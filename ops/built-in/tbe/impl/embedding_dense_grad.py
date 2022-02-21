@@ -71,6 +71,7 @@ class EmbeddingDenseGrad:
         self.kernel_name = kernel_name
         self.scale_grad_by_freq = scale_grad_by_freq
         self.block_ub = None
+        self.align_ub = None
 
         '''Data reading and writing on UB must be 32B aligned. This parameter is used
         to calculate tensor division and data handling instruction parameters
@@ -103,7 +104,7 @@ class EmbeddingDenseGrad:
         '''The vector instruction calculates a maximum of 8 blocks per repeat.
         This parameter is the maximum value of the mask when grad performs vector calculation
         '''
-        self.vector_mask_max_counts = 8 * self.counts_each_block
+        self.vector_mask_max_counts = Constant.BLOCK * self.counts_each_block
         self.new_numel_indices = None
         self.grad_ub = None
         self.indices_ub = None
@@ -173,6 +174,10 @@ class EmbeddingDenseGrad:
         """
         cal_core_num
         """
+        if self.embedding_dim > Constant.BLOCK and self.embedding_dim % Constant.BLOCK != 0:
+            scale = ((self.embedding_dim - 1) // Constant.BLOCK + 1) * Constant.BLOCK
+        else:
+            scale = self.embedding_dim
         if self.scale_grad_by_freq:
             self.index_not_last_core = (self.num_weights - 1) // self.aicore_num + 1
             self.used_core = (self.num_weights - 1) // self.index_not_last_core + 1
@@ -188,10 +193,10 @@ class EmbeddingDenseGrad:
             self.used_core = (self.numel_indices - 1) // self.ele_not_last_core + 1
             self.ele_last_core = self.numel_indices - (self.used_core - 1) * self.ele_not_last_core
             self.ub_indices_size = (self.ub_size_bytes - Constant.RESERVE_SIZE) \
-                                       // (self.embedding_dim * self.dtype_bytes_size_grad +
+                                       // (scale * self.dtype_bytes_size_grad +
                                            self.dtype_bytes_size_indices) \
                                        // self.indices_each_block * self.indices_each_block
-        self.ub_grad_size = self.ub_indices_size * self.embedding_dim
+        self.ub_grad_size = self.ub_indices_size * scale
 
     def gm_for_data_and_fill_grad_weight(self):
         """
@@ -271,7 +276,7 @@ class EmbeddingDenseGrad:
             self.counts_ub = self.tik_instance.Tensor(self.dtype_indices, (self.counts_size,), name="counts_ub",
                                                       scope=tik.scope_ubuf)
             self.dup_value(self.counts_ub, self.counts_size)
-        self.grad_ub = self.tik_instance.Tensor(self.dtype_grad, (self.ub_indices_size, self.embedding_dim),
+        self.grad_ub = self.tik_instance.Tensor(self.dtype_grad, (self.ub_grad_size,),
                                                 name="grad_ub", scope=tik.scope_ubuf)
         self.base_count_words_compute(core_index)
 
@@ -450,6 +455,31 @@ class EmbeddingDenseGrad:
                     tmp.set_as(self.counts_ub[self.k - self.begin])
                     self.counts_ub[self.k - self.begin].set_as(tmp + 1)
 
+    def add_grad_no_scale_not_align(self, total):
+        """
+        add_grad_no_scale_not_align
+        """
+        align_size = ((self.embedding_dim - 1) // Constant.BLOCK + 1) * Constant.BLOCK
+        align_ub = self.tik_instance.Tensor(self.dtype_grad, (align_size,), name='align_ub', scope=tik.scope_ubuf)
+        self.dup_value(align_ub, align_size)
+        with self.tik_instance.for_range(0, total) as index:
+            self.k.set_as(self.indices_ub[index])
+            with self.tik_instance.if_scope(self.k != self.padding_idx):
+                with self.tik_instance.if_scope(tik.all(self.k >= 0, self.k < self.num_weights)):
+                    self.tik_instance.data_move(align_ub, self.grad_ub[index * align_size], 0, 1,
+                                                self.embedding_dim // self.grad_each_block, 0, 0)
+                    with self.tik_instance.for_range(0, self.embedding_dim % self.grad_each_block) as i:
+                        align_ub[self.embedding_dim // self.grad_each_block *
+                                 self.grad_each_block + i].set_as(self.grad_ub[index * align_size +
+                                                                               self.embedding_dim //
+                                                                               self.grad_each_block *
+                                                                               self.grad_each_block + i])
+                    self.tik_instance.set_atomic_add(1)
+                    self.tik_instance.data_move(self.grad_weight[self.k * self.embedding_dim],
+                                                align_ub, 0,
+                                                1, align_size // self.grad_each_block, 0, 0)
+                    self.tik_instance.set_atomic_add(0)
+
     def base_compute_grad_weight_not_need_scale(self, core_index):
         """
         when sf is False,just use base function to compute the grad_weight
@@ -471,22 +501,70 @@ class EmbeddingDenseGrad:
         with self.tik_instance.else_scope():
             self.ranges.set_as(self.ele_not_last_core)
         # Move indexes and grad blocks from gm to ub
-        if self.embedding_dim < 8:
-            self.block_ub = self.tik_instance.Tensor(self.dtype_grad, (Constant.BLOCK,), name="block_ub",
-                                                     scope=tik.scope_ubuf)
-            self.tik_instance.vec_dup(Constant.BLOCK, self.block_ub, scalar_float0, 1, 8)
-        with self.tik_instance.if_scope(self.ranges // self.ub_indices_size > 0):
-            with self.tik_instance.for_range(0, self.ranges // self.ub_indices_size) as i1:
-                self.tik_instance.data_move(self.indices_ub, self.indices[core_index * self.ele_not_last_core +
-                                                                          i1 * self.ub_indices_size], 0, 1,
-                                            self.ub_indices_size // self.indices_each_block, 0, 0)
-                self.tik_instance.data_move(self.grad_ub, self.grad[(core_index * self.ele_not_last_core +
-                                                                     i1 * self.ub_indices_size) * self.embedding_dim],
-                                            0, 1, self.ub_indices_size * self.embedding_dim // self.grad_each_block,
-                                            0, 0)
+        if self.embedding_dim > Constant.BLOCK and self.embedding_dim % Constant.BLOCK != 0:
+            self.base_compute_no_scale_not_align(core_index)
+        else:
+            if self.embedding_dim < Constant.BLOCK:
+                self.block_ub = self.tik_instance.Tensor(self.dtype_grad, (Constant.BLOCK,), name="block_ub",
+                                                         scope=tik.scope_ubuf)
+                self.tik_instance.vec_dup(Constant.BLOCK, self.block_ub, scalar_float0, 1, 8)
+            with self.tik_instance.if_scope(self.ranges // self.ub_indices_size > 0):
+                with self.tik_instance.for_range(0, self.ranges // self.ub_indices_size) as i1:
+                    self.tik_instance.data_move(self.indices_ub, self.indices[core_index * self.ele_not_last_core +
+                                                                              i1 * self.ub_indices_size], 0, 1,
+                                                self.ub_indices_size // self.indices_each_block, 0, 0)
+                    self.tik_instance.data_move(self.grad_ub,
+                                                self.grad[(core_index * self.ele_not_last_core + i1 *
+                                                           self.ub_indices_size) * self.embedding_dim],
+                                                0, 1, self.ub_indices_size * self.embedding_dim // self.grad_each_block,
+                                                0, 0)
+                    self.add_same_word_grad_not_need_scale(self.ub_indices_size)
+            self.remaining_compute_grad_weight_not_need_scale(core_index)
 
+    def base_compute_no_scale_not_align(self, core_index):
+        """
+        base_compute_no_scale_not_align
+        """
+        align_length = (self.embedding_dim - 1) // Constant.BLOCK + 1
+        with self.tik_instance.if_scope(self.ranges // self.ub_indices_size > 0):
+            with self.tik_instance.for_range(0, self.ranges // self.ub_indices_size) as i:
+                self.tik_instance.data_move(self.indices_ub, self.indices[core_index * self.ele_not_last_core +
+                                                                          i * self.ub_indices_size], 0, 1,
+                                            self.ub_indices_size // self.indices_each_block, 0, 0)
+                with self.tik_instance.for_range(0, self.ub_indices_size) as j:
+                    self.tik_instance.data_move(self.grad_ub[j * align_length * Constant.BLOCK],
+                                                self.grad[(core_index * self.ele_not_last_core + i *
+                                                           self.ub_indices_size + j) * self.embedding_dim],
+                                                0, 1, align_length, 0, 0)
                 self.add_same_word_grad_not_need_scale(self.ub_indices_size)
-        self.remaining_compute_grad_weight_not_need_scale(core_index)
+        self.remain_compute_no_scale_not_align(core_index, align_length)
+
+    def remain_compute_no_scale_not_align(self, core_index, align_size):
+        """
+        remain_compute_no_scale_not_align
+        """
+        with self.tik_instance.if_scope(self.ranges % self.ub_indices_size != 0):
+            offset_indices_move = self.tik_instance.Scalar('int32', name='offset_indices_move')
+            offset_indices_move.set_as(core_index * self.ele_not_last_core + self.ranges // self.ub_indices_size \
+                                                                        * self.ub_indices_size)
+            burst_len_indices = self.tik_instance.Scalar('int32', name='burst_len_indices')
+            offset_grad_move = self.tik_instance.Scalar('int32', name='offset_grad_move')
+            burst_len_indices.set_as((
+                self.ranges %
+                self.ub_indices_size - 1) //
+                self.indices_each_block + 1)
+            offset_grad_move.set_as((core_index * self.ele_not_last_core + self.ranges // self.ub_indices_size *
+                                self.ub_indices_size) * self.embedding_dim)
+
+            self.tik_instance.data_move(self.indices_ub, self.indices[offset_indices_move], 0, 1, burst_len_indices, 0,
+                                        0)
+            with self.tik_instance.for_range(0, self.ranges % self.ub_indices_size) as i:
+                self.tik_instance.data_move(self.grad_ub[i * align_size * Constant.BLOCK],
+                                            self.grad[(core_index * self.ele_not_last_core + self.ranges //
+                                                       self.ub_indices_size * self.ub_indices_size + i)
+                                                      * self.embedding_dim],
+                                            0, 1, align_size, 0, 0)
+            self.add_same_word_grad_not_need_scale(self.ranges % self.ub_indices_size)
 
     def remaining_compute_grad_weight_not_need_scale(self, core_index):
         """
@@ -536,24 +614,27 @@ class EmbeddingDenseGrad:
         -------
         None
         """
-        with self.tik_instance.for_range(0, total) as self.index:
-            self.k.set_as(self.indices_ub[self.index])
-            with self.tik_instance.if_scope(self.k != self.padding_idx):
-                with self.tik_instance.if_scope(tik.all(self.k >= 0, self.k < self.num_weights)):
-                    if self.embedding_dim < 8:
-                        with self.tik_instance.for_range(0, self.embedding_dim) as i:
-                            self.block_ub[i].set_as(self.grad_ub[self.index * self.embedding_dim + i])
-                        self.tik_instance.set_atomic_add(1)
-                        self.tik_instance.data_move(self.grad_weight[self.k * self.embedding_dim],
-                                                    self.block_ub, 0,
-                                                    1, Constant.BLOCK // self.grad_each_block, 0, 0)
-                        self.tik_instance.set_atomic_add(0)
-                    else:
-                        self.tik_instance.set_atomic_add(1)
-                        self.tik_instance.data_move(self.grad_weight[self.k * self.embedding_dim],
-                                                    self.grad_ub[self.index * self.embedding_dim], 0,
-                                                    1, self.embedding_dim // self.grad_each_block, 0, 0)
-                        self.tik_instance.set_atomic_add(0)
+        if self.embedding_dim > Constant.BLOCK and self.embedding_dim % Constant.BLOCK != 0:
+            self.add_grad_no_scale_not_align(total)
+        else:
+            with self.tik_instance.for_range(0, total) as self.index:
+                self.k.set_as(self.indices_ub[self.index])
+                with self.tik_instance.if_scope(self.k != self.padding_idx):
+                    with self.tik_instance.if_scope(tik.all(self.k >= 0, self.k < self.num_weights)):
+                        if self.embedding_dim < Constant.BLOCK:
+                            with self.tik_instance.for_range(0, self.embedding_dim) as i:
+                                self.block_ub[i].set_as(self.grad_ub[self.index * self.embedding_dim + i])
+                            self.tik_instance.set_atomic_add(1)
+                            self.tik_instance.data_move(self.grad_weight[self.k * self.embedding_dim],
+                                                        self.block_ub, 0,
+                                                        1, Constant.BLOCK // self.grad_each_block, 0, 0)
+                            self.tik_instance.set_atomic_add(0)
+                        else:
+                            self.tik_instance.set_atomic_add(1)
+                            self.tik_instance.data_move(self.grad_weight[self.k * self.embedding_dim],
+                                                        self.grad_ub[self.index * self.embedding_dim], 0,
+                                                        1, self.embedding_dim // self.grad_each_block, 0, 0)
+                            self.tik_instance.set_atomic_add(0)
 
 
 # 'pylint: disable=too-many-arguments
