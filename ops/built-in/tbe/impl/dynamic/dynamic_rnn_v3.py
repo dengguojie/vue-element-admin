@@ -831,34 +831,24 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
 
     # input and s_start_h is Nz, need trans to zZ
     # so change axis 1 and 2
-    a_ub_if = tvm.compute(shape_a_z_bigz,
-                          lambda *indice:
-                          tvm.select(indice[2] < in_x,
-                                      input_x[indice[0],
-                                              indice[2],
-                                              indice[1],
-                                              indice[3],
-                                              indice[4]]
-                                      ),
-                          name="a_ub_if", tag="concat")
-
-    a_ub_else = tvm.compute(shape_a_z_bigz,
-                            lambda *indice:
-                            tvm.select(indice[2] >= in_x,
-                                        s_state_h_ub[0,
-                                                    indice[2] - in_x,
-                                                    indice[1],
-                                                    indice[3],
-                                                    indice[4]]
-                                        ),
-                            name="a_ub_else", tag="concat")
-
-    # `a_ub_if_else = a_ub_if + a_ub_else`
-    a_ub_if_else = tvm.compute(shape_a_z_bigz, lambda *indices: a_ub_if(*indices) + a_ub_else(*indices),
-                               name="a_ub_if_else", tag="empty_intrin")
+    a_ub = tvm.compute(shape_a_z_bigz,
+                       lambda *indice:
+                       tvm.select(indice[2] < in_x,
+                                  input_x[indice[0],
+                                          indice[2],
+                                          indice[1],
+                                          indice[3],
+                                          indice[4]],
+                                  s_state_h_ub[0,
+                                               indice[2] - in_x,
+                                               indice[1],
+                                               indice[3],
+                                               indice[4]]
+                                  ),
+                       name="a_ub", tag="concat")
 
     a_l1 = tvm.compute(shape_a_z_bigz,
-                       lambda *indices: a_ub_if_else(*indices),
+                       lambda *indices: a_ub(*indices),
                        name='a_l1',
                        tag="out_to_l1")
     b_l1 = tvm.compute(shape_b,
@@ -1335,8 +1325,6 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
             for index, sch_list_value in enumerate(sch_list):
                 sch_list_value.set_constraint( \
                     expr.And(input_x.shape[2] <= tune_shape_list[index][1], input_x.shape[2] > 0))
-        tbe_context.get_context().add_compile_info("vars", {"tune_shape_list": tune_shape_list})
-        return return_list, sch_list, index_list
 
     bank_manager.update_bank_hit_info(True)
     # schedule
@@ -1382,9 +1370,7 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
     s[s_state_h_ub].set_scope(scope_ubuf)
     s[s_state_c_ub].set_scope(scope_ubuf)
 
-    s[a_ub_if].set_scope(scope_ubuf)
-    s[a_ub_else].set_scope(scope_ubuf)
-    s[a_ub_if_else].set_scope(scope_ubuf)
+    s[a_ub].set_scope(scope_ubuf)
     s[c_t_tanh_fake].set_scope(scope_ubuf)
     if bias_dtype == "float16":
         s[update_c_fp16_back_fake].set_scope(scope_ubuf)
@@ -1468,10 +1454,7 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
                      c_l0c.op.axis[4 + 1], l0_k_inner,
                      c_l0c.op.reduce_axis[1])
 
-    s[a_ub_if].compute_at(s[c_l0c], l1_k_outer)
-    s[a_ub_else].compute_at(s[c_l0c], l1_k_outer)
-    s[a_ub_if_else].compute_at(s[c_l0c], l1_k_outer)
-
+    s[a_ub].compute_at(s[c_l0c], l1_k_outer)
     s[s_state_h_ub].compute_at(s[c_l0c], l1_k_outer)
 
     s[a_l0a].compute_at(s[c_l0c], l0_k_outer)
@@ -1710,20 +1693,13 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
     if is_gate_output:
         s[c_t_tanh_mid].reused_by(c_t_tanh_ub)
         s[c_t_tanh_ub].reused_by(reuse_data=True)
-
-    s[a_ub_if].reused_by(a_ub_else, a_ub_if_else)
-    s[a_ub_if].reused_by(reuse_data=True)
-
     # emit_insn
     s[a_l1].emit_insn(a_l1.op.axis[0], 'dma_copy')
     s[b_l1].emit_insn(b_l1.op.axis[0], 'dma_copy')
     s[a_l0a].emit_insn(a_l0a.op.axis[0], 'dma_copy')
     s[b_l0b].emit_insn(b_l0b.op.axis[0], 'dma_copy')
 
-    s[a_ub_if].emit_insn(a_ub_if.op.axis[0], 'dma_copy')
-    s[a_ub_else].emit_insn(a_ub_else.op.axis[0], 'dma_copy')
-    s[a_ub_if_else].emit_insn(a_ub_if_else.op.axis[0], 'phony_insn')
-
+    s[a_ub].emit_insn(a_ub.op.axis[0], 'dma_copy')
     if wci_gm is not None:
         s[wci_ub].emit_insn(wci_ub.op.axis[0], 'dma_copy')
         s[wco_ub].emit_insn(wco_ub.op.axis[0], 'dma_copy')
@@ -1841,5 +1817,11 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
     s[update_h_gm_as_y_back].emit_insn(update_h_gm_as_y_back.op.axis[0],
                                        'phony_insn')
 
-    tbe_context.get_context().add_compile_info("vars", {"tune_shape_list": [[-1, -1, 0]]})
-    return return_list, [s], [0]
+    default_index = 0
+    if index_list is not None and len(index_list) > 0:
+        default_index = index_list[-1] + 1
+    tune_shape_list.append([-1, -1, default_index])
+    tbe_context.get_context().add_compile_info("vars", {"tune_shape_list": tune_shape_list})
+    sch_list.append(s)
+    index_list.append(default_index)
+    return return_list, sch_list, index_list
