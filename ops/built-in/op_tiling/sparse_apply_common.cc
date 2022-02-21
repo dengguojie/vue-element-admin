@@ -58,9 +58,9 @@ bool CalSparseApplyCommonTiling(const std::string& op_type, const nlohmann::json
     int32_t need_core_num = core_num;
     if (num_indices < core_num and each_row_data_num > cache_threshold_col) {
         need_core_num = num_indices;
-        if (num_indices * 2 <= core_num and each_row_data_num >= 1024){
+        if (num_indices * 2 <= core_num and each_row_data_num >= 1024) {
             need_core_num = core_num / num_indices * num_indices;
-            if (need_core_num > core_num){
+            if (need_core_num > core_num) {
                 need_core_num = core_num;
             }
             if (need_core_num <= 0) {
