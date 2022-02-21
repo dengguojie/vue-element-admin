@@ -664,6 +664,7 @@ class NonZero:
 
         return col_auxiliary_matrix
 
+
 # 'pylint: disable=too-many-arguments, unused-argument,
 def check_supported(x, value, index, count, transpose, kernel_name="non_zero_with_value"):
     """

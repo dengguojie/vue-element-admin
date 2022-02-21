@@ -323,28 +323,29 @@ bool SpaceToBatchNDTiling(const string& op_type, const TeOpParas& op_paras, cons
     } else if (((ori_format == "NHWC") || (ori_format == "NCHW")) && (block_vec.size() == SIZE_2) &&
                (pads_vec.size() == SIZE_4)) {
       ;
-    } else if ((ori_format == "NCHW") && (block_vec.size() == SIZE_3) && (pads_vec.size() == SIZE_6) && (block_vec[0] == 1) &&
-               (pads_vec[0] == 0) && (pads_vec[1] == 0)) {
+    } else if ((ori_format == "NCHW") && (block_vec.size() == SIZE_3) && (pads_vec.size() == SIZE_6) &&
+               (block_vec[0] == 1) && (pads_vec[0] == 0) && (pads_vec[1] == 0)) {
       block_vec.erase(block_vec.begin());
       pads_vec.erase(pads_vec.begin(), pads_vec.begin() + FACTOR_TWO);
     } else {
       VECTOR_INNER_ERR_REPORT_TILIING(op_type,
           "Input with format NC1HWC0 which does not meet the rules, ori_format is %s, block size is %lu, pads size "
-              "is %lu",
+          "is %lu",
           ori_format.c_str(), block_vec.size(), pads_vec.size());
       return false;
     }
   } else {
-    if (((ori_format == "NDHWC") || (ori_format == "NCDHW")) && (block_vec.size() == SIZE_3) && (pads_vec.size() == SIZE_6)) {
+    if (((ori_format == "NDHWC") || (ori_format == "NCDHW")) && (block_vec.size() == SIZE_3) &&
+        (pads_vec.size() == SIZE_6)) {
       ;
-    } else if ((ori_format == "NCDHW") && (block_vec.size() == SIZE_4) && (pads_vec.size() == SIZE_8) && (block_vec[0] == 1) &&
-               (pads_vec[0] == 0) && (pads_vec[1] == 0)) {
+    } else if ((ori_format == "NCDHW") && (block_vec.size() == SIZE_4) && (pads_vec.size() == SIZE_8) &&
+               (block_vec[0] == 1) && (pads_vec[0] == 0) && (pads_vec[1] == 0)) {
       block_vec.erase(block_vec.begin());
       pads_vec.erase(pads_vec.begin(), pads_vec.begin() + FACTOR_TWO);
     } else {
       VECTOR_INNER_ERR_REPORT_TILIING(op_type,
           "Input with format NDC1HWC0 which does not meet the rules, ori_format is %s, block size is %lu, pads size "
-              "is %lu",
+          "is %lu",
           ori_format.c_str(), block_vec.size(), pads_vec.size());
       return false;
     }
@@ -355,22 +356,22 @@ bool SpaceToBatchNDTiling(const string& op_type, const TeOpParas& op_paras, cons
     if ((block_vec[0] <= 0) || (block_vec[1] <= 0)) {
       VECTOR_INNER_ERR_REPORT_TILIING(op_type,
           "Get block_shape failed at format NC1HWC0, the value of block_shape must be greater to 0, but "
-              "got [%ld, %ld].",
+          "got [%ld, %ld].",
           block_vec[0], block_vec[1]);
       return false;
     }
     if ((pads_vec[0] < 0) || (pads_vec[1] < 0) || (pads_vec[2] < 0) || (pads_vec[3] < 0)) {
       VECTOR_INNER_ERR_REPORT_TILIING(op_type,
           "Get pads failed at format NC1HWC0, the value of pads must be greater and equal to 0, but "
-              "got [%ld, %ld, %ld, %ld].",
+          "got [%ld, %ld, %ld, %ld].",
           pads_vec[0], pads_vec[1], pads_vec[2], pads_vec[3]);
       return false;
     }
     if ((input_shape[2] + pads_vec[0] + pads_vec[1]) % block_vec[0] != 0 ||
         (input_shape[3] + pads_vec[2] + pads_vec[3]) % block_vec[1] != 0) {
       VECTOR_INNER_ERR_REPORT_TILIING(op_type,
-          "The (input+pads)/(block_shape) should be integer, but got input:[%ld, %ld], block:[%ld, %ld], pads:[%ld, %ld, "
-              "%ld, %ld]",
+          "The (input+pads)/(block_shape) should be integer, but got input:[%ld, %ld], block:[%ld, %ld], "
+          "pads:[%ld, %ld, %ld, %ld]",
           input_shape[2], input_shape[3], block_vec[0], block_vec[1], pads_vec[0], pads_vec[1], pads_vec[2],
           pads_vec[3]);
       return false;
@@ -379,7 +380,7 @@ bool SpaceToBatchNDTiling(const string& op_type, const TeOpParas& op_paras, cons
     if ((block_vec[0] <= 0) || (block_vec[1] <= 0) || (block_vec[2] <= 0)) {
       VECTOR_INNER_ERR_REPORT_TILIING(op_type,
           "Get block_shape failed at format NDC1HWC0, the value of block_shape must be greater to 0, but "
-              "got [%ld, %ld, %ld].",
+          "got [%ld, %ld, %ld].",
           block_vec[0], block_vec[1], block_vec[2]);
       return false;
     }
@@ -387,7 +388,7 @@ bool SpaceToBatchNDTiling(const string& op_type, const TeOpParas& op_paras, cons
         (pads_vec[5] < 0)) {
       VECTOR_INNER_ERR_REPORT_TILIING(op_type,
           "Get pads failed at format NDC1HWC0, the value of pads must be greater and equal 0, but "
-              "got [%ld, %ld, %ld, %ld, %ld, %ld].",
+          "got [%ld, %ld, %ld, %ld, %ld, %ld].",
           pads_vec[0], pads_vec[1], pads_vec[2], pads_vec[3], pads_vec[4], pads_vec[5]);
       return false;
     }
@@ -396,7 +397,7 @@ bool SpaceToBatchNDTiling(const string& op_type, const TeOpParas& op_paras, cons
         (input_shape[4] + pads_vec[4] + pads_vec[5]) % block_vec[2] != 0) {
       VECTOR_INNER_ERR_REPORT_TILIING(op_type,
           "The (input+pads)/(block_shape) should be integer, but got input:[%ld, %ld, %ld], block:[%ld, %ld, %ld], "
-              "pads:[%ld, %ld, %ld, %ld, %ld, %ld]",
+          "pads:[%ld, %ld, %ld, %ld, %ld, %ld]",
           input_shape[1], input_shape[3], input_shape[4], block_vec[0], block_vec[1], block_vec[2], pads_vec[0],
           pads_vec[1], pads_vec[2], pads_vec[3], pads_vec[4], pads_vec[5]);
       return false;
