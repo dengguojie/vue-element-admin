@@ -38,7 +38,6 @@ static const char kPatternAipp[] = "aipp";
 static const char kPatternConv[] = "convolution";
 static const char kPatternEltwise[] = "eltwise";
 static const char kPatternMaxpool[] = "maxpool";
-static const char kPatternQuant[] = "quant";
 static const char kPatternFixpipe[] = "FixPipe";
 
 static const char kOpTypeMaxPool[] = "MaxPool";
@@ -73,12 +72,10 @@ vector<BufferFusionPattern*> TbeAippConvReluMaxpoolingFusionPass::DefinePatterns
       .AddOpDesc(kPatternEltwise, {OP_PATTERN_ELEMWISE}, TBE_PATTERN_NUM_NONE, TBE_PATTERN_NUM_DEFAULT)
       .AddOpDesc(kPatternMaxpool, {kOpTypeMaxPool, OP_PATTERN_POOL2D}, TBE_PATTERN_NUM_DEFAULT,
                  TBE_PATTERN_NUM_DEFAULT)
-      .AddOpDesc(kPatternQuant, {OP_PATTERN_QUANT}, TBE_PATTERN_NUM_NONE, TBE_PATTERN_NUM_DEFAULT)
       .SetHead({kPatternAipp, kPatternConv})
       .SetOutputs(kPatternAipp, {kPatternConv})
       .SetOutputs(kPatternConv, {kPatternEltwise}, TBE_OUTPUT_BRANCH_SINGLE, true)
-      .SetOutputs(kPatternEltwise, {kPatternMaxpool})
-      .SetOutputs(kPatternMaxpool, {kPatternQuant});
+      .SetOutputs(kPatternEltwise, {kPatternMaxpool});
   patterns.push_back(pattern);
   OP_LOGD(fused_op_type_.c_str(), "End to define %s pass pattern.", pass_name.c_str());
 
