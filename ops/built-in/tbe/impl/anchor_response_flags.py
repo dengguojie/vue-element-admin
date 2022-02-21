@@ -33,6 +33,7 @@ class AnchorResponseFlags():
         self.output_dtype = flags.get("dtype")
         self.featmap_h = featmap_size[0]
         self.featmap_w = featmap_size[1]
+        self.hw = self.featmap_h * self.featmap_w
         self.stride_h = strides[0]
         self.stride_w = strides[1]
         self.num_base_anchors = num_base_anchors
@@ -279,6 +280,9 @@ class AnchorResponseFlags():
 
         with self.tik_instance.for_range(0, self.n) as idx:
             idx_scalar.set_as(idx_tensor[idx])
+            with self.tik_instance.if_scope(idx_scalar < 0):
+                idx_scalar.set_as(self.hw + idx_scalar)
+
             with self.tik_instance.for_range(0, self.num_base_anchors) as num_idx:
                 grid_tensor_fp16[idx_scalar * self.num_base_anchors + num_idx].set_as(scalar_one)
 
