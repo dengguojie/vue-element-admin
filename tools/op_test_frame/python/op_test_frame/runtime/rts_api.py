@@ -561,7 +561,7 @@ class AscendRTSApi:
                 time.sleep(1)
                 self.memcpy(c_memory_p, memory_size, data, data_size, memcpy_kind, retry_count)
             else:
-                raise RuntimeError("After three retrys,memcpy still fails")
+                raise RuntimeError("After three retrys,memcpy still fails") from err
 
     def memset(self,
                c_memory_p: ctypes.c_void_p, memory_size: int,

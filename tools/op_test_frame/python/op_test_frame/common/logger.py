@@ -21,7 +21,8 @@ logger
 import sys
 import inspect
 import traceback
-from datetime import datetime
+import datetime
+import time
 
 
 # 'pylint: disable=too-few-public-methods
@@ -54,7 +55,9 @@ def log(level, file_name, line, msg):
     """
 
     def _get_time_str():
-        return datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
+        time_delta = datetime.timedelta(seconds=-time.timezone)
+        tz_obj = datetime.timezone(time_delta)
+        return datetime.datetime.now(tz=tz_obj).strftime("%Y-%m-%d %H:%M:%S.%f")
 
     print("[%s] %s [File \"%s\", line %d] %s" % (level, _get_time_str(), file_name, line, msg))
 
