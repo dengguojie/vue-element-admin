@@ -140,7 +140,9 @@ REG_OP(Transpose)
 *@par Attributes:
 *@li src_format: A string source data format, can be "NHWC", "NCHW", "FRACTAL_Z" etc.
 *@li dst_format: A string target data format, can be "NC1HWC0", "NCHW", "FRACTAL_Z" etc.
-*@li group: A optional int32, default value is 1. \n
+*@li src_subformat: A optional int32 for source sub-format, default value is 0.
+*@li dst_subformat: A optional int32 for target sub-format, default value is 0.
+*@li groups: A optional int32, default value is 1. \n
 
 *@par Outputs:
 *dst: A Tensor. Has the same type as "src".
@@ -150,6 +152,8 @@ REG_OP(TransData)
     .OUTPUT(dst, TensorType::BasicType())
     .REQUIRED_ATTR(src_format, String)
     .REQUIRED_ATTR(dst_format, String)
+    .ATTR(src_subformat, Int, 0)
+    .ATTR(dst_subformat, Int, 0)
     .ATTR(groups, Int, 1)
     .OP_END_FACTORY_REG(TransData)
 

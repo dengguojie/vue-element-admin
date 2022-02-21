@@ -1,5 +1,5 @@
 """
-Copyright (C) 2019-2021. Huawei Technologies Co., Ltd. All rights reserved.
+Copyright (C) 2019-2022. Huawei Technologies Co., Ltd. All rights reserved.
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the Apache License Version 2.0.
@@ -67,11 +67,11 @@ def check_whether_2d(input_format, input_dict):
     return is_2d
 
 
-# 'pylint: disable=locally-disabled,too-many-branches
+# 'pylint: disable=locally-disabled,too-many-branches, unused-argument
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_STR,
-                            para_check.REQUIRED_ATTR_STR, para_check.OPTION_ATTR_INT, para_check.KERNEL_NAME)
-def trans_data(src, dst, src_format, dst_format, groups=1,
-               kernel_name='trans_data'):
+                            para_check.REQUIRED_ATTR_STR, para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_INT,
+                            para_check.OPTION_ATTR_INT, para_check.KERNEL_NAME)
+def trans_data(src, dst, src_format, dst_format, src_subformat=0, dst_subformat=0, groups=1, kernel_name='trans_data'):
     """
     algorithm: format_transfer
     doing format_transfer for various data format
@@ -89,6 +89,10 @@ def trans_data(src, dst, src_format, dst_format, groups=1,
         source data format, can be NHWC, NCHW, FRACTAL_Zn etc.
     dst_format: str
         target data format, can be NC1HWC0, NCHW, FRACTAL_Zn etc.
+    src_subformat: int
+        default 0
+    dst_subformat: int
+        default 0
     groups: int
         default 1
     kernel_name: str
