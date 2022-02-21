@@ -106,7 +106,7 @@ class CpuKernelCache : public KernelCache<CpuCacheData> {
    * @return uint32_t: 0 indicates success, while the others fail
    */
   uint32_t UpdateTensor(const std::vector<uint64_t> &io_addrs,
-                        ExtInfoMsg &ext_info_msg, CpuKernelContext &ctx);
+                        ExtInfoMsg &ext_info_msg, CpuKernelContext &ctx) const;
 
   /*
    * parse extend tensor shape types information.

@@ -118,7 +118,7 @@ void CpuKernelCache::GetDimsFromArrays(const int64_t *shape, size_t len,
  */
 uint32_t CpuKernelCache::UpdateTensor(
     const std::vector<uint64_t> &io_addrs, ExtInfoMsg &ext_info_msg,
-    CpuKernelContext &ctx) {
+    CpuKernelContext &ctx) const {
   KERNEL_LOG_INFO("Update tensor info begin.");
   if (io_addrs.size() != ctx.GetInputsSize() + ctx.GetOutputsSize()) {
     KERNEL_LOG_ERROR(
