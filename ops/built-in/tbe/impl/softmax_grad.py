@@ -22,6 +22,45 @@ from te.utils import para_check
 from te.utils import shape_util
 from te import tvm
 from impl.util.platform_adapter import tbe_context
+from impl.util import util_select_op_base
+
+# 'pylint: disable=unused-argument
+def op_select_format(softmax, grad_softmax, grad_x, axis, kernel_name="softmax_grad"):
+    """
+    1.when the lengths of x's shape and y's shape are the same and equal to 2,
+    the formats of x and y are the same and are one of [FRACTAL_NZ,NC1HWC0,ND].
+
+        example:
+        original:
+        softmax's Tensor(shape=(16, 16, 16, 16, 16), "FRACTAL_NZ")
+        grad_softmax's Tensor(shape=(16, 16, 16, 16, 16), "FRACTAL_NZ")
+        grad_x's Tensor(shape=(16, 16, 16, 16, 16), "FRACTAL_NZ")
+    """
+    shape_x_ori = shape_util.scalar2tensor_one(softmax.get("ori_shape"))
+    length_x_ori = len(shape_x_ori)
+    if length_x_ori == 2 and  shape_x_ori[0] == 4096 and shape_x_ori[1] == 4096:
+        input0 = util_select_op_base.gen_param(classify="input0", name="softmax",
+                                            datatype="float16,float16,float",
+                                            format="ND, ND, ND")
+        input1 = util_select_op_base.gen_param(classify="input1", name="grad_softmax",
+                                            datatype="float16,float16,float",
+                                            format="ND, ND, ND")
+        output0 = util_select_op_base.gen_param(classify="output0", name="grad_x",
+                                                datatype="float,float16,float",
+                                                format="ND, ND, ND")
+    else:
+        input0 = util_select_op_base.gen_param(classify="input0", name="softmax",
+                                            datatype="float16,float16,float16,float16,float,float,float,float",
+                                            format="NC1HWC0,ND,NDC1HWC0,FRACTAL_NZ,NC1HWC0,ND,NDC1HWC0,FRACTAL_NZ")
+        input1 = util_select_op_base.gen_param(classify="input1", name="grad_softmax",
+                                            datatype="float16,float16,float16,float16,float,float,float,float",
+                                            format="NC1HWC0,ND,NDC1HWC0,FRACTAL_NZ,NC1HWC0,ND,NDC1HWC0,FRACTAL_NZ")
+        output0 = util_select_op_base.gen_param(classify="output0", name="grad_x",
+                                                datatype="float16,float16,float16,float16,float,float,float,float",
+                                                format="NC1HWC0,ND,NDC1HWC0,FRACTAL_NZ,NC1HWC0,ND,NDC1HWC0,FRACTAL_NZ")
+    param_list = [input0, input1, output0]
+    param_dynamic_in_json = util_select_op_base.get_dynamic_param_in_json(param_list)
+    return param_dynamic_in_json
 
 
 # 'pylint: disable=locally-disabled,unused-argument
@@ -56,6 +95,7 @@ def softmax_grad_compute(softmax, grad_softmax, grad_x, axis,
         the result of softmax_grad_compute
     """
     dtype = softmax.dtype
+    output_dtype = grad_x.get("dtype")
     shape_input1 = shape_util.shape_to_list(softmax.shape)
     shape_input2 = shape_util.shape_to_list(grad_softmax.shape)
     has_improve_precision = False
@@ -80,7 +120,7 @@ def softmax_grad_compute(softmax, grad_softmax, grad_x, axis,
         data_sum_tmp = tbe.broadcast(data_sum, shape_input2)
     data_sub = tbe.vsub(grad_softmax, data_sum_tmp)
     res = tbe.vmul(softmax, data_sub)
-    if has_improve_precision:
+    if has_improve_precision and output_dtype == "float16":
         res = tbe.cast_to(res, "float16")
 
     return res

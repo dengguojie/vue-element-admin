@@ -23,6 +23,35 @@ from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import classify
 from impl.util import util_frac_z as fz
+from impl.util import util_select_op_base
+
+# 'pylint: disable=unused-argument
+def op_select_format(softmax, grad_softmax, grad_x, axis, kernel_name="softmax_grad"):
+    """
+    select format dynamically \n
+    1.when is dynamic softmax, the formats of x and y are the same and only support ND.
+
+        example:
+        original:
+        softmax's Tensor(shape=(16, 16, 16), "ND")
+        grad_softmax's Tensor(shape=(16, 16, 16), "ND")
+        grad_x's Tensor(shape=(16, 16, 16), "ND")
+    """
+    input0 = util_select_op_base.gen_param(classify="input0", name="softmax",
+                                           datatype="float16,float32",
+                                           format="ND,ND",
+                                           unknownshape_format="ND,ND")
+    input1 = util_select_op_base.gen_param(classify="input1", name="grad_softmax",
+                                           datatype="float16,float32",
+                                           format="ND,ND",
+                                           unknownshape_format="ND,ND")
+    output0 = util_select_op_base.gen_param(classify="output0", name="grad_x",
+                                            datatype="float16,float32",
+                                            format="ND,ND",
+                                            unknownshape_format="ND,ND")
+    param_list = [input0, input1, output0]
+    param_dynamic_in_json = util_select_op_base.get_dynamic_param_in_json(param_list)
+    return param_dynamic_in_json
 
 
 # 'pylint: disable=locally-disabled,unused-argument

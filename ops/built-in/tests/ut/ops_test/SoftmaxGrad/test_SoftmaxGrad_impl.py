@@ -101,12 +101,12 @@ case13 = {"params": [{"shape": (1,4,7,7,16), "dtype": "float16", "format": "NC1H
          "expect": "success",
          "format_expect": [],
          "support_expect": True}
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case1)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case2)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case3)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case4)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case5)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case6)
+ut_case.add_case(["Ascend710", "Ascend910A"], case1)
+ut_case.add_case(["Ascend710", "Ascend910A"], case2)
+ut_case.add_case(["Ascend710", "Ascend910A"], case3)
+ut_case.add_case(["Ascend710", "Ascend910A"], case4)
+ut_case.add_case(["Ascend710", "Ascend910A"], case5)
+ut_case.add_case(["Ascend710", "Ascend910A"], case6)
 ut_case.add_case(["Ascend710", "Ascend910A"], case7)
 ut_case.add_case(["Ascend710", "Ascend910A"], case8)
 ut_case.add_case(["Ascend710", "Ascend910A"], case9)
@@ -114,6 +114,70 @@ ut_case.add_case(["Ascend710", "Ascend910A"], case10)
 ut_case.add_case(["Ascend710", "Ascend910A"], case11)
 ut_case.add_case(["Ascend710", "Ascend910A"], case12)
 ut_case.add_case(["Ascend710", "Ascend910A"], case13)
+
+
+from impl.softmax_grad import op_select_format
+
+def test_softmax_grad_op_select_format_000(test_arg):
+    """
+    test_softmax_grad_op_select_format_000
+    """
+    op_select_format(
+        {
+            "shape": (4096, 4096),
+            "dtype": "float16",
+            "format": "ND",
+            "ori_shape": (4096, 4096),
+            "ori_format": "NHWC"
+        },
+        {
+            "shape": (4096, 4096),
+            "dtype": "float16",
+            "format": "ND",
+            "ori_shape": (4096, 4096),
+            "ori_format": "NHWC"
+        },
+        {
+            "shape": (4096, 4096),
+            "dtype": "float32",
+            "format": "ND",
+            "ori_shape": (4096, 4096),
+            "ori_format": "NHWC"
+        },
+        -1,
+    )
+
+def test_softmax_grad_op_select_format_001(test_arg):
+    """
+    test_softmax_grad_op_select_format_001
+    """
+    op_select_format(
+        {
+            "shape": (32, 32, 4096),
+            "dtype": "float16",
+            "format": "ND",
+            "ori_shape": (4096, 4096),
+            "ori_format": "NHWC"
+        },
+        {
+            "shape": (32, 32, 4096),
+            "dtype": "float16",
+            "format": "ND",
+            "ori_shape": (4096, 4096),
+            "ori_format": "NHWC"
+        },
+        {
+            "shape": (32, 32, 4096),
+            "dtype": "float16",
+            "format": "ND",
+            "ori_shape": (4096, 4096),
+            "ori_format": "NHWC"
+        },
+        -1,
+    )
+
+ut_case.add_cust_test_func(test_func=test_softmax_grad_op_select_format_000)
+ut_case.add_cust_test_func(test_func=test_softmax_grad_op_select_format_001)
 
 if __name__ == '__main__':
     ut_case.run()

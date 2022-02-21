@@ -40,5 +40,36 @@ ut_case.add_case(["Ascend910A"],
                                       (16, 16, 16),
                                       "float32", "dynamic_softmax_grad_2", "success"))
 
+from impl.dynamic.softmax_grad import op_select_format
+def test_dynamic_softmax_grad_op_select_format_001(test_arg):
+    """
+    test_dynamic_softmax_grad_op_select_format_001
+    """
+    op_select_format(
+        {
+            "shape": (32, 32, 4096),
+            "dtype": "float16",
+            "format": "ND",
+            "ori_shape": (4096, 4096),
+            "ori_format": "NHWC"
+        },
+        {
+            "shape": (32, 32, 4096),
+            "dtype": "float16",
+            "format": "ND",
+            "ori_shape": (4096, 4096),
+            "ori_format": "NHWC"
+        },
+        {
+            "shape": (32, 32, 4096),
+            "dtype": "float16",
+            "format": "ND",
+            "ori_shape": (4096, 4096),
+            "ori_format": "NHWC"
+        },
+        -1,
+    )
+ut_case.add_cust_test_func(test_func=test_dynamic_softmax_grad_op_select_format_001)
+
 if __name__ == '__main__':
     ut_case.run("Ascend910A")

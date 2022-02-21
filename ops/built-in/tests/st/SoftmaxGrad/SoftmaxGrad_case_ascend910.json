@@ -595,5 +595,64 @@
       }
     ],
     "case_name": "test_SoftmaxGrad_009"
+  },
+  {
+    "op": "SoftmaxGrad",
+    "input_desc": [
+      {
+        "shape": [
+          4096,
+          4096
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          4096,
+          4096
+        ],
+        "ori_format": "NCHW",
+        "name": "softmax",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          4096,
+          4096
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          4096,
+          4096
+        ],
+        "ori_format": "NCHW",
+        "name": "grad_softmax",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          4096,
+          4096
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          4096,
+          4096
+        ],
+        "ori_format": "NCHW",
+        "name": "grad_x",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "axes",
+        "type": "list_int",
+        "value": [
+          1
+        ]
+      }
+    ],
+    "case_name": "test_SoftmaxGrad_010"
   }
 ]
