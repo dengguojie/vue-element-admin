@@ -3215,6 +3215,7 @@ unkown:
       - ops/built-in/fusion_pass/common/aicore_util_attr_define.h
       - ops/built-in/fusion_pass/common/fp16_t.cc
       - ops/built-in/fusion_pass/common/fusion_const2attr_registry.h
+      - ops/built-in/fusion_pass/common/anchor_util.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/pass_through_second_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/a_a_square_sum_maximum_rsqrt_mul_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/mul_addn_l2loss_fusion_pass.h
