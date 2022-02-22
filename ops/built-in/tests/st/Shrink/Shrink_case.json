@@ -53,5 +53,32 @@
     ],
     "attr": [],
     "case_name": "test_dynamic_Shrink_000"
+  },
+  {
+    "op": "Shrink",
+    "input_desc": [
+      {
+        "shape": [
+          8,
+          9
+        ],
+        "format": "ND",
+        "name": "input_x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          8,
+          9
+        ],
+        "format": "ND",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Shrink_static_001"
   }
 ]

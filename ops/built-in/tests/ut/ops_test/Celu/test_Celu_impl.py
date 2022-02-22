@@ -121,9 +121,9 @@ ut_case.add_precision_case("all", {
 })
 
 ut_case.add_precision_case(["Ascend910A", "Ascend710"], {
-    "params": [{"dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (32,), "shape": (32,),
+    "params": [{"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (32,), "shape": (32,),
                 "param_type": "input"},
-               {"dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (32,), "shape": (32,),
+               {"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (32,), "shape": (32,),
                 "param_type": "output"},
                1.0],
 

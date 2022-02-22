@@ -1,0 +1,208 @@
+[
+  {
+    "op": "Celu",
+    "calc_expect_func_file": "test_celu_golden.py:calc_expect_func",
+    "input_desc": [
+      {
+        "shape": [
+          -1,
+          -1
+        ],
+        "format": "ND",
+        "name": "x",
+        "type": "float16",
+        "shape_range": [
+          [
+            1,
+            1024
+          ],
+          [
+            1,
+            1024
+          ]
+        ],
+        "typical_shape": [
+          7,
+          8
+        ]
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          -1,
+          -1
+        ],
+        "format": "ND",
+        "name": "y",
+        "type": "float16",
+        "shape_range": [
+          [
+            1,
+            1024
+          ],
+          [
+            1,
+            1024
+          ]
+        ],
+        "typical_shape": [
+          7,
+          8
+        ]
+      }
+    ],
+    "attr": [
+      {
+        "name": "alpha",
+        "value": 1.0,
+        "type": "float"
+      }
+    ],
+    "case_name": "test_dynamic_Celu_001"
+  },
+  {
+    "op": "Celu",
+    "calc_expect_func_file": "test_celu_golden.py:calc_expect_func",
+    "input_desc": [
+      {
+        "shape": [
+          -1,
+          6,
+          16
+        ],
+        "format": "NC1HWC0",
+        "name": "x",
+        "type": "float16",
+        "shape_range": [
+          [
+            1,
+            1024
+          ]
+        ],
+        "typical_shape": [
+          3,
+          6,
+          16
+        ]
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          -1,
+          6,
+          16
+        ],
+        "format": "NC1HWC0",
+        "name": "y",
+        "type": "float16",
+        "shape_range": [
+          [
+            1,
+            1024
+          ]
+        ],
+        "typical_shape": [
+          3,
+          6,
+          16
+        ]
+      }
+    ],
+    "attr": [
+      {
+        "name": "alpha",
+        "value": 1.0,
+        "type": "float"
+      }
+    ],
+    "case_name": "test_dynamic_Celu_002"
+  },
+  {
+    "op": "Celu",
+    "calc_expect_func_file": "test_celu_golden.py:calc_expect_func",
+    "input_desc": [
+      {
+        "shape": [
+          2,
+          3
+        ],
+        "value_range": [
+          [
+            -20.1,
+            1.0
+          ]
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "format": "ND",
+        "name": "x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          2,
+          3
+        ],
+        "format": "ND",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "alpha",
+        "value": 1.0,
+        "type": "float"
+      }
+    ],
+    "case_name": "test_static_Celu_001"
+  },
+  {
+    "op": "Celu",
+    "calc_expect_func_file": "test_celu_golden.py:calc_expect_func",
+    "input_desc": [
+      {
+        "shape": [
+          7,
+          8
+        ],
+        "value_range": [
+          [
+            -20.1,
+            1.0
+          ]
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "format": "ND",
+        "name": "x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          7,
+          8
+        ],
+        "format": "ND",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "alpha",
+        "value": 1.0,
+        "type": "float"
+      }
+    ],
+    "case_name": "test_static_Celu_002"
+  }
+]
