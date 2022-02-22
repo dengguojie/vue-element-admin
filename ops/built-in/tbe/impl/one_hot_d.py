@@ -44,9 +44,9 @@ def check_supported(input_x,
                     axis=-1,
                     kernel_name="one_hot_d"):
     x_shape = input_x.get("shape")
-    shape_list = [[2, 2]]
-    if list(x_shape) in shape_list:
-        reason = "when static and shape is 2,2"
+    shape_list = [(2048,)]
+    if x_shape in shape_list and axis == 0:
+        reason = "when static and shape is 2048 and axis is 0, go to dynamic onehot op"
         return False, reason
     return True, ""
 
