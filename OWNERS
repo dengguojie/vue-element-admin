@@ -49,9 +49,6 @@ approvers:
 - zhaoping12
 - tanshengshun
 reviewers:
-- chuqingxi
-- wang-jintang
-- luanma_bl
 - chen-kang30
 - li-xulong
 - Allan_Yu
@@ -65,7 +62,6 @@ reviewers:
 - su-yueming
 - chenpeng-hw
 - wang_jianle
-- luanma_bl
 - LDLD0524
 - wywismygod2020
 - lipeiyang3699
@@ -106,3 +102,5 @@ reviewers:
 - xu-binglin
 - yangyang016
 - zhangzhongzt
+- wu-mingli
+- fang-guocan
