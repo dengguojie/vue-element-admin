@@ -452,6 +452,10 @@ set(_tf_plugins
   block_lstm_plugin.cc
   roll_plugin.cc
   ensure_shape_plugin.cc
+  gather_point_grad_plugin.cc
+  gather_point_plugin.cc
+  group_point_grad_plugin.cc
+  group_point_plugin.cc
 )
 
 set(_tf_scope_fusion_passes

@@ -352,60 +352,60 @@ int64_t InferShapeGetShapeSizeBytes(int64_t shape_size) {
 }
 
 graphStatus GetDropOutGenMaskShapeAndRange(Operator &op, ShapeAndRange &out) {
-  std::vector<std::pair<int64_t, int64_t>> value_range;
-  int64_t low = 0;
+  std::vector<std::pair<int64_t, int64_t>> valueRange;
+  int64_t down = 0;
   int64_t up = 0;
 
   out = {Shape(UNKNOWN_SHAPE), {}};
-  ShapeAndRange shape_and_range{Shape(UNKNOWN_SHAPE), {}};
-  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
-  auto input_shape_desc = op_desc->MutableInputDesc("shape");
-  (void)input_shape_desc->GetValueRange(value_range);
-  OP_LOGI(op.GetName().c_str(), "DropOutGenMask::value_range.size() = %d", value_range.size());
-  if (value_range.size() == 0) {
-    OP_LOGW(op.GetName().c_str(), "value_range.size() == 0");
+  ShapeAndRange shapeAndRange{Shape(UNKNOWN_SHAPE), {}};
+  auto opDesc = OpDescUtils::GetOpDescFromOperator(op);
+  auto input_shape_desc = opDesc->MutableInputDesc("shape");
+  (void)input_shape_desc->GetValueRange(valueRange);
+  OP_LOGI(op.GetName().c_str(), "DropOutGenMask::valueRange.size() = %d", valueRange.size());
+  if (valueRange.size() == 0) {
+    OP_LOGW(op.GetName().c_str(), "valueRange.size() == 0");
     return GRAPH_SUCCESS;
   }
 
-  for (size_t i = 0; i < value_range.size(); i++) {
+  for (size_t i = 0; i < valueRange.size(); i++) {
     OP_LOGI(op.GetName().c_str(), "i = %d, first = %lld, second = %lld",
-            i, value_range[i].first, value_range[i].second);
-    if (value_range[i].first < UNKNOWN_DIM || value_range[i].second < UNKNOWN_DIM) {
+            i, valueRange[i].first, valueRange[i].second);
+    if (valueRange[i].first < UNKNOWN_DIM || valueRange[i].second < UNKNOWN_DIM) {
       OP_LOGW(op.GetName().c_str(), "value < UNKNOWN_DIM");
       return GRAPH_SUCCESS;
     }
 
     if (i == 0) {
-      low = value_range[i].first;
-      up = value_range[i].second;
+      down = valueRange[i].first;
+      up = valueRange[i].second;
       continue;
     }
 
-    if ((low == UNKNOWN_DIM) || (value_range[i].first == UNKNOWN_DIM)) {
-      low = UNKNOWN_DIM;
+    if ((down == UNKNOWN_DIM) || (valueRange[i].first == UNKNOWN_DIM)) {
+      down = UNKNOWN_DIM;
     } else {
-      low = low * value_range[i].first;
+      down = down * valueRange[i].first;
     }
 
-    if ((up == UNKNOWN_DIM) || (value_range[i].second == UNKNOWN_DIM)) {
+    if ((up == UNKNOWN_DIM) || (valueRange[i].second == UNKNOWN_DIM)) {
       up = UNKNOWN_DIM;
     } else {
-      up = up * value_range[i].second; 
+      up = up * valueRange[i].second; 
     }
-    OP_LOGI(op.GetName().c_str(), "low = %lld, up = %lld", low, up);
+    OP_LOGI(op.GetName().c_str(), "down = %lld, up = %lld", down, up);
   }
 
   Shape unknown_shape(UNKNOWN_SHAPE);
-  std::vector<std::pair<int64_t, int64_t>> shape_range(1);
-  shape_range[0].first = InferShapeGetShapeSizeBytes(low);
-  shape_range[0].second = InferShapeGetShapeSizeBytes(up);
-  shape_and_range.shape_range_ = shape_range;
-  shape_and_range.shape_ = unknown_shape;
-  out.shape_ = shape_and_range.shape_;
-  out.shape_range_ = shape_and_range.shape_range_;
+  std::vector<std::pair<int64_t, int64_t>> shapeRange(1);
+  shapeRange[0].first = InferShapeGetShapeSizeBytes(down);
+  shapeRange[0].second = InferShapeGetShapeSizeBytes(up);
+  shapeAndRange.shape_range_ = shapeRange;
+  shapeAndRange.shape_ = unknown_shape;
+  out.shape_ = shapeAndRange.shape_;
+  out.shape_range_ = shapeAndRange.shape_range_;
 
-  OP_LOGI(op.GetName().c_str(), "low = %lld, up = %lld, first = %lld, second = %lld \n",
-          low, up, shape_range[0].first, shape_range[0].second);
+  OP_LOGI(op.GetName().c_str(), "down = %lld, up = %lld, first = %lld, second = %lld \n",
+          down, up, shapeRange[0].first, shapeRange[0].second);
 
   return GRAPH_SUCCESS;
 }
@@ -427,17 +427,17 @@ IMPLEMT_COMMON_INFERFUNC(DropOutGenMaskInfer) {
   auto ret = op.GetInputConstData("shape", shape_tensor);
   OP_LOGI(op.GetName().c_str(), "GetInputConstData ret = %d \n", ret);
   if (ret != GRAPH_SUCCESS) {
-    ShapeAndRange shape_and_range;
-    if (GetDropOutGenMaskShapeAndRange(op, shape_and_range) != GRAPH_SUCCESS) {
+    ShapeAndRange shapeAndRange;
+    if (GetDropOutGenMaskShapeAndRange(op, shapeAndRange) != GRAPH_SUCCESS) {
         AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(),
         ConcatString("call GetDropOutGenMaskShapeAndRange function failed "));
       return GRAPH_FAILED;
     }
-    TensorDesc output_desc = op.GetOutputDesc("y");
-    output_desc.SetShape(shape_and_range.shape_);
-    output_desc.SetShapeRange(shape_and_range.shape_range_);
-    output_desc.SetDataType(DT_UINT8);
-    return op.UpdateOutputDesc("y", output_desc);
+    TensorDesc outputDesc = op.GetOutputDesc("y");
+    outputDesc.SetShape(shapeAndRange.shape_);
+    outputDesc.SetShapeRange(shapeAndRange.shape_range_);
+    outputDesc.SetDataType(DT_UINT8);
+    return op.UpdateOutputDesc("y", outputDesc);
   }
 
   Shape shape;
@@ -453,10 +453,10 @@ IMPLEMT_COMMON_INFERFUNC(DropOutGenMaskInfer) {
   std::vector<int64_t> out_dims = {n8s};
   Shape outShape(out_dims);
 
-  TensorDesc output_desc = op.GetOutputDesc("y");
-  output_desc.SetShape(outShape);
-  output_desc.SetDataType(DT_UINT8);
-  return op.UpdateOutputDesc("y", output_desc);
+  TensorDesc outputDesc = op.GetOutputDesc("y");
+  outputDesc.SetShape(outShape);
+  outputDesc.SetDataType(DT_UINT8);
+  return op.UpdateOutputDesc("y", outputDesc);
 }
 
 COMMON_INFER_FUNC_REG(DropOutGenMask, DropOutGenMaskInfer);

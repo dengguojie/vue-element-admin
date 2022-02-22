@@ -34,8 +34,8 @@ namespace {
 graphStatus SetAttrsToShapesAndTypes(Operator& op,
                                      const std::string& dtypes,
                                      const std::string& shapes) {
-  std::vector<DataType> elem_types;
-  if (op.GetAttr(dtypes, elem_types) != GRAPH_SUCCESS) {
+  std::vector<DataType> elemTypes;
+  if (op.GetAttr(dtypes, elemTypes) != GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "Get attr [%s] failed.", dtypes.c_str());
     return GRAPH_FAILED;
   }
@@ -45,49 +45,49 @@ graphStatus SetAttrsToShapesAndTypes(Operator& op,
     return GRAPH_FAILED;
   }
 
-  Operator::OpListListInt elem_shapes;
-  auto ret = op.GetAttr(shapes, elem_shapes);
-  OP_LOGI(op.GetName().c_str(), "elem_shapes = %ld, elem_types = %ld", elem_shapes.size(), elem_types.size());
-  if (ret == GRAPH_SUCCESS && elem_shapes.size() > 0) {
-    size_t num = std::min(elem_shapes.size(), elem_types.size());
-    std::vector<ShapeAndType> handle_shapes_and_types;
-    handle_shapes_and_types.reserve(num);
+  Operator::OpListListInt elemShapes;
+  auto ret = op.GetAttr(shapes, elemShapes);
+  OP_LOGI(op.GetName().c_str(), "elemShapes = %ld, elemTypes = %ld", elemShapes.size(), elemTypes.size());
+  if (ret == GRAPH_SUCCESS && elemShapes.size() > 0) {
+    size_t num = std::min(elemShapes.size(), elemTypes.size());
+    std::vector<ShapeAndType> handleShapesAndTypes;
+    handleShapesAndTypes.reserve(num);
 
     for (size_t i = 0; i < num; ++i) {
-      Shape elem_shape(std::move(elem_shapes[i]));
-      DataType elem_type(std::move(elem_types[i]));
-      ShapeAndType shape_and_type(elem_shape, elem_type);
-      handle_shapes_and_types.emplace_back(std::move(shape_and_type));
+      Shape elemShape(std::move(elemShapes[i]));
+      DataType elem_type(std::move(elemTypes[i]));
+      ShapeAndType shape_and_type(elemShape, elem_type);
+      handleShapesAndTypes.emplace_back(std::move(shape_and_type));
     }
 
-    std::vector<std::vector<ShapeAndType>> shapes_and_types(2);
-    shapes_and_types[0] = handle_shapes_and_types;
-    context->SetOutputHandleShapesAndTypes(shapes_and_types);
+    std::vector<std::vector<ShapeAndType>> shapeAndTypes(2);
+    shapeAndTypes[0] = handleShapesAndTypes;
+    context->SetOutputHandleShapesAndTypes(shapeAndTypes);
   }
 
-  AscendString op_name;
-  op.GetName(op_name);
-  std::vector<AscendString> marks = {op_name};
+  AscendString opName;
+  op.GetName(opName);
+  std::vector<AscendString> marks = {opName};
   context->SetMarks(marks);
 
   return GRAPH_SUCCESS;
 }
 
 graphStatus InferShapesFillUnknownShape(Operator& op, const std::string &name, 
-                                        const std::string &dynCompName, Shape &unknown_shape) {
-  std::vector<DataType> dtypes;
-  if (op.GetAttr(name, dtypes) == GRAPH_FAILED) {
+                                        const std::string &dynCompName, Shape &unknownShape) {
+  std::vector<DataType> dataTypes;
+  if (op.GetAttr(name, dataTypes) == GRAPH_FAILED) {
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), name);
     return GRAPH_FAILED;
   }
-  size_t size = dtypes.size();
+  size_t size = dataTypes.size();
   for (size_t i = 0; i < size; i++) {
-    TensorDesc output_desc = op.GetDynamicOutputDesc(dynCompName, i);
-    output_desc.SetShape(unknown_shape);
-    output_desc.SetDataType(dtypes[i]);
-    if (op.UpdateDynamicOutputDesc(dynCompName, i, output_desc) != GRAPH_SUCCESS) {
-      std::string err_msg = ConcatString("update desc of ", i, "th output of dynamic output[y] failed.");
-      AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    TensorDesc outputDesc = op.GetDynamicOutputDesc(dynCompName, i);
+    outputDesc.SetShape(unknownShape);
+    outputDesc.SetDataType(dataTypes[i]);
+    if (op.UpdateDynamicOutputDesc(dynCompName, i, outputDesc) != GRAPH_SUCCESS) {
+      std::string errMsg = ConcatString("update desc of ", i, "th output of dynamic output[y] failed.");
+      AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), errMsg);
       return GRAPH_FAILED;
     }
   }
@@ -95,96 +95,96 @@ graphStatus InferShapesFillUnknownShape(Operator& op, const std::string &name,
 } 
 
 AicpuResourceContext* GetAicpuResourceContext(Operator& op, std::vector<AscendString> &marks) {
-    auto operator_context = op.GetInferenceContext();
-    if (marks.empty() || operator_context == nullptr) {
-      AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), std::string("marks is empty()"));
+    auto context = op.GetInferenceContext();
+    if (marks.empty() || context == nullptr) {
+      AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), std::string("marks.empty()"));
       return nullptr; 
     }
 
-    if (operator_context->RegisterReliedOnResourceKey(marks[0]) != GRAPH_SUCCESS) {
+    if (context->RegisterReliedOnResourceKey(marks[0]) != GRAPH_SUCCESS) {
       AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), std::string("RegisterReliedOnResourceKey fail"));
       return nullptr;
     }
 
-    return reinterpret_cast<AicpuResourceContext*>(operator_context->GetResourceContext(marks[0]));
+    return reinterpret_cast<AicpuResourceContext*>(context->GetResourceContext(marks[0]));
 }
 
 AicpuResourceContext* GetAicpuResourceContext(Operator& op) {
-  auto infer_context = op.GetInferenceContext();
-  if (infer_context == nullptr) {
+  auto context = op.GetInferenceContext();
+  if (context == nullptr) {
     return nullptr;
   }
   std::vector<AscendString> marks;
-  infer_context->GetMarks(marks);
+  context->GetMarks(marks);
   return GetAicpuResourceContext(op, marks);
 }
 
 graphStatus DequeueManyShape(Operator& op, const Shape& n_shape, const std::string& out_name) {
-  auto operator_context = op.GetInferenceContext();
-  std::vector<std::vector<ShapeAndType>> handle_shapes_and_types;
-  handle_shapes_and_types = operator_context->GetInputHandleShapesAndTypes();
+  auto context = op.GetInferenceContext();
+  std::vector<std::vector<ShapeAndType>> handleShapesAndTypes;
+  handleShapesAndTypes = context->GetInputHandleShapesAndTypes();
 
-  std::vector<ge::DataType> input_component_types;
-  if (op.GetAttr("component_types", input_component_types) != GRAPH_SUCCESS) {
+  std::vector<ge::DataType> inputComponentTypes;
+  if (op.GetAttr("component_types", inputComponentTypes) != GRAPH_SUCCESS) {
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), std::string("get attr[component_types] failed."));
     return GRAPH_FAILED;
   }
 
-  graphStatus output_status = GRAPH_SUCCESS;
-  size_t num_outputs_data = input_component_types.size();
-  if ((handle_shapes_and_types.size() != 0) &&
-      (handle_shapes_and_types[0].size() != 0) &&
-      (handle_shapes_and_types[0].size() == num_outputs_data)) {
-    for (size_t i = 0; i < handle_shapes_and_types[0].size(); ++i) {
-      Shape comibined_shape;
-      Shape handle_shape = handle_shapes_and_types[0][i].GetShape();
-      graphStatus concatenate_status = Concatenate(n_shape, handle_shape, comibined_shape);
-      if (concatenate_status != GRAPH_SUCCESS) {
+  graphStatus status = GRAPH_SUCCESS;
+  size_t componentNum = inputComponentTypes.size();
+  if ((handleShapesAndTypes.size() != 0) &&
+      (handleShapesAndTypes[0].size() != 0) &&
+      (handleShapesAndTypes[0].size() == componentNum)) {
+    for (size_t i = 0; i < handleShapesAndTypes[0].size(); ++i) {
+      Shape comibinedShape;
+      Shape handleShape = handleShapesAndTypes[0][i].GetShape();
+      graphStatus concatenateStatus = Concatenate(n_shape, handleShape, comibinedShape);
+      if (concatenateStatus != GRAPH_SUCCESS) {
         std::string err_msg("call Concatenate function failed to cancate shape");
         AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
         return GRAPH_FAILED;
       }
-      TensorDesc ops_output_desc = op.GetDynamicOutputDesc(out_name, i);
-      ops_output_desc.SetShape(comibined_shape);
-      ops_output_desc.SetDataType(input_component_types[i]);
-      output_status = op.UpdateDynamicOutputDesc(out_name, i, ops_output_desc);
-      if (output_status != GRAPH_SUCCESS) {
+      TensorDesc outputDesc = op.GetDynamicOutputDesc(out_name, i);
+      outputDesc.SetShape(comibinedShape);
+      outputDesc.SetDataType(inputComponentTypes[i]);
+      status = op.UpdateDynamicOutputDesc(out_name, i, outputDesc);
+      if (status != GRAPH_SUCCESS) {
         std::string err_msg = ConcatString("update output[",out_name, ":", i,"] desc failed.");
         AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
         return GRAPH_FAILED;
       }
     }
   } else {
-    auto res_context = GetAicpuResourceContext(op);
-    if (res_context == nullptr) {
+    auto resContext = GetAicpuResourceContext(op);
+    if (resContext == nullptr) {
       AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), std::string("marks is empty()"));
-      Shape unknown_shape(ge::UNKNOWN_SHAPE);
-      InferShapesFillUnknownShape(op, "component_types", out_name, unknown_shape);
+      Shape unknownShape(ge::UNKNOWN_SHAPE);
+      InferShapesFillUnknownShape(op, "component_types", out_name, unknownShape);
       return GRAPH_SUCCESS; 
     }
-    std::string err_msg = ConcatString("size::", res_context->shape_and_range_.size(), num_outputs_data);
+    std::string err_msg = ConcatString("size::", resContext->shape_and_range_.size(), componentNum);
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
-    if (res_context->shape_and_range_.size() == num_outputs_data) {
-      for (size_t i = 0; i < num_outputs_data; i++) {
-        Shape combined_shape;
-        graphStatus ret = Concatenate(n_shape, res_context->shape_and_range_[i].shape_, combined_shape);
+    if (resContext->shape_and_range_.size() == componentNum) {
+      for (size_t i = 0; i < componentNum; i++) {
+        Shape combinedShape;
+        graphStatus ret = Concatenate(n_shape, resContext->shape_and_range_[i].shape_, combinedShape);
         if (ret != GRAPH_SUCCESS) {          
           AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), std::string("call Concatenate failed"));
           return GRAPH_FAILED;
         }
-        TensorDesc ops_output_desc = op.GetDynamicOutputDesc(out_name, i);
-        ops_output_desc.SetShape(combined_shape);
-        ops_output_desc.SetDataType(input_component_types[i]);
-        output_status = op.UpdateDynamicOutputDesc(out_name, i, ops_output_desc);
-        if (output_status != GRAPH_SUCCESS) {
+        TensorDesc outputDesc = op.GetDynamicOutputDesc(out_name, i);
+        outputDesc.SetShape(combinedShape);
+        outputDesc.SetDataType(inputComponentTypes[i]);
+        status = op.UpdateDynamicOutputDesc(out_name, i, outputDesc);
+        if (status != GRAPH_SUCCESS) {
           std::string err_msg = ConcatString("update output[", out_name, ":", i, "] desc failed.");
           AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
           return GRAPH_FAILED;
         }
       }
     } else {
-      Shape unknown_shape(ge::UNKNOWN_RANK);    
-      InferShapesFillUnknownShape(op, "component_types", out_name, unknown_shape);      
+      Shape unknownShape(ge::UNKNOWN_RANK);    
+      InferShapesFillUnknownShape(op, "component_types", out_name, unknownShape);      
     }
   }
 
@@ -194,17 +194,17 @@ graphStatus DequeueManyShape(Operator& op, const Shape& n_shape, const std::stri
 graphStatus GetStageKeyMarks(Operator &op, std::vector<AscendString> &marks) {
   std::string containerStr;
   std::string sharedNameStr;
-  graphStatus res_con;
-  graphStatus res_shar;
-  res_con = op.GetAttr("container", containerStr);
-  res_shar = op.GetAttr("shared_name", sharedNameStr);
-  if ((res_con != GRAPH_SUCCESS) || (res_shar != GRAPH_SUCCESS)) {
+  graphStatus resCon;
+  graphStatus resShar;
+  resCon = op.GetAttr("container", containerStr);
+  resShar = op.GetAttr("shared_name", sharedNameStr);
+  if ((resCon != GRAPH_SUCCESS) || (resShar != GRAPH_SUCCESS)) {
     AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), std::string("get attr failed."));
     return GRAPH_FAILED;
   }
 
-  std::string indices_tensor_name = containerStr + sharedNameStr;
-  marks.push_back(AscendString(indices_tensor_name.c_str()));
+  std::string indicesTensorName = containerStr + sharedNameStr;
+  marks.push_back(AscendString(indicesTensorName.c_str()));
   return GRAPH_SUCCESS;
 }
 
@@ -216,19 +216,19 @@ graphStatus InferShapesFromAicpuResource(Operator& op, std::vector<AscendString>
     return GRAPH_FAILED;
   }
 
-  auto res_context = GetAicpuResourceContext(op, marks);
-  if (res_context == nullptr) {
+  auto context = GetAicpuResourceContext(op, marks);
+  if (context == nullptr) {
     Shape unknown_shape(ge::UNKNOWN_RANK);
     return InferShapesFillUnknownShape(op, name, dynCompName, unknown_shape);
   }
 
   size_t size = dtypes.size();
-  size_t num = std::min(res_context->shape_and_range_.size(), size);
+  size_t num = std::min(context->shape_and_range_.size(), size);
   for (size_t i = 0; i < num; i++) {
-    TensorDesc output_desc = op.GetDynamicOutputDesc(dynCompName, i);
-    output_desc.SetShape(res_context->shape_and_range_[i].shape_);
-    output_desc.SetDataType(dtypes[i]);
-    if (op.UpdateDynamicOutputDesc(dynCompName, i, output_desc) != GRAPH_SUCCESS) {
+    TensorDesc outputDesc = op.GetDynamicOutputDesc(dynCompName, i);
+    outputDesc.SetShape(context->shape_and_range_[i].shape_);
+    outputDesc.SetDataType(dtypes[i]);
+    if (op.UpdateDynamicOutputDesc(dynCompName, i, outputDesc) != GRAPH_SUCCESS) {
       std::string err_msg = ConcatString("update desc of ", i, "th output of dynamic output[y] failed.");
       AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
       return GRAPH_FAILED;
@@ -239,66 +239,66 @@ graphStatus InferShapesFromAicpuResource(Operator& op, std::vector<AscendString>
 }
 
 graphStatus SaveShapesToAicpuResource(const Operator &op, std::vector<AscendString> &marks,
-                                      const size_t dyn_comp_size, const char*dynCompName) {                           
+                                      const size_t dynCompSize, const char*dynCompName) {                           
   auto context = op.GetInferenceContext();
   if (context == nullptr || marks.empty()) {
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), std::string("op.GetInferenceContext() fail"));
     return GRAPH_FAILED;
   }
 
-  bool shape_changed = false;
-  auto res_context = reinterpret_cast<AicpuResourceContext*>(context->GetResourceContext(marks[0]));
-  if (res_context == nullptr) {
-    res_context = new (std::nothrow)AicpuResourceContext();
-    if (res_context == nullptr) {
+  bool shapeChanged = false;
+  auto resContext = reinterpret_cast<AicpuResourceContext*>(context->GetResourceContext(marks[0]));
+  if (resContext == nullptr) {
+    resContext = new (std::nothrow)AicpuResourceContext();
+    if (resContext == nullptr) {
       AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), std::string("new AicpuResourceContext() fail"));
       return GRAPH_FAILED;
     }
 
-    for (size_t i = 0; i < dyn_comp_size; i++) {
-      const TensorDesc input_desc = op.GetDynamicInputDesc(dynCompName, i);
-      Shape elem_shape(input_desc.GetShape());
+    for (size_t i = 0; i < dynCompSize; i++) {
+      const TensorDesc inputDesc = op.GetDynamicInputDesc(dynCompName, i);
+      Shape elem_shape(inputDesc.GetShape());
       std::vector<std::pair<int64_t, int64_t>> value_shape_range;
-      input_desc.GetShapeRange(value_shape_range);
+      inputDesc.GetShapeRange(value_shape_range);
       ShapeAndRange feed_shape_and_range{elem_shape, value_shape_range};
-      res_context->shape_and_range_.push_back(feed_shape_and_range);
+      resContext->shape_and_range_.push_back(feed_shape_and_range);
     }
 
-    if (context->SetResourceContext(marks[0], res_context) != GRAPH_SUCCESS) {
+    if (context->SetResourceContext(marks[0], resContext) != GRAPH_SUCCESS) {
       AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), std::string("SetResourceContext() fail"));
-      delete res_context;
+      delete resContext;
       return GRAPH_FAILED;
     }
-    shape_changed = true;
+    shapeChanged = true;
   } else {
-    auto &shape_and_range = res_context->shape_and_range_;
-    std::vector<ShapeAndRange> new_shape_and_range;
-    for (size_t i = 0; i < dyn_comp_size; i++) {
-      const TensorDesc input_desc = op.GetDynamicInputDesc(dynCompName, i);
-      Shape elem_shape(input_desc.GetShape());
-      std::vector<std::pair<int64_t, int64_t>> shape_range;
-      input_desc.GetShapeRange(shape_range);
-      ShapeAndRange feed_shape_and_range{elem_shape, shape_range};
-      new_shape_and_range.push_back(feed_shape_and_range);
+    auto &shapeAndRange = resContext->shape_and_range_;
+    std::vector<ShapeAndRange> newShapeAndRange;
+    for (size_t i = 0; i < dynCompSize; i++) {
+      const TensorDesc inputDesc = op.GetDynamicInputDesc(dynCompName, i);
+      Shape elemShape(inputDesc.GetShape());
+      std::vector<std::pair<int64_t, int64_t>> shapeRange;
+      inputDesc.GetShapeRange(shapeRange);
+      ShapeAndRange feed_shape_and_range{elemShape, shapeRange};
+      newShapeAndRange.push_back(feed_shape_and_range);
     }
 
-    if (new_shape_and_range.size() != shape_and_range.size()) {
-      AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), std::string("size() != shape_and_range.size()"));
+    if (newShapeAndRange.size() != shapeAndRange.size()) {
+      AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), std::string("size() != shapeAndRange.size()"));
       return GRAPH_FAILED;
     }
 
-    AscendString op_name;
-    op.GetName(op_name);
-    for (size_t i = 0; i < shape_and_range.size(); i++) {
-      if (MergeShapeAndRange(shape_and_range[i], new_shape_and_range[i], shape_and_range[i],
-                             shape_changed, op_name.GetString()) != GRAPH_SUCCESS) {
+    AscendString opName;
+    op.GetName(opName);
+    for (size_t i = 0; i < shapeAndRange.size(); i++) {
+      if (MergeShapeAndRange(shapeAndRange[i], newShapeAndRange[i], shapeAndRange[i],
+                             shapeChanged, opName.GetString()) != GRAPH_SUCCESS) {
         AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), std::string("MergeShapeAndRange failed."));                              
         return GRAPH_FAILED;
       }
     }
   }
 
-  if (shape_changed) {
+  if (shapeChanged) {
     if (context->AddChangedResourceKey(marks[0]) != GRAPH_SUCCESS) {
       AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), std::string("AddChangedResourceKey failed."));
       return GRAPH_FAILED;  
@@ -312,12 +312,12 @@ graphStatus SaveShapesToAicpuResource(const Operator &op, std::vector<AscendStri
 }  // namespace
 
 IMPLEMT_INFERFUNC(QueueIsClosed, QueueIsClosedInfer) {
-  Shape scalar_shape;
-  (void)Scalar(scalar_shape);
-  TensorDesc ops_output_desc = op.GetOutputDesc("is_closed");
-  ops_output_desc.SetShape(scalar_shape);
-  ops_output_desc.SetDataType(DT_BOOL);
-  if (op.UpdateOutputDesc("is_closed", ops_output_desc) != GRAPH_SUCCESS) {
+  Shape scalarShape;
+  (void)Scalar(scalarShape);
+  TensorDesc opsOutputDesc = op.GetOutputDesc("is_closed");
+  opsOutputDesc.SetShape(scalarShape);
+  opsOutputDesc.SetDataType(DT_BOOL);
+  if (op.UpdateOutputDesc("is_closed", opsOutputDesc) != GRAPH_SUCCESS) {
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), std::string("UpdateOutputDesc failed"));
     return GRAPH_FAILED;
   }
@@ -327,11 +327,11 @@ IMPLEMT_INFERFUNC(QueueIsClosed, QueueIsClosedInfer) {
 INFER_FUNC_REG(QueueIsClosed, QueueIsClosedInfer);
 
 IMPLEMT_INFERFUNC(QueueSize, QueueSizeInfer) {
-  Shape input_shape = op.GetInputDesc("handle").GetShape();
-  TensorDesc ops_size_desc = op.GetOutputDesc("size");
-  ops_size_desc.SetShape(input_shape);
-  ops_size_desc.SetDataType(DT_INT32);
-  if (op.UpdateOutputDesc("size", ops_size_desc) != GRAPH_SUCCESS) {
+  Shape inputShape = op.GetInputDesc("handle").GetShape();
+  TensorDesc opsSizeDesc = op.GetOutputDesc("size");
+  opsSizeDesc.SetShape(inputShape);
+  opsSizeDesc.SetDataType(DT_INT32);
+  if (op.UpdateOutputDesc("size", opsSizeDesc) != GRAPH_SUCCESS) {
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), std::string("UpdateOutputDesc failed"));
     return GRAPH_FAILED;
   }
@@ -341,11 +341,11 @@ IMPLEMT_INFERFUNC(QueueSize, QueueSizeInfer) {
 INFER_FUNC_REG(QueueSize, QueueSizeInfer);
 
 IMPLEMT_INFERFUNC(FIFOQueue, FIFOQueueInfer) {
-  TensorDesc ops_output_desc = op.GetOutputDesc("handle");
-  DataType output_type = DT_RESOURCE;
-  ops_output_desc.SetShape(Shape());
-  ops_output_desc.SetDataType(output_type);
-  if (op.UpdateOutputDesc("handle", ops_output_desc) != GRAPH_SUCCESS) {
+  TensorDesc opsOutputDesc = op.GetOutputDesc("handle");
+  DataType outputType = DT_RESOURCE;
+  opsOutputDesc.SetShape(Shape());
+  opsOutputDesc.SetDataType(outputType);
+  if (op.UpdateOutputDesc("handle", opsOutputDesc) != GRAPH_SUCCESS) {
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), std::string("UpdateOutputDesc failed"));
     return GRAPH_FAILED;
   }
@@ -357,65 +357,65 @@ INFER_FUNC_REG(FIFOQueue, FIFOQueueInfer);
 
 IMPLEMT_INFERFUNC(QueueEnqueue, QueueEnqueueInfer) {
   auto context = op.GetInferenceContext();
-  std::vector<std::vector<ShapeAndType>> input_shapes_and_types;
-  input_shapes_and_types = context->GetInputHandleShapesAndTypes();
-  size_t dyn_comp_size = op.GetInputsSize() - 1;
-  if ((input_shapes_and_types.size() != 0) &&
-      (input_shapes_and_types[0].size() != 0) &&
-      (input_shapes_and_types[0].size() == dyn_comp_size)) {
-      OP_LOGI(op.GetName().c_str(), "dyn_comp_size = %ld", dyn_comp_size);
+  std::vector<std::vector<ShapeAndType>> inputShapesAndTypes;
+  inputShapesAndTypes = context->GetInputHandleShapesAndTypes();
+  size_t dynCompSize = op.GetInputsSize() - 1;
+  if ((inputShapesAndTypes.size() != 0) &&
+      (inputShapesAndTypes[0].size() != 0) &&
+      (inputShapesAndTypes[0].size() == dynCompSize)) {
+      OP_LOGI(op.GetName().c_str(), "dynCompSize = %ld", dynCompSize);
     return GRAPH_SUCCESS;
   }
 
-  std::vector<AscendString> marks;
-  context->GetMarks(marks);
-  OP_LOGI(op.GetName().c_str(), "SaveShapesToAicpuResource marks.size() = %ld", marks.size());
-  return SaveShapesToAicpuResource(op, marks, dyn_comp_size, "components");
+  std::vector<AscendString> marksInfo;
+  context->GetMarks(marksInfo);
+  OP_LOGI(op.GetName().c_str(), "SaveShapesToAicpuResource marks.size() = %ld", marksInfo.size());
+  return SaveShapesToAicpuResource(op, marksInfo, dynCompSize, "components");
 }
 
 INFER_FUNC_REG(QueueEnqueue, QueueEnqueueInfer);
 
 IMPLEMT_INFERFUNC(QueueEnqueueMany, QueueEnqueueManyInfer) {
   auto context = op.GetInferenceContext();
-  std::vector<std::vector<ShapeAndType>> input_shapes_and_types;
-  input_shapes_and_types = context->GetInputHandleShapesAndTypes();
-  size_t dyn_comp_size = op.GetInputsSize() - 1;
-  if ((input_shapes_and_types.size() != 0) &&
-      (input_shapes_and_types[0].size() != 0) &&
-      (input_shapes_and_types[0].size() == dyn_comp_size)) {
+  std::vector<std::vector<ShapeAndType>> inputShapesAndTypes;
+  inputShapesAndTypes = context->GetInputHandleShapesAndTypes();
+  size_t dynCompSize = op.GetInputsSize() - 1;
+  if ((inputShapesAndTypes.size() != 0) &&
+      (inputShapesAndTypes[0].size() != 0) &&
+      (inputShapesAndTypes[0].size() == dynCompSize)) {
     return GRAPH_SUCCESS;
   }
 
-  std::vector<AscendString> marks;
-  context->GetMarks(marks);
-  return SaveShapesToAicpuResource(op, marks, dyn_comp_size, "components");
+  std::vector<AscendString> marksInfo;
+  context->GetMarks(marksInfo);
+  return SaveShapesToAicpuResource(op, marksInfo, dynCompSize, "components");
 }
 
 INFER_FUNC_REG(QueueEnqueueMany, QueueEnqueueManyInfer);
 
 IMPLEMT_INFERFUNC(QueueDequeue, QueueDequeueInfer) {
-  auto operator_context = op.GetInferenceContext();
-  std::vector<std::vector<ShapeAndType>> handle_shapes_and_types;
-  handle_shapes_and_types = operator_context->GetInputHandleShapesAndTypes();
+  auto context = op.GetInferenceContext();
+  std::vector<std::vector<ShapeAndType>> handleShapesAndTypes;
+  handleShapesAndTypes = context->GetInputHandleShapesAndTypes();
 
-  std::vector<ge::DataType> component_types;
-  if (op.GetAttr("component_types", component_types) != GRAPH_SUCCESS) {
+  std::vector<ge::DataType> componentTypes;
+  if (op.GetAttr("component_types", componentTypes) != GRAPH_SUCCESS) {
     std::string err_msg("get attr[component_types] failed.");
 	  AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return 1;
   }
 
-  graphStatus output_status = GRAPH_SUCCESS;
-  size_t num_outputs_data = component_types.size();
-  if ((handle_shapes_and_types.size() != 0) &&
-      (handle_shapes_and_types[0].size() != 0) &&
-      (handle_shapes_and_types[0].size() == num_outputs_data)) {
-    for (size_t i = 0; i < handle_shapes_and_types[0].size(); ++i) {
-      TensorDesc output_desc = op.GetDynamicOutputDesc("components", i);
-      output_desc.SetShape(handle_shapes_and_types[0][i].GetShape());
-      output_desc.SetDataType(component_types[i]);
-      output_status = op.UpdateDynamicOutputDesc("components", i, output_desc);
-      if (output_status != GRAPH_SUCCESS) {
+  graphStatus status = GRAPH_SUCCESS;
+  size_t componentNum = componentTypes.size();
+  if ((handleShapesAndTypes.size() != 0) &&
+      (handleShapesAndTypes[0].size() != 0) &&
+      (handleShapesAndTypes[0].size() == componentNum)) {
+    for (size_t i = 0; i < handleShapesAndTypes[0].size(); ++i) {
+      TensorDesc outputDesc = op.GetDynamicOutputDesc("components", i);
+      outputDesc.SetShape(handleShapesAndTypes[0][i].GetShape());
+      outputDesc.SetDataType(componentTypes[i]);
+      status = op.UpdateDynamicOutputDesc("components", i, outputDesc);
+      if (status != GRAPH_SUCCESS) {
         std::string err_msg = ConcatString("update output[components:", i,"] desc failed.");
         AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
         return 2;
@@ -426,29 +426,29 @@ IMPLEMT_INFERFUNC(QueueDequeue, QueueDequeueInfer) {
   } 
 
   std::vector<AscendString> marks;
-  operator_context->GetMarks(marks);
+  context->GetMarks(marks);
   return InferShapesFromAicpuResource(op, marks, "component_types", "components");
 }
 
 INFER_FUNC_REG(QueueDequeue, QueueDequeueInfer);
 
 IMPLEMT_INFERFUNC(QueueDequeueMany, QueueDequeueManyInfer) {
-  Tensor n_tensor;
-  Shape n_shape;
-  if (op.GetInputConstData("n", n_tensor) == GRAPH_SUCCESS) {
-    const uint8_t* n = n_tensor.GetData();
+  Tensor nTensor;
+  Shape nShape;
+  if (op.GetInputConstData("n", nTensor) == GRAPH_SUCCESS) {
+    const uint8_t* n = nTensor.GetData();
     const int32_t* n_data = reinterpret_cast<const int32_t*>(n);
     if (*n_data < 0) {
       std::string err_msg = ConcatString("input[n] must >= 0, but got[", *n_data,"].");
       AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
       return GRAPH_FAILED;
     }
-    n_shape = Shape({*n_data});
+    nShape = Shape({*n_data});
   } else {
-    n_shape = Shape({ge::UNKNOWN_DIM});
+    nShape = Shape({ge::UNKNOWN_DIM});
   }
 
-  if (DequeueManyShape(op, n_shape, "components") != GRAPH_SUCCESS) {
+  if (DequeueManyShape(op, nShape, "components") != GRAPH_SUCCESS) {
       AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), std::string("DequeueManyShape failed."));
       return GRAPH_FAILED; 
   }
@@ -465,11 +465,11 @@ IMPLEMT_INFERFUNC(QueueDequeueUpTo, QueueDequeueUpToInfer) {
 INFER_FUNC_REG(QueueDequeueUpTo, QueueDequeueUpToInfer);
 
 IMPLEMT_INFERFUNC(Stage, StageInfer) {
-  size_t comp_size = op.GetInputsSize();
+  size_t size = op.GetInputsSize();
 
-  std::vector<AscendString> marks;
-  GetStageKeyMarks(op, marks);
-  return SaveShapesToAicpuResource(op, marks, comp_size, "values");
+  std::vector<AscendString> marksInfo;
+  GetStageKeyMarks(op, marksInfo);
+  return SaveShapesToAicpuResource(op, marksInfo, size, "values");
 }
 
 INFER_FUNC_REG(Stage, StageInfer);
@@ -489,12 +489,12 @@ IMPLEMT_INFERFUNC(StagePeek, StagePeekInfer) {
     return GRAPH_FAILED;
   }
 
-  size_t dtypes_size = dtypes.size();
-  for (size_t i = 0; i < dtypes_size; ++i) {
-    TensorDesc y_output_desc = op.GetDynamicOutputDesc("y", i);
-    y_output_desc.SetShape(shape);
-    y_output_desc.SetDataType(dtypes[i]);
-    op.UpdateDynamicOutputDesc("y", i, y_output_desc);
+  size_t size = dtypes.size();
+  for (size_t i = 0; i < size; ++i) {
+    TensorDesc outputDesc = op.GetDynamicOutputDesc("y", i);
+    outputDesc.SetShape(shape);
+    outputDesc.SetDataType(dtypes[i]);
+    op.UpdateDynamicOutputDesc("y", i, outputDesc);
   }
   return GRAPH_SUCCESS;
 }
@@ -514,8 +514,8 @@ IMPLEMT_INFERFUNC(StageSize, StageSizeInfer) {
 INFER_FUNC_REG(StageSize, StageSizeInfer);
 
 IMPLEMT_INFERFUNC(StackPop, StackPopInfer) {
-  auto operator_context = op.GetInferenceContext();
-  Shape unknown_rank(ge::UNKNOWN_RANK);
+  auto context = op.GetInferenceContext();
+  Shape unknownRank(ge::UNKNOWN_RANK);
 
   OP_LOGI(op.GetName().c_str(), "StackPopInfer");
   DataType type;
@@ -525,21 +525,21 @@ IMPLEMT_INFERFUNC(StackPop, StackPopInfer) {
     return GRAPH_FAILED;
   }
 
-  TensorDesc output_desc = op.GetOutputDesc("element");
-  output_desc.SetShape(unknown_rank);
+  TensorDesc outputDesc = op.GetOutputDesc("element");
+  outputDesc.SetShape(unknownRank);
 
-  if (operator_context->GetMarks().size() != 0) {
-    ShapeAndRange shape_and_range;
+  if (context->GetMarks().size() != 0) {
+    ShapeAndRange shapeAndRange;
     bool geted = false;
-    if (GetShapeAndRange(op, shape_and_range, geted, operator_context) != GRAPH_SUCCESS) {
+    if (GetShapeAndRange(op, shapeAndRange, geted, context) != GRAPH_SUCCESS) {
 	    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
          std::string("context is empty, you should call stack push first."));
       return GRAPH_FAILED;
     }
 
     if (geted) {
-      output_desc.SetShape(shape_and_range.shape_);
-      output_desc.SetShapeRange(shape_and_range.shape_range_);
+      outputDesc.SetShape(shapeAndRange.shape_);
+      outputDesc.SetShapeRange(shapeAndRange.shape_range_);
     } else {
       OP_LOGW(op.GetName().c_str(), "Stack is empty");
     }
@@ -547,41 +547,41 @@ IMPLEMT_INFERFUNC(StackPop, StackPopInfer) {
     OP_LOGW(op.GetName().c_str(), "Stack marks is empty");    
   }
 
-  output_desc.SetDataType(type);
-  return op.UpdateOutputDesc("element", output_desc);
+  outputDesc.SetDataType(type);
+  return op.UpdateOutputDesc("element", outputDesc);
 }
 
 INFER_FUNC_REG(StackPop, StackPopInfer);
 
 IMPLEMT_INFERFUNC(StackPush, StackPushInfer) {
-  auto operator_context = op.GetInferenceContext();
-  Shape elsShape = op.GetInputDesc("element").GetShape();
+  auto context = op.GetInferenceContext();
+  Shape elShape = op.GetInputDesc("element").GetShape();
   DataType type = op.GetInputDesc("element").GetDataType();
 
   OP_LOGI(op.GetName().c_str(), "StackPushInfer");
-  if (operator_context->GetMarks().size() != 0) {
-    std::vector<std::pair<int64_t, int64_t>> shape_range;
-    op.GetInputDesc("element").GetShapeRange(shape_range);
-    ShapeAndRange feed_shape_and_range{elsShape, shape_range, type};
-    if (SetShapeAndRange(op, feed_shape_and_range) != GRAPH_SUCCESS) {
+  if (context->GetMarks().size() != 0) {
+    std::vector<std::pair<int64_t, int64_t>> shapeRange;
+    op.GetInputDesc("element").GetShapeRange(shapeRange);
+    ShapeAndRange feedShapeAndRange{elShape, shapeRange, type};
+    if (SetShapeAndRange(op, feedShapeAndRange) != GRAPH_SUCCESS) {
 	    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), std::string("SetShapeAndRange failed"));
       return GRAPH_FAILED;
     }
   }
 
-  TensorDesc ops_output_desc = op.GetOutputDesc("y");
-  ops_output_desc.SetShape(elsShape);
-  ops_output_desc.SetDataType(type);
-  return op.UpdateOutputDesc("y", ops_output_desc);
+  TensorDesc opsOutput = op.GetOutputDesc("y");
+  opsOutput.SetShape(elShape);
+  opsOutput.SetDataType(type);
+  return op.UpdateOutputDesc("y", opsOutput);
 }
 
 INFER_FUNC_REG(StackPush, StackPushInfer);
 
 IMPLEMT_INFERFUNC(StackClose, StackCloseInfer) {
   Shape shape;
-  ge::TensorDesc handle_desc = op.GetInputDesc("handle");
-  if (WithRank(handle_desc, 1, shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    std::string err_msg = GetShapeErrMsg(0, DebugString(handle_desc.GetShape().GetDims()), "1D");
+  ge::TensorDesc handleDesc = op.GetInputDesc("handle");
+  if (WithRank(handleDesc, 1, shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
+    std::string err_msg = GetShapeErrMsg(0, DebugString(handleDesc.GetShape().GetDims()), "1D");
     err_msg = string("failed to call WithRank, ") + err_msg;
     AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
   }
@@ -595,14 +595,14 @@ IMPLEMT_INFERFUNC(Stack, StackInfer) {
 
   OP_LOGI(op.GetName().c_str(), "StackInfer");
   (void)Vector(2, out);
-  auto operator_context = op.GetInferenceContext();
+  auto context = op.GetInferenceContext();
   std::vector<std::string> marks = {op.GetName()};
 
-  operator_context->SetMarks(marks);
-  TensorDesc output_desc = op.GetOutputDesc("handle");
-  output_desc.SetShape(out);
-  output_desc.SetDataType(DT_RESOURCE);
-  return op.UpdateOutputDesc("handle", output_desc);
+  context->SetMarks(marks);
+  TensorDesc outputDesc = op.GetOutputDesc("handle");
+  outputDesc.SetShape(out);
+  outputDesc.SetDataType(DT_RESOURCE);
+  return op.UpdateOutputDesc("handle", outputDesc);
 }
 
 INFER_FUNC_REG(Stack, StackInfer);
@@ -612,12 +612,12 @@ IMPLEMT_INFERFUNC(MapClear, MapClearInfer) { return GRAPH_SUCCESS; }
 INFER_FUNC_REG(MapClear, MapClearInfer);
 
 IMPLEMT_INFERFUNC(MapIncompleteSize, MapIncompleteSizeInfer) {
-  Shape scalar_shape;
-  (void)Scalar(scalar_shape);
-  TensorDesc output_desc = op.GetOutputDesc("size");
-  output_desc.SetShape(scalar_shape);
-  output_desc.SetDataType(DT_INT32);
-  if (op.UpdateOutputDesc("size", output_desc) != GRAPH_SUCCESS) {
+  Shape scalarShape;
+  (void)Scalar(scalarShape);
+  TensorDesc outputDesc = op.GetOutputDesc("size");
+  outputDesc.SetShape(scalarShape);
+  outputDesc.SetDataType(DT_INT32);
+  if (op.UpdateOutputDesc("size", outputDesc) != GRAPH_SUCCESS) {
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
         std::string("update description for output[size] failed."));
     return GRAPH_FAILED;
@@ -643,24 +643,24 @@ IMPLEMT_INFERFUNC(TensorArray, TensorArrayInfer) {
     return GRAPH_FAILED;
   }
 
-  TensorDesc handle_desc = op.GetOutputDesc("handle");
-  handle_desc.SetShape(Shape());
-  handle_desc.SetDataType(DT_RESOURCE);
-  if (op.UpdateOutputDesc("handle", handle_desc) != GRAPH_SUCCESS) {
+  TensorDesc handleDesc = op.GetOutputDesc("handle");
+  handleDesc.SetShape(Shape());
+  handleDesc.SetDataType(DT_RESOURCE);
+  if (op.UpdateOutputDesc("handle", handleDesc) != GRAPH_SUCCESS) {
     AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), std::string("update output[handle] desc failed."));
     return GRAPH_FAILED;
   }
 
-  TensorDesc flow_desc = op.GetOutputDesc("flow");
-  flow_desc.SetShape(Shape());
-  flow_desc.SetDataType(DT_FLOAT);
-  if (op.UpdateOutputDesc("flow", flow_desc) != GRAPH_SUCCESS) {
+  TensorDesc flowDesc = op.GetOutputDesc("flow");
+  flowDesc.SetShape(Shape());
+  flowDesc.SetDataType(DT_FLOAT);
+  if (op.UpdateOutputDesc("flow", flowDesc) != GRAPH_SUCCESS) {
     AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), std::string("update output[flow] desc failed."));
     return GRAPH_FAILED;
   }
 
-  bool identical_shapes;
-  if (op.GetAttr("identical_element_shapes", identical_shapes) != GRAPH_SUCCESS) {
+  bool identicalShapes;
+  if (op.GetAttr("identical_element_shapes", identicalShapes) != GRAPH_SUCCESS) {
     AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), std::string("get attr[identical_element_shapes] failed."));
     return GRAPH_FAILED;
   }
@@ -671,32 +671,32 @@ IMPLEMT_INFERFUNC(TensorArray, TensorArrayInfer) {
     return GRAPH_FAILED;
   }
 
-  Operator::OpListInt elem_dims;
-  if (op.GetAttr("element_shape", elem_dims) != GRAPH_SUCCESS) {
+  Operator::OpListInt elemDims;
+  if (op.GetAttr("element_shape", elemDims) != GRAPH_SUCCESS) {
     AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), std::string("get attr[element_shape] failed."));
     return GRAPH_FAILED;
   }
 
   AscendString op_name;
   op.GetName(op_name);
-  auto infer_context = op.GetInferenceContext();
-  if (infer_context == nullptr) {
+  auto context = op.GetInferenceContext();
+  if (context == nullptr) {
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(std::string(op_name.GetString()), std::string("get context failed, context is nullptr."));
     return GRAPH_FAILED;
   }
 
-  Shape elemShape(std::move(elem_dims));
-  if ((ShapeFullDefined(elemShape) || identical_shapes)) {
+  Shape elemShape(std::move(elemDims));
+  if ((ShapeFullDefined(elemShape) || identicalShapes)) {
     ShapeAndType shape_and_type(elemShape, dtype);
-    std::vector<ShapeAndType> handle_shapes_and_types;
-    handle_shapes_and_types.reserve(1);
-    handle_shapes_and_types.emplace_back(shape_and_type);
+    std::vector<ShapeAndType> handle_shapes_and_type;
+    handle_shapes_and_type.reserve(1);
+    handle_shapes_and_type.emplace_back(shape_and_type);
     std::vector<std::vector<ShapeAndType>> shapes_and_types(2);
-    shapes_and_types[0] = handle_shapes_and_types;
-    infer_context->SetOutputHandleShapesAndTypes(shapes_and_types);
+    shapes_and_types[0] = handle_shapes_and_type;
+    context->SetOutputHandleShapesAndTypes(shapes_and_types);
   }
   std::vector<AscendString> marks = {op_name};
-  infer_context->SetMarks(marks);
+  context->SetMarks(marks);
   return GRAPH_SUCCESS;
 }
 
@@ -739,14 +739,14 @@ IMPLEMT_INFERFUNC(TensorArrayConcat, TensorArrayConcatInfer) {
   auto lengths_shape = Shape({ge::UNKNOWN_DIM});
   ShapeAndRange shape_and_range;
   bool geted = false;
-  auto infer_context = op.GetInferenceContext();
+  auto context = op.GetInferenceContext();
   AscendString op_name;
   op.GetName(op_name);
-  if (infer_context == nullptr) {
+  if (context == nullptr) {
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(std::string(op_name.GetString()), std::string("get context failed, context is nullptr."));
     return GRAPH_FAILED;
   }
-  if (GetShapeAndRange(op, shape_and_range, geted, infer_context) != GRAPH_SUCCESS) {
+  if (GetShapeAndRange(op, shape_and_range, geted, context) != GRAPH_SUCCESS) {
     AICPU_INFER_SHAPE_CALL_ERR_REPORT(std::string(op_name.GetString()), std::string("get shape and range failed."));
     return GRAPH_FAILED;
   }
@@ -801,8 +801,8 @@ IMPLEMT_INFERFUNC(TensorArrayGather, TensorArrayGatherInfer) {
     AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
-  auto infer_context = op.GetInferenceContext();
-  if (infer_context == nullptr) {
+  auto context = op.GetInferenceContext();
+  if (context == nullptr) {
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), std::string("get context failed, context is nullptr."));
     return GRAPH_FAILED;
   }
@@ -810,7 +810,7 @@ IMPLEMT_INFERFUNC(TensorArrayGather, TensorArrayGatherInfer) {
   Shape input_or_attr_shape;
   ShapeAndRange shape_and_range;
   bool geted = false;
-  if (GetShapeAndRange(op, shape_and_range, geted, infer_context) != GRAPH_SUCCESS) {
+  if (GetShapeAndRange(op, shape_and_range, geted, context) != GRAPH_SUCCESS) {
     AscendString op_name;
     op.GetName(op_name);
     AICPU_INFER_SHAPE_CALL_ERR_REPORT(std::string(op_name.GetString()), std::string("get shape and range failed."));
@@ -819,7 +819,7 @@ IMPLEMT_INFERFUNC(TensorArrayGather, TensorArrayGatherInfer) {
   if (geted && RankKnown(shape_and_range.shape_)) {
     input_or_attr_shape = shape_and_range.shape_;
   } else {
-    std::vector<std::vector<ShapeAndType>> shapes_and_types = infer_context->GetInputHandleShapesAndTypes();
+    std::vector<std::vector<ShapeAndType>> shapes_and_types = context->GetInputHandleShapesAndTypes();
     if ((!shapes_and_types.empty()) && (!shapes_and_types.at(0).empty())) {
       input_or_attr_shape = shapes_and_types.at(0).at(0).GetShape();
     } else {
@@ -896,10 +896,10 @@ IMPLEMT_INFERFUNC(TensorArrayGrad, TensorArrayGradInfer) {
     return GRAPH_FAILED;
   }
 
-  TensorDesc flow_out_desc = op.GetOutputDesc("flow_out");
-  flow_out_desc.SetShape(Shape());
-  flow_out_desc.SetDataType(DT_FLOAT);
-  if (op.UpdateOutputDesc("flow_out", flow_out_desc) != GRAPH_SUCCESS) {
+  TensorDesc flow_out = op.GetOutputDesc("flow_out");
+  flow_out.SetShape(Shape());
+  flow_out.SetDataType(DT_FLOAT);
+  if (op.UpdateOutputDesc("flow_out", flow_out) != GRAPH_SUCCESS) {
     AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), std::string("update output[flow_out] desc failed."));
     return GRAPH_FAILED;
   }
@@ -912,11 +912,11 @@ IMPLEMT_INFERFUNC(TensorArrayGrad, TensorArrayGradInfer) {
   std::vector<std::vector<ShapeAndType>> input_shapes_and_types = context->GetInputHandleShapesAndTypes();
   if ((!input_shapes_and_types.empty()) && (!input_shapes_and_types.at(0).empty())) {
     ShapeAndType shape_and_type = input_shapes_and_types.at(0).at(0);
-    std::vector<ShapeAndType> grad_handle_shape_and_type;
-    grad_handle_shape_and_type.reserve(1);
-    grad_handle_shape_and_type.emplace_back(shape_and_type);
+    std::vector<ShapeAndType> grad_shape_and_type;
+    grad_shape_and_type.reserve(1);
+    grad_shape_and_type.emplace_back(shape_and_type);
     std::vector<std::vector<ShapeAndType>> shapes_and_types(2);
-    shapes_and_types[0] = grad_handle_shape_and_type;
+    shapes_and_types[0] = grad_shape_and_type;
     context->SetOutputHandleShapesAndTypes(shapes_and_types);
   }
   return GRAPH_SUCCESS;
@@ -961,9 +961,9 @@ IMPLEMT_INFERFUNC(TensorArrayWrite, TensorArrayWriteInfer) {
       return GRAPH_FAILED;
     }
   }
-  std::vector<std::pair<int64_t, int64_t>> value_shape_range;
-  op.GetInputDesc(2).GetShapeRange(value_shape_range);
-  ShapeAndRange feed_shape_and_range = {value_shape, value_shape_range, DT_FLOAT};
+  std::vector<std::pair<int64_t, int64_t>> shape_range;
+  op.GetInputDesc(2).GetShapeRange(shape_range);
+  ShapeAndRange feed_shape_and_range = {value_shape, shape_range, DT_FLOAT};
   if (SetShapeAndRange(op, feed_shape_and_range) != GRAPH_SUCCESS) {
     AscendString op_name;
     op.GetName(op_name);
@@ -971,10 +971,10 @@ IMPLEMT_INFERFUNC(TensorArrayWrite, TensorArrayWriteInfer) {
     return GRAPH_FAILED;
   }
 
-  TensorDesc flow_out_desc = op.GetOutputDesc("flow_out");
-  flow_out_desc.SetShape(Shape());
-  flow_out_desc.SetDataType(DT_FLOAT);
-  if (op.UpdateOutputDesc("flow_out", flow_out_desc) != GRAPH_SUCCESS) {
+  TensorDesc flow_out = op.GetOutputDesc("flow_out");
+  flow_out.SetShape(Shape());
+  flow_out.SetDataType(DT_FLOAT);
+  if (op.UpdateOutputDesc("flow_out", flow_out) != GRAPH_SUCCESS) {
     AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), std::string("update output[flow_out] desc failed."));
     return GRAPH_FAILED;
   }
@@ -1070,12 +1070,12 @@ IMPLEMT_INFERFUNC(TensorArrayRead, TensorArrayReadInfer) {
     return GRAPH_FAILED;
   }
 
-  auto infer_context = op.GetInferenceContext();
-  if (infer_context == nullptr) {
+  auto context = op.GetInferenceContext();
+  if (context == nullptr) {
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), std::string("get context failed, context is nullptr."));
     return GRAPH_FAILED;
   }
-  std::vector<std::vector<ShapeAndType>> shapes_and_types = infer_context->GetInputHandleShapesAndTypes();
+  std::vector<std::vector<ShapeAndType>> shapes_and_types = context->GetInputHandleShapesAndTypes();
 
   Operator::OpType dtype;
   if (op.GetAttr("dtype", dtype) != GRAPH_SUCCESS) {
@@ -1087,7 +1087,7 @@ IMPLEMT_INFERFUNC(TensorArrayRead, TensorArrayReadInfer) {
 
   ShapeAndRange shape_and_range;
   bool geted = false;
-  if (GetShapeAndRange(op, shape_and_range, geted, infer_context) != GRAPH_SUCCESS) {
+  if (GetShapeAndRange(op, shape_and_range, geted, context) != GRAPH_SUCCESS) {
     AscendString op_name;
     op.GetName(op_name);
     AICPU_INFER_SHAPE_CALL_ERR_REPORT(std::string(op_name.GetString()), std::string("get shape and range failed."));
@@ -1154,8 +1154,8 @@ IMPLEMT_INFERFUNC(TensorArrayScatter, TensorArrayScatterInfer) {
     }
   }
 
-  auto infer_context = op.GetInferenceContext();
-  if (infer_context == nullptr) {
+  auto context = op.GetInferenceContext();
+  if (context == nullptr) {
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), std::string("get context failed, context is nullptr."));
     return GRAPH_FAILED;
   }
@@ -1169,7 +1169,7 @@ IMPLEMT_INFERFUNC(TensorArrayScatter, TensorArrayScatterInfer) {
     AICPU_INFER_SHAPE_CALL_ERR_REPORT(std::string(op_name.GetString()), ConcatString("get ", err_msg));
     return GRAPH_FAILED;
   }
-  std::vector<std::vector<ShapeAndType>> shapes_and_types = infer_context->GetInputHandleShapesAndTypes();
+  std::vector<std::vector<ShapeAndType>> shapes_and_types = context->GetInputHandleShapesAndTypes();
   if ((!shapes_and_types.empty()) && (!shapes_and_types.at(0).empty())) {
     Shape tensor_shape = shapes_and_types.at(0).at(0).GetShape();
 
@@ -1260,47 +1260,47 @@ IMPLEMT_INFERFUNC(TensorArraySize, TensorArraySizeInfer) {
 INFER_FUNC_REG(TensorArraySize, TensorArraySizeInfer);
 
 IMPLEMT_INFERFUNC(MapStage, MapStageInfer) {
-  size_t dyn_comp_size = op.GetInputsSize() - 2;
+  size_t dynCompSize = op.GetInputsSize() - 2;
 
-  std::vector<AscendString> marks;
-  GetStageKeyMarks(op, marks);
-  return SaveShapesToAicpuResource(op, marks, dyn_comp_size, "values");
+  std::vector<AscendString> marksInfo;
+  GetStageKeyMarks(op, marksInfo);
+  return SaveShapesToAicpuResource(op, marksInfo, dynCompSize, "values");
 }
 
 INFER_FUNC_REG(MapStage, MapStageInfer);
 
 IMPLEMT_INFERFUNC(MapUnstage, MapUnstageInfer)  {
-  std::vector<AscendString> marks;
-  GetStageKeyMarks(op, marks);
-  return InferShapesFromAicpuResource(op, marks, "dtypes", "values");
+  std::vector<AscendString> marksInfo;
+  GetStageKeyMarks(op, marksInfo);
+  return InferShapesFromAicpuResource(op, marksInfo, "dtypes", "values");
 }
 
 INFER_FUNC_REG(MapUnstage, MapUnstageInfer);
 
 IMPLEMT_INFERFUNC(MapUnstageNoKey, MapUnstageNoKeyInfer) {
-  std::vector<AscendString> marks;
-  GetStageKeyMarks(op, marks);
-  return InferShapesFromAicpuResource(op, marks, "dtypes", "values");
+  std::vector<AscendString> marksInfo;
+  GetStageKeyMarks(op, marksInfo);
+  return InferShapesFromAicpuResource(op, marksInfo, "dtypes", "values");
 }
 
 INFER_FUNC_REG(MapUnstageNoKey, MapUnstageNoKeyInfer);
 
 IMPLEMT_INFERFUNC(MapPeek, MapPeekInfer) {
-  std::vector<AscendString> marks;
-  GetStageKeyMarks(op, marks);
+  std::vector<AscendString> marksInfo;
+  GetStageKeyMarks(op, marksInfo);
 
-  return InferShapesFromAicpuResource(op, marks, "dtypes", "values");
+  return InferShapesFromAicpuResource(op, marksInfo, "dtypes", "values");
 }
 
 INFER_FUNC_REG(MapPeek, MapPeekInfer);
 
 IMPLEMT_INFERFUNC(MapSize, MapSizeInfer) {
-  Shape scalar_shape;
-  (void)Scalar(scalar_shape);
-  TensorDesc output_desc = op.GetOutputDesc("size");
-  output_desc.SetDataType(DT_INT32);
-  output_desc.SetShape(scalar_shape);
-  if (op.UpdateOutputDesc("size", output_desc) != GRAPH_SUCCESS) {
+  Shape scalarShape;
+  (void)Scalar(scalarShape);
+  TensorDesc outputDesc = op.GetOutputDesc("size");
+  outputDesc.SetDataType(DT_INT32);
+  outputDesc.SetShape(scalarShape);
+  if (op.UpdateOutputDesc("size", outputDesc) != GRAPH_SUCCESS) {
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), std::string("update description for output[size] failed."));
     return GRAPH_FAILED;
   }
@@ -1310,12 +1310,12 @@ IMPLEMT_INFERFUNC(MapSize, MapSizeInfer) {
 INFER_FUNC_REG(MapSize, MapSizeInfer);
 
 IMPLEMT_INFERFUNC(RandomShuffleQueue, RandomShuffleQueueInfer) {
-  Shape scalar_shape;
-  (void)Scalar(scalar_shape);
-  TensorDesc out_handle_desc = op.GetOutputDesc("handle");
-  out_handle_desc.SetShape(scalar_shape);
-  out_handle_desc.SetDataType(DT_RESOURCE);
-  if (op.UpdateOutputDesc("handle", out_handle_desc) != GRAPH_SUCCESS) {
+  Shape scalarShape;
+  (void)Scalar(scalarShape);
+  TensorDesc outHandleDesc = op.GetOutputDesc("handle");
+  outHandleDesc.SetShape(scalarShape);
+  outHandleDesc.SetDataType(DT_RESOURCE);
+  if (op.UpdateOutputDesc("handle", outHandleDesc) != GRAPH_SUCCESS) {
     std::string err_msg("update output[handle] desc failed.");
 	  AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
@@ -1639,10 +1639,10 @@ IMPLEMT_INFERFUNC(ParallelDynamicStitch, ParallelDynamicStitchInfer) {
 INFER_FUNC_REG(ParallelDynamicStitch, ParallelDynamicStitchInfer);
 
 IMPLEMT_INFERFUNC(PaddingFIFOQueue, PaddingFIFOQueueInfer) {
-  TensorDesc ops_output_desc = op.GetOutputDesc("handle");
-  ops_output_desc.SetShape(Shape());
-  ops_output_desc.SetDataType(DT_RESOURCE);
-  if (op.UpdateOutputDesc("handle", ops_output_desc) != GRAPH_SUCCESS) {
+  TensorDesc opsOutputDesc = op.GetOutputDesc("handle");
+  opsOutputDesc.SetShape(Shape());
+  opsOutputDesc.SetDataType(DT_RESOURCE);
+  if (op.UpdateOutputDesc("handle", opsOutputDesc) != GRAPH_SUCCESS) {
     std::string err_msg("update output[handle] desc failed.");
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
@@ -1654,11 +1654,11 @@ IMPLEMT_INFERFUNC(PaddingFIFOQueue, PaddingFIFOQueueInfer) {
 INFER_FUNC_REG(PaddingFIFOQueue, PaddingFIFOQueueInfer);
 
 IMPLEMT_INFERFUNC(PriorityQueue, PriorityQueueInfer) {
-  TensorDesc ops_output_desc = op.GetOutputDesc("handle");
+  TensorDesc opsOutputDesc = op.GetOutputDesc("handle");
   OP_LOGI(op.GetName().c_str(), "PriorityQueueInfer");
-  ops_output_desc.SetShape(Shape());
-  ops_output_desc.SetDataType(DT_RESOURCE);
-  if (op.UpdateOutputDesc("handle", ops_output_desc) != GRAPH_SUCCESS) {
+  opsOutputDesc.SetShape(Shape());
+  opsOutputDesc.SetDataType(DT_RESOURCE);
+  if (op.UpdateOutputDesc("handle", opsOutputDesc) != GRAPH_SUCCESS) {
     std::string err_msg("update output[handle] desc failed.");
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     
@@ -1677,7 +1677,7 @@ IMPLEMT_INFERFUNC(QueueClose, QueueCloseInfer) {
 INFER_FUNC_REG(QueueClose, QueueCloseInfer);
 
 IMPLEMT_INFERFUNC(OrderedMapStage, OrderedMapStageInfer) {
-  size_t dyn_comp_size;
+  size_t dynCompSize;
 
   if (op.GetInputsSize() < 2) {
     std::string err_msg("update output[handle] desc failed.");
@@ -1685,10 +1685,10 @@ IMPLEMT_INFERFUNC(OrderedMapStage, OrderedMapStageInfer) {
     return GRAPH_FAILED;
   }
 
-  dyn_comp_size = op.GetInputsSize() - 2;
-  std::vector<AscendString> marks;
-  GetStageKeyMarks(op, marks);
-  return SaveShapesToAicpuResource(op, marks, dyn_comp_size, "values");
+  dynCompSize = op.GetInputsSize() - 2;
+  std::vector<AscendString> marksInfo;
+  GetStageKeyMarks(op, marksInfo);
+  return SaveShapesToAicpuResource(op, marksInfo, dynCompSize, "values");
 }
 
 INFER_FUNC_REG(OrderedMapStage, OrderedMapStageInfer);
@@ -1741,9 +1741,9 @@ IMPLEMT_INFERFUNC(OrderedMapUnstageNoKey, OrderedMapUnstageNoKeyInfer) {
     return GRAPH_FAILED;  
   }
 
-  TensorDesc tensordesc_output = op.GetOutputDesc("key");
-  tensordesc_output.SetDataType(DT_INT64);
-  (void)op.UpdateOutputDesc("key", tensordesc_output);
+  TensorDesc tensordescOutput = op.GetOutputDesc("key");
+  tensordescOutput.SetDataType(DT_INT64);
+  (void)op.UpdateOutputDesc("key", tensordescOutput);
   return GRAPH_SUCCESS;
 }
 
@@ -2244,14 +2244,14 @@ IMPLEMT_INFERFUNC(ResourceAccumulatorApplyGradient, ResourceAccumulatorApplyGrad
 INFER_FUNC_REG(ResourceAccumulatorApplyGradient, ResourceAccumulatorApplyGradientInfer);
 
 IMPLEMT_INFERFUNC(ResourceAccumulatorNumAccumulated, ResourceAccumulatorNumAccumulatedInfer) {
-  Shape scalar_shape;
-  if (Scalar(scalar_shape) != GRAPH_SUCCESS) {
+  Shape scalarShape;
+  if (Scalar(scalarShape) != GRAPH_SUCCESS) {
     AICPU_INFER_SHAPE_CALL_ERR_REPORT(
         op.GetName(), std::string("call Scalar function create shape failed"));
     return GRAPH_FAILED;
   }
   auto num_accumulated_sesc = op.GetOutputDesc("num_accumulated");
-  num_accumulated_sesc.SetShape(scalar_shape);
+  num_accumulated_sesc.SetShape(scalarShape);
   num_accumulated_sesc.SetDataType(DT_INT32);
   if (op.UpdateOutputDesc("num_accumulated", num_accumulated_sesc) != GRAPH_SUCCESS) {
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(
@@ -2509,14 +2509,14 @@ IMPLEMT_INFERFUNC(DynamicGetNextV2, DynamicGetNextV2Infer) {
 INFER_FUNC_REG(DynamicGetNextV2, DynamicGetNextV2Infer);
 
 IMPLEMT_COMMON_INFERFUNC(FakeQueueInferShape) {
-  OpDescPtr op_desc = OpDescUtils::GetOpDescFromOperator(op);
-  if (op_desc == nullptr) {
+  OpDescPtr opDesc = OpDescUtils::GetOpDescFromOperator(op);
+  if (opDesc == nullptr) {
       OP_LOGE(op.GetName().c_str(), "Op desc is NULL!");
       return GRAPH_FAILED;
   }
-  GeShape reader_handle_shape({2});
-  auto reader_handle_desc = op_desc->MutableOutputDesc("handle");
-  (void)FillOpDesc(reader_handle_desc, reader_handle_shape, DT_STRING);
+  GeShape handleShape({2});
+  auto handleDesc = opDesc->MutableOutputDesc("handle");
+  (void)FillOpDesc(handleDesc, handleShape, DT_STRING);
   return GRAPH_SUCCESS;
 }
 
@@ -2690,38 +2690,38 @@ COMMON_INFER_FUNC_REG(CacheAllIndexToLocal, CacheAllIndexToLocalInferShape);
 
 // ----------------------------AdpGetNext---------------------------------------
 IMPLEMT_INFERFUNC(AdpGetNext, AdpGetNextInfer) {
-  std::vector<ge::DataType> output_types;
-  if (op.GetAttr("output_types", output_types) != GRAPH_SUCCESS) {
+  std::vector<ge::DataType> outputTypes;
+  if (op.GetAttr("output_types", outputTypes) != GRAPH_SUCCESS) {
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), string("get attr[output_types] failed"));
     return GRAPH_FAILED;
   }
 
-  std::vector<std::vector<int64_t>> output_shapes;
-  if (op.GetAttr("output_shapes", output_shapes) != GRAPH_SUCCESS) {
+  std::vector<std::vector<int64_t>> outputShapes;
+  if (op.GetAttr("output_shapes", outputShapes) != GRAPH_SUCCESS) {
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), string("get attr[output_shapes] failed"));
     return GRAPH_FAILED;
   }
 
-  if (output_types.size() != output_shapes.size()) {
-    std::string err_msg =
-      "attr[output_types] and attr[output_shapes] should be the same length";
-    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+  if (outputTypes.size() != outputShapes.size()) {
+    std::string errMsg =
+      "attr[output_types] and attr[output_shapes] should be the same length ";
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), errMsg);
     return GRAPH_FAILED;
   }
 
-  for (size_t i = 0; i < output_shapes.size(); i++) {
-    TensorDesc output_desc = op.GetDynamicOutputDesc("y", i);
-    Shape shape(output_shapes[i]);
-    output_desc.SetShape(shape);
-    output_desc.SetDataType(output_types[i]);
-    graphStatus output_status = op.UpdateDynamicOutputDesc("y", i, output_desc);
-    if (output_status != GRAPH_SUCCESS) {
-      std::ostringstream ss;
-      ss << "update output[y] index[";
-      ss << i;
-      ss << "] desc failed";
-      std::string err_msg = ss.str();
-      AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+  for (size_t i = 0; i < outputShapes.size(); i++) {
+    TensorDesc outputDesc = op.GetDynamicOutputDesc("y", i);
+    Shape shape(outputShapes[i]);
+    outputDesc.SetShape(shape);
+    outputDesc.SetDataType(outputTypes[i]);
+    graphStatus status = op.UpdateDynamicOutputDesc("y", i, outputDesc);
+    if (status != GRAPH_SUCCESS) {
+      std::ostringstream sstr;
+      sstr << "update output[y] index[";
+      sstr << i;
+      sstr << "] desc failed";
+      std::string errMsg = sstr.str();
+      AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), errMsg);
       return GRAPH_FAILED;
     }
   }
@@ -2733,38 +2733,38 @@ INFER_FUNC_REG(AdpGetNext, AdpGetNextInfer);
 
 // ----------------------------GetNextV2---------------------------------------
 IMPLEMT_INFERFUNC(GetNextV2, GetNextV2Infer) {
-  std::vector<ge::DataType> output_types;
-  if (op.GetAttr("output_types", output_types) != GRAPH_SUCCESS) {
+  std::vector<ge::DataType> outputTypes;
+  if (op.GetAttr("output_types", outputTypes) != GRAPH_SUCCESS) {
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), string("get attr[output_types] failed"));
     return GRAPH_FAILED;
   }
 
-  std::vector<std::vector<int64_t>> output_shapes;
-  if (op.GetAttr("output_shapes", output_shapes) != GRAPH_SUCCESS) {
+  std::vector<std::vector<int64_t>> outputShapes;
+  if (op.GetAttr("output_shapes", outputShapes) != GRAPH_SUCCESS) {
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), string("get attr[output_shapes] failed"));
     return GRAPH_FAILED;
   }
 
-  if (output_types.size() != output_shapes.size()) {
-    std::string err_msg =
+  if (outputTypes.size() != outputShapes.size()) {
+    std::string errMsg =
       "attr[output_types] and attr[output_shapes] should be the same length";
-    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), errMsg);
     return GRAPH_FAILED;
   }
 
-  for (size_t i = 0; i < output_shapes.size(); i++) {
-    TensorDesc output_desc = op.GetDynamicOutputDesc("y", i);
-    Shape shape(output_shapes[i]);
-    output_desc.SetShape(shape);
-    output_desc.SetDataType(output_types[i]);
-    graphStatus output_status = op.UpdateDynamicOutputDesc("y", i, output_desc);
-    if (output_status != GRAPH_SUCCESS) {
-      std::ostringstream ss;
-      ss << "update output[y] index[";
-      ss << i;
-      ss << "] desc failed";
-      std::string err_msg = ss.str();
-      AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+  for (size_t i = 0; i < outputShapes.size(); i++) {
+    TensorDesc outputDesc = op.GetDynamicOutputDesc("y", i);
+    Shape shape(outputShapes[i]);
+    outputDesc.SetShape(shape);
+    outputDesc.SetDataType(outputTypes[i]);
+    graphStatus status = op.UpdateDynamicOutputDesc("y", i, outputDesc);
+    if (status != GRAPH_SUCCESS) {
+      std::ostringstream sstr;
+      sstr << "update output[y] index[";
+      sstr << i;
+      sstr << "] desc failed";
+      std::string errMsg = sstr.str();
+      AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), errMsg);
       return GRAPH_FAILED;
     }
   }
@@ -2777,38 +2777,38 @@ INFER_FUNC_REG(GetNextV2, GetNextV2Infer);
 
 // ----------------------------GetNextFromQueue--------------------------------
 IMPLEMT_INFERFUNC(GetNextFromQueue, GetNextFromQueueInferShape) {
-  std::vector<ge::DataType> output_types;
-  if (op.GetAttr("output_types", output_types) != GRAPH_SUCCESS) {
+  std::vector<ge::DataType> outputTypes;
+  if (op.GetAttr("output_types", outputTypes) != GRAPH_SUCCESS) {
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), string("get attr[output_types] failed"));
     return GRAPH_FAILED;
   }
 
-  std::vector<std::vector<int64_t>> output_shapes;
-  if (op.GetAttr("output_shapes", output_shapes) != GRAPH_SUCCESS) {
+  std::vector<std::vector<int64_t>> outputShapes;
+  if (op.GetAttr("output_shapes", outputShapes) != GRAPH_SUCCESS) {
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), string("get attr[output_shapes] failed"));
     return GRAPH_FAILED;
   }
 
-  if (output_types.size() != output_shapes.size()) {
-    std::string err_msg =
+  if (outputTypes.size() != outputShapes.size()) {
+    std::string errMsg =
       "attr[output_types] and attr[output_shapes] should be the same length";
-    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), errMsg);
     return GRAPH_FAILED;
   }
 
-  for (size_t i = 0; i < output_shapes.size(); i++) {
-    TensorDesc output_desc = op.GetDynamicOutputDesc("y", i);
-    Shape shape(output_shapes[i]);
-    output_desc.SetShape(shape);
-    output_desc.SetDataType(output_types[i]);
-    graphStatus output_status = op.UpdateDynamicOutputDesc("y", i, output_desc);
-    if (output_status != GRAPH_SUCCESS) {
-      std::ostringstream ss;
-      ss << "update output[y] index[";
-      ss << i;
-      ss << "] desc failed";
-      std::string err_msg = ss.str();
-      AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+  for (size_t i = 0; i < outputShapes.size(); i++) {
+    TensorDesc outputDesc = op.GetDynamicOutputDesc("y", i);
+    Shape shape(outputShapes[i]);
+    outputDesc.SetShape(shape);
+    outputDesc.SetDataType(outputTypes[i]);
+    graphStatus outputStatus = op.UpdateDynamicOutputDesc("y", i, outputDesc);
+    if (outputStatus != GRAPH_SUCCESS) {
+      std::ostringstream sInfo;
+      sInfo << "update output[y] index[";
+      sInfo << i;
+      sInfo << "] desc failed";
+      std::string errMsg = sInfo.str();
+      AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), errMsg);
       return GRAPH_FAILED;
     }
   }
