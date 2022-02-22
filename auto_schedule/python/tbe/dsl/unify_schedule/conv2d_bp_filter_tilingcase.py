@@ -1141,10 +1141,11 @@ class Conv2dBpFilterTiling(CubeTilingOp):
         )
 
         # 2) a_l1 full_load or full_k, b_l1 k_split => a_kl1 > b_kl1 & reorder_l1_mn = 1;
+        # reorder_l1_mn default to 0
         invalid_choice |= (
             choice[4] in (utils.ATTACH_FULL_LOAD, utils.ATTACH_EQUAL) and
             choice[5] == utils.ATTACH_LESS and
-            (choice[3] != utils.ATTACH_EQUAL or choice[9] != 1)
+            (choice[3] != utils.ATTACH_EQUAL)
         )
 
         # 3) a_l1 k_split, b_l1 full_load or full_k => a_kl1 < b_kl1 & reorder_l1_mn = 0;
@@ -1186,6 +1187,11 @@ class Conv2dBpFilterTiling(CubeTilingOp):
         invalid_choice |= (
             choice[5] == utils.ATTACH_FULL_LOAD and
             choice[1] != utils.DB_OFF
+        )
+
+        # 9) reorder_l0_mn reorder_l1_mn aub_multi_flag, bub_multi_flag default to 0
+        invalid_choice |= (
+            choice[7] != 0 or choice[8] != 0 or choice[9] != 0 or choice[10] != 0
         )
 
         return invalid_choice

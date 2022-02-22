@@ -8,6 +8,9 @@ from impl.dynamic.trans_data import trans_data_fusion_compute
 from impl.util.platform_adapter import operation
 from impl.util.platform_adapter import tvm
 from tbe.common.utils import shape_util
+from tbe.common.context.op_context import OpContext
+from tbe.dsl import build
+import te
 
 ut_case = OpUT("Conv2DBackpropFilter", "impl.dynamic.conv2d_backprop_filter",
                "conv2d_backprop_filter")
@@ -1106,34 +1109,47 @@ def test_transdata_fusion_compute_2(test_arg):
 ut_case.add_cust_test_func(test_func=test_transdata_fusion_compute_2)
 
 def test_conv2d_backprop_filter_binary_mode(test_arg):
-    batch_idx = operation.var("batch")
-    fmap_c = operation.var("fmap_c")
-    fmap_h = operation.var("fmap_h")
-    fmap_w = operation.var("fmap_w")
-    dedy_c = operation.var("dedy_c")
-    dedy_h = operation.var("dedy_h")
-    dedy_w = operation.var("dedy_w")
+    with OpContext("dynamic"):
+        with operation.ComputeContext():
+            batch_idx = operation.var("batch")
+            fmap_c = operation.var("fmap_c")
+            fmap_h = operation.var("fmap_h")
+            fmap_w = operation.var("fmap_w")
+            dedy_c = operation.var("dedy_c")
+            dedy_h = operation.var("dedy_h")
+            dedy_w = operation.var("dedy_w")
 
-    fmap_nchw = (batch_idx, fmap_c, fmap_h, fmap_w)
-    dedy_nchw = (batch_idx, dedy_c, dedy_h, dedy_w)
-    fmap_nc_hw = (batch_idx, fmap_c, fmap_h * fmap_w)
-    dedy_nc_hw = (batch_idx, dedy_c, dedy_h * dedy_w)
+            fmap_nchw = (batch_idx, fmap_c, fmap_h, fmap_w)
+            dedy_nchw = (batch_idx, dedy_c, dedy_h, dedy_w)
+            fmap_nc_hw = (batch_idx, fmap_c, fmap_h * fmap_w)
+            dedy_nc_hw = (batch_idx, dedy_c, dedy_h * dedy_w)
 
-    fmap = tvm.placeholder(fmap_nc_hw, name="fmap", dtype="float16", attrs={"shape": fmap_nchw})
-    dedy = tvm.placeholder(dedy_nc_hw, name="dedy", dtype="float16", attrs={"shape": dedy_nchw})
-    filter_tensor = tvm.placeholder([4,], name="filter_tensor", dtype="int32")
-    y = {"shape": (-1, -1, -1, -1), "dtype": "float32", "format": "NCHW"}
-    strides = (1, 1, 1, 1)
-    pads = (0, 0, 0, 0)
-    dilations = (1, 1, 1, 1)
+            fmap = tvm.placeholder(fmap_nc_hw, name="fmap", dtype="float16", attrs={"shape": fmap_nchw})
+            dedy = tvm.placeholder(dedy_nc_hw, name="dedy", dtype="float16", attrs={"shape": dedy_nchw})
+            filter_tensor = tvm.placeholder([4,], name="filter_tensor", dtype="int32")
+            y = {"shape": (-1, -1, -1, -1), "dtype": "float32", "format": "NCHW"}
+            strides = (1, 1, 1, 1)
+            pads = (0, 0, 0, 0)
+            dilations = (1, 1, 1, 1)
+            dst = {"dtype": "float16", "shape": [-1, -1, -1, -1, 16], "ori_shape": [-1, -1, -1, -1],
+                "format": "NC1HWC0", "ori_format": "NCHW",
+                "range": [[1, None], [1, None], [1, None],[1, None], [16, 16]]}
 
-    fmap_nc1hwc0 = trans_data_fusion_compute(fmap, None, "NCHW", "NC1HWC0")
-    dedy_nc1hwc0 = trans_data_fusion_compute(dedy, None, "NCHW", "NC1HWC0")
+            fmap_nc1hwc0 = trans_data_fusion_compute(fmap, dst, "NCHW", "NC1HWC0")
+            dedy_nc1hwc0 = trans_data_fusion_compute(dedy, dst, "NCHW", "NC1HWC0")
 
-    dedw = conv2d_backprop_filter_fusion_compute(fmap_nc1hwc0, filter_tensor, dedy_nc1hwc0, y, strides, pads, dilations)
+            dedw = conv2d_backprop_filter_fusion_compute(fmap_nc1hwc0, filter_tensor, dedy_nc1hwc0, y, strides, pads, dilations)
+            tensor_list = [fmap, filter_tensor, dedy, dedw]
+            with tvm.target.cce():
+                sch = te.utils.cce.auto_schedule(dedw)
+            config = {
+                "name": "conv2d_backprop_filter",
+                "tensor_list": tensor_list,
+                "build_args": {"constant_realize_extend_in_infer_bound": False}
+            }
+            build(sch, config)
 
-
-ut_case.add_cust_test_func(test_func=test_conv2d_backprop_filter_binary_mode)
+ut_case.add_cust_test_func(["Ascend910A"],test_func=test_conv2d_backprop_filter_binary_mode)
 
 
 if __name__ == '__main__':

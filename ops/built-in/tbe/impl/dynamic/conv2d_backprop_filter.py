@@ -1350,7 +1350,8 @@ def conv2d_backprop_filter_fusion_compute(fmap, filter_tensor, out_backprop, y, 
     if is_binary_flag:
         _binary_mode_para_check(strides, pads, dilations, kernel_name)
         var_shape_map = _define_binary_mode_vars()
-        _, _, dilations = _get_attrs(strides, pads, dilations, data_format)
+        dilations = var_shape_map.get("dilations")
+        groups = var_shape_map.get("groups")
         strides = var_shape_map.get("strides")
         pads = var_shape_map.get("pads")
         dedw_dtype = y.get("dtype", "float32").lower()

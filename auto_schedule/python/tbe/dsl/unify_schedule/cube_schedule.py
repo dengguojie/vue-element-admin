@@ -115,7 +115,10 @@ class ConvSchedule:
         attach_flags = ("dynamic_l0a_attach", "dynamic_l0b_attach",
                         "dynamic_al1_attach", "dynamic_bl1_attach",
                         "bl1_hw_allin_flag")
-        dynamic_para = {f: self._tiling_strategy.pop(f) for f in attach_flags}
+        if -1 in self._tiling_strategy.get("block_dim"):
+            dynamic_para = {}
+        else:
+            dynamic_para = {f: self._tiling_strategy.pop(f) for f in attach_flags}
         dynamic_para.update({
             "var_range": self._tiling_case['var_range'],
             "tiling": self._tiling_strategy
