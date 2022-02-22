@@ -4174,23 +4174,28 @@ class CceConvOp:
             4. remove_pad tensor canot be used by two or more than two tensor.
             5. only be v200 scenes.
             """
-            biasrelu_optim_flag = False
+            bias_relu_optim_flag = False
             for lop in self._op_graph.body_ops:
                 if self._pre_relu_fused_flag:
                     continue
 
-                leaky_relu_flag = "elewise_single_lrelu" in lop["op"] and \
+                relu_flag = "elewise_single_relu" in lop["op"]
+
+                leakyrelu_flag = "elewise_single_lrelu" in lop["op"] and \
                     "negative_slope" in lop["dst_buffer"].op.attrs and \
                     lop["dst_buffer"].op.attrs["negative_slope"].value == 0
 
-                relu_flag = "elewise_single_relu" in lop["op"]
+                if relu_flag or leakyrelu_flag:
+                    if not ("prev_op" in lop) or not len(lop["prev_op"]) or \
+                        not ("prev_op" in lop["prev_op"][0]) or not ("next_op" in lop["prev_op"][0]):
+                        return bias_relu_optim_flag
 
-                if (leaky_relu_flag or relu_flag) and \
-                    "conv_vector_bias_add" in lop["prev_op"][0]["prev_op"][0]["op"] and \
-                    len(lop["prev_op"][0]["next_op"]) == 1 and is_support_v200():
-                        biasrelu_optim_flag = True
+                    if "convolution_C" in lop["prev_op"][0]["op"]  and \
+                        "conv_vector_bias_add" in lop["prev_op"][0]["prev_op"][0]["op"] and \
+                        len(lop["prev_op"][0]["next_op"]) == 1 and is_support_v200():
+                        bias_relu_optim_flag = True
 
-            return biasrelu_optim_flag
+            return bias_relu_optim_flag
 
         def _cal_channel_wise_input_optim_list(tiling):
             """
@@ -4279,7 +4284,7 @@ class CceConvOp:
                 reorder_flag = False
                 if not tiling["BL1_shape"]:
                     reorder_flag = True
-                elif double_buffer_flag["AL1_pbuffer"] == double_buffer_flag["BL1_pbuffer"]:
+                elif double_buffer_flag.get("AL1_pbuffer") == double_buffer_flag.get("BL1_pbuffer"):
                     if self._dynamic_flag:
                         pass
                     elif bl1_factor[1] >= al1_factor[1]:
