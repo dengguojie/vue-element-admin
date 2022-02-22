@@ -474,13 +474,13 @@ void TilingCommonSplitUB(const int32_t ub_block_inner, const int32_t block_axis,
       tilingparams.block_factor = input_x[block_axis];
     } else if (tilingparams.ub_tiling_axis != static_cast<int32_t>(block_axis)) {
       std::vector<int32_t> blocktilingdata =
-          GetBlockTilingData(block_axis, block_inner, ubtilingdata[0], ubtilingdata[4], input_x, reduce_axis, core_num);
-      tilingparams.block_dim = blocktilingdata[1] * blocktilingdata[3];
+          GetBlockTilingData(block_axis, block_inner, ubtilingdata[0], ubtilingdata[4U], input_x, reduce_axis, core_num);
+      tilingparams.block_dim = blocktilingdata[1] * blocktilingdata[3U];
       tilingparams.block_tiling_axis = block_axis;
-      tilingparams.block_tiling_axis_1 = blocktilingdata[2];
+      tilingparams.block_tiling_axis_1 = blocktilingdata[2U];
       tilingparams.block_factor = blocktilingdata[1];
-      tilingparams.block_factor_1 = blocktilingdata[3];
-      GetUbTilingDataAfterFuse(blocktilingdata[2], blocktilingdata[3], ubtilingdata[0], input_x, ubtilingdata[1],
+      tilingparams.block_factor_1 = blocktilingdata[3U];
+      GetUbTilingDataAfterFuse(blocktilingdata[2U], blocktilingdata[3U], ubtilingdata[0], input_x, ubtilingdata[1],
                                tilingparams);
     }
     tilingparams.ub_tiling_axis_reduce = 0;
