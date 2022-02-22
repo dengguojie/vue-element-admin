@@ -59,7 +59,7 @@ uint32_t AssertCpuKernel::Compute(aicpu::CpuKernelContext &ctx) {
   auto sum_attr = ctx.GetAttr("summarize");
   KERNEL_CHECK_NULLPTR(sum_attr, KERNEL_STATUS_PARAM_INVALID,
                        "Get summarize attr failed.")
-  uint32_t sum= sum_attr->GetInt();
+  uint32_t sum = sum_attr->GetInt();
   // assert fail info, the value printed depends on the attribute summarize
   string msg = "assertion failed: ";
   for (uint32_t i = 1; i < ctx.GetInputsSize(); ++i) {
@@ -74,8 +74,7 @@ uint32_t AssertCpuKernel::Compute(aicpu::CpuKernelContext &ctx) {
   return KERNEL_STATUS_PARAM_INVALID;
 }
 
-string AssertCpuKernel::SummarizeValue(Tensor &t, int64_t max_entries,
-                             const bool print_v2) {
+string AssertCpuKernel::SummarizeValue(Tensor &t, int64_t max_entries, const bool print_v2) {
   const int64_t num_elts = t.NumElements();
   if (max_entries < 0) {
     max_entries = num_elts;
@@ -135,8 +134,8 @@ string AssertCpuKernel::SummarizeValue(Tensor &t, int64_t max_entries,
 // Print from left dim to right dim recursively.
 template <typename T>
 void AssertCpuKernel::PrintOneDim(int dim_index, std::shared_ptr<TensorShape> shape,
-                 int64_t limit, int shape_size, const T *data,
-                 int64_t *data_index, string &result) {
+                                  int64_t limit, int shape_size, const T *data,
+                                  int64_t *data_index, string &result) {
   if (*data_index >= limit) {
     return;
   }
@@ -177,7 +176,7 @@ void AssertCpuKernel::PrintOneDim(int dim_index, std::shared_ptr<TensorShape> sh
 
 template <typename T>
 string AssertCpuKernel::SummarizeArray(const int64_t limit, const int64_t num_elts,
-                             Tensor &t, const bool print_v2) {
+                                       Tensor &t, const bool print_v2) {
   string ret;
   const T *array = reinterpret_cast<const T *>(t.GetData());
   std::shared_ptr<TensorShape> shape = t.GetTensorShape();
