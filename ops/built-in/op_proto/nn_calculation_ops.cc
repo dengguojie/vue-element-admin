@@ -807,18 +807,11 @@ IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DInferShape) {
 
   auto dataTypeIn = tensorDescIn->GetDataType();
 
-  if (!GetDimInFormat(string(op_name.GetString()), dataFormat, "N", nPosition)) {
-    return GRAPH_FAILED;
-  }
-
-  if (!GetDimInFormat(string(op_name.GetString()), dataFormat, "C", cPosition)) {
-    return GRAPH_FAILED;
-  }
-
-  if (!GetDimInFormat(string(op_name.GetString()), dataFormat, "H", hPosition)) {
-    return GRAPH_FAILED;
-  }
-  if (!GetDimInFormat(string(op_name.GetString()), dataFormat, "W", wPosition)) {
+  bool get_dim_in_format = GetDimInFormat(string(op_name.GetString()), dataFormat, "N", nPosition) &&
+    GetDimInFormat(string(op_name.GetString()), dataFormat, "C", cPosition) &&
+    GetDimInFormat(string(op_name.GetString()), dataFormat, "H", hPosition) &&
+    GetDimInFormat(string(op_name.GetString()), dataFormat, "W", wPosition);
+  if (!get_dim_in_format) {
     return GRAPH_FAILED;
   }
 
@@ -838,16 +831,11 @@ IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DInferShape) {
   Format filterFormat = tensorDescW->GetFormat();
   std::string filterFormatStr = format2str[filterFormat];
 
-  if (!GetDimInFormat(string(op_name.GetString()), filterFormatStr, "N", fnPosition)) {
-    return GRAPH_FAILED;
-  }
-  if (!GetDimInFormat(string(op_name.GetString()), filterFormatStr, "C", fcPosition)) {
-    return GRAPH_FAILED;
-  }
-  if (!GetDimInFormat(string(op_name.GetString()), filterFormatStr, "H", fhPosition)) {
-    return GRAPH_FAILED;
-  }
-  if (!GetDimInFormat(string(op_name.GetString()), filterFormatStr, "W", fwPosition)) {
+  get_dim_in_format = GetDimInFormat(string(op_name.GetString()), filterFormatStr, "N", fnPosition) &&
+    GetDimInFormat(string(op_name.GetString()), filterFormatStr, "C", fcPosition) &&
+    GetDimInFormat(string(op_name.GetString()), filterFormatStr, "H", fhPosition) &&
+    GetDimInFormat(string(op_name.GetString()), filterFormatStr, "W", fwPosition);
+  if (!get_dim_in_format) {
     return GRAPH_FAILED;
   }
 
@@ -857,11 +845,8 @@ IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DInferShape) {
   filterW = shapeW.GetDim(fwPosition);
 
   // set range
-  bool is_dynamic = false;
   // when static op or dynamic op phase_running, is_dynamic == false
-  if (shapeIn.IsUnknownShape() && (!shapeIn.IsUnknownDimNum())) {
-    is_dynamic = true;
-  }
+  bool is_dynamic = shapeIn.IsUnknownShape() && (!shapeIn.IsUnknownDimNum());
 
   if (is_dynamic && (inC == -1)) {
       shapeIn.SetDim(cPosition, filterC);
@@ -5003,18 +4988,13 @@ IMPLEMT_INFERFUNC(Conv2DCompress, Conv2DCompressInfer) {
   // in strides and dilations(previously used ori_format)
   std::string data_format;
   std::string attr_data_format = "data_format";
-  std::string data_format_NCHW = "NCHW";
-  std::string data_format_NHWC = "NHWC";
+  std::string expected_data_format = (xFormat == ge::FORMAT_NCHW) ? "NCHW" : "NHWC";
 
   if (GRAPH_SUCCESS == op.GetAttr(attr_data_format, data_format)) {
     OP_LOGI(data_format.c_str(), "conv compress before set data_format");
   }
 
-  if (xFormat == ge::FORMAT_NCHW) {
-    op.SetAttr(attr_data_format, data_format_NCHW);
-  } else {
-    op.SetAttr(attr_data_format, data_format_NHWC);
-  }
+  op.SetAttr(attr_data_format, expected_data_format);
 
   op.GetAttr(attr_data_format, data_format);
   OP_LOGI(data_format.c_str(), "conv compress after set data_format");
@@ -5063,11 +5043,11 @@ IMPLEMT_INFERFUNC(Conv2DCompress, Conv2DCompressInfer) {
   }
   yTensor.SetShape(Shape(yShape));
   auto xDtype = xTensor.GetDataType();
+  auto yDtype = xDtype;
   if (xDtype == ge::DT_INT8) {
-    yTensor.SetDataType(ge::DT_INT32);
-  } else {
-    yTensor.SetDataType(xDtype);
+    yDtype = ge::DT_INT32;
   }
+  yTensor.SetDataType(yDtype);
   CHECK_OP_FUNC(GRAPH_SUCCESS != op.update_output_desc_y(yTensor), return GRAPH_FAILED, "update output desc failed.");
 
   OP_LOGD(op_name.GetString(), "Leave Conv2DCompressInfer.");
@@ -5396,7 +5376,8 @@ static bool GetAttrsDfmConv2D(ge::Operator& op, Format refer, int32_t& strh, int
   padb = pads_list[kConv2dPadDownIdx];
   padl = pads_list[kConv2dPadLeftIdx];
   padr = pads_list[kConv2dPadRightIdx];
-  if (padt < 0 || padb < 0 || padl < 0 || padr < 0) {
+  bool negative_pads = padt < 0 || padb < 0 || padl < 0 || padr < 0;
+  if (negative_pads) {
     OP_LOGE(op_name.GetString(),
             "pads should be positive, "
             " actual is [%d,%d,%d,%d].",
