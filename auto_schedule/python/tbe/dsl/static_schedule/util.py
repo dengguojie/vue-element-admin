@@ -115,6 +115,14 @@ def check_fixpipe_op_support():
     return False
 
 
+def get_fixpipe_emit_str():
+    """
+    get emit tag for fixpipe data flow
+    :return: str
+    """
+    return "fixpipe_op" if check_fixpipe_op_support() else "dma_copy"
+
+
 def parse_tbe_compile_para(compile_para):
     """
     get tbe compile parameter form compile parameter

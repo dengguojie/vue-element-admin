@@ -195,6 +195,38 @@ class DeConvKernelSize1Pattern(cube_util.CubeDslPattern):
             dilate_tensor_res = dilate_tensor
         return dilate_tensor_res
 
+    @staticmethod
+    def _check_tensor_bias_dtype(tensor_bias):
+        """
+        bias table only support l1_dtype -> bt_dtype as fp16->fp32, fp32->fp32, int32->int32
+
+        Parameters
+        ----------
+        tensor_bias : bias input
+
+        Returns
+        -------
+        whether input dtype is supported
+        """
+        return tensor_bias.dtype in ["float16", "float32", "int32"]
+
+    @staticmethod
+    def _get_bias_table_dtype(tensor_bias):
+        """
+        get bias table dtype for input bias
+
+        Parameters
+        ----------
+        tensor_bias : bias input
+
+        Returns
+        -------
+        dtype:dtype in bias table
+        """
+        if tensor_bias.dtype == "float16":
+            return "float32"
+        return tensor_bias.dtype
+
     def generate_a(self, dedy):
         """
         generate dedy_col_fractal tensor for mad
@@ -457,7 +489,7 @@ class DeConvKernelSize1Pattern(cube_util.CubeDslPattern):
 
             bias_bt = tvm.compute(
                 bias_shape,
-                lambda *indice: bias(*indice).astype('float32'),
+                lambda *indice: bias(*indice).astype(self._get_bias_table_dtype(bias)),
                 name='bias_bt'
             )
 
@@ -469,7 +501,7 @@ class DeConvKernelSize1Pattern(cube_util.CubeDslPattern):
                             matrix_a[g_index, n_index, m_index // self._m0,
                                      k1_axis, m_index % self._m0, k0_axis] *
                             matrix_b[g_index, k1_axis, co1_index, co0_index, k0_axis]
-                        ).astype('float32') +
+                        ).astype(bias_bt.dtype) +
                         bias_bt[g_index * co1_dim * co0_dim + co1_index * co0_dim + co0_index]
                     ),
                     axis=[k1_axis, k0_axis]
@@ -554,12 +586,11 @@ class DeConvKernelSize1Pattern(cube_util.CubeDslPattern):
             return mmad
 
         if (tensor_bias is not None and self._support_l1_to_bt_flag and
-                self._stride_h == 1 and self._stride_w == 1 and tensor_bias.dtype == 'float32'):
+                self._stride_h == 1 and self._stride_w == 1 and self._check_tensor_bias_dtype(tensor_bias)):
             res_c = _inner_generate_mmad_bt(tensor_a, tensor_b, tensor_bias)
         else:
             res_c = _inner_generate_mmad(tensor_a, tensor_b)
             res_c = _add_bias_in_l0c(res_c, tensor_bias)
-
         batch_dx_img, c1_dx_img, h_dx_img, w_dx_img, c0_dx_img = self._output_shape
         group_l0c, batch_l0c, co1_l0c, m_l0c, co0_l0c = cube_util.shape_to_list(
             res_c.shape)

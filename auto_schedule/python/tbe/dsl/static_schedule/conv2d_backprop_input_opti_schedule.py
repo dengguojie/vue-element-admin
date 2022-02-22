@@ -29,6 +29,7 @@ from tbe.dsl.compute import cube_util
 from tbe.dsl.compute.conv2d_backprop_input_opti_compute import DeConvKernelSize1Pattern
 from tbe.dsl.compute.util import int_ceil_div
 from tbe.dsl.compute.util import align
+from tbe.dsl.static_schedule.util import get_fixpipe_emit_str
 from tbe.dsl.static_schedule.util import L1CommonParam
 from tbe.dsl.static_schedule.util import parse_tbe_compile_para
 
@@ -692,7 +693,7 @@ class Conv2dDxOptiSchedule:
         elif TENSOR_MAP.get("filter_placehold").dtype == "float32":
             filter_shape_g = [
                 DIM_MAP.get(cube_util.GroupDictKeys.dy_c1_extend) * block_k * 2,
-                DIM_MAP.get(cube_util.GroupDictKeys.dx_c1_extend) // 2,
+                (DIM_MAP.get(cube_util.GroupDictKeys.dx_c1_extend) + 1) // 2,
                 1,
                 1,
                 block_n
@@ -2479,18 +2480,22 @@ class Conv2dDxOptiSchedule:
                     else:
                         sch[c_ub].emit_insn(c_ub.op.axis[0], "dma_copy")
 
+            def _emit_single_out_insn():
+                emit_str = get_fixpipe_emit_str()
+                if self.dx_para.get_para_map("5HD_TRANS_NHWC"):
+                    sch[c_gm].emit_insn(l0c_m_inner_inner, emit_str, {"layout_transform": "nz2nd"})
+                elif c_gm.dtype == "float32" and a_l1.dtype == "float32" and c_ub is None:
+                    _, split_axis = sch[c_gm].split(l0c_n_inner_inner, factor=2)
+                    sch[c_gm].emit_insn(split_axis, emit_str, {"layout_transform": "channel_split"})
+                else:
+                    sch[c_gm].emit_insn(l0c_n_inner_inner, emit_str)
+
             if DOUBLE_TENSOR_OUT:
                 sch[DOUBLE_TENSOR_OUT[0]].emit_insn(DOUBLE_TENSOR_OUT[0].op.axis[0], "dma_copy")
                 sch[DOUBLE_TENSOR_OUT[1]].emit_insn(DOUBLE_TENSOR_OUT[1].op.axis[0], "dma_copy")
                 sch[c_gm].emit_insn(l0c_n_inner_inner, "phony_insn")
             else:
-                if self.dx_para.get_para_map("5HD_TRANS_NHWC"):
-                    sch[c_gm].emit_insn(l0c_m_inner_inner, "dma_copy", {"layout_transform": "nz2nd"})
-                elif c_gm.dtype == "float32" and a_l1.dtype == "float32" and c_ub is None:
-                    _, split_axis = sch[c_gm].split(l0c_n_inner_inner, factor=2)
-                    sch[c_gm].emit_insn(split_axis, "dma_copy", {"layout_transform": "channel_split"})
-                else:
-                    sch[c_gm].emit_insn(l0c_n_inner_inner, "dma_copy")
+                _emit_single_out_insn()
 
             if dilate_ub is not None:
                 filling_zero_ub = TENSOR_MAP.get("tensor_fillling_zero")
@@ -2556,8 +2561,8 @@ class Conv2dDxOptiSchedule:
                 mad_dict["init_bias"] = 1
 
             if bias_bt is not None:
-                sch[bias_bt].emit_insn(bias_bt.op.axis[0], 'dma_copy')
-                sch[bias_l1].emit_insn(bias_l1.op.axis[0], 'dma_copy')
+                sch[bias_bt].emit_insn(bias_bt.op.axis[0], 'dma_copy', {'mem_align': 1})
+                sch[bias_l1].emit_insn(bias_l1.op.axis[0], 'dma_copy', {'mem_align': 1})
 
             if (self.dx_para.get_para_map("no_need_use_ub_flag") and
                 "impl_mode" in c_l0c.op.attrs and
@@ -2735,14 +2740,11 @@ class Conv2dDxOptiSchedule:
             "bias_ub"
         )
         bias_ub_brc, bias_l0c, c_add_bias = (
-            TENSOR_MAP.get("bias_ub_brc"),
-            TENSOR_MAP.get("bias_l0c"),
-            TENSOR_MAP.get("c_add_bias")
+            TENSOR_MAP.get("bias_ub_brc"), TENSOR_MAP.get("bias_l0c"), TENSOR_MAP.get("c_add_bias")
         )
 
         bias_l1, bias_bt = (
-            TENSOR_MAP.get("bias_l1"),
-            TENSOR_MAP.get("bias_bt")
+            TENSOR_MAP.get("bias_l1"), TENSOR_MAP.get("bias_bt")
         )
         self._get_tiling(
             dx_res_write, fusion_type, kernel_name, is_conv1d_bool, tiling_case, var_map, l0c_multi_group_flag
@@ -2835,6 +2837,18 @@ class Conv2dDxOptiSchedule:
             sch[c_l0c].op.axis[0]
         ]
         sch[c_l0c].compute_at(sch[c_gm], c_slice_axis)
+
+        def _do_buffer_align():
+            sch[c_l0c].buffer_align(
+                (1, 1),
+                (1, 1),
+                (1, 1),
+                (1, tbe_platform.CUBE_MKN.get(c_l0c.dtype).get("mac")[0]),
+                (1, tbe_platform.CUBE_MKN.get(c_l0c.dtype).get("mac")[2]),
+                (1, 1),
+                (1, tbe_platform.CUBE_MKN.get(a_l0a.dtype).get("mac")[1])
+            )
+        _do_buffer_align()
         if self.dx_para.get_para_map("no_need_use_ub_flag") and not var_map:
             sch[c_l0c].storage_align(sch[c_l0c].op.axis[2], CUBE_MUL_SHAPE, 0)
         if bias_l0c is not None:

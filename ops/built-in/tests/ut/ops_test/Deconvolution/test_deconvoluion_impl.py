@@ -48,6 +48,7 @@ support_intrinsic_mix = {
     ("Intrinsic_mmad", "f162f32",) : True,
     ("CUBE_VECTOR_SPLIT",) : True,
     ("Intrinsic_fix_pipe_unit_list",): True,
+    ("Intrinsic_fix_pipe_unit_list", "post_eltwise"): True
 }
 
 def check_intrinsic_mock_mix(*args):
@@ -483,6 +484,7 @@ def test_op_compute_int8(test_arg):
             print(e)
             pass
 
+
 for case_ut in deconvolution_ut_case:
     print("==========add case for deconvlution===============")
     print("the case is :", case_ut)
@@ -563,6 +565,31 @@ def test_fixpipe_dequant(test_arg):
                 dedy = tvm.placeholder(out_shape_5hd, name="dedy", dtype=data_type,
                                     attrs={"ori_shape": (16, 32, 2, 2), "dtype":data_type, "ori_format": "NCHW"})
                 bias = tvm.placeholder((32,), name="bias", dtype="float32",
+                                    attrs={"ori_shape": (32,), "dtype":data_type, "ori_format": "ND"})
+                y = {"ori_shape" : input_size, "dtype" : data_type, "ori_format" : "NCHW", "shape": input_size_5hd, "format": "NC1HWC0"}
+                deq = tvm.placeholder((1, 2, 1, 1, 16), name='deq', dtype="uint64", attrs={"ori_shape": (32, ), "format": "NC1HWC0", "ori_format": "ND"})
+                out = deconvolution_compute(dedy, weight, bias, None, y, (1, 1, 1, 1), (0, 0, 0, 0),
+                        dilations=(1, 1, 1, 1), groups=1, data_format="NCHW", offset_x=0,
+                        kernel_name="deconvolution")
+                fixpie_op = FixpipeConv2dBackpropInput("conv2d_backprop_input", out, None, deq, None, None, None, None, None, None, None, y, [], [], "")
+                res = fixpie_op.fixpipe_compute()
+                sch = auto_schedule(res)
+
+
+def test_bt_fp162fp32(test_arg):
+    with patch("tbe.common.platform.intrinsic_check_support", MagicMock(side_effect=check_intrinsic_mock_mix)):
+        with patch("tbe.common.platform.platform_info.intrinsic_check_support", MagicMock(side_effect=check_intrinsic_mock_mix)):
+            filter_frac = (18, 2, 16, 16)
+            out_shape_5hd = (16, 2, 2, 2, 16)
+            input_size = (16, 32, 4, 4)
+            input_size_5hd = (16, 2, 4, 4, 16)
+            data_type = "float16"
+            with cce():
+                weight = tvm.placeholder(filter_frac, name="filter", dtype=data_type,
+                                        attrs={"ori_shape": (32, 32, 3, 3), "dtype":data_type, "ori_format": "NCHW"})
+                dedy = tvm.placeholder(out_shape_5hd, name="dedy", dtype=data_type,
+                                    attrs={"ori_shape": (16, 32, 2, 2), "dtype":data_type, "ori_format": "NCHW"})
+                bias = tvm.placeholder((32,), name="bias", dtype="float16",
                                     attrs={"ori_shape": (32,), "dtype":data_type, "ori_format": "ND"})
                 y = {"ori_shape" : input_size, "dtype" : data_type, "ori_format" : "NCHW", "shape": input_size_5hd, "format": "NC1HWC0"}
                 deq = tvm.placeholder((1, 2, 1, 1, 16), name='deq', dtype="uint64", attrs={"ori_shape": (32, ), "format": "NC1HWC0", "ori_format": "ND"})

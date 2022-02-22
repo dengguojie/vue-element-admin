@@ -100,6 +100,11 @@ class DeConvPattern(cube_util.CubeDslPattern):
         self.load3d_special_multiply = 1
         self.impl_mode = impl_mode
         self.binary_mode = binary_mode
+        self.bias_dtype_map = {
+            "float16": "float32",
+            "float32": "float32",
+            "int32": "int32"
+        }
 
     def generate_a(self, dy_ddr):
         """
@@ -463,7 +468,7 @@ class DeConvPattern(cube_util.CubeDslPattern):
                 shape_w_l0b = (
                     self._real_g,
                     self._cou1_g * kernel_h * kernel_w * 2,
-                    self._cin1_g // 2,
+                    (self._cin1_g + 1) // 2,
                     kernel_cout0,
                     w_k0
                 )
@@ -539,19 +544,19 @@ class DeConvPattern(cube_util.CubeDslPattern):
         if w_col.dtype == "int8" and dy_col.dtype == "int8":
             res_c_type = "int32"
 
-        bias_table_flag = False
         if tensor_bias is not None and tensor_bias.dtype == "int32":
             bias = tensor_bias
         else:
             bias = None
-        if tensor_bias is not None and self._support_l1_to_bt_flag and tensor_bias.dtype == "float32":
+        bias_table_flag = (tensor_bias is not None and self._support_l1_to_bt_flag and
+                           tensor_bias.dtype in self.bias_dtype_map)
+        if bias_table_flag:
             bias_shape = cube_util.shape_to_list(tensor_bias.shape)
             bias = tvm.compute(
                 bias_shape,
-                lambda *indice: tensor_bias(*indice).astype('float32'),
+                lambda *indice: tensor_bias(*indice).astype(self.bias_dtype_map.get(tensor_bias.dtype)),
                 name='bias_bt'
             )
-            bias_table_flag = True
 
         dx_col = super().generate_c(
             dy_col, w_col, c_type=res_c_type, tensor_bias=bias, offset_x=self._offset_x, impl_mode=self.impl_mode,

@@ -637,7 +637,7 @@ def _get_var_map(out_backprop, input_sizes):
     return var_map
 
 
-def _get_dx_shape(input_sizes, filters, binary_mode):
+def _get_dx_shape(input_sizes, filters, binary_mode, res_dtype):
     """
     Configure the shape of dx in different scenarios
 
@@ -647,7 +647,8 @@ def _get_dx_shape(input_sizes, filters, binary_mode):
     shape_dx = (dx_batch, ceil_div(dx_c, dx_n0), dx_h, dx_w, dx_n0)
     if binary_mode:
         shape_dx = (dx_batch, get_te_var('dx_c1').get_tvm_var(), dx_h, dx_w, dx_n0)
-    if filters.dtype == "float32":
+    support_l0c2out = tbe_platform.intrinsic_check_support(SUPPORT_FIXPIPE_INTRINSIC)
+    if support_l0c2out and (filters.dtype == "float32" or res_dtype == "int8"):
         shape_dx = (dx_batch, ceil_div(dx_c, dx_k0), dx_h, dx_w, dx_k0)
     return shape_dx
 
@@ -775,7 +776,7 @@ def conv2d_backprop_input_compute(filters, out_backprop, filter_sizes, input_siz
 
     _, dx_k0, dx_n0 = tbe_platform.CUBE_MKN.get(filters.dtype)["mac"]
 
-    shape_dx = _get_dx_shape(input_sizes, filters, binary_mode)
+    shape_dx = _get_dx_shape(input_sizes, filters, binary_mode, res_dtype)
     shape_dy = cube_util.shape_to_list(out_backprop.shape)
     g_extend = group_dict.get(cube_util.GroupDictKeys.g_extend)
     dy_c1_extend = group_dict.get(cube_util.GroupDictKeys.dy_c1_extend)

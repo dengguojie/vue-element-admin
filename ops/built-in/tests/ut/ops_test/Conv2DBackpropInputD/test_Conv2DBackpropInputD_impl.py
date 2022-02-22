@@ -488,6 +488,7 @@ def _test_conv2d_bp_input_preload_cl0c_al1(test_arg):
         data_format = 'NHWC'
         conv2d_backprop_input_d(weight, out_backprop, y, input_size, strides, pads, dilations, groups, data_format)
 
+
 _gen_conv2d_bp_input_op_case()
 _gen_conv2d_bp_input_check_support_case()
 ut_case.add_cust_test_func(test_func=_gen_conv2d_bp_input_cube_vector_split_case_mock)

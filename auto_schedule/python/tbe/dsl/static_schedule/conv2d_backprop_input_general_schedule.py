@@ -30,6 +30,7 @@ from tbe.dsl.compute import cube_util
 from tbe.dsl.base.operation import get_te_var
 from tbe.dsl.static_schedule.util import L1CommonParam
 from tbe.dsl.static_schedule.util import parse_tbe_compile_para
+from tbe.dsl.static_schedule.util import get_fixpipe_emit_str
 from tbe.tvm.schedule import InferBound
 from tbe.tvm.schedule import ScheduleOps
 from tbe.dsl.boost_schedule_kit import Compare
@@ -260,7 +261,6 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):
     out_mem = _set_output_mem()
     fmap_l1_addr_flag = fusion_para.get("fmap_l1_addr_flag")
     fmap_l1_valid_size = fusion_para.get("fmap_l1_valid_size")
-    cube_vector_split = tbe_platform_info.get_soc_spec("CUBE_VECTOR_SPLIT")
 
     def _fetch_tensor_info(dyn_util):
         def _set_intrinsic_support(tensor_attr):
@@ -662,8 +662,8 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):
                 bias_ddr = bias_bt.op.input_tensors[0]
                 bias_l1 = sch.cache_read(bias_ddr, tbe_platform_info.scope_cbuf, [bias_bt])
                 tensor_map["bias_l1"] = bias_l1
-                sch[bias_bt].emit_insn(bias_bt.op.axis[0], "dma_copy")
-                sch[bias_l1].emit_insn(bias_l1.op.axis[0], "dma_copy")
+                sch[bias_bt].emit_insn(bias_bt.op.axis[0], "dma_copy", {'mem_align': 1})
+                sch[bias_l1].emit_insn(bias_l1.op.axis[0], "dma_copy", {'mem_align': 1})
 
         def _bias_tensor():
             if c_ub is not None and c_ub.op.input_tensors[0].name == "c_add_bias":
@@ -1550,12 +1550,14 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):
         fixpipe_tensor = tensor_map.get("fixpipe_tensor", None)
         if fixpipe_tensor is None:
             return
-        fixpipe_inputs = tensor_map.get("fixpipe_inputs")
-        for fixpipe_input in fixpipe_inputs:
+        vector_params = fixpipe_tensor.op.attrs["vector_params"]
+        vector_tensors = fixpipe_tensor.op.attrs["vector_tensors"]
+        for idx, params_mem in enumerate(vector_params):
+            fixpipe_input = vector_tensors[idx]
             fixpipe_input_l1 = sch.cache_read(fixpipe_input, tbe_platform_info.scope_cbuf, [fixpipe_tensor])
-            if fixpipe_input.op.name in FIXPIPE_SCOPE_MAP:
-                tensor_scope = FIXPIPE_SCOPE_MAP.get(fixpipe_input.op.name)
-                fixpipe_fb_tensor = sch.cache_read(fixpipe_input_l1, tensor_scope, [fixpipe_tensor])
+            fixpipe_scope_name = FIXPIPE_SCOPE_MAP.get(params_mem.value)
+            if fixpipe_scope_name:
+                fixpipe_fb_tensor = sch.cache_read(fixpipe_input_l1, fixpipe_scope_name, [fixpipe_tensor])
                 sch_agent.same_attach(fixpipe_fb_tensor, c_col)
                 sch[fixpipe_fb_tensor].emit_insn(fixpipe_fb_tensor.op.axis[0], "dma_copy")
             sch_agent.same_attach(fixpipe_input_l1, c_col)
@@ -1709,7 +1711,10 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):
             elif tensor_attr.get("5HD_TRANS_NCHW"):
                 affine_l0c = (1, 1, cl0_tiling_n0 * cl0_tiling_nc,
                               cl0_tiling_mc * cl0_tiling_m0 // load3d_special_multiply)
-
+            elif c_ddr.dtype == "int8" and tensor_attr.get("support_l0c_to_out"):
+                affine_l0c = (1, 1, int(cl0_tiling_nc * cl0_tiling_g // 2),
+                              cl0_tiling_mc * cl0_tiling_m0 // load3d_special_multiply,
+                              cl0_tiling_n0 * 2)
             else:
                 factor = 2 if c_ddr.dtype == "float32" and a_col.dtype == "float32" else 1
                 affine_l0c = 1, 1, cl0_tiling_nc * factor, cl0_tiling_mc * cl0_tiling_m0 // load3d_special_multiply,\
@@ -2584,6 +2589,28 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):
         else:
             sch_agent[b_col].emit_insn(sch_agent[b_col].op.axis[2], "dma_copy")
 
+    def _emit_single_output_insn():
+        emit_str = get_fixpipe_emit_str()
+        if tensor_attr.get("5HD_TRANS_NHWC"):
+            hw_dim, c_dim = sch_agent[c_ddr].nlast_scopes(2)
+            sch_agent[c_ddr].split(c_dim, 16)
+            sch[c_ddr].emit_insn(hw_dim, emit_str, {"layout_transform": "nz2nd"})
+        elif c_ddr.dtype == "float32" and b_col.dtype == "float32":
+            channel_axis = sch_agent[c_ddr].nlast_scopes(3)[0]
+            _, channel_axis_inner = sch[c_ddr].split(channel_axis, factor=2)
+            sch[c_ddr].emit_insn(channel_axis_inner, emit_str, {"layout_transform": "channel_split"})
+        elif tensor_attr.get("5HD_TRANS_NCHW"):
+            no_overlap_flag = ("default" if dyn_util.tiling_case.get("no_overlap_default_flag")
+                                else "process_data_smaller_than_one_block")
+            sch[c_ddr].emit_insn(sch_agent[c_ddr].nlast_scopes(2)[0], 'dma_copy',
+                                    {'no_overlap': no_overlap_flag})
+        elif c_ddr.dtype == "int8" and tensor_attr.get("support_l0c_to_out"):
+            hw_dim, c_dim = sch_agent[c_ddr].nlast_scopes(2)
+            sch_agent[c_ddr].split(c_dim, 16)
+            sch[c_ddr].emit_insn(hw_dim, emit_str)
+        else:
+            sch[c_ddr].emit_insn(sch_agent[c_ddr].nlast_scopes(2)[0], emit_str)
+
     def _emit_insn():
         _b_tensor_emit_insn()
 
@@ -2632,7 +2659,7 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):
             sch[bias_ub_brc].emit_insn(bias_ub_brc.op.axis[0], 'vector_auto')
             mad_dict["init_bias"] = 1
 
-        if cube_vector_split and _get_precision_mode() == "high_performance":
+        if tensor_attr.get("support_l0c_to_out") and _get_precision_mode() == "high_performance":
             mad_dict["hf32"] = 1
         if dyn_util.dynamic_mode == "binary":
             mad_dict['spec_offset'] = tvm.expr.Call(
@@ -2640,21 +2667,7 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):
         sch_agent[c_col].emit_insn(scope_insn, "mad", mad_dict)
 
         if not double_out_tensor:
-            if tensor_attr.get("5HD_TRANS_NHWC"):
-                hw_dim, c_dim = sch_agent[c_ddr].nlast_scopes(2)
-                sch_agent[c_ddr].split(c_dim, 16)
-                sch[c_ddr].emit_insn(hw_dim, "dma_copy", {"layout_transform": "nz2nd"})
-            elif c_ddr.dtype == "float32" and b_col.dtype == "float32":
-                channel_axis = sch_agent[c_ddr].nlast_scopes(3)[0]
-                _, channel_axis_inner = sch[c_ddr].split(channel_axis, factor=2)
-                sch[c_ddr].emit_insn(channel_axis_inner, "dma_copy", {"layout_transform": "channel_split"})
-            elif tensor_attr.get("5HD_TRANS_NCHW"):
-                no_overlap_flag = ("default" if dyn_util.tiling_case.get("no_overlap_default_flag")
-                                   else "process_data_smaller_than_one_block")
-                sch[c_ddr].emit_insn(sch_agent[c_ddr].nlast_scopes(2)[0], 'dma_copy',
-                                     {'no_overlap': no_overlap_flag})
-            else:
-                sch[c_ddr].emit_insn(sch_agent[c_ddr].nlast_scopes(2)[0], "dma_copy")
+            _emit_single_output_insn()
         else:
             sch[c_ddr].emit_insn(sch_agent[c_ddr].nlast_scopes(2)[0], "phony_insn")
             sch[double_out_tensor[0]].emit_insn(sch_agent[double_out_tensor[0]].nlast_scopes(2)[0], "dma_copy")
@@ -2904,8 +2917,8 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):
 
     dyn_util.get_buffer_status()
     affine_cub = _cub_process()
-    _fixpipe_process()
     _cl0_process(affine_cub)
+    _fixpipe_process()
     _l0a_process()
     neg_src_stride = _l0b_process()
     _do_l1andub_process()
