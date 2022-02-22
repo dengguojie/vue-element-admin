@@ -1061,7 +1061,6 @@ vector_B:
       - auto_schedule/python/tbe/dsl/static_schedule/l2_loss_schedule.py
       - auto_schedule/python/tbe/dsl/static_schedule/l2loss_mul_addn_schedule.py
       - auto_schedule/python/tbe/dsl/static_schedule/layer_norm_grad_schedule.py
-      - auto_schedule/python/tbe/dsl/static_schedule/vector_schedule.py
       - auto_schedule/python/utils/scatter/scatter.py
       - tools/custom_operator_sample/dependency_files/protobuf_static.cmake
       - tools/op_test_frame/python/op_test_frame/common/ascend_tbe_op.py
