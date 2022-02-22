@@ -142,7 +142,7 @@ TEST_F(pads_onnx_plugin_test, pads_onnx_plugin_test_case_7) {
 
   auto status = aclgrphParseONNX(modelFile.c_str(), parser_params, graph);
 
-  EXPECT_EQ(status, ge::GRAPH_FAILED);
+  EXPECT_EQ(status, ge::GRAPH_SUCCESS);
 }
 
 TEST_F(pads_onnx_plugin_test, pads_onnx_plugin_test_case_8) {

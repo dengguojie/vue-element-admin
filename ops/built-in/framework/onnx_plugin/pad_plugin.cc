@@ -31,10 +31,6 @@ Status parse_params_pad_v11(const Message* op_src, ge::Operator& op_dest) {
   for (const auto& attr : node->attribute()) {
     if (attr.name() == "mode" && attr.type() == ge::onnx::AttributeProto::STRING) {
       mode_value = attr.s();
-      if (mode_value == "edge") {
-        ONNX_PLUGIN_LOGE(op_dest.GetName().c_str(), "Mode attr of Pad only supports constant/refletc, current is %s .", mode_value.c_str());
-        return FAILED;
-      }
     }
   }
   op_dest.SetAttr("paddings_contiguous", false);
@@ -64,10 +60,6 @@ Status parse_params_pad_v9(const Message* op_src, ge::Operator& op_dest) {
   for (const auto& attr : node->attribute()) {
     if (attr.name() == "mode" && attr.type() == ge::onnx::AttributeProto::STRING) {
       mode_value = attr.s();
-      if (mode_value == "edge") {
-        ONNX_PLUGIN_LOGE(op_dest.GetName().c_str(), "Mode attr of Pad only supports constant/refletc, current is %s .", mode_value.c_str());
-        return FAILED;
-      }
     } else if (attr.name() == "pads") {
       set_pads_flag = true;
       unsigned int len = attr.ints_size();
