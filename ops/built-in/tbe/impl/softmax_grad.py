@@ -38,7 +38,7 @@ def op_select_format(softmax, grad_softmax, grad_x, axis, kernel_name="softmax_g
     """
     shape_x_ori = shape_util.scalar2tensor_one(softmax.get("ori_shape"))
     length_x_ori = len(shape_x_ori)
-    if length_x_ori == 2 and  shape_x_ori[0] == 4096 and shape_x_ori[1] == 4096:
+    if length_x_ori == 2 and shape_x_ori[0] == 4096 and shape_x_ori[1] == 4096:
         input0 = util_select_op_base.gen_param(classify="input0", name="softmax",
                                             datatype="float16,float16,float",
                                             format="ND, ND, ND")
@@ -152,8 +152,8 @@ def update_5hd_axis(origin_format, axis, input_format):
 # 'pylint: disable=too-many-locals
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             (para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_LIST_INT),
-                            para_check.KERNEL_NAME)
-def softmax_grad(softmax, grad_softmax, grad_x, axis=-1, kernel_name="softmax_grad"):
+                            para_check.KERNEL_NAME, para_check.OPTION_ATTR_STR)
+def softmax_grad(softmax, grad_softmax, grad_x, axis=-1, kernel_name="softmax_grad", impl_mode="high_performance"):
     """Computes softmax gradients for a softmax operation
     The calculation formula is as follows :
     grad_x = grad_softmax * softmax - sum(grad_softmax * softmax) * softmax
@@ -218,10 +218,10 @@ def softmax_grad(softmax, grad_softmax, grad_x, axis=-1, kernel_name="softmax_gr
         context = tbe_context.op_context.get_context()
         if context is not None:
             context.set_op_mode("static")
-            dyn_impl.softmax_grad(softmax, grad_softmax, grad_x, axis, kernel_name)
+            dyn_impl.softmax_grad(softmax, grad_softmax, grad_x, axis, kernel_name, impl_mode)
         else:
             with tbe_context.op_context.OpContext("static"):
-                dyn_impl.softmax_grad(softmax, grad_softmax, grad_x, axis, kernel_name)
+                dyn_impl.softmax_grad(softmax, grad_softmax, grad_x, axis, kernel_name, impl_mode)
         return
 
     if not isinstance(axis, int):

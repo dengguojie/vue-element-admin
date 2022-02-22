@@ -5,7 +5,7 @@ from op_test_frame.ut import OpUT
 ut_case = OpUT("SoftmaxGrad", "impl.dynamic.softmax_grad", "softmax_grad")
 
 def gen_softmaxgrad_case(dynamic_input_shapes, ori_input_shapes, dtype,
-                    case_name_val, expect, input_format="ND"):
+                    case_name_val, impl_mode, expect, input_format="ND"):
     inputs = (
         {"shape": dynamic_input_shapes,
          "dtype": dtype,
@@ -26,6 +26,7 @@ def gen_softmaxgrad_case(dynamic_input_shapes, ori_input_shapes, dtype,
     return {"params": [inputs[0],
                        inputs[0],
                        outputs[0]],
+            'addition_params': {'impl_mode': impl_mode},
             "case_name": case_name_val,
             "expect": expect,
             "support_expect": True}
@@ -33,12 +34,12 @@ def gen_softmaxgrad_case(dynamic_input_shapes, ori_input_shapes, dtype,
 ut_case.add_case(["Ascend910A"],
                  gen_softmaxgrad_case((-1, -1, -1),
                                       (16, 16, 16),
-                                      "float16", "dynamic_softmax_grad_1", "success"))
+                                      "float16", "dynamic_softmax_grad_1", "high_precision", "success"))
 
 ut_case.add_case(["Ascend910A"],
                  gen_softmaxgrad_case((-1, -1, -1),
                                       (16, 16, 16),
-                                      "float32", "dynamic_softmax_grad_2", "success"))
+                                      "float16", "dynamic_softmax_grad_2", "high_performance", "success"))
 
 from impl.dynamic.softmax_grad import op_select_format
 def test_dynamic_softmax_grad_op_select_format_001(test_arg):

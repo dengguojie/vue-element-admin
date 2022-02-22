@@ -3,7 +3,7 @@ from unittest.mock import MagicMock
 
 from impl.softmax_grad import op_select_format as op_select_format
 from impl.dynamic.softmax_grad import op_select_format as dy_op_select_format
-
+from impl.dynamic.softmax_grad import softmax_grad_compute
 
 def test_op_select_format_1():
     x1 = {"shape": (4096, 4096), "dtype": "float16", "format": "ND", "ori_shape": (4096, 4096), "ori_format": "ND"}
@@ -22,3 +22,15 @@ def test_op_select_format_3():
     x2 = {"shape": (32, 32, 4096), "dtype": "float16", "format": "ND", "ori_shape": (32, 32, 4096), "ori_format": "ND"}
     output = {"shape": (32, 32, 4096), "dtype": "float16", "format": "ND", "ori_shape": (32, 32, 4096), "ori_format": "ND"}
     dy_op_select_format(x1, x2, output, -1)
+
+def test_op_select_format_4():
+    x1 = {"shape": (32, 32, 4096), "dtype": "float16", "format": "ND", "ori_shape": (32, 32, 4096), "ori_format": "ND"}
+    x2 = {"shape": (32, 32, 4096), "dtype": "float16", "format": "ND", "ori_shape": (32, 32, 4096), "ori_format": "ND"}
+    output = {"shape": (32, 32, 4096), "dtype": "float16", "format": "ND", "ori_shape": (32, 32, 4096), "ori_format": "ND"}
+    softmax_grad_compute(x1, x2, output, -1, "softmax_grad", "high_precision")
+
+def test_op_select_format_5():
+    x1 = {"shape": (32, 32, 4096), "dtype": "float16", "format": "ND", "ori_shape": (32, 32, 4096), "ori_format": "ND"}
+    x2 = {"shape": (32, 32, 4096), "dtype": "float16", "format": "ND", "ori_shape": (32, 32, 4096), "ori_format": "ND"}
+    output = {"shape": (32, 32, 4096), "dtype": "float16", "format": "ND", "ori_shape": (32, 32, 4096), "ori_format": "ND"}
+    softmax_grad_compute(x1, x2, output, -1, "softmax_grad", "high_performance")

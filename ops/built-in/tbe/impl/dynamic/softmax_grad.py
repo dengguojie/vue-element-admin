@@ -58,7 +58,7 @@ def op_select_format(softmax, grad_softmax, grad_x, axis, kernel_name="softmax_g
 # 'pylint: disable=unused-variable,disable=too-many-lines,disable=too-many-locals
 @register_operator("SoftmaxGrad")
 def softmax_grad_compute(softmax, grad_softmax, grad_x, axis,
-                         kernel_name="softmax_grad"):
+                         kernel_name="softmax_grad", impl_mode="high_precision"):
     """
     Computes softmax gradients for a softmax operation
     The calculation formula is as follows :
@@ -124,18 +124,29 @@ def softmax_grad_compute(softmax, grad_softmax, grad_x, axis,
         softmax = tbe.set_value(softmax, lambda *i: tvm.all(i[list_axis[0]] > shape[list_axis[0]] - 2, \
                                                             i[list_axis[1]] > pad_c - 1), 0)
 
-    if dtype == "float16" and tbe_platform.api_check_support("te.lang.cce.sum", "float32"):
-        grad_softmax = tbe.cast_to(grad_softmax, "float32")
-        softmax = tbe.cast_to(softmax, "float32")
-        has_improve_precision = True
-    data_vmul = tbe.vmul(softmax, grad_softmax)
+    if impl_mode == "high_performance" and dtype == "float16" and \
+        tbe_platform.api_check_support("te.lang.cce.sum", "float32"):
+        grad_softmax_fp32 = tbe.cast_to(grad_softmax, "float32")
+        softmax_fp32 = tbe.cast_to(softmax, "float32")
+        data_vmul = tbe.vmul(softmax_fp32, grad_softmax_fp32)
+        data_sum = tbe.reduce_sum(data_vmul, axis=axis, keepdims=True)
+        data_sum = tbe.cast_to(data_sum, "float16")
+        data_sum_tmp = tbe.broadcast(data_sum, shape)
+        data_sub = tbe.vsub(grad_softmax, data_sum_tmp)
+        res = tbe.vmul(softmax, data_sub)
+    else:
+        if dtype == "float16" and tbe_platform.api_check_support("te.lang.cce.sum", "float32"):
+            grad_softmax = tbe.cast_to(grad_softmax, "float32")
+            softmax = tbe.cast_to(softmax, "float32")
+            has_improve_precision = True
+        data_vmul = tbe.vmul(softmax, grad_softmax)
 
-    data_sum = tbe.reduce_sum(data_vmul, axis=axis, keepdims=True)
-    data_sum_tmp = tbe.broadcast(data_sum, shape)
-    data_sub = tbe.vsub(grad_softmax, data_sum_tmp)
-    res = tbe.vmul(softmax, data_sub)
-    if has_improve_precision:
-        res = tbe.cast_to(res, "float16")
+        data_sum = tbe.reduce_sum(data_vmul, axis=axis, keepdims=True)
+        data_sum_tmp = tbe.broadcast(data_sum, shape)
+        data_sub = tbe.vsub(grad_softmax, data_sum_tmp)
+        res = tbe.vmul(softmax, data_sub)
+        if has_improve_precision:
+            res = tbe.cast_to(res, "float16")
 
     return res
 
@@ -166,8 +177,8 @@ def update_5hd_axis(origin_format, list_axis, input_format):
 @register_operator("SoftmaxGrad")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             (para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_LIST_INT),
-                            para_check.KERNEL_NAME)
-def softmax_grad(softmax, grad_softmax, grad_x, axis=-1, kernel_name="softmax_grad"):
+                            para_check.KERNEL_NAME, para_check.OPTION_ATTR_STR)
+def softmax_grad(softmax, grad_softmax, grad_x, axis=-1, kernel_name="softmax_grad", impl_mode="high_precision"):
     """
     Computes softmax gradients for a softmax operation
     The calculation formula is as follows :
@@ -234,7 +245,7 @@ def softmax_grad(softmax, grad_softmax, grad_x, axis=-1, kernel_name="softmax_gr
                                       attrs={"ori_shape": ori_shape, "ori_format": ori_format, "format": input_format,
                                              "disable_fuse_axes": disable_fuse_axes})
             grad_softmax = tvm.placeholder(grad_shape_var_new, dtype=dtype, name="grad_softmax")
-            output = softmax_grad_compute(softmax, grad_softmax, grad_x, reduce_axis, kernel_name)
+            output = softmax_grad_compute(softmax, grad_softmax, grad_x, reduce_axis, kernel_name, impl_mode)
             tensors.append([softmax, grad_softmax, output])
 
         with tvm.target.cce():
