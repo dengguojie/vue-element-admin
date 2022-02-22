@@ -93,7 +93,7 @@ def op_select_format(x, sum, square_sum, scale, offset,
                                                datatype="float,float,float,float",
                                                format="NC1HWC0,NC1HWC0,NDC1HWC0,NDC1HWC0")
         output0 = util_select_op_base.gen_param(classify="output0", name="y",
-                                                datatype="float16,float,float,float",
+                                                datatype="float16,float,float16,float",
                                                 format="NC1HWC0,NC1HWC0,NDC1HWC0,NDC1HWC0")
         output1 = util_select_op_base.gen_param(classify="output1", name="batch_mean",
                                                 datatype="float,float,float,float",
@@ -273,7 +273,8 @@ def bn_training_update_v2_compute(x, sum, square_sum, scale, offset,
     origin_format = y.get("ori_format")
     axis = list(range(len(shape_x)))
 
-    if data_format == "NC1HWC0":
+    # compute process is same when input's format is NDC1HWC0 or NC1HWC0, using N * D = N
+    if data_format in ["NC1HWC0", "NDC1HWC0"]:
         axis = [0, 2, 3]
     if data_format == "NCHW":
         if origin_format == "NCHW":
