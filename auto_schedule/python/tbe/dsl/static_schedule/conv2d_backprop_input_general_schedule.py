@@ -3158,8 +3158,6 @@ class DxDynamicUtil():
             range_256 = self.range_const.get("range_256")
             range_1024 = self.range_const.get("range_1024")
             range_4096 = self.range_const.get("range_4096")
-            range_ub_bound = self.range_const.get("range_ub_bound")
-            range_l1_bound = self.range_const.get("range_l1_bound")
             shape_var_range = {
                 "dedy_h": range_4096, "dedy_w": range_4096,
                 "dx_h": range_4096, "dx_w": range_4096, "kernel_h": range_64, "kernel_w": range_64,
@@ -3184,7 +3182,9 @@ class DxDynamicUtil():
                 "k_al1_div_16": range_1024, "k_bl1_div_16": range_1024, "m_al1": range_1024, "n_bl1": range_1024,
                 "n_ub": range_64, "m_l0": range_64, "k_l0": range_64, "n_l0_div_ub": range_64,
                 "m_aub": range_256, "k_aub": range_1024,
-                "aub_bound": range_ub_bound, "al1_bound": range_l1_bound, "bl1_bound": range_l1_bound
+                "aub_bound": self.range_const.get("range_ub_bound"),
+                "al1_bound": self.range_const.get("range_l1_bound"),
+                "bl1_bound": self.range_const.get("range_l1_bound")
             }
             for var_name, var_range in tiling_var_range.items():
                 var = self.tiling_vars.get(var_name)

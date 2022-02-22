@@ -310,7 +310,7 @@ bool GetSameCutOff(const int64_t &first, const int64_t &second, const int64_t &f
 bool ModifyL0(const DxParas &params, int64_t &k_l0) {
   CHECK_OP_FUNC(k_l0 == 0, return false, "k_l0 is 0");
   while ((params.co1 * params.kh * params.kw) % k_l0 != 0) {
-    k_l0 --;
+    k_l0--;
   }
   return true;
 }
@@ -692,7 +692,7 @@ vector<int64_t> GetMinloadSize(map<std::string, vector<int64_t>> &factor_size, T
 }
 
 bool CheckL1Size(const vector<int64_t> &kn_factors, const vector<int64_t> &m_h,
-                 const Tiling &tiling, const int64_t &load_h, const DxParas &params) {
+                 const Tiling &tiling, const DxParas &params) {
   int64_t a_size;
   size_t idx = 0;
   int64_t k_bl1 = kn_factors[idx++];
@@ -754,7 +754,7 @@ bool GetL1FactorsOpti(map<std::string, vector<int64_t>> &factor_size,
       int64_t db_al1_end = db_size[1];
       int64_t db_bl1_end = db_size[kIdxTwo];
       vector<int64_t> m_h = {m_1, h2, db_al1_end, db_bl1_end};
-      modify_l1 = CheckL1Size(kn_factors, m_h, tiling, load_h, params) &&
+      modify_l1 = CheckL1Size(kn_factors, m_h, tiling, params) &&
                   (min_load_size > load_size ||
                    (static_cast<double>(abs(min_load_size - load_size)) < kLoadSizeThreshold &&
                     tiling.k_al1 < k_al1) ||

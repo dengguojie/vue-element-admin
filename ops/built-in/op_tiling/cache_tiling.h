@@ -177,15 +177,14 @@ struct L1Status {
   bool both_full_load = false;
   bool al1_full_load = false;
   bool bl1_full_load = false;
-  void SetStatus(int32_t kal1_16_input, int32_t kbl1_16_input, int32_t m_al1_input, int32_t n_bl1_input,
-                 int32_t db_al1_input, int32_t db_bl1_input)
+  void SetStatus(const int32_t *tmp_l1_factors)
   {
-    this->kal1_16 = kal1_16_input;
-    this->kbl1_16 = kbl1_16_input;
-    this->m_al1 = m_al1_input;
-    this->n_bl1 = n_bl1_input;
-    this->db_al1 = db_al1_input;
-    this->db_bl1 = db_bl1_input;
+    this->kal1_16 = tmp_l1_factors[0];
+    this->kbl1_16 = tmp_l1_factors[1];
+    this->m_al1 = tmp_l1_factors[2];
+    this->n_bl1 = tmp_l1_factors[3];
+    this->db_al1 = tmp_l1_factors[4];
+    this->db_bl1 = tmp_l1_factors[5];
   }
 };
 
@@ -266,11 +265,7 @@ void GetTwoFactors(int32_t* res, const int32_t& base, const int32_t& dim,
 void GetNearestFactor(const int32_t& base, int32_t& factor);
 void BL1FullLoadBlock(const L2Status& l2Status, BlockDimCalculator& blockDimCalculator, int32_t& n0);
 void AL1FullLoadBlock(const L2Status& l2Status, BlockDimCalculator& blockDimCalculator, int32_t& m0);
-void NeitherFullLoadBlock(const L2Status& l2Status, BlockDimCalculator& blockDimCalculator,
-                          const int32_t nFactorTwoCandidates[][2], const int32_t mFactorTwoCandidates[][2],
-                          const int32_t& nFactor, const int32_t& mFactor);
 int32_t GetBlockDim(const std::string& op_type, const BatchmatmulParas& params, L2Status& l2Status);
-
 int32_t GetLoadSize(const L2Status& l2Status, const L0Status& l0Status);
 MKNParasCombo GetParasCombo(const int32_t& index, const int32_t& blockValue);
 void GetFinalMkn(L0Status& l0Status, const L2Status& l2Status);

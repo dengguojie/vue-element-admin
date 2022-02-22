@@ -66,6 +66,8 @@ static const int32_t kTypeOne = 1;
 static const int32_t kTypeTwo = 2;
 static const int32_t kTypeThree = 3;
 static const int32_t kBankConflictFactor = 4;
+static const int32_t kL1FactorsLen = 6;
+static const int32_t kCandidateLen = 2;
 
 void Tiling::SetParams(const L2Status &l2Status, const L0Status &l0Status, const L1Status &l1Status,
                        const UbStatus &ubStatus, const BatchmatmulParas &params)
@@ -273,10 +275,11 @@ void AL1FullLoadBlock(const L2Status &l2Status, BlockDimCalculator &blockDimCalc
 }
 
 void NeitherFullLoadBlock(const L2Status &l2Status, BlockDimCalculator &blockDimCalculator,
-                          const int32_t nFactorTwoCandidates[][2], const int32_t mFactorTwoCandidates[][2],
-                          const int32_t &nFactor, const int32_t &mFactor) {
-  for (auto const &n0: nFactorTwoCandidates[nFactor]) {
-    for (auto const &m0: mFactorTwoCandidates[mFactor]) {
+                          const int32_t (&nFactorTwoCandidates)[kCandidateLen],
+                          const int32_t (&mFactorTwoCandidates)[kCandidateLen])
+{
+  for (auto const &n0: nFactorTwoCandidates) {
+    for (auto const &m0: mFactorTwoCandidates) {
       if (m0 <= 0 || n0 <= 0) {
         continue;
       }
@@ -296,8 +299,8 @@ void NeitherFullLoadBlock(const L2Status &l2Status, BlockDimCalculator &blockDim
   }
 }
 
-void GetBlockDimHelper(L2Status &l2Status, BlockDimCalculator &blockDimCalculator, const int32_t m0s[][2],
-                       const int32_t n0s[][2], bool b_have_batch, int32_t core_num)
+void GetBlockDimHelper(L2Status &l2Status, BlockDimCalculator &blockDimCalculator, const int32_t m0s[][kCandidateLen],
+                       const int32_t n0s[][kCandidateLen], bool b_have_batch, int32_t core_num)
 {
   int32_t iIdx = blockDimCalculator.i_idx;
   int32_t jIdx = blockDimCalculator.j_idx;
@@ -333,7 +336,7 @@ void GetBlockDimHelper(L2Status &l2Status, BlockDimCalculator &blockDimCalculato
       AL1FullLoadBlock(l2Status, blockDimCalculator, m0);
       // neither full load max_m max_n
       // closest m and n
-      NeitherFullLoadBlock(l2Status, blockDimCalculator, n0s, m0s, nFactor, mFactor);
+      NeitherFullLoadBlock(l2Status, blockDimCalculator, n0s[nFactor], m0s[mFactor]);
     }
     int32_t loadSizeKb = blockDimCalculator.total_load_size * blockDimCalculator.k_bytes / kKbytes;
     int32_t minLoadSizeKb = blockDimCalculator.min_load_size * blockDimCalculator.k_bytes / kKbytes;
@@ -419,8 +422,8 @@ int32_t GetBlockDim(const string &op_type, const BatchmatmulParas &params, L2Sta
   GetFactors(&blockDimCalculator.n_dim_cnt, nDimArray, params.n_32, params.core_num);
   GetFactors(&blockDimCalculator.m_dim_cnt, mDimArray, params.m_32, params.core_num);
   int32_t mnMaxPnt = 16;
-  int32_t m0s[params.core_num + 1][2] = {0};
-  int32_t n0s[params.core_num + 1][2] = {0};
+  int32_t m0s[params.core_num + 1][kCandidateLen] = {0};
+  int32_t n0s[params.core_num + 1][kCandidateLen] = {0};
   for (int32_t idx = 0; idx < blockDimCalculator.n_dim_cnt; idx++) {
     int32_t tmpNDim = nDimArray[idx];
     int32_t tmpNSingleCore = params.n_32 / tmpNDim;
@@ -558,21 +561,21 @@ void GetL0FactorsCand(L0Factors &resFactors, const L2Status &l2Status, L0Status 
     majorDimK = l0Status.max_nk;
     minorDimK = l0Status.max_mk;
   }
-  int32_t majorDimFactors[2] = {0};
+  int32_t majorDimFactors[kCandidateLen] = {0};
   GetTwoFactors(majorDimFactors, l0Status.max_axis_pnt, majorDim, l0Status.max_axis_num);
   for (auto &majorDimFactor: majorDimFactors) {
     if (majorDimFactor == 0) {
       continue;
     }
     int32_t minorFactorMax = min(l0Status.max_mn / majorDimFactor, minorDimK);
-    int32_t minorDimFactors[2] = {0};
+    int32_t minorDimFactors[kCandidateLen] = {0};
     GetTwoFactors(minorDimFactors, minorFactorMax, minorDim, minorFactorMax);
     for (auto &minorDimFactor: minorDimFactors) {
       if (minorDimFactor == 0) {
         continue;
       }
       int32_t k0Max = min(majorDimK / majorDimFactor, minorDimK / minorDimFactor);
-      int32_t k0Factors[2] = {0};
+      int32_t k0Factors[kCandidateLen] = {0};
       GetTwoFactors(k0Factors, k0Max, l2Status.k, k0Max);
       for (auto &k0: k0Factors) {
         if (k0 == 0) {
@@ -621,8 +624,8 @@ void GetL0Factors(const string &op_type, const L2Status &l2Status, const int32_t
   float l0cUseL0cDbOff = resFactors[dbAOnBOnCOffIdx].final_l0c_use;
 
   if ((l0cUseL0cDbOff > l0cUseL0cDbOn) || (loadSizeL0cDbOff < loadSizeL0cDbOn)) {
-    int64_t dbL0aL0cDbOff = 2;
-    int64_t dbL0bL0cDbOff = 2;
+    int64_t dbL0aL0cDbOff = kDbOn;
+    int64_t dbL0bL0cDbOff = kDbOn;
     l0Status.db_l0c = kDbOff;
     l0Status.db_l0a = dbL0aL0cDbOff;
     l0Status.db_l0b = dbL0bL0cDbOff;
@@ -630,8 +633,8 @@ void GetL0Factors(const string &op_type, const L2Status &l2Status, const int32_t
     l0Status.k_l0 = k0L0cDbOff;
     l0Status.n_l0 = n0L0cDbOff;
   } else {
-    int64_t dbL0aL0cDbOn = 2;
-    int64_t dbL0bL0cDbOn = 2;
+    int64_t dbL0aL0cDbOn = kDbOn;
+    int64_t dbL0bL0cDbOn = kDbOn;
     l0Status.db_l0c = kDbOn;
     l0Status.db_l0a = dbL0aL0cDbOn;
     l0Status.db_l0b = dbL0bL0cDbOn;
@@ -951,16 +954,21 @@ void GetL1Factors(const string &op_type, const BatchmatmulParas &params, const L
   l1Status.max_k_bl1 =
     max(mte1Loop, ((kMinMte1Load + l0Status.n_l0 - 1) / l0Status.n_l0 + l0Status.k_l0 - 1) / l0Status.k_l0);
   // both AL1 and Bl1 full load
-  l1Status.SetStatus(l2Status.k, l2Status.k, l1Status.max_m_al1, l1Status.max_n_bl1, kDbOff, kDbOff);
+  int32_t both_full_load_factors[kL1FactorsLen] =
+      {l2Status.k, l2Status.k, l1Status.max_m_al1, l1Status.max_n_bl1, kDbOff, kDbOff};
+  l1Status.SetStatus(both_full_load_factors);
   L1StatusBothFullLoad(l2Status, l0Status, l1Status, res);
   // only AL1 full load
-  l1Status.SetStatus(l2Status.k, l0Status.k_l0, l1Status.max_m_al1, 1, kDbOff, kDbOff);
+  int32_t al1_full_load_factors[kL1FactorsLen] = {l2Status.k, l0Status.k_l0, l1Status.max_m_al1, 1, kDbOff, kDbOff};
+  l1Status.SetStatus(al1_full_load_factors);
   L1StatusAl1FullLoad(l2Status, l0Status, l1Status, res);
   // only BL1 full load
-  l1Status.SetStatus(l0Status.k_l0, l2Status.k, 1, l1Status.max_n_bl1, kDbOff, kDbOff);
+  int32_t bl1_full_load_factors[kL1FactorsLen] = {l0Status.k_l0, l2Status.k, 1, l1Status.max_n_bl1, kDbOff, kDbOff};
+  l1Status.SetStatus(bl1_full_load_factors);
   L1StatusBl1FullLoad(l2Status, l0Status, l1Status, res);
   // neither AL1 nor Bl1 full load
-  l1Status.SetStatus(l0Status.k_l0, l0Status.k_l0, 1, 1, kDbOn, kDbOn);
+  int32_t neither_full_load_factors[kL1FactorsLen] = {l0Status.k_l0, l0Status.k_l0, 1, 1, kDbOn, kDbOn};
+  l1Status.SetStatus(neither_full_load_factors);
   L1StatusNeitherFullLoad(l2Status, params, l0Status, l1Status, res);
   // choose the final factors
   int32_t *tmpFactors = res[kIdxThree];
@@ -985,8 +993,9 @@ void GetL1Factors(const string &op_type, const BatchmatmulParas &params, const L
         res[kIdxZero][kIdxOne] + res[kIdxZero][kIdxFour] > tmpFactors[kIdxOne] + tmpFactors[kIdxFour]))) {
     tmpFactors = res[kIdxZero];
   }
-  l1Status.SetStatus(tmpFactors[kIdxZero], tmpFactors[kIdxThree], tmpFactors[kIdxOne], tmpFactors[kIdxFour],
-                     tmpFactors[kIdxTwo], tmpFactors[kIdxFive]);
+  int32_t res_l1_factors[kL1FactorsLen] = {tmpFactors[kIdxZero], tmpFactors[kIdxThree], tmpFactors[kIdxOne],
+                                           tmpFactors[kIdxFour], tmpFactors[kIdxTwo], tmpFactors[kIdxFive]};
+  l1Status.SetStatus(res_l1_factors);
   OP_LOGD(op_type.c_str(), "tiling kal1_16:%lld, kbl1_16:%lld, k_l0:%lld", l1Status.kal1_16, l1Status.kbl1_16,
           l0Status.k_l0);
   OP_LOGD(op_type.c_str(), "tiling m_al1:%lld, n_bl1:%lld", l1Status.m_al1, l1Status.n_bl1);

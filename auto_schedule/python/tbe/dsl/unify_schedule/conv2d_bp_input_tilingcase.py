@@ -500,6 +500,26 @@ class Conv2dBpInputTiling(CubeTilingOp):
 
         return invalid_choice
 
+    @staticmethod
+    def get_attach_choices():
+        """
+        generates all selections of 8 flags
+
+        Returns
+        -------
+        list: all selections of flags
+        """
+        (al1_pb, bl1_pb, l0c_pb, abkl1_attach, al1_attach_flag,
+        bl1_attach_flag, min_kl1_cmp_kl0, no_overlap_default_flag) = (
+            [utils.DB_OFF, utils.DB_ON], [utils.DB_OFF, utils.DB_ON], [utils.DB_OFF, utils.DB_ON],
+            [utils.ATTACH_FULL_LOAD, utils.ATTACH_EQUAL, utils.ATTACH_LESS],
+            [utils.ATTACH_FULL_LOAD, utils.ATTACH_EQUAL, utils.ATTACH_LESS],
+            [utils.ATTACH_FULL_LOAD, utils.ATTACH_EQUAL, utils.ATTACH_LESS], [0, 1], [0, 1])
+        attach_choices = list(
+            product(al1_pb, bl1_pb, l0c_pb, abkl1_attach,
+                    al1_attach_flag, bl1_attach_flag, min_kl1_cmp_kl0, no_overlap_default_flag))
+        return attach_choices
+
     def get_repo_tiling(self):
         """
         get tiling from repository
@@ -536,30 +556,22 @@ class Conv2dBpInputTiling(CubeTilingOp):
         according to size in l1, generate 9 kind of templates, each subdivided into 132 different
         templates as follows templates according to size in l1 sub template
         --------------------------------------------|-----
-        al1 @l0c and bl1 @l0c                       | 48
-        al1 @l0c and bl1 @ddr                       | 16
-        al1 @l0c and bl1 full load                  | 8
-        al1 @ddr and bl1 @l0c                       | 16
-        al1 @ddr and bl1 @ddr                       | 16
-        al1 @ddr and bl1 full load                  | 8
-        al1 full load and bl1 @l0c                  | 8
-        al1 full load and bl1 @ddr                  | 8
-        al1 full load and bl1 full load             | 4
+        al1 @l0c and bl1 @l0c                       | 96
+        al1 @l0c and bl1 @ddr                       | 32
+        al1 @l0c and bl1 full load                  | 16
+        al1 @ddr and bl1 @l0c                       | 32
+        al1 @ddr and bl1 @ddr                       | 32
+        al1 @ddr and bl1 full load                  | 16
+        al1 full load and bl1 @l0c                  | 16
+        al1 full load and bl1 @ddr                  | 16
+        al1 full load and bl1 full load             | 8
 
         Returns
         ----------
         cache_tiling_all: list, include 132 different tiling templates
         '''
         cache_tiling_all = {}
-        (al1_pb, bl1_pb, l0c_pb, abkl1_attach, al1_attach_flag,
-        bl1_attach_flag, min_kl1_cmp_kl0, no_overlap_default_flag) = (
-            [utils.DB_OFF, utils.DB_ON], [utils.DB_OFF, utils.DB_ON], [utils.DB_OFF, utils.DB_ON],
-            [utils.ATTACH_FULL_LOAD, utils.ATTACH_EQUAL, utils.ATTACH_LESS],
-            [utils.ATTACH_FULL_LOAD, utils.ATTACH_EQUAL, utils.ATTACH_LESS],
-            [utils.ATTACH_FULL_LOAD, utils.ATTACH_EQUAL, utils.ATTACH_LESS], [0, 1], [0, 1])
-        attach_choices = list(
-            product(al1_pb, bl1_pb, l0c_pb, abkl1_attach,
-                    al1_attach_flag, bl1_attach_flag, min_kl1_cmp_kl0, no_overlap_default_flag))
+        attach_choices = self.get_attach_choices()
         stride_expand_flag = 0 if isinstance(self.stride_h, int) else 1
         for choice in attach_choices:
             cache_tiling = {
@@ -581,19 +593,16 @@ class Conv2dBpInputTiling(CubeTilingOp):
                 'al1_attach_flag': -1, 'bl1_attach_flag': -1, 'aub_attach_flag': utils.ATTACH_LESS,
                 'abkl1_attach_flag': -1, 'aub_multi_flag': -1, 'bub_multi_flag': -1}, 'no_overlap_default_flag': 0
             }
-            (al1_pb, bl1_pb, l0c_pb, abkl1_attach,
-             al1_attach_flag, bl1_attach_flag, min_kl1_cmp_kl0, no_overlap_default_flag) = choice
             if self._check_template_valid(choice):
                 continue
-
-            cache_tiling.get('manual_pingpong_buffer')['AL1_pbuffer'] = al1_pb
-            cache_tiling.get('manual_pingpong_buffer')['BL1_pbuffer'] = bl1_pb
-            cache_tiling.get('manual_pingpong_buffer')['CL0_pbuffer'] = l0c_pb
-            cache_tiling.get('attach_at_flag')['abkl1_attach_flag'] = abkl1_attach
-            cache_tiling.get('attach_at_flag')['al1_attach_flag'] = al1_attach_flag
-            cache_tiling.get('attach_at_flag')['bl1_attach_flag'] = bl1_attach_flag
-            cache_tiling.get('attach_at_flag')['min_kl1_cmp_kl0'] = min_kl1_cmp_kl0
-            cache_tiling['no_overlap_default_flag'] = no_overlap_default_flag
+            cache_tiling.get('manual_pingpong_buffer')['AL1_pbuffer'] = choice[0]
+            cache_tiling.get('manual_pingpong_buffer')['BL1_pbuffer'] = choice[1]
+            cache_tiling.get('manual_pingpong_buffer')['CL0_pbuffer'] = choice[2]
+            cache_tiling.get('attach_at_flag')['abkl1_attach_flag'] = choice[3]
+            cache_tiling.get('attach_at_flag')['al1_attach_flag'] = choice[4]
+            cache_tiling.get('attach_at_flag')['bl1_attach_flag'] = choice[5]
+            cache_tiling.get('attach_at_flag')['min_kl1_cmp_kl0'] = choice[6]
+            cache_tiling['no_overlap_default_flag'] = choice[7]
             name = int(''.join((str(i) for i in choice))) * 10 + stride_expand_flag
             cache_tiling_all[name] = [[], cache_tiling, []]
             tiling_cases = [self.assembly_case(v[1], v[0], k) for k, v in cache_tiling_all.items()]

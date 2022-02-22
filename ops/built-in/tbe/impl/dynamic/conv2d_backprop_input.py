@@ -286,13 +286,6 @@ def _conv2d_backprop_input_compute(input_size, filters, out_backprop, y, strides
     conv2dbp_para = Conv2dBackpropParaProcess(ori_paras)
     conv2dbp_para.config_paras()
     res_dtype = y.get("dtype").lower()
-    attrs_info = {
-        "strides": strides,
-        "pads": pads,
-        "dilations": dilations,
-        "groups": groups,
-        "data_format": data_format
-    }
     dedx = tbe.conv2d_backprop_input(filters=conv2dbp_para.tensors.get("filter_tensor"),
                                      out_backprop=conv2dbp_para.tensors.get("dy_tensor"),
                                      filter_sizes=conv2dbp_para.shape.get("filter_shape_nchw"),
