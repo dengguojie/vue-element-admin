@@ -318,23 +318,20 @@ IMPLEMT_INFERFUNC(DynamicRNNV3, DynamicRNNV3InferShape) {
     return GRAPH_FAILED;
   }
   auto inputProjectTensorDesc = op_desc->MutableInputDesc("project");
-  ge::TensorDesc inputXTensorDesc = op.GetInputDesc("x");
-  ge::TensorDesc inputWTensorDesc = op.GetInputDesc("w");
-  ge::TensorDesc inputBTensorDesc = op.GetInputDesc("b");
-  ge::Shape shapeX = inputXTensorDesc.GetShape();
-  ge::Shape shapeW = inputWTensorDesc.GetShape();
-  DataType inputXDtype = inputXTensorDesc.GetDataType();
-  DataType inputBDtype = inputBTensorDesc.GetDataType();
-  TensorDesc outputYTensorDesc = op.GetOutputDesc("y");
-  TensorDesc outputHTensorDesc = op.GetOutputDesc("output_h");
-  TensorDesc outputCTensorDesc = op.GetOutputDesc("output_c");
-  TensorDesc outputITensorDesc = op.GetOutputDesc("i");
-  TensorDesc outputJTensorDesc = op.GetOutputDesc("j");
-  TensorDesc outputFTensorDesc = op.GetOutputDesc("f");
-  TensorDesc outputOTensorDesc = op.GetOutputDesc("o");
-  TensorDesc outputTanhcTensorDesc = op.GetOutputDesc("tanhc");
+  auto inputXTensorDesc = op_desc->MutableInputDesc("x");
+  auto inputWTensorDesc = op_desc->MutableInputDesc("w");
+  auto inputBTensorDesc = op_desc->MutableInputDesc("b");
 
-  
+  if (inputXTensorDesc == nullptr || inputWTensorDesc == nullptr || inputBTensorDesc == nullptr) {
+    OP_LOGE(op.GetName().c_str(), "MutableInputDesc return nullptr!");
+    return GRAPH_FAILED;
+  }
+
+  const auto &shapeX = inputXTensorDesc->GetShape();
+  const auto &shapeW = inputWTensorDesc->GetShape();
+  DataType inputXDtype = inputXTensorDesc->GetDataType();
+  DataType inputBDtype = inputBTensorDesc->GetDataType();
+
   int64_t dim_num = shapeX.GetDimNum();
   int64_t batchSize = 0;
   int64_t hiddenSize = 0;
@@ -356,39 +353,60 @@ IMPLEMT_INFERFUNC(DynamicRNNV3, DynamicRNNV3InferShape) {
 
   vector<int64_t> outputHDims = {num_step, batchSize, hiddenSize};
   vector<int64_t> outputHStateDims = {num_step, batchSize, stateSize};
-  outputYTensorDesc.SetShape(ge::Shape(outputHStateDims));
-  outputHTensorDesc.SetShape(ge::Shape(outputHStateDims));
-  outputCTensorDesc.SetShape(ge::Shape(outputHDims));
-  outputITensorDesc.SetShape(ge::Shape(outputHDims));
-  outputJTensorDesc.SetShape(ge::Shape(outputHDims));
-  outputFTensorDesc.SetShape(ge::Shape(outputHDims));
-  outputOTensorDesc.SetShape(ge::Shape(outputHDims));
-  outputTanhcTensorDesc.SetShape(ge::Shape(outputHDims));
 
-  outputYTensorDesc.SetDataType(inputBDtype);
-  outputHTensorDesc.SetDataType(inputXDtype);
-  outputCTensorDesc.SetDataType(inputBDtype);
-  outputITensorDesc.SetDataType(inputBDtype);
-  outputJTensorDesc.SetDataType(inputBDtype);
-  outputFTensorDesc.SetDataType(inputBDtype);
-  outputOTensorDesc.SetDataType(inputBDtype);
-  outputTanhcTensorDesc.SetDataType(inputBDtype);
+  auto outputYTensorDesc = op_desc->MutableOutputDesc("y");
+  auto outputHTensorDesc = op_desc->MutableOutputDesc("output_h");
+  auto outputCTensorDesc = op_desc->MutableOutputDesc("output_c");
+  auto outputITensorDesc = op_desc->MutableOutputDesc("i");
+  auto outputJTensorDesc = op_desc->MutableOutputDesc("j");
+  auto outputFTensorDesc = op_desc->MutableOutputDesc("f");
+  auto outputOTensorDesc = op_desc->MutableOutputDesc("o");
+  auto outputTanhcTensorDesc = op_desc->MutableOutputDesc("tanhc");
 
-  (void)op.UpdateOutputDesc("y", outputYTensorDesc);
-  (void)op.UpdateOutputDesc("output_h", outputHTensorDesc);
-  (void)op.UpdateOutputDesc("output_c", outputCTensorDesc);
-  (void)op.UpdateOutputDesc("i", outputITensorDesc);
-  (void)op.UpdateOutputDesc("j", outputJTensorDesc);
-  (void)op.UpdateOutputDesc("f", outputFTensorDesc);
-  (void)op.UpdateOutputDesc("o", outputOTensorDesc);
-  (void)op.UpdateOutputDesc("tanhc", outputTanhcTensorDesc);
+  if (outputYTensorDesc != nullptr) {
+    outputYTensorDesc->SetShape(GeShape(outputHStateDims));
+    outputYTensorDesc->SetDataType(inputBDtype);
+  }
 
-  inputWTensorDesc.SetFormat(ge::FORMAT_ND);
-  inputBTensorDesc.SetFormat(ge::FORMAT_ND);
+  if (outputHTensorDesc != nullptr) {
+    outputHTensorDesc->SetShape(GeShape(outputHStateDims));
+    outputHTensorDesc->SetDataType(inputXDtype);
+  }
+
+  if (outputCTensorDesc != nullptr) {
+    outputCTensorDesc->SetShape(GeShape(outputHDims));
+    outputCTensorDesc->SetDataType(inputBDtype);
+  }
+
+  if (outputITensorDesc != nullptr) {
+    outputITensorDesc->SetShape(GeShape(outputHDims));
+    outputITensorDesc->SetDataType(inputBDtype);
+  }
+
+  if (outputJTensorDesc != nullptr) {
+    outputJTensorDesc->SetShape(GeShape(outputHDims));
+    outputJTensorDesc->SetDataType(inputBDtype);
+  }
+
+  if (outputFTensorDesc != nullptr) {
+    outputFTensorDesc->SetShape(GeShape(outputHDims));
+    outputFTensorDesc->SetDataType(inputBDtype);
+  }
+
+  if (outputOTensorDesc != nullptr) {
+    outputOTensorDesc->SetShape(GeShape(outputHDims));
+    outputOTensorDesc->SetDataType(inputBDtype);
+  }
+
+  if (outputTanhcTensorDesc != nullptr) {
+    outputTanhcTensorDesc->SetShape(GeShape(outputHDims));
+    outputTanhcTensorDesc->SetDataType(inputBDtype);
+  }
+
+  inputWTensorDesc->SetFormat(ge::FORMAT_ND);
+  inputBTensorDesc->SetFormat(ge::FORMAT_ND);
   ge::AttrUtils::SetInt(op_desc, "input_size", inputSize);
   ge::AttrUtils::SetInt(op_desc, "hidden_size", hiddenSize);
-  (void)op.UpdateInputDesc("w", inputWTensorDesc);
-  (void)op.UpdateInputDesc("b", inputBTensorDesc);
 
   return GRAPH_SUCCESS;
 }
