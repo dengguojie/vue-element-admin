@@ -453,15 +453,8 @@ Status PatternFusionUtil::SetOutputDescAttrForDataDump(ge::NodePtr fusedNode, ge
   FUSION_PASS_CHECK(fusionNode == nullptr || fusionNode->GetOpDesc() == nullptr,
                     OP_LOGE("SetOutputDescAttrForDataDump", "fusedNode or OpDesc is null, fusion failed."),
                     return FAILED);
-  for (unsigned int i = 0; i < fusedNode->GetAllOutDataAnchors().size(); i++) {
-    ge::AttrUtils::SetStr(fusionNode->GetOpDesc()->MutableOutputDesc(i), ge::ATTR_NAME_DATA_DUMP_ORIGIN_NAME,
-                          fusedNode->GetName());
-    ge::AttrUtils::SetInt(fusionNode->GetOpDesc()->MutableOutputDesc(i), ge::ATTR_NAME_DATA_DUMP_ORIGIN_OUTPUT_INDEX,
-                          i);
-    GraphPassUtil::SetDataDumpOriginDataType(fusedNode->GetOpDesc()->GetOutputDesc(i).GetOriginDataType(),
-                                             fusionNode->GetOpDesc()->MutableOutputDesc(i));
-    GraphPassUtil::SetDataDumpOriginFormat(fusedNode->GetOpDesc()->GetOutputDesc(i).GetOriginFormat(),
-                                           fusionNode->GetOpDesc()->MutableOutputDesc(i));
+  for (uint32_t i = 0; i < fusedNode->GetAllOutDataAnchors().size(); i++) {
+    GraphPassUtil::SetOutputDescAttr(i, i, fusedNode, fusionNode);
   }
   return SUCCESS;
 }

@@ -234,7 +234,6 @@ Status ReshapeTransposeFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapp
   ge::GeTensorDesc reshapeOutputTensor = reshapeDesc->GetOutputDesc(0);
   ge::GeShape reshapeOutputShape = reshapeOutputTensor.GetShape();
   vector<int64_t> dimInfo = reshapeOutputShape.GetDims();
-  reshapeDesc->SetName(reshapeDesc->GetName() + "/" + FUSED_OP_TYPE);
   reshapeDesc->SetType(FUSED_OP_TYPE);
   reshapeDesc->UpdateOutputDesc(0, transDesc->GetOutputDesc(0));
 
@@ -261,6 +260,7 @@ Status ReshapeTransposeFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapp
     OP_LOGI(FUSED_OP_TYPE.c_str(), "Tile has input which is not a constant, graph not changed.");
     return NOT_CHANGED;
   }
+  confusionTransposeD->GetOpDesc()->SetName(confusionTransposeD->GetName() + "/" + FUSED_OP_TYPE);
   ge::AttrUtils::SetListInt(confusionTransposeD->GetOpDesc(), "shape", dimInfo);
   fusionNodes.push_back(confusionTransposeD);
 
