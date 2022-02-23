@@ -13,7 +13,10 @@ http://www.apache.org/licenses/LICENSE-2.0
 
 NMSWithMask dynamic ut case
 """
+from unittest.mock import MagicMock
+from unittest.mock import patch
 from op_test_frame.ut import OpUT
+from tbe.common.context.op_context import OpContext
 
 ut_case = OpUT("NMSWithMask", "impl.dynamic.nms_with_mask", "nms_with_mask")
 
@@ -93,7 +96,7 @@ def test_op_mask_generalization_1(test_arg):
         "range": [(16, 16)]
     }
     iou_thr = 0.7
-    generalize_config = {"mode" : "keep_rank"}
+    generalize_config = {"mode": "keep_rank"}
 
     if not nms_with_mask_generalization(box_scores, selected_boxes, selected_idx, selected_mask, iou_thr,
                                         generalize_config):
@@ -102,3 +105,93 @@ def test_op_mask_generalization_1(test_arg):
 
 ut_case.add_cust_test_func(test_func=test_op_mask_generalization_1)
 ut_case.run("Ascend910A")
+
+
+def test_op_mask_1981_test_1(test_arg):
+    from impl.dynamic.nms_with_mask_common import nms_with_mask_single_core
+    box_scores = {
+        'shape': (-1, 8),
+        'dtype': "float16",
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": (-1, 8),
+        "range": [(2048, 2048), (8, 8)]
+    }
+    selected_boxes = {
+        'shape': (-1, 5),
+        'dtype': "float16",
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": (-1, 5),
+        "range": [(2048, 2048), (5, 5)]
+    }
+    selected_idx = {
+        'shape': (-1, ),
+        'dtype': "int32",
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": (-1, ),
+        "range": [(2048, 2048)]
+    }
+    selected_mask = {
+        'shape': (-1, ),
+        'dtype': "uint8",
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": (-1, ),
+        "range": [(2048, 2048)]
+    }
+    iou_thr = 0.7
+    with OpContext("dynamic") as opc:
+        from tbe.common.platform.platform_info import set_current_compile_soc_info
+        set_current_compile_soc_info("Ascend920A")
+        nms_with_mask_single_core(box_scores, selected_boxes, selected_idx, selected_mask, iou_thr,
+                                  "test_op_mask_1981_test_1")
+        set_current_compile_soc_info(test_arg)
+
+
+def test_op_mask_1981_test_2(test_arg):
+    from impl.dynamic.nms_with_mask_common import nms_with_mask_single_core
+    box_scores = {
+        'shape': (-1, 8),
+        'dtype': "float32",
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": (-1, 8),
+        "range": [(2048, 2048), (8, 8)]
+    }
+    selected_boxes = {
+        'shape': (-1, 5),
+        'dtype': "float32",
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": (-1, 5),
+        "range": [(2048, 2048), (5, 5)]
+    }
+    selected_idx = {
+        'shape': (-1, ),
+        'dtype': "int32",
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": (-1, ),
+        "range": [(2048, 2048)]
+    }
+    selected_mask = {
+        'shape': (-1, ),
+        'dtype': "uint8",
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": (-1, ),
+        "range": [(2048, 2048)]
+    }
+    iou_thr = 0.7
+    with OpContext("dynamic") as opc:
+        from tbe.common.platform.platform_info import set_current_compile_soc_info
+        set_current_compile_soc_info("Ascend920A")
+        nms_with_mask_single_core(box_scores, selected_boxes, selected_idx, selected_mask, iou_thr,
+                                  "test_op_mask_1981_test_2")
+        set_current_compile_soc_info(test_arg)
+
+
+ut_case.add_cust_test_func(test_func=test_op_mask_1981_test_1)
+ut_case.add_cust_test_func(test_func=test_op_mask_1981_test_2)

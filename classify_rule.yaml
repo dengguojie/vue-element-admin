@@ -943,6 +943,7 @@ vector_B:
       - ops/built-in/tbe/impl/dynamic/nll_loss.py
       - ops/built-in/tbe/impl/dynamic/nll_loss_grad.py
       - ops/built-in/tbe/impl/dynamic/not_equal.py
+      - ops/built-in/tbe/impl/dynamic/nms_with_mask_common.py
       - ops/built-in/tbe/impl/dynamic/ones_like.py
       - ops/built-in/tbe/impl/dynamic/pow.py
       - ops/built-in/tbe/impl/dynamic/power.py

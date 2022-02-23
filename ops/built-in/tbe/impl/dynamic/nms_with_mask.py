@@ -23,7 +23,7 @@ from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
 import tbe.common.register as tbe_register
-
+from .nms_with_mask_common import nms_with_mask_single_core
 
 # 'pylint:disable=too-few-public-methods,too-many-instance-attributes
 class Constant:
@@ -533,6 +533,11 @@ def nms_with_mask(box_scores, selected_boxes, selected_idx, selected_mask, iou_t
     -------
     None
     """
+    # new soc branch
+    if tbe_platform.api_check_support("tik.vreduce",
+                                      "float16") and not tbe_platform.api_check_support("tik.vaadd", "float16"):
+        return nms_with_mask_single_core(box_scores, selected_boxes, selected_idx, selected_mask, iou_thr, kernel_name)
+
     input_shape = box_scores.get("shape")
     input_dtype = box_scores.get("dtype").lower()
 
