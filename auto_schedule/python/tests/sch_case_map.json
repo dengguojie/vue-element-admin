@@ -289,6 +289,10 @@
     "auto_schedule/python/tbe/dsl/static_schedule/reduce_5hdc_schedule.py":[
         "reduce_sum"
     ],
+    "auto_schedule/python/tbe/dsl/base/classifier/norm_classifier.py": [
+        "norm",
+        "norm_classify"
+    ],
     "auto_schedule/python/tbe/dsl/unify_schedule/vector/norm/norm_tilingcase.py":[
         "norm"
     ],

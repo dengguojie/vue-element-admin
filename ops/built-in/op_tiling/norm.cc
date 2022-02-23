@@ -70,6 +70,26 @@ namespace {
     }
     return pattern;
   }
+
+  template<typename T>
+  bool NormalizeAxis(const std::vector<T>& src, std::vector<int32_t>& dst, std::size_t dim_len) {
+    std::size_t src_len = src.size();
+    for (std::size_t i = 0; i < src_len; i++) {
+      auto single_axis = static_cast<int32_t>(src[i]);
+      // convert axis (-1 -> dim_len - 1)
+      if (single_axis < 0) {
+        single_axis = dim_len + single_axis;
+      }
+      // check axis value
+      V_OP_TILING_CHECK((single_axis < static_cast<int32_t>(dim_len)),
+                        VECTOR_INNER_ERR_REPORT_TILIING("norm", "value of axis %d is illegal", single_axis),
+                        return false);
+      dst[i] = single_axis;
+    }
+    dst.resize(src_len);
+
+    return true;
+  }
 }
 
 bool Norm::CheckInputNum() const {
@@ -166,68 +186,112 @@ bool Norm::GetInput() {
   return true;
 }
 
-bool Norm::Init() {
+bool Norm::InitReduce() {
   // init reduce axis
-  std::size_t ori_reduce_axis_len = compileInfo.ori_reduce_axis.size();
-  for (std::size_t i = 0; i < ori_reduce_axis_len; i++) {
-    int32_t single_reduce_axis = compileInfo.ori_reduce_axis[i];
-    // convert reduce axis (-1 -> max_dim_len - 1)
+  if (!compileInfo.ori_reduce_axis.empty()) {
+    if (compileInfo.reduce_axis_type == static_cast<int32_t>(NormAxisType::AFTER)) {
+      int32_t single_reduce_axis = compileInfo.ori_reduce_axis[0];
+      if (single_reduce_axis < 0) {
+        single_reduce_axis = max_dim_len + single_reduce_axis;
+      }
+      for (int32_t i = single_reduce_axis; i < static_cast<int32_t>(max_dim_len); i++) {
+        reduce_axis_ori[i - single_reduce_axis] = i;
+      }
+      reduce_axis_ori.resize(max_dim_len - single_reduce_axis);
+      return true;
+    }
+    // reduce axis is assigned in compile
+    return NormalizeAxis(compileInfo.ori_reduce_axis, reduce_axis_ori, max_dim_len);
+  }
+  // reduce axis is variable in compile
+  auto reduce_attr_name = compileInfo.reduce_attr_name.c_str();
+  std::vector<int64_t> reduce_axis_list;
+  if (compileInfo.is_reduce_attr_is_int) {
+    int64_t single_reduce_axis{0};
+    V_OP_TILING_CHECK((ge::GRAPH_SUCCESS == op_paras.GetAttr(reduce_attr_name, single_reduce_axis)),
+                      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "failed to get attr %s", reduce_attr_name),
+                      return false);
     if (single_reduce_axis < 0) {
       single_reduce_axis = max_dim_len + single_reduce_axis;
     }
-    // check reduce axis value
-    V_OP_TILING_CHECK((single_reduce_axis < static_cast<int32_t>(max_dim_len)),
-                      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "value of reduce axis %d is illegal",
-                                                      single_reduce_axis),
-                      return false);
-    reduce_axis_ori[i] = single_reduce_axis;
-  }
-  reduce_axis_ori.resize(ori_reduce_axis_len);
-
-  // init broadcast axis
-  if (compileInfo.is_broadcast_axis_known) {
-    std::size_t ori_broadcast_axis_len = compileInfo.ori_broadcast_axis.size();
-    for (std::size_t i = 0; i < ori_broadcast_axis_len; i++) {
-      int32_t single_broadcast_axis = compileInfo.ori_broadcast_axis[i];
-      // convert broadcast axis (-1 -> max_dim_len - 1)
-      if (single_broadcast_axis < 0) {
-        single_broadcast_axis = max_dim_len + single_broadcast_axis;
+    if (compileInfo.reduce_axis_type == static_cast<int32_t>(NormAxisType::AFTER)) {
+      for (int64_t i = single_reduce_axis; i < static_cast<int64_t>(max_dim_len); i++) {
+        reduce_axis_list.push_back(i);
       }
-      // check broadcast axis value
-      V_OP_TILING_CHECK((single_broadcast_axis < static_cast<int32_t>(max_dim_len)),
-                        VECTOR_INNER_ERR_REPORT_TILIING(op_type, "value of broadcast axis %d is illegal",
-                                                        single_broadcast_axis),
-                        return false);
-      broadcast_axis_ori[i] = single_broadcast_axis;
+    } else if (compileInfo.reduce_axis_type == static_cast<int32_t>(NormAxisType::BEFORE)) {
+      for (int64_t i = 0; i < single_reduce_axis; i++) {
+        reduce_axis_list.push_back(i);
+      }
+    } else {
+      reduce_axis_list.push_back(single_reduce_axis);
     }
-    broadcast_axis_ori.resize(ori_broadcast_axis_len);
   } else {
-    broadcast_axis_ori.clear();
+    V_OP_TILING_CHECK((ge::GRAPH_SUCCESS == op_paras.GetAttr(reduce_attr_name, reduce_axis_list)),
+                      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "failed to get attr %s", reduce_attr_name),
+                      return false);
   }
 
-  // init disable fuse axes
-  std::size_t ori_disable_fuse_axes_len = compileInfo.ori_disable_fuse_axes.size();
-  for (std::size_t i = 0; i < ori_disable_fuse_axes_len; ++i) {
-    int32_t single_disable_fuse_axes = compileInfo.ori_disable_fuse_axes[i];
-    // convert axis index from negative to positive
-    if (single_disable_fuse_axes < 0) {
-      single_disable_fuse_axes = max_dim_len + single_disable_fuse_axes;
-    }
-    // check disable fuse axes value
-    V_OP_TILING_CHECK((single_disable_fuse_axes < static_cast<int32_t>(max_dim_len)),
-                      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "value of disable fuse axes %d is illegal",
-                                                      single_disable_fuse_axes),
-                      return false);
-    disable_fuse_axes_ori[i] = single_disable_fuse_axes;
+  return NormalizeAxis(reduce_axis_list, reduce_axis_ori, max_dim_len);
+}
+
+bool Norm::InitReduce(const OpInfo& op_info) {
+  // init reduce axis
+  if (op_info.GetReduceAxes().empty()) {
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "failed to get reduce axis from op_info");
+    return false;
   }
-  disable_fuse_axes_ori.resize(ori_disable_fuse_axes_len);
+
+  return NormalizeAxis(op_info.GetReduceAxes()[0], reduce_axis_ori, max_dim_len);
+}
+
+bool Norm::InitBroadcast() {
+  // init broadcast axis
+  if (!compileInfo.is_broadcast_axis_known) {
+    // compile broadcast axes are not the same
+    broadcast_axis_ori.clear();
+    return true;
+  }
+
+  if (compileInfo.broadcast_axis_type.empty()) {
+    // broadcast axis is assigned in compile
+    return NormalizeAxis(compileInfo.ori_broadcast_axis, broadcast_axis_ori, max_dim_len);
+  }
+
+  // broadcast axis is variable in compile
+  int32_t single_broadcast_axis_type = compileInfo.broadcast_axis_type[0];
+  if (single_broadcast_axis_type == static_cast<int32_t>(NormAxisType::OPPOSITE_REDUCE)) {
+    int32_t count = 0;
+    for (int32_t i = 0; i < static_cast<int32_t>(max_dim_len); i++) {
+      if (!IsElementInVector(reduce_axis_ori, i)) {
+        broadcast_axis_ori[count] = i;
+        count++;
+      }
+    }
+    broadcast_axis_ori.resize(max_dim_len - reduce_axis_ori.size());
+  } else {
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "norm tiling don't support this broadcast axis type now.");
+    return false;
+  }
+
+  return true;
+}
+
+bool Norm::Init() {
+  bool ret = InitBroadcast();
+
+  for (const auto& i : compileInfo.ori_disable_fuse_axes) {
+    // check disable fuse axes value
+    V_OP_TILING_CHECK((i < static_cast<int32_t>(max_dim_len)),
+                      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "value of disable fuse axes %d is illegal", i),
+                      return false);
+  }
 
   std::sort(reduce_axis_ori.begin(), reduce_axis_ori.end());
   std::sort(broadcast_axis_ori.begin(), broadcast_axis_ori.end());
 
   block_size = compileInfo.min_block_size;
 
-  return true;
+  return ret;
 }
 
 NormBroadcastMode Norm::JudgeBroadcastMode(const std::array<int64_t,
@@ -308,7 +372,7 @@ bool Norm::EliminateOne() {
   // have before broadcast input but unify broadcast axis is unknown
   bool is_unify_broadcast_axis_unknown = before_broadcast_input_num > 0 && !compileInfo.is_broadcast_axis_known;
   // disable fuse axes
-  bool is_disable_fuse_axes = !disable_fuse_axes_ori.empty();
+  bool is_disable_fuse_axes = !compileInfo.ori_disable_fuse_axes.empty();
 
   bool is_cannot_eliminate_one = is_no_fuse_axis || is_no_after_broadcast_axis ||
                                  is_unify_broadcast_axis_unknown || is_disable_fuse_axes;
@@ -395,7 +459,7 @@ bool Norm::FusedAxis() {
 
   int32_t modulo = 10;
   int32_t cnt = 1;
-  for (const auto& idx: disable_fuse_axes_ori) {
+  for (const auto& idx: compileInfo.ori_disable_fuse_axes) {
     flags[idx] += modulo * (cnt++);
   }
 
@@ -466,7 +530,18 @@ bool Norm::GetNormPattern() {
       return true;
     }
     for (std::size_t i = 0; i < before_broadcast_input_num; i++) {
-      auto single_mode = JudgeBroadcastMode(before_broadcast_shapes[i]);
+      NormBroadcastMode single_mode;
+      if (i < compileInfo.broadcast_axis_type.size()) {
+        if (compileInfo.broadcast_axis_type[i] == static_cast<int32_t>(NormAxisType::OPPOSITE_REDUCE)) {
+          single_mode = NormBroadcastMode::OPPOSITE_REDUCE;
+        } else if (compileInfo.broadcast_axis_type[i] == static_cast<int32_t>(NormAxisType::SAME_REDUCE)) {
+          single_mode = NormBroadcastMode::SAME_REDUCE;
+        } else {
+          single_mode = JudgeBroadcastMode(before_broadcast_shapes[i]);
+        }
+      } else {
+        single_mode = JudgeBroadcastMode(before_broadcast_shapes[i]);
+      }
       broadcast_pattern = broadcast_pattern * weight + static_cast<int32_t>(single_mode);
       // cannot fuse axis
       if (single_mode == NormBroadcastMode::OTHERS) {
@@ -1558,6 +1633,15 @@ bool Norm::WriteTilingData() {
 
 bool Norm::DoTiling() {
   bool ret = GetInput();
+  ret = ret && InitReduce();
+  ret = ret && CalcTiling();
+  ret = ret && WriteTilingData();
+  return ret;
+}
+
+bool Norm::DoTiling(const OpInfo& op_info) {
+  bool ret = GetInput();
+  ret = ret && InitReduce(op_info);
   ret = ret && CalcTiling();
   ret = ret && WriteTilingData();
   return ret;
@@ -1587,7 +1671,22 @@ bool NormCompileInfo::Check(const std::string& op_type) const {
 
 void NormCompileInfo::ParseAxisInfo(const nlohmann::json& parsed_json_obj) {
   // reduce and broadcast axis
-  ori_reduce_axis = parsed_json_obj.at("_ori_reduce_axis").get<std::vector<int32_t>>();
+  if (parsed_json_obj.contains("reduce_axis_attr_name")) {
+    reduce_attr_name = parsed_json_obj.at("reduce_axis_attr_name").get<std::string>();
+  }
+  if (parsed_json_obj.contains("reduce_axis_attr_dtype")) {
+    auto reduce_attr_dtype = parsed_json_obj.at("reduce_axis_attr_dtype").get<std::string>();
+    is_reduce_attr_is_int = reduce_attr_dtype == "Int";
+  }
+  if (parsed_json_obj.contains("_reduce_axis_type")) {
+    reduce_axis_type = parsed_json_obj.at("_reduce_axis_type").get<int32_t>();
+  }
+  if (parsed_json_obj.contains("_ori_reduce_axis")) {
+    ori_reduce_axis = parsed_json_obj.at("_ori_reduce_axis").get<std::vector<int32_t>>();
+  }
+  if (parsed_json_obj.contains("_broadcast_axis_type_list")) {
+    broadcast_axis_type = parsed_json_obj.at("_broadcast_axis_type_list").get<std::vector<int32_t>>();
+  }
   if (parsed_json_obj.contains("_ori_broadcast_axis")) {
     ori_broadcast_axis = parsed_json_obj.at("_ori_broadcast_axis").get<std::vector<int32_t>>();
     is_broadcast_axis_known = true;
@@ -1675,8 +1774,9 @@ bool NormTilingHandler::DoTiling(const ge::Operator& op_paras, utils::OpRunInfo&
 
 bool NormTilingHandler::DoTiling(const ge::Operator& op_paras, utils::OpRunInfo& run_info,
                                  const OpInfo& op_info) const {
-  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "Norm custom tiling is not supported yet");
-  return false;
+  OP_LOGD(op_type.c_str(), "Norm tiling with op_info running");
+  Norm norm(op_type, op_paras, norm_compile_info, run_info);
+  return norm.DoTiling(op_info);
 }
 
 std::shared_ptr<AutoTilingHandler> CreateNormTilingHandler(const std::string& op_type,

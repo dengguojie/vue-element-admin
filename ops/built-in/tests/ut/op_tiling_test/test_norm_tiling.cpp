@@ -116,7 +116,18 @@ static bool compare_norm_struct(const NormCompileInfo& actual_struct,
   if (!compare_map(actual_struct.const_block_dims, expect_struct.const_block_dims)) {
     return false;
   }
-
+  if (actual_struct.reduce_attr_name != expect_struct.reduce_attr_name) {
+    return false;
+  }
+  if (actual_struct.is_reduce_attr_is_int != expect_struct.is_reduce_attr_is_int) {
+    return false;
+  }
+  if (actual_struct.reduce_axis_type != expect_struct.reduce_axis_type) {
+    return false;
+  }
+  if (actual_struct.broadcast_axis_type != expect_struct.broadcast_axis_type) {
+    return false;
+  }
   return true;
 }
 
@@ -209,11 +220,15 @@ TEST_F(NormTilingTest, ParseTest2) {
 }
 
 TEST_F(NormTilingTest, ParseTest3) {
-  std::string compileInfo = R"({ "_fuse_axis": false, "_input_type": [0], "_ori_reduce_axis": [1], "_ori_broadcast_axis": [1], "_pattern": "Norm", "_common_info": [32, 8, 128], "_available_ub_size": {"4000": [15792, 16120, 15792]}, "_is_const": true, "_const_shape_post": true, "_const_block_dims": {"4000": 25}, "_exist_workspace_after_reduce": false, "_exist_output_after_reduce": false})";
+  std::string compileInfo = R"({"reduce_axis_attr_name": "axis", "reduce_axis_attr_dtype": "ListInt", "_reduce_axis_type": 9, "_broadcast_axis_type_list": [1, 2], "_fuse_axis": false, "_input_type": [0], "_ori_reduce_axis": [1], "_ori_broadcast_axis": [1], "_pattern": "Norm", "_common_info": [32, 8, 128], "_available_ub_size": {"4000": [15792, 16120, 15792]}, "_is_const": true, "_const_shape_post": true, "_const_block_dims": {"4000": 25}, "_exist_workspace_after_reduce": false, "_exist_output_after_reduce": false})";
   nlohmann::json op_info = nlohmann::json::parse(compileInfo.c_str());
 
   NormCompileInfo actual_struct("norm", op_info);
   NormCompileInfo expect_struct;
+  expect_struct.reduce_attr_name = "axis";
+  expect_struct.is_reduce_attr_is_int = false;
+  expect_struct.reduce_axis_type = 9;
+  expect_struct.broadcast_axis_type = {1, 2};
   expect_struct.input_type = {0};
   expect_struct.ori_reduce_axis = {1};
   expect_struct.ori_broadcast_axis = {1};
@@ -823,4 +838,169 @@ TEST_F(NormTilingTest, TilingTest16) {
   ASSERT_TRUE(norm.DoTiling());
   EXPECT_EQ(runInfo.GetBlockDim(), 21);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "21 93 1 47 ");
+}
+
+TEST_F(NormTilingTest, TilingTest17) {
+  std::vector<std::vector<int64_t>> inputs {
+    {11, 20, 512}, {11, 20, 1}, {11, 20, 1}, {512}, {512}
+  };
+  std::vector<std::vector<int64_t>> outputs {
+    {11, 20, 512}, {11, 20, 512}
+  };
+  ge::DataType dtype = ge::DT_FLOAT16;
+  ge::OpDescPtr op_desc = std::make_shared<ge::OpDesc>();
+  for (std::size_t i = 0; i < inputs.size(); i++) {
+    contruct_tensor(op_desc, inputs[i], dtype);
+  }
+  for (std::size_t i = 0; i < outputs.size(); i++) {
+    contruct_tensor(op_desc, outputs[i], dtype, false);
+  }
+  ge::Operator op_paras = ge::OpDescUtils::CreateOperatorFromOpDesc(op_desc);
+  optiling::utils::OpRunInfo runInfo;
+
+  std::vector<std::vector<int32_t>> reduce_axis{{-1}};
+  OpInfo op_info(inputs, dtype, reduce_axis);
+
+  NormCompileInfo op_compile_info;
+  op_compile_info.input_type = {0, 0, 1, 1, 2};
+  op_compile_info.reduce_axis_type = 3;
+  op_compile_info.broadcast_axis_type = {1, 2};
+  op_compile_info.core_num = 32;
+  op_compile_info.min_block_size = 16;
+  op_compile_info.pad_max_entire_size = 128;
+  op_compile_info.exist_output_after_reduce = false;
+  op_compile_info.exist_workspace_after_reduce = false;
+  op_compile_info.available_ub_size = {{4012, {9040, 7256, 9056}}};
+  op_compile_info.workspace_info = {{300401200, {32, 32}}};
+  op_compile_info.norm_vars = {{300401200, {20000, 20001, 30000, 40000}}};
+  op_compile_info.is_fuse_axis = true;
+
+  optiling::Norm norm("norm", op_paras, op_compile_info, runInfo);
+  ASSERT_TRUE(norm.DoTiling(op_info));
+  EXPECT_EQ(runInfo.GetBlockDim(), 32);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "220 512 7 7 ");
+}
+
+TEST_F(NormTilingTest, TilingTest18) {
+  std::vector<std::vector<int64_t>> inputs {
+    {11, 20, 512}, {512}, {512}
+  };
+  std::vector<std::vector<int64_t>> outputs {
+    {11, 20, 512}, {11, 20, 1}, {11, 20, 1}
+  };
+  ge::DataType dtype = ge::DT_FLOAT16;
+  ge::OpDescPtr op_desc = std::make_shared<ge::OpDesc>();
+  for (std::size_t i = 0; i < inputs.size(); i++) {
+    contruct_tensor(op_desc, inputs[i], dtype);
+  }
+  for (std::size_t i = 0; i < outputs.size(); i++) {
+    contruct_tensor(op_desc, outputs[i], dtype, false);
+  }
+  ge::Operator op_paras = ge::OpDescUtils::CreateOperatorFromOpDesc(op_desc);
+  op_paras.SetAttr("axis", -1);
+
+  optiling::utils::OpRunInfo runInfo;
+
+  NormCompileInfo op_compile_info;
+  op_compile_info.reduce_attr_name = "axis";
+  op_compile_info.is_reduce_attr_is_int = true;
+  op_compile_info.input_type = {0, 1, 1};
+  op_compile_info.reduce_axis_type = 3;
+  op_compile_info.broadcast_axis_type = {2};
+  op_compile_info.ori_broadcast_axis = {0, 1};
+  op_compile_info.is_broadcast_axis_known = true;
+  op_compile_info.core_num = 32;
+  op_compile_info.min_block_size = 16;
+  op_compile_info.pad_max_entire_size = 128;
+  op_compile_info.exist_output_after_reduce = true;
+  op_compile_info.exist_workspace_after_reduce = false;
+  op_compile_info.available_ub_size = {{4005, {21080, 16350, 15808}}};
+  op_compile_info.workspace_info = {{1300400500, {32}}};
+  op_compile_info.norm_vars = {{1300400500, {20000, 20001, 30000, 40000}}};
+  op_compile_info.is_fuse_axis = true;
+
+  optiling::Norm norm("norm", op_paras, op_compile_info, runInfo);
+  ASSERT_TRUE(norm.DoTiling());
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "220 512 16 16 ");
+  EXPECT_EQ(runInfo.GetBlockDim(), 14);
+}
+
+TEST_F(NormTilingTest, TilingTest19) {
+  std::vector<std::vector<int64_t>> inputs {
+    {11, 20, 512}
+  };
+  std::vector<std::vector<int64_t>> outputs {
+    {11, 20, 512}
+  };
+  ge::DataType dtype = ge::DT_FLOAT16;
+  ge::OpDescPtr op_desc = std::make_shared<ge::OpDesc>();
+  for (std::size_t i = 0; i < inputs.size(); i++) {
+    contruct_tensor(op_desc, inputs[i], dtype);
+  }
+  for (std::size_t i = 0; i < outputs.size(); i++) {
+    contruct_tensor(op_desc, outputs[i], dtype, false);
+  }
+  ge::Operator op_paras = ge::OpDescUtils::CreateOperatorFromOpDesc(op_desc);
+  op_paras.SetAttr("axis", {-1});
+  optiling::utils::OpRunInfo runInfo;
+
+  NormCompileInfo op_compile_info;
+  op_compile_info.input_type = {0};
+  op_compile_info.reduce_attr_name = "axis";
+  op_compile_info.is_reduce_attr_is_int = false;
+  op_compile_info.reduce_axis_type = 9;
+  op_compile_info.core_num = 32;
+  op_compile_info.min_block_size = 16;
+  op_compile_info.pad_max_entire_size = 128;
+  op_compile_info.exist_output_after_reduce = false;
+  op_compile_info.exist_workspace_after_reduce = false;
+  op_compile_info.available_ub_size = {{4000, {15824, 16360, 15824}}};
+  op_compile_info.workspace_info = {{300400000, {32}}};
+  op_compile_info.norm_vars = {{300400000, {20000, 20001, 30000, 40000}}};
+  op_compile_info.is_fuse_axis = true;
+
+  optiling::Norm norm("norm", op_paras, op_compile_info, runInfo);
+  ASSERT_TRUE(norm.DoTiling());
+  EXPECT_EQ(runInfo.GetBlockDim(), 32);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "220 512 7 7 ");
+}
+
+TEST_F(NormTilingTest, TilingTest20) {
+  std::vector<std::vector<int64_t>> inputs {
+    {1968, 32, 512}, {512}, {512}
+  };
+  std::vector<std::vector<int64_t>> outputs {
+    {1968, 32, 512}, {1968, 32, 1}, {1968, 32, 1}
+  };
+  ge::DataType dtype = ge::DT_FLOAT;
+  ge::OpDescPtr op_desc = std::make_shared<ge::OpDesc>();
+  for (std::size_t i = 0; i < inputs.size(); i++) {
+    contruct_tensor(op_desc, inputs[i], dtype);
+  }
+  for (std::size_t i = 0; i < outputs.size(); i++) {
+    contruct_tensor(op_desc, outputs[i], dtype, false);
+  }
+  ge::Operator op_paras = ge::OpDescUtils::CreateOperatorFromOpDesc(op_desc);
+  optiling::utils::OpRunInfo runInfo;
+
+  NormCompileInfo op_compile_info;
+  op_compile_info.input_type = {0, 1, 1};
+  op_compile_info.ori_reduce_axis = {2};
+  op_compile_info.reduce_axis_type = 3;
+  op_compile_info.ori_broadcast_axis = {0, 1};
+  op_compile_info.is_broadcast_axis_known = true;
+  op_compile_info.core_num = 32;
+  op_compile_info.min_block_size = 8;
+  op_compile_info.pad_max_entire_size = 128;
+  op_compile_info.exist_output_after_reduce = true;
+  op_compile_info.exist_workspace_after_reduce = false;
+  op_compile_info.available_ub_size = {{4005, {21152, 16120, 15864}}};
+  op_compile_info.workspace_info = {{1300400500, {32}}};
+  op_compile_info.norm_vars = {{1300400500, {20000, 20001, 30000, 40000}}};
+  op_compile_info.is_fuse_axis = true;
+
+  optiling::Norm norm("norm", op_paras, op_compile_info, runInfo);
+  ASSERT_TRUE(norm.DoTiling());
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "62976 512 1968 41 ");
+  EXPECT_EQ(runInfo.GetBlockDim(), 32);
 }

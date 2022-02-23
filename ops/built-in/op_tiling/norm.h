@@ -50,7 +50,11 @@ struct NormCompileInfo {
 
   bool check_success{true};
   // reduce and broadcast axis
+  std::string reduce_attr_name;
+  bool is_reduce_attr_is_int{true};
+  int32_t reduce_axis_type{0};
   std::vector<int32_t> ori_reduce_axis;
+  std::vector<int32_t> broadcast_axis_type;
   std::vector<int32_t> ori_broadcast_axis;
   bool is_broadcast_axis_known{false};
   // disable fuse axes
@@ -106,6 +110,15 @@ enum class NormBroadcastMode {
   OTHERS = 4
 };
 
+enum class NormAxisType {
+  COMMON = 0,
+  SAME_REDUCE = 1,
+  OPPOSITE_REDUCE = 2,
+  AFTER = 3,
+  BEFORE = 4,
+  OTHERS = 5
+};
+
 class Norm {
   public:
     explicit Norm(const std::string& op_type, const ge::Operator& op_paras,
@@ -114,11 +127,15 @@ class Norm {
     }
     ~Norm() = default;
     bool DoTiling();
+    bool DoTiling(const OpInfo& op_info);
 
   private:
     bool CheckInputNum() const;
     bool GetMaxDimLen(const ge::OpDescPtr& op_desc);
     bool GetInput();
+    bool InitReduce();
+    bool InitReduce(const OpInfo& op_info);
+    bool InitBroadcast();
     bool Init();
     bool GetNormPattern();
     bool EliminateOne();
@@ -174,7 +191,6 @@ class Norm {
     std::vector<int64_t> input_shape_ori{std::vector<int64_t>(NORM_MAX_DIM_LEN, 0)};
     std::vector<int32_t> reduce_axis_ori{std::vector<int32_t>(NORM_MAX_DIM_LEN, 0)};
     std::vector<int32_t> broadcast_axis_ori{std::vector<int32_t>(NORM_MAX_DIM_LEN, 0)};
-    std::vector<int32_t> disable_fuse_axes_ori{std::vector<int32_t>(NORM_MAX_DIM_LEN, 0)};
     std::vector<int64_t> input_shape{std::vector<int64_t>(NORM_MAX_DIM_LEN, 0)};
     std::vector<int32_t> reduce_axis{std::vector<int32_t>(NORM_MAX_DIM_LEN, 0)};
     std::vector<int32_t> broadcast_axis{std::vector<int32_t>(NORM_MAX_DIM_LEN, 0)};
