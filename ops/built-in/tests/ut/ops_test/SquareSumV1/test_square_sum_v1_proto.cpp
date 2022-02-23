@@ -151,7 +151,7 @@ TEST_F(SquareSumV1, InfershapeSquareSumV1_003) {
 TEST_F(SquareSumV1, InfershapeSquareSumV1_004) {
   ge::op::SquareSumV1 op;
   op.UpdateInputDesc("x", create_desc({4, 3, 1}, ge::DT_FLOAT16));
-  std::vector<int64_t> axis = {-1, 2, 4};
+  std::vector<int64_t> axis = {-1, 2, 1};
   op.SetAttr("axis", axis);
   op.SetAttr("keep_dims", true);
 

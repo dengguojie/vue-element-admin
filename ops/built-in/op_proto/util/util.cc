@@ -1253,6 +1253,23 @@ void MakeUpShapeRange(const std::vector<int64_t>& shape, std::vector<std::pair<i
   }
 }
 
+void MakeUpShapeRange(const ge::GeShape& shape, std::vector<std::pair<int64_t, int64_t>>& range) {
+  if (IsUnknownRankShape(shape)) {
+    return;
+  }
+
+  if (range.empty()) {
+    for (size_t i = 0; i < shape.GetDimNum(); i++) {
+      int64_t dim = shape.GetDim(i);
+      if (dim == -1) {
+        range.push_back(std::pair<int64_t, int64_t>(0, -1));
+      } else {
+        range.push_back(std::pair<int64_t, int64_t>(dim, dim));
+      }
+    }
+  }
+}
+
 std::string DataTypeToStringDesc(const ge::DataType& dataType) {
   std::map<ge::DataType, std::string>::const_iterator totalIter = DTYPE_STR_MAP.find(dataType);
   if (totalIter == DTYPE_STR_MAP.end()) {

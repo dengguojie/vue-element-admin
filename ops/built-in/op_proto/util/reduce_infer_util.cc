@@ -328,4 +328,40 @@ bool CommonReduceInferWithInputAxes(const Operator& op, const int64_t input_x_id
   return true;
 }
 
+bool CommonReduceInferWithAttrAxes(const Operator& op, const int64_t input_x_idx, const int64_t output_idx,
+                                   vector<int64_t> attr_axes, bool keep_dims) {
+  PROFILING_PROTO_INIT(TbeGetName(op).c_str());
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  CHECK(op_desc == nullptr, VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), OtherErrMsg("invalid OpDesc.")),
+        return false);
+  auto tensordesc_input_x = op_desc->MutableInputDesc(input_x_idx);
+  auto tensordesc_output = op_desc->MutableOutputDesc(output_idx);
+  CHECK(tensordesc_input_x == nullptr || tensordesc_output == nullptr,
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), OtherErrMsg("get mutable desc failed.")), return false);
+  auto input_type = tensordesc_input_x->GetDataType();
+  const GeShape& input_shape = tensordesc_input_x->MutableShape();
+  tensordesc_output->SetDataType(input_type);
+
+  PROFILING_PROTO_AFTER_GET_SHAPE_REG();
+  // do infershape with const axes for static op
+  GeShape& output_shape = tensordesc_output->MutableShape();
+  CHECK(!DoReduceInfershapeWithAxes(input_shape, keep_dims, attr_axes, output_shape),
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), OtherErrMsg("do reduce infershape failed.")), return false);
+
+  // when output is dynamic shape, will infer range
+  if (output_shape.IsUnknownShape()) {
+    if (!output_shape.IsUnknownDimNum()) {
+      CHECK(!DoReduceInferRangeWithAxes(tensordesc_input_x, tensordesc_output, attr_axes, keep_dims),
+            VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), OtherErrMsg("do reduce infer range failed.")),
+            return false);
+    }
+    OP_LOGD(TbeGetName(op), "infer output range end for dynamic output");
+    return true;
+  }
+  OP_LOGD(TbeGetName(op), "the output is not dynamic");
+  PROFILING_PROTO_AFTER_INFER_SHAPE_REG();
+  PROFILING_PROTO_END();
+  return true;
+}
+
 }  // namespace reduce_ops

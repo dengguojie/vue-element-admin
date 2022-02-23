@@ -112,7 +112,8 @@ bool DoReduceInferShapeWithoutAxes(const Operator& op, GeTensorDescPtr& tensorde
  */
 bool CommonReduceInferWithInputAxes(const Operator& op, const int64_t input_x_idx, const int64_t output_idx,
                                     const int64_t input_axes_idx, bool keep_dims);
-
+bool CommonReduceInferWithAttrAxes(const Operator& op, const int64_t input_x_idx, const int64_t output_idx,
+                                   vector<int64_t> attr_axes, bool keep_dims);
 }  // namespace reduce_ops
 
 #endif  // OPS_BUILT_IN_OP_PROTO_UTIL_REDUCE_INFER_UTIL_H_

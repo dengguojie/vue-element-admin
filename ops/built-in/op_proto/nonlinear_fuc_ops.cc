@@ -175,7 +175,9 @@ COMMON_INFER_FUNC_REG(TanhGrad, TanhGradInferShape);
 
 // ----------------PRelu-------------------
 IMPLEMT_COMMON_INFERFUNC(PReluInferShape) {
-  if (OneInOneOutDynamicInfer(op, 0, {0})) {
+  const int64_t input_x_idx = 0;
+  const int64_t output_y_idx = 0;
+  if (OneInOneOutDynamicInfer(op, input_x_idx, {output_y_idx})) {
     return GRAPH_SUCCESS;
   }
   return GRAPH_FAILED;
@@ -922,7 +924,9 @@ VERIFY_FUNC_REG(SoftShrinkGrad, SoftShrinkGradVerify);
 // ----------------Sigmoid----------------------
 IMPLEMT_COMMON_INFERFUNC(SigmoidInferShape) {
   OP_LOGI(op.GetName().c_str(), "Enter SigmoidInferShape");
-  if (OneInOneOutDynamicInfer(op, "x", {"y"})) {
+  const int64_t input_x_idx = 0;
+  const int64_t output_y_idx = 0;
+  if (OneInOneOutDynamicInfer(op, input_x_idx, {output_y_idx})) {
     return GRAPH_SUCCESS;
   }
   return GRAPH_FAILED;

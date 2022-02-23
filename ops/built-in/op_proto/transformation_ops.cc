@@ -893,7 +893,7 @@ COMMON_INFER_FUNC_REG(Flatten, FlattenInferShape);
 
 // ----------------Transpose Op Begin-------------------
 static graphStatus TransposeCommonInferShape(const std::vector<int64_t>& perm_list, Operator& op) {
-  PROFILING_PROTO_INIT(op.GetName().c_str());
+  PROFILING_PROTO_INIT(TbeGetName(op).c_str());
   auto op_info = OpDescUtils::GetOpDescFromOperator(op);
   const int64_t input_x_idx = 0;
   auto input_desc = op_info->MutableInputDesc(input_x_idx);
@@ -925,7 +925,7 @@ static graphStatus TransposeCommonInferShape(const std::vector<int64_t>& perm_li
       std::string err_msg = GetAttrValueErrMsg("perm", ConcatString(perm_value),
                                                ConcatString("less than input shape size[",
                                                input_shape_len, "]"));
-      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
       return GRAPH_FAILED;
     }
     // verify perm_list end
@@ -939,12 +939,11 @@ static graphStatus TransposeCommonInferShape(const std::vector<int64_t>& perm_li
 
   // infer the range, when need
   if (output_ge_shape.IsUnknownShape()) {
-    std::vector<int64_t> input_shape = input_ge_shape.GetDims();
     output_desc->SetOriginShape(output_ge_shape);
     std::vector<std::pair<int64_t, int64_t>> input_range;
     std::vector<std::pair<int64_t, int64_t>> output_range;
     input_desc->GetShapeRange(input_range);
-    MakeUpShapeRange(input_shape, input_range);
+    MakeUpShapeRange(input_ge_shape, input_range);
     for (size_t i = 0; i < perm_list.size(); ++i) {
       output_range.push_back(input_range[perm_list[i]]);
     }
@@ -960,18 +959,12 @@ IMPLEMT_COMMON_INFERFUNC(TransposeInferShape) {
   PREPARE_DYNAMIC_SHAPE(depend_names);
   auto op_info = OpDescUtils::GetOpDescFromOperator(op);
 
-  bool perm_done = false;
+  bool perm_done = true;
   std::vector<int64_t> perm_list;
-  auto perm_idx = static_cast<uint32_t>(op_info->GetInputIndexByName("perm"));
-  const GeTensor *perm_tensor = OpDescUtils::GetInputConstData(op, perm_idx);
-  if (perm_tensor != nullptr) {
-    auto const_desc = op_desc->MutableInputDesc("perm");
-    auto const_dtype = const_desc->GetDataType();
-    if (GetConstValue(op, perm_tensor, const_dtype, perm_list)) {
-      perm_done = true;
-    } else {
-      OP_LOGW(op.GetName().c_str(), "Get Const perm value failed ");
-    }
+  static const int64_t perm_input_index = 1;
+  if (!(ops::GetConstIntData(op, perm_input_index, perm_list))) {
+    perm_done = false;
+    OP_LOGW(TbeGetName(op), "Get Const perm value failed ");
   }
 
   // perm is const node , will do infer use function TransposeCommonInferShape
@@ -983,10 +976,12 @@ IMPLEMT_COMMON_INFERFUNC(TransposeInferShape) {
   }
 
   // perm is not const node, infer for aicpu
-  auto input_desc = op_desc->MutableInputDesc("x");
+  static const int64_t x_input_index = 0;
+  static const int64_t y_output_index = 0;
+  auto input_desc = op_desc->MutableInputDesc(x_input_index);
   auto input_shape = input_desc->MutableShape().GetDims();
   auto input_dtype = input_desc->GetDataType();
-  auto output_desc = op_desc->MutableOutputDesc("y");
+  auto output_desc = op_desc->MutableOutputDesc(y_output_index);
 
   // set output dtype as the same with input x
   output_desc->SetDataType(input_dtype);
@@ -996,7 +991,7 @@ IMPLEMT_COMMON_INFERFUNC(TransposeInferShape) {
     auto perm_shape = perm_desc->MutableShape().GetDims();
     if (IsUnknown(perm_shape)) {
       // set output is -2 UnknownRank
-      OP_LOGW(op.GetName().c_str(), "the output will be set to -2");
+      OP_LOGW(TbeGetName(op), "the output will be set to -2");
       output_desc->SetShape(GeShape(input_shape));
       output_desc->SetOriginShape(GeShape(input_shape));
       return GRAPH_SUCCESS;
@@ -1080,14 +1075,14 @@ IMPLEMT_INFERFORMAT_FUNC(Transpose, TransposeInferFormat) {
     }
   } else {
     recovery_flag = true;
-    OP_LOGE(op.GetName().c_str(), "transpose perm do not support this type %d", dtype);
+    OP_LOGE(TbeGetName(op), "transpose perm do not support this type %d", dtype);
   }
 
   auto input_format = (recovery_flag == false) ? op.GetInputDesc("x").GetOriginFormat() : FORMAT_ND;
   auto output_format = (recovery_flag == false) ? op.GetOutputDesc("y").GetOriginFormat() : FORMAT_ND;
 
   if (input_format == FORMAT_ND && output_format == FORMAT_ND) {
-    OP_LOGI(op.GetName().c_str(),
+    OP_LOGI(TbeGetName(op),
             "[Transpose Inferformat] only support trans between NCHW and NHWC.input format is %d, output format is %d",
             input_format, output_format);
     // Recovery ND origin format
@@ -1117,7 +1112,7 @@ IMPLEMT_INFERFORMAT_FUNC(Transpose, TransposeInferFormat) {
         break;
       default:
         OP_LOGI(
-            op.GetName().c_str(),
+            TbeGetName(op),
             "[Transpose Inferformat] only support trans between NCHW and NHWC.input format is %d, output format is %d",
             input_format, output_format);
         output_format = FORMAT_ND;
@@ -1135,7 +1130,7 @@ IMPLEMT_INFERFORMAT_FUNC(Transpose, TransposeInferFormat) {
         break;
       default:
         OP_LOGI(
-            op.GetName().c_str(),
+            TbeGetName(op),
             "[Transpose Inferformat] only support trans between NCHW and NHWC.input format is %d, output format is %d",
             input_format, output_format);
         input_format = FORMAT_ND;
@@ -1143,8 +1138,8 @@ IMPLEMT_INFERFORMAT_FUNC(Transpose, TransposeInferFormat) {
     }
   }
 
-  OP_LOGD(op.GetName().c_str(), "[Transpose Inferformat] Finaly input format is %d, output format is %d", input_format,
-          output_format);
+  OP_LOGD(TbeGetName(op), "[Transpose Inferformat] Finaly input format is %d, output format is %d",
+          input_format, output_format);
 
   TensorDesc tensordesc_output = op.GetOutputDesc("y");
   tensordesc_output.SetOriginFormat(output_format);

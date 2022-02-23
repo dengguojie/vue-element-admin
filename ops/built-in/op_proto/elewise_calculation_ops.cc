@@ -21,10 +21,12 @@
 #include "inc/elewise_calculation_ops.h"
 #include <string>
 #include <vector>
+#include "op_attr.h"
 #include "op_log.h"
 #include "util/util.h"
 #include "util/error_util.h"
 #include "util/vector_proto_profiling.h"
+#include "util/reduce_infer_util.h"
 #include "graph/utils/node_utils.h"
 #include "graph/utils/op_desc_utils.h"
 #include "register/infer_data_slice_registry.h"
@@ -3089,87 +3091,28 @@ COMMON_INFER_FUNC_REG(ClipByNormNoDivSum, ClipByNormNoDivSumInferShape);
 
 // ------------SquareSumV1 Op Begin----------------
 IMPLEMT_COMMON_INFERFUNC(SquareSumV1InferShape) {
-  auto op_info = OpDescUtils::GetOpDescFromOperator(op);
-  auto inputx_desc = op_info->MutableInputDesc("x");
-  std::vector<int64_t> shapeVector = inputx_desc->MutableShape().GetDims();
-  int64_t dimNum = shapeVector.size();
-  DataType input_dtype = inputx_desc->GetDataType();
-  auto tensordesc_output = op_info->MutableOutputDesc("y");
-  
-
-  std::vector<int64_t> axis;
-  if (ge::GRAPH_SUCCESS != op.GetAttr("axis", axis)) {
+  const int64_t input_x_idx = 0;
+  const int64_t output_y_idx = 0;
+  vector<int64_t> attr_axis;
+  static const std::pair<int64_t, std::string> axis_attr_info{0, "axis"};
+  if (!(ops::GetAttrValue(op, axis_attr_info, attr_axis))) {
     std::string err_msg = GetInputInvalidErrMsg("axis");
-    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
-
-  bool keep_dims;
-  if (ge::GRAPH_SUCCESS != op.GetAttr("keep_dims", keep_dims)) {
+  bool keep_dims = false;
+  static const std::pair<int64_t, std::string> keep_dims_attr_info{1, "keep_dims"};
+  if (!(ops::GetAttrValue(op, keep_dims_attr_info, keep_dims))) {
     std::string err_msg = GetInputInvalidErrMsg("keep_dims");
-    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
-
-  if (axis.size() == 0) {
-    for (size_t i = 0; i < shapeVector.size(); ++i) {
-      axis.push_back(i);
-    }
+  if (reduce_ops::CommonReduceInferWithAttrAxes(op, input_x_idx, output_y_idx, attr_axis, keep_dims)) {
+    return GRAPH_SUCCESS;
   }
-
-  for (size_t i = 0; i < axis.size(); ++i) {
-    if (axis[i] < 0) {
-      axis[i] = dimNum + axis[i];
-    }
-  }
-
-  std::vector<int64_t> oShapeVector;
-  std::vector<std::pair<int64_t, int64_t>> oRangeVector;
-  std::vector<int64_t>::iterator tmp;
-  if (IsUnknown(shapeVector)) {
-    std::vector<std::pair<int64_t, int64_t>> input_range;
-    inputx_desc->GetShapeRange(input_range);
-    for (int64_t item = 0; item < dimNum; ++item) {
-      tmp = std::find(axis.begin(), axis.end(), item);
-      if (tmp != axis.end()) {
-        // item in axis
-        // If keepDims is true, current dimesion set to 1
-        if (keep_dims == true) {
-          oShapeVector.push_back(1);
-          oRangeVector.push_back({1, 1});
-        }
-      } else {
-        // item is not in ConstValueAxis
-        oShapeVector.push_back(shapeVector[item]);
-        oRangeVector.push_back(input_range[item]);
-      }
-    }
-    ge::GeShape oShape = ge::GeShape(oShapeVector);
-    tensordesc_output->SetShape(oShape);
-    tensordesc_output->SetOriginShape(oShape);
-    tensordesc_output->SetShapeRange(oRangeVector);
-    tensordesc_output->SetDataType(input_dtype);
-  } else {
-    for (int64_t item = 0; item < dimNum; ++item) {
-      tmp = std::find(axis.begin(), axis.end(), item);
-      if (tmp != axis.end()) {
-        // item in axis
-        // If keepDims is true, current dimesion set to 1
-        if (keep_dims == true) {
-          oShapeVector.push_back(1);
-        }
-      } else {
-        // item is not in ConstValueAxis
-        oShapeVector.push_back(shapeVector[item]);
-      }
-    }
-    ge::GeShape oShape = ge::GeShape(oShapeVector);
-    tensordesc_output->SetShape(oShape);
-    tensordesc_output->SetOriginShape(oShape);
-    tensordesc_output->SetDataType(input_dtype);
-  }
-
-  return GRAPH_SUCCESS;
+  std::string err_msg = OtherErrMsg("infershape failed");
+  VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
+  return GRAPH_FAILED;
 }
 
 COMMON_INFER_FUNC_REG(SquareSumV1, SquareSumV1InferShape);
@@ -5083,22 +5026,19 @@ bool InferShapeAndTypeCosineSimilarity(Operator &op,
     std::vector<int64_t> dim_vec;
     int64_t attr_dim;
     op.GetAttr(attr_name, attr_dim);
-    //Valid dim value [-shape_x, shape_x - 1] in Python,
-    //which needs to be converted to [0, shape_x - 1] here in C++.
-    if (attr_dim < 0)
-    {
-        attr_dim += dims_x.size();
+    // Valid dim value [-shape_x, shape_x - 1] in Python,
+    // which needs to be converted to [0, shape_x - 1] here in C++.
+    if (attr_dim < 0) {
+      attr_dim += dims_x.size();
     }
-    //Shape of output Tensor is the same as input except for
-    //the axis that dim points to.
-    //Example.
-    //Shape of input [2,3,4,5], dim = 0, then shape of output is [3,4,5]
-    for (size_t i = 0UL; i < dims_x.size(); i++)
-    {
-        if (static_cast<int64_t>(i) != attr_dim)
-        {
-            dim_vec.push_back(dims_x[i]);
-        }
+    // Shape of output Tensor is the same as input except for
+    // the axis that dim points to.
+    // Example.
+    // Shape of input [2,3,4,5], dim = 0, then shape of output is [3,4,5]
+    for (size_t i = 0UL; i < dims_x.size(); i++) {
+      if (static_cast<int64_t>(i) != attr_dim) {
+        dim_vec.push_back(dims_x[i]);
+      }
     }
     ge::Shape output_shape = ge::Shape(dim_vec);
     v_output_desc.SetShape(output_shape);

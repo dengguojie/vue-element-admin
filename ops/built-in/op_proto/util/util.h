@@ -402,6 +402,7 @@ bool IsUnknownVec(std::vector<int64_t>& shape_vec);
 bool IsUnknown(const std::vector<int64_t>& shape_vec);
 
 void MakeUpShapeRange(const std::vector<int64_t>& shape, std::vector<std::pair<int64_t, int64_t>>& range);
+void MakeUpShapeRange(const ge::GeShape& shape, std::vector<std::pair<int64_t, int64_t>>& range);
 
 std::string DataTypeToStringDesc(const ge::DataType& dataType);
 

@@ -825,12 +825,12 @@ IMPLEMT_COMMON_INFERFUNC(ReduceMeanInferShape) {
     if (prof_switch) {
         before_infer = std::chrono::steady_clock::now();
     }
-    OP_LOGD(op.GetName().c_str(), "Enter ReduceMeanInferShape");
+    OP_LOGD(TbeGetName(op), "Enter ReduceMeanInferShape");
     if (InferReduceShapeProcess(op, "x", "axes", "keep_dims")) {
         if (prof_switch) {
             after_infer = std::chrono::steady_clock::now();
             auto t0 = std::chrono::duration_cast<std::chrono::microseconds>(after_infer - before_infer).count();
-            GEEVENT("[REDUCE_INFER_PROF] op[%s]: total: %d(us)", op.GetName().c_str(), static_cast<int>(t0));
+            GEEVENT("[REDUCE_INFER_PROF] op[%s]: total: %d(us)", TbeGetName(op), static_cast<int>(t0));
         }
         return GRAPH_SUCCESS;
     }
@@ -1321,12 +1321,12 @@ IMPLEMT_COMMON_INFERFUNC(ReduceSumDInferShape) {
   if (prof_switch) {
     before_infer = std::chrono::steady_clock::now();
   }
-  OP_LOGD(op.GetName().c_str(), "Enter ReduceSumDInferShape");
+  OP_LOGD(TbeGetName(op), "Enter ReduceSumDInferShape");
   if (InferReduceDShapeProcess(op, "x", "axes", "keep_dims")) {
     if (prof_switch) {
       after_infer = std::chrono::steady_clock::now();
       auto t0 = std::chrono::duration_cast<std::chrono::microseconds>(after_infer - before_infer).count();
-      GEEVENT("[REDUCE_INFER_PROF] op[%s]: total: %d(us)", op.GetName().c_str(), static_cast<int>(t0));
+      GEEVENT("[REDUCE_INFER_PROF] op[%s]: total: %d(us)", TbeGetName(op), static_cast<int>(t0));
     }
     return GRAPH_SUCCESS;
   }
