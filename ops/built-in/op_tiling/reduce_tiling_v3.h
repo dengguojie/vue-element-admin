@@ -61,12 +61,15 @@ struct ReduceCompileInfo {
     std::pair<bool, int32_t> compile_pattern;
     std::unordered_map<std::string, uint32_t> block_dim_map;
     std::unordered_map<std::string, bool> atomic_flags_map;
+    std::unordered_map<std::uint64_t, vector<VarAttr>> var_attr_map;
+
     bool parsed_success{true};
 
   private:
     bool GetCompileInfoForProcessControl(const nlohmann::json& json_info);
     bool GetCompileInfoForConst(const nlohmann::json& json_info);
     bool GetCompileInfoForCalculate(std::string op_type, const nlohmann::json& json_info);
+    bool GetCompileInfoForRunInfo(const nlohmann::json& json_info);
 };
 
 struct ReduceTilingInfo {
@@ -138,7 +141,6 @@ class Reduce {
 
   bool GetBlockTilingInfo();
   void GetNotMulCoreBlockTiling();
-  bool SetAttrVars(int32_t key) const;
   int32_t CalcTilingKey();
   bool IsReducePadCase() const;
   bool IsEnableReducePad() const;

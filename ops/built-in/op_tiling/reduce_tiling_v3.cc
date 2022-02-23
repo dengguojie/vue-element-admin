@@ -56,6 +56,7 @@ ReduceCompileInfo::ReduceCompileInfo(const std::string& op_type, const nlohmann:
   bool ret = GetCompileInfoForCalculate(op_type, json_info);
   ret = ret && GetCompileInfoForProcessControl(json_info);
   ret = ret && GetCompileInfoForConst(json_info);
+  ret = ret && GetCompileInfoForRunInfo(json_info);
   parsed_success = ret;
 }
 
@@ -135,6 +136,13 @@ bool ReduceCompileInfo::GetCompileInfoForCalculate(const std::string op_type, co
     ub_info_pad = json_info.at("_ub_info_pad").get<std::vector<int32_t>>();
   }
 
+  return true;
+}
+bool ReduceCompileInfo::GetCompileInfoForRunInfo(const nlohmann::json& json_info) {
+  if (json_info.count("_attr_vars") > 0) {
+    bool ret = ParseVarAttr(json_info, var_attr_map);
+    return ret;
+  }
   return true;
 }
 
@@ -1038,10 +1046,6 @@ bool Reduce::DoConstRunTimeBranch() {
   return true;
 }
 
-bool Reduce::SetAttrVars(int32_t key) const {
-  return true;
-}
-
 bool Reduce::WriteTilingData() {
   if (reduceTilingInfo.atomic) {
     run_info.SetClearAtomic(true);
@@ -1053,16 +1057,32 @@ bool Reduce::WriteTilingData() {
     run_info.AddTilingData((int32_t)fusion_dim_value);
     run_info.AddTilingData((int32_t)reduceTilingInfo.ub_tiling_factor);
     run_info.SetBlockDim(1);
-    run_info.SetTilingKey(static_cast<uint32_t>(zero_tiling_key));
-    return SetAttrVars(zero_tiling_key);
+    uint32_t zero_tiling_key_uint = static_cast<uint32_t>(zero_tiling_key);
+    run_info.SetTilingKey(zero_tiling_key_uint);
+
+    if (compileInfo.var_attr_map.count(zero_tiling_key_uint) > 0) {
+      const std::vector<VarAttr>& all_attr_vars = compileInfo.var_attr_map.at(zero_tiling_key_uint);
+      if (all_attr_vars.size() != 0) {
+        return SetAttrVars(op_type, op_paras, run_info, all_attr_vars);
+      }
+    }
+    return true;
   }
 
   if (compileInfo.is_const_post) {
     // runtime
     run_info.SetBlockDim(reduceTilingInfo.const_block_dims);
     run_info.SetClearAtomic(reduceTilingInfo.const_atomic_flag);
-    run_info.SetTilingKey(static_cast<uint32_t>(pattern));
-    return SetAttrVars(pattern);
+    uint32_t pattern_uint = static_cast<uint32_t>(pattern);
+    run_info.SetTilingKey(pattern_uint);
+
+    if (compileInfo.var_attr_map.count(pattern_uint) > 0) {
+      const std::vector<VarAttr>& all_attr_vars = compileInfo.var_attr_map.at(pattern_uint);
+      if (all_attr_vars.size() != 0) {
+        return SetAttrVars(op_type, op_paras, run_info, all_attr_vars);
+      }
+    }
+    return true;
   }
 
   if (compileInfo.is_const) {
@@ -1081,7 +1101,8 @@ bool Reduce::WriteTilingData() {
   // tiling_key
   run_info.SetBlockDim(static_cast<uint32_t>(reduceTilingInfo.block_dim));
   int32_t tiling_key = CalcTilingKey();
-  run_info.SetTilingKey(static_cast<uint32_t>(tiling_key));
+  uint32_t tiling_key_uint = static_cast<uint32_t>(tiling_key);
+  run_info.SetTilingKey(tiling_key_uint);
 
   // pure dma_copy, must skip "1".
   uint32_t offset = 0;
@@ -1100,7 +1121,13 @@ bool Reduce::WriteTilingData() {
   OP_LOGD(op_type.c_str(), "ub/input_ub tilling axis:%d", reduceTilingInfo.ub_tiling_axis);
   OP_LOGD(op_type.c_str(), "ub/input_ub tilling factor:%d", reduceTilingInfo.ub_tiling_factor);
 
-  return SetAttrVars(tiling_key);
+  if (compileInfo.var_attr_map.count(tiling_key_uint) > 0) {
+    const std::vector<VarAttr>& all_attr_vars = compileInfo.var_attr_map.at(tiling_key_uint);
+    if (all_attr_vars.size() != 0) {
+      return SetAttrVars(op_type, op_paras, run_info, all_attr_vars);
+    }
+  }
+  return true;
 }
 
 bool Reduce::CheckCompileInfoForCalculate() {

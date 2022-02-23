@@ -53,4 +53,50 @@ std::shared_ptr<AutoTilingHandler> CreateAutoTilingHandler(const std::string& op
     return std::shared_ptr<AutoTilingHandler>(nullptr);
   }
 }
-}  // namespace optiling
+
+bool ParseVarAttr(const nlohmann::json& json_info,
+                  std::unordered_map<std::uint64_t, vector<VarAttr>>& var_attr_map) {
+  const auto& tiling_key_map = json_info.at("_attr_vars");
+  for (const auto& item : tiling_key_map.items()) {
+    const std::uint64_t& tiling_key = std::stoull(item.key());
+    const auto& all_attr_vars = item.value();
+
+    const auto& ret = var_attr_map.emplace(std::piecewise_construct, forward_as_tuple(tiling_key), forward_as_tuple());
+    auto& var_attr_list = ret.first->second;
+    var_attr_list.reserve(all_attr_vars.size());
+    for (const auto& var : all_attr_vars) {
+      var_attr_list.emplace_back(var.at("name"), var.at("type"), var.at("src_type"), var.at("length"));
+    }
+  }
+
+  return true;
+}
+
+bool SetAttrVars(const std::string& op_type, const ge::Operator& op_paras,
+                 utils::OpRunInfo& run_info, const std::vector<VarAttr>& all_attr_vars) {
+  try {
+      for (VarAttr varAttr : all_attr_vars) {
+        const char* var_name = varAttr.name.c_str();
+        const char* var_type = varAttr.type.c_str();
+        const char* var_src_type = varAttr.src_type.c_str();
+
+        AttrDataPtr data;
+        ge::graphStatus graphStatus = GetOperatorAttrValue(op_paras, var_name, var_src_type, data, var_type);
+
+        if (graphStatus != ge::GRAPH_SUCCESS) {
+          VECTOR_INNER_ERR_REPORT_TILIING(op_type,
+                                          "getAttrVars from FE error. Error message: var name is %s , var type is %s, "
+                                          "var_src_type is %s",
+                                          var_name, var_type, var_src_type);
+          return false;
+        }
+
+        run_info.AddTilingData(reinterpret_cast<const char*>(data->GetData()), data->GetSize());
+      }
+  } catch (const std::exception &e) {
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "SetAttrVars error. Error message: %s", e.what());
+    return false;
+  }
+  return true;
+}
+} // namespace optiling

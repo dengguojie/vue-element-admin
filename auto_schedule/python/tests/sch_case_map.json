@@ -246,6 +246,9 @@
     "auto_schedule/python/tbe/dsl/unify_schedule/vector/reduce_tilingcase.py":[
         "reduce_sum"
     ],
+    "auto_schedule/python/tbe/dsl/base/operation.py":[
+        "reduce_sum"
+    ],
     "auto_schedule/python/tbe/dsl/unify_schedule/vector_info.py":[
         "reduce_sum",
         "reduce_max"

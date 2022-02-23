@@ -21,6 +21,8 @@ def dsl_dync_reduce_sum(x, y, axis, keepdims, kernel_name="dsl_dync_reduce_sum")
 
     for (x, axis) in ins:
         with tbe.dsl.compute():
+            tbe.dsl.var_attr("varName_1", None, "int32", {"src_dtype": "float16"})
+            tbe.dsl.var_attr("varName_2", None, "int32[2]", {"src_dtype": "float16"})
             shape_x = shape_util.variable_shape([x, axis], op_mode="reduce")[0]
             data1 = tvm.placeholder(shape_x, name='data1', dtype=input_dtype)
             res = tbe.dsl.reduce_sum(data1, axis.get("value"), keepdims)

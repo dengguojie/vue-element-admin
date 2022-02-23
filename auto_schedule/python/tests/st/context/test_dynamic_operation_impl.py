@@ -38,6 +38,24 @@ def test_operation_var_attr_simple_dtype(_):
     return False
 
 
+def test_operation_var_attr_simple_dtype_srctype(_):
+    with tbe.common.context.op_context.OpContext("dynamic"):
+        tvm_var = operation.var_attr("varName", None, "int32", {"src_dtype": "float16"})
+        if tvm_var.name == "varName" \
+                and operation.get_context().get_attr_vars_desc()[-1].name == "varName":
+            return True
+    return False
+
+
+def test_operation_var_attr_simple_dtype_srctype_2(_):
+    with tbe.common.context.op_context.OpContext("dynamic"):
+        tvm_var = operation.var_attr("varName", 10, "int32", {"src_dtype": "float16"})
+        if tvm_var.name == "varName" \
+                and operation.get_context().get_attr_vars_desc()[-1].name == "varName":
+            return True
+    return False
+
+
 def test_operation_var_attr_dtype_exception(_):
     try:
         with tbe.common.context.op_context.OpContext("dynamic"):
@@ -52,6 +70,22 @@ def test_operation_var_attr_dtype_list(_):
     with tbe.common.context.op_context.OpContext("dynamic"):
         vars = operation.var_attr("varName", None, "int32[2]", None)
         if vars[0].name == "varName_0" and vars[1].name == "varName_1":
+            return True
+    return False
+
+
+def test_operation_var_attr_src_type_list(_):
+    with tbe.common.context.op_context.OpContext("dynamic"):
+        var_name = operation.var_attr("varName", None, "int32[2]",  {"src_dtype": "float16"})
+        if var_name[0].name == "varName_0" and var_name[1].name == "varName_1":
+            return True
+    return False
+
+
+def test_operation_var_attr_src_type_list_2(_):
+    with tbe.common.context.op_context.OpContext("dynamic"):
+        var_name = operation.var_attr("varName", 10, "int32[2]",  {"src_dtype": "float16"})
+        if var_name[0].name == "varName_0" and var_name[1].name == "varName_1":
             return True
     return False
 

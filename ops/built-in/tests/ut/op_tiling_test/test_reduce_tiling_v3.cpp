@@ -79,6 +79,51 @@ static bool compare_map(const std::unordered_map<T1, T2>& map1, const std::unord
   return true;
 }
 
+template<typename T1, typename T2>
+static bool compare_var_attr_map(const std::unordered_map<T1, T2>& map1, const std::unordered_map<T1, T2>& map2) {
+  if (map1.size() != map2.size()) {
+     std::cout << "map1.size is :" << map1.size() << endl;
+     std::cout << "map2.size is :" << map2.size() << endl;
+     std::cout << "map1.size";
+    return false;
+  }
+  for (const auto& it: map1) {
+    if (map2.count(it.first) == 0) {
+      std::cout << "map2.count";
+      return false;
+    }
+
+    std::vector<VarAttr> var_attr_1_list = map1.at(it.first);
+    std::vector<VarAttr> var_attr_2_list = map2.at(it.first);
+
+    if (var_attr_1_list.size() != var_attr_2_list.size()) {
+     std::cout << "var_attr_1_list.size()";
+      return false;
+    }
+
+    for (int i = 0; i < var_attr_1_list.size(); i ++){
+      VarAttr var_attr_1 = var_attr_1_list[i];
+      VarAttr var_attr_2 = var_attr_2_list[i];
+      if (var_attr_1.name != var_attr_2.name) {
+        std::cout << "var_attr_1.name";
+        return false;
+      }
+      if (var_attr_1.length != var_attr_2.length) {
+        std::cout << "ar_attr_1.length";
+        return false;
+      }
+      if (var_attr_1.type != var_attr_2.type) {
+       std::cout << "var_attr_1.type";
+        return false;
+      }
+      if (var_attr_1.src_type != var_attr_2.src_type) {
+      std::cout << "var_attr_1.src_type";
+        return false;
+      }
+    }
+  }
+  return true;
+}
 static bool compare_reduce_struct(const optiling::v3::ReduceCompileInfo ptr1,
                                   const optiling::v3::ReduceCompileInfo ptr2) {
   if (ptr1.is_const != ptr2.is_const) {
@@ -225,6 +270,45 @@ TEST_F(ReduceTilingV3, ReduceParseTest2) {
 TEST_F(ReduceTilingV3, ReduceParseTest3) {
   std::string compileInfo = R"({"_ori_axis": [0],
                                 "_pattern": "CommReduce",
+                                "_attr_vars": {"40000400":[{"length":1,"name":"alpha","type":"float16",
+                                               "src_type":"float16"}],
+                                               "3100000":[{"length":2,"name":"beta","type":"float32",
+                                               "src_type":"float16"}]},
+                                "_common_info": [32, 1, 8, 1, 1],
+                                "_pattern_info": [5],
+                                "axes_idx":0,
+                                "_compile_pattern":0,
+                                "_ub_info": [16256],
+                                "_ub_info_rf": [16256],
+                                "_block_dims": {"40000400": 0},
+                                "_atomic_flags": {"40000400": false}})";
+  nlohmann::json json_info = nlohmann::json::parse(compileInfo.c_str());
+  v3::ReduceCompileInfo actualCompileInfo = v3::ReduceCompileInfo("CommonReduce", json_info);
+  unordered_map<std::uint64_t, std::vector<VarAttr>> expect_var_attr_map;
+  VarAttr var1;
+  std::vector<VarAttr> var1_attr_list;
+  var1.name = "alpha";
+  var1.length = 1;
+  var1.type = "float16";
+  var1.src_type = "float16";
+  var1_attr_list.push_back(var1);
+  expect_var_attr_map[40000400] = var1_attr_list;
+
+  VarAttr var2;
+  std::vector<VarAttr> var2_attr_list;
+  var2.name = "beta";
+  var2.length = 2;
+  var2.type = "float32";
+  var2.src_type = "float16";
+  var2_attr_list.push_back(var2);
+  expect_var_attr_map[3100000] = var2_attr_list;
+  ASSERT_TRUE(compare_var_attr_map(expect_var_attr_map, actualCompileInfo.var_attr_map));
+}
+
+
+TEST_F(ReduceTilingV3, ReduceParseTest5) {
+  std::string compileInfo = R"({"_ori_axis": [0],
+                                "_pattern": "CommReduce",
                                 "_common_info": [32, 1, 8, 1, 1, 0],
                                 "_pattern_info": [5],
                                 "axes_idx":0,
@@ -301,7 +385,8 @@ TEST_F(ReduceTilingV3, ReduceTiling2) {
   graph.SetInputs(inputs).SetOutputs(outputs);
   ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
 
-  std::string compileInfo = R"({ "_ori_axis": [2], "_pattern": "CommReduce", "push_status": 0, "_zero_ub_factor": 25600, "_vars": {"10": ["_dim_1", "_ub_factor"]}})";
+  std::string compileInfo = R"({ "_ori_axis": [2], "_pattern": "CommReduce", "push_status": 0,
+                                               "_zero_ub_factor": 25600, "_vars": {"10": ["_dim_1", "_ub_factor"]}})";
 
   optiling::utils::OpRunInfo runInfo;
 
@@ -828,3 +913,86 @@ TEST_F(ReduceTilingV3, ReduceSumTiling3) {
   bool isCustom = false;
   ReduceSumComputeInt64(inputA, inputB, axes, output, dtypeA, dtypeB, dtypeOutput, compileInfo, isCustom, caseName);
 }
+
+/* Test Case
+ * **/
+TEST_F(ReduceTilingV3, ReduceTiling_var_attr) {
+  using namespace optiling;
+
+  std::vector<int64_t> input{1};
+  std::vector<int64_t> output{1};
+
+  TensorDesc tensor_input(ge::Shape(input), FORMAT_ND, DT_FLOAT);
+  TensorDesc tensor_output(ge::Shape(output), FORMAT_ND, DT_FLOAT);
+
+  auto x1 = op::Data("x1");
+  x1.update_input_desc_x(tensor_input);
+  x1.update_output_desc_y(tensor_input);
+
+  auto _op = op::ReduceSumD("ReduceSumD_1");
+  _op.set_input_x(x1);
+  _op.SetAttr("alpha", 12345);
+  _op.update_output_desc_y(tensor_output);
+
+  std::vector<Operator> inputs{x1};
+  std::vector<Operator> outputs{_op};
+  ge::Graph graph("ReduceTiling1");
+  graph.SetInputs(inputs).SetOutputs(outputs);
+  ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
+
+  std::string compileInfo = R"({ "_ori_axis": [0],
+                                 "_attr_vars": {"4293966796":[{"length":1,"name":"alpha","type":"int32",
+                                               "src_type":"int32"}]},
+                                 "_pattern": "CommReduce","push_status": 0,"_common_info": [32, 1, 8, 1, 1], "_pattern_info": [5], "_ub_info": [16256], "_ub_info_rf": [16256], "_vars": {"-1000500": ["_dim_1_0", "_block_factor", "_ub_factor"]}})";
+
+  optiling::utils::OpRunInfo runInfo;
+  const nlohmann::json& parsed_compile_info = nlohmann::json::parse(compileInfo);
+  std::shared_ptr<AutoTilingHandler> outer_compile_info = \
+    CreateReduceTilingHandler(this->test_info_->name(),
+                              "CommReduce",
+                              nlohmann::json::parse(compileInfo));
+  ASSERT_TRUE(outer_compile_info->DoTiling(_op, runInfo));
+  EXPECT_EQ(runInfo.GetBlockDim(), 1);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "1 1 1 12345 ");
+}
+
+/* Test Case
+ * **/
+TEST_F(ReduceTilingV3, ReduceTiling_var_attr_2) {
+  using namespace optiling;
+
+  std::vector<int64_t> input{64,64};
+  std::vector<int64_t> output{1,64};
+
+  TensorDesc tensor_input(ge::Shape(input), FORMAT_ND, DT_FLOAT);
+  TensorDesc tensor_output(ge::Shape(output), FORMAT_ND, DT_FLOAT);
+
+  auto x1 = op::Data("x1");
+  x1.update_input_desc_x(tensor_input);
+  x1.update_output_desc_y(tensor_input);
+
+  auto _op = op::ReduceSumD("ReduceSumD_1_1");
+  _op.set_input_x(x1);
+  _op.SetAttr("alpha", 12345);
+  _op.update_output_desc_y(tensor_output);
+
+  std::vector<Operator> inputs{x1};
+  std::vector<Operator> outputs{_op};
+  ge::Graph graph("ReduceTiling1_1");
+  graph.SetInputs(inputs).SetOutputs(outputs);
+  ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
+
+  std::string compileInfo = R"({"_ori_axis": [0],"_attr_vars": {"1":[{"length":1,"name":"alpha","type":"int32","src_type":"int32"}]},
+                                               "_pattern": "CommReduce", "push_status": 0, "_zero_ub_factor": 32512, "_common_info": [32,1,8,1,1], "_pattern_info": [1], "_ub_info":[32512], "_ub_info_rf": [32512], "_reduce_shape_known": true, "_const_shape_post": true, "_compile_pattern": 1, "_block_dims":{"1":32},
+     "_atomic_flags":{"1": true},
+     "_vars": {"1": []}})";
+
+  optiling::utils::OpRunInfo runInfo;
+  const nlohmann::json& parsed_compile_info = nlohmann::json::parse(compileInfo);
+  std::shared_ptr<AutoTilingHandler> outer_compile_info = \
+    CreateReduceTilingHandler(this->test_info_->name(),
+                              "CommReduce",
+                              nlohmann::json::parse(compileInfo));
+  ASSERT_TRUE(outer_compile_info->DoTiling(_op, runInfo));
+}
+

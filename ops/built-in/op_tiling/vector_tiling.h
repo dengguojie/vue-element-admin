@@ -29,6 +29,7 @@
 #include <nlohmann/json.hpp>
 
 #include "register/op_tiling_registry.h"
+#include "register/op_tiling_attr_utils.h"
 #include "op_log.h"
 #include "error_log.h"
 #include "graph/debug/ge_log.h"
@@ -76,6 +77,22 @@ class AutoTilingHandler: public CompileInfoBase {
   const std::string op_type;
   const std::string pattern;
 };
+
+struct VarAttr {
+  VarAttr() = default;
+  VarAttr(const std::string& _name, const std::string& _type, const std::string& _src_type, const int32_t& _length):
+          name (_name), type (_type), src_type (_src_type), length (_length) {}
+  std::string name;
+  std::string type;
+  std::string src_type;
+  int32_t length{0};
+};
+
+bool ParseVarAttr(const nlohmann::json& json_info,
+                  std::unordered_map<std::uint64_t, vector<VarAttr>>& var_attr_map);
+
+bool SetAttrVars(const std::string& op_type, const ge::Operator& op_paras,
+                 utils::OpRunInfo& run_info, const std::vector<VarAttr>& all_attr_vars);
 
 std::shared_ptr<AutoTilingHandler> CreateAutoTilingHandler(const std::string& op_type, const std::string& pattern,
                                                            const nlohmann::json& parsed_compile_info);

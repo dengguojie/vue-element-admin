@@ -102,5 +102,7 @@ class AttrVarDesc:
     name: str
     # such as int32, float16, etc. If list type, take primitive part
     dtype: str
+    # source type, such as int32, float16, etc. If list type, take primitive part
+    src_dtype: str
     # None means primitive type, other list type
     length: Optional[int] = None

@@ -390,13 +390,15 @@ class Builder:
             def convert(attr_var):
                 # type: (AttrVarDesc) -> Dict[str, Any]
 
-                dtype, length = attr_var.dtype, attr_var.length
+                dtype, src_dtype, length = attr_var.dtype, attr_var.src_dtype, attr_var.length
                 if length:
-                    dtype = "List" + dtype.capitalize()
+                    dtype = "list_" + dtype
+                    src_dtype = "list_" + src_dtype
 
                 return {
                     "name": attr_var.name,
                     "type": dtype,
+                    "src_type": src_dtype,
                     "length": length or 1
                 }
 
