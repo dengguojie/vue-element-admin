@@ -705,7 +705,6 @@ def _test_dx_transdata_shape_util(test_arg):
     ]
     shape_util.variable_shape(inputs, op_mode="cube")
 
-
 ut_case.add_cust_test_func(support_soc="Ascend910A", test_func=_test_dx_transdata_fusion_op)
 ut_case.add_cust_test_func(support_soc="Ascend910A", test_func=_test_transdata_dx_transdata_fusion_op)
 ut_case.add_cust_test_func(support_soc="Ascend910A", test_func=_test_transdata_dx_transdata_shape_util)

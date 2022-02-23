@@ -79,6 +79,7 @@ const int64_t kL1size = (1024 * 1024);
 const int64_t kStrideHWUp = 63;
 const int64_t kConv2dNC1HWC0Size = 5;
 const int64_t kConv2dNCHWSize = 4;
+const int64_t kInputIndexTwo = 2;
 
 static map<int, std::string> format2str = {
     {ge::FORMAT_NCHW, "NCHW"}, {ge::FORMAT_NHWC, "NHWC"}, {ge::FORMAT_HWCN, "HWCN"}, {ge::FORMAT_DHWNC, "DHWNC"},
@@ -95,7 +96,7 @@ int64_t Align(const int64_t& param1, const int64_t& param2) {
 bool CheckRange(const int64_t& value, const int64_t& value_low, const int64_t& value_up) {
   if (value < value_low) {
     return false;
-  } else if (value_up != 0 && value > value_up){
+  } else if (value_up != 0 && value > value_up) {
     return false;
   }
   return true;
@@ -161,7 +162,9 @@ bool CheckL1SizeLimit(const DxParas& dx_paras) {
   }
   int64_t a_l1_size = h_value_max * w_value * kC0 * kFp16Bytes;
   int64_t b_l1_size = dx_paras.kh * kC0 * dx_paras.kw * kC0 * kFp16Bytes;
-  CHECK_OP_FUNC(a_l1_size + b_l1_size > kL1size, return false, "check l1size fail");
+  CHECK_OP_FUNC(a_l1_size + b_l1_size > kL1size, return false,
+                "check l1size failed, a_l1_size is %ld, b_l1_size is %ld, kL1size is %ld", a_l1_size, b_l1_size,
+                kL1size);
   return true;
 }
 
@@ -193,7 +196,7 @@ void UpdateOpDescAttr(const ge::OpDescPtr& op_desc, ge::OpDescPtr& op_desc_attr)
       }
     }
   } else {
-    GELOGD("this is not fusion node, only conv2d_backrprop_inpt single node");
+    GELOGD("this is not fusion node, only conv2d_backprop_input single node");
   }
 }
 
@@ -281,7 +284,7 @@ bool Conv2DBackpropInputParseFunc(const ge::Operator& op_paras, const nlohmann::
     ge::AscendString op_type;
     CHECK_OP_FUNC(op_paras.GetOpType(op_type) != ge::GRAPH_SUCCESS, return false, "failed to get op_type");
     dx_paras.op_type = string(op_type.GetString());
-    int32_t out_backprop_input_index = 2;
+    int32_t out_backprop_input_index = kInputIndexTwo;
     int32_t filter_input_index = 1;
     if (op_desc_attr == nullptr) {
       CHECK_OP_FUNC(!GetAttrFromOp(op_desc, dx_paras), return false, "get attr failed");
@@ -290,7 +293,7 @@ bool Conv2DBackpropInputParseFunc(const ge::Operator& op_paras, const nlohmann::
     }
     bool stride_equal_one = dx_paras.stride_h == 1 && dx_paras.stride_w == 1;
     if (op_desc_attr != nullptr && stride_equal_one) {
-      filter_input_index = 2;
+      filter_input_index = kInputIndexTwo;
       out_backprop_input_index = 0;
     }
     CHECK_OP_FUNC(!compile_info.contains("block_dim") || !compile_info["block_dim"].contains("CORE_NUM"),

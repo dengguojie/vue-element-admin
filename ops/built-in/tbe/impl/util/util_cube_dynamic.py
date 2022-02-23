@@ -119,7 +119,8 @@ def pos_from_format(ele_format):
     pos_c = ele_format.find('C')
     pos_h = ele_format.find('H')
     pos_w = ele_format.find('W')
-    return pos_n, pos_c, pos_h, pos_w
+    pos = (pos_n, pos_c, pos_h, pos_w)
+    return pos
 
 
 def set_default_para():
@@ -198,8 +199,8 @@ def modify_w_range_max(fmap: dict, infilter: dict, dedy: dict, strides: list, da
         h_value_max = min(filter_h + 1, dedy_h_max * stride_h)
         l1_size = get_soc_spec("L1_SIZE")
         kw_k0 = filter_w * CUBE_SIZE
-        tiling_BL1_shape_0 = bit_dir.get(filter_dtype) // kw_k0
-        filter_l1_size = FP16_SIZE * FP16_N * tiling_BL1_shape_0 * FP16_K * filter_w * filter_h
+        tiling_bl1_shape_0 = bit_dir.get(filter_dtype) // kw_k0
+        filter_l1_size = FP16_SIZE * FP16_N * tiling_bl1_shape_0 * FP16_K * filter_w * filter_h
         a_l1_size = l1_size - filter_l1_size
         w_value = a_l1_size // (h_value_max * c0_size_k * BIT_RATIO_DICT.get(out_backprop_dtype))
         w_max = w_value // stride_w
@@ -1023,8 +1024,6 @@ class Conv2dBackpropParaProcess(CubeParaProcess):
         """
         # support both Tensor input and dict input
         batch, dy_c1, dedy_h, dedy_w, dy_c0 = self.out_backprop.shape
-        _, filter_co1, *_ = self.filters.shape
-
         dx_c = operation.var("dx_c")
         dx_c1 = operation.var("dx_c1")
         dx_h = operation.var("dx_h")
@@ -1037,7 +1036,7 @@ class Conv2dBackpropParaProcess(CubeParaProcess):
         self.attrs["group_para"] = {"g_extend": g_extend,
                                     "multiple_extend": operation.var("multiple_extend"),
                                     "dx_c1_extend": dx_c1_extend,
-                                    "dy_c1_extend": filter_co1}
+                                    "dy_c1_extend": self.filters.shape[1]}
 
         self.shape["dy_shape_nc1hwc0"] = (batch, dy_c1, dedy_h, dedy_w, dy_c0)
         self.shape["dy_shape_nchw"] = (batch, dy_c1 * dy_c0, dedy_h, dedy_w)
@@ -1117,17 +1116,12 @@ class Conv2dBackpropParaProcess(CubeParaProcess):
         self.calc_pads(input_size, self.shape.get("filter_shape_nchw"))
         self._calc_filter_shape_fz()
 
-    def _infer_shape_range_attrs(self):
-        """
-        infer range from dx to dy
-        """
 
-        if self.binary_mode:
-            self._infer_binary_shape_range_attrs()
-            return
+    def _infer_shape_nchw(self):
+        """
+        get shape in format nchw
+        """
         self.check_input_dict(self.y, "y", False)
-
-        dy_shape = list(self.out_backprop.get("ori_shape"))
         filter_shape = self.filters.get("ori_shape")
         dx_shape = self.y.get("ori_shape")
         self.check_para_dim(dx_shape, "input_size")
@@ -1137,21 +1131,24 @@ class Conv2dBackpropParaProcess(CubeParaProcess):
         self.get_attr_nchw(self.data_format)
         dx_shape_nchw = self.get_input_nchw(dx_shape, self.data_format)
 
+        return filter_shape_nchw, dx_shape_nchw, dx_shape
+
+    def _infer_shape_range_attrs(self):
+        """
+        infer range from dx to dy
+        """
+        if self.binary_mode:
+            self._infer_binary_shape_range_attrs()
+            return
+
+        dy_shape = list(self.out_backprop.get("ori_shape"))
+        filter_shape_nchw, dx_shape_nchw, dx_shape = self._infer_shape_nchw()
         correct_range_flag = False
         if self.check_unknown_scene(dy_shape, dx_shape_nchw, filter_shape_nchw[C_DIM] * self.groups):
             dy_shape_nchw = [DYNAMIC_FLAG, filter_shape_nchw[N_DIM], DYNAMIC_FLAG, DYNAMIC_FLAG]
-
-            dy_range_nchw = [(1, None), None, (1, None), (1, None)]
-            dx_range_nchw = [(1, None), None, (1, None), (1, None)]
+            dy_range_nchw = BINARY_RANGE
+            dx_range_nchw = BINARY_RANGE
             self.check_support_valid(dy_shape_nchw, filter_shape_nchw)
-            group_para = comm.calculate_group(
-                dy_shape_nchw, dx_shape_nchw, filter_shape_nchw, self.groups, self.dtype, self.data_format)
-            comm.check_conv2dbp_input_params(filter_shape_nchw, dy_shape_nchw, dx_shape_nchw,
-                                             self.strides[2:], self.pads, self.dilations,
-                                             self.dtype, self.dtype, self.dtype,
-                                             kernel_name=self.paras.get("kernel_name"),
-                                             fusion_para=None,
-                                             group_dict=group_para)
         else:
             self.check_para_dim(dy_shape, "out_backprop_shape")
             self.check_input_dict(self.y, "y", True)
@@ -1164,19 +1161,18 @@ class Conv2dBackpropParaProcess(CubeParaProcess):
             self.check_support_valid(dy_shape_nchw, filter_shape_nchw)
             self.check_dynamic_channel_scene(
                 dy_shape_nchw, dx_shape_nchw, filter_shape_nchw[N_DIM])
-            group_para = comm.calculate_group(
-                dy_shape_nchw, dx_shape_nchw, filter_shape_nchw, self.groups, self.dtype, self.data_format)
-            comm.check_conv2dbp_input_params(filter_shape_nchw, dy_shape_nchw, dx_shape_nchw,
-                                             self.strides[2:], self.pads, self.dilations,
-                                             self.dtype, self.dtype, self.dtype,
-                                             kernel_name=self.paras.get("kernel_name"),
-                                             fusion_para=None,
-                                             group_dict=group_para)
+        group_para = comm.calculate_group(
+            dy_shape_nchw, dx_shape_nchw, filter_shape_nchw, self.groups, self.dtype, self.data_format)
+        comm.check_conv2dbp_input_params(filter_shape_nchw, dy_shape_nchw, dx_shape_nchw,
+                                            self.strides[2:], self.pads, self.dilations,
+                                            self.dtype, self.dtype, self.dtype,
+                                            kernel_name=self.paras.get("kernel_name"),
+                                            fusion_para=None,
+                                            group_dict=group_para)
+        if dx_range_nchw != BINARY_RANGE:
             self.check_range_valid(dx_shape_nchw, dx_range_nchw, "input_size", self.data_format)
-
             dy_range_nchw, correct_range_flag,\
                 dx_range_nchw = self.get_output_range(filter_shape_nchw, dx_range_nchw)
-
             output_range = copy.deepcopy(dy_range_nchw)
             if output_range[W_DIM][1]:
                 if filter_shape_nchw[H_DIM] == 1 and filter_shape_nchw[W_DIM] == 1:
@@ -1184,19 +1180,10 @@ class Conv2dBackpropParaProcess(CubeParaProcess):
                                         output_range[W_DIM][1] * self.strides[H_DIM] * self.strides[W_DIM])
             self.check_range_valid(dy_shape_nchw, output_range, "out_backprop", self.data_format)
 
-        self.shape = {
-            "dy_shape_nchw": dy_shape_nchw,
-            "filter_shape_nchw": filter_shape_nchw,
-            "dx_shape_nchw": dx_shape_nchw
-        }
-        self.range = {
-            "dy_range_nchw": dy_range_nchw,
-            "dx_range_nchw": dx_range_nchw,
-        }
-        self.attrs = {
-            "group_para": group_para,
-            "correct_range_flag": correct_range_flag
-        }
+        self.shape = {"dy_shape_nchw": dy_shape_nchw, "filter_shape_nchw": filter_shape_nchw,
+                      "dx_shape_nchw": dx_shape_nchw}
+        self.range = {"dy_range_nchw": dy_range_nchw, "dx_range_nchw": dx_range_nchw}
+        self.attrs = {"group_para": group_para, "correct_range_flag": correct_range_flag}
         self._config_shape()
 
     def config_paras(self):
@@ -1714,7 +1701,7 @@ class DepthwiseConv2dBackpropParaProcess(Conv2dBackpropParaProcess):
         self.check_range_valid(dy_shape_nchw, output_range, "out_backprop", self.data_format)
 
         self.shape = {"dy_shape_nchw": dy_shape_nchw, "filter_shape_nchw": filter_shape_nchw,
-                      "dx_shape_nchw": dx_shape_nchw,}
+                      "dx_shape_nchw": dx_shape_nchw}
         self.range = {"dy_range_nchw": dy_range_nchw, "dx_range_nchw": dx_range_nchw}
         self.attrs = {"group_para": group_para, "correct_range_flag": correct_range_flag}
 

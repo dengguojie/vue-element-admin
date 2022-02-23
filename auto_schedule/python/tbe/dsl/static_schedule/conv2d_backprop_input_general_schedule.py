@@ -3116,6 +3116,15 @@ class DxDynamicUtil():
     def _get_optional_te_var(var_name):
         return None if not get_te_var(var_name) else get_te_var(var_name).get_tvm_var()
 
+    @staticmethod
+    def get_ceil_mode():
+        """
+        calculate factor with factor_ceil_mode in schedule_agent, split with split_ceil_mode in schedule_agent/
+        False for divisible scene, default is True
+        """
+        ceil_mode_dict = {"factor_ceil_mode": True, "split_ceil_mode": True}
+        return ceil_mode_dict
+
     def set_dynamic_scene(self):
         """
         identify dynamic scene and set relevant members
@@ -3259,15 +3268,6 @@ class DxDynamicUtil():
             "bl1_status_ori":  self.status_ori_dict_dx.get(bl1_attach_flag),
             "bl1_status": self.status_dict_dx.get(bl1_attach_flag),
         }
-
-    @staticmethod
-    def get_ceil_mode():
-        """
-        calculate factor with factor_ceil_mode in schedule_agent, split with split_ceil_mode in schedule_agent/
-        False for divisible scene, default is True
-        """
-        ceil_mode_dict = {"factor_ceil_mode": True, "split_ceil_mode": True}
-        return ceil_mode_dict
 
     def l1_full_load(self, c_ddr, a_l1, b_l1, sch):
         """

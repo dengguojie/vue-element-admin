@@ -9,6 +9,7 @@ from tbe.common.context.op_context import OpContext
 from impl.dynamic.conv2d_backprop_input import conv2dbp_input_fusion_compute
 from impl.dynamic.trans_data import trans_data_fusion_compute
 
+
 def test_conv2d_backprop_input_fuzz_build_lower_limit():
     input_list = [
         {
