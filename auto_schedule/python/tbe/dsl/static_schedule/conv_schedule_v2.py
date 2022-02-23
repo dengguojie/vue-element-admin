@@ -33,6 +33,7 @@ from tbe.dsl.static_schedule.conv_schedule_util import ceil, ceil_div, is_suppor
 from tbe.dsl.static_schedule.conv_ubfusion_schedule import EltwiseUBFusion
 from tbe.dsl.static_schedule.conv_ubfusion_schedule import QuantFusion
 from tbe.dsl.static_schedule.conv_maxpoolfusion_schedule import MaxpoolFusion
+from tbe.dsl.static_schedule.conv_bn1_fusion_schedule import Conv2dBN1Fusion
 from te.platform import cce_params
 
 
@@ -647,7 +648,7 @@ class Conv2dSchedule:
     """
     Class of Conv2d Schedule.
     """
-    def __init__(self, sch, res, conv_param, op_graph, tiling_dict_flag, tiling_case, var_range):
+    def __init__(self, sch, res, spec_node_list, conv_param, op_graph, tiling_dict_flag, tiling_case, var_range):
         self._sch = sch
         self._res = res
         self._conv_param = conv_param
@@ -694,7 +695,7 @@ class Conv2dSchedule:
         self._core_num = get_soc_spec("CORE_NUM")
 
         #===========================parse ub fusion=======================================
-        self._eltwise_ub_fusion = EltwiseUBFusion(res, op_graph)
+        self._eltwise_ub_fusion = EltwiseUBFusion(res, op_graph, conv_param)
         self._fixpipe_res = self._eltwise_ub_fusion.cub if self._eltwise_ub_fusion.flag else res
 
         self._quant_fusion = QuantFusion(res, op_graph)
@@ -716,9 +717,16 @@ class Conv2dSchedule:
         self._c04 = C04Opti(conv_param)
         self._conv1d = Conv1dSplitw(conv_param)
         self._pooling_fusion = MaxpoolFusion(res, MaxPoolParam)
+        self._convbn1 = Conv2dBN1Fusion(conv_param, self._fmap_dtype, op_graph, self._eltwise_ub_fusion.cub)
 
         #===================parse fusion pattern========================
         self._fixpipe_fusion.parse_fusion_pattern()
+
+        # multi_out specify
+        if len(spec_node_list) > 1:
+            self._multi_out = spec_node_list[:-1]
+        else:
+            self._multi_out = None
 
         if self._aipp_fusion.flag:
             self._fmap_dtype = "float16"
@@ -735,6 +743,22 @@ class Conv2dSchedule:
             eltwise_coeff += self._quant_fusion.cal_quant_coeff()
             eltwise_coeff += self._pooling_fusion.cal_pooling_coeff()
             return eltwise_coeff, channelwise_coeff, scalar_num
+
+        def get_info_dict_cdtype(c_dtype):
+            """
+            get info_dict cdtype
+            """
+            if self._convbn1.flag:
+                return self._convbn1.get_info_dict_cdtype()
+            return c_dtype
+
+        def get_info_dict_fusion_type(fusion_type):
+            """
+            get info_dict fusion_type
+            """
+            if self._convbn1.flag:
+                return self._convbn1.fusion_type
+            return fusion_type
 
         if self._dynamic_shape.flag and tiling_case: # pass when tiling_case
             return None
@@ -758,6 +782,8 @@ class Conv2dSchedule:
 
         pooling_shape, pooling_stride = self._pooling_fusion.config_window_stride()
 
+        c_dtype = get_info_dict_cdtype(self._res_dtype)
+        fusion_type = get_info_dict_fusion_type(self._fusion_type)
         # group conv, send one group_opt a, b, c shape to tiling
         info_dict = {"op_type": 'conv2d',
                      "a_shape": fmap_shape_nc1hwc0,
@@ -765,7 +791,7 @@ class Conv2dSchedule:
                      "c_shape": c_shape,
                      "a_dtype": self._fmap_dtype,
                      "b_dtype": self._weight_dtype,
-                     "c_dtype": self._res_dtype,
+                     "c_dtype": c_dtype,
                      "mad_dtype": mad_dtype,
                      "pad": [conv_param.pad_w[0], conv_param.pad_w[1],
                              conv_param.pad_h[0], conv_param.pad_h[1]],
@@ -786,7 +812,7 @@ class Conv2dSchedule:
                      "out_fm_memory_type": self._lx_fusion.output_memory_type,
                      "l1_fusion_type": self._lx_fusion.l1_fusion_type,
                      "fm_l1_valid_size": self._lx_fusion.fmap_l1_valid_size,
-                     "fusion_type": self._fusion_type,
+                     "fusion_type": fusion_type,
                      "kernel_name": conv_param.kernel_name,
                      "special_mode": {"use_c04_mode": 2 if self._c04.flag else 0, # 3 for v220 c04
                                       # disable strideh opti when input nd2nz.
@@ -825,6 +851,8 @@ class Conv2dSchedule:
             default_tiling["AL0_matrix"] = [tiling_m, tiling_k, 16, self._in_c0, 1, 1]
             default_tiling["BL0_matrix"] = [tiling_k, tiling_n, 16, self._in_c0, 1, 1]
             default_tiling["CL0_matrix"] = [tiling_n, tiling_m, 16, 16, 1, group_cl0]
+            default_tiling["CUB_matrix"] = [tiling_n, tiling_m, 16, 16, 1, 1]
+            default_tiling["AUB_shape"] = [1, 1, 1, 1]
             default_tiling["manual_pingpong_buffer"] = {'AL1_pbuffer': 1,
                                                         'BL1_pbuffer': 1,
                                                         'AL0_pbuffer': 1,
@@ -837,6 +865,7 @@ class Conv2dSchedule:
             default_tiling["n_bef_batch_flag"] = False
             default_tiling["A_overhead_opt_flag"] = False
             default_tiling["B_overhead_opt_flag"] = False
+            default_tiling["CUB_channel_wise_flag"] = True
 
             default_tiling["block_dim"] = [1, 1, 1, 1]
             if self._batch > 1 and self._core_num > 1:
@@ -1122,11 +1151,13 @@ class Conv2dSchedule:
 
         align_al1()
         align_row_major()
-
-        self._fixpipe_fusion.inline_fixpipe_tensor(sch)
+        if not self._convbn1.flag:
+            self._fixpipe_fusion.inline_fixpipe_tensor(sch)
         if res.op.name == "res_fp32_conv2d" and is_support_fixpipe_op():
             # for single conv2d inline res_conv2d
             sch[res.op.input_tensors[0]].compute_inline()
+        # bn1 fusion
+        self._convbn1.bn1fusion_special_process_pre(sch)
 
         # inline row_major_reshape
         if fmap_row_major_reshape is not None:
@@ -1152,7 +1183,7 @@ class Conv2dSchedule:
         self._dynamic_shape.handle_var_range(sch)
         self._dynamic_shape.disable_memory_reuse(sch, tensor_param)
 
-    def tile_attach_tensor(self, res, tensor_param):
+    def tile_attach_tensor(self, res, sch_list, tensor_param):
         """
         Split tensor axis and attach tensors.
         """
@@ -1597,6 +1628,259 @@ class Conv2dSchedule:
 
             return res_axis_list, bindcore_axis, res_pragma_axis
 
+        def bn1fusion_tile_tensor_res():
+            """
+            bn1fusion special tile_tensor_res
+            """
+            # res.op.axis [Co1, Co0]
+            # res.op.reduce_axis [n, howo]
+            res_n_axis, res_hw_axis = res.op.reduce_axis
+            out2cl0_loopm_axis, res_m_cl0_axis = sch[res].split(res_hw_axis, factor=mc_cl0 * m0_cl0)
+            res_batch_dim_axis, res_singlecore_batch_axis = sch[res].split(res_n_axis, nparts=batch_dim)
+
+            out2al1_loopm_axis, al12al0_loopm_axis = sch[res].split(out2cl0_loopm_axis, nparts=al1_nparts[1])
+            res_m_dim_axis, singlecore_out2al1_loopm_axis = sch[res].split(out2al1_loopm_axis, nparts=m_dim)
+
+            sch[res].reorder(
+                res_batch_dim_axis,
+                res_m_dim_axis,
+                res_singlecore_batch_axis,
+                singlecore_out2al1_loopm_axis)
+            res_batch_m_dim_fused = sch[res].fuse(res_batch_dim_axis, res_m_dim_axis)
+
+            # res_batch_dim_axis and res_m_dim_axis are usually bindcore axis
+            # in this scenario, these two are reduction axes
+            # TBE don't support bindcore to a reduction axis
+            # use rfactor to factor a reduction axis in tensor's schedule to be an explicit axis
+            # which create a new stage that generated the new tensor with axis as the first dimension
+            # The tensor's body will be rewritten as a reduction over the factored tensor
+            res_ub_rf, _ = sch.rfactor(res, res_batch_m_dim_fused)
+            sch[res_ub_rf].set_scope(cce_params.scope_ubuf)
+
+            res_batch_m_dim_fused, res_c1_axis, res_c0_axis = res_ub_rf.op.axis
+            res_singlecore_batch_axis, singlecore_out2al1_loopm_axis, al12al0_loopm_axis, res_m_cl0_axis = res_ub_rf.op.reduce_axis
+
+            sum_x_global, square_sum_x_global = sch.cache_write([res, res], "global")
+
+            sch[res].emit_insn(sch[res].op.axis[0], "phony_insn")
+
+            bn_c1_axis, bn_c0_axis = sum_x_global.op.axis
+            bn_batch_m_dim_fused = sum_x_global.op.reduce_axis[0]
+
+            sch[sum_x_global].reorder(
+                bn_batch_m_dim_fused,
+                bn_c1_axis,
+                bn_c0_axis)
+
+            # use sch_list[0] to return conv schedule
+            # use sch_list[1:] to indicate real_outs
+            sch_list.append(self._multi_out[0])
+            sch_list.append(sum_x_global)
+            sch_list.append(square_sum_x_global)
+
+            # split sum_x_global
+            if self._convbn1.fp32_bn1_flag:
+                bn_group_opt_axis, bn_co1_opt_axis_ori = sch[sum_x_global].split(bn_c1_axis, factor=co1_opt*2)
+                bn_co1_opt_axis, bn_c0_npart_axis = sch[sum_x_global].split(bn_co1_opt_axis_ori, factor=2)
+            else:
+                bn_group_opt_axis, bn_co1_opt_axis = sch[sum_x_global].split(bn_c1_axis, factor=co1_opt)
+
+            bn_group_dim_axis, bn_singlecore_group_opt_axis = sch[sum_x_global].split(bn_group_opt_axis,
+                                                                                      nparts=group_dim)
+            bn_out2cl0_loopn_axis, bn_nc_cl0_axis = sch[sum_x_global].split(bn_co1_opt_axis, factor=nc_cl0)
+
+            bn_out2bl1_loopn_axis, bn_bl12bl0_loopn_axis = sch[sum_x_global].split(bn_out2cl0_loopn_axis,
+                                                                                   nparts=bl1_nparts[1])
+            bn_n_dim_axis, bn_singlecore_out2bl1_loopn_axis = sch[sum_x_global].split(bn_out2bl1_loopn_axis,
+                                                                                      nparts=n_dim)
+            if self._convbn1.fp32_bn1_flag:
+                sch[sum_x_global].reorder(
+                    bn_batch_m_dim_fused,
+                    bn_group_dim_axis,
+                    bn_n_dim_axis,
+                    bn_singlecore_group_opt_axis,
+                    bn_bl12bl0_loopn_axis,
+                    bn_singlecore_out2bl1_loopn_axis,
+                    bn_nc_cl0_axis,
+                    bn_c0_npart_axis,  # 2
+                    bn_c0_axis)
+            else:
+                sch[sum_x_global].reorder(
+                    bn_batch_m_dim_fused,
+                    bn_group_dim_axis,
+                    bn_n_dim_axis,
+                    bn_singlecore_group_opt_axis,
+                    bn_bl12bl0_loopn_axis,
+                    bn_singlecore_out2bl1_loopn_axis,
+                    bn_nc_cl0_axis,
+                    bn_c0_axis)
+
+            multicore_axis = sch[sum_x_global].fuse(bn_batch_m_dim_fused, bn_group_dim_axis, bn_n_dim_axis)
+
+            # split res_ub_rf
+            if self._convbn1.fp32_bn1_flag:
+                res_group_opt_axis, res_co1_opt_axis_ori = sch[res_ub_rf].split(res_c1_axis, factor=co1_opt*2)
+                res_co1_opt_axis, res_c0_npart_axis = sch[res_ub_rf].split(res_co1_opt_axis_ori, factor=2)
+            else:
+                res_group_opt_axis, res_co1_opt_axis = sch[res_ub_rf].split(res_c1_axis, factor=co1_opt)
+
+            out2cl0_loopn_axis, res_nc_cl0_axis = sch[res_ub_rf].split(res_co1_opt_axis, factor=nc_cl0)
+
+            cl02cub_loopm_axis, res_m_factor_axis = sch[res_ub_rf].split(res_m_cl0_axis, nparts=1)
+
+            # when multi_cl0_group, cl0_factor[0] is 1 and bl1_nparts[1] is 1
+            out2bl1_loopn_axis, bl12bl0_loopn_axis = sch[res_ub_rf].split(out2cl0_loopn_axis, nparts=bl1_nparts[1])
+
+            res_group_dim_axis, res_singlecore_group_opt_axis = sch[res_ub_rf].split(res_group_opt_axis,
+                                                                                     nparts=group_dim)
+
+            batch_factor = self._inner_batch.config_innerbatch_axis(batch_al1, batch_cl0)
+
+            out2al1_loopbatch_axis, res_al1_batch_axis = sch[res_ub_rf].split(res_singlecore_batch_axis,
+                                                                              factor=batch_factor)
+
+            if group_cl0 == 1 and multi_bl0_group:
+                singlecore_out2bl0_loopg_axis, res_bl0_group_opt_axis = sch[res_ub_rf].split(res_singlecore_group_opt_axis,
+                                                                                             factor=group_bl0)
+            else:
+                singlecore_out2bl0_loopg_axis, res_bl0_group_opt_axis = sch[res_ub_rf].split(res_singlecore_group_opt_axis,
+                                                                                             factor=1)
+
+            res_n_dim_axis, singlecore_out2bl1_loopn_axis = sch[res_ub_rf].split(out2bl1_loopn_axis, nparts=n_dim)
+
+            cl02cub_loopn_axis, res_nc_factor_axis = sch[res_ub_rf].split(res_nc_cl0_axis, factor=nc_factor_cub)
+
+            if self._convbn1.fp32_bn1_flag:
+                sch[res_ub_rf].reorder(
+                    res_batch_m_dim_fused,
+                    res_group_dim_axis,
+                    res_n_dim_axis,
+                    singlecore_out2bl0_loopg_axis,
+                    out2al1_loopbatch_axis,
+                    singlecore_out2bl1_loopn_axis,
+                    singlecore_out2al1_loopm_axis,
+                    res_bl0_group_opt_axis,
+                    res_al1_batch_axis,
+                    bl12bl0_loopn_axis,
+                    al12al0_loopm_axis,
+                    cl02cub_loopn_axis,
+                    cl02cub_loopm_axis,
+                    res_nc_factor_axis,
+                    res_c0_npart_axis,  # 2
+                    res_m_factor_axis,
+                    res_c0_axis)
+            else:
+                sch[res_ub_rf].reorder(
+                    res_batch_m_dim_fused,
+                    res_group_dim_axis,
+                    res_n_dim_axis,
+                    singlecore_out2bl0_loopg_axis,
+                    out2al1_loopbatch_axis,
+                    singlecore_out2bl1_loopn_axis,
+                    singlecore_out2al1_loopm_axis,
+                    res_bl0_group_opt_axis,
+                    res_al1_batch_axis,
+                    bl12bl0_loopn_axis,
+                    al12al0_loopm_axis,
+                    cl02cub_loopn_axis,
+                    cl02cub_loopm_axis,
+                    res_nc_factor_axis,
+                    res_m_factor_axis,
+                    res_c0_axis)
+
+            if self._inner_batch.flag:
+                sch[res_ub_rf].reorder(
+                    bl12bl0_loopn_axis,
+                    al12al0_loopm_axis,
+                    cl02cub_loopn_axis,
+                    cl02cub_loopm_axis,
+                    res_nc_factor_axis,
+                    res_al1_batch_axis)
+
+            blocks = batch_dim*n_dim*m_dim*group_dim
+            sch[sum_x_global].bind(multicore_axis, tvm.thread_axis("blockIdx.x"))
+            if blocks == batch_dim:
+                sch[sum_x_global].pragma(bn_bl12bl0_loopn_axis, 'json_info_batchBindOnly', 1)
+
+            out2al1_loopbatch_axis_ori = out2al1_loopbatch_axis
+            out2al1_loopbatch_axis, res_batch_1_axis = sch[res_ub_rf].split(out2al1_loopbatch_axis_ori, factor=1)
+            reorder_mn_flag = get_reorder_mn_flag()
+            if not self._inner_batch.flag:
+                if reorder_mn_flag:
+                    sch[res_ub_rf].reorder(
+                        out2al1_loopbatch_axis,
+                        singlecore_out2al1_loopm_axis,
+                        res_batch_1_axis,
+                        bl12bl0_loopn_axis,
+                        singlecore_out2bl1_loopn_axis,
+                        res_bl0_group_opt_axis,
+                        res_al1_batch_axis)
+                else:
+                    sch[res_ub_rf].reorder(
+                        out2al1_loopbatch_axis,
+                        singlecore_out2bl1_loopn_axis,
+                        singlecore_out2al1_loopm_axis,
+                        bl12bl0_loopn_axis,
+                        res_batch_1_axis,
+                        res_bl0_group_opt_axis,
+                        res_al1_batch_axis)
+            if self._tiling["n_bef_batch_flag"] and not reorder_mn_flag and not self._inner_batch.flag:
+                sch[res_ub_rf].reorder(singlecore_out2bl1_loopn_axis, out2al1_loopbatch_axis)
+
+            res_pragma_axis = res_m_factor_axis
+            bindcore_axis = out2al1_loopbatch_axis
+
+            def get_bn1_res_attach_axis():
+                """
+                conv2d+bn1 fusion prepare res attach axis for compute_at
+                """
+                # get cub_at_res_axis
+                cub_at_res_axis = cl02cub_loopm_axis
+
+                # get cl0_at_res_axis
+                cl0_at_res_axis = al12al0_loopm_axis
+
+                # get bl0_at_res_axis
+                bl0_at_res_axis = singlecore_out2bl0_loopg_axis
+
+                # get al1_at_res_axis
+                al1_at_res_axis = out2al1_loopbatch_axis
+                if self._lx_fusion.l1_fusion_type == DEPTH_L1_FUSION:
+                    al1_at_res_axis = singlecore_out2bl0_loopg_axis
+                if al1_tiling or self._conv1d.flag:
+                    al1_at_res_axis = singlecore_out2al1_loopm_axis
+
+                # get bl1_at_res_axis
+                bl1_at_res_axis = singlecore_out2bl0_loopg_axis
+                if bl1_tiling:
+                    bl1_at_res_axis = singlecore_out2bl1_loopn_axis
+                    if group_cl0 == 1 and multi_bl0_group:
+                        bl1_at_res_axis = singlecore_out2bl0_loopg_axis
+                if self._inner_batch.flag:
+                    bl1_at_res_axis = singlecore_out2bl1_loopn_axis
+
+                # get sum_x_global_pragma_axis
+                if cub_channel_wise_flag:
+                    sum_x_global_pragma_axis = bn_nc_cl0_axis
+                else:
+                    sum_x_global_pragma_axis = bn_bl12bl0_loopn_axis
+
+                # get res_ub_rf_at_sum_x_axis
+                res_ub_rf_at_sum_x_axis = multicore_axis
+                if group_opt > 1:
+                    res_ub_rf_at_sum_x_axis = bn_singlecore_group_opt_axis
+                if cub_channel_wise_flag:
+                    res_ub_rf_at_sum_x_axis = bn_singlecore_out2bl1_loopn_axis
+
+                self._convbn1.set_sum_x_global(sum_x_global, sum_x_global_pragma_axis, res_ub_rf_at_sum_x_axis)
+
+                return [cub_at_res_axis, cl0_at_res_axis, bl0_at_res_axis,
+                        al1_at_res_axis, bl1_at_res_axis]
+
+            res_axis_list = get_bn1_res_attach_axis()
+
+            return res_ub_rf, res_axis_list, bindcore_axis, res_pragma_axis
+
         def tile_tensor_cl0():
             """
             tile tensor cl0
@@ -1942,7 +2226,10 @@ class Conv2dSchedule:
         al0_axis_list, dynamic_al0_pragma_axis = tile_tensor_al0()
 
         #===================================tile res============================================
-        res_axis_list, bindcore_axis, res_pragma_axis = tile_tensor_res()
+        if self._convbn1.flag:
+            res, res_axis_list, bindcore_axis, res_pragma_axis = bn1fusion_tile_tensor_res()
+        else:
+            res_axis_list, bindcore_axis, res_pragma_axis = tile_tensor_res()
         cub_at_res_axis, cl0_at_res_axis, bl0_at_res_axis, al1_at_res_axis, bl1_at_res_axis = res_axis_list
 
         #=====================================tile cl0==============================================
@@ -1966,6 +2253,9 @@ class Conv2dSchedule:
 
         # quant fusion
         self._quant_fusion.quant_tensors_attach(sch, res, cub_at_res_axis)
+
+        # bn1 fusion
+        self._convbn1.bn1fusion_compute_at(sch, res, cub_at_res_axis)
 
         sch[cl0].compute_at(sch[res], cl0_at_res_axis)
         sch[al0].compute_at(sch[cl0], al0_at_cl0_axis)
@@ -2004,7 +2294,7 @@ class Conv2dSchedule:
                           "dynamic_al0_pragma_axis": dynamic_al0_pragma_axis,
                          }
 
-        return tiling_param, emit_insn_dict, attach_axis_dict
+        return res, tiling_param, emit_insn_dict, attach_axis_dict
 
     def special_process_post(self, res, conv_param, tensor_param, tiling_param, emit_insn_dict, attach_axis_dict):
         """
@@ -2028,12 +2318,12 @@ class Conv2dSchedule:
         res_pragma_axis = emit_insn_dict["res_pragma_axis"]
         bindcore_axis = emit_insn_dict["bindcore_axis"]
 
-        cub_at_res_axis = attach_axis_dict["cub_at_res_axis"]
-        singlecore_out2al1_loopm_axis = attach_axis_dict["singlecore_out2al1_loopm_axis"]
-        al12al0_loopm_axis = attach_axis_dict["al12al0_loopm_axis"]
-        batchbindonly_pragma_axis = attach_axis_dict["batchbindonly_pragma_axis"]
-        res_m_dim_axis = attach_axis_dict["res_m_dim_axis"]
-        cl0_mo = attach_axis_dict["cl0_mo"]
+        cub_at_res_axis = attach_axis_dict.get("cub_at_res_axis")
+        singlecore_out2al1_loopm_axis = attach_axis_dict.get("singlecore_out2al1_loopm_axis")
+        al12al0_loopm_axis = attach_axis_dict.get("al12al0_loopm_axis")
+        batchbindonly_pragma_axis = attach_axis_dict.get("batchbindonly_pragma_axis")
+        res_m_dim_axis = attach_axis_dict.get("res_m_dim_axis")
+        cl0_mo = attach_axis_dict.get("cl0_mo")
 
         sch = self._sch
 
@@ -2212,6 +2502,7 @@ class Conv2dSchedule:
                 al1_emit_insn()
                 self._lx_fusion.al1_l1fusion_pragma(sch, al1)
                 al0_emit_insn()
+            if not self._dynamic_shape.flag:
                 get_weight_repeat_number()
 
         def bl1_emit_insn():
@@ -2290,6 +2581,9 @@ class Conv2dSchedule:
                 fixpipe_res_pragma_axis = cub_pragma_axis if self._eltwise_ub_fusion.flag else res_pragma_axis
                 sch[self._fixpipe_res].emit_insn(fixpipe_res_pragma_axis, get_res_insn_str())
 
+            if self._convbn1.flag:
+                return self._convbn1.bn1fusion_cub_emit_insn(sch)
+
             if is_support_fixpipe_op():
                 return res_common_emit_insn()
 
@@ -2304,7 +2598,9 @@ class Conv2dSchedule:
             """
             Emit insn for res tensor.
             """
-            if self._eltwise_ub_fusion.flag:
+            if self._convbn1.flag:
+                self._convbn1.bn1fusion_res_emit_insn(sch, res, res_pragma_axis, self._dynamic_shape.flag)
+            elif self._eltwise_ub_fusion.flag:
                 sch[res].emit_insn(res_pragma_axis, "dma_copy")
 
         def bias_emit_insn():
@@ -2362,11 +2658,11 @@ class Conv2dSchedule:
         self._quant_fusion.quant_tensors_emit_insn(sch)
 
 
-def conv_v220_schedule(sch, res, conv_param, op_graph, tiling_dict_flag, tiling_case=None, var_range=None):
+def conv_v220_schedule(sch, res, spec_node_list, sch_list, conv_param, op_graph, tiling_dict_flag, tiling_case=None, var_range=None):
     """
     Schedule for Conv2d v220.
     """
-    schedule = Conv2dSchedule(sch, res, conv_param, op_graph, tiling_dict_flag, tiling_case, var_range)
+    schedule = Conv2dSchedule(sch, res, spec_node_list, conv_param, op_graph, tiling_dict_flag, tiling_case, var_range)
 
     info_dict = schedule.fetch_info_dict(tiling_case)
 
@@ -2381,7 +2677,7 @@ def conv_v220_schedule(sch, res, conv_param, op_graph, tiling_dict_flag, tiling_
 
     schedule.special_process_pre(res, tensor_param)
 
-    tiling_param, emit_insn_dict, attach_axis_dict = schedule.tile_attach_tensor(res, tensor_param)
+    res, tiling_param, emit_insn_dict, attach_axis_dict = schedule.tile_attach_tensor(res, sch_list, tensor_param)
 
     schedule.special_process_post(res, conv_param, tensor_param, tiling_param, emit_insn_dict, attach_axis_dict)
 

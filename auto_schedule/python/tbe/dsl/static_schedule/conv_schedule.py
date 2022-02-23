@@ -29,6 +29,8 @@ from tbe.dsl.compute.conv_compute import shape_to_list
 from tbe.dsl.compute.max_pool2d_3_2_fusion_compute import MaxPoolParam
 from tbe.dsl.static_schedule import util
 from tbe.dsl.static_schedule.conv_schedule_v2 import conv_v220_schedule
+from tbe.dsl.static_schedule.conv_bn1_fusion_schedule import check_conv_bn1
+from tbe.dsl.static_schedule.conv_bn1_fusion_schedule import convbn1_recompute
 from tbe.dsl.base.operation import get_te_var
 from tbe.common.tiling.get_tiling import get_tiling
 from tbe.common.tiling.tiling_helper import TILING_INSTANCE
@@ -179,45 +181,6 @@ def delete_op(del_op, body_ops, sch, dtype=None):
                 break
 
 
-def check_conv_bn1(outs):
-    """
-    check conv + bn1
-
-    Parameters
-    ----------
-    outs : the outputs of op
-
-    Returns
-    -------
-
-    """
-    if isinstance(outs, tvm.tensor.Tensor) or not isinstance(outs, list) or len(outs) != 3:
-        return False
-
-    conv_out, reduce_0, reduce_1 = outs
-    if "convolution_" not in conv_out.op.tag and "conv_vector_bias_add" not in conv_out.op.tag:
-        return False
-    if ("reduce_sum" not in reduce_0.op.tag) or \
-            ("reduce_sum" not in reduce_1.op.tag):
-        return False
-
-    # check conv_type is fp16
-    if conv_out.dtype != "float16":
-        return False
-    # check cast->reduce_0
-    reduce0_src = get_srctensor(reduce_0)
-    reduce0_src_pre = get_srctensor(reduce0_src)
-
-    if ("elewise_single_cast" not in reduce0_src.op.tag) or (reduce0_src_pre != conv_out):
-        return False
-    # check reduce_axis
-    if (conv_out.op.axis[1].dom.extent.value != reduce_0.op.axis[1].dom.extent.value) or \
-            (conv_out.op.axis[1].dom.extent.value != reduce_1.op.axis[1].dom.extent.value):
-        return False
-
-    return True
-
-
 def check_doubleout_quant_v200(outs):
     """
     check v200 quant fuse for double out
@@ -341,29 +304,6 @@ def reget_tensor_list(outs):
     outputs
 
     """
-    def _fcombine(arg_0, arg_1):
-        """
-        return index tupe
-
-        Parameters
-        ----------
-        arg_0 : the operand of reduction, a tuple of index and value
-        arg_1 : the operand of reduction, a tuple of index and value
-
-        Returns
-        -------
-        index tupe
-
-        """
-        return arg_0[0] + arg_1[0], arg_0[1] + arg_1[1]
-
-    def _fidentity(t_0, t_1):
-        """
-        return tvm const tupe
-
-        """
-        return tvm.const(0, t_0), tvm.const(0, t_1)
-
     def _process_doubleout_quant_v200(outs):
         """
         process the out tensors in conv + dequants16 + requant16 doubleout.
@@ -434,92 +374,7 @@ def reget_tensor_list(outs):
 
     ConvParam.convbn1_flag = False # used in cce_schedule
     if check_conv_bn1(outs):
-        conv_out, _, _ = outs
-        conv_res_shape = tuple(conv_out.shape)
-        # add for group pattern
-        cout1_opt = ConvParam.para_dict["cout1_opt"]
-        # end for group pattern
-        reduce_shape = (conv_res_shape[1], conv_res_shape[3])
-        k_0 = tvm.reduce_axis((0, conv_res_shape[0]), name='k_0')
-        k_1 = tvm.reduce_axis((0, conv_res_shape[2]), name='k_1')
-        op_tag = "convolution_"
-
-        if ConvParam.tiling_query_param["bias_flag"]:
-            cub = ConvParam.tensor_map["c_ub"]
-            bias_ub = ConvParam.tensor_map["bias_ub"]
-        else:
-            cub = ConvParam.tensor_map["c_ub"]
-
-        c_col = cub.op.input_tensors[0]
-        group = ConvParam.para_dict["group"]
-
-        if ConvParam.tiling_query_param["bias_flag"]:
-            mad_shape = c_col.shape
-            bias_l0c = tvm.compute(mad_shape, lambda group, n, c1_opt, m, c0:
-                                   bias_ub(group*mad_shape[2]*mad_shape[4] + \
-                                   c1_opt*mad_shape[4] + c0).astype(c_col.dtype),
-                                   name=op_tag + "bias_l0c",
-                                   tag=op_tag + "bias_l0c")
-            c_col = tvm.compute(mad_shape, lambda *indice:
-                                bias_l0c(*indice) + c_col(*indice),
-                                name=op_tag + "c_col_bias",
-                                tag=op_tag + "c_col_bias")
-            ConvParam.tensor_map["c_col_bias"] = c_col
-            ConvParam.tensor_map["bias_l0c"] = bias_l0c
-
-        c_ub = tvm.compute(cub.shape,
-                           lambda batch, cout1, howo, cout0: \
-                           c_col(0 if group == 1 else cout1 // cout1_opt,
-                                 batch,
-                                 cout1 if group == 1 else cout1 % cout1_opt,
-                                 howo, cout0),
-                           name='c_ub',
-                           tag=op_tag + "c_ub",
-                           attrs=cub.op.attrs)
-        ConvParam.tensor_map["c_ub"] = c_ub
-
-        if ConvParam.v200_width_out_1_flag:
-            removepad_shape = ConvParam.tensor_map["remove_padded_column"].shape
-            res_tensor = tvm.compute(removepad_shape, lambda batch, cout1, howo, cout0:
-                                     c_ub(batch, cout1, howo*2, cout0),
-                                     name="remove_padded_column",
-                                     tag=op_tag + "remove_padded_column",
-                                     attrs={"width_out": ConvParam.w_out})
-            ConvParam.tensor_map["remove_padded_column"] = res_tensor
-            c_ub = res_tensor
-
-        res_c = tvm.compute(conv_res_shape,
-                            lambda batch, cout1, howo, cout0:
-                            c_ub(batch, cout1, howo, cout0),
-                            name='C',
-                            tag=op_tag + "C",
-                            attrs={"width_out": ConvParam.w_out})
-        ConvParam.tensor_map["C"] = res_c
-        cast_0_ub = tvm.compute(conv_res_shape,
-                                lambda *indice:
-                                res_c(*indice).astype("float16"),
-                                name="cast_0_ub")
-        cast0 = tvm.compute(conv_res_shape,
-                            lambda *indice: cast_0_ub(*indice),
-                            name="cast0")
-        cast1 = tvm.compute(conv_res_shape,
-                            lambda *indice: cast0(*indice).astype("float32"),
-                            name="cast1")
-        ConvParam.tensor_map["cast1"] = cast1
-        from tbe.dsl.api import vmul
-        mul_0 = vmul(cast1, cast1)
-
-        tuple_reduce = tvm.comm_reducer(_fcombine,
-                                        _fidentity,
-                                        name='tuple_reduce')
-        mean_out, _ = tvm.compute(reduce_shape,
-                                  lambda c1, c0:
-                                  tuple_reduce((cast1[k_0, c1, k_1, c0],
-                                                mul_0[k_0, c1, k_1, c0]),
-                                               axis=[k_0, k_1]),
-                                  name="mean_out")
-        outputs = [cast0, mean_out]
-        ConvParam.convbn1_flag = True # used in cce_schedule
+        outputs = convbn1_recompute(outs)
     elif check_doubleout_quant_v200(outs):
         outputs = _process_doubleout_quant_v200(outs)
     elif check_doubleout_dequant(outs):
@@ -4907,7 +4762,7 @@ class CceConvOp:
         self_init()
 
         if is_support_v220():
-            return conv_v220_schedule(self._schedule, res, ConvParam, self._op_graph, tilingdict_flag, tiling_case, var_range)
+            return conv_v220_schedule(self._schedule, res, spec_node_list, sch_list, ConvParam, self._op_graph, tilingdict_flag, tiling_case, var_range)
 
         _l0a_dma_load3d_support_check()
         tensor_map = ConvParam.tensor_map

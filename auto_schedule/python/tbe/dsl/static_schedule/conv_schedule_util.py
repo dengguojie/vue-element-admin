@@ -70,23 +70,10 @@ def is_elewise(tensor):
     return False
 
 
-def is_dynamic(tensor):
-    """
-    Check whether the input tensor is dynamic.
-    """
-    for i in tensor.shape:
-        if isinstance(i, tvm.expr.Var):
-            return True
-    return False
-
-
 def is_shape_equal(tensor_a, tensor_b):
     """
     Compare the shape of two input tensors.
     """
-    if is_dynamic(tensor_a) or is_dynamic(tensor_b):
-        return False
-
     shape_a = tuple(i.value for i in tensor_a.shape)
     shape_b = tuple(i.value for i in tensor_b.shape)
 

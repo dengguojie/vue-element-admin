@@ -389,6 +389,7 @@ cube-tiling:
       - auto_schedule/python/tbe/dsl/static_schedule/conv_maxpoolfusion_schedule.py
       - auto_schedule/python/tbe/dsl/static_schedule/conv_maxpoolfusion_schedule_util.py
       - auto_schedule/python/tbe/dsl/static_schedule/conv_ubfusion_schedule.py
+      - auto_schedule/python/tbe/dsl/static_schedule/conv_bn1_fusion_schedule.py
       - auto_schedule/python/tbe/dsl/static_schedule/strided_read_schedule.py
       - auto_schedule/python/tbe/dsl/static_schedule/strided_write_schedule.py
       - auto_schedule/python/lang/dynamic/schedule/conv2d_tilingcase.py

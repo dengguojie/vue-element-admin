@@ -43,11 +43,12 @@ class EltwiseUBFusion:
     process cub and common eltwise ub tensors.
     conv + fixpipe + ub to be supported.
     """
-    def __init__(self, res, op_graph):
+    def __init__(self, res, op_graph, conv_param):
         self.cub_tag_list = ["fixpipe_reform",
                              "convolution_res_fp32_conv2d",
                              "convolution_res_conv2d"
                             ]  # The order cannot be changed.
+        self._conv_param = conv_param
         self.flag = self.check_ub_fusion_flag(res)
         self.ub_body_tensors = set()
         self.ub_input_placeholders = set()
@@ -110,7 +111,12 @@ class EltwiseUBFusion:
     def check_ub_fusion_flag(self, res):
         """
         Check for ub fusion situations.
+        Special fusion reset cub_tag_list to get the real cub
         """
+        if self._conv_param.convbn1_flag:
+            self.cub_tag_list = ["convolution_c_ub"]
+            return True
+
         # to be deleted when fixpipe ready
         if not is_support_fixpipe_op():
             return res.op.tag == "elewise_single_VS_min"
@@ -180,6 +186,9 @@ class EltwiseUBFusion:
             """
             Check if cannot reuse the memory of pre tensor.
             """
+            if self._conv_param.dynamic_flag:
+                return False
+
             pre_tensor_list = []
             for pre_tensor in tensor.op.input_tensors:
                 if pre_tensor in self.inline_tensors:
