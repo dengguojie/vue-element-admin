@@ -152,10 +152,6 @@ def _get_reduce_sum_ub_work_space_size(dtype, ub_size):
     repeat_data_num = 8 * data_one_block
     repeat_num = _ceil_div(ub_size, repeat_data_num)
 
-    # 32byte align
-    if repeat_num % data_one_block > 0:
-        repeat_num = _ceil_div(repeat_num, data_one_block) * data_one_block
-
     return repeat_num
 
 
