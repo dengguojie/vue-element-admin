@@ -146,23 +146,16 @@ class SplitV():
         self.ub_elems = (self.ub_elems // self.block_elems) * self.block_elems
         self.tiling_dtype = "int64"
         self.tiling_align = align_value(self.TILING_ARG_NUM, 4)
-        self.tiling_gm, self.x_gm, self.size_splits_gm, self.split_dim_gm, self.outputs_gm = self.init_gm_tensor()
+        tiling_args = self.init_gm_tensor()
+        self.tiling_gm, self.x_gm, self.size_splits_gm, self.split_dim_gm, self.outputs_gm = tiling_args
 
-        self.block_ub = None
-        self.tiling_ub = None
+        self.block_ub, self.tiling_ub = [None, None]
 
         # mode 8
-        self.outer_loop = 0
-        self.outer_tail = 0
-        self.block_num = 0
-        self.num1 = 0
-        self.num2 = 0
+        self.outer_loop, self.outer_tail, self.block_num, self.num1, self.num2 = [0, 0, 0, 0, 0]
 
         # mode 3
-        self.row_elems_offset = None
-        self.split_i_mode = None
-        self.row_num1 = None
-        self.row_num2 = None
+        self.row_elems_offset, self.split_i_mode, self.row_num1, self.row_num2 = [None, None, None, None]
 
         # tiling params
         self.tiling_mode = None
@@ -178,10 +171,7 @@ class SplitV():
         self.last_num_last_core = None
         self.one_loop_elems_last_core = None
 
-        self.shape_after_dim = None
-        self.shape_before = None
-        self.shape_after = None
-        self.multi_move = None
+        self.shape_after_dim, self.shape_before, self.shape_after, self.multi_move = [None, None, None, None]
 
         self.tail_ele = None
         self.one_core_seg = None
@@ -224,7 +214,8 @@ class SplitV():
                                                  scope=tik.scope_gm)
             outputs_gm.append(gm_tensor)
 
-        return tiling_gm, x_gm, size_splits_gm, split_dim_gm, outputs_gm
+        tiling_args = [tiling_gm, x_gm, size_splits_gm, split_dim_gm, outputs_gm]
+        return tiling_args
 
     def get_tiling_args(self):
         """

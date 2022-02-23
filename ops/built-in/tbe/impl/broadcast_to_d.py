@@ -91,11 +91,13 @@ def _check_shape_compatibility(shape_in, shape):
     try:
         comp_shape_in, comp_shape, shape_max = shape_util.broadcast_shapes(
             shape_in, shape, param_name_input1="x", param_name_input2="shape")
-        if comp_shape != shape_max:
-            error_detail = "shape_in is not compatible with shape_out"
-            error_manager_vector.raise_err_two_input_shape_invalid("broadcast_to_d", "shape_in", "shape_out",
-                                                                   error_detail)
+
     except RuntimeError:
+        error_detail = "shape_in is not compatible with shape_out"
+        error_manager_vector.raise_err_two_input_shape_invalid("broadcast_to_d", "shape_in", "shape_out",
+                                                               error_detail)
+
+    if comp_shape != shape_max:
         error_detail = "shape_in is not compatible with shape_out"
         error_manager_vector.raise_err_two_input_shape_invalid("broadcast_to_d", "shape_in", "shape_out",
                                                                error_detail)

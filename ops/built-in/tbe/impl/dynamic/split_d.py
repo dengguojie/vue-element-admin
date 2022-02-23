@@ -172,6 +172,20 @@ class SplitD:
         self.temp_ub = self.tik_instance.Tensor(self.input_dtype, (self.input_data_each_block,), name="temp_ub",
                                                 scope=tik.scope_ubuf)
 
+    @staticmethod
+    def ceil_div(value_x, value_y):
+        """
+        do ceil division
+        """
+        return (value_x + value_y - 1) // value_y
+
+    @staticmethod
+    def floor_div(value_x, value_y):
+        """
+        do ceil division
+        """
+        return value_x // value_y
+
     def tiling_args(self):
         """
         get runtime params from tiling
@@ -223,20 +237,6 @@ class SplitD:
         self.loop_each_last_core.set_as(self.tiling_ub[16])
         self.loop_last_last_core.set_as(self.tiling_ub[17])
         self.loop_burst_len.set_as(0)
-
-    @staticmethod
-    def ceil_div(value_x, value_y):
-        """
-        do ceil division
-        """
-        return (value_x + value_y - 1) // value_y
-
-    @staticmethod
-    def floor_div(value_x, value_y):
-        """
-        do ceil division
-        """
-        return value_x // value_y
 
     def check_input_params(self):
         """

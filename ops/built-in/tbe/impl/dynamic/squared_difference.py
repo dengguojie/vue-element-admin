@@ -92,7 +92,7 @@ def squared_difference(x1, x2, y, kernel_name="squared_difference"):
     check_list = ["float16", "float32", "int32"]
     x1_dtype = x1.get("dtype").lower()
     x2_dtype = x2.get("dtype").lower()
-    if not x1_dtype in check_list or not x2_dtype in check_list:
+    if x1_dtype not in check_list or x2_dtype not in check_list:
         error_detal = "squared_difference only support float16, float32, int32"
         error_manager_vector.raise_err_two_input_dtype_invalid(kernel_name, "x1", "x2", error_detal)
 

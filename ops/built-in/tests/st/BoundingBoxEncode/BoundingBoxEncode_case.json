@@ -1,0 +1,182 @@
+[
+  {
+    "op": "BoundingBoxEncode",
+    "input_desc": [
+      {
+        "shape": [
+          15,
+          32,
+		  1,
+		  4
+        ],
+        "format": "ND",
+        "ori_shape": [
+          15,
+          32,
+		  1,
+		  4
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "anchor_box",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          15,
+          32,
+		  1,
+		  4
+        ],
+        "format": "ND",
+        "ori_shape": [
+          15,
+          32,
+		  1,
+		  4
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "ground_truth_box",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          15,
+          32,
+		  1,
+		  4
+        ],
+        "format": "ND",
+        "ori_shape": [
+          15,
+          32,
+		  1,
+		  4
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "deltas",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "means",
+        "type": "list_float",
+        "value": [
+          1.0,
+          2.1,
+		  0.0,
+		  1.8
+        ]
+      },
+      {
+        "name": "stds",
+        "type": "list_float",
+        "value": [
+          2.1,
+          1.0,
+		  3.6,
+		  1.9
+        ]
+      }
+    ],
+    "case_name": "test_BoundingBoxEncode_000"
+  },
+  {
+    "op": "BoundingBoxEncode",
+    "input_desc": [
+      {
+        "shape": [
+          5,
+		  13,
+          64,
+		  16,
+		  4
+        ],
+        "format": "ND",
+        "ori_shape": [
+          5,
+		  13,
+          64,
+		  16,
+		  4
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "anchor_box",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          5,
+		  13,
+          64,
+		  16,
+		  4
+        ],
+        "format": "ND",
+        "ori_shape": [
+          5,
+		  13,
+          64,
+		  16,
+		  4
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "ground_truth_box",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          5,
+		  13,
+          64,
+		  16,
+		  4
+        ],
+        "format": "ND",
+        "ori_shape": [
+          5,
+		  13,
+          64,
+		  16,
+		  4
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "deltas",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "means",
+        "type": "list_float",
+        "value": [
+          0.0,
+          0.0,
+		  0.0,
+		  0.0
+        ]
+      },
+      {
+        "name": "stds",
+        "type": "list_float",
+        "value": [
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    ],
+    "case_name": "test_BoundingBoxEncode_002"
+  }
+]

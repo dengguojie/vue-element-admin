@@ -237,9 +237,8 @@ def _gather_c0_for_out(args):
             src_factor_step = factor_idx * tdc.VNC_LINES * c0_size
             dst_factor_step = factor_idx * c0_size
             src_addr_list = [src_ub_casted[src_factor_step + src_c1_step + c0_size * i] for i in tdc.ADDR_IDX_LIST]
-            dst_addr_list = [
-                dst_ub_casted[ub_offset_casted + dst_factor_step + dst_gap * size_factor * i] for i in tdc.ADDR_IDX_LIST
-            ]
+            dst_addr_list = [dst_ub_casted[ub_offset_casted + dst_factor_step + dst_gap * size_factor * i] for i in
+                             tdc.ADDR_IDX_LIST]
             with tik_inst.if_scope(repeat_cnt == 1):
                 src_stride.set_as(0)
                 dst_stride.set_as(0)
@@ -300,9 +299,8 @@ def _gather_c0_with_gap_for_out(args):
             src_factor_step = factor_idx * tdc.VNC_LINES * c0_size
             dst_factor_step = factor_idx * c0_size
             src_addr_list = [src_ub_casted[src_factor_step + src_c1_step + c0_size * i] for i in tdc.ADDR_IDX_LIST]
-            dst_addr_list = [
-                dst_ub_casted[ub_offset_casted + dst_factor_step + dst_gap * size_factor * i] for i in tdc.ADDR_IDX_LIST
-            ]
+            dst_addr_list = [dst_ub_casted[ub_offset_casted + dst_factor_step + dst_gap * size_factor * i] for i in
+                             tdc.ADDR_IDX_LIST]
             with tik_inst.if_scope(repeat_cnt == 1):
                 src_stride.set_as(0)
                 dst_stride.set_as(0)

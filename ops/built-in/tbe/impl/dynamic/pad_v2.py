@@ -1017,9 +1017,8 @@ class PadInit(OpBase):
                                                     self.input_gm[input_gm_offset + src_offset], 0, 1, burst_len, 0, 0)
 
                     # step2. vnchw 16 dims origin_data_ub to vnchw_data_ub
-                    origin_data_ub_list = [
-                        origin_data_ub[i * max_output_size] for i in range(0, Constant.TRANS_MIN_BLKS)
-                    ]
+                    origin_data_ub_list = [origin_data_ub[i * max_output_size] for i in
+                                           range(0, Constant.TRANS_MIN_BLKS)]
                     vnchw_data_ub_list = [vnchw_data_ub[i * 16] for i in range(0, Constant.TRANS_MIN_BLKS)]
                     self.tik_instance.vnchwconv(False, False, vnchw_data_ub_list, origin_data_ub_list, vnchw_repeat0,
                                                 vnchw_dst_stride0, vnchw_src_stride0)

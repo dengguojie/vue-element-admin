@@ -693,8 +693,8 @@
         ],
         "format": "ND",
         "ori_shape": [
-          1,
-          1
+          -1,
+          -1
         ],
         "ori_format": "ND",
         "name": "input_dy",
@@ -721,8 +721,8 @@
         ],
         "format": "ND",
         "ori_shape": [
-          1,
-          1
+          -1,
+          -1
         ],
         "ori_format": "ND",
         "name": "input_x",
@@ -751,8 +751,8 @@
         ],
         "format": "ND",
         "ori_shape": [
-          1,
-          1
+          -1,
+          -1
         ],
         "ori_format": "ND",
         "name": "output_z",

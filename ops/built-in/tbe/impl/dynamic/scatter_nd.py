@@ -97,7 +97,7 @@ class ScatterNd():
         self.shape_dtype = shape.get("dtype").lower()
         self.out_dtype = y.get("dtype").lower()
         set_atomic_add_reflect_list = {"float32": 1, "float16": 2, "int16": 3, "int32": 4, "int8": 5}
-        self.set_atomic_add_value = set_atomic_add_reflect_list[self.out_dtype]
+        self.set_atomic_add_value = set_atomic_add_reflect_list.get(self.out_dtype)
 
         self.check_input_params()
 
@@ -1380,8 +1380,9 @@ class ScatterNd():
                 self.tik_instance.vconv(Constant.MASK_CAST, "none", self.updates_fp32_ub[updates_fp32_ub_index],
                                         self.updates_ub[updates_ub_index], max_repeat_loop_last, 1, 1, 8, 4)
             with self.tik_instance.if_scope(repeat_loop_left > 0):
-                updates_fp32_ub_index = Constant.MAX_REPEAT * max_repeat_loop_num * Constant.MASK_CAST + max_repeat_loop_last * Constant.MASK_CAST
-                updates_ub_index = Constant.MAX_REPEAT * max_repeat_loop_num * Constant.MASK_CAST + max_repeat_loop_last * Constant.MASK_CAST
+                max_repeat = Constant.MAX_REPEAT * max_repeat_loop_num * Constant.MASK_CAST
+                updates_fp32_ub_index = max_repeat + max_repeat_loop_last * Constant.MASK_CAST
+                updates_ub_index = max_repeat + max_repeat_loop_last * Constant.MASK_CAST
                 self.tik_instance.vconv(repeat_loop_left, "none", self.updates_fp32_ub[updates_fp32_ub_index],
                                         self.updates_ub[updates_ub_index], 1, 1, 1, 8, 4)
             self.tik_instance.set_atomic_add(self.set_atomic_add_value)

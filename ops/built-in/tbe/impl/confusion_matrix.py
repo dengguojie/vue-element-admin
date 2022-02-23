@@ -339,7 +339,8 @@ def compute_outub_size(height, width, dtype, core_nums):
             last_remian = 0
         total_len = block_num * out_ele_perblock
 
-    return block_num, block_per_core, out_factor, last_remian, total_len, use_cores
+    tiling_args = [block_num, block_per_core, out_factor, last_remian, total_len, use_cores]
+    return tiling_args
 
 
 def applyub_by_length(ibuilder, length, dtype, buf_name):
@@ -415,8 +416,8 @@ def confusion_matrix_ir(labels, prediction, weight, output):
     ibuilder.scope_attr(core_num, "thread_extent", device_core_num)
 
     # apply for confusion_buf,weight_buf
-    block_num, block_per_core, out_factor, last_remian, total_len, use_cores = compute_outub_size(
-        height, width, output_dtype, device_core_num)
+    tiling_args = compute_outub_size(height, width, output_dtype, device_core_num)
+    block_num, block_per_core, out_factor, last_remian, total_len, use_cores = tiling_args
     block_num_int8 = int(total_len // Constant.BYTES_PER_BLOCK) + 1
     block_num_fp16 = int(total_len // Constant.FLOAT16_NUMS) + 1
     if output_dtype in ["int8", "uint8"]:
@@ -834,8 +835,8 @@ def confusion_matrix_ir_weight_none(labels, prediction, output):
     ibuilder.scope_attr(core_num, "thread_extent", device_core_num)
 
     # apply for confusion_buf,weight_buf
-    block_num, block_per_core, out_factor, last_remian, total_len, use_cores = compute_outub_size(
-        height, width, output_dtype, device_core_num)
+    tiling_args = compute_outub_size(height, width, output_dtype, device_core_num)
+    block_num, block_per_core, out_factor, last_remian, total_len, use_cores = tiling_args
     block_num_int8 = int(total_len // Constant.BYTES_PER_BLOCK) + 1
     block_num_fp16 = int(total_len // Constant.FLOAT16_NUMS) + 1
 

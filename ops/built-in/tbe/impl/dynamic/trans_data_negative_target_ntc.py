@@ -264,9 +264,8 @@ def _once_vnchwconv_invert(args):
                     src_addr_list = [src_ub[c0_len * (tdc.VNC_LINES + i) + src_offset] for i in tdc.ADDR_IDX_LIST]
                     tik_inst.vnchwconv(True, False, dst_addr_list, src_addr_list, repeat_cnt, dst_stride, src_stride)
                     src_addr_list = [src_ub[c0_len * i + src_offset] for i in tdc.ADDR_IDX_LIST]
-                    dst_addr_list = [
-                        dst_ub[cr_align_block_size * (tdc.VNC_LINES + i) + dst_offset] for i in tdc.ADDR_IDX_LIST
-                    ]
+                    dst_addr_list = [dst_ub[cr_align_block_size * (tdc.VNC_LINES + i) + dst_offset] for i in
+                                     tdc.ADDR_IDX_LIST]
                     tik_inst.vnchwconv(False, True, dst_addr_list, src_addr_list, repeat_cnt, dst_stride, src_stride)
                     src_addr_list = [src_ub[c0_len * (tdc.VNC_LINES + i) + src_offset] for i in tdc.ADDR_IDX_LIST]
                     tik_inst.vnchwconv(True, True, dst_addr_list, src_addr_list, repeat_cnt, dst_stride, src_stride)

@@ -223,8 +223,9 @@ class BoundingBoxEncode():
         stds_3_scalar = self.tik_instance.Scalar(dtype, name="stds_3_scalar")
         stds_3_scalar.set_as(1.0 / stds[3])
 
-        return (means_0_scalar, means_1_scalar, means_2_scalar, means_3_scalar,
-                stds_0_scalar, stds_1_scalar, stds_2_scalar, stds_3_scalar)
+        scalar_list = [means_0_scalar, means_1_scalar, means_2_scalar, means_3_scalar,
+                       stds_0_scalar, stds_1_scalar, stds_2_scalar, stds_3_scalar]
+        return scalar_list
 
     def tik_instance_function(self):
         """
@@ -417,12 +418,8 @@ class BoundingBoxEncode():
                               for i in range(16)]
         anchorbox_dst_list = [anchorbox_dst_ub[16 * i] for i in range(16)]
 
-        groundtruthbox_src_list = [
-            groundtruthbox_vconv_src_ub[16 * i] for i in range(16)
-        ]
-        groundtruthbox_dst_list = [
-            groundtruthbox_dst_ub[16 * i] for i in range(16)
-        ]
+        groundtruthbox_src_list = [groundtruthbox_vconv_src_ub[16 * i] for i in range(16)]
+        groundtruthbox_dst_list = [groundtruthbox_dst_ub[16 * i] for i in range(16)]
 
         anchorbox_ptmp_ub = self.tik_instance.Tensor(
             "float16", (self.ub_max_size,),

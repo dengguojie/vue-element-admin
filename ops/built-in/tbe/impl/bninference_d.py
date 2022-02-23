@@ -455,8 +455,7 @@ def get_fusion_params(x, mean, variance, scale, bias, y):
         if x is not None:
             l1_fusion_type = -1
             if tbe_platform.fusion_manager.fusion_manager.get_build_cfg() != "disable":
-                l1_fusion_type = x.op.attrs["L1_fusion_type"].value \
-                    if "L1_fusion_type" in x.op.attrs else -1
+                l1_fusion_type = x.op.attrs["L1_fusion_type"].value if "L1_fusion_type" in x.op.attrs else -1
                 if l1_fusion_type == 1:
                     error_manager_vector.raise_err_specific_reson("bninference",
                         "bninference does not support l1 width fusion")
@@ -617,7 +616,8 @@ def gen_tensor(x, mean, variance, scale, offect):
             offset_input = tvm.placeholder(shape_offect_new, name="offset_input",
                                            dtype=dtype_offect.lower(), attrs=attr_offect)
 
-    return x_input, mean_input, variance_input, scale_input, offset_input, is_l1_depth_fusion
+    input_list = [x_input, mean_input, variance_input, scale_input, offset_input]
+    return input_list, is_l1_depth_fusion
 
 
 def get_l1_paras(x):
@@ -679,10 +679,10 @@ def bninference_d(x, mean, variance, scale, offect, y, momentum, epsilon,
         para_scale_bias_check(x, mean, variance, scale, offect, use_global_stats, kernel_name)
     else:
         _para_check(x, mean, variance, scale, use_global_stats, kernel_name)
-    x_input, mean_input, variance_input, scale_input, offect_input, is_l1_depth_fusion = gen_tensor(x, mean, variance,
-                                                                                                    scale, offect)
+    input_list, is_l1_depth_fusion = gen_tensor(x, mean, variance, scale, offect)
+    x_input, mean_input, variance_input, scale_input, offset_input = input_list
     res = bninference_d_compute(x_input, mean_input,
-                                variance_input, scale_input, offect_input,
+                                variance_input, scale_input, offset_input,
                                 y, momentum, epsilon,
                                 use_global_stats, mode)
     with tvm.target.cce():
@@ -692,7 +692,7 @@ def bninference_d(x, mean, variance, scale, offect, y, momentum, epsilon,
     elif offect is None and scale is not None:
         tensor_list = [x_input, mean_input, variance_input, scale_input, res]
     else:
-        tensor_list = [x_input, mean_input, variance_input, scale_input, offect_input, res]
+        tensor_list = [x_input, mean_input, variance_input, scale_input, offset_input, res]
     config = {"name": kernel_name,
               "tensor_list": tensor_list,
               "l1_fusion_option": is_l1_depth_fusion}

@@ -263,12 +263,16 @@ def op_select_format(input_x, input_y, output_z, alpha, kernel_name="axpy"):
                 format_support_flag[("ND", "FRACTAL_NZ", "FRACTAL_NZ")] = 1
 
     # gen format and dtype
-    format_list_input0 = [format_tuple[0] for format_tuple in format_support_flag if
-                          format_support_flag.get(format_tuple)]
-    format_list_input1 = [format_tuple[1] for format_tuple in format_support_flag if
-                          format_support_flag.get(format_tuple)]
-    format_list_output = [format_tuple[2] for format_tuple in format_support_flag if
-                          format_support_flag.get(format_tuple)]
+    format_list_input0 = []
+    format_list_input1 = []
+    format_list_output = []
+
+    for _, format_tuple in enumerate(format_support_flag):
+        if format_support_flag.get(format_tuple):
+            format_list_input0.append(format_tuple[0])
+            format_list_input1.append(format_tuple[1])
+            format_list_output.append(format_tuple[2])
+
     dtype_total = []
     for dtype in dtype_list:
         dtype_total = dtype_total + [dtype] * len(format_list_output)

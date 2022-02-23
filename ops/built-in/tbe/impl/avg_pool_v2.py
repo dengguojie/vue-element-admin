@@ -104,6 +104,108 @@ def check_supported(x, filter, bias, y, ksize, strides, padding="CALCULATED", pa
     return True, ""
 
 
+def get_op_support_info(x, filter, bias, y, ksize, strides, padding="CALCULATED", pads=(0, 0, 0, 0),
+                        data_format="NCHW", global_pooling=False, ceil_mode=False,
+                        exclusive=True, offset_x=0, kernel_name="avg_pool_v2",
+                        impl_mode="high_performance"):
+    """
+    algorithm: get_op_support_info
+
+    Notice
+    ------
+    get the avgpoolv2 split
+
+    Parameters
+    ----------
+    x : dict, shape and dtype of input_data, only support float16, shape is 4
+        dims, format is NCHW
+    filter : assist matrix
+    y : dict, shape and dtype of output_data, only support float16
+    ksize : list or tuple, the window of avgpooling, only support avgpooling
+            in H or W
+    strides : list or tuple, the stride of avgpooling window, only support
+              avgpooling in H or W
+    padding : str, the mode of padding, support VALID, SAME and CALCULATED
+    pads : padding value when padding_mode is CALCULATED
+    data_format : str, default = "NCHW"
+    global_pooling : global pooling or not
+    ceil_mode : use ceil or floor to calculate ho and wo when padding_mode
+                is CALCULATED
+    exclusive : ignore padding area or not when calculating the average
+    kernel_name : cce kernel name, default value is "avg_pool_v2"
+    impl_mode : assign high_performance or high_precision
+
+
+    Returns
+    -------
+    split info of avg_pool_v2
+    """
+
+
+    def remove_cout_split_info(temp_info, slice_info):
+        """
+        remove_cout_split_info
+        """
+        temp_info_new = []
+        for _, item in enumerate(temp_info):
+            if item["inputList"][0]["idx"] != 1:
+                temp_info_new.append(item)
+        slice_info["_op_slice_info"]["splitMaps"] = temp_info_new
+
+
+    def check_global_pooling_remove_h_w_split(temp_info, slice_info, global_pooling):
+        """
+        when glbal_pooling, remove corresponding H/W split info
+        """
+        temp_global_pooling = []
+        for _, item in enumerate(temp_info):
+            if item["inputList"][0]["axis"][0] == 0:
+                temp_global_pooling.append(item)
+        if global_pooling:
+            slice_info["_op_slice_info"]["splitMaps"] = temp_global_pooling
+
+
+    def check_dynamic(x, slice_info):
+        """
+        process for dynamic shape
+        """
+        input_shape = []
+        if x.get("ori_shape"):
+            input_shape = x.get("ori_shape")
+        dynamic_flag = False
+        if input_shape:
+            input_shape = list(input_shape)
+            if -1 in input_shape or input_shape == [-2]:
+                dynamic_flag = True
+        if dynamic_flag:
+            slice_info["_op_slice_info"]["splitMaps"] = []
+
+
+    bias_idx = 2
+    bias = None
+    slice_info = util_conv2d.get_op_support_info_static_common(bias, bias_idx)
+
+    if slice_info.get('_op_slice_info'):
+        if slice_info.get('_op_slice_info').get("splitMaps"):
+            try:
+                temp_info = slice_info['_op_slice_info']["splitMaps"]
+            except KeyError:
+                error_detail = "Key(_op_slice_info or splitMaps) not in the dict"
+                error_manager_vector.raise_err_specific_user("avg_pool_v2", error_detail)
+            remove_cout_split_info(temp_info, slice_info)
+            check_global_pooling_remove_h_w_split(temp_info, slice_info, global_pooling)
+
+            format_x = x.get("format")
+            if format_x != "NC1HWC0":
+                try:
+                    slice_info["_op_slice_info"]["splitMaps"] = []
+                except KeyError:
+                    error_detail = "Key(_op_slice_info or splitMaps) not in the dict"
+                    error_manager_vector.raise_err_specific_user("avg_pool_v2", error_detail)
+            check_dynamic(x, slice_info)
+    return json.dumps(slice_info)
+    
+
 def _get_fusion_params(input_data, output_data, is_fused_compute=True):
     """
     function to get fusion params
@@ -122,17 +224,12 @@ def _get_fusion_params(input_data, output_data, is_fused_compute=True):
     """
     # l1 fusion params assign
     # 0: L1 depth fusion, 1: L1 width fusion, -1: no L1 fusion
-    l1_fusion_type = input_data.op.attrs["L1_fusion_type"].value \
-        if "L1_fusion_type" in input_data.op.attrs else -1
-    in_l1_flag = input_data.op.attrs["addr_type"].value == 1 \
-        if "addr_type" in input_data.op.attrs else False
-    in_valid_shape = input_data.op.attrs["valid_shape"] \
-        if "valid_shape" in input_data.op.attrs else []
-    in_slice_offset = input_data.op.attrs["slice_offset"] \
-        if "slice_offset" in input_data.op.attrs else []
+    l1_fusion_type = input_data.op.attrs["L1_fusion_type"].value if "L1_fusion_type" in input_data.op.attrs else -1
+    in_l1_flag = input_data.op.attrs["addr_type"].value == 1 if "addr_type" in input_data.op.attrs else False
+    in_valid_shape = input_data.op.attrs["valid_shape"] if "valid_shape" in input_data.op.attrs else []
+    in_slice_offset = input_data.op.attrs["slice_offset"] if "slice_offset" in input_data.op.attrs else []
     in_select_read_flag = bool(in_valid_shape)
-    in_split_index = input_data.op.attrs["split_index"].value \
-        if "split_index" in input_data.op.attrs else 0
+    in_split_index = input_data.op.attrs["split_index"].value if "split_index" in input_data.op.attrs else 0
     out_l1_flag = output_data.get("addr_type") == 1
     fusion_params = {"is_fused_compute": is_fused_compute,
                      "l1_fusion_type": l1_fusion_type,
@@ -417,8 +514,7 @@ def avg_pool_v2_compute1(x, y, ksize, strides, padding="VALID", data_format="NHW
     stride = list(stride)
 
     # l1 fusion and l2 fusion
-    l1_fusion_type = x.op.attrs["L1_fusion_type"].value \
-        if "L1_fusion_type" in x.op.attrs else -1
+    l1_fusion_type = x.op.attrs["L1_fusion_type"].value if "L1_fusion_type" in x.op.attrs else -1
     fusion_params = _get_fusion_params(x, y, is_fused_compute)
     in_select_read_flag = fusion_params.get("in_select_read_flag")
     in_valid_shape = fusion_params.get("in_valid_shape")
@@ -515,15 +611,17 @@ def avg_pool_v2(x, filter, bias, y, ksize, strides, padding="CALCULATED", pads=(
     slice_offset = x.get("slice_offset", [])
     split_index = x.get("split_index", 0)
     l1_fusion_type = x.get("L1_fusion_type", -1)
-    attr = {"addr_type": addr_type,
-            "valid_shape": valid_shape,
-            "slice_offset": slice_offset,
-            "split_index": split_index,
-            "L1_fusion_type": l1_fusion_type}
-    is_l1fusion = l1_fusion_type in (0, 1)
 
+    is_l1fusion = l1_fusion_type in (0, 1)
     input_h = input_shape[2]
     input_w = input_shape[3]
+    
+    attr = {"addr_type": addr_type,
+        "valid_shape": valid_shape,
+        "slice_offset": slice_offset,
+        "split_index": split_index,
+        "L1_fusion_type": l1_fusion_type}
+    
     if data_format in ("NHWC",):
         ksize_h = ksize[1]
         ksize_w = ksize[2]
@@ -582,96 +680,3 @@ def avg_pool_v2(x, filter, bias, y, ksize, strides, padding="CALCULATED", pads=(
 
         tbe.cce_build_code(sch, config)
 
-
-def get_op_support_info(x, filter, bias, y, ksize, strides, padding="CALCULATED", pads=(0, 0, 0, 0),
-                        data_format="NCHW", global_pooling=False, ceil_mode=False,
-                        exclusive=True, offset_x=0, kernel_name="avg_pool_v2",
-                        impl_mode="high_performance"):
-    """
-    algorithm: get_op_support_info
-
-    Notice
-    ------
-    get the avgpoolv2 split
-
-    Parameters
-    ----------
-    x : dict, shape and dtype of input_data, only support float16, shape is 4
-        dims, format is NCHW
-    filter : assist matrix
-    y : dict, shape and dtype of output_data, only support float16
-    ksize : list or tuple, the window of avgpooling, only support avgpooling
-            in H or W
-    strides : list or tuple, the stride of avgpooling window, only support
-              avgpooling in H or W
-    padding : str, the mode of padding, support VALID, SAME and CALCULATED
-    pads : padding value when padding_mode is CALCULATED
-    data_format : str, default = "NCHW"
-    global_pooling : global pooling or not
-    ceil_mode : use ceil or floor to calculate ho and wo when padding_mode
-                is CALCULATED
-    exclusive : ignore padding area or not when calculating the average
-    kernel_name : cce kernel name, default value is "avg_pool_v2"
-    impl_mode : assign high_performance or high_precision
-
-
-    Returns
-    -------
-    split info of avg_pool_v2
-    """
-
-
-    def remove_cout_split_info(temp_info, slice_info):
-        """
-        remove_cout_split_info
-        """
-        temp_info_new = []
-        for _, item in enumerate(temp_info):
-            if item["inputList"][0]["idx"] != 1:
-                temp_info_new.append(item)
-        slice_info["_op_slice_info"]["splitMaps"] = temp_info_new
-
-
-    def check_global_pooling_remove_h_w_split(temp_info, slice_info, global_pooling):
-        """
-        when glbal_pooling, remove corresponding H/W split info
-        """
-        temp_global_pooling = []
-        for _, item in enumerate(temp_info):
-            if item["inputList"][0]["axis"][0] == 0:
-                temp_global_pooling.append(item)
-        if global_pooling:
-            slice_info["_op_slice_info"]["splitMaps"] = temp_global_pooling
-
-
-    def check_dynamic(x, slice_info):
-        """
-        process for dynamic shape
-        """
-        input_shape = []
-        if x.get("ori_shape"):
-            input_shape = x.get("ori_shape")
-        dynamic_flag = False
-        if input_shape:
-            input_shape = list(input_shape)
-            if -1 in input_shape or input_shape == [-2]:
-                dynamic_flag = True
-        if dynamic_flag:
-            slice_info["_op_slice_info"]["splitMaps"] = []
-
-
-    bias_idx = 2
-    bias = None
-    slice_info = util_conv2d.get_op_support_info_static_common(bias, bias_idx)
-
-    if slice_info.get('_op_slice_info'):
-        if slice_info['_op_slice_info'].get("splitMaps"):
-            temp_info = slice_info['_op_slice_info']["splitMaps"]
-            remove_cout_split_info(temp_info, slice_info)
-            check_global_pooling_remove_h_w_split(temp_info, slice_info, global_pooling)
-
-            format_x = x.get("format")
-            if format_x != "NC1HWC0":
-                slice_info["_op_slice_info"]["splitMaps"] = []
-            check_dynamic(x, slice_info)
-    return json.dumps(slice_info)

@@ -66,5 +66,141 @@
         "type": "bool"
       }
     ]
+  },
+  {
+    "op": "AvgPoolV2",
+    "case_name" : "test_avg_pool_v2_002",
+    "input_desc": [
+      {
+        "format": "NCHW",
+        "ori_format": "NCHW",
+        "shape": [1,16,3,3],
+        "ori_shape": [1,16,3,3],
+        "type": "float16",
+        "value_range": [[0,1]],
+        "data_distribute" : "uniform",
+        "name": "x"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "NCHW",
+        "ori_format": "NCHW",
+        "shape": [1,16,1,1],
+        "ori_shape": [1,16,1,1],
+        "type": "float16",
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "ksize",
+        "value": [1,1,2,2],
+        "type": "list_int"
+      },
+      {
+        "name": "strides",
+        "value": [1,1,2,2],
+        "type": "list_int"
+      },
+      {
+        "name": "pads",
+        "value": [0,0,0,0],
+        "type": "list_int"
+      },
+      {
+        "name": "data_format",
+        "value": "NCHW",
+        "type": "string"
+      },
+      {
+        "name": "global_pooling",
+        "value": false,
+        "type": "bool"
+      },
+      {
+        "name": "padding_mode",
+        "value": "VALID",
+        "type": "string"
+      },
+      {
+        "name": "ceil_mode",
+        "value": false,
+        "type": "bool"
+      },
+      {
+        "name": "exclusive",
+        "value": true,
+        "type": "bool"
+      }
+    ]
+  },
+  {
+    "op": "AvgPoolV2",
+    "case_name" : "test_avg_pool_v2_003",
+    "input_desc": [
+      {
+        "format": "NHWC",
+        "ori_format": "NHWC",
+        "shape": [1,32,32,16],
+        "ori_shape": [1,32,32,16],
+        "type": "float16",
+        "value_range": [[0,1]],
+        "data_distribute" : "uniform",
+        "name": "x"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "NHWC",
+        "ori_format": "NHWC",
+        "shape": [1,16,16,16],
+        "ori_shape": [1,16,16,16],
+        "type": "float16",
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "ksize",
+        "value": [1,2,2,1],
+        "type": "list_int"
+      },
+      {
+        "name": "strides",
+        "value": [1,2,2,1],
+        "type": "list_int"
+      },
+      {
+        "name": "pads",
+        "value": [0,0,0,0],
+        "type": "list_int"
+      },
+      {
+        "name": "data_format",
+        "value": "NHWC",
+        "type": "string"
+      },
+      {
+        "name": "global_pooling",
+        "value": false,
+        "type": "bool"
+      },
+      {
+        "name": "padding_mode",
+        "value": "SAME",
+        "type": "string"
+      },
+      {
+        "name": "ceil_mode",
+        "value": false,
+        "type": "bool"
+      },
+      {
+        "name": "exclusive",
+        "value": true,
+        "type": "bool"
+      }
+    ]
   }
 ]

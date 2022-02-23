@@ -651,8 +651,8 @@ def split_d(input_value, output_data, split_dim, num_split, kernel_name="split_d
 
     is_split_last_dim = new_split_dim == 1
     if is_split_last_dim:
-        re_shape, re_dtype, re_size_splits, resize = SplitEqual.reinter_split_equal(
-            new_shape, dtype_lower, new_size_splits)
+        re_args = SplitEqual.reinter_split_equal(new_shape, dtype_lower, new_size_splits)
+        re_shape, re_dtype, re_size_splits, resize = re_args
         if resize > 0:
             split_equal = SplitEqual(re_shape, re_dtype, new_split_dim, re_size_splits, resize, kernel_name)
             if split_equal.check_support():

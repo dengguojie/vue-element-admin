@@ -1,0 +1,57 @@
+[
+  {
+    "op": "Unpack",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          8
+        ],
+        "ori_shape": [
+          1,
+          8
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "type": "float",
+        "value_range": [
+          [
+            0,
+            1
+          ]
+        ],
+        "data_distribute": "uniform",
+        "name": "x"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          8
+        ],
+        "ori_shape": [
+          1,
+          8
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "axis",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "num",
+        "type": "int",
+        "value": 1
+      }
+    ],
+    "case_name": "test_Unpack_000"
+  }
+ ]

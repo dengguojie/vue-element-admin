@@ -133,15 +133,6 @@ class SplitEqual():
             loop_offset = core_offset + loop_idx * self.x_unit
             self.mov_input_to_output(loop_offset, self.ub_a, self.ub_b)
 
-    def get_min_unit(self):
-        """get_min_unit"""
-        if len(set(self.size_splits)) == 1:
-            list_sixteen = {1, 2, 4, 8, 16}
-            for i in list_sixteen:
-                if self.size_splits[0] * i % 16 == 0:
-                    return i
-        return 16 // self.resize
-
     # 'pylint:disable=missing-function-docstring
     @staticmethod
     def get_sum_list(size_splits):
@@ -157,7 +148,17 @@ class SplitEqual():
         re_shape[-1] *= resize
         re_dtype = "float16"
         re_size_splits = list(map(lambda x: x * resize, re_size_splits))
-        return re_shape, re_dtype, re_size_splits, resize
+        re_args = [re_shape, re_dtype, re_size_splits, resize]
+        return re_args
+
+    def get_min_unit(self):
+        """get_min_unit"""
+        if len(set(self.size_splits)) == 1:
+            list_sixteen = {1, 2, 4, 8, 16}
+            for i in list_sixteen:
+                if self.size_splits[0] * i % 16 == 0:
+                    return i
+        return 16 // self.resize
 
     def run(self):
         """run function

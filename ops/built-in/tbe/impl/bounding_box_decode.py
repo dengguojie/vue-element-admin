@@ -284,9 +284,10 @@ class BoundingBoxDecode(object):
             dtype, name="stds_three_scalar")
         stds_three_scalar.set_as(stds[3])
 
-        return (means_zero_scalar, means_one_scalar, means_two_scalar,
-                means_three_scalar, stds_zero_scalar, stds_one_scalar,
-                stds_two_scalar, stds_three_scalar)
+        scalar_list = [means_zero_scalar, means_one_scalar, means_two_scalar,
+                       means_three_scalar, stds_zero_scalar, stds_one_scalar,
+                       stds_two_scalar, stds_three_scalar]
+        return scalar_list
 
     def init_gm_tensor(self):
         """
@@ -972,18 +973,14 @@ class BoundingBoxDecode(object):
                                      scope=tik.scope_ubuf)
 
         # transform rois and deltas data with 16x16
-        rois_src_list = [
-            rois_src_ub_vconv[BoundingBoxDecode.LIST_NUMBER * i] for i in range(BoundingBoxDecode.LIST_NUMBER)
-        ]
-        rois_dst_list = [
-            rois_dst_ub[BoundingBoxDecode.LIST_NUMBER * i] for i in range(BoundingBoxDecode.LIST_NUMBER)
-        ]
-        deltas_src_list = [
-            deltas_src_ub_vconv[BoundingBoxDecode.LIST_NUMBER * i] for i in range(BoundingBoxDecode.LIST_NUMBER)
-        ]
-        deltas_dst_list = [
-            deltas_dst_ub[BoundingBoxDecode.LIST_NUMBER * i] for i in range(BoundingBoxDecode.LIST_NUMBER)
-        ]
+        rois_src_list = [rois_src_ub_vconv[BoundingBoxDecode.LIST_NUMBER * i] for i in
+                         range(BoundingBoxDecode.LIST_NUMBER)]
+        rois_dst_list = [rois_dst_ub[BoundingBoxDecode.LIST_NUMBER * i] for i in range(BoundingBoxDecode.LIST_NUMBER)]
+        deltas_src_list = [deltas_src_ub_vconv[BoundingBoxDecode.LIST_NUMBER * i] for i in
+                           range(BoundingBoxDecode.LIST_NUMBER)]
+        deltas_dst_list = [deltas_dst_ub[BoundingBoxDecode.LIST_NUMBER * i] for i in
+                           range(BoundingBoxDecode.LIST_NUMBER)]
+
         number_two = 2
         self.tik_instance.vnchwconv(True, True, rois_dst_list, rois_src_list,
                                     repeat_times * number_two, BoundingBoxDecode.LIST_NUMBER,
@@ -1006,9 +1003,7 @@ class BoundingBoxDecode(object):
         denorm_rois_dst_ub = self.clamp_result(denorm_rois_dst_ub,
                                                repeat_times)
 
-        res_list = [
-            denorm_rois_dst_ub[BoundingBoxDecode.LIST_NUMBER * i] for i in range(BoundingBoxDecode.LIST_NUMBER)
-        ]
+        res_list = [denorm_rois_dst_ub[BoundingBoxDecode.LIST_NUMBER * i] for i in range(BoundingBoxDecode.LIST_NUMBER)]
         self.tik_instance.vnchwconv(True, True, res_list, res_list,
                                     repeat_times * number_two, BoundingBoxDecode.LIST_NUMBER,
                                     BoundingBoxDecode.LIST_NUMBER)
