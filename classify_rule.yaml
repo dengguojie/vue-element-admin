@@ -2550,6 +2550,7 @@ unkown:
       - ops/built-in/tbe/impl/apply_adagradv2_d.py
       - ops/built-in/tbe/impl/fractal_z_3d_2_dhwcn.py
       - ops/built-in/tbe/impl/top_k.py
+      - ops/built-in/tbe/impl/drop_out_with_muls_and_softmax_grad.py
       - ops/built-in/tbe/impl/im2col_common_func.py
       - ops/built-in/tbe/impl/dot.py
       - ops/built-in/tbe/impl/invert.py

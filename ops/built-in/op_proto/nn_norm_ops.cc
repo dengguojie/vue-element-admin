@@ -44,6 +44,14 @@ IMPLEMT_COMMON_INFERFUNC(LogSoftmaxGradInferShape) {
 COMMON_INFER_FUNC_REG(LogSoftmaxGrad, LogSoftmaxGradInferShape);
 // --------------------------LogSoftmaxGrad END---------------------
 
+// --------------------------DropoutWithMulsAndSoftmaxGrad-------------------------
+IMPLEMT_COMMON_INFERFUNC(DropoutWithMulsAndSoftmaxGradInferShape) {
+  return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(DropoutWithMulsAndSoftmaxGrad, DropoutWithMulsAndSoftmaxGradInferShape);
+// ------------------------DropoutWithMulsAndSoftmaxGrad END-----------------------
+
 //-------------SparseSoftmaxCrossEntropyWithLogits----------------
 IMPLEMT_VERIFIER(SparseSoftmaxCrossEntropyWithLogits, SparseSoftmaxCrossEntropyWithLogitsVerify) {
   return GRAPH_SUCCESS;
