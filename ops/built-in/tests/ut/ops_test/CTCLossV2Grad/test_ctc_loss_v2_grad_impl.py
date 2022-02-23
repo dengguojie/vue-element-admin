@@ -5,7 +5,7 @@ from op_test_frame.ut import OpUT
 ut_case = OpUT("ctc_loss_v2_grad")
 
 def generate_case(input0_shape, input1_shape, input2_shape, input3_shape, input4_shape, input5_shape, input6_shape,
-                  output0_shape, label_max):
+                  output0_shape):
     dtype_int = "int32"
     dtype_float = "float32"
 
@@ -79,15 +79,15 @@ def generate_case(input0_shape, input1_shape, input2_shape, input3_shape, input4
     zero_infinity = False
 
     case["params"] = [input0, input1, input2, input3, input4, input5, input6, output0, blank, reduction,
-                      zero_infinity, label_max]
+                      zero_infinity]
 
     return case
 
 
 ut_case.add_case("Ascend910A",
-                 case=generate_case((1,), (195, 1, 41), (1, 74), (1,), (1,), (1,), (1, 195, 149), (195, 1, 41), 0))
+                 case=generate_case((1,), (195, 1, 41), (1, 74), (1,), (1,), (1,), (1, 195, 149), (195, 1, 41)))
 ut_case.add_case("Ascend910A",
-                 case=generate_case((1,), (195, 1, 41), (74,), (1,), (1,), (1,), (1, 195, 149), (195, 1, 41), 74))
+                 case=generate_case((1,), (195, 1, 41), (74,), (1,), (1,), (1,), (1, 195, 149), (195, 1, 41)))
 
 if __name__ == '__main__':
     ut_case.run("Ascend910A")

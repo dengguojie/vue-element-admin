@@ -4,7 +4,7 @@ from op_test_frame.ut import OpUT
 
 ut_case = OpUT("ctc_loss_v2")
 
-def generate_case(input1_shape, input2_shape, input3_shape, input4_shape, output1_shape, output2_shape, label_max):
+def generate_case(input1_shape, input2_shape, input3_shape, input4_shape, output1_shape, output2_shape):
     dtype_int = "int32"
     dtype_float = "float32"
 
@@ -62,14 +62,14 @@ def generate_case(input1_shape, input2_shape, input3_shape, input4_shape, output
     reduction = "mean"
     zero_infinity = False
 
-    case["params"] = [input1, input2, input3, input4, output1, output2, blank, reduction, zero_infinity, label_max]
+    case["params"] = [input1, input2, input3, input4, output1, output2, blank, reduction, zero_infinity]
 
     return case
 
 
-ut_case.add_case("Ascend910A", case=generate_case((195, 1, 41), (1, 74), (1,), (1,), (1,), (1, 195, 149), 0))
-ut_case.add_case("Ascend910A", case=generate_case((195, 1, 41), (1, 3), (1,), (1,), (1,), (1, 195, 7), 0))
-ut_case.add_case("Ascend910A", case=generate_case((195, 1, 41), (3,), (1,), (1,), (1,), (1, 195, 7), 3))
+ut_case.add_case("Ascend910A", case=generate_case((195, 1, 41), (1, 74), (1,), (1,), (1,), (1, 195, 149)))
+ut_case.add_case("Ascend910A", case=generate_case((195, 1, 41), (1, 3), (1,), (1,), (1,), (1, 195, 7)))
+ut_case.add_case("Ascend910A", case=generate_case((195, 1, 41), (3,), (1,), (1,), (1,), (1, 195, 7)))
 
 if __name__ == '__main__':
     ut_case.run("Ascend910A")

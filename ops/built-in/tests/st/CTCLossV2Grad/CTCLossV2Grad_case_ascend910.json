@@ -138,11 +138,6 @@
         "name": "zero_infinity",
         "type": "bool",
         "value": false
-      },
-      {
-        "name": "label_max",
-        "type": "int",
-        "value": 0
       }
     ],
     "case_name": "test_CTCLossV2Grad_000"
@@ -290,11 +285,6 @@
         "name": "zero_infinity",
         "type": "bool",
         "value": false
-      },
-      {
-        "name": "label_max",
-        "type": "int",
-        "value": 4
       }
     ],
     "case_name": "test_CTCLossV2Grad_001"

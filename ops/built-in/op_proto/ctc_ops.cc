@@ -225,46 +225,52 @@ INFER_FUNC_REG(CTCBeamSearchDecoder, CTCBeamSearchDecoderInfer);
 IMPLEMT_INFERFUNC(CTCLossV2, CTCLossV2Infer) {
   const char *op_name = "CTCLossV2";
   OP_LOGD(op_name, "CTCLossV2Infer begin.");
-  TensorDesc tensordesc_targets = op.get_input_desc_targets();
-  TensorDesc tensordesc_log_probs = op.get_input_desc_log_probs();
-  
-  Shape shape_targets = tensordesc_targets.GetShape();
-  Shape shape_log_probs = tensordesc_log_probs.GetShape();
-  
-  DataType dtype = tensordesc_log_probs.GetDataType();
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  auto tensordesc_log_probs = op_desc->GetInputDescPtr(0);
+  auto dtype = tensordesc_log_probs->GetDataType();
+  auto log_probs_shape = tensordesc_log_probs->GetShape();
+  int64_t T = log_probs_shape.GetDim(0);
+  int64_t N = log_probs_shape.GetDim(1);
+  int64_t S = 0;
+  auto tensordesc_targets = op_desc->GetInputDescPtr(1);
+  auto targets_shape = tensordesc_targets->GetShape();
+  int64_t targets_dims_len = targets_shape.GetDimNum();
+  auto tensordesc_target_lengths = op_desc->GetInputDescPtr(3);
+  auto target_lengths_shape = tensordesc_target_lengths->GetShape();
 
-  std::vector<int64_t> dims_log_probs = shape_log_probs.GetDims();
-  std::vector<int64_t> dims_targets = shape_targets.GetDims();
-
-  int64_t T = dims_log_probs[0];
-  int64_t N = dims_log_probs[1];
-  int64_t S;
-
-  if (dims_targets.size() == 2) {
-    S = dims_targets[1];
+  if (targets_dims_len == 2) {
+    S = targets_shape.GetDim(1);
   } else {
-    int32_t label_max = 0;
-    if ((op.GetAttr("label_max", label_max) != GRAPH_SUCCESS) || (label_max == 0)) {
-      GE_OP_LOGE(op.GetName().c_str(), "attr label_max get fail, when targets.size() == 1.");
+    Tensor target_lengths_tensor;
+    int64_t batch_size = target_lengths_shape.GetDimNum();
+
+    if (op.GetInputConstData("target_lengths", target_lengths_tensor) !=
+        GRAPH_SUCCESS) {
+      GE_OP_LOGE(op.GetName().c_str(), "target_lengths get fail, when targets.size() == 1.");
       return GRAPH_FAILED;
     }
-    S = label_max;
+
+    for (int64_t i = 0; i < batch_size; i++) {
+      int32_t target_length = *((int32_t *)target_lengths_tensor.GetData() + i);
+      if (target_length > S) {
+        S = target_length;
+      }
+    }
   }
-
-  TensorDesc tensordesc_neg_log_likelihood = op.get_output_desc_neg_log_likelihood();
-  TensorDesc tensordesc_log_alpha = op.get_output_desc_log_alpha();
-
-  std::vector<int64_t> dims_neg_log_likelihood = {N}; 
-  std::vector<int64_t> dims_log_alpha = {N, T, 2 * S + 1};
-
-  tensordesc_neg_log_likelihood.SetShape(ge::Shape(dims_neg_log_likelihood));
-  tensordesc_neg_log_likelihood.SetDataType(dtype);
+  auto tensordesc_neg_log_likelihood = op_desc->MutableOutputDesc(0);
   
-  tensordesc_log_alpha.SetShape(ge::Shape(dims_log_alpha));
-  tensordesc_log_alpha.SetDataType(dtype);
-  
-  (void)op.UpdateOutputDesc("neg_log_likelihood", tensordesc_neg_log_likelihood);
-  (void)op.UpdateOutputDesc("log_alpha", tensordesc_log_alpha);
+  tensordesc_neg_log_likelihood->SetShape(target_lengths_shape);
+  tensordesc_neg_log_likelihood->SetDataType(dtype);
+
+  auto tensordesc_log_alpha = op_desc->MutableOutputDesc(1);
+  tensordesc_log_alpha->SetDataType(dtype);
+  GeShape &output_shape = tensordesc_log_alpha->MutableShape();
+  int64_t log_alpha_dim_len = 3;
+  std::vector<int64_t> log_alpha_dims = {N, T, 2 * S + 1};
+  output_shape.SetDimNum(log_alpha_dim_len);
+  for (int64_t i = 0; i < log_alpha_dim_len; i++) {
+    output_shape.SetDim(i, log_alpha_dims[i]);
+  }
 
   OP_LOGD(op_name, "CTCLossV2Infer end.");
   return GRAPH_SUCCESS;
@@ -275,41 +281,15 @@ INFER_FUNC_REG(CTCLossV2, CTCLossV2Infer);
 IMPLEMT_INFERFUNC(CTCLossV2Grad, CTCLossV2GradInfer) {
   const char *op_name = "CTCLossV2Grad";
   OP_LOGD(op_name, "CTCLossV2GradInfer begin.");
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  auto tensordesc_log_probs = op_desc->GetInputDescPtr(1);
+  auto dtype = tensordesc_log_probs->GetDataType();
+  auto log_probs_shape = tensordesc_log_probs->GetShape();
 
-  TensorDesc tensordesc_grad_out = op.get_input_desc_grad_out();
-  Shape shape_grad_out = tensordesc_grad_out.GetShape();
-  DataType dtype_grad_out = tensordesc_grad_out.GetDataType();
-  std::vector<int64_t> dims_grad_out = shape_grad_out.GetDims();
-
-  TensorDesc tensordesc_log_probs = op.get_input_desc_log_probs();
-  Shape shape_log_probs = tensordesc_log_probs.GetShape();
-  std::vector<int64_t> dims_log_probs = shape_log_probs.GetDims();
-  DataType dtype = tensordesc_log_probs.GetDataType();
-
-  TensorDesc tensordesc_targets = op.get_input_desc_targets();
-  Shape shape_targets = tensordesc_targets.GetShape();
-  std::vector<int64_t> dims_targets = shape_targets.GetDims();
-
-  if (dims_log_probs.size() != 3){
-    OP_LOGE(op_name, "The shape of log_probs is unexpected");
-    return GRAPH_FAILED;
-  }
-
-  int64_t T = dims_log_probs[0];
-  int64_t N = dims_log_probs[1];
-  int64_t C = dims_log_probs[2];
-
-  if (dtype != dtype_grad_out){
-    OP_LOGE(op_name, "The dtype of log_probs and grad_out is unmatch");
-    return GRAPH_FAILED;
-  }
-
-  TensorDesc tensordesc_grad = op.get_output_desc_grad();
-  std::vector<int64_t> dims_grad = {T, N, C};
-
-  tensordesc_grad.SetShape(ge::Shape(dims_grad));
-  tensordesc_grad.SetDataType(dtype);
-  (void)op.UpdateOutputDesc("grad", tensordesc_grad);
+  auto tensordesc_grad = op_desc->MutableOutputDesc(0);
+ 
+  tensordesc_grad->SetShape(log_probs_shape);
+  tensordesc_grad->SetDataType(dtype);
   OP_LOGD(op_name, "CTCLossV2GradInfer begin.");
   return GRAPH_SUCCESS;
 }
