@@ -26,6 +26,7 @@ namespace fe {
 using std::vector;
 static const string PATTERN_CONV = "convolution";
 static const string PATTERN_DEQUANT = "dequant";
+static const string PATTERN_FIXPIPE = "FixPipe";
 static const string PATTERN_QUANT = "quant";
 static const string PATTERN_OTHER_INPUT = "otherInput";
 static const string PATTERN_SIGMOID = "sigmoid";
@@ -71,6 +72,26 @@ vector<BufferFusionPattern*> ConvSigmoidMulQuantFusionPass::DefinePatterns() {
           .SetOutputs(PATTERN_MUL, {PATTERN_QUANT});
   patterns.push_back(pattern1);
   OP_LOGD(fused_op_type_.c_str(), "End to define %s pass pattern.", pattern_name1.c_str());
+
+  string pattern_name2 = "TbeConvFixpipeSigmoidMulQuantFusionPass";
+  BufferFusionPattern* pattern2 = new (std::nothrow) BufferFusionPattern(pattern_name2, TBE_FUSION_OP_NUM_MAX + 1);
+  FUSION_PASS_CHECK((pattern2 == nullptr), OP_LOGE(fused_op_type_.c_str(), "new an object failed."), return patterns);
+  OP_LOGD(fused_op_type_.c_str(), "Start to define %s pass pattern.", pattern_name2.c_str());
+  // define pattern rules
+  pattern2->AddOpDesc(PATTERN_CONV, {OP_PATTERN_CONV}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+          .AddOpDesc(PATTERN_OTHER_INPUT, {TBE_PATTERN_INPUT_NODE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+          .AddOpDesc(PATTERN_FIXPIPE, {OP_PATTERN_FIXPIPE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+          .AddOpDesc(PATTERN_SIGMOID, {OP_PATTERN_ELEMWISE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+          .AddOpDesc(PATTERN_MUL, {OP_PATTERN_ELEMWISE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+          .AddOpDesc(PATTERN_QUANT, {OP_PATTERN_QUANT}, TBE_PATTERN_NUM_NONE, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+          .SetHead({PATTERN_CONV})
+          .SetOutputs(PATTERN_CONV, {PATTERN_FIXPIPE})
+          .SetOutputs(PATTERN_OTHER_INPUT, {PATTERN_FIXPIPE})
+          .SetOutputs(PATTERN_FIXPIPE, {PATTERN_SIGMOID, PATTERN_MUL}, TBE_OUTPUT_BRANCH_MULTI)
+          .SetOutputs(PATTERN_SIGMOID, {PATTERN_MUL})
+          .SetOutputs(PATTERN_MUL, {PATTERN_QUANT});
+  patterns.push_back(pattern2);
+  OP_LOGD(fused_op_type_.c_str(), "End to define %s pass pattern.", pattern_name2.c_str());
 
   return patterns;
 }
