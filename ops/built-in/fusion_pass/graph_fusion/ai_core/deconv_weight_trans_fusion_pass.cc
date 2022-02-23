@@ -45,6 +45,8 @@ const string DeconvWeightTransFusionPass::FUSED_OP_TYPE = "Deconvolution";
 namespace {
 const string DECONV = "Deconvolution";
 const string CONV2D_TRANSPOSE = "Conv2DTransposeD";
+const string ASCEND_WEIGHT_QUANT = "AscendWeightQuant";
+const string PATTERN_QUANT = "AscendWeightQuantInt8";
 const string PATTERN_DECONV = "DeconvolutionInt8";
 static const std::string CONSTANTOP = "Const";
 static const std::string CONSTANT = "Constant";
@@ -60,15 +62,24 @@ vector<FusionPattern*> DeconvWeightTransFusionPass::DefinePatterns() {
   OP_LOGI(FUSED_OP_TYPE.c_str(),
           "Enter DeconvWeightTransFusionPass::DefinePatterns.");
   vector<FusionPattern*> patterns;
-  FusionPattern* pattern =
-      new (std::nothrow) FusionPattern("DeconvWeightTransFusionPass");
+  FusionPattern* pattern_0 = new (std::nothrow) FusionPattern("DeconvWeightTransFusionPass0");
+  FUSION_PASS_CHECK(
+      pattern_0 == nullptr,
+      CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
+      return patterns);
+  pattern_0->AddOpDesc(PATTERN_QUANT, {ASCEND_WEIGHT_QUANT})
+            .AddOpDesc(PATTERN_DECONV, {DECONV, CONV2D_TRANSPOSE})
+            .SetInputs(PATTERN_DECONV, {PATTERN_QUANT})
+            .SetOutput(PATTERN_DECONV);
+  patterns.push_back(pattern_0);
+
+  FusionPattern* pattern = new (std::nothrow) FusionPattern("DeconvWeightTransFusionPass");
   FUSION_PASS_CHECK(
       pattern == nullptr,
       CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
       return patterns);
   pattern->AddOpDesc(PATTERN_DECONV, {DECONV, CONV2D_TRANSPOSE})
-      .SetOutput(PATTERN_DECONV);
-
+          .SetOutput(PATTERN_DECONV);
   patterns.push_back(pattern);
 
   return patterns;
@@ -211,6 +222,20 @@ void DeconvWeightTransFusionPass::GetShapeUsedByIntermediateProcessInDeconvWeigh
   }
 }
 
+Status DeconvWeightTransFusionPass::UpdateWeightQuantShape(const vector<int64_t>& reshape_out,
+                                                           ge::NodePtr& quant_node, ge::NodePtr deconv_node) {
+  ge::GeTensorDesc quant_weight_out_desc = quant_node->GetOpDesc()->GetOutputDesc(0);
+  quant_weight_out_desc.SetShape(ge::GeShape(reshape_out));
+  quant_weight_out_desc.SetOriginShape(ge::GeShape(reshape_out));
+  FUSION_PASS_CHECK(quant_node->GetOpDesc()->UpdateOutputDesc(0, quant_weight_out_desc) != SUCCESS,
+                    ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(),"fail to update output description of quant"),
+                    return FAILED);
+  FUSION_PASS_CHECK(deconv_node->GetOpDesc()->UpdateInputDesc(1, quant_weight_out_desc) != SUCCESS,
+                    ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(),"fail to update input description of deconv"),
+                    return FAILED);
+  return SUCCESS;
+}
+
 Status DeconvWeightTransFusionPass::GenerateTransposeNode(ge::ComputeGraph& graph, ge::GeTensorDesc& previous_out_desc,
                                                           ge::GeTensorDesc& next_in_desc, const vector<int64_t>& perm,
                                                           ge::NodePtr& transpose_node, const std::string& basename) {
@@ -331,17 +356,16 @@ Status DeconvWeightTransFusionPass::Relink(
     ge::NodePtr filter_node, ge::NodePtr dim_comp_node, ge::NodePtr transpose_node,
     ge::NodePtr reformat_node, ge::NodePtr reshape_in_node,
     ge::NodePtr reverse_node, ge::NodePtr reshape_out_node,
-    ge::NodePtr deconv_node) {
-  // weight -> Deconvolution
+    ge::NodePtr filter_next_node, const int filter_anchor) {
+  // weight -> AscendWeightQuant -> Deconvolution
   // weight -> [complement_dimension] -> transpose -> [reshape_in -> reverse -> reshape_out] ->
-  // deconv
-  int filter_anchor = 1;
+  // AscendWeightQuant -> deconv
   FUSION_PASS_CHECK(
       ge::GraphUtils::RemoveEdge(filter_node->GetOutDataAnchor(0),
-                                 deconv_node->GetInDataAnchor(filter_anchor)) !=
+                                 filter_next_node->GetInDataAnchor(filter_anchor)) !=
           SUCCESS,
       CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-              "fail to remove edge between filter_node and deconv_node"),
+              "fail to remove edge between filter_node and deconv_node/quant_node"),
       return FAILED);
 
   OutDataAnchorPtr dim_comp_out_anchor = nullptr;
@@ -391,10 +415,10 @@ Status DeconvWeightTransFusionPass::Relink(
         return FAILED);
     FUSION_PASS_CHECK(
         ge::GraphUtils::AddEdge(reshape_out_node->GetOutDataAnchor(0),
-                                deconv_node->GetInDataAnchor(filter_anchor)) !=
+                                filter_next_node->GetInDataAnchor(filter_anchor)) !=
             SUCCESS,
         CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                "fail to add edge between reshape_out_node and deconv_node"),
+                "fail to add edge between reshape_out_node and deconv_node/quant_node"),
         return FAILED);
   } else {
     FUSION_PASS_CHECK(
@@ -405,20 +429,20 @@ Status DeconvWeightTransFusionPass::Relink(
         return FAILED);
     FUSION_PASS_CHECK(
         ge::GraphUtils::AddEdge(reshape_out_node->GetOutDataAnchor(0),
-                                deconv_node->GetInDataAnchor(filter_anchor)) !=
+                                filter_next_node->GetInDataAnchor(filter_anchor)) !=
             SUCCESS,
         CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                "fail to add edge between reshape_out_node and deconv_node"),
+                "fail to add edge between reshape_out_node and deconv_node/quant_node"),
         return FAILED);
   }
-  ge::OpDescPtr deconvNodeDescPtr = deconv_node->GetOpDesc();
-  FUSION_PASS_CHECK(deconvNodeDescPtr == nullptr,
-                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "deconvNodeDescPtr is null"),
+  ge::OpDescPtr filterNextNodeDescPtr = filter_next_node->GetOpDesc();
+  FUSION_PASS_CHECK(filterNextNodeDescPtr == nullptr,
+                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "deconv_node/quant_node is null"),
                     return FAILED);
-  FUSION_PASS_CHECK(deconvNodeDescPtr->UpdateInputDesc(
+  FUSION_PASS_CHECK(filterNextNodeDescPtr->UpdateInputDesc(
           filter_anchor, reshape_out_node->GetOpDesc()->GetOutputDesc(0)) != SUCCESS,
       CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-              "fail to update input description of deconv"),
+              "fail to update input description of deconv_node/quant_node"),
       return FAILED);
 
   return SUCCESS;
@@ -444,45 +468,43 @@ Status DeconvWeightTransFusionPass::Fusion(ge::ComputeGraph& graph,
                                            vector<ge::NodePtr>& /* fusion_nodes */) {
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Enter DeconvWeightTransFusionPass.");
   ge::NodePtr deconv_node = GetNodeFromMapping(PATTERN_DECONV, mapping);
+  ge::NodePtr quant_node = GetNodeFromMapping(PATTERN_QUANT, mapping);
   FUSION_PASS_CHECK(deconv_node == nullptr,
-                    CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "Failed to get node from mapping"), return NOT_CHANGED);
+                    CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "Failed to get node from mapping"),
+                    return NOT_CHANGED);
 
   // pattern
   // originFormat: NCHW,HWCN,NHWC
   // for example: NCHW
   // weight(NCHW) -> | dim completion -> transpose -> reshape in -> reverse ->
-  // reshape out | -> Deconvolution
+  // reshape out | -> AscendWeightQuant -> Deconvolution
   //                 | |
   //                 | |
   //                 | |
 
-  // input: x, filter, bias
-  int input_anchor = 0;
+  // is with AscendWeightQuant
   int filter_anchor = 1;
+  bool with_quant = false;
+  ge::NodePtr filter_next_node = deconv_node;
+  if (quant_node != nullptr) {
+    filter_anchor = 0;
+    with_quant = true;
+    filter_next_node = quant_node;
+  }
 
   // prerequisite
-  ge::NodePtr input_node = GetPeerOutNodeWithInDataAnchor(deconv_node, input_anchor);
-  FUSION_PASS_CHECK(input_node == nullptr,
-                    CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "Failed to get peer out node of feature map"),
-                    return NOT_CHANGED);
-  int input_index = GetPeerOutAnchorWithInDataAnchor(deconv_node, input_anchor)->GetIdx();
-
-  ge::NodePtr filter_node = GetPeerOutNodeWithInDataAnchor(deconv_node, filter_anchor);
+  ge::NodePtr filter_node = GetPeerOutNodeWithInDataAnchor(filter_next_node, filter_anchor);
+  int filter_index = GetPeerOutAnchorWithInDataAnchor(filter_next_node, 1)->GetIdx();
   FUSION_PASS_CHECK(filter_node == nullptr,
                     CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "Failed to get peer out node of filter"),
                     return NOT_CHANGED);
-  int filter_index = GetPeerOutAnchorWithInDataAnchor(deconv_node, filter_anchor)->GetIdx();
   ge::ConstGeTensorDescPtr filterNodeDescPtr = GetCurrNodeOutputDesc(filter_node, filter_index);
   FUSION_PASS_CHECK(filterNodeDescPtr == nullptr,
                     CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "filterNodeDescPtr is null"),
                     return NOT_CHANGED);
-  ge::ConstGeTensorDescPtr inputNodeDescPtr = GetCurrNodeOutputDesc(input_node, input_index);
-  FUSION_PASS_CHECK(inputNodeDescPtr == nullptr,
-                    CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "inputNodeDescPtr is null"),
-                    return NOT_CHANGED);
-  if (filterNodeDescPtr->GetDataType() != ge::DT_INT8 ||
-      inputNodeDescPtr->GetDataType() != ge::DT_INT8) {
-    OP_LOGI(FUSED_OP_TYPE.c_str(), "The dtype of weight or x is not int8.");
+
+  if (filterNodeDescPtr->GetDataType() != ge::DT_INT8) {
+    OP_LOGI(FUSED_OP_TYPE.c_str(), "The dtype of weight is not int8.");
     return NOT_CHANGED;
   }
   std::string type = ge::NodeUtils::GetInConstNodeTypeCrossSubgraph(filter_node);
@@ -501,10 +523,8 @@ Status DeconvWeightTransFusionPass::Fusion(ge::ComputeGraph& graph,
                     OP_LOGW(FUSED_OP_TYPE.c_str(),
                             "Groups can not be 0."),
                     return NOT_CHANGED);
-  ge::GeTensorDesc deconv_weight_in_desc =
-      deconv_node->GetOpDesc()->GetInputDesc(filter_anchor);
-  ge::GeTensorDesc filter_out_desc =
-      filter_node->GetOpDesc()->GetOutputDesc(filter_index);
+  ge::GeTensorDesc weight_in_desc = filter_next_node->GetOpDesc()->GetInputDesc(filter_anchor);
+  ge::GeTensorDesc filter_out_desc = filter_node->GetOpDesc()->GetOutputDesc(filter_index);
   ge::GeShape filter_shape = filter_out_desc.GetShape();
   ge::Format filter_format = filter_out_desc.GetFormat();
   FUSION_PASS_CHECK(GetShapeByFormat(filter_format, filter_shape, number, channel,
@@ -538,7 +558,7 @@ Status DeconvWeightTransFusionPass::Fusion(ge::ComputeGraph& graph,
 
   // 1. dimension completion
   FUSION_PASS_CHECK(
-      GenerateReshapeNode(graph, filter_out_desc, deconv_weight_in_desc, complement_dimension,
+      GenerateReshapeNode(graph, filter_out_desc, weight_in_desc, complement_dimension,
                           dim_comp_node, "dimension_completion",
                           basename) != SUCCESS,
       CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(),
@@ -553,14 +573,14 @@ Status DeconvWeightTransFusionPass::Fusion(ge::ComputeGraph& graph,
 
   // 2. transpose number,channel
   FUSION_PASS_CHECK(
-      GenerateTransposeNode(graph, dim_comp_out_desc, deconv_weight_in_desc,
+      GenerateTransposeNode(graph, dim_comp_out_desc, weight_in_desc,
                             permute_shape, transpose_node, basename) != SUCCESS,
       CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "fail to generate transpose node"),
       return FAILED);
   ge::GeTensorDesc transpose_out_desc =
       transpose_node->GetOpDesc()->GetOutputDesc(0);
   FUSION_PASS_CHECK(
-      GenerateReFormatNode(graph, transpose_out_desc, deconv_weight_in_desc,
+      GenerateReFormatNode(graph, transpose_out_desc, weight_in_desc,
                            filter_format, reformat_node, basename) != SUCCESS,
       CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "fail to generate reformat node"),
       return FAILED);
@@ -569,7 +589,7 @@ Status DeconvWeightTransFusionPass::Fusion(ge::ComputeGraph& graph,
   if (height != 1 || weight != 1) {
     // 3. fuse height, weight
     FUSION_PASS_CHECK(
-        GenerateReshapeNode(graph, reformat_desc, deconv_weight_in_desc, reshape_in,
+        GenerateReshapeNode(graph, reformat_desc, weight_in_desc, reshape_in,
                             reshape_in_node, "reshape_in", basename) != SUCCESS,
         CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "fail to generate reshape in node"),
         return FAILED);
@@ -578,7 +598,7 @@ Status DeconvWeightTransFusionPass::Fusion(ge::ComputeGraph& graph,
 
     // 4. reverse height*weight
     FUSION_PASS_CHECK(
-        GenerateReverseNode(graph, reshape_in_out_desc, deconv_weight_in_desc,
+        GenerateReverseNode(graph, reshape_in_out_desc, weight_in_desc,
                             reverse_axis, reverse_node, basename) != SUCCESS,
         CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "fail to generate reverse node"),
         return FAILED);
@@ -587,14 +607,14 @@ Status DeconvWeightTransFusionPass::Fusion(ge::ComputeGraph& graph,
 
     // 5. anti-fusion height*weight
     FUSION_PASS_CHECK(
-        GenerateReshapeNode(graph, reverse_out_desc, deconv_weight_in_desc,
+        GenerateReshapeNode(graph, reverse_out_desc, weight_in_desc,
                             reshape_out, reshape_out_node, "reshape_out",
                             basename) != SUCCESS,
         CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "fail to generate reshape out node"),
         return FAILED);
   } else {
     FUSION_PASS_CHECK(
-        GenerateReshapeNode(graph, reformat_desc, deconv_weight_in_desc,
+        GenerateReshapeNode(graph, reformat_desc, weight_in_desc,
                             reshape_out, reshape_out_node, "reshape_out",
                             basename) != SUCCESS,
         CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "fail to generate reshape out node"),
@@ -602,8 +622,13 @@ Status DeconvWeightTransFusionPass::Fusion(ge::ComputeGraph& graph,
   }
   FUSION_PASS_CHECK(
       Relink(filter_node, dim_comp_node, transpose_node, reformat_node,
-             reshape_in_node, reverse_node, reshape_out_node, deconv_node) != SUCCESS,
+             reshape_in_node, reverse_node, reshape_out_node, filter_next_node, filter_anchor) != SUCCESS,
       CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "fail to relink nodes"), return FAILED);
+  if (with_quant) {
+    FUSION_PASS_CHECK(
+        UpdateWeightQuantShape(reshape_out, quant_node, deconv_node) != SUCCESS,
+        CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "fail to update quant and deconv node"), return FAILED);
+  }
 
   OP_LOGI(FUSED_OP_TYPE.c_str(), "End DeconvWeightTransFusionPass.");
   return SUCCESS;

@@ -51,7 +51,7 @@ static const char kCcatHostOp[] = "Concatv2HostCpuOp";
 static const char kSptOutKey[] = "y";
 static const char kCcatInKey[] = "x";
 static const std::set<string> kNewCcatIn = {"Const", "Constant", "QuantBiasOptimization", "QuantWeightRollBack",
-                                            "QuantBiasRollBack"};
+                                            "QuantBiasRollBack", "AscendWeightQuant"};
 static const std::set<DataType> kDataTypeIn = {DT_FLOAT, DT_FLOAT16, DT_INT8, DT_INT32};
 
 /*!

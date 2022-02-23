@@ -13,8 +13,10 @@
 # limitations under the License.
 # ============================================================================
 file(GLOB PLUGIN_TC_FILES *plugin.cpp)
+file(GLOB PLUGIN_ASCENDWEIGHTQUANT_FILES ascend_weight_quant_plugin_test.cpp)
 
 add_executable(ops_cpp_plugin_utest
+        ${PLUGIN_ASCENDWEIGHTQUANT_FILES}
         ${PLUGIN_TC_FILES}
         )
 
