@@ -84,23 +84,6 @@ def check_window_rule(ksize, strides, padding_mode, pads, data_format, kernel_na
                                                         str(padding_mode))
 
 
-def get_op_support_info(input_data, output_data, ksize, strides, padding_mode, pads,
-                        data_format="NC1HWC0", global_pooling=False, ceil_mode=False, kernel_name="max_pool_v3"):
-    """
-    get the max_pool_v3 data slice info
-    """
-    format_x = input_data.get("format")
-
-    axis_split_matrix = None
-    axis_reduce_list = None
-    if format_x == "NC1HWC0":
-        axis_split_matrix = [[util_select_op_base.SplitInput([0, [0], [-1], [-1]]),
-                                  util_select_op_base.SplitOutput([0, [0]])]]
-    op_cal_info_in_json = util_select_op_base.get_op_cal_info(axis_split_matrix, axis_reduce_list, 2, 0)
-
-    return op_cal_info_in_json
-
-
 # 'pylint: disable=unnecessary-lambda,too-many-locals
 # 'pylint: disable=locally-disabled,unused-argument,too-many-arguments
 @fusion_manager.register("max_pool_v3")
@@ -162,23 +145,23 @@ def max_pool_compute(input_data, output_data, ksize, strides, padding_mode, pads
 
     # l1 fusion params assign
     # 0: L1 depth fusion, 1: L1 width fusion, -1: no L1 fusion
-    l1_fusion_type = input_data.op.attrs["L1_fusion_type"].value \
-        if "L1_fusion_type" in input_data.op.attrs else -1
-    in_l1_flag = input_data.op.attrs["addr_type"].value == 1 \
-        if "addr_type" in input_data.op.attrs else False
-    in_valid_shape = input_data.op.attrs["valid_shape"] \
-        if "valid_shape" in input_data.op.attrs else []
-    in_slice_offset = input_data.op.attrs["slice_offset"] \
-        if "slice_offset" in input_data.op.attrs else []
+    l1_fusion_type = \
+        input_data.op.attrs["L1_fusion_type"].value if "L1_fusion_type" in input_data.op.attrs else -1
+    in_l1_flag = \
+        input_data.op.attrs["addr_type"].value == 1 if "addr_type" in input_data.op.attrs else False
+    in_valid_shape = \
+        input_data.op.attrs["valid_shape"] if "valid_shape" in input_data.op.attrs else []
+    in_slice_offset = \
+        input_data.op.attrs["slice_offset"] if "slice_offset" in input_data.op.attrs else []
     in_select_read_flag = bool(in_valid_shape)
-    in_split_index = input_data.op.attrs["split_index"].value \
-        if "split_index" in input_data.op.attrs else 0
+    in_split_index = \
+        input_data.op.attrs["split_index"].value if "split_index" in input_data.op.attrs else 0
     out_l1_flag = output_data.get("addr_type") == 1
     out_valid_shape = output_data.get("valid_shape", [])
     out_select_write_flag = bool(out_valid_shape)
     out_shape = output_data.get("shape")
-    out_total_shape = output_data.get("valid_shape") \
-        if out_select_write_flag else output_data.get("shape")
+    out_total_shape = \
+        output_data.get("valid_shape") if out_select_write_flag else output_data.get("shape")
     out_slice_offset = output_data.get("slice_offset", [0, 0, 0, 0, 0])
     fusion_params = {"l1_fusion_type": l1_fusion_type,
                      "in_l1_flag": in_l1_flag,

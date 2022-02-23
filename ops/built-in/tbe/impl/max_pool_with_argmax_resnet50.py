@@ -451,47 +451,6 @@ class MaxPoolWithargmaxResnet50():
                                                          (w_loop * self.in_size_w + w_index) * c0_dim],
                                            0, gm_len, 1, 1, 0)
 
-    def _calc_src_offsets(self, output_block_h):
-        """
-        calc src_offsets
-
-        Parameters
-        ----------
-        None
-
-        Returns
-        -------
-        src_offsets_value
-        src_offsets_last_value
-        """
-        filter_size = self.window_h * self.window_w
-        src_offsets_value = [0] * filter_size * output_block_h * self.out_size_w
-        src_offsets_last_value = [0] * filter_size * output_block_h * self.out_size_w
-
-        for window_index in range(filter_size):
-            w_index = window_index % self.window_w
-            w_loop = window_index // self.window_w
-            for output_block_h_index in range(output_block_h):
-                for output_w_index in range(self.out_size_w):
-                    offset_value = (window_index * output_block_h + output_block_h_index) * \
-                                   self.out_size_w + output_w_index
-                    if output_w_index == self.out_size_w - 1 and w_index == 2:
-                        tensor_value = ((output_block_h - 1) * self.stride_h + self.window_h) * self.in_size_w * 32
-                    else:
-                        tensor_value = ((output_block_h_index * self.stride_h + w_loop) * self.in_size_w +
-                                        output_w_index * self.stride_w + w_index) * 32
-
-                    if output_block_h_index == output_block_h - 1 and w_loop == 2:
-                        tensor_last_value = ((output_block_h - 1) * self.stride_h + self.window_h) * \
-                                            self.in_size_w * 32
-                    else:
-                        tensor_last_value = tensor_value
-
-                    src_offsets_value[offset_value] = tensor_value
-                    src_offsets_last_value[offset_value] = tensor_last_value
-
-        return src_offsets_value, src_offsets_last_value
-
     # 'pylint: disable=too-many-locals,too-many-statements,too-many-branches
     def tik_instance_function(self, kernel_name):
         """
@@ -847,6 +806,47 @@ class MaxPoolWithargmaxResnet50():
                           outputs=(output_max_gm,
                                    output_mask_gm))
         return instance
+
+    def _calc_src_offsets(self, output_block_h):
+        """
+        calc src_offsets
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        src_offsets_value
+        src_offsets_last_value
+        """
+        filter_size = self.window_h * self.window_w
+        src_offsets_value = [0] * filter_size * output_block_h * self.out_size_w
+        src_offsets_last_value = [0] * filter_size * output_block_h * self.out_size_w
+
+        for window_index in range(filter_size):
+            w_index = window_index % self.window_w
+            w_loop = window_index // self.window_w
+            for output_block_h_index in range(output_block_h):
+                for output_w_index in range(self.out_size_w):
+                    offset_value = (window_index * output_block_h + output_block_h_index) * \
+                                   self.out_size_w + output_w_index
+                    if output_w_index == self.out_size_w - 1 and w_index == 2:
+                        tensor_value = ((output_block_h - 1) * self.stride_h + self.window_h) * self.in_size_w * 32
+                    else:
+                        tensor_value = ((output_block_h_index * self.stride_h + w_loop) * self.in_size_w +
+                                        output_w_index * self.stride_w + w_index) * 32
+
+                    if output_block_h_index == output_block_h - 1 and w_loop == 2:
+                        tensor_last_value = ((output_block_h - 1) * self.stride_h + self.window_h) * \
+                                            self.in_size_w * 32
+                    else:
+                        tensor_last_value = tensor_value
+
+                    src_offsets_value[offset_value] = tensor_value
+                    src_offsets_last_value[offset_value] = tensor_last_value
+
+        return src_offsets_value, src_offsets_last_value
 
 
 # 'pylint: disable=invalid-name

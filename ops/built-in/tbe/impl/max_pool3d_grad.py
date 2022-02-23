@@ -299,7 +299,7 @@ class MaxPool3DGradCompute:
                      [pad_hw_top, pad_hw_bottom],
                      [pad_hw_left, pad_hw_right]]
 
-        return do, ho, wo, pad_model
+        return [do, ho, wo, pad_model]
 
     def _infer_dim_return(self, do, ho, wo, model):
 
@@ -532,20 +532,8 @@ class MaxPool3DGradCompute:
 
         return branch, split_model, param
 
-    def _ultimate_data_move(self, tik_instance, src_buf, dst_buf, in_list, num_bit):
-        src_idx, dst_idx = in_list[-2], in_list[-1]
-        n_burst, burst_len = in_list[0], in_list[1]
-        src_stride, dst_stride = in_list[2], in_list[3]
-
-        with tik_instance.for_range(0, n_burst) as i:
-            src_idx += i * (src_stride + burst_len) * Constant.MINI_UNIT // num_bit
-            dst_idx += i * (dst_stride + burst_len) * Constant.MINI_UNIT // num_bit
-
-            tik_instance.data_move(dst_buf[dst_idx],
-                                   src_buf[src_idx],
-                                   0, 1, burst_len, 0, 0)
-
-    def norm_data_move(self, tik_instance, src_buf, dst_buf, in_list):
+    @staticmethod
+    def norm_data_move(tik_instance, src_buf, dst_buf, in_list):
         """
         norm_data_move
         """
@@ -560,6 +548,19 @@ class MaxPool3DGradCompute:
                                burst_len,
                                src_stride,
                                dst_stride)
+
+    def _ultimate_data_move(self, tik_instance, src_buf, dst_buf, in_list, num_bit):
+        src_idx, dst_idx = in_list[-2], in_list[-1]
+        n_burst, burst_len = in_list[0], in_list[1]
+        src_stride, dst_stride = in_list[2], in_list[3]
+
+        with tik_instance.for_range(0, n_burst) as i:
+            src_idx += i * (src_stride + burst_len) * Constant.MINI_UNIT // num_bit
+            dst_idx += i * (dst_stride + burst_len) * Constant.MINI_UNIT // num_bit
+
+            tik_instance.data_move(dst_buf[dst_idx],
+                                   src_buf[src_idx],
+                                   0, 1, burst_len, 0, 0)
 
     def _copy_gm_to_l1(self, tik_instance, l1_buf, src_idx, dst_idx, in_shape):
         n_burst = in_shape[0]
@@ -790,33 +791,6 @@ class MaxPool3DGradCompute:
         self.set_vector_dup(tik_instance, num_init_zero,
                             ubuf, num_overlap, 0, "float32")
 
-    def _copy_gm_to_ub(self, tik_instance, dst_buf, src_buf, src_idx, in_shape):
-        # Only split do, self.ho is equal to in_shape[1], self.wo is equal
-        # to in_shape[2].
-        # Only split do and ho, self.wo is equal to in_shape[2], and do is 1.
-        # Only split do, ho, wo, do and ho is 1.
-        n_burst = in_shape[0]
-        burst_len = _prod(in_shape[1:]) * self.num_bit // Constant.MINI_UNIT
-        src_stride = (_prod(self.forward_ou_shape[3:]) * (self.c1 - 1) +
-                      _prod(self.forward_ou_shape[4:]) * (self.ho - in_shape[1]) +
-                      self.c0 * (self.wo - in_shape[2])) * \
-                     self.num_bit // Constant.MINI_UNIT
-        dst_stride = 0
-
-        if src_stride > Constant.MAX_STRIDE or dst_stride > Constant.MAX_STRIDE:
-            in_list = [n_burst, burst_len, src_stride,
-                       dst_stride, src_idx, 0]
-            self._ultimate_data_move(tik_instance, src_buf,
-                                     dst_buf, in_list, self.num_bit)
-        else:
-            tik_instance.data_move(dst_buf[0],
-                                   src_buf[src_idx],
-                                   0,
-                                   n_burst,
-                                   burst_len,
-                                   src_stride,
-                                   dst_stride)
-
     def set_vector_dup(self, tik_instance, psm, dst, idx, number, dtype):
         """
         set_vector_dup
@@ -860,6 +834,33 @@ class MaxPool3DGradCompute:
                                         1,
                                         dst_blk_stride,
                                         dst_rep_stride)
+
+    def _copy_gm_to_ub(self, tik_instance, dst_buf, src_buf, src_idx, in_shape):
+        # Only split do, self.ho is equal to in_shape[1], self.wo is equal
+        # to in_shape[2].
+        # Only split do and ho, self.wo is equal to in_shape[2], and do is 1.
+        # Only split do, ho, wo, do and ho is 1.
+        n_burst = in_shape[0]
+        burst_len = _prod(in_shape[1:]) * self.num_bit // Constant.MINI_UNIT
+        src_stride = (_prod(self.forward_ou_shape[3:]) * (self.c1 - 1) +
+                      _prod(self.forward_ou_shape[4:]) * (self.ho - in_shape[1]) +
+                      self.c0 * (self.wo - in_shape[2])) * \
+                     self.num_bit // Constant.MINI_UNIT
+        dst_stride = 0
+
+        if src_stride > Constant.MAX_STRIDE or dst_stride > Constant.MAX_STRIDE:
+            in_list = [n_burst, burst_len, src_stride,
+                       dst_stride, src_idx, 0]
+            self._ultimate_data_move(tik_instance, src_buf,
+                                     dst_buf, in_list, self.num_bit)
+        else:
+            tik_instance.data_move(dst_buf[0],
+                                   src_buf[src_idx],
+                                   0,
+                                   n_burst,
+                                   burst_len,
+                                   src_stride,
+                                   dst_stride)
 
     def _vconv(self, tik_instance, src, src_start, dst,
                dst_start, ele_num, src_dtype):
@@ -1150,28 +1151,6 @@ class MaxPool3DGradCompute:
                               param.mask_size // Constant.VECTOR_FP16_SIZE,
                               1, 1, 8, 8)
 
-    def _sel(self, tik_instance, buf_list, idx_list, const_list):
-        mask_buf = buf_list[4]
-        zero_buf = buf_list[7]
-        grad_buf = buf_list[2]
-        grad_sel_fp16_buf = buf_list[8]
-
-        ho, wo, c0 = const_list
-        idx_do = idx_list[0]
-
-        repeat_times_sel = math.ceil(ho * wo * c0 / Constant.VECTOR_FP16_SIZE)
-        with tik_instance.for_range(0, repeat_times_sel) as serial:
-            grad_sel_offset = serial * 128
-            grad_offset = serial * 128 + idx_do * ho * wo * c0
-            mask_offset = serial * 8
-            cmp_mask = tik_instance.mov_tensor_to_cmpmask(mask_buf[mask_offset])
-            tik_instance.vsel(self.mask_fp16, 0,
-                              grad_sel_fp16_buf[grad_sel_offset],
-                              cmp_mask,
-                              grad_buf[grad_offset],
-                              zero_buf,
-                              1, 1, 1, 1, 8, 8, 0)
-
     def not_tiling_main(self, tik_instance, core_loop, sum_core,
                         model, param):
         """
@@ -1378,6 +1357,28 @@ class MaxPool3DGradCompute:
             self._copy_ub_to_gm(tik_instance, f_map_fp32_buf, 0,
                                 self.ou_y_gm, dst_ou_gm,
                                 ub2gm_shape)
+
+    def _sel(self, tik_instance, buf_list, idx_list, const_list):
+        mask_buf = buf_list[4]
+        zero_buf = buf_list[7]
+        grad_buf = buf_list[2]
+        grad_sel_fp16_buf = buf_list[8]
+
+        ho, wo, c0 = const_list
+        idx_do = idx_list[0]
+
+        repeat_times_sel = math.ceil(ho * wo * c0 / Constant.VECTOR_FP16_SIZE)
+        with tik_instance.for_range(0, repeat_times_sel) as serial:
+            grad_sel_offset = serial * 128
+            grad_offset = serial * 128 + idx_do * ho * wo * c0
+            mask_offset = serial * 8
+            cmp_mask = tik_instance.mov_tensor_to_cmpmask(mask_buf[mask_offset])
+            tik_instance.vsel(self.mask_fp16, 0,
+                              grad_sel_fp16_buf[grad_sel_offset],
+                              cmp_mask,
+                              grad_buf[grad_offset],
+                              zero_buf,
+                              1, 1, 1, 1, 8, 8, 0)
 
     def tiling_do_main(self, tik_instance, core_loop,
                        sum_core, model, param):
@@ -4002,6 +4003,24 @@ class MaxPool3DGradCompute:
                     break
         return n1, new_base_num
 
+    def grad(self, tik_instance, split_model,
+             param, total_num, core_num, func):
+        """
+        grad
+        """
+        # just tiling do ho
+        # support valid
+        core_loop = tik_instance.Scalar("int64")
+        sum_core = tik_instance.Scalar("int64")
+        with tik_instance.for_range(0, core_num,
+                                    block_num=core_num) as blk_idx:
+            core_loop_uint64, sum_core_uint64 = _cal_core(tik_instance, total_num,
+                                                          blk_idx, core_num)
+            core_loop.set_as(core_loop_uint64)
+            sum_core.set_as(sum_core_uint64)
+
+            func(tik_instance, core_loop, sum_core, split_model, param)
+
     def _split_core(self):
         # ============================
         # SPLIT Do,Ho,Wo for core_num
@@ -4051,25 +4070,20 @@ class MaxPool3DGradCompute:
         di, hi, wi = self._infer_dim_return(do, ho, wo, True)
         core_in_shape = [di, hi, wi, c0]
 
-        return total_num, core_num, core_ou_shape, core_in_shape, core_branch
+        return [total_num, core_num, core_ou_shape, core_in_shape, core_branch]
 
-    def grad(self, tik_instance, split_model,
-             param, total_num, core_num, func):
+    def get_tik_instance(self):
         """
-        grad
+        obtain tik instance
         """
-        # just tiling do ho
-        # support valid
-        core_loop = tik_instance.Scalar("int64")
-        sum_core = tik_instance.Scalar("int64")
-        with tik_instance.for_range(0, core_num,
-                                    block_num=core_num) as blk_idx:
-            core_loop_uint64, sum_core_uint64 = _cal_core(tik_instance, total_num,
-                                                          blk_idx, core_num)
-            core_loop.set_as(core_loop_uint64)
-            sum_core.set_as(sum_core_uint64)
+        tik_instance = self._compute()
+        tik_instance.BuildCCE(kernel_name=self.kernel_name,
+                              inputs=[self.orig_x_gm,
+                                      self.orig_y_gm,
+                                      self.grads_gm],
+                              outputs=[self.ou_y_gm])
 
-            func(tik_instance, core_loop, sum_core, split_model, param)
+        return tik_instance
 
     def _compute(self):
         """
@@ -4142,19 +4156,6 @@ class MaxPool3DGradCompute:
                 self.grad(tik_instance, split_model, param,
                           total_num, core_num,
                           self.same_pure_atomic_tiling_do_ho_wo)
-
-        return tik_instance
-
-    def get_tik_instance(self):
-        """
-        obtain tik instance
-        """
-        tik_instance = self._compute()
-        tik_instance.BuildCCE(kernel_name=self.kernel_name,
-                              inputs=[self.orig_x_gm,
-                                      self.orig_y_gm,
-                                      self.grads_gm],
-                              outputs=[self.ou_y_gm])
 
         return tik_instance
 
