@@ -904,17 +904,17 @@ def __dynamic_template_api(input_x, input_gamma, input_beta, output_y, output_me
     # when all reduce axis, or reduce axis non aligned or reduced mte data less one block etc. single-core cases will
     # transfer dynamic template to use multi-core
     input_x, input_gamma, input_beta = layer_norm_unify.set_range(input_x, input_gamma, input_beta)
-    context = tbe_context.op_context.get_context()
-    if context is not None:
-        context.set_op_mode("static")
-        context.add_addition("is_static", True)
+    context_ops = tbe_context.op_context.get_context()
+    if context_ops is not None:
+        context_ops.set_op_mode("static")
+        context_ops.add_addition("is_static", True)
         dyn.layer_norm(input_x, input_gamma, input_beta,
                        output_y, output_mean, output_variance,
                        begin_norm_axis, begin_params_axis,
                        epsilon, kernel_name, impl_mode)
     else:
         with tbe_context.op_context.OpContext("static"):
-            context.add_addition("is_static", True)
+            tbe_context.op_context.get_context().add_addition("is_static", True)
             dyn.layer_norm(input_x, input_gamma, input_beta,
                            output_y, output_mean, output_variance,
                            begin_norm_axis, begin_params_axis,
