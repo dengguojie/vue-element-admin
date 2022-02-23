@@ -37,14 +37,21 @@ uint32_t DoGatherV2Compute(CpuKernelContext &ctx) {
   KERNEL_CHECK_NULLPTR(params, KERNEL_STATUS_PARAM_INVALID,
                        "Get params failed.");
   Tensor* indices = ctx.Input(1);
-  auto axis_addr = static_cast<int64_t *>(ctx.Input(kIndexTwo)->GetData());
   KERNEL_CHECK_NULLPTR(indices, KERNEL_STATUS_PARAM_INVALID,
                        "Get indices failed.");
+  DataType indicesTwo_type = ctx.Input(kIndexTwo)->GetDataType();
   int64_t axis = 0;
-  if (axis_addr != NULL) {
-    axis = *axis_addr;
+  if (indicesTwo_type == DT_INT32) {
+    auto axis_addr = static_cast<int32_t *>(ctx.Input(kIndexTwo)->GetData());
+    if (axis_addr != NULL) {
+      axis = static_cast<int64_t>(*axis_addr);
+    }
+  } else {
+    auto axis_addr = static_cast<int64_t *>(ctx.Input(kIndexTwo)->GetData());
+    if (axis_addr != NULL) {
+      axis = static_cast<int64_t>(*axis_addr);
+    }
   }
-
   if (axis < 0) {
     axis = params->GetTensorShape()->GetDims() + axis;
   }
@@ -109,13 +116,20 @@ uint32_t GatherV2CpuKernel::GetInputAndCheck(CpuKernelContext &ctx) {
   Tensor* params = ctx.Input(0);
   KERNEL_CHECK_NULLPTR(params, KERNEL_STATUS_PARAM_INVALID,
                        "Get params failed.");
-  auto axis_addr = static_cast<int64_t *>(ctx.Input(kIndexTwo)->GetData());
+  DataType indicesTwo_type = ctx.Input(kIndexTwo)->GetDataType();
   int64_t axis = 0;
-  if (axis_addr != NULL) {
-    axis = *axis_addr;
+  if (indicesTwo_type == DT_INT32) {
+    auto axis_addr = static_cast<int32_t *>(ctx.Input(kIndexTwo)->GetData());
+    if (axis_addr != NULL) {
+      axis = static_cast<int64_t>(*axis_addr);
+    }
+  } else {
+    auto axis_addr = static_cast<int64_t *>(ctx.Input(kIndexTwo)->GetData());
+    if (axis_addr != NULL) {
+      axis = static_cast<int64_t>(*axis_addr);
+    }
   }
   auto params_dims = params->GetTensorShape()->GetDims();
-
   int64_t min_params_dim = axis < 0 ? -axis : axis + 1;
   KERNEL_CHECK_FALSE((params_dims >= min_params_dim), KERNEL_STATUS_PARAM_INVALID,
                      "Shape must be at least rank [%d] but is rank [%d]",

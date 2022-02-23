@@ -25,15 +25,15 @@ class TEST_GATHERV2_UT : public testing::Test {};
       .Output({"output", data_types[3], shapes[3], datas[3]})       \
       .Attr("batch_dims", 0);
 
-#define ADD_GATHERV2_CASE(base_type, aicpu_type, indices_type, indices_aicpu_type)                  \
+#define ADD_GATHERV2_CASE(base_type, aicpu_type, indices_type, indices_aicpu_type, axis_type, axis_aicpu_type)                  \
   TEST_F(TEST_GATHERV2_UT, TestGatherV2_##aicpu_type) {                                             \
-    vector<DataType> data_types = {aicpu_type, indices_aicpu_type, DT_INT64, aicpu_type};           \
+    vector<DataType> data_types = {aicpu_type, indices_aicpu_type, axis_aicpu_type, aicpu_type};           \
     vector<vector<int64_t>> shapes = {{3, 5}, {2}, {1}, {3, 2}};                                          \
     base_type input0[15] = {(base_type)0, (base_type)1, (base_type)2, (base_type)3, (base_type)4,   \
                             (base_type)6, (base_type)1, (base_type)8, (base_type)3, (base_type)4,  \
                             (base_type)7, (base_type)1, (base_type)9, (base_type)3, (base_type)4};   \
     indices_type input1[2] = {(indices_type)0, (indices_type)2};                                                     \
-    int64_t input2[1] = {1};                                                                        \
+    int64_t input2[1] = {(axis_type)1};                                                                        \
     base_type output[6] = {(base_type)0};      \
     vector<void *> datas = {(void *)input0, (void *)input1, (void *)input2, (void *)output};        \
     CREATE_GATHERV2_NODEDEF(shapes, data_types, datas);                      \
@@ -42,8 +42,9 @@ class TEST_GATHERV2_UT : public testing::Test {};
     EXPECT_EQ(CompareResult<base_type>(output, expect_out, 6), true);    \
   }
 
-  ADD_GATHERV2_CASE(int64_t, DT_INT64, int64_t, DT_INT64)
-  ADD_GATHERV2_CASE(int32_t, DT_INT32, int64_t, DT_INT64)
+  ADD_GATHERV2_CASE(int64_t, DT_INT64, int64_t, DT_INT64, int32_t, DT_INT32)
+  ADD_GATHERV2_CASE(int32_t, DT_INT32, int64_t, DT_INT64, int64_t, DT_INT64)
+
 
 TEST_F(TEST_GATHERV2_UT, TestGatherV2_HighRank) {
     vector<DataType> data_types = {DT_INT64, DT_INT64, DT_INT64, DT_INT64};
@@ -81,6 +82,20 @@ TEST_F(TEST_GATHERV2_UT, TestGatherV2_Float32) {
     float input0[4] = {0.01051331, 2.1171875, 6.3320312, 7.7382812};
     int64_t input1[6] = {1, 2, 0, 3};
     int64_t input2[1] = {0};
+    float output[4] = {0.0};
+    vector<void *> datas = {(void *)input0, (void *)input1, (void *)input2, (void *)output};
+    CREATE_GATHERV2_NODEDEF(shapes, data_types, datas);
+    RUN_KERNEL(node_def, HOST, KERNEL_STATUS_OK);
+    float expect_out[4] = {2.1171875, 6.3320312, 0.01051331, 7.7382812};
+    EXPECT_EQ(CompareResult<float>(output, expect_out, 4), true);
+}
+
+TEST_F(TEST_GATHERV2_UT, TestGatherV2_axis_INT32) {
+    vector<DataType> data_types = {DT_FLOAT, DT_INT32, DT_INT32, DT_FLOAT};
+    vector<vector<int64_t>> shapes = {{4}, {2, 3}, {1}, {2, 3}};
+    float input0[4] = {0.01051331, 2.1171875, 6.3320312, 7.7382812};
+    int32_t input1[6] = {1, 2, 0, 3};
+    int32_t input2[1] = {0};
     float output[4] = {0.0};
     vector<void *> datas = {(void *)input0, (void *)input1, (void *)input2, (void *)output};
     CREATE_GATHERV2_NODEDEF(shapes, data_types, datas);
