@@ -169,8 +169,8 @@ class GEMMComputeParam:
     @staticmethod
     def get_stride_w_value(tail_block_flag, split_k):
         """
-        result_value's bit0 means have tail block
-                       bit1 means need bind k axis in core
+        result_value's bit0 means have tail block,
+        bit1 means need bind k axis in core
         """
         result_value = tail_block_flag
         split_k = int(split_k)
@@ -179,6 +179,9 @@ class GEMMComputeParam:
 
 
 class GetPerfCoreNum:
+    """
+    get perf core num by mte2/mte3, use in atomic add k.
+    """
     BYTES_DTYPE = {
         "uint64": 8,
         "float16": 2,
@@ -197,6 +200,9 @@ class GetPerfCoreNum:
         pass
 
     def get_best_perf_factor(self, shapes, blocks):
+        """
+        get best perf block dim factor by mte2 and mte3
+        """
         m_factor = 1
         k_factor = 1
         n_factor = 1
@@ -232,7 +238,7 @@ class GetPerfCoreNum:
             if (m_dim > m_axis_outer) or (k_dim > k_axis_outer) or (n_dim > n_axis_outer):
                 continue
             block_dims = (m_dim, k_dim, n_dim)
-            cur_cost = self.compute_perf(shapes, block_dims, cur_bandwidth)
+            cur_cost = self._compute_perf(shapes, block_dims, cur_bandwidth)
             if cur_cost < min_cost:
                 min_cost = cur_cost
                 m_factor, k_factor, n_factor = block_dims
@@ -244,7 +250,8 @@ class GetPerfCoreNum:
         if hbm_bandwidth == 0 or l2_bandwidth == 0:
             distant = abs(core_num - 8)
             core_num_best = 8
-            for inner_core_num in self.soc_hbm_bandwidth_info.keys():
+            all_corenum_value = self.soc_hbm_bandwidth_info.keys()
+            for inner_core_num in all_corenum_value:
                 if abs(core_num - inner_core_num) < distant:
                     distant = abs(core_num - inner_core_num)
                     core_num_best = inner_core_num
@@ -252,7 +259,7 @@ class GetPerfCoreNum:
             l2_bandwidth = self.soc_l2_bandwidth_info.get(core_num_best, 0)
         return hbm_bandwidth, l2_bandwidth
 
-    def compute_perf(self, shapes, block_dims, cur_bandwidth):
+    def _compute_perf(self, shapes, block_dims, cur_bandwidth):
         m_shape, k_shape, n_shape = shapes
         m_dim, k_dim, n_dim = block_dims
         m_shape_inner = int_ceil_div(m_shape, m_dim)
@@ -807,8 +814,8 @@ class GEMMCompute(FormatCompute):
                 ka_shape = self.input_range[-2][0]
                 n_shape = self.input_range[-1][1]
         else:
-            a_shape = list(self._get_value(i) for i in self.tensor_a.shape)
-            b_shape = list(self._get_value(i) for i in self.tensor_b.shape)
+            a_shape = [self._get_value(i) for i in self.tensor_a.shape]
+            b_shape = [self._get_value(i) for i in self.tensor_b.shape]
 
             m_index = self.m_shape_dict.get(self.format_a)
             n_index = self.n_shape_dict.get(self.format_b)
@@ -924,8 +931,8 @@ class GEMMCompute(FormatCompute):
         not_fp16_in_fp32_out = (self.src_dtype != "float16") or (self.dst_dtype != "float32")
         not_fractal_nz_out = self.format_out != "FRACTAL_NZ"
 
-        a_shape = list(self._get_value(i) for i in self.tensor_a.shape)
-        b_shape = list(self._get_value(i) for i in self.tensor_b.shape)
+        a_shape = [self._get_value(i) for i in self.tensor_a.shape]
+        b_shape = [self._get_value(i) for i in self.tensor_b.shape]
         have_batch = False
         if (len(a_shape) in (3, 5)) or (len(b_shape) in (3, 5)):
             have_batch = True

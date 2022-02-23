@@ -22,11 +22,6 @@
 #ifndef OPS_BUILT_IN_FUSION_PASS_BUFFER_FUSION_UB_FUSION_AI_CORE_MATMUL_MATMUL_ATOMIC_ADD_UB_FUSION_H
 #define OPS_BUILT_IN_FUSION_PASS_BUFFER_FUSION_UB_FUSION_AI_CORE_MATMUL_MATMUL_ATOMIC_ADD_UB_FUSION_H
 
-#define ATOMIC_ADD_DISABLE 0
-#define ATOMIC_ADD_ENABLE 1
-#define ATOMIC_ADD_NEED_CAST 2
-#define ATOMIC_ADD_NEED_TRANSDATA 4
-
 #include <utility>
 #include <vector>
 
@@ -37,7 +32,7 @@ class MatmulAtomicAddUbFusion : public BufferFusionPassBase {
  public:
   explicit MatmulAtomicAddUbFusion() {}
 
-  ~MatmulAtomicAddUbFusion() {}
+  ~MatmulAtomicAddUbFusion() override {}
   bool EnableAtomicAdd(const ge::NodePtr &matmul_node);
   bool NeedSplitK(const ge::NodePtr &matmul_node);
   Status GetBandWidth(int64_t &hbm_bandwidth, int64_t &l2_bandwidth);
@@ -46,7 +41,7 @@ class MatmulAtomicAddUbFusion : public BufferFusionPassBase {
   bool getValueByKey(std::unordered_map<ge::DataType, int> ori_map, ge::DataType traget_key, int &target_value);
   vector<int64_t> GetMatMulDims(const ge::NodePtr &matmul_node);
   int AtomicAddType(const ge::NodePtr &matmul_node);
-  Status IsDynamic(const ge::NodePtr &matmul_node, bool &is_dynamic, bool &is_no_range);
+  Status IsDynamicMatmul(const ge::NodePtr &matmul_node, bool &is_dynamic, bool &is_no_range);
   bool IsTheRangeOfNoRange(const vector<std::pair<int64_t, int64_t>> &range_data);
   Status GenerateCastNode(ge::NodePtr &matmul_node, ge::NodePtr &cast_node);
   Status GenerateTransDataNode(ge::NodePtr &matmul_node, ge::NodePtr &transdata_node);

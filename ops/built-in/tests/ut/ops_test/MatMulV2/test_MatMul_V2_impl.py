@@ -10,6 +10,7 @@ from te import tvm
 from te.tvm.target import cce
 from te.lang.cce import cce_build_code
 from impl.mat_mul import mat_mul_compute
+from impl.mat_mul import mat_mul_compute_self
 from topi.generic import auto_schedule
 from tbe.common.tiling.tiling_helper import TILING_INSTANCE
 
@@ -668,11 +669,31 @@ def test_auto_tiling(test_arg):
         }
         cce_build_code(sch, config)
 
+def test_atomic_add_k(test_arg):
+    # Test Auto tiling here
+    with cce():
+        x1 = tvm.placeholder((1024, 1, 16, 16), name="x1",
+                             attrs={'format': "FRACTAL_NZ", "ori_shape": (16, 16384)}, dtype="float16")
+        x2 = tvm.placeholder((32, 1024, 16, 16), name="x2",
+                             attrs={'format': "FRACTAL_NZ", "ori_shape": (16384, 512)}, dtype="float16")
+        output_y = {"shape": (1, 32, 16, 16), "dtype": "float32",
+                    "ori_shape": (16, 512), "format": "FRACTAL_NZ", "ori_format": "ND"}
+        matmul_out = mat_mul_compute_self(x1, x2, None, None, output_y, False, False, 0, "matmul_atomic_add_k", "")
+        tensor_list = [x1, x2, matmul_out]
+        sch = auto_schedule(matmul_out)
+        config = {
+            "print_ir": False,
+            "need_build": True,
+            "name": "matmul_atomic_add_k",
+            "tensor_list": tensor_list,
+        }
+        cce_build_code(sch, config)
+
 ut_case.add_cust_test_func(test_func=test_nbuffer_case1)
 ut_case.add_cust_test_func(test_func=test_nbuffer_case2)
 ut_case.add_cust_test_func(test_func=test_nbuffer_case3)
 ut_case.add_cust_test_func(test_func=test_auto_tiling)
-
+ut_case.add_cust_test_func(test_func=test_atomic_add_k)
 
 if __name__ == '__main__':
     ut_case._case_info_map = {}

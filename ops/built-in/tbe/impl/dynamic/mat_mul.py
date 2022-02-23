@@ -271,7 +271,7 @@ def mat_mul(input_x1, input_x2, bias, offset_w={}, output_y={},
     if input_x2.get("format") == "FRACTAL_ZN_RNN":
         input_x2["format"] = "FRACTAL_Z"
     is_prebuild = get_current_build_config("enable_op_prebuild")
-    if (is_prebuild):
+    if is_prebuild:
         get_context().add_build_res("pattern", "MatMul")
 
     with tbe.compute():

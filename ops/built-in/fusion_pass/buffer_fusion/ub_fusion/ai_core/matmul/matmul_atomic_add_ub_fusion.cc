@@ -57,6 +57,10 @@ static const float kAtomicAddBwLoseRadio = 0.5;
 static const int kBlockSize = 16;
 static const int kScheduleTime = 10;
 static const int kLimitCoreNumber = 8;
+static const int kAtomicAddDisable = 0;
+static const int kAtomicAddEnable = 1;
+static const int kAtomicAddNeedCast = 2;
+static const int kAtomicAddNeedTransdata = 4;
 
 vector<BufferFusionPattern *> MatmulAtomicAddUbFusion::DefinePatterns() {
   vector<BufferFusionPattern *> patterns;
@@ -183,8 +187,8 @@ Status MatmulAtomicAddUbFusion::GetBandWidth(int64_t &hbm_bandwidth, int64_t &l2
   }
   if (hbm_bandwidth == 0 || l2_bandwidth == 0) {
     OP_LOGD(kFusedOpType.c_str(), "Get bandwidth fail, use other bandwidth info");
-    int distant = std::abs(core_num - 8);
     int core_num_best = 8;
+    int distant = std::abs(core_num - core_num_best);
     for (const auto &soc_hbm_bandwidth : soc_hbm_bandwidth_info) {
       int inner_core_num = soc_hbm_bandwidth.first;
       if (std::abs(core_num - inner_core_num) < distant) {
@@ -220,7 +224,7 @@ bool MatmulAtomicAddUbFusion::computePerf(vector<int64_t> shapes, vector<int> bl
   ret = ret & getValueByKey(bytes_dtype, out_dtype, ori_out_data_size);
   int in_data_size = 1;
   ret = ret & getValueByKey(bytes_dtype, ge::DT_FLOAT16, in_data_size);
-  if (!ret) {
+  if (!ret || (cur_bandwidth == 0)) {
     return false;
   }
 
@@ -341,23 +345,23 @@ vector<int64_t> MatmulAtomicAddUbFusion::GetMatMulDims(const ge::NodePtr &matmul
 }
 
 int MatmulAtomicAddUbFusion::AtomicAddType(const ge::NodePtr &matmul_node) {
-  int atomic_add_type = ATOMIC_ADD_DISABLE;
+  int atomic_add_type = kAtomicAddDisable;
   if (is_no_range || !EnableAtomicAdd(matmul_node)) {
     return atomic_add_type;
   }
   auto out_dtype = matmul_node->GetOpDesc()->GetOutputDesc(0).GetDataType();
   auto out_format = matmul_node->GetOpDesc()->GetOutputDesc(0).GetFormat();
-  atomic_add_type = ATOMIC_ADD_ENABLE;
+  atomic_add_type = kAtomicAddEnable;
   if (out_dtype == ge::DT_FLOAT16) {
-    atomic_add_type = atomic_add_type | ATOMIC_ADD_NEED_CAST;
+    atomic_add_type = atomic_add_type | kAtomicAddNeedCast;
   }
   if (out_format == ge::FORMAT_ND) {
-    atomic_add_type = atomic_add_type | ATOMIC_ADD_NEED_TRANSDATA;
+    atomic_add_type = atomic_add_type | kAtomicAddNeedTransdata;
   }
   return atomic_add_type;
 }
 
-Status MatmulAtomicAddUbFusion::IsDynamic(const ge::NodePtr &matmul_node, bool &is_dynamic, bool &is_no_range) {
+Status MatmulAtomicAddUbFusion::IsDynamicMatmul(const ge::NodePtr &matmul_node, bool &is_dynamic, bool &is_no_range) {
   is_dynamic = false;
   auto input0_desc = GetCurrNodeInputDesc(matmul_node, 0);
   auto input1_desc = GetCurrNodeInputDesc(matmul_node, 1);
@@ -367,12 +371,8 @@ Status MatmulAtomicAddUbFusion::IsDynamic(const ge::NodePtr &matmul_node, bool &
   vector<int64_t> all_dims;
   all_dims.resize(input0_dims.size() + input1_dims.size());
   merge(input0_dims.begin(), input0_dims.end(), input1_dims.begin(), input1_dims.end(), all_dims.begin());
-  for (auto single_dim : all_dims) {
-    if (single_dim < 0) {
-      is_dynamic = true;
-      break;
-    }
-  }
+  is_dynamic = std::any_of(all_dims.begin(), all_dims.end(),
+                           [](int64_t single_dim) {return single_dim < 0;});
   if (!is_dynamic) {
     return SUCCESS;
   }
@@ -391,16 +391,18 @@ Status MatmulAtomicAddUbFusion::IsDynamic(const ge::NodePtr &matmul_node, bool &
   return SUCCESS;
 }
 
+bool IsNoRange(const pair<int64_t, int64_t> &dim_range) {
+  return ((dim_range.first == 1) && (dim_range.second == -1));
+}
+
 bool MatmulAtomicAddUbFusion::IsTheRangeOfNoRange(const vector<pair<int64_t, int64_t>> &range_data) {
   if (range_data.empty()) {
     OP_LOGD(kFusedOpType, "the range of MatMul is empty, is no range.");
     return true;
   }
-  for (auto dim_range : range_data) {
-    if ((dim_range.first == 1) && (dim_range.second == -1)) {
-      OP_LOGD(kFusedOpType, "range is (1, -1), is no range.");
-      return true;
-    }
+  if (std::any_of(range_data.begin(), range_data.end(), IsNoRange)) {
+    OP_LOGD(kFusedOpType, "range is (1, -1), is no range.");
+    return true;
   }
   return false;
 }
@@ -587,20 +589,19 @@ Status MatmulAtomicAddUbFusion::AddCustomNode(int cur_add_node_type, ge::NodePtr
                             matmul_node->GetName().c_str()),
                     return SUCCESS);
 
-  if (cur_add_node_type == ATOMIC_ADD_NEED_TRANSDATA) {
+  if (cur_add_node_type == kAtomicAddNeedTransdata) {
     next_node_name = next_node_name + "_Transdata";
     FUSION_PASS_CHECK(
       SUCCESS != GenerateTransDataNode(matmul_node, next_node),
       CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "Add transdata node for %s fail.", matmul_node->GetName().c_str()),
       return FAILED);
-  } else if (cur_add_node_type == ATOMIC_ADD_NEED_CAST) {
+  } else if (cur_add_node_type == kAtomicAddNeedCast) {
     next_node_name = next_node_name + "_Cast";
     FUSION_PASS_CHECK(
       SUCCESS != GenerateCastNode(matmul_node, next_node),
       CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "Add cast node for %s fail.", matmul_node->GetName().c_str()),
       return FAILED);
   }
-
   if (matmul_node->GetOutDataAnchor(0)->GetPeerInDataAnchors().size() > 0) {
     for (ge::InDataAnchorPtr &in_anchor_ptr : matmul_node->GetOutDataAnchor(0)->GetPeerInDataAnchors()) {
       FUSION_PASS_CHECK(
@@ -687,7 +688,7 @@ Status MatmulAtomicAddUbFusion::GetFusionNodes(const BufferFusionMapping &mappin
     return SUCCESS;
   }
   auto matmul_node = matmul_nodes[0];
-  bool ret = IsDynamic(matmul_node, is_dynamic_flag, is_no_range);
+  bool ret = IsDynamicMatmul(matmul_node, is_dynamic_flag, is_no_range);
   if (ret != SUCCESS) {
     OP_LOGW(kFusedOpType.c_str(), "Get dynamic flag or no range flag fail, end.", matmul_node->GetName().c_str());
     return SUCCESS;
@@ -696,19 +697,19 @@ Status MatmulAtomicAddUbFusion::GetFusionNodes(const BufferFusionMapping &mappin
 
   auto atomic_add_type = AtomicAddType(matmul_node);
   OP_LOGD(kFusedOpType.c_str(), "In matmul atomic add fusion pass, mode is %d", atomic_add_type);
-  if (atomic_add_type != ATOMIC_ADD_DISABLE) {
+  if (atomic_add_type != kAtomicAddDisable) {
     fusion_nodes.push_back(matmul_node);
-    if ((atomic_add_type & ATOMIC_ADD_NEED_TRANSDATA) == ATOMIC_ADD_NEED_TRANSDATA) {
+    if ((atomic_add_type & kAtomicAddNeedTransdata) == kAtomicAddNeedTransdata) {
       // add transdata node
       OP_LOGD(kFusedOpType.c_str(), "Current matmul node %s will connect with Transdata.",
               matmul_node->GetName().c_str());
-      FUSION_PASS_CHECK(AddCustomNode(ATOMIC_ADD_NEED_TRANSDATA, matmul_node, fusion_nodes) != SUCCESS,
+      FUSION_PASS_CHECK(AddCustomNode(kAtomicAddNeedTransdata, matmul_node, fusion_nodes) != SUCCESS,
                         CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "Add Transdata node fail."), return FAILED);
     }
-    if ((atomic_add_type & ATOMIC_ADD_NEED_CAST) == ATOMIC_ADD_NEED_CAST) {
+    if ((atomic_add_type & kAtomicAddNeedCast) == kAtomicAddNeedCast) {
       // add cast node
       OP_LOGD(kFusedOpType.c_str(), "Current matmul node %s will connect with Cast.", matmul_node->GetName().c_str());
-      FUSION_PASS_CHECK(AddCustomNode(ATOMIC_ADD_NEED_CAST, matmul_node, fusion_nodes) != SUCCESS,
+      FUSION_PASS_CHECK(AddCustomNode(kAtomicAddNeedCast, matmul_node, fusion_nodes) != SUCCESS,
                         CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "Add Cast node fail."), return FAILED);
     }
   } else {

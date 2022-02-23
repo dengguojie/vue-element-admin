@@ -229,6 +229,7 @@ class GemmSchedule:
             self.fuse_num_group = []
             self.vector_muls_attr = {}
             self.custom_block_dim = []
+            self.axis_core = None
 
     class GemmScheduleStatusController:
         """
@@ -275,6 +276,7 @@ class GemmSchedule:
             self.attach_at_flag = None
             self.split_k_axis_by_tiling = False
             self.split_k = False
+            self.over_head_flag = False
 
     def __init__(self, res, sch_list, dynamic_para):
         self.res_ori = res
@@ -558,7 +560,8 @@ class GemmSchedule:
         self._print_ir_matmul("after data layout", self.sch)
         self._get_batch_info()
         self._set_buffer_reuse_dict()
-        over_head_flag = self._tiling_process()
+        self._tiling_process()
+        self._update_flag_after_tiling()
         self._set_nd_out_compute_inline()
         self._atomic_add_k_axis()
         self._print_ir_matmul("atomic_add_k_axis", self.sch)
@@ -578,11 +581,11 @@ class GemmSchedule:
         self._do_buffer_align()
         self._solve_bank_conflict()
         self._solve_split_k_dirty_data()
-        a_run_once, b_run_once = self._allocate_axis(over_head_flag)
+        a_run_once, b_run_once = self._allocate_axis(self.status_controller.over_head_flag)
         self._cache_tiling_full_load(self.container.TENSOR_MAP.get("c_gm"))
         self._double_buffer(a_run_once, b_run_once)
         self._handle_tbe_compile_para()
-        self._reorder_axis(over_head_flag, a_run_once, b_run_once)
+        self._reorder_axis(self.status_controller.over_head_flag, a_run_once, b_run_once)
         self._do_compute_inline()
         self._mem_process()
         self._set_var_range_for_dynamic()
@@ -597,9 +600,9 @@ class GemmSchedule:
 
         block_dims = self.tiling.get("block_dim")
         block_dims_without_k_dim = block_dims[0] * block_dims[1] * block_dims[2]
-        real_multi_core_axis = self.axis_core
+        real_multi_core_axis = self.container.axis_core
         if block_dims_without_k_dim != 1:
-            real_multi_core_axis = self.axis_core // block_dims_without_k_dim
+            real_multi_core_axis = self.container.axis_core // block_dims_without_k_dim
 
         a_l0 = self.container.TENSOR_MAP.get("a_l0a")
         a_l0_shape_k = self._get_value(a_l0.shape[-3])
@@ -634,7 +637,7 @@ class GemmSchedule:
 
         al0_k_dim_full_load = self.status_controller.al0_attach_status != "c_l0c"
         if (not self.is_dynamic and no_tail_core_k_len % self.al0_tiling_ka == 0) or al0_k_dim_full_load:
-            return True
+            return
 
         self.sch[a_l0].set_store_predicate(
             a_l0.op.axis[-3].var - real_multi_core_axis * no_tail_core_k_len < no_tail_core_k_len, partition=True)
@@ -651,12 +654,11 @@ class GemmSchedule:
 
     def _get_condition_of_multi_k_axis(self, multi_core_axis, block_dim_k, k_len, is_tail_core=False):
         c_l0c = self.container.TENSOR_MAP.get("c_l0c")
-        reduce_axis_index = 1
         # the axis number of l0c is 6
         total_axis_l0c = 6
         scopes_intrins = self.sch_agent[c_l0c].intrin_scopes(total_axis_l0c)
         scope_insn = scopes_intrins[0]
-        inner_k_axis = self.sch_agent[c_l0c].get_relate_scope(c_l0c.op.reduce_axis[reduce_axis_index], scope_insn)
+        inner_k_axis = self.sch_agent[c_l0c].get_relate_scope(c_l0c.op.reduce_axis[1], scope_insn)
         inner_k_axis = inner_k_axis[::-1]
         k_axis_values = self._get_k_outer_values(k_len)
         k_axis_values = k_axis_values[::-1]
@@ -685,7 +687,7 @@ class GemmSchedule:
         if self.status_controller.bub_attach_status == "c_l0c":
             k_split_info.append(self.bub_tiling_k // self.block_reduce)
         k_split_info = list(set(k_split_info))
-        k_split_info = list(sorted(k_split_info))
+        k_split_info = sorted(k_split_info)
         k_split_info_new = k_split_info + [k_len]
         before_value = k_split_info[0]
         for i in k_split_info_new[1:]:
@@ -2151,7 +2153,7 @@ class GemmSchedule:
     def _tiling_process(self):
         """
         :param None:
-        :return tiling result and data_byte
+        :return None
         info_dict
         -----------------------------------------------
         strideH: the data format A matrix and B matrix
@@ -2236,14 +2238,11 @@ class GemmSchedule:
             "scalar_size": scalar_size
         }
         self._print_debug(info_dict, "info_dict")
-        over_head_flag = False
         if self.is_dynamic:
             tiling = self.dynamic_para.get("tiling_strategy")
             tiling = self._config_cache_tiling(tiling)
         else:
             tiling = self._get_tiling_after_cmp(info_dict, new_fused_num)
-            # split k not support nbuffer now
-            over_head_flag = bool(tiling.get("A_overhead_opt_flag")) and (not self.status_controller.split_k)
         tiling = self._no_solution_tiling(tiling)
         tiling = self._gemv_tiling(tiling)
         tiling = self._check_k_full_load(tiling)
@@ -2254,12 +2253,21 @@ class GemmSchedule:
                 "value": "None"
             }
             raise RuntimeError(args_dict, error_manager_util.get_error_message(args_dict))
-        # the index 3 of block_dim means block_dim_k
-        self.status_controller.split_k_axis_by_tiling = tiling.get("block_dim")[3] != 1
         self.tiling = tiling
         self.status_controller.attach_at_flag = tiling.get("attach_at_flag")
         self._print_debug(tiling, "auto tiling result")
-        return over_head_flag
+
+    def _update_flag_after_tiling(self):
+        """
+        Update variables that depend on tiling.
+        over_head_flag: try use nbuffer. Depend on A_overhead_opt_flag and split_k.
+        split_k_axis_by_tiling: Enable the bind multi core in k axis. Depend on block_dim_k.
+        """
+        # split k not support nbuffer now
+        self.status_controller.over_head_flag = bool(
+            self.tiling.get("A_overhead_opt_flag")) and (not self.status_controller.split_k)
+        # the index 3 of block_dim means block_dim_k
+        self.status_controller.split_k_axis_by_tiling = self.tiling.get("block_dim")[3] != 1
 
     @staticmethod
     def _get_zero_tiling(tiling_dict):
@@ -2437,15 +2445,8 @@ class GemmSchedule:
             _
         ) = self.tiling.get("CL0_matrix")
         c_l0c = self.container.TENSOR_MAP.get("c_l0c")
+        self._get_l0c_reduce_dims()
 
-        self.c_col_k1, self.c_col_k0 = [self._get_value(ax.dom.extent) for ax in c_l0c.op.reduce_axis]
-        if self.is_dynamic:
-            if self.status_controller.split_k_axis_by_tiling:
-                self.c_col_k0 = self.dynamic_k
-            else:
-                self.c_col_k1 = self.dynamic_k
-        if self.status_controller.split_k_axis_by_tiling:
-            self.c_col_k0, self.c_col_k1 = self.c_col_k1, self.c_col_k0
         self.al0_tiling_m0 = tbe_platform.CUBE_MKN[a_l0a.dtype]["mac"][0]
         self.al0_tiling_k0 = tbe_platform.CUBE_MKN[a_l0a.dtype]["mac"][1]
         self.bl0_tiling_k0 = tbe_platform.CUBE_MKN[b_l0b.dtype]["mac"][1]
@@ -2457,6 +2458,17 @@ class GemmSchedule:
         self.al0_tiling_batch = 1
         self.bl0_tiling_batch = 1
         self.cl0_tiling_batch = 1
+
+    def _get_l0c_reduce_dims(self):
+        c_l0c = self.container.TENSOR_MAP.get("c_l0c")
+        self.c_col_k1, self.c_col_k0 = [self._get_value(ax.dom.extent) for ax in c_l0c.op.reduce_axis]
+        if self.is_dynamic:
+            if self.status_controller.split_k_axis_by_tiling:
+                self.c_col_k0 = self.dynamic_k
+            else:
+                self.c_col_k1 = self.dynamic_k
+        if self.status_controller.split_k_axis_by_tiling:
+            self.c_col_k0, self.c_col_k1 = self.c_col_k1, self.c_col_k0
 
     def _tiling_l1_process(self):
         self._tiling_al1_process()
@@ -3631,8 +3643,7 @@ class GemmSchedule:
         return axes_list
 
     def _bind_multi_core(self):
-        root_tensor = self.root_tensor
-        axis_mn = self.sch_agent[root_tensor].get_active_scopes()
+        axis_mn = self.sch_agent[self.root_tensor].get_active_scopes()
         ax_batch = 1
         offset_value = 1 if self.status_controller.split_k_axis_by_tiling else 0
         if (not self.status_controller.have_batch) and (not self.status_controller.reduce_fusion):
@@ -3648,7 +3659,7 @@ class GemmSchedule:
         if self.status_controller.reduce_fusion:
             batch_dim = self._get_value(self.container.TENSOR_MAP.get("c_l0c").shape)[0]
         if self.cache_tiling:
-            axes_list = self._bind_core_cache_tiling(root_tensor, ax_batch, ax_n, ax_m)
+            axes_list = self._bind_core_cache_tiling(self.root_tensor, ax_batch, ax_n, ax_m)
             block = tvm.thread_axis("blockIdx.x")
             self.sch.bind_axes(axes_list, block)
         else:
@@ -3661,7 +3672,7 @@ class GemmSchedule:
                 axis_list.insert(0, axis_mn[0])
                 axis_dim.insert(0, reduce_dim)
 
-            self.axis_core = self.sch_agent[root_tensor].bind_core(axis_list, axis_dim)
+            self.container.axis_core = self.sch_agent[self.root_tensor].bind_core(axis_list, axis_dim)
 
     def _buffer_align_func(self, tensor, have_batch, *align_args):
 
@@ -5917,11 +5928,9 @@ class ComputeTiling:
         m_factors = m_var[1]
         n_shape = n_var[0]
         n_factors = n_var[1]
-        k_shape = k_var[0]
-        k_factors = k_var[1]
         core_inner_m = m_shape
         core_inner_n = n_shape
-        core_inner_k = k_shape
+        core_inner_k = k_var[0]
         batch = self.batch_shape
         if batch in (0, 1):
             block_in = self.block_in
@@ -5930,8 +5939,8 @@ class ComputeTiling:
             if m_shape != 1:
                 core_inner_m = (((m_shape + block_in - 1) // block_in + (m_factors - 1)) // m_factors) * block_in
             core_inner_n = (((n_shape + block_out - 1) // block_out + (n_factors - 1)) // n_factors) * block_out
-            core_inner_k = (((k_shape + block_reduce - 1) // block_reduce +
-                             (k_factors - 1)) // k_factors) * block_reduce
+            core_inner_k = (((k_var[0] + block_reduce - 1) // block_reduce +
+                             (k_var[1] - 1)) // k_var[1]) * block_reduce
         return batch, core_inner_m, core_inner_n, core_inner_k
 
     def _is_need_n_cut_even(self, core_inner_n):
