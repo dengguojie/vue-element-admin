@@ -222,7 +222,8 @@ def check_prama_dtype(input_x, weight, bias, init_h, init_c, y, output_h,
     # check optional input
     if init_c is not None:
         if init_c.get("dtype").lower() != bias_dtype:
-            error_manager_vector.raise_err_specific_reson("DynamicRNNV3", "init_c dtype is not the same as bias dtype !")
+            error_manager_vector.raise_err_specific_reson("DynamicRNNV3",
+                                                          "init_c dtype is not the same as bias dtype !")
 
     # check output
     if y["dtype"] != bias_dtype:
@@ -298,7 +299,8 @@ def check_attr(cell_type, direction, cell_depth, activation):
         error_manager_vector.raise_err_specific_reson("DynamicRNNV3", "attr cell_depth is not support, please check!")
 
     if activation not in ["tanh"]:
-        error_manager_vector.raise_err_specific_reson("DynamicRNNV3", "attr activation only support tanh, please check!")
+        error_manager_vector.raise_err_specific_reson("DynamicRNNV3",
+                                                      "attr activation only support tanh, please check!")
 
 
 @register_operator("DynamicRNNV3")
@@ -1803,7 +1805,7 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
         s[c_t_tanh_back].emit_insn(s[c_t_tanh_back].op.axis[1], 'phony_insn')
 
     s[c_t_tanh_fake].emit_insn(s[c_t_tanh_fake].op.axis[0], 'phony_insn')
-     # fp16 in
+    # fp16 in
     if bias_dtype == 'float16':
         s[update_c_fp16].emit_insn(update_c_fp16.op.axis[0], 'vector_conv')
         s[update_c_fp16_back_fake].emit_insn(s[update_c_fp16_back_fake].op.axis[0], 'phony_insn')
