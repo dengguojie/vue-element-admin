@@ -263,7 +263,6 @@ static bool CheckReduceDInfo(const ge::Operator& op, const size_t& input_size, c
     return false;
   }
   if (GRAPH_SUCCESS != op.GetAttr(axis_name, axis)) {
-    OpsGetAttrErrReport(op.GetName(), axis_name);
     OP_LOGE(op.GetName().c_str(), "GetAttr of %s failed.", axis_name.c_str());
     return false;
   }
@@ -640,14 +639,12 @@ static bool InferReduceDShape(const ge::Operator& op, const string& input_name, 
 
   std::vector<int64_t> axis;
   if (GRAPH_SUCCESS != op.GetAttr(axis_name, axis)) {
-    OpsGetAttrErrReport(op.GetName(), axis_name);
     OP_LOGE(op.GetName().c_str(), "GetAttr of %s failed.", axis_name.c_str());
     return false;
   }
 
   bool keep_dims;
   if (GRAPH_SUCCESS != op.GetAttr(keep_dims_name, keep_dims)) {
-    OpsGetAttrErrReport(op.GetName(), keep_dims_name);
     OP_LOGE(op.GetName().c_str(), "GetAttr of %s failed.", keep_dims_name.c_str());
     return false;
   }
@@ -660,8 +657,6 @@ static bool InferReduceDShape(const ge::Operator& op, const string& input_name, 
 
   for (size_t i = 0; i < axis.size(); ++i) {
     if (axis[i] < -dimNum || axis[i] > (dimNum - 1)) {
-      OpsInputShapeDimErrReport(op.GetName(), "axis", ConcatString(dimNum - 1), ConcatString(-dimNum),
-                                ConcatString(axis[i]));
       OP_LOGE(op.GetName().c_str(), "the axis of reduce verify failed.");
       return false;
     }

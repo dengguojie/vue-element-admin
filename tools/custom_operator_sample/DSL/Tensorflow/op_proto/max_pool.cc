@@ -63,28 +63,24 @@ IMPLEMT_INFERFUNC(MaxPool, MaxPoolInferShape) {
     // get input ksize
     std::vector<int32_t> ksize;
     if (GRAPH_SUCCESS != op.GetAttr("ksize", ksize)) {
-        OpsGetAttrErrReport(op.GetName(), "ksize");
         OP_LOGE(op.GetName().c_str(), "GetOpAttr ksize failed!");
         return GRAPH_FAILED;
     }
     // get input strides
     std::vector<int32_t> strides;
     if (GRAPH_SUCCESS != op.GetAttr("strides", strides)) {
-        OpsGetAttrErrReport(op.GetName(), "strides");
         OP_LOGE(op.GetName().c_str(), "GetOpAttr strides failed!");
         return GRAPH_FAILED;
     }
     // get input data_format
     std::string data_format;
     if (GRAPH_SUCCESS != op.GetAttr("data_format", data_format)) {
-        OpsGetAttrErrReport(op.GetName(), "data_format");
         OP_LOGE(op.GetName().c_str(), "GetOpAttr data_format failed!");
         return GRAPH_FAILED;
     }
     // get input padding
     std::string padding;
     if (GRAPH_SUCCESS != op.GetAttr("padding", padding)) {
-        OpsGetAttrErrReport(op.GetName(), "padding");
         OP_LOGE(op.GetName().c_str(), "GetOpAttr padding failed!");
         return GRAPH_FAILED;
     }
@@ -136,37 +132,31 @@ IMPLEMT_VERIFIER(MaxPool, MaxPoolVerify) {
     // check ksize
     std::vector<int32_t> ksize;
     if (GRAPH_SUCCESS != op.GetAttr("ksize", ksize)) {
-        OpsGetAttrErrReport(op.GetName(), "ksize");
         OP_LOGE(op.GetName().c_str(), "GetOpAttr ksize failed!");
         return GRAPH_FAILED;
     }
     if (ksize.size() != 4) {
-        OpsAttrValueErrReport(op.GetName(), "length of ksize", ConcatString(4), ConcatString((size_t)ksize.size()));
         OP_LOGE(op.GetName().c_str(), "The length of ksize must be equal to the length of shape!");
         return GRAPH_FAILED;
     }
     // check strides
     std::vector<int32_t> strides;
     if (GRAPH_SUCCESS != op.GetAttr("strides", strides)) {
-        OpsGetAttrErrReport(op.GetName(), "strides");
         OP_LOGE(op.GetName().c_str(), "GetOpAttr strides failed!");
         return GRAPH_FAILED;
     }
     if (strides.size() != 4) {
-        OpsAttrValueErrReport(op.GetName(), "length of strides", ConcatString(4), ConcatString(strides.size()));
         OP_LOGE(op.GetName().c_str(), "The length of strides must be equal to the length of shape!");
         return GRAPH_FAILED;
     }
     // check data_format
     std::string data_format;
     if (GRAPH_SUCCESS != op.GetAttr("data_format", data_format)) {
-        OpsGetAttrErrReport(op.GetName(), "data_format");
         OP_LOGE(op.GetName().c_str(), "GetOpAttr data_format failed!");
         return GRAPH_FAILED;
     }
     if (data_format != "NHWC" && data_format != "NCHW" && data_format != "NC1HWC0") {
         string expected_format_list = ConcatString("NHWC,NCHW,NC1HWC0");
-        OpsInputFormatErrReport(op.GetName(), "data_format", expected_format_list, data_format);
         OP_LOGE(op.GetName().c_str(), "data_format only support 'NHWC','NCHW' and 'NC1HWC0'.");
         return GRAPH_FAILED;
     }
@@ -185,13 +175,11 @@ IMPLEMT_VERIFIER(MaxPool, MaxPoolVerify) {
     // check padding
     std::string padding;
     if (GRAPH_SUCCESS != op.GetAttr("padding", padding)) {
-        OpsGetAttrErrReport(op.GetName(), "padding");
         OP_LOGE(op.GetName().c_str(), "GetOpAttr padding failed!");
         return GRAPH_FAILED;
     }
     if (padding != "SAME" && padding != "VALID") {
         string expected_format_list = ConcatString("SAME,VALID");
-        OpsInputFormatErrReport(op.GetName(), "padding", expected_format_list, padding);
         OP_LOGE(op.GetName().c_str(), "padding only support SAME or VALID padding mode!");
         return GRAPH_FAILED;
     }
