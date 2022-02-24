@@ -84,6 +84,23 @@ def check_window_rule(ksize, strides, padding_mode, pads, data_format, kernel_na
                                                         str(padding_mode))
 
 
+def get_op_support_info(input_data, output_data, ksize, strides, padding_mode, pads,
+                        data_format="NC1HWC0", global_pooling=False, ceil_mode=False, kernel_name="max_pool_v3"):
+    """
+    get the max_pool_v3 data slice info
+    """
+    format_x = input_data.get("format")
+
+    axis_split_matrix = None
+    axis_reduce_list = None
+    if format_x == "NC1HWC0":
+        axis_split_matrix = [[util_select_op_base.SplitInput([0, [0], [-1], [-1]]),
+                                  util_select_op_base.SplitOutput([0, [0]])]]
+    op_cal_info_in_json = util_select_op_base.get_op_cal_info(axis_split_matrix, axis_reduce_list, 2, 0)
+
+    return op_cal_info_in_json
+
+
 # 'pylint: disable=unnecessary-lambda,too-many-locals
 # 'pylint: disable=locally-disabled,unused-argument,too-many-arguments
 @fusion_manager.register("max_pool_v3")
