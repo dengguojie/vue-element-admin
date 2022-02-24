@@ -3983,14 +3983,12 @@ INFER_DATA_SLICE_FUNC_REG(Conv2DBackpropFilterD, Conv2DBackpropFilterDInferDataS
   * @param padt, padb, padl, padr Top, bottom, left, right padding.
   * @return bool Whether the pads setting is correct.
   */
-static bool GetPadConv2D(ge::Operator& op, int32_t ih, int32_t iw, int32_t kh, int32_t kw, int32_t strh, int32_t strw,
+static bool GetPadConv2D(const AscendString& op_name, ge::OpDescPtr& op_desc,
+                         int32_t ih, int32_t iw, int32_t kh, int32_t kw, int32_t strh, int32_t strw,
                          int32_t dilh, int32_t dilw, int32_t& padt, int32_t& padb, int32_t& padl, int32_t& padr) {
-  AscendString op_name;
-  CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return false);
-
   std::string pad_str;
   std::vector<int32_t> pad_list;
-  if (GRAPH_SUCCESS == op.GetAttr("padding", pad_str) && pad_str.compare("EXPLICIT") != 0) {
+  if (ge::AttrUtils::GetStr(op_desc, "padding", pad_str) && pad_str.compare("EXPLICIT") != 0) {
     if (pad_str.compare("SAME") == 0) {
       int32_t tails_h = ih % strh;
       int32_t tails_w = iw % strw;
@@ -4022,11 +4020,11 @@ static bool GetPadConv2D(ge::Operator& op, int32_t ih, int32_t iw, int32_t kh, i
     }
     OP_LOGD(op_name.GetString(),
             "pads info is %s.", ops::to_string(pad_list).c_str());
-    op.SetAttr("pads", pad_list);
+    ge::AttrUtils::SetListInt(op_desc, "pads", pad_list);
   }
 
   // handle attr auto_pad from ONNX
-  if (GRAPH_SUCCESS == op.GetAttr("auto_pad", pad_str)) {
+  if (ge::AttrUtils::GetStr(op_desc, "auto_pad", pad_str)) {
     if (pad_str.compare("SAME_UPPER") == 0) {
       int32_t tails_h = ih % strh;
       int32_t tails_w = iw % strw;
@@ -4038,7 +4036,7 @@ static bool GetPadConv2D(ge::Operator& op, int32_t ih, int32_t iw, int32_t kh, i
       pad_list.push_back((pad_h >> 1) + (pad_h & 1));
       pad_list.push_back((pad_w >> 1));
       pad_list.push_back((pad_w >> 1) + (pad_w & 1));
-      op.SetAttr("pads", pad_list);
+      ge::AttrUtils::SetListInt(op_desc, "pads", pad_list);
     } else if (pad_str.compare("SAME_LOWER") == 0) {
       int32_t tails_h = ih % strh;
       int32_t tails_w = iw % strw;
@@ -4050,14 +4048,14 @@ static bool GetPadConv2D(ge::Operator& op, int32_t ih, int32_t iw, int32_t kh, i
       pad_list.push_back((pad_h >> 1));
       pad_list.push_back((pad_w >> 1) + (pad_w & 1));
       pad_list.push_back((pad_w >> 1));
-      op.SetAttr("pads", pad_list);
+      ge::AttrUtils::SetListInt(op_desc, "pads", pad_list);
     } else if (pad_str.compare("NOTSET") == 0) {
     } else if (pad_str.compare("VALID") == 0) {
       pad_list.push_back(0);
       pad_list.push_back(0);
       pad_list.push_back(0);
       pad_list.push_back(0);
-      op.SetAttr("pads", pad_list);
+      ge::AttrUtils::SetListInt(op_desc, "pads", pad_list);
     } else {
       OP_LOGE(op_name.GetString(),
               "padding should be SAME or VALID."
@@ -4075,7 +4073,7 @@ static bool GetPadConv2D(ge::Operator& op, int32_t ih, int32_t iw, int32_t kh, i
   }
 
   std::vector<int32_t> pads_list;
-  op.GetAttr("pads", pads_list);
+  ge::AttrUtils::GetListInt(op_desc, "pads", pads_list);
   auto p_size = pads_list.size();
   if (pads_list.empty() || p_size != kConv2dPadSizeLimit) {
     OP_LOGE(op_name.GetString(), "pads list should be 4D. actual is: %lu.", p_size);
@@ -4093,10 +4091,9 @@ static bool GetPadConv2D(ge::Operator& op, int32_t ih, int32_t iw, int32_t kh, i
   padl = pads_list[kConv2dPadLeftIdx];
   padr = pads_list[kConv2dPadRightIdx];
   // >>> start: cut off right/bottom pad when output size is 1
-  AscendString op_type;
-  CHECK(op.GetOpType(op_type) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_type"), return false);
-  auto x_shape = op.GetInputDescByName("x").GetShape().GetDims();
-  bool unknown_rank = IsUnknownRankShape(x_shape);
+  AscendString op_type = op_desc->GetType().c_str();
+  auto &x_shape = op_desc->MutableInputDesc(0)->MutableShape();
+  bool unknown_rank = x_shape.IsUnknownDimNum();
   bool valid = !unknown_rank && string(op_type.GetString()) == "Conv2D";
   if (valid) {
     bool cut_pad = false;
@@ -4122,12 +4119,12 @@ static bool GetPadConv2D(ge::Operator& op, int32_t ih, int32_t iw, int32_t kh, i
       pads_list[kConv2dPadRightIdx] = padr;
       OP_LOGD(op_name.GetString(),
               "pads after cutting off is %s.", ops::to_string(pads_list).c_str());
-      op.SetAttr("pads", pads_list);
+      ge::AttrUtils::SetListInt(op_desc, "pads", pads_list);
     }
   }
   // <<< end: cut off right/bottom pad when output size is 1
   bool negative_pad = (padt < 0 || padb < 0 || padl < 0 || padr < 0);
-  bool unknown_shape = IsUnKnownShape(x_shape);
+  bool unknown_shape = x_shape.IsUnknownShape();
   if ((!unknown_shape) && (!unknown_rank) && negative_pad) {
     OP_LOGE(op_name.GetString(),
             "pads should be positive, "
@@ -4160,13 +4157,10 @@ static bool GetPadConv2D(ge::Operator& op, int32_t ih, int32_t iw, int32_t kh, i
   * @param dilh, dilw  Input dilation H/W value.
   * @return bool Whether the strides, dilations settings are correct.
   */
-static bool GetAttrsConv2D(ge::Operator& op, Format refer, int32_t& strh,
+static bool GetAttrsConv2D(const AscendString& op_name, ge::OpDescPtr& op_desc, Format refer, int32_t& strh,
                            int32_t& strw, int32_t& dilh, int32_t& dilw) {
-  AscendString op_name;
-  CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return false);
-
   std::vector<int32_t> stride_list;
-  op.GetAttr("strides", stride_list);
+  ge::AttrUtils::GetListInt(op_desc, "strides", stride_list);
   auto s_size = stride_list.size();
   if (stride_list.empty() || s_size != kConv2dStridesSizeLimit) {
     OP_LOGE(op_name.GetString(), "strides list should be 4D. actual is: %lu.", s_size);
@@ -4180,7 +4174,7 @@ static bool GetAttrsConv2D(ge::Operator& op, Format refer, int32_t& strh,
     return false;
   }
   std::vector<int32_t> dilation_list;
-  op.GetAttr("dilations", dilation_list);
+  ge::AttrUtils::GetListInt(op_desc, "dilations", dilation_list);
   auto d_size = dilation_list.size();
   if (dilation_list.empty() || d_size != kConv2dDilationSizeLimit) {
     OP_LOGE(op_name.GetString(), "dilations list should be 4D. actual is: %lu.", d_size);
@@ -4258,14 +4252,12 @@ static void GetConv2dOutShapeRange(const std::string& pad_str,
   }
 }
 
-static bool SetConv2dOutShapeRange(op::Conv2D& op,
+static bool SetConv2dOutShapeRange(const AscendString& op_name,
+                                   ge::OpDescPtr& op_desc,
                                    const vector<int32_t>& attr_params,
                                    ge::GeShape& y_shape,
                                    ge::GeTensorDescPtr& x_tensor,
                                    ge::GeTensorDescPtr& y_tensor) {
-  AscendString op_name;
-  CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return false);
-
   auto &x_shape = x_tensor->MutableShape();
   auto x_format = x_tensor->GetFormat();
 
@@ -4295,9 +4287,9 @@ static bool SetConv2dOutShapeRange(op::Conv2D& op,
 
   // update pads if padding is SAME
   std::string pad_str;
-  if (x_shape.GetDimNum() == 4 && GRAPH_SUCCESS == op.GetAttr("padding", pad_str) && pad_str == "SAME" &&
-      (x_shape.GetDim(idx_h) == -1 or x_shape.GetDim(idx_w) == -1)) {
-    op.SetAttr("pads", {-1, -1, -1, -1});
+  if (x_shape.GetDimNum() == 4 && ge::AttrUtils::GetStr(op_desc, "padding", pad_str) &&
+      pad_str == "SAME" && (x_shape.GetDim(idx_h) == -1 or x_shape.GetDim(idx_w) == -1)) {
+    ge::AttrUtils::SetListInt(op_desc, "pads", {-1, -1, -1, -1});
     OP_LOGD(op_name.GetString(), "set pads to {-1, -1, -1, -1} when padding is SAME in dynamic_shape");
   }
 
@@ -4407,13 +4399,13 @@ static graphStatus CheckConv2DBias(const AscendString& op_name, const OpDescPtr&
   * @return Status The processing flow result.
   */
 IMPLEMT_INFERFUNC(Conv2D, Conv2DInfer) {
-  AscendString op_name;
-  CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
-  PROFILING_PROTO_INIT(op_name.GetString());
-
-  OP_LOGD(op_name.GetString(), "Enter Conv2DInfer.");
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
   CHECK_PTR_NULL(op_desc, "op desc", return GRAPH_FAILED);
+
+  AscendString op_name = op_desc->GetName().c_str();
+  PROFILING_PROTO_INIT(op_name.GetString());
+  OP_LOGD(op_name.GetString(), "Enter Conv2DInfer.");
+
   auto x_tensor = op_desc->MutableInputDesc(0);
   auto w_tensor = op_desc->MutableInputDesc(1);
   CHECK_PTR_NULL(x_tensor, "tensor x desc", return GRAPH_FAILED);
@@ -4510,21 +4502,21 @@ IMPLEMT_INFERFUNC(Conv2D, Conv2DInfer) {
   std::string data_format_NCHW = "NCHW";
   std::string data_format_NHWC = "NHWC";
 
-  if (GRAPH_SUCCESS == op.GetAttr(attr_data_format, data_format)) {
+  if (ge::AttrUtils::GetStr(op_desc, attr_data_format, data_format)) {
     OP_LOGI(data_format.c_str(), "conv before set data_format");
   }
 
   if (x_format == ge::FORMAT_NCHW) {
-    op.SetAttr(attr_data_format, data_format_NCHW);
+    ge::AttrUtils::SetStr(op_desc, attr_data_format, data_format_NCHW);
   } else {
-    op.SetAttr(attr_data_format, data_format_NHWC);
+    ge::AttrUtils::SetStr(op_desc, attr_data_format, data_format_NHWC);
   }
 
-  op.GetAttr(attr_data_format, data_format);
+  ge::AttrUtils::GetStr(op_desc, attr_data_format, data_format);
   OP_LOGI(data_format.c_str(), "conv after set data_format");
 
   int64_t groups = 1;
-  op.GetAttr("groups", groups);
+  ge::AttrUtils::GetInt(op_desc, "groups", groups);
   bool is_dynamic = false;
   // when static op or dynamic op phase_running, is_dynamic == False
   if (x_shape.IsUnknownShape() && (!x_shape.IsUnknownDimNum())) {
@@ -4539,7 +4531,7 @@ IMPLEMT_INFERFUNC(Conv2D, Conv2DInfer) {
   if ((!unknown_rank) && (groups == 1)) {
     if ((ic > 0) && (ic % kc == 0)) {
       groups = ic / kc;
-      op.SetAttr("groups", groups);
+      ge::AttrUtils::SetInt(op_desc, "groups", groups);
       OP_LOGD(op_name.GetString(), "parameter groups is implicitly changed.");
     } else {
       OP_LOGE(op_name.GetString(), "in_channels(>0) should be divisible by kernel_channels when groups = 1.");
@@ -4591,8 +4583,8 @@ IMPLEMT_INFERFUNC(Conv2D, Conv2DInfer) {
   int32_t padb = 0;
   int32_t padl = 0;
   int32_t padr = 0;
-  if (!GetAttrsConv2D(op, x_format, strh, strw, dilh, dilw) ||
-      !GetPadConv2D(op, ih, iw, kh, kw, strh, strw, dilh, dilw, padt, padb, padl, padr)) {
+  if (!GetAttrsConv2D(op_name, op_desc, x_format, strh, strw, dilh, dilw) ||
+      !GetPadConv2D(op_name, op_desc, ih, iw, kh, kw, strh, strw, dilh, dilw, padt, padb, padl, padr)) {
     return GRAPH_FAILED;
   }
 
@@ -4655,7 +4647,7 @@ IMPLEMT_INFERFUNC(Conv2D, Conv2DInfer) {
 
   // fuzz_build switch
   bool fuzz_build = false;
-  op.GetAttr(ge::ATTR_NAME_FUZZ_BUILD.c_str(), fuzz_build);
+  ge::AttrUtils::GetBool(op_desc, ge::ATTR_NAME_FUZZ_BUILD.c_str(), fuzz_build);
 
   // set Range
   if (is_dynamic) {
@@ -4663,7 +4655,7 @@ IMPLEMT_INFERFUNC(Conv2D, Conv2DInfer) {
     vector<int32_t> attr_params = {strh, strw, dilh, dilw,
                                    padt + padb, padl + padr,
                                    kn, kh, kw};
-    if (!SetConv2dOutShapeRange(op, attr_params, y_shape, x_tensor, y_tensor)) {
+    if (!SetConv2dOutShapeRange(op_name, op_desc, attr_params, y_shape, x_tensor, y_tensor)) {
       return GRAPH_FAILED;
     }
   }
@@ -4672,9 +4664,9 @@ IMPLEMT_INFERFUNC(Conv2D, Conv2DInfer) {
     OP_LOGD(op_name.GetString(), "start fuzz build.");
     // change pad to -1 when padding is SAME
     std::string pad_str;
-    op.GetAttr("padding", pad_str);
+    ge::AttrUtils::GetStr(op_desc, "padding", pad_str);
     if (pad_str == "SAME") {
-      op.SetAttr("pads", {-1, -1, -1, -1});
+      ge::AttrUtils::SetListInt(op_desc, "pads", {-1, -1, -1, -1});
       OP_LOGD(op_name.GetString(), "set pads to {-1, -1, -1, -1} when padding is SAME in fuzzy build");
     }
   }
@@ -4928,6 +4920,8 @@ IMPLEMT_INFERFUNC(Conv2DCompress, Conv2DCompressInfer) {
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
 
   OP_LOGD(op_name.GetString(), "Enter Conv2DCompressInfer.");
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  CHECK_PTR_NULL(op_desc, "op desc", return GRAPH_FAILED);
   auto xTensor = op.get_input_desc_x();
   auto wTensor = op.get_input_desc_filter_compress();
 
@@ -5015,9 +5009,9 @@ IMPLEMT_INFERFUNC(Conv2DCompress, Conv2DCompressInfer) {
   int32_t padb = 0;
   int32_t padl = 0;
   int32_t padr = 0;
-  CHECK_OP_FUNC(false == GetAttrsConv2D(op, xFormat, strh, strw, dilh, dilw),
+  CHECK_OP_FUNC(false == GetAttrsConv2D(op_name, op_desc, xFormat, strh, strw, dilh, dilw),
                 return GRAPH_FAILED, "get attrs failed.");
-  CHECK_OP_FUNC(false == GetPadConv2D(op, ih, iw, kh, kw, strh, strw, dilh, dilw, padt, padb, padl, padr),
+  CHECK_OP_FUNC(false == GetPadConv2D(op_name, op_desc, ih, iw, kh, kw, strh, strw, dilh, dilw, padt, padb, padl, padr),
                 return GRAPH_FAILED, "get pads attrs failed.");
 
   int64_t oh = (ih + padt + padb - dilh * (kh - 1) - 1) / strh + 1;
@@ -6081,7 +6075,7 @@ IMPLEMT_INFERFUNC(Deconvolution, DeconvolutionInfer) {
     ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
     return GRAPH_FAILED;
   }
-  if (false == GetPadConv2D(op, ih, iw, kh, kw, strh, strw, dilh, dilw, padt, padb, padl, padr)) {
+  if (false == GetPadConv2D(op_name, opDesc, ih, iw, kh, kw, strh, strw, dilh, dilw, padt, padb, padl, padr)) {
     OP_LOGE(op_name.GetString(), "get pads attrs failed.");
     map<string, string> err_map;
     err_map["op_name"] = op_name.GetString();
