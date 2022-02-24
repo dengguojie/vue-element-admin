@@ -55,7 +55,6 @@ namespace optiling {
     }
 
     num_rec = 1.0 / static_cast<float>(num);
-
     bool ret = parsed_info.tiling_handler->DoTiling(op_paras, run_info);
     if (!ret) {
       VECTOR_INNER_ERR_REPORT_TILIING(op_type, "bn_training_update_v3 tiling failed.");

@@ -173,5 +173,164 @@
       }
     ],
     "case_name": "test_BNTrainingUpdateV2_000"
+  },
+  {
+    "op": "BNTrainingUpdateV2",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          16,
+          1,
+          16
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          1,
+          16,
+          1,
+          16
+        ],
+        "ori_format": "NCHW",
+        "name": "x",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1,
+          16,
+          1,
+          16
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          1,
+          16,
+          1,
+          16
+        ],
+        "ori_format": "NCHW",
+        "name": "sum",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1,
+          16,
+          1,
+          16
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          1,
+          16,
+          1,
+          16
+        ],
+        "ori_format": "NCHW",
+        "name": "square_sum",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1,
+          16,
+          1,
+          16
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          1,
+          16,
+          1,
+          16
+        ],
+        "ori_format": "NCHW",
+        "name": "scale",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1,
+          16,
+          1,
+          16
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          1,
+          16,
+          1,
+          16
+        ],
+        "ori_format": "NCHW",
+        "name": "offset",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          16,
+          1,
+          16
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          1,
+          16,
+          1,
+          16
+        ],
+        "ori_format": "NCHW",
+        "name": "y",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1,
+          16,
+          1,
+          16
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          1,
+          16,
+          1,
+          16
+        ],
+        "ori_format": "NCHW",
+        "name": "batch_mean",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1,
+          16,
+          1,
+          16
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          1,
+          16,
+          1,
+          16
+        ],
+        "ori_format": "NCHW",
+        "name": "batch_variance",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "epsilon",
+        "type": "float",
+        "value": 0.0001
+      }
+    ],
+    "case_name": "test_BNTrainingUpdateV2_001"
   }
 ]

@@ -328,6 +328,7 @@ from .clip_by_norm_no_div_sum import clip_by_norm_no_div_sum
 from .eltwise import eltwise
 from .iou import iou
 from .bn_training_update import bn_training_update
+from .bn_training_update_v2 import bn_training_update_v2
 from .bn_training_update_v3 import bn_training_update_v3
 from .softmax_cross_entropy_with_logits import softmax_cross_entropy_with_logits
 from .resize_nearest_neighbor_v2_grad import resize_nearest_neighbor_v2_grad

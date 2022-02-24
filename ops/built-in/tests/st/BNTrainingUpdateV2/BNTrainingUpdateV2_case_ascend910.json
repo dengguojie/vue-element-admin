@@ -1,0 +1,201 @@
+[
+    {
+      "op": "BNTrainingUpdateV2",
+      "input_desc": [
+        {
+          "shape": [
+            -1,
+            -1,
+            -1,
+            -1,
+            16
+          ],
+          "format": "NC1HWC0",
+          "ori_shape": [
+            -1,
+            -1,
+            -1,
+            -1
+          ],
+          "ori_format": "NCHW",
+          "typical_shape": [16, 16, 16, 16, 16],
+          "shape_range": [[1, 32], [1, 32], [1, 32], [1, 32]],
+          "value_range": [[0, 10]],
+          "data_distribute" : "uniform",
+          "name": "x",
+          "type": "float"
+        },
+        {
+          "shape": [
+            1,
+            -1,
+            1,
+            1,
+            16
+          ],
+          "format": "NC1HWC0",
+          "ori_shape": [
+            1,
+            -1,
+            1,
+            1
+          ],
+          "ori_format": "NCHW",
+          "typical_shape": [1, 16, 1, 1, 16],
+          "shape_range": [[1, 32]],
+          "value_range": [[0, 10]],
+          "data_distribute" : "uniform",
+          "name": "sum",
+          "type": "float"
+        },
+        {
+          "shape": [
+            1,
+            -1,
+            1,
+            1,
+            16
+          ],
+          "format": "NC1HWC0",
+          "ori_shape": [
+            1,
+            -1,
+            1,
+            1
+          ],
+          "ori_format": "NCHW",
+          "typical_shape": [1, 16, 1, 1, 16],
+          "shape_range": [[1, 32]],
+          "value_range": [[0, 10]],
+          "data_distribute" : "uniform",
+          "name": "square_sum",
+          "type": "float"
+        },
+        {
+          "shape": [
+            1,
+            -1,
+            1,
+            1,
+            16
+          ],
+          "format": "NC1HWC0",
+          "ori_shape": [
+            1,
+            -1,
+            1,
+            1
+          ],
+          "ori_format": "NCHW",
+          "typical_shape": [1, 16, 1, 1, 16],
+          "shape_range": [[1, 32]],
+          "value_range": [[0, 10]],
+          "data_distribute" : "uniform",
+          "name": "scale",
+          "type": "float"
+        },
+        {
+          "shape": [
+            1,
+            -1,
+            1,
+            1,
+            16
+          ],
+          "format": "NC1HWC0",
+          "ori_shape": [
+            1,
+            -1,
+            1,
+            1
+          ],
+          "ori_format": "NCHW",
+          "typical_shape": [1, 16, 1, 1, 16],
+          "shape_range": [[1, 32]],
+          "value_range": [[0, 10]],
+          "data_distribute" : "uniform",
+          "name": "offset",
+          "type": "float"
+        }
+      ],
+      "output_desc": [
+        {
+          "shape": [
+            -1,
+            -1,
+            -1,
+            -1,
+            16
+          ],
+          "format": "NC1HWC0",
+          "ori_shape": [
+            -1,
+            -1,
+            -1,
+            -1
+          ],
+          "ori_format": "NCHW",
+          "typical_shape": [16, 16, 16, 16, 16],
+          "shape_range": [[1, 32], [1, 32], [1, 32], [1, 32]],
+          "value_range": [[0, 10]],
+          "data_distribute" : "uniform",
+          "name": "y",
+          "type": "float"
+        },
+        {
+          "shape": [
+            1,
+            -1,
+            1,
+            1,
+            16
+          ],
+          "format": "NC1HWC0",
+          "ori_shape": [
+            1,
+            -1,
+            1,
+            1
+          ],
+          "ori_format": "NCHW",
+          "typical_shape": [1, 16, 1, 1, 16],
+          "shape_range": [[1, 32]],
+          "value_range": [[0, 10]],
+          "data_distribute" : "uniform",
+          "name": "batch_mean",
+          "type": "float"
+        },
+        {
+          "shape": [
+            1,
+            -1,
+            1,
+            1,
+            16
+          ],
+          "format": "NC1HWC0",
+          "ori_shape": [
+            1,
+            -1,
+            1,
+            1
+          ],
+          "ori_format": "NCHW",
+          "typical_shape": [1, 16, 1, 1, 16],
+          "shape_range": [[1, 32]],
+          "value_range": [[0, 10]],
+          "data_distribute" : "uniform",
+          "name": "batch_variance",
+          "type": "float"
+        }
+      ],
+      "attr": [
+        {
+          "name": "epsilon",
+          "type": "float",
+          "value": 0.0001
+        }
+      ],
+      "case_name": "test_BNTrainingUpdateV2_dynamic_000"
+    }
+  ]

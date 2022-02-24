@@ -889,6 +889,7 @@ vector_B:
       - ops/built-in/tbe/impl/dynamic/bn_infer.py
       - ops/built-in/tbe/impl/dynamic/bn_infer_grad.py
       - ops/built-in/tbe/impl/dynamic/bn_training_reduce.py
+      - ops/built-in/tbe/impl/dynamic/bn_training_update_v2.py
       - ops/built-in/tbe/impl/dynamic/bn_training_update_v3.py
       - ops/built-in/tbe/impl/dynamic/bninference_d.py
       - ops/built-in/tbe/impl/dynamic/broadcast_to.py
@@ -1808,6 +1809,7 @@ unkown:
       - ops/built-in/op_tiling/cube_tiling_new.h
       - ops/built-in/op_tiling/op_tiling_util.cc
       - ops/built-in/op_tiling/error_log.h
+      - ops/built-in/op_tiling/bn_training_update_v2.cc
       - ops/built-in/op_tiling/bn_training_update_v3.cc
       - ops/built-in/op_tiling/reflection_pad_v3.cc
       - ops/built-in/op_tiling/l1_loss_grad.cc

@@ -974,7 +974,8 @@ IMPLEMT_COMMON_INFERFUNC(BNTrainingUpdateInferShape) {
 
   if (input_x_desc == nullptr || output_y_desc == nullptr || input_scale_desc == nullptr || 
       output_mean_desc == nullptr || output_variance_desc == nullptr || output_batch_mean_desc == nullptr ||output_batch_variance_desc == nullptr) {
-    OP_LOGE(op.GetName().c_str(), "[TBE Compiler] Get null node ptr");
+    std::string err_msg = OtherErrMsg("[TBE Compiler] Get null node ptr");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -1006,26 +1007,37 @@ IMPLEMT_VERIFIER(BNTrainingUpdateV2, BNTrainingUpdateV2Verify) {
 }
 
 IMPLEMT_INFERFUNC(BNTrainingUpdateV2, BNTrainingUpdateV2InferShape) {
-  DYNAMIC_SHAPE_NOT_SUPPORTED(op);
-  auto shape = op.GetInputDesc("x").GetShape();
-  auto output_dtype = op.GetInputDesc("x").GetDataType();
-  TensorDesc td = op.GetOutputDesc("y");
-  td.SetShape(shape);
-  td.SetDataType(output_dtype);
-  op.UpdateOutputDesc("y", td);
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  auto input_x_desc = op_desc->GetInputDescPtr(0);
+  auto input_scale_desc = op_desc->GetInputDescPtr(3);
 
-  auto shape_scale = op.GetInputDesc("scale").GetShape();
-  auto output_dtype_scale = op.GetInputDesc("scale").GetDataType();
+  std::vector<std::pair<int64_t, int64_t>> input_x_range;
+  input_x_desc->GetShapeRange(input_x_range);
+  std::vector<std::pair<int64_t, int64_t>> input_scale_range;
+  input_scale_desc->GetShapeRange(input_scale_range);
 
-  TensorDesc td_batch_mean = op.GetOutputDesc("batch_mean");
-  td_batch_mean.SetShape(shape_scale);
-  td_batch_mean.SetDataType(output_dtype_scale);
-  op.UpdateOutputDesc("batch_mean", td_batch_mean);
+  auto output_y_desc = op_desc->MutableOutputDesc(0);
+  auto output_batch_mean_desc = op_desc->MutableOutputDesc(1);
+  auto output_batch_variance_desc = op_desc->MutableOutputDesc(2);
 
-  TensorDesc td_batch_variance = op.GetOutputDesc("batch_variance");
-  td_batch_variance.SetShape(shape_scale);
-  td_batch_variance.SetDataType(output_dtype_scale);
-  op.UpdateOutputDesc("batch_variance", td_batch_variance);
+  if (input_x_desc == nullptr || output_y_desc == nullptr || input_scale_desc == nullptr || 
+      output_batch_mean_desc == nullptr || output_batch_variance_desc == nullptr) {
+    std::string err_msg = OtherErrMsg("[TBE Compiler] Get null node ptr");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    return GRAPH_FAILED;
+  }
+
+  output_y_desc->SetShape(input_x_desc->GetShape());
+  output_y_desc->SetDataType(input_x_desc->GetDataType());
+  output_y_desc->SetShapeRange(input_x_range);
+
+  output_batch_mean_desc->SetShape(input_scale_desc->GetShape());
+  output_batch_mean_desc->SetDataType(input_scale_desc->GetDataType());
+  output_batch_mean_desc->SetShapeRange(input_scale_range);
+
+  output_batch_variance_desc->SetShape(input_scale_desc->GetShape());
+  output_batch_variance_desc->SetDataType(input_scale_desc->GetDataType());
+  output_batch_variance_desc->SetShapeRange(input_scale_range);
 
   return GRAPH_SUCCESS;
 }
@@ -1058,7 +1070,8 @@ IMPLEMT_INFERFUNC(BNTrainingUpdateV3, BNTrainingUpdateV3InferShape) {
   if (input_x_desc == nullptr || output_y_desc == nullptr || input_scale_desc == nullptr || 
       output_batch_mean_desc == nullptr || output_batch_variance_desc == nullptr || 
       output_reserve_1_desc == nullptr || output_reserve_2_desc == nullptr) {
-    OP_LOGE(op.GetName().c_str(), "[TBE Compiler] Get null node ptr");
+    std::string err_msg = OtherErrMsg("[TBE Compiler] Get null node ptr");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 

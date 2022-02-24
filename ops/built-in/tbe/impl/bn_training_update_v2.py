@@ -47,60 +47,96 @@ def op_select_format(x, sum, square_sum, scale, offset,
     """
     origin_format = x.get("ori_format").upper()
     origin_shape = x.get("ori_shape")
-
-    # can support Nz + ND
-    if origin_format == "NCHW" and len(origin_shape) == 4 \
-            and origin_shape[0] == 1 and origin_shape[2] == 1:
+    # dynamic shape
+    if -1 in origin_shape or -1 in sum.get("ori_shape") or -1 in square_sum.get("ori_shape") \
+            or -1 in scale.get("ori_shape") or -1 in offset.get("ori_shape"):
         input0 = util_select_op_base.gen_param(classify="input0", name="x",
-                                               datatype="float16,float,float16,float",
-                                               format="NCHW,NCHW,NC1HWC0,NC1HWC0")
+                                               datatype="float16,float",
+                                               format="NC1HWC0,NC1HWC0",
+                                               unknownshape_format="NC1HWC0,NC1HWC0")
         input1 = util_select_op_base.gen_param(classify="input1", name="sum",
-                                               datatype="float,float,float,float",
-                                               format="NCHW,NCHW,NC1HWC0,NC1HWC0")
+                                               datatype="float,float",
+                                               format="NC1HWC0,NC1HWC0",
+                                               unknownshape_format="NC1HWC0,NC1HWC0")
         input2 = util_select_op_base.gen_param(classify="input2", name="square_sum",
-                                               datatype="float,float,float,float",
-                                               format="NCHW,NCHW,NC1HWC0,NC1HWC0")
+                                               datatype="float,float",
+                                               format="NC1HWC0,NC1HWC0",
+                                               unknownshape_format="NC1HWC0,NC1HWC0")
         input3 = util_select_op_base.gen_param(classify="input3", name="scale",
-                                               datatype="float,float,float,float",
-                                               format="NCHW,NCHW,NC1HWC0,NC1HWC0")
+                                               datatype="float,float",
+                                               format="NC1HWC0,NC1HWC0",
+                                               unknownshape_format="NC1HWC0,NC1HWC0")
         input4 = util_select_op_base.gen_param(classify="input4", name="offset",
-                                               datatype="float,float,float,float",
-                                               format="NCHW,NCHW,NC1HWC0,NC1HWC0")
+                                               datatype="float,float",
+                                               format="NC1HWC0,NC1HWC0",
+                                               unknownshape_format="NC1HWC0,NC1HWC0")
         output0 = util_select_op_base.gen_param(classify="output0", name="y",
-                                                datatype="float16,float,float16,float",
-                                                format="NCHW,NCHW,NC1HWC0,NC1HWC0")
+                                                datatype="float16,float",
+                                                format="NC1HWC0,NC1HWC0",
+                                                unknownshape_format="NC1HWC0,NC1HWC0")
         output1 = util_select_op_base.gen_param(classify="output1", name="batch_mean",
-                                                datatype="float,float,float,float",
-                                                format="NCHW,NCHW,NC1HWC0,NC1HWC0")
+                                                datatype="float,float",
+                                                format="NC1HWC0,NC1HWC0",
+                                                unknownshape_format="NC1HWC0,NC1HWC0")
         output2 = util_select_op_base.gen_param(classify="output2", name="batch_variance",
-                                                datatype="float,float,float,float",
-                                                format="NCHW,NCHW,NC1HWC0,NC1HWC0")
-    # support 5HD + 5HD
+                                                datatype="float,float",
+                                                format="NC1HWC0,NC1HWC0",
+                                                unknownshape_format="NC1HWC0,NC1HWC0")
+    # static shape
     else:
-        input0 = util_select_op_base.gen_param(classify="input0", name="x",
-                                               datatype="float16,float,float16,float",
-                                               format="NC1HWC0,NC1HWC0,NDC1HWC0,NDC1HWC0")
-        input1 = util_select_op_base.gen_param(classify="input1", name="sum",
-                                               datatype="float,float,float,float",
-                                               format="NC1HWC0,NC1HWC0,NDC1HWC0,NDC1HWC0")
-        input2 = util_select_op_base.gen_param(classify="input2", name="square_sum",
-                                               datatype="float,float,float,float",
-                                               format="NC1HWC0,NC1HWC0,NDC1HWC0,NDC1HWC0")
-        input3 = util_select_op_base.gen_param(classify="input3", name="scale",
-                                               datatype="float,float,float,float",
-                                               format="NC1HWC0,NC1HWC0,NDC1HWC0,NDC1HWC0")
-        input4 = util_select_op_base.gen_param(classify="input4", name="offset",
-                                               datatype="float,float,float,float",
-                                               format="NC1HWC0,NC1HWC0,NDC1HWC0,NDC1HWC0")
-        output0 = util_select_op_base.gen_param(classify="output0", name="y",
-                                                datatype="float16,float,float16,float",
-                                                format="NC1HWC0,NC1HWC0,NDC1HWC0,NDC1HWC0")
-        output1 = util_select_op_base.gen_param(classify="output1", name="batch_mean",
-                                                datatype="float,float,float,float",
-                                                format="NC1HWC0,NC1HWC0,NDC1HWC0,NDC1HWC0")
-        output2 = util_select_op_base.gen_param(classify="output2", name="batch_variance",
-                                                datatype="float,float,float,float",
-                                                format="NC1HWC0,NC1HWC0,NDC1HWC0,NDC1HWC0")
+        # can support Nz + ND
+        if origin_format == "NCHW" and len(origin_shape) == 4 \
+                and origin_shape[0] == 1 and origin_shape[2] == 1:
+            input0 = util_select_op_base.gen_param(classify="input0", name="x",
+                                                   datatype="float16,float,float16,float",
+                                                   format="NCHW,NCHW,NC1HWC0,NC1HWC0")
+            input1 = util_select_op_base.gen_param(classify="input1", name="sum",
+                                                   datatype="float,float,float,float",
+                                                   format="NCHW,NCHW,NC1HWC0,NC1HWC0")
+            input2 = util_select_op_base.gen_param(classify="input2", name="square_sum",
+                                                   datatype="float,float,float,float",
+                                                   format="NCHW,NCHW,NC1HWC0,NC1HWC0")
+            input3 = util_select_op_base.gen_param(classify="input3", name="scale",
+                                                   datatype="float,float,float,float",
+                                                   format="NCHW,NCHW,NC1HWC0,NC1HWC0")
+            input4 = util_select_op_base.gen_param(classify="input4", name="offset",
+                                                   datatype="float,float,float,float",
+                                                   format="NCHW,NCHW,NC1HWC0,NC1HWC0")
+            output0 = util_select_op_base.gen_param(classify="output0", name="y",
+                                                    datatype="float16,float,float16,float",
+                                                    format="NCHW,NCHW,NC1HWC0,NC1HWC0")
+            output1 = util_select_op_base.gen_param(classify="output1", name="batch_mean",
+                                                    datatype="float,float,float,float",
+                                                    format="NCHW,NCHW,NC1HWC0,NC1HWC0")
+            output2 = util_select_op_base.gen_param(classify="output2", name="batch_variance",
+                                                    datatype="float,float,float,float",
+                                                    format="NCHW,NCHW,NC1HWC0,NC1HWC0")
+        # support 5HD + 5HD
+        else:
+            input0 = util_select_op_base.gen_param(classify="input0", name="x",
+                                                   datatype="float16,float,float16,float",
+                                                   format="NC1HWC0,NC1HWC0,NDC1HWC0,NDC1HWC0")
+            input1 = util_select_op_base.gen_param(classify="input1", name="sum",
+                                                   datatype="float,float,float,float",
+                                                   format="NC1HWC0,NC1HWC0,NDC1HWC0,NDC1HWC0")
+            input2 = util_select_op_base.gen_param(classify="input2", name="square_sum",
+                                                   datatype="float,float,float,float",
+                                                   format="NC1HWC0,NC1HWC0,NDC1HWC0,NDC1HWC0")
+            input3 = util_select_op_base.gen_param(classify="input3", name="scale",
+                                                   datatype="float,float,float,float",
+                                                   format="NC1HWC0,NC1HWC0,NDC1HWC0,NDC1HWC0")
+            input4 = util_select_op_base.gen_param(classify="input4", name="offset",
+                                                   datatype="float,float,float,float",
+                                                   format="NC1HWC0,NC1HWC0,NDC1HWC0,NDC1HWC0")
+            output0 = util_select_op_base.gen_param(classify="output0", name="y",
+                                                    datatype="float16,float,float,float",
+                                                    format="NC1HWC0,NC1HWC0,NDC1HWC0,NDC1HWC0")
+            output1 = util_select_op_base.gen_param(classify="output1", name="batch_mean",
+                                                    datatype="float,float,float,float",
+                                                    format="NC1HWC0,NC1HWC0,NDC1HWC0,NDC1HWC0")
+            output2 = util_select_op_base.gen_param(classify="output2", name="batch_variance",
+                                                    datatype="float,float,float,float",
+                                                    format="NC1HWC0,NC1HWC0,NDC1HWC0,NDC1HWC0")
 
     param_list = [input0, input1, input2, input3,
                   input4, output0, output1, output2]
