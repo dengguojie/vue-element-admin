@@ -68,9 +68,13 @@ const int64_t kDimHWLow = 2;
 const int64_t kDimHWUpper = 4096;
 const int64_t kDefaultC0 = 16;
 
+const int32_t kBlockDimRate = 2;
+const int32_t kFloat16Bytes = 2;
+
 const int64_t kDefaultL1Size = (1024 * 1024);
 
-inline int64_t Align(int64_t param1, int64_t param2) {
+template <typename T>
+inline T Align(T param1, T param2) {
   return (param1 + param2 - 1) / param2 * param2;
 }
 
@@ -79,7 +83,7 @@ inline bool CheckRange(int64_t val, int64_t down, int64_t upper) {
 }
 
 bool UpdateRunInfoCube(const conv2d_dw::Conv2dDwTiling& tiling, const conv2d_dw::Conv2dBpFilterParas& params,
-                          optiling::utils::OpRunInfo& run_info) {
+                       optiling::utils::OpRunInfo& run_info) {
   uint32_t block_dim = tiling.batch_dim * tiling.n_dim * tiling.h_dim * tiling.m_dim * tiling.group_dim;
   run_info.SetBlockDim(block_dim);
   run_info.SetTilingKey(stoi(tiling.tiling_id));
@@ -128,8 +132,7 @@ bool UpdateRunInfoCube(const conv2d_dw::Conv2dDwTiling& tiling, const conv2d_dw:
   // n_bl1
   run_info.AddTilingData(tiling.n_bl1);
   // n_ub_l0_time = l0c_n / cub_n
-  OP_LOGE_IF(tiling.n_cub == 0, false, params.op_type,
-             "There is a div zero error. tiling:n_cub is zero.");
+  OP_LOGE_IF(tiling.n_cub == 0, false, params.op_type, "There is a div zero error. tiling:n_cub is zero.");
   run_info.AddTilingData(tiling.n_l0 / tiling.n_cub);
   // cub_n1
   run_info.AddTilingData(tiling.n_cub);
@@ -138,7 +141,7 @@ bool UpdateRunInfoCube(const conv2d_dw::Conv2dDwTiling& tiling, const conv2d_dw:
   // m_single_core
   OP_LOGE_IF(tiling.m_dim * tiling.m_al1 * tiling.m_l0 == 0, false, params.op_type,
              "There is a div zero error. tiling:tiling.m_dim * tiling.m_al1 * tiling.m_l0 is zero.");
-  run_info.AddTilingData(params.co1/ tiling.m_dim / tiling.m_al1 / tiling.m_l0);
+  run_info.AddTilingData(params.co1 / tiling.m_dim / tiling.m_al1 / tiling.m_l0);
   // m_al1
   run_info.AddTilingData(tiling.m_al1);
   // m_l0
@@ -274,24 +277,14 @@ bool CheckShapeRelation(const conv2d_dw::Conv2dBpFilterParas& params) {
 bool CheckL1Size(const conv2d_dw::Conv2dBpFilterParas& params) {
   int32_t kernel_dilation_h = (params.kh - 1) * params.dilation_h + 1;
   int32_t kernel_dilation_w = (params.kw - 1) * params.dilation_w + 1;
-  int32_t al1_min_size = params.co0 * params.k0 * params.a_dtype;
-  int32_t kl1_min = (params.co0 - 1) * params.stride_w + kernel_dilation_w;
-  int32_t bl1_min_size = 0;
-  if (params.ho >= params.co0) {
-    if (params.ho % params.co0) {
-      bl1_min_size = kernel_dilation_h * kl1_min * params.ci0 * params.b_dtype;
-    } else {
-      bl1_min_size = (kernel_dilation_h + params.stride_h) * kl1_min * params.ci0 * params.b_dtype;
-    }
-  } else {
-    int32_t bl1_align_factor = (params.ci0 + params.ho - 1) / params.ho;
-    if (params.ci0 % params.ho == 0) {
-      bl1_min_size =
-          (kernel_dilation_h + (bl1_align_factor - 1) * params.stride_h) * kl1_min * params.ci0 * params.b_dtype;
-    } else {
-      bl1_min_size = (kernel_dilation_h + bl1_align_factor * params.stride_h) * kl1_min * params.ci0 * params.b_dtype;
-    }
+  int32_t al1_min_size = params.co0 * params.k0 * params.a_dtype * kFloat16Bytes;
+  int32_t bl1_align_factor = (params.ci0 + params.wo - 1) / params.wo;
+  if (params.ci0 % params.wo != 0 || params.wo % params.ci0 != 0) {
+    ++bl1_align_factor;
   }
+  int32_t bl1_min_size =
+      Align<int32_t>(kernel_dilation_h + (bl1_align_factor - 1) * params.stride_h * params.wi, params.ci0) *
+      params.ci0 * params.b_dtype * kFloat16Bytes;
   OP_LOGE_IF(al1_min_size + bl1_min_size > kDefaultL1Size, false, params.op_type, "L1 min tiling excced L1 size.");
   return true;
 }
@@ -386,7 +379,7 @@ bool ParseOpInfo(const nlohmann::json& compile_info, const ge::OpDescPtr& op_des
   OP_LOGE_IF(!compile_info.contains("max_core_num"), false, params.op_type,
              "compile info attrs not contains max_core_num.");
   // dw tiling can use double times core num
-  params.max_core_num = static_cast<int>(compile_info["max_core_num"]) * 2;
+  params.max_core_num = static_cast<int>(compile_info["max_core_num"]) * kBlockDimRate;
   // check shape and attrs by params
   return true;
 }
@@ -403,6 +396,29 @@ bool BinaryTiling(const string& op_type, const ge::OpDescPtr op_desc, const nloh
   OP_LOGE_IF(!cacheTiling.GenTiling(tiling), false, op_type, "GenTiling failed!");
   UpdateRunInfoCube(tiling, params, run_info);
   return true;
+}
+
+void SpliceCompileInfo(const nlohmann::json& op_compile_info, nlohmann::json& op_info) {
+  nlohmann::json item;
+  for (size_t i = 1; i < op_compile_info.size(); ++i) {
+    item = op_compile_info[i];
+    std::vector<std::string> key_list = {"repo_seeds", "repo_range", "cost_range"};
+    for (auto& key : key_list) {
+      auto& item_key = item[key];
+      if (item_key.is_object() && !item_key.empty()) {
+        std::vector<int32_t> list_value = item_key.begin().value().get<std::vector<int32_t>>();
+        op_info[key][item_key.begin().key()] = list_value;
+      }
+    }
+    std::string key_int = "block_dim";
+    auto& item_key_int = item[key_int];
+    if (item_key_int.is_object() && !item_key_int.empty()) {
+      int32_t int_value = item_key_int.begin().value().get<int32_t>();
+      op_info[key_int][item_key_int.begin().key()] = int_value;
+    }
+  }
+  // <<< end: put together compile info
+  GELOGD("compile info after splice is: %s", op_info.dump().c_str());
 }
 
 /*
@@ -447,51 +463,32 @@ bool Conv2DBpFilterTiling(const std::string& op_type, const ge::Operator& op_par
   try {
     OP_LOGE_IF(op_compile_info.empty(), false, op_type, "op compile info is empty.");
     // accurate build has only one item, fuzzy build has multiple items
-    std::vector<std::string> varMap;
-    nlohmann::json opInfo;
+    std::vector<std::string> var_map;
+    nlohmann::json op_info;
     GELOGD("original compile info is: %s", op_compile_info.dump().c_str());
     if (op_compile_info.is_array()) {
       // >>> start: splice compile info
-      opInfo = op_compile_info[0];
-      varMap = opInfo.at("_vars").begin().value().get<std::vector<std::string>>();
-      nlohmann::json item;
-      for (size_t i = 1; i < op_compile_info.size(); ++i) {
-        item = op_compile_info[i];
-        std::vector<std::string> key_list = {"repo_seeds", "repo_range", "cost_range"};
-        for (auto& key : key_list) {
-          auto& item_key = item[key];
-          if (item_key.is_object() && !item_key.empty()) {
-            std::vector<int32_t> list_value = item_key.begin().value().get<std::vector<int32_t>>();
-            opInfo[key][item_key.begin().key()] = list_value;
-          }
-        }
-        std::string key_int = "block_dim";
-        auto& item_key_int = item[key_int];
-        if (item_key_int.is_object() && !item_key_int.empty()) {
-          int32_t int_value = item_key_int.begin().value().get<int32_t>();
-          opInfo[key_int][item_key_int.begin().key()] = int_value;
-        }
-      }
-      // <<< end: put together compile info
-      GELOGD("compile info after splice is: %s", opInfo.dump().c_str());
+      op_info = op_compile_info[0];
+      var_map = op_info.at("_vars").begin().value().get<std::vector<std::string>>();
+      SpliceCompileInfo(op_compile_info, op_info);
     } else if (op_compile_info.is_object()) {
       if (op_compile_info.contains("tiling_type") && op_compile_info.at("tiling_type") == "binary") {
         BinaryTiling(op_type, op_desc, op_compile_info, run_info, ori_dw_desc);
         return true;
       }
-      varMap = op_compile_info.at("_vars")["10000"].get<std::vector<std::string>>();
-      opInfo = op_compile_info;
+      var_map = op_compile_info.at("_vars")["10000"].get<std::vector<std::string>>();
+      op_info = op_compile_info;
     }
 
     std::vector<int64_t> var_value;
-    if (std::find(varMap.begin(), varMap.end(), "batch") != varMap.end()) {
+    if (std::find(var_map.begin(), var_map.end(), "batch") != var_map.end()) {
       var_value.insert(var_value.end(), tensor_a_shape.GetDim(kConv2dNDim));
     }
-    if (std::find(varMap.begin(), varMap.end(), "fmap_h") != varMap.end()) {
+    if (std::find(var_map.begin(), var_map.end(), "fmap_h") != var_map.end()) {
       var_value.insert(var_value.end(), tensor_a_shape.GetDim(kConv2dHDim));
       var_value.insert(var_value.end(), tensor_b_shape.GetDim(kConv2dHDim));
     }
-    if (std::find(varMap.begin(), varMap.end(), "fmap_w") != varMap.end()) {
+    if (std::find(var_map.begin(), var_map.end(), "fmap_w") != var_map.end()) {
       var_value.insert(var_value.end(), tensor_a_shape.GetDim(kConv2dWDim));
       var_value.insert(var_value.end(), tensor_b_shape.GetDim(kConv2dWDim));
     }
@@ -501,7 +498,7 @@ bool Conv2DBpFilterTiling(const std::string& op_type, const ge::Operator& op_par
     for (size_t i = 0; i < shape_a_dimnum; i++) {
       input_shape.emplace_back(tensor_a_shape.GetDim(i));
     }
-    return cube_tiling(op_type, input_shape, var_value, opInfo, run_info);
+    return cube_tiling(op_type, input_shape, var_value, op_info, run_info);
   } catch (...) {
     GELOGD("get unknown exception, please check compile info json.");
     return false;

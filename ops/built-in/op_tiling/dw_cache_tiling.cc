@@ -285,7 +285,7 @@ void Conv2dDwCacheTiling::GetBlockDim()
   singlecoreStatus.m1 = params.co1;
   singlecoreStatus.n1 = params.ci1 * params.kh * params.kw;
   singlecoreStatus.k1 = (params.ho * params.wo + kBlockSize - 1) / kBlockSize;
-  OP_LOGD(params.op_type.c_str(), "batch1:%lld, m1:%lld, k1:%lld, n1:%lld",
+  OP_LOGD(params.op_type.c_str(), "batch1:%d, m1:%d, k1:%d, n1:%d",
           singlecoreStatus.batch1, singlecoreStatus.m1, singlecoreStatus.k1, singlecoreStatus.n1);
   if (singlecoreStatus.batch1 * params.co1 * params.ci1 * singlecoreStatus.k1 <= params.max_core_num) {
     singlecoreStatus.batch_dim = singlecoreStatus.batch1;
@@ -302,7 +302,7 @@ void Conv2dDwCacheTiling::GetBlockDim()
     int32_t single_core_hi = GetHo2Hi(single_core_ho, params.stride_h, params.kh);
     singlecoreStatus.bl1_k_full_load_size = single_core_hi * params.wi * params.ci0;
     singlecoreStatus.bl1_full_load_size = params.ci1 * singlecoreStatus.bl1_k_full_load_size;
-    OP_LOGD(params.op_type.c_str(), "multi-core factors batch_dim:%lld, n_dim:%lld, m_dim:%lld, h_dim:%lld",
+    OP_LOGD(params.op_type.c_str(), "multi-core factors batch_dim:%d, n_dim:%d, m_dim:%d, h_dim:%d",
             singlecoreStatus.batch_dim, singlecoreStatus.n_dim, singlecoreStatus.m_dim, singlecoreStatus.h_dim);
     return;
   }
@@ -336,7 +336,7 @@ void Conv2dDwCacheTiling::GetBlockDim()
       }
     }
   }
-  OP_LOGD(params.op_type.c_str(), "multi-core factors batch_dim:%lld, n_dim:%lld, m_dim:%lld, h_dim:%lld",
+  OP_LOGD(params.op_type.c_str(), "multi-core factors batch_dim:%d, n_dim:%d, m_dim:%d, h_dim:%d",
           singlecoreStatus.batch_dim, singlecoreStatus.n_dim, singlecoreStatus.m_dim, singlecoreStatus.h_dim);
 }
 
@@ -547,8 +547,8 @@ bool Conv2dDwCacheTiling::GetL0Factors()
   OP_LOGE_IF(l0Status.n_l0 == 0, false, params.op_type, "l0Status.n_l0 is 0.");
   OP_LOGE_IF(l0Status.k_l0 == 0, false, params.op_type, "l0Status.k_l0 is 0.");
   OP_LOGD(params.op_type.c_str(),
-          "tiling m_l0:%lld, n_l0:%lld, k_l0:%lld", l0Status.m_l0, l0Status.n_l0, l0Status.k_l0);
-  OP_LOGD(params.op_type.c_str(), "tiling db_l0a:%lld, db_l0b:%lld, db_l0c:%lld", l0Status.db_l0a, l0Status.db_l0b,
+          "tiling m_l0:%d, n_l0:%d, k_l0:%d", l0Status.m_l0, l0Status.n_l0, l0Status.k_l0);
+  OP_LOGD(params.op_type.c_str(), "tiling db_l0a:%d, db_l0b:%d, db_l0c:%d", l0Status.db_l0a, l0Status.db_l0b,
           l0Status.db_l0c);
   return true;
 }
@@ -822,10 +822,10 @@ void Conv2dDwCacheTiling::GetL1Factors()
   l1Status.hi = GetHo2Hi(l1Status.ho, params.stride_h, params.kh);
   int32_t bl1_ci = (l0Status.n_l0 * l1Status.n_bl1 + params.kh * params.kw - 1) / (params.kh * params.kw);
   l1Status.bl1_bound = l1Status.hi * params.wi * bl1_ci * params.ci0;
-  OP_LOGD(params.op_type.c_str(), "dw_tiling kal1_16:%lld, kbl1_16:%lld, k_l0:%lld", l1Status.kal1_16, l1Status.kbl1_16,
+  OP_LOGD(params.op_type.c_str(), "dw_tiling kal1_16:%d, kbl1_16:%d, k_l0:%d", l1Status.kal1_16, l1Status.kbl1_16,
           l0Status.k_l0);
-  OP_LOGD(params.op_type.c_str(), "dw_tiling m_al1:%lld, n_bl1:%lld", l1Status.m_al1, l1Status.n_bl1);
-  OP_LOGD(params.op_type.c_str(), "dw_tiling db_al1:%lld, db_bl1:%lld", l1Status.db_al1, l1Status.db_bl1);
+  OP_LOGD(params.op_type.c_str(), "dw_tiling m_al1:%d, n_bl1:%d", l1Status.m_al1, l1Status.n_bl1);
+  OP_LOGD(params.op_type.c_str(), "dw_tiling db_al1:%d, db_bl1:%d", l1Status.db_al1, l1Status.db_bl1);
 }
 
 void Conv2dDwCacheTiling::GetUbFactors()
@@ -874,7 +874,7 @@ void Conv2dDwCacheTiling::GetUbFactors()
                      Align(ubStatus.k_bub * params.wi, kBlockSize) * ubStatus.db_bub;
   ubStatus.n_cub = (kUbSize - (aub_size + bub_size) * kFp16Bytes) / kFp32Bytes / cub_min_size;
   GetNearestFactor(l0Status.n_l0, ubStatus.n_cub);
-  OP_LOGD(params.op_type.c_str(), "dw ub tiling -- m_aub:%lld, k_aub:%lld, n_bub:%lld, k_bub:%lld, n_cub:%lld",
+  OP_LOGD(params.op_type.c_str(), "dw ub tiling -- m_aub:%d, k_aub:%d, n_bub:%d, k_bub:%d, n_cub:%d",
           ubStatus.m_aub, ubStatus.k_aub, ubStatus.n_bub, ubStatus.k_bub, ubStatus.n_cub);
 }
 
@@ -1001,7 +1001,7 @@ void Conv2dDwCacheTiling::GetTilingId(Conv2dDwTiling &tiling)
 bool Conv2dDwCacheTiling::GenTiling(Conv2dDwTiling &tiling)
 {
   OP_LOGD(params.op_type.c_str(),
-          "dw_cache_tiling input batch:%lld, ho:%lld, wo:%lld, co1:%lld, hi:%lld, wi:%lld, ci1:%lld, kh:%lld, kw:%lld",
+          "dw_cache_tiling input batch:%d, ho:%d, wo:%d, co1:%d, hi:%d, wi:%d, ci1:%d, kh:%d, kw:%d",
           params.batch, params.ho, params.wo, params.co1, params.hi, params.wi, params.ci1, params.kh, params.kw);
   GetBlockDim();
   OP_LOGE_IF(!GetL0Factors(), false, params.op_type, "get L0 factors failed.");
