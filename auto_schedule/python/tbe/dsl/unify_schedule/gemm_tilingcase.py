@@ -584,7 +584,8 @@ class MatmulTiling(CubeTilingOp):
         self.bias_flag = self.tiling_info["bias_flag"]
         self.none_range_area = self.tiling_info["none_range_area"]
         self.use_cache_tiling = (not self.bias_flag and self.none_range_area and
-                                 "Ascend910" in tbe_platform_info.get_soc_spec("SOC_VERSION"))
+                                 ("Ascend910" in tbe_platform_info.get_soc_spec("SOC_VERSION") or
+                                  "Ascend710" in tbe_platform_info.get_soc_spec("SOC_VERSION")))
 
         if intrinsic_check_support("Intrinsic_fix_pipe_l0c2out"):
             self.use_cache_tiling = False

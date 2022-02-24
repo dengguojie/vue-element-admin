@@ -829,7 +829,7 @@ def batch_matmul_compute(input_x1: dict, input_x2: dict, bias: dict, offset_w: d
         reason = f"not support op_type: {op_type}"
         error_manager_vector.raise_err_specific_reson(op_type, reason)
 
-    if "Ascend910" in soc_version:
+    if "Ascend910" in soc_version or "Ascend710" in soc_version:
         _define_cache_tiling_var(input_x1, input_x2, bias, output_z)
 
     shape_x2 = [DYNAMIC_FLAG, DYNAMIC_FLAG]
