@@ -346,22 +346,6 @@ class OpUT:  # 'pylint: disable=too-many-instance-attributes
         case_info = self._build_op_ut_case_info(support_soc, case, case_line_num=case_line_num)
         self._case_info_map[case_info.case_name] = case_info
 
-    def _build_data_file(self, file_name, run_soc_version, run_cfg: Dict = None):
-        if run_cfg:
-            data_root_dir = run_cfg.get("data_dump_path", "./data")
-        else:
-            data_root_dir = "./data"
-        data_dir = os.path.join(data_root_dir, self.op_type, run_soc_version)
-        data_dir = os.path.realpath(data_dir)
-        if not os.path.exists(data_dir):
-            file_util.makedirs(data_dir, mode=Constant.DATA_DIR_MODES)
-        data_path = os.path.join(data_dir, file_name)
-        if not os.path.exists(data_path):
-            # create output data file with mode
-            with os.fdopen(os.open(data_path, Constant.DATA_FILE_FLAGS, Constant.DATA_FILE_MODES), 'w') as fout:
-                fout.write("")
-        return data_path
-
     def add_precision_case(self, support_soc=None, case=None):
         """
         add a test op compile and precision case
@@ -445,6 +429,22 @@ class OpUT:  # 'pylint: disable=too-many-instance-attributes
             }
             case_info_list.append(case_obj)
         return case_info_list
+
+    def _build_data_file(self, file_name, run_soc_version, run_cfg: Dict = None):
+        if run_cfg:
+            data_root_dir = run_cfg.get("data_dump_path", "./data")
+        else:
+            data_root_dir = "./data"
+        data_dir = os.path.join(data_root_dir, self.op_type, run_soc_version)
+        data_dir = os.path.realpath(data_dir)
+        if not os.path.exists(data_dir):
+            file_util.makedirs(data_dir, mode=Constant.DATA_DIR_MODES)
+        data_path = os.path.join(data_dir, file_name)
+        if not os.path.exists(data_path):
+            # create output data file with mode
+            with os.fdopen(os.open(data_path, Constant.DATA_FILE_FLAGS, Constant.DATA_FILE_MODES), 'w') as fout:
+                fout.write("")
+        return data_path
 
     def _save_data(self, run_soc_version, case_info: op_ut_case_info.OpUTCase, run_cfg: Dict = None):
 
@@ -633,22 +633,6 @@ class OpUT:  # 'pylint: disable=too-many-instance-attributes
                                                    check_exist=check_exist)
         return call_success, err_msg
 
-    def _run_compile_stage(self, run_soc_version,
-                           case_info: op_ut_case_info.OpUTCase,
-                           check_exist=False) -> op_ut_case_info.OpUTStageResult:
-        compile_success, compile_err_msg = self._compile_op_kernel(run_soc_version,
-                                                                   case_info=case_info,
-                                                                   check_exist=check_exist)
-        if not compile_success:
-            stage_status = op_ut_case_info.OpUTStageResult(status=op_status.FAILED,
-                                                           stage_name=op_ut_case_info.Constant.STAGE_COMPILE,
-                                                           err_msg="Failed",
-                                                           err_trace=compile_err_msg)
-        else:
-            stage_status = op_ut_case_info.OpUTStageResult(status=op_status.SUCCESS,
-                                                           stage_name=op_ut_case_info.Constant.STAGE_COMPILE)
-        return stage_status
-
     @staticmethod
     def _get_simulator_mode(run_cfg):
         if not run_cfg or not isinstance(run_cfg, dict):
@@ -660,23 +644,6 @@ class OpUT:  # 'pylint: disable=too-many-instance-attributes
         if not run_cfg or not isinstance(run_cfg, dict):
             return None
         return run_cfg.get("simulator_lib_path", None)
-
-    def _run_compile_case(self, run_soc_version,
-                          case_info: op_ut_case_info.OpUTCase) -> ut_report.OpUTCaseReport:
-        case_trace = op_ut_case_info.OpUTCaseTrace(run_soc_version, case_info)
-        stage_status = self._run_compile_stage(run_soc_version, case_info)
-        case_trace.add_stage_result(stage_status)
-        return ut_report.OpUTCaseReport(case_trace)
-
-    def _get_simulator_dump_path(self, simulator_mode, case_name, run_cfg):
-        base_dir = "./model"
-        if isinstance(run_cfg, dict):
-            base_dir = run_cfg.get("simulator_dump_path", "./model")
-
-        model_data_path = os.path.join(os.path.realpath(base_dir), simulator_mode, self.op_type, case_name)
-        if not os.path.exists(model_data_path):
-            file_util.makedirs(model_data_path, Constant.DATA_DIR_MODES)
-        return model_data_path
 
     @staticmethod
     def _get_op_param_desc_info(op_func):
@@ -700,6 +667,39 @@ class OpUT:  # 'pylint: disable=too-many-instance-attributes
         node_iter.visit(ast.parse(inspect.getsource(op_func)))
 
         return param_desc_list, param_name_list
+
+    def _run_compile_stage(self, run_soc_version,
+                           case_info: op_ut_case_info.OpUTCase,
+                           check_exist=False) -> op_ut_case_info.OpUTStageResult:
+        compile_success, compile_err_msg = self._compile_op_kernel(run_soc_version,
+                                                                   case_info=case_info,
+                                                                   check_exist=check_exist)
+        if not compile_success:
+            stage_status = op_ut_case_info.OpUTStageResult(status=op_status.FAILED,
+                                                           stage_name=op_ut_case_info.Constant.STAGE_COMPILE,
+                                                           err_msg="Failed",
+                                                           err_trace=compile_err_msg)
+        else:
+            stage_status = op_ut_case_info.OpUTStageResult(status=op_status.SUCCESS,
+                                                           stage_name=op_ut_case_info.Constant.STAGE_COMPILE)
+        return stage_status
+
+    def _run_compile_case(self, run_soc_version,
+                          case_info: op_ut_case_info.OpUTCase) -> ut_report.OpUTCaseReport:
+        case_trace = op_ut_case_info.OpUTCaseTrace(run_soc_version, case_info)
+        stage_status = self._run_compile_stage(run_soc_version, case_info)
+        case_trace.add_stage_result(stage_status)
+        return ut_report.OpUTCaseReport(case_trace)
+
+    def _get_simulator_dump_path(self, simulator_mode, case_name, run_cfg):
+        base_dir = "./model"
+        if isinstance(run_cfg, dict):
+            base_dir = run_cfg.get("simulator_dump_path", "./model")
+
+        model_data_path = os.path.join(os.path.realpath(base_dir), simulator_mode, self.op_type, case_name)
+        if not os.path.exists(model_data_path):
+            file_util.makedirs(model_data_path, Constant.DATA_DIR_MODES)
+        return model_data_path
 
     def _do_tiling(self, run_soc_version: str, case_info: op_ut_case_info.OpUTCase,
                    input_info_list: List, output_info_list: List):
@@ -884,6 +884,14 @@ class OpUT:  # 'pylint: disable=too-many-instance-attributes
                                                        err_trace=err_msg)
         return stage_status
 
+    @staticmethod
+    def _check_need_run_expect(run_args):
+        if not run_args:
+            return True
+
+        simulator_mode = run_args.get("simulator_mode")
+        return simulator_mode != "tm"
+
     def _compare_output(self, case_info: op_ut_case_info.OpUTCase):
         output_list = self._get_outputs(case_info.op_params)
         err_msg = ""
@@ -904,14 +912,6 @@ class OpUT:  # 'pylint: disable=too-many-instance-attributes
                 compare_success = False
                 err_msg += "output %d precision compare failed, detail msg: %s" % (idx, cmp_res.err_msg)
         return compare_success, err_msg
-
-    @staticmethod
-    def _check_need_run_expect(run_args):
-        if not run_args:
-            return True
-
-        simulator_mode = run_args.get("simulator_mode")
-        return simulator_mode != "tm"
 
     def _run_data_compare_stage(self, case_info: op_ut_case_info.OpUTCase):
         compare_success, err_msg = self._compare_output(case_info)

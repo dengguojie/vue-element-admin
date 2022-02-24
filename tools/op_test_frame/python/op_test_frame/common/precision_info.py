@@ -62,6 +62,7 @@ class PrecisionStandard:
             "max_atol": self.max_atol
         }
 
+
 class PrecisionCompareResult:
     """
     precision compare result
@@ -70,13 +71,6 @@ class PrecisionCompareResult:
     def __init__(self, status, err_msg=None):
         self.status = status
         self.err_msg = err_msg
-
-    def is_success(self):
-        """
-        check success
-        :return: True or False
-        """
-        return self.status == op_status.SUCCESS
 
     @staticmethod
     def parse_json_obj(json_obj):
@@ -87,6 +81,13 @@ class PrecisionCompareResult:
         """
         return PrecisionCompareResult(json_obj['status'], json_obj['err_msg'])
 
+    def is_success(self):
+        """
+        check success
+        :return: True or False
+        """
+        return self.status == op_status.SUCCESS
+
     def to_json_obj(self):
         """
         get json obj
@@ -96,6 +97,7 @@ class PrecisionCompareResult:
             "status": self.status,
             "err_msg": self.err_msg
         }
+
 
 def get_default_standard(dtype):
     """

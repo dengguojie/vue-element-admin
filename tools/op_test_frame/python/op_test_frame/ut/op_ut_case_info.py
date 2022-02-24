@@ -87,6 +87,21 @@ class OpUTBaseCase:
         self.case_file = case_file
         self.case_line_num = case_line_num
 
+    @staticmethod
+    def parser_json_obj(json_obj):
+        """
+        convert json object to OpUTBaseCase object
+        :param json_obj: json object
+        :return: OpUTBaseCase object
+        """
+        if not json_obj:
+            return None
+        case_usage = CaseUsage.parser_str(json_obj["case_usage"])
+        if case_usage == CaseUsage.CUSTOM:
+            return OpUTCustomCase.parser_json_obj(json_obj)
+
+        return OpUTCase.parser_json_obj(json_obj)
+
     def check_support_soc(self, soc_version: str):
         """
         check this case if support the soc
@@ -111,21 +126,6 @@ class OpUTBaseCase:
             if "all" in self.support_soc:
                 return True
         return False
-
-    @staticmethod
-    def parser_json_obj(json_obj):
-        """
-        convert json object to OpUTBaseCase object
-        :param json_obj: json object
-        :return: OpUTBaseCase object
-        """
-        if not json_obj:
-            return None
-        case_usage = CaseUsage.parser_str(json_obj["case_usage"])
-        if case_usage == CaseUsage.CUSTOM:
-            return OpUTCustomCase.parser_json_obj(json_obj)
-
-        return OpUTCase.parser_json_obj(json_obj)
 
     def to_json_obj(self):
         """
@@ -308,13 +308,6 @@ class OpUTStageResult:
         self.err_trace = err_trace
         self.stage_name = stage_name
 
-    def is_success(self):
-        """
-        check stage status is success
-        :return: True or False
-        """
-        return self.status == op_status.SUCCESS
-
     @staticmethod
     def parser_json_obj(json_obj):
         """
@@ -324,6 +317,13 @@ class OpUTStageResult:
         """
         return OpUTStageResult(json_obj["status"], json_obj["stage_name"], json_obj["result"], json_obj["err_msg"],
                                json_obj["err_trace"])
+
+    def is_success(self):
+        """
+        check stage status is success
+        :return: True or False
+        """
+        return self.status == op_status.SUCCESS
 
     def to_json_obj(self):
         """
@@ -349,14 +349,6 @@ class OpUTCaseTrace:
         self.stage_result = []
         self.run_soc = soc_version
 
-    def add_stage_result(self, stage_res: OpUTStageResult):
-        """
-        add a stage result into trace
-        :param stage_res: stage result
-        :return: None
-        """
-        self.stage_result.append(stage_res)
-
     @staticmethod
     def parser_json_obj(json_obj):
         """
@@ -369,6 +361,14 @@ class OpUTCaseTrace:
         res = OpUTCaseTrace(json_obj["run_soc"], OpUTBaseCase.parser_json_obj(json_obj["ut_case_info"]))
         res.stage_result = [OpUTStageResult.parser_json_obj(stage_obj) for stage_obj in json_obj["stage_result"]]
         return res
+
+    def add_stage_result(self, stage_res: OpUTStageResult):
+        """
+        add a stage result into trace
+        :param stage_res: stage result
+        :return: None
+        """
+        self.stage_result.append(stage_res)
 
     def to_json_obj(self):
         """
