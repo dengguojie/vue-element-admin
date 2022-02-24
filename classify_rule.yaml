@@ -333,6 +333,7 @@ cube:
       - ops/built-in/tbe/impl/depthwise_conv2d_backprop_input_d.py
       - ops/built-in/tbe/impl/avg_pool3d_grad_d.py
       - ops/built-in/tbe/impl/gemm.py
+      - ops/built-in/tbe/impl/dilation.py
       - ops/built-in/tbe/impl/dynamic/celu.py
       - ops/built-in/tbe/impl/dynamic/conv2d_backprop_filter.py
       - ops/built-in/tbe/impl/dynamic/conv2d_backprop_input.py

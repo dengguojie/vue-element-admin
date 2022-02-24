@@ -17,116 +17,93 @@
 """
 dilation schedule
 """
-from tbe.common import platform as tbe_platform
+from functools import reduce
+
+from tbe import tvm
+from tbe.common.platform import CORE_NUM
 from tbe.common.platform import platform_info as tbe_platform_info
 from tbe.common.utils.errormgr import error_manager_util
-from tbe.dsl.compute.dilation_compute import calc_minimum_ub
-from tbe.dsl.compute.dilation_compute import calc_space_of_ub
-from tbe.dsl.compute.dilation_compute import get_first_axis_need_dilate
+from . import gemm_schedule_util as util
 
 
-def _get_tiling_factor(shape, dilations, dtype):
+def _cal_mini_ub(shape_input, shape_out, dtype):
     """
-    get tiling axis and factor
-    :param shape: list or tuple
-    :param dilations: list or tuple
-    :param dtype: str
-    :return: axis to split and factor
+    calculate the mininum ub
     """
-    first_dilate_axis = get_first_axis_need_dilate(dilations)
-    minimum_ub = calc_minimum_ub(shape, dilations, dtype)
-    ub_size = tbe_platform_info.get_soc_spec("UB_SIZE")
-    if minimum_ub > ub_size:
+    return reduce(lambda x, y: x * y, shape_input) + reduce(lambda x, y: x * y, shape_out) * util.DATA_SIZE.get(dtype)
+
+
+def _get_attach_axis(input_x, res, core_num):
+    """
+    get the axis for compute at
+    """
+    shape_input = util.shape_to_list(input_x.shape)
+    shape_out = util.shape_to_list(res.shape)
+    block_inner_parts = util.int_ceil_div(shape_out[0], core_num)
+    shape_input = [block_inner_parts, *shape_input[1:]]
+    shape_out = [block_inner_parts, *shape_out[1:]]
+
+    w_dim = 2
+    ub_size_max = tbe_platform_info.get_soc_spec("UB_SIZE")
+    mini_ub_size = _cal_mini_ub(shape_input[w_dim:], shape_out[w_dim:], input_x.dtype)
+    if mini_ub_size > ub_size_max:
         args_dict = {
-            "errCode": "E60038",
-            "desc": "input is too large, the minimum space may exceed UB_Buffer"
+            "errCode": "E60114",
+            "reason": "mini split exceed UB Buffer",
+            "value": "tiling size = {}".format(mini_ub_size)
         }
-        raise RuntimeError(
-            args_dict,
-            error_manager_util.get_error_message(args_dict)
-        )
-    axis_exceed_ub = -1
-    for i in range(first_dilate_axis):
-        size = calc_space_of_ub(shape, dilations, i, dtype)
-        if size > ub_size:
-            axis_exceed_ub = i
-        else:
+        raise RuntimeError(args_dict, error_manager_util.get_error_message(args_dict))
+
+    double_flag = False
+    attach_axis = w_dim
+    for attach_dim in range(0, w_dim + 1):
+        ub_size = _cal_mini_ub(shape_input[attach_dim:], shape_out[attach_dim:], input_x.dtype)
+        if ub_size <= ub_size_max:
+            double_flag = True
+            attach_axis = attach_dim
             break
-    if axis_exceed_ub == -1:
-        return -1, -1
-    max_no_exceed_size = calc_space_of_ub(shape, dilations, axis_exceed_ub + 1, dtype)
-    factor = ub_size // max_no_exceed_size
-    return axis_exceed_ub, factor
+    return double_flag, attach_axis
 
 
-def _get_buffer_align_param(dilations, dtype):
+def _set_tensor_scope(sch, res, input_x, init_ub):
     """
-    get_buffer_align_param
-    :param dilations: list
-    :param dtype: str,  data type
-    :return: buffer_align params
+    set ub scope for tensor
     """
-    res = [(1, 1)] * (len(dilations) - 1)
-    align_num = tbe_platform.BLOCK_REDUCE
-    if dtype == "int8":
-        align_num = tbe_platform.BLOCK_REDUCE_INT8
-    res.append((1, align_num))
-    return res
+    dilation_ub = sch.cache_write(res, tbe_platform_info.scope_ubuf)
+    x_ub = sch.cache_read(input_x, tbe_platform_info.scope_ubuf, [dilation_ub])
+    sch[init_ub].set_scope(tbe_platform_info.scope_ubuf)
+    return dilation_ub, x_ub
 
 
-def _get_all_tensors(res):
+def _bind_multiblock(sch, res):
     """
-    get all tensors in schedule
-    :param res: tvm.tensor
-    :return: dict of all tensors
+    blind multi block upon batch axis
     """
-    all_tensor = {}
-    all_tensor["res"] = res
-
-    def get(tensor):
-        """
-        get all input tensors
-        :param tensor: tvm.tensor
-        """
-        tensor_list = tensor.op.input_tensors
-        for each_tensor in tensor_list:
-            if each_tensor.op.name not in all_tensor:
-                all_tensor[each_tensor.op.name] = each_tensor
-                get(each_tensor)
-
-    get(res)
-    return all_tensor
+    core_num = tbe_platform_info.get_soc_spec(CORE_NUM)
+    batch_dim = util.shape_to_list(res.shape)[0]
+    if core_num > batch_dim:
+        core_num = batch_dim
+    block_outer, block_inner = sch[res].split(res.op.axis[0], nparts=core_num)
+    block_outer_outer, block_outer_inner = sch[res].split(block_outer, 1)
+    blockidx = tvm.thread_axis("blockIdx.x")
+    sch[res].bind(block_outer_outer, blockidx)
+    return [block_outer_outer, block_outer_inner, block_inner], core_num
 
 
-def _get_split_params(ub_x, dilations, dtype, sch, dilated_x):
+def _dilation_emitinsn(sch, res, dilation_ub, input_dtype):
     """
-    split params, split
-
-    Parameters:
-
-    ub_x: tensor of ub_x.
-
-    dilations: info of dilations.
-
-    dtype: the tensor x 's dtype.
-
-    sch: dilations schedule.
-
-    dilated_x: tensor of res.
-
-    Returns:
-
-    split tensor.
+    emit insn for all tensor
     """
-    shape_ub_x = [i.value for i in ub_x.shape]
-    split_axis, split_factor = _get_tiling_factor(shape_ub_x, dilations, dtype)
-    if split_axis == -1:
-        dilate_x_out = dilated_x.op.axis[0]
-        dilate_x_in = dilated_x.op.axis[1]
-    else:
-        dilate_x_out, dilate_x_in = sch[dilated_x].split(dilated_x.op.axis[split_axis], split_factor)
+    dilations_para = [i.value for i in res.op.attrs["dilations_para"]]
+    dilation_n_dim, dilation_h_dim, dilation_w_dim, _ = sch[dilation_ub].op.axis
+    h_dim_outer, h_dim_inner = sch[dilation_ub].split(dilation_h_dim, dilations_para[1])
+    w_dim_outer, w_dim_inner = sch[dilation_ub].split(dilation_w_dim, dilations_para[2])
+    sch[dilation_ub].reorder(h_dim_inner, w_dim_inner, dilation_n_dim, h_dim_outer, w_dim_outer)
+    sch[dilation_ub].unroll(h_dim_inner)
+    sch[dilation_ub].unroll(w_dim_inner)
 
-    return dilate_x_out, dilate_x_in
+    dilation_emit = "vector_muls" if input_dtype in ("float16", "float32") else "dma_copy"
+    sch[dilation_ub].emit_insn(sch[dilation_ub].op.axis[0], dilation_emit)
 
 
 def dilation_schedule(res, sch_list):
@@ -141,34 +118,35 @@ def dilation_schedule(res, sch_list):
     True for sucess, False for no schedule
     """
     sch = sch_list[0]
-    all_tensors = _get_all_tensors(res)
-    x = all_tensors.get("x")
-    ub_x = all_tensors.get("ub_x")
-    padding_default = all_tensors.get("padding_default")
-    ub_dilated_x = all_tensors.get("ub_dilated_x")
-    dilated_x = all_tensors.get("res")
-    dilations = [i.value for i in x.op.attrs["dilations"]]
-    dtype = x.op.attrs["dtype"].value
+    x = res.op.input_tensors[0]
+    init_ub = res.op.input_tensors[1]
 
-    # set scope and buffer_align
-    sch[ub_x].buffer_align(*_get_buffer_align_param(dilations, dtype))
-    sch[ub_dilated_x].buffer_align(*_get_buffer_align_param(dilations, dtype))
-    sch[ub_x].set_scope(tbe_platform_info.scope_ubuf)
-    sch[padding_default].set_scope(tbe_platform_info.scope_ubuf)
-    sch[ub_dilated_x].set_scope(tbe_platform_info.scope_ubuf)
+    # set scope
+    dilation_ub, x_ub = _set_tensor_scope(sch, res, x, init_ub)
+    # blind multi block
+    block_axis, core_num = _bind_multiblock(sch, res)
 
-    # get split params, split and compute_at
-    dilate_x_out, dilate_x_in = _get_split_params(ub_x, dilations, dtype, sch, dilated_x)
-    sch[padding_default].compute_inline()
-    sch[ub_x].compute_at(sch[dilated_x], dilate_x_out)
-    sch[ub_dilated_x].compute_at(sch[dilated_x], dilate_x_out)
-
-    # emit_insn
-    sch[padding_default].emit_insn(padding_default.op.axis[0], "dma_copy")
-    sch[ub_x].emit_insn(ub_x.op.axis[0], "dma_copy")
-    ub_dilate_x_emit_str = "vector_muls"
-    if dtype == "int8":
-        ub_dilate_x_emit_str = "dma_copy"
-    sch[ub_dilated_x].emit_insn(ub_dilated_x.op.axis[0], ub_dilate_x_emit_str)
-    sch[dilated_x].emit_insn(dilate_x_in, "dma_copy")
+    # get attach axis
+    double_flag, attach_axis = _get_attach_axis(x, res, core_num)
+    # attach at
+    attach_dim = [*block_axis[1:], sch[res].op.axis[1]]
+    sch[dilation_ub].compute_at(sch[res], attach_dim[attach_axis])
+    sch[init_ub].compute_at(sch[res], attach_dim[attach_axis])
+    sch[x_ub].compute_at(sch[res], attach_dim[attach_axis])
+    # unroll for dilation
+    _dilation_emitinsn(sch, res, dilation_ub, x.dtype)
+    # double buffer
+    if double_flag:
+        sch[dilation_ub].double_buffer()
+        sch[init_ub].double_buffer()
+        sch[x_ub].double_buffer()
+    # reuseby and emit insn
+    sch[dilation_ub].reused_by(init_ub)
+    sch[init_ub].emit_insn(sch[init_ub].op.axis[0], "vector_dup")
+    sch[x_ub].emit_insn(sch[x_ub].op.axis[0], "dma_copy")
+    if attach_axis == 0:
+        sch[res].emit_insn(block_axis[2], "dma_copy")
+    else:
+        sch[res].emit_insn(sch[res].op.axis[attach_axis], "dma_copy")
     return True
+

@@ -17,6 +17,7 @@ dilation
 """
 from impl.util.platform_adapter import error_manager_util
 from impl.util.platform_adapter import error_manager_cube
+from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tvm
 from impl.util import util_select_op_base
@@ -55,24 +56,15 @@ def get_op_support_info(x: dict, y: dict, dilations: list, pads: list = None,
 
 def _param_check(x, dilations):
     shape_x = x.get("shape")
-    if shape_x is None:
-        args_dict = {
-            "errCode": "E60029",
-            "param_name": "x",
-            "key": "shape"
-        }
-        raise RuntimeError(
-            args_dict,
-            error_manager_util.get_error_message(args_dict)
-        )
-    shape_x_len = len(shape_x)
-    if shape_x_len != len(dilations):
+    para_check.check_shape(shape_x, param_name="x")
+
+    if len(shape_x) != len(dilations):
         args_dict = {
             "errCode": "E60002",
             "attr_name": "dim",
             "param1_name": "x",
             "param2_name": "dilations",
-            "param1_value": "{}".format(shape_x_len),
+            "param1_value": "{}".format(len(shape_x)),
             "param2_value": "{}".format(len(dilations))
         }
         raise RuntimeError(
@@ -85,41 +77,28 @@ def _param_check(x, dilations):
                 "Dilation",
                 "Elements in dilations should be positive integer"
                 )
-    x_dtype = x.get("dtype")
-    supported_dtype = ("int8", "float16", "float32")
-    if x_dtype not in supported_dtype:
-        args_dict = {
-            "errCode": "E60005",
-            "param_name": "x",
-            "expected_dtype": str(supported_dtype),
-            "dtype": "{}".format(x_dtype)
-        }
-        raise RuntimeError(
-            args_dict,
-            error_manager_util.get_error_message(args_dict)
-        )
+    check_list = ("int8", "float16", "float32")
+    para_check.check_dtype(x.get("dtype"), check_list, param_name="x")
 
 
 def dilation(x, y, dilations, pads=None, padding_value=0.0, kernel_name="dilation"):
     """
     dilation, expand dims of x according to parameter dilations, for example:
-    when x = [[1, 1], [1, 1]], dilations = [2, 1], output is [[1, 1], [0, 0], [1, 1]]
+    when x shape is [1, 1, 2, 2, 16], dilations = [1, 1, 2, 2, 1], output is [1, 1, 3, 3, 16]
     :param x: dict, input
     :param y: dict, output
-    :param dilations: list or tuple
+    :param dilations: list or tuple, only supported h and w dilation now
     :param padding_value: float
     :param pads: list or tuple or None
     :param kernel_name
     """
-    shape = x.get("shape")
-    dtype = x.get("dtype")
+    shape_x = x.get("shape")
+    dtype_x = x.get("dtype")
     _param_check(x, dilations)
-    attrs = {
-        "dilations": dilations,
-        "dtype": dtype
-    }
-    tensor_x = tvm.placeholder(shape, dtype=dtype, name="x", attrs=attrs)
-    dilated_x = tbe.dilation(tensor_x, dilations, pads, padding_value)
+    shape_x_fuse = [shape_x[0] * shape_x[1], *shape_x[2:]]
+    dilations_fuse = [dilations[0] * dilations[1], *dilations[2:]]
+    tensor_x = tvm.placeholder(shape_x_fuse, dtype=dtype_x, name="x")
+    dilated_x = tbe.dilation(tensor_x, dilations_fuse, pads, padding_value)
 
     with tvm.target.cce():
         s = tbe.auto_schedule(dilated_x)

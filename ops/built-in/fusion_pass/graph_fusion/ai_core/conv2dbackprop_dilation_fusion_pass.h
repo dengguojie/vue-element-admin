@@ -33,7 +33,7 @@ protected:
 
 private:
   static Status Relink(ge::NodePtr outBackprop_node, ge::NodePtr dilation_node,
-                ge::NodePtr conv2dbp_input_node, ge::NodePtr y_node, ge::NodePtr pad_node,
+                ge::NodePtr conv2dbp_input_node, ge::NodePtr y_node,
                 const int pre_achor, const int sub_achor, bool pre_dilation,
                 const vector<int> &y_idxs);
   static Status generate_pre_dilation_node(ge::ComputeGraph* graph, ge::GeTensorDesc* prev_out_desc,
@@ -44,9 +44,6 @@ private:
                                             ge::GeTensorDesc* conv2dbp_input_outbackprop_desc,
                                             ge::NodePtr* dilation_node, const vector<int64_t> strides,
                                             const vector<int64_t> pads, const std::string& basename);
-  static Status generate_pad_node(ge::ComputeGraph* graph, ge::GeTensorDesc* prev_out_desc,
-                                  ge::GeTensorDesc* next_in_desc, ge::NodePtr* pad_node, const vector<int64_t> pad_hw,
-                                  const std::string& basename);
   static const string FUSED_OP_TYPE;
 
   static const vector<std::string> kOriFormatSupportByFilter;

@@ -17,170 +17,39 @@
 """
 dilation compute
 """
-import math
-import functools
-import operator
 
 from tbe import tvm
-from tbe.common import platform as tbe_platform
-from tbe.common.platform import platform_info as tbe_platform_info
 from tbe.common.utils.errormgr import error_manager_util
+from tbe.common.utils import para_check
 
 
-def shape_align(shape, dtype):
-    """
-    align the last dim to 32Bit
-    :param shape: tuple or list
-    :param dtype: data type, support int8, float16, float32
-    :return: list; aligned shape
-    """
-    align_factor = tbe_platform.BLOCK_REDUCE_INT8 if dtype == "int8" else tbe_platform.BLOCK_REDUCE
-    res = list(shape)
-    res[-1] = math.ceil(res[-1] / align_factor) * align_factor
-    return res
-
-
-def calc_minimum_ub(shape, dilations, dtype):
-    """
-    calculate the minimum ub size needed according to dilations
-    :param shape: tuple or list
-    :param dilations: tuple or list
-    :param dtype: str
-    :return: int
-    """
-    shape_aligned = shape_align(shape, dtype)
-    highest_dilate = get_first_axis_need_dilate(dilations)
-    return calc_space_of_ub(shape_aligned, dilations, highest_dilate, dtype)
-
-
-def get_first_axis_need_dilate(dilations):
-    """
-    get the highest dim need to be dilated, that is the index of the
-    first element which is more than 1.
-    for example: for input dilations = (1, 1, 3, 4, 1), result is 2
-    :param dilations: list or tuple
-    :return: int
-    """
-    axis = len(dilations) - 1
-    for i, value in enumerate(dilations):
-        if int(value) > 1:
-            axis = i
-            break
-    return axis
-
-
-def calc_space_of_ub(shape, dilations, index, dtype):
-    """
-    calculate the ub_size of shape and its dilation from index
-    :param shape: list or tuple
-    :param dilations: list or tuple
-    :param index: int, index of shape
-    :param dtype: string, data type
-    :return: int
-    """
-    shape_dilated = _calc_dilated_shape(shape, dilations)
-    num_element = functools.reduce(operator.mul, shape[index:]) + \
-                  functools.reduce(operator.mul, shape_dilated[index:])
-    type_size_map = {
-        "int8": 1,
-        "float16": 2,
-        "float32": 4
-    }
-    return type_size_map.get(dtype) * num_element
-
-
-def _calc_dilated_shape(shape, dilations):
+def _calc_dilated_shape(shape, dilations, pads):
     """
     calculate dilated shape
-    :param shape:list or tuple
+    :param shape: list or tuple
     :param dilations: list or tuple
-    :return: list, dilated shape
+    :param pads: list or tuple
+    return : list, dilated shape
     """
-    return list(map(lambda a, b: (a - 1) * b + 1, shape, dilations))
+    return list(map(lambda a, b, c: (a - 1)*b + 1 + c[0] + c[1], shape, dilations, pads))
 
 
 def _param_check(tensor_x, dilations):
     """
-    check params
+    check param
     :param tensor_x: tvm.tensor
     :param dilations: list or tuple
     """
-    if tensor_x is None:
-        args_dict = {
-            "errCode": "E60001",
-            "param_name": "x"
-        }
-        raise RuntimeError(
-            args_dict,
-            error_manager_util.get_error_message(args_dict)
-        )
-    if tensor_x.shape is None or len(tensor_x.shape) == 0:
-        args_dict = {
-            "errCode": "E60029",
-            "param_name": "x",
-            "key": "shape"
-        }
-        raise RuntimeError(
-            args_dict,
-            error_manager_util.get_error_message(args_dict)
-        )
-    if tensor_x.dtype is None:
-        args_dict = {
-            "errCode": "E60029",
-            "param_name": "x",
-            "key": "dtype"
-        }
-        raise RuntimeError(
-            args_dict,
-            error_manager_util.get_error_message(args_dict)
-        )
-    dtype = tensor_x.dtype
     shape_x = [i.value for i in tensor_x.shape]
-    shape_x_len = len(shape_x)
-    if shape_x_len != len(dilations):
-        args_dict = {
-            "errCode": "E60002",
-            "attr_name": "dim",
-            "param1_name": "x",
-            "param2_name": 'dilations',
-            "param1_value": "{}".format(shape_x_len),
-            "param2_value": "{}".format(len(dilations))
-        }
-        raise RuntimeError(
-            args_dict,
-            error_manager_util.get_error_message(args_dict)
-        )
+    para_check.check_shape(shape_x, param_name="x")
+    check_list = ("int8", "float16", "float32")
+    para_check.check_dtype(tensor_x.dtype, check_list, param_name="x")
     if not all([value > 0 and isinstance(value, int) for value in dilations]):
         args_dict = {
             "errCode": "E60038",
             "desc": "Elements in dilations should be positive integer"
         }
-        raise RuntimeError(
-            args_dict,
-            error_manager_util.get_error_message(args_dict)
-        )
-    if dtype not in ("int8", "float16", "float32"):
-        args_dict = {
-            "errCode": "E60005",
-            "param_name": "x",
-            "expected_dtype": "(int8, float16, float32)",
-            "dtype": "{}".format(dtype)
-        }
-        raise RuntimeError(
-            args_dict,
-            error_manager_util.get_error_message(args_dict)
-        )
-    ub_size_need = calc_minimum_ub(shape_x, dilations, dtype)
-    ub_size = tbe_platform_info.get_soc_spec("UB_SIZE")
-    if ub_size_need > ub_size:
-        args_dict = {
-            "errCode": "E60038",
-            "desc": "input is too large, the minimum space may exceed UB_Buffer"
-        }
-        raise RuntimeError(
-            args_dict,
-            error_manager_util.get_error_message(args_dict)
-        )
+        raise RuntimeError(args_dict, error_manager_util.get_error_message(args_dict))
 
 
 def dilation_compute(tensor_x, dilations, pads=None, padding_value=0.0):
@@ -193,38 +62,31 @@ def dilation_compute(tensor_x, dilations, pads=None, padding_value=0.0):
     """
     _param_check(tensor_x, dilations)
     shape_x = [i.value for i in tensor_x.shape]
-    dtype = tensor_x.dtype
-    aligned_shape_x = shape_align(shape_x, dtype)
-    shape_dilated = _calc_dilated_shape(aligned_shape_x, dilations)
-    padding_default = tvm.compute(
+    if pads is None:
+        pads = [(0, 0)] * len(dilations)
+    else:
+        pads = [(0, 0), (pads[0], pads[1]), (pads[2], pads[3]), (0, 0)]
+    shape_dilated = _calc_dilated_shape(shape_x, dilations, pads)
+    dtype_x = tensor_x.dtype
+    zero_tensor = tvm.compute(
         shape_dilated,
-        lambda *indices: tvm.convert(padding_value).astype(dtype),
-        name="padding_default"
+        lambda *indices: tvm.convert(padding_value).astype(dtype_x),
+        name="init_pad",
+        tag="init_pad"
     )
-    ub_x = tvm.compute(
-        aligned_shape_x,
-        lambda *indices: tvm.select(
-            tvm.all(indices[-1] < shape_x[-1]),
-            tensor_x(*indices),
-            tvm.const(0, dtype=dtype)
-        ),
-        name="ub_x"
-    )
-    ub_dilated_x = tvm.compute(
+    dilate_res = tvm.compute(
         shape_dilated,
         lambda *indices: tvm.select(
-            tvm.all(*[(indices[i] % dilations[i] == 0) for i in range(len(indices))]),
-            ub_x(*[indices[i] // dilations[i] for i in range(len(indices))]),
-            padding_default(*indices)
+            tvm.all(*[((indices[i] - pads[i][0]) % dilations[i] == 0) for i in range(len(indices))]),
+            tensor_x(*[(indices[i] - pads[i][0]) // dilations[i] for i in range(len(indices))]),
+            zero_tensor(*indices)
         ),
-        name="ub_dilated_x"
+        name="dilation",
+        tag="dilation",
+        attrs={
+            "dilations_para": dilations,
+            "pads_para": pads
+        }
     )
-    shape_out = shape_dilated[:]
-    shape_out[-1] = shape_x[-1]
-    dilated_x = tvm.compute(
-        shape_out,
-        lambda *indices: ub_dilated_x(*indices),
-        name="dilated_x",
-        tag="dilation"
-    )
-    return dilated_x
+
+    return dilate_res

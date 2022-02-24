@@ -204,7 +204,6 @@ TEST_F(conv2dbackprop_dilation_fusion_test, conv2dbackprop_dilation_fusion_test_
     EXPECT_EQ(findNode, true);
 }
 
-
 TEST_F(conv2dbackprop_dilation_fusion_test, conv2dbackprop_dilation_fusion_test_4) {
     ge::Graph graph("conv2dbackprop_dilation_fusion_test_1");
 

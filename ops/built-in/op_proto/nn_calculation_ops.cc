@@ -10496,75 +10496,84 @@ VERIFY_FUNC_REG(DeformableOffsetsGrad, DeformableOffsetsGradVerify);
 
 IMPLEMT_COMMON_INFERFUNC(DilationInferShape)
 {
-    auto x_desc = op.GetInputDescByName("x");
-    auto x_shape = x_desc.GetShape().GetDims();
-    std::vector<int64_t> dilations;
-    dilations = GetAttrValue(op, "dilations");
-    std::vector<int64_t> out_shape;
-    std::vector<int64_t> pads;
-    pads = GetAttrValue(op, "pads");
-    for (size_t i = 0; i < x_shape.size(); i++) {
-        int shape_value = (x_shape[i] - 1) * dilations[i] + 1;
-        if (!pads.empty()) {
-            shape_value += pads[i] * 2;
-        }
-        out_shape.push_back(shape_value);
+  AscendString op_name;
+  CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
+  int64_t h_position = 0;
+  int64_t w_position = 0;
+  auto x_desc = op.GetInputDescByName("x");
+  auto x_shape = x_desc.GetShape().GetDims();
+  std::vector<int64_t> dilations;
+  dilations = GetAttrValue(op, "dilations");
+  std::vector<int64_t> out_shape;
+  std::vector<int64_t> pads;
+  pads = GetAttrValue(op, "pads");
+  auto x_format = x_desc.GetFormat();
+  std::string x_format_str = format2str[x_format];
+  if (!GetDimInFormat(string(op_name.GetString()), x_format_str, "H", h_position) ||
+      !GetDimInFormat(string(op_name.GetString()), x_format_str, "W", w_position)) {
+    return GRAPH_FAILED;
+  }
+  for (size_t i = 0; i < x_shape.size(); i++) {
+    int shape_value = (x_shape[i] - 1) * dilations[i] + 1;
+    if (!pads.empty()) {
+      if (i == h_position) {
+        shape_value += (pads[0] + pads[1]);
+      }
+      else if (i == w_position) {
+        shape_value += (pads[2] + pads[3]);
+      }
     }
-    auto y_desc = op.GetOutputDescByName("y");
-    y_desc.SetShape(ge::Shape(out_shape));
-    (void)op.UpdateOutputDesc("y", y_desc);
-    return GRAPH_SUCCESS;
+    out_shape.push_back(shape_value);
+  }
+  auto y_desc = op.GetOutputDescByName("y");
+  y_desc.SetShape(ge::Shape(out_shape));
+  (void)op.UpdateOutputDesc("y", y_desc);
+  return GRAPH_SUCCESS;
 }
 
 IMPLEMT_VERIFIER(Dilation, DilationVerify)
 {
-    AscendString op_name;
-    CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
+  AscendString op_name;
+  CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
 
-    auto x_desc = op.GetInputDescByName("x");
-    auto x_shape = x_desc.GetShape().GetDims();
-    std::vector<int64_t> dilations;
-    dilations = GetAttrValue(op, "dilations");
-    std::vector<int64_t> out_shape;
-    if (x_shape.size() != dilations.size()) {
-        map<string, string> err_map;
-        err_map["op_name"] = op_name.GetString();
-        err_map["attr_name"] = "dim";
-        err_map["param1_name"] = "x";
-        err_map["param1_value"] = std::to_string(x_shape.size());
-        err_map["param2_name"] = "dilations";
-        err_map["param2_value"] = std::to_string(dilations.size());
-        std::string report_error_code = "E50031";
-        ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
-        return GRAPH_FAILED;
-    }
-    for (size_t i = 0; i < dilations.size(); i++) {
-        if (dilations[i] <= 0) {
-            map<string, string> err_map;
-            err_map["op_name"] = op_name.GetString();
-            err_map["description"] = "Elements of dilations should be positive integers";
-            std::string report_error_code = "E50060";
-            ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
-            return GRAPH_FAILED;
-        }
-    }
-    std::vector<int64_t> pads;
-    pads = GetAttrValue(op, "pads");
-    if (!pads.empty()) {
-        if (pads.size() != x_shape.size()) {
-            map<string, string> err_map;
-            err_map["op_name"] = op_name.GetString();
-            err_map["attr_name"] = "dim";
-            err_map["param1_name"] = "x";
-            err_map["param1_value"] = std::to_string(x_shape.size());
-            err_map["param2_name"] = "pads";
-            err_map["param2_value"] = std::to_string(pads.size());
-            std::string report_error_code = "E50031";
-            ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
-            return GRAPH_FAILED;
-        }
-    }
-    return GRAPH_SUCCESS;
+  auto x_desc = op.GetInputDescByName("x");
+  auto x_shape = x_desc.GetShape().GetDims();
+  std::vector<int64_t> dilations;
+  dilations = GetAttrValue(op, "dilations");
+  std::vector<int64_t> out_shape;
+  if (x_shape.size() != dilations.size()) {
+      map<string, string> err_map;
+      err_map["op_name"] = op_name.GetString();
+      err_map["attr_name"] = "dim";
+      err_map["param1_name"] = "x";
+      err_map["param1_value"] = std::to_string(x_shape.size());
+      err_map["param2_name"] = "dilations";
+      err_map["param2_value"] = std::to_string(dilations.size());
+      std::string report_error_code = "E50031";
+      ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
+      return GRAPH_FAILED;
+  }
+  for (size_t i = 0; i < dilations.size(); i++) {
+      if (dilations[i] <= 0) {
+          map<string, string> err_map;
+          err_map["op_name"] = op_name.GetString();
+          err_map["description"] = "Elements of dilations should be positive integers";
+          std::string report_error_code = "E50060";
+          ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
+          return GRAPH_FAILED;
+      }
+  }
+  std::vector<int64_t> pads;
+  pads = GetAttrValue(op, "pads");
+  if (!pads.empty() && pads.size() != kConv2dPadSizeLimit) {
+    map<string, string> err_map;
+    err_map["op_name"] = op_name.GetString();
+    err_map["description"] = "pads must be empty or size is 4";
+    std::string report_error_code = "E50060";
+    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
 }
 
 COMMON_INFER_FUNC_REG(Dilation, DilationInferShape);
