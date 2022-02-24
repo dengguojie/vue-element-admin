@@ -363,7 +363,8 @@ vector<ge::NodePtr> DynamicRNNGradDAlignFusionPass::GetDynamicReshapeNode(
   lastDescTensor->SetData(reinterpret_cast<uint8_t*>(lastValue.data()), lastValue.size() * sizeof(int64_t));
   ge::OpDescPtr last_const_opdesc = ge::OpDescUtils::CreateConstOp(lastDescTensor);
   ge::NodePtr last_const_node = graph.AddNode(last_const_opdesc);
-  FUSION_PASS_CHECK(last_const_node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "Create Const Op operator error"), return result);
+  FUSION_PASS_CHECK(last_const_node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "Create Const Op operator error"),
+                    return result);
   ge::NodePtr tSplitNode =
       BuildTDgateSplit(shapeNode->GetOpDesc()->GetOutputDesc(X_INDEX).Clone(), dynamicRNNGradNode, graph, failStatus);
   std::string reshapeConcatName = "TDgateConcat";
@@ -549,7 +550,8 @@ ge::NodePtr DynamicRNNGradDAlignFusionPass::BuildSizeConcatNode(ge::NodePtr dyna
   ge::OpDescPtr x2OpDesc = ge::OpDescUtils::CreateConstOp(x2DescTensor);
 
   ge::NodePtr x2Node = graph.AddNode(x2OpDesc);
-  FUSION_PASS_CHECK(x2Node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "Create Const Op operator error"), return nullptr);
+  FUSION_PASS_CHECK(x2Node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "Create Const Op operator error"),
+                    return nullptr);
   ge::NodePtr concatNode = graph.AddNode(concatDesc);
   ge::GraphUtils::AddEdge(subNode->GetOutDataAnchor(X_INDEX), concatNode->GetInDataAnchor(X_INDEX));
   ge::GraphUtils::AddEdge(x2Node->GetOutDataAnchor(X_INDEX), concatNode->GetInDataAnchor(W_INDEX));
@@ -657,7 +659,8 @@ ge::NodePtr DynamicRNNGradDAlignFusionPass::BuildSubNode(ge::NodePtr dynamicRNNG
   ge::OpDescPtr subOneOpDesc = ge::OpDescUtils::CreateConstOp(subOneDescTensor);
 
   ge::NodePtr subOneNode = graph.AddNode(subOneOpDesc);
-  FUSION_PASS_CHECK(subOneNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "Create Const Op operator error"), return nullptr);
+  FUSION_PASS_CHECK(subOneNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "Create Const Op operator error"),
+                    return nullptr);
   ge::NodePtr subNode = graph.AddNode(subDesc);
   ge::GraphUtils::AddEdge(tSplitNode->GetOutDataAnchor(X_INDEX), subNode->GetInDataAnchor(X_INDEX));
   ge::GraphUtils::AddEdge(subOneNode->GetOutDataAnchor(X_INDEX), subNode->GetInDataAnchor(W_INDEX));
@@ -1200,7 +1203,8 @@ vector<ge::NodePtr> DynamicRNNGradDAlignFusionPass::BuildT0Graph(ge::NodePtr dyn
   string constName = DynamicRNNGradName + "curT0Const";
   ge::OpDescPtr curTConst = CreateConstDesc(constName, X_INDEX, "int32");
   ge::NodePtr curTConstNode = graph.AddNode(curTConst);
-  FUSION_PASS_CHECK(curTConstNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "Create Const Op operator error"), return {});
+  FUSION_PASS_CHECK(curTConstNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "Create Const Op operator error"),
+                    return {});
   t0CellNode->AddLinkFrom(DC_INDEX, curTConstNode);
 
   ge::GraphUtils::AddEdge(dynamicRNNGradNode->GetInDataAnchor(1)->GetPeerOutAnchor(),
@@ -1451,7 +1455,8 @@ ge::NodePtr DynamicRNNGradDAlignFusionPass::DynamicAddSplitNode(ge::NodePtr dyna
   sliceDesc->AddInputDesc("offsets", offsetDesc);
   ge::OpDescPtr offsetConst = CreateListConstDesc("addWhileHSliceOffset", output1Dim);
   ge::NodePtr offsetNode = graph.AddNode(offsetConst);
-  FUSION_PASS_CHECK(offsetNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "Create Const Op operator error"), return nullptr);
+  FUSION_PASS_CHECK(offsetNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "Create Const Op operator error"),
+                    return nullptr);
   newNodes.push_back(offsetNode);
   vector<int64_t> output2Dim = {-W_INDEX, batch_size, hidden_size};
 
@@ -1498,7 +1503,8 @@ ge::NodePtr DynamicRNNGradDAlignFusionPass::DynamicAddInputReshapeNode(ge::NodeP
                                                                        bool& failStatus) {
   std::string operatorName = dynamicRNNGradNode->GetName() + "/" + reshapeName;
   auto reshapeOp = ge::OperatorFactory::CreateOperator(operatorName.c_str(), "Reshape");
-  FUSION_PASS_CHECK(reshapeOp.IsEmpty(), OP_LOGE(FUSED_OP_TYPE.c_str(), "Create Reshape Op operator error"), return nullptr);
+  FUSION_PASS_CHECK(reshapeOp.IsEmpty(), OP_LOGE(FUSED_OP_TYPE.c_str(), "Create Reshape Op operator error"),
+                    return nullptr);
   auto reshape_desc = ge::OpDescUtils::GetOpDescFromOperator(reshapeOp);
   reshapeOp.BreakConnect();
 
@@ -1527,7 +1533,8 @@ ge::NodePtr DynamicRNNGradDAlignFusionPass::DynamicAddInithReshapeNode(ge::NodeP
                                                                        bool& failStatus) {
   std::string operatorName = dynamicRNNGradNode->GetName() + "/" + reshapeName;
   auto reshapeOp = ge::OperatorFactory::CreateOperator(operatorName.c_str(), "Unsqueeze");
-  FUSION_PASS_CHECK(reshapeOp.IsEmpty(), OP_LOGE(FUSED_OP_TYPE.c_str(), "Create Reshape Op operator error"), return nullptr);
+  FUSION_PASS_CHECK(reshapeOp.IsEmpty(), OP_LOGE(FUSED_OP_TYPE.c_str(), "Create Reshape Op operator error"),
+                    return nullptr);
   auto reshape_desc = ge::OpDescUtils::GetOpDescFromOperator(reshapeOp);
   reshapeOp.BreakConnect();
 
@@ -1589,12 +1596,14 @@ vector<ge::NodePtr> DynamicRNNGradDAlignFusionPass::DynamicAddLSTMInputGradNode(
   string negOneConstName = DynamicRNNGradName + "negOneConst";
   ge::OpDescPtr negOneConst = CreateConstDesc(negOneConstName, -W_INDEX, "int64");
   ge::NodePtr negOneConstNode = graph.AddNode(negOneConst);
-  FUSION_PASS_CHECK(negOneConstNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "Create Const Op operator error"), return {});
+  FUSION_PASS_CHECK(negOneConstNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "Create Const Op operator error"),
+                    return {});
 
   string inputSizeConstName = DynamicRNNGradName + "inputSizeConst";
   ge::OpDescPtr inputSizeConst = CreateConstDesc(inputSizeConstName, input_size, "int64");
   ge::NodePtr inputSizeConstConstNode = graph.AddNode(inputSizeConst);
-  FUSION_PASS_CHECK(inputSizeConstConstNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "Create Const Op operator error"), return {});
+  FUSION_PASS_CHECK(inputSizeConstConstNode == nullptr,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "Create Const Op operator error"), return {});
 
   std::string reshapeDxNodeName = "TDxConcat";
   ge::NodePtr dxReshapeConcatNode = BuildDxReshapeSizeConcatNode(dynamicRNNGradNode, reshapeDxNodeName, negOneConstNode,
@@ -2006,7 +2015,8 @@ ge::NodePtr DynamicRNNGradDAlignFusionPass::AddDxPadNode(ge::NodePtr dynamicRNNG
   ge::OpDescPtr padingsConstOpDesc = ge::OpDescUtils::CreateConstOp(padingsConstDescTensor);
 
   ge::NodePtr padingsConstNode = graph.AddNode(padingsConstOpDesc);
-  FUSION_PASS_CHECK(padingsConstNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "Create Const Op for pad operator error"), return nullptr);
+  FUSION_PASS_CHECK(padingsConstNode == nullptr,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "Create Const Op for pad operator error"), return nullptr);
   newNodes.push_back(padingsConstNode);
   ge::GraphUtils::AddEdge(padingsConstNode->GetOutDataAnchor(X_INDEX), dxPadNode->GetInDataAnchor(W_INDEX));
 

@@ -606,7 +606,8 @@ ge::NodePtr DynamicGRUV2GradDFusionPass::BuildSizeConcatNode(ge::NodePtr dynamic
   ge::OpDescPtr x2OpDesc = ge::OpDescUtils::CreateConstOp(x2DescTensor);
 
   ge::NodePtr x2Node = graph.AddNode(x2OpDesc);
-  FUSION_PASS_CHECK(x2Node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "Create Const Op operator error"), return nullptr);
+  FUSION_PASS_CHECK(x2Node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "Create Const Op operator error"),
+                    return nullptr);
   ge::NodePtr concatNode = graph.AddNode(concatDesc);
   ge::GraphUtils::AddEdge(subNode->GetOutDataAnchor(0), concatNode->GetInDataAnchor(0));
   ge::GraphUtils::AddEdge(x2Node->GetOutDataAnchor(0), concatNode->GetInDataAnchor(1));
@@ -1495,7 +1496,8 @@ ge::NodePtr DynamicGRUV2GradDFusionPass::AddInputReshapeNode(ge::NodePtr dynamic
                                                              vector<ge::NodePtr>& newNodes) {
   std::string reshape_op_name = dynamicGRUGradNode->GetName() + "/" + reshapeName;
   auto reshapeOp = ge::OperatorFactory::CreateOperator(reshape_op_name.c_str(), "Unsqueeze");
-  FUSION_PASS_CHECK(reshapeOp.IsEmpty(), OP_LOGE(FUSED_OP_TYPE.c_str(), "Create Reshape Op operator error"), return nullptr);
+  FUSION_PASS_CHECK(reshapeOp.IsEmpty(), OP_LOGE(FUSED_OP_TYPE.c_str(), "Create Reshape Op operator error"),
+                    return nullptr);
   auto reshape_desc = ge::OpDescUtils::GetOpDescFromOperator(reshapeOp);
   reshapeOp.BreakConnect();
 
