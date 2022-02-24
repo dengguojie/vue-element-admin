@@ -303,13 +303,18 @@ Status MatrixSetDiagFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
     return NOT_CHANGED;
   }
   // check op support
-  vector<ge::GeTensorPtr> weights = {assitPtr};
-  ge::OpDescUtils::SetWeights(matrixsetdiagVNode, weights);
+  map<int, ge::GeTensorPtr> weights = {{2, assitPtr}};
+  Status ret1 = ge::OpDescUtils::SetWeights(*matrixsetdiagVNode, weights);
+  FUSION_PASS_CHECK(ret1 != SUCCESS, OP_LOGW(FUSED_OP_TYPE, "SetWeights failed."), return NOT_CHANGED);
   auto constInputNodes = OpDescUtils::GetConstInputs(matrixsetdiagVNode);
-  NodePtr constInput = constInputNodes[0];
+  FUSION_PASS_CHECK(constInputNodes.empty(),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "const input empty."), return PARAM_INVALID);
+  NodePtr constInput = nullptr;
+  OP_LOGI(FUSED_OP_TYPE, "constInputNodes size is %zu", constInputNodes.size());
+  constInput = constInputNodes.back();
   constInput->GetOpDesc()->SetType(CONSTANTOP);
   matrixsetdiagDesc->SetType("MatrixSetDiagD");
-
+  OP_LOGI(FUSED_OP_TYPE, "MatrixSetDiagFusionPass SUCCESS !!!!");
   return SUCCESS;
 }
 
