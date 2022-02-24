@@ -385,6 +385,13 @@ REGISTER_CUSTOM_OP("Igammac")
     .ParseParamsFn(AutoMappingFn)
     .ImplyType(ImplyType::AI_CPU);
 
+// register IgammaGradA op to GE
+REGISTER_CUSTOM_OP("IgammaGradA")
+    .FrameworkType(TENSORFLOW)
+    .OriginOpType("IgammaGradA")
+    .ParseParamsFn(AutoMappingFn)
+    .ImplyType(ImplyType::AI_CPU);
+
 // register InitializeTable op to GE
 REGISTER_CUSTOM_OP("InitializeTable")
     .FrameworkType(TENSORFLOW)
