@@ -654,6 +654,7 @@ def op_select_format(x, y, output, kernel_name="mul"):
     format_flag["FRACTAL_Z"] = format_flag.get("FRACTAL_Z") or (x_flag.get("4d") and y_flag.get("Scalar")) or (
             x_flag.get("Scalar") and y_flag.get("4d"))
     format_flag["FRACTAL_NZ"] = format_flag.get("FRACTAL_NZ") or (
+            len(shape_x) >= 2 and len(shape_y) >= 2 and common_flag.get("half_16_div_flg")) or (
             len(shape_x) >= 2 and y_flag.get("Scalar") and (
                 format_x in format_4d_list or format_x in format_nd)) or (
             len(shape_y) >= 2 and x_flag.get("Scalar") and (
@@ -693,8 +694,22 @@ def op_select_format(x, y, output, kernel_name="mul"):
             dtype_total = dtype_total + [dtype] * len(format_list)
         format_list = format_list * len_format_list
         unknownshape_format_list = ["ND"] * len(format_list)
-        param_list = _gen_para(dtype_total, format_list, format_list, format_list, unknownshape_format_list, shape_x,
-                               shape_y)
+        format_list0 = format_list[:]
+        if "FRACTAL_NZ" in format_list and (_can_division_sixteen(shape_x) and not _can_division_sixteen(shape_y)):
+            index_list = [idx for idx, item in enumerate(format_list) if item == "FRACTAL_NZ"]
+            for idx in index_list:
+                format_list0[idx] = "ND"
+            param_list = _gen_para(dtype_total, format_list, format_list0, format_list,
+                                    unknownshape_format_list, shape_x, shape_y)
+        elif "FRACTAL_NZ" in format_list and (not _can_division_sixteen(shape_x) and _can_division_sixteen(shape_y)):
+            index_list = [idx for idx, item in enumerate(format_list) if item == "FRACTAL_NZ"]
+            for idx in index_list:
+                format_list0[idx] = "ND"
+            param_list = _gen_para(dtype_total, format_list0, format_list, format_list,
+                                    unknownshape_format_list, shape_x, shape_y)
+        else:
+            param_list = _gen_para(dtype_total, format_list, format_list, format_list, unknownshape_format_list,
+                                    shape_x, shape_y)
 
     # 5HD+scalar,ND+ND,FZ+scalar,6D+scalar,NZ+ND
     elif len(shape_x) >= 2 and len(shape_y) == 1 and shape_y[0] == 1:
@@ -835,17 +850,23 @@ def _infer_shape(format_pattern, x, y):
     return shape_x, shape_y
 
 # 'pylint: too-many-branches,too-many-statements
-def reshape(tensor_in, new_shape):
+def reshape(tensor_in, new_shape, reshape_type):
     """
     :params:
     :input: tensor to be reshaped
     :new_shape: shape after input tensor reshaped
+    :reshape_type: support 0, 1 type
     :return: reshape tensor
     """
     def _nd2nz_compute(tensor, indices):
-        axis_3 = indices[-1]
-        axis_0 = indices[-4]
-        axis_list = [0] * (len(indices) - 1) + [axis_0 * 16 + axis_3]
+        if reshape_type == 0:
+            axis_3 = indices[-1]
+            axis_0 = indices[-4]
+            axis_list = [0] * (len(indices) - 1) + [axis_0 * 16 + axis_3]
+        else:
+            axis_2 = indices[-2]
+            axis_1 = indices[-3]
+            axis_list = [0] * (len(indices) - 4) + [axis_1 * 16 + axis_2] + [0]
         return tensor(*axis_list)
 
     return tvm.compute(new_shape, lambda *indices: _nd2nz_compute(tensor_in, indices), name='reshape')
@@ -930,7 +951,13 @@ def mul_compute(input_x, input_y, output_data, is_scene_1d=False, kernel_name="m
                     target_shape = [1] * len(shape_x)
                     target_shape[-1] = shape_x[-1]
                     target_shape[-4] = shape_x[-4]
-                    input_y = reshape(input_y, target_shape)
+                    input_y = reshape(input_y, target_shape, 0)
+                    shape_y = target_shape
+                elif len(ori_shape_y) >= 2 and ori_shape_y[-2] != 1 and ori_shape_y[-1] == 1:
+                    target_shape = [1] * len(shape_x)
+                    target_shape[-2] = shape_x[-2]
+                    target_shape[-3] = shape_x[-3]
+                    input_y = reshape(input_y, target_shape, 1)
                     shape_y = target_shape
             elif format_y == check_format and "ori_shape" in input_x.op.attrs:
                 ori_shape_x = [i.value for i in input_x.op.attrs["ori_shape"]]
@@ -938,7 +965,13 @@ def mul_compute(input_x, input_y, output_data, is_scene_1d=False, kernel_name="m
                     target_shape = [1] * len(shape_y)
                     target_shape[-1] = shape_y[-1]
                     target_shape[-4] = shape_y[-4]
-                    input_x = reshape(input_x, target_shape)
+                    input_x = reshape(input_x, target_shape, 0)
+                    shape_x = target_shape
+                elif len(ori_shape_x) >= 2 and ori_shape_x[-2] != 1 and ori_shape_x[-1] == 1:
+                    target_shape = [1] * len(shape_y)
+                    target_shape[-2] = shape_y[-2]
+                    target_shape[-3] = shape_y[-3]
+                    input_x = reshape(input_x, target_shape, 1)
                     shape_x = target_shape
 
         shape_x, shape_y, shape_max = shape_util.broadcast_shapes(shape_x,

@@ -101,19 +101,33 @@ case7 = {"params": [{"shape": (3, 16, 16), "dtype": "float16", "format": "FRACTA
          "format_expect": [],
          "support_expect": True}
 
-def test_mul_compute_nz_nd_ubfusion(test_arg):
+def test_mul_compute_nz_nd_ubfusion_1(test_arg):
     from impl.mul import mul_compute
     x = tvm.placeholder((15, 512, 16, 16), name="x", dtype="float16", attrs={'format': "FRACTAL_NZ", "ori_shape": (8192, 240)})
     y = tvm.placeholder((1, 1, 1, 240), name="y", dtype="float16", attrs={'format': "ND", "ori_shape": (240,)})
     output = {"shape": (15, 512, 16, 16), "dtype": "float16", "ori_shape": (8192, 240), "format": "FRACTAL_NZ", "ori_format": "ND"}
     mul_compute(x, y, output, False)  
 
-def test_mul_compute_nd_nz_ubfusion(test_arg):
+def test_mul_compute_nz_nd_ubfusion_2(test_arg):
+    from impl.mul import mul_compute
+    x = tvm.placeholder((2, 16, 16, 16), name="x", dtype="float16", attrs={'format': "FRACTAL_NZ", "ori_shape": (256, 32)})
+    y = tvm.placeholder((256, 1), name="y", dtype="float16", attrs={'format': "ND", "ori_shape": (256, 1)})
+    output = {"shape": (2, 16, 16, 16), "dtype": "float16", "ori_shape": (256, 32), "format": "FRACTAL_NZ", "ori_format": "ND"}
+    mul_compute(x, y, output, False)
+
+def test_mul_compute_nd_nz_ubfusion_1(test_arg):
     from impl.mul import mul_compute
     x = tvm.placeholder((1, 1, 1, 240), name="y", dtype="float16", attrs={'format': "ND", "ori_shape": (240,)})
     y = tvm.placeholder((15, 512, 16, 16), name="x", dtype="float16", attrs={'format': "FRACTAL_NZ", "ori_shape": (8192, 240)})
     output = {"shape": (15, 512, 16, 16), "dtype": "float16", "ori_shape": (8192, 240), "format": "FRACTAL_NZ", "ori_format": "ND"}
     mul_compute(x, y, output, False) 
+
+def test_mul_compute_nd_nz_ubfusion_2(test_arg):
+    from impl.mul import mul_compute
+    x = tvm.placeholder((256, 1), name="y", dtype="float16", attrs={'format': "ND", "ori_shape": (256, 1)})
+    y = tvm.placeholder((2, 16, 16, 16), name="x", dtype="float16", attrs={'format': "FRACTAL_NZ", "ori_shape": (256, 32)})
+    output = {"shape": (2, 16, 16, 16), "dtype": "float16", "ori_shape": (256, 32), "format": "FRACTAL_NZ", "ori_format": "ND"}
+    mul_compute(x, y, output, False)
 
 # pylint: disable=unused-argument
 def test_op_select_format(test_arg):
@@ -277,6 +291,18 @@ def test_op_select_format(test_arg):
                       "ori_format": "ND", "sub_format" : 0},
                      {"shape": (8192, 240), "dtype": "float16", "format": "ND", "ori_shape": (8192, 240),
                       "ori_format": "ND", "sub_format" : 0})
+    op_select_format({"shape": (256, 32), "dtype": "float16", "format": "ND", "ori_shape": (256, 32),
+                      "ori_format": "ND", "sub_format" : 0},
+                     {"shape": (256, 1), "dtype": "float16", "format": "ND", "ori_shape": (256, 1),
+                      "ori_format": "ND", "sub_format" : 0},
+                     {"shape": (256, 32), "dtype": "float16", "format": "ND", "ori_shape": (256, 32),
+                      "ori_format": "ND", "sub_format" : 0})
+    op_select_format({"shape": (256, 1), "dtype": "float16", "format": "ND", "ori_shape": (256, 1),
+                      "ori_format": "ND", "sub_format" : 0},
+                     {"shape": (256, 32), "dtype": "float16", "format": "ND", "ori_shape": (256, 32),
+                      "ori_format": "ND", "sub_format" : 0},
+                     {"shape": (256, 32), "dtype": "float16", "format": "ND", "ori_shape": (256, 32),
+                      "ori_format": "ND", "sub_format" : 0})
 
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case1)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case2)
@@ -286,8 +312,10 @@ ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case5)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case6)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case7)
 ut_case.add_cust_test_func(test_func=test_op_select_format)
-ut_case.add_cust_test_func(test_func=test_mul_compute_nz_nd_ubfusion)
-ut_case.add_cust_test_func(test_func=test_mul_compute_nd_nz_ubfusion)
+ut_case.add_cust_test_func(test_func=test_mul_compute_nz_nd_ubfusion_1)
+ut_case.add_cust_test_func(test_func=test_mul_compute_nz_nd_ubfusion_2)
+ut_case.add_cust_test_func(test_func=test_mul_compute_nd_nz_ubfusion_1)
+ut_case.add_cust_test_func(test_func=test_mul_compute_nd_nz_ubfusion_2)
 
 """
 The ca_model of CI is faulty.Related cases are commented out temporaily.
