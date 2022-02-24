@@ -2582,6 +2582,7 @@ def softmax_param_check(in_tensor, output_tensor, axis, kernel_name):
     
     return return_list
 
+
 def softmax_nz_param_check(in_tensor, output_tensor, axis, kernel_name):
     """
     checking the parameter of softmax nz format, and calculating the

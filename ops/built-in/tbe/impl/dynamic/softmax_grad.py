@@ -25,6 +25,7 @@ from impl.util.platform_adapter import classify
 from impl.util import util_frac_z as fz
 from impl.util import util_select_op_base
 
+
 # 'pylint: disable=unused-argument
 def op_select_format(softmax, grad_softmax, grad_x, axis, kernel_name="softmax_grad"):
     """

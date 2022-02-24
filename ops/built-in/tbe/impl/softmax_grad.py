@@ -24,6 +24,7 @@ from te import tvm
 from impl.util.platform_adapter import tbe_context
 from impl.util import util_select_op_base
 
+
 # 'pylint: disable=unused-argument
 def op_select_format(softmax, grad_softmax, grad_x, axis, kernel_name="softmax_grad"):
     """
