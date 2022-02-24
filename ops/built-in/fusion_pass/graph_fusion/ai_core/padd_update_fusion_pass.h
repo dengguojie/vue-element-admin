@@ -37,7 +37,6 @@ private:
   Status CheckFusedNode(const ge::NodePtr& fusedNode);
   Status AddFusionNodes(ge::ComputeGraph& graph, const ge::NodePtr& fusedNode, ge::NodePtr& constNode,
                         ge::NodePtr& padNode);
-  Status RemoveFusionNodes(ge::ComputeGraph& graph, ge::NodePtr& constNode, ge::NodePtr& padNode);
   Status RemoveFusedNode(ge::ComputeGraph& graph, ge::NodePtr& fusedNode);
 };
 

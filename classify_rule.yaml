@@ -3387,6 +3387,7 @@ unkown:
       - ops/built-in/fusion_pass/graph_fusion/ai_core/im2col_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/pooling_matrix_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/pad_fusion_pass.h
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/padd_update_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/common_lstm_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/transpose_inplaceupdate_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/mul_addn_l2loss_fusion_pass.cc
@@ -3405,6 +3406,7 @@ unkown:
       - ops/built-in/fusion_pass/graph_fusion/ai_core/unsortedsegmentsumd_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/dynamic_gru_v2_grad_align_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/pad_fusion_pass.cc
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/padd_update_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/gelu_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/dynamic_rnn_grad_d_align_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/softmax_cross_entropy_with_logits.cc

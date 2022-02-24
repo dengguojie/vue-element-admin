@@ -128,8 +128,14 @@ Status PaddUpdateFusionPass::CheckFusedNode(const ge::NodePtr& fusedNode) {
                     OP_LOGD(FUSED_OP_TYPE.c_str(), "Exit PaddUpdateFusionPass due to input format is NC1HWC0"),
                     return NOT_CHANGED);
 
-  vector<int64_t> inputDims = fusedOpDesc->GetInputDesc(0).GetShape().GetDims();
-  vector<int64_t> outputDims = fusedOpDesc->GetOutputDesc(0).GetShape().GetDims();
+  ge::GeShape inputShape = fusedOpDesc->GetInputDesc(0).GetShape();
+  ge::GeShape outputShape = fusedOpDesc->GetOutputDesc(0).GetShape();
+  FUSION_PASS_CHECK(inputShape.IsUnknownShape() || outputShape.IsUnknownShape(),
+                    OP_LOGD(FUSED_OP_TYPE.c_str(), "Exit PaddUpdateFusionPass due to dynamic shape"),
+                    return NOT_CHANGED);
+
+  vector<int64_t> inputDims = inputShape.GetDims();
+  vector<int64_t> outputDims = outputShape.GetDims();
   FUSION_PASS_CHECK(IsVectorEquals(inputDims, outputDims),
                     OP_LOGD(FUSED_OP_TYPE.c_str(), "Input and output of PadD have same shape."),
                     return NOT_CHANGED);
@@ -169,10 +175,10 @@ Status PaddUpdateFusionPass::AddFusionNodes(ge::ComputeGraph& graph, const ge::N
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Failed to create Pad op desc"),
                     return FAILED);
 
-  FUSION_PASS_CHECK(padOpDesc->AddInputDesc(0, fusedOpDesc->GetInputDesc(0)) != ge::GRAPH_SUCCESS,
+  FUSION_PASS_CHECK(padOpDesc->AddInputDesc("x", fusedOpDesc->GetInputDesc(0)) != ge::GRAPH_SUCCESS,
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Failed to add x desc for Pad"),
                     return FAILED);
-  FUSION_PASS_CHECK(padOpDesc->AddInputDesc(1, constTensorDesc) != ge::GRAPH_SUCCESS,
+  FUSION_PASS_CHECK(padOpDesc->AddInputDesc("paddings", constTensorDesc) != ge::GRAPH_SUCCESS,
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Failed to add paddings desc for Pad"),
                     return FAILED);
   FUSION_PASS_CHECK(padOpDesc->AddOutputDesc(fusedOpDesc->GetOutputDesc(0)) != ge::GRAPH_SUCCESS,
@@ -200,28 +206,6 @@ Status PaddUpdateFusionPass::AddFusionNodes(ge::ComputeGraph& graph, const ge::N
   }
 
   OP_LOGD(FUSED_OP_TYPE.c_str(), "AddFusionNodes end");
-  return SUCCESS;
-}
-
-Status PaddUpdateFusionPass::RemoveFusionNodes(ge::ComputeGraph& graph, ge::NodePtr& constNode, ge::NodePtr& padNode) {
-  OP_LOGD(FUSED_OP_TYPE.c_str(), "RemovefusionNodes begin");
-
-  FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != graph.RemoveNode(constNode),
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Failed to remove Const node"),
-                    return FAILED);
-
-  for (auto inAnchor : padNode->GetAllInDataAnchors()) {
-    if (inAnchor != nullptr) {
-      inAnchor->UnlinkAll();
-    }
-  }
-  if (padNode->GetInControlAnchor() != nullptr) {
-    padNode->GetInControlAnchor()->UnlinkAll();
-  }
-  FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != graph.RemoveNode(padNode),
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Failed to remove Pad node"), return FAILED);
-
-  OP_LOGD(FUSED_OP_TYPE.c_str(), "RemovefusionNodes end");
   return SUCCESS;
 }
 
