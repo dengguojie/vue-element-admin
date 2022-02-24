@@ -75,12 +75,14 @@ def strided_slice_v3(x, begin, end, axes, strides, y, kernel_name="strided_slice
     opt_config = {"out_of_bound_sync_check": True}
     strided_slice_instance.axes_gm = inst.Tensor(strided_slice_instance.dtype, (Constant.MAX_SIZE,),
                                                  name="axes_gm", scope=tik.scope_gm)
+    inputs_list = [strided_slice_instance.input_gm, strided_slice_instance.begin_gm, strided_slice_instance.end_gm]
+    if strides:
+        inputs_list.append(strided_slice_instance.strides_gm)
+    if axes:
+        inputs_list.append(strided_slice_instance.axes_gm)
+
     inst.BuildCCE(kernel_name=strided_slice_instance.kernel_name,
-                  inputs=(strided_slice_instance.input_gm,
-                          strided_slice_instance.begin_gm,
-                          strided_slice_instance.end_gm,
-                          strided_slice_instance.strides_gm,
-                          strided_slice_instance.axes_gm),
+                  inputs=inputs_list,
                   outputs=(strided_slice_instance.output_gm,),
                   flowtable=[strided_slice_instance.tiling_param.tiling_gm],
                   config=opt_config,

@@ -81,7 +81,7 @@ bool StridedSliceV3Tiling(const std::string& opType, const ge::Operator& opParas
     auto& name = item.first;
     int index = item.second.first;
     auto& values = item.second.second;
-    if (!ops::GetConstIntData(opParas, index, values)) {
+    if (operator_info->MutableInputDesc(name) == nullptr || !ops::GetConstIntData(opParas, index, values)) {
       if (name == "axes") {
         axes_exist = false;
         continue;

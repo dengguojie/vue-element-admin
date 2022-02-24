@@ -4205,7 +4205,14 @@ static graphStatus GetStridedSliceInferConstData(const ge::Operator& op, struct 
 IMPLEMT_COMMON_INFERFUNC(StridedSliceV2InferShape) {
   const int64_t MAX_INT = ((uint32_t)(-1))>>1;
   const int64_t MIN_INT = ~MAX_INT;
-  const vector<string> depend_names = {"begin", "end", "axes", "strides"};
+  vector<string> depend_names = {"begin", "end"};
+  auto op_info = OpDescUtils::GetOpDescFromOperator(op);
+  if (op_info->MutableInputDesc("axes") != nullptr) {
+    depend_names.push_back("axes");
+  }
+  if (op_info->MutableInputDesc("strides") != nullptr) {
+    depend_names.push_back("strides");
+  }
   PREPARE_DYNAMIC_SHAPE(depend_names);
 
   // Get input shape
@@ -4795,7 +4802,14 @@ VERIFY_FUNC_REG(TopKPQDistanceMerge, TopKPQDistanceMergeVerify);
 
 // ----------------StridedSlicev3 Op Begin-------------------
 IMPLEMT_COMMON_INFERFUNC(StridedSliceV3InferShape) {
-  const vector<string> depend_names = {"begin", "end", "axes", "strides"};
+  vector<string> depend_names = {"begin", "end"};
+  auto op_info = OpDescUtils::GetOpDescFromOperator(op);
+  if (op_info->MutableInputDesc("axes") != nullptr) {
+    depend_names.push_back("axes");
+  }
+  if (op_info->MutableInputDesc("strides") != nullptr) {
+    depend_names.push_back("strides");
+  }
   PREPARE_DYNAMIC_SHAPE(depend_names);
 
   // Get input shape
@@ -4810,33 +4824,21 @@ IMPLEMT_COMMON_INFERFUNC(StridedSliceV3InferShape) {
   // check the ranks and get the len of final end list len start 
   /* shape must be same with input ranks */
   size_t rank_num = shape.GetDims().size();
-  // begin_len = std::max(static_cast<int64_t>(rank_num), begin_len);
-  /* read the axes values from const tensor */
-  bool has_axes = true;
-  Tensor input_axes_tensor;
-  std::vector<int64_t> input_axes_values;
 
-  if (op.GetInputConstData("axes", input_axes_tensor) != GRAPH_SUCCESS) {
-    OP_LOGD(op.GetName().c_str(), "Get axes tensor failed.");
-    has_axes = false;
-  } else {
-    DataType input_axes_dtype = op.GetInputDesc("axes").GetDataType();
-    GetSliceConstValue(input_axes_tensor, input_axes_dtype, input_axes_values);
-    OP_LOGD(op.GetName().c_str(), "Get Axes value:%s", to_string(input_axes_values).c_str());
-  }
-  // check the ranks and get the len of final end list len end
-
-  // Get 'begin_list','end_list','stride_list' from const node
+  // Get 'begin_list','end_list', 'axis_list', 'stride_list' from const node, if exist.
   struct SliceParameters slice_params = {};
+  std::vector<int64_t> input_axes_values;
   bool begin_valid = true;
   bool end_valid = true;
   bool stride_valid = true;
-  if (GRAPH_FAILED == GetStridedSliceListConstValues(op, slice_params)) {
+  bool axes_valid = true;
+  if (GRAPH_FAILED == GetStridedSliceInferConstData(op, slice_params, input_axes_values)) {
     OP_LOGI(op.GetName().c_str(),
-            "[begin,end,stride] are not all constant, set to tmp values for inference dynamic shape");
+            "[begin,end,axis,stride] are not all constant, set to tmp values for inference dynamic shape");
     begin_valid = !slice_params.begin_list.empty();
     end_valid = !slice_params.end_list.empty();
     stride_valid = !slice_params.stride_list.empty();
+    axes_valid = !input_axes_values.empty();
   }
 
   OP_LOGD(op.GetName().c_str(), "input stride_valid:%d", stride_valid);
@@ -4900,7 +4902,7 @@ IMPLEMT_COMMON_INFERFUNC(StridedSliceV3InferShape) {
   // process end list and begin list accoring to the axes values start
   uint64_t axes_mask = 0;
   uint64_t ends_mask = 0;
-  if(has_axes){
+  if (axes_valid) {
     // pre fill the values to the vector
     std::vector<int64_t> processed_begin(rank_num, 0);
     std::vector<int64_t> processed_end = shape.GetDims();
