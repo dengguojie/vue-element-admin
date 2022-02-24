@@ -596,6 +596,9 @@ vector_A:
       - ops/built-in/tbe/impl/softmax_grad.py
       - ops/built-in/tbe/impl/yolo_boxes_encode.py
       - ops/built-in/tbe/impl/anchor_response_flags.py
+      - ops/built-in/tbe/impl/roi_align.py
+      - ops/built-in/tbe/impl/roi_align_grad_pt.py
+      - ops/built-in/tbe/impl/roi_align_true.py
     unrelease:
       - auto_schedule/python/tbe/dsl/compute/avg_pool2d.py
       - auto_schedule/python/tbe/dsl/static_schedule/ascend_anti_quant_schedule.py

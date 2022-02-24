@@ -131,6 +131,36 @@ case8 = {"params": [
          "expect": "success",
          "support_expect": True}
 
+case9 = {"params": [
+    {"shape": (256, 16, 7, 7, 16), "dtype": "float32", "format": "NC1HWC0", "ori_shape": (256, 16, 7, 7, 16),
+     "ori_format": "NC1HWC0"},
+    # x
+    {"shape": (256, 5), "dtype": "float32", "format": "ND", "ori_shape": (256, 5), "ori_format": "ND"},
+    {"shape": (7, 5), "dtype": "int32", "format": "ND", "ori_shape": (7, 5), "ori_format": "ND"},
+    {"shape": (1, 16, 512, 512, 16), "dtype": "float32", "format": "NC1HWC0", "ori_shape": (1, 16, 512, 512, 16),
+     "ori_format": "NC1HWC0"},
+    [1, 256, 512, 512], 7, 7, 0.06125, 2, 2
+    ],
+         "case_name": "RoiAlignGrad_9",
+         "expect": "success",
+         "support_expect": True}
+
+
+case10 = {"params": [
+    {"shape": (16, 16, 2048, 127, 16), "dtype": "float32", "format": "NC1HWC0", "ori_shape": (16, 16, 2048, 127, 16),
+     "ori_format": "NC1HWC0"},
+    # x
+    {"shape": (16, 5), "dtype": "float32", "format": "ND", "ori_shape": (16, 5), "ori_format": "ND"},
+    {"shape": (7, 5), "dtype": "int32", "format": "ND", "ori_shape": (7, 5), "ori_format": "ND"},
+    {"shape": (1, 16, 512, 512, 16), "dtype": "float32", "format": "NC1HWC0", "ori_shape": (1, 16, 512, 512, 16),
+     "ori_format": "NC1HWC0"},
+    [1, 256, 512, 512], 2048, 127, 0.06125, 2, 2
+    ],
+         "case_name": "RoiAlignGrad_9",
+         "expect": "success",
+         "support_expect": True}
+
+
 
 ut_case.add_case(["Ascend910A", "Ascend710"], case1)
 ut_case.add_case(["Ascend910A", "Ascend710"], case2)
@@ -138,6 +168,8 @@ ut_case.add_case(["Ascend910A", "Ascend310", "Ascend710"], case3)
 ut_case.add_case(["Ascend910A", "Ascend710"], case4)
 ut_case.add_case(["Ascend910A", "Ascend710"], case5)
 ut_case.add_case(["Ascend910A", "Ascend710"], case6)
+ut_case.add_case(["Ascend910A", "Ascend710"], case9)
+ut_case.add_case(["Ascend910A", "Ascend710"], case10)
 #ut_case.add_case(["Ascend910A", "Ascend710"], case7)
 #ut_case.add_case(["Ascend910A", "Ascend710"], case8)
 

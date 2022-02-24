@@ -1,21 +1,20 @@
 [
   {
-    "case_name": "ROIAlignGrad_dynamic_shape_RoiAlignGrad_1_ascend910a",
+    "case_name": "RoiAlignGrad_2_ascend910a",
     "op": "ROIAlignGrad",
     "input_desc": [
       {
         "format": [
-          "NC1HWC0"
+          "NCHW"
         ],
         "type": [
           "float32"
         ],
         "shape": [
-          -1,
-          -1,
-          -1,
-          -1,
-          -1
+          16,
+          16,
+          7,
+          7
         ],
         "data_distribute": [
           "uniform"
@@ -25,31 +24,6 @@
             0.1,
             1.0
           ]
-        ],
-        "shape_range": [
-          [
-            1,
-            65535
-          ],[
-            1,
-            65535
-          ],[
-            1,
-            65535
-          ],[
-            1,
-            65535
-          ],[
-            1,
-            65535
-          ]
-        ],
-        "typical_shape": [
-          1,
-          1,
-          1,
-          1,
-          1
         ],
         "name": "ydiff"
       },
@@ -61,8 +35,8 @@
           "float32"
         ],
         "shape": [
-          -1,
-          -1
+          16,
+          5
         ],
         "data_distribute": [
           "uniform"
@@ -72,93 +46,23 @@
             0.1,
             1.0
           ]
-        ],
-        "shape_range": [
-          [
-            1,
-            65535
-          ],
-          [
-            1,
-            65535
-          ]
-        ],
-        "typical_shape": [
-          1,
-          1
         ],
         "name": "rois"
-      },
-      {
-        "format": [
-          "ND"
-        ],
-        "type": [
-          "int32"
-        ],
-        "shape": [
-          -1
-        ],
-        "data_distribute": [
-          "uniform"
-        ],
-        "value_range": [
-          [
-            0.1,
-            1.0
-          ]
-        ],
-        "shape_range": [
-          [
-            1,
-            65535
-          ]
-        ],
-        "typical_shape": [
-          1
-        ],
-        "name": "rois_n"
       }
     ],
     "output_desc": [
       {
         "format": [
-          "NC1HWC0"
+          "NCHW"
         ],
         "type": [
           "float32"
         ],
         "shape": [
-          -1,
-          -1,
-          -1,
-          -1,
-          -1
-        ],
-        "shape_range": [
-          [
-            1,
-            65535
-          ],[
-            1,
-            65535
-          ],[
-            1,
-            65535
-          ],[
-            1,
-            65535
-          ],[
-            1,
-            65535
-          ]
-        ],
-        "typical_shape": [
           1,
-          1,
-          1,
-          1,
-          1
+          16,
+          56,
+          56
         ],
         "name": "xdiff"
       }
@@ -168,11 +72,116 @@
         "name": "xdiff_shape",
         "type": "list_int",
         "value": [
-          -1,
-          -1,
-          -1,
-          -1,
-          -1
+          1,
+          16,
+          56,
+          56
+        ]
+      },
+      {
+        "name": "pooled_width",
+        "type": "int",
+        "value": 7
+      },
+      {
+        "name": "pooled_height",
+        "type": "int",
+        "value": 7
+      },
+      {
+        "name": "spatial_scale",
+        "type": "float",
+        "value": 0.0625
+      },
+      {
+        "name": "sample_num",
+        "type": "int",
+        "value": 0
+	  },
+      {
+        "name": "roi_end_mode",
+        "type": "int",
+        "value": 2
+      }
+    ]
+  },
+  {
+    "case_name": "RoiAlignGrad_3_ascend910a",
+    "op": "ROIAlignGrad",
+    "input_desc": [
+      {
+        "format": [
+          "NCHW"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          256,
+          256,
+          7,
+          7
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "ydiff"
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          256,
+          5
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "rois"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "NCHW"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          1,
+          256,
+          56,
+          56
+        ],
+        "name": "xdiff"
+      }
+    ],
+    "attr": [
+      {
+        "name": "xdiff_shape",
+        "type": "list_int",
+        "value": [
+          1,
+          256,
+          56,
+          56
         ]
       },
       {
@@ -194,11 +203,117 @@
         "name": "sample_num",
         "type": "int",
         "value": 2
-      },
+	  },
       {
         "name": "roi_end_mode",
         "type": "int",
-        "value": 1
+        "value": 2
+      }
+    ]
+  },
+  {
+    "case_name": "RoiAlignGrad_4_ascend910a",
+    "op": "ROIAlignGrad",
+    "input_desc": [
+      {
+        "format": [
+          "NCHW"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          256,
+          256,
+          7,
+          7
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "ydiff"
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          256,
+          5
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "rois"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "NCHW"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          1,
+          256,
+          512,
+          512
+        ],
+        "name": "xdiff"
+      }
+    ],
+    "attr": [
+      {
+        "name": "xdiff_shape",
+        "type": "list_int",
+        "value": [
+          1,
+          256,
+          512,
+          512
+        ]
+      },
+      {
+        "name": "pooled_width",
+        "type": "int",
+        "value": 7
+      },
+      {
+        "name": "pooled_height",
+        "type": "int",
+        "value": 7
+      },
+      {
+        "name": "spatial_scale",
+        "type": "float",
+        "value": 0.0625
+      },
+      {
+        "name": "sample_num",
+        "type": "int",
+        "value": 2
+	  },
+      {
+        "name": "roi_end_mode",
+        "type": "int",
+        "value": 2
       }
     ]
   }

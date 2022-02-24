@@ -159,6 +159,17 @@ class RoiAlign(object):
         """
         self.data_mul(count_ub, grid_w, grid_h, [0, 0, 0], num=roi_num)
         self.data_max(count_ub, count_ub, one_ub, [0, 0, 0], num=roi_num)
+    
+    def l1_support(self):
+        """
+        check if support l1 buffer or not
+        :return: 
+        """
+        soc_version = tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION)
+        if soc_version == "Ascend920":
+            return 0
+        else:
+            return 1
 
     def get_tiling_mode(self):
         """
@@ -168,18 +179,19 @@ class RoiAlign(object):
         left_size = left_ub // self.get_dtype_size(self.dtype)
         l1_size = tbe_platform.get_soc_spec(tbe_platform.L1_SIZE)
         l1_num = l1_size // self.get_dtype_size(self.dtype)
+        l1_support = self.l1_support()
 
         bilinear_size = self.channels * self.pool_w * self.c0 + 8 * self.channels * self.c0
         if self.c1hwc0 + bilinear_size < left_size:
             return 0
 
-        if self.c1hwc0 < l1_num and bilinear_size < left_size:
+        if self.c1hwc0 < l1_num and bilinear_size < left_size and l1_support:
             return 1
 
         if self.hwc0 + bilinear_size < left_size:
             return 2
 
-        if self.hwc0 < l1_num and bilinear_size < left_size:
+        if self.hwc0 < l1_num and bilinear_size < left_size and l1_support:
             return 3
         return 4
 

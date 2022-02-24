@@ -52,7 +52,7 @@ if __name__ == '__main__':
         return vals[args]
     # with patch("te.platform.api_check_support", MagicMock(side_effect=side_effects)):
     #     test_roi_align_static()
-    with patch("impl.util.platform_adapter.tik.Dprofile.get_l1_buffer_size", MagicMock(return_value=0)):
-        test_roi_align_dynamic()
+    # with patch("impl.util.platform_adapter.tik.Dprofile.get_l1_buffer_size", MagicMock(return_value=0)):
+    #    test_roi_align_dynamic()
 
     cce_conf.te_set_version(soc_version)

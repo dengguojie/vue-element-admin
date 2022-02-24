@@ -132,6 +132,15 @@ def _roi_align_calc_grad_line(tik_instance, x_lo_w, x_hi_w, y_lo_w, y_hi_w, x_lo
                       calc_c1_num, y_lo, x_lo_reg)
 
 
+def get_soc():
+    """
+    get soc_version
+    :return:
+    """
+    soc_version = tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION)
+    return soc_version
+
+
 def _roi_align_calc_grad_line_align(tik_instance, x_lo_w, x_hi_w, y_lo_w, y_hi_w, x_lo,
                                     x_hi, y_hi, y_lo, x_len, y_diff_ub, x_ind, x_diff,
                                     image_index, start_c1, calc_c1_num):
@@ -321,14 +330,14 @@ def _get_ydiff_line(tik_instance, y_diff, y_diff_ub, n_index, start_c1, c1_num,
 
     c1_gap = ((h_num - 1) * w_num * 16 * 4) // 32
     if c1_gap <= 65535:
-        tik_instance.tensor_mov(y_diff_ub[0],
-                                y_diff[n_index, start_c1, line_index, 0, 0], '',
-                                c1_num, w_num * 2, 0, c1_gap)
+        tik_instance.data_move(y_diff_ub[0],
+                               y_diff[n_index, start_c1, line_index, 0, 0], 0,
+                               c1_num, w_num * 2, 0, c1_gap)
     else:
         with tik_instance.for_range(0, c1_num) as i:
-            tik_instance.tensor_mov(
+            tik_instance.data_move(
                 y_diff_ub[0], y_diff[n_index, start_c1 + i, line_index, 0, 0],
-                '', 1, w_num * 2, 0, 0)
+                0, 1, w_num * 2, 0, 0)
 
 
 def _mov_data_ddr(tik_instance, x_diff, x_diff_ub,
@@ -377,17 +386,17 @@ def _mov_data_ddr_onepoint(tik_instance, x_diff, x_diff_ub, image_index,
 
         w_gap = 65536
         if c1_gap <= 65535:
-            tik_instance.tensor_mov(x_diff[image_index, start_c1, h_index, w_index, 0],
-                                    x_diff_ub[0, 0, 0], '', c1_num, 2, c1_gap, 6)
+            tik_instance.data_move(x_diff[image_index, start_c1, h_index, w_index, 0],
+                                   x_diff_ub[0, 0, 0], 0, c1_num, 2, c1_gap, 6)
 
         elif w_gap <= 65535:
             with tik_instance.for_range(0, c1_num) as i:
-                tik_instance.tensor_mov(x_diff[image_index, start_c1 + i, h_index, w_index, 0],
-                                        x_diff_ub[i, 0, 0], '', 2, 4, w_gap, 0)
+                tik_instance.data_move(x_diff[image_index, start_c1 + i, h_index, w_index, 0],
+                                       x_diff_ub[i, 0, 0], 0, 2, 4, w_gap, 0)
         else:
             with tik_instance.for_range(0, c1_num) as i:
-                tik_instance.tensor_mov(x_diff[image_index, start_c1 + i, h_index, w_index, 0],
-                                        x_diff_ub[i, 0, 0], '', 1, 2, 0, 0)
+                tik_instance.data_move(x_diff[image_index, start_c1 + i, h_index, w_index, 0],
+                                       x_diff_ub[i, 0, 0], 0, 1, 2, 0, 0)
 
 
 def _mov_data_ddr_oneline(tik_instance, x_diff, x_diff_ub, image_index,
@@ -413,17 +422,17 @@ def _mov_data_ddr_oneline(tik_instance, x_diff, x_diff_ub, image_index,
 
         w_gap = 65536
         if c1_gap <= 65535:
-            tik_instance.tensor_mov(x_diff[image_index, start_c1, h_index, w_index, 0],
-                                    x_diff_ub[0, 0, 0], '', c1_num, 4, c1_gap, 4)
+            tik_instance.data_move(x_diff[image_index, start_c1, h_index, w_index, 0],
+                                   x_diff_ub[0, 0, 0], 0, c1_num, 4, c1_gap, 4)
 
         elif w_gap <= 65535:
             with tik_instance.for_range(0, c1_num) as i:
-                tik_instance.tensor_mov(x_diff[image_index, start_c1 + i, h_index, w_index, 0],
-                                        x_diff_ub[i, 0, 0], '', 2, 4, w_gap, 0)
+                tik_instance.data_move(x_diff[image_index, start_c1 + i, h_index, w_index, 0],
+                                       x_diff_ub[i, 0, 0], 0, 2, 4, w_gap, 0)
         else:
             with tik_instance.for_range(0, c1_num) as i:
-                tik_instance.tensor_mov(x_diff[image_index, start_c1 + i, h_index, w_index, 0],
-                                        x_diff_ub[i, 0, 0], '', 1, 4, 0, 0)
+                tik_instance.data_move(x_diff[image_index, start_c1 + i, h_index, w_index, 0],
+                                       x_diff_ub[i, 0, 0], 0, 1, 4, 0, 0)
 
 
 def _mov_data_ddr_onerow(tik_instance, x_diff, x_diff_ub, image_index,
@@ -455,21 +464,21 @@ def _mov_data_ddr_onerow(tik_instance, x_diff, x_diff_ub, image_index,
 
         w_gap = 65536
         if c1_gap <= 65535:
-            tik_instance.tensor_mov(x_diff[image_index, start_c1, h_index, w_index, 0],
-                                    x_diff_ub[0, 0, 0], '', c1_num, 2, c1_gap, 6)
-            tik_instance.tensor_mov(x_diff[image_index, start_c1, h_index + 1, w_index, 0],
-                                    x_diff_ub[0, 2, 0], '', c1_num, 2, c1_gap, 6)
+            tik_instance.data_move(x_diff[image_index, start_c1, h_index, w_index, 0],
+                                   x_diff_ub[0, 0, 0], 0, c1_num, 2, c1_gap, 6)
+            tik_instance.data_move(x_diff[image_index, start_c1, h_index + 1, w_index, 0],
+                                   x_diff_ub[0, 2, 0], 0, c1_num, 2, c1_gap, 6)
 
         elif w_gap <= 65535:
             with tik_instance.for_range(0, c1_num) as i:
-                tik_instance.tensor_mov(x_diff[image_index, start_c1 + i, h_index, w_index, 0],
-                                        x_diff_ub[i, 0, 0], '', 2, 4, w_gap, 0)
+                tik_instance.data_move(x_diff[image_index, start_c1 + i, h_index, w_index, 0],
+                                       x_diff_ub[i, 0, 0], 0, 2, 4, w_gap, 0)
         else:
             with tik_instance.for_range(0, c1_num) as i:
-                tik_instance.tensor_mov(x_diff[image_index, start_c1 + i, h_index, w_index, 0],
-                                        x_diff_ub[i, 0, 0], '', 1, 2, 0, 0)
-                tik_instance.tensor_mov(x_diff[image_index, start_c1 + i, h_index + 1, w_index, 0],
-                                        x_diff_ub[i, 2, 0], '', 1, 2, 0, 0)
+                tik_instance.data_move(x_diff[image_index, start_c1 + i, h_index, w_index, 0],
+                                       x_diff_ub[i, 0, 0], 0, 1, 2, 0, 0)
+                tik_instance.data_move(x_diff[image_index, start_c1 + i, h_index + 1, w_index, 0],
+                                       x_diff_ub[i, 2, 0], 0, 1, 2, 0, 0)
 
 
 def _mov_data_ddr_all(tik_instance, x_diff,
@@ -503,27 +512,27 @@ def _mov_data_ddr_all(tik_instance, x_diff,
 
         w_gap = 65536
         if c1_gap <= 65535:
-            tik_instance.tensor_mov(x_diff[image_index, start_c1,
-                                           h_index, w_index, 0],
-                                    x_diff_ub[0, 0, 0], '', c1_num, 4, c1_gap, 4)
-            tik_instance.tensor_mov(x_diff[image_index, start_c1,
-                                           h_index + 1, w_index, 0],
-                                    x_diff_ub[0, 2, 0], '', c1_num, 4, c1_gap, 4)
+            tik_instance.data_move(x_diff[image_index, start_c1,
+                                   h_index, w_index, 0],
+                                   x_diff_ub[0, 0, 0], 0, c1_num, 4, c1_gap, 4)
+            tik_instance.data_move(x_diff[image_index, start_c1,
+                                   h_index + 1, w_index, 0],
+                                   x_diff_ub[0, 2, 0], 0, c1_num, 4, c1_gap, 4)
 
         elif w_gap <= 65535:
             with tik_instance.for_range(0, c1_num) as i:
-                tik_instance.tensor_mov(x_diff[image_index, start_c1 + i,
-                                               h_index, w_index, 0],
-                                        x_diff_ub[i, 0, 0], '',
-                                        2, 4, w_gap, 0)
+                tik_instance.data_move(x_diff[image_index, start_c1 + i,
+                                       h_index, w_index, 0],
+                                       x_diff_ub[i, 0, 0], 0,
+                                       2, 4, w_gap, 0)
         else:
             with tik_instance.for_range(0, c1_num) as i:
-                tik_instance.tensor_mov(x_diff[image_index, start_c1 + i,
-                                               h_index, w_index, 0],
-                                        x_diff_ub[i, 0, 0], '', 1, 4, 0, 0)
-                tik_instance.tensor_mov(x_diff[image_index, start_c1 + i,
-                                               h_index + 1, w_index, 0],
-                                        x_diff_ub[i, 2, 0], '', 1, 4, 0, 0)
+                tik_instance.data_move(x_diff[image_index, start_c1 + i,
+                                       h_index, w_index, 0],
+                                       x_diff_ub[i, 0, 0], 0, 1, 4, 0, 0)
+                tik_instance.data_move(x_diff[image_index, start_c1 + i,
+                                       h_index + 1, w_index, 0],
+                                       x_diff_ub[i, 2, 0], 0, 1, 4, 0, 0)
 
 
 def _calc_max_c1_num(pool_w, c1_shape):
@@ -538,7 +547,11 @@ def _calc_max_c1_num(pool_w, c1_shape):
     -------
     c1_num
     """
-    available_res = 160 * 1024
+    soc_version = get_soc()
+    if soc_version == "Ascend920":
+        available_res = 110 * 1024
+    else:
+        available_res = 160 * 1024
     c1_num = available_res // ((pool_w + 14) * 16 * 4)
     if c1_num > c1_shape:
         c1_num = c1_shape
@@ -932,43 +945,17 @@ def _convert_rois_data_to5n(tik_instance, rois_data_gm, rois_data_index, rois_nu
     rois_data_ub = tik_instance.Tensor(
         "float32", (5, 128), name="rois_data_ub", scope=tbe_platform.scope_ubuf)
 
-    if rois_data_gm.shape[1] == 5:
-        rois_data_tmp = tik_instance.Tensor(
-            "float32", (128, 5), name="rois_data_tmp", scope=tbe_platform.scope_ubuf)
-        tik_instance.tensor_mov(rois_data_tmp,
-                                rois_data_gm[rois_data_index, 0],
-                                '', 1, (4 * rois_num * 5 + 31) // 32, 0, 0)
-        with tik_instance.for_range(0, rois_num) as i:
-            rois_data_ub[0, i].set_as(rois_data_tmp[i, 0])
-            rois_data_ub[1, i].set_as(rois_data_tmp[i, 1])
-            rois_data_ub[2, i].set_as(rois_data_tmp[i, 2])
-            rois_data_ub[3, i].set_as(rois_data_tmp[i, 3])
-            rois_data_ub[4, i].set_as(rois_data_tmp[i, 4])
-    else:
-        rois_data_tmp = tik_instance.Tensor(
-            "float32", (128, 8), name="rois_data_tmp", scope=tbe_platform.scope_ubuf)
-        roi_pos = tik_instance.Tensor(
-            "float16", [Constant.BATCH_SIZE, 8], name="roi_pos", scope=tbe_platform.scope_ubuf)
-        roi_pos_new = tik_instance.Tensor(
-            "float16", [5, Constant.BATCH_SIZE],
-            name="roi_pos_new",
-            scope=tbe_platform.scope_ubuf)
-
-        tik_instance.tensor_mov(rois_data_tmp,
-                                rois_data_gm[rois_data_index, 0],
-                                '', 1, (4 * rois_num * 8) // 32, 0, 0)
-
-        tik_instance.vconv(128, "", roi_pos[0, 0], rois_data_tmp[0, 0],
-                           (Constant.BATCH_SIZE * 8) // 64, 1, 1, 4, 8)
-
-        tik_instance.vextract(roi_pos_new[0, 0], roi_pos, 8, 0)
-        tik_instance.vextract(roi_pos_new[1, 0], roi_pos, 8, 1)
-        tik_instance.vextract(roi_pos_new[2, 0], roi_pos, 8, 2)
-        tik_instance.vextract(roi_pos_new[3, 0], roi_pos, 8, 3)
-        tik_instance.vextract(roi_pos_new[4, 0], roi_pos, 8, 4)
-
-        tik_instance.vconv(128, "", rois_data_ub[0, 0], roi_pos_new[0, 0],
-                           (Constant.BATCH_SIZE * 10) // 128, 1, 1, 8, 4)
+    rois_data_tmp = tik_instance.Tensor(
+        "float32", (128, 5), name="rois_data_tmp", scope=tbe_platform.scope_ubuf)
+    tik_instance.data_move(rois_data_tmp,
+                           rois_data_gm[rois_data_index, 0],
+                           0, 1, (4 * rois_num * 5 + 31) // 32, 0, 0)
+    with tik_instance.for_range(0, rois_num) as i:
+        rois_data_ub[0, i].set_as(rois_data_tmp[i, 0])
+        rois_data_ub[1, i].set_as(rois_data_tmp[i, 1])
+        rois_data_ub[2, i].set_as(rois_data_tmp[i, 2])
+        rois_data_ub[3, i].set_as(rois_data_tmp[i, 3])
+        rois_data_ub[4, i].set_as(rois_data_tmp[i, 4])
 
     return rois_data_ub
 
