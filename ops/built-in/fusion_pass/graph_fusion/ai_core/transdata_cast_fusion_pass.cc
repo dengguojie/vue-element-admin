@@ -1,5 +1,5 @@
 /**
- * Copyright (c) Huawei Technologies Co., Ltd. 2021-2021. All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2021-2022. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -102,6 +102,12 @@ Status TransdataCastFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
   if (SUCCESS != castInt8ToFloat16Desc->DelAttr("groups")) {
     OP_LOGW(FUSED_OP_TYPE.c_str(), "Delete attribute groups from castInt8ToFloat16Desc failed.");
   }
+  if (SUCCESS != castInt8ToFloat16Desc->DelAttr("src_subformat")) {
+    OP_LOGW(FUSED_OP_TYPE.c_str(), "Delete attribute src_subformat from castInt8ToFloat16Desc failed.");
+  }
+  if (SUCCESS != castInt8ToFloat16Desc->DelAttr("dst_subformat")) {
+    OP_LOGW(FUSED_OP_TYPE.c_str(), "Delete attribute dst_subformat from castInt8ToFloat16Desc failed.");
+  }
   if (SUCCESS != castInt8ToFloat16Desc->DelAttr("_fe_imply_type")) {
     OP_LOGW(FUSED_OP_TYPE.c_str(), "Delete attribute _fe_imply_type from castInt8ToFloat16Desc failed.");
   }
@@ -119,6 +125,12 @@ Status TransdataCastFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
                     return PARAM_INVALID);
   if (SUCCESS != castFloat16ToBoolDesc->DelAttr("groups")) {
     OP_LOGW(FUSED_OP_TYPE.c_str(), "Delete attribute groups from castFloat16ToBoolDesc failed.");
+  }
+  if (SUCCESS != castFloat16ToBoolDesc->DelAttr("src_subformat")) {
+    OP_LOGW(FUSED_OP_TYPE.c_str(), "Delete attribute src_subformat from castFloat16ToBoolDesc failed.");
+  }
+  if (SUCCESS != castFloat16ToBoolDesc->DelAttr("dst_subformat")) {
+    OP_LOGW(FUSED_OP_TYPE.c_str(), "Delete attribute dst_subformat from castFloat16ToBoolDesc failed.");
   }
   if (SUCCESS != castFloat16ToBoolDesc->DelAttr("_fe_imply_type")) {
     OP_LOGW(FUSED_OP_TYPE.c_str(), "Delete attribute _fe_imply_type from castFloat16ToBoolDesc failed.");

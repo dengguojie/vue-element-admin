@@ -48,6 +48,9 @@ TEST_F(transdata_cast_fusion_pass_test, transdata_cast_fusion_pass_test_1) {
     transdata1_op.update_output_desc_dst(Trasdata1OutputTensorDesc);
     transdata1_op.SetAttr("src_format", FORMAT_NC1HWC0);
     transdata1_op.SetAttr("dst_format", FORMAT_NCHW);
+    auto transdata1_desc = ge::OpDescUtils::GetOpDescFromOperator(transdata1_op);
+    transdata1_desc->DelAttr("src_subformat");
+    transdata1_desc->DelAttr("dst_subformat");
 
     auto reformat_op = op::ReFormat("reformat");
     std::vector<int64_t> reformat_dims{1, 832};

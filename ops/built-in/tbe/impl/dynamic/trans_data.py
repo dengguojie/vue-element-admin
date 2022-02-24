@@ -1,18 +1,16 @@
-# Copyright 2020 Huawei Technologies Co., Ltd
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-# http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-# ============================================================================
 """
+Copyright (C) 2019-2022. Huawei Technologies Co., Ltd. All rights reserved.
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the Apache License Version 2.0.
+You may not use this file except in compliance with the License.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+Apache License for more details at
+http://www.apache.org/licenses/LICENSE-2.0
+
 trans_data
 """
 from __future__ import absolute_import
@@ -77,7 +75,30 @@ def is_do_with_positive_source_ntc_100(src_format, dst_format):
                             para_check.OPTION_ATTR_STR, para_check.OPTION_ATTR_INT, para_check.KERNEL_NAME)
 def trans_data(src, dst, src_format=None, dst_format=None, group=1, kernel_name="trans_data"):
     """
-    format transform for rnn
+    algorithm: format_transfer
+    doing format_transfer for various data format
+    only support NHWC/NCHW to NC1HWC0 and NC1HWC0 to NHWC/NCHW
+    NCHW to FRACTAL_Zn or FRACTAL_Zn to NCHW
+    HWCN to FRACTAL_Zn or FRACTAL_Zn to HWCN
+
+    Parameters
+    ----------
+    src : dict
+        shape and dtype of input
+    dst: dict
+        shape and dtype of output, should be same shape and type as input
+    src_format: str
+        source data format, can be NHWC, NCHW, FRACTAL_Zn etc.
+    dst_format: str
+        target data format, can be NC1HWC0, NCHW, FRACTAL_Zn etc.
+    group: int
+        default 1
+    kernel_name: str
+        kernel name, default value is "format_transfer"
+
+    Returns
+    -------
+    None
     """
     if src_format is None:
         src_format = src.get("format").upper().split(":")[0]
@@ -222,7 +243,7 @@ def trans_data_fusion_compute(src, dst, src_format=None, dst_format=None, group=
     source data format, can be NCHW and NC1HWC0, default value is None
     dst_format: str
     target data format, can be NC1HWC0 and NCHW, default value is None
-    groups: int
+    group: int
     default 1
     kernel_name: str
     kernel name, default value is "trans_data"
