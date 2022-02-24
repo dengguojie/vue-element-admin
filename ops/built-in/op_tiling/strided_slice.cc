@@ -237,8 +237,7 @@ static void MakeSameDims(SliceParameters* parametersPtr) {
 
   parameters.output_shape.clear();
   parameters.output_shape.reserve(parameters.input.size());
-  bool wrong_dim = false;
-  for (size_t i = 0, j = 0; i < parameters.input.size(); i++) {
+  for (size_t i = 0; i < parameters.input.size(); i++) {
     auto interval = parameters.end_list[i] - parameters.begin_list[i];
     auto stride_i = parameters.stride_list[i];
     if (stride_i == 0) {
