@@ -50,14 +50,12 @@ class FixpipeConv2dBackpropFilter(FixpipeBase):
         elif len(shape) == 4 and self.output.get("format") == "FRACTAL_Z":
             # 2) input dtype: float16; out format: FRACTAL_Z
             # (C1HW, N1, N0, C0) -> (real_g, fkk, Cout_g, fmap_c0)
-            # only support group = 1
             out_shape = [1, shape[0], shape[1] * shape[2], shape[3]]
         elif len(shape) == 5 and \
             self.output.get("format") == "FRACTAL_Z" and \
             self.output.get("need_channel_split", False):
             # 3) input dtype: float32; out format: FRACTAL_Z (with channel split)
             # (C1, HW, N1, N0, C0) -> (real_g, Cin1_g, kk, Cout_g, fmap_c0)
-            # only support group = 1
             out_shape = [1, shape[0], shape[1], shape[2] * shape[3], shape[4]]
         else:
             raise RuntimeError("error output shape or format")

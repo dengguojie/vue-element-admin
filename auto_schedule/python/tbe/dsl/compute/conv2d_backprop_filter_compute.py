@@ -372,8 +372,8 @@ class Conv2dBackpropFilter:
         # pad: pad_top, pad_bottom, pad_left, pad_right
         fmap_height_after_pad = self.shape_x_5hd[2] + self.pad[0] + self.pad[1]
 
-        weight_shape_n = _ceil_div(self.weight_shape[0], BLOCK_SIZE) * BLOCK_SIZE
-        weight_shape_c = _ceil_div(self.group * self.weight_shape[1], BLOCK_SIZE) * BLOCK_SIZE
+        weight_shape_n = _ceil_div(self.weight_shape[0], self.c0_size) * self.c0_size
+        weight_shape_c = _ceil_div(self.group * self.weight_shape[1], self.c0_size) * self.c0_size
         check_shape_equal(self.shape_grads_5hd[4], self.c0_size, "grads_c0", "c0_size")
         check_shape_equal(self.shape_x_5hd[4], self.c0_size, "fmap_c0", "c0_size")
         check_shape_equal(self.shape_grads_5hd[1] * self.shape_grads_5hd[4], \
@@ -978,16 +978,13 @@ class Conv2dBackpropFilter:
             hw_mad_indices = hw_mad_1_indices * BLOCK_SIZE + hw_mad_0_indices
             grads_h_index = hw_mad_indices // grads_w
             grads_w_index = hw_mad_indices % grads_w
-            return tvm.select(
-                hw_mad_indices < hw_mad,
-                grads(
+            return grads(
                     batch_indices,
                     grads_c1_indices,
                     grads_h_index,
                     grads_w_index,
                     grads_c0_indices
                 )
-            )
 
         func_name = __grads_2_zz_matrix_compute if self.grads_dtype == "float32" else __grads_2_matrix_compute
         return tvm.compute(grads_shape_matrix,
@@ -1397,9 +1394,6 @@ class Conv2dBackpropFilter:
             mode = "f162f16"
 
         if self.fmap_dtype == "float32":
-            # align hw_fuse to 16
-            hw_fuse = _ceil_div(hw_fuse, BLOCK_SIZE) * BLOCK_SIZE
-            k_axis = tvm.reduce_axis((0, hw_fuse), name='axis_k')
             k_1 = k_axis.var // self.c0_size
             k_0 = k_axis.var % self.c0_size
             mode = "fp322fp32"

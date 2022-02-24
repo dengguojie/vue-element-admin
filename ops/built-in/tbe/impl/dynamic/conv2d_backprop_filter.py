@@ -872,17 +872,18 @@ def _is_binary_mode():
     var_vector.append(operation.get_te_var("dedy_w"))
 
     for var in var_vector:
-        range = var.get_bound() if var is not None else None
-        if range is not None and list(range) != [1, None]:
+        var_range = var.get_bound() if var is not None else None
+        if var_range is not None and list(var_range) != [1, None]:
             return False
     return True
 
 
-def _binary_mode_para_check(strides, pads, dilations, kernel_name):
+def _binary_mode_para_check(strides, pads, dilations, data_format, kernel_name):
     '''
     Check params for binary mode.
     '''
     para_check.check_kernel_name(kernel_name)
+    _check_data_format(data_format, "data_format")
     if len(strides) != CONV_BACKPROP_SHAPE_DIM:
         error_manager_cube.raise_err_specific_user("conv2d_backprop_filter", "strides should be 4d list")
     if len(dilations) != CONV_BACKPROP_SHAPE_DIM:
@@ -901,74 +902,42 @@ def _define_binary_mode_vars():
     '''
     Define vars for binary mode.
     '''
-    batch = _define_optional_vars("batch")
-    fmap_c = _define_optional_vars("fmap_c")
-    fmap_h = _define_optional_vars("fmap_h")
-    fmap_w = _define_optional_vars("fmap_w")
-    dedy_c = _define_optional_vars("dedy_c")
-    dedy_h = _define_optional_vars("dedy_h")
-    dedy_w = _define_optional_vars("dedy_w")
-
-    kernel_h = operation.var("kernel_h")
-    kernel_w = operation.var("kernel_w")
-    fmap_c1 = operation.var("fmap_c1")
-    dedy_c1 = operation.var("dedy_c1")
-    stride_h = operation.var("stride_h")
-    stride_w = operation.var("stride_w")
-    padt = operation.var("padt")
-    padb = operation.var("padb")
-    padl = operation.var("padl")
-    padr = operation.var("padr")
-    dilation_h = operation.var("dilation_h")
-    dilation_w = operation.var("dilation_w")
-    groups = operation.var("groups")
-
-    cache_tiling_vars = (
-        "group_dim",
-        "batch_dim",
-        "k_dim",
-        "batch_single_core",
-        "n_single_core",
-        "n_dim",
-        "n_bl1",
-        "n_ub_l0_time",
-        "cub_n1",
-        "m_dim",
-        "m_single_core",
-        "m_al1",
-        "m_l0",
-        "k_l0",
-        "kal1_factor",
-        "kbl1_factor",
-        "kal0_factor",
-        "kbl0_factor",
-        "kal1_16",
-        "kbl1_16",
-        "kl1_times",
-        "bl1_bound",
-        "m_aub",
-        "n_bub",
-        "k_aub",
-        "k_bub",
-        "ho_bL1",
-        "multi_n_ub_l1",
-        "multi_m_ub_l1",
-        "multi_k_aub_l1",
-        "multi_k_bub_l1",
+    shape_var_map = {}
+    attr_var_map = {}
+    tiling_var_map = {}
+    shape_vars = ("batch", "fmap_c", "fmap_h", "fmap_w", "dedy_c", "dedy_h", "dedy_w")
+    attr_vars = ("kernel_h", "kernel_w", "fmap_c1", "dedy_c1", "stride_h", "stride_w", "padt", "padb", "padl", "padr",
+        "dilation_h", "dilation_w", "groups")
+    tiling_vars = ("group_dim", "batch_dim", "k_dim", "batch_single_core", "n_single_core", "n_dim", "n_bl1",
+        "n_ub_l0_time", "cub_n1", "m_dim", "m_single_core", "m_al1", "m_l0", "k_l0", "kal1_factor", "kbl1_factor",
+        "kal0_factor", "kbl0_factor", "kal1_16", "kbl1_16", "kl1_times", "bl1_bound", "m_aub", "n_bub", "k_aub",
+        "k_bub", "ho_bL1", "multi_n_ub_l1", "multi_m_ub_l1", "multi_k_aub_l1", "multi_k_bub_l1",
     )
-    for var_name in cache_tiling_vars:
-        operation.var(var_name)
+    for var in shape_vars:
+        shape_var_map[var] = _define_optional_vars(var)
+
+    for var in attr_vars:
+        attr_var_map[var] = operation.var(var)
+
+    for var in tiling_vars:
+        tiling_var_map[var] = operation.var(var)
 
     var_shape_map = {}
-    var_shape_map["fmap_nchw"] = (batch, fmap_c, fmap_h, fmap_w)
-    var_shape_map["dedy_nchw"] = (batch, dedy_c, dedy_h, dedy_w)
-    var_shape_map["dedw_nchw"] = (dedy_c, fmap_c, kernel_h, kernel_w)
-    var_shape_map["fmap_nc1hwc0"] = (batch, fmap_c1, fmap_h, fmap_w, 16)
-    var_shape_map["dedy_nc1hwc0"] = (batch, dedy_c1, dedy_h, dedy_w, 16)
-    var_shape_map["strides"] = (stride_h, stride_w)
-    var_shape_map["pads"] = (padt, padb, padl, padr)
-    var_shape_map["dilations"] = (1, 1, dilation_h, dilation_w)
-    var_shape_map["groups"] = groups
+    var_shape_map["fmap_nchw"] = (shape_var_map.get("batch"), shape_var_map.get("fmap_c"), shape_var_map.get("fmap_h"),
+                                  shape_var_map.get("fmap_w"))
+    var_shape_map["dedy_nchw"] = (shape_var_map.get("batch"), shape_var_map.get("dedy_c"), shape_var_map.get("dedy_h"),
+                                  shape_var_map.get("dedy_w"))
+    var_shape_map["dedw_nchw"] = (shape_var_map.get("dedy_c"), shape_var_map.get("fmap_c"),
+                                  attr_var_map.get("kernel_h"), attr_var_map.get("kernel_w"))
+    var_shape_map["fmap_nc1hwc0"] = (shape_var_map.get("batch"), attr_var_map.get("fmap_c1"),
+                                     shape_var_map.get("fmap_h"), shape_var_map.get("fmap_w"), 16)
+    var_shape_map["dedy_nc1hwc0"] = (shape_var_map.get("batch"), attr_var_map.get("dedy_c1"),
+                                     shape_var_map.get("dedy_h"), shape_var_map.get("dedy_w"), 16)
+    var_shape_map["strides"] = (attr_var_map.get("stride_h"), attr_var_map.get("stride_w"))
+    var_shape_map["pads"] = (attr_var_map.get("padt"), attr_var_map.get("padb"), attr_var_map.get("padl"),
+                             attr_var_map.get("padr"))
+    var_shape_map["dilations"] = (1, 1, attr_var_map.get("dilation_h"), attr_var_map.get("dilation_w"))
+    var_shape_map["groups"] = attr_var_map.get("groups")
 
     return var_shape_map
 
@@ -1348,7 +1317,7 @@ def conv2d_backprop_filter_fusion_compute(fmap, filter_tensor, out_backprop, y, 
 
     is_binary_flag = _is_binary_mode()
     if is_binary_flag:
-        _binary_mode_para_check(strides, pads, dilations, kernel_name)
+        _binary_mode_para_check(strides, pads, dilations, data_format, kernel_name)
         var_shape_map = _define_binary_mode_vars()
         dilations = var_shape_map.get("dilations")
         groups = var_shape_map.get("groups")

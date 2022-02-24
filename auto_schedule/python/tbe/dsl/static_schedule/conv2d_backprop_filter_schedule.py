@@ -783,7 +783,7 @@ class CceConv2dBackpropFilterOp:
             if grads_trans_flag:
                 # grads_matrix axes(fp32): batch, mad_1, cout_1, mad_0->16, cout_0->8
                 sch[grads].compute_inline()
-                sch[grads_matrix].emit_insn(grads_matrix.op.axis[0], 'dma_copy')
+                sch[grads_matrix].emit_insn(grads_matrix.op.axis[0], 'dma_copy', {"layout_transform": "nd2nz"})
             else:
                 sch[grads_matrix].emit_insn(grads_matrix.op.axis[grads_ub2l1_idx], 'dma_copy')
             # move grads from L1 to L0A
@@ -1572,9 +1572,11 @@ class CceConv2dBackpropFilterOp:
         if grads_trans_flag:
             sch[grads].set_scope(tbe_platform_info.scope_cbuf)
         sch[grads_matrix].set_scope(tbe_platform_info.scope_cbuf)
+        # input dtype float16, 16 * 16 aligned; input dtype float32, 16 * 8 aligned.
         sch[grads_matrix].storage_align(
-            sch[grads_matrix].op.axis[1], mul_align_length, 0)
-
+            sch[grads_matrix].op.axis[-3], mul_align_length, 0)
+        sch[grads_matrix].storage_align(
+            sch[grads_matrix].op.axis[1], CUBE_MUL_SHAPE, 0)
         sch[grads_fractal].set_scope(tbe_platform_info.scope_ca)
         sch[grads_fractal].buffer_align((1, 1), (1, 1), (1, 1), (1, 1),
                                         (1, CUBE_DIM), (1, k_align_length))
@@ -1648,12 +1650,12 @@ class CceConv2dBackpropFilterOp:
         if dw_fixpipe_flag:
             # dw_ddr.rf -> dw_ddr -> fixpipe_tensor -> fixpipe_reform
             # after inline: dw_ddr.rf -> fixpipe_reform
-            fixpipe_tensor = self.tensor_map["fixpipe_tensor"]
+            fixpipe_tensor = self.tensor_map.get("fixpipe_tensor")
             dw_ddr = fixpipe_tensor.op.input_tensors[0]
             sch[dw_ddr].compute_inline(instant=True)
             sch[fixpipe_tensor].compute_inline(instant=True)
 
-            dw_ddr = self.tensor_map["fixpipe_reform"]
+            dw_ddr = self.tensor_map.get("fixpipe_reform")
             dw_trans_flag = dw_ddr.op.name == "fixpipe_nz2nd"
             c_split_flag = dw_ddr.op.name == "fixpipe_channel_split"
         elif c_split_flag:

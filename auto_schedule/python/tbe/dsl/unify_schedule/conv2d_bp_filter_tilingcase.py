@@ -1131,16 +1131,17 @@ class Conv2dBpFilterTiling(CubeTilingOp):
                 batch_num_sc != 1 else "dw_ddr"
         return al1_attach, bl1_attach
 
-    def _check_invalid_choice(self, choice):
+    @staticmethod
+    def _check_invalid_choice(choice):
         ## Drop invalid choices
-        # 1) a_l1 full_load or a_l1 full_k, b_l1 full_load or full_k => a_kl1 = a_bkl1;
+        # 1) a_l1 full_load or a_l1 full_k, b_l1 full_load or full_k: a_kl1 equals a_bkl1;
         invalid_choice = (
             choice[4] in (utils.ATTACH_FULL_LOAD, utils.ATTACH_EQUAL) and
             choice[5] in (utils.ATTACH_FULL_LOAD, utils.ATTACH_EQUAL) and
             choice[3] != utils.ATTACH_FULL_LOAD
         )
 
-        # 2) a_l1 full_load or full_k, b_l1 k_split => a_kl1 > b_kl1 & reorder_l1_mn = 1;
+        # 2) a_l1 full_load or full_k, b_l1 k_split: a_kl1 > b_kl1 & reorder_l1_mn is 1;
         # reorder_l1_mn default to 0
         invalid_choice |= (
             choice[4] in (utils.ATTACH_FULL_LOAD, utils.ATTACH_EQUAL) and
@@ -1148,28 +1149,28 @@ class Conv2dBpFilterTiling(CubeTilingOp):
             (choice[3] != utils.ATTACH_EQUAL)
         )
 
-        # 3) a_l1 k_split, b_l1 full_load or full_k => a_kl1 < b_kl1 & reorder_l1_mn = 0;
+        # 3) a_l1 k_split, b_l1 full_load or full_k: a_kl1 < b_kl1 & reorder_l1_mn is 0;
         invalid_choice |= (
             choice[4] == utils.ATTACH_LESS and
             choice[5] in (utils.ATTACH_FULL_LOAD, utils.ATTACH_EQUAL) and
             (choice[3] != utils.ATTACH_LESS or choice[9] != 0)
         )
 
-        # 4) a_l1 k_split, b_l1 k_split => reorder_l1_mn = 0
+        # 4) a_l1 k_split, b_l1 k_split: reorder_l1_mn is 0
         invalid_choice |= (
             choice[4] == utils.ATTACH_LESS and
             choice[5] == utils.ATTACH_LESS and
             choice[9] != 0
         )
 
-        # 5) a_l1 full_load, b_l1 full_load => reorder_l1_mn = 0
+        # 5) a_l1 full_load, b_l1 full_load: reorder_l1_mn is 0
         invalid_choice |= (
             choice[4] == utils.ATTACH_FULL_LOAD and
             choice[5] == utils.ATTACH_FULL_LOAD and
             choice[9] != 0
         )
 
-        # 6) a_l1@l0c or b_l1@l0c or min_kl1_cmp_kl0 = 1 => reorder_l0_mn = 0
+        # 6) a_l1@l0c or b_l1@l0c or min_kl1_cmp_kl0 is 1: reorder_l0_mn is 0
         invalid_choice |= (
             (choice[4] == utils.ATTACH_LESS or
             choice[5] == utils.ATTACH_LESS or
@@ -1196,6 +1197,28 @@ class Conv2dBpFilterTiling(CubeTilingOp):
 
         return invalid_choice
 
+    @staticmethod
+    def _get_choice_list():
+        (al1_pb, bl1_pb, l0c_pb, abkl1_attach, al1_attach_flag, bl1_attach_flag, min_kl1_cmp_kl0,
+         aub_multi_flag, bub_multi_flag, reorder_l1_mn, reorder_l0_mn) = (
+            [utils.DB_OFF, utils.DB_ON],
+            [utils.DB_OFF, utils.DB_ON],
+            [utils.DB_OFF, utils.DB_ON],
+            [utils.ATTACH_FULL_LOAD, utils.ATTACH_EQUAL, utils.ATTACH_LESS],
+            [utils.ATTACH_FULL_LOAD, utils.ATTACH_EQUAL, utils.ATTACH_LESS],
+            [utils.ATTACH_FULL_LOAD, utils.ATTACH_EQUAL, utils.ATTACH_LESS],
+            [0, 1],
+            [utils.ABUB_NOT_FULL_LOAD, utils.ABUB_INNER_FULL_LOAD, utils.ABUB_FULL_LOAD],
+            [utils.ABUB_NOT_FULL_LOAD, utils.ABUB_INNER_FULL_LOAD, utils.ABUB_FULL_LOAD],
+            [0, 1],
+            [0, 1])
+
+        choice_list = list(
+            product(al1_pb, bl1_pb, l0c_pb, abkl1_attach, al1_attach_flag, bl1_attach_flag, min_kl1_cmp_kl0,
+                    aub_multi_flag, bub_multi_flag, reorder_l1_mn, reorder_l0_mn))
+
+        return choice_list
+
     def get_cache_tiling(self):
         '''
         Generate tiling cases based on combinations of all attach flags.
@@ -1214,25 +1237,9 @@ class Conv2dBpFilterTiling(CubeTilingOp):
         ----------
         tiling_cases: list of all tiling templates.
         '''
-        # get cache_tiling
         cache_tiling_all = {}
-        (al1_pb, bl1_pb, l0c_pb, abkl1_attach, al1_attach_flag, bl1_attach_flag,
-        min_kl1_cmp_kl0, aub_multi_flag, bub_multi_flag, reorder_l1_mn, reorder_l0_mn) = (
-            [utils.DB_OFF, utils.DB_ON], [utils.DB_OFF, utils.DB_ON], [utils.DB_OFF, utils.DB_ON],
-            [utils.ATTACH_FULL_LOAD, utils.ATTACH_EQUAL, utils.ATTACH_LESS],
-            [utils.ATTACH_FULL_LOAD, utils.ATTACH_EQUAL, utils.ATTACH_LESS],
-            [utils.ATTACH_FULL_LOAD, utils.ATTACH_EQUAL, utils.ATTACH_LESS],
-            [0, 1],
-            [utils.ABUB_NOT_FULL_LOAD, utils.ABUB_INNER_FULL_LOAD, utils.ABUB_FULL_LOAD],
-            [utils.ABUB_NOT_FULL_LOAD, utils.ABUB_INNER_FULL_LOAD, utils.ABUB_FULL_LOAD],
-            [0, 1],
-            [0, 1])
-
-        l1_choice = list(
-            product(al1_pb, bl1_pb, l0c_pb, abkl1_attach, al1_attach_flag, bl1_attach_flag, min_kl1_cmp_kl0,
-                    aub_multi_flag, bub_multi_flag, reorder_l1_mn, reorder_l0_mn))
-
-        for choice in l1_choice:
+        choice_list = self._get_choice_list()
+        for choice in choice_list:
             cache_tiling = {
                 'block_dim': [-1, -1, -1, 1],
                 'AL0_matrix': [-1, -1, utils.CUBE_SIZE, utils.CUBE_SIZE, 1, 1],
@@ -1275,6 +1282,9 @@ class Conv2dBpFilterTiling(CubeTilingOp):
 
             name = reduce(lambda x, y: 5*x + y, choice)
             cache_tiling_all[name] = [[], cache_tiling, []]
-            tiling_cases = [self.assembly_case(v[1], v[0], k) for k, v in cache_tiling_all.items()]
+
+        tiling_cases = []
+        for k, v in cache_tiling_all.items():
+            tiling_cases.append(self.assembly_case(v[1], v[0], k))
 
         return tiling_cases
