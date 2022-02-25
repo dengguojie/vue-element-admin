@@ -791,33 +791,6 @@ class GenBnReduceTilingCase:
         return True
 
     @staticmethod
-    def _gen_atomic_tiling_case_not_last_axis(shape_before_reduce, reduce_axis_index):
-        """
-        :param shape_before_reduce:
-        :param reduce_axis_index:
-        :return:
-        """
-        reordered_shape, reorder_to_orignal_axis_map, _ = \
-            BNReduceInfo.reorder_reduce_nlast_shape(shape_before_reduce, reduce_axis_index)
-        tiling_case_list = []
-        for i in range(0, len(reordered_shape)):
-            orignal_axis = reorder_to_orignal_axis_map[i]
-            if orignal_axis in reduce_axis_index:
-                block_split_axis = orignal_axis
-                for j in range(0, len(reordered_shape)):
-                    orignal_axis = reorder_to_orignal_axis_map[j]
-                    if orignal_axis in reduce_axis_index and j < i:
-                        continue
-                    ub_split_axis = reorder_to_orignal_axis_map[j]
-                    tiling_case = ReduceTilingCase()
-                    tiling_case.is_atomic = True
-                    tiling_case.block_split_axis_index = block_split_axis
-                    tiling_case.ub_split_axis_index = ub_split_axis
-                    tiling_case.multi_core = True
-                    tiling_case_list.append(tiling_case)
-        return tiling_case_list
-
-    @staticmethod
     def calculate_customised_tiling_cases(info):
         """
         :param info:
@@ -879,6 +852,33 @@ class GenBnReduceTilingCase:
             tiling_case.tiling_strategy = TilingStrategy.NONE_CUT
             tiling_case_list.append(tiling_case)
 
+        return tiling_case_list
+
+    @staticmethod
+    def _gen_atomic_tiling_case_not_last_axis(shape_before_reduce, reduce_axis_index):
+        """
+        :param shape_before_reduce:
+        :param reduce_axis_index:
+        :return:
+        """
+        reordered_shape, reorder_to_orignal_axis_map, _ = \
+            BNReduceInfo.reorder_reduce_nlast_shape(shape_before_reduce, reduce_axis_index)
+        tiling_case_list = []
+        for i in range(0, len(reordered_shape)):
+            orignal_axis = reorder_to_orignal_axis_map[i]
+            if orignal_axis in reduce_axis_index:
+                block_split_axis = orignal_axis
+                for j in range(0, len(reordered_shape)):
+                    orignal_axis = reorder_to_orignal_axis_map[j]
+                    if orignal_axis in reduce_axis_index and j < i:
+                        continue
+                    ub_split_axis = reorder_to_orignal_axis_map[j]
+                    tiling_case = ReduceTilingCase()
+                    tiling_case.is_atomic = True
+                    tiling_case.block_split_axis_index = block_split_axis
+                    tiling_case.ub_split_axis_index = ub_split_axis
+                    tiling_case.multi_core = True
+                    tiling_case_list.append(tiling_case)
         return tiling_case_list
 
     @staticmethod

@@ -561,6 +561,30 @@ class ResizeBilinearV2(OpBase):
                                                 dst_blk=4,
                                                 dst_rep=32)
 
+    def resize_bilinear_v2_operator(self):
+        """
+        resize_bilinear_v2_operator
+        """
+        # regist compute base on tiling_key
+        self.regist_compute(100110, self._function_reisze_with_nc_process)
+        self.regist_compute(999999, self._tiling_compute_with_no_bilinear)
+        self.regist_compute(100000, self._tiling_compute_default)
+        # run all regist compute base tiling key
+        self.op_run_compute()
+        tbe_context.get_context().add_compile_info("global_variable_link", True)
+        tbe_context.get_context().add_compile_info(
+            "vars", {
+                "ub_size": self.ub_size_bytes,
+                "core_num": self.core_nums,
+                "max_w_len": self.ub_max_num // self.images_shape_c0,
+                "align_corners": int(self.align_corners),
+                "half_pixel_centers": int(self.half_pixel_centers)
+            })
+        # Build CCE
+        self.op_build_cce()
+
+        return self.tik_instance
+
     def _function_data_move(self, copy_line_num, copy_line_length, ub_info, scalar_is_src_stride):
         """
         function _function_data_move
@@ -2157,30 +2181,6 @@ class ResizeBilinearV2(OpBase):
                 self._function_resize_with_l1_default(is_h_big_to_small=False)
             with self.tik_instance.if_scope(self.tiling_out_height // self.tiling_in_height >= 2):
                 self._function_resize_with_l1_default(is_h_big_to_small=True)
-
-    def resize_bilinear_v2_operator(self):
-        """
-        resize_bilinear_v2_operator
-        """
-        # regist compute base on tiling_key
-        self.regist_compute(100110, self._function_reisze_with_nc_process)
-        self.regist_compute(999999, self._tiling_compute_with_no_bilinear)
-        self.regist_compute(100000, self._tiling_compute_default)
-        # run all regist compute base tiling key
-        self.op_run_compute()
-        tbe_context.get_context().add_compile_info("global_variable_link", True)
-        tbe_context.get_context().add_compile_info(
-            "vars", {
-                "ub_size": self.ub_size_bytes,
-                "core_num": self.core_nums,
-                "max_w_len": self.ub_max_num // self.images_shape_c0,
-                "align_corners": int(self.align_corners),
-                "half_pixel_centers": int(self.half_pixel_centers)
-            })
-        # Build CCE
-        self.op_build_cce()
-
-        return self.tik_instance
 
     def _function_reisze_with_nc_process(self):
         """
