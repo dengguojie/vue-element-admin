@@ -101,8 +101,14 @@ def do_op_tiling(optype, compile_info, inputs, outputs, compile_info_hash=None, 
                           ctypes.c_void_p())
     if not res:
         dict_args = {}
+        inputs_str = "\n".join(tuple(map(str, inputs)))
+        outputs_str = "\n".join(tuple(map(str, outputs)))
         dict_args["errCode"] = "E90003"
-        dict_args["detailed_cause"] = "Tiling func failed."
+        dict_args["detailed_cause"] = f"Tiling func of op_type {optype} failed, failure details:\n" \
+                                      f"Compile_info: {compile_info}\n" \
+                                      f"Inputs: {inputs_str}\n" \
+                                      f"Outputs: {outputs_str}\n" \
+                                      f"[OP_TILING] Attrs: {attrs}"
         raise RuntimeError(dict_args, get_error_message(dict_args))
 
     run_info = json.loads(_TILING_DATA.buf.value)

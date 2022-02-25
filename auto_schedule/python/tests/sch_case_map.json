@@ -435,6 +435,9 @@
     "auto_schedule/python/tbe/common/utils/create_kb_query_key.py":[
         "tik_kb_query_key"
     ],
+    "auto_schedule/python/tbe/common/utils/op_tiling.py":[
+        "do_op_tiling"
+    ],
     "auto_schedule/python/tbe/dsl/base/context.py":[
         "context"
     ],
