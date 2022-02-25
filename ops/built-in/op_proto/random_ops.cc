@@ -334,14 +334,14 @@ IMPLEMT_INFERFUNC(TruncatedNormal, TruncatedNormalInfer) {
 
 INFER_FUNC_REG(TruncatedNormal, TruncatedNormalInfer);
 
-int64_t InferShapeGetShapeSizeBytes(int64_t shape_size) {
-  if (shape_size < 0) {
+int64_t InferShapeGetShapeSizeBytes(int64_t shapeSize) {
+  if (shapeSize < 0) {
     return UNKNOWN_DIM;
   }
 
   // 128 bits are generated at a time.
-  int64_t n128s = shape_size / 128;
-  if (shape_size % 128 != 0) {
+  int64_t n128s = shapeSize / 128;
+  if (shapeSize % 128 != 0) {
     n128s++;
   }
 
@@ -395,12 +395,12 @@ graphStatus GetDropOutGenMaskShapeAndRange(Operator &op, ShapeAndRange &out) {
     OP_LOGI(op.GetName().c_str(), "down = %lld, up = %lld", down, up);
   }
 
-  Shape unknown_shape(UNKNOWN_SHAPE);
+  Shape unknownShape(UNKNOWN_SHAPE);
   std::vector<std::pair<int64_t, int64_t>> shapeRange(1);
   shapeRange[0].first = InferShapeGetShapeSizeBytes(down);
   shapeRange[0].second = InferShapeGetShapeSizeBytes(up);
   shapeAndRange.shape_range_ = shapeRange;
-  shapeAndRange.shape_ = unknown_shape;
+  shapeAndRange.shape_ = unknownShape;
   out.shape_ = shapeAndRange.shape_;
   out.shape_range_ = shapeAndRange.shape_range_;
 

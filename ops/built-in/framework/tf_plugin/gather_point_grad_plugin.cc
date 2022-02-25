@@ -59,7 +59,8 @@ static Status ParseOpToGraphGatherPointGrad(const ge::Operator &op, ge::Graph &g
   ge::Operator data_2 = op::Data("out_g").set_attr_index(2);
   auto use_locking = false;
 
-  auto ScatterUpdate = op::ScatterUpdate().set_input_var(data_0).set_input_indices(data_1).set_input_updates(data_2).set_attr_use_locking(use_locking);
+  auto ScatterUpdate = op::ScatterUpdate().set_input_var(data_0).set_input_indices(data_1)
+                      .set_input_updates(data_2).set_attr_use_locking(use_locking);
   std::vector<ge::Operator> inputs{data_0, data_1, data_2};
   std::vector<std::pair<ge::Operator, std::vector<size_t>>> output_indexs;
   output_indexs.emplace_back(ScatterUpdate, vector<std::size_t>{0});

@@ -62,7 +62,8 @@ static Status ParseOpToGraphGroupPoint(const ge::Operator &op, ge::Graph &graph)
   ge::Tensor const_value(tensor1_desc, (uint8_t*)&axis_val, sizeof(axis_val));
   auto const_op = op::Const("const_data").set_attr_value(const_value);
   int batch_dims = 1;
-  auto GatherV2 = op::GatherV2().set_input_x(data_0).set_input_indices(data_1).set_input_axis(const_op).set_attr_batch_dims(batch_dims);
+  auto GatherV2 = op::GatherV2().set_input_x(data_0).set_input_indices(data_1)
+                  .set_input_axis(const_op).set_attr_batch_dims(batch_dims);
   std::vector<ge::Operator> inputs{data_0, data_1, const_op};
   std::vector<std::pair<ge::Operator, std::vector<size_t>>> output_indexs;
   output_indexs.emplace_back(GatherV2, vector<std::size_t>{0});

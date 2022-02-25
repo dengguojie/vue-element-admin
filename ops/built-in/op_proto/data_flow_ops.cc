@@ -55,9 +55,9 @@ graphStatus SetAttrsToShapesAndTypes(Operator& op,
 
     for (size_t i = 0; i < num; ++i) {
       Shape elemShape(std::move(elemShapes[i]));
-      DataType elem_type(std::move(elemTypes[i]));
-      ShapeAndType shape_and_type(elemShape, elem_type);
-      handleShapesAndTypes.emplace_back(std::move(shape_and_type));
+      DataType elemType(std::move(elemTypes[i]));
+      ShapeAndType shapeAndType(elemShape, elemType);
+      handleShapesAndTypes.emplace_back(std::move(shapeAndType));
     }
 
     std::vector<std::vector<ShapeAndType>> shapeAndTypes(2);
@@ -162,8 +162,8 @@ graphStatus DequeueManyShape(Operator& op, const Shape& n_shape, const std::stri
       InferShapesFillUnknownShape(op, "component_types", out_name, unknownShape);
       return GRAPH_SUCCESS; 
     }
-    std::string err_msg = ConcatString("size::", resContext->shape_and_range_.size(), componentNum);
-    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    std::string errMsg = ConcatString("size::", resContext->shape_and_range_.size(), componentNum);
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), errMsg);
     if (resContext->shape_and_range_.size() == componentNum) {
       for (size_t i = 0; i < componentNum; i++) {
         Shape combinedShape;
@@ -257,10 +257,10 @@ graphStatus SaveShapesToAicpuResource(const Operator &op, std::vector<AscendStri
 
     for (size_t i = 0; i < dynCompSize; i++) {
       const TensorDesc inputDesc = op.GetDynamicInputDesc(dynCompName, i);
-      Shape elem_shape(inputDesc.GetShape());
-      std::vector<std::pair<int64_t, int64_t>> value_shape_range;
-      inputDesc.GetShapeRange(value_shape_range);
-      ShapeAndRange feed_shape_and_range{elem_shape, value_shape_range};
+      Shape elemShape(inputDesc.GetShape());
+      std::vector<std::pair<int64_t, int64_t>> valueShapeRange;
+      inputDesc.GetShapeRange(valueShapeRange);
+      ShapeAndRange feed_shape_and_range{elemShape, valueShapeRange};
       resContext->shape_and_range_.push_back(feed_shape_and_range);
     }
 
@@ -278,8 +278,8 @@ graphStatus SaveShapesToAicpuResource(const Operator &op, std::vector<AscendStri
       Shape elemShape(inputDesc.GetShape());
       std::vector<std::pair<int64_t, int64_t>> shapeRange;
       inputDesc.GetShapeRange(shapeRange);
-      ShapeAndRange feed_shape_and_range{elemShape, shapeRange};
-      newShapeAndRange.push_back(feed_shape_and_range);
+      ShapeAndRange feedShapeAndRange{elemShape, shapeRange};
+      newShapeAndRange.push_back(feedShapeAndRange);
     }
 
     if (newShapeAndRange.size() != shapeAndRange.size()) {
@@ -367,10 +367,10 @@ IMPLEMT_INFERFUNC(QueueEnqueue, QueueEnqueueInfer) {
     return GRAPH_SUCCESS;
   }
 
-  std::vector<AscendString> marksInfo;
-  context->GetMarks(marksInfo);
-  OP_LOGI(op.GetName().c_str(), "SaveShapesToAicpuResource marks.size() = %ld", marksInfo.size());
-  return SaveShapesToAicpuResource(op, marksInfo, dynCompSize, "components");
+  std::vector<AscendString> marks;
+  context->GetMarks(marks);
+  OP_LOGI(op.GetName().c_str(), "SaveShapesToAicpuResource marks.size() = %ld", marks.size());
+  return SaveShapesToAicpuResource(op, marks, dynCompSize, "components");
 }
 
 INFER_FUNC_REG(QueueEnqueue, QueueEnqueueInfer);
@@ -386,9 +386,9 @@ IMPLEMT_INFERFUNC(QueueEnqueueMany, QueueEnqueueManyInfer) {
     return GRAPH_SUCCESS;
   }
 
-  std::vector<AscendString> marksInfo;
-  context->GetMarks(marksInfo);
-  return SaveShapesToAicpuResource(op, marksInfo, dynCompSize, "components");
+  std::vector<AscendString> marks;
+  context->GetMarks(marks);
+  return SaveShapesToAicpuResource(op, marks, dynCompSize, "components");
 }
 
 INFER_FUNC_REG(QueueEnqueueMany, QueueEnqueueManyInfer);
@@ -467,9 +467,9 @@ INFER_FUNC_REG(QueueDequeueUpTo, QueueDequeueUpToInfer);
 IMPLEMT_INFERFUNC(Stage, StageInfer) {
   size_t size = op.GetInputsSize();
 
-  std::vector<AscendString> marksInfo;
-  GetStageKeyMarks(op, marksInfo);
-  return SaveShapesToAicpuResource(op, marksInfo, size, "values");
+  std::vector<AscendString> marks;
+  GetStageKeyMarks(op, marks);
+  return SaveShapesToAicpuResource(op, marks, size, "values");
 }
 
 INFER_FUNC_REG(Stage, StageInfer);
@@ -1262,34 +1262,34 @@ INFER_FUNC_REG(TensorArraySize, TensorArraySizeInfer);
 IMPLEMT_INFERFUNC(MapStage, MapStageInfer) {
   size_t dynCompSize = op.GetInputsSize() - 2;
 
-  std::vector<AscendString> marksInfo;
-  GetStageKeyMarks(op, marksInfo);
-  return SaveShapesToAicpuResource(op, marksInfo, dynCompSize, "values");
+  std::vector<AscendString> marks;
+  GetStageKeyMarks(op, marks);
+  return SaveShapesToAicpuResource(op, marks, dynCompSize, "values");
 }
 
 INFER_FUNC_REG(MapStage, MapStageInfer);
 
 IMPLEMT_INFERFUNC(MapUnstage, MapUnstageInfer)  {
-  std::vector<AscendString> marksInfo;
-  GetStageKeyMarks(op, marksInfo);
-  return InferShapesFromAicpuResource(op, marksInfo, "dtypes", "values");
+  std::vector<AscendString> marks;
+  GetStageKeyMarks(op, marks);
+  return InferShapesFromAicpuResource(op, marks, "dtypes", "values");
 }
 
 INFER_FUNC_REG(MapUnstage, MapUnstageInfer);
 
 IMPLEMT_INFERFUNC(MapUnstageNoKey, MapUnstageNoKeyInfer) {
-  std::vector<AscendString> marksInfo;
-  GetStageKeyMarks(op, marksInfo);
-  return InferShapesFromAicpuResource(op, marksInfo, "dtypes", "values");
+  std::vector<AscendString> marks;
+  GetStageKeyMarks(op, marks);
+  return InferShapesFromAicpuResource(op, marks, "dtypes", "values");
 }
 
 INFER_FUNC_REG(MapUnstageNoKey, MapUnstageNoKeyInfer);
 
 IMPLEMT_INFERFUNC(MapPeek, MapPeekInfer) {
-  std::vector<AscendString> marksInfo;
-  GetStageKeyMarks(op, marksInfo);
+  std::vector<AscendString> marks;
+  GetStageKeyMarks(op, marks);
 
-  return InferShapesFromAicpuResource(op, marksInfo, "dtypes", "values");
+  return InferShapesFromAicpuResource(op, marks, "dtypes", "values");
 }
 
 INFER_FUNC_REG(MapPeek, MapPeekInfer);
@@ -1686,9 +1686,9 @@ IMPLEMT_INFERFUNC(OrderedMapStage, OrderedMapStageInfer) {
   }
 
   dynCompSize = op.GetInputsSize() - 2;
-  std::vector<AscendString> marksInfo;
-  GetStageKeyMarks(op, marksInfo);
-  return SaveShapesToAicpuResource(op, marksInfo, dynCompSize, "values");
+  std::vector<AscendString> marks;
+  GetStageKeyMarks(op, marks);
+  return SaveShapesToAicpuResource(op, marks, dynCompSize, "values");
 }
 
 INFER_FUNC_REG(OrderedMapStage, OrderedMapStageInfer);
@@ -2759,11 +2759,11 @@ IMPLEMT_INFERFUNC(GetNextV2, GetNextV2Infer) {
     outputDesc.SetDataType(outputTypes[i]);
     graphStatus status = op.UpdateDynamicOutputDesc("y", i, outputDesc);
     if (status != GRAPH_SUCCESS) {
-      std::ostringstream sstr;
-      sstr << "update output[y] index[";
-      sstr << i;
-      sstr << "] desc failed";
-      std::string errMsg = sstr.str();
+      std::ostringstream ss;
+      ss << "update output[y] index[";
+      ss << i;
+      ss << "] desc failed";
+      std::string errMsg = ss.str();
       AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), errMsg);
       return GRAPH_FAILED;
     }
@@ -2803,11 +2803,11 @@ IMPLEMT_INFERFUNC(GetNextFromQueue, GetNextFromQueueInferShape) {
     outputDesc.SetDataType(outputTypes[i]);
     graphStatus outputStatus = op.UpdateDynamicOutputDesc("y", i, outputDesc);
     if (outputStatus != GRAPH_SUCCESS) {
-      std::ostringstream sInfo;
-      sInfo << "update output[y] index[";
-      sInfo << i;
-      sInfo << "] desc failed";
-      std::string errMsg = sInfo.str();
+      std::ostringstream ss;
+      ss << "update output[y] index[";
+      ss << i;
+      ss << "] desc failed";
+      std::string errMsg = ss.str();
       AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), errMsg);
       return GRAPH_FAILED;
     }
