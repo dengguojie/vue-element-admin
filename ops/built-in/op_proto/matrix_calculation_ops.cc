@@ -2259,10 +2259,12 @@ IMPLEMT_INFERFORMAT_FUNC(BatchMatMulV2, BatchMatMulV2InferFormat) {
   CHECK_PTR_NULL(op_desc, "op desc", return GRAPH_FAILED);
 
   ge::GeTensorDescPtr tensordesc_input = op_desc->MutableInputDesc(0);
+  CHECK_PTR_NULL(tensordesc_input, "tensordesc input", return GRAPH_FAILED);
+  ge::GeTensorDescPtr tensordesc_input_2 = op_desc->MutableInputDesc(1);
+  CHECK_PTR_NULL(tensordesc_input_2, "tensordesc input_2", return GRAPH_FAILED);
+
   tensordesc_input->SetOriginFormat(FORMAT_ND);
   tensordesc_input->SetFormat(FORMAT_ND);
-
-  ge::GeTensorDescPtr tensordesc_input_2 = op_desc->MutableInputDesc(1);
   tensordesc_input_2->SetOriginFormat(FORMAT_ND);
   tensordesc_input_2->SetFormat(FORMAT_ND);
 
