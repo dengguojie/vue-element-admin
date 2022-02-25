@@ -1,0 +1,167 @@
+[
+    {
+      "op": "AsStrided",
+      "case_name": "test_as_strided_000",
+      "calc_expect_func_file": "gen_golden_data.py:calc_expect_func",
+      "input_desc": [
+        {
+	  "name": "x",
+          "shape": [-1, 320],
+	  "shape_range": [[1, 21]],
+          "format": "ND",
+          "typical_shape": [16, 320],
+          "type": "int32",
+          "data_distribute": "uniform",
+          "value_range": [[1, 10]]
+        },
+        {
+	  "name": "size",
+          "shape": [7],
+          "format": "ND",
+          "type": "int32",
+	  "is_const": true,
+          "value": [3, 1, 2, 2, 3, 3, 2]
+        },
+	{
+          "name": "stride",
+          "shape": [7],
+          "format": "ND",
+          "type": "int32",
+	  "is_const": true,
+          "value": [3, 1, 0, 1, 0, 0, 1]
+        },
+	{
+          "name": "storage_offset",
+          "shape": [1],
+          "format": "ND",
+          "type": "int32",
+	  "is_const": true,
+          "value": [0]
+        }
+      ],
+      "output_desc": [
+        {
+	  "name": "y",
+          "shape": [
+            3, 1, 2, 2, 3, 3, 2
+          ],
+          "format": "ND",
+          "ori_shape": [
+            3, 1, 2, 2, 3, 3, 2
+          ],
+          "ori_format": "ND",
+          "type": "int32"
+        }
+      ]
+    },
+    {
+      "op": "AsStrided",
+      "case_name": "test_as_strided_001",
+      "calc_expect_func_file": "gen_golden_data.py:calc_expect_func",
+      "input_desc": [
+        {
+          "name": "x",
+          "shape": [101, 78, 67, 2, 78, -1],
+          "shape_range": [[1, 21]],
+          "format": "ND",
+          "typical_shape": [101, 78, 67, 2, 78, 2],
+          "type": "float16",
+          "data_distribute": "uniform",
+          "value_range": [[1, 10]]
+        },
+        {
+          "name": "size",
+          "shape": [4],
+          "format": "ND",
+          "type": "int32",
+          "is_const": true,
+          "value": [3, 2, 66, 691]
+        },
+        {
+          "name": "stride",
+          "shape": [4],
+          "format": "ND",
+          "type": "int32",
+          "is_const": true,
+          "value": [11, 32, 31, 1]
+        },
+        {
+          "name": "storage_offset",
+          "shape": [1],
+          "format": "ND",
+          "type": "int32",
+          "is_const": true,
+          "value": [0]
+        }
+      ],
+      "output_desc": [
+        {
+          "name": "y",
+          "shape": [
+            3, 2, 66, 691
+          ],
+          "format": "ND",
+          "ori_shape": [
+            3, 2, 66, 691
+          ],
+          "ori_format": "ND",
+          "type": "float16"
+        }
+      ]
+    },
+    {
+      "op": "AsStrided",
+      "case_name": "test_as_strided_002",
+      "calc_expect_func_file": "gen_golden_data.py:calc_expect_func",
+      "input_desc": [
+        {
+          "name": "x",
+          "shape": [101, 78, 67, 2, 78, -1],
+          "shape_range": [[1, 21]],
+          "format": "ND",
+          "typical_shape": [101, 78, 67, 2, 78, 2],
+          "type": "float32",
+          "data_distribute": "uniform",
+          "value_range": [[1, 10]]
+        },
+        {
+          "name": "size",
+          "shape": [4],
+          "format": "ND",
+          "type": "int32",
+          "is_const": true,
+          "value": [3, 2, 66, 691]
+        },
+        {
+          "name": "stride",
+          "shape": [4],
+          "format": "ND",
+          "type": "int32",
+          "is_const": true,
+          "value": [11, 32, 31, 1]
+        },
+        {
+          "name": "storage_offset",
+          "shape": [1],
+          "format": "ND",
+          "type": "int32",
+          "is_const": true,
+          "value": [0]
+        }
+      ],
+      "output_desc": [
+        {
+          "name": "y",
+          "shape": [
+            3, 2, 66, 691
+          ],
+          "format": "ND",
+          "ori_shape": [
+            3, 2, 66, 691
+          ],
+          "ori_format": "ND",
+          "type": "float32"
+        }
+      ]
+    }
+  ]

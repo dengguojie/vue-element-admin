@@ -617,3 +617,20 @@ TEST_F(AsStridedTiling, AsStrided_tiling32) {
   run_case(input_shape, v_size, v_stride, v_storage_offset, output_shape, dtype, compile_info, expect_tiling,
            this->test_info_->name());
 }
+
+TEST_F(AsStridedTiling, AsStrided_tiling33) {
+  std::vector<int64_t> input_shape = {8, 2268, 21};
+  std::vector<int64_t> output_shape = {8, 126, 3, 3};
+  std::vector<int64_t> v_size = {8, 126, 3, 3};
+  std::vector<int64_t> v_stride = {47628, 1, 378, 126};
+  std::vector<int64_t> v_storage_offset = {0};
+  std::string dtype = "float16";
+
+  std::string compile_info =
+      "{\"vars\": {\"max_elem_cnt\": 130560, \"core_num\": 32}}";
+  std::string expect_tiling =
+      "3006 1 65280 4080 1134 1134 8 0 8 1 0 1 0 1 0 1 0 0 9 126 126 1 1134 1 1 1 8 47628 "
+      "0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 ";
+  run_case(input_shape, v_size, v_stride, v_storage_offset, output_shape, dtype, compile_info, expect_tiling,
+           this->test_info_->name());
+}

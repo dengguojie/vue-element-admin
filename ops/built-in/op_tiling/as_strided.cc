@@ -51,13 +51,26 @@ static const int64_t MAX_DIM_COUNT = 20;
 // define the compile key of json.vars
 static const std::vector<std::string> COMPILE_INFO_KEY = {"max_elem_cnt", "core_num"};
 
-static int64_t GetFloorDiv(const int64_t u_value, const int64_t d_value) {
+static int64_t GetRangeSize(const std::vector<int64_t>& in_shape, const int64_t begin, const int64_t end) {
+  int64_t range_size = 1;
+  if (end < 0) {
+    range_size = in_shape[begin];
+  } else {
+    for (int64_t i = begin; i <= end; i++) {
+    range_size *= in_shape[i];
+    }
+  }
+
+  return range_size;
+}
+
+static int64_t GetDivisorAlign(const int64_t u_value, const int64_t d_value) {
   int64_t res_value = 0;
   if (d_value == 0) {
     return u_value;
   }
 
-  res_value = u_value / d_value;
+  res_value = u_value / d_value * d_value;
 
   return res_value;
 }
@@ -73,29 +86,15 @@ static int64_t GetCeilDiv(const int64_t u_value, const int64_t d_value) {
   return res_value;
 }
 
-static int64_t GetDivisorAlign(const int64_t u_value, const int64_t d_value) {
+static int64_t GetFloorDiv(const int64_t u_value, const int64_t d_value) {
   int64_t res_value = 0;
   if (d_value == 0) {
     return u_value;
   }
 
-  res_value = u_value / d_value * d_value;
+  res_value = u_value / d_value;
 
   return res_value;
-}
-
-static int64_t GetRangeSize(const std::vector<int64_t>& in_shape, const int64_t beg, const int64_t end) {
-  int64_t range_size = 1;
-
-  if (end < 0) {
-    range_size = in_shape[beg];
-  } else {
-    for (int64_t i = beg; i <= end; i++) {
-    range_size *= in_shape[i];
-    }
-  }
-
-  return range_size;
 }
 
 static int64_t GetElemIndexInOri(const AsStridedInfo& as_info, const int64_t row, const int64_t col) {
@@ -122,7 +121,7 @@ static int64_t GetElemIndexInOri(const AsStridedInfo& as_info, const int64_t row
 
 static bool MergeAxis(const std::vector<int64_t>& out_size, const std::vector<int64_t>& out_stride,
                       std::vector<int64_t>& new_size, std::vector<int64_t>& new_stride) {
-  int64_t idx_beg = 0;
+  int64_t idx_begin = 0;
   int64_t idx_end = 0;
   int64_t save_dims = 2;
   int64_t dims = out_stride.size();
@@ -168,20 +167,20 @@ static bool MergeAxis(const std::vector<int64_t>& out_size, const std::vector<in
     if (tmp_out_stride[i] == tmp_out_stride[i+1] && tmp_out_stride[i] == 0) {
       idx_end = i + 1;
     } else {
-      if (idx_end > idx_beg) {
-        new_size.push_back(GetRangeSize(tmp_out_size, idx_beg, idx_end));
+      if (idx_end > idx_begin) {
+        new_size.push_back(GetRangeSize(tmp_out_size, idx_begin, idx_end));
       } else {
-        new_size.push_back(tmp_out_size[idx_beg]);
+        new_size.push_back(tmp_out_size[idx_begin]);
       }
-      idx_beg = i + 1;
+      idx_begin = i + 1;
       idx_end = i + 1;
-      new_stride.push_back(tmp_out_stride[idx_beg]);
+      new_stride.push_back(tmp_out_stride[idx_begin]);
     }
   }
   if (tmp_out_stride[tmp_dims-save_dims] == tmp_out_stride[tmp_dims-1]) {
-    new_size.push_back(GetRangeSize(tmp_out_size, idx_beg, idx_end));
+    new_size.push_back(GetRangeSize(tmp_out_size, idx_begin, idx_end));
   } else {
-    new_size.push_back(tmp_out_size[idx_beg]);
+    new_size.push_back(tmp_out_size[idx_begin]);
   }
 
   /***
@@ -206,11 +205,14 @@ static bool MergeAxis(const std::vector<int64_t>& out_size, const std::vector<in
       new_size[0] = tmp_axis_merge_size;
       new_stride[0] = tmp_axis_merge_stride;
     } else {
-      int64_t cur_idx = new_dims - save_dims;
-      for (int64_t j = cur_idx; j > 0; j--) {
-        if (new_size[j] * last_dim_index == new_stride[j-1]) {
+      int64_t cur_idx = new_dims - 1;
+      // index from right to left
+      for (int64_t j = cur_idx - 1; j >= 0; j--) {
+        if (last_dim_index == new_stride[j]) {
           last_dim_index *= new_size[j];
-          cur_idx -= 1;
+          cur_idx = j;
+        } else {
+          break;
         }
       }
 
@@ -233,6 +235,7 @@ static bool SetDimsTilingParas(const string& op_type, AsStridedInfo& as_info,
     return false;
   }
 
+  OP_LOGD(op_type, "begin to set dimension info.");
   int64_t dims = out_size.size();
   int64_t save_dims = 2;
   as_info.dim_num = dims - 1;  // except last dim
@@ -261,6 +264,15 @@ static bool SetDimsTilingParas(const string& op_type, AsStridedInfo& as_info,
   return true;
 }
 
+static std::string GetVectorData(const std::vector<int64_t>& vec_data) {
+  std::string dims_info = "";
+  for (int64_t i = 0; i < static_cast<int64_t>(vec_data.size()); i++) {
+    dims_info += " " + std::to_string(vec_data[i]);
+  }
+
+  return dims_info;
+}
+
 static bool GetOutputSizeAndStride(const string& op_type, const ge::Operator& paras,
                                    AsStridedInfo& as_info, const std::vector<int64_t>& in_shape,
                                    std::vector<int64_t>& out_size, std::vector<int64_t>& out_stride) {
@@ -271,16 +283,20 @@ static bool GetOutputSizeAndStride(const string& op_type, const ge::Operator& pa
   size_t input_idx_2 = 2;
   size_t input_idx_3 = 3;
 
+  OP_LOGD(op_type, "begin to get attribute value.");
+
   // the parameters order in op proto is: x, size, stride, storage_offset, y
   if (!ops::GetConstIntData(paras, input_idx_1, tmp_out_size)) {
     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get const size failed!");
     return false;
   }
+  OP_LOGD(op_type, "the attribute size is:[%s].", GetVectorData(tmp_out_size).c_str());
 
   if (!ops::GetConstIntData(paras, input_idx_2, tmp_out_stride)) {
     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get const stride failed!");
     return false;
   }
+  OP_LOGD(op_type, "the attribute stride is:[%s].", GetVectorData(tmp_out_stride).c_str());
 
   if (tmp_out_size.size() != tmp_out_stride.size()) {
     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "the dimension count of size and stride should be same!");
@@ -300,6 +316,7 @@ static bool GetOutputSizeAndStride(const string& op_type, const ge::Operator& pa
   } else {
     as_info.storage_offset = storage_offset[0];
   }
+  OP_LOGD(op_type, "the attribute storage_offset is: [%ld].", as_info.storage_offset);
 
   MergeAxis(tmp_out_size, tmp_out_stride, out_size, out_stride);
   // to make sure there are at least 2 dims in out_size and out_stride
@@ -308,6 +325,10 @@ static bool GetOutputSizeAndStride(const string& op_type, const ge::Operator& pa
     out_stride.insert(out_stride.begin(), 0);
   }
   SetDimsTilingParas(op_type, as_info, out_size, out_stride);
+
+  OP_LOGD(op_type, "the input shape is:[%s].", GetVectorData(in_shape).c_str());
+  OP_LOGD(op_type, "the adjusted output shape is:[%s].", GetVectorData(out_size).c_str());
+  OP_LOGD(op_type, "the adjusted output stride is:[%s].", GetVectorData(out_stride).c_str());
 
   int64_t row = 0;
   int64_t col = 0;
@@ -343,7 +364,7 @@ static bool GetCompileParams(const std::string& op_type, const std::vector<int64
   core_num = op_compile_info[1];
   OP_TILING_CHECK(core_num == 0, VECTOR_INNER_ERR_REPORT_TILIING(op_type, "core_num cannot be zero."), return false);
 
-  OP_LOGD(op_type, "the operator info is: element_in_ub=[%ld], core_num=[%ld].", max_elem_in_ub, core_num);
+  OP_LOGD(op_type, "the compile info is: element_in_ub=[%ld], core_num=[%ld].", max_elem_in_ub, core_num);
 
   return true;
 }
@@ -661,15 +682,6 @@ static void Serialize(utils::OpRunInfo& run_info, const AsStridedInfo& as_info, 
   run_info.SetBlockDim(as_info.used_core_cnt);
 }
 
-static std::string GetVectorData(const AsStridedInfo& as_info) {
-  std::string dims_info = "the dims info is:";
-  for (int64_t i = 0; i < static_cast<int64_t>(as_info.dim_except_last_paras.size()); i++) {
-    dims_info += " " + std::to_string(as_info.dim_except_last_paras[i]);
-  }
-
-  return dims_info;
-}
-
 static void PrintTilingParas(const std::string& op_type, const AsStridedInfo& as_info) {
   OP_LOGD(op_type, "tiling_mode=%ld", as_info.tiling_mode);
   OP_LOGD(op_type, "used_core_cnt=%ld", as_info.used_core_cnt);
@@ -696,14 +708,14 @@ static void PrintTilingParas(const std::string& op_type, const AsStridedInfo& as
   OP_LOGD(op_type, "out_lp_step=%ld", as_info.out_lp_step);
   OP_LOGD(op_type, "nfirst_cnt_per_row=%ld", as_info.nfirst_cnt_per_row);
   OP_LOGD(op_type, "dim_num=%ld", as_info.dim_num);
-  OP_LOGD(op_type, "%s", GetVectorData(as_info).c_str());
+  OP_LOGD(op_type, "the dimensions is:%s", GetVectorData(as_info.dim_except_last_paras).c_str());
 }
 
 bool AsStridedTiling(const std::string& op_type,
                      const ge::Operator& op_paras,
                      const std::vector<int64_t>& op_compile_info,
                      utils::OpRunInfo& run_info) {
-  OP_LOGI(op_type, "Tiling is running.");
+  OP_LOGI(op_type, "TIK Tiling is running.");
   auto operator_info = OpDescUtils::GetOpDescFromOperator(op_paras);
   if (operator_info == nullptr) {
     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get op info failed.");
