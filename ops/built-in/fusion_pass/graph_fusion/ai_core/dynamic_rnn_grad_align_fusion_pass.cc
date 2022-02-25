@@ -1659,8 +1659,7 @@ Status DynamicRNNGradAlignFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& m
           dynamicRNNGradNode->GetOpDesc()->GetOutputDesc(OUTPUT_INDEX["dx"]).GetShape().GetDim(2)) ||
       PatternFusionUtil::IsUnknownShape(
           dynamicRNNGradNode->GetOpDesc()->GetOutputDesc(OUTPUT_INDEX["dx"]).GetShape().GetDim(1))) {
-    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                                   "DynamicRNNGradAlignFusionPass cannot be applied for unknown shape.");
+    OP_LOGI(FUSED_OP_TYPE.c_str(), "DynamicRNNGradAlignFusionPass cannot be applied for unknown shape.");
     return NOT_CHANGED;
   }
 

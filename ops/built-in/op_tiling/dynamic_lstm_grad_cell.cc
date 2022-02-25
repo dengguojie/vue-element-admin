@@ -158,6 +158,13 @@ bool DynamicLSTMGradCellTiling(const std::string& op_type, const TeOpParas& op_p
   int64_t batchSize = op_paras.inputs[2].tensor[0].shape[2];
   tilingPara["hiddenSize"] = hiddenSize * BLOCK_SIZE;
   tilingPara["batchSize"] = batchSize * BLOCK_SIZE;
+  if (op_paras.inputs[2].tensor[0].format == "ND") {
+    hiddenSize = op_paras.inputs[2].tensor[0].shape[2];
+    batchSize = op_paras.inputs[2].tensor[0].shape[1];
+    tilingPara["hiddenSize"] = hiddenSize;
+    tilingPara["batchSize"] = batchSize;
+  }
+
   tilingPara["useCoreNum"] = hiddenSize * batchSize >= deviceCoreNum ? deviceCoreNum : hiddenSize * batchSize;
   tilingPara["fuseSize"] = shapeSize;
   std::string cDType = op_paras.inputs[1].tensor[0].dtype;

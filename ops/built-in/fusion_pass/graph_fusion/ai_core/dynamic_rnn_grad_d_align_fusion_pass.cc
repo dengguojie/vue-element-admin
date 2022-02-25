@@ -1769,12 +1769,22 @@ Status DynamicRNNGradDAlignFusionPass::DynamicAddDbReduceSumNode(ge::NodePtr dyn
       return FAILED);
   newNodes.push_back(reduceSumNode);
 
+  // add transdata node
+  bool failStatus = false;
+  ge::NodePtr transdataDbNode = AddTransdataNodeForDb(dynamicRNNGradNode, graph, newNodes, failStatus);
+  FUSION_PASS_CHECK(
+      failStatus,
+      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "AddTransdataNodeForDw:check failed, fusion failed."),
+      return FAILED);
+
   // Edge
   ge::GraphUtils::AddEdge(while_node->GetOutDataAnchor(F_INDEX), reduceSumNode->GetInDataAnchor(X_INDEX));
+  ge::GraphUtils::AddEdge(reduceSumNode->GetOutDataAnchor(X_INDEX), transdataDbNode->GetInDataAnchor(X_INDEX));
+
   if (dynamicRNNGradNode->GetOutDataAnchor(W_INDEX)->GetPeerInDataAnchors().size() > X_INDEX) {
     for (InDataAnchorPtr inAnchorPtr : dynamicRNNGradNode->GetOutDataAnchor(W_INDEX)->GetPeerInDataAnchors()) {
       inAnchorPtr->UnlinkAll();
-      ge::GraphUtils::AddEdge(reduceSumNode->GetOutDataAnchor(X_INDEX), inAnchorPtr);
+      ge::GraphUtils::AddEdge(transdataDbNode->GetOutDataAnchor(X_INDEX), inAnchorPtr);
     }
   }
 
@@ -1842,14 +1852,21 @@ Status DynamicRNNGradDAlignFusionPass::DynamicAddDwReduceSumNode(ge::NodePtr dyn
       VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "AddTransposeNode:check failed, fusion failed."),
       return FAILED);
 
+  ge::NodePtr transdataDwNode = AddTransdataNodeForDw(dynamicRNNGradNode, graph, newNodes, failStatus);
+  FUSION_PASS_CHECK(
+      failStatus,
+      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "AddTransdataNodeForDw:check failed, fusion failed."),
+      return FAILED);
+
   // Edge
   ge::GraphUtils::AddEdge(matmulNode->GetOutDataAnchor(X_INDEX), reduceSumNode->GetInDataAnchor(X_INDEX));
   ge::GraphUtils::AddEdge(reduceSumNode->GetOutDataAnchor(X_INDEX), transposeNode->GetInDataAnchor(X_INDEX));
+  ge::GraphUtils::AddEdge(transposeNode->GetOutDataAnchor(X_INDEX), transdataDwNode->GetInDataAnchor(X_INDEX));
 
   if (dynamicRNNGradNode->GetOutDataAnchor(X_INDEX)->GetPeerInDataAnchors().size() > X_INDEX) {
     for (InDataAnchorPtr inAnchorPtr : dynamicRNNGradNode->GetOutDataAnchor(X_INDEX)->GetPeerInDataAnchors()) {
       inAnchorPtr->UnlinkAll();
-      ge::GraphUtils::AddEdge(transposeNode->GetOutDataAnchor(X_INDEX), inAnchorPtr);
+      ge::GraphUtils::AddEdge(transdataDwNode->GetOutDataAnchor(X_INDEX), inAnchorPtr);
     }
   }
   return SUCCESS;
@@ -1901,29 +1918,106 @@ ge::NodePtr DynamicRNNGradDAlignFusionPass::AddTransposeNode(ge::NodePtr dynamic
   return transposeNode;
 }
 
+ge::NodePtr DynamicRNNGradDAlignFusionPass::AddTransdataNodeForDw(ge::NodePtr dynamicRNNGradNode,
+                                                                  ge::ComputeGraph &graph,
+                                                                  vector<ge::NodePtr> &newNodes, bool &failStatus) {
+  // create transdata desc
+  ge::OpDescPtr transdataDesc = nullptr;
+  FUSION_PASS_MAKE_SHARED((transdataDesc = std::make_shared<ge::OpDesc>(
+      dynamicRNNGradNode->GetName() + "LSTMWeightGrad/Dw/transdataDw", "TransDataRNN")),
+                          failStatus = true;
+                              return nullptr);
+  // input for transdata
+  vector<int64_t> trans_zn_rnn_dims{input_nz_size + hidden_nz_size, hidden_nz_size * 4, 16, 16};
+  vector<int64_t> trans_ori_nd_dims{input_size + hidden_size, hidden_size * 4};
+  GeTensorDesc transDwInDesc =
+      GeTensorDesc(GeShape(trans_zn_rnn_dims), FORMAT_FRACTAL_ZN_RNN, DT_FLOAT16);
+  transDwInDesc.SetOriginShape(GeShape(trans_ori_nd_dims));
+  transDwInDesc.SetOriginFormat(FORMAT_ND);
+  transdataDesc->AddInputDesc("trans_src", transDwInDesc);
+  // output for tarnsdata
+  GeTensorDesc transdwOutDesc =
+      GeTensorDesc(GeShape(trans_ori_nd_dims), FORMAT_ND, DT_FLOAT16);
+  transdwOutDesc.SetOriginShape(GeShape(trans_ori_nd_dims));
+  transdwOutDesc.SetOriginFormat(FORMAT_ND);
+  transdataDesc->AddOutputDesc("trans_dsc", transdwOutDesc);
+  // attr
+  AttrUtils::SetStr(transdataDesc, "src_format", "FRACTAL_ZN_RNN");
+  AttrUtils::SetStr(transdataDesc, "dst_format", "ND");
+  AttrUtils::SetInt(transdataDesc, "input_size", input_size);
+  AttrUtils::SetInt(transdataDesc, "hidden_size", hidden_size);
+
+  // create transpose node
+  ge::NodePtr transdataNode = graph.AddNode(transdataDesc);
+  FUSION_PASS_CHECK(transdataNode == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode is null, fusion failed."),
+                    failStatus = true);
+  newNodes.push_back(transdataNode);
+  return transdataNode;
+}
+
+ge::NodePtr DynamicRNNGradDAlignFusionPass::AddTransdataNodeForDb(ge::NodePtr dynamicRNNGradNode,
+                                                                  ge::ComputeGraph &graph,
+                                                                  vector<ge::NodePtr> &newNodes, bool &failStatus) {
+  // create transdata desc
+  ge::OpDescPtr transdataDesc = nullptr;
+  FUSION_PASS_MAKE_SHARED((transdataDesc = std::make_shared<ge::OpDesc>(
+      dynamicRNNGradNode->GetName() + "LSTMWeightGrad/Db/transdataDb", "TransDataRNN")),
+                          failStatus = true;
+                              return nullptr);
+  // input for transdata
+  vector<int64_t> trans_dims{hidden_nz_size * 4 * 16};
+  vector<int64_t> trans_origin_dims{hidden_size * 4};
+  GeTensorDesc transDbInputDesc =
+      GeTensorDesc(GeShape(trans_dims), FORMAT_ND_RNN_BIAS, DT_FLOAT16);
+  transDbInputDesc.SetOriginShape(GeShape(trans_origin_dims));
+  transDbInputDesc.SetOriginFormat(FORMAT_ND);
+  transdataDesc->AddInputDesc("trans_src", transDbInputDesc);
+  // output for tarnsdata
+  GeTensorDesc transDboutputDesc =
+      GeTensorDesc(GeShape(trans_origin_dims), FORMAT_ND, DT_FLOAT16);
+  transDboutputDesc.SetOriginShape(GeShape(trans_origin_dims));
+  transDboutputDesc.SetOriginFormat(FORMAT_ND);
+  transdataDesc->AddOutputDesc("trans_dsc", transDboutputDesc);
+
+  // attr
+  AttrUtils::SetStr(transdataDesc, "src_format", "ND_RNN_BIAS");
+  AttrUtils::SetStr(transdataDesc, "dst_format", "ND");
+  AttrUtils::SetInt(transdataDesc, "input_size", input_size);
+  AttrUtils::SetInt(transdataDesc, "hidden_size", hidden_size);
+
+  // create transpose node
+  ge::NodePtr transdataNode = graph.AddNode(transdataDesc);
+  FUSION_PASS_CHECK(transdataNode == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode is null, fusion failed."),
+                    failStatus = true);
+  newNodes.push_back(transdataNode);
+  return transdataNode;
+}
+
 ge::OpDescPtr DynamicRNNGradDAlignFusionPass::AddCastNode(std::string castNodeName, ge::NodePtr dynamicRNNGradNode,
                                                           bool &failStatus) {
-  // create cast desc
-  ge::OpDescPtr castDesc = nullptr;
-  FUSION_PASS_MAKE_SHARED((castDesc = std::make_shared<ge::OpDesc>(castNodeName, "Cast")),
-                          failStatus = true;return nullptr);
+// create cast desc
+ge::OpDescPtr castDesc = nullptr;
+FUSION_PASS_MAKE_SHARED((castDesc = std::make_shared<ge::OpDesc>(castNodeName, "Cast")),
+                        failStatus = true;return nullptr);
 
-  // input
-  vector<int64_t> cast_input_dims{input_size + hidden_size, hidden_size * 4};
-  ge::GeTensorDesc castInputDesc =
-      ge::GeTensorDesc(GeShape(cast_input_dims), ge::FORMAT_ND, ge::DT_FLOAT);
-  castInputDesc.SetOriginShape(GeShape(cast_input_dims));
-  castInputDesc.SetOriginFormat(ge::FORMAT_ND);
-  castDesc->AddInputDesc("x", castInputDesc);
+// input
+vector<int64_t> cast_input_dims{input_size + hidden_size, hidden_size * 4};
+ge::GeTensorDesc castInputDesc =
+    ge::GeTensorDesc(GeShape(cast_input_dims), ge::FORMAT_ND, ge::DT_FLOAT);
+castInputDesc.SetOriginShape(GeShape(cast_input_dims));
+castInputDesc.SetOriginFormat(ge::FORMAT_ND);
+castDesc->AddInputDesc("x", castInputDesc);
 
-  // output
-  ge::GeTensorDesc transOutDesc =
-      ge::GeTensorDesc(GeShape(cast_input_dims), ge::FORMAT_ND, ge::DT_FLOAT16);
-  transOutDesc.SetOriginShape(GeShape(cast_input_dims));
-  transOutDesc.SetOriginFormat(ge::FORMAT_ND);
-  castDesc->AddOutputDesc("y", transOutDesc);
+// output
+ge::GeTensorDesc transOutDesc =
+    ge::GeTensorDesc(GeShape(cast_input_dims), ge::FORMAT_ND, ge::DT_FLOAT16);
+transOutDesc.SetOriginShape(GeShape(cast_input_dims));
+transOutDesc.SetOriginFormat(ge::FORMAT_ND);
+castDesc->AddOutputDesc("y", transOutDesc);
 
-  return castDesc;
+return castDesc;
 }
 
 ge::OpDescPtr DynamicRNNGradDAlignFusionPass::AddTransposeToRNNNode(std::string transposeNodeName,

@@ -152,13 +152,16 @@ namespace fe {
 
     ge::NodePtr AddTransposeNode(ge::NodePtr dynamicRNNGradNode, ge::ComputeGraph &graph, vector<ge::NodePtr> &newNodes,
                                  bool &failStatus);
-
     ge::NodePtr AddDxPadNode(ge::NodePtr dynamicRNNGradNode, ge::ComputeGraph &graph, vector<ge::NodePtr> &newNodes,
                              bool &failStatus);
     ge::OpDescPtr AddCastNode(std::string castNodeName, ge::NodePtr dynamicRNNGradNode, bool& failStatus);
+
     ge::OpDescPtr
     AddTransposeToRNNNode(std::string transposeNodeName, ge::NodePtr dynamicRNNGradNode, bool &failStatus);
-
+    ge::NodePtr AddTransdataNodeForDw(ge::NodePtr dynamicRNNGradNode, ge::ComputeGraph &graph, vector<ge::NodePtr> &newNodes,
+                                 bool &failStatus);
+    ge::NodePtr AddTransdataNodeForDb(ge::NodePtr dynamicRNNGradNode, ge::ComputeGraph &graph, vector<ge::NodePtr> &newNodes,
+                                 bool &failStatus);
     const string FUSED_OP_TYPE = "DynamicRNNGradDAlignFusionPass";
 
     int64_t t_size = -1;
