@@ -15,6 +15,7 @@
 """
 select
 """
+from impl.util.util_common import is_unknown_rank_input
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import para_check
@@ -24,7 +25,6 @@ from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import register_operator
-from impl.util.platform_adapter import tbe_context
 
 
 # 'pylint: disable=too-many-locals,invalid-name,unused-argument,too-many-statements
@@ -87,6 +87,49 @@ def select_compute(condition, x1, x2, y, kernel_name="select"):
     return res
 
 
+def x_target_compute(x_target, x2):
+    """
+    x_target_compute
+    """
+    x_target["shape"] = list(x_target["shape"])
+    x_target["range"] = list(x_target["range"])
+    for i, (_shape, _range) in enumerate(zip(x2["shape"], x2["range"])):
+        x_target["shape"][i] = _shape if x_target["shape"][i] == -1 else x_target["shape"][i]
+        _range_second = x_target["range"][i][1] if x_target["range"][i][1] is not None else _range[1]
+        if x_target["range"][i][1] is not None and _range[1] is not None:
+            _range_second = min(x_target["range"][i][1], _range[1])
+
+        x_target["range"][i] = (max(x_target["range"][i][0], _range[0]), _range_second)
+    x_target["shape"] = tuple(x_target["shape"])
+    x_target["range"] = tuple(x_target["range"])
+    return x_target
+
+
+def condition_compute(shape_x1, con_shape, condition, kernel_name):
+    """
+    condition_compute
+    """
+
+    x_len = len(shape_x1)
+    con_len = len(con_shape)
+
+    if con_len == 1 and x_len != 1:
+        if -1 != con_shape[0] != shape_x1[0] != -1 and con_shape[0] != 1:
+            error_detail = "Shape of tensor condition and x1 dim[0] must be equal!"
+            error_manager_vector.raise_err_two_input_shape_invalid(kernel_name, "condition", "x1", error_detail)
+        fill_lens = x_len - con_len
+        fill_shape = [1] * fill_lens
+        condition["ori_shape"] += tuple(fill_shape)
+        condition["range"] += tuple([(1, 1)] * fill_lens)
+        condition["shape"] += tuple(fill_shape)
+
+    else:
+        if con_len != x_len:
+            error_detail = "dims of tensor condition and x1 must be equal!"
+            error_manager_vector.raise_err_two_input_shape_invalid(kernel_name, "condition", "x1", error_detail)
+    return condition
+
+
 @register_operator("Select")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
@@ -116,9 +159,8 @@ def select(condition, x1, x2, y, kernel_name="select"):
     dtype_x1 = x1.get("dtype").lower()
     dtype_x2 = x2.get("dtype").lower()
     con_shape = condition.get("shape")
-    bool_dtype = condition.get("dtype").lower()
-    if bool_dtype == "bool":
-        bool_dtype = "int8"
+    dtype = condition.get("dtype").lower()
+    bool_dtype = "int8" if dtype == "bool" else dtype
 
     check_list = ("float16", "float32", "int32", "int8", "uint8")
     para_check.check_dtype(dtype_x1, check_list, param_name="x1")
@@ -129,38 +171,12 @@ def select(condition, x1, x2, y, kernel_name="select"):
         error_detail = "Dtype of tensor x1 and x2 must be equal!"
         error_manager_vector.raise_err_two_input_dtype_invalid(kernel_name, "x1", "x2", error_detail)
 
-    x_len = len(shape_x1)
-    con_shape = list(con_shape)
-    fill_shape = []
-    if len(con_shape) == 1 and x_len != 1:
-        if -1 != con_shape[0] != shape_x1[0] != -1 and con_shape[0] != 1:
-            error_detail = "Shape of tensor condition and x1 dim[0] must be equal!"
-            error_manager_vector.raise_err_two_input_shape_invalid(kernel_name, "condition", "x1", error_detail)
-        fill_lens = x_len - len(con_shape)
-        fill_shape = [1] * fill_lens
-        condition["ori_shape"] += tuple(fill_shape)
-        condition["range"] += tuple([(1, 1)] * fill_lens)
-        condition["shape"] += tuple(fill_shape)
-
+    x_target = x1.copy() if is_unknown_rank_input(x2) else x2.copy()
+    if is_unknown_rank_input([x_target, condition]):
+        x_target, condition = [x_target, x_target] if is_unknown_rank_input(x_target) else [condition, condition]
     else:
-        if len(con_shape) != len(shape_x1):
-            error_detail = "dims of tensor condition and x1 must be equal!"
-            error_manager_vector.raise_err_two_input_shape_invalid(kernel_name, "condition", "x1", error_detail)
-
-    tbe_context.get_context().add_compile_info("boardcast_condition_fill", fill_shape)
-
-    x_target = x1
-    x_target["shape"] = list(x_target["shape"])
-    x_target["range"] = list(x_target["range"])
-    for i, (_shape, _range) in enumerate(zip(x2["shape"], x2["range"])):
-        x_target["shape"][i] = _shape if x_target["shape"][i] == -1 else x_target["shape"][i]
-        _range_second = x_target["range"][i][1] if x_target["range"][i][1] is not None else _range[1]
-        if x_target["range"][i][1] is not None and _range[1] is not None:
-            _range_second = min(x_target["range"][i][1], _range[1])
-
-        x_target["range"][i] = (max(x_target["range"][i][0], _range[0]), _range_second)
-    x_target["shape"] = tuple(x_target["shape"])
-    x_target["range"] = tuple(x_target["range"])
+        x_target = x_target_compute(x1, x2)
+        condition = condition_compute(shape_x1, con_shape, condition, kernel_name)
 
     ins = classify([condition, x_target], OpPatternMode.ELEWISE_WITH_BROADCAST)
     schedules, tensors = [], []
