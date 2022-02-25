@@ -160,6 +160,40 @@ Status BNupdateReluV2Conv2DBNreducePass::Fusion(ge::ComputeGraph& graph, Mapping
 }
 
 /*!
+  * @brief Check bnupdate node output single referred
+  */
+bool BNupdateReluV2Conv2DBNreducePass::CheckBnupdateNodeOutSingleReferred(
+    const std::vector<ge::NodePtr>& node_list,
+    const int idx,
+    const std::vector<size_t>& ir_inputs,
+    const std::vector<size_t>& expect_ref)
+{
+    for (size_t i = 0; i < node_list.size(); ++i) {
+        auto node_desc = node_list[i]->GetOpDesc();
+        FUSION_PASS_CHECK(node_desc == nullptr, OP_LOGD(fused_op_type_.c_str(), "get op desc failed."),
+                          return false);
+        FUSION_PASS_CHECK(ir_inputs[i] != node_desc->GetAllInputNames().size(),
+                          OP_LOGD(fused_op_type_.c_str(), "the node %s inputs number is not %zu.",
+                                  node_list[i]->GetName().c_str(), ir_inputs[i]),
+                          return false);
+        auto out_anchor = node_list[i]->GetOutDataAnchor(idx);
+        FUSION_PASS_CHECK(out_anchor == nullptr,
+                          OP_LOGD(fused_op_type_.c_str(), "get %s output data anchor %d failed.",
+                                  node_list[i]->GetName().c_str(), idx),
+                          return false);
+        size_t real_num = out_anchor->GetPeerInDataNodesSize();
+        if (real_num > 0 && expect_ref[i] > 1) {
+            continue;
+        }
+        FUSION_PASS_CHECK(real_num != expect_ref[i],
+                          OP_LOGD(fused_op_type_.c_str(), "expect %s output %zu referred, not %zu.",
+                                  node_list[i]->GetName().c_str(), expect_ref[i], real_num),
+                          return false);
+    }
+    return true;
+}
+
+/*!
   * @brief Check the output count and shape params.
   *
   *  x sum square_sum scale offset mean variance
@@ -189,28 +223,7 @@ bool BNupdateReluV2Conv2DBNreducePass::AnalyzeLayers(const std::vector<ge::NodeP
     int idx = 0;
     std::vector<size_t> ir_inputs = {7, 1, 4, 1};
     std::vector<size_t> expect_ref = {1, 2, 2, 1};
-    for (size_t i = 0; i < node_list.size(); ++i) {
-        auto node_desc = node_list[i]->GetOpDesc();
-        FUSION_PASS_CHECK(node_desc == nullptr, OP_LOGD(fused_op_type_.c_str(), "get op desc failed."),
-                          return false);
-        FUSION_PASS_CHECK(ir_inputs[i] != node_desc->GetAllInputNames().size(),
-                          OP_LOGD(fused_op_type_.c_str(), "the node %s inputs number is not %zu.",
-                                  node_list[i]->GetName().c_str(), ir_inputs[i]),
-                          return false);
-        auto out_anchor = node_list[i]->GetOutDataAnchor(idx);
-        FUSION_PASS_CHECK(out_anchor == nullptr,
-                          OP_LOGD(fused_op_type_.c_str(), "get %s output data anchor %d failed.",
-                                  node_list[i]->GetName().c_str(), idx),
-                          return false);
-        size_t real_num = out_anchor->GetPeerInDataNodesSize();
-        if (real_num > 0 && expect_ref[i] > 1) {
-            continue;
-        }
-        FUSION_PASS_CHECK(real_num != expect_ref[i],
-                          OP_LOGD(fused_op_type_.c_str(), "expect %s output %zu referred, not %zu.",
-                                  node_list[i]->GetName().c_str(), expect_ref[i], real_num),
-                          return false);
-    }
+    CheckBnupdateNodeOutSingleReferred(node_list, idx, ir_inputs, expect_ref);
     // gather tensor info
     auto conv_desc = node_list[2]->GetOpDesc();
     std::vector<int64_t> params;
@@ -262,6 +275,29 @@ bool BNupdateReluV2Conv2DBNreducePass::AnalyzeLayers(const std::vector<ge::NodeP
 }
 
 /*!
+  * @brief Replace fused desc names.
+  */
+bool BNupdateReluV2Conv2DBNreducePass::ReplaceFusedDescName(
+    const std::vector<std::string>& ori_names,
+    std::map<std::string, std::vector<std::string>>& ori_to_new,
+    const string& name_attr,
+    std::map<std::string, uint32_t>& new_name)
+{
+    for (size_t i = 0; i < ori_names.size(); ++i) {
+        std::string name = ori_names[i];
+        auto it = ori_to_new.find(name);
+        if (it != ori_to_new.end()) {
+            FUSION_PASS_CHECK((it->second).empty(), OP_LOGD(fused_op_type_.c_str(),
+                "replace %s name [%s] failed.", name_attr.c_str(), name.c_str()), return false);
+            name = (it->second)[0];
+            (it->second).erase((it->second).begin());
+        }
+        new_name.insert(std::pair<std::string, uint32_t>(name, static_cast<uint32_t>(i)));
+    }
+    return true;
+}
+
+/*!
   * @brief Simply update fused desc in/output name and attributes.
   */
 bool BNupdateReluV2Conv2DBNreducePass::UpdateDesc(const std::vector<ge::NodePtr> &node_list, ge::OpDescPtr fused_desc,
@@ -272,39 +308,16 @@ bool BNupdateReluV2Conv2DBNreducePass::UpdateDesc(const std::vector<ge::NodePtr>
     std::map<std::string, std::vector<std::string>> ori_to_new = {
         {"mean", {"moving_mean"}}, {"variance", {"moving_variance"}}};
     std::map<std::string, uint32_t> new_name;
-    for (size_t i = 0; i < fused_inputs.size(); ++i) {
-        std::string name = fused_inputs[i];
-        auto it = ori_to_new.find(name);
-        if (it != ori_to_new.end()) {
-            FUSION_PASS_CHECK((it->second).empty(),
-                              OP_LOGD(fused_op_type_.c_str(), "replace input name [%s] failed.", name.c_str()),
-                              return false);
-            name = (it->second)[0];
-            (it->second).erase((it->second).begin());
-        }
-        new_name.insert(std::pair<std::string, uint32_t>(name, static_cast<uint32_t>(i)));
-    }
+    ReplaceFusedDescName(fused_inputs, ori_to_new, "input", new_name);
     fused_desc->UpdateInputName(new_name);
     new_name.clear();
     ori_to_new = {
         {"y", {"reluv2_out", "conv2d_out"}}, {"sum", {"sum_out"}}, {"square_sum", {"square_sum_out"}},
         {"mean", {"moving_mean"}}, {"variance", {"moving_variance"}},
         {"batch_mean", {"mean"}}, {"batch_variance", {"variance"}}};
-    for (size_t i = 0; i < fused_outputs.size(); ++i) {
-        std::string name = fused_outputs[i];
-        auto it = ori_to_new.find(name);
-        if (it != ori_to_new.end()) {
-            FUSION_PASS_CHECK((it->second).empty(),
-                              OP_LOGD(fused_op_type_.c_str(), "replace output name [%s] failed.", name.c_str()),
-                              return false);
-            name = (it->second)[0];
-            (it->second).erase((it->second).begin());
-        }
-        new_name.insert(std::pair<std::string, uint32_t>(name, static_cast<uint32_t>(i)));
-    }
+    ReplaceFusedDescName(fused_outputs, ori_to_new, "output", new_name);
     fused_desc->UpdateOutputName(new_name);
     // <<< end: replace input and output name
-
     // >>> start: add op attribute
     std::vector<std::string> attr_list = {kAttrFactor, kAttrEpsilon};
     for (auto attr : attr_list) {
@@ -321,7 +334,7 @@ bool BNupdateReluV2Conv2DBNreducePass::UpdateDesc(const std::vector<ge::NodePtr>
         std::vector<int32_t> value;
         bool ret = ge::AttrUtils::GetListInt(node_list[2]->GetOpDesc(), attr, value);
         FUSION_PASS_CHECK(!ret, OP_LOGD(fused_op_type_.c_str(), "get attribute [%s] failed.", attr.c_str()),
-                                        return false);
+                          return false);
         ret = ge::AttrUtils::SetListInt(fused_desc, attr, value);
         FUSION_PASS_CHECK(!ret, OP_LOGD(fused_op_type_.c_str(), "set attribute [%s] failed.", attr.c_str()),
                           return false);
@@ -356,23 +369,19 @@ bool BNupdateReluV2Conv2DBNreducePass::AddFusedDesc(const std::vector<ge::NodePt
         for (auto name_idx : ori_inputs) {
             input_name[name_idx.second] = name_idx.first;
         }
-        // remove x input
         if (node->GetType() != kBNupdateType) {
-            input_name.erase(input_name.begin());
+            input_name.erase(input_name.begin()); // remove x input
         }
-        // remove offset_w input
         if (node->GetType() == kConv2DType) {
-            input_name.pop_back();
+            input_name.pop_back(); // remove offset_w input
         }
         for (auto name : input_name) {
             for (auto exist : fused_inputs) {
-                FUSION_PASS_CHECK((name != kCommInput && exist == name),
-                                  OP_LOGD(fused_op_type_.c_str(), "can't support input same name [%s].", exist.c_str()),
-                                  return false);
+                FUSION_PASS_CHECK((name != kCommInput && exist == name), OP_LOGD(fused_op_type_.c_str(),
+                    "can't support input same name [%s].", exist.c_str()), return false);
             }
-            FUSION_PASS_CHECK(fused_desc->AddInputDesc(node_desc->GetInputDesc(name)) != ge::GRAPH_SUCCESS,
-                              OP_LOGD(fused_op_type_.c_str(), "add input desc %s failed.", name.c_str()),
-                              return false);
+            FUSION_PASS_CHECK(fused_desc->AddInputDesc(node_desc->GetInputDesc(name)) != ge::GRAPH_SUCCESS, OP_LOGD(
+                fused_op_type_.c_str(), "add input desc %s failed.", name.c_str()), return false);
         }
         fused_inputs.insert(fused_inputs.end(), input_name.begin(), input_name.end());
         // <<< end: process orignal input name
@@ -383,15 +392,13 @@ bool BNupdateReluV2Conv2DBNreducePass::AddFusedDesc(const std::vector<ge::NodePt
         for (auto name_idx : ori_outputs) {
             output_name[name_idx.second] = name_idx.first;
         }
-        // remove y output
         if (node->GetType() == kBNupdateType) {
-            output_name.erase(output_name.begin());
+            output_name.erase(output_name.begin()); // remove y output
         }
         for (auto name : output_name) {
             for (auto exist : fused_outputs) {
-                FUSION_PASS_CHECK((name != kCommoutput && exist == name),
-                    OP_LOGD(fused_op_type_.c_str(), "can't support output same name [%s].", exist.c_str()),
-                    return false);
+                FUSION_PASS_CHECK((name != kCommoutput && exist == name), OP_LOGD(fused_op_type_.c_str(),
+                    "can't support output same name [%s].", exist.c_str()), return false);
             }
             FUSION_PASS_CHECK(fused_desc->AddOutputDesc(node_desc->GetOutputDesc(name)) != ge::GRAPH_SUCCESS,
                               OP_LOGD(fused_op_type_.c_str(), "add output desc %s failed.", name.c_str()),
@@ -411,16 +418,107 @@ bool BNupdateReluV2Conv2DBNreducePass::AddFusedDesc(const std::vector<ge::NodePt
 }
 
 /*!
+  * @brief Link valid input data anchor
+  */
+bool BNupdateReluV2Conv2DBNreducePass::LinkValidInputDataAnchor(
+    ge::Node::Vistor<ge::InDataAnchorPtr>& input_anchors,
+    const std::map<std::string, size_t>& node_name,
+    ge::NodePtr& fused_node,
+    uint32_t& inputIdx)
+{
+    ge::graphStatus ret;
+    for (const auto &anchor : input_anchors) {
+        if (anchor == nullptr) {
+            continue;
+        }
+        auto peer_output = anchor->GetPeerOutAnchor();
+        if (peer_output == nullptr) {
+            continue;
+        }
+        auto src_node = peer_output->GetOwnerNode();
+        if (src_node == nullptr) {
+            continue;
+        }
+        // skip inner node connection
+        auto it = node_name.find(src_node->GetName());
+        if (it != node_name.end()) {
+            continue;
+        }
+        ret = peer_output->Unlink(anchor);
+        FUSION_PASS_CHECK(ret != ge::GRAPH_SUCCESS, OP_LOGD(fused_op_type_.c_str(), "unlink input anchor failed."),
+            return false);
+        auto new_dst = fused_node->GetInDataAnchor(inputIdx);
+        FUSION_PASS_CHECK(new_dst == nullptr,
+            OP_LOGD(fused_op_type_.c_str(), "get fused node input %u anchor failed.", inputIdx),
+            return false);
+        ret = peer_output->LinkTo(new_dst);
+        FUSION_PASS_CHECK(ret != ge::GRAPH_SUCCESS,
+            OP_LOGD(fused_op_type_.c_str(), "link fused node input %u anchor failed.", inputIdx),
+            return false);
+        inputIdx++;
+    }
+    return true;
+}
+
+/*!
+  * @brief Link valid output data anchor
+  */
+bool BNupdateReluV2Conv2DBNreducePass::LinkValidOutputDataAnchor(
+    ge::Node::Vistor<ge::OutDataAnchorPtr>& output_anchors,
+    const std::map<std::string, size_t>& node_name,
+    ge::NodePtr& fused_node,
+    uint32_t& outputIdx)
+{
+    ge::graphStatus ret;
+    for (const auto &anchor : output_anchors) {
+        if (anchor == nullptr) {
+            continue;
+        }
+        bool has_external = false;
+        auto peer_inputs = anchor->GetPeerInDataAnchors();
+        for (const auto &peer_input : peer_inputs) {
+            if (peer_input == nullptr) {
+                continue;
+            }
+            auto dst_node = peer_input->GetOwnerNode();
+            if (dst_node == nullptr) {
+                continue;
+            }
+            // skip inner node connection
+            auto it = node_name.find(dst_node->GetName());
+            if (it != node_name.end()) {
+                continue;
+            }
+            has_external = true;
+            ret = anchor->Unlink(peer_input);
+            FUSION_PASS_CHECK(ret != ge::GRAPH_SUCCESS,
+                OP_LOGD(fused_op_type_.c_str(), "unlink output anchor failed."),
+                return false);
+            auto new_src = fused_node->GetOutDataAnchor(outputIdx);
+            FUSION_PASS_CHECK(new_src == nullptr,
+                OP_LOGD(fused_op_type_.c_str(), "get fused node output %u anchor failed.", outputIdx),
+                return false);
+            ret = new_src->LinkTo(peer_input);
+            FUSION_PASS_CHECK(ret != ge::GRAPH_SUCCESS,
+                OP_LOGD(fused_op_type_.c_str(), "link fused node output %u anchor failed.", outputIdx),
+                return false);
+        }
+        // only external connection need to link to output
+        if (has_external) {
+            outputIdx++;
+        }
+    }
+    return true;
+}
+
+/*!
   * @brief Simply link fused node to graph.
   */
 bool BNupdateReluV2Conv2DBNreducePass::LinkNewNode(const std::vector<ge::NodePtr> &node_list, ge::NodePtr fused_node)
 {
-    uint32_t input_idx = 0;
-    // output valid anchor start from 2
-    uint32_t output_idx = 2;
-    ge::graphStatus ret;
-    // map for simply identify inner nodes
-    std::map<std::string, size_t> node_name;
+    uint32_t inputIdx = 0;
+    uint32_t outputIdx = 2; // output valid anchor start from 2
+    std::map<std::string, size_t> node_name; // map for simply identify inner nodes
     for (size_t i = 0; i < node_list.size(); ++i) {
         node_name.insert(std::pair<std::string, size_t>(node_list[i]->GetName(), i));
     }
@@ -428,78 +526,12 @@ bool BNupdateReluV2Conv2DBNreducePass::LinkNewNode(const std::vector<ge::NodePtr
         // >>> start: connect input
         auto input_anchors = node->GetAllInDataAnchors();
         // get vaild input data anchor
-        for (const auto &anchor : input_anchors) {
-            if (anchor == nullptr) {
-                continue;
-            }
-            auto peer_output = anchor->GetPeerOutAnchor();
-            if (peer_output == nullptr) {
-                continue;
-            }
-            auto src_node = peer_output->GetOwnerNode();
-            if (src_node == nullptr) {
-                continue;
-            }
-            // skip inner node connection
-            auto it = node_name.find(src_node->GetName());
-            if (it != node_name.end()) {
-                continue;
-            }
-            ret = peer_output->Unlink(anchor);
-            FUSION_PASS_CHECK(ret != ge::GRAPH_SUCCESS, OP_LOGD(fused_op_type_.c_str(), "unlink input anchor failed."),
-                              return false);
-            auto new_dst = fused_node->GetInDataAnchor(input_idx);
-            FUSION_PASS_CHECK(new_dst == nullptr,
-                              OP_LOGD(fused_op_type_.c_str(), "get fused node input %u anchor failed.", input_idx),
-                              return false);
-            ret = peer_output->LinkTo(new_dst);
-            FUSION_PASS_CHECK(ret != ge::GRAPH_SUCCESS,
-                              OP_LOGD(fused_op_type_.c_str(), "link fused node input %u anchor failed.", input_idx),
-                              return false);
-            input_idx++;
-        }
+        LinkValidInputDataAnchor(input_anchors, node_name, fused_node, inputIdx);
         // <<< end: connect input
         // >>> start: connect output
         auto output_anchors = node->GetAllOutDataAnchors();
         // get vaild output data anchor
-        for (const auto &anchor : output_anchors) {
-            if (anchor == nullptr) {
-                continue;
-            }
-            bool has_external = false;
-            auto peer_inputs = anchor->GetPeerInDataAnchors();
-            for (const auto &peer_input : peer_inputs) {
-                if (peer_input == nullptr) {
-                    continue;
-                }
-                auto dst_node = peer_input->GetOwnerNode();
-                if (dst_node == nullptr) {
-                    continue;
-                }
-                // skip inner node connection
-                auto it = node_name.find(dst_node->GetName());
-                if (it != node_name.end()) {
-                    continue;
-                }
-                has_external = true;
-                ret = anchor->Unlink(peer_input);
-                FUSION_PASS_CHECK(ret != ge::GRAPH_SUCCESS,
-                                  OP_LOGD(fused_op_type_.c_str(), "unlink output anchor failed."),
-                                  return false);
-                auto new_src = fused_node->GetOutDataAnchor(output_idx);
-                FUSION_PASS_CHECK(new_src == nullptr,
-                    OP_LOGD(fused_op_type_.c_str(), "get fused node output %u anchor failed.", output_idx),
-                    return false);
-                ret = new_src->LinkTo(peer_input);
-                FUSION_PASS_CHECK(ret != ge::GRAPH_SUCCESS,
-                    OP_LOGD(fused_op_type_.c_str(), "link fused node output %u anchor failed.", output_idx),
-                    return false);
-            }
-            // only external connection need to link to output
-            if (has_external) {
-                output_idx++;
-            }
-        }
+        LinkValidOutputDataAnchor(output_anchors, node_name, fused_node, outputIdx);
         // <<< end: connect output
     }
     return true;
