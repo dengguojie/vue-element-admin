@@ -33,7 +33,6 @@ using domi::tensorflow::TensorProto;
 using google::protobuf::Message;
 
 namespace domi {
-
 Status ParseParamsAscendWeightQuant(const google::protobuf::Message* op_src, ge::Operator& op) {
   AutoMappingFn(op_src, op);
 
