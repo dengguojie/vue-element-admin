@@ -902,8 +902,8 @@ def _pooling2d_avg(fmap_img2col_ub, res_output_shape, window_h, window_w, poolin
     pooling_ub_5hd_shape = (batch_size, c1_size, oh_size*ow_size, c0_size)
     pooling_ub_5hd = tvm.compute(
         pooling_ub_5hd_shape,
-        lambda i, j, k, l:
-        pooling_out_ub_mul_factor[i, k // 16, j, k % 16, l] + 0,
+        lambda i, j, k, m:
+        pooling_out_ub_mul_factor[i, k // 16, j, k % 16, m] + 0,
         name="pooling_ub_5hd"
     )
 
@@ -954,7 +954,7 @@ def _pooling2d_gmp(tensor_in_ub, res_output_shape, window_h, window_w, pooling_p
 
     res = tvm.compute(
         res_output_shape_new,
-        lambda i, j, k, l: pooling_out_ub[i, j, k // 1, k % 1, l],
+        lambda i, j, k, m: pooling_out_ub[i, j, k // 1, k % 1, m],
         name="pooling2d_res",
         tag=_OP_TAG + 'gmp',
         attrs={'pooling_params': pooling_params,
@@ -1038,8 +1038,8 @@ def _pooling2d_gap(tensor_in_ub, res_output_shape, window_h, window_w, pooling_p
                                               is_auto_cast=False)
         res = tvm.compute(
             res_output_shape_new,
-            lambda i, j, k, l:
-            pooling_out_ub_mul_factor_f16[i, j, k // 1, k % 1, l],
+            lambda i, j, k, m:
+            pooling_out_ub_mul_factor_f16[i, j, k // 1, k % 1, m],
             name="res",
             tag=_OP_TAG + 'gap',
             attrs={'pooling_params': pooling_params,
@@ -1050,8 +1050,8 @@ def _pooling2d_gap(tensor_in_ub, res_output_shape, window_h, window_w, pooling_p
     else:
         res = tvm.compute(
             res_output_shape_new,
-            lambda i, j, k, l:
-            pooling_out_ub_mul_factor[i, j, k // 1, k % 1, l],
+            lambda i, j, k, m:
+            pooling_out_ub_mul_factor[i, j, k // 1, k % 1, m],
             name="pooling2d_res",
             tag=_OP_TAG + 'gap',
             attrs={'pooling_params': pooling_params,

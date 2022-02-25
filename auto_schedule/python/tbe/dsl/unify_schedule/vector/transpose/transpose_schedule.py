@@ -617,26 +617,26 @@ class TransposeSchedule(Schedule, ABC):
             src_split_index = self._ori_permute[self._low_ub_split_axis_index]
             consequent_src = src_order[src_split_index:]
             consequent_dst = dst_order[self._high_ub_split_axis_index:]
-            ub_src_order = [o for o in src_order if o in consequent_dst and o not in consequent_src]
+            ub_src_order = [i for i in src_order if i in consequent_dst and i not in consequent_src]
             ub_src_order.extend(consequent_src)
-            ub_dst_order = [o for o in dst_order if o in consequent_src and o not in consequent_dst]
+            ub_dst_order = [i for i in dst_order if i in consequent_src and i not in consequent_dst]
             ub_dst_order.extend(consequent_dst)
             src_shape = util.shape_to_list(self._out.op.input_tensors[0].shape)
             new_ub_src_order = []
-            for o in ub_src_order:
-                if src_split_index == o:
+            for i in ub_src_order:
+                if src_split_index == i:
                     if self._low_ub_factor != 1:
-                        new_ub_src_order.append(o)
-                elif src_shape[o] != 1:
-                    new_ub_src_order.append(o)
+                        new_ub_src_order.append(i)
+                elif src_shape[i] != 1:
+                    new_ub_src_order.append(i)
             dst_split_index = self._ori_permute[self._high_ub_split_axis_index]
             new_ub_dst_order = []
-            for o in ub_dst_order:
-                if dst_split_index == o:
+            for i in ub_dst_order:
+                if dst_split_index == i:
                     if self._high_ub_factor != 1:
-                        new_ub_dst_order.append(o)
-                elif src_shape[o] != 1:
-                    new_ub_dst_order.append(o)
+                        new_ub_dst_order.append(i)
+                elif src_shape[i] != 1:
+                    new_ub_dst_order.append(i)
             remove_low_factor_one = self._low_ub_factor == 1 and src_split_index != dst_split_index
             if remove_low_factor_one:
                 new_ub_dst_order.remove(src_split_index)
@@ -663,7 +663,7 @@ class TransposeSchedule(Schedule, ABC):
             else:
                 new_ub_src_order = src_order
                 new_ub_dst_order = dst_order
-            ub_permute = [new_ub_src_order.index(o) for o in new_ub_dst_order]
+            ub_permute = [new_ub_src_order.index(i) for i in new_ub_dst_order]
             if self._is_const_align or self.Util.is_all_read_align(self._tiling_strategy):
                 insn_name = "dma_copy"
                 self._emit_insn_map[source] = [source.op.axis[0], insn_name]

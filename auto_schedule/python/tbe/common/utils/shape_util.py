@@ -325,6 +325,7 @@ def _get_input_range_nchw(op_type, in_shape, in_format, in_range):
             err_man.raise_err_specific_user(op_type, "each dim of range must be tuple or list.")
     return [tuple(r) if r else r for r in in_range]
 
+
 def _produce_convout_shape(inputs: list):
     """
     produce another input shape for conv + add fusion
@@ -364,6 +365,7 @@ def _produce_convout_shape(inputs: list):
             in_shape[hw_dim] = ho_var*wo_var
         shape_out.append(in_shape)
     return shape_out
+
 
 def _cube_variable_shape(inputs: list):
     shape_out = []
