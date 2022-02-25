@@ -19,6 +19,7 @@ from te import tik
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import para_check
 
+
 # 'pylint: disable=too-few-public-methods,not-use-list-comprehension
 class Constant:
     """
@@ -29,6 +30,7 @@ class Constant:
     DIM_BASE_IDX = 3
     INT64_BYTE_SIZE = 8
     BLOCK_BYTE_SIZE = 32
+
 
 # 'pylint: disable=too-few-public-methods
 class UpdateTensorDesc:

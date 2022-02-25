@@ -305,10 +305,10 @@ def update_shape_base_other_format_dynamic(input_dict):
                 shape_c1_dim = -1
                 temp_range = [(1, None)]
                 if shape_h_dim > 0 and shape_w_dim > 0:
-                    upper = None if input_range[0][1] is None else \
-                            int(math.ceil(input_range[0][1] / (shape_h_dim * shape_w_dim)))
-                    lower = 1 if int(math.floor(input_range[0][0] / (shape_h_dim * shape_w_dim))) == 0 else \
-                            int(math.floor(input_range[0][0] / (shape_h_dim * shape_w_dim)))
+                    ceil_res = int(math.ceil(input_range[0][1] / (shape_h_dim * shape_w_dim)))
+                    upper = None if input_range[0][1] is None else ceil_res
+                    floor_res = int(math.floor(input_range[0][0] / (shape_h_dim * shape_w_dim)))
+                    lower = 1 if floor_res == 0 else floor_res
                     temp_range = [(lower, upper)]
             else:
                 shape_c1_dim = input_shape[0] // (shape_h_dim * shape_w_dim)
@@ -327,8 +327,8 @@ def update_shape_base_other_format_dynamic(input_dict):
                     temp_range = [(1, None)]
                     if shape_d_dim > 0:
                         upper = None if input_range[0][1] is None else int(math.ceil(input_range[0][1] / shape_d_dim))
-                        lower = 1 if int(math.floor(input_range[0][0] / shape_d_dim)) == 0 else \
-                                int(math.floor(input_range[0][0] / shape_d_dim))
+                        floor_res = int(math.floor(input_range[0][0] / shape_d_dim))
+                        lower = 1 if floor_res == 0 else floor_res
                         temp_range = [(lower, upper)]
                 else:
                     shape_c1_dim = new_shape[0] // shape_d_dim
