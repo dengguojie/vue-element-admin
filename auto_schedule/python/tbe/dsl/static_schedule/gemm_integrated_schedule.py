@@ -4772,7 +4772,7 @@ class GemmSchedule:
             out_insn_dict = {"no_overlap": 0}
         offset_res = 1 if self.status_controller.split_k_axis_by_tiling else 0
         self._emit_insn_func(real_res, 0, emit_insn_cmd, insn_dict=out_insn_dict, mode=1, offset=offset_res)
-        if self.format_out == "ND" and self.cache_tiling:
+        if self.format_out == "ND" and self.is_dynamic:
             axis_list = [self.sch[real_res].leaf_iter_vars[-2], self.sch[real_res].leaf_iter_vars[-1]]
             self._combine_cce_pragma(real_res, axis_list)
 

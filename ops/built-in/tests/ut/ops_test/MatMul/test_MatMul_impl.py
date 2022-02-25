@@ -20,8 +20,6 @@ from impl.leaky_relu import leaky_relu_compute
 from impl.mat_mul import check_supported
 from impl.confusion_transpose_d import confusion_transpose_d_compute
 from impl.trans_data import trans_data_compute
-from impl.ascend_dequant import ascend_dequant_compute
-from impl.ascend_requant import ascend_requant_compute
 from te.platform.cce_conf import te_set_version
 from impl.mat_mul import op_select_format
 from test_mock_case import *
