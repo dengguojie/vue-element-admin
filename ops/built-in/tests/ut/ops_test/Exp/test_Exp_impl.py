@@ -61,6 +61,17 @@ ut_case.add_precision_case("all", {"params": [{"shape": (1, 24, 1, 256), "dtype"
 
 # ============ auto gen ["Ascend910"] test cases end =================
 
+case1 = {"params": [{"shape": (1, 3), "dtype": "float16", "format": "ND",
+                     "ori_shape": (1, 3), "ori_format": "ND"},
+                    {"shape": (1, 3), "dtype": "float16", "format": "ND",
+                     "ori_shape": (1, 3), "ori_format": "ND"}],
+         "case_name": "exp_1",
+         "expect": "success",
+         "format_expect": [],
+         "support_expect": True}
+
+ut_case.add_case(["Ascend910A"], case1)
+
 if __name__ == '__main__':
     user_home_path = os.path.expanduser("~")
     simulator_lib_path = os.path.join(user_home_path, ".mindstudio/huawei/adk/1.75.T15.0.B150/toolkit/tools/simulator")
