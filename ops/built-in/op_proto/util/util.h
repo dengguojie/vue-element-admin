@@ -56,15 +56,17 @@
     re_expr;                                           \
   }
 
-#define DYNAMIC_SHAPE_NOT_SUPPORTED(op)                                                                      \
-  auto static_op_desc = OpDescUtils::GetOpDescFromOperator(op);                                              \
-  for (size_t i = 0; i < static_op_desc->GetAllInputsSize(); ++i) {                                          \
-    auto input_i_desc = static_op_desc->MutableInputDesc(i);                                                 \
-    const GeShape& input_i_shape = input_i_desc->MutableShape();                                             \
-    CHECK(input_i_shape.IsUnknownShape() || input_i_shape.IsUnknownDimNum(),                                 \
-          VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), OtherErrMsg("Not Support dynamic shape now")), \
-          return GRAPH_FAILED);                                                                              \
-  }
+#define DYNAMIC_SHAPE_NOT_SUPPORTED(op)                                        \
+  do {                                                                         \
+    auto static_op_desc = OpDescUtils::GetOpDescFromOperator(op);              \
+    for (size_t i = 0; i < static_op_desc->GetAllInputsSize(); ++i) {          \
+      auto input_i_desc = static_op_desc->MutableInputDesc(i);                 \
+      const GeShape& input_i_shape = input_i_desc->MutableShape();             \
+      if (input_i_shape.IsUnknownShape() || input_i_shape.IsUnknownDimNum()) { \
+        OP_LOGW(TbeGetName(op), OtherErrMsg("Not Support dynamic shape now")); \
+      }                                                                        \
+    }                                                                          \
+  } while (0)
 
 namespace ge {
 

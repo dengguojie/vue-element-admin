@@ -137,5 +137,5 @@ TEST_F(ExtractImagePatchesProtoTest, extract_image_patches_verify_and_infer_dyna
   EXPECT_EQ(verify_res, ge::GRAPH_SUCCESS);
 
   auto infer_res = op.InferShapeAndType();
-  EXPECT_EQ(infer_res, ge::GRAPH_FAILED);
+  EXPECT_EQ(infer_res, ge::GRAPH_SUCCESS);
 }

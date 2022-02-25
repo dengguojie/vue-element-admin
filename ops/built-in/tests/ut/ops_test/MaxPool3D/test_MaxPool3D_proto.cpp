@@ -626,5 +626,5 @@ TEST_F(MaxPool3DTest, InfershapeMaxPool3D_dynamic) {
   auto status = op.VerifyAllAttr(true);
   EXPECT_EQ(status, ge::GRAPH_SUCCESS);
   auto ret = op.InferShapeAndType();
-  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
 }

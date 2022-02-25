@@ -58,5 +58,5 @@ TEST_F(SPARSE_TO_DENSE_UT, InferShape_dynamic) {
   op.UpdateInputDesc("default_value", create_desc({}, ge::DT_INT32));
 
   auto ret = op.InferShapeAndType();
-  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
 }
