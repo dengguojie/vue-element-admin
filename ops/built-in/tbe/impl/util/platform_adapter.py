@@ -36,6 +36,7 @@ from te.platform.fusion_manager import fusion_manager as tbe_fusion_manager
 import te.platform.cce_build as tbe_cce_build
 from te.lang.cce import tuple_sum as te_tuple_sum
 from impl.util import util_common
+from impl.util.norm_pattern_adapter import NormPattern
 
 register_operator = tbe_register.register_operator
 
@@ -71,7 +72,7 @@ class OpPatternMode:
     ELEWISE_WITH_BROADCAST = "broadcast"
     REDUCE = "reduce"
     TRANSDATA = "transdata"
-    NORM = "norm"
+    NORM = NormPattern.PATTERN_NAME
 
 
 # 'pylint: disable=too-few-public-methods, too-many-instance-attributes

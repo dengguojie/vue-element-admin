@@ -1,0 +1,37 @@
+[
+  {
+    "op": "SoftmaxV2",
+    "calc_expect_func_file": "test_softmax_v2_golden.py:calc_expect_func",
+    "input_desc": [
+      {
+        "shape": [-2],
+        "ori_shape": [-2],
+        "format": "ND",
+        "typical_shape": [32, 2, 4, 16],
+        "ori_format": "ND",
+        "name": "x",
+        "type": "float32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [32, 2, 4, 16],
+        "format": "ND",
+        "ori_shape": [32, 2, 4, 16],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float32"
+      }
+    ],
+    "attr": [
+      {
+        "name": "axes",
+        "type": "list_int",
+        "value": [
+          1
+        ]
+      }
+    ],
+    "case_name": "test_SoftmaxV2_003_unkown_rank"
+  }
+]

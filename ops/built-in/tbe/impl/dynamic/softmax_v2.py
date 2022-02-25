@@ -22,6 +22,10 @@ from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import tbe_platform
+from impl.util.platform_adapter import operation
+from impl.util.platform_adapter import OpPatternMode
+from impl.util.norm_pattern_adapter import NormPattern
+from impl.util import util_common
 from impl.util import util_frac_z as fz
 from impl.util import util_select_op_base
 
@@ -46,11 +50,13 @@ def op_select_format(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
         x's Tensor(shape=(16, 16, 16), "ND")
         y's Tensor(shape=(16, 16, 16), "ND")
     """
-    input0 = util_select_op_base.gen_param(classify="input0", name="x",
+    input0 = util_select_op_base.gen_param(classify="input0",
+                                           name="x",
                                            datatype="float16,float32",
                                            format="ND,ND",
                                            unknownshape_format="ND,ND")
-    output0 = util_select_op_base.gen_param(classify="output0", name="y",
+    output0 = util_select_op_base.gen_param(classify="output0",
+                                            name="y",
                                             datatype="float16,float32",
                                             format="ND,ND",
                                             unknownshape_format="ND,ND")
@@ -138,11 +144,9 @@ def softmax_v2_compute(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
                                                             i[list_axis[1]] > pad_c - 1), -max_const)
 
     if dtype == "float32" and vcmax_flag and \
-        not tbe_platform.api_check_support(
-            "te.lang.cce.reduce_max", "float32"):
+        not tbe_platform.api_check_support("te.lang.cce.reduce_max", "float32"):
         data_max_input = tbe.cast_to(input_x, "float16")
-        data_max_output = tbe.reduce_max(data_max_input,
-                                         axis=list_axis, keepdims=True)
+        data_max_output = tbe.reduce_max(data_max_input, axis=list_axis, keepdims=True)
         data_max = tbe.cast_to(data_max_output, "float32")
     else:
         data_max = tbe.reduce_max(input_x, axis=list_axis, keepdims=True)
@@ -151,8 +155,7 @@ def softmax_v2_compute(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
     data_subtrac = tbe.vsub(input_x, data_max)
 
     has_improve_precision = False
-    if dtype == "float16" and tbe_platform.api_check_support(
-            "te.lang.cce.vexp", "float32"):
+    if dtype == "float16" and tbe_platform.api_check_support("te.lang.cce.vexp", "float32"):
         data_subtrac = tbe.cast_to(data_subtrac, "float32")
         has_improve_precision = True
 
@@ -174,8 +177,8 @@ def softmax_v2_compute(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
     data_expsum = tbe.reduce_sum(data_exp, list_axis, keepdims=True)
 
     if (tbe_product in ("Ascend910", "Ascend610", "Ascend615", "Ascend710") or
-        tbe_platform.api_check_support("tik.vgatherb")) and \
-            output_y.get("format") == "FRACTAL_NZ" and dtype == "float16":
+            tbe_platform.api_check_support("tik.vgatherb")
+       ) and output_y.get("format") == "FRACTAL_NZ" and dtype == "float16":
         if _is_special_cases(ori_shape):
             data_expsum = tbe.vrec(data_expsum, "high_precision")
         else:
@@ -204,11 +207,11 @@ def update_5hd_axis(origin_format, list_axis, input_format):
     offset_6hd = 1 if input_format == "NDC1HWC0" else 0
 
     dict_format_axis = {
-        "N": [0, ],
+        "N": [0],
         "C": [1 + offset_6hd, 4 + offset_6hd],
-        "H": [2 + offset_6hd, ],
-        "W": [3 + offset_6hd, ],
-        "D": [1, ]
+        "H": [2 + offset_6hd],
+        "W": [3 + offset_6hd],
+        "D": [1]
     }
 
     return dict_format_axis.get(axis_str)
@@ -246,7 +249,6 @@ def softmax_v2(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
     -------
     None
     """
-
     shape = input_x.get("shape")
     dtype = input_x.get("dtype").lower()
     input_format = input_x.get("format")
@@ -256,24 +258,33 @@ def softmax_v2(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
     para_check.check_dtype(dtype, ("float16", "float32"), param_name="x")
     para_check.check_shape(shape, param_name="x")
 
-    if not isinstance(axis, int):
+    extra_params = dict()
+    if axis is None:
+        # when axis is None, it is binary case, go unknown axis schedule
+        list_axis = NormPattern.REDUCE_UNKNOWN_MODE
+        extra_params.update(NormPattern.REDUCE_SINGLE_TYPE)
+        operation.add_compile_info(NormPattern.REDUCE_ATTR_IDX, 0)
+        operation.add_compile_info(NormPattern.REDUCE_ATTR_NAME, "axes")
+        operation.add_compile_info(NormPattern.REDUCE_ATTR_DTYPE, "ListInt")
+    elif not isinstance(axis, int):
         list_axis = list(axis)
     else:
         list_axis = [axis]
 
-    if input_format in ("NC1HWC0", "NDC1HWC0"):
-        list_axis = update_5hd_axis(ori_format, list_axis, input_format)
+    # only static op support special format, update axis for special format
+    if not util_common.is_unknown(input_x):
+        if input_format in ("NC1HWC0", "NDC1HWC0"):
+            list_axis = update_5hd_axis(ori_format, list_axis, input_format)
 
-    if fz.is_frac_z(input_x):
-        list_axis = fz.to_frac_z_axis(ori_shape, list_axis)
+        if fz.is_frac_z(input_x):
+            list_axis = fz.to_frac_z_axis(ori_shape, list_axis)
 
-    extra_params = {}
-    if input_format in ("NC1HWC0", "NDC1HWC0", "FRACTAL_NZ") and len(list_axis) == 2:
-        extra_params.update({"disable_fuse_axes": [list_axis[0], list_axis[1]]})
+        if input_format in ("NC1HWC0", "NDC1HWC0", "FRACTAL_NZ") and len(list_axis) == 2:
+            extra_params.update({"disable_fuse_axes": [list_axis[0], list_axis[1]]})
 
     tensors = []
     schedules = []
-    ins = classify([input_x, list_axis], "norm", extra_params)
+    ins = classify([input_x, list_axis], OpPatternMode.NORM, extra_params)
 
     for idx, (x, reduce_axis) in enumerate(ins):
         with tbe.compute():
@@ -281,9 +292,15 @@ def softmax_v2(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
             if "disable_fuse_axes" in extra_params:
                 disable_fuse_axes = extra_params.get("disable_fuse_axes")[idx]
             shape_var_new = shape_util.variable_shape([x], op_mode="norm")[0]
-            input_x = tvm.placeholder(shape_var_new, dtype=dtype, name="input_x",
-                                      attrs={"ori_shape": ori_shape, "ori_format": ori_format, "format": input_format,
-                                             "disable_fuse_axes": disable_fuse_axes})
+            input_x = tvm.placeholder(shape_var_new,
+                                      dtype=dtype,
+                                      name="input_x",
+                                      attrs={
+                                          "ori_shape": ori_shape,
+                                          "ori_format": ori_format,
+                                          "format": input_format,
+                                          "disable_fuse_axes": disable_fuse_axes
+                                      })
             output = softmax_v2_compute(input_x, output_y, reduce_axis, kernel_name)
             tensors.append([input_x, output])
 
@@ -292,6 +309,5 @@ def softmax_v2(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
         schedules.append(sch)
 
     # build
-    config = {"name": kernel_name,
-              "tensor_list": tensors}
+    config = {"name": kernel_name, "tensor_list": tensors}
     tbe.build(schedules, config)

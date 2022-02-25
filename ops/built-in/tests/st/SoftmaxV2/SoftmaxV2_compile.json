@@ -1,0 +1,71 @@
+[
+  {"compile_flag": 1},
+  {
+    "op": "SoftmaxV2",
+    "calc_expect_func_file": "test_softmax_v2_golden.py:calc_expect_func",
+    "input_desc": [
+      {
+        "shape": [16, 16],
+        "format": "ND",
+        "ori_shape": [16, 16],
+        "ori_format": "ND",
+        "name": "x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [16, 16],
+        "format": "ND",
+        "ori_shape": [16, 16],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "axes",
+        "type": "list_int",
+        "value": [
+          1
+        ]
+      }
+    ],
+    "case_name": "test_SoftmaxV2_001"
+  },
+  {
+    "op": "SoftmaxV2",
+    "calc_expect_func_file": "test_softmax_v2_golden.py:calc_expect_func",
+    "input_desc": [
+      {
+        "shape": [32, 2, 4, 16],
+        "format": "ND",
+        "ori_shape": [32, 2, 4, 16],
+        "ori_format": "ND",
+        "name": "x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [32, 2, 4, 16],
+        "format": "ND",
+        "ori_shape": [32, 2, 4, 16],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "axes",
+        "type": "list_int",
+        "value": [
+          1
+        ]
+      }
+    ],
+    "case_name": "test_SoftmaxV2_002"
+  }
+]
