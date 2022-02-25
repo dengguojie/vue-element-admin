@@ -57,17 +57,19 @@ IMPLEMT_VERIFIER(SparseSoftmaxCrossEntropyWithLogits, SparseSoftmaxCrossEntropyW
   return GRAPH_SUCCESS;
 }
 IMPLEMT_INFERFUNC(SparseSoftmaxCrossEntropyWithLogits, SparseSoftmaxCrossEntropyWithLogitsInferShape) {
-  TensorDesc tensordesc_loss = op.GetOutputDesc(0);
-  TensorDesc tensordesc_backprop = op.GetOutputDesc(1);
-  ge::Shape shape_fetures = op.GetInputDesc(0).GetShape();
-  ge::Shape shape_labels = op.GetInputDesc(1).GetShape();
-  tensordesc_backprop.SetShape(shape_fetures);
-  tensordesc_loss.SetShape(shape_labels);
-  DataType input_dtype = op.GetInputDesc(0).GetDataType();
-  tensordesc_loss.SetDataType(input_dtype);
-  tensordesc_backprop.SetDataType(input_dtype);
-  (void)op.UpdateOutputDesc("loss", tensordesc_loss);
-  (void)op.UpdateOutputDesc("backprop", tensordesc_backprop);
+  const int64_t io_0_idx = 0;
+  const int64_t io_1_idx = 1;
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  auto features_desc = op_desc->MutableInputDesc(io_0_idx);
+  auto labels_desc = op_desc->MutableInputDesc(io_1_idx);
+  DataType features_type = features_desc->GetDataType();
+
+  auto loss_desc = op_desc->MutableOutputDesc(io_0_idx);
+  auto backprop_desc = op_desc->MutableOutputDesc(io_1_idx);
+  loss_desc->SetDataType(features_type);
+  backprop_desc->SetDataType(features_type);
+  loss_desc->SetShape(labels_desc->GetShape());
+  backprop_desc->SetShape(features_desc->GetShape());
   return GRAPH_SUCCESS;
 }
 
@@ -484,9 +486,9 @@ IMPLEMT_VERIFIER(MVN, MVNVerify) {
 
 INFER_FUNC_REG(MVN, MVNInferShape);
 VERIFY_FUNC_REG(MVN, MVNVerify);
-//-----------------------MVN---------------------------
+// -----------------------MVN---------------------------
 
-//------------------------MVNV2---------------------------
+// ------------------------MVNV2---------------------------
 IMPLEMT_INFERFUNC(MVNV2, MVNV2InferShape) {
   auto outShape = op.GetInputDesc("x").GetShape();
   auto outDtype = op.GetInputDesc("x").GetDataType();
@@ -504,9 +506,9 @@ IMPLEMT_VERIFIER(MVNV2, MVNV2Verify) {
 
 INFER_FUNC_REG(MVNV2, MVNV2InferShape);
 VERIFY_FUNC_REG(MVNV2, MVNV2Verify);
-//-----------------------MVNV2---------------------------
+// -----------------------MVNV2---------------------------
 
-//------------------------Normalize---------------------------
+// ------------------------Normalize---------------------------
 IMPLEMT_INFERFUNC(Normalize, NormalizeInfer) {
   auto input_dType = op.get_input_desc_x1().GetDataType();
   auto output_dType = input_dType;
@@ -1782,7 +1784,7 @@ bool InferShapeAndTypePoissonNllLoss(Operator& op,
     return true;
 }
 
-//PoissonNllLoss
+// PoissonNllLoss
 IMPLEMT_VERIFIER(PoissonNllLoss, PoissonNllLossVerify) {
     DataType input_type_input = op.GetInputDesc("input_x").GetDataType();
     DataType input_type_target = op.GetInputDesc("target").GetDataType();
@@ -1793,7 +1795,7 @@ IMPLEMT_VERIFIER(PoissonNllLoss, PoissonNllLossVerify) {
     return GRAPH_SUCCESS;
 }
 
-//Obtains the processing function of the output tensor description.
+// Obtains the processing function of the output tensor description.
 IMPLEMT_COMMON_INFERFUNC(PoissonNllLossInferShape) {
     std::string reduction_str = "";
     op.GetAttr("reduction",reduction_str);
@@ -1803,12 +1805,12 @@ IMPLEMT_COMMON_INFERFUNC(PoissonNllLossInferShape) {
     return GRAPH_FAILED;
 }
 
-//Registered inferfunction
+// Registered inferfunction
 COMMON_INFER_FUNC_REG(PoissonNllLoss, PoissonNllLossInferShape);
 
-//Registered verify function
+// Registered verify function
 VERIFY_FUNC_REG(PoissonNllLoss, PoissonNllLossVerify);
-//PoissonNllLoss
+// PoissonNllLoss
 // ----------------PoissonNllLoss END------------------------------
 // --------------------------RnnGenMask-------------------------
 IMPLEMT_COMMON_INFERFUNC(RnnGenMaskInferShape) {
