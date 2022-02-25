@@ -104,7 +104,7 @@ ut_case.add_case(
         relu_output, mask_output,
         convolution_output, sum_output, square_sum_output,
         factor, epsilon, stride, padding, dilation, groups],
-        'expect': 'success',
+        'expect': RuntimeError,
         'case_name': 'test2'})
 
 # case7 ok use

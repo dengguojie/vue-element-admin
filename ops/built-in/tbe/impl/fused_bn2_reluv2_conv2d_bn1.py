@@ -55,9 +55,9 @@ class Bn2ReluV2Conv2dBn1NoRedundant:
         self.channel_in0 = 16
         self.channel_out0 = 16
         self.hw_out0 = 16
-        self.channel_in1 = self.int_ceil_div(self.channel_in, self.channel_in0)
-        self.channel_out1 = self.int_ceil_div(self.channel_out, self.channel_out0)
-        self.hw_out1 = self.int_ceil_div(self.height_out * self.width_out, self.hw_out0)
+        self.channel_in1 = self._int_ceil_div(self.channel_in, self.channel_in0)
+        self.channel_out1 = self._int_ceil_div(self.channel_out, self.channel_out0)
+        self.hw_out1 = self._int_ceil_div(self.height_out * self.width_out, self.hw_out0)
 
         self.reduce_k0 = self.channel_in0
         self.reduce_k1 = self.channel_in1 * self.kernel_h * self.kernel_w
@@ -190,7 +190,7 @@ class Bn2ReluV2Conv2dBn1NoRedundant:
         self.m_l0a_factor = tiling["AL0"][0]
         self.n_l0a_factor = tiling["BL0"][1]
         self.k_l0a_factor = tiling["AL0"][1]
-        self.m_redundant_factor = self.int_ceil_div(self.hw_out1, self.m_l0a_factor)
+        self.m_redundant_factor = self._int_ceil_div(self.hw_out1, self.m_l0a_factor)
         self.b_block_factor = tiling["BLOCK_DIM"][0]
         self.b_inner_factor = tiling["BLOCK_INNER"]
         self.b_redundant_factor = self.batch // (self.b_block_factor * self.b_inner_factor)
@@ -207,7 +207,7 @@ class Bn2ReluV2Conv2dBn1NoRedundant:
             self.n_redundant_factor = 1
             self.n_l1a_factor = self.channel_out1 // self.n_l0a_factor
 
-    def get_start_addr(self, start_addr, length):
+    def _get_start_addr(self, start_addr, length):
         """
         calu the start addr
         """
@@ -357,7 +357,7 @@ class Bn2ReluV2Conv2dBn1NoRedundant:
                                                           is_atomic_add=True)
         self.output_tensors.append(self.output_square_sum)
 
-    def int_ceil_div(self, num_a, num_b):
+    def _int_ceil_div(self, num_a, num_b):
         """
         upper division
         """
@@ -492,27 +492,27 @@ class Bn2ReluV2Conv2dBn1BatchByBatchForStrideTwoHandSync(Bn2ReluV2Conv2dBn1NoRed
             name="ub_fm1_workbuf2",
             scope=tik.scope_ubuf,
             start_addr=ub_fm1_workbuf2_start_addr)
-        fmap_f16_ub_pong_start_addr = self.get_start_addr(ub_fm1_workbuf2_start_addr, square_size * 4)
+        fmap_f16_ub_pong_start_addr = self._get_start_addr(ub_fm1_workbuf2_start_addr, square_size * 4)
         self.fmap_f16_ub_pong = self.tik_instance.Tensor(
             "float16",
             [square_size],
             name="fmap_f16_ub_pong",
             scope=tik.scope_ubuf,
             start_addr=fmap_f16_ub_pong_start_addr)
-        input_x_fp16_ub_pong_start_addr = self.get_start_addr(fmap_f16_ub_pong_start_addr, square_size * 2)
+        input_x_fp16_ub_pong_start_addr = self._get_start_addr(fmap_f16_ub_pong_start_addr, square_size * 2)
         self.input_x_fp16_ub_pong = self.tik_instance.Tensor(
             "float16",
             [(self.b_inner_factor * self.get_max_h_length() * self.width_in * self.channel_in0 + 127) // 128 * 128],
             name="input_x_fp16_ub_pong",
             scope=tik.scope_ubuf,
             start_addr=input_x_fp16_ub_pong_start_addr)
-        tem_ub_start_addr = self.get_start_addr(input_x_fp16_ub_pong_start_addr,
-                                                (self.b_inner_factor * self.get_max_h_length() * self.width_in * \
-                                                 self.channel_in0 + 127) // 128 * 128 * 2)
+        tem_ub_start_addr = self._get_start_addr(input_x_fp16_ub_pong_start_addr,
+                                                 (self.b_inner_factor * self.get_max_h_length() * self.width_in * \
+                                                  self.channel_in0 + 127) // 128 * 128 * 2)
         self.tem_ub = self.tik_instance.Tensor("uint16", [512], name="temp_ub",
                                                scope=tik.scope_ubuf,
                                                start_addr=tem_ub_start_addr)
-        tem_ub_pong_start_addr = self.get_start_addr(tem_ub_start_addr, 512 * 2)
+        tem_ub_pong_start_addr = self._get_start_addr(tem_ub_start_addr, 512 * 2)
         self.tem_ub_pong = self.tik_instance.Tensor("uint16", [512], name="temp_ub_pong",
                                                     scope=tik.scope_ubuf,
                                                     start_addr=tem_ub_pong_start_addr)
@@ -529,30 +529,30 @@ class Bn2ReluV2Conv2dBn1BatchByBatchForStrideTwoHandSync(Bn2ReluV2Conv2dBn1NoRed
                                                     name="scale_ub_64",
                                                     scope=tik.scope_ubuf,
                                                     start_addr=scale_ub_64_start_addr)
-        offset_ub_64_start_addr = self.get_start_addr(scale_ub_64_start_addr,
-                                                      4 * self.channel_in0 * self.channel_in1 * 4)
+        offset_ub_64_start_addr = self._get_start_addr(scale_ub_64_start_addr,
+                                                       4 * self.channel_in0 * self.channel_in1 * 4)
         self.offset_ub_64 = self.tik_instance.Tensor("float32",
                                                      [4 * self.channel_in0 * self.channel_in1],
                                                      name="offset_ub_64",
                                                      scope=tik.scope_ubuf,
                                                      start_addr=offset_ub_64_start_addr)
-        input_x_mask_ub_pong_start_addr = self.get_start_addr(offset_ub_64_start_addr,
-                                                              4 * self.channel_in0 * self.channel_in1 * 4)
+        input_x_mask_ub_pong_start_addr = self._get_start_addr(offset_ub_64_start_addr,
+                                                               4 * self.channel_in0 * self.channel_in1 * 4)
         self.input_x_mask_ub_pong = self.tik_instance.Tensor(
             "uint16",
             [(self.get_max_h_length() * self.width_in + 15) // 16 * 16],
             name="input_x_mask_ub_pong",
             scope=tik.scope_ubuf,
             start_addr=input_x_mask_ub_pong_start_addr)
-        fmap_f16_ub_ping_start_addr = self.get_start_addr(input_x_mask_ub_pong_start_addr,
-                                                          (self.get_max_h_length() * self.width_in + 15) // 16 * 16 * 2)
+        fmap_f16_ub_ping_start_addr = self._get_start_addr(input_x_mask_ub_pong_start_addr, (
+            self.get_max_h_length() * self.width_in + 15) // 16 * 16 * 2)
         self.fmap_f16_ub_ping = self.tik_instance.Tensor(
             "float16",
             [square_size],
             name="fmap_f16_ub_ping",
             scope=tik.scope_ubuf,
             start_addr=fmap_f16_ub_ping_start_addr)
-        input_x_fp16_ub_start_addr = self.get_start_addr(fmap_f16_ub_ping_start_addr, square_size * 2)
+        input_x_fp16_ub_start_addr = self._get_start_addr(fmap_f16_ub_ping_start_addr, square_size * 2)
         self.input_x_fp16_ub = self.tik_instance.Tensor(
             "float16",
             [(self.b_inner_factor * (
@@ -560,9 +560,9 @@ class Bn2ReluV2Conv2dBn1BatchByBatchForStrideTwoHandSync(Bn2ReluV2Conv2dBn1NoRed
             name="input_x_fp16_ub",
             scope=tik.scope_ubuf,
             start_addr=input_x_fp16_ub_start_addr)
-        square_mul_ub_start_addr = self.get_start_addr(input_x_fp16_ub_start_addr,
-                                                       (self.b_inner_factor * (self.get_max_h_length()) * \
-                                                        self.width_in * self.channel_in0 + 127) // 128 * 128 * 2)
+        square_mul_ub_start_addr = self._get_start_addr(input_x_fp16_ub_start_addr,
+                                                        (self.b_inner_factor * (self.get_max_h_length()) * \
+                                                         self.width_in * self.channel_in0 + 127) // 128 * 128 * 2)
         self.square_mul_ub = self.tik_instance.Tensor(
             "float32",
             [square_size],
@@ -581,15 +581,15 @@ class Bn2ReluV2Conv2dBn1BatchByBatchForStrideTwoHandSync(Bn2ReluV2Conv2dBn1NoRed
             name="last_sum_output_ub",
             scope=tik.scope_ubuf,
             start_addr=last_sum_output_ub_start_addr)
-        last_square_sum_output_ub_start_addr = self.get_start_addr(last_sum_output_ub_start_addr,
-                                                                   self.channel_out1 * self.channel_out0 * 4)
+        last_square_sum_output_ub_start_addr = self._get_start_addr(last_sum_output_ub_start_addr,
+                                                                    self.channel_out1 * self.channel_out0 * 4)
         self.last_square_sum_output_ub = self.tik_instance.Tensor(
             "float32", self.channel_wise_shape_out,
             name="last_square_sum_output_ub",
             scope=tik.scope_ubuf,
             start_addr=last_square_sum_output_ub_start_addr)
-        zeros_const_ub_start_addr = self.get_start_addr(last_square_sum_output_ub_start_addr,
-                                                        self.channel_out1 * self.channel_out0 * 4)
+        zeros_const_ub_start_addr = self._get_start_addr(last_square_sum_output_ub_start_addr,
+                                                         self.channel_out1 * self.channel_out0 * 4)
         self.zeros_const_ub = self.tik_instance.Tensor(
             "float16",
             [128],
@@ -603,7 +603,7 @@ class Bn2ReluV2Conv2dBn1BatchByBatchForStrideTwoHandSync(Bn2ReluV2Conv2dBn1NoRed
             name="zeros_const_ub_16",
             scope=tik.scope_ubuf,
             start_addr=zeros_const_ub_start_addr)
-        input_x_fp32_ub_start_addr = self.get_start_addr(zeros_const_ub_start_addr, 128 * 2)
+        input_x_fp32_ub_start_addr = self._get_start_addr(zeros_const_ub_start_addr, 128 * 2)
         self.input_x_fp32_ub = self.tik_instance.Tensor(
             "float32",
             [self.b_inner_factor,
@@ -613,13 +613,13 @@ class Bn2ReluV2Conv2dBn1BatchByBatchForStrideTwoHandSync(Bn2ReluV2Conv2dBn1NoRed
             name="input_x_fp32_ub",
             scope=tik.scope_ubuf,
             start_addr=input_x_fp32_ub_start_addr)
-        save_ub_start_addr = self.get_start_addr(input_x_fp32_ub_start_addr,
-                                                 self.b_inner_factor * self.get_max_h_length() * \
-                                                 self.width_in * self.channel_in0 * 4)
+        save_ub_start_addr = self._get_start_addr(input_x_fp32_ub_start_addr,
+                                                  self.b_inner_factor * self.get_max_h_length() * \
+                                                  self.width_in * self.channel_in0 * 4)
         self.save_ub = self.tik_instance.Tensor("uint16", [16 * 16], tik.scope_ubuf,
                                                 name="save_last_inub",
                                                 start_addr=save_ub_start_addr)
-        save_ub_pong_start_addr = self.get_start_addr(save_ub_start_addr, 16 * 16 * 2)
+        save_ub_pong_start_addr = self._get_start_addr(save_ub_start_addr, 16 * 16 * 2)
         self.save_ub_pong = self.tik_instance.Tensor("uint16", [16 * 16], tik.scope_ubuf,
                                                      name="save_last_inub_pong",
                                                      start_addr=save_ub_pong_start_addr)
@@ -636,70 +636,70 @@ class Bn2ReluV2Conv2dBn1BatchByBatchForStrideTwoHandSync(Bn2ReluV2Conv2dBn1NoRed
             name="y_scale_ub",
             scope=tik.scope_ubuf,
             start_addr=0)
-        y_offset_ub_start_addr = self.get_start_addr(0, elem_num * 4)
+        y_offset_ub_start_addr = self._get_start_addr(0, elem_num * 4)
         self.y_offset_ub = self.tik_instance.Tensor(
             "float32",
             [elem_num],
             name="y_offset_ub",
             scope=tik.scope_ubuf,
             start_addr=y_offset_ub_start_addr)
-        sum_input_ub_start_addr = self.get_start_addr(y_offset_ub_start_addr, elem_num * 4)
+        sum_input_ub_start_addr = self._get_start_addr(y_offset_ub_start_addr, elem_num * 4)
         self.sum_input_ub = self.tik_instance.Tensor(
             "float32",
             [elem_num],
             name="sum_ub",
             scope=tik.scope_ubuf,
             start_addr=sum_input_ub_start_addr)
-        square_sum_input_ub_start_addr = self.get_start_addr(sum_input_ub_start_addr, elem_num * 4)
+        square_sum_input_ub_start_addr = self._get_start_addr(sum_input_ub_start_addr, elem_num * 4)
         self.square_sum_input_ub = self.tik_instance.Tensor(
             "float32",
             [elem_num],
             name="square_sum_input_ub",
             scope=tik.scope_ubuf,
             start_addr=square_sum_input_ub_start_addr)
-        mean_ub_starr_addr = self.get_start_addr(square_sum_input_ub_start_addr, elem_num * 4)
+        mean_ub_starr_addr = self._get_start_addr(square_sum_input_ub_start_addr, elem_num * 4)
         self.mean_ub = self.tik_instance.Tensor(
             "float32",
             [elem_num],
             name="mean_ub",
             scope=tik.scope_ubuf,
             start_addr=mean_ub_starr_addr)
-        scale_ub_start_addr = self.get_start_addr(mean_ub_starr_addr, elem_num * 4)
+        scale_ub_start_addr = self._get_start_addr(mean_ub_starr_addr, elem_num * 4)
         self.scale_ub = self.tik_instance.Tensor(
             "float32",
             [elem_num],
             name="scale_ub",
             scope=tik.scope_ubuf,
             start_addr=scale_ub_start_addr)
-        square_sum_div_ub_start_addr = self.get_start_addr(scale_ub_start_addr, elem_num * 4)
+        square_sum_div_ub_start_addr = self._get_start_addr(scale_ub_start_addr, elem_num * 4)
         self.square_sum_div_ub = self.tik_instance.Tensor(
             "float32",
             [elem_num],
             name="square_sum_div_ub",
             scope=tik.scope_ubuf,
             start_addr=square_sum_div_ub_start_addr)
-        square_mean_ub_start_addr = self.get_start_addr(square_sum_div_ub_start_addr, elem_num * 4)
+        square_mean_ub_start_addr = self._get_start_addr(square_sum_div_ub_start_addr, elem_num * 4)
         self.square_mean_ub = self.tik_instance.Tensor(
             "float32",
             [elem_num],
             name="square_mean_ub",
             scope=tik.scope_ubuf,
             start_addr=square_mean_ub_start_addr)
-        varience_ub_start_addr = self.get_start_addr(square_mean_ub_start_addr, elem_num * 4)
+        varience_ub_start_addr = self._get_start_addr(square_mean_ub_start_addr, elem_num * 4)
         self.varience_ub = self.tik_instance.Tensor(
             "float32",
             [elem_num],
             name="varience_ub",
             scope=tik.scope_ubuf,
             start_addr=varience_ub_start_addr)
-        y_scale_add_ub_start_addr = self.get_start_addr(varience_ub_start_addr, elem_num * 4)
+        y_scale_add_ub_start_addr = self._get_start_addr(varience_ub_start_addr, elem_num * 4)
         self.y_scale_add_ub = self.tik_instance.Tensor(
             "float32",
             [elem_num],
             name="y_scale_add_ub",
             scope=tik.scope_ubuf,
             start_addr=y_scale_add_ub_start_addr)
-        y_scale_sqrt_ub_start_addr = self.get_start_addr(y_scale_add_ub_start_addr, elem_num * 4)
+        y_scale_sqrt_ub_start_addr = self._get_start_addr(y_scale_add_ub_start_addr, elem_num * 4)
         self.y_scale_sqrt_ub = self.tik_instance.Tensor(
             "float32",
             [elem_num],
@@ -713,83 +713,43 @@ class Bn2ReluV2Conv2dBn1BatchByBatchForStrideTwoHandSync(Bn2ReluV2Conv2dBn1NoRed
         """
         fetch allocate ub in area one
         """
-        offset_ub_start_addr = self.get_start_addr(y_scale_sqrt_ub_start_addr, elem_num * 4)
-        self.offset_ub = self.tik_instance.Tensor(
-            "float32",
-            [elem_num],
-            name="offset_ub",
-            scope=tik.scope_ubuf,
-            start_addr=offset_ub_start_addr)
-        y_offset_mul_ub_start_addr = self.get_start_addr(offset_ub_start_addr, elem_num * 4)
-        self.y_offset_mul_ub = self.tik_instance.Tensor(
-            "float32",
-            [elem_num],
-            name="y_offset_mul_ub",
-            scope=tik.scope_ubuf,
-            start_addr=y_offset_mul_ub_start_addr)
-        pre_moving_mean_ub_start_addr = self.get_start_addr(y_offset_mul_ub_start_addr, elem_num * 4)
-        self.pre_moving_mean_ub = self.tik_instance.Tensor(
-            "float32",
-            [elem_num],
-            name="pre_moving_mean_ub",
-            scope=tik.scope_ubuf,
-            start_addr=pre_moving_mean_ub_start_addr)
-        mean_mul_ub_start_addr = self.get_start_addr(pre_moving_mean_ub_start_addr, elem_num * 4)
-        self.mean_mul_ub = self.tik_instance.Tensor(
-            "float32",
-            [elem_num],
-            name="mean_mul_ub",
-            scope=tik.scope_ubuf,
-            start_addr=mean_mul_ub_start_addr)
-        pre_moving_variance_ub_start_addr = self.get_start_addr(mean_mul_ub_start_addr, elem_num * 4)
-        self.pre_moving_variance_ub = self.tik_instance.Tensor(
-            "float32",
-            [elem_num],
-            name="pre_moving_variance_ub",
-            scope=tik.scope_ubuf,
-            start_addr=pre_moving_variance_ub_start_addr)
-        mean_mul_rev_ub_start_addr = self.get_start_addr(pre_moving_variance_ub_start_addr, elem_num * 4)
-        self.mean_mul_rev_ub = self.tik_instance.Tensor(
-            "float32",
-            [elem_num],
-            name="mean_mul_rev_ub",
-            scope=tik.scope_ubuf,
-            start_addr=mean_mul_rev_ub_start_addr)
-        moving_mean_ub_start_addr = self.get_start_addr(mean_mul_rev_ub_start_addr, elem_num * 4)
-        self.moving_mean_ub = self.tik_instance.Tensor(
-            "float32",
-            [elem_num],
-            name="moving_mean_ub",
-            scope=tik.scope_ubuf,
-            start_addr=moving_mean_ub_start_addr)
-        variance_batch_ub_start_addr = self.get_start_addr(moving_mean_ub_start_addr, elem_num * 4)
-        self.variance_batch_ub = self.tik_instance.Tensor(
-            "float32",
-            [elem_num],
-            name="variance_batch_ub",
-            scope=tik.scope_ubuf,
-            start_addr=variance_batch_ub_start_addr)
-        variance_mul_ub_start_addr = self.get_start_addr(variance_batch_ub_start_addr, elem_num * 4)
-        self.variance_mul_ub = self.tik_instance.Tensor(
-            "float32",
-            [elem_num],
-            name="variance_mul_ub",
-            scope=tik.scope_ubuf,
-            start_addr=variance_mul_ub_start_addr)
-        variance_mul_rev_ub_start_addr = self.get_start_addr(variance_mul_ub_start_addr, elem_num * 4)
-        self.variance_mul_rev_ub = self.tik_instance.Tensor(
-            "float32",
-            [elem_num],
-            name="variance_mul_rev_ub",
-            scope=tik.scope_ubuf,
-            start_addr=variance_mul_rev_ub_start_addr)
-        moving_variance_ub_start_addr = self.get_start_addr(variance_mul_rev_ub_start_addr, elem_num * 4)
-        self.moving_variance_ub = self.tik_instance.Tensor(
-            "float32",
-            [elem_num],
-            name="moving_variance_ub",
-            scope=tik.scope_ubuf,
-            start_addr=moving_variance_ub_start_addr)
+        offset_ub_start_addr = self._get_start_addr(y_scale_sqrt_ub_start_addr, elem_num * 4)
+        self.offset_ub = self.tik_instance.Tensor("float32", [elem_num], name="offset_ub",
+                                                  scope=tik.scope_ubuf, start_addr=offset_ub_start_addr)
+        y_offset_mul_ub_start_addr = self._get_start_addr(offset_ub_start_addr, elem_num * 4)
+        self.y_offset_mul_ub = self.tik_instance.Tensor("float32", [elem_num], name="y_offset_mul_ub",
+                                                        scope=tik.scope_ubuf, start_addr=y_offset_mul_ub_start_addr)
+        pre_moving_mean_ub_start_addr = self._get_start_addr(y_offset_mul_ub_start_addr, elem_num * 4)
+        self.pre_moving_mean_ub = self.tik_instance.Tensor("float32", [elem_num], name="pre_moving_mean_ub",
+                                                           scope=tik.scope_ubuf,
+                                                           start_addr=pre_moving_mean_ub_start_addr)
+        mean_mul_ub_start_addr = self._get_start_addr(pre_moving_mean_ub_start_addr, elem_num * 4)
+        self.mean_mul_ub = self.tik_instance.Tensor("float32", [elem_num], name="mean_mul_ub",
+                                                    scope=tik.scope_ubuf, start_addr=mean_mul_ub_start_addr)
+        pre_moving_variance_ub_start_addr = self._get_start_addr(mean_mul_ub_start_addr, elem_num * 4)
+        self.pre_moving_variance_ub = self.tik_instance.Tensor("float32", [elem_num], name="pre_moving_variance_ub",
+                                                               scope=tik.scope_ubuf,
+                                                               start_addr=pre_moving_variance_ub_start_addr)
+        mean_mul_rev_ub_start_addr = self._get_start_addr(pre_moving_variance_ub_start_addr, elem_num * 4)
+        self.mean_mul_rev_ub = self.tik_instance.Tensor("float32", [elem_num], name="mean_mul_rev_ub",
+                                                        scope=tik.scope_ubuf, start_addr=mean_mul_rev_ub_start_addr)
+        moving_mean_ub_start_addr = self._get_start_addr(mean_mul_rev_ub_start_addr, elem_num * 4)
+        self.moving_mean_ub = self.tik_instance.Tensor("float32", [elem_num], name="moving_mean_ub",
+                                                       scope=tik.scope_ubuf, start_addr=moving_mean_ub_start_addr)
+        variance_batch_ub_start_addr = self._get_start_addr(moving_mean_ub_start_addr, elem_num * 4)
+        self.variance_batch_ub = self.tik_instance.Tensor("float32", [elem_num], name="variance_batch_ub",
+                                                          scope=tik.scope_ubuf, start_addr=variance_batch_ub_start_addr)
+        variance_mul_ub_start_addr = self._get_start_addr(variance_batch_ub_start_addr, elem_num * 4)
+        self.variance_mul_ub = self.tik_instance.Tensor("float32", [elem_num], name="variance_mul_ub",
+                                                        scope=tik.scope_ubuf, start_addr=variance_mul_ub_start_addr)
+        variance_mul_rev_ub_start_addr = self._get_start_addr(variance_mul_ub_start_addr, elem_num * 4)
+        self.variance_mul_rev_ub = self.tik_instance.Tensor("float32", [elem_num], name="variance_mul_rev_ub",
+                                                            scope=tik.scope_ubuf,
+                                                            start_addr=variance_mul_rev_ub_start_addr)
+        moving_variance_ub_start_addr = self._get_start_addr(variance_mul_rev_ub_start_addr, elem_num * 4)
+        self.moving_variance_ub = self.tik_instance.Tensor("float32", [elem_num], name="moving_variance_ub",
+                                                           scope=tik.scope_ubuf,
+                                                           start_addr=moving_variance_ub_start_addr)
 
     def _override_used_ub(self):
         """
@@ -802,8 +762,8 @@ class Bn2ReluV2Conv2dBn1BatchByBatchForStrideTwoHandSync(Bn2ReluV2Conv2dBn1NoRed
             name="input_x_mask_ub",
             scope=tik.scope_ubuf,
             start_addr=0)
-        input_x_ub_start_addr = self.get_start_addr(0,
-                                                    ((self.get_max_h_length()) * self.width_in + 15) // 16 * 16 * 2)
+        input_x_ub_start_addr = self._get_start_addr(0,
+                                                     ((self.get_max_h_length()) * self.width_in + 15) // 16 * 16 * 2)
         self.input_x_ub = self.tik_instance.Tensor(
             "float16",
             [self.b_inner_factor * (self.get_max_h_length()) * self.width_in * self.channel_in0],
@@ -811,23 +771,23 @@ class Bn2ReluV2Conv2dBn1BatchByBatchForStrideTwoHandSync(Bn2ReluV2Conv2dBn1NoRed
             scope=tik.scope_ubuf,
             start_addr=input_x_ub_start_addr)
         square_size = self.b_inner_factor * self.m_l0a_factor * self.hw_out0 * self.channel_out0
-        fmap_ub_start_addr = self.get_start_addr(input_x_ub_start_addr,
-                                                 self.b_inner_factor * (self.get_max_h_length()) * \
-                                                 self.width_in * self.channel_in0 * 2)
+        fmap_ub_start_addr = self._get_start_addr(input_x_ub_start_addr,
+                                                  self.b_inner_factor * (self.get_max_h_length()) * \
+                                                  self.width_in * self.channel_in0 * 2)
         self.fmap_ub = self.tik_instance.Tensor(
             "float32",
             [square_size],
             name="fmap_ub",
             scope=tik.scope_ubuf,
             start_addr=fmap_ub_start_addr)
-        output_sum_inub_start_addr = self.get_start_addr(fmap_ub_start_addr, square_size * 4)
+        output_sum_inub_start_addr = self._get_start_addr(fmap_ub_start_addr, square_size * 4)
         self.output_sum_inub = self.tik_instance.Tensor(dtype="float32",
                                                         shape=[1, self.channel_out1, 1, 1, self.channel_out0 * 4],
                                                         scope=tik.scope_ubuf,
                                                         name="output_sum_gm_inub",
                                                         start_addr=output_sum_inub_start_addr)
-        output_square_sum_inub_start_addr = self.get_start_addr(output_sum_inub_start_addr,
-                                                                self.channel_out1 * self.channel_out0 * 4 * 4)
+        output_square_sum_inub_start_addr = self._get_start_addr(output_sum_inub_start_addr,
+                                                                 self.channel_out1 * self.channel_out0 * 4 * 4)
         self.output_square_sum_inub = self.tik_instance.Tensor(dtype="float32",
                                                                shape=[1, self.channel_out1, 1, 1,
                                                                       self.channel_out0 * 4],
@@ -1333,28 +1293,39 @@ class Bn2ReluV2Conv2dBn1BatchByBatchForStrideTwoHandSync(Bn2ReluV2Conv2dBn1NoRed
         with self.tik_instance.if_scope(self.l0c_pingpong == 1):
             with self.tik_instance.if_scope(k_redundant == 0):
                 self.tik_instance.wait_flag("PIPE_M", "PIPE_V", 0)
-            self.tik_instance.data_move(
-                self.fmap_ub,
-                self.fmap_l0c_ping[0, n_l0, 0, 0, 0],
-                0,
-                self.b_inner_factor,
-                self.m_l0a_factor,
-                (self.n_l0a_factor - 1) * self.m_l0a_factor,
-                0)
+            self.tik_instance.data_move(self.fmap_ub, self.fmap_l0c_ping[0, n_l0, 0, 0, 0], 0, self.b_inner_factor,
+                                        self.m_l0a_factor, (self.n_l0a_factor - 1) * self.m_l0a_factor, 0)
         with self.tik_instance.else_scope():
             with self.tik_instance.if_scope(k_redundant == 0):
                 self.tik_instance.wait_flag("PIPE_M", "PIPE_V", 1)
-            self.tik_instance.data_move(
-                self.fmap_ub,
-                self.fmap_l0c_pong[0, n_l0, 0, 0, 0],
-                0,
-                self.b_inner_factor,
-                self.m_l0a_factor,
-                (self.n_l0a_factor - 1) * self.m_l0a_factor,
-                0)
+            self.tik_instance.data_move(self.fmap_ub, self.fmap_l0c_pong[0, n_l0, 0, 0, 0], 0, self.b_inner_factor,
+                                        self.m_l0a_factor, (self.n_l0a_factor - 1) * self.m_l0a_factor, 0)
         m_tail_size = self.height_out * self.width_out - \
                       (self.m_redundant_factor - 1) * self.m_l0a_factor * self.hw_out0
         tail_square_size = self.b_inner_factor * m_tail_size * self.channel_out0
+        dst_n_offset, fp32_loop_times, fp32_redundant, fp32_repeat_times, res_conv = self._move_conv_res_to_ddr(
+            m_tail_size, n_l0, tail_square_size)
+        self.bn_reduce_ub_output_pingpong.set_as(1 - self.bn_reduce_ub_output_pingpong)
+        # square sum
+        self.calu_square_sum(res_conv, fp32_loop_times, fp32_redundant, fp32_repeat_times)
+        self.tik_instance.pipe_barrier("PIPE_V")
+        if self.b_inner_factor == 2:
+            for i in range(self.b_inner_factor):
+                self.dichotomy_sum_and_square_sum_handsync(res_conv, self.square_mul_ub,
+                                                           tail_square_size // self.b_inner_factor, dst_n_offset)
+                if i + 1 < self.b_inner_factor:
+                    self.tik_instance.data_move(res_conv, res_conv[tail_square_size // self.b_inner_factor],
+                                                0, 1, tail_square_size // self.b_inner_factor // 8, 0, 0)
+                    self.tik_instance.data_move(self.square_mul_ub,
+                                                self.square_mul_ub[tail_square_size // self.b_inner_factor],
+                                                0, 1, tail_square_size // self.b_inner_factor // 8, 0, 0)
+        else:
+            self.dichotomy_sum_and_square_sum_handsync(res_conv, self.square_mul_ub, tail_square_size, dst_n_offset)
+
+    def _move_conv_res_to_ddr(self, m_tail_size, n_l0, tail_square_size):
+        """
+        move conv2d res to ddr
+        """
         # inner batch 场景需要剔除脏数据
         res_conv = self.fmap_ub
         fp32_loop_times, fp32_redundant, fp32_repeat_times = self.calu_loop_time(tail_square_size)
@@ -1369,14 +1340,8 @@ class Bn2ReluV2Conv2dBn1BatchByBatchForStrideTwoHandSync(Bn2ReluV2Conv2dBn1NoRed
             self.tik_instance.set_flag("PIPE_V", "PIPE_MTE3", 2)
             self.tik_instance.wait_flag("PIPE_V", "PIPE_MTE3", 2)
             self.tik_instance.data_move(
-                self.output_convolution[dst_b_offset, dst_n_offset, dst_m_offset, 0],
-                self.fmap_f16_ub_ping,
-                0,
-                self.b_inner_factor,
-                m_tail_size,
-                0,
-                self.channel_out1 * self.height_out *
-                self.width_out - m_tail_size)
+                self.output_convolution[dst_b_offset, dst_n_offset, dst_m_offset, 0], self.fmap_f16_ub_ping, 0,
+                self.b_inner_factor, m_tail_size, 0, self.channel_out1 * self.height_out * self.width_out - m_tail_size)
             self.tik_instance.set_flag("PIPE_MTE3", "PIPE_V", 2)
         with self.tik_instance.else_scope():
             # mv ub to gm
@@ -1387,37 +1352,12 @@ class Bn2ReluV2Conv2dBn1BatchByBatchForStrideTwoHandSync(Bn2ReluV2Conv2dBn1NoRed
                                                                        "fp32_repeat_times": fp32_repeat_times})
             self.tik_instance.set_flag("PIPE_V", "PIPE_MTE3", 3)
             self.tik_instance.wait_flag("PIPE_V", "PIPE_MTE3", 3)
-            self.tik_instance.data_move(
-                self.output_convolution[dst_b_offset, dst_n_offset, dst_m_offset, 0],
-                self.fmap_f16_ub_pong,
-                0,
-                self.b_inner_factor,
-                m_tail_size,
-                0,
-                self.channel_out1 * self.height_out *
-                self.width_out - m_tail_size)
+            self.tik_instance.data_move(self.output_convolution[dst_b_offset, dst_n_offset, dst_m_offset, 0],
+                                        self.fmap_f16_ub_pong, 0, self.b_inner_factor, m_tail_size, 0,
+                                        self.channel_out1 * self.height_out *
+                                        self.width_out - m_tail_size)
             self.tik_instance.set_flag("PIPE_MTE3", "PIPE_V", 3)
-        self.bn_reduce_ub_output_pingpong.set_as(1 - self.bn_reduce_ub_output_pingpong)
-        # square sum
-        self.calu_square_sum(res_conv, fp32_loop_times, fp32_redundant, fp32_repeat_times)
-        self.tik_instance.pipe_barrier("PIPE_V")
-        if self.b_inner_factor == 2:
-            for i in range(self.b_inner_factor):
-                self.dichotomy_sum_and_square_sum_handsync(res_conv, self.square_mul_ub,
-                                                           tail_square_size // self.b_inner_factor,
-                                                           dst_n_offset)
-                if i + 1 < self.b_inner_factor:
-                    self.tik_instance.data_move(res_conv,
-                                                res_conv[tail_square_size // self.b_inner_factor],
-                                                0, 1, tail_square_size // self.b_inner_factor // 8,
-                                                0, 0)
-                    self.tik_instance.data_move(self.square_mul_ub,
-                                                self.square_mul_ub[tail_square_size // self.b_inner_factor],
-                                                0, 1, tail_square_size // self.b_inner_factor // 8,
-                                                0, 0)
-        else:
-            self.dichotomy_sum_and_square_sum_handsync(res_conv, self.square_mul_ub,
-                                                       tail_square_size, dst_n_offset)
+        return dst_n_offset, fp32_loop_times, fp32_redundant, fp32_repeat_times, res_conv
 
     def dichotomy_sum_and_square_sum_handsync(self, sum_ub, square_sum_ub, total_blocks, dst_n_offset):
         """
@@ -2170,26 +2110,10 @@ class Bn2ReluV2Conv2dBn1BatchByBatchForStrideTwoHandSync(Bn2ReluV2Conv2dBn1NoRed
                 self.tik_instance.pipe_barrier("PIPE_MTE1")
                 self.tik_instance.load3dv1(
                     self.fmap_l0a_pong[dst_b_offset, dst_m_offset, 0, 0, 0],
-                    self.fmap_l1[src_b_offset, 0, 0, 0, 0],
-                    pad,
-                    self.height_in,
-                    self.width_in,
-                    cin1_l0_index,
-                    kw_l0_index,
-                    kh_l0_index,
-                    (wo_l0_index + current_w_offset) * self.stride_w - self.pad_l,
-                    self.hin_l1_start_pos,
-                    self.stride_w,
-                    self.stride_h,
-                    self.kernel_w,
-                    self.kernel_h,
-                    self.dilation_w,
-                    self.dilation_w,
-                    1,
-                    0,
-                    self.k_l0a_factor,
-                    0,
-                    0)
+                    self.fmap_l1[src_b_offset, 0, 0, 0, 0], pad, self.height_in, self.width_in, cin1_l0_index,
+                    kw_l0_index, kh_l0_index, (wo_l0_index + current_w_offset) * self.stride_w - self.pad_l,
+                    self.hin_l1_start_pos, self.stride_w, self.stride_h, self.kernel_w, self.kernel_h,
+                    self.dilation_w, self.dilation_w, 1, 0, self.k_l0a_factor, 0, 0)
         with self.tik_instance.else_scope():
             with self.tik_instance.for_range(0, self.k_l0a_factor, name="k_l0") as k_l0:
                 dst_b_offset = b_inner
@@ -2201,26 +2125,11 @@ class Bn2ReluV2Conv2dBn1BatchByBatchForStrideTwoHandSync(Bn2ReluV2Conv2dBn1NoRed
                 self.tik_instance.pipe_barrier("PIPE_MTE1")
                 self.tik_instance.load3dv1(
                     self.fmap_l0a_pong[dst_b_offset, 0, dst_k_offset, 0, 0],
-                    self.fmap_l1[src_b_offset, 0, 0, 0, 0],
-                    pad,
-                    self.height_in,
-                    self.width_in,
-                    cin1_l0_index + current_c1_offset,
-                    kw_l0_index + current_kw_offset,
-                    kh_l0_index + current_kh_offset,
-                    wo_l0_index * self.stride_w - self.pad_l,
-                    self.hin_l1_start_pos,
-                    self.stride_w,
-                    self.stride_h,
-                    self.kernel_w,
-                    self.kernel_h,
-                    self.dilation_w,
-                    self.dilation_h,
-                    self.k_l0a_factor,
-                    1,
-                    self.m_l0a_factor,
-                    0,
-                    0)
+                    self.fmap_l1[src_b_offset, 0, 0, 0, 0], pad, self.height_in, self.width_in,
+                    cin1_l0_index + current_c1_offset, kw_l0_index + current_kw_offset, kh_l0_index + current_kh_offset,
+                    wo_l0_index * self.stride_w - self.pad_l, self.hin_l1_start_pos, self.stride_w, self.stride_h,
+                    self.kernel_w, self.kernel_h, self.dilation_w, self.dilation_h, self.k_l0a_factor, 1,
+                    self.m_l0a_factor, 0, 0)
 
     def _load_l0a_ping(self, input_list):
         """
@@ -2303,12 +2212,9 @@ class Bn2ReluV2Conv2dBn1BatchByBatchForStrideTwoHandSync(Bn2ReluV2Conv2dBn1NoRed
 
                     src_k_offset = (k_redundant * self.k_l0a_factor + k_l0)
                     src_n_offset = n_l1 * self.n_l0a_factor
-                    self.tik_instance.load2dv1(
-                        self.filters_l0b_ping[dst_offset, 0, 0, 0],
-                        self.filters_l1[src_k_offset, src_n_offset, 0, 0],
-                        0,
-                        self.n_l0a_factor,
-                        1, 0)
+                    self.tik_instance.load2dv1(self.filters_l0b_ping[dst_offset, 0, 0, 0],
+                                               self.filters_l1[src_k_offset, src_n_offset, 0, 0], 0, self.n_l0a_factor,
+                                               1, 0)
             else:
                 self.tik_instance.pipe_barrier("PIPE_MTE2")
                 with self.tik_instance.for_range(0, self.k_l0a_factor, name="k_l0") as k_l0:
@@ -2316,12 +2222,9 @@ class Bn2ReluV2Conv2dBn1BatchByBatchForStrideTwoHandSync(Bn2ReluV2Conv2dBn1NoRed
 
                     src_k_offset = (k_redundant * self.k_l0a_factor + k_l0)
                     src_n_offset = n_l1 * self.n_l0a_factor
-                    self.tik_instance.load2dv1(
-                        self.filters_l0b_ping[dst_offset, 0, 0, 0],
-                        self.filters_input[src_k_offset, src_n_offset, 0, 0],
-                        0,
-                        self.n_l0a_factor,
-                        1, 0)
+                    self.tik_instance.load2dv1(self.filters_l0b_ping[dst_offset, 0, 0, 0],
+                                               self.filters_input[src_k_offset, src_n_offset, 0, 0], 0,
+                                               self.n_l0a_factor, 1, 0)
         with self.tik_instance.else_scope():
             if self.filters_load_from_l1_flag:
                 self.tik_instance.pipe_barrier("PIPE_MTE1")
@@ -2330,12 +2233,9 @@ class Bn2ReluV2Conv2dBn1BatchByBatchForStrideTwoHandSync(Bn2ReluV2Conv2dBn1NoRed
 
                     src_k_offset = (k_redundant * self.k_l0a_factor + k_l0)
                     src_n_offset = n_l1 * self.n_l0a_factor
-                    self.tik_instance.load2dv1(
-                        self.filters_l0b_pong[dst_offset, 0, 0, 0],
-                        self.filters_l1[src_k_offset, src_n_offset, 0, 0],
-                        0,
-                        self.n_l0a_factor,
-                        1, 0)
+                    self.tik_instance.load2dv1(self.filters_l0b_pong[dst_offset, 0, 0, 0],
+                                               self.filters_l1[src_k_offset, src_n_offset, 0, 0], 0, self.n_l0a_factor,
+                                               1, 0)
             else:
                 self.tik_instance.pipe_barrier("PIPE_MTE2")
                 with self.tik_instance.for_range(0, self.k_l0a_factor, name="k_l0") as k_l0:
@@ -2343,12 +2243,9 @@ class Bn2ReluV2Conv2dBn1BatchByBatchForStrideTwoHandSync(Bn2ReluV2Conv2dBn1NoRed
 
                     src_k_offset = (k_redundant * self.k_l0a_factor + k_l0)
                     src_n_offset = n_l1 * self.n_l0a_factor
-                    self.tik_instance.load2dv1(
-                        self.filters_l0b_pong[dst_offset, 0, 0, 0],
-                        self.filters_input[src_k_offset, src_n_offset, 0, 0],
-                        0,
-                        self.n_l0a_factor,
-                        1, 0)
+                    self.tik_instance.load2dv1(self.filters_l0b_pong[dst_offset, 0, 0, 0],
+                                               self.filters_input[src_k_offset, src_n_offset, 0, 0], 0,
+                                               self.n_l0a_factor, 1, 0)
 
     def _preload_input_x_handsync(self):
         """
@@ -2754,74 +2651,36 @@ class Bn2ReluV2Conv2dBn1BatchByBatchForStrideTwoHandSync(Bn2ReluV2Conv2dBn1NoRed
         burst_length, factor_reverse, redundant, repeat, start_pos = input_list
         if repeat >= 1:
             self.tik_instance.vmuls(
-                64,
-                self.variance_mul_rev_ub,
-                self.pre_moving_variance_ub,
-                factor_reverse,
-                repeat,
-                1, 1, 8, 8)  # float32 一个repeat 64个元素
+                64, self.variance_mul_rev_ub, self.pre_moving_variance_ub, factor_reverse, repeat, 1, 1, 8, 8)
         if redundant >= 1:
             self.tik_instance.vmuls(
-                redundant * 8,
-                self.variance_mul_rev_ub[repeat * 64],
-                self.pre_moving_variance_ub[repeat * 64],
-                factor_reverse,
-                1,
-                1, 1, 8, 8)
+                redundant * 8, self.variance_mul_rev_ub[repeat * 64], self.pre_moving_variance_ub[repeat * 64],
+                factor_reverse, 1, 1, 1, 8, 8)
         self.tik_instance.pipe_barrier("PIPE_V")
         if repeat >= 1:
             self.tik_instance.vadd(
-                64,
-                self.moving_variance_ub,
-                self.variance_mul_ub,
-                self.variance_mul_rev_ub,  # float32 一个repeat 64个元素
-                repeat,
+                64, self.moving_variance_ub, self.variance_mul_ub, self.variance_mul_rev_ub, repeat,
                 1, 1, 1, 8, 8, 8)
         if redundant >= 1:
             self.tik_instance.vadd(
-                redundant * 8,
-                self.moving_variance_ub[repeat * 64],
-                self.variance_mul_ub[repeat * 64],
-                self.variance_mul_rev_ub[repeat * 64],
-                1,
-                1, 1, 1, 8, 8, 8)
+                redundant * 8, self.moving_variance_ub[repeat * 64], self.variance_mul_ub[repeat * 64],
+                self.variance_mul_rev_ub[repeat * 64], 1, 1, 1, 1, 8, 8, 8)
         self.tik_instance.set_flag("PIPE_V", "PIPE_MTE3", 3)
-        dup_scalar = self.tik_instance.Scalar(
-            dtype="float16",
-            name="dup_zero_scalar",
-            init_value=0)
+        dup_scalar = self.tik_instance.Scalar(dtype="float16", name="dup_zero_scalar", init_value=0)
         self.tik_instance.vector_dup(
-            128,
-            self.zeros_const_ub,
-            dup_scalar,
-            1,
-            1, 1)
+            128, self.zeros_const_ub, dup_scalar, 1, 1, 1)
         self.tik_instance.wait_flag("PIPE_V", "PIPE_MTE3", 0)
         self.tik_instance.data_move(
-            self.output_mean[start_pos],
-            self.mean_ub,
-            0,
-            1, burst_length,
-            0, 0)  # float32 多一倍 block
+            self.output_mean[start_pos], self.mean_ub, 0, 1, burst_length, 0, 0)
         self.tik_instance.wait_flag("PIPE_V", "PIPE_MTE3", 1)
         self.tik_instance.data_move(
-            self.output_varience[start_pos],
-            self.varience_ub,
-            0,
-            1, burst_length,
-            0, 0)  # float32 多一倍 block
+            self.output_varience[start_pos], self.varience_ub, 0, 1, burst_length, 0, 0)
         self.tik_instance.wait_flag("PIPE_V", "PIPE_MTE3", 2)
         self.tik_instance.data_move(
-            self.output_moving_mean[start_pos],
-            self.moving_mean_ub,
-            0,
-            1, burst_length, 0, 0)  # float32 多一倍 block
+            self.output_moving_mean[start_pos], self.moving_mean_ub, 0, 1, burst_length, 0, 0)
         self.tik_instance.wait_flag("PIPE_V", "PIPE_MTE3", 3)
         self.tik_instance.data_move(
-            self.output_moving_varience[start_pos],
-            self.moving_variance_ub,
-            0,
-            1, burst_length, 0, 0)  # float32 多一倍 block
+            self.output_moving_varience[start_pos], self.moving_variance_ub, 0, 1, burst_length, 0, 0)
         self.tik_instance.set_flag("PIPE_MTE3", "PIPE_MTE2", 0)
         for i in range(4):
             self.tik_instance.data_move(self.offset_ub_64[16 * i], self.y_offset_ub,
@@ -2838,102 +2697,41 @@ class Bn2ReluV2Conv2dBn1BatchByBatchForStrideTwoHandSync(Bn2ReluV2Conv2dBn1NoRed
         self.tik_instance.set_flag("PIPE_V", "PIPE_MTE3", 1)
         self.tik_instance.pipe_barrier("PIPE_V")
         if repeat >= 1:
-            self.tik_instance.vadds(
-                64,
-                self.y_scale_add_ub,
-                self.varience_ub,  # float32 一个repeat 64个元素
-                self.epsilon,
-                repeat,
-                1, 1, 8, 8)
+            self.tik_instance.vadds(64, self.y_scale_add_ub, self.varience_ub, self.epsilon, repeat, 1, 1, 8, 8)
         if redundant >= 1:
-            self.tik_instance.vadds(
-                redundant,
-                self.y_scale_add_ub[repeat * 64],
-                self.varience_ub[repeat * 64],
-                self.epsilon,
-                1,
-                1, 1, 8, 8)
+            self.tik_instance.vadds(redundant, self.y_scale_add_ub[repeat * 64], self.varience_ub[repeat * 64],
+                                    self.epsilon, 1, 1, 1, 8, 8)
         self.tik_instance.pipe_barrier("PIPE_V")
         if repeat >= 1:
-            self.tik_instance.vsqrt(
-                64,
-                self.y_scale_sqrt_ub,
-                self.y_scale_add_ub,  # float32 一个repeat 64个元素
-                repeat,
-                1, 1, 8, 8)
+            self.tik_instance.vsqrt(64, self.y_scale_sqrt_ub, self.y_scale_add_ub, repeat, 1, 1, 8, 8)
         if redundant >= 1:
-            self.tik_instance.vsqrt(
-                redundant,
-                self.y_scale_sqrt_ub[repeat * 64],
-                self.y_scale_add_ub[repeat * 64],
-                1,
-                1, 1, 8, 8)
-        self.tik_instance.data_move(
-            self.offset_ub,
-            self.offset_input[start_pos],
-            0,
-            1, burst_length,
-            0, 0)  # float32 多一倍 block
+            self.tik_instance.vsqrt(redundant, self.y_scale_sqrt_ub[repeat * 64], self.y_scale_add_ub[repeat * 64],
+                                    1, 1, 1, 8, 8)
+        self.tik_instance.data_move(self.offset_ub, self.offset_input[start_pos], 0, 1, burst_length, 0, 0)
         self.tik_instance.set_flag("PIPE_MTE2", "PIPE_V", 1)
         self.tik_instance.wait_flag("PIPE_MTE2", "PIPE_V", 0)
         self.tik_instance.pipe_barrier("PIPE_V")
         if repeat >= 1:
-            self.tik_instance.vdiv(
-                64,
-                self.y_scale_ub,
-                self.scale_ub,
-                self.y_scale_sqrt_ub,  # float32 一个repeat 64个元素
-                repeat, 1, 1, 1, 8, 8, 8)
+            self.tik_instance.vdiv(64, self.y_scale_ub, self.scale_ub, self.y_scale_sqrt_ub, repeat, 1, 1, 1, 8, 8, 8)
         if redundant >= 1:
-            self.tik_instance.vdiv(
-                redundant,
-                self.y_scale_ub[repeat * 64],
-                self.scale_ub[repeat * 64],
-                self.y_scale_sqrt_ub[repeat * 64],
-                1,
-                1, 1, 1, 8, 8, 8)
+            self.tik_instance.vdiv(redundant, self.y_scale_ub[repeat * 64], self.scale_ub[repeat * 64],
+                                   self.y_scale_sqrt_ub[repeat * 64], 1, 1, 1, 1, 8, 8, 8)
         self.tik_instance.pipe_barrier("PIPE_V")
         if repeat >= 1:
-            self.tik_instance.vmul(
-                64,
-                self.y_offset_mul_ub,
-                self.mean_ub,
-                self.y_scale_ub,  # float32 一个repeat 64个元素
-                repeat,
-                1, 1, 1, 8, 8, 8)
+            self.tik_instance.vmul(64, self.y_offset_mul_ub, self.mean_ub, self.y_scale_ub, repeat, 1, 1, 1, 8, 8, 8)
         if redundant >= 1:
-            self.tik_instance.vmul(
-                redundant,
-                self.y_offset_mul_ub[repeat * 64],
-                self.mean_ub[repeat * 64],
-                self.y_scale_ub[repeat * 64],
-                1,
-                1, 1, 1, 8, 8, 8)
-        self.tik_instance.data_move(
-            self.pre_moving_mean_ub,
-            self.pre_moving_mean_input[start_pos],
-            0,
-            1, burst_length,
-            0, 0)  # float32 多一倍 block
+            self.tik_instance.vmul(redundant, self.y_offset_mul_ub[repeat * 64], self.mean_ub[repeat * 64],
+                                   self.y_scale_ub[repeat * 64], 1, 1, 1, 1, 8, 8, 8)
+        self.tik_instance.data_move(self.pre_moving_mean_ub, self.pre_moving_mean_input[start_pos], 0, 1, burst_length,
+                                    0, 0)  # float32 多一倍 block
         self.tik_instance.set_flag("PIPE_MTE2", "PIPE_V", 0)
         self.tik_instance.wait_flag("PIPE_MTE2", "PIPE_V", 1)
         self.tik_instance.pipe_barrier("PIPE_V")
         if repeat >= 1:
-            self.tik_instance.vsub(
-                64,
-                self.y_offset_ub,
-                self.offset_ub,
-                self.y_offset_mul_ub,  # float32 一个repeat 64个元素
-                repeat,
-                1, 1, 1, 8, 8, 8)
+            self.tik_instance.vsub(64, self.y_offset_ub, self.offset_ub, self.y_offset_mul_ub, repeat, 1, 1, 1, 8, 8, 8)
         if redundant >= 1:
-            self.tik_instance.vsub(
-                redundant,
-                self.y_offset_ub[repeat * 64],
-                self.offset_ub[repeat * 64],
-                self.y_offset_mul_ub[repeat * 64],
-                1,
-                1, 1, 1, 8, 8, 8)
+            self.tik_instance.vsub(redundant, self.y_offset_ub[repeat * 64], self.offset_ub[repeat * 64],
+                                   self.y_offset_mul_ub[repeat * 64], 1, 1, 1, 1, 8, 8, 8)
 
     def _first_part_bn_mean_varience_process(self, burst_length, elem_num, num_rec, start_pos):
         """
@@ -3232,7 +3030,7 @@ class Bn2ReluV2Conv2dBn1HandSync(Bn2ReluV2Conv2dBn1NoRedundant):
         allocate ub in 192kB ~ 256kB
         """
         # area4
-        input_x_fp16_ub_pong_start_addr = self.get_start_addr(192 * 1024, 0)
+        input_x_fp16_ub_pong_start_addr = self._get_start_addr(192 * 1024, 0)
         square_size = self.b_inner_factor * self.m_l0a_factor * self.hw_out0 * self.channel_out0
         fmap_input_size = self.b_inner_factor * self.get_max_h_length() * self.width_in * self.channel_in0
         self.input_x_fp16_ub_pong = self.tik_instance.Tensor(
@@ -3241,40 +3039,40 @@ class Bn2ReluV2Conv2dBn1HandSync(Bn2ReluV2Conv2dBn1NoRedundant):
             name="input_x_fp16_ub_pong",
             scope=tik.scope_ubuf,
             start_addr=input_x_fp16_ub_pong_start_addr)
-        fmap_ub_start_addr = self.get_start_addr(input_x_fp16_ub_pong_start_addr, fmap_input_size * 2)
+        fmap_ub_start_addr = self._get_start_addr(input_x_fp16_ub_pong_start_addr, fmap_input_size * 2)
         self.fmap_ub = self.tik_instance.Tensor(
             "float32",
             [square_size],
             name="fmap_ub",
             scope=tik.scope_ubuf,
             start_addr=fmap_ub_start_addr)
-        output_sum_inub_start_addr = self.get_start_addr(fmap_ub_start_addr, square_size * 4)
+        output_sum_inub_start_addr = self._get_start_addr(fmap_ub_start_addr, square_size * 4)
         self.output_sum_inub = self.tik_instance.Tensor(dtype="float32",
                                                         shape=self.channel_wise_shape_out,
                                                         scope=tik.scope_ubuf,
                                                         name="output_sum_gm_inub",
                                                         start_addr=output_sum_inub_start_addr)
-        output_square_sum_inub_start_addr = self.get_start_addr(output_sum_inub_start_addr,
-                                                                self.channel_out1 * self.channel_out0 * 4)
+        output_square_sum_inub_start_addr = self._get_start_addr(output_sum_inub_start_addr,
+                                                                 self.channel_out1 * self.channel_out0 * 4)
         self.output_square_sum_inub = self.tik_instance.Tensor(dtype="float32",
                                                                shape=self.channel_wise_shape_out,
                                                                scope=tik.scope_ubuf,
                                                                name="output_square_sum_gm_inub",
                                                                start_addr=output_square_sum_inub_start_addr)
-        save_ub_start_addr = self.get_start_addr(output_square_sum_inub_start_addr,
-                                                 self.channel_out1 * self.channel_out0 * 4)
+        save_ub_start_addr = self._get_start_addr(output_square_sum_inub_start_addr,
+                                                  self.channel_out1 * self.channel_out0 * 4)
         self.save_ub = self.tik_instance.Tensor("uint16", [16 * 16], tik.scope_ubuf,
                                                 name="save_last_inub",
                                                 start_addr=save_ub_start_addr)
-        tem_ub_start_addr = self.get_start_addr(save_ub_start_addr, 16 * 16 * 2)
+        tem_ub_start_addr = self._get_start_addr(save_ub_start_addr, 16 * 16 * 2)
         self.tem_ub = self.tik_instance.Tensor("uint16", [512], name="temp_ub",
                                                scope=tik.scope_ubuf,
                                                start_addr=tem_ub_start_addr)
-        save_ub_pong_start_addr = self.get_start_addr(tem_ub_start_addr, 512 * 2)
+        save_ub_pong_start_addr = self._get_start_addr(tem_ub_start_addr, 512 * 2)
         self.save_ub_pong = self.tik_instance.Tensor("uint16", [16 * 16], tik.scope_ubuf,
                                                      name="save_last_inub_pong",
                                                      start_addr=save_ub_pong_start_addr)
-        tem_ub_pong_start_addr = self.get_start_addr(save_ub_pong_start_addr, 16 * 16 * 2)
+        tem_ub_pong_start_addr = self._get_start_addr(save_ub_pong_start_addr, 16 * 16 * 2)
         self.tem_ub_pong = self.tik_instance.Tensor("uint16", [512], name="temp_ub_pong",
                                                     scope=tik.scope_ubuf,
                                                     start_addr=tem_ub_pong_start_addr)
@@ -3284,7 +3082,7 @@ class Bn2ReluV2Conv2dBn1HandSync(Bn2ReluV2Conv2dBn1NoRedundant):
         allocate ub in 128kB ~ 196kB
         """
         # area3
-        input_x_ub_start_addr = self.get_start_addr(128 * 1024, 0)
+        input_x_ub_start_addr = self._get_start_addr(128 * 1024, 0)
         square_size = self.b_inner_factor * self.m_l0a_factor * self.hw_out0 * self.channel_out0
         fmap_input_size = self.b_inner_factor * self.get_max_h_length() * self.width_in * self.channel_in0
         self.input_x_ub = self.tik_instance.Tensor(
@@ -3293,7 +3091,7 @@ class Bn2ReluV2Conv2dBn1HandSync(Bn2ReluV2Conv2dBn1NoRedundant):
             name="input_x_ub",
             scope=tik.scope_ubuf,
             start_addr=input_x_ub_start_addr)
-        fmap_f16_ub_pong_start_addr = self.get_start_addr(input_x_ub_start_addr, fmap_input_size * 2)
+        fmap_f16_ub_pong_start_addr = self._get_start_addr(input_x_ub_start_addr, fmap_input_size * 2)
         self.fmap_f16_ub_pong = self.tik_instance.Tensor(
             "float16",
             [square_size],
@@ -3306,7 +3104,7 @@ class Bn2ReluV2Conv2dBn1HandSync(Bn2ReluV2Conv2dBn1NoRedundant):
         allocate ub in 64kB ~ 128kB
         """
         # area 2
-        input_x_fp32_ub_start_addr = self.get_start_addr(64 * 1024, 0)
+        input_x_fp32_ub_start_addr = self._get_start_addr(64 * 1024, 0)
         square_size = self.b_inner_factor * self.m_l0a_factor * self.hw_out0 * self.channel_out0
         self.input_x_fp32_ub = self.tik_instance.Tensor(
             "float32",
@@ -3318,14 +3116,14 @@ class Bn2ReluV2Conv2dBn1HandSync(Bn2ReluV2Conv2dBn1NoRedundant):
             scope=tik.scope_ubuf,
             start_addr=input_x_fp32_ub_start_addr)
         fmap_input_size = self.b_inner_factor * self.get_max_h_length() * self.width_in * self.channel_in0
-        input_x_fp16_ub_start_addr = self.get_start_addr(input_x_fp32_ub_start_addr, fmap_input_size * 4)
+        input_x_fp16_ub_start_addr = self._get_start_addr(input_x_fp32_ub_start_addr, fmap_input_size * 4)
         self.input_x_fp16_ub = self.tik_instance.Tensor(
             "float16",
             [(self.b_inner_factor * (self.get_max_h_length()) * self.width_in * self.channel_in0)],
             name="input_x_fp16_ub",
             scope=tik.scope_ubuf,
             start_addr=input_x_fp16_ub_start_addr)
-        square_mul_ub_start_addr = self.get_start_addr(input_x_fp16_ub_start_addr, fmap_input_size * 2)
+        square_mul_ub_start_addr = self._get_start_addr(input_x_fp16_ub_start_addr, fmap_input_size * 2)
         self.square_mul_ub = self.tik_instance.Tensor(
             "float32",
             [square_size],
@@ -3357,35 +3155,35 @@ class Bn2ReluV2Conv2dBn1HandSync(Bn2ReluV2Conv2dBn1NoRedundant):
             name="y_scale_ub",
             scope=tik.scope_ubuf,
             start_addr=288)
-        self.y_offset_ub_start_addr = self.get_start_addr(288, self.channel_in0 * self.channel_in1 * 4)
+        self.y_offset_ub_start_addr = self._get_start_addr(288, self.channel_in0 * self.channel_in1 * 4)
         self.y_offset_ub = self.tik_instance.Tensor(
             "float32",
             [self.channel_in0 * self.channel_in1],
             name="y_offset_ub",
             scope=tik.scope_ubuf,
             start_addr=self.y_offset_ub_start_addr)
-        scale_ub_64_start_addr = self.get_start_addr(self.y_offset_ub_start_addr, elem_num * 4)
+        scale_ub_64_start_addr = self._get_start_addr(self.y_offset_ub_start_addr, elem_num * 4)
         self.scale_ub_64 = self.tik_instance.Tensor("float32",
                                                     [64],
                                                     name="scale_ub_64",
                                                     scope=tik.scope_ubuf,
                                                     start_addr=scale_ub_64_start_addr)
-        offset_ub_64_start_addr = self.get_start_addr(scale_ub_64_start_addr, 64 * 4)
+        offset_ub_64_start_addr = self._get_start_addr(scale_ub_64_start_addr, 64 * 4)
         self.offset_ub_64 = self.tik_instance.Tensor("float32",
                                                      [64],
                                                      name="offset_ub_64",
                                                      scope=tik.scope_ubuf,
                                                      start_addr=offset_ub_64_start_addr)
-        input_x_mask_ub_start_addr = self.get_start_addr(offset_ub_64_start_addr, 64 * 4)
+        input_x_mask_ub_start_addr = self._get_start_addr(offset_ub_64_start_addr, 64 * 4)
         self.input_x_mask_ub = self.tik_instance.Tensor(
             "uint16",
             [((self.get_max_h_length()) * self.width_in + 15) // 16 * 16],
             name="input_x_relu_ub",
             scope=tik.scope_ubuf,
             start_addr=input_x_mask_ub_start_addr)
-        input_x_mask_ub_pong_start_addr = self.get_start_addr(input_x_mask_ub_start_addr,
-                                                              (self.get_max_h_length() * self.width_in +
-                                                               15) // 16 * 16 * 2)
+        input_x_mask_ub_pong_start_addr = self._get_start_addr(input_x_mask_ub_start_addr,
+                                                               (self.get_max_h_length() * self.width_in +
+                                                                15) // 16 * 16 * 2)
         self.input_x_mask_ub_pong = self.tik_instance.Tensor(
             "uint16",
             [(self.get_max_h_length() * self.width_in + 15) // 16 * 16],
@@ -3393,36 +3191,37 @@ class Bn2ReluV2Conv2dBn1HandSync(Bn2ReluV2Conv2dBn1NoRedundant):
             scope=tik.scope_ubuf,
             start_addr=input_x_mask_ub_pong_start_addr)
         square_size = self.b_inner_factor * self.m_l0a_factor * self.hw_out0 * self.channel_out0
-        fmap_f16_ub_ping_start_addr = self.get_start_addr(input_x_mask_ub_pong_start_addr,
-                                                          (self.get_max_h_length() * self.width_in + 15) // 16 * 16 * 2)
+        fmap_f16_ub_ping_start_addr = self._get_start_addr(input_x_mask_ub_pong_start_addr,
+                                                           (self.get_max_h_length() * self.width_in + \
+                                                           15) // 16 * 16 * 2)
         self.fmap_f16_ub_ping = self.tik_instance.Tensor(
             "float16",
             [square_size],
             name="fmap_f16_ub_ping",
             scope=tik.scope_ubuf,
             start_addr=fmap_f16_ub_ping_start_addr)
-        ub_fm1_workbuf_start_addr = self.get_start_addr(fmap_f16_ub_ping_start_addr, square_size * 4)
+        ub_fm1_workbuf_start_addr = self._get_start_addr(fmap_f16_ub_ping_start_addr, square_size * 4)
         self.ub_fm1_workbuf = self.tik_instance.Tensor(
             "float32",
             [square_size],
             name="ub_fm1_workbuf",
             scope=tik.scope_ubuf,
             start_addr=ub_fm1_workbuf_start_addr)
-        ub_fm1_workbuf2_start_addr = self.get_start_addr(ub_fm1_workbuf_start_addr, square_size * 4)
+        ub_fm1_workbuf2_start_addr = self._get_start_addr(ub_fm1_workbuf_start_addr, square_size * 4)
         self.ub_fm1_workbuf2 = self.tik_instance.Tensor(
             "float32",
             [square_size],
             name="ub_fm1_workbuf2",
             scope=tik.scope_ubuf,
             start_addr=ub_fm1_workbuf2_start_addr)
-        sum_input_ub_start_addr = self.get_start_addr(fmap_f16_ub_ping_start_addr, square_size * 2)
+        sum_input_ub_start_addr = self._get_start_addr(fmap_f16_ub_ping_start_addr, square_size * 2)
         self.sum_input_ub = self.tik_instance.Tensor(
             "float32",
             [elem_num],
             name="sum_ub",
             scope=tik.scope_ubuf,
             start_addr=sum_input_ub_start_addr)
-        square_sum_input_ub_start_addr = self.get_start_addr(sum_input_ub_start_addr, elem_num * 4)
+        square_sum_input_ub_start_addr = self._get_start_addr(sum_input_ub_start_addr, elem_num * 4)
         self.square_sum_input_ub = self.tik_instance.Tensor(
             "float32",
             [elem_num],
@@ -3435,63 +3234,63 @@ class Bn2ReluV2Conv2dBn1HandSync(Bn2ReluV2Conv2dBn1NoRedundant):
         """
         fetch allocate ub in area one
         """
-        mean_ub_starr_addr = self.get_start_addr(square_sum_input_ub_start_addr, elem_num * 4)
+        mean_ub_starr_addr = self._get_start_addr(square_sum_input_ub_start_addr, elem_num * 4)
         self.mean_ub = self.tik_instance.Tensor(
             "float32",
             [elem_num],
             name="mean_ub",
             scope=tik.scope_ubuf,
             start_addr=mean_ub_starr_addr)
-        scale_ub_start_addr = self.get_start_addr(mean_ub_starr_addr, elem_num * 4)
+        scale_ub_start_addr = self._get_start_addr(mean_ub_starr_addr, elem_num * 4)
         self.scale_ub = self.tik_instance.Tensor(
             "float32",
             [elem_num],
             name="scale_ub",
             scope=tik.scope_ubuf,
             start_addr=scale_ub_start_addr)
-        square_sum_div_ub_start_addr = self.get_start_addr(scale_ub_start_addr, elem_num * 4)
+        square_sum_div_ub_start_addr = self._get_start_addr(scale_ub_start_addr, elem_num * 4)
         self.square_sum_div_ub = self.tik_instance.Tensor(
             "float32",
             [elem_num],
             name="square_sum_div_ub",
             scope=tik.scope_ubuf,
             start_addr=square_sum_div_ub_start_addr)
-        square_mean_ub_start_addr = self.get_start_addr(square_sum_div_ub_start_addr, elem_num * 4)
+        square_mean_ub_start_addr = self._get_start_addr(square_sum_div_ub_start_addr, elem_num * 4)
         self.square_mean_ub = self.tik_instance.Tensor(
             "float32",
             [elem_num],
             name="square_mean_ub",
             scope=tik.scope_ubuf,
             start_addr=square_mean_ub_start_addr)
-        varience_ub_start_addr = self.get_start_addr(square_mean_ub_start_addr, elem_num * 4)
+        varience_ub_start_addr = self._get_start_addr(square_mean_ub_start_addr, elem_num * 4)
         self.varience_ub = self.tik_instance.Tensor(
             "float32",
             [elem_num],
             name="varience_ub",
             scope=tik.scope_ubuf,
             start_addr=varience_ub_start_addr)
-        y_scale_add_ub_start_addr = self.get_start_addr(varience_ub_start_addr, elem_num * 4)
+        y_scale_add_ub_start_addr = self._get_start_addr(varience_ub_start_addr, elem_num * 4)
         self.y_scale_add_ub = self.tik_instance.Tensor(
             "float32",
             [elem_num],
             name="y_scale_add_ub",
             scope=tik.scope_ubuf,
             start_addr=y_scale_add_ub_start_addr)
-        y_scale_sqrt_ub_start_addr = self.get_start_addr(y_scale_add_ub_start_addr, elem_num * 4)
+        y_scale_sqrt_ub_start_addr = self._get_start_addr(y_scale_add_ub_start_addr, elem_num * 4)
         self.y_scale_sqrt_ub = self.tik_instance.Tensor(
             "float32",
             [elem_num],
             name="y_scale_sqrt_ub",
             scope=tik.scope_ubuf,
             start_addr=y_scale_sqrt_ub_start_addr)
-        offset_ub_start_addr = self.get_start_addr(y_scale_sqrt_ub_start_addr, elem_num * 4)
+        offset_ub_start_addr = self._get_start_addr(y_scale_sqrt_ub_start_addr, elem_num * 4)
         self.offset_ub = self.tik_instance.Tensor(
             "float32",
             [elem_num],
             name="offset_ub",
             scope=tik.scope_ubuf,
             start_addr=offset_ub_start_addr)
-        y_offset_mul_ub_start_addr = self.get_start_addr(offset_ub_start_addr, elem_num * 4)
+        y_offset_mul_ub_start_addr = self._get_start_addr(offset_ub_start_addr, elem_num * 4)
         self.y_offset_mul_ub = self.tik_instance.Tensor(
             "float32",
             [elem_num],
@@ -3504,63 +3303,63 @@ class Bn2ReluV2Conv2dBn1HandSync(Bn2ReluV2Conv2dBn1NoRedundant):
         """
         split allocate ub area one
         """
-        pre_moving_mean_ub_start_addr = self.get_start_addr(y_offset_mul_ub_start_addr, elem_num * 4)
+        pre_moving_mean_ub_start_addr = self._get_start_addr(y_offset_mul_ub_start_addr, elem_num * 4)
         self.pre_moving_mean_ub = self.tik_instance.Tensor(
             "float32",
             [elem_num],
             name="pre_moving_mean_ub",
             scope=tik.scope_ubuf,
             start_addr=pre_moving_mean_ub_start_addr)
-        mean_mul_ub_start_addr = self.get_start_addr(pre_moving_mean_ub_start_addr, elem_num * 4)
+        mean_mul_ub_start_addr = self._get_start_addr(pre_moving_mean_ub_start_addr, elem_num * 4)
         self.mean_mul_ub = self.tik_instance.Tensor(
             "float32",
             [elem_num],
             name="mean_mul_ub",
             scope=tik.scope_ubuf,
             start_addr=mean_mul_ub_start_addr)
-        pre_moving_variance_ub_start_addr = self.get_start_addr(mean_mul_ub_start_addr, elem_num * 4)
+        pre_moving_variance_ub_start_addr = self._get_start_addr(mean_mul_ub_start_addr, elem_num * 4)
         self.pre_moving_variance_ub = self.tik_instance.Tensor(
             "float32",
             [elem_num],
             name="pre_moving_variance_ub",
             scope=tik.scope_ubuf,
             start_addr=pre_moving_variance_ub_start_addr)
-        mean_mul_rev_ub_start_addr = self.get_start_addr(pre_moving_variance_ub_start_addr, elem_num * 4)
+        mean_mul_rev_ub_start_addr = self._get_start_addr(pre_moving_variance_ub_start_addr, elem_num * 4)
         self.mean_mul_rev_ub = self.tik_instance.Tensor(
             "float32",
             [elem_num],
             name="mean_mul_rev_ub",
             scope=tik.scope_ubuf,
             start_addr=mean_mul_rev_ub_start_addr)
-        moving_mean_ub_start_addr = self.get_start_addr(mean_mul_rev_ub_start_addr, elem_num * 4)
+        moving_mean_ub_start_addr = self._get_start_addr(mean_mul_rev_ub_start_addr, elem_num * 4)
         self.moving_mean_ub = self.tik_instance.Tensor(
             "float32",
             [elem_num],
             name="moving_mean_ub",
             scope=tik.scope_ubuf,
             start_addr=moving_mean_ub_start_addr)
-        variance_batch_ub_start_addr = self.get_start_addr(moving_mean_ub_start_addr, elem_num * 4)
+        variance_batch_ub_start_addr = self._get_start_addr(moving_mean_ub_start_addr, elem_num * 4)
         self.variance_batch_ub = self.tik_instance.Tensor(
             "float32",
             [elem_num],
             name="variance_batch_ub",
             scope=tik.scope_ubuf,
             start_addr=variance_batch_ub_start_addr)
-        variance_mul_ub_start_addr = self.get_start_addr(variance_batch_ub_start_addr, elem_num * 4)
+        variance_mul_ub_start_addr = self._get_start_addr(variance_batch_ub_start_addr, elem_num * 4)
         self.variance_mul_ub = self.tik_instance.Tensor(
             "float32",
             [elem_num],
             name="variance_mul_ub",
             scope=tik.scope_ubuf,
             start_addr=variance_mul_ub_start_addr)
-        variance_mul_rev_ub_start_addr = self.get_start_addr(variance_mul_ub_start_addr, elem_num * 4)
+        variance_mul_rev_ub_start_addr = self._get_start_addr(variance_mul_ub_start_addr, elem_num * 4)
         self.variance_mul_rev_ub = self.tik_instance.Tensor(
             "float32",
             [elem_num],
             name="variance_mul_rev_ub",
             scope=tik.scope_ubuf,
             start_addr=variance_mul_rev_ub_start_addr)
-        moving_variance_ub_start_addr = self.get_start_addr(variance_mul_rev_ub_start_addr, elem_num * 4)
+        moving_variance_ub_start_addr = self._get_start_addr(variance_mul_rev_ub_start_addr, elem_num * 4)
         self.moving_variance_ub = self.tik_instance.Tensor(
             "float32",
             [elem_num],
@@ -3850,204 +3649,100 @@ class Bn2ReluV2Conv2dBn1HandSync(Bn2ReluV2Conv2dBn1NoRedundant):
         """
         threshold = 6
         total_repeat = total_blocks // 64
-
         dichotomy_repeat = total_repeat // 2
         redundant = total_blocks % 64
-
         # separate src & des op to boost performance
         if dichotomy_repeat > threshold:
-
+            self.tik_instance.vadd(64, self.ub_fm1_workbuf2, sum_ub, sum_ub[64], dichotomy_repeat, 1, 1, 1, 8, 16, 16)
             self.tik_instance.vadd(
-                64,
-                self.ub_fm1_workbuf2,
-                sum_ub,
-                sum_ub[64],
-                dichotomy_repeat,
-                1, 1, 1, 8, 16, 16)
-
-            self.tik_instance.vadd(
-                64,
-                self.ub_fm1_workbuf2[total_blocks // 2],
-                square_sum_ub,
-                square_sum_ub[64],
-                dichotomy_repeat,
+                64, self.ub_fm1_workbuf2[total_blocks // 2], square_sum_ub, square_sum_ub[64], dichotomy_repeat,
                 1, 1, 1, 8, 16, 16)
             self.tik_instance.pipe_barrier("PIPE_V")
             if redundant > 0:
                 self.tik_instance.vadd(
-                    16,
-                    self.ub_fm1_workbuf2,
-                    sum_ub[total_blocks // 64 * 64],
-                    sum_ub,
-                    redundant // 16,
+                    16, self.ub_fm1_workbuf2, sum_ub[total_blocks // 64 * 64], sum_ub, redundant // 16,
                     1, 1, 1, 0, 2, 0)
-
                 self.tik_instance.vadd(
-                    16,
-                    self.ub_fm1_workbuf2[total_blocks // 2],
-                    square_sum_ub[total_blocks // 64 * 64],
-                    square_sum_ub,
-                    redundant // 16,
-                    1, 1, 1, 0, 2, 0)
+                    16, self.ub_fm1_workbuf2[total_blocks // 2], square_sum_ub[total_blocks // 64 * 64], square_sum_ub,
+                    redundant // 16, 1, 1, 1, 0, 2, 0)
                 redundant = 0
                 self.tik_instance.pipe_barrier("PIPE_V")
-            total_repeat = dichotomy_repeat
-            dichotomy_repeat = total_repeat // 2
+            dichotomy_repeat, total_repeat, ub_add_0 = self._dich_loop_add(dichotomy_repeat, threshold, total_blocks)
 
-            ub_add_0 = self.ub_fm1_workbuf2
-            ub_add_1 = self.ub_fm1_workbuf
-
-            while dichotomy_repeat > threshold:
-                self.tik_instance.vadd(
-                    64,
-                    ub_add_1,
-                    ub_add_0[64],
-                    ub_add_0,
-                    dichotomy_repeat,
-                    1, 1, 1, 8, 16, 16)
-                self.tik_instance.vadd(
-                    64,
-                    ub_add_1[total_blocks // 2],
-                    ub_add_0[total_blocks // 2 + 64],
-                    ub_add_0[total_blocks // 2],
-                    dichotomy_repeat,
-                    1, 1, 1, 8, 16, 16)
-                self.tik_instance.pipe_barrier("PIPE_V")
-                if total_repeat % 2 != 0:
-                    self.tik_instance.vadd(
-                        64,
-                        ub_add_1,
-                        ub_add_0[dichotomy_repeat * 64 * 2],
-                        ub_add_1,
-                        total_repeat % 2,
-                        1, 1, 1,
-                        8, 8, 8)
-                    self.tik_instance.vadd(
-                        64,
-                        ub_add_1[total_blocks // 2],
-                        ub_add_0[total_blocks // 2 + dichotomy_repeat * 64 * 2],
-                        ub_add_1[total_blocks // 2],
-                        total_repeat % 2,
-                        1, 1, 1,
-                        8, 8, 8)
-                    self.tik_instance.pipe_barrier("PIPE_V")
-                total_repeat = dichotomy_repeat
-                dichotomy_repeat = total_repeat // 2
-                ub_add_0, ub_add_1 = ub_add_1, ub_add_0
-
+            self.tik_instance.vadd(64, sum_ub, ub_add_0[64], ub_add_0, dichotomy_repeat, 1, 1, 1, 8, 16, 16)
             self.tik_instance.vadd(
-                64,
-                sum_ub,
-                ub_add_0[64],
-                ub_add_0,
-                dichotomy_repeat,
-                1, 1, 1, 8, 16, 16)
-            self.tik_instance.vadd(
-                64,
-                square_sum_ub,
-                ub_add_0[total_blocks // 2 + 64],
-                ub_add_0[total_blocks // 2],
-                dichotomy_repeat,
-                1, 1, 1, 8, 16, 16)
+                64, square_sum_ub, ub_add_0[total_blocks // 2 + 64], ub_add_0[total_blocks // 2],
+                dichotomy_repeat, 1, 1, 1, 8, 16, 16)
             self.tik_instance.pipe_barrier("PIPE_V")
             if total_repeat % 2 != 0:
                 self.tik_instance.vadd(
-                    64,
-                    sum_ub,
-                    ub_add_0[dichotomy_repeat * 64 * 2],
-                    sum_ub,
-                    total_repeat % 2,
-                    1, 1, 1,
-                    8, 8, 8)
+                    64, sum_ub, ub_add_0[dichotomy_repeat * 64 * 2], sum_ub, total_repeat % 2, 1, 1, 1, 8, 8, 8)
                 self.tik_instance.vadd(
-                    64,
-                    square_sum_ub,
-                    ub_add_0[total_blocks // 2 + dichotomy_repeat * 64 * 2],
-                    square_sum_ub,
-                    total_repeat % 2,
-                    1, 1, 1,
-                    8, 8, 8)
+                    64, square_sum_ub, ub_add_0[total_blocks // 2 + dichotomy_repeat * 64 * 2], square_sum_ub,
+                    total_repeat % 2, 1, 1, 1, 8, 8, 8)
                 self.tik_instance.pipe_barrier("PIPE_V")
             total_repeat = dichotomy_repeat
             dichotomy_repeat = total_repeat // 2
 
         return total_repeat, dichotomy_repeat, redundant
 
+    def _dich_loop_add(self, dichotomy_repeat, threshold, total_blocks):
+        """
+        dichotomy loop add
+        """
+        total_repeat = dichotomy_repeat
+        dichotomy_repeat = total_repeat // 2
+        ub_add_0 = self.ub_fm1_workbuf2
+        ub_add_1 = self.ub_fm1_workbuf
+        while dichotomy_repeat > threshold:
+            self.tik_instance.vadd(64, ub_add_1, ub_add_0[64], ub_add_0, dichotomy_repeat, 1, 1, 1, 8, 16, 16)
+            self.tik_instance.vadd(
+                64, ub_add_1[total_blocks // 2], ub_add_0[total_blocks // 2 + 64], ub_add_0[total_blocks // 2],
+                dichotomy_repeat, 1, 1, 1, 8, 16, 16)
+            self.tik_instance.pipe_barrier("PIPE_V")
+            if total_repeat % 2 != 0:
+                self.tik_instance.vadd(64, ub_add_1, ub_add_0[dichotomy_repeat * 64 * 2], ub_add_1,
+                                       total_repeat % 2, 1, 1, 1, 8, 8, 8)
+                self.tik_instance.vadd(
+                    64, ub_add_1[total_blocks // 2], ub_add_0[total_blocks // 2 + dichotomy_repeat * 64 * 2],
+                    ub_add_1[total_blocks // 2], total_repeat % 2, 1, 1, 1, 8, 8, 8)
+                self.tik_instance.pipe_barrier("PIPE_V")
+            total_repeat = dichotomy_repeat
+            dichotomy_repeat = total_repeat // 2
+            ub_add_0, ub_add_1 = ub_add_1, ub_add_0
+        return dichotomy_repeat, total_repeat, ub_add_0
+
     def dichotomy_sum_and_square_sum_handsync(self, sum_ub, square_sum_ub, total_blocks):
         """
         dichotomy sum and square sum
         """
-        total_repeat, dichotomy_repeat, redundant = self.effecient_sum_and_square_sum_handsync(sum_ub,
-                                                                                               square_sum_ub,
+        total_repeat, dichotomy_repeat, redundant = self.effecient_sum_and_square_sum_handsync(sum_ub, square_sum_ub,
                                                                                                total_blocks)
         while dichotomy_repeat > 0:
-            self.tik_instance.vadd(
-                64,
-                sum_ub,
-                sum_ub[dichotomy_repeat * 64],
-                sum_ub,
-                dichotomy_repeat,
-                1, 1, 1, 8, 8, 8)
-            self.tik_instance.vadd(
-                64,
-                square_sum_ub,
-                square_sum_ub[dichotomy_repeat * 64],
-                square_sum_ub,
-                dichotomy_repeat,
-                1, 1, 1, 8, 8, 8)
+            self.tik_instance.vadd(64, sum_ub, sum_ub[dichotomy_repeat * 64], sum_ub,
+                                   dichotomy_repeat, 1, 1, 1, 8, 8, 8)
+            self.tik_instance.vadd(64, square_sum_ub, square_sum_ub[dichotomy_repeat * 64], square_sum_ub,
+                                   dichotomy_repeat, 1, 1, 1, 8, 8, 8)
             self.tik_instance.pipe_barrier("PIPE_V")
             if total_repeat % 2 != 0:
-                self.tik_instance.vadd(
-                    64,
-                    sum_ub,
-                    sum_ub[dichotomy_repeat * 64 * 2],
-                    sum_ub,
-                    total_repeat % 2,
-                    1, 1, 1,
-                    8, 8, 8)
-                self.tik_instance.vadd(
-                    64,
-                    square_sum_ub,
-                    square_sum_ub[dichotomy_repeat * 64 * 2],
-                    square_sum_ub,
-                    total_repeat % 2,
-                    1, 1, 1,
-                    8, 8, 8)
+                self.tik_instance.vadd(64, sum_ub, sum_ub[dichotomy_repeat * 64 * 2], sum_ub, total_repeat % 2,
+                                       1, 1, 1, 8, 8, 8)
+                self.tik_instance.vadd(64, square_sum_ub, square_sum_ub[dichotomy_repeat * 64 * 2], square_sum_ub,
+                                       total_repeat % 2, 1, 1, 1, 8, 8, 8)
                 self.tik_instance.pipe_barrier("PIPE_V")
             total_repeat = dichotomy_repeat
             dichotomy_repeat = total_repeat // 2
 
         if total_repeat > 0:
-            self.tik_instance.vadd(
-                16,
-                sum_ub,
-                sum_ub[16],
-                sum_ub,
-                (total_repeat * 64 // 16 - 1),
-                1, 1, 1, 0, 2, 0)
-            self.tik_instance.vadd(
-                16,
-                square_sum_ub,
-                square_sum_ub[16],
-                square_sum_ub,
-                (total_repeat * 64 // 16 - 1),
-                1, 1, 1, 0, 2, 0)
+            self.tik_instance.vadd(16, sum_ub, sum_ub[16], sum_ub, (total_repeat * 64 // 16 - 1), 1, 1, 1, 0, 2, 0)
+            self.tik_instance.vadd(16, square_sum_ub, square_sum_ub[16], square_sum_ub, (total_repeat * 64 // 16 - 1),
+                                   1, 1, 1, 0, 2, 0)
             self.tik_instance.pipe_barrier("PIPE_V")
         if redundant > 0:
-            self.tik_instance.vadd(
-                16,
-                sum_ub,
-                sum_ub[total_blocks // 64 * 64],
-                sum_ub,
-                redundant // 16,
-                1, 1, 1, 0, 2, 0)
-            self.tik_instance.vadd(
-                16,
-                square_sum_ub,
-                square_sum_ub[total_blocks // 64 * 64],
-                square_sum_ub,
-                redundant // 16,
-                1, 1, 1, 0, 2, 0)
+            self.tik_instance.vadd(16, sum_ub, sum_ub[total_blocks // 64 * 64], sum_ub, redundant // 16,
+                                   1, 1, 1, 0, 2, 0)
+            self.tik_instance.vadd(16, square_sum_ub, square_sum_ub[total_blocks // 64 * 64], square_sum_ub,
+                                   redundant // 16, 1, 1, 1, 0, 2, 0)
             self.tik_instance.pipe_barrier("PIPE_V")
 
     def calu_square_sum_handsync(self, fmap_ub, fp32_loop_times, fp32_redundant, fp32_repeat_times):
@@ -5743,7 +5438,7 @@ def fused_bn2_reluv2_conv2d_bn1(fmap_input, sum_input, square_sum_input,
             tiling, kernel_name)
         bn2_reluv2_conv2d_bn1.compute()
         return bn2_reluv2_conv2d_bn1
-    return None
+    err_man.raise_err_specific("fused_bn2_reluv2_conv2d_bn1", "no match shape, please check!!!")
 
 
 def is_same_value(a_value, b_value):
