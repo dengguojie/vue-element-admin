@@ -73,7 +73,11 @@ def fast_gelu_v2_compute(input_x, output_y, kernel_name="fast_gelu_v2",
     temp_0 = tbe.vadds(temp_0, const_d)
     x_adds = tbe.vadds(input_x, const_offset)
     abs_x = tbe.vabs(x_adds)
-    sgn = tbe.vdiv(x_adds, abs_x)
+    if impl_mode == "high_performance":
+        vrec_abs = tbe.vrec(abs_x, priority_flag=0)
+        sgn = tbe.vmul(x_adds, vrec_abs)
+    else:
+        sgn = tbe.vdiv(x_adds, abs_x)
     temp_1 = tbe.vmul(temp_0, sgn)
     temp_1 = tbe.vadds(temp_1, const_d)
     result = tbe.vmul(input_x, temp_1)

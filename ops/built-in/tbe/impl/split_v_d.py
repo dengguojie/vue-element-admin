@@ -486,9 +486,9 @@ def split_v_d(input_value, output_data, size_splits, split_dim, num_split, kerne
             split_with_5hd_not_align.do_5hd_split_cut_by_batch()
             return
     if (split_dim == 1 and input_format == "NC1HWC0") or (split_dim == 2 and input_format == "NDC1HWC0"):
-        C0_SIZE = shape[-1]
+        c0_size = shape[-1]
         size_splits = list(size_splits)
-        size_splits = [size // C0_SIZE for size in size_splits]
+        size_splits = [size // c0_size for size in size_splits]
 
     if input_format == "FRACTAL_NZ" and ori_format != "FRACTAL_NZ" and split_dim >= len(shape) - 4:
         size_splits = list(size_splits)

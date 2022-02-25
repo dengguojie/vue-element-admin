@@ -107,62 +107,8 @@ def op_select_format(input_x, output1, attr1, attr2, kernel_name="square_sum_v1"
 
 # 'pylint: disable=locally-disabled,too-many-arguments,unused-argument,invalid-name
 # 'pylint: disable=locally-disabled,redefined-builtin,too-many-locals,unused-variable
-def reduce_sum_d_compute(x, y, axis=None, keepdims=None, kernel_name="reduce_sum_d"):
-    """redusce_sum_d compute
-
-    Parameters:
-    ----------
-    x: TVM tensor
-        input tensor.
-    y: dict
-        the dict of output tensor.
-    axis: int, list, tuple or NONETYPE
-        the axis for reduce.
-    keepdims: bool or NONETYPE
-        if true, retains reduced dimensions with length 1.
-    kernel_name: str
-        cce kernel name, default value is "reduce_sum_d".
-
-    Returns
-    -------
-    res: TVM tensor
-        output tensor, has the same shape and type as input tensor.
-    """
-    dtype = x.dtype
-
-    if dtype == "float16" and tbe_platform.api_check_support("te.lang.cce.sum", "float32"):
-        x = tbe.cast_to(x, "float32")
-    res_sum = tbe.sum(x, axis=axis, keepdims=keepdims)
-    res = tbe.cast_to(res_sum, dtype)
-
-    return res
-
-
-def square_compute(input_x, output_y, kernel_name="square"):
-    """
-    algorithm: square
-    calculating data's square,y= x*x
-
-    Parameters
-    ----------
-    input_x: TVM tensor
-        the placeholder of input data
-    output_y: dict
-        shape and dtype of output, should be same shape and type as input
-    kernel_name: str
-        cce kernel name, default value is square
-
-    Returns
-    -------
-    res : tvm.tensor
-        the result of square
-    """
-    res = tbe.vmul(input_x, input_x)
-    return res
-
-
 @tbe_platform.fusion_manager.fusion_manager.register("square_sum_v1")
-def square_sum_v1_compute(input_x, output1, attr1, attr2, kernel_name="square_sum_v1"):
+def square_sum_v1_compute(input_x, output1, attr1, attr2, kernel_name="square_sum_v1", impl_mode=None):
     """
     calculating data
 
@@ -175,22 +121,32 @@ def square_sum_v1_compute(input_x, output1, attr1, attr2, kernel_name="square_su
     output tensor
     """
     shape = shape_util.shape_to_list(input_x.shape)
+    ori_dtype = input_x.dtype
     axis_d = []
     if not attr1:
         for i, _ in enumerate(shape):
             axis_d.append(i)
     else:
         axis_d = attr1
-    square = square_compute(input_x, {}, kernel_name)
 
-    sum0 = reduce_sum_d_compute(square, {}, axis_d, keepdims=attr2, kernel_name=kernel_name)
+    if impl_mode == "high_precision":
+        input_x = tbe.cast_to(input_x, "float32")
+    square_res = tbe.vmul(input_x, input_x)
 
-    return sum0
+    if square_res.dtype == "float16" and tbe_platform.api_check_support("te.lang.cce.sum", "float32"):
+        square_res = tbe.cast_to(square_res, "float32")
+
+    sum_res = tbe.sum(square_res, axis=axis_d, keepdims=attr2)
+
+    res = tbe.cast_to(sum_res, ori_dtype)
+
+
+    return res
 
 
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_LIST_INT,
                             para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
-def square_sum_v1(input_x, output1, attr1, attr2=True, kernel_name="square_sum_v1"):
+def square_sum_v1(input_x, output1, attr1, attr2=True, kernel_name="square_sum_v1", impl_mode=None):
     """
     calculating data
 
@@ -215,7 +171,7 @@ def square_sum_v1(input_x, output1, attr1, attr2=True, kernel_name="square_sum_v
 
     data_input = tvm.placeholder(shape, name="data_input", dtype=input_dtype)
 
-    res = square_sum_v1_compute(data_input, output1, attr1, attr2, kernel_name)
+    res = square_sum_v1_compute(data_input, output1, attr1, attr2, kernel_name, impl_mode)
 
     with tvm.target.cce():
         sch = tbe.auto_schedule(res)

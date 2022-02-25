@@ -157,13 +157,6 @@ class Lru(OpBase):
                                                           scope=tik.scope_ubuf)
 
     @staticmethod
-    def _get_ele_block(dtype):
-        """
-        get this dtype block num
-        """
-        return Constant.BLOCK_BYTES // (tbe_platform.get_bit_len(dtype) // Constant.BYTE_BITS)
-
-    @staticmethod
     def is_power(k):
         """
         input is or not 2**n
@@ -172,6 +165,13 @@ class Lru(OpBase):
             return False
         m = k & (k - 1)
         return m == 0
+
+    @staticmethod
+    def _get_ele_block(dtype):
+        """
+        get this dtype block num
+        """
+        return Constant.BLOCK_BYTES // (tbe_platform.get_bit_len(dtype) // Constant.BYTE_BITS)
 
     def tiling_args(self):
         """
