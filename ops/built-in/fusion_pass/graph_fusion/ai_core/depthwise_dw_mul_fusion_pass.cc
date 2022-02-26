@@ -95,14 +95,16 @@ NodePtr DepthwiseDwMulFusionPass::AddMul(ge::ComputeGraph& graph, ge::NodePtr& d
   FUSION_PASS_CHECK(mul_desc == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "mul_desc is null, mul failed."),
                     return nullptr);
 
+  // set dw output dtype to float32 for post mul connection
+  ge::GeTensorDescPtr dedw_ptr = depthwise_dw_node->GetOpDesc()->MutableOutputDesc(0);
+  FUSION_PASS_CHECK(dedw_ptr == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "get dw output desc ptr failed."),
+                    return nullptr);
+  dedw_ptr->SetDataType(DT_FLOAT);
+
   // add input
   ge::GeTensorDesc depthwise_output_desc = depthwise_dw_node->GetOpDesc()->GetOutputDesc(0);
   ge::GeShape kernel_shape = depthwise_output_desc.GetShape();
   vector<int64_t> kernel_shape_vec = kernel_shape.GetDims();
-
-  // set dw output dtype to float32 for post mul connection
-  ge::GeTensorDescPtr dedw_ptr = depthwise_dw_node->GetOpDesc()->MutableOutputDesc(0);
-  dedw_ptr->SetDataType(DT_FLOAT);
 
   FUSION_PASS_CHECK(kernel_shape_vec.size() == 0, OP_LOGE(FUSED_OP_TYPE.c_str(), "dim_mul is null, please check!"),
                     return nullptr);
