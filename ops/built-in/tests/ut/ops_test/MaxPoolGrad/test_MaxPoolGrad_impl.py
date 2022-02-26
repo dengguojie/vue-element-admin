@@ -1338,6 +1338,14 @@ paddings = "SAME"
 data_format = "NHWC"
 do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format, "case_139")
 
+ori_shape0 = [18, 4, 285, 16]
+ori_shape1 = [18, 1, 7, 16]
+ksize = [1, 2, 87, 1]
+strides = [1, 13, 30, 1]
+paddings = "VALID"
+data_format = "NHWC"
+do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format, "case_140")
+
 
 vals = {("tik.load3dv1",): False}
 def side_effects(*args):
@@ -1352,6 +1360,7 @@ with patch("te.platform.cce_conf.api_check_support", MagicMock(side_effect=side_
     ut_case.run("Ascend910A", "MaxPoolGrad_static_shape_case_137")
     ut_case.run("Ascend910A", "MaxPoolGrad_static_shape_case_138")
     ut_case.run("Ascend910A", "MaxPoolGrad_static_shape_case_139")
+    ut_case.run("Ascend910A", "MaxPoolGrad_static_shape_case_140")
 # if __name__ == '__main__':
 #     ut_case.run("Ascend910")
 #     exit(0)

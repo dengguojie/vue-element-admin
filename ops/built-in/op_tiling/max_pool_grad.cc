@@ -58,6 +58,8 @@ const int64_t INDEX_7 = 7;
 const int64_t INDEX_8 = 8;
 const int64_t MODE_TWO = 2;
 const int64_t TILING_FACTOR_TWO = 2;
+const int64_t VCMP_NUM_EACH_REPEAT = 128;
+const int64_t LOAD3D_NUM_EACH_REPEAT = 16;
 
 static const std::vector<std::string> COMPILE_INFO_KEY = {"core_num", "ub_size", "kh",      "kw",
                                                           "sh",       "sw",      "padding", "l1_size"};
@@ -499,13 +501,13 @@ vector<int64_t> PaddingMode(const GeShape& input_shape, const GeShape& output_sh
     if (pad_h < 0) {
       pad_h = 0;
     }
-    pad_top = pad_h / 2;
+    pad_top = pad_h / TILING_FACTOR_TWO;
     pad_bottom = pad_h - pad_top;
     int64_t pad_w = (wo - 1) * sw + kw - fmap_w;
     if (pad_w < 0) {
       pad_w = 0;
     }
-    pad_left = pad_w / 2;
+    pad_left = pad_w / TILING_FACTOR_TWO;
     pad_right = pad_w - pad_left;
     pad = {pad_top, pad_bottom, pad_left, pad_right};
   }
@@ -523,10 +525,10 @@ int64_t OverlapMode(int64_t stride, int64_t ksize, int64_t xo, int64_t xi) {
 
 void InferDimReturn(int64_t ho, int64_t wo, bool model, std::vector<int64_t>& ksize, std::vector<int64_t>& strides,
                     int64_t ho_ys, int64_t wo_ys, int64_t h_ys, int64_t w_ys, int64_t& hi, int64_t& wi) {
-  int64_t kh = ksize[1];
-  int64_t sh = strides[1];
-  int64_t kw = ksize[2];
-  int64_t sw = strides[2];
+  int64_t kh = ksize[INDEX_1];
+  int64_t sh = strides[INDEX_1];
+  int64_t kw = ksize[INDEX_2];
+  int64_t sw = strides[INDEX_2];
   if (kh > sh) {
     hi = kh + (ho - 1) * sh;
   } else {
@@ -596,7 +598,8 @@ void VectorDup(int64_t ele_num, ge::DataType dtype, int64_t& dup_repeat_merchant
 
 int64_t CheckConfig(vector<int64_t>& config) {
   int64_t mark = 1;
-  for (int64_t i = 0; i < 6; i++) {
+  int64_t config_size = 6;
+  for (int64_t i = 0; i < config_size; i++) {
     if (config[i] > MAX_REPEAT_TIME) {
       mark = 0;
       break;
@@ -846,10 +849,10 @@ vector<int64_t> SplitPore(int64_t& n, int64_t& c1, int64_t& core_num, vector<int
 
 void InferMapReturn(int64_t ho, int64_t wo, vector<int64_t>& ksize, vector<int64_t>& strides, int64_t ho_ys,
                     int64_t wo_ys, int64_t h_ys, int64_t w_ys, vector<int64_t>& pad, int64_t& hi, int64_t& wi) {
-  int64_t kh = ksize[1];
-  int64_t sh = strides[1];
-  int64_t kw = ksize[2];
-  int64_t sw = strides[2];
+  int64_t kh = ksize[INDEX_1];
+  int64_t sh = strides[INDEX_1];
+  int64_t kw = ksize[INDEX_2];
+  int64_t sw = strides[INDEX_2];
   if (kh >= sh) {
     hi = kh + (ho - 1) * sh;
   } else {
@@ -861,10 +864,10 @@ void InferMapReturn(int64_t ho, int64_t wo, vector<int64_t>& ksize, vector<int64
     wi = wo * sw;
   }
   if (ho_ys == ho) {
-    hi = h_ys + pad[0] + pad[1];
+    hi = h_ys + pad[INDEX_0] + pad[INDEX_1];
   }
   if (wo_ys == wo) {
-    wi = w_ys + pad[2] + pad[3];
+    wi = w_ys + pad[INDEX_2] + pad[INDEX_3];
   }
 }
 
@@ -879,16 +882,18 @@ void CheckProcessSpace(int64_t ho, int64_t wo, vector<int64_t>& params_ub, vecto
   int64_t l1_in_size = infer_hi * infer_wi * C0;
 
   int64_t col_in_shape = ho * wo * C0;
-  int64_t col_in_size = UssCeilDiv(col_in_shape, 256) * 256;
+  int64_t min_col_in_size = 256;
+  int64_t min_output_size = 128;
+  int64_t col_in_size = UssCeilDiv(col_in_shape, min_col_in_size) * min_col_in_size;
 
-  int64_t forward_ou_size = UssCeilDiv(col_in_shape, 128) * 128;
+  int64_t forward_ou_size = UssCeilDiv(col_in_shape, min_output_size) * min_output_size;
 
   int64_t mask_shape = ho * wo;
-  int64_t mask_size = UssCeilDiv(mask_shape, 128) * 128;
+  int64_t mask_size = UssCeilDiv(mask_shape, min_output_size) * min_output_size;
   int64_t grad_size = forward_ou_size;
   int64_t zero_size = 128;
 
-  int64_t grad_sel_fp16_size = UssCeilDiv(col_in_shape, 128) * 128;
+  int64_t grad_sel_fp16_size = UssCeilDiv(col_in_shape, min_output_size) * min_output_size;
   int64_t grad_sel_fp32_size = grad_sel_fp16_size;
   int64_t f_map_fp32_size = 0;
   if (padding == "VALID") {
@@ -903,15 +908,15 @@ void CheckProcessSpace(int64_t ho, int64_t wo, vector<int64_t>& params_ub, vecto
   int64_t used_ub_byte =
       (col_in_size + forward_ou_size + mask_size * 3 + grad_size + zero_size + grad_sel_fp16_size) * BYTE16 +
       (grad_sel_fp32_size + f_map_fp32_size) * BYTE32;
-  bool l1_split = l1_in_size > (l1_size / 2);
-  int64_t col_in_size_ub = ((ub_size - 256) / (198 + 64 * strides[1] * strides[2])) * C0;
-  if (col_in_size_ub < 256) {
-    col_in_size_ub = 256;
+  bool l1_split = l1_in_size > (l1_size / TILING_FACTOR_TWO);
+  int64_t col_in_size_ub = ((ub_size - min_col_in_size) / (198 + 64 * strides[INDEX_1] * strides[INDEX_2])) * C0;
+  if (col_in_size_ub < min_col_in_size) {
+    col_in_size_ub = min_col_in_size;
   }
   int64_t forward_ou_size_ub = col_in_size_ub;
-  int64_t mask_size_ub = (ub_size - 256) / (198 + 64 * strides[1] * strides[2]);
-  if (mask_size_ub < 128) {
-    mask_size_ub = 128;
+  int64_t mask_size_ub = (ub_size - min_col_in_size) / (198 + 64 * strides[INDEX_1] * strides[INDEX_2]);
+  if (mask_size_ub < min_output_size) {
+    mask_size_ub = min_output_size;
   }
   int64_t grad_size_ub = col_in_size_ub;
   int64_t zero_size_ub = 128;
@@ -1160,7 +1165,7 @@ bool MaxPoolGradTiling(const std::string& op_type, const ge::Operator& op_paras,
     params.core_loop_params = params.total_num / params.core_num;
     params.core_loop_params1 = (params.total_num + params.core_num - 1) / params.core_num;
 
-    VectorDup(params_ub[8], DTYPE_FP32, params.dup_repeat_merchant_f_map_fp32, params.dup_repeat_remainder_f_map_fp32,
+    VectorDup(params_ub[INDEX_8], DTYPE_FP32, params.dup_repeat_merchant_f_map_fp32, params.dup_repeat_remainder_f_map_fp32,
               params.dup_remainder_f_map_fp32, params.repeats_f_map_fp32);
 
     params.loop_ho = params.ho / params.new_ho;
@@ -1197,19 +1202,19 @@ bool MaxPoolGradTiling(const std::string& op_type, const ge::Operator& op_paras,
                                      forward_in_shape.GetDim(INDEX_3) * forward_in_shape.GetDim(INDEX_4);
     params.forward_ou_shape_h_w_c0 = forward_ou_shape.GetDim(INDEX_1) * forward_ou_shape.GetDim(INDEX_2) *
                                      forward_ou_shape.GetDim(INDEX_3) * forward_ou_shape.GetDim(INDEX_4);
-    params.repeat_times = UssCeilDiv(params.new_ho * params.new_wo, 16);
-    params.howo_co_ver = UssCeilDiv(params.new_ho * params.new_wo * C0, 128);
-    params.mask_size_16 = params_ub[3] / FP16_BLOCK_NUM;
-    params.mask_size_ver = params_ub[3] / MASK_FP16;
+    params.repeat_times = UssCeilDiv(params.new_ho * params.new_wo, LOAD3D_NUM_EACH_REPEAT);
+    params.howo_co_ver = UssCeilDiv(params.new_ho * params.new_wo * C0, VCMP_NUM_EACH_REPEAT);
+    params.mask_size_16 = params_ub[INDEX_3] / FP16_BLOCK_NUM;
+    params.mask_size_ver = params_ub[INDEX_3] / MASK_FP16;
 
-    VectorDup2(params_ub[6], params.repeat_max_time_grad_sel, params.remain_repeat_time_grad_sel,
+    VectorDup2(params_ub[INDEX_6], params.repeat_max_time_grad_sel, params.remain_repeat_time_grad_sel,
                params.remain_ele_grad_sel);
-    int64_t w_2 = params.new_wo * C0 / 2;
+    int64_t w_2 = params.new_wo * C0 / TILING_FACTOR_TWO;
     VectorDup3(w_2, DTYPE_FP32, params.repeat_max_loop_vadd, params.remain_max_loop_vadd, params.remain_ele_vadd);
     params.burst_len_ub_2_gm = params.wi_val * C0 * BYTE32 / BYTE_BLOCK;
     params.src_stride_ub_2_gm = (params.wi_batch - params.wi_val) * C0 * BYTE32 / BYTE_BLOCK;
     params.dst_stride_ub_2_gm = (params.w - params.wi_val) * C0 * BYTE32 / BYTE_BLOCK;
-    VectorDup2(params_ub[8], params.repeat_max_loop_f_map_fp32, params.remain_max_loop_f_map_fp32,
+    VectorDup2(params_ub[INDEX_8], params.repeat_max_loop_f_map_fp32, params.remain_max_loop_f_map_fp32,
                params.remain_ele_f_map_fp32);
 
     if (params.wo_tail != 0) {
@@ -1235,9 +1240,9 @@ bool MaxPoolGradTiling(const std::string& op_type, const ge::Operator& op_paras,
            forward_ou_shape.GetDim(INDEX_3) * forward_ou_shape.GetDim(INDEX_4) * (params.ho - params.new_ho) +
            C0 * (params.wo - params.wo_tail)) *
           BYTE16 / BYTE_BLOCK;
-      params.repeat_times_tail = UssCeilDiv(params.new_ho * params.wo_tail, 16);
-      params.howo_co_ver_tail = UssCeilDiv(params.new_ho * params.wo_tail * C0, 128);
-      int64_t w_2_tail = params.wo_tail * C0 / 2;
+      params.repeat_times_tail = UssCeilDiv(params.new_ho * params.wo_tail, LOAD3D_NUM_EACH_REPEAT);
+      params.howo_co_ver_tail = UssCeilDiv(params.new_ho * params.wo_tail * C0, VCMP_NUM_EACH_REPEAT);
+      int64_t w_2_tail = params.wo_tail * C0 / TILING_FACTOR_TWO;
       VectorDup3(w_2_tail, DTYPE_FP32, params.repeat_max_loop_vadd_tail, params.remain_max_loop_vadd_tail,
                  params.remain_ele_vadd_tail);
       params.burst_len_ub_2_gm_tail = params.wi_val_tail * C0 * BYTE32 / BYTE_BLOCK;
@@ -1258,8 +1263,8 @@ bool MaxPoolGradTiling(const std::string& op_type, const ge::Operator& op_paras,
 
     InferDimReturn(params.new_ho, params.wo_tail, bool_data, ksize, strides, params.ho, params.wo, params.h, params.w,
                    params.hi_tail, params.wi_tail);
-    VectorDup(params_ub[8], DTYPE_FP32, params.dup_repeat_merchant_f_map_fp32, params.dup_repeat_remainder_f_map_fp32,
-              params.dup_remainder_f_map_fp32, params.repeats_f_map_fp32);
+    VectorDup(params_ub[INDEX_8], DTYPE_FP32, params.dup_repeat_merchant_f_map_fp32,
+              params.dup_repeat_remainder_f_map_fp32, params.dup_remainder_f_map_fp32, params.repeats_f_map_fp32);
     params.core_ho_times = params.ho / params.core_ou_shape_h;
     params.core_wo_times = params.wo / params.core_ou_shape_w;
     params.forward_in_shape_h_w_c0 = forward_in_shape.GetDim(INDEX_1) * forward_in_shape.GetDim(INDEX_2) *
@@ -1286,18 +1291,18 @@ bool MaxPoolGradTiling(const std::string& op_type, const ge::Operator& op_paras,
          forward_ou_shape.GetDim(INDEX_3) * forward_ou_shape.GetDim(INDEX_4) * (params.ho - params.new_ho) +
          C0 * (params.wo - params.new_wo)) *
         BYTE16 / BYTE_BLOCK;
-    params.repeat_times = UssCeilDiv(params.new_ho * params.new_wo, 16);
-    params.howo_co_ver = UssCeilDiv(params.new_ho * params.new_wo * C0, 128);
-    params.mask_size_16 = params_ub[3] / FP16_BLOCK_NUM;
-    params.mask_size_ver = params_ub[3] / MASK_FP16;
-    VectorDup2(params_ub[6], params.repeat_max_time_grad_sel, params.remain_repeat_time_grad_sel,
+    params.repeat_times = UssCeilDiv(params.new_ho * params.new_wo, LOAD3D_NUM_EACH_REPEAT);
+    params.howo_co_ver = UssCeilDiv(params.new_ho * params.new_wo * C0, VCMP_NUM_EACH_REPEAT);
+    params.mask_size_16 = params_ub[INDEX_3] / FP16_BLOCK_NUM;
+    params.mask_size_ver = params_ub[INDEX_3] / MASK_FP16;
+    VectorDup2(params_ub[INDEX_6], params.repeat_max_time_grad_sel, params.remain_repeat_time_grad_sel,
                params.remain_ele_grad_sel);
-    int64_t w_2 = params.new_wo * C0 / 2;
+    int64_t w_2 = params.new_wo * C0 / TILING_FACTOR_TWO;
     VectorDup3(w_2, DTYPE_FP32, params.repeat_max_loop_vadd, params.remain_max_loop_vadd, params.remain_ele_vadd);
     params.burst_len_ub2gm_2 = params.wi_val * C0 * BYTE32 / BYTE_BLOCK;
     params.src_stride_ub_2_gm = (params.wi_batch - params.wi_val) * C0 * BYTE32 / BYTE_BLOCK;
     params.dst_stride_ub_2_gm = (params.w - params.wi_val) * C0 * BYTE32 / BYTE_BLOCK;
-    VectorDup2(params_ub[8], params.repeat_max_loop_f_map_fp32, params.remain_max_loop_f_map_fp32,
+    VectorDup2(params_ub[INDEX_8], params.repeat_max_loop_f_map_fp32, params.remain_max_loop_f_map_fp32,
                params.remain_ele_f_map_fp32);
     if (params.wo_tail != 0) {
       if (params.overlap_w > 0) {
@@ -1319,12 +1324,12 @@ bool MaxPoolGradTiling(const std::string& op_type, const ge::Operator& op_paras,
            forward_ou_shape.GetDim(INDEX_3) * forward_ou_shape.GetDim(INDEX_4) * (params.ho - params.new_ho) +
            C0 * (params.wo - params.wo_tail)) *
           BYTE16 / BYTE_BLOCK;
-      params.repeat_times_tail = UssCeilDiv(params.new_ho * params.wo_tail, 16);
-      params.howo_co_ver_tail = UssCeilDiv(params.new_ho * params.wo_tail * C0, 128);
-      int64_t w_2_tail = params.wo_tail * C0 / 2;
+      params.repeat_times_tail = UssCeilDiv(params.new_ho * params.wo_tail, LOAD3D_NUM_EACH_REPEAT);
+      params.howo_co_ver_tail = UssCeilDiv(params.new_ho * params.wo_tail * C0, VCMP_NUM_EACH_REPEAT);
+      int64_t w_2_tail = params.wo_tail * C0 / TILING_FACTOR_TWO;
       VectorDup3(w_2_tail, DTYPE_FP32, params.repeat_max_loop_vadd_tail, params.remain_max_loop_vadd_tail,
                  params.remain_ele_vadd_tail);
-      params.burst_len_ub2gm_2_tail = params.wi_val_tail * C0 * 4 / BYTE_BLOCK;
+      params.burst_len_ub2gm_2_tail = params.wi_val_tail * C0 * BYTE32 / BYTE_BLOCK;
       params.src_stride_ub_2_gm_tail = (params.wi_batch - params.wi_val_tail) * C0 * BYTE32 / BYTE_BLOCK;
       params.dst_stride_ub_2_gm_tail = (params.w - params.wi_val_tail) * C0 * BYTE32 / BYTE_BLOCK;
     }
@@ -1344,8 +1349,8 @@ bool MaxPoolGradTiling(const std::string& op_type, const ge::Operator& op_paras,
                    params.hi_tail, params.wi_tail);
     InferMapReturn(params.new_ho, params.new_wo, ksize, strides, params.ho, params.wo, params.h, params.w, pad,
                    params.map_hi, params.map_wi);
-    VectorDup(params_ub[8], DTYPE_FP32, params.dup_repeat_merchant_f_map_fp32, params.dup_repeat_remainder_f_map_fp32,
-              params.dup_remainder_f_map_fp32, params.repeats_f_map_fp32);
+    VectorDup(params_ub[INDEX_8], DTYPE_FP32, params.dup_repeat_merchant_f_map_fp32,
+              params.dup_repeat_remainder_f_map_fp32, params.dup_remainder_f_map_fp32, params.repeats_f_map_fp32);
 
     params.core_ho_times = params.ho / params.core_ou_shape_h;
 
@@ -1371,17 +1376,17 @@ bool MaxPoolGradTiling(const std::string& op_type, const ge::Operator& op_paras,
          forward_ou_shape.GetDim(INDEX_3) * forward_ou_shape.GetDim(INDEX_4) * (params.ho - params.new_ho) +
          C0 * (params.wo - params.new_wo)) *
         BYTE16 / BYTE_BLOCK;
-    params.repeat_times = UssCeilDiv(params.new_ho * params.new_wo, 16);
-    params.howo_co_ver = UssCeilDiv(params.new_ho * params.new_wo * C0, 128);
-    params.mask_size_16 = params_ub[3] / FP16_BLOCK_NUM;
-    params.mask_size_ver = params_ub[3] / MASK_FP16;
-    VectorDup2(params_ub[6], params.repeat_max_time_grad_sel, params.remain_repeat_time_grad_sel,
+    params.repeat_times = UssCeilDiv(params.new_ho * params.new_wo, LOAD3D_NUM_EACH_REPEAT);
+    params.howo_co_ver = UssCeilDiv(params.new_ho * params.new_wo * C0, VCMP_NUM_EACH_REPEAT);
+    params.mask_size_16 = params_ub[INDEX_3] / FP16_BLOCK_NUM;
+    params.mask_size_ver = params_ub[INDEX_3] / MASK_FP16;
+    VectorDup2(params_ub[INDEX_6], params.repeat_max_time_grad_sel, params.remain_repeat_time_grad_sel,
                params.remain_ele_grad_sel);
-    int64_t w_2 = params.new_wo * C0 / 2;
+    int64_t w_2 = params.new_wo * C0 / TILING_FACTOR_TWO;
     VectorDup3(w_2, DTYPE_FP32, params.repeat_max_loop_vadd, params.remain_max_loop_vadd, params.remain_ele_vadd);
 
-    VectorDup(params_ub[8], DTYPE_FP32, params.dup_repeat_merchant_f_map_fp32, params.dup_repeat_remainder_f_map_fp32,
-              params.dup_remainder_f_map_fp32, params.repeats_f_map_fp32);
+    VectorDup(params_ub[INDEX_8], DTYPE_FP32, params.dup_repeat_merchant_f_map_fp32,
+              params.dup_repeat_remainder_f_map_fp32, params.dup_remainder_f_map_fp32, params.repeats_f_map_fp32);
 
     if (params.wo_tail != 0) {
       if (params.overlap_w > 0) {
@@ -1401,9 +1406,9 @@ bool MaxPoolGradTiling(const std::string& op_type, const ge::Operator& op_paras,
            forward_ou_shape.GetDim(INDEX_3) * forward_ou_shape.GetDim(INDEX_4) * (params.ho - params.new_ho) +
            C0 * (params.wo - params.wo_tail)) *
           BYTE16 / BYTE_BLOCK;
-      params.repeat_times_tail = UssCeilDiv(params.new_ho * params.wo_tail, 16);
-      params.howo_co_ver_tail = UssCeilDiv(params.new_ho * params.wo_tail * C0, 128);
-      int64_t w_2_tail = params.wo_tail * C0 / 2;
+      params.repeat_times_tail = UssCeilDiv(params.new_ho * params.wo_tail, LOAD3D_NUM_EACH_REPEAT);
+      params.howo_co_ver_tail = UssCeilDiv(params.new_ho * params.wo_tail * C0, VCMP_NUM_EACH_REPEAT);
+      int64_t w_2_tail = params.wo_tail * C0 / TILING_FACTOR_TWO;
       VectorDup3(w_2_tail, DTYPE_FP32, params.repeat_max_loop_vadd_tail, params.remain_max_loop_vadd_tail,
                  params.remain_ele_vadd_tail);
     }
@@ -1415,8 +1420,8 @@ bool MaxPoolGradTiling(const std::string& op_type, const ge::Operator& op_paras,
 
     InferDimReturn(params.new_ho, params.new_wo, bool_data, ksize, strides, params.ho, params.wo, params.h, params.w,
                    params.hi_batch, params.wi_batch);
-    VectorDup(params_ub[8], DTYPE_FP32, params.dup_repeat_merchant_f_map_fp32, params.dup_repeat_remainder_f_map_fp32,
-              params.dup_remainder_f_map_fp32, params.repeats_f_map_fp32);
+    VectorDup(params_ub[INDEX_8], DTYPE_FP32, params.dup_repeat_merchant_f_map_fp32,
+              params.dup_repeat_remainder_f_map_fp32, params.dup_remainder_f_map_fp32, params.repeats_f_map_fp32);
     params.forward_in_shape_h_w_c0 = forward_in_shape.GetDim(INDEX_1) * forward_in_shape.GetDim(INDEX_2) *
                                      forward_in_shape.GetDim(INDEX_3) * forward_in_shape.GetDim(INDEX_4);
     params.forward_ou_shape_h_w_c0 = forward_ou_shape.GetDim(INDEX_1) * forward_ou_shape.GetDim(INDEX_2) *
@@ -1436,14 +1441,14 @@ bool MaxPoolGradTiling(const std::string& op_type, const ge::Operator& op_paras,
          forward_ou_shape.GetDim(INDEX_3) * forward_ou_shape.GetDim(INDEX_4) * (params.ho - params.new_ho) +
          C0 * (params.wo - params.new_wo)) *
         BYTE16 / BYTE_BLOCK;
-    params.repeat_times = UssCeilDiv(params.new_ho * params.new_wo, 16);
-    params.howo_co_ver = UssCeilDiv(params.new_ho * params.new_wo * C0, 128);
-    params.mask_size_16 = params_ub[3] / FP16_BLOCK_NUM;
-    params.mask_size_ver = params_ub[3] / MASK_FP16;
-    VectorDup2(params_ub[6], params.repeat_max_time_grad_sel, params.remain_repeat_time_grad_sel,
+    params.repeat_times = UssCeilDiv(params.new_ho * params.new_wo, LOAD3D_NUM_EACH_REPEAT);
+    params.howo_co_ver = UssCeilDiv(params.new_ho * params.new_wo * C0, VCMP_NUM_EACH_REPEAT);
+    params.mask_size_16 = params_ub[INDEX_3] / FP16_BLOCK_NUM;
+    params.mask_size_ver = params_ub[INDEX_3] / MASK_FP16;
+    VectorDup2(params_ub[INDEX_6], params.repeat_max_time_grad_sel, params.remain_repeat_time_grad_sel,
                params.remain_ele_grad_sel);
-    params.wo_2 = params.new_wo * 2;
-    params.sh_wi_2 = strides[1] * params.wi_batch * 2;
+    params.wo_2 = params.new_wo * TILING_FACTOR_TWO;
+    params.sh_wi_2 = strides[1] * params.wi_batch * TILING_FACTOR_TWO;
     vector<int64_t> config_list = {strides[INDEX_2] * TILING_FACTOR_TWO,
                                    strides[INDEX_2] * TILING_FACTOR_TWO,
                                    MODE_TWO,
@@ -1452,10 +1457,10 @@ bool MaxPoolGradTiling(const std::string& op_type, const ge::Operator& op_paras,
                                    params.wo_2};
     params.config = CheckConfig(config_list);
     if (params.config == 1) {
-      params.num_instr_loop_h = UssCeilDiv(params.new_ho, 255);
-      params.num_instr_loop_w = UssCeilDiv(params.new_wo * C0 / 2, MASK_FP32);
-      params.remain_mask = (params.new_wo * C0 / 2) % MASK_FP32;
-      if (params.remain_mask == 0 && ((params.new_wo * C0 / 2) != 0)) {
+      params.num_instr_loop_h = UssCeilDiv(params.new_ho, MAX_REPEAT_TIME);
+      params.num_instr_loop_w = UssCeilDiv(params.new_wo * C0 / TILING_FACTOR_TWO, MASK_FP32);
+      params.remain_mask = (params.new_wo * C0 / TILING_FACTOR_TWO) % MASK_FP32;
+      if (params.remain_mask == 0 && ((params.new_wo * C0 / TILING_FACTOR_TWO) != 0)) {
         params.remain_mask = MASK_FP32;
       }
 
@@ -1466,14 +1471,14 @@ bool MaxPoolGradTiling(const std::string& op_type, const ge::Operator& op_paras,
       params.num_instr_loop_w_1 = params.num_instr_loop_w - 1;
       params.num_instr_loop_h_1 = params.num_instr_loop_h - 1;
     }
-    int64_t w_2 = params.new_wo * C0 / 2;
+    int64_t w_2 = params.new_wo * C0 / TILING_FACTOR_TWO;
     VectorDup3(w_2, DTYPE_FP32, params.repeat_max_loop_vadd, params.remain_max_loop_vadd, params.remain_ele_vadd);
     params.dst_stride_ub_2_gm =
         (forward_in_shape.GetDim(INDEX_2) * forward_in_shape.GetDim(INDEX_3) * forward_in_shape.GetDim(INDEX_4) *
              (params.c1 - 1) +
          forward_in_shape.GetDim(INDEX_3) * forward_in_shape.GetDim(INDEX_4) * (params.h - params.hi_batch)) *
-        4 / 32;
-    params.burst_len_tail = params.hi_batch * params.wi_batch * C0 * 4 / 32;
+        BYTE32 / BYTE_BLOCK;
+    params.burst_len_tail = params.hi_batch * params.wi_batch * C0 * BYTE32 / BYTE_BLOCK;
   } else if (params.select_key == CASE_TILING_HO) {
     params.total_num_div_core = params.total_num % params.core_num;
     params.total_num_div_core_1 = params.total_num_div_core;
@@ -1488,8 +1493,8 @@ bool MaxPoolGradTiling(const std::string& op_type, const ge::Operator& op_paras,
     if (params.ho_tail == 0) {
       params.hi_tail = 0;
     }
-    VectorDup(params_ub[8], DTYPE_FP32, params.dup_repeat_merchant_f_map_fp32, params.dup_repeat_remainder_f_map_fp32,
-              params.dup_remainder_f_map_fp32, params.repeats_f_map_fp32);
+    VectorDup(params_ub[INDEX_8], DTYPE_FP32, params.dup_repeat_merchant_f_map_fp32,
+              params.dup_repeat_remainder_f_map_fp32, params.dup_remainder_f_map_fp32, params.repeats_f_map_fp32);
     params.forward_in_shape_h_w_c0 = forward_in_shape.GetDim(INDEX_1) * forward_in_shape.GetDim(INDEX_2) *
                                      forward_in_shape.GetDim(INDEX_3) * forward_in_shape.GetDim(INDEX_4);
     params.forward_ou_shape_h_w_c0 = forward_ou_shape.GetDim(INDEX_1) * forward_ou_shape.GetDim(INDEX_2) *
@@ -1520,14 +1525,14 @@ bool MaxPoolGradTiling(const std::string& op_type, const ge::Operator& op_paras,
          forward_ou_shape.GetDim(INDEX_3) * forward_ou_shape.GetDim(INDEX_4) * (params.ho - params.new_ho) +
          C0 * (params.wo - params.new_wo)) *
         BYTE16 / BYTE_BLOCK;
-    params.repeat_times = UssCeilDiv(params.new_ho * params.new_wo, 16);
-    params.howo_co_ver = UssCeilDiv(params.new_ho * params.new_wo * C0, 128);
-    params.mask_size_16 = params_ub[3] / FP16_BLOCK_NUM;
-    params.mask_size_ver = params_ub[3] / MASK_FP16;
-    VectorDup2(params_ub[6], params.repeat_max_time_grad_sel, params.remain_repeat_time_grad_sel,
+    params.repeat_times = UssCeilDiv(params.new_ho * params.new_wo, LOAD3D_NUM_EACH_REPEAT);
+    params.howo_co_ver = UssCeilDiv(params.new_ho * params.new_wo * C0, VCMP_NUM_EACH_REPEAT);
+    params.mask_size_16 = params_ub[INDEX_3] / FP16_BLOCK_NUM;
+    params.mask_size_ver = params_ub[INDEX_3] / MASK_FP16;
+    VectorDup2(params_ub[INDEX_6], params.repeat_max_time_grad_sel, params.remain_repeat_time_grad_sel,
                params.remain_ele_grad_sel);
-    params.wo_2 = params.new_wo * 2;
-    params.sh_wi_2 = strides[1] * params.wi_batch * 2;
+    params.wo_2 = params.new_wo * TILING_FACTOR_TWO;
+    params.sh_wi_2 = strides[1] * params.wi_batch * TILING_FACTOR_TWO;
     vector<int64_t> config_list = {strides[INDEX_2] * TILING_FACTOR_TWO,
                                    strides[INDEX_2] * TILING_FACTOR_TWO,
                                    MODE_TWO,
@@ -1536,10 +1541,10 @@ bool MaxPoolGradTiling(const std::string& op_type, const ge::Operator& op_paras,
                                    params.wo_2};
     params.config = CheckConfig(config_list);
     if (params.config == 1) {
-      params.num_instr_loop_h = UssCeilDiv(params.new_ho, 255);
-      params.num_instr_loop_w = UssCeilDiv(params.new_wo * C0 / 2, MASK_FP32);
-      params.remain_mask = (params.new_wo * C0 / 2) % MASK_FP32;
-      if (params.remain_mask == 0 && ((params.new_wo * C0 / 2) != 0)) {
+      params.num_instr_loop_h = UssCeilDiv(params.new_ho, MAX_REPEAT_TIME);
+      params.num_instr_loop_w = UssCeilDiv(params.new_wo * C0 / TILING_FACTOR_TWO, MASK_FP32);
+      params.remain_mask = (params.new_wo * C0 / TILING_FACTOR_TWO) % MASK_FP32;
+      if (params.remain_mask == 0 && ((params.new_wo * C0 / TILING_FACTOR_TWO) != 0)) {
         params.remain_mask = MASK_FP32;
       }
 
@@ -1551,7 +1556,7 @@ bool MaxPoolGradTiling(const std::string& op_type, const ge::Operator& op_paras,
       params.num_instr_loop_w_1 = params.num_instr_loop_w - 1;
       params.num_instr_loop_h_1 = params.num_instr_loop_h - 1;
     }
-    int64_t w_2 = params.new_wo * C0 / 2;
+    int64_t w_2 = params.new_wo * C0 / TILING_FACTOR_TWO;
     VectorDup3(w_2, DTYPE_FP32, params.repeat_max_loop_vadd, params.remain_max_loop_vadd, params.remain_ele_vadd);
     if (params.hi_invalid < 0) {
       params.hi_invalid = 0;
@@ -1619,10 +1624,10 @@ bool MaxPoolGradTiling(const std::string& op_type, const ge::Operator& op_paras,
            forward_ou_shape.GetDim(INDEX_3) * forward_ou_shape.GetDim(INDEX_4) * (params.ho - params.ho_tail) +
            C0 * (params.wo - params.new_wo)) *
           BYTE16 / BYTE_BLOCK;
-      params.repeat_times_tail = UssCeilDiv(params.ho_tail * params.new_wo, 16);
-      params.howo_co_ver_tail = UssCeilDiv(params.ho_tail * params.new_wo * C0, 128);
+      params.repeat_times_tail = UssCeilDiv(params.ho_tail * params.new_wo, LOAD3D_NUM_EACH_REPEAT);
+      params.howo_co_ver_tail = UssCeilDiv(params.ho_tail * params.new_wo * C0, VCMP_NUM_EACH_REPEAT);
       if (params.config == 1) {
-        params.num_instr_loop_h_tail = UssCeilDiv(params.ho_tail, 255);
+        params.num_instr_loop_h_tail = UssCeilDiv(params.ho_tail, MAX_REPEAT_TIME);
         params.remain_repeat_tail = params.ho_tail % MAX_REPEAT_TIME;
         if (params.remain_repeat_tail == 0 && (params.ho_tail != 0)) {
           params.remain_repeat_tail = MAX_REPEAT_TIME;
@@ -1671,8 +1676,8 @@ bool MaxPoolGradTiling(const std::string& op_type, const ge::Operator& op_paras,
                    params.hi_batch, params.wi_batch);
     InferDimReturn(params.ho_tail, params.new_wo, bool_data, ksize, strides, params.ho, params.wo, params.h, params.w,
                    params.hi_tail, params.wi_tail);
-    VectorDup(params_ub[8], DTYPE_FP32, params.dup_repeat_merchant_f_map_fp32, params.dup_repeat_remainder_f_map_fp32,
-              params.dup_remainder_f_map_fp32, params.repeats_f_map_fp32);
+    VectorDup(params_ub[INDEX_8], DTYPE_FP32, params.dup_repeat_merchant_f_map_fp32,
+              params.dup_repeat_remainder_f_map_fp32, params.dup_remainder_f_map_fp32, params.repeats_f_map_fp32);
     params.core_ho_times = params.ho / params.core_ou_shape_h;
     params.forward_in_shape_h_w_c0 = forward_in_shape.GetDim(INDEX_1) * forward_in_shape.GetDim(INDEX_2) *
                                      forward_in_shape.GetDim(INDEX_3) * forward_in_shape.GetDim(INDEX_4);
@@ -1698,14 +1703,14 @@ bool MaxPoolGradTiling(const std::string& op_type, const ge::Operator& op_paras,
          forward_ou_shape.GetDim(INDEX_3) * forward_ou_shape.GetDim(INDEX_4) * (params.ho - params.new_ho) +
          C0 * (params.wo - params.new_wo)) *
         BYTE16 / BYTE_BLOCK;
-    params.repeat_times = UssCeilDiv(params.new_ho * params.new_wo, 16);
-    params.howo_co_ver = UssCeilDiv(params.new_ho * params.new_wo * C0, 128);
-    params.mask_size_16 = params_ub[3] / FP16_BLOCK_NUM;
-    params.mask_size_ver = params_ub[3] / MASK_FP16;
-    VectorDup2(params_ub[6], params.repeat_max_time_grad_sel, params.remain_repeat_time_grad_sel,
+    params.repeat_times = UssCeilDiv(params.new_ho * params.new_wo, LOAD3D_NUM_EACH_REPEAT);
+    params.howo_co_ver = UssCeilDiv(params.new_ho * params.new_wo * C0, VCMP_NUM_EACH_REPEAT);
+    params.mask_size_16 = params_ub[INDEX_3] / FP16_BLOCK_NUM;
+    params.mask_size_ver = params_ub[INDEX_3] / MASK_FP16;
+    VectorDup2(params_ub[INDEX_6], params.repeat_max_time_grad_sel, params.remain_repeat_time_grad_sel,
                params.remain_ele_grad_sel);
-    params.wo_2 = params.new_wo * 2;
-    params.sh_wi_2 = strides[1] * params.wi_batch * 2;
+    params.wo_2 = params.new_wo * TILING_FACTOR_TWO;
+    params.sh_wi_2 = strides[1] * params.wi_batch * TILING_FACTOR_TWO;
     vector<int64_t> config_list = {strides[INDEX_2] * TILING_FACTOR_TWO,
                                    strides[INDEX_2] * TILING_FACTOR_TWO,
                                    MODE_TWO,
@@ -1714,10 +1719,10 @@ bool MaxPoolGradTiling(const std::string& op_type, const ge::Operator& op_paras,
                                    params.wo_2};
     params.config = CheckConfig(config_list);
     if (params.config == 1) {
-      params.num_instr_loop_h = UssCeilDiv(params.new_ho, 255);
-      params.num_instr_loop_w = UssCeilDiv(params.new_wo * C0 / 2, MASK_FP32);
-      params.remain_mask = (params.new_wo * C0 / 2) % MASK_FP32;
-      if (params.remain_mask == 0 && ((params.new_wo * C0 / 2) != 0)) {
+      params.num_instr_loop_h = UssCeilDiv(params.new_ho, MAX_REPEAT_TIME);
+      params.num_instr_loop_w = UssCeilDiv(params.new_wo * C0 / TILING_FACTOR_TWO, MASK_FP32);
+      params.remain_mask = (params.new_wo * C0 / TILING_FACTOR_TWO) % MASK_FP32;
+      if (params.remain_mask == 0 && ((params.new_wo * C0 / TILING_FACTOR_TWO) != 0)) {
         params.remain_mask = MASK_FP32;
       }
 
@@ -1728,7 +1733,7 @@ bool MaxPoolGradTiling(const std::string& op_type, const ge::Operator& op_paras,
       params.num_instr_loop_w_1 = params.num_instr_loop_w - 1;
       params.num_instr_loop_h_1 = params.num_instr_loop_h - 1;
     }
-    int64_t w_2 = params.new_wo * C0 / 2;
+    int64_t w_2 = params.new_wo * C0 / TILING_FACTOR_TWO;
     VectorDup3(w_2, DTYPE_FP32, params.repeat_max_loop_vadd, params.remain_max_loop_vadd, params.remain_ele_vadd);
     params.burst_len_ub_2_gm = params.hi_val * params.wi_batch * C0 * BYTE32 / BYTE_BLOCK;
     params.src_stride_ub_2_gm = (params.hi_batch - params.hi_val) * params.w * C0 * BYTE32 / BYTE_BLOCK;
@@ -1758,10 +1763,10 @@ bool MaxPoolGradTiling(const std::string& op_type, const ge::Operator& op_paras,
            forward_ou_shape.GetDim(INDEX_3) * forward_ou_shape.GetDim(INDEX_4) * (params.ho - params.ho_tail) +
            C0 * (params.wo - params.new_wo)) *
           BYTE16 / BYTE_BLOCK;
-      params.repeat_times_tail = UssCeilDiv(params.ho_tail * params.new_wo, 16);
-      params.howo_co_ver_tail = UssCeilDiv(params.ho_tail * params.new_wo * C0, 128);
+      params.repeat_times_tail = UssCeilDiv(params.ho_tail * params.new_wo, LOAD3D_NUM_EACH_REPEAT);
+      params.howo_co_ver_tail = UssCeilDiv(params.ho_tail * params.new_wo * C0, VCMP_NUM_EACH_REPEAT);
       if (params.config == 1) {
-        params.num_instr_loop_h_tail = UssCeilDiv(params.ho_tail, 255);
+        params.num_instr_loop_h_tail = UssCeilDiv(params.ho_tail, MAX_REPEAT_TIME);
         params.remain_repeat_tail = params.ho_tail % MAX_REPEAT_TIME;
         if (params.remain_repeat_tail == 0 && (params.ho_tail != 0)) {
           params.remain_repeat_tail = MAX_REPEAT_TIME;
@@ -1785,8 +1790,8 @@ bool MaxPoolGradTiling(const std::string& op_type, const ge::Operator& op_paras,
                    params.hi_batch, params.wi_batch);
     params.hi_tail = params.hi_batch;
     params.wi_tail = params.wi_batch;
-    VectorDup(params_ub[8], DTYPE_FP32, params.dup_repeat_merchant_f_map_fp32, params.dup_repeat_remainder_f_map_fp32,
-              params.dup_remainder_f_map_fp32, params.repeats_f_map_fp32);
+    VectorDup(params_ub[INDEX_8], DTYPE_FP32, params.dup_repeat_merchant_f_map_fp32,
+              params.dup_repeat_remainder_f_map_fp32, params.dup_remainder_f_map_fp32, params.repeats_f_map_fp32);
     InferMapReturn(params.new_ho, params.new_wo, ksize, strides, params.ho, params.wo, params.h, params.w, pad,
                    params.map_hi, params.map_wi);
     params.forward_in_shape_h_w_c0 = forward_in_shape.GetDim(INDEX_1) * forward_in_shape.GetDim(INDEX_2) *
@@ -1807,16 +1812,16 @@ bool MaxPoolGradTiling(const std::string& op_type, const ge::Operator& op_paras,
          forward_ou_shape.GetDim(INDEX_3) * forward_ou_shape.GetDim(INDEX_4) * (params.ho - params.new_ho) +
          C0 * (params.wo - params.new_wo)) *
         BYTE16 / BYTE_BLOCK;
-    params.repeat_times = UssCeilDiv(params.new_ho * params.new_wo, 16);
+    params.repeat_times = UssCeilDiv(params.new_ho * params.new_wo, LOAD3D_NUM_EACH_REPEAT);
     params.pad_hw_left_neg = -params.pad_hw_left;
     params.pad_hw_top_neg = -params.pad_hw_top;
-    params.howo_co_ver = UssCeilDiv(params.new_ho * params.new_wo * C0, 128);
-    params.mask_size_16 = params_ub[3] / FP16_BLOCK_NUM;
-    params.mask_size_ver = params_ub[3] / MASK_FP16;
-    VectorDup2(params_ub[6], params.repeat_max_time_grad_sel, params.remain_repeat_time_grad_sel,
+    params.howo_co_ver = UssCeilDiv(params.new_ho * params.new_wo * C0, VCMP_NUM_EACH_REPEAT);
+    params.mask_size_16 = params_ub[INDEX_3] / FP16_BLOCK_NUM;
+    params.mask_size_ver = params_ub[INDEX_3] / MASK_FP16;
+    VectorDup2(params_ub[INDEX_6], params.repeat_max_time_grad_sel, params.remain_repeat_time_grad_sel,
                params.remain_ele_grad_sel);
-    params.wo_2 = params.new_wo * 2;
-    params.sh_wi_2 = strides[1] * params.map_wi * 2;
+    params.wo_2 = params.new_wo * TILING_FACTOR_TWO;
+    params.sh_wi_2 = strides[1] * params.map_wi * TILING_FACTOR_TWO;
     vector<int64_t> config_list = {strides[INDEX_2] * TILING_FACTOR_TWO,
                                    strides[INDEX_2] * TILING_FACTOR_TWO,
                                    MODE_TWO,
@@ -1825,10 +1830,10 @@ bool MaxPoolGradTiling(const std::string& op_type, const ge::Operator& op_paras,
                                    params.wo_2};
     params.config = CheckConfig(config_list);
     if (params.config == 1) {
-      params.num_instr_loop_h = UssCeilDiv(params.new_ho, 255);
-      params.num_instr_loop_w = UssCeilDiv(params.new_wo * C0 / 2, MASK_FP32);
-      params.remain_mask = (params.new_wo * C0 / 2) % MASK_FP32;
-      if (params.remain_mask == 0 && ((params.new_wo * C0 / 2) != 0)) {
+      params.num_instr_loop_h = UssCeilDiv(params.new_ho, MAX_REPEAT_TIME);
+      params.num_instr_loop_w = UssCeilDiv(params.new_wo * C0 / TILING_FACTOR_TWO, MASK_FP32);
+      params.remain_mask = (params.new_wo * C0 / TILING_FACTOR_TWO) % MASK_FP32;
+      if (params.remain_mask == 0 && ((params.new_wo * C0 / TILING_FACTOR_TWO) != 0)) {
         params.remain_mask = MASK_FP32;
       }
 
@@ -1840,7 +1845,7 @@ bool MaxPoolGradTiling(const std::string& op_type, const ge::Operator& op_paras,
       params.num_instr_loop_w_1 = params.num_instr_loop_w - 1;
       params.num_instr_loop_h_1 = params.num_instr_loop_h - 1;
     }
-    int64_t w_2 = params.new_wo * C0 / 2;
+    int64_t w_2 = params.new_wo * C0 / TILING_FACTOR_TWO;
     VectorDup3(w_2, DTYPE_FP32, params.repeat_max_loop_vadd, params.remain_max_loop_vadd, params.remain_ele_vadd);
     params.burst_len_over = params.wi_batch * C0 * BYTE32 / BYTE_BLOCK;
     params.src_stride_val = (params.pad_hw_left + params.pad_hw_right) * BYTE16;
@@ -1857,8 +1862,8 @@ bool MaxPoolGradTiling(const std::string& op_type, const ge::Operator& op_paras,
                    params.hi_tail, params.wi_tail);
     InferMapReturn(params.new_ho, params.new_wo, ksize, strides, params.ho, params.wo, params.h, params.w, pad,
                    params.map_hi, params.map_wi);
-    VectorDup(params_ub[8], DTYPE_FP32, params.dup_repeat_merchant_f_map_fp32, params.dup_repeat_remainder_f_map_fp32,
-              params.dup_remainder_f_map_fp32, params.repeats_f_map_fp32);
+    VectorDup(params_ub[INDEX_8], DTYPE_FP32, params.dup_repeat_merchant_f_map_fp32,
+              params.dup_repeat_remainder_f_map_fp32, params.dup_remainder_f_map_fp32, params.repeats_f_map_fp32);
 
     params.core_ho_times = params.ho / params.core_ou_shape_h;
     params.forward_in_shape_h_w_c0 = forward_in_shape.GetDim(INDEX_1) * forward_in_shape.GetDim(INDEX_2) *
@@ -1880,16 +1885,16 @@ bool MaxPoolGradTiling(const std::string& op_type, const ge::Operator& op_paras,
          forward_ou_shape.GetDim(INDEX_3) * forward_ou_shape.GetDim(INDEX_4) * (params.ho - params.new_ho) +
          C0 * (params.wo - params.new_wo)) *
         BYTE16 / BYTE_BLOCK;
-    params.repeat_times = UssCeilDiv(params.new_ho * params.new_wo, 16);
+    params.repeat_times = UssCeilDiv(params.new_ho * params.new_wo, LOAD3D_NUM_EACH_REPEAT);
     params.pad_hw_left_neg = -params.pad_hw_left;
     params.pad_hw_top_neg = -params.pad_hw_top;
-    params.howo_co_ver = UssCeilDiv(params.new_ho * params.new_wo * C0, 128);
-    params.mask_size_16 = params_ub[3] / FP16_BLOCK_NUM;
-    params.mask_size_ver = params_ub[3] / MASK_FP16;
-    VectorDup2(params_ub[6], params.repeat_max_time_grad_sel, params.remain_repeat_time_grad_sel,
+    params.howo_co_ver = UssCeilDiv(params.new_ho * params.new_wo * C0, VCMP_NUM_EACH_REPEAT);
+    params.mask_size_16 = params_ub[INDEX_3] / FP16_BLOCK_NUM;
+    params.mask_size_ver = params_ub[INDEX_3] / MASK_FP16;
+    VectorDup2(params_ub[INDEX_6], params.repeat_max_time_grad_sel, params.remain_repeat_time_grad_sel,
                params.remain_ele_grad_sel);
-    params.wo_2 = params.new_wo * 2;
-    params.sh_wi_2 = strides[1] * params.map_wi * 2;
+    params.wo_2 = params.new_wo * TILING_FACTOR_TWO;
+    params.sh_wi_2 = strides[1] * params.map_wi * TILING_FACTOR_TWO;
     vector<int64_t> config_list = {strides[INDEX_2] * TILING_FACTOR_TWO,
                                    strides[INDEX_2] * TILING_FACTOR_TWO,
                                    MODE_TWO,
@@ -1898,10 +1903,10 @@ bool MaxPoolGradTiling(const std::string& op_type, const ge::Operator& op_paras,
                                    params.wo_2};
     params.config = CheckConfig(config_list);
     if (params.config == 1) {
-      params.num_instr_loop_h = UssCeilDiv(params.new_ho, 255);
-      params.num_instr_loop_w = UssCeilDiv(params.new_wo * C0 / 2, MASK_FP32);
-      params.remain_mask = (params.new_wo * C0 / 2) % MASK_FP32;
-      if (params.remain_mask == 0 && ((params.new_wo * C0 / 2) != 0)) {
+      params.num_instr_loop_h = UssCeilDiv(params.new_ho, MAX_REPEAT_TIME);
+      params.num_instr_loop_w = UssCeilDiv(params.new_wo * C0 / TILING_FACTOR_TWO, MASK_FP32);
+      params.remain_mask = (params.new_wo * C0 / TILING_FACTOR_TWO) % MASK_FP32;
+      if (params.remain_mask == 0 && ((params.new_wo * C0 / TILING_FACTOR_TWO) != 0)) {
         params.remain_mask = MASK_FP32;
       }
 
@@ -1912,7 +1917,7 @@ bool MaxPoolGradTiling(const std::string& op_type, const ge::Operator& op_paras,
       params.num_instr_loop_w_1 = params.num_instr_loop_w - 1;
       params.num_instr_loop_h_1 = params.num_instr_loop_h - 1;
     }
-    int64_t w_2 = params.new_wo * C0 / 2;
+    int64_t w_2 = params.new_wo * C0 / TILING_FACTOR_TWO;
     VectorDup3(w_2, DTYPE_FP32, params.repeat_max_loop_vadd, params.remain_max_loop_vadd, params.remain_ele_vadd);
     params.burst_len_ub_2_gm = params.wi_batch * C0 * BYTE32 / BYTE_BLOCK;
     params.src_stride_ub_2_gm = (params.pad_hw_left + params.pad_hw_right) * BYTE16;
@@ -1929,10 +1934,10 @@ bool MaxPoolGradTiling(const std::string& op_type, const ge::Operator& op_paras,
            forward_ou_shape.GetDim(INDEX_3) * forward_ou_shape.GetDim(INDEX_4) * (params.ho - params.ho_tail) +
            C0 * (params.wo - params.new_wo)) *
           BYTE16 / BYTE_BLOCK;
-      params.repeat_times_tail = UssCeilDiv(params.ho_tail * params.new_wo, 16);
-      params.howo_co_ver_tail = UssCeilDiv(params.ho_tail * params.new_wo * C0, 128);
+      params.repeat_times_tail = UssCeilDiv(params.ho_tail * params.new_wo, LOAD3D_NUM_EACH_REPEAT);
+      params.howo_co_ver_tail = UssCeilDiv(params.ho_tail * params.new_wo * C0, VCMP_NUM_EACH_REPEAT);
       if (params.config == 1) {
-        params.num_instr_loop_h_tail = UssCeilDiv(params.ho_tail, 255);
+        params.num_instr_loop_h_tail = UssCeilDiv(params.ho_tail, MAX_REPEAT_TIME);
         params.remain_repeat_tail = params.ho_tail % MAX_REPEAT_TIME;
         if (params.remain_repeat_tail == 0 && (params.ho_tail != 0)) {
           params.remain_repeat_tail = MAX_REPEAT_TIME;

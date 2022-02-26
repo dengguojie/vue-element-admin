@@ -449,32 +449,6 @@ class SquareSumAll():
                                                    name="input_y_ub",
                                                    scope=tik.scope_ubuf)
 
-    def _square_sum_all_compute_tiling(self):
-        """
-        SquareSumAll main process
-
-        Parameters
-        ----------
-        None
-
-        Returns
-        -------
-        None
-        """
-        soc_core_num = self.device_core_num
-        process_data_num = self.data_num_each_core
-        actual_block_num = self.need_core_num_input_scalar
-
-        with self.tik_instance.for_range(0, soc_core_num, block_num=soc_core_num) as block_idx:
-            move_offset = self.tik_instance.Scalar(dtype="int32", init_value=block_idx * process_data_num,
-                                                   name="move_offset")
-            with self.tik_instance.if_scope(block_idx < actual_block_num - 1):
-                self._set_tensor(False)
-                self._execute_square_sum_all(move_offset)
-            with self.tik_instance.else_scope():
-                self._set_tensor(True)
-                self._execute_square_sum_all(move_offset)
-
     def square_sum_all_compute(self):
         """
         SquareSumAll operation
@@ -521,6 +495,32 @@ class SquareSumAll():
                                    inputs=(self.input_x_gm, self.input_y_gm),
                                    outputs=(self.output_x_gm, self.output_y_gm),
                                    flowtable=(tiling_gm,))
+
+    def _square_sum_all_compute_tiling(self):
+        """
+        SquareSumAll main process
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        None
+        """
+        soc_core_num = self.device_core_num
+        process_data_num = self.data_num_each_core
+        actual_block_num = self.need_core_num_input_scalar
+
+        with self.tik_instance.for_range(0, soc_core_num, block_num=soc_core_num) as block_idx:
+            move_offset = self.tik_instance.Scalar(dtype="int32", init_value=block_idx * process_data_num,
+                                                   name="move_offset")
+            with self.tik_instance.if_scope(block_idx < actual_block_num - 1):
+                self._set_tensor(False)
+                self._execute_square_sum_all(move_offset)
+            with self.tik_instance.else_scope():
+                self._set_tensor(True)
+                self._execute_square_sum_all(move_offset)
 
 
 # 'pylint: disable=unused-argument

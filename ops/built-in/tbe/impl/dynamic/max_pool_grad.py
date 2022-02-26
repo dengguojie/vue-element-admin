@@ -2979,6 +2979,18 @@ class MaxPoolGradCompute:
                               self.params.remain_ele_grad_sel, self.params.repeat_max_loop_vadd,
                               self.params.remain_max_loop_vadd, self.params.remain_ele_vadd)
 
+    def get_tik_instance(self):
+        """
+        obtain tik instance
+        """
+        tik_instance = self._compute()
+        tik_instance.BuildCCE(kernel_name=self.kernel_name,
+                              inputs=[self.orig_x_gm, self.orig_y_gm, self.grads_gm],
+                              outputs=[self.ou_y_gm],
+                              flowtable=[self.gm.tiling_gm])
+
+        return tik_instance
+
     def _compute(self):
         """
         the overall data move process
@@ -3130,18 +3142,6 @@ class MaxPoolGradCompute:
                                 sum_core.set_as((core_loop + 1) * self.params.total_num_div_core_1 + core_loop *
                                                 (blk_idx - self.params.total_num_div_core_1))
                         self._same_pure_atomic_tiling_ho_dy(tik_instance, core_loop, sum_core, split_model, param_ub)
-
-        return tik_instance
-
-    def get_tik_instance(self):
-        """
-        obtain tik instance
-        """
-        tik_instance = self._compute()
-        tik_instance.BuildCCE(kernel_name=self.kernel_name,
-                              inputs=[self.orig_x_gm, self.orig_y_gm, self.grads_gm],
-                              outputs=[self.ou_y_gm],
-                              flowtable=[self.gm.tiling_gm])
 
         return tik_instance
 
