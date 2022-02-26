@@ -66,10 +66,12 @@ case3 = {"params": [{"shape": (-1, -1, -1, -1, 16), "dtype": "float32", "format"
          "format_expect": [],
          "support_expect": True}
 
-ut_case.add_case("all", case1)
-ut_case.add_case("all", case2)
-ut_case.add_case("all", case3)
+ut_case.add_case("Ascend910A", case1)
+ut_case.add_case("Ascend910A", case2)
+ut_case.add_case("Ascend910A", case3)
 
 
 if __name__ == '__main__':
-    ut_case.run(["Ascend910A"])
+    import tbe
+    with tbe.common.context.op_context.OpContext("dynamic"):
+        ut_case.run(["Ascend910A"])

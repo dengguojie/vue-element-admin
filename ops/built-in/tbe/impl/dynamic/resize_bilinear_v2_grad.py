@@ -85,7 +85,7 @@ class ResizeBilinearV2Grad:
                  half_pixel_centers=False,
                  kernel_name="resize_bilinear_v2_grad"):
 
-        self.tik_instance = tik.Tik(tik.Dprofile("v100", "cloud"))
+        self.tik_instance = tik.Tik()
 
         self.grads_dtype = grads.get("dtype")
         self.images_dtype = images.get("dtype")
@@ -102,6 +102,7 @@ class ResizeBilinearV2Grad:
         self.max_mask = 8 * self.data_each_block
         self.tensor_size = self.ub_size // self.grad_byte_size // 2
         self.c0 = 16
+        self.tensor_c = self.tensor_size // self.c0
 
         self.grads_gm = self.tik_instance.Tensor(self.grads_dtype, (Constant.MAX_INT32,),
                                                  scope=tik.scope_gm,
@@ -167,6 +168,18 @@ class ResizeBilinearV2Grad:
             self.output_idx11 = tik_instance.Scalar(dtype="int32", name="output_idx11")
             self.grads_idx = tik_instance.Scalar(dtype="int32", name="grads_idx")
             self.next_loop = tik_instance.Scalar(dtype="int32", name="next_loop", init_value=0)
+
+    @staticmethod
+    def l1_support():
+        """
+        check if support l1 buffer or not
+        :return: 
+        """
+        soc_version = tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION)
+        if soc_version == "Ascend920":
+            return 0
+        else:
+            return 1
 
     def l1_function(self):
         """
@@ -361,8 +374,10 @@ class ResizeBilinearV2Grad:
         op compute
         :return:
         """
+        status = self.l1_support()
         self.tiling_compute()
-        tbe_context.get_context().add_compile_info("vars", {"core_num": self.core_num})
+        tbe_context.get_context().add_compile_info("vars", {"core_num": self.core_num, "l1_support": status,
+                                                            "tensor_c": self.tensor_c})
         opt_config = {"out_of_bound_sync_check": True, "enable_const_fold": True}
         self.tik_instance.BuildCCE(kernel_name=self.kernel_name,
                                    inputs=[self.grads_gm, self.images_gm],
@@ -744,8 +759,8 @@ class ResizeBilinearV2Grad:
         scalar = self.CommomScalar(self.tik_instance)
         self.calculate_h(scalar, h_idx)
 
-        max_w = 2048
-        output_max_w = 1024
+        max_w = self.tensor_c
+        output_max_w = max_w // 2
         use_max_w = output_max_w - 1
         loop = self.grads_w // max_w
         tail_w = self.grads_w % max_w

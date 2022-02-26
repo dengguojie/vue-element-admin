@@ -76,14 +76,25 @@ bool ShapeOne(int32_t h, int32_t w) {
     }
 }
 
-bool GetCompileInfo(const std::string& op_type, const nlohmann::json& op_compile_info, int32_t& core_num) {
+bool GetCompileInfo2(const std::string& op_type, const nlohmann::json& op_compile_info, int32_t& core_num,
+                     int32_t& l1_support, int32_t& tensor_c) {
     using namespace nlohmann;
     auto all_vars = op_compile_info["vars"];
     if (all_vars.count("core_num") == 0) {
         VECTOR_INNER_ERR_REPORT_TILIING("ResizeBilinearV2GradTiling", "GetCompileInfo, get core_num error");
         return false;
     }
+    if (all_vars.count("l1_support") == 0) {
+        VECTOR_INNER_ERR_REPORT_TILIING("ResizeBilinearV2GradTiling", "GetCompileInfo, get l1_support error");
+        return false;
+    }
+    if (all_vars.count("tensor_c") == 0) {
+        VECTOR_INNER_ERR_REPORT_TILIING("ResizeBilinearV2GradTiling", "GetCompileInfo, get tensor_c error");
+        return false;
+    }
     core_num = all_vars["core_num"].get<std::int32_t>();
+    l1_support = all_vars["l1_support"].get<std::int32_t>();
+    tensor_c = all_vars["tensor_c"].get<std::int32_t>();
     return true;
 }
 
@@ -110,7 +121,8 @@ int32_t CalTail(int32_t grads_w, int32_t loop_num) {
     return res;
 }
 
-int32_t CalTilingMode(std::vector<int64_t> grads_shape, std::vector<int64_t> images_shape) {
+int32_t CalTilingMode(std::vector<int64_t> grads_shape, std::vector<int64_t> images_shape, int32_t l1_support,
+                      int32_t tensor_c) {
     int32_t tiling_mode = 0;
     int32_t grads_h = grads_shape[2];
     int32_t grads_w = grads_shape[3];
@@ -123,7 +135,7 @@ int32_t CalTilingMode(std::vector<int64_t> grads_shape, std::vector<int64_t> ima
     }
 
     if (ShapeOne(images_h, images_w) && !ShapeOne(grads_h, grads_w)) {
-        if (grads_h * grads_w > 2048) {
+        if (grads_h * grads_w > tensor_c) {
             tiling_mode = 2;
         } else {
             tiling_mode = 1;
@@ -136,12 +148,12 @@ int32_t CalTilingMode(std::vector<int64_t> grads_shape, std::vector<int64_t> ima
         return tiling_mode;
     }
 
-    if (images_h * images_w < 2048 && grads_h * grads_w < 2048) {
+    if (images_h * images_w < tensor_c && grads_h * grads_w < tensor_c) {
         tiling_mode = 4;
         return tiling_mode;
     }
 
-    if (images_w <= 640 && grads_w <= 4096 && grads_w > images_w && grads_w / images_w < 255) {
+    if (images_w <= 640 && grads_w <= 4096 && grads_w > images_w && grads_w / images_w < 255 && l1_support==1) {
         tiling_mode = 5;
     } else {
         tiling_mode = 6;
@@ -189,8 +201,8 @@ void CalCoreInfo(ResizeBilinearV2GradTilingParams& tiling_params, int32_t core_n
     }
 }
 
-void CalRunningInfo(ResizeBilinearV2GradTilingParams& tiling_params, int32_t core_num,
-                    std::vector<int64_t> grads_shape, std::vector<int64_t> images_shape) {
+void CalRunningInfo(ResizeBilinearV2GradTilingParams& tiling_params, int32_t core_num, int32_t l1_support,
+                    int32_t tensor_c, std::vector<int64_t> grads_shape, std::vector<int64_t> images_shape) {
     int32_t grad_each_core = grads_shape[2] * grads_shape[3] * grads_shape[4];
     int32_t output_each_core = images_shape[2] * images_shape[3] * images_shape[4];
     int32_t grad_move_num = grads_shape[3] * grads_shape[4];
@@ -211,7 +223,7 @@ void CalRunningInfo(ResizeBilinearV2GradTilingParams& tiling_params, int32_t cor
     tiling_params.nc1 = nc1;
     tiling_params.w_loop = w_loop;
     tiling_params.w_tail = w_tail;
-    tiling_params.tiling_mode = CalTilingMode(grads_shape, images_shape);
+    tiling_params.tiling_mode = CalTilingMode(grads_shape, images_shape, l1_support, tensor_c);
     CalCoreInfo(tiling_params, core_num, grads_shape);
 }
 
@@ -259,7 +271,9 @@ bool ResizeBilinearV2GradTiling(const std::string& op_type, const TeOpParas& op_
                                 const nlohmann::json& op_compile_info, OpRunInfo& run_info) {
     using namespace ge;
     int32_t core_num;
-    bool get_compile_info = GetCompileInfo(op_type, op_compile_info, core_num);
+    int32_t l1_support;
+    int32_t tensor_c;
+    bool get_compile_info = GetCompileInfo2(op_type, op_compile_info, core_num, l1_support, tensor_c);
     if (!get_compile_info) {
         VECTOR_INNER_ERR_REPORT_TILIING(op_type, "ResizeBilinearV2GradTiling: GetCompileInfo error.");
         return false;
@@ -270,7 +284,7 @@ bool ResizeBilinearV2GradTiling(const std::string& op_type, const TeOpParas& op_
 
     const std::vector<int64_t>& grads_shape = op_paras.inputs[0].tensor[0].shape;
     const std::vector<int64_t>& images_shape = op_paras.inputs[1].tensor[0].shape;
-    CalRunningInfo(tiling_params, core_num, grads_shape, images_shape);
+    CalRunningInfo(tiling_params, core_num, l1_support, tensor_c, grads_shape, images_shape);
     SetRunningInfo(tiling_params, run_info);
     PrintTilingParams(tiling_params);
 

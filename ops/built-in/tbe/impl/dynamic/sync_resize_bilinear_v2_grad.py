@@ -1,16 +1,18 @@
+# Copyright 2021 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
 """
-Copyright (C) 2021. Huawei Technologies Co., Ltd. All rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the Apache License Version 2.0.You may not use
-this file except in compliance with the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-Apache License for more details at
-http://www.apache.org/licenses/LICENSE-2.0
-
 sync_resize_bilinear_v2_grad.py
 """
 
@@ -70,18 +72,10 @@ class SyncResizeBilinearV2Grad:
     TILING_MODE6 = 6
 
     # 'pylint:disable=too-many-arguments,invalid-name
-    def __init__(self,
-                 grads,
-                 images,
-                 size,
-                 ori_image_size,
-                 src_start_w,
-                 dst_start_w,
-                 align_corners=False,
-                 half_pixel_centers=False,
-                 kernel_name="sync_resize_bilinear_v2_grad"):
+    def __init__(self, grads, images, size, ori_image_size, src_start_w, dst_start_w, align_corners=False,
+                 half_pixel_centers=False, kernel_name="sync_resize_bilinear_v2_grad"):
 
-        self.tik_instance = tik.Tik(tik.Dprofile("v100", "cloud"))
+        self.tik_instance = tik.Tik()
 
         self.grads_dtype = grads.get("dtype")
         self.images_dtype = images.get("dtype")
@@ -89,8 +83,7 @@ class SyncResizeBilinearV2Grad:
         self.align_corner = align_corners
         self.half_pixel_centers = half_pixel_centers
         self.kernel_name = kernel_name
-        self.src_start_w = src_start_w
-        self.dst_start_w = dst_start_w
+        self.src_start_w, self.dst_start_w = src_start_w, dst_start_w
         self.ori_h, self.ori_w = ori_image_size
         self.resize_h, self.resize_w = size
         self.scale_h = self.get_scale(self.ori_h, self.resize_h)
@@ -104,6 +97,7 @@ class SyncResizeBilinearV2Grad:
         self.max_mask = 8 * self.data_each_block
         self.tensor_size = self.ub_size // self.grad_byte_size // 2
         self.c0 = 16
+        self.tensor_c = self.tensor_size // self.c0
 
         self.grads_gm = self.tik_instance.Tensor(self.grads_dtype, (self.MAX_INT32,),
                                                  scope=tik.scope_gm,
@@ -166,6 +160,18 @@ class SyncResizeBilinearV2Grad:
             self.output_idx11 = tik_instance.Scalar(dtype="int32", name="output_idx11")
             self.grads_idx = tik_instance.Scalar(dtype="int32", name="grads_idx")
             self.next_loop = tik_instance.Scalar(dtype="int32", name="next_loop", init_value=0)
+
+    @staticmethod
+    def l1_support():
+        """
+        check if support l1 buffer or not
+        :return:
+        """
+        soc_version = tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION)
+        if soc_version == "Ascend920":
+            return 0
+        else:
+            return 1
 
     def l1_function(self):
         """
@@ -357,8 +363,10 @@ class SyncResizeBilinearV2Grad:
         op compute
         :return:
         """
+        status = self.l1_support()
         self.tiling_compute()
-        tbe_context.get_context().add_compile_info("vars", {"core_num": self.core_num})
+        tbe_context.get_context().add_compile_info("vars", {"core_num": self.core_num, "l1_support": status,
+                                                            "tensor_c": self.tensor_c})
         opt_config = {"out_of_bound_sync_check": True, "enable_const_fold": True}
         self.tik_instance.BuildCCE(kernel_name=self.kernel_name,
                                    inputs=[self.grads_gm, self.images_gm],
@@ -739,8 +747,8 @@ class SyncResizeBilinearV2Grad:
         scalar = self.CommomScalar(self.tik_instance)
         self.calculate_h(scalar, h_idx)
 
-        max_w = 2048
-        output_max_w = 1024
+        max_w = self.tensor_c
+        output_max_w = max_w // 2
         use_max_w = output_max_w - 1
         loop = self.grads_w // max_w
         tail_w = self.grads_w % max_w
