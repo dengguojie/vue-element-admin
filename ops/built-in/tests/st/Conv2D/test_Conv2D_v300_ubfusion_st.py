@@ -155,6 +155,5 @@ def test_conv2d_v300_ubfusion():
             dataflow, conv_type, shape_in, shape_w, pads, strides, groups, bias_flag = x
             conv_v300_fusion_case(dataflow, conv_type, shape_in, shape_w, pads, strides, groups, bias_flag)
 
-
 if __name__ == '__main__':
     test_conv2d_v300_ubfusion()

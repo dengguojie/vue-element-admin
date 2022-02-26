@@ -310,7 +310,7 @@ class QuantFusion:
             "reform_by_vadds": "vector_auto",
             "reform_by_vmuls": "vector_auto",
             "offset_ub": "vector_auto",
-            "cast_i8_ub": "vector_conv_round",
+            "cast_i8_ub": "vector_conv",
             "cast_i4_ub": "vector_conv",
         }
         self.quant_padding_flag = False

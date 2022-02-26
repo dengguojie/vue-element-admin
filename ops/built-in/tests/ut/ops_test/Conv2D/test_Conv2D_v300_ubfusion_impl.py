@@ -162,7 +162,6 @@ def test_conv2d_v300_ubfusion(test_arg):
             dataflow, conv_type, shape_in, shape_w, pads, strides, groups, bias_flag = x
             conv_v300_fusion_case(dataflow, conv_type, shape_in, shape_w, pads, strides, groups, bias_flag)
 
-
 print("adding Conv2D v300 ub fusion ut testcases")
 ut_case.add_cust_test_func('Ascend320', test_func=test_conv2d_v300_ubfusion)
 ut_case.run(['Ascend320'])
