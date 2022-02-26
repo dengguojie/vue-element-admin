@@ -980,8 +980,10 @@ TEST_F(NormTilingTest, TilingTest20) {
   for (std::size_t i = 0; i < outputs.size(); i++) {
     contruct_tensor(op_desc, outputs[i], dtype, false);
   }
+
   ge::Operator op_paras = ge::OpDescUtils::CreateOperatorFromOpDesc(op_desc);
   optiling::utils::OpRunInfo runInfo;
+  op_paras.SetAttr("alpha", 2);
 
   NormCompileInfo op_compile_info;
   op_compile_info.input_type = {0, 1, 1};
@@ -998,9 +1000,17 @@ TEST_F(NormTilingTest, TilingTest20) {
   op_compile_info.workspace_info = {{1300400500, {32}}};
   op_compile_info.norm_vars = {{1300400500, {20000, 20001, 30000, 40000}}};
   op_compile_info.is_fuse_axis = true;
+  std::vector<VarAttr> var_attr_list;
+  VarAttr var_attr;
+  var_attr.name = "alpha";
+  var_attr.length = 1;
+  var_attr.type = "int32";
+  var_attr.src_type = "int32";
+  var_attr_list.push_back(var_attr);
+  op_compile_info.var_attr_map = {{1300400500, var_attr_list}};
 
   optiling::Norm norm("norm", op_paras, op_compile_info, runInfo);
   ASSERT_TRUE(norm.DoTiling());
-  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "62976 512 1968 41 ");
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "62976 512 1968 41 2 ");
   EXPECT_EQ(runInfo.GetBlockDim(), 32);
 }

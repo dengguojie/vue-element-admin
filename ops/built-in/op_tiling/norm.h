@@ -78,6 +78,7 @@ struct NormCompileInfo {
   bool is_const{false};
   bool is_const_post{false};
   std::unordered_map<int32_t, int32_t> const_block_dims;
+  std::unordered_map<std::uint64_t, vector<VarAttr>> var_attr_map;
 
   private:
     void ParseAxisInfo(const nlohmann::json& compile_info);
