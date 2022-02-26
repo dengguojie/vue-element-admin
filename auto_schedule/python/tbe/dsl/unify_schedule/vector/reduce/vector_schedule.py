@@ -522,8 +522,14 @@ class VectorSchedule(VectorScheduleBase, ABC):
                 emitinsn_itervar = self.get_itervar_by_original_index(emitinsninfo.tensor, emitinsn_itervar)
             if emitinsninfo.attr:
                 # convert extra_space of the special insn to the pass
+                attr_map = {}
                 extra_space = emitinsninfo.attr.get("extra_space")
-                stage.emit_insn(emitinsn_itervar, emitinsninfo.insn, attrs={"storage_bound":[extra_space]})
+                if extra_space is not None:
+                    attr_map["storage_bound"] = [extra_space]
+                trans = emitinsninfo.attr.get("trans")
+                if trans is not None:
+                    attr_map["trans"] = trans
+                stage.emit_insn(emitinsn_itervar, emitinsninfo.insn, attrs=attr_map)
             else:
                 stage.emit_insn(emitinsn_itervar, emitinsninfo.insn)
         for _, tensor in self._ori_and_align_pad_tensor_map.items():

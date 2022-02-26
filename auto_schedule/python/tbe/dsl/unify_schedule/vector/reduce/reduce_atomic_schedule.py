@@ -652,7 +652,7 @@ class ReduceAtomicSchedule(_VectorSchedule):
                     para = {"parent": self.schedule[reduce_tensor], "scope": scop_axis}
                     self.compute_at_map[tensor] = para
 
-            if self.is_ARA_1_0_case():
+            if self._is_ara_1_0_case():
                 for input_tensor in self._ori_and_align_pad_tensor_map.keys():
                     align_buffer = self._ori_and_align_pad_tensor_map.get(input_tensor)
                     para = {"parent": self.schedule[align_buffer], "scope": self.schedule[align_buffer].op.axis[0]}
@@ -710,7 +710,7 @@ class ReduceAtomicSchedule(_VectorSchedule):
                     continue
                 if tensor in self._align_pad_tensor_list:
                     insn = "align_pad"
-                    if self.is_ARA_1_0_case():
+                    if self._is_ara_1_0_case():
                         emit_insn_axis_index = -2
                     else:
                         emit_insn_axis_index = 0
@@ -1422,7 +1422,7 @@ class ReduceAtomicSchedule(_VectorSchedule):
             return True
         return False
 
-    def is_ARA_1_0_case(self):
+    def _is_ara_1_0_case(self):
         ub_split_axis = self.ub_tiling_result_pair[1]
         block_split_axis = self.block_tiling_result_pair[1]
         if len(self._align_pad_tensor_list) != 0 and block_split_axis == 1 and ub_split_axis == 0:

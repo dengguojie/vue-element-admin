@@ -46,6 +46,7 @@ from tbe.common.platform import SOC_VERSION
 from tbe.common.platform.platform_info import get_soc_spec
 from ...constants import DTYPE_BYTE_MAPPING
 from ...constants import FAKE_NODE_TAG
+from ...constants import ReduceSchType
 from ...util import equals_one
 from ...util import expr_equal
 from ...util import get_reduce_all_axes
@@ -99,6 +100,7 @@ class ComputeGraphInfo:
         # For ReduceSch(only)
         self.coexisting_quantities: Optional[Dict] = None
         self.coexisting_quantities_for_pad: Optional[Dict] = None
+        self.coexisting_quantities_for_transpose: Optional[Dict] = None
         self.max_type: Optional[str] = None
         self.min_type: Optional[str] = None
         self.coef: Optional[int] = None
@@ -299,9 +301,9 @@ class ComputeGraphInfo:
         self.min_type = self.tensor_list[0].dtype
 
         for item in self.tensor_list:
-            if DTYPE_BYTE_MAPPING[item.dtype] > DTYPE_BYTE_MAPPING[self.max_type]:
+            if DTYPE_BYTE_MAPPING.get(item.dtype) > DTYPE_BYTE_MAPPING.get(self.max_type):
                 self.max_type = item.dtype
-            elif DTYPE_BYTE_MAPPING[item.dtype] < DTYPE_BYTE_MAPPING[self.min_type]:
+            elif DTYPE_BYTE_MAPPING.get(item.dtype) < DTYPE_BYTE_MAPPING.get(self.min_type):
                 self.min_type = item.dtype
 
             if self._eq_tvm_shape(list(item.shape), shape_before_reduce):
@@ -333,7 +335,7 @@ class ComputeGraphInfo:
                     raise RuntimeError("tensor_i is not in discrimination.")
             return _dict
 
-        def _current_compute_need_space(_tensor, _dict, _is_pad=False):
+        def _current_compute_need_space(_tensor, _dict, _is_pad=False, _is_transpose=False):
             tag = _tensor.op.tag
             dtype = _tensor.dtype
 
@@ -414,6 +416,11 @@ class ComputeGraphInfo:
                     _reduce_prod_space(_tensor)
                 else:
                     raise RuntimeError("Unknown reduce_insn is %s" % tag)
+
+                # add two live tensor for transpose
+                if _is_transpose:
+                    _dict["_bNodeNum"].append(dtype)
+                    _dict["_bNodeNum"].append(dtype)
             else:
                 if _tensor in self.tensors_before_reduce:
                     _dict["_bNodeNum"].append(dtype)
@@ -441,16 +448,16 @@ class ComputeGraphInfo:
                 if not dependent_map[_tensor_i]:
                     dependent_map.pop(_tensor_i)
 
-        def _r_coexisting(_tensor, _need_space, _is_pad=False):
+        def _r_coexisting(_tensor, _need_space, _is_pad=False, _is_transpose=False):
             if _tensor in dependent_map:
                 _need_space.append(_analysis_dependent(dependent_map))
                 return
 
             for _tensor_i in _tensor.op.input_tensors:
-                _r_coexisting(_tensor_i, _need_space, _is_pad)
+                _r_coexisting(_tensor_i, _need_space, _is_pad, _is_transpose)
 
             _curr_dict = _analysis_dependent(dependent_map)
-            _current_compute_need_space(_tensor, _curr_dict, _is_pad=_is_pad)
+            _current_compute_need_space(_tensor, _curr_dict, _is_pad=_is_pad, _is_transpose=_is_transpose)
             _need_space.append(_curr_dict)
 
             _refresh_dependent(_tensor)
@@ -498,6 +505,17 @@ class ComputeGraphInfo:
             coexisting_quantities_for_pad.append(curr_dict)
         self.coexisting_quantities_for_pad = coexisting_quantities_for_pad
 
+        # reduce transpose sch
+        coexisting_quantities_for_transpose, dependent_map = [], {}
+        for tensor_i in _out.op.input_tensors:
+            _r_coexisting(tensor_i, coexisting_quantities_for_transpose, _is_transpose=True)
+
+        # [Common Reduce] Multi outputs
+        if not _out.op.tag == FAKE_NODE_TAG:
+            curr_dict = _analysis_dependent(dependent_map)
+            _current_compute_need_space(_out, curr_dict, _is_transpose=True)
+            coexisting_quantities_for_transpose.append(curr_dict)
+        self.coexisting_quantities_for_transpose = coexisting_quantities_for_transpose
         min_input_type = "int64"
         for item in self.input_tensor_set:
             if DTYPE_BYTE_MAPPING.get(item.dtype) < DTYPE_BYTE_MAPPING.get(min_input_type):
@@ -505,7 +523,7 @@ class ComputeGraphInfo:
         self.pad_max_entire_size = get_pad_entire_size(min_input_type)
 
     @staticmethod
-    def get_maximum_subgraph(graph_info, reduce_info, tiling_case, is_pad=False):
+    def get_maximum_subgraph(graph_info, reduce_info, tiling_case, sch_type=ReduceSchType.NORMAL):
         """
         get maximum subgraph
         """
@@ -565,10 +583,14 @@ class ComputeGraphInfo:
             small_ub_size = soc_ub_size // max_value // 128 * 128
             return small_ub_size
 
-        if is_pad:
+        if sch_type == ReduceSchType.PAD:
             small_ub_size_for_pad = _calc_small_ubsize(graph_info.coexisting_quantities_for_pad)
             tiling_case.tensor_ub_size_before_reduce = int(small_ub_size_for_pad * coefficients)
             tiling_case.tensor_ub_size_after_reduce = int(small_ub_size_for_pad)
+        elif sch_type == ReduceSchType.TRANSPOSE:
+            small_ub_size_for_transpose = _calc_small_ubsize(graph_info.coexisting_quantities_for_transpose)
+            tiling_case.tensor_ub_size_before_reduce = int(small_ub_size_for_transpose * coefficients)
+            tiling_case.tensor_ub_size_after_reduce = int(small_ub_size_for_transpose)
         else:
             small_ub_size_normal = _calc_small_ubsize(graph_info.coexisting_quantities)
             tiling_case.tensor_ub_size_before_reduce = int(small_ub_size_normal * coefficients)

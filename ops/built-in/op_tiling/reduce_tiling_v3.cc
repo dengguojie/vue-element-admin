@@ -41,14 +41,21 @@ namespace {
   constexpr int32_t ARRAY_INDEX_3 = 3;
   constexpr int32_t ARRAY_INDEX_4 = 4;
   constexpr int32_t ARRAY_INDEX_5 = 5;
+  constexpr int32_t ARRAY_INDEX_6 = 6;
   constexpr int32_t ARRAY_FIRST_POS = 0;
   constexpr int32_t DEFAULT_CAPACITY_EMPTY = 0;
   constexpr int32_t NO_DIM = 0;
   constexpr int32_t LEAST_LENGTH_OF_COMMON_FIVE = 5;
+  constexpr int32_t LENGTH_OF_COMMON_SIX = 6;
+  constexpr int32_t LENGTH_OF_COMMON_SEVEN = 7;
   constexpr int32_t TILINGKEY_NONE_REDUCE_AXIS = 2147483646;
   constexpr int32_t MIN_NOT_ONE_AXIS_NUM = 2;
   constexpr int32_t SHAPE_LENGTH_TWO = 2;
   constexpr int32_t SHAPE_LENGTH_THREE = 3;
+  constexpr int32_t INDEX_OF_LAST_DIM_OF_ARA_CASE = 2;
+  constexpr int32_t REDUCE_PAD_SCH_TYPE = 1;
+  constexpr int32_t REDUCE_TRANSPOSE_SCH_TYPE = 2;
+  constexpr int32_t TRANSPOSE_THRESHOLD_VALUE = 64;
 }
 
 namespace v3 {
@@ -111,12 +118,16 @@ bool ReduceCompileInfo::GetCompileInfoForCalculate(const std::string op_type, co
     atomic = (bool)common_info[ARRAY_INDEX_3];
     coef = common_info[ARRAY_INDEX_4];
 
-    if (common_info.size() > LEAST_LENGTH_OF_COMMON_FIVE) {
+    if (common_info.size() >= LENGTH_OF_COMMON_SIX) {
       pad_max_entire_size = common_info[ARRAY_INDEX_5];
       if (pad_max_entire_size <= 0) {
         VECTOR_INNER_ERR_REPORT_TILIING(op_type, "pad max entire size is %d that is illegal.", pad_max_entire_size);
         return false;
       }
+    }
+
+    if (common_info.size() >= LENGTH_OF_COMMON_SEVEN) {
+      support_transpose = (bool)common_info[ARRAY_INDEX_6];
     }
   }
 
@@ -134,6 +145,10 @@ bool ReduceCompileInfo::GetCompileInfoForCalculate(const std::string op_type, co
 
   if (json_info.count("_ub_info_pad") > 0) {
     ub_info_pad = json_info.at("_ub_info_pad").get<std::vector<int32_t>>();
+  }
+
+  if (json_info.count("_ub_info_transpose") > 0) {
+    ub_info_transpose = json_info.at("_ub_info_transpose").get<std::vector<int32_t>>();
   }
 
   return true;
@@ -440,9 +455,13 @@ void Reduce::ChooseAtomic() {
   int64_t ub_info_size = compileInfo.ub_info[reduceTilingInfo.idx];
   int64_t ub_info_rf_size = compileInfo.ub_info_rf[reduceTilingInfo.idx];
   int64_t ub_info_pad_size = compileInfo.ub_info_pad.size() == 0 ? 0 : compileInfo.ub_info_pad[reduceTilingInfo.idx];
+  int64_t ub_info_transpose_size = compileInfo.ub_info_transpose.size() == 0 ?
+                                                              0 : compileInfo.ub_info_transpose[reduceTilingInfo.idx];
   int64_t mib_ub_info_size = ub_info_size < ub_info_rf_size ? ub_info_size : ub_info_rf_size;
   mib_ub_info_size = ub_info_pad_size != 0 && ub_info_pad_size < mib_ub_info_size ?
                                                               ub_info_pad_size : mib_ub_info_size;
+  mib_ub_info_size = ub_info_transpose_size != 0 && ub_info_transpose_size < mib_ub_info_size ?
+                                                              ub_info_transpose_size : mib_ub_info_size;
 
   // Layer 0 Check if atomic is enabled
   bool atomic_available = compileInfo.atomic;
@@ -474,9 +493,54 @@ void Reduce::ChooseAtomic() {
   reduceTilingInfo.atomic = reduceTilingInfo.atomic && atomic_available;
 }
 
+bool Reduce::IsReduceTransposeCase() {
+  // no pad_max_entire_size given , avoid old ut error
+  bool pad_max_entire_size_not_exist = -1 == compileInfo.pad_max_entire_size;
+
+  // not support pad in tilingcase
+  bool ub_info_transpose_not_exist = compileInfo.ub_info_transpose.size() == 0 ||
+                                     compileInfo.ub_info_transpose[reduceTilingInfo.idx] == 0;
+
+  // only support shape size of 2
+  bool input_shape_size_not_support = input_shape.size() != SHAPE_LENGTH_TWO;
+
+  // should be last reduce
+  bool not_last_reduce = !IsInVector(reduce_axis, 1);
+
+  // should no one axis exist
+  bool exist_one_axis = input_shape[0] == 1 || input_shape[1] == 1;
+
+  // block split should be on A axis
+  bool is_atomic = reduceTilingInfo.atomic;
+
+  // should be not aligned
+  bool last_axis_aligned = input_shape.back() % block_size == 0;
+
+  if (pad_max_entire_size_not_exist || ub_info_transpose_not_exist ||  input_shape_size_not_support ||
+      exist_one_axis || not_last_reduce || is_atomic || last_axis_aligned) {
+      return false;
+  }
+
+  // last dim is not small enough
+  int32_t pad_max_entire_size = compileInfo.pad_max_entire_size;
+  int32_t last_dim = input_shape[input_shape.size() - 1];
+  int32_t last_dim_align = (last_dim + block_size - 1) / block_size * block_size;
+  if (compileInfo.ub_info_pad[reduceTilingInfo.idx] / pad_max_entire_size < last_dim_align) {
+    return false;
+  }
+
+  // as test, more than 64 per core for last 2 axis, will increase the efficiency. both fp16 and fp32
+  if (input_shape[0] / compileInfo.core_num < TRANSPOSE_THRESHOLD_VALUE) {
+   return false;
+  }
+
+  return true;
+}
+
+
 bool Reduce::IsReducePadCase() const {
   // no pad_max_entire_size given , avoid old ut error
-  if ( -1 == compileInfo.pad_max_entire_size) {
+  if (-1 == compileInfo.pad_max_entire_size) {
     return false;
   }
 
@@ -530,12 +594,12 @@ bool Reduce::IsEnableReducePad() const {
   int32_t pad_max_entire_size = compileInfo.pad_max_entire_size;
   if ((input_shape_size == SHAPE_LENGTH_TWO &&
                 !reduceTilingInfo.atomic && input_shape[0] / core_num >= pad_max_entire_size)
-    ||(input_shape_size == SHAPE_LENGTH_THREE && ((reduceTilingInfo.atomic && input_shape[1] / core_num >=
-    pad_max_entire_size)||
+      || (input_shape_size == SHAPE_LENGTH_THREE && ((reduceTilingInfo.atomic && input_shape[1] / core_num >=
+      pad_max_entire_size)||
       (!reduceTilingInfo.atomic &&
       ((input_shape[0] >= core_num && input_shape[0] / core_num * input_shape[1] >= pad_max_entire_size)
-       || (input_shape[0] < core_num && input_shape[0] != 1 && input_shape[2] < block_size
-           && input_shape[1] > pad_max_entire_size)))))) {
+      || (input_shape[0] < core_num && input_shape[0] != 1 && input_shape[INDEX_OF_LAST_DIM_OF_ARA_CASE] < block_size
+      && input_shape[1] >= pad_max_entire_size)))))) {
     return true;
   }
 
@@ -554,10 +618,21 @@ void Reduce::ChooseUBInfo() {
 
   // According adaptation of SCH, choose the best UBInfo.
   // Rfactor only attached in Last Reduce.
-  is_reduce_pad_case = IsReducePadCase();
-  if (is_reduce_pad_case) {
+  if (compileInfo.support_transpose) {
+    is_reduce_transpose_case = IsReduceTransposeCase();
+  }
+
+  // if match transpose case, won't match pad case.
+  if (!is_reduce_transpose_case) {
+    is_reduce_pad_case = IsReducePadCase();
+  }
+
+  if (is_reduce_transpose_case) {
+    ubSizeB = compileInfo.ub_info_transpose[reduceTilingInfo.idx];
+    reduceTilingInfo.sch_type = REDUCE_TRANSPOSE_SCH_TYPE;
+  } else if (is_reduce_pad_case) {
     ubSizeB = compileInfo.ub_info_pad[reduceTilingInfo.idx];
-    reduceTilingInfo.sch_type = 1;
+    reduceTilingInfo.sch_type = REDUCE_PAD_SCH_TYPE;
   } else if (is_last_axis_reduce) {
     int64_t last_dim = input_shape[input_shape.size()-1];
     int64_t real_reduce_count = total_reduce_count / last_dim;
@@ -599,6 +674,15 @@ bool Reduce::GetUbTilingInfo() {
       if (reduceTilingInfo.ub_tiling_factor > max_ub_tiling_factor) {
         reduceTilingInfo.ub_tiling_factor = max_ub_tiling_factor;
       }
+
+      // if is AR pattern and both block and ub split on A, it will be transpose case
+      // if block factor > ub factor, should do align to ub factor even to zero to
+      // avoid some pass align error
+      if (is_reduce_transpose_case && reduceTilingInfo.block_tiling_factor
+                                            > reduceTilingInfo.ub_tiling_factor) {
+        reduceTilingInfo.ub_tiling_factor = reduceTilingInfo.ub_tiling_factor / block_size * block_size;
+      }
+
       return true;
     }
   }

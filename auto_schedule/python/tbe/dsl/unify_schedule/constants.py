@@ -89,6 +89,15 @@ class ReduceCategory:
     LAST_REDUCE = 3
 
 
+class ReduceSchType:
+    """
+    Category of Reduce
+    """
+    NORMAL = 0
+    PAD = 1
+    TRANSPOSE = 2
+
+
 class NormPattern:
     """
     Norm sub pattern.
@@ -106,6 +115,7 @@ class GatherPattern:
     NORMAL_SCHEDULE = "NORMAL_SCHEDULE"
     ZERO_SCHEDULE = "ZERO_SCHEDULE"
 
+
 class TransposePattern:
     """
     Transpose sub pattern.
@@ -114,12 +124,14 @@ class TransposePattern:
     # generic
     T_0 = "T_0"
 
+
 class TransdataCategory:
     """
     Category of Transdata
     """
     GENERAL_FORWARD = "general.forward"
     GENERAL_BACKWARD = "general.backward"
+
 
 class ConcatPattern:
     """

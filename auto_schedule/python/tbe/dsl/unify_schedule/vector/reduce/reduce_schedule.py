@@ -62,6 +62,7 @@ class EntryReduceSchedule(Schedule):
     """
     Entry class for All Reduce Schedule
     """
+
     def __init__(self, outs, tiling_case):
         self.outs = outs
         self.tiling_case: ReduceTilingCase = tiling_case
@@ -116,6 +117,7 @@ class ReduceSchedule(VectorSchedule):
     """
     Schedule for normal reduce
     """
+
     def __init__(self, graph_info: ComputeGraphInfo, single_reduce_info: SingleReduceInfo):
         VectorSchedule.__init__(self, graph_info)
         self.reduce_info = single_reduce_info
@@ -424,11 +426,6 @@ class ReduceSchedule(VectorSchedule):
                 r_ub_idx = r_indexes.index(ub_idx)
                 max_ub_count = self.tiling_case.tensor_ub_size_before_reduce
                 # [A,R,A,R,A] --> [A,A,R,R,A]
-                #                          |-->BLK(fixed)
-                #                          |-->UB(s1)
-                #                      |-->UB(s2)
-                # [A,R,A,R,A] --> [A,A,R,R,A]
-                #                    |-->BLK
                 for _dim in r_in_shape[r_ub_idx + 1:]:
                     input_size *= _dim
                     if not isinstance(_dim <= max_ub_count, bool):
@@ -469,6 +466,9 @@ class ReduceSchedule(VectorSchedule):
         return True
 
     def _calc_storage_align(self):
+        if self.tiling_case.is_reduce_transpose_case:
+            return
+
         if not self.__need_storage_align():
             return
 
@@ -630,27 +630,41 @@ class ReduceSchedule(VectorSchedule):
         if self._contains_zero_axis():
             self._emit_zero_reduce_insn(reduce_ub_tensor, emit_insn_axis)
         else:
-            if self._last_reduction_rf_optimization():
-                # reduce emit_insn
-                reduce_emit_insn_axis = self.Placeholder(
-                    self.Placeholder.PlaceholderType.ITER_VAR, (reduce_ub_tensor, -1))
-                self.emit_insn_list.append(VectorSchedule.EmitInsnInfo(reduce_ub_tensor,
-                                                                       reduce_emit_insn_axis,
-                                                                       INSN_MAPPING[get_dsl_insn(reduce_ub_tensor)],
-                                                                       {"extra_space": extra_space}))
-                # reduce_rf emit_insn
-                reduce_rf_emit_insn_axis = emit_insn_axis
-                reduce_rf_ub_tensor = self.get_buffers_of(self.reduce_rf)[0]
-                self.emit_insn_list.append(VectorSchedule.EmitInsnInfo(reduce_rf_ub_tensor,
-                                                                       reduce_rf_emit_insn_axis,
-                                                                       INSN_MAPPING[get_dsl_insn(reduce_rf_ub_tensor)],
-                                                                       {"extra_space": extra_space}))
+            def _emit_reduce_insn():
+                if self._last_reduction_rf_optimization():
+                    # reduce emit_insn
+                    reduce_emit_insn_axis = self.Placeholder(
+                        self.Placeholder.PlaceholderType.ITER_VAR, (reduce_ub_tensor, -1))
+                    self.emit_insn_list.append(VectorSchedule.EmitInsnInfo(reduce_ub_tensor,
+                                                                           reduce_emit_insn_axis,
+                                                                           INSN_MAPPING.get(
+                                                                               get_dsl_insn(reduce_ub_tensor)),
+                                                                           {"extra_space": extra_space}))
+                    # reduce_rf emit_insn
+                    reduce_rf_emit_insn_axis = emit_insn_axis
+                    reduce_rf_ub_tensor = self.get_buffers_of(self.reduce_rf)[0]
+                    self.emit_insn_list.append(VectorSchedule.EmitInsnInfo(reduce_rf_ub_tensor,
+                                                                           reduce_rf_emit_insn_axis,
+                                                                           INSN_MAPPING.get(
+                                                                               get_dsl_insn(reduce_ub_tensor)),
+                                                                           {"extra_space": extra_space}))
 
-            else:
-                self.emit_insn_list.append(VectorSchedule.EmitInsnInfo(reduce_ub_tensor,
-                                                                       emit_insn_axis,
-                                                                       INSN_MAPPING[get_dsl_insn(reduce_ub_tensor)],
-                                                                       {"extra_space": extra_space}))
+                else:
+                    if self.tiling_case.is_reduce_transpose_case:
+                        self.emit_insn_list.append(VectorSchedule.EmitInsnInfo(reduce_ub_tensor,
+                                                                               emit_insn_axis,
+                                                                               INSN_MAPPING.get(
+                                                                                   get_dsl_insn(reduce_ub_tensor)),
+                                                                               {"extra_space": extra_space,
+                                                                                "trans": True}))
+                    else:
+                        self.emit_insn_list.append(VectorSchedule.EmitInsnInfo(reduce_ub_tensor,
+                                                                               emit_insn_axis,
+                                                                               INSN_MAPPING.get(
+                                                                                   get_dsl_insn(reduce_ub_tensor)),
+                                                                               {"extra_space": extra_space}))
+
+            _emit_reduce_insn()
 
         def _traverse():
             # tensors_before_root: exclude reduce_tensor unless reduce_tensor is output_tensor
@@ -675,27 +689,32 @@ class ReduceSchedule(VectorSchedule):
         if get_context().get_current_compute().get("_mode") != "zero":
             # traversing all tensors and their buffers
             remaining_tensors = _traverse()
-        for tensor in remaining_tensors:
-            if tensor in self.graph_info.input_tensor_set:
-                continue
-            insn = get_dsl_insn(tensor)
+
+        def _emit_remaining_tensors(remaining_tensor):
+            insn = get_dsl_insn(remaining_tensor)
             emit_insn_axis_index = 0
 
             # if not have fake_node: output_tensor_set will cover real_output_tensor_set
-            if tensor in self.graph_info.real_output_tensor_set:
+            if remaining_tensor in self.graph_info.real_output_tensor_set:
                 insn = "dma_copy"
                 emit_insn_axis_index = 0
-            if tensor in self.graph_info.output_tensor_set:
+            if remaining_tensor in self.graph_info.output_tensor_set:
                 emit_insn_axis_index = self.block_tiling_result_pair[1]
 
             if insn == "":
                 insn = "dma_copy"
 
-            if 0 in tensor.shape:
-                self.emit_insn_list.append(VectorSchedule.EmitInsnInfo(tensor, emit_insn_axis_index, "phony_insn"))
+            if 0 in remaining_tensor.shape:
+                self.emit_insn_list.append(VectorSchedule.EmitInsnInfo(remaining_tensor, emit_insn_axis_index,
+                                                                       "phony_insn"))
             else:
-                self.emit_insn_list.append(VectorSchedule.EmitInsnInfo(tensor, emit_insn_axis_index,
+                self.emit_insn_list.append(VectorSchedule.EmitInsnInfo(remaining_tensor, emit_insn_axis_index,
                                                                        INSN_MAPPING[insn]))
+
+        for tensor in remaining_tensors:
+            if tensor in self.graph_info.input_tensor_set:
+                continue
+            _emit_remaining_tensors(tensor)
 
     def _calc_pragma(self):
         # For zero compute mode, skip pragma stage
