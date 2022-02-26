@@ -983,8 +983,15 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
         out_channel_c0 = weight_shape[2]
         out_channel = out_channel_c1*out_channel_c0
 
-        strideh_opti_flag = (filter_h == 1 and stride_h > 1) and not optim_dict["c0_optim_flg"] and \
-            sum(ConvParam.para_dict['pad_h'] + ConvParam.para_dict['pad_w']) == 0
+        pad_expr_flag = isinstance(ConvParam.para_dict.get('pad_h')[0], tvm.expr.Expr) or \
+                        isinstance(ConvParam.para_dict.get('pad_h')[1], tvm.expr.Expr) or \
+                        isinstance(ConvParam.para_dict.get('pad_w')[0], tvm.expr.Expr) or \
+                        isinstance(ConvParam.para_dict.get('pad_w')[1], tvm.expr.Expr)
+        if pad_expr_flag:
+            strideh_opti_flag = (filter_h == 1 and stride_h > 1) and not optim_dict.get("c0_optim_flg")
+        else:
+            strideh_opti_flag = (filter_h == 1 and stride_h > 1) and not optim_dict.get("c0_optim_flg") and \
+                sum(ConvParam.para_dict.get('pad_h') + ConvParam.para_dict.get('pad_w')) == 0
 
         if ConvParam.fusion_para["l1_fusion_type"] == 1 or ConvParam.fusion_para["input_memory_type"][0] == 1:
             # for L1 breadth fusion, fmap must load all at once
@@ -1229,7 +1236,7 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
             back_h = (virtual_h // fmap_wo) * stride[0] + (col_w // kernel_w % kernel_h)*dilate_h
             back_w = (virtual_h % fmap_wo) * stride[1] + (col_w % kernel_w)*dilate_w
 
-            if len(fmap.shape) == len(ConvParam.para_dict["a_shape"]):
+            if len(fmap.shape) == len(ConvParam.para_dict.get("a_shape")):
                 return tvm.select(tvm.any(back_h < padding[0],
                                           back_h > fmap.shape[2] + padding[0] - 1,
                                           back_w < padding[2],
@@ -1386,22 +1393,22 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
                         w_index > input_w.value + padding_left - 1),
                 tvm.const(offset_x, compute_dtype),
                 fmap(batch,
-                     cin_1 + group * ConvParam.para_dict["c1_opt"],
+                     cin_1 + group * ConvParam.para_dict.get("c1_opt"),
                      h_index - padding_top,
                      w_index - padding_left, cin_0))
 
         _, input_ci1, input_h, input_w, input_ci0 = fmap.shape
         attrs_dict = {
-            "conv_kernel_h": ConvParam.para_dict['filter_h'],
-            "conv_kernel_w": ConvParam.para_dict['filter_w'],
-            "conv_padding_top": ConvParam.para_dict['pad_h'][0],
-            "conv_padding_bottom": ConvParam.para_dict['pad_h'][1],
-            "conv_padding_left": ConvParam.para_dict['pad_w'][0],
-            "conv_padding_right": ConvParam.para_dict['pad_w'][1],
-            "conv_stride_h": ConvParam.para_dict['stride_h'],
-            "conv_stride_w": ConvParam.para_dict['stride_w'],
-            "conv_dilation_h": ConvParam.para_dict['dilate_h'],
-            "conv_dilation_w": ConvParam.para_dict['dilate_w'],
+            "conv_kernel_h": ConvParam.para_dict.get('filter_h'),
+            "conv_kernel_w": ConvParam.para_dict.get('filter_w'),
+            "conv_padding_top": ConvParam.para_dict.get('pad_h')[0],
+            "conv_padding_bottom": ConvParam.para_dict.get('pad_h')[1],
+            "conv_padding_left": ConvParam.para_dict.get('pad_w')[0],
+            "conv_padding_right": ConvParam.para_dict.get('pad_w')[1],
+            "conv_stride_h": ConvParam.para_dict.get('stride_h'),
+            "conv_stride_w": ConvParam.para_dict.get('stride_w'),
+            "conv_dilation_h": ConvParam.para_dict.get('dilate_h'),
+            "conv_dilation_w": ConvParam.para_dict.get('dilate_w'),
             "conv_fm_c": input_ci0 * input_ci1,
             "conv_fm_h": input_h,
             "conv_fm_w": input_w
@@ -1644,14 +1651,14 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
             mode = 'f162f16'
         else:
             mode = 'f162f32'
-        fmap_c1 = ConvParam.para_dict["a_shape"][1]
-        kernel_h = ConvParam.para_dict["filter_h"]
-        kernel_w = ConvParam.para_dict["filter_w"]
+        fmap_c1 = ConvParam.para_dict.get("a_shape")[1]
+        kernel_h = ConvParam.para_dict.get("filter_h")
+        kernel_w = ConvParam.para_dict.get("filter_w")
         reduce_c1hwc0 = fmap_c1*kernel_h*kernel_w*block_size
-        if TENSOR_MAP["c0_optim_flg"]:
+        if TENSOR_MAP.get("c0_optim_flg"):
             reduce_c1hwc0 = fmap_c1*kernel_h*kernel_w*4
         if not ConvParam.v200_width_out_1_flag:
-            remove_pad_m = DIM_MAP["out_img_height_width"][0]*DIM_MAP["out_img_height_width"][1]
+            remove_pad_m = DIM_MAP.get("out_img_height_width")[0]*DIM_MAP.get("out_img_height_width")[1]
         else: # invliad_data_rm uses removed_pad_m as the shape of UB tensor, so modify it to N*1 here
             remove_pad_m = DIM_MAP["out_img_height_width"][0]*DIM_MAP["out_img_height_width"][1] // 2
         if ConvParam.int4_width_out_align_flag:
