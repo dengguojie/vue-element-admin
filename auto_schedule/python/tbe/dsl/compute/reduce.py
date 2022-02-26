@@ -76,7 +76,7 @@ def is_true(expr, dict_args):
     :param dict_args: error message
     :return: RuntimeError
     """
-    if expr:
+    if not expr:
         raise RuntimeError(dict_args, get_error_message(dict_args))
 
 
@@ -115,18 +115,17 @@ def _para_check_of_reduce(func, *args, **kwargs):
 
         dtype = raw_tensor.dtype
 
-        is_true(dtype not in supported_dtypes,
+        is_true(dtype in supported_dtypes,
                 {"errCode": "E90002",
-                "detailed_cause": "[%s] do not support [%s] in [%s] !" % (intr,
-                                                                          dtype,
-                                                                          get_soc_spec("SOC_VERSION"))})
+                 "detailed_cause": "[%s] do not support [%s] in [%s] !" % (intr,
+                                                                           dtype,
+                                                                           get_soc_spec("SOC_VERSION"))})
 
     if len(args) == 3 or len(args) == 4:
-        is_true(not isinstance(args[0], tvm.tensor.Tensor),
+        is_true(isinstance(args[0], tvm.tensor.Tensor),
                 {"errCode": "E90002",
-                "detailed_cause": "The first input type must be [%s]" \
-                                          ", while type is [%s]" \
-                                          % ('tvm.tensor', type(args[0]))})
+                 "detailed_cause": "The first input type must be [%s], while type is [%s]" \
+                                   % ('tvm.tensor', type(args[0]))})
 
         raw_tensor = args[0]
         axis = args[1]
@@ -146,9 +145,9 @@ def _para_check_of_reduce(func, *args, **kwargs):
         is_last_axis = _is_last_axis(raw_tensor.shape, axis)
 
         supported_dtypes = dsl_support_dtype(intr)
-        is_true(not supported_dtypes,
+        is_true(supported_dtypes,
                 {"errCode": "E90002",
-                "detailed_cause": "[%s] is not supported!" % intr})
+                 "detailed_cause": "[%s] is not supported!" % intr})
         # dynamic shape do not perform auto cast
         if in_dynamic_and_static_unify():
             _check_dynamic_dtype(raw_tensor, intr, supported_dtypes, is_last_axis)
@@ -239,10 +238,7 @@ def _single_reduce_op(input_tensor,  # 'pylint: disable=too-many-statements
     factory method of single reduce operations
     keepdims : if true, retains reduced dimensions with length 1, default value is None
     """
-    is_true(axis is None, {"errCode": "E90001", "detailed_cause": "The axis is None!"})
-
-    def raise_error(message):
-        is_true(True, {"errCode": "E90001", "detailed_cause": message})
+    is_true(axis is not None, {"errCode": "E90001", "detailed_cause": "The axis is None!"})
 
     check_input_tensor_shape(input_tensor)
 
@@ -251,13 +247,15 @@ def _single_reduce_op(input_tensor,  # 'pylint: disable=too-many-statements
             if contains_zero_axis() and not contains_non_reduce_zero_axis():
                 operator = in_op.lower()
                 dtype_map = _VALUE_MAP_IN_REDUCE_ZERO.get(operator)
-                if dtype_map is None:
-                    raise_error("Reduce zero axis does not support operator: {0}.".format(operator))
+                is_true(dtype_map is not None,
+                        {"errCode": "E90001",
+                         "detailed_cause": "Reduce zero axis does not support operator: {0}.".format(operator)})
 
                 dtype = input_tensor.dtype
                 value = dtype_map.get(dtype)
-                if value is None:
-                    raise_error("Reduce zero axis does not support dtype: {0}.".format(dtype))
+                is_true(value is not None,
+                        {"errCode": "E90001",
+                         "detailed_cause": "Reduce zero axis does not support dtype: {0}.".format(dtype)})
 
                 return value
 
@@ -368,7 +366,7 @@ def _auto_cast_of_tuple_reduce(func, *args, **kwargs):
     '''
     func_name = func.__name__
     supported_types = ("float16", "float32")
-    is_true(func_name != "tuple_sum", {"errCode": "E90001",
+    is_true(func_name == "tuple_sum", {"errCode": "E90001",
             "detailed_cause": "function name [%s] must be tuple_sum" % func_name})
 
     def _is_last_axis(shape, axis):
@@ -379,13 +377,13 @@ def _auto_cast_of_tuple_reduce(func, *args, **kwargs):
         return len(shape) - 1 in local_axis
 
     def _check_tensor(tensor_list):
-        is_true(len(tensor_list) != 2, {"errCode": "E90001",
+        is_true(len(tensor_list) == 2, {"errCode": "E90001",
                 "detailed_cause": "Tuple reduce input tensors must be 2. " \
                                           "while is [%s]" % len(tensor_list)
                                           })
         shape1 = shape_to_list(tensor_list[0].shape)
         shape2 = shape_to_list(tensor_list[1].shape)
-        is_true(shape1 != shape2, {"errCode": "E90001",
+        is_true(shape1 == shape2, {"errCode": "E90001",
                 "detailed_cause": "Tuple reduce input tensors must " \
                                           "have same shape. while shape1 is [%s], " \
                                           "shape2 is [%s]" % (shape1, shape2)})
@@ -405,7 +403,7 @@ def _auto_cast_of_tuple_reduce(func, *args, **kwargs):
         return dealed_tensor
 
     if len(args) == 3:
-        is_true(not isinstance(args[0], (tuple, list)), {"errCode": "E90001",
+        is_true(isinstance(args[0], (tuple, list)), {"errCode": "E90001",
                 "detailed_cause": "The first input type must be list" \
                                           " or tuple, while type is [%s]" % type(args[0])})
         raw_tensor_list = args[0]
@@ -450,7 +448,7 @@ def _tuple_reduce_op(input_tensor_list, axis, in_op, keepdims=False):
     factory method of tuple reduce operations
     keepdims : if true, retains reduced dimensions with length 1, default value is None
     """
-    is_true(axis is None, {"errCode": "E90001", "detailed_cause": "The axis is None!"})
+    is_true(axis is not None, {"errCode": "E90001", "detailed_cause": "The axis is None!"})
 
     check_input_tensor_shape(input_tensor_list[0])
 

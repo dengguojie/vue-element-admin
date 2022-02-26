@@ -55,7 +55,7 @@ def is_true(expr, dict_args):
     :param dict_args: error message
     :return: RuntimeError
     """
-    if expr:
+    if not expr:
         raise RuntimeError(dict_args, get_error_message(dict_args))
 
 
@@ -220,7 +220,7 @@ class Builder:
             if not (len(tensors) == 1 and isinstance(tensors[0], (tuple, list))):
                 tensors = [tensors]
 
-        is_true(len(cpt_contexts) != len(tensors),
+        is_true(len(cpt_contexts) == len(tensors),
                 {"errCode": "E90001",
                 "detailed_cause": "The size of compute, build " \
                                    "tensors does not match, they " \
@@ -254,7 +254,7 @@ class Builder:
                 sch_tensors_list.append(list(self.tensors[i]))
 
         lens = [len(self.schedules), len(te_vars_list), len(ebv_list)]
-        is_true(len(set(lens)) != 1,
+        is_true(len(set(lens)) == 1,
                 {"errCode": "E90001",
                 "detailed_cause": "The size of schedule, var, and " \
                                   "var_bound does not match, " \

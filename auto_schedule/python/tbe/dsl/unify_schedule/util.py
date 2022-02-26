@@ -60,7 +60,7 @@ def is_true(expr, dict_args):
     :param dict_args: error message
     :return: RuntimeError
     """
-    if expr:
+    if not expr:
         raise RuntimeError(dict_args, get_error_message(dict_args))
 
 
@@ -252,7 +252,7 @@ def get_bound(expr):
     :return:
     """
     valid_types = (int, tvm.expr.Expr)
-    is_true(not isinstance(expr, valid_types),
+    is_true(isinstance(expr, valid_types),
             {"errCode": "E90001",
             "detailed_cause": "Only accept (int, expr), but now " \
                               "is [%s]." % type(expr)

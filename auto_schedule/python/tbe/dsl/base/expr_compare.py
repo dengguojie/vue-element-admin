@@ -28,7 +28,7 @@ def is_true(expr, dict_args):
     :param dict_args: error message
     :return: RuntimeError
     """
-    if expr:
+    if not expr:
         raise RuntimeError(dict_args, get_error_message(dict_args))
 
 
@@ -58,9 +58,9 @@ def expr_equal(expr_a, expr_b, condition=None):
     :param condition:
     :return:
     """
-    is_true(condition is not None,
+    is_true(condition is None,
             {"errCode": "E90001",
-            "detailed_cause": "Now, not support condition"})
+             "detailed_cause": "Now, not support condition"})
     sympy_a = _te_expr2sympy_expr(expr_a)
     sympy_b = _te_expr2sympy_expr(expr_b)
     return sympy_a == sympy_b
