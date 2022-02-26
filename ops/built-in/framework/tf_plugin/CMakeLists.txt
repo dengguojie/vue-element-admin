@@ -194,6 +194,7 @@ set(_tf_plugins
   floor_mod_plugin.cc
   floor_plugin.cc
   for_plugin.cc
+  file_constant_plugin.cc
   gather_nd_plugin.cc
   gather_plugin.cc
   gather_v2_plugin.cc
