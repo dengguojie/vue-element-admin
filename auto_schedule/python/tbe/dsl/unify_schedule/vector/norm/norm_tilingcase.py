@@ -70,6 +70,8 @@ VNCHWCONV_TEMP_SPACE_FP16 = 1024
 VNCHWCONV_TEMP_SPACE_FP32 = 8192
 # number extra nodes that enable align and remove pad
 ALIGN_AND_REMOVE_PAD_EXTRA_NODES = 3
+# temp space for enable align and remove pad with avoiding bank conflict
+ALIGN_AND_REMOVE_PAD_TEMP_SPACE = 1024
 # number extra nodes that enable no overlap 3
 NO_OVERLAP_THREE_EXTRA_NODES = 2
 
@@ -282,6 +284,17 @@ def _enable_align_and_remove_pad(is_continuous_pattern, pad_shape, reduce_axis,
     if len(pad_shape) - len(reduce_axis) > 1:
         return False
 
+    reduce_product = 1
+    for reduce_idx in reduce_axis:
+        reduce_dim = pad_shape[reduce_idx]
+        if isinstance(reduce_dim, int):
+            last_dim = (reduce_dim + block_size - 1) // block_size * block_size\
+                if reduce_idx == len(pad_shape) - 1 else reduce_dim
+            reduce_product *= last_dim
+
+    if reduce_product > ub_size:
+        return False
+
     first_dim_is_one = util.expr_equal(pad_shape[0], 1)
     ub_factor_is_one = isinstance(ub_factor, int) and ub_factor == 1
     const_one_count = int(first_dim_is_one or ub_factor_is_one)
@@ -359,8 +372,6 @@ def _add_tiling_case(norm_graph_info, norm_info):
             tiling_case_list.append(_tiling_case)
 
     def __add_aligned_in_ub_tiling_case():
-        if reduce_product > norm_graph_info.pad_available_ub_size:
-            return
         all_reduce_normal_case = norm_info.is_all_reduce
         _tiling_case = NormTilingCase()
         _tiling_case.block_split_axis_index = None if all_reduce_normal_case else 0
@@ -402,7 +413,9 @@ def _add_tiling_case(norm_graph_info, norm_info):
     for reduce_idx in reduce_axis_index:
         reduce_dim = shape_before_reduce[reduce_idx]
         if isinstance(reduce_dim, int):
-            reduce_product *= reduce_dim
+            last_dim = (reduce_dim + block_size - 1) // block_size * block_size\
+                if reduce_idx == len(shape_before_reduce) - 1 else reduce_dim
+            reduce_product *= last_dim
 
     for block_split_axis in range(len(shape_before_reduce)):
         # block split on A axis
@@ -1510,7 +1523,8 @@ class NormComputeGraphInfo:
             # correct ub size in reduce
             _correct_ub_size_by_reduce(_out)
             coexisting_quantities.append(_local_current_coexist_node)
-        tensor_space = (self.soc_ub_size - self.temp_ub_size - broadcast_temp_size) // max(coexisting_quantities)
+        tensor_space = (self.soc_ub_size - self.temp_ub_size - broadcast_temp_size - 
+                        ALIGN_AND_REMOVE_PAD_TEMP_SPACE) // max(coexisting_quantities)
         self.pad_available_ub_size =\
             tensor_space // BLOCK_SIZE_BYTE * BLOCK_SIZE_BYTE // DTYPE_BYTE_MAPPING.get(self.max_type)
         self.pad_max_entire_size = max(get_align_and_remove_pad_entire_size(self.min_type) *

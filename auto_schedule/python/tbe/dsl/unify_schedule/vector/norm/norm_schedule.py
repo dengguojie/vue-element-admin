@@ -39,6 +39,7 @@ NO_OVERLAP = "no_overlap"
 STORAGE_BOUND = "storage_bound"
 ENABLE_VNCHWCONV = "enable_vnchwconv"
 TRANS_THRESHOLD = "trans_threshold"
+AVOID_BANK_CONFLICT = "avoid_bank_conflict"
 TRANS_THRESHOLD_VALUE = 32
 
 
@@ -768,10 +769,12 @@ class NormNormalSchedule:
             self._emit_insn_map[self._res_tensor] = [emit_insn_axis, "phony_insn"]
 
         for source, _ in self._align_pad_and_ori_tensor_map.items():
-            self._emit_insn_map[source] = [source.op.axis[emit_insn_axis_index], "align_pad"]
+            self._emit_insn_map[source] = [source.op.axis[emit_insn_axis_index], "align_pad",
+                                           {AVOID_BANK_CONFLICT: True}]
 
         for source, _ in self._remove_pad_and_ori_tensor_map.items():
-            self._emit_insn_map[source] = [source.op.axis[emit_insn_axis_index], "remove_pad"]
+            self._emit_insn_map[source] = [source.op.axis[emit_insn_axis_index], "remove_pad",
+                                           {AVOID_BANK_CONFLICT: True}]
 
         __broadcast_tensor_enable_vnchwconv()
 
