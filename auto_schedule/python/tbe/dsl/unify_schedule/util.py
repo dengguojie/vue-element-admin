@@ -301,7 +301,7 @@ def get_bound(expr):
             left_lower, left_upper = _parse(_expr.a)
             right_lower, right_upper = _parse(_expr.b)
             _lower, _upper = _add(left_lower, right_lower), _add(left_upper, right_upper)
-        elif isinstance(_expr, tvm.expr.Max):
+        elif isinstance(_expr, (tvm.expr.Max, tvm.expr.FloorDiv, tvm.expr.Sub)):
             left_lower, left_upper = _parse(_expr.a)
             right_lower, right_upper = _parse(_expr.b)
             _lower, _upper = _min(left_lower, right_lower), _max(left_upper, right_upper)

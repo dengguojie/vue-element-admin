@@ -326,6 +326,15 @@
     "auto_schedule/python/tbe/dsl/base/classifier/concat_classifier.py": [
         "concat"
     ],
+    "auto_schedule/python/tbe/dsl/unify_schedule/vector/split/split_tilingcase.py":[
+        "split"
+    ],
+    "auto_schedule/python/tbe/dsl/unify_schedule/vector/split/split_schedule.py":[
+        "split"
+    ],
+    "auto_schedule/python/tbe/dsl/base/classifier/split_classifier.py": [
+        "split"
+    ],
     "auto_schedule/python/tbe/dsl/unify_schedule/unify_auto_schedule.py":[
         "unify_auto_schedule",
         "reduce_max",

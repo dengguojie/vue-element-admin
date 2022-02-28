@@ -82,6 +82,10 @@ CONCAT_COMPUTE = {
     "concat"
 }
 
+SPLIT_COMPUTE = {
+    "split"
+}
+
 CONV2D_COMPUTE = {
     "conv_vector_remove_pad",
     "convolution_C",
@@ -139,6 +143,7 @@ class ComputeType(Enum):
     TRANSDATA = auto()
     SET_VALUE = auto()
     CONCAT = auto()
+    SPLIT = auto()
     CAST = auto()
     CONV2D = auto()
     CONV2D_BP_INPUT = auto()
@@ -188,6 +193,15 @@ def _parse_pattern(outs):
     # key: compute type, @see enum(ComputeType)
     # value: the special compute type tensor
     compute_type_size_map, compute_type_tensor_map = _dfs_compute(outs)
+    funcs = [(lambda: _is_elewise(compute_type_size_map), Pattern.ELEMWISE),
+             (lambda: _is_broadcast(compute_type_size_map), Pattern.BROADCAST),
+             (lambda: _is_reduce(compute_type_size_map), Pattern.REDUCE),
+             (lambda: _is_norm(outs, compute_type_size_map, compute_type_tensor_map), Pattern.NORM),
+             (lambda: _is_gather(compute_type_size_map), Pattern.GATHER),
+             (lambda: _is_transpose(compute_type_size_map), Pattern.TRANSPOSE),
+             (lambda: _is_transdata(compute_type_size_map), Pattern.TRANSDATA),
+             (lambda: _is_concat(compute_type_size_map), Pattern.CONCAT),
+             (lambda: _is_split(compute_type_size_map), Pattern.SPLIT)]
 
     if ComputeType.CONV3D in compute_type_size_map:
         return Pattern.CONV3D
@@ -201,22 +215,11 @@ def _parse_pattern(outs):
         return Pattern.CONV3D_BACKPROP_INPUT
     if ComputeType.MAT_MUL in compute_type_size_map:
         return Pattern.MAT_MUL
-    if _is_elewise(compute_type_size_map):
-        return Pattern.ELEMWISE
-    if _is_broadcast(compute_type_size_map):
-        return Pattern.BROADCAST
-    if _is_reduce(compute_type_size_map):
-        return Pattern.REDUCE
-    if _is_norm(outs, compute_type_size_map, compute_type_tensor_map):
-        return Pattern.NORM
-    if _is_gather(compute_type_size_map):
-        return Pattern.GATHER
-    if _is_transpose(compute_type_size_map):
-        return Pattern.TRANSPOSE
-    if _is_transdata(compute_type_size_map):
-        return Pattern.TRANSDATA
-    if _is_concat(compute_type_size_map):
-        return Pattern.CONCAT
+
+    for func, pattern in funcs:
+        if func():
+            return pattern
+
     if ComputeType.CONV3D_BP_FILTER in compute_type_size_map:
         return Pattern.CONV3D_BACKPROP_FILTER
 
@@ -336,17 +339,26 @@ def _is_transpose(compute_type_size_map: dict):
     total = compute_type_size_map.get(ComputeType.ANY, 0)
     return ph_size + transpose_size == total
 
+
 def _is_transdata(compute_type_size_map: dict):
     ph_size = compute_type_size_map.get(ComputeType.PLACEHOLDER, 0)
     transdata_size = compute_type_size_map.get(ComputeType.TRANSDATA, 0)
     total = compute_type_size_map.get(ComputeType.ANY, 0)
     return ph_size + transdata_size == total
 
+
 def _is_concat(compute_type_size_map: dict):
     ph_size = compute_type_size_map.get(ComputeType.PLACEHOLDER, 0)
     concat_size = compute_type_size_map.get(ComputeType.CONCAT, 0)
     total = compute_type_size_map.get(ComputeType.ANY, 0)
     return ph_size + concat_size == total
+
+
+def _is_split(compute_type_size_map: dict):
+    ph_size = compute_type_size_map.get(ComputeType.PLACEHOLDER, 0)
+    split_size = compute_type_size_map.get(ComputeType.SPLIT, 0)
+    total = compute_type_size_map.get(ComputeType.ANY, 0)
+    return ph_size + split_size == total
 
 
 def _dfs_compute(outs) -> Tuple[dict, dict]:
@@ -401,6 +413,7 @@ def _get_compute_type(tensor: tvm.tensor.Tensor) -> ComputeType:
         (TRANSDATA_COMPUTE, ComputeType.TRANSDATA),
         (SET_VALUE_COMPUTE, ComputeType.SET_VALUE),
         (CONCAT_COMPUTE, ComputeType.CONCAT),
+        (SPLIT_COMPUTE, ComputeType.SPLIT),
         (CONV3D_COMPUTE, ComputeType.CONV3D),
         (CONV2D_COMPUTE, ComputeType.CONV2D),
         (CONV2D_BP_INPUT_COMPUTE, ComputeType.CONV2D_BP_INPUT),

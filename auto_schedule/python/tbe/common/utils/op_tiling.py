@@ -141,14 +141,15 @@ def decode(tiling_data, fmt):
             if count < 0:
                 fmt_size = struct.calcsize("i")
                 res = struct.unpack_from("i", tiling_data, offset)
-                fmt = fmt_def[fmt[1]]
                 count = res[0]
                 unpack_size += fmt_size
+            fmt_str = "{}{}".format(count, fmt_def.get(fmt[1]))
+        else:
+            fmt_str = "{}{}".format(count, fmt_def.get(fmt))
 
         if count == 0:
             return [unpack_size, []]
 
-        fmt_str = "{}{}".format(count, fmt_def[fmt])
         fmt_size = struct.calcsize(fmt_str)
         res = struct.unpack_from(fmt_str, tiling_data, offset + unpack_size)
         unpack_size += fmt_size

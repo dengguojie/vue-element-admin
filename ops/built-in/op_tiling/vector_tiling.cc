@@ -44,6 +44,8 @@ std::shared_ptr<AutoTilingHandler> CreateAutoTilingHandler(const std::string& op
       return CreateTransdataTilingHandler(op_type, pattern, parsed_compile_info);
     } else if (pattern == "Concat") {
       return CreateConcatDslTilingHandler(op_type, pattern, parsed_compile_info);
+    } else if (pattern == "Split") {
+      return CreateSplitDslTilingHandler(op_type, pattern, parsed_compile_info);
     } else {
       OP_LOGE(op_type.c_str(), "Pattern %s is not supported by AutoTiling Compile Info Parser", pattern.c_str());
       return std::shared_ptr<AutoTilingHandler>(nullptr);

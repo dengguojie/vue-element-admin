@@ -30,6 +30,7 @@ class Pattern:
     NORM = "Norm"
     TRANSPOSE = "Transpose"
     CONCAT = "Concat"
+    SPLIT = "Split"
     OPAQUE = "Opaque"
     SOFTMAX = "Softmax"
     ASCEND_QUANT = "quant"
@@ -140,6 +141,14 @@ class ConcatPattern:
     """
     # generic
     C_0 = "C_0"
+
+class SplitPattern:
+    """
+    Split sub pattern.
+    Each sub-pattern has a corresponding schedule, for function or performance.
+    """
+    # generic
+    S_0 = "S_0"
 
 
 class CompileInfo:

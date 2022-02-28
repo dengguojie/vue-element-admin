@@ -88,6 +88,7 @@ auto_schedule:
       - auto_schedule/python/tbe/dsl/base/classifier/reduce_helper.py
       - auto_schedule/python/tbe/dsl/base/classifier/unknown_reduce_classifier.py
       - auto_schedule/python/tbe/dsl/base/classifier/util.py
+      - auto_schedule/python/tbe/dsl/base/classifier/split_classifier.py
       - auto_schedule/python/tbe/dsl/base/context.py
       - auto_schedule/python/tbe/dsl/base/expr_compare.py
       - auto_schedule/python/tbe/dsl/base/__init__.py
@@ -175,6 +176,8 @@ auto_schedule:
       - ops/built-in/op_tiling/transdata_dsl.h
       - ops/built-in/op_tiling/transdata_dsl.cc
       - ops/built-in/op_tiling/tiling_handler.h
+      - ops/built-in/op_tiling/split_dsl.cc
+      - ops/built-in/op_tiling/split_dsl.h
       - auto_schedule/python/tbe/dsl/unify_schedule/vector/
     unrelease:
     llt:

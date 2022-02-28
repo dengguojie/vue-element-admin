@@ -40,6 +40,10 @@ std::shared_ptr<AutoTilingHandler> CreateConcatDslTilingHandler(const std::strin
                                                                 const std::string& pattern,
                                                                 const nlohmann::json& parsed_compile_info);
 
+std::shared_ptr<AutoTilingHandler> CreateSplitDslTilingHandler(const std::string& op_type,
+                                                               const std::string& pattern,
+                                                               const nlohmann::json& parsed_compile_info);
+
 std::shared_ptr<AutoTilingHandler> CreateElewiseTilingHandler(const std::string& op_type,
                                                               const std::string& pattern,
                                                               const nlohmann::json& parsed_compile_info);

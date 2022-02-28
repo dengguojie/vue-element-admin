@@ -75,6 +75,29 @@ def split_compute_com(data, split_dim, size_splits):
     return split(data, split_dim, size_splits)
 
 
+def _unify_split(input_tensor, split_dim, size_splits):
+    def compute_func(*indice):
+        """
+        split compute expr
+        """
+        return input_tensor(*indice[:split_dim], indice[split_dim] + offset, *indice[split_dim + 1:])
+
+    if split_dim < 0:
+        split_dim += len(input_tensor.shape)
+
+    res = []
+    res_shape = shape_to_list(input_tensor.shape)
+    offset = 0
+    with tvm.tag_scope("split"):
+        for index, split_len in enumerate(size_splits):
+            res_shape[split_dim] = split_len
+            split_n = tvm.compute(res_shape, compute_func, name=f"split_{index}")
+            offset += split_len
+            res.append(split_n)
+
+    return res
+
+
 @source_info_decorator()
 def split(data, split_dim, size_splits):
     """Split a tensor into len(size_splits) tensors along one dimension.
@@ -95,6 +118,9 @@ def split(data, split_dim, size_splits):
     output_tensor_list: list
         the list of output tensors, output tensor type is TVM tensor.
     """
+    if in_dynamic_and_static_unify():
+        return _unify_split(data, split_dim, size_splits)
+
     input_shape = shape_to_list(data.shape)
 
     output_shape_list = []
