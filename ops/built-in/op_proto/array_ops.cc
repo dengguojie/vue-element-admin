@@ -3139,7 +3139,14 @@ IMPLEMT_INFERFUNC(Expand, ExpandInferShape) {
     }
   } else {
     OP_LOGD(op_name, "Get constValue successed of [shape]");
-    DataType data_type = data.GetTensorDesc().GetDataType();
+    TensorDesc tensordesc_shape = data.GetTensorDesc();
+    vector<int64_t> shape_dims = tensordesc_shape.GetShape().GetDims();
+    if (shape_dims.size() > 1) {
+      OP_LOGE(op_name, "The dim numbers of constValue [%zu] are more than one.",
+              shape_dims.size());
+      return GRAPH_FAILED;
+    }
+    DataType data_type = tensordesc_shape.GetDataType();
     if (data_type == DT_INT32) {
       if (!ExpandCalDim<int32_t>(data, vec_dim, x_dims, range_vector)) {
         OP_LOGE(op_name, "Data shape are not compatible!");

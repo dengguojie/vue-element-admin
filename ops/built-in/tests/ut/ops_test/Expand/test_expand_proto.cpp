@@ -39,3 +39,28 @@ TEST_F(expand, expand_infershape_diff_test){
     EXPECT_EQ(output_shape_range,expected_shape_range);
 }
 
+TEST_F(expand, expand_infershape_const) {
+    ge::op::Expand expand_op;
+
+    ge::TensorDesc tensorDesc1;
+    ge::Shape xShape({2, 2});
+    tensorDesc1.SetDataType(ge::DT_INT32);
+    tensorDesc1.SetShape(xShape);
+    expand_op.UpdateInputDesc("x", tensorDesc1);
+
+    ge::Tensor constTensor;
+    ge::TensorDesc constDesc(ge::Shape({2, 2}), ge::FORMAT_ND, ge::DT_INT32);
+    constDesc.SetSize(4 * sizeof(int32_t));
+    constTensor.SetTensorDesc(constDesc);
+    int64_t constData[4] = {1, 1, 1, 1};
+    constTensor.SetData((uint8_t *)constData, 4 * sizeof(int32_t));
+    auto shape = ge::op::Constant().set_attr_value(constTensor);
+
+    expand_op.set_input_shape(shape);
+    auto desc = expand_op.GetInputDescByName("shape");
+    desc.SetDataType(ge::DT_INT32);
+    expand_op.UpdateInputDesc("shape", desc);
+
+    auto ret = expand_op.InferShapeAndType();
+}
+
