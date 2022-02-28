@@ -26,9 +26,6 @@ CANN_ST_SOURCE="${CANN_ROOT}/st"
 
 test ! -d "${CANN_ST_OUT}" && mkdir -p "${CANN_ST_OUT}"
 
-ALL_CASES="cases.txt"
-RESULT="result.txt"
-
 set_st_env() {
   local install_path="$1"
   local soc_version="$2"
@@ -107,21 +104,10 @@ run_st() {
     else
       echo "[INFO] use custom_ini:${custom_ini}"
       timeout 10m python3.7 "$msopst" run -i "$op_case" -soc "$supported_soc" -out "${CANN_ST_OUT}_${op_case}" -conf "${custom_ini}"
-      case_name=`grep -F "case_name"  $op_case|sed 's/^ \+//g; s/\"//g; s/, *//g'`
-      result_file="${CANN_ST_OUT}/result.txt"
-      echo ${case_name}" [pass]" >> "${result_file}" 2>/dev/null
     fi
     if [[ $? -ne 0 ]]; then
       echo "[ERROR] run ops stest failed, case file is: $op_case."
       st_failed="true"
-    fi
-    if [[ "${op_type}" != "all" ]]; then
-      op_result="${CANN_ST_OUT}/result_${op_type}.txt"
-      touch "${op_result}"
-      find "${CANN_ST_OUT}/${op_type}" -name "result.txt" |
-        xargs grep -v "Test Result" |
-        awk '{print $2" : "$3}' >> "${op_result}" 2>/dev/null
-        echo "[INFO] get results for ${op_type}:" && cat "${op_result}"
     fi
   done
 
@@ -158,30 +144,27 @@ delete_unmatch_cases() {
   fi
 }
 
-gen_all_cases() {
-  touch "${ALL_CASES}"
-  find "${CANN_ST_SOURCE}" -name "*.json" |
-    xargs grep -F "case_name" |
-    sed 's/^ \+//g; s/\"//g; s/, *//g' > "${ALL_CASES}" 2>/dev/null
-  echo "[INFO] find cases to execute:" && cat "${ALL_CASES}"
-}
-
 get_results() {
-  touch "${RESULT}"
-  find "${CANN_TEST_OUT}" -name "result.txt" |
-    xargs grep -v "Test Result" |
-    awk '{print $2" : "$3}' > "${RESULT}" 2>/dev/null
-  echo "[INFO] get results for all:" && cat "${RESULT}"
-
-  if [[ `grep "\[fail\]" "${RESULT}"|wc -l` -gt 0 ]]; then
-    echo "[ERROR]Some TestCase failed! Please check log with keyword \"[fail]\""
-    st_failed="true"
-  fi
+  st_reports=$(find "${CANN_TEST_OUT}" -name "st_report.json" 2>/dev/null)
+  for report in $(echo $st_reports); do
+      fail_count=`grep "failed count" $report| awk '{print $3}'`
+      if [[ 10#${fail_count} -gt 0 ]]; then
+        echo "[ERROR]Some TestCase(s) failed! Please check log with keyword \"failed\" or \"FAILED\""
+        st_failed="true"
+      fi
+  done
   
   if [[ `ls cov_result/.coverage*|wc -l` -gt 0 ]]; then
     echo "[INFO] find coverage files,tar them."
     cd cov_result && coverage combine && cd -
     tar -cvzf cov_result.tar.gz cov_result/.coverage*
+  fi
+
+  if [[ "$st_failed" = "true" ]];then
+    echo "[ERROR]Some TestCase(s) failed! Please check log with keyword \"fail\" or \"ERROR\""
+    exit $STATUS_FAILED
+  else
+    echo "[INFO]ALL TestCases Pass!"
   fi
 }
 
@@ -200,16 +183,10 @@ main() {
   fi
   modify_for_cov
   delete_unmatch_cases $soc_version
-  gen_all_cases
   set_st_env "${base_path}"  "${soc_version}"
   run_st "${op_type}" "${soc_version}"
   get_results
   clear_tmp
-
-  if [[ "$st_failed" = "true" ]];then
-    echo "[ERROR]Some TestCase failed! Please check log with keyword \"[fail]\" or \"[ERROR]\""
-    exit $STATUS_FAILED
-  fi
 }
 
 if [[ $# -lt 1 ]]; then
