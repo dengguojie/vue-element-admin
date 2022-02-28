@@ -849,6 +849,7 @@ def _infer_shape(format_pattern, x, y):
 
     return shape_x, shape_y
 
+
 # 'pylint: too-many-branches,too-many-statements
 def reshape(tensor_in, new_shape, reshape_type):
     """
