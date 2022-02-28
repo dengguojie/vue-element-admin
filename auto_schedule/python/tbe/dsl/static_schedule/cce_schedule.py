@@ -246,25 +246,6 @@ def verify_compute_tensor(tensors):
     return False
 
 
-def rl_search_proc(outs, option):
-    """
-    rl_search schedule
-    """
-    # no special tensor list
-    tensor_list = []
-    # only support single output
-    real_outs = outs
-    if "rl_schedule_dict" in option:
-        log.info("start to call offline rl_search.")
-        from schedule_search.offline_schedule import offline_schedule  # 'pylint: disable=E0401
-        schedule = offline_schedule(outs, option["rl_schedule_dict"])
-    else:
-        log.info("start to call online rl_search.")
-        from schedule_search.online_infer import online_infer  # 'pylint: disable=E0401
-        schedule = online_infer(outs, option)
-    return schedule, tensor_list, real_outs
-
-
 def get_all_tags(res):
     """
     get all tags
@@ -433,8 +414,6 @@ def schedule_cce(outs, option=None):  # 'pylint: disable=R0912, R0914, R0915
     schedule = None
     if not get_current_build_config("enable_op_prebuild"):
         try:
-            if option is not None and isinstance(option, dict):
-                schedule, tensor_list, real_outs = rl_search_proc(outs, option)
             enable_bank_query = True
             if get_context() and (get_context().get_addition("enable_rl_bank_query") is False):
                 enable_bank_query = False
