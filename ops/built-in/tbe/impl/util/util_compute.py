@@ -103,6 +103,30 @@ def check_batchmatmul_fuse(input_tensor):
     return False
 
 
+def fetch_batchmatmul_fuse_tensor(input_tensor):
+    """
+    fetch fused tensor of batchmatmul
+
+    Parameters:
+    input_tensor: the tensor of elem input
+
+    Returns result
+    """
+    queue = [input_tensor]
+    visited = [input_tensor]
+    while queue:
+        item = queue.pop(0)
+        if len(item.shape) == BATCH_MATMUL_LENGTH and ("matmul" in item.op.tag) \
+                and item.op.attrs["format"] == "FRACTAL_NZ":
+            return item
+
+        for child in item.op.input_tensors:
+            if child not in visited:
+                queue.append(child)
+                visited.append(child)
+    return
+
+
 def batchmatmul_elem_nd2nz(batch_matmul, elem_input, para_dict, para_name):
     """
     reshape batchmatmul+elem ubfusion inputs tensors

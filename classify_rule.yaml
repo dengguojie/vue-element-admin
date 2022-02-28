@@ -359,6 +359,7 @@ cube:
       - ops/built-in/tbe/impl/batch_matmul_v2.py
       - ops/built-in/tbe/impl/dynamic/batch_matmul.py
       - ops/built-in/tbe/impl/dynamic/batch_matmul_v2.py
+      - ops/built-in/tbe/impl/util/util_compute.py
       - ops/built-in/tbe/impl/compress_fully_connection.py
       - ops/built-in/tbe/impl/fully_connection.py
       - ops/built-in/tbe/impl/util/util_deconv_comm.py

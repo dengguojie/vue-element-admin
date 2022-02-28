@@ -32,6 +32,7 @@ from impl.confusion_transpose_d import confusion_transpose_d_compute
 from impl.add import add_compute
 from impl.relu import relu_compute
 from impl.div import div_compute
+from impl.real_div import real_div_compute
 from impl.fused_mul_add import fusion_mul_add_compute
 from te.platform.cce_conf import te_set_version
 
@@ -414,6 +415,29 @@ def test_batchmatmul_div_fused_mul_add(test_arg):
         cce_build_code(sch, config)
 
 
+def test_batchmatmul_realdiv_add(test_arg):
+    with cce():
+        x1 = tvm.placeholder((8, 48, 24, 16, 16), name="x1", attrs={'format': "FRACTAL_NZ", "ori_shape": (8, 384, 768)}, dtype="float16")
+        x2 = tvm.placeholder((48, 48, 16, 16), name="x2", attrs={'format': "FRACTAL_NZ", "ori_shape": (768,768)}, dtype="float16")
+        output_y = {"shape": (8, 48, 24, 16, 16), "dtype": "float16", "ori_shape": (8, 384, 768), "format": "FRACTAL_NZ", "ori_format": "ND"}
+        matmul_out = batch_matmul_compute(x1, x2, None, output_y)
+
+        real_div_tensor = tvm.placeholder((1, ), name='tensor_div', dtype="float16", attrs={"format": "ND", "ori_shape": (1,)})
+        add_tensor =  tvm.placeholder((8, 48, 24, 16, 16), name='tensor_add', dtype="float16", attrs={"format": "FRACTAL_NZ", "ori_shape": (16, 1, 96, 96)})
+        real_div_out = real_div_compute(matmul_out, real_div_tensor, {})
+        out = add_compute(real_div_out, add_tensor, {})
+
+        tensor_list = [x1, x2, real_div_tensor, add_tensor, out]
+        sch = auto_schedule(out)
+        config = {
+            "print_ir": False,
+            "need_build": True,
+            "name": "batch_matmul_realdiv_fused_mul_add",
+            "tensor_list": tensor_list,
+        }
+        cce_build_code(sch, config)
+
+
 def test_op_check_supported(test_arg):
     def _test_supported(case):
         input_x, input_y, bias, output_z, trans_a, trans_b = case["params"]
@@ -452,6 +476,7 @@ ut_case.add_cust_test_func(test_func=test_batchmatmul_confusion_transpose_710)
 #ut_case.add_cust_test_func(test_func=test_batchmatmul_add_add)
 #ut_case.add_cust_test_func(test_func=test_batchmatmul_add_relu)
 #ut_case.add_cust_test_func(test_func=test_batchmatmul_div_fused_mul_add)
+ut_case.add_cust_test_func(test_func=test_batchmatmul_realdiv_add)
 ut_case.add_cust_test_func(test_func=test_op_check_supported)
 
 

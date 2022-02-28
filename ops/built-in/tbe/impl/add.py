@@ -27,6 +27,7 @@ from impl.util import util_common
 from impl.util.util_compute import batchmatmul_elem_nd2nz
 from impl.util.util_compute import batchmatmul_elem_reshape
 from impl.util.util_compute import check_batchmatmul_fuse
+from impl.util.util_compute import fetch_batchmatmul_fuse_tensor
 from impl.util.util_select_op_base import gen_param
 from impl.util.util_select_op_base import get_dynamic_param_in_json
 from impl.util.util_compute import check_fc_fuse
@@ -583,12 +584,16 @@ def _add_compute_with_batchmatmul(lhs_tensor, rhs_tensor):
         para_name += "_add"
     else:
         para_name = "add"
-    batch_shape = shape_util.shape_to_list(lhs_tensor.op.attrs["batch_shape"])
+    batch_matmul_tensor = fetch_batchmatmul_fuse_tensor(lhs_tensor)
+    if batch_matmul_tensor is None:
+        error_manager_vector.raise_err_specific_reson("add", "ub fusion with bmm, can't fetch batchmatmul tensor.")
+
+    batch_shape = shape_util.shape_to_list(batch_matmul_tensor.op.attrs["batch_shape"])
     para_dict = {"format_elem": rhs_tensor.op.attrs["format"],
                  "batch_shape": batch_shape}
-    rhs_tensor, shape_max = batchmatmul_elem_nd2nz(lhs_tensor, rhs_tensor, para_dict, para_name)
+    rhs_tensor, shape_max = batchmatmul_elem_nd2nz(batch_matmul_tensor, rhs_tensor, para_dict, para_name)
     rhs_tensor = tbe.broadcast(rhs_tensor, shape_max)
-    rhs_tensor = batchmatmul_elem_reshape(lhs_tensor, rhs_tensor, batch_shape, para_name)
+    rhs_tensor = batchmatmul_elem_reshape(batch_matmul_tensor, rhs_tensor, batch_shape, para_name)
     res = tbe.vadd(lhs_tensor, rhs_tensor)
     res.op.attrs["batch_shape"] = batch_shape
     res.op.attrs["para_name"] = para_name

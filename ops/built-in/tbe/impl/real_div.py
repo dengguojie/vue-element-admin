@@ -21,6 +21,10 @@ from te.utils import para_check
 from te.utils import shape_util
 from te import tvm
 from te.utils.error_manager import error_manager_vector
+from impl.util.util_compute import batchmatmul_elem_nd2nz
+from impl.util.util_compute import batchmatmul_elem_reshape
+from impl.util.util_compute import check_batchmatmul_fuse
+from impl.util.util_compute import fetch_batchmatmul_fuse_tensor
 from impl.util import util_select_op_base
 
 SIZE_SIXTEEN = 16
@@ -468,6 +472,45 @@ def _infer_shape(format_pattern, x, y):
     return shape_x, shape_y
 
 
+def _real_div_compute_with_batchmatmul(lhs_tensor, rhs_tensor, is_bmm_in_left=True):
+    """
+    real_div ub fused with batchmatmul, return lhs_tensor / rhs_tensor
+    if lhs_tensor shape dim is different from rhs_tensor, will broadcast small one
+
+    Parameters
+    ----------
+    lhs_tensor: TVM tensor
+        the placeholder of first input data
+    rhs_tensor: TVM tensor
+        the placeholder of second input data
+    Returns
+    -------
+    res : output of the lhs_tensor / rhs_tensor
+    """
+    bmm_direction_tensor, other_tensor = (lhs_tensor, rhs_tensor) if is_bmm_in_left else (rhs_tensor, lhs_tensor)
+    if "para_name" in bmm_direction_tensor.op.attrs:
+        para_name = bmm_direction_tensor.op.attrs["para_name"].value
+        para_name += "_realdiv"
+    else:
+        para_name = "realdiv"
+    batch_matmul_tensor = fetch_batchmatmul_fuse_tensor(bmm_direction_tensor)
+    if batch_matmul_tensor is None:
+        error_manager_vector.raise_err_specific_reson("realdiv", "ub fusion with bmm, can't fetch batchmatmul tensor.")
+
+    batch_shape = shape_util.shape_to_list(batch_matmul_tensor.op.attrs["batch_shape"])
+    para_dict = {"format_elem": other_tensor.op.attrs["format"],
+                 "batch_shape": batch_shape}
+    other_tensor, shape_max = batchmatmul_elem_nd2nz(batch_matmul_tensor, other_tensor, para_dict, para_name)
+    other_tensor = tbe.broadcast(other_tensor, shape_max)
+    other_tensor = batchmatmul_elem_reshape(batch_matmul_tensor, other_tensor, batch_shape, para_name)
+    res = (tbe.vdiv(bmm_direction_tensor, other_tensor) if is_bmm_in_left
+            else tbe.vdiv(other_tensor, bmm_direction_tensor))
+    res.op.attrs["batch_shape"] = batch_shape
+    res.op.attrs["para_name"] = para_name
+
+    return res
+
+
 @tbe_platform.fusion_manager.fusion_manager.register("real_div")
 def real_div_compute(x1, x2, y, kernel_name="real_div"):
     """
@@ -488,6 +531,9 @@ def real_div_compute(x1, x2, y, kernel_name="real_div"):
     -------
     res : output of the data's divide
     """
+    is_bmm_in_left, is_bmm_in_right = check_batchmatmul_fuse(x1), check_batchmatmul_fuse(x2)
+    if is_bmm_in_left or is_bmm_in_right:
+        return _real_div_compute_with_batchmatmul(x1, x2, is_bmm_in_left)
     shape_x = shape_util.shape_to_list(x1.shape)
     shape_y = shape_util.shape_to_list(x2.shape)
     shape_x, shape_y, shape_max = shape_util.broadcast_shapes(shape_x,
