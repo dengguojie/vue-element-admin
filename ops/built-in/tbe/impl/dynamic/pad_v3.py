@@ -131,7 +131,8 @@ class PadV3Init:
         self.inner_dtype = "float16"
         self.paddings_dtype = paddings.get('dtype')
         self.constant_values = constant_values
-        self.y_dtype = y.get('dtype')
+        # MDC 610 compute grouping avoiding patch DTS:2022022105256
+        self.version_info = tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION)
         self.kernel_name = kernel_name
         self.input_gm = None
         self.output_gm = None
@@ -152,7 +153,7 @@ class PadV3Init:
         self.copy_num = 3200
         self.max_numel_vec_dup_one_loop = None
 
-        if self.core_nums > 1:
+        if self.core_nums > 1 and self.version_info != "Ascend610":
             self.sync_workspace = self.tik_instance.Tensor('int64', (4 * self.core_nums,),
                                                            tik.scope_gm,
                                                            'sync_workspace',
@@ -372,7 +373,11 @@ class PadV3Init:
         if self.constant_values is not None:
             self.input_gm_list.append(self.constant_values_gm)
 
-        y_gm = self.tik_instance.Tensor(self.inner_dtype, self.unknown_max_shape, name="y", scope=tik.scope_gm)
+        atomic_flag = False
+        if self.version_info == "Ascend610":
+            atomic_flag = True
+        y_gm = self.tik_instance.Tensor(self.inner_dtype, self.unknown_max_shape, name="y",
+                                        scope=tik.scope_gm, is_atomic_add = atomic_flag)
         self.input_bytes_size = tbe_platform.get_bit_len(x_dtype) // Constant.EIGHT_BIT
         self.output_gm_list.append(y_gm)
 
@@ -480,9 +485,10 @@ class PadV3Init:
                     self.pad_scalar.set_as(0)
                 else:
                     self.get_pad_scalar()
-                self.fill_gm_output_tensor(core_index)
-                if self.core_nums > 1:
-                    self.tik_instance.block_barrier(self.sync_workspace)
+                if self.version_info != "Ascend610":
+                    self.fill_gm_output_tensor(core_index)
+                    if self.core_nums > 1:
+                        self.tik_instance.block_barrier(self.sync_workspace)
             self.do_pad(core_index)
 
     def get_output_outer_idx(self, in_idx, outer_num=5):
