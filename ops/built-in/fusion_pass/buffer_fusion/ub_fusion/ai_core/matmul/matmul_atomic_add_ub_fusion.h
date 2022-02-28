@@ -35,19 +35,20 @@ class MatmulAtomicAddUbFusion : public BufferFusionPassBase {
   ~MatmulAtomicAddUbFusion() override {}
   bool EnableAtomicAdd(const ge::NodePtr &matmul_node);
   bool NeedSplitK(const ge::NodePtr &matmul_node);
-  Status GetBandWidth(int64_t &hbm_bandwidth, int64_t &l2_bandwidth);
+  Status GetBandWidth(int64_t &hbm_bandwidth, int64_t &l2_bandwidth) const;
   bool computePerf(vector<int64_t> shapes, vector<int> block_dims, int64_t cur_bandwidth, int64_t hbm_bandwidth,
                    ge::DataType out_dtype, ge::Format out_format, float &cur_cost);
-  bool getValueByKey(std::unordered_map<ge::DataType, int> ori_map, ge::DataType traget_key, int &target_value);
+  bool getValueByKey(const std::unordered_map<ge::DataType, int> &ori_map, const ge::DataType traget_key,
+                     int &target_value);
   vector<int64_t> GetMatMulDims(const ge::NodePtr &matmul_node);
   int AtomicAddType(const ge::NodePtr &matmul_node);
-  Status IsDynamicMatmul(const ge::NodePtr &matmul_node, bool &is_dynamic, bool &is_no_range);
-  bool IsTheRangeOfNoRange(const vector<std::pair<int64_t, int64_t>> &range_data);
-  Status GenerateCastNode(ge::NodePtr &matmul_node, ge::NodePtr &cast_node);
-  Status GenerateTransDataNode(ge::NodePtr &matmul_node, ge::NodePtr &transdata_node);
+  Status IsDynamicMatmul(const ge::NodePtr &matmul_node, bool &is_dynamic, bool &is_no_range_flag) const;
+  bool IsTheRangeOfNoRange(const vector<std::pair<int64_t, int64_t>> &range_data) const;
+  Status GenerateCastNode(ge::NodePtr &matmul_node, ge::NodePtr &cast_node) const;
+  Status GenerateTransDataNode(ge::NodePtr &matmul_node, ge::NodePtr &transdata_node) const;
   Status AddSuperKernelId(ge::NodePtr &matmul_node);
   Status AddCustomNode(int cur_add_node_type, ge::NodePtr &matmul_node, vector<ge::NodePtr> &fusion_nodes);
-  Status MatMulLinkControlEdge(ge::NodePtr &matmul_node, ge::NodePtr &next_node);
+  Status MatMulLinkControlEdge(ge::NodePtr &matmul_node, ge::NodePtr &next_node) const;
  protected:
   vector<BufferFusionPattern *> DefinePatterns() override;
   /*

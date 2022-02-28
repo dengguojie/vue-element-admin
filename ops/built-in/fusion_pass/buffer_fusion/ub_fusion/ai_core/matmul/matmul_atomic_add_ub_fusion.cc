@@ -174,7 +174,7 @@ bool MatmulAtomicAddUbFusion::NeedSplitK(const ge::NodePtr &matmul_node) {
   return need_split_k;
 }
 
-Status MatmulAtomicAddUbFusion::GetBandWidth(int64_t &hbm_bandwidth, int64_t &l2_bandwidth) {
+Status MatmulAtomicAddUbFusion::GetBandWidth(int64_t &hbm_bandwidth, int64_t &l2_bandwidth) const {
   hbm_bandwidth = 0;
   l2_bandwidth = 0;
   auto iter1 = soc_hbm_bandwidth_info.find(core_num);
@@ -263,8 +263,8 @@ bool MatmulAtomicAddUbFusion::computePerf(vector<int64_t> shapes, vector<int> bl
   return true;
 }
 
-bool MatmulAtomicAddUbFusion::getValueByKey(std::unordered_map<ge::DataType, int> ori_map, ge::DataType target_key,
-                                            int &target_value) {
+bool MatmulAtomicAddUbFusion::getValueByKey(const std::unordered_map<ge::DataType, int> &ori_map,
+                                            const ge::DataType target_key, int &target_value) {
   auto iter = ori_map.find(target_key);
   if (iter != ori_map.end()) {
     target_value = iter->second;
@@ -361,7 +361,8 @@ int MatmulAtomicAddUbFusion::AtomicAddType(const ge::NodePtr &matmul_node) {
   return atomic_add_type;
 }
 
-Status MatmulAtomicAddUbFusion::IsDynamicMatmul(const ge::NodePtr &matmul_node, bool &is_dynamic, bool &is_no_range) {
+Status MatmulAtomicAddUbFusion::IsDynamicMatmul(const ge::NodePtr &matmul_node, bool &is_dynamic,
+                                                bool &is_no_range_flag) const {
   is_dynamic = false;
   auto input0_desc = GetCurrNodeInputDesc(matmul_node, 0);
   auto input1_desc = GetCurrNodeInputDesc(matmul_node, 1);
@@ -386,7 +387,7 @@ Status MatmulAtomicAddUbFusion::IsDynamicMatmul(const ge::NodePtr &matmul_node, 
                     return FAILED);
 
   if (IsTheRangeOfNoRange(range_data_0) || IsTheRangeOfNoRange(range_data_1)) {
-    is_no_range = true;
+    is_no_range_flag = true;
   }
   return SUCCESS;
 }
@@ -395,7 +396,7 @@ bool IsNoRange(const pair<int64_t, int64_t> &dim_range) {
   return ((dim_range.first == 1) && (dim_range.second == -1));
 }
 
-bool MatmulAtomicAddUbFusion::IsTheRangeOfNoRange(const vector<pair<int64_t, int64_t>> &range_data) {
+bool MatmulAtomicAddUbFusion::IsTheRangeOfNoRange(const vector<pair<int64_t, int64_t>> &range_data) const {
   if (range_data.empty()) {
     OP_LOGD(kFusedOpType, "the range of MatMul is empty, is no range.");
     return true;
@@ -407,7 +408,7 @@ bool MatmulAtomicAddUbFusion::IsTheRangeOfNoRange(const vector<pair<int64_t, int
   return false;
 }
 
-Status MatmulAtomicAddUbFusion::GenerateTransDataNode(ge::NodePtr &matmul_node, ge::NodePtr &transdata_node) {
+Status MatmulAtomicAddUbFusion::GenerateTransDataNode(ge::NodePtr &matmul_node, ge::NodePtr &transdata_node) const {
   auto base_name = matmul_node->GetName();
   auto op_name = base_name + "_transdata";
   ge::OpDescPtr new_desc_ptr = nullptr;
@@ -510,7 +511,7 @@ Status MatmulAtomicAddUbFusion::GenerateTransDataNode(ge::NodePtr &matmul_node, 
   return SUCCESS;
 }
 
-Status MatmulAtomicAddUbFusion::GenerateCastNode(ge::NodePtr &matmul_node, ge::NodePtr &cast_node) {
+Status MatmulAtomicAddUbFusion::GenerateCastNode(ge::NodePtr &matmul_node, ge::NodePtr &cast_node) const {
   auto base_name = matmul_node->GetName();
   auto matmul_out_shape_size = GetCurrNodeOutputDesc(matmul_node, 0)->GetShape().GetDims().size();
   auto op_name = base_name + "_cast";
@@ -637,7 +638,7 @@ Status MatmulAtomicAddUbFusion::AddCustomNode(int cur_add_node_type, ge::NodePtr
   return SUCCESS;
 }
 
-Status MatmulAtomicAddUbFusion::MatMulLinkControlEdge(ge::NodePtr &matmul_node, ge::NodePtr &next_node) {
+Status MatmulAtomicAddUbFusion::MatMulLinkControlEdge(ge::NodePtr &matmul_node, ge::NodePtr &next_node) const {
   if (matmul_node->GetOutControlAnchor() != nullptr) {
     if (matmul_node->GetOutControlAnchor()->GetPeerInControlAnchors().size() > 0) {
       for (auto in_control_anchor : matmul_node->GetOutControlAnchor()->GetPeerInControlAnchors()) {
