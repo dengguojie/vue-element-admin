@@ -22,10 +22,13 @@ from impl.util.util_select_op_base import gen_param
 from impl.util.util_select_op_base import get_dynamic_param_in_json
 from .sort_v2_910 import SortV2In910
 
+# aicore num in 910
+CLOULD_CORE = 32
+
 
 def op_select_format(x, y, axis=-1, descending=False, kernel_name="sort_v2"):
     available_core_num = tik.Dprofile().get_aicore_num()
-    if available_core_num == 32:
+    if available_core_num == CLOULD_CORE:
         dtype = "float16"
         input_format = "ND"
         output_format = "ND"
@@ -65,7 +68,7 @@ def sort_v2(x, y, axis=-1, descending=False, kernel_name="sort_v2"):
     ----------
     """
     available_core_num = tik.Dprofile().get_aicore_num()
-    if available_core_num == 32:
+    if available_core_num == CLOULD_CORE:
         op_obj = SortV2In910(x, y, axis, descending, kernel_name)
         return op_obj.sort_v2_compute()
     else:

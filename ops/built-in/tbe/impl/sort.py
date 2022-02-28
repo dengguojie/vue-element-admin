@@ -43,6 +43,10 @@ BLOCK = 16
 NUM_BLOCK = 2048
 # sorting limit for data volume
 DATA_LIMITE = 100000
+# aicore num in 310
+MINI_CORE = 2
+# aicore num in 910
+CLOULD_CORE = 32
 
 
 def check_supported(x, y1, y2, axis, descending, kernel_name="sort"):
@@ -257,11 +261,11 @@ def moveout(tik_instance, num_16, num, data_out, offset_out, input_ub, dest_pos_
     # descend
     with tik_instance.else_scope():
         # data is continuous in GM & gather scattered data together
-        if available_aicore_num == 2:
+        if available_aicore_num == MINI_CORE:
             with tik_instance.for_range(0, num) as i2:
                 input_ub[i2 + src_pos_ub].set_as(input_ub[i2 * PROPOSAL_NUM + VAL_IDX + dest_pos_ub])
                 input_ub[i2 + src_pos_ub + num_16].set_as(input_ub[i2 * PROPOSAL_NUM + dest_pos_ub])
-        elif available_aicore_num == 32:
+        elif available_aicore_num == CLOULD_CORE:
             tik_instance.vextract(input_ub[src_pos_ub], input_ub[dest_pos_ub], num_16 // BLOCK, VAL_IDX)
             tik_instance.vextract(input_ub[src_pos_ub + num_16], input_ub[dest_pos_ub], num_16 // BLOCK, INT_IDX)
         else:
@@ -406,9 +410,9 @@ def pick(tik_instance, temp, offset, core_idx, num_2048, data_out, data_indices,
         tik_instance.vec_add(BLOCK, int_list_1, int_list_2, int_list_3, repeat_times, 2, 2, 2)
 
         # data is continuous in GM & gather scattered data together
-        if available_aicore_num == 32:
+        if available_aicore_num == CLOULD_CORE:
             tik_instance.vextract(input_ub[dest_pos_ub], input_ub[0], repeat_times, VAL_IDX)
-        elif available_aicore_num == 2:
+        elif available_aicore_num == MINI_CORE:
             with tik_instance.for_range(0, NUM_BLOCK) as i2:
                 input_ub[dest_pos_ub + i2].set_as(input_ub[i2 * PROPOSAL_NUM + VAL_IDX])
         else:
@@ -515,12 +519,12 @@ def sort_compute(tik_instance, dtype, num, num_16, num_2048, core_idx, used_aico
 
         tik_instance.vconcat(input_ub[0], input_ub[dest_pos_ub], n_repeat_total, VAL_IDX)
 
-        if available_aicore_num == 32:
+        if available_aicore_num == CLOULD_CORE:
             idx = tik_instance.Scalar(dtype="float32", init_value=num)
             with tik_instance.for_range(0, num) as i2:
                 idx.set_as(idx - 1)
                 idx_ub[(num - 1 - i2)].set_as(idx)
-        elif available_aicore_num == 2:
+        elif available_aicore_num == MINI_CORE:
             data_out_ub_ = tik_instance.Tensor(dtype, [BLOCK], name="data_out_ub_", scope=tik.scope_ubuf)
             data_indices_ub_int_ = tik_instance.Tensor("int32", [BLOCK], name="data_indices_ub_int_",
                                                        scope=tik.scope_ubuf)
@@ -544,12 +548,12 @@ def sort_compute(tik_instance, dtype, num, num_16, num_2048, core_idx, used_aico
     else:
         idx_ub = tik_instance.Tensor(dtype, [NUM_BLOCK], name="idx_ub", scope=tik.scope_ubuf)
         tmp_ub = tik_instance.Tensor(dtype, [NUM_BLOCK], name="tmp_ub", scope=tik.scope_ubuf)
-        if available_aicore_num == 32:
+        if available_aicore_num == CLOULD_CORE:
             idx = tik_instance.Scalar(dtype="float32", init_value=0)
             with tik_instance.for_range(0, NUM_BLOCK) as i2:
                 idx_ub[i2].set_as(idx)
                 idx.set_as(idx + 1)
-        elif available_aicore_num == 2:
+        elif available_aicore_num == MINI_CORE:
             data_out_ub_ = tik_instance.Tensor(dtype, [BLOCK], name="data_out_ub_", scope=tik.scope_ubuf)
             data_indices_ub_int_ = tik_instance.Tensor("int32", [BLOCK], name="data_indices_ub_int_",
                                                        scope=tik.scope_ubuf)

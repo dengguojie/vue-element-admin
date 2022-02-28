@@ -291,7 +291,7 @@ class MovingSumWithSigmoid(object):
                 self.tik_instance.vec_add(Constant.BLOCK_ALIGN, tmp_ub, exp_ub, ones_ub,
                                           frame_size_align // Constant.BLOCK_ALIGN, 2, 2, 2)
                 self.tik_instance.vec_rec_high_preci(Constant.BLOCK_ALIGN, sigmoid_ub, tmp_ub, work_tensor_ub,
-                                                     12 * frame_size_align // Constant.BLOCK_ALIGN, 2, 2)
+                                                     2 * frame_size_align // Constant.BLOCK_ALIGN, 2, 2)
 
                 with self.tik_instance.if_scope(frame_size > self.window_size):
                     with self.tik_instance.if_scope(self.window_size > Constant.REDUCE_ALIGN):

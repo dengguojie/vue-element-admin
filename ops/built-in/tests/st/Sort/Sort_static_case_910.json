@@ -1,0 +1,126 @@
+[
+  {
+    "op": "Sort",
+    "input_desc": [
+      {
+        "shape": [
+          16, 
+          32760
+        ],
+        "ori_shape": [
+          16,
+          32760
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          16,
+          32760
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          32760
+        ],
+        "ori_format": "ND",
+        "name": "y1",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          16,
+          32760
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          32760
+        ],
+        "ori_format": "ND",
+        "name": "y2",
+        "type": "int32"
+      }
+    ],
+    "attr": [
+      {
+        "name": "axis",
+        "type": "int",
+        "value": -1
+      },
+      {
+        "name": "descending",
+        "type": "bool",
+        "value": false
+      }
+    ],
+    "case_name": "test_Sort_000"
+  },
+  {
+    "op": "Sort",
+    "input_desc": [
+      {
+        "shape": [
+          16, 
+          345
+        ],
+        "ori_shape": [
+          16,
+          345
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          16,
+          345
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          345
+        ],
+        "ori_format": "ND",
+        "name": "y1",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          16,
+          345
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          345
+        ],
+        "ori_format": "ND",
+        "name": "y2",
+        "type": "int32"
+      }
+    ],
+    "attr": [
+      {
+        "name": "axis",
+        "type": "int",
+        "value": -1
+      },
+      {
+        "name": "descending",
+        "type": "bool",
+        "value": true
+      }
+    ],
+    "case_name": "test_Sort_001"
+  }
+]
