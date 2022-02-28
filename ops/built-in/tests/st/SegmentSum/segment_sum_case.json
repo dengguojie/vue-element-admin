@@ -130,5 +130,43 @@
                 "name": "y"
               }
         ]
+    },
+    {
+        "case_name": "Test_SegmentSum_static_001",
+        "op": "SegmentSum",
+        "calc_expect_func_file": "test_segment_sum_golden.py:calc_expect_func",
+        "input_desc": [
+            {
+                "format": "ND",
+                "type": "float32",
+                "shape": [3, 1],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.1,
+                        1.0
+                    ]
+                ],
+                "name": "x"
+            },
+            {
+                "format": "ND",
+                "type": "int32",
+                "shape": [3],
+                "value": [0, 0, 0],
+                "is_const": true,
+                "name": "segment_ids"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": "ND",
+                "type": ["float32"],
+                "shape": [1, 1],
+                "name": "y"
+              }
+        ]
     }
 ]
