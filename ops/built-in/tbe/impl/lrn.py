@@ -45,7 +45,7 @@ def _lrn_parameter_check(input_data, depth_radius, norm_region, kernel_name):
     """
     _lrn_parameter_check
     """
-    DEPTH_RADIUS_SIZE_LIMIT = 48
+    depth_radius_size = 48
     shape_input = input_data.get("shape")
     dtype_input = input_data.get("dtype").lower()
     para_check.check_shape(shape_input, param_name="x")
@@ -53,9 +53,9 @@ def _lrn_parameter_check(input_data, depth_radius, norm_region, kernel_name):
 
     para_check.check_shape(shape_input, min_rank=4, max_rank=5, param_name="x")
 
-    if depth_radius > DEPTH_RADIUS_SIZE_LIMIT:
+    if depth_radius > depth_radius_size:
         error_info = {'errCode': 'E81000', 'param_name': 'depth_radius', 'op_name': 'lrn',
-                      'expect_value': "less than " + str(DEPTH_RADIUS_SIZE_LIMIT),
+                      'expect_value': "less than " + str(depth_radius_size),
                       'real_value': "too large to calculate"}
         raise ValueError(error_info, "In op[%s], the parameter [%s] is not right, it should be [%s],"
                                      "but actually is [%s]."
@@ -532,9 +532,9 @@ class LRNBase5HD(LRNBase):
         CUT_C_HW_SIZE = 128
         tiling = {}
         tiling["batch_once"] = self.n_size // self.device_aicore_num if self.n_size > self.device_aicore_num else 1
-        tiling["batch_tail"] = self.n_size % tiling["batch_once"] \
-            if self.n_size % tiling["batch_once"] != 0 else \
-            tiling["batch_once"]
+        tiling["batch_tail"] = tiling["batch_once"]
+        if self.n_size % tiling["batch_once"] != 0:
+            tiling["batch_tail"] = self.n_size % tiling["batch_once"]
         tiling["batch_loop"] = math.ceil(self.n_size / tiling["batch_once"])
         if self.c_size * self.hw_align_size <= self.ub_split_size:
             # one batch each time
@@ -1070,6 +1070,163 @@ class LRNBase4HD(LRNBase):
                                      (self._get_shape_size(self.input_shape),),
                                      name="output_gm", scope=tik.scope_gm)
 
+    def tik_instance_function(self):
+        """
+        do the LRN operation when H*W is 32B align
+
+        Parameters
+        ----------
+
+        Returns
+        -------
+        None
+        """
+        if self.core_num == 1:
+            # check if multi core can be used
+            if (self.one_column_size <= self.alignment_standards) or self._check_c_axis_too_large():
+                if self.input_dtype != self.dtype_real_in_out:
+                    self._allocate_cast_ub()
+                # multi core can not be used
+                self.input_shape = (1, self.C, self.H, self.W)
+                self.N = self.input_shape[0]
+                offset_gm = 0
+                self._do_operation_each_core(offset_gm)
+            else:
+                # multi core can be used
+                core_num, hw_num_each_core, hw_num_first_core =\
+                    self._get_target_core_num_batch_one()
+                with self.tik_instance.for_range(0, core_num, block_num=core_num) as block_idx:
+                    if self.input_dtype != self.dtype_real_in_out:
+                        self._allocate_cast_ub()
+                    with self.tik_instance.if_scope(block_idx == 0):
+                        self.input_shape = (1, self.C, hw_num_first_core, 1)
+                        self.N = self.input_shape[0]
+                        offset_gm = 0
+                        self._do_operation_each_core_h_w_cut_branch(offset_gm)
+                    with self.tik_instance.else_scope():
+                        self.input_shape = (1, self.C, hw_num_each_core, 1)
+                        self.N = self.input_shape[0]
+                        offset_gm = hw_num_first_core + (block_idx - 1)*hw_num_each_core
+                        self._do_operation_each_core_h_w_cut_branch(offset_gm)
+
+        elif (self.core_num > 1) and (self.core_num < Constant.MAX_CORE_NUMBER):
+            # each core handle only one batch
+            with self.tik_instance.for_range(0, self.core_num, block_num=self.core_num) as block_idx:
+                if self.input_dtype != self.dtype_real_in_out:
+                    self._allocate_cast_ub()
+                self.input_shape = (1, self.C, self.H, self.W)
+                self.N = self.input_shape[0]
+                offset_gm = block_idx*self.one_batch_size
+                self._do_operation_each_core(offset_gm)
+        else:
+            with self.tik_instance.for_range(0, self.core_num, block_num=self.core_num) as block_idx:
+                if self.input_dtype != self.dtype_real_in_out:
+                    self._allocate_cast_ub()
+                with self.tik_instance.if_scope(block_idx < self.threshold_multi_core):
+                    self.input_shape = (self.batch_num_front_core, self.C, self.H, self.W)
+                    self.N = self.input_shape[0]
+                    offset_gm = block_idx*self.batch_num_front_core*self.one_batch_size
+                    self._do_operation_each_core(offset_gm)
+                with self.tik_instance.else_scope():
+                    self.input_shape = (self.batch_num_each_core, self.C, self.H, self.W)
+                    self.N = self.input_shape[0]
+                    offset_gm = self.threshold_multi_core * self.batch_num_front_core * self.one_batch_size + \
+                        (block_idx - self.threshold_multi_core) * self.batch_num_each_core*self.one_batch_size
+                    self._do_operation_each_core(offset_gm)
+
+        self.tik_instance.BuildCCE(kernel_name=self.kernel_name,
+                                   inputs=[self.input_gm],
+                                   outputs=[self.output_gm])
+
+        return self.tik_instance
+
+    def tik_instance_function_not_align(self):
+        """
+        do the LRN operation when H*W is not 32B align
+
+        Parameters
+        ----------
+
+        Returns
+        -------
+        None
+        """
+        if self.one_column_size < self.alignment_standards:
+            # if H*W is less than 32B, then only one core can be used
+            if self.input_dtype != self.dtype_real_in_out:
+                self._allocate_cast_ub()
+            self._do_operation_each_core_not_align_hw_little(offset_gm=0)
+        elif self.core_num == 1:
+            # check if multi core can be used
+            if self._check_c_axis_too_large():
+                # multi core can not be used
+                if self.input_dtype != self.dtype_real_in_out:
+                    self._allocate_cast_ub()
+                self.input_shape = (1, self.C, self.H, self.W)
+                self.N = self.input_shape[0]
+                offset_gm = 0
+                self._do_operation_each_core_not_align(offset_gm)
+            else:
+                # multi core can be used
+                core_num, hw_num_each_core, hw_num_first_core = \
+                    self._get_target_core_num_batch_one()
+
+                if (hw_num_first_core % self.alignment_standards) != 0:
+                    real_first_core =\
+                        (hw_num_first_core // self.alignment_standards + 1) * \
+                        self.alignment_standards
+
+                with self.tik_instance.for_range(0, core_num, block_num=core_num) as block_idx:
+                    if self.input_dtype != self.dtype_real_in_out:
+                        self._allocate_cast_ub()
+                    with self.tik_instance.if_scope(block_idx == 0):
+                        self.input_shape = (1, self.C, real_first_core, 1)
+                        self.N = self.input_shape[0]
+                        offset_gm = 0
+                        self._do_operation_each_core_h_w_cut_branch(offset_gm)
+                    with self.tik_instance.else_scope():
+                        self.input_shape = (1, self.C, hw_num_each_core, 1)
+                        self.N = self.input_shape[0]
+                        offset_gm = hw_num_first_core + (block_idx - 1)*hw_num_each_core
+                        self._do_operation_each_core_h_w_cut_branch(offset_gm)
+        elif (self.core_num > 1) and (self.core_num < Constant.MAX_CORE_NUMBER):
+            # each core handle only one batch
+            with self.tik_instance.for_range(0, self.core_num, block_num=self.core_num) as block_idx:
+                if self.input_dtype != self.dtype_real_in_out:
+                    self._allocate_cast_ub()
+                self.N = 1
+                offset_gm = block_idx*self.one_batch_size
+                self._do_operation_each_core_not_align(offset_gm)
+        else:
+            with self.tik_instance.for_range(0, self.core_num,
+                                             block_num=self.core_num) as\
+                    block_idx:
+                if self.input_dtype != self.dtype_real_in_out:
+                    self._allocate_cast_ub()
+                with self.tik_instance.if_scope(block_idx <
+                                                self.threshold_multi_core):
+                    self.input_shape = (self.batch_num_front_core, self.C,
+                                        self.H, self.W)
+                    self.N = self.input_shape[0]
+                    offset_gm =\
+                        block_idx*self.batch_num_front_core*self.one_batch_size
+                    self._do_operation_each_core_not_align(offset_gm)
+                with self.tik_instance.else_scope():
+                    self.input_shape = (self.batch_num_each_core, self.C,
+                                        self.H, self.W)
+                    self.N = self.input_shape[0]
+                    offset_gm = self.threshold_multi_core *\
+                                self.batch_num_front_core*self.one_batch_size +\
+                                (block_idx - self.threshold_multi_core) *\
+                                self.batch_num_each_core*self.one_batch_size
+                    self._do_operation_each_core_not_align(offset_gm)
+
+        self.tik_instance.BuildCCE(kernel_name=self.kernel_name,
+                                   inputs=[self.input_gm],
+                                   outputs=[self.output_gm])
+
+        return self.tik_instance
+
     def _get_compute_dtype(self):
         # check whether the platform is mini or not
         is_mini_flag = \
@@ -1363,7 +1520,7 @@ class LRNBase4HD(LRNBase):
                     # hw axis and c axis all need cut
                     hw_c_all_cut_flag = True
 
-        return n_cut_flag, c_cut_flag, hw_cut_flag, hw_c_all_cut_flag
+        return [n_cut_flag, c_cut_flag, hw_cut_flag, hw_c_all_cut_flag]
 
     def _do_tiling_not_align(self):
         """
@@ -2814,177 +2971,6 @@ class LRNBase4HD(LRNBase):
             return True
 
         return False
-
-    def tik_instance_function(self):
-        """
-        do the LRN operation when H*W is 32B align
-
-        Parameters
-        ----------
-
-        Returns
-        -------
-        None
-        """
-        if self.core_num == 1:
-            # check if mutlti core can be used
-            if (self.one_column_size <= self.alignment_standards) or \
-                    self._check_c_axis_too_large():
-                if self.input_dtype != self.dtype_real_in_out:
-                    self._allocate_cast_ub()
-                # multi core can not be used
-                self.input_shape = (1, self.C, self.H, self.W)
-                self.N = self.input_shape[0]
-                offset_gm = 0
-                self._do_operation_each_core(offset_gm)
-            else:
-                # multi core can be used
-                core_num, hw_num_each_core, hw_num_first_core =\
-                    self._get_target_core_num_batch_one()
-                with self.tik_instance.for_range(0, core_num, block_num=core_num) as block_idx:
-                    if self.input_dtype != self.dtype_real_in_out:
-                        self._allocate_cast_ub()
-                    with self.tik_instance.if_scope(block_idx == 0):
-                        self.input_shape = (1, self.C, hw_num_first_core, 1)
-                        self.N = self.input_shape[0]
-                        offset_gm = 0
-                        self._do_operation_each_core_h_w_cut_branch(offset_gm)
-                    with self.tik_instance.else_scope():
-                        self.input_shape = (1, self.C, hw_num_each_core, 1)
-                        self.N = self.input_shape[0]
-                        offset_gm = hw_num_first_core + (block_idx - 1)*hw_num_each_core
-                        self._do_operation_each_core_h_w_cut_branch(offset_gm)
-
-        elif (self.core_num > 1) and (self.core_num < Constant.MAX_CORE_NUMBER):
-            # each core handle only one batch
-            with self.tik_instance.for_range(0, self.core_num,
-                                             block_num=self.core_num) as\
-                    block_idx:
-                if self.input_dtype != self.dtype_real_in_out:
-                    self._allocate_cast_ub()
-                self.input_shape = (1, self.C, self.H, self.W)
-                self.N = self.input_shape[0]
-                offset_gm = block_idx*self.one_batch_size
-                self._do_operation_each_core(offset_gm)
-        else:
-            with self.tik_instance.for_range(0, self.core_num,
-                                             block_num=self.core_num) as\
-                    block_idx:
-                if self.input_dtype != self.dtype_real_in_out:
-                    self._allocate_cast_ub()
-                with self.tik_instance.if_scope(block_idx <
-                                                self.threshold_multi_core):
-                    self.input_shape = (self.batch_num_front_core, self.C,
-                                        self.H, self.W)
-                    self.N = self.input_shape[0]
-                    offset_gm =\
-                        block_idx*self.batch_num_front_core*self.one_batch_size
-                    self._do_operation_each_core(offset_gm)
-                with self.tik_instance.else_scope():
-                    self.input_shape = (self.batch_num_each_core, self.C,
-                                        self.H, self.W)
-                    self.N = self.input_shape[0]
-                    offset_gm =\
-                        self.threshold_multi_core * self.batch_num_front_core *\
-                        self.one_batch_size + \
-                        (block_idx - self.threshold_multi_core) *\
-                        self.batch_num_each_core*self.one_batch_size
-                    self._do_operation_each_core(offset_gm)
-
-        self.tik_instance.BuildCCE(kernel_name=self.kernel_name,
-                                   inputs=[self.input_gm],
-                                   outputs=[self.output_gm])
-
-        return self.tik_instance
-
-    def tik_instance_function_not_align(self):
-        """
-        do the LRN operation when H*W is not 32B align
-
-        Parameters
-        ----------
-
-        Returns
-        -------
-        None
-        """
-        if self.one_column_size < self.alignment_standards:
-            # if H*W is less than 32B, then only one core can be used
-            if self.input_dtype != self.dtype_real_in_out:
-                self._allocate_cast_ub()
-            self._do_operation_each_core_not_align_hw_little(offset_gm=0)
-        elif self.core_num == 1:
-            # check if mutlti core can be used
-            if self._check_c_axis_too_large():
-                # multi core can not be used
-                if self.input_dtype != self.dtype_real_in_out:
-                    self._allocate_cast_ub()
-                self.input_shape = (1, self.C, self.H, self.W)
-                self.N = self.input_shape[0]
-                offset_gm = 0
-                self._do_operation_each_core_not_align(offset_gm)
-            else:
-                # multi core can be used
-                core_num, hw_num_each_core, hw_num_first_core = \
-                    self._get_target_core_num_batch_one()
-
-                if (hw_num_first_core % self.alignment_standards) != 0:
-                    real_first_core =\
-                        (hw_num_first_core // self.alignment_standards + 1) * \
-                        self.alignment_standards
-
-                with self.tik_instance.for_range(0, core_num, block_num=core_num) as block_idx:
-                    if self.input_dtype != self.dtype_real_in_out:
-                        self._allocate_cast_ub()
-                    with self.tik_instance.if_scope(block_idx == 0):
-                        self.input_shape = (1, self.C, real_first_core, 1)
-                        self.N = self.input_shape[0]
-                        offset_gm = 0
-                        self._do_operation_each_core_h_w_cut_branch(offset_gm)
-                    with self.tik_instance.else_scope():
-                        self.input_shape = (1, self.C, hw_num_each_core, 1)
-                        self.N = self.input_shape[0]
-                        offset_gm = hw_num_first_core + (block_idx - 1)*hw_num_each_core
-                        self._do_operation_each_core_h_w_cut_branch(offset_gm)
-        elif (self.core_num > 1) and (self.core_num < Constant.MAX_CORE_NUMBER):
-            # each core handle only one batch
-            with self.tik_instance.for_range(0, self.core_num,
-                                             block_num=self.core_num) as\
-                    block_idx:
-                if self.input_dtype != self.dtype_real_in_out:
-                    self._allocate_cast_ub()
-                self.N = 1
-                offset_gm = block_idx*self.one_batch_size
-                self._do_operation_each_core_not_align(offset_gm)
-        else:
-            with self.tik_instance.for_range(0, self.core_num,
-                                             block_num=self.core_num) as\
-                    block_idx:
-                if self.input_dtype != self.dtype_real_in_out:
-                    self._allocate_cast_ub()
-                with self.tik_instance.if_scope(block_idx <
-                                                self.threshold_multi_core):
-                    self.input_shape = (self.batch_num_front_core, self.C,
-                                        self.H, self.W)
-                    self.N = self.input_shape[0]
-                    offset_gm =\
-                        block_idx*self.batch_num_front_core*self.one_batch_size
-                    self._do_operation_each_core_not_align(offset_gm)
-                with self.tik_instance.else_scope():
-                    self.input_shape = (self.batch_num_each_core, self.C,
-                                        self.H, self.W)
-                    self.N = self.input_shape[0]
-                    offset_gm = self.threshold_multi_core *\
-                                self.batch_num_front_core*self.one_batch_size +\
-                                (block_idx - self.threshold_multi_core) *\
-                                self.batch_num_each_core*self.one_batch_size
-                    self._do_operation_each_core_not_align(offset_gm)
-
-        self.tik_instance.BuildCCE(kernel_name=self.kernel_name,
-                                   inputs=[self.input_gm],
-                                   outputs=[self.output_gm])
-
-        return self.tik_instance
 
     def _get_target_core_num_batch_one(self):
         segment_num = self.one_column_size // self.alignment_standards

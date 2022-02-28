@@ -206,39 +206,39 @@ ut_case.add_case("all",
                               -1, 1.0, 0.00002, 0.5, "NCHW",
                               "ACROSS_CHANNELS", "lrn_102"))
 
-ut_case.add_case(["Ascend310"],
+ut_case.add_case(["all"],
                  gen_lrn_case((1, 192, 28, 28), "float16", "success",
                               5, 1.0, 1.0, 0.5, "NCHW",
                               "ACROSS_CHANNELS", "lrn_001"))
-ut_case.add_case(["Ascend310"],
+ut_case.add_case(["all"],
                  gen_lrn_case((1, 192, 28, 28), "float16", "success",
                               5, 1.0, 1.0, 0.5, "NCHW",
                               "ACROSS_CHANNELS", "lrn_002", "high_precision"))
-ut_case.add_case(["Ascend310"],
+ut_case.add_case(["all"],
                  gen_lrn_case((1, 192, 28, 28), "float32", "success",
                               5, 1.0, 1.0, 0.5, "NCHW",
                               "ACROSS_CHANNELS", "lrn_003", "high_precision"))
-ut_case.add_case(["Ascend620"],
+ut_case.add_case(["all"],
                  gen_lrn_case((1, 192, 28, 28), "float16", "success",
                               5, 1.0, 1.0, 0.5, "NCHW",
                               "ACROSS_CHANNELS", "lrn_004"))
-ut_case.add_case(["Ascend620"],
+ut_case.add_case(["all"],
                  gen_lrn_case((1, 192, 28, 28), "float16", "success",
                               5, 1.0, 1.0, 0.5, "NCHW",
                               "ACROSS_CHANNELS", "lrn_005", "high_precision"))
-ut_case.add_case(["Ascend620"],
+ut_case.add_case(["all"],
                  gen_lrn_case((1, 192, 28, 28), "float32", "success",
                               5, 1.0, 1.0, 0.5, "NCHW",
                               "ACROSS_CHANNELS", "lrn_006", "high_precision"))
-ut_case.add_case(["Ascend910A"],
+ut_case.add_case(["all"],
                  gen_lrn_case((1, 192, 28, 28), "float32", "success",
                               5, 1.0, 1.0, 0.5, "NCHW",
                               "ACROSS_CHANNELS", "lrn_007", "high_precision"))
-ut_case.add_case(["Ascend910A"],
+ut_case.add_case(["all"],
                  gen_lrn_case((1, 192, 28, 28), "float32", "success",
                               5, 1.0, 1.0, 0.5, "NCHW",
                               "ACROSS_CHANNELS", "lrn_008"))
-ut_case.add_case(["Ascend910A"],
+ut_case.add_case(["all"],
                  gen_lrn_case((1, 192, 28, 28), "float16", "success",
                               5, 1.0, 1.0, 0.5, "NCHW",
                               "ACROSS_CHANNELS", "lrn_009"))
@@ -268,6 +268,25 @@ ut_case.add_case("all",
                               5, 1.0, 1.0, 0.5, "NCHW",
                               "ACROSS_CHANNELS", "lrn_014"))
 
+ut_case.add_case(["all"],
+                 gen_lrn_case((1, 1, 1, 8), "float32", "success",
+                              5, 1.0, 1.0, 0.5, "NCHW",
+                              "ACROSS_CHANNELS", "lrn_015"))
+
+ut_case.add_case(["all"],
+                 gen_lrn_case((2, 1, 1, 16), "float32", "success",
+                              5, 1.0, 1.0, 0.5, "NCHW",
+                              "ACROSS_CHANNELS", "lrn_016"))
+
+ut_case.add_case(["all"],
+                 gen_lrn_case((36, 1, 1, 16), "float32", "success",
+                              5, 1.0, 1.0, 0.5, "NCHW",
+                              "ACROSS_CHANNELS", "lrn_017"))
+
+ut_case.add_case(["all"],
+                 gen_lrn_case((2, 1, 1, 15), "float32", "success",
+                              5, 1.0, 1.0, 0.5, "NCHW",
+                              "ACROSS_CHANNELS", "lrn_018"))
 
 if __name__ == '__main__':
     ut_case.run(["Ascend910A"])
