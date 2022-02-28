@@ -576,10 +576,7 @@ def _conv_layer_cce(shape_in, shape_w, in_dtype, w_dtype, res_dtype,
         tensor_list.append(weight)
         bias_tensor = None
         bias_shape = (cout_ori * groups,)
-        if util_conv2d.is_support_v220():
-            bias_dtype = "int32" if in_dtype in ("int4", "int8") else "float32"
-        else:
-            bias_dtype = res_dtype
+        bias_dtype = "float16" if res_dtype == "bfloat16" else res_dtype
         offset_w_tensor = None
 
         if bias:

@@ -763,7 +763,7 @@ def v220_gen_param(inputs: dict, weights: dict, shape_fm: list, c0_optim_flag: b
             dtype_dict = {
                 "input0": "float16", # fmap
                 "input1": "float16", # weight
-                "input2": "float32", # bias
+                "input2": "float16", # bias
                 "input3": "int8", # offset_w
                 "output0": "float16", # y
             }
@@ -779,7 +779,7 @@ def v220_gen_param(inputs: dict, weights: dict, shape_fm: list, c0_optim_flag: b
             dtype_dict = {
                 "input0": "float16,float32,int8", # fmap
                 "input1": "float16,float32,int8", # weight
-                "input2": "float32,float32,int32", # bias
+                "input2": "float16,float32,int32", # bias
                 "input3": "int8,int8,int8", # offset_w
                 "output0": "float16,float32,int32", # y
             }
@@ -794,7 +794,7 @@ def v220_gen_param(inputs: dict, weights: dict, shape_fm: list, c0_optim_flag: b
         dtype_dict = {
             "input0": "float16,bfloat16,float32,int8", # fmap
             "input1": "float16,bfloat16,float32,int8", # weight
-            "input2": "float32,float32,float32,int32", # bias
+            "input2": "float16,float16,float32,int32", # bias
             "input3": "int8,int8,int8,int8", # offset_w
             "output0": "float16,bfloat16,float32,int32", # y
         }
