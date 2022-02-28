@@ -110,10 +110,9 @@ class SyncResizeBilinearV2Grad:
                                                   name="output_gm",
                                                   is_atomic_add=True)
         self.tiling_gm = self.tik_instance.Tensor("int32", (self.TILING_NUM,), scope=tik.scope_gm, name="tiling_gm")
-        self.int_index_l1 = self.tik_instance.Tensor("int32", (4096, 8), name="int_index_l1", scope=tik.scope_cbuf)
-        self.l_ratio_l1 = self.tik_instance.Tensor("int32", (4096, 8), name="wl_ratio_l1", scope=tik.scope_cbuf)
-        self.r_ratio_l1 = self.tik_instance.Tensor("int32", (4096, 8), name="wr_ratio_l1", scope=tik.scope_cbuf)
-        self.count_num_l1 = self.tik_instance.Tensor("int32", (640,), name="count_num_l1", scope=tik.scope_cbuf)
+        self.l1_status = self.l1_support()
+        self.int_index_l1, self.l_ratio_l1 = None, None
+        self.r_ratio_l1, self.count_num_l1 = None, None
 
         self.tiling_mode = None
         self.need_core_num = None
@@ -168,16 +167,21 @@ class SyncResizeBilinearV2Grad:
         :return:
         """
         soc_version = tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION)
-        if soc_version == "Ascend920":
-            return 0
-        else:
+        if soc_version in [tbe_platform.ASCEND_910, tbe_platform.ASCEND_710, tbe_platform.ASCEND_610,
+                           tbe_platform.ASCEND_615]:
             return 1
+        else:
+            return 0
 
     def l1_function(self):
         """
         use to calculate ratio and count num
         :return:
         """
+        self.int_index_l1 = self.tik_instance.Tensor("int32", (4096, 8), name="int_index_l1", scope=tik.scope_cbuf)
+        self.l_ratio_l1 = self.tik_instance.Tensor("int32", (4096, 8), name="wl_ratio_l1", scope=tik.scope_cbuf)
+        self.r_ratio_l1 = self.tik_instance.Tensor("int32", (4096, 8), name="wr_ratio_l1", scope=tik.scope_cbuf)
+        self.count_num_l1 = self.tik_instance.Tensor("int32", (640,), name="count_num_l1", scope=tik.scope_cbuf)
         with self.tik_instance.new_stmt_scope():
             const_one = self.tik_instance.Tensor("float32", (8, 8), name="const_one", scope=tik.scope_ubuf)
             const_zero = self.tik_instance.Tensor("float32", (8, 8), name="const_zero", scope=tik.scope_ubuf)
@@ -332,8 +336,6 @@ class SyncResizeBilinearV2Grad:
         :return:
         """
         self.get_tiling_params()
-        with self.tik_instance.if_scope(self.tiling_mode == self.TILING_MODE5):
-            self.l1_function()
 
         with self.tik_instance.for_range(0, self.core_num, block_num=self.core_num) as core_idx:
             with self.tik_instance.if_scope(self.tiling_mode == self.TILING_MODE0):
@@ -351,9 +353,11 @@ class SyncResizeBilinearV2Grad:
             with self.tik_instance.if_scope(self.tiling_mode == self.TILING_MODE4):
                 with self.tik_instance.new_stmt_scope():
                     self.small_in_out(core_idx)
-            with self.tik_instance.if_scope(self.tiling_mode == self.TILING_MODE5):
-                with self.tik_instance.new_stmt_scope():
-                    self.normal_small(core_idx)
+            if self.l1_status:
+                with self.tik_instance.if_scope(self.tiling_mode == self.TILING_MODE5):
+                    self.l1_function()
+                    with self.tik_instance.new_stmt_scope():
+                        self.normal_small(core_idx)
             with self.tik_instance.if_scope(self.tiling_mode == self.TILING_MODE6):
                 with self.tik_instance.new_stmt_scope():
                     self.normal_big(core_idx)
@@ -363,9 +367,8 @@ class SyncResizeBilinearV2Grad:
         op compute
         :return:
         """
-        status = self.l1_support()
         self.tiling_compute()
-        tbe_context.get_context().add_compile_info("vars", {"core_num": self.core_num, "l1_support": status,
+        tbe_context.get_context().add_compile_info("vars", {"core_num": self.core_num, "l1_support": self.l1_status,
                                                             "tensor_c": self.tensor_c})
         opt_config = {"out_of_bound_sync_check": True, "enable_const_fold": True}
         self.tik_instance.BuildCCE(kernel_name=self.kernel_name,
