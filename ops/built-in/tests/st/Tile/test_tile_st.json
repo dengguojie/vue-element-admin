@@ -60,5 +60,185 @@
 				"name": "y"
 			}
 		]
-	}
+	},
+	{
+		"case_name":"Test_Tile_003",
+		"op":"Tile",
+		"calc_expect_func_file" : "test_tile_golden.py:calc_expect_func",
+		"input_desc":[
+			{
+				"format": "ND",
+				"type": "int32",
+				"shape": [-2],
+				"typical_shape": [1, 16, 16, 16],
+				"value_range": [[0, 10]],
+				"shape_range": [[1, 2240],[1, 2240],[1, 2240],[1, 2240]],
+				"data_distribute": "uniform",
+				"name": "x"
+			},
+			{
+				"format": "ND",
+				"type": "int32",
+				"shape": [-2],
+				"typical_shape": [4],
+				"shape_range": [[1, 2240]],
+				"value": [16, 1, 1, 1],
+				"name": "multiples"
+			}
+		],
+		"output_desc":[
+			{
+				"format": "ND",
+				"type": "int32",
+				"shape":[16, 16, 16, 16],
+				"name": "y"
+			}
+		]
+	},
+	{
+		"case_name":"Test_Tile_004",
+		"op":"Tile",
+		"calc_expect_func_file" : "test_tile_golden.py:calc_expect_func",
+		"input_desc":[
+			{
+				"format": "ND",
+				"type": "int32",
+				"shape": [-1, -1, -1, -1],
+				"typical_shape": [1, 16, 16, 16],
+				"value_range": [[0, 10]],
+				"shape_range": [[1, 2240],[1, 2240],[1, 2240],[1, 2240]],
+				"data_distribute": "uniform",
+				"name": "x"
+			},
+			{
+				"format": "ND",
+				"type": "int32",
+				"shape": [-1],
+				"typical_shape": [4],
+				"shape_range": [[1, 2240]],
+				"value": [16, 1, 1, 1],
+				"name": "multiples"
+			}
+		],
+		"output_desc":[
+			{
+				"format": "ND",
+				"type": "int32",
+				"shape":[16, 16, 16, 16],
+				"name": "y"
+			}
+		]
+	},
+	{
+		  "case_name":"Test_Tile_005",
+		  "op":"Tile",
+		  "input_desc":[
+			  {
+				  "format": "ND",
+				  "type": "int32",
+				  "shape": [-1],
+				  "typical_shape": [1],
+				  "value_range": [[0, 10]],
+				  "shape_range": [[1, 2240]],
+				  "data_distribute": "uniform",
+				  "name": "x"
+			  },
+			  {
+				  "format": "ND",
+				  "type": "int32",
+				  "shape": [4],
+				  "typical_shape": [4],
+				  "value": [16, 16, 16, 16],
+				  "name": "multiples"
+			  }
+		  ],
+		  "output_desc":[
+			  {
+				  "format": "ND",
+				  "type": "int32",
+				  "shape":[16, 16, 16, 16],
+				  "name": "y"
+			  }
+		  ]
+	  },
+	  {
+		"case_name": "Test_Tile_006",
+		"op": "Tile",
+		"input_desc": [
+		  {
+			"format": [
+			  "ND"
+			],
+			"type": [
+			  "int8"
+			],
+			"shape": [
+			  1
+			],
+			"data_distribute": [
+			  "uniform"
+			],
+			"value_range": [
+			  [
+				0.1,
+				1.0
+			  ]
+			],
+			"name": "x",
+			"shape_range": [
+			  [
+				1,
+				65535
+			  ]
+			],
+			"typical_shape": [
+			  1
+			]
+		  },
+		  {
+			"format": [
+			  "ND"
+			],
+			"type": [
+			  "int32"
+			],
+			"shape": [
+			  1
+			],
+			"data_distribute": [
+			  "uniform"
+			],
+			"value_range": [
+			  [
+				0.1,
+				1.0
+			  ]
+			],
+			"name": "multiples"
+		  }
+		],
+		"output_desc": [
+		  {
+			"format": [
+			  "ND"
+			],
+			"type": [
+			  "int8"
+			],
+			"shape": [
+			  1
+			],
+			"name": "y",
+			"shape_range": [
+			  [
+				1,
+				65535
+			  ]
+			],
+			"typical_shape": [
+			  1
+			]
+		  }
+		]
+	  }
 ]

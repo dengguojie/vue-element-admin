@@ -15,6 +15,7 @@
 """
 dynamic tile
 """
+from impl.util.util_common import is_unknown_rank_input
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import shape_util
@@ -23,6 +24,7 @@ from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
+from impl.util.platform_adapter import error_manager_vector
 
 
 # 'pylint: disable=locally-disabled,too-many-arguments,unused-argument
@@ -53,6 +55,55 @@ def tile_compute(data, multiples, output_x, kernel_name="tile"):
     if src_dtype == "int8":
         res = tbe.cast_to(res, "int8")
     return res
+
+
+def adapt_shape_compute(input_x_shape, input_x_range, input_m_shape):
+    """
+    adapt_shape_compute
+    """
+    dims_value = input_m_shape[0]
+    if dims_value < -1:
+        error_manager_vector.raise_err_input_value_invalid("tile", "multiples",
+                                                           "shape value should be more than -1",
+                                                           str(dims_value))
+
+    dims_value = len(input_x_shape) if dims_value == -1 else dims_value
+
+    if len(input_x_shape) > dims_value:
+        error_manager_vector.raise_err_input_value_invalid("tile", "input_x",
+                                                           "should not be bigger than \
+                                                           multiples values [{}]".format(dims_value),
+                                                           str(len(input_x_shape)))
+
+    if len(input_x_shape) < dims_value:
+        len_diff = dims_value - len(input_x_shape)
+        input_x_shape = [1] * len_diff + input_x_shape
+        input_x_range = [(1, 1)] * len_diff + input_x_range
+
+    shape_adapt = []
+    multiples_adapt = []
+    range_adapt = []
+    multiples_range_adapt = []
+    for shape_i, range_i in zip(input_x_shape, input_x_range):
+        if shape_i == 1:
+            shape_adapt.append(1)
+            range_adapt.append((1, 1))
+            multiples_adapt.append(-1)
+            multiples_range_adapt.append((1, None))
+        else:
+            shape_adapt.append(1)
+            range_adapt.append((1, 1))
+            shape_adapt.append(shape_i)
+            range_adapt.append(range_i)
+            multiples_adapt.append(-1)
+            multiples_range_adapt.append((1, None))
+            if shape_i == -1:
+                multiples_adapt.append(-1)
+                multiples_range_adapt.append((1, None))
+            else:
+                multiples_adapt.append(shape_i)
+                multiples_range_adapt.append(range_i)
+    return [shape_adapt, range_adapt, multiples_adapt, multiples_range_adapt]
 
 
 # 'pylint: disable=too-many-locals,too-many-statements
@@ -96,85 +147,32 @@ def tile(input_x, input_m, output_x, kernel_name="tile"):
 
     # multiples : A Tensor. Must be 1-D
     input_m_shape = list(input_m.get("shape"))
-    if len(input_m_shape) > 1:
-        error_info = {}
-        error_info['errCode'] = para_check.OP_ERROR_CODE_012
-        error_info['op_name'] = 'tile'
-        error_info['param_name'] = 'multiples'
-        error_info['real_value'] = str(len(input_m_shape))
-        raise RuntimeError(error_info, "In op[%s], input[%s] should be 1-D, but actually is [%s]-D." % (
-            error_info['op_name'], error_info['param_name'], error_info['real_value']))
-
     input_x_shape = list(input_x.get("shape"))
     compile_shape = input_x_shape.copy()
-    input_x_range = list(input_x.get("range"))
+    if len(input_m_shape) > 1:
+        error_manager_vector.raise_err_input_value_invalid("tile", "multiples",
+                                                           "should be 1-D",
+                                                           str(len(input_m_shape)))
 
-    dims_value = input_m_shape[0]
-    if dims_value < -1:
-        error_info = {}
-        error_info['errCode'] = para_check.OP_ERROR_CODE_012
-        error_info['op_name'] = 'tile'
-        error_info['param_name'] = 'multiples'
-        error_info['real_value'] = str(dims_value)
-        raise RuntimeError(error_info, "In op[%s], input[%s]'s shape value [%s] is invalid. "
-                                       "It should be more than -1." % (
-                                           error_info['op_name'], error_info['param_name'], error_info['real_value']))
-    if dims_value == -1:
-        dims_value = len(input_x_shape)
-
-    if len(input_x_shape) > dims_value:
-        error_info = {}
-        error_info['errCode'] = para_check.OP_ERROR_CODE_012
-        error_info['op_name'] = 'tile'
-        error_info['param_name'] = 'input_x'
-        error_info['real_value'] = str(len(input_x_shape))
-        error_info['max_value'] = str(dims_value)
-        raise RuntimeError(error_info, "In op[%s], the dimensions of input[%s] is [%s], should not be bigger than "
-                                       "multiples values [%s]. " % (
-                                           error_info['op_name'], error_info['param_name'], error_info['real_value'],
-                                           error_info['max_value']))
-
-    if len(input_x_shape) < dims_value:
-        len_diff = dims_value - len(input_x_shape)
-        input_x_shape = [1] * len_diff + input_x_shape
-        input_x_range = [(1, 1)] * len_diff + input_x_range
-
-    shape_adapt = []
-    multiples_adapt = []
-    range_adapt = []
-    multiples_range_adapt = []
-    for shape_i, range_i in zip(input_x_shape, input_x_range):
-        if shape_i == 1:
-            shape_adapt.append(1)
-            range_adapt.append((1, 1))
-            multiples_adapt.append(-1)
-            multiples_range_adapt.append((1, None))
-        else:
-            shape_adapt.append(1)
-            range_adapt.append((1, 1))
-            shape_adapt.append(shape_i)
-            range_adapt.append(range_i)
-            multiples_adapt.append(-1)
-            multiples_range_adapt.append((1, None))
-            if shape_i == -1:
-                multiples_adapt.append(-1)
-                multiples_range_adapt.append((1, None))
-            else:
-                multiples_adapt.append(shape_i)
-                multiples_range_adapt.append(range_i)
-
-    input_x["shape"] = shape_adapt
-    input_x["range"] = range_adapt
-    input_m["shape"] = multiples_adapt
-    input_m["range"] = multiples_range_adapt
+    is_unknown = False
+    if is_unknown_rank_input([input_x, input_m]):
+        input_x, input_m = [input_x, input_x] if is_unknown_rank_input(input_x) else [input_m, input_m]
+        is_unknown = True
+    else:
+        input_x_range = list(input_x.get("range"))
+        input_x["shape"], input_x["range"], input_m["shape"], input_m["range"] = \
+            adapt_shape_compute(input_x_shape, input_x_range, input_m_shape)
 
     extra_params = {"disable_optimization": True}
     ins = classify([input_m, input_x], OpPatternMode.ELEWISE_WITH_BROADCAST, extra_params)
     schedules, tensors = [], []
     for (_input_m, _input_x) in ins:
         with tbe.compute():
-            shape_mul = shape_util.variable_shape([_input_m])[0]
-            shape = [shape_mul[i] if shape_adapt[i] != 1 else shape_adapt[i] for i in range(len(shape_mul))]
+            shape_mul, shape_x = shape_util.variable_shape([_input_m, _input_x])
+            if is_unknown:
+                shape = shape_x
+            else:
+                shape = [shape_mul[i] if shape_x[i] != 1 else shape_x[i] for i in range(len(shape_mul))]
             data = tvm.placeholder(shape, name="input_x", dtype=input_x_dtype)
             input_mul = tvm.placeholder(shape_mul, name="multiples", dtype=input_m_dtype)
 

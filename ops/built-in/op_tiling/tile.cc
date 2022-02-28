@@ -28,6 +28,7 @@
 
 namespace optiling {
 constexpr uint64_t LAST_SIZE_FACTOR = 2;
+const std::vector<int64_t> DYNAMIC_RANK{-2};
 
 struct TileCompileInfo {
   std::shared_ptr<AutoTilingHandler> tiling_handler;
@@ -49,6 +50,9 @@ bool TileTiling(const std::string& op_type, const ge::Operator& op_paras, const 
   std::vector<int64_t> compile_shape = parsed_info.compile_shape;
   std::vector<int64_t> multiples_value;
 
+  if (compile_shape == DYNAMIC_RANK) {
+    compile_shape = x_runtime_shape;
+  }
   // input multiples index is 1
   OP_TILING_CHECK(!ops::GetConstIntData(op_paras, 1, multiples_value),
                   VECTOR_INNER_ERR_REPORT_TILIING(op_type, "GetConstIntData multiples error!"), return false);
