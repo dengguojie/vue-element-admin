@@ -53,5 +53,132 @@
       }
     ],
     "case_name": "test_Unpack_000"
+  },
+  {
+    "op": "Unpack",
+    "input_desc": [
+      {
+        "shape": [
+          42,
+          6,
+          32775
+        ],
+        "ori_shape": [
+          42,
+          6,
+          32775
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "type": "int32",
+        "value_range": [
+          [
+            0,
+            1
+          ]
+        ],
+        "data_distribute": "uniform",
+        "name": "x"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          42,
+          32775
+        ],
+        "ori_shape": [
+          42,
+          32775
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "y",
+        "type": "int32"
+      },
+      {
+        "shape": [
+          42,
+          32775
+        ],
+        "ori_shape": [
+          42,
+          32775
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "y1",
+        "type": "int32"
+      },
+      {
+        "shape": [
+          42,
+          32775
+        ],
+        "ori_shape": [
+          42,
+          32775
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "y2",
+        "type": "int32"
+      },
+      {
+        "shape": [
+          42,
+          32775
+        ],
+        "ori_shape": [
+          42,
+          32775
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "y3",
+        "type": "int32"
+      },
+      {
+        "shape": [
+          42,
+          32775
+        ],
+        "ori_shape": [
+          42,
+          32775
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "y4",
+        "type": "int32"
+      },
+      {
+        "shape": [
+          42,
+          32775
+        ],
+        "ori_shape": [
+          42,
+          32775
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "y5",
+        "type": "int32"
+      }
+    ],
+    "attr": [
+      {
+        "name": "axis",
+        "type": "int",
+        "value": 1
+      },
+      {
+        "name": "num",
+        "type": "int",
+        "value": 6
+      }
+    ],
+    "case_name": "test_Unpack_001"
   }
  ]

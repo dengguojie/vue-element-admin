@@ -304,6 +304,38 @@ case_num_is_none = {
     "expect": "success"
 }
 
+case_axis1_int32 = {
+    "params":
+        [
+            {
+                "shape": (42, 2, 32775),
+                "format": "ND",
+                "dtype": "int32",
+                "ori_shape": (42, 2, 32775),
+                "ori_format": "ND"
+            },
+            [
+                {
+                    "shape": (42, 32775),
+                    "format": "ND",
+                    "dtype": "int32",
+                    "ori_shape": (42, 32775),
+                    "ori_format": "ND"
+                },
+                {
+                    "shape": (42, 32775),
+                    "format": "ND",
+                    "dtype": "int32",
+                    "ori_shape": (42, 32775),
+                    "ori_format": "ND"
+                }
+            ],
+            2, 1
+        ],
+    "case_name": 'test_unpack_axis1_int32',
+    "expect": "success"
+}
+
 case_5hd_supoort = {
     "params":
         [
@@ -368,6 +400,7 @@ def test_check_supported(test_arg):
 
 ut_case.add_case(["Ascend910", "Ascend310"], case_small_shape_scalar_fp16)
 ut_case.add_case(["Ascend910", "Ascend310"], case_small_shape_not_aligned_fp16)
+ut_case.add_case(["Ascend910A", "Ascend710", "Ascend310"], case_axis1_int32)
 # ut_case.add_case(["Ascend910", "Ascend310"], case_last_dim_lt_one_block_fp16)
 # ut_case.add_case(["Ascend910", "Ascend310"], case_last_dim_lt_one_block_2_fp16)
 # ut_case.add_case(["Ascend910", "Ascend310"], case_direct_moved_by_ub_fp16)

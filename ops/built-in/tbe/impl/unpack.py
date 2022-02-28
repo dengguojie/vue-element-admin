@@ -374,6 +374,11 @@ def _tiling_axis(shape, dtype):
             split_factor -= 1
             if split_factor == 1:
                 break
+    elif split_axis == 2 and shape[-1] % split_factor != 0:
+        while shape[-1] % split_factor < ele_each_block:
+            split_factor -= 1
+            if split_factor == 1:
+                break
 
     return split_axis, split_factor
 
