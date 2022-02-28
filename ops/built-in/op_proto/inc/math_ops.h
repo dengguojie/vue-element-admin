@@ -462,15 +462,15 @@ REG_OP(Erfc)
 
 *@par Inputs:
 *Three inputs, including:
-*@li x: A Tensor of type float32, float16, int32, int64.
-*@li range: A Tensor of type float32,float16,int32, int64.
+*@li x: A Tensor of type float32, int32, int64. float16 is currently not supported.
+*@li range: A Tensor of type float32, int32, int64. float16 is currently not supported.
 *@li nbins: A Tensor of type int32 . \n
 
 *@par Attributes:
 * dtype: An optional attribute. Defaults to "int32" . \n
 
 *@par Outputs:
-*y: A Tensor. A Tensor of type int32 or int64 . \n
+*y: A Tensor. A Tensor of type int32. \n
 
 *@par Third-party framework compatibility
 * Compatible with TensorFlow operator HistogramFixedWidth.
