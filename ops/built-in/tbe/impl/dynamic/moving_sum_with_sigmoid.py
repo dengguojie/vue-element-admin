@@ -106,9 +106,9 @@ class MovingSumWithSigmoid(object):
                                                  scope=tik.scope_ubuf)
 
         self.tik_instance.data_move(beam_size_ub, self.beam_size_gm, 0, 1,
-                                    self.batch_size_align // Constant.BLOCK_ALIGN, 0, 0)
+                                    2 * self.batch_size_align // Constant.BLOCK_ALIGN, 0, 0)
         self.tik_instance.data_move(frame_size_ub, self.frame_size_gm, 0, 1,
-                                    self.batch_size_align // Constant.BLOCK_ALIGN, 0, 0)
+                                    2 * self.batch_size_align // Constant.BLOCK_ALIGN, 0, 0)
 
         self.col_offset = self.tik_instance.Scalar("int32", init_value=0)
         tmp = self.tik_instance.Scalar("int32")

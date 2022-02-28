@@ -319,6 +319,9 @@ cube:
       - auto_schedule/python/tbe/dsl/unify_schedule/conv3d_tilingcase.py
       - auto_schedule/python/tbe/dsl/unify_schedule/cube_schedule.py
       - auto_schedule/python/tbe/dsl/unify_schedule/gemm_tilingcase.py
+      - ops/built-in/tbe/impl/sort.py
+      - ops/built-in/tbe/impl/sort_v2.py
+      - ops/built-in/tbe/impl/sort_v2_910.py
       - ops/built-in/tbe/impl/ctc_loss_v2.py
       - ops/built-in/tbe/impl/ctc_loss_v2_grad.py
       - ops/built-in/tbe/impl/conv2d_backprop_filter_d.py

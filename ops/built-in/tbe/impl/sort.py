@@ -232,7 +232,7 @@ def vms4(tik_instance, total, input_ub, dest_pos_ub):
 
 
 def moveout(tik_instance, num_16, num, data_out, offset_out, input_ub, dest_pos_ub, data_indices, descending,
-            version):
+            available_aicore_num):
     """
     Function: Move UB to GM, and trans y2 from fp16 to int32.
     Modify : 2020-08-03
@@ -257,15 +257,15 @@ def moveout(tik_instance, num_16, num, data_out, offset_out, input_ub, dest_pos_
     # descend
     with tik_instance.else_scope():
         # data is continuous in GM & gather scattered data together
-        if version == "mini":
+        if available_aicore_num == 2:
             with tik_instance.for_range(0, num) as i2:
                 input_ub[i2 + src_pos_ub].set_as(input_ub[i2 * PROPOSAL_NUM + VAL_IDX + dest_pos_ub])
                 input_ub[i2 + src_pos_ub + num_16].set_as(input_ub[i2 * PROPOSAL_NUM + dest_pos_ub])
-        elif version == "cloud":
+        elif available_aicore_num == 32:
             tik_instance.vextract(input_ub[src_pos_ub], input_ub[dest_pos_ub], num_16 // BLOCK, VAL_IDX)
             tik_instance.vextract(input_ub[src_pos_ub + num_16], input_ub[dest_pos_ub], num_16 // BLOCK, INT_IDX)
         else:
-            raise RuntimeError("Unexcepted version.")
+            raise RuntimeError("Unexpected version.")
 
     # conv indices (float16->int32) , and move from UB to GM
     tik_instance.vec_conv(BLOCK, "round", int_list, input_ub[src_pos_ub + num_16], num_16 // BLOCK, 2, 1)
@@ -373,7 +373,8 @@ def sort_in_gm(tik_instance, temp, num_gm, input_ub, offset):
     return temp
 
 
-def pick(tik_instance, temp, offset, core_idx, num_2048, data_out, data_indices, input_ub, num_gm, descending, version):
+def pick(tik_instance, temp, offset, core_idx, num_2048, data_out, data_indices, input_ub, num_gm, descending,
+         available_aicore_num):
     """
     Function: pick value from proposal.
     Modify : 2020-11-11
@@ -405,13 +406,13 @@ def pick(tik_instance, temp, offset, core_idx, num_2048, data_out, data_indices,
         tik_instance.vec_add(BLOCK, int_list_1, int_list_2, int_list_3, repeat_times, 2, 2, 2)
 
         # data is continuous in GM & gather scattered data together
-        if version == "cloud":
+        if available_aicore_num == 32:
             tik_instance.vextract(input_ub[dest_pos_ub], input_ub[0], repeat_times, VAL_IDX)
-        elif version == "mini":
+        elif available_aicore_num == 2:
             with tik_instance.for_range(0, NUM_BLOCK) as i2:
                 input_ub[dest_pos_ub + i2].set_as(input_ub[i2 * PROPOSAL_NUM + VAL_IDX])
         else:
-            raise RuntimeError("Unexcepted version.")
+            raise RuntimeError("Unexpected version.")
 
         # move output (float16) from UB to GM
         # ascend
@@ -478,7 +479,7 @@ def tune(tik_instance, num, num_16, num_2048, rounds, num_gm, data_out, data_out
 
 @tbe_platform.fusion_manager.fusion_manager.register("sort")
 def sort_compute(tik_instance, dtype, num, num_16, num_2048, core_idx, used_aicore_num, data_out,
-                 data_indices, input_gm, temp, num_gm, descending, version):
+                 data_indices, input_gm, temp, num_gm, descending, available_aicore_num):
     """
     Function: sortcompute in UB.
     Modify : 2020-08-03
@@ -514,12 +515,12 @@ def sort_compute(tik_instance, dtype, num, num_16, num_2048, core_idx, used_aico
 
         tik_instance.vconcat(input_ub[0], input_ub[dest_pos_ub], n_repeat_total, VAL_IDX)
 
-        if version == "cloud":
+        if available_aicore_num == 32:
             idx = tik_instance.Scalar(dtype="float32", init_value=num)
             with tik_instance.for_range(0, num) as i2:
                 idx.set_as(idx - 1)
                 idx_ub[(num - 1 - i2)].set_as(idx)
-        elif version == "mini":
+        elif available_aicore_num == 2:
             data_out_ub_ = tik_instance.Tensor(dtype, [BLOCK], name="data_out_ub_", scope=tik.scope_ubuf)
             data_indices_ub_int_ = tik_instance.Tensor("int32", [BLOCK], name="data_indices_ub_int_",
                                                        scope=tik.scope_ubuf)
@@ -528,7 +529,7 @@ def sort_compute(tik_instance, dtype, num, num_16, num_2048, core_idx, used_aico
                 tik_instance.vec_conv(1, "none", data_out_ub_, data_indices_ub_int_, 1, 0, 0, deqscale=1.0)
                 idx_ub[(num - 1 - i2)].set_as(data_out_ub_[0])
         else:
-            raise RuntimeError("Unexcepted version.")
+            raise RuntimeError("Unexpected version.")
 
         tik_instance.vconcat(input_ub[0], idx_ub[0], n_repeat_total, INT_IDX)
 
@@ -538,17 +539,17 @@ def sort_compute(tik_instance, dtype, num, num_16, num_2048, core_idx, used_aico
         input_ub, dest_pos_ub = vms4(tik_instance, num_16, input_ub, dest_pos_ub)
         # 4. Move Data from UB to OUT
         data_out, data_indices = moveout(tik_instance, num_16, num, data_out, offset_out, input_ub,
-                                         dest_pos_ub, data_indices, descending, version)
+                                         dest_pos_ub, data_indices, descending, available_aicore_num)
 
     else:
         idx_ub = tik_instance.Tensor(dtype, [NUM_BLOCK], name="idx_ub", scope=tik.scope_ubuf)
         tmp_ub = tik_instance.Tensor(dtype, [NUM_BLOCK], name="tmp_ub", scope=tik.scope_ubuf)
-        if version == "cloud":
+        if available_aicore_num == 32:
             idx = tik_instance.Scalar(dtype="float32", init_value=0)
             with tik_instance.for_range(0, NUM_BLOCK) as i2:
                 idx_ub[i2].set_as(idx)
                 idx.set_as(idx + 1)
-        elif version == "mini":
+        elif available_aicore_num == 2:
             data_out_ub_ = tik_instance.Tensor(dtype, [BLOCK], name="data_out_ub_", scope=tik.scope_ubuf)
             data_indices_ub_int_ = tik_instance.Tensor("int32", [BLOCK], name="data_indices_ub_int_",
                                                        scope=tik.scope_ubuf)
@@ -557,7 +558,7 @@ def sort_compute(tik_instance, dtype, num, num_16, num_2048, core_idx, used_aico
                 tik_instance.vec_conv(1, "none", data_out_ub_, data_indices_ub_int_, 1, 0, 0, deqscale=1.0)
                 idx_ub[i2].set_as(data_out_ub_[0])
         else:
-            raise RuntimeError("Unexcepted version.")
+            raise RuntimeError("Unexpected version.")
 
         offset = (core_idx % used_aicore_num) * num_gm * NUM_BLOCK * PROPOSAL_NUM
 
@@ -575,7 +576,7 @@ def sort_compute(tik_instance, dtype, num, num_16, num_2048, core_idx, used_aico
 
         # Pick Data from GM to GM
         data_out, data_indices = pick(tik_instance, temp, offset, core_idx, num_2048, data_out, data_indices, input_ub,
-                                      num_gm, descending, version)
+                                      num_gm, descending, available_aicore_num)
 
     return data_out, data_indices
 
@@ -636,17 +637,16 @@ def sort(x, y1, y2, axis=-1, descending=False, kernel_name="sort"):
     temp = tik_instance.Tensor(dtype, [used_aicore_num * num_2048 * PROPOSAL_NUM], name="temp",
                                scope=tik.scope_gm, is_workspace=True)
 
-    version = tik.Dprofile().get_product_name()
-
     with tik_instance.for_range(0, used_aicore_num, block_num=used_aicore_num) as i:
         with tik_instance.for_range(0, batch_num_per_aicore) as j:
             data_out, data_indices = sort_compute(tik_instance, dtype, num, num_16, num_2048, i + j * used_aicore_num,
                                                   used_aicore_num, data_out, data_indices, input_gm,
-                                                  temp, num_gm, descending, version)
+                                                  temp, num_gm, descending, available_aicore_num)
         with tik_instance.if_scope(i < batch_tail):
             data_out, data_indices = sort_compute(tik_instance, dtype, num, num_16, num_2048,
                                                   batch_num_per_aicore * used_aicore_num + i, used_aicore_num,
-                                                  data_out, data_indices, input_gm, temp, num_gm, descending, version)
+                                                  data_out, data_indices, input_gm, temp, num_gm, descending,
+                                                  available_aicore_num)
 
     data_out_, data_indices_ = tune(tik_instance, num, num_16, num_2048, rounds, num_gm, data_out, data_out_,
                                     data_indices, data_indices_)
