@@ -1035,3 +1035,43 @@ TEST_F(ReduceTilingV3, ReduceTiling_var_attr_2) {
   ASSERT_TRUE(outer_compile_info->DoTiling(_op, runInfo));
 }
 
+
+/* Test Case
+ * **/
+TEST_F(ReduceTilingV3, ReduceTiling_reduce_all) {
+  using namespace optiling;
+
+  std::vector<int64_t> input{500,64,64};
+  std::vector<int64_t> output{500,1,64};
+
+  TensorDesc tensor_input(ge::Shape(input), FORMAT_ND, DT_FLOAT);
+  TensorDesc tensor_output(ge::Shape(output), FORMAT_ND, DT_FLOAT);
+
+  auto x1 = op::Data("x1");
+  x1.update_input_desc_x(tensor_input);
+  x1.update_output_desc_y(tensor_input);
+
+  auto _op = op::ReduceSumD("ReduceTiling_reduce_all");
+  _op.set_input_x(x1);
+  _op.update_output_desc_y(tensor_output);
+
+  std::vector<Operator> inputs{x1};
+  std::vector<Operator> outputs{_op};
+  ge::Graph graph("ReduceTiling_reduce_all");
+  graph.SetInputs(inputs).SetOutputs(outputs);
+  ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
+
+  std::string compileInfo = R"({"_reduce_axes_type": 0, "_pattern": "CommReduce", "_zero_ub_factor":
+  32512, "_common_info":[32,1,8,1,1,256], "_pattern_info": [5,4,9], "_ub_info":[32512, 32128, 16128],
+  "_ub_info_rf": [32512, 21376, 32512],"_vars": {"1": []}})";
+
+  optiling::utils::OpRunInfo runInfo;
+  const nlohmann::json& parsed_compile_info = nlohmann::json::parse(compileInfo);
+  std::shared_ptr<AutoTilingHandler> outer_compile_info = \
+    CreateReduceTilingHandler(this->test_info_->name(),
+                              "CommReduce",
+                              nlohmann::json::parse(compileInfo));
+  ASSERT_TRUE(outer_compile_info->DoTiling(_op, runInfo));
+  EXPECT_EQ(runInfo.GetTilingKey(), 1100400);
+}
+

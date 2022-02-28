@@ -56,6 +56,7 @@ namespace {
   constexpr int32_t REDUCE_PAD_SCH_TYPE = 1;
   constexpr int32_t REDUCE_TRANSPOSE_SCH_TYPE = 2;
   constexpr int32_t TRANSPOSE_THRESHOLD_VALUE = 64;
+  constexpr int32_t REDUCE_AXES_TYPE_ALL = 0;
 }
 
 namespace v3 {
@@ -88,6 +89,10 @@ bool ReduceCompileInfo::GetCompileInfoForProcessControl(const nlohmann::json& js
   if (json_info.count("_compile_pattern") > 0) {
     compile_pattern.first = true;
     compile_pattern.second = json_info.at("_compile_pattern").get<std::int32_t>();
+  }
+
+  if (json_info.count("_reduce_axes_type") > 0) {
+    reduce_axes_type = json_info.at("_reduce_axes_type").get<std::int32_t>();
   }
   return true;
 }
@@ -1362,7 +1367,13 @@ bool Reduce::DoReduceTiling() {
 
 bool Reduce::getReduceAxisTensor() {
   // Get ReduceAxis
-  if (compileInfo.ori_axis.first) {
+  if (compileInfo.reduce_axes_type == REDUCE_AXES_TYPE_ALL) {
+    size_t input_shape_ori_size = input_shape_ori.size();
+    reduce_axis_ori.resize(input_shape_ori_size);
+    for (size_t i = 0; i < input_shape_ori_size; i++) {
+      reduce_axis_ori[i] = i;
+    }
+  } else if (compileInfo.ori_axis.first) {
     reduce_axis_ori = compileInfo.ori_axis.second;
   } else {
     // axes is tensor

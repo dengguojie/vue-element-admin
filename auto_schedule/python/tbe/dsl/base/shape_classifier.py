@@ -31,6 +31,7 @@ from tbe.dsl.base.classifier import classify_gather_nd
 from tbe.dsl.base.classifier import classify_transpose
 from tbe.dsl.base.classifier import classify_concat
 from tbe.dsl.base.classifier import classify_transdata
+from .expr_compare import is_true
 
 
 ELEWISE = "elewise"
@@ -53,16 +54,6 @@ CLASSIFY_SAME_PATTERN_MAP = {
 }
 
 
-def is_true(expr, dict_args):
-    """
-    :param expr: condition
-    :param dict_args: error message
-    :return: RuntimeError
-    """
-    if not expr:
-        raise RuntimeError(dict_args, get_error_message(dict_args))
-
-
 def classify(ins: list, mode: str, extra_params: Optional[Dict[str, Any]] = None):
     """
     classify
@@ -81,12 +72,7 @@ def classify(ins: list, mode: str, extra_params: Optional[Dict[str, Any]] = None
     if mode == BROADCAST:
         return classify_elewise(ins, support_broadcast=True, extra_params=extra_params)
     if mode == REDUCE:
-        is_true(extra_params is not None and "keepdims" in extra_params,
-                {"errCode": "E90001",
-                 "detailed_cause": "inputs of classify must include the dict extra_params with the key keepdims "
-                                   "when mode is reduce"})
-
-        return classify_reduction(ins, extra_params.get("keepdims"))
+        return classify_reduction(ins, extra_params)
     if mode == SOFTMAX_CROSS_ENTROPY_WITH_LOGITS_WITH_REDUCE:
         return classify_softmax_cross_entropy_with_logits(ins, support_reduce=True)
     if mode == NORM:

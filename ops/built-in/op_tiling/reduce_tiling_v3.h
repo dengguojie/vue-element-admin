@@ -46,6 +46,7 @@ struct ReduceCompileInfo {
     bool is_const_post{false};
     bool atomic{false};
     bool is_keep_dims{false};
+    int32_t reduce_axes_type{-1};
     uint32_t idx_before_reduce{0};
     int64_t zero_ub_factor{-1};
     int32_t core_num{-1};
