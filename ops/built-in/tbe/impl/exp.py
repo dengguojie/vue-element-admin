@@ -58,7 +58,7 @@ def exp_compute(input_x, output_y, base=-1.0, scale=1.0, shift=0.0, kernel_name=
     res : the result of compute
     """
     x_dtype = input_x.dtype
-    if tbe_platform.api_check_support("tbe.dsl.vexp","float32") and x_dtype == "float16":
+    if tbe_platform.api_check_support("tbe.dsl.vexp", "float32") and x_dtype == "float16":
         input_x = tbe.cast_to(input_x, "float32")
     input_x_dtype = input_x.dtype
     if isclose(scale, 1.0) and isclose(shift, 0.0):
