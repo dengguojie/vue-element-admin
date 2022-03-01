@@ -520,7 +520,6 @@ bool Reduce::IsReduceTransposeCase() {
 
   // should be not aligned
   bool last_axis_aligned = input_shape.back() % block_size == 0;
-
   if (pad_max_entire_size_not_exist || ub_info_transpose_not_exist ||  input_shape_size_not_support ||
       exist_one_axis || not_last_reduce || is_atomic || last_axis_aligned) {
       return false;

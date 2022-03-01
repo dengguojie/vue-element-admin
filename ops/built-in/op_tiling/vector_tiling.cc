@@ -84,7 +84,6 @@ bool SetAttrVars(const std::string& op_type, const ge::Operator& op_paras,
 
         AttrDataPtr data;
         ge::graphStatus graphStatus = GetOperatorAttrValue(op_paras, var_name, var_src_type, data, var_type);
-
         if (graphStatus != ge::GRAPH_SUCCESS) {
           VECTOR_INNER_ERR_REPORT_TILIING(op_type,
                                           "getAttrVars from FE error. Error message: var name is %s , var type is %s, "
