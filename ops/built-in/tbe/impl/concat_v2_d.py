@@ -221,6 +221,13 @@ def op_select_format(input_values,
     return param_dynamic_in_json
 
 
+def check_supported(input_values, output_data, axis, kernel_name="concat_v2_d"):
+    """
+    check_supported invoked by framework
+    """
+    return True, ""
+
+
 def concat_v2_d_compute(input_values,
                         output_data,
                         axis,
@@ -270,7 +277,6 @@ def _is_dynamic_concat_better_performance(input_values, axis):
     return [input_shapes, axis % shape_dims] in better_performance_params
 
 
-# 'pylint: disable=variable_type_changed
 def _do_with_dynamic_concat_v2_d(input_values, axis, kernel_name):
     def cal_tiling(_input_values, _axis):
         if len(_input_values) == 0:

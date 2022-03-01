@@ -21,6 +21,7 @@ from te.utils import para_check
 from impl.concat_v2_d import concat_v2_d
 from impl.concat_v2_d import op_select_format as concat_v2_op_select_format
 from impl.concat_v2_d import get_op_support_info as concat_v2_get_op_support_info
+from impl.concat_v2_d import check_supported as concat_v2_d_check_supported
 
 
 # 'pylint: disable = unused-argument
@@ -59,6 +60,13 @@ def op_select_format(input_values, output_data, concat_dim,
     > x : Tensor of (shape=(16, 16, 16, 16), "ND")
     """
     return concat_v2_op_select_format(input_values, output_data, concat_dim, kernel_name)
+
+
+def check_supported(input_values, output_data, concat_dim, kernel_name="concat"):
+    """
+    check_supported invoked by framework
+    """
+    return concat_v2_d_check_supported(input_values, output_data, concat_dim, kernel_name)
 
 
 @para_check.check_op_params(para_check.DYNAMIC_INPUT, para_check.REQUIRED_OUTPUT,

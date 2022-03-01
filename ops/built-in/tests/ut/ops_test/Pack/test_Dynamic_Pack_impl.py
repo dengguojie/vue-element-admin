@@ -36,9 +36,9 @@ ut_case.add_case(["Ascend910A", "Ascend310", "Ascend710"],
                  gen_pack_case([(-1, -1)] * 1, [(2, 2)] * 1, "int64",
                                  -2, "case_13", "success"))
 
-ut_case.add_case(["Ascend910A", "Ascend310", "Ascend710"],
-                 gen_pack_case([(-2,)] * 1, [(2, 2)] * 1, "int64",
-                               2, "case_14", "success"))
+# ut_case.add_case(["Ascend910A", "Ascend310", "Ascend710"],
+#                  gen_pack_case([(-2,)] * 1, [(2, 2)] * 1, "int64",
+#                                2, "case_14", "success"))
 
 if __name__ == '__main__':
     ut_case.run("Ascend910A")

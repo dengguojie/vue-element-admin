@@ -26,6 +26,7 @@ from impl.util.platform_adapter import tbe_context
 from impl.dynamic.concat_v2_d_tik import concat_v2_d_tik
 from impl.concat_v2_d import get_op_support_info as concat_v2_get_op_support_info
 from impl.concat_v2_d import op_select_format as concat_v2_op_select_format
+from impl.concat_last_dim import ConcatWith5HD
 
 
 # 'pylint: disable = unused-argument
@@ -64,6 +65,48 @@ def op_select_format(input_values, output_data, concat_dim,
     > x : Tensor of (shape=(16, 16, 16, 16), "ND")
     """
     return concat_v2_op_select_format(input_values, output_data, concat_dim, kernel_name)
+
+
+def _update_input_values(input_values):
+    new_input_values = []
+    for _, tensor_dict in enumerate(input_values):
+        shape_input = tensor_dict.get("ori_shape")
+        if not (0 in shape_input or -1 in shape_input or -2 in shape_input):
+            tensor_dict = util_common.update_shape_base_other_format(tensor_dict)
+            new_input_values.append(tensor_dict)
+
+    return new_input_values
+
+
+def _update_concat_dim(input_values, concat_dim):
+    for _, _input_dict in enumerate(input_values):
+        ori_shape = _input_dict.get("ori_shape")
+        if -2 not in ori_shape:
+            # cannot update the axis for unknown rank case
+            input_format = _input_dict.get("format")
+            ori_format = _input_dict.get("ori_format")
+            concat_dim = util_common.update_axis_for_other_format(ori_shape, concat_dim, input_format, ori_format)
+            break
+
+    return concat_dim
+
+
+def check_supported(input_values, output_data, concat_dim, kernel_name="concat_v2_d"):
+    """
+    check_supported invoked by framework
+    """
+    new_input_values = _update_input_values(input_values)
+    if len(input_values) == len(new_input_values):
+        input_values = new_input_values
+    concat_dim = _update_concat_dim(input_values, concat_dim)
+
+    other_5hd_inst = ConcatWith5HD(input_values, output_data, concat_dim, kernel_name)
+    is_support_other_5hd = other_5hd_inst.check_5hd_vnchw()
+
+    if is_support_other_5hd:
+        return False, "the format is not supported by DSL now"
+
+    return True, ""
 
 
 # 'pylint: disable=unused-argument
@@ -108,24 +151,12 @@ def concat_v2_d_dsl(input_values, output_data, concat_dim, kernel_name="concat_v
     dtype_x = input_values[0].get("dtype")
 
     # update shape based on input format
-    new_input_values = []
-    for _, tensor_dict in enumerate(input_values):
-        shape_input = tensor_dict.get("ori_shape")
-        if not (0 in shape_input or -1 in shape_input or -2 in shape_input):
-            tensor_dict = util_common.update_shape_base_other_format(tensor_dict)
-            new_input_values.append(tensor_dict)
+    new_input_values = _update_input_values(input_values)
     if len(input_values) == len(new_input_values):
         input_values = new_input_values
 
     # update axis base on input format
-    for _, _input_dict in enumerate(input_values):
-        ori_shape = _input_dict.get("ori_shape")
-        if -2 not in ori_shape:
-            # can not use unkownrank shape to update the axis
-            input_format = _input_dict.get("format")
-            ori_format = _input_dict.get("ori_format")
-            concat_dim = util_common.update_axis_for_other_format(ori_shape, concat_dim, input_format, ori_format)
-            break
+    concat_dim = _update_concat_dim(input_values, concat_dim)
 
     # transfer concat_dim to tiling for dynamic shape
     tbe_context.get_context().add_compile_info("concat_dim", concat_dim)
