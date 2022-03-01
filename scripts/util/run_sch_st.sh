@@ -78,8 +78,10 @@ run_st() {
   python3.7 "$sch_run_py" "${case_dir}" "${supported_soc}" "${CANN_ST_OUT}"
 
   if [[ $? -ne 0 ]]; then
-      echo "[ERROR] run ops stest failed, case file is: $op_case."
+      echo "[ERROR] run sch stest failed, case file is: $op_case."
       #exit $STATUS_FAILED
+  else
+      echo "ALL TestCases Pass."
   fi
 
 }

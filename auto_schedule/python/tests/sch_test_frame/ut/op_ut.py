@@ -200,6 +200,8 @@ class OpUT:  # pylint: disable=too-many-instance-attributes
         expect = case.get("expect")
         if not expect:
             expect = op_status.SUCCESS
+        
+        case_type = case.get('case_type')
 
         precision_standard = case.get("precision_standard")
         if precision_standard and not isinstance(precision_standard, precision_info.PrecisionStandard):
@@ -216,7 +218,8 @@ class OpUT:  # pylint: disable=too-many-instance-attributes
                                         case_line_num=case_line_num,
                                         precision_standard=precision_standard,
                                         op_imply_type=self.imply_type.value,
-                                        addition_params=case.get("addition_params", None))
+                                        addition_params=case.get("addition_params", None),
+                                        case_type = case_type)
 
     def add_case(self, support_soc=None, case=None):
         """
@@ -544,6 +547,14 @@ class OpUT:  # pylint: disable=too-many-instance-attributes
             compile_info_str = info_f.read()
         return json.loads(compile_info_str)
 
+    @staticmethod
+    def _is_dynamic(op_params):
+        for param in op_params:
+            if isinstance(param, dict) and \
+                (-1 in param.get("shape") or -2 in param.get("shape")):
+                return True
+        return False
+
     def _call_op_func(self, run_soc_version: str, op_func, case_info: op_ut_case_info.OpUTCase, check_exist=False):
         kernel_name = self._get_kernel_name(run_soc_version, case_info)
         if not case_info.addition_params:
@@ -556,15 +567,22 @@ class OpUT:  # pylint: disable=too-many-instance-attributes
         err_msg = None
         try:
             if self.imply_type == OpImplyType.DYNAMIC_SHAPE:
+                # 未指定case_type，通过输入shape进行判断
+                if not case_info.case_type:
+                    case_type = 'dynamic' if self._is_dynamic(case_info.op_params) else 'static'
+                else:
+                    case_type = case_info.case_type
+
                 # there is a bug in te, we can't import te before tensorflow, so can't import te outside
                 import tbe  # pylint: disable=import-outside-toplevel
                 import tbe.common.context.op_info as operator_info  # pylint: disable=import-outside-toplevel
-                with tbe.common.context.op_context.OpContext("dynamic"):
+                with tbe.common.context.op_context.OpContext(case_type):
                     op_info = operator_info.OpInfo(self.op_type, self.op_type)
                     tbe.common.context.op_context.get_context().add_op_info(op_info)
                     op_func(*case_info.op_params, **addition_params)
                     compile_info = tbe.common.context.op_context.get_context().get_compile_info()
                     self._save_compile_info_json(kernel_name=kernel_name, compile_info=compile_info)
+
             else:
                 op_func(*case_info.op_params, **addition_params)
         except BaseException as run_err:  # pylint: disable=broad-except
