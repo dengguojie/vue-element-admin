@@ -134,6 +134,7 @@ def sgd_compute(parameters,
         accum_t = tbe.cast_to(accum_t, "float16")
         stat_t = tbe.cast_to(stat_t, "float16")
 
+    # 'pylint: disable=too-many-return-values
     def _compute(*index):
         return accum_t(*index), parameters_t(*index), stat_t(*index), parameters_t(*index)
 

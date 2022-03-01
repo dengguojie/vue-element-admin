@@ -171,8 +171,9 @@ class SpatialTransformer:
         """
         process_on_each_core is
         """
-        theta1_1, theta1_2, theta1_3, theta2_1, theta2_2, theta2_3 = self.calc_theta(batch_id, "float16") if \
-            self.calc_by_fp16 else self.calc_theta(batch_id, "float32")
+        theta1_1, theta1_2, theta1_3, theta2_1, theta2_2, theta2_3 = (self.calc_theta(batch_id, "float16") 
+                                                                      if self.calc_by_fp16 
+                                                                      else self.calc_theta(batch_id, "float32"))
 
         thread_num = 2 if each_batch_loop_count >= 2 else 1
         with self.tik_instance.for_range(0, each_batch_loop_count, thread_num=thread_num) as hw_index_handle_count:
@@ -473,6 +474,7 @@ class SpatialTransformer:
         return self.mian_calc_ceof_offset(origin_h_or_res_ub, origin_w_or_res_ub, origin_h_or_res_ub,
                                           origin_w_or_res_ub)
 
+    # 'pylint: disable=too-many-return-values
     def mian_calc_ceof_offset(self, origin_h_or_res_ub, origin_w_or_res_ub, origin_h_res_ub16, origin_w_res_ub16):
         """
         mian_calc_ceof_offset
@@ -748,6 +750,7 @@ class SpatialTransformer:
         self.tik_instance.vec_muls(mask, origin_h_or_res_ub, origin_h_or_res_ub, self.size[0], repeat, 8, 8)
         return origin_h_or_res_ub, origin_w_ub
 
+    # 'pylint: disable=too-many-return-values
     def calc_theta(self, batch_id, d_type):
         """
         calc_theta
@@ -784,6 +787,7 @@ class SpatialTransformer:
             theta2_3 = self.default_theta[5]
         return theta1_1, theta1_2, theta1_3, theta2_1, theta2_2, theta2_3
 
+    # 'pylint: disable=too-many-return-values
     def get_theta_by_mix(self, d_type, input_theta_ub):
         """
         get_theta_by_mix
