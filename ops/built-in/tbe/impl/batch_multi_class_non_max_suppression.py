@@ -234,8 +234,6 @@ class BatchMultiClassNonMaxSuppression:
                              [1, 1000], self.max_size_per_class)
         error_code_002_check("BatchMultiClassNonMaxSuppression", "max_total_size",
                              [1, 1000], self.max_total_size)
-        error_code_002_check("BatchMultiClassNonMaxSuppression", "classes num from input scores shape",
-                             [1, 200], self.classes)
 
         if not self.need_clip_window:
             error_code_000_check("BatchMultiClassNonMaxSuppression",
