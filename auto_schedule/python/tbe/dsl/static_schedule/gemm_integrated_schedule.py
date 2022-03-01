@@ -5462,9 +5462,10 @@ class CalculateMultiUB:
     """
     BYTES_DTYPE = {"uint64": 8, "float16": 2, "float32": 4, "int32": 4,
                     "int16": 2, "uint16": 2, "int8": 1, "uint8": 1,
-                    "int4": 0.5}
+                    "int4": 0.5, "bool": 1}
     ALIGN_BYTE = 32
     MASK_SIZE_RATIO = 100
+    DEFAULT_SIZE = 2
 
     def __init__(self, start_tensor, end_tensor, not_count_list):
         self.start_tensor = start_tensor
@@ -5548,7 +5549,7 @@ class CalculateMultiUB:
     def _compute_result(self, tensor):
         if self._not_count(tensor):
             return
-        self.ub_res += self.BYTES_DTYPE.get(tensor.dtype)
+        self.ub_res += self.BYTES_DTYPE.get(tensor.dtype, self.DEFAULT_SIZE)
         return
 
     def _not_count(self, tensor):
