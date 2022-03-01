@@ -1105,6 +1105,15 @@ bool Broadcast::WriteTilingData() const {
     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get compile_info[_elewise_vars] error. Error message: %s", e.what());
     return false;
   }
+
+  // write attr_vars
+  if (broadcast_compile_info.var_attr_map.count(static_cast<uint64_t>(key)) > 0) {
+    const std::vector<VarAttr>& all_attr_vars = broadcast_compile_info.var_attr_map.at(static_cast<uint64_t>(key));
+    if (all_attr_vars.size() != 0) {
+      return SetAttrVars(op_type, op_paras, run_info, all_attr_vars);
+    }
+  }
+
   return true;
 }
 
@@ -1319,6 +1328,14 @@ bool Broadcast::WriteConstTiling() {
   OP_LOGD(op_type.c_str(), "tiling block_dims:%lld", block_dims);
   run_info.SetBlockDim(static_cast<uint32_t>(block_dims));
   run_info.SetTilingKey(static_cast<uint32_t>(key));
+
+  // write attr_vars
+  if (broadcast_compile_info.var_attr_map.count(static_cast<uint64_t>(key)) > 0) {
+    const std::vector<VarAttr>& all_attr_vars = broadcast_compile_info.var_attr_map.at(static_cast<uint64_t>(key));
+    if (all_attr_vars.size() != 0) {
+      return SetAttrVars(op_type, op_paras, run_info, all_attr_vars);
+    }
+  }
   return true;
 }
 
@@ -1371,6 +1388,10 @@ BroadcastCompileInfo::BroadcastCompileInfo(const std::string& op_type, const nlo
   if (outer_compile_info.contains("_soc_version")) {
     soc_version.first = true;
     soc_version.second = outer_compile_info.at("_soc_version").get<std::string>();
+  }
+
+  if (outer_compile_info.count("_attr_vars") > 0 && !ParseVarAttr(outer_compile_info, var_attr_map)) {
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "broadcast get _attr_vars of compile_info error");
   }
 }
 

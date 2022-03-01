@@ -885,3 +885,80 @@ TEST_F(BroadcastTilingV3, TilingTest21) {
   v3::Broadcast broadcast("autotiling", op_paras, actual_ptr, runInfo);
   ASSERT_TRUE(broadcast.BroadcastTiling(custom_op_info));
 }
+
+TEST_F(BroadcastTilingV3, TilingTest22) {
+  std::vector<std::vector<int64_t>> inputs {{2, 26, 26, 3, 80}, {1}};
+  std::vector<std::vector<int64_t>> outputs {{2, 26, 26, 3, 80}};
+  ge::DataType dtype = ge::DT_FLOAT16;
+  ge::OpDescPtr op_desc = std::make_shared<ge::OpDesc>();
+  for (std::size_t i = 0; i < inputs.size(); i++) {
+    contruct_tensor(op_desc, inputs[i], dtype);
+  }
+  for (std::size_t i = 0; i < outputs.size(); i++) {
+    contruct_tensor(op_desc, outputs[i], dtype, false);
+  }
+  ge::Operator op_paras = ge::OpDescUtils::CreateOperatorFromOpDesc(op_desc);
+  op_paras.SetAttr("alpha", 123);
+  optiling::utils::OpRunInfo runInfo;
+
+
+  std::string compileInfo = R"({"_outs_uint1": false,  "_pattern": "Broadcast", "_fusion_index": [[0,1,2,3,4]], "push_status": 0, "_flag_info": [false, false, true, true, true, false, false], "_base_info": {"230": [32, 2, 42320, 21152]}, "_elewise_vars": { "223000000": [10000, 20000, 30000] },  "_attr_vars": { "223000000": [{"length":1, "name":"alpha", "type":"int32", "src_type":"int32"}] } })";
+  std::shared_ptr<AutoTilingHandler> outer_compile_info = \
+    CreateBroadcastTilingHandler(this->test_info_->name(),
+                              "autotiling",
+                              nlohmann::json::parse(compileInfo));
+  ASSERT_TRUE(outer_compile_info->DoTiling(op_paras, runInfo));
+}
+
+TEST_F(BroadcastTilingV3, TilingTest23) {
+  std::vector<std::vector<int64_t>> inputs {{1, 40000, 10}, {10, 40000, 10}};
+  std::vector<std::vector<int64_t>> outputs {{10, 40000, 10}};
+  ge::DataType dtype = ge::DT_FLOAT16;
+  ge::OpDescPtr op_desc = std::make_shared<ge::OpDesc>();
+  for (std::size_t i = 0; i < inputs.size(); i++) {
+    contruct_tensor(op_desc, inputs[i], dtype);
+  }
+  for (std::size_t i = 0; i < outputs.size(); i++) {
+    contruct_tensor(op_desc, outputs[i], dtype, false);
+  }
+  ge::Operator op_paras = ge::OpDescUtils::CreateOperatorFromOpDesc(op_desc);
+  op_paras.SetAttr("alpha", 123);
+  optiling::utils::OpRunInfo runInfo;
+
+  v3::BroadcastCompileInfo actual_ptr;
+  actual_ptr.base_info_compile.first = false;
+  actual_ptr.base_info_compile.second = {};
+  actual_ptr.flag_info_compile = {false, true, true, false, false, false, false};
+  actual_ptr.outs_uint1_compile = false;
+  actual_ptr.elewise_vars_compile.first = true;
+  actual_ptr.elewise_vars_compile.second = {{"100000000",{}}};
+  actual_ptr.const_block_dims_compile.first = true;
+  actual_ptr.const_block_dims_compile.second = {40};
+
+  VarAttr var_attr;
+  var_attr.name = "alpha";
+  var_attr.type = "int32";
+  var_attr.src_type = "int32";
+  var_attr.length = 1;
+  std::vector<VarAttr> var_attrs;
+  var_attrs.push_back(var_attr);
+  std::unordered_map<std::uint64_t, vector<VarAttr>> attr_map;
+  attr_map[100000000] = var_attrs;
+  actual_ptr.var_attr_map = attr_map;
+
+  actual_ptr.const_shapes_compile.first = true;
+  actual_ptr.const_shapes_compile.second = {{1, 40000, 10}};
+
+  actual_ptr.fusion_index_compile.first = true;
+  actual_ptr.fusion_index_compile.second = {{0},{1,2}};
+
+  actual_ptr.broadcast_axis_compile.first = true;
+  actual_ptr.broadcast_axis_compile.second = {false, true};
+
+  actual_ptr.soc_version.first = true;
+  actual_ptr.soc_version.second = "Ascend920";
+
+
+  v3::Broadcast broadcast("autotiling", op_paras, actual_ptr, runInfo);
+  ASSERT_TRUE(broadcast.BroadcastTiling());
+}

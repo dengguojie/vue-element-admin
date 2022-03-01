@@ -43,6 +43,7 @@ struct BroadcastCompileInfo {
   std::vector<bool> flag_info_compile;
   bool outs_uint1_compile {false};
   std::pair<bool, std::unordered_map<std::string, std::vector<int64_t>>> elewise_vars_compile;
+  std::unordered_map<std::uint64_t, vector<VarAttr>> var_attr_map;
   std::pair<bool, std::vector<int64_t>> const_block_dims_compile;
 
   std::pair<bool, std::vector<std::vector<int64_t>>> const_shapes_compile;
