@@ -304,6 +304,9 @@ IMPLEMT_COMMON_INFERFUNC(SoftmaxCrossEntropyWithLogitsInferShape) {
   ge::ConstGeTensorDescPtr input_features_desc_ptr = op_desc->GetInputDescPtr(0);
   ge::ConstGeTensorDescPtr input_labels_desc_ptr = op_desc->GetInputDescPtr(1);
 
+  ge::GeTensorDescPtr input_features_desc = op_desc->MutableInputDesc(0);
+  ge::GeTensorDescPtr input_labels_desc = op_desc->MutableInputDesc(1);
+
   ge::GeTensorDescPtr output_loss_desc = op_desc->MutableOutputDesc(0);
   ge::GeTensorDescPtr output_backprop_desc = op_desc->MutableOutputDesc(1);
 
@@ -320,21 +323,44 @@ IMPLEMT_COMMON_INFERFUNC(SoftmaxCrossEntropyWithLogitsInferShape) {
   GeShape &output_loss_shape = output_loss_desc->MutableShape();
   GeShape &output_backprop_shape = output_backprop_desc->MutableShape();
 
+  vector<int64_t> input_features_shape_vec;
+  vector<int64_t> input_labels_shape_vec;
+  vector<int64_t> output_loss_shape_vec;
+  vector<int64_t> output_backprop_shape_vec;
+
   // -2 shape
   if (input_features_shape.IsUnknownDimNum()) {
-    output_loss_desc->SetShape(input_features_shape);
-    output_loss_desc->SetDataType(input_features_desc_ptr->GetDataType());
+    input_features_shape_vec.push_back(-1);
+    input_features_shape_vec.push_back(-1);
+    input_features_desc->SetShape(ge::GeShape(input_features_shape_vec));
 
-    output_backprop_desc->SetShape(input_features_shape);
-    output_backprop_desc->SetDataType(input_features_desc_ptr->GetDataType());
+    input_labels_shape_vec.push_back(-1);
+    input_labels_shape_vec.push_back(-1);
+    input_labels_desc->SetShape(ge::GeShape(input_labels_shape_vec));
+
+    output_loss_shape_vec.push_back(-1);
+    output_loss_desc->SetShape(ge::GeShape(output_loss_shape_vec));
+
+    output_backprop_shape_vec.push_back(-1);
+    output_backprop_shape_vec.push_back(-1);
+    output_backprop_desc->SetShape(ge::GeShape(output_backprop_shape_vec));
     return GRAPH_SUCCESS;
   }
   if (input_labels_shape.IsUnknownDimNum()) {
-    output_loss_desc->SetShape(input_labels_shape);
-    output_loss_desc->SetDataType(input_labels_desc_ptr->GetDataType());
+    input_features_shape_vec.push_back(-1);
+    input_features_shape_vec.push_back(-1);
+    input_features_desc->SetShape(ge::GeShape(input_features_shape_vec));
 
-    output_backprop_desc->SetShape(input_labels_shape);
-    output_backprop_desc->SetDataType(input_labels_desc_ptr->GetDataType());
+    input_labels_shape_vec.push_back(-1);
+    input_labels_shape_vec.push_back(-1);
+    input_labels_desc->SetShape(ge::GeShape(input_labels_shape_vec));
+
+    output_loss_shape_vec.push_back(-1);
+    output_loss_desc->SetShape(ge::GeShape(output_loss_shape_vec));
+
+    output_backprop_shape_vec.push_back(-1);
+    output_backprop_shape_vec.push_back(-1);
+    output_backprop_desc->SetShape(ge::GeShape(output_backprop_shape_vec));
     return GRAPH_SUCCESS;
   }
 
@@ -360,9 +386,15 @@ IMPLEMT_COMMON_INFERFUNC(SoftmaxCrossEntropyWithLogitsInferShape) {
     input_features_dim_1 = input_features_shape.GetDim(1);
     input_labels_dim_0 = 1;
     input_labels_dim_1 = input_labels_shape.GetDim(0);
+    input_labels_shape_vec.push_back(input_labels_dim_0);
+    input_labels_shape_vec.push_back(input_labels_dim_1);
+    input_labels_desc->SetShape(ge::GeShape(input_labels_shape_vec));
   } else if (input_features_dim_num == 1 && input_labels_dim_num == 2) {
     input_features_dim_0 = 1;
     input_features_dim_1 = input_features_shape.GetDim(0);
+    input_features_shape_vec.push_back(input_features_dim_0);
+    input_features_shape_vec.push_back(input_features_dim_1);
+    input_features_desc->SetShape(ge::GeShape(input_features_shape_vec));
     input_labels_dim_0 = input_labels_shape.GetDim(0);
     input_labels_dim_1 = input_labels_shape.GetDim(1);
   } else {
@@ -371,26 +403,29 @@ IMPLEMT_COMMON_INFERFUNC(SoftmaxCrossEntropyWithLogitsInferShape) {
   }
 
   // static shape, set the output shape and datatype
-  if (input_features_dim_0 > 0 && input_features_dim_1 > 0 && input_labels_dim_0 > 0 && input_labels_dim_1 > 0) {
+  if (input_features_dim_0 > 0 && input_labels_dim_0 > 0) {
     if (input_features_dim_0 != input_labels_dim_0 && input_features_dim_0 != 1 && input_labels_dim_0 != 1) {
       OP_LOGE(op.GetName().c_str(), "[TBE Compiler] not supported shape for dim0");
       return GRAPH_FAILED;
     }
+    int64_t dim_0 = input_features_dim_0 >= input_labels_dim_0 ? input_features_dim_0 : input_labels_dim_0;
+    output_loss_shape.SetDim(0, dim_0);
+    output_backprop_shape.SetDim(0, dim_0);
+  } else {
+    output_loss_shape.SetDim(0, -1);
+    output_backprop_shape.SetDim(0, -1);
+  }
+
+  if (input_features_dim_1 > 0 && input_labels_dim_1 > 0) {
     if (input_features_dim_1 != input_labels_dim_1 && input_features_dim_1 != 1 && input_labels_dim_1 != 1) {
       OP_LOGE(op.GetName().c_str(), "[TBE Compiler] not supported shape for dim1");
       return GRAPH_FAILED;
     }
-    int64_t dim_0 = input_features_dim_0 >= input_labels_dim_0 ? input_features_dim_0 : input_labels_dim_0;
     int64_t dim_1 = input_features_dim_1 >= input_labels_dim_1 ? input_features_dim_1 : input_labels_dim_1;
-    output_loss_shape.SetDim(0, dim_0);
-    output_backprop_shape.SetDim(0, dim_0);
     output_backprop_shape.SetDim(1, dim_1);
   } else {
-    output_loss_shape.SetDim(0, -1);
-    output_backprop_shape.SetDim(0, -1);
     output_backprop_shape.SetDim(1, -1);
   }
-
   output_loss_desc->SetDataType(input_features_desc_ptr->GetDataType());
   output_backprop_desc->SetDataType(input_features_desc_ptr->GetDataType());
 

@@ -102,6 +102,16 @@ TEST_F(SoftmaxCrossEntropyWithLogits, SoftmaxCrossEntropyWithLogits_infershape_u
 // -2 case
 TEST_F(SoftmaxCrossEntropyWithLogits, SoftmaxCrossEntropyWithLogits_infershape_unknown_len_test1) {
     ge::op::SoftmaxCrossEntropyWithLogits op;
+    op.UpdateInputDesc("features", create_desc({-1, -1}, ge::DT_FLOAT));
+    op.UpdateInputDesc("labels", create_desc({-2}, ge::DT_FLOAT));
+
+    auto ret = op.InferShapeAndType();
+    EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+}
+
+// -2 case
+TEST_F(SoftmaxCrossEntropyWithLogits, SoftmaxCrossEntropyWithLogits_infershape_unknown_len_test2) {
+    ge::op::SoftmaxCrossEntropyWithLogits op;
     op.UpdateInputDesc("features", create_desc({-2}, ge::DT_FLOAT));
     op.UpdateInputDesc("labels", create_desc({-2}, ge::DT_FLOAT));
 
