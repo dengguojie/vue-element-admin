@@ -27,8 +27,8 @@
 
 #include "graph/utils/op_desc_utils.h"
 #include "op_tiling/vector_tiling.h"
-#include "op_tiling/transdata_dsl.h"
 #include "op_tiling/transdata_dsl_general.h"
+#include "op_tiling/transdata_dsl_borrow_n.h"
 #include "op_tiling/tiling_handler.h"
 
 using namespace std;
@@ -81,7 +81,6 @@ TEST_F(TransdataTiling, TransdataTiling0) {
       "_src_fuse": [0, 1, 2],
       "_pattern": "Transdata",
       "_common_info": [1, 8, 16, 32, 0, 0],
-      "_unknown_dims": [],
       "_ub_info": [[16256, 16256]]})";
 
   CompileInfoTransdataDSL op_compile_info;
@@ -95,7 +94,6 @@ TEST_F(TransdataTiling, TransdataTiling0) {
   op_compile_info.src_pad = {0, 2, 0};
   op_compile_info.src_fuse = {0, 1, 2};
   op_compile_info.permute = {0, 1, 3, 2};
-  op_compile_info.unknown_dims = {0, 1, 2};
   op_compile_info.ub_info = {{16256, 16256}};
 
   vector<vector<int64_t>> inputs {
@@ -136,7 +134,6 @@ TEST_F(TransdataTiling, TransdataTiling1) {
         "_src_fuse": [0, 1, 2],
         "_pattern": "Transdata",
         "_common_info": [1, 16, 16, 32, 0, 0],
-        "_unknown_dims": [],
         "_ub_info": [[16256, 16256]]})";
 
   CompileInfoTransdataDSL op_compile_info;
@@ -150,7 +147,6 @@ TEST_F(TransdataTiling, TransdataTiling1) {
   op_compile_info.src_pad = {0, 2, 0};
   op_compile_info.src_fuse = {0, 1, 2};
   op_compile_info.permute = {0, 1, 3, 2};
-  op_compile_info.unknown_dims = {0, 1, 2};
   op_compile_info.ub_info = {{16256, 16256}};
 
   vector<vector<int64_t>> inputs {
@@ -194,7 +190,6 @@ TEST_F(TransdataTiling, TransdataTiling2) {
       "_src_fuse": [0, 1, 3],
       "_pattern": "Transdata",
       "_common_info": [1, 8, 16, 32, 0, 0],
-      "_unknown_dims": [],
       "_ub_info": [[16256, 16256]]})";
 
   CompileInfoTransdataDSL op_compile_info;
@@ -208,7 +203,6 @@ TEST_F(TransdataTiling, TransdataTiling2) {
   op_compile_info.src_pad = {0, 0, 2};
   op_compile_info.src_fuse = {0, 1, 3};
   op_compile_info.permute = {0, 2, 1, 3};
-  op_compile_info.unknown_dims = {};
   op_compile_info.ub_info = {{16256, 16256}};
 
   vector<vector<int64_t>> inputs {
@@ -250,7 +244,6 @@ TEST_F(TransdataTiling, TransdataTiling3) {
         "_src_fuse": [0, 1, 3],
         "_pattern": "Transdata",
         "_common_info": [1, 16, 16, 32, 0, 0],
-        "_unknown_dims": [],
         "_ub_info": [[32000, 32000]]})";
 
   CompileInfoTransdataDSL op_compile_info;
@@ -264,7 +257,6 @@ TEST_F(TransdataTiling, TransdataTiling3) {
   op_compile_info.src_pad = {0, 0, 2};
   op_compile_info.src_fuse = {0, 1, 3};
   op_compile_info.permute = {0, 2, 1, 3};
-  op_compile_info.unknown_dims = {};
   op_compile_info.ub_info = {{32000, 32000}};
 
   vector<vector<int64_t>> inputs {
@@ -305,7 +297,6 @@ TEST_F(TransdataTiling, TransdataTiling4) {
           "_src_fuse": [0, 1, 3],
           "_pattern": "Transdata",
           "_common_info": [1, 16, 16, 32, 0, 0],
-          "_unknown_dims": [],
           "_ub_info": [[32000, 32000]]})";
 
   CompileInfoTransdataDSL op_compile_info;
@@ -319,7 +310,6 @@ TEST_F(TransdataTiling, TransdataTiling4) {
   op_compile_info.src_pad = {0, 0, 2};
   op_compile_info.src_fuse = {0, 1, 3};
   op_compile_info.permute = {0, 2, 1, 3};
-  op_compile_info.unknown_dims = {};
   op_compile_info.ub_info = {{32000, 32000}};
 
   vector<vector<int64_t>> inputs {
@@ -360,7 +350,6 @@ TEST_F(TransdataTiling, TransdataTiling5) {
         "_src_fuse": [0, 1, 2],
         "_pattern": "Transdata",
         "_common_info": [0, 16, 16, 32, 0, 0],
-        "_unknown_dims": [],
         "_ub_info": [[64000, 64000]]})";
 
   CompileInfoTransdataDSL op_compile_info;
@@ -374,7 +363,6 @@ TEST_F(TransdataTiling, TransdataTiling5) {
   op_compile_info.src_pad = {0, 2, 0};
   op_compile_info.src_fuse = {0, 1, 2};
   op_compile_info.permute = {0, 1, 3, 2};
-  op_compile_info.unknown_dims = {};
   op_compile_info.ub_info = {{64000, 64000}};
 
   vector<vector<int64_t>> inputs {
@@ -415,7 +403,6 @@ TEST_F(TransdataTiling, TransdataTiling6) {
             "_src_fuse": [0, 1, 3],
             "_pattern": "Transdata",
             "_common_info": [0, 16, 16, 32, 0, 0],
-            "_unknown_dims": [],
             "_ub_info": [[32000, 32000]]})";
 
   CompileInfoTransdataDSL op_compile_info;
@@ -429,7 +416,6 @@ TEST_F(TransdataTiling, TransdataTiling6) {
   op_compile_info.src_pad = {0, 1, 2};
   op_compile_info.src_fuse = {0, 1, 3};
   op_compile_info.permute = {0, 2, 1, 3};
-  op_compile_info.unknown_dims = {};
   op_compile_info.ub_info = {{32000, 32000}};
 
   vector<vector<int64_t>> inputs {
@@ -462,7 +448,7 @@ TEST_F(TransdataTiling, TransdataTiling6) {
   ASSERT_TRUE(transdata.DoTiling());
 }
 
-TEST_F(TransdataTiling, TransdataTiling8) {
+TEST_F(TransdataTiling, TransdataTiling7) {
   std::string compileInfo = R"(
               { "_pad_factor": 16,
                 "_src_pad": [0, 1, 2],
@@ -470,7 +456,6 @@ TEST_F(TransdataTiling, TransdataTiling8) {
                 "_src_fuse": [0, 1, 3],
                 "_pattern": "Transdata",
                 "_common_info": [0, 16, 16, 32, 1, 1],
-                "_unknown_dims": [],
                 "_ub_info": [[32000, 32000]]})";
 
   CompileInfoTransdataDSL op_compile_info;
@@ -484,7 +469,6 @@ TEST_F(TransdataTiling, TransdataTiling8) {
   op_compile_info.src_pad = {0, 1, 2};
   op_compile_info.src_fuse = {0, 1, 3};
   op_compile_info.permute = {0, 2, 1, 3};
-  op_compile_info.unknown_dims = {};
   op_compile_info.ub_info = {{32000, 32000}};
 
   vector<vector<int64_t>> inputs {
@@ -514,5 +498,167 @@ TEST_F(TransdataTiling, TransdataTiling8) {
   classify.GetInputOutput(input, output, reshape);
   int64_t sch_branch = classify.ChooseStrategy(input, output);
   TransdataGeneral transdata("Transdata", op_compile_info, runInfo, input, output, reshape);
+  ASSERT_TRUE(transdata.DoTiling());
+}
+
+// BorrowN
+TEST_F(TransdataTiling, TransdataTiling8) {
+  std::string compileInfo = R"(
+                { "_pad_factor": 16,
+                  "_src_pad": [0, 1, 2],
+                  "_permute": [0, 2, 1, 3],
+                  "_src_fuse": [0, 1, 3],
+                  "_pattern": "Transdata",
+                  "_common_info": [0, 16, 16, 32, 1, 1],
+                  "_ub_info": [[32000, 32000], [65280]]})";
+
+  CompileInfoTransdataDSL op_compile_info;
+  op_compile_info.is_forward = 0;
+  op_compile_info.align_size = 16;
+  op_compile_info.pad_align_size = 16;
+  op_compile_info.core_num = 32;
+  op_compile_info.is_const = 1;
+  op_compile_info.is_const_compile = 1;
+
+  op_compile_info.src_pad = {0, 1, 2};
+  op_compile_info.src_fuse = {0, 1, 3};
+  op_compile_info.permute = {0, 2, 1, 3};
+  op_compile_info.ub_info = {{32000, 32000}, {65280}};
+
+  vector<vector<int64_t>> inputs {
+          {16, 2, 56, 56, 16}
+  };
+  vector<vector<int64_t>> outputs {
+          {16, 56, 56, 21}
+  };
+
+  ge::DataType dtype = ge::DT_FLOAT16;
+  ge::OpDescPtr op_desc = std::make_shared<ge::OpDesc>();
+
+  for (std::size_t i = 0; i < inputs.size(); i++) {
+  contruct_tensor(op_desc, inputs[i], dtype);
+  }
+  for (std::size_t i = 0; i < outputs.size(); i++) {
+  contruct_tensor(op_desc, outputs[i], dtype, false);
+  }
+
+  ge::Operator op_paras = ge::OpDescUtils::CreateOperatorFromOpDesc(op_desc);
+  optiling::utils::OpRunInfo runInfo;
+  // main process
+  Shape input;
+  Shape output;
+  Shape reshape;
+  TransdataClassify classify(op_paras, op_compile_info);
+  classify.GetInputOutput(input, output, reshape);
+  int64_t sch_branch = classify.ChooseStrategy(input, output);
+  TransdataBN transdata("Transdata", op_compile_info, runInfo, input, output);
+  ASSERT_TRUE(transdata.DoTiling());
+}
+
+// BorrowN
+TEST_F(TransdataTiling, TransdataTiling9) {
+  std::string compileInfo = R"(
+                  { "_pad_factor": 16,
+                    "_src_pad": [1, 2],
+                    "_permute": [1, 0, 2],
+                    "_src_fuse": [0, 1],
+                    "_pattern": "Transdata",
+                    "_common_info": [0, 16, 16, 32, 0, 0],
+                    "_ub_info": [[32000, 32000], [65280]]})";
+
+  CompileInfoTransdataDSL op_compile_info;
+  op_compile_info.is_forward = 0;
+  op_compile_info.align_size = 16;
+  op_compile_info.pad_align_size = 16;
+  op_compile_info.core_num = 32;
+  op_compile_info.is_const = 0;
+  op_compile_info.is_const_compile = 0;
+
+  op_compile_info.src_pad = {1, 2};
+  op_compile_info.src_fuse = {0, 1};
+  op_compile_info.permute = {1, 0, 2};
+  op_compile_info.ub_info = {{32000, 32000}, {65280}};
+
+  vector<vector<int64_t>> inputs {
+          {2, 56, 56, 16}
+  };
+  vector<vector<int64_t>> outputs {
+          {56, 56, 21}
+  };
+
+  ge::DataType dtype = ge::DT_FLOAT16;
+  ge::OpDescPtr op_desc = std::make_shared<ge::OpDesc>();
+
+  for (std::size_t i = 0; i < inputs.size(); i++) {
+  contruct_tensor(op_desc, inputs[i], dtype);
+  }
+  for (std::size_t i = 0; i < outputs.size(); i++) {
+  contruct_tensor(op_desc, outputs[i], dtype, false);
+  }
+
+  ge::Operator op_paras = ge::OpDescUtils::CreateOperatorFromOpDesc(op_desc);
+  optiling::utils::OpRunInfo runInfo;
+  // main process
+  Shape input;
+  Shape output;
+  Shape reshape;
+  TransdataClassify classify(op_paras, op_compile_info);
+  classify.GetInputOutput(input, output, reshape);
+  int64_t sch_branch = classify.ChooseStrategy(input, output);
+  TransdataBN transdata("Transdata", op_compile_info, runInfo, input, output);
+  ASSERT_TRUE(transdata.DoTiling());
+}
+
+// BorrowN Support FP32 + Forward
+TEST_F(TransdataTiling, TransdataTiling10) {
+  std::string compileInfo = R"(
+                    { "_pad_factor": 16,
+                      "_src_pad": [0, 0, 2],
+                      "_permute": [0, 2, 1, 3],
+                      "_src_fuse": [0, 1, 3],
+                      "_pattern": "Transdata",
+                      "_common_info": [1, 8, 16, 32, 0, 0],
+                      "_ub_info": [[32640, 16256], [65280]]})";
+
+  CompileInfoTransdataDSL op_compile_info;
+  op_compile_info.is_forward = 1;
+  op_compile_info.align_size = 8;
+  op_compile_info.pad_align_size = 16;
+  op_compile_info.core_num = 32;
+  op_compile_info.is_const = 0;
+  op_compile_info.is_const_compile = 0;
+
+  op_compile_info.src_pad = {0, 0, 2};
+  op_compile_info.src_fuse = {0, 1, 3};
+  op_compile_info.permute = {0, 2, 1, 3};
+  op_compile_info.ub_info = {{32640, 16256}, {65280}};
+
+  vector<vector<int64_t>> inputs {
+          {2, 32, 16, 47}
+  };
+  vector<vector<int64_t>> outputs {
+          {2, 3, 32, 16, 16}
+  };
+
+  ge::DataType dtype = ge::DT_FLOAT;
+  ge::OpDescPtr op_desc = std::make_shared<ge::OpDesc>();
+
+  for (std::size_t i = 0; i < inputs.size(); i++) {
+  contruct_tensor(op_desc, inputs[i], dtype);
+  }
+  for (std::size_t i = 0; i < outputs.size(); i++) {
+  contruct_tensor(op_desc, outputs[i], dtype, false);
+  }
+
+  ge::Operator op_paras = ge::OpDescUtils::CreateOperatorFromOpDesc(op_desc);
+  optiling::utils::OpRunInfo runInfo;
+  // main process
+  Shape input;
+  Shape output;
+  Shape reshape;
+  TransdataClassify classify(op_paras, op_compile_info);
+  classify.GetInputOutput(input, output, reshape);
+  int64_t sch_branch = classify.ChooseStrategy(input, output);
+  TransdataBN transdata("Transdata", op_compile_info, runInfo, input, output);
   ASSERT_TRUE(transdata.DoTiling());
 }

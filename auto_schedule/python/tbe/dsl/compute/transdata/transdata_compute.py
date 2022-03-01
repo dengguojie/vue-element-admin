@@ -37,6 +37,7 @@ class TransdataComputation(abc.ABC):
     """
     TransdataComputation
     """
+
     def __init_subclass__(cls, **kwargs):
         _computes[cls.get_category()] = cls
 

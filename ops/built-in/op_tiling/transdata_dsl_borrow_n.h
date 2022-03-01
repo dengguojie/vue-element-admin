@@ -15,28 +15,22 @@
  */
 
 /*!
- * \file transdata_dsl_general.h
- * \brief dynamic transdata_dsl_general op tiling
+ * \file transdata_dsl_borrow_n.h
+ * \brief dynamic transdata_dsl_borrow_n op tiling
  */
 
-#ifndef TRANSDATA_DSL_GENERAL_H
-#define TRANSDATA_DSL_GENERAL_H
+#ifndef TRANSDATA_DSL_BORROW_N_H
+#define TRANSDATA_DSL_BORROW_N_H
 
 #include "transdata_dsl.h"
 
 namespace optiling {
-constexpr float GENERAL_THRESHOLD = 0.95;
-
-struct GeneralTilingInfo {
+struct TDBNTilingInfo {
   int64_t blk_dim;
   int64_t blk_factor;
   int64_t ub_0_factor;
   int64_t ub_1_factor;
-  int64_t mte2_burst_len;
-  int64_t mte3_burst_len;
   int64_t core;
-  bool split_once;
-  float percent;
   size_t blk_idx;
   size_t ub_0_idx;
   size_t ub_1_idx;
@@ -46,35 +40,26 @@ struct GeneralTilingInfo {
     blk_factor = 0;
     ub_0_factor = 0;
     ub_1_factor = 0;
-    mte2_burst_len = 0;
-    mte3_burst_len = 0;
     core = 0;
-    split_once = false;
-    percent = 0;
     blk_idx = 0;
     ub_0_idx = 0;
     ub_1_idx = 0;
   }
 
-  void UBInfoSet(size_t ptrA, size_t ptrB, int64_t factorA, int64_t factorB, int64_t mte2_rate, int64_t mte3_rate,
-                 float ub_percent, int64_t possible_core, bool once_split) {
+  void UBInfoSet(size_t ptrA, size_t ptrB, int64_t factorA, int64_t factorB, int64_t possible_core) {
     ub_0_idx = ptrA;
     ub_1_idx = ptrB;
     ub_0_factor = factorA;
     ub_1_factor = factorB;
-    mte2_burst_len = mte2_rate;
-    mte3_burst_len = mte3_rate;
-    percent = ub_percent;
     core = possible_core;
-    split_once = once_split;
   }
 
-  GeneralTilingInfo() {
+  TDBNTilingInfo() {
     Reset();
   }
 };
 
-struct GeneralSplit {
+struct TDBNSplit {
   size_t ptrA;
   size_t ptrB;
 
@@ -88,23 +73,22 @@ struct GeneralSplit {
     ptrB = b;
   }
 
-  GeneralSplit() {
+  TDBNSplit() {
     Reset();
   }
 };
 
-class TransdataGeneral {
+class TransdataBN {
  public:
-  explicit TransdataGeneral(const std::string& _op_type, const CompileInfoTransdataDSL& _compileInfo, utils::OpRunInfo& _run_info,
-                            const Shape& _input, const Shape& _output, const Shape& _reshape)
+  explicit TransdataBN(const std::string& _op_type, const CompileInfoTransdataDSL& _compileInfo, utils::OpRunInfo& _run_info,
+                       Shape& _input, Shape& _output)
       : op_type(_op_type),
         compileInfo(_compileInfo),
         run_info(_run_info),
         input(_input),
-        output(_output),
-        reshape(_reshape) {
+        output(_output){
   }
-  ~TransdataGeneral() {
+  ~TransdataBN() {
   }
   bool DoTiling();
 
@@ -112,32 +96,22 @@ class TransdataGeneral {
   const std::string& op_type;
   const CompileInfoTransdataDSL& compileInfo;
   utils::OpRunInfo& run_info;
-  const Shape& input;
-  const Shape& output;
-  const Shape& reshape;
-  GeneralTilingInfo tilingInfo;
-
-  bool is_last_transpose{false};
-  bool is_data_move{true};
-  bool split_once{false};
-  float percent{0};
-
-  size_t c1_index{0};
-  size_t c0_index{0};
-  size_t computeType{BASE_SCH};
-  size_t shapeType{COMMON_ALIGN};
-  // reshape mapping output
-  size_t r_mapping_o[MAX_DIM] = {0};
+  Shape& input;
+  Shape& output;
 
   Shape tiling_input;
   Shape tiling_output;
-
+  size_t c_index{0};
+  size_t c1_index{0};
+  size_t c0_index{0};
+  std::vector<size_t> permute{std::vector<size_t>(MAX_DIM, 0)};
+  size_t computeType{BORROW_N_SCH};
+  size_t shapeType{STORAGE_ALIGN};
   size_t array_size{0};
-  GeneralSplit split_array[MAX_DIM];
+  TDBNSplit split_array[MAX_DIM];
 
-  MTEInfo mte2;
-  MTEInfo mte3;
-
+  bool has_dim_n{true};
+  bool is_reinterpret{false};
   size_t ptrI{0};
   size_t ptrO{0};
   int64_t UBSize{0};
@@ -145,15 +119,17 @@ class TransdataGeneral {
   int64_t factorO{0};
   int64_t core{0};
   int64_t num_in_ub{0};
+  int64_t align_size{0};
   int64_t ele_byte{0};
   int64_t mte_rate{0};
-  int64_t total_num{0};
+  MTEInfo mte3;
+  TDBNTilingInfo tilingInfo;
 
  private:
   bool CalcTiling();
   bool WriteTilingData();
-
-  bool Init();
+  bool InitBackward();
+  bool InitForward();
   bool IsConstRuntime();
   bool Strategy();
   bool UBTiling();
@@ -163,23 +139,15 @@ class TransdataGeneral {
   void BlkTilingProcess(const AxisType* type_array, const Shape& res);
 
  private:
-  int64_t CommonAlignLimit(int64_t factor) const;
-  int64_t CalcTilingKey();
-  bool ChooseType(int64_t dim_len, int64_t ub_size) const;
-  bool CheckValidSplit(size_t ptrA, size_t ptrB) const;
+  bool InferTilingInput();
   bool OnceTiling();
-  bool TwiceTiling();
-  bool InitUBFactorMTE2(int64_t lower, int64_t higher);
-  bool InitUBFactorMTE3(int64_t lower, int64_t higher);
-
-  void SetStorageAlign(Shape& input_shape, Shape& output_shape, const Shape& ori_input) const;
   void CompareTiling();
-  void AdjustUBFactor();
-  void AdjustUBFactorMTE2(int64_t lower, int64_t higher);
-  void AdjustUBFactorMTE3(int64_t lower, int64_t higher);
+  void AdjustUBFactorForward();
+  void AdjustUBFactorBackward();
   void GetOutputRealTail(int64_t ptr, int64_t factor, MTEInfo& mte);
   void DiscriminationAxisType(AxisType* type_array, size_t length);
+  int64_t CalcTilingKey();
 };
 }  // namespace optiling
 
-#endif  // TRANSDATA_DSL_GENERAL_H
+#endif  // TRANSDATA_DSL_BORROW_N_H

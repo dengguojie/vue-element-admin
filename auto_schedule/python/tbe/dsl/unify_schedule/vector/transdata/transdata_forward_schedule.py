@@ -162,11 +162,11 @@ class TransForwardSchedule(TransdataBaseSchedule):
         self.split_once = case.ub_split_second_idx == case.ub_split_first_idx
 
         case.block_factor = case.block_factor if case.block_factor else var_inner("_block_factor", (1, None))
-        case.ub_first_factor = \
-            case.ub_first_factor if case.ub_first_factor else var_inner("_ub_first_factor", (1, None))
+        case.ub_first_factor = case.ub_first_factor if case.ub_first_factor \
+            else var_inner("_ub_first_factor", (1, None))
         if not self.split_once:
-            case.ub_second_factor = \
-                case.ub_second_factor if case.ub_second_factor else var_inner("_ub_second_factor", (1, None))
+            case.ub_second_factor = case.ub_second_factor if case.ub_second_factor \
+                else var_inner("_ub_second_factor", (1, None))
 
     def _do_tiling(self):
         self._do_ub_tiling()
@@ -193,16 +193,15 @@ class TransForwardSchedule(TransdataBaseSchedule):
         """
         block tiling only split axis which belong to outsiders of ub
         """
-        case = self.tiling_case
-        if case.block_split_idx == case.ub_split_first_idx:
+        if self.tiling_case.block_split_idx == self.tiling_case.ub_split_first_idx:
             tiling_axis_var = self.iter_ub_first_outer
-        elif not self.split_once and case.block_split_idx == case.ub_split_second_idx:
+        elif not self.split_once and self.tiling_case.block_split_idx == self.tiling_case.ub_split_second_idx:
             tiling_axis_var = self.iter_ub_second_outer
         else:
-            tiling_axis_var = self.tiling_axes[case.block_split_idx]
+            tiling_axis_var = self.tiling_axes[self.tiling_case.block_split_idx]
 
         self.iter_block_outer, self.iter_block_inner = \
-            self.schedule[self.tiling_tensor].split(tiling_axis_var, factor=case.block_factor)
+            self.schedule[self.tiling_tensor].split(tiling_axis_var, factor=self.tiling_case.block_factor)
 
     def _do_reorder(self):
         """
@@ -238,33 +237,26 @@ class TransForwardSchedule(TransdataBaseSchedule):
         outer.add(split_o)
         outer = list(outer)
         outer.sort()
-        outside = []
+        _outside = []
         for idx in outer:
             if idx == split_b:
-                outside.extend([self.iter_block_outer, self.iter_block_inner])
+                _outside.extend([self.iter_block_outer, self.iter_block_inner])
             elif idx == split_i:
-                outside.append(self.iter_ub_first_outer)
+                _outside.append(self.iter_ub_first_outer)
             elif idx == split_o:
-                outside.append(self.iter_ub_second_outer)
+                _outside.append(self.iter_ub_second_outer)
             else:
-                outside.append(self.tiling_axes[idx])
+                _outside.append(self.tiling_axes[idx])
 
-        self.ub_outer = outside[-1]
         self.ub_inner = self.reorder_list[0]
-        self.reorder_list = outside + self.reorder_list
+        self.ub_outer = _outside[-1]
+        self.reorder_list = _outside + self.reorder_list
         self.schedule[self.tiling_tensor].reorder(*self.reorder_list)
 
-        # While n_last_transpose and forward
-        # NHC1C0 -> NC1HC0, H more likely than C1,
-        # swaps(C1,H) help vector_or more effective.
-        if not self.graph_info.is_last_transpose:
-            _reorder = [self.transpose_tensor.op.axis[x] for x in self.graph_info.permute]
-            self.schedule[self.transpose_tensor].reorder(*_reorder)
-
     def _do_storage_bound(self):
-        for stage_tensor in self.forward_stage_graph_map:
-            ub_count = self.tiling_case.tensor_ub_size_list[self.tiling_case.shape_type]
-            self.schedule[stage_tensor].set_buffer_size(ub_count)
+        for stage in self.forward_stage_graph_map:
+            buffer_size = self.tiling_case.tensor_ub_size_list[self.tiling_case.shape_type]
+            self.schedule[stage].set_buffer_size(buffer_size)
 
     def _do_set_constraint(self):
         case = self.tiling_case
@@ -374,9 +366,8 @@ class TransForwardSchedule(TransdataBaseSchedule):
     def _calc_multi_core(self):
         if self.need_multi_core:
             idx = self.reorder_list.index(self.iter_block_outer)
-            fused_list = self.reorder_list[:idx + 1]
-            fused_axis = self.schedule[self.tiling_tensor].fuse(*fused_list)
-            self.multi_core_fused_axis = fused_axis
+            forward_fused_list = self.reorder_list[:idx + 1]
+            self.multi_core_fused_axis = self.schedule[self.tiling_tensor].fuse(*forward_fused_list)
             self.multi_core_bind_tensor = self.tiling_tensor
 
     def _calc_compute_at(self):
@@ -388,13 +379,18 @@ class TransForwardSchedule(TransdataBaseSchedule):
     def _transpose_emit_insn(self):
         emit_idx, insn = self._calc_permute_in_ub()
         if insn == "vector_transpose":
+            # last-transpose
             iter = self.transpose_tensor.op.axis[emit_idx]
             src_in_dst_order = tvm.expr.Call('handle', 'tvm_tuple', self.permute, tvm.expr.Call.PureIntrinsic, None, 0)
             self.emit_insn_map[self.transpose_tensor] = {"scope": iter, "instruction": "vector_transpose",
                                                          "src_in_dst_order": src_in_dst_order}
         elif insn in ["vector_or", "dma_copy"]:
-            self.emit_insn_map[self.transpose_tensor] = {"scope": self.transpose_tensor.op.axis[emit_idx],
-                                                         "instruction": insn}
+            # While n-last-transpose and forward NHC1C0 -> NC1HC0, H more likely than C1,
+            # swaps(C,H) help vector_or more effective.
+            # not last-transpose
+            _reorder = [self.transpose_tensor.op.axis[x] for x in self.graph_info.permute]
+            self.schedule[self.transpose_tensor].reorder(*_reorder)
+            self.emit_insn_map[self.transpose_tensor] = {"scope": _reorder[0], "instruction": insn}
 
     def _calc_emit_insn(self):
         self.emit_insn_map.clear()

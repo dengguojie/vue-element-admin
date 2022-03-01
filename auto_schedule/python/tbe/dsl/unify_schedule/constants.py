@@ -132,6 +132,8 @@ class TransdataCategory:
     """
     GENERAL_FORWARD = "general.forward"
     GENERAL_BACKWARD = "general.backward"
+    BORROW_N_B8B16_BACKWARD = "borrow.n.b8b16.backward"
+    BORROW_N_B8B16_FORWARD = "borrow.n.b8b16.forward"
 
 
 class ConcatPattern:
@@ -273,7 +275,7 @@ DST_SRC_NO_REUSE_SET = {
 }
 
 # support scalar insn
-# example: tensor - scalar
+# example: tensor support scalar
 SUPPORT_SCALAR_INSNS = [
     "elewise_binary_add",
     "elewise_binary_sub",

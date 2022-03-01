@@ -36,7 +36,7 @@ from tbe.dsl.base.operation import get_context
 from tbe.common.utils.errormgr import get_error_message
 from tbe.common.platform.platform_info import get_soc_spec
 from tbe.dsl.unify_schedule.constants import DTYPE_BYTE_MAPPING
-from tbe.dsl.unify_schedule.constants import TransdataCategory
+from tbe.dsl.unify_schedule.constants import TransdataCategory as TCategory
 
 
 class ComputeGraphInfo:
@@ -69,8 +69,8 @@ class ComputeGraphInfo:
         self.de_pad_tensor_set: Set[Tensor] = set()
         self.f_reshape_tensor_set: Set[Tensor] = set()
         self.s_reshape_tensor_set: Set[Tensor] = set()
-
         self.coexisting_quantities: Optional[Dict] = None
+
         self.category = None
         self.is_forward = False
         self.permute: List = list()
@@ -78,6 +78,8 @@ class ComputeGraphInfo:
         self.reshape = None
         self.c1c0_idx_base_on_output: List = list()
 
+        self.c_idx_base_on_output: List = list()
+        self.transpose_2_tensor = None
         self._collect_info(output_tensors)
         self._collect_transdata_info()
         self._max_ub_count()
@@ -140,31 +142,52 @@ class ComputeGraphInfo:
                 self.mid_tensor_set.add(tensor)
 
     def _collect_transdata_info(self):
-        def _get_reshape(tensor):
-            axes = []
-            for x in list(tensor.op.attrs["axes"]):
-                if isinstance(x, tvm.container.Array):
-                    axes.append([int(j) for j in list(x)])
-                else:
-                    axes.append(int(x))
-            return axes
-
         current_compute = get_context().get_current_compute()
         self.category = current_compute.get("_transdata_category")
-        if self.category in [TransdataCategory.GENERAL_BACKWARD, TransdataCategory.GENERAL_FORWARD]:
+        if self.category in [TCategory.GENERAL_BACKWARD, TCategory.GENERAL_FORWARD]:
+            self._base_collect_transdata_info()
+        elif self.category in [TCategory.BORROW_N_B8B16_BACKWARD, TCategory.BORROW_N_B8B16_FORWARD]:
+            self._bn_collect_transdata_info()
 
-            self.is_forward = True if self.category == TransdataCategory.GENERAL_FORWARD else False
-            self.permute = [int(x) for x in list(list(self.transpose_tensor_set)[0].op.attrs["permute"])]
-            self.is_last_transpose = self.permute[-1] != len(self.permute) - 1
+    def _base_collect_transdata_info(self):
+        self.is_forward = True if self.category == TCategory.GENERAL_FORWARD else False
+        self.permute = [int(x) for x in list(list(self.transpose_tensor_set)[0].op.attrs["permute"])]
+        self.is_last_transpose = self.permute[-1] != len(self.permute) - 1
+        self.reshape = get_reshape(list(self.s_reshape_tensor_set)[0]) if self.is_forward else \
+            get_reshape(list(self.f_reshape_tensor_set)[0])
 
-            if self.is_forward:
-                self.reshape = _get_reshape(list(self.s_reshape_tensor_set)[0])
-            else:
-                self.reshape = _get_reshape(list(self.f_reshape_tensor_set)[0])
+        for j in self.reshape:
+            if isinstance(j, (list, tuple)) and len(j) >= 2:
+                self.c1c0_idx_base_on_output.append([self.permute[x] for x in j] if self.is_forward else j)
 
-            for j in self.reshape:
+    def _bn_collect_transdata_info(self):
+        # In backward, tiling would not split C (combined by c1 and c0), find C base on transpose_2_tensor
+        # In forward, tiling would not split c1 and c0, find c1\c0 base on transpose_2_tensor
+        transpose_1_tensor = None
+        for tensor in self.transpose_tensor_set:
+            perm = [int(x) for x in tensor.op.attrs["permute"]]
+            if perm[-1] == len(perm) - 1:
+                transpose_1_tensor = tensor
+
+        self.is_forward = True if self.category == TCategory.BORROW_N_B8B16_FORWARD else False
+        if not self.is_forward:
+            # f0->t2(N,H,C1*C0,16)->(N,H,C,16)->(N,16,H,C)
+            f_reshape_0_tensor = list(self.tensor_consumers_map.get(transpose_1_tensor, None))[0]
+            reshape = get_reshape(f_reshape_0_tensor)
+            for idx, value in enumerate(reshape):
+                if isinstance(value, (list, tuple)) and len(value) >= 2:
+                    self.c_idx_base_on_output.append(idx + 1)
+        else:
+            # s1->t2(N,H,C1,C0,16)->(N,C1,H,C0,16)->(N,16,C1,H,C0)
+            s_reshape_1_tensor = list(self.tensor_producers_map.get(transpose_1_tensor, None))[0]
+            reshape = get_reshape(s_reshape_1_tensor)
+            perm = [int(x) for x in transpose_1_tensor.op.attrs["permute"]]
+            for i, j in enumerate(reshape):
                 if isinstance(j, (list, tuple)) and len(j) >= 2:
-                    self.c1c0_idx_base_on_output.append([self.permute[x] for x in j] if self.is_forward else j)
+                    self.c_idx_base_on_output.extend([perm.index(x) + 1 for x in j])
+
+        reshape_tensor = list(self.tensor_producers_map.get(list(self.output_tensor_set)[0], None))[0]
+        self.transpose_2_tensor = list(self.tensor_producers_map.get(reshape_tensor, None))[0]
 
     def _max_ub_count(self):
         def _analysis_dependent(dependent):
@@ -300,8 +323,11 @@ class ComputeGraphInfo:
             temp_value = 4 * DTYPE_BYTE_MAPPING[node_list[0][0]]
             temp_value = temp_value if temp_value > max_value else max_value
             tiling_case.tensor_ub_size_list.append(soc_ub_size // temp_value // 128 * 128)
+        elif tiling_case.ub_category == 1:
+            # sch only choose storage_align (shape_type is 0)
+            tiling_case.tensor_ub_size_list.append(soc_ub_size // max_value // 128 * 128)
         else:
-            dict_args = {"errCode": "E90001", "detailed_cause": "ub_category isn't 0"}
+            dict_args = {"errCode": "E90001", "detailed_cause": "ub_category isn't 0 or 1"}
             raise RuntimeError(dict_args, get_error_message(dict_args))
 
     @staticmethod
@@ -310,3 +336,29 @@ class ComputeGraphInfo:
         deep copy tensor map
         """
         return {key: _map[key].copy() for key in _map}
+
+
+def get_reshape(tensor_):
+    """
+    Get reshape-info from reshape-tensor
+    """
+    axes = []
+    if tensor_ is not None:
+        for x in list(tensor_.op.attrs["axes"]):
+            if isinstance(x, tvm.container.Array):
+                axes.append([int(j) for j in list(x)])
+            else:
+                axes.append(int(x))
+    return axes
+
+
+def choose_transpose_insn(perm):
+    """
+    According to the perm to decide use which instruction
+    """
+    emit_idx = 0
+    if perm[-1] != len(perm) - 1:
+        insn = "vector_transpose"
+    else:
+        insn = "dma_copy"
+    return emit_idx, insn

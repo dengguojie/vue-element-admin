@@ -87,6 +87,7 @@ auto_schedule:
       - auto_schedule/python/tbe/dsl/base/classifier/reduce_classifier.py
       - auto_schedule/python/tbe/dsl/base/classifier/reduce_helper.py
       - auto_schedule/python/tbe/dsl/base/classifier/unknown_reduce_classifier.py
+      - auto_schedule/python/tbe/dsl/base/classifier/transdata/constants.py
       - auto_schedule/python/tbe/dsl/base/classifier/util.py
       - auto_schedule/python/tbe/dsl/base/classifier/split_classifier.py
       - auto_schedule/python/tbe/dsl/base/context.py
@@ -102,6 +103,7 @@ auto_schedule:
       - auto_schedule/python/tbe/dsl/compute/nn.py
       - auto_schedule/python/tbe/dsl/compute/pooling2d.py
       - auto_schedule/python/tbe/dsl/compute/reduce.py
+      - auto_schedule/python/tbe/dsl/compute/transdata/performance_transdata.py
       - auto_schedule/python/tbe/dsl/compute/util.py
       - auto_schedule/python/tbe/dsl/__init__.py
       - auto_schedule/python/tbe/dsl/static_schedule/cce_schedule_declarations.py
@@ -175,6 +177,8 @@ auto_schedule:
       - ops/built-in/op_tiling/gather_dsl.h
       - ops/built-in/op_tiling/transdata_dsl.h
       - ops/built-in/op_tiling/transdata_dsl.cc
+      - ops/built-in/op_tiling/transdata_dsl_borrow_n.cc
+      - ops/built-in/op_tiling/transdata_dsl_borrow_n.h
       - ops/built-in/op_tiling/tiling_handler.h
       - ops/built-in/op_tiling/split_dsl.cc
       - ops/built-in/op_tiling/split_dsl.h

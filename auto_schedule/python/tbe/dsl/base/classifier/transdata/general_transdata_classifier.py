@@ -17,12 +17,14 @@
 """
 general transdata
 """
+import copy
 from tbe.dsl.base import operation
 from .transdata_classifier import TransdataClassify
-
-GENERAL_FORWARD = "general.forward"
-GENERAL_BACKWARD = "general.backward"
-UNKNOWN_DIM = -1
+from .constants import DTYPE_BYTE, REINTERPRET_MAP
+from .constants import PACKET_SENDING_RATE, UNKNOWN_DIM
+from .constants import GENERAL_FORWARD, GENERAL_BACKWARD, BORROW_N_B8B16_BACKWARD, BORROW_N_B8B16_FORWARD
+from .constants import BLOCK, B8, B16, B32, B64
+from .constants import DO_NOTHING, DO_PAD, DO_TRANSPOSE_PAD
 
 
 class GeneralForwardClassify(TransdataClassify):
@@ -108,19 +110,18 @@ class GeneralForwardClassify(TransdataClassify):
 
     def _add_compile_info(self, src_list):
         """
-        _src_pad has three model: 0 is not pad, 1 is do pad, 2 is do_transpose_pad
+        _src_pad has three model: 0 is not pad, 1 is do pad, 2 is DO_TRANSPOSE_PAD
         """
         _src_pad = []
-        do_nothing, do_pad, do_transpose_pad = 0, 1, 2
         for key, value in self._axes_map.items():
             if isinstance(value, int):
-                _src_pad.append(do_nothing)
+                _src_pad.append(DO_NOTHING)
             elif isinstance(value, (list, tuple)) and len(value) == 1:
-                _src_pad.append(do_pad)
+                _src_pad.append(DO_PAD)
                 pad_factor = self._dst_shape[value[0]]
                 operation.add_compile_info_inner("_pad_factor", pad_factor)
             else:
-                _src_pad.append(do_transpose_pad)
+                _src_pad.append(DO_TRANSPOSE_PAD)
                 pad_factor = self._dst_shape[value[-1]]
                 operation.add_compile_info_inner("_pad_factor", pad_factor)
 
@@ -135,7 +136,64 @@ class GeneralForwardClassify(TransdataClassify):
         self._ins[0]["transdata_category"] = GENERAL_FORWARD
         self._ins[1] = self._dst_shape
         self._ins[2] = self._axes_map
-        return [self._ins, ]
+        return self._handle_high_performance_branch(self._ins)
+
+    def _handle_high_performance_branch(self, ins):
+        """
+        EG: HWC -> C1HWC0: [1, H, W, C] -> [1, C1, H, W, C0]
+        """
+        # Don't use high-mode(dynamic, const)
+        is_do_transpose = self.dst != sorted(self.dst)
+        is_n_last_transpose = self.dst[-1] == len(self.dst) - 1
+        if not (is_do_transpose and is_n_last_transpose):
+            return [ins, ]
+        # Don't use high-mode (const)
+        if _is_const(self._src_shape):
+            block_size = BLOCK // DTYPE_BYTE.get(self._dtype, 1)
+            mte2_burst_len = PACKET_SENDING_RATE // DTYPE_BYTE.get(self._dtype, 1)
+            c, h = self._src_shape[-1], self._src_shape[-2]
+            if c >= mte2_burst_len or h * c < block_size or c % block_size == 0:
+                return [ins, ]
+
+        def update_axes_map():
+            _map = {0: 0}
+            for k, v in self._axes_map.items():
+                _map[k + 1] = tuple(x + 1 for x in v) if isinstance(v, (tuple, list)) else v + 1
+            return _map
+
+        # Pad-One while src don't have dim N
+        src_shape = self._src_shape.copy()
+        dst_shape = self._dst_shape.copy()
+        axes_map = self._axes_map.copy()
+        dtype = self._dtype
+        if not (self.dst[0] == 0):
+            src_shape = [1] + src_shape
+            dst_shape = [1] + dst_shape
+            axes_map = update_axes_map()
+        # Reinterpret fp32-tensor by fp16-mode
+        bit_size = DTYPE_BYTE.get(dtype, None)
+        if bit_size in [B32, B64]:
+            dtype = REINTERPRET_MAP.get(dtype, None)
+            src_shape = src_shape + [bit_size // B16, ]
+            dst_shape = dst_shape + [bit_size // B16, ]
+            axes_map[len(axes_map)] = len(dst_shape) - 1
+
+        # Update compileInfo while const
+        # Update result
+        _ins = copy.deepcopy(ins)
+        if bit_size in [B32, B64]:
+            _ins[0]["ori_bit"] = bit_size
+        _ins[0]["transdata_category"] = BORROW_N_B8B16_FORWARD
+        _ins[0]["shape"] = src_shape
+        _ins[0]["dtype"] = dtype
+        _ins[0]["range"] = [[1, None] if x == UNKNOWN_DIM else [x, x] for x in src_shape]
+        _ins[1] = dst_shape
+        _ins[2] = axes_map
+        if _is_const(src_shape):
+            _update_const_compile_info(_ins[2], is_forward=True)
+            return [_ins, ]
+        else:
+            return [ins, _ins]
 
 
 class GeneralBackwardClassify(TransdataClassify):
@@ -225,16 +283,15 @@ class GeneralBackwardClassify(TransdataClassify):
         _src_pad has three model: 0 is not pad, 1 is do pad, 2 is do split and pad
         """
         _src_pad = []
-        do_nothing, do_pad, do_transpose_pad = 0, 1, 2
         for key, value in self._axes_map.items():
             if isinstance(key, int):
-                _src_pad.append(do_nothing)
+                _src_pad.append(DO_NOTHING)
             elif isinstance(key, (list, tuple)) and len(key) == 1:
-                _src_pad.append(do_pad)
+                _src_pad.append(DO_PAD)
                 pad_factor = self._src_shape[key[0]]
                 operation.add_compile_info_inner("_pad_factor", pad_factor)
             else:
-                _src_pad.append(do_transpose_pad)
+                _src_pad.append(DO_TRANSPOSE_PAD)
                 pad_factor = self._src_shape[key[-1]]
                 operation.add_compile_info_inner("_pad_factor", pad_factor)
 
@@ -249,7 +306,68 @@ class GeneralBackwardClassify(TransdataClassify):
         self._ins[0]["transdata_category"] = GENERAL_BACKWARD
         self._ins[1] = self._dst_shape
         self._ins[2] = self._axes_map
-        return [self._ins, ]
+        return self._handle_high_performance_branch(self._ins)
+
+    def _handle_high_performance_branch(self, ins):
+        """
+        EG: C1HWC0 -> HWC1C0: [1,C1,H,W,C0] -> [1,H,W,C1,C0]
+        """
+        # Don't use high-mode (dynamic, const)
+        is_do_transpose = self.src != sorted(self.src)
+        is_n_last_transpose = self.src[-1] == len(self.src) - 1
+        if not (is_do_transpose and is_n_last_transpose):
+            return [ins, ]
+        # Don't use high-mode (const)
+        if _is_const(self._src_shape):
+            block_size = BLOCK // DTYPE_BYTE.get(self._dtype, 1)
+            mte3_burst_len = PACKET_SENDING_RATE // DTYPE_BYTE.get(self._dtype, 1)
+            c, h = self._dst_shape[-1], self._dst_shape[-2]
+            if c >= mte3_burst_len or h * c < block_size or c % block_size == 0:
+                return [ins, ]
+
+        def update_axes_map():
+            _map = {0: 0, }
+            for k, v in self._axes_map.items():
+                if isinstance(k, tuple):
+                    _map[tuple(x + 1 for x in k)] = v + 1
+                else:
+                    _map[k + 1] = v + 1
+            return _map
+
+        # Pad-One while src don't have dim N
+        src_shape = self._src_shape.copy()
+        dst_shape = self._dst_shape.copy()
+        axes_map = self._axes_map.copy()
+        dtype = self._dtype
+        if not (self.src[0] == 0):
+            src_shape = [1] + src_shape
+            dst_shape = [1] + dst_shape
+            axes_map = update_axes_map()
+
+        # Reinterpret fp32-tensor by fp16-mode
+        bit_size = DTYPE_BYTE.get(dtype, None)
+        if bit_size in [B32, B64]:
+            dtype = REINTERPRET_MAP.get(dtype, None)
+            src_shape += [bit_size // B16, ]
+            dst_shape += [bit_size // B16, ]
+            axes_map[len(src_shape) - 1] = len(axes_map)
+
+        # Update compileInfo while const
+        # Update result
+        _ins = copy.deepcopy(ins)
+        if bit_size in [B32, B64]:
+            _ins[0]["ori_bit"] = bit_size
+        _ins[0]["transdata_category"] = BORROW_N_B8B16_BACKWARD
+        _ins[0]["shape"] = src_shape
+        _ins[0]["dtype"] = dtype
+        _ins[0]["range"] = [[1, None] if x == UNKNOWN_DIM else [x, x] for x in src_shape]
+        _ins[1] = dst_shape
+        _ins[2] = axes_map
+        if _is_const(src_shape):
+            _update_const_compile_info(_ins[2], )
+            return [_ins, ]
+        else:
+            return [ins, _ins]
 
 
 def _do_idx_fusion(src, dst, pad):
@@ -335,6 +453,28 @@ def _eliminate_one(src_shape, dst_shape, src, dst, pad):
         num += 1
 
     return src_shape, dst_shape, src, dst, pad
+
+
+def _update_const_compile_info(axes_map, is_forward=False):
+    """
+    Due to Pad-Dim work in last, const-shape is not matched with compileInfo,
+    need update src-pad, permute(discard src_fuse, const had been done)
+    """
+    src_pad = []
+    permute = []
+    index = 0 if not is_forward else 1
+    for var in axes_map.items():
+        if isinstance(var[index], int):
+            src_pad.append(DO_NOTHING)
+            permute.append(var[index])
+        elif isinstance(var[index], (list, tuple)) and len(var[index]) == 1:
+            src_pad.append(DO_PAD)
+            permute.extend(var[index])
+        else:
+            src_pad.append(DO_TRANSPOSE_PAD)
+            permute.extend(var[index])
+    operation.add_compile_info_inner("_src_pad", src_pad)
+    operation.add_compile_info_inner("_permute", permute)
 
 
 def _is_const(shape):

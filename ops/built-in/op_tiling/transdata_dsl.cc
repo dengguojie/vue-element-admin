@@ -19,6 +19,7 @@
  * \brief
  */
 #include "transdata_dsl_general.h"
+#include "transdata_dsl_borrow_n.h"
 
 namespace optiling {
 using namespace transdata_dsl;
@@ -113,6 +114,7 @@ void TransdataClassify::DoFusing(Shape& input, Shape& output, Shape& reshape) {
       reshape.shape[root_ptr] = SetAlign(input.shape[i], compileInfo.pad_align_size);
       root_ptr++;
     } else {
+      is_data_move = false;
       reshape.shape[root_ptr] = SetAlign(input.shape[i], compileInfo.pad_align_size) / compileInfo.pad_align_size;
       reshape.shape[root_ptr + 1] = compileInfo.pad_align_size;
       root_ptr += OFFSET_2;
@@ -135,7 +137,22 @@ void TransdataClassify::DoFusing(Shape& input, Shape& output, Shape& reshape) {
 
 int64_t TransdataClassify::ChooseStrategy(const Shape& input, const Shape& output) const {
   // only choose computeType
-  return BaseSch;
+  bool is_last_transpose = compileInfo.is_forward ?
+          compileInfo.permute[output.size - 1] != output.size - 1 :
+          compileInfo.permute[input.size - 1] != input.size - 1;
+  // choose branch
+  if (is_last_transpose || is_data_move) {
+    // last-transpose and data-move branch
+    return BASE_SCH;
+  } else {
+    // n-last-transpose-branch(NHC: C is last-dim, H is second-dim)
+    int64_t c_index = VectorIndex(compileInfo.src_pad, OFFSET_2);
+    int64_t c = compileInfo.is_forward ? input.shape[c_index] : output.shape[c_index];
+    int64_t h = compileInfo.is_forward ? input.shape[c_index - 1] : output.shape[c_index - 1];
+    bool valid_c = c % compileInfo.align_size != 0 and c < (PACKET_SENDING_RATE / (BLOCK / compileInfo.align_size));
+    bool valid_hc = h * c >= compileInfo.align_size;
+    return valid_hc and valid_c ? BORROW_N_SCH : BASE_SCH;
+  }
 }
 
 bool TransdataTilingHandler::DoTiling(const ge::Operator& op_paras, utils::OpRunInfo& run_info) const {
@@ -151,9 +168,10 @@ bool TransdataTilingHandler::DoTiling(const ge::Operator& op_paras, utils::OpRun
   if (sch_branch == 0) {
     TransdataGeneral transdata(op_type, compileInfo, run_info, input, output, reshape);
     return transdata.DoTiling();
-  } else if (sch_branch == BorrowNSch) {
-    return false;
-  } else if (sch_branch == BorrowHSch) {
+  } else if (sch_branch == BORROW_N_SCH) {
+    TransdataBN transdata(op_type, compileInfo, run_info, input, output);
+    return transdata.DoTiling();
+  } else if (sch_branch == BORROW_H_SCH) {
     return false;
   } else {
     return false;
@@ -208,7 +226,6 @@ CompileInfoTransdataDSL::CompileInfoTransdataDSL(const std::string& op_type, con
   src_pad = parsed_json_obj.at("_src_pad").get<std::vector<size_t>>();
   src_fuse = parsed_json_obj.at("_src_fuse").get<std::vector<size_t>>();
   permute = parsed_json_obj.at("_permute").get<std::vector<size_t>>();
-  unknown_dims = parsed_json_obj.at("_unknown_dims").get<std::vector<size_t>>();
   ub_info = parsed_json_obj.at("_ub_info").get<std::vector<std::vector<int64_t>>>();
 
   // collect vars

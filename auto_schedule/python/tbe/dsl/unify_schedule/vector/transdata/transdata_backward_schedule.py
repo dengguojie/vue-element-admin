@@ -208,12 +208,13 @@ class TransBackwardSchedule(TransdataBaseSchedule):
 
         def parses_factor(_case):
             # define factor
-            _case.block_factor = _case.block_factor if _case.block_factor else var_inner("_block_factor", (1, None))
-            _case.ub_first_factor = \
-                _case.ub_first_factor if _case.ub_first_factor else var_inner("_ub_first_factor", (1, None))
+            _case.block_factor = _case.block_factor if _case.block_factor \
+                else var_inner("_block_factor", (1, None))
+            _case.ub_first_factor = _case.ub_first_factor if _case.ub_first_factor \
+                else var_inner("_ub_first_factor", (1, None))
             if not self.split_once:
-                _case.ub_second_factor = \
-                    _case.ub_second_factor if _case.ub_second_factor else var_inner("_ub_second_factor", (1, None))
+                _case.ub_second_factor = _case.ub_second_factor if _case.ub_second_factor \
+                    else var_inner("_ub_second_factor", (1, None))
 
         def parses_split_one():
             """
@@ -413,9 +414,8 @@ class TransBackwardSchedule(TransdataBaseSchedule):
     def _calc_multi_core(self):
         if self.need_multi_core:
             idx = self.reorder_list.index(self.iter_block_outer)
-            fused_list = self.reorder_list[:idx + 1]
-            fused_axis = self.schedule[self.tiling_tensor].fuse(*fused_list)
-            self.multi_core_fused_axis = fused_axis
+            backward_fused_list = self.reorder_list[:idx + 1]
+            self.multi_core_fused_axis = self.schedule[self.tiling_tensor].fuse(*backward_fused_list)
             self.multi_core_bind_tensor = self.tiling_tensor
 
     def _calc_compute_at(self):

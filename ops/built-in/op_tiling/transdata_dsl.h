@@ -37,6 +37,7 @@ namespace optiling {
 constexpr size_t OFFSET_2 = 2;
 constexpr size_t STRIDE_16 = 16;
 constexpr size_t STRIDE_2 = 2;
+constexpr size_t STRIDE_3 = 3;
 constexpr int64_t MAX_DIM = 8;
 constexpr int64_t DEFAULT = -1;
 
@@ -47,16 +48,23 @@ constexpr int64_t FP16_BYTE = 2;
 constexpr int64_t FP32_BYTE = 4;
 constexpr int64_t FP32_TRANSPOSE_LIMIT = 128;
 
-constexpr int64_t BaseSch = 0;
-constexpr int64_t BorrowNSch = 1;
-constexpr int64_t BorrowHSch = 2;
-constexpr int64_t StorageAlign = 0;
-constexpr int64_t CommonAlign = 1;
+constexpr int64_t BASE_SCH = 0;
+constexpr int64_t BORROW_N_SCH = 1;
+constexpr int64_t BORROW_H_SCH = 2;
+constexpr int64_t STORAGE_ALIGN = 0;
+constexpr int64_t COMMON_ALIGN = 1;
 constexpr int64_t EXISTED_C1C0 = 2;
 
 constexpr int64_t CONST_KEY = 123;
 constexpr int64_t FORWARD_KEY = 2;
 constexpr int64_t BACKWARD_KEY = 3;
+
+enum AxisType {
+  UB_EXTERNAL = 0,
+  UB_INTERNAL = 1,
+  UB_FIRST_SPLIT = 2,
+  UB_SECOND_SPLIT = 3,
+};
 
 struct Shape {
   int64_t shape[MAX_DIM];
@@ -71,6 +79,19 @@ struct Shape {
 
   void SetSize(size_t num) {
     size = num;
+  }
+
+  void Insert(size_t index, int64_t value) {
+    if (size >= MAX_DIM || index > size || index >= MAX_DIM) {
+      return;
+    }
+    for (size_t i = index; i < size; i++) {
+      int64_t tmp = shape[i];
+      shape[i] = value;
+      value = tmp;
+    }
+    shape[size] = value;
+    size++;
   }
 
   Shape() {
@@ -94,7 +115,6 @@ struct CompileInfoTransdataDSL {
   std::vector<size_t> src_pad;
   std::vector<size_t> src_fuse;
   std::vector<size_t> permute;
-  std::vector<size_t> unknown_dims;
   std::vector<std::vector<int64_t>> ub_info;
   std::unordered_map<std::string, int32_t> const_block_dims;
 };
@@ -128,6 +148,7 @@ class TransdataClassify {
  private:
   const ge::Operator& op_paras;
   const CompileInfoTransdataDSL& compileInfo;
+  bool is_data_move{true};
   void DoFusing(Shape& input, Shape& output, Shape& reshape);
 };
 

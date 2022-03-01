@@ -99,8 +99,8 @@ bool TransdataGeneral::CheckValidSplit(size_t ptrA, size_t ptrB) const {
   bool not_split_c0 = new_c0 != ptrA and VectorIndex(compileInfo.permute, new_c0) != static_cast<int64_t>(ptrB);
 
   // Common align need tiling not split last dim
-  bool valid_common_align = shapeType != CommonAlign;
-  if (shapeType == CommonAlign) {
+  bool valid_common_align = shapeType != COMMON_ALIGN;
+  if (shapeType == COMMON_ALIGN) {
     if (compileInfo.is_forward) {
       // new_c0 base on input
       if (new_c0 != tiling_input.size - 1) {
@@ -152,10 +152,10 @@ bool TransdataGeneral::InitUBFactorMTE3(int64_t lower, int64_t higher) {
   for (int64_t factor = lower; factor <= higher; factor++) {
     // check tail
     GetOutputRealTail(ptrO, factor, mte3);
-    bool tail_is_legal = mte3.tailLen == 0 or mte3.tailLen >= compileInfo.align_size;
+    bool tail_is_legal = mte3.tailLen == 0 || mte3.tailLen >= compileInfo.align_size;
     // check main
     int64_t core_num = base_core * CeilDiv(tiling_output.shape[ptrO], factor);
-    bool main_is_legal = mte3.mainLen >= compileInfo.align_size or core_num == 1;
+    bool main_is_legal = mte3.mainLen >= compileInfo.align_size || core_num == 1;
     if (tail_is_legal and main_is_legal) {
       factorO = factor;
       init_success = true;
@@ -192,7 +192,7 @@ bool TransdataGeneral::OnceTiling() {
   if (is_last_transpose and ptrO == tiling_output.size - OFFSET_2) {
     bound = bound / compileInfo.align_size * compileInfo.align_size;
   } else if (is_last_transpose and ptrO == tiling_output.size - 1) {
-    bound = ele_byte == FP16_BYTE or ele_byte == INT8_BYTE ? bound / compileInfo.align_size * compileInfo.align_size
+    bound = ele_byte == FP16_BYTE || ele_byte == INT8_BYTE ? bound / compileInfo.align_size * compileInfo.align_size
                                                            : STRIDE_16 * compileInfo.align_size;
   }
 
@@ -201,10 +201,10 @@ bool TransdataGeneral::OnceTiling() {
   for (int64_t factor = 1; factor <= bound; factor++) {
     // check tail
     GetOutputRealTail(ptrO, factor, mte3);
-    bool tail_is_legal = mte3.tailLen == 0 or mte3.tailLen >= compileInfo.align_size;
+    bool tail_is_legal = mte3.tailLen == 0 || mte3.tailLen >= compileInfo.align_size;
     // check main
     core = total_num / num_in_ub / tiling_output.shape[ptrO] * CeilDiv(tiling_output.shape[ptrO], factor);
-    bool main_is_legal = mte3.mainLen >= compileInfo.align_size or core == 1;
+    bool main_is_legal = mte3.mainLen >= compileInfo.align_size || core == 1;
     if (tail_is_legal and main_is_legal) {
       factorO = factor;
       init_success = true;
@@ -226,7 +226,7 @@ bool TransdataGeneral::OnceTiling() {
     for (int64_t factor = factorO; factor <= bound; factor++) {
       // Check tail
       GetOutputRealTail(ptrO, factor, mte3);
-      bool tail_is_legal = mte3.tailLen == 0 or mte3.tailLen >= compileInfo.align_size;
+      bool tail_is_legal = mte3.tailLen == 0 || mte3.tailLen >= compileInfo.align_size;
       if (tail_is_legal) {
         core = total_num / num_in_ub / tiling_output.shape[ptrO] * CeilDiv(tiling_output.shape[ptrO], factor);
         factorO = factor;
@@ -299,7 +299,7 @@ void TransdataGeneral::SetStorageAlign(Shape& input_shape, Shape& output_shape, 
   if (is_last_transpose) {
     bool isFp16 = BLOCK / compileInfo.align_size == FP16_BYTE;
     bool isInt8 = BLOCK / compileInfo.align_size == INT8_BYTE;
-    if (isFp16 or isInt8) {
+    if (isFp16 || isInt8) {
       input_shape.shape[length - OFFSET_2] = SetAlign(input_shape.shape[length - OFFSET_2], compileInfo.align_size);
     } else {
       // FP32(128),INT32(128),INT64(64)
@@ -348,7 +348,7 @@ void TransdataGeneral::AdjustUBFactorMTE3(int64_t lower, int64_t higher) {
     for (int64_t i = lower; i <= higher; i++) {
       // check tail
       GetOutputRealTail(ptrO, i, mte3);
-      bool tail_is_legal = mte3.tailLen == 0 or mte3.tailLen >= compileInfo.align_size;
+      bool tail_is_legal = mte3.tailLen == 0 || mte3.tailLen >= compileInfo.align_size;
       if (tail_is_legal) {
         factorO = i;
         ub_o_outer = CeilDiv(tiling_output.shape[ptrO], i);
@@ -442,7 +442,7 @@ void TransdataGeneral::DiscriminationAxisType(AxisType* type_array, size_t lengt
 bool TransdataGeneral::Init() {
   // 1. Match length and array
   // 2. Last-Transpose or not
-  if (input.size < 1 or output.size < 1 or reshape.size < 1) {
+  if (input.size < 1 || output.size < 1 || reshape.size < 1) {
     return false;
   }
 
@@ -492,7 +492,7 @@ bool TransdataGeneral::Strategy() {
   if (compileInfo.ub_info[computeType].size() < shapeType + 1) {
     return false;
   }
-  shapeType = ChooseType(last_dim, compileInfo.ub_info[computeType][shapeType]) ? CommonAlign : StorageAlign;
+  shapeType = ChooseType(last_dim, compileInfo.ub_info[computeType][shapeType]) ? COMMON_ALIGN : STORAGE_ALIGN;
   UBSize = compileInfo.ub_info[computeType][shapeType];
   return true;
 }
@@ -654,8 +654,8 @@ bool TransdataGeneral::WriteTilingData() {
   run_info.SetTilingKey(static_cast<uint32_t>(CalcTilingKey()));
   // convert dim which is input after fused
   const Shape* res_shape = compileInfo.is_forward ? &input : &output;
-  for (size_t i = 0; i < compileInfo.unknown_dims.size(); i++) {
-    run_info.AddTilingData(static_cast<int32_t>(res_shape->shape[compileInfo.unknown_dims[i]]));
+  for (size_t i = 0; i < res_shape->size; i++) {
+    run_info.AddTilingData(static_cast<int32_t>(res_shape->shape[i]));
     OP_LOGD(op_type.c_str(), "input shape : %d", res_shape->shape[i]);
   }
   // convert factor

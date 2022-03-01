@@ -31,6 +31,7 @@ class GeneralForwardComputation(TransdataComputation):
     """
     GeneralForwardComputation
     """
+
     def __init__(self, tensor, dst_shape, axes_map, pad_value):
         super().__init__(tensor, dst_shape, axes_map, pad_value)
         self._axes_map = dict(sorted(axes_map.items()))
@@ -136,6 +137,7 @@ class GeneralBackwardComputation(TransdataComputation):
     """
     GeneralBackwardComputation
     """
+
     def __init__(self, tensor, dst_shape, axes_map, pad_value):
         super().__init__(tensor, dst_shape, axes_map, pad_value)
         self._axes_map = dict(sorted(axes_map.items(), key=lambda x: x[1]))

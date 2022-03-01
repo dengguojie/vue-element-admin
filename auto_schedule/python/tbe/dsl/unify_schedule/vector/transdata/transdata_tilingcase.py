@@ -28,7 +28,7 @@ from tbe.dsl.base.operation import add_compile_info_inner
 from tbe.dsl.unify_schedule.constants import Pattern
 from tbe.dsl.unify_schedule.constants import DTYPE_BYTE_MAPPING
 from tbe.dsl.unify_schedule.constants import CompileInfo
-from tbe.dsl.unify_schedule.constants import TransdataCategory
+from tbe.dsl.unify_schedule.constants import TransdataCategory as TCategory
 
 from tbe.dsl.unify_schedule.util import shape_to_list
 from tbe.dsl.unify_schedule.computation import Computation
@@ -42,10 +42,14 @@ DEFAULT = "default"
 FORWARD = "forward"
 BACKWARD = "backward"
 CONST_KEY = 123
+STORAGE_ALIGN = 0
+COMMON_ALIGN = 1
 
 CATEGORY_MAP_UB = {
-    TransdataCategory.GENERAL_FORWARD: 0,
-    TransdataCategory.GENERAL_BACKWARD: 0,
+    TCategory.GENERAL_FORWARD: 0,
+    TCategory.GENERAL_BACKWARD: 0,
+    TCategory.BORROW_N_B8B16_BACKWARD: 1,
+    TCategory.BORROW_N_B8B16_FORWARD: 1,
 }
 
 
@@ -59,8 +63,8 @@ class TransdataComputation(Computation):
         self.option = option
 
         self.is_const = None
+        self.ori_bit = None
         self.graph_info = None
-        self.unknown_dims = None
         self.pad_factor = None
         self.align_size = None
         self.tiling_case_list = []
@@ -93,17 +97,35 @@ class TransdataComputation(Computation):
         current_compute.add("_compute_graph_info", self.graph_info)
 
         self.is_const = current_compute.get("_const_model")
-        self.unknown_dims = current_compute.get("_unknown_dims")
+        # while src-tensor is fp32, schedule would reinterpret it by fp16-mode,
+        # ori-bit is size of fp32-element.
+        self.ori_bit = current_compute.get("_ori_bit")
         self.pad_factor = current_compute.get("_pad_factor")
         self.align_size = int(BLOCK // DTYPE_BYTE_MAPPING[list(self.graph_info.transpose_tensor_set)[0].dtype])
 
         if self.is_const:
             self.tiling_case_list += self.calc_const_tiling_case()
         else:
+            if self.ori_bit:
+                self.align_size = BLOCK // self.ori_bit
             self.tiling_case_list += self.calc_tiling_case()
             self.apply_dynamic_compile_info()
 
         return self.tiling_case_list
+
+    def _check_common_align(self, _input):
+        """
+        If forward: (N,H,C) -> (N,C1,H,C0), don't split C.
+        If backward: (N,C1,H,C0) -> (N,H,C), don't split C.
+        Attention backward split on transpose-tensor(N,H,C1,C0)
+        """
+        last_dim = self.graph_info.reshape[-1] \
+            if isinstance(self.graph_info.reshape[-1], (list, tuple)) else [self.graph_info.reshape[-1]]
+        new_input = [self.graph_info.permute[x] for x in _input] if self.graph_info.is_forward else _input
+        for v in last_dim:
+            if v in new_input:
+                return False
+        return True
 
     @staticmethod
     def normal_split(_length, _perm):
@@ -159,6 +181,31 @@ class TransdataComputation(Computation):
             _out = _inputs
         return _out
 
+    def filter_split_borrow_n(self, _inputs):
+        """
+        Return legal cases from all split cases
+        1. not split C
+        2. not split N0
+        3. if src-tensor is fp32, it would be interpret as fp16 that don't split last-dim
+        """
+
+        def split_c(input_):
+            for c in self.graph_info.c_idx_base_on_output:
+                if c in input_:
+                    return True
+            return False
+
+        _out = []
+        length = len(self.graph_info.transpose_2_tensor.shape)
+        for i in _inputs:
+            not_split_c = not split_c(i)
+            not_split_n0 = 1 not in i
+            if not_split_c and not_split_n0:
+                if length - 1 in i and self.ori_bit:
+                    continue
+                _out.append(i)
+        return _out
+
     @staticmethod
     def get_key(case):
 
@@ -181,48 +228,66 @@ class TransdataComputation(Computation):
             key += v * val[k]
         case.tiling_key = key
 
-    @staticmethod
-    def create_case(inputs, info):
+    def create_case(self, inputs):
         result = []
         for item in inputs:
             # 0: use storage_align
             # 1: use common_align
-            for shape_type in range(2):
-                case = TransdataTilingCase(info)
+            for shape_type in [STORAGE_ALIGN, COMMON_ALIGN]:
+                if shape_type == COMMON_ALIGN and not self._check_common_align(item):
+                    continue
+                case = TransdataTilingCase(self.graph_info)
                 case.block_split_idx = item[0]
                 case.ub_split_first_idx = item[1]
                 case.ub_split_second_idx = item[2]
                 case.shape_type = shape_type
                 TransdataComputation.get_key(case)
-                ComputeGraphInfo.update_tensor_ub_sizes(info, case)
+                ComputeGraphInfo.update_tensor_ub_sizes(self.graph_info, case)
                 result.append(case)
+        return result
+
+    @staticmethod
+    def create_case_borrow_n(inputs, info):
+        result = []
+        for item in inputs:
+            case = TransdataTilingCase(info)
+            case.block_split_idx = item[0]
+            case.ub_split_first_idx = item[1]
+            case.ub_split_second_idx = item[2]
+            case.shape_type = 0
+            TransdataComputation.get_key(case)
+            ComputeGraphInfo.update_tensor_ub_sizes(info, case)
+            result.append(case)
         return result
 
     def calc_tiling_case(self, ):
 
-        def _forward_case_0():
-            length = len(list(self.graph_info.output_tensor_set)[0].shape)
+        def _base_case():
+            if self.graph_info.is_forward:
+                length = len(list(self.graph_info.output_tensor_set)[0].shape)
+            else:
+                # assume split in transpose_tensor, real split in output_tensor
+                length = len(list(self.graph_info.transpose_tensor_set)[0].shape)
+
             result = self.normal_split(length, self.graph_info.permute)
             result = self.filter_split(result, self.graph_info)
-            result = self.create_case(result, self.graph_info)
-            return result
+            return self.create_case(result)
 
-        def _backward_case_0():
-            # assume split in transpose_tensor, real split in output_tensor
-            length = len(list(self.graph_info.transpose_tensor_set)[0].shape)
-            result = self.normal_split(length, self.graph_info.permute)
-            result = self.filter_split(result, self.graph_info)
-            result = self.create_case(result, self.graph_info)
-            return result
+        def _borrow_n_case():
+            length = len(self.graph_info.transpose_2_tensor.shape)
+            perm = [int(x) for x in self.graph_info.transpose_2_tensor.op.attrs["permute"]]
+            result = self.normal_split(length, perm)
+            result = self.filter_split_borrow_n(result)
+            return self.create_case_borrow_n(result, self.graph_info)
 
-        if self.graph_info.category in [TransdataCategory.GENERAL_FORWARD,
-                                        TransdataCategory.GENERAL_BACKWARD]:
-            return _forward_case_0() if self.graph_info.is_forward else _backward_case_0()
+        if self.graph_info.category in [TCategory.GENERAL_FORWARD, TCategory.GENERAL_BACKWARD]:
+            return _base_case()
+        elif self.graph_info.category in [TCategory.BORROW_N_B8B16_BACKWARD, TCategory.BORROW_N_B8B16_FORWARD]:
+            return _borrow_n_case()
         else:
-            dict_args = {"errCode": "E90001",
-                         "detailed_cause": " TilingCases not match the "
-                                           "transdata_category that in [general.forward, general.backward], but "
-                                           "is %s" % self.graph_info.category}
+            dict_args = {"errCode": "E90001", "detailed_cause": "TilingCases not match the transdata_category"
+                         "that in [general.forward, general.backward, borrow_n_backward, borrow_n_forward], "
+                         "but is %s" % self.graph_info.category}
             raise RuntimeError(dict_args, get_error_message(dict_args))
 
     def calc_const_tiling_case(self):
@@ -230,7 +295,6 @@ class TransdataComputation(Computation):
         output_tensor = list(self.graph_info.output_tensor_set)[0]
         input_shape = shape_to_list(input_tensor.shape)
         output_shape = shape_to_list(output_tensor.shape)
-        dtype = input_tensor.dtype
 
         # while in const model, sch known which transdata category,
         # but don't known which shape_type in category,
@@ -239,8 +303,8 @@ class TransdataComputation(Computation):
         ComputeGraphInfo.update_tensor_ub_sizes(self.graph_info, cst_case)
         self.apply_info([cst_case], is_const_compile=True)
 
-        inputs = [{"shape": input_shape, "dtype": dtype}]
-        outputs = [{"shape": output_shape, "dtype": dtype}]
+        inputs = [{"shape": input_shape, "dtype": input_tensor.dtype}]
+        outputs = [{"shape": output_shape, "dtype": output_tensor.dtype}]
         run_info = op_tiling.do_op_tiling("Transdata", get_compile_info(), inputs, outputs)
 
         _format = {"ub_category": "int", "shape_type": "int", "block_split_idx": "int",
@@ -288,9 +352,9 @@ class TransdataComputation(Computation):
         is_const_compile = int(is_const_compile)
         common_info = [is_forward, align_size, pad_factor, core_num, is_const, is_const_compile]
         add_compile_info_inner("_common_info", common_info)
-        add_compile_info_inner("_unknown_dims", self.unknown_dims)
 
-    def apply_ub_info(self, case_list):
+    @staticmethod
+    def apply_ub_info(case_list):
         # case_list had full info of ubSize
         # index of tensor_list is ub_category
         # value of tensor_list is ub_size_list in different shape_type

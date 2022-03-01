@@ -588,16 +588,14 @@ def _transdata_variable_shape(inputs: list):
             result[value] = key
         return result
 
-    def init_shape(_input, _range):
-        result, unknown_dims = [], []
-        for key, value in enumerate(_input):
-            if is_const:
-                _var = value
-            else:
-                _var = operation.var_inner(f"_dim_{key}", [1, None])
-                unknown_dims.append(key)
-            result.append(_var)
-        current_compute.add("_unknown_dims", unknown_dims)
+    def init_shape(_input):
+        if is_const:
+            return _input
+
+        result = []
+        for k, v in enumerate(_input):
+            # set pad-dim-n as var but not 1 while dynamic
+            result.append(v if v != -1 and [k, v] != [0, 1] else operation.var_inner(f"_dim_{k}", [1, None]))
         return result
 
     def src_infer_dst(in_shape, out_shape, _map):
@@ -614,33 +612,31 @@ def _transdata_variable_shape(inputs: list):
 
         return out_shape
 
-    def infer_shape_main(_input, _range, _output, _map):
-        _input = init_shape(_input, _range)
+    def infer_shape_main(_input, _output, _map):
+        _input = init_shape(_input)
         _output = src_infer_dst(_input, _output, _map)
         return _input, _output
 
     axes_map = inputs[2]
     is_forward = inputs[0].get("is_forward")
     src_shape = inputs[0].get("shape")
-    src_range = inputs[0].get("range")
     dst_shape = inputs[1]
-    dst_range = [[1, None] if x == -1 else [x, x] for x in dst_shape]
 
     if not is_forward:
         src_shape, dst_shape = dst_shape, src_shape
-        src_range, dst_range = dst_range, src_range
         axes_map = reversed_map(axes_map)
 
     current_compute = operation.get_context().get_current_compute()
-    # get pad factor
+    # transdata_category that help to choose different computation.
+    # 32bit-Tensor would be reinterpret as 16bit-Tensor in schedule(ori_bit).
     pad_factor = operation.get_compile_info().get("_pad_factor")
-    current_compute.add("_pad_factor", pad_factor)
-    # transdata_category that help to choose different computation
-    current_compute.add("_transdata_category", inputs[0].get("transdata_category"))
     is_const = is_const_model(src_shape)
+    current_compute.add("_pad_factor", pad_factor)
     current_compute.add("_const_model", is_const)
+    current_compute.add("_transdata_category", inputs[0].get("transdata_category", None))
+    current_compute.add("_ori_bit", inputs[0].get("ori_bit", None))
 
-    src_shape, dst_shape = infer_shape_main(src_shape, src_range, dst_shape, axes_map)
+    src_shape, dst_shape = infer_shape_main(src_shape, dst_shape, axes_map)
     if not is_forward:
         src_shape, dst_shape = dst_shape, src_shape
 
