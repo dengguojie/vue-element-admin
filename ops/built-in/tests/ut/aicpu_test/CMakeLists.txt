@@ -188,6 +188,7 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/kernels/normalized/pinverse.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/poisson.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/random_uniform.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/random_standard.cc  
   ${CPU_KERNELS_DIR}/kernels/normalized/realdiv.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/reshape.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/resize_bilinear.cc
@@ -399,6 +400,7 @@ set(_cpu_kernels_ut_files
   testcase/qr/src/qr_utest.cpp
   testcase/random_gamma/src/random_gamma_utest.cpp
   testcase/random_uniform/src/random_uniform_utest.cpp
+  testcase/random_standard_normal/src/random_standard_normal_utest.cpp
   testcase/realdiv/src/realdiv_utest.cpp
   testcase/reshape/src/reshape_utest.cpp
   testcase/resize_bilinear/src/resize_bilinear_grad_utest.cpp
