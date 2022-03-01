@@ -188,8 +188,6 @@ class BaseBroadcastSchedule:
         self._schedule = tvm.create_schedule(self._out.op)
         self._schedule.tiling_key = self._tiling_case.tiling_key
 
-        self._calc_remove_pad()
-
         self._calc_cache_read()
         self._do_cache_read()
 
@@ -197,6 +195,8 @@ class BaseBroadcastSchedule:
         self._do_cache_write()
 
         self._set_scope()
+
+        self._calc_remove_pad()
 
         if self._tiling_strategy == TilingStrategy.CONST:
             self._get_const_storage_bound()

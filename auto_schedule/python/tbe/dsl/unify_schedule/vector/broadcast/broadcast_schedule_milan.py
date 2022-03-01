@@ -179,7 +179,7 @@ class BroadcastScheduleMl(BaseBroadcastSchedule, Schedule):
                     (isinstance(last_axis_shape, int) and last_axis_shape % align_factor != 0):
                 self._remove_pad_tensors.add(tensor_i)
                 use_tensors = [super(BroadcastScheduleMl, self)._get_ub_tensor(_tensor) for
-                               _tensor in self._in_out_map[tensor_i]]
+                               _tensor in self._in_out_map.get(tensor_i, [])]
                 remove_pad_buffer = sch.cache_read(super(BroadcastScheduleMl, self)._get_ub_tensor(tensor_i),
                                                    self._scope, use_tensors)
                 util.merge_value(self._in_out_map, remove_pad_buffer, use_tensors)
