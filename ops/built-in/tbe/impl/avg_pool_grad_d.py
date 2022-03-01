@@ -315,9 +315,6 @@ def _avg_pool_grad_tiling(input_w, input_h, out_shape, res, stride, l1_load_kern
     # into L1. L1 SIZE = 1M, UB SIZE = 256K;
     max_tile_input_h = l1_size // (input_w * Constant.BLOCK_SIZE * 2)
     max_tile_dh = l1_size // (dila_w * Constant.BLOCK_SIZE * data_size) - k_height
-    dout_l1_size = input_w * (k_height + stride[0]) * Constant.BLOCK_SIZE * 2
-    tile_k_o = dout_l1_size // l1_size + 2 if dout_l1_size > l1_size else 0
-
     max_h_in_ub = ((ub_size // data_size - (max_l0a_m * Constant.BLOCK_SIZE)) // Constant.BLOCK_SIZE +
                    (stride[0] - 1) * dila_w) // (3 * out_w + stride[0] * dila_w)
 
@@ -372,6 +369,8 @@ def _avg_pool_grad_tiling(input_w, input_h, out_shape, res, stride, l1_load_kern
     tile_dile_h_ub = min(tile_dile_h_ub, ub_size // (dila_w * Constant.BLOCK_SIZE * data_size) +
                          dilated_pad_top - 1)
 
+    dout_l1_size = input_w * dila_h * Constant.BLOCK_SIZE * 2
+    tile_k_o = dout_l1_size // l1_size + 2 if dout_l1_size > l1_size else 0
     return res_l1, tile_input_h, tile_dile_h_ub, tile_m, tile_k, tile_n, tile_k_o, l1_load_kernel
 
 
