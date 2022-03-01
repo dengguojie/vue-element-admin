@@ -4,6 +4,7 @@
 #include "graph/utils/op_desc_utils.h"
 #include "graph/utils/graph_utils.h"
 #include "nn_calculation_ops.h"
+#include "quantize_ops.h"
 #include "nonlinear_fuc_ops.h"
 #include "array_ops.h"
 #include "fusion_pass_test_utils.h"
@@ -138,36 +139,77 @@ protected:
         return reluOp;
     }
 
+    ge::op::AscendQuant BuildQuant(std::string opName, ge::Operator& inputOp)
+    {
+        float scale = 1.234;
+        float offset = 0.0;
+        auto quantOp = op::AscendQuant(opName.c_str());
+        quantOp.set_input_x(inputOp)
+               .set_attr_scale(scale)
+               .set_attr_offset(offset);
+
+        return quantOp;
+    }
+
+    ge::op::AscendDequant BuildDequant(std::string opName, ge::Operator& inputOp)
+    {
+        ge::Shape shape({32});
+        ge::TensorDesc tensorDesc(shape, ge::FORMAT_NHWC, ge::DT_FLOAT);
+
+        float deqScale = 1.0;
+        ge::Tensor scaleTensor(tensorDesc, reinterpret_cast<uint8_t*>(&deqScale), sizeof(float));
+        auto constName = opName + "deq_scale";
+        auto constOp = op::Const(constName.c_str()).set_attr_value(scaleTensor);
+
+        auto dequantOp = op::AscendDequant(opName.c_str());
+        dequantOp.set_input_x(inputOp)
+                 .set_input_deq_scale(constOp)
+                 .set_attr_dtype(DT_FLOAT);
+
+        return dequantOp;
+    }
+
+    ge::op::AscendRequant BuildRequant(std::string opName, ge::Operator& inputOp)
+    {
+        ge::Shape shape({32});
+        ge::TensorDesc tensorDesc(shape, ge::FORMAT_NHWC, ge::DT_FLOAT);
+
+        float deqScale = 1.0;
+        ge::Tensor scaleTensor(tensorDesc, reinterpret_cast<uint8_t*>(&deqScale), sizeof(float));
+        auto constName = opName + "req_scale";
+        auto constOp = op::Const(constName.c_str()).set_attr_value(scaleTensor);
+        auto requantOp = op::AscendRequant(opName.c_str());
+        requantOp.set_input_x(inputOp)
+                 .set_input_req_scale(constOp);
+
+        return requantOp;
+    }
+
     void BuildGraph(ComputeGraphPtr &computeGraph)
     {
-        auto inputOp = BuildInputOp("input", {1, 32, 32, 1}, FORMAT_NHWC, DT_FLOAT);
+        auto inputOp = BuildInputOp("input", {1, 32, 32, 32}, FORMAT_NHWC, DT_FLOAT);
 
-        auto filterOp0 = BuildFilter("filter_0", {0.1}, {1, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
-        auto biasOp0 = BuildBias("bias_0", {0.1}, {1}, FORMAT_ND, DT_FLOAT);
+        auto filterOp0 = BuildFilter("filter_0", vector<float>(32, 0.1), {32, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
+        auto biasOp0 = BuildBias("bias_0", vector<float>(32, 0.1), {32}, FORMAT_ND, DT_FLOAT);
         auto conv2dOp0 = BuildConv2dOp("conv_0", inputOp, filterOp0, biasOp0, true, "NHWC", {1, 1, 1, 1}, {0, 0, 0, 0});
         auto reluOp0 = BuildRelu("relu_0", conv2dOp0);
 
-        auto filterOp1 = BuildFilter("filter_1", {0.1}, {1, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
-        auto biasOp1 = BuildBias("bias_1", {0.1}, {1}, FORMAT_ND, DT_FLOAT);
+        auto filterOp1 = BuildFilter("filter_1", vector<float>(32, 0.1), {32, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
+        auto biasOp1 = BuildBias("bias_1", vector<float>(32, 0.1), {32}, FORMAT_ND, DT_FLOAT);
         auto conv2dOp1 = BuildConv2dOp("conv_1", inputOp, filterOp1, biasOp1, true, "NHWC", {1, 1, 1, 1}, {0, 0, 0, 0});
         auto reluOp1 = BuildRelu("relu_1", conv2dOp1);
 
-        auto filterOp2 = BuildFilter("filter_2", {0.1}, {1, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
-        auto biasOp2 = BuildBias("bias_2", {0.1}, {1}, FORMAT_ND, DT_FLOAT);
+        auto filterOp2 = BuildFilter("filter_2", vector<float>(32, 0.1), {32, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
+        auto biasOp2 = BuildBias("bias_2", vector<float>(32, 0.1), {32}, FORMAT_ND, DT_FLOAT);
         auto conv2dOp2 = BuildConv2dOp("conv_2", reluOp0, filterOp2, biasOp2, true, "NHWC", {1, 1, 1, 1}, {0, 0, 0, 0});
 
-        auto filterOp3 = BuildFilter("filter_3", {0.1}, {1, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
-        auto biasOp3 = BuildBias("bias_3", {0.1}, {1}, FORMAT_ND, DT_FLOAT);
+        auto filterOp3 = BuildFilter("filter_3", vector<float>(32, 0.1), {32, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
+        auto biasOp3 = BuildBias("bias_3", vector<float>(32, 0.1), {32}, FORMAT_ND, DT_FLOAT);
         auto conv2dOp3 = BuildConv2dOp("conv_3", reluOp1, filterOp3, biasOp3, true, "NHWC", {1, 1, 1, 1}, {0, 0, 0, 0});
-
-        auto outputOp0 = BuildInputOp("output0", {1, 32, 32, 1}, FORMAT_NHWC, DT_FLOAT);
-        outputOp0.set_input_x(conv2dOp2);
-        auto outputOp1 = BuildInputOp("output1", {1, 32, 32, 1}, FORMAT_NHWC, DT_FLOAT);
-        outputOp1.set_input_x(conv2dOp3);
 
         // create graph
         std::vector<Operator> inputs {inputOp, filterOp0, biasOp0, filterOp1, biasOp1, filterOp2, biasOp2, filterOp3, biasOp3};
-        std::vector<Operator> outputs {outputOp0, outputOp1};
+        std::vector<Operator> outputs {conv2dOp2, conv2dOp3};
 
         ge::Graph graph("test");
         graph.SetInputs(inputs).SetOutputs(outputs);
@@ -176,24 +218,24 @@ protected:
 
     void BuildGraphWithNoBias(ComputeGraphPtr &computeGraph)
     {
-        auto inputOp = BuildInputOp("input", {1, 32, 32, 1}, FORMAT_NHWC, DT_FLOAT);
+        auto inputOp = BuildInputOp("input", {1, 32, 32, 32}, FORMAT_NHWC, DT_FLOAT);
 
-        auto filterOp0 = BuildFilter("filter_0", {0.1}, {1, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
-        auto biasOp0 = BuildBias("bias_0", {0.1}, {1}, FORMAT_ND, DT_FLOAT);
+        auto filterOp0 = BuildFilter("filter_0", vector<float>(32, 0.1), {32, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
+        auto biasOp0 = BuildBias("bias_0", vector<float>(32, 0.1), {32}, FORMAT_ND, DT_FLOAT);
         auto conv2dOp0 = BuildConv2dOp("conv_0", inputOp, filterOp0, biasOp0, false, "NHWC", {1, 1, 1, 1}, {0, 0, 0, 0});
         auto reluOp0 = BuildRelu("relu_0", conv2dOp0);
 
-        auto filterOp1 = BuildFilter("filter_1", {0.1}, {1, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
-        auto biasOp1 = BuildBias("bias_1", {0.1}, {1}, FORMAT_ND, DT_FLOAT);
+        auto filterOp1 = BuildFilter("filter_1", vector<float>(32, 0.1), {32, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
+        auto biasOp1 = BuildBias("bias_1", vector<float>(32, 0.1), {32}, FORMAT_ND, DT_FLOAT);
         auto conv2dOp1 = BuildConv2dOp("conv_1", inputOp, filterOp1, biasOp1, false, "NHWC", {1, 1, 1, 1}, {0, 0, 0, 0});
         auto reluOp1 = BuildRelu("relu_1", conv2dOp1);
 
-        auto filterOp2 = BuildFilter("filter_2", {0.1}, {1, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
-        auto biasOp2 = BuildBias("bias_2", {0.1}, {1}, FORMAT_ND, DT_FLOAT);
+        auto filterOp2 = BuildFilter("filter_2", vector<float>(32, 0.1), {32, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
+        auto biasOp2 = BuildBias("bias_2", vector<float>(32, 0.1), {32}, FORMAT_ND, DT_FLOAT);
         auto conv2dOp2 = BuildConv2dOp("conv_2", reluOp0, filterOp2, biasOp2, false, "NHWC", {1, 1, 1, 1}, {0, 0, 0, 0});
 
-        auto filterOp3 = BuildFilter("filter_3", {0.1}, {1, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
-        auto biasOp3 = BuildBias("bias_3", {0.1}, {1}, FORMAT_ND, DT_FLOAT);
+        auto filterOp3 = BuildFilter("filter_3", vector<float>(32, 0.1), {32, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
+        auto biasOp3 = BuildBias("bias_3", vector<float>(32, 0.1), {32}, FORMAT_ND, DT_FLOAT);
         auto conv2dOp3 = BuildConv2dOp("conv_3", reluOp1, filterOp3, biasOp3, false, "NHWC", {1, 1, 1, 1}, {0, 0, 0, 0});
 
         // create graph
@@ -207,24 +249,24 @@ protected:
 
     void BuildGraphWithOneBias(ComputeGraphPtr &computeGraph)
     {
-        auto inputOp = BuildInputOp("input", {1, 32, 32, 1}, FORMAT_NHWC, DT_FLOAT);
+        auto inputOp = BuildInputOp("input", {1, 32, 32, 32}, FORMAT_NHWC, DT_FLOAT);
 
-        auto filterOp0 = BuildFilter("filter_0", {0.1}, {1, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
-        auto biasOp0 = BuildBias("bias_0", {0.1}, {1}, FORMAT_ND, DT_FLOAT);
+        auto filterOp0 = BuildFilter("filter_0", vector<float>(32, 0.1), {32, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
+        auto biasOp0 = BuildBias("bias_0", vector<float>(32, 0.1), {32}, FORMAT_ND, DT_FLOAT);
         auto conv2dOp0 = BuildConv2dOp("conv_0", inputOp, filterOp0, biasOp0, false, "NHWC", {1, 1, 1, 1}, {0, 0, 0, 0});
         auto reluOp0 = BuildRelu("relu_0", conv2dOp0);
 
-        auto filterOp1 = BuildFilter("filter_1", {0.1}, {1, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
-        auto biasOp1 = BuildBias("bias_1", {0.1}, {1}, FORMAT_ND, DT_FLOAT);
+        auto filterOp1 = BuildFilter("filter_1", vector<float>(32, 0.1), {32, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
+        auto biasOp1 = BuildBias("bias_1", vector<float>(32, 0.1), {32}, FORMAT_ND, DT_FLOAT);
         auto conv2dOp1 = BuildConv2dOp("conv_1", inputOp, filterOp1, biasOp1, true, "NHWC", {1, 1, 1, 1}, {0, 0, 0, 0});
         auto reluOp1 = BuildRelu("relu_1", conv2dOp1);
 
-        auto filterOp2 = BuildFilter("filter_2", {0.1}, {1, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
-        auto biasOp2 = BuildBias("bias_2", {0.1}, {1}, FORMAT_ND, DT_FLOAT);
+        auto filterOp2 = BuildFilter("filter_2", vector<float>(32, 0.1), {32, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
+        auto biasOp2 = BuildBias("bias_2", vector<float>(32, 0.1), {32}, FORMAT_ND, DT_FLOAT);
         auto conv2dOp2 = BuildConv2dOp("conv_2", reluOp0, filterOp2, biasOp2, false, "NHWC", {1, 1, 1, 1}, {0, 0, 0, 0});
 
-        auto filterOp3 = BuildFilter("filter_3", {0.1}, {1, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
-        auto biasOp3 = BuildBias("bias_3", {0.1}, {1}, FORMAT_ND, DT_FLOAT);
+        auto filterOp3 = BuildFilter("filter_3", vector<float>(32, 0.1), {32, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
+        auto biasOp3 = BuildBias("bias_3", vector<float>(32, 0.1), {32}, FORMAT_ND, DT_FLOAT);
         auto conv2dOp3 = BuildConv2dOp("conv_3", reluOp1, filterOp3, biasOp3, false, "NHWC", {1, 1, 1, 1}, {0, 0, 0, 0});
 
         // create graph
@@ -238,23 +280,23 @@ protected:
 
     void BuildGraphWithCommonBias(ComputeGraphPtr &computeGraph)
     {
-        auto inputOp = BuildInputOp("input", {1, 32, 32, 1}, FORMAT_NHWC, DT_FLOAT);
+        auto inputOp = BuildInputOp("input", {1, 32, 32, 32}, FORMAT_NHWC, DT_FLOAT);
 
-        auto filterOp0 = BuildFilter("filter_0", {0.1}, {1, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
-        auto biasOp0 = BuildBias("bias_0", {0.1}, {1}, FORMAT_ND, DT_FLOAT);
+        auto filterOp0 = BuildFilter("filter_0", vector<float>(32, 0.1), {32, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
+        auto biasOp0 = BuildBias("bias_0", vector<float>(32, 0.1), {32}, FORMAT_ND, DT_FLOAT);
         auto conv2dOp0 = BuildConv2dOp("conv_0", inputOp, filterOp0, biasOp0, true, "NHWC", {1, 1, 1, 1}, {0, 0, 0, 0});
         auto reluOp0 = BuildRelu("relu_0", conv2dOp0);
 
-        auto filterOp1 = BuildFilter("filter_1", {0.1}, {1, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
+        auto filterOp1 = BuildFilter("filter_1", vector<float>(32, 0.1), {32, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
         auto conv2dOp1 = BuildConv2dOp("conv_1", inputOp, filterOp1, biasOp0, true, "NHWC", {1, 1, 1, 1}, {0, 0, 0, 0});
         auto reluOp1 = BuildRelu("relu_1", conv2dOp1);
 
-        auto filterOp2 = BuildFilter("filter_2", {0.1}, {1, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
-        auto biasOp2 = BuildBias("bias_2", {0.1}, {1}, FORMAT_ND, DT_FLOAT);
+        auto filterOp2 = BuildFilter("filter_2", vector<float>(32, 0.1), {32, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
+        auto biasOp2 = BuildBias("bias_2", vector<float>(32, 0.1), {32}, FORMAT_ND, DT_FLOAT);
         auto conv2dOp2 = BuildConv2dOp("conv_2", reluOp0, filterOp2, biasOp2, false, "NHWC", {1, 1, 1, 1}, {0, 0, 0, 0});
 
-        auto filterOp3 = BuildFilter("filter_3", {0.1}, {1, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
-        auto biasOp3 = BuildBias("bias_3", {0.1}, {1}, FORMAT_ND, DT_FLOAT);
+        auto filterOp3 = BuildFilter("filter_3",vector<float>(32, 0.1), {32, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
+        auto biasOp3 = BuildBias("bias_3", vector<float>(32, 0.1), {32}, FORMAT_ND, DT_FLOAT);
         auto conv2dOp3 = BuildConv2dOp("conv_3", reluOp1, filterOp3, biasOp3, false, "NHWC", {1, 1, 1, 1}, {0, 0, 0, 0});
 
         // create graph
@@ -268,24 +310,24 @@ protected:
 
     void BuildGraphWithCommonFilter(ComputeGraphPtr &computeGraph)
     {
-        auto inputOp = BuildInputOp("input", {1, 32, 32, 1}, FORMAT_NHWC, DT_FLOAT);
+        auto inputOp = BuildInputOp("input", {1, 32, 32, 32}, FORMAT_NHWC, DT_FLOAT);
 
-        auto filterOp0 = BuildFilter("filter_0", {0.1}, {1, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
-        auto biasOp0 = BuildBias("bias_0", {0.1}, {1}, FORMAT_ND, DT_FLOAT);
+        auto filterOp0 = BuildFilter("filter_0", vector<float>(32, 0.1), {32, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
+        auto biasOp0 = BuildBias("bias_0", vector<float>(32, 0.1), {32}, FORMAT_ND, DT_FLOAT);
         auto conv2dOp0 = BuildConv2dOp("conv_0", inputOp, filterOp0, biasOp0, true, "NHWC", {1, 1, 1, 1}, {0, 0, 0, 0});
         auto reluOp0 = BuildRelu("relu_0", conv2dOp0);
 
         // same filter with conv2d 0
-        auto biasOp1 = BuildBias("bias_1", {0.1}, {1}, FORMAT_ND, DT_FLOAT);
+        auto biasOp1 = BuildBias("bias_1", vector<float>(32, 0.1), {32}, FORMAT_ND, DT_FLOAT);
         auto conv2dOp1 = BuildConv2dOp("conv_1", inputOp, filterOp0, biasOp1, true, "NHWC", {1, 1, 1, 1}, {0, 0, 0, 0});
         auto reluOp1 = BuildRelu("relu_1", conv2dOp1);
 
-        auto filterOp2 = BuildFilter("filter_2", {0.1}, {1, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
-        auto biasOp2 = BuildBias("bias_2", {0.1}, {1}, FORMAT_ND, DT_FLOAT);
+        auto filterOp2 = BuildFilter("filter_2", vector<float>(32, 0.1), {32, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
+        auto biasOp2 = BuildBias("bias_2", vector<float>(32, 0.1), {32}, FORMAT_ND, DT_FLOAT);
         auto conv2dOp2 = BuildConv2dOp("conv_2", reluOp0, filterOp2, biasOp2, false, "NHWC", {1, 1, 1, 1}, {0, 0, 0, 0});
 
-        auto filterOp3 = BuildFilter("filter_3", {0.1}, {1, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
-        auto biasOp3 = BuildBias("bias_3", {0.1}, {1}, FORMAT_ND, DT_FLOAT);
+        auto filterOp3 = BuildFilter("filter_3", vector<float>(32, 0.1), {32, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
+        auto biasOp3 = BuildBias("bias_3", vector<float>(32, 0.1), {32}, FORMAT_ND, DT_FLOAT);
         auto conv2dOp3 = BuildConv2dOp("conv_3", reluOp1, filterOp3, biasOp3, false, "NHWC", {1, 1, 1, 1}, {0, 0, 0, 0});
 
         // create graph
@@ -299,10 +341,10 @@ protected:
 
     void BuildGraphWithCommonFilterBias(ComputeGraphPtr &computeGraph)
     {
-        auto inputOp = BuildInputOp("input", {1, 32, 32, 1}, FORMAT_NHWC, DT_FLOAT);
+        auto inputOp = BuildInputOp("input", {1, 32, 32, 32}, FORMAT_NHWC, DT_FLOAT);
 
-        auto filterOp0 = BuildFilter("filter_0", {0.1}, {1, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
-        auto biasOp0 = BuildBias("bias_0", {0.1}, {1}, FORMAT_ND, DT_FLOAT);
+        auto filterOp0 = BuildFilter("filter_0", vector<float>(32, 0.1), {32, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
+        auto biasOp0 = BuildBias("bias_0", vector<float>(32, 0.1), {32}, FORMAT_ND, DT_FLOAT);
         auto conv2dOp0 = BuildConv2dOp("conv_0", inputOp, filterOp0, biasOp0, true, "NHWC", {1, 1, 1, 1}, {0, 0, 0, 0});
         auto reluOp0 = BuildRelu("relu_0", conv2dOp0);
 
@@ -311,12 +353,12 @@ protected:
         auto conv2dOp1 = BuildConv2dOp("conv_1", inputOp, filterOp0, biasOp0, true, "NHWC", {1, 1, 1, 1}, {0, 0, 0, 0});
         auto reluOp1 = BuildRelu("relu_1", conv2dOp1);
 
-        auto filterOp2 = BuildFilter("filter_2", {0.1}, {1, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
-        auto biasOp2 = BuildBias("bias_2", {0.1}, {1}, FORMAT_ND, DT_FLOAT);
+        auto filterOp2 = BuildFilter("filter_2", vector<float>(32, 0.1), {32, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
+        auto biasOp2 = BuildBias("bias_2", vector<float>(32, 0.1), {32}, FORMAT_ND, DT_FLOAT);
         auto conv2dOp2 = BuildConv2dOp("conv_2", reluOp0, filterOp2, biasOp2, false, "NHWC", {1, 1, 1, 1}, {0, 0, 0, 0});
 
-        auto filterOp3 = BuildFilter("filter_3", {0.1}, {1, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
-        auto biasOp3 = BuildBias("bias_3", {0.1}, {1}, FORMAT_ND, DT_FLOAT);
+        auto filterOp3 = BuildFilter("filter_3", vector<float>(32, 0.1), {32, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
+        auto biasOp3 = BuildBias("bias_3", vector<float>(32, 0.1), {32}, FORMAT_ND, DT_FLOAT);
         auto conv2dOp3 = BuildConv2dOp("conv_3", reluOp1, filterOp3, biasOp3, false, "NHWC", {1, 1, 1, 1}, {0, 0, 0, 0});
 
         // create graph
@@ -330,27 +372,27 @@ protected:
 
     void BuildGraphWithBiasLinkOtherNode(ComputeGraphPtr &computeGraph)
     {
-        auto inputOp = BuildInputOp("input", {1, 32, 32, 1}, FORMAT_NHWC, DT_FLOAT);
+        auto inputOp = BuildInputOp("input", {1, 32, 32, 32}, FORMAT_NHWC, DT_FLOAT);
 
-        auto filterOp0 = BuildFilter("filter_0", {0.1}, {1, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
-        auto biasOp0 = BuildBias("bias_0", {0.1}, {1}, FORMAT_ND, DT_FLOAT);
+        auto filterOp0 = BuildFilter("filter_0", vector<float>(32, 0.1), {32, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
+        auto biasOp0 = BuildBias("bias_0", vector<float>(32, 0.1), {32}, FORMAT_ND, DT_FLOAT);
         auto conv2dOp0 = BuildConv2dOp("conv_0", inputOp, filterOp0, biasOp0, true, "NHWC", {1, 1, 1, 1}, {0, 0, 0, 0});
         auto reluOp0 = BuildRelu("relu_0", conv2dOp0);
 
-        auto filterOp1 = BuildFilter("filter_1", {0.1}, {1, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
-        auto biasOp1 = BuildBias("bias_1", {0.1}, {1}, FORMAT_ND, DT_FLOAT);
+        auto filterOp1 = BuildFilter("filter_1", vector<float>(32, 0.1), {32, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
+        auto biasOp1 = BuildBias("bias_1", vector<float>(32, 0.1), {32}, FORMAT_ND, DT_FLOAT);
         auto conv2dOp1 = BuildConv2dOp("conv_1", inputOp, filterOp1, biasOp1, true, "NHWC", {1, 1, 1, 1}, {0, 0, 0, 0});
         auto reluOp1 = BuildRelu("relu_1", conv2dOp1);
 
         // other node relu
         auto reluOp2 = BuildRelu("relu_2", biasOp1);
 
-        auto filterOp2 = BuildFilter("filter_2", {0.1}, {1, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
-        auto biasOp2 = BuildBias("bias_2", {0.1}, {1}, FORMAT_ND, DT_FLOAT);
+        auto filterOp2 = BuildFilter("filter_2", vector<float>(32, 0.1), {32, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
+        auto biasOp2 = BuildBias("bias_2", vector<float>(32, 0.1), {32}, FORMAT_ND, DT_FLOAT);
         auto conv2dOp2 = BuildConv2dOp("conv_2", reluOp0, filterOp2, biasOp2, false, "NHWC", {1, 1, 1, 1}, {0, 0, 0, 0});
 
-        auto filterOp3 = BuildFilter("filter_3", {0.1}, {1, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
-        auto biasOp3 = BuildBias("bias_3", {0.1}, {1}, FORMAT_ND, DT_FLOAT);
+        auto filterOp3 = BuildFilter("filter_3", vector<float>(32, 0.1), {32, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
+        auto biasOp3 = BuildBias("bias_3", vector<float>(32, 0.1), {32}, FORMAT_ND, DT_FLOAT);
         auto conv2dOp3 = BuildConv2dOp("conv_3", reluOp1, filterOp3, biasOp3, false, "NHWC", {1, 1, 1, 1}, {0, 0, 0, 0});
 
         // create graph
@@ -364,27 +406,27 @@ protected:
 
     void BuildGraphWithFmapLinkOtherNode(ComputeGraphPtr &computeGraph)
     {
-        auto inputOp = BuildInputOp("input", {1, 32, 32, 1}, FORMAT_NHWC, DT_FLOAT);
+        auto inputOp = BuildInputOp("input", {1, 32, 32, 32}, FORMAT_NHWC, DT_FLOAT);
 
-        auto filterOp0 = BuildFilter("filter_0", {0.1}, {1, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
-        auto biasOp0 = BuildBias("bias_0", {0.1}, {1}, FORMAT_ND, DT_FLOAT);
+        auto filterOp0 = BuildFilter("filter_0", vector<float>(32, 0.1), {32, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
+        auto biasOp0 = BuildBias("bias_0", vector<float>(32, 0.1), {32}, FORMAT_ND, DT_FLOAT);
         auto conv2dOp0 = BuildConv2dOp("conv_0", inputOp, filterOp0, biasOp0, true, "NHWC", {1, 1, 1, 1}, {0, 0, 0, 0});
         auto reluOp0 = BuildRelu("relu_0", conv2dOp0);
 
-        auto filterOp1 = BuildFilter("filter_1", {0.1}, {1, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
-        auto biasOp1 = BuildBias("bias_1", {0.1}, {1}, FORMAT_ND, DT_FLOAT);
+        auto filterOp1 = BuildFilter("filter_1", vector<float>(32, 0.1), {32, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
+        auto biasOp1 = BuildBias("bias_1", vector<float>(32, 0.1), {32}, FORMAT_ND, DT_FLOAT);
         auto conv2dOp1 = BuildConv2dOp("conv_1", inputOp, filterOp1, biasOp1, true, "NHWC", {1, 1, 1, 1}, {0, 0, 0, 0});
         auto reluOp1 = BuildRelu("relu_1", conv2dOp1);
 
         // other node relu
         auto reluOp2 = BuildRelu("relu_2", inputOp);
 
-        auto filterOp2 = BuildFilter("filter_2", {0.1}, {1, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
-        auto biasOp2 = BuildBias("bias_2", {0.1}, {1}, FORMAT_ND, DT_FLOAT);
+        auto filterOp2 = BuildFilter("filter_2", vector<float>(32, 0.1), {32, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
+        auto biasOp2 = BuildBias("bias_2", vector<float>(32, 0.1), {32}, FORMAT_ND, DT_FLOAT);
         auto conv2dOp2 = BuildConv2dOp("conv_2", reluOp0, filterOp2, biasOp2, false, "NHWC", {1, 1, 1, 1}, {0, 0, 0, 0});
 
-        auto filterOp3 = BuildFilter("filter_3", {0.1}, {1, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
-        auto biasOp3 = BuildBias("bias_3", {0.1}, {1}, FORMAT_ND, DT_FLOAT);
+        auto filterOp3 = BuildFilter("filter_3", vector<float>(32, 0.1), {32, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
+        auto biasOp3 = BuildBias("bias_3", vector<float>(32, 0.1), {32}, FORMAT_ND, DT_FLOAT);
         auto conv2dOp3 = BuildConv2dOp("conv_3", reluOp1, filterOp3, biasOp3, false, "NHWC", {1, 1, 1, 1}, {0, 0, 0, 0});
 
         // create graph
@@ -398,25 +440,25 @@ protected:
 
     void BuildGraphWithDiffConv2dFormat(ComputeGraphPtr &computeGraph)
     {
-        auto inputOp = BuildInputOp("input", {1, 32, 32, 1}, FORMAT_NHWC, DT_FLOAT);
+        auto inputOp = BuildInputOp("input", {1, 32, 32, 32}, FORMAT_NHWC, DT_FLOAT);
 
-        auto filterOp0 = BuildFilter("filter_0", {0.1}, {1, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
-        auto biasOp0 = BuildBias("bias_0", {0.1}, {1}, FORMAT_ND, DT_FLOAT);
+        auto filterOp0 = BuildFilter("filter_0", vector<float>(32, 0.1), {32, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
+        auto biasOp0 = BuildBias("bias_0", vector<float>(32, 0.1), {32}, FORMAT_ND, DT_FLOAT);
         auto conv2dOp0 = BuildConv2dOp("conv_0", inputOp, filterOp0, biasOp0, false, "NHWC", {1, 1, 1, 1}, {0, 0, 0, 0});
         auto reluOp0 = BuildRelu("relu_0", conv2dOp0);
 
         // different data format for conv2d
-        auto filterOp1 = BuildFilter("filter_1", {0.1}, {1, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
-        auto biasOp1 = BuildBias("bias_1", {0.1}, {1}, FORMAT_ND, DT_FLOAT);
+        auto filterOp1 = BuildFilter("filter_1", vector<float>(32, 0.1), {32, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
+        auto biasOp1 = BuildBias("bias_1", vector<float>(32, 0.1), {32}, FORMAT_ND, DT_FLOAT);
         auto conv2dOp1 = BuildConv2dOp("conv_1", inputOp, filterOp1, biasOp1, false, "NCHW", {1, 1, 1, 1}, {0, 0, 0, 0});
         auto reluOp1 = BuildRelu("relu_1", conv2dOp1);
 
-        auto filterOp2 = BuildFilter("filter_2", {0.1}, {1, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
-        auto biasOp2 = BuildBias("bias_2", {0.1}, {1}, FORMAT_ND, DT_FLOAT);
+        auto filterOp2 = BuildFilter("filter_2", vector<float>(32, 0.1), {32, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
+        auto biasOp2 = BuildBias("bias_2", vector<float>(32, 0.1), {32}, FORMAT_ND, DT_FLOAT);
         auto conv2dOp2 = BuildConv2dOp("conv_2", reluOp0, filterOp2, biasOp2, false, "NHWC", {1, 1, 1, 1}, {0, 0, 0, 0});
 
-        auto filterOp3 = BuildFilter("filter_3", {0.1}, {1, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
-        auto biasOp3 = BuildBias("bias_3", {0.1}, {1}, FORMAT_ND, DT_FLOAT);
+        auto filterOp3 = BuildFilter("filter_3", vector<float>(32, 0.1), {32, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
+        auto biasOp3 = BuildBias("bias_3", vector<float>(32, 0.1), {32}, FORMAT_ND, DT_FLOAT);
         auto conv2dOp3 = BuildConv2dOp("conv_3", reluOp1, filterOp3, biasOp3, false, "NHWC", {1, 1, 1, 1}, {0, 0, 0, 0});
 
         // create graph
@@ -430,25 +472,25 @@ protected:
 
     void BuildGraphWithDiffConv2dStrides(ComputeGraphPtr &computeGraph)
     {
-        auto inputOp = BuildInputOp("input", {1, 32, 32, 1}, FORMAT_NHWC, DT_FLOAT);
+        auto inputOp = BuildInputOp("input", {1, 32, 32, 32}, FORMAT_NHWC, DT_FLOAT);
 
-        auto filterOp0 = BuildFilter("filter_0", {0.1}, {1, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
-        auto biasOp0 = BuildBias("bias_0", {0.1}, {1}, FORMAT_ND, DT_FLOAT);
+        auto filterOp0 = BuildFilter("filter_0", vector<float>(32, 0.1), {32, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
+        auto biasOp0 = BuildBias("bias_0", vector<float>(32, 0.1), {32}, FORMAT_ND, DT_FLOAT);
         auto conv2dOp0 = BuildConv2dOp("conv_0", inputOp, filterOp0, biasOp0, true, "NHWC", {1, 1, 1, 1}, {0, 0, 0, 0});
         auto reluOp0 = BuildRelu("relu_0", conv2dOp0);
 
         // different strides for conv2d
-        auto filterOp1 = BuildFilter("filter_1", {0.1}, {1, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
-        auto biasOp1 = BuildBias("bias_1", {0.1}, {1}, FORMAT_ND, DT_FLOAT);
+        auto filterOp1 = BuildFilter("filter_1", vector<float>(32, 0.1), {32, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
+        auto biasOp1 = BuildBias("bias_1", vector<float>(32, 0.1), {32}, FORMAT_ND, DT_FLOAT);
         auto conv2dOp1 = BuildConv2dOp("conv_1", inputOp, filterOp1, biasOp1, true, "NHWC", {1, 1, 2, 1}, {0, 0, 0, 0});
         auto reluOp1 = BuildRelu("relu_1", conv2dOp1);
 
-        auto filterOp2 = BuildFilter("filter_2", {0.1}, {1, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
-        auto biasOp2 = BuildBias("bias_2", {0.1}, {1}, FORMAT_ND, DT_FLOAT);
+        auto filterOp2 = BuildFilter("filter_2", vector<float>(32, 0.1), {32, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
+        auto biasOp2 = BuildBias("bias_2", vector<float>(32, 0.1), {32}, FORMAT_ND, DT_FLOAT);
         auto conv2dOp2 = BuildConv2dOp("conv_2", reluOp0, filterOp2, biasOp2, false, "NHWC", {1, 1, 1, 1}, {0, 0, 0, 0});
 
-        auto filterOp3 = BuildFilter("filter_3", {0.1}, {1, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
-        auto biasOp3 = BuildBias("bias_3", {0.1}, {1}, FORMAT_ND, DT_FLOAT);
+        auto filterOp3 = BuildFilter("filter_3", vector<float>(32, 0.1), {32, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
+        auto biasOp3 = BuildBias("bias_3", vector<float>(32, 0.1), {32}, FORMAT_ND, DT_FLOAT);
         auto conv2dOp3 = BuildConv2dOp("conv_3", reluOp1, filterOp3, biasOp3, false, "NHWC", {1, 1, 1, 1}, {0, 0, 0, 0});
 
         // create graph
@@ -462,25 +504,25 @@ protected:
 
     void BuildGraphWithDiffConv2dPads(ComputeGraphPtr &computeGraph)
     {
-        auto inputOp = BuildInputOp("input", {1, 32, 32, 1}, FORMAT_NHWC, DT_FLOAT);
+        auto inputOp = BuildInputOp("input", {1, 32, 32, 32}, FORMAT_NHWC, DT_FLOAT);
 
-        auto filterOp0 = BuildFilter("filter_0", {0.1}, {1, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
-        auto biasOp0 = BuildBias("bias_0", {0.1}, {1}, FORMAT_ND, DT_FLOAT);
+        auto filterOp0 = BuildFilter("filter_0", vector<float>(32, 0.1), {32, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
+        auto biasOp0 = BuildBias("bias_0", vector<float>(32, 0.1), {32}, FORMAT_ND, DT_FLOAT);
         auto conv2dOp0 = BuildConv2dOp("conv_0", inputOp, filterOp0, biasOp0, true, "NHWC", {1, 1, 1, 1}, {0, 0, 0, 0});
         auto reluOp0 = BuildRelu("relu_0", conv2dOp0);
 
         // different pads for conv2d
-        auto filterOp1 = BuildFilter("filter_1", {0.1}, {1, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
-        auto biasOp1 = BuildBias("bias_1", {0.1}, {1}, FORMAT_ND, DT_FLOAT);
+        auto filterOp1 = BuildFilter("filter_1", vector<float>(32, 0.1), {32, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
+        auto biasOp1 = BuildBias("bias_1", vector<float>(32, 0.1), {32}, FORMAT_ND, DT_FLOAT);
         auto conv2dOp1 = BuildConv2dOp("conv_1", inputOp, filterOp1, biasOp1, true, "NHWC", {1, 1, 1, 1}, {0, 1, 0, 0});
         auto reluOp1 = BuildRelu("relu_1", conv2dOp1);
 
-        auto filterOp2 = BuildFilter("filter_2", {0.1}, {1, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
-        auto biasOp2 = BuildBias("bias_2", {0.1}, {1}, FORMAT_ND, DT_FLOAT);
+        auto filterOp2 = BuildFilter("filter_2", vector<float>(32, 0.1), {32, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
+        auto biasOp2 = BuildBias("bias_2", vector<float>(32, 0.1), {32}, FORMAT_ND, DT_FLOAT);
         auto conv2dOp2 = BuildConv2dOp("conv_2", reluOp0, filterOp2, biasOp2, false, "NHWC", {1, 1, 1, 1}, {0, 0, 0, 0});
 
-        auto filterOp3 = BuildFilter("filter_3", {0.1}, {1, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
-        auto biasOp3 = BuildBias("bias_3", {0.1}, {1}, FORMAT_ND, DT_FLOAT);
+        auto filterOp3 = BuildFilter("filter_3", vector<float>(32, 0.1), {32, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
+        auto biasOp3 = BuildBias("bias_3", vector<float>(32, 0.1), {32}, FORMAT_ND, DT_FLOAT);
         auto conv2dOp3 = BuildConv2dOp("conv_3", reluOp1, filterOp3, biasOp3, false, "NHWC", {1, 1, 1, 1}, {0, 0, 0, 0});
 
         // create graph
@@ -495,24 +537,24 @@ protected:
     // conv format 
     void BuildGraphWithDiffFilterFormat(ComputeGraphPtr &computeGraph)
     {
-        auto inputOp = BuildInputOp("input", {1, 1, 32, 32}, FORMAT_NCHW, DT_FLOAT);
+        auto inputOp = BuildInputOp("input", {1, 32, 32, 32}, FORMAT_NCHW, DT_FLOAT);
 
-        auto filterOp0 = BuildFilter("filter_0", {0.1}, {1, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
-        auto biasOp0 = BuildBias("bias_0", {0.1}, {1}, FORMAT_ND, DT_FLOAT);
+        auto filterOp0 = BuildFilter("filter_0", vector<float>(32, 0.1), {32, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
+        auto biasOp0 = BuildBias("bias_0", vector<float>(32, 0.1), {32}, FORMAT_ND, DT_FLOAT);
         auto conv2dOp0 = BuildConv2dOp("conv_0", inputOp, filterOp0, biasOp0, false, "NHWC", {1, 1, 1, 1}, {0, 0, 0, 0});
         auto reluOp0 = BuildRelu("relu_0", conv2dOp0);
 
-        auto filterOp1 = BuildFilter("filter_1", {0.1}, {1, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
-        auto biasOp1 = BuildBias("bias_1", {0.1}, {1}, FORMAT_ND, DT_FLOAT);
+        auto filterOp1 = BuildFilter("filter_1", vector<float>(32, 0.1), {32, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
+        auto biasOp1 = BuildBias("bias_1", vector<float>(32, 0.1), {32}, FORMAT_ND, DT_FLOAT);
         auto conv2dOp1 = BuildConv2dOp("conv_1", inputOp, filterOp1, biasOp1, false, "NHWC", {1, 1, 1, 1}, {0, 0, 0, 0});
         auto reluOp1 = BuildRelu("relu_1", conv2dOp1);
 
-        auto filterOp2 = BuildFilter("filter_2", {0.1}, {1, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
-        auto biasOp2 = BuildBias("bias_2", {0.1}, {1}, FORMAT_ND, DT_FLOAT);
+        auto filterOp2 = BuildFilter("filter_2", vector<float>(32, 0.1), {32, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
+        auto biasOp2 = BuildBias("bias_2", vector<float>(32, 0.1), {32}, FORMAT_ND, DT_FLOAT);
         auto conv2dOp2 = BuildConv2dOp("conv_2", reluOp0, filterOp2, biasOp2, false, "NHWC", {1, 1, 1, 1}, {0, 0, 0, 0});
 
-        auto filterOp3 = BuildFilter("filter_3", {0.1}, {1, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
-        auto biasOp3 = BuildBias("bias_3", {0.1}, {1}, FORMAT_ND, DT_FLOAT);
+        auto filterOp3 = BuildFilter("filter_3", vector<float>(32, 0.1), {32, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
+        auto biasOp3 = BuildBias("bias_3", vector<float>(32, 0.1), {32}, FORMAT_ND, DT_FLOAT);
         auto conv2dOp3 = BuildConv2dOp("conv_3", reluOp1, filterOp3, biasOp3, false, "NHWC", {1, 1, 1, 1}, {0, 0, 0, 0});
 
         // create graph
@@ -526,26 +568,26 @@ protected:
 
     void BuildGraphWithDiffConvOffsetW(ComputeGraphPtr &computeGraph)
     {
-        auto inputOp = BuildInputOp("input", {1, 32, 32, 1}, FORMAT_NHWC, DT_FLOAT);
+        auto inputOp = BuildInputOp("input", {1, 32, 32, 32}, FORMAT_NHWC, DT_FLOAT);
 
-        auto filterOp0 = BuildFilter("filter_0", {0.1}, {1, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
-        auto biasOp0 = BuildBias("bias_0", {0.1}, {1}, FORMAT_ND, DT_FLOAT);
+        auto filterOp0 = BuildFilter("filter_0", vector<float>(32, 0.1), {32, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
+        auto biasOp0 = BuildBias("bias_0", vector<float>(32, 0.1), {32}, FORMAT_ND, DT_FLOAT);
         auto conv2dOp0 = BuildConv2dOp("conv_0", inputOp, filterOp0, biasOp0, true, "NHWC", {1, 1, 1, 1}, {0, 0, 0, 0});
         auto reluOp0 = BuildRelu("relu_0", conv2dOp0);
 
         // input offset_w is not supported
         // conv2d 0 has offset w
-        auto filterOp1 = BuildFilter("filter_1", {0.1}, {1, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
-        auto biasOp1 = BuildBias("bias_1", {0.1}, {1}, FORMAT_ND, DT_FLOAT);
+        auto filterOp1 = BuildFilter("filter_1", vector<float>(32, 0.1), {32, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
+        auto biasOp1 = BuildBias("bias_1", vector<float>(32, 0.1), {32}, FORMAT_ND, DT_FLOAT);
         auto conv2dOp1 = BuildConv2dOp("conv_1", inputOp, filterOp1, biasOp1, true, "NHWC", {1, 1, 1, 1}, {0, 0, 0, 0});
         auto reluOp1 = BuildRelu("relu_1", conv2dOp1);
 
-        auto filterOp2 = BuildFilter("filter_2", {0.1}, {1, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
-        auto biasOp2 = BuildBias("bias_2", {0.1}, {1}, FORMAT_ND, DT_FLOAT);
+        auto filterOp2 = BuildFilter("filter_2", vector<float>(32, 0.1), {32, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
+        auto biasOp2 = BuildBias("bias_2", vector<float>(32, 0.1), {32}, FORMAT_ND, DT_FLOAT);
         auto conv2dOp2 = BuildConv2dOp("conv_2", reluOp0, filterOp2, biasOp2, false, "NHWC", {1, 1, 1, 1}, {0, 0, 0, 0});
 
-        auto filterOp3 = BuildFilter("filter_3", {0.1}, {1, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
-        auto biasOp3 = BuildBias("bias_3", {0.1}, {1}, FORMAT_ND, DT_FLOAT);
+        auto filterOp3 = BuildFilter("filter_3", vector<float>(32, 0.1), {32, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
+        auto biasOp3 = BuildBias("bias_3", vector<float>(32, 0.1), {32}, FORMAT_ND, DT_FLOAT);
         auto conv2dOp3 = BuildConv2dOp("conv_3", reluOp1, filterOp3, biasOp3, false, "NHWC", {1, 1, 1, 1}, {0, 0, 0, 0});
 
         // create graph
@@ -559,24 +601,24 @@ protected:
 
     void BuildGraphInputConst(ComputeGraphPtr &computeGraph)
     {
-        auto inputOp0 = BuildInputOp("input_0", {1, 1, 32, 32}, FORMAT_NCHW, DT_FLOAT);
-        auto inputOp1 = BuildInputOp("input_1", {1, 1, 32, 32}, FORMAT_NCHW, DT_FLOAT);
+        auto inputOp0 = BuildInputOp("input_0", {1, 32, 32, 32}, FORMAT_NCHW, DT_FLOAT);
+        auto inputOp1 = BuildInputOp("input_1", {1, 32, 32, 32}, FORMAT_NCHW, DT_FLOAT);
 
-        auto filterOp0 = BuildFilter("filter_0", {0.1}, {1, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
-        auto biasOp0 = BuildBias("bias_0", {0.1}, {1}, FORMAT_ND, DT_FLOAT);
+        auto filterOp0 = BuildFilter("filter_0", vector<float>(32, 0.1), {32, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
+        auto biasOp0 = BuildBias("bias_0", vector<float>(32, 0.1), {32}, FORMAT_ND, DT_FLOAT);
         auto conv2dOp0 = BuildConv2dOp("conv_0", inputOp0, filterOp0, biasOp0, true, "NHWC", {1, 1, 1, 1}, {0, 0, 0, 0});
         auto reluOp0 = BuildRelu("relu_0", conv2dOp0);
 
-        auto filterOp1 = BuildFilter("filter_1", {0.1}, {1, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
+        auto filterOp1 = BuildFilter("filter_1", vector<float>(32, 0.1), {32, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
         auto conv2dOp1 = BuildConv2dOp("conv_1", inputOp1, filterOp1, biasOp0, true, "NHWC", {1, 1, 1, 1}, {0, 0, 0, 0});
         auto reluOp1 = BuildRelu("relu_1", conv2dOp1);
 
-        auto filterOp2 = BuildFilter("filter_2", {0.1}, {1, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
-        auto biasOp2 = BuildBias("bias_2", {0.1}, {1}, FORMAT_ND, DT_FLOAT);
+        auto filterOp2 = BuildFilter("filter_2", vector<float>(32, 0.1), {32, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
+        auto biasOp2 = BuildBias("bias_2", vector<float>(32, 0.1), {32}, FORMAT_ND, DT_FLOAT);
         auto conv2dOp2 = BuildConv2dOp("conv_2", reluOp0, filterOp2, biasOp2, false, "NHWC", {1, 1, 1, 1}, {0, 0, 0, 0});
 
-        auto filterOp3 = BuildFilter("filter_3", {0.1}, {1, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
-        auto biasOp3 = BuildBias("bias_3", {0.1}, {1}, FORMAT_ND, DT_FLOAT);
+        auto filterOp3 = BuildFilter("filter_3", vector<float>(32, 0.1), {32, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
+        auto biasOp3 = BuildBias("bias_3", vector<float>(32, 0.1), {32}, FORMAT_ND, DT_FLOAT);
         auto conv2dOp3 = BuildConv2dOp("conv_3", reluOp1, filterOp3, biasOp3, false, "NHWC", {1, 1, 1, 1}, {0, 0, 0, 0});
 
         // create graph
@@ -590,33 +632,33 @@ protected:
 
     void BuildGraphWithMultiConv(ComputeGraphPtr &computeGraph)
     {
-        auto inputOp = BuildInputOp("input", {1, 32, 32, 1}, FORMAT_NHWC, DT_FLOAT);
+        auto inputOp = BuildInputOp("input", {1, 32, 32, 32}, FORMAT_NHWC, DT_FLOAT);
 
-        auto filterOp0 = BuildFilter("filter_0", {0.1}, {1, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
-        auto biasOp0 = BuildBias("bias_0", {0.1}, {1}, FORMAT_ND, DT_FLOAT);
+        auto filterOp0 = BuildFilter("filter_0", vector<float>(32, 0.1), {32, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
+        auto biasOp0 = BuildBias("bias_0", vector<float>(32, 0.1), {32}, FORMAT_ND, DT_FLOAT);
         auto conv2dOp0 = BuildConv2dOp("conv_0", inputOp, filterOp0, biasOp0, true, "NHWC", {1, 1, 1, 1}, {0, 0, 0, 0});
         auto reluOp0 = BuildRelu("relu_0", conv2dOp0);
 
-        auto filterOp1 = BuildFilter("filter_1", {0.1}, {1, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
-        auto biasOp1 = BuildBias("bias_1", {0.1}, {1}, FORMAT_ND, DT_FLOAT);
+        auto filterOp1 = BuildFilter("filter_1", vector<float>(32, 0.1), {32, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
+        auto biasOp1 = BuildBias("bias_1", vector<float>(32, 0.1), {32}, FORMAT_ND, DT_FLOAT);
         auto conv2dOp1 = BuildConv2dOp("conv_1", inputOp, filterOp1, biasOp1, true, "NHWC", {1, 1, 1, 1}, {0, 0, 0, 0});
         auto reluOp1 = BuildRelu("relu_1", conv2dOp1);
 
-        auto filterOpMulti = BuildFilter("filter_multi", {0.1}, {1, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
-        auto biasOpMulti = BuildBias("bias_multi", {0.1}, {1}, FORMAT_ND, DT_FLOAT);
+        auto filterOpMulti = BuildFilter("filter_multi", vector<float>(32, 0.1), {32, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
+        auto biasOpMulti = BuildBias("bias_multi", vector<float>(32, 0.1), {32}, FORMAT_ND, DT_FLOAT);
         auto conv2dOpMulti = BuildConv2dOp("conv_multi", inputOp, filterOpMulti, biasOpMulti, true, "NHWC", {1, 1, 1, 1}, {0, 0, 0, 0});
         auto reluOpMulti = BuildRelu("relu_multi", conv2dOpMulti);
 
-        auto filterOp2 = BuildFilter("filter_2", {0.1}, {1, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
-        auto biasOp2 = BuildBias("bias_2", {0.1}, {1}, FORMAT_ND, DT_FLOAT);
+        auto filterOp2 = BuildFilter("filter_2", vector<float>(32, 0.1), {32, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
+        auto biasOp2 = BuildBias("bias_2", vector<float>(32, 0.1), {32}, FORMAT_ND, DT_FLOAT);
         auto conv2dOp2 = BuildConv2dOp("conv_2", reluOp0, filterOp2, biasOp2, false, "NHWC", {1, 1, 1, 1}, {0, 0, 0, 0});
 
-        auto filterOp3 = BuildFilter("filter_3", {0.1}, {1, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
-        auto biasOp3 = BuildBias("bias_3", {0.1}, {1}, FORMAT_ND, DT_FLOAT);
+        auto filterOp3 = BuildFilter("filter_3", vector<float>(32, 0.1), {32, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
+        auto biasOp3 = BuildBias("bias_3", vector<float>(32, 0.1), {32}, FORMAT_ND, DT_FLOAT);
         auto conv2dOp3 = BuildConv2dOp("conv_3", reluOp1, filterOp3, biasOp3, false, "NHWC", {1, 1, 1, 1}, {0, 0, 0, 0});
 
-        auto filterOp4 = BuildFilter("filter_4", {0.1}, {1, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
-        auto biasOp4 = BuildBias("bias_4", {0.1}, {1}, FORMAT_ND, DT_FLOAT);
+        auto filterOp4 = BuildFilter("filter_4", vector<float>(32, 0.1), {32, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
+        auto biasOp4 = BuildBias("bias_4", vector<float>(32, 0.1), {32}, FORMAT_ND, DT_FLOAT);
         auto conv2dOp4 = BuildConv2dOp("conv_4", reluOpMulti, filterOp4, biasOp4, false, "NHWC", {1, 1, 1, 1}, {0, 0, 0, 0});
 
         // create graph
@@ -630,33 +672,33 @@ protected:
 
     void BuildGraphWithMultiConvPartSame(ComputeGraphPtr &computeGraph)
     {
-        auto inputOp = BuildInputOp("input", {1, 32, 32, 1}, FORMAT_NHWC, DT_FLOAT);
+        auto inputOp = BuildInputOp("input", {1, 32, 32, 32}, FORMAT_NHWC, DT_FLOAT);
 
-        auto filterOp0 = BuildFilter("filter_0", {0.1}, {1, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
-        auto biasOp0 = BuildBias("bias_0", {0.1}, {1}, FORMAT_ND, DT_FLOAT);
+        auto filterOp0 = BuildFilter("filter_0", vector<float>(32, 0.1), {32, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
+        auto biasOp0 = BuildBias("bias_0", vector<float>(32, 0.1), {32}, FORMAT_ND, DT_FLOAT);
         auto conv2dOp0 = BuildConv2dOp("conv_0", inputOp, filterOp0, biasOp0, true, "NHWC", {1, 1, 1, 1}, {0, 0, 0, 0});
         auto reluOp0 = BuildRelu("relu_0", conv2dOp0);
 
-        auto filterOp1 = BuildFilter("filter_1", {0.1}, {1, 2, 2, 1}, FORMAT_NHWC, DT_FLOAT);
-        auto biasOp1 = BuildBias("bias_1", {0.1}, {1}, FORMAT_ND, DT_FLOAT);
+        auto filterOp1 = BuildFilter("filter_1", vector<float>(32, 0.1), {32, 2, 2, 1}, FORMAT_NHWC, DT_FLOAT);
+        auto biasOp1 = BuildBias("bias_1", vector<float>(32, 0.1), {32}, FORMAT_ND, DT_FLOAT);
         auto conv2dOp1 = BuildConv2dOp("conv_1", inputOp, filterOp1, biasOp1, true, "NHWC", {1, 1, 1, 1}, {0, 0, 0, 0});
         auto reluOp1 = BuildRelu("relu_1", conv2dOp1);
 
-        auto filterOpMulti = BuildFilter("filter_multi", {0.1}, {1, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
-        auto biasOpMulti = BuildBias("bias_multi", {0.1}, {1}, FORMAT_ND, DT_FLOAT);
+        auto filterOpMulti = BuildFilter("filter_multi", vector<float>(32, 0.1), {32, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
+        auto biasOpMulti = BuildBias("bias_multi", vector<float>(32, 0.1), {32}, FORMAT_ND, DT_FLOAT);
         auto conv2dOpMulti = BuildConv2dOp("conv_multi", inputOp, filterOpMulti, biasOpMulti, true, "NHWC", {1, 1, 1, 1}, {0, 0, 0, 0});
         auto reluOpMulti = BuildRelu("relu_multi", conv2dOpMulti);
 
-        auto filterOp2 = BuildFilter("filter_2", {0.1}, {1, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
-        auto biasOp2 = BuildBias("bias_2", {0.1}, {1}, FORMAT_ND, DT_FLOAT);
+        auto filterOp2 = BuildFilter("filter_2", vector<float>(32, 0.1), {32, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
+        auto biasOp2 = BuildBias("bias_2", vector<float>(32, 0.1), {32}, FORMAT_ND, DT_FLOAT);
         auto conv2dOp2 = BuildConv2dOp("conv_2", reluOp0, filterOp2, biasOp2, false, "NHWC", {1, 1, 1, 1}, {0, 0, 0, 0});
 
-        auto filterOp3 = BuildFilter("filter_3", {0.1}, {1, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
-        auto biasOp3 = BuildBias("bias_3", {0.1}, {1}, FORMAT_ND, DT_FLOAT);
+        auto filterOp3 = BuildFilter("filter_3", vector<float>(32, 0.1), {32, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
+        auto biasOp3 = BuildBias("bias_3", vector<float>(32, 0.1), {32}, FORMAT_ND, DT_FLOAT);
         auto conv2dOp3 = BuildConv2dOp("conv_3", reluOp1, filterOp3, biasOp3, false, "NHWC", {1, 1, 1, 1}, {0, 0, 0, 0});
 
-        auto filterOp4 = BuildFilter("filter_4", {0.1}, {1, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
-        auto biasOp4 = BuildBias("bias_4", {0.1}, {1}, FORMAT_ND, DT_FLOAT);
+        auto filterOp4 = BuildFilter("filter_4", vector<float>(32, 0.1), {32, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
+        auto biasOp4 = BuildBias("bias_4", vector<float>(32, 0.1), {32}, FORMAT_ND, DT_FLOAT);
         auto conv2dOp4 = BuildConv2dOp("conv_4", reluOpMulti, filterOp4, biasOp4, false, "NHWC", {1, 1, 1, 1}, {0, 0, 0, 0});
 
         // create graph
@@ -670,24 +712,24 @@ protected:
 
     void BuildGraphWithDiffKernel(ComputeGraphPtr &computeGraph)
     {
-        auto inputOp = BuildInputOp("input", {1, 32, 32, 1}, FORMAT_NHWC, DT_FLOAT);
+        auto inputOp = BuildInputOp("input", {1, 32, 32, 32}, FORMAT_NHWC, DT_FLOAT);
 
-        auto filterOp0 = BuildFilter("filter_0", {0.1}, {1, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
-        auto biasOp0 = BuildBias("bias_0", {0.1}, {1}, FORMAT_ND, DT_FLOAT);
+        auto filterOp0 = BuildFilter("filter_0", vector<float>(32, 0.1), {32, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
+        auto biasOp0 = BuildBias("bias_0", vector<float>(32, 0.1), {32}, FORMAT_ND, DT_FLOAT);
         auto conv2dOp0 = BuildConv2dOp("conv_0", inputOp, filterOp0, biasOp0, false, "NHWC", {1, 1, 1, 1}, {0, 0, 0, 0});
         auto reluOp0 = BuildRelu("relu_0", conv2dOp0);
 
-        auto filterOp1 = BuildFilter("filter_1", {0.1}, {1, 2, 2, 1}, FORMAT_NHWC, DT_FLOAT);
-        auto biasOp1 = BuildBias("bias_1", {0.1}, {1}, FORMAT_ND, DT_FLOAT);
+        auto filterOp1 = BuildFilter("filter_1", vector<float>(32, 0.1), {32, 2, 2, 1}, FORMAT_NHWC, DT_FLOAT);
+        auto biasOp1 = BuildBias("bias_1", vector<float>(32, 0.1), {32}, FORMAT_ND, DT_FLOAT);
         auto conv2dOp1 = BuildConv2dOp("conv_1", inputOp, filterOp1, biasOp1, false, "NHWC", {1, 1, 1, 1}, {0, 0, 0, 0});
         auto reluOp1 = BuildRelu("relu_1", conv2dOp1);
 
-        auto filterOp2 = BuildFilter("filter_2", {0.1}, {1, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
-        auto biasOp2 = BuildBias("bias_2", {0.1}, {1}, FORMAT_ND, DT_FLOAT);
+        auto filterOp2 = BuildFilter("filter_2", vector<float>(32, 0.1), {32, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
+        auto biasOp2 = BuildBias("bias_2", vector<float>(32, 0.1), {32}, FORMAT_ND, DT_FLOAT);
         auto conv2dOp2 = BuildConv2dOp("conv_2", reluOp0, filterOp2, biasOp2, false, "NHWC", {1, 1, 1, 1}, {0, 0, 0, 0});
 
-        auto filterOp3 = BuildFilter("filter_3", {0.1}, {1, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
-        auto biasOp3 = BuildBias("bias_3", {0.1}, {1}, FORMAT_ND, DT_FLOAT);
+        auto filterOp3 = BuildFilter("filter_3", vector<float>(32, 0.1), {32, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
+        auto biasOp3 = BuildBias("bias_3", vector<float>(32, 0.1), {32}, FORMAT_ND, DT_FLOAT);
         auto conv2dOp3 = BuildConv2dOp("conv_3", reluOp1, filterOp3, biasOp3, false, "NHWC", {1, 1, 1, 1}, {0, 0, 0, 0});
 
         // create graph
@@ -699,6 +741,106 @@ protected:
         computeGraph = ge::GraphUtils::GetComputeGraph(graph);
     }
 
+    void BuildGraphRequant(ComputeGraphPtr &computeGraph)
+    {
+        auto inputOp = BuildInputOp("input", {1, 32, 32, 32}, FORMAT_NHWC, DT_FLOAT);
+
+        auto filterOp0 = BuildFilter("filter_0", vector<float>(32, 0.1), {32, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
+        auto biasOp0 = BuildBias("bias_0", vector<float>(32, 0.1), {32}, FORMAT_ND, DT_FLOAT);
+        auto conv2dOp0 = BuildConv2dOp("conv_0", inputOp, filterOp0, biasOp0, false, "NHWC", {1, 1, 1, 1}, {0, 0, 0, 0});
+        auto requantOp0 = BuildRequant("requant_0", conv2dOp0);
+
+        auto filterOp1 = BuildFilter("filter_1", vector<float>(32, 0.1), {32, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
+        auto biasOp1 = BuildBias("bias_1", vector<float>(32, 0.1), {32}, FORMAT_ND, DT_FLOAT);
+        auto conv2dOp1 = BuildConv2dOp("conv_1", inputOp, filterOp1, biasOp1, false, "NHWC", {1, 1, 1, 1}, {0, 0, 0, 0});
+        auto requantOp1 = BuildRequant("requant_1", conv2dOp1);
+
+        auto filterOp2 = BuildFilter("filter_2", vector<float>(32, 0.1), {32, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
+        auto biasOp2 = BuildBias("bias_2", vector<float>(32, 0.1), {32}, FORMAT_ND, DT_FLOAT);
+        auto conv2dOp2 = BuildConv2dOp("conv_2", requantOp0, filterOp2, biasOp2, false, "NHWC", {1, 1, 1, 1}, {0, 0, 0, 0});
+
+        auto filterOp3 = BuildFilter("filter_3", vector<float>(32, 0.1), {32, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
+        auto biasOp3 = BuildBias("bias_3", vector<float>(32, 0.1), {32}, FORMAT_ND, DT_FLOAT);
+        auto conv2dOp3 = BuildConv2dOp("conv_3", requantOp1, filterOp3, biasOp3, false, "NHWC", {1, 1, 1, 1}, {0, 0, 0, 0});
+
+        // create graph
+        std::vector<Operator> inputs {inputOp, filterOp0, filterOp1, filterOp2, filterOp3};
+        std::vector<Operator> outputs {conv2dOp2, conv2dOp3};
+
+        ge::Graph graph("test");
+        graph.SetInputs(inputs).SetOutputs(outputs);
+        computeGraph = ge::GraphUtils::GetComputeGraph(graph);
+    }
+
+    void BuildGraphQuant(ComputeGraphPtr &computeGraph)
+    {
+        auto inputOp = BuildInputOp("input", {1, 32, 32, 32}, FORMAT_NHWC, DT_FLOAT);
+
+        auto filterOp0 = BuildFilter("filter_0", vector<float>(32, 0.1), {32, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
+        auto biasOp0 = BuildBias("bias_0", vector<float>(32, 0.1), {32}, FORMAT_ND, DT_FLOAT);
+        auto conv2dOp0 = BuildConv2dOp("conv_0", inputOp, filterOp0, biasOp0, false, "NHWC", {1, 1, 1, 1}, {0, 0, 0, 0});
+        auto dequantOp0 = BuildDequant("dequant_0", conv2dOp0);
+        auto quantOp0 = BuildQuant("quant_0", dequantOp0);
+
+        auto filterOp1 = BuildFilter("filter_1", vector<float>(32, 0.1), {32, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
+        auto biasOp1 = BuildBias("bias_1", vector<float>(32, 0.1), {32}, FORMAT_ND, DT_FLOAT);
+        auto conv2dOp1 = BuildConv2dOp("conv_1", inputOp, filterOp1, biasOp1, false, "NHWC", {1, 1, 1, 1}, {0, 0, 0, 0});
+        auto dequantOp1 = BuildDequant("dequant_1", conv2dOp1);
+        auto quantOp1 = BuildQuant("quant_1", dequantOp1);
+
+        auto filterOp2 = BuildFilter("filter_2", vector<float>(32, 0.1), {32, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
+        auto biasOp2 = BuildBias("bias_2", vector<float>(32, 0.1), {32}, FORMAT_ND, DT_FLOAT);
+        auto conv2dOp2 = BuildConv2dOp("conv_2", quantOp0, filterOp2, biasOp2, false, "NHWC", {1, 1, 1, 1}, {0, 0, 0, 0});
+
+        auto filterOp3 = BuildFilter("filter_3", vector<float>(32, 0.1), {32, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
+        auto biasOp3 = BuildBias("bias_3", vector<float>(32, 0.1), {32}, FORMAT_ND, DT_FLOAT);
+        auto conv2dOp3 = BuildConv2dOp("conv_3", quantOp1, filterOp3, biasOp3, false, "NHWC", {1, 1, 1, 1}, {0, 0, 0, 0});
+
+        // create graph
+        std::vector<Operator> inputs {inputOp, filterOp0, filterOp1, filterOp2, filterOp3};
+        std::vector<Operator> outputs {conv2dOp2, conv2dOp3};
+
+        ge::Graph graph("test");
+        graph.SetInputs(inputs).SetOutputs(outputs);
+        computeGraph = ge::GraphUtils::GetComputeGraph(graph);
+    }
+
+    void BuildGraphQuantNext(ComputeGraphPtr &computeGraph)
+    {
+        auto inputOp = BuildInputOp("input", {1, 32, 32, 32}, FORMAT_NHWC, DT_FLOAT);
+
+        auto filterOp0 = BuildFilter("filter_0", vector<float>(32, 0.1), {32, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
+        auto biasOp0 = BuildBias("bias_0", vector<float>(32, 0.1), {32}, FORMAT_ND, DT_FLOAT);
+        auto conv2dOp0 = BuildConv2dOp("conv_0", inputOp, filterOp0, biasOp0, false, "NHWC", {1, 1, 1, 1}, {0, 0, 0, 0});
+        auto dequantOp0 = BuildDequant("dequant_0", conv2dOp0);
+        auto quantOp0 = BuildQuant("quant_0", dequantOp0);
+
+        auto filterOp1 = BuildFilter("filter_1", vector<float>(32, 0.1), {32, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
+        auto biasOp1 = BuildBias("bias_1", vector<float>(32, 0.1), {32}, FORMAT_ND, DT_FLOAT);
+        auto conv2dOp1 = BuildConv2dOp("conv_1", inputOp, filterOp1, biasOp1, false, "NHWC", {1, 1, 1, 1}, {0, 0, 0, 0});
+        auto dequantOp1 = BuildDequant("dequant_1", conv2dOp1);
+        auto quantOp1 = BuildQuant("quant_1", dequantOp1);
+
+        auto filterOp2 = BuildFilter("filter_2", vector<float>(32, 0.1), {32, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
+        auto biasOp2 = BuildBias("bias_2", vector<float>(32, 0.1), {32}, FORMAT_ND, DT_FLOAT);
+        auto conv2dOp2 = BuildConv2dOp("conv_2", quantOp0, filterOp2, biasOp2, false, "NHWC", {1, 1, 1, 1}, {0, 0, 0, 0});
+        auto dequantOp2 = BuildDequant("dequant_2", conv2dOp2);
+        auto quantOp2 = BuildQuant("quant_2", dequantOp2);
+
+        auto filterOp3 = BuildFilter("filter_3", vector<float>(32, 0.1), {32, 1, 1, 1}, FORMAT_NHWC, DT_FLOAT);
+        auto biasOp3 = BuildBias("bias_3", vector<float>(32, 0.1), {32}, FORMAT_ND, DT_FLOAT);
+        auto conv2dOp3 = BuildConv2dOp("conv_3", quantOp1, filterOp3, biasOp3, false, "NHWC", {1, 1, 1, 1}, {0, 0, 0, 0});
+        auto dequantOp3 = BuildDequant("dequant_3", conv2dOp3);
+        auto quantOp3 = BuildQuant("quant_3", dequantOp3);
+
+        // create graph
+        std::vector<Operator> inputs {inputOp, filterOp0, filterOp1, filterOp2, filterOp3};
+        std::vector<Operator> outputs {quantOp2, quantOp3};
+
+        ge::Graph graph("test");
+        graph.SetInputs(inputs).SetOutputs(outputs);
+        computeGraph = ge::GraphUtils::GetComputeGraph(graph);
+    }
 };
 
 TEST_F(same_input_conv2d_test, same_input_conv2d_smoke_test_01)
@@ -821,13 +963,6 @@ TEST_F(same_input_conv2d_test, same_input_conv2d_with_bias_link_other_node_test_
     BuildGraphWithBiasLinkOtherNode(computeGraph);
     FusionPassTestUtils::InferShapeAndType(computeGraph);
     FusionPassTestUtils::RunGraphFusionPass("SameInputConv2dPass", fe::BUILT_IN_GRAPH_PASS, *computeGraph);
-
-    uint32_t conv2dNodeExpect = 4;
-    uint32_t splitNodeExpect = 0;
-    uint32_t constNodeExpect = 6;
-    uint32_t reluNodeExpect = 3;
-    uint32_t concatNodeExpect = 0;
-    CheckNodesCnt(computeGraph, conv2dNodeExpect, splitNodeExpect, constNodeExpect, reluNodeExpect, concatNodeExpect);
 }
 
 TEST_F(same_input_conv2d_test, same_input_conv2d_with_fmap_link_other_node_test_08)
@@ -960,7 +1095,51 @@ TEST_F(same_input_conv2d_test, same_input_conv2d_diff_kernel_test_16)
     CheckNodesCnt(computeGraph, conv2dNodeExpect, splitNodeExpect, constNodeExpect, reluNodeExpect, concatNodeExpect);
 }
 
+TEST_F(same_input_conv2d_test, same_input_conv2d_quant_test_17)
+{
+    ge::ComputeGraphPtr computeGraph;
+    BuildGraphQuant(computeGraph);
+    cout << "build graph quant" << endl;
+    FusionPassTestUtils::InferShapeAndType(computeGraph);
+    FusionPassTestUtils::RunGraphFusionPass("SameInputConv2dPass", fe::BUILT_IN_GRAPH_PASS, *computeGraph);
 
+    uint32_t conv2dNodeExpect = 3;
+    uint32_t splitNodeExpect = 1;
+    uint32_t constNodeExpect = 4;
+    uint32_t reluNodeExpect = 0;
+    uint32_t concatNodeExpect = 2;
+    CheckNodesCnt(computeGraph, conv2dNodeExpect, splitNodeExpect, constNodeExpect, reluNodeExpect, concatNodeExpect);
+}
+
+TEST_F(same_input_conv2d_test, same_input_conv2d_requant_test_18)
+{
+    ge::ComputeGraphPtr computeGraph;
+    BuildGraphRequant(computeGraph);
+    FusionPassTestUtils::InferShapeAndType(computeGraph);
+    FusionPassTestUtils::RunGraphFusionPass("SameInputConv2dPass", fe::BUILT_IN_GRAPH_PASS, *computeGraph);
+
+    uint32_t conv2dNodeExpect = 3;
+    uint32_t splitNodeExpect = 1;
+    uint32_t constNodeExpect = 4;
+    uint32_t reluNodeExpect = 0;
+    uint32_t concatNodeExpect = 2;
+    CheckNodesCnt(computeGraph, conv2dNodeExpect, splitNodeExpect, constNodeExpect, reluNodeExpect, concatNodeExpect);
+}
+
+TEST_F(same_input_conv2d_test, same_input_conv2d_quant_next_test_19)
+{
+    ge::ComputeGraphPtr computeGraph;
+    BuildGraphQuantNext(computeGraph);
+    FusionPassTestUtils::InferShapeAndType(computeGraph);
+    FusionPassTestUtils::RunGraphFusionPass("SameInputConv2dPass", fe::BUILT_IN_GRAPH_PASS, *computeGraph);
+
+    uint32_t conv2dNodeExpect = 3;
+    uint32_t splitNodeExpect = 1;
+    uint32_t constNodeExpect = 4;
+    uint32_t reluNodeExpect = 0;
+    uint32_t concatNodeExpect = 2;
+    CheckNodesCnt(computeGraph, conv2dNodeExpect, splitNodeExpect, constNodeExpect, reluNodeExpect, concatNodeExpect);
+}
 
 } // namespace fe
 

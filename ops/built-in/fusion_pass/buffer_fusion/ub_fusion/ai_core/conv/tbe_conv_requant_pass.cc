@@ -27,6 +27,7 @@ static const string PATTERN_CONV = "convolution";
 static const string PATTERN_REQUANT = "requant";
 static const string PATTERN_OTHER_INPUT = "otherInput";
 static const string PATTERN_STRIDEDWRITE = "strided_write";
+static const string PATTERN_STRIDEDREAD = "strided_read";
 
 vector<BufferFusionPattern*> ConvRequantFusionPass::DefinePatterns() {
   vector<BufferFusionPattern*> patterns;
@@ -36,12 +37,14 @@ vector<BufferFusionPattern*> ConvRequantFusionPass::DefinePatterns() {
   FUSION_PASS_CHECK((pattern == nullptr), OP_LOGE(fused_op_type_.c_str(), "new an object failed."), return patterns);
   OP_LOGD(fused_op_type_.c_str(), "Start to define %s pass pattern.", pattern_name.c_str());
   // define pattern rules
-  pattern->AddOpDesc(PATTERN_CONV, {OP_PATTERN_CONV}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+  pattern->AddOpDesc(PATTERN_STRIDEDREAD, {OP_PATTERN_STRIDED_READ}, TBE_PATTERN_NUM_NONE, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+          .AddOpDesc(PATTERN_CONV, {OP_PATTERN_CONV}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
           .AddOpDesc(PATTERN_REQUANT, {OP_PATTERN_REQUANT}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
           .AddOpDesc(PATTERN_OTHER_INPUT, {TBE_PATTERN_INPUT_NODE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
           .AddOpDesc(PATTERN_STRIDEDWRITE, {OP_PATTERN_STRIDED_WRITE}, TBE_PATTERN_NUM_NONE, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
-          .SetHead({PATTERN_CONV})
-          .SetOutputs(PATTERN_CONV, {PATTERN_REQUANT})
+          .SetHead({PATTERN_STRIDEDREAD, PATTERN_CONV})
+          .SetOutputs(PATTERN_STRIDEDREAD, {PATTERN_CONV})
+          .SetOutputs(PATTERN_CONV, {PATTERN_REQUANT}, TBE_OUTPUT_BRANCH_SINGLE, true)
           .SetOutputs(PATTERN_REQUANT, {PATTERN_STRIDEDWRITE})
           .SetOutputs(PATTERN_OTHER_INPUT, {PATTERN_REQUANT});
   patterns.push_back(pattern);

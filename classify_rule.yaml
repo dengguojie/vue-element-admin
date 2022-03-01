@@ -439,7 +439,9 @@ cube-tiling:
       - ops/built-in/fusion_pass/graph_fusion/ai_core/conv2d_squeeze_biasadd_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/conv2d_squeeze_biasadd_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/spacetobatch_conv2d_batchtospace_fusion_pass.cc
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/spacetobatch_conv2d_batchtospace_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/same_input_conv2d_fusion_pass.cc
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/same_input_conv2d_fusion_pass.h
       - ops/built-in/host_cpu/inc/convcatv2_host_cpu_op.h
       - ops/built-in/host_cpu/convcatv2_host_cpu_op.cpp
       - ops/built-in/framework/tf_plugin/conv2d_plugin.cc
