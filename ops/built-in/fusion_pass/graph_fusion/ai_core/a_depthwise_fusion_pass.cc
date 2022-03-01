@@ -154,20 +154,25 @@ namespace fe {
                     int64_t tmp_w = 0;
                     vector<int64_t> quant_pre_shape;
                     vector<int64_t> quant_new_shape;
-                    if (depthwiseNodeInput1DescPtr->GetOriginFormat() == FORMAT_HWCN) {
+                    ge::GeTensorDesc filter_ori_out_des = quant_filter_ori_node->GetOpDesc()->GetOutputDesc(
+                                                          iter_out->GetIdx());
+                    ge::Format filter_ori_node_format = filter_ori_out_des.GetOriginFormat();
+                    if (filter_ori_node_format == FORMAT_HWCN) {
                         tmp_n = tmp_quant_shape[INDEX_3];
                         tmp_c = tmp_quant_shape[INDEX_2];
                         tmp_h = tmp_quant_shape[INDEX_0];
                         tmp_w = tmp_quant_shape[INDEX_1];
                         quant_pre_shape = {tmp_h, tmp_w, tmp_c, tmp_n};
                         quant_new_shape = {tmp_h, tmp_w, 1, tmp_c*tmp_n};
-                    } else if (depthwiseNodeInput1DescPtr->GetOriginFormat() == FORMAT_NCHW) {
+                    } else if (filter_ori_node_format == FORMAT_NCHW) {
                         tmp_n = tmp_quant_shape[INDEX_0];
                         tmp_c = tmp_quant_shape[INDEX_1];
                         tmp_h = tmp_quant_shape[INDEX_2];
                         tmp_w = tmp_quant_shape[INDEX_3];
                         quant_pre_shape = {tmp_n, tmp_c, tmp_h, tmp_w};
                         quant_new_shape = {tmp_n * tmp_c, 1, tmp_h, tmp_w};
+                    } else {
+                        continue;
                     }
                     if (cur_node_type == "QuantBiasOptimization" || std::find(quant_special_list.begin(),
                         quant_special_list.end(), cur_node_type) != quant_special_list.end()) {
