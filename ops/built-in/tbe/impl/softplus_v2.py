@@ -15,6 +15,7 @@
 """
 softplus_v2
 """
+import math
 import te.lang.cce as tbe
 from te import tvm
 from te.utils import para_check
@@ -103,7 +104,7 @@ def softplus_v2(x, y, beta=1.0, threshold=20.0, kernel_name="softplus_v2"):
     para_check.check_dtype(dtype_feature, check_list, param_name="x")
     para_check.check_shape(shape_feature, param_name="x")
 
-    if beta == 0.0:
+    if math.isclose(beta, 0.0):
         raise ZeroDivisionError("The value of beta must be non-zero.")
 
     data_features = tvm.placeholder(shape_feature, dtype=dtype_feature, name="data_features")

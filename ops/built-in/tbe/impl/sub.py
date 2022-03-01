@@ -84,9 +84,7 @@ def sub(input_x, input_y, output_z, kernel_name="sub"):
 
     check_list = ["float16", "float32", "int32"]
     dtype = input_x.get("dtype").lower()
-    if not dtype in check_list:
-        error_manager_vector.raise_err_input_dtype_not_supported(kernel_name, "input_x", \
-                                                                 check_list, dtype)
+    para_check.check_dtype(dtype, check_list, param_name="input_x")
 
     shape_x, shape_y, shape_max = shape_util.broadcast_shapes(shape_x, shape_y, param_name_input1="input_x",
                                                               param_name_input2="input_y")

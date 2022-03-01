@@ -15,6 +15,7 @@
 """
 softplus_v2_grad
 """
+import math
 import te.lang.cce as tbe
 from te import tvm
 from te.utils import para_check
@@ -126,7 +127,7 @@ def softplus_v2_grad(input_gradients, input_features, output_backprops,
 
     para_check.check_shape(shape_grad, param_name="input_gradients")
     para_check.check_shape(shape_feature, param_name="input_features")
-    if beta == 0.0:
+    if math.isclose(beta, 0.0):
         raise ZeroDivisionError("the value of beta must be non-zero")
     # broadcast grad and feature
     if len(list(shape_grad)) != len(list(shape_feature)):

@@ -55,6 +55,10 @@ COM_LIMIT_SAMPLE_NUM = 128
 MODE_ZERO_16 = 0b0000000100000001
 MODE_ZERO = 0b00000001000000010000000100000001
 
+# global flag for vextract
+SUB_VEXTRACT_FP32 = False
+SUB_VEXTRACT_FP16 = True
+
 
 # 'pylint: disable=too-many-instance-attributes,too-many-arguments,too-many-locals
 # 'pylint: disable=too-many-statements
@@ -1711,14 +1715,14 @@ def _get_roi_align_perf_scale_for_zero(tik_instance, proposal, proposals_ub_x0,
         dtype, [128], name="roi_fp32_fm_index", scope=tbe_platform.scope_ubuf)
     roi_int32_fm_index = tik_instance.Tensor(
         "int32", [128], name="roi_int32_fm_index", scope=tbe_platform.scope_ubuf)
-    if sup_vextract_fp32 is False and sup_vextract_fp16 is True and dtype == "float32":
+    if SUB_VEXTRACT_FP32 is False and SUB_VEXTRACT_FP16 is True and dtype == "float32":
         tik_instance.vec_conv(64, "", roi_fp16_pos[0, 0], proposal[0, 0],
                               (128 * 8) // 64, 4, 8)
 
         tik_instance.vextract(roi_fp16_fm_index[0], roi_fp16_pos, 8, 0)
         tik_instance.vec_conv(64, "ceil", roi_int32_fm_index[0],
                               roi_fp16_fm_index[0], 2, 8, 4)
-    elif sup_vextract_fp32 is False and sup_vextract_fp16 is False:
+    elif SUB_VEXTRACT_FP32 is False and SUB_VEXTRACT_FP16 is False:
         mask_ub = tik_instance.Tensor(mask_ub_dtype, [8], name="mask_ub", scope=tbe_platform.scope_ubuf)
         tik_instance.vec_dup(8, mask_ub, mask_scalar, 1, 8)
         tik_instance.vreduce(process_num, roi_fp32_fm_index, proposal[0, 0], mask_ub, 1, 1, 8, 0, 0, None, "counter")
@@ -3245,11 +3249,11 @@ def roi_align_tik(feature_map_dict, rois_dict, roisn_dict, \
     :return:
     """
     # 'pylint: disable=global-variable-undefined
-    global sup_vextract_fp32
+    global SUB_VEXTRACT_FP32
     # 'pylint: disable=global-variable-undefined
-    global sup_vextract_fp16
-    sup_vextract_fp32 = tbe_platform.api_check_support("tik.vextract", "float32")
-    sup_vextract_fp16 = tbe_platform.api_check_support("tik.vextract", "float16")
+    global SUB_VEXTRACT_FP16
+    SUB_VEXTRACT_FP32 = tbe_platform.api_check_support("tik.vextract", "float32")
+    SUB_VEXTRACT_FP16 = tbe_platform.api_check_support("tik.vextract", "float16")
     tik_instance = tik.Tik(tik.Dprofile(), True)
     rois_shape = rois_dict.get("shape")
     dtype = feature_map_dict.get("dtype")
@@ -3438,7 +3442,7 @@ def roi_align_tik(feature_map_dict, rois_dict, roisn_dict, \
                                                0, 1,
                                                64 * n_bust, 0, 0)
 
-                    if dtype == "float16" and sup_vextract_fp16 is True:
+                    if dtype == "float16" and SUB_VEXTRACT_FP16 is True:
                         if cce_product == tbe_platform.ASCEND_310:
                             j_value = tik_instance.Scalar(dtype=dtype)
                             with tik_instance.for_range(0, 128) as j:
@@ -3449,7 +3453,7 @@ def roi_align_tik(feature_map_dict, rois_dict, roisn_dict, \
                         tik_instance.vextract(proposals_ub_x0[0, 0], rois_ub[0], 8, 1)
                         tik_instance.vextract(proposals_ub_y0[0, 0], rois_ub[0], 8, 2)
                         tik_instance.vextract(proposals_ub_x1[0, 0], rois_ub[0], 8, 3)
-                    elif dtype == "float32" and sup_vextract_fp32 is True:
+                    elif dtype == "float32" and SUB_VEXTRACT_FP32 is True:
                         tik_instance.vextract(proposals_ub_x0[0, 0], rois_ub[0], 8, 1)
                         tik_instance.vextract(proposals_ub_y0[0, 0], rois_ub[0], 8, 2)
                         tik_instance.vextract(proposals_ub_x1[0, 0], rois_ub[0], 8, 3)

@@ -94,10 +94,7 @@ def squared_difference(x1, x2, y, kernel_name="squared_difference"):
 
     check_list = ["float16", "float32", "int32"]
     dtype = x1.get("dtype").lower()
-
-    if not dtype in check_list:
-        error_manager_vector.raise_err_input_dtype_not_supported(kernel_name, "x1", \
-                                                                 check_list, dtype)
+    para_check.check_dtype(dtype, check_list, param_name="x1")
 
     shape_x, shape_y, shape_max = \
         shape_util.broadcast_shapes(shape_x, shape_y, param_name_input1="x1", param_name_input2="x2")

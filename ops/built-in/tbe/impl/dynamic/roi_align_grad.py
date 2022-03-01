@@ -50,9 +50,9 @@ class Constant:
     VREDUCE_TIMES = 5
     VECDUP_ELES = 8
     # ub size limits
-    WIDTH_DIM_CONST = 80
-    WIDTH_DIM_CONST_NEW = 70
-    UB_SIZE_NEW_VER = 196608
+    WIDTH_DIM = 80
+    WIDTH_DIM_NEW = 70
+    UB_SIZE_LMT = 196608
 
 
 # 'pylint: disable-msg=too-many-arguments,too-many-locals,too-many-statements
@@ -104,8 +104,7 @@ class RoiAlignGrad():
         self.available_c1_num = None
         self.exist_rois_n = False
         self.rois_n_gm = None
-        self.with_dim_limit = Constant.WIDTH_DIM_CONST if self.ub_size > Constant.UB_SIZE_NEW_VER \
-                              else Constant.WIDTH_DIM_CONST_NEW
+        self.with_dim_limit = Constant.WIDTH_DIM if self.ub_size > Constant.UB_SIZE_LMT else Constant.WIDTH_DIM_NEW
 
     def _get_tiling_args(self, tiling_ub):
         """

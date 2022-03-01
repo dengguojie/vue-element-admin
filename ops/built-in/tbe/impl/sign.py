@@ -89,11 +89,7 @@ def sign(input_x, output_y, kernel_name="sign"):
 
     check_list = ["float16", "float32", "int32"]
     inp_dtype = input_x.get("dtype").lower()
-    if not inp_dtype in check_list:
-        excepted_dtype_list = "float16, float32, int32"
-        error_manager_vector.raise_err_input_dtype_not_supported(kernel_name, "input_x", \
-                                                                 excepted_dtype_list, inp_dtype)
-
+    para_check.check_dtype(inp_dtype, check_list, param_name="input_x")
     shape = shape_util.shape_refine(shape)
     fuseshape = [1]
     fuseshape[0] = functools.reduce(lambda x, y: x*y, shape)

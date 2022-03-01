@@ -78,10 +78,7 @@ def square(input_x, output_y, kernel_name="square"):
     para_check.check_shape(shape, param_name="input_x")
 
     check_list = ["float16", "float32", "int32"]
-    if not dtype in check_list:
-        error_manager_vector.raise_err_input_dtype_not_supported(kernel_name, "input_x", \
-                                                                 check_list, dtype)
-
+    para_check.check_dtype(dtype, check_list, param_name="input_x")
     shape = shape_util.shape_refine(shape)
     fuseshape = [1]
     fuseshape[0] = functools.reduce(lambda x, y: x*y, shape)

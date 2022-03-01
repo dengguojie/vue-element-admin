@@ -48,6 +48,7 @@ SHRINK_AXIS = -1
 NEW_AXIS = -2
 BURST_LEN = 65535
 
+
 def _fill_list_with_ones(length):
     """
     fill a list array with ones
@@ -189,14 +190,14 @@ def _infer_shape(shape, begin, end, stride, begin_mask, end_mask, ellipsis_mask,
     for index, _ in enumerate(sparse_spec.get("begin")):
         bit_value = 1 << index
         if ellipsis_seen and (new_axis_mask & bit_value != 0):
-            sparse_spec["num_add_axis_after_ellipsis"] = sparse_spec["num_add_axis_after_ellipsis"] + 1
+            sparse_spec["num_add_axis_after_ellipsis"] = sparse_spec.get("num_add_axis_after_ellipsis") + 1
 
         if ellipsis_mask & bit_value != 0:
             ellipsis_seen = True
 
     # If no ellipsis insert one at the end
     if not ellipsis_seen:
-        sparse_spec["ellipsis_mask"] |= (1 << sparse_spec["dims"])
+        sparse_spec["ellipsis_mask"] |= (1 << sparse_spec.get("dims"))
         sparse_spec["dims"] += 1
 
     # Step 2: Make a sparse spec into a full index spec
@@ -221,9 +222,9 @@ def _infer_shape(shape, begin, end, stride, begin_mask, end_mask, ellipsis_mask,
         "shrink_axis_mask": 0
     }
     _build_dense_spec(sparse_spec, dense_spec)
-    begin = list(dense_spec["begin"])
-    end = list(dense_spec["end"])
-    stride = list(dense_spec["strides"])
+    begin = list(dense_spec.get("begin"))
+    end = list(dense_spec.get("end"))
+    stride = list(dense_spec.get("strides"))
     # Step 3: Make implicit ranges (non-zero begin_masks and end_masks) explicit
     #         and bounds check!
     is_identity = True
@@ -235,7 +236,7 @@ def _infer_shape(shape, begin, end, stride, begin_mask, end_mask, ellipsis_mask,
     processing_stride = []
     for i, dim_i in enumerate(shape):
         bit_value = 1 << i
-        shrink_i = (dense_spec["shrink_axis_mask"] & bit_value)
+        shrink_i = (dense_spec.get("shrink_axis_mask") & bit_value)
         if dim_i == -1:
             processing_shape.append(1 if shrink_i != 0 else -1)
             processing_begin.append(begin[i])
@@ -243,7 +244,7 @@ def _infer_shape(shape, begin, end, stride, begin_mask, end_mask, ellipsis_mask,
             processing_stride.append(stride[i])
             continue
 
-        masks = (dense_spec["begin_mask"] & bit_value, dense_spec["end_mask"] & bit_value)
+        masks = (dense_spec.get("begin_mask") & bit_value, dense_spec.get("end_mask") & bit_value)
         valid_range = (0 if stride[i] > 0 else -1, dim_i if stride[i] > 0 else dim_i - 1)
 
         # 'pylint: disable=invalid-name,cell-var-from-loop
@@ -255,8 +256,8 @@ def _infer_shape(shape, begin, end, stride, begin_mask, end_mask, ellipsis_mask,
 
         is_simple_slice &= (stride[i] == 1)
         begin_and_end_masked = (
-            (dense_spec["begin_mask"] & bit_value != 0) and (dense_spec["end_mask"] & bit_value != 0))
-        if dense_spec["begin_valid"] and dense_spec["end_valid"]:
+            (dense_spec.get("begin_mask") & bit_value != 0) and (dense_spec.get("end_mask") & bit_value != 0))
+        if dense_spec.get("begin_valid") and dense_spec.get("end_valid"):
             if shrink_i != 0:
                 # If we are shrinking, the end index is now possibly incorrect. In
                 # particular foo[-1] produces sparse_begin = -1, sparse_end = 0.
@@ -284,7 +285,7 @@ def _infer_shape(shape, begin, end, stride, begin_mask, end_mask, ellipsis_mask,
         # Compute the processing shape (the intermediate Eigen will produce)
         interval_length = 0
         known_interval = False
-        if dense_spec["begin_valid"] and dense_spec["end_valid"]:
+        if dense_spec.get("begin_valid") and dense_spec.get("end_valid"):
             interval_length = end[i] - begin[i]
             known_interval = True
         elif shrink_i != 0:
@@ -321,7 +322,7 @@ def _infer_shape(shape, begin, end, stride, begin_mask, end_mask, ellipsis_mask,
     final_input_end = []
     final_input_stride = []
     shrink_gather_index = 0
-    for _, gather_index in enumerate(dense_spec["final_shape_gather_indices"]):
+    for _, gather_index in enumerate(dense_spec.get("final_shape_gather_indices")):
         if gather_index >= 0:
             final_shape.append(processing_shape[gather_index])
             final_input_shape.append(shape[gather_index])
@@ -786,13 +787,13 @@ def _update_params_for_other_format(input_shape, begin, end, strides, input_form
         #     strides  [N, C, H, W] -> [N, 1, H, W, 1]
         #     strides[c] only support 1
         begin_nchw = [begin[input_ori_format.index("N")], begin[input_ori_format.index("C")],
-                       begin[input_ori_format.index("H")], begin[input_ori_format.index("W")]]
+                      begin[input_ori_format.index("H")], begin[input_ori_format.index("W")]]
         end_nchw = [end[input_ori_format.index("N")], end[input_ori_format.index("C")],
-                     end[input_ori_format.index("H")], end[input_ori_format.index("W")]]
+                    end[input_ori_format.index("H")], end[input_ori_format.index("W")]]
         strides_nchw = [strides[input_ori_format.index("N")], strides[input_ori_format.index("C")],
-                         strides[input_ori_format.index("H")], strides[input_ori_format.index("W")]]
+                        strides[input_ori_format.index("H")], strides[input_ori_format.index("W")]]
         input_shape_nchw = [input_shape[input_ori_format.index("N")], input_shape[input_ori_format.index("C")],
-                             input_shape[input_ori_format.index("H")], input_shape[input_ori_format.index("W")]]
+                            input_shape[input_ori_format.index("H")], input_shape[input_ori_format.index("W")]]
         # strides[c] ！= 1，raise exception
         # begin[c] is not c0 align, raise exception
         # end[c] is not c0 align and end[c] != input_shape[c], raise exception
