@@ -53,7 +53,7 @@ build_binary.sh soc_version opp_run_path output_path
               ex: {output_path}/op_impl/built-in/ai_core/tbe/kernel/config/ascend910/add.json
 ```
 
-### gen_opcinfo_for_socversion.sh .sh
+### gen_opcinfo_for_socversion.sh
 
 ```
 区分平台生成opc 编译算子使用的信息, 动态算子实现文件(dynamic/add.py)和算子编译入口函数(add)
@@ -104,4 +104,51 @@ build_binary.sh soc_version opp_run_path output_path
     op_type,file_name,file_func
     Abs,dynamic/abs.py,abs
     AbsGrad,dynamic/abs_grad.py,abs_grad
+```
+
+### binary_fuzz_json.sh
+
+```
+生成对应平台的二进制发布json文件
+执行方法：
+1. 在binary_json_cfg.ini 中配置算子kernel发布的config, 见Addd, Cast
+2. 执行 bash binary_fuzz_json.sh {op_type} {soc_version}
+    ex: bash binary_fuzz_json.sh Add,Cast ascend910,ascend610
+
+入参说明
+    {op_type}      算子名字, ex：1.Add(单算子)
+                                2.Add,Cast(多算子)
+                                3.all(全量)
+    {soc_version}  编译平台, ex: 1.Ascend910(单平台)
+                                2.Ascend910,Ascend910(多平台)
+                                3.all(全平台)
+
+输出json文件说明：
+    路径规划 ../binary_config/{soc_version}/{op_type}/{xxx}.json    //xxx为算子实现文件前缀, 即binary_json_cfg.ini中op_name
+    ex: ../binary_config/ascend910/Add/add.json
+```
+
+### binary_mate_json.sh
+
+```
+检测输入是否匹配二进制kernel
+执行方法：
+    bash binary_fuzz_json.sh {op_type} {binary_file} {input_tensors}
+    ex: bash binary_fuzz_json.sh Sample ${Asend}/op_impl/built-in/ai_core/tbe/kernel/config/ascend910/sample.json ./test.json
+
+入参说明
+    {op_type}        算子名字
+    {binary_file}    算子kernel的总json文件
+    {input_tensors}  要检测的输入(ex: binary_config/ascend910/Add/test.json)
+```
+
+### gen_output_json.py
+
+```
+获取opc工具生成的supportInfo合并到binList里生成二进制kernel总json文件
+执行方法：
+    python3 gen_opcinfo_from_opinfo.py {binary_config_full_path} {binary_compile_full_path} {binary_compile_json_full_path}
+
+入参说明:
+     1.二进制kernel发布场景json文件, 2.opc工具生成的supportinfo, 3.kernel的总json文件(1 + 2)
 ```

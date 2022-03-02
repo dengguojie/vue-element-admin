@@ -1,0 +1,36 @@
+{
+    "inputs": [
+      {
+        "name": "x1",
+        "index": 0,
+        "dtype": "int32",
+        "format": "ND",
+        "paramType": "required",
+        "shape": [2, 2],
+        "ori_shape": [2, 2],
+        "ori_format": "ND"
+      },
+      {
+        "name": "x2",
+        "index": 1,
+        "dtype": "int32",
+        "format": "ND",
+        "paramType": "required",
+        "shape": [2, 2],
+        "ori_shape": [2, 2],
+        "ori_format": "ND"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "y",
+        "index": 0,
+        "dtype": "int32",
+        "format": "ND",
+        "paramType": "required",
+        "shape": [2, 2],
+        "ori_shape": [2, 2],
+        "ori_format": "ND"
+      }
+    ]
+}

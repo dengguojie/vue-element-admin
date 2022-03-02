@@ -102,7 +102,7 @@ main() {
   ${cmd}
 
   # step6: post process to gen op.json
-  cmd="python3.7 xxx.py ${binary_config_full_path} ${binary_compile_full_path} ${binary_compile_json_full_path}"
+  cmd="python3.7 gen_output_json.py ${binary_config_full_path} ${binary_compile_full_path} ${binary_compile_json_full_path}"
   # ${cmd}
 }
 set -o pipefail
