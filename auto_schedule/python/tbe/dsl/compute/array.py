@@ -468,6 +468,82 @@ def _get_next_name_index():
     NAME_INDEX[0] += 1
     return NAME_INDEX[0]
 
+
+@source_info_decorator()
+@dtype_check_decorator
+def slice(tensor, begin, end, stride=None):
+    """
+    :param tensor: The tensor from which to slice values.
+    :param begin: The begin indexes to slice for each dimension.
+    :param end: The end indexes to slice for each dimension and end point not include.
+    :param stride: The stride means slice continues by stride length. now stride is not support.
+    :return:
+    """
+
+    def _get_resust_idx(idxs, begin):
+        return [i + b for i, b in zip(idxs, begin)]
+
+    def _check_stride(stride):
+        if stride is not None:
+            dict_args = {}
+            dict_args["errCode"] = "E90001"
+            dict_args["detailed_cause"] = "slice stride input must be None"
+            raise RuntimeError(dict_args, get_error_message(dict_args))
+
+    def _check_list_input(list_input, input_len):
+        if not isinstance(list_input, list):
+            dict_args = {}
+            dict_args["errCode"] = "E90001"
+            dict_args["detailed_cause"] = "input dtype must be list"
+            raise RuntimeError(dict_args, get_error_message(dict_args))
+
+        if input_len != len(list_input):
+            dict_args = {}
+            dict_args["errCode"] = "E90001"
+            dict_args["detailed_cause"] = "input lenght must be [%u] " \
+                                          "while real is [%u]" % (input_len, len(list_input))
+            raise RuntimeError(dict_args, get_error_message(dict_args))
+
+    def _check_begin_end_value(tensor_shape, begin_list, end_list):
+        for _tensor_value, _begin, _end in zip(tensor_shape, begin_list, end_list):
+            if isinstance(_tensor_value, (tvm.expr.IntImm, tvm.expr.UIntImm)):
+                if isinstance(_begin, int):
+                    if _begin < 0 or _begin > _tensor_value.value:
+                        dict_args = {}
+                        dict_args["errCode"] = "E90001"
+                        dict_args["detailed_cause"] = "begin [%u] out of range [0, %u]" % (_begin, _tensor_value.value)
+                        raise RuntimeError(dict_args, get_error_message(dict_args))
+
+                if isinstance(_end, int):
+                    if _end < 0 or _end > _tensor_value.value:
+                        dict_args = {}
+                        dict_args["errCode"] = "E90001"
+                        dict_args["detailed_cause"] = "_end [%u] out of range [0, %u]" \
+                                                      % (_end, _tensor_value.value)
+                        raise RuntimeError(dict_args, get_error_message(dict_args))
+
+                if isinstance(_begin, int) and isinstance(_end, int):
+                    if _end < _begin:
+                        dict_args = {}
+                        dict_args["errCode"] = "E90001"
+                        dict_args["detailed_cause"] = "_begin [%u] must small or equal than _end %u" \
+                                                      % (_begin, _end)
+                        raise RuntimeError(dict_args, get_error_message(dict_args))
+
+    _check_stride(stride)
+    tensor_shape_len = len(tensor.shape)
+    _check_list_input(begin, tensor_shape_len)
+    _check_list_input(end, tensor_shape_len)
+    _check_begin_end_value(tensor.shape, begin, end)
+
+    output_shape = [_end - _begin for _begin, _end in zip(begin, end)]
+    op_name = "slice"
+    compute_name = op_name + str(_get_next_name_index())
+    with tvm.tag_scope(op_name):
+        slice_res = tvm.compute(output_shape, lambda *i: tensor(*_get_resust_idx(i, begin)), name=compute_name)
+    return slice_res
+
+
 @source_info_decorator()
 @dtype_check_decorator
 def transdata(tensor, dst_shape, axes_map, pad_value=0):

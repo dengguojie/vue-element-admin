@@ -28,6 +28,7 @@ from tbe.dsl.base.classifier import classify_reduction
 from tbe.dsl.base.classifier import classify_softmax_cross_entropy_with_logits
 from tbe.dsl.base.classifier import classify_gather
 from tbe.dsl.base.classifier import classify_gather_nd
+from tbe.dsl.base.classifier import classify_slice
 from tbe.dsl.base.classifier import classify_transpose
 from tbe.dsl.base.classifier import classify_concat
 from tbe.dsl.base.classifier import classify_split
@@ -42,6 +43,7 @@ REDUCE = "reduce"
 SOFTMAX_CROSS_ENTROPY_WITH_LOGITS_WITH_REDUCE = "softmax_cross_entropy_with_logits_with_reduce"
 GATHER = "gather"
 GATHER_ND = "gather_nd"
+SLICE = "slice"
 TRANSPOSE = "transpose"
 CONCAT = "concat"
 TRANSDATA = "transdata"
@@ -83,6 +85,8 @@ def classify(ins: list, mode: str, extra_params: Optional[Dict[str, Any]] = None
         return classify_gather(ins)
     if mode == GATHER_ND:
         return classify_gather_nd(ins)
+    if mode == SLICE:
+        return classify_slice(ins, extra_params)
     if mode == TRANSPOSE:
         return classify_transpose(ins, extra_params)
     if mode == CONCAT:

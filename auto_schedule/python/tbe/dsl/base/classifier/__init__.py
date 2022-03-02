@@ -27,3 +27,4 @@ from .transpose_classifier import classify as classify_transpose
 from .concat_classifier import classify as classify_concat
 from .split_classifier import classify as classify_split
 from .transdata.transdata_classifier import classify as classify_transdata
+from .slice_classifier import classify_slice

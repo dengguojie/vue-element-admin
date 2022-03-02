@@ -1563,6 +1563,17 @@ def gather_nd(params, indices, batch_dims=0):
     return array.gather_nd(params, indices, batch_dims)
 
 
+def slice(tensor, begin, end, stride=None):
+    """
+    :param tensor: The tensor from which to slice values.
+    :param begin: The begin indexes to slice for each dimension.
+    :param end: The end indexes to slice for each dimension and end point not include.
+    :param stride: The stride means slice continues by stride length. now stride is not support.
+    :return:
+    """
+    return array.slice(tensor, begin, end, stride)
+
+
 def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
     """
     conv

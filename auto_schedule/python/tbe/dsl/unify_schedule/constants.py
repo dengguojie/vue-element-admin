@@ -51,6 +51,7 @@ class Pattern:
     LAYER_NORM_X_BACKPROP = "Layer_norm_x_backprop"
     LAYER_NORM_X_BACKPROP_V2 = "Layer_norm_x_backprop_v2"
     GATHER = "Gather"
+    SLICE = "Slice"
     TRANSDATA = "Transdata"
 
 
@@ -115,6 +116,14 @@ class GatherPattern:
     """
     NORMAL_SCHEDULE = "NORMAL_SCHEDULE"
     ZERO_SCHEDULE = "ZERO_SCHEDULE"
+
+
+class SlicePattern:
+    """
+    Slice sub pattern.
+    Each sub-pattern has a corresponding schedule, for function or performance.
+    """
+    NORMAL_SCHEDULE = "NORMAL_SCHEDULE"
 
 
 class TransposePattern:

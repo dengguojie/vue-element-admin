@@ -308,6 +308,15 @@
     "auto_schedule/python/tbe/dsl/unify_schedule/vector/gather/gather_schedule_zero.py":[
         "gather"
     ],
+    "auto_schedule/python/tbe/dsl/base/classifier/slice_classifier.py": [
+        "slice_classify"
+    ],
+    "auto_schedule/python/tbe/dsl/unify_schedule/vector/slice/slice_tilingcase.py":[
+        "slice"
+    ],
+    "auto_schedule/python/tbe/dsl/unify_schedule/vector/slice/slice_schedule.py":[
+        "slice"
+    ],
     "auto_schedule/python/tbe/dsl/unify_schedule/vector/transpose/transpose_tilingcase.py":[
         "transpose"
     ],

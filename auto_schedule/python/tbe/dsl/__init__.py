@@ -109,6 +109,8 @@ from .api import matmul
 from .api import gather
 from .api import gather_nd
 
+from .api import slice
+
 from .api import transdata
 
 from .api import conv

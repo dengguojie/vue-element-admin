@@ -59,5 +59,9 @@ std::shared_ptr<AutoTilingHandler> CreateReduceTilingHandler(const std::string& 
 std::shared_ptr<AutoTilingHandler> CreateGatherTilingHandler(const std::string& op_type,
                                                              const std::string& pattern,
                                                              const nlohmann::json& parsed_compile_info);
+
+std::shared_ptr<AutoTilingHandler> CreateSliceTilingHandler(const std::string& op_type,
+                                                            const std::string& pattern,
+                                                            const nlohmann::json& parsed_compile_info);
 }  // namespace optiling
 #endif  //__TILINGHANDLER_H__

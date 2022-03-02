@@ -128,6 +128,10 @@ GATHER_COMPUTE = {
     "gather_nd",
 }
 
+SLICE_COMPUTE = {
+    "slice"
+}
+
 
 class ComputeType(Enum):
     """
@@ -153,6 +157,7 @@ class ComputeType(Enum):
     MAT_MUL = auto()
     CONV3D_BP_FILTER = auto()
     GATHER = auto()
+    SLICE = auto()
 
 
 def _get_custom_pattern():
@@ -198,6 +203,7 @@ def _parse_pattern(outs):
              (lambda: _is_reduce(compute_type_size_map), Pattern.REDUCE),
              (lambda: _is_norm(outs, compute_type_size_map, compute_type_tensor_map), Pattern.NORM),
              (lambda: _is_gather(compute_type_size_map), Pattern.GATHER),
+             (lambda: _is_slice(compute_type_size_map), Pattern.SLICE),
              (lambda: _is_transpose(compute_type_size_map), Pattern.TRANSPOSE),
              (lambda: _is_transdata(compute_type_size_map), Pattern.TRANSDATA),
              (lambda: _is_concat(compute_type_size_map), Pattern.CONCAT),
@@ -333,6 +339,13 @@ def _is_gather(compute_type_size_map: dict):
     return ph_size + gather_size == total
 
 
+def _is_slice(compute_type_size_map: dict):
+    ph_size = compute_type_size_map.get(ComputeType.PLACEHOLDER, 0)
+    slice_size = compute_type_size_map.get(ComputeType.SLICE, 0)
+    total = compute_type_size_map.get(ComputeType.ANY, 0)
+    return ph_size + slice_size == total and slice_size == 1
+
+
 def _is_transpose(compute_type_size_map: dict):
     ph_size = compute_type_size_map.get(ComputeType.PLACEHOLDER, 0)
     transpose_size = compute_type_size_map.get(ComputeType.TRANSPOSE, 0)
@@ -409,6 +422,7 @@ def _get_compute_type(tensor: tvm.tensor.Tensor) -> ComputeType:
         (CAST_COMPUTE, ComputeType.CAST),
         (REDUCE_COMPUTE, ComputeType.REDUCE),
         (GATHER_COMPUTE, ComputeType.GATHER),
+        (SLICE_COMPUTE, ComputeType.SLICE),
         (TRANSPOSE_COMPUTE, ComputeType.TRANSPOSE),
         (TRANSDATA_COMPUTE, ComputeType.TRANSDATA),
         (SET_VALUE_COMPUTE, ComputeType.SET_VALUE),

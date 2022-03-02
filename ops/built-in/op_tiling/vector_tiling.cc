@@ -38,6 +38,8 @@ std::shared_ptr<AutoTilingHandler> CreateAutoTilingHandler(const std::string& op
       return CreateNormTilingHandler(op_type, pattern, parsed_compile_info);
     } else if (pattern == "Gather") {
         return CreateGatherTilingHandler(op_type, pattern, parsed_compile_info);
+    } else if (pattern == "Slice") {
+      return CreateSliceTilingHandler(op_type, pattern, parsed_compile_info);
     }else if (pattern == "Transpose") {
       return CreateTransposeDslTilingHandler(op_type, pattern, parsed_compile_info);
     } else if (pattern == "Transdata") {

@@ -560,6 +560,48 @@ def _gather_variable_shape(inputs):
     return params_shape, indices_shape, batch_dims_info
 
 
+def _slice_variable_shape(inputs: list):
+    x_info = inputs[0]
+    begin_info = inputs[1]
+    end_info = inputs[2]
+
+    current_compute = operation.get_context().get_current_compute()
+    if 0 in x_info["shape"]:
+        current_compute.add("_zero_shape", True)
+    else:
+        current_compute.add("_zero_shape", False)
+
+    # new x var
+    x_shape = []
+    for index, value in enumerate(x_info["shape"]):
+        _var = None
+        if value == -1:
+            _var = operation.var_inner("_x_dim_{}".format(index), x_info["range"][index])
+            x_shape.append(_var)
+        else:
+            x_shape.append(value)
+
+    dim_len = len(x_info["shape"])
+    begin_list = []
+    is_begin_list = isinstance(begin_info, list)
+    end_list = []
+    is_end_list = isinstance(end_info, list)
+    for _idx in range(dim_len):
+        if is_begin_list:
+            begin_value = begin_info[_idx]
+        else:
+            begin_value = operation.var_inner("_begin_dim_{}".format(_idx), (1, None))
+        begin_list.append(begin_value)
+
+        if is_end_list:
+            end_value = end_info[_idx]
+        else:
+            end_value = begin_value + operation.var_inner("_size_dim_{}".format(_idx), (1, None))
+        end_list.append(end_value)
+
+    return x_shape, begin_list, end_list
+
+
 def _transdata_variable_shape(inputs: list):
     """
     Eg:
@@ -784,6 +826,9 @@ def variable_shape(inputs: list, op_mode="elewise"):
 
     if op_mode == "gather":
         return _gather_variable_shape(inputs)
+
+    if op_mode == "slice":
+        return _slice_variable_shape(inputs)
 
     if op_mode == "transpose":
         return _transpose_variable_shape(inputs)
