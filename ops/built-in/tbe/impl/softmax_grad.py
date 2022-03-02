@@ -154,7 +154,7 @@ def update_5hd_axis(origin_format, axis, input_format):
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             (para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_LIST_INT),
                             para_check.KERNEL_NAME, para_check.OPTION_ATTR_STR)
-def softmax_grad(softmax, grad_softmax, grad_x, axis=-1, kernel_name="softmax_grad", impl_mode="high_performance"):
+def softmax_grad(softmax, grad_softmax, grad_x, axis=-1, kernel_name="softmax_grad", impl_mode="high_precision"):
     """Computes softmax gradients for a softmax operation
     The calculation formula is as follows :
     grad_x = grad_softmax * softmax - sum(grad_softmax * softmax) * softmax
