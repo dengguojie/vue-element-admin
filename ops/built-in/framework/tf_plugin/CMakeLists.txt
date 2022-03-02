@@ -169,6 +169,7 @@ set(_tf_plugins
   einsum_plugin.cc
   elu_plugin.cc
   encode_jpeg_variable_quality_plugin.cc
+  optional_get_value_plugin.cc
   equal_plugin.cc
   erfc_plugin.cc
   erf_plugin.cc

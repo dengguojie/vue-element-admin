@@ -2818,4 +2818,70 @@ IMPLEMT_INFERFUNC(GetNextFromQueue, GetNextFromQueueInferShape) {
 
 INFER_FUNC_REG(GetNextFromQueue, GetNextFromQueueInferShape);
 // ----------------------------GetNextFromQueue END----------------------------
+
+// ----------------------------OptionalGetValue--------------------------------
+IMPLEMT_INFERFUNC(OptionalGetValue, OptionalGetValueInferShape) {
+  OP_LOGD("OP[OptionalGetValue]", "OptionalGetValueInferShape Begin.");
+  const auto op_name = op.GetName();
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  auto optional_ptr = op_desc->MutableInputDesc("optional");
+  GeShape optional_shape;
+  if (WithRank(optional_ptr, 0, optional_shape, op_name.c_str()) != GRAPH_SUCCESS) {
+    OP_LOGE(op_name, "Expected optional should be 0-D. But get %lu.", optional_ptr->GetShape().GetDimNum());
+    return GRAPH_FAILED;
+  }
+
+  std::vector<ge::DataType> outputTypes;
+  if (op.GetAttr("output_types", outputTypes) != GRAPH_SUCCESS) {
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op_name, string("get attr[output_types] failed"));
+    return GRAPH_FAILED;
+  }
+
+  if (outputTypes.size() < 1) {
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op_name, string("get attr[output_types] less 1"));
+    return GRAPH_FAILED;
+  }
+
+  std::vector<std::vector<int64_t>> outputShapes;
+  if (op.GetAttr("output_shapes", outputShapes) != GRAPH_SUCCESS) {
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op_name, string("get attr[output_shapes] failed"));
+    return GRAPH_FAILED;
+  }
+
+  if (outputShapes.size() < 1) {
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op_name, string("get attr[outputShapes] less 1"));
+    return GRAPH_FAILED;
+  }
+
+  if (outputTypes.size() != outputShapes.size()) {
+    std::string errMsg =
+      "attr[output_types] and attr[output_shapes] should be the same length";
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op_name, errMsg);
+    return GRAPH_FAILED;
+  }
+
+  for (size_t i = 0; i < outputShapes.size(); i++) {
+    TensorDesc outputDesc = op.GetDynamicOutputDesc("components", i);
+    Shape shape(outputShapes[i]);
+    outputDesc.SetShape(shape);
+    outputDesc.SetDataType(outputTypes[i]);
+  
+    graphStatus outputStatus = op.UpdateDynamicOutputDesc("components", i, outputDesc);
+    if (outputStatus != GRAPH_SUCCESS) {
+      std::ostringstream sInfo;
+      sInfo << "update output[components] index[";
+      sInfo << i;
+      sInfo << "] desc failed";
+      std::string errMsg = sInfo.str();
+      AICPU_INFER_SHAPE_INNER_ERR_REPORT(op_name, errMsg);
+      return GRAPH_FAILED;
+    }
+  }
+
+  OP_LOGD("OP[OptionalGetValue]", "OptionalGetValueInferShape End.");
+  return GRAPH_SUCCESS;
+}
+
+INFER_FUNC_REG(OptionalGetValue, OptionalGetValueInferShape);
+// ----------------------------OptionalGetValue END----------------------------
 }  // namespace ge
