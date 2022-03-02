@@ -572,7 +572,6 @@ vector_A:
       - ops/built-in/op_proto/elewise_calculation_ops.cc
       - ops/built-in/op_proto/fsrdetectionoutput_ops.cc
       - ops/built-in/op_proto/nn_detect_ops.cc
-      - ops/built-in/op_proto/nn_pooling_ops.cc
       - ops/built-in/op_proto/psroipooling_ops.cc
       - ops/built-in/op_proto/quantize_ops.cc
       - ops/built-in/op_proto/reduction_ops.cc
@@ -583,14 +582,12 @@ vector_A:
       - ops/built-in/op_tiling/aipp.cc
       - ops/built-in/op_tiling/ascend_anti_quant.cc
       - ops/built-in/op_tiling/ascend_quant.cc
-      - ops/built-in/op_tiling/avg_pool.cc
       - ops/built-in/op_tiling/dynamic_lstm_grad_cell.cc
       - ops/built-in/op_tiling/dynamic_rnn.cc
       - ops/built-in/op_tiling/softmax_tiling.cc
       - ops/built-in/tbe/impl/ascend_quant.py
       - ops/built-in/tbe/impl/ascend_quant_util.py
       - ops/built-in/tbe/impl/basic_lstm_cell.py
-      - ops/built-in/tbe/impl/batch_matmul.py
       - ops/built-in/tbe/impl/bnll.py
       - ops/built-in/tbe/impl/cumprod_d.py
       - ops/built-in/tbe/impl/cumsum_d.py
@@ -604,7 +601,6 @@ vector_A:
       - ops/built-in/tbe/impl/dynamic/softmax_v2.py
       - ops/built-in/tbe/impl/dynamic_gru_v2_hidden.py
       - ops/built-in/tbe/impl/dynamic/swish.py
-      - ops/built-in/tbe/impl/fully_connection.py
       - ops/built-in/tbe/impl/leaky_relu.py
       - ops/built-in/tbe/impl/log_softmax_grad.py
       - ops/built-in/tbe/impl/log_softmax_v2.py
@@ -803,7 +799,6 @@ vector_B:
       - ops/built-in/op_tiling/nll_loss.cc
       - ops/built-in/op_tiling/nll_loss_grad.cc
       - ops/built-in/op_tiling/nms_with_mask.cc
-      - ops/built-in/op_tiling/norm.cc
       - ops/built-in/op_tiling/one_hot.cc
       - ops/built-in/op_tiling/pad.cc
       - ops/built-in/op_tiling/pad_d.cc
@@ -3264,7 +3259,6 @@ unkown:
       - ops/built-in/fusion_pass/graph_fusion/ai_core/lars_v2_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/strided_slice_grad_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/lin_space_fusion_pass.h
-      - ops/built-in/fusion_pass/graph_fusion/ai_core/pad_addn_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/matrix_diag_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/prodenvmata_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/a_arg_max_v2_fusion_pass.cc
@@ -3319,7 +3313,6 @@ unkown:
       - ops/built-in/fusion_pass/graph_fusion/ai_core/resize_bilinear_cast_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/nms_with_mask_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/a_split_node_remove_fusion_pass.cc
-      - ops/built-in/fusion_pass/graph_fusion/ai_core/concatv2d_sliced_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/gelu_onnx_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/transdata_transdata_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/one_hot_fusion_pass.h
@@ -3488,7 +3481,6 @@ unkown:
       - ops/built-in/fusion_pass/graph_fusion/ai_core/transdata_reshape_transdata_transpose.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/decode_bbox_v2_insert_transpose_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/softmax_grad_ext_v2_fusion_pass.h
-      - ops/built-in/fusion_pass/graph_fusion/ai_core/concatv2d_sliced_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/tbe_vector_core_fusion_base_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/avg_pool_v2_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/batchnorm_fusion_pass.h
@@ -3516,7 +3508,6 @@ unkown:
       - ops/built-in/fusion_pass/graph_fusion/ai_core/extremum_grad_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/slice_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/concat_fusion_pass.cc
-      - ops/built-in/fusion_pass/graph_fusion/ai_core/pad_addn_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/batchnormgrad_preprocess_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/mul_fusion_optimizer_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/confusion_mul_grad_fusion_pass.h
