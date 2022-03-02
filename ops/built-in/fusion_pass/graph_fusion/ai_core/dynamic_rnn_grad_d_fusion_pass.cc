@@ -45,6 +45,10 @@ static const int TANHCT_INDEX = 15;
 static const int MASK_INDEX = 16;
 static const int SHAPE_2 = 2;
 static const int SHAPE_3 = 3;
+static const int RESHAPE_DGATE_INDEX = 17;
+static const int RESHAPE_DOUT_INDEX = 18;
+static const int RESHAPE_CONCAT_INDEX = 19;
+static const int CONCAT_INPUT_INDEX_TWO = 2;
 static map<std::string, int> RNN_GRAD_NODE_INPUT_INDEX = {
     {"x", X_INDEX}, {"w", W_INDEX},   {"init_c", INIT_C_INDEX}, {"init_h", INIT_H_INDEX}, {"h", H_INDEX},
     {"c", C_INDEX}, {"dy", DY_INDEX}, {"dh", DH_INDEX},         {"dc", DC_INDEX},         {"i", I_INDEX},
@@ -81,9 +85,9 @@ ge::ComputeGraphPtr DynamicRNNGradDFusionPass::BuildCondGraph(ge::NodePtr& while
   graph_builder.SetInput(O_INDEX, {lessName}, {X_INDEX});
   graph_builder.SetInput(TANHCT_INDEX, {lessName}, {W_INDEX});
   graph_builder.SetUselessInput(MASK_INDEX);
-  graph_builder.SetUselessInput(17);
-  graph_builder.SetUselessInput(18);
-  graph_builder.SetUselessInput(19);
+  graph_builder.SetUselessInput(RESHAPE_DGATE_INDEX);
+  graph_builder.SetUselessInput(RESHAPE_DOUT_INDEX);
+  graph_builder.SetUselessInput(RESHAPE_CONCAT_INDEX);
   graph_builder.AddOutput(lessName, X_INDEX);
   std::map<uint32_t, uint32_t> input_mapping;
   for (int32_t i = X_INDEX; i < argNum; i++) {
@@ -324,9 +328,7 @@ vector<ge::NodePtr> DynamicRNNGradDFusionPass::GetDynamicReshapeNode(std::string
   std::vector<string> dep_inputs = {"shape"};
   reshape_desc->SetOpInferDepends(dep_inputs);
 
-  ge::GeShape shapeConstShape = ge::GeShape({
-      W_INDEX,
-  });
+  ge::GeShape shapeConstShape = ge::GeShape({W_INDEX,});
   auto shapeDescConst = ge::GeTensorDesc(shapeConstShape, ge::FORMAT_ND, ge::DT_INT64);
   shapeDescConst.SetOriginShape(shapeConstShape);
   shapeDescConst.SetOriginFormat(ge::FORMAT_ND);
@@ -360,9 +362,7 @@ vector<ge::NodePtr> DynamicRNNGradDFusionPass::GetDynamicReshapeNode(std::string
   FUSION_PASS_CHECK(const_body_node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "Create const Op operator error"),
                     return result);
 
-  ge::GeShape lastConstShape = ge::GeShape({
-      W_INDEX,
-  });
+  ge::GeShape lastConstShape = ge::GeShape({W_INDEX,});
   auto lastDescConst = ge::GeTensorDesc(lastConstShape, ge::FORMAT_ND, ge::DT_INT64);
   lastDescConst.SetOriginShape(lastConstShape);
   lastDescConst.SetOriginFormat(ge::FORMAT_ND);
@@ -1086,9 +1086,9 @@ ge::ComputeGraphPtr DynamicRNNGradDFusionPass::BuildBodyGraph(ge::ComputeGraph& 
   graph_builder.SetInput(F_INDEX, {dgateConcatNodeName}, {idxOri});
 
   graph_builder.SetInput(MASK_INDEX, {bodyDxReshapeNodeName}, {W_INDEX});
-  graph_builder.SetInput(17, {bodyReshapeNodeName}, {W_INDEX});
-  graph_builder.SetInput(18, {reshapOutNodeName}, {W_INDEX});
-  graph_builder.SetInput(19, {reshapInNodeName}, {W_INDEX});
+  graph_builder.SetInput(RESHAPE_DGATE_INDEX, {bodyReshapeNodeName}, {W_INDEX});
+  graph_builder.SetInput(RESHAPE_DOUT_INDEX, {reshapOutNodeName}, {W_INDEX});
+  graph_builder.SetInput(RESHAPE_CONCAT_INDEX, {reshapInNodeName}, {W_INDEX});
 
   graph_builder.AddDataLink(cellNodeName, X_INDEX, reshapOutNodeName, X_INDEX)
       .AddDataLink(reshapOutNodeName, X_INDEX, cellTransposeNodeName, X_INDEX)
@@ -1120,9 +1120,9 @@ ge::ComputeGraphPtr DynamicRNNGradDFusionPass::BuildBodyGraph(ge::ComputeGraph& 
   graph_builder.AddOutput("Data_" + std::to_string(TANHCT_INDEX), X_INDEX);
 
   graph_builder.AddOutput("Data_" + std::to_string(MASK_INDEX), X_INDEX);
-  graph_builder.AddOutput("Data_" + std::to_string(17), X_INDEX);
-  graph_builder.AddOutput("Data_" + std::to_string(18), X_INDEX);
-  graph_builder.AddOutput("Data_" + std::to_string(19), X_INDEX);
+  graph_builder.AddOutput("Data_" + std::to_string(RESHAPE_DGATE_INDEX), X_INDEX);
+  graph_builder.AddOutput("Data_" + std::to_string(RESHAPE_DOUT_INDEX), X_INDEX);
+  graph_builder.AddOutput("Data_" + std::to_string(RESHAPE_CONCAT_INDEX), X_INDEX);
   std::map<uint32_t, uint32_t> input_mapping;
   for (int32_t i = X_INDEX; i < argNum; i++) {
     input_mapping[i] = i;
@@ -1361,7 +1361,8 @@ vector<ge::NodePtr> DynamicRNNGradDFusionPass::BuildT0Graph(ge::NodePtr dynamicR
   ge::GraphUtils::AddEdge(t0reshapOutFirstConstNode->GetOutDataAnchor(0),
                           t0CellReshapOutConcatNode->GetInDataAnchor(0));
   ge::GraphUtils::AddEdge(t0ReshapeSplitNode->GetOutDataAnchor(1), t0CellReshapOutConcatNode->GetInDataAnchor(1));
-  ge::GraphUtils::AddEdge(t0reshapOutLastConstNode->GetOutDataAnchor(0), t0CellReshapOutConcatNode->GetInDataAnchor(2));
+  ge::GraphUtils::AddEdge(t0reshapOutLastConstNode->GetOutDataAnchor(0),
+                          t0CellReshapOutConcatNode->GetInDataAnchor(CONCAT_INPUT_INDEX_TWO));
   ge::GraphUtils::AddEdge(t0CellReshapOutConcatNode->GetOutDataAnchor(X_INDEX),
                           t0reshapOutNode->GetInDataAnchor(W_INDEX));
   ge::GraphUtils::AddEdge(t0reshapOutNode->GetOutDataAnchor(X_INDEX), t0CellTransposeNode->GetInDataAnchor(X_INDEX));
@@ -1469,7 +1470,8 @@ ge::NodePtr DynamicRNNGradDFusionPass::DynamicAddMatmulNode(ge::NodePtr dynamicR
                           batmatmatmulReshapNode->GetInDataAnchor(1));
   ge::GraphUtils::AddEdge(tSplitNode->GetOutDataAnchor(0), batchmatmulReshapConcatNode->GetInDataAnchor(0));
   ge::GraphUtils::AddEdge(tSplitNode->GetOutDataAnchor(1), batchmatmulReshapConcatNode->GetInDataAnchor(1));
-  ge::GraphUtils::AddEdge(t0reshapeLastConstNode->GetOutDataAnchor(0), batchmatmulReshapConcatNode->GetInDataAnchor(2));
+  ge::GraphUtils::AddEdge(t0reshapeLastConstNode->GetOutDataAnchor(0),
+                          batchmatmulReshapConcatNode->GetInDataAnchor(CONCAT_INPUT_INDEX_TWO));
   ge::GraphUtils::AddEdge(batmatmatmulReshapNode->GetOutDataAnchor(X_INDEX), matmulNode->GetInDataAnchor(W_INDEX));
 
   return matmulNode;
@@ -1733,7 +1735,7 @@ ge::NodePtr DynamicRNNGradDFusionPass::DynamicAddInithReshapeNode(ge::NodePtr dy
 ge::OpDescPtr DynamicRNNGradDFusionPass::DynamicAddCellOutReshapeNode(ge::NodePtr dynamicRNNGradNode,
                                                                       string reshapeName, ge::GeTensorDesc inputDesc,
                                                                       ge::ComputeGraph& graph, bool& failStatus) {
-  auto reshapeOp = ge::OperatorFactory::CreateOperator(reshapeName, "Reshape");
+  auto reshapeOp = ge::OperatorFactory::CreateOperator(reshapeName.c_str(), "Reshape");
   FUSION_PASS_CHECK(reshapeOp.IsEmpty(), OP_LOGE(FUSED_OP_TYPE.c_str(), "Create Reshape Op operator error"),
                     return nullptr);
   auto reshape_desc = ge::OpDescUtils::GetOpDescFromOperator(reshapeOp);
@@ -1767,7 +1769,7 @@ ge::OpDescPtr DynamicRNNGradDFusionPass::DynamicAddCellOutReshapeNode(ge::NodePt
 ge::OpDescPtr DynamicRNNGradDFusionPass::AddBatchMatmulReshapeNode(ge::NodePtr dynamicRNNGradNode, string reshapeName,
                                                                    ge::GeTensorDesc inputDesc, ge::ComputeGraph& graph,
                                                                    bool& failStatus) {
-  auto reshapeOp = ge::OperatorFactory::CreateOperator(reshapeName, "Reshape");
+  auto reshapeOp = ge::OperatorFactory::CreateOperator(reshapeName.c_str(), "Reshape");
   FUSION_PASS_CHECK(reshapeOp.IsEmpty(), OP_LOGE(FUSED_OP_TYPE.c_str(), "Create Reshape Op operator error"),
                     return nullptr);
   auto reshape_desc = ge::OpDescUtils::GetOpDescFromOperator(reshapeOp);
@@ -1801,7 +1803,7 @@ ge::OpDescPtr DynamicRNNGradDFusionPass::AddBatchMatmulReshapeNode(ge::NodePtr d
 ge::OpDescPtr DynamicRNNGradDFusionPass::DynamicAddMatmulInReshapeNode(ge::NodePtr dynamicRNNGradNode,
                                                                        string reshapeName, ge::GeTensorDesc inputDesc,
                                                                        ge::ComputeGraph& graph, bool& failStatus) {
-  auto reshapeOp = ge::OperatorFactory::CreateOperator(reshapeName, "Reshape");
+  auto reshapeOp = ge::OperatorFactory::CreateOperator(reshapeName.c_str(), "Reshape");
   FUSION_PASS_CHECK(reshapeOp.IsEmpty(), OP_LOGE(FUSED_OP_TYPE.c_str(), "Create Reshape Op operator error"),
                     return nullptr);
   auto reshape_desc = ge::OpDescUtils::GetOpDescFromOperator(reshapeOp);
@@ -2011,9 +2013,12 @@ vector<ge::NodePtr> DynamicRNNGradDFusionPass::DynamicAddLSTMInputGradNode(ge::N
                           dxBodyReshapeConcatNode->GetInDataAnchor(SHAPE_2));
   ge::GraphUtils::AddEdge(tSplitNode->GetOutDataAnchor(W_INDEX), dxBodyReshapeConcatNode->GetInDataAnchor(W_INDEX));
   ge::GraphUtils::AddEdge(dxBodyReshapeConcatNode->GetOutDataAnchor(X_INDEX), whileNode->GetInDataAnchor(MASK_INDEX));
-  ge::GraphUtils::AddEdge(dgateBodyReshapeConcatNode->GetOutDataAnchor(X_INDEX), whileNode->GetInDataAnchor(17));
-  ge::GraphUtils::AddEdge(reshapeConcatOutT0Node->GetOutDataAnchor(X_INDEX), whileNode->GetInDataAnchor(18));
-  ge::GraphUtils::AddEdge(reshapeConcatInT0Node->GetOutDataAnchor(X_INDEX), whileNode->GetInDataAnchor(19));
+  ge::GraphUtils::AddEdge(dgateBodyReshapeConcatNode->GetOutDataAnchor(X_INDEX),
+                          whileNode->GetInDataAnchor(RESHAPE_DGATE_INDEX));
+  ge::GraphUtils::AddEdge(reshapeConcatOutT0Node->GetOutDataAnchor(X_INDEX),
+                          whileNode->GetInDataAnchor(RESHAPE_DOUT_INDEX));
+  ge::GraphUtils::AddEdge(reshapeConcatInT0Node->GetOutDataAnchor(X_INDEX),
+                          whileNode->GetInDataAnchor(RESHAPE_CONCAT_INDEX));
   if (dynamicRNNGradNode->GetOutDataAnchor(SHAPE_2)->GetPeerInDataAnchors().size() > X_INDEX) {
     for (InDataAnchorPtr inAnchorPtr : dynamicRNNGradNode->GetOutDataAnchor(SHAPE_2)->GetPeerInDataAnchors()) {
       inAnchorPtr->UnlinkAll();

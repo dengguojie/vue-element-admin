@@ -64,6 +64,7 @@ TEST_F(DynamicLSTMGradCellTilling, DynamicLSTMGradCellTilling_tilling1) {
     TeOpTensor tensorInput;
     tensorInput.shape = input_shapes[i];
     tensorInput.dtype = dtypes[i];
+    tensorInput.format = "FRACTAL_NZ";
     tensorInputArg.tensor.push_back(tensorInput);
     tensorInputArg.arg_type = TensorArgType::TA_SINGLE;
     opParas.inputs.push_back(tensorInputArg);
