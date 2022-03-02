@@ -73,15 +73,26 @@ class GemmScheduleV2:
         """
         cal the l1 bound of al1
         """
-        m_parts = util.int_ceil_div(_get_value(tensor_map["a_l0a"].shape[-4]), tiling["CL0_matrix"][1])
-        if tiling["AL1_shape"]:
-            k_bound = tiling["AL1_shape"][0]
-            al1_parts = util.int_ceil_div(m_parts, tiling["AL1_shape"][1])
+        # get parts from gm to l0c every core of m direction: ceil(m1 // blockdim_m, m_l0c)
+        l0c_parts = util.int_ceil_div(_get_value(tensor_map.get("a_l0a").shape[-4]) // tiling.get("block_dim")[2],
+                                      tiling.get("CL0_matrix")[1])
+        if tiling.get("AL1_shape"):
+            # get parts from gm to L1: l0c_parts // multiple_of_L1_and_L0 
+            al1_parts = util.int_ceil_div(l0c_parts, tiling.get("AL1_shape")[1])
+            # k on Al1
+            k_bound = tiling.get("AL1_shape")[0]
         else:
-            k_bound = _get_value(tensor_map["a_l0a"].shape[-3]) * _get_value(tensor_map["a_l0a"].shape[-1])
-            al1_parts = m_parts
-        m_factors = util.int_ceil_div(al1_parts, tiling["block_dim"][2])
-        m_bound = m_factors * tiling["CL0_matrix"][1] * tiling["CL0_matrix"][2]
+            # Al1 full load, move all data in one time
+            al1_parts = 1
+            # total K of input: k0 * k1
+            k_bound = _get_value(tensor_map.get("a_l0a").shape[-3]) * _get_value(tensor_map.get("a_l0a").shape[-1])
+        # parts from from gm to l0c ignore multi core
+        l0c_bounds = util.int_ceil_div(_get_value(tensor_map.get("a_l0a").shape[-4]), tiling.get("CL0_matrix")[1])
+        # multiple of al1 and l0c space
+        al1_bounds = util.int_ceil_div(l0c_bounds, al1_parts)
+        # divide blockdim since l0c_bounds ignored multicore to get m on L1
+        m_bound = (util.int_ceil_div(al1_bounds, tiling.get("block_dim")[2]) * tiling.get("CL0_matrix")[1] *
+                   tiling.get("CL0_matrix")[2])
         return k_bound * m_bound
 
     @staticmethod
@@ -89,16 +100,19 @@ class GemmScheduleV2:
         """
         cal the l1 bound of bl1
         """
-        n_parts = util.int_ceil_div(_get_value(tensor_map["b_l0b"].shape[-3]), tiling["CL0_matrix"][0])
-        if tiling["BL1_shape"]:
-            k_bound = tiling["BL1_shape"][0]
-            bl1_parts = util.int_ceil_div(n_parts, tiling["BL1_shape"][1])
+        l0c_parts = util.int_ceil_div(_get_value(tensor_map.get("b_l0b").shape[-3]) // tiling.get("block_dim")[1],
+                                      tiling.get("CL0_matrix")[0])
+        if tiling.get("BL1_shape"):
+            bl1_parts = util.int_ceil_div(l0c_parts, tiling.get("BL1_shape")[1])
+            k_bound = tiling.get("BL1_shape")[0]
         else:
-            k_bound = _get_value(tensor_map["b_l0b"].shape[-4]) * _get_value(tensor_map["b_l0b"].shape[-1])
-            bl1_parts = n_parts
-        n_factors = util.int_ceil_div(bl1_parts, tiling["block_dim"][1])
-        n_bound = n_factors * tiling["CL0_matrix"][0] * tiling["CL0_matrix"][3]
-        return k_bound * n_bound
+            bl1_parts = 1
+            k_bound = _get_value(tensor_map.get("b_l0b").shape[-4]) * _get_value(tensor_map.get("b_l0b").shape[-1])
+        l0c_bounds = util.int_ceil_div(_get_value(tensor_map.get("b_l0b").shape[-3]), tiling.get("CL0_matrix")[0])
+        bl1_bounds = util.int_ceil_div(l0c_bounds, bl1_parts)
+        m_bound = (util.int_ceil_div(bl1_bounds, tiling.get("block_dim")[1]) * tiling.get("CL0_matrix")[0] *
+                   tiling.get("CL0_matrix")[3])
+        return k_bound * m_bound
 
     def _init_tiling_input(self, tensor_map):
         """
