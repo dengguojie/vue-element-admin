@@ -232,6 +232,7 @@ def avg_pool3d_compute(x,
     return res
 
 
+# 'pylint: disable=too-many-return-values
 def _tiling_param(shape, ksize, strides, core_num):
     d = shape[1]
     hw = shape[3]
