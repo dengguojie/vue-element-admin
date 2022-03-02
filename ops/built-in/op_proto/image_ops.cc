@@ -33,6 +33,7 @@
 #include "graph/utils/type_utils.h"
 #include "axis_util.h"
 #include "inc/graph/utils/type_utils.h"
+#include "graph/debug/ge_attr_define.h"
 
 namespace ge {
 IMPLEMT_INFERFUNC(DecodeGif, DecodeGifInfer) {
@@ -3723,4 +3724,89 @@ IMPLEMT_INFERFUNC(ImageProjectiveTransform, ImageProjectiveTransformInferShape) 
 }
 INFER_FUNC_REG(ImageProjectiveTransform, ImageProjectiveTransformInferShape);
 // ----------------ImageProjectiveTransform END---------------------
+
+std::vector<std::pair<int64_t, int64_t>> GetOpShapeRangeByAttr(Operator& op)
+{
+  std::vector<std::pair<int64_t, int64_t>> maxShapes;
+  std::string maxShapeAttr;
+  if (op.GetAttr(ge::ATTR_NAME_OP_MAX_SHAPE, maxShapeAttr) == GRAPH_SUCCESS) {
+    const size_t maxShapeAttrSize = maxShapeAttr.size();
+    size_t startIndex = 0;
+    while (startIndex < maxShapeAttrSize) {
+      int64_t maxShape = -1;
+      size_t nextPos = 0;
+      try
+      {
+        maxShape = std::stoll(maxShapeAttr.substr(startIndex, maxShapeAttrSize), &nextPos);
+      }
+      catch(const std::exception& e)
+      {
+        OP_LOGI(op.GetName().c_str(), "ge::ATTR_NAME_OP_MAX_SHAPE[%s] is invalid", maxShapeAttr.c_str());
+        break;
+      }
+      maxShapes.emplace_back(1, maxShape);
+      startIndex = maxShapeAttr.find(',', startIndex + nextPos);
+      if (startIndex == string::npos) {
+        break;
+      }
+      startIndex++;
+    }
+  }
+  return maxShapes;
+}
+
+graphStatus DecodeImageV3ShapeFn(Operator& op) {
+  int channels;
+  if (op.GetAttr("channels", channels) != GRAPH_SUCCESS) {
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName().c_str(), string("Get attr[chanels] failed"));
+    return GRAPH_FAILED;
+  }
+  if (channels != 0 && channels != 1 && channels != 3 && channels != 4) {
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName().c_str(), string("attr[Channels] must be 0,1,3,or 4"));
+    return GRAPH_FAILED;
+  }
+
+  DataType dtype;
+  if (op.GetAttr("dtype", dtype) != GRAPH_SUCCESS) {
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName().c_str(), string("Get attr[dtype] failed"));
+    return GRAPH_FAILED;
+  }
+
+  bool expandAnimations = true;
+  TensorDesc outputTensor = op.GetOutputDesc(0);
+  op.GetAttr("expand_animations", expandAnimations);
+  if (expandAnimations) {
+    outputTensor.SetShape(Shape(ge::UNKNOWN_RANK));
+    op.UpdateOutputDesc("image", outputTensor);
+    return GRAPH_SUCCESS;
+  }
+
+  std::vector<int64_t> dims;
+  if (channels == 0) {
+    dims = {ge::UNKNOWN_DIM, ge::UNKNOWN_DIM, ge::UNKNOWN_DIM};
+  } else {
+    dims = {ge::UNKNOWN_DIM, ge::UNKNOWN_DIM, channels};
+  }
+
+  Shape outputShape(dims);
+  outputTensor.SetDataType(dtype);
+  outputTensor.SetShape(outputShape);
+
+  std::vector<std::pair<int64_t, int64_t>> shapeRange = GetOpShapeRangeByAttr(op);
+  if (shapeRange.size() == dims.size()) {
+    outputTensor.SetShapeRange(shapeRange);
+  }
+  if (op.UpdateOutputDesc("image", outputTensor) != GRAPH_SUCCESS) {
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName().c_str(), string("Update OutputDesc[image] failed"));
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+
+IMPLEMT_INFERFUNC(DecodeImage, DecodeImageV3Infer) {
+  return DecodeImageV3ShapeFn(op);
+}
+
+INFER_FUNC_REG(DecodeImage, DecodeImageV3Infer);
+
 }  // namespace ge

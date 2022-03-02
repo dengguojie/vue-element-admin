@@ -77,6 +77,13 @@ REGISTER_CUSTOM_OP("DecodeGif")
     .ParseParamsFn(AutoMappingFn)
     .ImplyType(ImplyType::AI_CPU);
 
+// register DecodeImage op to GE
+REGISTER_CUSTOM_OP("DecodeImage")
+    .FrameworkType(TENSORFLOW)
+    .OriginOpType("DecodeImageV3")
+    .ParseParamsFn(AutoMappingFn)
+    .ImplyType(ImplyType::AI_CPU);
+
 // register UnicodeEncode op to GE
 REGISTER_CUSTOM_OP("UnicodeEncode")
     .FrameworkType(TENSORFLOW)
