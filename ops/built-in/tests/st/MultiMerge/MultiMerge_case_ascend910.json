@@ -35,6 +35,18 @@
         "ori_format": "NCHW",
         "name": "output_proposal",
         "type": "float16"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "NCHW",
+        "name": "output_index",
+        "type": "int32"
       }
     ],
     "attr": [
@@ -42,8 +54,73 @@
         "name": "k_num",
         "type": "int",
         "value": 1808412
+      },
+      {
+        "name": "include_index",
+        "type": "bool",
+        "value": false
       }
     ],
     "case_name": "test_MultiMerge_000"
+  },
+  {
+    "op": "MultiMerge",
+    "input_desc": [
+      {
+        "shape": [
+          2,
+          1808432,
+          8
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          2,
+          1808432,
+          8
+        ],
+        "ori_format": "NCHW",
+        "name": "input_proposal",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1808412
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          1808412
+        ],
+        "ori_format": "NCHW",
+        "name": "output_proposal",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1808412
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          1808412
+        ],
+        "ori_format": "NCHW",
+        "name": "output_index",
+        "type": "int32"
+      }
+    ],
+    "attr": [
+      {
+        "name": "k_num",
+        "type": "int",
+        "value": 1808412
+      },
+      {
+        "name": "include_index",
+        "type": "bool",
+        "value": true
+      }
+    ],
+    "case_name": "test_MultiMerge_001"
   }
 ]

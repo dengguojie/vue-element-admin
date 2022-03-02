@@ -109,18 +109,19 @@ REG_OP(FusedBatchNormV2)
  * @brief Large amount of data sort.First operator of TopK.
  * @par Inputs:
  * two input, including:
- * @li input_data: A Tensor. Data to be sorted. Support float16
- * @li input_index: A Tensor. Range(0, 2048). Datatype and format is same as input_data.
+ * @li input_data: A Tensor. Data to be sorted. Support float16 or float32.
+ * @li input_index: A Tensor. Range(0, 2048). Support float16 or int32.
  * @par Attributes:
  * k_num: Int.Number to be sorted.
  * @par Outputs:
  * One output, including:
  * output_proposal: A Tensor. Datatype and format is same as input_data. Proposal sorted for each channel.
+ * Warning: THIS FUNCTION IS EXPERIMENTAL. Please do not use.
  */
 REG_OP(SegmentSort)
-    .INPUT(input_data, TensorType({DT_FLOAT16}))
-    .INPUT(input_index, TensorType({DT_FLOAT16}))
-    .OUTPUT(output_proposal, TensorType({DT_FLOAT16}))
+    .INPUT(input_data, TensorType({DT_FLOAT16,DT_FLOAT}))
+    .INPUT(input_index, TensorType({DT_FLOAT16,DT_INT32}))
+    .OUTPUT(output_proposal, TensorType({DT_FLOAT16,DT_FLOAT}))
     .REQUIRED_ATTR(k_num, Int)
     .OP_END_FACTORY_REG(SegmentSort)
 
@@ -128,36 +129,22 @@ REG_OP(SegmentSort)
  * @brief: Large amount of data sort.Second operator of TopK.
  * @par Inputs:
  * One input, including:
- * input_proposal: A Tensor. Proposal sorted for each channel. Support float16
+ * input_proposal: A Tensor. Proposal sorted for each channel. Support float16 or float32
  * @par Attributes:
  * k_num: Int.Number to be sorted.
- * @par Outputs:
- * One output, including:
- * output_proposal: A Tensor. Datatype and format is same as input_data. Proposal sorted for each channel.
- */
-REG_OP(MultiMerge)
-    .INPUT(input_proposal, TensorType({DT_FLOAT16}))
-    .OUTPUT(output_proposal, TensorType({DT_FLOAT16}))
-    .REQUIRED_ATTR(k_num, Int)
-    .OP_END_FACTORY_REG(MultiMerge)
-
-/**
- * @brief Large amount of data sort.Third operator of TopK.
- * @par Inputs:
- * One input, including:
- * input_proposal: A Tensor. Proposal sorted for each channel. Support float16
- * @par Attributes:
- * k_num: Int.Number to be sorted.
+ * include_index: Bool.include_index is false,output proposal. include_index is true, output data and index.
  * @par Outputs:
  * Two output, including:
- * @li output_data: A Tensor. Datatype and format is same as input_data. Data sorted.
- * @li output_index: A Tensor. int32. Data index.
+ * output_proposal: A Tensor. Datatype and format is same as input_data. Proposal sorted for each channel.
+ * output_index: A Tensor.If include_index is true, output index.
+ * Warning: THIS FUNCTION IS EXPERIMENTAL. Please do not use.
  */
-REG_OP(SingleMerge)
-    .INPUT(input_proposal, TensorType({DT_FLOAT16}))
-    .OUTPUT(output_data, TensorType({DT_FLOAT16}))
+REG_OP(MultiMerge)
+    .INPUT(input_proposal, TensorType({DT_FLOAT16,DT_FLOAT}))
+    .OUTPUT(output_proposal, TensorType({DT_FLOAT16,DT_FLOAT}))
     .OUTPUT(output_index, TensorType({DT_INT32}))
     .REQUIRED_ATTR(k_num, Int)
-    .OP_END_FACTORY_REG(SingleMerge)
+    .ATTR(include_index, Bool, false)
+    .OP_END_FACTORY_REG(MultiMerge)
 }// namespace ge
 #endif  // OPS_BUILT_IN_OP_PROTO_INC_NN_OPS_H_

@@ -2313,6 +2313,10 @@ unkown:
       - ops/built-in/tbe/impl/renorm.py
       - ops/built-in/tbe/impl/scatter_nd_d_help.py
       - ops/built-in/tbe/impl/top_k_d.py
+      - ops/built-in/tbe/impl/merge_sort.py
+      - ops/built-in/tbe/impl/multi_merge.py
+      - ops/built-in/tbe/impl/segment_sort.py
+      - ops/built-in/tbe/impl/single_merge.py
       - ops/built-in/tbe/impl/strided_slice_last_dim_with_vreducev2.py
       - ops/built-in/tbe/impl/log1p.py
       - ops/built-in/tbe/impl/n_p_u_clear_float_status_v2.py

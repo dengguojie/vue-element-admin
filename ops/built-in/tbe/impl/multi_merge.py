@@ -21,6 +21,28 @@ from te.utils.error_manager import error_manager_vector
 from impl.ascend import AContainer
 from impl.merge_sort import CommonMethod
 from impl.merge_sort import MergeSort
+from impl.util import util_select_op_base
+from impl.single_merge import single_merge
+
+
+# 'pylint: disable=unused-argument
+def op_select_format(input_proposal, output_proposal, output_index, k_num,
+                     include_index=False, kernel_name="MultiMerge"):
+    """
+    select format dynamically
+    """
+    input0 = util_select_op_base.gen_param(classify="input0", name="input_proposal",
+                                           datatype="float16",
+                                           format="ND")
+    output0 = util_select_op_base.gen_param(classify="output0", name="output_proposal",
+                                            datatype="float16",
+                                            format="ND")
+    output1 = util_select_op_base.gen_param(classify="output1", name="output_index",
+                                            datatype="int32",
+                                            format="ND")
+    param_list = [input0, output0, output1]
+    param_dynamic_in_json = util_select_op_base.get_dynamic_param_in_json(param_list)
+    return param_dynamic_in_json
 
 
 # 'pylint: disable=too-few-public-methods,too-many-instance-attributes
@@ -29,7 +51,7 @@ class MultiMerge:
     MultiMerge
     """
     # 'pylint: disable=too-many-arguments
-    def __init__(self, input_shape, k_num, data_type, kernel_name, cont):
+    def __init__(self, input_shape, output_shape, k_num, data_type, kernel_name, cont):
         self.sorted_num = input_shape[1]
         self.data_type = data_type
         self.kernel_name = kernel_name
@@ -37,7 +59,7 @@ class MultiMerge:
         self.cont = cont
         self.tik = self.cont.tik
         self.tik_inst = self.cont.tinst
-        self.ub_size = self.cont.const_ub_max_byte
+        self.ub_size = 253952
         self.pro_data_num = self.cont.const_proposal_data_num
         self.pro_repeat_num = self.cont.const_proposal_repeat_num
 
@@ -46,31 +68,20 @@ class MultiMerge:
         self.merge_sort = MergeSort(self.cont, self.data_type, self.ub_size)
 
         self.tail_proposal_num = self.pro_repeat_num
-        self.merge_channel = self.merge_sort.merge_channel_num
+        self.merge_channel = min(self.merge_sort.merge_channel_num, input_shape[0])
         self.fp16_ne_inf = -65504.0
 
-        self.result_shape, self.ai_core_use, self.channel_num, self.k_num = self._get_result_info(input_shape, k_num)
+        self.result_shape = output_shape
+        self.ai_core_use = output_shape[0]
+        self.channel_num = input_shape[0] // self.merge_channel
+        self.k_num = output_shape[1] - self.pro_repeat_num
 
         input_proposal_shape = (self.channel_num, input_shape[1] * self.merge_channel, self.pro_data_num)
         self.input_proposal = self.tik_inst.Tensor(self.data_type, input_proposal_shape,
                                                    self.tik.scope_gm, "input_proposal")
         self.output_proposal = self.tik_inst.Tensor(self.data_type, self.result_shape,
                                                     self.tik.scope_gm, "output_proposal")
-
-    def _get_result_info(self, input_shape, k_num):
-        sorted_num_align = self.method.get_align_num(k_num, self.pro_repeat_num)
-        k_num_new = (input_shape[1] - self.tail_proposal_num) * self.merge_channel
-        k_num_new = min(sorted_num_align, k_num_new)
-        result_data_num = k_num_new + self.tail_proposal_num
-
-        channel_num = input_shape[0] // self.merge_channel
-        if channel_num <= self.merge_channel:
-            ai_core_use_num = channel_num
-        else:
-            ai_core_use_num = self.method.get_align_num(channel_num, self.merge_channel)
-
-        result_shape = (ai_core_use_num, result_data_num, self.pro_data_num)
-        return result_shape, ai_core_use_num, channel_num, k_num_new
+        self.output_index = self.tik_inst.Tensor("int32", (1, ), self.tik.scope_gm, "output_index")
 
     def mode_compute(self):
         """
@@ -82,7 +93,7 @@ class MultiMerge:
             with self.tik_inst.else_scope():
                 self._set_tail(core_index, 0)
         inputs_all = [self.input_proposal]
-        outputs_all = [self.output_proposal]
+        outputs_all = [self.output_proposal, self.output_index]
         self.tik_inst.BuildCCE(
             inputs=inputs_all,
             outputs=outputs_all,
@@ -114,10 +125,10 @@ def check_params(input_proposal, kernel_name):
             kernel_name, "shape of input_proposal", "support", "not support")
 
 
-@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
-                            para_check.REQUIRED_ATTR_INT, para_check.KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.REQUIRED_ATTR_INT, para_check.REQUIRED_ATTR_BOOL, para_check.KERNEL_NAME)
 # 'pylint: disable=unused-argument
-def multi_merge(input_proposal, output_proposal, k_num, kernel_name="top_k_2"):
+def multi_merge(input_proposal, output_proposal, output_index, k_num, include_index=False, kernel_name="MultiMerge"):
     """
     algorithm: merge and sort on single core
     Parameters
@@ -126,23 +137,31 @@ def multi_merge(input_proposal, output_proposal, k_num, kernel_name="top_k_2"):
         A Tensor. Proposal sorted for each channel. Support float16
     output_proposal :
         A Tensor. Datatype and format is same as input_data. Data sorted.
+    output_index:
+        A Tensor. if include_index is true, output index.
     k_num: int
         Number to be sorted.
+    include_index: bool
+        include_index is false,output proposal. include_index is true, output data and index
     kernel_name : str
-        cce kernel name, default value is top_k_3
+        cce kernel name, default value is MultiMerge
     Returns
     -------
     None
     """
-    input_shape = input_proposal.get("shape")
-    input_dtype = input_proposal.get("dtype").lower()
-    input_format = input_proposal.get("format")
-    check_list = ("float16",)
-    para_check.check_dtype(input_dtype, check_list, param_name="input_proposal")
-    para_check.check_shape(input_shape, param_name="input_proposal")
-    para_check.check_format(input_format)
-    check_params(input_proposal, kernel_name)
-    AContainer.reset_instance()
-    cont = AContainer.get_instance()
-    obj = MultiMerge(input_shape, k_num, input_dtype, kernel_name, cont)
-    obj.mode_compute()
+    if include_index:
+        single_merge(input_proposal, output_proposal, output_index, k_num, kernel_name)
+    else:
+        proposal_shape_result = output_proposal.get("shape")
+        input_shape = input_proposal.get("shape")
+        input_dtype = input_proposal.get("dtype").lower()
+        input_format = input_proposal.get("format")
+        check_list = ("float16",)
+        para_check.check_dtype(input_dtype, check_list, param_name="input_proposal")
+        para_check.check_shape(input_shape, param_name="input_proposal")
+        para_check.check_format(input_format)
+        check_params(input_proposal, kernel_name)
+        AContainer.reset_instance()
+        cont = AContainer.get_instance()
+        obj = MultiMerge(input_shape, proposal_shape_result, k_num, input_dtype, kernel_name, cont)
+        obj.mode_compute()

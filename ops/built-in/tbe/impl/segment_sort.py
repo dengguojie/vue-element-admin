@@ -20,12 +20,32 @@ from te.utils.error_manager import error_manager_vector
 from impl.ascend import AContainer
 from impl.merge_sort import CommonMethod
 from impl.merge_sort import MergeSort
+from impl.util import util_select_op_base
+
+
+# 'pylint: disable=unused-argument
+def op_select_format(input_data, input_index, output_proposal, k_num, kernel_name="SegmentSort"):
+    """
+    select format dynamically
+    """
+    input0 = util_select_op_base.gen_param(classify="input0", name="input_data",
+                                           datatype="float16",
+                                           format="ND")
+    input1 = util_select_op_base.gen_param(classify="input1", name="input_index",
+                                           datatype="float16",
+                                           format="ND")
+    output0 = util_select_op_base.gen_param(classify="output0", name="output_proposal",
+                                            datatype="float16",
+                                            format="ND")
+    param_list = [input0, input1, output0]
+    param_dynamic_in_json = util_select_op_base.get_dynamic_param_in_json(param_list)
+    return param_dynamic_in_json
 
 
 class SegmentSort:
     # 'pylint: disable=too-many-arguments
     """define SegmentSort"""
-    def __init__(self, data_num, index_num, data_type, k_num, kernel_name, cont):
+    def __init__(self, data_num, index_num, data_type, k_num, proposal_shape_result, kernel_name, cont):
         self.data_num = data_num
         self.k_num = k_num
         self.data_type = data_type
@@ -33,8 +53,8 @@ class SegmentSort:
 
         self.cont = cont
         self.tik = self.cont.tik
+        self.ub_size = 253952
         self.tik_inst = self.cont.tinst
-        self.ub_size = self.cont.const_ub_max_byte
         self.pro_data_num = self.cont.const_proposal_data_num
         self.pro_repeat_num = self.cont.const_proposal_repeat_num
 
@@ -47,8 +67,10 @@ class SegmentSort:
         self.fp16_ne_inf = -65504.0
         self.tail_proposal_num = self.pro_repeat_num
         self.merge_channel = self.merge_sort.merge_channel_num
-
-        self.result_shape, self.ai_core_use, self.channel_num = self.get_result_info()
+        self.result_shape = proposal_shape_result
+        self.ai_core_use = proposal_shape_result[0]
+        each_core_data_num = proposal_shape_result[1] - self.tail_proposal_num
+        self.channel_num = self.method.ceil_div(self.data_num, each_core_data_num)
 
         self.input_data = self.tik_inst.Tensor(self.data_type, (self.data_num, ), self.tik.scope_gm, "input_data")
         self.input_index = self.tik_inst.Tensor(self.data_type, (self.fp16_index_num, ),
@@ -58,22 +80,6 @@ class SegmentSort:
                                                   is_workspace=True)
         self.output_proposal = self.tik_inst.Tensor(self.data_type, self.result_shape,
                                                     self.tik.scope_gm, "output_proposal")
-
-    def get_result_info(self):
-        """get result shape, ai_core_use, channel_num"""
-        ai_core_num = 32
-        each_core_data_num = self.method.ceil_div(self.data_num, ai_core_num)
-        each_core_data_num = self.method.get_align_num(each_core_data_num, self.each_loop_index_num)
-        each_core_data_num = max(self.ub_pro_num_max, each_core_data_num)
-        channel_num = self.method.ceil_div(self.data_num, each_core_data_num)
-        if channel_num <= self.merge_channel:
-            ai_core_use_num = channel_num
-        else:
-            ai_core_use_num = self.method.get_align_num(channel_num, self.merge_channel)
-
-        each_core_data_num += self.tail_proposal_num
-        result_shape = (ai_core_use_num, each_core_data_num, self.pro_data_num)
-        return result_shape, ai_core_use_num, channel_num
 
     def mode_compute(self):
         """main compute"""
@@ -262,5 +268,6 @@ def segment_sort(input_data, input_index, output_proposal, k_num, kernel_name="S
     cont = AContainer.get_instance()
     data_num = input_shape[0]
     index_num = input_index.get("shape")[0]
-    obj = SegmentSort(data_num, index_num, input_dtype, k_num, kernel_name, cont)
+    proposal_shape_result = output_proposal.get("shape")
+    obj = SegmentSort(data_num, index_num, input_dtype, k_num, proposal_shape_result, kernel_name, cont)
     obj.mode_compute()

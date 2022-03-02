@@ -1,6 +1,6 @@
 # # -*- coding:utf-8 -*-
 from op_test_frame.ut import OpUT
-
+from impl.segment_sort import op_select_format
 ut_case = OpUT("SegmentSort", None, None)
 
 
@@ -41,6 +41,13 @@ case2 = {
 ut_case.add_case(["Ascend910A"], case1)
 ut_case.add_case(["Ascend910A"], case2)
 
+
+def test_op_select_format(_):
+    params = case2.get("params")
+    op_select_format(*params)
+
+
+ut_case.add_cust_test_func("Ascend910A", test_op_select_format)
 
 if __name__ == '__main__':
     ut_case.run("Ascend910A")

@@ -18,7 +18,6 @@
 single_merge
 """
 from te.utils import para_check
-from te.utils.error_manager import error_manager_vector
 
 from impl.ascend import AContainer
 from impl.merge_sort import CommonMethod
@@ -26,7 +25,7 @@ from impl.merge_sort import MergeSort
 
 
 # 'pylint: disable=too-many-arguments,too-many-locals,too-few-public-methods
-class SingleMerge():
+class SingleMerge:
     """method to merge and sort on single core"""
     def __init__(self, input_shape, k_num, data_type, kernel_name, cont):
         self.channel_num = input_shape[0]
@@ -38,8 +37,8 @@ class SingleMerge():
         self.cont = cont
         self.tik = self.cont.tik
         self.tik_inst = self.cont.tinst
-        self.ub_size = self.cont.const_ub_max_byte
         self.pro_data_num = self.cont.const_proposal_data_num
+        self.ub_size = 253952
         self.pro_repeat_num = self.cont.const_proposal_repeat_num
 
         self.method = CommonMethod(self.cont)
@@ -158,7 +157,7 @@ class SingleMerge():
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_INT,
                             para_check.KERNEL_NAME)
-def single_merge(input_proposal, output_data, output_index, k_num, kernel_name="top_k_3"):
+def single_merge(input_proposal, output_data, output_index, k_num, kernel_name="SingleMerge"):
     """algorithm: merge and sort on single core
     Parameters
     ----------
@@ -171,17 +170,11 @@ def single_merge(input_proposal, output_data, output_index, k_num, kernel_name="
     k_num: int
         Number to be sorted.
     kernel_name : str
-        cce kernel name, default value is top_k_3
+        cce kernel name, default value is SingleMerge
     Returns
     -------
     None
     """
-    def _check_params(input_proposal, kernel_name):
-        input_shape = input_proposal.get("shape")
-        if len(input_shape) != 3 or input_shape[0] > 4 or input_shape[2] != 8:
-            error_manager_vector.raise_err_input_value_invalid(
-                kernel_name, "shape of input_proposal", "support", "not support")
-
     input_shape = input_proposal.get("shape")
     input_dtype = input_proposal.get("dtype").lower()
     input_format = input_proposal.get("format")
@@ -189,7 +182,6 @@ def single_merge(input_proposal, output_data, output_index, k_num, kernel_name="
     para_check.check_dtype(input_dtype, check_list, param_name="input_proposal")
     para_check.check_shape(input_shape, param_name="input_proposal")
     para_check.check_format(input_format)
-    _check_params(input_proposal, kernel_name)
     AContainer.reset_instance()
     cont = AContainer.get_instance()
     obj = SingleMerge(input_shape, k_num, input_dtype, kernel_name, cont)

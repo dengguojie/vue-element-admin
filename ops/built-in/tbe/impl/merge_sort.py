@@ -538,10 +538,11 @@ class MergeSort(object):
                 dst_gm, src_gm, batch_index, result_index, start_index,
                 pro_num)
         else:
-            self._merge_sort_gm_channels(
-                dst_gm, src_gm, batch_index,
-                result_index, start_index, src_gm_rem_list,
-                sort_num_align, sorted_num)
+            with self._tik_inst.new_stmt_scope():
+                self._merge_sort_gm_channels(
+                    dst_gm, src_gm, batch_index,
+                    result_index, start_index, src_gm_rem_list,
+                    sort_num_align, sorted_num)
 
     # 'pylint: disable=too-many-arguments,too-many-locals
     def _large_src_to_dst(self, dst_gm, src_gm, batch_index, result_index,
@@ -598,9 +599,7 @@ class MergeSort(object):
         (src_gm_idx_list_, src_gm_rem_list_, src_ub_list_, src_ub_num_list_, slot_map_list_, dst_ub_num_list_) = \
             self._large_init_scalar_list(src_ub, ub_data_num, src_gm_rem_list, start_index_, sorted_num)
         sort_num_align = min(sort_num_align, sum(src_gm_rem_list))
-        loop_times = self._method.ceil_div(sort_num_align, ub_data_num)
-        if min(src_gm_rem_list) < ub_data_num:
-            loop_times += 1
+        loop_times = sort_num_align // ub_data_num + self._merge_channel_num
         with self._tik_inst.for_range(0, loop_times):
             with self._tik_inst.if_scope(selected_num_sum_ < sort_num_align):
                 valid_bit_, slot_map_list_, src_ub_list_ = \
