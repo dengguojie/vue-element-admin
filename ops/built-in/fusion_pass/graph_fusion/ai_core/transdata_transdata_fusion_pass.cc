@@ -144,7 +144,7 @@ Status TransdataTransdataPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
   FUSION_PASS_CHECK(fullyConnection == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fullyConnection is null"),
                     return PARAM_INVALID);
 
-  if ((reshapeOP != nullptr) && (reshapeOP->GetOutDataNodes().size() > 1)){
+  if ((reshapeOP != nullptr) && (reshapeOP->GetOutDataNodes().size() > 1)) {
     return SUCCESS;
   }
   int64_t axis;
