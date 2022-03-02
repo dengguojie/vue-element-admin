@@ -720,8 +720,7 @@ def tik_topk_merge_sort_internal(tik_inst, inter_sort_store, inter_split_param):
             src_stride=0, dst_stride=0)
 
     # 2. vbs
-    dest_pos_ub = HALF_UB_REGION_CAPACITY if n_input_list == 1 else \
-        sum(src_region_num_list)
+    dest_pos_ub = HALF_UB_REGION_CAPACITY if n_input_list == 1 else sum(src_region_num_list)
     region_info_list = tik_topk_internal_vbs(
         tik_inst, (mem_ub, src_region_num_list, n_total_regions), dest_pos_ub)
     # 3. vms4
@@ -1064,7 +1063,7 @@ def tik_topk_external_out_to_ub(tik_inst, data_src, slot_val):
 
             variable_temp_.set_as(variable_temp_ + 1)
 
-    return ms_valid_bit_, list_slot_map_, n_burst_, ms_src_list
+    return [ms_valid_bit_, list_slot_map_, n_burst_, ms_src_list]
 
 
 def tik_top_external_set_slot_data(tik_inst, src_list_set):
@@ -1226,8 +1225,7 @@ def tik_topk_merge_sort_external(tik_inst, data_store, sub_list):
 
     ms_dest = mem_ub[0, UB_SIZE//REGION_SIZE_INBYTE//2, 0]
     ms_src_list = [mem_ub[0, 0, 0] for i in range(VMS4_ELEMENT_NUM)]
-    ms_src_list_len_ = [tik_inst.Scalar(dtype="int64") for i in
-                        range(VMS4_ELEMENT_NUM)]
+    ms_src_list_len_ = [tik_inst.Scalar(dtype="int64") for i in range(VMS4_ELEMENT_NUM)]
 
     for slot_idx in range(n_src_list):
         ms_src_list[slot_idx] = mem_ub[0, slot_capacity * slot_idx, 0]
