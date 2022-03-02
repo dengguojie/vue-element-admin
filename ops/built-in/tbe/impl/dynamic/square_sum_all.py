@@ -111,6 +111,53 @@ class SquareSumAll():
         self.burst_len_remain_core = None
         self.burst_len_tail_remain_core = None
 
+    def square_sum_all_compute(self):
+        """
+        SquareSumAll operation
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        None
+        """
+        tiling_gm = self.tik_instance.Tensor(Constant.TILING_PARAM_DTYPE, (Constant.TILING_PARAMS_NUM,),
+                                             name="tiling_gm", scope=tik.scope_gm)
+
+        # get tiling args from gm
+        self.tiling_ub = self.tik_instance.Tensor(Constant.TILING_PARAM_DTYPE, (Constant.TILING_PARAMS_NUM,),
+                                                  name="tiling_ub", scope=tik.scope_ubuf)
+        self.tik_instance.data_move(self.tiling_ub, tiling_gm, 0, 1, 2, 0, 0)
+
+        self._get_tiling_args()
+
+        self.input_x_gm = self.tik_instance.Tensor(self.input_x_dtype, (Constant.MAX_SHAPE_SIZE,), name="input_x_gm",
+                                                   scope=tik.scope_gm)
+        self.input_y_gm = self.tik_instance.Tensor(self.input_y_dtype, (Constant.MAX_SHAPE_SIZE,), name="input_y_gm",
+                                                   scope=tik.scope_gm)
+        self.output_x_gm = self.tik_instance.Tensor(self.input_x_dtype, (1,), name="output_x_gm", scope=tik.scope_gm,
+                                                    is_atomic_add=True)
+        self.output_y_gm = self.tik_instance.Tensor(self.input_y_dtype, (1,), name="output_y_gm", scope=tik.scope_gm,
+                                                    is_atomic_add=True)
+
+        self._square_sum_all_compute_tiling()
+
+        # add compile info
+        tbe_context.get_context().add_compile_info(
+            "vars", {
+                "ub_size": self.ub_size_bytes,
+                "core_num": self.device_core_num,
+                "data_each_block": self.data_each_block,
+                "dtype_bytes_size": self.dtype_bytes_size
+            })
+
+        self.tik_instance.BuildCCE(kernel_name=self.kernel_name,
+                                   inputs=(self.input_x_gm, self.input_y_gm),
+                                   outputs=(self.output_x_gm, self.output_y_gm),
+                                   flowtable=(tiling_gm,))
+
     def _check_param(self):
         """
         Check parameters
@@ -448,53 +495,6 @@ class SquareSumAll():
                                                    assign_ub_shape,
                                                    name="input_y_ub",
                                                    scope=tik.scope_ubuf)
-
-    def square_sum_all_compute(self):
-        """
-        SquareSumAll operation
-
-        Parameters
-        ----------
-        None
-
-        Returns
-        -------
-        None
-        """
-        tiling_gm = self.tik_instance.Tensor(Constant.TILING_PARAM_DTYPE, (Constant.TILING_PARAMS_NUM,),
-                                             name="tiling_gm", scope=tik.scope_gm)
-
-        # get tiling args from gm
-        self.tiling_ub = self.tik_instance.Tensor(Constant.TILING_PARAM_DTYPE, (Constant.TILING_PARAMS_NUM,),
-                                                  name="tiling_ub", scope=tik.scope_ubuf)
-        self.tik_instance.data_move(self.tiling_ub, tiling_gm, 0, 1, 2, 0, 0)
-
-        self._get_tiling_args()
-
-        self.input_x_gm = self.tik_instance.Tensor(self.input_x_dtype, (Constant.MAX_SHAPE_SIZE,), name="input_x_gm",
-                                                   scope=tik.scope_gm)
-        self.input_y_gm = self.tik_instance.Tensor(self.input_y_dtype, (Constant.MAX_SHAPE_SIZE,), name="input_y_gm",
-                                                   scope=tik.scope_gm)
-        self.output_x_gm = self.tik_instance.Tensor(self.input_x_dtype, (1,), name="output_x_gm", scope=tik.scope_gm,
-                                                    is_atomic_add=True)
-        self.output_y_gm = self.tik_instance.Tensor(self.input_y_dtype, (1,), name="output_y_gm", scope=tik.scope_gm,
-                                                    is_atomic_add=True)
-
-        self._square_sum_all_compute_tiling()
-
-        # add compile info
-        tbe_context.get_context().add_compile_info(
-            "vars", {
-                "ub_size": self.ub_size_bytes,
-                "core_num": self.device_core_num,
-                "data_each_block": self.data_each_block,
-                "dtype_bytes_size": self.dtype_bytes_size
-            })
-
-        self.tik_instance.BuildCCE(kernel_name=self.kernel_name,
-                                   inputs=(self.input_x_gm, self.input_y_gm),
-                                   outputs=(self.output_x_gm, self.output_y_gm),
-                                   flowtable=(tiling_gm,))
 
     def _square_sum_all_compute_tiling(self):
         """

@@ -970,6 +970,18 @@ class MaxPoolGradCompute:
             i = i + 1
             self.params.dst_stride.set_as(tiling_ub[i])
 
+    def get_tik_instance(self):
+        """
+        obtain tik instance
+        """
+        tik_instance = self._compute()
+        tik_instance.BuildCCE(kernel_name=self.kernel_name,
+                              inputs=[self.orig_x_gm, self.orig_y_gm, self.grads_gm],
+                              outputs=[self.ou_y_gm],
+                              flowtable=[self.gm.tiling_gm])
+
+        return tik_instance
+
     def _set_tik_instance(self, tik_instance):
         """
         set tik_instance
@@ -2978,18 +2990,6 @@ class MaxPoolGradCompute:
                               self.params.repeat_max_time_grad_sel, self.params.remain_repeat_time_grad_sel,
                               self.params.remain_ele_grad_sel, self.params.repeat_max_loop_vadd,
                               self.params.remain_max_loop_vadd, self.params.remain_ele_vadd)
-
-    def get_tik_instance(self):
-        """
-        obtain tik instance
-        """
-        tik_instance = self._compute()
-        tik_instance.BuildCCE(kernel_name=self.kernel_name,
-                              inputs=[self.orig_x_gm, self.orig_y_gm, self.grads_gm],
-                              outputs=[self.ou_y_gm],
-                              flowtable=[self.gm.tiling_gm])
-
-        return tik_instance
 
     def _compute(self):
         """
