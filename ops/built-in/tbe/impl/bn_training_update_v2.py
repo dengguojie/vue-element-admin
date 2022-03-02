@@ -129,7 +129,7 @@ def op_select_format(x, sum, square_sum, scale, offset,
                                                    datatype="float,float,float,float",
                                                    format="NC1HWC0,NC1HWC0,NDC1HWC0,NDC1HWC0")
             output0 = util_select_op_base.gen_param(classify="output0", name="y",
-                                                    datatype="float16,float,float,float",
+                                                    datatype="float16,float,float16,float",
                                                     format="NC1HWC0,NC1HWC0,NDC1HWC0,NDC1HWC0")
             output1 = util_select_op_base.gen_param(classify="output1", name="batch_mean",
                                                     datatype="float,float,float,float",
