@@ -255,6 +255,7 @@ def __calcu_other_tiling_single_core(shape_x, reduce_axis_list, limit_ub_count, 
     misalign_size = shape_x[res_align_dim] % cur_align_size
     if misalign_size and misalign_size < res_align_factor:
         return True
+    default_shape_x = shape_x.copy()
     shape_x[res_align_dim] //= res_align_factor
     limit_ub_count *= cur_align_size
 
@@ -272,7 +273,7 @@ def __calcu_other_tiling_single_core(shape_x, reduce_axis_list, limit_ub_count, 
             block_tiling_para = __calc_tiling_strategy(shape_x, reduce_axis_list, res_size, res_align_dim, core_num,
                                                        _last_axis_index, align_count, cur_align_size)
 
-    return _do_tiling_strategy(shape_x, reduce_axis_list, block_tiling_para)
+    return _do_tiling_strategy(default_shape_x, reduce_axis_list, block_tiling_para)
 
 
 def is_special_cases(input_x, input_gamma, input_beta, begin_norm_axis, impl_mode):
