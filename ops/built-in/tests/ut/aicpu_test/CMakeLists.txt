@@ -400,7 +400,6 @@ set(_cpu_kernels_ut_files
   testcase/qr/src/qr_utest.cpp
   testcase/random_gamma/src/random_gamma_utest.cpp
   testcase/random_uniform/src/random_uniform_utest.cpp
-  testcase/random_standard_normal/src/random_standard_normal_utest.cpp
   testcase/realdiv/src/realdiv_utest.cpp
   testcase/reshape/src/reshape_utest.cpp
   testcase/resize_bilinear/src/resize_bilinear_grad_utest.cpp

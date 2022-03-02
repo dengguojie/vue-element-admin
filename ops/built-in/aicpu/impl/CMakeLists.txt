@@ -70,7 +70,6 @@ set(local_kernels_src_files
     kernels/normalized/pinverse.cc
     kernels/normalized/poisson.cc
     kernels/normalized/random_uniform.cc
-    kernels/normalized/random_standard.cc
     kernels/normalized/realdiv.cc
     kernels/normalized/reshape.cc
     kernels/normalized/resize_bilinear.cc
