@@ -34,11 +34,9 @@ namespace aicpu {
 template <typename T, typename Index>
 uint32_t DoGatherV2Compute(CpuKernelContext &ctx) {
   Tensor* params = ctx.Input(0);
-  KERNEL_CHECK_NULLPTR(params, KERNEL_STATUS_PARAM_INVALID,
-                       "Get params failed.");
+  KERNEL_CHECK_NULLPTR(params, KERNEL_STATUS_PARAM_INVALID, "Get params failed.");
   Tensor* indices = ctx.Input(1);
-  KERNEL_CHECK_NULLPTR(indices, KERNEL_STATUS_PARAM_INVALID,
-                       "Get indices failed.");
+  KERNEL_CHECK_NULLPTR(indices, KERNEL_STATUS_PARAM_INVALID, "Get indices failed.");
   DataType indicesTwo_type = ctx.Input(kIndexTwo)->GetDataType();
   int64_t axis = 0;
   if (indicesTwo_type == DT_INT32) {
@@ -71,21 +69,17 @@ uint32_t DoGatherV2Compute(CpuKernelContext &ctx) {
 
   int64_t slice_size = inner_size * sizeof(T);
   auto params_base = static_cast<T *>(params->GetData());
-  KERNEL_CHECK_NULLPTR(params_base, KERNEL_STATUS_PARAM_INVALID,
-                       "Get params_base failed.");
+  KERNEL_CHECK_NULLPTR(params_base, KERNEL_STATUS_PARAM_INVALID, "Get params_base failed.");
   auto indices_data = static_cast<Index *>(indices->GetData());
-  KERNEL_CHECK_NULLPTR(indices_data, KERNEL_STATUS_PARAM_INVALID,
-                       "Get indices_data failed.");
+  KERNEL_CHECK_NULLPTR(indices_data, KERNEL_STATUS_PARAM_INVALID, "Get indices_data failed.");
   auto out_base = static_cast<T *>(ctx.Output(0)->GetData());
-  KERNEL_CHECK_NULLPTR(out_base, KERNEL_STATUS_PARAM_INVALID,
-                       "Get output failed.");
+  KERNEL_CHECK_NULLPTR(out_base, KERNEL_STATUS_PARAM_INVALID, "Get output failed.");
   for (int64_t i = 0; i < outer_size; ++i) {
     for (int64_t j = 0; j < indices_num; ++j) {
       auto params_idx = (i * gather_dim_size + indices_data[j]) * inner_size;
       auto out_idx = (i * indices_num + j) * inner_size;
       auto cpret = memcpy_s(out_base + out_idx, slice_size, params_base + params_idx, slice_size);
-      KERNEL_CHECK_FALSE((cpret == EOK), KERNEL_STATUS_INNER_ERROR,
-                         "memcpy_s to output failed.");
+      KERNEL_CHECK_FALSE((cpret == EOK), KERNEL_STATUS_INNER_ERROR, "memcpy_s to output failed.");
     }
   }
 
@@ -137,7 +131,7 @@ uint32_t GatherV2CpuKernel::GetInputAndCheck(CpuKernelContext &ctx) {
 
   auto batch_dims_ptr = ctx.GetAttr("batch_dims");
   KERNEL_CHECK_NULLPTR(batch_dims_ptr, KERNEL_STATUS_PARAM_INVALID,
-                       "Get batch dims failed.");  
+                       "Get batch dims failed.");
   int64_t batch_dims = batch_dims_ptr->GetInt();
   KERNEL_CHECK_FALSE((batch_dims >= 0), KERNEL_STATUS_PARAM_INVALID,
                      "Batch_dims must be at least 0 but is [%d]", batch_dims);

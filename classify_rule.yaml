@@ -3022,6 +3022,7 @@ unkown:
       - ops/built-in/framework/tf_plugin/getspan_plugin.cc
       - ops/built-in/framework/tf_plugin/rsqrt_grad_plugin.cc
       - ops/built-in/framework/tf_plugin/ifmr_plugin.cc
+      - ops/built-in/framework/tf_plugin/image_projective_transform_plugin.cc
       - ops/built-in/framework/tf_plugin/space_to_batch_plugin.cc
       - ops/built-in/framework/tf_plugin/adam_apply_one_with_decay_assign_plugin.cc
       - ops/built-in/framework/tf_plugin/sqrt_grad_plugin.cc
@@ -3179,6 +3180,7 @@ unkown:
       - ops/built-in/framework/tf_plugin/reverse_v2_plugin.cc
       - ops/built-in/framework/tf_plugin/fused_layer_norm_plugin.cc
       - ops/built-in/framework/tf_plugin/elu_plugin.cc
+      - ops/built-in/framework/tf_plugin/encode_jpeg_variable_quality_plugin.cc
       - ops/built-in/framework/tf_plugin/sparse_tensor_dense_add_plugin.cc
       - ops/built-in/framework/tf_plugin/sinh_plugin.cc
       - ops/built-in/framework/tf_plugin/exp_plugin.cc

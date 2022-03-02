@@ -82,10 +82,9 @@ static uint32_t DoCompute(typename TTypes<T>::ConstTensor flat_input,
                       typename TTypes<int64_t>::Matrix output,
                       std::vector<int64_t> input_dims) {
   Eigen::DenseIndex true_nums = 0;
-  // every dim's stride in memory 
+  // every dim's stride in memory
   Eigen::DSizes<Eigen::DenseIndex, DIMS> dim_strides;
-  static_assert((static_cast<int>(decltype(flat_input)::Layout) == 
-                 static_cast<int>(Eigen::RowMajor)),
+  static_assert((static_cast<int>(decltype(flat_input)::Layout) == static_cast<int>(Eigen::RowMajor)),
                  "Where kernel input should be RowMajor");
   if (input_dims.size() != DIMS)
     return KERNEL_STATUS_INNER_ERROR;

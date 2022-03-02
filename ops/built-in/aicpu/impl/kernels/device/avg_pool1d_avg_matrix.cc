@@ -62,7 +62,7 @@ static int64_t CalculateWoutput(const int64_t w_in_input, const int64_t pad_l,
 }  // namespace
 
 namespace aicpu {
-uint32_t AvgPool1DAvgMatrixCpuKernel::CheckParam(CpuKernelContext &ctx){
+uint32_t AvgPool1DAvgMatrixCpuKernel::CheckParam(CpuKernelContext &ctx) {
   auto output_data_temp = ctx.Output(0)->GetData();
   Tensor *input_tensor = ctx.Input(0);
   KERNEL_CHECK_NULLPTR(output_data_temp, KERNEL_STATUS_PARAM_INVALID,
@@ -186,7 +186,7 @@ uint32_t AvgPool1DAvgMatrixCpuKernel::Compute(CpuKernelContext &ctx) {
   KERNEL_CHECK_NULLPTR(output_tensor, KERNEL_STATUS_PARAM_INVALID,
                        "[%s] get output_tensor fail.", kAvgPool1DAvgMatrix);
   KERNEL_CHECK_FALSE((CheckParam(ctx) == KERNEL_STATUS_OK),
-                     KERNEL_STATUS_PARAM_INVALID, "CheckParam failed."); 
+                     KERNEL_STATUS_PARAM_INVALID, "CheckParam failed.");
   DataType dt = static_cast<DataType>(input_tensor->GetDataType());
   switch (dt) {
     AVGPOOL1DAVGMATRIX_COMPUTE_CASE(DT_INT8, int8_t, ctx)

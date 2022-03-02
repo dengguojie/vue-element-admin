@@ -117,13 +117,13 @@ class AttrValueImpl {
    * set int list value to attr.
    * @param vector<int64_t>: int list value need to set to attr
    */
-  void SetListInt(const std::vector<int64_t> &i);
+  void SetListInt(const std::vector<int64_t> &list);
 
   /*
    * set int list list value to attr.
    * @param vector<vector<int64_t>>: int list list value need to set to attr
    */
-  void SetListListInt(const std::vector<std::vector<int64_t>> &i);
+  void SetListListInt(const std::vector<std::vector<int64_t>> &list);
 
   /*
    * get float value of attr.
@@ -159,7 +159,7 @@ class AttrValueImpl {
    * set float list value to attr.
    * @param vector<float>: float list value need to set to attr
    */
-  void SetListFloat(const std::vector<float> &f);
+  void SetListFloat(const std::vector<float> &list);
 
   /*
    * get bool value of attr.
@@ -195,7 +195,7 @@ class AttrValueImpl {
    * set bool list value to attr.
    * @param vector<bool>: bool list value need to set to attr
    */
-  void SetListBool(const std::vector<bool> &b);
+  void SetListBool(const std::vector<bool> &list);
 
   /*
    * get data type value of attr.
@@ -231,7 +231,7 @@ class AttrValueImpl {
    * set data type list value to attr.
    * @param vector<DataType>: data type list value need to set to attr
    */
-  void SetListDataType(const std::vector<DataType> &type);
+  void SetListDataType(const std::vector<DataType> &list);
 
   /*
    * set tensor shape value to attr.
@@ -245,7 +245,7 @@ class AttrValueImpl {
    * @param vector<TensorShape>: tensor shape list value need to set to attr
    * @return uint32_t: success number
    */
-  uint32_t SetListTensorShape(const std::vector<TensorShape *> &shape);
+  uint32_t SetListTensorShape(const std::vector<TensorShape *> &list);
 
   /*
    * attr add tensor shape value to list.
@@ -283,7 +283,7 @@ class AttrValueImpl {
    * @param vector<Tensor>: tensor list value need to set to attr
    * @return uint32_t: success number
    */
-  uint32_t SetListTensor(const std::vector<Tensor *> &tensor);
+  uint32_t SetListTensor(const std::vector<Tensor *> &list);
 
   /*
    * attr add tensor value to list.
