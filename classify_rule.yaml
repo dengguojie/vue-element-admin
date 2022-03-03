@@ -1085,6 +1085,7 @@ vector_B:
       - ops/built-in/tbe/impl_mode/high_performance_for_all.ini
       - ops/built-in/tbe/impl_mode/high_precision.ini
       - ops/built-in/tbe/impl_mode/high_precision_for_all.ini
+      - ops/built-in/kernel/binary_script/binary_json_cfg.ini
       - ops/built-in/tbe/op_info_cfg/parser/parser_ini.py
       - ops/built-in/kernel/binary_script/gen_output_json.py
       - ops/built-in/kernel/binary_script/binary_json.py
