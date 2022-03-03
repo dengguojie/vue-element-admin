@@ -55,6 +55,7 @@ struct ElewiseCompileInfo {
   uint32_t elewise_vars_size{0};
   // tiling info from broadcast
   bool broadcast_pattern{false};
+  std::unordered_map<uint64_t, std::vector<VarAttr>> elewise_var_attr;
 
  private:
   void ParseOutsUintOne(const nlohmann::json& outer_compile_info);
@@ -62,6 +63,7 @@ struct ElewiseCompileInfo {
   void ParseBaseInfo(const nlohmann::json& outer_compile_info);
   void ParseConstDims(const nlohmann::json& outer_compile_info);
   void ParseElewiseVarSize(const nlohmann::json& outer_compile_info);
+  bool ParseAttrVars(const nlohmann::json& outer_compile_info);
 };
 
 class Elewise {
@@ -86,15 +88,15 @@ class Elewise {
   bool GetOutShape();
   bool GetOutShape(const OpInfo& op_info);
   void GetOutputDtype();
-  void WriteKnownData();
-  void DoConstTiling();
-  void DoEmptyTiling();
+  bool WriteKnownData();
+  bool DoConstTiling();
+  bool DoEmptyTiling();
   void CalcMultiCore();
   void DoBlockTiling();
   bool DoUbTiling();
   void CalcCommonKey();
   bool DoCommonTiling();
-  void WriteCommonData() const;
+  bool WriteCommonData() const;
 
  private:
   const std::string& op_type;
@@ -104,7 +106,7 @@ class Elewise {
   // tiling info
   bool need_multi_core{true};
   bool need_double_buffer{false};
-  int64_t tiling_key{1};
+  uint64_t tiling_key{1};
   int64_t block_dims{1};
   int64_t ub_factor{1};
   int64_t block_factor{1};

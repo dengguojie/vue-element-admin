@@ -41,7 +41,7 @@ constexpr int64_t DOUBLE_BUFFER_SIZE = 2;
 constexpr int64_t ELEWISE_MAX_INPUT_NUMS = 70;
 constexpr int64_t KNOWN_PATTERN_KEY = 0;
 constexpr int64_t COMMON_PATTERN_KEY = 1;
-constexpr int64_t CONST_TILING_KEY = 100000000;
+constexpr uint64_t CONST_TILING_KEY = 100000000;
 constexpr uint32_t ELEWISE_FLAG_SIZE = 6;
 constexpr int64_t ELEMENT_IN_BLOCK_DOUBLE = 4;
 constexpr int64_t ELEMENT_IN_BLOCK_FLOAT = 8;
@@ -290,24 +290,31 @@ void Elewise::GetOutputDtype() {
   }
 }
 
-void Elewise::WriteKnownData() {
-  OP_LOGD(op_type.c_str(), "elewise known tiling key is:%lld and block_dims is:%lld", tiling_key, block_dims);
+bool Elewise::WriteKnownData() {
+  OP_LOGD(op_type.c_str(), "elewise known tiling key is:%llu and block_dims is:%lld", tiling_key, block_dims);
   run_info.SetBlockDim(static_cast<uint32_t>(block_dims));
   run_info.SetTilingKey(static_cast<uint32_t>(tiling_key));
+  if (compile_info.elewise_var_attr.count(tiling_key) > 0) {
+    const std::vector<VarAttr>& all_attr_vars = compile_info.elewise_var_attr.at(tiling_key);
+    if (all_attr_vars.size() > 0) {
+      return SetAttrVars(op_type, op_paras, run_info, all_attr_vars);
+    }
+  }
+  return true;
 }
 
-void Elewise::DoConstTiling() {
+bool Elewise::DoConstTiling() {
   OP_LOGD(op_type.c_str(), "Enter into elewise const shape tiling.");
   block_dims = compile_info.const_block_dims;
   tiling_key = CONST_TILING_KEY;
-  WriteKnownData();
+  return WriteKnownData();
 }
 
-void Elewise::DoEmptyTiling() {
+bool Elewise::DoEmptyTiling() {
   OP_LOGD(op_type.c_str(), "Enter into elewise empty shape tiling.");
   block_dims = 1;
   tiling_key = INT32_MAX;
-  WriteKnownData();
+  return WriteKnownData();
 }
 
 void Elewise::CalcMultiCore() {
@@ -348,8 +355,8 @@ bool Elewise::DoUbTiling() {
 }
 
 void Elewise::CalcCommonKey() {
-  constexpr int64_t common_tiling_key = 210000000;
-  constexpr int64_t db_tiling_key = 10000;
+  constexpr uint64_t common_tiling_key = 210000000;
+  constexpr uint64_t db_tiling_key = 10000;
   tiling_key = compile_info.use_special_pattern ? common_tiling_key : 0;
   if (need_double_buffer) {
     tiling_key += db_tiling_key;
@@ -374,11 +381,11 @@ bool Elewise::DoCommonTiling() {
   if (ret && !compile_info.only_const_tiling) {
     CalcCommonKey();
   }
-  WriteCommonData();
+  ret = WriteCommonData();
   return ret;
 }
 
-void Elewise::WriteCommonData() const {
+bool Elewise::WriteCommonData() const {
   OP_LOGD(op_type.c_str(), "elewise tiling key is:%lld", tiling_key);
   OP_LOGD(op_type.c_str(), "elewise tiling block_dims is:%lld", block_dims);
   OP_LOGD(op_type.c_str(), "elewise tiling block_factor is:%lld", block_factor);
@@ -395,15 +402,22 @@ void Elewise::WriteCommonData() const {
     run_info.AddTilingData(elewise_ub_axis);
     run_info.AddTilingData(static_cast<int32_t>(ub_factor));
     run_info.AddTilingData(double_buffer_num);
-  } else {
-    constexpr uint32_t pure_elewise_var_size = 3;
-    run_info.SetTilingKey(static_cast<uint32_t>(tiling_key));
-    if (compile_info.elewise_vars_size == pure_elewise_var_size) {
-      run_info.AddTilingData(static_cast<int32_t>(out_shape));
-    }
-    run_info.AddTilingData(static_cast<int32_t>(block_factor));
-    run_info.AddTilingData(static_cast<int32_t>(ub_factor));
+    return true;
   }
+  constexpr uint32_t pure_elewise_var_size = 3;
+  run_info.SetTilingKey(static_cast<uint32_t>(tiling_key));
+  if (compile_info.elewise_vars_size == pure_elewise_var_size) {
+    run_info.AddTilingData(static_cast<int32_t>(out_shape));
+  }
+  run_info.AddTilingData(static_cast<int32_t>(block_factor));
+  run_info.AddTilingData(static_cast<int32_t>(ub_factor));
+  if (compile_info.elewise_var_attr.count(tiling_key) > 0) {
+    const std::vector<VarAttr>& all_attr_vars = compile_info.elewise_var_attr.at(tiling_key);
+    if (all_attr_vars.size() > 0) {
+      return SetAttrVars(op_type, op_paras, run_info, all_attr_vars);
+    }
+  }
+  return true;
 }
 
 bool Elewise::DoTiling() {
@@ -416,9 +430,9 @@ bool Elewise::DoTiling() {
   GetOutputDtype();
   // elewise tiling compose of const, empty and common scene
   if (compile_info.is_const_shapes) {
-    DoConstTiling();
+    ret = DoConstTiling();
   } else if (out_shape == 0) {
-    DoEmptyTiling();
+    ret = DoEmptyTiling();
   } else {
     ret = DoCommonTiling();
   }
@@ -435,9 +449,9 @@ bool Elewise::DoTiling(const OpInfo& op_info) {
   GetOutputDtype();
   // elewise tiling compose of const, empty and common scene
   if (compile_info.is_const_shapes) {
-    DoConstTiling();
+    ret = DoConstTiling();
   } else if (out_shape == 0) {
-    DoEmptyTiling();
+    ret = DoEmptyTiling();
   } else {
     ret = DoCommonTiling();
   }
@@ -521,7 +535,7 @@ void ElewiseCompileInfo::ParseConstDims(const nlohmann::json& outer_compile_info
 }
 
 void ElewiseCompileInfo::ParseElewiseVarSize(const nlohmann::json& outer_compile_info) {
-  if (outer_compile_info.contains("_elewise_vars")&& !outer_compile_info.at("_elewise_vars").empty()) {
+  if (outer_compile_info.contains("_elewise_vars") && !outer_compile_info.at("_elewise_vars").empty()) {
     const std::string tiling_key_str = "210000000";
     const std::string tiling_key_db_str = "210010000";
     const std::unordered_map<std::string, std::vector<int64_t>>& elewise_vars =
@@ -532,6 +546,14 @@ void ElewiseCompileInfo::ParseElewiseVarSize(const nlohmann::json& outer_compile
       elewise_vars_size = elewise_vars.at(tiling_key_db_str).size();
     }
   }
+}
+
+bool ElewiseCompileInfo::ParseAttrVars(const nlohmann::json& outer_compile_info) {
+  if (outer_compile_info.count("_attr_vars") > 0) {
+    bool ret = ParseVarAttr(outer_compile_info, elewise_var_attr);
+    return ret;
+  }
+  return true;
 }
 
 void ElewiseCompileInfo::SetBroadcastPattern(const bool& is_broadcast_pattern) {
@@ -545,6 +567,7 @@ ElewiseCompileInfo::ElewiseCompileInfo(const std::string& op_type, const nlohman
   ParseBaseInfo(outer_compile_info);
   ParseConstDims(outer_compile_info);
   ParseElewiseVarSize(outer_compile_info);
+  ParseAttrVars(outer_compile_info);
 }
 }  // namespace v3
 
