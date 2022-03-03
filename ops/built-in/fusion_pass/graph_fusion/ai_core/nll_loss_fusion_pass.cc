@@ -32,6 +32,7 @@ static constexpr int32_t INPUT_INDEX_TWO = 2;
 static const vector<vector<int64_t>> SUPPORT_CASES = {
     {4210704, 21},
     {8388608, 19},
+    {2105352, 21},
 };
 
 vector<FusionPattern*> NLLLossFusionPass::DefinePatterns() {
