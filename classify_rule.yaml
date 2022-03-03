@@ -2541,6 +2541,7 @@ unkown:
       - ops/built-in/tbe/impl/img_warp_resize.py
       - ops/built-in/tbe/impl/acos_grad.py
       - ops/built-in/tbe/impl/adam_apply_one_with_decay_assign.py
+      - ops/built-in/tbe/impl/axpy_with_softmax_and_dropoutdomask.py
       - ops/built-in/tbe/impl/square_sum_all.py
       - ops/built-in/tbe/impl/dynamic_rnn_v3.py
       - ops/built-in/tbe/impl/yolo_v5_correct_region_box.py
