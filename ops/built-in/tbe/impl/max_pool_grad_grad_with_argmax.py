@@ -442,7 +442,7 @@ def max_pool_grad_grad_with_argmax_compute(placeholders,
     grad_n, grad_c1 * kernel_h * kernel_w, howo // tbe_platform.BLOCK_REDUCE, tbe_platform.BLOCK_REDUCE,
     tbe_platform.BLOCK_REDUCE)
     grad_fractal_transp = tvm.compute(shape_grad_fratical_transp,
-                                      lambda i, j, k, l, m: grad_fractal[i, k, j, l, m],
+                                      lambda i, j, k, n, m: grad_fractal[i, k, j, n, m],
                                       name='grad_fractal_transp')
 
     # declare a zero tensor, and move to ub for vsel
@@ -457,8 +457,8 @@ def max_pool_grad_grad_with_argmax_compute(placeholders,
     grad_n, grad_c1 * kernel_h * kernel_w, howo // tbe_platform.BLOCK_REDUCE, tbe_platform.BLOCK_REDUCE,
     tbe_platform.BLOCK_REDUCE)
     grad_grad_col = tvm.compute(shape_grad_grad_col,
-                                lambda i, j, k, l, m: tvm.select(argmax_ub[i, j, k, l, m], grad_fractal_transp[
-                                    i, j, k, l, m], tensor_zero_ub[m]),
+                                lambda i, j, k, n, m: tvm.select(argmax_ub[i, j, k, n, m], grad_fractal_transp[
+                                    i, j, k, n, m], tensor_zero_ub[m]),
                                 name='grad_grad_col')
 
     # reduce_sum
@@ -499,7 +499,7 @@ def max_pool_grad_grad_with_argmax_compute(placeholders,
 
     # UB to OUT
     output_res = tvm.compute((grad_n, grad_c1, shape_max_pool_h * shape_max_pool_w, tbe_platform.BLOCK_REDUCE),
-                             lambda i, j, l, m: grad_grad[i, j, l // 16, l % 16, m],
+                             lambda i, j, n, m: grad_grad[i, j, n // 16, n % 16, m],
                              name="ub_to_out",
                              attrs={
                                  'extract_params': extract_params,

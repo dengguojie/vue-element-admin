@@ -536,13 +536,16 @@ def _avg_pool_grad_schedule(res, l1_load_kernel):
     s[weight_cbuf].emit_insn(weight_cbuf.op.axis[0], tbe_platform.DMA_COPY)
     s[weight_cb].emit_insn(weight_cb.op.axis[3], tbe_platform.DMA_COPY)
     s[mad_ubuf].emit_insn(mad_ubuf_n_cut_i, tbe_platform.DMA_COPY)
-    mad_dict = {
-        "mad_pattern": tbe_platform.CONV_MODE,
-        "k_outer": [mad_cc_kcut_o, mad_cc_kcut_o_o]
-    } if tile_k_o != 0 else {
-        "mad_pattern": tbe_platform.CONV_MODE,
-        "k_outer": mad_cc_kcut_o
-    }
+    if tile_k_o != 0:
+        mad_dict = {
+            "mad_pattern": tbe_platform.CONV_MODE,
+            "k_outer": [mad_cc_kcut_o, mad_cc_kcut_o_o]
+        }
+    else:
+        mad_dict = {
+            "mad_pattern": tbe_platform.CONV_MODE,
+            "k_outer": mad_cc_kcut_o
+        }
     s[mad_cc].emit_insn(mad_cc_n_cut_i, tbe_platform.MAD, mad_dict)
     s[res].emit_insn(conv_n_cut_i, tbe_platform.DMA_COPY)
 

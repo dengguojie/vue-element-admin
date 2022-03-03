@@ -219,7 +219,7 @@ def _ceil_to(value, ceil_value):
 
 
 # 'pylint: disable=too-many-return-statements
-def _cal_multi_core_factor_3_axis(m, n, l):
+def _cal_multi_core_factor_3_axis(m, n, t):
     """
     Return the proper cut factors for 3 multicore axis.
     """
@@ -227,19 +227,19 @@ def _cal_multi_core_factor_3_axis(m, n, l):
         return (x + y - 1) // y
 
     # for pruning
-    if m * n * l > 65535:
+    if m * n * t > 65535:
         max_gcd_m = math.gcd(m, Constant.DEVICE_CORE_NUM)
         max_gcd_n = math.gcd(n, Constant.DEVICE_CORE_NUM)
-        max_gcd_l = math.gcd(l, Constant.DEVICE_CORE_NUM)
+        max_gcd_t = math.gcd(t, Constant.DEVICE_CORE_NUM)
         if max_gcd_m >= Constant.DEVICE_CORE_NUM:
             return Constant.DEVICE_CORE_NUM, 1, 1
         if max_gcd_m * max_gcd_n >= Constant.DEVICE_CORE_NUM:
             return max_gcd_m, Constant.DEVICE_CORE_NUM // max_gcd_m, 1
-        if max_gcd_m * max_gcd_n * max_gcd_l >= Constant.DEVICE_CORE_NUM:
+        if max_gcd_m * max_gcd_n * max_gcd_t >= Constant.DEVICE_CORE_NUM:
             return max_gcd_m, max_gcd_m, Constant.DEVICE_CORE_NUM // (max_gcd_m * max_gcd_n)
 
     split_loop_partition_bug_list = [[53, 7, 5]]
-    if [m, n, l] in split_loop_partition_bug_list:
+    if [m, n, t] in split_loop_partition_bug_list:
         if Constant.DEVICE_CORE_NUM == 32:
             return 6, 1, 5
         if Constant.DEVICE_CORE_NUM == 8:
@@ -247,29 +247,29 @@ def _cal_multi_core_factor_3_axis(m, n, l):
         if Constant.DEVICE_CORE_NUM == 2:
             return 2, 1, 1
 
-    def _init_core(m, n, l):
+    def _init_core(m, n, t):
         for i in range(m, 0, -1):
             for j in range(n, 0, -1):
-                for k in range(l, 0, -1):
+                for k in range(t, 0, -1):
                     if i * j * k < 65536:
                         return (i, j, k)
 
-    (core_m, core_n, core_l) = _init_core(m, n, l)
-    min_cycle_num = _ceil(m, core_m) * _ceil(n, core_n) * _ceil(l, core_l) * \
-                    _ceil(core_m * core_n * core_l, Constant.DEVICE_CORE_NUM)
-    min_core = core_m * core_n * core_l
+    (core_m, core_n, core_t) = _init_core(m, n, t)
+    min_cycle_num = _ceil(m, core_m) * _ceil(n, core_n) * _ceil(t, core_t) * \
+                    _ceil(core_m * core_n * core_t, Constant.DEVICE_CORE_NUM)
+    min_core = core_m * core_n * core_t
 
     for i in range(m, 0, -1):
         for j in range(n, 0, -1):
-            for k in range(l, 0, -1):
-                if _ceil(m, i) * _ceil(n, j) * _ceil(l, k) * \
+            for k in range(t, 0, -1):
+                if _ceil(m, i) * _ceil(n, j) * _ceil(t, k) * \
                     _ceil(i * j * k, Constant.DEVICE_CORE_NUM) > min_cycle_num:
                     continue
                 if i * j * k < min_core:
                     min_core = i * j * k
-                    core_m, core_n, core_l = i, j, k
+                    core_m, core_n, core_t = i, j, k
 
-    return core_m, core_n, core_l
+    return core_m, core_n, core_t
 
 
 # 'pylint: disable=invalid-name
@@ -636,10 +636,16 @@ def _get_load3d_tiling(fmap_shape, ksize, strides, padding,
         tensor5_num = fmap_c0 * fmap_c0
         tensor42_num = tensor5_num
         tensor7_num = tensor42_num
-        res_double_buffer_flag = 1 if (Constant.MAX_UB_SIZE // 4) // (tensor42_num + \
-                                                                        tensor5_num + tensor7_num) else 0
-        ub_num = Constant.MAX_UB_SIZE // (Constant.DOUBLE_BUFFER * data_size) if res_double_buffer_flag \
-            else Constant.MAX_UB_SIZE // data_size
+        if (Constant.MAX_UB_SIZE // 4) // (tensor42_num + tensor5_num + tensor7_num):
+            res_double_buffer_flag = 1
+        else:
+            res_double_buffer_flag = 0
+
+        if res_double_buffer_flag:
+            ub_num = Constant.MAX_UB_SIZE // (Constant.DOUBLE_BUFFER * data_size)
+        else:
+            ub_num = Constant.MAX_UB_SIZE // data_size
+
         max_mhowo_factor = ub_num // (tensor42_num + tensor5_num + tensor7_num)
         mhowo = (output_h * output_w + fmap_c0 - 1) // fmap_c0
         factor = min(max_mhowo_factor, mhowo)
@@ -1568,8 +1574,10 @@ def _extract_volume_patches_schedule(res, sch_list, original_cin):
             workspace2_khkw_factor, workspace2_kd_factor, workspace2_mhowo_factor,\
               split_workspace2_kd_flag, split_workspace2_mhowo_flag = 1, 1, 1, 0, 0
             workspace2_double_buffer_flag = 1 if (Constant.MAX_UB_SIZE // 4) // (tensor1_num + tensor2_num) else 0
-            ub_num = Constant.MAX_UB_SIZE // (Constant.DOUBLE_BUFFER * dtype_size) \
-                if workspace2_double_buffer_flag else Constant.MAX_UB_SIZE // dtype_size
+            if workspace2_double_buffer_flag:
+                ub_num = Constant.MAX_UB_SIZE // (Constant.DOUBLE_BUFFER * dtype_size)
+            else:
+                ub_num = Constant.MAX_UB_SIZE // dtype_size
             max_khkw_factor = ub_num // (tensor1_num + tensor2_num)
             if max_khkw_factor == 0:
                 error_manager_vector.raise_err_specific_reson(
@@ -1650,10 +1658,14 @@ def _extract_volume_patches_schedule(res, sch_list, original_cin):
             tensor42_num = tensor5_num
             tensor7_num = tensor42_num
             res_kdkhkwc_floor_factor, res_mhowo_factor, split_res_kdkhkwc_floor_flag, split_res_mhowo_flag = 1, 1, 0, 0
-            res_double_buffer_flag = 1 if (Constant.MAX_UB_SIZE // 4) // \
-                                          (tensor42_num + tensor5_num + tensor7_num) else 0
-            ub_num = Constant.MAX_UB_SIZE // (Constant.DOUBLE_BUFFER * dtype_size)\
-                if res_double_buffer_flag else Constant.MAX_UB_SIZE // dtype_size
+            if (Constant.MAX_UB_SIZE // 4) // (tensor42_num + tensor5_num + tensor7_num):
+                res_double_buffer_flag = 1
+            else:
+                res_double_buffer_flag = 0
+            if res_double_buffer_flag:
+                ub_num = Constant.MAX_UB_SIZE // (Constant.DOUBLE_BUFFER * dtype_size)
+            else:
+                ub_num = Constant.MAX_UB_SIZE // dtype_size
             max_mhowo_factor = ub_num // (tensor42_num + tensor5_num + tensor7_num)
             if max_mhowo_factor == 0:
                 error_manager_vector.raise_err_specific_reson(
@@ -1829,10 +1841,14 @@ def _extract_volume_patches_schedule(res, sch_list, original_cin):
             tensor00_num = tensor0_num
             workspace_8bit_khkw_factor, workspace_8bit_kd_factor, workspace_8bit_mhowo_factor,\
               split_workspace_8bit_kd_flag, split_workspace_8bit_mhowo_flag = 1, 1, 1, 0, 0
-            workspace_8bit_double_buffer_flag = 1 if (Constant.MAX_UB_SIZE // 2) // \
-                                                     (tensor0_num + tensor00_num) else 0
-            ub_num = Constant.MAX_UB_SIZE // (Constant.DOUBLE_BUFFER * dtype_size) \
-                if workspace_8bit_double_buffer_flag else Constant.MAX_UB_SIZE // dtype_size
+            if (Constant.MAX_UB_SIZE // 2) // (tensor0_num + tensor00_num):
+                workspace_8bit_double_buffer_flag = 1
+            else:
+                workspace_8bit_double_buffer_flag = 0
+            if workspace_8bit_double_buffer_flag:
+                ub_num = Constant.MAX_UB_SIZE // (Constant.DOUBLE_BUFFER * dtype_size)
+            else:
+                ub_num = Constant.MAX_UB_SIZE // dtype_size
             max_khkw_factor = ub_num // (tensor0_num + tensor00_num)
             if max_khkw_factor == 0:
                 error_manager_vector.raise_err_specific_reson("extract_volume_patches",
@@ -1909,11 +1925,14 @@ def _extract_volume_patches_schedule(res, sch_list, original_cin):
             tensor2_num = tensor1_num
             workspace2_khkw_factor, workspace2_kd_factor, workspace2_mhowo_factor, split_workspace2_kd_flag,\
               split_workspace2_mhowo_flag = 1, 1, 1, 0, 0
-            workspace2_double_buffer_flag = 1 \
-                if (Constant.MAX_UB_SIZE // Constant.DOUBLE_BUFFER) // \
-                    (tensor10_num + tensor1_num + tensor2_num) else 0
-            ub_num = Constant.MAX_UB_SIZE // (Constant.DOUBLE_BUFFER * dtype_size) \
-                if workspace2_double_buffer_flag else Constant.MAX_UB_SIZE // dtype_size
+            if (Constant.MAX_UB_SIZE // Constant.DOUBLE_BUFFER) // (tensor10_num + tensor1_num + tensor2_num):
+                workspace2_double_buffer_flag = 1
+            else:
+                workspace2_double_buffer_flag = 0
+            if workspace2_double_buffer_flag:
+                ub_num = Constant.MAX_UB_SIZE // (Constant.DOUBLE_BUFFER * dtype_size)
+            else:
+                ub_num = Constant.MAX_UB_SIZE // dtype_size
             max_khkw_factor = ub_num // (tensor10_num + tensor1_num + tensor2_num)
             if max_khkw_factor == 0:
                 error_manager_vector.raise_err_specific_reson("extract_volume_patches",
@@ -1994,10 +2013,14 @@ def _extract_volume_patches_schedule(res, sch_list, original_cin):
             tensor42_num = tensor5_num
             tensor7_num = tensor42_num
             res_kdkhkwc_floor_factor, res_mhowo_factor, split_res_kdkhkwc_floor_flag, split_res_mhowo_flag = 1, 1, 0, 0
-            res_double_buffer_flag = 1 if (Constant.MAX_UB_SIZE // 4) // \
-                                           (tensor42_num + tensor5_num + tensor7_num) else 0
-            ub_num = Constant.MAX_UB_SIZE // (Constant.DOUBLE_BUFFER * dtype_size) \
-                if res_double_buffer_flag else Constant.MAX_UB_SIZE // dtype_size
+            if (Constant.MAX_UB_SIZE // 4) // (tensor42_num + tensor5_num + tensor7_num):
+                res_double_buffer_flag = 1
+            else:
+                res_double_buffer_flag = 0
+            if res_double_buffer_flag:
+                ub_num = Constant.MAX_UB_SIZE // (Constant.DOUBLE_BUFFER * dtype_size)
+            else:
+                ub_num = Constant.MAX_UB_SIZE // dtype_size
             max_mhowo_factor = ub_num // (tensor42_num + tensor5_num + tensor7_num)
             if max_mhowo_factor == 0:
                 error_manager_vector.raise_err_specific_reson("extract_volume_patches",

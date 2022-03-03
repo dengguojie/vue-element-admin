@@ -56,10 +56,10 @@ class Core:
     """
 
     def __init__(self, core_ind, c1, d_step):
-        self.ind_N = core_ind // (c1 * d_step)
+        self.ind_n = core_ind // (c1 * d_step)
         n_rest = core_ind % (c1 * d_step)
         self.ind_d = n_rest // c1
-        self.ind_C1 = n_rest % c1
+        self.ind_c1 = n_rest % c1
 
 
 # 'pylint: disable=too-few-public-methods
@@ -90,7 +90,7 @@ class MaxPool3DWithArgmax(metaclass=ABCMeta):
         # we have to aligned the address to 32B.
         self.upper_cmp_rep = 254
 
-        self.N, self.input_d, self.C1, self.input_h, self.input_w, self.C0 = x.get('shape')
+        self.n, self.input_d, self.c1, self.input_h, self.input_w, self.c0 = x.get('shape')
         _, _, self.k_d, self.k_h, self.k_w = kernel_size
         _, _, self.stride_d, self.stride_h, self.stride_w = stride
 
@@ -98,7 +98,7 @@ class MaxPool3DWithArgmax(metaclass=ABCMeta):
         self.h_step = (self.input_h - self.k_h) // self.stride_h + 1
         self.w_step = (self.input_w - self.k_w) // self.stride_w + 1
         self.k_elem = self.k_h * self.k_w * self.k_d
-        self.output_shape = (self.N, self.d_step, self.C1, self.h_step, self.w_step, self.C0)
+        self.output_shape = (self.n, self.d_step, self.c1, self.h_step, self.w_step, self.c0)
 
         # first, we have to aligned the data points to uint16, not yet aligned the uint16 to block_size(32B)
         # this is approximately equal to w_step * h_step, aligned to 16.(compliment by zero)
@@ -203,7 +203,7 @@ class MaxPool3DWithArgmax(metaclass=ABCMeta):
                             )
                         else:
                             _, _, shape_h, shape_w, _ = aux_l1.shape
-                            l1_start_offset = tmp_kd * shape_h * shape_w * self.C0
+                            l1_start_offset = tmp_kd * shape_h * shape_w * self.c0
                             img2col(
                                 self.inst, aux_l1, big_matrix_ub, l1_start_offset,
                                 (tmp_kd * self.k_h * self.k_w + tmp_kh * self.k_w + tmp_kw) * big_matrix_ub.shape[1],
@@ -243,13 +243,13 @@ class MaxPool3DWithArgmax(metaclass=ABCMeta):
                                        shape=self.output_shape,
                                        name='output_tensor',
                                        scope=tik.scope_gm)
-        output_gm_tensor = output_gm_tensor.reshape((self.N, self.d_step, self.C1, self.h_step * self.w_step * self.C0))
+        output_gm_tensor = output_gm_tensor.reshape((self.n, self.d_step, self.c1, self.h_step * self.w_step * self.c0))
 
         # the output bitmask
         final_bitmask_gm_tensor = self.inst.Tensor(
             dtype=self.out_mask_type,
             # the last two dimension of the shape aim to align to 32B.
-            shape=[self.N, self.d_step, self.C1 * self.k_elem, self.aligned_bm_line // 16, 16],
+            shape=[self.n, self.d_step, self.c1 * self.k_elem, self.aligned_bm_line // 16, 16],
             name='final_bitmask',
             scope=tik.scope_gm
         )
@@ -372,7 +372,7 @@ class MaxPool3DWithArgmaxWholeKernel(MaxPool3DWithArgmax):
 
         # compute some values for ub-cut-tail process
         # Notice: cut_ub_tail_aligned has already aligned to 16, so there is no need to consider ubtail_ub_tail
-        self.ubtail_ub_loop = self.cut_ub_tail_aligned * self.C0 // self.vector_size_elem
+        self.ubtail_ub_loop = self.cut_ub_tail_aligned * self.c0 // self.vector_size_elem
         self.ubtail_bm_loop = self.cut_ub_tail_aligned // self.vector_size_elem
         self.ubtail_bm_tail = self.cut_ub_tail_aligned % self.vector_size_elem
         self.ubtail_super_loop = self.ubtail_ub_loop // self.upper_rep_limit
@@ -384,18 +384,18 @@ class MaxPool3DWithArgmaxWholeKernel(MaxPool3DWithArgmax):
     # 'pylint: disable=too-many-locals
     def _cut_ub_process(self, ind_ctx, mode):
         tensor_info = ind_ctx['tensor_info']
-        ind_n = ind_ctx['ind_N']
-        ind_c1 = ind_ctx['ind_C1']
+        ind_n = ind_ctx['ind_n']
+        ind_c1 = ind_ctx['ind_c1']
         ind_d = ind_ctx['ind_d']
 
         # init a big matrix in ub, for register the img2col.
         bigmat_ub_tensor = self.inst.Tensor(dtype=self.input_dtype,
-                                            shape=[self.k_elem, self.cut_ub_val * self.C0],
+                                            shape=[self.k_elem, self.cut_ub_val * self.c0],
                                             name='big_matrix',
                                             scope=tik.scope_ubuf)
         # init a register to store the max line.
         maxline_ub_tensor = self.inst.Tensor(dtype=self.input_dtype,
-                                             shape=[self.cut_ub_val * self.C0, ],
+                                             shape=[self.cut_ub_val * self.c0, ],
                                              name='max_line',
                                              scope=tik.scope_ubuf)
         # init a uint16 bitmask, each number represents 16 bits. (16 pairs of numbers)
@@ -484,7 +484,7 @@ class MaxPool3DWithArgmaxWholeKernel(MaxPool3DWithArgmax):
         # step3: move the max_line_ub to gm
         self._move_ctn(dst=tensor_info['output'][ind_n, ind_d, ind_c1, self.cut_ub_loop * self.ub_line],
                        src=maxline_ub_tensor,
-                       burst=self.cut_ub_tail_ori * self.C0 * self.each_fp16_bytes // self.block_size)
+                       burst=self.cut_ub_tail_ori * self.c0 * self.each_fp16_bytes // self.block_size)
 
         # step4: compute the bitmask
         super()._calc_bitmask(big_matrix_ub=bigmat_ub_tensor,
@@ -526,35 +526,35 @@ class MaxPool3DWithArgmaxWholeKernel(MaxPool3DWithArgmax):
                                          name='aux_l1',
                                          scope=tik.scope_cbuf)
         tensor_info['aux_l1'] = aux_l1_tensor
-        core_nums = self.N * self.C1 * self.d_step
+        core_nums = self.n * self.c1 * self.d_step
 
         with self.inst.for_range(0, core_nums, block_num=core_nums) as core_ind:
 
-            core = Core(core_ind, self.C1, self.d_step)
+            core = Core(core_ind, self.c1, self.d_step)
 
             # if we don't need to cut l1, now is a good time to move data that all we need in this d-loop.
             if self.l1_strategy is L1MoveStrategy.NO_NEED_TO_CUT:
-                if (self.C1 - 1) * self.input_h * self.input_w <= 65535:
+                if (self.c1 - 1) * self.input_h * self.input_w <= 65535:
                     self.inst.data_move(
                         dst=aux_l1_tensor[0],
-                        src=tensor_info['input'][core.ind_N, core.ind_d * self.stride_d, core.ind_C1, 0, 0, 0],
+                        src=tensor_info.get('input')[core.ind_n, core.ind_d * self.stride_d, core.ind_c1, 0, 0, 0],
                         sid=0,
                         nburst=self.k_d,
                         burst=self.input_h * self.input_w,
-                        src_stride=(self.C1 - 1) * self.input_h * self.input_w,
+                        src_stride=(self.c1 - 1) * self.input_h * self.input_w,
                         dst_stride=self.dirty_l1_pad * self.input_w
                     )
                 else:
                     with self.inst.for_range(0, self.k_d) as d_ind:
                         self._move_ctn(
                             dst=aux_l1_tensor[0, d_ind, 0, 0, 0],
-                            src=tensor_info['input'][core.ind_N, core.ind_d * self.stride_d + d_ind,
-                                                     core.ind_C1, 0, 0, 0],
+                            src=tensor_info.get('input')[core.ind_n, core.ind_d * self.stride_d + d_ind,
+                                                         core.ind_c1, 0, 0, 0],
                             burst=self.input_h * self.input_w
                         )
 
-            ub_context = {"ind_N": core.ind_N,
-                          "ind_C1": core.ind_C1,
+            ub_context = {"ind_n": core.ind_n,
+                          "ind_c1": core.ind_c1,
                           "ind_d": core.ind_d,
                           "tensor_info": tensor_info}
             # begin to calculate cut ub-process
