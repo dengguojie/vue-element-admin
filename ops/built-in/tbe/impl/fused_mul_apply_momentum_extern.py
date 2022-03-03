@@ -123,6 +123,7 @@ def fused_mul_apply_momentum_extern_compute(var,
     var_out_fp16 = tbe.vadds(var_t_fp16, tvm.const(0.0, var_t_fp16.dtype))
     var_out_accum = tbe.vadds(accum_t, tvm.const(0.0, accum_t.dtype))
 
+    # 'pylint: disable=too-many-return-values
     def _compute(*index):
         """
         compute for multi output

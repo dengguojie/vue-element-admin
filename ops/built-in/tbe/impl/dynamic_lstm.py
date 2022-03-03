@@ -342,19 +342,19 @@ def dynamic_lstm(input_x, weight, bias,
     o_t_index = 3
     i_t = \
         tvm.compute(shape_i,
-                    lambda t, i, j, k, l: c_ub_bias(t, i_t_index, i, j, k, l),
+                    lambda t, i, j, m, n: c_ub_bias(t, i_t_index, i, j, m, n),
                     name="i_t")
     j_t = \
         tvm.compute(shape_i,
-                    lambda t, i, j, k, l: c_ub_bias(t, j_t_index, i, j, k, l),
+                    lambda t, i, j, m, n: c_ub_bias(t, j_t_index, i, j, m, n),
                     name="j_t")
     f_t = \
         tvm.compute(shape_i,
-                    lambda t, i, j, k, l: c_ub_bias(t, f_t_index, i, j, k, l),
+                    lambda t, i, j, m, n: c_ub_bias(t, f_t_index, i, j, m, n),
                     name="f_t")
     o_t = \
         tvm.compute(shape_i,
-                    lambda t, i, j, k, l: c_ub_bias(t, o_t_index, i, j, k, l),
+                    lambda t, i, j, m, n: c_ub_bias(t, o_t_index, i, j, m, n),
                     name="o_t")
 
     f_t_sigmoid = sigmoid_compute(f_t)
@@ -367,61 +367,61 @@ def dynamic_lstm(input_x, weight, bias,
     update_c = te.lang.cce.vadd(c_t_tmp1, c_t_tmp2)
 
     update_c_gm = tvm.compute(shape_i_t,
-                              lambda t, i, j, k, l: update_c(0, i, j, k, l),
+                              lambda t, i, j, m, n: update_c(0, i, j, m, n),
                               name="update_c_gm")
 
     c_t_tanh = tanh_compute(update_c)
 
     update_h = te.lang.cce.vmul(c_t_tanh, o_t_sigmoid)
     update_h_gm = tvm.compute(shape_i_t,
-                              lambda t, i, j, k, l: update_h(0, i, j, k, l),
+                              lambda t, i, j, m, n: update_h(0, i, j, m, n),
                               name="update_h_gm")
 
     update_hc_vn = \
         tvm.compute(
             shape_i_t,
-            lambda t, i, j, k, l: update_c_gm(0, i, j, k, l) +\
-                                  update_h_gm(t, i, j, k, l),
+            lambda t, i, j, m, n: update_c_gm(0, i, j, m, n) +\
+                                  update_h_gm(t, i, j, m, n),
             name="update_hc_vn")
 
     update_c_gm_vn = \
         tvm.compute(
             shape_i_t,
-            lambda t, i, j, k, l: update_hc_vn(0, i, j, k, l),
+            lambda t, i, j, m, n: update_hc_vn(0, i, j, m, n),
             name="update_c_gm_vn")
 
     update_h_gm_vn = \
         tvm.compute(
             shape_i_t,
-            lambda t, i, j, k, l: update_hc_vn(0, i, j, k, l),
+            lambda t, i, j, m, n: update_hc_vn(0, i, j, m, n),
             name="update_h_gm_vn")
 
     update_c_ub = \
         tvm.compute(
             shape_i,
-            lambda t, i, j, k, l: update_c_gm_vn(t, i, j, k, l),
+            lambda t, i, j, m, n: update_c_gm_vn(t, i, j, m, n),
             name="update_c_ub")
 
     update_c_gm_2 = \
         tvm.compute(shape_i_t,
-                    lambda t, i, j, k, l: update_c_ub(0, i, j, k, l),
+                    lambda t, i, j, m, n: update_c_ub(0, i, j, m, n),
                     name="update_c_gm_2")
     update_h_ub = \
         tvm.compute(
             shape_i,
-            lambda t, i, j, k, l: update_h_gm_vn(t, i, j, k, l),
+            lambda t, i, j, m, n: update_h_gm_vn(t, i, j, m, n),
             name="update_h_ub")
 
     update_h_gm_2 = \
         tvm.compute(
             shape_i_t,
-            lambda t, i, j, k, l: update_h_ub(0, i, j, k, l) +\
-                                  update_c_gm_2(t, i, j, k, l),
+            lambda t, i, j, m, n: update_h_ub(0, i, j, m, n) +\
+                                  update_c_gm_2(t, i, j, m, n),
             name="update_h_gm_2")
 
     update_h_gm_2_dummy = \
         tvm.compute(shape_i_t,
-                    lambda t, i, j, k, l: update_h_gm_2(t, i, j, k, l),
+                    lambda t, i, j, m, n: update_h_gm_2(t, i, j, m, n),
                     name="update_h_gm_2_dummy")
 
     # state init
@@ -439,13 +439,13 @@ def dynamic_lstm(input_x, weight, bias,
     s_init_h = \
         tvm.compute(
             init_shape,
-            lambda _, i, j, k, l: s_state_h_ub[0, i, j, k, l],
+            lambda _, i, j, m, n: s_state_h_ub[0, i, j, m, n],
             name="s_init_h")
 
     s_init_c = \
         tvm.compute(
             init_shape,
-            lambda _, i, j, k, l: s_state_c_ub[0, i, j, k, l],
+            lambda _, i, j, m, n: s_state_c_ub[0, i, j, m, n],
             name="s_init_c")
 
     # scan

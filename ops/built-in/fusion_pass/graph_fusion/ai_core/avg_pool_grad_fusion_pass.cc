@@ -441,7 +441,7 @@ Status AvgPoolGradFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vect
                       return PARAM_INVALID);
     vector<int64_t> avg_pool_assit_dim_info;
     ret = AvgValueTableGen(orig_input_shape_v, k_size, strides, padding, data_format, avg_pool_assit_dim_info,
-                                  input_assit.get());
+                           input_assit.get());
     FUSION_PASS_CHECK(ret != SUCCESS, CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "AssitHelp failed."), return ret);
     GeShape avg_pool_assit_shape(avg_pool_assit_dim_info);
     GeTensorDesc tensor_desc(GeShape(), FORMAT_NHWC, DT_FLOAT16);

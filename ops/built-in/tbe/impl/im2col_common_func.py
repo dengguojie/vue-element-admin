@@ -724,34 +724,34 @@ def im2col_schedule(res, sch_list):
                 break
         return core_m, core_n
 
-    def _cal_multi_core_factor_3d(m, n, l, m_list, n_list, l_list):
+    def _cal_multi_core_factor_3d(n, c, howo, n_list, c_list, howo_list):
         """
         Return the cut factors for multicore axis.
         """
-        m_list = list(set(m_list))
         n_list = list(set(n_list))
-        l_list = list(set(l_list))
+        c_list = list(set(c_list))
+        howo_list = list(set(howo_list))
 
-        m_list.sort(reverse=True)
         n_list.sort(reverse=True)
-        l_list.sort(reverse=True)
+        c_list.sort(reverse=True)
+        howo_list.sort(reverse=True)
 
-        min_cycle_num = m * n * l
-        core_m, core_n, core_l = m_list[-1], n_list[-1], l_list[-1]
+        min_cycle_num = n * c * howo
+        core_n, core_c, core_howo = n_list[-1], c_list[-1], howo_list[-1]
 
-        for i in m_list:
-            for j in n_list:
+        for i in n_list:
+            for j in c_list:
                 if i * j > device_core_num:
                     continue
-                for k in l_list:
+                for k in howo_list:
                     if i * j * k > device_core_num:
                         continue
-                    tmp_cycle_num = _ceil_div(m, i) * _ceil_div(n, j) * _ceil_div(l, k)
+                    tmp_cycle_num = _ceil_div(n, i) * _ceil_div(c, j) * _ceil_div(howo, k)
                     if tmp_cycle_num < min_cycle_num:
                         min_cycle_num = tmp_cycle_num
-                        core_m, core_n, core_l = i, j, k
+                        core_n, core_c, core_howo = i, j, k
                     break
-        return core_m, core_n, core_l
+        return core_n, core_c, core_howo
 
     def _get_multi_core_factor(dma_split_axis_id, tiling_factor):
         """

@@ -102,7 +102,7 @@ std::vector<ge::NodePtr> BnupdateEltwiseEltwiseFusionPass::GetMatchedNodes(
  * @return bool: fusion status ok or not.
  */
 Status BnupdateEltwiseEltwiseFusionPass::GetFusionNodes(const BufferFusionMapping &mapping,
-                                                           vector<ge::NodePtr> &fusion_nodes) {
+                                                        vector<ge::NodePtr> &fusion_nodes) {
   OP_LOGD(kFusedOpType.c_str(), "Begin to do BNUpdateEltwiseEltwiseFusionPass!");
   for (auto &item : mapping) {
     auto elem_opdesc = find(item.first->types.begin(), item.first->types.end(), OP_PATTERN_ELEMWISE);

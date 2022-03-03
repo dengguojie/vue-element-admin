@@ -75,7 +75,7 @@ vector<FusionPattern*> KerasMomentumLossscaleFusionPass::DefinePatterns() {
 }
 
 Status KerasMomentumLossscaleFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
-                                           vector<ge::NodePtr>& fusion_nodes) {
+                                                vector<ge::NodePtr>& fusion_nodes) {
   OP_LOGD(kkFusedOpType.c_str(), "Enter graph fusion KerasMomentumLossscaleFusionPass!");
   ge::NodePtr momentum_node = GetNodeFromMapping(kkerasMomentumLossscalePatternIdMomentum, mapping);
   ge::NodePtr mul_node = GetNodeFromMapping(kkMomentumLossscalePatternIdMul, mapping);

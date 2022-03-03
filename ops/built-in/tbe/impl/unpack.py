@@ -383,7 +383,7 @@ def _tiling_axis(shape, dtype):
     return split_axis, split_factor
 
 
-# 'pylint: disable=unnecessary-lambda,too-many-locals
+# 'pylint: disable=unnecessary-lambda,too-many-locals,too-many-return-values
 @tbe_platform.fusion_manager.fusion_manager.register("unpack")
 def _unpack_compute_scalar(input_place, y, num, axis, kernel_name="unpack"):
     """

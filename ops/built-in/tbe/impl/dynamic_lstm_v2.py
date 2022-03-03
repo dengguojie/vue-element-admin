@@ -500,9 +500,9 @@ def dynamic_rnn_core_high_preformance(input_x, weight, bias, seq_length, static,
     if is_first_round:
         if is_global_init:
             s_state_h_ub = tvm.compute(shape_h,
-                                       lambda _, i, j, k, l: s_init_h_gm[0, i, j, k, l], name="s_init_h")
+                                       lambda _, i, j, m, n: s_init_h_gm[0, i, j, m, n], name="s_init_h")
             s_state_c_ub = tvm.compute(shape_i,
-                                       lambda _, i, j, k, l: s_init_c_gm[0, i, j, k, l], name='s_init_c')
+                                       lambda _, i, j, m, n: s_init_c_gm[0, i, j, m, n], name='s_init_c')
         else:
             s_state_h_ub = \
                 tvm.compute(shape_h,
@@ -517,16 +517,16 @@ def dynamic_rnn_core_high_preformance(input_x, weight, bias, seq_length, static,
                             tag="broadcast")
     else:
         s_state_h_ub = tvm.compute(shape_h,
-                                   lambda _, i, j, k, l: s_state_h_gm_last[0, i, j, k, l],
+                                   lambda _, i, j, m, n: s_state_h_gm_last[0, i, j, m, n],
                                     name="s_state_h_ub")
         s_state_c_ub = tvm.compute(shape_i,
-                                   lambda _, i, j, k, l: s_state_c_gm_last[0, i, j, k, l],
+                                   lambda _, i, j, m, n: s_state_c_gm_last[0, i, j, m, n],
                                     name="s_state_c_ub")
 
     # handle cont mul h  caffe
     tmp_shape = [1, 1, (seq_length.shape[1] + 15) // 16, 16, 1]
     tensor_seq_length_ub = tvm.compute(
-        tmp_shape, lambda i, j, l, m, n: seq_length[0, l * 16 + m], name='tensor_seq_length_ub'
+        tmp_shape, lambda i, j, k, m, n: seq_length[0, k * 16 + m], name='tensor_seq_length_ub'
         )
     tensor_seq_length_bc_ub = broadcast(tensor_seq_length_ub, shape_h)
     s_state_h_mul_cont_ub = vmul(s_state_h_ub, tensor_seq_length_bc_ub)
@@ -594,39 +594,39 @@ def dynamic_rnn_core_high_preformance(input_x, weight, bias, seq_length, static,
     o_t_index = 2
 
     j_t = tvm.compute(shape_i,
-                    lambda t, i, j, k, l: c_ub_bias(t, j_t_index, i, j, k, l),
+                    lambda t, i, j, m, n: c_ub_bias(t, j_t_index, i, j, m, n),
                     name="j_t",
                     tag="split_com")
     if has_static:
         i_t = tvm.compute(shape_i,
-                    lambda t, i, j, k, l: c_ub_bias(t, i_t_index, i, j, k, l),
+                    lambda t, i, j, m, n: c_ub_bias(t, i_t_index, i, j, m, n),
                     name="i_t",
                     tag="split_com")
         f_t = tvm.compute(shape_i,
-                    lambda t, i, j, k, l: c_ub_bias(t, f_t_index, i, j, k, l),
+                    lambda t, i, j, m, n: c_ub_bias(t, f_t_index, i, j, m, n),
                     name="f_t",
                     tag="split_com")
         o_t = tvm.compute(shape_i,
-                    lambda t, i, j, k, l: c_ub_bias(t, o_t_index, i, j, k, l),
+                    lambda t, i, j, m, n: c_ub_bias(t, o_t_index, i, j, m, n),
                     name="o_t",
                     tag="split_com")
         shape_static = (1, n_size, m_size, 16, 16)
         output_dim = shape_i[1]
-        tensor_static_ub = tvm.compute(shape_static, lambda _, j, k, l, m: static(j, k, l, m), name="tensor_static_ub")
+        tensor_static_ub = tvm.compute(shape_static, lambda _, j, k, m, n: static(j, k, m, n), name="tensor_static_ub")
         it_add_static = tvm.compute(
-            shape_i, lambda t, i, j, k, l: i_t(t, i, j, k, l) + tensor_static_ub(t, i, j, k, l),
+            shape_i, lambda t, i, j, m, n: i_t(t, i, j, m, n) + tensor_static_ub(t, i, j, m, n),
             name='it_add_static', tag='elewise_binary_add'
         )
         ft_add_static = tvm.compute(
-            shape_i, lambda t, i, j, k, l: f_t(t, i, j, k, l) + tensor_static_ub(t, i + output_dim, j, k, l),
+            shape_i, lambda t, i, j, m, n: f_t(t, i, j, m, n) + tensor_static_ub(t, i + output_dim, j, m, n),
             name='ft_add_static', tag='elewise_binary_add'
         )
         ot_add_static = tvm.compute(
-            shape_i, lambda t, i, j, k, l: o_t(t, i, j, k, l) + tensor_static_ub(t, i + output_dim * 2, j, k, l),
+            shape_i, lambda t, i, j, m, n: o_t(t, i, j, m, n) + tensor_static_ub(t, i + output_dim * 2, j, m, n),
             name='ot_add_static', tag='elewise_binary_add'
         )
         jt_add_static = tvm.compute(
-            shape_i, lambda t, i, j, k, l: j_t(t, i, j, k, l) + tensor_static_ub(t, i + output_dim * 3, j, k, l),
+            shape_i, lambda t, i, j, m, n: j_t(t, i, j, m, n) + tensor_static_ub(t, i + output_dim * 3, j, m, n),
             name='jt_add_static', tag='elewise_binary_add'
         )
         f_t_sigmoid = sigmoid_compute(ft_add_static)
@@ -635,17 +635,17 @@ def dynamic_rnn_core_high_preformance(input_x, weight, bias, seq_length, static,
         j_t_tanh = tanh_compute(jt_add_static)
     else:
         shape_fio = (t_size, 3, hidden_size, m_size, 16, 16)
-        f_i_o = tvm.compute(shape_fio, lambda t, x, i, j, k, l: c_ub_bias(t, x, i, j, k, l),
+        f_i_o = tvm.compute(shape_fio, lambda t, x, i, j, m, n: c_ub_bias(t, x, i, j, m, n),
          name='f_i_o', tag="split_com")
         f_i_o_sigmoid = sigmoid_compute(f_i_o)
         f_t_sigmoid = tvm.compute(shape_i,
-                    lambda t, i, j, k, l: f_i_o_sigmoid(t, f_t_index, i, j, k, l),
+                    lambda t, i, j, m, n: f_i_o_sigmoid(t, f_t_index, i, j, m, n),
                     name="f_t_sigmoid", tag="split_com")
         i_t_sigmoid = tvm.compute(shape_i,
-                lambda t, i, j, k, l: f_i_o_sigmoid(t, i_t_index, i, j, k, l),
+                lambda t, i, j, m, n: f_i_o_sigmoid(t, i_t_index, i, j, m, n),
                 name="i_t_sigmoid", tag="split_com")
         o_t_sigmoid = tvm.compute(shape_i,
-                lambda t, i, j, k, l: f_i_o_sigmoid(t, o_t_index, i, j, k, l),
+                lambda t, i, j, m, n: f_i_o_sigmoid(t, o_t_index, i, j, m, n),
                 name="o_t_sigmoid", tag="split_com")
         j_t_tanh = tanh_compute(j_t)
 
@@ -1037,10 +1037,10 @@ def dynamic_rnn_core_high_precision(input_x, weight, bias, seq_length, static, s
     if is_first_round:
         if is_global_init:
             s_state_h_ub = tvm.compute(shape_h,
-                                       lambda _, i, j, k, l: s_init_h_gm[
-                                           0, i, j, k, l], name="s_init_h")
+                                       lambda _, i, j, m, n: s_init_h_gm[
+                                           0, i, j, m, n], name="s_init_h")
             s_state_c_ub = tvm.compute(shape_i,
-                                       lambda _, i, j, k, l: s_init_c_gm[0, i, j, k, l], name='s_init_c')
+                                       lambda _, i, j, m, n: s_init_c_gm[0, i, j, m, n], name='s_init_c')
         else:
             s_state_h_ub = \
                 tvm.compute(shape_h,
@@ -1055,16 +1055,16 @@ def dynamic_rnn_core_high_precision(input_x, weight, bias, seq_length, static, s
                             tag="broadcast")
     else:
         s_state_h_ub = tvm.compute(shape_h,
-                                   lambda _, i, j, k, l: s_state_h_gm_last[
-                                       0, i, j, k, l], name="s_state_h_ub")
+                                   lambda _, i, j, m, n: s_state_h_gm_last[
+                                       0, i, j, m, n], name="s_state_h_ub")
         s_state_c_ub = tvm.compute(shape_i,
-                                   lambda _, i, j, k, l: s_state_c_gm_last[
-                                       0, i, j, k, l], name="s_state_c_ub")
+                                   lambda _, i, j, m, n: s_state_c_gm_last[
+                                       0, i, j, m, n], name="s_state_c_ub")
 
     # handle cont mul h  caffe
     tmp_shape = [1, 1, (seq_length.shape[1] + 15) // 16, 16, 1]
     tensor_seq_length_ub = tvm.compute(
-        tmp_shape, lambda i, j, l, m, n: seq_length[0, l * 16 + m], name='tensor_seq_length_ub'
+        tmp_shape, lambda i, j, k, m, n: seq_length[0, k * 16 + m], name='tensor_seq_length_ub'
         )
     tensor_seq_length_bc_ub = broadcast(tensor_seq_length_ub, shape_h)
     s_state_h_mul_cont_ub_tmp = vmul(s_state_h_ub, tensor_seq_length_bc_ub)
@@ -1146,31 +1146,31 @@ def dynamic_rnn_core_high_precision(input_x, weight, bias, seq_length, static, s
     o_t_index = 2
 
     j_t = tvm.compute(shape_i,
-                    lambda t, i, j, k, l: c_ub_bias(t, j_t_index, i, j, k, l),
+                    lambda t, i, j, m, n: c_ub_bias(t, j_t_index, i, j, m, n),
                     name="j_t",
                     tag="split_com")
     if has_static:
         i_t = tvm.compute(shape_i,
-                    lambda t, i, j, k, l: c_ub_bias(t, i_t_index, i, j, k, l),
+                    lambda t, i, j, m, n: c_ub_bias(t, i_t_index, i, j, m, n),
                     name="i_t",
                     tag="split_com")
         f_t = tvm.compute(shape_i,
-                    lambda t, i, j, k, l: c_ub_bias(t, f_t_index, i, j, k, l),
+                    lambda t, i, j, m, n: c_ub_bias(t, f_t_index, i, j, m, n),
                     name="f_t",
                     tag="split_com")
         o_t = tvm.compute(shape_i,
-                    lambda t, i, j, k, l: c_ub_bias(t, o_t_index, i, j, k, l),
+                    lambda t, i, j, m, n: c_ub_bias(t, o_t_index, i, j, m, n),
                     name="o_t",
                     tag="split_com")
 
         output_dim = shape_i[1]
-        tensor_static_it_ub_fp16 = tvm.compute(shape_i, lambda _, j, k, l, m: static(j, k, l, m),
+        tensor_static_it_ub_fp16 = tvm.compute(shape_i, lambda _, j, k, n, m: static(j, k, n, m),
          name="tensor_static_it_ub_fp16")
-        tensor_static_ft_ub_fp16 = tvm.compute(shape_i, lambda _, j, k, l, m: static(j, k + output_dim, l, m),
+        tensor_static_ft_ub_fp16 = tvm.compute(shape_i, lambda _, j, k, n, m: static(j, k + output_dim, n, m),
          name="tensor_static_ft_ub_fp16")
-        tensor_static_ot_ub_fp16 = tvm.compute(shape_i, lambda _, j, k, l, m: static(j, k + 2 * output_dim, l, m),
+        tensor_static_ot_ub_fp16 = tvm.compute(shape_i, lambda _, j, k, n, m: static(j, k + 2 * output_dim, n, m),
          name="tensor_static_ot_ub_fp16")
-        tensor_static_jt_ub_fp16 = tvm.compute(shape_i, lambda _, j, k, l, m: static(j, k + 3 * output_dim, l, m),
+        tensor_static_jt_ub_fp16 = tvm.compute(shape_i, lambda _, j, k, n, m: static(j, k + 3 * output_dim, n, m),
          name="tensor_static_jt_ub_fp16")
 
         tensor_static_it_ub = tensor_static_it_ub_fp16
@@ -1200,19 +1200,19 @@ def dynamic_rnn_core_high_precision(input_x, weight, bias, seq_length, static, s
             tensor_static_jt_ub = tensor_static_jt_ub_fp32
 
         it_add_static = tvm.compute(
-            shape_i, lambda t, i, j, k, l: i_t(t, i, j, k, l) + tensor_static_it_ub(t, i, j, k, l),
+            shape_i, lambda t, i, j, m, n: i_t(t, i, j, m, n) + tensor_static_it_ub(t, i, j, m, n),
             name='it_add_static', tag='elewise_binary_add'
         )
         ft_add_static = tvm.compute(
-            shape_i, lambda t, i, j, k, l: f_t(t, i, j, k, l) + tensor_static_ft_ub(t, i, j, k, l),
+            shape_i, lambda t, i, j, m, n: f_t(t, i, j, m, n) + tensor_static_ft_ub(t, i, j, m, n),
             name='ft_add_static', tag='elewise_binary_add'
         )
         ot_add_static = tvm.compute(
-            shape_i, lambda t, i, j, k, l: o_t(t, i, j, k, l) + tensor_static_ot_ub(t, i, j, k, l),
+            shape_i, lambda t, i, j, m, n: o_t(t, i, j, m, n) + tensor_static_ot_ub(t, i, j, m, n),
             name='ot_add_static', tag='elewise_binary_add'
         )
         jt_add_static = tvm.compute(
-            shape_i, lambda t, i, j, k, l: j_t(t, i, j, k, l) + tensor_static_jt_ub(t, i, j, k, l),
+            shape_i, lambda t, i, j, m, n: j_t(t, i, j, m, n) + tensor_static_jt_ub(t, i, j, m, n),
             name='jt_add_static', tag='elewise_binary_add'
         )
         f_t_sigmoid = sigmoid_compute(ft_add_static)
@@ -1221,17 +1221,17 @@ def dynamic_rnn_core_high_precision(input_x, weight, bias, seq_length, static, s
         j_t_tanh = tanh_compute(jt_add_static)
     else:
         shape_fio = (t_size, 3, hidden_size, m_size, 16, 16)
-        f_i_o = tvm.compute(shape_fio, lambda t, x, i, j, k, l: c_ub_bias(t, x, i, j, k, l),
+        f_i_o = tvm.compute(shape_fio, lambda t, x, i, j, m, n: c_ub_bias(t, x, i, j, m, n),
          name='f_i_o', tag="split_com")
         f_i_o_sigmoid = sigmoid_compute(f_i_o)
         f_t_sigmoid = tvm.compute(shape_i,
-                    lambda t, i, j, k, l: f_i_o_sigmoid(t, f_t_index, i, j, k, l),
+                    lambda t, i, j, m, n: f_i_o_sigmoid(t, f_t_index, i, j, m, n),
                     name="f_t_sigmoid", tag="split_com")
         i_t_sigmoid = tvm.compute(shape_i,
-                lambda t, i, j, k, l: f_i_o_sigmoid(t, i_t_index, i, j, k, l),
+                lambda t, i, j, m, n: f_i_o_sigmoid(t, i_t_index, i, j, m, n),
                 name="i_t_sigmoid", tag="split_com")
         o_t_sigmoid = tvm.compute(shape_i,
-                lambda t, i, j, k, l: f_i_o_sigmoid(t, o_t_index, i, j, k, l),
+                lambda t, i, j, m, n: f_i_o_sigmoid(t, o_t_index, i, j, m, n),
                 name="o_t_sigmoid", tag="split_com")
         j_t_tanh = tanh_compute_high_precision(j_t)
 

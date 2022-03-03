@@ -31,6 +31,7 @@
 
 namespace optiling {
 constexpr int32_t kBlockSize{32};
+constexpr int32_t kRegBufSize{192};
 constexpr int32_t kCalcMemSize{1024};
 constexpr int32_t RightIndex{2};
 enum TilingStrategy { SINGLE_OUTPUT = 0, SMALL_SHAPE, BIG_SHAPE, LESS_32B, LAST_DIM_SMALL };
@@ -77,7 +78,7 @@ bool UnpackParseFunc(const std::string& op_type, const nlohmann::json& compile_i
   return true;
 }
 
-const std::unordered_map<ge::DataType, int32_t> kDtypeSizeMap{
+const std::unordered_map<ge::DataType, int32_t> kDtypeSizeMap {
     {ge::DT_INT8, 1},   {ge::DT_UINT8, 1},   {ge::DT_BOOL, 1},  {ge::DT_INT64, 8},
     {ge::DT_UINT64, 8}, {ge::DT_FLOAT16, 2}, {ge::DT_INT16, 2}, {ge::DT_UINT16, 2},
     {ge::DT_FLOAT, 4},  {ge::DT_INT32, 4},   {ge::DT_UINT32, 4}};
@@ -322,7 +323,7 @@ bool UnpackTiling(const std::string& op_type, const ge::Operator& op_paras, cons
     compile_info.ub_size = compile_info.ub_size - 64 * out_num;
     compile_info.ub_size = compile_info.ub_size / (out_num + 1) * out_num;
   } else {
-    compile_info.ub_size = compile_info.ub_size - 192 * compile_info.output_num;
+    compile_info.ub_size = compile_info.ub_size - kRegBufSize * compile_info.output_num;
   }
 
   // calc tiling para
