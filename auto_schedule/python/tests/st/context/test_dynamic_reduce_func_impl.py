@@ -3,9 +3,9 @@ from sch_test_frame.ut import OpUT
 import warnings
 
 import tbe
-from tbe.dsl.unify_schedule import reduce_tilingcase
-from tbe.dsl.unify_schedule import vector_schedule
-from tbe.dsl.unify_schedule import reduce_atomic_schedule
+from tbe.dsl.unify_schedule.vector.reduce import reduce_tilingcase
+from tbe.dsl.unify_schedule.vector.reduce import vector_schedule
+from tbe.dsl.unify_schedule.vector.reduce import reduce_atomic_schedule
 
 warnings.filterwarnings("ignore")
 

@@ -106,7 +106,7 @@ ut_case.add_precision_case(
     })
 
 ut_case.add_precision_case(
-    ["Ascend910A", "Ascend310"], {
+    ["Ascend910A"], {
         "params": [
             {
                 "shape": (2, -1),

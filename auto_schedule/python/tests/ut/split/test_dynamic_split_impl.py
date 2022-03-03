@@ -236,15 +236,15 @@ case8 = {
     "support_expect": True
 }
 
-ut_case.add_case(["all"], case0)
-ut_case.add_case(["all"], case1)
-ut_case.add_case(["all"], case2)
-ut_case.add_case(["all"], case3)
-ut_case.add_case(["all"], case4)
-ut_case.add_case(["all"], case5)
-ut_case.add_case(["all"], case6)
-ut_case.add_case(["all"], case7)
-ut_case.add_case(["all"], case8)
+ut_case.add_case(["Ascend910A", "Ascend710"], case0)
+ut_case.add_case(["Ascend910A", "Ascend710"], case1)
+ut_case.add_case(["Ascend910A", "Ascend710"], case2)
+ut_case.add_case(["Ascend910A", "Ascend710"], case3)
+ut_case.add_case(["Ascend910A", "Ascend710"], case4)
+ut_case.add_case(["Ascend910A", "Ascend710"], case5)
+ut_case.add_case(["Ascend910A", "Ascend710"], case6)
+ut_case.add_case(["Ascend910A", "Ascend710"], case7)
+ut_case.add_case(["Ascend910A", "Ascend710"], case8)
 
 case100 = {
     "params": [{

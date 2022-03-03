@@ -119,11 +119,11 @@ case5 = {"params": [{"shape": (5, 8, 16, 16), "dtype": "int32", "format": "ND"},
          "support_expect": True
          }
 
-ut_case.add_case("all", case1)
-ut_case.add_case("all", case2)
-ut_case.add_case("all", case3)
-ut_case.add_case("all", case4)
-ut_case.add_case("all", case5)
+ut_case.add_case(["Ascend910A", "Ascend710A"], case1)
+ut_case.add_case(["Ascend910A", "Ascend710A"], case2)
+ut_case.add_case(["Ascend910A", "Ascend710A"], case3)
+ut_case.add_case(["Ascend910A", "Ascend710A"], case4)
+ut_case.add_case(["Ascend910A", "Ascend710A"], case5)
 
 
 def calc_expect_func(x, y):
@@ -133,7 +133,7 @@ def calc_expect_func(x, y):
 
 
 ut_case.add_precision_case(
-    "all", {
+    ["Ascend910A", "Ascend710"], {
         "params": [
             {
                 "shape": (-1, -1),
@@ -156,7 +156,7 @@ ut_case.add_precision_case(
     })
 
 ut_case.add_precision_case(
-    "all", {
+    ["Ascend910A", "Ascend710"], {
         "params": [
             {
                 "shape": (-1, -1),
@@ -180,7 +180,7 @@ ut_case.add_precision_case(
 
 
 ut_case.add_precision_case(
-    "all", {
+    ["Ascend910A", "Ascend710"], {
         "params": [
             {
                 "shape": (-1, -1),
@@ -203,7 +203,7 @@ ut_case.add_precision_case(
     })
 
 ut_case.add_precision_case(
-    "all", {
+    ["Ascend910A", "Ascend710"], {
         "params": [
             {
                 "shape": (-1, -1),

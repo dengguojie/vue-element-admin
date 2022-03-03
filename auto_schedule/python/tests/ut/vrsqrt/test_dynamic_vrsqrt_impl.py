@@ -71,8 +71,8 @@ case2 = {
         True
 }
 
-ut_case.add_case(["Ascend910A", "Ascend310"], case1)
-ut_case.add_case(["Ascend910A", "Ascend310"], case2)
+ut_case.add_case(["Ascend910A"], case1)
+ut_case.add_case(["Ascend910A"], case2)
 
 
 def calc_expect_func(x, y):
@@ -83,7 +83,7 @@ def calc_expect_func(x, y):
 # vrsqrt instruction has precision problem
 # The max error of all dtypes in all soc reaches 0.004 
 ut_case.add_precision_case(
-    ["Ascend910A", "Ascend310"], {
+    ["Ascend910A"], {
         "params": [
             {
                 "shape": (-1, -1),

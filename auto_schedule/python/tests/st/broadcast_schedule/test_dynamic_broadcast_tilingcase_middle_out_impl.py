@@ -59,4 +59,4 @@ case1 = {
     "support_expect":
         True
 }
-ut_case.add_case(["Ascend910A", "Ascend310", "Ascend710"], case1)
+ut_case.add_case(["Ascend910A", "Ascend710"], case1)

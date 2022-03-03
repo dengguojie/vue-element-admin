@@ -99,7 +99,7 @@ compile_case_list = [
 
 
 for item in compile_case_list:
-    ut_case.add_case(["Ascend910A", "Ascend310"], case=item)
+    ut_case.add_case(["Ascend910A"], case=item)
 
 
 def calc_expect_func(x, y, axis, keepdims):
@@ -109,7 +109,7 @@ def calc_expect_func(x, y, axis, keepdims):
 
 
 ut_case.add_precision_case(
-    ["Ascend310"], {
+    ["Ascend910A", "Ascend710"], {
         "params": [
             {
                 "shape": (-1, -1),
@@ -137,7 +137,7 @@ ut_case.add_precision_case(
     })
 
 ut_case.add_precision_case(
-    ["all"], {
+    ["Ascend910A", "Ascend710"], {
         "params": [
             {
                 "shape": (-1, -1),

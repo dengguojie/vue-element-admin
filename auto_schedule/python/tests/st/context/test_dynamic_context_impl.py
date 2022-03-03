@@ -95,9 +95,9 @@ def test_operator_context_var_list(_):
 
 def test_operator_context_var_desc(_):
     operatorContext = context.OperatorContext()
-    varDesc1 = var.AttrVarDesc("varDesc1", "float16")
+    varDesc1 = var.AttrVarDesc("varDesc1", "float16", "float16")
     operatorContext.add_attr_var_desc(varDesc1)
-    varDesc2 = var.AttrVarDesc("varDesc2", "float16")
+    varDesc2 = var.AttrVarDesc("varDesc2", "float16", "float16")
     operatorContext.add_attr_var_desc(varDesc2)
     varDesc2_get = operatorContext.get_attr_vars_desc()
     if varDesc1 in varDesc2_get and varDesc2 in varDesc2_get:
@@ -109,9 +109,9 @@ def test_operator_context_var_desc_with_compute(_):
     computeContext = context.ComputeContext()
     operatorContext = context.OperatorContext()
     operatorContext.begin_compute(computeContext)
-    varDesc1 = var.AttrVarDesc("varDesc1", "float16")
+    varDesc1 = var.AttrVarDesc("varDesc1", "float16", "float16")
     operatorContext.add_attr_var_desc(varDesc1)
-    varDesc2 = var.AttrVarDesc("varDesc2", "float16")
+    varDesc2 = var.AttrVarDesc("varDesc2", "float16", "float16")
     operatorContext.add_attr_var_desc(varDesc2)
     varDesc2_get = operatorContext.get_current_compute().get_attr_vars_desc()
     operatorContext.end_compute(computeContext)
@@ -342,7 +342,7 @@ def test_compute_context_get_vars(_):
 
 def test_compute_attr_var_desc(_):
     computeContext = context.ComputeContext()
-    attrVarDesc = var.AttrVarDesc("attr", "float16")
+    attrVarDesc = var.AttrVarDesc("attr", "float16", "float16")
     computeContext.add_attr_var_desc(attrVarDesc)
     get_attr_vars_desc = computeContext.get_attr_vars_desc()
     if attrVarDesc in get_attr_vars_desc:
@@ -356,7 +356,7 @@ def test_compute_attr_var_desc_with_schedule(_):
         scheduleContext = context.ScheduleContext()
 
         computeContext.begin_schedule(scheduleContext)
-        attrVarDesc = var.AttrVarDesc("var3", 1, "float16")
+        attrVarDesc = var.AttrVarDesc("var3", "float16", "float16")
         computeContext.add_attr_var_desc(attrVarDesc)
         exclude_bound_attrVarDesc_get = computeContext.get_current_schedule().get_attr_vars_desc()
         computeContext.end_schedule(scheduleContext)
@@ -431,7 +431,7 @@ def test_schedule_context_compute_context(_):
 def test_schedule_context_attr_var_desc(_):
     with tbe.common.context.op_context.OpContext("dynamic"):
         scheduleContext = context.ScheduleContext()
-        attrVarDesc = var.AttrVarDesc("attr", "float16")
+        attrVarDesc = var.AttrVarDesc("attr", "float16", "float16")
         scheduleContext.add_attr_var_desc(attrVarDesc)
         add_attr_var_desc = scheduleContext.get_attr_vars_desc()
         if attrVarDesc in add_attr_var_desc:

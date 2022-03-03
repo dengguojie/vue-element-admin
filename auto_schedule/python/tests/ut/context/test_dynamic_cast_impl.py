@@ -108,22 +108,19 @@ def test_cast_op_for_davinci_not_auto_cast(_):
 
 
 def test_cast_op_for_protogenes(_):
-    with tbe.common.testing.testing._Testing():
-        opTypes = ["elewise_single_round", "elewise_single_ceil", "elewise_single_floor", "elewise_single_trunc"]
-        lhs_shape = (16, 64, 1, 8)
-        lhs = tvm.placeholder(lhs_shape, name="lhs", dtype="int8")
-        for opType in opTypes:
-            cast._cast_op(lhs, "float16", opType)
-        return True
-    return False
+    opTypes = ["elewise_single_round", "elewise_single_ceil", "elewise_single_floor", "elewise_single_trunc"]
+    lhs_shape = (16, 64, 1, 8)
+    lhs = tvm.placeholder(lhs_shape, name="lhs", dtype="int8")
+    for opType in opTypes:
+        cast._cast_op(lhs, "float16", opType)
+    return True
 
 
 def test_cast_op_for_protogenes_exception(_):
     try:
-        with tbe.common.testing.testing._Testing():
-            lhs_shape = (16, 64, 1, 8)
-            lhs = tvm.placeholder(lhs_shape, name="lhs", dtype="int8")
-            cast._cast_op(lhs, "float16", "elewise_single_cast_x")
+        lhs_shape = (16, 64, 1, 8)
+        lhs = tvm.placeholder(lhs_shape, name="lhs", dtype="int8")
+        cast._cast_op(lhs, "float16", "elewise_single_cast_x")
     except RuntimeError as e:
         if e.args[0].get("errCode") == "E90003":
             return True

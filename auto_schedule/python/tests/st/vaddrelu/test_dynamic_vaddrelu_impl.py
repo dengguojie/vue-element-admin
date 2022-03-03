@@ -101,7 +101,7 @@ case3 = {
         True
 }
 
-ut_case.add_case("all", case1)
+ut_case.add_case(["Ascend910A", "Ascend710"], case1)
 ut_case.add_case(["Ascend710"], case2)
 ut_case.add_case(["Ascend710"], case3)
 
@@ -115,7 +115,7 @@ def calc_expect_func(x, y, z):
 
 
 ut_case.add_precision_case(
-    ["Ascend310", "Ascend910A"], {
+    ["Ascend910A"], {
         "params": [
             {
                 "shape": (2, -1),
