@@ -107,6 +107,7 @@ bool SparseApplyAdadeltaDTiling(const std::string& op_type, const TeOpParas& op_
         VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op_info json error.");
         return false;
     }
+    // Numbers in brackets indicate dimensions
     if (op_paras.inputs.size() < 4 || op_paras.inputs[0].tensor.empty() || op_paras.inputs[1].tensor.empty() ||
     op_paras.inputs[2].tensor.empty() || op_paras.inputs[3].tensor.empty() || op_paras.inputs[4].tensor.empty() ||
     op_paras.inputs[5].tensor.empty() || op_paras.inputs[6].tensor.empty()) {
@@ -155,6 +156,7 @@ bool SparseApplyRMSPropDTiling(const std::string& op_type, const TeOpParas& op_p
         VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op_info json error.");
         return false;
     }
+    // Numbers in brackets indicate dimensions
     if (op_paras.inputs.size() < 4 || op_paras.inputs[0].tensor.empty() || op_paras.inputs[1].tensor.empty() ||
     op_paras.inputs[2].tensor.empty() || op_paras.inputs[3].tensor.empty() || op_paras.inputs[4].tensor.empty() ||
     op_paras.inputs[5].tensor.empty()) {
@@ -179,6 +181,7 @@ bool SparseApplyFtrlV2DTiling(const std::string& op_type, const TeOpParas& op_pa
         VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op_info json error.");
         return false;
     }
+    // Numbers in brackets indicate dimensions
     if (op_paras.inputs.size() < 4 || op_paras.inputs[0].tensor.empty() || op_paras.inputs[1].tensor.empty() ||
     op_paras.inputs[2].tensor.empty() || op_paras.inputs[3].tensor.empty() || op_paras.inputs[4].tensor.empty()) {
         VECTOR_INNER_ERR_REPORT_TILIING(op_type, "input shape error.");
