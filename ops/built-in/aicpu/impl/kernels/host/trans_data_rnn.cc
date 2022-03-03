@@ -206,23 +206,23 @@ uint32_t TransDataRNNCpuKernel::GenDataFractalZn(std::vector<int64_t> &dims, int
                      shape0, shape1, hiddenSize);
     return KERNEL_STATUS_PARAM_INVALID;
   }
-  if (stateSize == 0){
+  if (stateSize == 0) {
     if (inputSize > 0 && (shape0 == hiddenSize + inputSize)) {
       return GenDataFractalZnCase1(dims, hiddenSize, inputSize, stateSize, srcTensor, dstTensor);
     } else if ((hiddenSize > 0 && (shape0 == hiddenSize)) || (inputSize > 0 && (shape0 == inputSize))) {
       return GenDataFractalZnCase2(dims, hiddenSize, srcTensor, dstTensor);
     } else {
       KERNEL_LOG_ERROR("TransDataRNN params is invalid, dim0 is %d, hiddenSize %d, inputSize %d, stateSize %d",
-                      shape0, hiddenSize, inputSize, stateSize);
+                       shape0, hiddenSize, inputSize, stateSize);
     }
   } else {
     if (inputSize > 0 && (shape0 == stateSize + inputSize)) {
       return GenDataFractalZnCase1(dims, hiddenSize, inputSize, stateSize, srcTensor, dstTensor);
-    } else if ((stateSize > 0 && (shape0 == stateSize)) || (inputSize > 0 && (shape0 == inputSize))){
+    } else if ((stateSize > 0 && (shape0 == stateSize)) || (inputSize > 0 && (shape0 == inputSize))) {
       return GenDataFractalZnCase2(dims, hiddenSize, srcTensor, dstTensor);
     } else {
       KERNEL_LOG_ERROR("TransDataRNN params is invalid, dim0 is %d, hiddenSize %d, inputSize %d, stateSize %d",
-                      shape0, hiddenSize, inputSize, stateSize);
+                       shape0, hiddenSize, inputSize, stateSize);
     }
   }
 
@@ -230,8 +230,8 @@ uint32_t TransDataRNNCpuKernel::GenDataFractalZn(std::vector<int64_t> &dims, int
   return KERNEL_STATUS_PARAM_INVALID;
 }
 
-uint32_t TransDataRNNCpuKernel::GetInputAttrs(CpuKernelContext &ctx, int32_t &inputSize, int32_t &hiddenSize,  int32_t &stateSize,
-                                              std::string &srcFormat, std::string &dstFormat) {
+uint32_t TransDataRNNCpuKernel::GetInputAttrs(CpuKernelContext &ctx, int32_t &inputSize, int32_t &hiddenSize,
+                                              int32_t &stateSize, std::string &srcFormat, std::string &dstFormat) {
   AttrValue *input_size = ctx.GetAttr("input_size");
   KERNEL_CHECK_NULLPTR(input_size, KERNEL_STATUS_PARAM_INVALID, "get input_size failed.");
   inputSize = input_size->GetInt();
