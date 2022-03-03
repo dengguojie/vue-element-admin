@@ -1,0 +1,55 @@
+[
+  {"compile_flag": 1},
+  {
+    "op": "L2Loss",
+    "calc_expect_func_file": "test_l2_loss_golden.py:calc_expect_func",
+    "input_desc": [
+      {
+        "shape": [16, 16],
+        "format": "ND",
+        "ori_shape": [16, 16],
+        "ori_format": "ND",
+        "name": "x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [],
+        "format": "ND",
+        "ori_shape": [],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_L2Loss_001"
+  },
+  {
+    "op": "L2Loss",
+    "calc_expect_func_file": "test_l2_loss_golden.py:calc_expect_func",
+    "input_desc": [
+      {
+        "shape": [32, 1, 4, 15],
+        "format": "ND",
+        "ori_shape": [32, 1, 4, 15],
+        "ori_format": "ND",
+        "name": "x",
+        "type": "float32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [],
+        "format": "ND",
+        "ori_shape": [],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float32"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_L2Loss_002"
+  }
+]

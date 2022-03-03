@@ -22,6 +22,7 @@ from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
+from impl.util.reduce_pattern_adapter import ReducePattern
 
 
 # 'pylint: disable=unused-argument,invalid-name
@@ -77,21 +78,24 @@ def l2_loss(x, y, kernel_name="l2_loss"):
     """
 
     shape = x.get("shape")
-    dtype_x = x["dtype"]
+    dtype_x = x.get("dtype")
     dtype_lower_x = dtype_x.lower()
     check_list_x = ("float16", "float32")
     para_check.check_dtype(dtype_lower_x, check_list_x, param_name="x")
     x["rel_pos_to_reduce"] = "before"
 
-    axes = []
-    for i in range(len(shape)):
-        axes.append(i)
-    input_axis = {"shape": [len(axes)], "value": axes, "rel_pos_to_reduce": "axis"}
+    # gen reduce axis input dict
+    input_axis = {"shape": [-1], "value": [], "rel_pos_to_reduce": "axis"}
 
+    # gen extra_params for reduce pattern
+    extra_params = dict()
+    # set KEEP_DIMS flag
+    extra_params.update(ReducePattern.KEEP_DIMS_FALSE)
+    # set all reduce pattern
+    extra_params.update(ReducePattern.REDUCE_MODE_REDUCE_ALL)
     schedules = []
-    ins = classify([x, input_axis], OpPatternMode.REDUCE, {"keepdims": False})
     tensors = []
-
+    ins = classify([x, input_axis], OpPatternMode.REDUCE, extra_params)
     for (_x, axes) in ins:
         with tbe.compute():
             shape_x = shape_util.variable_shape([_x, axes], op_mode="reduce")[0]

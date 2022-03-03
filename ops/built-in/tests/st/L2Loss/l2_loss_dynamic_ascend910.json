@@ -1,0 +1,29 @@
+[
+  {
+    "op": "L2Loss",
+    "calc_expect_func_file": "test_l2_loss_golden.py:calc_expect_func",
+    "input_desc": [
+      {
+        "shape": [-2],
+        "ori_shape": [-2],
+        "format": "ND",
+        "typical_shape": [15, 2, 4, 16],
+        "ori_format": "ND",
+        "name": "x",
+        "type": "float32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [],
+        "format": "ND",
+        "ori_shape": [],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float32"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_L2Loss_003_unkown_rank"
+  }
+]
