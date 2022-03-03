@@ -13,14 +13,14 @@ def test_max_inputs(_):
     with op_context.OpContext("dynamic"):
         dim_len = 2
         input_0 = {"shape": (-1,) * dim_len, "dtype": "float32", "range": [(1, None)] * dim_len}
-        input_s = [[input_0] * 49]
+        input_s = [[input_0] * 64]
         extra_params = {"axis": 1}
         try:
             ins = classify_concat(input_s, extra_params)
         except RuntimeError as e:
             error_message = {'errCode': 'E90001',
                              'detailed_cause': 'input numbers error, input numbers must '
-                                               'be greater 0 and less equal 48 , now, it is 49'}
+                                               'be greater 0 and less equal 63 , now, it is 64'}
             return error_message == e.args[0]
     return False
 
@@ -36,7 +36,7 @@ def test_min_inputs(_):
         except RuntimeError as e:
             error_message = {'errCode': 'E90001',
                              'detailed_cause': 'input numbers error, input numbers must '
-                                               'be greater 0 and less equal 48 , now, it is 0'}
+                                               'be greater 0 and less equal 63 , now, it is 0'}
             return error_message == e.args[0]
     return False
 
@@ -246,6 +246,18 @@ def test_unknown_rank_3_axis(_):
     return ins == except_ins and compile_info == except_compile_info
 
 
+def test_unknown_rank_single_input(_):
+    with op_context.OpContext("dynamic"):
+        input_0 = {"shape": (-2,), "dtype": "float32"}
+        input_s = [[input_0]]
+        extra_params = {"axis": -1}
+        ins = classify_concat(input_s, extra_params)
+        compile_info = get_compile_info()
+        except_compile_info = {"_ori_axis": 0}
+        except_ins = [[[{'shape': [1, -1], 'range': [(1, 1), (0, None)], 'mode': 'concat'}], 1], [[{'shape': (0,), 'range': [(0, 0)], 'mode': 'concat_empty'}], 0]]
+    return ins == except_ins and compile_info == except_compile_info
+
+
 test_func_list = [
     test_max_inputs,
     test_min_inputs,
@@ -264,7 +276,8 @@ test_func_list = [
     test_one_axis_all_dynamic_concat_neg_axis,
     test_one_input_concat_neg_axis,
     test_unknown_rank_1_axis,
-    test_unknown_rank_3_axis
+    test_unknown_rank_3_axis,
+    test_unknown_rank_single_input
 ]
 
 

@@ -32,7 +32,7 @@ namespace optiling {
 namespace concat {
 constexpr size_t MAX_DIM_LEN = 8;
 constexpr int64_t BLOCK_SIZE = 32;
-constexpr int64_t MAX_INPUT_NUM = 48;
+constexpr int64_t MAX_INPUT_NUM = 63;
 constexpr int64_t MAX_TILING_NUM = 256;
 
 struct CompileInfo {

@@ -26,7 +26,7 @@ from tbe.dsl.base import operation
 from . import util
 
 
-INPUT_NUMBER_LIMIT = 48
+INPUT_NUMBER_LIMIT = 63
 UNKNOWN_RANK = -2
 
 
@@ -107,10 +107,10 @@ class ConcatClassifier:
                 self.shapes[index] = [-1 for _ in range(max_dim_len)]
                 self.ranges[index] = [(0, None) for _ in range(max_dim_len)]
 
-        if len(self.shapes) == 1:
-            self.axis = 0
         if is_all_unknown_rank:
             self.axis = 1
+        if len(self.shapes) == 1:
+            self.axis = 0
 
     def _process_single_input(self):
         if len(self.shapes) == 1:
