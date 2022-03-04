@@ -431,6 +431,43 @@ class ElewiseSchedule(VectorSchedule):
                         self._emit_insn_map[stage]["scope"] = stage.op.axis[-1]
         VectorSchedule._do_emit_insn(self)
 
+    def _adjust_ub_tiling_for_multi_output(self, shape, dtype, ub_split_axis,
+                                           block_split_axis, block_split_inner_size, ub_split_inner):
+        ub_tail_tag = 0
+        for tensor in self._mid_output_tensors:
+            _out_shape = self._shape_to_list(tensor.shape)
+            _out_dtype = tensor.dtype
+            if _out_shape == shape and _out_dtype == dtype:
+                continue
+            data_size = 1
+            for i in range(ub_split_axis + 1, len(_out_shape), 1):
+                data_size = data_size * _out_shape[i]
+            if block_split_axis == ub_split_axis:
+                tail_count = block_split_inner_size % ub_split_inner
+                ub_split_axis_count = block_split_inner_size
+            else:
+                tail_count = _out_shape[ub_split_axis] % ub_split_inner
+                ub_split_axis_count = _out_shape[ub_split_axis]
+            ub_split_outer = math.ceil(ub_split_axis_count / ub_split_inner)
+            if ub_split_outer == 1:
+                tail_size = DTYPE_WIDTH_MAP.get(dtype) * 2 * ub_split_inner * data_size
+                if tail_size < 32:
+                    ub_tail_tag == 1
+                    break
+                else:
+                    continue
+            tail_size = DTYPE_WIDTH_MAP.get(dtype) * 2 * tail_count * data_size
+            if tail_count != 0:
+                if tail_size < 32:
+                    allow_tail_count = 32 / (DTYPE_WIDTH_MAP.get(dtype) * 2 * data_size)
+                    new_ub_split_inner = math.floor((ub_split_axis_count - allow_tail_count) / (ub_split_outer - 1))
+                    new_ub_inner_size = DTYPE_WIDTH_MAP.get(dtype) * 2 * new_ub_split_inner * data_size
+                    if new_ub_inner_size < 32:
+                        ub_tail_tag = 1
+                        break
+                    ub_split_inner = new_ub_split_inner
+        return ub_tail_tag ,ub_split_inner
+
     def _calculate_tiling(self):
         """
         calculate tiling strategy
@@ -519,33 +556,8 @@ class ElewiseSchedule(VectorSchedule):
             max_ub_count)
 
         if len(self._mid_output_tensors) > 1:
-            ub_tail_tag = 0
-            for tensor in self._mid_output_tensors:
-                _out_shape = self._shape_to_list(tensor.shape)
-                _out_dtype = tensor.dtype
-                if _out_shape == shape and _out_dtype == dtype:
-                    continue
-
-                data_size = 1
-                for i in range(ub_split_axis + 1, len(_out_shape), 1):
-                    data_size = data_size * _out_shape[i]
-                if block_split_axis == ub_split_axis:
-                    tail_count = block_split_inner_size % ub_split_inner
-                    ub_split_axis_count = block_split_inner_size
-                else:
-                    tail_count = _out_shape[ub_split_axis] % ub_split_inner
-                    ub_split_axis_count = _out_shape[ub_split_axis]
-                ub_split_outer = math.ceil(ub_split_axis_count / ub_split_inner)
-                tail_size = DTYPE_WIDTH_MAP.get(dtype) * 2 * tail_count * data_size
-                if tail_count != 0:
-                    if tail_size < 32:
-                        allow_tail_count = 32 / (DTYPE_WIDTH_MAP.get(dtype) * 2 * data_size)
-                        new_ub_split_inner = math.floor((ub_split_axis_count - allow_tail_count) / (ub_split_outer - 1))
-                        new_ub_inner_size = DTYPE_WIDTH_MAP.get(dtype) * 2 * new_ub_split_inner * data_size
-                        if new_ub_inner_size < 32:
-                            ub_tail_tag = 1
-                            break
-                        ub_split_inner = new_ub_split_inner
+            ub_tail_tag, ub_split_inner = self._adjust_ub_tiling_for_multi_output(shape, dtype, ub_split_axis,
+                                                     block_split_axis, block_split_inner_size, ub_split_inner)
             if ub_tail_tag:
                 self.block_tiling_use_nparts_mode = False
                 self._need_multi_core = False
@@ -3328,10 +3340,10 @@ class ElewiseSchedule(VectorSchedule):
                 tag = op_node.op.tag
                 # logic use 4 fp16 temp buffer
                 if tag.find("logic") != -1:
-                    tmp_width = 4 * DTYPE_WIDTH_MAP["float16"]
+                    tmp_width = 4 * DTYPE_WIDTH_MAP.get("float16")
                 # cond use 3 fp16 temp buffer
                 elif tag.find("cond") != -1:
-                    tmp_width = 3 * DTYPE_WIDTH_MAP["float16"]
+                    tmp_width = 3 * DTYPE_WIDTH_MAP.get("float16")
                 # vsel use 3 fp16 temp buffer
                 elif tag.find("sel") != -1:
                     tmp_width = 3 * DTYPE_WIDTH_MAP.get("float16")
@@ -3427,7 +3439,7 @@ class ElewiseSchedule(VectorSchedule):
         tmp_op["args"] = []
         tmp_op["effective_op"] = True
 
-        if tmp_op["op"].find("elewise_single") != -1:
+        if tmp_op.get("op").find("elewise_single") != -1:
             if hasattr(op_node.body[0], 'b'):
                 if isinstance(op_node.body[0].a, tvm.expr.Call):
                     tmp_op["args"] = [op_node.body[0].b]
