@@ -84,8 +84,6 @@ class SplitEqual():
         """
         if self.dtype not in ("float16",):
             return False
-        if self.first_dim <= 512:
-            return False
         if self.size_splits[0] % self.block_ele == 0:
             return False
         if self.x_unit <= 0:
