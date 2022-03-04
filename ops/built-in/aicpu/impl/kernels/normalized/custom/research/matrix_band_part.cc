@@ -18,7 +18,7 @@
 
 #include <algorithm>
 #include <vector>
-
+#include <securec.h>
 #include "cpu_kernel_utils.h"
 #include "cpu_types.h"
 #include "utils/eigen_tensor.h"
@@ -163,9 +163,10 @@ uint32_t MatrixBandPartCpuKernel::BandCompute(Tensor *x, int64_t lower,
           }
         } else {
           if (band_start < band_end) {
-            std::memcpy((y_addrs + base_index + band_start),
-                        (x_addrs + base_index + band_start),
-                        (band_end - band_start) * sizeof(T));
+            (void)memcpy_s((y_addrs + base_index + band_start),
+                           (band_end - band_start) * sizeof(T),
+                           (x_addrs + base_index + band_start),
+                           (band_end - band_start) * sizeof(T));
           }
         }
       }
@@ -205,9 +206,10 @@ uint32_t MatrixBandPartCpuKernel::BandCompute(Tensor *x, int64_t lower,
             }
           } else {
             if (band_start < band_end) {
-              std::memcpy((y_addrs + base_index + band_start),
-                          (x_addrs + base_index + band_start),
-                          (band_end - band_start) * sizeof(T));
+              (void)memcpy_s((y_addrs + base_index + band_start),
+                             (band_end - band_start) * sizeof(T),
+                             (x_addrs + base_index + band_start),
+                             (band_end - band_start) * sizeof(T));
             }
           }
         }

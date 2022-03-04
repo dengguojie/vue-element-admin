@@ -17,6 +17,7 @@
 #include "unsorted_segment_sum.h"
 
 #include <string>
+#include <securec.h>
 #include "cpu_kernel_utils.h"
 #include "cpu_types.h"
 #include "utils/eigen_tensor.h"
@@ -74,7 +75,8 @@ uint32_t UnsortedSegmentSumCpuKernel::UnsortedSegmentSumComputeTemplate(
   }  
   int64_t reshapesize = data_size / id_size;
   // Initialized to 0
-  memset(output_y, 0, ctx.Output(0)->GetDataSize());
+  (void)memset_s(output_y, ctx.Output(0)->GetDataSize(), 0,
+                 ctx.Output(0)->GetDataSize());
   if (data_size <= kParallelDataNums) {
     // calculation process
     for (int64_t i = 0; i < id_size; i++) {

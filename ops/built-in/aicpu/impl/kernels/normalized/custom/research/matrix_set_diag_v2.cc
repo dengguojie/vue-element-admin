@@ -15,7 +15,7 @@
  */
 
 #include "matrix_set_diag_v2.h"
-
+#include <securec.h>
 #include "cpu_kernel_utils.h"
 #include "cpu_types.h"
 #include "log.h"
@@ -197,7 +197,7 @@ uint32_t MatrixSetDiagV2CpuKernel::SetDiagCompute(
   int64_t matrix_size = num_row * num_col;
   int64_t matrix_num = data_num / matrix_size;
   if (data_num <= 64 * 1024) {
-    std::memcpy(y_addr, x_addr, data_size);
+    (void)memcpy_s(y_addr, data_size, x_addr, data_size);
     for (int64_t i = 0; i < matrix_num; i++) {
       for (int64_t m = 0; m < num_diags; m++) {
         int32_t diag_index = upper_diag - m;
@@ -226,7 +226,8 @@ uint32_t MatrixSetDiagV2CpuKernel::SetDiagCompute(
       max_core_num = data_num;
     }
     auto shard_copy = [&x_addr, &y_addr](size_t start, size_t end) {
-      std::memcpy(y_addr + start, x_addr + start, (end - start) * sizeof(T));
+      (void)memcpy_s(y_addr + start, (end - start) * sizeof(T), x_addr + start,
+                     (end - start) * sizeof(T));
     };
     KERNEL_HANDLE_ERROR(CpuKernelUtils::ParallelFor(
                             ctx, data_num, data_num / max_core_num, shard_copy),
