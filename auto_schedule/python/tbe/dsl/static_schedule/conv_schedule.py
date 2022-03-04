@@ -438,7 +438,7 @@ def check_dyn_quantfuse_doubleout(tensor_list, outs):
 
     """
     # avoid vector ops by using pattern
-    context_pattern = operation.get_context().get_current_compute().get_pattern()
+    context_pattern = operation.get_context().get_pattern()
     if "Convolution" not in context_pattern:
         return tensor_list
     if hasattr(ConvParam, "conv_deq_req_double_out"):

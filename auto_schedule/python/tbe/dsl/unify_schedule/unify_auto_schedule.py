@@ -19,6 +19,7 @@ auto_schedule template, if user call auto_schedule, this file will choose a
 corresponding schedule template for user's compute
 """
 import copy
+import functools
 from typing import Any
 from typing import Dict
 from typing import List
@@ -59,6 +60,19 @@ def is_true(expr, dict_args):
         raise RuntimeError(dict_args, get_error_message(dict_args))
 
 
+def _prolong_compute_context(func):
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        operation.get_context().prolong_compute_context()
+        try:
+            ret = func(*args, **kwargs)
+        finally:
+            operation.get_context().end_prolonged_compute_context()
+        return ret
+    return wrapper
+
+
+@_prolong_compute_context
 def schedule_cce(outs, option=None):
     """
     :param outs:

@@ -92,8 +92,8 @@ class OperatorContext:
         :param var_:
         :return:
         """
-        if self._computes:
-            self._computes[-1].add_var(var_)
+        if self._current_compute:
+            self._current_compute.add_var(var_)
         else:
             self._vars.append(var_)
 
@@ -126,8 +126,8 @@ class OperatorContext:
         :param attr_var_desc:
         :return:
         """
-        if self._computes:
-            self._computes[-1].add_attr_var_desc(attr_var_desc)
+        if self._current_compute:
+            self._current_compute.add_attr_var_desc(attr_var_desc)
         else:
             self._attr_vars_desc.append(attr_var_desc)
 
@@ -178,7 +178,7 @@ class OperatorContext:
         """
         :return:
         """
-        return self._computes[-1] if self._computes else None
+        return self._current_compute
 
     def add(self, key, value):
         # type: (str, Any) -> None
@@ -225,8 +225,8 @@ class OperatorContext:
         :param var_:
         :return:
         """
-        if self._computes:
-            self._computes[-1].add_exclude_bound_var(var_)
+        if self._current_compute:
+            self._current_compute.add_exclude_bound_var(var_)
         else:
             self._exclude_bound_vars.append(var_)
 
@@ -236,6 +236,24 @@ class OperatorContext:
         :return:
         """
         return self._exclude_bound_vars
+
+    def prolong_compute_context(self):
+        # type: () -> None
+        """
+        :return:
+        """
+        if self._current_compute is None:
+            self._current_compute = self._computes[-1]
+            self._current_compute.add("_prolonged", True)
+
+    def end_prolonged_compute_context(self):
+        # type: () -> None
+        """
+        :return:
+        """
+        if self._current_compute and self._current_compute.get("_prolonged"):
+            self._current_compute.add("_prolonged", False)
+            self._current_compute = None
 
 
 class ComputeContext:
@@ -348,8 +366,8 @@ class ComputeContext:
         :param var_:
         :return:
         """
-        if self._schedules:
-            self._schedules[-1].add_var(var_)
+        if self._current_schedule:
+            self._current_schedule.add_var(var_)
         else:
             self._vars.append(var_)
 
@@ -382,8 +400,8 @@ class ComputeContext:
         :param attr_var_desc:
         :return:
         """
-        if self._schedules:
-            self._schedules[-1].add_attr_var_desc(attr_var_desc)
+        if self._current_schedule:
+            self._current_schedule.add_attr_var_desc(attr_var_desc)
         else:
             self._attr_vars_desc.append(attr_var_desc)
 
@@ -439,8 +457,8 @@ class ComputeContext:
         :param var_:
         :return:
         """
-        if self._schedules:
-            self._schedules[-1].add_exclude_bound_var(var_)
+        if self._current_schedule:
+            self._current_schedule.add_exclude_bound_var(var_)
         else:
             self._exclude_bound_vars.append(var_)
 
