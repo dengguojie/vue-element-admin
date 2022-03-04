@@ -1,3 +1,6 @@
+set(CMAKE_CXX_COMPILER g++)
+set(CMAKE_C_COMPILER gcc)
+
 add_definitions(-D_GLIBCXX_USE_CXX11_ABI=0)
 
 set(PROJECT_DIR "$ENV{PROJECT_PATH}")

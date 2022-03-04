@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.14)
-
 project(cpu_kernels_llt)
+
+set(CMAKE_CXX_COMPILER g++)
+set(CMAKE_C_COMPILER gcc)
 
 if ("${ASCEND_CUSTOM_PATH}" STREQUAL "")
     message(WARNING "ASCEND_CUSTOM_PATH was not set, use env var ASCEND_AICPU_PATH instead.")
