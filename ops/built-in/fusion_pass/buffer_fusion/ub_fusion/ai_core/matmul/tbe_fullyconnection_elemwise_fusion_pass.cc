@@ -34,7 +34,7 @@ static const int kNumTwo = 2;
 static const vector<string> elemWiseWhiteList = {
     "Elu",        "LeakyRelu",    "Gelu",    "Softsign", "Relu6", "Relu",  "Softplus",
     "Sigmoid",    "Tanh",         "Selu",    "GeluGrad", "Add",   "AddN",  "FastGelu",
-    "FastGeluV2", "FastGeluGrad", "Eltwise", "PRelu",    "Mul",   "Power", "Relu6D"};
+    "FastGeluV2", "FastGeluGrad", "Eltwise", "PRelu",    "Mul",   "Muls",   "Power",  "Relu6D"};
 static const vector<string> matmulWhiteList = {"FullyConnection", "MatMul", "MatMulV2", "BatchMatMul", "BatchMatMulV2"};
 /*
  * @brief:  define fully connection elemwise fusion pattern
@@ -342,7 +342,8 @@ Status TbeFullyconnectionElemwiseFusionPass::GetFusionNodes(const BufferFusionMa
     } else {
       OP_LOGD(FUSED_OP_TYPE.c_str(), "Eltwise1 type is %s, Eltwise2 is not empty.", reluNode->GetType().c_str());
       bool unvalid_elemWise1_type =
-          reluNode->GetType() != "Relu" && reluNode->GetType() != "LeakyRelu" && reluNode->GetType() != "Add";
+          reluNode->GetType() != "Relu" && reluNode->GetType() != "LeakyRelu" && reluNode->GetType() != "Add" &&
+          reluNode->GetType() != "Muls";
       if (unvalid_elemWise1_type) {
         fusionNodes.clear();
         OP_LOGD(FUSED_OP_TYPE.c_str(), "Eltwise op[%s] type[%s] is not supported for this ub fusion pass, skip fusion.",

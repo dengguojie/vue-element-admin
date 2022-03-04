@@ -3462,6 +3462,8 @@ unkown:
       - ops/built-in/fusion_pass/graph_fusion/ai_core/pass_through_second_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/remap_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/deep_md_fusion_pass_util.h
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/realdiv_2_muls_fusion_pass.cc
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/realdiv_2_muls_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/flatten_v2_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/apply_addoutput_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/continuation_indicator_fusion_pass.cc

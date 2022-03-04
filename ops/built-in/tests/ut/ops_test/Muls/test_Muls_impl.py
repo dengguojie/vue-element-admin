@@ -17,6 +17,7 @@ from op_test_frame.ut import OpUT
 import numpy as np
 from op_test_frame.common import precision_info
 from op_test_frame.ut import OpUT
+from te import tvm
 import os
 
 ut_case = OpUT("Muls", None, None)
@@ -53,10 +54,30 @@ case4 = {"params": [{"shape": (3, 30, 100, 16, 17), "dtype": "float16", "format"
          "format_expect": ["ND"],
          "support_expect": True}
 
+def test_muls_compute_with_batchmatmul_1(test_arg):
+    from impl.muls import muls_compute
+    x = tvm.placeholder((2, 2, 2, 16, 16), name="x", dtype="float16",
+                        attrs={'format': "FRACTAL_NZ", "ori_shape": (2, 32, 32)})
+    tensor_x = tvm.compute((2, 2, 2, 16, 16), lambda *i: x(*i), name="tensor_x", tag="matmul",
+                           attrs={'format': "FRACTAL_NZ", "ori_shape": (2, 32, 32), "batch_shape": (2,)})
+    output = {"shape": (2, 2, 2, 16, 16), "dtype": "float16", "ori_shape": (2, 32, 32), "format": "FRACTAL_NZ"}
+    muls_compute(tensor_x, output, 2.0, "muls_kernel")
+
+def test_muls_compute_with_batchmatmul_2(test_arg):
+    from impl.muls import muls_compute
+    x = tvm.placeholder((2, 2, 2, 16, 16), name="x", dtype="float16",
+                        attrs={'format': "FRACTAL_NZ", "ori_shape": (2, 32, 32)})
+    tensor_x = tvm.compute((2, 2, 2, 16, 16), lambda *i: x(*i), name="tensor_x", tag="matmul",
+                           attrs={'format': "FRACTAL_NZ", "ori_shape": (2, 32, 32), "batch_shape": (2,), "para_name": "muls"})
+    output = {"shape": (2, 2, 2, 16, 16), "dtype": "float16", "ori_shape": (2, 32, 32), "format": "FRACTAL_NZ"}
+    muls_compute(tensor_x, output, 2.0, "muls_kernel")
+
 ut_case.add_case(["Ascend910"], case1)
 ut_case.add_case(["Ascend910"], case2)
 ut_case.add_case(["Ascend910"], case3)
 ut_case.add_case(["Ascend910"], case4)
+ut_case.add_cust_test_func(test_func=test_muls_compute_with_batchmatmul_1)
+ut_case.add_cust_test_func(test_func=test_muls_compute_with_batchmatmul_2)
 
 def calc_expect_func(input_x, output, hg):
     shape_x=input_x.get("shape")
@@ -106,4 +127,3 @@ if __name__ == '__main__':
     user_home_path = os.path.expanduser("~")
     simulator_lib_path = os.path.join(user_home_path, ".mindstudio/huawei/adk/1.75.T15.0.B150/toolkit/tools/simulator")
     ut_case.run(["Ascend910"], simulator_mode="pv", simulator_lib_path=simulator_lib_path)
-
