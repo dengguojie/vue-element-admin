@@ -23,7 +23,7 @@ from te import platform as tbe_platform
 from te.utils.error_manager import error_manager_vector
 from te.utils.op_utils import *
 
-import impl
+from . import conv2d
 from . import common_util
 from . import constant_util as constant
 from .util.util_select_op_base import gen_param
@@ -77,7 +77,7 @@ def space_to_depth(x, filter,
     if filter is not None:
         pad = (0, 0, 0, 0)
         block_size = (1, 1, block_size, block_size)
-        impl.conv2d(x, filter, None, None, y, block_size, pad,
+        conv2d.conv2d(x, filter, None, None, y, block_size, pad,
                     dilations=(1, 1, 1, 1), kernel_name=kernel_name)
     else:
         fun = SpaceToDepth(x, block_size, kernel_name)

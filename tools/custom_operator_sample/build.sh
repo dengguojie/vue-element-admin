@@ -215,6 +215,7 @@ mkdir -p ${DST_DIR}/TIK/Tensorflow/log
 cp -r ${CODE_ROOT_DIR}/asl/ops/cann/tools/custom_operator_sample/dependency_files/op_log.h ${DST_DIR}/TIK/Tensorflow/log
 #copy impl/util
 cp -r ${CODE_ROOT_DIR}/asl/ops/cann/tools/custom_operator_sample/dependency_files/util ${DST_DIR}/TIK/Tensorflow/tbe/impl
+cp -r ${DST_DIR}/DSL/Tensorflow/tbe/impl/conv2d.py ${DST_DIR}/TIK/Tensorflow/tbe/impl
 #3.2 PyTorch
 cp -r ${SRC_DIR}/op_project_tmpl/* ${DST_DIR}/TIK/PyTorch/
 cp -r ${SRC_DIR}/tbe/* ${DST_DIR}/TIK/PyTorch/tbe
