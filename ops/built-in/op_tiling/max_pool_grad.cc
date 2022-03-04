@@ -1165,7 +1165,8 @@ bool MaxPoolGradTiling(const std::string& op_type, const ge::Operator& op_paras,
     params.core_loop_params = params.total_num / params.core_num;
     params.core_loop_params1 = (params.total_num + params.core_num - 1) / params.core_num;
 
-    VectorDup(params_ub[INDEX_8], DTYPE_FP32, params.dup_repeat_merchant_f_map_fp32, params.dup_repeat_remainder_f_map_fp32,
+    VectorDup(params_ub[INDEX_8], DTYPE_FP32, params.dup_repeat_merchant_f_map_fp32,
+              params.dup_repeat_remainder_f_map_fp32,
               params.dup_remainder_f_map_fp32, params.repeats_f_map_fp32);
 
     params.loop_ho = params.ho / params.new_ho;

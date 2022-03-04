@@ -171,9 +171,8 @@ class SpatialTransformer:
         """
         process_on_each_core is
         """
-        theta1_1, theta1_2, theta1_3, theta2_1, theta2_2, theta2_3 = (self.calc_theta(batch_id, "float16") 
-                                                                      if self.calc_by_fp16 
-                                                                      else self.calc_theta(batch_id, "float32"))
+        dtype = "float16" if self.calc_by_fp16 else "float32"
+        theta1_1, theta1_2, theta1_3, theta2_1, theta2_2, theta2_3 = self.calc_theta(batch_id, dtype)
 
         thread_num = 2 if each_batch_loop_count >= 2 else 1
         with self.tik_instance.for_range(0, each_batch_loop_count, thread_num=thread_num) as hw_index_handle_count:

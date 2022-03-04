@@ -97,9 +97,10 @@ class SpatialTransformer:
 
         # tiling policy
         self.total_c1 = self.shape[0] * self.shape[1]
-        self.ub_tensor_size = (16
-                               if self.shape[1] * self.shape[4] * self.d_type_bytes_size > ub_size_bytes * 0.4
-                               else self.shape[1] * self.shape[4])
+        if self.shape[1] * self.shape[4] * self.d_type_bytes_size > ub_size_bytes * 0.4:
+            self.ub_tensor_size = 16
+        else:
+            self.ub_tensor_size = self.shape[1] * self.shape[4]
         self.input_stride = (self.shape[2] * self.shape[3] * self.shape[4] - self.shape[4]) \
             * self.d_type_bytes_size // 32
         self.output_stride = (self.output_hw * self.shape[4] - self.shape[4]) * self.d_type_bytes_size // 32
