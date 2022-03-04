@@ -136,6 +136,16 @@ uint32_t RightShiftCpuKernel::NoBcastCompute(CpuKernelContext &ctx) {
       (in0_elements_nums == 1 ?
       BcastShapeType::X_ONE_ELEMENT : BcastShapeType::Y_ONE_ELEMENT);
 
+  T *in1_clamped = new T[in1_elements_nums];
+  for (int64_t i = 0; i < in1_elements_nums; i++) {
+    in1_clamped[i] = in1[i];
+    if (in1_clamped[i] < 0) {
+      in1_clamped[i] = 0;
+    } else if (size_t(in1_clamped[i]) > sizeof(T) * CHAR_BIT -1) {
+      in1_clamped[i] = sizeof(T) * CHAR_BIT -1;
+    }
+  }
+
   if (data_num >= kParallelDataNumSameShape) {
     uint32_t min_core_num = 1;
     uint32_t max_core_num = std::max(
@@ -150,17 +160,19 @@ uint32_t RightShiftCpuKernel::NoBcastCompute(CpuKernelContext &ctx) {
     }
 
     auto sharder_less = [&](int64_t start, int64_t end) {
-      SpecialCompute<T>(type, start, end, in0, in1, out);
+      SpecialCompute<T>(type, start, end, in0, in1_clamped, out);
     };
-
-    KERNEL_HANDLE_ERROR(CpuKernelUtils::ParallelFor(ctx, data_num,
-                                                    data_num / max_core_num,
-                                                    sharder_less),
-                        "RightShift Compute failed.")
+    if (max_core_num == 0) {
+      KERNEL_LOG_ERROR("max_core_num could not be 0.");
+    }
+    uint32_t flag = CpuKernelUtils::ParallelFor(
+        ctx, data_num, data_num / max_core_num, sharder_less);
+    delete[] in1_clamped;
+    KERNEL_HANDLE_ERROR(flag, "RightShift Compute failed.")
   } else {
-    SpecialCompute<T>(type, 0, data_num, in0, in1, out);
+    SpecialCompute<T>(type, 0, data_num, in0, in1_clamped, out);
+    delete[] in1_clamped;
   }
-
   return KERNEL_STATUS_OK;
 }
 
@@ -171,6 +183,18 @@ uint32_t RightShiftCpuKernel::BcastCompute(CpuKernelContext &ctx, Bcast &bcast) 
   auto in1 = reinterpret_cast<T *>(ctx.Input(1)->GetData());
   auto out = reinterpret_cast<T *>(ctx.Output(0)->GetData());
   int64_t data_num = ctx.Output(0)->NumElements();
+
+  int64_t in1_elements_nums = ctx.Input(1)->NumElements();
+  T *in1_clamped = new T[in1_elements_nums];
+  for (int64_t i = 0; i < in1_elements_nums; i++) {
+    in1_clamped[i] = in1[i];
+    if (in1_clamped[i] < 0) {
+      in1_clamped[i] = 0;
+    } else if (size_t(in1_clamped[i]) > sizeof(T) * CHAR_BIT -1) {
+      in1_clamped[i] = sizeof(T) * CHAR_BIT -1;
+    }
+  }
+
   if (data_num >= kParallelDataNum) {
     uint32_t min_core_num = 1;
     uint32_t max_core_num = std::max(
@@ -187,19 +211,22 @@ uint32_t RightShiftCpuKernel::BcastCompute(CpuKernelContext &ctx, Bcast &bcast) 
     auto sharder_less = [&](int64_t start, int64_t end) {
       for (int64_t i = start; i < end; ++i) {
         *(out + i) = *(in0 + bcast.GetBroadcastXIndex(i)) >>
-                     *(in1 + bcast.GetBroadcastYIndex(i));
+                     *(in1_clamped + bcast.GetBroadcastYIndex(i));
       }
     };
-
-    KERNEL_HANDLE_ERROR(CpuKernelUtils::ParallelFor(ctx, data_num,
-                                                    data_num / max_core_num,
-                                                    sharder_less),
-                        "RightShift Compute failed.")
+    if (max_core_num == 0) {
+      KERNEL_LOG_ERROR("max_core_num could not be 0.");
+    }
+    uint32_t flag = CpuKernelUtils::ParallelFor(
+        ctx, data_num, data_num / max_core_num, sharder_less);
+    delete[] in1_clamped;
+    KERNEL_HANDLE_ERROR(flag, "RightShift Compute failed.")
   } else {
     for (int64_t i = 0; i < data_num; ++i) {
       *(out + i) = *(in0 + bcast.GetBroadcastXIndex(i)) >>
-                   *(in1 + bcast.GetBroadcastYIndex(i));
+                   *(in1_clamped + bcast.GetBroadcastYIndex(i));
     }
+    delete [] in1_clamped;
   }
   return KERNEL_STATUS_OK;
 }

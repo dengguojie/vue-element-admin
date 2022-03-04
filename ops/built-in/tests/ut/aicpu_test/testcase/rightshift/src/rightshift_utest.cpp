@@ -24,11 +24,23 @@ void RightCalcExpectWithSameShape(const NodeDef &node_def, T expect_out[]) {
   T *input1_data = (T *)input1->GetData();
   int64_t input0_num = input0->NumElements();
   int64_t input1_num = input1->NumElements();
-  if (input0_num == input1_num) {
-    for (int64_t j = 0; j < input0_num; ++j) {
-      expect_out[j] = input0_data[j] >> input1_data[j];
+  
+  T *in1_clamped = new T[input1_num];
+  for (int64_t i = 0; i < input1_num; i++) {
+    in1_clamped[i] = input1_data[i];
+    if (in1_clamped[i] < 0) {
+      in1_clamped[i] = 0;
+    } else if (in1_clamped[i] > sizeof(T) * CHAR_BIT -1) {
+      in1_clamped[i] = sizeof(T) * CHAR_BIT -1;
     }
   }
+
+  if (input0_num == input1_num) {
+    for (int64_t j = 0; j < input0_num; ++j) {
+      expect_out[j] = input0_data[j] >> in1_clamped[j];
+    }
+  }
+  delete [] in1_clamped;
 }
 
 template <typename T>
@@ -39,17 +51,29 @@ void RightCalcExpectWithDiffShape(const NodeDef &node_def, T expect_out[]) {
   T *input1_data = (T *)input1->GetData();
   int64_t input0_num = input0->NumElements();
   int64_t input1_num = input1->NumElements();
+
+  T *in1_clamped = new T[input1_num];
+  for (int64_t i = 0; i < input1_num; i++) {
+    in1_clamped[i] = input1_data[i];
+    if (in1_clamped[i] < 0) {
+      in1_clamped[i] = 0;
+    } else if (in1_clamped[i] > sizeof(T) * CHAR_BIT -1) {
+      in1_clamped[i] = sizeof(T) * CHAR_BIT -1;
+    }
+  }
+
   if (input0_num > input1_num) {
     for (int64_t j = 0; j < input0_num; ++j) {
       int64_t i = j % input1_num;
-      expect_out[j] = input0_data[j] >> input1_data[i];
+      expect_out[j] = input0_data[j] >> in1_clamped[i];
     }
   } else {
     for (int64_t j = 0; j < input1_num; ++j) {
       int64_t i = j % input0_num;
-      expect_out[j] = input0_data[i] >> input1_data[j];
+      expect_out[j] = input0_data[i] >> in1_clamped[j];
     }
   }
+  delete [] in1_clamped;
 }
 
 #define CREATE_NODEDEF(shapes, data_types, datas)                  \
@@ -303,4 +327,21 @@ TEST_F(TEST_RIGHTSHIFT_UT, INPUT_BOOL_UNSUPPORT) {
   vector<void *> datas = {(void *)input1, (void *)input2, (void *)output};
   CREATE_NODEDEF(shapes, data_types, datas);
   RUN_KERNEL(node_def, HOST, KERNEL_STATUS_PARAM_INVALID);
+}
+
+TEST_F(TEST_RIGHTSHIFT_UT, INPUT2_NEGATIVE_OR_GREATER) {
+  vector<DataType> data_types = {DT_INT32, DT_INT32, DT_INT32};
+  vector<vector<int64_t>> shapes = {{2, 3}, {2, 3}, {2, 3}};
+  int32_t input1[6] = {10, 10 , 10, 10, 10, 10};
+  int32_t input2[6] = {2, -2, 32};
+  int32_t output[6] = {0};
+  vector<void *> datas = {(void *)input1, (void *)input2, (void *)output};
+  CREATE_NODEDEF(shapes, data_types, datas);
+  RUN_KERNEL(node_def, HOST, KERNEL_STATUS_OK);
+
+  int32_t output_exp[6] = {0};
+  RightCalcExpectWithDiffShape<int32_t>(*node_def.get(), output_exp);
+
+  bool compare = CompareResult(output, output_exp, 6);
+  EXPECT_EQ(compare, true);
 }
