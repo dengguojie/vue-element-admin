@@ -31,6 +31,7 @@ class SoftmaxWithDropOutDoMaskFusionPass : public PatternFusionBasePass {
   Status Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& newNodes) override;
 
  private:
+  bool CheckISUsePattern(const int32_t& input_h, const int32_t& input_w);
   const string FUSED_OP_TYPE = "SoftmaxV2WithDropOutDoMaskV3D";
 };
 }  // namespace fe

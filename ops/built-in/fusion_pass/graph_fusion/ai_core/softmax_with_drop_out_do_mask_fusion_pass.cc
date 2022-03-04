@@ -32,18 +32,25 @@
 
 using namespace ge;
 namespace fe {
+static const uint32_t BLOCK = 32;
 static const uint32_t CORE_NUM = 32;
 static const int32_t INT_NUM_TWO = 2;
 static const int32_t INT_NUM_THREE = 3;
 static const int32_t INT_NUM_FOUR = 4;
 static const int32_t INT_NUM_C0 = 16;
-static const int32_t INT_NUM_C1 = 32;
-static const int32_t INT_H_W = 512;
+static const int32_t MAX_INT_H = 512;
 static const string AXIS = "axes";
 static const string KEEPPROB = "keep_prob";
 static const string PATTERN_DROPOUT = "DropOutDoMaskV3D";
 static const string PATTERN_SOFTMAX = "SoftmaxV2";
 static const string SOFTMAXWITHDROPOUTDOMASK = "SoftmaxV2WithDropOutDoMaskV3D";
+
+bool SoftmaxWithDropOutDoMaskFusionPass::CheckISUsePattern(const int32_t& input_h, const int32_t& input_w) {
+  if (input_h == input_w && input_h <= MAX_INT_H && input_h % BLOCK == 0) {
+    return true;
+  }
+  return false;
+}
 
 vector<FusionPattern*> SoftmaxWithDropOutDoMaskFusionPass::DefinePatterns() {
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Define SoftmaxWithDropOutDoMaskFusionPass pattern begin.");
@@ -84,11 +91,16 @@ Status SoftmaxWithDropOutDoMaskFusionPass::Fusion(ge::ComputeGraph& graph, Mappi
   }
 
   vector<int64_t> originDimInfo = softmaxNode->GetOpDesc()->GetInputDesc(0).GetOriginShape().GetDims();
-  if (!(originDimInfo.size() == INT_NUM_FOUR && originDimInfo[INT_NUM_TWO] == INT_H_W &&
-        originDimInfo[INT_NUM_THREE] == INT_H_W)) {
+  if (!(originDimInfo.size() == INT_NUM_FOUR &&
+      CheckISUsePattern(originDimInfo[INT_NUM_TWO], originDimInfo[INT_NUM_THREE]))) {
     OP_LOGI(FUSED_OP_TYPE.c_str(), "shape is not support.");
     return NOT_CHANGED;
   }
+  
+  int64_t inputH = originDimInfo[INT_NUM_TWO];
+  int64_t inputW = originDimInfo[INT_NUM_THREE];
+  int64_t inputH1 = originDimInfo[INT_NUM_TWO] / INT_NUM_C0;
+  int64_t inputW1 = originDimInfo[INT_NUM_THREE] / INT_NUM_C0;
 
   OptionalInfo optional_info;
   PlatformInfo platform_info;
@@ -118,8 +130,8 @@ Status SoftmaxWithDropOutDoMaskFusionPass::Fusion(ge::ComputeGraph& graph, Mappi
   ge::GeShape softmaxInputShape = input_tensor0.GetShape();
 
   vector<int64_t> dimInfo = softmaxInputShape.GetDims();
-  vector<int64_t> assitDimInfoOrigin = {dimInfo[0], dimInfo[1], INT_H_W, INT_H_W};
-  vector<int64_t> assitDimInfo = {dimInfo[0], dimInfo[1], INT_NUM_C1, INT_NUM_C1, INT_NUM_C0, INT_NUM_C0};
+  vector<int64_t> assitDimInfoOrigin = {dimInfo[0], dimInfo[1], inputH, inputH};
+  vector<int64_t> assitDimInfo = {dimInfo[0], dimInfo[1], inputH1, inputW1, INT_NUM_C0, INT_NUM_C0};
   ge::GeShape assitShape(assitDimInfo);
   ge::GeShape assitShapeOrigin(assitDimInfoOrigin);
 
