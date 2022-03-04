@@ -20,6 +20,7 @@ softmax_cross_entropy_with_logits op schedule
 import math
 
 import te.lang.cce
+import te.platform as tbe_platform
 from tbe import tvm
 from tbe.dsl.instrinsic import cce_util
 from tbe.dsl.instrinsic import cce_emitinsn_params
@@ -142,13 +143,24 @@ def reduce_last_axis_max_and_sum(tensor_op, intrin_cmd):
 
     is_vcmax_fp32_v200 = \
         (dtype.lower() == "float32") and \
-        intrinsic_check_support("Intrinsic_vcmax", "float32")
+        intrinsic_check_support("Intrinsic_vcmax", "float32") and \
+        tbe_platform.cce_conf.api_check_support("tik.load3dv1")
+
+    is_vcmax_fp32_v220 = \
+        (dtype.lower() == "float32") and \
+        intrinsic_check_support("Intrinsic_vcmax", "float32") and \
+        not tbe_platform.cce_conf.api_check_support("tik.load3dv1")
 
     repeat_stride = (1, 1, 8)
     # v200 vcmax/vcmin fp32, 7 input param
+    # v220 vcmax/vcmin, vcadd fp32, 5 input param
     is_vcmax_v200 = intrin_cmd == "vcmax" and is_vcmax_fp32_v200
+    is_vcmax_v220 = intrin_cmd == "vcmax" and is_vcmax_fp32_v220
+    is_vcadd_v220 = intrin_cmd == "vcadd" and is_vcmax_fp32_v220
     if is_vcmax_v200:
         repeat_stride = (1, 1, 8, 0, 0, 0)
+    elif is_vcmax_v220 or is_vcadd_v220:
+        repeat_stride = (1, 1, 8, 0)
 
     if len(for_extent_vals) == 1:
         repeat_time = reduce_axis_len // vector_inst_one_repeat_size
@@ -1022,9 +1034,9 @@ def logits_nchw_schedule(res, input_tensors):
 
     for tensor in tensor_list_dst_tensor_map:
         if isinstance(tensor.op, tvm.tensor.PlaceholderOp):
-            input_tensor_dst_tensor_map[tensor] = tensor_list_dst_tensor_map[tensor]
+            input_tensor_dst_tensor_map[tensor] = tensor_list_dst_tensor_map.get(tensor)
         else:
-            mid_tensor_dst_tensor_map[tensor] = tensor_list_dst_tensor_map[tensor]
+            mid_tensor_dst_tensor_map[tensor] = tensor_list_dst_tensor_map.get(tensor)
 
         if tensor.op.tag.find("broadcast") != -1:
             broadcast_not_last_axis_tensors.append(tensor)
