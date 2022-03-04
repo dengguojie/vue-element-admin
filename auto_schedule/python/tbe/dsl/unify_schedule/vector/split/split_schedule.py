@@ -38,6 +38,7 @@ from .split_tilingcase import SplitTilingCase
 from ...constants import FAKE_NODE_TAG
 
 DEFAULT = "default"
+SCOPE_UB = "local.UB"
 DMA_COPY = "dma_copy"
 COPY_UB_TO_UB = "dma_copy"
 VNCHWCONV = "vnchwconv"
@@ -137,22 +138,6 @@ class SplitSchedule(Schedule):
     SplitSchedule
     """
 
-    @classmethod
-    def get_instance(cls, outs, tiling_case):
-        return cls(outs, tiling_case)
-
-    @classmethod
-    def get_supported_soc(cls):
-        return [DEFAULT]
-
-    @classmethod
-    def get_supported_pattern(cls):
-        return [Pattern.SPLIT]
-
-    @classmethod
-    def get_supported_sub_pattern(cls):
-        return [SplitPattern.S_0]
-
     def __init__(self, outs: List[tvm.tensor.Tensor], tiling_case):
         self._out: List[tvm.tensor.Tensor] = outs if isinstance(outs, (list, tuple)) else [outs]
         self._dtype = self._out[0].dtype
@@ -162,8 +147,6 @@ class SplitSchedule(Schedule):
         self._enable_db: bool = self._tiling_case.enable_db
         self._no_cut = self._tiling_strategy in [TilingStrategy.NONE_CUT, TilingStrategy.EMPTY]
         self._avg_split = operation.get_context().get("_avg_split")
-
-        self._scope = "local.UB"
 
         self._in_out_map = {}
 
@@ -184,6 +167,7 @@ class SplitSchedule(Schedule):
         self._row_factor_var = 1
         self._low_ub_factor = []
         self._high_ub_factor = []
+        self._block_dims = 1
 
         self._in_reshape_map = {}
         self._out_reshape_map = {}
@@ -214,9 +198,6 @@ class SplitSchedule(Schedule):
         self._constraints = []
         self._const_invalid = False
 
-        self._init_falg()
-
-    def _init_falg(self):
         self._is_const = Util.is_const(self._tiling_strategy)
         self._is_base = Util.is_base(self._tiling_strategy)
         self._is_general = Util.is_general(self._tiling_strategy)
@@ -225,6 +206,22 @@ class SplitSchedule(Schedule):
         self._is_only_cut_m = Util.is_only_cut_m(self._tiling_strategy)
         self._is_all_general = Util.is_all_general(self._tiling_strategy)
         self._is_transpose_strategy = Util.is_transpose_strategy(self._tiling_strategy)
+
+    @classmethod
+    def get_instance(cls, outs, tiling_case):
+        return cls(outs, tiling_case)
+
+    @classmethod
+    def get_supported_soc(cls):
+        return [DEFAULT]
+
+    @classmethod
+    def get_supported_pattern(cls):
+        return [Pattern.SPLIT]
+
+    @classmethod
+    def get_supported_sub_pattern(cls):
+        return [SplitPattern.S_0]
 
     def do_schedule(self):
         self._construct_compute_graph()
@@ -334,7 +331,7 @@ class SplitSchedule(Schedule):
                 use_tensors = self._in_out_map.get(input_tensor)
             else:
                 use_tensors = [tensor_i]
-            buffer_tensor = self._schedule.cache_read(input_tensor, self._scope, use_tensors)
+            buffer_tensor = self._schedule.cache_read(input_tensor, SCOPE_UB, use_tensors)
             self._cache_read_buffers.append(buffer_tensor)
 
     def _calc_cache_write(self):
@@ -342,19 +339,19 @@ class SplitSchedule(Schedule):
 
     def _do_cache_write(self):
         for tensor_i in self._cache_write_tensors:
-            buffer_tensor = self._schedule.cache_write(tensor_i, self._scope)
+            buffer_tensor = self._schedule.cache_write(tensor_i, SCOPE_UB)
             self._cache_write_buffers.append(buffer_tensor)
 
     def _set_scope(self):
         sch = self._schedule
         for tensor_i in self._middle_tensors:
-            sch[tensor_i].set_scope(self._scope)
+            sch[tensor_i].set_scope(SCOPE_UB)
 
     def _calc_reshape(self):
         if not self._is_transpose_strategy:
             return
         for tensor_i in self._cache_read_buffers:
-            read_cache_cache = self._schedule.cache_read(tensor_i, self._scope, self._cache_write_buffers)
+            read_cache_cache = self._schedule.cache_read(tensor_i, SCOPE_UB, self._cache_write_buffers)
             if self._no_cut:
                 self._in_reshape_map[read_cache_cache] = [TRANSPOSE_FACTOR]
             else:
@@ -404,7 +401,7 @@ class SplitSchedule(Schedule):
         shape = util.shape_to_list(list(self._input_tensors)[0].shape)
         b_i = self._block_split_axis
         b_bound = (1, util.get_bound(shape[b_i])[1])
-        ele_in_block = BLOCK_SIZE_BYTE // DTYPE_BYTE_MAPPING[self._dtype]
+        ele_in_block = BLOCK_SIZE_BYTE // DTYPE_BYTE_MAPPING.get(self._dtype)
         self._block_factor = operation.var_inner("_block_factor_" + str(b_i), b_bound)
         self._row_factor_var = 1
         low_factor = TRANSPOSE_FACTOR * ele_in_block
@@ -417,7 +414,7 @@ class SplitSchedule(Schedule):
         b_bound = (1, util.get_bound(shape[b_i])[1])
         u_h_bound = (1, util.get_bound(shape[u_h_i])[1])
         self._block_factor = operation.var_inner("_block_factor_" + str(b_i), b_bound)
-        ele_in_block = BLOCK_SIZE_BYTE // DTYPE_BYTE_MAPPING[self._dtype]
+        ele_in_block = BLOCK_SIZE_BYTE // DTYPE_BYTE_MAPPING.get(self._dtype)
         low_factor = TRANSPOSE_FACTOR * ele_in_block
         self._low_ub_factor = [low_factor]
         self._high_ub_factor = [operation.var_inner("_ub_factor_" + str(u_h_i), u_h_bound)]
@@ -489,18 +486,18 @@ class SplitSchedule(Schedule):
                 "low_ub_factors": [output_num, "int"],
                 "high_ub_factors": [output_num, "int"]
             }
-            tiling_data = op_tiling.decode(run_info["tiling_data"], tiling_format)
-            self._block_dims = run_info["block_dim"]
-            need_do_block = tiling_data["need_multi_core"] > 0
-            const_is_base = tiling_data["is_base"] > 0
-            const_is_all_align = tiling_data["is_all_align"] > 0
-            const_only_cut_m = tiling_data["only_cut_m"] > 0
-            self._block_split_axis = tiling_data["block_axis"]
-            self._block_factor = tiling_data["block_factor"]
-            self._low_ub_factor = tiling_data["low_ub_factors"]
-            self._high_ub_factor = tiling_data["high_ub_factors"]
+            tiling_data = op_tiling.decode(run_info.get("tiling_data"), tiling_format)
+            self._block_dims = run_info.get("block_dim")
+            need_do_block = tiling_data.get("need_multi_core") > 0
+            const_is_base = tiling_data.get("is_base") > 0
+            const_is_all_align = tiling_data.get("is_all_align") > 0
+            const_only_cut_m = tiling_data.get("only_cut_m") > 0
+            self._block_split_axis = tiling_data.get("block_axis")
+            self._block_factor = tiling_data.get("block_factor")
+            self._low_ub_factor = tiling_data.get("low_ub_factors")
+            self._high_ub_factor = tiling_data.get("high_ub_factors")
             if self._avg_split and const_is_base:
-                self._avg_split_block_factor = tiling_data["avg_block_factor"]
+                self._avg_split_block_factor = tiling_data.get("avg_block_factor")
                 self._low_ub_factor = [self._low_ub_factor[0]] * len(self._out_tensors)
                 self._high_ub_factor = [self._high_ub_factor[0]] * len(self._out_tensors)
             input_shape = util.shape_to_list(list(self._input_tensors)[0].shape)
@@ -575,7 +572,7 @@ class SplitSchedule(Schedule):
 
     def _calc_storage_align(self):
         offset = 0
-        factor = BLOCK_SIZE_BYTE // DTYPE_BYTE_MAPPING[self._out[0].dtype]
+        factor = BLOCK_SIZE_BYTE // DTYPE_BYTE_MAPPING.get(self._out[0].dtype)
         if self._is_general:
             for tensor_i in self._cache_read_buffers:
                 self._storage_align_map[tensor_i] = [tensor_i.op.axis[-2], factor, offset]
@@ -586,7 +583,7 @@ class SplitSchedule(Schedule):
                 self._storage_align_map[tensor_i] = [tensor_i.op.axis[-2], factor, offset]
 
     def _calc_compute_align(self):
-        factor = BLOCK_SIZE_BYTE // DTYPE_BYTE_MAPPING[self._out[0].dtype]
+        factor = BLOCK_SIZE_BYTE // DTYPE_BYTE_MAPPING.get(self._out[0].dtype)
         if self._is_general and not self._avg_split:
             for tensor_i in self._out_transpose_tensors:
                 self._compute_align_map[tensor_i] = [tensor_i.op.axis[-2], factor]
@@ -729,7 +726,7 @@ class SplitSchedule(Schedule):
                 _, axis = sch[tensor].split(axis, nparts=factor, tail_strategy="round_up")
             else:
                 _, axis = sch[tensor].split(axis, factor=factor, tail_strategy="round_up")
-        reshape_tensor = sch.cache_write(tensor, self._scope)
+        reshape_tensor = sch.cache_write(tensor, SCOPE_UB)
         return reshape_tensor
 
     def _transpose(self, tensor, permute):
@@ -738,7 +735,7 @@ class SplitSchedule(Schedule):
         for axis in permute:
             reorder_axis.append(tensor.op.axis[axis])
         sch[tensor].reorder(*reorder_axis)
-        transpose_tensor = sch.cache_write(tensor, self._scope)
+        transpose_tensor = sch.cache_write(tensor, SCOPE_UB)
         return transpose_tensor
 
     def _do_reshape(self):
@@ -798,7 +795,7 @@ class SplitSchedule(Schedule):
         self._tensor_space = tensor_space // BLOCK_SIZE_BYTE * BLOCK_SIZE_BYTE
 
         for tensor_i in tensors:
-            storage_bound = int(self._tensor_space // DTYPE_BYTE_MAPPING[tensor_i.dtype])
+            storage_bound = int(self._tensor_space // DTYPE_BYTE_MAPPING.get(tensor_i.dtype))
             sch[tensor_i].set_buffer_size(storage_bound)
 
     def _do_multi_core(self):

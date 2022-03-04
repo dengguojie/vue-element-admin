@@ -89,10 +89,10 @@ bool Split::GenerateOutputShape() {
   dtype = op_desc->MutableOutputDesc(0)->GetDataType();
   output_nums = op_desc->GetAllOutputsDescSize();
   is_single_output = output_nums == 1;
-  V_OP_TILING_CHECK((output_nums <= MAX_INPUT_NUM), VECTOR_INNER_ERR_REPORT_TILIING(op_type, "output tensor is too much"),
-                    return false);
-  V_OP_TILING_CHECK((op_desc->GetAllInputsSize() != 0), VECTOR_INNER_ERR_REPORT_TILIING(op_type, "input tensor can not be empty"),
-                    return false);
+  V_OP_TILING_CHECK((output_nums <= MAX_INPUT_NUM),
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "output tensor is too much"), return false);
+  V_OP_TILING_CHECK((op_desc->GetAllInputsSize() != 0),
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "input tensor can not be empty"), return false);
   const ge::GeShape& shape = op_desc->MutableInputDesc(0)->GetShape();
   auto dim_len = static_cast<int64_t>(shape.GetDimNum());
   int64_t axis = c_info.ori_axis < 0 ? c_info.ori_axis + dim_len : c_info.ori_axis;
@@ -145,8 +145,8 @@ bool Split::GenerateOutputShapeFromOp() {
   dtype = op_info.GetInType();
   output_nums = op_desc->GetAllOutputsDescSize();
   is_single_output = output_nums == 1;
-  V_OP_TILING_CHECK((output_nums <= MAX_INPUT_NUM), VECTOR_INNER_ERR_REPORT_TILIING(op_type, "output tensor is too much"),
-                    return false);
+  V_OP_TILING_CHECK((output_nums <= MAX_INPUT_NUM),
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "output tensor is too much"), return false);
   const std::vector<std::vector<int64_t>>& op_input_shapes = op_info.GetInputShape();
   auto dim_len = static_cast<int64_t>(op_input_shapes[0].size());
   const std::vector<std::vector<int32_t>>& axes = op_info.GetReduceAxes();
@@ -239,10 +239,9 @@ bool Split::CalcAllAlignInfo() {
     is_all_align_copy = false;
     max_available_ub = c_info.ub_size / ALL_ALIGN_NODE_NUMBERS / BLOCK_SIZE * BLOCK_SIZE / bytes;
     V_OP_TILING_CHECK((max_available_ub != 0),
-                      VECTOR_INNER_ERR_REPORT_TILIING("Split", "max_available_ub cannot be zero."),
-                      return false);
+                      VECTOR_INNER_ERR_REPORT_TILIING("Split", "max_available_ub cannot be zero."), return false);
     row_limit = std::min(ROW_LIMIT_FACTOR, input_shapes[0]);
-    col_limit =  max_available_ub / row_limit / ele_in_block * ele_in_block;
+    col_limit = max_available_ub / row_limit / ele_in_block * ele_in_block;
     if (input_shapes[1] < col_limit) {
       col_limit = input_shapes[1];
       row_limit = max_available_ub / col_limit;
@@ -273,8 +272,8 @@ bool Split::CalcGeneralInfo() {
     }
   } else {
     int64_t last_align = (min_split_shape * 2 + ele_in_block - 1) / ele_in_block * ele_in_block;
-    bool is_general = c_info.is_avg_split && ele_in_block == ELEMENT_IN_BLOCK_DEFAULT &&
-                      col_limit >= last_align && input_shapes[0] != 1;
+    bool is_general = c_info.is_avg_split && ele_in_block == ELEMENT_IN_BLOCK_DEFAULT && col_limit >= last_align &&
+                      input_shapes[0] != 1;
     if (is_general) {
       col_limit = col_limit / min_split_shape * min_split_shape;
       last_align = (col_limit + ele_in_block - 1) / ele_in_block * ele_in_block;
@@ -308,8 +307,7 @@ void Split::DoBaseBlockTiling() {
   if (input_shapes[0] * input_shapes[1] < 2048) {
     core_num = 1;
   }
-  if (min_split_shape < ele_in_block &&
-      (input_shapes[0] * min_split_shape) / core_num < ele_in_block &&
+  if (min_split_shape < ele_in_block && (input_shapes[0] * min_split_shape) / core_num < ele_in_block &&
       core_num != 1) {
     int64_t factor_left = (ele_in_block + min_split_shape - 1) / min_split_shape;
     core_num = std::max(input_shapes[0] / factor_left, 1L);

@@ -153,6 +153,7 @@ class ConcatPattern:
     # generic
     C_0 = "C_0"
 
+
 class SplitPattern:
     """
     Split sub pattern.
