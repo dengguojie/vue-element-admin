@@ -328,7 +328,7 @@ vector<ge::NodePtr> DynamicRNNGradDFusionPass::GetDynamicReshapeNode(std::string
   std::vector<string> dep_inputs = {"shape"};
   reshape_desc->SetOpInferDepends(dep_inputs);
 
-  ge::GeShape shapeConstShape = ge::GeShape({W_INDEX,});
+  ge::GeShape shapeConstShape = ge::GeShape({W_INDEX, });
   auto shapeDescConst = ge::GeTensorDesc(shapeConstShape, ge::FORMAT_ND, ge::DT_INT64);
   shapeDescConst.SetOriginShape(shapeConstShape);
   shapeDescConst.SetOriginFormat(ge::FORMAT_ND);
@@ -362,7 +362,7 @@ vector<ge::NodePtr> DynamicRNNGradDFusionPass::GetDynamicReshapeNode(std::string
   FUSION_PASS_CHECK(const_body_node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "Create const Op operator error"),
                     return result);
 
-  ge::GeShape lastConstShape = ge::GeShape({W_INDEX,});
+  ge::GeShape lastConstShape = ge::GeShape({W_INDEX, });
   auto lastDescConst = ge::GeTensorDesc(lastConstShape, ge::FORMAT_ND, ge::DT_INT64);
   lastDescConst.SetOriginShape(lastConstShape);
   lastDescConst.SetOriginFormat(ge::FORMAT_ND);
