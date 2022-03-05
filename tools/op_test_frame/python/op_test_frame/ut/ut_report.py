@@ -145,6 +145,18 @@ class OpUTReport:
         # map struct is: soc -> status['success', 'failed'] -> case_rpt list
         self._soc_report_map = {}
 
+    @staticmethod
+    def parser_json_obj(json_obj):
+        """
+        parser from json object
+        :param json_obj: json object
+        :return: report object
+        """
+        rpt = OpUTReport(json_obj["run_cmd"])
+        for case_rpt in [OpUTCaseReport.parser_json_obj(case_obj) for case_obj in json_obj["report_list"]]:
+            rpt.add_case_report(case_rpt)
+        return rpt
+
     def get_case_rpt_list(self):
         """
         get case report list
@@ -291,18 +303,6 @@ run command: %s
         if not find_report_list and strict:
             logger.log_err("combine_report not found any report to combine in: [%s]" % ", ".join(report_paths))
             raise RuntimeError("combine_report not found any report to combine in: [%s]" % ", ".join(report_paths))
-
-    @staticmethod
-    def parser_json_obj(json_obj):
-        """
-        parser from json object
-        :param json_obj: json object
-        :return: report object
-        """
-        rpt = OpUTReport(json_obj["run_cmd"])
-        for case_rpt in [OpUTCaseReport.parser_json_obj(case_obj) for case_obj in json_obj["report_list"]]:
-            rpt.add_case_report(case_rpt)
-        return rpt
 
     def load(self, report_file):
         """

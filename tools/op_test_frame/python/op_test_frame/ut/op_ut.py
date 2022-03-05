@@ -623,16 +623,6 @@ class OpUT:  # 'pylint: disable=too-many-instance-attributes
 
         return call_op_success, err_msg
 
-    def _compile_op_kernel(self, run_soc_version, case_info: op_ut_case_info.OpUTCase, check_exist=False):
-        op_func, load_err_msg = self._load_op_func()
-        if not op_func:
-            return False, load_err_msg
-        call_success, err_msg = self._call_op_func(run_soc_version=run_soc_version,
-                                                   op_func=op_func,
-                                                   case_info=case_info,
-                                                   check_exist=check_exist)
-        return call_success, err_msg
-
     @staticmethod
     def _get_simulator_mode(run_cfg):
         if not run_cfg or not isinstance(run_cfg, dict):
@@ -667,6 +657,24 @@ class OpUT:  # 'pylint: disable=too-many-instance-attributes
         node_iter.visit(ast.parse(inspect.getsource(op_func)))
 
         return param_desc_list, param_name_list
+
+    @staticmethod
+    def _check_need_run_expect(run_args):
+        if not run_args:
+            return True
+
+        simulator_mode = run_args.get("simulator_mode")
+        return simulator_mode != "tm"
+
+    def _compile_op_kernel(self, run_soc_version, case_info: op_ut_case_info.OpUTCase, check_exist=False):
+        op_func, load_err_msg = self._load_op_func()
+        if not op_func:
+            return False, load_err_msg
+        call_success, err_msg = self._call_op_func(run_soc_version=run_soc_version,
+                                                   op_func=op_func,
+                                                   case_info=case_info,
+                                                   check_exist=check_exist)
+        return call_success, err_msg
 
     def _run_compile_stage(self, run_soc_version,
                            case_info: op_ut_case_info.OpUTCase,
@@ -883,14 +891,6 @@ class OpUT:  # 'pylint: disable=too-many-instance-attributes
                                                        err_msg="Failed" if not gen_success else None,
                                                        err_trace=err_msg)
         return stage_status
-
-    @staticmethod
-    def _check_need_run_expect(run_args):
-        if not run_args:
-            return True
-
-        simulator_mode = run_args.get("simulator_mode")
-        return simulator_mode != "tm"
 
     def _compare_output(self, case_info: op_ut_case_info.OpUTCase):
         output_list = self._get_outputs(case_info.op_params)
