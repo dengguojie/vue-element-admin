@@ -106,12 +106,6 @@ def gen_random_data_int32():
     b = np.int32(0)
     write_file_txt(data_files[1], b, fmt="%s")
 
-    re = math_ops.compare_and_bitpack(a, b)
-    with tf.compat.v1.Session(config=config('cpu')) as session:
-        data = session.run(re)
-    write_file_txt(data_files[2], data, fmt="%s")
-
-
 def gen_random_data_int64():
     data_files = ["compare_and_bitpack/data/compare_and_bitpack_data_input1_2.txt",
                   "compare_and_bitpack/data/compare_and_bitpack_data_input2_2.txt",
@@ -120,12 +114,6 @@ def gen_random_data_int64():
     a = gen_data_file(data_files[0], shape_x, np.int64, "randint", -10000, 10000)
     b = np.int64(0)
     write_file_txt(data_files[1], b, fmt="%s")
-
-    re = math_ops.compare_and_bitpack(a, b)
-    with tf.compat.v1.Session(config=config('cpu')) as session:
-        data = session.run(re)
-    write_file_txt(data_files[2], data, fmt="%s")
-
 
 def gen_random_data_float():
     data_files = ["compare_and_bitpack/data/compare_and_bitpack_data_input1_3.txt",
@@ -136,12 +124,6 @@ def gen_random_data_float():
     b = np.float32(0)
     write_file_txt(data_files[1], b, fmt="%s")
 
-    re = math_ops.compare_and_bitpack(a, b)
-    with tf.compat.v1.Session(config=config('cpu')) as session:
-        data = session.run(re)
-    write_file_txt(data_files[2], data, fmt="%s")
-
-
 def gen_random_data_double():
     data_files = ["compare_and_bitpack/data/compare_and_bitpack_data_input1_4.txt",
                   "compare_and_bitpack/data/compare_and_bitpack_data_input2_4.txt",
@@ -150,12 +132,6 @@ def gen_random_data_double():
     a = gen_data_file(data_files[0], shape_x, np.float64, "uniform", -10000, 10000)
     b = np.float64(0)
     write_file_txt(data_files[1], b, fmt="%s")
-
-    re = math_ops.compare_and_bitpack(a, b)
-    with tf.compat.v1.Session(config=config('cpu')) as session:
-        data = session.run(re)
-    write_file_txt(data_files[2], data, fmt="%s")
-
 
 def gen_random_data_int8():
     data_files = ["compare_and_bitpack/data/compare_and_bitpack_data_input1_5.txt",
@@ -166,12 +142,6 @@ def gen_random_data_int8():
     b = np.int8(0)
     write_file_txt(data_files[1], b, fmt="%s")
 
-    re = math_ops.compare_and_bitpack(a, b)
-    with tf.compat.v1.Session(config=config('cpu')) as session:
-        data = session.run(re)
-    write_file_txt(data_files[2], data, fmt="%s")
-
-
 def gen_random_data_bool():
     data_files = ["compare_and_bitpack/data/compare_and_bitpack_data_input1_6.txt",
                   "compare_and_bitpack/data/compare_and_bitpack_data_input2_6.txt",
@@ -180,12 +150,6 @@ def gen_random_data_bool():
     a = gen_data_file(data_files[0], shape_x, np.bool, "randint", -100, 100)
     b = np.array(True, np.bool)
     write_file_txt(data_files[1], b, fmt="%s")
-
-    re = math_ops.compare_and_bitpack(a, b)
-    with tf.compat.v1.Session(config=config('cpu')) as session:
-        data = session.run(re)
-    write_file_txt(data_files[2], data, fmt="%s")
-
 
 def gen_random_data_int16():
     data_files = ["compare_and_bitpack/data/compare_and_bitpack_data_input1_7.txt",
@@ -196,12 +160,6 @@ def gen_random_data_int16():
     b = np.int16(0)
     write_file_txt(data_files[1], b, fmt="%s")
 
-    re = math_ops.compare_and_bitpack(a, b)
-    with tf.compat.v1.Session(config=config('cpu')) as session:
-        data = session.run(re)
-    write_file_txt(data_files[2], data, fmt="%s")
-
-
 def gen_random_data_float16():
     data_files = ["compare_and_bitpack/data/compare_and_bitpack_data_input1_8.txt",
                   "compare_and_bitpack/data/compare_and_bitpack_data_input2_8.txt",
@@ -210,12 +168,6 @@ def gen_random_data_float16():
     a = gen_data_file(data_files[0], shape_x, np.float16, "uniform", -100, 100)
     b = np.float16(0)
     write_file_txt(data_files[1], b, fmt="%s")
-
-    re = math_ops.compare_and_bitpack(a, b)
-    with tf.compat.v1.Session(config=config('cpu')) as session:
-        data = session.run(re)
-    write_file_txt(data_files[2], data, fmt="%s")
-
 
 def run():
     gen_random_data_int32()

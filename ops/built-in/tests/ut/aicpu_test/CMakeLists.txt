@@ -79,6 +79,7 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/kernels/host/transdata.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/acos.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/acosh.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/compare_and_bitpack.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/adaptive_max_pool_2d.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/add.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/asin.cc
@@ -110,7 +111,6 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/bitwise_or.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/bitwise_xor.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/bucketize.cc
-  ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/compare_and_bitpack.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/cos.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/diag.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/custom/research/diag_part.cc

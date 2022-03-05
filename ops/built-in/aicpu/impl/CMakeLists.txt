@@ -18,6 +18,7 @@ set(local_kernels_src_files
     kernels/normalized/cast.cc
     kernels/normalized/ceil.cc
     kernels/normalized/check_numerics.cc
+    kernels/normalized/compare_and_bitpack.cc
     kernels/normalized/combinations.cc
     kernels/normalized/compute_accidental_hits.cc
     kernels/normalized/concatv2.cc
@@ -126,7 +127,6 @@ if(WITH_CUSTOM_OP)
         kernels/normalized/custom/research/bitwise_or.cc
         kernels/normalized/custom/research/bitwise_xor.cc
         kernels/normalized/custom/research/bucketize.cc
-        kernels/normalized/custom/research/compare_and_bitpack.cc
         kernels/normalized/custom/research/cos.cc
         kernels/normalized/custom/research/diag.cc
         kernels/normalized/custom/research/diag_part.cc
