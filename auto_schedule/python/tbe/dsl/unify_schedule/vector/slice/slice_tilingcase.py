@@ -66,6 +66,7 @@ class SliceCompileInfo:
     CONST_ENDS = "_const_ends"
     END_MODE = "_end_mode"
 
+
 class TilingStrategy(Enum):
     """
     TilingStrategy
@@ -73,6 +74,7 @@ class TilingStrategy(Enum):
     DYNAMIC = auto()
     STATIC = auto()
     ZEROS = auto()
+
 
 class SliceComputation(Computation):
     """
@@ -82,6 +84,40 @@ class SliceComputation(Computation):
     def __init__(self, outs, option):
         self.outs = outs
         self.option = option
+
+    @staticmethod
+    def _calc_base_key(dim_len):
+        return 500000000 + dim_len * 10000000
+
+    @staticmethod
+    def _calc_mode(ub_axis, dim_len):
+        if ub_axis == dim_len - 1:
+            return [DATA_MOV]
+        return [DATA_MOV, DEPAD, UNALIGED_STRIDE, BOTH_ALIGN, SCALAR]
+
+    @staticmethod
+    def _calc_zero_slice():
+        cases = []
+        cases.append({
+            "key": 500000000,
+            "block_tiling_axis": 0,
+            "ub_tiling_axis": 0,
+            "tiling_strategy": TilingStrategy.ZEROS
+        })
+
+        return cases
+
+    @classmethod
+    def get_instance(cls, outs, option):  # type: (list[Any], dict[str, Any]) -> "Computation"
+        return cls(outs, option)
+
+    @classmethod
+    def get_supported_pattern(cls):  # type: () -> list[str]
+        return [Pattern.SLICE]
+
+    @classmethod
+    def get_supported_soc(cls):  # type: () -> list[str]
+        return [DEFAULT]
 
     def do_tiling_case(self):
         is_static = operation.get_op_mode() == "static"
@@ -96,18 +132,6 @@ class SliceComputation(Computation):
 
     def get_sub_pattern(self):  # type: () -> str
         return SlicePattern.NORMAL_SCHEDULE
-
-    @classmethod
-    def get_instance(cls, outs, option):  # type: (list[Any], dict[str, Any]) -> "Computation"
-        return cls(outs, option)
-
-    @classmethod
-    def get_supported_pattern(cls):  # type: () -> list[str]
-        return [Pattern.SLICE]
-
-    @classmethod
-    def get_supported_soc(cls):  # type: () -> list[str]
-        return [DEFAULT]
 
     def _calc_dynamic_slice(self):
         out = self.outs[0] if isinstance(self.outs, (list, tuple)) else self.outs
@@ -152,16 +176,6 @@ class SliceComputation(Computation):
 
         return cases
 
-    @staticmethod
-    def _calc_base_key(dim_len):
-        return 500000000 + dim_len * 10000000
-
-    @staticmethod
-    def _calc_mode(ub_axis, dim_len):
-        if ub_axis == dim_len - 1:
-            return [DATA_MOV]
-        return [DATA_MOV, DEPAD, UNALIGED_STRIDE, BOTH_ALIGN, SCALAR]
-
     def _calc_static_slice(self):
         out = self.outs[0] if isinstance(self.outs, (list, tuple)) else self.outs
         shape = util.shape_to_list(out.shape)
@@ -172,18 +186,6 @@ class SliceComputation(Computation):
         cases.append({
             "key": base_key + 999,
             "tiling_strategy": TilingStrategy.STATIC
-        })
-
-        return cases
-
-    @staticmethod
-    def _calc_zero_slice():
-        cases = []
-        cases.append({
-            "key": 500000000,
-            "block_tiling_axis": 0,
-            "ub_tiling_axis": 0,
-            "tiling_strategy": TilingStrategy.ZEROS
         })
 
         return cases

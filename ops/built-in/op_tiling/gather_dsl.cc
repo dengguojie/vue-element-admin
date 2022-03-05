@@ -102,6 +102,11 @@ constexpr int32_t DECIMAL_TEN = 10;
 constexpr int32_t INDICES_SHAPE_IDX = 20000;
 constexpr int32_t MIN_BLOCK_FACTOR_IDX = 30000;
 constexpr int32_t MIN_UB_FACTOR_IDX = 40000;
+
+// other
+constexpr int64_t SCALAR_MODE_THRESHOLD = 15;
+constexpr int64_t PARAMS_ROWS_THRESHOLD = 64;
+constexpr int64_t BLOCK_AIXS_THRESHOLD = 2;
 }
   GatherDslCompileInfo::GatherDslCompileInfo(const std::string &op_type, const nlohmann::json &org_compile_info) {
     try {
@@ -388,7 +393,7 @@ constexpr int32_t MIN_UB_FACTOR_IDX = 40000;
     }
 
     bool is_shape_ok = ((params_size_total > gather_compile_info.params_ub_store_num) ||
-                       (params_rows > 15 && params_rows < 64)) &&
+                       (params_rows > SCALAR_MODE_THRESHOLD && params_rows < PARAMS_ROWS_THRESHOLD)) &&
                        (params_rows % gather_compile_info.params_align > 0);
     if (is_shape_ok) {
       // b32
@@ -445,7 +450,7 @@ constexpr int32_t MIN_UB_FACTOR_IDX = 40000;
     real_params_row_num = params_num_ub / params_rows_align;
 
     return (params_size_total < gather_compile_info.params_ub_store_num) &&
-           (params_rows <= 15) &&
+           (params_rows <= SCALAR_MODE_THRESHOLD) &&
            (params_rows % gather_compile_info.params_align > 0);
   }
 
@@ -731,14 +736,14 @@ constexpr int32_t MIN_UB_FACTOR_IDX = 40000;
 
   bool GatherDsl::DoBaseTiling() {
     // n last gather and params last dim > 1
-    if ((output_shape[OUTPUT_BATCH_DIM_IDX] >= (gather_compile_info.core_num / 2)) ||
+    if ((output_shape[OUTPUT_BATCH_DIM_IDX] >= (gather_compile_info.core_num / BLOCK_AIXS_THRESHOLD)) ||
     ((output_size / output_shape[OUTPUT_BATCH_DIM_IDX] * gather_compile_info.params_dtype) < BLOCK_SIZE) ||
     ((output_shape[OUTPUT_BATCH_DIM_IDX] >= output_shape[OUTPUT_PARAMS_PRE_LOOP_IDX]) &&
     (output_shape[OUTPUT_INDICES_LOOP_IDX] * params_rows <
     gather_compile_info.core_num * gather_compile_info.params_align))) {
       BlockFirstAxis();
     } else {
-      if ((output_shape[OUTPUT_PARAMS_PRE_LOOP_IDX] >= (gather_compile_info.core_num / 2)) ||
+      if ((output_shape[OUTPUT_PARAMS_PRE_LOOP_IDX] >= (gather_compile_info.core_num / BLOCK_AIXS_THRESHOLD)) ||
       (output_shape[OUTPUT_INDICES_LOOP_IDX] * params_rows <
       gather_compile_info.core_num * gather_compile_info.params_align)) {
         BlockSecondAxis();

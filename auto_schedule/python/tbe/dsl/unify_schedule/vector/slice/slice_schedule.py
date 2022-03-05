@@ -62,22 +62,6 @@ class SliceSchedule(Schedule):
     """
     slice schedule
     """
-    @classmethod
-    def get_instance(cls, outs, tiling_case):  # type: (list[Any], Any) -> "Schedule"
-        return cls(outs, tiling_case)
-
-    @classmethod
-    def get_supported_soc(cls):  # type: () -> list[str]
-        return [DEFAULT]
-
-    @classmethod
-    def get_supported_pattern(cls):  # type: () -> list[str]
-        return [Pattern.SLICE]
-
-    @classmethod
-    def get_supported_sub_pattern(cls):  # type: () -> list[str]
-        return [SlicePattern.NORMAL_SCHEDULE]
-
     def __init__(self, outs, tiling_case):
         self._real_out = outs[0]
         self._out_tensor = self._real_out
@@ -116,6 +100,34 @@ class SliceSchedule(Schedule):
 
         self._out_shape = self._real_out.shape
         self._out_shape_len = len(self._out_shape)
+
+        self._tensor_storage_bound = None
+        self._align_factor = None
+
+        self._slice_ub_tensor = None
+        self._input_x_tensor = None
+        self._remove_pad_tensor = None
+        self._remove_pad_emit_at_axis = None
+        self._slice_ub_emit_at_axis = None
+        self._cache_read_emit_at_axis = None
+        self._res_emit_at_axis = None
+        self._real_out_emit_at_axis = None
+
+    @classmethod
+    def get_instance(cls, outs, tiling_case):  # type: (list[Any], Any) -> "Schedule"
+        return cls(outs, tiling_case)
+
+    @classmethod
+    def get_supported_soc(cls):  # type: () -> list[str]
+        return [DEFAULT]
+
+    @classmethod
+    def get_supported_pattern(cls):  # type: () -> list[str]
+        return [Pattern.SLICE]
+
+    @classmethod
+    def get_supported_sub_pattern(cls):  # type: () -> list[str]
+        return [SlicePattern.NORMAL_SCHEDULE]
 
     def do_schedule(self):
         """
