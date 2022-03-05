@@ -2206,6 +2206,7 @@ unkown:
       - ops/built-in/tbe/impl/roi_pooling_onec0.py
       - ops/built-in/tbe/impl/log.py
       - ops/built-in/tbe/impl/kl_div.py
+      - ops/built-in/tbe/impl/kl_div_loss_grad.py
       - ops/built-in/tbe/impl/elu_grad_v2.py
       - ops/built-in/tbe/impl/sub.py
       - ops/built-in/tbe/impl/space_to_depth.py
