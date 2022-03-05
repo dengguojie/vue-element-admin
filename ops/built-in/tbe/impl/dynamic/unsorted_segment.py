@@ -315,16 +315,14 @@ class CommonScalar:
                                             None if obj_scalar is None else obj_scalar.num_segments_param)
 
         self.num_segments_loop_param = FrontLast(tik_instance, "num_segments_loop",
-                                                 None if obj_scalar is None else
-                                                 obj_scalar.num_segments_loop_param)
+                                                 None if obj_scalar is None else obj_scalar.num_segments_loop_param)
 
         self.e_out_param = FrontLast(tik_instance, "e_out_param",
                                      None if obj_scalar is None else obj_scalar.e_out_param)
         self.ids_param = FrontLast(tik_instance, "ids_param",
                                    None if obj_scalar is None else obj_scalar.ids_param)
         self.e_out_loop_param = FrontLast(tik_instance, "e_out_loop_param",
-                                          None if obj_scalar is None else
-                                          obj_scalar.e_out_loop_param)
+                                          None if obj_scalar is None else obj_scalar.e_out_loop_param)
 
         if obj_scalar is None:
             self.ids_num = "ids_num"

@@ -477,7 +477,7 @@ void NumSegmentOne(
     repeat_times = UssCeilDiv(e_num_front_part_input_scalar, mask * 255);
 
     repeat_time_front_part_input_scalar = UssCeilDiv(e_num_front_part_input_scalar -
-                                          (repeat_times - 1) * mask * 255, mask);
+                                                     (repeat_times - 1) * mask * 255, mask);
 
     e_num_last_part_input_scalar = ComputeDivRemainders(num_segments_front_core_input_scalar,
                                    e_num_front_part_input_scalar, e_mov_times_gm2ub_input_scalar - 1);
@@ -486,7 +486,7 @@ void NumSegmentOne(
     repeat_times_last_part = UssCeilDiv(e_num_last_part_input_scalar, mask * 255);
     if (repeat_times_last_part > 1) {
       repeat_time_last_part_input_scalar = UssCeilDiv(e_num_last_part_input_scalar -
-                                           (repeat_times_last_part - 1) * mask * 255, mask);
+                                                      (repeat_times_last_part - 1) * mask * 255, mask);
     } else {
       repeat_time_last_part_input_scalar = UssCeilDiv(e_num_last_part_input_scalar, mask);
     }
@@ -497,7 +497,7 @@ void NumSegmentOne(
     repeat_times = UssCeilDiv(e_num_front_part_input_scalar, mask * 255);
     if (repeat_times > 1) {
       repeat_time_front_part_input_scalar = UssCeilDiv(e_num_front_part_input_scalar -
-                                            (repeat_times - 1) * mask * 255, mask);
+                                                       (repeat_times - 1) * mask * 255, mask);
     } else {
       repeat_time_front_part_input_scalar = UssCeilDiv(e_num_front_part_input_scalar, mask);
     }
@@ -535,7 +535,8 @@ void ComputeUbTensorSize(const int32_t& ub_size, const GeShape& input_shape,
 /******************MODE_FP32_INPUT_LAST_AXIS_ALIGN******************/
 void ComputeEleNumOneCore(const int32_t& min_ele_num, const int32_t& ids_num, const int32_t& core_num,
                           const int32_t& e_size, int32_t& ids_ele_num_front_core, int32_t& ids_ele_num_last_core,
-                          int32_t& input_ele_num_front_core, int32_t& input_ele_num_last_core, const int32_t& num_segments) {
+                          int32_t& input_ele_num_front_core, int32_t& input_ele_num_last_core,
+                          const int32_t& num_segments) {
   int32_t ids_num_align = UssCeil(ids_num, min_ele_num);
   if (num_segments > 1) {
     if (e_size == 1) {
@@ -1143,139 +1144,139 @@ void PrintTilingParams(const std::string& op_type, const TilingParamsFp32& param
   OP_LOGD(op_type, " : params.select_key_input_scalar=%d", params.select_key_input_scalar);
   OP_LOGD(op_type, " : params.need_core_num_input_scalar=%d", params.need_core_num_input_scalar);
   OP_LOGD(op_type, " : params.input_ele_num_front_core_input_scalar=%d",
-         params.input_ele_num_front_core_input_scalar);
+          params.input_ele_num_front_core_input_scalar);
   OP_LOGD(op_type, " : params.input_mov_times_gm2ub_front_part_front_core_input_scalar=%d",
-         params.input_mov_times_gm2ub_front_part_front_core_input_scalar);
+          params.input_mov_times_gm2ub_front_part_front_core_input_scalar);
   OP_LOGD(op_type, " : params.input_front_burst_len_front_part_front_core_input_scalar=%d",
-         params.input_front_burst_len_front_part_front_core_input_scalar);
+          params.input_front_burst_len_front_part_front_core_input_scalar);
   OP_LOGD(op_type, " : params.input_last_burst_len_front_part_front_core_input_scalar=%d",
-         params.input_last_burst_len_front_part_front_core_input_scalar);
+          params.input_last_burst_len_front_part_front_core_input_scalar);
   OP_LOGD(op_type, " : params.input_front_ele_num_ub_front_part_front_core_input_scalar=%d",
-         params.input_front_ele_num_ub_front_part_front_core_input_scalar);
+          params.input_front_ele_num_ub_front_part_front_core_input_scalar);
   OP_LOGD(op_type, " : params.input_last_ele_num_ub_front_part_front_core_input_scalar=%d",
-         params.input_last_ele_num_ub_front_part_front_core_input_scalar);
+          params.input_last_ele_num_ub_front_part_front_core_input_scalar);
   OP_LOGD(op_type, " : params.input_front_rows_front_part_front_core_input_scalar=%d",
-         params.input_front_rows_front_part_front_core_input_scalar);
+          params.input_front_rows_front_part_front_core_input_scalar);
   OP_LOGD(op_type, " : params.input_last_rows_front_part_front_core_input_scalar=%d",
-         params.input_last_rows_front_part_front_core_input_scalar);
+          params.input_last_rows_front_part_front_core_input_scalar);
   OP_LOGD(op_type, " : params.input_mov_times_gm2ub_last_part_front_core_input_scalar=%d",
-         params.input_mov_times_gm2ub_last_part_front_core_input_scalar);
+          params.input_mov_times_gm2ub_last_part_front_core_input_scalar);
   OP_LOGD(op_type, " : params.input_front_burst_len_last_part_front_core_input_scalar=%d",
-         params.input_front_burst_len_last_part_front_core_input_scalar);
+          params.input_front_burst_len_last_part_front_core_input_scalar);
   OP_LOGD(op_type, " : params.input_last_burst_len_last_part_front_core_input_scalar=%d",
-         params.input_last_burst_len_last_part_front_core_input_scalar);
+          params.input_last_burst_len_last_part_front_core_input_scalar);
   OP_LOGD(op_type, " : params.input_front_ele_num_ub_last_part_front_core_input_scalar=%d",
-         params.input_front_ele_num_ub_last_part_front_core_input_scalar);
+          params.input_front_ele_num_ub_last_part_front_core_input_scalar);
   OP_LOGD(op_type, " : params.input_last_ele_num_ub_last_part_front_core_input_scalar=%d",
-         params.input_last_ele_num_ub_last_part_front_core_input_scalar);
+          params.input_last_ele_num_ub_last_part_front_core_input_scalar);
   OP_LOGD(op_type, " : params.input_front_rows_last_part_front_core_input_scalar=%d",
-         params.input_front_rows_last_part_front_core_input_scalar);
+          params.input_front_rows_last_part_front_core_input_scalar);
   OP_LOGD(op_type, " : params.input_last_rows_last_part_front_core_input_scalar=%d",
-         params.input_last_rows_last_part_front_core_input_scalar);
+          params.input_last_rows_last_part_front_core_input_scalar);
   OP_LOGD(op_type, " : params.input_ele_num_last_core_input_scalar=%d",
-         params.input_ele_num_last_core_input_scalar);
+          params.input_ele_num_last_core_input_scalar);
   OP_LOGD(op_type, " : params.input_mov_times_gm2ub_front_part_last_core_input_scalar=%d",
-         params.input_mov_times_gm2ub_front_part_last_core_input_scalar);
+          params.input_mov_times_gm2ub_front_part_last_core_input_scalar);
   OP_LOGD(op_type, " : params.input_front_burst_len_front_part_last_core_input_scalar=%d",
-         params.input_front_burst_len_front_part_last_core_input_scalar);
+          params.input_front_burst_len_front_part_last_core_input_scalar);
   OP_LOGD(op_type, " : params.input_last_burst_len_front_part_last_core_input_scalar=%d",
-         params.input_last_burst_len_front_part_last_core_input_scalar);
+          params.input_last_burst_len_front_part_last_core_input_scalar);
   OP_LOGD(op_type, " : params.input_front_ele_num_ub_front_part_last_core_input_scalar=%d",
-         params.input_front_ele_num_ub_front_part_last_core_input_scalar);
+          params.input_front_ele_num_ub_front_part_last_core_input_scalar);
   OP_LOGD(op_type, " : params.input_last_ele_num_ub_front_part_last_core_input_scalar=%d",
-         params.input_last_ele_num_ub_front_part_last_core_input_scalar);
+          params.input_last_ele_num_ub_front_part_last_core_input_scalar);
   OP_LOGD(op_type, " : params.input_front_rows_front_part_last_core_input_scalar=%d",
-         params.input_front_rows_front_part_last_core_input_scalar);
+          params.input_front_rows_front_part_last_core_input_scalar);
   OP_LOGD(op_type, " : params.input_last_rows_front_part_last_core_input_scalar=%d",
-         params.input_last_rows_front_part_last_core_input_scalar);
+          params.input_last_rows_front_part_last_core_input_scalar);
   OP_LOGD(op_type, " : params.input_mov_times_gm2ub_last_part_last_core_input_scalar=%d",
-         params.input_mov_times_gm2ub_last_part_last_core_input_scalar);
+          params.input_mov_times_gm2ub_last_part_last_core_input_scalar);
   OP_LOGD(op_type, " : params.input_front_burst_len_last_part_last_core_input_scalar=%d",
-         params.input_front_burst_len_last_part_last_core_input_scalar);
+          params.input_front_burst_len_last_part_last_core_input_scalar);
   OP_LOGD(op_type, " : params.input_last_burst_len_last_part_last_core_input_scalar=%d",
-         params.input_last_burst_len_last_part_last_core_input_scalar);
+          params.input_last_burst_len_last_part_last_core_input_scalar);
   OP_LOGD(op_type, " : params.input_front_ele_num_ub_last_part_last_core_input_scalar=%d",
-         params.input_front_ele_num_ub_last_part_last_core_input_scalar);
+          params.input_front_ele_num_ub_last_part_last_core_input_scalar);
   OP_LOGD(op_type, " : params.input_last_ele_num_ub_last_part_last_core_input_scalar=%d",
-         params.input_last_ele_num_ub_last_part_last_core_input_scalar);
+          params.input_last_ele_num_ub_last_part_last_core_input_scalar);
   OP_LOGD(op_type, " : params.input_front_rows_last_part_last_core_input_scalar=%d",
-         params.input_front_rows_last_part_last_core_input_scalar);
+          params.input_front_rows_last_part_last_core_input_scalar);
   OP_LOGD(op_type, " : params.input_last_rows_last_part_last_core_input_scalar=%d",
-         params.input_last_rows_last_part_last_core_input_scalar);
+          params.input_last_rows_last_part_last_core_input_scalar);
   OP_LOGD(op_type, " : params.e_num_input_scalar=%d", params.e_num_input_scalar);
   OP_LOGD(op_type, " : params.e_mov_times_gm2ub_input_scalar=%d", params.e_mov_times_gm2ub_input_scalar);
   OP_LOGD(op_type, " : params.e_ub2gm_front_burst_len_input_scalar=%d",
-         params.e_ub2gm_front_burst_len_input_scalar);
+          params.e_ub2gm_front_burst_len_input_scalar);
   OP_LOGD(op_type, " : params.e_num_front_part_input_scalar=%d", params.e_num_front_part_input_scalar);
   OP_LOGD(op_type, " : params.e_ub2gm_last_burst_len_input_scalar=%d",
-         params.e_ub2gm_last_burst_len_input_scalar);
+          params.e_ub2gm_last_burst_len_input_scalar);
   OP_LOGD(op_type, " : params.e_num_last_part_input_scalar=%d", params.e_num_last_part_input_scalar);
   OP_LOGD(op_type, " : params.ids_size_input_scalar=%d", params.ids_size_input_scalar);
   OP_LOGD(op_type, " : params.ids_ele_num_front_core_input_scalar=%d",
-         params.ids_ele_num_front_core_input_scalar);
+          params.ids_ele_num_front_core_input_scalar);
   OP_LOGD(op_type, " : params.ids_mov_times_gm2ub_front_core_input_scalar=%d",
-         params.ids_mov_times_gm2ub_front_core_input_scalar);
+          params.ids_mov_times_gm2ub_front_core_input_scalar);
   OP_LOGD(op_type, " : params.ids_front_burst_len_front_core_input_scalar=%d",
-         params.ids_front_burst_len_front_core_input_scalar);
+          params.ids_front_burst_len_front_core_input_scalar);
   OP_LOGD(op_type, " : params.ids_last_burst_len_front_core_input_scalar=%d",
-         params.ids_last_burst_len_front_core_input_scalar);
+          params.ids_last_burst_len_front_core_input_scalar);
   OP_LOGD(op_type, " : params.ids_ele_num_ub_front_part_front_core_input_scalar=%d",
-         params.ids_ele_num_ub_front_part_front_core_input_scalar);
+          params.ids_ele_num_ub_front_part_front_core_input_scalar);
   OP_LOGD(op_type, " : params.ids_ele_num_ub_last_part_front_core_input_scalar=%d",
-         params.ids_ele_num_ub_last_part_front_core_input_scalar);
+          params.ids_ele_num_ub_last_part_front_core_input_scalar);
   OP_LOGD(op_type, " : params.ids_ele_num_last_core_input_scalar=%d",
-         params.ids_ele_num_last_core_input_scalar);
+          params.ids_ele_num_last_core_input_scalar);
   OP_LOGD(op_type, " : params.ids_mov_times_gm2ub_last_core_input_scalar=%d",
-         params.ids_mov_times_gm2ub_last_core_input_scalar);
+          params.ids_mov_times_gm2ub_last_core_input_scalar);
   OP_LOGD(op_type, " : params.ids_front_burst_len_last_core_input_scalar=%d",
-         params.ids_front_burst_len_last_core_input_scalar);
+          params.ids_front_burst_len_last_core_input_scalar);
   OP_LOGD(op_type, " : params.ids_last_burst_len_last_core_input_scalar=%d",
-         params.ids_last_burst_len_last_core_input_scalar);
+          params.ids_last_burst_len_last_core_input_scalar);
   OP_LOGD(op_type, " : params.ids_ele_num_ub_front_part_last_core_input_scalar=%d",
-         params.ids_ele_num_ub_front_part_last_core_input_scalar);
+          params.ids_ele_num_ub_front_part_last_core_input_scalar);
   OP_LOGD(op_type, " : params.ids_ele_num_ub_last_part_last_core_input_scalar=%d",
-         params.ids_ele_num_ub_last_part_last_core_input_scalar);
+          params.ids_ele_num_ub_last_part_last_core_input_scalar);
   OP_LOGD(op_type, " : params.output_ub_init_last_repeat_time_front_part_front_core_input_scalar=%d",
-         params.output_ub_init_last_repeat_time_front_part_front_core_input_scalar);
+          params.output_ub_init_last_repeat_time_front_part_front_core_input_scalar);
   OP_LOGD(op_type, " : params.output_ub_init_times_front_part_front_core_input_scalar=%d",
-         params.output_ub_init_times_front_part_front_core_input_scalar);
+          params.output_ub_init_times_front_part_front_core_input_scalar);
   OP_LOGD(op_type, " : params.output_ub_init_last_repeat_time_last_part_front_core_input_scalar=%d",
-         params.output_ub_init_last_repeat_time_last_part_front_core_input_scalar);
+          params.output_ub_init_last_repeat_time_last_part_front_core_input_scalar);
   OP_LOGD(op_type, " : params.output_ub_init_times_last_part_front_core_input_scalar=%d",
-         params.output_ub_init_times_last_part_front_core_input_scalar);
+          params.output_ub_init_times_last_part_front_core_input_scalar);
   OP_LOGD(op_type, " : params.output_ub_init_last_repeat_time_front_part_last_core_input_scalar=%d",
-         params.output_ub_init_last_repeat_time_front_part_last_core_input_scalar);
+          params.output_ub_init_last_repeat_time_front_part_last_core_input_scalar);
   OP_LOGD(op_type, " : params.output_ub_init_times_front_part_last_core_input_scalar=%d",
-         params.output_ub_init_times_front_part_last_core_input_scalar);
+          params.output_ub_init_times_front_part_last_core_input_scalar);
   OP_LOGD(op_type, " : params.output_ub_init_last_repeat_time_last_part_last_core_input_scalar=%d",
-         params.output_ub_init_last_repeat_time_last_part_last_core_input_scalar);
+          params.output_ub_init_last_repeat_time_last_part_last_core_input_scalar);
   OP_LOGD(op_type, " : params.output_ub_init_times_last_part_last_core_input_scalar=%d",
-         params.output_ub_init_times_last_part_last_core_input_scalar);
+          params.output_ub_init_times_last_part_last_core_input_scalar);
   OP_LOGD(op_type, " : params.input_last_axis_align_front_part_ele_num_input_scalar=%d",
-         params.input_last_axis_align_front_part_ele_num_input_scalar);
+          params.input_last_axis_align_front_part_ele_num_input_scalar);
   OP_LOGD(op_type, " : params.input_last_axis_align_floor_ele_num_input_scalar=%d",
-         params.input_last_axis_align_floor_ele_num_input_scalar);
+          params.input_last_axis_align_floor_ele_num_input_scalar);
   OP_LOGD(op_type, " : params.last_part_vadd_mask_input_scalar=%d",
-         params.last_part_vadd_mask_input_scalar);
+          params.last_part_vadd_mask_input_scalar);
   OP_LOGD(op_type, " : params.e_gm2ub_last_burst_len_input_scalar=%d",
-         params.e_gm2ub_last_burst_len_input_scalar);
+          params.e_gm2ub_last_burst_len_input_scalar);
 
   OP_LOGD(op_type, " : params.output_ub_init_last_row_last_repeat_time_front_part_front_core_input_scalar=%d",
-         params.output_ub_init_last_row_last_repeat_time_front_part_front_core_input_scalar);
+          params.output_ub_init_last_row_last_repeat_time_front_part_front_core_input_scalar);
   OP_LOGD(op_type, " : params.output_ub_init_last_row_times_front_part_front_core_input_scalar=%d",
-         params.output_ub_init_last_row_times_front_part_front_core_input_scalar);
+          params.output_ub_init_last_row_times_front_part_front_core_input_scalar);
   OP_LOGD(op_type, " : params.output_ub_init_last_row_last_repeat_time_last_part_front_core_input_scalar=%d",
-         params.output_ub_init_last_row_last_repeat_time_last_part_front_core_input_scalar);
+          params.output_ub_init_last_row_last_repeat_time_last_part_front_core_input_scalar);
   OP_LOGD(op_type, " : params.output_ub_init_last_row_times_last_part_front_core_input_scalar=%d",
-         params.output_ub_init_last_row_times_last_part_front_core_input_scalar);
+          params.output_ub_init_last_row_times_last_part_front_core_input_scalar);
   OP_LOGD(op_type, " : params.output_ub_init_last_row_last_repeat_time_front_part_last_core_input_scalar=%d",
-         params.output_ub_init_last_row_last_repeat_time_front_part_last_core_input_scalar);
+          params.output_ub_init_last_row_last_repeat_time_front_part_last_core_input_scalar);
   OP_LOGD(op_type, " : params.output_ub_init_last_row_times_front_part_last_core_input_scalar=%d",
-         params.output_ub_init_last_row_times_front_part_last_core_input_scalar);
+          params.output_ub_init_last_row_times_front_part_last_core_input_scalar);
   OP_LOGD(op_type, " : params.output_ub_init_last_row_last_repeat_time_last_part_last_core_input_scalar=%d",
-         params.output_ub_init_last_row_last_repeat_time_last_part_last_core_input_scalar);
+          params.output_ub_init_last_row_last_repeat_time_last_part_last_core_input_scalar);
   OP_LOGD(op_type, " : params.output_ub_init_last_row_times_last_part_last_core_input_scalar=%d",
-         params.output_ub_init_last_row_times_last_part_last_core_input_scalar);
+          params.output_ub_init_last_row_times_last_part_last_core_input_scalar);
   OP_LOGD(op_type, " : params.num_segments=%d", params.num_segments);
 }
 
@@ -1283,66 +1284,66 @@ void PrintTilingParams(const std::string& op_type, const TilingParamsInt32& para
   OP_LOGD(op_type, " : params.select_key_input_scalar=%d", params.select_key_input_scalar);
   OP_LOGD(op_type, " : params.need_core_num_input_scalar=%d", params.need_core_num_input_scalar);
   OP_LOGD(op_type, " : params.num_segments_front_core_input_scalar=%d",
-         params.num_segments_front_core_input_scalar);
+          params.num_segments_front_core_input_scalar);
   OP_LOGD(op_type, " : params.num_segments_last_core_input_scalar=%d",
-         params.num_segments_last_core_input_scalar);
+          params.num_segments_last_core_input_scalar);
   OP_LOGD(op_type, " : params.ids_size_input_scalar=%d", params.ids_size_input_scalar);
   OP_LOGD(op_type, " : params.ids_mov_times_gm2ub_input_scalar=%d",
-         params.ids_mov_times_gm2ub_input_scalar);
+          params.ids_mov_times_gm2ub_input_scalar);
   OP_LOGD(op_type, " : params.ids_ele_num_ub_front_part_input_scalar=%d",
-         params.ids_ele_num_ub_front_part_input_scalar);
+          params.ids_ele_num_ub_front_part_input_scalar);
   OP_LOGD(op_type, " : params.ids_front_burst_len_input_scalar=%d",
-         params.ids_front_burst_len_input_scalar);
+          params.ids_front_burst_len_input_scalar);
   OP_LOGD(op_type, " : params.ids_ele_num_ub_last_part_input_scalar=%d",
-         params.ids_ele_num_ub_last_part_input_scalar);
+          params.ids_ele_num_ub_last_part_input_scalar);
   OP_LOGD(op_type, " : params.ids_last_burst_len_input_scalar=%d",
-         params.ids_last_burst_len_input_scalar);
+          params.ids_last_burst_len_input_scalar);
   OP_LOGD(op_type, " : params.e_num_input_scalar=%d", params.e_num_input_scalar);
   OP_LOGD(op_type, " : params.e_mov_times_gm2ub_input_scalar=%d", params.e_mov_times_gm2ub_input_scalar);
   OP_LOGD(op_type, " : params.e_ub2gm_front_burst_len_input_scalar=%d",
-         params.e_ub2gm_front_burst_len_input_scalar);
+          params.e_ub2gm_front_burst_len_input_scalar);
   OP_LOGD(op_type, " : params.e_num_front_part_input_scalar=%d", params.e_num_front_part_input_scalar);
   OP_LOGD(op_type, " : params.repeat_time_front_part_input_scalar=%d",
-         params.repeat_time_front_part_input_scalar);
+          params.repeat_time_front_part_input_scalar);
   OP_LOGD(op_type, " : params.e_ub2gm_last_burst_len_input_scalar=%d",
-         params.e_ub2gm_last_burst_len_input_scalar);
+          params.e_ub2gm_last_burst_len_input_scalar);
   OP_LOGD(op_type, " : params.e_num_last_part_input_scalar=%d", params.e_num_last_part_input_scalar);
   OP_LOGD(op_type, " : params.repeat_time_last_part_input_scalar=%d",
-         params.repeat_time_last_part_input_scalar);
+          params.repeat_time_last_part_input_scalar);
 
   OP_LOGD(op_type, " : params.align_scalar=%d",params.align_scalar);
   OP_LOGD(op_type, " : params.align_scalar_lastcore=%d",
-         params.align_scalar_lastcore);
+          params.align_scalar_lastcore);
   OP_LOGD(op_type, " : params.e_gm2ub_front_burst_len_input_scalar=%d",
-         params.e_gm2ub_front_burst_len_input_scalar);
+          params.e_gm2ub_front_burst_len_input_scalar);
   OP_LOGD(op_type, " : params.e_gm2ub_last_burst_len_input_scalar=%d",
-         params.e_gm2ub_last_burst_len_input_scalar);
+          params.e_gm2ub_last_burst_len_input_scalar);
   OP_LOGD(op_type, " : params.num_segment_max=%d",
-         params.num_segment_max);
+          params.num_segment_max);
   OP_LOGD(op_type, " : params.num_segment_max_time=%d",
-         params.num_segment_max_time);
+          params.num_segment_max_time);
   OP_LOGD(op_type, " : params.num_segment_max_time_lastcore=%d",
-         params.num_segment_max_time_lastcore);
+          params.num_segment_max_time_lastcore);
   OP_LOGD(op_type, " : params.front_num_segment=%d",
-         params.front_num_segment);
+          params.front_num_segment);
   OP_LOGD(op_type, " : params.front_num_segment_last=%d",
-         params.front_num_segment_last);
+          params.front_num_segment_last);
   OP_LOGD(op_type, " : params.front_num_segment_lastcore=%d",
-         params.front_num_segment_lastcore);
+          params.front_num_segment_lastcore);
   OP_LOGD(op_type, " : params.front_num_segment_last_lastcore=%d",
-         params.front_num_segment_last_lastcore);
+          params.front_num_segment_last_lastcore);
   OP_LOGD(op_type, " : params.e_ub2gm_front_burst_len_input_scalar_lastcore=%d",
-         params.e_ub2gm_front_burst_len_input_scalar_lastcore);
+          params.e_ub2gm_front_burst_len_input_scalar_lastcore);
   OP_LOGD(op_type, " : params.e_ub2gm_last_burst_len_input_scalar_lastcore=%d",
-         params.e_ub2gm_last_burst_len_input_scalar_lastcore);
+          params.e_ub2gm_last_burst_len_input_scalar_lastcore);
   OP_LOGD(op_type, " : params.repeat_times=%d", params.repeat_times);
   OP_LOGD(op_type, " : params.repeat_times_last_part=%d", params.repeat_times_last_part);
   OP_LOGD(op_type, " : params.repeat_times_last_part_lastcore=%d",
-         params.repeat_times_last_part_lastcore);
+          params.repeat_times_last_part_lastcore);
   OP_LOGD(op_type, " : params.e_mov_times_gm2ub_input_scalar_lastcore=%d",
-         params.e_mov_times_gm2ub_input_scalar_lastcore);
+          params.e_mov_times_gm2ub_input_scalar_lastcore);
   OP_LOGD(op_type, " : params.repeat_time_front_part_input_scalar_lastcore=%d",
-         params.repeat_time_front_part_input_scalar_lastcore);
+          params.repeat_time_front_part_input_scalar_lastcore);
   OP_LOGD(op_type, " : params.num_segments=%d", params.num_segments);
 }
 
@@ -1378,7 +1379,7 @@ bool UnsortedSegmentSumTiling(const std::string& op_type, const ge::Operator& op
     return false;
   }
   for (unsigned i = 0; i < ids_shape.GetDimNum(); i++) {
-    OP_LOGD(op_type, " ids_shape[i] is %d",ids_shape.GetDim(i));
+    OP_LOGD(op_type, " ids_shape[i] is %d", ids_shape.GetDim(i));
     if (input_shape.GetDim(i) != ids_shape.GetDim(i)) {
       VECTOR_INNER_ERR_REPORT_TILIING(op_type, "front shape of input must be equal with ids shape");
       return false;
@@ -1937,13 +1938,13 @@ bool UnsortedSegmentSumTiling(const std::string& op_type, const ge::Operator& op
                                 ub_tensor_size_output, output_ub_ele_num_one_row,
                                 params.need_core_num_input_scalar, mask, num_segments);
     OP_LOGD(op_type, " : ub_tensor_size_id is=%d,ub_tensor_size_input is %d,ub_tensor_size_output is %d",
-           ub_tensor_size, ub_tensor_size_input, ub_tensor_size_output);
+            ub_tensor_size, ub_tensor_size_input, ub_tensor_size_output);
 
     flag = GetTilingModeNoAtomic(input_shape, e_size, ids_size, input_dtype, ids_dtype, ub_tensor_size,
     ub_tensor_size_input, params.select_key_input_scalar, e_once_num, id_once_num, params.need_core_num_input_scalar,
     output_ub_ele_num_one_row, params.num_segment_max, mask, input_size, num_segments);
     OP_LOGD(op_type, " :e_once_num is %d ,id_once_num is %d ,params.num_segment_max is %d", e_once_num,
-           id_once_num, params.num_segment_max);
+            id_once_num, params.num_segment_max);
     if (!flag) {
       VECTOR_INNER_ERR_REPORT_TILIING(op_type, "GetTilingMode failed.");
       return false;

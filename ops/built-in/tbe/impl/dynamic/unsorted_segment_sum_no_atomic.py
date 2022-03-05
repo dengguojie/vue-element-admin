@@ -2031,8 +2031,10 @@ def _tik_no_atomic_small_e_block_small_id(block_index, tik_inst, obj_gm_tensor, 
     align_scalar = obj_int32_e_num_input_scalar.align_scalar
     align_scalar_last_core = obj_int32_e_num_input_scalar.align_scalar_last_core
     mask = Constant.MASK_FP16 if dtype == Constant.DTYPE_FP16 else Constant.MASK_INT32
-    ele_num_one_block = Constant.ELE_NUM_ONE_BLOCK_FP16 if dtype == \
-                        Constant.DTYPE_FP16 else Constant.ELE_NUM_ONE_BLOCK_INT32
+    if dtype == Constant.DTYPE_FP16:
+        ele_num_one_block = Constant.ELE_NUM_ONE_BLOCK_FP16
+    else:
+        ele_num_one_block = Constant.ELE_NUM_ONE_BLOCK_INT32
     mask_ub = tik_inst.Tensor(dtype, (mask,), name="mask_ub", scope=tik.scope_ubuf)
     with tik_inst.if_scope(block_index < obj_common_scalar.need_core_num - 1):
         ids_offset_gm = 0
@@ -2316,8 +2318,10 @@ def _tik_no_atomic_small_e_block_big_id(block_index, tik_inst, obj_gm_tensor, ob
     align_scalar = obj_int32_e_num_input_scalar.align_scalar
     align_scalar_last_core = obj_int32_e_num_input_scalar.align_scalar_last_core
     mask = Constant.MASK_FP16 if dtype == Constant.DTYPE_FP16 else Constant.MASK_INT32
-    ele_num_one_block = Constant.ELE_NUM_ONE_BLOCK_FP16 if dtype == \
-                        Constant.DTYPE_FP16 else Constant.ELE_NUM_ONE_BLOCK_INT32
+    if dtype == Constant.DTYPE_FP16:
+        ele_num_one_block = Constant.ELE_NUM_ONE_BLOCK_FP16
+    else:
+        ele_num_one_block = Constant.ELE_NUM_ONE_BLOCK_INT32
     mask_ub = tik_inst.Tensor(dtype, (mask,), name="mask_ub", scope=tik.scope_ubuf)
     with tik_inst.if_scope(block_index < obj_common_scalar.need_core_num - 1):
         # front core
