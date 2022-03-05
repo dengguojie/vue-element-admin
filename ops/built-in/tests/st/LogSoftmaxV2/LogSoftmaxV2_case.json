@@ -214,5 +214,52 @@
       }
     ],
     "case_name": "test_LogSoftmaxV2_008"
+  },
+  {
+    "op": "LogSoftmaxV2",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          2105352,
+          21
+        ],
+        "shape": [
+          2105352,
+          21
+        ],
+        "param_type": "input",
+        "name": "input_x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          2105352,
+          21
+        ],
+        "shape": [
+          2105352,
+          21
+        ],
+        "param_type": "output",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "axes",
+        "type": "list_int",
+        "value": [
+          1
+        ]
+      }
+    ],
+    "case_name": "test_LogSoftmaxV2_009"
   }
 ]

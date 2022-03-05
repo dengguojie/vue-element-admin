@@ -26,7 +26,8 @@ from impl.util.platform_adapter import classify
 
 # 'pylint: disable=locally-disabled,unused-argument
 @register_operator("LogSoftmaxV2")
-def log_softmax_v2_compute(input_x, output_y, axis=-1, kernel_name="log_softmax_v2"):
+def log_softmax_v2_compute(input_x, output_y, axis=-1, kernel_name="log_softmax_v2",
+                           impl_mode="high_performance"):
     """
     process of calculating data's log_softmax, x - log(sum(exp(x)))
     this x is x - xmax
@@ -49,7 +50,13 @@ def log_softmax_v2_compute(input_x, output_y, axis=-1, kernel_name="log_softmax_
     inp_dtype = input_x.dtype
     shape = shape_util.shape_to_list(input_x.shape)
 
-    data_max = tbe.reduce_max(input_x, axis=axis, keepdims=True)
+    if inp_dtype == "float32" and impl_mode == "high_performance":
+        data_max_input = tbe.cast_to(input_x, "float16")
+        data_max_output = tbe.reduce_max(data_max_input, axis=axis, keepdims=True)
+        data_max = tbe.cast_to(data_max_output, "float32")
+    else:
+        data_max = tbe.reduce_max(input_x, axis=axis, keepdims=True)
+
     data_max_broadcast = tbe.broadcast(data_max, shape)
     data_sub = tbe.vsub(input_x, data_max_broadcast)
 
@@ -78,8 +85,8 @@ def log_softmax_v2_compute(input_x, output_y, axis=-1, kernel_name="log_softmax_
 @register_operator("LogSoftmaxV2")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             (para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_LIST_INT),
-                            para_check.KERNEL_NAME)
-def log_softmax_v2(input_x, output_y, axis=-1, kernel_name="log_softmax_v2"):
+                            para_check.KERNEL_NAME, para_check.OPTION_ATTR_STR)
+def log_softmax_v2(input_x, output_y, axis=-1, kernel_name="log_softmax_v2", impl_mode="high_performance"):
     """
     algorithm: log_softmax
     calculating data's log_softmax, x - log(sum(exp(x)))
@@ -118,7 +125,7 @@ def log_softmax_v2(input_x, output_y, axis=-1, kernel_name="log_softmax_v2"):
         with tbe.compute():
             shape_var_new = shape_util.variable_shape([x], op_mode="norm")[0]
             input_x = tvm.placeholder(shape_var_new, dtype=dtype, name="input_x")
-            output = log_softmax_v2_compute(input_x, output_y, reduce_axis, kernel_name)
+            output = log_softmax_v2_compute(input_x, output_y, reduce_axis, kernel_name, impl_mode)
             tensors.append([input_x, output])
 
         with tvm.target.cce():

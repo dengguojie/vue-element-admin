@@ -366,6 +366,18 @@ def _broadcast_nz(tensor, shape):
     return tensor
 
 
+def is_white_shape(shape):
+    """
+    is_white_shape
+    """
+    white_list_shape = [[4096, 3, 49, 49], [1024, 6, 49, 49], [256, 12, 49, 49], [64, 24, 49, 49],
+                        [128, 8, 12, 12]]
+    shape_t = list(shape)
+    if shape_t in white_list_shape:
+        return True
+    return False
+
+
 def _is_special_cases(input_shape, compare_type):
     tbe_product = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
     if tbe_product not in ("Ascend610", "Ascend615", "Ascend710",):
@@ -2756,6 +2768,21 @@ def softmax_v2(input_x, output_y, axis=-1, kernel_name="softmax_v2", impl_mode="
         use_dynamic = False
 
     if input_format in ("NC1HWC0", "NDC1HWC0", "FRACTAL_NZ") and use_dynamic:
+        context = tbe_context.op_context.get_context()
+        if context is not None:
+            context.set_op_mode("static")
+            dyn_impl.softmax_v2(input_x, output_y, axis, kernel_name)
+        else:
+            with tbe_context.op_context.OpContext("static"):
+                dyn_impl.softmax_v2(input_x, output_y, axis, kernel_name)
+        return
+
+    range_x = []
+    for dim in input_x.get("shape"):
+        range_x.append((dim, dim))
+    input_x["range"] = range_x
+
+    if is_white_shape(input_x.get("shape")):
         context = tbe_context.op_context.get_context()
         if context is not None:
             context.set_op_mode("static")

@@ -64,6 +64,17 @@ def op_select_format(softmax, grad_softmax, grad_x, axis, kernel_name="softmax_g
     return param_dynamic_in_json
 
 
+def is_white_shape(shape):
+    """
+    is_white_shape
+    """
+    white_list_shape = [[4096, 3, 49, 49], [1024, 6, 49, 49], [256, 12, 49, 49], [64, 24, 49, 49]]
+    shape_t = list(shape)
+    if shape_t in white_list_shape:
+        return True
+    return False
+
+
 # 'pylint: disable=locally-disabled,unused-argument
 # 'pylint: disable=unused-variable
 @tbe_platform.fusion_manager.fusion_manager.register("softmax_grad")
@@ -216,6 +227,25 @@ def softmax_grad(softmax, grad_softmax, grad_x, axis=-1, kernel_name="softmax_gr
                     axis[0] = axis[0] + 1
 
     if input_format in ("NC1HWC0", "NDC1HWC0", "FRACTAL_NZ"):
+        context = tbe_context.op_context.get_context()
+        if context is not None:
+            context.set_op_mode("static")
+            dyn_impl.softmax_grad(softmax, grad_softmax, grad_x, axis, kernel_name, impl_mode)
+        else:
+            with tbe_context.op_context.OpContext("static"):
+                dyn_impl.softmax_grad(softmax, grad_softmax, grad_x, axis, kernel_name, impl_mode)
+        return
+
+    range_x = []
+    for dim in softmax.get("shape"):
+        range_x.append((dim, dim))
+    softmax["range"] = range_x
+    grad_softmax["range"] = range_x
+
+    tbe_product = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
+    is_support = tbe_product in ("Ascend610", "Ascend615", "Ascend710", "Ascend910")
+
+    if is_support and is_white_shape(shape_softmax):
         context = tbe_context.op_context.get_context()
         if context is not None:
             context.set_op_mode("static")

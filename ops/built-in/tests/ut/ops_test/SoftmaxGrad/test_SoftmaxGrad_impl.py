@@ -101,6 +101,13 @@ case13 = {"params": [{"shape": (1,4,7,7,16), "dtype": "float16", "format": "NC1H
          "expect": "success",
          "format_expect": [],
          "support_expect": True}
+case14 = {"params": [{"shape": (4096, 3, 49, 49), "dtype": "float32", "format": "ND", "ori_shape": (4096, 3, 49, 49),"ori_format": "ND"},
+                    {"shape": (4096, 3, 49, 49), "dtype": "float32", "format": "ND", "ori_shape": (4096, 3, 49, 49),"ori_format": "ND"},
+                    {"shape": (4096, 3, 49, 49), "dtype": "float32", "format": "ND", "ori_shape": (4096, 3, 49, 49),"ori_format": "ND"}],
+         "case_name": "softmax_grad_14",
+         "expect": "success",
+         "format_expect": [],
+         "support_expect": True}
 ut_case.add_case(["Ascend710", "Ascend910A"], case1)
 ut_case.add_case(["Ascend710", "Ascend910A"], case2)
 ut_case.add_case(["Ascend710", "Ascend910A"], case3)
@@ -114,7 +121,7 @@ ut_case.add_case(["Ascend710", "Ascend910A"], case10)
 ut_case.add_case(["Ascend710", "Ascend910A"], case11)
 ut_case.add_case(["Ascend710", "Ascend910A"], case12)
 ut_case.add_case(["Ascend710", "Ascend910A"], case13)
-
+ut_case.add_case(["Ascend710", "Ascend910A"], case14)
 
 from impl.softmax_grad import op_select_format
 

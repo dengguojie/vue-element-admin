@@ -16,13 +16,25 @@
 log_softmax_grad
 """
 import operator
-
 import te.lang.cce as tbe
+import impl.dynamic as dyn_impl
+from impl.util.platform_adapter import tbe_context
 from te import tvm
 from te import platform as tbe_platform
 from te.utils import para_check
 from te.utils import shape_util
 from te.utils.error_manager import error_manager_vector
+
+
+def is_white_shape(shape):
+    """
+    is_white_shape
+    """
+    white_list_shape = [[2105352, 21], [8, 81, 25276]]
+    shape_t = list(shape)
+    if shape_t in white_list_shape:
+        return True
+    return False
 
 
 # 'pylint: disable = locally-disabled,too-many-arguments,unused-argument
@@ -110,6 +122,25 @@ def log_softmax_grad(input_dy, input_x, output_z, axis=-1,
     """
     check_list = ("float16", "float32")
     input_dtype = input_dy.get("dtype").lower()
+
+    range_x = []
+    for dim in input_x.get("shape"):
+        range_x.append((dim, dim))
+    input_x["range"] = range_x
+    input_dy["range"] = range_x
+
+    tbe_product = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
+    is_support = tbe_product in ("Ascend610", "Ascend615", "Ascend710", "Ascend910")
+
+    if is_support and is_white_shape(input_x.get("shape")):
+        context = tbe_context.op_context.get_context()
+        if context is not None:
+            context.set_op_mode("static")
+            dyn_impl.log_softmax_grad(input_dy, input_x, output_z, axis, kernel_name)
+        else:
+            with tbe_context.op_context.OpContext("static"):
+                dyn_impl.log_softmax_grad(input_dy, input_x, output_z, axis, kernel_name)
+        return
 
     if not isinstance(axis, int):
         axis = list(axis)

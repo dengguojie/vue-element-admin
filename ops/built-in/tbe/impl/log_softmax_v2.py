@@ -16,11 +16,13 @@
 log_softmax_v2
 """
 import te.lang.cce as tbe
+import impl.dynamic as dyn_impl
 from te import tvm
 from te import platform as tbe_platform
 from te.utils import para_check
 from te.utils import shape_util
 from impl.util import util_select_op_base
+from impl.util.platform_adapter import tbe_context
 
 
 # 'pylint: disable = unused-argument,unused-variable,too-many-locals
@@ -43,6 +45,17 @@ def get_op_support_info(input_x, output_y, axis=-1, kernel_name="log_softmax_v2"
     axis_reduce_list = None
     op_cal_info_in_json = util_select_op_base.get_op_cal_info(axis_split_matrix, axis_reduce_list, 0, 0)
     return op_cal_info_in_json
+
+
+def is_white_shape(shape):
+    """
+    is_white_shape
+    """
+    white_list_shape = [[2105352, 21], [8, 81, 25276]]
+    shape_t = list(shape)
+    if shape_t in white_list_shape:
+        return True
+    return False
 
 
 # 'pylint: disable = locally-disabled,unused-argument
@@ -102,7 +115,7 @@ def log_softmax_v2_compute(input_x, output_y, axis=-1, kernel_name="log_softmax_
 # 'pylint: disable=variable_type_changed
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             (para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_LIST_INT),
-                            para_check.KERNEL_NAME)
+                            para_check.KERNEL_NAME, para_check.OPTION_ATTR_STR)
 def log_softmax_v2(input_x, output_y, axis=-1, kernel_name="log_softmax_v2", impl_mode="high_performance"):
     """
     algorithm: log_softmax
@@ -127,6 +140,24 @@ def log_softmax_v2(input_x, output_y, axis=-1, kernel_name="log_softmax_v2", imp
     shape = input_x.get("shape")
     input_dtype = input_x.get("dtype").lower()
     shape_len = len(shape)
+
+    range_x = []
+    for dim in input_x.get("shape"):
+        range_x.append((dim, dim))
+    input_x["range"] = range_x
+
+    tbe_product = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
+    is_support = tbe_product in ("Ascend610", "Ascend615", "Ascend710", "Ascend910")
+
+    if is_support and is_white_shape(shape):
+        context = tbe_context.op_context.get_context()
+        if context is not None:
+            context.set_op_mode("static")
+            dyn_impl.log_softmax_v2(input_x, output_y, axis, kernel_name, impl_mode)
+        else:
+            with tbe_context.op_context.OpContext("static"):
+                dyn_impl.log_softmax_v2(input_x, output_y, axis, kernel_name, impl_mode)
+        return
 
     if not isinstance(axis, int):
         axis = list(axis)

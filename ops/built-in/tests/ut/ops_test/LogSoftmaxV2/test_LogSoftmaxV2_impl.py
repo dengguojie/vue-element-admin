@@ -41,12 +41,20 @@ case5 = {"params": [{"shape": (2, 1, 2), "dtype": "float32", "format": "ND", "or
          "format_expect": [],
          "support_expect": True}
 
+case6 = {"params": [{"shape": (8, 81, 25276), "dtype": "float32", "format": "ND", "ori_shape": (8, 81, 25276),"ori_format": "ND"},
+                    {"shape": (8, 81, 25276), "dtype": "float32", "format": "ND", "ori_shape": (8, 81, 25276),"ori_format": "ND"},
+                    -1],
+         "case_name": "LogSoftmaxV2_6",
+         "expect": "success",
+         "format_expect": [],
+         "support_expect": True}
 
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case2)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case3)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case4)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case5)
+ut_case.add_case(["Ascend710", "Ascend910A"], case6)
 
 def calc_expect_func(input_x, output, axis):
     inputArr = input_x['value']

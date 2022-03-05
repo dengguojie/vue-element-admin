@@ -202,5 +202,56 @@
     ],
     "attr": [],
     "case_name": "test_LogSoftmaxGrad_003"
+  },
+  {
+    "op": "LogSoftmaxGrad",
+    "input_desc": [
+      {
+        "shape": [
+          2105352,
+          21
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2105352,
+          21
+        ],
+        "ori_format": "ND",
+        "name": "input_dy",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          2105352,
+          21
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2105352,
+          21
+        ],
+        "ori_format": "ND",
+        "name": "input_x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          2105352,
+          21
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2105352,
+          21
+        ],
+        "ori_format": "ND",
+        "name": "output_z",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_LogSoftmaxGrad_004"
   }
 ]
