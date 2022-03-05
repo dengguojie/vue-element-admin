@@ -114,5 +114,469 @@
         "type": "int"
       }
     ]
+  },
+  {
+    "op": "AvgPool",
+    "case_name" : "test_avg_pool_005",
+    "calc_expect_func_file" : "test_avg_pool_golden.py:calc_expect_func",
+    "input_desc": [
+      {
+        "format": "NCHW",
+        "ori_format": "NCHW",
+        "shape": [-1,-1,-1,-1],
+        "ori_shape": [-1,-1,-1,-1],
+        "typical_shape": [8,32,40,20],
+        "shape_range": [[1,224],[1,224],[1,224],[1,224]],
+        "type": "float16",
+        "value_range": [[-1, 1]],
+        "data_distribute" : "uniform",
+        "name": "x"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "NCHW",
+        "ori_format": "NCHW",
+        "shape": [-1,-1,-1,-1],
+        "ori_shape": [-1,-1,-1,-1],
+        "typical_shape": [8,32,3,2],
+        "shape_range": [[1,224],[1,224],[1,224],[1,224]],
+        "type": "float16",
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "ksize",
+        "value": [1,1,16,16],
+        "type": "list_int"
+      },
+      {
+        "name": "strides",
+        "value": [1,1,16,16],
+        "type": "list_int"
+      },
+      {
+        "name": "padding",
+        "value": "SAME",
+        "type": "string"
+      },
+      {
+        "name": "data_format",
+        "value": "NCHW",
+        "type": "string"
+      },
+      {
+        "name": "offset_x",
+        "value": 0,
+        "type": "int"
+      }
+    ]
+  },
+  {
+    "op": "AvgPool",
+    "case_name" : "test_avg_pool_006",
+    "calc_expect_func_file" : "test_avg_pool_golden.py:calc_expect_func",
+    "input_desc": [
+      {
+        "format": "NHWC",
+        "ori_format": "NHWC",
+        "shape": [8,32,-1,80],
+        "ori_shape": [8,32,-1,80],
+        "typical_shape": [8,32,100,80],
+        "shape_range": [[1,224]],
+        "type": "float16",
+        "value_range": [[-1, 1]],
+        "data_distribute" : "uniform",
+        "name": "x"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "NHWC",
+        "ori_format": "NHWC",
+        "shape": [8,16,-1,80],
+        "ori_shape": [8,16,-1,80],
+        "typical_shape": [8,16,2,80],
+        "shape_range": [[1,224]],
+        "type": "float16",
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "ksize",
+        "value": [1,15,20,1],
+        "type": "list_int"
+      },
+      {
+        "name": "strides",
+        "value": [1,2,64,1],
+        "type": "list_int"
+      },
+      {
+        "name": "padding",
+        "value": "SAME",
+        "type": "string"
+      },
+      {
+        "name": "data_format",
+        "value": "NHWC",
+        "type": "string"
+      },
+      {
+        "name": "offset_x",
+        "value": 0,
+        "type": "int"
+      }
+    ]
+  },
+  {
+    "op": "AvgPool",
+    "case_name" : "test_avg_pool_007",
+    "calc_expect_func_file" : "test_avg_pool_golden.py:calc_expect_func",
+    "input_desc": [
+      {
+        "format": "NHWC",
+        "ori_format": "NHWC",
+        "shape": [8,32,-1,80],
+        "ori_shape": [8,32,-1,80],
+        "typical_shape": [8,32,100,80],
+        "shape_range": [[1,224]],
+        "type": "float16",
+        "value_range": [[-1, 1]],
+        "data_distribute" : "uniform",
+        "name": "x"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "NHWC",
+        "ori_format": "NHWC",
+        "shape": [8,16,-1,80],
+        "ori_shape": [8,16,-1,80],
+        "typical_shape": [8,16,2,80],
+        "shape_range": [[1,224]],
+        "type": "float16",
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "ksize",
+        "value": [1,15,20,1],
+        "type": "list_int"
+      },
+      {
+        "name": "strides",
+        "value": [1,2,64,1],
+        "type": "list_int"
+      },
+      {
+        "name": "padding",
+        "value": "SAME",
+        "type": "string"
+      },
+      {
+        "name": "data_format",
+        "value": "NHWC",
+        "type": "string"
+      },
+      {
+        "name": "offset_x",
+        "value": 0,
+        "type": "int"
+      }
+    ]
+  },
+  {
+    "op": "AvgPool",
+    "case_name" : "test_avg_pool_008",
+    "calc_expect_func_file" : "test_avg_pool_golden.py:calc_expect_func",
+    "input_desc": [
+      {
+        "format": "NCHW",
+        "ori_format": "NCHW",
+        "shape": [-1,-1,-1,-1],
+        "ori_shape": [-1,-1,-1,-1],
+        "typical_shape": [8,32,100,793],
+        "shape_range": [[1,224],[1,224],[1,224],[1,800]],
+        "type": "float16",
+        "value_range": [[-1, 1]],
+        "data_distribute" : "uniform",
+        "name": "x"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "NCHW",
+        "ori_format": "NCHW",
+        "shape": [-1,-1,-1,-1],
+        "ori_shape": [-1,-1,-1,-1],
+        "typical_shape": [8,32,7,50],
+        "shape_range": [[1,224],[1,224],[1,224],[1,224]],
+        "type": "float16",
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "ksize",
+        "value": [1,1,16,16],
+        "type": "list_int"
+      },
+      {
+        "name": "strides",
+        "value": [1,1,16,16],
+        "type": "list_int"
+      },
+      {
+        "name": "padding",
+        "value": "SAME",
+        "type": "string"
+      },
+      {
+        "name": "data_format",
+        "value": "NCHW",
+        "type": "string"
+      },
+      {
+        "name": "offset_x",
+        "value": 0,
+        "type": "int"
+      }
+    ]
+  },
+  {
+    "op": "AvgPool",
+    "case_name" : "test_avg_pool_009",
+    "calc_expect_func_file" : "test_avg_pool_golden.py:calc_expect_func",
+    "input_desc": [
+      {
+        "format": "NCHW",
+        "ori_format": "NCHW",
+        "shape": [-1,-1,-1,-1],
+        "ori_shape": [-1,-1,-1,-1],
+        "typical_shape": [8,32,40,20],
+        "shape_range": [[1,224],[1,224],[1,224],[1,224]],
+        "type": "float16",
+        "value_range": [[-1, 1]],
+        "data_distribute" : "uniform",
+        "name": "x"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "NCHW",
+        "ori_format": "NCHW",
+        "shape": [-1,-1,-1,-1],
+        "ori_shape": [-1,-1,-1,-1],
+        "typical_shape": [8,32,2,1],
+        "shape_range": [[1,224],[1,224],[1,224],[1,224]],
+        "type": "float16",
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "ksize",
+        "value": [1,1,16,16],
+        "type": "list_int"
+      },
+      {
+        "name": "strides",
+        "value": [1,1,16,16],
+        "type": "list_int"
+      },
+      {
+        "name": "padding",
+        "value": "VALID",
+        "type": "string"
+      },
+      {
+        "name": "data_format",
+        "value": "NCHW",
+        "type": "string"
+      },
+      {
+        "name": "offset_x",
+        "value": 0,
+        "type": "int"
+      }
+    ]
+  },
+  {
+    "op": "AvgPool",
+    "case_name" : "test_avg_pool_010",
+    "calc_expect_func_file" : "test_avg_pool_golden.py:calc_expect_func",
+    "input_desc": [
+      {
+        "format": "NHWC",
+        "ori_format": "NHWC",
+        "shape": [8,32,-1,80],
+        "ori_shape": [8,32,-1,80],
+        "typical_shape": [8,32,100,80],
+        "shape_range": [[1,224]],
+        "type": "float16",
+        "value_range": [[-1, 1]],
+        "data_distribute" : "uniform",
+        "name": "x"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "NHWC",
+        "ori_format": "NHWC",
+        "shape": [8,9,-1,80],
+        "ori_shape": [8,9,-1,80],
+        "typical_shape": [8,9,2,80],
+        "shape_range": [[1,224]],
+        "type": "float16",
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "ksize",
+        "value": [1,15,20,1],
+        "type": "list_int"
+      },
+      {
+        "name": "strides",
+        "value": [1,2,64,1],
+        "type": "list_int"
+      },
+      {
+        "name": "padding",
+        "value": "VALID",
+        "type": "string"
+      },
+      {
+        "name": "data_format",
+        "value": "NHWC",
+        "type": "string"
+      },
+      {
+        "name": "offset_x",
+        "value": 0,
+        "type": "int"
+      }
+    ]
+  },
+  {
+    "op": "AvgPool",
+    "case_name" : "test_avg_pool_011",
+    "calc_expect_func_file" : "test_avg_pool_golden.py:calc_expect_func",
+    "input_desc": [
+      {
+        "format": "NHWC",
+        "ori_format": "NHWC",
+        "shape": [8,32,-1,80],
+        "ori_shape": [8,32,-1,80],
+        "typical_shape": [8,32,100,80],
+        "shape_range": [[1,224]],
+        "type": "float16",
+        "value_range": [[-1, 1]],
+        "data_distribute" : "uniform",
+        "name": "x"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "NHWC",
+        "ori_format": "NHWC",
+        "shape": [8,9,-1,80],
+        "ori_shape": [8,9,-1,80],
+        "typical_shape": [8,9,2,80],
+        "shape_range": [[1,224]],
+        "type": "float16",
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "ksize",
+        "value": [1,15,20,1],
+        "type": "list_int"
+      },
+      {
+        "name": "strides",
+        "value": [1,2,64,1],
+        "type": "list_int"
+      },
+      {
+        "name": "padding",
+        "value": "VALID",
+        "type": "string"
+      },
+      {
+        "name": "data_format",
+        "value": "NHWC",
+        "type": "string"
+      },
+      {
+        "name": "offset_x",
+        "value": 0,
+        "type": "int"
+      }
+    ]
+  },
+  {
+    "op": "AvgPool",
+    "case_name" : "test_avg_pool_012",
+    "calc_expect_func_file" : "test_avg_pool_golden.py:calc_expect_func",
+    "input_desc": [
+      {
+        "format": "NCHW",
+        "ori_format": "NCHW",
+        "shape": [-1,-1,-1,-1],
+        "ori_shape": [-1,-1,-1,-1],
+        "typical_shape": [8,32,100,800],
+        "shape_range": [[1,224],[1,224],[1,224],[1,800]],
+        "type": "float16",
+        "value_range": [[-1, 1]],
+        "data_distribute" : "uniform",
+        "name": "x"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "NCHW",
+        "ori_format": "NCHW",
+        "shape": [-1,-1,-1,-1],
+        "ori_shape": [-1,-1,-1,-1],
+        "typical_shape": [8,32,6,50],
+        "shape_range": [[1,224],[1,224],[1,224],[1,224]],
+        "type": "float16",
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "ksize",
+        "value": [1,1,16,16],
+        "type": "list_int"
+      },
+      {
+        "name": "strides",
+        "value": [1,1,16,16],
+        "type": "list_int"
+      },
+      {
+        "name": "padding",
+        "value": "VALID",
+        "type": "string"
+      },
+      {
+        "name": "data_format",
+        "value": "NCHW",
+        "type": "string"
+      },
+      {
+        "name": "offset_x",
+        "value": 0,
+        "type": "int"
+      }
+    ]
   }
 ]

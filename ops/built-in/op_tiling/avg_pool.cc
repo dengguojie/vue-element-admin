@@ -69,6 +69,7 @@ struct TilingParam {
 };
 
 const int32_t MAX_STRIDE = 63;
+const int32_t MAX_K_SIZE = 255;
 void PrintTilingParam(const TilingParam& param)
 {
   OP_LOGD("AvgPoolTiling", "tiling_mode=%d.", param.tiling_mode);
@@ -270,6 +271,13 @@ bool AvgPoolTilingVector(const std::string& op_type, const ge::Operator& op_para
           "Get tiling failed, minimum processing unit must be ksize_h * ksize_w."),
         return false);
 
+  OP_TILING_CHECK((strides_h <= 0),
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "strides_h must be more than 0."),
+                  return false);
+  OP_TILING_CHECK((strides_w <= 0),
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "strides_w must be more than 0."),
+                  return false);
+
   CalTilingParam(param, input_shape, ub_ele, core_num, ksize_h, ksize_w, strides_h, strides_w, padding);
   SetTilingParam(param, run_info);
   PrintTilingParam(param);
@@ -364,9 +372,11 @@ bool AvgPoolTiling(const std::string& opType, const ge::Operator& opParas, const
 
   int32_t strides_h = opInfo.at("strides_h");
   int32_t strides_w = opInfo.at("strides_w");
+  int32_t k_size_h = opInfo.at("k_size_h");
+  int32_t k_size_w = opInfo.at("k_size_w");
   bool result = true;
 
-  if (strides_h <= MAX_STRIDE && strides_w <= MAX_STRIDE) {
+  if (strides_h <= MAX_STRIDE && strides_w <= MAX_STRIDE && k_size_h * k_size_w <= MAX_K_SIZE) {
     result = AvgPoolTilingCube(opType, opParas, opInfo, runInfo);
   } else {
     result = AvgPoolTilingVector(opType, opParas, opInfo, runInfo);

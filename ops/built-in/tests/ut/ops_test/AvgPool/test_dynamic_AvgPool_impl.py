@@ -468,6 +468,29 @@ case37 = {"params": [{"shape": (-1,1,752,-1,16), "dtype": "float16", "format": "
          "expect": RuntimeError,
          "support_expect": True}
 
+
+case38 = {"params": [{"shape": (1,-1,-1,32), "format": "NHWC", "dtype": "float16", "ori_shape": (1,-1,-1,32), "ori_format": "NHWC",
+                     "range":[(1, 1), (3, 100), (2, 100), (32, 32)]},
+                    None,
+                    None,
+                    {"shape": (1, -1, -1, 32),"format": "NHWC", "dtype": "float16", "ori_shape": (1, -1, -1, 32),"ori_format": "NHWC",
+                     "range":[(1, 1), (1, 99), (1, 99), (32, 32)]},
+                    [1,16,15,1], [1,2,2,1], "SAME", "NHWC"],
+         "case_name": "dynamic_AvgPool_case_38",
+         "expect": "success",
+         "support_expect": True}
+
+case39 = {"params": [{"shape": (1,-1,-1,32), "format": "NHWC", "dtype": "float16", "ori_shape": (1,-1,-1,32), "ori_format": "NHWC",
+                     "range":[(1, 1), (3, 100), (2, 100), (32, 32)]},
+                    None,
+                    None,
+                    {"shape": (1, -1, -1, 32),"format": "NHWC", "dtype": "float16", "ori_shape": (1, -1, -1, 32),"ori_format": "NHWC",
+                     "range":[(1, 1), (1, 99), (1, 99), (32, 32)]},
+                    [1,16,15,1], [1,2,2,1], "VALID", "NHWC"],
+         "case_name": "dynamic_AvgPool_case_39",
+         "expect": "success",
+         "support_expect": True}
+
 # check al1 buffer_tile
 case_al1_buffer_tile = {"params": [{"shape": (-1,17,-1,-1), "format": "NCHW", "dtype": "float16", "ori_shape": (-1,17,-1,-1), "ori_format": "NCHW",
                      "range":[(32, 36), (17, 17), (64, 127), (128, 191)]},
@@ -482,11 +505,11 @@ case_al1_buffer_tile = {"params": [{"shape": (-1,17,-1,-1), "format": "NCHW", "d
          "support_expect": True}
 
 
-ut_case.add_case(["Ascend910A"], case1)
-ut_case.add_case(["Ascend910A"], case2)
-ut_case.add_case(["Ascend910A"], case3)
-ut_case.add_case(["Ascend910A"], case4)
-ut_case.add_case(["Ascend910A"], case5)
+ut_case.add_case("all", case1)
+ut_case.add_case("all", case2)
+ut_case.add_case("all", case3)
+ut_case.add_case("all", case4)
+ut_case.add_case("all", case5)
 ut_case.add_case(["Ascend910A"], case6)
 ut_case.add_case(["Ascend910A"], case7)
 ut_case.add_case(["Ascend910A"], case8)
@@ -498,7 +521,7 @@ ut_case.add_case(["Ascend910A"], case13)
 ut_case.add_case(["Ascend910A"], case14)
 ut_case.add_case(["Ascend910A"], case15)
 ut_case.add_case(["Ascend910A"], case16)
-ut_case.add_case(["Ascend910A"], case17)
+ut_case.add_case("all", case17)
 ut_case.add_case(["Ascend910A"], case18)
 ut_case.add_case(["Ascend910A"], case19)
 ut_case.add_case(["Ascend910A"], case20)
@@ -514,11 +537,13 @@ ut_case.add_case(["Ascend910A"], case29)
 ut_case.add_case(["Ascend910A"], case30)
 ut_case.add_case(["Ascend910A"], case31)
 ut_case.add_case(["Ascend910A"], case32)
-ut_case.add_case(["Ascend910A"], case33)
-ut_case.add_case(["Ascend910A"], case34)
+ut_case.add_case("all", case33)
+ut_case.add_case("all", case34)
 ut_case.add_case(["Ascend910A"], case35)
 ut_case.add_case(["Ascend910A"], case36)
 ut_case.add_case(["Ascend910A"], case37)
+ut_case.add_case("all", case38)
+ut_case.add_case("all", case39)
 ut_case.add_case(["Ascend910A"], case_al1_buffer_tile)
 
 def test_avg_pool_fuzz_build_generalization(test_arg):

@@ -46,12 +46,11 @@ from tbe.dsl.compute.conv_compute import ConvParam
 from tbe.common.utils import log
 from typing import Union
 
-
-AVG_KERNEL_SIZE_H_MUL_W = 255 #kernel_h * kernel_w
-AVG_KERNEL_SIZE = 20 # maximum ksize
-MAX_CUBE_STRIDE = 63 # maximum cube stride
+AVG_KERNEL_SIZE_H_MUL_W = 255  # kernel_h * kernel_w
+AVG_KERNEL_SIZE = 20  # maximum ksize
+MAX_CUBE_STRIDE = 63  # maximum cube stride
 NONETYPE = type(None)
-MAX_INT32 = 2**31 - 1
+MAX_INT32 = 2 ** 31 - 1
 TILING_ARG_NUM = 24
 RESERVED_UB_SIZE = 8 * 1024
 EIGHT_BIT = 8
@@ -167,6 +166,18 @@ class AvgPool:
         self.repeat_w = self.tik_instance.Scalar("int32", name="repeat_w")
         self.rep_blk_h = self.tik_instance.Scalar("int32", name="rep_blk_h")
         self.factor_total = self.tik_instance.Scalar(self.dtype, name="factor_total")
+        self.fp_dtype = "float32"
+        self.int_dtype = "int32"
+        if not tbe_platform.api_check_support("tik.vconv", "s322f32") or \
+                not tbe_platform.api_check_support("tik.vmuls", "float32"):
+            self.fp_dtype = "float16"
+            if not tbe_platform.api_check_support("tik.vconv", "s322f16"):
+                self.int_dtype = "int16"
+
+        self.real_h = self.tik_instance.Scalar("int32", name="real_h")
+        self.real_w = self.tik_instance.Scalar("int32", name="real_w")
+        self.pos_h = self.tik_instance.Scalar("int32", name="pos_h")
+        self.pos_w = self.tik_instance.Scalar("int32", name="pos_w")
 
     def init_ub_scalar_double(self):
         self.size_loop = self.tik_instance.Scalar("int32", name="size_loop")
@@ -359,7 +370,8 @@ class AvgPool:
                     self.repeat_offset_src0.set_as(repeat_loop_idx * REPEAT_LIMIT * src0_rep * C_ZERO)
                     self.repeat_offset_src1.set_as(repeat_loop_idx * REPEAT_LIMIT * src1_rep * C_ZERO)
                     self.tik_instance.vadd(mask_len, dst[self.repeat_offset], src0[self.repeat_offset_src0],
-                                           src1[self.repeat_offset_src1], REPEAT_LIMIT, 1, src0_blk, src1_blk, dst_rep,
+                                           src1[self.repeat_offset_src1],
+                                           REPEAT_LIMIT, 1, src0_blk, src1_blk, dst_rep,
                                            src0_rep, src1_rep)
                 with self.tik_instance.if_scope(self.repeat_left > 0):
                     self.repeat_offset.set_as(self.repeat_loop * REPEAT_LIMIT * dst_rep * C_ZERO)
@@ -381,13 +393,64 @@ class AvgPool:
                 _inner(dst[self.size_offset:], src0[self.size_offset_src0:], src1[self.size_offset_src1:],
                        self.size_left)
 
-    def reduce_max(self, ub_x, ub_y, repeat_p, repeat_o):
+    def mean_func(self, repeat_o, ub_x, h_idx, w_idx):
+        def _int_conv_float(win_int):
+            win_fp = self.tik_instance.Scalar(self.fp_dtype, name="win_fp")
+            if not tbe_platform.api_check_support("tik.vconv", "s322f32") or \
+                    not tbe_platform.api_check_support("tik.vmuls", "float32"):
+                int_temp = self.tik_instance.Tensor(self.int_dtype, (1,), name="int_temp", scope=tik.scope_ubuf)
+                fp_temp = self.tik_instance.Tensor(self.fp_dtype, (1,), name="int_temp", scope=tik.scope_ubuf)
+                int_temp[0].set_as(win_int)
+                self.tik_instance.vec_conv(1, '', fp_temp, int_temp, 1, 8, 8, deqscale=1.0)
+                self.tik_instance.vec_rec(1, fp_temp, fp_temp, 1, 8, 8)
+                win_fp.set_as(fp_temp[0])
+            else:
+                self.tik_instance.scalar_conv('none', win_fp, win_int)
+                win_fp.set_as(1.0 / win_fp)
+
+            return win_fp
+
+        self.size_loop.set_as(repeat_o * self.size_w // C_ZERO)
+        if self.padding:
+            self.factor_total.set_as(1.0 / (self.ksize_h * self.ksize_w))
+            with self.tik_instance.for_range(0, self.size_loop) as size_loop_idx:
+                self.size_offset.set_as(size_loop_idx * C_ZERO)
+                self.tik_instance.vmuls(C_ZERO, ub_x[self.size_offset], ub_x[self.size_offset],
+                                        self.factor_total, 1, 1, 1, 1, 1)
+        else:
+            with self.tik_instance.for_range(0, self.size_loop) as size_loop_idx:
+                self.pos_h.set_as(h_idx + size_loop_idx // self.output_w)
+                self.pos_w.set_as((w_idx + size_loop_idx) % self.output_w)
+                self.real_h.set_as(self.ksize_h)
+                self.real_w.set_as(self.ksize_w)
+
+                with self.tik_instance.if_scope(self.pos_h * self.strides_h < self.pad_t):
+                    self.real_h.set_as(self.ksize_h - (self.pad_t - self.pos_h * self.strides_h))
+                with self.tik_instance.if_scope(self.pos_h * self.strides_h + self.ksize_h >
+                                                (self.pad_h - self.pad_b)):
+                    self.real_h.set_as(
+                        self.ksize_h - (self.pos_h * self.strides_h + self.ksize_h - (self.pad_h - self.pad_b)))
+                with self.tik_instance.if_scope(self.pos_w * self.strides_w < self.pad_l):
+                    self.real_w.set_as(self.ksize_w - (self.pad_l - self.pos_w * self.strides_w))
+                with self.tik_instance.if_scope(self.pos_w * self.strides_w + self.ksize_w >
+                                                self.pad_w - self.pad_r):
+                    self.real_w.set_as(
+                        self.ksize_w - (self.pos_w * self.strides_w + self.ksize_w - (self.pad_w - self.pad_r)))
+                window_int = self.tik_instance.Scalar(self.int_dtype, name="window_int")
+                window_int.set_as(self.real_h * self.real_w)
+                self.factor_total.set_as(_int_conv_float(window_int))
+                self.size_offset.set_as(size_loop_idx * C_ZERO)
+                self.tik_instance.vmuls(C_ZERO, ub_x[self.size_offset], ub_x[self.size_offset],
+                                        self.factor_total, 1, 1, 1, 1, 1)
+
+    def reduce_max(self, ub_x, ub_y, repeat_p, repeat_o, pos_idx):
         if self.ksize_w == 1:
             if self.strides_w == self.ksize_w:
                 self.reduce_max_rw(ub_y, ub_x, ub_x, repeat_p * self.size_w, self.strides_w, self.strides_w)
-            elif self.strides_w <= 255:
+            elif self.strides_w <= REPEAT_LIMIT:
                 with self.tik_instance.if_scope(
-                        tik.all(repeat_p >= self.repeat_w, self.output_w <= 255, self.pad_w <=255)):
+                        tik.all(repeat_p >= self.repeat_w, self.output_w <= REPEAT_LIMIT,
+                                self.pad_w <= REPEAT_LIMIT)):
                     self.reduce_max_rh(ub_y, ub_x, ub_x, repeat_p, self.size_w, self.strides_w, self.strides_w,
                                        self.output_w, self.pad_w, self.pad_w)
                 with self.tik_instance.else_scope():
@@ -401,22 +464,24 @@ class AvgPool:
                     self.offset_dst.set_as(h_idx * self.size_w)
                     self.offset_src0.set_as(h_idx * self.pad_w * C_ZERO)
                     self.reduce_max_rw(ub_y[self.offset_dst:], ub_x[self.offset_src0:], ub_x[self.offset_src0:],
-                                        self.size_w, self.strides_w, self.strides_w)
+                                       self.size_w, self.strides_w, self.strides_w)
         else:
             if self.strides_w == self.ksize_w:
                 self.reduce_avg_rw(ub_y, ub_x, ub_x[C_ZERO:], repeat_p * self.size_w, self.strides_w, self.strides_w)
                 with self.tik_instance.for_range(0, self.ksize_w - 2) as idx:
                     self.offset_w.set_as((idx + 2) * C_ZERO)
                     self.reduce_avg_rw(ub_y, ub_x[self.offset_w:], ub_y, repeat_p * self.size_w, self.strides_w, 1)
-            elif self.strides_w <= 255:
+            elif self.strides_w <= REPEAT_LIMIT:
                 with self.tik_instance.if_scope(
-                        tik.all(repeat_p >= self.repeat_w, self.output_w <= 255, self.pad_w <=255)):
-                    self.reduce_avg_rh(ub_y, ub_x, ub_x[C_ZERO:], repeat_p, self.size_w, self.strides_w, self.strides_w,
+                        tik.all(repeat_p >= self.repeat_w, self.output_w <= REPEAT_LIMIT,
+                                self.pad_w <= REPEAT_LIMIT)):
+                    self.reduce_avg_rh(ub_y, ub_x, ub_x[C_ZERO:],
+                                       repeat_p, self.size_w, self.strides_w, self.strides_w,
                                        self.output_w, self.pad_w, self.pad_w)
                     with self.tik_instance.for_range(0, self.ksize_w - 2) as idx:
                         self.offset_w.set_as((idx + 2) * C_ZERO)
                         self.reduce_avg_rh(ub_y, ub_x[self.offset_w:], ub_y, repeat_p, self.size_w, self.strides_w, 1,
-                                       self.output_w, self.pad_w, self.output_w)
+                                           self.output_w, self.pad_w, self.output_w)
                 with self.tik_instance.else_scope():
                     with self.tik_instance.for_range(0, repeat_p) as h_idx:
                         self.offset_dst.set_as(h_idx * self.size_w)
@@ -434,18 +499,19 @@ class AvgPool:
                     self.offset_src0.set_as(h_idx * self.pad_w * C_ZERO)
                     self.offset_src1.set_as(self.offset_src0 + C_ZERO)
                     self.reduce_avg_rw(ub_y[self.offset_dst:], ub_x[self.offset_src0:], ub_x[self.offset_src1:],
-                                        self.size_w, self.strides_w, self.strides_w)
+                                       self.size_w, self.strides_w, self.strides_w)
                     with self.tik_instance.for_range(0, self.ksize_w - 2) as idx:
                         self.offset_w.set_as(self.offset_src0 + (idx + 2) * C_ZERO)
                         self.reduce_avg_rw(ub_y[self.offset_dst:], ub_x[self.offset_w:], ub_y[self.offset_dst:],
-                                            self.size_w, self.strides_w, 1)
+                                           self.size_w, self.strides_w, 1)
 
         if self.ksize_h == 1:
             if self.strides_h == 1:
                 self.reduce_max_rw(ub_x, ub_y, ub_y, repeat_o * self.size_w, 1, 1)
             else:
                 with self.tik_instance.if_scope(
-                        tik.all(repeat_o >= self.repeat_w, self.output_w <= 255, self.rep_blk_h <= 255)):
+                        tik.all(repeat_o >= self.repeat_w, self.output_w <= REPEAT_LIMIT,
+                                self.rep_blk_h <= REPEAT_LIMIT)):
                     self.reduce_max_rh(ub_x, ub_y, ub_y, repeat_o, self.size_w, 1, 1,
                                        self.output_w, self.rep_blk_h, self.rep_blk_h)
                 with self.tik_instance.else_scope():
@@ -462,13 +528,14 @@ class AvgPool:
                     self.reduce_avg_rw(ub_x, ub_y[self.offset_h:], ub_x, repeat_o * self.size_w, 1, 1)
             else:
                 with self.tik_instance.if_scope(
-                        tik.all(repeat_o >= self.repeat_w, self.output_w <= 255, self.rep_blk_h <= 255)):
+                        tik.all(repeat_o >= self.repeat_w, self.output_w <= REPEAT_LIMIT,
+                                self.rep_blk_h <= REPEAT_LIMIT)):
                     self.reduce_avg_rh(ub_x, ub_y, ub_y[self.size_w:], repeat_o, self.size_w, 1, 1,
                                        self.output_w, self.rep_blk_h, self.rep_blk_h)
                     with self.tik_instance.for_range(0, self.ksize_h - 2) as idx:
                         self.offset_h.set_as((idx + 2) * self.size_w)
-                        self.reduce_avg_rh(ub_x, ub_y[self.offset_h:], ub_y, repeat_o, self.size_w, 1, 1,
-                                       self.output_w, self.rep_blk_h, self.output_w)
+                        self.reduce_avg_rh(ub_x, ub_y[self.offset_h:], ub_x, repeat_o, self.size_w, 1, 1,
+                                           self.output_w, self.rep_blk_h, self.output_w)
                 with self.tik_instance.else_scope():
                     with self.tik_instance.for_range(0, repeat_o) as h_idx:
                         self.offset_dst.set_as(h_idx * self.size_w)
@@ -480,17 +547,11 @@ class AvgPool:
                             self.offset_h.set_as(self.offset_src0 + (idx + 2) * self.size_w)
                             self.reduce_avg_rw(ub_x[self.offset_dst:], ub_y[self.offset_h:], ub_x[self.offset_dst:],
                                                self.size_w, 1, 1)
-        self.factor_total.set_as(1.0 / (self.ksize_h * self.ksize_w))
-        self.size_loop.set_as(repeat_o * self.size_w // C_ZERO)
-        with self.tik_instance.for_range(0, self.size_loop) as size_loop_idx:
-            self.size_offset.set_as(size_loop_idx * C_ZERO)
-            self.tik_instance.vmuls(C_ZERO, ub_x[self.size_offset], ub_x[self.size_offset],
-                                    self.factor_total, 1, 1, 1, 1, 1)
+        self.mean_func(repeat_o, ub_x, pos_idx[0], pos_idx[1])
 
     def tiling_c_dim_core_nc(self, core_idx, core_ele):
         '''Tiling c1 dim
         '''
-        #common params
         self.size_1.set_as(self.pad_t * self.pad_w * C_ZERO + self.pad_l * C_ZERO)
         self.offset_2.set_as((self.pad_h - self.pad_b) * self.pad_w * C_ZERO - self.pad_r * C_ZERO)
         self.size_2.set_as(self.pad_b * self.pad_w * C_ZERO + self.pad_r * C_ZERO)
@@ -498,14 +559,14 @@ class AvgPool:
         self.size_3.set_as((self.pad_r + self.pad_l) * C_ZERO)
         self.size_w.set_as(self.output_w * C_ZERO)
         self.burst_len_out.set_as(self.output_h * self.output_w)
-        #
         self.size.set_as(self.pad_h * self.pad_w * C_ZERO)
-        #
+        self.repeat_w.set_as(self.size_w // MASK)
+        self.rep_blk_h.set_as(self.output_w * self.strides_h)
+
         with self.tik_instance.if_scope(self.pad_h <= self.input_h):
             self.nburst.set_as(self.pad_h)
         with self.tik_instance.else_scope():
             self.nburst.set_as(self.input_h)
-        #
         with self.tik_instance.if_scope(self.pad_w <= self.input_w):
             self.repeat_3.set_as(0)
             self.burst_len_in.set_as(self.pad_w)
@@ -517,35 +578,32 @@ class AvgPool:
             self.src_stride.set_as(0)
             self.dst_stride.set_as(self.pad_r + self.pad_l)
 
-        #
         with self.tik_instance.new_stmt_scope():
-
             def _inner(ele_idx, ub_x, ub_y):
-                self.offset_in.set_as((core_idx * self.one_core_ele + ele_idx) * self.input_h * self.input_w  * C_ZERO)
+                self.offset_in.set_as((core_idx * self.one_core_ele + ele_idx) * self.input_h * self.input_w * C_ZERO)
                 self.offset_out.set_as(
-                    (core_idx * self.one_core_ele + ele_idx) * self.output_h * self.output_w  * C_ZERO)
-                #
-                with self.tik_instance.if_scope(tik.all(self.pad_w > 255, self.size_3 > 0)):
+                    (core_idx * self.one_core_ele + ele_idx) * self.output_h * self.output_w * C_ZERO)
+
+                with self.tik_instance.if_scope(tik.all(self.pad_w > REPEAT_LIMIT, self.size_3 > 0)):
                     self.vector_dup_continuous(ub_x, self.size)
                 with self.tik_instance.else_scope():
                     self.vector_dup_continuous(ub_x, self.size_1)
                     self.vector_dup_continuous(ub_x[self.offset_2:], self.size_2)
                     self.vector_dup_discrete(ub_x[self.offset_3:], self.repeat_3, self.size_3, 1, self.pad_w)
                 self.tik_instance.data_move(ub_x[self.size_1], self.input_gm[self.offset_in], 0, self.nburst,
-                                            self.burst_len_in,self.src_stride, self.dst_stride)
-                #
-                self.reduce_max(ub_x, ub_y, self.pad_h, self.output_h)
-                #
-                self.tik_instance.data_move(self.output_gm[self.offset_out],ub_x, 0, 1, self.burst_len_out,0 , 0)
+                                            self.burst_len_in, self.src_stride, self.dst_stride)
+                pos_idx = [0, 0]
+                self.reduce_max(ub_x, ub_y, self.pad_h, self.output_h, pos_idx)
 
-            #
+                self.tik_instance.data_move(self.output_gm[self.offset_out], ub_x, 0, 1, self.burst_len_out, 0, 0)
+
             self.init_ub_tensor()
             self.init_ub_scalar_double()
             with self.tik_instance.for_range(0, core_ele // 2) as ele_idx:
                 _inner(ele_idx * 2, self.ub_a, self.ub_b)
-                _inner(ele_idx * 2 + 1,  self.ub_c, self.ub_d)
+                _inner(ele_idx * 2 + 1, self.ub_c, self.ub_d)
             with self.tik_instance.if_scope(core_ele % 2 == 1):
-                _inner(core_ele - 1,  self.ub_a, self.ub_b)
+                _inner(core_ele - 1, self.ub_a, self.ub_b)
 
     def tiling_h_dim_core_nc(self, core_idx, core_ele, loop_num, loop_left):
         with self.tik_instance.for_range(0, loop_num) as loop_idx:
@@ -554,52 +612,53 @@ class AvgPool:
             self.tiling_h_dim_core_nc_process(core_idx, core_ele, loop_num, loop_left)
 
     def tiling_h_dim_core_nc_process(self, core_idx, core_ele, loop_idx, ele):
-        #common params
+        # common params
         self.before_h.set_as(loop_idx * self.h_factor * self.strides_h)
-        self.after_h.set_as((loop_idx * self.h_factor + ele -1) * self.strides_h + self.ksize_h)
+        self.after_h.set_as((loop_idx * self.h_factor + ele - 1) * self.strides_h + self.ksize_h)
         self.len_h.set_as(self.after_h - self.before_h)
         self.size_w.set_as(self.output_w * C_ZERO)
         self.burst_len_out.set_as(ele * self.output_w)
-        #
         self.size.set_as(self.len_h * self.pad_w * C_ZERO)
-        #
+        self.repeat_w.set_as(self.size_w // MASK)
+        self.rep_blk_h.set_as(self.output_w * self.strides_h)
+
         with self.tik_instance.if_scope(self.before_h < self.pad_t):
             self.size_1.set_as((self.pad_t - self.before_h) * self.pad_w * C_ZERO + self.pad_l * C_ZERO)
             self.offset_3.set_as(self.size_1 + self.input_w * C_ZERO)
             self.offset.set_as(0)
-            with self.tik_instance.if_scope(self.after_h <= self.pad_h -self.pad_b):
+            with self.tik_instance.if_scope(self.after_h <= self.pad_h - self.pad_b):
                 self.offset_2.set_as(self.len_h * self.pad_w * C_ZERO - self.pad_r * C_ZERO)
                 self.size_2.set_as(self.pad_r * C_ZERO)
-                self.repeat_3.set_as(self.after_h - self.pad_t -1)
+                self.repeat_3.set_as(self.after_h - self.pad_t - 1)
                 self.size_3.set_as((self.pad_r + self.pad_l) * C_ZERO)
                 self.nburst.set_as(self.after_h - self.pad_t)
             with self.tik_instance.else_scope():
                 self.offset_2.set_as((self.pad_h - self.pad_b - self.before_h) * self.pad_w * C_ZERO -
-                                    self.pad_r * C_ZERO)
+                                     self.pad_r * C_ZERO)
                 self.size_2.set_as((self.after_h - (self.pad_h - self.pad_b)) * self.pad_w * C_ZERO +
-                                  self.pad_r * C_ZERO)
-                self.repeat_3.set_as(self.input_h-1)
+                                   self.pad_r * C_ZERO)
+                self.repeat_3.set_as(self.input_h - 1)
                 self.size_3.set_as((self.pad_r + self.pad_l) * C_ZERO)
                 self.nburst.set_as(self.input_h)
         with self.tik_instance.else_scope():
             self.size_1.set_as(self.pad_l * C_ZERO)
             self.offset_3.set_as(self.size_1 + self.input_w * C_ZERO)
             self.offset.set_as((self.before_h - self.pad_t) * self.input_w * C_ZERO)
-            with self.tik_instance.if_scope(self.after_h <= self.pad_h -self.pad_b):
-                self.offset_2.set_as(self.len_h * self.pad_w *C_ZERO - self.pad_r * C_ZERO)
+            with self.tik_instance.if_scope(self.after_h <= self.pad_h - self.pad_b):
+                self.offset_2.set_as(self.len_h * self.pad_w * C_ZERO - self.pad_r * C_ZERO)
                 self.size_2.set_as(self.pad_r * C_ZERO)
-                self.repeat_3.set_as(self.len_h-1)
+                self.repeat_3.set_as(self.len_h - 1)
                 self.size_3.set_as((self.pad_r + self.pad_l) * C_ZERO)
                 self.nburst.set_as(self.len_h)
             with self.tik_instance.else_scope():
                 self.offset_2.set_as((self.pad_h - self.pad_b - self.before_h) * self.pad_w * C_ZERO -
-                                    self.pad_r * C_ZERO)
+                                     self.pad_r * C_ZERO)
                 self.size_2.set_as((self.after_h - (self.pad_h - self.pad_b)) * self.pad_w * C_ZERO +
-                                  self.pad_r * C_ZERO)
+                                   self.pad_r * C_ZERO)
                 self.repeat_3.set_as(self.pad_h - self.pad_b - self.before_h - 1)
                 self.size_3.set_as((self.pad_r + self.pad_l) * C_ZERO)
                 self.nburst.set_as(self.pad_h - self.pad_b - self.before_h)
-        #
+
         with self.tik_instance.if_scope(self.pad_w <= self.input_w):
             self.burst_len_in.set_as(self.pad_w)
             self.src_stride.set_as(self.input_w - self.pad_w)
@@ -609,36 +668,34 @@ class AvgPool:
             self.src_stride.set_as(0)
             self.dst_stride.set_as(self.pad_r + self.pad_l)
 
-        #
         with self.tik_instance.new_stmt_scope():
-
             def _inner(ele_idx, ub_x, ub_y):
-                self.offset_in.set_as((core_idx * self.one_core_ele + ele_idx) * self.input_h * self.input_w  * C_ZERO +
+                self.offset_in.set_as((core_idx * self.one_core_ele + ele_idx) * self.input_h * self.input_w * C_ZERO +
                                       self.offset)
-                self.offset_out.set_as((core_idx * self.one_core_ele + ele_idx) * self.output_h * self.output_w  *
-                                        C_ZERO + loop_idx * self.h_factor * self.output_w * C_ZERO)
-                #
-                with self.tik_instance.if_scope(tik.all(self.pad_w > 255, self.size_3 > 0)):
+                self.offset_out.set_as((core_idx * self.one_core_ele + ele_idx) * self.output_h * self.output_w *
+                                       C_ZERO + loop_idx * self.h_factor * self.output_w * C_ZERO)
+
+                with self.tik_instance.if_scope(tik.all(self.pad_w > REPEAT_LIMIT, self.size_3 > 0)):
                     self.vector_dup_continuous(ub_x, self.size)
                 with self.tik_instance.else_scope():
                     self.vector_dup_continuous(ub_x, self.size_1)
                     self.vector_dup_continuous(ub_x[self.offset_2:], self.size_2)
                     self.vector_dup_discrete(ub_x[self.offset_3:], self.repeat_3, self.size_3, 1, self.pad_w)
                 self.tik_instance.data_move(ub_x[self.size_1], self.input_gm[self.offset_in], 0, self.nburst,
-                                            self.burst_len_in,self.src_stride, self.dst_stride)
-                #
-                self.reduce_max(ub_x, ub_y, self.len_h, ele)
-                #
-                self.tik_instance.data_move(self.output_gm[self.offset_out],ub_x, 0, 1, self.burst_len_out,0 , 0)
-            
-            #
+                                            self.burst_len_in, self.src_stride, self.dst_stride)
+
+                pos_idx = [loop_idx * self.h_factor, 0]
+                self.reduce_max(ub_x, ub_y, self.len_h, ele, pos_idx)
+
+                self.tik_instance.data_move(self.output_gm[self.offset_out], ub_x, 0, 1, self.burst_len_out, 0, 0)
+
             self.init_ub_tensor()
             self.init_ub_scalar_double()
             with self.tik_instance.for_range(0, core_ele // 2) as ele_idx:
                 _inner(ele_idx * 2, self.ub_a, self.ub_b)
-                _inner(ele_idx * 2 +1,  self.ub_c, self.ub_d)
+                _inner(ele_idx * 2 + 1, self.ub_c, self.ub_d)
             with self.tik_instance.if_scope(core_ele % 2 == 1):
-                _inner(core_ele - 1,  self.ub_a, self.ub_b)
+                _inner(core_ele - 1, self.ub_a, self.ub_b)
 
     def tiling_w_dim_core_nc(self, core_idx, core_ele, loop_num, loop_left):
         with self.tik_instance.for_range(0, loop_num) as loop_idx:
@@ -647,27 +704,24 @@ class AvgPool:
             self.tiling_w_dim_core_nc_process(core_idx, core_ele, loop_num, loop_left)
 
     def tiling_w_dim_core_nc_process(self, core_idx, core_ele, loop_idx, ele):
-        #common params
+        # common params
         self.before_w.set_as(loop_idx * self.w_factor * self.strides_w)
-        self.after_w.set_as((loop_idx * self.w_factor + ele - 1)*self.strides_w + self.ksize_w)
+        self.after_w.set_as((loop_idx * self.w_factor + ele - 1) * self.strides_w + self.ksize_w)
         self.len_w.set_as(self.after_w - self.before_w)
         self.size_w.set_as(ele * C_ZERO)
         self.burst_len_out.set_as(ele)
-        #
         self.size.set_as(self.ksize_h * self.len_w * C_ZERO)
-        #
+
         with self.tik_instance.for_range(0, self.output_h) as h_idx:
-            #
             self.before_h.set_as(h_idx * self.h_factor * self.strides_h)
-            self.after_h = self.before_h + self.ksize_h
+            self.after_h.set_as(self.before_h + self.ksize_h)
             with self.tik_instance.if_scope(self.before_h < self.pad_t):
-                #
                 self.size_1.set_as((self.pad_t - self.before_h) * self.len_w * C_ZERO)
                 self.offset_2.set_as(0)
                 self.size_2.set_as(0)
                 self.repeat_3.set_as(self.after_h - self.pad_t)
                 self.nburst.set_as(self.after_h - self.pad_t)
-                #
+
                 with self.tik_instance.if_scope(self.before_w < self.pad_l):
                     with self.tik_instance.if_scope(self.after_w <= self.pad_w - self.pad_r):
                         self.offset_3.set_as(self.size_1)
@@ -687,15 +741,14 @@ class AvgPool:
                         self.src_stride.set_as(self.input_w - self.len_w)
                         self.dst_stride.set_as(0)
                     with self.tik_instance.else_scope():
-                        self.offset_3.set_as(self.size_1 + (self.pad_w - self.pad_r - self.before_w)*C_ZERO)
-                        self.size_3.set_as((self.after_w - (self.pad_w - self.pad_r))*C_ZERO)
+                        self.offset_3.set_as(self.size_1 + (self.pad_w - self.pad_r - self.before_w) * C_ZERO)
+                        self.size_3.set_as((self.after_w - (self.pad_w - self.pad_r)) * C_ZERO)
                         self.burst_len_in.set_as(self.pad_w - self.pad_r - self.before_w)
                         self.src_stride.set_as(self.before_w - self.pad_l)
                         self.dst_stride.set_as(self.after_w - (self.pad_w - self.pad_r))
             with self.tik_instance.else_scope():
-                #
                 self.size_1.set_as(0)
-                with self.tik_instance.if_scope(self.after_h <= self.pad_h -self.pad_b):
+                with self.tik_instance.if_scope(self.after_h <= self.pad_h - self.pad_b):
                     self.offset_2.set_as(0)
                     self.size_2.set_as(0)
                     self.repeat_3.set_as(self.ksize_h)
@@ -705,40 +758,40 @@ class AvgPool:
                     self.size_2.set_as((self.after_h - (self.pad_h - self.pad_b)) * self.len_w * C_ZERO)
                     self.repeat_3.set_as(self.pad_h - self.pad_b - self.before_h)
                     self.nburst.set_as(self.pad_h - self.pad_b - self.before_h)
-                #
-                with self.tik_instance.if_scope(self.before_w  < self.pad_l):    
-                    with self.tik_instance.if_scope(self.after_w  <= self.pad_w - self.pad_r):
+
+                with self.tik_instance.if_scope(self.before_w < self.pad_l):
+                    with self.tik_instance.if_scope(self.after_w <= self.pad_w - self.pad_r):
                         self.offset_3.set_as(0)
-                        self.size_3.set_as((self.pad_l - self.before_w)*C_ZERO)
-                        self.offset.set_as((self.before_h - self.pad_t)*self.input_w*C_ZERO)
+                        self.size_3.set_as((self.pad_l - self.before_w) * C_ZERO)
+                        self.offset.set_as((self.before_h - self.pad_t) * self.input_w * C_ZERO)
                         self.offset_ub.set_as(self.size_3)
                         self.burst_len_in.set_as(self.after_w - self.pad_l)
                         self.src_stride.set_as(self.input_w - (self.after_w - self.pad_l))
                         self.dst_stride.set_as(self.pad_l - self.before_w)
                 with self.tik_instance.else_scope():
-                    self.offset.set_as((self.before_h - self.pad_t)*self.input_w*C_ZERO +
-                                        (self.before_w - self.pad_l)*C_ZERO)
+                    self.offset.set_as((self.before_h - self.pad_t) * self.input_w * C_ZERO +
+                                       (self.before_w - self.pad_l) * C_ZERO)
                     self.offset_ub.set_as(0)
-                    with self.tik_instance.if_scope(self.after_w  <= self.pad_w - self.pad_r):
+                    with self.tik_instance.if_scope(self.after_w <= self.pad_w - self.pad_r):
                         self.offset_3.set_as(0)
                         self.size_3.set_as(0)
                         self.burst_len_in.set_as(self.len_w)
                         self.src_stride.set_as(self.input_w - self.len_w)
                         self.dst_stride.set_as(0)
                     with self.tik_instance.else_scope():
-                        self.offset_3.set_as((self.pad_w - self.pad_r - self.before_w)* C_ZERO)
-                        self.size_3.set_as(self.after_w - (self.pad_w - self.pad_r)* C_ZERO)
+                        self.offset_3.set_as((self.pad_w - self.pad_r - self.before_w) * C_ZERO)
+                        self.size_3.set_as((self.after_w - (self.pad_w - self.pad_r)) * C_ZERO)
                         self.burst_len_in.set_as(self.pad_w - self.pad_r - self.before_w)
                         self.src_stride.set_as(self.before_w - self.pad_l)
                         self.dst_stride.set_as(self.after_w - (self.pad_w - self.pad_r))
 
             with self.tik_instance.new_stmt_scope():
                 def _inner(ele_idx, ub_x, ub_y):
-                    self.offset_in.set_as((core_idx*self.one_core_ele + ele_idx)*self.input_h*self.input_w*
+                    self.offset_in.set_as((core_idx * self.one_core_ele + ele_idx) * self.input_h * self.input_w *
                                           C_ZERO + self.offset)
-                    self.offset_out.set_as((core_idx*self.one_core_ele + ele_idx)*self.output_h*self.output_w*
-                                          C_ZERO + h_idx*self.output_w*C_ZERO + loop_idx*self.w_factor*C_ZERO)
-                    with self.tik_instance.if_scope(tik.all(self.len_w > 255, self.size_3 > 0)):
+                    self.offset_out.set_as((core_idx * self.one_core_ele + ele_idx) * self.output_h * self.output_w *
+                                           C_ZERO + h_idx * self.output_w * C_ZERO + loop_idx * self.w_factor * C_ZERO)
+                    with self.tik_instance.if_scope(tik.all(self.len_w > REPEAT_LIMIT, self.size_3 > 0)):
                         self.vector_dup_continuous(ub_x, self.size)
                     with self.tik_instance.else_scope():
                         self.vector_dup_continuous(ub_x, self.size_1)
@@ -750,19 +803,22 @@ class AvgPool:
                         with self.tik_instance.for_range(0, self.ksize_h) as k_idx:
                             self.offset_dst.set_as(k_idx * self.size_w)
                             self.offset_src0.set_as(k_idx * self.len_w * C_ZERO)
-                            self.reduce_max_rw(ub_y[self.offset_dst:], ub_x[self.offset_src0:], ub_x[self.offset_src0:],
+                            self.reduce_max_rw(ub_y[self.offset_dst:], ub_x[self.offset_src0:],
+                                               ub_x[self.offset_src0:],
                                                self.size_w, self.strides_w, self.strides_w)
                     else:
                         with self.tik_instance.for_range(0, self.ksize_h) as k_idx:
                             self.offset_dst.set_as(k_idx * self.size_w)
                             self.offset_src0.set_as(k_idx * self.len_w * C_ZERO)
                             self.offset_src1.set_as(self.offset_src0 + C_ZERO)
-                            self.reduce_avg_rw(ub_y[self.offset_dst:], ub_x[self.offset_src0:], ub_x[self.offset_src1:],
+                            self.reduce_avg_rw(ub_y[self.offset_dst:], ub_x[self.offset_src0:],
+                                               ub_x[self.offset_src1:],
                                                self.size_w, self.strides_w, self.strides_w)
                             with self.tik_instance.for_range(0, self.ksize_w - 2) as idx:
                                 self.offset_w.set_as(self.offset_src0 + (idx + 2) * C_ZERO)
-                                self.reduce_avg_rw(ub_y[self.offset_dst:], ub_x[self.offset_w:], ub_y[self.offset_dst:],
-                                               self.size_w, self.strides_w, 1)
+                                self.reduce_avg_rw(ub_y[self.offset_dst:], ub_x[self.offset_w:],
+                                                   ub_y[self.offset_dst:],
+                                                   self.size_w, self.strides_w, 1)
                     if self.ksize_h == 1:
                         self.reduce_max_rw(ub_x, ub_y, ub_y, self.size_w, 1, 1)
                     else:
@@ -770,7 +826,10 @@ class AvgPool:
                         with self.tik_instance.for_range(0, self.ksize_h - 2) as idx:
                             self.offset_h.set_as((idx + 2) * self.size_w)
                             self.reduce_avg_rw(ub_x, ub_y[self.offset_h:], ub_x, self.size_w, 1, 1)
+
+                    self.mean_func(1, ub_x, h_idx, loop_idx * self.w_factor)
                     self.tik_instance.data_move(self.output_gm[self.offset_out], ub_x, 0, 1, self.burst_len_out, 0, 0)
+
                 self.init_ub_tensor()
                 self.init_ub_scalar_double()
                 with self.tik_instance.for_range(0, core_ele // 2) as ele_idx:
@@ -1131,9 +1190,9 @@ def _check_window_rule(ksize, strides, padding, data_format, offset_x):
                            "In op[%s], the num of dimensions of input[%s] "
                            "should be in the range of [%s, %s], "
                            "but actually is [%s]." %
-                           (error_info['op_name'], error_info['param_name'],
-                            error_info['min_value'], error_info['max_value'],
-                            error_info['real_value']))
+                           (error_info.get('op_name'), error_info.get('param_name'),
+                            error_info.get('min_value'), error_info.get('max_value'),
+                            error_info.get('real_value')))
 
     if len(strides) != 4:
         error_info = {}
@@ -1147,25 +1206,13 @@ def _check_window_rule(ksize, strides, padding, data_format, offset_x):
                            "In op[%s], the num of dimensions of input[%s] "
                            "should be in the range of [%s, %s], "
                            "but actually is [%s]." %
-                           (error_info['op_name'], error_info['param_name'],
-                            error_info['min_value'], error_info['max_value'],
-                            error_info['real_value']))
+                           (error_info.get('op_name'), error_info.get('param_name'),
+                            error_info.get('min_value'), error_info.get('max_value'),
+                            error_info.get('real_value')))
 
     ksize_c = ksize[3] if data_format in ("NHWC",) else ksize[1]
     strides_c = strides[3] if data_format in ("NHWC",) else strides[1]
     window_size = ksize[1] * ksize[2] if data_format in ("NHWC",) else ksize[2] * ksize[3]
-    if window_size > AVG_KERNEL_SIZE_H_MUL_W:
-        error_info = {}
-        error_info['errCode'] = para_check.OP_ERROR_CODE_000
-        error_info['op_name'] = 'avg_pool'
-        error_info['param_name'] = "window_size"
-        error_info['expected_value'] = '256'
-        error_info['real_value'] = str(window_size)
-        raise RuntimeError("In op[%s], the parameter[%s] should less than [%s], "
-                           "but actually is [%s]." %
-                           (error_info['op_name'], error_info['param_name'],
-                            error_info['expected_value'],
-                            error_info['real_value']))
 
     if ksize[0] != 1 or (ksize_c != 1):
         error_info = {}
@@ -1176,10 +1223,9 @@ def _check_window_rule(ksize, strides, padding, data_format, offset_x):
         error_info['real_value'] = ",".join((str(ksize[1]), str(ksize[3])))
         raise RuntimeError("In op[%s], the parameter[%s] should be [%s], "
                            "but actually is [%s]." %
-                           (error_info['op_name'], error_info['param_name'],
-                            error_info['expected_value'],
-                            error_info['real_value']))
-
+                           (error_info.get('op_name'), error_info.get('param_name'),
+                            error_info.get('expected_value'),
+                            error_info.get('real_value')))
 
     if strides[0] != 1 or strides_c != 1:
         error_info = {}
@@ -1189,10 +1235,10 @@ def _check_window_rule(ksize, strides, padding, data_format, offset_x):
         error_info['expected_value'] = '1'
         error_info['real_value'] = ",".join((str(strides[1]), str(strides[3])))
         raise RuntimeError(error_info, "In op[%s], the parameter[%s] should be [%s], "
-                           "but actually is [%s]." % (error_info['op_name'],
-                                                      error_info['param_name'],
-                                                      error_info['expected_value'],
-                                                      error_info['real_value']))
+                                       "but actually is [%s]." % (error_info.get('op_name'),
+                                                                  error_info.get('param_name'),
+                                                                  error_info.get('expected_value'),
+                                                                  error_info.get('real_value')))
 
     if padding not in ("SAME", "VALID"):
         error_info = {}
@@ -1202,12 +1248,12 @@ def _check_window_rule(ksize, strides, padding, data_format, offset_x):
         error_info['expected_value_list'] = ",".join(("SAME", "VALID"))
         error_info['real_value'] = padding
         raise RuntimeError(error_info, "In op[%s], parameter[%s] should be one of [%s], "
-                            "but actually is [%s]." % (error_info['op_name'],
-                                                       error_info['param_name'],
-                                                       error_info['expected_value_list'],
-                                                       error_info['real_value']))
+                                       "but actually is [%s]." % (error_info.get('op_name'),
+                                                                  error_info.get('param_name'),
+                                                                  error_info.get('expected_value_list'),
+                                                                  error_info.get('real_value')))
 
-    if data_format not in("NCHW", "NHWC", "NC1HWC0"):
+    if data_format not in ("NCHW", "NHWC", "NC1HWC0"):
         error_info = {}
         error_info['errCode'] = para_check.OP_ERROR_CODE_015
         error_info['op_name'] = 'avg_pool'
@@ -1219,10 +1265,10 @@ def _check_window_rule(ksize, strides, padding, data_format, offset_x):
                                        "should be one of [%s], "
                                        "but actuall"
                                        "y is [%s]."
-                           % (error_info['op_name'],
-                              error_info['param_name'],
-                              error_info['excepted_format_list'],
-                              error_info['format']))
+                           % (error_info.get('op_name'),
+                              error_info.get('param_name'),
+                              error_info.get('excepted_format_list'),
+                              error_info.get('format')))
 
     if offset_x != 0:
         error_info = {}
@@ -1233,10 +1279,10 @@ def _check_window_rule(ksize, strides, padding, data_format, offset_x):
         error_info['real_value'] = str(offset_x)
         raise RuntimeError(error_info, "In op[%s], the parameter[%s] should be [%s], "
                                        "but actually is [%s]."
-                           % (error_info['op_name'],
-                              error_info['param_name'],
-                              error_info['expected_value'],
-                              error_info['real_value']))
+                           % (error_info.get('op_name'),
+                              error_info.get('param_name'),
+                              error_info.get('expected_value'),
+                              error_info.get('real_value')))
 
 
 def _avg_pool_check_rule(input_shape, input_dtype, output_dtype,
@@ -1520,6 +1566,8 @@ def avg_pool(x, filter, bias, y, ksize, strides,
         raise RuntimeError("Unsupported input format!")
     tbe_context.get_context().add_compile_info("strides_h", strides_h)
     tbe_context.get_context().add_compile_info("strides_w", strides_w)
+    tbe_context.get_context().add_compile_info("k_size_h", window[0])
+    tbe_context.get_context().add_compile_info("k_size_w", window[1])
 
     if bias is None and filter is not None:
         dilations = (1, 1, 1, 1)
