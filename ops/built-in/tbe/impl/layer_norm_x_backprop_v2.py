@@ -496,6 +496,8 @@ def _get_pd_var_front(data, cast_dtype):
     ----------
     data: dict
         placeholders after cast
+    cast_dtype: str
+        if api_check_support float32, then equal to float32 else float16
 
     Returns
     -------
@@ -529,6 +531,8 @@ def _get_pd_var(data, params, shape_x, pd_xl, cast_dtype):
         shape of x
     pd_xl: tvm.tensor
         data_dy*data_gamma
+    cast_dtype: str
+        if api_check_support float32, then equal to float32 else float16
 
     Returns
     -------
@@ -574,6 +578,8 @@ def _get_pd_mean(params, pd_xl, pd_var, var_elta_2, sub_x_mean, cast_dtype):
         np.power((data_variance + EPSLON), (-0.5))
     sub_x_mean: tvm.tensor
         data_x - data_mean
+    cast_dtype: str
+        if api_check_support float32, then equal to float32 else float16
 
     Returns
     -------
@@ -591,9 +597,13 @@ def _get_pd_mean(params, pd_xl, pd_var, var_elta_2, sub_x_mean, cast_dtype):
     return pd_mean_1
 
 
-def _get_pd_x_front(data, params, shape_x, cast_dtype):
+def _get_pd_x(data, params, shape_x, dtype, cast_dtype):
     """
-    compute front part of pd_x according to data, params and shape_x
+    compute pd_x, res_for_gamma according to data, params and shape_x
+
+    `pd_x     = pd_xl * np.power((data_variance + EPSLON), (-0.5))`
+               `+ pd_var * (2.0 / m) * (data_x - data_mean) + pd_mean * (1.0 / m)`
+    `res_for_gamma = (data_x - data_mean) * np.power((data_variance + EPSLON), (-0.5))`
 
     Parameters
     ----------
@@ -604,19 +614,17 @@ def _get_pd_x_front(data, params, shape_x, cast_dtype):
         "mean_num": mean_num}
     shape_x: list or tuple
         shape of x
+    dtype: str
+        the data type
+    cast_dtype: str
+        if api_check_support float32, then equal to float32 else float16
 
     Returns
     -------
-    pd_x_1: tvm.tensor
-        pd_xl*np.power((data_variance + EPSLON), (-0.5))
-    pd_x_2: tvm.tensor
-        pd_var*(2.0/m)*(data_x - data_mean)
-    pd_x_3: tvm.tensor
-        pd_mean*(1.0/m)
-    var_elta_2_cast: tvm.tensor
-        np.power((data_variance + EPSLON), (-0.5))
-    sub_x_mean: tvm.tensor
-        data_x - data_mean
+    pd_x: tvm.tensor
+        partial derivation of x
+    res_for_gamma: tvm.tensor
+        `(data_x - data_mean)*np.power((data_variance + EPSLON), (-0.5))`
     """
     pd_xl = _get_pd_xl(data, shape_x)
 
@@ -632,36 +640,6 @@ def _get_pd_x_front(data, params, shape_x, cast_dtype):
     pdx2_broad = tbe.broadcast(pd_var, shape_x)
     pd_x_2 = tbe.vmul(pdx2_broad, sub_x_mean)
     pd_x_3 = tbe.vmuls(pd_mean, tvm.const((params.get("mean_num")**(-1)), dtype=cast_dtype))
-
-    return pd_x_1, pd_x_2, pd_x_3, res_for_gamma
-
-
-def _get_pd_x(data, params, shape_x, dtype, cast_dtype):
-    """
-    compute pd_x according to data, params and shape_x
-
-    Parameters
-    ----------
-    data: dict
-        placeholders after cast
-    params: dict
-        {"param_axis": param_axis, "reduce_axis": reduce_axis,
-        "mean_num": mean_num}
-    shape_x: list or tuple
-        shape of x
-    dtype: str
-        the data type
-
-    Returns
-    -------
-    pd_x: tvm.tensor
-        partial derivation of x
-    var_elta_2_cast: tvm.tensor
-        np.power((data_variance + EPSLON), (-0.5))
-    sub_x_mean: tvm.tensor
-        data_x - data_mean
-    """
-    pd_x_1, pd_x_2, pd_x_3, res_for_gamma = _get_pd_x_front(data, params, shape_x, cast_dtype)
 
     pdx_broad = tbe.broadcast(pd_x_3, shape_x)
     pdx_add = tbe.vadd(pd_x_1, pd_x_2)
@@ -690,6 +668,8 @@ def _get_res(data, params, shape_x, dtype, cast_dtype):
         shape of x
     dtype: str
         the data type
+    cast_dtype: str
+        if api_check_support float32, then equal to float32 else float16
 
     Returns
     -------
@@ -937,9 +917,9 @@ def _get_pd_mean_nz(param_nz, pd_xl, pd_var, var_elta_2, sub_x_mean, cast_dtype)
     return pd_mean_1
 
 
-def _get_pd_x_front_nz(data, param_nz, cast_dtype):
+def _get_pd_x_nz(data, param_nz, dtype, cast_dtype):
     """
-    compute front part of pd_x according to data, params and shape_x
+    compute pd_x according to data, params and shape_x
 
     """
     pd_xl = _get_pd_xl_nz(data, param_nz)
@@ -955,16 +935,6 @@ def _get_pd_x_front_nz(data, param_nz, cast_dtype):
     pdx2_broad = _broadcast_nz(pd_var, param_nz.get("shape_x_nz"))
     pd_x_2 = tbe.vmul(pdx2_broad, sub_x_mean)
     pd_x_3 = tbe.vmuls(pd_mean, tvm.const((param_nz.get("mean_num")**(-1)), dtype=cast_dtype))
-
-    return pd_x_1, pd_x_2, pd_x_3, res_for_gamma
-
-
-def _get_pd_x_nz(data, param_nz, dtype, cast_dtype):
-    """
-    compute pd_x according to data, params and shape_x
-
-    """
-    pd_x_1, pd_x_2, pd_x_3, res_for_gamma = _get_pd_x_front_nz(data, param_nz, cast_dtype)
 
     pdx_broad = _broadcast_nz(pd_x_3, param_nz.get("shape_x_nz"))
     pdx_add = tbe.vadd(pd_x_1, pd_x_2)
