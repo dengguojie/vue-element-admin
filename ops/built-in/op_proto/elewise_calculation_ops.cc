@@ -358,6 +358,70 @@ COMMON_INFER_FUNC_REG(FusedMulAdd, FusedMulAddInferShape);
 VERIFY_FUNC_REG(FusedMulAdd, FusedMulAddVerify);
 // ---------------------FusedMulAdd END-----------------
 
+// ---------------------FusedMulAddAdd--------------------
+IMPLEMT_VERIFIER(FusedMulAddAdd, FusedMulAddAddVerify) {
+  DataType input_type_x1 = op.GetInputDesc("x1").GetDataType();
+  DataType input_type_x2 = op.GetInputDesc("x2").GetDataType();
+  DataType input_type_x3 = op.GetInputDesc("x3").GetDataType();
+  DataType input_type_x4 = op.GetInputDesc("x4").GetDataType();
+  if (input_type_x1 != input_type_x2) {
+    string err_msg1 = ConcatString("The ",op.GetName().c_str()," op dtype is not same, type1:",input_type_x1, ", type2:",input_type_x2);
+    std::string err_msg = OtherErrMsg(err_msg1);
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    return GRAPH_FAILED;
+  }
+
+  if (input_type_x2 != input_type_x3) {
+    string err_msg1 = ConcatString("The ",op.GetName().c_str()," op dtype is not same, type2:",input_type_x2, ", type3:",input_type_x3);
+    std::string err_msg = OtherErrMsg(err_msg1);
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    return GRAPH_FAILED;
+  }
+
+  if (input_type_x3 != input_type_x4) {
+    string err_msg1 = ConcatString("The ",op.GetName().c_str()," op dtype is not same, type3:",input_type_x3, ", type4:",input_type_x4);
+    std::string err_msg = OtherErrMsg(err_msg1);
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    return GRAPH_FAILED;
+  }
+
+  return GRAPH_SUCCESS;
+}
+
+IMPLEMT_COMMON_INFERFUNC(FusedMulAddAddInferShape) {
+  AscendString opName;
+  CHECK(op.GetName(opName) != GRAPH_SUCCESS,
+        OP_LOGE(opName.GetString(), "Failed to get op name of FusedMulAddAdd"), return GRAPH_FAILED);
+
+  auto opDesc = OpDescUtils::GetOpDescFromOperator(op);
+  GeTensorDescPtr x1Desc = opDesc->MutableInputDesc("x1");
+  std::vector<int64_t> x1Dims = x1Desc->MutableShape().GetDims();
+  GeTensorDescPtr x2Desc = opDesc->MutableInputDesc("x2");
+  std::vector<int64_t> x2Dims = x2Desc->MutableShape().GetDims();
+  GeTensorDescPtr x3Desc = opDesc->MutableInputDesc("x3");
+  std::vector<int64_t> x3Dims = x3Desc->MutableShape().GetDims();
+  GeTensorDescPtr x4Desc = opDesc->MutableInputDesc("x4");
+  std::vector<int64_t> x4Dims = x4Desc->MutableShape().GetDims();
+
+  GeTensorDescPtr yDesc = opDesc->MutableOutputDesc("y");
+  CHECK(yDesc == nullptr, OP_LOGE(opName.GetString(), "Failed to get y desc"), return GRAPH_FAILED);
+  
+  yDesc->SetDataType(x1Desc->GetDataType());
+
+  if (IsUnknownVec(x1Dims) || IsUnknownVec(x2Dims) || IsUnknownVec(x3Dims) || IsUnknownVec(x4Dims)) {
+    OP_LOGW(op.GetName().c_str(), "The shape of inputs are illegal, maybe have -1 in shape!");
+    return GRAPH_FAILED;
+  }
+  
+  yDesc->SetShape(ge::GeShape(x1Dims));
+  
+  return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(FusedMulAddAdd, FusedMulAddAddInferShape);
+VERIFY_FUNC_REG(FusedMulAddAdd, FusedMulAddAddVerify);
+// ---------------------FusedMulAddAdd END-----------------
+
 // ---------------------AddV2--------------------------
 IMPLEMT_VERIFIER(AddV2, AddV2Verify) {
   if (!CheckTwoInputDtypeSame(op, "x1", "x2")) {

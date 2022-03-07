@@ -1430,6 +1430,8 @@ vector_B:
       - ops/built-in/tests/ut/ops_test/Floor/test_Floor_proto.cpp
       - ops/built-in/tests/ut/ops_test/FusedMulAdd/test_FusedMulAdd_impl.py
       - ops/built-in/tests/ut/ops_test/FusedMulAdd/test_FusedMulAdd_proto.cpp
+      - ops/built-in/tests/ut/ops_test/FusedMulAddAdd/test_FusedMulAddAdd_impl.py
+      - ops/built-in/tests/ut/ops_test/FusedMulAddAdd/test_FusedMulAddAdd_proto.cpp
       - ops/built-in/tests/ut/ops_test/FusedMulAddN/test_FusedMulAddN_proto.cpp
       - ops/built-in/tests/ut/ops_test/FusedMulApplyMomentum/test_FusedMulApplyMomentum_proto.cpp
       - ops/built-in/tests/ut/ops_test/Gather/test_Gather_impl.py
@@ -2345,6 +2347,7 @@ unkown:
       - ops/built-in/tbe/impl/max_pool.py
       - ops/built-in/tbe/impl/soft_shrink_grad.py
       - ops/built-in/tbe/impl/fused_mul_add.py
+      - ops/built-in/tbe/impl/fused_mul_add_add.py
       - ops/built-in/tbe/impl/nhwc_2_fractal_z_c04.py
       - ops/built-in/tbe/impl/confusion_transpose_d.py
       - ops/built-in/tbe/impl/fake_quant_with_min_max_vars_per_channel_gradient.py

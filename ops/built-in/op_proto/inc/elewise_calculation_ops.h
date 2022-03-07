@@ -1177,6 +1177,31 @@ REG_OP(FusedMulAdd)
     .OP_END_FACTORY_REG(FusedMulAdd)
 
 /**
+*@brief Confuse mul+add+add with broadcast. \n
+
+*@par Inputs:
+*Four inputs, including:
+* @li x1: A Tensor. Must be one of the following types:int32, float16, float32.
+* @li x2: A Tensor of the same type as "x1".
+* @li x3: A Tensor of the same type as "x1".
+* @li x4: A Tensor of the same type as "x1". \n
+
+*@par Outputs:
+* y: A Tensor. Has the same type as "x1". \n
+
+*@par Restrictions:
+*Warning: THIS FUNCTION IS EXPERIMENTAL.  Please do not use.
+*/
+
+REG_OP(FusedMulAddAdd)
+    .INPUT(x1, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))
+    .INPUT(x2, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))
+    .INPUT(x3, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))
+    .INPUT(x4, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))
+    .OUTPUT(y, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))
+    .OP_END_FACTORY_REG(FusedMulAddAdd)
+	
+/**
 *@brief Returns x1 + x2 element-wise. \n
 
 *
