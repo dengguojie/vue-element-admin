@@ -42,6 +42,7 @@ struct ConvAttr {
   int dim_size;
   int input_num;
   bool trans_2d = false;
+  std::string auto_pad = "NOTSET";
 };
 
 Status SetAttrToOp(const ge::onnx::NodeProto* node, ge::Operator& op) {
@@ -194,14 +195,15 @@ Status SetFormat(ge::Operator& op, const int& dims) {
 
 Status GetConvAttr(const ge::Operator& op, ConvAttr& convAttr) {
   // check attr value, if value is null, then set default value here
-  std::string pad_mode = "NOTSET";
   auto ret_strides = op.GetAttr("strides", convAttr.strides);
   auto ret_pads = op.GetAttr("pads", convAttr.pads);
   auto ret_dilations = op.GetAttr("dilations", convAttr.dilations);
-  op.GetAttr("auto_pad", pad_mode);
-  if (pad_mode != "NOTSET") {
+  op.GetAttr("auto_pad", convAttr.auto_pad);
+  std::string pad_mode = convAttr.auto_pad;
+
+  if (pad_mode != "NOTSET" && convAttr.dim_size == INPUT_5D) {
     ONNX_PLUGIN_LOGE("Conv",
-                     "The attr of auto_pad is not NOTSET, unsupported other value for now, transform failed,"
+                     "The attr of auto_pad is not NOTSET for 5D, unsupported other value for now, transform failed,"
                      "may cause precision error.");
     return FAILED;
   }
@@ -240,14 +242,18 @@ Status GetConvAttr(const ge::Operator& op, ConvAttr& convAttr) {
     strides_list_default.push_back(1);
     dilations_list_default.push_back(1);
     pad_list_default.push_back(0);
+    pad_list_default.push_back(0);
   }
 
-  if (convAttr.strides.size() == 2)
+  if (convAttr.strides.size() == 2) {
     convAttr.strides = strides_list_default;
-  if (convAttr.dilations.size() == 2)
+  }
+  if (convAttr.dilations.size() == 2) {
     convAttr.dilations = dilations_list_default;
-  if (convAttr.pads.size() == 0)
+  }
+  if (convAttr.pads.size() == 0) {
     convAttr.pads = pad_list_default;
+  }
   return SUCCESS;
 }
 
@@ -343,6 +349,10 @@ static Status ParseOpToGraphConv(const ge::Operator& op, Graph& graph) {
     ONNX_PLUGIN_LOGE("Conv", "just support 4D or 5D input, transform failed.");
     return FAILED;
   }
+
+  // set conv with the auto_pad
+  OpDesc op_desc = ge::OpDescUtils::GetOpDescFromOperator(conv);
+  ge::AttrUtils::SetStr(op_desc, "auto_pad", tbeAttr.auto_pad);
 
   outputs.emplace_back(conv, std::vector<std::size_t>{0});
   graph.SetInputs(inputs).SetOutputs(outputs);
