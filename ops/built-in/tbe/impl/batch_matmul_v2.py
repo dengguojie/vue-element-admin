@@ -475,6 +475,8 @@ def batch_matmul_compute(input_x, input_y, bias=None, offset_w=None, output_z=No
     batch_shape_a = ori_shape_x[:-2] if len(ori_shape_x) > 2 else []
     batch_shape_b = ori_shape_y[:-2] if len(ori_shape_y) > 2 else []
     batch_shape_out = ori_shape_out[:-2] if len(ori_shape_out) > 2 else []
+    input_x.op.attrs["ori_batch_shape"] = batch_shape_a
+    input_y.op.attrs["ori_batch_shape"] = batch_shape_b
 
     output_format = output_z.get("format")
     output_format = "ND" if output_format == "NHWC" else output_format
@@ -775,6 +777,10 @@ def batch_matmul_v2(input_x, input_y, bias=None, offset_w=None, output_z=None, t
         shape_bias_dup = (shape_bias[len(shape_bias) - 2], shape_bias[len(shape_bias) - 1])
         bias_batch_size = functools.reduce(lambda x, y: x * y, shape_bias[:-2])
         shape_bias_dup = (bias_batch_size,) + shape_bias_dup
+
+    if input_y.get("dtype").lower() == "int8":
+        c1hw = functools.reduce(lambda x, y: x * y, shape_b_dup[:-3])
+        shape_b_dup = (c1hw, ) + shape_b_dup[-3:]
 
     tensor_a = tvm.placeholder(shape_a_dup, name='tensor_a',
                                attrs={'format': format_a,

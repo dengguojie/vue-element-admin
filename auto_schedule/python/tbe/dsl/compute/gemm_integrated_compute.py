@@ -709,7 +709,6 @@ class GEMMCompute(FormatCompute):
                         and shape_b_len == 4
                         and self.tensor_b.dtype == "int8"
                         and not self.trans_b
-                        and self.tensor_b.op.attrs["ori_format"] == "HWCN"
                         and self.format_b == "FRACTAL_Z")
             if is_valid:
                 if ori_shape_b_len == 4:
@@ -724,7 +723,9 @@ class GEMMCompute(FormatCompute):
                 self.tensor_b = tvm.compute(tensor_b_reshape,
                                             lambda hw_idx, c1_idx, n1_idx, n0_idx, c0_idx:
                                             self.tensor_b(c1_idx * height * width + hw_idx, n1_idx, n0_idx, c0_idx),
-                                            name="tensor_b_reshape")
+                                            name="tensor_b_reshape",
+                                            attrs={"ori_batch_shape": self.para_dict.get("batch_shape_b")})
+                self.b_shape = tensor_b_reshape
 
     def calculate(self):
         """

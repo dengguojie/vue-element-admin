@@ -717,5 +717,69 @@
         "type": "bool"
       }
     ]
+  },
+  {
+    "op": "BatchMatMulV2",
+    "case_name": "test_BatchMatMulV2_013",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [
+          3,
+          32,
+          32
+        ],
+        "type": "int8",
+        "value_range": [
+          [
+            -1,
+            1
+          ]
+        ],
+        "data_distribute": "uniform",
+        "name": "x1"
+      },
+      {
+        "format": "ND",
+        "shape": [
+          3,
+          32,
+          32
+        ],
+        "type": "int8",
+        "value_range": [
+          [
+            -1,
+            1
+          ]
+        ],
+        "data_distribute": "uniform",
+        "name": "x2"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [
+          3,
+          32,
+          32
+        ],
+        "type": "int32",
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "adj_x1",
+        "value": false,
+        "type": "bool"
+      },
+      {
+        "name": "adj_x2",
+        "value": false,
+        "type": "bool"
+      }
+    ]
   }
 ]
