@@ -466,7 +466,7 @@ class ElewiseSchedule(VectorSchedule):
                         ub_tail_tag = 1
                         break
                     ub_split_inner = new_ub_split_inner
-        return ub_tail_tag ,ub_split_inner
+        return ub_tail_tag, ub_split_inner
 
     def _calculate_tiling(self):
         """
