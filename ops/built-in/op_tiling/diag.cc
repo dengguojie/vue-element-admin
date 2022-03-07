@@ -56,7 +56,7 @@ static void PrintTilingParam(const TilingParam& param) {
 
 static void CalTilingParam(TilingParam& param, int64_t input_num, int64_t aicore_num) {
   param.input_num = input_num;
-  if (aicore_num == 0){
+  if (aicore_num == 0) {
       VECTOR_INNER_ERR_REPORT_TILIING("diag", "aicore_num = 0 is not support");
       return;
   }

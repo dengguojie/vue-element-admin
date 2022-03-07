@@ -300,7 +300,7 @@ def check_param(input_x, output_y, tiles, axis, kernel_name):
         shape_x_adapt.append(shape_x[i])
         shape_y_adapt.append(shape_x[i])
 
-    return axis, shape_x_adapt, shape_y_adapt, dtype_x
+    return [axis, shape_x_adapt, shape_y_adapt, dtype_x]
 
 
 def check_same_shape(shape_x, shape_y):
