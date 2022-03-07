@@ -305,8 +305,10 @@ def update_shape_base_other_format_dynamic(input_dict):
                 shape_c1_dim = -1
                 temp_range = [(1, None)]
                 if shape_h_dim > 0 and shape_w_dim > 0:
-                    ceil_res = int(math.ceil(input_range[0][1] / (shape_h_dim * shape_w_dim)))
-                    upper = None if input_range[0][1] is None else ceil_res
+                    if input_range[0][1] is None:
+                        upper = None
+                    else:
+                        upper = int(math.ceil(input_range[0][1] / (shape_h_dim * shape_w_dim)))
                     floor_res = int(math.floor(input_range[0][0] / (shape_h_dim * shape_w_dim)))
                     lower = 1 if floor_res == 0 else floor_res
                     temp_range = [(lower, upper)]
