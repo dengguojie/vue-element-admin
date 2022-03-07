@@ -114,6 +114,10 @@ Status SubFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<NodeP
   vector<int64_t> subDimInfo = subShape.GetDims();
   int32_t shapeSize = 1;
   for (auto it : subDimInfo) {
+    if(it < 0){
+      OP_LOGI(PATTERN_SUB.c_str(), "SubFusionPass do not support dynamic shape, not changed");
+      return NOT_CHANGED;
+    }
     shapeSize *= static_cast<int32_t>(it);
   }
   vector<int32_t> zeroNum(shapeSize, 0);
