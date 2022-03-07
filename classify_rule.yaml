@@ -2632,6 +2632,7 @@ unkown:
       - ops/built-in/tbe/impl/dynamic/nms_with_mask.py
       - ops/built-in/tbe/impl/dynamic/assign.py
       - ops/built-in/tbe/impl/dynamic/selu.py
+      - ops/built-in/tbe/impl/dynamic/selu_grad.py
       - ops/built-in/tbe/impl/dynamic/wts_arq.py
       - ops/built-in/tbe/impl/dynamic/segment_sum.py
       - ops/built-in/tbe/impl/dynamic/space_to_batch.py
@@ -3078,6 +3079,7 @@ unkown:
       - ops/built-in/framework/tf_plugin/relu_grad_plugin.cc
       - ops/built-in/framework/tf_plugin/sparse_apply_adadelta.cc
       - ops/built-in/framework/tf_plugin/selu_plugin.cc
+      - ops/built-in/framework/tf_plugin/selu_grad_plugin.cc
       - ops/built-in/framework/tf_plugin/get_shape_plugin.cc
       - ops/built-in/framework/tf_plugin/scale_and_translate_plugin.cc
       - ops/built-in/framework/tf_plugin/xdivy_plugin.cc

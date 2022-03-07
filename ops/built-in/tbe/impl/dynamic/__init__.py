@@ -300,6 +300,7 @@ from .elu import elu
 from .bn_infer import bn_infer
 from .bn_infer_grad import bn_infer_grad
 from .selu import selu
+from .selu_grad import selu_grad
 from .binary_cross_entropy import binary_cross_entropy
 from .binary_cross_entropy_grad import binary_cross_entropy_grad
 from .softmax_v2 import softmax_v2

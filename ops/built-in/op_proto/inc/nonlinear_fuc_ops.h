@@ -481,6 +481,28 @@ REG_OP(Selu)
     .OP_END_FACTORY_REG(Selu)
 
 /**
+*@brief Computes SeluGrad backprops: gradients * (outputs + scale * alpha)
+*    if outputs < 0, scale * gradients otherwise .
+
+*@par Inputs:
+* Two inputs, including:
+*@li gradients: A Tensor. Must be one of the following types: float32, float16,
+* int32, int8, uint8
+*@li outputs: A Tensor. Must be one of the following types: float32, float16,
+* int32, int8, uint8
+*@par Outputs:
+*y: A Tensor. Must have the same type as "gradients" .
+
+*@par Third-party framework compatibility
+* Compatible with the TensorFlow operator SeluGrad.
+*/
+REG_OP(SeluGrad)
+    .INPUT(gradients, TensorType::RealNumberType())
+    .INPUT(outputs, TensorType::RealNumberType())
+    .OUTPUT(y, TensorType::RealNumberType())
+    .OP_END_FACTORY_REG(SeluGrad)
+
+/**
 *@brief Computes rectified linear gradients for a ReLU operation . \n
 
 *@par Inputs:

@@ -471,6 +471,51 @@ IMPLEMT_COMMON_INFERFUNC(SeluInferShape) {
 COMMON_INFER_FUNC_REG(Selu, SeluInferShape);
 // ----------------Selu END-------------------
 
+// ----------------SeluGrad-------------------
+IMPLEMT_VERIFIER(SeluGrad, SeluGradVerify) {
+  if (!CheckTwoInputDtypeSame(op, "gradients", "outputs")) {
+    return GRAPH_FAILED;
+  }
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  GeTensorDescPtr tensordesc_input1 = op_desc->MutableInputDesc("gradients");
+  GeTensorDescPtr tensordesc_input2 = op_desc->MutableInputDesc("outputs");
+  CHECK(op_desc == nullptr ||
+        tensordesc_input1 == nullptr ||
+        tensordesc_input2 == nullptr,
+        OP_LOGE(op.GetName().c_str(), "invalid OpDesc."), return GRAPH_FAILED);
+  std::vector<int64_t> dimsX = tensordesc_input1->GetShape().GetDims();
+  std::vector<int64_t> dimsY = tensordesc_input2->GetShape().GetDims();
+  // unknown rank
+  if (IsUnknownRankShape(dimsX) || IsUnknownRankShape(dimsY)) {
+    OP_LOGI(op.GetName().c_str(), "One of input is Unknown Rank Shape");
+    return GRAPH_SUCCESS;
+  }
+  if (dimsX.size() != dimsY.size()) {
+    OP_LOGE(op.GetName().c_str(), "The two input dimensions are different.");
+    return GRAPH_FAILED;
+  } else {
+    for (size_t i = 0; i < dimsX.size(); i++) {
+      CHECK((dimsX[i] != dimsY[i]) && (dimsX[i] != -1) && (dimsY[i] != -1),
+            OP_LOGE(op.GetName().c_str(), "The two input shape are different."),
+            return GRAPH_FAILED);
+    }
+    return GRAPH_SUCCESS;
+  }
+}
+IMPLEMT_COMMON_INFERFUNC(SeluGradInferShape) {
+  if (!InferShapeAndTypeTwoInOneOutBroadcast(op, "gradients", "outputs", "y")) {
+    return GRAPH_FAILED;
+  }
+  if (!InferShapeRangeTwoInOneOutBroadcase(op, "gradients", "outputs", "y")) {
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(SeluGrad, SeluGradInferShape);
+VERIFY_FUNC_REG(SeluGrad, SeluGradVerify);
+// ----------------SeluGrad END-------------------
+
 // ----------------ReluGrad-------------------
 IMPLEMT_VERIFIER(ReluGrad, ReluGradVerify) {
   if (!CheckTwoInputDtypeSame(op, "gradients", "features")) {

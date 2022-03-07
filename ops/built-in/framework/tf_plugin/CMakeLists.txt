@@ -378,6 +378,7 @@ set(_tf_plugins
   segment_sum_plugin.cc
   select_plugin.cc
   select_plugin_v2.cc
+  selu_grad_plugin.cc
   selu_plugin.cc
   sigmoid_grad_plugin.cc
   sigmoid_plugin.cc
