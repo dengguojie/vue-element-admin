@@ -31,6 +31,6 @@ Status AutoMappingFnNpuGetFloatStatusV2(const google::protobuf::Message* op_src,
 REGISTER_CUSTOM_OP("NPUGetFloatStatusV2")
     .FrameworkType(TENSORFLOW)
     .OriginOpType("NpuGetFloatStatusV2")
-    .ParseParamsFn(AutoMappingFn)
+    .ParseParamsFn(AutoMappingFnNpuGetFloatStatusV2)
     .ImplyType(ImplyType::TVM);
 }  // namespace domi
