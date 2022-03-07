@@ -600,9 +600,9 @@ bool Reduce::IsEnableReducePad() const {
                 !reduceTilingInfo.atomic && input_shape[0] / core_num >= pad_max_entire_size)
       || (input_shape_size == SHAPE_LENGTH_THREE && ((reduceTilingInfo.atomic && input_shape[1] / core_num >=
       pad_max_entire_size)||
-      (!reduceTilingInfo.atomic &&
+      (!reduceTilingInfo.atomic && input_shape[0] != 1 &&
       ((input_shape[0] >= core_num && input_shape[0] / core_num * input_shape[1] >= pad_max_entire_size)
-      || (input_shape[0] < core_num && input_shape[0] != 1 && input_shape[INDEX_OF_LAST_DIM_OF_ARA_CASE] < block_size
+      || (input_shape[0] < core_num && input_shape[INDEX_OF_LAST_DIM_OF_ARA_CASE] < block_size
       && input_shape[1] >= pad_max_entire_size)))))) {
     return true;
   }
