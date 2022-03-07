@@ -138,6 +138,23 @@ def op_select_format(x, paddings, y, kernel_name="pad"):
     return param_dynamic_in_json
 
 
+# 'pylint: disable=unused-argument,too-many-return-statements
+def check_supported(x, paddings, y, kernel_name="pad"):
+    """
+    check supported
+    """
+    black_list_shape = [
+                         [1, 3200, 256], [1, 3204, 256], [1, 3208, 256], [1, 3216, 256], [1, 3232, 256], 
+                         [1, 3264, 256], [1, 3328, 256], [1, 3456, 256]
+                       ]
+
+    x_shape = x.get("ori_shape")
+    shape_t = list(x_shape)
+    if shape_t in black_list_shape:
+        return False, "no support for the shape"
+
+    return True, ""
+
 class PadInit(OpBase):
     """
     Function: class that execute pad

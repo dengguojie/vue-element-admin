@@ -46,9 +46,11 @@ static const std::string OP_TYPE_PAD = "Pad";
 static const std::string OP_TYPE_PADD = "PadD";
 static const std::string OP_TYPE_CAST = "Cast";
 static const std::string OP_TYPE_CONST = "Const";
+static const std::string OP_TYPE_CONSTANT = "Constant";
 static const std::string PADDINGS = "paddings";
 static const std::vector<std::string> SUPPORT_PLATFORM_PATTERN = {"Ascend310", "Ascend610", "Ascend615", "Ascend710",
                                                                   "Ascend910"};
+static const std::vector<int64_t> BLACK_SHAPE = {1, 3200, 256};
 
 vector<FusionPattern*> PaddUpdateFusionPass::DefinePatterns() {
   OP_LOGD(FUSED_OP_TYPE.c_str(), "Enter into define PaddUpdateFusionPass pattern");
@@ -116,7 +118,7 @@ Status PaddUpdateFusionPass::CheckFusedNode(const ge::NodePtr& fusedNode) {
                     return NOT_CHANGED);
 
   std::string preNodeType = outAnchor->GetOwnerNode()->GetType();
-  FUSION_PASS_CHECK(preNodeType == OP_TYPE_CAST || preNodeType == OP_TYPE_CONST,
+  FUSION_PASS_CHECK(preNodeType == OP_TYPE_CAST || preNodeType == OP_TYPE_CONST || preNodeType == OP_TYPE_CONSTANT,
                     OP_LOGD(FUSED_OP_TYPE.c_str(), "Do not fusion for the type of pre node is Cast or Const"),
                     return NOT_CHANGED);
 
@@ -209,6 +211,28 @@ Status PaddUpdateFusionPass::AddFusionNodes(ge::ComputeGraph& graph, const ge::N
   return SUCCESS;
 }
 
+Status PaddUpdateFusionPass::RemoveFusionNodes(ge::ComputeGraph& graph, ge::NodePtr& constNode, ge::NodePtr& padNode) {
+  OP_LOGD(FUSED_OP_TYPE.c_str(), "RemovefusionNodes begin");
+
+  FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != graph.RemoveNode(constNode),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Failed to remove Const node"),
+                    return FAILED);
+
+  for (auto inAnchor : padNode->GetAllInDataAnchors()) {
+    if (inAnchor != nullptr) {
+      inAnchor->UnlinkAll();
+    }
+  }
+  if (padNode->GetInControlAnchor() != nullptr) {
+    padNode->GetInControlAnchor()->UnlinkAll();
+  }
+  FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != graph.RemoveNode(padNode),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Failed to remove Pad node"), return FAILED);
+
+  OP_LOGD(FUSED_OP_TYPE.c_str(), "RemovefusionNodes end");
+  return SUCCESS;
+}
+
 Status PaddUpdateFusionPass::RemoveFusedNode(ge::ComputeGraph& graph, ge::NodePtr& fusedNode) {
   OP_LOGD(FUSED_OP_TYPE.c_str(), "RemovefusedNode begin");
 
@@ -248,6 +272,19 @@ Status PaddUpdateFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
   FUSION_PASS_CHECK(addNodeRet != SUCCESS,
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Failed to add Const and Pad node"),
                     return addNodeRet);
+
+  std::vector<int64_t> padShape = padNode->GetOpDesc()->GetInputDesc(0).GetShape().GetDims();
+  bool isBlackShape = IsVectorEquals(padShape, BLACK_SHAPE);
+  bool isPadSupported = CheckOpSupported(padNode);
+  if (isBlackShape || !isPadSupported) {
+    OP_LOGD(FUSED_OP_TYPE.c_str(), "Failed to check op supported");
+    Status removeNodeRet = RemoveFusionNodes(graph, constNode, padNode);
+    FUSION_PASS_CHECK(removeNodeRet != SUCCESS,
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Failed to remove fusion nodes"),
+                      return removeNodeRet);
+    return NOT_CHANGED;
+  }
+
   newNodes.push_back(constNode);
   newNodes.push_back(padNode);
 

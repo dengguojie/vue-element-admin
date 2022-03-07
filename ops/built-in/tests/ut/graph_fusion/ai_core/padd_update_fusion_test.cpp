@@ -29,6 +29,7 @@
 #define private public
 #include "common/util/platform_info.h"
 
+using namespace std;
 using namespace ge;
 using namespace op;
 
@@ -178,6 +179,56 @@ TEST_F(padd_update_fusion_test, padd_update_fusion_test_03) {
   auto paddOp = PadD("PadD_03");
   paddOp.set_input_x(x).set_attr_paddings({{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}});
   paddOp.update_output_desc_y(SimpleTensorDesc("y", {1, 16, 3, 7, 16}, FORMAT_NC1HWC0, DT_FLOAT));
+
+  std::vector<Operator> inputs{x};
+  std::vector<Operator> outputs{paddOp};
+
+  Graph graph(testCaseName.c_str());
+  graph.SetInputs(inputs).SetOutputs(outputs);
+  ComputeGraphPtr computeGraph = GraphUtils::GetComputeGraph(graph);
+
+  fe::FusionPassTestUtils::InferShapeAndType(computeGraph);
+  GE_DUMP(computeGraph, testCaseName + "_after_infer_shape");
+  fe::FusionPassTestUtils::RunGraphFusionPass("PaddUpdateFusionPass", fe::SECOND_ROUND_BUILT_IN_GRAPH_PASS,
+                                              *computeGraph);
+  GE_DUMP(computeGraph, testCaseName + "_after_fusion");
+
+  bool findPaddNode = false;
+  bool findPadNode = false;
+  bool findConstNode = false;
+  for (auto iNode : computeGraph->GetAllNodes()) {
+    if (iNode->GetType() == "PadD") {
+      findPaddNode = true;
+    } else if (iNode->GetType() == "Pad") {
+      findPadNode = true;
+    } else if (iNode->GetType() == "Const") {
+      findConstNode = true;
+    }
+  }
+
+  fe::PlatformInfoManager::Instance().platform_info_map_.clear();
+
+  EXPECT_EQ(findPaddNode, true);
+  EXPECT_EQ(findPadNode, false);
+  EXPECT_EQ(findConstNode, false);
+}
+
+TEST_F(padd_update_fusion_test, padd_update_fusion_test_04) {
+  std::string testCaseName = "padd_update_fusion_test_04";
+
+  fe::PlatformInfo platformInfo;
+  fe::OptionalInfo optiCompilationInfo;
+  platformInfo.soc_info.ai_core_cnt = 1;
+  platformInfo.str_info.ccec_aic_version = "dav-s200";
+  optiCompilationInfo.soc_version = "Ascend710";
+  fe::PlatformInfoManager::Instance().platform_info_map_["Ascend710"] = platformInfo;
+  fe::PlatformInfoManager::Instance().SetOptionalCompilationInfo(optiCompilationInfo);
+
+  auto x = CreateDataNode("x", {1, 3200, 256}, FORMAT_ND, DT_FLOAT);
+
+  auto paddOp = PadD("PadD_04");
+  paddOp.set_input_x(x).set_attr_paddings({{0, 0}, {2, 2}, {0, 0}});
+  paddOp.update_output_desc_y(SimpleTensorDesc("y", {1, 3204, 256}, FORMAT_ND, DT_FLOAT));
 
   std::vector<Operator> inputs{x};
   std::vector<Operator> outputs{paddOp};
