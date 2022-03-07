@@ -30,7 +30,7 @@
 
 namespace optiling {
 namespace {
-const std::unordered_map<int64_t, int64_t> SPLIT_FACTORS{
+const std::unordered_map<int64_t, int64_t> SPLIT_FACTORS {
     {1, 32767},
     {2, 32767},
     {4, 16383},
