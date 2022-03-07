@@ -19,14 +19,40 @@ ut_case.add_case("all", {
     "support_expect": True})
 
 ut_case.add_case("all", {
-    "params": [{"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (2, 5000), "shape": (2, 5000),
+    "params": [{"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (2, 40), "shape": (2, 40),
                 "param_type": "input"},
-               {"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (2, 5000), "shape": (2, 5000),
+               {"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (2, 40), "shape": (2, 40),
                 "param_type": "output"},
-               {"dtype": "int32", "format": "ND", "ori_format": "ND", "ori_shape": (2, 5000), "shape": (2, 5000),
+               {"dtype": "int32", "format": "ND", "ori_format": "ND", "ori_shape": (2, 40), "shape": (2, 40),
                 "param_type": "output"},
                -1, True],
     "case_name": "test1",
+    "expect": "success",
+    "format_expect": ["ND"],
+    "support_expect": True})
+
+ut_case.add_case("all", {
+    "params": [{"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (2, 80), "shape": (2, 80),
+                "param_type": "input"},
+               {"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (2, 80), "shape": (2, 80),
+                "param_type": "output"},
+               {"dtype": "int32", "format": "ND", "ori_format": "ND", "ori_shape": (2, 80), "shape": (2, 80),
+                "param_type": "output"},
+               -1, True],
+    "case_name": "test2",
+    "expect": "success",
+    "format_expect": ["ND"],
+    "support_expect": True})
+
+ut_case.add_case("all", {
+    "params": [{"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (1, 5000), "shape": (1, 5000),
+                "param_type": "input"},
+               {"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (1, 5000), "shape": (1, 5000),
+                "param_type": "output"},
+               {"dtype": "int32", "format": "ND", "ori_format": "ND", "ori_shape": (1, 5000), "shape": (1, 5000),
+                "param_type": "output"},
+               -1, True],
+    "case_name": "test3",
     "expect": "success",
     "format_expect": ["ND"],
     "support_expect": True})
@@ -39,7 +65,7 @@ ut_case.add_case("all", {
                {"dtype": "int32", "format": "ND", "ori_format": "ND", "ori_shape": (2, 50000), "shape": (2, 50000),
                 "param_type": "output"},
                -1, True],
-    "case_name": "test1",
+    "case_name": "test4",
     "expect": "success",
     "format_expect": ["ND"],
     "support_expect": True})
@@ -52,7 +78,7 @@ ut_case.add_case("all", {
                {"dtype": "int32", "format": "ND", "ori_format": "ND", "ori_shape": (2, 3, 4, 10, 32, 8, 3),
                "shape": (2, 3, 4, 10, 32, 8, 3), "param_type": "output"},
                -1, True],
-    "case_name": "test1",
+    "case_name": "test5",
     "expect": "success",
     "format_expect": ["ND"],
     "support_expect": True})

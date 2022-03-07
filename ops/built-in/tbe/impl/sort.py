@@ -43,10 +43,6 @@ BLOCK = 16
 NUM_BLOCK = 2048
 # sorting limit for data volume
 DATA_LIMITE = 100000
-# aicore num in 310
-MINI_CORE = 2
-# aicore num in 910
-CLOULD_CORE = 32
 
 
 def check_supported(x, y1, y2, axis, descending, kernel_name="sort"):
@@ -94,6 +90,245 @@ def check(x, y1, y2, axis, kernel_name):
     num = shape[axis]
 
     return shape, dtype, num
+
+
+@tbe_platform.fusion_manager.fusion_manager.register("sort")
+def sort_compute(tik_instance, dtype, num, num_16, num_2048, core_idx, used_aicore_num, data_out,
+                 data_indices, input_gm, temp, num_gm, descending, cce_product):
+    """
+    Function: sortcompute in UB.
+    Modify : 2020-08-03
+
+    Attention : This way is unstable (can't compare two scalar).
+    Init base parameters
+    Parameters
+    ----------
+    dtype, num_16, core_idx, num, distance, shape, big_distance, L : for index compute
+    data_out, data_indices, input_gm : for data move
+    ----------
+    """
+
+    if num <= NUM_BLOCK:
+        idx_ub = tik_instance.Tensor(dtype, [NUM_BLOCK], name="idx_ub", scope=tik.scope_ubuf)
+        input_ub = tik_instance.Tensor(dtype, [num_16 * PROPOSAL_NUM * 2], name="input_ub", scope=tik.scope_ubuf)
+
+        offset_in = core_idx * num
+        offset_out = core_idx * num_16
+        dest_pos_ub = num_16 * PROPOSAL_NUM
+        n_repeat_total = num_16 // BLOCK
+        # 1. Move data from OUT to UB
+        tik_instance.data_move(input_ub[dest_pos_ub], input_gm[offset_in], 0, 1, n_repeat_total, 0, 0)
+        max_num = tik_instance.Scalar('float16', init_value=MAX_VAL)
+        min_num = tik_instance.Scalar('float16', init_value=MIN_VAL)
+        # Add ineffective object for 16 alignment
+        if descending:
+            with tik_instance.for_range(0, num_16 - num) as i:
+                input_ub[(num + i) + dest_pos_ub].set_as(min_num)
+        else:
+            with tik_instance.for_range(0, num_16 - num) as i:
+                input_ub[(num + i) + dest_pos_ub].set_as(max_num)
+
+        tik_instance.vconcat(input_ub[0], input_ub[dest_pos_ub], n_repeat_total, VAL_IDX)
+
+        if cce_product == tbe_platform.ASCEND_310:
+            data_out_ub_ = tik_instance.Tensor(dtype, [BLOCK], name="data_out_ub_", scope=tik.scope_ubuf)
+            data_indices_ub_int_ = tik_instance.Tensor("int32", [BLOCK], name="data_indices_ub_int_",
+                                                       scope=tik.scope_ubuf)
+            with tik_instance.for_range(0, num) as i2:
+                data_indices_ub_int_.set_as(num - 1 - i2)
+                tik_instance.vec_conv(1, "none", data_out_ub_, data_indices_ub_int_, 1, 0, 0, deqscale=1.0)
+                idx_ub[(num - 1 - i2)].set_as(data_out_ub_[0])
+        else:
+            idx = tik_instance.Scalar(dtype="float32", init_value=num)
+            with tik_instance.for_range(0, num) as i2:
+                idx.set_as(idx - 1)
+                idx_ub[(num - 1 - i2)].set_as(idx)
+        tik_instance.vconcat(input_ub[0], idx_ub[0], n_repeat_total, INT_IDX)
+
+        # 2. vbs16
+        tik_instance.vrpsort16(dst=input_ub[dest_pos_ub], src=input_ub[0], repeat_times=n_repeat_total)
+        # 3. vms4
+        input_ub, dest_pos_ub = vms4(tik_instance, num_16, input_ub, dest_pos_ub)
+        # 4. Move Data from UB to OUT
+        data_out, data_indices = moveout(tik_instance, num_16, num, data_out, offset_out, input_ub,
+                                         dest_pos_ub, data_indices, descending, cce_product)
+
+    else:
+        idx_ub = tik_instance.Tensor(dtype, [NUM_BLOCK], name="idx_ub", scope=tik.scope_ubuf)
+        tmp_ub = tik_instance.Tensor(dtype, [NUM_BLOCK], name="tmp_ub", scope=tik.scope_ubuf)
+
+        if cce_product == tbe_platform.ASCEND_310:
+            data_out_ub_ = tik_instance.Tensor(dtype, [BLOCK], name="data_out_ub_", scope=tik.scope_ubuf)
+            data_indices_ub_int_ = tik_instance.Tensor("int32", [BLOCK], name="data_indices_ub_int_",
+                                                       scope=tik.scope_ubuf)
+            with tik_instance.for_range(0, NUM_BLOCK) as i2:
+                data_indices_ub_int_.set_as(i2)
+                tik_instance.vec_conv(1, "none", data_out_ub_, data_indices_ub_int_, 1, 0, 0, deqscale=1.0)
+                idx_ub[i2].set_as(data_out_ub_[0])
+        else:
+            idx = tik_instance.Scalar(dtype="float32", init_value=0)
+            with tik_instance.for_range(0, NUM_BLOCK) as i2:
+                idx_ub[i2].set_as(idx)
+                idx.set_as(idx + 1)
+        offset = (core_idx % used_aicore_num) * num_gm * NUM_BLOCK * PROPOSAL_NUM
+
+        ori_offset = core_idx * num
+
+        input_ub = tik_instance.Tensor(dtype, [NUM_BLOCK * 2 * PROPOSAL_NUM * 2], name="input_ub", scope=tik.scope_ubuf)
+
+        # SORT IN UB
+        for i in range(num_gm):
+            temp = sort_in_ub(tik_instance, input_ub, idx_ub, tmp_ub, num, i, input_gm, temp, ori_offset, offset,
+                              descending)
+
+        # SORT IN GM
+        temp = sort_in_gm(tik_instance, temp, num_gm, input_ub, offset)
+
+        # Pick Data from GM to GM
+        data_out, data_indices = pick(tik_instance, temp, offset, core_idx, num_2048, data_out, data_indices, input_ub,
+                                      num_gm, descending, cce_product)
+
+    return data_out, data_indices
+
+
+def moveout(tik_instance, num_16, num, data_out, offset_out, input_ub, dest_pos_ub, data_indices, descending,
+            cce_product):
+    """
+    Function: Move UB to GM, and trans y2 from fp16 to int32.
+    Modify : 2020-08-03
+
+    Attention : This way is unstable (can't compare two scalar).
+    Init base parameters
+    Parameters
+    ----------
+    offset_out, num_16, num, dest_pos_ub : for index compute
+    data_out, input_ub, data_indices : for data move
+    ----------
+    """
+    int_list = tik_instance.Tensor("int32", [num_16], name="int_list", scope=tik.scope_ubuf)
+    src_pos_ub = num_16 * PROPOSAL_NUM if dest_pos_ub == 0 else 0
+    # ascend
+    with tik_instance.if_scope(descending is False):
+        # data is continuous in GM & gather scattered data together
+        with tik_instance.for_range(0, num) as i2:
+            input_ub[i2 + src_pos_ub].set_as(input_ub[(num_16 - 1 - i2) * PROPOSAL_NUM + VAL_IDX + dest_pos_ub])
+            input_ub[i2 + src_pos_ub + num_16].set_as(input_ub[(num_16 - 1 - i2) * PROPOSAL_NUM + dest_pos_ub])
+
+    # descend
+    with tik_instance.else_scope():
+        # data is continuous in GM & gather scattered data together
+        if cce_product == tbe_platform.ASCEND_310:
+            with tik_instance.for_range(0, num) as i2:
+                input_ub[i2 + src_pos_ub].set_as(input_ub[i2 * PROPOSAL_NUM + VAL_IDX + dest_pos_ub])
+                input_ub[i2 + src_pos_ub + num_16].set_as(input_ub[i2 * PROPOSAL_NUM + dest_pos_ub])
+        else:
+            tik_instance.vextract(input_ub[src_pos_ub], input_ub[dest_pos_ub], num_16 // BLOCK, VAL_IDX)
+            tik_instance.vextract(input_ub[src_pos_ub + num_16], input_ub[dest_pos_ub], num_16 // BLOCK, INT_IDX)
+
+    # conv indices (float16->int32) , and move from UB to GM
+    tik_instance.vec_conv(BLOCK, "round", int_list, input_ub[src_pos_ub + num_16], num_16 // BLOCK, 2, 1)
+
+    # move output (float16) from UB to GM
+    tik_instance.data_move(data_out[offset_out], input_ub[src_pos_ub], 0, 1, num_16 // BLOCK, 0, 0)
+    tik_instance.data_move(data_indices[offset_out], int_list, 0, 1, 2 * num_16 // BLOCK, 0, 0)
+
+    return data_out, data_indices
+
+
+def sort_in_ub(tik_instance, input_ub, idx_ub, tmp_ub, num, i, input_gm, temp, ori_offset, offset, descending):
+    """
+    Function: sort in ub.
+    Modify : 2020-11-16
+
+    Init base parameters
+    Parameters
+    ----------
+    num, i, ori_offset, offset : for index compute
+    input_gm, temp, dtype : for data move
+    ----------
+    """
+    # dest position in UB
+    dest_pos_ub = NUM_BLOCK * PROPOSAL_NUM
+    repeat_times = NUM_BLOCK // BLOCK
+    # 1. Move data from OUT to UB
+    tik_instance.data_move(input_ub[dest_pos_ub], input_gm[ori_offset + i * NUM_BLOCK], 0, 1, repeat_times, 0, 0)
+
+    tik_instance.vector_dup(BLOCK, tmp_ub[0], i, repeat_times, 1, 1)
+    # index // 2048
+    tik_instance.vconcat(input_ub[0], tmp_ub[0], repeat_times, INT_IDX)
+    # index % 2048
+    tik_instance.vconcat(input_ub[0], idx_ub[0], repeat_times, REM_IDX)
+
+    if num < (i + 1) * NUM_BLOCK:
+        # aline for NUM_BLOCK
+        aline = NUM_BLOCK - num % NUM_BLOCK
+        if descending:
+            tmp = tik_instance.Scalar('float16', init_value=MIN_VAL)
+        # descend
+        else:
+            tmp = tik_instance.Scalar('float16', init_value=MAX_VAL)
+        # Add ineffective object for 16 alignment
+        for j in range(aline % BLOCK):
+            input_ub[dest_pos_ub + num % NUM_BLOCK + j].set_as(tmp)
+        # Add ineffective object for NUM_BLOCK alignment
+        if aline > BLOCK - 1:
+            tik_instance.vec_dup(BLOCK, input_ub[dest_pos_ub + num % NUM_BLOCK + aline % BLOCK], tmp,
+                                 aline // BLOCK, 1)
+
+    tik_instance.vconcat(input_ub[0], input_ub[dest_pos_ub], repeat_times, VAL_IDX)
+    # 2. vrpsort16
+    tik_instance.vrpsort16(dst=input_ub[dest_pos_ub], src=input_ub[0], repeat_times=repeat_times)
+    # 3. vms4
+    input_ub, dest_pos_ub = vms4(tik_instance, NUM_BLOCK, input_ub, dest_pos_ub)
+    # 4. Move Data from UB to OUT
+    tik_instance.data_move(temp[offset + i * NUM_BLOCK * PROPOSAL_NUM], input_ub[dest_pos_ub], 0, 1,
+                           NUM_BLOCK * PROPOSAL_NUM // BLOCK, 0, 0)
+
+    return temp
+
+
+def vms4(tik_instance, total, input_ub, dest_pos_ub):
+    """
+    Function: Merge all lists into one.
+    Modify : 2020-08-03
+
+    Init base parameters
+    Parameters
+    ----------
+    total: The number of all object (16 alignment).
+    input_ub: UB
+    dest_pos_ub: The dest position in UB.
+    ----------
+    """
+    # record the lists info, since overlapping src and dst addresses can lead to perf degradation
+    length = total // BLOCK
+    num_list = [BLOCK] * length
+    src_pos_ub = 0
+
+    while len(num_list) > 1:
+        src_pos_ub, dest_pos_ub = dest_pos_ub, src_pos_ub
+        index = 0
+        offset = 0
+        while True:
+            res = len(num_list) - index
+            if res > 3:
+                num_list, input_ub, offset = merge4(tik_instance, num_list, input_ub,
+                                                    offset, src_pos_ub, index, dest_pos_ub)
+            elif res == 3:
+                num_list, input_ub, offset = merge3(tik_instance, num_list, input_ub,
+                                                    offset, src_pos_ub, index, dest_pos_ub)
+            elif res == 2:
+                num_list, input_ub, offset = merge2(tik_instance, num_list, input_ub,
+                                                    offset, src_pos_ub, index, dest_pos_ub)
+            elif res == 1:
+                tik_instance.data_move(input_ub[dest_pos_ub + offset * PROPOSAL_NUM],
+                                       input_ub[src_pos_ub + offset * PROPOSAL_NUM], 0, 1,
+                                       num_list[index] * PROPOSAL_NUM // BLOCK, 0, 0)
+            else:
+                break
+            index += 1
+
+    return input_ub, dest_pos_ub
 
 
 def merge4(tik_instance, num_list, input_ub, offset, src_pos_ub, index, dest_pos_ub):
@@ -191,148 +426,6 @@ def merge2(tik_instance, num_list, input_ub, offset, src_pos_ub, index, dest_pos
     return num_list, input_ub, offset
 
 
-def vms4(tik_instance, total, input_ub, dest_pos_ub):
-    """
-    Function: Merge all lists into one.
-    Modify : 2020-08-03
-
-    Init base parameters
-    Parameters
-    ----------
-    total: The number of all object (16 alignment).
-    input_ub: UB
-    dest_pos_ub: The dest position in UB.
-    ----------
-    """
-    # record the lists info, since overlapping src and dst addresses can lead to perf degradation
-    length = total // BLOCK
-    num_list = [BLOCK] * length
-    src_pos_ub = 0
-
-    while len(num_list) > 1:
-        src_pos_ub, dest_pos_ub = dest_pos_ub, src_pos_ub
-        index = 0
-        offset = 0
-        while True:
-            res = len(num_list) - index
-            if res > 3:
-                num_list, input_ub, offset = merge4(tik_instance, num_list, input_ub,
-                                                    offset, src_pos_ub, index, dest_pos_ub)
-            elif res == 3:
-                num_list, input_ub, offset = merge3(tik_instance, num_list, input_ub,
-                                                    offset, src_pos_ub, index, dest_pos_ub)
-            elif res == 2:
-                num_list, input_ub, offset = merge2(tik_instance, num_list, input_ub,
-                                                    offset, src_pos_ub, index, dest_pos_ub)
-            elif res == 1:
-                tik_instance.data_move(input_ub[dest_pos_ub + offset * PROPOSAL_NUM],
-                                       input_ub[src_pos_ub + offset * PROPOSAL_NUM], 0, 1,
-                                       num_list[index] * PROPOSAL_NUM // BLOCK, 0, 0)
-            else:
-                break
-            index += 1
-
-    return input_ub, dest_pos_ub
-
-
-def moveout(tik_instance, num_16, num, data_out, offset_out, input_ub, dest_pos_ub, data_indices, descending,
-            available_aicore_num):
-    """
-    Function: Move UB to GM, and trans y2 from fp16 to int32.
-    Modify : 2020-08-03
-
-    Attention : This way is unstable (can't compare two scalar).
-    Init base parameters
-    Parameters
-    ----------
-    offset_out, num_16, num, dest_pos_ub : for index compute
-    data_out, input_ub, data_indices : for data move
-    ----------
-    """
-    int_list = tik_instance.Tensor("int32", [num_16], name="int_list", scope=tik.scope_ubuf)
-    src_pos_ub = num_16 * PROPOSAL_NUM if dest_pos_ub == 0 else 0
-    # ascend
-    with tik_instance.if_scope(descending is False):
-        # data is continuous in GM & gather scattered data together
-        with tik_instance.for_range(0, num) as i2:
-            input_ub[i2 + src_pos_ub].set_as(input_ub[(num_16 - 1 - i2) * PROPOSAL_NUM + VAL_IDX + dest_pos_ub])
-            input_ub[i2 + src_pos_ub + num_16].set_as(input_ub[(num_16 - 1 - i2) * PROPOSAL_NUM + dest_pos_ub])
-
-    # descend
-    with tik_instance.else_scope():
-        # data is continuous in GM & gather scattered data together
-        if available_aicore_num == MINI_CORE:
-            with tik_instance.for_range(0, num) as i2:
-                input_ub[i2 + src_pos_ub].set_as(input_ub[i2 * PROPOSAL_NUM + VAL_IDX + dest_pos_ub])
-                input_ub[i2 + src_pos_ub + num_16].set_as(input_ub[i2 * PROPOSAL_NUM + dest_pos_ub])
-        elif available_aicore_num == CLOULD_CORE:
-            tik_instance.vextract(input_ub[src_pos_ub], input_ub[dest_pos_ub], num_16 // BLOCK, VAL_IDX)
-            tik_instance.vextract(input_ub[src_pos_ub + num_16], input_ub[dest_pos_ub], num_16 // BLOCK, INT_IDX)
-        else:
-            raise RuntimeError("Unexpected version.")
-
-    # conv indices (float16->int32) , and move from UB to GM
-    tik_instance.vec_conv(BLOCK, "round", int_list, input_ub[src_pos_ub + num_16], num_16 // BLOCK, 2, 1)
-
-    # move output (float16) from UB to GM
-    tik_instance.data_move(data_out[offset_out], input_ub[src_pos_ub], 0, 1, num_16 // BLOCK, 0, 0)
-    tik_instance.data_move(data_indices[offset_out], int_list, 0, 1, 2 * num_16 // BLOCK, 0, 0)
-
-    return data_out, data_indices
-
-
-def sort_in_ub(tik_instance, input_ub, idx_ub, tmp_ub, num, i, input_gm, temp, ori_offset, offset, descending):
-    """
-    Function: sort in ub.
-    Modify : 2020-11-16
-
-    Init base parameters
-    Parameters
-    ----------
-    num, i, ori_offset, offset : for index compute
-    input_gm, temp, dtype : for data move
-    ----------
-    """
-    # dest position in UB
-    dest_pos_ub = NUM_BLOCK * PROPOSAL_NUM
-    repeat_times = NUM_BLOCK // BLOCK
-    # 1. Move data from OUT to UB
-    tik_instance.data_move(input_ub[dest_pos_ub], input_gm[ori_offset + i * NUM_BLOCK], 0, 1, repeat_times, 0, 0)
-
-    tik_instance.vector_dup(BLOCK, tmp_ub[0], i, repeat_times, 1, 1)
-    # index // 2048
-    tik_instance.vconcat(input_ub[0], tmp_ub[0], repeat_times, INT_IDX)
-    # index % 2048
-    tik_instance.vconcat(input_ub[0], idx_ub[0], repeat_times, REM_IDX)
-
-    if num < (i + 1) * NUM_BLOCK:
-        # aline for NUM_BLOCK
-        aline = NUM_BLOCK - num % NUM_BLOCK
-        if descending:
-            tmp = tik_instance.Scalar('float16', init_value=MIN_VAL)
-        # descend
-        else:
-            tmp = tik_instance.Scalar('float16', init_value=MAX_VAL)
-        # Add ineffective object for 16 alignment
-        for j in range(aline % BLOCK):
-            input_ub[dest_pos_ub + num % NUM_BLOCK + j].set_as(tmp)
-        # Add ineffective object for NUM_BLOCK alignment
-        if aline > BLOCK - 1:
-            tik_instance.vec_dup(BLOCK, input_ub[dest_pos_ub + num % NUM_BLOCK + aline % BLOCK], tmp,
-                                 aline // BLOCK, 1)
-
-    tik_instance.vconcat(input_ub[0], input_ub[dest_pos_ub], repeat_times, VAL_IDX)
-    # 2. vrpsort16
-    tik_instance.vrpsort16(dst=input_ub[dest_pos_ub], src=input_ub[0], repeat_times=repeat_times)
-    # 3. vms4
-    input_ub, dest_pos_ub = vms4(tik_instance, NUM_BLOCK, input_ub, dest_pos_ub)
-    # 4. Move Data from UB to OUT
-    tik_instance.data_move(temp[offset + i * NUM_BLOCK * PROPOSAL_NUM], input_ub[dest_pos_ub], 0, 1,
-                           NUM_BLOCK * PROPOSAL_NUM // BLOCK, 0, 0)
-
-    return temp
-
-
 def sort_in_gm(tik_instance, temp, num_gm, input_ub, offset):
     """
     Function: sort in gm.
@@ -378,7 +471,7 @@ def sort_in_gm(tik_instance, temp, num_gm, input_ub, offset):
 
 
 def pick(tik_instance, temp, offset, core_idx, num_2048, data_out, data_indices, input_ub, num_gm, descending,
-         available_aicore_num):
+         cce_product):
     """
     Function: pick value from proposal.
     Modify : 2020-11-11
@@ -410,14 +503,12 @@ def pick(tik_instance, temp, offset, core_idx, num_2048, data_out, data_indices,
         tik_instance.vec_add(BLOCK, int_list_1, int_list_2, int_list_3, repeat_times, 2, 2, 2)
 
         # data is continuous in GM & gather scattered data together
-        if available_aicore_num == CLOULD_CORE:
-            tik_instance.vextract(input_ub[dest_pos_ub], input_ub[0], repeat_times, VAL_IDX)
-        elif available_aicore_num == MINI_CORE:
+
+        if cce_product == tbe_platform.ASCEND_310:
             with tik_instance.for_range(0, NUM_BLOCK) as i2:
                 input_ub[dest_pos_ub + i2].set_as(input_ub[i2 * PROPOSAL_NUM + VAL_IDX])
         else:
-            raise RuntimeError("Unexpected version.")
-
+            tik_instance.vextract(input_ub[dest_pos_ub], input_ub[0], repeat_times, VAL_IDX)
         # move output (float16) from UB to GM
         # ascend
         with tik_instance.if_scope(descending is False):
@@ -481,110 +572,6 @@ def tune(tik_instance, num, num_16, num_2048, rounds, num_gm, data_out, data_out
     return data_out_, data_indices_
 
 
-@tbe_platform.fusion_manager.fusion_manager.register("sort")
-def sort_compute(tik_instance, dtype, num, num_16, num_2048, core_idx, used_aicore_num, data_out,
-                 data_indices, input_gm, temp, num_gm, descending, available_aicore_num):
-    """
-    Function: sortcompute in UB.
-    Modify : 2020-08-03
-
-    Attention : This way is unstable (can't compare two scalar).
-    Init base parameters
-    Parameters
-    ----------
-    dtype, num_16, core_idx, num, distance, shape, big_distance, L : for index compute
-    data_out, data_indices, input_gm : for data move
-    ----------
-    """
-
-    if num <= NUM_BLOCK:
-        idx_ub = tik_instance.Tensor(dtype, [NUM_BLOCK], name="idx_ub", scope=tik.scope_ubuf)
-        input_ub = tik_instance.Tensor(dtype, [num_16 * PROPOSAL_NUM * 2], name="input_ub", scope=tik.scope_ubuf)
-
-        offset_in = core_idx * num
-        offset_out = core_idx * num_16
-        dest_pos_ub = num_16 * PROPOSAL_NUM
-        n_repeat_total = num_16 // BLOCK
-        # 1. Move data from OUT to UB
-        tik_instance.data_move(input_ub[dest_pos_ub], input_gm[offset_in], 0, 1, n_repeat_total, 0, 0)
-        max_num = tik_instance.Scalar('float16', init_value=MAX_VAL)
-        min_num = tik_instance.Scalar('float16', init_value=MIN_VAL)
-        # Add ineffective object for 16 alignment
-        if descending:
-            with tik_instance.for_range(0, num_16 - num) as i:
-                input_ub[(num + i) + dest_pos_ub].set_as(min_num)
-        else:
-            with tik_instance.for_range(0, num_16 - num) as i:
-                input_ub[(num + i) + dest_pos_ub].set_as(max_num)
-
-        tik_instance.vconcat(input_ub[0], input_ub[dest_pos_ub], n_repeat_total, VAL_IDX)
-
-        if available_aicore_num == CLOULD_CORE:
-            idx = tik_instance.Scalar(dtype="float32", init_value=num)
-            with tik_instance.for_range(0, num) as i2:
-                idx.set_as(idx - 1)
-                idx_ub[(num - 1 - i2)].set_as(idx)
-        elif available_aicore_num == MINI_CORE:
-            data_out_ub_ = tik_instance.Tensor(dtype, [BLOCK], name="data_out_ub_", scope=tik.scope_ubuf)
-            data_indices_ub_int_ = tik_instance.Tensor("int32", [BLOCK], name="data_indices_ub_int_",
-                                                       scope=tik.scope_ubuf)
-            with tik_instance.for_range(0, num) as i2:
-                data_indices_ub_int_.set_as(num - 1 - i2)
-                tik_instance.vec_conv(1, "none", data_out_ub_, data_indices_ub_int_, 1, 0, 0, deqscale=1.0)
-                idx_ub[(num - 1 - i2)].set_as(data_out_ub_[0])
-        else:
-            raise RuntimeError("Unexpected version.")
-
-        tik_instance.vconcat(input_ub[0], idx_ub[0], n_repeat_total, INT_IDX)
-
-        # 2. vbs16
-        tik_instance.vrpsort16(dst=input_ub[dest_pos_ub], src=input_ub[0], repeat_times=n_repeat_total)
-        # 3. vms4
-        input_ub, dest_pos_ub = vms4(tik_instance, num_16, input_ub, dest_pos_ub)
-        # 4. Move Data from UB to OUT
-        data_out, data_indices = moveout(tik_instance, num_16, num, data_out, offset_out, input_ub,
-                                         dest_pos_ub, data_indices, descending, available_aicore_num)
-
-    else:
-        idx_ub = tik_instance.Tensor(dtype, [NUM_BLOCK], name="idx_ub", scope=tik.scope_ubuf)
-        tmp_ub = tik_instance.Tensor(dtype, [NUM_BLOCK], name="tmp_ub", scope=tik.scope_ubuf)
-        if available_aicore_num == CLOULD_CORE:
-            idx = tik_instance.Scalar(dtype="float32", init_value=0)
-            with tik_instance.for_range(0, NUM_BLOCK) as i2:
-                idx_ub[i2].set_as(idx)
-                idx.set_as(idx + 1)
-        elif available_aicore_num == MINI_CORE:
-            data_out_ub_ = tik_instance.Tensor(dtype, [BLOCK], name="data_out_ub_", scope=tik.scope_ubuf)
-            data_indices_ub_int_ = tik_instance.Tensor("int32", [BLOCK], name="data_indices_ub_int_",
-                                                       scope=tik.scope_ubuf)
-            with tik_instance.for_range(0, NUM_BLOCK) as i2:
-                data_indices_ub_int_.set_as(i2)
-                tik_instance.vec_conv(1, "none", data_out_ub_, data_indices_ub_int_, 1, 0, 0, deqscale=1.0)
-                idx_ub[i2].set_as(data_out_ub_[0])
-        else:
-            raise RuntimeError("Unexpected version.")
-
-        offset = (core_idx % used_aicore_num) * num_gm * NUM_BLOCK * PROPOSAL_NUM
-
-        ori_offset = core_idx * num
-
-        input_ub = tik_instance.Tensor(dtype, [NUM_BLOCK * 2 * PROPOSAL_NUM * 2], name="input_ub", scope=tik.scope_ubuf)
-
-        # SORT IN UB
-        for i in range(num_gm):
-            temp = sort_in_ub(tik_instance, input_ub, idx_ub, tmp_ub, num, i, input_gm, temp, ori_offset, offset,
-                              descending)
-
-        # SORT IN GM
-        temp = sort_in_gm(tik_instance, temp, num_gm, input_ub, offset)
-
-        # Pick Data from GM to GM
-        data_out, data_indices = pick(tik_instance, temp, offset, core_idx, num_2048, data_out, data_indices, input_ub,
-                                      num_gm, descending, available_aicore_num)
-
-    return data_out, data_indices
-
-
 @para_check.check_input_type(dict, dict, dict, int, bool, str)
 def sort(x, y1, y2, axis=-1, descending=False, kernel_name="sort"):
     """
@@ -633,6 +620,7 @@ def sort(x, y1, y2, axis=-1, descending=False, kernel_name="sort"):
         data_out_ = tik_instance.Tensor(dtype, shape, name="data_out_", scope=tik.scope_gm)
         data_indices_ = tik_instance.Tensor("int32", shape, name="data_indices_", scope=tik.scope_gm)
 
+    cce_product = tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION)
     available_aicore_num = tik.Dprofile().get_aicore_num()
     used_aicore_num = available_aicore_num if rounds > available_aicore_num else rounds
     batch_num_per_aicore = rounds // used_aicore_num
@@ -645,12 +633,12 @@ def sort(x, y1, y2, axis=-1, descending=False, kernel_name="sort"):
         with tik_instance.for_range(0, batch_num_per_aicore) as j:
             data_out, data_indices = sort_compute(tik_instance, dtype, num, num_16, num_2048, i + j * used_aicore_num,
                                                   used_aicore_num, data_out, data_indices, input_gm,
-                                                  temp, num_gm, descending, available_aicore_num)
+                                                  temp, num_gm, descending, cce_product)
         with tik_instance.if_scope(i < batch_tail):
             data_out, data_indices = sort_compute(tik_instance, dtype, num, num_16, num_2048,
                                                   batch_num_per_aicore * used_aicore_num + i, used_aicore_num,
                                                   data_out, data_indices, input_gm, temp, num_gm, descending,
-                                                  available_aicore_num)
+                                                  cce_product)
 
     data_out_, data_indices_ = tune(tik_instance, num, num_16, num_2048, rounds, num_gm, data_out, data_out_,
                                     data_indices, data_indices_)
