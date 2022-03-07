@@ -15,6 +15,8 @@
 """
 resize_nearest_neighbor_v2.py
 """
+from abc import ABCMeta, abstractmethod
+from functools import partial
 from impl.util import util_tik_comm_func
 from impl.util.util_tik_comm_func import OpBase
 from impl.util.platform_adapter import tik
@@ -29,42 +31,70 @@ class Constant:
     """
     The class for constant
     """
-    # max uint16
-    MAX_UINT16 = 2 ** 16 - 1
     # ting param num
     TILING_ARG_NUM = 16
     # reserved ub size
     RESERVED_UB_SIZE = 8 * 1024
+    # 8 numbers per block for float32 / int32
+    FP32_PER_BLOCK = 8
+    # nBurst max value of `data_move`
+    BURST_NUM_MAX = 4095
+    # burstLen max value of `data_move`
+    BURST_LEN_MAX = 65535
+    # stride max value of `data_move`
+    BURST_STRIDE_MAX = 65535
+    # whether exceed BURST_STRIDE_MAX
+    EXCEED_BURST_STRIDE = 1
 
 
 # 'pylint: disable=too-many-instance-attributes,too-many-arguments,unused-argument
 # 'pylint: disable=too-many-locals,too-many-statements,unused-argument,invalid-name
 class ResizeNearestNeighbor(OpBase):
+    """ResizeNearestNeighbor basic information
+
+    Tiling key expression: 1abcde
+        a: whether H is integer zoom-in.
+        b: whether W is integer zoom-in. 3: srcW = dstW
+        c/d: not used currently
+        e: particular flag for SMALL images AlignHW
+    Note: Scenarios that align_corners or half_pixel_centers is True will be considered as 100000
     """
-    Function: use to store ResizeNearestNeighbor base parameters
-    Modify: 2021-01-15
-    """
+
+    # processor dictionary for different tiling keys
+    _processors = {
+        111000: lambda op: AlignHW(op, False),
+        113000: lambda op: AlignHW(op, True),
+        111001: lambda op: AlignHWSmall(op, False),
+        113001: lambda op: AlignHWSmall(op, True),
+        101000: lambda op: AlignOnlyW(op, False),
+        103000: lambda op: AlignOnlyW(op, True),
+        100000: lambda op: Default(op)
+    }
+
     def __init__(self, images, size, y, align_corners, half_pixel_centers, kernel_name):
         OpBase.__init__(self)
         self.images_dtype = images.get("dtype").lower()
         self.size_dtype = size.get("dtype").lower()
         self.align_corners = align_corners
         self.half_pixel_centers = half_pixel_centers
+
         # check dtype
         para_check.check_dtype(self.size_dtype, ("int64", "int32"), param_name="size")
         para_check.check_dtype(self.images_dtype, ("float32", "float16"), param_name="images")
 
         self.kernel_name = kernel_name
         self.ub_size_bytes = self.ub_size_bytes - Constant.RESERVED_UB_SIZE
-        self.elememts_vector_fp16 = tbe_platform.ELEMENTS_VECTOR_OP_FP16
 
+        self.shape_c0 = 16
         self.block_num = 16 if self.images_dtype in ("float16",) else 8
-        self.vector_num = self.block_num * 8
         self.ub_max_num = self.ub_size_bytes // 32 // 2 * self.block_num
+        self.c0_blocks = self.shape_c0 // self.block_num
 
-        self.images_shape_c0 = 16
-        self.height_idx_sigment_num = 512
-        self.width_idx_sigment_num = 512
+        self.l1_size_bytes = 0 \
+            if not tbe_platform.intrinsic_check_support("Intrinsic_data_move_l12ub") \
+            else tbe_platform.get_soc_spec(tbe_platform.L1_SIZE)
+        self.l1_exists = True if self.l1_size_bytes > 0 else False
+        self.l1_max_num = self.l1_size_bytes // 2 // (2 if self.images_dtype in ("float16",) else 4)
 
         # init gm addr
         tiling_dict = {"dtype": "int64", "shape": (Constant.TILING_ARG_NUM,)}
@@ -72,56 +102,74 @@ class ResizeNearestNeighbor(OpBase):
         self.images_gm, self.size_gm = self.input_gm_list
         self.out_gm = self.output_gm_list[0]
 
-        self.stride_threshold = Constant.MAX_UINT16 if self.images_dtype in ("float16",) else Constant.MAX_UINT16 // 2
-        self.is_suport_vdiv = tbe_platform.api_check_support("tik.vdiv", "float32")
+        self.is_support_vdiv = tbe_platform.api_check_support("tik.vdiv", "float32")
+        self.is_support_vgatherb = tbe_platform.api_check_support("tik.vgatherb")
+
+        # will be set as `(IN_X / OUT_X)` or `((IN_X - 1)/(OUT_X - 1))` when needed
+        self.h_rec_scale_fp32 = self.tik_instance.Scalar("float32", name="h_rec_scale_fp32")
+        self.w_rec_scale_fp32 = self.tik_instance.Scalar("float32", name="w_rec_scale_fp32")
+        # will be set as `(OUT_X // IN_X)` w/o considering align_corners
+        self.h_scale = self.tik_instance.Scalar("int64", name="h_scale")
+        self.w_scale = self.tik_instance.Scalar("int64", name="w_scale")
+
         # init tiling data
-        self.resize_scale_h = self.tik_instance.Scalar("float32", name="resize_scale_h")
-        self.resize_scale_w = self.tik_instance.Scalar("float32", name="resize_scale_w")
-        self.scalar_idx_fp32 = self.tik_instance.Scalar("float32", name="scalar_idx_fp32")
         self.tiling_key = self.tik_instance.Scalar("int64", name="tiling_key")
-        self.tiling_batch = self.tik_instance.Scalar("int64", name="tiling_batch")
-        self.tiling_c1 = self.tik_instance.Scalar("int64", name="tiling_c1")
-        self.tiling_in_height = self.tik_instance.Scalar("int64", name="tiling_in_height")
-        self.tiling_in_width = self.tik_instance.Scalar("int64", name="tiling_in_width")
-        self.tiling_out_height = self.tik_instance.Scalar("int64", name="tiling_out_height")
-        self.tiling_out_width = self.tik_instance.Scalar("int64", name="tiling_out_width")
-        self.tiling_bc1_cut_num = self.tik_instance.Scalar("int64", name="tiling_bc1_cut_num")
+        self.image_nc1 = self.tik_instance.Scalar("int64", name="image_nc1")
+        self.input_height = self.tik_instance.Scalar("int64", name="input_height")
+        self.input_width = self.tik_instance.Scalar("int64", name="input_width")
+        self.output_height = self.tik_instance.Scalar("int64", name="output_height")
+        self.output_width = self.tik_instance.Scalar("int64", name="output_width")
+        self.tiling_nc1_cut_num = self.tik_instance.Scalar("int64", name="tiling_nc1_cut_num")
         self.tiling_height_cut_num = self.tik_instance.Scalar("int64", name="tiling_height_cut_num")
         self.tiling_width_cut_num = self.tik_instance.Scalar("int64", name="tiling_width_cut_num")
 
-        # init scaler for each core
-        # nc1 start addr offset for per core
+        # init scalars for each core
+        # nc1 start addr offset per core
         self.core_nc_start = self.tik_instance.Scalar("int64", name="core_nc_start")
-        # h start addr offset for per core
+        # h start addr offset per core
         self.core_height_start = self.tik_instance.Scalar("int64", name="core_height_start")
-        # w start addr offset for per core
+        # w start addr offset per core
         self.core_width_start = self.tik_instance.Scalar("int64", name="core_width_start")
-        # nc1 process len for per core
-        self.core_nc_num = self.tik_instance.Scalar("int64", name="core_nc_num")
-        # h process len for per core
-        self.core_height_num = self.tik_instance.Scalar("int64", name="core_height_num")
-        # w process len for per core
-        self.core_width_num = self.tik_instance.Scalar("int64", name="core_width_num")
-        self.cut_width_num = None
-        self.cut_height_num = None
-        self.scale_w_ceil = self.tik_instance.Scalar("int32", name="scale_w_ceil")
+        # nc1 process len per core
+        self.nc_per_core = self.tik_instance.Scalar("int64", name="nc_per_core")
+        # h process len per core
+        self.h_per_core = self.tik_instance.Scalar("int64", name="h_per_core")
+        # w process len per core
+        self.w_per_core = self.tik_instance.Scalar("int64", name="w_per_core")
+        # cut-ed height, input or output height
+        self.cut_height_num = self.tik_instance.Scalar("int64", name="cut_height_num")
+        # cut-ed width, input or output width
+        self.cut_width_num = self.tik_instance.Scalar("int64", name="cut_width_num")
 
-        # init ub
-        self.height_idx_ub = None
-        self.width_idx_ub = None
-        self.idx_ub_fp32 = None
-        self.idx_cb_fp32 = None
-        self.image_out_ub = None
-        self.image_in_cb_ping = None
-        self.image_out_ub = None
-        self.image_in_cb_ping = None
+    def resize_nearest_neighbor_v2_operator(self):
+        """
+        resize_nearest_neighbor_v2_operator
+        """
+        # register compute base on tiling_key
+        register_func = partial(self.regist_compute, tiling_func=self._functions)
+        for k in self._processors:
+            register_func(k, key=k)
+
+        # run all registered compute base tiling key
+        self.op_run_compute()
+
+        # Build CCE
+        max_w_len = (self.ub_max_num // self.shape_c0) if self.l1_exists else ((self.ub_max_num // self.shape_c0) - 1)
+        tbe_context.get_context().add_compile_info("vars", {"ub_size": self.ub_size_bytes,
+                                                            "core_num": self.core_nums,
+                                                            "max_w_len": max_w_len,  # max_w_len actually is w_scale
+                                                            "align_corners": int(self.align_corners),
+                                                            "half_pixel_centers": int(self.half_pixel_centers)})
+        self.op_build_cce()
+
+        return self.tik_instance
 
     def tiling_args(self):
         """
         tiling_args
         tiling key  tiling_key
-        input info  tiling_batch, tiling_c1, tiling_in_height, tiling_in_width
-        output info tiling_out_height, tiling_out_width
+        input info  tiling_batch, tiling_c1, input_height, input_width
+        output info output_height, output_width
         cut info    tiling_bc1_, tiling_height_cut_num, tiling_width_cut_num
         """
         with self.tik_instance.new_stmt_scope():
@@ -129,13 +177,14 @@ class ResizeNearestNeighbor(OpBase):
                                                  name="tiling_ub", scope=tik.scope_ubuf)
             self.tik_instance.data_move(tiling_ub, self.tiling_gm, 0, 1, (Constant.TILING_ARG_NUM + 3) // 4, 0, 0)
             self.tiling_key.set_as(tiling_ub[0])
-            self.tiling_batch.set_as(tiling_ub[1])
-            self.tiling_c1.set_as(tiling_ub[2])
-            self.tiling_in_height.set_as(tiling_ub[3])
-            self.tiling_in_width.set_as(tiling_ub[4])
-            self.tiling_out_height.set_as(tiling_ub[5])
-            self.tiling_out_width.set_as(tiling_ub[6])
-            self.tiling_bc1_cut_num.set_as(tiling_ub[7])
+            tmp_batch = self.tik_instance.Scalar("int64", "tmp_batch", tiling_ub[1])
+            tmp_c1 = self.tik_instance.Scalar("int64", "tmp_c1", tiling_ub[2])
+            self.image_nc1.set_as(tmp_batch * tmp_c1)
+            self.input_height.set_as(tiling_ub[3])
+            self.input_width.set_as(tiling_ub[4])
+            self.output_height.set_as(tiling_ub[5])
+            self.output_width.set_as(tiling_ub[6])
+            self.tiling_nc1_cut_num.set_as(tiling_ub[7])
             self.tiling_height_cut_num.set_as(tiling_ub[8])
             self.tiling_width_cut_num.set_as(tiling_ub[9])
 
@@ -144,55 +193,43 @@ class ResizeNearestNeighbor(OpBase):
         get runtime tiling parameters from tiling data with core_id
 
         need_input1: image info -->
-                   tiling_batch*tiling_c1 tiling_in_height tiling_in_width tiling_out_height tiling_out_width
-        need_input2: cut core info ---> tiling_bc1_cut_num tiling_height_cut_num tiling_width_cut_num
+                   tiling_batch*tiling_c1 input_height input_width output_height output_width
+        need_input2: cut core info ---> tiling_nc1_cut_num tiling_height_cut_num tiling_width_cut_num
         output: the process info for each core -->
-                   self.core_nc_start/self.core_nc_num
-                   self.core_height_start/self.core_height_num
-                   self.core_width_start/self.core_width_num
+                   self.core_nc_start/self.nc_per_core
+                   self.core_height_start/self.h_per_core
+                   self.core_width_start/self.w_per_core
 
         proc:
-            core_nc_num = (batch*c1 + bc1_cut_num - 1) // bc1_cut_num
-            core_nc_start = (core_id // (height_cut_num * width_cut_num)) * core_nc_num
-            core_height_num = (height + height_cut_num - 1) // height_cut_num
-            core_height_start = ((core_id % (height_cut_num * width_cut_num)) // width_cut_num) * core_height_num
-            core_width_num = (width + width_cut_num - 1) // width_cut_num
-            core_width_start = ((core_id % (height_cut_num * width_cut_num)) // width_cut_num) * core_width_num
+            nc_per_core = (batch*c1 + bc1_cut_num - 1) // bc1_cut_num
+            core_nc_start = (core_id // (height_cut_num * width_cut_num)) * nc_per_core
+            h_per_core = (height + height_cut_num - 1) // height_cut_num
+            core_height_start = ((core_id % (height_cut_num * width_cut_num)) // width_cut_num) * h_per_core
+            w_per_core = (width + width_cut_num - 1) // width_cut_num
+            core_width_start = ((core_id % (height_cut_num * width_cut_num)) // width_cut_num) * w_per_core
 
             for example:
                 input info:
                     16, 2, 32, 32, 16 resize to 16, 2, 64, 64, 16     h from 32->64 w from 32->64
-                cut info: tiling_bc1_cut_num, tiling_height_cut_num, tiling_width_cut_num
+                cut info: tiling_nc1_cut_num, tiling_height_cut_num, tiling_width_cut_num
                     4, 4, 2
 
-                core_nc_num = ceil(32, 4) = 8
-                core_nc_start = (core_idx // (4*2)) * core_nc_num
+                nc_per_core = ceil(32, 4) = 8
+                core_nc_start = (core_idx // (4*2)) * nc_per_core
                    ---> 0 <= core_idx < 8  core_nc_start = 0
                    ---> 8 <= core_idx < 16  core_nc_start = 8
                    ---> 16 <= core_idx < 24  core_nc_start = 16
                    ---> 24 <= core_idx < 32  core_nc_start = 24
         """
-        # h process len for per core
-        self.cut_height_num = self.tik_instance.Scalar("int64", name="cut_height_num")
-        # w process len for per core
-        self.cut_width_num = self.tik_instance.Scalar("int64", name="cut_width_num")
-        self.cut_height_num.set_as(self.tiling_out_height)
-        self.cut_width_num.set_as(self.tiling_out_width)
-        with self.tik_instance.if_scope(self.tiling_key == 111000):
-            # when tiling_key is 111000, will cut by input
-            self.cut_height_num.set_as(self.tiling_in_height)
-            self.cut_width_num.set_as(self.tiling_in_width)
-            with self.tik_instance.if_scope(self.tiling_height_cut_num * self.tiling_width_cut_num == 1):
-                with self.tik_instance.if_scope(
-                        tik.all(self.tiling_out_width <= 128,
-                                self.tiling_out_height * self.tiling_out_width < self.stride_threshold,
-                                self.tiling_in_height * self.tiling_in_width < 10 * 10)):
-                    self.tiling_key.set_as(111001)
-        with self.tik_instance.if_scope(self.tiling_key == 113000):
-            self.cut_height_num.set_as(self.tiling_in_height)
-            self.cut_width_num.set_as(self.tiling_in_width)
+        self.cut_height_num.set_as(self.output_height)
+        self.cut_width_num.set_as(self.output_width)
+        with self.tik_instance.if_scope(tik.any(self.tiling_key == 111000, self.tiling_key == 113000,
+                                                self.tiling_key == 111001, self.tiling_key == 113001)):
+            # when tiling_key is 111000 / 113000 / 111001 / 113001, will cut by input
+            self.cut_height_num.set_as(self.input_height)
+            self.cut_width_num.set_as(self.input_width)
         with self.tik_instance.if_scope(self.tiling_key == 101000):
-            self.cut_width_num.set_as(self.tiling_in_width)
+            self.cut_width_num.set_as(self.input_width)
 
         # fix the core cut num
         # fix for height_cut_num
@@ -206,62 +243,140 @@ class ResizeNearestNeighbor(OpBase):
         self.tiling_width_cut_num.set_as(
             (self.cut_width_num + self.tiling_width_cut_num - 1) // self.tiling_width_cut_num)
         # fix for nc_cut_num
-        self.tiling_bc1_cut_num.set_as(
-            (self.tiling_batch * self.tiling_c1 + self.tiling_bc1_cut_num - 1) // self.tiling_bc1_cut_num)
-        self.tiling_bc1_cut_num.set_as(
-            (self.tiling_batch * self.tiling_c1 + self.tiling_bc1_cut_num - 1) // self.tiling_bc1_cut_num)
+        self.tiling_nc1_cut_num.set_as(
+            (self.image_nc1 + self.tiling_nc1_cut_num - 1) // self.tiling_nc1_cut_num)
+        self.tiling_nc1_cut_num.set_as(
+            (self.image_nc1 + self.tiling_nc1_cut_num - 1) // self.tiling_nc1_cut_num)
 
-        nc_sigment = (self.tiling_batch * self.tiling_c1 + self.tiling_bc1_cut_num - 1) // self.tiling_bc1_cut_num
-        h_sigment = (self.cut_height_num + self.tiling_height_cut_num - 1) // self.tiling_height_cut_num
-        w_sigment = (self.cut_width_num + self.tiling_width_cut_num - 1) // self.tiling_width_cut_num
+        nc_per_core = (self.image_nc1 + self.tiling_nc1_cut_num - 1) // self.tiling_nc1_cut_num
+        h_per_core = (self.cut_height_num + self.tiling_height_cut_num - 1) // self.tiling_height_cut_num
+        w_per_core = (self.cut_width_num + self.tiling_width_cut_num - 1) // self.tiling_width_cut_num
         self.core_nc_start.set_as(
-            (core_idx // (self.tiling_height_cut_num * self.tiling_width_cut_num)) * nc_sigment)
+            (core_idx // (self.tiling_height_cut_num * self.tiling_width_cut_num)) * nc_per_core)
         self.core_height_start.set_as(
             ((core_idx % (self.tiling_height_cut_num * self.tiling_width_cut_num))
-             // self.tiling_width_cut_num) * h_sigment)
+             // self.tiling_width_cut_num) * h_per_core)
         self.core_width_start.set_as(
             ((core_idx % (self.tiling_height_cut_num * self.tiling_width_cut_num))
-             % self.tiling_width_cut_num) * w_sigment)
-        self.core_nc_num.set_as(nc_sigment)
-        self.core_height_num.set_as(h_sigment)
-        self.core_width_num.set_as(w_sigment)
-        with self.tik_instance.if_scope(self.tiling_key == 101000):
-            # when tiling_key is 101000, w start will start from align_num*n
-            align_num = self.tiling_out_width // self.tiling_in_width
-            self.core_width_num.set_as(self.core_width_num * align_num)
-            self.core_width_start.set_as(self.core_width_start * align_num)
-            self.cut_width_num.set_as(self.tiling_in_width * align_num)
+             % self.tiling_width_cut_num) * w_per_core)
+        self.nc_per_core.set_as(nc_per_core)
+        self.h_per_core.set_as(h_per_core)
+        self.w_per_core.set_as(w_per_core)
 
         with self.tik_instance.if_scope(
-                self.core_nc_start + self.core_nc_num >= self.tiling_batch * self.tiling_c1):
-            self.core_nc_num.set_as(self.tiling_batch * self.tiling_c1 - self.core_nc_start)
+                self.core_nc_start + self.nc_per_core >= self.image_nc1):
+            self.nc_per_core.set_as(self.image_nc1 - self.core_nc_start)
         with self.tik_instance.if_scope(
-                self.core_height_start + self.core_height_num >= self.cut_height_num):
-            self.core_height_num.set_as(self.cut_height_num - self.core_height_start)
+                self.core_height_start + self.h_per_core >= self.cut_height_num):
+            self.h_per_core.set_as(self.cut_height_num - self.core_height_start)
         with self.tik_instance.if_scope(
-                self.core_width_start + self.core_width_num >= self.cut_width_num):
-            self.core_width_num.set_as(self.cut_width_num - self.core_width_start)
-        core_used = self.tiling_width_cut_num * self.tiling_height_cut_num * self.tiling_bc1_cut_num
+                self.core_width_start + self.w_per_core >= self.cut_width_num):
+            self.w_per_core.set_as(self.cut_width_num - self.core_width_start)
+
+        core_used = self.tiling_width_cut_num * self.tiling_height_cut_num * self.tiling_nc1_cut_num
         with self.tik_instance.if_scope(core_idx >= core_used):
-            self.core_nc_num.set_as(0)
-            self.core_height_num.set_as(0)
-            self.core_width_num.set_as(0)
-        self.calculate_scale()
+            self.nc_per_core.set_as(0)
+            self.h_per_core.set_as(0)
+            self.w_per_core.set_as(0)
+        with self.tik_instance.else_scope():
+            self._calculate_scale()
 
-    def scalar_vconv_int32_to_fp32(self, int32_value, float32_value):
-        """
-        vconv one scalar from int32 to fp32 usr vector
-        """
-        with self.tik_instance.new_stmt_scope():
-            idx_int32_tmp = self.tik_instance.Tensor("int32", (64,),
-                                                     name="idx_int32_tmp", scope=tik.scope_ubuf)
-            idx_fp32_tmp = self.tik_instance.Tensor("float32", (64,),
-                                                    name="idx_fp32_tmp", scope=tik.scope_ubuf)
-            idx_int32_tmp[0].set_as(int32_value)
-            util_tik_comm_func.tik_func_vconv(self.tik_instance, idx_fp32_tmp, idx_int32_tmp, 1)
-            float32_value.set_as(idx_fp32_tmp[0])
+    def _calculate_scale(self):
+        """ calculate scale by input h/w and output h/w """
+        def _do_calculate(input_value, output_value, scale_fp32):
+            with self.tik_instance.new_stmt_scope():
+                if self.is_support_vgatherb:
+                    # for A920 precision fall down issue. Fix later
+                    tmp_int32_tensor = self.tik_instance.Tensor("int32", (Constant.FP32_PER_BLOCK,),
+                                                                name="tmp_int32_tensor", scope=tik.scope_ubuf)
+                    tmp_fp32_tensor = self.tik_instance.Tensor("float32", (Constant.FP32_PER_BLOCK,),
+                                                            name="tmp_fp32_tensor", scope=tik.scope_ubuf)
 
-    def calcu_out_in_idx(self, scale, des_idx_ub, src_idx_fp_ub, idx_num):
+                    tmp_int32_tensor[0].set_as(input_value)
+                    tmp_int32_tensor[1].set_as(output_value)
+                    util_tik_comm_func.tik_func_vconv(self.tik_instance, tmp_fp32_tensor, tmp_int32_tensor, 2)
+
+                    input_fp32 = self.tik_instance.Scalar("float32", "tmp_input_fp32", tmp_fp32_tensor[0])
+                    output_fp32 = self.tik_instance.Scalar("float32", "tmp_output_fp32", tmp_fp32_tensor[1])
+                    with self.tik_instance.if_scope(tik.all(self.align_corners, output_value > 1)):
+                        input_fp32.set_as(input_fp32 - 1.0)
+                        output_fp32.set_as(output_fp32 - 1.0)
+                    scale_fp32.set_as(input_fp32 / output_fp32)
+                else:
+                    tmp_int32_tensor = self.tik_instance.Tensor("int32", (Constant.FP32_PER_BLOCK * 2,),
+                                                                name="tmp_int32_tensor", scope=tik.scope_ubuf)
+                    tmp_fp32_tensor = self.tik_instance.Tensor("float32", (Constant.FP32_PER_BLOCK * 3,),
+                                                            name="tmp_fp32_tensor", scope=tik.scope_ubuf)
+
+                    tmp_int32_tensor[0].set_as(input_value)
+                    tmp_int32_tensor[Constant.FP32_PER_BLOCK].set_as(output_value)
+                    util_tik_comm_func.tik_func_vconv(self.tik_instance, tmp_fp32_tensor[0:], tmp_int32_tensor[0:], 1)
+                    util_tik_comm_func.tik_func_vconv(self.tik_instance, tmp_fp32_tensor[Constant.FP32_PER_BLOCK:],
+                                                      tmp_int32_tensor[Constant.FP32_PER_BLOCK:], 1)
+
+                    with self.tik_instance.if_scope(tik.all(self.align_corners, output_value > 1)):
+                        self.tik_instance.vadds(1, tmp_fp32_tensor[0:], tmp_fp32_tensor[0:], -1.0, 2, 1, 1, 1, 1)
+
+                    if self.is_support_vdiv:
+                        self.tik_instance.vdiv(1, tmp_fp32_tensor[0:], tmp_fp32_tensor[0:],
+                                               tmp_fp32_tensor[Constant.FP32_PER_BLOCK:], 1, 1, 1, 1, 1, 1, 1)
+                    else:
+                        # for A310
+                        util_tik_comm_func.tik_func_vrec(self.tik_instance,
+                                                         tmp_fp32_tensor[Constant.FP32_PER_BLOCK * 2:],
+                                                         tmp_fp32_tensor[Constant.FP32_PER_BLOCK:], 1, 1, 1, 1, 1, 1)
+                        self.tik_instance.vmul(1, tmp_fp32_tensor[0:], tmp_fp32_tensor[0:],
+                                               tmp_fp32_tensor[Constant.FP32_PER_BLOCK * 2:], 1, 1, 1, 1, 1, 1, 1)
+                    scale_fp32.set_as(tmp_fp32_tensor[0])
+
+        self.h_scale.set_as(self.output_height // self.input_height)
+        self.w_scale.set_as(self.output_width // self.input_width)
+
+        with self.tik_instance.if_scope(tik.any(self.tiling_key == 101000, self.tiling_key == 103000)):
+            _do_calculate(self.input_height, self.output_height, self.h_rec_scale_fp32)
+        with self.tik_instance.elif_scope(self.tiling_key == 100000):
+            _do_calculate(self.input_height, self.output_height, self.h_rec_scale_fp32)
+            _do_calculate(self.input_width, self.output_width, self.w_rec_scale_fp32)
+
+    def _functions(self, key: int):
+        """invoke each tiling functions
+
+        Parameters
+        ----------
+        key : int
+            tiling key
+        """
+        with self.tik_instance.if_scope(self.w_per_core == 0):
+            self.tik_instance.tik_return()
+
+        processor = self._processors.get(key)
+        processor(self).run()
+
+
+class ProcessorBase(metaclass=ABCMeta):
+    def __init__(self, resize_op_obj: ResizeNearestNeighbor, is_w_equal: bool = False) -> None:
+        self.op = resize_op_obj
+        self.tik_inst = resize_op_obj.tik_instance
+        self.is_w_equal = is_w_equal
+
+        # memory in UB/L1 used to save data moved from GM
+        self.image_in_buf_ping, self.image_in_buf_pong = None, None
+        # memory in UB used to save temporary re-ordered data
+        self.reorder_buf_ping, self.reorder_buf_pong = None, None
+
+        # scalars for loop
+        self.w_in_per_loop = self.tik_inst.Scalar("int64", name="w_in_per_loop")
+        self.w_out_per_loop = self.tik_inst.Scalar("int64", name="w_out_per_loop")
+        self.w_loop_num = self.tik_inst.Scalar("int64", name="w_loop_num")
+        self.w_loop_tail = self.tik_inst.Scalar("int64", name="w_loop_tail")
+
+        # GM in / out start per core
+        self.gm_in_start = self.tik_inst.Scalar("int64", "gm_in_start")
+        self.gm_out_start = self.tik_inst.Scalar("int64", "gm_out_start")
+
+    @staticmethod
+    def calculate_src_idx(tik_instance: tik.Tik, scale, in_idx_ub, out_idx_fp_ub,
+                          idx_num: int, align_corners: bool, half_pixel_centers: bool) -> None:
         """
         if not self.align_corners and self.half_pixel_centers:
             # vconv_f322s32f((idx + 0.5) * scale)
@@ -272,711 +387,904 @@ class ResizeNearestNeighbor(OpBase):
         if self.align_corners and self.half_pixel_centers:
             # vconv_f322s32r((idx + 0.5) * scale)
         """
-        with self.tik_instance.new_stmt_scope():
-            calcu_out_in_idx_tmp_ub = self.tik_instance.Tensor(src_idx_fp_ub.dtype, src_idx_fp_ub.shape,
-                                                               name="calcu_out_in_idx_tmp_ub", scope=tik.scope_ubuf)
+        with tik_instance.new_stmt_scope():
+            calc_out_in_idx_tmp_ub = tik_instance.Tensor(out_idx_fp_ub.dtype, out_idx_fp_ub.shape,
+                                                         name="calc_out_in_idx_tmp_ub", scope=tik.scope_ubuf)
             vector_repeat_num = (idx_num + 63) // 64
-            if self.half_pixel_centers:
-                # `calcu: (idx + 0.5) * scale`
-                self.tik_instance.vadds(64, calcu_out_in_idx_tmp_ub, src_idx_fp_ub, 0.5,
-                                        vector_repeat_num, 1, 1, 8, 8)
-                self.tik_instance.vmuls(64, calcu_out_in_idx_tmp_ub, calcu_out_in_idx_tmp_ub, scale,
-                                        vector_repeat_num, 1, 1, 8, 8)
+            if half_pixel_centers:
+                # `calc: (idx + 0.5) * scale`
+                tik_instance.vadds(64, calc_out_in_idx_tmp_ub, out_idx_fp_ub, 0.5,
+                                   vector_repeat_num, 1, 1, 8, 8)
+                tik_instance.vmuls(64, calc_out_in_idx_tmp_ub, calc_out_in_idx_tmp_ub, scale,
+                                   vector_repeat_num, 1, 1, 8, 8)
             else:
-                # `calcu: idx * scale`
-                self.tik_instance.vmuls(64, calcu_out_in_idx_tmp_ub, src_idx_fp_ub, scale,
-                                        vector_repeat_num, 1, 1, 8, 8)
-            if self.align_corners:
+                # `calc: idx * scale`
+                tik_instance.vmuls(64, calc_out_in_idx_tmp_ub, out_idx_fp_ub, scale,
+                                   vector_repeat_num, 1, 1, 8, 8)
+            if align_corners:
                 # will use vconv_f322s32r to cast to int32
-                util_tik_comm_func.tik_func_vconv(self.tik_instance, des_idx_ub, calcu_out_in_idx_tmp_ub,
+                util_tik_comm_func.tik_func_vconv(tik_instance, in_idx_ub, calc_out_in_idx_tmp_ub,
                                                   vector_repeat_num * 64, mode="round")
             else:
                 # will use vconv_f322s32f to cast to int32
-                util_tik_comm_func.tik_func_vconv(self.tik_instance, des_idx_ub, calcu_out_in_idx_tmp_ub,
+                util_tik_comm_func.tik_func_vconv(tik_instance, in_idx_ub, calc_out_in_idx_tmp_ub,
                                                   vector_repeat_num * 64, mode="floor")
 
-    def calculate_scale(self):
+    @staticmethod
+    def nc_batch_move_from_gm(tik_instance: tik.Tik, op: ResizeNearestNeighbor,
+                              gm_in_offset, in_image_buf, nc_len, w_in_len, image_in_exceed_stride) -> None:
+        """ GM -> L1/UB """
+        with tik_instance.new_stmt_scope(disable_sync=True):
+            burst_num = nc_len
+            burst_len = w_in_len * op.c0_blocks
+            with tik_instance.if_scope(image_in_exceed_stride != Constant.EXCEED_BURST_STRIDE):
+                burst_src_gap = op.input_height * op.input_width * op.c0_blocks - burst_len
+                tik_instance.data_move(in_image_buf[0:], op.images_gm[gm_in_offset:],
+                                       0, burst_num, burst_len, burst_src_gap, 0)
+            with tik_instance.else_scope():
+                with tik_instance.for_range(0, burst_num) as _nc_idx:
+                    src_offset = gm_in_offset + _nc_idx * op.input_height * op.input_width * op.shape_c0
+                    dst_offset = _nc_idx * w_in_len * op.shape_c0
+                    tik_instance.data_move(in_image_buf[dst_offset:], op.images_gm[src_offset:],
+                                           0, 1, burst_len, 0, 0)
+
+    @staticmethod
+    def nc_batch_move_to_gm(tik_instance: tik.Tik, op: ResizeNearestNeighbor,
+                            gm_out_offset, reorder_buf, nc_len, w_out_len, image_out_exceed_stride) -> None:
+        """ UG -> GM """
+        with tik_instance.new_stmt_scope(disable_sync=True):
+            burst_num = nc_len
+            burst_len = w_out_len * op.c0_blocks
+            with tik_instance.if_scope(image_out_exceed_stride != Constant.EXCEED_BURST_STRIDE):
+                burst_dst_gap = op.output_height * op.output_width * op.c0_blocks - burst_len
+                tik_instance.data_move(op.out_gm[gm_out_offset:], reorder_buf[0:],
+                                       0, burst_num, burst_len, 0, burst_dst_gap)
+            with tik_instance.else_scope():
+                with tik_instance.for_range(0, burst_num) as _nc_idx:
+                    src_offset = _nc_idx * w_out_len * op.shape_c0
+                    dst_offset = gm_out_offset + _nc_idx * op.output_height * op.output_width * op.shape_c0
+                    tik_instance.data_move(op.out_gm[dst_offset:], reorder_buf[src_offset:],
+                                           0, 1, burst_len, 0, 0)
+
+    @staticmethod
+    def reorder_in_ub_for_w_align(tik_instance: tik.Tik, op: ResizeNearestNeighbor,
+                                  in_image_buf, reorder_buf, burst_num) -> None:
+        """ L1/UB -> UB """
+        burst_len = op.c0_blocks
+        burst_dst_gap = op.w_scale * op.c0_blocks - burst_len
+        if op.l1_exists:
+            # L1 -> UB
+            tik_instance.data_move(reorder_buf[0:], in_image_buf[0:],
+                                   0, burst_num, burst_len, 0, burst_dst_gap)
+            # UB -> UB
+            with tik_instance.new_stmt_scope(disable_sync=True):
+                with tik_instance.for_range(1, op.w_scale) as w_cp_idx:
+                    dst_offset = w_cp_idx * op.shape_c0
+                    tik_instance.data_move(reorder_buf[dst_offset:], reorder_buf[0:],
+                                           0, burst_num, burst_len, burst_dst_gap, burst_dst_gap)
+        else:
+            # UB -> UB
+            with tik_instance.new_stmt_scope(disable_sync=True):
+                with tik_instance.for_range(0, op.w_scale) as w_cp_idx:
+                    dst_offset = w_cp_idx * op.shape_c0
+                    tik_instance.data_move(reorder_buf[dst_offset:], in_image_buf[0:],
+                                           0, burst_num, burst_len, 0, burst_dst_gap)
+
+    @abstractmethod
+    def adjust_w_per_loop(self) -> None:
+        """adjust width loop length as per L1/UB size & data_move ISA limitations"""
+        pass
+
+    @abstractmethod
+    def init_loop_parameters(self) -> None:
+        """init H/NC loop parameters once width loop length is done"""
+        pass
+
+    @abstractmethod
+    def malloc_buf(self) -> None:
+        """malloc buffer for moving in image and reordering"""
+        pass
+
+    @abstractmethod
+    def pre_image_process(self) -> None:
+        """do some prepare before image processing"""
+        pass
+
+    @abstractmethod
+    def image_process(self) -> None:
+        """process/resize images: move in -> reorder in UB -> move out"""
+        pass
+
+    def run(self) -> None:
+        """main procedure for resizeNN"""
+        self.adjust_w_per_loop()
+        self.init_loop_parameters()
+        self.malloc_buf()
+        self.pre_image_process()
+        self.image_process()
+
+    def adjust_w_per_loop_for_w_align(self) -> None:
+        """adjust w_in_per_loop based on l1/ub buffer size & limitations of data_move ISA"""
+        op = self.op
+        # if use ub only, number in ub each loop is `(w_scale+1) * nc_per_loop * w_in_per_loop * C0`
+        w_scale_factor = op.w_scale + 1
+        if op.l1_exists or self.is_w_equal:
+            # number in ub each loop is `w_scale * nc_per_loop * w_in_per_loop * C0`
+            w_scale_factor = op.w_scale
+
+        """Limits:
+        COMMON LIMITS:
+          1. [ MUST ] w_in_per_loop <= BURST_LEN_MAX * self.block_num // c0              <-- will be ok if 3 is ok
+          2. [SHOULD] w_in_per_loop * w_scale <= BURST_LEN_MAX * self.block_num // c0    <-- will be ok if 3 is ok
+          3. [SHOULD] w_in_per_loop * w_scale_factor <= ub_max // c0   <-- will limit by compile parameter when tiling
+        if not is_w_equal:
+          1. [ MUST ] nc_per_loop * w_in_per_loop <= BURST_NUM_MAX
+          2. [SHOULD] w_scale <= BURST_STRIDE_MAX * self.block_num // c0     <-- will be ok if COMMON-3 is ok
         """
-        calculate scale user input h/w and output h/w
+        self.w_in_per_loop.set_as(op.w_per_core)
+        max_num_in_ub_per_loop = w_scale_factor * self.w_in_per_loop * op.shape_c0
+        with self.tik_inst.if_scope(max_num_in_ub_per_loop > op.ub_max_num):
+            self.w_in_per_loop.set_as(op.ub_max_num // op.shape_c0 // w_scale_factor)
+        if not self.is_w_equal:
+            with self.tik_inst.if_scope(self.w_in_per_loop > Constant.BURST_NUM_MAX):
+                self.w_in_per_loop.set_as(Constant.BURST_NUM_MAX)
+
+    def malloc_ping_pong_buf(self, tik_instance: tik.Tik, dtype: str,
+                             input_num_per_loop, reorder_num_per_loop,
+                             is_w_equal: bool, l1_exists: bool) -> None:
+        """malloc buffer for data move when image-reorder
+
+        Warning
+        ----------
+        DO NOT place any new_stmt_scope / if_scope / else_scope of TIK around this function.
+        Otherwise, the Tensor malloc here will be retrieved by TIK.
+
+        Parameters
+        ----------
+        tik_instance: tik instance
+        dtype: image dtype
+        input_num_per_loop : Scalar or Expr with Scalar
+            max count of number moved from GM to L1/UB
+        reorder_num_per_loop : Scalar or Expr with Scalar
+            max count of reordered which is going to be moved from L1/UB to GM
+        is_w_equal: True or False
+            whether w_in equals to w_out
+        l1_exists: True or False
+            whether L1 buffer exists
         """
-        with self.tik_instance.new_stmt_scope():
-            height_input_fp32 = self.tik_instance.Tensor("float32", (self.block_num * 2,),
-                                                         name="height_input_fp32", scope=tik.scope_ubuf)
-            width_input_fp32 = self.tik_instance.Tensor("float32", (self.block_num * 2,),
-                                                        name="width_input_fp32", scope=tik.scope_ubuf)
-            height_input_int32 = self.tik_instance.Tensor("int32", (self.block_num * 2,),
-                                                          name="height_input_int32", scope=tik.scope_ubuf)
-            width_input_int32 = self.tik_instance.Tensor("int32", (self.block_num * 2,),
-                                                         name="width_input_int32", scope=tik.scope_ubuf)
-            height_output_fp32 = self.tik_instance.Tensor("float32", (self.block_num * 2,),
-                                                          name="height_output_fp32", scope=tik.scope_ubuf)
-            width_output_fp32 = self.tik_instance.Tensor("float32", (self.block_num * 2,),
-                                                         name="width_output_fp32", scope=tik.scope_ubuf)
+        def _malloc(name: str, count, buf_scope: str):
+            ping = tik_instance.Tensor(dtype, (count,), name='%s_ping' % name, scope=buf_scope)
+            pong = tik_instance.Tensor(dtype, (count,), name='%s_pong' % name, scope=buf_scope)
+            return ping, pong
 
-            height_input_int32[0].set_as(self.tiling_in_height)
-            width_input_int32[0].set_as(self.tiling_in_width)
-            height_input_int32[self.block_num].set_as(self.tiling_out_height)
-            width_input_int32[self.block_num].set_as(self.tiling_out_width)
-            util_tik_comm_func.tik_func_vconv(self.tik_instance, height_input_fp32,
-                                              height_input_int32, 1)
-            util_tik_comm_func.tik_func_vconv(self.tik_instance, width_input_fp32,
-                                              width_input_int32, 1)
-            util_tik_comm_func.tik_func_vconv(self.tik_instance, height_output_fp32,
-                                              height_input_int32[self.block_num:], 1)
-            util_tik_comm_func.tik_func_vconv(self.tik_instance, width_output_fp32,
-                                              width_input_int32[self.block_num:], 1)
+        if is_w_equal:
+            self.image_in_buf_ping, self.image_in_buf_pong = _malloc(
+                "image_in_buf", input_num_per_loop, tik.scope_ubuf)
+            self.reorder_buf_ping, self.reorder_buf_pong = None, None
+        else:
+            self.image_in_buf_ping, self.image_in_buf_pong = _malloc(
+                "image_in_buf", input_num_per_loop, tik.scope_cbuf if l1_exists else tik.scope_ubuf)
+            self.reorder_buf_ping, self.reorder_buf_pong = _malloc(
+                "reorder_buf", reorder_num_per_loop, tik.scope_ubuf)
 
-            with self.tik_instance.if_scope(tik.all(self.align_corners, self.tiling_out_height > 1)):
-                self.tik_instance.vadds(1, height_output_fp32, height_output_fp32, -1.0, 1, 1, 1, 8, 8)
-                self.tik_instance.vadds(1, height_input_fp32, height_input_fp32, -1.0, 1, 1, 1, 8, 8)
 
-            if not self.is_suport_vdiv:
-                self.tik_instance.vrec(1, height_output_fp32[self.block_num:], height_output_fp32, 1, 1, 1, 8, 8)
-                _tik_fuc_vrec_newton(self.tik_instance, height_output_fp32[self.block_num:], height_output_fp32,
-                                     1, block_num=self.block_num)
-                self.tik_instance.vmul(1, height_input_fp32, height_input_fp32, height_output_fp32[self.block_num:],
-                                       1, 1, 1, 1, 8, 8, 8)
-            else:
-                self.tik_instance.vdiv(1, height_input_fp32, height_input_fp32, height_output_fp32,
-                                       1, 1, 1, 1, 8, 8, 8)
-            self.resize_scale_h.set_as(height_input_fp32[0])
+class AlignHW(ProcessorBase):
+    """Both height & width are align, also both align_corners & half_pixel_centers are False
 
-            self.scale_w_ceil.set_as(
-                (self.tiling_in_width + self.tiling_out_width - 1) // self.tiling_out_width)
-            with self.tik_instance.if_scope(tik.all(self.align_corners, self.tiling_out_width > 1)):
-                self.tik_instance.vadds(1, width_output_fp32, width_output_fp32, -1.0, 1, 1, 1, 8, 8)
-                self.tik_instance.vadds(1, width_input_fp32, width_input_fp32, -1.0, 1, 1, 1, 8, 8)
-                self.scale_w_ceil.set_as(
-                    (self.tiling_in_width + self.tiling_out_width - 3) // (self.tiling_out_width - 1))
-            if not self.is_suport_vdiv:
-                self.tik_instance.vrec(1, width_output_fp32[self.block_num:], width_output_fp32, 1, 1, 1, 8, 8)
-                _tik_fuc_vrec_newton(self.tik_instance, width_output_fp32[self.block_num:], width_output_fp32,
-                                     1, block_num=self.block_num)
-                self.tik_instance.vmul(1, width_input_fp32, width_input_fp32, width_output_fp32[self.block_num:],
-                                       1, 1, 1, 1, 8, 8, 8)
-            else:
-                self.tik_instance.vdiv(1, width_input_fp32, width_input_fp32, width_output_fp32,
-                                       1, 1, 1, 1, 8, 8, 8)
-            self.resize_scale_w.set_as(width_input_fp32[0])
+    Attributes:
+    ------
+        is_w_equal: whether w_in equals w_out
+    """
 
-    def _init_ub_tensor_for_idx(self, height_idx_len=0, width_idx_len=0):
+    def __init__(self, resize_op_obj: ResizeNearestNeighbor, is_w_equal: bool = False) -> None:
+        super().__init__(resize_op_obj, is_w_equal)
+
+        # scalars for loop
+        self.h_per_loop = self.tik_inst.Scalar("int64", name="h_per_loop")
+        self.h_loop_num = self.tik_inst.Scalar("int64", name="h_loop_num")
+        self.h_loop_tail = self.tik_inst.Scalar("int64", name="h_loop_tail")
+
+    def adjust_w_per_loop(self) -> None:
+        """Limits:
+        COMMON LIMITS:
+          1. [ MUST ] w_in_per_loop <= BURST_LEN_MAX * self.block_num // c0              <-- will be ok if 3 is ok
+          2. [SHOULD] w_in_per_loop * w_scale <= BURST_LEN_MAX * self.block_num // c0    <-- will be ok if 3 is ok
+          3. [SHOULD] w_in_per_loop * w_scale_factor <= ub_max // c0   <-- will limit by compile parameter when tiling
+          4. [ MUST ] W-in <= BURST_LEN_MAX * self.block_num // c0           <-- will limit when tiling
+          5. [ MUST ] h_scale * W-out <= BURST_STRIDE_MAX * self.block_num // c0   <-- will limit when tiling
+        if not is_w_equal:
+          1. [ MUST ] h_in_per_loop * w_in_per_loop <= BURST_NUM_MAX
+          2. [SHOULD] w_scale <= BURST_STRIDE_MAX * self.block_num // c0     <-- will be ok if COMMON-3 is ok
         """
-        compute the ub size of tensors
+        self.adjust_w_per_loop_for_w_align()
+
+    def init_loop_parameters(self) -> None:
+        op = self.op
+
+        self.w_out_per_loop.set_as(self.w_in_per_loop * op.w_scale)
+
+        self.w_loop_num.set_as(op.w_per_core // self.w_in_per_loop)
+        self.w_loop_tail.set_as(op.w_per_core % self.w_in_per_loop)
+
+        if op.l1_exists or self.is_w_equal:
+            self.h_per_loop.set_as(op.ub_max_num // op.shape_c0 // self.w_out_per_loop)
+        else:
+            self.h_per_loop.set_as(op.ub_max_num // op.shape_c0 // (self.w_in_per_loop + self.w_out_per_loop))
+
+        """considering for data_move ISA:
+        1. h_per_loop <= BURST_NUM_MAX
+        2. if not is_w_equal: h_per_loop * w_in_per_loop <= BURST_NUM_MAX
         """
-        height_idx_len = self.height_idx_sigment_num if height_idx_len == 0 else height_idx_len
-        width_idx_len = self.width_idx_sigment_num if width_idx_len == 0 else width_idx_len
-        idx_max_len = max(height_idx_len, width_idx_len)
-        self.height_idx_ub = self.tik_instance.Tensor("int32", (height_idx_len,),
-                                                      name="height_idx", scope=tik.scope_ubuf)
-        self.width_idx_ub = self.tik_instance.Tensor("int32", (width_idx_len,),
-                                                     name="width_idx", scope=tik.scope_ubuf)
-        self.idx_ub_fp32 = self.tik_instance.Tensor("float32", (idx_max_len,),
-                                                    name="idx_ub_fp32", scope=tik.scope_ubuf)
-        self.idx_cb_fp32 = self.tik_instance.Tensor("float32", (idx_max_len,),
-                                                    name="idx_cb_fp32", scope=tik.scope_cbuf)
-        avail_bytes = self.ub_size_bytes - (height_idx_len + width_idx_len + idx_max_len) * 4
-        avail_block = avail_bytes // 32 // 2
-        self.ub_max_num = avail_block * self.block_num
+        if self.is_w_equal:
+            with self.tik_inst.if_scope(self.h_per_loop > Constant.BURST_NUM_MAX):
+                self.h_per_loop.set_as(Constant.BURST_NUM_MAX)
+        else:
+            w_max = self.tik_inst.Scalar("int64", "w_max", init_value=self.w_in_per_loop)
+            with self.tik_inst.if_scope(self.w_loop_num == 0):
+                w_max.set_as(self.w_loop_tail)
+            with self.tik_inst.if_scope(self.h_per_loop * w_max > Constant.BURST_NUM_MAX):
+                self.h_per_loop.set_as(Constant.BURST_NUM_MAX // w_max)
 
-    def _init_ub_tensor_for_images(self, mode="all"):
+        self.h_loop_num.set_as(op.h_per_core // self.h_per_loop)
+        self.h_loop_tail.set_as(op.h_per_core % self.h_per_loop)
+
+    def malloc_buf(self) -> None:
+        _h_max = self.tik_inst.Scalar("int64", "h_max", init_value=self.h_per_loop)
+        with self.tik_inst.if_scope(self.h_loop_num == 0):
+            _h_max.set_as(self.h_loop_tail)
+
+        op = self.op
+        in_num_per_loop = _h_max * self.w_in_per_loop * op.shape_c0
+        reorder_num_per_loop = in_num_per_loop * op.w_scale
+        self.malloc_ping_pong_buf(self.tik_inst, op.images_dtype,
+                                  in_num_per_loop, reorder_num_per_loop, self.is_w_equal, op.l1_exists)
+
+    def pre_image_process(self) -> None: pass
+
+    def image_process(self) -> None:
+        with self.tik_inst.if_scope(self.h_loop_num > 1):
+            self._h_ping_pong()
+        with self.tik_inst.else_scope():
+            self._nc_ping_pong()
+
+    def _h_ping_pong(self) -> None:
+        op = self.op
+        nc_start = self.tik_inst.Scalar("int64", "nc_start")
+
+        def _invoke_ping_pong(w_in_len):
+            self.gm_in_start.set_as((nc_start * op.input_height + op.core_height_start)
+                                    * op.input_width + w_in_start)
+            self.gm_out_start.set_as((nc_start * op.input_height + op.core_height_start) * op.h_scale
+                                     * op.output_width + w_in_start * op.w_scale)
+
+            def _do_reorder(h_loop_idx, h_in_len, in_image_buf, reorder_buf):
+                gm_in_offset = op.shape_c0 * (self.gm_in_start + h_loop_idx
+                                              * self.h_per_loop * op.input_width)
+                gm_out_offset = op.shape_c0 * (self.gm_out_start + h_loop_idx
+                                               * self.h_per_loop * op.h_scale * op.output_width)
+                self._image_reorder(gm_in_offset, gm_out_offset, h_in_len, w_in_len, in_image_buf, reorder_buf)
+
+            with self.tik_inst.for_range(0, self.h_loop_num >> 1) as _h_loop_idx:
+                _do_reorder(_h_loop_idx * 2, self.h_per_loop, self.image_in_buf_ping, self.reorder_buf_ping)
+                _do_reorder(_h_loop_idx * 2 + 1, self.h_per_loop, self.image_in_buf_pong, self.reorder_buf_pong)
+            with self.tik_inst.if_scope(self.h_loop_num % 2 == 1):
+                _do_reorder(self.h_loop_num - 1, self.h_per_loop, self.image_in_buf_ping, self.reorder_buf_ping)
+            with self.tik_inst.if_scope(self.h_loop_tail > 0):
+                _do_reorder(self.h_loop_num, self.h_loop_tail, self.image_in_buf_ping, self.reorder_buf_ping)
+
+        with self.tik_inst.for_range(0, op.nc_per_core) as _nc_idx:
+            nc_start.set_as(op.core_nc_start + _nc_idx)
+            with self.tik_inst.for_range(0, self.w_loop_num) as _w_loop_idx:
+                w_in_start = op.core_width_start + _w_loop_idx * self.w_in_per_loop
+                _invoke_ping_pong(self.w_in_per_loop)
+            with self.tik_inst.if_scope(self.w_loop_tail > 0):
+                w_in_start = op.core_width_start + self.w_loop_num * self.w_in_per_loop
+                _invoke_ping_pong(self.w_loop_tail)
+
+    def _nc_ping_pong(self) -> None:
+        op = self.op
+
+        def _w_loop_of_nc_ping_pong(h_in_len):
+            def _invoke_ping_pong(w_in_len):
+                self.gm_in_start.set_as((op.core_nc_start * op.input_height + h_in_start)
+                                        * op.input_width + w_in_start)
+                self.gm_out_start.set_as((op.core_nc_start * op.input_height + h_in_start) * op.h_scale
+                                         * op.output_width + w_in_start * op.w_scale)
+
+                def _do_reorder(nc_idx, in_image_buf, reorder_buf):
+                    gm_in_offset = (self.gm_in_start + nc_idx
+                                    * op.input_height * op.input_width) * op.shape_c0
+                    gm_out_offset = (self.gm_out_start + nc_idx
+                                     * op.output_height * op.output_width) * op.shape_c0
+                    self._image_reorder(gm_in_offset, gm_out_offset, h_in_len, w_in_len, in_image_buf, reorder_buf)
+
+                with self.tik_inst.for_range(0, op.nc_per_core >> 1) as _nc_idx:
+                    _do_reorder(_nc_idx * 2, self.image_in_buf_ping, self.reorder_buf_ping)
+                    _do_reorder(_nc_idx * 2 + 1, self.image_in_buf_pong, self.reorder_buf_pong)
+                with self.tik_inst.if_scope(op.nc_per_core % 2 == 1):
+                    _do_reorder(op.nc_per_core - 1, self.image_in_buf_ping, self.reorder_buf_ping)
+
+            with self.tik_inst.for_range(0, self.w_loop_num) as _w_loop_idx:
+                w_in_start = op.core_width_start + _w_loop_idx * self.w_in_per_loop
+                _invoke_ping_pong(self.w_in_per_loop)
+            with self.tik_inst.if_scope(self.w_loop_tail > 0):
+                w_in_start = op.core_width_start + self.w_loop_num * self.w_in_per_loop
+                _invoke_ping_pong(self.w_loop_tail)
+
+        with self.tik_inst.if_scope(self.h_loop_num == 1):
+            h_in_start = op.core_height_start
+            _w_loop_of_nc_ping_pong(self.h_per_loop)
+        with self.tik_inst.if_scope(self.h_loop_tail > 0):
+            h_in_start = op.core_height_start + self.h_loop_num * self.h_per_loop
+            _w_loop_of_nc_ping_pong(self.h_loop_tail)
+
+    def _image_reorder(self, gm_in_offset, gm_out_offset, h_in_len, w_in_len, in_image_buf, reorder_buf) -> None:
+        self._move_from_gm(gm_in_offset, in_image_buf, h_in_len, w_in_len)
+        if self.is_w_equal:
+            self._move_to_gm(gm_out_offset, in_image_buf, h_in_len, w_in_len)
+        else:
+            self.reorder_in_ub_for_w_align(self.tik_inst, self.op, in_image_buf, reorder_buf, h_in_len * w_in_len)
+            self._move_to_gm(gm_out_offset, reorder_buf, h_in_len, w_in_len)
+
+    def _move_from_gm(self, gm_in_offset, in_image_buf, h_in_len, w_in_len) -> None:
+        """ GM -> L1/UB """
+        op = self.op
+        burst_num = h_in_len
+        burst_len = w_in_len * op.c0_blocks
+        burst_src_gap = op.input_width * op.c0_blocks - burst_len
+        self.tik_inst.data_move(in_image_buf[0:], op.images_gm[gm_in_offset:],
+                                0, burst_num, burst_len, burst_src_gap, 0)
+
+    def _move_to_gm(self, gm_out_offset, reorder_buf, h_in_len, w_in_len) -> None:
+        """ UB -> GM """
+        with self.tik_inst.new_stmt_scope(disable_sync=True):
+            op = self.op
+            burst_num = h_in_len
+            burst_len = w_in_len * op.w_scale * op.c0_blocks
+            burst_dst_gap = op.h_scale * op.output_width * op.c0_blocks - burst_len
+            with self.tik_inst.for_range(0, op.h_scale) as _h_cp_idx:
+                dst_offset = gm_out_offset + _h_cp_idx * op.output_width * op.shape_c0
+                self.tik_inst.data_move(op.out_gm[dst_offset:], reorder_buf[0:],
+                                        0, burst_num, burst_len, 0, burst_dst_gap)
+
+
+class AlignHWSmall(ProcessorBase):
+    """Scenario for particular AlignHW with large NC1 but small H/W.
+    H/W will not be cut between COREs, but NC1 only.
+    Also, H/W will not be cut within each CORE.
+
+    Attributes:
+    ------
+        is_w_equal: whether w_in equals w_out
+    """
+    def __init__(self, resize_op_obj: ResizeNearestNeighbor, is_w_equal: bool = False) -> None:
+        super().__init__(resize_op_obj, is_w_equal)
+
+        # scalars for loop
+        self.nc_per_loop = self.tik_inst.Scalar("int64", name="nc_per_loop")
+        self.nc_loop_num = self.tik_inst.Scalar("int64", name="nc_loop_num")
+        self.nc_loop_tail = self.tik_inst.Scalar("int64", name="nc_loop_tail")
+
+    def adjust_w_per_loop(self) -> None: pass
+
+    def init_loop_parameters(self) -> None:
+        """Limits:
+
+        COMMON LIMITS:
+          1. [ MUST ] nc_per_loop <= BURST_NUM_MAX
+          2. [ MUST ] w_per_core <= BURST_LEN_MAX * self.block_num // c0     <-- will be ok if COMMON-4 is ok
+          3. [ MUST ] H-out * W-out <= BURST_STRIDE_MAX * self.block_num // c0  <-- will limit when tiling
+          4. [SHOULD] w_per_core * w_scale <= BURST_LEN_MAX * self.block_num // c0  <-- will limit when tiling (128)
+          5. [SHOULD] nc_per_loop * w_per_core * w_scale <= ub_max // c0
+
+        if not is_w_equal:
+          1. [ MUST ] nc_per_loop * w_per_core <= BURST_NUM_MAX
+          2. [SHOULD] w_scale <= BURST_STRIDE_MAX * self.block_num // c0     <-- will be ok if COMMON-4 is ok
         """
-        _init_ub_tensor_for_images
+        op = self.op
+
+        if op.l1_exists or self.is_w_equal:
+            self.nc_per_loop.set_as(op.ub_max_num // op.shape_c0 // (op.w_per_core * op.w_scale))
+        else:
+            self.nc_per_loop.set_as(op.ub_max_num // op.shape_c0 // (op.w_per_core * (1 + op.w_scale)))
+
+        """considering for data_move ISA"""
+        if self.is_w_equal:
+            with self.tik_inst.if_scope(self.nc_per_loop > Constant.BURST_NUM_MAX):
+                self.nc_per_loop.set_as(Constant.BURST_NUM_MAX)
+        else:
+            with self.tik_inst.if_scope(self.nc_per_loop * op.w_per_core > Constant.BURST_NUM_MAX):
+                self.nc_per_loop.set_as(Constant.BURST_NUM_MAX // op.w_per_core)
+
+        self.nc_loop_num.set_as(op.nc_per_core // self.nc_per_loop)
+        self.nc_loop_tail.set_as(op.nc_per_core % self.nc_per_loop)
+
+    def malloc_buf(self) -> None:
+        op = self.op
+        _nc_max = self.tik_inst.Scalar("int64", "nc_max", init_value=self.nc_per_loop)
+        with self.tik_inst.if_scope(self.nc_loop_num == 0):
+            _nc_max.set_as(self.nc_loop_tail)
+
+        in_num_per_loop = _nc_max * op.w_per_core * op.shape_c0
+        reorder_num_per_loop = in_num_per_loop * op.w_scale
+        self.malloc_ping_pong_buf(self.tik_inst, op.images_dtype,
+                                  in_num_per_loop, reorder_num_per_loop, self.is_w_equal, op.l1_exists)
+
+    def pre_image_process(self) -> None: pass
+
+    def image_process(self) -> None:
+        self._h_ping_pong()
+
+    def _h_ping_pong(self) -> None:
+        op = self.op
+
+        def _invoke_ping_pong(nc_len):
+            self.gm_in_start.set_as((nc_start * op.input_height + op.core_height_start)
+                                    * op.input_width + op.core_width_start)
+            self.gm_out_start.set_as((nc_start * op.input_height + op.core_height_start) * op.h_scale
+                                     * op.output_width + op.core_width_start * op.w_scale)
+
+            def _do_reorder(h_idx, in_image_buf, reorder_buf):
+                gm_in_offset = op.shape_c0 * (self.gm_in_start + h_idx * op.input_width)
+                gm_out_offset = op.shape_c0 * (self.gm_out_start + h_idx * op.h_scale * op.output_width)
+                self._image_reorder(gm_in_offset, gm_out_offset, nc_len, in_image_buf, reorder_buf)
+
+            with self.tik_inst.for_range(0, op.h_per_core >> 1) as _h_idx:
+                _do_reorder(_h_idx * 2, self.image_in_buf_ping, self.reorder_buf_ping)
+                _do_reorder(_h_idx * 2 + 1, self.image_in_buf_pong, self.reorder_buf_pong)
+            with self.tik_inst.if_scope(op.h_per_core % 2 == 1):
+                _do_reorder(op.h_per_core - 1, self.image_in_buf_ping, self.reorder_buf_ping)
+
+        with self.tik_inst.for_range(0, self.nc_loop_num) as _nc_loop_idx:
+            nc_start = op.core_nc_start + _nc_loop_idx * self.nc_per_loop
+            _invoke_ping_pong(self.nc_per_loop)
+        with self.tik_inst.if_scope(self.nc_loop_tail > 0):
+            nc_start = op.core_nc_start + self.nc_loop_num * self.nc_per_loop
+            _invoke_ping_pong(self.nc_loop_tail)
+
+    def _image_reorder(self, gm_in_offset, gm_out_offset, nc_len, in_image_buf, reorder_buf) -> None:
+        self._move_from_gm(gm_in_offset, in_image_buf, nc_len)
+        if self.is_w_equal:
+            self._move_to_gm(gm_out_offset, in_image_buf, nc_len)
+        else:
+            self.reorder_in_ub_for_w_align(self.tik_inst, self.op, in_image_buf, reorder_buf,
+                                           nc_len * self.op.w_per_core)
+            self._move_to_gm(gm_out_offset, reorder_buf, nc_len)
+
+    def _move_from_gm(self, gm_in_offset, in_image_buf, nc_len) -> None:
+        """ GM -> L1/UB """
+        op = self.op
+        burst_num = nc_len
+        burst_len = op.w_per_core * op.c0_blocks
+        burst_src_gap = op.input_height * op.input_width * op.c0_blocks - burst_len
+        self.tik_inst.data_move(in_image_buf[0:], op.images_gm[gm_in_offset:],
+                                0, burst_num, burst_len, burst_src_gap, 0)
+
+    def _move_to_gm(self, gm_out_offset, reorder_buf, nc_len) -> None:
+        """ UB -> GM """
+        with self.tik_inst.new_stmt_scope(disable_sync=True):
+            op = self.op
+            burst_num = nc_len
+            burst_len = op.w_per_core * op.w_scale * op.c0_blocks
+            burst_dst_gap = op.output_height * op.output_width * op.c0_blocks - burst_len
+            with self.tik_inst.for_range(0, op.h_scale) as _h_cp_idx:
+                dst_offset = gm_out_offset + _h_cp_idx * op.output_width * op.shape_c0
+                self.tik_inst.data_move(op.out_gm[dst_offset:], reorder_buf[0:],
+                                        0, burst_num, burst_len, 0, burst_dst_gap)
+
+
+class AlignOnlyW(ProcessorBase):
+    """Only width align, both align_corners & half_pixel_centers are False
+
+    Attributes:
+    ------
+        is_w_equal: whether w_in equals w_out
+    """
+
+    def __init__(self, resize_op_obj: ResizeNearestNeighbor, is_w_equal: bool = False) -> None:
+        super().__init__(resize_op_obj, is_w_equal)
+
+        # scalars for loop
+        self.nc_per_loop = self.tik_inst.Scalar("int64", name="nc_per_loop")
+        self.nc_loop_num = self.tik_inst.Scalar("int64", name="nc_loop_num")
+        self.nc_loop_tail = self.tik_inst.Scalar("int64", name="nc_loop_tail")
+
+        # batch count for index calculation
+        self.height_idx_per_loop = 64
+
+        # parameters to decide how to data_move from / to GM.
+        self.image_in_exceed_stride = self.tik_inst.Scalar("int8", name="image_in_exceed_stride", init_value=0)
+        self.image_out_exceed_stride = self.tik_inst.Scalar("int8", name="image_out_exceed_stride", init_value=0)
+
+        # assistant scalar
+        self.h_out_idx = self.tik_inst.Scalar("int32", "h_out_idx")
+        self.h_in_idx = self.tik_inst.Scalar("int32", "h_in_idx")
+
+        # prepare to batch calculate height-in index
+        self.h_in_idx_ub = self.tik_inst.Tensor("int32", (self.height_idx_per_loop,),
+                                                name="h_in_idx_ub", scope=tik.scope_ubuf)
+        self.h_out_idx_ub_fp32 = self.tik_inst.Tensor("float32", (self.height_idx_per_loop,),
+                                                      name="h_out_idx_ub_fp32", scope=tik.scope_ubuf)
+        # fill in 0,1,2,3,4,...,63 into h_out_idx_ub_fp32
+        # NOTE: DO NOT move function below after malloc_buf because of some unknown issues...
+        fill_index_in_ub(self.tik_inst, self.h_out_idx_ub_fp32, self.height_idx_per_loop)
+
+    def adjust_w_per_loop(self) -> None:
+        """Limits:
+        COMMON LIMITS:
+          1. [ MUST ] w_in_per_loop <= BURST_LEN_MAX * self.block_num // c0              <-- will be ok if 3 is ok
+          2. [SHOULD] w_in_per_loop * w_scale <= BURST_LEN_MAX * self.block_num // c0    <-- will be ok if 3 is ok
+          3. [SHOULD] w_in_per_loop * w_scale_factor <= ub_max // c0   <-- will limit by compile parameter when tiling
+        if not is_w_equal:
+          1. [ MUST ] nc_per_loop * w_in_per_loop <= BURST_NUM_MAX
+          2. [SHOULD] w_scale <= BURST_STRIDE_MAX * self.block_num // c0     <-- will be ok if COMMON-3 is ok
         """
-        if mode in ("all",):
-            self.image_out_ub = self.tik_instance.Tensor(self.images_dtype, (self.ub_max_num,),
-                                                         name="image_out_ub", scope=tik.scope_ubuf)
-            self.image_in_cb_ping = self.tik_instance.Tensor(self.images_dtype, (self.ub_max_num,),
-                                                             name="image_in_cb_ping", scope=tik.scope_cbuf)
-        if mode in ("l1",):
-            self.image_in_cb_ping = self.tik_instance.Tensor(self.images_dtype, (self.ub_max_num,),
-                                                             name="image_in_cb_ping", scope=tik.scope_cbuf)
-        if mode in ("ub",):
-            self.image_out_ub = self.tik_instance.Tensor(self.images_dtype, (self.ub_max_num,),
-                                                         name="image_out_ub", scope=tik.scope_ubuf)
+        self.adjust_w_per_loop_for_w_align()
 
-    def _function_default(self, is_src_stride_copy=False, is_dst_stride_copy=False,
-                          is_w_algin=False, is_big_to_small=True):
+    def init_loop_parameters(self) -> None:
+        op = self.op
+
+        self.w_out_per_loop.set_as(self.w_in_per_loop * op.w_scale)
+
+        self.w_loop_num.set_as(op.w_per_core // self.w_in_per_loop)
+        self.w_loop_tail.set_as(op.w_per_core % self.w_in_per_loop)
+
+        if op.l1_exists or self.is_w_equal:
+            self.nc_per_loop.set_as(op.ub_max_num // op.shape_c0 // self.w_out_per_loop)
+        else:
+            self.nc_per_loop.set_as(op.ub_max_num // op.shape_c0 // (self.w_in_per_loop + self.w_out_per_loop))
+
+        """considering for data_move ISA:
+        1. nc_per_loop <= BURST_NUM_MAX
+        2. if not is_w_equal: nc_per_loop * w_in_per_loop <= BURST_NUM_MAX
         """
-        _function_default, run this
-        """
-        if is_w_algin:
-            is_big_to_small = False
-        self.height_idx_sigment_num = 64
-        self.width_idx_sigment_num = 128
-        # cut by output h and output w
-        self._init_ub_tensor_for_idx()
+        if self.is_w_equal:
+            with self.tik_inst.if_scope(self.nc_per_loop > Constant.BURST_NUM_MAX):
+                self.nc_per_loop.set_as(Constant.BURST_NUM_MAX)
+        else:
+            w_max = self.tik_inst.Scalar("int64", "w_max", init_value=self.w_in_per_loop)
+            with self.tik_inst.if_scope(self.w_loop_num == 0):
+                w_max.set_as(self.w_loop_tail)
+            with self.tik_inst.if_scope(self.nc_per_loop * w_max > Constant.BURST_NUM_MAX):
+                self.nc_per_loop.set_as(Constant.BURST_NUM_MAX // w_max)
 
-        # gen 0-511 to l1 fp32
-        with self.tik_instance.new_stmt_scope():
-            fill_index_in_ub(self.tik_instance, self.idx_ub_fp32, self.width_idx_sigment_num)
+        self.nc_loop_num.set_as(op.nc_per_core // self.nc_per_loop)
+        self.nc_loop_tail.set_as(op.nc_per_core % self.nc_per_loop)
 
-        # calcu is_src_stride_copy and is_dst_stride_copy use scalar
-        scalar_is_src_stride = self.tik_instance.Scalar("int32", name="scalar_is_src_stride", init_value=1)
-        scalar_is_dst_stride = self.tik_instance.Scalar("int32", name="scalar_is_dst_stride", init_value=1)
+    def malloc_buf(self) -> None:
+        _nc_max = self.tik_inst.Scalar("int64", "nc_max", init_value=self.nc_per_loop)
+        with self.tik_inst.if_scope(self.nc_loop_num == 0):
+            _nc_max.set_as(self.nc_loop_tail)
 
-        with self.tik_instance.if_scope(self.tiling_in_height * self.tiling_in_width > self.stride_threshold):
-            scalar_is_src_stride.set_as(0)
-        with self.tik_instance.if_scope(self.tiling_out_height * self.tiling_out_width > self.stride_threshold):
-            scalar_is_dst_stride.set_as(0)
-        # calcu is_src_stride_copy and is_dst_stride_copy use scalar end
+        op = self.op
+        in_num_per_loop = _nc_max * self.w_in_per_loop * op.shape_c0
+        reorder_num_per_loop = in_num_per_loop * op.w_scale
+        self.malloc_ping_pong_buf(self.tik_inst, op.images_dtype,
+                                  in_num_per_loop, reorder_num_per_loop, self.is_w_equal, op.l1_exists)
 
-        # init a scalar for w sigment one time
-        w_loop_sigment = self.tik_instance.Scalar("int32", name="w_loop_sigment",
-                                                  init_value=self.width_idx_sigment_num)
-        if is_w_algin:
-            # if width is input_w resize to n*input_w, one sigment must be n algin
-            # exp: 24 resize to 48, one sigment of width must be 2*n
-            with self.tik_instance.new_stmt_scope():
-                algin_num_scalar = self.tik_instance.Scalar("int32", name="algin_num_scalar")
-                algin_num_scalar.set_as(self.tiling_out_width // self.tiling_in_width)
-                w_loop_sigment.set_as(w_loop_sigment // algin_num_scalar * algin_num_scalar)
+    def pre_image_process(self) -> None:
+        op = self.op
+        with self.tik_inst.if_scope(op.input_height * op.input_width * op.c0_blocks > Constant.BURST_STRIDE_MAX):
+            self.image_in_exceed_stride.set_as(Constant.EXCEED_BURST_STRIDE)
+        with self.tik_inst.if_scope(op.output_height * op.output_width * op.c0_blocks > Constant.BURST_STRIDE_MAX):
+            self.image_out_exceed_stride.set_as(Constant.EXCEED_BURST_STRIDE)
 
-        with self.tik_instance.if_scope(tik.all(self.core_width_num < w_loop_sigment, self.core_width_num > 0)):
-            w_loop_sigment.set_as(self.core_width_num)
+    def image_process(self) -> None:
+        with self.tik_inst.new_stmt_scope():
+            op = self.op
 
-        w_loop_num = self.tik_instance.Scalar("int32", name="w_loop_num")
-        w_tail_num = self.tik_instance.Scalar("int32", name="w_tail_num")
-        nc_max_segment = self.tik_instance.Scalar("int32", name="nc_max_segment")
-        nc_loop = self.tik_instance.Scalar("int32", name="nc_loop")
-        nc_tail = self.tik_instance.Scalar("int32", name="nc_tail")
+            scalar_idx_fp32 = self.tik_inst.Scalar("float32", name="scalar_idx_fp32")
+            scalar_vconv_int32_to_fp32(self.tik_inst, op.core_height_start, scalar_idx_fp32)
+            # do vadds 0,1,2,3,4,...,63 + core_height_start
+            self.tik_inst.vadds(64, self.h_out_idx_ub_fp32, self.h_out_idx_ub_fp32, scalar_idx_fp32,
+                                (self.height_idx_per_loop + 63) // 64, 1, 1, 8, 8)
+            # convert height_idx_per_loop for the loop below
+            scalar_vconv_int32_to_fp32(self.tik_inst, self.height_idx_per_loop, scalar_idx_fp32)
 
-        w_loop_num.set_as(self.core_width_num // w_loop_sigment)
-        w_tail_num.set_as(self.core_width_num % w_loop_sigment)
-        nc_max_segment.set_as(self.ub_max_num // (w_loop_sigment * self.images_shape_c0))
-        nc_loop.set_as(self.core_nc_num // nc_max_segment)
-        nc_tail.set_as(self.core_nc_num % nc_max_segment)
+            with self.tik_inst.for_range(0, op.h_per_core) as _h_idx:
+                # batch calculate height-in index once per 64
+                with self.tik_inst.if_scope((_h_idx % self.height_idx_per_loop) == 0):
+                    self.calculate_src_idx(self.tik_inst, op.h_rec_scale_fp32, self.h_in_idx_ub,
+                                           self.h_out_idx_ub_fp32, self.height_idx_per_loop,
+                                           op.align_corners, op.half_pixel_centers)
+                    self.tik_inst.vadds(64, self.h_out_idx_ub_fp32, self.h_out_idx_ub_fp32, scalar_idx_fp32,
+                                        (self.height_idx_per_loop + 63) // 64, 1, 1, 8, 8)
 
-        if is_big_to_small:
-            # when nc_loop is 0, do not check the size of input_w * nc for nc_max_segment
-            # so change `nc_max_segment = 0`
-            with self.tik_instance.if_scope(nc_loop == 0):
-                nc_max_segment.set_as(0)
-            # mean: if input_w // output_w > 4, the input_w can not save in l1
-            # will modify w_loop_sigment base on input
-            w_input_output_rate = self.scale_w_ceil
-            w_loop_input_sigment = (w_loop_sigment - 1) * w_input_output_rate + 1
-            _max_nc_w_in_l1 = self.ub_max_num * 4 // self.images_shape_c0
-            with self.tik_instance.if_scope(self.tiling_out_width * 4 < self.tiling_in_width):
-                with self.tik_instance.if_scope(tik.any(w_loop_input_sigment * nc_tail > _max_nc_w_in_l1,
-                                                        w_loop_input_sigment * nc_max_segment > _max_nc_w_in_l1)):
-                    w_loop_sigment.set_as(w_loop_sigment * 4 // w_input_output_rate)
-                    with self.tik_instance.if_scope(w_loop_sigment < 1):
-                        w_loop_sigment.set_as(1)
-                    w_loop_num.set_as(self.core_width_num // w_loop_sigment)
-                    w_tail_num.set_as(self.core_width_num % w_loop_sigment)
+                self.h_out_idx.set_as(op.core_height_start + _h_idx)
+                self.h_in_idx.set_as(self.h_in_idx_ub[_h_idx % self.height_idx_per_loop])
+                self._nc_ping_pong()
 
-        scalar_idx_fp32 = self.tik_instance.Scalar("float32", name="scalar_idx_fp32")
+    def _nc_ping_pong(self) -> None:
+        op = self.op
+
+        def _invoke_ping_pong(w_in_len):
+            self.gm_in_start.set_as((op.core_nc_start * op.input_height + self.h_in_idx)
+                                    * op.input_width + w_in_start)
+            self.gm_out_start.set_as((op.core_nc_start * op.output_height + self.h_out_idx)
+                                     * op.output_width + w_in_start * op.w_scale)
+
+            def _do_reorder(nc_loop_idx, nc_len, in_image_buf, reorder_buf):
+                gm_in_offset = (self.gm_in_start + nc_loop_idx * self.nc_per_loop
+                                * op.input_height * op.input_width) * op.shape_c0
+                gm_out_offset = (self.gm_out_start + nc_loop_idx * self.nc_per_loop
+                                 * op.output_height * op.output_width) * op.shape_c0
+                self._image_reorder(gm_in_offset, gm_out_offset, nc_len, w_in_len, in_image_buf, reorder_buf)
+
+            with self.tik_inst.for_range(0, self.nc_loop_num >> 1) as _nc_loop_idx:
+                _do_reorder(_nc_loop_idx * 2, self.nc_per_loop, self.image_in_buf_ping, self.reorder_buf_ping)
+                _do_reorder(_nc_loop_idx * 2 + 1, self.nc_per_loop, self.image_in_buf_pong, self.reorder_buf_pong)
+            with self.tik_inst.if_scope(self.nc_loop_num % 2 == 1):
+                _do_reorder(self.nc_loop_num - 1, self.nc_per_loop, self.image_in_buf_ping, self.reorder_buf_ping)
+            with self.tik_inst.if_scope(self.nc_loop_tail > 0):
+                _do_reorder(self.nc_loop_num, self.nc_loop_tail, self.image_in_buf_ping, self.reorder_buf_ping)
+
+        with self.tik_inst.for_range(0, self.w_loop_num) as _w_loop_idx:
+            w_in_start = op.core_width_start + _w_loop_idx * self.w_in_per_loop
+            _invoke_ping_pong(self.w_in_per_loop)
+        with self.tik_inst.if_scope(self.w_loop_tail > 0):
+            w_in_start = op.core_width_start + self.w_loop_num * self.w_in_per_loop
+            _invoke_ping_pong(self.w_loop_tail)
+
+    def _image_reorder(self, gm_in_offset, gm_out_offset, nc_len, w_in_len, in_image_buf, reorder_buf) -> None:
+        self.nc_batch_move_from_gm(self.tik_inst, self.op, gm_in_offset, in_image_buf,
+                                   nc_len, w_in_len, self.image_in_exceed_stride)
+        if self.is_w_equal:
+            self.nc_batch_move_to_gm(self.tik_inst, self.op, gm_out_offset, in_image_buf,
+                                     nc_len, w_in_len * self.op.w_scale, self.image_out_exceed_stride)
+        else:
+            self.reorder_in_ub_for_w_align(self.tik_inst, self.op, in_image_buf, reorder_buf, nc_len * w_in_len)
+            self.nc_batch_move_to_gm(self.tik_inst, self.op, gm_out_offset, reorder_buf,
+                                     nc_len, w_in_len * self.op.w_scale, self.image_out_exceed_stride)
+
+
+class Default(ProcessorBase):
+    """ Default process class """
+    def __init__(self, resize_op_obj: ResizeNearestNeighbor) -> None:
+        super().__init__(resize_op_obj)
+
+        # scalars for loop
+        self.nc_per_loop = self.tik_inst.Scalar("int64", name="nc_per_loop")
+        self.nc_loop_num = self.tik_inst.Scalar("int64", name="nc_loop_num")
+        self.nc_loop_tail = self.tik_inst.Scalar("int64", name="nc_loop_tail")
+
+        # batch count for index calculation
+        self.width_idx_per_loop = 128
+
+        # parameters to decide how to data_move from / to GM.
+        self.image_in_exceed_stride = self.tik_inst.Scalar("int8", name="image_in_exceed_stride", init_value=0)
+        self.image_out_exceed_stride = self.tik_inst.Scalar("int8", name="image_out_exceed_stride", init_value=0)
+
+        # assistant scalars
+        self.w_in_start_idx = self.tik_inst.Scalar("int32", name="w_in_start_idx")
+        self.w_in_end_idx = self.tik_inst.Scalar("int32", name="w_in_end_idx")
+        self.w_in_len = self.tik_inst.Scalar("int32", name="w_in_len")
+        self.w_out_start = self.tik_inst.Scalar("int32", name="w_out_start")
+        self.nc_start = self.tik_inst.Scalar("int32", name="nc_start")
+
+        # width index array for batch calculation
+        self.w_in_idx_array = self.tik_inst.Tensor("int32", (self.width_idx_per_loop,),
+                                                   name="w_in_idx_array", scope=tik.scope_ubuf)
+        self.w_out_idx_ub_fp32 = self.tik_inst.Tensor("float32", (self.width_idx_per_loop,),
+                                                      name="w_out_idx_ub_fp32", scope=tik.scope_ubuf)
+        self.scalar_idx_fp32 = self.tik_inst.Scalar("float32", name="scalar_idx_fp32")
+
+        # fill 0-127 into fp32 index array
+        # NOTE: DO NOT move function below after malloc_buf because of some unknown issues...
+        fill_index_in_ub(self.tik_inst, self.w_out_idx_ub_fp32, self.width_idx_per_loop)
+
+    def adjust_w_per_loop(self) -> None:
+        op = self.op
+
+        self.w_out_per_loop.set_as(self.width_idx_per_loop)
+        with self.tik_inst.if_scope(op.w_per_core < self.w_out_per_loop):
+            self.w_out_per_loop.set_as(op.w_per_core)
+
+        w_out_per_loop_max = self.tik_inst.Scalar("int64", "w_out_per_loop_max", init_value=self.w_out_per_loop)
+        with self.tik_inst.if_scope(op.output_width >= op.input_width):
+            # zoom in
+            if not op.l1_exists:
+                """Limit:
+                w_out_per_loop + w_in_per_loop <= ub_max // c0
+                # w_out_per_loop + w_out_per_loop/w_scale <= ub_max // c0
+                # w_out_per_loop <= ub_max // c0 / (1 + 1 / w_scale)
+                # w_out_per_loop <= ub_max // c0 / ((input_width + output_width) / output_width)
+                                 < ub_max // c0 / ((input_width + output_width - 2) / (output_width - 1))
+                So: 128 (default max width per loop) < 0.5 * (ub_max // c0) < w_out_per_loop_max < (ub_max // c0)
+                """
+                w_out_per_loop_max.set_as(((op.ub_max_num // op.shape_c0) * op.output_width)
+                                          // (op.input_width + op.output_width))
+        with self.tik_inst.else_scope():
+            # zoom out
+            if op.l1_exists:
+                """Limits:
+                1. w_in_per_loop  <= l1_max_num // c0 - 1 , minus 1 is to protect nc_per_loop calculation
+                2. w_in_per_loop  <= BURST_STRIDE_MAX * self.block_num // c0
+                3. w_out_per_loop <= ub_max_num // c0
+                """
+                w_in_limit_min = min(op.l1_max_num // op.shape_c0 - 1,
+                                     Constant.BURST_STRIDE_MAX * op.block_num // op.shape_c0)
+                if not op.align_corners:
+                    # likely
+                    w_out_per_loop_max.set_as((w_in_limit_min * op.output_width) // op.input_width)
+                else:
+                    with self.tik_inst.if_scope(op.output_width > 1):
+                        # likely
+                        w_out_per_loop_max.set_as((w_in_limit_min * (op.output_width - 1)) // (op.input_width - 1))
+                    with self.tik_inst.else_scope():  # op.output_width == 1
+                        w_out_per_loop_max.set_as(w_in_limit_min // op.input_width)
+                with self.tik_inst.if_scope(w_out_per_loop_max > op.ub_max_num // op.shape_c0):
+                    w_out_per_loop_max.set_as(op.ub_max_num // op.shape_c0)
+            else:  # not op.l1_exists
+                """Limit:
+                w_out_per_loop + w_in_per_loop <= ub_max // c0
+                # w_out_per_loop + w_out_per_loop/w_scale <= ub_max // c0
+                # w_out_per_loop <= ub_max // c0 / (1 + 1 / w_scale)
+                # w_out_per_loop <= ub_max // c0 / ((input_width + output_width - 2) / (output_width - 1)
+                                 < ub_max // c0 / ((input_width + output_width) / output_width)
+                So:  0 < w_out_per_loop_max < 0.5 * (ub_max // c0) < w_in_per_loop_max < ub_max // c0
+                Also: w_in_per_loop_max < ub_max // c0 < BURST_STRIDE_MAX * self.block_num // c0
+                """
+                w_in_limit = op.ub_max_num // op.shape_c0
+                if not op.align_corners:
+                    # likely
+                    w_out_per_loop_max.set_as(w_in_limit * op.output_width // (op.input_width + op.output_width))
+                else:
+                    with self.tik_inst.if_scope(op.output_width > 1):
+                        w_out_per_loop_max.set_as(w_in_limit * (op.output_width - 1)
+                                                  // (op.input_width + op.output_width - 2))
+                    with self.tik_inst.else_scope():  # op.output_width == 1
+                        w_out_per_loop_max.set_as(w_in_limit // (op.input_width + 1))
+
+        with self.tik_inst.if_scope(self.w_out_per_loop > w_out_per_loop_max):
+            self.w_out_per_loop.set_as(w_out_per_loop_max)
+        with self.tik_inst.if_scope(self.w_out_per_loop < 1):
+            self.w_out_per_loop.set_as(1)
+
+    def init_loop_parameters(self) -> None:
+        op = self.op
+
+        # attribute `half_pixel_centers` has already been considered
+        if not op.align_corners:
+            self.w_in_per_loop.set_as(1 +
+                                      util_tik_comm_func.ceil_div((self.w_out_per_loop - 1) * op.input_width,
+                                                                  op.output_width))
+        else:
+            with self.tik_inst.if_scope(op.output_width > 1):
+                self.w_in_per_loop.set_as(1 +
+                                          util_tik_comm_func.ceil_div((self.w_out_per_loop - 1) * (op.input_width - 1),
+                                                                      (op.output_width - 1)))
+            with self.tik_inst.else_scope():
+                self.w_in_per_loop.set_as(1)
+
+        self.w_loop_num.set_as(op.w_per_core // self.w_out_per_loop)
+        self.w_loop_tail.set_as(op.w_per_core % self.w_out_per_loop)
+
+        if op.l1_exists:
+            self.nc_per_loop.set_as(op.ub_max_num // op.shape_c0 // self.w_out_per_loop)
+            with self.tik_inst.if_scope(self.nc_per_loop * self.w_in_per_loop > op.l1_max_num // op.shape_c0):
+                self.nc_per_loop.set_as(op.l1_max_num // op.shape_c0 // self.w_in_per_loop)
+        else:
+            self.nc_per_loop.set_as(op.ub_max_num // op.shape_c0 // (self.w_in_per_loop + self.w_out_per_loop))
+
+        # considering for data_move ISA
+        with self.tik_inst.if_scope(self.nc_per_loop > Constant.BURST_NUM_MAX):
+            self.nc_per_loop.set_as(Constant.BURST_NUM_MAX)
+
+        self.nc_loop_num.set_as(op.nc_per_core // self.nc_per_loop)
+        self.nc_loop_tail.set_as(op.nc_per_core % self.nc_per_loop)
+
+    def malloc_buf(self) -> None:
+        op = self.op
+        _nc_max = self.tik_inst.Scalar("int64", "nc_max", init_value=self.nc_per_loop)
+        with self.tik_inst.if_scope(self.nc_loop_num == 0):
+            _nc_max.set_as(self.nc_loop_tail)
+
+        in_num_per_loop = _nc_max * self.w_in_per_loop * op.shape_c0
+        reorder_num_per_loop = _nc_max * self.w_out_per_loop * op.shape_c0
+        self.malloc_ping_pong_buf(self.tik_inst, op.images_dtype,
+                                  in_num_per_loop, reorder_num_per_loop, False, op.l1_exists)
+
+    def pre_image_process(self) -> None:
+        op = self.op
+        with self.tik_inst.if_scope(op.input_height * op.input_width * op.c0_blocks > Constant.BURST_STRIDE_MAX):
+            self.image_in_exceed_stride.set_as(Constant.EXCEED_BURST_STRIDE)
+        with self.tik_inst.if_scope(op.output_height * op.output_width * op.c0_blocks > Constant.BURST_STRIDE_MAX):
+            self.image_out_exceed_stride.set_as(Constant.EXCEED_BURST_STRIDE)
+
+    def image_process(self) -> None:
+        op = self.op
+
         # vconv start idx from int32 scalar to fp32 scalar
-        self.scalar_vconv_int32_to_fp32(self.core_width_start, scalar_idx_fp32)
+        scalar_vconv_int32_to_fp32(self.tik_inst, op.core_width_start, self.scalar_idx_fp32)
         # do vadds 0,1,2,3,4 + fp32_scalar
-        self.tik_instance.vadds(64, self.idx_ub_fp32, self.idx_ub_fp32, scalar_idx_fp32,
-                                (w_loop_sigment + 63) // 64, 1, 1, 8, 8)
-        self.scalar_vconv_int32_to_fp32(w_loop_sigment, scalar_idx_fp32)
+        self.tik_inst.vadds(64, self.w_out_idx_ub_fp32, self.w_out_idx_ub_fp32, self.scalar_idx_fp32,
+                            (self.w_out_per_loop + 63) // 64, 1, 1, 8, 8)
+        scalar_vconv_int32_to_fp32(self.tik_inst, self.w_out_per_loop, self.scalar_idx_fp32)
 
-        def _run_w_loop_default(w_loop_idx, w_do_len, h_loop_offset, h_do_len):
-            w_gm_offset = w_loop_idx * w_loop_sigment + self.core_width_start
-            self.calcu_out_in_idx(self.resize_scale_w, self.width_idx_ub,
-                                  self.idx_ub_fp32, self.width_idx_sigment_num)
-            self.tik_instance.vadds(64, self.idx_ub_fp32, self.idx_ub_fp32, scalar_idx_fp32,
-                                    (self.width_idx_sigment_num + 63) // 64, 1, 1, 8, 8)
+        with self.tik_inst.for_range(0, self.w_loop_num) as _w_loop_idx:
+            self.w_out_start.set_as(op.core_width_start + _w_loop_idx * self.w_out_per_loop)
+            self._do_one_w_loop(self.w_out_per_loop)
+        with self.tik_inst.if_scope(self.w_loop_tail > 0):
+            self.w_out_start.set_as(op.core_width_start + self.w_loop_num * self.w_out_per_loop)
+            self._do_one_w_loop(self.w_loop_tail)
 
-            scalar_w_start_idx = self.tik_instance.Scalar("int32", name="scalar_w_start_idx")
-            scalar_w_end_idx = self.tik_instance.Scalar("int32", name="scalar_w_end_idx")
-            scalar_w_start_idx.set_as(self.width_idx_ub[0])
-            scalar_w_end_idx.set_as(self.width_idx_ub[w_do_len - 1])
-            input_w_len = scalar_w_end_idx - scalar_w_start_idx + 1
+    def _do_one_w_loop(self, w_out_len) -> None:
+        op = self.op
+        # batch calculate src width index
+        self.calculate_src_idx(self.tik_inst, op.w_rec_scale_fp32,
+                               self.w_in_idx_array, self.w_out_idx_ub_fp32, self.width_idx_per_loop,
+                               op.align_corners, op.half_pixel_centers)
+        self.tik_inst.vadds(64, self.w_out_idx_ub_fp32, self.w_out_idx_ub_fp32, self.scalar_idx_fp32,
+                            (self.width_idx_per_loop + 63) // 64, 1, 1, 8, 8)
+        self.w_in_start_idx.set_as(self.w_in_idx_array[0])
+        self.w_in_end_idx.set_as(self.w_in_idx_array[w_out_len-1])
+        self.w_in_len.set_as(self.w_in_end_idx - self.w_in_start_idx + 1)
 
-            # one sigment h and one sigment w
-            def _do_single_nc(do_nc_num, _nc_loop_idx):
-                def _do_one_height(h_idx, output_ub, input_l1):
-                    h_gm_offset = h_idx + h_loop_offset
-                    scalar_in_h_idx = self.tik_instance.Scalar("int32", name="scalar_in_h_idx")
-                    height_idx_ub = self.tik_instance.Tensor("int32", (64,),
-                                                             name="height_idx", scope=tik.scope_ubuf)
-                    height_idx_ub_fp32 = self.tik_instance.Tensor("float32", (64,),
-                                                                  name="height_idx_ub_fp32", scope=tik.scope_ubuf)
-                    self.tik_instance.vector_dup(64, height_idx_ub_fp32, 0, 1, 1, 8)
-                    util_tik_comm_func.tik_func_vector(self.tik_instance, height_idx_ub,
-                                                       h_idx + self.core_height_start, 64)
-                    util_tik_comm_func.tik_func_vconv(self.tik_instance, height_idx_ub_fp32,
-                                                      height_idx_ub, 64)
+        with self.tik_inst.for_range(0, self.nc_loop_num) as _nc_loop_idx:
+            self.nc_start.set_as(op.core_nc_start + _nc_loop_idx * self.nc_per_loop)
+            self._do_one_nc_loop(self.nc_per_loop, self.w_in_len, w_out_len)
+        with self.tik_inst.if_scope(self.nc_loop_tail > 0):
+            self.nc_start.set_as(op.core_nc_start + self.nc_loop_num * self.nc_per_loop)
+            self._do_one_nc_loop(self.nc_loop_tail, self.w_in_len, w_out_len)
 
-                    self.calcu_out_in_idx(self.resize_scale_h, height_idx_ub,
-                                          height_idx_ub_fp32, 1)
+    def _do_one_nc_loop(self, nc_len, w_in_len, w_out_len) -> None:
+        op = self.op
 
-                    scalar_in_h_idx.set_as(height_idx_ub[0])
-                    with self.tik_instance.new_stmt_scope(disable_sync=True):
-                        with self.tik_instance.if_scope(scalar_is_src_stride == 0):
-                            with self.tik_instance.for_range(0, do_nc_num) as _sigment_idx:
-                                data_move_cbuf_offset = (input_w_len * self.images_shape_c0) * _sigment_idx
-                                nc_gm_input_offset = \
-                                    (_nc_loop_idx * nc_max_segment + self.core_nc_start + _sigment_idx) \
-                                    * self.tiling_in_width * self.tiling_in_height
-                                data_move_gm_offset = \
-                                    nc_gm_input_offset + scalar_in_h_idx * self.tiling_in_width + scalar_w_start_idx
-                                self.tik_instance.data_move(
-                                    input_l1[data_move_cbuf_offset],
-                                    self.images_gm[data_move_gm_offset * self.images_shape_c0],
-                                    0, 1, input_w_len * self.images_shape_c0 // self.block_num, 0, 0)
-                        with self.tik_instance.else_scope():
-                            data_move_cbuf_offset = 0
-                            nc_gm_input_offset = \
-                                (_nc_loop_idx * nc_max_segment + self.core_nc_start) \
-                                * self.tiling_in_width * self.tiling_in_height
-                            data_move_gm_offset = \
-                                nc_gm_input_offset + scalar_in_h_idx * self.tiling_in_width + scalar_w_start_idx
-                            data_move_burst_num = do_nc_num
-                            data_move_burst_len = input_w_len * self.images_shape_c0 // self.block_num
-                            data_move_src_stride = \
-                                (self.tiling_in_width * self.tiling_in_height - input_w_len) \
-                                * self.images_shape_c0 // self.block_num
-                            self.tik_instance.data_move(input_l1[data_move_cbuf_offset],
-                                                        self.images_gm[data_move_gm_offset * self.images_shape_c0],
-                                                        0,
-                                                        data_move_burst_num,
-                                                        data_move_burst_len,
-                                                        data_move_src_stride, 0)
+        self.gm_in_start.set_as(self.nc_start * op.input_height * op.input_width + self.w_in_start_idx)
+        self.gm_out_start.set_as(self.nc_start * op.output_height * op.output_width + self.w_out_start)
 
-                    if not is_w_algin:
-                        with self.tik_instance.new_stmt_scope(disable_sync=True):
-                            with self.tik_instance.for_range(0, w_do_len) as w_idx:
-                                scalar_in_w_idx = self.tik_instance.Scalar("int32", name="scalar_in_w_idx")
-                                scalar_in_w_idx.set_as(self.width_idx_ub[w_idx])
-                                nc_cbuf_offset = input_w_len * self.images_shape_c0
-                                burst_num = do_nc_num
-                                burst_len = self.images_shape_c0 // self.block_num
-                                cbuf_burst_stride = nc_cbuf_offset // self.block_num - burst_len
-                                ub_out_burst_strde = w_do_len * self.images_shape_c0 // self.block_num - burst_len
+        with self.tik_inst.for_range(0, op.h_per_core >> 1) as _h_idx:
+            self._do_one_height(op.core_height_start + _h_idx * 2, nc_len, w_in_len, w_out_len,
+                                self.image_in_buf_ping, self.reorder_buf_ping)
+            self._do_one_height(op.core_height_start + _h_idx * 2 + 1, nc_len, w_in_len, w_out_len,
+                                self.image_in_buf_pong, self.reorder_buf_pong)
+        with self.tik_inst.if_scope(op.h_per_core % 2 == 1):
+            self._do_one_height(op.core_height_start + op.h_per_core - 1, nc_len, w_in_len, w_out_len,
+                                self.image_in_buf_ping, self.reorder_buf_ping)
 
-                                self.tik_instance.data_move(output_ub[w_idx * self.images_shape_c0],
-                                                            input_l1[(scalar_in_w_idx - scalar_w_start_idx)
-                                                                     * self.images_shape_c0],
-                                                            0, burst_num, burst_len,
-                                                            cbuf_burst_stride, ub_out_burst_strde)
-                    else:
-                        # input_w_len
-                        scalar_in_w_idx = self.tik_instance.Scalar("int32", name="scalar_in_w_idx")
-                        scalar_in_w_idx.set_as(self.width_idx_ub[0])
-                        w_algin_num = self.tiling_out_width // self.tiling_in_width
-                        with self.tik_instance.new_stmt_scope(disable_sync=True):
-                            with self.tik_instance.for_range(0, input_w_len) as w_input_idx:
-                                nc_cbuf_offset = input_w_len * self.images_shape_c0
-                                burst_num = do_nc_num
-                                burst_len = self.images_shape_c0 // self.block_num
-                                cbuf_burst_stride = nc_cbuf_offset // self.block_num - burst_len
-                                ub_out_burst_strde = w_do_len * self.images_shape_c0 // self.block_num - burst_len
+    def _do_one_height(self, h_out_idx, nc_len, w_in_len, w_out_len, in_image_buf, reorder_buf) -> None:
+        with self.tik_inst.new_stmt_scope():
+            op = self.op
+            h_in_idx = self.tik_inst.Scalar("int32", name="h_in_idx")
+            h_in_idx_array = self.tik_inst.Tensor("int32", (64,), name="h_in_idx_array", scope=tik.scope_ubuf)
+            h_in_idx_array_fp32 = self.tik_inst.Tensor("float32", (64,), name="h_in_idx_array_fp32",
+                                                       scope=tik.scope_ubuf)
 
-                                self.tik_instance.data_move(
-                                    output_ub[w_input_idx * w_algin_num * self.images_shape_c0],
-                                    input_l1[w_input_idx * self.images_shape_c0],
-                                    0, burst_num, burst_len, cbuf_burst_stride, ub_out_burst_strde)
-                        # datamove to all
-                        burst_num = do_nc_num * input_w_len
-                        burst_len = self.images_shape_c0 // self.block_num
-                        with self.tik_instance.new_stmt_scope(disable_sync=True):
-                            with self.tik_instance.for_range(1, w_algin_num) as copy_num:
-                                data_move_src_offset = 0
-                                data_move_dst_offset = self.images_shape_c0 * copy_num
-                                data_move_src_stride = (w_algin_num - 1) * self.images_shape_c0 // self.block_num
-                                data_move_dst_stride = data_move_src_stride
-                                self.tik_instance.data_move(output_ub[data_move_dst_offset:],
-                                                            output_ub[data_move_src_offset:],
-                                                            0, burst_num, burst_len,
-                                                            data_move_src_stride, data_move_dst_stride)
-                    with self.tik_instance.new_stmt_scope(disable_sync=True):
-                        with self.tik_instance.if_scope(scalar_is_dst_stride == 0):
-                            with self.tik_instance.for_range(0, do_nc_num) as _sigment_idx:
-                                nc_gm_offset = \
-                                    (_nc_loop_idx * nc_max_segment + self.core_nc_start + _sigment_idx) \
-                                    * self.tiling_out_width * self.tiling_out_height
-                                output_gm_offset = \
-                                    nc_gm_offset + h_gm_offset * self.tiling_out_width + w_gm_offset
-                                ub_output_offset = w_do_len * self.images_shape_c0 * _sigment_idx
-                                self.tik_instance.data_move(self.out_gm[output_gm_offset * self.images_shape_c0:],
-                                                            output_ub[ub_output_offset:], 0, 1,
-                                                            w_do_len * self.images_shape_c0 // self.block_num,
-                                                            0, 0)
-                        with self.tik_instance.else_scope():
-                            nc_gm_offset = \
-                                (_nc_loop_idx * nc_max_segment + self.core_nc_start) \
-                                * self.tiling_out_width * self.tiling_out_height
-                            output_gm_offset = nc_gm_offset + h_gm_offset * self.tiling_out_width + w_gm_offset
-                            data_move_ub_offset = 0
-                            data_move_burst_num = do_nc_num
-                            data_move_burst_len = w_do_len * self.images_shape_c0 // self.block_num
-                            data_move_dst_stride = \
-                                (self.tiling_out_width * self.tiling_out_height - w_do_len) \
-                                * self.images_shape_c0 // self.block_num
-                            self.tik_instance.data_move(self.out_gm[output_gm_offset * self.images_shape_c0:],
-                                                        output_ub[data_move_ub_offset:], 0,
-                                                        data_move_burst_num,
-                                                        data_move_burst_len,
-                                                        0, data_move_dst_stride)
+            util_tik_comm_func.tik_func_vector(self.tik_inst, h_in_idx_array, h_out_idx, 64)
+            util_tik_comm_func.tik_func_vconv(self.tik_inst, h_in_idx_array_fp32, h_in_idx_array, 64)
+            self.calculate_src_idx(self.tik_inst, op.h_rec_scale_fp32, h_in_idx_array, h_in_idx_array_fp32, 1,
+                                   op.align_corners, op.half_pixel_centers)
 
-                image_out_ub_ping = self.tik_instance.Tensor(self.images_dtype, (self.ub_max_num,),
-                                                             name="image_out_ub_ping", scope=tik.scope_ubuf)
-                image_out_ub_pang = self.tik_instance.Tensor(self.images_dtype, (self.ub_max_num,),
-                                                             name="image_out_ub_pang", scope=tik.scope_ubuf)
-                image_in_cb_ping = self.tik_instance.Tensor(self.images_dtype, (self.ub_max_num * 4,),
-                                                            name="image_in_cb_ping", scope=tik.scope_cbuf)
-                image_in_cb_pang = self.tik_instance.Tensor(self.images_dtype, (self.ub_max_num * 4,),
-                                                            name="image_in_cb_pang", scope=tik.scope_cbuf)
-                with self.tik_instance.for_range(0, h_do_len // 2) as _h_idx:
-                    _do_one_height(_h_idx * 2, image_out_ub_ping, image_in_cb_ping)
-                    _do_one_height(_h_idx * 2 + 1, image_out_ub_pang, image_in_cb_pang)
-                with self.tik_instance.if_scope(h_do_len % 2 == 1):
-                    _do_one_height(h_do_len - 1, image_out_ub_ping, image_in_cb_ping)
+            h_in_idx.set_as(h_in_idx_array[0])
 
-            with self.tik_instance.for_range(0, nc_loop) as nc_loop_idx:
-                _do_single_nc(nc_max_segment, nc_loop_idx)
-            with self.tik_instance.if_scope(nc_tail != 0):
-                _do_single_nc(nc_tail, nc_loop)
+            gm_in_offset = op.shape_c0 * (self.gm_in_start + h_in_idx * op.input_width)
+            gm_out_offset = op.shape_c0 * (self.gm_out_start + h_out_idx * op.output_width)
+            self._image_reorder(gm_in_offset, gm_out_offset, nc_len, w_in_len, w_out_len, in_image_buf, reorder_buf)
 
-        def _run_h_loop_default(h_loop_idx, h_do_len):
-            h_loop_sigment_start = h_loop_idx * self.height_idx_sigment_num + self.core_height_start
-            h_gm_offset = h_loop_sigment_start
-            # calcu h idx
+    def _image_reorder(self, gm_in_offset, gm_out_offset, nc_len, w_in_len, w_out_len,
+                       in_image_buf, reorder_buf) -> None:
+        self.nc_batch_move_from_gm(self.tik_inst, self.op, gm_in_offset, in_image_buf,
+                                   nc_len, w_in_len, self.image_in_exceed_stride)
+        self._reorder_in_ub(in_image_buf, reorder_buf, nc_len, w_in_len, w_out_len)
+        self.nc_batch_move_to_gm(self.tik_inst, self.op, gm_out_offset, reorder_buf,
+                                 nc_len, w_out_len, self.image_out_exceed_stride)
 
-            with self.tik_instance.for_range(0, w_loop_num) as w_loop_idx:
-                _run_w_loop_default(w_loop_idx, w_loop_sigment, h_gm_offset, h_do_len)
-            with self.tik_instance.if_scope(w_tail_num != 0):
-                _run_w_loop_default(w_loop_num, w_tail_num, h_gm_offset, h_do_len)
-
-        _run_h_loop_default(0, self.core_height_num)
-
-    def _function_hw_to_nhnw_resize_for_small_hw(self):
-        """
-        _function_hw_to_nhnw_resize_for_small, run this
-        """
-        self.width_idx_sigment_num = 128
-        size_h_n = self.tiling_out_height // self.tiling_in_height
-        size_w_n = self.tiling_out_width // self.tiling_in_width
-        output_w_size = self.core_width_num * size_w_n
-        w_output_size_one_line = self.tik_instance.Scalar("int64", name="input_w_size",
-                                                          init_value=self.width_idx_sigment_num)
-        with self.tik_instance.if_scope(tik.all(output_w_size < self.width_idx_sigment_num, self.core_width_num > 0)):
-            w_output_size_one_line.set_as(output_w_size)
-
-        with self.tik_instance.if_scope(
-                tik.all(self.ub_max_num < output_w_size * self.images_shape_c0,
-                        self.core_width_num > 0)):
-            w_output_size_one_line.set_as((self.ub_max_num // self.images_shape_c0 // size_w_n) * size_w_n)
-        with self.tik_instance.if_scope(w_output_size_one_line == 0):
-            w_output_size_one_line.set_as((self.ub_max_num // self.images_shape_c0 // size_w_n) * size_w_n)
-
-        nc_loop = self.tik_instance.Scalar("int32", name="nc_loop")
-        nc_tail = self.tik_instance.Scalar("int32", name="nc_tail")
-        nc_sigment = self.tik_instance.Scalar("int32", name="nc_sigment")
-        nc_sigment.set_as(self.ub_max_num // self.images_shape_c0 // w_output_size_one_line)
-        nc_loop.set_as(self.core_nc_num // nc_sigment)
-        nc_tail.set_as(self.core_nc_num % nc_sigment)
-
-        def _run_w_loop_default(w_loop_idx, w_do_len, h_loop_offset, h_do_len):
-            w_gm_offset = w_loop_idx * (w_output_size_one_line // size_w_n) + self.core_width_start
-            input_w_len = w_do_len
-            scalar_in_w_idx = w_gm_offset
-
-            # one sigment h and one sigment w
-            def _do_single_nc(do_nc_num, _nc_loop_idx):
-                def _do_one_height(h_idx, output_ub, input_l1):
-                    h_gm_offset = h_idx + h_loop_offset
-                    scalar_in_h_idx = self.tik_instance.Scalar("int32", name="scalar_in_h_idx")
-                    scalar_in_h_idx.set_as(h_gm_offset)
-                    with self.tik_instance.new_stmt_scope(disable_sync=True):
-                        data_move_cbuf_offset = 0
-                        nc_gm_input_offset = \
-                            (_nc_loop_idx * nc_sigment + self.core_nc_start) \
-                            * self.tiling_in_width * self.tiling_in_height
-                        data_move_gm_offset = \
-                            nc_gm_input_offset + scalar_in_h_idx * self.tiling_in_width + scalar_in_w_idx
-                        data_move_burst_num = do_nc_num
-                        data_move_burst_len = input_w_len * self.images_shape_c0 // self.block_num
-                        data_move_src_stride = \
-                            (self.tiling_in_width * self.tiling_in_height - input_w_len) \
-                            * self.images_shape_c0 // self.block_num
-                        self.tik_instance.data_move(input_l1[data_move_cbuf_offset],
-                                                    self.images_gm[data_move_gm_offset * self.images_shape_c0],
-                                                    0,
-                                                    data_move_burst_num,
-                                                    data_move_burst_len,
-                                                    data_move_src_stride, 0)
-
-                    # input_w_len
-                    w_algin_num = size_w_n
-                    with self.tik_instance.new_stmt_scope(disable_sync=True):
-                        with self.tik_instance.for_range(0, input_w_len) as w_input_idx:
-                            nc_cbuf_offset = input_w_len * self.images_shape_c0
-                            burst_num = do_nc_num
-                            burst_len = self.images_shape_c0 // self.block_num
-                            cbuf_burst_stride = nc_cbuf_offset // self.block_num - burst_len
-                            ub_out_burst_stride = \
-                                w_do_len * size_w_n * self.images_shape_c0 // self.block_num - burst_len
-
-                            self.tik_instance.data_move(
-                                output_ub[w_input_idx * w_algin_num * self.images_shape_c0],
-                                input_l1[w_input_idx * self.images_shape_c0],
-                                0, burst_num, burst_len, cbuf_burst_stride, ub_out_burst_stride)
-                    # datamove to all
-                    burst_num = do_nc_num * input_w_len
-                    burst_len = self.images_shape_c0 // self.block_num
-                    with self.tik_instance.new_stmt_scope(disable_sync=True):
-                        with self.tik_instance.for_range(1, w_algin_num) as copy_num:
-                            data_move_src_offset = 0
-                            data_move_dst_offset = self.images_shape_c0 * copy_num
-                            data_move_src_stride = (w_algin_num - 1) * self.images_shape_c0 // self.block_num
-                            data_move_dst_stride = data_move_src_stride
-                            self.tik_instance.data_move(output_ub[data_move_dst_offset:],
-                                                        output_ub[data_move_src_offset:],
-                                                        0, burst_num, burst_len,
-                                                        data_move_src_stride, data_move_dst_stride)
-                    with self.tik_instance.new_stmt_scope(disable_sync=True):
-                        with self.tik_instance.for_range(0, size_h_n) as _nh_idx:
-                            nc_gm_offset = \
-                                (_nc_loop_idx * nc_sigment + self.core_nc_start) \
-                                * self.tiling_out_width * self.tiling_out_height
-                            output_gm_offset = \
-                                nc_gm_offset + h_gm_offset * size_h_n * self.tiling_out_width \
-                                + w_gm_offset * size_w_n + _nh_idx * self.tiling_out_width
-                            data_move_ub_offset = 0
-                            data_move_burst_num = do_nc_num
-                            data_move_burst_len = w_do_len * size_w_n * self.images_shape_c0 // self.block_num
-                            data_move_dst_stride = \
-                                (self.tiling_out_width * self.tiling_out_height - w_do_len * size_w_n) \
-                                * self.images_shape_c0 // self.block_num
-                            self.tik_instance.data_move(self.out_gm[output_gm_offset * self.images_shape_c0:],
-                                                        output_ub[data_move_ub_offset:], 0,
-                                                        data_move_burst_num,
-                                                        data_move_burst_len,
-                                                        0, data_move_dst_stride)
-
-                image_out_ub_ping = self.tik_instance.Tensor(self.images_dtype, (self.ub_max_num,),
-                                                             name="image_out_ub_ping", scope=tik.scope_ubuf)
-                image_out_ub_pang = self.tik_instance.Tensor(self.images_dtype, (self.ub_max_num,),
-                                                             name="image_out_ub_pang", scope=tik.scope_ubuf)
-                image_in_cb_ping = self.tik_instance.Tensor(self.images_dtype, (self.ub_max_num * 4,),
-                                                            name="image_in_cb_ping", scope=tik.scope_cbuf)
-                image_in_cb_pang = self.tik_instance.Tensor(self.images_dtype, (self.ub_max_num * 4,),
-                                                            name="image_in_cb_pang", scope=tik.scope_cbuf)
-                with self.tik_instance.for_range(0, h_do_len // 2) as _h_idx:
-                    _do_one_height(_h_idx * 2, image_out_ub_ping, image_in_cb_ping)
-                    _do_one_height(_h_idx * 2 + 1, image_out_ub_pang, image_in_cb_pang)
-                with self.tik_instance.if_scope(h_do_len % 2 == 1):
-                    _do_one_height(h_do_len - 1, image_out_ub_ping, image_in_cb_ping)
-
-            with self.tik_instance.for_range(0, nc_loop) as nc_loop_idx:
-                _do_single_nc(nc_sigment, nc_loop_idx)
-            with self.tik_instance.if_scope(nc_tail != 0):
-                _do_single_nc(nc_tail, nc_loop)
-
-        def _run_h_loop_default(h_loop_idx, h_do_len):
-            h_gm_in_offset = h_loop_idx
-            # calcu h idx
-            _run_w_loop_default(0, w_output_size_one_line // size_w_n, h_gm_in_offset, h_do_len)
-
-        _run_h_loop_default(self.core_height_start, self.core_height_num)
-
-    def resize_nearest_neighbor_v2_operator(self):
-        """
-        resize_nearest_neighbor_v2_operator
-        """
-        # regist compute base on tiling_key
-        self.regist_compute(100000, self._function_default, is_w_algin=False)
-        self.regist_compute(101000, self._function_default, is_w_algin=True)
-        self.regist_compute(111000, self._function_hw_to_nhnw_resize)
-        self.regist_compute(111001, self._function_hw_to_nhnw_resize_for_small_hw)
-        self.regist_compute(113000, self._function_hw_to_nhnw_resize, is_w_equal=True)
-
-        # run all regist compute base tiling key
-        self.op_run_compute()
-        # Build CCE
-
-        tbe_context.get_context().add_compile_info("vars", {"ub_size": self.ub_size_bytes,
-                                                            "core_num": self.core_nums,
-                                                            "max_w_len": self.ub_max_num // self.images_shape_c0,
-                                                            "align_corners": int(self.align_corners),
-                                                            "half_pixel_centers": int(self.half_pixel_centers)})
-        self.op_build_cce()
-
-        return self.tik_instance
-
-    def _function_hw_to_nhnw_resize(self, is_w_equal=False):
-        """
-        _function_hw_to_nhnw_resize, when `tiling key = 111000, run this`
-        """
-        # h boardcast base input_h cut
-        size_h_n = self.tiling_out_height // self.tiling_in_height
-        size_w_n = self.tiling_out_width // self.tiling_in_width
-        output_w_size = self.core_width_num * size_w_n
-        w_output_size_one_line = self.tik_instance.Scalar("int64", name="input_w_size", init_value=0)
-        w_output_size_one_line.set_as(output_w_size)
-
-        with self.tik_instance.if_scope(
-                tik.all(self.ub_max_num < output_w_size * self.images_shape_c0,
-                        self.core_width_num > 0)):
-            w_output_size_one_line.set_as((self.ub_max_num // self.images_shape_c0 // size_w_n) * size_w_n)
-        with self.tik_instance.if_scope(w_output_size_one_line == 0):
-            w_output_size_one_line.set_as((self.ub_max_num // self.images_shape_c0 // size_w_n) * size_w_n)
-        _w_loop_num = self.core_width_num // (w_output_size_one_line // size_w_n)
-        _w_tail_num = self.core_width_num % (w_output_size_one_line // size_w_n)
-        _segment_h_num = self.ub_max_num // self.images_shape_c0 // w_output_size_one_line
-        _h_loop_num = self.core_height_num // _segment_h_num
-        _h_tail_num = self.core_height_num % _segment_h_num
-
-        def _run_h_loop(h_loop_idx, h_do_len, w_start_offset, w_do_len, nc_idx):
-            h_sigment_start = h_loop_idx * _segment_h_num + self.core_height_start
-            nc_sigment_start = nc_idx + self.core_nc_start
-            aicore_mem = self.image_out_ub if is_w_equal else self.image_in_cb_ping
-
-            # copy h * w input to l1
-            data_move_gm_offset = \
-                nc_sigment_start * self.tiling_in_height * self.tiling_in_width + \
-                h_sigment_start * self.tiling_in_width + w_start_offset
-            data_move_burst_num = h_do_len
-            data_move_burst_len = w_do_len * self.images_shape_c0 // self.block_num
-            data_move_src_stride = (self.tiling_in_width - w_do_len) * self.images_shape_c0 // self.block_num
-            data_move_dst_stride = 0
-            self.tik_instance.data_move(aicore_mem,
-                                        self.images_gm[data_move_gm_offset * self.images_shape_c0],
-                                        0,
-                                        data_move_burst_num,
-                                        data_move_burst_len,
-                                        data_move_src_stride,
-                                        data_move_dst_stride)
-            if not is_w_equal:
-                # boardcast w from l1 to ub
-                data_move_burst_num = h_do_len * w_do_len
-                data_move_burst_len = self.images_shape_c0 // self.block_num
-                data_move_src_stride = 0
-                data_move_dst_stride = (size_w_n - 1) * self.images_shape_c0 // self.block_num
-                self.tik_instance.data_move(self.image_out_ub,
-                                            aicore_mem,
-                                            0,
-                                            data_move_burst_num,
-                                            data_move_burst_len,
-                                            data_move_src_stride,
-                                            data_move_dst_stride)
-                # ub to ub
-                with self.tik_instance.new_stmt_scope(disable_sync=True):
-                    with self.tik_instance.for_range(1, size_w_n) as _w_idx:
-                        data_move_dst_offset = _w_idx * self.images_shape_c0
-                        data_move_burst_num = h_do_len * w_do_len
-                        data_move_burst_len = self.images_shape_c0 // self.block_num
-                        data_move_src_stride = (size_w_n - 1) * self.images_shape_c0 // self.block_num
-                        data_move_dst_stride = (size_w_n - 1) * self.images_shape_c0 // self.block_num
-                        self.tik_instance.data_move(self.image_out_ub[data_move_dst_offset],
-                                                    self.image_out_ub,
-                                                    0,
-                                                    data_move_burst_num,
-                                                    data_move_burst_len,
-                                                    data_move_src_stride,
-                                                    data_move_dst_stride)
-
-            with self.tik_instance.new_stmt_scope(disable_sync=True):
-                with self.tik_instance.for_range(0, size_h_n) as _h_idx:
-                    # copy output one h by one h
-                    data_move_src_offset = 0
-                    data_move_dst_offset = \
-                        nc_sigment_start * self.tiling_out_height * self.tiling_out_width + \
-                        h_sigment_start * size_h_n * self.tiling_out_width + w_start_offset * size_w_n + \
-                        _h_idx * self.tiling_out_width
-                    data_move_burst_num = h_do_len
-                    data_move_burst_len = w_do_len * size_w_n * self.images_shape_c0 // self.block_num
-                    data_move_src_stride = 0
-                    data_move_dst_stride = \
-                        (size_h_n * self.tiling_out_width - w_do_len * size_w_n) \
-                        * self.images_shape_c0 // self.block_num
-                    self.tik_instance.data_move(self.out_gm[data_move_dst_offset * self.images_shape_c0:],
-                                                self.image_out_ub[data_move_src_offset:],
-                                                0,
-                                                data_move_burst_num,
-                                                data_move_burst_len,
-                                                data_move_src_stride,
-                                                data_move_dst_stride)
-
-        def _run_w_loop(w_loop_idx, input_w_len):
-            w_sigment_start = w_loop_idx * (w_output_size_one_line // size_w_n) + self.core_width_start
-            with self.tik_instance.for_range(0, self.core_nc_num) as nc_idx:
-                with self.tik_instance.for_range(0, _h_loop_num, thread_num=2) as _h_loop_idx:
-                    self._init_ub_tensor_for_images("l1")
-                    self._init_ub_tensor_for_images("ub")
-                    _run_h_loop(_h_loop_idx, _segment_h_num, w_sigment_start, input_w_len, nc_idx)
-            with self.tik_instance.if_scope(_h_tail_num != 0):
-                with self.tik_instance.for_range(0, self.core_nc_num) as nc_idx:
-                    self._init_ub_tensor_for_images("l1")
-                    self._init_ub_tensor_for_images("ub")
-                    _run_h_loop(_h_loop_num, _h_tail_num, w_sigment_start, input_w_len, nc_idx)
-
-        def _run_w_loop_double_nc(w_loop_idx, input_w_len):
-            w_sigment_start = w_loop_idx * (w_output_size_one_line // size_w_n) + self.core_width_start
-            with self.tik_instance.new_stmt_scope():
-                with self.tik_instance.for_range(0, _h_loop_num) as _h_loop_idx:
-                    with self.tik_instance.for_range(0, self.core_nc_num, thread_num=2) as nc_idx:
-                        self._init_ub_tensor_for_images("l1")
-                        self._init_ub_tensor_for_images("ub")
-                        _run_h_loop(_h_loop_idx, _segment_h_num, w_sigment_start, input_w_len, nc_idx)
-            with self.tik_instance.new_stmt_scope():
-                with self.tik_instance.if_scope(_h_tail_num != 0):
-                    with self.tik_instance.for_range(0, self.core_nc_num, thread_num=2) as nc_idx:
-                        self._init_ub_tensor_for_images("l1")
-                        self._init_ub_tensor_for_images("ub")
-                        _run_h_loop(_h_loop_num, _h_tail_num, w_sigment_start, input_w_len, nc_idx)
-
-        with self.tik_instance.new_stmt_scope():
-            with self.tik_instance.if_scope(_h_loop_num > 1):
-                with self.tik_instance.for_range(0, _w_loop_num) as _w_loop_idx:
-                    _run_w_loop(_w_loop_idx, w_output_size_one_line // size_w_n)
-                with self.tik_instance.if_scope(_w_tail_num != 0):
-                    _run_w_loop(_w_loop_num, _w_tail_num)
-        with self.tik_instance.new_stmt_scope():
-            with self.tik_instance.if_scope(_h_loop_num <= 1):
-                with self.tik_instance.for_range(0, _w_loop_num) as _w_loop_idx:
-                    _run_w_loop_double_nc(_w_loop_idx, w_output_size_one_line // size_w_n)
-                with self.tik_instance.if_scope(_w_tail_num != 0):
-                    _run_w_loop_double_nc(_w_loop_num, _w_tail_num)
+    def _reorder_in_ub(self, in_image_buf, reorder_buf, nc_len, w_in_len, w_out_len) -> None:
+        with self.tik_inst.new_stmt_scope(disable_sync=True):
+            with self.tik_inst.for_range(0, w_out_len) as _w_idx:
+                op = self.op
+                w_in_idx = self.tik_inst.Scalar("int32", name="w_in_idx", init_value=self.w_in_idx_array[_w_idx])
+                burst_num = nc_len
+                burst_len = op.c0_blocks
+                burst_src_gap = w_in_len * op.c0_blocks - burst_len
+                burst_dst_gap = w_out_len * op.c0_blocks - burst_len
+                src_offset = (w_in_idx - self.w_in_start_idx) * op.shape_c0
+                dst_offset = _w_idx * op.shape_c0
+                self.tik_inst.data_move(reorder_buf[dst_offset:], in_image_buf[src_offset:],
+                                        0, burst_num, burst_len, burst_src_gap, burst_dst_gap)
 
 
-def _tik_fuc_vrec_newton(tik_instance, vrec_ub, origin_ub, do_len, newton_iteration=6, block_num=16):
-    """
-    only do newton for vrec result
-
-    Parameters
-    ----------
-    tik_instance: class
-        tik_instance
-    vrec_ub: ub
-        the result of vrec
-    origin_ub: ub
-        the origin input for vrec
-    do_len: int
-        vrec num
-    newton_iteration: int
-        do newton iteration
-    block_num: int
-        num in one block
-
-    Returns
-    -------
-    None
-    """
-    with tik_instance.new_stmt_scope():
-        vrec_newton_1 = tik_instance.Tensor(
-            vrec_ub.dtype, (((do_len + block_num - 1) // block_num) * block_num,),
-            name="vrec_newton_1", scope=tik.scope_ubuf)
-        vrec_newton_2 = tik_instance.Tensor(
-            vrec_ub.dtype, (((do_len + block_num - 1) // block_num) * block_num,),
-            name="vrec_newton_2", scope=tik.scope_ubuf)
-
-        def _one_newton():
-            tik_instance.vmul(1, vrec_newton_1, vrec_ub, origin_ub, 1, 1, 1, 1, 8, 8, 8)
-            tik_instance.vmuls(1, vrec_newton_2, vrec_newton_1, -1, 1, 1, 1, 8, 8)
-            tik_instance.vadds(1, vrec_newton_1, vrec_newton_2, 2, 1, 1, 1, 8, 8)
-            tik_instance.vmul(1, vrec_ub, vrec_newton_1, vrec_ub, 1, 1, 1, 1, 8, 8, 8)
-
-        for _ in range(newton_iteration):
-            _one_newton()
-
-
-def fill_index_in_ub(tik_instance, idx_ub, idx_num, vector_num=64):
+def fill_index_in_ub(tik_instance: tik.Tik, idx_ub, idx_num, vector_num=64) -> None:
     """
     fill 0,1,2  .... (idx_num -1) in idx_ub
     when the idx_num is less than 16, fill it one by one
@@ -984,26 +1292,39 @@ def fill_index_in_ub(tik_instance, idx_ub, idx_num, vector_num=64):
     when the type is int32, will fill in int32 one by one
     """
     # when the idx_num is less than 16, fill it one by one
-    _idx_scalar = tik_instance.Scalar(dtype=idx_ub.dtype)
+    with tik_instance.new_stmt_scope():
+        vector_num_ub = tik_instance.Tensor(idx_ub.dtype, (vector_num,),
+                                            name="vector_num_ub", scope=tik.scope_ubuf)
+        for _idx in range(vector_num // 8):
+            idx_ub[_idx].set_as(_idx)
+        tik_instance.vector_dup(vector_num, vector_num_ub, vector_num // 8, 1, 1, 8)
+        with tik_instance.for_range(1, 8) as add_idx:
+            add_offset = add_idx * vector_num // 8
+            tik_instance.vadd(vector_num // 8, idx_ub[add_offset:], vector_num_ub,
+                              idx_ub[add_offset - (vector_num // 8):],
+                              1, 1, 1, 1, 8, 0, 8)
 
-    vector_num_ub = tik_instance.Tensor(idx_ub.dtype, (vector_num,),
-                                        name="vector_num_ub", scope=tik.scope_ubuf)
-    for _idx in range(vector_num // 8):
-        _idx_scalar.set_as(_idx)
-        idx_ub[_idx].set_as(_idx_scalar)
-    tik_instance.vector_dup(vector_num, vector_num_ub, vector_num // 8, 1, 1, 8)
-    with tik_instance.for_range(1, 8) as add_idx:
-        add_offset = add_idx * vector_num // 8
-        tik_instance.vadd(vector_num // 8, idx_ub[add_offset:], vector_num_ub,
-                          idx_ub[add_offset - (vector_num // 8):],
-                          1, 1, 1, 1, 8, 0, 8)
+        idx_vector_num = (idx_num + vector_num - 1) // vector_num
+        with tik_instance.if_scope(idx_vector_num > 1):
+            tik_instance.vector_dup(vector_num, vector_num_ub, vector_num, 1, 1, 8)
+            with tik_instance.for_range(1, idx_vector_num) as add_idx:
+                add_offset = add_idx * vector_num
+                tik_instance.vadd(vector_num, idx_ub[add_offset:], vector_num_ub, idx_ub[add_offset - vector_num:],
+                                  1, 1, 1, 1, 8, 0, 8)
 
-    tik_instance.vector_dup(vector_num, vector_num_ub, vector_num, 1, 1, 8)
-    idx_vector_num = (idx_num + vector_num - 1) // vector_num
-    with tik_instance.for_range(1, idx_vector_num) as add_idx:
-        add_offset = add_idx * vector_num
-        tik_instance.vadd(vector_num, idx_ub[add_offset:], vector_num_ub, idx_ub[add_offset - vector_num:],
-                          1, 1, 1, 1, 8, 0, 8)
+
+def scalar_vconv_int32_to_fp32(tik_instance: tik.Tik, int32_value, float32_value) -> None:
+    """
+    vconv one scalar from int32 to fp32 using vector
+    """
+    with tik_instance.new_stmt_scope():
+        idx_int32_tmp = tik_instance.Tensor("int32", (Constant.FP32_PER_BLOCK,),
+                                            name="idx_int32_tmp", scope=tik.scope_ubuf)
+        idx_fp32_tmp = tik_instance.Tensor("float32", (Constant.FP32_PER_BLOCK,),
+                                           name="idx_fp32_tmp", scope=tik.scope_ubuf)
+        idx_int32_tmp[0].set_as(int32_value)
+        util_tik_comm_func.tik_func_vconv(tik_instance, idx_fp32_tmp, idx_int32_tmp, 1)
+        float32_value.set_as(idx_fp32_tmp[0])
 
 
 @register_operator("ResizeNearestNeighborV2")
@@ -1023,8 +1344,8 @@ def resize_nearest_neighbor_v2(images, size, y, align_corners=False, half_pixel_
         the dict of input, include shape of input_tensor which layout
         only support 5HD and dtype supports 'float16', 'float32'
     size: dict
-        the dict of input, the height and width of output tensor
-        only support 5HD and dtype supports 'float16', 'float32'
+        the dict of input, positive height and width of output tensor
+        only support 1D and dtype supports 'int32'
     y: dict
         the dict of output, include shape of input_tensor which layout
         only support 5HD and dtype supports 'float16', 'float32'
@@ -1032,14 +1353,18 @@ def resize_nearest_neighbor_v2(images, size, y, align_corners=False, half_pixel_
         whether align_corners
     half_pixel_centers: bool
         whether half_pixel_centers
+        align_corners & half_pixel_centers can not be both TRUE in zoom-out scenario,
+        otherwise, the input index will be out of range
     kernel_name: str
         cce kernel name, default value is `resize_nearest_neighbor`
 
     Returns
     -------
     tik_instance
-    """
-    obj = ResizeNearestNeighbor(images, size, y, align_corners, half_pixel_centers,
-                                kernel_name)
 
+    Note
+    -------
+    Please refer to `test_resize_nearest_neighbor_v2_dynamic_impl.py` for python implemention.
+    """
+    obj = ResizeNearestNeighbor(images, size, y, align_corners, half_pixel_centers, kernel_name)
     return obj.resize_nearest_neighbor_v2_operator()

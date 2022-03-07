@@ -108,9 +108,11 @@ static bool ResizeCommonTiling(const std::string& op_type, const ge::Operator& o
   tiling_params.output_height = output_shape.GetDim(INDEX_2);
   tiling_params.input_width = input_shape.GetDim(INDEX_3);
   tiling_params.output_width = output_shape.GetDim(INDEX_3);
+  tiling_params.input_c0 = output_shape.GetDim(INDEX_4);
   tiling_params.cut_batch_c1_num = 1;
   tiling_params.cut_height_num = 1;
   tiling_params.cut_width_num = 1;
+  tiling_params.input_dtype = input_x_desc->GetDataType();
 
   // calcu tiling
   bool get_tiling_result = false;

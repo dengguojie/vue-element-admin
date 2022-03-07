@@ -141,26 +141,37 @@ void PrintTilingParams(const std::string& op_type, const ResizeClassTilingParams
 
 void GetTilingForHW2MHNW(const ResizeClassCompileParams& compile_params, ResizeClassTilingParams& tiling_params) {
   auto image_batch_c1 = tiling_params.input_batch * tiling_params.input_c1;
-  auto cut_batch_c1_sigment = (image_batch_c1 + compile_params.core_num - 1) / compile_params.core_num;
-  tiling_params.cut_batch_c1_num = (image_batch_c1 + cut_batch_c1_sigment - 1) / cut_batch_c1_sigment;
+  auto nc_per_core = (image_batch_c1 + compile_params.core_num - 1) / compile_params.core_num;
+  tiling_params.cut_batch_c1_num = (image_batch_c1 + nc_per_core - 1) / nc_per_core;
   auto left_core_num = compile_params.core_num - tiling_params.cut_batch_c1_num;
   if (left_core_num != 0) {
     if (tiling_params.input_width > left_core_num * 4) {
       // charge whether continue cut width
       left_core_num = (compile_params.core_num + tiling_params.cut_batch_c1_num - 1) / tiling_params.cut_batch_c1_num;
+
+      // correct NC1 cut number. Suppose NC1=32 & CORE=48, correct from 2(per_core)/24(cut_num) to 2/16
       tiling_params.cut_batch_c1_num = compile_params.core_num / left_core_num;
-      auto cut_w_sigment = (tiling_params.input_width + left_core_num - 1) / left_core_num;
-      int64_t min_w_sigment = 16;
-      cut_w_sigment = max(min_w_sigment, cut_w_sigment);
-      tiling_params.cut_width_num = (tiling_params.input_width + cut_w_sigment - 1) / cut_w_sigment;
+      nc_per_core = (image_batch_c1 + tiling_params.cut_batch_c1_num - 1) / tiling_params.cut_batch_c1_num;
+      tiling_params.cut_batch_c1_num = (image_batch_c1 + nc_per_core - 1) / nc_per_core;
+
+      left_core_num = compile_params.core_num / tiling_params.cut_batch_c1_num;
+      auto w_per_core = (tiling_params.input_width + left_core_num - 1) / left_core_num;
+      int64_t min_w_per_core = 16;
+      w_per_core = max(min_w_per_core, w_per_core);
+      tiling_params.cut_width_num = (tiling_params.input_width + w_per_core - 1) / w_per_core;
     }
   }
   left_core_num = compile_params.core_num / (tiling_params.cut_batch_c1_num * tiling_params.cut_width_num);
   // continue cut height
   if (left_core_num > 1) {
-    auto cut_h_sigment = (tiling_params.input_height + left_core_num - 1) / left_core_num;
-    auto h_max = (tiling_params.input_height + cut_h_sigment - 1) / cut_h_sigment;
+    auto h_per_core = (tiling_params.input_height + left_core_num - 1) / left_core_num;
+    auto h_max = (tiling_params.input_height + h_per_core - 1) / h_per_core;
     tiling_params.cut_height_num = min(left_core_num, h_max);
   }
+}
+
+bool IsIntegerResize(const ResizeClassCompileParams& compile_params, int64_t input, int64_t output) {
+  return ((input != 0 && output % input == 0 && compile_params.align_corners + compile_params.half_pixel_centers == 0) ||
+          output == input);
 }
 }  // namespace optiling

@@ -44,6 +44,7 @@ constexpr int64_t HEIGHT_ALIGN_FLAG = 10000;
 constexpr int64_t width_ALIGN_FLAG = 1000;
 constexpr int64_t WIDTH_ALIGN_FLAG = 100;
 constexpr int64_t BIG_TO_SMALL_FLAG = 10;
+constexpr int64_t SMALL_IMAGE_FLAG = 1;
 
 // auto tune interface parameter name
 const char INNERTUNEPARAM[] = "_tune_param";
@@ -53,6 +54,7 @@ constexpr int64_t INDEX_0 = 0;
 constexpr int64_t INDEX_1 = 1;
 constexpr int64_t INDEX_2 = 2;
 constexpr int64_t INDEX_3 = 3;
+constexpr int64_t INDEX_4 = 4;
 constexpr int64_t MODE_5 = 5;
 
 struct ResizeClassTilingParams {
@@ -69,6 +71,10 @@ struct ResizeClassTilingParams {
   int64_t cut_height_num;
   // cut core num by width
   int64_t cut_width_num;
+  // C0
+  int64_t input_c0;
+  // image data type
+  ge::DataType input_dtype;
 };
 
 struct TuneParams {
@@ -175,5 +181,16 @@ bool GetResizeNearestNeighborV2GradTiling(const ResizeClassCompileParams& compil
  * @return bool: success or not
  */
 bool GetResizeBilinearV2Tiling(const ResizeClassCompileParams& compile_params, ResizeClassTilingParams& tiling_params);
+
+/**
+ * @brief whether resize operation is integer (zoom-in) resize
+ *
+ * @param [in] compile_params: the compile info struct
+ * @param [in] input: the input height or width
+ * @param [out] output: the output height or width
+ * @return true: `Out = In` or `Out = N * In` and both align_corners & half_pixel_centers are False
+ * @return false: other condition
+ */
+bool IsIntegerResize(const ResizeClassCompileParams& compile_params, int64_t input, int64_t output);
 }  // namespace optiling
 #endif  //  ASL_OPS_CANN_OPS_BUILT_IN_OP_TILING_RESIZE_COMMON_H

@@ -98,12 +98,8 @@ static void GetTilingDefault(const ResizeClassCompileParams& compile_params, Res
 bool GetResizeNearestNeighborV2GradTiling(const ResizeClassCompileParams& compile_params,
                                           ResizeClassTilingParams& tiling_params) {
   // check whether h,w to nh,nw
-  bool is_h_nh = ((tiling_params.output_height % tiling_params.input_height == 0 &&
-                   compile_params.align_corners + compile_params.half_pixel_centers == 0) ||
-                  (tiling_params.output_height == tiling_params.input_height));
-  bool is_w_nw = ((tiling_params.output_width % tiling_params.input_width == 0 &&
-                   compile_params.align_corners + compile_params.half_pixel_centers == 0) ||
-                  tiling_params.output_width == tiling_params.input_width);
+  bool is_h_nh = IsIntegerResize(compile_params, tiling_params.input_height, tiling_params.output_height);
+  bool is_w_nw = IsIntegerResize(compile_params, tiling_params.input_width, tiling_params.output_width);
   // h is not h-> mh and  w -> nw, will run output cut branch
   // is the n is too large (> 100), will not use hign performance branch
   is_w_nw = (!is_h_nh && tiling_params.output_width > tiling_params.input_width * 100) ? false : is_w_nw;

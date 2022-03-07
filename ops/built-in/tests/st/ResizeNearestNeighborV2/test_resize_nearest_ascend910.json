@@ -1,14 +1,14 @@
 [
     {
         "op": "ResizeNearestNeighborV2",
-        "case_name": "test_resize_nearest_v2_001",
+        "case_name": "test_resize_nearest_v2_100000",
         "calc_expect_func_file": "test_resize_nearest_v2_golden.py:calc_expect_func",
         "input_desc": [
             {
                 "format": "NHWC",
-                "shape": [-1, 16, 16, 16],
-                "typical_shape": [4, 16, 16, 16],
-                "shape_range": [[1, 2240]],
+                "shape": [-1, -1, -1, -1],
+                "typical_shape": [31, 15, 15, 48],
+                "shape_range": [[1, 2240], [1, 2000], [1, 2000], [1, 2000]],
                 "type": "float16",
                 "value_range": [[0, 1]],
                 "data_distribute": "uniform",
@@ -18,15 +18,367 @@
                 "format": "NHWC",
                 "shape": [2],
                 "type": "int32",
-                "value": [48, 48],
+                "value": [51, 21],
                 "name": "size"
             }
         ],
         "output_desc": [
             {
                 "format": "NHWC",
-                "shape": [4, 48, 48, 16],
-                "type": "float",
+                "shape": [31, 51, 21, 48],
+                "type": "float16",
+                "name": "y"
+            }
+        ],
+        "attr": [
+            {
+                "name": "align_corners",
+                "value": false,
+                "type": "bool"
+            },
+            {
+                "name": "half_pixel_centers",
+                "value": false,
+                "type": "bool"
+            }
+        ]
+    },
+    {
+        "op": "ResizeNearestNeighborV2",
+        "case_name": "test_resize_nearest_v2_101000",
+        "calc_expect_func_file": "test_resize_nearest_v2_golden.py:calc_expect_func",
+        "input_desc": [
+            {
+                "format": "NHWC",
+                "shape": [-1, -1, -1, -1],
+                "typical_shape": [1, 32, 32, 16],
+                "shape_range": [[1, 2240], [1, 2000], [1, 2000], [1, 2000]],
+                "type": "float16",
+                "value_range": [[0, 1]],
+                "data_distribute": "uniform",
+                "name": "x"
+            },
+            {
+                "format": "NHWC",
+                "shape": [2],
+                "type": "int32",
+                "value": [48, 96],
+                "name": "size"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": "NHWC",
+                "shape": [1, 48, 96, 16],
+                "type": "float16",
+                "name": "y"
+            }
+        ],
+        "attr": [
+            {
+                "name": "align_corners",
+                "value": false,
+                "type": "bool"
+            },
+            {
+                "name": "half_pixel_centers",
+                "value": false,
+                "type": "bool"
+            }
+        ]
+    },
+    {
+        "op": "ResizeNearestNeighborV2",
+        "case_name": "test_resize_nearest_v2_103000",
+        "calc_expect_func_file": "test_resize_nearest_v2_golden.py:calc_expect_func",
+        "input_desc": [
+            {
+                "format": "NHWC",
+                "shape": [-1, -1, -1, -1],
+                "typical_shape": [1, 32, 32, 16],
+                "shape_range": [[1, 2240], [1, 2000], [1, 2000], [1, 2000]],
+                "type": "float16",
+                "value_range": [[0, 1]],
+                "data_distribute": "uniform",
+                "name": "x"
+            },
+            {
+                "format": "NHWC",
+                "shape": [2],
+                "type": "int32",
+                "value": [12, 32],
+                "name": "size"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": "NHWC",
+                "shape": [1, 12, 32, 16],
+                "type": "float16",
+                "name": "y"
+            }
+        ],
+        "attr": [
+            {
+                "name": "align_corners",
+                "value": false,
+                "type": "bool"
+            },
+            {
+                "name": "half_pixel_centers",
+                "value": false,
+                "type": "bool"
+            }
+        ]
+    },
+    {
+        "op": "ResizeNearestNeighborV2",
+        "case_name": "test_resize_nearest_v2_111000",
+        "calc_expect_func_file": "test_resize_nearest_v2_golden.py:calc_expect_func",
+        "input_desc": [
+            {
+                "format": "NHWC",
+                "shape": [-1, -1, -1, -1],
+                "typical_shape": [1, 25, 25, 16],
+                "shape_range": [[1, 2240], [1, 2000], [1, 2000], [1, 2000]],
+                "type": "float16",
+                "value_range": [[0, 1]],
+                "data_distribute": "uniform",
+                "name": "x"
+            },
+            {
+                "format": "NHWC",
+                "shape": [2],
+                "type": "int32",
+                "value": [50, 50],
+                "name": "size"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": "NHWC",
+                "shape": [1, 50, 50, 16],
+                "type": "float16",
+                "name": "y"
+            }
+        ],
+        "attr": [
+            {
+                "name": "align_corners",
+                "value": false,
+                "type": "bool"
+            },
+            {
+                "name": "half_pixel_centers",
+                "value": false,
+                "type": "bool"
+            }
+        ]
+    },
+    {
+        "op": "ResizeNearestNeighborV2",
+        "case_name": "test_resize_nearest_v2_113000",
+        "calc_expect_func_file": "test_resize_nearest_v2_golden.py:calc_expect_func",
+        "input_desc": [
+            {
+                "format": "NHWC",
+                "shape": [-1, -1, -1, -1],
+                "typical_shape": [1, 25, 25, 16],
+                "shape_range": [[1, 2240], [1, 2000], [1, 2000], [1, 2000]],
+                "type": "float16",
+                "value_range": [[0, 1]],
+                "data_distribute": "uniform",
+                "name": "x"
+            },
+            {
+                "format": "NHWC",
+                "shape": [2],
+                "type": "int32",
+                "value": [50, 25],
+                "name": "size"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": "NHWC",
+                "shape": [1, 50, 25, 16],
+                "type": "float16",
+                "name": "y"
+            }
+        ],
+        "attr": [
+            {
+                "name": "align_corners",
+                "value": false,
+                "type": "bool"
+            },
+            {
+                "name": "half_pixel_centers",
+                "value": false,
+                "type": "bool"
+            }
+        ]
+    },
+    {
+        "op": "ResizeNearestNeighborV2",
+        "case_name": "test_resize_nearest_v2_111001",
+        "calc_expect_func_file": "test_resize_nearest_v2_golden.py:calc_expect_func",
+        "input_desc": [
+            {
+                "format": "NHWC",
+                "shape": [-1, -1, -1, -1],
+                "typical_shape": [2, 8, 8, 1200],
+                "shape_range": [[1, 2240], [1, 2000], [1, 2000], [1, 2000]],
+                "type": "float16",
+                "value_range": [[0, 1]],
+                "data_distribute": "uniform",
+                "name": "x"
+            },
+            {
+                "format": "NHWC",
+                "shape": [2],
+                "type": "int32",
+                "value": [32, 32],
+                "name": "size"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": "NHWC",
+                "shape": [2, 32, 32, 1200],
+                "type": "float16",
+                "name": "y"
+            }
+        ],
+        "attr": [
+            {
+                "name": "align_corners",
+                "value": false,
+                "type": "bool"
+            },
+            {
+                "name": "half_pixel_centers",
+                "value": false,
+                "type": "bool"
+            }
+        ]
+    },
+    {
+        "op": "ResizeNearestNeighborV2",
+        "case_name": "test_resize_nearest_v2_113001",
+        "calc_expect_func_file": "test_resize_nearest_v2_golden.py:calc_expect_func",
+        "input_desc": [
+            {
+                "format": "NHWC",
+                "shape": [-1, -1, -1, -1],
+                "typical_shape": [2, 8, 8, 1200],
+                "shape_range": [[1, 2240], [1, 2000], [1, 2000], [1, 2000]],
+                "type": "float16",
+                "value_range": [[0, 1]],
+                "data_distribute": "uniform",
+                "name": "x"
+            },
+            {
+                "format": "NHWC",
+                "shape": [2],
+                "type": "int32",
+                "value": [32, 8],
+                "name": "size"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": "NHWC",
+                "shape": [2, 32, 8, 1200],
+                "type": "float16",
+                "name": "y"
+            }
+        ],
+        "attr": [
+            {
+                "name": "align_corners",
+                "value": false,
+                "type": "bool"
+            },
+            {
+                "name": "half_pixel_centers",
+                "value": false,
+                "type": "bool"
+            }
+        ]
+    },
+    {
+        "op": "ResizeNearestNeighborV2",
+        "case_name": "test_resize_nearest_v2_100000_zoom_out",
+        "calc_expect_func_file": "test_resize_nearest_v2_golden.py:calc_expect_func",
+        "input_desc": [
+            {
+                "format": "NHWC",
+                "shape": [-1, -1, -1, -1],
+                "typical_shape": [1, 40, 30, 224],
+                "shape_range": [[1, 2240], [1, 2000], [1, 2000], [1, 2000]],
+                "type": "float16",
+                "value_range": [[0, 1]],
+                "data_distribute": "uniform",
+                "name": "x"
+            },
+            {
+                "format": "NHWC",
+                "shape": [2],
+                "type": "int32",
+                "value": [12, 6],
+                "name": "size"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": "NHWC",
+                "shape": [1, 12, 6, 224],
+                "type": "float16",
+                "name": "y"
+            }
+        ],
+        "attr": [
+            {
+                "name": "align_corners",
+                "value": false,
+                "type": "bool"
+            },
+            {
+                "name": "half_pixel_centers",
+                "value": false,
+                "type": "bool"
+            }
+        ]
+    },
+    {
+        "op": "ResizeNearestNeighborV2",
+        "case_name": "test_resize_nearest_v2_100000_exceed_data_move_gap",
+        "calc_expect_func_file": "test_resize_nearest_v2_golden.py:calc_expect_func",
+        "input_desc": [
+            {
+                "format": "NHWC",
+                "shape": [-1, -1, -1, -1],
+                "typical_shape": [1, 2, 2, 16],
+                "shape_range": [[1, 2240], [1, 2000], [1, 2000], [1, 2000]],
+                "type": "float16",
+                "value_range": [[0, 1]],
+                "data_distribute": "uniform",
+                "name": "x"
+            },
+            {
+                "format": "NHWC",
+                "shape": [2],
+                "type": "int32",
+                "value": [256, 512],
+                "name": "size"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": "NHWC",
+                "shape": [1, 256, 512, 16],
+                "type": "float16",
                 "name": "y"
             }
         ],
