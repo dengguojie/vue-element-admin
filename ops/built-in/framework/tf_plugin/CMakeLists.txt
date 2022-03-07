@@ -390,6 +390,7 @@ set(_tf_plugins
   softmax_cross_entropy_with_logits_plugin.cc
   softmax_grad_plugin.cc
   softmax_v2_plugin.cc
+  softsign_grad_plugin.cc
   softplus_grad_plugin.cc
   softplus_plugin.cc
   softsign_plugin.cc

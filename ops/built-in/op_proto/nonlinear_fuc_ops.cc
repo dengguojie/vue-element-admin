@@ -460,6 +460,28 @@ IMPLEMT_COMMON_INFERFUNC(SoftsignInferShape) {
 COMMON_INFER_FUNC_REG(Softsign, SoftsignInferShape);
 // ----------------SoftSign END-------------------
 
+// ----------------SoftsignGrad-------------------
+IMPLEMT_VERIFIER(SoftsignGrad, SoftsignGradVerify) {
+  if (!CheckTwoInputDtypeSame(op, "gradients", "features")) {
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+
+IMPLEMT_COMMON_INFERFUNC(SoftsignGradInferShape) {
+  if (!InferShapeAndTypeTwoInOneOutBroadcast(op, "gradients", "features", "output")) {
+    return GRAPH_FAILED;
+  }
+  if (!InferShapeRangeTwoInOneOutBroadcase(op, "gradients", "features", "output")) {
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(SoftsignGrad, SoftsignGradInferShape);
+VERIFY_FUNC_REG(SoftsignGrad, SoftsignGradVerify);
+// ----------------SoftsignGrad END-----------------
+
 // ----------------Selu-------------------
 IMPLEMT_COMMON_INFERFUNC(SeluInferShape) {
   if (OneInOneOutDynamicInfer(op, "x", {"y"})) {

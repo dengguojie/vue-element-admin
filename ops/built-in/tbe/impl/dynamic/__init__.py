@@ -394,4 +394,5 @@ from .sync_bn_training_update import sync_bn_training_update
 from .sync_batch_norm_gather_stats_with_counts import sync_batch_norm_gather_stats_with_counts
 from .reduce_mean_with_count import reduce_mean_with_count
 from .prod_force_se_a import prod_force_se_a
+from .softsign_grad import softsign_grad
 from .moving_sum_with_sigmoid import moving_sum_with_sigmoid

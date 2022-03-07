@@ -458,6 +458,25 @@ REG_OP(Softsign)
     .OP_END_FACTORY_REG(Softsign)
 
 /**
+ * @brief Computes softsignGrad: gradients / (1 + abs(features)) ** 2 .
+ *
+ * @par Inputs:
+ * Two inputs, including:
+ * @li gradients: A Tensor.Must be one of the following types:float16, float32,
+ * @li features: A Tensor of the same type and shape as "gradients".
+
+ * @par Outputs:
+ * output:A Tensor. Has the same type as "gradients".
+ * @par Third-party framework compatibility
+ * Compatible with the TensorFlow operator SoftsignGrad.
+ */
+REG_OP(SoftsignGrad)
+    .INPUT(gradients, TensorType::FloatingDataType())
+    .INPUT(features, TensorType::FloatingDataType())
+    .OUTPUT(output, TensorType::FloatingDataType())
+    .OP_END_FACTORY_REG(SoftsignGrad)
+
+/**
 *@brief Computes scaled exponential linear: scale * alpha * (exp(x) - 1) . \n
 
 *@par Inputs:

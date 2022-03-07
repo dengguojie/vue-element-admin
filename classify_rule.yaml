@@ -2629,6 +2629,7 @@ unkown:
       - ops/built-in/tbe/impl/truncate_mod.py
       - ops/built-in/tbe/impl/sigmoid_cross_entropy_with_logits_v2.py
       - ops/built-in/tbe/impl/logical_and.py
+      - ops/built-in/tbe/impl/dynamic/softsign_grad.py
       - ops/built-in/tbe/impl/dynamic/nms_with_mask.py
       - ops/built-in/tbe/impl/dynamic/assign.py
       - ops/built-in/tbe/impl/dynamic/selu.py
@@ -3072,6 +3073,7 @@ unkown:
       - ops/built-in/framework/tf_plugin/data_format_dim_map_plugin.cc
       - ops/built-in/framework/tf_plugin/matrix_set_diag_d_plugin.cc
       - ops/built-in/framework/tf_plugin/ceil_plugin.cc
+      - ops/built-in/framework/tf_plugin/softsign_grad_plugin.cc
       - ops/built-in/framework/tf_plugin/tensor_scatter_sub_plugin.cc
       - ops/built-in/framework/tf_plugin/apply_momentum_plugin.cc
       - ops/built-in/framework/tf_plugin/sparse_apply_adagrad_plugin.cc
