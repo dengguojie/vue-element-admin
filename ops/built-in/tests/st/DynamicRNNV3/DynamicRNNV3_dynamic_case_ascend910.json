@@ -1,0 +1,218 @@
+[
+    {
+      "op": "DynamicRNNV3",
+      "input_desc": [
+        {
+          "shape": [
+            -1,
+            -1,
+            16
+          ],
+          "ori_shape": [
+            -1,
+            -1,
+            16
+          ],
+          "format": "ND",
+          "ori_format": "ND",
+          "typical_shape": [1,32,16],
+          "shape_range": [[1,1],[32,32]],
+          "value_range": [[0, 1]],
+          "name": "x",
+          "type": "float16"
+        },
+        {
+          "shape": [
+            32,
+            64
+          ],
+          "ori_shape": [
+            32,
+            64
+          ],
+          "format": "ND",
+          "ori_format": "ND",
+          "name": "w",
+          "type": "float16"
+        },
+        {
+          "shape": [
+            64
+          ],
+          "format": "ND",
+          "name": "b",
+          "type": "float16"
+        },
+        {
+            "shape": [
+              32
+            ],
+            "format": "ND",
+            "name": "seq_length",
+            "type": "int32"
+        },
+        {
+            "shape": [
+              32,
+              16
+            ],
+            "format": "ND",
+            "name": "init_h",
+            "type": "float16"
+        },
+        {
+            "shape": [
+              32,
+              16
+            ],
+            "format": "ND",
+            "name": "init_c",
+            "type": "float16"
+        },
+        {
+            "shape": [
+              32,
+              16
+            ],
+            "format": "ND",
+            "name": "wci",
+            "type": "float16"
+        },
+        {
+            "shape": [
+              32,
+              16
+            ],
+            "format": "ND",
+            "name": "wcf",
+            "type": "float16"
+        },
+        {
+            "shape": [
+              32,
+              16
+            ],
+            "format": "ND",
+            "name": "wco",
+            "type": "float16"
+        },
+        {
+            "shape": [
+              16
+            ],
+            "format": "ND",
+            "name": "mask",
+            "type": "uint8"
+        },
+        {
+            "shape": [
+              1,
+              32,
+              1
+            ],
+            "format": "ND",
+            "name": "real_mask",
+            "type": "float16"
+        },
+        {
+            "shape": [
+              16,
+              16
+            ],
+            "format": "ND",
+            "name": "project",
+            "type": "float16"
+        }
+      ],
+      "output_desc": [
+        {
+          "shape": [
+            1,
+            32,
+            16
+          ],
+          "format": "ND",
+          "name": "y",
+          "type": "float16"
+        },
+        {
+          "shape": [
+            1,
+            32,
+            16
+          ],
+          "format": "ND",
+          "name": "output_h",
+          "type": "float16"
+        },
+        {
+          "shape": [
+             1,
+            32,
+            16
+          ],
+          "format": "ND",
+          "name": "output_c",
+          "type": "float16"
+        },
+        {
+          "shape": [
+             1,
+            32,
+            16
+          ],
+          "format": "ND",
+          "name": "i",
+          "type": "float16"
+        },
+        {
+          "shape": [
+             1,
+            32,
+            16
+          ],
+          "format": "ND",
+          "name": "j",
+          "type": "float16"
+        },
+        {
+          "shape": [
+             1,
+            32,
+            16
+          ],
+          "format": "ND",
+          "name": "f",
+          "type": "float16"
+        },
+        {
+          "shape": [
+             1,
+            32,
+            16
+          ],
+          "format": "ND",
+          "name": "o",
+          "type": "float16"
+        },
+        {
+          "shape": [
+             1,
+            32,
+            16
+          ],
+          "format": "ND",
+          "name": "tanhc",
+          "type": "float16"
+        }
+      ],
+      "attr": [
+        {
+          "name": "time_major",
+          "type": "bool",
+          "value": true
+        }
+      ],
+      "case_name": "test_DynamicRNNV3_dynamic_001"
+    }
+]

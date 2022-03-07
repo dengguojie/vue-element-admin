@@ -4,8 +4,6 @@ import numpy as np
 from op_test_frame.ut import OpUT
 ut_case = OpUT("DynamicRNNV3", "impl.dynamic.dynamic_rnn_v3", "dynamic_rnn_v3")
 
-# def gen_dynamic_rnnv3_case(shape_x, shape_w, shape_b, shape_output, dtype, init_from_gm, gate_output, with_seq_mask, cell_clip,
-#                          expect, case_name_val, range_x, range_w, range_b, range_out):
 def gen_dynamic_rnnv3_case(shape_x, shape_w, shape_b, dtype, init_from_gm, gate_output, with_seq_mask, cell_clip,
                            wc_exit, real_mask_exit, project_exit,
                            expect, case_name_val, range_x, range_w, range_b):
@@ -24,14 +22,14 @@ def gen_dynamic_rnnv3_case(shape_x, shape_w, shape_b, dtype, init_from_gm, gate_
         wco = None
     else:
         shape_wc = [hidden, m, 16, 16]
-        wci = {"shape": shape_wc, "dtype": "float16", "ori_shape": shape_wc, "ori_format": "FRACTAL_NZ", "format": "FRACTAL_NZ"}
-        wcf = {"shape": shape_wc, "dtype": "float16", "ori_shape": shape_wc, "ori_format": "FRACTAL_NZ", "format": "FRACTAL_NZ"}
-        wco = {"shape": shape_wc, "dtype": "float16", "ori_shape": shape_wc, "ori_format": "FRACTAL_NZ", "format": "FRACTAL_NZ"}
+        wci = {"shape": shape_wc, "dtype": dtype, "ori_shape": shape_wc, "ori_format": "FRACTAL_NZ", "format": "FRACTAL_NZ"}
+        wcf = {"shape": shape_wc, "dtype": dtype, "ori_shape": shape_wc, "ori_format": "FRACTAL_NZ", "format": "FRACTAL_NZ"}
+        wco = {"shape": shape_wc, "dtype": dtype, "ori_shape": shape_wc, "ori_format": "FRACTAL_NZ", "format": "FRACTAL_NZ"}
     if not real_mask_exit:
         real_mask = None
     else:
         shape_mask = [t, 1, m, 16, 16]
-        real_mask = {"shape": shape_mask, "dtype": "float16", "ori_shape": shape_mask, "ori_format": "FRACTAL_NZ", "format": "FRACTAL_NZ"}
+        real_mask = {"shape": shape_mask, "dtype": dtype, "ori_shape": shape_mask, "ori_format": "FRACTAL_NZ", "format": "FRACTAL_NZ"}
     if not project_exit:
         project = None
     else:
@@ -68,8 +66,8 @@ def gen_dynamic_rnnv3_case(shape_x, shape_w, shape_b, dtype, init_from_gm, gate_
 
     return {"params": [{"shape": shape_x, "dtype": "float16", "ori_shape": shape_x, "ori_format": "FRACTAL_NZ", "format": "FRACTAL_NZ", "range": range_x},
                        {"shape": shape_w, "dtype": "float16", "ori_shape": shape_w,
-                        "ori_format": "FRACTAL_ZN_LSTM", "format": "FRACTAL_ZN_LSTM", "range": range_w},
-                       {"shape": shape_b, "dtype": dtype, "ori_shape": shape_b, "ori_format": "ND", "format": "ND", "range": range_b},
+                        "ori_format": "FRACTAL_ZN_RNN", "format": "FRACTAL_ZN_RNN", "range": range_w},
+                       {"shape": shape_b, "dtype": dtype, "ori_shape": shape_b, "ori_format": "ND_RNN_BIAS", "format": "ND_RNN_BIAS", "range": range_b},
                        seq_mask, init_h, init_c, wci, wcf, wco, None, real_mask, project,
                        {"shape": shape_output, "dtype": dtype, "ori_shape": shape_output,
                         "ori_format": "FRACTAL_NZ", "format": "FRACTAL_NZ", "range": range_out},
@@ -87,53 +85,23 @@ case1 = gen_dynamic_rnnv3_case((1,1,2,16,16), (2,4,16,16), (4*16,), "float16", T
                               True, True, True,
                              "success", "dynamic_dynamic_rnnv3_1", [(1,1),(1,1),(2,2),(16,16),(16,16)], [(2,2),(4,4),(16,16),(16,16)],
                              [(64,64)])
-# case2 = gen_dynamic_rnnv3_case((1,1,2,16,16), (2,4,16,16), (4*16,), "float16", False, True, False, -1.0,
-#                               True, True, True,
-#                              "success", "dynamic_dynamic_rnnv3_2", [(1,1),(1,1),(2,2),(16,16),(16,16)], [(2,2),(4,4),(16,16),(16,16)],
-#                              [(64,64)])
-
-# case5 = gen_dynamic_rnnv3_case((1,1,2,16,16), (2,4,16,16), (4*16,), "float16", True, True, False, -1.0,
-#                              True, False, True,
-#                              RuntimeError, "dynamic_rnnv3_5", [(1,1),(1,1),(2,2),(16,16),(16,16)], [(2,2),(4,4),(16,16),(16,16)],
-#                              [(64,64)])
-# case5['params'][10]['dtype'] = 'float32'
-# case6 = gen_dynamic_rnnv3_case((1,1,2,16,16), (2,4,16,16), (4*16,), "float16", True, True, False, -1.0,
-#                              True, False, False,
-#                              RuntimeError, "dynamic_rnnv3_6", [(1,1),(1,1),(2,2),(16,16),(16,16)], [(2,2),(4,4),(16,16),(16,16)],
-#                              [(64,64)])
-# case6['params'][12]['dtype'] = 'float32'
-# case7 = gen_dynamic_rnnv3_case((1,1,2,16,16), (2,4,16,16), (4*16,), "float16", True, True, False, -1.0,
-#                              True, True, True,
-#                              RuntimeError, "dynamic_rnnv3_7", [(1,1),(1,1),(2,2),(16,16),(16,16)], [(2,2),(4,4),(16,16),(16,16)],
-#                              [(64,64)])
-# case7['params'][13]['dtype'] = 'float32'
-# case8 = gen_dynamic_rnnv3_case((1,1,2,16,16), (2,4,16,16), (4*16,), "float16", True, True, False, -1.0,
-#                              True, True, True,
-#                              RuntimeError, "dynamic_rnnv3_8", [(1,1),(1,1),(2,2),(16,16),(16,16)], [(2,2),(4,4),(16,16),(16,16)],
-#                              [(64,64)])
-# case8['params'][14]['dtype'] = 'float32'
-# case9 = gen_dynamic_rnnv3_case((1,1,2,16,16), (2,4,16,16), (4*16,), "float16", True, True, False, -1.0,
-#                              True, True, True,
-#                              RuntimeError, "dynamic_rnnv3_9", [(1,1),(1,1),(2,2),(16,16),(16,16)], [(2,2),(4,4),(16,16),(16,16)],
-#                              [(64,64)])
-# case9['params'][15]['dtype'] = 'float32'
-# case10 = gen_dynamic_rnnv3_case((1,1,2,16,16), (2,4,16,16), (4*16,), "float16", True, True, False, -1.0,
-#                              True, True, True,
-#                              RuntimeError, "dynamic_rnnv3_10", [(1,1),(1,1),(2,2),(16,16),(16,16)], [(2,2),(4,4),(16,16),(16,16)],
-#                              [(64,64)])
-# case10['params'][16]['dtype'] = 'float32'
-
+case2 = gen_dynamic_rnnv3_case((1,1,2,16,16), (2,4,16,16), (4*16,), "float16", True, True, False, -1.0,
+                              True, True, False,
+                             "success", "dynamic_dynamic_rnnv3_2", [(1,1),(1,1),(2,2),(16,16),(16,16)], [(2,2),(4,4),(16,16),(16,16)],
+                             [(64,64)])
+case3 = gen_dynamic_rnnv3_case((1,1,2,16,16), (2,4,16,16), (4*16,), "float32", True, True, False, -1.0,
+                              True, True, True,
+                             "success", "dynamic_dynamic_rnnv3_3", [(1,1),(1,1),(2,2),(16,16),(16,16)], [(2,2),(4,4),(16,16),(16,16)],
+                             [(64,64)])
+case4 = gen_dynamic_rnnv3_case((1,1,2,16,16), (2,4,16,16), (4*16,), "float32", True, True, False, -1.0,
+                              True, True, False,
+                             "success", "dynamic_dynamic_rnnv3_4", [(1,1),(1,1),(2,2),(16,16),(16,16)], [(2,2),(4,4),(16,16),(16,16)],
+                             [(64,64)])
 
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case1)
-# ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case2)
-
-# ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case5)
-# ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case6)
-# ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case7)
-# ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case8)
-# ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case9)
-# ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case10)
-
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case2)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case3)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case4)
 
 if __name__ == '__main__':
     ut_case.run("Ascend910A")

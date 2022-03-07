@@ -465,7 +465,7 @@ def dynamic_rnn_v3(input_x, weight, bias, seq_length, init_h, init_c, wci, wcf,
 
     if project_fun:
         project_gm = tik_instance.Tensor(shape=shape_project, scope=scope_gm,
-                                         dtype=bias_dtype, name='project')
+                                         dtype=input_dtype, name='project')
 
     is_using_seq_mask = False
     if seq_length is not None:
@@ -1013,14 +1013,13 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
                             lambda *indices: i_t_sigmoid(*indices).astype('float16'),
                             name="i_t_sigmoid_fp16_drnn_cast",
                             tag="elewise_single_cast")
-            f_t_sigmoid_mid = f_t_sigmoid_fp16
-            i_t_sigmoid_mid = i_t_sigmoid_fp16
             j_t_tanh_fp16 = \
                 tvm.compute(shape_i,
                             lambda *indices: j_t_tanh(*indices).astype('float16'),
                             name="j_t_tanh_fp16_drnn_cast",
                             tag="elewise_single_cast")
-            
+            f_t_sigmoid_mid = f_t_sigmoid_fp16
+            i_t_sigmoid_mid = i_t_sigmoid_fp16
             j_t_tanh_mid = j_t_tanh_fp16
 
         f_t_sigmoid_gm = tvm.compute(shape_i,
@@ -1132,19 +1131,22 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
 
     if mask_gm is not None:
         update_c_tmp1 = vmul(mask_ub_ct_fp32_mid, update_c)
-        broadcast_one = broadcast(tvm.const(1, "float16"), [1, hidden_size, m_size, 16, 16], "float16")
+        broadcast_one = broadcast(tvm.const(1, bias_dtype), [1, hidden_size, m_size, 16, 16], bias_dtype)
         one_sub_mtc = vsub(broadcast_one, mask_ub_ct)
         update_c_tmp2 = vmul(one_sub_mtc, s_state_c_ub)
-        update_c_tmp2_fp32 = tvm.compute(shape_i,
-                                         lambda *indices: update_c_tmp2(*indices).astype('float32'),
-                                         name="update_c_tmp2_fp32_drnn_cast",
-                                         tag="elewise_single_cast")
-        update_c_tmp = vadd(update_c_tmp1, update_c_tmp2_fp32)
+        update_c_tmp2_mid = update_c_tmp2
+        if fp16_input_output:
+            update_c_tmp2_fp32 = tvm.compute(shape_i,
+                                             lambda *indices: update_c_tmp2(*indices).astype('float32'),
+                                             name="update_c_tmp2_fp32_drnn_cast",
+                                             tag="elewise_single_cast")
+            update_c_tmp2_mid = update_c_tmp2_fp32
+            mask_tensors.append(update_c_tmp2_fp32)
+        update_c_tmp = vadd(update_c_tmp1, update_c_tmp2_mid)
         mask_tensors.append(update_c_tmp1)
         mask_tensors.append(broadcast_one)
         mask_tensors.append(one_sub_mtc)
         mask_tensors.append(update_c_tmp2)
-        mask_tensors.append(update_c_tmp2_fp32)
         mask_tensors.append(update_c_tmp)
     else:
         update_c_tmp = update_c
@@ -1178,7 +1180,10 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
                                     name="c_t_tanh_fake",
                                     tag="phony_insn")
     else:
-        c_t_tanh_fake = vadd(c_t_tanh, update_c_gm)
+        c_t_tanh_fake = tvm.compute(shape_i,
+                                    lambda *indices: c_t_tanh(*indices) + update_c_gm(*indices),
+                                    name="c_t_tanh_fake",
+                                    tag="phony_insn")
 
     if is_gate_output:
         c_t_tanh_mid = c_t_tanh_fake
@@ -1213,8 +1218,15 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
     pjc_shape_c = [t_size, state_size, m_size, 16, 16]
     if project_gm is not None:
         shape_dh = [t_size, hidden_size, m_size, 16, 16]
+        update_h_mid = update_h
+        if not fp16_input_output:
+            update_h_mid_fp16 = tvm.compute(shape_dh,
+                                            lambda *indices: update_h(*indices).astype('float16'),
+                                            name="update_h_fp16_drnn_cast",
+                                            tag="elewise_single_cast")
+            update_h_mid = update_h_mid_fp16
         pjc_a_l1 = tvm.compute(shape_dh,
-                               lambda *indices: update_h(*indices),
+                               lambda *indices: update_h_mid(*indices),
                                name='pjc_a_l1',
                                tag="conv_l1fuse_reshape")
         shape_project = [t_size, state_size, hidden_size, 16, 16]
@@ -1226,7 +1238,7 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
         pjc_a_l0a = tvm.compute(shape_pjc_l0a, lambda b, a_i, b_i, c_i, d_i:pjc_a_l1[b, b_i, a_i, c_i, d_i],
                                 name="pjc_a_l0a", tag="l1_to_l0")
         shape_pjc_l0b = [t_size, hidden_size, state_size, 16, 16]
-        pjc_b_l0b = tvm.compute(shape_pjc_l0b, lambda b, a_i, b_i, c_i, d_i: pjc_b_l1[b, b_i, a_i, c_i, d_i],
+        pjc_b_l0b = tvm.compute(shape_pjc_l0b, lambda b, a_i, b_i, c_i, d_i: pjc_b_l1[b, b_i, a_i, d_i, c_i],
                                 name="pjc_b_l0b", tag="l1_to_l0")
         pjc_k1 = tvm.reduce_axis((0, hidden_size), name='k1')
         pjc_k0 = tvm.reduce_axis((0, k0_size), name='k0')
@@ -1249,10 +1261,21 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
         project_tensors.append(pjc_c_ub)
     else:
         update_h_mad = update_h
-    if mask_gm is not None and project_gm is not None:
+
+    pjc_after_tensors = []
+    if mask_gm is not None:
         update_h_tmp1 = vmul(mask_ub_ht_fp32_mid, update_h_mad)
         broadcast_one_dh = broadcast(tvm.const(1, "float16"), [1, state_size, m_size, 16, 16], "float16")
-        one_sub_mth = vsub(broadcast_one_dh, mask_ub_ht)
+        mask_ub_ht_fp16_mid = mask_ub_ht
+        if not fp16_input_output:
+            mask_ub_ht_fp16 = tvm.compute(shape_mask_ub_ht,
+                                          lambda *indices: mask_ub_ht(*indices).astype('float16'),
+                                          name="mask_ub_ht_fp16_drnn_cast",
+                                          tag="elewise_single_cast")
+            mask_ub_ht_fp16_mid = mask_ub_ht_fp16
+            mask_tensors.append(mask_ub_ht_fp16)
+            pjc_after_tensors += [mask_ub_ht_fp16]
+        one_sub_mth = vsub(broadcast_one_dh, mask_ub_ht_fp16_mid)
         update_h_tmp2 = vmul(one_sub_mth, s_state_h_ub_tmp)
         update_h_tmp2_fp32 = tvm.compute(shape_mask_ub_ht,
                                          lambda *indices: update_h_tmp2(*indices).astype('float32'),
@@ -1266,11 +1289,11 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
         mask_tensors.append(update_h_tmp2_fp32)
         mask_tensors.append(update_h_tmp)
         mask_tensors.append(s_state_h_ub_tmp)
-        pjc_after_tensors = [mask_ub_ht, update_h_mad, broadcast_one_dh, one_sub_mth, s_state_h_ub_tmp, update_h_tmp2,
+        pjc_after_tensors += [mask_ub_ht, update_h_mad, broadcast_one_dh, one_sub_mth, s_state_h_ub_tmp, update_h_tmp2,
                              update_h_tmp1, update_h_tmp, update_h_tmp2_fp32]
     else:
         update_h_tmp = update_h_mad
-        pjc_after_tensors = [update_h_mad, s_state_h_ub_tmp]
+        pjc_after_tensors += [update_h_mad, s_state_h_ub_tmp]
 
     if fp16_input_output:
         update_h_fp16 = tvm.compute(pjc_shape_c,
@@ -1349,7 +1372,7 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
                     if "elewise" in in_tensor.op.tag or in_tensor.op.tag == "broadcast":
                         if in_tensor.name.endswith("_drnn_cast"):
                             continue
-                        if in_tensor.name in ["s_state_h_ub", "s_state_c_ub"]:
+                        if in_tensor.name in ["s_state_h_ub", "s_state_c_ub", "s_state_h_ub_tmp"]:
                             continue
                         if in_tensor not in tensor_list:
                             tensor_list.append(in_tensor)
@@ -1391,6 +1414,8 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
         s[pjc_b_l0b].set_scope(scope_cb)
         s[pjc_c_l0c].set_scope(scope_cc)
         s[pjc_c_ub].set_scope(scope_ubuf)
+        if not fp16_input_output:
+            s[update_h_mid_fp16].set_scope(scope_ubuf)
     if fp16_input_output:
         s[bias_ub_fp32].set_scope(scope_ubuf)
 
@@ -1503,6 +1528,8 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
                             pjc_ub_n_inner, pjc_ub_m_inner,
                             pjc_c_ub.op.axis[3], pjc_c_ub.op.axis[4])
         s[pjc_c_l0c].compute_at(s[pjc_c_ub], pjc_ub_n_outer)
+        if not fp16_input_output:
+            s[update_h_mid_fp16].compute_at(s[pjc_c_l0c], pjc_l1_k_outer)
 
     s[c_ub].compute_at(s[barrier_tensor], barrier_outer)
     s[bias_ub].compute_at(s[barrier_tensor], barrier_outer)
@@ -1523,16 +1550,26 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
                            update_h_gm.op.axis[4])
 
     if mask_gm is not None:
-        s[s_state_c_ub].compute_at(s[pjc_c_l0c], pjc_l1_k_outer)
-        s[s_state_h_ub_tmp].compute_at(s[update_h_gm], vn_o_inner)
-        s[mask_ub_ct].compute_at(s[pjc_c_l0c], pjc_l1_k_outer)
-        s[mask_ub_ht].compute_at(s[update_h_gm], vn_o_inner)
-        s[update_c_tmp2_fp32].compute_at(s[pjc_c_l0c], pjc_l1_k_outer)
         if project_gm is not None:
-            s[update_h_tmp2_fp32].compute_at(s[update_h_gm], vn_o_inner)
+            s[s_state_c_ub].compute_at(s[pjc_c_l0c], pjc_l1_k_outer)
+            s[mask_ub_ct].compute_at(s[pjc_c_l0c], pjc_l1_k_outer)
+            if fp16_input_output:
+                s[mask_ub_ct_fp32].compute_at(s[pjc_c_l0c], pjc_l1_k_outer)
+                s[update_c_tmp2_fp32].compute_at(s[pjc_c_l0c], pjc_l1_k_outer)
+        else:
+            s[s_state_c_ub].compute_at(s[update_h_gm], vn_o_inner)
+            s[mask_ub_ct].compute_at(s[update_h_gm], vn_o_inner)
+            if fp16_input_output:
+                s[mask_ub_ct_fp32].compute_at(s[update_h_gm], vn_o_inner)
+                s[update_c_tmp2_fp32].compute_at(s[update_h_gm], vn_o_inner)
+
+        s[s_state_h_ub_tmp].compute_at(s[update_h_gm], vn_o_inner)
+        s[mask_ub_ht].compute_at(s[update_h_gm], vn_o_inner)
+        s[update_h_tmp2_fp32].compute_at(s[update_h_gm], vn_o_inner)
         if fp16_input_output:
-            s[mask_ub_ct_fp32].compute_at(s[pjc_c_l0c], pjc_l1_k_outer)
             s[mask_ub_ht_fp32].compute_at(s[update_h_gm], vn_o_inner)
+        else:
+            s[mask_ub_ht_fp16].compute_at(s[update_h_gm], vn_o_inner)
     else:
         s[s_state_c_ub].compute_at(s[update_h_gm], vn_o_inner)
 
@@ -1618,24 +1655,28 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
             s[f_t_sigmoid_ub].reused_by(reuse_data=True)
             s[i_t_sigmoid_ub].reused_by(reuse_data=True)
             s[o_t_sigmoid_ub].reused_by(reuse_data=True)
-            s[c_t_tanh_ub].reused_by(reuse_data=True)
             s[j_t_tanh_ub].reused_by(reuse_data=True)
         s[pjc_c_ub].compute_at(s[update_h_gm], vn_o_inner)
         for tensor in elewise_after_tensors:
             if tensor not in elewise_before_barrier_tensors:
                 s[tensor].compute_at(s[update_h_gm], vn_o_inner)
     else:
-        s[c_t_tanh_back_fp32].set_scope(scope_ubuf)
-        s[o_t_sigmoid_back_fp32].set_scope(scope_ubuf)
+        if fp16_input_output:
+            s[c_t_tanh_back_fp32].set_scope(scope_ubuf)
+            s[o_t_sigmoid_back_fp32].set_scope(scope_ubuf)
         for tensor in elewise_tensors:
             s[tensor].compute_at(s[update_h_gm], vn_o_inner)
+
+        s[c_t_tanh_fake].compute_at(s[update_h_gm], vn_o_inner)
+        if bias_dtype == 'float16':
+            s[update_c_fp16_back_fake].compute_at(s[update_h_gm], vn_o_inner)
+            s[update_c_fp16_back_fp32_fake].compute_at(s[update_h_gm], vn_o_inner)
+
         s[update_c_gm].compute_at(s[update_h_gm], vn_o_inner)
 
         # fp16 in
         if bias_dtype == 'float16':
             s[update_c_fp16].compute_at(s[update_h_gm], vn_o_inner)
-            s[update_c_fp16_back_fake].compute_at(s[update_h_gm], vn_o_inner)
-            s[update_c_fp16_back_fp32_fake].compute_at(s[update_h_gm], vn_o_inner)
             s[update_h_fp16].compute_at(s[update_h_gm], vn_o_inner)
         else:
             s[update_c].compute_at(s[update_h_gm], vn_o_inner)
@@ -1675,25 +1716,26 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
             s[i_t_sigmoid].reused_by(i_t_sigmoid_ub)
             s[o_t_sigmoid].reused_by(o_t_sigmoid_ub)
             s[j_t_tanh].reused_by(j_t_tanh_ub)
-            s[c_t_tanh].reused_by(c_t_tanh_ub)
 
             s[f_t_sigmoid_ub].reused_by(reuse_data=True)
             s[i_t_sigmoid_ub].reused_by(reuse_data=True)
             s[o_t_sigmoid_ub].reused_by(reuse_data=True)
             s[j_t_tanh_ub].reused_by(reuse_data=True)
-            s[c_t_tanh_ub].reused_by(reuse_data=True)
     if bias_dtype == 'float16':
         s[update_h_fp16].reused_by(update_h_gm_as_y_back)
         s[update_h_gm_as_y_back].reused_by(reuse_data=True)
     else:
-        s[update_h].reused_by(update_h_gm_as_y_back)
+        s[update_h_tmp].reused_by(update_h_gm_as_y_back)
         s[update_h_gm_as_y_back].reused_by(reuse_data=True)
 
     s[c_t_tanh].reused_by(c_t_tanh_fake)
     s[c_t_tanh_fake].reused_by(reuse_data=True)
 
     if is_gate_output:
-        s[c_t_tanh_mid].reused_by(c_t_tanh_ub)
+        if project_gm is not None:
+            s[c_t_tanh_mid].reused_by(c_t_tanh_ub)
+        else:
+            s[c_t_tanh_fake].reused_by(c_t_tanh_ub)
         s[c_t_tanh_ub].reused_by(reuse_data=True)
     # emit_insn
     s[a_l1].emit_insn(a_l1.op.axis[0], 'dma_copy')
@@ -1714,15 +1756,22 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
     if mask_gm is not None:
         s[mask_ub_ct].emit_insn(mask_ub_ct.op.axis[0], 'dma_copy')
         s[mask_ub_ht].emit_insn(mask_ub_ht.op.axis[0], 'dma_copy')
-        s[s_state_h_ub_tmp].emit_insn(s_state_h_ub_tmp.op.axis[0], 'dma_copy')
+        if is_first_round:
+            if is_global_init:
+                s[s_state_h_ub_tmp].emit_insn(s_state_h_ub_tmp.op.axis[0], 'dma_copy')
+            else:
+                s[s_state_h_ub_tmp].emit_insn(s_state_h_ub_tmp.op.axis[0], 'vector_broadcast')
+        else:
+            s[s_state_h_ub_tmp].emit_insn(s_state_h_ub_tmp.op.axis[0], 'dma_copy')
         s[broadcast_one].emit_insn(broadcast_one.op.axis[0], 'vector_broadcast')
         s[broadcast_one_dh].emit_insn(broadcast_one_dh.op.axis[0], 'vector_broadcast')
-        s[update_c_tmp2_fp32].emit_insn(update_c_tmp2_fp32.op.axis[0], 'vector_conv')
-        if project_gm is not None:
-            s[update_h_tmp2_fp32].emit_insn(update_h_tmp2_fp32.op.axis[0], 'vector_conv')
+        s[update_h_tmp2_fp32].emit_insn(update_h_tmp2_fp32.op.axis[0], 'vector_conv')
         if fp16_input_output:
             s[mask_ub_ct_fp32].emit_insn(mask_ub_ct_fp32.op.axis[0], 'vector_conv')
             s[mask_ub_ht_fp32].emit_insn(mask_ub_ht_fp32.op.axis[0], 'vector_conv')
+            s[update_c_tmp2_fp32].emit_insn(update_c_tmp2_fp32.op.axis[0], 'vector_conv')
+        else:
+            s[mask_ub_ht_fp16].emit_insn(mask_ub_ht_fp16.op.axis[0], 'vector_conv')
 
     if project_gm is not None:
         s[pjc_a_l1].emit_insn(pjc_a_l1.op.axis[0], 'dma_copy')
@@ -1732,6 +1781,8 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
         pjc_mad_dict = {"mad_pattern": 0, "k_outer": [pjc_l1_k_outer, pjc_l0_k_outer]}
         s[pjc_c_l0c].emit_insn(pjc_l0_n_inner, 'mad', pjc_mad_dict)
         s[pjc_c_ub].emit_insn(pjc_ub_n_inner, 'dma_copy')
+        if not fp16_input_output:
+            s[update_h_mid_fp16].emit_insn(update_h_mid_fp16.op.axis[0], 'vector_conv')
 
     if fp16_input_output:
         s[bias_ub_fp32].emit_insn(bias_ub_fp32.op.axis[0], 'vector_conv')
@@ -1783,9 +1834,9 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
                 s[i_t_sigmoid_back_fp32].op.axis[1], 'phony_insn')
             s[j_t_tanh_back_fp32].emit_insn(s[j_t_tanh_back_fp32].op.axis[1],
                                             'phony_insn')
-            s[s_state_c_back_fp32].emit_insn(s[s_state_c_back_fp32].op.axis[0],
+            s[s_state_c_back_fp32].emit_insn(s[s_state_c_back_fp32].op.axis[1],
                                             'vector_conv')
-            if project_gm is None:
+            if project_gm is None and fp16_input_output:
                 s[c_t_tanh_back_fp32].emit_insn(s[c_t_tanh_back_fp32].op.axis[1], 'phony_insn')
                 s[o_t_sigmoid_back_fp32].emit_insn(s[o_t_sigmoid_back_fp32].op.axis[1], 'phony_insn')
 

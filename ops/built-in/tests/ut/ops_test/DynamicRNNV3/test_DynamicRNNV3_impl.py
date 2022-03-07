@@ -4,155 +4,98 @@
 from op_test_frame.ut import OpUT
 ut_case = OpUT("DynamicRNNV3", "impl.dynamic_rnn_v3", "dynamic_rnn_v3")
 
-def gen_dynamic_rnn_v3_case(shape_x, shape_w, shape_b, shape_output, dtype, init_from_gm, gate_output, expect, case_name_val,
-                            init_c_dtype="float16"):
+def gen_dynamic_rnnv3_case(shape_x, shape_w, shape_b, dtype, init_from_gm, gate_output, with_seq_mask, cell_clip,
+                           wc_exit, real_mask_exit, project_exit,
+                           expect, case_name_val):
+    t = shape_x[0]
+    x = shape_x[1]
+    m = shape_x[2]
+    state = shape_w[0] - x
+    hidden = shape_w[1] // 4
+    shape_output = [t, state, m, 16, 16]
+    shape_output_c = [t, hidden, m, 16, 16]
+    if not wc_exit:
+        wci = None
+        wcf = None
+        wco = None
+    else:
+        shape_wc = [hidden, m, 16, 16]
+        wci = {"shape": shape_wc, "dtype": dtype, "ori_shape": shape_wc, "ori_format": "FRACTAL_NZ", "format": "FRACTAL_NZ"}
+        wcf = {"shape": shape_wc, "dtype": dtype, "ori_shape": shape_wc, "ori_format": "FRACTAL_NZ", "format": "FRACTAL_NZ"}
+        wco = {"shape": shape_wc, "dtype": dtype, "ori_shape": shape_wc, "ori_format": "FRACTAL_NZ", "format": "FRACTAL_NZ"}
+    if not real_mask_exit:
+        real_mask = None
+    else:
+        shape_mask = [t, 1, m, 16, 16]
+        real_mask = {"shape": shape_mask, "dtype": dtype, "ori_shape": shape_mask, "ori_format": "FRACTAL_NZ", "format": "FRACTAL_NZ"}
+    if not project_exit:
+        project = None
+    else:
+        shape_project = [state, hidden, 16, 16]
+        project = {"shape": shape_project, "dtype": "float16", "ori_shape": shape_project, "ori_format": "FRACTAL_NZ", "format": "FRACTAL_NZ"}
+    if not init_from_gm:
+        init_h = None
+        init_c = None
+    else:
+        shape_init_h = []
+        shape_init_c = []
+        for i in range(1, len(shape_output)):
+            shape_init_h.append(shape_output[i])
+            shape_init_c.append(shape_output_c[i])
+        init_h = {"shape": shape_init_h, "dtype": "float16", "ori_shape": shape_init_h, "ori_format": "FRACTAL_NZ", "format": "FRACTAL_NZ"}
+        init_c = {"shape": shape_init_c, "dtype": dtype, "ori_shape": shape_init_c, "ori_format": "FRACTAL_NZ", "format": "FRACTAL_NZ"}
+    if with_seq_mask:
+        seq_mask = {"shape": shape_output_c, "dtype": dtype, "ori_shape": shape_output_c,
+                    "ori_format": "FRACTAL_NZ", "format": "FRACTAL_NZ"}
+    else:
+        seq_mask = None
+    if not gate_output:
+        i = None
+        j = None
+        f = None
+        o = None
+        tanhc = None
+    else:
+        i = {"shape": shape_output_c, "dtype": dtype, "ori_shape": shape_output_c, "ori_format": "FRACTAL_NZ", "format": "FRACTAL_NZ"}
+        j = {"shape": shape_output_c, "dtype": dtype, "ori_shape": shape_output_c, "ori_format": "FRACTAL_NZ", "format": "FRACTAL_NZ"}
+        f = {"shape": shape_output_c, "dtype": dtype, "ori_shape": shape_output_c, "ori_format": "FRACTAL_NZ", "format": "FRACTAL_NZ"}
+        o = {"shape": shape_output_c, "dtype": dtype, "ori_shape": shape_output_c, "ori_format": "FRACTAL_NZ", "format": "FRACTAL_NZ"}
+        tanhc = {"shape": shape_output_c, "dtype": dtype, "ori_shape": shape_output_c, "ori_format": "FRACTAL_NZ", "format": "FRACTAL_NZ"}
 
-    shape_x = [1, 64, 1, 16, 16]
-    shape_w = [96, 128, 16, 16]
-    shape_b = [2048]
-    init_h = {"shape": [1, 2, 1, 16, 16], "dtype": init_c_dtype, "ori_shape": [1, 2, 1, 16, 16], "ori_format": "FRACTAL_NZ", "format": "FRACTAL_NZ"}
-
-    init_c = {"shape": [1, 32, 1, 16, 16], "dtype": init_c_dtype, "ori_shape": [1, 32, 1, 16, 16], "ori_format": "FRACTAL_NZ", "format": "FRACTAL_NZ"}
-
-    wci = {"shape": [1, 32, 1, 16, 16], "dtype": "float16", "ori_shape": [1, 32, 1, 16, 16], "ori_format": "FRACTAL_NZ", "format": "FRACTAL_NZ"}
-    wcf = {"shape": [1, 32, 1, 16, 16], "dtype": "float16", "ori_shape": [1, 32, 1, 16, 16], "ori_format": "FRACTAL_NZ", "format": "FRACTAL_NZ"}
-    wco = {"shape": [1, 32, 1, 16, 16], "dtype": "float16", "ori_shape": [1, 32, 1, 16, 16], "ori_format": "FRACTAL_NZ", "format": "FRACTAL_NZ"}
-    real_mask = {"shape": [1, 1, 1, 16, 16], "dtype": "float16", "ori_shape": [1, 1, 1, 16, 16], "ori_format": "FRACTAL_NZ", "format": "FRACTAL_NZ"}
-    project = {"shape": [1, 2, 32, 16, 16], "dtype": "float16", "ori_shape": [1, 2, 32, 16, 16], "ori_format": "FRACTAL_NZ", "format": "FRACTAL_NZ"}
-
-    shape_output = [1, 32, 2, 16, 16]
-    shape_outout2 = [1, 2, 2, 16, 16]
-    i = {"shape": shape_output, "dtype": dtype, "ori_shape": shape_output,
-                        "ori_format": "FRACTAL_NZ", "format": "FRACTAL_NZ"}
-    j = {"shape": shape_output, "dtype": dtype, "ori_shape": shape_output,
-         "ori_format": "FRACTAL_NZ", "format": "FRACTAL_NZ"}
-    f = {"shape": shape_output, "dtype": dtype, "ori_shape": shape_output,
-         "ori_format": "FRACTAL_NZ", "format": "FRACTAL_NZ"}
-    o = {"shape": shape_output, "dtype": dtype, "ori_shape": shape_output,
-         "ori_format": "FRACTAL_NZ", "format": "FRACTAL_NZ"}
-    tanhc = {"shape": shape_output, "dtype": dtype, "ori_shape": shape_output,
-             "ori_format": "FRACTAL_NZ", "format": "FRACTAL_NZ"}
     return {"params": [{"shape": shape_x, "dtype": "float16", "ori_shape": shape_x, "ori_format": "FRACTAL_NZ", "format": "FRACTAL_NZ"},
                        {"shape": shape_w, "dtype": "float16", "ori_shape": shape_w,
-                        "ori_format": "FRACTAL_ZN_LSTM", "format": "FRACTAL_ZN_LSTM"},
-                       {"shape": shape_b, "dtype": dtype, "ori_shape": shape_b, "ori_format": "ND", "format": "ND"},
-                       None, init_h, init_c, wci, wcf, wco, None, real_mask, project,
+                        "ori_format": "FRACTAL_ZN_RNN", "format": "FRACTAL_ZN_RNN"},
+                       {"shape": shape_b, "dtype": dtype, "ori_shape": shape_b, "ori_format": "ND_RNN_BIAS", "format": "ND_RNN_BIAS"},
+                       seq_mask, init_h, init_c, wci, wcf, wco, None, real_mask, project,
                        {"shape": shape_output, "dtype": dtype, "ori_shape": shape_output,
                         "ori_format": "FRACTAL_NZ", "format": "FRACTAL_NZ"},
-                       {"shape": shape_outout2, "dtype": "float16", "ori_shape": shape_outout2,
+                       {"shape": shape_output, "dtype": "float16", "ori_shape": shape_output,
                         "ori_format": "FRACTAL_NZ", "format": "FRACTAL_NZ"},
-                       {"shape": shape_output, "dtype": dtype, "ori_shape": shape_output,
+                       {"shape": shape_output_c, "dtype": dtype, "ori_shape": shape_output_c,
                         "ori_format": "FRACTAL_NZ", "format": "FRACTAL_NZ"},
-                       i, j, f, o, tanhc],
+                       i, j, f, o, tanhc, "LSTM", "UNIDIRECTIONAL", 1, False, 1.0, cell_clip, 0, True, "tanh", 0.0, True],
             "case_name": case_name_val,
             "expect": expect,
             "format_expect": [],
             "support_expect": True}
 
-
-def gen_dynamic_rnn_v3_case2_act(shape_x, shape_w, shape_b, shape_output, dtype, init_from_gm, gate_output, expect, case_name_val):
-
-    shape_x = [1, 64, 1, 16, 16]
-    shape_w = [96, 128, 16, 16]
-    shape_b = [2048]
-    init_h = {"shape": [1, 2, 1, 16, 16], "dtype": "float16", "ori_shape": [1, 2, 1, 16, 16], "ori_format": "FRACTAL_NZ", "format": "FRACTAL_NZ"}
-
-    init_c = {"shape": [1, 32, 1, 16, 16], "dtype": "float32", "ori_shape": [1, 32, 1, 16, 16], "ori_format": "FRACTAL_NZ", "format": "FRACTAL_NZ"}
-
-    wci = {"shape": [1, 32, 1, 16, 16], "dtype": "float16", "ori_shape": [1, 32, 1, 16, 16], "ori_format": "FRACTAL_NZ", "format": "FRACTAL_NZ"}
-    wcf = {"shape": [1, 32, 1, 16, 16], "dtype": "float16", "ori_shape": [1, 32, 1, 16, 16], "ori_format": "FRACTAL_NZ", "format": "FRACTAL_NZ"}
-    wco = {"shape": [1, 32, 1, 16, 16], "dtype": "float16", "ori_shape": [1, 32, 1, 16, 16], "ori_format": "FRACTAL_NZ", "format": "FRACTAL_NZ"}
-    real_mask = {"shape": [1, 1, 1, 16, 16], "dtype": "float16", "ori_shape": [1, 1, 1, 16, 16], "ori_format": "FRACTAL_NZ", "format": "FRACTAL_NZ"}
-    project = {"shape": [1, 2, 32, 16, 16], "dtype": "float16", "ori_shape": [1, 2, 32, 16, 16], "ori_format": "FRACTAL_NZ", "format": "FRACTAL_NZ"}
-
-    shape_output = [1, 32, 2, 16, 16]
-    shape_outout2 = [1, 2, 2, 16, 16]
-    i = {"shape": shape_output, "dtype": dtype, "ori_shape": shape_output,
-                        "ori_format": "FRACTAL_NZ", "format": "FRACTAL_NZ"}
-    j = {"shape": shape_output, "dtype": dtype, "ori_shape": shape_output,
-         "ori_format": "FRACTAL_NZ", "format": "FRACTAL_NZ"}
-    f = {"shape": shape_output, "dtype": dtype, "ori_shape": shape_output,
-         "ori_format": "FRACTAL_NZ", "format": "FRACTAL_NZ"}
-    o = {"shape": shape_output, "dtype": dtype, "ori_shape": shape_output,
-         "ori_format": "FRACTAL_NZ", "format": "FRACTAL_NZ"}
-    tanhc = {"shape": shape_output, "dtype": dtype, "ori_shape": shape_output,
-             "ori_format": "FRACTAL_NZ", "format": "FRACTAL_NZ"}
-    return {"params": [{"shape": shape_x, "dtype": "float16", "ori_shape": shape_x, "ori_format": "FRACTAL_NZ", "format": "FRACTAL_NZ"},
-                       {"shape": shape_w, "dtype": "float16", "ori_shape": shape_w,
-                        "ori_format": "FRACTAL_ZN_LSTM", "format": "FRACTAL_ZN_LSTM"},
-                       {"shape": shape_b, "dtype": dtype, "ori_shape": shape_b, "ori_format": "ND", "format": "ND"},
-                       None, init_h, init_c, wci, wcf, wco, None, real_mask, project,
-                       {"shape": shape_output, "dtype": dtype, "ori_shape": shape_output,
-                        "ori_format": "FRACTAL_NZ", "format": "FRACTAL_NZ"},
-                       {"shape": shape_outout2, "dtype": "float16", "ori_shape": shape_outout2,
-                        "ori_format": "FRACTAL_NZ", "format": "FRACTAL_NZ"},
-                       {"shape": shape_output, "dtype": dtype, "ori_shape": shape_output,
-                        "ori_format": "FRACTAL_NZ", "format": "FRACTAL_NZ"},
-                       i, j, f, o, tanhc, "LSTM", "UNIDIRECTIONAL", 1,
-                   False, 1.0, -1.0, 0,
-                   True, "tanh", 0.0, True],
-            "case_name": case_name_val,
-            "expect": expect,
-            "format_expect": [],
-            "support_expect": True}
-
-def gen_dynamic_rnn_v3_case3_act(shape_x, shape_w, shape_b, shape_output, dtype, init_from_gm, gate_output, expect, case_name_val):
-
-    shape_x = [1, 64, 1, 16, 16]
-    shape_w = [96, 128, 16, 16]
-    shape_b = [2048]
-    init_h = {"shape": [1, 2, 1, 16, 16], "dtype": "float16", "ori_shape": [1, 2, 1, 16, 16], "ori_format": "FRACTAL_NZ", "format": "FRACTAL_NZ"}
-
-    init_c = {"shape": [1, 32, 1, 16, 16], "dtype": "float16", "ori_shape": [1, 32, 1, 16, 16], "ori_format": "FRACTAL_NZ", "format": "FRACTAL_NZ"}
-
-    wci = {"shape": [1, 32, 1, 16, 16], "dtype": "float16", "ori_shape": [1, 32, 1, 16, 16], "ori_format": "FRACTAL_NZ", "format": "FRACTAL_NZ"}
-    wcf = {"shape": [1, 32, 1, 16, 16], "dtype": "float16", "ori_shape": [1, 32, 1, 16, 16], "ori_format": "FRACTAL_NZ", "format": "FRACTAL_NZ"}
-    wco = {"shape": [1, 32, 1, 16, 16], "dtype": "float16", "ori_shape": [1, 32, 1, 16, 16], "ori_format": "FRACTAL_NZ", "format": "FRACTAL_NZ"}
-    real_mask = {"shape": [1, 1, 1, 16, 16], "dtype": "float16", "ori_shape": [1, 1, 1, 16, 16], "ori_format": "FRACTAL_NZ", "format": "FRACTAL_NZ"}
-    project = {"shape": [1, 2, 32, 16, 16], "dtype": "float16", "ori_shape": [1, 2, 32, 16, 16], "ori_format": "FRACTAL_NZ", "format": "FRACTAL_NZ"}
-
-    shape_output = [1, 32, 2, 16, 16]
-    shape_outout2 = [1, 2, 2, 16, 16]
-    i = {"shape": shape_output, "dtype": dtype, "ori_shape": shape_output,
-                        "ori_format": "FRACTAL_NZ", "format": "FRACTAL_NZ"}
-    j = {"shape": shape_output, "dtype": dtype, "ori_shape": shape_output,
-         "ori_format": "FRACTAL_NZ", "format": "FRACTAL_NZ"}
-    f = {"shape": shape_output, "dtype": dtype, "ori_shape": shape_output,
-         "ori_format": "FRACTAL_NZ", "format": "FRACTAL_NZ"}
-    o = {"shape": shape_output, "dtype": dtype, "ori_shape": shape_output,
-         "ori_format": "FRACTAL_NZ", "format": "FRACTAL_NZ"}
-    tanhc = {"shape": shape_output, "dtype": dtype, "ori_shape": shape_output,
-             "ori_format": "FRACTAL_NZ", "format": "FRACTAL_NZ"}
-    return {"params": [{"shape": shape_x, "dtype": "float16", "ori_shape": shape_x, "ori_format": "FRACTAL_NZ", "format": "FRACTAL_NZ"},
-                       {"shape": shape_w, "dtype": "float16", "ori_shape": shape_w,
-                        "ori_format": "FRACTAL_ZN_LSTM", "format": "FRACTAL_ZN_LSTM"},
-                       {"shape": shape_b, "dtype": dtype, "ori_shape": shape_b, "ori_format": "ND", "format": "ND"},
-                       None, init_h, init_c, wci, wcf, wco, None, real_mask, project,
-                       {"shape": shape_output, "dtype": dtype, "ori_shape": shape_output,
-                        "ori_format": "FRACTAL_NZ", "format": "FRACTAL_NZ"},
-                       {"shape": shape_outout2, "dtype": "float16", "ori_shape": shape_outout2,
-                        "ori_format": "FRACTAL_NZ", "format": "FRACTAL_NZ"},
-                       {"shape": shape_output, "dtype": dtype, "ori_shape": shape_output,
-                        "ori_format": "FRACTAL_NZ", "format": "FRACTAL_NZ"},
-                       i, j, f, o, tanhc, "LSTM", "UNIDIRECTIONAL", 1,
-                   False, 1.0, -1.0, 0,
-                   True, "sigmoidh", 0.0, True],
-            "case_name": case_name_val,
-            "expect": expect,
-            "format_expect": [],
-            "support_expect": True}
-
-case1 = gen_dynamic_rnn_v3_case((1,64,2,16,16), (96,128,16,16), (128*16,), (1,32,2,16,16), "float16", True, True,
-                                "success", "dynamic_rnn_v3")
-case2 = gen_dynamic_rnn_v3_case2_act((1,64,2,16,16), (96,128,16,16), (128*16,), (1,32,2,16,16), "float16", True, True,
-                                "failed", "dynamic_rnn_v3")
-case3 = gen_dynamic_rnn_v3_case3_act((1,64,2,16,16), (96,128,16,16), (128*16,), (1,32,2,16,16), "float16", True, True,
-                                "failed", "dynamic_rnn_v3")
+case1 = gen_dynamic_rnnv3_case((1,64,2,16,16), (96,128,16,16), (128*16,), "float16", True, True, False, -1.0,
+                              True, True, True,
+                             "success", "dynamic_rnnv3_1")
+case2 = gen_dynamic_rnnv3_case((1,64,2,16,16), (96,128,16,16), (128*16,), "float32", True, True, False, -1.0,
+                              True, True, True,
+                             "success", "dynamic_rnnv3_2")
+case3 = gen_dynamic_rnnv3_case((1,64,2,16,16), (96,128,16,16), (128*16,), "float32", True, True, False, -1.0,
+                              True, True, False,
+                             "success", "dynamic_rnnv3_3")
+case4 = gen_dynamic_rnnv3_case((1,64,2,16,16), (96,128,16,16), (128*16,), "float16", True, True, False, -1.0,
+                              True, True, False,
+                             "success", "dynamic_rnnv3_4")
 
 ut_case.add_case(["Ascend310","Ascend710","Ascend910A"], case1)
 ut_case.add_case(["Ascend310","Ascend710","Ascend910A"], case2)
-ut_case.add_case(["Ascend310","Ascend710","Ascend910A"], case3)
-
+ut_case.add_case(["Ascend310", "Ascend710","Ascend910A"], case3)
+ut_case.add_case(["Ascend310", "Ascend710","Ascend910A"], case4)
 
 if __name__ == '__main__':
     ut_case.run("Ascend310")
