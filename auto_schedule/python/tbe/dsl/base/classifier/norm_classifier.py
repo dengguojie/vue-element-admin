@@ -494,7 +494,7 @@ class NormClassifyInfo:
         broadcast_axis_list = []
         for input_index in range(self.input_num):
             if self.input_type_list[input_index] == 0:
-                 continue
+                continue
             single_compile_broadcast_axis = ori_compile_broadcast_axes.get(input_index, [])
             single_runtime_broadcast_axis = ori_runtime_broadcast_axes.get(input_index, [])
             single_broadcast_axis_type = BroadcastAxisType(ori_broadcast_axes_type.get(input_index, "assigned"))

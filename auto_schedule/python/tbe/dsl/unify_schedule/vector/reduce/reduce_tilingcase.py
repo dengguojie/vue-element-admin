@@ -68,10 +68,10 @@ OP_TYPE_AUTO_TILING = "AutoTiling"
 TILINGKEY_NONE_REDUCE_AXIS = 2 ** 31 - 2
 REDUCE_CASE_LENGTH_TWO = 2
 
-BlkOuter = "block_outer"
-BlkInner = "block_inner"
-UbOuter = "ub_outer"
-UbInner = "ub_inner"
+BLKOUTER = "block_outer"
+BLKINNER = "block_inner"
+UBOUTER = "ub_outer"
+UBINNER = "ub_inner"
 A = "A"
 R = "R"
 REDUCE_COMPUTE = {
@@ -404,9 +404,9 @@ class Dim:
         do dim split
         """
         if model == "UBSplit":
-            outer, inner = UbOuter, UbInner
+            outer, inner = UBOUTER, UBINNER
         else:
-            outer, inner = BlkOuter, BlkInner
+            outer, inner = BLKOUTER, BLKINNER
 
         # update index
         for item in in_shape[split_idx + 1:]:
