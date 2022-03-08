@@ -49,10 +49,12 @@ def get_op_support_info(input_x, input_gamma, input_beta,
     """
     format_x = input_x.get("format").upper()
     shape_x = input_x.get("shape")
+    ori_shape_x = input_x.get("ori_shape")
     begin_norm_axis = shape_util.axis_check(len(shape_x), begin_norm_axis)
     begin_params_axis = shape_util.axis_check(len(shape_x), begin_params_axis)
+    axis_split_matrix = []
+
     if format_x in ("ND", "NCHW", "NHWC", "NC1HWC0"):
-        axis_split_matrix = []
         if begin_params_axis == 0:
             for i in range(begin_norm_axis):
                 split_0 = [SplitInput([0, [i], [-1], [-1]], [1, [i], [-1], [-1]], [2, [i], [-1], [-1]]),
@@ -69,6 +71,18 @@ def get_op_support_info(input_x, input_gamma, input_beta,
                     split_0 = [SplitInput([0, [i], [-1], [-1]]),
                                SplitOutput([0, [i]], [1, [i]], [2, [i]])]
                     axis_split_matrix.append(split_0)
+
+    elif format_x == "FRACTAL_NZ":
+        index_list = tuple(index for index, _ in enumerate(ori_shape_x))
+        start_axis = min(begin_norm_axis, begin_params_axis)
+        
+        no_split_axis = index_list[start_axis:]
+        no_split_axis = to_frac_z_axis(ori_shape_x, no_split_axis)
+        for i in range(len(shape_x)):
+            if i not in no_split_axis:
+                split_0 = [SplitInput([0, [i], [-1], [-1]]),
+                           SplitOutput([0, [i]], [1, [i]], [2, [i]])]
+                axis_split_matrix.append(split_0)
 
     else:
         axis_split_matrix = None

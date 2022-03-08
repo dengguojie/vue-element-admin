@@ -21,12 +21,15 @@
 #include "inc/nn_norm_ops.h"
 #include <string>
 #include <vector>
+#include <set>
 #include "util/util.h"
 #include "op_log.h"
 #include "./util/error_util.h"
 #include "graph/utils/node_utils.h"
 #include "common/inc/op_log.h"
 #include "util/common_shape_fns.h"
+#include "register/infer_data_slice_registry.h"
+#include "graph/debug/ge_attr_define.h"
 
 namespace ge {
 // --------------------------LogSoftmaxGrad-------------------------
@@ -665,7 +668,82 @@ IMPLEMT_COMMON_INFERFUNC(LayerNormInferShape) {
   return GRAPH_SUCCESS;
 }
 
+/*!
+ * @brief provide LayerNorm operator slice data
+ * @param LayerNorm Operator type.
+ * @param LayerNormInferDataSlice slice data function
+ * @return Status The processing flow result.
+ */
+ IMPLEMT_INFER_DATA_SLICE(LayerNorm, LayerNormInferDataSlice) {
+  OP_LOGI(op.GetName().c_str(), "Enter LayerNorm InferDataSlice");
+
+  auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
+  auto input_x = op_desc->MutableInputDesc(0);
+  auto input_gamma = op_desc->MutableInputDesc(1);
+  auto input_beta = op_desc->MutableInputDesc(2);
+  auto output_y = op_desc->MutableOutputDesc(0);
+
+  ge::GeShape shape_x = input_x->GetShape();
+  ge::GeShape shape_gamma = input_gamma->GetShape();
+  ge::GeShape shape_beta = input_beta->GetShape();
+  ge::GeShape shape_y = output_y->GetShape();
+
+  auto x_format = input_x->GetFormat();
+  std::set<Format> vaildFormat = {FORMAT_ND, FORMAT_NHWC, FORMAT_NCHW,
+                                  FORMAT_NC1HWC0, FORMAT_FRACTAL_NZ};
+  if (vaildFormat.find(x_format) == vaildFormat.end()) {
+    OP_LOGE(op.GetName().c_str(), 
+            "Attr x_format only support NHWC or NCHW or ND or NC1HWC0 or FRACTAL_NZ");
+    return GRAPH_FAILED;
+  }
+
+  int32_t x_dim = shape_x.GetDimNum();
+  int32_t gamma_dim = shape_gamma.GetDimNum();
+  vector<vector<int64_t>> x_data_slice(x_dim);
+  vector<vector<int64_t>> y_data_slice(x_dim);
+  vector<vector<int64_t>> gamma_data_slice(gamma_dim);
+  vector<vector<int64_t>> beta_data_slice(gamma_dim);
+
+  int64_t begin_params_axis = 0;
+  if (!AttrUtils::GetInt(op_desc, "begin_params_axis", begin_params_axis)) {
+    OP_LOGE(op.GetName().c_str(), "[TBE Compiler] Get attr begin_params_axis failed!");
+    return GRAPH_FAILED;
+  }
+
+  if (!AttrUtils::GetListListInt(output_y, ge::ATTR_NAME_DATA_SLICE, y_data_slice)) {
+    OP_LOGE(op.GetName().c_str(), "No data slice, not need infer input");
+    return GRAPH_FAILED;
+  }
+
+  x_data_slice = y_data_slice;
+  if (x_format != FORMAT_FRACTAL_NZ) {
+    if (begin_params_axis == 0) {
+      gamma_data_slice = y_data_slice;
+      beta_data_slice = y_data_slice;
+    }
+  }
+
+  if (!AttrUtils::SetListListInt(input_x, ge::ATTR_NAME_DATA_SLICE, x_data_slice)) {
+    OP_LOGE(op.GetName().c_str(), "LayerNorm input_x SetListListInt failed");
+    return GRAPH_FAILED;
+  }
+
+  if (!AttrUtils::SetListListInt(input_gamma, ge::ATTR_NAME_DATA_SLICE, gamma_data_slice)) {
+    OP_LOGE(op.GetName().c_str(), "LayerNorm input_gamma SetListListInt failed");
+    return GRAPH_FAILED;
+  }
+
+  if (!AttrUtils::SetListListInt(input_beta, ge::ATTR_NAME_DATA_SLICE, beta_data_slice)) {
+    OP_LOGE(op.GetName().c_str(), "LayerNorm input_beta SetListListInt failed");
+    return GRAPH_FAILED;
+  }
+
+  OP_LOGI(op.GetName().c_str(), "Calc LayerNorm InferDataSlice end!");
+  return GRAPH_SUCCESS;
+}
+
 COMMON_INFER_FUNC_REG(LayerNorm, LayerNormInferShape);
+INFER_DATA_SLICE_FUNC_REG(LayerNorm, LayerNormInferDataSlice);
 // ----------------------LayerNorm END--------------------------
 
 // ----------------LayerNormBetaGammaBackprop--------------------
