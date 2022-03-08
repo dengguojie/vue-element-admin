@@ -56,6 +56,7 @@ def _get_output_length(l1_hi, l1_wi, stride, kernel_size, output_h, output_w, in
 
 
 # 'pylint: disable=too-many-arguments,invalid-name,too-many-locals,too-many-statements,too-many-branches
+# 'pylint: disable=too-many-return-statements
 def _get_load3d_tiling(fmap_shape, ksize, strides, padding, max_l1_valid_size, max_next_valid_size, dtype):
     """
     get load3d tiling in davinci.
@@ -330,6 +331,7 @@ def check_shape_and_format_vailded(x, grad, argmax, y, ksize, strides, padding):
 
 
 # 'pylint: disable=too-many-arguments,unused-argument,unnecessary-lambda,too-many-locals
+# 'pylint: disable=too-many-return-statements
 @tbe_platform.fusion_manager.fusion_manager.register("max_pool_grad_grad_with_argmax")
 def max_pool_grad_grad_with_argmax_compute(placeholders,
                                            x,

@@ -93,7 +93,7 @@ def get_op_support_info(input_x, output_y, ksizes, strides, padding, kernel_name
     return op_cal_info_in_json
 
 
-# 'pylint: disable=too-many-arguments, invalid-name, too-many-statements, too-many-branches,too-many-locals
+# 'pylint: disable=too-many-arguments,invalid-name,too-many-statements,too-many-branches,too-many-locals
 def _check_shape_and_format_vailded(input_x, output_y, ksizes, strides, padding, kernel_name):
     """
     check whether the input param valid or not
@@ -252,9 +252,9 @@ def _cal_multi_core_factor_3_axis(m, n, t):
             for j in range(n, 0, -1):
                 for k in range(t, 0, -1):
                     if i * j * k < 65536:
-                        return (i, j, k)
+                        return i, j, k
 
-    (core_m, core_n, core_t) = _init_core(m, n, t)
+    core_m, core_n, core_t = _init_core(m, n, t)
     min_cycle_num = _ceil(m, core_m) * _ceil(n, core_n) * _ceil(t, core_t) * \
                     _ceil(core_m * core_n * core_t, Constant.DEVICE_CORE_NUM)
     min_core = core_m * core_n * core_t
@@ -468,7 +468,7 @@ def _im2col_fractal(a_im2col_shape, fmap):
                        tag='im2col_fractal')
 
 
-# 'pylint: disable=too-many-arguments,invalid-name,too-many-locals,too-many-statements
+# 'pylint: disable=too-many-arguments,invalid-name,too-many-locals,too-many-statements,too-many-return-statements
 def _get_load3d_tiling(fmap_shape, ksize, strides, padding,
                        max_l1_valid_size, max_next_valid_size, dtype, aligned_flag):
     """
@@ -704,7 +704,7 @@ def _get_load3d_tiling(fmap_shape, ksize, strides, padding,
                                              l0ub_c0), l0_double_buffer, howo_split
 
 
-# 'pylint: disable=unnecessary-lambda,too-many-locals
+# 'pylint: disable=unnecessary-lambda,too-many-locals,too-many-return-statements
 def _extract_volume_patches_compute_6hd(data_input, fmap_c, ksizes, strides, padding):
     """
     calculating data
@@ -1566,6 +1566,7 @@ def _extract_volume_patches_schedule(res, sch_list, original_cin):
                     break
             return max_devisor
 
+        # 'pylint: disable=too-many-return-statements
         def _cal_workspace2_factor():
             tensor1_num = functools.reduce(lambda x, y: x * y, tensor1_shape[-3:])
             if hasattr(tensor1_num, "value"):
@@ -1652,6 +1653,7 @@ def _extract_volume_patches_schedule(res, sch_list, original_cin):
         mhowo = tensor7.shape[-3].value
         fmap_c = fmap_c.value
 
+        # 'pylint: disable=too-many-return-statements
         def _cal_res_factor():
             tensor5_num = functools.reduce(lambda x, y: x * y, tensor5.shape[-2:])
             tensor5_num = tensor5_num.value
@@ -1835,6 +1837,7 @@ def _extract_volume_patches_schedule(res, sch_list, original_cin):
         tensor00_shape = tensor00.shape
         fmap_batch, dout, howo_8bit_align_floor, _, kd, khkw, fmap_c1 = tensor00_shape[:7]
 
+        # 'pylint: disable=too-many-return-statements
         def _cal_workspace_8bit_factor():
             tensor0_num = blcok_size_align * blcok_size_align * fmap_c1
             tensor0_num = tensor0_num.value
@@ -1915,6 +1918,7 @@ def _extract_volume_patches_schedule(res, sch_list, original_cin):
                     break
             return max_devisor
 
+        # 'pylint: disable=too-many-return-statements
         def _cal_workspace2_factor():
             tensor10_num = functools.reduce(lambda x, y: x * y, tensor10_shape[-2:])
             if hasattr(tensor10_num, "value"):
@@ -2007,6 +2011,7 @@ def _extract_volume_patches_schedule(res, sch_list, original_cin):
         mhowo = tensor7.shape[-3].value
         fmap_c = fmap_c.value
 
+        # 'pylint: disable=too-many-return-statements
         def _cal_res_factor():
             tensor5_num = functools.reduce(lambda x, y: x * y, tensor5.shape[-2:])
             tensor5_num = tensor5_num.value

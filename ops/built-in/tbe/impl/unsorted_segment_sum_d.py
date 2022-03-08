@@ -825,6 +825,7 @@ def _do_cp_ids(segment_ids_ub, segment_ids, gm_offset, data_len, params):
     params.ib_.emit(tvm.call_extern('int32', 'pipe_barrier', args_str))
 
 
+# 'pylint: disable=too-many-return-statements
 def _apply_bufs_cast(ids_len, input_len, output_len, params):
     """
     ids_len : id length
