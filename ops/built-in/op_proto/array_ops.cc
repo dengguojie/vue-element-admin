@@ -1185,7 +1185,7 @@ graphStatus EmptyTensorProcess(const Operator &op, const GeTensorDesc &x_desc, G
   if (shape_type == DT_INT32) {
     ret = GetOutShapeFromTensor<int32_t>(op_desc, shape_tensor, shape_shape);
   } else if (shape_type == DT_INT64) {
-    ret = GetOutShapeFromTensor<int32_t>(op_desc, shape_tensor, shape_shape);
+    ret = GetOutShapeFromTensor<int64_t>(op_desc, shape_tensor, shape_shape);
   } else {
     string reason =
         "dtype of shape input must be DT_INT32 or DT_INT64, actually is " + DataTypeToStringDesc(shape_type);
