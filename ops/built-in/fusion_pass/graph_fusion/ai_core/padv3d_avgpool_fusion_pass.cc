@@ -72,7 +72,7 @@ Status Padv3dAvgpoolFusionPass::Fusion(ge::ComputeGraph& graph,
                     "pad_node is null, fusion failed."), return PARAM_INVALID);
   FUSION_PASS_CHECK(pooling_node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(),
                     "pooling_node is null, fusion failed."), return PARAM_INVALID);
-    NOT_CHANGED_WITH_DYNAMIC_NODE({pad_node});
+  NOT_CHANGED_WITH_DYNAMIC_NODE({pad_node});
   // check output link
   FUSION_PASS_CHECK(pad_node->GetOutDataAnchor(0)->GetPeerAnchorsSize() != 1,
                     OP_LOGI(FUSED_OP_TYPE.c_str(), "PADV3D_node output size is [%d], which not equal to 1.",
@@ -359,5 +359,5 @@ Status Padv3dAvgpoolFusionPass::CheckPadAndKsize(ge::Format& input_format,
   return SUCCESS;
 }
 
-REGISTER_PASS("Padv3dAvgpoolFusionPass", BUILT_IN_GRAPH_PASS, Padv3dAvgpoolFusionPass);
+REGISTER_PASS("Padv3dAvgpoolFusionPass", BUILT_IN_BEFORE_QUANT_OPTIMIZATION_GRAPH_PASS, Padv3dAvgpoolFusionPass);
 }
