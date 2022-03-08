@@ -143,21 +143,21 @@ class _NMSHelper():
         self.vector_mask_max = 64
 
         # note: N canbe used in size, but not for def tensor, should use ceil_n
-        self.N_max = input_boxes_max_num
-        self.ceil_n_max = _ceiling(self.N_max, self.vector_mask_max)
+        self.n_max = input_boxes_max_num
+        self.ceil_n_max = _ceiling(self.n_max, self.vector_mask_max)
 
-        self.N_actual_scalar = tik_instance.Scalar(dtype="int32", name="N_actual_scalar")
-        self.N_actual_scalar.set_as(boxes_num_scalar)
-        self.ceil_n_actual_scalar = _ceiling_scalar(tik_instance, self.N_actual_scalar, self.vector_mask_max)
+        self.n_actual_scalar = tik_instance.Scalar(dtype="int32", name="n_actual_scalar")
+        self.n_actual_scalar.set_as(boxes_num_scalar)
+        self.ceil_n_actual_scalar = _ceiling_scalar(tik_instance, self.n_actual_scalar, self.vector_mask_max)
 
         # set input gm
-        self.all_inp_proposals_gm_max = tik_instance.Tensor(input_dtype, (self.N_max, Constant.ELEMENT_NUM),
+        self.all_inp_proposals_gm_max = tik_instance.Tensor(input_dtype, (self.n_max, Constant.ELEMENT_NUM),
                                                             name="in_proposals",
                                                             scope=tik.scope_gm)
 
-        self.input_size_max = self.N_max * Constant.ELEMENT_NUM
+        self.input_size_max = self.n_max * Constant.ELEMENT_NUM
         self.input_size_actual_scalar = tik_instance.Scalar(dtype="int32",
-                                                            init_value=self.N_actual_scalar * Constant.ELEMENT_NUM)
+                                                            init_value=self.n_actual_scalar * Constant.ELEMENT_NUM)
 
         # set iou thres
         self.iou_thres_factor = iou_thres / (iou_thres + 1)
@@ -275,9 +275,9 @@ class _NMSHelper():
         pattern_value_fp32_y2 = 134744072
         if self.input_dtype == 'float16':
             # Constant.BURST_PROPOSAL_NUM is shape0 of tmp_tensor_ub_fp16_burst
-            tmp_actual_N_scalar = self.tik_instance.Scalar(dtype="int32",
-                                                           init_value=self.N_actual_scalar * Constant.ELEMENT_NUM)
-            repeat_actual_scalar = _ceil_div_scalar(self.tik_instance, tmp_actual_N_scalar,
+            tmp_actual_n_scalar = self.tik_instance.Scalar(dtype="int32",
+                                                           init_value=self.n_actual_scalar * Constant.ELEMENT_NUM)
+            repeat_actual_scalar = _ceil_div_scalar(self.tik_instance, tmp_actual_n_scalar,
                                                     Constant.BURST_PROPOSAL_NUM)
 
             with self.tik_instance.for_range(0, repeat_actual_scalar) as i:
@@ -491,9 +491,9 @@ class _NMSHelper():
         """
         tik_instance = self.tik_instance
         # ceiling vector_mask_max for handling tailing
-        self.actual_valid_mask_size_int8_scalar = _ceiling_scalar(tik_instance, self.N_actual_scalar,
+        self.actual_valid_mask_size_int8_scalar = _ceiling_scalar(tik_instance, self.n_actual_scalar,
                                                                   self.vector_mask_max)
-        self.max_valid_mask_size_int8 = _ceiling(self.N_max, self.vector_mask_max)
+        self.max_valid_mask_size_int8 = _ceiling(self.n_max, self.vector_mask_max)
         self.max_valid_mask_int8_ub = tik_instance.Tensor('int8', (self.max_valid_mask_size_int8, ), tik.scope_ubuf,
                                                           'max_valid_mask_int8_ub')
         self.valid_mask_fp16_ub_max = self.tmp_tensor_ub_fp16_max
@@ -588,8 +588,8 @@ class _NMSHelper():
         """
         tik_instance = self.tik_instance
         # dscend sorted list in ub, fixed dtype is fp16. use selected_idx_ub to generate dsorts_ub
-        max_dsorts_size = _ceiling(self.N_max, self.vector_mask_max)
-        actual_dsorts_size_scalar = _ceiling_scalar(tik_instance, self.N_actual_scalar, self.vector_mask_max)
+        max_dsorts_size = _ceiling(self.n_max, self.vector_mask_max)
+        actual_dsorts_size_scalar = _ceiling_scalar(tik_instance, self.n_actual_scalar, self.vector_mask_max)
 
         scalar_dsorts_size_actual = tik_instance.Scalar("float16", init_value=actual_dsorts_size_scalar)
 
@@ -793,6 +793,47 @@ class _NMSHelper():
         self._tailing_handle_vmuls(self.y1_max_ub, self.y1_max_ub, Constant.DOWN_FACTOR, self.ceil_n_actual_scalar)
         self._tailing_handle_vmuls(self.y2_max_ub, self.y2_max_ub, Constant.DOWN_FACTOR, self.ceil_n_actual_scalar)
 
+    def loops(self):
+        """
+        comparing nums and IOU
+        A ∩ B > (A + B) * (iou_thr / (iou_thr + 1))
+        
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        selected_mask_ub
+        """
+        # def and init selected_mask_ub
+        selected_mask_ub_max = self.tik_instance.Tensor('uint8', (self.ceil_n_max, ),
+                                                        name="selected_mask_ub",
+                                                        scope=tik.scope_ubuf)
+
+        selected_mask_ub_tmp = self.tmp_tensor_ub_fp16_max
+        scalar_i = self.tik_instance.Scalar('float16', 'scalar_i', init_value=0)
+
+        self._tailing_handle_vector_dup(selected_mask_ub_tmp,
+                                        scalar_i,
+                                        size=self.ceil_n_actual_scalar,
+                                        src_bytes=Constant.BYTES_SIZE_FP16)
+        self._tailing_handle_vec_conv(selected_mask_ub_max, selected_mask_ub_tmp, self.ceil_n_actual_scalar,
+                                      Constant.BYTES_SIZE_UINT8, Constant.BYTES_SIZE_FP16, 'round')
+
+        cur_scalar = self.tik_instance.Scalar(dtype='int32', name='cur_scalar', init_value=0)
+
+        with self.tik_instance.for_range(0, self.n_actual_scalar):
+            with self.tik_instance.if_scope(cur_scalar < self.n_actual_scalar):
+                # set 1, means valid
+                selected_mask_ub_max[cur_scalar] = self.one_uint8_scalar
+                mask_ub = self._one_loop(cur_scalar)
+                self._update_valid_mask(mask_ub)
+                self._update_next_nonzero_idx(self.max_valid_mask_int8_ub)
+                cur_scalar.set_as(self.next_nonzero_int32_idx_ub[0])
+
+        return selected_mask_ub_max
+
     def _tailing_handle_vmuls(self, dst_ub, src_ub, scalar, size):
         """
         handle tailing of vmuls
@@ -840,47 +881,6 @@ class _NMSHelper():
                                     src_blk_stride=1,
                                     dst_rep_stride=8,
                                     src_rep_stride=8)
-
-    def loops(self):
-        """
-        comparing nums and IOU
-        A ∩ B > (A + B) * (iou_thr / (iou_thr + 1))
-        
-        Parameters
-        ----------
-        None
-
-        Returns
-        -------
-        selected_mask_ub
-        """
-        # def and init selected_mask_ub
-        selected_mask_ub_max = self.tik_instance.Tensor('uint8', (self.ceil_n_max, ),
-                                                        name="selected_mask_ub",
-                                                        scope=tik.scope_ubuf)
-
-        selected_mask_ub_tmp = self.tmp_tensor_ub_fp16_max
-        scalar_i = self.tik_instance.Scalar('float16', 'scalar_i', init_value=0)
-
-        self._tailing_handle_vector_dup(selected_mask_ub_tmp,
-                                        scalar_i,
-                                        size=self.ceil_n_actual_scalar,
-                                        src_bytes=Constant.BYTES_SIZE_FP16)
-        self._tailing_handle_vec_conv(selected_mask_ub_max, selected_mask_ub_tmp, self.ceil_n_actual_scalar,
-                                      Constant.BYTES_SIZE_UINT8, Constant.BYTES_SIZE_FP16, 'round')
-
-        cur_scalar = self.tik_instance.Scalar(dtype='int32', name='cur_scalar', init_value=0)
-
-        with self.tik_instance.for_range(0, self.N_actual_scalar):
-            with self.tik_instance.if_scope(cur_scalar < self.N_actual_scalar):
-                # set 1, means valid
-                selected_mask_ub_max[cur_scalar] = self.one_uint8_scalar
-                mask_ub = self._one_loop(cur_scalar)
-                self._update_valid_mask(mask_ub)
-                self._update_next_nonzero_idx(self.max_valid_mask_int8_ub)
-                cur_scalar.set_as(self.next_nonzero_int32_idx_ub[0])
-
-        return selected_mask_ub_max
 
     def _one_loop(self, cur_scalar):
         """
@@ -1133,7 +1133,7 @@ class _NMSHelper():
         -------
         None
         """
-        if not self.total_areas_ub is None:
+        if self.total_areas_ub is not None:
             return self.total_areas_ub
 
         tik_instance = self.tik_instance
@@ -1312,6 +1312,66 @@ class _NMSHelper():
                                       dst_bytes=1,
                                       src_bytes=2)
 
+    def selected_boxes_gen(self):
+        """
+        selected_boxes generate from proposals_ub
+
+        original box_scores: [N, 8]
+        selected_boxes:      [N, 5]
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        selected_boxes_ub:
+        """
+        # 7967 is [1 1 1 1 1 0 0 0 1 1 1 1 1 0 0 0] for 16 inputs
+        pattern_value_uint16 = 7967
+        # 522133279 is [1 1 1 1 1 0 0 0   1 1 1 1 1 0 0 0   1 1 1 1 1 0 0 0
+        # 1 1 1 1 1 0 0 0] one uint32 can handle selection of 32 elems
+        pattern_value_uint32 = 522133279
+        # def selected_boxes_ub
+        # ceil n 64 align
+        selected_boxes_ub = self.tik_instance.Tensor(self.input_dtype, (self.ceil_n_max, Constant.VALID_COLUMN_NUM),
+                                                     tik.scope_ubuf, 'selected_boxes_ub')
+
+        # create pattern, shape is 16 or 8, which is enough and it'll be reused in vreduce, and vreduce output
+        if self.input_dtype == 'float16':
+            pattern_ub = self.tik_instance.Tensor('uint16', (16, ), tik.scope_ubuf, 'pattern_ub')
+            # init pattern
+            self.tik_instance.vector_dup(
+                16, pattern_ub, self.tik_instance.Scalar('uint16', 'pattern_s', init_value=pattern_value_uint16), 1, 1,
+                1)
+
+            repeat_reg = _ceil_div_scalar(self.tik_instance, self.n_actual_scalar * Constant.ELEMENT_NUM,
+                                          Constant.BURST_PROPOSAL_NUM)
+
+            # only select first 5 elements
+            with self.tik_instance.for_range(0, repeat_reg) as i:
+                offset = i * Constant.BURST_PROPOSAL_NUM
+                self.tik_instance.data_move(
+                    self.tmp_tensor_ub_fp16_burst, self.all_inp_proposals_gm_max[offset], 0, 1,
+                    Constant.BURST_PROPOSAL_NUM * self.input_bytes_each_elem // Constant.CONFIG_DATA_ALIGN, 0, 0)
+                self.tik_instance.vreduce(mask=Constant.BURST_PROPOSAL_NUM,
+                                          dst=selected_boxes_ub[offset * Constant.VALID_COLUMN_NUM //
+                                                                Constant.ELEMENT_NUM],
+                                          src0=self.tmp_tensor_ub_fp16_burst,
+                                          src1_pattern=pattern_ub,
+                                          repeat_times=1,
+                                          src0_blk_stride=1,
+                                          src0_rep_stride=0,
+                                          src1_rep_stride=0)
+        else:
+            pattern_ub = self.tik_instance.Tensor('uint32', (8, ), tik.scope_ubuf, 'pattern_ub')
+            self.tik_instance.vector_dup(
+                8, pattern_ub, self.tik_instance.Scalar('uint32', 'pattern_s', init_value=pattern_value_uint32), 1, 1,
+                1)
+            self._tailing_handle_vreduce_output(selected_boxes_ub, self.all_inp_proposals_ub_fp32_max, pattern_ub)
+
+        return selected_boxes_ub
+
     def _update_next_nonzero_idx(self, valid_mask_int8_ub):
         """
         update next nonzero idx
@@ -1387,66 +1447,6 @@ class _NMSHelper():
                                       Constant.BYTES_SIZE_INT32,
                                       Constant.BYTES_SIZE_FP16,
                                       mode='round')
-
-    def selected_boxes_gen(self):
-        """
-        selected_boxes generate from proposals_ub
-
-        original box_scores: [N, 8]
-        selected_boxes:      [N, 5]
-
-        Parameters
-        ----------
-        None
-
-        Returns
-        -------
-        selected_boxes_ub:
-        """
-        # 7967 is [1 1 1 1 1 0 0 0 1 1 1 1 1 0 0 0] for 16 inputs
-        pattern_value_uint16 = 7967
-        # 522133279 is [1 1 1 1 1 0 0 0   1 1 1 1 1 0 0 0   1 1 1 1 1 0 0 0
-        # 1 1 1 1 1 0 0 0] one uint32 can handle selection of 32 elems
-        pattern_value_uint32 = 522133279
-        # def selected_boxes_ub
-        # ceil n 64 align
-        selected_boxes_ub = self.tik_instance.Tensor(self.input_dtype, (self.ceil_n_max, Constant.VALID_COLUMN_NUM),
-                                                     tik.scope_ubuf, 'selected_boxes_ub')
-
-        # create pattern, shape is 16 or 8, which is enough and it'll be reused in vreduce, and vreduce output
-        if self.input_dtype == 'float16':
-            pattern_ub = self.tik_instance.Tensor('uint16', (16, ), tik.scope_ubuf, 'pattern_ub')
-            # init pattern
-            self.tik_instance.vector_dup(
-                16, pattern_ub, self.tik_instance.Scalar('uint16', 'pattern_s', init_value=pattern_value_uint16), 1, 1,
-                1)
-
-            repeat_reg = _ceil_div_scalar(self.tik_instance, self.N_actual_scalar * Constant.ELEMENT_NUM,
-                                          Constant.BURST_PROPOSAL_NUM)
-
-            # only select first 5 elements
-            with self.tik_instance.for_range(0, repeat_reg) as i:
-                offset = i * Constant.BURST_PROPOSAL_NUM
-                self.tik_instance.data_move(
-                    self.tmp_tensor_ub_fp16_burst, self.all_inp_proposals_gm_max[offset], 0, 1,
-                    Constant.BURST_PROPOSAL_NUM * self.input_bytes_each_elem // Constant.CONFIG_DATA_ALIGN, 0, 0)
-                self.tik_instance.vreduce(mask=Constant.BURST_PROPOSAL_NUM,
-                                          dst=selected_boxes_ub[offset * Constant.VALID_COLUMN_NUM //
-                                                                Constant.ELEMENT_NUM],
-                                          src0=self.tmp_tensor_ub_fp16_burst,
-                                          src1_pattern=pattern_ub,
-                                          repeat_times=1,
-                                          src0_blk_stride=1,
-                                          src0_rep_stride=0,
-                                          src1_rep_stride=0)
-        else:
-            pattern_ub = self.tik_instance.Tensor('uint32', (8, ), tik.scope_ubuf, 'pattern_ub')
-            self.tik_instance.vector_dup(
-                8, pattern_ub, self.tik_instance.Scalar('uint32', 'pattern_s', init_value=pattern_value_uint32), 1, 1,
-                1)
-            self._tailing_handle_vreduce_output(selected_boxes_ub, self.all_inp_proposals_ub_fp32_max, pattern_ub)
-
-        return selected_boxes_ub
 
     def _tailing_handle_vreduce_output(self, dst_ub, src0_ub, src1_pattern_ub):
         """

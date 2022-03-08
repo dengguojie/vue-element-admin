@@ -1,0 +1,73 @@
+[
+    {
+        "op": "NMSWithMask",
+        "input_desc": [
+            {
+                "shape": [
+                    1001,
+                    8
+                ],
+                "format": "ND",
+                "ori_shape": [
+                    1001,
+                    8
+                ],
+                "ori_format": "ND",
+                "name": "box_scores",
+                "param_name": "box_scores",
+                "type": "float"
+            }
+        ],
+        "output_desc": [
+            {
+                "shape": [
+                    1001,
+                    5
+                ],
+                "format": "ND",
+                "ori_shape": [
+                    1001,
+                    5
+                ],
+                "ori_format": "ND",
+                "name": "selected_boxes",
+                "param_name": "selected_boxes",
+                "type": "float"
+            },
+            {
+                "shape": [
+                    1001
+                ],
+                "format": "ND",
+                "ori_shape": [
+                    1001
+                ],
+                "ori_format": "ND",
+                "name": "selected_idx",
+                "param_name": "selected_idx",
+                "type": "int32"
+            },
+            {
+                "shape": [
+                    1001
+                ],
+                "format": "ND",
+                "ori_shape": [
+                    1001
+                ],
+                "ori_format": "ND",
+                "name": "selected_mask",
+                "param_name": "selected_mask",
+                "type": "uint8"
+            }
+        ],
+        "attr": [
+            {
+                "name": "iou_threshold",
+                "type": "float",
+                "value": 0.5
+            }
+        ],
+        "case_name": "test_NMSwithMask_001"
+    }
+]

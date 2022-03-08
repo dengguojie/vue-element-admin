@@ -111,7 +111,7 @@ int32_t GetLoopTimes(int32_t cols) {
   }
   while (true) {
     level += 1;
-    // 4 regions merge
+    // 4 regions merge, 3 means ceil
     regions = (regions + 3) / 4;
     if (regions <= 1) {
       break;
@@ -176,6 +176,7 @@ void TopkTilingBase(const int32_t row, const int32_t col, const int32_t batch_co
       turning = core_max;
     }
   }
+  // 16 is a limitation for k, 16 is used for data align
   if (k_num < 16 && k_num > 0) {
     // when k is not const, k_num use 0 as default value, and need to check k
     // value in py to update these two scalars.

@@ -483,6 +483,7 @@ class GlobalVarTilingScalar:
                 break
         return _ceil_fill(level, 2)
 
+    # 'pylint:disable=too-many-return-values
     def topk_tiling(self, k_num, input_shape):
         """
         topk_tiling

@@ -1407,7 +1407,7 @@ class _NMSHelper():
         -------
         None
         """
-        if not self.total_areas_ub is None:
+        if self.total_areas_ub is not None:
             return self.total_areas_ub
 
         tik_instance = self.tik_instance

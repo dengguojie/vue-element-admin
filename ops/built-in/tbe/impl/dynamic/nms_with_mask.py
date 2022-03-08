@@ -25,6 +25,7 @@ from impl.util.platform_adapter import tbe_context
 import tbe.common.register as tbe_register
 from .nms_with_mask_common import nms_with_mask_single_core
 
+
 # 'pylint:disable=too-few-public-methods,too-many-instance-attributes
 class Constant:
     """
@@ -472,7 +473,7 @@ def nms_with_mask_generalization(box_scores,
     """
     result = []
     # fuzzy compile
-    if generalize_config["mode"] == "keep_rank":
+    if generalize_config.get('mode') == "keep_rank":
         last_dim = box_scores["shape"][-1]
         box_scores_shape_in = (-1, last_dim)
         box_scores_range_in = [(1, -1), (last_dim, last_dim)]
@@ -497,7 +498,7 @@ def nms_with_mask_generalization(box_scores,
     return result
 
 
-# 'pylint: disable=unused-argument,too-many-locals,too-many-arguments
+# 'pylint: disable=unused-argument,too-many-locals,too-many-arguments,inconsistent-return-statements
 @register_operator("NMSWithMask")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_FLOAT, para_check.KERNEL_NAME)
