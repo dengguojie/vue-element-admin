@@ -1820,6 +1820,11 @@ unkown:
   team: "unkown" ##组件名称
   src:
     release:
+      - ops/built-in/utils/block_pool.cc
+      - ops/built-in/utils/block_pool.h
+      - ops/built-in/utils/block_store.cc
+      - ops/built-in/utils/block_store.h
+      - ops/built-in/utils/pool_allocator.h
       - ops/built-in/op_tiling/is_finite.cc
       - ops/built-in/op_tiling/transdata_dsl_general.h
       - ops/built-in/op_tiling/square_sum_all.cc
