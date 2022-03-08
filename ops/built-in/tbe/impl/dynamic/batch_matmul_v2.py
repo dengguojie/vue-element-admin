@@ -16,6 +16,7 @@
 dynamic batch_matmul_v2
 """
 import math
+import warnings
 from enum import Enum
 
 from impl.util import util_gemm
@@ -31,6 +32,7 @@ from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tbe_register
 from impl.util.platform_adapter import tvm
 from impl.util.util_common import cal_mini_l1_size_matmul
+from tbe.common.context import op_context
 
 
 # General limitation of the size for input shape: 2**31 - 1
@@ -126,13 +128,19 @@ def get_op_support_info(input_x1, input_x2, bias=None, offset_w=None, output_z=N
     return op_cal_info_in_json
 
 
-def base_op_select_format(src_fp16_flag: bool) -> tuple:
+def base_op_select_format(input_x, input_y, src_dtype, trans_b, src_fp16_flag: bool) -> tuple:
     """
     provide dynamic format to FE(Base processing)
     This funciton contains all basic format combinations
 
     return : dynamic format combination, static format combination
     """
+    shape_a = input_x.get("ori_shape")
+    shape_b = input_y.get("ori_shape")
+    dynamic_flag = any(v < 0 for v in shape_a) or any(v < 0 for v in shape_b)
+    dyn_case_scenario_list = []
+    full_case_scenario_list = []
+
     # The order from left to right is input1, input2, input3(bias), input4(offset_w), output
     base_case_scenario = [(("float16", "FRACTAL_NZ"), ("float16", "FRACTAL_NZ"), ("float16", "ND"),
                            ("int8", "ND"), ("float16", "FRACTAL_NZ"))]
@@ -142,12 +150,15 @@ def base_op_select_format(src_fp16_flag: bool) -> tuple:
         (("int8", "FRACTAL_NZ"), ("int8", "FRACTAL_Z"), ("float16", "ND"), ("int8", "ND"), ("float16", "FRACTAL_NZ"))
     ]
     # Vector Logic
-    quant_case_scenario = [
+    fp32_int32_dtype_scenario = [
             (("float", "NHWC"), ("float", "NHWC"), ("float", "NHWC"), ("int8", "ND"), ("float", "NHWC")),
             (("float", "ND"), ("float", "ND"), ("float", "ND"), ("int8", "ND"), ("float", "ND")),
             (("int32", "NHWC"), ("int32", "NHWC"), ("int32", "NHWC"), ("int8", "ND"), ("int32", "NHWC")),
             (("int32", "ND"), ("int32", "ND"), ("int32", "ND"), ("int8", "ND"), ("int32", "ND"))
         ]
+
+    if not check_fp32_case_scenario(shape_a, shape_b, trans_b, src_dtype):
+        fp32_int32_dtype_scenario = []
 
     fp32_out_scenatio = [(("float16", "FRACTAL_NZ"), ("float16", "FRACTAL_NZ"),
                           ("float", "ND"), ("int8", "ND"), ("float", "FRACTAL_NZ"))]
@@ -171,15 +182,101 @@ def base_op_select_format(src_fp16_flag: bool) -> tuple:
          ("int8", "ND"), ("bfloat16", "FRACTAL_NZ"))
     ]
     support_l0c2out = tbe_platform.intrinsic_check_support("Intrinsic_fix_pipe_l0c2out")
+
     dyn_case_scenario_list = base_case_scenario
+    if dynamic_flag and not check_batch_range(input_x, input_y):
+        warnings.warn("input_x, input_y out of batch_range")
+        dyn_case_scenario_list = []
+
     # Construct scenario list for static
     if support_l0c2out:
         full_case_scenario_list = cube_vector_scenario
     elif src_fp16_flag:
         full_case_scenario_list = base_case_scenario + fp32_out_scenatio + rnn_scenatio
     else:
-        full_case_scenario_list = base_case_scenario + base_quant_case_scenario + quant_case_scenario
+        full_case_scenario_list = base_case_scenario + base_quant_case_scenario + fp32_int32_dtype_scenario
     return dyn_case_scenario_list, full_case_scenario_list
+
+
+def check_fp32_case_scenario(shape_a, shape_b, trans_b, src_dtype):
+    """
+    check if support float32 or int32 type
+
+    Paramaters
+
+    shape_a: list or tuple ,information of shape_a
+    shape_b: list or tuple ,information of shape_b
+    trans_b: bool
+    src_type: type of input_x
+
+    Returns
+
+    support format for float32 or int32
+    """
+    dynamic_flag = any(v < 0 for v in shape_a) or any(v < 0 for v in shape_b)
+
+    if not dynamic_flag:
+        shape_a_length = len(shape_a)
+        shape_b_length = len(shape_b)
+        if shape_a_length != shape_b_length:
+            return False
+        elif trans_b:
+            if shape_b[shape_a_length - 2] == 1:
+                return False
+        elif bool(1-trans_b):
+            if shape_b[shape_a_length - 1] == 1:
+                return False
+
+    if _is_fuzzily_build() and src_dtype != "float16":
+        return False
+
+    return True
+
+
+def _is_fuzzily_build():
+    """
+    check fuzzily build flag
+    """
+    context = op_context.get_context()
+    return (context and context.get_build_type() == "fuzzily_build")
+
+
+def check_batch_range(input_x, input_y):
+    """
+    Check the batch shape and range legal
+
+    Parameters
+    ----------
+    input_x: dict with shape and range
+    input_y: dict with shape and range
+
+    Returns
+    -------
+    legit or not
+    """
+    shape_a = input_x.get("ori_shape")
+    shape_b = input_y.get("ori_shape")
+
+    range_x1 = input_x.get("range")
+    range_x2 = input_y.get("range")
+    if len(shape_a) <= ND_LENGTH:
+        warnings.warn("shape_a length is at least 3-dimensional")
+        return False
+    if len(shape_b) < ND_LENGTH:
+        warnings.warn("shape_b length is at least 2-dimensional")
+        return False
+
+    batch_range_x1 = range_x1[:(len(shape_a) - ND_LENGTH)]
+    batch_range_x2 = range_x2[:(len(shape_b) - ND_LENGTH)]
+
+    if not batch_range_x2:
+        return True
+
+    if len(batch_range_x1) != len(batch_range_x2):
+        warnings.warn("shape_a and shape_b batch_range is not equal")
+        return False
+
+    return True
 
 
 def gen_op_select_format_params(scenario_combinations: list, support_offset_w: bool = False) -> list:
@@ -225,7 +322,7 @@ def op_select_format(input_x, input_y, bias=None, offset_w=None, output_z=None, 
     """
     src_dtype = input_x.get("dtype")
     src_fp16_flag = src_dtype == "float16"
-    scenario_combinations, _ = base_op_select_format(src_fp16_flag)
+    scenario_combinations, _ = base_op_select_format(input_x, input_y, src_dtype, trans_b, src_fp16_flag)
 
     param_list = gen_op_select_format_params(scenario_combinations, support_offset_w=True)
     param_dynamic_in_json = util_select_op_base.get_dynamic_param_in_json(param_list)

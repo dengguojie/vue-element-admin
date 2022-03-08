@@ -157,20 +157,11 @@ def gen_batch_matmul_dynamic(batch_range, m_range, k_range, n_range, src_dtype, 
 def test_op_select_format(test_arg):
     from impl.dynamic.batch_matmul import op_select_format
     # dynamic shape
-    op_select_format({"shape": (-1, 2, 4), "dtype": "float16", "format": "ND", "ori_shape": (-1, 2, 4), "ori_format": "ND"},
-                     {"shape": (7, 4, 5), "dtype": "float16", "format": "ND", "ori_shape": (7, 4, 5), "ori_format": "ND"},
+    op_select_format({"shape": (-1, 2, 4), "dtype": "float16", "format": "ND",
+                      "ori_shape": (-1, 2, 4), "ori_format": "ND", "range": ((1, 8), (2, 2), (4, 4))},
+                     {"shape": (7, 4, 5), "dtype": "float16", "format": "ND",
+                      "ori_shape": (7, 4, 5), "ori_format": "ND", "range": ((7, 7), (4, 4), (5, 5))},
                      )
-
-
-def test_op_check_supported(test_arg):
-    from impl.batch_matmul import check_supported
-    input_x1_dynamic = {"ori_shape": (-1, -1, -1), "shape": (-1, -1, -1, 16, 16), "range": ((1,3), (2,3), (3,5)), "dtype": 'float16'}
-    input_x2_dynamic = {"ori_shape": (-1, -1, -1), "shape": (-1, -1, -1, 16, 16), "range": ((1,3), (3,5), (4,5)), "dtype": 'float16'}
-    check_supported(input_x1_dynamic, input_x2_dynamic)
-
-    input_x1 = {"ori_shape": (2, 16, 16), "shape": (2, 1, 1, 16, 16),"dtype": 'float16'}
-    input_x2 = {"ori_shape": (2, 16, 16), "shape": (2, 1, 1, 16, 16),"dtype": 'float16'}
-    check_supported(input_x1, input_x2)
 
 
 def test_batch_matmul_generalization(test_arg):
@@ -352,7 +343,6 @@ for case in common_cases:
         ut_case.add_case("Ascend910A", param)
 
 ut_case.add_cust_test_func(test_func=test_op_select_format)
-ut_case.add_cust_test_func(test_func=test_op_check_supported)
 ut_case.add_cust_test_func(test_func=test_batch_matmul_generalization)
 ut_case.add_cust_test_func(test_func=test_batch_matmul_generalization_range_check)
 ut_case.add_cust_test_func(test_func=test_batch_matmul_generalization_not_valid)

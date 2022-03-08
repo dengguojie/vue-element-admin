@@ -16,6 +16,8 @@
 dynamic batch_matmul
 """
 from impl.dynamic.batch_matmul_v2 import batch_matmul_v2
+from impl.dynamic.batch_matmul_v2 import check_batch_range
+from impl.dynamic.batch_matmul_v2 import check_fp32_case_scenario
 from impl.dynamic.batch_matmul_v2 import gen_op_select_format_params
 from impl.dynamic.batch_matmul_v2 import get_op_support_info as get_op_support_info_v2
 from impl.dynamic.batch_matmul_v2 import batch_matmul_v2_generalization
@@ -40,26 +42,34 @@ SUPPORT_FORMAT = ["FRACTAL_NZ", "ND"]
 FUZZY_SUCC_LEN = 8
 
 
-def base_op_select_format(src_fp16_flag: bool) -> tuple:
+def base_op_select_format(input_x, input_y, src_dtype, trans_b, src_fp16_flag: bool) -> tuple:
     """
     provide dynamic format to FE(Base processing)
     This funciton contains all basic format combinations
 
     return : dynamic format combination, static format combination
     """
+    shape_a = input_x.get("ori_shape")
+    shape_b = input_y.get("ori_shape")
     dyn_case_scenario_list = []
     full_case_scenario_list = []
+
+    dynamic_flag = any(v < 0 for v in shape_a) or any(v < 0 for v in shape_b)
+
     # The order from left to right is input1, input2, input3(bias), output
     base_case_scenario = [(("float16", "FRACTAL_NZ"), ("float16", "FRACTAL_NZ"),
                            ("float16", "ND"), ("float16", "FRACTAL_NZ"))]
     fp32_out_scenario = [(("float16", "FRACTAL_NZ"), ("float16", "FRACTAL_NZ"),
                           ("float", "ND"), ("float", "FRACTAL_NZ"))]
 
-    quant_case_scenario = [(("float", "NHWC"), ("float", "NHWC"), ("float", "NHWC"), ("float", "NHWC")),
+    fp32_int32_dtype_scenario = [(("float", "NHWC"), ("float", "NHWC"), ("float", "NHWC"), ("float", "NHWC")),
                            (("float", "ND"), ("float", "ND"), ("float", "ND"), ("float", "ND")),
                            (("int32", "NHWC"), ("int32", "NHWC"), ("int32", "NHWC"), ("int32", "NHWC")),
                            (("int32", "ND"), ("int32", "ND"), ("int32", "ND"), ("int32", "ND"))]
 
+    if not check_fp32_case_scenario(shape_a, shape_b, trans_b, src_dtype):
+        fp32_int32_dtype_scenario = []
+    
     # ND input and output scenario
     nd_case_scenario = [(("float16", "ND"), ("float16", "ND"), ("float16", "ND"), ("float16", "ND")),
                         (("float16", "ND"), ("float16", "FRACTAL_NZ"), ("float16", "ND"), ("float16", "ND"))]
@@ -76,13 +86,16 @@ def base_op_select_format(src_fp16_flag: bool) -> tuple:
     ]
     support_l0c2out = tbe_platform.intrinsic_check_support("Intrinsic_fix_pipe_l0c2out")
     dyn_case_scenario_list = base_case_scenario + nd_case_scenario
+    if dynamic_flag and not check_batch_range(input_x, input_y):
+        warnings.warn("input_x, input_y out of batch_range")
+        dyn_case_scenario_list = []
     # Construct scenario list for static
     if support_l0c2out:
         full_case_scenario_list = cube_vector_scenario
     elif src_fp16_flag:
         full_case_scenario_list = base_case_scenario + fp32_out_scenario + nd_case_scenario + nd_fp32out_scenario
     else:
-        full_case_scenario_list = base_case_scenario + quant_case_scenario
+        full_case_scenario_list = base_case_scenario + fp32_int32_dtype_scenario
     return dyn_case_scenario_list, full_case_scenario_list
 
 
@@ -93,7 +106,7 @@ def op_select_format(input_x: dict, input_y: dict, bias: dict = None, output_z: 
     """
     src_dtype = input_x.get("dtype")
     src_fp16_flag = src_dtype == "float16"
-    scenario_combinations, _ = base_op_select_format(src_fp16_flag)
+    scenario_combinations, _ = base_op_select_format(input_x, input_y, src_dtype, trans_b, src_fp16_flag)
 
     param_list = gen_op_select_format_params(scenario_combinations, support_offset_w=False)
     param_dynamic_in_json = util_select_op_base.get_dynamic_param_in_json(param_list)

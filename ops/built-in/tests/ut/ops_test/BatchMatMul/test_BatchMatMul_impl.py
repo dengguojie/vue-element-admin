@@ -27,7 +27,6 @@ from tbe.dsl import auto_schedule
 
 from impl.batch_matmul import get_op_support_info
 from impl.batch_matmul import batch_matmul_compute
-from impl.batch_matmul import check_supported
 from impl.confusion_transpose_d import confusion_transpose_d_compute
 from impl.add import add_compute
 from impl.relu import relu_compute
@@ -438,27 +437,6 @@ def test_batchmatmul_realdiv_add(test_arg):
         cce_build_code(sch, config)
 
 
-def test_op_check_supported(test_arg):
-    def _test_supported(case):
-        input_x, input_y, bias, output_z, trans_a, trans_b = case["params"]
-        try:
-            check_supported(input_x, input_y, bias, output_z, trans_a, trans_b, kernel_name="batch_matmul")
-        except RuntimeError:
-            print("The case is not supported!")
-            pass
-
-    _test_supported(case1)
-    _test_supported(case2)
-    _test_supported(case3)
-    _test_supported(case4)
-    _test_supported(case5)
-    _test_supported(case10)
-    _test_supported(case11)
-    _test_supported(case16)
-    _test_supported(case17)
-    _test_supported(case18)
-    _test_supported(case19)
-
 def test_op_select_format(test_arg):
     from impl.batch_matmul import op_select_format
     # static shape
@@ -477,7 +455,6 @@ ut_case.add_cust_test_func(test_func=test_batchmatmul_confusion_transpose_710)
 #ut_case.add_cust_test_func(test_func=test_batchmatmul_add_relu)
 #ut_case.add_cust_test_func(test_func=test_batchmatmul_div_fused_mul_add)
 ut_case.add_cust_test_func(test_func=test_batchmatmul_realdiv_add)
-ut_case.add_cust_test_func(test_func=test_op_check_supported)
 
 
 def reshape_nd_to_nz(tensor1, shape):

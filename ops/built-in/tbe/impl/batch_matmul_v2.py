@@ -262,51 +262,6 @@ def _get_input_shape(input_shape, transpose, src_dtype, input_name):
     return res
 
 
-def _check_batch_range(input_x, input_y):
-    """
-    Check the batch shape and range legal
-
-    Parameters
-    ----------
-    input_x: dict with shape and range
-    input_y: dict with shape and range
-
-    Returns
-    -------
-    legit or not
-    """
-    shape_a = input_x.get("ori_shape")
-    shape_b = input_y.get("ori_shape")
-    if list(shape_a) == DYNAMIC_UNRANK or list(shape_b) == DYNAMIC_UNRANK:
-        return True
-
-    range_x1 = input_x.get("range")
-    range_x2 = input_y.get("range")
-    if (range_x1 is None) or (len(shape_a) <= ND_LENGTH):
-        return False
-    if (range_x2 is None) or (len(shape_b) < ND_LENGTH):
-        return False
-
-    if (not range_x1) or (not range_x2):
-        return True
-
-    batch_range_x1 = range_x1[:(len(shape_a) - ND_LENGTH)]
-    batch_range_x2 = range_x2[:(len(shape_b) - ND_LENGTH)]
-
-    if not batch_range_x2:
-        return True
-
-    if len(batch_range_x1) != len(batch_range_x2):
-        return False
-
-    for range1, range2 in zip(batch_range_x1, batch_range_x2):
-        if range1[1] is not None and range2[1] is not None:
-            if max(range1[0], range2[0]) > min(range1[1], range2[1]):
-                return False
-
-    return True
-
-
 def op_select_format(input_x, input_y, bias=None, offset_w=None, output_z=None, trans_a=False,
                      trans_b=False, offset_x=0, kernel_name="matmul"):
     """
@@ -314,105 +269,12 @@ def op_select_format(input_x, input_y, bias=None, offset_w=None, output_z=None, 
     """
     src_dtype = input_x.get("dtype")
     src_fp16_flag = src_dtype == "float16"
-    _, full_case_senario_combinations = base_op_select_format(src_fp16_flag)
+    _, full_case_senario_combinations = base_op_select_format(input_x, input_y, src_dtype, trans_b, src_fp16_flag)
 
     param_list = gen_op_select_format_params(full_case_senario_combinations, support_offset_w=True)
     param_dynamic_in_json = util_select_op_base.get_dynamic_param_in_json(param_list)
 
     return param_dynamic_in_json
-
-
-def check_supported(input_x,
-                    input_y,
-                    bias=None,
-                    offset_w=None,
-                    output_z=None,
-                    trans_a=False,
-                    trans_b=False,
-                    offset_x=0,
-                    kernel_name="matmul"):
-    """
-    get the op supported situation
-    """
-    shape_a = input_x.get("ori_shape")
-    shape_b = input_y.get("ori_shape")
-    src_dtype = input_x.get("dtype")
-    if input_y.get("format") == "FRACTAL_ZN_RNN":
-        input_y["format"] = "FRACTAL_Z"
-        temp_ori_shape = input_y.get("shape")
-        shape_b = [temp_ori_shape[0] * 16, temp_ori_shape[1] * 16]
-        input_y["ori_shape"] = shape_b
-
-    if any(v == 0 for v in shape_a) or any(v == 0 for v in shape_b):
-        reason = "cannot support dim 0, shape_a:%s, shape_b:%s" \
-                 % (str(shape_a), str(shape_b))
-        return False, reason
-
-    dynamic_flag = any(v < 0 for v in shape_a) or any(v < 0 for v in shape_b)
-    if not dynamic_flag:
-        para_check.check_shape(shape_a, param_name="input_x")
-        para_check.check_shape(shape_b, param_name="input_y")
-    else:
-        if not _check_batch_range(input_x, input_y):
-            reason = "The batch range or shape of inputs is illegal"
-            return False, reason
-
-    src_dtypes = ["float32", "int32"]
-    if src_dtype in src_dtypes and not dynamic_flag:
-        shape_length = len(shape_a)
-        shape_length_b = len(shape_b)
-        if shape_length != shape_length_b:
-            reason = "The dimensions of TensorA and TensorB are not equal"
-            return False, reason
-        elif trans_b:
-            if shape_b[shape_length - 2] == 1:
-                reason = "When trans_b is True and src_dtypes is float32 or int32," \
-                    "the shape_b[{}] cannot be equal to 1".format(shape_length - 2)
-                return False, reason
-        elif bool(1 - trans_b):
-            if shape_b[shape_length - 1] == 1:
-                reason = "When trans_b is False and src_dtypes is float32 or int32," \
-                    "the shape_b[{}] cannot be equal to 1".format(shape_length - 1)
-                return False, reason
-        elif trans_a:
-            if trans_b:
-                if shape_a[shape_length - 2] != shape_b[shape_length - 1]:
-                    reason = "The shape_a[{}] and shape_b[{}] are not equal".format(
-                        shape_length - 2, shape_length - 1)
-                    return False, reason
-            else:
-                if shape_a[shape_length - 2] != shape_b[shape_length - 2]:
-                    reason = "The shape_a[{0}] and shape_b[{0}] are not equal".format(shape_length - 2)
-                    return False, reason
-        else:
-            if trans_b:
-                if shape_a[shape_length - 1] != shape_b[shape_length - 1]:
-                    reason = "The shape_a[{0}] and shape_b[{0}] are not equal".format(shape_length - 1)
-                    return False, reason
-            else:
-                if shape_a[shape_length - 1] != shape_b[shape_length - 2]:
-                    reason = "The shape_a[{0}] and shape_b[{1}] are not equal".format(
-                        shape_length - 1, shape_length - 2)
-                    return False, reason
-    elif src_dtype in ["float16", "int8"] and not dynamic_flag:
-        shape_length = len(shape_a)
-        if trans_a:
-            k_shape = shape_a[shape_length - 2]
-        else:
-            k_shape = shape_a[shape_length - 1]
-
-        shape_length_b = len(shape_b)
-        if trans_b:
-            k_b_shape = shape_b[shape_length_b - 1]
-        else:
-            k_b_shape = shape_b[shape_length_b - 2]
-
-        if k_shape != k_b_shape:
-            reason = "The K of TensorA and TensorB should be equal," \
-                "but actually K of TensorA is {} and K of TensorB is {}".format(k_shape, k_b_shape)
-            return False, reason
-
-    return True, ""
 
 
 @tbe_platform.fusion_manager.register("batch_matmul_v2")

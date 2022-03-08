@@ -20,7 +20,6 @@ from op_test_frame.ut import OpUT
 ut_case = OpUT("BatchMatmulV2", None, None)
 
 from tbe import tvm
-from impl.batch_matmul_v2 import check_supported
 from impl.batch_matmul_v2 import get_op_support_info
 from test_bmmv2_mock_case import *
 
@@ -127,7 +126,6 @@ case7 = {"params": [{"shape": (4, 3, 96, 32), "dtype": "float32", "format": "NHW
                      "ori_shape": (3,64, 96),"ori_format": "NHWC"},
                     {"shape": (64,), "dtype": "float32", "format": "NHWC",
                      "ori_shape": (64,),"ori_format": "NHWC"},
-                     None,
                     {"shape": (3, 96, 32), "dtype": "float32", "format": "NHWC",
                      "ori_shape": (3,96, 32),"ori_format": "NHWC"},
                     True,True
@@ -139,7 +137,6 @@ case8 = {"params": [{"shape": (3, 96, 32), "dtype": "float32", "format": "NHWC",
                     {"shape": (1, 1, 96), "dtype": "float32", "format": "NHWC",
                      "ori_shape": (1, 1, 96),"ori_format": "NHWC"},
                     {"shape": (64,), "dtype": "float32", "format": "NHWC", "ori_shape": (64,),"ori_format": "NHWC"},
-                     None,
                     {"shape": (3, 96, 32), "dtype": "float32", "format": "NHWC",
                      "ori_shape": (3,96, 32),"ori_format": "NHWC"},
                     False,True
@@ -151,7 +148,6 @@ case9 = {"params": [{"shape": (3, 96, 32), "dtype": "float32", "format": "NHWC",
                     {"shape": (1, 32, 1), "dtype": "float32", "format": "NHWC",
                      "ori_shape": (1, 32, 1),"ori_format": "NHWC"},
                     {"shape": (64,), "dtype": "float32", "format": "NHWC", "ori_shape": (64,),"ori_format": "NHWC"},
-                     None,
                     {"shape": (3, 96, 32), "dtype": "float32", "format": "NHWC",
                      "ori_shape": (3,96, 32),"ori_format": "NHWC"},
                     True, False
@@ -163,7 +159,6 @@ case10 = {"params": [{"shape": (3, 32, 64), "dtype": "float16", "format": "NHWC"
                      {"shape": (3, 64, 96), "dtype": "float16", "format": "NHWC",
                       "ori_shape": (3, 64, 96),"ori_format": "NHWC"},
                      {"shape": (64,), "dtype": "float16", "format": "NHWC", "ori_shape": (64,),"ori_format": "NHWC"},
-                      None,
                      {"shape": (3, 96, 32), "dtype": "float16", "format": "NHWC",
                       "ori_shape": (3,96, 32),"ori_format": "NHWC"},
                      True,False
@@ -174,7 +169,6 @@ case15 = {"params": [{"shape": (0, 10), "dtype": "float16", "format": "FRACTAL_N
                       "ori_shape": (0, 10),"ori_format": "ND"},
                      {"shape": (10, 20), "dtype": "float16", "format": "FRACTAL_NZ",
                       "ori_shape": (10, 20),"ori_format": "ND"},
-                     None,
                      None,
                      {"shape": (0, 20), "dtype": "float16", "format": "FRACTAL_NZ",
                       "ori_shape": (0, 20),"ori_format": "ND"},
@@ -243,7 +237,6 @@ case15 = {"params": [{"shape": (4, 4, 2, 16, 16), "dtype": "float16", "format": 
                      {"shape": (4, 4, 4, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ",
                       "ori_shape": (4, 64, 49),"ori_format": "ND"},
                      {"shape": (49,), "dtype": "float32", "format": "ND", "ori_shape": (49,),"ori_format": "ND"},
-                    None,
                     {"shape": (4, 4, 2, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ",
                      "ori_shape": (4, 32, 49),"ori_format": "ND"},
                     False,False,
@@ -301,7 +294,6 @@ case19 = {"params": [{"shape": (128, 1, 16, 16), "dtype": "float16", "format": "
                     {"shape": (36, 128, 16, 16), "dtype": "float16", "format": "FRACTAL_ZN_RNN",
                      "ori_shape": (576, 2048),"ori_format": "ND"},
                     None,
-                    None,
                     {"shape": (1, 36, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ",
                      "ori_shape": (1, 36, 16, 16),"ori_format": "FRACTAL_NZ"},
                     False,True
@@ -349,7 +341,6 @@ ut_case.add_case(["Ascend920A"], case15)
 ut_case.add_case(["Ascend910A"], case16)
 ut_case.add_case(["Ascend910A"], case17)
 ut_case.add_case(["Ascend910A"], case18)
-ut_case.add_case(["Ascend910A"], case19)
 ut_case.add_case(["Ascend910A"], case20)
 ut_case.add_case(["Ascend910A"], case21)
 
@@ -384,24 +375,6 @@ ut_case.add_cust_test_func(test_func=test_split_batch_matmul_v2_1)
 ut_case.add_cust_test_func(test_func=test_split_batch_matmul_v2_2)
 ut_case.add_cust_test_func(test_func=test_split_batch_matmul_v2_3)
 
-def test_op_check_supported(test_arg):
-    def _test_supported(case):
-        input_x, input_y, bias, offset_w, output_z, trans_a, trans_b = case["params"]
-        try:
-            print(check_supported(input_x, input_y, bias, offset_w, output_z,
-                                  trans_a, trans_b, kernel_name="batch_matmul"))
-        except RuntimeError:
-            print("The case is not supported!")
-            pass
-
-    _test_supported(case7)
-    _test_supported(case8)
-    _test_supported(case9)
-    _test_supported(case10)
-    _test_supported(case15)
-    _test_supported(case19)
-
-ut_case.add_cust_test_func(test_func=test_op_check_supported)
 
 def test_op_select_format(test_arg):
     from impl.batch_matmul_v2 import op_select_format

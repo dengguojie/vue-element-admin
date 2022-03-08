@@ -27,7 +27,6 @@ from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tvm
-from tbe.common.context import op_context
 
 
 # General limitation of the size for input shape: 2**31
@@ -254,52 +253,6 @@ def _get_input_shape(shape_x):
     return res
 
 
-def _check_batch_range(input_x, input_y):
-    """
-    Check the batch shape and range legal
-
-    Parameters
-    ----------
-    input_x: dict with shape and range
-    input_y: dict with shape and range
-
-    Returns
-    -------
-    legit or not
-    """
-    shape_a = input_x.get("ori_shape")
-    shape_b = input_y.get("ori_shape")
-    if list(shape_a) == DYNAMIC_UNRANK or list(shape_b) == DYNAMIC_UNRANK:
-        return True
-
-    range_x1 = input_x.get("range")
-    range_x2 = input_y.get("range")
-
-    range_x1 = [[v, v] for v in shape_a] if not range_x1 and all(v > 0 for v in shape_a) else range_x1
-    range_x2 = [[v, v] for v in shape_b] if not range_x2 and all(v > 0 for v in shape_b) else range_x2
-
-    if not range_x1 or len(shape_a) <= ND_LENGTH:
-        return False
-    if not range_x2 or len(shape_b) < ND_LENGTH:
-        return False
-
-    batch_range_x1 = range_x1[:(len(shape_a) - ND_LENGTH)]
-    batch_range_x2 = range_x2[:(len(shape_b) - ND_LENGTH)]
-
-    if not batch_range_x2:
-        return True
-
-    if len(batch_range_x1) != len(batch_range_x2):
-        return False
-
-    for range1, range2 in zip(batch_range_x1, batch_range_x2):
-        if range1[1] is not None and range2[1] is not None:
-            if max(range1[0], range2[0]) > min(range1[1], range2[1]):
-                return False
-
-    return True
-
-
 def op_select_format(input_x: dict, input_y: dict, bias: dict = None, output_z: dict = None, trans_a: bool = False,
                      trans_b: bool = False, kernel_name: str = "matmul"):
     """
@@ -308,108 +261,12 @@ def op_select_format(input_x: dict, input_y: dict, bias: dict = None, output_z: 
     # BatchMatMulV1 does not support offset_w
     src_dtype = input_x.get("dtype")
     src_fp16_flag = src_dtype == "float16"
-    _, full_case_senario_combinations = base_op_select_format(src_fp16_flag)
+    _, full_case_senario_combinations = base_op_select_format(input_x, input_y, src_dtype, trans_b, src_fp16_flag)
 
     param_list = gen_op_select_format_params(full_case_senario_combinations, support_offset_w=False)
     param_dynamic_in_json = util_select_op_base.get_dynamic_param_in_json(param_list)
 
     return param_dynamic_in_json
-
-
-def _is_fuzzily_build():
-    """
-    check fuzzily build flag
-    """
-    context = op_context.get_context()
-    return (context and context.get_build_type() == "fuzzily_build")
-
-
-def check_supported(input_x, input_y, bias=None, output_z=None, trans_a=False,
-                    trans_b=False, kernel_name="matmul"):
-    """
-    get the op supported situation
-    """
-    shape_a = input_x.get("ori_shape")
-    shape_b = input_y.get("ori_shape")
-    src_dtype = input_x.get("dtype")
-
-    if any(v == 0 for v in shape_a) or any(v == 0 for v in shape_b):
-        reason = "cannot support dim 0, shape_a:%s, shape_b:%s" \
-                 % (str(shape_a), str(shape_b))
-        return False, reason
-
-    dynamic_flag = any(v < 0 for v in shape_a) or any(v < 0 for v in shape_b)
-    if not dynamic_flag:
-        para_check.check_shape(shape_a, param_name="input_x")
-        para_check.check_shape(shape_b, param_name="input_y")
-    else:
-        if not _check_batch_range(input_x, input_y):
-            reason = "input_x, input_y out of batch range"
-            return False, reason
-
-    src_dtypes = ["float32", "int32"]
-    if src_dtype in src_dtypes and not dynamic_flag:
-        shape_length = len(shape_a)
-        shape_length_b = len(shape_b)
-        if shape_length != shape_length_b:
-            reason = "shape_length != shape_length_b, shape_length:%s, shape_length_b:%s"\
-                      % (shape_length, shape_length_b)
-            return False, reason
-        elif trans_b:
-            if shape_b[shape_length - 2] == 1:
-                reason = "the shape_b[shape_length - 2] is not supported, shape_b[shape_length - 2] == 1"
-                return False, reason
-        elif bool(1-trans_b):
-            if shape_b[shape_length - 1] == 1:
-                reason = "the shape_b[shape_length - 1] is not supported, shape_b[shape_length - 1] == 1"
-                return False, reason
-        elif trans_a:
-            if trans_b:
-                if shape_a[shape_length - 2] != shape_b[shape_length - 1]:
-                    reason = "shape_a[shape_length - 2] != shape_b[shape_length - 1], \
-                              shape_a[shape_length - 2]:%s, shape_b[shape_length - 1]:%s"\
-                              % (shape_a[shape_length - 2], shape_b[shape_length - 1])
-                    return False, reason
-            else:
-                if shape_a[shape_length - 2] != shape_b[shape_length - 2]:
-                    reason = "shape_a[shape_length - 2] != shape_b[shape_length - 2], \
-                              shape_a[shape_length - 2]:%s, shape_b[shape_length - 2]:%s"\
-                              % (shape_a[shape_length - 2], shape_b[shape_length - 2])
-                    return False, reason
-        else:
-            if trans_b:
-                if shape_a[shape_length - 1] != shape_b[shape_length - 1]:
-                    reason = "shape_a[shape_length - 1] != shape_b[shape_length - 1], \
-                              shape_a[shape_length - 1]:%s, shape_b[shape_length - 1]:%s"\
-                              % (shape_a[shape_length - 1], shape_b[shape_length - 1])
-                    return False, reason
-            else:
-                if shape_a[shape_length - 1] != shape_b[shape_length - 2]:
-                    reason = "shape_a[shape_length - 1] != shape_b[shape_length - 2], \
-                              shape_a[shape_length - 1]:%s, shape_b[shape_length - 2]:%s"\
-                              % (shape_a[shape_length - 1], shape_b[shape_length - 2])
-                    return False, reason
-    elif src_dtype == "float16" and not dynamic_flag:
-        shape_length = len(shape_a)
-        if trans_a:
-            k_shape = shape_a[shape_length - 2]
-        else:
-            k_shape = shape_a[shape_length - 1]
-
-        shape_length_b = len(shape_b)
-        if trans_b:
-            k_b_shape = shape_b[shape_length_b - 1]
-        else:
-            k_b_shape = shape_b[shape_length_b - 2]
-
-        if k_shape != k_b_shape:
-            reason = "k_shape != k_b_shape, k_shape:%s, k_b_shape:%s" % (k_shape, k_b_shape)
-            return False, reason
-    if _is_fuzzily_build() and src_dtype != "float16":
-        reason = "in dynamic mode, src dtype only support float16!"
-        return False, reason
-
-    return True, ""
 
 
 @tbe_platform.fusion_manager.register("batch_matmul")
