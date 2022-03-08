@@ -6087,10 +6087,7 @@ class CceConvOp:
             elif "reform" in lop["op"]:
                 _handle_reform_emit_insn_optimize()
             elif lop["op"] == "cast_i8_ub":
-                round_mode_emit_insn = 'vector_conv_%s' % self._lhisi_dequant_quant_para['quant_round'].value.lower()
-                if get_soc_spec("SOC_VERSION") == "Ascend310" or \
-                        "Ascend910" in get_soc_spec("SOC_VERSION") or _is_depthwise_scene():
-                    round_mode_emit_insn = 'vector_conv'
+                round_mode_emit_insn = 'vector_conv'
                 self._schedule[cache_buffer].emit_insn(tensorize_axis, round_mode_emit_insn)
             elif lop["op"] == "cast_i4_ub":
                 self._schedule[cache_buffer].emit_insn(tensorize_axis, 'vector_conv')

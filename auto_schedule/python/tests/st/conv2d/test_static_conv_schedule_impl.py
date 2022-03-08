@@ -8,6 +8,7 @@ from te import tvm
 from impl.util.platform_adapter import operation
 from impl.conv2d import conv2d_compute
 from impl.ascend_dequant import ascend_dequant_compute
+from impl.ascend_quant import ascend_quant_compute
 from impl.relu_v2 import relu_v2_compute
 
 
@@ -119,6 +120,40 @@ def test_full_cut_aicorecnt(test_arg):
         return True
     
 print("adding test_full_cut_aicorecnt")
-ut_case.add_cust_test_func(test_func=test_full_cut_aicorecnt) 
+ut_case.add_cust_test_func(test_func=test_full_cut_aicorecnt)
+
+def test_static_conv_schedule_quant_fusion(test_arg):
+    try:
+        with tbe.common.context.op_context.OpContext(None):
+            with tbe.dsl.base.operation.compute():
+                x_ = tvm.placeholder([1, 4, 300, 450, 16], name="x", dtype="float16", attrs={"ori_shape": [1, 300, 450, 64], "format": "NC1HWC0", "ori_format": "NHWC"})
+                filter_ = tvm.placeholder([36, 8, 16, 16], name="filter", dtype="float16", attrs={"ori_shape": [3, 3, 64, 128], "format": "FRACTAL_Z", "ori_format": "HWCN"})
+                bias_ = tvm.placeholder([128], name="bias", dtype="float16", attrs={"ori_shape": [128], "format": "ND", "ori_format": "ND"})
+                output_ = {"dtype": "float16", "format": "NC1HWC0", "ori_format": "NHWC"}
+                strides = [1, 1, 1, 1]
+                pads = [1, 1, 1, 1]
+                dilations = [1, 1, 1, 1]
+                conv_out = conv2d_compute(x_, filter_, bias_, None, output_, strides, pads, dilations, 1, "NHWC")
+                quant_out = ascend_quant_compute(conv_out, None, scale=0.1, offset=0.2, sqrt_mode=True)
+                tensor_list = [x_, filter_, bias_, quant_out]
+                with te.tvm.target.cce():
+                    sch = te.utils.cce.auto_schedule(quant_out)
+                config = {
+                    "name": "static_conv_schedule_quant_fusion",
+                    "tensor_list": tensor_list,
+                    "build_args": {"constant_realize_extent_in_infer_bound": False}
+                }
+                tbe.dsl.unify_schedule.build.build(sch, config)
+
+    except (RuntimeError, ValueError, TypeError, AttributeError):
+        msg = traceback.format_exc()
+        print(msg)
+        return False
+    else:
+        return True
+
+print("adding test_static_conv_schedule_quant_fusion")
+ut_case.add_cust_test_func(test_func=test_static_conv_schedule_quant_fusion)
+
 if __name__ == '__main__':
     ut_case.run(["Ascend910A", "Ascend710"])
