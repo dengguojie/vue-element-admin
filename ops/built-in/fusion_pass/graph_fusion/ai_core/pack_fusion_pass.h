@@ -16,7 +16,7 @@
 
 /*!
  * \file pack_fusion_pass.h
- * \brief LayerNormGrad fusion pass(Pack --> Pack)
+ * \brief split big Pack into small Pack and ConcatD
  */
 #ifndef OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_PACK_FUSION_PASS_H_
 #define OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_PACK_FUSION_PASS_H_

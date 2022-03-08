@@ -158,6 +158,7 @@ set(_aicore_fusion_srcs
   graph_fusion/ai_core/combined_non_max_suppression_fusion_pass.cc
   graph_fusion/ai_core/concatd_fusion_pass.cc
   graph_fusion/ai_core/concat_fusion_pass.cc
+  graph_fusion/ai_core/concat_pass_util.cc
   graph_fusion/ai_core/concat_v2d_fusion_pass.cc
   graph_fusion/ai_core/concat_v2_fusion_pass.cc
   graph_fusion/ai_core/concatv2d_sliced_fusion_pass.cc

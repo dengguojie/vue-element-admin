@@ -1,5 +1,5 @@
 /**
- * Copyright (c) Huawei Technologies Co., Ltd. 2019-2021. All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2019-2022. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
 
 /*!
  * \file concatd_fusion_pass.h
- * \brief ConcatD fusion pass(ConcatD --> ConcatD)
+ * \brief split big ConcatD into small ones
  */
 #ifndef OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_CONCATD_FUSION_PASS_H_
 #define OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_CONCATD_FUSION_PASS_H_
@@ -29,8 +29,6 @@ class ConcatDFusionPass : public PatternFusionBasePass {
   vector<FusionPattern*> DefinePatterns() override;
   Status Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes) override;
 
- private:
-  void UpdateInputName(ge::OpDescPtr& input_desc_ptr);
  private:
   const string FUSED_OP_TYPE = "ConcatD";
 };
