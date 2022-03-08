@@ -284,5 +284,164 @@ IMPLEMT_COMMON_INFERFUNC(MultiMergeInferShape) {
 
 COMMON_INFER_FUNC_REG(MultiMerge, MultiMergeInferShape);
 //-----------------------MultiMerge END---------------------
+// ----------------------MultiHeadAttention Start----------------------
+IMPLEMT_COMMON_INFERFUNC(MultiHeadAttentionInferShape) {
+  TensorDesc query_tensordesc = op.GetInputDescByName("query");
+  vector<int64_t> query_shape = query_tensordesc.GetShape().GetDims();
+  DataType dtype = query_tensordesc.GetDataType();
+  Format format = query_tensordesc.GetFormat();
 
+  int64_t attn_head_num, attn_dim_per_head, src_len, tgt_len, batch, weight_col;
+  bool softmax_use_float;
+  op.GetAttr("attn_head_num", attn_head_num);
+  op.GetAttr("attn_dim_per_head", attn_dim_per_head);
+  op.GetAttr("src_len", src_len);
+  op.GetAttr("tgt_len", tgt_len);
+  op.GetAttr("softmax_use_float", softmax_use_float);
+  batch = query_shape[0] / tgt_len;
+  weight_col = attn_head_num * attn_dim_per_head;
+
+  TensorDesc y_tensordesc = op.GetOutputDescByName("y");
+  y_tensordesc.SetShape(Shape({query_shape[0], weight_col}));
+  y_tensordesc.SetDataType(dtype);
+  y_tensordesc.SetFormat(format);
+  (void) op.UpdateOutputDesc("y", y_tensordesc);
+
+  TensorDesc dropout_mask_tensordesc = op.GetOutputDescByName("dropout_mask");
+  dropout_mask_tensordesc.SetShape(Shape({batch * attn_head_num * tgt_len * src_len / 8}));
+  dropout_mask_tensordesc.SetDataType(DT_UINT8);
+  dropout_mask_tensordesc.SetFormat(FORMAT_ND);
+  (void) op.UpdateOutputDesc("dropout_mask", dropout_mask_tensordesc);
+
+  TensorDesc query_res_tensordesc = op.GetOutputDescByName("query_res");
+  query_res_tensordesc.SetShape(Shape({batch, attn_head_num, tgt_len, attn_dim_per_head}));
+  query_res_tensordesc.SetDataType(dtype);
+  query_res_tensordesc.SetFormat(format);
+  (void) op.UpdateOutputDesc("query_res", query_res_tensordesc);
+
+  TensorDesc key_res_tensordesc = op.GetOutputDescByName("key_res");
+  key_res_tensordesc.SetShape(Shape({batch, attn_head_num, src_len, attn_dim_per_head}));
+  key_res_tensordesc.SetDataType(dtype);
+  key_res_tensordesc.SetFormat(format);
+  (void) op.UpdateOutputDesc("key_res", key_res_tensordesc);
+
+  TensorDesc value_res_tensordesc = op.GetOutputDescByName("value_res");
+  value_res_tensordesc.SetShape(Shape({batch, attn_head_num, src_len, attn_dim_per_head}));
+  value_res_tensordesc.SetDataType(dtype);
+  value_res_tensordesc.SetFormat(format);
+  (void) op.UpdateOutputDesc("value_res", value_res_tensordesc);
+
+  TensorDesc attn_scores_tensordesc = op.GetOutputDescByName("attn_scores");
+  attn_scores_tensordesc.SetShape(Shape({batch, attn_head_num, tgt_len, src_len}));
+  if (softmax_use_float) {
+    attn_scores_tensordesc.SetDataType(DT_FLOAT);
+  } else {
+    attn_scores_tensordesc.SetDataType(dtype);
+  }
+  attn_scores_tensordesc.SetFormat(format);
+  (void) op.UpdateOutputDesc("attn_scores", attn_scores_tensordesc);
+
+  TensorDesc attn_res_tensordesc = op.GetOutputDescByName("attn_res");
+  attn_res_tensordesc.SetShape(Shape({batch, attn_head_num, tgt_len, src_len}));
+  attn_res_tensordesc.SetDataType(dtype);
+  attn_res_tensordesc.SetFormat(format);
+  (void) op.UpdateOutputDesc("attn_res", attn_res_tensordesc);
+
+  TensorDesc context_tensordesc = op.GetOutputDescByName("context");
+  context_tensordesc.SetShape(Shape({batch * tgt_len, weight_col}));
+  context_tensordesc.SetDataType(dtype);
+  context_tensordesc.SetFormat(format);
+  (void) op.UpdateOutputDesc("context", context_tensordesc);
+
+  return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(MultiHeadAttention, MultiHeadAttentionInferShape);
+// ----------------------MultiHeadAttention End----------------------
+// ----------------------MultiHeadAttentionGrad Start----------------------
+IMPLEMT_COMMON_INFERFUNC(MultiHeadAttentionGradInferShape) {
+  TensorDesc query_input_tensordesc = op.GetInputDescByName("query");
+  vector<int64_t> query_shape = query_input_tensordesc.GetShape().GetDims();
+  DataType dtype = query_input_tensordesc.GetDataType();
+  Format format = query_input_tensordesc.GetFormat();
+
+  int64_t attn_head_num, attn_dim_per_head, src_len, tgt_len, batch, weight_col;
+  op.GetAttr("attn_head_num", attn_head_num);
+  op.GetAttr("attn_dim_per_head", attn_dim_per_head);
+  op.GetAttr("src_len", src_len);
+  op.GetAttr("tgt_len", tgt_len);
+  batch = query_shape[0] / tgt_len;
+  weight_col = attn_head_num * attn_dim_per_head;
+
+  TensorDesc query_weight_tensordesc = op.GetInputDescByName("query_weight_grad");
+  query_weight_tensordesc.SetShape(Shape({weight_col, weight_col}));
+  query_weight_tensordesc.SetDataType(dtype);
+  query_weight_tensordesc.SetFormat(format);
+  (void) op.UpdateOutputDesc("query_weight_grad", query_weight_tensordesc);
+
+  TensorDesc key_weight_tensordesc = op.GetInputDescByName("key_weight_grad");
+  key_weight_tensordesc.SetShape(Shape({weight_col, weight_col}));
+  key_weight_tensordesc.SetDataType(dtype);
+  key_weight_tensordesc.SetFormat(format);
+  (void) op.UpdateOutputDesc("key_weight_grad", key_weight_tensordesc);
+
+  TensorDesc value_weight_tensordesc = op.GetInputDescByName("value_weight_grad");
+  value_weight_tensordesc.SetShape(Shape({weight_col, weight_col}));
+  value_weight_tensordesc.SetDataType(dtype);
+  value_weight_tensordesc.SetFormat(format);
+  (void) op.UpdateOutputDesc("value_weight_grad", value_weight_tensordesc);
+
+  TensorDesc out_proj_weight_tensordesc = op.GetInputDescByName("out_proj_weight_grad");
+  out_proj_weight_tensordesc.SetShape(Shape({weight_col, weight_col}));
+  out_proj_weight_tensordesc.SetDataType(dtype);
+  out_proj_weight_tensordesc.SetFormat(format);
+  (void) op.UpdateOutputDesc("out_proj_weight_grad", out_proj_weight_tensordesc);
+
+  TensorDesc query_tensordesc = op.GetInputDescByName("query_grad");
+  query_tensordesc.SetShape(Shape({batch * tgt_len, weight_col}));
+  query_tensordesc.SetDataType(dtype);
+  query_tensordesc.SetFormat(format);
+  (void) op.UpdateOutputDesc("query_grad", query_tensordesc);
+
+  TensorDesc key_tensordesc = op.GetInputDescByName("key_grad");
+  key_tensordesc.SetShape(Shape({batch * src_len, weight_col}));
+  key_tensordesc.SetDataType(dtype);
+  key_tensordesc.SetFormat(format);
+  (void) op.UpdateOutputDesc("key_grad", key_tensordesc);
+
+  TensorDesc value_tensordesc = op.GetInputDescByName("value_grad");
+  value_tensordesc.SetShape(Shape({batch * src_len, weight_col}));
+  value_tensordesc.SetDataType(dtype);
+  value_tensordesc.SetFormat(format);
+  (void) op.UpdateOutputDesc("value_grad", value_tensordesc);
+
+  TensorDesc query_bias_tensordesc = op.GetInputDescByName("query_bias_grad");
+  query_bias_tensordesc.SetShape(Shape({1, weight_col}));
+  query_bias_tensordesc.SetDataType(dtype);
+  query_bias_tensordesc.SetFormat(format);
+  (void) op.UpdateOutputDesc("query_bias_grad", query_bias_tensordesc);
+
+  TensorDesc key_bias_tensordesc = op.GetInputDescByName("key_bias_grad");
+  key_bias_tensordesc.SetShape(Shape({1, weight_col}));
+  key_bias_tensordesc.SetDataType(dtype);
+  key_bias_tensordesc.SetFormat(format);
+  (void) op.UpdateOutputDesc("key_bias_grad", key_bias_tensordesc);
+
+  TensorDesc value_bias_tensordesc = op.GetInputDescByName("value_bias_grad");
+  value_bias_tensordesc.SetShape(Shape({1, weight_col}));
+  value_bias_tensordesc.SetDataType(dtype);
+  value_bias_tensordesc.SetFormat(format);
+  (void) op.UpdateOutputDesc("value_bias_grad", value_bias_tensordesc);
+
+  TensorDesc out_proj_bias_tensordesc = op.GetInputDescByName("out_proj_bias_grad");
+  out_proj_bias_tensordesc.SetShape(Shape({1, weight_col}));
+  out_proj_bias_tensordesc.SetDataType(dtype);
+  out_proj_bias_tensordesc.SetFormat(format);
+  (void) op.UpdateOutputDesc("out_proj_bias_grad", out_proj_bias_tensordesc);
+
+  return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(MultiHeadAttentionGrad, MultiHeadAttentionGradInferShape);
+// ----------------------MultiHeadAttentionGrad End----------------------
 }//namespace ge

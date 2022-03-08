@@ -3564,6 +3564,10 @@ unkown:
       - ops/built-in/fusion_pass/graph_fusion/ai_core/adaptive_max_pool2d_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/const2attr/const2attr_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/padv3d_avgpool_fusion_pass.cc
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/multi_head_attention_fusion_pass.h
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/multi_head_attention_fusion_pass.cc
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/multi_head_attention_grad_fusion_pass.h
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/multi_head_attention_grad_fusion_pass.cc
       - ops/contrib/op_proto/yolov2_post_process.h
       - ops/contrib/op_proto/fasterrcnn_cropandresize.h
       - ops/contrib/op_proto/roi_align.h

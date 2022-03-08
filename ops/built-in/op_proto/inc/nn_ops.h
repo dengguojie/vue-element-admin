@@ -146,5 +146,157 @@ REG_OP(MultiMerge)
     .REQUIRED_ATTR(k_num, Int)
     .ATTR(include_index, Bool, false)
     .OP_END_FACTORY_REG(MultiMerge)
+
+/**
+ * @brief MultiHeadAttention.
+ * @par Inputs:
+ * thirteen input, including:
+ * @li query: A Tensor. Query of Attention. Support float16
+ * @li key: A Tensor. Key of Attention. Support float16
+ * @li value: A Tensor. Value of Attention. Support float16
+ * @li query_weight: A Tensor. QueryWeight of Attention. Support float16
+ * @li key_weight: A Tensor. KeyWeight of Attention. Support float16
+ * @li value_weight: A Tensor. ValueWeight of Attention. Support float16
+ * @li attn_mask: A Tensor. AttentionMask of Attention. Support float16
+ * @li out_proj_weight: A Tensor. OutProjWeight of Attention. Support float16
+ * @li query_bias: Optional Tensor. QueryBias of Attention. Support float16
+ * @li key_bias: Optional Tensor. KeyBias of Attention. Support float16
+ * @li value_bias: Optional Tensor. ValueBias of Attention. Support float16
+ * @li out_proj_bias: Optional Tensor. OutProjBias of Attention. Support float16
+ * @li dropout_mask: Optional Tensor. DropOutMask of Attention. Support uint8 \n
+
+ * @par Attributes:
+ * @li attn_head_num: Attention Head numbers, Support int
+ * @li attn_dim_per_head: Attention dim of a Head, Support int
+ * @li src_len: source length, Support int
+ * @li tgt_len: target length, Support int
+ * @li keep_prob: dropout keep probability, Support float
+ * @li softmax_use_float: SoftMax Use Float32 to keep precision, Support bool \n
+
+ * @par Outputs:
+ * Eight output, including:
+ * @li y: A Tensor. Result of Attention. Support float16
+ * @li dropout_mask: DropOutMask of Attention. Support uint8
+ * @li query_res: Query Result of Attention. Support float16
+ * @li key_res: Key Result of Attention. Support float16
+ * @li value_res: Value Result of Attention. Support float16
+ * @li attn_scores: Attention Scores of SoftMax. Support float16, float
+ * @li attn_res: Attention Result of SoftMax. Support float16
+ * @li context: Context of Attention. Support float16
+
+ * @par Restrictions:
+ * Warning: THIS FUNCTION IS EXPERIMENTAL. Please do not use.
+ */
+REG_OP(MultiHeadAttention)
+    .INPUT(query, TensorType({DT_FLOAT16}))
+    .INPUT(key, TensorType({DT_FLOAT16}))
+    .INPUT(value, TensorType({DT_FLOAT16}))
+    .INPUT(query_weight, TensorType({DT_FLOAT16}))
+    .INPUT(key_weight, TensorType({DT_FLOAT16}))
+    .INPUT(value_weight, TensorType({DT_FLOAT16}))
+    .INPUT(attn_mask, TensorType({DT_FLOAT16}))
+    .INPUT(out_proj_weight, TensorType({DT_FLOAT16}))
+    .OPTIONAL_INPUT(query_bias, TensorType({DT_FLOAT16}))
+    .OPTIONAL_INPUT(key_bias, TensorType({DT_FLOAT16}))
+    .OPTIONAL_INPUT(value_bias, TensorType({DT_FLOAT16}))
+    .OPTIONAL_INPUT(out_proj_bias, TensorType({DT_FLOAT16}))
+    .OPTIONAL_INPUT(dropout_mask, TensorType({DT_UINT8}))
+    .OUTPUT(y, TensorType({DT_FLOAT16}))
+    .OUTPUT(dropout_mask, TensorType({DT_UINT8}))
+    .OUTPUT(query_res, TensorType({DT_FLOAT16}))
+    .OUTPUT(key_res, TensorType({DT_FLOAT16}))
+    .OUTPUT(value_res, TensorType({DT_FLOAT16}))
+    .OUTPUT(attn_scores, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .OUTPUT(attn_res, TensorType({DT_FLOAT16}))
+    .OUTPUT(context, TensorType({DT_FLOAT16}))
+    .REQUIRED_ATTR(attn_head_num, Int)
+    .REQUIRED_ATTR(attn_dim_per_head, Int)
+    .REQUIRED_ATTR(src_len, Int)
+    .REQUIRED_ATTR(tgt_len, Int)
+    .REQUIRED_ATTR(keep_prob, Float)
+    .REQUIRED_ATTR(softmax_use_float, Bool)
+    .OP_END_FACTORY_REG(MultiHeadAttention)
+
+/**
+ * @brief MultiHeadAttentionGrad.
+ * @par Inputs:
+ * thirteen input, including:
+ * @li query: A Tensor. Query of Attention. Support float16
+ * @li key: A Tensor. Key of Attention. Support float16
+ * @li value: A Tensor. Value of Attention. Support float16
+ * @li query_weight: A Tensor. QueryWeight of Attention. Support float16
+ * @li key_weight: A Tensor. KeyWeight of Attention. Support float16
+ * @li value_weight: A Tensor. ValueWeight of Attention. Support float16
+ * @li out_proj_weight: A Tensor. OutProjWeight of Attention. Support float16
+ * @li query_res: A Tensor. Query Result of Attention. Support float16
+ * @li key_res: A Tensor. Key Result of Attention. Support float16
+ * @li value_res: A Tensor. Value Result of Attention. Support float16
+ * @li attn_scores: A Tensor. Attention Scores of Attention. Support float16, float
+ * @li attn_res: A Tensor. Attention Result of Attention. Support float16
+ * @li context: A Tensor. Context of Attention. Support float16
+ * @li y_grad: A Tensor. Grad of Attention. Support float16
+ * @li dropout_mask: : A Tensor. Query Result of Attention. Support uint8 \n
+
+ * @par Attributes:
+ * @li attn_head_num: Attention Head numbers, Support int
+ * @li attn_dim_per_head: Attention dim of a Head, Support int
+ * @li src_len: source length, Support int
+ * @li tgt_len: target length, Support int
+ * @li keep_prob: dropout keep probability, Support float
+ * @li softmax_use_float: SoftMax Use Float32 to keep precision, Support bool
+ * @li bias_grad_mask: mask for attention has bias grad, Support list bool  \n
+
+ * @par Outputs:
+ * Eight output, including:
+ * @li query_weight_grad: QueryWeight Grad of Attention. Support float16
+ * @li key_weight_grad: KeyWeight Grad of Attention. Support float16
+ * @li value_weight_grad: ValueWeight Grad of Attention. Support float16
+ * @li out_proj_weight_grad: OutProjWeight Grad of Attention. Support float16
+ * @li query_grad: Query Grad of Attention. Support float16
+ * @li key_grad: Key Grad of Attention. Support float16
+ * @li value_grad: Value Grad of Attention. Support float16
+ * @li query_bias_grad: QueryBias Grad of Attention. Support float16
+ * @li key_bias_grad: KeyBias Grad of Attention. Support float16
+ * @li value_bias_grad: ValueBias Grad of Attention. Support float16
+ * @li out_proj_bias_grad: OutProjBias Grad of Attention. Support float16
+
+ * @par Restrictions:
+ * Warning: THIS FUNCTION IS EXPERIMENTAL. Please do not use.
+ */
+REG_OP(MultiHeadAttentionGrad)
+    .INPUT(query, TensorType({DT_FLOAT16}))
+    .INPUT(key, TensorType({DT_FLOAT16}))
+    .INPUT(value, TensorType({DT_FLOAT16}))
+    .INPUT(query_weight, TensorType({DT_FLOAT16}))
+    .INPUT(key_weight, TensorType({DT_FLOAT16}))
+    .INPUT(value_weight, TensorType({DT_FLOAT16}))
+    .INPUT(out_proj_weight, TensorType({DT_FLOAT16}))
+    .INPUT(query_res, TensorType({DT_FLOAT16}))
+    .INPUT(key_res, TensorType({DT_FLOAT16}))
+    .INPUT(value_res, TensorType({DT_FLOAT16}))
+    .INPUT(attn_scores, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .INPUT(attn_res, TensorType({DT_FLOAT16}))
+    .INPUT(context, TensorType({DT_FLOAT16}))
+    .INPUT(y_grad, TensorType({DT_FLOAT16}))
+    .OPTIONAL_INPUT(dropout_mask, TensorType({DT_UINT8}))
+    .OUTPUT(query_weight_grad, TensorType({DT_FLOAT16}))
+    .OUTPUT(key_weight_grad, TensorType({DT_UINT8}))
+    .OUTPUT(value_weight_grad, TensorType({DT_FLOAT16}))
+    .OUTPUT(out_proj_weight_grad, TensorType({DT_FLOAT16}))
+    .OUTPUT(query_grad, TensorType({DT_FLOAT16}))
+    .OUTPUT(key_grad, TensorType({DT_FLOAT16}))
+    .OUTPUT(value_grad, TensorType({DT_FLOAT16}))
+    .OUTPUT(query_bias_grad, TensorType({DT_FLOAT16}))
+    .OUTPUT(key_bias_grad, TensorType({DT_FLOAT16}))
+    .OUTPUT(value_bias_grad, TensorType({DT_FLOAT16}))
+    .OUTPUT(out_proj_bias_grad, TensorType({DT_FLOAT16}))
+    .REQUIRED_ATTR(attn_head_num, Int)
+    .REQUIRED_ATTR(attn_dim_per_head, Int)
+    .REQUIRED_ATTR(src_len, Int)
+    .REQUIRED_ATTR(tgt_len, Int)
+    .REQUIRED_ATTR(keep_prob, Float)
+    .REQUIRED_ATTR(softmax_use_float, Bool)
+    .REQUIRED_ATTR(bias_grad_mask, ListBool)
+    .OP_END_FACTORY_REG(MultiHeadAttentionGrad)
 }// namespace ge
 #endif  // OPS_BUILT_IN_OP_PROTO_INC_NN_OPS_H_
