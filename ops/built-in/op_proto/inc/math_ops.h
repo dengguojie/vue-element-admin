@@ -425,7 +425,7 @@ REG_OP(EndOfSequence)
 
 *@par Inputs:
 *x: A Tensor of type float16, float32 or double. the format can be
-*    [NCHW,NC1HWC0,NHWC,ND]
+*    [NCHW,NHWC,ND]
 
 *@par Outputs:
 *y: A Tensor. Has the same type and format as "x" . \n

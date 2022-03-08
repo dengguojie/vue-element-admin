@@ -423,8 +423,8 @@ REG_OP(Softplus)
 
 *@par Inputs:
 *Two inputs:
-* @li gradients: An NC1HWC0 or ND Tensor of type float16 or float32.
-* @li features: An NC1HWC0 or ND Tensor of type float16 or float32.
+* @li gradients: A ND Tensor of type float16 or float32.
+* @li features: A ND Tensor of type float16 or float32.
 
 
 *@par Outputs:
@@ -482,10 +482,10 @@ REG_OP(SoftsignGrad)
 *@par Inputs:
 * One input:
 *x: A Tensor. Must be one of the following types: float16, float, double
- * int32, int8. format:ND, NC1HWC0 . \n
+ * int32, int8. format:ND. \n
 
 *@par Outputs:
-*y: A Tensor. Has the same type and format as input "x". format:ND, NC1HWC0 . \n
+*y: A Tensor. Has the same type and format as input "x". format:ND. \n
 
 *@see Region()
 

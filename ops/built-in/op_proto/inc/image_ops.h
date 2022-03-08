@@ -1267,7 +1267,7 @@ REG_OP(DecodeAndCropJpeg)
 
 *@par Inputs:
 * One input:
-*x: An NC1HWC0 Tensor.
+*x: A Tensor.
 * Must be one of the following types: float16, float32 . \n
 
 *@par Attributes:
@@ -1304,7 +1304,7 @@ REG_OP(ResizeBilinearV2D)
 
 *@par Inputs:
 * One input:
-*images: An NC1HWC0 Tensor.
+*images: A Tensor.
 * Must be one of the following types: float16, float32 . \n
 
 *@par Attributes:
@@ -1338,7 +1338,7 @@ REG_OP(KeepRatioResizeBilinear)
 
 *@par Inputs:
 * One input:
-*x: An NC1HWC0 Tensor.
+*x: A Tensor.
 * Must be one of the following types: float16, float32, int32, int8, uint8
 
 *@par Attributes:
