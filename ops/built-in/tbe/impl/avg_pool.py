@@ -28,6 +28,7 @@ from impl.util import util_select_op_base
 from impl.conv2d import conv2d
 from impl.conv2d import conv2d_compute
 from impl.util.platform_adapter import error_manager_vector
+from impl.reduce_mean_d import reduce_mean_d
 
 
 # 'pylint: disable=too-few-public-methods
@@ -44,7 +45,8 @@ class Constant:
 # 'pylint: disable=invalid-name,redefined-builtin,too-many-locals,unused-argument,unused-variable,unnecessary-lambda
 def check_supported(x, filter, bias, y, ksize, strides,
                     padding="VALID", data_format="NHWC", offset_x=0,
-                    kernel_name="avg_pool"):
+                    kernel_name="avg_pool",
+                    impl_mode=None):
     """
     x : dict, shape and dtype of input_data, only support float16 or int8 \n
     filter : dict, optional input, shape and dtype of input_data, only support float16 or int8 \n
@@ -57,7 +59,8 @@ def check_supported(x, filter, bias, y, ksize, strides,
     padding : str, the mode of padding, support padding and not padding \n
     data_format : str, default = "NHWC" \n
     offset_x : int, quantization parameter \n
-    kernel_name : cce kernel name, default value is "avg_pool_cce"
+    kernel_name : cce kernel name, default value is "avg_pool_cce" \n
+    impl_mode : str, support high_performance and high_precision, default value is None
     """
     ori_shape = y.get("ori_shape")
     input_shape = x.get("ori_shape")
@@ -96,7 +99,8 @@ def check_supported(x, filter, bias, y, ksize, strides,
 
 def get_op_support_info(x, filter, bias, y, ksize, strides,
                         padding="VALID", data_format="NHWC", offset_x=0,
-                        kernel_name="avg_pool"):
+                        kernel_name="avg_pool",
+                        impl_mode=None):
     """
     get the avgpool split
     """
@@ -300,7 +304,7 @@ def _get_pad(input_pad):
 
 def _avg_pool_check_rule(input_shape, input_dtype,
                          output_dtype, ksize, strides,
-                         data_format, kernel_name):
+                         data_format, kernel_name, impl_mode):
     """
     :param input_shape: shape of input_data
     :param input_dtype: dtype of input_data
@@ -309,20 +313,24 @@ def _avg_pool_check_rule(input_shape, input_dtype,
     :param strides: the stride of avgpooling window
     :param data_format: NHWC default
     :param kernel_name: cce kernel name
+    :param impl_mode: support high_performance and high_precision
     :return: None
     """
 
     para_check.check_shape(input_shape)
     para_check.check_dtype(input_dtype, ["float16", "int8"])
     para_check.check_dtype(output_dtype, ["float16", "int8", "int32"])
-
+    if (impl_mode is not None) and (impl_mode not in ("high_performance", "high_precision")):
+        error_manager_vector.raise_err_input_value_invalid("avg_pool", "impl_mode",
+                                                           "high_performance, high_precision", str(impl_mode))
     _check_window_rule(ksize, strides, data_format)
 
 
 def _avg_pool_global_compute(x, y, ksize, strides,
                              padding="VALID", data_format="NHWC",
                              is_fused_compute=True,
-                             kernel_name="avg_pool"):
+                             kernel_name="avg_pool",
+                             impl_mode=None):
     """
     algorithm: avg_pool
     calculating the average pooling
@@ -339,6 +347,7 @@ def _avg_pool_global_compute(x, y, ksize, strides,
     data_format : str, default = "NHWC"
     is_fused_compute : bool, default true
     kernel_name : kernel name, default value is "avg_pool"
+    impl_mode : str, support high_performance and high_precision, default value is None
 
     Returns
     -------
@@ -357,6 +366,10 @@ def _avg_pool_global_compute(x, y, ksize, strides,
     fusion_params = _get_fusion_params(x, y, is_fused_compute)
     l1_fusion_type = fusion_params.get("l1_fusion_type")
 
+    if impl_mode is None:
+        # based on pooling2d impl_mode default value
+        impl_mode = "high_performance"
+
     if l1_fusion_type == 1:
         x.op.attrs["addr_type"].value = 1
         in_l1_flag = True
@@ -369,10 +382,12 @@ def _avg_pool_global_compute(x, y, ksize, strides,
                                          attrs=x.op.attrs)
         res = tbe.pooling2d(l1_width_fusion_in, window, stride,
                             "AVG", padding,
-                            fusion_params=fusion_params)
+                            fusion_params=fusion_params,
+                            impl_mode=impl_mode)
     else:
         res = tbe.pooling2d(x, window, stride, "AVG", padding,
-                            fusion_params=fusion_params)
+                            fusion_params=fusion_params,
+                            impl_mode=impl_mode)
 
     return res
 
@@ -381,7 +396,8 @@ def _avg_pool_global_compute(x, y, ksize, strides,
 # 'pylint: disable=unnecessary-lambda,too-many-statements
 @tbe_platform.fusion_manager.fusion_manager.register("avg_pool")
 def avg_pool_compute(x, filter, bias, y, ksize, strides, padding="VALID",
-                     data_format="NHWC", offset_x=0, kernel_name="avg_pool"):
+                     data_format="NHWC", offset_x=0, kernel_name="avg_pool",
+                     impl_mode=None):
     """
     algorithm: avg_pool
     calculating the average pooling
@@ -400,6 +416,7 @@ def avg_pool_compute(x, filter, bias, y, ksize, strides, padding="VALID",
     data_format : str, default = "NHWC"
     offset_x : quantization parameter
     kernel_name : kernel name, default value is "avg_pool"
+    impl_mode : str, support high_performance and high_precision, default value is None
 
     Returns
     -------
@@ -430,7 +447,7 @@ def avg_pool_compute(x, filter, bias, y, ksize, strides, padding="VALID",
 
     if filter is None:
         res = _avg_pool_global_compute(x, y, ksize, strides, padding, data_format,
-                                      is_fused_compute=True, kernel_name=kernel_name)
+                                      is_fused_compute=True, kernel_name=kernel_name, impl_mode=impl_mode)
     else:
         res = conv2d_compute(x, filter, bias, None, y, strides, pad, dilations, groups=inputc,
                              data_format=data_format, offset_x=offset_x, kernel_name=kernel_name)
@@ -441,10 +458,12 @@ def avg_pool_compute(x, filter, bias, y, ksize, strides, padding="VALID",
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.OPTION_INPUT, para_check.OPTION_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_LIST_INT,
                             para_check.REQUIRED_ATTR_LIST_INT, para_check.REQUIRED_ATTR_STR,
-                            para_check.OPTION_ATTR_STR, para_check.OPTION_ATTR_INT, para_check.KERNEL_NAME)
+                            para_check.OPTION_ATTR_STR, para_check.OPTION_ATTR_INT, para_check.KERNEL_NAME,
+                            para_check.OPTION_ATTR_STR)
 def avg_pool(x, filter, bias, y, ksize, strides,
              padding="VALID", data_format="NHWC", offset_x=0,
-             kernel_name="avg_pool"):
+             kernel_name="avg_pool",
+             impl_mode=None):
     """
     Parameters
     ----------
@@ -470,6 +489,8 @@ def avg_pool(x, filter, bias, y, ksize, strides,
 
     kernel_name : cce kernel name, default value is "avg_pool_cce"
 
+    impl_mode : str, support high_performance and high_precision, default value is None
+
     Returns
     -------
     None
@@ -481,10 +502,18 @@ def avg_pool(x, filter, bias, y, ksize, strides,
     input_dtype = input_dtype.lower()
     output_dtype = y.get("dtype")
     output_dtype = output_dtype.lower()
+    output_shape = y.get("ori_shape")
+    output_h = output_shape[1] if data_format in ("NHWC",) else output_shape[2]
+    output_w = output_shape[2] if data_format in ("NHWC",) else output_shape[3]
+
+    is_global = (output_h == 1) and (output_w == 1)
+    cce_product = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
+    is_710 = cce_product in ("Ascend710",)
+    axes = [2, 3]
 
     # check others parameter
     _avg_pool_check_rule(input_shape, input_dtype, output_dtype, ksize, strides,
-                         data_format, kernel_name)
+                         data_format, kernel_name, impl_mode)
     if filter is not None:
         input_h = input_shape[2]
         input_w = input_shape[3]
@@ -504,6 +533,11 @@ def avg_pool(x, filter, bias, y, ksize, strides,
         conv2d(x, filter, bias, offset_w, y, strides, pad, dilations,
                groups=filter_n, data_format=data_format, offset_x=offset_x,
                kernel_name=kernel_name)
+    elif is_710 and is_global:
+        if impl_mode is None:
+            # based on 710 global avg pool default value
+            impl_mode = "high_precision"
+        reduce_mean_d(x, y, axes, keepdims=True, kernel_name=kernel_name, impl_mode=impl_mode)
     else:
         # set tensor attrs, during L1 fusion these attrs will assign by te_fusion
         addr_type = x.get("addr_type", 0)
@@ -521,7 +555,7 @@ def avg_pool(x, filter, bias, y, ksize, strides,
         tensor_in = tvm.placeholder(input_shape, name="tensor_in",
                                     dtype=input_dtype, attrs=attr)
         res = _avg_pool_global_compute(tensor_in, y, ksize, strides,
-                                       padding, data_format, False, kernel_name)
+                                       padding, data_format, False, kernel_name, impl_mode=impl_mode)
         tensor_list = [tensor_in, res]
         # schedule
         with tvm.target.cce():

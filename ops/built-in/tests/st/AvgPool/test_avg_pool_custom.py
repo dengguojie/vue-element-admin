@@ -172,6 +172,18 @@ def test_avg_pool_fuzzbuild_generalization_graph_mode_04():
         (1, 3, 3, 1), (1, 1, 1, 1), "SAME", 'NHWC', 0, 'test_avg_pool_fuzzbuild_generalization_graph_mode_04']
     avg_pool_generalization(*input_list)
 
+from te.platform.cce_conf import te_set_version
+from impl.avg_pool import avg_pool
+def test_710_gap():
+    te_set_version("Ascend710")
+    x = {"shape": (1, 2, 8, 8, 16), "dtype": "float16", "format": "NC1HWC0",
+         "ori_shape": (1, 8, 8, 32),"ori_format": "NHWC"}
+    y = {"shape": (1, 2, 1, 1, 16), "dtype": "float16", "format": "NC1HWC0",
+         "ori_shape": (1, 1, 1, 32), "ori_format": "NHWC"}
+    avg_pool(x, None, None, y, [1, 8, 8, 1], [1, 1, 1, 1],
+             padding="SAME", data_format="NHWC", offset_x=0,
+             kernel_name="avg_pool", impl_mode=None)
+
 if __name__ == "__main__":
     test_avg_pool_fuzzbuild_generalization_01()
     test_avg_pool_fuzzbuild_generalization_02()
@@ -179,3 +191,4 @@ if __name__ == "__main__":
     test_avg_pool_fuzzbuild_generalization_graph_mode_02()
     test_avg_pool_fuzzbuild_generalization_graph_mode_03()
     test_avg_pool_fuzzbuild_generalization_graph_mode_04()
+    test_710_gap()

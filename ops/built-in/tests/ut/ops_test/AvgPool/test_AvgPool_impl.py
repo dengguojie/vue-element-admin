@@ -5,6 +5,7 @@ from op_test_frame.ut import OpUT
 import numpy as np
 from op_test_frame.common import precision_info
 import tensorflow as tf
+from te.platform.cce_conf import te_set_version
 
 ut_case = OpUT("AvgPool", "impl.avg_pool", "avg_pool")
 
@@ -149,6 +150,7 @@ from impl.avg_pool import check_supported
 from impl.avg_pool import get_op_support_info
 from impl.avg_pool import avg_pool_compute
 from impl.avg_pool import _avgpool_conv2d_fusion_para
+from impl.avg_pool import avg_pool
 
 def test_check_support(test_arg):
     check_supported({"shape": (1, 24, 1, 256), "dtype": "float16", "format": "ND", "ori_shape": (1, 24, 1, 256),"ori_format": "ND", "param_type": "input"},
@@ -163,7 +165,7 @@ def test_check_support(test_arg):
     check_supported({"shape": (1, 24, 1, 256), "dtype": "float16", "format": "ND", "ori_shape": (1, 24, 1, 256),"ori_format": "ND", "param_type": "input"},
     None,None,{"shape": (1, 3, 3, 256 ), "dtype": "float16", "format": "ND", "ori_shape": (1, 3, 3, 256),"ori_format": "ND", "param_type": "output"},
     [1,255,21,1],[1,4,4,1],"VALIED","NHWC")
-    
+
     check_supported({"shape": (1, 1, 100001, 256), "dtype": "float16", "format": "ND", "ori_shape": (1, 1, 100001, 256),"ori_format": "ND", "param_type": "input"},
     None,None,{"shape": (1, 24, 1, 256 ), "dtype": "float16", "format": "ND", "ori_shape": (1, 24, 1, 256),"ori_format": "ND", "param_type": "output"},
     [1,2,2,1],[1,4,4,1],"VALIED","NCHW")
@@ -219,10 +221,21 @@ def test_avgpool_conv2d_fusion_para_001(test_arg):
             "param_type": "output"
         })
 
+def test_710_gap(test_arg):
+    te_set_version("Ascend710")
+    x = {"shape": (1, 2, 8, 8, 16), "dtype": "float16", "format": "NC1HWC0",
+         "ori_shape": (1, 8, 8, 32),"ori_format": "NHWC"}
+    y = {"shape": (1, 2, 1, 1, 16), "dtype": "float16", "format": "NC1HWC0",
+         "ori_shape": (1, 1, 1, 32), "ori_format": "NHWC"}
+    avg_pool(x, None, None, y, [1, 8, 8, 1], [1, 1, 1, 1],
+             padding="SAME", data_format="NHWC", offset_x=0,
+             kernel_name="avg_pool", impl_mode=None)
+
 ut_case.add_cust_test_func(test_func=test_avg_pool_compute_001)
 ut_case.add_cust_test_func(test_func=test_check_support)
 ut_case.add_cust_test_func(test_func=test_get_op_support_info)
 ut_case.add_cust_test_func(test_func=test_avgpool_conv2d_fusion_para_001)
+ut_case.add_cust_test_func(test_func=test_710_gap)
 
 if __name__ == '__main__':
     ut_case.run(["Ascend310", "Ascend710", "Ascend910A"])
