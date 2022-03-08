@@ -269,6 +269,7 @@ static bool CheckReduceDInfo(const ge::Operator& op, const size_t& input_size, c
     OP_LOGE(op.GetName().c_str(), "GetAttr of %s failed.", axis_name.c_str());
     return false;
   }
+
   if (axis.size() > input_size) {
     OP_LOGE(op.GetName().c_str(), "size of axis is illegal.");
     return false;
@@ -290,7 +291,7 @@ static void GetTensorValue(const GeTensor* data, std::vector<int64_t>& vec_dim) 
   }
 }
 
-static bool ConvertAxis(std::vector<int64_t>& axis, int64_t input_length) {
+static bool ConvertAxis(std::vector<int64_t>& axis, int64_t input_length, bool noop_with_empty_axes = true) {
   // Convert reduce axis
   for (size_t i = 0; i < axis.size(); ++i) {
     if (axis[i] < -input_length || axis[i] > (input_length - 1)) {
@@ -302,7 +303,7 @@ static bool ConvertAxis(std::vector<int64_t>& axis, int64_t input_length) {
     }
   }
   // All Reduce
-  if (axis.size() == 0) {
+  if (axis.size() == 0 && !noop_with_empty_axes) {
     for (size_t i = 0; i < (size_t)input_length; ++i) {
       axis.push_back(i);
     }
@@ -574,8 +575,10 @@ static bool InferReduceDShapeProcess(const ge::Operator& op, const string& input
     return false;
   }
 
+  bool noop_with_empty_axes = true;
+  op.GetAttr("noop_with_empty_axes", noop_with_empty_axes);
   // Convert "-1" -> "length-1";
-  if (!ConvertAxis(axis, (int64_t)input_length)) {
+  if (!ConvertAxis(axis, (int64_t)input_length, noop_with_empty_axes)) {
     OP_LOGE(op.GetName().c_str(), "axis_value is illegal");
     return false;
   }

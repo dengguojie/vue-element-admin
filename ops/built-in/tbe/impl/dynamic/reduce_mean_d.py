@@ -124,9 +124,9 @@ def reduce_mean_d_compute(x,
 
 @register_operator("ReduceMeanD")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_LIST_INT,
-                            para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
+                            para_check.OPTION_ATTR_BOOL, para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
 def reduce_mean_d(input_x, output_y, axes,
-                  keepdims=None, kernel_name="reduce_mean_d",
+                  keepdims=None, noop_with_empty_axes=True, kernel_name="reduce_mean_d",
                   impl_mode=OpImplMode.HIGH_PERFORMANCE):
     """
     Reduce a tensor on a certa in axes based on mean.
@@ -143,6 +143,8 @@ def reduce_mean_d(input_x, output_y, axes,
     keepdims : bool, NoneType
         if true, retains reduced dimensions with length 1,
         default value is None.
+    noop_with_empty_axes : bool, NoneType
+        useless attr to avoid dynamic reduce_mean_d compile error.
     kernel_name : str
         cce kernel name, default value is reduce_mean_d
 

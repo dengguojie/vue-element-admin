@@ -1,18 +1,12 @@
 [
     {
       "op": "ReduceMeanD",
-      "cast_name": "test_reducemean_d_001",
       "case_name": "test_reducemean_d_001",
+      "calc_expect_func_file": "test_reduce_mean_d_st.py:reduce_mean_d",
       "input_desc": [
         {
           "format": "NHWC",
-          "ori_format": "NHWC",
           "shape": [
-            -1,
-            5,
-            2
-          ],
-          "typical_shape": [
             3,
             5,
             2
@@ -27,13 +21,7 @@
       "output_desc": [
         {
           "format": "NHWC",
-          "ori_format": "NHWC",
           "shape": [
-            -1,
-            1,
-            2
-          ],
-          "typical_shape": [
             3,
             1,
             2
@@ -45,7 +33,7 @@
       ],
       "attr": [
         {
-          "type": "int32",
+          "type": "list_int",
           "value": [1],
           "name": "axes"
         },
@@ -53,6 +41,111 @@
           "name": "keep_dims",
           "type": "bool",
           "value": true
+        },
+        {
+          "name": "noop_with_empty_axes",
+          "type": "bool",
+          "value": false
+        }
+      ]
+    },
+    {
+      "op": "ReduceMeanD",
+      "case_name": "test_reducemean_d_002",
+      "calc_expect_func_file": "test_reduce_mean_d_st.py:reduce_mean_d",
+      "input_desc": [
+        {
+          "format": "NHWC",
+          "shape": [
+            3,
+            5,
+            2
+          ],
+          "shape_range": [[0,2240]],
+          "type": "float16",
+          "value_range":[[0,1]],
+          "data_distribute":"uniform",
+          "name": "x"
+        }
+      ],
+      "output_desc": [
+        {
+          "format": "NHWC",
+          "shape": [
+            3,
+            5,
+            2
+          ],
+          "shape_range": [[0,2240]],
+          "type": "float16",
+          "name": "y"
+        }
+      ],
+      "attr": [
+        {
+          "type": "list_int",
+          "value": [],
+          "name": "axes"
+        },
+        {
+          "name": "keep_dims",
+          "type": "bool",
+          "value": true
+        },
+        {
+          "name": "noop_with_empty_axes",
+          "type": "bool",
+          "value": true
+        }
+      ]
+    },
+    {
+      "op": "ReduceMeanD",
+      "case_name": "test_reducemean_d_003",
+      "calc_expect_func_file": "test_reduce_mean_d_st.py:reduce_mean_d",
+      "input_desc": [
+        {
+          "format": "NHWC",
+          "shape": [
+            3,
+            5,
+            2
+          ],
+          "shape_range": [[0,2240]],
+          "type": "float16",
+          "value_range":[[0,1]],
+          "data_distribute":"uniform",
+          "name": "x"
+        }
+      ],
+      "output_desc": [
+        {
+          "format": "NHWC",
+          "shape": [
+            1,
+            1,
+            1
+          ],
+          "shape_range": [[0,2240]],
+          "type": "float16",
+          "name": "y"
+        }
+      ],
+      "attr": [
+        {
+          "type": "list_int",
+          "name": "axes",
+          "value": []
+        },
+        {
+          "name": "keep_dims",
+          "type": "bool",
+          "value": true
+        },
+        {
+          "name": "noop_with_empty_axes",
+          "type": "bool",
+          "value": false
         }
       ]
     }

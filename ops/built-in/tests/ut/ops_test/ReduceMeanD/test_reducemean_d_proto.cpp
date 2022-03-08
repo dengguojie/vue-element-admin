@@ -83,3 +83,26 @@ TEST_F(ReduceMeanD, reducemean_d_infer_shape_fp32) {
   };
   EXPECT_EQ(output_shape_range, expected_shape_range);
 }
+
+TEST_F(ReduceMeanD, reducemean_d_infer_shape_noop) {
+  ge::op::ReduceMeanD op;
+  std::vector<std::pair<int64_t,int64_t>> shape_range = {{2, 2}, {100, 200}, {4, 8}};
+  auto tensor_desc = create_desc_shape_range({-1, 100, 4},
+                                             ge::DT_FLOAT, ge::FORMAT_ND,
+                                             {2, 100, 4},
+                                             ge::FORMAT_ND, shape_range);
+  op.UpdateInputDesc("x", tensor_desc);
+  op.SetAttr("axes", {});
+  op.SetAttr("keep_dims", false);
+  op.SetAttr("noop_with_empty_axes", false); 
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+  auto output_desc = op.GetOutputDesc("y");
+  EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT);
+  std::vector<int64_t> expected_output_shape = {};
+  EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
+  std::vector<std::pair<int64_t,int64_t>> output_shape_range;
+  EXPECT_EQ(output_desc.GetShapeRange(output_shape_range), ge::GRAPH_SUCCESS);
+  std::vector<std::pair<int64_t,int64_t>> expected_shape_range = {};
+  EXPECT_EQ(output_shape_range, expected_shape_range);
+}

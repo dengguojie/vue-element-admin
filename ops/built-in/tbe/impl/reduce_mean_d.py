@@ -17,7 +17,6 @@ reduce_mean_d
 """
 # 'pylint: disable=too-many-arguments,too-many-locals,global-statement
 import collections
-
 import te.lang.cce as tbe
 import te.platform as tbe_platform
 from te.utils import para_check
@@ -31,12 +30,70 @@ ori_shape = [[0], [0]]
 ori_format = ["NCHW", "NCHW"]
 
 
+def get_axes(axes, shape_len, noop_with_empty_axes):
+    """
+    preprocess axes
+    """
+    if axes is None or (len(axes) == 0 and not noop_with_empty_axes):
+        axes = range(shape_len)
+    if hasattr(axes, 'index'):
+        axes = list(axes)
+    axes = shape_util.axis_check(shape_len, axes)
+    return axes
+
+
+def get_cof(axes, shape):
+    """
+    get cof
+    """
+    reduce_elts = 1.0
+    if isinstance(axes, collections.Iterable):
+        for i in axes:
+            reduce_elts *= shape[i]
+    else:
+        reduce_elts = shape[axes]
+    cof = reduce_elts**(-1)
+
+    if ori_format[0] == 'NHWC' and ori_format[1] == 'NC1HWC0' and len(axes) == 2 \
+            and axes == [1, 4] and len(ori_shape[0]) == 4:
+        cof = ori_shape[0][-1]**(-1)
+    return cof
+
+
+def preprocess_input(impl_mode, dtype, data_input_tmp, is_5hdc, is_nz_nd):
+    """
+    preprocess input and get has_improve_precision
+    """
+    has_improve_precision = False
+    cce_product = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
+    if impl_mode is None:
+        if cce_product in ("Ascend310",):
+            impl_mode = "high_performance"
+        else:
+            impl_mode = "high_precision"
+
+
+    if cce_product not in ("Ascend310",) and dtype == "float16" and \
+            tbe_platform.cce_conf.api_check_support(
+                "te.lang.cce.sum", "float32") and not (is_5hdc or is_nz_nd) and impl_mode == "high_precision":
+        data_input_tmp = tbe.cast_to(data_input_tmp, "float32")
+        has_improve_precision = True
+    elif cce_product in ("Ascend310",) and dtype == "float16" \
+            and tbe_platform.cce_conf.api_check_support("te.lang.cce.sum",
+                                                        "float32") \
+            and not (is_5hdc or is_nz_nd) and impl_mode != "high_performance":
+        data_input_tmp = tbe.cast_to(data_input_tmp, "float32")
+        has_improve_precision = True
+    return has_improve_precision, data_input_tmp
+
+
 # 'pylint: disable=locally-disabled,unused-argument,invalid-name
 @tbe_platform.fusion_manager.fusion_manager.register("reduce_mean_d")
 def reduce_mean_d_compute(x,
                           y,
                           axes,
                           keepdims,
+                          noop_with_empty_axes,
                           kernel_name="reduce_mean_d",
                           impl_mode=None,
                           is_5hdc=False,
@@ -63,50 +120,16 @@ def reduce_mean_d_compute(x,
         output tensor, has the same shape and type as input tensor.
     """
     shape = shape_util.shape_to_list(x.shape)
-
     shape_len = len(shape)
-    if not axes:
-        axes = range(shape_len)
-    if hasattr(axes, 'index'):
-        axes = list(axes)
-    axes = shape_util.axis_check(shape_len, axes)
+    axes = get_axes(axes, shape_len, noop_with_empty_axes)
 
-    reduce_elts = 1.0
-    if isinstance(axes, collections.Iterable):
-        for i in axes:
-            reduce_elts *= shape[i]
-    else:
-        reduce_elts = shape[axes]
-    cof = reduce_elts**(-1)
-
-    if ori_format[0] == 'NHWC' and ori_format[1] == 'NC1HWC0' and len(axes) == 2 \
-            and axes == [1, 4] and len(ori_shape[0]) == 4:
-        cof = ori_shape[0][-1]**(-1)
+    cof = get_cof(axes, shape)
 
     dtype = x.dtype
     data_input_tmp = x
 
     has_improve_precision = False
-    cce_product = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
-    if impl_mode is None:
-        if cce_product in ("Ascend310", ):
-            impl_mode = "high_performance"
-        else:
-            impl_mode = "high_precision"
-
-
-    if cce_product not in ("Ascend310",) and dtype == "float16" and \
-            tbe_platform.cce_conf.api_check_support(
-                "te.lang.cce.sum", "float32") and not (is_5hdc or is_nz_nd) and impl_mode == "high_precision":
-        data_input_tmp = tbe.cast_to(data_input_tmp, "float32")
-        has_improve_precision = True
-    elif cce_product in ("Ascend310",) and dtype == "float16" \
-            and tbe_platform.cce_conf.api_check_support("te.lang.cce.sum",
-                                                        "float32") \
-            and not (is_5hdc or is_nz_nd) and impl_mode != "high_performance":
-        data_input_tmp = tbe.cast_to(data_input_tmp, "float32")
-        has_improve_precision = True
-
+    has_improve_precision, data_input_tmp = preprocess_input(impl_mode, dtype, data_input_tmp, is_5hdc, is_nz_nd)
     data_input_tmp = tbe.vmuls(data_input_tmp, cof)
     res = tbe.sum(data_input_tmp, axis=axes, keepdims=keepdims)
 
@@ -118,8 +141,14 @@ def reduce_mean_d_compute(x,
 
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             (para_check.REQUIRED_ATTR_INT, para_check.REQUIRED_ATTR_LIST_INT),
-                            para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
-def reduce_mean_d(input_x, output_y, axes, keepdims=None, kernel_name="reduce_mean_d", impl_mode=None):
+                            para_check.OPTION_ATTR_BOOL, para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
+def reduce_mean_d(input_x,
+                  output_y,
+                  axes,
+                  keepdims=None,
+                  noop_with_empty_axes=True,
+                  kernel_name="reduce_mean_d",
+                  impl_mode=None):
     """
     Reduce a tensor on a certa in axes based on mean.
 
@@ -135,6 +164,9 @@ def reduce_mean_d(input_x, output_y, axes, keepdims=None, kernel_name="reduce_me
     keepdims : bool, NoneType
         if true, retains reduced dimensions with length 1,
         default value is None.
+    noop_with_empty_axes : bool, default is True
+        if true, no op, just like tf,
+        if false, reduce all dims when x's shape is [].
     kernel_name : str
         cce kernel name, default value is reduce_mean_d
 
@@ -148,12 +180,14 @@ def reduce_mean_d(input_x, output_y, axes, keepdims=None, kernel_name="reduce_me
     format_x = input_x.get("format")
     format_y = output_y.get("format")
     format_ori_y = output_y.get("ori_format")
+    if isinstance(axes, int):
+        axes = [axes]
 
     para_check.check_shape(shape, param_name="input_x")
     check_list = ["float16", "float32"]
     shape_len = len(shape)
 
-    if not axes:
+    if axes is None or (len(axes) == 0 and not noop_with_empty_axes) :
         axes = range(shape_len)
 
     if hasattr(axes, 'index'):
@@ -172,8 +206,8 @@ def reduce_mean_d(input_x, output_y, axes, keepdims=None, kernel_name="reduce_me
     is_5hdc = para_check.check_and_init_5hdc_reduce_support(input_x, axes)
     if not is_5hdc:
         shape, axes = shape_util.shape_refine(list(shape), axes)
-        shape, axes = shape_util.simplify_axis_shape(shape, axes)
-
+        if len(axes) != 0:
+            shape, axes = shape_util.simplify_axis_shape(shape, axes)
     ori_shape = [input_x["ori_shape"], input_x["shape"]]
     ori_format = [input_x["ori_format"], input_x["format"]]
     data_input = tvm.placeholder(shape, name="data_input", dtype=inp_dtype)
@@ -181,6 +215,7 @@ def reduce_mean_d(input_x, output_y, axes, keepdims=None, kernel_name="reduce_me
                                 output_y,
                                 axes,
                                 keepdims,
+                                noop_with_empty_axes,
                                 impl_mode=impl_mode,
                                 is_5hdc=is_5hdc,
                                 is_nz_nd=is_nz_nd)
