@@ -1453,7 +1453,7 @@ class CceConvOp:
                 # L1 buffer tiling
                 reduce_al1 = ((self._cache_tiling["k_h"] - 1) * self._cache_tiling["dilation_h"] + 1) * \
                                 ((self._cache_tiling["k_w"] - 1) * self._cache_tiling["dilation_w"] + 1)
-                reduce_bl1 = self._cache_tiling["k_h"] * self._cache_tiling["k_h"]
+                reduce_bl1 = self._cache_tiling["k_h"] * self._cache_tiling["k_h"] * CUBE_MKN[w_dtype]['mac'][1]
                 tiling["AL1_shape"][0] = self._cache_tiling["kal1_16"]//reduce_al1
                 tiling["AL1_shape"][1] = self._cache_tiling["m_al1_factor"]
                 tiling["BL1_shape"][0] = self._cache_tiling["kbl1_16"]//reduce_bl1
@@ -3907,7 +3907,8 @@ class CceConvOp:
             for bl1 bound set for dynamic shape
             """
             n_bound_max = tiling["BL1_shape"][1]*tiling["BL0_matrix"][1]*CUBE_MKN[bl1.dtype]['mac'][2]
-            k_bound_max = tiling["BL1_shape"][0]*tiling["BL0_matrix"][0]*CUBE_MKN[bl1.dtype]['mac'][1]
+            k_bound_max = tiling["BL1_shape"][0]*self._cache_tiling["k_h"]*self._cache_tiling["k_h"]*\
+                CUBE_MKN[bl1.dtype]['mac'][1]
             bl1_bound_max_size = n_bound_max * k_bound_max
 
             return bl1_bound_max_size
