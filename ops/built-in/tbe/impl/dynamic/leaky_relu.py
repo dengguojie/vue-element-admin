@@ -15,6 +15,7 @@
 """
 leaky_relu
 """
+import math
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import shape_util
@@ -45,18 +46,14 @@ def get_fusion_params(x_tensor, y):
     # 0: L1 depth fusion, 1: L1 width fusion, -1: no L1 fusion
     l1_fusion_type = -1
     if not get_current_build_config("enable_op_prebuild"):
-        l1_fusion_type = x_tensor.op.attrs["L1_fusion_type"].value \
-            if "L1_fusion_type" in x_tensor.op.attrs else -1
+        l1_fusion_type = x_tensor.op.attrs["L1_fusion_type"].value if "L1_fusion_type" in x_tensor.op.attrs else -1
         if l1_fusion_type == 1:
             error_manager_vector.raise_err_specific_reson("leaky_relu",
                                                           "leaky_relu does not support l1 fusion")
     is_l1_depth_fusion = l1_fusion_type == 0
-    in_l1_flag = x_tensor.op.attrs["addr_type"].value == 1 \
-        if "addr_type" in x_tensor.op.attrs else False
-    in_valid_shape = x_tensor.op.attrs["valid_shape"] \
-        if "valid_shape" in x_tensor.op.attrs else []
-    in_slice_offset = x_tensor.op.attrs["slice_offset"] \
-        if "slice_offset" in x_tensor.op.attrs else []
+    in_l1_flag = x_tensor.op.attrs["addr_type"].value == 1 if "addr_type" in x_tensor.op.attrs else False
+    in_valid_shape = x_tensor.op.attrs["valid_shape"] if "valid_shape" in x_tensor.op.attrs else []
+    in_slice_offset = x_tensor.op.attrs["slice_offset"] if "slice_offset" in x_tensor.op.attrs else []
     in_select_read_flag = x_tensor.op.tag == "read_select_5d"
 
     out_l1_flag = False
@@ -103,7 +100,7 @@ def leaky_relu_compute(x, y, negative_slope=0, kernel_name="leaky_relu"):
             res.op.attrs['format'] = x.op.attrs['format']
     res.op.attrs["negative_slope"] = negative_slope
     res.op.attrs["ele_fusion_params"] = fusion_params
-    res.op.attrs["L1_fusion_type"] = fusion_params["l1_fusion_type"]
+    res.op.attrs["L1_fusion_type"] = fusion_params.get("l1_fusion_type")
 
     return res
 

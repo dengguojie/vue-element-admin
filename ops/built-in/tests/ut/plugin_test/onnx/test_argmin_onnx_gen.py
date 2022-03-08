@@ -1,41 +1,33 @@
+#argmax.py
 import onnx
 import numpy as np
 from onnx import helper
+from onnx import AttributeProto, TensorProto, GraphProto
 
-def make_argmin():
+
+def export_keepdims_select_last_index(version_num):
     data = helper.make_tensor_value_info("data", onnx.TensorProto.FLOAT, [2, 2])
-    Y = helper.make_tensor_value_info("Y", onnx.TensorProto.INT64, [2, 1])
-    node = helper.make_node('ArgMin',
-                            inputs=['data'],
-                            outputs=['Y'],
-                            keepdims=1,
-                            axis = 1)
-    graph = helper.make_graph([node],
-                              "test_argmin_1",
-                              [data],
-                              [Y],)
+    result = helper.make_tensor_value_info("result", onnx.TensorProto.INT64, [2, 1])
 
-    model_def = onnx.helper.make_model(graph, producer_name='wdq')
-    model_def.opset_import[0].version = 13
-    onnx.save(model_def, "./test_argmin_case_V13.onnx")
+    node = helper.make_node(
+        'ArgMin',
+        inputs=['data'],
+        outputs=['result'],
+        axis=1,
+        keepdims=1,
+    )
 
-def export_keepdims_select_last_index():
-    data = helper.make_tensor_value_info("data", onnx.TensorProto.FLOAT, [2, 2])
-    Y = helper.make_tensor_value_info("Y", onnx.TensorProto.INT64, [2, 1])
-    node = helper.make_node('ArgMin',
-                            inputs=['data'],
-                            outputs=['Y'],
-                            keepdims=1,
-                            axis = -1,
-                            select_last_index=True)
-    graph = helper.make_graph([node],
-                              "test_argmin_2",
-                              [data],
-                              [Y],)
-    model_def = onnx.helper.make_model(graph, producer_name='wdq')
-    model_def.opset_import[0].version = 11
-    onnx.save(model_def, "./test_argmin_case_V11.onnx")
+    graph_def = helper.make_graph(
+        [node],
+        'test-model',
+        [data],
+        [result],
+    )
+
+    model_def = onnx.helper.make_model(graph_def, producer_name='HJ-ArgMin-onnx')
+    model_def.opset_import[0].version = version_num
+    onnx.save(model_def, "./test_argmin_case_V{}.onnx".format(version_num))
 
 if __name__ == "__main__":
-    make_argmin()
-    export_keepdims_select_last_index()
+    i = 13
+    export_keepdims_select_last_index(i)

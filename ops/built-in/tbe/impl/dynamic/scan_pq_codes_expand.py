@@ -490,9 +490,42 @@ class ScanPQCodesExpand():
             self.tik_instance.vreduce((slice_size // self.group_size) * 2, self.grouped_extrim_distance_ub_fp16,
                                     block_extrim_ub_fp16, 1, 1, 1, 1, 0, 0, None, "counter")
 
-    def _run_one_core_loop(self, args):
+    def scan_pq_codes_operator(self, kernel_name):
+        """
+        scan_pq_codes_operator
+        """
+        self._tiling_args()
+        self._init_gm_tensor()
+        self._init_ub_tensor()
+        self._init_assist_ub()
+        self._run_multi_core()
+        # Build CCE
+        # this "global_variable_link" flag suggest ccec.py do link without "-r" option
+        # which will result in global variable in cce file with wrong address
+        tbe_context.get_context().add_compile_info("vars", {
+            "core_nums": self.core_nums,
+            "split_count": self.split_count,
+            "split_index": self.split_index
+        })
+        input_list_ex = [
+            self.ivf_gm, self.bucket_list_gm, self.bucket_base_distance_gm, self.bucket_limits_gm,
+            self.bucket_offsets_gm, self.adc_tables_gm
+        ]
+        output_list_ex = [
+            self.actual_count_gm, self.pq_distance_gm,
+            self.grouped_extrim_distance_gm, self.pq_ivf_gm, self.pq_index_gm
+        ]
+        self.tik_instance.BuildCCE(kernel_name=kernel_name,
+                                   inputs=input_list_ex,
+                                   outputs=output_list_ex,
+                                   flowtable=(self.tiling_gm,),
+                                   config=self.opt_config)
+
+        return self.tik_instance
+
+    def _run_one_core_loop(self, args_ex):
         (bucket_idx, bucket_id, bucket_base_dis, bucket_limit, bucket_offset_input, bucket_offset_output,
-         bucket_offset_max) = args
+         bucket_offset_max) = args_ex
         self._create_adc_table(bucket_idx)
         thread_loop = self.tik_instance.Scalar("int32", name="thread_loop")
         thread_tail = self.tik_instance.Scalar("int32", name="thread_tail")
@@ -571,7 +604,7 @@ class ScanPQCodesExpand():
             pq_left = (Constant.SLICE_SIZE - _ceil_fill(thread_tail, Constant.BLOCK_FLOAT16)) // Constant.BLOCK_FLOAT16
             with self.tik_instance.if_scope(pq_left > 0):
                 self.tik_instance.vector_dup(Constant.BLOCK_FLOAT16,
-                                             self.pq_distance_ub_fp16[_ceil_fill(thread_tail,Constant.BLOCK_FLOAT16)],
+                                             self.pq_distance_ub_fp16[_ceil_fill(thread_tail, Constant.BLOCK_FLOAT16)],
                                              extreme_value, pq_left, 1, 1)
             args_dis = (bucket_offset_output, bucket_offset_max, Constant.SLICE_SIZE)
             self._handle_pq_distance(args_dis)
@@ -596,36 +629,3 @@ class ScanPQCodesExpand():
             self.tik_instance.data_move(self.pq_distance_gm[bucket_offset_output + Constant.SLICE_SIZE * thread_loop],
                                         self.pq_distance_ub_fp16, 0, 1, Constant.SLICE_SIZE // Constant.BLOCK_FLOAT16,
                                         0, 0)
-
-    def scan_pq_codes_operator(self, kernel_name):
-        """
-        scan_pq_codes_operator
-        """
-        self._tiling_args()
-        self._init_gm_tensor()
-        self._init_ub_tensor()
-        self._init_assist_ub()
-        self._run_multi_core()
-        # Build CCE
-        # this "global_variable_link" flag suggest ccec.py do link without "-r" option
-        # which will result in global variable in cce file with wrong address
-        tbe_context.get_context().add_compile_info("vars", {
-            "core_nums": self.core_nums,
-            "split_count": self.split_count,
-            "split_index": self.split_index
-        })
-        input_list = [
-            self.ivf_gm, self.bucket_list_gm, self.bucket_base_distance_gm, self.bucket_limits_gm,
-            self.bucket_offsets_gm, self.adc_tables_gm
-        ]
-        output_list = [
-            self.actual_count_gm, self.pq_distance_gm,
-            self.grouped_extrim_distance_gm, self.pq_ivf_gm, self.pq_index_gm
-        ]
-        self.tik_instance.BuildCCE(kernel_name=kernel_name,
-                                   inputs=input_list,
-                                   outputs=output_list,
-                                   flowtable=(self.tiling_gm,),
-                                   config=self.opt_config)
-
-        return self.tik_instance

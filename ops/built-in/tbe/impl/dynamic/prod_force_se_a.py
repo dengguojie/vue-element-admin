@@ -151,6 +151,37 @@ class ProdForceSeA:
                 with self.tik_instance.else_scope():
                     self._run_one_core_loop(core_idx, self.core_loop_left)
 
+    def prod_force_se_a_operator(self, kernel_name):
+        """
+        prod_force_se_a_operator
+        """
+        self._tiling_args()
+        self._init_gm_data_fp32()
+        self._run_multi_core_loop()
+        # Build CCE
+        # this "global_variable_link" flag suggest ccec.py do link without "-r" option
+        # which will result in global variable in cce file with wrong address
+        tbe_context.get_context().add_compile_info("vars", {
+            "core_nums": self.core_nums,
+            "n_a_sel" : self.n_a_sel,
+            "n_r_sel" : self.n_r_sel,
+            "split_count" : self.split_count,
+            "split_index" : self.split_index
+        })
+        input_list = [
+            self.net_deriv_gm, self.in_deriv_gm, self.nlist_gm, self.natoms_gm
+        ]
+        output_list = [
+            self.force_gm
+        ]
+        self.tik_instance.BuildCCE(kernel_name=kernel_name,
+                                   inputs=input_list,
+                                   outputs=output_list,
+                                   flowtable=(self.tiling_gm,),
+                                   config=self.opt_config)
+
+        return self.tik_instance
+
     # 'pylint:disable=too-many-locals,too-many-branches,too-many-statements
     def _run_one_core_loop(self, core_idx, core_loop_unit):
         with self.tik_instance.for_range(0, self.nframes) as frame_idx:
@@ -655,21 +686,20 @@ class ProdForceSeA:
                                     1, 1, 1, 8)
                                 self.tik_instance.vcpadd(vcpadd_left_2,
                                     deriv_nnei_vcpadd_ub_fp32[(self.nnei_unit_len * 4 + vcpadd_offset) // 2],
-                                    deriv_input_ub_fp32[self.nnei_unit_len * 4 + vcpadd_offset],
-                                    1, 1, 1, 8)
+                                    deriv_input_ub_fp32[self.nnei_unit_len * 4 + vcpadd_offset], 1, 1, 1, 8)
 
                         # first
                         with self.tik_instance.new_stmt_scope(disable_sync=False):
-                            force_add_ub_fp32 = self.tik_instance.Tensor(self.force_dtype,
-                                (3 + Constant.MASK_FLOAT32, ), name="force_add_ub_fp32",
+                            force_add_ub_l_fp32 = self.tik_instance.Tensor(self.force_dtype,
+                                (3 + Constant.MASK_FLOAT32, ), name="force_add_ub_l_fp32",
                                 scope=tik.scope_ubuf)
-                            force_assis_ub_fp32 = self.tik_instance.Tensor(self.force_dtype,
+                            force_assis_ub_l_fp32 = self.tik_instance.Tensor(self.force_dtype,
                                                                         (Constant.BLOCK_FLOAT32 * 3, ),
-                                                                        name="force_assis_ub_fp32",
+                                                                        name="force_assis_ub_l_fp32",
                                                                         scope=tik.scope_ubuf)
-                            self.tik_instance.vector_dup(Constant.MASK_FLOAT32, force_add_ub_fp32, 0, 1, 1, 8)
-                            self.tik_instance.vector_dup(3, force_add_ub_fp32, 0, 1, 1, 8)
-                            self.tik_instance.vector_dup(Constant.BLOCK_FLOAT32 * 3, force_assis_ub_fp32, 0, 1, 1, 8)
+                            self.tik_instance.vector_dup(Constant.MASK_FLOAT32, force_add_ub_l_fp32, 0, 1, 1, 8)
+                            self.tik_instance.vector_dup(3, force_add_ub_l_fp32, 0, 1, 1, 8)
+                            self.tik_instance.vector_dup(Constant.BLOCK_FLOAT32 * 3, force_assis_ub_l_fp32, 0, 1, 1, 8)
                             force_vcadd_ub_fp32 = self.tik_instance.Tensor(self.force_dtype,
                                 (3 + Constant.MASK_FLOAT32,), name="force_vcadd_ub_fp32",
                                 scope=tik.scope_ubuf)
@@ -679,29 +709,29 @@ class ProdForceSeA:
                                 self.tik_instance.vcadd(Constant.MASK_FLOAT32, force_vcadd_ub_fp32,
                                     deriv_nnei_vcpadd_ub_fp32[Constant.MASK_FLOAT32 * i],
                                     3, 1, 0, self.nnei_unit_len, stride_unit=2)
-                                self.tik_instance.vadd(3, force_add_ub_fp32,
-                                    force_add_ub_fp32, force_vcadd_ub_fp32, 1, 1, 1, 1, 8, 8, 8)
+                                self.tik_instance.vadd(3, force_add_ub_l_fp32,
+                                    force_add_ub_l_fp32, force_vcadd_ub_fp32, 1, 1, 1, 1, 8, 8, 8)
                             if force_reduce_left > 0:
                                 force_reduce_floor = _floor_fill(self.nnei_unit_len, Constant.MASK_FLOAT32)
                                 self.tik_instance.vector_dup(1 * 3, force_vcadd_ub_fp32, 0, 1, 1, 8)
                                 self.tik_instance.vcadd(force_reduce_left, force_vcadd_ub_fp32,
                                     deriv_nnei_vcpadd_ub_fp32[force_reduce_floor],
                                     1 * 3, 1, 0, self.nnei_unit_len, stride_unit=2)
-                                self.tik_instance.vadd(1 * 3, force_add_ub_fp32,
-                                    force_add_ub_fp32, force_vcadd_ub_fp32,
+                                self.tik_instance.vadd(1 * 3, force_add_ub_l_fp32,
+                                    force_add_ub_l_fp32, force_vcadd_ub_fp32,
                                     1, 1, 1, 1, 8, 8, 8)
-                            self.tik_instance.vmuls(1 * 3, force_add_ub_fp32,
-                                force_add_ub_fp32, -1, 1, 1, 1, 8, 8)
+                            self.tik_instance.vmuls(1 * 3, force_add_ub_l_fp32,
+                                force_add_ub_l_fp32, -1, 1, 1, 1, 8, 8)
                             force_offset = frame_idx * self.nall * 3 + nloc_offset_vector + nloc_offset + l_idx
-                            self.tik_instance.vadds(1, force_assis_ub_fp32,
-                                force_add_ub_fp32, 0, 3, 0, 0, 8, 1, stride_unit=2)
+                            self.tik_instance.vadds(1, force_assis_ub_l_fp32,
+                                force_add_ub_l_fp32, 0, 3, 0, 0, 8, 1, stride_unit=2)
                             self.tik_instance.set_atomic_add(1)
                             self.tik_instance.data_move(self.force_gm[force_offset],
-                                                        force_assis_ub_fp32, 0, 1, 1, 0, 0)
+                                                        force_assis_ub_l_fp32, 0, 1, 1, 0, 0)
                             self.tik_instance.data_move(self.force_gm[force_offset + self.nall],
-                                                        force_assis_ub_fp32[Constant.BLOCK_FLOAT32], 0, 1, 1, 0, 0)
+                                                        force_assis_ub_l_fp32[Constant.BLOCK_FLOAT32], 0, 1, 1, 0, 0)
                             self.tik_instance.data_move(self.force_gm[force_offset + self.nall * 2],
-                                                        force_assis_ub_fp32[Constant.BLOCK_FLOAT32 * 2],
+                                                        force_assis_ub_l_fp32[Constant.BLOCK_FLOAT32 * 2],
                                                         0, 1, 1, 0, 0)
                             self.tik_instance.set_atomic_add(0)
 
@@ -955,36 +985,7 @@ class ProdForceSeA:
                                                         0, 1, _ceil_div(self.nall, Constant.BLOCK_FLOAT32), 0, 0)
                             self.tik_instance.set_atomic_add(0)
 
-    def prod_force_se_a_operator(self, kernel_name):
-        """
-        prod_force_se_a_operator
-        """
-        self._tiling_args()
-        self._init_gm_data_fp32()
-        self._run_multi_core_loop()
-        # Build CCE
-        # this "global_variable_link" flag suggest ccec.py do link without "-r" option
-        # which will result in global variable in cce file with wrong address
-        tbe_context.get_context().add_compile_info("vars", {
-            "core_nums": self.core_nums,
-            "n_a_sel" : self.n_a_sel,
-            "n_r_sel" : self.n_r_sel,
-            "split_count" : self.split_count,
-            "split_index" : self.split_index
-        })
-        input_list = [
-            self.net_deriv_gm, self.in_deriv_gm, self.nlist_gm, self.natoms_gm
-        ]
-        output_list = [
-            self.force_gm
-        ]
-        self.tik_instance.BuildCCE(kernel_name=kernel_name,
-                                   inputs=input_list,
-                                   outputs=output_list,
-                                   flowtable=(self.tiling_gm,),
-                                   config=self.opt_config)
 
-        return self.tik_instance
 
 
 def _para_dtype_check(args_list):

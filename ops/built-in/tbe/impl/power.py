@@ -26,6 +26,14 @@ from te.utils import para_check
 from impl.util.platform_adapter import error_manager_vector
 
 
+# 'pylint: disable=too-many-locals,redefined-argument-from-local
+def isclose(valuex, valuey, rel_tol=1e-08, abs_tol=0.0):
+    """
+    determines whether the values of two floating-point numbers are close or equal
+    """
+    return math.isclose(valuex, valuey, rel_tol=rel_tol, abs_tol=abs_tol)
+
+
 # 'pylint: disable=unused-argument,too-many-locals
 # 'pylint: disable=unrecognized-inline-option,unused-argument
 def positive_compute(base, power, version, input_dtype):
@@ -177,7 +185,7 @@ def zero_diff_scale_compute(input_x, shift, power):
     res: the result when power*scale is 0.0
     """
 
-    if power == 0.0:
+    if isclose(power, 0.0):
         tmp_zero = tbe.vmuls(input_x, 0)
         res = tbe.vadds(tmp_zero, 1)
         return res
@@ -211,7 +219,7 @@ def power_compute(input_x, output_y, power=1.0, scale=1.0, shift=0.0, kernel_nam
 
     diff_scale = power * scale
 
-    if diff_scale == 0.0:
+    if isclose(diff_scale, 0.0):
         res = zero_diff_scale_compute(input_x, shift, power)
         return res
 
@@ -223,13 +231,13 @@ def power_compute(input_x, output_y, power=1.0, scale=1.0, shift=0.0, kernel_nam
 
     nan_value = tbe.vrec(zeros)
 
-    if power == 1.0:
+    if isclose(power, 1.0):
         res = shift_scaled_x
         return res
-    if power == 2.0:
+    if isclose(power, 2.0):
         res = tbe.vmul(shift_scaled_x, shift_scaled_x)
         return res
-    if power == 3.0:
+    if isclose(power, 3.0):
         res = tbe.vmul(shift_scaled_x, shift_scaled_x)
         res = tbe.vmul(res, shift_scaled_x)
         return res

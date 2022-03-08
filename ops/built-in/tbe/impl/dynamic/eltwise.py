@@ -52,19 +52,16 @@ def get_fusion_params(x_tensor, y, x_tensor_num):
     for i in range(0, x_tensor_num):
         l1_fusion_type = -1
         if not get_current_build_config("enable_op_prebuild"):
-            l1_fusion_type = x_tensor[i].op.attrs["L1_fusion_type"].value \
-                if "L1_fusion_type" in x_tensor[i].op.attrs else -1
+            l1_fusion_type = \
+                x_tensor[i].op.attrs["L1_fusion_type"].value if "L1_fusion_type" in x_tensor[i].op.attrs else -1
             if l1_fusion_type == 1:
                 error_manager_vector.raise_err_specific_reson("eltwise", "eltwise does not support l1 width fusion")
         is_l1_depth_fusion = (l1_fusion_type == 0) or is_l1_depth_fusion
-        in_l1_flag = x_tensor[i].op.attrs["addr_type"].value == 1 \
-            if "addr_type" in x_tensor[i].op.attrs else False
+        in_l1_flag = x_tensor[i].op.attrs["addr_type"].value == 1 if "addr_type" in x_tensor[i].op.attrs else False
         in_l1_flag_list.append(in_l1_flag)
-        in_valid_shape = x_tensor[i].op.attrs["valid_shape"] \
-            if "valid_shape" in x_tensor[i].op.attrs else []
+        in_valid_shape = x_tensor[i].op.attrs["valid_shape"] if "valid_shape" in x_tensor[i].op.attrs else []
         in_valid_shape_list.append(in_valid_shape)
-        in_slice_offset = x_tensor[i].op.attrs["slice_offset"] \
-            if "slice_offset" in x_tensor[i].op.attrs else []
+        in_slice_offset = x_tensor[i].op.attrs["slice_offset"] if "slice_offset" in x_tensor[i].op.attrs else []
         in_slice_offset_list.append(in_slice_offset)
         in_select_read_flag = x_tensor[i].op.tag == "read_select_5d"
         in_select_read_flag_list.append(in_select_read_flag)
@@ -105,9 +102,9 @@ def eltwise_compute(x, y, mode=1, coeff=[], kernel_name="eltwise"):
     """
     Compute elementwise operation
     """
-    tensor_num = len(x)
-    inp_dtype = x[0].dtype
-    data0_tmp = x[0]
+    tensor_num_d = len(x)
+    inp_dtype_d = x[0].dtype
+    data0_tmp_d = x[0]
 
     tmp_y = {
         "addr_type": 0,
@@ -115,54 +112,54 @@ def eltwise_compute(x, y, mode=1, coeff=[], kernel_name="eltwise"):
         "slice_offset": []
     }
     fuse_y = tmp_y if y is None else y
-    fusion_params = get_fusion_params(x, fuse_y, tensor_num)
+    fusion_params = get_fusion_params(x, fuse_y, tensor_num_d)
     case = 0  # depthwise_con2d fusion flag
 
     if mode == 1:
-        if len(coeff) != 0 and len(coeff) != tensor_num:
+        if len(coeff) != 0 and len(coeff) != tensor_num_d:
             error_manager_vector.raise_err_specific_reson("eltwise",
                                                           "the parameter coeff's length not equal to inputs'num")
-        if len(coeff) == tensor_num:
+        if len(coeff) == tensor_num_d:
             if type(coeff[0]) != int and type(coeff[0]) != float:
                 error_manager_vector.raise_err_specific_reson("eltwise", "ele of coeff must be a number.")
             if coeff[0] != 1:
-                coeff1 = tvm.const(coeff[0], dtype=inp_dtype)
-                data0_tmp = tbe.vmuls(data0_tmp, coeff1)
+                coeff1 = tvm.const(coeff[0], dtype=inp_dtype_d)
+                data0_tmp_d = tbe.vmuls(data0_tmp_d, coeff1)
 
-    res = None
-    if tensor_num == 1:
-        const_val_0 = tvm.const(0, dtype=inp_dtype)
-        data0_tmp = tbe.vadds(data0_tmp, const_val_0)
-        res = data0_tmp
-    elif tensor_num > 1:
-        for i in range(1, tensor_num):
+    res_d = None
+    if tensor_num_d == 1:
+        const_val_0 = tvm.const(0, dtype=inp_dtype_d)
+        data0_tmp_d = tbe.vadds(data0_tmp_d, const_val_0)
+        res_d = data0_tmp_d
+    elif tensor_num_d > 1:
+        for i in range(1, tensor_num_d):
             datan_tmp = x[i]
             if mode == 0:
-                data0_tmp = tbe.vmul(data0_tmp, datan_tmp)
+                data0_tmp_d = tbe.vmul(data0_tmp_d, datan_tmp)
                 case = "eltwise_case_0"
             elif mode == 2:
-                data0_tmp = tbe.vmax(data0_tmp, datan_tmp)
+                data0_tmp_d = tbe.vmax(data0_tmp_d, datan_tmp)
                 case = "eltwise_case_2"
             else:
                 if len(coeff) == 0:
-                    data0_tmp = tbe.vadd(data0_tmp, datan_tmp)
+                    data0_tmp_d = tbe.vadd(data0_tmp_d, datan_tmp)
                     case = "eltwise_case_1_1"
                 elif coeff[i] == 1:
-                    data0_tmp = tbe.vadd(data0_tmp, datan_tmp)
+                    data0_tmp_d = tbe.vadd(data0_tmp_d, datan_tmp)
                     case = "eltwise_case_1_1"
                 else:
-                    coeff2 = tvm.const(coeff[i], dtype=inp_dtype)
+                    coeff2 = tvm.const(coeff[i], dtype=inp_dtype_d)
                     datan_tmp = tbe.vmuls(datan_tmp, coeff2)
-                    data0_tmp = tbe.vadd(data0_tmp, datan_tmp)
+                    data0_tmp_d = tbe.vadd(data0_tmp_d, datan_tmp)
                     case = "eltwise_case_1_2"
-        res = data0_tmp
+        res_d = data0_tmp_d
 
-    res.op.attrs["ele_fusion_params"] = fusion_params
-    res.op.attrs["L1_fusion_type"] = fusion_params["l1_fusion_type"]
+    res_d.op.attrs["ele_fusion_params"] = fusion_params
+    res_d.op.attrs["L1_fusion_type"] = fusion_params.get("l1_fusion_type")
     if case:
-        res.op.attrs["eltwise_case"] = case
+        res_d.op.attrs["eltwise_case"] = case
 
-    return res
+    return res_d
 
 
 def _eltwise_check_para(x, y, mode=1, coeff=[],

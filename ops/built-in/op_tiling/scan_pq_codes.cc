@@ -29,7 +29,7 @@ namespace {
 }
 
 namespace optiling {
-struct ScanPQCodesTilingParams{
+struct ScanPQCodesTilingParams {
   int64_t bucketNumTotal;
   int64_t bucketStartBase;
   int64_t bucketNumLow;

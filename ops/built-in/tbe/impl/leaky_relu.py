@@ -39,8 +39,7 @@ def get_fusion_params(x_tensor, y):
     # 0: L1 depth fusion, 1: L1 width fusion, -1: no L1 fusion
     l1_fusion_type = -1
     if fusion_manager.get_build_cfg() != "disable":
-        l1_fusion_type = x_tensor.op.attrs["L1_fusion_type"].value \
-            if "L1_fusion_type" in x_tensor.op.attrs else -1
+        l1_fusion_type = x_tensor.op.attrs["L1_fusion_type"].value if "L1_fusion_type" in x_tensor.op.attrs else -1
         if l1_fusion_type == 1:
             error_manager_vector.raise_err_specific_reson("leaky_relu",
                                         "leaky_relu does not support l1 width fusion")

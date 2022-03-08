@@ -44,8 +44,8 @@ def get_fusion_params(x_tensor, y, x_tensor_num):
     for i in range(0, x_tensor_num):
         l1_fusion_type = -1
         if tbe_platform.fusion_manager.fusion_manager.get_build_cfg() != "disable":
-            l1_fusion_type = x_tensor[i].op.attrs["L1_fusion_type"].value \
-                if "L1_fusion_type" in x_tensor[i].op.attrs else -1
+            l1_fusion_type = \
+                x_tensor[i].op.attrs["L1_fusion_type"].value if "L1_fusion_type" in x_tensor[i].op.attrs else -1
             if l1_fusion_type == 1:
                 error_manager_vector.raise_err_specific_reson("eltwise", "eltwise does not support l1 width fusion")
         is_l1_depth_fusion = (l1_fusion_type == 0) or is_l1_depth_fusion

@@ -275,20 +275,17 @@ def get_fusion_params(x_tensor, scale_tensor, bias_tensor, y):
         if x_tensor is not None:
             l1_fusion_type = -1
             if not get_current_build_config("enable_op_prebuild"):
-                l1_fusion_type = x_tensor.op.attrs["L1_fusion_type"].value \
-                    if "L1_fusion_type" in x_tensor.op.attrs else -1
+                l1_fusion_type = \
+                    x_tensor.op.attrs["L1_fusion_type"].value if "L1_fusion_type" in x_tensor.op.attrs else -1
                 if l1_fusion_type == 1:
                     error_manager_vector.raise_err_specific_reson("scale",
                                                                   "Scale does not support l1 width fusion")
             is_l1_depth_fusion = (l1_fusion_type == 0) or is_l1_depth_fusion
-            in_l1_flag = x_tensor.op.attrs["addr_type"].value == 1 \
-                if "addr_type" in x_tensor.op.attrs else False
+            in_l1_flag = x_tensor.op.attrs["addr_type"].value == 1 if "addr_type" in x_tensor.op.attrs else False
             in_l1_flag_list.append(in_l1_flag)
-            in_valid_shape = x_tensor.op.attrs["valid_shape"] \
-                if "valid_shape" in x_tensor.op.attrs else []
+            in_valid_shape = x_tensor.op.attrs["valid_shape"] if "valid_shape" in x_tensor.op.attrs else []
             in_valid_shape_list.append(in_valid_shape)
-            in_slice_offset = x_tensor.op.attrs["slice_offset"] \
-                if "slice_offset" in x_tensor.op.attrs else []
+            in_slice_offset = x_tensor.op.attrs["slice_offset"] if "slice_offset" in x_tensor.op.attrs else []
             in_slice_offset_list.append(in_slice_offset)
             in_select_read_flag = x_tensor.op.tag == "read_select_5d"
             in_select_read_flag_list.append(in_select_read_flag)

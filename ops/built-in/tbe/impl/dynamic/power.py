@@ -17,7 +17,6 @@ power
 """
 # 'pylint: disable=redefined-outer-name
 import math
-
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tvm
@@ -28,6 +27,14 @@ from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import error_manager_vector
+
+
+# 'pylint: disable=too-many-locals,redefined-argument-from-local
+def isclose(valuex, valuey, rel_tol=1e-08, abs_tol=0.0):
+    """
+    determines whether the values of two floating-point numbers are close or equal
+    """
+    return math.isclose(valuex, valuey, rel_tol=rel_tol, abs_tol=abs_tol)
 
 
 # 'pylint: disable=unused-argument,too-many-locals
@@ -47,21 +54,21 @@ def positive_compute(base, power, version, input_dtype):
     res: the result tensor
     """
 
-    base_cast = base
+    base_d_cast = base
 
     if input_dtype == "float16" and \
             tbe_platform.api_check_support("te.lang.cce.vexp", "float32") and \
             tbe_platform.api_check_support("te.lang.cce.vlog", "float32"):
-        base_cast = tbe.cast_to(base, "float32")
+        base_d_cast = tbe.cast_to(base, "float32")
 
-    log_val = tbe.vlog(base_cast)
-    mul_val = tbe.vmuls(log_val, power)
-    exp_val = tbe.vexp(mul_val)
+    log_d_val = tbe.vlog(base_d_cast)
+    mul_d_val = tbe.vmuls(log_d_val, power)
+    exp_d_val = tbe.vexp(mul_d_val)
 
-    if exp_val.dtype.lower() != input_dtype:
-        exp_val = tbe.cast_to(exp_val, input_dtype)
+    if exp_d_val.dtype.lower() != input_dtype:
+        exp_d_val = tbe.cast_to(exp_d_val, input_dtype)
 
-    return exp_val
+    return exp_d_val
 
 
 def negtive_compute(base, power, nan_values, version, input_dtype):
@@ -82,36 +89,36 @@ def negtive_compute(base, power, nan_values, version, input_dtype):
     """
 
     if float(power).is_integer():
-        base_cast = base
+        base_d_cast = base
 
         if input_dtype == "float16" and \
                 tbe_platform.api_check_support("te.lang.cce.vexp", "float32") and \
                 tbe_platform.api_check_support("te.lang.cce.vlog", "float32"):
-            base_cast = tbe.cast_to(base, "float32")
+            base_d_cast = tbe.cast_to(base, "float32")
 
         sign_value = math.pow(-1, power)
-        abs_base_value = tbe.vabs(base_cast)
-        log_value = tbe.vlog(abs_base_value)
-        mul_value = tbe.vmuls(log_value, power)
-        exp_value = tbe.vexp(mul_value)
-        res = tbe.vmuls(exp_value, sign_value)
+        abs_base_d_value = tbe.vabs(base_d_cast)
+        log_d_value = tbe.vlog(abs_base_d_value)
+        mul_d_value = tbe.vmuls(log_d_value, power)
+        exp_d_value = tbe.vexp(mul_d_value)
+        res_d = tbe.vmuls(exp_d_value, sign_value)
 
-        if res.dtype.lower() != input_dtype:
-            res = tbe.cast_to(res, input_dtype)
+        if res_d.dtype.lower() != input_dtype:
+            res_d = tbe.cast_to(res_d, input_dtype)
 
-        return res
+        return res_d
 
     return nan_values
 
 
-def zero_compute(power, nan_values, zero_values):
+def zero_compute(power, nan_values_d, zero_values):
     """
     calculate power for zero elements of base tensor
 
     Parameters
     ----------
     power: attr power
-    nan_values: a tensor with nan values
+    nan_values_d: a tensor with nan values
     zero_values: a tensor with zero values
 
     Returns
@@ -122,16 +129,16 @@ def zero_compute(power, nan_values, zero_values):
     if power > 0.0:
         return zero_values
 
-    return nan_values
+    return nan_values_d
 
 
-def power_scalar(input_x, base, power):
+def power_scalar(input_x_d, base, power):
     """
     calculate power when attr scale is 0.0 and attr power is not
 
     Parameters
     ----------
-    input_x: placeholder of input
+    input_x_d: placeholder of input
     base: the base value, equals attr shift
     power: attr power
 
@@ -140,29 +147,29 @@ def power_scalar(input_x, base, power):
     res: the result when attr scale is 0.0 and attr power is not
     """
 
-    tmp_zero = tbe.vmuls(input_x, 0)
-    ones = tbe.vadds(tmp_zero, 1)
-    zeros = tmp_zero
+    tmp_zero_d = tbe.vmuls(input_x_d, 0)
+    ones = tbe.vadds(tmp_zero_d, 1)
+    zeros = tmp_zero_d
 
     if base > 0.0:
-        res = tbe.vmuls(ones, math.pow(base, power))
-        return res
+        res_d = tbe.vmuls(ones, math.pow(base, power))
+        return res_d
     if base < 0.0:
         if float(power).is_integer():
-            res = tbe.vmuls(ones, math.pow(base, power))
-            return res
+            res_d = tbe.vmuls(ones, math.pow(base, power))
+            return res_d
 
         # abnormal value
-        res = tbe.vrec(zeros)
-        return res
+        res_d = tbe.vrec(zeros)
+        return res_d
 
     if power > 0:
         return zeros
 
     # abnormal value
-    res = tbe.vrec(zeros)
+    res_d = tbe.vrec(zeros)
 
-    return res
+    return res_d
 
 
 def zero_diff_scale_compute(input_x, shift, power):
@@ -180,14 +187,14 @@ def zero_diff_scale_compute(input_x, shift, power):
     res: the result when power*scale is 0.0
     """
 
-    if power == 0.0:
-        tmp_zero = tbe.vmuls(input_x, 0)
-        res = tbe.vadds(tmp_zero, 1)
-        return res
+    if isclose(power, 0.0):
+        tmp_zero_d = tbe.vmuls(input_x, 0)
+        res_d = tbe.vadds(tmp_zero_d, 1)
+        return res_d
 
-    res = power_scalar(input_x, shift, power)
+    res_d = power_scalar(input_x, shift, power)
 
-    return res
+    return res_d
 
 
 # 'pylint: disable=locally-disabled,unused-argument,too-many-arguments
@@ -215,7 +222,7 @@ def power_compute(input_x, output_y, power=1.0, scale=1.0,
 
     diff_scale = power * scale
 
-    if diff_scale == 0.0:
+    if isclose(diff_scale, 0.0):
         res = zero_diff_scale_compute(input_x, shift, power)
         return res
 
@@ -227,13 +234,13 @@ def power_compute(input_x, output_y, power=1.0, scale=1.0,
 
     nan_value = tbe.vrec(zeros)
 
-    if power == 1.0:
+    if isclose(power, 1.0):
         res = shift_scaled_x
         return res
-    if power == 2.0:
+    if isclose(power, 2.0):
         res = tbe.vmul(shift_scaled_x, shift_scaled_x)
         return res
-    if power == 3.0:
+    if isclose(power, 3.0):
         res = tbe.vmul(shift_scaled_x, shift_scaled_x)
         res = tbe.vmul(res, shift_scaled_x)
         return res
