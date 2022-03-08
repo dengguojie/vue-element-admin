@@ -458,7 +458,6 @@ IMPLEMT_INFERFUNC(HcomAllToAllV, HcomAllToAllVInferShape) {
     std::vector<string> dep_inputs = {"recv_displacements", "recv_counts"};
     auto opDesc = OpDescUtils::GetOpDescFromOperator(op);
     opDesc->SetOpInferDepends(dep_inputs);
-    AttrUtils::SetBool(opDesc, "_force_unknown_shape", true);
     Tensor recvDispTensor;
     Tensor recvCountsTensor;
     if ((op.GetInputConstData("recv_displacements", recvDispTensor) != GRAPH_SUCCESS) ||
@@ -477,8 +476,21 @@ IMPLEMT_INFERFUNC(HcomAllToAllV, HcomAllToAllVInferShape) {
     vector<int64_t> recvCounts;
     GetConstValue(op, recvCountsTensor, recvCountsDtype, recvCounts);
 
+    if (recvDisp.size() != recvCounts.size()) {
+        OP_LOGE(op.GetName().c_str(), "recvDisp size[%zu] and recvCounts size[%zu] are different.",
+            recvDisp.size(), recvCounts.size());
+        return GRAPH_FAILED;
+    }
+
+    int64_t recvShape = -1;
     std::vector<int64_t> recvDataDims;
-    recvDataDims.push_back((int64_t)recvDisp.back() + (int64_t)recvCounts.back());
+    for (size_t i = 0; i < recvDisp.size(); i++) {
+        int64_t tempSum = recvDisp[i] + recvCounts[i];
+        if (recvShape < tempSum) {
+            recvShape = tempSum;
+        }
+    }
+    recvDataDims.push_back(recvShape);
     auto outTensorDesc = opDesc->MutableOutputDesc("recv_data");
     outTensorDesc->SetShape(GeShape(recvDataDims));
     outTensorDesc->SetDataType(op.GetInputDesc("send_data").GetDataType());

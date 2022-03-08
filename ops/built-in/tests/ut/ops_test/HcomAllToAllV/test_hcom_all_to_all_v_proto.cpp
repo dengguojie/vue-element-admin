@@ -99,3 +99,49 @@ TEST_F(HcomAllToAllVTest, hcom_all_to_all_v_infershape_test_const) {
   auto recv_data_desc = op.get_output_desc_recv_data();
   EXPECT_EQ(recv_data_desc.GetDataType(), ge::DT_FLOAT);
 }
+
+TEST_F(HcomAllToAllVTest, hcom_all_to_all_v_infershape_test_const_diff_size) {
+  ge::op::HcomAllToAllV op;
+  op.UpdateInputDesc("send_data", create_desc({2, 1}, ge::DT_FLOAT));
+  op.UpdateInputDesc("send_counts", create_desc({2, 1}, ge::DT_INT64));
+  op.UpdateInputDesc("send_displacements", create_desc({1, 1}, ge::DT_INT64));
+
+  {
+    ge::Tensor constTensor;
+    ge::TensorDesc constDesc(ge::Shape(), ge::FORMAT_ND, ge::DT_INT64);
+    constDesc.SetSize(3 * sizeof(int64_t));
+    constTensor.SetTensorDesc(constDesc);
+    int64_t constData[3] = {1, 1, 1};
+    constTensor.SetData((uint8_t*)constData, 3* sizeof(int64_t));
+    auto recv_counts = ge::op::Constant().set_attr_value(constTensor);
+    op.set_input_recv_counts(recv_counts);
+    auto desc = op.GetInputDesc("recv_counts");
+    desc.SetDataType(ge::DT_INT64);
+    op.UpdateInputDesc("recv_counts", desc);
+  }
+
+  {
+    ge::Tensor constTensor;
+    ge::TensorDesc constDesc(ge::Shape(), ge::FORMAT_ND, ge::DT_INT64);
+    constDesc.SetSize(2 * sizeof(int64_t));
+    constTensor.SetTensorDesc(constDesc);
+    int64_t constData[2] = {0, 1};
+    constTensor.SetData((uint8_t*)constData, 2* sizeof(int64_t));
+    auto recv_displacements = ge::op::Constant().set_attr_value(constTensor);
+    op.set_input_recv_displacements(recv_displacements);
+    auto desc = op.GetInputDesc("recv_displacements");
+    desc.SetDataType(ge::DT_INT64);
+    op.UpdateInputDesc("recv_displacements", desc);
+  }
+
+  op.SetAttr("group", "hccl_world_group");
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_SUCCESS);
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+
+  auto recv_data_desc = op.get_output_desc_recv_data();
+  EXPECT_EQ(recv_data_desc.GetDataType(), ge::DT_FLOAT);
+}
