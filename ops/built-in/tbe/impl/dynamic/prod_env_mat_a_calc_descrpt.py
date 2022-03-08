@@ -266,7 +266,7 @@ class ProdEnvMatACalcDescrpt:
             src_tuples1 = [(trans_ub_fp16[128 * i], trans_ub_fp16[128 * i + 16]) for i in range(8)]
             src_list1 = [i for tup in src_tuples1 for i in tup]
             dst_list1 = [src_tail_ub_fp16[16 * i] for i in range(16)]
-            self.tik_instance.vnchwconv(False, False, dst_list1, src_list1, 4, hw % 128, 2)
+            self.tik_instance.vnchwconv(False, False, dst_list1, src_list1, 4, 16, 2)
 
             self.tik_instance.data_move(dst_ub_fp16[dst_offset * 2 + hw // 128 * 256], src_tail_ub_fp16, 0, 4,
                                         hw % 128 // 8, 16 - hw % 128 // 8, hw // 128 * 16)

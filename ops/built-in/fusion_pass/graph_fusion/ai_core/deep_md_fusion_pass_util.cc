@@ -68,7 +68,7 @@ Status DeepMdFusionPassUtil::CheckSupportVectorCore(const std::string& fusedOpTy
     }
   }
 
-  OP_LOGD(fusedOpType.c_str(), "End to IsSupportVectorCore. isSupport: %s", isSupport);
+  OP_LOGD(fusedOpType.c_str(), "End to IsSupportVectorCore. isSupport: %d", isSupport);
   return SUCCESS;
 }
 
