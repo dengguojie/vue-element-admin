@@ -258,6 +258,15 @@ bool GetCompileValue(const nlohmann::json& all_vars, const std::string& name, T1
   return true;
 }
 
+#define OP_TILING_MAKE_SHARED(exec_expr0, exec_expr1) \
+  do {                                                  \
+    try {                                               \
+      exec_expr0;                                       \
+    } catch (...) {                                     \
+      exec_expr1;                                       \
+    }                                                   \
+  } while (0)
+
 /*
  * @brief: transfor the json to vector_int64, with the json string key
  * @param [in] op: ge::Operator
