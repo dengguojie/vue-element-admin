@@ -15,6 +15,7 @@
  */
 
 #include <unordered_map>
+#include <algorithm>
 #include "error_log.h"
 #include "vector_tiling.h"
 #include "op_tiling_util.h"
@@ -22,7 +23,93 @@
 namespace optiling {
 struct BiasAddGradCompileInfo {
   std::shared_ptr<AutoTilingHandler> tiling_handler;
+  bool is_unknown_rank;
 };
+
+static constexpr size_t SHAPE_DIM_NUM_MIN = 2;
+static constexpr size_t SHAPE_DIM_NUM_FRACTAL_NZ1 = 4;
+static constexpr size_t SHAPE_DIM_NUM_FRACTAL_NZ2 = 5;
+// FORMAT_FRACTAL_Z C1HWNiNoC0
+static constexpr size_t SHAPE_DIM_NUM_FRACTAL_Z = 6;
+// FORMAT_FRACTAL_Z_3D DC1HWNiNoC0
+static constexpr size_t SHAPE_DIM_NUM_FRACTAL_Z_3D = 7;
+// FORMAT_NDC1HWC0
+static constexpr size_t SHAPE_DIM_NUM_NDC1HWC0 = 6;
+// FORMAT_NC1HWC0
+static constexpr size_t SHAPE_DIM_NUM_NC1HWC0 = 5;
+
+struct format_dimnum_axis {
+  ge::Format format;
+  size_t dim_num;
+  std::vector<int32_t> reduce_axis;
+};
+
+bool CalcShapeAndAxes(const ge::Format format, const bool data_nchw, std::vector<int64_t>& shape,
+                      std::vector<int32_t>& axes) {
+  size_t dim_num = shape.size();
+  if (dim_num < SHAPE_DIM_NUM_MIN) {
+    OP_LOGW("BiasAddGrad", "dim_num < %ud", SHAPE_DIM_NUM_MIN);
+    return false;
+  }
+
+  static const format_dimnum_axis fda[] = {
+    // C1HWNiNoC0
+    {ge::FORMAT_FRACTAL_Z, SHAPE_DIM_NUM_FRACTAL_Z, {1, 2, 3, 4}},
+    // DC1HWNiNoC0
+    {ge::FORMAT_FRACTAL_Z_3D, SHAPE_DIM_NUM_FRACTAL_Z_3D, {0, 2, 3, 4, 5}},
+    // NC1HWC0
+    {ge::FORMAT_NC1HWC0, SHAPE_DIM_NUM_NC1HWC0, {0, 2, 3}},
+    // NDC1HWC0
+    {ge::FORMAT_NDC1HWC0, SHAPE_DIM_NUM_NDC1HWC0, {0, 1, 3, 4}}
+  };
+
+  for (int i = 0; i < sizeof(fda) / sizeof(fda[0]); i++) {
+    if (format == fda[i].format) {
+      if (dim_num != fda[i].dim_num) {
+        OP_LOGW("BiasAddGrad", "dim_num != %ud", fda[i].dim_num);
+        return false;
+      }
+      axes = fda[i].reduce_axis;
+      return true;
+    }
+  }
+  std::vector<int32_t> c_axes;
+  if (format == ge::FORMAT_FRACTAL_NZ) {
+    if (data_nchw) {
+      if (dim_num == SHAPE_DIM_NUM_FRACTAL_NZ1) {
+        axes = {1, 2};
+      } else if (dim_num == SHAPE_DIM_NUM_FRACTAL_NZ2) {
+        axes = {0, 1, 4};
+      } else {
+        c_axes.push_back(1);
+      }
+    } else {
+      if (dim_num < SHAPE_DIM_NUM_FRACTAL_NZ1) {
+        OP_LOGW("BiasAddGrad", "dim_num < %ud", SHAPE_DIM_NUM_FRACTAL_NZ1);
+        return false;
+      }
+      c_axes.push_back(dim_num - 1);
+      c_axes.push_back(dim_num - 4);
+    }
+  } else {
+    // ND
+    if (data_nchw) {
+      c_axes.push_back(1);
+    } else {
+      c_axes.push_back(dim_num - 1);
+    }
+  }
+  if (c_axes.size() > 0) {
+    std::vector<int32_t>::iterator it;
+    for(int32_t i = 0; i < dim_num; i++) {
+      it = find(c_axes.begin(), c_axes.end(), i);
+      if (it == c_axes.end()) {
+        axes.push_back(i);
+      }
+    }
+  }
+  return true;
+}
 
 bool BiasAddGradTiling(const std::string& op_type, const ge::Operator& op_paras,
                        const BiasAddGradCompileInfo& parsed_info, utils::OpRunInfo& run_info) {
@@ -39,7 +126,6 @@ bool BiasAddGradTiling(const std::string& op_type, const ge::Operator& op_paras,
   ge::Format format = input_desc->GetFormat();
   ge::Format ori_format = input_desc->GetOriginFormat();
   PROFILING_TILING_AFTER_GET_SHAPE_REG();
-  std::unordered_map<char, int> zip_shape;
   std::vector<int64_t> new_shape = shape.GetDims();
 
   OP_LOGI("BiasAddGrad",
@@ -48,7 +134,7 @@ bool BiasAddGradTiling(const std::string& op_type, const ge::Operator& op_paras,
           to_string(format).c_str(), to_string(ori_format).c_str(), shape.ToString().c_str(),
           ori_shape.ToString().c_str());
   if (format == ge::FORMAT_FRACTAL_Z or format == ge::FORMAT_FRACTAL_Z_3D) {
-    uint64_t target_shape = 4;
+    static const uint64_t target_shape = 4;
     if (shape.GetDimNum() == target_shape) {
       std::string str_ori_format = to_string(ori_format);
       if (str_ori_format.size() != ori_shape.GetDimNum()) {
@@ -59,16 +145,26 @@ bool BiasAddGradTiling(const std::string& op_type, const ge::Operator& op_paras,
                 ori_shape.ToString().c_str());
         return false;
       } else {
+        std::unordered_map<char, int> zip_shape;
         for (uint64_t i = 0; i < str_ori_format.size(); ++i) {
           zip_shape[str_ori_format[i]] = ori_shape.GetDim(i);
         }
+        OP_TILING_CHECK((zip_shape.count('H') < 1) || (zip_shape.count('W') < 1),
+                        VECTOR_INNER_ERR_REPORT_TILIING(op_type, "ori_format has no height or width, error!"),
+                        return false);
         int64_t shape_h_dim = zip_shape['H'];
         int64_t shape_w_dim = zip_shape['W'];
+        OP_TILING_CHECK((shape_h_dim <= 0) || (shape_w_dim <= 0),
+                        VECTOR_INNER_ERR_REPORT_TILIING(op_type, "shape height or width error!"),
+                        return false);
         int64_t shape_c1_dim = shape.GetDim(0) / (shape_h_dim * shape_w_dim);
         std::vector<int64_t> tmp_shape = {shape_c1_dim, shape_h_dim, shape_w_dim};
         tmp_shape.insert(tmp_shape.end(), new_shape.begin() + 1, new_shape.end());
-        if (format == ge::FORMAT_FRACTAL_Z_3D) {
+        if ((format == ge::FORMAT_FRACTAL_Z_3D) && (zip_shape.count('D') > 0)) {
           int64_t shape_d_dim = zip_shape['D'];
+          OP_TILING_CHECK((shape_d_dim <= 0),
+                          VECTOR_INNER_ERR_REPORT_TILIING(op_type, "shape d dim error!"),
+                          return false);
           shape_c1_dim = tmp_shape[0] / shape_d_dim;
           tmp_shape.insert(tmp_shape.begin(), {shape_d_dim});
           tmp_shape[1] = shape_c1_dim;
@@ -76,6 +172,26 @@ bool BiasAddGradTiling(const std::string& op_type, const ge::Operator& op_paras,
         new_shape = tmp_shape;
       }
     }
+  }
+  OP_LOGI("BiasAddGrad", "is_unknown_rank : [%d]", parsed_info.is_unknown_rank);
+  if (parsed_info.is_unknown_rank) {
+    std::vector<int32_t> reduce_axis;
+    OP_TILING_CHECK(!CalcShapeAndAxes(format, (ori_format == ge::FORMAT_NCHW), new_shape, reduce_axis), 
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "is_unknown_rank CalcShapeAndAxes failed."),
+                    return false);
+    PROFILING_TILING_AFTER_GET_COMPILE_INFO_REG();
+    std::vector<std::vector<int64_t>> shapes = {new_shape};
+    ge::DataType type = input_desc->GetDataType();
+    std::vector<std::vector<int32_t>> axes{reduce_axis};
+    OpInfo eletwise_info(shapes, type, axes);
+    PROFILING_TILING_AFTER_CALCU_TILING_REG();
+
+    OP_TILING_CHECK(parsed_info.tiling_handler == nullptr,
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "parsed_info.tiling_handler nullptr, error!"),
+                    return false);
+    bool ret = parsed_info.tiling_handler->DoTiling(op_paras, run_info, eletwise_info);
+    PROFILING_TILING_END();
+    return ret;
   }
   PROFILING_TILING_AFTER_GET_COMPILE_INFO_REG();
   std::vector<std::vector<int64_t>> shapes = {new_shape};
@@ -96,6 +212,9 @@ static bool ParseJsonCompileInfo(const std::string& op_type, const nlohmann::jso
   parsed_info.tiling_handler = CreateAutoTilingHandler(op_type, PATTERN_REDUCE, compile_info);
   OP_TILING_CHECK(parsed_info.tiling_handler == nullptr,
                   VECTOR_INNER_ERR_REPORT_TILIING(op_type, "CreateAutoTilingHandler return nullptr"), return false);
+  // get parsed_info.is_unknown_rank value
+  parsed_info.is_unknown_rank = false;
+  GetCompileValue(compile_info, "is_unknown_rank", parsed_info.is_unknown_rank, false);
   return true;
 }
 

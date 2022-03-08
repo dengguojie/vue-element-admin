@@ -1,0 +1,147 @@
+[
+  {
+    "op": "BiasAddGrad",
+    "calc_expect_func_file" : "test_biasaddgrad_golden.py:calc_expect_func_other",
+    "input_desc": [
+      {
+        "shape": [-2],
+        "typical_shape": [1, 16, 16, 16],
+        "format": "NHWC",
+        "name": "x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [16],
+        "format": "NHWC",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "data_format",
+        "type": "string",
+        "value": "NHWC"
+      }
+    ],
+    "case_name": "test_BiasAddGrad_unknownrank_000"
+  },
+  {
+    "op": "BiasAddGrad",
+    "calc_expect_func_file" : "test_biasaddgrad_golden.py:calc_expect_func_nz",
+    "input_desc": [
+      {
+        "shape": [-2],
+        "typical_shape": [16, 16, 16, 16],
+        "format": "FRACTAL_NZ",
+        "name": "x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [16,16],
+        "format": "NHWC",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "data_format",
+        "type": "string",
+        "value": "NHWC"
+      }
+    ],
+    "case_name": "test_BiasAddGrad_unknownrank_001"
+  },
+  {
+    "op": "BiasAddGrad",
+    "calc_expect_func_file" : "test_biasaddgrad_golden.py:calc_expect_func_nz",
+    "input_desc": [
+      {
+        "shape": [-2],
+        "typical_shape": [16, 16, 16, 16, 16],
+        "format": "FRACTAL_NZ",
+        "name": "x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [16,16],
+        "format": "NHWC",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "data_format",
+        "type": "string",
+        "value": "NHWC"
+      }
+    ],
+    "case_name": "test_BiasAddGrad_unknownrank_002"
+  },
+  {
+    "op": "BiasAddGrad",
+    "calc_expect_func_file" : "test_biasaddgrad_golden.py:calc_expect_func_fz3d",
+    "input_desc": [
+      {
+        "shape": [-2],
+        "typical_shape": [1, 16, 16, 16, 16, 16, 16],
+        "format": "FRACTAL_Z_3D",
+        "name": "x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [16,16],
+        "format": "NHWC",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "data_format",
+        "type": "string",
+        "value": "NHWC"
+      }
+    ],
+    "case_name": "test_BiasAddGrad_unknownrank_003"
+  },
+  {
+    "op": "BiasAddGrad",
+    "calc_expect_func_file" : "test_biasaddgrad_golden.py:calc_expect_func_ndc1hwc0",
+    "input_desc": [
+      {
+        "shape": [-2],
+        "typical_shape": [14, 16, 16, 16, 16, 16],
+        "format": "NDC1HWC0",
+        "name": "x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [16,16],
+        "format": "NHWC",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "data_format",
+        "type": "string",
+        "value": "NHWC"
+      }
+    ],
+    "case_name": "test_BiasAddGrad_unknownrank_004"
+  }
+]

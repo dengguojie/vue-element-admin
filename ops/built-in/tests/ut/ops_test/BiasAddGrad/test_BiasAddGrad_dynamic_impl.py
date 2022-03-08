@@ -44,12 +44,30 @@ case5 = {"params": [{"shape": (-1, 3, 4, 5), "dtype": "float16", "format": "FRAC
          "expect": "success",
          "support_expect": True}
 
+case6 = {"params": [{"shape": (-2,), "dtype": "float16", "format": "FRACTAL_Z_3D", "ori_shape": (2,3,4,6),"ori_format": "NDHWC","range":[(1, 100),(3, 3),(4, 4),(1, 100)]},
+                    {"shape": (-1, 3, 4, -1), "dtype": "float16", "format": "FRACTAL_Z_3D", "ori_shape":(2,3,4,6),"ori_format": "NDHWC","range":[(1, 100),(3, 3),(4, 4),(1, 100)]},
+                    "NHWC"
+                    ],
+         "case_name": "BiasAddGrad_6",
+         "expect": "success",
+         "support_expect": True}
+
+case7 = {"params": [{"shape": (-2,), "dtype": "float16", "format": "FRACTAL_Z", "ori_shape": (2,3,4,5),"ori_format": "NHWC","range":[(1, 100),(3, 3),(4, 4), (5, 5)]},
+                    {"shape": (-1, 3, 4, 5), "dtype": "float16", "format": "FRACTAL_Z", "ori_shape":(2,3,4,5),"ori_format": "NHWC","range":[(1, 100),(3, 3),(4, 4),(5, 5)]},
+                    "NHWC"
+                    ],
+         "case_name": "BiasAddGrad_5",
+         "expect": "success",
+         "support_expect": True}
+
 
 ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case1)
 ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case2)
 ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case3)
 ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case4)
 ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case5)
+ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case6)
+ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case7)
 
 if __name__ == '__main__':
     # ut_case.run(["Ascend310"])

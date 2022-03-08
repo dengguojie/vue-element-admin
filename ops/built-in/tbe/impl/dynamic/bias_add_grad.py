@@ -17,15 +17,16 @@ bias_add_grad
 """
 # 'pylint: disable=locally-disabled,invalid-name
 # 'pylint: disable=unnecessary-comprehension,global-statement
+from impl.util import util_common
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tvm
+from impl.util.platform_adapter import tbe_context
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import shape_util
-from impl.util import util_common
 from impl.util.platform_adapter import register_operator
 
 
@@ -160,12 +161,8 @@ def bias_add_grad(x, y, data_format, kernel_name="bias_add_grad"):
     """
     x = util_common.update_shape_base_other_format_dynamic(x)
     y = util_common.update_shape_base_other_format_dynamic(y)
-    shape = x.get("shape")
-    if len(shape) < 2:
-        error_detail = "cce_bias_add_grad only support shape larger than 2D"
-        error_manager_vector.raise_err_input_shape_invalid(kernel_name, "x", error_detail)
-
     dtype = x.get("dtype").lower()
+    shape = x.get("shape")
     data_format = data_format.upper()
     check_list = ("float16", "float32")
     para_check.check_dtype(dtype, check_list, param_name="x")
@@ -173,9 +170,16 @@ def bias_add_grad(x, y, data_format, kernel_name="bias_add_grad"):
     input_data_format = x.get("format").upper()
     para_check.check_format(data_format, data_format_tuple, param_name="x")
     x["rel_pos_to_reduce"] = "before"
+    is_unknown_rank = util_common.is_unknown_rank_input(x)
+    if is_unknown_rank:
+        input_axis = {"shape": [-1], "rel_pos_to_reduce": "axis"}
+    else:
+        if len(shape) < 2:
+            error_detail = "cce_bias_add_grad shape should be larger than 2D"
+            error_manager_vector.raise_err_input_shape_invalid(kernel_name, "x", error_detail)
 
-    g_shape_list = _infer_axes(input_data_format, data_format, shape)
-    input_axis = {"shape": [len(g_shape_list), ], "value": g_shape_list, "rel_pos_to_reduce": "axis"}
+        g_shape_list = _infer_axes(input_data_format, data_format, shape)
+        input_axis = {"shape": [len(g_shape_list), ], "value": g_shape_list, "rel_pos_to_reduce": "axis"}
     ins = classify([x, input_axis], OpPatternMode.REDUCE, {"keepdims": False})
     schedules, tensors = [], []
     for (_x, axes) in ins:
@@ -191,4 +195,5 @@ def bias_add_grad(x, y, data_format, kernel_name="bias_add_grad"):
         schedules.append(sch)
 
     config = {"print_ir": False, "name": kernel_name, "tensor_list": tensors}
+    tbe_context.get_context().add_compile_info("is_unknown_rank", is_unknown_rank)
     tbe.build(schedules, config)

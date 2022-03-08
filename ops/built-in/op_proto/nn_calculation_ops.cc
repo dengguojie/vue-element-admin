@@ -2030,67 +2030,62 @@ VERIFY_FUNC_REG(DepthwiseConv2DBackpropFilter, DepthwiseConv2DBackpropFilterVeri
 
 // --------------------------------BiasAddGrad---------------------------------
 IMPLEMT_COMMON_INFERFUNC(BiasAddGradInferShape) {
-  AscendString op_name;
-  CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
-
   auto op_info = OpDescUtils::GetOpDescFromOperator(op);
-  auto input_desc = op_info->MutableInputDesc("x");
-  auto output_desc = op_info->MutableOutputDesc("y");
-  vector<int64_t> input_shape = input_desc->MutableShape().GetDims();
+  static const int64_t x_input_idx = 0;
+  static const int64_t y_output_idx = 0;
+  auto input_desc = op_info->MutableInputDesc(x_input_idx);
+  auto output_desc = op_info->MutableOutputDesc(y_output_idx);
+  const ge::GeShape& input_shape = input_desc->MutableShape();
+  ge::GeShape& output_shape = output_desc->MutableShape();
   DataType input_dtype = input_desc->GetDataType();
-  size_t dim_num = input_shape.size();
+  output_desc->SetDataType(input_dtype);
+  output_shape.SetDimNum(1);
 
-  if (IsUnknownRankShape(input_shape)) {
-    std::vector<int64_t> dim_vec = {-1};
-    output_desc->SetShape(GeShape(dim_vec));
-    output_desc->SetDataType(input_dtype);
-    std::vector<std::pair<int64_t, int64_t>> output_range;
-    output_range.push_back(std::pair<int64_t, int64_t>{-1, 1});
+  if (input_shape.IsUnknownDimNum()) {
+    output_shape.SetDim(0, -1);
+    std::vector<std::pair<int64_t, int64_t>> output_range{{0, -1}};
     output_desc->SetShapeRange(output_range);
     return GRAPH_SUCCESS;
   }
   std::string data_format;
   if (ge::GRAPH_SUCCESS != op.GetAttr("data_format", data_format)) {
     std::string err_msg = GetInputInvalidErrMsg("data_format");
-    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(string(op_name.GetString()), err_msg);
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
 
-  std::vector<int64_t> dim_vec;
+  size_t dim_num = input_shape.GetDimNum();
   if (data_format == "NHWC") {
     if (dim_num < DIM_SIZE2 || dim_num > DIM_SIZE8) {
       string err_msg1 = ConcatString("The bias add grad op dimension(", dim_num,
                                      ") is not supported when format is NHWC!");
       std::string err_msg = OtherErrMsg(err_msg1);
-      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(string(op_name.GetString()), err_msg);
+      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
       return GRAPH_FAILED;
     }
-    dim_vec.push_back(input_shape[dim_num - 1]);
+    output_shape.SetDim(0, input_shape.GetDim(dim_num - 1));
   } else if (data_format == "NCHW") {
     if (dim_num < DIM_SIZE2) {
       string err_msg1 = ConcatString("The bias add grad op dimension(", dim_num,
                                       ") is not supported when format is NCHW!");
       std::string err_msg = OtherErrMsg(err_msg1);
-      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(string(op_name.GetString()), err_msg);
+      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
       return GRAPH_FAILED;
     }
-    dim_vec.push_back(input_shape[1]);
+    output_shape.SetDim(0, input_shape.GetDim(1));
   } else {
     string expected_format_list = ConcatString("NHWC, NCHW");
     std::string err_msg = GetInputFormatNotSupportErrMsg("data_format", expected_format_list, data_format.c_str());
-    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(string(op_name.GetString()), err_msg);
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
 
-  output_desc->SetShape(GeShape(dim_vec));
-  output_desc->SetDataType(input_dtype);
-
-  if (IsUnknown(input_shape)) {
+  if (input_shape.IsUnknownShape()) {
     // update range
     std::vector<std::pair<int64_t, int64_t>> input_range;
     std::vector<std::pair<int64_t, int64_t>> output_range;
     input_desc->GetShapeRange(input_range);
-    MakeUpShapeRange(input_shape, input_range);
+    MakeUpShapeRange(input_shape.GetDims(), input_range);
     if (data_format == "NHWC") {
       output_range.push_back(input_range[dim_num - 1]);
     } else if (data_format == "NCHW") {
@@ -4238,6 +4233,10 @@ static void GetConv2dOutShapeRange(const std::string& pad_str,
                                    std::vector<std::pair<int64_t, int64_t>>& out_range) {
   int32_t low = fm_range[idx].first;
   int32_t high = fm_range[idx].second;
+  if (stride <= 0) {
+    OP_LOGE("GetConv2dOutShapeRange", "diviser stride must > 0");
+    return;
+  }
   if (pad_str == "SAME") {
     out_range[idx].first = (low + stride -1) / stride;
     out_range[idx].second = (high + stride -1) / stride;
