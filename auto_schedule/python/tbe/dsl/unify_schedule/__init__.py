@@ -17,20 +17,6 @@
 """
 unify schedule
 """
-from . import vector
-from . import softmax_schedule
-from . import softmax_tilingcase
-from . import softmax_cross_entropy_with_logits_schedule
-from . import softmax_cross_entropy_with_logits_tilingcase
-from . import layer_norm_x_backprop_tilingcase
-from . import layer_norm_x_backprop_schedule
-from . import layer_norm_x_backprop_v2_tilingcase
-from . import layer_norm_x_backprop_v2_schedule
-from . import layer_norm_beta_gamma_backprop_schedule
-from . import layer_norm_beta_gamma_backprop_tilingcase
-from . import layer_norm_beta_gamma_backprop_v2_schedule
-from . import layer_norm_beta_gamma_backprop_v2_tilingcase
-
 from .constants import Pattern
 from .constants import INSN_MAPPING
 from .constants import SUPPORT_SCALAR_INSNS
@@ -45,6 +31,21 @@ from .constants import NEED_SPACE_WITH_DIFF_TYPE
 from .constants import TERNARY_INSNS
 from .constants import NEED_EXTENT_NODE_INSNS
 from .constants import VCMP_INSNS
+
+from . import vector
+from . import softmax_schedule
+from . import softmax_tilingcase
+from . import softmax_cross_entropy_with_logits_schedule
+from . import softmax_cross_entropy_with_logits_tilingcase
+from . import layer_norm_x_backprop_tilingcase
+from . import layer_norm_x_backprop_schedule
+from . import layer_norm_x_backprop_v2_tilingcase
+from . import layer_norm_x_backprop_v2_schedule
+from . import layer_norm_beta_gamma_backprop_schedule
+from . import layer_norm_beta_gamma_backprop_tilingcase
+from . import layer_norm_beta_gamma_backprop_v2_schedule
+from . import layer_norm_beta_gamma_backprop_v2_tilingcase
+
 from .unify_auto_schedule import build
 from .unify_auto_schedule import schedule_cce
 

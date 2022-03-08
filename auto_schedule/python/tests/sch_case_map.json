@@ -335,6 +335,22 @@
     "auto_schedule/python/tbe/dsl/base/classifier/concat_classifier.py": [
         "concat"
     ],
+    "auto_schedule/python/tbe/dsl/base/classifier/tuple_reduce_classifier.py": [
+        "tuple_reduce",
+        "tuple_reduce_classify"
+    ],
+    "auto_schedule/python/tbe/dsl/unify_schedule/vector/tuple_reduce/tuple_reduce_schedule.py": [
+        "tuple_reduce"
+    ],
+    "auto_schedule/python/tbe/dsl/unify_schedule/vector/tuple_reduce/tuple_reduce_tilingcase.py": [
+        "tuple_reduce"
+    ],
+    "auto_schedule/python/tbe/dsl/unify_schedule/vector/tuple_reduce/tuple_reduce_tilingcase_info.py": [
+        "tuple_reduce"
+    ],
+    "auto_schedule/python/tbe/dsl/unify_schedule/vector/tuple_reduce/tuple_reduce_schedule_helper.py": [
+        "tuple_reduce"
+    ],
     "auto_schedule/python/tbe/dsl/unify_schedule/vector/split/split_tilingcase.py":[
         "split"
     ],

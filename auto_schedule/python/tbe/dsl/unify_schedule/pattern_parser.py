@@ -21,6 +21,7 @@ corresponding schedule template for user's compute
 from enum import Enum
 from enum import auto
 from typing import Tuple
+from typing import Set
 
 from tbe import tvm
 from tbe.common.register import get_operator
@@ -206,6 +207,7 @@ def _parse_pattern(outs):
              (lambda: _is_slice(compute_type_size_map), Pattern.SLICE),
              (lambda: _is_transpose(compute_type_size_map), Pattern.TRANSPOSE),
              (lambda: _is_transdata(compute_type_size_map), Pattern.TRANSDATA),
+             (lambda: _is_tuple_reduce(outs, compute_type_tensor_map), Pattern.TUPLE_REDUCE),
              (lambda: _is_concat(compute_type_size_map), Pattern.CONCAT),
              (lambda: _is_split(compute_type_size_map), Pattern.SPLIT)]
 
@@ -372,6 +374,48 @@ def _is_split(compute_type_size_map: dict):
     split_size = compute_type_size_map.get(ComputeType.SPLIT, 0)
     total = compute_type_size_map.get(ComputeType.ANY, 0)
     return ph_size + split_size == total
+
+
+def _is_tuple_reduce(outs, compute_type_tensor_map):
+    if ComputeType.REDUCE not in compute_type_tensor_map:
+        return False
+    reduce_tensors = compute_type_tensor_map.get(ComputeType.REDUCE)
+    # check reduce tensors' shape
+    reduce_tensor_shape = [tensor.shape for tensor in reduce_tensors]
+    reduce_tensor_shape = set([tuple(map(str, _shape)) for _shape in reduce_tensor_shape])
+    if len(reduce_tensor_shape) > 1:
+        return False
+    # check reduce axis
+    reduce_axis = [axis.var for axis in reduce_tensors[0].op.body[0].axis]
+    for tensor in reduce_tensors:
+        axes = [axis.var for axis in tensor.op.body[0].axis]
+        if not reduce_axis == axes:
+            return False
+    # check intermediate output, res tensor should not be any tensor's input tensors
+    for tensor in compute_type_tensor_map[ComputeType.ANY]:
+        if set(tensor.op.input_tensors).intersection(set(outs)):
+            return False
+    # check reduce node cannot be followed by any broadcast node
+    # check broadcast node cannot be followed by any broadcast node
+    if ComputeType.BROADCAST not in compute_type_tensor_map:
+        return True
+    broadcast_tensors = compute_type_tensor_map[ComputeType.BROADCAST]
+    reduce_broadcast_tensor_set: Set = set(reduce_tensors).union(set(broadcast_tensors))
+    for tensor in broadcast_tensors:
+        if reduce_broadcast_tensor_set.intersection(_poset(tensor)):
+            return False
+    
+    return True
+
+
+def _poset(_tensor):
+    tensors = set(_tensor.op.input_tensors)
+    queue = set(_tensor.op.input_tensors)
+    while queue:
+        tensor = queue.pop()
+        tensors.update(tensor.op.input_tensors)
+        queue.update(tensor.op.input_tensors)
+    return tensors
 
 
 def _dfs_compute(outs) -> Tuple[dict, dict]:

@@ -85,6 +85,7 @@ auto_schedule:
       - auto_schedule/python/tbe/dsl/base/classifier/norm_classifier.py
       - auto_schedule/python/tbe/dsl/base/classifier/pure_elewise_classifier.py
       - auto_schedule/python/tbe/dsl/base/classifier/reduce_classifier.py
+      - auto_schedule/python/tbe/dsl/base/classifier/tuple_reduce_classifier.py
       - auto_schedule/python/tbe/dsl/base/classifier/reduce_helper.py
       - auto_schedule/python/tbe/dsl/base/classifier/slice_classifier.py
       - auto_schedule/python/tbe/dsl/base/classifier/unknown_reduce_classifier.py
@@ -148,6 +149,11 @@ auto_schedule:
       - auto_schedule/python/tbe/dsl/unify_schedule/vector/slice/__init__.py
       - auto_schedule/python/tbe/dsl/unify_schedule/vector/slice/slice_schedule.py
       - auto_schedule/python/tbe/dsl/unify_schedule/vector/slice/slice_tilingcase.py
+      - auto_schedule/python/tbe/dsl/unify_schedule/vector/tuple_reduce/__init__.py
+      - auto_schedule/python/tbe/dsl/unify_schedule/vector/tuple_reduce/tuple_reduce_schedule.py
+      - auto_schedule/python/tbe/dsl/unify_schedule/vector/tuple_reduce/tuple_reduce_schedule_helper.py
+      - auto_schedule/python/tbe/dsl/unify_schedule/vector/tuple_reduce/tuple_reduce_tilingcase.py
+      - auto_schedule/python/tbe/dsl/unify_schedule/vector/tuple_reduce/tuple_reduce_tilingcase_info.py
       - auto_schedule/python/utils/cce.py
       - auto_schedule/python/utils/error_manager/error_manager_util.py
       - auto_schedule/python/utils/error_manager/error_manager_vector.py
@@ -167,6 +173,8 @@ auto_schedule:
       - ops/built-in/op_tiling/lock.h
       - ops/built-in/op_tiling/norm.cc
       - ops/built-in/op_tiling/norm.h
+      - ops/built-in/op_tiling/tuple_reduce.cc
+      - ops/built-in/op_tiling/tuple_reduce.h
       - ops/built-in/op_tiling/op_tiling.h
       - ops/built-in/op_tiling/reduce_tiling_v3.cc
       - ops/built-in/op_tiling/reduce_tiling_v3.h

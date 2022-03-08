@@ -15,16 +15,9 @@
 # limitations under the License.
 # ============================================================================
 """
-vector
+tuple reduce
 """
-from . import broadcast
-from . import elewise
-from . import norm
-from . import reduce
-from . import gather
-from . import slice
-from . import transpose
-from . import concat
-from . import transdata
-from . import split
-from . import tuple_reduce
+from . import tuple_reduce_schedule
+from . import tuple_reduce_tilingcase
+from . import tuple_reduce_schedule_helper
+from . import tuple_reduce_tilingcase_info

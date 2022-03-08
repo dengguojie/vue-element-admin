@@ -33,6 +33,7 @@ from tbe.dsl.base.classifier import classify_transpose
 from tbe.dsl.base.classifier import classify_concat
 from tbe.dsl.base.classifier import classify_split
 from tbe.dsl.base.classifier import classify_transdata
+from tbe.dsl.base.classifier import classify_tuple_reduce
 from .expr_compare import is_true
 
 
@@ -48,6 +49,7 @@ TRANSPOSE = "transpose"
 CONCAT = "concat"
 TRANSDATA = "transdata"
 SPLIT = "split"
+TUPLE_REDUCE = "tuple_reduce"
 
 
 CLASSIFY_SAME_PATTERN_MAP = {
@@ -95,5 +97,7 @@ def classify(ins: list, mode: str, extra_params: Optional[Dict[str, Any]] = None
         return classify_split(ins, extra_params)
     if mode == TRANSDATA:
         return classify_transdata(ins)
+    if mode == TUPLE_REDUCE:
+        return classify_tuple_reduce(ins, extra_params)
 
     return [ins]

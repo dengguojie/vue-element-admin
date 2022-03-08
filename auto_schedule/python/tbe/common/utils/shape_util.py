@@ -800,6 +800,19 @@ def _split_variable_shape(inputs: list):
     return shape_variable(), split_value_variable()
 
 
+def _tuple_reduce_variable_shape(inputs: list):
+    """
+    variable shape for tuple_reduce ops
+    :param inputs: all inputs
+    :return:
+    """
+    shapes = [tensor.get("shape") for tensor in inputs]
+    shapes_transpose = list(map(list, zip(*shapes)))
+    tuple_reduce_vars = [operation.var_inner("_dim_{}".format(j), (1, None))
+                         if -1 in col else None for j, col in enumerate(shapes_transpose)]
+    return [[tuple_reduce_vars[j] if v == -1 else v for j, v in enumerate(_shape)] for _shape in shapes]
+
+
 def variable_shape(inputs: list, op_mode="elewise"):
     """
     :param inputs: all inputs
@@ -820,6 +833,9 @@ def variable_shape(inputs: list, op_mode="elewise"):
 
     if op_mode == "reduce":
         return _reduce_variable_shape(inputs)
+		
+    if op_mode == "tuple_reduce":
+        return _tuple_reduce_variable_shape(inputs)
 
     if op_mode == "norm":
         return _norm_variable_shape(inputs)

@@ -103,6 +103,7 @@ set(_optiling_files
   reverse.cc
   reduce_tiling_v3.cc
   norm.cc
+  tuple_reduce.cc
   resize_common.cc
   resize_nearest_neighbor_v2.cc
   resize_nearest_neighbor_v2_grad.cc

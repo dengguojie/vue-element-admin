@@ -53,6 +53,7 @@ class Pattern:
     GATHER = "Gather"
     SLICE = "Slice"
     TRANSDATA = "Transdata"
+    TUPLE_REDUCE = "TupleReduce"
 
 
 class ElewisePattern:
@@ -163,6 +164,13 @@ class SplitPattern:
     S_0 = "S_0"
 
 
+class TupleReducePattern:
+    """
+    Tuple Reduce sub pattern.
+    Each sub-pattern has a corresponding schedule, for function or performance.
+    """
+    # generic
+    TR_0 = "TR_0"
 class CompileInfo:
     """
     Built-in Compilation Info Keys
