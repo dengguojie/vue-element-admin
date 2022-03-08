@@ -504,13 +504,11 @@ def _do_operation(ir_builder, place_holders, plantform_paras, loops_remains, con
                                         offset=offset_src*repeate_vmuls),
                 reg[0], repeat_left, 1, 1, 8, 8))
 
-        remains_divs = tbe_platform.ELEMENTS_VECTOR_OP_FP16 if place_holders[0].dtype == 'float16' \
-            else 64
+        remains_divs = tbe_platform.ELEMENTS_VECTOR_OP_FP16 if place_holders[0].dtype == 'float16' else 64
         loops_remains[1], loops_remains[3] = remain_shapes[0][0] // remains_divs, \
                                              remain_shapes[0][0] % remains_divs
 
-        loops = ((loops_remains[1]) // 2) + 1 if place_holders[0].dtype == 'float32' \
-            else loops_remains[1]
+        loops = ((loops_remains[1]) // 2) + 1 if place_holders[0].dtype == 'float32' else loops_remains[1]
         with ir_builder.for_range(0, loops, name='index2') as index2:
             ir_builder.emit(
                 tvm.call_extern(
@@ -652,18 +650,18 @@ def _get_target_core_num(data_input, data_mask):
             mask_num_each_core = int(mask_shape[0])
         else:
             mask_num_each_core = num_div_by_128
-        return target_core_num, mask_num_each_core, core_num_one_more, num_remain_by_128, is_not_align
+        return [target_core_num, mask_num_each_core, core_num_one_more, num_remain_by_128, is_not_align]
     is_not_align = False
 
     if int(num_div_by_128) <= int(target_core_num):
         target_core_num = num_div_by_128 if num_div_by_128 != 0 else 1
         mask_num_each_core = 1
-        return target_core_num, mask_num_each_core, core_num_one_more, num_remain_by_128, is_not_align
+        return [target_core_num, mask_num_each_core, core_num_one_more, num_remain_by_128, is_not_align]
 
     mask_num_each_core = num_div_by_128 // target_core_num
     core_num_one_more = num_div_by_128 % target_core_num
 
-    return target_core_num, mask_num_each_core, core_num_one_more, num_remain_by_128, is_not_align
+    return [target_core_num, mask_num_each_core, core_num_one_more, num_remain_by_128, is_not_align]
 
 
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,

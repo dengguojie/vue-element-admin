@@ -131,10 +131,12 @@ class Argmin():
     def init_gm_tensor(self):
         """Init gm tensor
         """
-        self.tiling_gm = self.tik_instance.Tensor("int32", (Constant.TILING_ARG_NUM,), name="tiling_gm", scope=tik.scope_gm)
+        self.tiling_gm = self.tik_instance.Tensor("int32", (Constant.TILING_ARG_NUM,),
+                                                  name="tiling_gm", scope=tik.scope_gm)
         self.data_gm = self.tik_instance.Tensor(self.dtype_x, (Constant.MAX_INT32,), name="data_gm", scope=tik.scope_gm)
         self.result_gm = self.tik_instance.Tensor("int32", (Constant.MAX_INT32,), name="result_gm", scope=tik.scope_gm)
-        self.result_gm_2 = self.tik_instance.Tensor(self.dtype_x, (Constant.MAX_INT32,), name="result_gm_2", scope=tik.scope_gm)
+        self.result_gm_2 = self.tik_instance.Tensor(self.dtype_x, (Constant.MAX_INT32,),
+                                                    name="result_gm_2", scope=tik.scope_gm)
 
     def do_not_last(self, segment, gm_in_offset, gm_out_offset):
         """process for a segment when arg not last dim
@@ -151,7 +153,8 @@ class Argmin():
 
         repeat = _get_ceil_int(segment, self.data_each_vector)
         with self.tik_instance.for_range(1, self.axis_size, thread_num=2) as axis_i:
-            ub_b = self.tik_instance.Tensor(self.dtype_x, (Constant.MAX_SEGMENT_LEN,), name="ub_b", scope=tik.scope_ubuf)
+            ub_b = self.tik_instance.Tensor(self.dtype_x, (Constant.MAX_SEGMENT_LEN,),
+                                            name="ub_b", scope=tik.scope_ubuf)
             ub_mask = self.tik_instance.Tensor("uint64", (Constant.MAX_SEGMENT_LEN // Constant.OUT_MASK,),
                                                name="ub_mask",
                                                scope=tik.scope_ubuf)
@@ -201,7 +204,8 @@ class Argmin():
         self.tik_instance.vector_dup(Constant.OUT_MASK, ub_c, 0, int64_num, 1, 8)
 
         with self.tik_instance.for_range(1, self.axis_size, thread_num=2) as axis_i:
-            ub_b = self.tik_instance.Tensor(self.dtype_x, (Constant.MAX_SEGMENT_LEN,), name="ub_b", scope=tik.scope_ubuf)
+            ub_b = self.tik_instance.Tensor(self.dtype_x, (Constant.MAX_SEGMENT_LEN,),
+                                            name="ub_b", scope=tik.scope_ubuf)
             ub_mask = self.tik_instance.Tensor("uint64", (Constant.MAX_SEGMENT_LEN // Constant.OUT_MASK,),
                                                name="ub_mask",
                                                scope=tik.scope_ubuf)
@@ -261,7 +265,8 @@ class Argmin():
         dst_stride = dst_stride // self.data_each_block
 
         def _run_one_sigment(axis_idx, axis_len):
-            ub_b = self.tik_instance.Tensor(self.dtype_x, (Constant.MAX_SEGMENT_LEN,), name="ub_b", scope=tik.scope_ubuf)
+            ub_b = self.tik_instance.Tensor(self.dtype_x, (Constant.MAX_SEGMENT_LEN,),
+                                            name="ub_b", scope=tik.scope_ubuf)
             ub_mask = self.tik_instance.Tensor("uint64", (Constant.MAX_SEGMENT_LEN // Constant.OUT_MASK,),
                                                name="ub_mask",
                                                scope=tik.scope_ubuf)
@@ -315,11 +320,13 @@ class Argmin():
                 pro_len = _get_ceil_int(segment_tail_data, 2)
                 pro_len = _get_ceil_int(pro_len, self.data_each_block) * self.data_each_block
                 offset = segment_tail_data - pro_len
-                gm_in_offset = first_idx * self.axis_size * self.last_dim_size + segment_loop * Constant.MAX_SEGMENT_LEN
+                gm_in_offset = first_idx * self.axis_size * self.last_dim_size + \
+                               segment_loop * Constant.MAX_SEGMENT_LEN
                 gm_out_offset = first_idx * self.last_dim_size + segment_loop * Constant.MAX_SEGMENT_LEN
                 with self.tik_instance.new_stmt_scope():
                     not_last_axis_fuc(pro_len, gm_in_offset, gm_out_offset)
-                gm_in_offset = first_idx * self.axis_size * self.last_dim_size + segment_loop * Constant.MAX_SEGMENT_LEN + offset
+                gm_in_offset = first_idx * self.axis_size * self.last_dim_size + segment_loop * \
+                               Constant.MAX_SEGMENT_LEN + offset
                 gm_out_offset = first_idx * self.last_dim_size + segment_loop * Constant.MAX_SEGMENT_LEN + offset
                 with self.tik_instance.new_stmt_scope():
                     not_last_axis_fuc(pro_len, gm_in_offset, gm_out_offset)
@@ -327,10 +334,12 @@ class Argmin():
                 with self.tik_instance.if_scope(segment_tail_data % self.data_each_block == 0):
                     gm_in_offset = first_idx * self.axis_size * self.last_dim_size + segment_loop * \
                                    Constant.MAX_SEGMENT_LEN + offset_data
-                    gm_out_offset = first_idx * self.last_dim_size + segment_loop * Constant.MAX_SEGMENT_LEN + offset_data
+                    gm_out_offset = first_idx * self.last_dim_size + segment_loop * Constant.MAX_SEGMENT_LEN + \
+                                    offset_data
                     not_last_axis_fuc(segment_tail_data, gm_in_offset, gm_out_offset)
                 with self.tik_instance.else_scope():
-                    gm_in_offset = first_idx * self.axis_size * self.last_dim_size + segment_loop * Constant.MAX_SEGMENT_LEN
+                    gm_in_offset = first_idx * self.axis_size * self.last_dim_size + \
+                                   segment_loop * Constant.MAX_SEGMENT_LEN
                     gm_out_offset = first_idx * self.last_dim_size + segment_loop * Constant.MAX_SEGMENT_LEN
                     not_last_axis_fuc(segment_tail_data, gm_in_offset, gm_out_offset)
 
@@ -565,7 +574,8 @@ class Argmin():
             ub_result = self.tik_instance.Tensor(self.dtype_x, (Constant.MAX_SEGMENT_LEN,),
                                                  name="ub_result",
                                                  scope=tik.scope_ubuf)
-            ub_data = self.tik_instance.Tensor(self.dtype_x, (Constant.MAX_SEGMENT_LEN,), name="ub_data", scope=tik.scope_ubuf)
+            ub_data = self.tik_instance.Tensor(self.dtype_x, (Constant.MAX_SEGMENT_LEN,),
+                                               name="ub_data", scope=tik.scope_ubuf)
             # move in
             gm_in_offset = first_idx * self.axis_size
             self.tik_instance.data_move(ub_data, self.data_gm[gm_in_offset], 0, 1,
@@ -764,7 +774,8 @@ class Argmin():
                 ub_second_result = self.tik_instance.Tensor(self.dtype_x, (self.data_each_vector,),
                                                             name="ub_second_result",
                                                             scope=tik.scope_ubuf)
-                self.tik_instance.vcmin([Constant.MASK_0_1, Constant.MASK_0_1], ub_second_result, ub_result, _repeat_times, 1, 1, 8)
+                self.tik_instance.vcmin([Constant.MASK_0_1, Constant.MASK_0_1], ub_second_result, ub_result,
+                                        _repeat_times, 1, 1, 8)
 
                 ub_third_result = self.tik_instance.Tensor(self.dtype_x, (self.data_each_vector,),
                                                            name="ub_third_result",

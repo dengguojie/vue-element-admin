@@ -347,7 +347,6 @@ from .inplace_add_d import inplace_add_d
 from .inplace_sub_d import inplace_sub_d
 from .apply_proximal_adagrad_d import apply_proximal_adagrad_d
 from .batch_to_space_d import batch_to_space_d
-from .depth_to_space import depth_to_space
 from .lrn_grad import lrn_grad
 from .basic_lstm_cell import basic_lstm_cell
 from .basic_lstm_cell_c_state_grad_v2 import basic_lstm_cell_c_state_grad_v2

@@ -72,22 +72,22 @@ def _shape_check(shape_x1, shape_x2, shape_tgt):
     para_check.check_tensor_shape_size(shape_x2)
     para_check.check_tensor_shape_size(shape_tgt)
 
-    return x_shape, tgt_shape, shape_x1, shape_x2, shape_tgt
+    return [x_shape, tgt_shape, shape_x1, shape_x2, shape_tgt]
 
 
 def _dtype_check(input_dtype_x1, input_dtype_x2, target_dtype, reduction):
     # cast_to not support "int16", "int64", ISA not support float64(double)
     x_check_list = ["int32", "float16", "float32"]
-    if not input_dtype_x1 in x_check_list:
+    if input_dtype_x1 not in x_check_list:
         error_manager_vector.raise_err_input_dtype_not_supported("cosine_embedding_loss", "input_dtype_x1",
                                                                  x_check_list, input_dtype_x1)
-    if not input_dtype_x2 in x_check_list:
+    if input_dtype_x2 not in x_check_list:
         error_manager_vector.raise_err_input_dtype_not_supported("cosine_embedding_loss", "input_dtype_x2",
                                                                  x_check_list, input_dtype_x2)
 
     # cast_to not support "int16", "int64", "uint8" can't indicate -1
     tgt_check_list = ["int32", "float16", "float32"]
-    if not target_dtype in tgt_check_list:
+    if target_dtype not in tgt_check_list:
         error_manager_vector.raise_err_input_dtype_not_supported("cosine_embedding_loss", "target_dtype",
                                                                  tgt_check_list, target_dtype)
 

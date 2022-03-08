@@ -90,8 +90,7 @@ def add_n_compute(datas, output, tensor_num, kernel_name="add_n"):
     for i, data_i in enumerate(datas):
         if i == 0:
             continue
-        tmp_data = data_i if not has_covert_float32 else \
-            tbe.cast_to(data_i, "float32")
+        tmp_data = data_i if not has_covert_float32 else tbe.cast_to(data_i, "float32")
         res = tbe.vadd(res, tmp_data)
 
     if has_covert_float32:

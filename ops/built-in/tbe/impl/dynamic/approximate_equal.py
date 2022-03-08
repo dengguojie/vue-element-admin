@@ -31,8 +31,6 @@ from impl.util.platform_adapter import register_operator_compute
 NUM_ONE = 1.0
 NUM_ZERO = 0.0
 
-__all__ = ["approximate_equal"]
-
 
 # 'pylint: disable=locally-disabled,too-many-arguments,unused-argument
 # 'pylint: disable=too-many-locals

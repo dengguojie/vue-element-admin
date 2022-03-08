@@ -255,7 +255,7 @@ def _check_broadcast_shape(input0, input1, input2, input3, input4,
     shapey = add2_y.get("shape")
     para_check.check_shape(shapey, param_name="add2_y")
 
-    return shape0, shape1, shape2, shape3, shape4, shapecm0, shapecm1, shapecm2, shapecm3, shapecm4, shapey
+    return [shape0, shape1, shape2, shape3, shape4, shapecm0, shapecm1, shapecm2, shapecm3, shapecm4, shapey]
 
 
 @register_operator_compute("adam_apply_one_with_decay_assign", op_mode="dynamic", support_fusion=True)
