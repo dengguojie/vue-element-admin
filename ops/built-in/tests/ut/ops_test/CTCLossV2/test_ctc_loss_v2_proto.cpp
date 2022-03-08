@@ -200,11 +200,13 @@ TEST_F(CTCLossV2ProtoTest, ctc_loss_v2_grad_infer_shape_test_4) {
     target_lengths_desc.SetShape(ZShape);
     target_lengths_desc.SetOriginShape(ZShape);
 
+    rnn_op.SetAttr("blank", 0);
+
     rnn_op.UpdateInputDesc("log_probs", log_probs_desc);
     rnn_op.UpdateInputDesc("targets", targets_desc);
     rnn_op.UpdateInputDesc("input_lengths", input_lengths_desc);
     rnn_op.UpdateInputDesc("target_lengths", target_lengths_desc);
 
     auto ret = rnn_op.InferShapeAndType();
-    EXPECT_EQ(ret, ge::GRAPH_FAILED);
+    EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
 }

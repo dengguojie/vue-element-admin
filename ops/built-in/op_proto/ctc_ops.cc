@@ -231,7 +231,9 @@ IMPLEMT_INFERFUNC(CTCLossV2, CTCLossV2Infer) {
   auto log_probs_shape = tensordesc_log_probs->GetShape();
   int64_t T = log_probs_shape.GetDim(0);
   int64_t N = log_probs_shape.GetDim(1);
-  int64_t S = 0;
+  int64_t C = log_probs_shape.GetDim(2);
+  int64_t S = 1;
+
   auto tensordesc_targets = op_desc->GetInputDescPtr(1);
   auto targets_shape = tensordesc_targets->GetShape();
   int64_t targets_dims_len = targets_shape.GetDimNum();
@@ -241,21 +243,11 @@ IMPLEMT_INFERFUNC(CTCLossV2, CTCLossV2Infer) {
   if (targets_dims_len == 2) {
     S = targets_shape.GetDim(1);
   } else {
-    Tensor target_lengths_tensor;
-    int64_t batch_size = target_lengths_shape.GetDimNum();
-
-    if (op.GetInputConstData("target_lengths", target_lengths_tensor) !=
-        GRAPH_SUCCESS) {
-      GE_OP_LOGE(op.GetName().c_str(), "target_lengths get fail, when targets.size() == 1.");
-      return GRAPH_FAILED;
-    }
-
-    for (int64_t i = 0; i < batch_size; i++) {
-      int32_t target_length = *((int32_t *)target_lengths_tensor.GetData() + i);
-      if (target_length > S) {
-        S = target_length;
-      }
-    }
+    int64_t blank_new;
+    op.GetAttr("blank", blank_new);
+    S = blank_new / C;
+    int64_t blank = blank_new % C;
+    op.SetAttr("blank", blank);
   }
   auto tensordesc_neg_log_likelihood = op_desc->MutableOutputDesc(0);
   
