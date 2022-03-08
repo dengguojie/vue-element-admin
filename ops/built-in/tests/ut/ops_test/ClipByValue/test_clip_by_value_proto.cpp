@@ -118,3 +118,112 @@ TEST_F(clip_by_value, clip_by_value_infershape_diff_test_4) {
   auto ret = op.InferShapeAndType();
   EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
 }
+
+TEST_F(clip_by_value, clip_by_value_infershape_diff_test_5) {
+  ge::op::ClipByValue op;
+  op.UpdateInputDesc("x",
+                     create_desc_shape_range({3, 1, 5}, ge::DT_FLOAT, ge::FORMAT_NHWC, {1}, ge::FORMAT_NHWC, {{1, 1}}));
+  op.UpdateInputDesc("clip_value_min",
+                     create_desc_shape_range({1}, ge::DT_FLOAT, ge::FORMAT_NHWC, {1}, ge::FORMAT_NHWC, {{1, 3}}));
+  op.UpdateInputDesc("clip_value_max",
+                     create_desc_shape_range({-1}, ge::DT_FLOAT, ge::FORMAT_NHWC, {1}, ge::FORMAT_NHWC, {{1, 3}}));
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+  auto output_desc = op.GetOutputDesc("y");
+  std::vector<int64_t> expected_output_shape = {3, 1, -1};
+  EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
+}
+
+TEST_F(clip_by_value, clip_by_value_infershape_diff_test_6) {
+  ge::op::ClipByValue op;
+  op.UpdateInputDesc("x",
+                     create_desc_shape_range({3, 1, 5}, ge::DT_FLOAT, ge::FORMAT_NHWC, {1}, ge::FORMAT_NHWC, {{1, 1}}));
+  op.UpdateInputDesc("clip_value_min",
+                     create_desc_shape_range({1}, ge::DT_FLOAT, ge::FORMAT_NHWC, {1}, ge::FORMAT_NHWC, {{1, 3}}));
+  op.UpdateInputDesc("clip_value_max",
+                     create_desc_shape_range({5}, ge::DT_FLOAT, ge::FORMAT_NHWC, {1}, ge::FORMAT_NHWC, {{1, 3}}));
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+  auto output_desc = op.GetOutputDesc("y");
+  std::vector<int64_t> expected_output_shape = {3, 1, 5};
+  EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
+}
+
+TEST_F(clip_by_value, clip_by_value_infershape_diff_test_7) {
+  ge::op::ClipByValue op;
+  op.UpdateInputDesc("x",
+                     create_desc_shape_range({3, 1, 5}, ge::DT_FLOAT, ge::FORMAT_NHWC, {1}, ge::FORMAT_NHWC, {{1, 1}}));
+  op.UpdateInputDesc("clip_value_min",
+                     create_desc_shape_range({1, 5}, ge::DT_FLOAT, ge::FORMAT_NHWC, {1}, ge::FORMAT_NHWC, {{1, 3}}));
+  op.UpdateInputDesc("clip_value_max",
+                     create_desc_shape_range({5}, ge::DT_FLOAT, ge::FORMAT_NHWC, {1}, ge::FORMAT_NHWC, {{1, 3}}));
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+  auto output_desc = op.GetOutputDesc("y");
+  std::vector<int64_t> expected_output_shape = {3, 1, 5};
+  EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
+}
+
+TEST_F(clip_by_value, clip_by_value_infershape_diff_test_8) {
+  ge::op::ClipByValue op;
+  op.UpdateInputDesc("x",
+                     create_desc_shape_range({3, 1, 5}, ge::DT_FLOAT, ge::FORMAT_NHWC, {1}, ge::FORMAT_NHWC, {{1, 1}}));
+  op.UpdateInputDesc("clip_value_min",
+                     create_desc_shape_range({1, 6}, ge::DT_FLOAT, ge::FORMAT_NHWC, {1}, ge::FORMAT_NHWC, {{1, 3}}));
+  op.UpdateInputDesc("clip_value_max",
+                     create_desc_shape_range({5}, ge::DT_FLOAT, ge::FORMAT_NHWC, {1}, ge::FORMAT_NHWC, {{1, 3}}));
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+TEST_F(clip_by_value, clip_by_value_infershape_diff_test_9) {
+  ge::op::ClipByValue op;
+  op.UpdateInputDesc("x",
+                     create_desc_shape_range({3, 1, 5}, ge::DT_FLOAT, ge::FORMAT_NHWC, {1}, ge::FORMAT_NHWC, {{1, 1}}));
+  op.UpdateInputDesc("clip_value_min",
+                     create_desc_shape_range({1, -1}, ge::DT_FLOAT, ge::FORMAT_NHWC, {1}, ge::FORMAT_NHWC, {{1, 3}}));
+  op.UpdateInputDesc("clip_value_max",
+                     create_desc_shape_range({-2}, ge::DT_FLOAT, ge::FORMAT_NHWC, {1}, ge::FORMAT_NHWC, {{1, 3}}));
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+  auto output_desc = op.GetOutputDesc("y");
+  std::vector<int64_t> expected_output_shape = {-2};
+  EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
+}
+
+TEST_F(clip_by_value, clip_by_value_infershape_diff_test_10) {
+  ge::op::ClipByValue op;
+  op.UpdateInputDesc("x",
+                     create_desc_shape_range({3, 1, 5}, ge::DT_FLOAT, ge::FORMAT_NHWC, {1}, ge::FORMAT_NHWC, {{1, 1}}));
+  op.UpdateInputDesc("clip_value_min",
+                     create_desc_shape_range({0, -1}, ge::DT_FLOAT, ge::FORMAT_NHWC, {1}, ge::FORMAT_NHWC, {{1, 3}}));
+  op.UpdateInputDesc("clip_value_max",
+                     create_desc_shape_range({-2}, ge::DT_FLOAT, ge::FORMAT_NHWC, {1}, ge::FORMAT_NHWC, {{1, 3}}));
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+  auto output_desc = op.GetOutputDesc("y");
+  std::vector<int64_t> expected_output_shape = {-2};
+  EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
+}
+
+TEST_F(clip_by_value, clip_by_value_infershape_diff_test_11) {
+  ge::op::ClipByValue op;
+  op.UpdateInputDesc("x",
+                     create_desc_shape_range({3, 1, 5}, ge::DT_FLOAT, ge::FORMAT_NHWC, {1}, ge::FORMAT_NHWC, {{1, 1}}));
+  op.UpdateInputDesc("clip_value_min",
+                     create_desc_shape_range({0, -1}, ge::DT_FLOAT, ge::FORMAT_NHWC, {1}, ge::FORMAT_NHWC, {{1, 3}}));
+  op.UpdateInputDesc("clip_value_max",
+                     create_desc_shape_range({-1}, ge::DT_FLOAT, ge::FORMAT_NHWC, {1}, ge::FORMAT_NHWC, {{1, 3}}));
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+  auto output_desc = op.GetOutputDesc("y");
+  std::vector<int64_t> expected_output_shape = {3, 0, -1};
+  EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
+}

@@ -578,6 +578,136 @@ bool InferShapeAndTypeTwoInOneOutBroadcast(Operator& op, const string& input_nam
 
   return true;
 }
+static bool BroadCastShapeToOutShape(const GeShape& shape, GeShape& shape_output) {
+  size_t shape_len = shape.GetDimNum();
+  size_t shape_y_len = shape_output.GetDimNum();
+  size_t i;
+  int64_t dim1, dim2;
+
+  if (shape_len > shape_y_len) {
+    shape_output.SetDimNum(shape_len);
+    size_t len_sub = shape_len - shape_y_len;
+    for (i = shape_y_len; i > 0; i--) {
+      dim1 = shape.GetDim(len_sub + i - 1);
+      dim2 = shape_output.GetDim(i - 1);
+      // if dim1 equal dim2 do nothing, else dim1<=1 or dim2<=1
+      if (dim1 != dim2) {
+        /* column is dim1, row is dim2, matrix value is broadcast(dim1, dim2)
+        dim   -1    0     1    d2
+        -1    -1    0     -1   -1
+        0     0     0     0    0
+        1     -1    0     1    d2
+        d1    -1    0     d1   E
+        */
+        if ((dim1 > 1) && (dim2 > 1)) {
+          std::string err_msg = shape_output.ToString() + " and " + shape.ToString() + " cannot broadcast";
+          VECTOR_INFER_SHAPE_INNER_ERR_REPORT("BroadCastShapeToOutShape", err_msg);
+          return false;
+        }
+        if (dim2 == 0) {
+          dim1 = 0;
+        }
+        if (dim1 == 1) {
+          dim1 = dim2;
+        }
+        if ( (dim1 > 1) && (dim2 == -1) ) {
+          dim1 = -1;
+        }
+      }
+      shape_output.SetDim(len_sub + i - 1, dim1);
+    }
+    for (i = 0; i < len_sub; i++) {
+      shape_output.SetDim(i, shape.GetDim(i));
+    }
+  } else {
+    auto len_sub = shape_y_len - shape_len;
+    for (size_t i = 0; i < shape_len; i++) {
+      dim1 = shape_output.GetDim(len_sub + i);
+      dim2 = shape.GetDim(i);
+      // if dim1 equal dim2 do nothing, else dim1<=1 or dim2<=1
+      if (dim1 != dim2) {
+        /* column is dim1, row is dim2, matrix value is broadcast(dim1, dim2)
+        dim   -1    0     1    d2
+        -1    -1    0     -1   -1
+        0     0     0     0    0
+        1     -1    0     1    d2
+        d1    -1    0     d1   E
+        */
+        if ((dim1 > 1) && (dim2 > 1)) {
+          std::string err_msg = shape_output.ToString() + " and " + shape.ToString() + " cannot broadcast";
+          VECTOR_INFER_SHAPE_INNER_ERR_REPORT("BroadCastShapeToOutShape", err_msg);
+          return false;
+        }
+        if (dim2 == 0) {
+          dim1 = 0;
+        }
+        if (dim1 == 1) {
+          dim1 = dim2;
+        }
+        if ( (dim1 > 1) && (dim2 == -1) ) {
+          dim1 = -1;
+        }
+        shape_output.SetDim(len_sub + i, dim1);
+      }
+    }
+  }
+  return true;
+}
+
+bool InferShapeAndTypeBroadcast(Operator& op, std::vector<int64_t> input_idxs, const int64_t& output_idx,
+                                bool& is_dynamic) {
+  PROFILING_PROTO_INIT(TbeGetName(op).c_str());
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  CHECK(op_desc == nullptr,
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), OtherErrMsg("invalid OpDesc.")),
+        return false);
+  GeTensorDescPtr tensordesc_output = op_desc->MutableOutputDesc(output_idx);
+  CHECK(tensordesc_output == nullptr,
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), OtherErrMsg("invalid tensordesc.")),
+        return false);
+  GeTensorDescPtr input_desc = op_desc->MutableInputDesc(input_idxs[0]);
+  CHECK(input_desc == nullptr,
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), OtherErrMsg("invalid tensordesc.")),
+        return false);
+  // do static infershape start
+  OP_LOGI(TbeGetName(op).c_str(), "do static infershape for Broadcast");
+  GeShape& shape_output = tensordesc_output->MutableShape();
+  shape_output = input_desc->MutableShape();
+  // set output
+  DataType input_dtype = input_desc->GetDataType();
+  tensordesc_output->SetDataType(input_dtype);
+  if (shape_output.IsUnknownDimNum()) {
+    OP_LOGI(TbeGetName(op), "do unknownrank infershape for Broadcast");
+    tensordesc_output->SetShape(shape_output);
+    return true;
+  }
+  is_dynamic = shape_output.IsUnknownShape();
+  size_t input_count = input_idxs.size();
+  for (size_t i = 1; i < input_count; i++) {
+    input_desc = op_desc->MutableInputDesc(input_idxs[i]);
+    CHECK(input_desc == nullptr,
+          VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), OtherErrMsg("invalid tensordesc.")),
+          return false);
+    const ge::GeShape& shape = input_desc->MutableShape();
+    if (shape.IsUnknownDimNum()) {
+      OP_LOGI(TbeGetName(op), "do unknownrank infershape for Broadcast");
+      tensordesc_output->SetShape(shape);
+      is_dynamic = false;
+      return true;
+    }
+    if ((!is_dynamic) && shape.IsUnknownShape()) {
+      OP_LOGI(TbeGetName(op), "unknown shape_%ld: %s.", i, to_string(shape).c_str());
+      is_dynamic = true;
+    }
+    OP_LOGI(TbeGetName(op), "shape_%ld: %s.", i, to_string(shape).c_str());
+    if (!BroadCastShapeToOutShape(shape, shape_output) ) {
+      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), OtherErrMsg("BroadCastShapeToOutShape error."));
+      return false;
+    }
+    OP_LOGI(TbeGetName(op), "shape_output%ld: %s.", i, to_string(shape_output).c_str());
+  }
+  return true;
+}
 
 static std::vector<int64_t> GetNewAxis4NDC1HWC0(std::size_t ori_shape_len, int64_t axis, const std::string& ori_format,
                                                 bool reduce_mode) {

@@ -2540,70 +2540,79 @@ IMPLEMT_COMMON_INFERFUNC(OneHotInferShape) {
   int32_t axis = -1;
   if (ge::GRAPH_SUCCESS != op.GetAttr("axis", axis)) {
     std::string err_msg = GetInputInvalidErrMsg("Get const axis failed from op of 'OneHot'!\n");
-    VECTOR_INFER_SHAPE_INNER_ERR_REPORT("OneHot", err_msg);
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
   if (axis < -1) {
-    OP_LOGE("OneHot", "attr axis must be >= -1");
+    string correct_size = ConcatString("attr axis(", axis, ") must be >= -1");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), correct_size);
     return GRAPH_FAILED;
   }
 
   // get all Desc info
   auto op_info = OpDescUtils::GetOpDescFromOperator(op);
-  auto input_desc = op_info->MutableInputDesc("x");
-  vector<int64_t> input_shape = input_desc->MutableShape().GetDims();
+  static const int64_t input_x_idx = 0;
+  auto input_desc = op_info->MutableInputDesc(input_x_idx);
+  const ge::GeShape& input_shape = input_desc->MutableShape();
 
-  auto value_desc = op_info->MutableInputDesc("on_value");
+  static const int64_t input_on_value_idx = 2;
+  auto value_desc = op_info->MutableInputDesc(input_on_value_idx);
   DataType value_dtype = value_desc->GetDataType();
 
   // output desc and set dtype
-  auto output_desc = op_info->MutableOutputDesc("y");
+  static const int64_t output_y_idx = 0;
+  auto output_desc = op_info->MutableOutputDesc(output_y_idx);
   output_desc->SetDataType(value_dtype);
 
-  if (IsUnknownRankShape(input_shape)) {
+  if (input_shape.IsUnknownDimNum()) {
     // input is UnknownRank, set output UnknownRank
     OP_LOGW("OneHot", "input shape is UnknownRank, set output UnknownRank");
-    output_desc->SetShape(GeShape(input_shape));
+    output_desc->SetShape(input_shape);
     return GRAPH_SUCCESS;
   }
   // update axis to positive number
+  int32_t dimnum = input_shape.GetDimNum();
+  if (axis >= dimnum) {
+    string correct_size = ConcatString("attr axis(", axis, ") must be < ", input_shape.GetDimNum());
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), correct_size);
+    return GRAPH_FAILED;
+  }
 
-  // get depth const value
-  vector<int64_t> depth_value;
-  auto depth_idx = static_cast<uint32_t>(op_info->GetInputIndexByName("depth"));
-  const GeTensor *depth_tensor = OpDescUtils::GetInputConstData(op, depth_idx);
-  if (depth_tensor != nullptr) {
-    auto const_desc = op_info->MutableInputDesc("depth");
-    auto const_dtype = const_desc->GetDataType();
-    if (!GetConstValue(op, depth_tensor, const_dtype, depth_value)) {
-      OP_LOGW("OneHot", "Get depth const from const tensor failed, set depth -1");
-      depth_value.clear();
-      depth_value.push_back(-1);
-    }
-  } else {
+  // get depth const value, depth index is 1
+  int64_t depth_value = -1;
+  static const int64_t input_depth_idx = 1;
+  if (!ops::GetConstInt(op, input_depth_idx, depth_value)) {
     OP_LOGW("OneHot", "Get depth const tensor failed, set depth -1");
-    depth_value.clear();
-    depth_value.push_back(-1);
   }
 
   // update output shape
-  vector<int64_t> output_shape(input_shape);
+  ge::GeShape& output_shape = output_desc->MutableShape();
+  output_shape.SetDimNum(dimnum + 1);
   if (-1 == axis) {
-    output_shape.insert(output_shape.end(), (int64_t)depth_value[0]);
+    for (int32_t i = 0; i < dimnum; i++) {
+      output_shape.SetDim(i, input_shape.GetDim(i));
+    }
+    output_shape.SetDim(dimnum, depth_value);
   } else {
-    output_shape.insert(output_shape.begin() + axis, (int64_t)depth_value[0]);
+    while (dimnum > axis) {
+      output_shape.SetDim(dimnum, input_shape.GetDim(dimnum - 1));
+      dimnum--;
+    }
+    output_shape.SetDim(axis, depth_value);
+    for (int32_t i = 0; i < axis; i++) {
+      output_shape.SetDim(i, input_shape.GetDim(i));
+    }
   }
-  output_desc->SetShape(GeShape(output_shape));
 
   // if output shape is dynamic update output range
-  if (IsUnknown(output_shape)) {
-    output_desc->SetOriginShape(GeShape(output_shape));
+  if (output_shape.IsUnknownShape()) {
+    output_desc->SetOriginShape(output_shape);
     std::vector<std::pair<int64_t, int64_t>> input_range;
     input_desc->GetShapeRange(input_range);
     MakeUpShapeRange(input_shape, input_range);
-    std::pair<int64_t, int64_t> depth_range = depth_value[0] == -1 ?
+    std::pair<int64_t, int64_t> depth_range = depth_value == -1 ?
                                               std::pair<int64_t, int64_t>(1, -1):
-                                              std::pair<int64_t, int64_t>(depth_value[0], depth_value[0]);
+                                              std::pair<int64_t, int64_t>(depth_value, depth_value);
     if (-1 == axis) {
       input_range.insert(input_range.end(), depth_range);
     } else {
@@ -3005,7 +3014,7 @@ IMPLEMT_COMMON_INFERFUNC(InTopKDInferShape) {
         input_prediction->GetShape().GetDim(1) == -1) {
       if (output_desc->SetShapeRange(input1_range) != GRAPH_SUCCESS) {
         AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), std::string("set output[y] shape range failed."));
-	return GRAPH_FAILED;
+        return GRAPH_FAILED;
       }
     }
   }
@@ -3104,7 +3113,7 @@ IMPLEMT_COMMON_INFERFUNC(InTopKInferShape) {
         input_prediction->GetShape().GetDim(1) == -1) {
       if (output_desc->SetShapeRange(input1_range) != GRAPH_SUCCESS) {
         AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), std::string("set output[y] shape range failed."));
-	      return GRAPH_FAILED;
+        return GRAPH_FAILED;
       }
     }
   }
@@ -3381,7 +3390,7 @@ IMPLEMT_COMMON_INFERFUNC(InplaceAddInferShape) {
   Tensor indices;
   graphStatus ret = op.GetInputConstData(indices_name, indices);
   OP_LOGI(op.GetName().c_str(), "InplaceAddInferShape get const data from input[%s] ret = %d",
-        indices_name.c_str(), static_cast<int>(ret)); 
+          indices_name.c_str(), static_cast<int>(ret));
 
   auto output_shape_dims = output_desc.GetShape().GetDims();
   Shape output_shape(output_shape_dims);
@@ -3427,7 +3436,7 @@ IMPLEMT_COMMON_INFERFUNC(InplaceSubInferShape) {
 
   graphStatus ret = op.GetInputConstData(indices_name, indices);
   OP_LOGI(op.GetName().c_str(), "InplaceSubInferShape get const data from input[%s] ret = %d",
-        indices_name.c_str(), static_cast<int>(ret)); 
+          indices_name.c_str(), static_cast<int>(ret));
 
   auto output_shape_dims = output_desc.GetShape().GetDims();
   Shape output_shape(output_shape_dims);
@@ -4149,7 +4158,7 @@ IMPLEMT_COMMON_INFERFUNC(MaskedScatterInferShape) {
   auto input_x = op_info->MutableInputDesc("x");
  
   auto x_dtype = input_x->GetDataType();
-  auto x_shape = input_x->GetShape(); 
+  auto x_shape = input_x->GetShape();
 
   output_y->SetShape(x_shape);
   output_y->SetDataType(x_dtype);
@@ -4697,7 +4706,7 @@ IMPLEMT_VERIFIER(InplaceTopKDistance, InplaceTopKDistanceVerify) {
   std::vector<int64_t> pq_index_dims = op.GetInputDesc("pq_index").GetShape().GetDims();
   if (!(pq_distance_dims == pq_index_dims)) {
     string msg = ConcatString("The shape of pq_distance is:", DebugString(topk_pq_distance_dims),
-                              "The shape of pq_index is:", DebugString(topk_pq_index_dims),". They must be same");                 
+                              "The shape of pq_index is:", DebugString(topk_pq_index_dims),". They must be same");
     std::string err_msg = OtherErrMsg(msg);
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
@@ -4757,7 +4766,7 @@ IMPLEMT_INFERFUNC(TopKPQDistanceMerge, TopKPQDistanceMergeInferShape) {
   CHECK(op.UpdateOutputDesc("topk_index", outputIndexDesc) != GRAPH_SUCCESS,
     OP_LOGE(op.GetName().c_str(), "Update topk_index outputDesc failed."),
     return GRAPH_FAILED
-  );	 
+  );
  
   return GRAPH_SUCCESS;
  
@@ -4773,13 +4782,11 @@ IMPLEMT_VERIFIER(TopKPQDistanceMerge, TopKPQDistanceMergeVerify) {
     string msg = ConcatString("The shape of sorted_distance is:", DebugString(sortedDistanceDims),
                               "The shape of pq_ivf is:", DebugString(pqIvfDims),
                               "The shape of pq_index is:", DebugString(pqIndexDims), ".They must be the same");
-   
     std::string  err_msg = OtherErrMsg(msg);
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
-							   
   }
- 
+
   int32_t topK = 0;
   if (op.GetAttr("k", topK) != GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "get attr k from op failed");
@@ -4787,8 +4794,7 @@ IMPLEMT_VERIFIER(TopKPQDistanceMerge, TopKPQDistanceMergeVerify) {
   }
   if (topK > maxK) {
     string correctValue = ConcatString("not greater than 1024");
-    std::string errMsg = GetAttrValueErrMsg("k", ConcatString(topK), correctValue); 
-	 
+    std::string errMsg = GetAttrValueErrMsg("k", ConcatString(topK), correctValue);
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), errMsg);
     return GRAPH_FAILED; 
   }

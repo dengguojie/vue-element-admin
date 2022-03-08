@@ -23,6 +23,7 @@
 #include <vector>
 #include "op_attr.h"
 #include "op_log.h"
+#include "op_const.h"
 #include "util/util.h"
 #include "util/error_util.h"
 #include "util/vector_proto_profiling.h"
@@ -103,7 +104,9 @@ IMPLEMT_COMMON_INFERFUNC(TwoInOneOutCommonInferShape) {
 }
 
 IMPLEMT_COMMON_INFERFUNC(OneInOneOutCommonInferShape) {
-  if (OneInOneOutDynamicInfer(op, "x", {"y"})) {
+  static const int64_t input_x_idx = 0;
+  static const int64_t output_y_idx = 0;
+  if (OneInOneOutDynamicInfer(op, input_x_idx, {output_y_idx})) {
     return GRAPH_SUCCESS;
   }
   return GRAPH_FAILED;
@@ -449,8 +452,7 @@ IMPLEMT_COMMON_INFERFUNC(CastInferShape) {
   if (input_shape.IsUnknownShape()) {
     std::vector<std::pair<int64_t, int64_t>> input_range;
     input_desc->GetShapeRange(input_range);
-    std::vector<int64_t> input_shape_vec = input_shape.GetDims();
-    MakeUpShapeRange(input_shape_vec, input_range);
+    MakeUpShapeRange(input_shape, input_range);
 
     output_desc->SetShape(input_shape);
     output_desc->SetOriginShape(input_shape);
@@ -479,23 +481,22 @@ IMPLEMT_VERIFIER(GreaterEqual, GreaterEqualVerify) {
   return GRAPH_SUCCESS;
 }
 
-IMPLEMT_COMMON_INFERFUNC(GreaterEqualInferShape) {
-  if (!InferShapeAndTypeTwoInOneOutBroadcast(op, "x1", "x2", "y")) {
+IMPLEMT_COMMON_INFERFUNC(CompareTwoOutBoolInferShape) {
+  bool is_dynamic_output = true;
+  static const int64_t input_x1_idx = 0;
+  static const int64_t input_x2_idx = 1;
+  static const int64_t output_y_idx = 0;
+  if (!InferShapeAndTypeTwoInOneOutBroadcast(op, input_x1_idx, input_x2_idx, output_y_idx, is_dynamic_output)) {
     return GRAPH_FAILED;
   }
-  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
-  auto vec_y = op_desc->MutableOutputDesc(0)->MutableShape().GetDims();
-  if (IsUnknownRankShape(vec_y) || IsUnknownVec(vec_y)) {
-    if (!InferShapeRangeTwoInOneOutBroadcase(op, "x1", "x2", "y")) {
-      return GRAPH_FAILED;
-    }
-  }
 
-  op_desc->MutableOutputDesc(0)->SetDataType(DT_BOOL);
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  op_desc->MutableOutputDesc(output_y_idx)->SetDataType(DT_BOOL);
+
   return GRAPH_SUCCESS;
 }
 
-COMMON_INFER_FUNC_REG(GreaterEqual, GreaterEqualInferShape);
+COMMON_INFER_FUNC_REG(GreaterEqual, CompareTwoOutBoolInferShape);
 VERIFY_FUNC_REG(GreaterEqual, GreaterEqualVerify);
 // ------------------GreaterEqual END-------------------
 
@@ -837,44 +838,47 @@ IMPLEMT_VERIFIER(ClipByValue, ClipByValueVerify) {
   return GRAPH_SUCCESS;
 }
 IMPLEMT_COMMON_INFERFUNC(ClipByValueInferShape) {
+  static const int64_t x_input_idx = 0;
+  static const int64_t clip_value_min_input_idx = 1;
+  static const int64_t clip_value_max_input_idx = 2;
+  static const int64_t y_output_idx = 0;
+  static const std::vector<int64_t> input_idxs{x_input_idx, clip_value_min_input_idx, clip_value_max_input_idx};
+  bool is_dynamic = true;
+  if (!InferShapeAndTypeBroadcast(op, input_idxs, y_output_idx, is_dynamic)) {
+    std::string err_msg = "InferShapeAndTypeBroadcast failed.";
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
+    return GRAPH_FAILED;
+  }
+  if (!is_dynamic) {
+    return GRAPH_SUCCESS;
+  }
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
-  string input_name1 = "x";
-  string input_name2 = "clip_value_min";
-  string input_name3 = "clip_value_max";
-  string output_name = "y";
-  GeTensorDescPtr tensordesc_output = op_desc->MutableOutputDesc(output_name);
-  GeTensorDescPtr tensordesc_input1 = op_desc->MutableInputDesc(input_name1);
-  GeTensorDescPtr tensordesc_input2 = op_desc->MutableInputDesc(input_name2);
-  GeTensorDescPtr tensordesc_input3 = op_desc->MutableInputDesc(input_name3);
-  CHECK(op_desc == nullptr ||
-        tensordesc_output == nullptr ||
+  CHECK(op_desc == nullptr,
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), OtherErrMsg("invalid OpDesc.")),
+        return GRAPH_FAILED);
+  GeTensorDescPtr tensordesc_output = op_desc->MutableOutputDesc(y_output_idx);
+  GeTensorDescPtr tensordesc_input1 = op_desc->MutableInputDesc(x_input_idx);
+  GeTensorDescPtr tensordesc_input2 = op_desc->MutableInputDesc(clip_value_min_input_idx);
+  GeTensorDescPtr tensordesc_input3 = op_desc->MutableInputDesc(clip_value_max_input_idx);
+  CHECK(tensordesc_output == nullptr ||
         tensordesc_input1 == nullptr ||
         tensordesc_input2 == nullptr ||
         tensordesc_input3 == nullptr,
-        OP_LOGE(op.GetName().c_str(), "invalid OpDesc."), return GRAPH_FAILED);
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), OtherErrMsg("invalid OpDesc.")),
+        return GRAPH_FAILED);
   DataType input_dtype = tensordesc_input1->GetDataType();
-  // output Desc
-
   tensordesc_output->SetDataType(input_dtype);
   // shape
   ge::GeShape shapeX = tensordesc_input1->GetShape();
   ge::GeShape shapeY = tensordesc_input2->GetShape();
   ge::GeShape shapeZ = tensordesc_input3->GetShape();
-  OP_LOGI(op.GetName().c_str(), "shape %s: %s, shape %s: %s, shape %s: %s.",
-                  input_name1.c_str(), to_string(shapeX).c_str(),
-                  input_name2.c_str(), to_string(shapeY).c_str(),
-                  input_name3.c_str(), to_string(shapeZ).c_str());
+  OP_LOGI(TbeGetName(op), "shape x: %s, shape clip_value_min: %s, shape clip_value_max: %s.",
+          shapeX.ToString().c_str(),
+          shapeY.ToString().c_str(),
+          shapeZ.ToString().c_str());
   std::vector<int64_t> dimsX = shapeX.GetDims();
   std::vector<int64_t> dimsY = shapeY.GetDims();
   std::vector<int64_t> dimsZ = shapeZ.GetDims();
-  // unknown rank
-  if (IsUnknownRankShape(dimsX) || IsUnknownRankShape(dimsY) || IsUnknownRankShape(dimsZ)) {
-    tensordesc_output->SetShape(ge::GeShape(UNKNOWN_RANK));
-    OP_LOGI(op.GetName().c_str(), "output shape is: %s, output dtype is:%d.",
-            to_string(ge::Shape(UNKNOWN_RANK)).c_str(),
-            input_dtype);
-    return GRAPH_SUCCESS;
-  }
   // range
   std::vector<std::pair<int64_t, int64_t>> shape_range_x;
   tensordesc_input1->GetShapeRange(shape_range_x);
@@ -889,14 +893,16 @@ IMPLEMT_COMMON_INFERFUNC(ClipByValueInferShape) {
   Vec_range = shape_range_x;
   MakeUpShapeRange(dimsX, shape_range_x);
   if (!TwoShapeAndRangeBroadcastIntegration(op, dimVec, Vec_range, dimsY, shape_range_y, "x", "clip_value_min")){
+    std::string err_msg = "TwoShapeAndRangeBroadcastIntegration failed.";
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
   if (!TwoShapeAndRangeBroadcastIntegration(op, dimVec, Vec_range, dimsZ, shape_range_z,
                                            "x_min_broadcast", "clip_value_max")){
+    std::string err_msg = "TwoShapeAndRangeBroadcastIntegration failed.";
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
-  ge::GeShape outputShape = ge::GeShape(dimVec);
-  tensordesc_output->SetShape(outputShape);
   tensordesc_output->SetShapeRange(Vec_range);
   return GRAPH_SUCCESS;
 }
@@ -990,7 +996,7 @@ IMPLEMT_COMMON_INFERFUNC(SqrtGradInferShape) {
   tensordesc_output.SetShapeRange(shape_range_x);
   if (op.UpdateOutputDesc("z", tensordesc_output) != GRAPH_SUCCESS) {
     std::string err_msg = UpdateParamErrMsg("z");
-    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
    return GRAPH_SUCCESS;
@@ -1001,14 +1007,7 @@ VERIFY_FUNC_REG(SqrtGrad, SqrtGradVerify);
 // ----------------SqrtGrad Op End-------------------
 
 // ----------------Log-------------------
-IMPLEMT_COMMON_INFERFUNC(LogInferShape) {
-  if (OneInOneOutDynamicInfer(op, "x", {"y"})) {
-    return GRAPH_SUCCESS;
-  }
-  return GRAPH_FAILED;
-}
-
-COMMON_INFER_FUNC_REG(Log, LogInferShape);
+COMMON_INFER_FUNC_REG(Log, OneInOneOutCommonInferShape);
 // ----------------Log END-------------------
 
 // ----------------Assign-------------------
@@ -1600,24 +1599,7 @@ IMPLEMT_VERIFIER(Greater, GreaterVerify) {
   return GRAPH_SUCCESS;
 }
 
-IMPLEMT_COMMON_INFERFUNC(GreaterInferShape) {
-  if (!InferShapeAndTypeTwoInOneOutBroadcast(op, "x1", "x2", "y")) {
-    return GRAPH_FAILED;
-  }
-
-  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
-  auto vec_y = op_desc->MutableOutputDesc("y")->MutableShape().GetDims();
-  op_desc->MutableOutputDesc("y")->SetDataType(DT_BOOL);
-  if (IsUnknownRankShape(vec_y) || IsUnknownVec(vec_y)) {
-    if (!InferShapeRangeTwoInOneOutBroadcase(op, "x1", "x2", "y")) {
-      return GRAPH_FAILED;
-    }
-  }
-
-  return GRAPH_SUCCESS;
-}
-
-COMMON_INFER_FUNC_REG(Greater, GreaterInferShape);
+COMMON_INFER_FUNC_REG(Greater, CompareTwoOutBoolInferShape);
 VERIFY_FUNC_REG(Greater, GreaterVerify);
 // --------------------Greater END---------------------
 
@@ -2349,11 +2331,12 @@ IMPLEMT_COMMON_INFERFUNC(ArgMaxInferShape) {
   const vector<string> depend_names = {"dimension"};
   PREPARE_DYNAMIC_SHAPE(depend_names);
   auto op_info_arg = OpDescUtils::GetOpDescFromOperator(op);
-  auto input_desc = op_info_arg->MutableInputDesc("x");
-  auto const_desc = op_info_arg->MutableInputDesc("dimension");
-  auto y_desc = op_info_arg->MutableOutputDesc("y");
+  static const int64_t x_input_idx = 0;
+  static const int64_t y_output_idx = 0;
+  auto input_desc = op_info_arg->MutableInputDesc(x_input_idx);
+  auto y_desc = op_info_arg->MutableOutputDesc(y_output_idx);
   // get x shape
-  auto x_shape = input_desc->MutableShape().GetDims();
+  const ge::GeShape& x_shape = input_desc->MutableShape();
 
   // get and set output dtype
   ge::DataType dtype;
@@ -2366,45 +2349,39 @@ IMPLEMT_COMMON_INFERFUNC(ArgMaxInferShape) {
 
   // if x_shape == -2, set output -2
   if (IsUnknownRankShape(x_shape)) {
-      y_desc->SetShape(GeShape(x_shape));
-      return GRAPH_SUCCESS;
+    y_desc->SetShape(x_shape);
+    return GRAPH_SUCCESS;
   }
 
   // if x_shape.size() < 2, set output scalar
-  if (x_shape.size() < 2) {
-      vector<int64_t> output_shape;
-      y_desc->SetShape(GeShape(output_shape));
-      return GRAPH_SUCCESS;
+  if (x_shape.GetDimNum() <= 1) {
+    vector<int64_t> output_dims;
+    y_desc->SetShape(GeShape(output_dims));
+    return GRAPH_SUCCESS;
   }
 
   // read dimension const value
-  vector<int64_t> dimension_value;
-  auto dimension_idx = static_cast<uint32_t>(op_info_arg->GetInputIndexByName("dimension"));
-  const GeTensor *dimension_tensor = OpDescUtils::GetInputConstData(op, dimension_idx);
-  if (dimension_tensor != nullptr) {
-    auto const_dtype = const_desc->GetDataType();
-    GetConstValue(op, dimension_tensor, const_dtype, dimension_value);
-    // verify dimension_value
-    if (dimension_value.size() != 1) {
-      OP_LOGE(op.GetName().c_str(), "The length of dimension value must be equal to 1, but got %lu.",
-              dimension_value.size());
-      return GRAPH_FAILED;
-    }
-    int64_t dimension = dimension_value[0] < 0 ? dimension_value[0] + x_shape.size() : dimension_value[0];
-    if (dimension >= static_cast<int64_t>(x_shape.size())) {
-      OP_LOGE(
-          op.GetName().c_str(),
-          "The dimension value must be range at input shape size, but got dimension value %lu, input shape size %lu.",
-          dimension_value[0], x_shape.size());
+  int64_t dimension = 0;
+  static const int64_t dimension_input_idx = 1;
+  if (ops::GetConstInt(op, dimension_input_idx, dimension)) {
+    dimension = dimension < 0 ? dimension + x_shape.GetDimNum() : dimension;
+    if ((dimension < 0) || (dimension >= static_cast<int64_t>(x_shape.GetDimNum()))) {
+      OP_LOGE(TbeGetName(op), "The dimension value %ld must in range of input shape size %ld.",
+              dimension, x_shape.GetDimNum());
       return GRAPH_FAILED;
     }
 
-    vector<int64_t> output_shape(x_shape);
-    output_shape.erase(output_shape.begin() + dimension);
-    y_desc->SetShape(GeShape(output_shape));
+    ge::GeShape& output_shape = y_desc->MutableShape();
+    output_shape.SetDimNum(x_shape.GetDimNum() - 1);
+    for (int64_t i = 0; i < dimension; i++) {
+      output_shape.SetDim(i, x_shape.GetDim(i));
+    }
+    for (int64_t i = dimension + 1; i < x_shape.GetDimNum(); i++) {
+      output_shape.SetDim(i - 1, x_shape.GetDim(i));
+    }
 
     // when output is dynamic will update range
-    if (IsUnknown(output_shape)) {
+    if (output_shape.IsUnknownShape()) {
       std::vector<std::pair<int64_t, int64_t>> input_range;
       input_desc->GetShapeRange(input_range);
       MakeUpShapeRange(x_shape, input_range);
@@ -2414,14 +2391,14 @@ IMPLEMT_COMMON_INFERFUNC(ArgMaxInferShape) {
     return GRAPH_SUCCESS;
   }
 
-  // dimension is not const, set all output is -1, range is [1, -1]
-  vector<int64_t> output_shape;
+  // dimension is not const, set all output is -1, range is [0, -1]
+  vector<int64_t> output_dims;
   std::vector<std::pair<int64_t, int64_t>> output_range;
-  for (size_t item = 0; item < (x_shape.size() - 1); ++item) {
-    output_shape.push_back(-1);
+  for (size_t item = 0; item < (x_shape.GetDimNum() - 1); ++item) {
+    output_dims.push_back(-1);
   }
-  MakeUpShapeRange(output_shape, output_range);
-  y_desc->SetShape(GeShape(output_shape));
+  MakeUpShapeRange(output_dims, output_range);
+  y_desc->SetShape(GeShape(output_dims));
   y_desc->SetShapeRange(output_range);
 
   return GRAPH_SUCCESS;

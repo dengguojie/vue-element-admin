@@ -3867,6 +3867,11 @@ IMPLEMT_INFERFUNC(MaxPool, MaxPoolInferShape) {
   auto input_w_dim = input_format == FORMAT_NHWC ? 2 : 3;
   auto strides_h_dim = data_format == "NHWC" ? 1 : 2;
   auto strides_w_dim = data_format == "NHWC" ? 2 : 3;
+  if ((strides[strides_h_dim] == 0) || (strides[strides_w_dim] == 0)) {
+    std::string err_msg = GetInputInvalidErrMsg("padding");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
+    return GRAPH_FAILED;
+  }
 
   if (padding != "VALID") {
     ksize[strides_h_dim] = 1;
@@ -7525,6 +7530,8 @@ VERIFY_FUNC_REG(MaxPoolWithArgmaxV2, MaxPoolWithArgmaxV2Verify);
 // ----------------------MaxPoolV3------------------------------
 static void SAMEUpdateDimAndRange(const int64_t& ksize, const int64_t& strides, int64_t& dim_size,
                                   std::pair<int64_t, int64_t>& dim_range) {
+  // warning strides divisor cannnot be 0
+  CHECK(strides == 0, OP_LOGW("SAMEUpdateDimAndRange", "strides divisor cannnot be 0"), return);
   if (dim_size != -1) {
     int64_t output_dim_size = (dim_size - ksize + strides) / strides;
     dim_range = std::pair<int64_t, int64_t>{output_dim_size, output_dim_size};
@@ -7539,6 +7546,8 @@ static void SAMEUpdateDimAndRange(const int64_t& ksize, const int64_t& strides, 
 
 static void CALCULATEUpdateDimAndRange(const int64_t& ksize, const int64_t& strides, bool ceil_mode, int32_t pad_a,
                                        int32_t pad_b, int64_t& dim_size, std::pair<int64_t, int64_t>& dim_range) {
+  // warning strides divisor cannnot be 0
+  CHECK(strides == 0, OP_LOGW("CALCULATEUpdateDimAndRange", "strides divisor cannnot be 0"), return);
   if (dim_size != -1) {
     int64_t output_dim_size = 0;
     if (ceil_mode) {

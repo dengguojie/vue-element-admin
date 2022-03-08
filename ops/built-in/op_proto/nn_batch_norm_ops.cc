@@ -472,10 +472,6 @@ VERIFY_FUNC_REG(BNInference, BNInferenceVerify);
 
 // ----------------------BNInferenceD
 IMPLEMT_VERIFIER(BNInferenceD, BNInferenceDVerify) {
-  return GRAPH_SUCCESS;
-}
-
-IMPLEMT_INFERFUNC(BNInferenceD, BNInferenceDInferShape) {
   std::string data_format;
   if (op.GetAttr("data_format", data_format) == GRAPH_SUCCESS) {
     if (data_format != "NHWC" && data_format != "NCHW") {
@@ -485,7 +481,11 @@ IMPLEMT_INFERFUNC(BNInferenceD, BNInferenceDInferShape) {
       return GRAPH_FAILED;
     }
   }
-  if (!OneInOneOutDynamicInfer(op, "x", {"y"})) {
+  return GRAPH_SUCCESS;
+}
+
+IMPLEMT_INFERFUNC(BNInferenceD, BNInferenceDInferShape) {
+  if (!OneInOneOutDynamicInfer(op, 0, {0})) {
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;

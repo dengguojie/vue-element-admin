@@ -43,7 +43,7 @@ TEST_F(pad_test, pad_infer_shape_01) {
   EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
   std::vector<std::pair<int64_t,int64_t>> output_shape_range;
   EXPECT_EQ(output_desc.GetShapeRange(output_shape_range), ge::GRAPH_SUCCESS);
-  std::vector<std::pair<int64_t,int64_t>> expected_shape_range = {{0,-1},{0,-1},{0,-1},{0,-1},{0,-1}};
+  std::vector<std::pair<int64_t,int64_t>> expected_shape_range = {{3,-1},{5,-1},{10,-1},{5,-1},{2,-1}};
   EXPECT_EQ(output_shape_range, expected_shape_range);
 }
 
@@ -79,6 +79,33 @@ TEST_F(pad_test, pad_infer_shape_03) {
   ge::op::Pad op;
   std::cout<< "pad test_3!!!"<<std::endl;
   std::vector<std::pair<int64_t,int64_t>> shape_range = {{3,3},{2,3},{2,3},{1,1}};
+  auto tensor_desc = create_desc_shape_range({3,-1,-1, 1},
+                                             ge::DT_FLOAT16, ge::FORMAT_NCHW,
+                                             {3,-1,-1, 1},
+                                             ge::FORMAT_NCHW, shape_range);
+
+  auto paddings_desc = create_desc_shape_range({-1,-1},
+                                           ge::DT_INT32, ge::FORMAT_ND,
+                                           {-1,-1},
+                                           ge::FORMAT_ND, {{1,80},{1,80}});
+
+  op.UpdateInputDesc("x", tensor_desc);
+  op.UpdateInputDesc("paddings", paddings_desc);
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+  auto output_desc = op.GetOutputDesc("y");
+  EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT16);
+  std::vector<int64_t> expected_output_shape = {-1,-1,-1,-1};
+  EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
+  std::vector<std::pair<int64_t,int64_t>> output_shape_range;
+  EXPECT_EQ(output_desc.GetShapeRange(output_shape_range), ge::GRAPH_SUCCESS);
+  std::vector<std::pair<int64_t,int64_t>> expected_shape_range = {{3,-1},{2,-1},{2,-1},{1,-1}};
+  EXPECT_EQ(output_shape_range, expected_shape_range);
+}
+
+TEST_F(pad_test, pad_infer_shape_04) {
+  ge::op::Pad op;
+  std::vector<std::pair<int64_t,int64_t>> shape_range;
   auto tensor_desc = create_desc_shape_range({3,-1,-1, 1},
                                              ge::DT_FLOAT16, ge::FORMAT_NCHW,
                                              {3,-1,-1, 1},

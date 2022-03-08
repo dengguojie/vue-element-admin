@@ -721,13 +721,13 @@ static graphStatus ConcatInferShapeCommon(Operator& op, const int64_t dy_input_s
       return GRAPH_FAILED;
     }
 
-    input_x_desc.emplace_back(op_info->MutableInputDesc(input_name_i));
+    input_x_desc.emplace_back(input_desc);
   }
 
   bool all_unknown_rank_shape = true;
   for (const auto& desc : input_x_desc) {
     dim_num = std::max(dim_num, desc->MutableShape().GetDimNum());
-    all_unknown_rank_shape = IsUnknownRankShape(desc->MutableShape().GetDims()) && all_unknown_rank_shape;
+    all_unknown_rank_shape = IsUnknownRankShape(desc->MutableShape()) && all_unknown_rank_shape;
   }
 
   if (all_unknown_rank_shape) {
@@ -780,7 +780,7 @@ static graphStatus ConcatInferShapeCommon(Operator& op, const int64_t dy_input_s
 
   int32_t size = 0;
   for (const auto& desc : input_x_desc) {
-    if (IsUnknownRankShape(desc->MutableShape().GetDims())) {
+    if (IsUnknownRankShape(desc->MutableShape())) {
       size = -1;
       break;
     }
@@ -808,7 +808,7 @@ static graphStatus ConcatInferShapeCommon(Operator& op, const int64_t dy_input_s
     vector<pair<int64_t, int64_t>> output_shape_ranges;
     pair<int64_t, int64_t> output_concat_dim_range(0, 0);
     for (const auto& input_desc : input_x_desc) {
-      if (IsUnknownRankShape(input_desc->MutableShape().GetDims())) {
+      if (IsUnknownRankShape(input_desc->MutableShape())) {
         output_concat_dim_range = {0, -1};
         continue;
       }
@@ -817,7 +817,7 @@ static graphStatus ConcatInferShapeCommon(Operator& op, const int64_t dy_input_s
       input_desc->GetShapeRange(input_shape_ranges);
       OP_LOGD(op.GetName().c_str(), "input shape range:%s", to_string(input_shape_ranges).c_str());
       if (input_shape_ranges.empty()) {
-        MakeUpShapeRange(input_desc->MutableShape().GetDims(), input_shape_ranges);
+        MakeUpShapeRange(input_desc->MutableShape(), input_shape_ranges);
       }
 
       if (static_cast<int64_t>(input_shape_ranges.size()) > non_negative_axis) {
@@ -1230,6 +1230,67 @@ bool JoinShapes(vector<int64_t>& dst_shape, const vector<int64_t>& src_shape) {
   return true;
 }
 
+bool PackInferShapeCommonStatic(Operator& op, int64_t pack_num, int64_t axis) {
+  auto op_info = OpDescUtils::GetOpDescFromOperator(op);
+  CHECK(op_info == nullptr,
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), OtherErrMsg("GetOpDescFromOperator return null.")),
+        return false);
+  auto input_desc = op_info->MutableInputDesc(0);
+  auto output_desc = op_info->MutableOutputDesc(0);
+  CHECK((input_desc == nullptr) || (output_desc == nullptr),
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), OtherErrMsg("input_desc is null.")),
+        return false);
+  const GeShape& input_shape = input_desc->MutableShape();
+  GeShape& output_shape = output_desc->MutableShape();
+  output_shape = input_shape;
+  if (input_shape.IsUnknownShape() || input_shape.IsUnknownDimNum()) {
+    // dynamic case or the input only one will use dynamic infer func
+    return false;
+  }
+
+  for (int64_t input_idx = 1; input_idx < pack_num; input_idx++) {
+    auto input_i_desc = op_info->MutableInputDesc(input_idx);
+    CHECK(input_i_desc == nullptr,
+          VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), OtherErrMsg("input_i_desc is null.")),
+          return false);
+    const GeShape& input_i_shape = input_i_desc->MutableShape();
+    if (!(input_i_shape == input_shape)) {
+      // input shape size is not equal output
+      return false;
+    }
+  }
+
+  // set data type
+  output_desc->SetDataType(input_desc->GetDataType());
+
+  int64_t dim_num = static_cast<int64_t>(output_shape.GetDimNum());
+  if (axis < (-dim_num - 1) || axis > dim_num) {
+    string correct_value = ConcatString("in range [", -dim_num - 1, ", ", dim_num, "]");
+    std::string err_msg = GetAttrValueErrMsg("axis", ConcatString(axis), correct_value);
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    return GRAPH_FAILED;
+  }
+
+  if (axis < 0) {
+    axis += (dim_num + 1);
+  }
+
+  if (output_shape.IsScalar()) {
+    // scalar to shape [1]
+    output_shape.SetDimNum(1);
+    output_shape.SetDim(0, pack_num);
+    return true;
+  }
+  output_shape.SetDimNum(dim_num + 1);
+  int64_t i = dim_num;
+  while (i > axis) {
+    output_shape.SetDim(i, output_shape.GetDim(i - 1));
+    i--;
+  }
+  output_shape.SetDim(axis, pack_num);
+  return true;
+}
+
 IMPLEMT_COMMON_INFERFUNC(PackInferShape) {
   int64_t pack_num;
   if (op.GetAttr("N", pack_num) == GRAPH_FAILED) {
@@ -1250,6 +1311,11 @@ IMPLEMT_COMMON_INFERFUNC(PackInferShape) {
     std::string err_msg = GetInputInvalidErrMsg("attr axis");
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
+  }
+
+  // try static infershape directly
+  if (PackInferShapeCommonStatic(op, pack_num, axis)) {
+    return GRAPH_SUCCESS;
   }
 
   auto op_info = OpDescUtils::GetOpDescFromOperator(op);

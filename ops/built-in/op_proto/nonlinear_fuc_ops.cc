@@ -28,7 +28,9 @@
 namespace ge {
 
 IMPLEMT_COMMON_INFERFUNC(OneInOneOutCommonInferShape) {
-  if (OneInOneOutDynamicInfer(op, "x", {"y"})) {
+  static const int64_t input_x_idx = 0;
+  static const int64_t output_y_idx = 0;
+  if (OneInOneOutDynamicInfer(op, input_x_idx, {output_y_idx})) {
     return GRAPH_SUCCESS;
   }
   return GRAPH_FAILED;
