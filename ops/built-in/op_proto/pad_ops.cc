@@ -563,7 +563,7 @@ IMPLEMT_COMMON_INFERFUNC(FillInferShape) {
     std::vector<std::pair<int64_t, int64_t>> range_output;
     for (int64_t m = 0; m < dim_value; m++) {
       vec_dim.push_back(-1);
-      range_output.push_back(std::make_pair(1, -1));
+      range_output.push_back(std::make_pair(0, -1));
     }
     if (vec_dim.empty()) {
       vec_dim.push_back(-2);
