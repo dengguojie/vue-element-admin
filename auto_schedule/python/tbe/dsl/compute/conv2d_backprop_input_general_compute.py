@@ -137,6 +137,11 @@ class DeConvPattern(cube_util.CubeDslPattern):
             )
             return dy_zero
 
+        def _dy_fill_indices(ho_idx, wo_idx):
+            if self.binary_mode:
+                return tvm.all(ho_idx % stride_h == 0)
+            return tvm.all(ho_idx % stride_h == 0, wo_idx % stride_w == 0)
+
         def _write_select():
             shape_dy_filling = (
                 dy_batch,
@@ -182,6 +187,7 @@ class DeConvPattern(cube_util.CubeDslPattern):
                 dy_w * stride_w,
                 kernel_cout0
             )
+
             if stride_h == 1 and stride_w == 1:
                 dy_vn = dy_ddr
             else:
@@ -189,7 +195,7 @@ class DeConvPattern(cube_util.CubeDslPattern):
                 dy_filling = tvm.compute(
                     shape_dy_filling,
                     lambda batch_idx, kernel_cout1_idx, ho_idx, wo_idx, kernel_cout0_idx: tvm.select(
-                        tvm.all(ho_idx % stride_h == 0, wo_idx % stride_w == 0),
+                        _dy_fill_indices(ho_idx, wo_idx),
                         dy_ddr[batch_idx,
                             kernel_cout1_idx,
                             ho_idx // stride_h,

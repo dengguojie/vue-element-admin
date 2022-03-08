@@ -2517,30 +2517,41 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):
         elif not tensor_attr.get("stride_expand"):
             sch[a_l1].emit_insn(a_l1.op.axis[0], "dma_copy", setfmatrix_dict)
         else:
-            afill_n, afill_c, afill_h, afill_w, afill_c0 = sch_agent[a_filling].get_active_scopes()
-            a_filling_emit_axis = afill_c0
+            afill_n, afill_c, afill_h, afill_w, _ = sch_agent[a_filling].get_active_scopes()
             afill_w_outer, afill_w_inner = sch_agent[a_filling].split(afill_w, factor=stride_w)
             afill_h_outer, afill_h_inner = sch_agent[a_filling].split(afill_h, factor=stride_h)
 
-            sch_agent[a_filling].reorder(
-                afill_h_inner,
-                afill_w_inner,
-                afill_n,
-                afill_c,
-                afill_h_outer,
-                afill_w_outer
-            )
-            if dyn_util.dynamic_mode != 'binary':
+            if dyn_util.dynamic_mode == 'binary':
+                sch_agent[a_filling].reorder(
+                    afill_w_inner,
+                    afill_h_inner,
+                    afill_h_outer,
+                    afill_n,
+                    afill_c,
+                    afill_w_outer
+                )
+                sch[a_filling].set_store_predicate(
+                    tvm.all(tvm.floormod(
+                        afill_w_inner.var - dyn_util.shape_vars.get("pad_left_before"), stride_w) == 0).asnode()
+                )
+            else:
+                sch_agent[a_filling].reorder(
+                    afill_h_inner,
+                    afill_w_inner,
+                    afill_n,
+                    afill_c,
+                    afill_h_outer,
+                    afill_w_outer
+                )
                 sch_agent[a_filling].unroll(afill_h_inner)
                 sch_agent[a_filling].unroll(afill_w_inner)
-                a_filling_emit_axis = afill_n
 
             sch_agent[a_zero].reused_by(a_filling)
             sch_agent[a_zero].reused_by(dy_vn)
 
             sch_agent[a_zero].emit_insn(sch_agent[a_zero].op.axis[0], "vector_dup")
             sch[dy_vn].emit_insn(dy_vn.op.axis[0], "phony_insn")
-            sch_agent[a_filling].emit_insn(a_filling_emit_axis, "dma_copy")
+            sch_agent[a_filling].emit_insn(afill_n, "dma_copy")
             c1_inner, _, _, _ = sch_agent[a_l1].nlast_scopes(4)
             sch_agent[a_l1].emit_insn(c1_inner, "dma_copy", setfmatrix_dict)
         sch[a_col].emit_insn(a_col.op.axis[1], 'im2col_v2', setfmatrix_dict_0)

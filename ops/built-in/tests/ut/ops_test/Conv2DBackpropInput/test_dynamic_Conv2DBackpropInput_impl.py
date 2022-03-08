@@ -586,7 +586,6 @@ def test_get_op_support_info_dynamic_dx_1(test_arg):
              }
     input_size =  (-1, -1, -1, 64)
     get_op_support_info(input_size, filter, out_backprop, y, (1, 1, 1, 1), (0, 0, 0, 0))
-
 ut_case.add_cust_test_func(test_func=test_get_op_support_info_dynamic_dx_0)
 ut_case.add_cust_test_func(test_func=test_get_op_support_info_dynamic_dx_1)
 
