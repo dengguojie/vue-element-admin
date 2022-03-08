@@ -27,12 +27,13 @@ const char *kRandomStandardNormal = "RandomStandardNormal";
     break;                                                            \
   }
 
-#define RANDOM_STANDARD_EIGEN_TENSOR_ASSIGN_CASE(ALIGNMENT_TYPE)       \
+#define RANDOM_STANDARD_EIGEN_TENSOR_ASSIGN_CASE(ALIGNMENT_TYPE) do { \
   Eigen::TensorMap<Eigen::Tensor<T, 1>, ALIGNMENT_TYPE> eigen_output( \
       static_cast<T *>(output->GetData()),                            \
       output->GetTensorShape()->NumElements());                       \
   eigen_output.device(device) = eigen_output.random(                  \
-      Eigen::internal::NormalRandomGenerator<T>(final_seed))
+      Eigen::internal::NormalRandomGenerator<T>(final_seed));          \
+} while(0)
 }
 
 namespace aicpu {
