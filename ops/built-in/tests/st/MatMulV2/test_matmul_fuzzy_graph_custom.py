@@ -83,6 +83,32 @@ def test_matmul_confusion_transpose_30_224_910():
         cce_build_code(sch, config)
 
 
+def test_matmul_confusion_transpose_30_224_910B_False_True():
+    te_set_version("Ascend910B")
+    try:
+        with cce():
+            x1 = tvm.placeholder((64, 420, 16, 16), name="x1", attrs={'format': "FRACTAL_NZ", "ori_shape": (6720, 1024)}, dtype="float16")
+            x2 = tvm.placeholder((64, 64, 16, 16), name="x2", attrs={'format': "FRACTAL_NZ", "ori_shape": (1024, 1024)}, dtype="float16")
+            output_y = {"shape": (64, 420, 16, 16), "dtype": "float16", "ori_shape": (6720, 1024), "format": "FRACTAL_NZ", "ori_format": "ND"}
+            matmul_out = mat_mul_compute(x1, x2, None, None, output_y, False, True)
+            y = {"shape": (30, 16, 4, 14, 16, 16), "ori_shape": (30, 16, 224, 64), "dtype": "float16", "format": "FRACTAL_NZ", "ori_format": "ND"}
+            out = confusion_transpose_d_compute(matmul_out, y, [0, 2, 1, 3], (30, 224, 16, 64), False)
+    except RuntimeError as e:
+        print("test_matmul_confusion_transpose_30_224_910B_False_True success")
+
+def test_matmul_confusion_transpose_30_256_910A_False_True():
+    te_set_version("Ascend910A")
+    try:
+        with cce():
+            x1 = tvm.placeholder((64, 480, 16, 16), name="x1", attrs={'format': "FRACTAL_NZ", "ori_shape": (7680, 1024)}, dtype="float16")
+            x2 = tvm.placeholder((64, 64, 16, 16), name="x2", attrs={'format': "FRACTAL_NZ", "ori_shape": (1024, 1024)}, dtype="float16")
+            output_y = {"shape": (64, 480, 16, 16), "dtype": "float16", "ori_shape": (7680, 1024), "format": "FRACTAL_NZ", "ori_format": "ND"}
+            matmul_out = mat_mul_compute(x1, x2, None, None, output_y, False, True)
+            y = {"shape": (30, 16, 4, 16, 16, 16), "ori_shape": (30, 16, 256, 64), "dtype": "float16", "format": "FRACTAL_NZ", "ori_format": "ND"}
+            out = confusion_transpose_d_compute(matmul_out, y, [0, 2, 1, 3], (30, 256, 16, 64), False)
+    except RuntimeError as e:
+        print("test_matmul_confusion_transpose_30_256_910A_False_True success")
+
 def test_matmul_confusion_transpose_30_224_310():
     te_set_version("Ascend310")
     try:
@@ -188,3 +214,5 @@ if __name__ == '__main__':
     test_matmul_confusion_transpose_30_224_310()
     test_matmul_confusion_transpose_30_224_perm_invalid()
     test_matmul_confusion_transpose_710()
+    test_matmul_confusion_transpose_30_224_910B_False_True()
+    test_matmul_confusion_transpose_30_256_910A_False_True()

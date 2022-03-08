@@ -540,8 +540,21 @@ def op_select_format(x, y, perm, shape, transpose_first,
     return param_dynamic_in_json
 
 
+def _special_situation_check(para_dict, seq_length, batch_size, support_core_num):
+    """
+    check if it is case of fusion with matmul when special situation
+    """
+    trans_a, trans_b = para_dict.get("trans_a"), para_dict.get("trans_b")
+    if not trans_a or not trans_b:
+        seq_length, batch_size = [], []
+        if tbe_platform_info.get_soc_spec("CORE_NUM") not in support_core_num:
+            seq_length = [128, 256]
+            batch_size = [60, 30]
+    return seq_length, batch_size
+
+
 # 'pylint: disable=too-many-boolean-expressions,too-many-return-statements,too-many-branches
-def _is_matmul_fusion_case(y, perm, shape, transpose_first):
+def _is_matmul_fusion_case(y, perm, shape, transpose_first, para_dict):
     """
     check if it is case of fusion with matmul
     """
@@ -558,6 +571,7 @@ def _is_matmul_fusion_case(y, perm, shape, transpose_first):
             if tbe_platform_info.get_soc_spec("CORE_NUM") in support_core_num:
                 seq_length = seq_length + [160, 192, 224, 256]
                 batch_size = batch_size + [1] * 4
+            seq_length, batch_size = _special_situation_check(para_dict, seq_length, batch_size, support_core_num)
             supported_shape = [[batch, seq] for batch, seq in zip(batch_size, seq_length)]
             supported_shape = supported_shape + [[i, 128] for i in range(16, 176, 16)] + \
                             [[i, 512] for i in range(4, 28, 4)]
@@ -600,10 +614,10 @@ def confusion_transpose_d_compute(x, y, perm, shape, transpose_first,
     """
     compute for matmul + confusion_transpose_d fusion
     """
-    if _is_matmul_fusion_case(y, perm, shape, transpose_first):
+    para_dict = getattr(x, "para_dict")
+    if _is_matmul_fusion_case(y, perm, shape, transpose_first, para_dict):
         tensor_a = getattr(x, "tensor_a")
         tensor_b = getattr(x, "tensor_b")
-        para_dict = getattr(x, "para_dict")
         para_dict["confusion_transpose"] = True
         x = tbe.gemm(tensor_a=tensor_a, tensor_b=tensor_b, para_dict=para_dict)
         setattr(x, "matmul_with_transpose", True)
