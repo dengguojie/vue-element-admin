@@ -122,12 +122,15 @@ class ProdVirialSeA:
         trans_ub = self.tik_inst.Tensor(self.op_data_type, op_ub_shape, name="trans_ub", scope=tik.scope_ubuf)
         tmpv_ub = self.tik_inst.Tensor(self.op_data_type, op_ub_shape, name="tmpv_ub", scope=tik.scope_ubuf)
 
+        idx_ub = self.tik_inst.Tensor(self.nlist_dtype, (ProdVirialSeA.NNEI_UB,), name="idx_ub", scope=tik.scope_ubuf)
+        idx_offset_ub = self.tik_inst.Tensor(self.nlist_dtype, (8,), name="idx_offset_ub", scope=tik.scope_ubuf)
+
         j_idx0 = self.tik_inst.Scalar(dtype=self.nlist_dtype)
         j_idx1 = self.tik_inst.Scalar(dtype=self.nlist_dtype)
         j_idx2 = self.tik_inst.Scalar(dtype=self.nlist_dtype)
         j_idx3 = self.tik_inst.Scalar(dtype=self.nlist_dtype)
 
-        return net_ub, drv_ub, nlist_ub, trans_ub, tmpv_ub, j_idx0, j_idx1, j_idx2, j_idx3
+        return net_ub, drv_ub, nlist_ub, trans_ub, tmpv_ub, idx_ub, idx_offset_ub, j_idx0, j_idx1, j_idx2, j_idx3
 
     # 'pylint: disable=too-many-locals,too-many-statements
     def _compute_virial_fp32(self, ub_tuple, kk, nei_start, nnei_ub):
@@ -142,7 +145,7 @@ class ProdVirialSeA:
         out   virial       (nframes, 9)                    float32   (9, )
         out   atom_virial  (nframes, nall * 9)             float32   (256 * 9, )
         """
-        (net_ub, drv_ub, nlist_ub, trans_ub, tmpv_ub, j_idx0, j_idx1, j_idx2, j_idx3) = ub_tuple
+        (net_ub, drv_ub, nlist_ub, trans_ub, tmpv_ub, idx_ub, idx_offset_ub, j_idx0, j_idx1, j_idx2, j_idx3) = ub_tuple
 
         with self.tik_inst.if_scope(nnei_ub < ProdVirialSeA.NNEI_UB):
             self.tik_inst.data_move(drv_ub, self.net_deriv_gm[nei_start * 4], 0, 1, (nnei_ub * 4 + 7) // 8, 0, 0)
@@ -154,7 +157,24 @@ class ProdVirialSeA:
                                     drv_ub[nnei_ub * 4 - nnei_ub * 4 % 64], 0, 1, 1, 1, 8, 8)
         with self.tik_inst.else_scope():
             self.tik_inst.data_move(trans_ub, self.net_deriv_gm[nei_start * 4], 0, 1, 128, 0, 0)
-        self.tik_inst.v4dtrans(False, net_ub, trans_ub, ProdVirialSeA.NNEI_UB, 4)        # net_deriv -> (1, 4, 256)
+        if tbe_platform.api_check_support("tik.v4dtrans", "float32"):
+            self.tik_inst.v4dtrans(False, net_ub, trans_ub, ProdVirialSeA.NNEI_UB, 4)        # net_deriv -> (1, 4, 256)
+        else:
+            trans_ub_fp16 = trans_ub.reinterpret_cast_to("float16")
+            src_list0 = [trans_ub_fp16[128 * i] for i in range(16)]
+            dst_list0 = [trans_ub_fp16[2048 + 16 * i] for i in range(16)]
+            self.tik_inst.vnchwconv(False, False, dst_list0, src_list0, 8, 16, 1)
+
+            net_ub_fp16 = net_ub.reinterpret_cast_to("float16")
+            src_tuples1 = [(trans_ub_fp16[2048 + 128 * i], trans_ub_fp16[2048 + 128 * i + 16]) for i in range(8)]
+            src_list1 = [i for tup in src_tuples1 for i in tup]
+            dst_list1 = [net_ub_fp16[32 * i] for i in range(16)]
+            self.tik_inst.vnchwconv(False, False, dst_list1, src_list1, 4, 32, 2)
+
+            src_tuples2 = [(trans_ub_fp16[3072 + 128 * i], trans_ub_fp16[3072 + 128 * i + 16]) for i in range(8)]
+            src_list2 = [i for tup in src_tuples2 for i in tup]
+            dst_list2 = [net_ub_fp16[32 * i + 16] for i in range(16)]
+            self.tik_inst.vnchwconv(False, False, dst_list2, src_list2, 4, 32, 2)
 
         with self.tik_inst.if_scope(nnei_ub < ProdVirialSeA.NNEI_UB):
             self.tik_inst.data_move(drv_ub, self.rij_gm[nei_start * 3], 0, 1, (nnei_ub * 3 + 7) // 8, 0, 0)
@@ -166,7 +186,24 @@ class ProdVirialSeA:
                                     drv_ub[nnei_ub * 3 - nnei_ub * 3 % 64], 0, 1, 1, 1, 8, 8)
         with self.tik_inst.else_scope():
             self.tik_inst.data_move(trans_ub, self.rij_gm[nei_start * 3], 0, 1, 96, 0, 0)
-        self.tik_inst.v4dtrans(False, drv_ub, trans_ub, ProdVirialSeA.NNEI_UB, 3)        # rij -> (3, 1, 256)
+        if tbe_platform.api_check_support("tik.v4dtrans", "float32"):
+            self.tik_inst.v4dtrans(False, drv_ub, trans_ub, ProdVirialSeA.NNEI_UB, 3)        # rij -> (3, 1, 256)
+        else:
+            trans_ub_fp16 = trans_ub.reinterpret_cast_to("float16")
+            src_list0 = [trans_ub_fp16[96 * i] for i in range(16)]
+            dst_list0 = [trans_ub_fp16[1536 + 16 * i] for i in range(16)]
+            self.tik_inst.vnchwconv(False, False, dst_list0, src_list0, 6, 16, 1)
+
+            drv_ub_fp16 = drv_ub.reinterpret_cast_to("float16")
+            src_tuples1 = [(trans_ub_fp16[1536 + 96 * i], trans_ub_fp16[1536 + 96 * i + 16]) for i in range(8)]
+            src_list1 = [i for tup in src_tuples1 for i in tup]
+            dst_list1 = [drv_ub_fp16[32 * i] for i in range(16)]
+            self.tik_inst.vnchwconv(False, False, dst_list1, src_list1, 3, 32, 2)
+
+            src_tuples2 = [(trans_ub_fp16[2304 + 96 * i], trans_ub_fp16[2304 + 96 * i + 16]) for i in range(8)]
+            src_list2 = [i for tup in src_tuples2 for i in tup]
+            dst_list2 = [drv_ub_fp16[32 * i + 16] for i in range(16)]
+            self.tik_inst.vnchwconv(False, False, dst_list2, src_list2, 3, 32, 2)
 
         with self.tik_inst.for_range(0, 3, name="rij_row") as rij_row:
             with self.tik_inst.for_range(0, 4, name="net_row") as net_row:
@@ -185,7 +222,24 @@ class ProdVirialSeA:
                                     drv_ub[nnei_ub * 12 - nnei_ub * 12 % 64], 0, 1, 1, 1, 8, 8)
         with self.tik_inst.else_scope():
             self.tik_inst.data_move(tmpv_ub, self.in_deriv_gm[nei_start * 12], 0, 1, 384, 0, 0)
-        self.tik_inst.v4dtrans(False, drv_ub, tmpv_ub, ProdVirialSeA.NNEI_UB, 12)        # in_deriv -> (4, 3, 256)
+        if tbe_platform.api_check_support("tik.v4dtrans", "float32"):
+            self.tik_inst.v4dtrans(False, drv_ub, tmpv_ub, ProdVirialSeA.NNEI_UB, 12)        # in_deriv -> (4, 3, 256)
+        else:
+            tmpv_ub_fp16 = tmpv_ub.reinterpret_cast_to("float16")
+            src_list0 = [tmpv_ub_fp16[384 * i] for i in range(16)]
+            dst_list0 = [tmpv_ub_fp16[6144 + 16 * i] for i in range(16)]
+            self.tik_inst.vnchwconv(False, False, dst_list0, src_list0, 24, 16, 1)
+
+            drv_ub_fp16 = drv_ub.reinterpret_cast_to("float16")
+            src_tuples1 = [(tmpv_ub_fp16[6144 + 384 * i], tmpv_ub_fp16[6144 + 384 * i + 16]) for i in range(8)]
+            src_list1 = [i for tup in src_tuples1 for i in tup]
+            dst_list1 = [drv_ub_fp16[32 * i] for i in range(16)]
+            self.tik_inst.vnchwconv(False, False, dst_list1, src_list1, 12, 32, 2)
+
+            src_tuples2 = [(tmpv_ub_fp16[9216 + 384 * i], tmpv_ub_fp16[9216 + 384 * i + 16]) for i in range(8)]
+            src_list2 = [i for tup in src_tuples2 for i in tup]
+            dst_list2 = [drv_ub_fp16[32 * i + 16] for i in range(16)]
+            self.tik_inst.vnchwconv(False, False, dst_list2, src_list2, 12, 32, 2)
 
         with self.tik_inst.for_range(0, 3, name="mul_row") as mul_row:
             with self.tik_inst.for_range(0, 3, name="env_col") as env_col:               # in_deriv -> (3, 1, 4, 256)
@@ -204,38 +258,93 @@ class ProdVirialSeA:
         self.tik_inst.data_move(self.virial_gm[kk * 9], net_ub, 0, 1, 2, 0, 0)
         self.tik_inst.set_atomic_add(0)
 
-        self.tik_inst.v4dtrans(True, trans_ub, tmpv_ub, ProdVirialSeA.NNEI_UB, 36)       # atom_virial -> (256, 9, 4)
-        self.tik_inst.vcpadd(64, tmpv_ub, trans_ub, 144, 1, 1, 8)
-        self.tik_inst.vcpadd(64, trans_ub, tmpv_ub, 72, 1, 1, 8)                         # atom_virial -> (256, 9)
+        self.tik_inst.vadd(64, trans_ub, tmpv_ub, tmpv_ub[ProdVirialSeA.NNEI_UB],
+                           18, 1, 1, 1, 32, 64, 64)
+        self.tik_inst.vadd(64, trans_ub[64], tmpv_ub[64], tmpv_ub[ProdVirialSeA.NNEI_UB + 64],
+                           18, 1, 1, 1, 32, 64, 64)
+        self.tik_inst.vadd(64, trans_ub[128], tmpv_ub[128], tmpv_ub[ProdVirialSeA.NNEI_UB + 128],
+                           18, 1, 1, 1, 32, 64, 64)
+        self.tik_inst.vadd(64, trans_ub[192], tmpv_ub[192], tmpv_ub[ProdVirialSeA.NNEI_UB + 192],
+                           18, 1, 1, 1, 32, 64, 64)
+        self.tik_inst.vadd(64, drv_ub, trans_ub, trans_ub[ProdVirialSeA.NNEI_UB],
+                           9, 1, 1, 1, 32, 64, 64)
+        self.tik_inst.vadd(64, drv_ub[64], trans_ub[64], trans_ub[ProdVirialSeA.NNEI_UB + 64],
+                           9, 1, 1, 1, 32, 64, 64)
+        self.tik_inst.vadd(64, drv_ub[128], trans_ub[128], trans_ub[ProdVirialSeA.NNEI_UB + 128],
+                           9, 1, 1, 1, 32, 64, 64)
+        self.tik_inst.vadd(64, drv_ub[192], trans_ub[192], trans_ub[ProdVirialSeA.NNEI_UB + 192],
+                           9, 1, 1, 1, 32, 64, 64)                                       # atom_virial -> (9, 256)
+
+        self.tik_inst.vec_dup(64, drv_ub[2304], 0, 28, 8)
+        if tbe_platform.api_check_support("tik.v4dtrans", "float32"):
+            self.tik_inst.v4dtrans(True, tmpv_ub, drv_ub, ProdVirialSeA.NNEI_UB, 16)     # atom_virial -> (256, 16)
+        else:
+            drv_ub_fp16 = drv_ub.reinterpret_cast_to("float16")
+            tmpv_ub_fp16 = tmpv_ub.reinterpret_cast_to("float16")
+            src_list0 = [drv_ub_fp16[16 * i] for i in range(16)]
+            dst_list0 = [tmpv_ub_fp16[8192 + 32 * i] for i in range(16)]
+            self.tik_inst.vnchwconv(False, False, dst_list0, src_list0, 16, 32, 32)
+
+            src_list1 = [drv_ub_fp16[256 + 16 * i] for i in range(16)]
+            dst_list1 = [tmpv_ub_fp16[8192 + 32 * i + 16] for i in range(16)]
+            self.tik_inst.vnchwconv(False, False, dst_list1, src_list1, 16, 32, 32)
+
+            src_tuples2 = [(tmpv_ub_fp16[8192 + 512 * i], tmpv_ub_fp16[8192 + 512 * i + 32]) for i in range(8)]
+            src_list2 = [i for tup in src_tuples2 for i in tup]
+            dst_list2 = [tmpv_ub_fp16[256 * i] for i in range(16)]
+            self.tik_inst.vnchwconv(False, False, dst_list2, src_list2, 8, 2, 4)
+
+            src_tuples3 = [(tmpv_ub_fp16[8192 + 512 * i + 16], tmpv_ub_fp16[8192 + 512 * i + 48]) for i in range(8)]
+            src_list3 = [i for tup in src_tuples3 for i in tup]
+            dst_list3 = [tmpv_ub_fp16[4096 + 256 * i] for i in range(16)]
+            self.tik_inst.vnchwconv(False, False, dst_list3, src_list3, 8, 2, 4)
+
+            src_tuples4 = [(tmpv_ub_fp16[12288 + 512 * i], tmpv_ub_fp16[12288 + 512 * i + 32]) for i in range(8)]
+            src_list4 = [i for tup in src_tuples4 for i in tup]
+            dst_list4 = [tmpv_ub_fp16[256 * i + 16] for i in range(16)]
+            self.tik_inst.vnchwconv(False, False, dst_list4, src_list4, 8, 2, 4)
+
+            src_tuples5 = [(tmpv_ub_fp16[12288 + 512 * i + 16], tmpv_ub_fp16[12288 + 512 * i + 48]) for i in range(8)]
+            src_list5 = [i for tup in src_tuples5 for i in tup]
+            dst_list5 = [tmpv_ub_fp16[4096 + 256 * i + 16] for i in range(16)]
+            self.tik_inst.vnchwconv(False, False, dst_list5, src_list5, 8, 2, 4)
 
         self.tik_inst.data_move(nlist_ub, self.nlist_gm[nei_start], 0, 1, 32, 0, 0)      # nlist -> (256, )
-        self.tik_inst.vadds(64, nlist_ub, nlist_ub, kk * self.nall, 4, 1, 1, 8, 8)
-        self.tik_inst.vmuls(64, nlist_ub, nlist_ub, 9, 4, 1, 1, 8, 8)
-
-        self.tik_inst.v4dtrans(False, drv_ub, trans_ub, ProdVirialSeA.NNEI_UB, 9)
-        self.tik_inst.vec_dup(64, drv_ub[2304], 0, 28, 8)
-        self.tik_inst.v4dtrans(True, tmpv_ub, drv_ub, ProdVirialSeA.NNEI_UB, 16)         # atom_virial -> (256, 16)
+        if tbe_platform.api_check_support("tik.vadds", "int32"):
+            self.tik_inst.vadds(64, idx_ub, nlist_ub, kk * self.nall, 4, 1, 1, 8, 8)
+        else:
+            self.tik_inst.vec_dup(8, idx_offset_ub, kk * self.nall, 1, 1)
+            self.tik_inst.vadd(64, idx_ub, nlist_ub, idx_offset_ub, 4, 1, 1, 0, 8, 8, 0)
+        if tbe_platform.api_check_support("tik.vmuls", "int32"):
+            self.tik_inst.vmuls(64, nlist_ub, idx_ub, 9, 4, 1, 1, 8, 8)
+        else:
+            self.tik_inst.vec_dup(8, idx_offset_ub, 9, 1, 1)
+            self.tik_inst.vmul(64, nlist_ub, idx_ub, idx_offset_ub, 4, 1, 1, 0, 8, 8, 0)
 
         self.tik_inst.set_atomic_add(1)
         with self.tik_inst.for_range(0, 64, name="jj") as jj:
             with self.tik_inst.if_scope(jj * 4 < nnei_ub):
                 j_idx0.set_as(nlist_ub[jj * 4])
-                with self.tik_inst.if_scope(j_idx0 > kk * self.nall * 9 - 1):
+                with self.tik_inst.if_scope(tik.all(j_idx0 > kk * self.nall * 9 - 1,
+                                                    j_idx0 < (kk + 1) * self.nall * 9)):
                     self.tik_inst.data_move(self.atom_virial_gm[j_idx0], tmpv_ub[jj * 64], 0, 1, 2, 0, 0)
 
             with self.tik_inst.if_scope(jj * 4 + 1 < nnei_ub):
                 j_idx1.set_as(nlist_ub[jj * 4 + 1])
-                with self.tik_inst.if_scope(j_idx1 > kk * self.nall * 9 - 1):
+                with self.tik_inst.if_scope(tik.all(j_idx1 > kk * self.nall * 9 - 1,
+                                                    j_idx1 < (kk + 1) * self.nall * 9)):
                     self.tik_inst.data_move(self.atom_virial_gm[j_idx1], tmpv_ub[jj * 64 + 16], 0, 1, 2, 0, 0)
 
             with self.tik_inst.if_scope(jj * 4 + 2 < nnei_ub):
                 j_idx2.set_as(nlist_ub[jj * 4 + 2])
-                with self.tik_inst.if_scope(j_idx2 > kk * self.nall * 9 - 1):
+                with self.tik_inst.if_scope(tik.all(j_idx2 > kk * self.nall * 9 - 1,
+                                                    j_idx2 < (kk + 1) * self.nall * 9)):
                     self.tik_inst.data_move(self.atom_virial_gm[j_idx2], tmpv_ub[jj * 64 + 32], 0, 1, 2, 0, 0)
 
             with self.tik_inst.if_scope(jj * 4 + 3 < nnei_ub):
                 j_idx3.set_as(nlist_ub[jj * 4 + 3])
-                with self.tik_inst.if_scope(j_idx3 > kk * self.nall * 9 - 1):
+                with self.tik_inst.if_scope(tik.all(j_idx3 > kk * self.nall * 9 - 1,
+                                                    j_idx3 < (kk + 1) * self.nall * 9)):
                     self.tik_inst.data_move(self.atom_virial_gm[j_idx3], tmpv_ub[jj * 64 + 48], 0, 1, 2, 0, 0)
         self.tik_inst.set_atomic_add(0)
 

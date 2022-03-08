@@ -36,6 +36,7 @@
 #include "graph_optimizer/graph_fusion/fusion_pass_manager/fusion_pass_registry.h"
 #include "op_log.h"
 #include "pattern_fusion_util.h"
+#include "deep_md_fusion_pass_util.h"
 #include "prodenvmata_fusion_pass.h"
 
 namespace fe {
@@ -401,6 +402,10 @@ Status ProdEnvMatAFusionPass::ClearFusedNode(ge::ComputeGraph& graph, ge::NodePt
  */
 Status ProdEnvMatAFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& newNodes) {
   OP_LOGD(FUSED_OP_TYPE.c_str(), "Enter into ProdEnvMatA fusion pass.");
+
+  bool isSupport = false;
+  FUSION_PASS_CHECK(DeepMdFusionPassUtil::CheckSupportVectorCore(FUSED_OP_TYPE, isSupport) != SUCCESS || !isSupport,
+                    OP_LOGD(FUSED_OP_TYPE.c_str(), "Exit for no support vector core"), return NOT_CHANGED);
 
   ge::NodePtr envmatNode = GetNodeFromMapping(PATTERN_PRODENVMATA, mapping);
   FUSION_PASS_CHECK(envmatNode == nullptr, CommonRuntimeErrLog(FUSED_OP_TYPE, "Failed to get ProdEnvMatA Node."),

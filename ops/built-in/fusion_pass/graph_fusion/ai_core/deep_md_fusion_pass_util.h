@@ -29,6 +29,14 @@ namespace fe {
 class DeepMdFusionPassUtil {
  public:
   /**
+   * Check is the platform support vector core.
+   * @param fusedOpType
+   * @param isSupport
+   * @return status
+   */
+  static Status CheckSupportVectorCore(const std::string& fusedOpType, bool& isSupport);
+
+  /**
    * Check value of split.
    * Expect value is split_count := 1, split_index := 0.
    * @param fusedOpType

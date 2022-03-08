@@ -38,7 +38,7 @@ class ProdVirialSeATiling : public testing::Test {
   }
 };
 
-static string to_string(const std::stringstream& tiling_data) {
+static string VirialTilingToString(const std::stringstream& tiling_data) {
   auto data = tiling_data.str();
   string result;
   int64_t tmp = 0;
@@ -50,7 +50,7 @@ static string to_string(const std::stringstream& tiling_data) {
   return result;
 }
 
-static TeOpTensorArg SimpleTensorArg(const std::vector<int64_t>& shape, const std::string& dtype) {
+static TeOpTensorArg SimpleVirialTensorArg(const std::vector<int64_t>& shape, const std::string& dtype) {
   TeOpTensor tensor;
   tensor.shape = shape;
   tensor.dtype = dtype;
@@ -62,7 +62,7 @@ static TeOpTensorArg SimpleTensorArg(const std::vector<int64_t>& shape, const st
   return tensorArg;
 }
 
-static void RunTestTiling(const std::vector<int64_t>& netShape, const std::string& netDtype,
+static void RunVirialTestTiling(const std::vector<int64_t>& netShape, const std::string& netDtype,
                           const std::vector<int64_t>& inShape, const std::string& inDtype,
                           const std::vector<int64_t>& rijShape, const std::string& rijDtype,
                           const std::vector<int64_t>& nlistShape, const std::string& nlistDtype,
@@ -75,14 +75,14 @@ static void RunTestTiling(const std::vector<int64_t>& netShape, const std::strin
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("ProdVirialSeA");
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
-  TeOpTensorArg netDeriv = SimpleTensorArg(netShape, netDtype);
-  TeOpTensorArg inDeriv = SimpleTensorArg(inShape, inDtype);
-  TeOpTensorArg rij = SimpleTensorArg(rijShape, rijDtype);
-  TeOpTensorArg nlist = SimpleTensorArg(nlistShape, nlistDtype);
-  TeOpTensorArg natoms = SimpleTensorArg(natomsShape, natomsDtype);
+  TeOpTensorArg netDeriv = SimpleVirialTensorArg(netShape, netDtype);
+  TeOpTensorArg inDeriv = SimpleVirialTensorArg(inShape, inDtype);
+  TeOpTensorArg rij = SimpleVirialTensorArg(rijShape, rijDtype);
+  TeOpTensorArg nlist = SimpleVirialTensorArg(nlistShape, nlistDtype);
+  TeOpTensorArg natoms = SimpleVirialTensorArg(natomsShape, natomsDtype);
 
-  TeOpTensorArg virial = SimpleTensorArg(virialShape, virialDtype);
-  TeOpTensorArg atomVirial = SimpleTensorArg(atomVirialShape, atomVirialDtype);
+  TeOpTensorArg virial = SimpleVirialTensorArg(virialShape, virialDtype);
+  TeOpTensorArg atomVirial = SimpleVirialTensorArg(atomVirialShape, atomVirialDtype);
 
   TeOpParas opParas;
   opParas.inputs.push_back(netDeriv);
@@ -99,10 +99,10 @@ static void RunTestTiling(const std::vector<int64_t>& netShape, const std::strin
   opCompileInfo.key = compileInfoKey;
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second.tiling_func_(opParas, opCompileInfo, runInfo));
-  EXPECT_EQ(to_string(runInfo.tiling_data), expectTiling);
+  EXPECT_EQ(VirialTilingToString(runInfo.tiling_data), expectTiling);
 }
 
-void RunSimpleTest(const int64_t& runIndex, const int64_t& nframes, const int64_t& nloc, const int64_t& nnei,
+void RunSimpleVirialTest(const int64_t& runIndex, const int64_t& nframes, const int64_t& nloc, const int64_t& nnei,
                    const int64_t& nall, const int64_t& splitCount, const int64_t& splitIndex,
                    const int64_t& coreNum, const std::string& expectTiling) {
   stringstream compileInfoKey;
@@ -113,7 +113,7 @@ void RunSimpleTest(const int64_t& runIndex, const int64_t& nframes, const int64_
               << ", \"split_count\": " << splitCount
               << ", \"split_index\": " << splitIndex << "}}";
 
-  RunTestTiling({nframes, nloc * nnei * 4}, "float32",
+  RunVirialTestTiling({nframes, nloc * nnei * 4}, "float32",
                 {nframes, nloc * nnei * 4 * 3}, "float32",
                 {nframes, nloc * nnei * 3}, "float32",
                 {nframes, nloc * nnei}, "int32",
@@ -124,11 +124,11 @@ void RunSimpleTest(const int64_t& runIndex, const int64_t& nframes, const int64_
 }
 
 TEST_F(ProdVirialSeATiling, prod_virial_se_a_tiling_001) {
-  RunSimpleTest(0, 1, 12288, 138, 28328, 1, 0, 8, "1 1695744 28328 0 6624 0 8 828 828 ");
-  RunSimpleTest(1, 1, 12288, 138, 28328, 2, 0, 8, "1 1695744 28328 0 3536 0 8 442 442 ");
-  RunSimpleTest(2, 1, 12288, 138, 28328, 2, 1, 7, "1 1695744 28328 3536 3088 1 6 442 441 ");
+  RunSimpleVirialTest(0, 1, 12288, 138, 28328, 1, 0, 8, "1 1695744 28328 0 6624 0 8 828 828 ");
+  RunSimpleVirialTest(1, 1, 12288, 138, 28328, 2, 0, 8, "1 1695744 28328 0 3536 0 8 442 442 ");
+  RunSimpleVirialTest(2, 1, 12288, 138, 28328, 2, 1, 7, "1 1695744 28328 3536 3088 1 6 442 441 ");
 
-  RunSimpleTest(10, 1, 6144, 1800, 19000, 1, 0, 8, "1 11059200 19000 0 43200 0 8 5400 5400 ");
-  RunSimpleTest(11, 1, 6144, 1800, 19000, 2, 0, 8, "1 11059200 19000 0 23040 0 8 2880 2880 ");
-  RunSimpleTest(12, 1, 6144, 1800, 19000, 2, 1, 7, "1 11059200 19000 23040 20160 0 7 2880 2880 ");
+  RunSimpleVirialTest(10, 1, 6144, 1800, 19000, 1, 0, 8, "1 11059200 19000 0 43200 0 8 5400 5400 ");
+  RunSimpleVirialTest(11, 1, 6144, 1800, 19000, 2, 0, 8, "1 11059200 19000 0 23040 0 8 2880 2880 ");
+  RunSimpleVirialTest(12, 1, 6144, 1800, 19000, 2, 1, 7, "1 11059200 19000 23040 20160 0 7 2880 2880 ");
 }

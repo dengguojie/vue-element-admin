@@ -28,6 +28,8 @@
 #include "split_combination_ops.h"
 #include "deep_md.h"
 #include "fusion_pass_test_utils.h"
+#define private public
+#include "common/util/platform_info.h"
 
 using namespace ge;
 using namespace op;
@@ -72,6 +74,14 @@ TEST_F(prodenvmata_fusion_test, prodenvmata_fusion_test_01) {
   int32_t nnei = n_a_sel + n_r_sel;
   int32_t natomsSize = 4;
   int32_t typeNum = 2;
+
+  fe::PlatformInfo platformInfo;
+  fe::OptionalInfo optiCompilationInfo;
+  platformInfo.soc_info.ai_core_cnt = 1;
+  platformInfo.str_info.ccec_aic_version = "dav-s200";
+  optiCompilationInfo.soc_version = "Ascend710";
+  fe::PlatformInfoManager::Instance().platform_info_map_["Ascend710"] = platformInfo;
+  fe::PlatformInfoManager::Instance().SetOptionalCompilationInfo(optiCompilationInfo);
 
   auto coord = CreateDataNode("coord", {nsample, nall * 3}, FORMAT_ND, DT_FLOAT);
   auto type = CreateDataNode("type", {nsample, nall}, FORMAT_ND, DT_INT32);

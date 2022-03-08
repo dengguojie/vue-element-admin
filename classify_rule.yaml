@@ -1832,6 +1832,7 @@ unkown:
       - ops/built-in/op_tiling/square_sum_all.cc
       - ops/built-in/op_tiling/as_strided.cc
       - ops/built-in/op_tiling/prod_env_mat_a.cc
+      - ops/built-in/op_tiling/prod_env_mat_a_calc_descrpt.cc
       - ops/built-in/op_tiling/ifmr.cc
       - ops/built-in/op_tiling/strided_slice.h
       - ops/built-in/op_tiling/layer_norm_v1.h
@@ -2687,6 +2688,7 @@ unkown:
       - ops/built-in/tbe/impl/dynamic/reduce_sum.py
       - ops/built-in/tbe/impl/dynamic/one_hot.py
       - ops/built-in/tbe/impl/dynamic/prod_env_mat_a.py
+      - ops/built-in/tbe/impl/dynamic/prod_env_mat_a_calc_descrpt.py
       - ops/built-in/tbe/impl/dynamic/sigmoid_cross_entropy_with_logits_grad_v2.py
       - ops/built-in/tbe/impl/dynamic/tan.py
       - ops/built-in/tbe/impl/dynamic/reduce_any.py

@@ -191,6 +191,7 @@ set(_optiling_files
   prod_virial_se_a.cc
   tabulate_fusion_grad.cc
   prod_env_mat_a.cc
+  prod_env_mat_a_calc_descrpt.cc
   strided_slice_v3.cc
   tabulate_fusion.cc
   kl_div.cc

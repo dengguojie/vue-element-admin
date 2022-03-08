@@ -1,0 +1,52 @@
+[
+    {
+      "op": "ProdVirialSeA",
+      "input_desc": [
+        {
+          "shape": [1, 6782976],
+          "format": "ND",
+          "param_type": "input",
+          "type": "float"
+        },
+        {
+          "shape": [1, 20348928],
+          "format": "ND",
+          "param_type": "input",
+          "type": "float"
+        },
+        {
+          "shape": [1, 5087232],
+          "format": "ND",
+          "param_type": "input",
+          "type": "float"
+        },
+        {
+          "shape": [1, 1695744],
+          "format": "ND",
+          "param_type": "input",
+          "type": "float"
+        },
+        {
+          "shape": [4],
+          "format": "ND",
+          "param_type": "input",
+          "type": "int32"
+        }
+      ],
+      "output_desc": [
+        {
+          "shape": [1, 9],
+          "format": "ND",
+          "param_type": "output",
+          "type": "float"
+        },
+        {
+          "shape": [1, 254952],
+          "format": "ND",
+          "param_type": "output",
+          "type": "float"
+        }
+      ],
+      "case_name": "test_ProdVirialSeA_001"
+    }
+  ]

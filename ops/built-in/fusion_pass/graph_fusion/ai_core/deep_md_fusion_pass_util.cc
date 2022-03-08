@@ -27,6 +27,7 @@
 
 #include "../../../op_proto/util/error_util.h"
 #include "common/util/error_manager/error_manager.h"
+#include "common/util/platform_info.h"
 #include "graph/debug/ge_attr_define.h"
 #include "graph/utils/attr_utils.h"
 #include "graph/utils/graph_utils.h"
@@ -45,6 +46,32 @@ static const std::string ATTR_NAME_STREAM_LABEL = "_stream_label";
 static const std::string ATTR_SPLIT_COUNT = "split_count";
 static const std::string ATTR_SPLIT_INDEX = "split_index";
 const int64_t SPLIT_COUNT_VALUE = 2;
+static const std::vector<std::string> SUPPORT_VECTORCORE_PLATFORM_PATTERN = {"Ascend710"};
+
+Status DeepMdFusionPassUtil::CheckSupportVectorCore(const std::string& fusedOpType, bool& isSupport) {
+  OP_LOGD(fusedOpType.c_str(), "Enter into IsSupportVectorCore");
+
+  PlatformInfo platformInfo;
+  OptionalInfo optionalInfo;
+  FUSION_PASS_CHECK(
+      PlatformInfoManager::Instance().GetPlatformInfoWithOutSocVersion(platformInfo, optionalInfo) != fe::SUCCESS,
+      OP_LOGD(fusedOpType.c_str(), "Failed to get platform info"), return FAILED);
+
+  std::string socVersion = optionalInfo.soc_version;
+  OP_LOGD(fusedOpType.c_str(), "Get soc version: %s", socVersion.c_str());
+
+  isSupport = false;
+  for (string pattern : SUPPORT_VECTORCORE_PLATFORM_PATTERN) {
+    if (socVersion == pattern || socVersion.find(pattern) != string::npos) {
+      isSupport = true;
+      break;
+    }
+  }
+
+  OP_LOGD(fusedOpType.c_str(), "End to IsSupportVectorCore. isSupport: %s", isSupport);
+  return SUCCESS;
+}
+
 Status DeepMdFusionPassUtil::CheckSplitInitInfo(const std::string& fusedOpType, const ge::NodePtr& node) {
   OP_LOGD(fusedOpType.c_str(), "Enter into CheckSplitInitInfo");
 

@@ -1,0 +1,103 @@
+[
+    {
+      "op": "ProdEnvMatACalcDescrpt",
+      "input_desc": [
+        {
+          "shape": [1, 1695744],
+          "format": "ND",
+          "param_type": "input",
+          "type": "float"
+        },
+        {
+          "shape": [1, 1695744],
+          "format": "ND",
+          "param_type": "input",
+          "type": "float"
+        },
+        {
+          "shape": [1, 1695744],
+          "format": "ND",
+          "param_type": "input",
+          "type": "float"
+        },
+        {
+          "shape": [1, 1695744],
+          "format": "ND",
+          "param_type": "input",
+          "type": "float"
+        },
+        {
+          "shape": [1, 12288],
+          "format": "ND",
+          "param_type": "input",
+          "type": "int32"
+        },
+        {
+          "shape": [4],
+          "format": "ND",
+          "param_type": "input",
+          "type": "int32"
+        },
+        {
+          "shape": [1, 12607489],
+          "format": "ND",
+          "param_type": "input",
+          "type": "int32"
+        },
+        {
+          "shape": [1, 552],
+          "format": "ND",
+          "param_type": "input",
+          "type": "float"
+        },
+        {
+          "shape": [1, 552],
+          "format": "ND",
+          "param_type": "input",
+          "type": "float"
+        }
+      ],
+      "output_desc": [
+        {
+          "shape": [1, 9],
+          "format": "ND",
+          "param_type": "output",
+          "type": "float"
+        },
+        {
+          "shape": [1, 254952],
+          "format": "ND",
+          "param_type": "output",
+          "type": "float"
+        }
+      ],
+      "attr": [
+        {
+          "name": "rcut_a",
+          "type": "float",
+          "value": 0.0
+        },
+        {
+          "name": "rcut_r",
+          "type": "float",
+          "value": 8.0
+        },
+        {
+          "name": "rcut_r_smth",
+          "type": "float",
+          "value": 2.0
+        },
+        {
+          "name": "sel_a",
+          "type": "list_int",
+          "value": [46, 92]
+        },
+        {
+          "name": "sel_r",
+          "type": "list_int",
+          "value": []
+        }
+      ],
+      "case_name": "test_ProdEnvMatACalcDescrpt_001"
+    }
+]

@@ -81,13 +81,15 @@ vector<FusionPattern*> ProdVirialSeAFusionPass::DefinePatterns() {
 Status ProdVirialSeAFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& newNodes) {
   OP_LOGD(FUSED_OP_TYPE.c_str(), "Enter into ProdVirialSeA fusion pass");
 
+  bool isSupport = false;
+  FUSION_PASS_CHECK(DeepMdFusionPassUtil::CheckSupportVectorCore(FUSED_OP_TYPE, isSupport) != SUCCESS || !isSupport,
+                    OP_LOGD(FUSED_OP_TYPE.c_str(), "Exit for no support vector core"), return NOT_CHANGED);
+
   ge::NodePtr virialNode = GetNodeFromMapping(PATTERN_PRODVIRIALSEA, mapping);
-  FUSION_PASS_CHECK(virialNode == nullptr,
-                    OP_LOGI(FUSED_OP_TYPE.c_str(), "Failed to get ProdVirialSeA Node"),
+  FUSION_PASS_CHECK(virialNode == nullptr, OP_LOGI(FUSED_OP_TYPE.c_str(), "Failed to get ProdVirialSeA Node"),
                     return NOT_CHANGED);
   FUSION_PASS_CHECK(DeepMdFusionPassUtil::CheckSplitInitInfo(FUSED_OP_TYPE, virialNode) != SUCCESS,
-                    OP_LOGI(FUSED_OP_TYPE.c_str(), "Failed to check {split_count, split_index}"),
-                    return NOT_CHANGED);
+                    OP_LOGI(FUSED_OP_TYPE.c_str(), "Failed to check {split_count, split_index}"), return NOT_CHANGED);
 
   ge::NodePtr virialNodeAic = nullptr;
   ge::NodePtr virialNodeVec = nullptr;

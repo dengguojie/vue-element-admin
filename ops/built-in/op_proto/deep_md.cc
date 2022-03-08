@@ -44,7 +44,8 @@ static const int NUM_15 = 15;
 // --------------------------TabulateFusion Begin-----------------
 IMPLEMT_VERIFIER(TabulateFusion, TabulateFusionVerify) {
   AscendString opName;
-  CHECK(op.GetName(opName) != GRAPH_SUCCESS, OP_LOGE(opName.GetString(), "Failed to get op name of TabulateFusion"),
+  CHECK(op.GetName(opName) != GRAPH_SUCCESS,
+        OP_LOGE("TabulateFusion", "Failed to get op name of TabulateFusion"),
         return GRAPH_FAILED);
 
   auto opDesc = OpDescUtils::GetOpDescFromOperator(op);
@@ -79,7 +80,7 @@ IMPLEMT_VERIFIER(TabulateFusion, TabulateFusionVerify) {
 }
 
 IMPLEMT_COMMON_INFERFUNC(TabulateFusionInferShape) {
-  OP_LOGI(op.GetName().c_str(), "TabulateFusionInferShape begin");
+  OP_LOGI(op.GetName(), "TabulateFusionInferShape begin");
   auto opDesc = OpDescUtils::GetOpDescFromOperator(op);
   GeTensorDescPtr emDesc = opDesc->MutableInputDesc("em");
   std::vector<int64_t> emShapeVec = emDesc->MutableShape().GetDims();
@@ -107,7 +108,7 @@ IMPLEMT_COMMON_INFERFUNC(TabulateFusionInferShape) {
   int32_t splitIndex = 0;
   op.GetAttr("split_count", splitCount);
   op.GetAttr("split_index", splitIndex);
-  OP_LOGI(op.GetName().c_str(), "TabulateFusionInferShape, splitCount=%d, splitIndex=%d", splitCount, splitIndex);
+  OP_LOGI(op.GetName(), "TabulateFusionInferShape, splitCount=%d, splitIndex=%d", splitCount, splitIndex);
   if (splitCount == 1) {
     outputDesc->SetShape(ge::GeShape(outputShape));
   } else if (splitCount == 2) {
@@ -118,10 +119,10 @@ IMPLEMT_COMMON_INFERFUNC(TabulateFusionInferShape) {
     }
 
     if (splitIndex == 0) {
-      OP_LOGI(op.GetName().c_str(), "TabulateFusionInferShape, splitIndex is 0, dim0=%ld", ceilValue);
+      OP_LOGI(op.GetName(), "TabulateFusionInferShape, splitIndex is 0, dim0=%ld", ceilValue);
       outputShape = {ceilValue, 4, lastLayerSize};
     } else {
-      OP_LOGI(op.GetName().c_str(), "TabulateFusionInferShape, splitIndex is 1, dim0=%ld", nlocValue - ceilValue);
+      OP_LOGI(op.GetName(), "TabulateFusionInferShape, splitIndex is 1, dim0=%ld", nlocValue - ceilValue);
       outputShape = {nlocValue - ceilValue, 4, lastLayerSize};
     }
     outputDesc->SetShape(ge::GeShape(outputShape));
@@ -132,7 +133,7 @@ IMPLEMT_COMMON_INFERFUNC(TabulateFusionInferShape) {
   }
   outputDesc->SetDataType(emDesc->GetDataType());
 
-  OP_LOGI(op.GetName().c_str(), "TabulateFusionInferShape run success");
+  OP_LOGI(op.GetName(), "TabulateFusionInferShape run success");
   return GRAPH_SUCCESS;
 }
 
@@ -143,7 +144,8 @@ VERIFY_FUNC_REG(TabulateFusion, TabulateFusionVerify);
 // --------------------------ProdForceSeA Begin---------------------
 IMPLEMT_VERIFIER(ProdForceSeA, ProdForceSeAVerify) {
   AscendString opName;
-  CHECK(op.GetName(opName) != GRAPH_SUCCESS, OP_LOGE(opName.GetString(), "Failed to get op name of ProdForceSeA"),
+  CHECK(op.GetName(opName) != GRAPH_SUCCESS,
+        OP_LOGE("ProdForceSeA", "Failed to get op name of ProdForceSeA"),
         return GRAPH_FAILED);
 
   auto opDesc = OpDescUtils::GetOpDescFromOperator(op);
@@ -182,8 +184,8 @@ IMPLEMT_VERIFIER(ProdForceSeA, ProdForceSeAVerify) {
 static const int64_t MAX_NALL = 30000;
 IMPLEMT_COMMON_INFERFUNC(ProdForceSeAInferShape) {
   AscendString opName;
-  CHECK(op.GetName(opName) != GRAPH_SUCCESS,
-    OP_LOGE(opName.GetString(), "Failed to get op name of ProdForceSeA."), return GRAPH_FAILED);
+  CHECK(op.GetName(opName) != GRAPH_SUCCESS, OP_LOGE("ProdForceSeA", "Failed to get op name of ProdForceSeA."),
+        return GRAPH_FAILED);
   const vector<string> depend_names = {"natoms"};
   PREPARE_DYNAMIC_SHAPE(depend_names);
 
@@ -252,7 +254,7 @@ VERIFY_FUNC_REG(ProdForceSeA, ProdForceSeAVerify);
 // --------------------------ProdVirialSeA Begin---------------------
 IMPLEMT_VERIFIER(ProdVirialSeA, ProdVirialSeAVerify) {
   AscendString opName;
-  CHECK(op.GetName(opName) != GRAPH_SUCCESS, OP_LOGE(opName.GetString(), "Failed to get op name of ProdVirialSeA"),
+  CHECK(op.GetName(opName) != GRAPH_SUCCESS, OP_LOGE("ProdVirialSeA", "Failed to get op name of ProdVirialSeA"),
         return GRAPH_FAILED);
 
   auto opDesc = OpDescUtils::GetOpDescFromOperator(op);
@@ -296,7 +298,7 @@ IMPLEMT_VERIFIER(ProdVirialSeA, ProdVirialSeAVerify) {
 
 IMPLEMT_COMMON_INFERFUNC(ProdVirialSeAInferShape) {
   AscendString opName;
-  CHECK(op.GetName(opName) != GRAPH_SUCCESS, OP_LOGE(opName.GetString(), "Failed to get op name of ProdVirialSeA"),
+  CHECK(op.GetName(opName) != GRAPH_SUCCESS, OP_LOGE("ProdVirialSeA", "Failed to get op name of ProdVirialSeA"),
         return GRAPH_FAILED);
 
   const vector<string> depend_names = {"natoms"};
@@ -352,7 +354,7 @@ VERIFY_FUNC_REG(ProdVirialSeA, ProdVirialSeAVerify);
 // --------------------------ProdEnvMatA Begin---------------------
 IMPLEMT_VERIFIER(ProdEnvMatA, ProdEnvMatAVerify) {
   AscendString opName;
-  CHECK(op.GetName(opName) != GRAPH_SUCCESS, OP_LOGE(opName.GetString(), "Failed to get op name of ProdVirialSeA"),
+  CHECK(op.GetName(opName) != GRAPH_SUCCESS, OP_LOGE("ProdEnvMatA", "Failed to get op name of ProdVirialSeA"),
         return GRAPH_FAILED);
 
   auto opDesc = OpDescUtils::GetOpDescFromOperator(op);
@@ -368,11 +370,11 @@ IMPLEMT_VERIFIER(ProdEnvMatA, ProdEnvMatAVerify) {
   CHECK(typeShape[0] != nframes,
         OP_LOGE(opName.GetString(), "Number of typeShape samples should match with coords"), return GRAPH_FAILED);
 
-  GeTensorDescPtr dstdDesc = opDesc->MutableInputDesc(5);
+  GeTensorDescPtr dstdDesc = opDesc->MutableInputDesc("dstd");
   std::vector<int64_t> dstdShape = dstdDesc->MutableShape().GetDims();
   CHECK(dstdShape.size() != 2, OP_LOGE(opName.GetString(), "Dim of dstdShape should be 2"), return GRAPH_FAILED);
 
-  GeTensorDescPtr davgDesc = opDesc->MutableInputDesc(6);
+  GeTensorDescPtr davgDesc = opDesc->MutableInputDesc("davg");
   std::vector<int64_t> davgShape = davgDesc->MutableShape().GetDims();
   CHECK(davgShape.size() != 2, OP_LOGE(opName.GetString(), "Dim of davgShape should be 2"), return GRAPH_FAILED);
 
@@ -392,7 +394,7 @@ IMPLEMT_VERIFIER(ProdEnvMatA, ProdEnvMatAVerify) {
 
 IMPLEMT_COMMON_INFERFUNC(ProdEnvMatAInferShape) {
   AscendString opName;
-  CHECK(op.GetName(opName) != GRAPH_SUCCESS, OP_LOGE(opName.GetString(), "Failed to get op name of ProdEnvMatA"),
+  CHECK(op.GetName(opName) != GRAPH_SUCCESS, OP_LOGE("ProdEnvMatA", "Failed to get op name of ProdEnvMatA"),
         return GRAPH_FAILED);
 
   const vector<string> depend_names = {"natoms"};
@@ -428,7 +430,6 @@ IMPLEMT_COMMON_INFERFUNC(ProdEnvMatAInferShape) {
 
   int64_t nsample = dimsCoords[0];
   int64_t nalls = dimsCoords[1];
-  int64_t ndescrpt = dimsAvg[1];
   int64_t nloc = UNKNOWN_DIM;
   int64_t descrptDimOne = UNKNOWN_DIM;
   int64_t descrptDerivDimOne = UNKNOWN_DIM;
@@ -503,11 +504,132 @@ COMMON_INFER_FUNC_REG(ProdEnvMatA, ProdEnvMatAInferShape);
 VERIFY_FUNC_REG(ProdEnvMatA, ProdEnvMatAVerify);
 // --------------------------ProdEnvMatA END---------------------
 
+// --------------------------ProdEnvMatACalcDescrpt Begin---------------------
+IMPLEMT_VERIFIER(ProdEnvMatACalcDescrpt, ProdEnvMatACalcDescrptVerify) {
+  AscendString opName;
+  CHECK(op.GetName(opName) != GRAPH_SUCCESS,
+        OP_LOGE("ProdEnvMatACalcDescrpt", "Failed to get op name of ProdEnvMatACalcDescrpt"),
+        return GRAPH_FAILED);
+
+  auto opDesc = OpDescUtils::GetOpDescFromOperator(op);
+
+  GeTensorDescPtr distanceDesc = opDesc->MutableInputDesc("distance");
+  std::vector<int64_t> distanceShape = distanceDesc->MutableShape().GetDims();
+  CHECK(distanceShape.size() != 2, OP_LOGE(opName.GetString(), "Dim of distanceShape should be 2"), return GRAPH_FAILED);
+  int64_t nsamples = distanceShape[0];
+
+  GeTensorDescPtr rijXDesc = opDesc->MutableInputDesc("rij_x");
+  std::vector<int64_t> rijXShape = rijXDesc->MutableShape().GetDims();
+  CHECK(rijXShape.size() != 2, OP_LOGE(opName.GetString(), "Dim of rij_x shape should be 2"), return GRAPH_FAILED);
+  CHECK(rijXShape[0] != nsamples,
+        OP_LOGE(opName.GetString(), "Number of rij_x shape samples should match with nsamples"), return GRAPH_FAILED);
+
+  GeTensorDescPtr rijYDesc = opDesc->MutableInputDesc("rij_y");
+  std::vector<int64_t> rijYShape = rijYDesc->MutableShape().GetDims();
+  CHECK(rijYShape.size() != 2, OP_LOGE(opName.GetString(), "Dim of rij_y shape should be 2"), return GRAPH_FAILED);
+  CHECK(rijYShape[0] != nsamples,
+        OP_LOGE(opName.GetString(), "Number of rij_y shape samples should match with nsamples"), return GRAPH_FAILED);
+
+  GeTensorDescPtr rijZDesc = opDesc->MutableInputDesc("rij_z");
+  std::vector<int64_t> rijZShape = rijZDesc->MutableShape().GetDims();
+  CHECK(rijZShape.size() != 2, OP_LOGE(opName.GetString(), "Dim of rij_y shape should be 2"), return GRAPH_FAILED);
+  CHECK(rijZShape[0] != nsamples,
+        OP_LOGE(opName.GetString(), "Number of rij_y shape samples should match with nsamples"), return GRAPH_FAILED);
+
+  GeTensorDescPtr typeDesc = opDesc->MutableInputDesc("type");
+  std::vector<int64_t> typeShape = typeDesc->MutableShape().GetDims();
+  CHECK(typeShape.size() != 2, OP_LOGE(opName.GetString(), "Dim of typeShape should be 2"), return GRAPH_FAILED);
+  CHECK(typeShape[0] != nsamples,
+        OP_LOGE(opName.GetString(), "Number of typeShape samples should match with nsamples"), return GRAPH_FAILED);
+
+  GeTensorDescPtr natomsDesc = opDesc->MutableInputDesc("natoms");
+  std::vector<int64_t> natomsShape = natomsDesc->MutableShape().GetDims();
+  CHECK(natomsShape.size() != 1, OP_LOGE(opName.GetString(), "Dim of natoms should be 1"), return GRAPH_FAILED);
+  CHECK(natomsShape[0] < 3,
+        OP_LOGE(opName.GetString(), "Number of atoms should be larger than (or equal to) 3"), return GRAPH_FAILED);
+
+  GeTensorDescPtr davgDesc = opDesc->MutableInputDesc("davg");
+  std::vector<int64_t> davgShape = davgDesc->MutableShape().GetDims();
+  CHECK(davgShape.size() != 2, OP_LOGE(opName.GetString(), "Dim of davgShape should be 2"), return GRAPH_FAILED);
+
+  GeTensorDescPtr dstdDesc = opDesc->MutableInputDesc("dstd");
+  std::vector<int64_t> dstdShape = dstdDesc->MutableShape().GetDims();
+  CHECK(dstdShape.size() != 2, OP_LOGE(opName.GetString(), "Dim of dstdShape should be 2"), return GRAPH_FAILED);
+
+  CHECK(distanceDesc->GetDataType() != dstdDesc->GetDataType(),
+        OP_LOGE(opName.GetString(), "Data type of distances and std are not match"), return GRAPH_FAILED);
+  CHECK(davgDesc->GetDataType() != dstdDesc->GetDataType(),
+        OP_LOGE(opName.GetString(), "Data type of avg and std are not match"), return GRAPH_FAILED);
+
+  return GRAPH_SUCCESS;
+}
+
+IMPLEMT_COMMON_INFERFUNC(ProdEnvMatACalcDescrptInferShape) {
+  AscendString opName;
+  CHECK(op.GetName(opName) != GRAPH_SUCCESS,
+        OP_LOGE("ProdEnvMatACalcDescrpt", "Failed to get op name of ProdEnvMatACalcDescrpt"),
+        return GRAPH_FAILED);
+
+  auto opDesc = OpDescUtils::GetOpDescFromOperator(op);
+  auto distanceDesc = opDesc->MutableInputDesc(0);
+  CHECK(distanceDesc == nullptr, OP_LOGE(opName.GetString(), "Failed to get distance desc"), return GRAPH_FAILED);
+  auto avgDesc = opDesc->MutableInputDesc(5);
+  CHECK(avgDesc == nullptr, OP_LOGE(opName.GetString(), "Failed to get avg desc"), return GRAPH_FAILED);
+
+  std::vector<int64_t> distanceDims = distanceDesc->MutableShape().GetDims();
+  CHECK(distanceDims.size() != 2, OP_LOGE(opName.GetString(), "Dim of distance should be 2"), return GRAPH_FAILED);
+  int64_t nsample = distanceDims[0];
+  int64_t descDim = distanceDims[1];
+  DataType dataType = distanceDesc->GetDataType();
+
+  std::vector<int64_t> descrptDims = {nsample};
+  std::vector<int64_t> descrptDerivDims = {nsample};
+  if (descDim > 0) {
+    descrptDims.push_back(descDim * 4);
+    descrptDerivDims.push_back(descDim * 12);
+  } else if (descDim == -1) {
+    descrptDims.push_back(-1);
+    descrptDerivDims.push_back(-1);
+  } else {
+    OP_LOGE(opName.GetString(), "No support dim value: %ld", descDim);
+    return GRAPH_FAILED;
+  }
+
+  auto descrptDesc = opDesc->MutableOutputDesc(0);
+  CHECK(descrptDesc == nullptr, OP_LOGE(opName.GetString(), "Failed to get descrpt desc"), return GRAPH_FAILED);
+  descrptDesc->SetShape(GeShape(descrptDims));
+  descrptDesc->SetOriginShape(GeShape(descrptDims));
+  descrptDesc->SetDataType(dataType);
+  if (IsUnknownVec(descrptDims)) {
+    std::vector<std::pair<int64_t, int64_t>> shapeRange;
+    MakeUpShapeRange(descrptDims, shapeRange);
+    descrptDesc->SetShapeRange(shapeRange);
+  }
+
+  auto descrptDerivDesc = opDesc->MutableOutputDesc(1);
+  CHECK(descrptDerivDesc == nullptr, OP_LOGE(opName.GetString(), "Failed to get descrpt_deriv desc"),
+        return GRAPH_FAILED);
+  descrptDerivDesc->SetShape(GeShape(descrptDerivDims));
+  descrptDerivDesc->SetOriginShape(GeShape(descrptDerivDims));
+  descrptDerivDesc->SetDataType(dataType);
+  if (IsUnknownVec(descrptDerivDims)) {
+    std::vector<std::pair<int64_t, int64_t>> shapeRange;
+    MakeUpShapeRange(descrptDerivDims, shapeRange);
+    descrptDerivDesc->SetShapeRange(shapeRange);
+  }
+
+  return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(ProdEnvMatACalcDescrpt, ProdEnvMatACalcDescrptInferShape);
+VERIFY_FUNC_REG(ProdEnvMatACalcDescrpt, ProdEnvMatACalcDescrptVerify);
+// --------------------------ProdEnvMatACalcDescrpt END---------------------
+
 // --------------------------TabulateFusionGrad Begin---------------------
 IMPLEMT_VERIFIER(TabulateFusionGrad, TabulateFusionGradVerify) {
   AscendString opName;
   CHECK(op.GetName(opName) != GRAPH_SUCCESS,
-        OP_LOGE(opName.GetString(), "Failed to get op name of TabulateFusionGrad"), return GRAPH_FAILED);
+        OP_LOGE("TabulateFusionGrad", "Failed to get op name of TabulateFusionGrad"), return GRAPH_FAILED);
 
   auto opDesc = OpDescUtils::GetOpDescFromOperator(op);
   CHECK(opDesc == nullptr, OP_LOGE(opName.GetString(), "Failed to get op desc"), return GRAPH_FAILED);
@@ -549,7 +671,7 @@ IMPLEMT_VERIFIER(TabulateFusionGrad, TabulateFusionGradVerify) {
 IMPLEMT_COMMON_INFERFUNC(TabulateFusionGradInferShape) {
   AscendString opName;
   CHECK(op.GetName(opName) != GRAPH_SUCCESS,
-        OP_LOGE(opName.GetString(), "Failed to get op name of TabulateFusionGrad"), return GRAPH_FAILED);
+        OP_LOGE("TabulateFusionGrad", "Failed to get op name of TabulateFusionGrad"), return GRAPH_FAILED);
 
   auto opDesc = OpDescUtils::GetOpDescFromOperator(op);
   GeTensorDescPtr emXDesc = opDesc->MutableInputDesc("em_x");

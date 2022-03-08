@@ -28,6 +28,8 @@
 #include "split_combination_ops.h"
 #include "deep_md.h"
 #include "fusion_pass_test_utils.h"
+#define private public
+#include "common/util/platform_info.h"
 
 using namespace ge;
 using namespace op;
@@ -71,6 +73,14 @@ TEST_F(prodvirialsea_fusion_test, prodvirialsea_fusion_test_01) {
   int32_t n_r_sel = 0;
   int32_t nnei = n_a_sel + n_r_sel;
   int32_t natomsSize = 4;
+
+  fe::PlatformInfo platformInfo;
+  fe::OptionalInfo optiCompilationInfo;
+  platformInfo.soc_info.ai_core_cnt = 1;
+  platformInfo.str_info.ccec_aic_version = "dav-s200";
+  optiCompilationInfo.soc_version = "Ascend710";
+  fe::PlatformInfoManager::Instance().platform_info_map_["Ascend710"] = platformInfo;
+  fe::PlatformInfoManager::Instance().SetOptionalCompilationInfo(optiCompilationInfo);
 
   auto netDeriv = CreateDataNode("net_deriv", {nframes, nloc * nnei * 4}, FORMAT_ND, DT_FLOAT);
   auto inDeriv = CreateDataNode("in_deriv", {nframes, nloc * nnei * 4 * 3}, FORMAT_ND, DT_FLOAT);
@@ -141,6 +151,14 @@ TEST_F(prodvirialsea_fusion_test, prodvirialsea_fusion_test_02) {
   int32_t n_a_sel = 138;
   int32_t n_r_sel = 0;
   int32_t natomsSize = 4;
+
+  fe::PlatformInfo platformInfo;
+  fe::OptionalInfo optiCompilationInfo;
+  platformInfo.soc_info.ai_core_cnt = 1;
+  platformInfo.str_info.ccec_aic_version = "dav-s200";
+  optiCompilationInfo.soc_version = "Ascend710";
+  fe::PlatformInfoManager::Instance().platform_info_map_["Ascend710"] = platformInfo;
+  fe::PlatformInfoManager::Instance().SetOptionalCompilationInfo(optiCompilationInfo);
 
   auto netDeriv = CreateDataNode("net_deriv", {-1, -1}, FORMAT_ND, DT_FLOAT);
   auto inDeriv = CreateDataNode("in_deriv", {-1, -1}, FORMAT_ND, DT_FLOAT);
