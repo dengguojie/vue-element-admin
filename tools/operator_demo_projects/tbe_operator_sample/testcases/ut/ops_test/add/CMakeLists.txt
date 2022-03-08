@@ -8,7 +8,15 @@ set(GTEST_DIR ${PROJECT_DIR}/testcases/libs/gtest)
 set(ADK_DIR "$ENV{ADK_PATH}")
 set(ATC_DIR ${ADK_DIR}/atc)
 set(OP_PROTO_SRC_DIR ${PROJECT_DIR}/op_proto)
-
+set(CMAKE_BUILD_TYPE "Release")
+set(CMAKE_CXX_FLAGS_RELEASE "-fPIC -O2 -Wall -s")
+set(CMAKE_CXX_FLAGS_DEBUG "-fPIC -O0 -g -Wall")
+set(CAMKE_SKIP_RPATH TRUE)
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,-z,relro,-z,now,-z,noexecstack -pie")
+add_compile_options(
+    -fstack-protector-all
+    -D_FORTIFY_SOURCE=2 -O2
+    )
 message(STATUS "ATC_DIR=${ATC_DIR}")
 
 enable_testing()

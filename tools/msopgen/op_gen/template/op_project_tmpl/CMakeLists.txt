@@ -1,5 +1,13 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2020-2021. All rights reserved.
-
+set(CMAKE_BUILD_TYPE "Release")
+set(CMAKE_CXX_FLAGS_RELEASE "-fPIC -O2 -Wall -s")
+set(CMAKE_CXX_FLAGS_DEBUG "-fPIC -O0 -g -Wall")
+set(CAMKE_SKIP_RPATH TRUE)
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,-z,relro,-z,now,-z,noexecstack -pie")
+add_compile_options(
+    -fstack-protector-all
+    -D_FORTIFY_SOURCE=2 -O2
+    )
 cmake_minimum_required(VERSION 3.5.1)
 add_definitions(-D_GLIBCXX_USE_CXX11_ABI=0)
 message(STATUS "CMAKE_CURRENT_BINARY_DIR=${CMAKE_CURRENT_BINARY_DIR}")
