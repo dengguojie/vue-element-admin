@@ -208,13 +208,12 @@ class TransBackwardSchedule(TransdataBaseSchedule):
 
         def parses_factor(_case):
             # define factor
-            _case.block_factor = _case.block_factor if _case.block_factor \
-                else var_inner("_block_factor", (1, None))
-            _case.ub_first_factor = _case.ub_first_factor if _case.ub_first_factor \
-                else var_inner("_ub_first_factor", (1, None))
+            _case.block_factor = _case.block_factor if _case.block_factor else var_inner("_block_factor", (1, None))
+            _case.ub_first_factor = \
+                _case.ub_first_factor if _case.ub_first_factor else var_inner("_ub_first_factor", (1, None))
             if not self.split_once:
-                _case.ub_second_factor = _case.ub_second_factor if _case.ub_second_factor \
-                    else var_inner("_ub_second_factor", (1, None))
+                _case.ub_second_factor = \
+                    _case.ub_second_factor if _case.ub_second_factor else var_inner("_ub_second_factor", (1, None))
 
         def parses_split_one():
             """
@@ -454,19 +453,19 @@ class TransBackwardSchedule(TransdataBaseSchedule):
 
     def _calc_permute_in_ub(self):
         if self.is_last_transpose:
-            insn = "vector_transpose"
+            instruction = "vector_transpose"
             if BLOCK // DTYPE_BYTE_MAPPING.get(self.dtype, 1) in [FP16_BLOCK, INT8_BLOCK]:
-                emit_idx = 0
+                idx = 0
             else:
-                emit_idx = -2
+                idx = -2
                 back = self.permute[-2:].copy()
                 min_value = min(self.permute)
                 self.permute = [x - min_value for x in back]
         else:
-            emit_idx = 0
+            idx = 0
             if BLOCK // DTYPE_BYTE_MAPPING.get(self.dtype, 1) in [INT8_BLOCK, ]:
-                insn = "dma_copy"
+                instruction = "dma_copy"
             else:
-                insn = "vector_or"
+                instruction = "vector_or"
 
-        return emit_idx, insn
+        return idx, instruction

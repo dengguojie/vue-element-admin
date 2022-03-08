@@ -237,14 +237,14 @@ bool TransdataBN::InitBackward() {
    * (N.o,16,C1,H,C0) -> (N.o,C1,H,C0,16) ->(N.o,H,C1,C0,16) -> (N.o,H,C,16) -> (N.o,16,H,C)
    * Const: const-shape would change permute\src-pad in python while pad dim N.
    * */
-  int64_t o_pad[output.size];
+  int64_t output_pad[output.size];
   for (size_t i = 0; i < output.size; i++) {
     if (compileInfo.src_pad[i] == 0) {
-      o_pad[i] = output.shape[i];
+      output_pad[i] = output.shape[i];
     } else if (compileInfo.src_pad[i] == 1) {
-      o_pad[i] = SetAlign(output.shape[i], compileInfo.pad_align_size);
+      output_pad[i] = SetAlign(output.shape[i], compileInfo.pad_align_size);
     } else {
-      o_pad[i] = SetAlign(output.shape[i], compileInfo.pad_align_size);
+      output_pad[i] = SetAlign(output.shape[i], compileInfo.pad_align_size);
       c_index = i;
     }
   }
@@ -257,18 +257,18 @@ bool TransdataBN::InitBackward() {
       has_dim_n = false;
       tiling_output.shape[ptr] = 1;
       tiling_output.shape[ptr + 1] = compileInfo.pad_align_size;
-      tiling_output.shape[ptr + 2] = o_pad[i];
+      tiling_output.shape[ptr + OFFSET_2] = output_pad[i];
       ptr += OFFSET_2;
       c_index += OFFSET_2;
     } else if (i == 0) {
       // Have dim N
-      tiling_output.shape[ptr] = CeilDiv(o_pad[i], compileInfo.pad_align_size);
+      tiling_output.shape[ptr] = CeilDiv(output_pad[i], compileInfo.pad_align_size);
       tiling_output.shape[ptr + 1] = compileInfo.pad_align_size;
       ptr++;
       c_index++;
     } else {
       // Normal dim
-      tiling_output.shape[ptr] = o_pad[i];
+      tiling_output.shape[ptr] = output_pad[i];
     }
     ptr++;
   }
@@ -299,7 +299,7 @@ bool TransdataBN::InitForward() {
       has_dim_n = false;
       tiling_output.shape[ptr] = 1;
       tiling_output.shape[ptr + 1] = compileInfo.pad_align_size;
-      tiling_output.shape[ptr + 2] = output.shape[i];
+      tiling_output.shape[ptr + OFFSET_2] = output.shape[i];
       ptr += OFFSET_2;
       c1_index += OFFSET_2;
       c0_index += OFFSET_2;

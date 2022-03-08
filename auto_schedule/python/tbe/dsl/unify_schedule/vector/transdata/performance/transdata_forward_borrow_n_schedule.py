@@ -88,6 +88,39 @@ class TransForwardBorrowNSchedule(TransdataBaseSchedule):
     def get_supported_sub_pattern(cls):
         return TransdataCategory.BORROW_N_B8B16_FORWARD
 
+    def do_schedule(self):
+        """
+        Process of schedule
+        """
+        self._create_schedule()
+        self._do_cache_read()
+        self._do_set_scope()
+        self._init_tensors()
+
+        self._calc_tiling()
+        self._do_tiling()
+
+        self._analysis_transpose_operator()
+
+        self._do_mem_reused()
+        self._do_storage_bound()
+        self._do_storage_align()
+        self._do_buffer_align()
+        self._do_set_predicate()
+
+        self._calc_multi_core()
+        self._do_multi_core()
+
+        self._calc_compute_at()
+        self._do_compute_at()
+
+        self._calc_emit_insn()
+        self._do_emit_insn()
+
+        self._do_pragma()
+        self.schedule.tiling_key = self.tiling_case.tiling_key
+        return self.schedule
+
     def _init_tensors(self):
         """
         DataStream: pre-stream + main-stream + post-stream
@@ -126,39 +159,6 @@ class TransForwardBorrowNSchedule(TransdataBaseSchedule):
         self.f_reshape_tensor = list(self.graph_info.f_reshape_tensor_set)[0]
         self.tiling_tensor = list(self.graph_info.output_tensor_set)[0]
 
-    def do_schedule(self):
-        """
-        Process of schedule
-        """
-        self._create_schedule()
-        self._do_cache_read()
-        self._do_set_scope()
-        self._init_tensors()
-
-        self._calc_tiling()
-        self._do_tiling()
-
-        self._analysis_transpose_operator()
-
-        self._do_mem_reused()
-        self._do_storage_bound()
-        self._do_storage_align()
-        self._do_buffer_align()
-        self._do_set_predicate()
-
-        self._calc_multi_core()
-        self._do_multi_core()
-
-        self._calc_compute_at()
-        self._do_compute_at()
-
-        self._calc_emit_insn()
-        self._do_emit_insn()
-
-        self._do_pragma()
-        self.schedule.tiling_key = self.tiling_case.tiling_key
-        return self.schedule
-
     def _calc_tiling(self):
         self.align_factor = BLOCK // DTYPE_BYTE_MAPPING.get(self.tiling_tensor.dtype, 1)
         self.pad_factor = get_context().get_current_compute().get("_pad_factor")
@@ -191,10 +191,10 @@ class TransForwardBorrowNSchedule(TransdataBaseSchedule):
 
         def parses_factor(_case):
             # define factor
-            _case.block_factor = _case.block_factor if _case.block_factor \
-                else var_inner("_block_factor", (1, None))
-            _case.ub_first_factor = _case.ub_first_factor if _case.ub_first_factor \
-                else var_inner("_ub_first_factor", (1, None))
+            _case.block_factor = \
+                _case.block_factor if _case.block_factor else var_inner("_block_factor", (1, None))
+            _case.ub_first_factor = \
+                _case.ub_first_factor if _case.ub_first_factor else var_inner("_ub_first_factor", (1, None))
 
         def parses_split_one():
             """

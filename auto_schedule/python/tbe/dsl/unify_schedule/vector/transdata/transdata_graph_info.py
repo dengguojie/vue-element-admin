@@ -153,8 +153,10 @@ class ComputeGraphInfo:
         self.is_forward = True if self.category == TCategory.GENERAL_FORWARD else False
         self.permute = [int(x) for x in list(list(self.transpose_tensor_set)[0].op.attrs["permute"])]
         self.is_last_transpose = self.permute[-1] != len(self.permute) - 1
-        self.reshape = get_reshape(list(self.s_reshape_tensor_set)[0]) if self.is_forward else \
-            get_reshape(list(self.f_reshape_tensor_set)[0])
+        if self.is_forward:
+            self.reshape = get_reshape(list(self.s_reshape_tensor_set)[0])
+        else:
+            self.reshape = get_reshape(list(self.f_reshape_tensor_set)[0])
 
         for j in self.reshape:
             if isinstance(j, (list, tuple)) and len(j) >= 2:

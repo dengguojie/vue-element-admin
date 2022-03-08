@@ -89,37 +89,6 @@ class TransBackwardBorrowNSchedule(TransdataBaseSchedule):
     def get_supported_sub_pattern(cls):
         return TransdataCategory.BORROW_N_B8B16_BACKWARD
 
-    def _bn_backward_init_tensors(self):
-        """
-        DataStream: pre-stream + main-stream + post-stream
-            pre-stream:
-                gm -> mte2_tensor -> crd_tensor -> pad_tensor -> s_reshape_tensor -> transpose_0
-            main-stream:
-                transpose_0 -> transpose_1 -> f_reshape_0 -> depad_tensor
-            post-stream:
-                depad_tensor -> transpose_2 -> f_reshape_1 -> res
-        """
-        self.mte2_tensor = self.cache_read_tensors_and_buffer_map[list(self.graph_info.input_tensor_set)[0]]
-        readers = self.forward_stage_graph_map[self.mte2_tensor]
-        self.crd_tensor = self.schedule.cache_read(self.mte2_tensor, "local.UB", readers)
-        self.cache_read_tensors_and_buffer_map[self.mte2_tensor] = self.crd_tensor
-        for item in readers:
-            self.update_stage(self.crd_tensor, item, True)
-
-        self.pad_tensor = list(self.graph_info.pad_tensor_set)[0]
-        self.s_reshape_tensor = list(self.graph_info.s_reshape_tensor_set)[0]
-        self.transpose_0_tensor = list(self.forward_stage_graph_map[self.s_reshape_tensor])[0]
-
-        self.transpose_1_tensor = list(self.forward_stage_graph_map[self.transpose_0_tensor])[0]
-        self.f_reshape_0_tensor = list(self.forward_stage_graph_map[self.transpose_1_tensor])[0]
-        self.depad_tensors = list(self.graph_info.de_pad_tensor_set)
-        self.depad_tensors.sort(key=lambda x: int(x.op.attrs["axes"]))
-        self.depad_axis_list = [int(x.op.attrs["axes"]) for x in self.depad_tensors]
-
-        self.tiling_tensor = list(self.graph_info.output_tensor_set)[0]
-        self.transpose_2_tensor = list(self.forward_stage_graph_map[self.depad_tensors[-1]])[0]
-        self.f_reshape_1_tensor = list(self.forward_stage_graph_map[self.transpose_2_tensor])[0]
-
     def do_schedule(self):
         """
         Process of schedule
@@ -151,6 +120,37 @@ class TransBackwardBorrowNSchedule(TransdataBaseSchedule):
         self._bn_backward_do_pragma()
         self.schedule.tiling_key = self.tiling_case.tiling_key
         return self.schedule
+
+    def _bn_backward_init_tensors(self):
+        """
+        DataStream: pre-stream + main-stream + post-stream
+            pre-stream:
+                gm -> mte2_tensor -> crd_tensor -> pad_tensor -> s_reshape_tensor -> transpose_0
+            main-stream:
+                transpose_0 -> transpose_1 -> f_reshape_0 -> depad_tensor
+            post-stream:
+                depad_tensor -> transpose_2 -> f_reshape_1 -> res
+        """
+        self.mte2_tensor = self.cache_read_tensors_and_buffer_map.get(list(self.graph_info.input_tensor_set)[0], None)
+        readers = self.forward_stage_graph_map[self.mte2_tensor]
+        self.crd_tensor = self.schedule.cache_read(self.mte2_tensor, "local.UB", readers)
+        self.cache_read_tensors_and_buffer_map[self.mte2_tensor] = self.crd_tensor
+        for item in readers:
+            self.update_stage(self.crd_tensor, item, True)
+
+        self.pad_tensor = list(self.graph_info.pad_tensor_set)[0]
+        self.s_reshape_tensor = list(self.graph_info.s_reshape_tensor_set)[0]
+        self.transpose_0_tensor = list(self.forward_stage_graph_map[self.s_reshape_tensor])[0]
+
+        self.transpose_1_tensor = list(self.forward_stage_graph_map[self.transpose_0_tensor])[0]
+        self.f_reshape_0_tensor = list(self.forward_stage_graph_map[self.transpose_1_tensor])[0]
+        self.depad_tensors = list(self.graph_info.de_pad_tensor_set)
+        self.depad_tensors.sort(key=lambda x: int(x.op.attrs["axes"]))
+        self.depad_axis_list = [int(x.op.attrs["axes"]) for x in self.depad_tensors]
+
+        self.tiling_tensor = list(self.graph_info.output_tensor_set)[0]
+        self.transpose_2_tensor = list(self.forward_stage_graph_map[self.depad_tensors[-1]])[0]
+        self.f_reshape_1_tensor = list(self.forward_stage_graph_map[self.transpose_2_tensor])[0]
 
     def _bn_backward_calc_tiling(self):
         self.pad_factor = get_context().get_current_compute().get("_pad_factor")
@@ -198,10 +198,12 @@ class TransBackwardBorrowNSchedule(TransdataBaseSchedule):
 
         def parses_factor():
             # define factor
-            self.tiling_case.block_factor = self.tiling_case.block_factor if self.tiling_case.block_factor \
-                else var_inner("_block_factor", (1, None))
-            self.tiling_case.ub_first_factor = self.tiling_case.ub_first_factor if self.tiling_case.ub_first_factor \
-                else var_inner("_ub_first_factor", (1, None))
+            self.tiling_case.block_factor = \
+                self.tiling_case.block_factor if self.tiling_case.block_factor else var_inner("_block_factor",
+                                                                                              (1, None))
+            self.tiling_case.ub_first_factor = \
+                self.tiling_case.ub_first_factor if self.tiling_case.ub_first_factor else var_inner("_ub_first_factor",
+                                                                                                    (1, None))
 
         def parses_split_one():
             """

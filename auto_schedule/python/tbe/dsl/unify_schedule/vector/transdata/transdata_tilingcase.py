@@ -69,64 +69,6 @@ class TransdataComputation(Computation):
         self.align_size = None
         self.tiling_case_list = []
 
-    def get_sub_pattern(self):
-        return get_context().get_current_compute().get("_transdata_category")
-
-    @classmethod
-    def get_instance(cls, outs, option):
-        return cls(outs, option)
-
-    @classmethod
-    def get_supported_pattern(cls):
-        return [Pattern.TRANSDATA]
-
-    @classmethod
-    def get_supported_soc(cls):
-        return [DEFAULT]
-
-    def do_tiling_case(self):
-        """
-        do tiling case
-        """
-        return self.main_proc()
-
-    def main_proc(self):
-        outs = list(self.outs) if isinstance(self.outs, (list, tuple)) else [self.outs]
-        self.graph_info = ComputeGraphInfo(outs)
-        current_compute = get_context().get_current_compute()
-        current_compute.add("_compute_graph_info", self.graph_info)
-
-        self.is_const = current_compute.get("_const_model")
-        # while src-tensor is fp32, schedule would reinterpret it by fp16-mode,
-        # ori-bit is size of fp32-element.
-        self.ori_bit = current_compute.get("_ori_bit")
-        self.pad_factor = current_compute.get("_pad_factor")
-        self.align_size = int(BLOCK // DTYPE_BYTE_MAPPING[list(self.graph_info.transpose_tensor_set)[0].dtype])
-
-        if self.is_const:
-            self.tiling_case_list += self.calc_const_tiling_case()
-        else:
-            if self.ori_bit:
-                self.align_size = BLOCK // self.ori_bit
-            self.tiling_case_list += self.calc_tiling_case()
-            self.apply_dynamic_compile_info()
-
-        return self.tiling_case_list
-
-    def _check_common_align(self, _input):
-        """
-        If forward: (N,H,C) -> (N,C1,H,C0), don't split C.
-        If backward: (N,C1,H,C0) -> (N,H,C), don't split C.
-        Attention backward split on transpose-tensor(N,H,C1,C0)
-        """
-        last_dim = self.graph_info.reshape[-1] \
-            if isinstance(self.graph_info.reshape[-1], (list, tuple)) else [self.graph_info.reshape[-1]]
-        new_input = [self.graph_info.permute[x] for x in _input] if self.graph_info.is_forward else _input
-        for v in last_dim:
-            if v in new_input:
-                return False
-        return True
-
     @staticmethod
     def normal_split(_length, _perm):
         """
@@ -181,6 +123,128 @@ class TransdataComputation(Computation):
             _out = _inputs
         return _out
 
+    @staticmethod
+    def get_key(case):
+
+        def _check(idx, _value):
+            rule = [range(2), [2, 3], range(9), range(100), range(9), range(9), range(9), ]
+            name = ["db", "is_forward", "ub_category", "shape_type", "block_split_idx",
+                    "ub_split_first_idx", "ub_split_second_idx"]
+            if _value not in rule[idx]:
+                dict_args = {"errCode": "E90001", "detailed_cause": " %s should in %s, but is %d"
+                                                                    % (name[idx], str(rule[idx]), _value)}
+                raise RuntimeError(dict_args, get_error_message(dict_args))
+
+        is_forward = 2 if case.sch_type == FORWARD else 3
+        pos = (case.db, is_forward, case.ub_category, case.shape_type, case.block_split_idx,
+               case.ub_split_first_idx, case.ub_split_second_idx)
+        val = (10 ** 9, 10 ** 8, 10 ** 7, 10 ** 5, 10 ** 4, 10 ** 3, 10 ** 2)
+        key = 0
+        for k, v in enumerate(pos):
+            _check(k, v)
+            key += v * val[k]
+        case.tiling_key = key
+
+    @staticmethod
+    def create_case_borrow_n(inputs, info):
+        result = []
+        for item in inputs:
+            case = TransdataTilingCase(info)
+            case.block_split_idx = item[0]
+            case.ub_split_first_idx = item[1]
+            case.ub_split_second_idx = item[2]
+            case.shape_type = 0
+            TransdataComputation.get_key(case)
+            ComputeGraphInfo.update_tensor_ub_sizes(info, case)
+            result.append(case)
+        return result
+
+    @staticmethod
+    def apply_ub_info(case_list):
+        # case_list had full info of ubSize
+        # index of tensor_list is ub_category
+        # value of tensor_list is ub_size_list in different shape_type
+        _case_list = sorted(case_list, key=lambda x: x.ub_category)
+        tensor_list = [[-1] for i in range(_case_list[-1].ub_category + 1)]
+        for _case in _case_list:
+            tensor_list[_case.ub_category] = _case.tensor_ub_size_list
+        ub_info = tensor_list
+
+        # deal ub_info: different computation has different ub size
+        pre_compile_info = get_compile_info()
+        if "_ub_info" in pre_compile_info.keys():
+            existed_info = pre_compile_info.get("_ub_info")
+            if len(existed_info) >= len(ub_info):
+                update, base = ub_info, existed_info
+            else:
+                update, base = existed_info, ub_info
+            for k, v in enumerate(update):
+                if base[k] == [-1, ]:
+                    base[k] = v
+            add_compile_info_inner("_ub_info", base)
+        else:
+            add_compile_info_inner("_ub_info", ub_info)
+
+    @classmethod
+    def get_instance(cls, outs, option):
+        return cls(outs, option)
+
+    @classmethod
+    def get_supported_pattern(cls):
+        return [Pattern.TRANSDATA]
+
+    @classmethod
+    def get_supported_soc(cls):
+        return [DEFAULT]
+
+    def get_sub_pattern(self):
+        return get_context().get_current_compute().get("_transdata_category")
+
+    def do_tiling_case(self):
+        """
+        do tiling case
+        """
+        return self.main_proc()
+
+    def main_proc(self):
+        outs = list(self.outs) if isinstance(self.outs, (list, tuple)) else [self.outs]
+        self.graph_info = ComputeGraphInfo(outs)
+        current_compute = get_context().get_current_compute()
+        current_compute.add("_compute_graph_info", self.graph_info)
+
+        self.is_const = current_compute.get("_const_model")
+        # while src-tensor is fp32, schedule would reinterpret it by fp16-mode,
+        # ori-bit is size of fp32-element.
+        self.ori_bit = current_compute.get("_ori_bit")
+        self.pad_factor = current_compute.get("_pad_factor")
+        self.align_size = int(BLOCK // DTYPE_BYTE_MAPPING[list(self.graph_info.transpose_tensor_set)[0].dtype])
+
+        if self.is_const:
+            self.tiling_case_list += self.calc_const_tiling_case()
+        else:
+            if self.ori_bit:
+                self.align_size = BLOCK // self.ori_bit
+            self.tiling_case_list += self.calc_tiling_case()
+            self.apply_dynamic_compile_info()
+
+        return self.tiling_case_list
+
+    def _check_common_align(self, _input):
+        """
+        If forward: (N,H,C) -> (N,C1,H,C0), don't split C.
+        If backward: (N,C1,H,C0) -> (N,H,C), don't split C.
+        Attention backward split on transpose-tensor(N,H,C1,C0)
+        """
+        if isinstance(self.graph_info.reshape[-1], (list, tuple)):
+            last_dim = self.graph_info.reshape[-1]
+        else:
+            last_dim = [self.graph_info.reshape[-1]]
+        new_input = [self.graph_info.permute[x] for x in _input] if self.graph_info.is_forward else _input
+        for v in last_dim:
+            if v in new_input:
+                return False
+        return True
+
     def filter_split_borrow_n(self, _inputs):
         """
         Return legal cases from all split cases
@@ -206,28 +270,6 @@ class TransdataComputation(Computation):
                 _out.append(i)
         return _out
 
-    @staticmethod
-    def get_key(case):
-
-        def _check(idx, _value):
-            rule = [range(2), [2, 3], range(9), range(100), range(9), range(9), range(9), ]
-            name = ["db", "is_forward", "ub_category", "shape_type", "block_split_idx",
-                    "ub_split_first_idx", "ub_split_second_idx"]
-            if _value not in rule[idx]:
-                dict_args = {"errCode": "E90001", "detailed_cause": " %s should in %s, but is %d"
-                                                                    % (name[idx], str(rule[idx]), _value)}
-                raise RuntimeError(dict_args, get_error_message(dict_args))
-
-        is_forward = 2 if case.sch_type == FORWARD else 3
-        pos = (case.db, is_forward, case.ub_category, case.shape_type, case.block_split_idx,
-               case.ub_split_first_idx, case.ub_split_second_idx)
-        val = (10 ** 9, 10 ** 8, 10 ** 7, 10 ** 5, 10 ** 4, 10 ** 3, 10 ** 2)
-        key = 0
-        for k, v in enumerate(pos):
-            _check(k, v)
-            key += v * val[k]
-        case.tiling_key = key
-
     def create_case(self, inputs):
         result = []
         for item in inputs:
@@ -244,20 +286,6 @@ class TransdataComputation(Computation):
                 TransdataComputation.get_key(case)
                 ComputeGraphInfo.update_tensor_ub_sizes(self.graph_info, case)
                 result.append(case)
-        return result
-
-    @staticmethod
-    def create_case_borrow_n(inputs, info):
-        result = []
-        for item in inputs:
-            case = TransdataTilingCase(info)
-            case.block_split_idx = item[0]
-            case.ub_split_first_idx = item[1]
-            case.ub_split_second_idx = item[2]
-            case.shape_type = 0
-            TransdataComputation.get_key(case)
-            ComputeGraphInfo.update_tensor_ub_sizes(info, case)
-            result.append(case)
         return result
 
     def calc_tiling_case(self, ):
@@ -285,9 +313,11 @@ class TransdataComputation(Computation):
         elif self.graph_info.category in [TCategory.BORROW_N_B8B16_BACKWARD, TCategory.BORROW_N_B8B16_FORWARD]:
             return _borrow_n_case()
         else:
-            dict_args = {"errCode": "E90001", "detailed_cause": "TilingCases not match the transdata_category"
-                         "that in [general.forward, general.backward, borrow_n_backward, borrow_n_forward], "
-                         "but is %s" % self.graph_info.category}
+            dict_args = {"errCode": "E90001",
+                         "detailed_cause": "TilingCases not match the transdata_category "
+                                           "that in [general.forward, general.backward, "
+                                           "borrow_n_backward, borrow_n_forward], "
+                                           "but is %s" % self.graph_info.category}
             raise RuntimeError(dict_args, get_error_message(dict_args))
 
     def calc_const_tiling_case(self):
@@ -352,32 +382,6 @@ class TransdataComputation(Computation):
         is_const_compile = int(is_const_compile)
         common_info = [is_forward, align_size, pad_factor, core_num, is_const, is_const_compile]
         add_compile_info_inner("_common_info", common_info)
-
-    @staticmethod
-    def apply_ub_info(case_list):
-        # case_list had full info of ubSize
-        # index of tensor_list is ub_category
-        # value of tensor_list is ub_size_list in different shape_type
-        _case_list = sorted(case_list, key=lambda x: x.ub_category)
-        tensor_list = [[-1] for i in range(_case_list[-1].ub_category + 1)]
-        for _case in _case_list:
-            tensor_list[_case.ub_category] = _case.tensor_ub_size_list
-        ub_info = tensor_list
-
-        # deal ub_info: different computation has different ub size
-        pre_compile_info = get_compile_info()
-        if "_ub_info" in pre_compile_info.keys():
-            existed_info = pre_compile_info.get("_ub_info")
-            if len(existed_info) >= len(ub_info):
-                update, base = ub_info, existed_info
-            else:
-                update, base = existed_info, ub_info
-            for k, v in enumerate(update):
-                if base[k] == [-1, ]:
-                    base[k] = v
-            add_compile_info_inner("_ub_info", base)
-        else:
-            add_compile_info_inner("_ub_info", ub_info)
 
 
 class TransdataTilingCase:

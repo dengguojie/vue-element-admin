@@ -162,11 +162,11 @@ class TransForwardSchedule(TransdataBaseSchedule):
         self.split_once = case.ub_split_second_idx == case.ub_split_first_idx
 
         case.block_factor = case.block_factor if case.block_factor else var_inner("_block_factor", (1, None))
-        case.ub_first_factor = case.ub_first_factor if case.ub_first_factor \
-            else var_inner("_ub_first_factor", (1, None))
+        case.ub_first_factor = \
+            case.ub_first_factor if case.ub_first_factor else var_inner("_ub_first_factor", (1, None))
         if not self.split_once:
-            case.ub_second_factor = case.ub_second_factor if case.ub_second_factor \
-                else var_inner("_ub_second_factor", (1, None))
+            case.ub_second_factor = \
+                case.ub_second_factor if case.ub_second_factor else var_inner("_ub_second_factor", (1, None))
 
     def _do_tiling(self):
         self._do_ub_tiling()
