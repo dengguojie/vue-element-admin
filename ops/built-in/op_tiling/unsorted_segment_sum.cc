@@ -1311,7 +1311,7 @@ void PrintTilingParams(const std::string& op_type, const TilingParamsInt32& para
   OP_LOGD(op_type, " : params.repeat_time_last_part_input_scalar=%d",
           params.repeat_time_last_part_input_scalar);
 
-  OP_LOGD(op_type, " : params.align_scalar=%d",params.align_scalar);
+  OP_LOGD(op_type, " : params.align_scalar=%d", params.align_scalar);
   OP_LOGD(op_type, " : params.align_scalar_lastcore=%d",
           params.align_scalar_lastcore);
   OP_LOGD(op_type, " : params.e_gm2ub_front_burst_len_input_scalar=%d",
