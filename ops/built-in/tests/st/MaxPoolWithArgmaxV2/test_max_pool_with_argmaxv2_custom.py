@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: UTF-8 -*-
 import te
+import tbe
 from te.platform.cce_conf import te_set_version
 from impl.dynamic.max_pool_with_argmaxv2 import max_pool_with_argmax_v2
 
@@ -15,7 +16,8 @@ def test_maxpoolwithargmaxv2_001():
                     [1, 1, 3, 3],
                     [1, 1, 2, 2],
                     [1, 1, 1, 1]]
-    max_pool_with_argmax_v2(*input_list)
+    with tbe.common.context.op_context.OpContext("dynamic"):
+        max_pool_with_argmax_v2(*input_list)
 
 if __name__ == '__main__':
     soc_version = te.platform.cce_conf.get_soc_spec("SOC_VERSION")

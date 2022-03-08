@@ -26,6 +26,7 @@ from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
 from impl.util import util_select_op_base
 
+
 # 'pylint: disable=locally-disabled,too-many-arguments,unused-argument
 # 'pylint: disable=invalid-name,too-many-statements
 # 'pylint: disable=self-assigning-variable

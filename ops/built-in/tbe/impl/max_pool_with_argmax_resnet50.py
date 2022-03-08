@@ -142,315 +142,6 @@ class MaxPoolWithargmaxResnet50():
                                                        name="output_mask_gm",
                                                        scope=tik.scope_gm)
 
-    def _calc_out_size_and_pad(self):
-        """
-        caculate output size and padding size
-        -------
-        pad: include pad_t, pad_b, pad_l, pad_r
-        out_size_h: out_size in h direction
-        out_size_w: out_size in w direction
-        """
-        # pad_l, pad_r, pad_t, pad_b is for pad on the left, right, top, bottom
-        pad_l, pad_r, pad_t, pad_b = 0, 0, 0, 0
-
-        if self.padding == "SAME":
-            # `Hout = ceil(Hi, Sh), Wout = ceil(Wi, Sw)`
-            out_size_h = (self.in_size_h + self.stride_h - 1) // self.stride_h
-            out_size_w = (self.in_size_w + self.stride_w - 1) // self.stride_w
-
-            # get total pad rows or pad columns
-            pad_rows = (out_size_h - 1) * self.stride_h + \
-                       ((self.window_h - 1) * DILATION + 1) - self.in_size_h
-            pad_cols = (out_size_w - 1) * self.stride_w + \
-                       ((self.window_w - 1) * DILATION + 1) - self.in_size_w
-
-            # pad_rows and pad_columns is odd or even number
-            if pad_rows % 2 == 0:
-                pad_t = pad_rows // 2
-                pad_b = pad_rows // 2
-            else:
-                pad_t = pad_rows // 2
-                pad_b = pad_rows - pad_t
-
-            if pad_cols % 2 == 0:
-                pad_l = pad_cols // 2
-                pad_r = pad_cols // 2
-            else:
-                pad_l = pad_cols // 2
-                pad_r = pad_cols - pad_l
-
-            if pad_t < 0:
-                pad_t = 0
-
-            if pad_b < 0:
-                pad_b = 0
-
-            if pad_l < 0:
-                pad_l = 0
-
-            if pad_r < 0:
-                pad_r = 0
-
-        # caculate output size in VALID mode
-        if self.padding == "VALID":
-            # `Hout = ceil(Hi - Fh + 1, Sh), Wout = ceil(Wi - Fw + 1, Sw)`
-            out_size_h = (self.in_size_h - self.window_h + 1 +
-                          (self.stride_h - 1)) // self.stride_h
-            out_size_w = (self.in_size_w - self.window_w + 1 +
-                          (self.stride_w - 1)) // self.stride_w
-        pad = (pad_l, pad_r, pad_t, pad_b)
-
-        return pad, out_size_h, out_size_w
-
-    def _calc_max_fun(self, data_input, data_input_ub, index_w, index_h):
-        """
-        caculate max of data_input
-
-        Parameters
-        ----------
-        data_input: input data
-        data_input_ub: input data in ub
-        index_w: input size in w direction
-        index_h: input size in h direction
-
-        Returns
-        -------
-        data_input: output tensor
-        """
-        self.tik_instance.vmax(
-            MASK, data_input[index_h * 256], data_input[index_h * 256],
-            data_input_ub[index_w * 256 + index_h * self.fmap_img2col_w * 256],
-            REPEAT_2, DSTSTRIDEM0, SRC0STRIDEM0, SRC1STRIDEM0, DSTSTRIDEM1,
-            SRC0STRIDEM1, SRC1STRIDEM1)
-        return data_input
-
-    def _load3d_fm_to_ub(self, ub_buff, l1_buff, i_dim_w, i_dim_h):
-        instance = self.tik_instance
-        filter_size = self.window_h * self.window_w
-        with instance.for_range(0, filter_size, thread_num=1) as loopk:
-            k_dim_w = loopk % 3
-            k_dim_h = loopk // 3
-            instance.load3dv1(ub_buff[loopk * 4 * 56 * 16], l1_buff,
-                              (self.pad[0], self.pad[1], 0, 0), self.in_size_h,
-                              self.in_size_w,
-                              0, k_dim_w, k_dim_h, i_dim_w, i_dim_h,
-                              self.stride_w, self.stride_h,
-                              self.window_w, self.window_h,
-                              1, 1, 1, 1, 4 * 56 // 16, 0, self.pad_value)
-
-    # 'pylint: disable=too-many-arguments
-    def _load_gm_to_ub_ping(self, ub_buff, output_block_h, input_fmap_gm, input_gm_idx, looph):
-        """
-        load data from gm to ub
-
-        Parameters
-        ----------
-        ub_buff: address of ub_buff
-        output_block_h: size of cut
-        input_fmap_gm: address of gm
-        input_gm_idx: offset of gm
-        looph: index of looph
-
-        Returns
-        -------
-        None
-        """
-        instance = self.tik_instance
-        gm_len = instance.Scalar("uint64", name="gm_len")
-        filter_size = self.window_h * self.window_w
-        c0_dim = 16
-        ub_zero = instance.Tensor(self.input_dtype, (c0_dim,), name="ub_zero", scope=tik.scope_ubuf)
-        instance.vector_dup(c0_dim, ub_zero, self.pad_value, 1, 1, 1)
-        with instance.for_range(0, filter_size) as window_index:
-            w_index = window_index % self.window_w
-            w_loop = window_index // self.window_w
-            with instance.if_scope(w_index == 2):
-                gm_len.set_as(self.out_size_w - 1)
-            with instance.else_scope():
-                gm_len.set_as(self.out_size_w)
-            with instance.for_range(0, output_block_h) as output_block_h_index:
-                with instance.if_scope(w_index == 2):
-                    instance.data_move(ub_buff[(window_index * output_block_h + output_block_h_index) *
-                                               self.out_size_w * c0_dim],
-                                       input_fmap_gm[input_gm_idx + (looph * 2 * output_block_h +
-                                                                     output_block_h_index) *
-                                                     self.stride_h * self. in_size_w * c0_dim +
-                                                     (w_loop * self.in_size_w + w_index) * c0_dim],
-                                       0, gm_len, 1, 1, 0)
-                    instance.data_move(ub_buff[(window_index * output_block_h + output_block_h_index) *
-                                               self.out_size_w * c0_dim + gm_len * c0_dim],
-                                       ub_zero, 0, 1, 1, 0, 0)
-                with instance.else_scope():
-                    instance.data_move(ub_buff[(window_index * output_block_h + output_block_h_index) *
-                                               self.out_size_w * c0_dim],
-                                       input_fmap_gm[input_gm_idx + (looph * 2 * output_block_h +
-                                                                     output_block_h_index) *
-                                                     self.stride_h * self. in_size_w * c0_dim +
-                                                     (w_loop * self.in_size_w + w_index) * c0_dim],
-                                       0, gm_len, 1, 1, 0)
-
-    # 'pylint: disable=too-many-arguments
-    def _ub_rearrangement_ping(self, ub_buff, ub_load, output_block_h, input_fmap_gm, input_gm_idx, looph,
-                               src_offsets_gm):
-        """
-        rearrange data of ub
-
-        Parameters
-        ----------
-        ub_buff: address of ub_buff
-        ub_load: address of ub_load
-        output_block_h: size of cut
-        input_fmap_gm: address of gm
-        input_gm_idx: offset of gm
-        looph: index of looph
-        src_offsets_gm: src_offsets
-
-        Returns
-        -------
-        None
-        """
-        instance = self.tik_instance
-        gm_len_ping = instance.Scalar("int32", name="gm_len_ping")
-        filter_size = self.window_h * self.window_w
-        instance.vector_dup(16,
-                            ub_load[((output_block_h - 1) * self.stride_h + self.window_h) * self.in_size_w * 16],
-                            self.pad_value, 1, 1, 1)
-        gm_len_ping.set_as(((output_block_h - 1) * self.stride_h + self.window_h) * self.in_size_w)
-        src_offsets_size = output_block_h * self.out_size_w * filter_size
-        src_offsets = instance.Tensor("int32", (src_offsets_size,), name="src_offsets", scope=tik.scope_ubuf)
-        repeat_times = src_offsets_size // 8
-        instance.data_move(ub_load,
-                           input_fmap_gm[input_gm_idx + (looph * 2 * output_block_h) * self.stride_h *
-                                         self. in_size_w * 16],
-                           0, 1, gm_len_ping, 0, 0)
-        instance.data_move(src_offsets, src_offsets_gm, 0, 1, src_offsets_size // 8, 0, 0)
-        instance.vgatherb(ub_buff, ub_load, src_offsets, repeat_times, 1, 8)
-
-    # 'pylint: disable=too-many-arguments,too-many-locals
-    def _ub_rearrangement_pong(self, ub_buff, ub_load, output_block_h, input_fmap_gm, input_gm_idx, looph, loop_h,
-                               src_offsets_gm, src_offsets_last_gm):
-        """
-        rearrange data of ub
-
-        Parameters
-        ----------
-        ub_buff: address of ub_buff
-        ub_load: address of ub_load
-        output_block_h: size of cut
-        input_fmap_gm: address of gm
-        input_gm_idx: offset of gm
-        looph: index of looph
-        loop_h: number of loop
-        src_offsets_gm: src_offsets
-        src_offsets_last_gm: src_offsets
-
-        Returns
-        -------
-        None
-        """
-        instance = self.tik_instance
-        gm_len_pong = instance.Scalar("int32", name="gm_len_pong")
-        filter_size = self.window_h * self.window_w
-        instance.vector_dup(16,
-                            ub_load[((output_block_h - 1) * self.stride_h + self.window_h) * self.in_size_w * 16],
-                            self.pad_value, 1, 1, 1)
-        if looph == loop_h // 2 - 1:
-            gm_len_pong.set_as(((output_block_h - 1) * self.stride_h + self.window_h - 1) * self.in_size_w)
-        else:
-            gm_len_pong.set_as(((output_block_h - 1) * self.stride_h + self.window_h) * self.in_size_w)
-
-        src_offsets_size = output_block_h * self.out_size_w * filter_size
-        src_offsets = instance.Tensor("int32", (src_offsets_size,), name="src_offsets", scope=tik.scope_ubuf)
-        repeat_times = src_offsets_size // 8
-        instance.data_move(ub_load,
-                           input_fmap_gm[input_gm_idx + ((looph * 2 + 1) * output_block_h) * self.stride_h *
-                                         self. in_size_w * 16],
-                           0, 1, gm_len_pong, 0, 0)
-        with instance.if_scope(looph == loop_h // 2 - 1):
-            instance.data_move(src_offsets, src_offsets_last_gm, 0, 1, src_offsets_size // 8, 0, 0)
-        with instance.else_scope():
-            instance.data_move(src_offsets, src_offsets_gm, 0, 1, src_offsets_size // 8, 0, 0)
-
-        instance.vgatherb(ub_buff, ub_load, src_offsets, repeat_times, 1, 8)
-
-    # 'pylint: disable=too-many-arguments,too-many-locals
-    def _load_gm_to_ub_pong(self, ub_buff, output_block_h, input_fmap_gm, input_gm_idx, looph, loop_h):
-        """
-        load data from gm to ub
-
-        Parameters
-        ----------
-        ub_buff: address of ub_buff
-        output_block_h: size of cut
-        input_fmap_gm: address of gm
-        input_gm_idx: offset of gm
-        looph: index of looph
-        loop_h: number of looph
-
-        Returns
-        -------
-        None
-        """
-        instance = self.tik_instance
-        gm_len = instance.Scalar("uint64", name="gm_len")
-        filter_size = self.window_h * self.window_w
-        c0_dim = 16
-        ub_zero = instance.Tensor(self.input_dtype, (c0_dim,), name="ub_zero", scope=tik.scope_ubuf)
-        instance.vector_dup(c0_dim, ub_zero, self.pad_value, 1, 1, 1)
-        with instance.for_range(0, filter_size) as window_index:
-            w_index = window_index % self.window_w
-            w_loop = window_index // self.window_w
-            with instance.if_scope(w_index == 2):
-                gm_len.set_as(self.out_size_w - 1)
-            with instance.else_scope():
-                gm_len.set_as(self.out_size_w)
-            with instance.for_range(0, output_block_h) as output_block_h_index:
-                with instance.if_scope(tik.all(looph == loop_h // 2 - 1, output_block_h_index == output_block_h - 1)):
-                    with instance.if_scope(w_loop == 2):
-                        instance.vector_dup(MASK, ub_buff[(window_index * output_block_h + output_block_h_index) *
-                                                          self.out_size_w * c0_dim],
-                                            self.pad_value, DSTSTRIDEM1 - 1, 1, DSTSTRIDEM1)
-                    with instance.else_scope():
-                        with instance.if_scope(w_index == 2):
-                            instance.data_move(ub_buff[(window_index * output_block_h + output_block_h_index) *
-                                                       self.out_size_w * c0_dim],
-                                               input_fmap_gm[input_gm_idx + ((looph * 2 + 1) * output_block_h +
-                                                                             output_block_h_index) *
-                                                             self.stride_h * self. in_size_w * c0_dim +
-                                                             (w_loop * self.in_size_w + w_index) * c0_dim],
-                                               0, gm_len, 1, 1, 0)
-                            instance.data_move(ub_buff[(window_index * output_block_h + output_block_h_index) *
-                                                       self.out_size_w * c0_dim + gm_len * c0_dim],
-                                               ub_zero, 0, 1, 1, 0, 0)
-                        with instance.else_scope():
-                            instance.data_move(ub_buff[(window_index * output_block_h + output_block_h_index) *
-                                                       self.out_size_w * c0_dim],
-                                               input_fmap_gm[input_gm_idx + ((looph * 2 + 1) * output_block_h +
-                                                                             output_block_h_index) *
-                                                             self.stride_h * self. in_size_w * c0_dim +
-                                                             (w_loop * self.in_size_w + w_index) * c0_dim],
-                                               0, gm_len, 1, 1, 0)
-                with instance.else_scope():
-                    with instance.if_scope(w_index == 2):
-                        instance.data_move(ub_buff[(window_index * output_block_h + output_block_h_index) *
-                                                   self.out_size_w * c0_dim],
-                                           input_fmap_gm[input_gm_idx + ((looph * 2 + 1) * output_block_h +
-                                                                         output_block_h_index) *
-                                                         self.stride_h * self. in_size_w * c0_dim +
-                                                         (w_loop * self.in_size_w + w_index) * c0_dim],
-                                           0, gm_len, 1, 1, 0)
-                        instance.data_move(ub_buff[(window_index * output_block_h + output_block_h_index) *
-                                                   self.out_size_w * c0_dim + gm_len * c0_dim],
-                                           ub_zero, 0, 1, 1, 0, 0)
-                    with instance.else_scope():
-                        instance.data_move(ub_buff[(window_index * output_block_h + output_block_h_index) *
-                                                   self.out_size_w * c0_dim],
-                                           input_fmap_gm[input_gm_idx + ((looph * 2 + 1) * output_block_h +
-                                                                         output_block_h_index) *
-                                                         self.stride_h * self. in_size_w * c0_dim +
-                                                         (w_loop * self.in_size_w + w_index) * c0_dim],
-                                           0, gm_len, 1, 1, 0)
-
     # 'pylint: disable=too-many-locals,too-many-statements,too-many-branches
     def tik_instance_function(self, kernel_name):
         """
@@ -806,6 +497,315 @@ class MaxPoolWithargmaxResnet50():
                           outputs=(output_max_gm,
                                    output_mask_gm))
         return instance
+
+    def _calc_out_size_and_pad(self):
+        """
+        caculate output size and padding size
+        -------
+        pad: include pad_t, pad_b, pad_l, pad_r
+        out_size_h: out_size in h direction
+        out_size_w: out_size in w direction
+        """
+        # pad_l, pad_r, pad_t, pad_b is for pad on the left, right, top, bottom
+        pad_l, pad_r, pad_t, pad_b = 0, 0, 0, 0
+
+        if self.padding == "SAME":
+            # `Hout = ceil(Hi, Sh), Wout = ceil(Wi, Sw)`
+            out_size_h = (self.in_size_h + self.stride_h - 1) // self.stride_h
+            out_size_w = (self.in_size_w + self.stride_w - 1) // self.stride_w
+
+            # get total pad rows or pad columns
+            pad_rows = (out_size_h - 1) * self.stride_h + \
+                       ((self.window_h - 1) * DILATION + 1) - self.in_size_h
+            pad_cols = (out_size_w - 1) * self.stride_w + \
+                       ((self.window_w - 1) * DILATION + 1) - self.in_size_w
+
+            # pad_rows and pad_columns is odd or even number
+            if pad_rows % 2 == 0:
+                pad_t = pad_rows // 2
+                pad_b = pad_rows // 2
+            else:
+                pad_t = pad_rows // 2
+                pad_b = pad_rows - pad_t
+
+            if pad_cols % 2 == 0:
+                pad_l = pad_cols // 2
+                pad_r = pad_cols // 2
+            else:
+                pad_l = pad_cols // 2
+                pad_r = pad_cols - pad_l
+
+            if pad_t < 0:
+                pad_t = 0
+
+            if pad_b < 0:
+                pad_b = 0
+
+            if pad_l < 0:
+                pad_l = 0
+
+            if pad_r < 0:
+                pad_r = 0
+
+        # caculate output size in VALID mode
+        if self.padding == "VALID":
+            # `Hout = ceil(Hi - Fh + 1, Sh), Wout = ceil(Wi - Fw + 1, Sw)`
+            out_size_h = (self.in_size_h - self.window_h + 1 +
+                          (self.stride_h - 1)) // self.stride_h
+            out_size_w = (self.in_size_w - self.window_w + 1 +
+                          (self.stride_w - 1)) // self.stride_w
+        pad = (pad_l, pad_r, pad_t, pad_b)
+
+        return pad, out_size_h, out_size_w
+
+    def _calc_max_fun(self, data_input, data_input_ub, index_w, index_h):
+        """
+        caculate max of data_input
+
+        Parameters
+        ----------
+        data_input: input data
+        data_input_ub: input data in ub
+        index_w: input size in w direction
+        index_h: input size in h direction
+
+        Returns
+        -------
+        data_input: output tensor
+        """
+        self.tik_instance.vmax(
+            MASK, data_input[index_h * 256], data_input[index_h * 256],
+            data_input_ub[index_w * 256 + index_h * self.fmap_img2col_w * 256],
+            REPEAT_2, DSTSTRIDEM0, SRC0STRIDEM0, SRC1STRIDEM0, DSTSTRIDEM1,
+            SRC0STRIDEM1, SRC1STRIDEM1)
+        return data_input
+
+    def _load3d_fm_to_ub(self, ub_buff, l1_buff, i_dim_w, i_dim_h):
+        instance = self.tik_instance
+        filter_size = self.window_h * self.window_w
+        with instance.for_range(0, filter_size, thread_num=1) as loopk:
+            k_dim_w = loopk % 3
+            k_dim_h = loopk // 3
+            instance.load3dv1(ub_buff[loopk * 4 * 56 * 16], l1_buff,
+                              (self.pad[0], self.pad[1], 0, 0), self.in_size_h,
+                              self.in_size_w,
+                              0, k_dim_w, k_dim_h, i_dim_w, i_dim_h,
+                              self.stride_w, self.stride_h,
+                              self.window_w, self.window_h,
+                              1, 1, 1, 1, 4 * 56 // 16, 0, self.pad_value)
+
+    # 'pylint: disable=too-many-arguments
+    def _load_gm_to_ub_ping(self, ub_buff, output_block_h, input_fmap_gm, input_gm_idx, looph):
+        """
+        load data from gm to ub
+
+        Parameters
+        ----------
+        ub_buff: address of ub_buff
+        output_block_h: size of cut
+        input_fmap_gm: address of gm
+        input_gm_idx: offset of gm
+        looph: index of looph
+
+        Returns
+        -------
+        None
+        """
+        instance = self.tik_instance
+        gm_len = instance.Scalar("uint64", name="gm_len")
+        filter_size = self.window_h * self.window_w
+        c0_dim = 16
+        ub_zero = instance.Tensor(self.input_dtype, (c0_dim,), name="ub_zero", scope=tik.scope_ubuf)
+        instance.vector_dup(c0_dim, ub_zero, self.pad_value, 1, 1, 1)
+        with instance.for_range(0, filter_size) as window_index:
+            w_index = window_index % self.window_w
+            w_loop = window_index // self.window_w
+            with instance.if_scope(w_index == 2):
+                gm_len.set_as(self.out_size_w - 1)
+            with instance.else_scope():
+                gm_len.set_as(self.out_size_w)
+            with instance.for_range(0, output_block_h) as output_block_h_index:
+                with instance.if_scope(w_index == 2):
+                    instance.data_move(ub_buff[(window_index * output_block_h + output_block_h_index) *
+                                               self.out_size_w * c0_dim],
+                                       input_fmap_gm[input_gm_idx + (looph * 2 * output_block_h +
+                                                                     output_block_h_index) *
+                                                     self.stride_h * self. in_size_w * c0_dim +
+                                                     (w_loop * self.in_size_w + w_index) * c0_dim],
+                                       0, gm_len, 1, 1, 0)
+                    instance.data_move(ub_buff[(window_index * output_block_h + output_block_h_index) *
+                                               self.out_size_w * c0_dim + gm_len * c0_dim],
+                                       ub_zero, 0, 1, 1, 0, 0)
+                with instance.else_scope():
+                    instance.data_move(ub_buff[(window_index * output_block_h + output_block_h_index) *
+                                               self.out_size_w * c0_dim],
+                                       input_fmap_gm[input_gm_idx + (looph * 2 * output_block_h +
+                                                                     output_block_h_index) *
+                                                     self.stride_h * self. in_size_w * c0_dim +
+                                                     (w_loop * self.in_size_w + w_index) * c0_dim],
+                                       0, gm_len, 1, 1, 0)
+
+    # 'pylint: disable=too-many-arguments
+    def _ub_rearrangement_ping(self, ub_buff, ub_load, output_block_h, input_fmap_gm, input_gm_idx, looph,
+                               src_offsets_gm):
+        """
+        rearrange data of ub
+
+        Parameters
+        ----------
+        ub_buff: address of ub_buff
+        ub_load: address of ub_load
+        output_block_h: size of cut
+        input_fmap_gm: address of gm
+        input_gm_idx: offset of gm
+        looph: index of looph
+        src_offsets_gm: src_offsets
+
+        Returns
+        -------
+        None
+        """
+        instance = self.tik_instance
+        gm_len_ping = instance.Scalar("int32", name="gm_len_ping")
+        filter_size = self.window_h * self.window_w
+        instance.vector_dup(16,
+                            ub_load[((output_block_h - 1) * self.stride_h + self.window_h) * self.in_size_w * 16],
+                            self.pad_value, 1, 1, 1)
+        gm_len_ping.set_as(((output_block_h - 1) * self.stride_h + self.window_h) * self.in_size_w)
+        src_offsets_size = output_block_h * self.out_size_w * filter_size
+        src_offsets = instance.Tensor("int32", (src_offsets_size,), name="src_offsets", scope=tik.scope_ubuf)
+        repeat_times = src_offsets_size // 8
+        instance.data_move(ub_load,
+                           input_fmap_gm[input_gm_idx + (looph * 2 * output_block_h) * self.stride_h *
+                                         self. in_size_w * 16],
+                           0, 1, gm_len_ping, 0, 0)
+        instance.data_move(src_offsets, src_offsets_gm, 0, 1, src_offsets_size // 8, 0, 0)
+        instance.vgatherb(ub_buff, ub_load, src_offsets, repeat_times, 1, 8)
+
+    # 'pylint: disable=too-many-arguments,too-many-locals
+    def _ub_rearrangement_pong(self, ub_buff, ub_load, output_block_h, input_fmap_gm, input_gm_idx, looph, loop_h,
+                               src_offsets_gm, src_offsets_last_gm):
+        """
+        rearrange data of ub
+
+        Parameters
+        ----------
+        ub_buff: address of ub_buff
+        ub_load: address of ub_load
+        output_block_h: size of cut
+        input_fmap_gm: address of gm
+        input_gm_idx: offset of gm
+        looph: index of looph
+        loop_h: number of loop
+        src_offsets_gm: src_offsets
+        src_offsets_last_gm: src_offsets
+
+        Returns
+        -------
+        None
+        """
+        instance = self.tik_instance
+        gm_len_pong = instance.Scalar("int32", name="gm_len_pong")
+        filter_size = self.window_h * self.window_w
+        instance.vector_dup(16,
+                            ub_load[((output_block_h - 1) * self.stride_h + self.window_h) * self.in_size_w * 16],
+                            self.pad_value, 1, 1, 1)
+        if looph == loop_h // 2 - 1:
+            gm_len_pong.set_as(((output_block_h - 1) * self.stride_h + self.window_h - 1) * self.in_size_w)
+        else:
+            gm_len_pong.set_as(((output_block_h - 1) * self.stride_h + self.window_h) * self.in_size_w)
+
+        src_offsets_size = output_block_h * self.out_size_w * filter_size
+        src_offsets = instance.Tensor("int32", (src_offsets_size,), name="src_offsets", scope=tik.scope_ubuf)
+        repeat_times = src_offsets_size // 8
+        instance.data_move(ub_load,
+                           input_fmap_gm[input_gm_idx + ((looph * 2 + 1) * output_block_h) * self.stride_h *
+                                         self. in_size_w * 16],
+                           0, 1, gm_len_pong, 0, 0)
+        with instance.if_scope(looph == loop_h // 2 - 1):
+            instance.data_move(src_offsets, src_offsets_last_gm, 0, 1, src_offsets_size // 8, 0, 0)
+        with instance.else_scope():
+            instance.data_move(src_offsets, src_offsets_gm, 0, 1, src_offsets_size // 8, 0, 0)
+
+        instance.vgatherb(ub_buff, ub_load, src_offsets, repeat_times, 1, 8)
+
+    # 'pylint: disable=too-many-arguments,too-many-locals
+    def _load_gm_to_ub_pong(self, ub_buff, output_block_h, input_fmap_gm, input_gm_idx, looph, loop_h):
+        """
+        load data from gm to ub
+
+        Parameters
+        ----------
+        ub_buff: address of ub_buff
+        output_block_h: size of cut
+        input_fmap_gm: address of gm
+        input_gm_idx: offset of gm
+        looph: index of looph
+        loop_h: number of looph
+
+        Returns
+        -------
+        None
+        """
+        instance = self.tik_instance
+        gm_len = instance.Scalar("uint64", name="gm_len")
+        filter_size = self.window_h * self.window_w
+        c0_dim = 16
+        ub_zero = instance.Tensor(self.input_dtype, (c0_dim,), name="ub_zero", scope=tik.scope_ubuf)
+        instance.vector_dup(c0_dim, ub_zero, self.pad_value, 1, 1, 1)
+        with instance.for_range(0, filter_size) as window_index:
+            w_index = window_index % self.window_w
+            w_loop = window_index // self.window_w
+            with instance.if_scope(w_index == 2):
+                gm_len.set_as(self.out_size_w - 1)
+            with instance.else_scope():
+                gm_len.set_as(self.out_size_w)
+            with instance.for_range(0, output_block_h) as output_block_h_index:
+                with instance.if_scope(tik.all(looph == loop_h // 2 - 1, output_block_h_index == output_block_h - 1)):
+                    with instance.if_scope(w_loop == 2):
+                        instance.vector_dup(MASK, ub_buff[(window_index * output_block_h + output_block_h_index) *
+                                                          self.out_size_w * c0_dim],
+                                            self.pad_value, DSTSTRIDEM1 - 1, 1, DSTSTRIDEM1)
+                    with instance.else_scope():
+                        with instance.if_scope(w_index == 2):
+                            instance.data_move(ub_buff[(window_index * output_block_h + output_block_h_index) *
+                                                       self.out_size_w * c0_dim],
+                                               input_fmap_gm[input_gm_idx + ((looph * 2 + 1) * output_block_h +
+                                                                             output_block_h_index) *
+                                                             self.stride_h * self. in_size_w * c0_dim +
+                                                             (w_loop * self.in_size_w + w_index) * c0_dim],
+                                               0, gm_len, 1, 1, 0)
+                            instance.data_move(ub_buff[(window_index * output_block_h + output_block_h_index) *
+                                                       self.out_size_w * c0_dim + gm_len * c0_dim],
+                                               ub_zero, 0, 1, 1, 0, 0)
+                        with instance.else_scope():
+                            instance.data_move(ub_buff[(window_index * output_block_h + output_block_h_index) *
+                                                       self.out_size_w * c0_dim],
+                                               input_fmap_gm[input_gm_idx + ((looph * 2 + 1) * output_block_h +
+                                                                             output_block_h_index) *
+                                                             self.stride_h * self. in_size_w * c0_dim +
+                                                             (w_loop * self.in_size_w + w_index) * c0_dim],
+                                               0, gm_len, 1, 1, 0)
+                with instance.else_scope():
+                    with instance.if_scope(w_index == 2):
+                        instance.data_move(ub_buff[(window_index * output_block_h + output_block_h_index) *
+                                                   self.out_size_w * c0_dim],
+                                           input_fmap_gm[input_gm_idx + ((looph * 2 + 1) * output_block_h +
+                                                                         output_block_h_index) *
+                                                         self.stride_h * self. in_size_w * c0_dim +
+                                                         (w_loop * self.in_size_w + w_index) * c0_dim],
+                                           0, gm_len, 1, 1, 0)
+                        instance.data_move(ub_buff[(window_index * output_block_h + output_block_h_index) *
+                                                   self.out_size_w * c0_dim + gm_len * c0_dim],
+                                           ub_zero, 0, 1, 1, 0, 0)
+                    with instance.else_scope():
+                        instance.data_move(ub_buff[(window_index * output_block_h + output_block_h_index) *
+                                                   self.out_size_w * c0_dim],
+                                           input_fmap_gm[input_gm_idx + ((looph * 2 + 1) * output_block_h +
+                                                                         output_block_h_index) *
+                                                         self.stride_h * self. in_size_w * c0_dim +
+                                                         (w_loop * self.in_size_w + w_index) * c0_dim],
+                                           0, gm_len, 1, 1, 0)
 
     def _calc_src_offsets(self, output_block_h):
         """

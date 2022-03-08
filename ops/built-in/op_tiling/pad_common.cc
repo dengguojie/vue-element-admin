@@ -481,7 +481,7 @@ void padCommon::GetRecurCore(PadDTilingParams& params, const std::vector<int64_t
 
   params.recur_outShape = outShape;
   if (depth - 1 > 0) {
-      for (int i = 0; i <= depth-2; i++){
+      for (int i = 0; i <= depth-2; i++) {
         params.recur_outShape[i] = 1;
       }
   }

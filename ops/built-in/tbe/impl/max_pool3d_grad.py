@@ -268,529 +268,6 @@ class MaxPool3DGradCompute:
                                            scope=tik.scope_gm,
                                            is_atomic_add=True)
 
-    def _padding_mode(self, ):
-        # NDC1HWC0
-        _, map_d, _, map_h, map_w, _ = self.forward_in_shape
-        _, kernel_d, kernel_h, kernel_w, _ = self.ksize
-        if self.pads.upper() == 'VALID':
-            do = int(math.ceil((map_d - kernel_d + 1) * 1.0 / self.sd))
-            ho = int(math.ceil((map_h - kernel_h + 1) * 1.0 / self.sh))
-            wo = int(math.ceil((map_w - kernel_w + 1) * 1.0 / self.sw))
-            pad_d_top = pad_d_bottom = \
-                pad_hw_top = pad_hw_left = pad_hw_bottom = pad_hw_right = 0
-
-        else:
-            do = (map_d + self.sd - 1) // self.sd
-            ho = (map_h + self.sh - 1) // self.sh
-            wo = (map_w + self.sw - 1) // self.sw
-
-            pad_h = max((ho - 1) * self.sh + kernel_h - map_h, 0)
-            pad_hw_top = pad_h // 2
-            pad_hw_bottom = pad_h - pad_hw_top
-            pad_w = max((wo - 1) * self.sw + kernel_w - map_w, 0)
-            pad_hw_left = pad_w // 2
-            pad_hw_right = pad_w - pad_hw_left
-
-            pad_d = max((do - 1) * self.sd + kernel_d - map_d, 0)
-            pad_d_top = pad_d // 2
-            pad_d_bottom = pad_d - pad_d_top
-
-        pad_model = [[pad_d_top, pad_d_bottom],
-                     [pad_hw_top, pad_hw_bottom],
-                     [pad_hw_left, pad_hw_right]]
-
-        return [do, ho, wo, pad_model]
-
-    def _infer_dim_return(self, do, ho, wo, model):
-
-        if self.kd >= self.sd:
-            di = self.kd + (do - 1) * self.sd
-        else:
-            di = do * self.sd
-
-        if self.kh >= self.sh:
-            hi = self.kh + (ho - 1) * self.sh
-        else:
-            hi = ho * self.sh
-
-        if self.kw > self.sw:
-            wi = self.kw + (wo - 1) * self.sw
-        else:
-            wi = wo * self.sw
-
-        # model: True, work for real split
-        # model: False, calc used part for _invalid_part()
-        # if not split do,ho,wo, all dim would
-        # be return.
-        if model:
-            if self.do == do:
-                # in "SAME", return the filled di
-                di = self.d + self.pad[0][0] + self.pad[0][1]
-            if self.ho == ho:
-                hi = self.h if self.ho != 1 else self.h + self.pad[1][0] + self.pad[1][1]
-            if self.wo == wo:
-                wi = self.w if self.wo != 1 else self.w + self.pad[2][0] + self.pad[2][1]
-
-        return di, hi, wi
-
-    def _infer_map_return(self, do, ho, wo):
-        # Only work in "SAME", return size of feature_map.
-        # Because in "VALID", feature_map's size is as same as l1_in_buf.
-
-        if self.kd >= self.sd:
-            di = self.kd + (do - 1) * self.sd
-        else:
-            di = do * self.sd
-
-        if self.kh >= self.sh:
-            hi = self.kh + (ho - 1) * self.sh
-        else:
-            hi = ho * self.sh
-
-        if self.kw > self.sw:
-            wi = self.kw + (wo - 1) * self.sw
-        else:
-            wi = wo * self.sw
-
-        if self.do == do:
-            di = self.d + self.pad[0][0] + self.pad[0][1]
-        if self.ho == ho:
-            hi = self.h + self.pad[1][0] + self.pad[1][1]
-        if self.wo == wo:
-            wi = self.w + self.pad[2][0] + self.pad[2][1]
-
-        return di, hi, wi
-
-    def _invalid_part(self):
-        # return area of kernel doesn't slides
-        di, hi, wi = self._infer_dim_return(self.do, self.ho, self.wo, False)
-        invalid_d = self.d - di
-        invalid_h = self.h - hi
-        invalid_w = self.w - wi
-
-        return invalid_d, invalid_h, invalid_w
-
-    def _overlap_mode(self, stride, size, xo, xi):
-        # xo: direction of x can be slided by xo times
-        # xi: the length of x
-        if xo == 1:
-            # If xo is 1,only xi >= stride, stride has work.
-            # If xo is 1 and xi < stride, only kernel has work
-            if xi >= stride:
-                overlap = size - stride
-            else:
-                overlap = 0
-        else:
-            overlap = size - stride
-
-        return overlap
-
-    def _check_process_space(self, do, ho, wo):
-        """
-        =====================================
-        UB_space: compute virtual space in UB
-        =====================================
-        col_in_shape:ho wo c0 (512B) ---> for load3d
-        forward_ou_shape: do ho wo c0(last do have 256B) ---> for vcmp_eq
-        mask_shape: ho wo (uint16,)
-        mask_or_shape: same
-        mask_not_shape: same
-        grad_shape: do ho wo c0(as same as forward_ou_shape)
-        zero_shape: 256B
-        grad_vsel_fp16_shape: ho wo c0(256B)
-        grad_vsel_fp32_shape: ho wo c0(256B)
-        f_map_fp32_shape: di hi wi c0
-        """
-        # If consider padding, L1_size must be less
-        # than computation of _infer_dim_return.
-        # So,actual of data move in L1 may less than space of malloc
-        # If data of L1 col2img to UB, l1_in_data would be released.
-        # Then, L1 will be used to save overlap which may include
-        # overlap_d and overlap_h.
-        # if l1_split = True, UB also can't process do ho wo.
-
-        # due to valid, self.pads is [[0,0],[0,0],[0,0]]
-        # l1_in_shape is most
-        infer_di, infer_hi, infer_wi = self._infer_dim_return(do, ho, wo, True)
-        l1_in_shape = [infer_di, infer_hi, infer_wi, self.c0]
-        l1_in_size = _prod(l1_in_shape)
-
-        col_in_shape = [ho, wo, self.c0]
-        col_in_size = _ceil_div(_prod(col_in_shape), 256) * 256
-
-        forward_ou_shape_last_do = [1, ho, wo, self.c0]
-        forward_ou_shape_except_last = [do - 1, ho, wo, self.c0]
-        forward_ou_size = _ceil_div(_prod(forward_ou_shape_last_do), 128) * 128
-        forward_ou_size += _prod(forward_ou_shape_except_last)
-
-        mask_shape = [ho, wo]
-        mask_size = _ceil_div(_prod(mask_shape), 128) * 128
-        grad_size = forward_ou_size
-        zero_size = 128
-
-        grad_sel_fp16_shape = [ho, wo, self.c0]
-        grad_sel_fp16_size = _ceil_div(_prod(grad_sel_fp16_shape), 128) * 128
-        grad_sel_fp32_size = grad_sel_fp16_size
-
-        if self.pads.upper() == "VALID":
-            f_map_fp32_shape = [infer_di, infer_hi, infer_wi, self.c0]
-        else:
-            map_di, map_hi, map_wi = self._infer_map_return(do, ho, wo)
-            f_map_fp32_shape = [map_di, map_hi, map_wi, self.c0]
-        f_map_fp32_size = _prod(f_map_fp32_shape)
-
-        used_ub_byte = (col_in_size + forward_ou_size + mask_size * 3 +
-                        grad_size + zero_size +
-                        grad_sel_fp16_size) * self.num_bit + \
-                       (grad_sel_fp32_size + f_map_fp32_size) * 4
-
-        ub_split = used_ub_byte > self.ub_maxsize * self.num_bit
-
-        param = Params(ub_split, col_in_size, forward_ou_size,
-                       mask_size, grad_size, zero_size, grad_sel_fp16_size,
-                       grad_sel_fp32_size, f_map_fp32_size, l1_in_size)
-        return param
-
-    def _check_cut_model(self, cut_model, split_model, all_do, core_branch):
-        # "not_tiling": 0
-        # "tiling_do": 1
-        # "tiling_do_ho": 2
-        # "tiling_do_ho_wo": 3
-        branch_list = ["not_tiling", "tiling_do",
-                       "tiling_do_ho", "tiling_do_ho_wo"]
-
-        if cut_model == [True, False, False]:
-            if split_model[0] == all_do:
-                model = 0
-            else:
-                model = 1
-        elif cut_model == [True, True, False]:
-            model = 2
-        else:
-            model = 3
-
-        model = max(model, core_branch)
-        return branch_list[model]
-
-    def _pattern(self, core_ou_shape, core_branch):
-        # valid
-        # D H W C0 -> Do Ho Wo C0
-        all_wo = core_ou_shape[-2]
-        all_ho = core_ou_shape[-3]
-        all_do = core_ou_shape[-4]
-
-        wo = all_wo
-        ho = all_ho
-        do = all_do
-
-        split_do = False
-        split_ho = False
-        split_wo = False
-
-        for k in range(all_do):
-            do = all_do - k
-            param = self._check_process_space(do, ho, wo)
-            if not param.ub_split:
-                split_do = True
-                break
-
-        if not split_do:
-            do = 1
-            for k in range(all_ho):
-                ho = all_ho - k
-                param = self._check_process_space(do, ho, wo)
-                if not param.ub_split:
-                    split_do = True
-                    split_ho = True
-                    break
-
-        if not split_do and not split_ho:
-            do = ho = 1
-            for k in range(all_wo):
-                wo = all_wo - k
-                param = self._check_process_space(do, ho, wo)
-                if not param.ub_split:
-                    split_do = True
-                    split_ho = True
-                    split_wo = True
-                    break
-
-        cut_model = [split_do, split_ho, split_wo]
-        split_model = [do, ho, wo]
-        if cut_model == [False, False, False]:
-            error_manager_vector.raise_err_specific_reson("MaxPoolGRAD", "kernel is too larger")
-
-        # avoid hardware bugs that load3dv1 can't
-        # support wo=1 and ho != 1 in cloud_v100
-        if split_model[-1] == 1 and split_model[-2] != 1:
-            param = self._check_process_space(1, 1, 1)
-            cut_model = [True, True, True]
-            split_model = [1, 1, 1]
-
-        branch = self._check_cut_model(cut_model, split_model,
-                                       all_do, core_branch)
-
-        return branch, split_model, param
-
-    @staticmethod
-    def norm_data_move(tik_instance, src_buf, dst_buf, in_list):
-        """
-        norm_data_move
-        """
-        src_idx, dst_idx = in_list[-2], in_list[-1]
-        n_burst, burst_len = in_list[0], in_list[1]
-        src_stride, dst_stride = in_list[2], in_list[3]
-
-        tik_instance.data_move(dst_buf[dst_idx],
-                               src_buf[src_idx],
-                               0,
-                               n_burst,
-                               burst_len,
-                               src_stride,
-                               dst_stride)
-
-    def _ultimate_data_move(self, tik_instance, src_buf, dst_buf, in_list, num_bit):
-        src_idx, dst_idx = in_list[-2], in_list[-1]
-        n_burst, burst_len = in_list[0], in_list[1]
-        src_stride, dst_stride = in_list[2], in_list[3]
-
-        with tik_instance.for_range(0, n_burst) as i:
-            src_idx += i * (src_stride + burst_len) * Constant.MINI_UNIT // num_bit
-            dst_idx += i * (dst_stride + burst_len) * Constant.MINI_UNIT // num_bit
-
-            tik_instance.data_move(dst_buf[dst_idx],
-                                   src_buf[src_idx],
-                                   0, 1, burst_len, 0, 0)
-
-    def _copy_gm_to_l1(self, tik_instance, l1_buf, src_idx, dst_idx, in_shape):
-        n_burst = in_shape[0]
-        burst_len = _prod(in_shape[1:]) * self.num_bit // Constant.MINI_UNIT
-        src_stride = (_prod(self.forward_in_shape[3:]) * (self.c1 - 1) +
-                      _prod(self.forward_in_shape[4:]) *
-                      (self.h - in_shape[1])) * self.num_bit // Constant.MINI_UNIT
-        dst_stride = 0
-
-        in_list = [n_burst, burst_len, src_stride, dst_stride, src_idx, dst_idx]
-        check = isinstance(src_stride, int)
-        with tik_instance.if_scope(src_stride > Constant.MAX_STRIDE):
-            self._ultimate_data_move(tik_instance, self.orig_x_gm,
-                                     l1_buf, in_list, self.num_bit)
-
-        with tik_instance.else_scope():
-            if check:
-                if src_stride <= Constant.MAX_STRIDE:
-                    self.norm_data_move(tik_instance, self.orig_x_gm,
-                                        l1_buf, in_list)
-            else:
-                self.norm_data_move(tik_instance, self.orig_x_gm,
-                                    l1_buf, in_list)
-
-    def _gm2l1_tiling_do_ho(self, tik_instance, l1_buf, src_idx, dst_idx,
-                            in_shape, hi_batch):
-        n_burst = in_shape[0]
-        burst_len = _prod(in_shape[1:]) * self.num_bit // Constant.MINI_UNIT
-        src_stride = (_prod(self.forward_in_shape[3:]) * (self.c1 - 1) +
-                      _prod(self.forward_in_shape[4:]) *
-                      (self.h - in_shape[1])) * self.num_bit // Constant.MINI_UNIT
-        dst_stride = (hi_batch - in_shape[1]) * self.w * self.c0 * \
-                     self.num_bit // Constant.MINI_UNIT
-
-        in_list = [n_burst, burst_len, src_stride,
-                   dst_stride, src_idx, dst_idx]
-        # dst_stride and src_stride must be same type
-        check = isinstance(src_stride, int)
-
-        with tik_instance.if_scope(
-                tik.any(src_stride > Constant.MAX_STRIDE,
-                        dst_stride > Constant.MAX_STRIDE)):
-            self._ultimate_data_move(tik_instance, self.orig_x_gm,
-                                     l1_buf, in_list, self.num_bit)
-        with tik_instance.else_scope():
-            if check:
-                if src_stride <= Constant.MAX_STRIDE and dst_stride <= Constant.MAX_STRIDE:
-                    self.norm_data_move(tik_instance, self.orig_x_gm,
-                                        l1_buf, in_list)
-            else:
-                self.norm_data_move(tik_instance, self.orig_x_gm,
-                                    l1_buf, in_list)
-
-    def _gm2l1_tiling_do_ho_wo(self, tik_instance,
-                               l1_buf, src_idx, dst_idx,
-                               input0, input1):
-
-        di_val, hi_val, wi_val = input0[0], input0[1], input0[2]
-        di_batch, hi_batch, wi_batch = input1[0], input1[1], input1[2]
-
-        # ==================================
-        # copy gm to l1
-        # ==================================
-        c1 = self.c1
-        c0 = self.c0
-        in_shape = [hi_val, wi_val, c0]
-        n_burst = in_shape[0]
-        burst_len = _prod(in_shape[1:]) * self.num_bit // Constant.MINI_UNIT
-        src_stride = (self.w - wi_val) * c0 * self.num_bit // Constant.MINI_UNIT
-        dst_stride = 0
-
-        with tik_instance.for_range(0, di_val) as idx:
-            src_idx_new = src_idx + _prod(self.forward_in_shape[3:]) * c1 * idx
-            dst_idx_new = dst_idx + hi_batch * wi_batch * c0 * idx
-
-            in_list = [n_burst, burst_len, src_stride,
-                       dst_stride, src_idx_new, dst_idx_new]
-            check = isinstance(src_stride, int)
-
-            with tik_instance.if_scope(src_stride > Constant.MAX_STRIDE):
-                self._ultimate_data_move(tik_instance, self.orig_x_gm,
-                                         l1_buf, in_list, self.num_bit)
-
-            with tik_instance.else_scope():
-                if check:
-                    if src_stride <= Constant.MAX_STRIDE:
-                        self.norm_data_move(tik_instance, self.orig_x_gm,
-                                            l1_buf, in_list)
-                else:
-                    self.norm_data_move(tik_instance, self.orig_x_gm,
-                                        l1_buf, in_list)
-
-    def _copy_ub_to_gm(self, tik_instance, src_buf, src_idx,
-                       dst_buf, dst_idx, in_shape):
-        # "float32"
-        n_burst = in_shape[0]
-        burst_len = _prod(in_shape[1:]) * self.num_bit_fp32 // Constant.MINI_UNIT
-        src_stride = 0
-        dst_stride = (_prod(self.forward_in_shape[3:]) * (self.c1 - 1) +
-                      _prod(self.forward_in_shape[4:]) *
-                      (self.h - in_shape[1])) * self.num_bit_fp32 // Constant.MINI_UNIT
-
-        in_list = [n_burst, burst_len, src_stride,
-                   dst_stride, src_idx, dst_idx]
-        check = isinstance(dst_stride, int)
-
-        with tik_instance.if_scope(dst_stride > Constant.MAX_STRIDE):
-            self._ultimate_data_move(tik_instance, src_buf,
-                                     dst_buf, in_list, self.num_bit_fp32)
-        with tik_instance.else_scope():
-            if check:
-                if dst_stride <= Constant.MAX_STRIDE:
-                    self.norm_data_move(tik_instance, src_buf, dst_buf, in_list)
-            else:
-                self.norm_data_move(tik_instance, src_buf, dst_buf, in_list)
-
-    def _ub2gm_split_do_ho_2(self, tik_instance, src,
-                             src_idx, dst, dst_idx, in_shape, hi_batch):
-        n_burst = in_shape[0]
-        burst_len = _prod(in_shape[1:]) * \
-                    self.num_bit_fp32 // Constant.MINI_UNIT
-        src_stride = (hi_batch - in_shape[1]) * self.w * self.c0 * \
-                     self.num_bit_fp32 // Constant.MINI_UNIT
-        dst_stride = (_prod(self.forward_in_shape[3:]) * (self.c1 - 1) +
-                      _prod(self.forward_in_shape[4:]) *
-                      (self.h - in_shape[1])) * \
-                     self.num_bit_fp32 // Constant.MINI_UNIT
-
-        in_list = [n_burst, burst_len, src_stride,
-                   dst_stride, src_idx, dst_idx]
-        # src_stride and dst_stride must be same type
-        check = isinstance(src_stride, int)
-
-        with tik_instance.if_scope(
-                tik.any(src_stride > Constant.MAX_STRIDE,
-                        dst_stride > Constant.MAX_STRIDE)):
-            self._ultimate_data_move(tik_instance, src, dst,
-                                     in_list, self.num_bit_fp32)
-
-        with tik_instance.else_scope():
-            if check:
-                if src_stride <= Constant.MAX_STRIDE and dst_stride <= Constant.MAX_STRIDE:
-                    self.norm_data_move(tik_instance, src, dst, in_list)
-            else:
-                self.norm_data_move(tik_instance, src, dst, in_list)
-
-    def _ub2gm_split_do_ho(self, tik_instance, src_buf, src_idx,
-                           dst_buf, dst_idx, in_shape):
-        n_burst = in_shape[0]
-        burst_len = _prod(in_shape[1:]) * \
-                    self.num_bit_fp32 // Constant.MINI_UNIT
-        src_stride = self.overlap_h * self.w * self.c0 * \
-                     self.num_bit_fp32 // Constant.MINI_UNIT
-        dst_stride = (_prod(self.forward_in_shape[3:]) * (self.c1 - 1) +
-                      _prod(self.forward_in_shape[4:]) *
-                      (self.h - in_shape[1])) * \
-                     self.num_bit_fp32 // Constant.MINI_UNIT
-
-        in_list = [n_burst, burst_len, src_stride,
-                   dst_stride, src_idx, dst_idx]
-        # src_stride is int,
-        check = isinstance(dst_stride, int)
-
-        with tik_instance.if_scope(
-                tik.any(src_stride > Constant.MAX_STRIDE,
-                        dst_stride > Constant.MAX_STRIDE)):
-            self._ultimate_data_move(tik_instance, src_buf,
-                                     dst_buf, in_list, self.num_bit_fp32)
-
-        with tik_instance.else_scope():
-            if check:
-                if src_stride <= Constant.MAX_STRIDE and dst_stride <= Constant.MAX_STRIDE:
-                    self.norm_data_move(tik_instance, src_buf, dst_buf, in_list)
-            else:
-                if src_stride <= Constant.MAX_STRIDE:
-                    self.norm_data_move(tik_instance, src_buf, dst_buf, in_list)
-
-    def _ub2gm_split_do_ho_wo(self, tik_instance, src, src_idx, dst, dst_idx,
-                              in_shape, hi_batch, wi_batch):
-
-        c0 = in_shape[-1]
-        c1 = self.c1
-        num_bit = self.num_bit_fp32
-
-        n_burst = in_shape[1]
-        burst_len = _prod(in_shape[2:]) * num_bit // Constant.MINI_UNIT
-        src_stride = (wi_batch - in_shape[2]) * c0 * num_bit // Constant.MINI_UNIT
-        dst_stride = (self.w - in_shape[2]) * c0 * num_bit // Constant.MINI_UNIT
-
-        for idx in range(in_shape[0]):
-            dst_idx_new = dst_idx + _prod(self.forward_in_shape[3:]) * c1 * idx
-            src_idx_new = src_idx + hi_batch * wi_batch * c0 * idx
-
-            in_list = [n_burst, burst_len, src_stride,
-                       dst_stride, src_idx_new, dst_idx_new]
-            # type of src_stride is as same as dst_stride
-            check = isinstance(src_stride, int)
-
-            with tik_instance.if_scope(
-                    tik.any(src_stride > Constant.MAX_STRIDE,
-                            dst_stride > Constant.MAX_STRIDE)):
-                self._ultimate_data_move(tik_instance, src,
-                                         dst, in_list, num_bit)
-            with tik_instance.else_scope():
-                if check:
-                    if src_stride <= Constant.MAX_STRIDE and dst_stride <= Constant.MAX_STRIDE:
-                        self.norm_data_move(tik_instance, src, dst, in_list)
-                else:
-                    self.norm_data_move(tik_instance, src, dst, in_list)
-
-    def _mov_init(self, tik_instance, ubuf,
-                  num_overlap, num_init_zero):
-        # mov  float32
-        all_num = num_overlap + num_init_zero
-        n_burst = 1
-        burst_len = num_overlap * 4 // Constant.MINI_UNIT
-        src_stride = 0
-        dst_stride = 0
-        if num_overlap > 0:
-            tik_instance.data_move(ubuf[0],
-                                   ubuf[all_num - num_overlap],
-                                   0,
-                                   n_burst,
-                                   burst_len,
-                                   src_stride,
-                                   dst_stride)
-        # vec_dup
-        self.set_vector_dup(tik_instance, num_init_zero,
-                            ubuf, num_overlap, 0, "float32")
-
     def set_vector_dup(self, tik_instance, psm, dst, idx, number, dtype):
         """
         set_vector_dup
@@ -835,321 +312,22 @@ class MaxPool3DGradCompute:
                                         dst_blk_stride,
                                         dst_rep_stride)
 
-    def _copy_gm_to_ub(self, tik_instance, dst_buf, src_buf, src_idx, in_shape):
-        # Only split do, self.ho is equal to in_shape[1], self.wo is equal
-        # to in_shape[2].
-        # Only split do and ho, self.wo is equal to in_shape[2], and do is 1.
-        # Only split do, ho, wo, do and ho is 1.
-        n_burst = in_shape[0]
-        burst_len = _prod(in_shape[1:]) * self.num_bit // Constant.MINI_UNIT
-        src_stride = (_prod(self.forward_ou_shape[3:]) * (self.c1 - 1) +
-                      _prod(self.forward_ou_shape[4:]) * (self.ho - in_shape[1]) +
-                      self.c0 * (self.wo - in_shape[2])) * \
-                     self.num_bit // Constant.MINI_UNIT
-        dst_stride = 0
+    @staticmethod
+    def norm_data_move(tik_instance, src_buf, dst_buf, in_list):
+        """
+        norm_data_move
+        """
+        src_idx, dst_idx = in_list[-2], in_list[-1]
+        n_burst, burst_len = in_list[0], in_list[1]
+        src_stride, dst_stride = in_list[2], in_list[3]
 
-        if src_stride > Constant.MAX_STRIDE or dst_stride > Constant.MAX_STRIDE:
-            in_list = [n_burst, burst_len, src_stride,
-                       dst_stride, src_idx, 0]
-            self._ultimate_data_move(tik_instance, src_buf,
-                                     dst_buf, in_list, self.num_bit)
-        else:
-            tik_instance.data_move(dst_buf[0],
-                                   src_buf[src_idx],
-                                   0,
-                                   n_burst,
-                                   burst_len,
-                                   src_stride,
-                                   dst_stride)
-
-    def _vconv(self, tik_instance, src, src_start, dst,
-               dst_start, ele_num, src_dtype):
-        total_repeat_time = ele_num // Constant.VECTOR_FP32_SIZE
-        remain_ele = ele_num % Constant.VECTOR_FP32_SIZE
-        mask_value = Constant.VECTOR_FP32_SIZE
-
-        repeat_max_time = total_repeat_time // Constant.MAX_REPEAT
-        remain_repeat_time = total_repeat_time % Constant.MAX_REPEAT
-
-        if src_dtype == 'float16':
-            src_stride, dst_stride = 4, 8
-            if repeat_max_time > 0:
-                with tik_instance.for_range(0, repeat_max_time) as loop1:
-                    tik_instance.vconv(
-                        Constant.MASK64_VALUE, "",
-                        dst[
-                            dst_start + loop1 * Constant.MAX_REPEAT * mask_value],
-                        src[
-                            src_start + loop1 * Constant.MAX_REPEAT * mask_value],
-                        Constant.MAX_REPEAT, 1, 1, dst_stride, src_stride)
-            if remain_repeat_time > 0:
-                tik_instance.vconv(
-                    Constant.MASK64_VALUE, "",
-                    dst[
-                        dst_start + repeat_max_time * Constant.MAX_REPEAT * mask_value],
-                    src[
-                        src_start + repeat_max_time * Constant.MAX_REPEAT * mask_value],
-                    remain_repeat_time, 1, 1, dst_stride, src_stride)
-            if remain_ele > 0:
-                tik_instance.vconv(
-                    remain_ele, "",
-                    dst[dst_start + repeat_max_time * Constant.MAX_REPEAT *
-                        mask_value + remain_repeat_time * mask_value],
-                    src[src_start + repeat_max_time * Constant.MAX_REPEAT *
-                        mask_value + remain_repeat_time * mask_value],
-                    1, 1, 1, dst_stride, src_stride)
-
-        else:
-            src_stride, dst_stride = 8, 4
-            if repeat_max_time > 0:
-                with tik_instance.for_range(0, repeat_max_time) as loop1:
-                    tik_instance.vconv(
-                        Constant.MASK64_VALUE, "",
-                        dst[
-                            dst_start + loop1 * Constant.MAX_REPEAT * mask_value],
-                        src[
-                            src_start + loop1 * Constant.MAX_REPEAT * mask_value],
-                        Constant.MAX_REPEAT, 1, 1, dst_stride, src_stride)
-            if remain_repeat_time > 0:
-                tik_instance.vconv(
-                    Constant.MASK64_VALUE, "",
-                    dst[
-                        dst_start + repeat_max_time * Constant.MAX_REPEAT * mask_value],
-                    src[
-                        src_start + repeat_max_time * Constant.MAX_REPEAT * mask_value],
-                    remain_repeat_time, 1, 1, dst_stride, src_stride)
-            if remain_ele > 0:
-                tik_instance.vconv(
-                    remain_ele, "",
-                    dst[dst_start + repeat_max_time * Constant.MAX_REPEAT *
-                        mask_value + remain_repeat_time * mask_value],
-                    src[src_start + repeat_max_time * Constant.MAX_REPEAT *
-                        mask_value + remain_repeat_time * mask_value],
-                    1, 1, 1, dst_stride, src_stride)
-
-    def _vector_op(self, tik_instance, operator,
-                   src1, src2, dst, dtype, ele_num,
-                   stride_config=None):
-        stride_config = list(stride_config)
-        if dtype == "float16":
-            repeat_times = ele_num // Constant.VECTOR_FP16_SIZE
-            remain_ele = ele_num % Constant.VECTOR_FP16_SIZE
-            mask = Constant.VECTOR_FP16_SIZE
-        else:
-            repeat_times = ele_num // Constant.VECTOR_FP32_SIZE
-            remain_ele = ele_num % Constant.VECTOR_FP32_SIZE
-            mask = Constant.VECTOR_FP32_SIZE
-
-        repeat_max_loop = repeat_times // Constant.MAX_REPEAT
-        remain_max_loop = repeat_times % Constant.MAX_REPEAT
-
-        if operator == "vadd":
-            if stride_config is None:
-                stride_config = 1, 1, 1, 8, 8, 8
-            dst_offset = 0
-            src1_offset = 0
-            src2_offset = 0
-            if repeat_max_loop > 0:
-                tik_instance.vadd(mask, dst[dst_offset], src1[src1_offset],
-                                  src2[src2_offset],
-                                  Constant.MAX_REPEAT,
-                                  stride_config[0], stride_config[1],
-                                  stride_config[2], stride_config[3],
-                                  stride_config[4], stride_config[5])
-                dst_offset += Constant.MINI_UNIT // (tbe_platform.cce_intrin.get_bit_len(
-                    dst.dtype.lower()) // 8) * stride_config[3] * 255
-                src1_offset += Constant.MINI_UNIT // (tbe_platform.cce_intrin.get_bit_len(
-                    src1.dtype.lower()) // 8) * stride_config[4] * 255
-                src2_offset += Constant.MINI_UNIT // (tbe_platform.cce_intrin.get_bit_len(
-                    src2.dtype.lower()) // 8) * stride_config[5] * 255
-            if remain_max_loop > 0:
-                # rep_stride maybe more than 255 while repeat_times=1.
-                if remain_max_loop == 1:
-                    tik_instance.vadd(mask, dst[dst_offset], src1[src1_offset],
-                                      src2[src2_offset],
-                                      remain_max_loop,
-                                      stride_config[0], stride_config[1],
-                                      stride_config[2], 0, 0, 0)
-                else:
-                    tik_instance.vadd(mask, dst[dst_offset], src1[src1_offset],
-                                      src2[src2_offset],
-                                      remain_max_loop,
-                                      stride_config[0], stride_config[1],
-                                      stride_config[2], stride_config[3],
-                                      stride_config[4], stride_config[5])
-                dst_offset += Constant.MINI_UNIT // (tbe_platform.cce_intrin.get_bit_len(
-                    dst.dtype.lower()) // 8) * stride_config[3] * remain_max_loop
-                src1_offset += Constant.MINI_UNIT // (tbe_platform.cce_intrin.get_bit_len(
-                    src1.dtype.lower()) // 8) * stride_config[4] * remain_max_loop
-                src2_offset += Constant.MINI_UNIT // (tbe_platform.cce_intrin.get_bit_len(
-                    src2.dtype.lower()) // 8) * stride_config[5] * remain_max_loop
-            if remain_ele > 0:
-                stride_config[3] = stride_config[4] = stride_config[5] = 0
-                tik_instance.vadd(remain_ele, dst[dst_offset], src1[src1_offset],
-                                  src2[src2_offset], 1,
-                                  stride_config[0], stride_config[1],
-                                  stride_config[2], stride_config[3],
-                                  stride_config[4], stride_config[5])
-
-    def _rewrite_fmap(self, tik_instance, operator,
-                      src1, src2, dst, dtype, once_elem,
-                      repeat_times, shape_map, shape_grad, config=None):
-        # once_elem: amount of data processed at a time in the Wo direction.
-        # shape_map: container size of src1[1:].
-        # shape_grad: valid data size of src2.
-
-        h, w, c0 = shape_map[0], shape_map[1], shape_map[2]
-        ho, wo = shape_grad[0], shape_grad[1]
-        config = list(config)
-        if dtype == "float16":
-            max_mask = 128
-            num_block = 8
-            block_size = 16
-        else:
-            max_mask = 64
-            num_block = 8
-            block_size = 8
-
-        # num_instr_loop_w: num of instructions on direct W
-        # num_instr_loop_h: num of instructions on direct H
-        num_instr_loop_w = math.ceil(once_elem / max_mask)
-        remain_mask = once_elem % max_mask
-        if remain_mask == 0 and once_elem != 0:
-            remain_mask = max_mask
-        num_instr_loop_h = math.ceil(repeat_times / Constant.MAX_REPEAT)
-        remain_repeat = repeat_times % Constant.MAX_REPEAT
-        if remain_repeat == 0 and repeat_times != 0:
-            remain_repeat = Constant.MAX_REPEAT
-
-        dst_offset = src1_offset = src2_offset = 0
-        if operator == "vadd":
-            for idx_h, _ in enumerate(range(num_instr_loop_h)):
-                for idx_w, _ in enumerate(range(num_instr_loop_w)):
-                    src1_offset = idx_w * num_block * config[1] * block_size + \
-                                  idx_h * Constant.MAX_REPEAT * w * c0
-                    src2_offset = idx_w * num_block * config[2] * block_size + \
-                                  idx_h * Constant.MAX_REPEAT * wo * c0
-                    dst_offset = idx_w * num_block * config[0] * block_size + \
-                                 idx_h * Constant.MAX_REPEAT * w * c0
-
-                    if idx_w < num_instr_loop_w - 1:
-                        mask = max_mask
-                    else:
-                        mask = remain_mask
-                    if idx_h < num_instr_loop_h - 1:
-                        rep = Constant.MAX_REPEAT
-                    else:
-                        rep = remain_repeat
-                    tik_instance.vadd(mask, dst[dst_offset],
-                                      src1[src1_offset], src2[src2_offset],
-                                      rep,
-                                      config[0], config[1],
-                                      config[2], config[3],
-                                      config[4], config[5])
-
-    def _set_buf_tensor(self, tik_instance, param):
-
-        l1_in_buf = tik_instance.Tensor(self.dtype,
-                                        [param.l1_in_size, ],
-                                        name="l1_in_buf",
-                                        scope=tik.scope_cbuf)
-        forward_ou_buf = tik_instance.Tensor(self.dtype,
-                                             [param.forward_ou_size, ],
-                                             name="forward_ou_buf",
-                                             scope=tik.scope_ubuf)
-        grad_buf = tik_instance.Tensor(self.dtype,
-                                       [param.grad_size, ],
-                                       name="grad_buf",
-                                       scope=tik.scope_ubuf)
-        col_in_buf = tik_instance.Tensor(self.dtype,
-                                         [param.col_in_size, ],
-                                         name="col_in_buf",
-                                         scope=tik.scope_ubuf)
-        mask_buf = tik_instance.Tensor("uint16",
-                                       [param.mask_size, ],
-                                       name='mask_buf',
-                                       scope=tik.scope_ubuf)
-        mask_or_buf = tik_instance.Tensor("uint16",
-                                          [param.mask_size, ],
-                                          name='mask_or_buf',
-                                          scope=tik.scope_ubuf)
-        mask_not_buf = tik_instance.Tensor("uint16",
-                                           [param.mask_size, ],
-                                           name='mask_not_buf',
-                                           scope=tik.scope_ubuf)
-        zero_buf = tik_instance.Tensor(self.dtype,
-                                       [param.zero_size, ],
-                                       name='zero_buf',
-                                       scope=tik.scope_ubuf)
-
-        grad_sel_fp16_buf = tik_instance.Tensor(self.dtype,
-                                                [param.grad_sel_fp16_size, ],
-                                                name='grad_sel_fp16_buf',
-                                                scope=tik.scope_ubuf)
-        grad_sel_fp32_buf = tik_instance.Tensor("float32",
-                                                [param.grad_sel_fp32_size, ],
-                                                name='grad_sel_fp32_buf',
-                                                scope=tik.scope_ubuf)
-        f_map_fp32_buf = tik_instance.Tensor("float32",
-                                             [param.f_map_fp32_size, ],
-                                             name='f_map_fp32_buf',
-                                             scope=tik.scope_ubuf)
-
-        buf_list = [l1_in_buf, forward_ou_buf, grad_buf, col_in_buf,
-                    mask_buf, mask_or_buf, mask_not_buf, zero_buf,
-                    grad_sel_fp16_buf, grad_sel_fp32_buf,
-                    f_map_fp32_buf]
-
-        return buf_list
-
-    def _calc_mask(self, tik_instance, buf_list, param,
-                   idx_list, const_list):
-        # ---calculate mask---
-        forward_ou_buf = buf_list[1]
-        col_in_buf = buf_list[3]
-        mask_buf = buf_list[4]
-        mask_or_buf = buf_list[5]
-        mask_not_buf = buf_list[6]
-
-        idx_do = idx_list[0]
-        idx_d = idx_list[1]
-        idx_h = idx_list[2]
-        idx_w = idx_list[3]
-        ho, wo, c0 = const_list
-
-        with tik_instance.if_scope(tik.all(idx_d == 0, idx_h == 0, idx_w == 0)):
-            tik_instance.vcmpv_eq(mask_buf[0],
-                                  forward_ou_buf[idx_do * ho * wo * c0],
-                                  col_in_buf[0],
-                                  math.ceil(ho * wo * c0 / Constant.VECTOR_FP16_SIZE),
-                                  1, 1, 8, 8)
-
-            tik_instance.data_move(mask_or_buf[0],
-                                   mask_buf[0], 0, 1,
-                                   param.mask_size // 16, 0, 0)
-
-            tik_instance.vnot(self.mask_fp16, mask_not_buf, mask_or_buf,
-                              param.mask_size // Constant.VECTOR_FP16_SIZE,
-                              1, 1, 8, 8)
-
-        with tik_instance.else_scope():
-            tik_instance.vcmpv_eq(mask_buf[0],
-                                  forward_ou_buf[idx_do * ho * wo * c0],
-                                  col_in_buf[0],
-                                  math.ceil(ho * wo * c0 / Constant.VECTOR_FP16_SIZE),
-                                  1, 1, 8, 8)
-
-            tik_instance.vand(self.mask_fp16, mask_buf, mask_not_buf, mask_buf,
-                              param.mask_size // Constant.VECTOR_FP16_SIZE,
-                              1, 1, 1, 8, 8, 8)
-
-            tik_instance.vor(self.mask_fp16, mask_or_buf, mask_or_buf, mask_buf,
-                             param.mask_size // Constant.VECTOR_FP16_SIZE,
-                             1, 1, 1, 8, 8, 8)
-
-            tik_instance.vnot(self.mask_fp16, mask_not_buf, mask_or_buf,
-                              param.mask_size // Constant.VECTOR_FP16_SIZE,
-                              1, 1, 8, 8)
+        tik_instance.data_move(dst_buf[dst_idx],
+                               src_buf[src_idx],
+                               0,
+                               n_burst,
+                               burst_len,
+                               src_stride,
+                               dst_stride)
 
     def not_tiling_main(self, tik_instance, core_loop, sum_core,
                         model, param):
@@ -1358,27 +536,36 @@ class MaxPool3DGradCompute:
                                 self.ou_y_gm, dst_ou_gm,
                                 ub2gm_shape)
 
-    def _sel(self, tik_instance, buf_list, idx_list, const_list):
-        mask_buf = buf_list[4]
-        zero_buf = buf_list[7]
-        grad_buf = buf_list[2]
-        grad_sel_fp16_buf = buf_list[8]
+    def grad(self, tik_instance, split_model,
+             param, total_num, core_num, func):
+        """
+        grad
+        """
+        # just tiling do ho
+        # support valid
+        core_loop = tik_instance.Scalar("int64")
+        sum_core = tik_instance.Scalar("int64")
+        with tik_instance.for_range(0, core_num,
+                                    block_num=core_num) as blk_idx:
+            core_loop_uint64, sum_core_uint64 = _cal_core(tik_instance, total_num,
+                                                          blk_idx, core_num)
+            core_loop.set_as(core_loop_uint64)
+            sum_core.set_as(sum_core_uint64)
 
-        ho, wo, c0 = const_list
-        idx_do = idx_list[0]
+            func(tik_instance, core_loop, sum_core, split_model, param)
 
-        repeat_times_sel = math.ceil(ho * wo * c0 / Constant.VECTOR_FP16_SIZE)
-        with tik_instance.for_range(0, repeat_times_sel) as serial:
-            grad_sel_offset = serial * 128
-            grad_offset = serial * 128 + idx_do * ho * wo * c0
-            mask_offset = serial * 8
-            cmp_mask = tik_instance.mov_tensor_to_cmpmask(mask_buf[mask_offset])
-            tik_instance.vsel(self.mask_fp16, 0,
-                              grad_sel_fp16_buf[grad_sel_offset],
-                              cmp_mask,
-                              grad_buf[grad_offset],
-                              zero_buf,
-                              1, 1, 1, 1, 8, 8, 0)
+    def get_tik_instance(self):
+        """
+        obtain tik instance
+        """
+        tik_instance = self._compute()
+        tik_instance.BuildCCE(kernel_name=self.kernel_name,
+                              inputs=[self.orig_x_gm,
+                                      self.orig_y_gm,
+                                      self.grads_gm],
+                              outputs=[self.ou_y_gm])
+
+        return tik_instance
 
     def tiling_do_main(self, tik_instance, core_loop,
                        sum_core, model, param):
@@ -3990,6 +3177,850 @@ class MaxPool3DGradCompute:
                                     dst_buf, 0, Constant.MIN_VALUE_FP16, "float16")
                 mark.set_as(1)
 
+    def _padding_mode(self, ):
+        # NDC1HWC0
+        _, map_d, _, map_h, map_w, _ = self.forward_in_shape
+        _, kernel_d, kernel_h, kernel_w, _ = self.ksize
+        if self.pads.upper() == 'VALID':
+            do = int(math.ceil((map_d - kernel_d + 1) * 1.0 / self.sd))
+            ho = int(math.ceil((map_h - kernel_h + 1) * 1.0 / self.sh))
+            wo = int(math.ceil((map_w - kernel_w + 1) * 1.0 / self.sw))
+            pad_d_top = pad_d_bottom = \
+                pad_hw_top = pad_hw_left = pad_hw_bottom = pad_hw_right = 0
+
+        else:
+            do = (map_d + self.sd - 1) // self.sd
+            ho = (map_h + self.sh - 1) // self.sh
+            wo = (map_w + self.sw - 1) // self.sw
+
+            pad_h = max((ho - 1) * self.sh + kernel_h - map_h, 0)
+            pad_hw_top = pad_h // 2
+            pad_hw_bottom = pad_h - pad_hw_top
+            pad_w = max((wo - 1) * self.sw + kernel_w - map_w, 0)
+            pad_hw_left = pad_w // 2
+            pad_hw_right = pad_w - pad_hw_left
+
+            pad_d = max((do - 1) * self.sd + kernel_d - map_d, 0)
+            pad_d_top = pad_d // 2
+            pad_d_bottom = pad_d - pad_d_top
+
+        pad_model = [[pad_d_top, pad_d_bottom],
+                     [pad_hw_top, pad_hw_bottom],
+                     [pad_hw_left, pad_hw_right]]
+
+        return [do, ho, wo, pad_model]
+
+    def _infer_dim_return(self, do, ho, wo, model):
+
+        if self.kd >= self.sd:
+            di = self.kd + (do - 1) * self.sd
+        else:
+            di = do * self.sd
+
+        if self.kh >= self.sh:
+            hi = self.kh + (ho - 1) * self.sh
+        else:
+            hi = ho * self.sh
+
+        if self.kw > self.sw:
+            wi = self.kw + (wo - 1) * self.sw
+        else:
+            wi = wo * self.sw
+
+        # model: True, work for real split
+        # model: False, calc used part for _invalid_part()
+        # if not split do,ho,wo, all dim would
+        # be return.
+        if model:
+            if self.do == do:
+                # in "SAME", return the filled di
+                di = self.d + self.pad[0][0] + self.pad[0][1]
+            if self.ho == ho:
+                hi = self.h if self.ho != 1 else self.h + self.pad[1][0] + self.pad[1][1]
+            if self.wo == wo:
+                wi = self.w if self.wo != 1 else self.w + self.pad[2][0] + self.pad[2][1]
+
+        return di, hi, wi
+
+    def _infer_map_return(self, do, ho, wo):
+        # Only work in "SAME", return size of feature_map.
+        # Because in "VALID", feature_map's size is as same as l1_in_buf.
+
+        if self.kd >= self.sd:
+            di = self.kd + (do - 1) * self.sd
+        else:
+            di = do * self.sd
+
+        if self.kh >= self.sh:
+            hi = self.kh + (ho - 1) * self.sh
+        else:
+            hi = ho * self.sh
+
+        if self.kw > self.sw:
+            wi = self.kw + (wo - 1) * self.sw
+        else:
+            wi = wo * self.sw
+
+        if self.do == do:
+            di = self.d + self.pad[0][0] + self.pad[0][1]
+        if self.ho == ho:
+            hi = self.h + self.pad[1][0] + self.pad[1][1]
+        if self.wo == wo:
+            wi = self.w + self.pad[2][0] + self.pad[2][1]
+
+        return di, hi, wi
+
+    def _invalid_part(self):
+        # return area of kernel doesn't slides
+        di, hi, wi = self._infer_dim_return(self.do, self.ho, self.wo, False)
+        invalid_d = self.d - di
+        invalid_h = self.h - hi
+        invalid_w = self.w - wi
+
+        return invalid_d, invalid_h, invalid_w
+
+    def _overlap_mode(self, stride, size, xo, xi):
+        # xo: direction of x can be slided by xo times
+        # xi: the length of x
+        if xo == 1:
+            # If xo is 1,only xi >= stride, stride has work.
+            # If xo is 1 and xi < stride, only kernel has work
+            if xi >= stride:
+                overlap = size - stride
+            else:
+                overlap = 0
+        else:
+            overlap = size - stride
+
+        return overlap
+
+    def _check_process_space(self, do, ho, wo):
+        """
+        =====================================
+        UB_space: compute virtual space in UB
+        =====================================
+        col_in_shape:ho wo c0 (512B) ---> for load3d
+        forward_ou_shape: do ho wo c0(last do have 256B) ---> for vcmp_eq
+        mask_shape: ho wo (uint16,)
+        mask_or_shape: same
+        mask_not_shape: same
+        grad_shape: do ho wo c0(as same as forward_ou_shape)
+        zero_shape: 256B
+        grad_vsel_fp16_shape: ho wo c0(256B)
+        grad_vsel_fp32_shape: ho wo c0(256B)
+        f_map_fp32_shape: di hi wi c0
+        """
+        # If consider padding, L1_size must be less
+        # than computation of _infer_dim_return.
+        # So,actual of data move in L1 may less than space of malloc
+        # If data of L1 col2img to UB, l1_in_data would be released.
+        # Then, L1 will be used to save overlap which may include
+        # overlap_d and overlap_h.
+        # if l1_split = True, UB also can't process do ho wo.
+
+        # due to valid, self.pads is [[0,0],[0,0],[0,0]]
+        # l1_in_shape is most
+        infer_di, infer_hi, infer_wi = self._infer_dim_return(do, ho, wo, True)
+        l1_in_shape = [infer_di, infer_hi, infer_wi, self.c0]
+        l1_in_size = _prod(l1_in_shape)
+
+        col_in_shape = [ho, wo, self.c0]
+        col_in_size = _ceil_div(_prod(col_in_shape), 256) * 256
+
+        forward_ou_shape_last_do = [1, ho, wo, self.c0]
+        forward_ou_shape_except_last = [do - 1, ho, wo, self.c0]
+        forward_ou_size = _ceil_div(_prod(forward_ou_shape_last_do), 128) * 128
+        forward_ou_size += _prod(forward_ou_shape_except_last)
+
+        mask_shape = [ho, wo]
+        mask_size = _ceil_div(_prod(mask_shape), 128) * 128
+        grad_size = forward_ou_size
+        zero_size = 128
+
+        grad_sel_fp16_shape = [ho, wo, self.c0]
+        grad_sel_fp16_size = _ceil_div(_prod(grad_sel_fp16_shape), 128) * 128
+        grad_sel_fp32_size = grad_sel_fp16_size
+
+        if self.pads.upper() == "VALID":
+            f_map_fp32_shape = [infer_di, infer_hi, infer_wi, self.c0]
+        else:
+            map_di, map_hi, map_wi = self._infer_map_return(do, ho, wo)
+            f_map_fp32_shape = [map_di, map_hi, map_wi, self.c0]
+        f_map_fp32_size = _prod(f_map_fp32_shape)
+
+        used_ub_byte = (col_in_size + forward_ou_size + mask_size * 3 +
+                        grad_size + zero_size +
+                        grad_sel_fp16_size) * self.num_bit + \
+                       (grad_sel_fp32_size + f_map_fp32_size) * 4
+
+        ub_split = used_ub_byte > self.ub_maxsize * self.num_bit
+
+        param = Params(ub_split, col_in_size, forward_ou_size,
+                       mask_size, grad_size, zero_size, grad_sel_fp16_size,
+                       grad_sel_fp32_size, f_map_fp32_size, l1_in_size)
+        return param
+
+    def _check_cut_model(self, cut_model, split_model, all_do, core_branch):
+        # "not_tiling": 0
+        # "tiling_do": 1
+        # "tiling_do_ho": 2
+        # "tiling_do_ho_wo": 3
+        branch_list = ["not_tiling", "tiling_do",
+                       "tiling_do_ho", "tiling_do_ho_wo"]
+
+        if cut_model == [True, False, False]:
+            if split_model[0] == all_do:
+                model = 0
+            else:
+                model = 1
+        elif cut_model == [True, True, False]:
+            model = 2
+        else:
+            model = 3
+
+        model = max(model, core_branch)
+        return branch_list[model]
+
+    def _pattern(self, core_ou_shape, core_branch):
+        # valid
+        # D H W C0 -> Do Ho Wo C0
+        all_wo = core_ou_shape[-2]
+        all_ho = core_ou_shape[-3]
+        all_do = core_ou_shape[-4]
+
+        wo = all_wo
+        ho = all_ho
+        do = all_do
+
+        split_do = False
+        split_ho = False
+        split_wo = False
+
+        for k in range(all_do):
+            do = all_do - k
+            param = self._check_process_space(do, ho, wo)
+            if not param.ub_split:
+                split_do = True
+                break
+
+        if not split_do:
+            do = 1
+            for k in range(all_ho):
+                ho = all_ho - k
+                param = self._check_process_space(do, ho, wo)
+                if not param.ub_split:
+                    split_do = True
+                    split_ho = True
+                    break
+
+        if not split_do and not split_ho:
+            do = ho = 1
+            for k in range(all_wo):
+                wo = all_wo - k
+                param = self._check_process_space(do, ho, wo)
+                if not param.ub_split:
+                    split_do = True
+                    split_ho = True
+                    split_wo = True
+                    break
+
+        cut_model = [split_do, split_ho, split_wo]
+        split_model = [do, ho, wo]
+        if cut_model == [False, False, False]:
+            error_manager_vector.raise_err_specific_reson("MaxPoolGRAD", "kernel is too larger")
+
+        # avoid hardware bugs that load3dv1 can't
+        # support wo=1 and ho != 1 in cloud_v100
+        if split_model[-1] == 1 and split_model[-2] != 1:
+            param = self._check_process_space(1, 1, 1)
+            cut_model = [True, True, True]
+            split_model = [1, 1, 1]
+
+        branch = self._check_cut_model(cut_model, split_model,
+                                       all_do, core_branch)
+
+        return branch, split_model, param
+
+    def _ultimate_data_move(self, tik_instance, src_buf, dst_buf, in_list, num_bit):
+        src_idx, dst_idx = in_list[-2], in_list[-1]
+        n_burst, burst_len = in_list[0], in_list[1]
+        src_stride, dst_stride = in_list[2], in_list[3]
+
+        with tik_instance.for_range(0, n_burst) as i:
+            src_idx += i * (src_stride + burst_len) * Constant.MINI_UNIT // num_bit
+            dst_idx += i * (dst_stride + burst_len) * Constant.MINI_UNIT // num_bit
+
+            tik_instance.data_move(dst_buf[dst_idx],
+                                   src_buf[src_idx],
+                                   0, 1, burst_len, 0, 0)
+
+    def _copy_gm_to_l1(self, tik_instance, l1_buf, src_idx, dst_idx, in_shape):
+        n_burst = in_shape[0]
+        burst_len = _prod(in_shape[1:]) * self.num_bit // Constant.MINI_UNIT
+        src_stride = (_prod(self.forward_in_shape[3:]) * (self.c1 - 1) +
+                      _prod(self.forward_in_shape[4:]) *
+                      (self.h - in_shape[1])) * self.num_bit // Constant.MINI_UNIT
+        dst_stride = 0
+
+        in_list = [n_burst, burst_len, src_stride, dst_stride, src_idx, dst_idx]
+        check = isinstance(src_stride, int)
+        with tik_instance.if_scope(src_stride > Constant.MAX_STRIDE):
+            self._ultimate_data_move(tik_instance, self.orig_x_gm,
+                                     l1_buf, in_list, self.num_bit)
+
+        with tik_instance.else_scope():
+            if check:
+                if src_stride <= Constant.MAX_STRIDE:
+                    self.norm_data_move(tik_instance, self.orig_x_gm,
+                                        l1_buf, in_list)
+            else:
+                self.norm_data_move(tik_instance, self.orig_x_gm,
+                                    l1_buf, in_list)
+
+    def _gm2l1_tiling_do_ho(self, tik_instance, l1_buf, src_idx, dst_idx,
+                            in_shape, hi_batch):
+        n_burst = in_shape[0]
+        burst_len = _prod(in_shape[1:]) * self.num_bit // Constant.MINI_UNIT
+        src_stride = (_prod(self.forward_in_shape[3:]) * (self.c1 - 1) +
+                      _prod(self.forward_in_shape[4:]) *
+                      (self.h - in_shape[1])) * self.num_bit // Constant.MINI_UNIT
+        dst_stride = (hi_batch - in_shape[1]) * self.w * self.c0 * \
+                     self.num_bit // Constant.MINI_UNIT
+
+        in_list = [n_burst, burst_len, src_stride,
+                   dst_stride, src_idx, dst_idx]
+        # dst_stride and src_stride must be same type
+        check = isinstance(src_stride, int)
+
+        with tik_instance.if_scope(
+                tik.any(src_stride > Constant.MAX_STRIDE,
+                        dst_stride > Constant.MAX_STRIDE)):
+            self._ultimate_data_move(tik_instance, self.orig_x_gm,
+                                     l1_buf, in_list, self.num_bit)
+        with tik_instance.else_scope():
+            if check:
+                if src_stride <= Constant.MAX_STRIDE and dst_stride <= Constant.MAX_STRIDE:
+                    self.norm_data_move(tik_instance, self.orig_x_gm,
+                                        l1_buf, in_list)
+            else:
+                self.norm_data_move(tik_instance, self.orig_x_gm,
+                                    l1_buf, in_list)
+
+    def _gm2l1_tiling_do_ho_wo(self, tik_instance,
+                               l1_buf, src_idx, dst_idx,
+                               input0, input1):
+
+        di_val, hi_val, wi_val = input0[0], input0[1], input0[2]
+        di_batch, hi_batch, wi_batch = input1[0], input1[1], input1[2]
+
+        # ==================================
+        # copy gm to l1
+        # ==================================
+        c1 = self.c1
+        c0 = self.c0
+        in_shape = [hi_val, wi_val, c0]
+        n_burst = in_shape[0]
+        burst_len = _prod(in_shape[1:]) * self.num_bit // Constant.MINI_UNIT
+        src_stride = (self.w - wi_val) * c0 * self.num_bit // Constant.MINI_UNIT
+        dst_stride = 0
+
+        with tik_instance.for_range(0, di_val) as idx:
+            src_idx_new = src_idx + _prod(self.forward_in_shape[3:]) * c1 * idx
+            dst_idx_new = dst_idx + hi_batch * wi_batch * c0 * idx
+
+            in_list = [n_burst, burst_len, src_stride,
+                       dst_stride, src_idx_new, dst_idx_new]
+            check = isinstance(src_stride, int)
+
+            with tik_instance.if_scope(src_stride > Constant.MAX_STRIDE):
+                self._ultimate_data_move(tik_instance, self.orig_x_gm,
+                                         l1_buf, in_list, self.num_bit)
+
+            with tik_instance.else_scope():
+                if check:
+                    if src_stride <= Constant.MAX_STRIDE:
+                        self.norm_data_move(tik_instance, self.orig_x_gm,
+                                            l1_buf, in_list)
+                else:
+                    self.norm_data_move(tik_instance, self.orig_x_gm,
+                                        l1_buf, in_list)
+
+    def _copy_ub_to_gm(self, tik_instance, src_buf, src_idx,
+                       dst_buf, dst_idx, in_shape):
+        # "float32"
+        n_burst = in_shape[0]
+        burst_len = _prod(in_shape[1:]) * self.num_bit_fp32 // Constant.MINI_UNIT
+        src_stride = 0
+        dst_stride = (_prod(self.forward_in_shape[3:]) * (self.c1 - 1) +
+                      _prod(self.forward_in_shape[4:]) *
+                      (self.h - in_shape[1])) * self.num_bit_fp32 // Constant.MINI_UNIT
+
+        in_list = [n_burst, burst_len, src_stride,
+                   dst_stride, src_idx, dst_idx]
+        check = isinstance(dst_stride, int)
+
+        with tik_instance.if_scope(dst_stride > Constant.MAX_STRIDE):
+            self._ultimate_data_move(tik_instance, src_buf,
+                                     dst_buf, in_list, self.num_bit_fp32)
+        with tik_instance.else_scope():
+            if check:
+                if dst_stride <= Constant.MAX_STRIDE:
+                    self.norm_data_move(tik_instance, src_buf, dst_buf, in_list)
+            else:
+                self.norm_data_move(tik_instance, src_buf, dst_buf, in_list)
+
+    def _ub2gm_split_do_ho_2(self, tik_instance, src,
+                             src_idx, dst, dst_idx, in_shape, hi_batch):
+        n_burst = in_shape[0]
+        burst_len = _prod(in_shape[1:]) * \
+                    self.num_bit_fp32 // Constant.MINI_UNIT
+        src_stride = (hi_batch - in_shape[1]) * self.w * self.c0 * \
+                     self.num_bit_fp32 // Constant.MINI_UNIT
+        dst_stride = (_prod(self.forward_in_shape[3:]) * (self.c1 - 1) +
+                      _prod(self.forward_in_shape[4:]) *
+                      (self.h - in_shape[1])) * \
+                     self.num_bit_fp32 // Constant.MINI_UNIT
+
+        in_list = [n_burst, burst_len, src_stride,
+                   dst_stride, src_idx, dst_idx]
+        # src_stride and dst_stride must be same type
+        check = isinstance(src_stride, int)
+
+        with tik_instance.if_scope(
+                tik.any(src_stride > Constant.MAX_STRIDE,
+                        dst_stride > Constant.MAX_STRIDE)):
+            self._ultimate_data_move(tik_instance, src, dst,
+                                     in_list, self.num_bit_fp32)
+
+        with tik_instance.else_scope():
+            if check:
+                if src_stride <= Constant.MAX_STRIDE and dst_stride <= Constant.MAX_STRIDE:
+                    self.norm_data_move(tik_instance, src, dst, in_list)
+            else:
+                self.norm_data_move(tik_instance, src, dst, in_list)
+
+    def _ub2gm_split_do_ho(self, tik_instance, src_buf, src_idx,
+                           dst_buf, dst_idx, in_shape):
+        n_burst = in_shape[0]
+        burst_len = _prod(in_shape[1:]) * \
+                    self.num_bit_fp32 // Constant.MINI_UNIT
+        src_stride = self.overlap_h * self.w * self.c0 * \
+                     self.num_bit_fp32 // Constant.MINI_UNIT
+        dst_stride = (_prod(self.forward_in_shape[3:]) * (self.c1 - 1) +
+                      _prod(self.forward_in_shape[4:]) *
+                      (self.h - in_shape[1])) * \
+                     self.num_bit_fp32 // Constant.MINI_UNIT
+
+        in_list = [n_burst, burst_len, src_stride,
+                   dst_stride, src_idx, dst_idx]
+        # src_stride is int,
+        check = isinstance(dst_stride, int)
+
+        with tik_instance.if_scope(
+                tik.any(src_stride > Constant.MAX_STRIDE,
+                        dst_stride > Constant.MAX_STRIDE)):
+            self._ultimate_data_move(tik_instance, src_buf,
+                                     dst_buf, in_list, self.num_bit_fp32)
+
+        with tik_instance.else_scope():
+            if check:
+                if src_stride <= Constant.MAX_STRIDE and dst_stride <= Constant.MAX_STRIDE:
+                    self.norm_data_move(tik_instance, src_buf, dst_buf, in_list)
+            else:
+                if src_stride <= Constant.MAX_STRIDE:
+                    self.norm_data_move(tik_instance, src_buf, dst_buf, in_list)
+
+    def _ub2gm_split_do_ho_wo(self, tik_instance, src, src_idx, dst, dst_idx,
+                              in_shape, hi_batch, wi_batch):
+
+        c0 = in_shape[-1]
+        c1 = self.c1
+        num_bit = self.num_bit_fp32
+
+        n_burst = in_shape[1]
+        burst_len = _prod(in_shape[2:]) * num_bit // Constant.MINI_UNIT
+        src_stride = (wi_batch - in_shape[2]) * c0 * num_bit // Constant.MINI_UNIT
+        dst_stride = (self.w - in_shape[2]) * c0 * num_bit // Constant.MINI_UNIT
+
+        for idx in range(in_shape[0]):
+            dst_idx_new = dst_idx + _prod(self.forward_in_shape[3:]) * c1 * idx
+            src_idx_new = src_idx + hi_batch * wi_batch * c0 * idx
+
+            in_list = [n_burst, burst_len, src_stride,
+                       dst_stride, src_idx_new, dst_idx_new]
+            # type of src_stride is as same as dst_stride
+            check = isinstance(src_stride, int)
+
+            with tik_instance.if_scope(
+                    tik.any(src_stride > Constant.MAX_STRIDE,
+                            dst_stride > Constant.MAX_STRIDE)):
+                self._ultimate_data_move(tik_instance, src,
+                                         dst, in_list, num_bit)
+            with tik_instance.else_scope():
+                if check:
+                    if src_stride <= Constant.MAX_STRIDE and dst_stride <= Constant.MAX_STRIDE:
+                        self.norm_data_move(tik_instance, src, dst, in_list)
+                else:
+                    self.norm_data_move(tik_instance, src, dst, in_list)
+
+    def _mov_init(self, tik_instance, ubuf,
+                  num_overlap, num_init_zero):
+        # mov  float32
+        all_num = num_overlap + num_init_zero
+        n_burst = 1
+        burst_len = num_overlap * 4 // Constant.MINI_UNIT
+        src_stride = 0
+        dst_stride = 0
+        if num_overlap > 0:
+            tik_instance.data_move(ubuf[0],
+                                   ubuf[all_num - num_overlap],
+                                   0,
+                                   n_burst,
+                                   burst_len,
+                                   src_stride,
+                                   dst_stride)
+        # vec_dup
+        self.set_vector_dup(tik_instance, num_init_zero,
+                            ubuf, num_overlap, 0, "float32")
+
+    def _copy_gm_to_ub(self, tik_instance, dst_buf, src_buf, src_idx, in_shape):
+        # Only split do, self.ho is equal to in_shape[1], self.wo is equal
+        # to in_shape[2].
+        # Only split do and ho, self.wo is equal to in_shape[2], and do is 1.
+        # Only split do, ho, wo, do and ho is 1.
+        n_burst = in_shape[0]
+        burst_len = _prod(in_shape[1:]) * self.num_bit // Constant.MINI_UNIT
+        src_stride = (_prod(self.forward_ou_shape[3:]) * (self.c1 - 1) +
+                      _prod(self.forward_ou_shape[4:]) * (self.ho - in_shape[1]) +
+                      self.c0 * (self.wo - in_shape[2])) * \
+                     self.num_bit // Constant.MINI_UNIT
+        dst_stride = 0
+
+        if src_stride > Constant.MAX_STRIDE or dst_stride > Constant.MAX_STRIDE:
+            in_list = [n_burst, burst_len, src_stride,
+                       dst_stride, src_idx, 0]
+            self._ultimate_data_move(tik_instance, src_buf,
+                                     dst_buf, in_list, self.num_bit)
+        else:
+            tik_instance.data_move(dst_buf[0],
+                                   src_buf[src_idx],
+                                   0,
+                                   n_burst,
+                                   burst_len,
+                                   src_stride,
+                                   dst_stride)
+
+    def _vconv(self, tik_instance, src, src_start, dst,
+               dst_start, ele_num, src_dtype):
+        total_repeat_time = ele_num // Constant.VECTOR_FP32_SIZE
+        remain_ele = ele_num % Constant.VECTOR_FP32_SIZE
+        mask_value = Constant.VECTOR_FP32_SIZE
+
+        repeat_max_time = total_repeat_time // Constant.MAX_REPEAT
+        remain_repeat_time = total_repeat_time % Constant.MAX_REPEAT
+
+        if src_dtype == 'float16':
+            src_stride, dst_stride = 4, 8
+            if repeat_max_time > 0:
+                with tik_instance.for_range(0, repeat_max_time) as loop1:
+                    tik_instance.vconv(
+                        Constant.MASK64_VALUE, "",
+                        dst[
+                            dst_start + loop1 * Constant.MAX_REPEAT * mask_value],
+                        src[
+                            src_start + loop1 * Constant.MAX_REPEAT * mask_value],
+                        Constant.MAX_REPEAT, 1, 1, dst_stride, src_stride)
+            if remain_repeat_time > 0:
+                tik_instance.vconv(
+                    Constant.MASK64_VALUE, "",
+                    dst[
+                        dst_start + repeat_max_time * Constant.MAX_REPEAT * mask_value],
+                    src[
+                        src_start + repeat_max_time * Constant.MAX_REPEAT * mask_value],
+                    remain_repeat_time, 1, 1, dst_stride, src_stride)
+            if remain_ele > 0:
+                tik_instance.vconv(
+                    remain_ele, "",
+                    dst[dst_start + repeat_max_time * Constant.MAX_REPEAT *
+                        mask_value + remain_repeat_time * mask_value],
+                    src[src_start + repeat_max_time * Constant.MAX_REPEAT *
+                        mask_value + remain_repeat_time * mask_value],
+                    1, 1, 1, dst_stride, src_stride)
+
+        else:
+            src_stride, dst_stride = 8, 4
+            if repeat_max_time > 0:
+                with tik_instance.for_range(0, repeat_max_time) as loop1:
+                    tik_instance.vconv(
+                        Constant.MASK64_VALUE, "",
+                        dst[
+                            dst_start + loop1 * Constant.MAX_REPEAT * mask_value],
+                        src[
+                            src_start + loop1 * Constant.MAX_REPEAT * mask_value],
+                        Constant.MAX_REPEAT, 1, 1, dst_stride, src_stride)
+            if remain_repeat_time > 0:
+                tik_instance.vconv(
+                    Constant.MASK64_VALUE, "",
+                    dst[
+                        dst_start + repeat_max_time * Constant.MAX_REPEAT * mask_value],
+                    src[
+                        src_start + repeat_max_time * Constant.MAX_REPEAT * mask_value],
+                    remain_repeat_time, 1, 1, dst_stride, src_stride)
+            if remain_ele > 0:
+                tik_instance.vconv(
+                    remain_ele, "",
+                    dst[dst_start + repeat_max_time * Constant.MAX_REPEAT *
+                        mask_value + remain_repeat_time * mask_value],
+                    src[src_start + repeat_max_time * Constant.MAX_REPEAT *
+                        mask_value + remain_repeat_time * mask_value],
+                    1, 1, 1, dst_stride, src_stride)
+
+    def _vector_op(self, tik_instance, operator,
+                   src1, src2, dst, dtype, ele_num,
+                   stride_config=None):
+        stride_config = list(stride_config)
+        if dtype == "float16":
+            repeat_times = ele_num // Constant.VECTOR_FP16_SIZE
+            remain_ele = ele_num % Constant.VECTOR_FP16_SIZE
+            mask = Constant.VECTOR_FP16_SIZE
+        else:
+            repeat_times = ele_num // Constant.VECTOR_FP32_SIZE
+            remain_ele = ele_num % Constant.VECTOR_FP32_SIZE
+            mask = Constant.VECTOR_FP32_SIZE
+
+        repeat_max_loop = repeat_times // Constant.MAX_REPEAT
+        remain_max_loop = repeat_times % Constant.MAX_REPEAT
+
+        if operator == "vadd":
+            if stride_config is None:
+                stride_config = 1, 1, 1, 8, 8, 8
+            dst_offset = 0
+            src1_offset = 0
+            src2_offset = 0
+            if repeat_max_loop > 0:
+                tik_instance.vadd(mask, dst[dst_offset], src1[src1_offset],
+                                  src2[src2_offset],
+                                  Constant.MAX_REPEAT,
+                                  stride_config[0], stride_config[1],
+                                  stride_config[2], stride_config[3],
+                                  stride_config[4], stride_config[5])
+                dst_offset += Constant.MINI_UNIT // (tbe_platform.cce_intrin.get_bit_len(
+                    dst.dtype.lower()) // 8) * stride_config[3] * 255
+                src1_offset += Constant.MINI_UNIT // (tbe_platform.cce_intrin.get_bit_len(
+                    src1.dtype.lower()) // 8) * stride_config[4] * 255
+                src2_offset += Constant.MINI_UNIT // (tbe_platform.cce_intrin.get_bit_len(
+                    src2.dtype.lower()) // 8) * stride_config[5] * 255
+            if remain_max_loop > 0:
+                # rep_stride maybe more than 255 while repeat_times=1.
+                if remain_max_loop == 1:
+                    tik_instance.vadd(mask, dst[dst_offset], src1[src1_offset],
+                                      src2[src2_offset],
+                                      remain_max_loop,
+                                      stride_config[0], stride_config[1],
+                                      stride_config[2], 0, 0, 0)
+                else:
+                    tik_instance.vadd(mask, dst[dst_offset], src1[src1_offset],
+                                      src2[src2_offset],
+                                      remain_max_loop,
+                                      stride_config[0], stride_config[1],
+                                      stride_config[2], stride_config[3],
+                                      stride_config[4], stride_config[5])
+                dst_offset += Constant.MINI_UNIT // (tbe_platform.cce_intrin.get_bit_len(
+                    dst.dtype.lower()) // 8) * stride_config[3] * remain_max_loop
+                src1_offset += Constant.MINI_UNIT // (tbe_platform.cce_intrin.get_bit_len(
+                    src1.dtype.lower()) // 8) * stride_config[4] * remain_max_loop
+                src2_offset += Constant.MINI_UNIT // (tbe_platform.cce_intrin.get_bit_len(
+                    src2.dtype.lower()) // 8) * stride_config[5] * remain_max_loop
+            if remain_ele > 0:
+                stride_config[3] = stride_config[4] = stride_config[5] = 0
+                tik_instance.vadd(remain_ele, dst[dst_offset], src1[src1_offset],
+                                  src2[src2_offset], 1,
+                                  stride_config[0], stride_config[1],
+                                  stride_config[2], stride_config[3],
+                                  stride_config[4], stride_config[5])
+
+    def _rewrite_fmap(self, tik_instance, operator,
+                      src1, src2, dst, dtype, once_elem,
+                      repeat_times, shape_map, shape_grad, config=None):
+        # once_elem: amount of data processed at a time in the Wo direction.
+        # shape_map: container size of src1[1:].
+        # shape_grad: valid data size of src2.
+
+        h, w, c0 = shape_map[0], shape_map[1], shape_map[2]
+        ho, wo = shape_grad[0], shape_grad[1]
+        config = list(config)
+        if dtype == "float16":
+            max_mask = 128
+            num_block = 8
+            block_size = 16
+        else:
+            max_mask = 64
+            num_block = 8
+            block_size = 8
+
+        # num_instr_loop_w: num of instructions on direct W
+        # num_instr_loop_h: num of instructions on direct H
+        num_instr_loop_w = math.ceil(once_elem / max_mask)
+        remain_mask = once_elem % max_mask
+        if remain_mask == 0 and once_elem != 0:
+            remain_mask = max_mask
+        num_instr_loop_h = math.ceil(repeat_times / Constant.MAX_REPEAT)
+        remain_repeat = repeat_times % Constant.MAX_REPEAT
+        if remain_repeat == 0 and repeat_times != 0:
+            remain_repeat = Constant.MAX_REPEAT
+
+        dst_offset = src1_offset = src2_offset = 0
+        if operator == "vadd":
+            for idx_h, _ in enumerate(range(num_instr_loop_h)):
+                for idx_w, _ in enumerate(range(num_instr_loop_w)):
+                    src1_offset = idx_w * num_block * config[1] * block_size + \
+                                  idx_h * Constant.MAX_REPEAT * w * c0
+                    src2_offset = idx_w * num_block * config[2] * block_size + \
+                                  idx_h * Constant.MAX_REPEAT * wo * c0
+                    dst_offset = idx_w * num_block * config[0] * block_size + \
+                                 idx_h * Constant.MAX_REPEAT * w * c0
+
+                    if idx_w < num_instr_loop_w - 1:
+                        mask = max_mask
+                    else:
+                        mask = remain_mask
+                    if idx_h < num_instr_loop_h - 1:
+                        rep = Constant.MAX_REPEAT
+                    else:
+                        rep = remain_repeat
+                    tik_instance.vadd(mask, dst[dst_offset],
+                                      src1[src1_offset], src2[src2_offset],
+                                      rep,
+                                      config[0], config[1],
+                                      config[2], config[3],
+                                      config[4], config[5])
+
+    def _set_buf_tensor(self, tik_instance, param):
+
+        l1_in_buf = tik_instance.Tensor(self.dtype,
+                                        [param.l1_in_size, ],
+                                        name="l1_in_buf",
+                                        scope=tik.scope_cbuf)
+        forward_ou_buf = tik_instance.Tensor(self.dtype,
+                                             [param.forward_ou_size, ],
+                                             name="forward_ou_buf",
+                                             scope=tik.scope_ubuf)
+        grad_buf = tik_instance.Tensor(self.dtype,
+                                       [param.grad_size, ],
+                                       name="grad_buf",
+                                       scope=tik.scope_ubuf)
+        col_in_buf = tik_instance.Tensor(self.dtype,
+                                         [param.col_in_size, ],
+                                         name="col_in_buf",
+                                         scope=tik.scope_ubuf)
+        mask_buf = tik_instance.Tensor("uint16",
+                                       [param.mask_size, ],
+                                       name='mask_buf',
+                                       scope=tik.scope_ubuf)
+        mask_or_buf = tik_instance.Tensor("uint16",
+                                          [param.mask_size, ],
+                                          name='mask_or_buf',
+                                          scope=tik.scope_ubuf)
+        mask_not_buf = tik_instance.Tensor("uint16",
+                                           [param.mask_size, ],
+                                           name='mask_not_buf',
+                                           scope=tik.scope_ubuf)
+        zero_buf = tik_instance.Tensor(self.dtype,
+                                       [param.zero_size, ],
+                                       name='zero_buf',
+                                       scope=tik.scope_ubuf)
+
+        grad_sel_fp16_buf = tik_instance.Tensor(self.dtype,
+                                                [param.grad_sel_fp16_size, ],
+                                                name='grad_sel_fp16_buf',
+                                                scope=tik.scope_ubuf)
+        grad_sel_fp32_buf = tik_instance.Tensor("float32",
+                                                [param.grad_sel_fp32_size, ],
+                                                name='grad_sel_fp32_buf',
+                                                scope=tik.scope_ubuf)
+        f_map_fp32_buf = tik_instance.Tensor("float32",
+                                             [param.f_map_fp32_size, ],
+                                             name='f_map_fp32_buf',
+                                             scope=tik.scope_ubuf)
+
+        buf_list = [l1_in_buf, forward_ou_buf, grad_buf, col_in_buf,
+                    mask_buf, mask_or_buf, mask_not_buf, zero_buf,
+                    grad_sel_fp16_buf, grad_sel_fp32_buf,
+                    f_map_fp32_buf]
+
+        return buf_list
+
+    def _calc_mask(self, tik_instance, buf_list, param,
+                   idx_list, const_list):
+        # ---calculate mask---
+        forward_ou_buf = buf_list[1]
+        col_in_buf = buf_list[3]
+        mask_buf = buf_list[4]
+        mask_or_buf = buf_list[5]
+        mask_not_buf = buf_list[6]
+
+        idx_do = idx_list[0]
+        idx_d = idx_list[1]
+        idx_h = idx_list[2]
+        idx_w = idx_list[3]
+        ho, wo, c0 = const_list
+
+        with tik_instance.if_scope(tik.all(idx_d == 0, idx_h == 0, idx_w == 0)):
+            tik_instance.vcmpv_eq(mask_buf[0],
+                                  forward_ou_buf[idx_do * ho * wo * c0],
+                                  col_in_buf[0],
+                                  math.ceil(ho * wo * c0 / Constant.VECTOR_FP16_SIZE),
+                                  1, 1, 8, 8)
+
+            tik_instance.data_move(mask_or_buf[0],
+                                   mask_buf[0], 0, 1,
+                                   param.mask_size // 16, 0, 0)
+
+            tik_instance.vnot(self.mask_fp16, mask_not_buf, mask_or_buf,
+                              param.mask_size // Constant.VECTOR_FP16_SIZE,
+                              1, 1, 8, 8)
+
+        with tik_instance.else_scope():
+            tik_instance.vcmpv_eq(mask_buf[0],
+                                  forward_ou_buf[idx_do * ho * wo * c0],
+                                  col_in_buf[0],
+                                  math.ceil(ho * wo * c0 / Constant.VECTOR_FP16_SIZE),
+                                  1, 1, 8, 8)
+
+            tik_instance.vand(self.mask_fp16, mask_buf, mask_not_buf, mask_buf,
+                              param.mask_size // Constant.VECTOR_FP16_SIZE,
+                              1, 1, 1, 8, 8, 8)
+
+            tik_instance.vor(self.mask_fp16, mask_or_buf, mask_or_buf, mask_buf,
+                             param.mask_size // Constant.VECTOR_FP16_SIZE,
+                             1, 1, 1, 8, 8, 8)
+
+            tik_instance.vnot(self.mask_fp16, mask_not_buf, mask_or_buf,
+                              param.mask_size // Constant.VECTOR_FP16_SIZE,
+                              1, 1, 8, 8)
+
+    def _sel(self, tik_instance, buf_list, idx_list, const_list):
+        mask_buf = buf_list[4]
+        zero_buf = buf_list[7]
+        grad_buf = buf_list[2]
+        grad_sel_fp16_buf = buf_list[8]
+
+        ho, wo, c0 = const_list
+        idx_do = idx_list[0]
+
+        repeat_times_sel = math.ceil(ho * wo * c0 / Constant.VECTOR_FP16_SIZE)
+        with tik_instance.for_range(0, repeat_times_sel) as serial:
+            grad_sel_offset = serial * 128
+            grad_offset = serial * 128 + idx_do * ho * wo * c0
+            mask_offset = serial * 8
+            cmp_mask = tik_instance.mov_tensor_to_cmpmask(mask_buf[mask_offset])
+            tik_instance.vsel(self.mask_fp16, 0,
+                              grad_sel_fp16_buf[grad_sel_offset],
+                              cmp_mask,
+                              grad_buf[grad_offset],
+                              zero_buf,
+                              1, 1, 1, 1, 8, 8, 0)
+
     def _division_nearest(self, number, base_num):
         # split number as n0 and n1,
         # return n1, base_num*n0 as new_number and core_num
@@ -4002,24 +4033,6 @@ class MaxPool3DGradCompute:
                 if new_base_num >= Constant.MAX_CORE:
                     break
         return n1, new_base_num
-
-    def grad(self, tik_instance, split_model,
-             param, total_num, core_num, func):
-        """
-        grad
-        """
-        # just tiling do ho
-        # support valid
-        core_loop = tik_instance.Scalar("int64")
-        sum_core = tik_instance.Scalar("int64")
-        with tik_instance.for_range(0, core_num,
-                                    block_num=core_num) as blk_idx:
-            core_loop_uint64, sum_core_uint64 = _cal_core(tik_instance, total_num,
-                                                          blk_idx, core_num)
-            core_loop.set_as(core_loop_uint64)
-            sum_core.set_as(sum_core_uint64)
-
-            func(tik_instance, core_loop, sum_core, split_model, param)
 
     def _split_core(self):
         # ============================
@@ -4071,19 +4084,6 @@ class MaxPool3DGradCompute:
         core_in_shape = [di, hi, wi, c0]
 
         return [total_num, core_num, core_ou_shape, core_in_shape, core_branch]
-
-    def get_tik_instance(self):
-        """
-        obtain tik instance
-        """
-        tik_instance = self._compute()
-        tik_instance.BuildCCE(kernel_name=self.kernel_name,
-                              inputs=[self.orig_x_gm,
-                                      self.orig_y_gm,
-                                      self.grads_gm],
-                              outputs=[self.ou_y_gm])
-
-        return tik_instance
 
     def _compute(self):
         """
