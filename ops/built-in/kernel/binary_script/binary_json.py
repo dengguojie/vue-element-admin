@@ -17,7 +17,7 @@ binary_json.py
 """
 import json
 import os
-import ast
+import sys
 import configparser
 from binary_op import BinaryBase
 
@@ -30,10 +30,15 @@ class BinaryCfg:
     CONFIG_PATH = "/usr/local/Ascend/opp/op_impl/built-in/ai_core/tbe/config/"
     BINARY_CONFIG_PATH = "../binary_config/"
 
-    def __init__(self, op_info, tensor_num, tensor_list, attrs, nd_info, soc_version):
-        self.op_info = op_info
+    def __init__(self, op_info, tensor_num, select_format, attrs, nd_info, soc_version):
+
+        self.op_type = op_info.get("op_type")
+        self.op_name = op_info.get("op_name")
+        self.format_type = op_info.get("format_type")
+        self.dtype_type = op_info.get("dtype_type")
+
         self.tensor_num = tensor_num
-        self.tensor_list = tensor_list
+        self.select_format = select_format
         self.attrs = attrs
         self.nd_info = nd_info
         self.soc_version = soc_version
@@ -42,65 +47,61 @@ class BinaryCfg:
         """
         generate format_mod_type, dtype_mod_type and op_info_case
         """
-        format_type = self.op_info.get("format_type")
-        dtype_type = self.op_info.get("dtype_type")
+
         # 0: default, 1: agnostic, 2:fixed
-        format_mod_type = [format_type] * self.tensor_num
+        format_mod_type = [self.format_type] * self.tensor_num
         # 0: default, 1: byte
-        dtype_mod_type = [dtype_type] * self.tensor_num
-        #op_info_case
-        op_info_case = None
-        if self.tensor_list is not None:
-            tensor_size = len(self.tensor_list)
-            if  tensor_size == 1:
-                format_before = self.tensor_list[0].get("format")
-                dtype_before = self.tensor_list[0].get("dtype")
-                format_size = len(format_before)
-                dtype_size = len(dtype_before)
-                support_format = ",".join(format_before * dtype_size)
-                support_dtype = ",".join([val for val in dtype_before for _ in range(format_size)])
-                op_info_case = [[support_dtype] * self.tensor_num, [support_format] * self.tensor_num]
-            elif tensor_size == self.tensor_num:
-                support_dtype = []
-                support_format = []
-                for tensor in self.tensor_list:
-                    format_before = tensor.get("format")
-                    dtype_before = tensor.get("dtype")
-                    format_size = len(format_before)
-                    dtype_size = len(dtype_before)
-                    format_after = ",".join(format_before * dtype_size)
-                    support_format.append(format_after)
-                    dtype_after = ",".join([val for val in dtype_before for _ in range(format_size)])
-                    support_dtype.append(dtype_after)
-                op_info_case = [support_dtype, support_format]
-            else:
-                raise RuntimeError(
-                    "[ERROR] tensor_num is {}, tensor_list size is {}, not equal".format(self.tensor_num, tensor_size))
-        return [format_mod_type, dtype_mod_type, self.attrs, self.nd_info, op_info_case]
+        dtype_mod_type = [self.dtype_type] * self.tensor_num
+        return [format_mod_type, dtype_mod_type]
+
+    def get_select_format(self, soc):
+        """
+        get op_info_case
+        """
+        if self.select_format is None:
+            op_info_case = None
+        else:
+            os.system(
+                "python3 ./binary_get_select_format.py {} {} {} {}".format(
+                    soc, self.op_type, self.tensor_num, self.select_format))
+
+            select_json = BinaryCfg.BINARY_CONFIG_PATH + self.op_type + "-" + soc + ".json"
+            with open(select_json, "r") as sl:
+                dynamic_json = json.load(sl)
+
+            support_format, support_dtype = [], []
+            for k in dynamic_json:
+                tensor = dynamic_json.get(k)
+                support_format.append(tensor.get("format"))
+                support_dtype.append(tensor.get("dtype"))
+            op_info_case = [support_dtype, support_format]
+            os.remove(select_json)
+        return op_info_case
 
     def fuzz_opinfo_cfg(self):
         """
         generate binary json
         """
         mod_lst = self.fuzz_mode()
-        op_type = self.op_info.get("op_type")
-        op_name = self.op_info.get("op_name")
         for soc in self.soc_version:
-            op_ob = BinaryBase(op_type)
+            op_ob = BinaryBase(self.op_type)
+            op_info_case = self.get_select_format(soc)
             op_info_cfg = BinaryCfg.CONFIG_PATH + soc + "/aic-" + soc + "-ops-info.json"
-            op_info_binary_cfg_path = BinaryCfg.BINARY_CONFIG_PATH + soc + "/" + op_type + "/"
+            op_info_binary_cfg_path = BinaryCfg.BINARY_CONFIG_PATH + soc + "/" + self.op_type + "/"
 
             try:
-                is_gen = op_ob.gen_binary_json(op_info_cfg, mod_lst[0], mod_lst[1], mod_lst[2], mod_lst[3], mod_lst[4])
+                is_gen = op_ob.gen_binary_json(op_info_cfg, mod_lst[0], mod_lst[1],
+                                               self.attrs, self.nd_info, op_info_case)
                 if is_gen:
                     os.makedirs(op_info_binary_cfg_path)
-                    op_info_binary_cfg = op_info_binary_cfg_path + op_name + ".json"
+                    op_info_binary_cfg = op_info_binary_cfg_path + self.op_name + ".json"
                     op_ob.dump_binary_json_to_file(op_info_binary_cfg)
+                    print("[INFO] success, {} dump binary json in {}".format(self.op_type, soc))
                 else:
-                    raise RuntimeError("[ERROR]{} dump binary json fail".format(op_type))
+                    print("[ERROR]{} dump binary json fail in {}".format(self.op_type, soc))
 
             except FileExistsError:
-                print("[warning]{} {} binary config already exists".format(op_type, soc))
+                print("[Warning]{} binary config already exists in {}".format(self.op_type, soc))
 
 def binary_cfg(op_type, soc_version):
     """
@@ -125,35 +126,37 @@ def binary_cfg(op_type, soc_version):
         soc_version = soc_version.strip(',').split(',')
     #生成输入算子的json
     for operator in op_type:
-        items = dict(cfg.items(operator))
+        try:
+            items = dict(cfg.items(operator))
+        except configparser.NoSectionError:
+            sys.exit("[ERROR]{} not in binary json config".format(operator))
+        # REQUIRED
         op_name = items.get("op_name")
-
         format_type = items.get("format_type")
-        format_type = format_mode.get(format_type)
-
         dtype_type = items.get("dtype_type")
-        dtype_type = dtype_mode.get(dtype_type)
-
         tensor_num = items.get("tensor_num")
-        tensor_num = int(tensor_num)
-
-        tensor_list = items.get("tensor_list")
-        if tensor_list is not None:
-            tensor_list = [ast.literal_eval(tensor_list)]
-
-        attrs = items.get("attrs")
-        if attrs is not None:
-            attrs = ast.literal_eval(attrs)
-
+        # OPTION
+        select_format = items.get("select_format")
+        var_attrs = items.get("var_attrs")
         nd_info = items.get("nd_info")
 
+        if None in (op_name, format_type, dtype_type, tensor_num):
+            sys.exit("[ERROR]Please check the {} binary json config".format(operator))
+        format_type = format_mode.get(format_type)
+        dtype_type = dtype_mode.get(dtype_type)
+        tensor_num = int(tensor_num)
+
+        if var_attrs is not None:
+            var_attrs = var_attrs.strip(',').split(',')
+            values = [None] * len(var_attrs)
+            var_attrs = dict(zip(var_attrs, values))
+
         op_info = {"op_type": operator, "op_name": op_name, "format_type": format_type, "dtype_type": dtype_type}
-        fuc = BinaryCfg(op_info, tensor_num, tensor_list, attrs, nd_info, soc_version)
+        fuc = BinaryCfg(op_info, tensor_num, select_format, var_attrs, nd_info, soc_version)
         fuc.fuzz_opinfo_cfg()
 
 def mate_json(op_type, binary_file, input_tensors):
     op_ob = BinaryBase(op_type)
     with open(input_tensors, 'r') as tensours:
         input_tensour = json.load(tensours)
-    print(binary_file)
     op_ob.update_tensor(binary_file, input_tensour)

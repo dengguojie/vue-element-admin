@@ -48,14 +48,14 @@ def fuzz_dtype(data_type_bit):
     return dtype_dict.get(data_type_bit)
 
 
-def get_op_supported_case(op_json, op_fixed_case=None):
+def get_op_supported_case(op_type, op_json, op_fixed_case=None):
     is_format_agnostic = op_json.get("op") is not None and op_json.get("op").get("pattern") == "formatAgnostic"
     is_format_broadcast = op_json.get("op") is not None and op_json.get("op").get("pattern") == "broadcast"
     is_format_reduce = op_json.get("op") is not None and op_json.get("op").get("pattern") == "reduce"
     is_op_select = op_json.get("dynamicFormat") is not None and op_json.get("dynamicFormat").get("flag") == "true"
 
     if is_op_select and op_fixed_case is None:
-        print("[ERROR]the op_fixed_case can not be None, when the op is is_op_select")
+        print("[ERROR]{} is is_op_select, op_fixed_case can not be None.".format(op_type))
         return None
 
     input_num = 0
@@ -82,7 +82,7 @@ def get_op_supported_case(op_json, op_fixed_case=None):
                 if is_format_agnostic or is_format_broadcast or is_format_reduce:
                     tensor_support_unknownshape_format = ["ND"] * len(tensor_support_dtype)
                 else:
-                    print("[ERROR]the op is not supported unknownshape_format")
+                    print("[ERROR]{} is not supported unknownshape_format".format(op_type))
                     return None
             else:
                 tensor_support_unknownshape_format = tensor_support_unknownshape_format.split(",")
@@ -102,10 +102,17 @@ def get_op_supported_case(op_json, op_fixed_case=None):
     outputs = []
     for i in range(input_num):
         op_key = "input" + str(i)
-        inputs.append(get_tensor_info(op_key, 0))
+        inputs_tensor = get_tensor_info(op_key, 0)
+        if inputs_tensor is None:
+            return None
+        inputs.append(inputs_tensor)
+
     for i in range(output_num):
         op_key = "output" + str(i)
-        outputs.append(get_tensor_info(op_key, input_num))
+        outputs_tensor = get_tensor_info(op_key, input_num)
+        if outputs_tensor is None:
+            return None
+        outputs.append(outputs_tensor)
 
     # get attrs
     attrs = []
@@ -115,7 +122,7 @@ def get_op_supported_case(op_json, op_fixed_case=None):
             attr_key = "attr_" + attr_name
             attr_info = op_json.get(attr_key)
             if attr_info is None:
-                print("[ERROR]the attr is not in ops json")
+                print("[ERROR]{} attr is not in ops json".format(op_type))
                 return None
             attr_type = attr_info.get("type")
             attr_dict = dict()
@@ -260,10 +267,9 @@ class BinaryBase:
                 if attr_ori_type == "bool":
                     attrs[i]["value"] = [True, False]
                 else:
-                    print("[ERROR]attr is not bool, must input from attr_type")
+                    print("[ERROR]{} attr is not bool, must input from attr_type".format(self.op_type))
                     return False
                 attrs[i]["dtype"] = attr_ori_type
-        print("[INFO]is_attr_unfold =", self.is_attr_unfold)
         return attrs
 
     def do_fuzz(self, op_info, format_type, dtype_type, attr_type, format_nd_info):
@@ -287,16 +293,16 @@ class BinaryBase:
         transfer binary json file to list
         """
         if not os.path.exists(json_file):
-            print("[ERROR]the json_file is not existed")
+            print("[ERROR]{} the json_file is not existed".format(self.op_type))
             return False
         with open(json_file, "r") as file_op:
             ops_info_json = json.load(file_op)
         op_type = ops_info_json.get("op_type")
         if op_type is None:
-            print("[ERROR]the op is not existed in file")
+            print("[ERROR]{} is not existed in file".format(self.op_type))
             return False
         if op_type != self.op_type:
-            print("[ERROR]the op type doesnt match")
+            print("[ERROR]{} doesnt match".format(self.op_type))
             return False
         return ops_info_json.get("binList")
 
@@ -344,13 +350,13 @@ class BinaryBase:
             return None
         for op_list_item in op_list_json:
             if not self.check_inputs(op_list_item, input_tensor):
-                print("[error] check_inputs")
+                print("[error]{} check_inputs".format(self.op_type))
                 continue
             if not self.check_outputs(op_list_item, input_tensor):
-                print("[error] check_outputs")
+                print("[error]{} check_outputs".format(self.op_type))
                 continue
             if not self.check_attrs(op_list_item, input_tensor):
-                print("[error] check_attrs")
+                print("[error]{} check_attrs".format(self.op_type))
                 continue
             return op_list_item
         return None
@@ -370,7 +376,7 @@ class BinaryBase:
         """
         matched_op_item = self.is_matched(ops_info_file, input_tensor)
         if matched_op_item is None:
-            print("[ERROR]can not find matched_op_item")
+            print("[ERROR]{} can not find matched_op_item".format(self.op_type))
             return None
         for i, op_item in enumerate(matched_op_item.get("inputs")):
             input_tensor.get("inputs")[i]["dtype"] = op_item["dtype"]
@@ -405,14 +411,14 @@ class BinaryBase:
         None
         """
         if len(op_list_item.get("inputs")) != len(input_tensor.get("inputs")):
-            print("[ERROR]the inputs num dosnt equal")
+            print("[ERROR]{} inputs num dosnt equal".format(self.op_type))
             return False
         inputs_num = len(op_list_item.get("inputs"))
         for i in range(inputs_num):
             op_item = op_list_item.get("inputs")[i]
             shape = op_item.get("shape")[0]
             if shape != -2:
-                print("[ERROR]Binary shape must be -2")
+                print("[ERROR]{} Binary shape must be -2".format(self.op_type))
                 return False
             input_item = input_tensor.get("inputs")[i]
             if not self.match_format(op_item, input_item):
@@ -437,14 +443,14 @@ class BinaryBase:
         None
         """
         if len(op_list_item.get("outputs")) != len(input_tensor.get("outputs")):
-            print("[ERROR]the outputs num doesnt equal")
+            print("[ERROR]{} outputs num doesnt equal".format(self.op_type))
             return False
         outputs_num = len(op_list_item.get("outputs"))
         for i in range(outputs_num):
             op_item = op_list_item.get("outputs")[i]
             shape = op_item.get("shape")[0]
             if shape != -2:
-                print("[ERROR]Binary shape must be -2")
+                print("[ERROR]{} Binary shape must be -2".format(self.op_type))
                 return False
             output_item = input_tensor.get("outputs")[i]
             if not self.match_format(op_item, output_item):
@@ -483,12 +489,11 @@ class BinaryBase:
             if op_attr.get("value")[0] is None:
                 continue
             if input_attr_item.get("value") not in op_attr.get("value"):
-                print("[ERROR]attr value doesnt equal")
+                print("[ERROR]{} attr value doesnt equal".format(self.op_type))
                 return False
         return True
 
-    @staticmethod
-    def find_attr(op_attr_name, input_attrs):
+    def find_attr(self, op_attr_name, input_attrs):
         """
         find attr by attr name
 
@@ -504,7 +509,7 @@ class BinaryBase:
         for input_attr_item in input_attrs:
             if input_attr_item.get("name") == op_attr_name:
                 return input_attr_item
-        print("[ERROR]attr name doesnt match")
+        print("[ERROR]{} attr name doesnt match".format(self.op_type))
         return None
 
     def check_ops_info(self, ops_info_file):
@@ -512,7 +517,7 @@ class BinaryBase:
         check_ops_info
         """
         if not os.path.exists(ops_info_file):
-            print("[ERROR]the ops_info_file is not existed")
+            print("[ERROR]{} ops_info_file is not existed".format(self.op_type))
             return False
 
         with open(ops_info_file, "r") as file_op:
@@ -520,7 +525,7 @@ class BinaryBase:
 
         op_json = ops_info_json.get(self.op_type)
         if op_json is None:
-            print("[ERROR]the op is not existed in ops_info_file")
+            print("[ERROR]{} is not existed in {}".format(self.op_type, ops_info_file))
             return False
         return op_json
 
@@ -577,11 +582,11 @@ class BinaryBase:
         # fuzz the supported case
         if not op_json:
             return False
-        ana_res = get_op_supported_case(op_json, op_fixed_case)
-        self.input_num, self.output_num = len(ana_res[0]), len(ana_res[1])
+        ana_res = get_op_supported_case(self.op_type, op_json, op_fixed_case)
         if ana_res is None:
-            print("[ERROR]get_op_supported_case failed")
+            print("[ERROR]{} get_op_supported_case failed".format(self.op_type))
             return False
+        self.input_num, self.output_num = len(ana_res[0]), len(ana_res[1])
 
         if format_type is None:
             format_type = [BinaryBase.FORMAT_MODE_DEFAULT] * (self.input_num + self.output_num)
@@ -736,7 +741,7 @@ class BinaryBase:
         dump_binary_json_to_file
         """
         flags = os.O_WRONLY | os.O_CREAT
-        modes = stat.S_IRWXO
+        modes = stat.S_IWUSR | stat.S_IRUSR
         with os.fdopen(os.open(file_path, flags, modes), 'w') as fp:
             json.dump(self.binary_json, fp, indent=2)
 
@@ -745,7 +750,7 @@ class BinaryBase:
         load_binary_file_to_json
         """
         if not os.path.exists(file_path):
-            print("[ERROR]the binary_file is not existed")
+            print("[ERROR]{} binary_file is not existed".format(self.op_type))
             self.binary_json = None
         with open(file_path, "r") as file_op:
             self.binary_json = json.load(file_op)

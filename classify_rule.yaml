@@ -1101,6 +1101,7 @@ vector_B:
       - ops/built-in/kernel/binary_script/gen_output_json.py
       - ops/built-in/kernel/binary_script/binary_json.py
       - ops/built-in/kernel/binary_script/binary_op.py
+      - ops/built-in/kernel/binary_script/binary_get_select_format.py
       - ops/CMakeLists.txt
     unrelease:
       - auto_schedule/python/tbe/dsl/static_schedule/bn_update_schedule.py
