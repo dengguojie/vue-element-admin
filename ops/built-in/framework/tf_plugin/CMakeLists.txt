@@ -202,6 +202,7 @@ set(_tf_plugins
   gelu_grad_plugin.cc
   gelu_plugin.cc
   get_next_from_queue_plugin.cc
+  get_shape_plugin.cc
   getspan_plugin.cc
   greater_equal_plugin.cc
   greater_plugin.cc
