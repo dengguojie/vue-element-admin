@@ -78,6 +78,15 @@ def _update_input_values(input_values):
     return new_input_values
 
 
+def _check_dynamic_inputs(input_values):
+    for _, tensor_dict in enumerate(input_values):
+        shape_input = tensor_dict.get("ori_shape")
+        if -1 in shape_input or -2 in shape_input:
+            return True
+
+    return False
+
+
 def _update_concat_dim(input_values, concat_dim):
     for _, _input_dict in enumerate(input_values):
         ori_shape = _input_dict.get("ori_shape")
@@ -95,6 +104,10 @@ def check_supported(input_values, output_data, concat_dim, kernel_name="concat_v
     """
     check_supported invoked by framework
     """
+    is_dynamic_inputs = _check_dynamic_inputs(input_values)
+    if is_dynamic_inputs:
+        return True, ""
+
     new_input_values = _update_input_values(input_values)
     if len(input_values) == len(new_input_values):
         input_values = new_input_values
