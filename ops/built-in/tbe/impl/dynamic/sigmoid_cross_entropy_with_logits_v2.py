@@ -173,7 +173,7 @@ def sigmoid_cross_entropy_with_logits_v2(predict,
 
         dtype_pos_weight = pos_weight.get("dtype").lower()
         para_check.check_dtype(dtype_pos_weight, check_list, param_name="target")
-        ins = classify([predict, target, weight, pos_weight], OpPatternMode.ELEWISE)
+        ins = classify([predict, target, weight, pos_weight], OpPatternMode.ELEWISE_WITH_BROADCAST)
         schedules, tensors = [], []
         for (x1, x2, x3, x4) in ins:
             with tbe.compute():
@@ -192,7 +192,7 @@ def sigmoid_cross_entropy_with_logits_v2(predict,
             schedules.append(sch)
 
     if (weight is None) and (pos_weight is None):
-        ins = classify([predict, target], OpPatternMode.ELEWISE)
+        ins = classify([predict, target], OpPatternMode.ELEWISE_WITH_BROADCAST)
         schedules, tensors = [], []
         for (x1, x2) in ins:
             with tbe.compute():
@@ -210,7 +210,7 @@ def sigmoid_cross_entropy_with_logits_v2(predict,
 
         dtype_pos_weight = pos_weight.get("dtype").lower()
         para_check.check_dtype(dtype_pos_weight, check_list, param_name="target")
-        ins = classify([predict, target, pos_weight], OpPatternMode.ELEWISE)
+        ins = classify([predict, target, pos_weight], OpPatternMode.ELEWISE_WITH_BROADCAST)
         schedules, tensors = [], []
         for (x1, x2, x4) in ins:
             with tbe.compute():

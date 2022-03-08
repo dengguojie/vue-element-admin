@@ -353,5 +353,123 @@
       }
     ],
     "case_name": "test_SigmoidCrossEntropyWithLogitsV2_003"
+  },
+  {
+    "op": "SigmoidCrossEntropyWithLogitsV2",
+    "input_desc": [
+      {
+        "shape": [
+          -1,
+          2,
+          4,
+          4
+        ],
+        "format": "ND",
+        "typical_shape": [
+          2,
+          4,
+          4,
+          4
+        ],
+        "ori_shape": [
+          2,
+          4,
+          4,
+          4
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "predict",
+        "type": "float16",
+        "value_range": [[0, 1]],
+        "shape_range": [[1, 2]]
+      },
+      {
+        "shape": [
+          2,
+          4,
+          4,
+          4
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          4,
+          4,
+          4
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "target",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          2,
+          4,
+          4,
+          4
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          4,
+          4,
+          4
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "weight",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          2,
+          4,
+          4,
+          4
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          4,
+          4,
+          4
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "pos_weight",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          2,
+          4,
+          4,
+          4
+        ],
+        "format": "ND",
+        "ori_shape": [
+          2,
+          4,
+          4,
+          4
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "loss",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "reduction",
+        "type": "string",
+        "value": "none"
+      }
+    ],
+    "case_name": "test_SigmoidCrossEntropyWithLogitsV2_004"
   }
 ]
