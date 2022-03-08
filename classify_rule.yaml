@@ -382,6 +382,7 @@ cube:
       - ops/built-in/tbe/impl/fully_connection.py
       - ops/built-in/tbe/impl/util/util_deconv_comm.py
       - ops/built-in/tbe/impl/util/util_cube_dynamic.py
+      - ops/built-in/tbe/impl/util/util_conv3d.py
       - ops/built-in/tbe/impl/k_means_centroids.py
       - ops/built-in/tbe/impl/fixpipe_op/fixpipe_matmul.py
       - ops/built-in/tbe/impl/fixpipe_op/fixpipe_conv2d_backprop_filter.py

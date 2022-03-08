@@ -17,6 +17,7 @@ dynamic conv3d
 """
 from __future__ import absolute_import
 
+import math
 import warnings
 
 from impl.util import util_common
@@ -30,7 +31,7 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tvm
-from tbe.common.register import register_param_generalization
+from impl.util.platform_adapter import tbe_register
 
 
 # [strides_batch, strides_depth, strides_height,
@@ -78,9 +79,17 @@ L1FUSION_INPUT_CTR = 2
 DYNAMIC_RANK_FLAG = [-2]
 _OP_TYPE = "conv3d"
 
-_DTYPE_SIZE = {"float16": 2, "float32": 4}
+_DTYPE_SIZE = {"int32": 4, "float32": 4, "float16": 2,
+               "uint8": 1, "int8": 1, "uint4": 0.5, "int4": 0.5}
 _ALIGN_BYTE = 32
 _DEFAULT_FP16_SIZE = 2
+_DEFAULT_L1_HO_LEN = 2
+_BINARY_SEARCH_NUM = 2
+
+# generalize error json
+LOWER_LIST = [{"result": "UNSUPPORTED", "reason": {"param_index": [0], "type": ["lower_limit"]}}]
+UPPER_LIST = [{"result": "UNSUPPORTED", "reason": {"param_index": [0], "type": ["upper_limit"]}}]
+UNSUPPORT_LIST = [{"result": "UNSUPPORTED"}]
 
 
 def get_op_support_info(fmap,
@@ -966,7 +975,107 @@ def _conv3d_compute(fmap,
     return {"op_placeholder": [data, weight], "op_res": [conv_res]}
 
 
-@register_param_generalization("Conv3D")
+def _check_correct_fuzz_input_range(fmap, weight, pads, strides, dilations, groups, is_dynamic_fuzz_mode):
+    in_shape = list(fmap.get("ori_shape"))
+    w_shape = list(weight.get("ori_shape"))
+    in_format = fmap.get("ori_format")
+    w_format = weight.get("ori_format")
+    in_range = fmap.get("ori_range")
+    # shape_fm/shape_filter format is NCDHW
+    shape_fm, shape_filter, stride_dhw, _ = _format_normalize(
+        in_format, w_format, in_shape, w_shape, strides, dilations, groups)
+    # fmap_range -> NDCHW
+    fmap_range = _get_fmap_range(in_range, shape_fm, in_format)
+    # calculate out_range
+    try:
+        _, correct_fmap_range, correct_range_flag = _get_out_range(fmap_range, shape_filter, pads, stride_dhw)
+    except RuntimeError as exc:
+        if is_dynamic_fuzz_mode:
+            return LOWER_LIST
+        else:
+            return UNSUPPORT_LIST
+    finally:
+        pass
+    if correct_range_flag:
+        if is_dynamic_fuzz_mode:
+            return LOWER_LIST
+        else:
+            fmap_range_n, fmap_range_d, fmap_range_c, fmap_range_h, fmap_range_w = correct_fmap_range
+            if in_format == "NDHWC":
+                fmap_range = [fmap_range_n, fmap_range_d, fmap_range_h, fmap_range_w, fmap_range_c]
+            else:
+                fmap_range = [fmap_range_n, fmap_range_c, fmap_range_d, fmap_range_h, fmap_range_w]
+        fmap["ori_range"] = fmap_range
+    return []
+
+
+def _check_l1_size(fmap, weight, pads, strides, dilations, is_dynamic_fuzz_mode):
+    """
+    check exceed l1 buf
+    graph mode fuzz, check range[high]
+    single mode fuzz, check shape and modify range[high]
+    """
+    def _get_l1_size(w_in):
+        if DYNAMIC_FLAG in pads:
+            w_out = w_in + stride_w - 1 // stride_w
+        else:
+            w_out = (w_in + (pad_left + pad_right) - filter_dilated_w) // stride_w + 1
+        limit_h_out = math.floor(block_size_m / w_out) + _DEFAULT_L1_HO_LEN
+        hw_size = ((limit_h_out - 1) * stride_h + filter_dilated_h) * w_in
+        return hw_size * block_size_k * _DTYPE_SIZE.get(fmap_dtype, _DEFAULT_FP16_SIZE)
+
+    l1_buffer_size = tbe_platform.get_soc_spec("L1_SIZE")
+    fmap_dtype = fmap["dtype"]
+    block_size_k = tbe_platform.CUBE_MKN[fmap_dtype]['mac'][1]
+    block_size_m = tbe_platform.CUBE_MKN[fmap_dtype]['mac'][0]
+    idx_w = fmap.get("ori_format").find("W")
+    idx_h = fmap.get("ori_format").find("H")
+    stride_h = strides[idx_h]
+    stride_w = strides[idx_w]
+    _, _, _, _, pad_left, pad_right = pads
+    dilation_w = dilations[idx_w]
+    dilation_h = dilations[idx_h]
+    filter_w = weight.get("ori_shape")[weight.get("ori_format").find('W')]
+    filter_h = weight.get("ori_shape")[weight.get("ori_format").find('H')]
+    filter_dilated_w = (filter_w - 1) * dilation_w + 1
+    filter_dilated_h = (filter_h - 1) * dilation_h + 1
+    if is_dynamic_fuzz_mode:
+        w_in = fmap.get("ori_range")[idx_w][0]
+        limit_size = _get_l1_size(w_in)
+        if limit_size > l1_buffer_size:
+            return LOWER_LIST
+        w_in = fmap.get("ori_range")[idx_w][1]
+        limit_size = _get_l1_size(w_in)
+        if limit_size > l1_buffer_size:
+            return UPPER_LIST
+    else:
+        w_in = fmap.get("ori_shape")[idx_w]
+        limit_size = _get_l1_size(w_in)
+        if limit_size > l1_buffer_size:
+            return UNSUPPORT_LIST
+    if not is_dynamic_fuzz_mode:
+        fmap_w_min = fmap.get("ori_range")[idx_w][0]
+        fmap_w_max = fmap.get("ori_range")[idx_w][1]
+        w_left = fmap_w_min
+        w_right = fmap_w_max
+        tmp_w = fmap_w_max
+        while (w_right - w_left) != 1:
+            max_fmap_l1 = _get_l1_size(tmp_w)
+            if max_fmap_l1 > l1_buffer_size:
+                w_right = tmp_w
+            else:
+                w_left = tmp_w
+            tmp_w = w_left + (w_right - w_left) // _BINARY_SEARCH_NUM
+            if w_left == fmap_w_max:
+                break
+        if w_in > w_left:
+            fmap.get("ori_range")[idx_w] = (w_in, w_in)
+        else:
+            fmap.get("ori_range")[idx_w] = (fmap_w_min, w_left)
+    return []
+
+
+@tbe_register.register_param_generalization("Conv3D")
 def conv3d_generalization(fmap,
                           weight,
                           bias,
@@ -982,6 +1091,15 @@ def conv3d_generalization(fmap,
                           generalize_config=None):
     """
     algorithm: conv3d_generalization
+
+    Notice
+    ------
+    run after infershape and before operator compile
+    only modify input and output tensors with range
+
+    for use:
+        1. te fusion distinguish .o (remove the generalization dim)
+        2. pass them to the operator to follow the dynanmic shape process
 
     Parameters
     ----------
@@ -1026,20 +1144,38 @@ def conv3d_generalization(fmap,
 
     Returns
     -------
-    None
+    list of params list
     """
-    result = []
-    if generalize_config.get("mode") == "keep_rank":
-        if -1 in fmap.get("ori_shape"):
-            return [fmap, weight, bias, offset_w, output, {"strides": strides},
-                    {"pads": pads}, {"dilations": dilations}, {"groups": groups},
-                    {"data_format": data_format}, {"offset_x": offset_x}]
-        else:
-            fmap = util_cube_dynamic.gen_conv_shape_range(fmap, _OP_TYPE)
-            util_conv3d.generalize_input_keep_rank(fmap)
-            util_conv3d.generalize_input_keep_rank(output)
-    else:
+    support_mode = ["keep_rank"]
+    is_generalize_config = (generalize_config is not None and generalize_config.get("mode") in support_mode)
+    if not is_generalize_config:
         return
+    result = []
+    is_dynamic_fuzz_mode = util_conv3d.check_fuzz_dynamic_mode(fmap)
+    check_result = util_conv3d.check_para_fuzz_compile_3d(fmap, output, weight, dilations, strides, pads,
+                                                          is_dynamic_fuzz_mode, _OP_TYPE, 0)
+    if check_result:
+        return check_result
+    fmap = util_cube_dynamic.gen_conv_shape_range(fmap, _OP_TYPE, is_dynamic_fuzz_mode)
+    util_conv3d.get_range(fmap)
+    # check output_d and output_h and output_w
+    new_pads = util_conv3d.correct_pads(fmap, output, weight, strides, pads, is_dynamic_fuzz_mode)
+    err_json = _check_correct_fuzz_input_range(fmap, weight, new_pads, strides, dilations, groups, is_dynamic_fuzz_mode)
+    if err_json:
+        return err_json
+    is_exceed_l1_lst = _check_l1_size(fmap, weight, new_pads, strides, dilations, is_dynamic_fuzz_mode)
+    if is_exceed_l1_lst:
+        warnings.warn("Conv3d generalization fuzz build exceed l1 buffer size.")
+        return is_exceed_l1_lst
+    if not is_dynamic_fuzz_mode:
+        util_conv3d.generalize_input_keep_rank(fmap)
+        util_conv3d.generalize_input_keep_rank(output)
+    try:
+        _check_and_config_para(fmap, weight, bias, offset_w, output, strides, new_pads, dilations, groups)
+    except RuntimeError as exc:
+        return UNSUPPORT_LIST
+    finally:
+        pass
     result.append([fmap, weight, bias, offset_w, output, {"strides": strides},
                    {"pads": pads}, {"dilations": dilations}, {"groups": groups},
                    {"data_format": data_format}, {"offset_x": offset_x}])

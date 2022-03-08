@@ -16,6 +16,7 @@
 conv3d_backprop_input
 """
 import re
+import warnings
 
 from impl.util import util_common
 from impl.util import util_conv3d
@@ -28,7 +29,7 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tvm
-from tbe.common.register import register_param_generalization
+from impl.util.platform_adapter import tbe_register
 
 
 # the dim of shape in conv_backprop must be 5
@@ -79,6 +80,11 @@ _LOWER_RANGE = 1
 # upper range
 _UPPER_RANGE = 4096
 
+# generalize error json
+LOWER_LIST = [{"result": "UNSUPPORTED", "reason": {"param_index": [2], "type": ["lower_limit"]}}]
+UPPER_LIST = [{"result": "UNSUPPORTED", "reason": {"param_index": [2], "type": ["upper_limit"]}}]
+UNSUPPORT_LIST = [{"result": "UNSUPPORTED"}]
+
 # the bytes length of several dtype
 _BIT_RATIO_DICT = {"int32": 4, "float32": 4, "float16": 2,
                    "uint8": 1, "int8": 1, "uint4": 0.5, "int4": 0.5}
@@ -92,6 +98,14 @@ _DIM_MAP = {"N": [0, 0], "D": [1, 1], "H": [2, 3], "W": [3, 4]}
 _DYNAMIC_DIM_VAL = -1
 _DYNAMIC_RANK_FLAG = [-2]
 _OP_TYPE = "conv3d_backprop_input"
+_D_DIM_EXTRA_LEN = 2
+# pad_front, pad_tail, pad_top, pad_bottom, pad_left, pad_right
+_PADS_FRONT_POS = 0
+_PADS_TAIL_POS = 1
+_PADS_TOP_POS = 2
+_PADS_BOTTOM_POS = 3
+_PADS_LEFT_POS = 4
+_PADS_RIGHT_POS = 5
 
 
 def _check_attr_range(attr_name, attr_value, attr_min, attr_max):
@@ -295,7 +309,6 @@ def _config_placeholder(shape_out_backprop, shape_filters, input_sizes, filters_
     cout_g = group_dict["cout_g"]
     shape_filter_frac = (real_g * filter_depth * cin1_g * filter_h * filter_w,
                          cout_g // _C0_SIZE, _C0_SIZE, _C0_SIZE)
-
     if dedx_batch == -1:
         dedy_batch = operation.var("batch_n", range_input[0])
         operation.add_exclude_bound_var(dedy_batch)
@@ -790,23 +803,32 @@ def _get_filter_dilation(weight: dict, dilation: list, data_format: str) -> int:
     return filter_d_dilation, filter_h_dilation, filter_w_dilation
 
 
-def _modify_w_range_max(weight: dict, dedy: dict, strides: list, dilation: list, data_format: str) -> bool:
+def _modify_w_range_max(weight: dict, dedy: dict, strides: list, dilation: list, data_format: str,
+                        is_dynamic_fuzz_mode: bool = False) -> dict:
     """
     modify w range max value
     """
     d_pos = data_format.find("D")
     w_pos = data_format.find("W")
-    dedy_w = dedy.get("ori_shape")[w_pos]
-    w_value = dedy_w * strides[w_pos]
-    out_backprop_date_byte = int(re.findall(r'\d+', dedy.get("dtype"))[0]) // 8
-    filter_data_byte = int(re.findall(r'\d+', weight.get("dtype"))[0]) // 8
+    out_backprop_date_byte = _BIT_RATIO_DICT.get(dedy.get("dtype"))
+    filter_data_byte = _BIT_RATIO_DICT.get(weight.get("dtype"))
     filter_d_dilation, filter_h_dilation, _ = _get_filter_dilation(weight, dilation, data_format)
-    d_factor = (filter_d_dilation - 2) // strides[d_pos] + 2
+    d_factor = (filter_d_dilation - _D_DIM_EXTRA_LEN) // strides[d_pos] + _D_DIM_EXTRA_LEN
     block_size_k = tbe_platform.CUBE_MKN[dedy.get("dtype")].get("mac")[1]
     # Using default tiling, b_l1_size is _C0_SIZE * block_size_k * filter_data_byte
     a_l1_size = tbe_platform.get_soc_spec("L1_SIZE") - _C0_SIZE * block_size_k * filter_data_byte
     h_value_max = filter_h_dilation + 1
     w_max = a_l1_size // (h_value_max * d_factor * block_size_k * out_backprop_date_byte) // strides[w_pos]
+    exceed_l1_lst = []
+    is_single_point = False
+    if is_dynamic_fuzz_mode:
+        if w_max < dedy.get("ori_range")[w_pos][0]:
+            exceed_l1_lst = LOWER_LIST
+        elif w_max < dedy.get("ori_range")[w_pos][1]:
+            exceed_l1_lst = UPPER_LIST
+        return {"exceed_l1_lst": exceed_l1_lst, "w_range_single_point": is_single_point}
+    dedy_w = dedy.get("ori_shape")[w_pos]
+    w_value = dedy_w * strides[w_pos]
     if w_max < dedy_w:
         if w_value % _C0_SIZE == 0 or _C0_SIZE % w_value == 0:
             h_value_max = filter_h_dilation
@@ -814,13 +836,78 @@ def _modify_w_range_max(weight: dict, dedy: dict, strides: list, dilation: list,
             if w_max >= dedy_w:
                 # cover a single w point
                 dedy.get("ori_range")[w_pos] = (dedy_w, dedy_w)
-                return True
+                is_single_point = True
+            else:
+                exceed_l1_lst = UNSUPPORT_LIST
+                is_single_point = True
+        else:
+            exceed_l1_lst = UNSUPPORT_LIST
+            is_single_point = False
     else:
-        dedy.get("ori_range")[w_pos][1] = min(w_max, dedy.get("ori_range")[w_pos][1])
-        return False
+        w_range_upper = min(w_max, dedy.get("ori_range")[w_pos][1])
+        dedy.get("ori_range")[w_pos] = (dedy.get("ori_range")[w_pos][0], w_range_upper)
+    return {"exceed_l1_lst": exceed_l1_lst, "w_range_single_point": is_single_point}
 
 
-@register_param_generalization("Conv3DBackpropInput")
+def _check_correct_fuzz_input_range(fmap, kernel, pads, stride, dilation, is_dynamic_fuzz_mode):
+    fmap_range = fmap.get("ori_range")
+    fmap_format = fmap.get("ori_format")
+    pos_d = fmap_format.find("D")
+    pos_h = fmap_format.find("H")
+    pos_w = fmap_format.find("W")
+    fmap_range_d = fmap_range[pos_d]
+    fmap_range_h = fmap_range[pos_h]
+    fmap_range_w = fmap_range[pos_w]
+    kernel_shape = kernel.get("ori_shape")
+    kernel_format = kernel.get("ori_format")
+    w_d = kernel_shape[kernel_format.find("D")]
+    w_h = kernel_shape[kernel_format.find("H")]
+    w_w = kernel_shape[kernel_format.find("W")]
+    correct_range_flag = False
+    if all(i == 0 for i in pads):
+        out_d_lower, _ = _get_output(fmap_range_d, w_d, (pads[_PADS_FRONT_POS], pads[_PADS_TAIL_POS]),
+                                               stride[pos_d], dilation[pos_d])
+        if out_d_lower < 1:
+            correct_range_flag = True
+            fmap_range_d_lower = min(w_d, fmap_range_d[1]) if fmap_range_d[1] else w_d
+            fmap_range[pos_d] = (fmap_range_d_lower, fmap_range_d[1])
+            out_d_lower, _ = _get_output(fmap_range_d, w_d, (pads[_PADS_FRONT_POS], pads[_PADS_TAIL_POS]),
+                                                   stride[pos_d], dilation[pos_d])
+            warnings.warn("The output calculated based on the lower limit of the input d \
+                range is less than 1, and the lower limit of the input d range is corrected \
+                as {}".format(fmap_range_d_lower))
+
+        out_h_lower, _ = _get_output(fmap_range_h, w_h, (pads[_PADS_TOP_POS], pads[_PADS_BOTTOM_POS]),
+                                               stride[pos_h], dilation[pos_h])
+        if out_h_lower < 1:
+            correct_range_flag = True
+            fmap_range_h_lower = min(w_h, fmap_range_h[1]) if fmap_range_h[1] else w_h
+            fmap_range[pos_h] = (fmap_range_h_lower, fmap_range_h[1])
+            out_h_lower, _ = _get_output(fmap_range_h, w_h, (pads[_PADS_TOP_POS], pads[_PADS_BOTTOM_POS]),
+                                                   stride[pos_h], dilation[pos_h])
+            warnings.warn("The output calculated based on the lower limit of the input h \
+                range is less than 1, and the lower limit of the input h range is corrected \
+                as {}".format(fmap_range_h_lower))
+
+        out_w_lower, _ = _get_output(fmap_range_w, w_w, (pads[_PADS_LEFT_POS], pads[_PADS_RIGHT_POS]),
+                                               stride[pos_w], dilation[pos_w])
+        if out_w_lower < 1:
+            correct_range_flag = True
+            fmap_range_w_lower = min(w_w, fmap_range_w[1]) if fmap_range_w[1] else w_w
+            fmap_range[pos_w] = (fmap_range_w_lower, fmap_range_w[1])
+            out_w_lower, _ = _get_output(fmap_range_w, w_w, (pads[_PADS_LEFT_POS], pads[_PADS_RIGHT_POS]),
+                                                   stride[pos_w], dilation[pos_w])
+            warnings.warn("The output calculated based on the lower limit of the input w \
+                range is less than 1, and the lower limit of the input w range is corrected \
+                as {}".format(fmap_range_w_lower))
+    if correct_range_flag:
+        if is_dynamic_fuzz_mode:
+            return LOWER_LIST
+        else:
+            return []
+
+
+@tbe_register.register_param_generalization("Conv3DBackpropInput")
 def conv3d_backprop_input_generalization(input_size, filter,
                                          out_backprop, y, strides,
                                          pads, dilations=(1, 1, 1, 1, 1), groups=1,
@@ -828,7 +915,16 @@ def conv3d_backprop_input_generalization(input_size, filter,
                                          kernel_name="conv3d_backprop_input",
                                          generalize_config=None):
     """
-    algorithm: Conv3d_backprop_input
+    algorithm: Conv3d_backprop_input generalization
+
+    Notice
+    ------
+    run after infershape and before operator compile
+    only modify input and output tensors with range
+
+    for use:
+        1. te fusion distinguish .o (remove the generalization dim)
+        2. pass them to the operator to follow the dynamic shape process
 
     Parameters
     ----------
@@ -867,44 +963,65 @@ def conv3d_backprop_input_generalization(input_size, filter,
 
     Returns
     -------
-    None
+    list of params list
     """
+    support_mode = ["keep_rank"]
+    is_generalize_config = (generalize_config is not None and generalize_config.get("mode") in support_mode)
+    if not is_generalize_config:
+        return
     result = []
-    if generalize_config.get("mode") == "keep_rank":
-        if -1 in out_backprop.get("ori_shape"):
-            return [input_size, filter, out_backprop, y, {"strides": strides}, {"pads": pads},
-                    {"dilations": dilations}, {"groups": groups}, {"data_format": data_format}]
-        else:
-            out_backprop = util_cube_dynamic.gen_conv_shape_range(out_backprop, _OP_TYPE)
-    else:
-        return None
-
-    # get dx_range depends on dy_range
-    para_dict = {
-        "strides": _get_ndhwc_by_format(out_backprop["ori_format"], strides),
-        "pads": pads,
-        "dilations": _get_ndhwc_by_format(out_backprop["ori_format"], dilations),
-        "kernel_name": kernel_name,
-        "groups": groups,
-        "ori_tensors": {"filter": filter,
-                        "out_backprop": out_backprop,
-                        "y": y,
-                        "input_size": input_size}
-    }
+    is_dynamic_fuzz_mode = util_conv3d.check_fuzz_dynamic_mode(out_backprop)
+    check_result = util_conv3d.check_para_fuzz_compile_3d(out_backprop, y, filter, dilations, strides, pads,
+                                                          is_dynamic_fuzz_mode, _OP_TYPE)
+    if check_result:
+        return check_result
+    out_backprop = util_cube_dynamic.gen_conv_shape_range(out_backprop, _OP_TYPE, is_dynamic_fuzz_mode)
+    new_pads = util_conv3d.correct_pads(y, out_backprop, filter, strides, pads, is_dynamic_fuzz_mode)
+    # check output_d and output_h and output_w
+    err_json = _check_correct_fuzz_input_range(out_backprop, filter, new_pads, strides, dilations, is_dynamic_fuzz_mode)
+    if err_json:
+        return err_json
+    util_conv3d.get_range(out_backprop)
     # if excced L1 size, narrow the w range.
-    w_range_single_point = _modify_w_range_max(filter, out_backprop, strides, dilations, data_format)
-    w_pos = data_format.find("W")
-    conv3d_backprop = util_cube_dynamic.Conv3dBackpropParaProcess(para_dict, _get_pad_mode(pads))
-    dy_ori_range = out_backprop.get("ori_range")
-    dx_ori_range = conv3d_backprop.get_dx_ori_range(dy_ori_range)
-    dx_ori_shape_w = y.get("ori_shape")[w_pos]
-    if w_range_single_point:
-        dx_ori_range[w_pos] = (dx_ori_shape_w, dx_ori_shape_w)
-    input_size["const_value_range"] = dx_ori_range
-    y["ori_range"] = dx_ori_range
-    util_conv3d.generalize_input_keep_rank(out_backprop)
-    util_conv3d.generalize_input_keep_rank(y)
-    input_size["const_value"] = None
+    l1_size_check_res = _modify_w_range_max(filter, out_backprop, strides, dilations, data_format, is_dynamic_fuzz_mode)
+    exceed_l1_lst = l1_size_check_res.get("exceed_l1_lst")
+    w_range_single_point = l1_size_check_res.get("w_range_single_point")
+    if exceed_l1_lst:
+        return exceed_l1_lst
+    # get dx_range depends on dy_range
+    if not is_dynamic_fuzz_mode:
+        para_dict = {
+            "strides": _get_ndhwc_by_format(out_backprop["ori_format"], strides),
+            "pads": new_pads,
+            "dilations": _get_ndhwc_by_format(out_backprop["ori_format"], dilations),
+            "kernel_name": kernel_name,
+            "groups": groups,
+            "ori_tensors": {"filter": filter,
+                            "out_backprop": out_backprop,
+                            "y": y,
+                            "input_size": input_size}
+        }
+        w_pos = data_format.find("W")
+        conv3d_backprop = util_cube_dynamic.Conv3dBackpropParaProcess(para_dict, _get_pad_mode(new_pads))
+        dy_ori_range = out_backprop.get("ori_range")
+        dx_ori_range = conv3d_backprop.get_dx_ori_range(dy_ori_range)
+        dx_ori_shape_w = y.get("ori_shape")[w_pos]
+        if w_range_single_point:
+            dx_ori_range[w_pos] = (dx_ori_shape_w, dx_ori_shape_w)
+        input_size["const_value_range"] = dx_ori_range
+        y["ori_range"] = dx_ori_range
+        util_conv3d.generalize_input_keep_rank(out_backprop)
+        util_conv3d.generalize_input_keep_rank(y)
+        input_size["const_value"] = None
+    # check attrs and filter
+    try:
+        util_conv3d.get_range(y)
+        check_and_config_para(filter, out_backprop, y, input_size, strides, new_pads,
+                              dilations, groups, data_format, kernel_name)
+    except RuntimeError as exc:
+        return UNSUPPORT_LIST
+    finally:
+        pass
     result.append([input_size, filter, out_backprop, y, {"strides": strides}, {"pads": pads},
                    {"dilations": dilations}, {"groups": groups}, {"data_format": data_format}])
     return result

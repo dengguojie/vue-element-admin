@@ -34,93 +34,24 @@ def _run_api_end_with_d(
             pads, dilations, groups, data_format, offset_x]
 
 
-def test_conv3d_fuzzy_build_generalization(test_arg):
+def test_conv3d_fuzzy_build_generalization(case):
     from impl.dynamic.conv3d import conv3d_generalization
-    input_list = [
-        {
-            'shape': (2, 8, 20, 8, 8, 16),
-            'ori_shape': (2, 8, 8 ,8 ,320),
-            'ori_format': 'NDHWC',
-            'format': 'NDC1HWC0',
-            'dtype': 'float16',
-            'range': [(2, 3), (8, 15), (20, 20), (8, 15), (8, 15), (16, 16)]
-        }, {
-            'shape': (160, 20, 16, 16),
-            'ori_shape': (2, 2, 2, 320, 320),
-            'ori_format': 'DHWCN',
-            'format': 'FRACTAL_Z_3D',
-            'dtype': 'float16'
-        }, None, None, {
-            'shape': (2, 4, 20, 4, 4, 16),
-            'ori_shape': (2, 4, 4, 4, 320),
-            'ori_format': 'NDHWC',
-            'format': 'NDC1HWC0',
-            'dtype': 'float16'
-        }, (1, 2, 2, 2, 1), (0, 0, 0, 0, 0, 0), (1, 1, 1, 1, 1), 1, 'NDHWC', 0, 'conv3d_generalization',
-        {"mode": "keep_rank"}]
-    conv3d_generalization(*input_list)
+    input_list = case.get("inputs")
+    expect = case.get("expect")
+    case_name = input_list[-2]
+    def _test_generalization_function(test_arg):
+        res = conv3d_generalization(*input_list)
+        if expect == "success":
+            if not res[0][0].get("ori_range"):
+                raise RuntimeError(f"In case {case_name}, conv3d_generalization function expected to \
+                    generate ori_range success.")
+        elif expect == "unsupported":
+            if res[0].get("result") != "UNSUPPORTED":
+                raise RuntimeError(f"In case {case_name}, conv3d_generalization function expected to return {expect}.")
+        elif expect not in res[0].get("reason").get("type"):
+            raise RuntimeError(f"In case {case_name}, conv3d_generalization function expected to return {expect}.")
+    return _test_generalization_function
 
-def test_conv3d_fuzz_build_tilingcase(test_arg):
-    import json
-    from impl.dynamic.conv3d import conv3d
-    from tbe.common.context import get_context
-    from tbe.common.context import op_context
-    with op_context.OpContext("dynamic"):
-        get_context().set_build_type("fuzzily_build")
-        get_context().add_addition("max_kernel_id", -1)
-        missing_info = [{
-                            "inputs": [{
-                                "index": 0,
-                                "tensor": [{
-                                    "range": [
-                                        [2, 4],
-                                        [8, 16],
-                                        [8, 16],
-                                        [8, 16],
-                                        [320, 320]
-                                    ],
-                                    "shape": [-1, -1, -1, -1, 320]
-                                }]
-                            }]
-                        }, {
-                            "inputs": [{
-                                "index": 0,
-                                "tensor": [{
-                                    "range": [
-                                        [2, 4],
-                                        [4, 8],
-                                        [4, 8],
-                                        [4, 8],
-                                        [512, 1024]
-                                    ],
-                                    "shape": [-1, -1, -1, -1, 320]
-                                }]
-                            }]
-                        }]
-        get_context().add_addition("missing_support_info", json.dumps(missing_info))
-        input_list = [
-            {
-                'shape': (2, 8, 20, 8, 8, 16),
-                'ori_shape': (-1, -1, -1, -1, 320),
-                'ori_format': 'NDHWC',
-                'format': 'NDC1HWC0',
-                'dtype': 'float16',
-                'range': [(2, 3), (8, 15), (20, 20), (8, 15), (8, 15), (16, 16)]
-            }, {
-                'shape': (160, 20, 16, 16),
-                'ori_shape': (2, 2, 2, 320, 320),
-                'ori_format': 'DHWCN',
-                'format': 'FRACTAL_Z_3D',
-                'dtype': 'float16'
-            }, None, None, {
-                'shape': (2, 4, 20, 4, 4, 16),
-                'ori_shape': (2, 4, 4, 4, 320),
-                'ori_format': 'NDHWC',
-                'format': 'NDC1HWC0',
-                'dtype': 'float16'
-            }, (1, 2, 2, 2, 1), (0, 0, 0, 0, 0, 0), (1, 1, 1, 1, 1), 1, 'NDHWC', 0, 'conv3d_generalization',
-            {"mode": "keep_rank"}]
-        conv3d(*input_list)
 
 def _test_op_get_op_support_info(test_arg):
     from impl.dynamic.conv3d import get_op_support_info
@@ -136,6 +67,7 @@ def _test_op_get_op_support_info(test_arg):
         fmap, weight, bias, offset_w, output, strides,
         pads, dilations, groups, data_format, offset_x)
 
+
 def _test_op_get_op_support_info_bias(test_arg):
     from impl.dynamic.conv3d import get_op_support_info
     [fmap, weight, bias, offset_w, output, strides,
@@ -145,6 +77,7 @@ def _test_op_get_op_support_info_bias(test_arg):
     get_op_support_info(
         fmap, weight, bias, offset_w, output, strides,
         pads, dilations, groups, data_format, offset_x)
+
 
 def _test_op_get_op_support_info_wrong_format(test_arg):
     from impl.dynamic.conv3d import get_op_support_info
@@ -171,6 +104,293 @@ def _test_op_get_op_support_info_wrong_format(test_arg):
             pads, dilations, groups, data_format, offset_x)
     except Exception as e:
         print(e)
+
+
+# test_conv3d_fuzzy_build_generalization
+print("adding conv3d test_conv3d_fuzzy_build_generalization testcase")
+fuzzy_test_case = [
+    {"inputs": [
+        {'shape': (2, 8, 8, 8, 320),
+         'ori_shape': (2, 8, 8, 8, 320),
+         'ori_format': 'NDHWC',
+         'format': 'NDHWC',
+         'dtype': 'float16'},
+        {'shape': (160, 20, 16, 16),
+         'ori_shape': (2, 2, 2, 320, 320),
+         'ori_format': 'DHWCN',
+         'format': 'FRACTAL_Z_3D',
+         'dtype': 'float16'}, None, None,
+        {'shape': (2, 4, 4, 4, 320),
+         'ori_shape': (2, 4, 4, 4, 320),
+         'ori_format': 'NDHWC',
+         'format': 'NDHWC',
+         'dtype': 'float16'}, (1, 2, 2, 2, 1), (0, 0, 0, 0, 0, 0), (1, 1, 1, 1, 1), 1, 'NDHWC', 0,
+        'test_conv3d_generalization_static_mode_general_case', {"mode": "keep_rank"}],
+     "expect": "success"},
+    {"inputs": [
+        {'shape': (-1, -1, -1, -1, 320),
+         'ori_shape': (-1, -1, -1, -1, 320),
+         'ori_format': 'NDHWC',
+         'format': 'NDHWC',
+         'dtype': 'float16',
+         'ori_range': [(2, 10), (2, 10), (2, 10), (4, 10), (320, 320)]},
+        {'shape': (160, 20, 16, 16),
+         'ori_shape': (2, 2, 2, 320, 320),
+         'ori_format': 'DHWCN',
+         'format': 'FRACTAL_Z_3D',
+         'dtype': 'float16'}, None, None,
+        {'shape': (-1, -1, -1, -1, 320),
+         'ori_shape': (-1, -1, -1, -1, 320),
+         'ori_format': 'NDHWC',
+         'format': 'NDHWC',
+         'dtype': 'float16',
+         'ori_range': [(2, 10), (2, 10), (2, 10), (4, 10), (320, 320)]},
+        (1, 2, 2, 2, 1), (0, 0, 0, 0, 0, 0), (1, 1, 1, 1, 1), 1, 'NDHWC', 0,
+        'test_conv3d_generalization_dynamic_mode_general_case', {"mode": "keep_rank"}],
+     "expect": "success"},
+    {"inputs": [
+        {'shape': (2, 8, 8, 8, 320),
+         'ori_shape': (2, 320, 8, 8, 8),
+         'ori_format': 'NCDHW',
+         'format': 'NDHWC',
+         'dtype': 'float16'},
+        {'shape': (160, 20, 16, 16),
+         'ori_shape': (2, 2, 2, 320, 320),
+         'ori_format': 'DHWCN',
+         'format': 'FRACTAL_Z_3D',
+         'dtype': 'float16'}, None, None,
+        {'shape': (2, 4, 4, 4, 320),
+         'ori_shape': (2, 320, 4, 4, 4),
+         'ori_format': 'NCDHW',
+         'format': 'NDHWC',
+         'dtype': 'float16'}, (1, 2, 2, 2, 1), (0, 0, 0, 0, 0, 0), (1, 1, 1, 1, 1), 1, 'NDHWC', 0,
+        'test_conv3d_generalization_static_mode_format_case', {"mode": "keep_rank"}],
+     "expect": "success"},
+    {"inputs": [
+        {'shape': (-1, -1, -1, -1, 320),
+         'ori_shape': (-1, 320, -1, -1, -1),
+         'ori_format': 'NCDHW',
+         'format': 'NDHWC',
+         'dtype': 'float16',
+         'ori_range': [(2, 10), (320, 320), (2, 10), (2, 10), (4, 10)]},
+        {'shape': (160, 20, 16, 16),
+         'ori_shape': (2, 2, 2, 320, 320),
+         'ori_format': 'DHWCN',
+         'format': 'FRACTAL_Z_3D',
+         'dtype': 'float16'}, None, None,
+        {'shape': (-1, -1, -1, -1, 320),
+         'ori_shape': (-1, 320, -1, -1, -1),
+         'ori_format': 'NCDHW',
+         'format': 'NDHWC',
+         'dtype': 'float16',
+         'ori_range': [(2, 10), (320, 320), (2, 10), (2, 10), (4, 10)]},
+        (1, 2, 2, 2, 1), (0, 0, 0, 0, 0, 0), (1, 1, 1, 1, 1), 1, 'NDHWC', 0,
+        'test_conv3d_generalization_dynamic_mode_format_case', {"mode": "keep_rank"}],
+     "expect": "success"},
+    {"inputs": [
+        {'shape': (-2,),
+         'ori_shape': (-2,),
+         'ori_format': 'NDHWC',
+         'format': 'NDHWC',
+         'dtype': 'float16',
+         'ori_range': [(1, None), (1, None), (1, None), (1, None), (1, None)]},
+        {'shape': (160, 20, 16, 16),
+         'ori_shape': (2, 2, 2, 320, 320),
+         'ori_format': 'DHWCN',
+         'format': 'FRACTAL_Z_3D',
+         'dtype': 'float16'}, None, None,
+        {'shape': (-1, -1, -1, -1, 320),
+         'ori_shape': (-1, -1, -1, -1, 320),
+         'ori_format': 'NDHWC',
+         'format': 'NDHWC',
+         'dtype': 'float16',
+         'ori_range': [(2, 10), (2, 10), (2, 10), (1, 10), (320, 320)]},
+        (1, 2, 2, 2, 1), (0, 0, 0, 0, 0, 0), (1, 1, 1, 1, 1), 1, 'NDHWC', 0,
+        'test_conv3d_generalization_dynamic_rank_case', {"mode": "keep_rank"}],
+     "expect": "unsupported"},
+    {"inputs": [
+        {'shape': (2, 8, 5000, 8, 320),
+         'ori_shape': (2, 8, 5000, 8, 320),
+         'ori_format': 'NDHWC',
+         'format': 'NDHWC',
+         'dtype': 'float16'},
+        {'shape': (160, 20, 16, 16),
+         'ori_shape': (2, 2, 2, 320, 320),
+         'ori_format': 'DHWCN',
+         'format': 'FRACTAL_Z_3D',
+         'dtype': 'float16'}, None, None,
+        {'shape': (2, 4, 2500, 4, 320),
+         'ori_shape': (2, 4, 2500, 4, 320),
+         'ori_format': 'NDHWC',
+         'format': 'NDHWC',
+         'dtype': 'float16'}, (1, 2, 2, 2, 1), (0, 0, 0, 0, 0, 0), (1, 1, 1, 1, 1), 1, 'NDHWC', 0,
+        'test_conv3d_generalization_static_mode_h_dim_large_case', {"mode": "keep_rank"}],
+     "expect": "unsupported"},
+    {"inputs": [
+        {'shape': (-1, -1, -1, -1, 320),
+         'ori_shape': (-1, -1, -1, -1, 320),
+         'ori_format': 'NDHWC',
+         'format': 'NDHWC',
+         'dtype': 'float16',
+         'ori_range': [(2, 10), (2, 10), (2, 5000), (4, 10), (320, 320)]},
+        {'shape': (160, 20, 16, 16),
+         'ori_shape': (2, 2, 2, 320, 320),
+         'ori_format': 'DHWCN',
+         'format': 'FRACTAL_Z_3D',
+         'dtype': 'float16'}, None, None,
+        {'shape': (-1, -1, -1, -1, 320),
+         'ori_shape': (-1, -1, -1, -1, 320),
+         'ori_format': 'NDHWC',
+         'format': 'NDHWC',
+         'dtype': 'float16',
+         'ori_range': [(2, 10), (2, 10), (2, 5000), (4, 10), (320, 320)]},
+        (1, 2, 2, 2, 1), (0, 0, 0, 0, 0, 0), (1, 1, 1, 1, 1), 1, 'NDHWC', 0,
+        'test_conv3d_generalization_dynamic_mode_h_dim_upper_range_large_case', {"mode": "keep_rank"}],
+     "expect": "upper_limit"},
+    {"inputs": [
+        {'shape': (-1, -1, -1, -1, 320),
+         'ori_shape': (-1, -1, -1, -1, 320),
+         'ori_format': 'NDHWC',
+         'format': 'NDHWC',
+         'dtype': 'float16',
+         'ori_range': [(2, 10), (2, 10), (5000, 5000), (4, 10), (320, 320)]},
+        {'shape': (160, 20, 16, 16),
+         'ori_shape': (2, 2, 2, 320, 320),
+         'ori_format': 'DHWCN',
+         'format': 'FRACTAL_Z_3D',
+         'dtype': 'float16'}, None, None,
+        {'shape': (-1, -1, -1, -1, 320),
+         'ori_shape': (-1, -1, -1, -1, 320),
+         'ori_format': 'NDHWC',
+         'format': 'NDHWC',
+         'dtype': 'float16',
+         'ori_range': [(2, 10), (2, 10), (5000, 5000), (4, 10), (320, 320)]},
+        (1, 2, 2, 2, 1), (0, 0, 0, 0, 0, 0), (1, 1, 1, 1, 1), 1, 'NDHWC', 0,
+        'test_conv3d_generalization_dynamic_mode_h_dim_lower_range_large_case', {"mode": "keep_rank"}],
+     "expect": "lower_limit"},
+    {"inputs": [
+        {'shape': (-1, -1, -1, -1, 320),
+         'ori_shape': (-1, -1, -1, -1, 320),
+         'ori_format': 'NDHWC',
+         'format': 'NDHWC',
+         'dtype': 'float16',
+         'ori_range': [(2, 10), (2, 10), (2, 10), (2, 10), (320, 320)]},
+        {'shape': (160, 20, 16, 16),
+         'ori_shape': (2, 2, 2, 320, 320),
+         'ori_format': 'DHWCN',
+         'format': 'FRACTAL_Z_3D',
+         'dtype': 'float16'}, None, None,
+        {'shape': (-1, -1, -1, -1, 320),
+         'ori_shape': (-1, -1, -1, -1, 320),
+         'ori_format': 'NDHWC',
+         'format': 'NDHWC',
+         'dtype': 'float16',
+         'ori_range': [(2, 10), (2, 10), (2, 10), (1, 10), (320, 320)]},
+        (1, 2, 2, 2, 1), (0, 0, 0, 0, 0, 0), (1, 1, 1, 1, 1), 1, 'NDHWC', 0,
+        'test_conv3d_generalization_dynamic_mode_w_lower_case', {"mode": "keep_rank"}],
+     "expect": "lower_limit"},
+    {"inputs": [
+        {'shape': (2, 8, 8, 8, 320),
+         'ori_shape': (2, 8, 8, 8, 320),
+         'ori_format': 'NDHWC',
+         'format': 'NDHWC',
+         'dtype': 'float16'},
+        {'shape': (160, 20, 16, 16),
+         'ori_shape': (2, 2, 2, 500, 320),
+         'ori_format': 'DHWCN',
+         'format': 'FRACTAL_Z_3D',
+         'dtype': 'float16'}, None, None,
+        {'shape': (2, 4, 4, 4, 320),
+         'ori_shape': (2, 4, 4, 4, 320),
+         'ori_format': 'NDHWC',
+         'format': 'NDHWC',
+         'dtype': 'float16'}, (1, 2, 2, 2, 1), (0, 0, 0, 0, 0, 0), (1, 1, 1, 1, 1), 1, 'NDHWC', 0,
+        'test_conv3d_generalization_static_mode_invalid_weight_case', {"mode": "keep_rank"}],
+     "expect": "unsupported"},
+    {"inputs": [
+        {'shape': (-1, -1, -1, -1, 320),
+         'ori_shape': (-1, -1, -1, -1, 320),
+         'ori_format': 'NDHWC',
+         'format': 'NDHWC',
+         'dtype': 'float16',
+         'ori_range': [(2, 10), (2, 10), (2, 10), (4, 10), (320, 320)]},
+        {'shape': (160, 20, 16, 16),
+         'ori_shape': (2, 2, 2, 500, 320),
+         'ori_format': 'DHWCN',
+         'format': 'FRACTAL_Z_3D',
+         'dtype': 'float16'}, None, None,
+        {'shape': (-1, -1, -1, -1, 320),
+         'ori_shape': (-1, -1, -1, -1, 320),
+         'ori_format': 'NDHWC',
+         'format': 'NDHWC',
+         'dtype': 'float16',
+         'ori_range': [(2, 10), (2, 10), (2, 10), (4, 10), (320, 320)]},
+        (1, 2, 2, 2, 1), (0, 0, 0, 0, 0, 0), (1, 1, 1, 1, 1), 1, 'NDHWC', 0,
+        'test_conv3d_generalization_dynamic_mode_invalid_weight_case', {"mode": "keep_rank"}],
+     "expect": "unsupported"},
+    {"inputs": [
+        {'shape': (2, 8, 8, 4095, 320),
+         'ori_shape': (2, 8, 8, 4095, 320),
+         'ori_format': 'NDHWC',
+         'format': 'NDHWC',
+         'dtype': 'float16'},
+        {'shape': (160, 20, 16, 16),
+         'ori_shape': (2, 8, 2, 320, 320),
+         'ori_format': 'DHWCN',
+         'format': 'FRACTAL_Z_3D',
+         'dtype': 'float16'}, None, None,
+        {'shape': (2, 4, 4, 2048, 320),
+         'ori_shape': (2, 4, 4, 2048, 320),
+         'ori_format': 'NDHWC',
+         'format': 'NDHWC',
+         'dtype': 'float16'}, (1, 2, 2, 2, 1), (0, 0, 0, 0, 0, 0), (1, 1, 1, 1, 1), 1, 'NDHWC', 0,
+        'test_conv3d_generalization_static_mode_exceed_l1_case', {"mode": "keep_rank"}],
+     "expect": "unsupported"},
+    {"inputs": [
+        {'shape': (-1, -1, -1, -1, 320),
+         'ori_shape': (-1, -1, -1, -1, 320),
+         'ori_format': 'NDHWC',
+         'format': 'NDHWC',
+         'dtype': 'float16',
+         'ori_range': [(8, 10), (8, 10), (8, 10), (8, 4095), (320, 320)]},
+        {'shape': (160, 20, 16, 16),
+         'ori_shape': (2, 8, 2, 320, 320),
+         'ori_format': 'DHWCN',
+         'format': 'FRACTAL_Z_3D',
+         'dtype': 'float16'}, None, None,
+        {'shape': (-1, -1, -1, -1, 320),
+         'ori_shape': (-1, -1, -1, -1, 320),
+         'ori_format': 'NDHWC',
+         'format': 'NDHWC',
+         'dtype': 'float16',
+         'ori_range': [(8, 10), (8, 10), (8, 10), (8, 2048), (320, 320)]},
+        (1, 2, 2, 2, 1), (0, 0, 0, 0, 0, 0), (1, 1, 1, 1, 1), 1, 'NDHWC', 0,
+        'test_conv3d_generalization_dynamic_mode_upper_range_exceed_l1_case', {"mode": "keep_rank"}],
+     "expect": "upper_limit"},
+    {"inputs": [
+        {'shape': (-1, -1, -1, -1, 320),
+         'ori_shape': (-1, -1, -1, -1, 320),
+         'ori_format': 'NDHWC',
+         'format': 'NDHWC',
+         'dtype': 'float16',
+         'ori_range': [(8, 10), (8, 10), (8, 10), (4095, 4095), (320, 320)]},
+        {'shape': (160, 20, 16, 16),
+         'ori_shape': (2, 8, 2, 320, 320),
+         'ori_format': 'DHWCN',
+         'format': 'FRACTAL_Z_3D',
+         'dtype': 'float16'}, None, None,
+        {'shape': (-1, -1, -1, -1, 320),
+         'ori_shape': (-1, -1, -1, -1, 320),
+         'ori_format': 'NDHWC',
+         'format': 'NDHWC',
+         'dtype': 'float16',
+         'ori_range': [(8, 10), (8, 10), (8, 10), (2048, 2048), (320, 320)]},
+        (1, 2, 2, 2, 1), (0, 0, 0, 0, 0, 0), (1, 1, 1, 1, 1), 1, 'NDHWC', 0,
+        'test_conv3d_generalization_dynamic_mode_lower_range_exceed_l1_case', {"mode": "keep_rank"}],
+     "expect": "lower_limit"},
+]
+for case in fuzzy_test_case:
+    ut_case.add_cust_test_func('Ascend910A', test_func=test_conv3d_fuzzy_build_generalization(case))
 
 ut_case.add_cust_test_func(test_func=_test_op_get_op_support_info)
 ut_case.add_cust_test_func(test_func=_test_op_get_op_support_info_bias)
@@ -499,13 +719,6 @@ ut_case.add_case(["Ascend910A", "Ascend310"],
 
 ut_case.add_case(["Ascend910A", "Ascend310"],
                  _gen_data_case(case38, RuntimeError, "dynamic_case38", True))
-
-# test_conv3d_fuzzy_build_generalization
-print("adding conv3d test_conv3d_fuzzy_build_generalization testcase")
-ut_case.add_cust_test_func(test_func=test_conv3d_fuzzy_build_generalization)
-
-print("adding conv3d test_conv3d_fuzz_build_tilingcase testcase")
-# ut_case.add_cust_test_func(test_func=test_conv3d_fuzz_build_tilingcase)
 
 if __name__ == '__main__':
     ut_case.run("Ascend910A")
