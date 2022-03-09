@@ -43,15 +43,14 @@ namespace fe {
                                              ge::ComputeGraph &graph, bool &failStatus);
 
     ge::OpDescPtr GetDynamicMatMulNode(std::string matmulNodeName, ge::NodePtr dynamicRNNGradNode,
-                                       ge::ComputeGraph &graph, bool &failStatus, ge::GeShape dgateShape);
+                                       ge::ComputeGraph &graph, bool &failStatus);
 
     vector<ge::OpDescPtr> GetDynamicSplitNode(std::string splitNodeName, std::string splitDimNodeName,
                                               std::string splitSizeNodeName,
                                               ge::NodePtr dynamicRNNGradNode, ge::ComputeGraph &graph, bool &failStatus,
                                               ge::GeTensorDesc matmulOutputDesc);
 
-    ge::OpDescPtr GetDynamicBodyDxConcatNode(std::string cellNodeName, ge::NodePtr dynamicRNNGradNode,
-                                             ge::ComputeGraph& graph, bool& failStatus,
+    ge::OpDescPtr GetDynamicBodyDxConcatNode(std::string cellNodeName, ge::NodePtr dynamicRNNGradNode, bool &failStatus,
                                              ge::GeTensorDesc splitInputDesc, ge::GeTensorDesc concatOriDesc);
 
     ge::OpDescPtr GetDynamicDxConcatNode(std::string cellNodeName, ge::NodePtr dynamicRNNGradNode,
@@ -133,14 +132,14 @@ namespace fe {
                                            vector<ge::NodePtr> &newNodes, bool &failStatus);
 
     ge::OpDescPtr DynamicAddCellOutReshapeNode(ge::NodePtr dynamicRNNGradNode, string reshapeName,
-                                               ge::GeTensorDesc inputDesc, ge::ComputeGraph &graph, bool &failStatus);
+                                               ge::GeTensorDesc inputDesc);
 
     ge::OpDescPtr DynamicAddMatmulInReshapeNode(ge::NodePtr dynamicRNNGradNode, string reshapeName,
-                                                ge::GeTensorDesc inputDesc, ge::ComputeGraph &graph, bool &failStatus);
+                                                ge::GeTensorDesc inputDesc);
     ge::OpDescPtr AddBatchMatmulReshapeNode(ge::NodePtr dynamicRNNGradNode, string reshapeName,
-                                            ge::GeTensorDesc inputDesc, ge::ComputeGraph &graph, bool &failStatus);
+                                            ge::GeTensorDesc inputDesc);
 
-    ge::OpDescPtr AddTransposeNode(ge::NodePtr dynamicRNNGradNode, string transposeName, ge::ComputeGraph &graph, bool &failStatus);
+    ge::OpDescPtr AddTransposeNode(ge::NodePtr dynamicRNNGradNode, string transposeName, bool &failStatus);
 
     vector<ge::OpDescPtr> GetDynamicBodyReshapeNode(std::string &reshapeNodeName, std::string &reshapeConstNodeName,
                                                     ge::NodePtr dynamicRNNGradNode, ge::GeTensorDesc inputDesc,

@@ -469,7 +469,7 @@ ge::OpDescPtr DynamicRNNGradDFusionPass::GetDynamicLSTMGradCellNode(std::string 
 
 ge::OpDescPtr DynamicRNNGradDFusionPass::GetDynamicMatMulNode(std::string matmulNodeName,
                                                               ge::NodePtr dynamicRNNGradNode, ge::ComputeGraph& graph,
-                                                              bool& failStatus, ge::GeShape dgateShape) {
+                                                              bool& failStatus) {
   ge::OpDescPtr dynamicRNNGradDesc = dynamicRNNGradNode->GetOpDesc();
   ge::OpDescPtr lstmBatchMatMulDesc = nullptr;
   FUSION_PASS_MAKE_SHARED((lstmBatchMatMulDesc = std::make_shared<ge::OpDesc>(matmulNodeName, "MatMulV2")),
@@ -933,8 +933,7 @@ vector<ge::OpDescPtr> DynamicRNNGradDFusionPass::GetDynamicSplitNode(
 }
 
 ge::OpDescPtr DynamicRNNGradDFusionPass::GetDynamicBodyDxConcatNode(std::string cellNodeName,
-                                                                    ge::NodePtr dynamicRNNGradNode,
-                                                                    ge::ComputeGraph& graph, bool& failStatus,
+                                                                    ge::NodePtr dynamicRNNGradNode, bool& failStatus,
                                                                     ge::GeTensorDesc splitInputDesc,
                                                                     ge::GeTensorDesc concatOriDesc) {
   ge::OpDescPtr dxConcatDesc = nullptr;
@@ -984,11 +983,11 @@ ge::ComputeGraphPtr DynamicRNNGradDFusionPass::BuildBodyGraph(ge::ComputeGraph& 
   ge::GeTensorDesc reshapeOutDesc = cellNode->GetOutputDesc(0).Clone();
   std::string reshapOutNodeName = DynamicRNNGradName + "CellOutReshape";
   ge::OpDescPtr reshapOutNode =
-      DynamicAddCellOutReshapeNode(dynamicRNNGradNode, reshapOutNodeName, reshapeOutDesc, graph, failStatus);
+      DynamicAddCellOutReshapeNode(dynamicRNNGradNode, reshapOutNodeName, reshapeOutDesc);
   graph_builder.AddNode(reshapOutNode);
 
   std::string cellTransposeNodeName = DynamicRNNGradName + "CellTransposeNode";
-  ge::OpDescPtr CellTransposeNode = AddTransposeNode(dynamicRNNGradNode, cellTransposeNodeName, graph, failStatus);
+  ge::OpDescPtr CellTransposeNode = AddTransposeNode(dynamicRNNGradNode, cellTransposeNodeName, failStatus);
   graph_builder.AddNode(CellTransposeNode);
 
   ge::OpDescPtr permConstOpdesc = CreatepermConstDesc({1, 0, 2});
@@ -998,12 +997,11 @@ ge::ComputeGraphPtr DynamicRNNGradDFusionPass::BuildBodyGraph(ge::ComputeGraph& 
   ge::GeTensorDesc reshapeInDesc = CellTransposeNode->GetOutputDesc(0).Clone();
   std::string reshapInNodeName = DynamicRNNGradName + "MatmulInReshape";
   ge::OpDescPtr reshapInNode =
-      DynamicAddMatmulInReshapeNode(dynamicRNNGradNode, reshapInNodeName, reshapeInDesc, graph, failStatus);
+      DynamicAddMatmulInReshapeNode(dynamicRNNGradNode, reshapInNodeName, reshapeInDesc);
   graph_builder.AddNode(reshapInNode);
 
   std::string matmulNodeName = DynamicRNNGradName + "MatMulCell";
-  ge::OpDescPtr matmulNode = GetDynamicMatMulNode(matmulNodeName, dynamicRNNGradNode, graph, failStatus,
-                                                  cellNode->GetOutputDesc(X_INDEX).GetShape());
+  ge::OpDescPtr matmulNode = GetDynamicMatMulNode(matmulNodeName, dynamicRNNGradNode, graph, failStatus);
   graph_builder.AddNode(matmulNode);
 
   std::string splitNodeName = DynamicRNNGradName + "SplitCell";
@@ -1032,7 +1030,7 @@ ge::ComputeGraphPtr DynamicRNNGradDFusionPass::BuildBodyGraph(ge::ComputeGraph& 
                                 dgateInputDesc.GetShape().GetDim(W_INDEX)};
   dgateInputDesc.SetShape(GeShape(dgateShape));
   dgateInputDesc.SetOriginShape(GeShape(dgateShape));
-  ge::OpDescPtr concatDgateDesc = GetDynamicBodyDxConcatNode(dgateConcatNodeName, dynamicRNNGradNode, graph, failStatus,
+  ge::OpDescPtr concatDgateDesc = GetDynamicBodyDxConcatNode(dgateConcatNodeName, dynamicRNNGradNode, failStatus,
                                                              dgateInputDesc, concatDgateOriDesc);
   graph_builder.AddNode(concatDgateDesc);
 
@@ -1249,7 +1247,7 @@ vector<ge::NodePtr> DynamicRNNGradDFusionPass::BuildT0Graph(ge::NodePtr dynamicR
   ge::GeTensorDesc reshapeOutDesc = cellNode->GetOutputDesc(0).Clone();
   std::string reshapOutNodeName = DynamicRNNGradName + "CellOutReshape";
   ge::OpDescPtr reshapOutNode =
-      DynamicAddCellOutReshapeNode(dynamicRNNGradNode, reshapOutNodeName, reshapeOutDesc, graph, failStatus);
+      DynamicAddCellOutReshapeNode(dynamicRNNGradNode, reshapOutNodeName, reshapeOutDesc);
   ge::NodePtr t0reshapOutNode = graph.AddNode(reshapOutNode);
 
   ge::NodePtr t0ReshapeSplitNode =
@@ -1266,7 +1264,7 @@ vector<ge::NodePtr> DynamicRNNGradDFusionPass::BuildT0Graph(ge::NodePtr dynamicR
       dynamicRNNGradNode, t0CellReshapeOutConcatName, t0reshapOutFirstConstNode, graph, failStatus);
 
   std::string CellTransposeNodeName = DynamicRNNGradName + "CellTransposeNodeName";
-  ge::OpDescPtr CellTransposeNode = AddTransposeNode(dynamicRNNGradNode, CellTransposeNodeName, graph, failStatus);
+  ge::OpDescPtr CellTransposeNode = AddTransposeNode(dynamicRNNGradNode, CellTransposeNodeName, failStatus);
   ge::NodePtr t0CellTransposeNode = graph.AddNode(CellTransposeNode);
 
   ge::OpDescPtr perm_const_opdesc = CreatepermConstDesc({1, 0, 2});
@@ -1276,7 +1274,7 @@ vector<ge::NodePtr> DynamicRNNGradDFusionPass::BuildT0Graph(ge::NodePtr dynamicR
   ge::GeTensorDesc reshapeInDesc = CellTransposeNode->GetOutputDesc(0).Clone();
   std::string reshapInNodeName = DynamicRNNGradName + "MatmulInReshape";
   ge::OpDescPtr reshapInNode =
-      DynamicAddMatmulInReshapeNode(dynamicRNNGradNode, reshapInNodeName, reshapeInDesc, graph, failStatus);
+      DynamicAddMatmulInReshapeNode(dynamicRNNGradNode, reshapInNodeName, reshapeInDesc);
   ge::NodePtr t0reshapInNode = graph.AddNode(reshapInNode);
 
   ge::OpDescPtr reshapeInConstOpdesc = CreatepermConstDesc({4 * hidden_size});
@@ -1288,8 +1286,7 @@ vector<ge::NodePtr> DynamicRNNGradDFusionPass::BuildT0Graph(ge::NodePtr dynamicR
       BuildT0ReshapeSizeConcatNode(dynamicRNNGradNode, t0CellReshapeInConcatName, graph, failStatus);
 
   std::string t0MatmulNodeName = DynamicRNNGradName + "MatMulCell0";
-  ge::OpDescPtr matmulNode = GetDynamicMatMulNode(t0MatmulNodeName, dynamicRNNGradNode, graph, failStatus,
-                                                  cellNode->GetOutputDesc(X_INDEX).GetShape());
+  ge::OpDescPtr matmulNode = GetDynamicMatMulNode(t0MatmulNodeName, dynamicRNNGradNode, graph, failStatus);
   ge::NodePtr t0MatmulNode = graph.AddNode(matmulNode);
 
   std::string t0castNodeName = DynamicRNNGradName + "T0CastCell";
@@ -1460,7 +1457,7 @@ ge::NodePtr DynamicRNNGradDFusionPass::DynamicAddMatmulNode(ge::NodePtr dynamicR
 
   std::string batmatmatmulReshapNodeName = DynamicRNNGradName + "batchmatmulReshape";
   ge::OpDescPtr batmatmatmulReshapeOpdesc =
-      AddBatchMatmulReshapeNode(dynamicRNNGradNode, batmatmatmulReshapNodeName, outputTensorDesc, graph, failStatus);
+      AddBatchMatmulReshapeNode(dynamicRNNGradNode, batmatmatmulReshapNodeName, outputTensorDesc);
   ge::NodePtr batmatmatmulReshapNode = graph.AddNode(batmatmatmulReshapeOpdesc);
 
   // Edge
@@ -1621,7 +1618,7 @@ ge::NodePtr DynamicRNNGradDFusionPass::DynamicAddSplitNode(ge::NodePtr dynamicRN
   offsetDesc.SetOriginShape(GeShape({static_cast<int64_t>(output1Dim.size())}));
   offsetDesc.SetOriginFormat(FORMAT_ND);
   sliceDesc->AddInputDesc("offsets", offsetDesc);
-  ge::OpDescPtr offsetConst = CreateListConstDesc("addWhileHSliceOffset", output1Dim);
+  ge::OpDescPtr offsetConst = CreateListConstDesc(dynamicRNNGradNode->GetName() + "addWhileHSliceOffset", output1Dim);
   ge::NodePtr offsetNode = graph.AddNode(offsetConst);
   FUSION_PASS_CHECK(offsetNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "Create Const Op operator error"),
                     return nullptr);
@@ -1733,8 +1730,7 @@ ge::NodePtr DynamicRNNGradDFusionPass::DynamicAddInithReshapeNode(ge::NodePtr dy
 }
 
 ge::OpDescPtr DynamicRNNGradDFusionPass::DynamicAddCellOutReshapeNode(ge::NodePtr dynamicRNNGradNode,
-                                                                      string reshapeName, ge::GeTensorDesc inputDesc,
-                                                                      ge::ComputeGraph& graph, bool& failStatus) {
+                                                                      string reshapeName, ge::GeTensorDesc inputDesc) {
   auto reshapeOp = ge::OperatorFactory::CreateOperator(reshapeName.c_str(), "Reshape");
   FUSION_PASS_CHECK(reshapeOp.IsEmpty(), OP_LOGE(FUSED_OP_TYPE.c_str(), "Create Reshape Op operator error"),
                     return nullptr);
@@ -1767,8 +1763,7 @@ ge::OpDescPtr DynamicRNNGradDFusionPass::DynamicAddCellOutReshapeNode(ge::NodePt
 }
 
 ge::OpDescPtr DynamicRNNGradDFusionPass::AddBatchMatmulReshapeNode(ge::NodePtr dynamicRNNGradNode, string reshapeName,
-                                                                   ge::GeTensorDesc inputDesc, ge::ComputeGraph& graph,
-                                                                   bool& failStatus) {
+                                                                   ge::GeTensorDesc inputDesc) {
   auto reshapeOp = ge::OperatorFactory::CreateOperator(reshapeName.c_str(), "Reshape");
   FUSION_PASS_CHECK(reshapeOp.IsEmpty(), OP_LOGE(FUSED_OP_TYPE.c_str(), "Create Reshape Op operator error"),
                     return nullptr);
@@ -1801,8 +1796,8 @@ ge::OpDescPtr DynamicRNNGradDFusionPass::AddBatchMatmulReshapeNode(ge::NodePtr d
 }
 
 ge::OpDescPtr DynamicRNNGradDFusionPass::DynamicAddMatmulInReshapeNode(ge::NodePtr dynamicRNNGradNode,
-                                                                       string reshapeName, ge::GeTensorDesc inputDesc,
-                                                                       ge::ComputeGraph& graph, bool& failStatus) {
+                                                                       string reshapeName,
+                                                                       ge::GeTensorDesc inputDesc) {
   auto reshapeOp = ge::OperatorFactory::CreateOperator(reshapeName.c_str(), "Reshape");
   FUSION_PASS_CHECK(reshapeOp.IsEmpty(), OP_LOGE(FUSED_OP_TYPE.c_str(), "Create Reshape Op operator error"),
                     return nullptr);
@@ -1836,7 +1831,7 @@ ge::OpDescPtr DynamicRNNGradDFusionPass::DynamicAddMatmulInReshapeNode(ge::NodeP
 }
 
 ge::OpDescPtr DynamicRNNGradDFusionPass::AddTransposeNode(ge::NodePtr dynamicRNNGradNode, string transposeName,
-                                                          ge::ComputeGraph& graph, bool& failStatus) {
+                                                          bool& failStatus) {
   // create transposed desc
   ge::OpDescPtr transposeDesc = nullptr;
   FUSION_PASS_MAKE_SHARED((transposeDesc = std::make_shared<ge::OpDesc>(transposeName, "Transpose")), failStatus = true;

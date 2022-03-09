@@ -1453,7 +1453,7 @@ ge::NodePtr DynamicRNNGradDAlignFusionPass::DynamicAddSplitNode(ge::NodePtr dyna
   offsetDesc.SetOriginShape(GeShape({static_cast<int64_t>(output1Dim.size())}));
   offsetDesc.SetOriginFormat(FORMAT_ND);
   sliceDesc->AddInputDesc("offsets", offsetDesc);
-  ge::OpDescPtr offsetConst = CreateListConstDesc("addWhileHSliceOffset", output1Dim);
+  ge::OpDescPtr offsetConst = CreateListConstDesc(dynamicRNNGradNode->GetName() + "addWhileHSliceOffset", output1Dim);
   ge::NodePtr offsetNode = graph.AddNode(offsetConst);
   FUSION_PASS_CHECK(offsetNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "Create Const Op operator error"),
                     return nullptr);
