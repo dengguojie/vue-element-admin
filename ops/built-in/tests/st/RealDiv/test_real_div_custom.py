@@ -32,4 +32,5 @@ def test_batchmatmul_realdiv_add():
 
 
 if __name__ == "__main__":
-    test_batchmatmul_realdiv_add()
+    # test_batchmatmul_realdiv_add()
+    pass

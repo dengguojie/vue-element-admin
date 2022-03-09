@@ -160,7 +160,6 @@ def sigmoid_cross_entropy_with_logits(predict, target, loss, kernel_name="sigmoi
     check_list = ("float16", "float32")
     para_check.check_dtype(input_dtype_predict, check_list, param_name="predict")
     para_check.check_dtype(input_dtype_target, check_list, param_name="target")
-    para_check.check_elewise_shape_range([predict, target], support_broadcast=False)
     ins = classify([predict, target], OpPatternMode.ELEWISE)
 
     schedules, tensors = [], []

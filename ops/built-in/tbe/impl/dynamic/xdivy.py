@@ -150,8 +150,6 @@ def xdivy(input_x, input_y, output_z, kernel_name="xdivy"):
     check_list = ("float16", "float32")
     para_check.check_dtype(input_dtype_x, check_list, param_name="input_x")
     para_check.check_dtype(input_dtype_y, check_list, param_name="input_y")
-    para_check.check_elewise_shape_range([input_x, input_y],
-                                         support_broadcast=True)
     if input_dtype_x != input_dtype_y:
         error_detal = "input_x and input_y should have same type"
         error_manager_vector.raise_err_two_input_dtype_invalid(kernel_name,

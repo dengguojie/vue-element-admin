@@ -333,7 +333,6 @@ def softmax_cross_entropy_with_logits(
     check_list = ("float16", "float32")
     input_dtype = input_features.get("dtype").lower()
     para_check.check_dtype(input_dtype, check_list, param_name="input_features")
-    para_check.check_elewise_shape_range([input_features, input_labels], support_broadcast=True)
 
     shape_features = shape_util.scalar2tensor_one(shape_features)
     shape_labels = shape_util.scalar2tensor_one(shape_labels)

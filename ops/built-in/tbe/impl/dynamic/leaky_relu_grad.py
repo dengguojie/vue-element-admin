@@ -121,7 +121,6 @@ def leaky_relu_grad(g, x, y, negative_slope=0, kernel_name="leaky_relu_grad"):
     check_list = ("float16", "float32")
     para_check.check_dtype(g_dtype, check_list, param_name="input_g")
     para_check.check_dtype(x_dtype, check_list, param_name="input_x")
-    para_check.check_elewise_shape_range([g, x], support_broadcast=True)
     if g_dtype != x_dtype:
         error_manager_vector.raise_err_inputs_dtype_not_equal(kernel_name, "g", "x",
                                                               g_dtype, x_dtype)

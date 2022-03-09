@@ -350,8 +350,6 @@ def xlogy(input_x, input_y, output_z, kernel_name="xlogy"):
     check_list = ("float16", "float32")
     para_check.check_dtype(input_dtype, check_list, param_name="input_x")
     para_check.check_dtype(input_dtype_y, check_list, param_name="input_y")
-    para_check.check_elewise_shape_range([input_x, input_y],
-                                         support_broadcast=True)
     if dtype != dtype_y:
         error_manager_vector.raise_err_inputs_dtype_not_equal("Xlogy", "input_x", "input_y",
                                                               str(dtype), str(dtype_y))

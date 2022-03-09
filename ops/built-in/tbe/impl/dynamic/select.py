@@ -165,8 +165,6 @@ def select(condition, x1, x2, y, kernel_name="select"):
     check_list = ("float16", "float32", "int32", "int8", "uint8")
     para_check.check_dtype(dtype_x1, check_list, param_name="x1")
 
-    para_check.check_elewise_shape_range([x1, x2], support_broadcast=True)
-
     if dtype_x1 != dtype_x2:
         error_detail = "Dtype of tensor x1 and x2 must be equal!"
         error_manager_vector.raise_err_two_input_dtype_invalid(kernel_name, "x1", "x2", error_detail)

@@ -55,6 +55,17 @@ install_stest() {
     fi
   done
 
+  for line in `cat ${pr_file}`
+  do
+      line_realpath=${CANN_ROOT}/${line}
+      line_dir=${line_realpath%/*}
+      if [[ ${line_dir%/*} =~ "ops/built-in/tests/st" ]] && [[ ! $all_cases =~ ${line_dir}  ]]
+      then
+        echo "[INFO]copy ${line_dir} to st dirctory"
+        cp -rf "${line_dir}" "${TEST_INSTALL_PATH}"
+      fi
+  done
+
   if [ ! -z "${case_not_found}" ];then
     echo "[ERROR] st case not found:[${case_not_found}]"
     echo "exit $STATUS_FAILED"

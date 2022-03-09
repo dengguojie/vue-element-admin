@@ -166,8 +166,6 @@ def greater(x, y, z, kernel_name="greater"):
     check_list = ("float16", "float32", "int32", "int8", "uint8")
     para_check.check_dtype(dtype_x, check_list, param_name="x")
 
-    para_check.check_elewise_shape_range([x, y], support_broadcast=True)
-
     ins = classify([x, y], OpPatternMode.ELEWISE_WITH_BROADCAST)
     schedules, tensors = [], []
     for (x1, x2) in ins:

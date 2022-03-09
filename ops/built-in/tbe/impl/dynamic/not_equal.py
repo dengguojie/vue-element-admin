@@ -139,7 +139,6 @@ def not_equal(input_x, input_y, output_z, kernel_name="not_equal"):
     check_list = ("float16", "float32", "int32", "uint8", "int8")
     para_check.check_dtype(x_dtype, check_list, param_name="input_x")
     para_check.check_dtype(y_dtype, check_list, param_name="input_y")
-    para_check.check_elewise_shape_range([input_x, input_y], support_broadcast=True)
     if x_dtype != y_dtype:
         error_manager_vector.raise_err_inputs_dtype_not_equal("not_equal", "input_x", "input_y", str(x_dtype),
                                                               str(y_dtype))

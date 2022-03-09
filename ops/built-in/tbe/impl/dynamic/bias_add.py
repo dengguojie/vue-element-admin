@@ -224,8 +224,6 @@ def bias_add(x, bias, y, data_format="NHWC", kernel_name="bias_add"):
     bias["ori_shape"] = shape_bias
     bias["range"] = range_bias
 
-    para_check.check_elewise_shape_range([x, bias], support_broadcast=True)
-
     ins = classify([x, bias], OpPatternMode.ELEWISE_WITH_BROADCAST)
 
     schedules, tensors = [], []

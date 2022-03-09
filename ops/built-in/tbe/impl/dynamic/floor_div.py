@@ -104,7 +104,6 @@ def floor_div(input_x, input_y, output_z, kernel_name="floor_div"):
     check_list = ('int8', 'uint8', 'int32', 'float16', 'float32')
     para_check.check_dtype(input_dtype_x, check_list, param_name="input_x")
     para_check.check_dtype(input_dtype_y, check_list, param_name="input_y")
-    para_check.check_elewise_shape_range([input_x, input_y], support_broadcast=True)
     if input_dtype_x != input_dtype_y:
         error_manager_vector.raise_err_inputs_dtype_not_equal("floor_div", "input_x", "input_y",
                                                                  str(input_dtype_x), str(input_dtype_y))

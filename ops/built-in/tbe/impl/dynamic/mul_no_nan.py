@@ -88,7 +88,6 @@ def mul_no_nan(x1, x2, y, kernel_name="mul_no_nan"):
     inputx2_data_type = x2.get("dtype").lower()
     para_check.check_dtype(inputx1_data_type, check_tuple)
     para_check.check_dtype(inputx2_data_type, check_tuple)
-    para_check.check_elewise_shape_range([x1, x2], support_broadcast=True)
 
     shape_x1 = x1.get("shape")
     shape_x2 = x2.get("shape")

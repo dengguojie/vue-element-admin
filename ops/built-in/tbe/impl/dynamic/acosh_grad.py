@@ -179,8 +179,6 @@ def acosh_grad(y, dy, z, kernel_name="acosh_grad"):
     check_list = ("float16", "float32")
     para_check.check_dtype(dtype, check_list, param_name="y")
     para_check.check_dtype(dtype_dy, check_list, param_name="dy")
-    para_check.check_elewise_shape_range([y, dy],
-                                         support_broadcast=True)
 
     if dtype != dtype_dy:
         error_detail = "dtype of y and dy should be same"

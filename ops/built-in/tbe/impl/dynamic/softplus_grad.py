@@ -120,7 +120,6 @@ def softplus_grad(input_gradients, input_features, output_backprops,
     check_list = ("float16", "float32", "int32", "int8", "uint8")
     para_check.check_dtype(dtype_dy, check_list, param_name="input_g")
     para_check.check_dtype(dtype_x, check_list, param_name="input_x")
-    para_check.check_elewise_shape_range([input_gradients, input_features], support_broadcast=True)
     if dtype_dy != dtype_x:
         error_detail = "Dtype of tensor input_gradients and input_features must be same!"
         error_manager_vector.raise_err_two_input_dtype_invalid(kernel_name, "input_gradients", \

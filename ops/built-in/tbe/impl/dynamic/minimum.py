@@ -99,7 +99,6 @@ def minimum(x1, x2, y, kernel_name="minimum"):
     dtype_x2 = x2.get("dtype").lower()
     para_check.check_dtype(dtype_x1, check_list, param_name="x1")
     para_check.check_dtype(dtype_x2, check_list, param_name="x2")
-    para_check.check_elewise_shape_range([x1, x2], support_broadcast=True)
     if dtype_x1 != dtype_x2:
         error_manager_vector.raise_err_inputs_dtype_not_equal('minimum', 'x1', 'x2',
                                                               str(dtype_x1), str(dtype_x2))

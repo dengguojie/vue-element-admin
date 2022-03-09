@@ -121,8 +121,6 @@ def threshold_grad_v2_d(input_gradients, input_features, output_backprops, thres
     check_list = ("float16", "float32", "int32", "int8", "uint8")
     para_check.check_dtype(dtype_input_gradients, check_list)
     para_check.check_dtype(dtype_input_features, check_list)
-    para_check.check_elewise_shape_range([input_gradients, input_features],
-                                         support_broadcast=True)
     schedules, tensors = [], []
     ins = classify([input_gradients, input_features], OpPatternMode.ELEWISE_WITH_BROADCAST)
     for (data_x, data_y) in ins:

@@ -283,7 +283,6 @@ def atan2(x1, x2, y, kernel_name="atan2"):
     check_list = ("float16", "float32")
     para_check.check_dtype(y_dtype, check_list, param_name="x1")
     para_check.check_dtype(x_dtype, check_list, param_name="x2")
-    para_check.check_elewise_shape_range([x1, x2], support_broadcast=True)
     ins = classify([x1, x2], OpPatternMode.ELEWISE_WITH_BROADCAST)
     schedules, tensors = [], []
     for (ins_x1, ins_x2) in ins:

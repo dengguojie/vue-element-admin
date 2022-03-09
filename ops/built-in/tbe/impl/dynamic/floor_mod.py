@@ -132,7 +132,6 @@ def floor_mod(x1, x2, y, kernel_name="floor_mod"):
     check_list = ("float16", "float32", "int32")
     para_check.check_dtype(dtype_x, check_list, param_name="x1")
     para_check.check_dtype(dtype_y, check_list, param_name="x2")
-    para_check.check_elewise_shape_range([x1, x2], support_broadcast=True)
 
     if dtype_x != dtype_y:
         error_manager_vector.raise_err_inputs_dtype_not_equal("floor_mod", 'x1', 'x2', str(dtype_x), str(dtype_y))

@@ -100,7 +100,6 @@ def real_div(x1, x2, y, kernel_name="real_div", impl_mode=OpImplMode.HIGH_PERFOR
     check_list = ("float16", "float32")
     para_check.check_dtype(x_dtype, check_list, param_name="input_x")
     para_check.check_dtype(y_dtype, check_list, param_name="input_y")
-    para_check.check_elewise_shape_range([x1, x2], support_broadcast=True)
     if x_dtype != y_dtype:
         error_manager_vector.raise_err_inputs_dtype_not_equal(kernel_name, "x1", "x2",
                                                               x_dtype, y_dtype)

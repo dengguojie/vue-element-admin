@@ -93,7 +93,6 @@ def logical_and(x1, x2, y, kernel_name="logical_and"):
     check_tuple = ("int8",)
     para_check.check_dtype(dtype_x1, check_tuple, param_name="x1")
     para_check.check_dtype(dtype_x2, check_tuple, param_name="x2")
-    para_check.check_elewise_shape_range([x1, x2], support_broadcast=True)
 
     ins = classify([x1, x2], OpPatternMode.ELEWISE_WITH_BROADCAST)
     schedules, tensors = [], []

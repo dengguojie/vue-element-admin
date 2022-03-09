@@ -105,7 +105,6 @@ def sigmoid_grad(x,
     check_list = ("float16", "float32")
     para_check.check_dtype(x_dtype, check_list, param_name="input_x")
     para_check.check_dtype(dx_dtype, check_list, param_name="input_dx")
-    para_check.check_elewise_shape_range([x, dx], support_broadcast=False)
     if x_dtype != dx_dtype:
         error_manager_vector.raise_err_inputs_dtype_not_equal(kernel_name, "x", "dx",
                                                               x_dtype, dx_dtype)

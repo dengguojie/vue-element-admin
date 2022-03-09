@@ -158,7 +158,6 @@ def relu_grad(input_gradients, input_features, output_backprops, kernel_name="re
     check_list = ("float16", "float32", "int32", "int8", "uint8")
     para_check.check_dtype(g_dtype, check_list, param_name="input_gradients")
     para_check.check_dtype(x_dtype, check_list, param_name="input_features")
-    para_check.check_elewise_shape_range([input_gradients, input_features], support_broadcast=True)
     if g_dtype != x_dtype:
         error_manager_vector.raise_err_inputs_dtype_not_equal(kernel_name, "input_gradients", "input_features", g_dtype,
                                                               x_dtype)
