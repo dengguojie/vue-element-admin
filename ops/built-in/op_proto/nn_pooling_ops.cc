@@ -1347,64 +1347,6 @@ static bool GetSingleRange(ge::Operator& op, const std::vector<int64_t>& grade,
 }
 
 /*!
-  * Generate NHW shape range
-  */
-static bool GenFuzzyCompileShapeRange(ge::Operator& op, ge::GeTensorDescPtr& x_tensor,
-                                      std::vector<std::pair<int64_t, int64_t>>& input_range) {
-  auto x_shape = x_tensor->MutableShape().GetDims();
-  // only support 4D shape
-  auto x_format = x_tensor->GetFormat();
-  size_t idx_n = 0;
-  size_t idx_h = 0;
-  size_t idx_w = 0;
-  size_t idx_c = 0;
-  if (x_format == FORMAT_NHWC) {
-    idx_h = 1;
-    idx_w = 2;
-    idx_c = 3;
-  } else {
-    idx_c = 1;
-    idx_h = 2;
-    idx_w = 3;
-  }
-  std::vector<int64_t> grade_n = {0, 1, 3, 7, 15, 31, ((1UL << 31) - 1)};
-  std::vector<int64_t> grade_w = {0, 3, 15, 31, 63, 127, 191, 255, 511, 767, 1023, 4096};
-  std::vector<int64_t> grade_h = {0, 3, 15, 31, 63, 127, 191, 255, 511, 767, 1023, 4096};
-  // init empty range
-  // shape -1 without set range call "GetShapeRange" will return [1,-1]
-  input_range = {{}, {}, {}, {}};
-  std::vector<std::pair<int64_t, int64_t>> range_set;
-  x_tensor->GetShapeRange(range_set);
-  std::map<size_t, std::vector<int64_t>> grade_map;
-  grade_map[idx_n] = grade_n;
-  grade_map[idx_h] = grade_h;
-  grade_map[idx_w] = grade_w;
-  ge::AscendString op_name;
-  CHECK(op.GetName(op_name) != ge::GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return false);
-  for (auto item: grade_map) {
-    // allow shape -1 with range
-    if(x_shape[item.first] == -1) {
-      if (range_set.size() > item.first) {
-        input_range[item.first] = range_set[item.first];
-      } else {
-        OP_LOGE(op_name.GetString(), "cant't get input index %zu range", item.first);
-        return false;
-      }
-    } else {
-      int64_t low = 1;
-      int64_t high = 1;
-      if (!GetSingleRange(op, item.second, x_shape[item.first], low, high)) {
-        OP_LOGE(op_name.GetString(), "failed to get the %zu range", item.first);
-        return false;
-      }
-      input_range[item.first] = std::make_pair(low, high);
-    }
-  }
-  input_range[idx_c] = (std::make_pair(x_shape[idx_c], x_shape[idx_c]));
-  return true;
-}
-
-/*!
   * Make sure that output shape is larger than 0
   */
 bool CorrectFuzzyCompileRangeStart(ge::Operator& op, ge::GeTensorDescPtr& x_tensor,
@@ -1446,32 +1388,6 @@ bool CorrectFuzzyCompileRangeStart(ge::Operator& op, ge::GeTensorDescPtr& x_tens
   // get larger one for left range
   input_range[idx_h].first = input_range[idx_h].first > low_h ? input_range[idx_h].first : low_h;
   input_range[idx_w].first = input_range[idx_w].first > low_w ? input_range[idx_w].first : low_w;
-  return true;
-}
-
-bool DealWithFuzzyCompileCube(ge::Operator& op)
-{
-  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
-  ge::AscendString oPType;
-  if (op.GetOpType(oPType) == ge::GRAPH_FAILED) {
-      return false;
-  }
-
-  if (oPType == "AvgPoolGrad") {
-    auto input_grad_desc = op_desc->MutableInputDesc("input_grad");
-    std::vector<int64_t> x_sizes = input_grad_desc->MutableShape().GetDims();
-    std::vector<std::pair<int64_t, int64_t>> input_range(x_sizes.size());
-    if (!GenFuzzyCompileShapeRange(op, input_grad_desc, input_range)) {
-      OP_LOGE(oPType.GetString(), "generate input shape range failed.");
-      return false;
-    }
-
-    if (ge::GRAPH_SUCCESS != input_grad_desc->SetShapeRange(input_range)) {
-      OP_LOGE(oPType.GetString(), "set input shape range failed.");
-      return false;
-    }
-  }
-
   return true;
 }
 
@@ -2212,7 +2128,7 @@ IMPLEMT_COMMON_INFERFUNC(AvgPoolV2InferShape) {
   } else {
     output_desc->SetDataType(input_dtype);
   }
-  
+
 
   bool isDynamic = (input_n == -1) || (input_c == -1) || (input_h == -1) || (input_w == -1);
   if (isDynamic) {
@@ -2230,7 +2146,7 @@ IMPLEMT_COMMON_INFERFUNC(AvgPoolV2InferShape) {
 // cal new_pad_value for avgpool_v2 according to conv(data slice info)
 static void InferHWAvgpoolv2(int32_t input, int32_t kernel, int32_t pad, int32_t stride,
                              int32_t dilation, vector<int64_t> output_slice, vector<int64_t>& data_slice,
-                             int64_t* start_add_pad, int64_t* end_add_pad) 
+                             int64_t* start_add_pad, int64_t* end_add_pad)
 {
     if ((start_add_pad == nullptr) || (end_add_pad == nullptr)) {
         OP_LOGE("InferHWAvgpoolv2:", "Get start_add_pad or end_add_pad failed.");
@@ -2262,7 +2178,7 @@ static void InferHWAvgpoolv2(int32_t input, int32_t kernel, int32_t pad, int32_t
     }
 }
 
-static void get_corrected_pad(int64_t* input_pad) 
+static void get_corrected_pad(int64_t* input_pad)
 {
     if (input_pad == nullptr) {
         OP_LOGE("get_corrected_pad:", "Get input_pad failed.");
@@ -2276,7 +2192,7 @@ static void get_corrected_pad(int64_t* input_pad)
   // The code here refers to the implementation of _calculate_pads before calling conv2d_compute in avg_pool_v2.py
 static void calculate_pad(string padding, int64_t input_h, int64_t input_w, int64_t stride_h,
                           int64_t stride_w, int64_t ksize_h, int64_t ksize_w, vector<int64_t> dilations,
-                          vector<int64_t>& pad, vector<int64_t> pads, bool ceilMode) 
+                          vector<int64_t>& pad, vector<int64_t> pads, bool ceilMode)
 {
     if ((pads.size() < 4) || (dilations.size() < 4)) {
         OP_LOGE("calculate_pad:", "Get pad_vec or  dilations failed.");
@@ -2391,7 +2307,7 @@ IMPLEMT_INFER_DATA_SLICE(AvgPoolV2, AvgPoolV2InferDataSlice){
         OP_LOGE(op_name.GetString(), "dims_input size or ksize size or strides size or pad size less then 4.");
         return GRAPH_FAILED;
     }
-      
+
     int64_t inputH = 0;
     int64_t inputW = 0;
     if (inputFormat == FORMAT_NC1HWC0) {
@@ -2470,7 +2386,7 @@ IMPLEMT_INFER_DATA_SLICE(AvgPoolV2, AvgPoolV2InferDataSlice){
                 vector<int64_t> iw_slice;
                 int64_t left_add_pad = pad_list[2];
                 int64_t right_add_pad = pad_list[3];
-                InferHWAvgpoolv2(inputW, windowW, padl, strideW, dilw, y_data_slice[i], 
+                InferHWAvgpoolv2(inputW, windowW, padl, strideW, dilw, y_data_slice[i],
                                 iw_slice, &left_add_pad, &right_add_pad);
                 OP_LOGD(op_name.GetString(), "Avgpoolv2 w axis slice ori_scope is [%d,%d], output scope is [%d,%d]",
                         iw_slice[0], iw_slice[1], y_data_slice[i][0], y_data_slice[i][1]);
@@ -5975,7 +5891,8 @@ IMPLEMT_COMMON_INFERFUNC(AvgPoolGradInferShape) {
     DataType dtype = input_sizes_desc->GetDataType();
     GetConstValue(op, orig_input_shape_tensor, dtype, orig_input_size);
     is_input_size_const = true;
-  } else if (IsUnKnownShape(input_grad_shape)) {
+  }
+  if (IsUnKnownShape(input_grad_shape)) {
     // when static op or dynamic op phase_running, is_dynamic == False
     is_dynamic = true;
     reset_range(op, "input_grad");
@@ -6017,15 +5934,6 @@ IMPLEMT_COMMON_INFERFUNC(AvgPoolGradInferShape) {
     tensordesc_output->SetShape(GeShape(orig_input_size));
   }
   tensordesc_output->SetDataType(output_dtype);
-
-  // fuzzy build compile
-  bool fuzzy_flag = false;
-  if (ge::GRAPH_SUCCESS == op.GetAttr(ge::ATTR_NAME_FUZZ_BUILD.c_str(), fuzzy_flag) &&
-    fuzzy_flag &&
-    (!IsUnknown(input_grad_shape)) &&
-    !DealWithFuzzyCompileCube(op)) {
-      return ge::GRAPH_FAILED;
-  }
 
   OP_LOGD(op_name.GetString(), "Leave AvgPoolGrad inferfunction!");
   return GRAPH_SUCCESS;

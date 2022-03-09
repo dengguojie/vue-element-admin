@@ -34,6 +34,7 @@ from te.platform import cce_params
 # the bytes length of several dtype
 BIT_RATIO_DICT = {"int32": 4, "float32": 4, "float16": 2,
                   "uint8": 1, "int8": 1, "uint4": 0.5, "int4": 0.5}
+BLOCK_K_DICT = {"float16": 16, "float32": 8, "int8": 32, "uint8": 32, "int32": 8, "uint4": 64, "int4": 64}
 N_DIM = 0
 C_DIM = 1
 H_DIM = 2
@@ -69,18 +70,18 @@ FP16_N = 16
 FP16_SIZE = 2
 
 
-def _get_idx_shape_from_format(obj_format, obj_shape):
+def get_idx_shape_from_format(obj_format, obj_shape, dst_format="NDHWC"):
     """
     get index and shape from ele_format
     """
-
-    idx_n = obj_format.find('N')
-    idx_d = obj_format.find('D')
-    idx_h = obj_format.find('H')
-    idx_w = obj_format.find('W')
-    idx_c = obj_format.find('C')
-    return [idx_n, idx_d, idx_h, idx_w, idx_c],\
-           [obj_shape[idx_n], obj_shape[idx_d], obj_shape[idx_h], obj_shape[idx_w], obj_shape[idx_c]]
+    idx_list = []
+    dst_shape = []
+    for dim in dst_format:
+        dim_idx = obj_format.find(dim)
+        idx_list.append(dim_idx)
+        dim_shape = obj_shape[dim_idx]
+        dst_shape.append(dim_shape)
+    return idx_list, dst_shape
 
 
 def ceil_div(x_1, x_2):
@@ -137,37 +138,47 @@ def check_para_fuzz_compile(x: dict, y:dict, dilations:list, is_gragh_mode:bool,
     """
     check fuzz compile parameters
     """
+    param_index_dict = {"conv2d_backprop_input": 2, "depthwise_conv2d_backprop_input": 2,
+                        "conv2d_transpose": 1, "deconvolution": 0, "avg_pool_grad": 1}
+    param_idx = param_index_dict.get(op_type, 0)
     # unknow_rank inputs ori_shape is [-2], others' shape length is 4
-    unknow_rank = len(x["ori_shape"]) == 1 and x["ori_shape"][0] == -2
+    unknow_rank = list(x.get("ori_shape", [])) == UNKNOWN_SHAPE
     if unknow_rank:
         warnings.warn("{} not support unknow_rank".format(op_type))
-        return [{"result": "UNSUPPORTED", "reason": {"param_index": [2], "type": ["lower_limit"]}}]
+        return [{"result": "UNSUPPORTED", \
+            "reason": {"param_index": [param_idx], "type": ["lower_limit"]}}]
     have_range = {"inputs": x, "outputs": y}
     support_format = ["NCHW", "NHWC"]
     for name, tensor in have_range.items():
         if tensor.get("ori_format") not in support_format:
             warnings.warn("{} invalid {} ori_format {}, only support {}".format(op_type,
                             name, str(tensor.get("ori_format")), str(support_format)))
-            return [{"result": "UNSUPPORTED", "reason": {"param_index": [2], "type": ["lower_limit"]}}]
+            return [{"result": "UNSUPPORTED", \
+                "reason": {"param_index": [param_idx], "type": ["lower_limit"]}}]
         # only change shape NHW dim to -1, range is already set at infershape
         valid = isinstance(tensor.get("ori_shape"), (list, tuple)) and len(tensor["ori_shape"]) == FORMAT_NCHW_DIM
         if not valid:
             warnings.warn("{}, invalid {} ori_shape {}, only support {}d".format(op_type,
                             name, str(tensor.get("ori_shape")), str(FORMAT_NCHW_DIM)))
-            return [{"result": "UNSUPPORTED", "reason": {"param_index": [2], "type": ["lower_limit"]}}]
+            return [{"result": "UNSUPPORTED", \
+                "reason": {"param_index": [param_idx], "type": ["lower_limit"]}}]
         tensor_format = tensor.get("ori_format")
         n_pos, h_pos, w_pos = tensor_format.find("N"), tensor_format.find("H"), tensor_format.find("W")
         if (dilations[h_pos] != 1 or dilations[w_pos] != 1):
-            return [{"result": "UNSUPPORTED", "reason": {"param_index": [2], "type": ["lower_limit"]}}]
+            return [{"result": "UNSUPPORTED", \
+                "reason": {"param_index": [param_idx], "type": ["lower_limit"]}}]
         ori_range = tensor.get("ori_range")
         if is_gragh_mode and (any([not dim_range[1] for dim_range in ori_range]) or \
-            any([dim_range[1] > MAX_HW_FUZZ_BUILD for dim_range in [ori_range[h_pos], ori_range[w_pos]]]) \
-            or ori_range[n_pos][1] > MAX_N_FUZZ_BUILD):
-            return [{"result": "UNSUPPORTED", "reason": {"param_index": [2], "type": ["upper_limit"]}}]
+            any([dim_range[1] == -1 for dim_range in ori_range]) or \
+            any([dim_range[1] > MAX_HW_FUZZ_BUILD for dim_range in [ori_range[h_pos], ori_range[w_pos]]]) or \
+            ori_range[n_pos][1] > MAX_N_FUZZ_BUILD):
+            return [{"result": "UNSUPPORTED", \
+                "reason": {"param_index": [param_idx], "type": ["upper_limit"]}}]
         if is_gragh_mode and (any([dim_range[0] < 1 for dim_range in ori_range]) or \
             any([dim_range[0] > MAX_HW_FUZZ_BUILD for dim_range in [ori_range[h_pos], ori_range[w_pos]]]) \
             or ori_range[n_pos][0] > MAX_N_FUZZ_BUILD):
-            return [{"result": "UNSUPPORTED", "reason": {"param_index": [2], "type": ["lower_limit"]}}]
+            return [{"result": "UNSUPPORTED", \
+                "reason": {"param_index": [param_idx], "type": ["lower_limit"]}}]
     return []
 
 
@@ -176,8 +187,6 @@ def modify_w_range_max(fmap: dict, infilter: dict, dedy: dict, strides: list, da
     """
     modify w range max value
     """
-
-    bit_dir = {"float32": 16, "float16": 16, "int8": 32, "int32": 16}
     fmap_w = fmap.get("ori_shape")[fmap.get("ori_format").find("W")]
     filter_h = infilter.get("ori_shape")[infilter.get("ori_format").find("H")]
     filter_w = infilter.get("ori_shape")[infilter.get("ori_format").find("W")]
@@ -198,13 +207,10 @@ def modify_w_range_max(fmap: dict, infilter: dict, dedy: dict, strides: list, da
     while dedy_h_max >= dedy_h:
         h_value_max = min(filter_h + 1, dedy_h_max * stride_h)
         l1_size = get_soc_spec("L1_SIZE")
-        kw_k0 = filter_w * CUBE_SIZE
-        tiling_bl1_shape_0 = bit_dir.get(filter_dtype) // kw_k0
-        filter_l1_size = FP16_SIZE * FP16_N * tiling_bl1_shape_0 * FP16_K * filter_w * filter_h
+        filter_l1_size = FP16_SIZE * FP16_N * FP16_K * filter_w * filter_h
         a_l1_size = l1_size - filter_l1_size
         w_value = a_l1_size // (h_value_max * c0_size_k * BIT_RATIO_DICT.get(out_backprop_dtype))
         w_max = w_value // stride_w
-
         is_single_point = False
         if w_max >= dedy_w:
             return {"dedy_h_max": dedy_h_max, "w_max": w_max,
@@ -238,7 +244,8 @@ def modify_dy_w_range_max_opti(dedy: dict, infilter: dict, strides: list,
 
     is_pass_check = True
     param_index_dict = {"conv2d_backprop_input": 2, "depthwise_conv2d_backprop_input": 2,
-                        "conv2d_transpose": 1, "deconvolution": 0}
+                        "conv2d_transpose": 1, "deconvolution": 0, "avg_pool_grad": 1}
+    param_idx = param_index_dict.get(op_type, 0)
     filter_shape = infilter.get("ori_shape")
     filter_format = infilter.get("ori_format")
     _, _, pos_filter_h, pos_filter_w = pos_from_format(filter_format)
@@ -254,7 +261,7 @@ def modify_dy_w_range_max_opti(dedy: dict, infilter: dict, strides: list,
         warnings.warn("{}, w of dedy is too large for opti scheme ,w can't larger than {}"
                       "actually is {}".format(op_type, str(w_max), str(dedy_shape[pos_w])))
         is_pass_check = False
-        return is_pass_check, [{"result": "UNSUPPORTED", "reason": {"param_index": [param_index_dict.get(op_type)],
+        return is_pass_check, [{"result": "UNSUPPORTED", "reason": {"param_index": [param_idx],
                                 "type": ["lower_limit"]}}]
     if w_max < dedy_range[pos_w][1]:
         if is_gragh_mode:
@@ -262,7 +269,7 @@ def modify_dy_w_range_max_opti(dedy: dict, infilter: dict, strides: list,
                         "w_range_max should not larger than {}, actually is {}"
                         .format(str(w_max), str(dedy_range[pos_w][1])))
             is_pass_check = False
-            return is_pass_check, [{"result": "UNSUPPORTED", "reason": {"param_index": [param_index_dict.get(op_type)],
+            return is_pass_check, [{"result": "UNSUPPORTED", "reason": {"param_index": [param_idx],
                                     "type": ["upper_limit"]}}]
         warnings.warn("w_range_max of dedy is too large for opti scheme"
                       "w_range_max will be modified to {}, actually is {}"
@@ -271,26 +278,41 @@ def modify_dy_w_range_max_opti(dedy: dict, infilter: dict, strides: list,
     return is_pass_check, dedy
 
 
-def correct_conv2d_backprop_range_start(input_d : dict, infilter : dict, dilations : list, \
+def correct_conv2d_backprop_range_start(fmap_dict : dict, filter_dict : dict,  dilations : list,
     pads : list, data_format : str) -> dict:
     """
-    correct conv2d backprop range start
+    correct fmap lower range for conv2d & conv3d.
     """
-    input_range = list(map(list, input_d.get("ori_range")))
-    input_format = input_d.get("ori_format")
-    filter_shape = infilter.get("ori_shape")
-    filter_format = infilter.get("ori_format")
+    input_range = list(map(list, fmap_dict.get("ori_range")))
+    input_format = fmap_dict.get("ori_format")
+    filter_shape = filter_dict.get("ori_shape")
+    filter_format = filter_dict.get("ori_format")
     _, _, pos_h, pos_w = pos_from_format(input_format)
     _, _, pos_filter_h, pos_filter_w = pos_from_format(filter_format)
     _, _, pos_attr_h, pos_attr_w = pos_from_format(data_format)
+
+    # support 3d
+    if data_format.find("D") > 0:
+        pad_head, pad_back, pad_top, pad_bottom, pad_left, pad_right = pads
+        pos_d = input_format.find("D")
+        pos_filter_d = filter_format.find("D")
+        pos_attr_d = data_format.find("D")
+        kd_dilation = dilations[pos_attr_d] * (filter_shape[pos_filter_d] - 1) + 1
+        low_d = kd_dilation - pad_head - pad_back
+        input_range[pos_d][0] = max(input_range[pos_d][0], low_d)
+    else:
+        pad_top, pad_bottom, pad_left, pad_right = pads
+
     kh_dilation = dilations[pos_attr_h] * (filter_shape[pos_filter_h] - 1) + 1
     kw_dilation = dilations[pos_attr_w] * (filter_shape[pos_filter_w] - 1) + 1
-    low_h = kh_dilation - pads[0] - pads[1]
-    low_w = kw_dilation - pads[2] - pads[3]
-    input_range[pos_h][0] = input_range[pos_h][0] if input_range[pos_h][0] > low_h else low_h
-    input_range[pos_w][0] = input_range[pos_w][0] if input_range[pos_w][0] > low_w else low_w
-    input_d["ori_range"] = input_range
-    return input_d
+    low_h = kh_dilation - pad_top - pad_bottom
+    low_w = kw_dilation - pad_left - pad_right
+    input_range[pos_h][0] = max(input_range[pos_h][0], low_h)
+    input_range[pos_w][0] = max(input_range[pos_w][0], low_w)
+
+    fmap_dict["ori_range"] = input_range
+
+    return fmap_dict
 
 
 def get_single_range(grade : list, shape_value : int, op_type : str) -> list:
@@ -344,7 +366,7 @@ def check_graph_mode(tensor: dict) -> bool:
     check graph mode
     """
     # check graph mode or single mode in fuzzy compile
-    if (list(tensor.get("ori_shape")) == [-2] or DYNAMIC_FLAG in tensor.get("ori_shape") and
+    if (list(tensor.get("ori_shape", [])) == UNKNOWN_SHAPE or DYNAMIC_FLAG in tensor.get("ori_shape") and
         "ori_range" in tensor.keys()):
         return True
     return False
@@ -525,6 +547,48 @@ def cal_dedx_range(input_tensor, strides, data_format):
     return input_size_range
 
 
+def check_modify_w_range(input_grad, filter_size, out_backprop, strides, data_format, op_type, is_first_point):
+    """
+    check L1 range
+    """
+    _, [_, dedy_w] = get_idx_shape_from_format(out_backprop.get("ori_format"), out_backprop.get("ori_shape"), "HW")
+    _, [_, fmap_w] = get_idx_shape_from_format(input_grad.get("ori_format"), input_grad.get("ori_shape"), "HW")
+    _, [filter_h, filter_w] = get_idx_shape_from_format(filter_size.get("ori_format"), filter_size.get("ori_shape"),
+                                                        "HW")
+
+    _, [_, strides_w] = get_idx_shape_from_format(data_format, strides, "HW")
+    _, [_, dedy_range_w] = get_idx_shape_from_format(out_backprop.get("ori_format"), out_backprop.get("ori_range"),
+                                                     "HW")
+    _, [_, fmap_range_w] = get_idx_shape_from_format(input_grad.get("ori_format"), input_grad.get("ori_range"), "HW")
+    filter_dtype = input_grad.get("dtype")
+    dedy_dtype = input_grad.get("dtype")
+    if not is_first_point:
+        dedy_w = dedy_range_w[0]
+        fmap_w = fmap_range_w[0]
+    bl1_size = filter_h * filter_w * BLOCK_K_DICT.get(filter_dtype) * FP16_N * BIT_RATIO_DICT.get(filter_dtype)
+    l1_size = get_soc_spec("L1_SIZE")
+    al1_max_size = l1_size - bl1_size
+    w_max = al1_max_size // (BIT_RATIO_DICT.get(dedy_dtype) * BLOCK_K_DICT.get(dedy_dtype) * (filter_h + 1) * strides_w)
+    # w_dim only support one point scene
+    fmap_w_static = (is_first_point or fmap_range_w[0] == fmap_range_w[1]) and fmap_w % FP16_M == 0 and w_max < dedy_w
+    if fmap_w_static:
+        w_max = al1_max_size // (BIT_RATIO_DICT.get(dedy_dtype) * BLOCK_K_DICT.get(dedy_dtype) * filter_h * strides_w)
+    supports = "no_limit"
+    if w_max < dedy_w:
+        if is_first_point:
+            warnings.warn(f"In {op_type}, the shape of inputs can not be supported which will exceed L1.")
+            supports = "unsupported"
+        else:
+            warnings.warn(f'In {op_type}, the lower limit of inputs range can not be supported which will exceed L1.')
+            supports = "lower_limit"
+    elif w_max < dedy_range_w[1]:
+        warnings.warn(f"In {op_type}, the upper limit of input range exceed support range.")
+        supports = "upper_limit"
+    dedy_range_w = (dedy_range_w[0], min(w_max, dedy_range_w[1]))
+    fmap_range_w = fmap_range_w if fmap_w_static else (fmap_w, fmap_w)
+    return supports, dedy_range_w, fmap_range_w
+
+
 class CubeParaProcess:
     """
     class of param check and preprocess for dynamic cube ops
@@ -536,6 +600,7 @@ class CubeParaProcess:
         self.strides = paras.get("strides")
         self.pads = paras.get("pads")
         self.dilations = paras.get("dilations")
+        self.data_format = paras.get("data_format")
         self.op_type = None
         self.binary_mode = False
         self.fusion_flag = False
@@ -1942,11 +2007,11 @@ class Conv3dBackpropParaProcess():
         get dx_ori_range according to dy_ori_range
         """
 
-        _, shape_filter_ndhwc = _get_idx_shape_from_format(self.filter["ori_format"],
+        _, shape_filter_ndhwc = get_idx_shape_from_format(self.filter["ori_format"],
                                                            self.filter["ori_shape"])
-        idx_y_ndhwc, _ = _get_idx_shape_from_format(self.y["ori_format"],
+        idx_y_ndhwc, _ = get_idx_shape_from_format(self.y["ori_format"],
                                                       self.y["ori_shape"])
-        idx_out_backprop_ndhwc, _ = _get_idx_shape_from_format(self.out_backprop["ori_format"],
+        idx_out_backprop_ndhwc, _ = get_idx_shape_from_format(self.out_backprop["ori_format"],
                                                                                       self.out_backprop["ori_shape"])
         _, filter_d, filter_h, filter_w, filter_c = shape_filter_ndhwc
         idx_out_backprop_n, idx_out_backprop_d, idx_out_backprop_h, idx_out_backprop_w, _ = idx_out_backprop_ndhwc

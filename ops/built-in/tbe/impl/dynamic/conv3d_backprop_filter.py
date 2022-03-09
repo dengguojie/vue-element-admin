@@ -28,6 +28,9 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tvm
+from impl.util.platform_adapter import tbe_register
+from impl.util.util_cube_dynamic import gen_conv_shape_range
+from impl.util.util_cube_dynamic import correct_conv2d_backprop_range_start
 
 
 # the dim of shape in conv_backprop must be 5
@@ -81,6 +84,18 @@ _PADDING_VAILD = [0, 0, 0, 0, 0, 0]
 # If pads is string , only support "SAME" or "VALID"
 _PADDING_SUPPORT = ('SAME', 'VALID')
 _DYNAMIC_RANK_FLAG = [-2]
+_DYNAMIC_SHAPE_VAL = -1
+
+# fuzzy compile constant
+FUZZ_MODE_N_MAX = 2147483647
+FUZZ_MODE_D_MAX = 4096
+FUZZ_MODE_HW_MAX = 4096
+FMAP_PARAM_IDX = 0
+DEDY_PARAM_IDX = 2
+LOEWR_LIMIT_FLAG = "lower_limit"
+UPPER_LIMIT_FLAG = "upper_limit"
+OP_TYPE = "conv3d_backprop_filter"
+UNSUPPORTED_FUZZ_RES = [{"result": "UNSUPPORTED"}]
 
 
 def _get_pos_from_format(format_in):
@@ -110,6 +125,115 @@ def _check_dimensions(shape, name, dimension):
         }
         raise RuntimeError(dict_args,
                            error_manager_util.get_error_message(dict_args))
+
+
+def _is_fuzzy_input_valid(tensor_dict):
+    """
+    Validate input for fuzzy compile.
+    """
+    is_valid = (
+        isinstance(tensor_dict.get("ori_shape"), (list, tuple)) and
+        len(tensor_dict.get("ori_shape")) == _CONV_BACKPROP_SHAPE_DIM and
+        list(tensor_dict.get("ori_shape")) != _DYNAMIC_RANK_FLAG and
+        tensor_dict.get("ori_format") in ("NDHWC", "NCDHW")
+        )
+    if is_valid and _DYNAMIC_SHAPE_VAL in tensor_dict.get("ori_shape"):
+        is_valid &= len(tensor_dict.get("ori_range")) == _CONV_BACKPROP_SHAPE_DIM
+
+    return is_valid
+
+
+def _check_tensor_range(tensor_dict, upper_limit_dict):
+    """
+    Helper function for tensor range validation.
+    """
+    n_dim, d_dim, h_dim, w_dim, _ = _get_pos_from_format(tensor_dict.get("ori_format"))
+    n_dim_max, d_dim_max, h_dim_max, w_dim_max = \
+        upper_limit_dict.get("N"), upper_limit_dict.get("D"), upper_limit_dict.get("H"), upper_limit_dict.get("W")
+
+    lower_limit_flag = (
+        tensor_dict.get("ori_range")[n_dim][0] > n_dim_max or
+        tensor_dict.get("ori_range")[d_dim][0] > d_dim_max or
+        tensor_dict.get("ori_range")[h_dim][0] > h_dim_max or
+        tensor_dict.get("ori_range")[w_dim][0] > w_dim_max
+    )
+
+    if lower_limit_flag:
+        warnings.warn("Lower range of N/D/H/W dim exceeds upper limit, please check.")
+        return LOEWR_LIMIT_FLAG
+
+    upper_limit_flag = (
+        None in list(zip(*tensor_dict.get("ori_range")))[1] or
+        -1 in list(zip(*tensor_dict.get("ori_range")))[1] or
+        tensor_dict.get("ori_range")[n_dim][1] > n_dim_max or
+        tensor_dict.get("ori_range")[d_dim][1] > d_dim_max or
+        tensor_dict.get("ori_range")[h_dim][1] > h_dim_max or
+        tensor_dict.get("ori_range")[w_dim][1] > w_dim_max
+    )
+
+    if upper_limit_flag:
+        warnings.warn("Upper range of N/D/H/W dim exceeds upper limit, please check.")
+        return UPPER_LIMIT_FLAG
+
+    return ""
+
+
+def _check_tensor_shape(tensor_dict, upper_limit_dict):
+    """
+    Helper function for tensor shape check.
+    """
+    n_dim, d_dim, h_dim, w_dim, _ = _get_pos_from_format(tensor_dict.get("ori_format"))
+    n_dim_max, d_dim_max, h_dim_max, w_dim_max = \
+        upper_limit_dict.get("N"), upper_limit_dict.get("D"), upper_limit_dict.get("H"), upper_limit_dict.get("W")
+    shape_invalid = lambda shape_val, upper_limit: shape_val >= upper_limit or shape_val <= 0
+    return (
+        shape_invalid(tensor_dict.get("ori_shape")[n_dim], n_dim_max) or
+        shape_invalid(tensor_dict.get("ori_shape")[d_dim], d_dim_max) or
+        shape_invalid(tensor_dict.get("ori_shape")[h_dim], h_dim_max) or
+        shape_invalid(tensor_dict.get("ori_shape")[w_dim], w_dim_max)
+    )
+
+
+def _generalize_tensor_shape(tensor_dict):
+    """
+    Helper function for tensor shape generalization.
+    """
+    general_shape = [-1] * len(tensor_dict.get("ori_shape"))
+    c_dim = tensor_dict.get("ori_format").find("C")
+    general_shape[c_dim] = tensor_dict.get("ori_shape")[c_dim]
+
+    return general_shape
+
+
+def _get_bl1_max_load_width(dedw_dict, strides, dilations, data_format):
+    """
+    Calculate max load width of fmap in L1, considering L1 size.
+    """
+    dedw_shape = dedw_dict.get("ori_shape")
+    h_dim = data_format.find("H")
+    stride_h = strides[h_dim]
+    dilation_h = dilations[h_dim]
+    filter_h_dilation = (dedw_shape[h_dim] - 1) * dilation_h + 1
+
+    l1_size = tbe_platform.get_soc_spec("L1_SIZE")
+    al1_min_byte = _C0_SIZE * _C0_SIZE * 2
+    bl1_max_byte = l1_size - al1_min_byte
+    bl1_w_max = bl1_max_byte // ((filter_h_dilation + stride_h) * _C0_SIZE * 2)
+
+    return bl1_w_max
+
+
+def _correct_fmap_w_range(fmap_dict, dedw_dict, strides, dilations, data_format):
+    """
+    Correct d/h/w range of fmap. Each dim is supposed to be within [kernel_dilated - pad, upper_limit].
+    """
+    w_dim = data_format.find("W")
+    w_lower, w_upper = fmap_dict.get("ori_range")[w_dim]
+    bl1_max_width = _get_bl1_max_load_width(dedw_dict, strides, dilations, data_format)
+    w_upper = min(bl1_max_width, w_upper)
+    fmap_dict["ori_range"][w_dim] = [w_lower, w_upper]
+
+    return fmap_dict
 
 
 def _get_ndhwc_shape(fmap, out_backprop, filters, dilations, strides, data_format, groups):
@@ -683,6 +807,100 @@ def _conv3d_backprop_filter_compute(x, filter_size, out_backprop, y,
     dedw = tbe.conv3d_backprop_filter(x=fmap, out_backprop=dedy, filter_size=dedw_ndchw, para_dict=para_dict)
 
     return {'op_placeholder': [fmap, filter_size, dedy], 'op_res': [dedw]}
+
+
+@tbe_register.register_param_generalization("Conv3DBackpropFilter")
+def conv3d_backprop_filter_generalization(x, filter_size, out_backprop, y, strides, pads,
+                                          dilations=(1, 1, 1, 1, 1), groups=1,
+                                          data_format='NDHWC',
+                                          kernel_name="conv3d_backprop_filter",
+                                          generalize_config=None):
+    """
+    algorithm: conv3d_backprop_filter generalization api.
+
+    Parameters
+    ----------
+    x: dict with keys(shape, dtype and range), input feature map tensor
+
+    filter_size: dict, will not be used
+
+    out_backprop: dict with keys(shape and dtype), out_backprop tensor
+
+    y: dict with keys(shape and dtype), output tensor, dtype must be assigned
+
+    strides: tuple/list of 5 integers, filter move stride
+
+    pads: tuple/list of 6 integers, [pad_front, pad_back, pad_top, pad_bottom, pad_left, pad_right]
+
+    dilations: tuple/list of 5 integers, filter expand size of dilated conv3d_backprop_filter
+
+    groups: int, The number of filter's group. Default value is 1.
+
+    data_format: str
+    An optional string from: "NDHWC", "NCDHW". Defaults to "NDHWC".
+    Specify the data format of the input and output data.
+
+    kernel_name: str, kernel name, default value is "conv3d_backprop_filter"
+
+    generalize_config: dict
+    An optional dict used for specify the operation mode, support "keep_rank" for now.
+
+    Returns
+    -------
+    Param list.
+    """
+    if generalize_config.get("mode") != "keep_rank":
+        warnings.warn("Only support keep_rank in generalize_config")
+        return
+
+    if not _is_fuzzy_input_valid(x) or not _is_fuzzy_input_valid(out_backprop):
+        return UNSUPPORTED_FUZZ_RES
+
+    result = []
+    dedy_upper_limit_dict = {"N": FUZZ_MODE_N_MAX, "D": FUZZ_MODE_D_MAX, "H": FUZZ_MODE_HW_MAX, "W": FUZZ_MODE_HW_MAX}
+    bl1_max_width = _get_bl1_max_load_width(y, strides, dilations, data_format)
+    fmap_upper_limit_dict = {"N": FUZZ_MODE_N_MAX, "D": FUZZ_MODE_D_MAX, "H": FUZZ_MODE_HW_MAX,
+                             "W": min(bl1_max_width, FUZZ_MODE_HW_MAX)}
+    _check_dynamic = lambda tensor: _DYNAMIC_SHAPE_VAL in tensor.get("ori_shape")
+    dynamic_flag = _check_dynamic(x) or _check_dynamic(out_backprop)
+    if dynamic_flag:
+        fmap_range_status = _check_tensor_range(x, fmap_upper_limit_dict)
+        dedy_range_status = _check_tensor_range(out_backprop, dedy_upper_limit_dict)
+
+        param_idx = []
+        support_info = []
+        if fmap_range_status:
+            param_idx.append(FMAP_PARAM_IDX)
+            support_info.append(fmap_range_status)
+        if dedy_range_status:
+            param_idx.append(DEDY_PARAM_IDX)
+            support_info.append(dedy_range_status)
+        if param_idx:
+            return [{"result": "UNSUPPORTED", "reason": {"param_index": param_idx, "type": support_info}}]
+
+    else:
+        fmap_invalid_flag = _check_tensor_shape(x, fmap_upper_limit_dict)
+        dedy_invalid_flag = _check_tensor_shape(out_backprop, dedy_upper_limit_dict)
+
+        if fmap_invalid_flag or dedy_invalid_flag:
+            return UNSUPPORTED_FUZZ_RES
+
+        # generalize input range
+        x = gen_conv_shape_range(x, OP_TYPE)
+        out_backprop = gen_conv_shape_range(out_backprop, OP_TYPE)
+
+        # correct fmap range of w dim
+        x = correct_conv2d_backprop_range_start(x, y, dilations, pads, data_format)
+        x = _correct_fmap_w_range(x, y, strides, dilations, data_format)
+
+        # modify input shape
+        x["ori_shape"] = _generalize_tensor_shape(x)
+        out_backprop["ori_shape"] = _generalize_tensor_shape(out_backprop)
+
+    result.append([x, filter_size, out_backprop, y, {"strides": strides}, {"pads": pads},
+                  {"dilations": dilations}, {"groups": groups}, {"data_format": data_format},
+                  {"kernel_name": kernel_name}])
+    return result
 
 
 @register_operator('Conv3DBackpropFilter')

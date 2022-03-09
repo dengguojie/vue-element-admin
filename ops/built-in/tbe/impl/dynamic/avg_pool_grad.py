@@ -15,16 +15,24 @@
 """
 avg_pool_grad
 """
+from __future__ import absolute_import
+
+import warnings
+
 from impl.util.platform_adapter import error_manager_cube
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tbe_register
 from impl.util.platform_adapter import tvm
+from impl.util.util_conv2d import transform_shape_with_format
 from impl.util.util_cube_dynamic import Conv2dBackpropParaProcess
 from impl.util.util_cube_dynamic import Conv2dTransposeParaProcess
 from impl.util.util_cube_dynamic import set_default_para
 from impl.util.util_cube_dynamic import modify_w_range_max
+from impl.util.util_cube_dynamic import gen_conv_shape_range
+from impl.util.util_cube_dynamic import modify_dy_w_range_max_opti
+from impl.util.util_cube_dynamic import check_modify_w_range
 
 BLOCK_SIZE = tbe_platform.BLOCK_REDUCE
 
@@ -46,6 +54,16 @@ H_DIM = 2
 W_DIM = 3
 
 UNKNOWN_RANK_SHAPE = [-2]
+
+# fuzzy compile constant
+FUZZ_MODE_N_MAX = 2147483647
+FUZZ_MODE_HW_MAX = 4096
+OP_TYPE = "avg_pool_grad"
+LOEWR_LIMIT_FLAG = "lower_limit"
+UPPER_LIMIT_FLAG = "upper_limit"
+UNSUPPORTED_FUZZ_RES = [{"result": "UNSUPPORTED"}]
+LOWER_LIMIT_FUZZ_RES = [{"result": "UNSUPPORTED", "reason": {"param_index": [1], "type": ["lower_limit"]}}]
+UPPER_LIMIT_FUZZ_RES = [{"result": "UNSUPPORTED", "reason": {"param_index": [1], "type": ["upper_limit"]}}]
 
 
 def _check_range(range_str, range_in):
@@ -276,6 +294,83 @@ def _check_dynamic_range(grad_range):
     return grad_range
 
 
+def _is_fuzzy_input_valid(tensor_dict):
+    """
+    Validate input for fuzzy compile.
+    """
+    is_valid = (
+        isinstance(tensor_dict.get("ori_shape"), (list, tuple)) and
+        len(tensor_dict.get("ori_shape")) == SHAPE_SIZE and
+        list(tensor_dict.get("ori_shape")) != UNKNOWN_RANK_SHAPE and
+        tensor_dict.get("ori_format") in ("NHWC", "NCHW")
+        )
+    if is_valid and -1 in tensor_dict.get("ori_shape"):
+        is_valid &= len(tensor_dict.get("ori_range")) == SHAPE_SIZE
+
+    return is_valid
+
+
+def _check_tensor_range(tensor_dict, upper_limit_dict):
+    """
+    Helper function for tensor range validation.
+    """
+    data_format = tensor_dict.get("ori_format")
+    n_dim, h_dim, w_dim = data_format.find("N"), data_format.find("H"), data_format.find("W")
+    n_dim_max, h_dim_max, w_dim_max = \
+        upper_limit_dict.get("N"), upper_limit_dict.get("H"), upper_limit_dict.get("W")
+
+    lower_limit_flag = (
+        tensor_dict.get("ori_range")[n_dim][0] > n_dim_max or
+        tensor_dict.get("ori_range")[h_dim][0] > h_dim_max or
+        tensor_dict.get("ori_range")[w_dim][0] > w_dim_max
+    )
+
+    if lower_limit_flag:
+        warnings.warn("Lower range of N/H/W dim exceeds upper limit, please check.")
+        return LOEWR_LIMIT_FLAG
+
+    upper_limit_flag = (
+        None in list(zip(*tensor_dict.get("ori_range")))[1] or
+        -1 in list(zip(*tensor_dict.get("ori_range")))[1] or
+        tensor_dict.get("ori_range")[n_dim][1] > n_dim_max or
+        tensor_dict.get("ori_range")[h_dim][1] > h_dim_max or
+        tensor_dict.get("ori_range")[w_dim][1] > w_dim_max
+    )
+
+    if upper_limit_flag:
+        warnings.warn("Upper range of N/H/W dim exceeds upper limit, please check.")
+        return UPPER_LIMIT_FLAG
+
+    return ""
+
+
+def _check_tensor_shape(tensor_dict, upper_limit_dict):
+    """
+    Helper function for tensor shape check.
+    """
+    data_format = tensor_dict.get("ori_format")
+    n_dim, h_dim, w_dim = data_format.find("N"), data_format.find("H"), data_format.find("W")
+    n_dim_max, h_dim_max, w_dim_max = \
+        upper_limit_dict.get("N"), upper_limit_dict.get("H"), upper_limit_dict.get("W")
+    shape_invalid = lambda shape_val, upper_limit: shape_val >= upper_limit or shape_val <= 0
+    return (
+        shape_invalid(tensor_dict.get("ori_shape")[n_dim], n_dim_max) or
+        shape_invalid(tensor_dict.get("ori_shape")[h_dim], h_dim_max) or
+        shape_invalid(tensor_dict.get("ori_shape")[w_dim], w_dim_max)
+    )
+
+
+def _generalize_tensor_shape(tensor_dict):
+    """
+    Helper function for tensor shape generalization.
+    """
+    general_shape = [-1] * len(tensor_dict.get("ori_shape"))
+    c_dim = tensor_dict.get("ori_format").find("C")
+    general_shape[c_dim] = tensor_dict.get("ori_shape")[c_dim]
+
+    return general_shape
+
+
 def _collect_ori_tensors(ori_paras):
     """
     get valid tensors
@@ -340,14 +435,9 @@ def correct_fuzzy_build_range(input_grad, strides, data_format):
     ------
     the proper range are not smaller than shape value
     """
-    if data_format not in ('NHWC', 'NCHW'):
-        error_manager_cube.raise_err_input_params_not_expected("avg_pool_grad",
-                                                               "data_format",
-                                                               "NHWC/NCHW",
-                                                               data_format)
     pos_h = data_format.find('H')
     pos_w = data_format.find('W')
-    proper_range = list(map(list, input_grad.get("range")))
+    proper_range = list(map(list, input_grad.get("ori_range")))
     pos_range_h, pos_range_w = 2, 3  # NC1HWC0
     proper_w = proper_range[pos_range_w][1]
     cube_size_min = BLOCK_SIZE * BLOCK_SIZE * 2
@@ -434,72 +524,100 @@ def avg_pool_grad_generalization(orig_input_shape,
     -------
     params list
     """
-    result = []
-    support_mode = ["keep_rank"]
-    is_generalize_config = (generalize_config is not None and generalize_config.get("mode") in support_mode)
-    if not is_generalize_config:
+    if generalize_config.get("mode") != "keep_rank":
+        warnings.warn("Only support keep_rank in generalize_config")
         return
-    # unknow_rank inputs ori_shape is [-2], normal shape length is 4
-    unknow_rank = len(input_grad["ori_shape"]) == 1 and input_grad["ori_shape"][0] == -2
-    if unknow_rank:
-        error_manager_cube.raise_err_specific_user("input_grad", "not support unknow_rank under mode {}".format(
-            generalize_config["mode"]))
-    correct_fuzzy_build_range(input_grad, strides, data_format)
-    # if over l1 size then modify dy h/w range
-    upper_range_result = modify_w_range_max(out_grad,
-                                            kernel_matrix,
-                                            input_grad,
-                                            strides,
-                                            data_format,
-                                            "AvgPoolGrad")
-    dy_h_range_max = upper_range_result.get("dedy_h_max")
-    dy_w_range_max = upper_range_result.get("w_max")
-    is_single_point = upper_range_result.get("is_single_point")
 
-    # get dx_range depends on dy_range
-    dy_range = input_grad["range"]
-    ori_data_format = input_grad["ori_format"]
-    pos_c = ori_data_format.find('C')
-    groups = input_grad["ori_shape"][pos_c]
-    pads = [0, 0, 0, 0] if padding == "VALID" else [-1, -1, -1, -1]
-    ori_paras = {
-        "input_size": orig_input_shape, "x": input_grad, "filters": kernel_matrix, "bias": None, "offset_w": None,
-        "y": out_grad, "strides": strides, "pads": pads, "dilations": (1, 1, 1, 1), "groups": groups,
-        "data_format": data_format, "output_padding": (0, 0, 0, 0), "offset_x": 0, "kernel_name": kernel_name}
-    conv2d_tranpose = Conv2dTransposeParaProcess(ori_paras)
-    conv2d_tranpose.get_attr_nchw(data_format)
-    filter_shape_nchw = conv2d_tranpose.get_input_nchw(kernel_matrix["ori_shape"], kernel_matrix["ori_format"])
-    _, dy_range_nchw = conv2d_tranpose.get_input_nchw(input_grad["ori_shape"], input_grad["ori_format"], dy_range)
+    if not _is_fuzzy_input_valid(input_grad) or not _is_fuzzy_input_valid(out_grad):
+        return UNSUPPORTED_FUZZ_RES
 
-    dy_range_nchw[2] = [dy_range_nchw[2][0], min(dy_h_range_max, dy_range_nchw[2][1])]
-    if is_single_point:
-        dy_range_nchw[3] = [dy_w_range_max, dy_w_range_max]
+    result = []
+    dynamic_flag = -1 in input_grad.get("ori_shape")
+    upper_limit_dict = {"N": FUZZ_MODE_N_MAX, "H": FUZZ_MODE_HW_MAX, "W": FUZZ_MODE_HW_MAX}
+    fuzz_res_dict = {"unsupported": UNSUPPORTED_FUZZ_RES, "lower_limit": LOWER_LIMIT_FUZZ_RES,
+                     "upper_limit": UPPER_LIMIT_FUZZ_RES}
+    if dynamic_flag:
+        dedy_range_status = _check_tensor_range(input_grad, upper_limit_dict)
+        if dedy_range_status:
+            return [{"result": "UNSUPPORTED", "reason": {"param_index": [1], "type": [dedy_range_status]}}]
+
+        check_res, _, _ = check_modify_w_range(out_grad, kernel_matrix, input_grad, strides, data_format, OP_TYPE,
+                                               False)
+        if fuzz_res_dict.get(check_res):
+            return fuzz_res_dict.get(check_res)
     else:
-        dy_range_nchw[3] = [dy_range_nchw[3][0], min(dy_w_range_max, dy_range_nchw[3][1])]
-    if input_grad["ori_shape"][input_grad.get("ori_format").find("W")] > dy_range_nchw[3][1]:
-        error_manager_cube.raise_err_specific_user("AvgPoolGrad",
-                                                   "invalid input_grad ori_shape {}, w should not larger than {}"
-                                                   .format(str(input_grad.get("shape")), dy_range_nchw[3][1]))
+        dedy_invalid_flag = _check_tensor_shape(input_grad, upper_limit_dict)
+        dedx_invalid_flag = _check_tensor_shape(out_grad, upper_limit_dict)
+        if dedx_invalid_flag or dedy_invalid_flag:
+            return UNSUPPORTED_FUZZ_RES
+        # generalize input range
+        input_grad = gen_conv_shape_range(input_grad, OP_TYPE, dynamic_flag)
 
-    dx_range_nchw, _, new_dy_range_nchw = conv2d_tranpose.get_input_range(filter_shape_nchw, dy_range_nchw)
-    out_grad["range"] = [dx_range_nchw[0], [out_grad["shape"][1], out_grad["shape"][1]], dx_range_nchw[2],
-                         dx_range_nchw[3], [out_grad["shape"][4], out_grad["shape"][4]]]
+        is_pass_check, dedy_modify = modify_dy_w_range_max_opti(input_grad, kernel_matrix, strides, data_format,
+                                                                OP_TYPE, dynamic_flag)
+        if not is_pass_check:
+            return dedy_modify
+        input_grad = dedy_modify
 
-    input_grad["range"] = list(input_grad["range"])
-    input_grad["ori_range"] = list(input_grad["ori_range"])
-    input_grad["range"][input_grad.get("format").find("H") - 1] = new_dy_range_nchw[2]
-    input_grad["range"][input_grad.get("format").find("W") - 1] = new_dy_range_nchw[3]
-    input_grad["ori_range"][input_grad.get("ori_format").find("H")] = new_dy_range_nchw[2]
-    input_grad["ori_range"][input_grad.get("ori_format").find("W")] = new_dy_range_nchw[3]
+        correct_fuzzy_build_range(input_grad, strides, data_format)
+        # if over l1 size then modify dy h/w range
+        upper_range_result = modify_w_range_max(out_grad, kernel_matrix, input_grad, strides, data_format, OP_TYPE,
+                                                dynamic_flag)
+        dedy_h_range_max = upper_range_result.get("dedy_h_max")
+        dedy_w_range_max = upper_range_result.get("w_max")
+        is_single_point = upper_range_result.get("is_single_point")
 
-    have_range = {"input_grad": input_grad, "out_grad": out_grad}
-    for _, tensor in have_range.items():
-        tensor["ori_shape"] = [-1, tensor["ori_shape"][1], -1, -1] if tensor["ori_format"] == "NCHW" \
-            else [-1, -1, -1, tensor["ori_shape"][3]]
-        tensor["shape"] = [-1, tensor["shape"][1], -1, -1, tensor["shape"][4]]
+        if upper_range_result.get("is_exceed_l1"):
+            return UNSUPPORTED_FUZZ_RES
 
-    result.append([orig_input_shape, input_grad, kernel_matrix, out_grad, ksize, strides,
-                   padding, data_format, kernel_name])
+        # get dx_range depends on dy_range
+        dy_range = input_grad["ori_range"]
+        ori_data_format = input_grad["ori_format"]
+        pos_c = ori_data_format.find('C')
+        groups = input_grad["ori_shape"][pos_c]
+        pads = [0, 0, 0, 0] if padding == "VALID" else [-1, -1, -1, -1]
+        ori_paras = {
+            "input_size": orig_input_shape, "x": input_grad, "filters": kernel_matrix, "bias": None, "offset_w": None,
+            "y": out_grad, "strides": strides, "pads": pads, "dilations": (1, 1, 1, 1), "groups": groups,
+            "data_format": data_format, "output_padding": (0, 0, 0, 0), "offset_x": 0, "kernel_name": kernel_name}
+        conv2d_tranpose = Conv2dTransposeParaProcess(ori_paras)
+        conv2d_tranpose.get_attr_nchw(data_format)
+        filter_shape_nchw = conv2d_tranpose.get_input_nchw(kernel_matrix["ori_shape"], kernel_matrix["ori_format"])
+        _, dy_range_nchw = conv2d_tranpose.get_input_nchw(input_grad["ori_shape"], input_grad["ori_format"], dy_range)
+
+        dy_range_nchw[H_DIM] = [dy_range_nchw[H_DIM][0], min(dedy_h_range_max, dy_range_nchw[H_DIM][1])]
+        if is_single_point:
+            dy_range_nchw[W_DIM] = [dedy_w_range_max, dedy_w_range_max]
+        else:
+            dy_range_nchw[W_DIM] = [dy_range_nchw[W_DIM][0], min(dedy_w_range_max, dy_range_nchw[W_DIM][1])]
+        if input_grad["ori_shape"][input_grad.get("ori_format").find("W")] > dy_range_nchw[W_DIM][1]:
+            warnings.warn(OP_TYPE, "{}, invalid input_grad ori_shape {}, w should not larger than {}".format(
+                                    OP_TYPE, str(input_grad.get("shape")), dy_range_nchw[W_DIM][1]))
+            return UNSUPPORTED_FUZZ_RES
+
+        dx_range_nchw, _, new_dy_range_nchw = conv2d_tranpose.get_input_range(filter_shape_nchw, dy_range_nchw)
+
+        input_grad["ori_range"] = list(input_grad["ori_range"])
+        input_grad["ori_range"][input_grad.get("ori_format").find("H")] = new_dy_range_nchw[H_DIM]
+        input_grad["ori_range"][input_grad.get("ori_format").find("W")] = new_dy_range_nchw[W_DIM]
+
+        input_grad["ori_shape"] = _generalize_tensor_shape(input_grad)
+        out_grad["ori_shape"] = _generalize_tensor_shape(out_grad)
+
+        orig_input_shape["const_value"] = None
+        orig_input_shape["const_value_range"] = transform_shape_with_format("NCHW", data_format, dx_range_nchw,
+                                                                            ["NCHW", "NHWC"])
+
+    try:
+        _avgpoolgrad_check_rule(input_grad, kernel_matrix, out_grad, ksize, strides, padding, data_format, kernel_name)
+    except RuntimeError:
+        return UNSUPPORTED_FUZZ_RES
+    finally:
+        pass
+
+    result.append([orig_input_shape, input_grad, kernel_matrix, out_grad, {"strides": strides}, {"padding": padding},
+                   {"ksize": ksize}, {"kernel_name": kernel_name}, {"data_format": data_format}])
+
     return result
 
 
