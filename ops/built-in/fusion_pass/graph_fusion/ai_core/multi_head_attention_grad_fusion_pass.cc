@@ -225,9 +225,6 @@ Status MultiHeadAttentionGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping
     vector<int64_t> query_shape = multiHeadAttentionGradDesc->GetInputDesc("query").GetShape().GetDims();
     FUSION_PASS_CHECK(query_shape.size() !=2, OP_LOGE(FUSED_OP_TYPE.c_str(), "MultiHeadAttentionGrad's Query origin shape should be 2D, fusion failed."),
                         return PARAM_INVALID);
-    ge::Format format = multiHeadAttentionGradDesc->GetInputDesc("query").GetOriginFormat();
-    FUSION_PASS_CHECK(format != FORMAT_ND, OP_LOGE(FUSED_OP_TYPE.c_str(), "MultiHeadAttentionGrad's Query origin format should be nd, fusion failed."),
-                        return PARAM_INVALID);
     int64_t attn_head_num, attn_dim_per_head, src_len, tgt_len;
     float keep_prob;
     bool softmax_use_float;
