@@ -18,6 +18,7 @@ binary_json.py
 import json
 import os
 import sys
+import ast
 import configparser
 from binary_op import BinaryBase
 
@@ -39,7 +40,7 @@ class BinaryCfg:
 
         self.tensor_num = tensor_num
         self.select_format = select_format
-        self.attrs = attrs
+        self.attrs = None if attrs == {} else attrs
         self.nd_info = nd_info
         self.soc_version = soc_version
 
@@ -138,6 +139,7 @@ def binary_cfg(op_type, soc_version):
         # OPTION
         select_format = items.get("select_format")
         var_attrs = items.get("var_attrs")
+        enumerate_attrs = items.get("enumerate_attrs")
         nd_info = items.get("nd_info")
 
         if None in (op_name, format_type, dtype_type, tensor_num):
@@ -146,13 +148,18 @@ def binary_cfg(op_type, soc_version):
         dtype_type = dtype_mode.get(dtype_type)
         tensor_num = int(tensor_num)
 
+        attrs = {}
         if var_attrs is not None:
             var_attrs = var_attrs.strip(',').split(',')
             values = [None] * len(var_attrs)
             var_attrs = dict(zip(var_attrs, values))
+            attrs.update(var_attrs)
+        if enumerate_attrs is not None:
+            enumerate_attrs = ast.literal_eval(enumerate_attrs)
+            attrs.update(enumerate_attrs)
 
         op_info = {"op_type": operator, "op_name": op_name, "format_type": format_type, "dtype_type": dtype_type}
-        fuc = BinaryCfg(op_info, tensor_num, select_format, var_attrs, nd_info, soc_version)
+        fuc = BinaryCfg(op_info, tensor_num, select_format, attrs, nd_info, soc_version)
         fuc.fuzz_opinfo_cfg()
 
 def mate_json(op_type, binary_file, input_tensors):
