@@ -312,7 +312,7 @@ def get_padlist(  # pylint: disable=too-many-locals
 
     filter_h_dilation = (filter_h - 1) * dilation_h + 1
     filter_w_dilation = (filter_w - 1) * dilation_w + 1
-    if pads == 'SAME':
+    if pads == 'SAME' or DYNAMIC_FLAG in pads:
         pad_h = \
             align(fmap_h, stride_h) - stride_h + filter_h_dilation - fmap_h
         pad_h = tvm.max(pad_h, 0)
@@ -750,8 +750,8 @@ def check_conv2dbp_input_params(shape_filter, shape_out_backprop, input_sizes,
 
     filter_h_dilation = (filter_h - 1) * dilation_h + 1
     filter_w_dilation = (filter_w - 1) * dilation_w + 1
-
     pads = get_padlist(pads, input_sizes, strides, shape_filter, dilations)
+
     pad_up, pad_down, pad_left, pad_right = pads
 
     fmap_h_padding = fmap_h + pad_up + pad_down

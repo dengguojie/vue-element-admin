@@ -252,6 +252,7 @@ REGISTER_CONST2ATTR("DepthwiseConv2DBackpropFilterD")
 
 REGISTER_CONST2ATTR("DepthwiseConv2DBackpropInputD")
     .OriginOpType("DepthwiseConv2DBackpropInput")
+    .NeedCheckSupported(true)
     .SetConstToAttr(0, "input_size", "SetListInt");
 REGISTER_CONST2ATTR("FillD").OriginOpType("Fill").NeedCheckSupported(true).SetConstToAttr(0, "dims", "SetListInt");
 

@@ -1537,7 +1537,8 @@ IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DBackpropInputInferShape) {
     DataType dtype = input_sizes_desc->GetDataType();
     GetConstValue(input_sizes_tensor, dtype, input_sizes);
     is_input_size_const = true;
-  } else if (IsUnKnownShape(dy_sizes)) {
+  }
+  if (IsUnKnownShape(dy_sizes)) {
     // when static op or dynamic op phase_running, is_dynamic == False
     is_dynamic = true;
     reset_range(op, "out_backprop");
@@ -4342,10 +4343,9 @@ static graphStatus CheckConv2DBias(const AscendString& op_name, const OpDescPtr&
     ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
     return GRAPH_FAILED;
   }
- 
  // The index of the C dimension in 4D, default value is 0
   size_t idx_c = 0;
-  if (bias_dim_num == 4) {  // bias shape is 4D 
+  if (bias_dim_num == 4) {  // bias shape is 4D
     auto bias_format = bias_tensor->GetFormat();
     if (bias_format == FORMAT_NCHW) {
       idx_c = 1;

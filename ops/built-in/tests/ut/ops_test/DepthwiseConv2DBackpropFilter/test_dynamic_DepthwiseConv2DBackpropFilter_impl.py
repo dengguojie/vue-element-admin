@@ -11,7 +11,7 @@ dynamic_conv2d_bp_filter_op_testcase = [
     ((3, 200, 75, 40), (3, 198, 37, 40), (3, 3, 1, 40), [1,1,2,1], [1,1,1,1], (0, 0, 0, 0), "NHWC", [0, 2, 3], "success", "dynamic_conv2d_bp_filter_op_testcase_2"),
     # h -1
     ((3, 4, 2, 40), (3, 1, 1, 40), (2, 2, 1, 40), [1,2,1,1], [1,1,1,1], (0, 0, 0, 0), "NHWC", [2], "success", "dynamic_conv2d_bp_filter_op_testcase_15"),
-    ((-1, 2, 2, -1), (-1, 2, 2, -1), (2, 1, 3, 3), [1,1,1,2], [1,1,1,1], (-1, -1, -1, -1), "NCHW", [0,1,3], "success", "dynamic_conv2d_bp_filter_op_testcase_19"),
+    ((-1, 2, 2, -1), (-1, 2, 2, -1), (2, 1, 3, 3), [1,1,1,2], [1,1,1,1], (-1, -1, -1, -1), "NCHW", [0,3], "success", "dynamic_conv2d_bp_filter_op_testcase_19"),
     # -2
     ((3, 40, 200, 75), (3, 40, 200, 75), (40, 1, 9, 9), [1,1,1,1], [1,1,1,1], (-1, -1, -1, -1), "NCHW", [-2], "success", "dynamic_conv2d_bp_filter_op_testcase_14"),
     # dynamic_nh in input, dynamic_hw in dedy
@@ -128,7 +128,7 @@ def _gen_case(param):
     out_backprop_shape = _shape_to_NC1HWC0(out_backprop_ori_shape, data_format, dtype)
     filter_format = 'NCHW' if data_format == 'NCHW' else 'HWCN'
     filter_grad_shape = _shape_to_C1HWNCoC0(filter_size, filter_format, dtype)
-    
+
     x = {
         "shape": _trans_dynamic_shape(input_shape, "NCHWI", dynamic_dim[0] if isinstance(dynamic_dim[0], list) else dynamic_dim),
         "format": "NC1HWC0",
@@ -178,135 +178,27 @@ for case in dynamic_conv2d_bp_filter_op_testcase:
     ut_case.add_case(["Ascend910A"], _gen_case(case))
 
 
-def test_depthwise_conv2d_backprop_filter_fuzz_build_generalization_general(test_arg):
+def test_depthwise_conv2d_backprop_filter_fuzz_generalization(case):
     from impl.dynamic.depthwise_conv2d_backprop_filter import depthwise_conv2d_backprop_filter_generalization
-    input_list = [
-        {
-            'shape': (16, 1, 16, 16, 16),
-            'ori_shape': (16, 3, 16, 16),
-            'ori_format': 'NCHW',
-            'format': 'NC1HWC0',
-            'dtype': 'float16'
-        }, {
-            'shape': (4,),
-            'ori_shape': (4,),
-            'ori_format': 'ND',
-            'format': 'ND',
-            'dtype': 'int32'
-        }, {
-            'shape': (16, 3, 14, 12, 16),
-            'ori_shape': (16, 33, 14, 12),
-            'ori_format': 'NCHW',
-            'format': 'NC1HWC0',
-            'dtype': 'float16'
-        }, {
-            'ori_shape': (3, 1, 3, 5),
-            'ori_format': 'NCHW',
-            'format': 'FRACTAL_Z',
-            'dtype': 'float16'
-        }, (1, 1, 1, 1), (1, 1, 1, 1), (0, 0, 0, 0), 'NCHW',
-        'depthwise_conv2d_backprop_filter_fuzz_build_generalization_general', {"mode": "keep_rank"}]
-    depthwise_conv2d_backprop_filter_generalization(*input_list)
+    input_list = case.get("inputs")
+    expect = case.get("expect")
+    case_name = input_list[-2]
+    def _test_generalization_function(test_arg):
+        res = depthwise_conv2d_backprop_filter_generalization(*input_list)
+        if expect == "success":
+            print(res)
+            if not res[0][0].get("ori_range"):
+                raise RuntimeError(f"In case {case_name}, depthwise_conv2d_backprop_filter_generalization \
+                    function expected to generate ori_range success")
+        elif expect not in res[0].get("reason").get("type"):
 
-ut_case.add_cust_test_func('Ascend910A', test_func=test_depthwise_conv2d_backprop_filter_fuzz_build_generalization_general)
-
-
-def test_depthwise_conv2d_backprop_filter_fuzz_build_generalization_range_max_fixed(test_arg):
-    from impl.dynamic.depthwise_conv2d_backprop_filter import depthwise_conv2d_backprop_filter_generalization
-    input_list = [
-        {
-            'shape': (50, 1, 35, 2896, 16),
-            'ori_shape': (50, 2, 35, 2896),
-            'ori_format': 'NCHW',
-            'format': 'NC1HWC0',
-            'dtype': 'float16'
-        }, {
-            'shape': (4,),
-            'ori_shape': (4,),
-            'ori_format': 'ND',
-            'format': 'ND',
-            'dtype': 'int32'
-        }, {
-            'shape': (50, 1, 26, 2888, 16),
-            'ori_shape': (50, 2, 26, 2888),
-            'ori_format': 'NCHW',
-            'format': 'NC1HWC0',
-            'dtype': 'float16'
-        }, {
-            'ori_shape': (2, 1, 10, 10),
-            'ori_format': 'NCHW',
-            'format': 'FRACTAL_Z',
-            'dtype': 'float16'
-        },  (1, 1, 1, 1), (1, 1, 1, 1), (0, 0, 0, 0), 'NCHW',
-        'depthwise_conv2d_backprop_filter_fuzz_build_generalization_range_max_fixed']
-    depthwise_conv2d_backprop_filter_generalization(*input_list)
-
-ut_case.add_cust_test_func('Ascend910A', test_func=test_depthwise_conv2d_backprop_filter_fuzz_build_generalization_range_max_fixed)
-
-def test_depthwise_conv2d_backprop_filter_fuzz_build_w_range_max_fixed(test_arg):
-    from impl.dynamic.depthwise_conv2d_backprop_filter import depthwise_conv2d_backprop_filter_generalization
-    input_list = [
-        {
-            'shape': (1, 1, 8, 3051, 16),
-            'ori_shape': (1, 8, 3051, 1),
-            'ori_format': 'NHWC',
-            'format': 'NC1HWC0',
-            'dtype': 'float16'
-        }, {
-            'shape': (4,),
-            'ori_shape': (4,),
-            'ori_format': 'ND',
-            'format': 'ND',
-            'dtype': 'int32'
-        }, {
-            'shape': (1, 1, 1, 3040, 16),
-            'ori_shape': (1, 1, 3040, 1),
-            'ori_format': 'NHWC',
-            'format': 'NC1HWC0',
-            'dtype': 'float16'
-        }, {
-            'ori_shape': (8, 12, 1, 1),
-            'ori_format': 'HWCN',
-            'format': 'FRACTAL_Z',
-            'dtype': 'float16'
-        },  (1, 1, 3, 1), (1, 1, 1, 1), (0, 0, 0, 0), 'NCHW',
-        'test_depthwise_conv2d_backprop_filter_fuzz_build_w_range_max_fixed']
-    depthwise_conv2d_backprop_filter_generalization(*input_list)
-
-ut_case.add_cust_test_func('Ascend910A', test_func=test_depthwise_conv2d_backprop_filter_fuzz_build_w_range_max_fixed)
-
-def test_depthwise_conv2d_backprop_filter_fuzz_build_dedy_h_equal_one_w_range_max_fixed(test_arg):
-    from impl.dynamic.depthwise_conv2d_backprop_filter import depthwise_conv2d_backprop_filter_generalization
-    input_list = [
-        {
-            'shape': (6, 1, 2, 2857, 16),
-            'ori_shape': (6, 2, 2857, 1),
-            'ori_format': 'NHWC',
-            'format': 'NC1HWC0',
-            'dtype': 'float16'
-        }, {
-            'shape': (4,),
-            'ori_shape': (4,),
-            'ori_format': 'ND',
-            'format': 'ND',
-            'dtype': 'int32'
-        }, {
-            'shape': (6, 1, 1, 2857, 16),
-            'ori_shape': (6, 1, 2857, 1),
-            'ori_format': 'NHWC',
-            'format': 'NC1HWC0',
-            'dtype': 'float16'
-        }, {
-            'ori_shape': (11, 1, 1, 1),
-            'ori_format': 'HWCN',
-            'format': 'FRACTAL_Z',
-            'dtype': 'float16'
-        },  (1, 1, 2, 1), (1, 1, 1, 1), (4, 5, 0, 0), 'NCHW',
-        'test_depthwise_conv2d_backprop_filter_fuzz_build_w_range_max_fixed']
-    depthwise_conv2d_backprop_filter_generalization(*input_list)
-
-ut_case.add_cust_test_func('Ascend910A', test_func=test_depthwise_conv2d_backprop_filter_fuzz_build_dedy_h_equal_one_w_range_max_fixed)
+            raise RuntimeError(f"In case {case_name}, depthwise_conv2d_backprop_filter_generalization \
+                    function expected return {expect}")
+    return _test_generalization_function
+from depthwiseconv2dbackpropfilter_fuzzy_case_list import fuzzy_test_case
+for case in fuzzy_test_case:
+    ut_case.add_cust_test_func('Ascend910A', test_func=test_depthwise_conv2d_backprop_filter_fuzz_generalization(case))
 
 if __name__ == '__main__':
-    ut_case.run()
+    ut_case.run("Ascend910A")
     exit(0)

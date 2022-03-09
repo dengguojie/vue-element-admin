@@ -443,7 +443,28 @@ ut_case.add_cust_test_func('Ascend910A', test_func=test_depthwise_conv2d_backpro
 ut_case.add_cust_test_func('Ascend910A', test_func=test_depthwise_conv2d_backprop_input_fuzz_build_ori_shape_error)
 ut_case.add_cust_test_func('Ascend910A', test_func=test_depthwise_conv2d_backprop_input_fuzz_build_shape_error)
 
-
+def test_depthwise_conv2d_backprop_input_fuzz_generalization(case):
+    from impl.dynamic.depthwise_conv2d_backprop_input import depthwise_conv2d_backprop_input_generalization
+    input_list = case.get("inputs")
+    expect = case.get("expect")
+    case_name = input_list[-2]
+    def _test_generalization_function(test_arg):
+        res = depthwise_conv2d_backprop_input_generalization(*input_list)
+        if expect == "success":
+            if not res[0][2].get("ori_range"):
+                raise RuntimeError(f"In case {case_name}, depthwise_conv2d_backprop_input_generalization \
+                    function expected to generate ori_range success")
+        elif expect == "unsupported":
+            if res != [{'result': 'UNSUPPORTED'}]:
+                raise RuntimeError(f"In case {case_name}, depthwise_conv2d_backprop_input_generalization \
+                    function expected return unsupported")
+        elif expect not in res[0].get("reason").get("type"):
+            raise RuntimeError(f"In case {case_name}, depthwise_conv2d_backprop_input_generalization \
+                    function expected return {expect}")
+    return _test_generalization_function
+from depthwiseconv2d_backpropinput_fuzzy_case_list import fuzzy_test_case
+for case in fuzzy_test_case:
+    ut_case.add_cust_test_func('Ascend910A', test_func=test_depthwise_conv2d_backprop_input_fuzz_generalization(case))
 if __name__ == '__main__':
-    ut_case.run()
+    ut_case.run("Ascend910A")
     exit(0)

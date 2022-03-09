@@ -33,7 +33,7 @@ from impl.util.platform_adapter import register_operator_compute
 from impl.util.util_cube_dynamic import correct_conv2d_backprop_range_start
 from impl.util.util_cube_dynamic import gen_conv_shape_range
 from impl.util.util_cube_dynamic import check_graph_mode
-
+from impl.util.util_cube_dynamic import calc_max_fmap_w
 
 # the dim of shape in conv_backprop must be 4
 CONV_BACKPROP_SHAPE_DIM = 4
@@ -339,16 +339,6 @@ def _get_input_shape(fmap_nchw, dedy_nchw, dedw_nchw):
 
 def _get_output(x_in, k_size, pads, stride, dilation):
     return (x_in + pads[0] + pads[1] - dilation * (k_size - 1) - 1) // stride + 1
-
-
-def _get_input(x_out, filter_dilation, pads, stride):
-    if DYNAMIC_FLAG in pads:
-        input_low = stride * (x_out - 1) + 1
-        input_high = stride * x_out
-    else:
-        input_low = (x_out - 1) * stride + filter_dilation - pads[0] - pads[1]
-        input_high = (x_out - 1) * stride + filter_dilation - pads[0] - pads[1] + stride - 1
-    return input_low, input_high
 
 
 def _get_range_intersection(range1, range2, param_name):
@@ -1003,93 +993,6 @@ def _conv2d_backprop_filter_compute(x, filter_size, out_backprop, y,
     return {'op_placeholder': [fmap, filter_size, dedy], 'op_res': [dedw]}
 
 
-def _calc_max_fmap_w(x, out_backprop, y, strides, dilations, pads, groups, data_format, graph_flag):
-    """
-    modify max grade point, when exceed L1 size
-
-    Parameters
-    ----------
-    x: dict with keys(ori_shape, ori_format, shape, format, dtype, range)
-        input feature map tensor.
-
-    out_backprop: dict with keys(ori_shape, ori_format, shape, format, dtype, range)
-        input weight tensor.
-
-    y: dict with keys(ori_shape, ori_format, shape, format, dtype, range)
-        output tensor, dtype must be assigned.
-
-    strides: tuple/list of 4 integers
-             filter move stride
-
-    pads: tuple/list of 4 integers
-          [pad_top, pad_bottom, pad_left, pad_right]
-
-    dilations: tuple/list of 4 integers
-        filter expand size of dilated conv2d_backprop_filter. Default to (1, 1, 1, 1).
-
-    groups: int
-            The number of filter's group. Default value is 1.
-
-    data_format: str
-            An optional string from: "NHWC", "NCHW". Defaults to "NHWC".
-            Specify the data format of the input and output data.
-
-    graph_flag: bool.
-
-    Returns
-    -------
-    modified dedx's w_range
-    """
-    ret_nchw = _get_nchw_shape(x, out_backprop, y, groups)
-    x_nchw = ret_nchw.get("x_shape")
-    dedy_nchw = ret_nchw.get("dedy_shape")
-    dedw_nchw = ret_nchw.get("dedw_shape")
-    strides, pads, dilations = _get_attrs(strides, pads, dilations, data_format)
-    pad_up, pad_down, pad_left, pad_right = pads
-    stride_h, stride_w = strides
-    dilation_h, dilation_w = dilations[H_DIM], dilations[W_DIM]
-    filter_h_dilation = (dedw_nchw[H_DIM] - 1) * dilation_h + 1
-    filter_w_dilation = (dedw_nchw[W_DIM] - 1) * dilation_w + 1
-    w_index = x.get("ori_format").find("W")
-    x_w_range = x.get("ori_range")[w_index]
-    h_index = x.get("ori_format").find("H")
-    x_h_range = x.get("ori_range")[h_index]
-    dy_w_range = out_backprop.get("ori_range")
-    upper_fmap_h_padding = x_h_range[1] + pad_up + pad_down
-    lower_fmap_h_padding = x_h_range[0] + pad_up + pad_down
-    is_conv1d_situation = upper_fmap_h_padding == 1 and lower_fmap_h_padding == 1 and \
-                          filter_h_dilation == 1 and stride_h == 1
-    l1_size = tbe_platform.get_soc_spec("L1_SIZE")  # L1 size
-    # C0_SIZE * C0_SIZE * 2 is al1_min_byte
-    bl1_min_byte = l1_size - C0_SIZE * C0_SIZE * 2
-    kl1_min = bl1_min_byte // ((filter_h_dilation + stride_h) * C0_SIZE * 2)
-    kl1_min_devided_sixteen = bl1_min_byte // (filter_h_dilation * C0_SIZE * 2)
-    max_dedy_devided_sixteen = (kl1_min_devided_sixteen + pad_left + \
-                                pad_right - filter_w_dilation) // stride_w + 1
-    dedx_w = x_w_range[1] if graph_flag else x_nchw[W_DIM]
-    test_single_mode = (not graph_flag or (dy_w_range[w_index][0] == dy_w_range[w_index][1]))
-    upper_limit_flag = (x_w_range[1] > kl1_min)
-    lower_limit_flag = (x_w_range[0] > kl1_min)
-    if not is_conv1d_situation:
-        if kl1_min >= x_w_range[1]:
-            x_w_range = x.get("ori_range")[w_index]
-        elif dedx_w <= kl1_min:
-            x_w_range = (x_w_range[0], kl1_min)
-        elif test_single_mode:
-            real_dedy = dy_w_range[w_index][0] if graph_flag else dedy_nchw[W_DIM]
-            if (real_dedy % C0_SIZE == 0 and real_dedy <= max_dedy_devided_sixteen):
-                x_w_range_low, x_w_range_high = _get_input(real_dedy, filter_w_dilation, pads[2:], stride_w)
-                x_w_range_low = max(x_w_range_low, x_w_range[0])
-                x_w_range_high = min(x_w_range_high, x_w_range[1])
-                x_w_range = (x_w_range_low, x_w_range_high)
-        else:
-            upper_res_flag = graph_flag and upper_limit_flag and not lower_limit_flag
-            if upper_res_flag:
-                return False, UPPER_STR
-            return False, LOWER_STR
-    return True, x_w_range
-
-
 def precheck_graph_range(x, out_backprop):
     """
     check of range.
@@ -1156,7 +1059,7 @@ def range_check(graph_flag, x, out_backprop):
     return []
 
 
-def tensor_range_infor(name, tensor, x, out_backprop, y, strides, dilations, pads, groups,
+def tensor_range_infor(is_fmap, tensor, x, out_backprop, y, strides, dilations, pads,
                        data_format, graph_flag):
     """
     get range informations.
@@ -1173,11 +1076,14 @@ def tensor_range_infor(name, tensor, x, out_backprop, y, strides, dilations, pad
     """
     status = True
     res = None
-    if name == "x":
+    if is_fmap:
         tensor = correct_conv2d_backprop_range_start(tensor, y, dilations, pads, data_format)
-        status, res = _calc_max_fmap_w(x, out_backprop, y, strides, dilations, pads, groups, data_format, graph_flag)
+        strides, pads, dilations = _get_attrs(strides, pads, dilations, data_format)
+        param_list = [strides, pads, dilations]
+        status, res = calc_max_fmap_w(x, out_backprop, y, param_list, graph_flag)
+        unsupported_dict = {"upper_limit": UPPER_STR, "lower_limit": LOWER_STR}
         if not status:
-            return status, res
+            return status, unsupported_dict.get(res)
         if res[0] < FMAP_HW_MAX:
             if tensor.get("ori_format") == "NCHW":
                 tensor["ori_range"] = (tensor["ori_range"][0], tensor["ori_range"][1], tensor["ori_range"][2], res)
@@ -1238,7 +1144,8 @@ def conv2d_bp_filter_generalization(x, filter_size, out_backprop, y, strides, pa
             message = range_check(graph_flag, x, out_backprop)
             if message:
                 return message
-            status, res = tensor_range_infor(name, tensor, x, out_backprop, y, strides, dilations, pads, groups,
+            is_fmap = name == "x"
+            status, res = tensor_range_infor(is_fmap, tensor, x, out_backprop, y, strides, dilations, pads,
                                              data_format, graph_flag)
             if not status:
                 return res
