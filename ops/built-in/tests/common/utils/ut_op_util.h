@@ -89,6 +89,15 @@ void SetValueToConstTensor(ge::Tensor const_tensor, std::vector<T> const_value) 
 void TransformerOpBaseFormat(const Operator& op, const std::string& input_name, const Format storage_format);
 
 /*
+ * set a tensor oriformat to special format
+ * this func will modify the shape/format/range base the orishape/oriformat/range
+ * param[in] op: one Operator
+ * param[in] input_name: which tensordesc will be update
+ * param[in] storage_format: des format
+ */
+void SetGetOriginFormat(const Operator& op, const std::string& input_name, const Format storage_format);
+
+/*
  * trans the string to GeDataType
  * param[in] dtype_string: string of type, ex: float32/float16
  * return DataType: the ge DataType of string data_type

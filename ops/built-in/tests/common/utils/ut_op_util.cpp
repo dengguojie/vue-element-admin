@@ -53,8 +53,7 @@ void TransformerOpBaseFormat(const Operator& op, const std::string& input_name, 
   // transfer shape
   transformer::ShapeTransferAccordingToFormat shape_transfer;
   ge::GeShape shape_dims_ge(shape_dims);
-  transformer::ShapeAndFormat shape_and_format_info{shape_dims_ge, format,
-                                                    storage_format, data_type};
+  transformer::ShapeAndFormat shape_and_format_info{shape_dims_ge, format, storage_format, data_type};
   (void)shape_transfer.GetShapeAccordingToFormat(shape_and_format_info);
   new_shape_dims = shape_dims_ge.GetDims();
   auto new_shape_shape = GeShape(new_shape_dims);
@@ -64,7 +63,7 @@ void TransformerOpBaseFormat(const Operator& op, const std::string& input_name, 
   // transfer range
   transformer::RangeTransferAccordingToFormat range_transfer;
   transformer::RangeAndFormat range_and_format_info{
-      shape_shape, origin_range, output_range, format, storage_format, data_type};
+    shape_shape, origin_range, output_range, format, storage_format, data_type};
   (void)range_transfer.GetRangeAccordingToFormat(range_and_format_info);
   tensordesc_input->SetFormat(storage_format);
   tensordesc_input->SetShape(GeShape(new_shape_dims));
@@ -74,6 +73,14 @@ void TransformerOpBaseFormat(const Operator& op, const std::string& input_name, 
           op_desc->GetName().c_str(), input_name.c_str(), shape_shape.ToString().c_str(),
           ge::TypeUtils::FormatToSerialString(format).c_str(), new_shape_shape.ToString().c_str(),
           ge::TypeUtils::FormatToSerialString(storage_format).c_str());
+}
+
+void SetGetOriginFormat(const Operator& op, const std::string& input_name, const Format storage_format) {
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  auto tensordesc_input = op_desc->MutableInputDesc(input_name);
+  auto format = tensordesc_input->GetOriginFormat();
+  tensordesc_input->SetOriginFormat(storage_format);
+  OP_LOGI("SetGetOriginFormat new format:%s.", ge::TypeUtils::FormatToSerialString(storage_format).c_str());
 }
 
 DataType StringToDtype(std::string dtype_string) {
