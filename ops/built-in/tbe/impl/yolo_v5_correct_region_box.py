@@ -934,33 +934,25 @@ class CorrectBoxComputer():
         # x
         with self.instance.if_scope(param['co_id'] == Constant.VALUE_ZERO):
             # move windex to ub b
-            self.instance.data_move(param['ub_b'],
-                                    param['windex'][cycle * param['mov_len']],
-                                    Constant.SID, Constant.NBURST_ONE, param['burlen'],
-                                    Constant.GAP_ZERO, Constant.GAP_ZERO)
+            self.instance.data_move(param['ub_b'],param['windex'][cycle * param['mov_len']],
+                                    Constant.SID, Constant.NBURST_ONE, param['burlen'], 0, 0)
 
-            self.instance.vec_muls(self.mask, param['ub_c'], param['ub_a'],
-                                   2.0, repeat,
+            self.instance.vec_muls(self.mask, param['ub_c'], param['ub_a'], 2.0, repeat,
                                    Constant.STRIDE_EIGHT, Constant.STRIDE_EIGHT)
 
-            self.instance.vec_adds(self.mask, param['ub_c'], param['ub_c'],
-                                   -0.5, repeat,
+            self.instance.vec_adds(self.mask, param['ub_c'], param['ub_c'], -0.5, repeat,
                                    Constant.STRIDE_EIGHT, Constant.STRIDE_EIGHT)
 
-            self.instance.vec_add(self.mask, param['ub_b'], param['ub_c'],
-                                   param['ub_b'], repeat,
-                                   Constant.STRIDE_EIGHT, Constant.STRIDE_EIGHT, Constant.STRIDE_EIGHT)
+            self.instance.vec_add(self.mask, param['ub_b'], param['ub_c'], param['ub_b'], repeat,
+                                  Constant.STRIDE_EIGHT, Constant.STRIDE_EIGHT, Constant.STRIDE_EIGHT)
 
-            self.instance.vec_muls(self.mask, param['ub_b'], param['ub_a'],
-                                   (1.0 / param['w']), repeat,
+            self.instance.vec_muls(self.mask, param['ub_b'], param['ub_b'], (1.0 / param['w']), repeat,
                                    Constant.STRIDE_EIGHT, Constant.STRIDE_EIGHT)
 
-            self.instance.vec_muls(self.mask, param['ub_b'], param['ub_b'],
-                                   param['x_vmuls_val'], repeat,
+            self.instance.vec_muls(self.mask, param['ub_b'], param['ub_b'], param['x_vmuls_val'], repeat,
                                    Constant.STRIDE_EIGHT, Constant.STRIDE_EIGHT)
 
-            self.instance.vec_adds(self.mask, param['ub_b'], param['ub_b'],
-                                   param['x_vadds_val'], repeat,
+            self.instance.vec_adds(self.mask, param['ub_b'], param['ub_b'], param['x_vadds_val'], repeat,
                                    Constant.STRIDE_EIGHT, Constant.STRIDE_EIGHT)
 
             if not self.relative:
@@ -980,27 +972,22 @@ class CorrectBoxComputer():
                                     param['burlen'],
                                     Constant.GAP_ZERO, Constant.GAP_ZERO)
 
-            self.instance.vec_muls(self.mask, param['ub_c'], param['ub_a'],
-                                   2.0, repeat,
+            self.instance.vec_muls(self.mask, param['ub_c'], param['ub_a'], 2.0, repeat,
                                    Constant.STRIDE_EIGHT, Constant.STRIDE_EIGHT)
 
-            self.instance.vec_adds(self.mask, param['ub_c'], param['ub_c'],
-                                   -0.5, repeat,
+            self.instance.vec_adds(self.mask, param['ub_c'], param['ub_c'], -0.5, repeat,
                                    Constant.STRIDE_EIGHT, Constant.STRIDE_EIGHT)
 
-            self.instance.vec_add(self.mask, param['ub_b'], param['ub_c'],
-                                   param['ub_b'], repeat,
-                                   Constant.STRIDE_EIGHT, Constant.STRIDE_EIGHT, Constant.STRIDE_EIGHT)
+            self.instance.vec_add(self.mask, param['ub_b'], param['ub_c'], param['ub_b'], repeat,
+                                  Constant.STRIDE_EIGHT, Constant.STRIDE_EIGHT, Constant.STRIDE_EIGHT)
 
-            self.instance.vec_muls(self.mask, param['ub_b'], param['ub_b'],
-                                   (1.0 / param['h']), repeat,
+            self.instance.vec_muls(self.mask, param['ub_b'], param['ub_b'], (1.0 / param['h']), repeat,
                                    Constant.STRIDE_EIGHT, Constant.STRIDE_EIGHT)
 
-            self.instance.vec_muls(self.mask, param['ub_b'], param['ub_b'],
-                                   param['y_vmuls_val'], repeat,
+            self.instance.vec_muls(self.mask, param['ub_b'], param['ub_b'], param['y_vmuls_val'], repeat,
                                    Constant.STRIDE_EIGHT, Constant.STRIDE_EIGHT)
-            self.instance.vec_adds(self.mask, param['ub_b'], param['ub_b'],
-                                   param['y_vadds_val'], repeat,
+
+            self.instance.vec_adds(self.mask, param['ub_b'], param['ub_b'], param['y_vadds_val'], repeat,
                                    Constant.STRIDE_EIGHT, Constant.STRIDE_EIGHT)
 
             if not self.relative:
