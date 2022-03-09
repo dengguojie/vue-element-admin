@@ -407,9 +407,9 @@ def _check_dynamic_mode_of_batch_matmul(shape_x1: tuple, shape_x2: tuple) -> Non
     """
     check dynamic mode
     """
-    if len(shape_x1) < BATCH_ND_LENGTH:
+    if len(shape_x1) < BATCH_ND_LENGTH - 1:
         error_manager_vector.raise_err_input_shape_invalid(
-            "batch_matmul", "x1", "ori_shape dim must more than 2"
+            "batch_matmul", "x1", "ori_shape dim must more than 1"
         )
 
     if len(shape_x2) < BATCH_ND_LENGTH - 1:
@@ -461,7 +461,7 @@ def _get_matmul_unrank_shape_and_range(input_x1: dict, input_x2: dict) -> list:
         range_x2 = range_nd if format_x2 == "ND" else range_nz
     range_x1 = tuple(dim_range if dim_range[0] >= MKN_MIN else (MKN_MIN, dim_range[1]) for dim_range in range_x1)
     range_x2 = tuple(dim_range if dim_range[0] >= MKN_MIN else (MKN_MIN, dim_range[1]) for dim_range in range_x2)
-    return [shape_x1, range_x1, shape_x2, range_x2]
+    return [list(shape_x1), range_x1, list(shape_x2), range_x2]
 
 
 def _get_batch_matmul_unrank_shape_and_range(input_x1: dict, input_x2: dict) -> list:
@@ -482,7 +482,7 @@ def _get_batch_matmul_unrank_shape_and_range(input_x1: dict, input_x2: dict) -> 
         range_x2 = range_nd if format_x2 == "ND" else range_nz
     range_x1 = tuple(dim_range if dim_range[0] >= MKN_MIN else (MKN_MIN, dim_range[1]) for dim_range in range_x1)
     range_x2 = tuple(dim_range if dim_range[0] >= MKN_MIN else (MKN_MIN, dim_range[1]) for dim_range in range_x2)
-    return [shape_x1, range_x1, shape_x2, range_x2]
+    return [list(shape_x1), range_x1, list(shape_x2), range_x2]
 
 
 def _get_dynamic_shape_and_range(input_x1: dict, input_x2: dict, bias: dict, op_type: str) -> tuple:
@@ -533,7 +533,7 @@ def _get_batch_range(range_x1: tuple, range_x2: tuple) -> list:
     """
     batch_range = [1, 1]
     range_x = []
-    if range_x2:
+    if range_x1 and range_x2:
         if len(range_x1) != len(range_x2):
             error_manager_vector.raise_err_specific_reson(
                 "batch_matmul", "the batch length is not same of x1 and x2"
@@ -541,6 +541,8 @@ def _get_batch_range(range_x1: tuple, range_x2: tuple) -> list:
         for range_mem1, range_mem2 in zip(range_x1, range_x2):
             range_ins = _get_range_intersection(range_mem1, range_mem2, "batch_range")
             range_x.append(range_ins)
+    elif range_x2:
+        range_x = range_x2
     else:
         range_x = range_x1
 
@@ -693,7 +695,7 @@ def check_and_config_para(input_x1: dict, input_x2: dict, bias: dict, output_z: 
         dtype_bias = bias.get("dtype")
         para_check.check_dtype_rule(dtype_bias, ("float16", "float32"), "bias")
 
-    return dtype_a, dtype_out, input_range
+    return dtype_a, dtype_out, input_range, shape_input
 
 
 def fuzzy_range_check(input_x1: dict, input_x2: dict, bias: dict, trans_a: bool, trans_b: bool) -> bool:
@@ -903,7 +905,7 @@ def batch_matmul_compute(input_x1: dict, input_x2: dict, bias: dict, offset_w: d
             "batch_matmul", "Hi3796CV300ES and Hi3796CV300CS and SD3403 don't support dynamic shape"
         )
 
-    dtype_in, dtype_out, input_range = check_and_config_para(
+    dtype_in, dtype_out, input_range, shape_input = check_and_config_para(
         input_x1, input_x2, bias, output_z, trans_a, trans_b, kernel_name, op_type
     )
 
@@ -916,10 +918,10 @@ def batch_matmul_compute(input_x1: dict, input_x2: dict, bias: dict, offset_w: d
     m_var = operation.var(m_var_name, m_range)
     k_var = operation.var(k_var_name, k_range)
     n_var = operation.var(n_var_name, n_range)
+    shape_x1, shape_x2 = shape_input
 
     if op_type in ("BatchMatMulV2", "BatchMatMul"):
         batch_var = operation.var("batch", batch_range)
-        shape_x1 = [batch_var, DYNAMIC_FLAG, DYNAMIC_FLAG]
     elif op_type in ("MatMulV2", "MatMul"):
         shape_x1 = [DYNAMIC_FLAG, DYNAMIC_FLAG]
     else:
@@ -929,12 +931,10 @@ def batch_matmul_compute(input_x1: dict, input_x2: dict, bias: dict, offset_w: d
     if "Ascend910" in soc_version or "Ascend710" in soc_version:
         _define_cache_tiling_var(input_x1, input_x2, bias, output_z)
 
-    shape_x2 = [DYNAMIC_FLAG, DYNAMIC_FLAG]
-    range_x2 = input_x2.get("range")
-
-    batch_len = BATCH_ND_LENGTH if format_b == "ND" else BATCH_NZ_LENGTH
-    if range_x2 and len(range_x2) >= batch_len:
-        shape_x2 = [batch_var] + shape_x2
+    if len(shape_x1) >= BATCH_ND_LENGTH:
+        shape_x1 = [batch_var, DYNAMIC_FLAG, DYNAMIC_FLAG]
+    if len(shape_x2) >= BATCH_ND_LENGTH:
+        shape_x2 = [batch_var, DYNAMIC_FLAG, DYNAMIC_FLAG]
 
     m_index, k_index = _get_m_k_index(format_a, trans_a)
     shape_x1[k_index] = k_var

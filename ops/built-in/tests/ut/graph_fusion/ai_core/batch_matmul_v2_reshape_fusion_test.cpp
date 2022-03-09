@@ -425,3 +425,42 @@ TEST_F(batch_matmul_v2_reshape_fusion_test, batch_matmul_v2_reshape_fusion_test_
     }
     ASSERT_EQ(expected, actual);
 }
+
+TEST_F(batch_matmul_v2_reshape_fusion_test, batch_matmul_v2_reshape_fusion_test_8) {
+    ge::Graph graph("batch_matmul_v2_reshape_fusion_test_8");
+
+    auto X1Data = op::Data("x1");
+    std::vector<int64_t> dims_x1{-2};
+    ge::Shape shape_x1(dims_x1);
+    ge::TensorDesc tensorDescX1(shape_x1, FORMAT_ND, DT_FLOAT16);
+    X1Data.update_input_desc_x(tensorDescX1);
+    X1Data.update_output_desc_y(tensorDescX1);
+
+    auto X2Data = op::Data("x2");
+    std::vector<int64_t> dims_x2{12, 3};
+    ge::Shape shape_x2(dims_x2);
+    ge::TensorDesc tensorDescX2(shape_x2, FORMAT_ND, DT_FLOAT16);
+    X2Data.update_input_desc_x(tensorDescX2);
+    X2Data.update_output_desc_y(tensorDescX2);
+
+    auto bmOP = op::BatchMatMulV2("BatchMatMulV2_1");
+    bmOP.set_input_x1(X1Data);
+    bmOP.set_input_x2(X2Data);
+
+    std::vector<Operator> inputs{X1Data, X2Data};
+    std::vector<Operator> outputs{bmOP};
+
+    graph.SetInputs(inputs).SetOutputs(outputs);
+    ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
+    fe::FusionPassTestUtils::InferShapeAndType(compute_graph_ptr);
+    fe::FusionPassTestUtils::RunGraphFusionPass("BatchMatMulV2ReshapeFusionPass",
+        fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
+
+    bool findTranspose = false;
+    for (auto node: compute_graph_ptr->GetAllNodes()) {
+        if (node->GetType() == "Reshape") {
+            findTranspose = true;
+        }
+    }
+    EXPECT_EQ(findTranspose, false);
+}

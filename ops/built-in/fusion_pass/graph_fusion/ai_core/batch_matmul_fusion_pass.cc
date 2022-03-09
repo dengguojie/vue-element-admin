@@ -86,6 +86,18 @@ bool BatchMatMulFusionPass::CheckIsNeedFusion(const ge::NodePtr& fused_node) con
     OP_LOGD(kFusionName, "BatchMatMul type is %s, skip BatchMatMul fusion.", fused_node->GetType().c_str());
     return false;
   }
+
+  // check if dynamic shape
+  auto op_desc = fused_node->GetOpDesc();
+  FUSION_PASS_CHECK(op_desc == nullptr, CUBE_INNER_ERR_REPORT(kFusionName, "op_desc is null."),
+                    return false);
+  auto x0_desc = op_desc->MutableInputDesc(0);
+  auto x1_desc = op_desc->MutableInputDesc(1);
+  if (x0_desc->MutableShape().IsUnknownShape() || x1_desc->MutableShape().IsUnknownShape()) {
+    OP_LOGD(kFusionName, "not support dynamic shape.");
+    return false;
+  }
+
   Operator op = ge::OpDescUtils::CreateOperatorFromNode(fused_node);
   auto input_desc1 = op.GetInputDesc(0);
   auto input_desc2 = op.GetInputDesc(1);

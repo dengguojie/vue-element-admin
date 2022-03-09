@@ -263,6 +263,8 @@ cube:
       - ops/built-in/fusion_pass/graph_fusion/ai_core/matmul_cast_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/batch_matmul_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/batch_matmul_fusion_pass.h
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/batch_matmul_v2_reshape_fusion_pass.cc
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/batch_matmul_v2_reshape_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/batch_matmul_v2_non_aligned_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/batch_matmul_v2_non_aligned_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/batch_matmul_reduce_mean_fusion_pass.cc

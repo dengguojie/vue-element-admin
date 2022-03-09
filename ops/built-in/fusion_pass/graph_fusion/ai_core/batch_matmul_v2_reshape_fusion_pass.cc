@@ -34,6 +34,7 @@ static const uint32_t kLeftShapeDim = 3;
 static const uint32_t kRightShapeDim = 2;
 static const uint32_t kBatchMinValue = 50;
 static const uint32_t kMaxValue = 32;
+static const int32_t kDynamicFlagUnrank = -2;
 vector<FusionPattern *> BatchMatMulV2ReshapeFusionPass::DefinePatterns() {
   vector<FusionPattern *> patterns;
   FusionPattern *pattern = new (std::nothrow) FusionPattern("BatchMatMulV2ReshapeFusionPass");
@@ -192,6 +193,10 @@ bool BatchMatMulV2ReshapeFusionPass::CheckNeedChange(const ge::NodePtr &fused_no
 
   // step1: compatible with the original scenario
   if (x_dims == 1 || y_dims == 1) {
+    if (shape_x[0] == kDynamicFlagUnrank || shape_y[0] == kDynamicFlagUnrank) {
+      OP_LOGD(FUSED_OP_TYPE.c_str(), "shape_x[0] or shape_y[0] is -2.");
+      return false;
+    }
     return true;
   }
 
