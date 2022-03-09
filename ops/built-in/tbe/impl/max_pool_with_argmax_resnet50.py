@@ -172,26 +172,18 @@ class MaxPoolWithargmaxResnet50():
 
         mask_one_window = ((output_h * output_w + 15) // 16 + 1) * 16
 
-        mask_gap_element = (mask_one_window -
-                            output_block_h * output_w)
+        mask_gap_element = (mask_one_window - output_block_h * output_w)
         mask_gap = mask_gap_element * 2 // 32
 
         output_gm_shape = (batch_size, c1_dim, output_h, output_w, 16)
         output_mask_shape = (batch_size, c1_dim, filter_size,
                              mask_one_window // 16, 16)
-        input_fmap_gm = instance.Tensor(dtype, input_shape,
-                                        name="input_fmap_gm",
-                                        scope=tik.scope_gm)
-        output_max_gm = instance.Tensor(dtype, output_gm_shape,
-                                        name="output_max_gm",
-                                        scope=tik.scope_gm)
-        output_mask_gm = instance.Tensor("uint16", output_mask_shape,
-                                         name="output_mask_gm",
-                                         scope=tik.scope_gm)
+        input_fmap_gm = instance.Tensor(dtype, input_shape, name="input_fmap_gm", scope=tik.scope_gm)
+        output_max_gm = instance.Tensor(dtype, output_gm_shape, name="output_max_gm", scope=tik.scope_gm)
+        output_mask_gm = instance.Tensor("uint16", output_mask_shape, name="output_mask_gm", scope=tik.scope_gm)
         if check_load3d_supported:
             l1_buff0_size = input_h * input_w * c0_dim + 32 * 1024
-            l1_buff0 = instance.Tensor(dtype, (l1_buff0_size,), name="l1_buff0",
-                                       scope=tik.scope_cbuf)
+            l1_buff0 = instance.Tensor(dtype, (l1_buff0_size,), name="l1_buff0", scope=tik.scope_cbuf)
         elif check_vgatherb_supported:
             src_offsets_size = output_block_h * self.out_size_w * filter_size
             src_offsets_value, src_offsets_last_value = self._calc_src_offsets(output_block_h)
@@ -212,47 +204,33 @@ class MaxPoolWithargmaxResnet50():
                                        name="ub_load1", scope=tik.scope_ubuf)
 
         ub_max_buff_size = self.stride_h * output_block_h * output_w * c0_dim
-        ub_max_buff = instance.Tensor(dtype, (ub_max_buff_size,),
-                                      name="ub_max_buff", scope=tik.scope_ubuf)
+        ub_max_buff = instance.Tensor(dtype, (ub_max_buff_size,), name="ub_max_buff", scope=tik.scope_ubuf)
 
         ub_mask_buff_size = 8 * 1024
-        ub_mask_buff = instance.Tensor("uint16", (ub_mask_buff_size,),
-                                       name="ub_mask_buff",
-                                       scope=tik.scope_ubuf)
-        ub_mask_temp = instance.Tensor("uint16", (ub_mask_buff_size,),
-                                       name="ub_mask_temp",
-                                       scope=tik.scope_ubuf)
-        ub_mask_or_buff = instance.Tensor("uint16", (ub_mask_buff_size,),
-                                          name="ub_mask_or_buff",
-                                          scope=tik.scope_ubuf)
-        ub_mask_not_buff = instance.Tensor("uint16", (ub_mask_buff_size,),
-                                           name="ub_mask_not_buff",
-                                           scope=tik.scope_ubuf)
+        ub_mask_buff = instance.Tensor("uint16", (ub_mask_buff_size,), name="ub_mask_buff", scope=tik.scope_ubuf)
+        ub_mask_temp = instance.Tensor("uint16", (ub_mask_buff_size,), name="ub_mask_temp", scope=tik.scope_ubuf)
+        ub_mask_or_buff = instance.Tensor("uint16", (ub_mask_buff_size,), name="ub_mask_or_buf", scope=tik.scope_ubuf)
+        ub_mask_not_buff = instance.Tensor("uint16", (ub_mask_buff_size,), name="ub_mask_not_buf", scope=tik.scope_ubuf)
 
         ub_buff_size = output_block_h * output_w * c0_dim * filter_size
-        ub_buff0 = instance.Tensor(dtype, (ub_buff_size,),
-                                   name="ub_buff0", scope=tik.scope_ubuf)
-        ub_buff1 = instance.Tensor(dtype, (ub_buff_size,),
-                                   name="ub_buff1", scope=tik.scope_ubuf)
+        ub_buff0 = instance.Tensor(dtype, (ub_buff_size,), name="ub_buff0", scope=tik.scope_ubuf)
+        ub_buff1 = instance.Tensor(dtype, (ub_buff_size,), name="ub_buff1", scope=tik.scope_ubuf)
 
         with instance.for_range(0, batch_size * c1_dim, block_num=batch_size * c1_dim) as batch_idx:
             batch = batch_idx / c1_dim
             loopc = batch_idx % c1_dim
             input_idx = instance.Scalar("uint64", name="input_idx")
             input_gm_idx = instance.Scalar("uint64", name="input_gm_idx")
-            input_idx.set_as(batch * c1_dim * input_h * input_w * c0_dim +
-                             loopc * input_h * input_w * c0_dim)
+            input_idx.set_as(batch * c1_dim * input_h * input_w * c0_dim + loopc * input_h * input_w * c0_dim)
             input_gm_idx.set_as(input_idx)
 
             output_idx = instance.Scalar("uint64", name="output_idx")
-            output_idx.set_as(batch * c1_dim * output_h * output_w * c0_dim +
-                              loopc * output_h * output_w * c0_dim)
+            output_idx.set_as(batch * c1_dim * output_h * output_w * c0_dim + loopc * output_h * output_w * c0_dim)
             if check_load3d_supported:
                 l1_buff0_idx = instance.Scalar("uint64", name="l1_buff0_idx")
                 l1_buff0_idx.set_as(0)
 
-            output_mask_idx = instance.Scalar("uint64",
-                                              name="output_mask_idx")
+            output_mask_idx = instance.Scalar("uint64", name="output_mask_idx")
             output_mask_idx.set_as(batch * c1_dim * mask_one_window * filter_size
                                    + loopc * mask_one_window * filter_size)
 
@@ -267,13 +245,9 @@ class MaxPoolWithargmaxResnet50():
                         load_fm_size.set_as((output_block_h * self.stride_h + 1) * input_w)
                     with instance.else_scope():
                         load_fm_size.set_as(output_block_h * self.stride_h * input_w)
-                    instance.data_move(l1_buff0[l1_buff0_idx],
-                                       input_fmap_gm[input_idx],
-                                       0, 1, load_fm_size, 0, 0)
+                    instance.data_move(l1_buff0[l1_buff0_idx], input_fmap_gm[input_idx], 0, 1, load_fm_size, 0, 0)
 
-                    self._load3d_fm_to_ub(ub_buff, l1_buff0, 0,
-                                          looph * 2 * output_block_h *
-                                          self.stride_h)
+                    self._load3d_fm_to_ub(ub_buff, l1_buff0, 0, looph * 2 * output_block_h * self.stride_h)
                 #when load3d is not supported and vgatherb is supported
                 elif check_vgatherb_supported:
                     ub_load = ub_load0
@@ -710,9 +684,9 @@ class MaxPoolWithargmaxResnet50():
         instance.vector_dup(16,
                             ub_load[((output_block_h - 1) * self.stride_h + self.window_h) * self.in_size_w * 16],
                             self.pad_value, 1, 1, 1)
-        if looph == loop_h // 2 - 1:
+        with instance.if_scope(looph == loop_h // 2 - 1):
             gm_len_pong.set_as(((output_block_h - 1) * self.stride_h + self.window_h - 1) * self.in_size_w)
-        else:
+        with instance.else_scope():
             gm_len_pong.set_as(((output_block_h - 1) * self.stride_h + self.window_h) * self.in_size_w)
 
         src_offsets_size = output_block_h * self.out_size_w * filter_size
@@ -838,8 +812,7 @@ class MaxPoolWithargmaxResnet50():
                                         output_w_index * self.stride_w + w_index) * 32
 
                     if output_block_h_index == output_block_h - 1 and w_loop == 2:
-                        tensor_last_value = ((output_block_h - 1) * self.stride_h + self.window_h) * \
-                                            self.in_size_w * 32
+                        tensor_last_value = ((output_block_h - 1) * self.stride_h + self.window_h) * self.in_size_w * 32
                     else:
                         tensor_last_value = tensor_value
 

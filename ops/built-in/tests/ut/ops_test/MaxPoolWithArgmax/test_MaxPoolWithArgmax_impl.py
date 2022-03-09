@@ -142,6 +142,4 @@ def test_check_support(test_arg):
 ut_case.add_cust_test_func(test_func=test_check_support)
 
 if __name__ == '__main__':
-    ut_case.run()
-    # ut_case.run("Ascend910")
-    exit(0)
+    ut_case.run("Ascend910A")
