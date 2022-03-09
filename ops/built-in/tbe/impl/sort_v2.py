@@ -273,7 +273,7 @@ class SortV2(object):
         # record the lists info
         length = self.num_per_batch // self.sort_size
         num_list = [self.sort_size] * length
-
+        # Let them merge evenly, to avoid exceeding the limit of the number of single list.
         src_pos_ub = 0
         while len(num_list) > 1:
             src_pos_ub, dest_pos_ub = dest_pos_ub, src_pos_ub
@@ -483,8 +483,8 @@ class SortV2(object):
         Function: remove min.
         """
         offset = self.num_per_batch - self.num_per_task % self.num_per_batch
-        num_max = self.num_in_ub * 2 * self.align
-        use_num = self.totalnum_per_task if self.totalnum_per_task > num_max else num_max
+        num_max = self.num_in_ub * 2 * self.num_offset
+        use_num = self.totalnum_per_task if num_max > self.totalnum_per_task else num_max
 
         batchs = (self.totalnum_per_task + use_num - 1) // use_num
         float_ub = self.tik_instance.Tensor(self.dtype, [use_num], name="float_ub", scope=tik.scope_ubuf)

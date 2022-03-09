@@ -60,6 +60,28 @@ ut_case.add_case(["Ascend910A","Ascend920A"], {
     "format_expect": ["ND"],
     "support_expect": True})
 
+ut_case.add_case(["Ascend910A","Ascend920A"], {
+    "params": [{"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (1, 250000), "shape": (1, 250000),
+                "param_type": "input"},
+               {"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (1, 250000), "shape": (1, 250000),
+                "param_type": "output"},
+               -1, True],
+    "case_name": "test5",
+    "expect": "success",
+    "format_expect": ["ND"],
+    "support_expect": True})
+
+ut_case.add_case(["Ascend910A","Ascend920A"], {
+    "params": [{"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (1, 500000), "shape": (1, 500000),
+                "param_type": "input"},
+               {"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (1, 500000), "shape": (1, 500000),
+                "param_type": "output"},
+               -1, True],
+    "case_name": "test6",
+    "expect": "success",
+    "format_expect": ["ND"],
+    "support_expect": False})
+
 if __name__ == '__main__':
     ut_case.run(["Ascend910A", "Ascend920A"])
     exit(0)
