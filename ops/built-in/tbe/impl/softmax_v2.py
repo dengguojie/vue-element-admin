@@ -2771,10 +2771,10 @@ def softmax_v2(input_x, output_y, axis=-1, kernel_name="softmax_v2", impl_mode="
         context = tbe_context.op_context.get_context()
         if context is not None:
             context.set_op_mode("static")
-            dyn_impl.softmax_v2(input_x, output_y, axis, kernel_name)
+            dyn_impl.softmax_v2(input_x, output_y, axis, kernel_name, impl_mode)
         else:
             with tbe_context.op_context.OpContext("static"):
-                dyn_impl.softmax_v2(input_x, output_y, axis, kernel_name)
+                dyn_impl.softmax_v2(input_x, output_y, axis, kernel_name, impl_mode)
         return
 
     range_x = []

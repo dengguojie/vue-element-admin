@@ -75,7 +75,7 @@ def _is_special_cases(input_shape):
 
 # 'pylint:disable=too-many-locals,disable=too-many-statements,too-many-branches
 @register_operator("SoftmaxV2")
-def softmax_v2_compute(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
+def softmax_v2_compute(input_x, output_y, axis=-1, kernel_name="softmax_v2", impl_mode="high_performance"):
     """
     calculating data's softmax, produces an output tensor with shape
     the result equals the sum of the x power of e over the sum of
@@ -181,6 +181,8 @@ def softmax_v2_compute(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
        ) and output_y.get("format") == "FRACTAL_NZ" and dtype == "float16":
         if _is_special_cases(ori_shape):
             data_expsum = tbe.vrec(data_expsum, "high_precision")
+        elif impl_mode == "high_precision":
+            data_expsum = tbe.vrec(data_expsum, "high_precision")
         else:
             data_expsum = tbe.vrec(data_expsum)
         data_expsum = tbe.broadcast(data_expsum, shape)
@@ -220,8 +222,9 @@ def update_5hd_axis(origin_format, list_axis, input_format):
 # 'pylint:disable=invalid-name,too-many-locals
 @register_operator("SoftmaxV2")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
-                            (para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_LIST_INT), para_check.KERNEL_NAME)
-def softmax_v2(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
+                            (para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_LIST_INT),
+                            para_check.KERNEL_NAME, para_check.OPTION_ATTR_STR)
+def softmax_v2(input_x, output_y, axis=-1, kernel_name="softmax_v2", impl_mode="high_performance"):
     """
     algorithm: softmax
     calculating data's softmax, produces an output tensor with shape
@@ -301,7 +304,7 @@ def softmax_v2(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
                                           "format": input_format,
                                           "disable_fuse_axes": disable_fuse_axes
                                       })
-            output = softmax_v2_compute(input_x, output_y, reduce_axis, kernel_name)
+            output = softmax_v2_compute(input_x, output_y, reduce_axis, kernel_name, impl_mode)
             tensors.append([input_x, output])
 
         with tvm.target.cce():

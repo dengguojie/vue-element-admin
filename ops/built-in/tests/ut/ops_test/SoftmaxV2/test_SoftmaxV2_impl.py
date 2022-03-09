@@ -137,6 +137,15 @@ case17 = {"params": [{"shape": (4096, 3, 49, 49), "dtype": "float32", "format": 
          "format_expect": [],
          "support_expect": True}
 
+case18 = {"params": [{"shape": (16, 16, 1, 1, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (16, 16, 8, 8),"ori_format": "ND"},
+                     {"shape": (16, 16, 1, 1, 16 ,16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (16, 16, 8, 8),"ori_format": "ND"},
+                     [-1]],
+         "addition_params": {"impl_mode": "high_precision"},
+         "case_name": "softmax_v2_nz_04",
+         "expect": "success",
+         "format_expect": [],
+         "support_expect": True}
+
 ut_case.add_case(["Ascend710", "Ascend910A"], case1)
 ut_case.add_case(["Ascend710", "Ascend910A"], case2)
 ut_case.add_case(["Ascend710", "Ascend910A"], case3)
@@ -154,6 +163,7 @@ ut_case.add_case(["Ascend710","Ascend910A","Hi3796CV300CS"], case14)
 ut_case.add_case(["Ascend710", "Ascend910A"], case15)
 ut_case.add_case(["Ascend710", "Ascend910A"], case16)
 ut_case.add_case(["Ascend710", "Ascend910A"], case17)
+ut_case.add_case(["Ascend710", "Ascend910A"], case18)
 # precision cases
 ## need axis is list
 
