@@ -2572,7 +2572,7 @@ IMPLEMT_COMMON_INFERFUNC(OneHotInferShape) {
   }
   // update axis to positive number
   int32_t dimnum = input_shape.GetDimNum();
-  if (axis >= dimnum) {
+  if (axis > dimnum) {
     string correct_size = ConcatString("attr axis(", axis, ") must be < ", input_shape.GetDimNum());
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), correct_size);
     return GRAPH_FAILED;
