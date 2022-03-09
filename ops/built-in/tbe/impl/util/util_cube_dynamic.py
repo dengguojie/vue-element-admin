@@ -44,13 +44,13 @@ RANGE_DIM_LEN = 2
 FORMAT_HW_DIM = 2
 FORMAT_NCHW_DIM = 4
 FORMAT_NC1HWC0_DIM = 5
+FIX_FLAG = 0
 DYNAMIC_FLAG = -1
 UNKNOWN_FLAG = -2
 UNKNOWN_SHAPE = [-2]
 BINARY_RANGE = ((1, None), (1, None), (1, None), (1, None))
 DIM_TO_NAME = {0: "N", 2: "H", 3: "W"}
 INPUT_SIZE_DEFAULT_SHAPE = [4]
-DX_OP_TYPE = ["deconvolution", "conv2d_transpose", "conv2d_backprop_input", "depthwise_conv2d_backprop_input"]
 _K_MIN_RANGE = 1
 _K_MAX_RANGE = 4096
 _K_DIM_SIZE = 5
@@ -348,6 +348,181 @@ def check_graph_mode(tensor: dict) -> bool:
         "ori_range" in tensor.keys()):
         return True
     return False
+
+
+def check_dynamic_mode(tensor: dict) -> bool:
+    """
+    check dynamic or not
+    """
+    if list(tensor.get("ori_shape")) == UNKNOWN_SHAPE:
+        return UNKNOWN_FLAG
+    if DYNAMIC_FLAG in tensor.get("ori_shape"):
+        return DYNAMIC_FLAG
+    return FIX_FLAG
+
+
+def check_generalize_config(generalize_config, op_type):
+    """
+    check generalize config is valid
+    """
+    if generalize_config is not None and generalize_config.get("mode") == "keep_rank":
+        return True
+    warnings.warn("the generalize_config of {} is not keep_rank".format(op_type))
+    return False
+
+
+def check_fuzz_input_output(input_x, dilations, op_type):
+    """
+    check the dtype and shape of input_x
+    """
+    support_format = ["NCHW", "NHWC"]
+    if list(dilations) != [1, 1, 1, 1]:
+        warnings.warn("the dilation of {} is {}, only support all ones for 4D".format(op_type, str(dilations)))
+        return False
+
+    for input_mem in input_x:
+        tensor_format = input_mem.get("ori_format")
+        ori_shape = input_mem.get("ori_shape")
+
+        if tensor_format not in support_format:
+            warnings.warn("ori_format of {} is {}, only support {}".format(op_type,
+                          str(tensor_format), str(support_format)))
+            return False
+        if not ori_shape or len(ori_shape) != FORMAT_NCHW_DIM:
+            warnings.warn("the ori_shape of {} is {}, only support {}d".format(op_type,
+                           str(ori_shape), FORMAT_NCHW_DIM))
+            return False
+
+
+    return True
+
+
+def check_fuzz_n_dim(input_x, dynamic_flag, op_type):
+    """
+    check the n dim of input x
+    """
+    tensor_format = input_x.get("ori_format")
+    n_pos = tensor_format.find("N")
+    input_index = 1 if op_type == "conv2d_transpose" else 0
+    if dynamic_flag == DYNAMIC_FLAG:
+        ori_range = input_x.get("ori_range")
+        if ori_range[n_pos][0] > MAX_N_FUZZ_BUILD:
+            return [{"result": "UNSUPPORTED", "reason": {"param_index": [input_index], "type": ["lower_limit"]}}]
+        if ori_range[n_pos][1] is None or ori_range[n_pos][1] > MAX_N_FUZZ_BUILD:
+            return [{"result": "UNSUPPORTED", "reason": {"param_index": [input_index], "type": ["upper_limit"]}}]
+    else:
+        ori_shape = input_x.get("ori_shape")
+        if ori_shape[n_pos] > MAX_N_FUZZ_BUILD:
+            return [{"result": "UNSUPPORTED"}]
+    return []
+
+
+def _get_nchw_dims(input_x, dynamic_mode=FIX_FLAG):
+    """
+    get the n,c,h,w dims of the shape
+    """
+    input_format = input_x.get("ori_format")
+    pos_n, pos_c, pos_h, pos_w = pos_from_format(input_format)
+    if dynamic_mode == FIX_FLAG:
+        input_shape = input_x.get("ori_shape")
+        return input_shape[pos_n], input_shape[pos_c], input_shape[pos_h], input_shape[pos_w]
+    else:
+        input_range = input_x.get("ori_range")
+        return input_range[pos_n], input_range[pos_c], input_range[pos_h], input_range[pos_w]
+
+
+def _cal_dx_pads(dedy, dedx, strides, data_format):
+    """
+    cal the dx pads in fix shape mode
+    """
+    _, _, dedx_h, dedx_w = _get_nchw_dims(dedx)
+    _, _, dedy_h, dedy_w = _get_nchw_dims(dedy)
+    stride_h, stride_w = strides[data_format.find("H")], strides[data_format.find("W")]
+    # when padding is same
+    if ceil_div(dedx_h, stride_h) == dedy_h and ceil_div(dedx_w, stride_w) == dedy_w:
+        return "SAME"
+    return "VALID"
+
+
+def _cal_dy_hw_max(input_filter, strides, data_format):
+    """
+    cal the hw max in dx
+    """
+    stride_h, stride_w = strides[data_format.find("H")], strides[data_format.find("W")]
+    _, _, filter_h, filter_w = _get_nchw_dims(input_filter)
+
+    h_max = ceil_div(MAX_HW_FUZZ_BUILD - filter_h, stride_h)
+    w_max = ceil_div(MAX_HW_FUZZ_BUILD - filter_w, stride_w)
+    if filter_h == 1 and filter_w == 1:
+        w_max = min(w_max, _K_MAX_RANGE // stride_h * stride_w)
+    else:
+        l1_size = get_soc_spec("L1_SIZE")
+        filter_dtype = input_filter.get("dtype").lower()
+        c0_size = cce_params.C0_SIZE
+        c0_size_k = cce_params.CUBE_MKN[filter_dtype]['mac'][1]
+        b_l1_size = filter_h * filter_w * c0_size * c0_size_k * comm.BIT_RATIO_DICT.get(filter_dtype)
+        al1_h_value = filter_h + 1
+        w_max_l1 = (l1_size - b_l1_size) // \
+                   (al1_h_value * c0_size_k * comm.BIT_RATIO_DICT.get(filter_dtype)) // stride_w
+        w_max = min(w_max_l1, w_max)
+    return h_max, w_max
+
+
+def check_fuzz_hw_dim(input_tensor, strides, data_format, dynamic_flag, op_type):
+    """
+    in dynamic mode, check the range is valid
+    """
+    dedy, _, input_filter = input_tensor
+    h_max, w_max = _cal_dy_hw_max(input_filter, strides, data_format)
+    tensor_format = dedy.get("ori_format")
+    h_pos, w_pos = tensor_format.find("H"), tensor_format.find("w")
+    input_index = 1 if op_type == "conv2d_transpose" else 0
+    if dynamic_flag == DYNAMIC_FLAG:
+        _, _, dedy_h_range, dedy_w_range = _get_nchw_dims(dedy, DYNAMIC_FLAG)
+        # check h dim
+        if dedy_h_range[0] > h_max:
+            return [{"result": "UNSUPPORTED", "reason": {"param_index": [input_index], "type": ["lower_limit"]}}]
+        if dedy_h_range[1] is None or dedy_h_range[1] > h_max:
+            return [{"result": "UNSUPPORTED", "reason": {"param_index": [input_index], "type": ["upper_limit"]}}]
+        if dedy_w_range[0] > w_max:
+            return [{"result": "UNSUPPORTED", "reason": {"param_index": [input_index], "type": ["lower_limit"]}}]
+        if dedy_w_range[1] is None or dedy_w_range[1] > w_max:
+            return [{"result": "UNSUPPORTED", "reason": {"param_index": [input_index], "type": ["upper_limit"]}}]
+    else:
+        _, _, dedy_h, dedy_w = _get_nchw_dims(dedy)
+        if dedy_h > h_max or dedy_w > w_max:
+            return [{"result": "UNSUPPORTED"}]
+        dedy = gen_conv_shape_range(dedy, op_type, False)
+        dedy["ori_range"][h_pos][1] = min(h_max, dedy["ori_range"][h_pos][1])
+        dedy["ori_range"][w_pos][1] = min(w_max, dedy["ori_range"][w_pos][1])
+    return []
+
+
+def cal_dedx_range(input_tensor, strides, data_format):
+    """
+    cal the output range of dx
+    """
+    input_size_range = [[1, None], [1, None], [1, None], [1, None]]
+    pos_n, pos_c, pos_h, pos_w = pos_from_format(data_format)
+    dedy, dedx, input_filter = input_tensor
+    _, _, filter_h, filter_w = _get_nchw_dims(input_filter)
+    _, dedx_c, _, _ = _get_nchw_dims(dedx)
+    dedy_n_range, _, dedy_h_range, dedy_w_range = _get_nchw_dims(dedy, DYNAMIC_FLAG)
+    stride_h, stride_w = strides[pos_h], strides[pos_w]
+    input_size_range[pos_n] = dedy_n_range,
+    input_size_range[pos_c][0] = input_size_range[pos_c][1] = dedx_c
+    pad_mode = _cal_dx_pads(dedy, dedx, strides, data_format)
+    if pad_mode == "SAME":
+        input_size_range[pos_h][0] = dedy_h_range[0]*stride_h + 1 - stride_h
+        input_size_range[pos_w][0] = dedy_w_range[0]*stride_w + 1 - stride_w
+        input_size_range[pos_h][1] = dedy_h_range[1]*stride_h + 1 - 1
+        input_size_range[pos_w][1] = dedy_w_range[1]*stride_w + 1 - 1
+    else:
+        input_size_range[pos_h][0] = dedy_h_range[0]*stride_h + filter_h - stride_h
+        input_size_range[pos_w][0] = dedy_w_range[0]*stride_w + filter_w - stride_w
+        input_size_range[pos_h][1] = dedy_h_range[1]*stride_h + filter_h - 1
+        input_size_range[pos_w][1] = dedy_w_range[1]*stride_w + filter_w - 1
+    return input_size_range
 
 
 class CubeParaProcess:

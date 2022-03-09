@@ -4,11 +4,13 @@ from unittest.mock import MagicMock
 from unittest.mock import patch
 from impl.deconvolution import deconvolution_compute
 from impl.deconvolution import get_op_support_info
+from impl.dynamic.deconvolution import deconvolution_generalization
 from op_test_frame.ut import OpUT
+import tbe
 from te import tvm
-
 from te.tvm.target import cce
 from tbe.dsl import auto_schedule
+
 
 ut_case = OpUT("Deconvolution", "impl.deconvolution", "deconvolution")
 
@@ -41,8 +43,6 @@ def check_intrinsic_mock_mix(*args):
 
 def check_intrinsic_mock_no_fixpipe(*args):
     return support_intrinsic_no_fixpipe[args]
-
-
 
 def test_op_group_requant():
     with patch("tbe.common.platform.intrinsic_check_support", MagicMock(side_effect=check_intrinsic_mock_no_fixpipe)):
@@ -131,7 +131,6 @@ def test_op_mix_case4_mock():
                     kernel_name="deconvolution")
             sch = auto_schedule(out)
 
-
 def test_op_compute_int8():
     with patch("tbe.common.platform.intrinsic_check_support", MagicMock(side_effect=check_intrinsic_mock_no_fixpipe)):
         x = tvm.placeholder(
@@ -166,6 +165,49 @@ def test_op_compute_int8():
             print(e)
             pass
 
+def test_deconvolution_fuzz_build_generalization():
+    input_list_same = [
+        {
+            'shape': (50, 1, 7, 7, 16),
+            'ori_shape': (50, 16, 7, 7),
+            'ori_format': 'NCHW',
+            'format': 'NC1HWC0',
+            'dtype': 'float16'
+        }, {
+            'ori_shape': ((16, 16, 3, 3)),
+            'ori_format': 'NCHW',
+            'format': 'FRACTAL_Z',
+            'dtype': 'float16'
+        }, None, None, {
+            'shape': (50, 1, 7, 7, 16),
+            'ori_shape': (50, 16, 7, 7),
+            'ori_format': 'NCHW',
+            'format': 'NC1HWC0',
+            'dtype': 'float16'
+        }, (1, 1, 1, 1), (0, 0, 0, 0), (1, 1, 1, 1), 1, 'NCHW', 0,
+        'deconvolution_fuzz_build_generalization_same', {"mode": "keep_rank"}]
+    deconvolution_generalization(*input_list_same)
+    input_list_valid = [
+        {
+            'shape': (50, 1, 5, 5, 16),
+            'ori_shape': (50, 16, 7, 7),
+            'ori_format': 'NCHW',
+            'format': 'NC1HWC0',
+            'dtype': 'float16'
+        }, {
+            'ori_shape': ((16, 16, 3, 3)),
+            'ori_format': 'NCHW',
+            'format': 'FRACTAL_Z',
+            'dtype': 'float16'
+        }, None, None, {
+            'shape': (50, 1, 7, 7, 16),
+            'ori_shape': (50, 16, 7, 7),
+            'ori_format': 'NCHW',
+            'format': 'NC1HWC0',
+            'dtype': 'float16'
+        }, (1, 1, 1, 1), (0, 0, 0, 0), (1, 1, 1, 1), 1, 'NCHW', 0,
+        'deconvolution_fuzz_build_generalization_valid', {"mode": "keep_rank"}]
+    deconvolution_generalization(*input_list_valid)
 
 def test_split_deconvolution():
     with patch("tbe.common.platform.intrinsic_check_support", MagicMock(side_effect=check_intrinsic_mock_no_fixpipe)):
@@ -177,10 +219,12 @@ def test_split_deconvolution():
 
 
 if __name__ == "__main__":
-    test_op_group_requant()
-    test_op_mix_case1_mock()
-    test_op_mix_case2_mock()
-    test_op_mix_case3_mock()
-    test_op_mix_case4_mock()
-    test_op_compute_int8()
-    test_split_deconvolution()
+    with tbe.common.context.op_context.OpContext():
+        test_op_group_requant()
+        test_op_mix_case1_mock()
+        test_op_mix_case2_mock()
+        test_op_mix_case3_mock()
+        test_op_mix_case4_mock()
+        test_op_compute_int8()
+        test_split_deconvolution()
+    test_deconvolution_fuzz_build_generalization()
