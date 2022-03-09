@@ -98,7 +98,6 @@ Status SoftmaxWithDropOutDoMaskFusionPass::Fusion(ge::ComputeGraph& graph, Mappi
   }
   
   int64_t inputH = originDimInfo[INT_NUM_TWO];
-  int64_t inputW = originDimInfo[INT_NUM_THREE];
   int64_t inputH1 = originDimInfo[INT_NUM_TWO] / INT_NUM_C0;
   int64_t inputW1 = originDimInfo[INT_NUM_THREE] / INT_NUM_C0;
 
