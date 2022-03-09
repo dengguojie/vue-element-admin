@@ -502,5 +502,8 @@
     ],
     "auto_schedule/python/tbe/dsl/unify_schedule/vector/transdata/transdata_forward_schedule.py":[
         "transdata"
+    ],
+    "auto_schedule/python/tbe/dsl/unify_schedule/extract_image_patches_schedule.py":[
+        "extract_image_patches/test_dynamic_extract_image_patches_impl.py"
     ]
 }

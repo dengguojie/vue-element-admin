@@ -75,6 +75,7 @@ set(_optiling_files
   dynamic_rnn_v2.cc
   dynamic_rnn_v3.cc
   elewise_v3.cc
+  extract_image_patches.cc
   broadcast_v3.cc
   fill.cc
   tensor_move.cc
@@ -165,7 +166,7 @@ set(_optiling_files
   maxpoolwithargmaxv1.cc
   maxpoolgradwithargmaxv1.cc
   maxpoolgradwithargmaxv2.cc
-  maxpoolwithargmaxv2.cc  
+  maxpoolwithargmaxv2.cc
   bounding_box_decode.cc
   iou.cc
   layer_norm.cc

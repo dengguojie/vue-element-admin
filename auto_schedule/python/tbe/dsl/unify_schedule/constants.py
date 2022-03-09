@@ -54,6 +54,7 @@ class Pattern:
     SLICE = "Slice"
     TRANSDATA = "Transdata"
     TUPLE_REDUCE = "TupleReduce"
+    EXTRACT_IMAGE_PATCHES = "ExtractImagePatches"
 
 
 class ElewisePattern:

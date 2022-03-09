@@ -190,23 +190,23 @@ def extract_image_patches(images, y, ksizes, strides, dilates, padding, kernel_n
     _, stride_h, stride_w, _ = strides
     _, dilate_h, dilate_w, _ = dilates
 
-    if (kernel_h >= 256) or (kernel_w >= 256):
+    if kernel_h >= 256 or kernel_w >= 256:
         error_manager_vector.raise_err_specific_reson(kernel_name, "kernel_h and kernel_w can not >= 256!")
-    if (stride_h >= 64) or (stride_w >= 64):
+    if stride_h >= 64 or stride_w >= 64:
         error_manager_vector.raise_err_specific_reson(kernel_name, "stride_h and stride_w can not >= 64!")
-    if (dilate_h >= 256) or (dilate_w >= 256):
+    if dilate_h >= 256 or dilate_w >= 256:
         error_manager_vector.raise_err_specific_reson(kernel_name, "dilate_h and dilate_w can not >= 256!")
 
     out_h, padding_h_top, padding_h_bottom = \
         tbe.te_compute.common.tf_get_windowed_output_size_verbose_v2(fmap_h, kernel_h, dilate_h, stride_h, padding)
     out_w, padding_w_before, padding_w_after = tbe.te_compute.common.tf_get_windowed_output_size_verbose_v2(
         fmap_w, kernel_w, dilate_w, stride_w, padding)
-    if (out_h <= 0) or (out_w <= 0):
+    if out_h <= 0 or out_w <= 0:
         error_manager_vector.raise_err_specific_reson(kernel_name, "out_h and out_w can not <= 0!")
-    if (padding_h_top >= 256) or (padding_h_bottom >= 256):
+    if padding_h_top >= 256 or padding_h_bottom >= 256:
         error_manager_vector.raise_err_specific_reson(kernel_name,
                                                       "padding_h_top and padding_h_bottom can not >= 256!")
-    if (padding_w_before >= 256) or (padding_w_after >= 256):
+    if padding_w_before >= 256 or padding_w_after >= 256:
         error_manager_vector.raise_err_specific_reson(kernel_name,
                                                       "padding_w_before and padding_w_after can not >= 256!")
 

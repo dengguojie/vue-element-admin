@@ -251,7 +251,7 @@ def _im2col_fractal_v2(im2col_shape, feature_map, config, compute_dtype):
                        tag='im2col_fractal')
 
 
-# 'pylint: disable=unused-argument,too-many-locals,too-many-arguments,too-many-statements
+# 'pylint: disable=unused-argument,too-many-locals,too-many-arguments,too-many-statements,too-many-lines
 @tbe_platform.fusion_manager.fusion_manager.register("extract_image_patches")
 def im2col_compute(fmap, c_in_real, ksizes, strides, dilates, pad, out_h, out_w):
     """
@@ -280,7 +280,10 @@ def im2col_compute(fmap, c_in_real, ksizes, strides, dilates, pad, out_h, out_w)
     else:
         align_block_size = Constant.BLOCK_SIZE
 
-    fmap_n = fmap_shape[0].value
+    if isinstance(fmap_shape[0], tvm.expr.IntImm):
+        fmap_n = fmap_shape[0].value
+    elif isinstance(fmap_shape[0], tvm.expr.Var):
+        fmap_n = fmap_shape[0]
     fmap_c1 = fmap_shape[1].value
     fmap_h = fmap_shape[2].value
     fmap_w = fmap_shape[3].value
@@ -527,21 +530,21 @@ def im2col_schedule(res, sch_list):
         else:
             extract_params[key] = value
 
-    out_h = extract_params['out_h']
-    out_w = extract_params['out_w']
-    fmap_shape = extract_params['fmap_shape']
-    c_in_real = extract_params["c_in_real"]
+    out_h = extract_params.get('out_h')
+    out_w = extract_params.get('out_w')
+    fmap_shape = extract_params.get('fmap_shape')
+    c_in_real = extract_params.get("c_in_real")
     fmap_n = fmap_shape[0].value
     fmap_c1 = fmap_shape[1].value
     fmap_h = fmap_shape[2].value
     fmap_w = fmap_shape[3].value
     fmap_c0 = fmap_shape[4].value
-    kernel_h = setfmatrix_dict['conv_kernel_h']
-    kernel_w = setfmatrix_dict['conv_kernel_w']
-    dilate_h = setfmatrix_dict['conv_dilation_h']
-    dilate_w = setfmatrix_dict['conv_dilation_w']
-    stride_h = setfmatrix_dict['conv_stride_h']
-    stride_w = setfmatrix_dict['conv_stride_w']
+    kernel_h = setfmatrix_dict.get('conv_kernel_h')
+    kernel_w = setfmatrix_dict.get('conv_kernel_w')
+    dilate_h = setfmatrix_dict.get('conv_dilation_h')
+    dilate_w = setfmatrix_dict.get('conv_dilation_w')
+    stride_h = setfmatrix_dict.get('conv_stride_h')
+    stride_w = setfmatrix_dict.get('conv_stride_w')
 
     ub_res = res.op.input_tensors[0]
     workspace_res = ub_res.op.input_tensors[0]

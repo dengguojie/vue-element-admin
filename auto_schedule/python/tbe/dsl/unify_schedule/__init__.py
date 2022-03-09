@@ -56,6 +56,8 @@ from . import bn_update_grad_schedule
 from . import bn_training_update_grad_tilingcase
 from . import confusion_softmax_grad_schedule
 from . import confusion_softmax_grad_tilingcase
+from . import extract_image_patches_schedule
+from . import extract_image_patches_tilingcase
 
 # quant
 from . import ascend_quant_schedule

@@ -802,6 +802,7 @@ vector_B:
       - ops/built-in/op_tiling/drop_out_do_mask.cc
       - ops/built-in/op_tiling/dynamic_atomic_addr_clean.cc
       - ops/built-in/op_tiling/embedding_dense_grad.cc
+      - ops/built-in/op_tiling/extractimagepatches.cc
       - ops/built-in/op_tiling/flatten.cc
       - ops/built-in/op_tiling/gather.cc
       - ops/built-in/op_tiling/gather_nd.cc
@@ -1428,6 +1429,7 @@ vector_B:
       - ops/built-in/tests/ut/ops_test/Erfc/test_Erfc_proto.cpp
       - ops/built-in/tests/ut/ops_test/Exp/test_dynamic_exp_impl.py
       - ops/built-in/tests/ut/ops_test/Expm1/test_Expm1_proto.cpp
+      - ops/built-in/tests/ut/ops_test/ExtractImagePatches/test_ExtractImagePatches.py
       - ops/built-in/tests/ut/ops_test/FakeQuantWithMinMaxArgs/test_FakeQuantWithMinMaxArgs_impl.py
       - ops/built-in/tests/ut/ops_test/FakeQuantWithMinMaxVarsGradient/test_FakeQuantWithMinMaxVarsGradient_impl.py
       - ops/built-in/tests/ut/ops_test/FastGelu/test_dynamic_fast_gelu_impl.py
@@ -1870,6 +1872,7 @@ unkown:
       - ops/built-in/op_tiling/moving_sum_with_sigmoid.cc
       - ops/built-in/op_tiling/tabulate_fusion_grad.cc
       - ops/built-in/op_tiling/layer_norm_x_backprop_v2.cc
+      - ops/built-in/op_tiling/extract_image_patches.cc
       - ops/built-in/op_tiling/bn_update_grad_tiling.cc
       - ops/built-in/op_tiling/as_strided.h
       - ops/built-in/op_tiling/ger.cc
@@ -2758,6 +2761,7 @@ unkown:
       - ops/built-in/tbe/impl/dynamic/reduce_prod.py
       - ops/built-in/tbe/impl/dynamic/layer_norm_x_backprop_v2.py
       - ops/built-in/tbe/impl/dynamic/layer_norm_tik.py
+      - ops/built-in/tbe/impl/dynamic/extract_image_patches.py
       - ops/built-in/tbe/impl/dynamic/index_fill_d.py
       - ops/built-in/tbe/impl/dynamic/leaky_relu_grad.py
       - ops/built-in/tbe/impl/dynamic/real_div.py
@@ -3969,6 +3973,8 @@ unkown:
       - auto_schedule/python/tbe/dsl/instrinsic/cce_intrin.py
       - auto_schedule/python/tbe/dsl/instrinsic/__init__.py
       - auto_schedule/python/tbe/dsl/instrinsic/cce_emitinsn_params.py
+      - auto_schedule/python/tbe/dsl/unify_schedule/extract_image_patches_tilingcase.py
+      - auto_schedule/python/tbe/dsl/unify_schedule/extract_image_patches_schedule.py
       - auto_schedule/python/tbe/dsl/unify_schedule/conv2d_schedule.py
       - auto_schedule/python/tbe/dsl/unify_schedule/softmax_cross_entropy_with_logits_tilingcase.py
       - auto_schedule/python/tbe/dsl/unify_schedule/layer_norm_beta_gamma_backprop_v2_schedule.py

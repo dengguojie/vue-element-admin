@@ -1,0 +1,49 @@
+[
+    {
+        "op": "ExtactImagePatches",
+        "input_desc": [
+          {
+            "shape": [-1, 1, 6, 6, 16],
+            "format": "NC1HWC0",
+            "typical_shape": [2, 6, 6, 2],
+            "ori_shape": [-1, 6, 6, 2],
+            "ori_format": "ND",
+            "shape_range": [[1, 2]],
+            "value_range": [[0, 1]],
+            "name": "images",
+            "type": "float"
+          }
+        ],
+        "output_desc": [
+          {
+            "shape": [2, 3, 3, 12],
+            "format": "NHWC",
+            "name": "y",
+            "type": "float"
+          }
+        ],
+        "attr": [
+            {
+             "name": "ksizes",
+             "value": [1, 2, 2, 1],
+             "type": "list_int"
+            },
+            {
+             "name": "strides",
+             "value": [1, 2, 2, 1],
+             "type": "list_int"
+            },
+            {
+                "name": "dilates",
+                "value": [1, 1, 1, 1],
+                "type": "list_int"
+            },
+            {
+             "name": "padding",
+             "value": "VALID",
+             "type": "string"
+            }
+        ],
+        "case_name": "test_ExtactImagePatches_001"
+      }
+]
