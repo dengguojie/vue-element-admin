@@ -21,7 +21,7 @@
 #include <string>
 #include <math.h>
 #include <nlohmann/json.hpp>
-#include "op_tiling.h"
+#include "op_tiling_util.h"
 #include "graph/debug/ge_log.h"
 #include "op_log.h"
 #include "error_log.h"
@@ -47,6 +47,8 @@ struct ResizeBilinearV2GradTilingParams
     int32_t w_loop;
     int32_t w_tail;
 };
+
+static const std::vector<std::string> COMPILE_INFO_KEY = {"core_num", "l1_support", "tensor_c"};
 
 void InitTilingParams(ResizeBilinearV2GradTilingParams& params) {
     params.tiling_mode = 0;
@@ -76,25 +78,13 @@ bool ShapeOne(int32_t h, int32_t w) {
     }
 }
 
-bool GetCompileInfo2(const std::string& op_type, const nlohmann::json& op_compile_info, int32_t& core_num,
+bool GetCompileInfo2(const std::string& op_type, const std::vector<int64_t>& op_compile_info, int32_t& core_num,
                      int32_t& l1_support, int32_t& tensor_c) {
-    using namespace nlohmann;
-    auto all_vars = op_compile_info["vars"];
-    if (all_vars.count("core_num") == 0) {
-        VECTOR_INNER_ERR_REPORT_TILIING("ResizeBilinearV2GradTiling", "GetCompileInfo, get core_num error");
-        return false;
-    }
-    if (all_vars.count("l1_support") == 0) {
-        VECTOR_INNER_ERR_REPORT_TILIING("ResizeBilinearV2GradTiling", "GetCompileInfo, get l1_support error");
-        return false;
-    }
-    if (all_vars.count("tensor_c") == 0) {
-        VECTOR_INNER_ERR_REPORT_TILIING("ResizeBilinearV2GradTiling", "GetCompileInfo, get tensor_c error");
-        return false;
-    }
-    core_num = all_vars["core_num"].get<std::int32_t>();
-    l1_support = all_vars["l1_support"].get<std::int32_t>();
-    tensor_c = all_vars["tensor_c"].get<std::int32_t>();
+    OP_TILING_CHECK(COMPILE_INFO_KEY.size() != op_compile_info.size(),
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "parse op_compile_info failed."), return false);
+    core_num = op_compile_info[0];
+    l1_support = op_compile_info[1];
+    tensor_c = op_compile_info[2];
     return true;
 }
 
@@ -121,13 +111,13 @@ int32_t CalTail(int32_t grads_w, int32_t loop_num) {
     return res;
 }
 
-int32_t CalTilingMode(std::vector<int64_t> grads_shape, std::vector<int64_t> images_shape, int32_t l1_support,
+int32_t CalTilingMode(const GeShape& grads_shape, const GeShape& images_shape, int32_t l1_support,
                       int32_t tensor_c) {
     int32_t tiling_mode = 0;
-    int32_t grads_h = grads_shape[2];
-    int32_t grads_w = grads_shape[3];
-    int32_t images_h = images_shape[2];
-    int32_t images_w = images_shape[3];
+    int32_t grads_h = grads_shape.GetDim(2);
+    int32_t grads_w = grads_shape.GetDim(3);
+    int32_t images_h = images_shape.GetDim(2);
+    int32_t images_w = images_shape.GetDim(3);
 
     if (grads_h == images_h && grads_w == images_w) {
         tiling_mode = 0;
@@ -171,11 +161,11 @@ bool CoreType(int32_t tiling_mode) {
 }
 
 void CalCoreInfo(ResizeBilinearV2GradTilingParams& tiling_params, int32_t core_num,
-                 std::vector<int64_t> grads_shape) {
+                 const GeShape& grads_shape) {
     int32_t need_core_num = 0;
-    int32_t n = grads_shape[0];
-    int32_t c1 = grads_shape[1];
-    int32_t h = grads_shape[2];
+    int32_t n = grads_shape.GetDim(0);
+    int32_t c1 = grads_shape.GetDim(1);
+    int32_t h = grads_shape.GetDim(2);
     int32_t nc1 = n * c1;
 
     if (CoreType(tiling_params.tiling_mode)) {
@@ -202,20 +192,20 @@ void CalCoreInfo(ResizeBilinearV2GradTilingParams& tiling_params, int32_t core_n
 }
 
 void CalRunningInfo(ResizeBilinearV2GradTilingParams& tiling_params, int32_t core_num, int32_t l1_support,
-                    int32_t tensor_c, std::vector<int64_t> grads_shape, std::vector<int64_t> images_shape) {
-    int32_t grad_each_core = grads_shape[2] * grads_shape[3] * grads_shape[4];
-    int32_t output_each_core = images_shape[2] * images_shape[3] * images_shape[4];
-    int32_t grad_move_num = grads_shape[3] * grads_shape[4];
-    int32_t output_move_num = images_shape[3] * images_shape[4];
-    int32_t nc1 = grads_shape[0] * grads_shape[1];
-    int32_t grads_w = grads_shape[3];
+                    int32_t tensor_c, const GeShape& grads_shape, const GeShape& images_shape) {
+    int32_t grad_each_core = grads_shape.GetDim(2) * grads_shape.GetDim(3) * grads_shape.GetDim(4);
+    int32_t output_each_core = images_shape.GetDim(2) * images_shape.GetDim(3) * images_shape.GetDim(4);
+    int32_t grad_move_num = grads_shape.GetDim(3) * grads_shape.GetDim(4);
+    int32_t output_move_num = images_shape.GetDim(3) * images_shape.GetDim(4);
+    int32_t nc1 = grads_shape.GetDim(0) * grads_shape.GetDim(1);
+    int32_t grads_w = grads_shape.GetDim(3);
     int32_t w_loop = CeilDiv(grads_w, 256);
     int32_t w_tail = CalTail(grads_w, 256);
 
-    tiling_params.grads_h = grads_shape[2];
-    tiling_params.grads_w = grads_shape[3];
-    tiling_params.images_h = images_shape[2];
-    tiling_params.images_w = images_shape[3];
+    tiling_params.grads_h = grads_shape.GetDim(2);
+    tiling_params.grads_w = grads_shape.GetDim(3);
+    tiling_params.images_h = images_shape.GetDim(2);
+    tiling_params.images_w = images_shape.GetDim(3);
     tiling_params.grad_each_core = grad_each_core;
     tiling_params.output_each_core = output_each_core;
     tiling_params.grad_move_num = grad_move_num;
@@ -227,72 +217,83 @@ void CalRunningInfo(ResizeBilinearV2GradTilingParams& tiling_params, int32_t cor
     CalCoreInfo(tiling_params, core_num, grads_shape);
 }
 
-void SetRunningInfo(const ResizeBilinearV2GradTilingParams& tiling_params, OpRunInfo& run_info) {
-    ByteBufferPut(run_info.tiling_data, tiling_params.tiling_mode);
-    ByteBufferPut(run_info.tiling_data, tiling_params.need_core_num);
-    ByteBufferPut(run_info.tiling_data, tiling_params.nc1_per_core);
-    ByteBufferPut(run_info.tiling_data, tiling_params.nc1_last_core);
-    ByteBufferPut(run_info.tiling_data, tiling_params.h_per_core);
-    ByteBufferPut(run_info.tiling_data, tiling_params.h_last_core);
-    ByteBufferPut(run_info.tiling_data, tiling_params.grads_h);
-    ByteBufferPut(run_info.tiling_data, tiling_params.grads_w);
-    ByteBufferPut(run_info.tiling_data, tiling_params.images_h);
-    ByteBufferPut(run_info.tiling_data, tiling_params.images_w);
-    ByteBufferPut(run_info.tiling_data, tiling_params.grad_each_core);
-    ByteBufferPut(run_info.tiling_data, tiling_params.output_each_core);
-    ByteBufferPut(run_info.tiling_data, tiling_params.grad_move_num);
-    ByteBufferPut(run_info.tiling_data, tiling_params.output_move_num);
-    ByteBufferPut(run_info.tiling_data, tiling_params.nc1);
-    ByteBufferPut(run_info.tiling_data, tiling_params.w_loop);
-    ByteBufferPut(run_info.tiling_data, tiling_params.w_tail);
+void SetRunningInfo(const ResizeBilinearV2GradTilingParams& tiling_params, utils::OpRunInfo& run_info) {
+    run_info.AddTilingData(tiling_params.tiling_mode);
+    run_info.AddTilingData(tiling_params.need_core_num);
+    run_info.AddTilingData(tiling_params.nc1_per_core);
+    run_info.AddTilingData(tiling_params.nc1_last_core);
+    run_info.AddTilingData(tiling_params.h_per_core);
+    run_info.AddTilingData(tiling_params.h_last_core);
+    run_info.AddTilingData(tiling_params.grads_h);
+    run_info.AddTilingData(tiling_params.grads_w);
+    run_info.AddTilingData(tiling_params.images_h);
+    run_info.AddTilingData(tiling_params.images_w);
+    run_info.AddTilingData(tiling_params.grad_each_core);
+    run_info.AddTilingData(tiling_params.output_each_core);
+    run_info.AddTilingData(tiling_params.grad_move_num);
+    run_info.AddTilingData(tiling_params.output_move_num);
+    run_info.AddTilingData(tiling_params.nc1);
+    run_info.AddTilingData(tiling_params.w_loop);
+    run_info.AddTilingData(tiling_params.w_tail);
 }
 
 void PrintTilingParams(const ResizeBilinearV2GradTilingParams& tiling_params) {
-    GELOGD("op [ResizeBilinearV2GradTiling] : tiling_mode=%d.", tiling_params.tiling_mode);
-    GELOGD("op [ResizeBilinearV2GradTiling] : need_core_num=%d.", tiling_params.need_core_num);
-    GELOGD("op [ResizeBilinearV2GradTiling] : nc1_per_core=%d.", tiling_params.nc1_per_core);
-    GELOGD("op [ResizeBilinearV2GradTiling] : nc1_last_core=%d.", tiling_params.nc1_last_core);
-    GELOGD("op [ResizeBilinearV2GradTiling] : h_per_core=%d.", tiling_params.h_per_core);
-    GELOGD("op [ResizeBilinearV2GradTiling] : h_last_core=%d.", tiling_params.h_last_core);
-    GELOGD("op [ResizeBilinearV2GradTiling] : grads_h=%d.", tiling_params.grads_h);
-    GELOGD("op [ResizeBilinearV2GradTiling] : grads_w=%d.", tiling_params.grads_w);
-    GELOGD("op [ResizeBilinearV2GradTiling] : images_h=%d.", tiling_params.images_h);
-    GELOGD("op [ResizeBilinearV2GradTiling] : images_w=%d.", tiling_params.images_w);
-    GELOGD("op [ResizeBilinearV2GradTiling] : grad_each_core=%d.", tiling_params.grad_each_core);
-    GELOGD("op [ResizeBilinearV2GradTiling] : output_each_core=%d.", tiling_params.output_each_core);
-    GELOGD("op [ResizeBilinearV2GradTiling] : grad_move_num=%d.", tiling_params.grad_move_num);
-    GELOGD("op [ResizeBilinearV2GradTiling] : output_move_num=%d.", tiling_params.output_move_num);
-    GELOGD("op [ResizeBilinearV2GradTiling] : nc1=%d.", tiling_params.nc1);
-    GELOGD("op [ResizeBilinearV2GradTiling] : w_loop=%d.", tiling_params.w_loop);
-    GELOGD("op [ResizeBilinearV2GradTiling] : w_tail=%d.", tiling_params.w_tail);
+    GELOGD("op [ResizeBilinearV2GradTiling] : tiling_mode=%ld.", tiling_params.tiling_mode);
+    GELOGD("op [ResizeBilinearV2GradTiling] : need_core_num=%ld.", tiling_params.need_core_num);
+    GELOGD("op [ResizeBilinearV2GradTiling] : nc1_per_core=%ld.", tiling_params.nc1_per_core);
+    GELOGD("op [ResizeBilinearV2GradTiling] : nc1_last_core=%ld.", tiling_params.nc1_last_core);
+    GELOGD("op [ResizeBilinearV2GradTiling] : h_per_core=%ld.", tiling_params.h_per_core);
+    GELOGD("op [ResizeBilinearV2GradTiling] : h_last_core=%ld.", tiling_params.h_last_core);
+    GELOGD("op [ResizeBilinearV2GradTiling] : grads_h=%ld.", tiling_params.grads_h);
+    GELOGD("op [ResizeBilinearV2GradTiling] : grads_w=%ld.", tiling_params.grads_w);
+    GELOGD("op [ResizeBilinearV2GradTiling] : images_h=%ld.", tiling_params.images_h);
+    GELOGD("op [ResizeBilinearV2GradTiling] : images_w=%ld.", tiling_params.images_w);
+    GELOGD("op [ResizeBilinearV2GradTiling] : grad_each_core=%ld.", tiling_params.grad_each_core);
+    GELOGD("op [ResizeBilinearV2GradTiling] : output_each_core=%ld.", tiling_params.output_each_core);
+    GELOGD("op [ResizeBilinearV2GradTiling] : grad_move_num=%ld.", tiling_params.grad_move_num);
+    GELOGD("op [ResizeBilinearV2GradTiling] : output_move_num=%ld.", tiling_params.output_move_num);
+    GELOGD("op [ResizeBilinearV2GradTiling] : nc1=%ld.", tiling_params.nc1);
+    GELOGD("op [ResizeBilinearV2GradTiling] : w_loop=%ld.", tiling_params.w_loop);
+    GELOGD("op [ResizeBilinearV2GradTiling] : w_tail=%ld.", tiling_params.w_tail);
 }
 
-bool ResizeBilinearV2GradTiling(const std::string& op_type, const TeOpParas& op_paras,
-                                const nlohmann::json& op_compile_info, OpRunInfo& run_info) {
+bool ResizeBilinearV2GradTiling(const std::string& op_type, const ge::Operator& opParas,
+                                const std::vector<int64_t>& op_compile_info, utils::OpRunInfo& run_info) {
     using namespace ge;
     int32_t core_num;
     int32_t l1_support;
     int32_t tensor_c;
-    bool get_compile_info = GetCompileInfo2(op_type, op_compile_info, core_num, l1_support, tensor_c);
-    if (!get_compile_info) {
-        VECTOR_INNER_ERR_REPORT_TILIING(op_type, "ResizeBilinearV2GradTiling: GetCompileInfo error.");
-        return false;
-    }
+
+    OP_TILING_CHECK(
+      !GetCompileInfo2(op_type, op_compile_info, core_num, l1_support, tensor_c),
+      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "GetCompileInfo2 error."), return false);
+
+    auto operator_info = ge::OpDescUtils::GetOpDescFromOperator(opParas);
+    OP_TILING_CHECK(operator_info == nullptr, VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get op_info failed."),
+                  return false);
+
+    auto input_desc = operator_info->MutableInputDesc(0);
+    OP_TILING_CHECK(input_desc == nullptr, VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get input_desc failed."),
+                    return false);
+    const GeShape& grads_shape = input_desc->MutableShape();
+
+    input_desc = operator_info->MutableInputDesc(1);
+    OP_TILING_CHECK(input_desc == nullptr, VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get input_desc failed."),
+                    return false);
+    const GeShape& images_shape = input_desc->MutableShape();
 
     ResizeBilinearV2GradTilingParams tiling_params;
     InitTilingParams(tiling_params);
 
-    const std::vector<int64_t>& grads_shape = op_paras.inputs[0].tensor[0].shape;
-    const std::vector<int64_t>& images_shape = op_paras.inputs[1].tensor[0].shape;
     CalRunningInfo(tiling_params, core_num, l1_support, tensor_c, grads_shape, images_shape);
     SetRunningInfo(tiling_params, run_info);
     PrintTilingParams(tiling_params);
 
-    run_info.block_dim = tiling_params.need_core_num;
+    run_info.SetBlockDim(tiling_params.need_core_num);
     return true;
 }
 // register tiling interface of the ResizeBilinearV2Grad op.
-REGISTER_OP_TILING_FUNC_BUFFERED(ResizeBilinearV2Grad, ResizeBilinearV2GradTiling);
+REGISTER_OP_TILING_V3_WITH_VECTOR(ResizeBilinearV2Grad, ResizeBilinearV2GradTiling, COMPILE_INFO_KEY, NO_OPTIONAL_VALUE);
 // register tiling interface of the SyncResizeBilinearV2Grad op.
-REGISTER_OP_TILING_FUNC_BUFFERED(SyncResizeBilinearV2Grad, ResizeBilinearV2GradTiling);
+REGISTER_OP_TILING_V3_WITH_VECTOR(SyncResizeBilinearV2Grad, ResizeBilinearV2GradTiling, COMPILE_INFO_KEY, NO_OPTIONAL_VALUE);
 }  // namespace optiling.
