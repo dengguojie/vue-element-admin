@@ -172,6 +172,8 @@ class TupleReducePattern:
     """
     # generic
     TR_0 = "TR_0"
+
+
 class CompileInfo:
     """
     Built-in Compilation Info Keys

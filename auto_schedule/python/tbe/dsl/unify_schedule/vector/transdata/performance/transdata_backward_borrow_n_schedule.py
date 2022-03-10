@@ -198,12 +198,10 @@ class TransBackwardBorrowNSchedule(TransdataBaseSchedule):
 
         def parses_factor():
             # define factor
-            self.tiling_case.block_factor = \
-                self.tiling_case.block_factor if self.tiling_case.block_factor else var_inner("_block_factor",
-                                                                                              (1, None))
-            self.tiling_case.ub_first_factor = \
-                self.tiling_case.ub_first_factor if self.tiling_case.ub_first_factor else var_inner("_ub_first_factor",
-                                                                                                    (1, None))
+            if not self.tiling_case.block_factor:
+                self.tiling_case.block_factor = var_inner("_block_factor", (1, None))
+            if not self.tiling_case.ub_first_factor:
+                self.tiling_case.ub_first_factor = var_inner("_ub_first_factor", (1, None))
 
         def parses_split_one():
             """

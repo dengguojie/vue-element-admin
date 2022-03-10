@@ -48,9 +48,7 @@ class CalcTupleReduceTilingCase(Computation):
     def __init__(self, outs, option):
         self.outs = outs
         self.option = option
-    
-    def get_sub_pattern(self):
-        return TupleReducePattern.TR_0
+        self.tiling_shape = None
     
     @classmethod
     def get_instance(cls, outs, option):
@@ -64,6 +62,9 @@ class CalcTupleReduceTilingCase(Computation):
     def get_supported_soc(cls):
         return [DEFAULT]
     
+    def get_sub_pattern(self):
+        return TupleReducePattern.TR_0
+
     def do_tiling_case(self):
         """
         do tuple reduce tiling case
@@ -109,28 +110,11 @@ class TupleReduceTilingCase:
         self.ub_factor = None
 
         self.dynamic_mode = CONST if self.info.is_const else DYNAMIC
-        self.schedule_type = self.ScheduleType.TIME_TILING if self.block_axis in self.info.reduce_axis \
-            else self.ScheduleType.SPATIAL_TILING
+        if self.block_axis in self.info.reduce_axis:
+            self.schedule_type = self.ScheduleType.TIME_TILING
+        else:
+            self.schedule_type = self.ScheduleType.SPATIAL_TILING
         self.tiling_key = self.calc_tiling_key()
-    
-    def calc_tiling_key(self):
-        block_axis, ub_axis = self.block_axis, self.ub_axis
-        schedule_type = 0 if self.schedule_type == self.ScheduleType.SPATIAL_TILING else 1
-        reduce_pattern = self._calc_reduce_axis(self.info.reduce_axis)
-        key_values = (reduce_pattern, schedule_type, block_axis, ub_axis)
-        key_weights = (10**3, 10**2, 10**1, 10**0)
-        tiling_key = [value * weight for value, weight in zip(key_values, key_weights)]
-        return sum(tiling_key)
-    
-    @staticmethod
-    def _calc_reduce_axis(reduce_axis):
-        one_hot = [0 for _ in range(8)]
-        for i in reduce_axis:
-            one_hot[i] = 1
-        pattern = 0
-        for v in one_hot:
-            pattern = 2 * pattern + v
-        return pattern
     
     @property
     def check_validity(self):
@@ -146,4 +130,23 @@ class TupleReduceTilingCase:
                 and self.ub_axis not in self.info.reduce_axis \
                 and self.block_axis > self.ub_axis:
             return False
-        return True 
+        return True
+    
+    @staticmethod
+    def _calc_reduce_axis(reduce_axis):
+        one_hot = [0 for _ in range(8)]
+        for i in reduce_axis:
+            one_hot[i] = 1
+        pattern = 0
+        for v in one_hot:
+            pattern = 2 * pattern + v
+        return pattern
+    
+    def calc_tiling_key(self):
+        block_axis, ub_axis = self.block_axis, self.ub_axis
+        schedule_type = 0 if self.schedule_type == self.ScheduleType.SPATIAL_TILING else 1
+        reduce_pattern = self._calc_reduce_axis(self.info.reduce_axis)
+        key_values = (reduce_pattern, schedule_type, block_axis, ub_axis)
+        key_weights = (10**3, 10**2, 10**1, 10**0)
+        tiling_key = [value * weight for value, weight in zip(key_values, key_weights)]
+        return sum(tiling_key)

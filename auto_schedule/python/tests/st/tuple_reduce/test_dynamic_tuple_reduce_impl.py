@@ -34,7 +34,8 @@ def dsl_dynamic_tuple_reduce(input_normalized_x, input_dx, shape_gamma, kernel_n
         with tvm.target.cce():
             sch = tbe.dsl.auto_schedule(outs)
         schedules.append(sch)
-        config = {"name": kernel_name, "tensor_list": tensors}
+
+    config = {"name": kernel_name, "tensor_list": tensors}
     tbe.dsl.build(schedules, config)
 
 ut_case = OpUT("tuple_reduce", "tuple_reduce.test_dynamic_tuple_reduce_impl", "dsl_dynamic_tuple_reduce")

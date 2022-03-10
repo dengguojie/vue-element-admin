@@ -17,14 +17,11 @@
 Schedule primitive enhancement plug-in
 """
 # Standard Packages
-import copy
 from typing import Set
-from typing import Dict
 from typing import List
-from typing import AnyStr
 from typing import Mapping
-from typing import Optional
-from enum import Enum, auto
+from enum import Enum
+from enum import auto
 # Ascend Packages
 from tbe import tvm
 
@@ -67,61 +64,6 @@ class Schedule:
     def __getitem__(self, stage: tvm.schedule.Stage):
         return self.sch[stage]
     
-    def poset(self, stage: tvm.schedule.Stage) -> Set[tvm.schedule.Stage]:
-        """
-        partially ordered set
-        @param stage:
-        @return:
-        """
-        tensors = set(stage.op.input_tensors)
-        queue = set(stage.op.input_tensors)
-        while queue:
-            tensor = queue.pop()
-            tensors.update(tensor.op.input_tensors)
-            queue.update(tensor.op.input_tensors)
-        stages = set()
-        for tensor in tensors:
-            stages.add(self.get_stage(tensor))
-        return stages
-    
-    def producer(self, stage: tvm.schedule.Stage) -> List[tvm.schedule.Stage]:
-        all_producers = [self.get_stage(tensor) for tensor in stage.op.input_tensors]
-        producers = []
-        for p in all_producers:
-            if p not in producers:
-                producers.append(p)
-        return producers
-    
-    def consumer(self, stage: tvm.schedule.Stage) -> List[tvm.schedule.Stage]:
-        all_consumers = [_stage for _stage in self.stages if stage in self.producer(_stage)]
-        consumers = set()
-        for c in all_consumers:
-            consumers.add(c)
-        return list(consumers)
-    
-    def get_tensor(self, stage: tvm.schedule.Stage) -> tvm.tensor.Tensor:
-        for tensor in self.tensors:
-            if tensor.op == stage.op:
-                return tensor
-        for tensor in self.ori_tensors:
-            if tensor.op == stage.origin_op:
-                return tensor
-    
-    def get_ori_tensor(self, stage: tvm.schedule.Stage) -> tvm.tensor.Tensor:
-        for tensor in self.ori_tensors:
-            if tensor.op == stage.origin_op:
-                return tensor
-        for tensor in self.tensors:
-            if tensor.op == stage.op:
-                return tensor
-    
-    def get_stage(self, tensor: tvm.tensor.Tensor) -> tvm.schedule.Stage:
-        for stage in self.stages:
-            if tensor.op == stage.op:
-                return stage
-            if tensor.op == stage.origin_op:
-                return stage
-    
     @property
     def stages(self) -> List[tvm.schedule.Stage]:
         return self.sch.stages
@@ -161,11 +103,11 @@ class Schedule:
         return tvm.create_schedule(ops)
     
     @staticmethod
-    def DataParallelIteration(stage: tvm.schedule.Stage) -> List[tvm.schedule.IterVar]:
+    def data_parallel_iteration(stage: tvm.schedule.Stage) -> List[tvm.schedule.IterVar]:
         return [iter_var for iter_var in stage.leaf_iter_vars if iter_var.iter_type == IterType.kDataPar.value]
     
     @staticmethod
-    def CommReduce(stage: tvm.schedule.Stage) -> List[tvm.schedule.IterVar]:
+    def comm_reduce(stage: tvm.schedule.Stage) -> List[tvm.schedule.IterVar]:
         return [iter_var for iter_var in stage.leaf_iter_vars if iter_var.iter_type == IterType.kCommReduce.value]
     
     @staticmethod
@@ -173,6 +115,65 @@ class Schedule:
         for iter_var in stage.leaf_iter_vars:
             if iter_var.iter_type == IterType.kCommReduce.value:
                 return iter_var
+        return iter_var
+
+    def poset(self, stage: tvm.schedule.Stage) -> Set[tvm.schedule.Stage]:
+        """
+        partially ordered set
+        @param stage:
+        @return:
+        """
+        tensors = set(stage.op.input_tensors)
+        queue = set(stage.op.input_tensors)
+        while queue:
+            tensor = queue.pop()
+            tensors.update(tensor.op.input_tensors)
+            queue.update(tensor.op.input_tensors)
+        stages = set()
+        for tensor in tensors:
+            stages.add(self.get_stage(tensor))
+        return stages
+    
+    def producer(self, stage: tvm.schedule.Stage) -> List[tvm.schedule.Stage]:
+        all_producers = [self.get_stage(tensor) for tensor in stage.op.input_tensors]
+        producers = []
+        for p in all_producers:
+            if p not in producers:
+                producers.append(p)
+        return producers
+    
+    def consumer(self, stage: tvm.schedule.Stage) -> List[tvm.schedule.Stage]:
+        all_consumers = [_stage for _stage in self.stages if stage in self.producer(_stage)]
+        consumers = set()
+        for c in all_consumers:
+            consumers.add(c)
+        return list(consumers)
+    
+    def get_tensor(self, stage: tvm.schedule.Stage) -> tvm.tensor.Tensor:
+        for tensor in self.tensors:
+            if tensor.op == stage.op:
+                return tensor
+        for tensor in self.ori_tensors:
+            if tensor.op == stage.origin_op:
+                return tensor
+        return tensor
+    
+    def get_ori_tensor(self, stage: tvm.schedule.Stage) -> tvm.tensor.Tensor:
+        for tensor in self.ori_tensors:
+            if tensor.op == stage.origin_op:
+                return tensor
+        for tensor in self.tensors:
+            if tensor.op == stage.op:
+                return tensor
+        return tensor
+    
+    def get_stage(self, tensor: tvm.tensor.Tensor) -> tvm.schedule.Stage:
+        for stage in self.stages:
+            if tensor.op == stage.op:
+                return stage
+            if tensor.op == stage.origin_op:
+                return stage
+        return stage
     
     def cache_read(self, tensor, scope, readers) -> tvm.tensor.Tensor:
         self.stages_not_on_ub.add(self.get_stage(tensor))

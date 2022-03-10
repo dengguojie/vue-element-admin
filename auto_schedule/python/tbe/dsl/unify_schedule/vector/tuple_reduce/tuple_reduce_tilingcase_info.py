@@ -111,56 +111,6 @@ class Info:
         if self.is_const:
             self.const_tiling()
     
-    def min_max_dtype(self):
-        min_dtype, max_dtype = self.outs[0].dtype, self.outs[0].dtype
-        for tensor in self.tensors:
-            if DTYPE_BYTE_MAPPING.get(tensor.dtype) > DTYPE_BYTE_MAPPING.get(max_dtype):
-                max_dtype = tensor.dtype
-            if DTYPE_BYTE_MAPPING.get(tensor.dtype) < DTYPE_BYTE_MAPPING.get(min_dtype):
-                min_dtype = tensor.dtype
-        return min_dtype, max_dtype
-    
-    @staticmethod
-    def dim_var_encode(shape):
-        one_hot = [1 if isinstance(thisaxis, tvm.expr.Var) else 0 for thisaxis in shape]
-        binary = 0
-        for v in one_hot[::-1]:
-            binary = 2 * binary + v
-        return binary
-    
-    def add_compile_info(self):
-        # prepare compile info
-        is_const = self.is_const
-        common_info = [self.core_num,
-                       self.ub_size,
-                       self.block_size,
-                       self.atomic_support,
-                       self.dim_var_code]
-        graph_info = [len(self.placeholder),
-                      self.buffer_count,
-                      DTYPE_BYTE_MAPPING.get(self.max_dtype),
-                      DTYPE_BYTE_MAPPING.get(self.min_dtype),
-                      self.keep_dims]
-        
-        # add compile info
-        add_compile_info_inner("_is_const", is_const)
-        add_compile_info_inner("_common_info", common_info)
-        add_compile_info_inner("_runtime", True)
-        add_compile_info_inner("_graph_info", graph_info)
-    
-    def const_tiling(self):
-        add_compile_info_inner("_runtime", False)
-        inputs = [{"shape": util.shape_to_list(ph.shape), "dtype": ph.dtype} for ph in self.placeholder]
-        outputs = [{"shape": util.shape_to_list(tensor.shape), "dtype": tensor.dtype} for tensor in self.outs]
-        run_info = op_tiling.do_op_tiling(OP_TYPE_AUTO_TILING, get_compile_info(), inputs, outputs)
-        tiling_data = op_tiling.decode(run_info.get("tiling_data"),
-                                       {"block_tiling_factor": "int", "ub_tiling_factor": "int"})
-        self.block_factor = tiling_data.get("block_tiling_factor")
-        self.ub_factor = tiling_data.get("ub_tiling_factor")
-        self.tiling_key = run_info.get("tiling_key")
-        # modify runtime to False
-        add_compile_info_inner("_runtime", True)
-
     @staticmethod
     def ub_buffer_count(sch: tuple_reduce_schedule_helper.Schedule) -> int:
         def _dfs(root: Stage, idx: int = 0, base: int = 0):
@@ -198,3 +148,53 @@ class Info:
     @staticmethod
     def get_dtype_size(dtype: AnyStr):
         return DTYPE_BYTE_MAPPING.get(dtype)
+
+    @staticmethod
+    def dim_var_encode(shape):
+        one_hot = [1 if isinstance(thisaxis, tvm.expr.Var) else 0 for thisaxis in shape]
+        binary = 0
+        for v in one_hot[::-1]:
+            binary = 2 * binary + v
+        return binary
+
+    def min_max_dtype(self):
+        min_dtype, max_dtype = self.outs[0].dtype, self.outs[0].dtype
+        for tensor in self.tensors:
+            if DTYPE_BYTE_MAPPING.get(tensor.dtype) > DTYPE_BYTE_MAPPING.get(max_dtype):
+                max_dtype = tensor.dtype
+            if DTYPE_BYTE_MAPPING.get(tensor.dtype) < DTYPE_BYTE_MAPPING.get(min_dtype):
+                min_dtype = tensor.dtype
+        return min_dtype, max_dtype
+    
+    def add_compile_info(self):
+        # prepare compile info
+        is_const = self.is_const
+        common_info = [self.core_num,
+                       self.ub_size,
+                       self.block_size,
+                       self.atomic_support,
+                       self.dim_var_code]
+        graph_info = [len(self.placeholder),
+                      self.buffer_count,
+                      DTYPE_BYTE_MAPPING.get(self.max_dtype),
+                      DTYPE_BYTE_MAPPING.get(self.min_dtype),
+                      self.keep_dims]
+        
+        # add compile info
+        add_compile_info_inner("_is_const", is_const)
+        add_compile_info_inner("_common_info", common_info)
+        add_compile_info_inner("_runtime", True)
+        add_compile_info_inner("_graph_info", graph_info)
+    
+    def const_tiling(self):
+        add_compile_info_inner("_runtime", False)
+        inputs = [{"shape": util.shape_to_list(ph.shape), "dtype": ph.dtype} for ph in self.placeholder]
+        outputs = [{"shape": util.shape_to_list(tensor.shape), "dtype": tensor.dtype} for tensor in self.outs]
+        run_info = op_tiling.do_op_tiling(OP_TYPE_AUTO_TILING, get_compile_info(), inputs, outputs)
+        tiling_data = op_tiling.decode(run_info.get("tiling_data"),
+                                       {"block_tiling_factor": "int", "ub_tiling_factor": "int"})
+        self.block_factor = tiling_data.get("block_tiling_factor")
+        self.ub_factor = tiling_data.get("ub_tiling_factor")
+        self.tiling_key = run_info.get("tiling_key")
+        # modify runtime to False
+        add_compile_info_inner("_runtime", True)

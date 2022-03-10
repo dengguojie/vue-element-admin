@@ -808,9 +808,17 @@ def _tuple_reduce_variable_shape(inputs: list):
     """
     shapes = [tensor.get("shape") for tensor in inputs]
     shapes_transpose = list(map(list, zip(*shapes)))
-    tuple_reduce_vars = [operation.var_inner("_dim_{}".format(j), (1, None))
-                         if -1 in col else None for j, col in enumerate(shapes_transpose)]
-    return [[tuple_reduce_vars[j] if v == -1 else v for j, v in enumerate(_shape)] for _shape in shapes]
+    tuple_reduce_vars = []
+    for j, col in enumerate(shapes_transpose):
+        if -1 in col:
+            tuple_reduce_vars.append(operation.var_inner("_dim_{}".format(j), (1, None)))
+        else:
+            tuple_reduce_vars.append(None)
+    res = []
+    for _shape in shapes:
+        single_shape = [tuple_reduce_vars[j] if v == -1 else v for j, v in enumerate(_shape)]
+        res.append(single_shape)
+    return res
 
 
 def variable_shape(inputs: list, op_mode="elewise"):

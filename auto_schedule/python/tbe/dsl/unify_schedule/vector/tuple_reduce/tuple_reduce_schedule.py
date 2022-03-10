@@ -104,6 +104,17 @@ class TupleReduceTimeTiling:
         self.scope = LOCAL_UB
         self.buffer_size: int = self.info.buffer_size
         self.info.atomic = 1
+
+        self.reduce_stage = None
+        self.reduce_rf_stage = None
+        self.block_split_axis = 0
+        self.block_tiling_axis = 0
+        self.block_outer = 0
+        self.block_inner = 0
+        self.ub_split_axis = 0
+        self.ub_tiling_axis = 0
+        self.ub_outer = 0
+        self.ub_inner = 0
     
     def do_schedule(self):
         self._cache_read()
@@ -134,8 +145,12 @@ class TupleReduceTimeTiling:
 
         # original order
         reduce_axis_one_hot = [1 if i in info.reduce_axis else 0 for i, _ in enumerate(info.max_shape)]
-        origin_order = [reduce_stage.op.reduce_axis[info.reduce_axis.index(i)] if reduce_axis_one_hot[i]
-                        else reduce_stage.op.axis[i] for i, _ in enumerate(info.max_shape)]
+        origin_order = []
+        for i, _ in enumerate(info.max_shape):
+            if reduce_axis_one_hot[i]:
+                origin_order.append(reduce_stage.op.reduce_axis[info.reduce_axis.index(i)])
+            else:
+                origin_order.append(reduce_stage.op.axis[i])
 
         # tiling order [A,...,A,R,...,R,*]
         tiling_order = []
@@ -221,8 +236,8 @@ class TupleReduceTimeTiling:
         reduce_stage.reorder(*gm_reduce_order)
 
         # Pivot rfactor in a proper order
-        data_par_iter = sch.DataParallelIteration(reduce_rf_stage)
-        common_reduce_iter = sch.CommReduce(reduce_rf_stage)
+        data_par_iter = sch.data_parallel_iteration(reduce_rf_stage)
+        common_reduce_iter = sch.comm_reduce(reduce_rf_stage)
         common_reduce_iter = sorted(common_reduce_iter, key=lambda thisaxis: thisaxis.var.name.split('.')[0])
 
         if info.reduce_mode: # last reduce
@@ -290,6 +305,17 @@ class TupleReduceSpatialTiling:
         self.scope = LOCAL_UB
         self.buffer_size: int = self.info.buffer_size
         self.info.atomic = 0
+
+        self.res = None
+        self.reduce_stage = None
+        self.block_split_axis = 0
+        self.ub_split_axis = 0
+        self.block_tiling_axis = 0
+        self.ub_tiling_axis = 0
+        self.block_outer = 0
+        self.ub_outer = 0
+        self.block_inner = 0
+        self.ub_inner = 0
     
     def do_schedule(self):
         self._cache_read()
@@ -367,8 +393,12 @@ class TupleReduceSpatialTiling:
 
         # original order
         reduce_axis_one_hot = [1 if i in info.reduce_axis else 0 for i, _ in enumerate(info.max_shape)]
-        origin_order = [reduce_stage.op.reduce_axis[info.reduce_axis.index(i)] if reduce_axis_one_hot[i]
-                        else reduce_stage.op.axis[i] for i, _ in enumerate(info.max_shape)]
+        origin_order = []
+        for i, _ in enumerate(info.max_shape):
+            if reduce_axis_one_hot[i]:
+                origin_order.append(reduce_stage.op.reduce_axis[info.reduce_axis.index(i)])
+            else:
+                origin_order.append(reduce_stage.op.axis[i])
         
         # tiling order [A,...,A,R,...,R,*]
         tiling_order = list(reduce_stage.leaf_iter_vars)
@@ -385,7 +415,7 @@ class TupleReduceSpatialTiling:
         # Get fuse stage
         res, reduce_stage = self.res, self.reduce_stage
         # Get fuse axes
-        common_reduce_iter = sch.CommReduce(reduce_stage)
+        common_reduce_iter = sch.comm_reduce(reduce_stage)
         if self.ub_outer not in common_reduce_iter:
             return
         to_fuse_ub_outer = []
