@@ -24,10 +24,18 @@ Status ParseParamsMatMul(const Message* op_src, ge::Operator& op_dest)
   const NodeProto* node = dynamic_cast<const NodeProto*>(op_src);
   CHECK(node == nullptr, ONNX_PLUGIN_LOGE(op_name.GetString(), "Dynamic cast op_src to NodeProto failed."),
         return FAILED);
-
+// add the attr to support the custom matmul transpose fusion
   bool trans_a = false;
   bool trans_b = false;
-
+  for (const auto& attr : node->attribute()) {
+    if (attr.name() == "transA" && attr.i() != 0) {
+      trans_a = true;
+    }
+    if (attr.name() == "transB" && attr.i() != 0) {
+      trans_b = true;
+    }
+  }
+  
   op_dest.SetAttr("adj_x1", trans_a);
   op_dest.SetAttr("adj_x2", trans_b);
 
