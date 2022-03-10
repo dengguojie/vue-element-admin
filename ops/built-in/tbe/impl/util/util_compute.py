@@ -112,8 +112,8 @@ def fetch_batchmatmul_fuse_tensor(input_tensor):
 
     Returns result
     """
-    queue = [input_tensor]
-    visited = [input_tensor]
+    queue = [input_tensor, ]
+    visited = [input_tensor, ]
     while queue:
         item = queue.pop(0)
         if len(item.shape) == BATCH_MATMUL_LENGTH and ("matmul" in item.op.tag) \
@@ -124,7 +124,7 @@ def fetch_batchmatmul_fuse_tensor(input_tensor):
             if child not in visited:
                 queue.append(child)
                 visited.append(child)
-    return
+    return None
 
 
 def batchmatmul_elem_nd2nz(batch_matmul, elem_input, para_dict, para_name):

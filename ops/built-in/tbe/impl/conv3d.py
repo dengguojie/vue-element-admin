@@ -335,7 +335,8 @@ def _conv3d_compute(shape_fm,
         bias_align_shape = (cout_ori + align_mod - 1) // align_mod * align_mod
         bias_tensor = tvm.placeholder((bias_align_shape,),
                                       name='bias_tensor',
-                                      dtype=res_dtype)
+                                      dtype=res_dtype,
+                                      attrs={'ori_shape': [cout_ori,]})
     para_dict = {
         "dsl_flag": False,
         "bias_tensor": bias_tensor,

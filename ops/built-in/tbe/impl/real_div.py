@@ -503,8 +503,8 @@ def _real_div_compute_with_batchmatmul(lhs_tensor, rhs_tensor, is_bmm_in_left=Tr
     other_tensor, shape_max = batchmatmul_elem_nd2nz(batch_matmul_tensor, other_tensor, para_dict, para_name)
     other_tensor = tbe.broadcast(other_tensor, shape_max)
     other_tensor = batchmatmul_elem_reshape(batch_matmul_tensor, other_tensor, batch_shape, para_name)
-    res = (tbe.vdiv(bmm_direction_tensor, other_tensor) if is_bmm_in_left
-            else tbe.vdiv(other_tensor, bmm_direction_tensor))
+    res = (tbe.vdiv(bmm_direction_tensor, other_tensor) if is_bmm_in_left else
+        tbe.vdiv(other_tensor, bmm_direction_tensor))
     res.op.attrs["batch_shape"] = batch_shape
     res.op.attrs["para_name"] = para_name
 

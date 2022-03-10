@@ -413,7 +413,6 @@ def test_batchmatmul_div_fused_mul_add(test_arg):
         }
         cce_build_code(sch, config)
 
-
 def test_batchmatmul_realdiv_add(test_arg):
     with cce():
         x1 = tvm.placeholder((8, 48, 24, 16, 16), name="x1", attrs={'format': "FRACTAL_NZ", "ori_shape": (8, 384, 768)}, dtype="float16")
@@ -436,6 +435,26 @@ def test_batchmatmul_realdiv_add(test_arg):
         }
         cce_build_code(sch, config)
 
+def test_op_check_supported(test_arg):
+    def _test_supported(case):
+        input_x, input_y, bias, output_z, trans_a, trans_b = case["params"]
+        try:
+            check_supported(input_x, input_y, bias, output_z, trans_a, trans_b, kernel_name="batch_matmul")
+        except RuntimeError:
+            print("The case is not supported!")
+            pass
+
+    _test_supported(case1)
+    _test_supported(case2)
+    _test_supported(case3)
+    _test_supported(case4)
+    _test_supported(case5)
+    _test_supported(case10)
+    _test_supported(case11)
+    _test_supported(case16)
+    _test_supported(case17)
+    _test_supported(case18)
+    _test_supported(case19)
 
 def test_op_select_format(test_arg):
     from impl.batch_matmul import op_select_format
