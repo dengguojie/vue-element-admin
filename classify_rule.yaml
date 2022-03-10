@@ -623,6 +623,7 @@ vector_A:
       - ops/built-in/tbe/impl/leaky_relu.py
       - ops/built-in/tbe/impl/log_softmax_grad.py
       - ops/built-in/tbe/impl/log_softmax_v2.py
+      - ops/built-in/tbe/impl/swish.py
       - ops/built-in/tbe/impl/mish.py
       - ops/built-in/tbe/impl/mvn.py
       - ops/built-in/tbe/impl/prior_box_d_v2.py
