@@ -509,7 +509,7 @@ class PadCompute:
         """
         set_vector_dup
         """
-        if psm > self.ub_maxsize - offset:
+        with tik_instance.if_scope(psm > self.ub_maxsize - offset):
             psm = self.ub_maxsize - offset
         dup_psm = MAX_REPEAT * self.mask
         dup_merchant = psm // dup_psm
