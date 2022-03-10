@@ -49,90 +49,74 @@ def op_select_format(x, bias, y, data_format="NHWC", kernel_name="bias_add"):
     shape_bias = bias.get("ori_shape")
     ori_shape_x = x.get("ori_shape")
     c0 = 16
+    vmuls_support = tbe_platform.cce_conf.api_check_support("te.lang.cce.vmuls", "float32")
     if len(ori_shape_x) <= 4:
         if shape_bias[0] % c0 == 0 and len(ori_shape_x) == 4:
-            # NC1HWC0+ND ND+ND
-            input0 = util_select_op_base.gen_param(classify="input0", name="x",
-                                                   datatype="float16, float, int32, float16, float",
-                                                   unknownshape_format="NC1HWC0, NC1HWC0, ND, ND, ND",
-                                                   format="NC1HWC0, NC1HWC0, ND, ND, ND")
-            input1 = util_select_op_base.gen_param(classify="input1", name="bias",
-                                                   datatype="float16, float, int32, float16, float",
-                                                   unknownshape_format="ND, ND, ND, ND, ND",
-                                                   format="ND, ND, ND, ND, ND")
-            output0 = util_select_op_base.gen_param(classify="output0", name="y",
-                                                    datatype="float16, float, int32, float16, float",
-                                                    unknownshape_format="NC1HWC0, NC1HWC0, ND, ND, ND",
-                                                    format="NC1HWC0, NC1HWC0, ND, ND, ND")
+            if not vmuls_support:
+                dtype_list = "float16, int32, float16"
+                format_list = "NC1HWC0, ND, ND"
+                bias_format_list = "ND, ND, ND"
+            else:
+                dtype_list = "float16, float, int32, float16, float"
+                format_list = "NC1HWC0, NC1HWC0, ND, ND, ND"
+                bias_format_list = "ND, ND, ND, ND, ND"
         elif shape_bias[0] % c0 != 0 and len(ori_shape_x) == 4:
-            # NC1HWC0+NC1HWC0 ND+ND
-            input0 = util_select_op_base.gen_param(classify="input0", name="x",
-                                                   datatype="float16, float, int32, float16, float",
-                                                   unknownshape_format="NC1HWC0, NC1HWC0, ND, ND, ND",
-                                                   format="NC1HWC0, NC1HWC0, ND, ND, ND")
-            input1 = util_select_op_base.gen_param(classify="input1", name="bias",
-                                                   datatype="float16, float, int32, float16, float",
-                                                   unknownshape_format="NC1HWC0, NC1HWC0, ND, ND, ND",
-                                                   format="NC1HWC0, NC1HWC0, ND, ND, ND")
-            output0 = util_select_op_base.gen_param(classify="output0", name="y",
-                                                    datatype="float16, float, int32, float16, float",
-                                                    unknownshape_format="NC1HWC0, NC1HWC0, ND, ND, ND",
-                                                    format="NC1HWC0, NC1HWC0, ND, ND, ND")
+            if not vmuls_support: 
+                # NC1HWC0+NC1HWC0 ND+ND
+                dtype_list = "float16, int32, float16"
+                format_list = "NC1HWC0, ND, ND"
+                bias_format_list = "NC1HWC0, ND, ND"
+            else:
+                dtype_list = "float16, float, int32, float16, float"
+                format_list = "NC1HWC0, NC1HWC0, ND, ND, ND"
+                bias_format_list = "NC1HWC0, NC1HWC0, ND, ND, ND"
         else:
-            # ND+ND
-            input0 = util_select_op_base.gen_param(classify="input0", name="x",
-                                                   datatype="int32, float16, float",
-                                                   format="ND, ND, ND",
-                                                   unknownshape_format="ND, ND, ND")
-            input1 = util_select_op_base.gen_param(classify="input1", name="bias",
-                                                   datatype="int32, float16, float",
-                                                   format="ND, ND, ND",
-                                                   unknownshape_format="ND, ND, ND")
-            output0 = util_select_op_base.gen_param(classify="output0", name="y",
-                                                    datatype="int32, float16, float",
-                                                    format="ND, ND, ND",
-                                                    unknownshape_format="ND, ND, ND")
+            if not vmuls_support: 
+                # ND+ND
+                dtype_list = "int32, float16"
+                format_list = "ND, ND"
+                bias_format_list = "ND, ND"
+            else:
+                # ND+ND
+                dtype_list = "int32, float16, float"
+                format_list = "ND, ND, ND"
+                bias_format_list = "ND, ND, ND"
     else:
         if shape_bias[0] % c0 == 0:
-            # NDHWC+NDHWC NCDHW+NCDHW NDC1HWC0+NDC1HWC0
-            input0 = util_select_op_base.gen_param(classify="input0", name="x",
-                                                   datatype="int32, float16, float, int32, float16,"
-                                                            "float, int32, float16, float",
-                                                   format="NDHWC, NDHWC, NDHWC, NCDHW, NCDHW,"
-                                                          "NCDHW, NDC1HWC0, NDC1HWC0, NDC1HWC0",
-                                                   unknownshape_format="NDHWC, NDHWC, NDHWC, NCDHW, NCDHW,"
-                                                                       "NCDHW, NDC1HWC0, NDC1HWC0, NDC1HWC0")
-            input1 = util_select_op_base.gen_param(classify="input1", name="bias",
-                                                   datatype="int32, float16, float, int32, float16,"
-                                                            "float, int32, float16, float",
-                                                   format="ND, ND, ND, ND, ND, ND, ND, ND, ND",
-                                                   unknownshape_format="ND, ND, ND, ND, ND, ND, ND, ND, ND")
-            output0 = util_select_op_base.gen_param(classify="output0", name="y",
-                                                    datatype="int32, float16, float, int32, float16,"
-                                                             "float, int32, float16, float",
-                                                    format="NDHWC, NDHWC, NDHWC, NCDHW, NCDHW,"
-                                                           "NCDHW, NDC1HWC0, NDC1HWC0, NDC1HWC0",
-                                                    unknownshape_format="NDHWC, NDHWC, NDHWC, NCDHW, NCDHW,"
-                                                                        "NCDHW, NDC1HWC0, NDC1HWC0, NDC1HWC0")
-
+            if not vmuls_support:
+                # NDHWC+NDHWC NCDHW+NCDHW NDC1HWC0+NDC1HWC0
+                dtype_list = "int32, float16, int32, float16, int32, float16"
+                format_list = "NDHWC, NDHWC, NCDHW, NCDHW, NDC1HWC0, NDC1HWC0"
+                bias_format_list = "ND, ND, ND, ND, ND, ND"
+            else:
+                # NDHWC+NDHWC NCDHW+NCDHW NDC1HWC0+NDC1HWC0
+                dtype_list = "int32, float16, float, int32, float16, float, int32, float16, float"
+                format_list = "NDHWC, NDHWC, NDHWC, NCDHW, NCDHW, NCDHW, NDC1HWC0, NDC1HWC0, NDC1HWC0"
+                bias_format_list = "ND, ND, ND, ND, ND, ND, ND, ND, ND"
         else:
-            # NDHWC+NDHWC NCDHW+NCDHW
-            input0 = util_select_op_base.gen_param(classify="input0", name="x",
-                                                   datatype="int32, float16, float, int32, float16,"
-                                                            "float",
-                                                   format="NDHWC, NDHWC, NDHWC, NCDHW, NCDHW, NCDHW",
-                                                   unknownshape_format="NDHWC, NDHWC, NDHWC, NCDHW, NCDHW, NCDHW")
-            input1 = util_select_op_base.gen_param(classify="input1", name="bias",
-                                                   datatype="int32, float16, float, int32, float16,"
-                                                            "float",
-                                                   format="ND, ND, ND, ND, ND, ND",
-                                                   unknownshape_format="ND, ND, ND, ND, ND, ND")
-            output0 = util_select_op_base.gen_param(classify="output0", name="y",
-                                                    datatype="int32, float16, float, int32, float16,"
-                                                             "float",
-                                                    format="NDHWC, NDHWC, NDHWC, NCDHW, NCDHW, NCDHW",
-                                                    unknownshape_format="NDHWC, NDHWC, NDHWC, NCDHW, NCDHW, NCDHW")
-
+            if not vmuls_support:
+                # NDHWC+NDHWC NCDHW+NCDHW
+                dtype_list = "int32, float16, int32, float16"
+                format_list = "NDHWC, NDHWC, NCDHW, NCDHW"
+                bias_format_list = "ND, ND, ND, ND"
+            else:
+                # NDHWC+NDHWC NCDHW+NCDHW
+                dtype_list = "int32, float16, float, int32, float16, float"
+                format_list = "NDHWC, NDHWC, NDHWC, NCDHW, NCDHW, NCDHW"
+                bias_format_list = "ND, ND, ND, ND, ND, ND"
+    
+    input0 = util_select_op_base.gen_param(classify="input0", name="x",
+                                           datatype=dtype_list,
+                                           format=format_list,
+                                           unknownshape_format=format_list)
+    input1 = util_select_op_base.gen_param(classify="input1", name="bias",
+                                           datatype=dtype_list,
+                                           format=bias_format_list,
+                                           unknownshape_format=bias_format_list)
+    output0 = util_select_op_base.gen_param(classify="output0", name="y",
+                                            datatype=dtype_list,
+                                            format=format_list,
+                                            unknownshape_format=format_list)
     param_list = [input0, input1, output0]
     param_dynamic_in_json = util_select_op_base.get_dynamic_param_in_json(param_list)
 

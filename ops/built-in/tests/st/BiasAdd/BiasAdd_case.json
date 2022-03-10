@@ -49,5 +49,107 @@
               "value": "NHWC"
           }
       ]
+  },
+  {
+    "case_name": "Test_BiasAdd_002",
+    "op": "BiasAdd",
+    "input_desc": [
+        {
+            "format": ["NHWC"],
+            "type": ["float16"],
+            "shape": [10,10,10,16],
+            "data_distribute": [
+                "uniform"
+            ],
+            "value_range": [
+                [
+                    0.1,
+                    1.0
+                ]
+            ],
+            "name": "x"
+        },
+        {
+            "format": ["NHWC"],
+            "type": ["float16"],
+            "shape": [16],
+            "data_distribute": [
+                "uniform"
+            ],
+            "value_range": [
+                [
+                    0.1,
+                    1.0
+                ]
+            ],
+            "name": "bias"
+        }
+    ],
+    "output_desc": [
+        {
+            "format": ["NHWC"],
+            "type": ["float16"],
+            "shape": [10, 10, 10, 16],
+            "name": "y"
+        }
+    ],
+    "attr": [
+        {
+            "name": "data_format",
+            "type": "string",
+            "value": "NHWC"
+        }
+    ]
+  },
+  {
+    "case_name": "Test_BiasAdd_003",
+    "op": "BiasAdd",
+    "input_desc": [
+        {
+            "format": ["NHWC"],
+            "type": ["float16"],
+            "shape": [10,10,10,10],
+            "data_distribute": [
+                "uniform"
+            ],
+            "value_range": [
+                [
+                    0.1,
+                    1.0
+                ]
+            ],
+            "name": "x"
+        },
+        {
+            "format": ["NHWC"],
+            "type": ["float16"],
+            "shape": [10],
+            "data_distribute": [
+                "uniform"
+            ],
+            "value_range": [
+                [
+                    0.1,
+                    1.0
+                ]
+            ],
+            "name": "bias"
+        }
+    ],
+    "output_desc": [
+        {
+            "format": ["NHWC"],
+            "type": ["float16"],
+            "shape": [10, 10, 10, 10],
+            "name": "y"
+        }
+    ],
+    "attr": [
+        {
+            "name": "data_format",
+            "type": "string",
+            "value": "NHWC"
+        }
+    ]
   }
 ]
