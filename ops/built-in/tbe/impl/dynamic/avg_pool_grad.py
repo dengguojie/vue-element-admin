@@ -540,9 +540,9 @@ def avg_pool_grad_generalization(orig_input_shape,
         dedy_range_status = _check_tensor_range(input_grad, upper_limit_dict)
         if dedy_range_status:
             return [{"result": "UNSUPPORTED", "reason": {"param_index": [1], "type": [dedy_range_status]}}]
-
-        check_res, _, _ = check_modify_w_range(out_grad, kernel_matrix, input_grad, strides, data_format, OP_TYPE,
-                                               False)
+        input_list = [out_grad, kernel_matrix, input_grad]
+        param_list = [strides, padding, [1, 1, 1, 1], data_format]
+        check_res, _, _ = check_modify_w_range(input_list, param_list, OP_TYPE, True)
         if fuzz_res_dict.get(check_res):
             return fuzz_res_dict.get(check_res)
     else:
@@ -552,8 +552,8 @@ def avg_pool_grad_generalization(orig_input_shape,
             return UNSUPPORTED_FUZZ_RES
         # generalize input range
         input_grad = gen_conv_shape_range(input_grad, OP_TYPE, dynamic_flag)
-
-        is_pass_check, dedy_modify = modify_dy_w_range_max_opti(input_grad, kernel_matrix, strides, data_format,
+        param_list = [strides, padding, (1, 1, 1, 1), data_format]
+        is_pass_check, dedy_modify = modify_dy_w_range_max_opti(input_grad, kernel_matrix, param_list,
                                                                 OP_TYPE, dynamic_flag)
         if not is_pass_check:
             return dedy_modify

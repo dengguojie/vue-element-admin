@@ -138,7 +138,8 @@ def conv2d_backprop_input_generalization(input_size,  # pylint: disable=W0622,C0
     if check_result:
         return check_result
     out_backprop = gen_conv_shape_range(out_backprop, OP_TYPE, is_graph_mode)
-    is_pass_check, dedy_modify = modify_dy_w_range_max_opti(out_backprop, filter, strides, data_format,
+    param_list = [strides, pads, dilations, data_format]
+    is_pass_check, dedy_modify = modify_dy_w_range_max_opti(out_backprop, filter, param_list,
                                                             OP_TYPE, is_graph_mode)
     if not is_pass_check:
         return dedy_modify

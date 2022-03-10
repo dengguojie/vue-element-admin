@@ -497,7 +497,7 @@ def check_fuzz_hw_dim(input_tensor, strides, data_format, dynamic_flag, op_type)
     dedy, _, input_filter = input_tensor
     h_max, w_max = _cal_dy_hw_max(input_filter, strides, data_format)
     tensor_format = dedy.get("ori_format")
-    h_pos, w_pos = tensor_format.find("H"), tensor_format.find("w")
+    h_pos, w_pos = tensor_format.find("H"), tensor_format.find("W")
     input_index = 1 if op_type == "conv2d_transpose" else 0
     if dynamic_flag == DYNAMIC_FLAG:
         _, _, dedy_h_range, dedy_w_range = _get_nchw_dims(dedy, DYNAMIC_FLAG)
@@ -727,48 +727,6 @@ def check_modify_w_range(input_list, param_list, op_type, dynamic_flag):
         supports = "upper_limit"
     dedy_range_w = (dedy_range_w[0], min(w_max, dedy_range_w[1]))
     fmap_range_w = (fmap_w, fmap_w) if fmap_w_static else fmap_range_w
-    return supports, dedy_range_w, fmap_range_w
-
-
-def check_modify_w_range(input_grad, filter_size, out_backprop, strides, data_format, op_type, is_first_point):
-    """
-    check L1 range
-    """
-    _, [_, dedy_w] = get_idx_shape_from_format(out_backprop.get("ori_format"), out_backprop.get("ori_shape"), "HW")
-    _, [_, fmap_w] = get_idx_shape_from_format(input_grad.get("ori_format"), input_grad.get("ori_shape"), "HW")
-    _, [filter_h, filter_w] = get_idx_shape_from_format(filter_size.get("ori_format"), filter_size.get("ori_shape"),
-                                                        "HW")
-
-    _, [_, strides_w] = get_idx_shape_from_format(data_format, strides, "HW")
-    _, [_, dedy_range_w] = get_idx_shape_from_format(out_backprop.get("ori_format"), out_backprop.get("ori_range"),
-                                                     "HW")
-    _, [_, fmap_range_w] = get_idx_shape_from_format(input_grad.get("ori_format"), input_grad.get("ori_range"), "HW")
-    filter_dtype = input_grad.get("dtype")
-    dedy_dtype = input_grad.get("dtype")
-    if not is_first_point:
-        dedy_w = dedy_range_w[0]
-        fmap_w = fmap_range_w[0]
-    bl1_size = filter_h * filter_w * BLOCK_K_DICT.get(filter_dtype) * FP16_N * BIT_RATIO_DICT.get(filter_dtype)
-    l1_size = get_soc_spec("L1_SIZE")
-    al1_max_size = l1_size - bl1_size
-    w_max = al1_max_size // (BIT_RATIO_DICT.get(dedy_dtype) * BLOCK_K_DICT.get(dedy_dtype) * (filter_h + 1) * strides_w)
-    # w_dim only support one point scene
-    fmap_w_static = (is_first_point or fmap_range_w[0] == fmap_range_w[1]) and fmap_w % FP16_M == 0 and w_max < dedy_w
-    if fmap_w_static:
-        w_max = al1_max_size // (BIT_RATIO_DICT.get(dedy_dtype) * BLOCK_K_DICT.get(dedy_dtype) * filter_h * strides_w)
-    supports = "no_limit"
-    if w_max < dedy_w:
-        if is_first_point:
-            warnings.warn(f"In {op_type}, the shape of inputs can not be supported which will exceed L1.")
-            supports = "unsupported"
-        else:
-            warnings.warn(f'In {op_type}, the lower limit of inputs range can not be supported which will exceed L1.')
-            supports = "lower_limit"
-    elif w_max < dedy_range_w[1]:
-        warnings.warn(f"In {op_type}, the upper limit of input range exceed support range.")
-        supports = "upper_limit"
-    dedy_range_w = (dedy_range_w[0], min(w_max, dedy_range_w[1]))
-    fmap_range_w = fmap_range_w if fmap_w_static else (fmap_w, fmap_w)
     return supports, dedy_range_w, fmap_range_w
 
 

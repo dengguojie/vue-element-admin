@@ -168,6 +168,11 @@ def depthwise_conv2d_backprop_input_generalization(input_size,  # pylint: disabl
         input_size["const_value"] = None
         input_size["const_value_range"] = transform_shape_with_format(TAR_FORMAT, data_format,
                                                                       dx_range_nchw, DATA_FORMAT_WHITE_LIST)
+    have_range = {"inputs": out_backprop, "outputs": input_grad}
+    for _, tensor in have_range.items():
+        # modify tesnors have range
+        tensor["ori_shape"] = [-1, tensor["ori_shape"][1], -1, -1] \
+            if tensor.get("ori_format") == TAR_FORMAT else [-1, -1, -1, tensor["ori_shape"][3]]
     result.append([input_size, filter, out_backprop, input_grad, {"strides": strides}, {"pads": pads},
                   {"dilations": dilations}, {"data_format": data_format}])
     return result

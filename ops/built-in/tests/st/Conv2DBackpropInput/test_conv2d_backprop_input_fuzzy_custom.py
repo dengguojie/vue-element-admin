@@ -166,5 +166,7 @@ def _test_dx_transdata_fusion_op():
 if __name__ == '__main__':
     test_conv2d_backprop_input_fuzz_build_lower_limit()
     test_conv2d_backprop_input_fuzz_build_upper_limit()
-    _test_dx_transdata_fusion_op()
-    _test_transdata_dx_transdata_fusion_op()
+    from te.platform import get_soc_spec
+    if "Ascend910" in get_soc_spec("SOC_VERSION"):
+        _test_dx_transdata_fusion_op()
+        _test_transdata_dx_transdata_fusion_op()

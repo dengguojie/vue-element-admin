@@ -450,15 +450,8 @@ def test_depthwise_conv2d_backprop_input_fuzz_generalization(case):
     case_name = input_list[-2]
     def _test_generalization_function(test_arg):
         res = depthwise_conv2d_backprop_input_generalization(*input_list)
-        if expect == "success":
-            if not res[0][2].get("ori_range"):
-                raise RuntimeError(f"In case {case_name}, depthwise_conv2d_backprop_input_generalization \
-                    function expected to generate ori_range success")
-        elif expect == "unsupported":
-            if res != [{'result': 'UNSUPPORTED'}]:
-                raise RuntimeError(f"In case {case_name}, depthwise_conv2d_backprop_input_generalization \
-                    function expected return unsupported")
-        elif expect not in res[0].get("reason").get("type"):
+        print("res", res)
+        if expect != res:
             raise RuntimeError(f"In case {case_name}, depthwise_conv2d_backprop_input_generalization \
                     function expected return {expect}")
     return _test_generalization_function
