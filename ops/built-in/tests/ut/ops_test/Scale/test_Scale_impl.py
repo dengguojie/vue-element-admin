@@ -122,7 +122,7 @@ precision_case1 = {"params": [{"shape": (2, 3, 2, 3), "dtype": "float16", "forma
                               ],
                    "expect": "success",
                    "calc_expect_func": calc_expect_func,
-                   "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)}
+                   "precision_standard": precision_info.PrecisionStandard(0.005, 0.005)}
 precision_case2 = {"params": [{"shape": (1,1,4,8,16), "dtype": "float16", "format": "ND", "ori_shape": (1,1,4,8,16),"ori_format": "ND","param_type":"input"}, #x
                               {"shape": (1,1,4,8,16), "dtype": "float16", "format": "ND", "ori_shape": (1,1,4,8,16),"ori_format": "ND","param_type":"input"},
                               {"shape": (1,1,4,8,16), "dtype": "float16", "format": "ND", "ori_shape": (1,1,4,8,16),"ori_format": "ND","param_type":"input"},

@@ -359,49 +359,6 @@ def get_scale_shape(shape_x, shape_scale, axis_, num_axes, scale_from_blob):
     return shape
 
 
-def get_fusion_params(x_tensor, scale_tensor, bias_tensor, y):
-    """
-    Get L1 fusion_params
-    Parameters
-    ----------
-    x_tensor : tensor of input data
-    scale_tensor: scale_tensor
-    bias_tensor: bias_tensor
-    y : dict of output data
-    Returns
-    -------
-    fusion_params
-    """
-    # 0: L1 depth fusion, 1: L1 width fusion, -1: no L1 fusion
-    is_l1_depth_fusion = False
-
-    input_tensor = [x_tensor, scale_tensor, bias_tensor]
-    for ele in input_tensor:
-        if ele is not None:
-            l1_fusion_type = -1
-            if fusion_manager.get_build_cfg() != "disable":
-                l1_fusion_type = ele.op.attrs["L1_fusion_type"].value \
-                    if "L1_fusion_type" in ele.op.attrs else -1
-                if l1_fusion_type == 1:
-                    error_manager_vector.raise_err_specific_reson("scale",
-                                        "Scale does not support l1 width fusion")
-            is_l1_depth_fusion = (l1_fusion_type == 0) or is_l1_depth_fusion
-
-    l1_fusion_type = 0 if is_l1_depth_fusion is True else -1
-    if l1_fusion_type != -1 and y.get("format").upper() != 'NC1HWC0':
-        shape_rule = "the input format must be 5HD when l1 fusion"
-        error_manager_vector.raise_err_check_params_rules("scale", shape_rule, "x",
-                                                                        y.get("format").upper())
-
-    out_l1_flag = False
-    if y is not None:
-        out_l1_flag = y.get("addr_type", 0) == 1
-
-    fusion_params = {"l1_fusion_type": l1_fusion_type,
-                     "out_l1_flag": out_l1_flag}
-    return fusion_params
-
-
 # 'pylint: disable=invalid-name,redefined-outer-name
 def _fused_scale_compute(x, scale):
     """
@@ -533,16 +490,12 @@ def scale_compute(x, scale, bias, y, axis, num_axes, scale_from_blob,
     tmp_y["valid_shape"] = []
     tmp_y["slice_offset"] = []
     fuse_y = tmp_y if y is None else y
-    fusion_params = get_fusion_params(x, scale, bias, fuse_y)
 
     res = None
     if bias is not None:
         res = _fused_scale_bias_compute(x, scale, bias)
     else:
         res = _fused_scale_compute(x, scale)
-
-    res.op.attrs["ele_fusion_params"] = fusion_params
-    res.op.attrs["L1_fusion_type"] = fusion_params["l1_fusion_type"]
 
     return res
 

@@ -2226,6 +2226,7 @@ unkown:
       - ops/built-in/tbe/impl/avg_pool_v2_grad_d.py
       - ops/built-in/tbe/impl/zn_2_hwcn_lstm.py
       - ops/built-in/tbe/impl/drop_out_do_mask_v3_d.py
+      - ops/built-in/tbe/impl/scale.py
       - ops/built-in/tbe/impl/sigmoid.py
       - ops/built-in/tbe/impl/smooth_l1_loss.py
       - ops/built-in/tbe/impl/concat_offset.py
