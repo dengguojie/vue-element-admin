@@ -21,7 +21,6 @@ import te.platform as tbe_platform
 from te.utils import para_check
 from te import tik
 
-
 # data type of fp16
 FP16 = "float16"
 # data type of fp32
@@ -118,6 +117,7 @@ class PSROIPoolingV2Class(object):
     """
     Function: class that execute PSROIPoolingV2
     """
+
     def _input_param_check(self):
         """
         check if the inputs are valid
@@ -252,7 +252,7 @@ class PSROIPoolingV2Class(object):
         product_name = tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION)
         self._input_param_check()
 
-        self.dsize = TYPE_LEN_DICT[self.dtype]
+        self.dsize = TYPE_LEN_DICT.get(self.dtype)
         self.fm_batch = self.x_shape[0]
         self.fm_c1 = self.x_shape[1]
         self.fm_h = self.x_shape[2]
@@ -265,12 +265,11 @@ class PSROIPoolingV2Class(object):
         self.roi_num_b = self.roi_shape[2]
 
         self.k2 = self.group_size * self.group_size
-        self.vec_elem_num = VEC_ELEM_NUM[self.dtype]
+        self.vec_elem_num = VEC_ELEM_NUM.get(self.dtype)
         self.ub_size = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
         # divide the available UB space into four parts
         self.ub_one_buf = self.ub_size // 4
         self.ub_one_buf_elem = self.ub_one_buf // self.dsize
-        self.l1_size = tbe_platform.get_soc_spec(tbe_platform.L1_SIZE)
         self.tik_instance = tik.Tik(profile, disable_debug=True)
         self.aicore_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
 
@@ -282,23 +281,14 @@ class PSROIPoolingV2Class(object):
         self.mask = self.roi_num_step
 
         # set parameters
-        self.inner_c1 = self.fm_c1 // self.k2
-        self.inner_c = self.inner_c1 * C0
-        self.inner_c_size = self.inner_c * self.dsize
-        self.inner_c_offset_size = self.inner_c_size * self.hw
-        self.c0_offset_size = C0 * self.hw * self.dsize
-
-        self.bin_load_stride = (self.hw * C0 - C0) * self.dsize // BLOCK_SIZE
-        self.bin_load_out_stride = (self.k2 * C0 - C0) * self.dsize // BLOCK_SIZE
+        self.inner_c_size = (self.fm_c1 // self.k2) * C0 * self.dsize
 
         self.x = None
         self.rois = None
         self.y = None
-        # L1 cache is used, when input x can be put down in L1
-        self.cache_in_l1 = False
-        self.cache_l1 = None
         self.const_0_127_ub = None
         self.const_1_128_ub = None
+
         self.output_dim_align = _ceil_value(self.output_dim, self.mask) * self.mask
         self.output_dim_align_c0 = _ceil_value(self.output_dim, C0) * C0
 
@@ -351,25 +341,26 @@ class PSROIPoolingV2Class(object):
                                 REP_STRIDE_EIGHT, REP_STRIDE_EIGHT)
         # rois_floor_ub[0]: batch id; rois_floor_ub[1-4]: roi coordinates
         # vconv.floor: f162s32r or f322s32r
-        if tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION) == "Ascend310" and self.dtype == FP32:
+        if (tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION) in
+            (tbe_platform.ASCEND_310, tbe_platform.ASCEND_320)) and self.dtype == FP32:
             rois_fp16_ub = self.tik_instance.Tensor(FP16, (DIGIT_5, roi_step),
                                                     name="rois_fp16_ub",
                                                     scope=tbe_platform.scope_ubuf)
             self.tik_instance.vconv(MASK64, '', rois_fp16_ub, rois_ub,
-                                    REP_TIMES[self.dtype] * DIGIT_5,
+                                    REP_TIMES.get(self.dtype) * DIGIT_5,
                                     STRIDE_ONE, STRIDE_ONE,
-                                    REP_STRIDE[FP16], REP_STRIDE[self.dtype])
+                                    REP_STRIDE.get(FP16), REP_STRIDE.get(self.dtype))
             self.tik_instance.vconv(MASK64, 'floor', rois_floor_ub, rois_fp16_ub,
-                                    REP_TIMES[self.dtype] * DIGIT_5,
+                                    REP_TIMES.get(self.dtype) * DIGIT_5,
                                     STRIDE_ONE, STRIDE_ONE,
-                                    REP_STRIDE[self.dtype], REP_STRIDE[FP16])
+                                    REP_STRIDE.get(self.dtype), REP_STRIDE.get(FP16))
             self._bias_f32_f16_int32(rois_ub, rois_floor_ub, rois_floor_ub, "floor",
-                                     REP_TIMES[self.dtype] * DIGIT_5)
+                                     REP_TIMES.get(self.dtype) * DIGIT_5)
         else:
             self.tik_instance.vconv(MASK64, 'floor', rois_floor_ub, rois_ub,
-                                    REP_TIMES[self.dtype] * DIGIT_5,
+                                    REP_TIMES.get(self.dtype) * DIGIT_5,
                                     STRIDE_ONE, STRIDE_ONE,
-                                    REP_STRIDE_EIGHT, REP_STRIDE[self.dtype])
+                                    REP_STRIDE_EIGHT, REP_STRIDE.get(self.dtype))
         # s322f16: vconv.deq, or s322f32: vconv
         if self.dtype == FP16:
             if self.is_hisi_cs:
@@ -391,25 +382,26 @@ class PSROIPoolingV2Class(object):
                                         REP_STRIDE.get(self.dtype), REP_STRIDE_EIGHT,
                                         deqscale=DEQSCALE)
         else:
-            if tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION) == "Ascend310":
+            if tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION) in \
+                    (tbe_platform.ASCEND_310, tbe_platform.ASCEND_320):
                 rois_floor_fp16_ub = self.tik_instance.Tensor(FP16, (DIGIT_5, roi_step),
                                                               name="rois_floor_fp16_ub",
                                                               scope=tbe_platform.scope_ubuf)
                 self.tik_instance.vconv(MASK64, '', rois_floor_fp16_ub, rois_floor_ub,
-                                        REP_TIMES[self.dtype] * DIGIT_5,
+                                        REP_TIMES.get(self.dtype) * DIGIT_5,
                                         STRIDE_ONE, STRIDE_ONE,
-                                        REP_STRIDE[FP16], REP_STRIDE[self.dtype], deqscale=1.0)
+                                        REP_STRIDE.get(FP16), REP_STRIDE.get(self.dtype), deqscale=1.0)
                 self.tik_instance.vconv(MASK64, '', rois_spatial_ub,
                                         rois_floor_fp16_ub[1, 0],
-                                        REP_TIMES[self.dtype] * DIGIT_4,
+                                        REP_TIMES.get(self.dtype) * DIGIT_4,
                                         STRIDE_ONE, STRIDE_ONE,
-                                        REP_STRIDE[self.dtype], REP_STRIDE[FP16])
+                                        REP_STRIDE.get(self.dtype), REP_STRIDE.get(FP16))
             else:
                 self.tik_instance.vconv(MASK64, '', rois_spatial_ub,
                                         rois_floor_ub[1, 0],
-                                        REP_TIMES[self.dtype] * DIGIT_4,
+                                        REP_TIMES.get(self.dtype) * DIGIT_4,
                                         STRIDE_ONE, STRIDE_ONE,
-                                        REP_STRIDE[self.dtype], REP_STRIDE_EIGHT)
+                                        REP_STRIDE.get(self.dtype), REP_STRIDE_EIGHT)
         self.tik_instance.vadds(self.mask, rois_spatial_ub[2, 0],
                                 rois_spatial_ub[2, 0], ONE_POINT, REPEAT_2,
                                 STRIDE_ONE, STRIDE_ONE,
@@ -455,8 +447,8 @@ class PSROIPoolingV2Class(object):
         -------
         None
         """
-        if tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION) in (tbe_platform.ASCEND_910, tbe_platform.ASCEND_710,
-                                                                   tbe_platform.ASCEND_610):
+        if tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION) in (tbe_platform.ASCEND_910, tbe_platform.ASCEND_920A,
+                                                                   tbe_platform.ASCEND_710, tbe_platform.ASCEND_610):
             self.tik_instance.vdiv(self.mask, dst, divisor, dividend, repeat,
                                    STRIDE_ONE, STRIDE_ONE, STRIDE_ONE,
                                    REP_STRIDE_EIGHT, REP_STRIDE_EIGHT,
@@ -467,7 +459,7 @@ class PSROIPoolingV2Class(object):
                     divisor_f32 = self.tik_instance.Tensor(FP32, divisor.shape, name="divisor_f32",
                                                            scope=tbe_platform.scope_ubuf)
                     dividend_f32 = self.tik_instance.Tensor(FP32, dividend.shape, name="dividend_f32",
-                                                           scope=tbe_platform.scope_ubuf)
+                                                            scope=tbe_platform.scope_ubuf)
                     rec_f32 = self.tik_instance.Tensor(FP32, dividend.shape, name="rec_f32",
                                                        scope=tbe_platform.scope_ubuf)
                     self.tik_instance.vconv(MASK64, '', divisor_f32, divisor,
@@ -479,7 +471,7 @@ class PSROIPoolingV2Class(object):
                     self.tik_instance.vrec(MASK64, rec_f32, dividend_f32,
                                            DIGIT_128 // DIGIT_64, STRIDE_ONE, STRIDE_ONE,
                                            REP_STRIDE_EIGHT, REP_STRIDE_EIGHT)
-                    
+
                     # Newton start
                     self.tik_instance.vmul(MASK64, dividend_f32, dividend_f32, rec_f32,
                                            DIGIT_128 // DIGIT_64, STRIDE_ONE, STRIDE_ONE,
@@ -506,16 +498,16 @@ class PSROIPoolingV2Class(object):
                 else:
                     rec_f32 = self.tik_instance.Tensor(FP32, dividend.shape, name="rec_f32",
                                                        scope=tbe_platform.scope_ubuf)
-                    dividend_copy =  self.tik_instance.Tensor(self.dtype, dividend.shape, 
-                                                              name="dividend_copy",
-                                                              scope=tbe_platform.scope_ubuf)
+                    dividend_copy = self.tik_instance.Tensor(self.dtype, dividend.shape,
+                                                             name="dividend_copy",
+                                                             scope=tbe_platform.scope_ubuf)
                     self.tik_instance.vrec(self.mask, rec_f32, dividend, repeat,
                                            STRIDE_ONE, STRIDE_ONE,
                                            REP_STRIDE_EIGHT, REP_STRIDE_EIGHT)
                     self.tik_instance.data_move(dividend_copy, dividend, SID, BURST_1,
-                                                dividend.shape[0] // BLOCK_ELEM_NUM[self.dtype],
+                                                dividend.shape[0] // BLOCK_ELEM_NUM.get(self.dtype),
                                                 STRIDE_ZERO, STRIDE_ZERO)
-                    
+
                     # Newton start
                     self.tik_instance.vmul(self.mask, dividend_copy, dividend_copy, rec_f32,
                                            repeat, STRIDE_ONE, STRIDE_ONE,
@@ -564,9 +556,6 @@ class PSROIPoolingV2Class(object):
         bin_i_offset_c0 = output_dim_index - bin_i_offset_c1 * C0
 
         x_src = self.x
-        if self.cache_in_l1:
-            x_src = self.cache_l1
-
         load_count_ceil = _ceil_value(C0, self.vec_elem_num)
         load_count_align = load_count_ceil * self.vec_elem_num
         ub_bin_input_buf = self.tik_instance.Tensor(self.dtype, \
@@ -587,33 +576,35 @@ class PSROIPoolingV2Class(object):
 
         # avg pooling
         src0_rep_stride = C0 * self.dsize // BLOCK_SIZE
-        if tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION) == "Ascend310" and self.dtype == FP32:
+        if (tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION) in
+            (tbe_platform.ASCEND_310, tbe_platform.ASCEND_320)) and self.dtype == FP32:
             with self.tik_instance.for_range(0, params["bin_area"]) as rep_i:
                 self.tik_instance.vadd([0, 0x1], ub_bin_output_buf, \
-                                        ub_bin_input_buf[src0_rep_stride * BLOCK_ELEM_NUM[self.dtype] * rep_i], ub_bin_output_buf, \
-                                        1, STRIDE_ONE, STRIDE_ONE, \
-                                        STRIDE_ONE, STRIDE_ZERO, src0_rep_stride, STRIDE_ZERO)
+                                       ub_bin_input_buf[src0_rep_stride * BLOCK_ELEM_NUM.get(self.dtype) * rep_i],
+                                       ub_bin_output_buf, \
+                                       1, STRIDE_ONE, STRIDE_ONE, \
+                                       STRIDE_ONE, STRIDE_ZERO, src0_rep_stride, STRIDE_ZERO)
         else:
             with self.tik_instance.if_scope(params["bin_area"] < DIGIT_256):
                 self.tik_instance.vadd([0, 0x1], ub_bin_output_buf, \
-                                    ub_bin_input_buf, ub_bin_output_buf, \
-                                    params["bin_area"], STRIDE_ONE, STRIDE_ONE, \
-                                    STRIDE_ONE, STRIDE_ZERO, src0_rep_stride, STRIDE_ZERO)
+                                       ub_bin_input_buf, ub_bin_output_buf, \
+                                       params["bin_area"], STRIDE_ONE, STRIDE_ONE, \
+                                       STRIDE_ONE, STRIDE_ZERO, src0_rep_stride, STRIDE_ZERO)
             with self.tik_instance.else_scope():
                 tail = params["bin_area"] % DIGIT_255
                 times = params["bin_area"] // DIGIT_255
                 with self.tik_instance.for_range(0, times) as times_i:
                     self.tik_instance.vadd([0, 0x1], ub_bin_output_buf, \
-                                        ub_bin_input_buf[C0 * DIGIT_255 * times_i], \
-                                        ub_bin_output_buf, DIGIT_255, \
-                                        STRIDE_ONE, STRIDE_ONE, STRIDE_ONE, \
-                                        STRIDE_ZERO, src0_rep_stride, STRIDE_ZERO)
+                                           ub_bin_input_buf[C0 * DIGIT_255 * times_i], \
+                                           ub_bin_output_buf, DIGIT_255, \
+                                           STRIDE_ONE, STRIDE_ONE, STRIDE_ONE, \
+                                           STRIDE_ZERO, src0_rep_stride, STRIDE_ZERO)
                 with self.tik_instance.if_scope(tail != 0):
                     self.tik_instance.vadd([0, 0x1], ub_bin_output_buf, \
-                                        ub_bin_input_buf[C0 * DIGIT_255 * times], \
-                                        ub_bin_output_buf, tail, \
-                                        STRIDE_ONE, STRIDE_ONE, STRIDE_ONE, \
-                                        STRIDE_ZERO, src0_rep_stride, STRIDE_ZERO)
+                                           ub_bin_input_buf[C0 * DIGIT_255 * times], \
+                                           ub_bin_output_buf, tail, \
+                                           STRIDE_ONE, STRIDE_ONE, STRIDE_ONE, \
+                                           STRIDE_ZERO, src0_rep_stride, STRIDE_ZERO)
 
         bin_area_fp_ub = params["bin_area_fp_ub"]
         self._newton_div(ub_bin_output_buf, ub_bin_output_buf, bin_area_fp_ub, load_count_ceil)
@@ -673,18 +664,19 @@ class PSROIPoolingV2Class(object):
                                             REP_STRIDE.get(self.dtype),
                                             REP_STRIDE_EIGHT, deqscale=DEQSCALE)
                 else:
-                    if tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION) == "Ascend310":
+                    if tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION) in \
+                            (tbe_platform.ASCEND_310, tbe_platform.ASCEND_320):
                         bin_area_fp16_ub = \
                             self.tik_instance.Tensor(FP16, (self.vec_elem_num,), name="bin_area_fp16_ub",
                                                      scope=tbe_platform.scope_ubuf)
                         self.tik_instance.vconv(MASK64, '', bin_area_fp16_ub,
                                                 bin_area_int32, REP_TIMES.get(self.dtype),
-                                                STRIDE_ONE, STRIDE_ONE, REP_STRIDE[FP16], REP_STRIDE_EIGHT,
+                                                STRIDE_ONE, STRIDE_ONE, REP_STRIDE.get(FP16), REP_STRIDE_EIGHT,
                                                 deqscale=DEQSCALE)
                         self.tik_instance.vconv(MASK64, '', bin_area_fp_ub,
                                                 bin_area_fp16_ub, REP_TIMES.get(self.dtype),
                                                 STRIDE_ONE, STRIDE_ONE, REP_STRIDE_EIGHT,
-                                                REP_STRIDE[FP16])
+                                                REP_STRIDE.get(FP16))
                     else:
                         self.tik_instance.vconv(MASK64, '', bin_area_fp_ub,
                                                 bin_area_int32, REP_TIMES.get(self.dtype),
@@ -777,7 +769,7 @@ class PSROIPoolingV2Class(object):
         bin_error = self.tik_instance.Tensor(INT32, out_int32.shape,
                                              name="bin_error",
                                              scope=tbe_platform.scope_ubuf)
-        #int32 to f16
+        # int32 to f16
         self.tik_instance.vconv(MASK64, '', temp_f16, in_int32,
                                 repeat_time, STRIDE_ONE, STRIDE_ONE,
                                 REP_STRIDE_FOUR, REP_STRIDE_EIGHT, 1.0)
@@ -799,7 +791,7 @@ class PSROIPoolingV2Class(object):
         self.tik_instance.vconv(MASK64, mode, bin_error, temp_f16,
                                 repeat_time, STRIDE_ONE, STRIDE_ONE,
                                 REP_STRIDE_EIGHT, REP_STRIDE_FOUR)
-        
+
         self.tik_instance.vadd(MASK64, out_int32, out_int32, bin_error,
                                repeat_time,
                                STRIDE_ONE, STRIDE_ONE, STRIDE_ONE,
@@ -886,7 +878,8 @@ class PSROIPoolingV2Class(object):
                                         STRIDE_ONE, STRIDE_ONE,
                                         REP_STRIDE_EIGHT, REP_STRIDE_EIGHT)
                 # vconv.floor: f162s32f or f322s32f
-                if tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION) != "Ascend310":
+                if tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION) not in \
+                        (tbe_platform.ASCEND_310, tbe_platform.ASCEND_320):
                     self.tik_instance.vconv(MASK64, 'floor', bin_start_w_floor,
                                             bin_start_w_ub_fp32, DIGIT_128 // DIGIT_64,
                                             STRIDE_ONE, STRIDE_ONE, REP_STRIDE_EIGHT,
@@ -894,7 +887,7 @@ class PSROIPoolingV2Class(object):
                 else:
                     temp_f16_ub = self.tik_instance.Tensor(self.dtype, (DIGIT_128,),
                                                            name="temp_f16_ub", scope=tbe_platform.scope_ubuf)
-                    self.tik_instance.vconv(MASK64, '', temp_f16_ub, bin_start_w_ub_fp32, 
+                    self.tik_instance.vconv(MASK64, '', temp_f16_ub, bin_start_w_ub_fp32,
                                             DIGIT_128 // DIGIT_64, STRIDE_ONE, STRIDE_ONE,
                                             REP_STRIDE_FOUR, REP_STRIDE_EIGHT)
                     self.tik_instance.vconv(MASK64, 'floor', bin_start_w_floor,
@@ -918,13 +911,14 @@ class PSROIPoolingV2Class(object):
                                         STRIDE_ONE, STRIDE_ONE,
                                         REP_STRIDE_EIGHT, REP_STRIDE_EIGHT)
                 # vconv.floor: f162s32f or f322s32f
-                if tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION) != "Ascend310":
+                if tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION) not in \
+                        (tbe_platform.ASCEND_310, tbe_platform.ASCEND_320):
                     self.tik_instance.vconv(MASK64, 'ceil', bin_end_w_ceil,
                                             bin_start_w_ub_fp32, DIGIT_128 // DIGIT_64,
                                             STRIDE_ONE, STRIDE_ONE, REP_STRIDE_EIGHT,
                                             REP_STRIDE_EIGHT)
                 else:
-                    self.tik_instance.vconv(MASK64, '', temp_f16_ub, bin_start_w_ub_fp32, 
+                    self.tik_instance.vconv(MASK64, '', temp_f16_ub, bin_start_w_ub_fp32,
                                             DIGIT_128 // DIGIT_64, STRIDE_ONE, STRIDE_ONE,
                                             REP_STRIDE_FOUR, REP_STRIDE_EIGHT)
                     self.tik_instance.vconv(MASK64, 'ceil', bin_end_w_ceil,
@@ -952,12 +946,13 @@ class PSROIPoolingV2Class(object):
                                         scalar_roi_start_h, DIGIT_128 // DIGIT_64,
                                         STRIDE_ONE, STRIDE_ONE, REP_STRIDE_EIGHT, REP_STRIDE_EIGHT)
                 # vconv.floor: f162s32f or f322s32f
-                if tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION) != "Ascend310":
+                if tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION) not in \
+                        (tbe_platform.ASCEND_310, tbe_platform.ASCEND_320):
                     self.tik_instance.vconv(MASK64, 'floor', bin_start_h_floor,
                                             bin_start_h_ub_fp32, DIGIT_128 // DIGIT_64,
                                             STRIDE_ONE, STRIDE_ONE, REP_STRIDE_EIGHT, REP_STRIDE_EIGHT)
                 else:
-                    self.tik_instance.vconv(MASK64, '', temp_f16_ub, bin_start_h_ub_fp32, 
+                    self.tik_instance.vconv(MASK64, '', temp_f16_ub, bin_start_h_ub_fp32,
                                             DIGIT_128 // DIGIT_64, STRIDE_ONE, STRIDE_ONE,
                                             REP_STRIDE_FOUR, REP_STRIDE_EIGHT)
                     self.tik_instance.vconv(MASK64, 'floor', bin_start_h_floor,
@@ -980,12 +975,13 @@ class PSROIPoolingV2Class(object):
                                         scalar_roi_start_h, DIGIT_128 // DIGIT_64,
                                         STRIDE_ONE, STRIDE_ONE, REP_STRIDE_EIGHT, REP_STRIDE_EIGHT)
                 # vconv.ceil: f162s32f or f322s32f
-                if tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION) != "Ascend310":
+                if tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION) not in \
+                        (tbe_platform.ASCEND_310, tbe_platform.ASCEND_320):
                     self.tik_instance.vconv(MASK64, 'ceil', bin_end_h_ceil,
                                             bin_start_h_ub_fp32, DIGIT_128 // DIGIT_64,
                                             STRIDE_ONE, STRIDE_ONE, REP_STRIDE_EIGHT, REP_STRIDE_EIGHT)
                 else:
-                    self.tik_instance.vconv(MASK64, '', temp_f16_ub, bin_start_h_ub_fp32, 
+                    self.tik_instance.vconv(MASK64, '', temp_f16_ub, bin_start_h_ub_fp32,
                                             DIGIT_128 // DIGIT_64, STRIDE_ONE, STRIDE_ONE,
                                             REP_STRIDE_FOUR, REP_STRIDE_EIGHT)
                     self.tik_instance.vconv(MASK64, 'ceil', bin_end_h_ceil,
@@ -1001,7 +997,8 @@ class PSROIPoolingV2Class(object):
                 scalar_roi_start_h.set_as(rois_spatial_ub[1, roi_i])
                 bin_start_w_ub = self.tik_instance.Tensor(self.dtype, (DIGIT_128,),
                                                           name="bin_start_w_ub", scope=tbe_platform.scope_ubuf)
-                if tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION) == "Ascend310":
+                if tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION) in \
+                        (tbe_platform.ASCEND_310, tbe_platform.ASCEND_320):
                     bin_start_w_fp16_ub = \
                         self.tik_instance.Tensor(FP16, (DIGIT_128,), name="bin_start_w_fp16_ub",
                                                  scope=tbe_platform.scope_ubuf)
@@ -1016,14 +1013,15 @@ class PSROIPoolingV2Class(object):
                                         DIGIT_128 // self.vec_elem_num,
                                         STRIDE_ONE, STRIDE_ONE,
                                         REP_STRIDE_EIGHT, REP_STRIDE_EIGHT)
-                if tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION) == "Ascend310":
+                if tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION) in \
+                        (tbe_platform.ASCEND_310, tbe_platform.ASCEND_320):
                     self.tik_instance.vconv(MASK64, '', bin_start_w_fp16_ub,
                                             bin_start_w_ub, DIGIT_128 // DIGIT_64,
-                                            STRIDE_ONE, STRIDE_ONE, REP_STRIDE[FP16], REP_STRIDE_EIGHT)
+                                            STRIDE_ONE, STRIDE_ONE, REP_STRIDE.get(FP16), REP_STRIDE_EIGHT)
                     self.tik_instance.vconv(MASK64, 'floor', bin_start_w_floor,
                                             bin_start_w_fp16_ub, DIGIT_128 // DIGIT_64,
                                             STRIDE_ONE, STRIDE_ONE, REP_STRIDE_EIGHT,
-                                            REP_STRIDE[FP16])
+                                            REP_STRIDE.get(FP16))
                     self._bias_f32_f16_int32(bin_start_w_ub, bin_start_w_floor,
                                              bin_start_w_floor, 'floor', DIGIT_128 // DIGIT_64)
                 else:
@@ -1031,7 +1029,7 @@ class PSROIPoolingV2Class(object):
                     self.tik_instance.vconv(MASK64, 'floor', bin_start_w_floor,
                                             bin_start_w_ub, DIGIT_128 // DIGIT_64,
                                             STRIDE_ONE, STRIDE_ONE, REP_STRIDE_EIGHT,
-                                            REP_STRIDE[self.dtype])
+                                            REP_STRIDE.get(self.dtype))
 
                 # scalar_roi_start_w + scalar_bin_width*(0...127)
                 self.tik_instance.vmuls(self.mask, bin_start_w_ub,
@@ -1044,23 +1042,23 @@ class PSROIPoolingV2Class(object):
                                         DIGIT_128 // self.vec_elem_num,
                                         STRIDE_ONE, STRIDE_ONE,
                                         REP_STRIDE_EIGHT, REP_STRIDE_EIGHT)
-                if tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION) == "Ascend310":
+                if tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION) in \
+                        (tbe_platform.ASCEND_310, tbe_platform.ASCEND_320):
                     self.tik_instance.vconv(MASK64, '', bin_start_w_fp16_ub,
                                             bin_start_w_ub, DIGIT_128 // DIGIT_64,
-                                            STRIDE_ONE, STRIDE_ONE, REP_STRIDE[FP16],
+                                            STRIDE_ONE, STRIDE_ONE, REP_STRIDE.get(FP16),
                                             REP_STRIDE_EIGHT)
                     self.tik_instance.vconv(MASK64, 'ceil', bin_end_w_ceil,
                                             bin_start_w_fp16_ub, DIGIT_128 // DIGIT_64,
                                             STRIDE_ONE, STRIDE_ONE, REP_STRIDE_EIGHT,
-                                            REP_STRIDE[FP16])
+                                            REP_STRIDE.get(FP16))
                     self._bias_f32_f16_int32(bin_start_w_ub, bin_end_w_ceil,
                                              bin_end_w_ceil, 'ceil', DIGIT_128 // DIGIT_64)
                 else:
                     self.tik_instance.vconv(MASK64, 'ceil', bin_end_w_ceil,
                                             bin_start_w_ub, DIGIT_128 // DIGIT_64,
                                             STRIDE_ONE, STRIDE_ONE, REP_STRIDE_EIGHT,
-                                            REP_STRIDE[self.dtype])
-
+                                            REP_STRIDE.get(self.dtype))
 
                 bin_start_h_ub = self.tik_instance.Tensor(self.dtype, (DIGIT_128,), \
                                                           name="bin_start_h_ub", scope=tbe_platform.scope_ubuf)
@@ -1076,22 +1074,23 @@ class PSROIPoolingV2Class(object):
                                         DIGIT_128 // self.vec_elem_num,
                                         STRIDE_ONE, STRIDE_ONE,
                                         REP_STRIDE_EIGHT, REP_STRIDE_EIGHT)
-                if tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION) == "Ascend310":
+                if tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION) in \
+                        (tbe_platform.ASCEND_310, tbe_platform.ASCEND_320):
                     self.tik_instance.vconv(MASK64, '', bin_start_w_fp16_ub,
                                             bin_start_h_ub, DIGIT_128 // DIGIT_64,
-                                            STRIDE_ONE, STRIDE_ONE, REP_STRIDE[FP16],
+                                            STRIDE_ONE, STRIDE_ONE, REP_STRIDE.get(FP16),
                                             REP_STRIDE_EIGHT)
                     self.tik_instance.vconv(MASK64, 'floor', bin_start_h_floor,
                                             bin_start_w_fp16_ub, DIGIT_128 // DIGIT_64,
                                             STRIDE_ONE, STRIDE_ONE, REP_STRIDE_EIGHT,
-                                            REP_STRIDE[FP16])
+                                            REP_STRIDE.get(FP16))
                     self._bias_f32_f16_int32(bin_start_h_ub, bin_start_h_floor,
                                              bin_start_h_floor, 'floor', DIGIT_128 // DIGIT_64)
                 else:
                     self.tik_instance.vconv(MASK64, 'floor', bin_start_h_floor,
                                             bin_start_h_ub, DIGIT_128 // DIGIT_64,
                                             STRIDE_ONE, STRIDE_ONE, REP_STRIDE_EIGHT,
-                                            REP_STRIDE[self.dtype])
+                                            REP_STRIDE.get(self.dtype))
 
                 self.tik_instance.vmuls(self.mask, bin_start_h_ub,
                                         self.const_1_128_ub, scalar_bin_height,
@@ -1103,22 +1102,23 @@ class PSROIPoolingV2Class(object):
                                         DIGIT_128 // self.vec_elem_num,
                                         STRIDE_ONE, STRIDE_ONE,
                                         REP_STRIDE_EIGHT, REP_STRIDE_EIGHT)
-                if tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION) == "Ascend310":
+                if tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION) in \
+                        (tbe_platform.ASCEND_310, tbe_platform.ASCEND_320):
                     self.tik_instance.vconv(MASK64, '', bin_start_w_fp16_ub,
                                             bin_start_h_ub, DIGIT_128 // DIGIT_64,
-                                            STRIDE_ONE, STRIDE_ONE, REP_STRIDE[FP16],
+                                            STRIDE_ONE, STRIDE_ONE, REP_STRIDE.get(FP16),
                                             REP_STRIDE_EIGHT)
                     self.tik_instance.vconv(MASK64, 'ceil', bin_end_h_ceil,
                                             bin_start_w_fp16_ub, DIGIT_128 // DIGIT_64,
                                             STRIDE_ONE, STRIDE_ONE, REP_STRIDE_EIGHT,
-                                            REP_STRIDE[FP16])
+                                            REP_STRIDE.get(FP16))
                     self._bias_f32_f16_int32(bin_start_h_ub, bin_end_h_ceil,
                                              bin_end_h_ceil, 'ceil', DIGIT_128 // DIGIT_64)
                 else:
                     self.tik_instance.vconv(MASK64, 'ceil', bin_end_h_ceil,
                                             bin_start_h_ub, DIGIT_128 // DIGIT_64,
                                             STRIDE_ONE, STRIDE_ONE, REP_STRIDE_EIGHT,
-                                            REP_STRIDE[self.dtype])
+                                            REP_STRIDE.get(self.dtype))
 
             self.tik_instance.vector_dup(MASK64, dup_tmp_ub, 0, REPEAT_1,
                                          STRIDE_ONE, REP_STRIDE_EIGHT)
@@ -1268,27 +1268,6 @@ class PSROIPoolingV2Class(object):
                                         rois_num_offset + self.roi_num_b * batch_id, \
                                         roi_step * inner_i, roi_step)
 
-    def _cache_fm_l1(self):
-        """
-        cache fm in L1, if fm size  is smaller than L1.
-
-        Parameters
-        ----------
-        None
-
-        Returns
-        -------
-        None
-        """
-        if self.x_data_size <= self.l1_size:
-            self.cache_in_l1 = True
-            self.cache_l1 = self.tik_instance.Tensor(self.dtype, self.x_shape,
-                                                     name="cache_l1", scope=tbe_platform.scope_cbuf)
-            # cache fm in L1
-            burst_len = self.x_data_size // BLOCK_SIZE
-            self.tik_instance.data_move(self.cache_l1, self.x, SID, BURST_1,
-                                        burst_len, STRIDE_ZERO, STRIDE_ZERO)
-
     def _init_const_0_127_ub(self):
         """
         init const_0_127_ub, which store 0.0 - 127.0.
@@ -1325,17 +1304,18 @@ class PSROIPoolingV2Class(object):
                                         STRIDE_ONE, REP_STRIDE.get(self.dtype),
                                         REP_STRIDE_EIGHT, deqscale=DEQSCALE)
             else:
-                if tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION) == "Ascend310":
+                if tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION) in \
+                        (tbe_platform.ASCEND_310, tbe_platform.ASCEND_320):
                     const_0_127_fp16 = self.tik_instance.Tensor(FP16, (DIGIT_128,),
                                                                 name="const_0_127_fp16",
                                                                 scope=tbe_platform.scope_ubuf)
                     self.tik_instance.vconv(MASK64, '', const_0_127_fp16,
                                             const_0_127_int32, REPEAT_2, STRIDE_ONE,
-                                            STRIDE_ONE, REP_STRIDE[FP16],
-                                            REP_STRIDE[self.dtype], deqscale=DEQSCALE)
+                                            STRIDE_ONE, REP_STRIDE.get(FP16),
+                                            REP_STRIDE.get(self.dtype), deqscale=DEQSCALE)
                     self.tik_instance.vconv(MASK64, '', self.const_0_127_ub,
                                             const_0_127_fp16, REPEAT_2, STRIDE_ONE,
-                                            STRIDE_ONE, REP_STRIDE[self.dtype], REP_STRIDE[FP16])
+                                            STRIDE_ONE, REP_STRIDE.get(self.dtype), REP_STRIDE.get(FP16))
                 else:
                     self.tik_instance.vconv(MASK64, '', self.const_0_127_ub,
                                             const_0_127_int32, REPEAT_2, STRIDE_ONE,
@@ -1378,17 +1358,18 @@ class PSROIPoolingV2Class(object):
                                         STRIDE_ONE, REP_STRIDE.get(self.dtype),
                                         REP_STRIDE_EIGHT, deqscale=DEQSCALE)
             else:
-                if tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION) == "Ascend310":
+                if tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION) in \
+                        (tbe_platform.ASCEND_310, tbe_platform.ASCEND_320):
                     const_1_128_fp16 = self.tik_instance.Tensor(FP16, (DIGIT_128,),
                                                                 name="const_1_128_fp16",
                                                                 scope=tbe_platform.scope_ubuf)
                     self.tik_instance.vconv(MASK64, '', const_1_128_fp16,
                                             const_1_128_int32, REPEAT_2, STRIDE_ONE,
-                                            STRIDE_ONE, REP_STRIDE[FP16],
-                                            REP_STRIDE[self.dtype], deqscale=DEQSCALE)
+                                            STRIDE_ONE, REP_STRIDE.get(FP16),
+                                            REP_STRIDE.get(self.dtype), deqscale=DEQSCALE)
                     self.tik_instance.vconv(MASK64, '', self.const_1_128_ub,
                                             const_1_128_fp16, REPEAT_2, STRIDE_ONE,
-                                            STRIDE_ONE, REP_STRIDE[self.dtype], REP_STRIDE[FP16])
+                                            STRIDE_ONE, REP_STRIDE.get(self.dtype), REP_STRIDE.get(FP16))
                 else:
                     self.tik_instance.vconv(MASK64, '', self.const_1_128_ub,
                                             const_1_128_int32, REPEAT_2, STRIDE_ONE,
@@ -1435,7 +1416,6 @@ class PSROIPoolingV2Class(object):
         with self.tik_instance.for_range(0, block_num,
                                          block_num=block_num) as block_id:
             # process of one aicore
-            self._cache_fm_l1()
             self._init_const_0_127_ub()
             self._init_const_1_128_ub()
 

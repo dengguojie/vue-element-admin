@@ -2655,6 +2655,7 @@ unkown:
       - ops/built-in/tbe/impl/truncate_mod.py
       - ops/built-in/tbe/impl/sigmoid_cross_entropy_with_logits_v2.py
       - ops/built-in/tbe/impl/logical_and.py
+      - ops/built-in/tbe/impl/p_s_r_o_i_pooling_v2.py
       - ops/built-in/tbe/impl/dynamic/softsign_grad.py
       - ops/built-in/tbe/impl/dynamic/nms_with_mask.py
       - ops/built-in/tbe/impl/dynamic/assign.py
