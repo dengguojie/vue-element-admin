@@ -2652,6 +2652,7 @@ unkown:
       - ops/built-in/tbe/impl/trans_data_rnn_negative_target.py
       - ops/built-in/tbe/impl/round.py
       - ops/built-in/tbe/impl/strided_slice_grad_d.py
+      - ops/built-in/tbe/impl/p_s_r_o_i_pooling_grad_v2_d.py
       - ops/built-in/tbe/impl/truncate_mod.py
       - ops/built-in/tbe/impl/sigmoid_cross_entropy_with_logits_v2.py
       - ops/built-in/tbe/impl/logical_and.py

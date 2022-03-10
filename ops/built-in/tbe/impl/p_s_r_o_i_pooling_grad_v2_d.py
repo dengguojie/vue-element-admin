@@ -58,8 +58,6 @@ DEQSCALE = 1.0
 MAX_GAP_SIZE = 65536
 # length of fp16 and fp32 data type
 TYPE_LEN_DICT = {FP16: 2, FP32: 4}
-# number of element of fp16 and fp32 data type in one block
-BLOCK_ELEM_NUM = {FP16: 16, FP32: 8}
 # number of element of fp16 and fp32 data type in one vector
 VEC_ELEM_NUM = {FP16: 128, FP32: 64}
 # repeat times of fp16 and fp32 data type in vconv instruction
@@ -67,10 +65,6 @@ REP_TIMES = {FP16: 2, FP32: 1}
 # repeat stride of fp16 and fp32 data type in vconv instruction
 REP_STRIDE = {FP16: 4, FP32: 8}
 
-# digit 256
-DIGIT_256 = 256
-# digit 255
-DIGIT_255 = 255
 # digit 128
 DIGIT_128 = 128
 # digit 64
@@ -79,8 +73,6 @@ DIGIT_64 = 64
 DIGIT_4 = 4
 # digit 5
 DIGIT_5 = 5
-# digit 2
-DIGIT_2 = 2
 # digit 8
 DIGIT_8 = 8
 # 0.1
@@ -117,7 +109,58 @@ class PSROIPoolingGradV2DClass(object):
     """
     Function: class that execute PSROIPoolingGradV2D
     """
+    def _input_shape_check(self):
+        """
+        check if the input shapes are valid
+        """
+        if self.roi_shape[0] != self.y_shape[0]:
+            error_info = {'errCode': 'E81009'}
+            raise RuntimeError(error_info, "The batch of output y[%s] and rois[%s] must be equal."
+                               % (self.y_shape[0], self.roi_shape[0]))
 
+        if self.roi_shape[1] != DIGIT_5:
+            error_info = {'errCode': 'E80000'}
+            raise RuntimeError(error_info, "The parameter [%s] must be equal 5, but actually is [%s]."
+                               % ("roi_shape[1]", self.roi_shape[1]))
+
+        if self.roi_shape[0] * self.roi_shape[2] != self.x_shape[0]:
+            error_info = {'errCode': 'E81009'}
+            raise RuntimeError(error_info, "All num of rois must be equal to "
+                                           "x_shape[0][%s],but actually is [%s]."
+                               % (self.x_shape[0], self.roi_shape[0] * self.roi_shape[2]))
+
+        if self.group_size >= DIGIT_128:
+            error_info = {'errCode': 'E80002'}
+            raise RuntimeError(error_info, "The parameter[%s] must be "
+                                           "less than [%s],but actually is [%s]."
+                               % ('group_size', DIGIT_128, self.group_size))
+
+        if self.ori_y_shape[1] // self.ori_x_shape[1] != self.ori_x_shape[2] * self.ori_x_shape[3]:
+            error_info = {'errCode': 'E81010'}
+            raise RuntimeError(error_info, "The parameter %s is invalid, it should follow the rule:"
+                               "ori_y_shape[1](%s)//ori_x_shape[1](%s) == ori_x_shape[2](%s)*ori_x_shape[3](%s)."
+                               % ('ori_x_shape[1]', self.ori_y_shape[1], self.ori_x_shape[1],
+                                  self.ori_x_shape[2], self.ori_x_shape[3]))
+
+        if self.group_size != self.x_shape[2] or self.group_size != self.x_shape[3]:
+            error_info = {'errCode': 'E80017'}
+            raise RuntimeError(error_info, "The shape of x_shape[2] and x_shape[3] "
+                                           "must be equal to group_size[%s],but actually is %s and %s."
+                               % (self.group_size, self.x_shape[2], self.x_shape[3]))
+
+        if _ceil_value(self.output_dim, C0) != self.x_shape[1]:
+            error_info = {'errCode': 'E81011'}
+            raise RuntimeError(error_info, "The parameter output_dim is invalid,it should "
+                                           "follow the rule:(output_dim + C0 -1) // C0 == x_shape[1]")
+
+        if self.input_size[0] != self.y_shape[2] or self.input_size[1] != self.y_shape[3]:
+            error_info = {'errCode': 'E81012'}
+            raise RuntimeError(error_info, "The parameter input_size is invalid, it should "
+                                           "follow the rule: input_size[0](%s)==y_shape[2](%s) and"
+                                           "input_size(1)(%s) == y_shape[3](%s)"
+                               % (self.input_size[0], self.y_shape[2],
+                                  self.input_size[1], self.y_shape[3]))
+       
     def _input_param_check(self):
         """
         check if the inputs are valid
@@ -133,13 +176,14 @@ class PSROIPoolingGradV2DClass(object):
         para_check.check_dtype(self.dtype, (FP16, FP32), param_name="x")
         para_check.check_dtype(self.roi_dtype, (FP16, FP32), param_name="rois")
 
-        if tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION) == "Ascend310":
+        if tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION) in \
+                (tbe_platform.ASCEND_310, tbe_platform.ASCEND_320):
             error_info = {'errCode': 'E80016',
                           'param_name1': tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION),
                           'op_name': 'PSROIPoolingGradV2D'}
             raise RuntimeError(error_info, "In op[%s], "
                                            "soc_version [%s] is not support gm atomic."
-                               % (error_info['op_name'], error_info['param_name1']))
+                               % (error_info.get('op_name'), error_info.get('param_name1')))
 
         if self.dtype != self.roi_dtype or self.dtype != self.y_dtype:
             error_info = {'errCode': 'E80017',
@@ -149,17 +193,19 @@ class PSROIPoolingGradV2DClass(object):
                           'op_name': 'PSROIPoolingGradV2D'}
             raise RuntimeError(error_info, "In op[%s], the dtype of input x[%s], "
                                            "rois[%s] and y[%s] must be equal."
-                               % (error_info['op_name'], error_info['param_name1'],
-                                  error_info['param_name2'], error_info['param_name3']))
+                               % (error_info.get('op_name'), error_info.get('param_name1'),
+                                  error_info.get('param_name2'), error_info.get('param_name3')))
 
-        if self.dtype == FP16 and tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION) == "Ascend910":
+        if self.dtype == FP16 and (tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION) in
+                                   (tbe_platform.ASCEND_910, tbe_platform.ASCEND_920A)):
             error_info = {'errCode': 'E80018',
                           'param_name1': self.dtype,
                           'param_name2': tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION),
                           'op_name': 'PSROIPoolingGradV2D'}
             raise RuntimeError(error_info, "In op[%s], the dtype of input[%s], "
                                            "soc_version [%s] is not support gm atomic."
-                               % (error_info['op_name'], error_info['param_name1'], error_info['param_name2']))
+                               % (error_info.get('op_name'), error_info.get('param_name1'),
+                                  error_info.get('param_name2')))
 
         para_check.check_shape(self.x_shape, param_name="x")
         para_check.check_shape(self.roi_shape, param_name="rois")
@@ -167,89 +213,7 @@ class PSROIPoolingGradV2DClass(object):
         # x and y must be 5HD
         para_check.check_shape(self.x_shape, min_rank=DIGIT_5, max_rank=DIGIT_5, param_name="x")
         para_check.check_shape(self.y_shape, min_rank=DIGIT_5, max_rank=DIGIT_5, param_name="y")
-
-        if self.roi_shape[0] != self.y_shape[0]:
-            error_info = {'errCode': 'E81009',
-                          'param_value1': self.y_shape[0],
-                          'param_value2': self.roi_shape[0],
-                          'op_name': 'PSROIPoolingGradV2D'}
-            raise RuntimeError(error_info, "In op[%s], the batch of output y[%s] and rois[%s] must be equal."
-                               % (error_info['op_name'], error_info['param_value1'], error_info['param_value2']))
-
-        if self.roi_shape[1] != DIGIT_5:
-            error_info = {'errCode': 'E80000',
-                          'param_name': "roi_shape[1]",
-                          'op_name': 'PSROIPoolingGradV2D',
-                          'expect_value': DIGIT_5,
-                          'real_value': self.roi_shape[1]}
-            raise RuntimeError(error_info, "In op[%s], the parameter [%s] must be equal 5, but actually is [%s]."
-                               % (error_info['op_name'], error_info['param_name'], error_info['real_value']))
-
-        if self.roi_shape[0] * self.roi_shape[2] != self.x_shape[0]:
-            error_info = {'errCode': 'E81009',
-                          'param_value1': self.roi_shape[0] * self.roi_shape[2],
-                          'param_value2': self.x_shape[0],
-                          'op_name': 'PSROIPoolingGradV2D'}
-            raise RuntimeError(error_info, "In op[%s], all num of rois must be equal to "
-                                           "x_shape[0][%s],but actually is [%s]."
-                               % (error_info['op_name'], error_info['param_value2'], error_info['param_value1']))
-
-        if self.group_size >= DIGIT_128:
-            error_info = {'errCode': 'E80002',
-                          'param_name': 'group_size',
-                          'op_name': 'PSROIPoolingGradV2D'}
-            raise RuntimeError(error_info, "In op[%s], the parameter[%s] must be "
-                                           "less than [%s],but actually is [%s]."
-                               % (error_info['op_name'], error_info['param_name'], DIGIT_128, self.group_size))
-
-        if self.ori_y_shape[1] // self.ori_x_shape[1] != self.ori_x_shape[2] * self.ori_x_shape[3]:
-            error_info = {'errCode': 'E81010',
-                          'param_name': 'ori_x_shape[1]',
-                          'op_name': 'PSROIPoolingGradV2D',
-                          'param_value1': self.ori_y_shape[1],
-                          'param_value2': self.ori_x_shape[1],
-                          'param_value3': self.ori_x_shape[2],
-                          'param_value4': self.ori_x_shape[3]}
-            raise RuntimeError(error_info, "In op[%s], the parameter %s is invalid, "
-                                           "it should follow the rule: self.ori_y_shape[1](%s)//"
-                                           "self.ori_x_shape[1](%s) "
-                                           "== self.ori_x_shape[2](%s)*self.ori_x_shape[3](%s)."
-                               % (error_info['op_name'], error_info['param_name'], error_info['param_value1'],
-                                  error_info['param_value2'], error_info['param_value3'],
-                                  error_info['param_value4']))
-
-        if self.group_size != self.x_shape[2] or self.group_size != self.x_shape[3]:
-            error_info = {'errCode': 'E80017',
-                          'param_value1': self.x_shape[2],
-                          'param_value2': self.x_shape[3],
-                          'op_name': 'PSROIPoolingGradV2D'}
-            raise RuntimeError(error_info, "In op[%s], the shape of x_shape[2] and x_shape[3] "
-                                           "must be equal to group_size[%s],but actually is %s and %s."
-                               % (error_info['op_name'], self.group_size, error_info['param_value1'],
-                                  error_info['param_value2']))
-
-        if _ceil_value(self.output_dim, C0) != self.x_shape[1]:
-            error_info = {'errCode': 'E81011',
-                          'param_name': 'output_dim',
-                          'op_name': 'PSROIPoolingGradV2D'}
-            raise RuntimeError(error_info, "In op[%s], the parameter[%s] is invalid,it should "
-                                           "follow the rule:(output_dim + C0 -1) // C0 == x_shape[1]"
-                               % (error_info['op_name'], error_info['param_name']))
-
-        if self.input_size[0] != self.y_shape[2] or self.input_size[1] != self.y_shape[3]:
-            error_info = {'errCode': 'E81012',
-                          'param_name': 'input_size',
-                          'op_name': 'PSROIPoolingGradV2D',
-                          'param_value1': self.input_size[0],
-                          'param_value2': self.input_size[1],
-                          'param_value3': self.y_shape[2],
-                          'param_value4': self.y_shape[3]}
-            raise RuntimeError(error_info, "In op[%s], the parameter[%s] is invalid, it should "
-                                           "follow the rule: input_size[0](%s)==y_shape[2](%s) and"
-                                           "input_size(1)(%s) == y_shape[3](%s)"
-                               % (error_info['op_name'], error_info['param_name'],
-                                  error_info['param_value1'], error_info['param_value2'],
-                                  error_info['param_value3'], error_info['param_value4']))
+        self._input_shape_check()
 
     def __init__(self, x_dict, rois_dict, y_dict, params, kernel_name):
         """
@@ -285,7 +249,7 @@ class PSROIPoolingGradV2DClass(object):
         product_name = tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION)
         self._input_param_check()
 
-        self.dsize = TYPE_LEN_DICT[self.dtype]
+        self.dsize = TYPE_LEN_DICT.get(self.dtype)
         self.fm_batch = self.y_shape[0]
         self.fm_c1 = self.y_shape[1]
         self.fm_h = self.y_shape[2]
@@ -303,7 +267,6 @@ class PSROIPoolingGradV2DClass(object):
         # divide the available UB space into four parts
         self.ub_one_buf = self.ub_size // 4
         self.ub_one_buf_elem = self.ub_one_buf // self.dsize
-        self.l1_size = tbe_platform.get_soc_spec(tbe_platform.L1_SIZE)
         self.tik_instance = tik.Tik(profile, disable_debug=True)
         self.aicore_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
 
@@ -327,9 +290,6 @@ class PSROIPoolingGradV2DClass(object):
         self.x = None
         self.rois = None
         self.y = None
-        # L1 cache is used, when input x can be put down in L1
-        self.cache_in_l1 = False
-        self.cache_l1 = None
         self.const_0_127_ub = None
         self.const_1_128_ub = None
         self.output_dim_align = _ceil_value(self.output_dim, self.mask) * self.mask
@@ -385,9 +345,9 @@ class PSROIPoolingGradV2DClass(object):
         # rois_floor_ub[0]: batch id; rois_floor_ub[1-4]: roi coordinates
         # vconv.floor: f162s32r or f322s32r
         self.tik_instance.vconv(MASK64, 'floor', rois_floor_ub, rois_ub,
-                                REP_TIMES[self.dtype] * DIGIT_5,
+                                REP_TIMES.get(self.dtype) * DIGIT_5,
                                 STRIDE_ONE, STRIDE_ONE,
-                                REP_STRIDE_EIGHT, REP_STRIDE[self.dtype])
+                                REP_STRIDE_EIGHT, REP_STRIDE.get(self.dtype))
         # s322f16: vconv.deq, or s322f32: vconv
         if self.dtype == FP16:
             if self.is_hisi_cs:
@@ -411,9 +371,9 @@ class PSROIPoolingGradV2DClass(object):
         else:
             self.tik_instance.vconv(MASK64, '', rois_spatial_ub,
                                     rois_floor_ub[1, 0],
-                                    REP_TIMES[self.dtype] * DIGIT_4,
+                                    REP_TIMES.get(self.dtype) * DIGIT_4,
                                     STRIDE_ONE, STRIDE_ONE,
-                                    REP_STRIDE[self.dtype], REP_STRIDE_EIGHT)
+                                    REP_STRIDE.get(self.dtype), REP_STRIDE_EIGHT)
         self.tik_instance.vadds(self.mask, rois_spatial_ub[2, 0],
                                 rois_spatial_ub[2, 0], ONE_POINT, REPEAT_2,
                                 STRIDE_ONE, STRIDE_ONE,
@@ -459,8 +419,8 @@ class PSROIPoolingGradV2DClass(object):
         -------
         None
         """
-        if tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION) in (tbe_platform.ASCEND_910, tbe_platform.ASCEND_710,
-                                                                   tbe_platform.ASCEND_610):
+        if tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION) in (tbe_platform.ASCEND_910, tbe_platform.ASCEND_920A,
+                                                                   tbe_platform.ASCEND_710, tbe_platform.ASCEND_610):
             self.tik_instance.vdiv(self.mask, dst, divisor, dividend, repeat,
                                    STRIDE_ONE, STRIDE_ONE, STRIDE_ONE,
                                    REP_STRIDE_EIGHT, REP_STRIDE_EIGHT,
@@ -519,7 +479,8 @@ class PSROIPoolingGradV2DClass(object):
             bin_i_offset_c1 = output_dim_index // C0
             bin_i_offset_c0 = output_dim_index - bin_i_offset_c1 * C0
             if tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION) in \
-                    (tbe_platform.ASCEND_910, tbe_platform.ASCEND_710, tbe_platform.ASCEND_610):
+                    (tbe_platform.ASCEND_910, tbe_platform.ASCEND_920A,
+                     tbe_platform.ASCEND_710, tbe_platform.ASCEND_610):
                 self.tik_instance.set_atomic_add(1)
                 # add diff_val
                 self.tik_instance.vadds([0, 0x1], ub_bin_input_buf, ub_bin_input_buf, diff_value,
@@ -570,7 +531,8 @@ class PSROIPoolingGradV2DClass(object):
                                          STRIDE_ONE, REP_STRIDE_EIGHT)
             with self.tik_instance.for_range(params["h_start"], params["h_end"]) as height:
                 if tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION) in \
-                        (tbe_platform.ASCEND_910, tbe_platform.ASCEND_710, tbe_platform.ASCEND_610):
+                        (tbe_platform.ASCEND_910, tbe_platform.ASCEND_920A,
+                         tbe_platform.ASCEND_710, tbe_platform.ASCEND_610):
                     self.tik_instance.set_atomic_add(1)
                     # add diff_val
                     self.tik_instance.vadds([0, 0x1], ub_bin_input_buf, ub_bin_input_buf, diff_value,
@@ -635,11 +597,11 @@ class PSROIPoolingGradV2DClass(object):
                 self.tik_instance.vector_dup(C0, in_zero_ub, 1.0, REPEAT_1, STRIDE_ONE, STRIDE_ONE)
                 if self.dtype == FP16:
                     self.tik_instance.vconv(C0, '', bin_area_float_ub, bin_area_int32_ub, REPEAT_1, STRIDE_ONE,
-                                            STRIDE_ONE, STRIDE_ONE, REP_STRIDE[self.dtype] // self.dsize,
+                                            STRIDE_ONE, STRIDE_ONE, REP_STRIDE.get(self.dtype) // self.dsize,
                                             deqscale=DEQSCALE)
                 else:
                     self.tik_instance.vconv(C0, '', bin_area_float_ub, bin_area_int32_ub, REPEAT_1, STRIDE_ONE,
-                                            STRIDE_ONE, STRIDE_ONE, REP_STRIDE[self.dtype] // self.dsize, None)
+                                            STRIDE_ONE, STRIDE_ONE, REP_STRIDE.get(self.dtype) // self.dsize, None)
                 self.tik_instance.vdiv(C0, bin_area_float_ub, in_zero_ub, bin_area_float_ub, REPEAT_1,
                                        STRIDE_ONE, STRIDE_ONE, STRIDE_ONE, REPEAT_1, REPEAT_1, REPEAT_1)
                 bin_area_inv.set_as(bin_area_float_ub[0])
@@ -815,7 +777,7 @@ class PSROIPoolingGradV2DClass(object):
             self.tik_instance.vconv(MASK64, 'floor', bin_start_w_floor,
                                     bin_start_w_ub, DIGIT_128 // DIGIT_64,
                                     STRIDE_ONE, STRIDE_ONE, REP_STRIDE_EIGHT,
-                                    REP_STRIDE[self.dtype])
+                                    REP_STRIDE.get(self.dtype))
 
             # scalar_roi_start_w + scalar_bin_width*(0...127)
             self.tik_instance.vmuls(self.mask, bin_start_w_ub,
@@ -832,7 +794,7 @@ class PSROIPoolingGradV2DClass(object):
             self.tik_instance.vconv(MASK64, 'ceil', bin_end_w_ceil,
                                     bin_start_w_ub, DIGIT_128 // DIGIT_64,
                                     STRIDE_ONE, STRIDE_ONE, REP_STRIDE_EIGHT,
-                                    REP_STRIDE[self.dtype])
+                                    REP_STRIDE.get(self.dtype))
 
             bin_start_h_ub = self.tik_instance.Tensor(self.dtype, (DIGIT_128,),
                                                       name="bin_start_h_ub", scope=tbe_platform.scope_ubuf)
@@ -851,7 +813,7 @@ class PSROIPoolingGradV2DClass(object):
             self.tik_instance.vconv(MASK64, 'floor', bin_start_h_floor,
                                     bin_start_h_ub, DIGIT_128 // DIGIT_64,
                                     STRIDE_ONE, STRIDE_ONE, REP_STRIDE_EIGHT,
-                                    REP_STRIDE[self.dtype])
+                                    REP_STRIDE.get(self.dtype))
 
             self.tik_instance.vmuls(self.mask, bin_start_h_ub,
                                     self.const_1_128_ub, scalar_bin_height,
@@ -866,7 +828,7 @@ class PSROIPoolingGradV2DClass(object):
             self.tik_instance.vconv(MASK64, 'ceil', bin_end_h_ceil,
                                     bin_start_h_ub, DIGIT_128 // DIGIT_64,
                                     STRIDE_ONE, STRIDE_ONE, REP_STRIDE_EIGHT,
-                                    REP_STRIDE[self.dtype])
+                                    REP_STRIDE.get(self.dtype))
 
             self.tik_instance.vector_dup(MASK64, dup_tmp_ub, 0, REPEAT_1,
                                          STRIDE_ONE, REP_STRIDE_EIGHT)
@@ -1015,27 +977,6 @@ class PSROIPoolingGradV2DClass(object):
                 self._process_step1_roi(rois_floor_ub, rois_spatial_ub,
                                         rois_num_offset + self.roi_num_b * batch_id,
                                         roi_step * inner_i, roi_step)
-
-    def _cache_fm_l1(self):
-        """
-        cache fm in L1, if fm size  is smaller than L1.
-
-        Parameters
-        ----------
-        None
-
-        Returns
-        -------
-        None
-        """
-        if self.x_data_size <= self.l1_size:
-            self.cache_in_l1 = True
-            self.cache_l1 = self.tik_instance.Tensor(self.dtype, self.x_shape,
-                                                     name="cache_l1", scope=tbe_platform.scope_cbuf)
-            # cache fm in L1
-            burst_len = self.x_data_size // BLOCK_SIZE
-            self.tik_instance.data_move(self.cache_l1, self.y, SID, BURST_1,
-                                        burst_len, STRIDE_ZERO, STRIDE_ZERO)
 
     def _init_const_0_127_ub(self):
         """
