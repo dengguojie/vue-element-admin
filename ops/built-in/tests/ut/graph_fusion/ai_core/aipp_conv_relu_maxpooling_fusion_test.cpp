@@ -314,3 +314,80 @@ TEST_F(AippConvReluMaxpoolingFusionTest, AippConvReluMaxpoolingFusionTest_5) {
   fusion_pass.CheckConvNodeValidation(conv_node);
 
 }
+/************************************
+ *
+ *       x    filter
+ *          \  /
+ *         conv2d
+ *            |
+ *         relu
+ *            |
+ *          maxpool
+ *            |
+ *          quant
+ *
+ *************************************/
+TEST_F(AippConvReluMaxpoolingFusionTest, AippConvReluMaxpoolingQuantFusionTest1) {
+ OpDescPtr conv_op = std::make_shared<OpDesc>("conv", "Conv2D");
+ OpDescPtr pool_op = std::make_shared<OpDesc>("maxpool", "MaxPool");
+ // input0 tensor :x for conv2d
+ vector<int64_t> dim1({1, 1, 224, 224, 4});
+ GeShape shape1(dim1);
+ vector<int64_t> dim1_ori({1, 3, 224, 224});
+ GeShape shape1_ori(dim1_ori);
+ GeTensorDesc tensor_desc_1(shape1);
+ tensor_desc_1.SetOriginFormat(FORMAT_NC1HWC0_C04);
+ tensor_desc_1.SetOriginDataType(DT_FLOAT16);
+ tensor_desc_1.SetOriginShape(shape1);
+ tensor_desc_1.SetFormat(FORMAT_NCHW);
+ tensor_desc_1.SetDataType(DT_FLOAT16);
+ tensor_desc_1.SetShape(shape1_ori);
+ 
+ // input1 tensor :filter for conv2d 
+ // FRAC_Z format kh*kw*Cin/16, cout/N0, 16, 16
+ vector<int64_t> dim2({13, 4, 16, 16});
+ GeShape shape2(dim2);
+ vector<int64_t> dim2_ori({64, 3, 7, 7});
+ GeShape shape2_ori(dim2_ori);
+ GeTensorDesc tensor_desc_2(shape2);
+ tensor_desc_2.SetOriginFormat(FORMAT_FRACTAL_Z_C04);
+ tensor_desc_2.SetOriginDataType(DT_FLOAT16);
+ tensor_desc_2.SetOriginShape(shape2);
+ tensor_desc_2.SetFormat(FORMAT_NCHW);
+ tensor_desc_2.SetDataType(DT_FLOAT16);
+ tensor_desc_2.SetShape(shape2_ori);
+
+
+vector<int64_t> dim4({1, 4, 112, 112, 16});
+GeShape shape4(dim4);
+vector<int64_t> dim4_ori({1, 64, 112, 112});
+GeShape shape4_ori(dim2_ori);
+GeTensorDesc tensor_desc_3(shape2);
+tensor_desc_3.SetOriginFormat(FORMAT_NC1HWC0);
+tensor_desc_3.SetOriginDataType(DT_FLOAT16);
+tensor_desc_3.SetOriginShape(shape4);
+tensor_desc_3.SetFormat(FORMAT_NCHW);
+tensor_desc_3.SetDataType(DT_FLOAT16);
+tensor_desc_3.SetShape(shape4_ori);
+
+conv_op->AddInputDesc("x", tensor_desc_1);
+conv_op->AddInputDesc("filter", tensor_desc_2);
+conv_op->AddOutputDesc(tensor_desc_3);
+ge::AttrUtils::SetListInt(conv_op, "dilations", {1, 1, 1, 1});
+ge::AttrUtils::SetListInt(conv_op, "pads", {3, 3, 3, 3});
+ge::AttrUtils::SetListInt(conv_op, "strides", {1, 1, 2, 2});
+
+
+ge::AttrUtils::SetListInt(pool_op, "ksize", {3,3});
+ge::AttrUtils::SetListInt(pool_op, "strides", {2, 2});
+ 
+pool_op->AddInputDesc("src", tensor_desc_1);
+pool_op->AddOutputDesc("dst", tensor_desc_1);
+
+ComputeGraphPtr graph = std::make_shared<ComputeGraph>("test_graph");
+NodePtr conv_node = graph->AddNode(conv_op);
+NodePtr pool_node = graph->AddNode(pool_op);
+ge::GraphUtils::AddEdge(conv_node->GetOutDataAnchor(0), pool_node->GetInDataAnchor(0));
+fe::TbeAippConvReluMaxpoolingFusionPass fusion_pass;
+fusion_pass.CheckConvNodeValidation(conv_node);
+}
