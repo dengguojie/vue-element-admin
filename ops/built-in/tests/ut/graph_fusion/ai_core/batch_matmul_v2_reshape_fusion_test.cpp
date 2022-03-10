@@ -464,3 +464,109 @@ TEST_F(batch_matmul_v2_reshape_fusion_test, batch_matmul_v2_reshape_fusion_test_
     }
     EXPECT_EQ(findTranspose, false);
 }
+
+TEST_F(batch_matmul_v2_reshape_fusion_test, batch_matmul_v2_reshape_fusion_test_9)
+{
+    ge::Graph graph("batch_matmul_v2_reshape_fusion_test_9");
+    auto X1Data = op::Data("x1");
+    std::vector<int64_t> dims_x1{4096, 16, 1775};
+    ge::Shape shape_x1(dims_x1);
+    ge::TensorDesc tensorDescX1(shape_x1, FORMAT_ND, DT_FLOAT16);
+    X1Data.update_input_desc_x(tensorDescX1);
+    X1Data.update_output_desc_y(tensorDescX1);
+
+    auto X2Data = op::Data("x2");
+    std::vector<int64_t> dims_x2{1775, 1981};
+    ge::Shape shape_x2(dims_x2);
+    ge::TensorDesc tensorDescX2(shape_x2, FORMAT_ND, DT_FLOAT16);
+    X2Data.update_input_desc_x(tensorDescX2);
+    X2Data.update_output_desc_y(tensorDescX2);
+
+    auto bmOP = op::BatchMatMulV2("BatchMatMulV2_1");
+    bmOP.set_input_x1(X1Data);
+    bmOP.set_input_x2(X2Data);
+
+    auto tanh_op = op::Tanh("tanh");
+    tanh_op.set_input_x(bmOP);
+
+    std::vector<Operator> inputs{X1Data, X2Data};
+    std::vector<Operator> outputs{tanh_op};
+
+    graph.SetInputs(inputs).SetOutputs(outputs);
+    ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
+    fe::FusionPassTestUtils::InferShapeAndType(compute_graph_ptr);
+    auto ret = fe::FusionPassTestUtils::RunGraphFusionPass("BatchMatMulV2ReshapeFusionPass",
+        fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
+    ASSERT_EQ(ret, fe::SUCCESS);
+
+    std::map<std::string, uint32_t> expected = {{"Reshape", 2}};
+    std::map<std::string, uint32_t> actual;
+    for (auto node : compute_graph_ptr->GetAllNodes()) {
+        if (node->GetType() == "Reshape") {
+            actual[node->GetType()]++;
+        }
+    }
+    ASSERT_EQ(expected, actual);
+}
+
+TEST_F(batch_matmul_v2_reshape_fusion_test, batch_matmul_v2_reshape_fusion_test_10)
+{
+    ge::Graph graph("batch_matmul_v2_reshape_fusion_test_10");
+    auto X1Data = op::Data("x1");
+    std::vector<int64_t> dims_x1{4096, 16, 1775};
+    ge::Shape shape_x1(dims_x1);
+    ge::TensorDesc tensorDescX1(shape_x1, FORMAT_ND, DT_FLOAT16);
+    X1Data.update_input_desc_x(tensorDescX1);
+    X1Data.update_output_desc_y(tensorDescX1);
+
+    auto X2Data = op::Data("x2");
+    std::vector<int64_t> dims_x2{1775, 1981};
+    ge::Shape shape_x2(dims_x2);
+    ge::TensorDesc tensorDescX2(shape_x2, FORMAT_ND, DT_FLOAT16);
+    X2Data.update_input_desc_x(tensorDescX2);
+    X2Data.update_output_desc_y(tensorDescX2);
+
+    auto bmOP = op::BatchMatMulV2("BatchMatMulV2_1");
+    bmOP.set_input_x1(X1Data);
+    bmOP.set_input_x2(X2Data);
+
+    auto X3Data = op::Data("x3");
+    std::vector<int64_t> dims_x3{1981};
+    ge::Shape shape_x3(dims_x3);
+    ge::TensorDesc tensorDescX3(shape_x3, FORMAT_ND, DT_FLOAT16);
+    X3Data.update_input_desc_x(tensorDescX3);
+    X3Data.update_output_desc_y(tensorDescX3);
+
+    auto X4Data = op::Data("x4");
+    std::vector<int64_t> dims_x4{1981};
+    ge::Shape shape_x4(dims_x4);
+    ge::TensorDesc tensorDescX4(shape_x4, FORMAT_ND, DT_FLOAT16);
+    X4Data.update_input_desc_x(tensorDescX4);
+    X4Data.update_output_desc_y(tensorDescX4);
+
+    auto addn_op = op::AddN("AddN")
+                       .create_dynamic_input_x(3)
+                       .set_dynamic_input_x(0, bmOP)
+                       .set_dynamic_input_x(1, X3Data)
+                       .set_dynamic_input_x(2, X4Data)
+                       .set_attr_N(3);
+
+    std::vector<Operator> inputs{X1Data, X2Data, X3Data, X4Data};
+    std::vector<Operator> outputs{addn_op};
+
+    graph.SetInputs(inputs).SetOutputs(outputs);
+    ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
+    fe::FusionPassTestUtils::InferShapeAndType(compute_graph_ptr);
+    auto ret = fe::FusionPassTestUtils::RunGraphFusionPass("BatchMatMulV2ReshapeFusionPass",
+        fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
+    ASSERT_EQ(ret, fe::SUCCESS);
+
+    std::map<std::string, uint32_t> expected = {{"Reshape", 2}};
+    std::map<std::string, uint32_t> actual;
+    for (auto node : compute_graph_ptr->GetAllNodes()) {
+        if (node->GetType() == "Reshape") {
+            actual[node->GetType()]++;
+        }
+    }
+    ASSERT_EQ(expected, actual);
+}

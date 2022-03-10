@@ -33,7 +33,14 @@ class BatchMatMulV2ReshapeFusionPass : public PatternFusionBasePass {
 
  private:
   bool CheckProduct(const std::vector<int64_t> &shape, std::size_t len);
-  bool CheckNeedChange(const ge::NodePtr &fused_node, const vector<int64_t> &shape_x, const vector<int64_t> &shape_y);
+  bool CheckNeedChange(const ge::NodePtr &fused_node, const vector<int64_t> &shape_x, const vector<int64_t> &shape_y,
+                       bool &is_elemwise_fusion, bool &is_big_batch_fusion);
+  bool CheckNextNode(const ge::NodePtr &fused_node, ge::NodePtr &next_node) const;
+  bool CheckValidDim(const int64_t &x_dims, const int64_t &y_dims) const;
+  bool IsElemwiseFusionScenario(const ge::NodePtr &fused_node, const vector<int64_t> &shape_x,
+                                const bool &trans_a) const;
+  bool IsBigBatchFusionScenario(const ge::NodePtr &fused_node, const vector<int64_t> &shape_x,
+                                const bool &trans_a) const;
   Status InputInsertReshapeNode(ge::ComputeGraph &graph, const ge::NodePtr &fused_node, int32_t index,
                                 const vector<int64_t> &new_shape);
   Status OutputInsertReshapeNode(ge::ComputeGraph &graph, const ge::NodePtr &fused_node, int32_t index,
@@ -42,8 +49,8 @@ class BatchMatMulV2ReshapeFusionPass : public PatternFusionBasePass {
   Status UpdateOpDesc(const ge::NodePtr &node, const vector<int64_t> &new_shape);
   Status ConnectOneElemwise(ge::ComputeGraph &graph, const ge::NodePtr &next_node, const vector<int64_t> &new_shape,
                             const vector<int64_t> &out_shape);
-  bool IsMatchScenario1(const ge::NodePtr &fused_node) const; // BatchMatMulV2 --> Add --> Output
-  bool IsMatchScenario2(const ge::NodePtr &fused_node) const; // BatchMatMulV2 --> Add --> Add --> Output
+  bool IsMatchScenario1(const ge::NodePtr &fused_node) const;  // BatchMatMulV2 --> Add --> Output
+  bool IsMatchScenario2(const ge::NodePtr &fused_node) const;  // BatchMatMulV2 --> Add --> Add --> Output
   /*
    * BatchMatMulV2 --> Add --> Mul --> Sigmoid --> Mul --> Output
    *                    \__________________________/
@@ -53,10 +60,12 @@ class BatchMatMulV2ReshapeFusionPass : public PatternFusionBasePass {
                             const vector<int64_t> &out_shape);
   Status ProcessOutNode(ge::ComputeGraph &graph, const ge::NodePtr &fused_node, const vector<int64_t> &new_shape,
                         const vector<int64_t> &out_shape);
+  Status ProcessOutNodeBigBatch(ge::ComputeGraph &graph, const ge::NodePtr &fused_node,
+                                const vector<int64_t> &new_shape, const vector<int64_t> &out_shape);
   Status CreateReshapeNode(ge::ComputeGraph &graph, const ge::NodePtr &next_node,
                            const ge::OutDataAnchorPtr &out_anchor, const vector<int64_t> &shape,
                            ge::NodePtr &shape_node);
   const string FUSED_OP_TYPE = "BatchMatMulV2";
 };
-} // namespace fe
-#endif // OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_BATCH_MATMUL_V2_RESHAPE_FUSION_PASS_H_
+}  // namespace fe
+#endif  // OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_BATCH_MATMUL_V2_RESHAPE_FUSION_PASS_H_
