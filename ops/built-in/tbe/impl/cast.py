@@ -181,6 +181,21 @@ def _float16_process(data, dst_type):
     if dst_type == "int32":
         return tbe.cast_to(data, "int32")
 
+    if dst_type == "int8":
+        data_int32 = tbe.cast_to(data, "int32")
+        const_ff = tvm.const(255, "int32")
+        shape_data = shape_util.shape_to_list(data.shape)
+        const_broad = tbe.broadcast(const_ff, shape_data)
+        data_and = dsl.vand(data_int32, const_broad)
+
+        data_fp16 = tbe.cast_to(data_and, "float16")
+        res = util_common.uint8_int8_overflow_proc(data_fp16, "int8")
+        return res
+    
+    if dst_type == "bool":
+        res = tbe.vcmp(data, 0.0, "ne")
+        return res
+
     if dst_type == "uint8":
         if not tbe_platform.cce_conf.api_check_support("te.lang.cce.cast_to", "s322f16") and \
                 tbe_platform.cce_conf.api_check_support("te.lang.cce.vmod", "float16"):
@@ -194,7 +209,7 @@ def _float16_process(data, dst_type):
         return tbe.cast_to(result, "uint8", True)
 
     error_manager_vector.raise_err_specific_reson("cast", "The cast_cce_aicore only support float16"
-                                                  "cast to float32,int32,uint8.")
+                                                  "cast to float32,int32,uint8,int8,bool.")
 
 
 def _cast_dsttype_conversion(dst_type):
@@ -230,7 +245,7 @@ def check_supported(input_x, output_y, dst_type, kernel_name="cast"):
 
     check_list = []
     if src_type == "float16":
-        check_list = ["float16", "float32", "int32", "uint8"]
+        check_list = ["float16", "float32", "int32", "uint8", "int8", "bool"]
     elif src_type == "float32":
         check_list = ["float16", "int32"]
     elif src_type == "int8":

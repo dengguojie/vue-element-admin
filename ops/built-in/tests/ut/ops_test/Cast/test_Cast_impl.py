@@ -65,13 +65,21 @@ case6 = {"params": [{"shape": (64,), "dtype": "int32", "format": "NHWC", "ori_sh
          "expect": "success",
          "support_expect": True}
 
+case7 = {"params": [{"shape": (64,), "dtype": "float16", "format": "NHWC", "ori_shape": (64,),"ori_format": "NHWC"},
+                    {"shape": (64,), "dtype": "int8", "format": "NHWC", "ori_shape":(64,),"ori_format": "NHWC"},
+                    2,],
+         "case_name": "Cast_6",
+         "expect": "success",
+         "support_expect": True}
+
 # TODO fix me, this comment, run failed
 ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case1)
 ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case2)
 ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case3)
-# ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case4)
+ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case4)
 ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case5)
 ut_case.add_case(["Ascend910A","Ascend310","Ascend310"], case6)
+ut_case.add_case(["Ascend910A","Ascend310","Ascend310"], case7)
 def calc_expect_func(x, y, dst):
     if dst == 12:
         dst = 6

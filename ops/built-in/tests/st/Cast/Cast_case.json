@@ -1049,6 +1049,96 @@
     "op": "Cast",
     "input_desc": [
       {
+        "shape": [
+          16,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          1
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "input_x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          16,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          32
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "output_y",
+        "type": "int8"
+      }
+    ],
+    "attr": [
+      {
+        "name": "dst_type",
+        "type": "int",
+        "value": 2
+      }
+    ],
+    "case_name": "test_Cast_020"
+  },
+  {
+    "op": "Cast",
+    "input_desc": [
+      {
+        "shape": [
+          16,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          1
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "input_x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          16,
+          32
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          32
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "output_y",
+        "type": "bool"
+      }
+    ],
+    "attr": [
+      {
+        "name": "dst_type",
+        "type": "int",
+        "value": 12
+      }
+    ],
+    "case_name": "test_Cast_021"
+  },
+  {
+    "op": "Cast",
+    "input_desc": [
+      {
         "shape": [-1, -1],
         "shape_range": [[1, 1024],[1, 1024]],
         "typical_shape": [16, 32],
