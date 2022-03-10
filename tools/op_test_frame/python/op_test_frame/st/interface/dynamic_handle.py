@@ -54,22 +54,6 @@ def check_not_dynamic_shape(shape_list):
     return dynamic_shape_count
 
 
-def check_ori_shape_consistent_with_shape(ori_shape_list):
-    """
-    Function: check ori_shape is consistent with shape, otherwise, raise error.
-    Parameters:
-    ori_shape_list: original shape
-    Return: None
-    """
-    if ori_shape_list is not None:
-        if not check_not_dynamic_shape(ori_shape_list):
-            utils.print_error_log(
-                'Ori_shape and shape both should be dynamic, '
-                'please checkout the value of ori_shape.')
-            raise utils.OpTestGenException(
-                ConstManager.OP_TEST_GEN_INVALID_DATA_ERROR)
-
-
 def set_typical_shape_in_cur_params(cur_params, tensor, current_json_path):
     """
     update cur_params dict

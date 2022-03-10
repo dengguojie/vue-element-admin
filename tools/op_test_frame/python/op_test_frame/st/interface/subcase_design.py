@@ -396,7 +396,6 @@ class SubCaseDesign:
         """
         if not dynamic_handle.check_not_dynamic_shape(op_desc.get('shape')):
             return
-        dynamic_handle.check_ori_shape_consistent_with_shape(op_desc.get('ori_shape'))
         typical_shape_list = self._check_list_list_valid(
             op_desc, ConstManager.TYPICAL_SHAPE, op_key)
         for item in typical_shape_list:

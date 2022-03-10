@@ -224,7 +224,6 @@ class SubCaseDesignFuzz(SD.SubCaseDesign):
                                       one_input_desc):
         if not dynamic_handle.check_not_dynamic_shape(json_obj.get('shape')):
             return one_input_desc
-        dynamic_handle.check_ori_shape_consistent_with_shape(json_obj.get('ori_shape'))
         typical_shape = self._check_fuzz_shape_valid(
             (json_obj, ConstManager.TYPICAL_SHAPE), param_type, fuzz_dict)
         dynamic_handle.check_typical_shape_valid(typical_shape,
