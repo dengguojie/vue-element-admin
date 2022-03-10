@@ -63,7 +63,7 @@ bool CalcShapeAndAxes(const ge::Format format, const bool data_nchw, std::vector
     {ge::FORMAT_NDC1HWC0, SHAPE_DIM_NUM_NDC1HWC0, {0, 1, 3, 4}}
   };
 
-  for (int i = 0; i < sizeof(fda) / sizeof(fda[0]); i++) {
+  for (uint32_t i = 0; i < sizeof(fda) / sizeof(fda[0]); i++) {
     if (format == fda[i].format) {
       if (dim_num != fda[i].dim_num) {
         OP_LOGW("BiasAddGrad", "dim_num != %ud", fda[i].dim_num);
@@ -101,7 +101,7 @@ bool CalcShapeAndAxes(const ge::Format format, const bool data_nchw, std::vector
   }
   if (c_axes.size() > 0) {
     std::vector<int32_t>::iterator it;
-    for(int32_t i = 0; i < dim_num; i++) {
+    for(int32_t i = 0; i < static_cast<int32_t>(dim_num); i++) {
       it = find(c_axes.begin(), c_axes.end(), i);
       if (it == c_axes.end()) {
         axes.push_back(i);
