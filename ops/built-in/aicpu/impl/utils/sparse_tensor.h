@@ -69,7 +69,7 @@ class SparseTensor {
    */
   template <typename T>
   uint32_t EigenTensorIndicesValid(int64_t n) const {
-    KERNEL_LOG_INFO("start to execute eigen IndicesValid.");
+    KERNEL_LOG_INFO("Start to execute eigen IndicesValid.");
     bool valid = true;
     bool different = false;
     bool increasing = true;
@@ -98,7 +98,7 @@ class SparseTensor {
     }
 
     if (!valid) {
-      KERNEL_LOG_ERROR("indices is out of bounds, index=%lld.", n);
+      KERNEL_LOG_ERROR("Indices is out of bounds, index=%lld.", n);
       return KERNEL_STATUS_PARAM_INVALID;
     }
     if (!increasing) {
@@ -109,7 +109,7 @@ class SparseTensor {
       KERNEL_LOG_ERROR("indices is repeated, index=%lld.", n);
       return KERNEL_STATUS_PARAM_INVALID;
     }
-    KERNEL_LOG_INFO("execute eigen IndicesValid end.");
+    KERNEL_LOG_INFO("Execute eigen IndicesValid end.");
     return KERNEL_STATUS_OK;
   }
 

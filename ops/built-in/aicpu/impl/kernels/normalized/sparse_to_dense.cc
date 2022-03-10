@@ -29,7 +29,7 @@ namespace aicpu {
 uint32_t SparseToDenseCpuKernel::SparseToDense(SparseTensor &st,
                                                Tensor *indices,
                                                Tensor *output) {
-  KERNEL_LOG_INFO("Start to execute SparseToDense.");
+  KERNEL_LOG_INFO("Start to execute SparseToDense");
   if (indices == nullptr || output == nullptr) {
     KERNEL_LOG_ERROR("Indices or output tensor is nullptr.");
     return KERNEL_STATUS_PARAM_INVALID;
@@ -66,7 +66,7 @@ uint32_t SparseToDenseCpuKernel::SparseToDense(SparseTensor &st,
 }
 
 uint32_t SparseToDenseCpuKernel::ValidParam(CpuKernelContext &ctx) {
-  KERNEL_LOG_INFO("Start to execute ValidParam.");
+  KERNEL_LOG_INFO("Start to execute ValidParam");
   // valid input and output nullptr
   Tensor *indices_tensor = ctx.Input(0);
   Tensor *shape_tensor = ctx.Input(1);
@@ -110,7 +110,7 @@ uint32_t SparseToDenseCpuKernel::ValidParam(CpuKernelContext &ctx) {
 
   // output_shape
   if (output_shape->GetDims() != 1) {
-    KERNEL_LOG_ERROR("Output_shape should be a vector, got dim size [%d].",
+    KERNEL_LOG_ERROR("Output_shape should be a vector, and got dim size [%d].",
                      output_shape->GetDims());
     return KERNEL_STATUS_PARAM_INVALID;
   }
@@ -128,10 +128,8 @@ uint32_t SparseToDenseCpuKernel::ValidParam(CpuKernelContext &ctx) {
   bool validShapeType =
       ((outShapeType != DT_INT32) && (outShapeType != DT_INT64));
   if (validShapeType || validIndiceType) {
-    KERNEL_LOG_ERROR(
-        "Valid indice or output shape data type failed, indiceType [%d], "
-        "shapeType [%d].",
-        IndiceType, outShapeType);
+    KERNEL_LOG_ERROR("Valid indice or output shape data type failed, indiceType [%d], "
+        "shapeType [%d].", IndiceType, outShapeType);
     return KERNEL_STATUS_PARAM_INVALID;
   }
 
@@ -152,7 +150,7 @@ uint32_t SparseToDenseCpuKernel::ValidParam(CpuKernelContext &ctx) {
 
   // default_value
   if (default_value_shape->GetDims() != 0) {
-    KERNEL_LOG_ERROR("Default_value should be a scalar, got dim size [%d].",
+    KERNEL_LOG_ERROR("Default_value should be a scalar, and got dim size [%d].",
                      default_value_shape->GetDims());
     return KERNEL_STATUS_PARAM_INVALID;
   }
@@ -212,7 +210,7 @@ uint32_t SparseToDenseCpuKernel::Compute(CpuKernelContext &ctx) {
   }
   if (validate_indices->GetBool()) {
     if (st.IndicesValid() != KERNEL_STATUS_OK) {
-      KERNEL_LOG_ERROR("Indices valid failed.");
+      KERNEL_LOG_ERROR("Indices is valid.");
       return KERNEL_STATUS_PARAM_INVALID;
     }
   }
@@ -237,7 +235,7 @@ uint32_t SparseToDenseCpuKernel::Compute(CpuKernelContext &ctx) {
     }
   }
   if (SparseToDense(st, indices_tensor, output_tensor) != KERNEL_STATUS_OK) {
-    KERNEL_LOG_ERROR("Sparse to dense failed.");
+    KERNEL_LOG_ERROR("Sparse_to_dense excute failed.");
     return KERNEL_STATUS_PARAM_INVALID;
   }
   return KERNEL_STATUS_OK;

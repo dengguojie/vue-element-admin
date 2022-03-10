@@ -52,8 +52,7 @@ uint32_t EqualCompute(CpuKernelContext &ctx, bool flag) {
   KERNEL_CHECK_FALSE((input0_type == input1_type), KERNEL_STATUS_PARAM_INVALID,
                      "DataType of x1 [%d] should be same as x2 [%d].",
                      input0_type, input1_type)
-  KERNEL_LOG_INFO(
-      "CpuKernel[%s], input x1 : addr[%p], size[%llu];"
+  KERNEL_LOG_INFO("CpuKernel[%s], input x1 : addr[%p], size[%llu];"
       "input x2: addr[%p], size[%llu];"
       "output: addr[%p], size[%llu].",
       ctx.GetOpType().c_str(), calcInfo.input_0->GetData(),

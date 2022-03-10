@@ -544,7 +544,7 @@ uint32_t TopKCpuKernel::Compute(CpuKernelContext &ctx) {
 
 template <typename T>
 uint32_t TopKCpuKernel::DoCompute(CpuKernelContext &ctx) {
-  KERNEL_LOG_INFO("TopKCpuKernel::DoCompute start");
+  KERNEL_LOG_INFO("TopKCpuKernel::DoCompute start.");
   auto shard_top_k = [&](size_t start, size_t end) {
     TopKForNVector<T>(start, end);
   };
@@ -555,7 +555,7 @@ uint32_t TopKCpuKernel::DoCompute(CpuKernelContext &ctx) {
     KERNEL_LOG_ERROR("CpuKernelUtils::ParallelFor failed");
     return KERNEL_STATUS_INNER_ERROR;
   }
-  KERNEL_LOG_INFO("TopKCpuKernel::DoCompute end! ");
+  KERNEL_LOG_INFO("TopKCpuKernel::DoCompute end!");
   return KERNEL_STATUS_OK;
 }
 

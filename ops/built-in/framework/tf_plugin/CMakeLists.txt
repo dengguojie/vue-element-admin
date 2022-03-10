@@ -305,6 +305,7 @@ set(_tf_plugins
   ocr_plugin.cc
   one_hot_plugin.cc
   ones_like_plugin.cc
+  out_feed_enqueue_op.cc
   pack_plugin.cc
   pad_plugin.cc
   pad_v2_plugin.cc

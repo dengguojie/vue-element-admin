@@ -3047,6 +3047,7 @@ unkown:
       - ops/built-in/framework/tf_plugin/unsorted_segment_max_plugin.cc
       - ops/built-in/framework/tf_plugin/apply_proximal_adagrad_plugin.cc
       - ops/built-in/framework/tf_plugin/get_next_v2.cc
+      - ops/built-in/framework/tf_plugin/out_feed_enqueue_op.cc
       - ops/built-in/framework/tf_plugin/asinh_grad_plugin.cc
       - ops/built-in/framework/tf_plugin/reciprocal_plugin.cc
       - ops/built-in/framework/tf_plugin/drop_out_do_mask_plugin.cc

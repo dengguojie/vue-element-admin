@@ -21,7 +21,7 @@ namespace aicpu {
 uint32_t SparseTensor::CreateSparseTensor(Tensor *ix, Tensor *tensorvals,
                                           std::vector<int64_t> shape,
                                           std::vector<int64_t> order) {
-  KERNEL_LOG_INFO("Start to execute CreateSparseTensor");
+  KERNEL_LOG_INFO("Start to execute CreateSparseTensor.");
   if (ix == nullptr || ix->GetData() == nullptr) {
     KERNEL_LOG_ERROR("Ix is nullptr.");
     return KERNEL_STATUS_INNER_ERROR;
@@ -33,7 +33,7 @@ uint32_t SparseTensor::CreateSparseTensor(Tensor *ix, Tensor *tensorvals,
 
   if (ix->GetTensorShape()->GetDims() > 2) {
     KERNEL_LOG_ERROR(
-        "Index tensor dim size less than 2 or equal to 2, got size [%d].",
+        "Index tensor dim size less than 2 or equal to 2, got size [%d] ",
         ix->GetTensorShape()->GetDims());
     return KERNEL_STATUS_INNER_ERROR;
   }
@@ -70,12 +70,12 @@ uint32_t SparseTensor::CreateSparseTensor(Tensor *ix, Tensor *tensorvals,
   shape_.assign(shape.begin(), shape.end());
   order_.assign(order.begin(), order.end());
   dims_ = dims;
-  KERNEL_LOG_INFO("execute CreateSparseTensor end");
+  KERNEL_LOG_INFO("Execute CreateSparseTensor end");
   return KERNEL_STATUS_OK;
 }
 
 uint32_t SparseTensor::IndicesValid() const {
-  KERNEL_LOG_INFO("Start to execute IndicesValid");
+  KERNEL_LOG_INFO("Start execute IndicesValid.");
   for (auto ord : order_) {
     if (ord < 0) {
       KERNEL_LOG_ERROR("Order was not provided.");
@@ -98,12 +98,12 @@ uint32_t SparseTensor::IndicesValid() const {
       }
     }
   }
-  KERNEL_LOG_INFO("Execute IndicesValid end");
+  KERNEL_LOG_INFO("Execute IndicesValid end.");
   return KERNEL_STATUS_OK;
 }
 
 bool SparseTensor::ValidateToDense(const Tensor *out) const {
-  KERNEL_LOG_INFO("Start to execute ValidateToDense.");
+  KERNEL_LOG_INFO("Start execute ValidateToDense.");
   if (out->GetDataType() != vals_->GetTensor()->GetDataType()) {
     KERNEL_LOG_ERROR("Output data type must match vals, got out [%d], vals [%d].",
                      out->GetDataType(), vals_->GetTensor()->GetDataType());
@@ -119,7 +119,7 @@ bool SparseTensor::ValidateToDense(const Tensor *out) const {
   int32_t shapeSize = static_cast<int32_t>(shape_.size());
   if (shapeSize != out_shape->GetDims()) {
     KERNEL_LOG_ERROR(
-        "output dims must match shape dims, got output dims [%d], shape dims [%d].",
+        "output dims must match shape dims, got output dim [%d], shape dim [%d].",
         out_shape->GetDims(), shapeSize);
     return false;
   }
@@ -132,7 +132,7 @@ bool SparseTensor::ValidateToDense(const Tensor *out) const {
       return false;
     }
   }
-  KERNEL_LOG_INFO("Execute ValidateToDense end.");
+  KERNEL_LOG_INFO("Execute Validate dense end.");
   return true;
 }
 
