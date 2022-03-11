@@ -525,6 +525,8 @@ vector_A:
       - ops/built-in/framework/caffe_plugin/yolo_plugin.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/concatv2d_sliced_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/concatv2d_sliced_fusion_pass.h
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/concatv2_mean_mul_gatherv2_fusion_pass.cc
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/concatv2_mean_mul_gatherv2_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/dynamic_gru_v2_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/dynamic_gru_v2_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/dynamic_gru_v2_grad_fusion_pass.cc
