@@ -18,7 +18,6 @@
  * \brief tiling function of conv2d_backprop_input
  */
 #include <cmath>
-#include <map>
 #include <string>
 #include <vector>
 #include <nlohmann/json.hpp>
@@ -38,9 +37,9 @@
 
 namespace optiling {
 const size_t kConv2dDxInputSizeLimit = 3;
-const int64_t kBlockSize = 16;
-const int64_t kC0 = 16;
-const int64_t kConv2dDimSizeLimit = 4;
+const int32_t kBlockSize = 16;
+const int32_t kC0 = 16;
+const int32_t kConv2dDimSizeLimit = 4;
 // pad
 const size_t kConv2dPadUpIdx = 0;
 const size_t kConv2dPadDownIdx = 1;
@@ -63,133 +62,82 @@ const size_t kCDimHWCNIdx = 2;
 const size_t kHDimHWCNIdx = 0;
 const size_t kWDimHWCNIdx = 1;
 
-const int64_t kDimHWUp = 4096;
-const int64_t kDimBatchUp = ((1UL << 31) - 1);
+const int32_t kDimHWUp = 4096;
+const int32_t kDimBatchUp = ((1UL << 31) - 1);
 const int64_t kDataSizeMax = ((1UL << 63) - 1);
-const int64_t kDimHWLow = 2;
-const int64_t kDimLow = 1;
-const int64_t kFilterDimHWUp = 255;
-const int64_t kStrideDimHWLow = 1;
-const int64_t kDilationDimHWUp = 1;
-const int64_t kFp16Bytes = 2;
-const int64_t kFrontUbFusionMulti = 2;
-const int64_t kAfterUbFusionMulti = 2;
-const int64_t kUbSize = 262000;
-const int64_t kL1size = (1024 * 1024);
-const int64_t kStrideHWUp = 63;
-const int64_t kConv2dNC1HWC0Size = 5;
-const int64_t kConv2dNCHWSize = 4;
-const int64_t kInputIndexTwo = 2;
+const int32_t kDimHWLow = 2;
+const int32_t kDimLow = 1;
+const int32_t kFilterDimHWUp = 255;
+const int32_t kStrideDimHWLow = 1;
+const int32_t kDilationDimHWUp = 1;
+const int32_t kFp16Bytes = 2;
+const int32_t kFrontUbFusionMulti = 2;
+const int32_t kAfterUbFusionMulti = 2;
+const int32_t kUbSize = 262000;
+const int32_t kL1size = (1024 * 1024);
+const int32_t kStrideHWUp = 63;
+const int32_t kConv2dNC1HWC0Size = 5;
+const int32_t kConv2dNCHWSize = 4;
+const int32_t kInputIndexTwo = 2;
+const int32_t kDefaultDilations = 1;
 
-static map<int, std::string> format2str = {
-    {ge::FORMAT_NCHW, "NCHW"}, {ge::FORMAT_NHWC, "NHWC"}, {ge::FORMAT_HWCN, "HWCN"}, {ge::FORMAT_DHWNC, "DHWNC"},
-    {ge::FORMAT_DHWCN, "DHWCN"}, {ge::FORMAT_NDHWC, "NDHWC"}, {ge::FORMAT_NCDHW, "NCDHW"},
-    {ge::FORMAT_NC1HWC0, "NC1HWC0"}};
-
-int64_t Align(const int64_t& param1, const int64_t& param2) {
+inline int32_t Align(const int32_t& param1, const int32_t& param2) {
   if (param2 == 0) {
     return 0;
   }
   return ((param1 + param2 - 1) / param2) * param2;
 }
 
-bool CheckRange(const int64_t& value, const int64_t& value_low, const int64_t& value_up) {
-  if (value < value_low) {
-    return false;
-  } else if (value_up != 0 && value > value_up) {
+inline bool CheckRange(const int32_t& value, const int32_t& value_low, const int32_t& value_up) {
+  if (value < value_low || value > value_up) {
     return false;
   }
   return true;
 }
 
-bool CheckValue(const int64_t& value, const int64_t& value_temp) {
-  if (value != value_temp) {
-    return false;
-  }
-  return true;
+inline bool CheckLowerBound(const int32_t& value, const int32_t& value_low) {
+  return value >= value_low;
 }
 
-bool CalculateGroup(const DxParas& dx_paras, map<std::string, int64_t> &group_map) {
-  CHECK_OP_FUNC(!CheckValue(dx_paras.co % dx_paras.groups, 0), return false,
-                "c dim of dedy must be divisible by groups");
-  CHECK_OP_FUNC(!CheckValue(dx_paras.cin % dx_paras.groups, 0), return false,
-                "c dim of dedx must be divisible by groups");
-  CHECK_OP_FUNC(!CheckValue(dx_paras.cin, dx_paras.kc * dx_paras.groups), return false,
-                "c dim of dedx must be equal with filter c multi groups");
-  CHECK_OP_FUNC(!CheckValue(dx_paras.co, dx_paras.kn), return false,
-                "c dim of dedy must be equal with filter n");
-  int64_t dx_c_ori = dx_paras.kc;
-  int64_t dy_c_ori = dx_paras.kn / dx_paras.groups;
-  int64_t filter_batch_ori = dy_c_ori;
-  int64_t filter_c_ori = dx_c_ori;
-  int64_t c0 = kC0;
-  int64_t dx_c_extend = Lcm(dx_c_ori, c0);
-  int64_t dy_c_extend = Lcm(dy_c_ori, c0);
-  int64_t multiple_extend = min(Lcm(dx_c_extend, dy_c_extend), dx_paras.groups);
-  int64_t dx_c1_extend = multiple_extend * dx_c_ori;
-  dx_c1_extend = Lcm(dx_c1_extend, c0);
-  int64_t dy_c1_extend = multiple_extend * dy_c_ori;
-  dy_c1_extend = Lcm(dy_c1_extend, c0);
-  group_map = {{"g_extend", static_cast<int64_t>(
-                                ceil(static_cast<double>(dx_paras.groups) / static_cast<double>(multiple_extend)))},
-               {"multiple_extend", multiple_extend},
-               {"groups", dx_paras.groups},
-               {"dx_c1_extend", dx_c1_extend},
-               {"dy_c1_extend", dy_c1_extend},
-               {"dx_c_ori", dx_c_ori},
-               {"dy_c_ori", dy_c_ori},
-               {"filter_batch_ori", filter_batch_ori},
-               {"filter_c_ori", filter_c_ori}};
-  return true;
-}
-
-bool CheckShapeRelation(const DxParas& dx_paras) {
-  map<std::string, int64_t> group_map;
-  CHECK_OP_FUNC(!CalculateGroup(dx_paras, group_map), return false, "Calculate Group invalid");
-  CHECK_OP_FUNC(!CheckValue(dx_paras.batch, dx_paras.batch_o), return false, "dedx batch not eqaul dedy batch");
-  CHECK_OP_FUNC(dx_paras.filter_h_dilation > dx_paras.fmap_h_padding, return false,
-                "filter_h_dilation or fmap_h_padding invalid");
-  CHECK_OP_FUNC(dx_paras.filter_w_dilation > dx_paras.fmap_w_padding, return false,
-                "filter_w_dilation or fmap_w_padding invalid");
-  return true;
+inline bool CheckValue(const int32_t& value, const int32_t& value_temp) {
+  return value == value_temp;
 }
 
 bool CheckL1SizeLimit(const DxParas& dx_paras) {
-  int64_t w_value = dx_paras.wo * dx_paras.stride_w;
-  int64_t h_value_max = 1;
+  int32_t w_value = dx_paras.wo * dx_paras.stride_w;
+  int32_t h_value_max = 1;
   if (dx_paras.w % kC0 != 0) {
     h_value_max += 1;
   }
-  int64_t a_l1_size = h_value_max * w_value * kC0 * kFp16Bytes;
-  int64_t b_l1_size = dx_paras.kh * kC0 * dx_paras.kw * kC0 * kFp16Bytes;
+  int32_t a_l1_size = h_value_max * w_value * kC0 * kFp16Bytes;
+  int32_t b_l1_size = dx_paras.kh * kC0 * dx_paras.kw * kC0 * kFp16Bytes;
   CHECK_OP_FUNC(a_l1_size + b_l1_size > kL1size, return false,
-                "check l1size failed, a_l1_size is %ld, b_l1_size is %ld, kL1size is %ld", a_l1_size, b_l1_size,
-                kL1size);
+                "check l1size failed, a_l1_size is %d, b_l1_size is %d, kL1size is %d", a_l1_size, b_l1_size, kL1size);
   return true;
 }
 
 bool CheckUBSizeLimit(const DxParas& dx_paras) {
-  int64_t m_aub = 1;
-  int64_t k_aub = 1;
-  int64_t n_cub = 1;
-  int64_t m_l0 = 1;
-  int64_t loadin_size = k_aub * m_aub * dx_paras.wo * kC0 * dx_paras.stride_w;
-  int64_t copyout_size = kAfterUbFusionMulti * n_cub * m_l0 * kC0 * kC0;
+  int32_t m_aub = 1;
+  int32_t k_aub = 1;
+  int32_t n_cub = 1;
+  int32_t m_l0 = 1;
+  int32_t loadin_size = k_aub * m_aub * dx_paras.wo * kC0 * dx_paras.stride_w;
+  int32_t copyout_size = kAfterUbFusionMulti * n_cub * m_l0 * kC0 * kC0;
   if (dx_paras.stride_expand_flag == 0) {
     loadin_size = kFrontUbFusionMulti * k_aub * kBlockSize *
                   ((m_aub * dx_paras.wo + dx_paras.kw - 1 + kBlockSize - 1) / kBlockSize) * kBlockSize;
   }
-  int64_t ub_fp16_size = kUbSize / kFp16Bytes;
+  int32_t ub_fp16_size = kUbSize / kFp16Bytes;
   CHECK_OP_FUNC(loadin_size + copyout_size > ub_fp16_size, return false,
-                "check ubsize fail, loadin_size is %ld, copyout_size is %ld, ub_fp16_size is %ld", loadin_size,
+                "check ubsize fail, loadin_size is %d, copyout_size is %d, ub_fp16_size is %d", loadin_size,
                 copyout_size, ub_fp16_size);
   return true;
 }
 
-void UpdateOpDescAttr(const ge::OpDescPtr& op_desc, ge::OpDescPtr& op_desc_attr) {
+inline void UpdateOpDescAttr(const ge::OpDescPtr& op_desc, ge::OpDescPtr& op_desc_attr) {
   ge::ComputeGraphPtr ori_graph = nullptr;
   if (ge::AttrUtils::GetGraph(op_desc, "_original_fusion_graph", ori_graph)) {
-    for (auto node : ori_graph->GetAllNodes()) {
+    for (auto &node : ori_graph->GetAllNodes()) {
       if (node->GetType() == "Conv2DBackpropInput") {
         op_desc_attr = node->GetOpDesc();
         break;
@@ -200,69 +148,110 @@ void UpdateOpDescAttr(const ge::OpDescPtr& op_desc, ge::OpDescPtr& op_desc_attr)
   }
 }
 
+inline string IntToBinary(int64_t& n) {
+  string ans = "";
+  do {
+    int64_t t = n % 2L;
+    if (t >= 0 && t <= 9L) {
+      ans += (t + '0');
+    } else {
+      ans += (t + 'a' - 10L);
+    }
+    n /= 2L;
+  } while (n);
+  return ans;
+}
+
+inline void OutputErrorMsg(const string error_info[], string& error_flag) {
+  string msg;
+  for (size_t i = 0; i < error_flag.length(); i++) {
+    if (error_flag[i] == '1') {
+      msg = error_info[i];
+      OP_LOGE("Conv2DBackpropInput", "Error msg is: %s", msg.c_str());
+      break;
+    }
+  }
+}
+
 bool CheckParams(const DxParas& dx_paras) {
-  CHECK_OP_FUNC(!CheckRange(dx_paras.kh, kDimLow, kFilterDimHWUp), return false, "kh value invalid");
-  CHECK_OP_FUNC(!CheckRange(dx_paras.kw, kDimLow, kFilterDimHWUp), return false, "kw value invalid");
-  CHECK_OP_FUNC(!CheckRange(dx_paras.batch, kDimLow, kDimBatchUp), return false, "batch value invalid");
-  CHECK_OP_FUNC(!CheckRange(dx_paras.co1, kDimLow, 0), return false, "co1 value invalid");
-  CHECK_OP_FUNC(!CheckRange(dx_paras.ho, kDimLow, kDimHWUp), return false, "ho value invalid");
-  CHECK_OP_FUNC(!CheckRange(dx_paras.wo, kDimLow, kDimHWUp), return false, "wo value invalid");
-  CHECK_OP_FUNC(!CheckRange(dx_paras.co, kDimLow, 0), return false, "co value invalid");
-  CHECK_OP_FUNC(!CheckRange(dx_paras.c1, kDimLow, 0), return false, "c1 value invalid");
-  CHECK_OP_FUNC(!CheckRange(dx_paras.cin, kDimLow, 0), return false, "cin value invalid");
-  CHECK_OP_FUNC(!CheckValue(dx_paras.dilations_n, 1), return false, "dilations_n value invalid");
-  CHECK_OP_FUNC(!CheckValue(dx_paras.dilations_c, 1), return false, "dilations_c value invalid");
-  CHECK_OP_FUNC(!CheckValue(dx_paras.dilations_h, 1), return false, "dilations_h value invalid");
-  CHECK_OP_FUNC(!CheckValue(dx_paras.dilations_w, 1), return false, "dilations_w value invalid");
-  CHECK_OP_FUNC(!CheckValue(dx_paras.groups, 1), return false, "groups value invalid");
-  CHECK_OP_FUNC(!CheckRange(dx_paras.ho * dx_paras.stride_h, kDimHWLow, kDimHWUp), return false,
-                "dedy's H after expands is invalid");
-  CHECK_OP_FUNC(!CheckRange(dx_paras.wo * dx_paras.stride_w, kDimHWLow, kDimHWUp), return false,
-                "dedy's W after expands is invalid");
-  CHECK_OP_FUNC(!CheckShapeRelation(dx_paras), return false, "check shape relation invalid");
-  CHECK_OP_FUNC(!CheckRange(dx_paras.h, kDimHWLow, kDimHWUp), return false, "h value invalid");
-  CHECK_OP_FUNC(!CheckRange(dx_paras.w, kDimHWLow, kDimHWUp), return false, "w value invalid");
-  CHECK_OP_FUNC(!CheckRange(dx_paras.stride_h, kDimLow, kStrideHWUp), return false, "stride_h value invalid");
-  CHECK_OP_FUNC(!CheckRange(dx_paras.stride_w, kDimLow, kStrideHWUp), return false, "stride_w value invalid");
-  CHECK_OP_FUNC((dx_paras.fmap_h_padding - dx_paras.filter_h_dilation) / dx_paras.stride_h + 1 != dx_paras.ho,
-                return false, "fmap_h does not match dedy_h");
-  CHECK_OP_FUNC((dx_paras.fmap_w_padding - dx_paras.filter_w_dilation) / dx_paras.stride_w + 1 != dx_paras.wo,
-                return false, "fmap_w does not match dedy_w");
-  CHECK_OP_FUNC(!CheckL1SizeLimit(dx_paras), return false, "this case may exceed L1size");
-  CHECK_OP_FUNC(!CheckUBSizeLimit(dx_paras), return false, "this case may exceed UBsize");
-  int64_t dedy_c_16 = Align(dx_paras.co, kC0);
-  CHECK_OP_FUNC(dedy_c_16 == 0, return false, "dedy_c_16 is invalid");
-  int64_t dedx_c_16 = Align(dx_paras.cin, kC0);
-  CHECK_OP_FUNC(dedx_c_16 == 0, return false, "dedy_c_16 is invalid");
-  int64_t filter_c_16 = Align(dx_paras.kc, kC0);
-  CHECK_OP_FUNC(filter_c_16 == 0, return false, "dedy_c_16 is invalid");
-  int64_t filter_n_16 = Align(dx_paras.kn, kC0);
-  CHECK_OP_FUNC(filter_n_16 == 0, return false, "dedy_c_16 is invalid");
+  int32_t dedy_c_16 = Align(dx_paras.co, kC0);
+  int32_t dedx_c_16 = Align(dx_paras.cin, kC0);
+  int32_t filter_c_16 = Align(dx_paras.kc, kC0);
+  int32_t filter_n_16 = Align(dx_paras.kn, kC0);
   int64_t dedy_size = dx_paras.batch * dedy_c_16 * dx_paras.wo * dx_paras.ho * kFp16Bytes;
-  CHECK_OP_FUNC(dedy_size > kDataSizeMax, return false, "dedy size large than int64");
   int64_t dedx_size = dx_paras.batch * dedx_c_16 * dx_paras.w * dx_paras.h * kFp16Bytes;
-  CHECK_OP_FUNC(dedx_size > kDataSizeMax, return false, "dedx size large than int64");
   int64_t filter_size = filter_n_16 * filter_c_16 * dx_paras.kw * dx_paras.kh * kFp16Bytes;
-  CHECK_OP_FUNC(filter_size > kDataSizeMax, return false, "filter size large than int64");
+  int32_t shift = 0;
+  int64_t invalid =
+      (!CheckRange(dx_paras.kh, kDimLow, kFilterDimHWUp) << shift++) +
+      (!CheckRange(dx_paras.kw, kDimLow, kFilterDimHWUp) << shift++) +
+      (!CheckRange(dx_paras.batch, kDimLow, kDimBatchUp) << shift++) +
+      (!CheckLowerBound(dx_paras.co1, kDimLow) << shift++) + (!CheckRange(dx_paras.ho, kDimLow, kDimHWUp) << shift++) +
+      (!CheckRange(dx_paras.wo, kDimLow, kDimHWUp) << shift++) + (!CheckLowerBound(dx_paras.co, kDimLow) << shift++) +
+      (!CheckLowerBound(dx_paras.c1, kDimLow) << shift++) + (!CheckLowerBound(dx_paras.cin, kDimLow) << shift++) +
+      ((dx_paras.dilations_h != kDefaultDilations || dx_paras.dilations_w != kDefaultDilations) << shift++) +
+      (!CheckValue(dx_paras.groups, 1) << shift++) +
+      (!CheckRange(dx_paras.ho * dx_paras.stride_h, kDimHWLow, kDimHWUp) << shift++) +
+      (!CheckRange(dx_paras.wo * dx_paras.stride_w, kDimHWLow, kDimHWUp) << shift++) +
+      (!CheckValue(dx_paras.co % dx_paras.groups, 0) << shift++) +
+      (!CheckValue(dx_paras.cin % dx_paras.groups, 0) << shift++) +
+      (!CheckValue(dx_paras.cin, dx_paras.kc * dx_paras.groups) << shift++) +
+      (!CheckValue(dx_paras.co, dx_paras.kn) << shift++) + (!CheckValue(dx_paras.batch, dx_paras.batch_o) << shift++) +
+      ((dx_paras.filter_h_dilation > dx_paras.fmap_h_padding) << shift++) +
+      ((dx_paras.filter_w_dilation > dx_paras.fmap_w_padding) << shift++) +
+      (!CheckRange(dx_paras.h, kDimHWLow, kDimHWUp) << shift++) +
+      (!CheckRange(dx_paras.w, kDimHWLow, kDimHWUp) << shift++) +
+      (!CheckRange(dx_paras.stride_h, kDimLow, kStrideHWUp) << shift++) +
+      (!CheckRange(dx_paras.stride_w, kDimLow, kStrideHWUp) << shift++) +
+      (((dx_paras.fmap_h_padding - dx_paras.filter_h_dilation) / dx_paras.stride_h + 1 != dx_paras.ho) << shift++) +
+      (((dx_paras.fmap_w_padding - dx_paras.filter_w_dilation) / dx_paras.stride_w + 1 != dx_paras.wo) << shift++) +
+      ((dedy_c_16 == 0) << shift++) + ((dedx_c_16 == 0) << shift++) + ((filter_c_16 == 0) << shift++) +
+      ((filter_n_16 == 0) << shift++) + ((dedy_size > kDataSizeMax) << shift++) +
+      ((dedx_size > kDataSizeMax) << shift++) + (static_cast<int64_t>((filter_size > kDataSizeMax)) << shift++) +
+      (static_cast<int64_t>(!CheckL1SizeLimit(dx_paras)) << shift++) +
+      (static_cast<int64_t>(!CheckUBSizeLimit(dx_paras)) << shift++);
+  if (invalid != 0) {
+    string error_info[shift++] = {"kh value invalid", "kw value invalid", "batch value invalid", "co1 value invalid",
+                             "ho value invalid", "wo value invalid", "co value invalid", "c1 value invalid",
+                             "cin value invalid", "dilations value invalid", "groups value invalid",
+                             "dedy's H after expands is invalid", "dedy's W after expands is invalid",
+                             "c dim of dedy must be div by groups", "c dim of dedx must be div by groups",
+                             "c dim of dedx must be equal with filter c multi groups",
+                             "c dim of dedy must be equal with filter n", "dedx batch not equal with dedy batch",
+                             "filter_h_dilation or fmap_h_padding invalid",
+                             "filter_w_dilation or fmap_w_padding invalid", "h value invalid", "w value invalid",
+                             "stride_h invalid", "stride_w invalid", "fmap_h does not match dedy_h",
+                             "fmap_w does not match dedy_h", "dedy_c_16 is invalid", "dedx_c_16 is invalid",
+                             "filter_c_16 is invalid", "filter_n_16 is invalid", "dedy size large than int64",
+                             "dedx size large than int64", "filter size large than int64",
+                             "this case may exceed L1size", "this case may exceed UBsize"};
+    string error_flag = IntToBinary(invalid);
+    OutputErrorMsg(error_info, error_flag);
+    return false;
+  }
   return true;
 }
 
 bool GetAttrFromOp(const ge::OpDescPtr& op_desc, DxParas& dx_paras) {
-  std::vector<int64_t> strides_list;
-  std::vector<int64_t> pads_list;
-  std::vector<int64_t> dilations_list;
-  std::string data_format;
-  CHECK_OP_FUNC(!ge::AttrUtils::GetListInt(op_desc, "strides", strides_list), return false, "get strides failed");
-  CHECK_OP_FUNC(!ge::AttrUtils::GetInt(op_desc, "groups", dx_paras.groups), return false, "get groups failed");
-  CHECK_SIZE(strides_list.size() != kConv2dDimSizeLimit, return false, "strides is invalid");
-  CHECK_OP_FUNC(!ge::AttrUtils::GetListInt(op_desc, "pads", pads_list), return false, "get pads failed");
-  CHECK_SIZE(pads_list.size() != kConv2dDimSizeLimit, return false, "pads is invalid");
-  CHECK_OP_FUNC(!ge::AttrUtils::GetListInt(op_desc, "dilations", dilations_list), return false,
-                "get dilations failed");
-  CHECK_SIZE(dilations_list.size() != kConv2dDimSizeLimit, return false, "dilations is invalid");
-  CHECK_OP_FUNC(!ge::AttrUtils::GetStr(op_desc, "data_format", data_format), return false, "get data_format failed");
-  CHECK_SIZE(data_format.length() != kConv2dDimSizeLimit, return false, "the format is not 4D");
-  CHECK_OP_FUNC(data_format != "NCHW", return false, "data_format is not NCHW");
+  std::vector<int32_t> strides_list;
+  std::vector<int32_t> pads_list;
+  std::vector<int32_t> dilations_list;
+  int32_t shift = 0;
+  int32_t get_attr_success = (!ge::AttrUtils::GetListInt(op_desc, "strides", strides_list) << shift++) +
+                             ((strides_list.size() != kConv2dDimSizeLimit) << shift++) +
+                             (!ge::AttrUtils::GetInt(op_desc, "groups", dx_paras.groups) << shift++) +
+                             (!ge::AttrUtils::GetListInt(op_desc, "pads", pads_list) << shift++) +
+                             ((pads_list.size() != kConv2dDimSizeLimit) << shift++) +
+                             (!ge::AttrUtils::GetListInt(op_desc, "dilations", dilations_list) << shift++) +
+                             ((dilations_list.size() != kConv2dDimSizeLimit) << shift++);
+  if (get_attr_success != 0) {
+    string error_info[shift++] = {"get strides failed", "strides is invalid", "get groups failed", "get pads failed",
+                            "pads is invalid", "get dilations failed", "dilations is invalid"};
+    int64_t error_num = static_cast<int64_t>(get_attr_success);
+    string error_flag = IntToBinary(error_num);
+    OutputErrorMsg(error_info, error_flag);
+    return false;
+  }
   dx_paras.padu = pads_list[kConv2dPadUpIdx];
   dx_paras.padd = pads_list[kConv2dPadDownIdx];
   dx_paras.padl = pads_list[kConv2dPadLeftIdx];
@@ -276,19 +265,16 @@ bool GetAttrFromOp(const ge::OpDescPtr& op_desc, DxParas& dx_paras) {
   return true;
 }
 
-bool Conv2DBackpropInputParseFunc(const ge::Operator& op_paras, const nlohmann::json& compile_info,
-                                  DxParas& dx_paras, const ge::OpDescPtr& op_desc_attr) {
+bool Conv2DBackpropInputParseFunc(const ge::OpDescPtr& op_desc, const nlohmann::json& compile_info,
+                                  DxParas& dx_paras) {
   if (compile_info.contains("tiling_type") && compile_info["tiling_type"] == "binary") {
     dx_paras.repo_binary_flag = true;
-    ge::OpDescPtr op_desc = ge::OpDescUtils::GetOpDescFromOperator(op_paras);
-    ge::AscendString op_type;
-    CHECK_OP_FUNC(op_paras.GetOpType(op_type) != ge::GRAPH_SUCCESS, return false, "failed to get op_type");
-    dx_paras.op_type = string(op_type.GetString());
     int32_t out_backprop_input_index = kInputIndexTwo;
     int32_t filter_input_index = 1;
-    if (op_desc_attr == nullptr) {
-      CHECK_OP_FUNC(!GetAttrFromOp(op_desc, dx_paras), return false, "get attr failed");
-    } else {
+    ge::OpDescPtr op_desc_attr = nullptr;
+    if (!GetAttrFromOp(op_desc, dx_paras)) {
+      GELOGD("get attr from single op fail, try get attr from original fusion graph");
+      UpdateOpDescAttr(op_desc, op_desc_attr);
       CHECK_OP_FUNC(!GetAttrFromOp(op_desc_attr, dx_paras), return false, "get attr failed");
     }
     bool stride_equal_one = dx_paras.stride_h == 1 && dx_paras.stride_w == 1;
@@ -296,48 +282,54 @@ bool Conv2DBackpropInputParseFunc(const ge::Operator& op_paras, const nlohmann::
       filter_input_index = kInputIndexTwo;
       out_backprop_input_index = 0;
     }
-    CHECK_OP_FUNC(!compile_info.contains("block_dim") || !compile_info["block_dim"].contains("CORE_NUM"),
-                  return false, "get core_num failed");
-    dx_paras.core_num = compile_info["block_dim"]["CORE_NUM"];
-    ge::GeTensorDescPtr filter_desc = op_desc->MutableInputDesc(filter_input_index);
-    ge::GeTensorDescPtr out_backprop_desc = op_desc->MutableInputDesc(out_backprop_input_index);
-    CHECK_OP_FUNC(filter_desc == nullptr, return false, "tensor filter desc failed");
-    CHECK_OP_FUNC(out_backprop_desc == nullptr, return false, "tensor out_backprop desc failed");
-    ge::GeTensorDescPtr y_desc = op_desc->MutableOutputDesc(0);
-    CHECK_OP_FUNC(y_desc == nullptr, return false, "tensor y desc failed");
-    dx_paras.batch = out_backprop_desc->GetShape().GetDim(kNDimNC1HWC0Idx);
-    dx_paras.batch_o = y_desc->GetShape().GetDim(kNDimNC1HWC0Idx);
-    CHECK_OP_FUNC(y_desc->GetOriginFormat() != ge::FORMAT_NCHW, return false, "y ori_format invalid");
-    CHECK_OP_FUNC(out_backprop_desc->GetOriginFormat() != ge::FORMAT_NCHW, return false,
-                  "out_backprop ori_format failed");
-    CHECK_OP_FUNC(filter_desc->GetFormat() != ge::FORMAT_FRACTAL_Z, return false, "filter format failed");
-    CHECK_OP_FUNC(
-        filter_desc->GetOriginFormat() != ge::FORMAT_NCHW && filter_desc->GetOriginFormat() != ge::FORMAT_HWCN,
-        return false, "filter ori_format failed");
-    CHECK_OP_FUNC(y_desc->GetFormat() != ge::FORMAT_NCHW, return false, "y format invalid");
-
+    ge::ConstGeTensorDescPtr filter_desc = op_desc->GetInputDescPtr(filter_input_index);
+    ge::ConstGeTensorDescPtr out_backprop_desc = op_desc->GetInputDescPtr(out_backprop_input_index);
+    ge::ConstGeTensorDescPtr y_desc = op_desc->GetOutputDescPtr(0);
+    int32_t shift = 0;
+    int32_t parse_func_invalid =
+        (!compile_info.contains("block_dim") << shift++) +
+        (!compile_info["block_dim"].contains("CORE_NUM") << shift++) + ((filter_desc == nullptr) << shift++) +
+        ((out_backprop_desc == nullptr) << shift++) + ((y_desc == nullptr) << shift++) +
+        ((y_desc->GetOriginFormat() != ge::FORMAT_NCHW) << shift++) +
+        ((out_backprop_desc->GetOriginFormat() != ge::FORMAT_NCHW) << shift++) +
+        ((filter_desc->GetFormat() != ge::FORMAT_FRACTAL_Z) << shift++) +
+        ((filter_desc->GetOriginFormat() != ge::FORMAT_NCHW && filter_desc->GetOriginFormat() != ge::FORMAT_HWCN)
+         << shift++) +
+        ((y_desc->GetFormat() != ge::FORMAT_NCHW) << shift++) +
+        ((out_backprop_desc->GetOriginShape().GetDimNum() != kConv2dNCHWSize) << shift++) +
+        ((filter_desc->GetOriginShape().GetDimNum() != kConv2dNCHWSize) << shift++) +
+        ((filter_desc->GetShape().GetDimNum() != kConv2dNCHWSize) << shift++) +
+        ((y_desc->GetOriginShape().GetDimNum() != kConv2dNCHWSize) << shift++) +
+        ((y_desc->GetShape().GetDimNum() != kConv2dNCHWSize) << shift++);
     if (stride_equal_one) {
       dx_paras.stride_expand_flag = 0;
-      CHECK_SIZE(out_backprop_desc->GetShape().GetDimNum() != kConv2dNCHWSize,
-          return false, "out_backprop shape len is invalid");
-      CHECK_OP_FUNC(out_backprop_desc->GetFormat() != ge::FORMAT_NCHW, return false, "out_backprop format failed");
+      parse_func_invalid = ((out_backprop_desc->GetShape().GetDimNum() != kConv2dNCHWSize) << shift++) +
+                           ((out_backprop_desc->GetFormat() != ge::FORMAT_NCHW) << shift++);
     } else {
       dx_paras.stride_expand_flag = 1;
-      CHECK_SIZE(out_backprop_desc->GetShape().GetDimNum() != kConv2dNC1HWC0Size,
-          return false, "out_backprop shape len is invalid");
-      CHECK_OP_FUNC(out_backprop_desc->GetFormat() != ge::FORMAT_NC1HWC0, return false, "out_backprop format failed");
+      parse_func_invalid = ((out_backprop_desc->GetShape().GetDimNum() != kConv2dNC1HWC0Size) << shift++) +
+                           ((out_backprop_desc->GetFormat() != ge::FORMAT_NC1HWC0) << shift++);
     }
-
-    std::string y_ori_format = format2str[y_desc->GetOriginFormat()];
-    CHECK_SIZE(out_backprop_desc->GetOriginShape().GetDimNum() != kConv2dNCHWSize,
-               return false, "out_backprop ori_shape len is invalid");
-    dx_paras.co = out_backprop_desc->GetOriginShape().GetDim(y_ori_format.find("C"));
+    if (parse_func_invalid != 0) {
+      string error_info[shift++] = {"get block_dim failed", "get core_num failed", "tensor filter desc failed",
+                               "tensor out_backprop desc failed", "tensor y desc failed", "y ori_format invalid",
+                               "out_backprop ori_format failed", "filter format failed", "filter ori_format failed",
+                               "y format invalid", "out_backprop ori_shape len is invalid",
+                               "filter ori_shape len is invalid", "filter shape len is invalid",
+                               "y ori_shape len is invalid", "y shape len is invalid",
+                               "out_backprop shape len is invalid", "out_backprop format failed"};
+      int64_t error_num = static_cast<int64_t>(parse_func_invalid);
+      string error_flag = IntToBinary(error_num);
+      OutputErrorMsg(error_info, error_flag);
+      return false;
+    }
+    dx_paras.core_num = compile_info["block_dim"]["CORE_NUM"];
+    dx_paras.batch = out_backprop_desc->GetShape().GetDim(kNDimNC1HWC0Idx);
+    dx_paras.batch_o = y_desc->GetShape().GetDim(kNDimNC1HWC0Idx);
+    dx_paras.co = out_backprop_desc->GetOriginShape().GetDim(kCDimNCHWIdx);
     dx_paras.co1 = (dx_paras.co + kBlockSize - 1) / kBlockSize;
     dx_paras.ho = out_backprop_desc->GetShape().GetDim(kHDimNC1HWC0Idx);
     dx_paras.wo = out_backprop_desc->GetShape().GetDim(kWDimNC1HWC0Idx);
-    CHECK_SIZE(filter_desc->GetOriginShape().GetDimNum() != kConv2dNCHWSize,
-               return false, "filter ori_shape len is invalid");
-    CHECK_SIZE(filter_desc->GetShape().GetDimNum() != kConv2dNCHWSize,  return false, "filter shape len is invalid");
     dx_paras.filter_cin1hw = filter_desc->GetShape().GetDim(0);
     dx_paras.filter_cout1 = filter_desc->GetShape().GetDim(1);
     if (filter_desc->GetOriginFormat() == ge::FORMAT_NCHW) {
@@ -351,22 +343,19 @@ bool Conv2DBackpropInputParseFunc(const ge::Operator& op_paras, const nlohmann::
       dx_paras.kh = filter_desc->GetOriginShape().GetDim(kHDimHWCNIdx);
       dx_paras.kw = filter_desc->GetOriginShape().GetDim(kWDimHWCNIdx);
     }
-
-    CHECK_SIZE(y_desc->GetOriginShape().GetDimNum() != kConv2dNCHWSize, return false, "y ori_shape len is invalid");
-    CHECK_SIZE(y_desc->GetShape().GetDimNum() != kConv2dNCHWSize, return false, "y shape len is invalid");
-    dx_paras.cin = y_desc->GetOriginShape().GetDim(y_ori_format.find("C"));
+    dx_paras.cin = y_desc->GetOriginShape().GetDim(kCDimNCHWIdx);
     dx_paras.c1 = (dx_paras.cin + kBlockSize - 1) / kBlockSize;
     dx_paras.h = y_desc->GetShape().GetDim(kHDimNC1HWC0Idx);
     dx_paras.w = y_desc->GetShape().GetDim(kWDimNC1HWC0Idx);
     // when padding is SAME, pads is [-1, -1, -1, -1]
     // when padding is VALID, pads is [0, 0, 0, 0]
     if (dx_paras.padu == -1) {
-      int64_t pad_h = max(Align(dx_paras.h, dx_paras.stride_h) - dx_paras.stride_h + dx_paras.kh - dx_paras.h, 0L);
-      int64_t pad_up = (pad_h >> 1L);
-      int64_t pad_down = pad_h - pad_up;
-      int64_t pad_w = max(Align(dx_paras.w, dx_paras.stride_w) - dx_paras.stride_w + dx_paras.kw - dx_paras.w, 0L);
-      int64_t pad_left = (pad_w >> 1L);
-      int64_t pad_right = pad_w - pad_left;
+      int32_t pad_h = max(Align(dx_paras.h, dx_paras.stride_h) - dx_paras.stride_h + dx_paras.kh - dx_paras.h, 0);
+      int32_t pad_up = (pad_h >> 1L);
+      int32_t pad_down = pad_h - pad_up;
+      int32_t pad_w = max(Align(dx_paras.w, dx_paras.stride_w) - dx_paras.stride_w + dx_paras.kw - dx_paras.w, 0);
+      int32_t pad_left = (pad_w >> 1L);
+      int32_t pad_right = pad_w - pad_left;
       dx_paras.padu = pad_up;
       dx_paras.padd = pad_down;
       dx_paras.padl = pad_left;
@@ -392,29 +381,38 @@ bool Conv2DBpInputTiling(const std::string& opType, const ge::Operator& opParas,
                          utils::OpRunInfo& runInfo) {
   ge::OpDescPtr op_desc = ge::OpDescUtils::GetOpDescFromOperator(opParas);
   CHECK_OP_FUNC(op_desc == nullptr, return false, "the op_desc is nullptr.");
-  ge::OpDescPtr op_desc_attr = nullptr;
-  UpdateOpDescAttr(op_desc, op_desc_attr);
-  // the input tensor's index is 2
-  ge::ConstGeTensorDescPtr tensor_in_desc = op_desc->GetInputDescPtr(2);
-  ge::ConstGeTensorDescPtr tensor_out_desc = op_desc->GetOutputDescPtr(0);
-  const ge::GeShape &tensor_in_shape = tensor_in_desc->GetShape();
-  const ge::GeShape &tensor_out_shape = tensor_out_desc->GetShape();
-  size_t output_dimnum = tensor_out_shape.GetDimNum();
-  bool unvalid_size = opParas.GetInputsSize() < kConv2dDxInputSizeLimit || opParas.GetOutputsSize() == 0 ||
-                      tensor_in_shape.GetDimNum() < kConv2dDimNumLimit || output_dimnum < kConv2dDimNumLimit;
-  CHECK_OP_FUNC(unvalid_size, return false, "the size is unvalid.");
-  GELOGD("Current format is %s, Ori format is %s",
-         ge::TypeUtils::FormatToSerialString(tensor_out_desc->GetFormat()).c_str(),
-         ge::TypeUtils::FormatToSerialString(tensor_out_desc->GetOriginFormat()).c_str());
-
   try {
+    DxParas dx_paras;
+    CHECK_OP_FUNC(!Conv2DBackpropInputParseFunc(op_desc, opCompileInfo, dx_paras), return false, "ParseFunc failed!");
+    if (dx_paras.repo_binary_flag) {
+      int32_t tiling_id;
+      Tiling tiling;
+      bool cache_tiling_invalid = !CheckParams(dx_paras) || !GenTiling(dx_paras, tiling, tiling_id) ||
+                                  !UpdateRunInfoBinary(dx_paras, tiling, tiling_id, runInfo);
+      if (cache_tiling_invalid) {
+        OP_LOGE("Conv2DBackpropInput", "binary mode failed");
+        return false;
+      }
+      return true;
+    }
+    // the input tensor's index is 2
+    ge::ConstGeTensorDescPtr tensor_in_desc = op_desc->GetInputDescPtr(2);
+    ge::ConstGeTensorDescPtr tensor_out_desc = op_desc->GetOutputDescPtr(0);
+    const ge::GeShape &tensor_in_shape = tensor_in_desc->GetShape();
+    const ge::GeShape &tensor_out_shape = tensor_out_desc->GetShape();
+    size_t output_dimnum = tensor_out_shape.GetDimNum();
+    bool unvalid_size = opParas.GetInputsSize() < kConv2dDxInputSizeLimit || opParas.GetOutputsSize() == 0 ||
+                        tensor_in_shape.GetDimNum() < kConv2dDimNumLimit || output_dimnum < kConv2dDimNumLimit;
+    CHECK_OP_FUNC(unvalid_size, return false, "the size is unvalid.");
+    GELOGD("Current format is %s, Ori format is %s",
+           ge::TypeUtils::FormatToSerialString(tensor_out_desc->GetFormat()).c_str(),
+           ge::TypeUtils::FormatToSerialString(tensor_out_desc->GetOriginFormat()).c_str());
     CHECK_OP_FUNC(opCompileInfo.empty(), return false, "op compile info is empty");
     // accurate build has only one item
     // fuzzy build has multiple items
     std::vector<std::string> varMap;
     nlohmann::json opInfo;
     GELOGD("original compile info is: %s", opCompileInfo.dump().c_str());
-    DxParas dx_paras;
     if (opCompileInfo.is_array()) {
       // >>> start: splice compile info
       opInfo = opCompileInfo[0];
@@ -425,7 +423,8 @@ bool Conv2DBpInputTiling(const std::string& opType, const ge::Operator& opParas,
         std::vector<std::string> key_list = {"repo_seeds", "repo_range", "cost_range"};
         for (auto &key : key_list) {
           auto &item_key = item[key];
-          if (item_key.is_object() && !item_key.empty()) {
+          bool item_key_valid = item_key.is_object() && !item_key.empty();
+          if (item_key_valid) {
             std::vector<int32_t> list_value = item_key.begin().value().get<std::vector<int32_t>>();
             opInfo[key][item_key.begin().key()] = list_value;
           }
@@ -440,21 +439,9 @@ bool Conv2DBpInputTiling(const std::string& opType, const ge::Operator& opParas,
       // <<< end: put together compile info
       GELOGD("compile info after splice is: %s", opInfo.dump().c_str());
     } else if (opCompileInfo.is_object()) {
-      CHECK_OP_FUNC(!Conv2DBackpropInputParseFunc(opParas, opCompileInfo, dx_paras, op_desc_attr), return false,
-                    "ParseFunc failed!");
-      if (dx_paras.repo_binary_flag) {
-        string tiling_id;
-        Tiling tiling;
-        CHECK_OP_FUNC(!CheckParams(dx_paras), return false, "Check failed!");
-        CHECK_OP_FUNC(!GenTiling(dx_paras, tiling, tiling_id), return false, "GenTiling failed!");
-        CHECK_OP_FUNC(!UpdateRunInfoBinary(dx_paras, tiling, tiling_id, runInfo), return false,
-                      "UpdateRunInfo failed!");
-        return true;
-      }
       varMap = opCompileInfo.at("_vars")["10000"].get<std::vector<std::string>>();
       opInfo = opCompileInfo;
     }
-
     std::vector<int64_t> var_value;
     if (std::find(varMap.begin(), varMap.end(), "batch_n") != varMap.end()) {
       var_value.insert(var_value.end(), tensor_out_shape.GetDim(kConv2dNDim));

@@ -555,3 +555,50 @@ TEST_F(Conv2DBackpropInputTiling, Conv2d_bp_input_binary_pads_equal_neg_one) {
   ASSERT_TRUE(iter->second.tiling_func_v2_(conv2dbackpropinput, op_compile_info, runInfo));
   EXPECT_EQ(runInfo.GetBlockDim(), 32);
 }
+
+TEST_F(Conv2DBackpropInputTiling, Conv2d_bp_input_binary_dilations_invalid) {
+  using namespace optiling;
+  std::string op_name = "Conv2DBackpropInput";
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
+
+  const ge::AscendString compileInfo = R"({"_pattern": "Conv2d_backprop_input", "tiling_type": "binary", "block_dim": {"CORE_NUM": 32}})";
+
+  ge::Graph graph("Conv2d_bp_input_binary_pads_equal_neg_one");
+
+  auto input_size = op::Data("input_size");
+  input_size.update_input_desc_x(create_desc_with_original_shape({4}, ge::DT_INT32, ge::FORMAT_ND, {4}, ge::FORMAT_ND));
+  input_size.update_output_desc_y(create_desc_with_original_shape({4}, ge::DT_INT32, ge::FORMAT_ND, {4}, ge::FORMAT_ND));
+
+  auto filter = op::Data("filter");
+  filter.update_input_desc_x(create_desc_with_original_shape({144, 16, 16, 16}, ge::DT_FLOAT16, ge::FORMAT_FRACTAL_Z, {256, 256, 3, 3}, ge::FORMAT_NCHW));
+  filter.update_output_desc_y(create_desc_with_original_shape({144, 16, 16, 16}, ge::DT_FLOAT16, ge::FORMAT_FRACTAL_Z, {256, 256, 3, 3}, ge::FORMAT_NCHW));
+
+  auto out_backprop = op::Data("out_backprop").set_attr_index(1);
+  out_backprop.update_input_desc_x(create_desc_with_original_shape({16, 256, 12, 20}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {16, 256, 12, 20}, ge::FORMAT_NCHW));
+  out_backprop.update_output_desc_y(create_desc_with_original_shape({16, 256, 12, 20}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {16, 256, 12, 20}, ge::FORMAT_NCHW));
+
+  auto conv2dbackpropinput = op::Conv2DBackpropInput(op_name)
+      .set_input_input_size(input_size)
+      .set_input_filter(filter)
+      .set_input_out_backprop(out_backprop)
+      .set_attr_strides({1, 1, 1, 1})
+      .set_attr_pads({-1, -1, -1, -1})
+      .set_attr_dilations({2, 2, 2, 2})
+      .set_attr_groups(1)
+      .set_attr_data_format("NCHW");
+  conv2dbackpropinput.update_input_desc_input_size(create_desc_with_original_shape({4}, ge::DT_INT32, ge::FORMAT_ND, {4}, ge::FORMAT_ND));
+  conv2dbackpropinput.update_input_desc_out_backprop(create_desc_with_original_shape({16, 256, 12, 20}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {16, 256, 12, 20}, ge::FORMAT_NCHW));
+  conv2dbackpropinput.update_input_desc_filter(create_desc_with_original_shape({144, 16, 16, 16}, ge::DT_FLOAT16, ge::FORMAT_FRACTAL_Z, {256, 256, 3, 3}, ge::FORMAT_NCHW));
+  conv2dbackpropinput.update_output_desc_y(create_desc_with_original_shape({16, 256, 12, 20}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {16, 256, 12, 20}, ge::FORMAT_NCHW));
+
+  std::vector<Operator> inputs{filter, out_backprop, input_size};
+  std::vector<Operator> outputs{conv2dbackpropinput};
+
+  graph.SetInputs(inputs).SetOutputs(outputs);
+  ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
+
+  optiling::utils::OpCompileInfo op_compile_info("Conv2d_bp_input_binary_pads_equal_neg_one", compileInfo);
+  optiling::utils::OpRunInfo runInfo;
+  ASSERT_FALSE(iter->second.tiling_func_v2_(conv2dbackpropinput, op_compile_info, runInfo));
+}

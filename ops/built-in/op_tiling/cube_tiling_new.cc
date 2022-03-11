@@ -28,7 +28,7 @@ namespace {
   constexpr int32_t kConv3dVarDimSizeLimit = 4;
   static const int kRangeDimLen = 2;
   static const int kBlockSize = 16;
-  static const int64_t kHoshWNoDivided = 2;
+  static const int32_t kHoshWNoDivided = 2;
   static const int kNumTwo = 2;
   const std::vector<int32_t> kConv3DDynamicShapeDims = {0, 1, 3, 4}; // format: NDC1HWC0
   const std::vector<int32_t> kConv3DDynamicRangeDims = {0, 1, 2, 3}; // foramt: NDHW
@@ -151,10 +151,10 @@ namespace optiling {
   * @param [out] run_info: runtime information
   * @return bool: success or not
   */
-  int64_t Lcm(const int64_t &param1, const int64_t &param2) {
-    int64_t pram1_lcm = param1;
-    int64_t pram2_lcm = param2;
-    int64_t temp = pram1_lcm * pram2_lcm;
+  inline int32_t Lcm(const int32_t &param1, const int32_t &param2) {
+    int32_t pram1_lcm = param1;
+    int32_t pram2_lcm = param2;
+    int32_t temp = pram1_lcm * pram2_lcm;
     int32_t param1_temp = pram1_lcm;
     while (pram1_lcm % pram2_lcm != 0) {
       param1_temp = pram1_lcm;
@@ -164,70 +164,120 @@ namespace optiling {
     return temp / pram2_lcm;
   }
 
+  void SetRunInfoStrideOne(const RunInfoRaras &run_info_params, const DxParas &params, const Tiling &tiling,
+                           utils::OpRunInfo &run_info, RunInfoParaStrideEqualOne &run) {
+    run.batch = params.batch;
+    run.co = params.co;
+    run.ho = params.ho;
+    run.wo = params.wo;
+    run.filter_cin1hw = params.filter_cin1hw;
+    run.filter_cout1 = params.filter_cout1;
+    run.cin = params.cin;
+    run.c1 = params.c1;
+    run.h = params.h;
+    run.w = params.w;
+    run.kh = params.kh;
+    run.kw = params.kw;
+    run.g_extend = run_info_params.g_extend;
+    run.dx_c1_extend = run_info_params.dx_c1_extend;
+    run.multiple_extend = run_info_params.multiple_extend;
+    run.padu = params.padu;
+    run.padd = params.padd;
+    run.padl = params.padl;
+    run.padr = params.padr;
+    run.shape_up_modify = run_info_params.shape_up_modify;
+    run.shape_left_modify = run_info_params.shape_left_modify;
+    run.shape_down_modify = run_info_params.shape_down_modify;
+    run.shape_right_modify = run_info_params.shape_right_modify;
+    run.pad_up_before = run_info_params.pad_up_before;
+    run.pad_left_before = run_info_params.pad_left_before;
+    run.pad_down_after = run_info_params.pad_down_after;
+    run.pad_right_after = run_info_params.pad_right_after;
+    run.batch_dim = tiling.batch_dim;
+    run.n_dim = tiling.n_dim;
+    run.m_dim = tiling.m_dim;
+    run.batch_single_core = run_info_params.batch_single_core;
+    run.m_al1 = tiling.m_al1;
+    run.n_bl1 = tiling.n_bl1;
+    run.k_aub = tiling.k_aub * params.kh * params.kw * kBlockSize;
+    run.m_aub = tiling.m_aub;
+    run.m_l0 = tiling.m_l0;
+    run.n_l0_div_ub = run_info_params.n_l0_div_ub;
+    run.n_cub = tiling.n_cub;
+    run.k_l0 = tiling.k_l0;
+    run.k_al1_div_16 = run_info_params.k_al1_div_16;
+    run.k_bl1_div_16 = run_info_params.k_bl1_div_16;
+    run.al1_bound = run_info_params.al1_bound;
+    run.bl1_bound = run_info_params.bl1_bound;
+    run.aub_bound = run_info_params.aub_bound;
+    run_info.AddTilingData(run);
+  }
+
+ void SetRunInfoStrideLargeOne(const RunInfoRaras &run_info_params, const DxParas &params, const Tiling &tiling,
+                               utils::OpRunInfo &run_info, RunInfoParaStrideLargeOne &run) {
+    run.filter_cin1hw = params.filter_cin1hw;
+    run.filter_cout1 = params.filter_cout1;
+    run.batch = params.batch;
+    run.co1 = params.co1;
+    run.ho = params.ho;
+    run.wo = params.wo;
+    run.cin = params.cin;
+    run.c1 = params.c1;
+    run.h = params.h;
+    run.w = params.w;
+    run.kh = params.kh;
+    run.kw = params.kw;
+    run.g_extend = run_info_params.g_extend;
+    run.dx_c1_extend = run_info_params.dx_c1_extend;
+    run.multiple_extend = run_info_params.multiple_extend;
+    run.padu = params.padu;
+    run.padd = params.padd;
+    run.padl = params.padl;
+    run.padr = params.padr;
+    run.stride_h = params.stride_h;
+    run.stride_w = params.stride_w;
+    run.shape_up_modify = run_info_params.shape_up_modify;
+    run.shape_left_modify = run_info_params.shape_left_modify;
+    run.shape_down_modify = run_info_params.shape_down_modify;
+    run.shape_right_modify = run_info_params.shape_right_modify;
+    run.pad_up_before = run_info_params.pad_up_before;
+    run.pad_left_before = run_info_params.pad_left_before;
+    run.pad_down_after = run_info_params.pad_down_after;
+    run.pad_right_after = run_info_params.pad_right_after;
+    run.batch_dim = tiling.batch_dim;
+    run.n_dim = tiling.n_dim;
+    run.m_dim = tiling.m_dim;
+    run.batch_single_core = run_info_params.batch_single_core;
+    run.m_al1 = tiling.m_al1;
+    run.n_bl1 = tiling.n_bl1;
+    run.k_aub = tiling.k_aub * params.kw * params.kh * kBlockSize;
+    run.m_aub = tiling.m_aub;
+    run.m_l0 = tiling.m_l0;
+    run.n_l0_div_ub = run_info_params.n_l0_div_ub;
+    run.n_cub = tiling.n_cub;
+    run.k_l0 = tiling.k_l0;
+    run.k_al1_div_16 = run_info_params.k_al1_div_16;
+    run.k_bl1_div_16 = run_info_params.k_bl1_div_16;
+    run.al1_bound = run_info_params.al1_bound;
+    run.bl1_bound = run_info_params.bl1_bound;
+    run.aub_bound = run_info_params.aub_bound;
+    run_info.AddTilingData(run);
+  }
+
   void SetRunInfo(const RunInfoRaras &run_info_params, const DxParas &params, const Tiling &tiling,
                   utils::OpRunInfo &run_info) {
     bool stride_equal_one = params.stride_h == 1 && params.stride_w == 1;
     if (stride_equal_one) {
-      run_info.AddTilingData(static_cast<int32_t>(params.batch));
-      run_info.AddTilingData(static_cast<int32_t>(params.co));
-      run_info.AddTilingData(static_cast<int32_t>(params.ho));
-      run_info.AddTilingData(static_cast<int32_t>(params.wo));
-      run_info.AddTilingData(static_cast<int32_t>(params.filter_cin1hw));
-      run_info.AddTilingData(static_cast<int32_t>(params.filter_cout1));
+      RunInfoParaStrideEqualOne run;
+      SetRunInfoStrideOne(run_info_params, params, tiling, run_info, run);
     } else {
-      run_info.AddTilingData(static_cast<int32_t>(params.filter_cin1hw));
-      run_info.AddTilingData(static_cast<int32_t>(params.filter_cout1));
-      run_info.AddTilingData(static_cast<int32_t>(params.batch));
-      run_info.AddTilingData(static_cast<int32_t>(params.co1));
-      run_info.AddTilingData(static_cast<int32_t>(params.ho));
-      run_info.AddTilingData(static_cast<int32_t>(params.wo));
+      RunInfoParaStrideLargeOne run;
+      SetRunInfoStrideLargeOne(run_info_params, params, tiling, run_info, run);
     }
-    run_info.AddTilingData(static_cast<int32_t>(params.cin));
-    run_info.AddTilingData(static_cast<int32_t>(params.c1));
-    run_info.AddTilingData(static_cast<int32_t>(params.h));
-    run_info.AddTilingData(static_cast<int32_t>(params.w));
-    run_info.AddTilingData(static_cast<int32_t>(params.kh));
-    run_info.AddTilingData(static_cast<int32_t>(params.kw));
-    run_info.AddTilingData(run_info_params.g_extend);
-    run_info.AddTilingData(run_info_params.dx_c1_extend);
-    run_info.AddTilingData(run_info_params.multiple_extend);
-    run_info.AddTilingData(static_cast<int32_t>(params.padu));
-    run_info.AddTilingData(static_cast<int32_t>(params.padd));
-    run_info.AddTilingData(static_cast<int32_t>(params.padl));
-    run_info.AddTilingData(static_cast<int32_t>(params.padr));
-    if (!stride_equal_one) {
-      run_info.AddTilingData(static_cast<int32_t>(params.stride_h));
-      run_info.AddTilingData(static_cast<int32_t>(params.stride_w));
-    }
-    run_info.AddTilingData(run_info_params.shape_up_modify);
-    run_info.AddTilingData(run_info_params.shape_left_modify);
-    run_info.AddTilingData(run_info_params.shape_down_modify);
-    run_info.AddTilingData(run_info_params.shape_right_modify);
-    run_info.AddTilingData(run_info_params.pad_up_before);
-    run_info.AddTilingData(run_info_params.pad_left_before);
-    run_info.AddTilingData(run_info_params.pad_down_after);
-    run_info.AddTilingData(run_info_params.pad_right_after);
-    run_info.AddTilingData(static_cast<int32_t>(tiling.batch_dim));
-    run_info.AddTilingData(static_cast<int32_t>(tiling.n_dim));
-    run_info.AddTilingData(static_cast<int32_t>(tiling.m_dim));
-    run_info.AddTilingData(run_info_params.batch_single_core);
-    run_info.AddTilingData(static_cast<int32_t>(tiling.m_al1));
-    run_info.AddTilingData(static_cast<int32_t>(tiling.n_bl1));
-    run_info.AddTilingData(static_cast<int32_t>(tiling.k_aub * params.kh * params.kw * kBlockSize));
-    run_info.AddTilingData(static_cast<int32_t>(tiling.m_aub));
-    run_info.AddTilingData(static_cast<int32_t>(tiling.m_l0));
-    run_info.AddTilingData(run_info_params.n_l0_div_ub);
-    run_info.AddTilingData(static_cast<int32_t>(tiling.n_cub));
-    run_info.AddTilingData(static_cast<int32_t>(tiling.k_l0));
-    run_info.AddTilingData(run_info_params.k_al1_div_16);
-    run_info.AddTilingData(run_info_params.k_bl1_div_16);
-    run_info.AddTilingData(run_info_params.al1_bound);
-    run_info.AddTilingData(run_info_params.bl1_bound);
-    run_info.AddTilingData(run_info_params.aub_bound);
   }
 
   bool UpdateRunInfoBinary(const DxParas &params, const Tiling &tiling,
-                           const string &tiling_id, utils::OpRunInfo& run_info) {
+                           const int32_t &tiling_id, utils::OpRunInfo &run_info) {
     RunInfoRaras run_info_params;
     run_info_params.dy_c_ori = ((params.co + params.groups - 1) / params.groups) * params.groups;
     int32_t block_size = kBlockSize;
@@ -266,8 +316,8 @@ namespace optiling {
       m_single_size = tiling.m_single_core_size;
     }
     run_info_params.m_single_core =
-        max((params.h * params.w + kBlockSize - 1) / kBlockSize / (tiling.n_dim * n_single_size), 1L);
-    run_info_params.n_single_core = max(params.c1 / (tiling.m_dim * m_single_size), 1L);
+        max((params.h * params.w + kBlockSize - 1) / kBlockSize / (tiling.n_dim * n_single_size), 1);
+    run_info_params.n_single_core = max(params.c1 / (tiling.m_dim * m_single_size), 1);
     run_info_params.n_l0_div_ub = tiling.n_l0 / tiling.n_cub;
     run_info_params.k_al1_div_16 = tiling.k_al1 * params.kh * params.kw;
     run_info_params.k_bl1_div_16 = tiling.k_bl1 * params.kh * params.kw;
@@ -294,7 +344,7 @@ namespace optiling {
 
     SetRunInfo(run_info_params, params, tiling, run_info);
     run_info.SetBlockDim(static_cast<uint32_t>(tiling.batch_dim * tiling.n_dim * tiling.m_dim));
-    run_info.SetTilingKey(std::stoi(tiling_id));
+    run_info.SetTilingKey(static_cast<int64_t>(tiling_id));
     return true;
   }
 
