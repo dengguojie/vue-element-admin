@@ -295,9 +295,9 @@ def _range_correction(fmap_range, kernel, pads, stride, dilation, out_shape):
     return range_dedy, range_input
 
 
-def _config_placeholder(shape_out_backprop, shape_filters, input_sizes, filters_dtype,
-                        out_backprop_dtype, range_dedy, range_input, groups):
+def _config_placeholder(shape_out_backprop, shape_filters, input_sizes, attrs_list):
 
+    filters_dtype, out_backprop_dtype, range_dedy, range_input, groups, is_fuzzy_build = attrs_list
     _, dy_k0, _ = tbe_platform.CUBE_MKN[out_backprop_dtype]['mac']
 
     dedy_batch, dedy_depth, dedy_h, dedy_w, dedy_channel = shape_out_backprop
@@ -309,28 +309,45 @@ def _config_placeholder(shape_out_backprop, shape_filters, input_sizes, filters_
     cout_g = group_dict["cout_g"]
     shape_filter_frac = (real_g * filter_depth * cin1_g * filter_h * filter_w,
                          cout_g // _C0_SIZE, _C0_SIZE, _C0_SIZE)
-    if dedx_batch == -1:
-        dedy_batch = operation.var("batch_n", range_input[0])
-        operation.add_exclude_bound_var(dedy_batch)
-        input_sizes[0] = dedy_batch
-    if dedx_depth == -1:
-        dx_depth = operation.var("dedx_d", range_input[1])
-        dedy_depth = operation.var("dedy_d", range_dedy[1])
-        operation.add_exclude_bound_var(dx_depth)
-        operation.add_exclude_bound_var(dedy_depth)
-        input_sizes[1] = dx_depth
-    if dedx_h == -1:
-        dx_h = operation.var("dedx_h", range_input[3])
-        dedy_h = operation.var("dedy_h", range_dedy[3])
-        operation.add_exclude_bound_var(dx_h)
-        operation.add_exclude_bound_var(dedy_h)
-        input_sizes[2] = dx_h
-    if dedx_w == -1:
-        dx_w = operation.var("dedx_w", range_input[4])
-        dedy_w = operation.var("dedy_w", range_dedy[4])
-        operation.add_exclude_bound_var(dx_w)
-        operation.add_exclude_bound_var(dedy_w)
-        input_sizes[3] = dx_w
+    if not is_fuzzy_build:
+        if dedx_batch == -1:
+            dedy_batch = operation.var("batch_n", range_input[0])
+            operation.add_exclude_bound_var(dedy_batch)
+            input_sizes[0] = dedy_batch
+        if dedx_depth == -1:
+            dx_depth = operation.var("dedx_d", range_input[1])
+            dedy_depth = operation.var("dedy_d", range_dedy[1])
+            operation.add_exclude_bound_var(dx_depth)
+            operation.add_exclude_bound_var(dedy_depth)
+            input_sizes[1] = dx_depth
+        if dedx_h == -1:
+            dx_h = operation.var("dedx_h", range_input[3])
+            dedy_h = operation.var("dedy_h", range_dedy[3])
+            operation.add_exclude_bound_var(dx_h)
+            operation.add_exclude_bound_var(dedy_h)
+            input_sizes[2] = dx_h
+        if dedx_w == -1:
+            dx_w = operation.var("dedx_w", range_input[4])
+            dedy_w = operation.var("dedy_w", range_dedy[4])
+            operation.add_exclude_bound_var(dx_w)
+            operation.add_exclude_bound_var(dedy_w)
+            input_sizes[3] = dx_w
+    else:
+        if dedx_batch == -1:
+            dedy_batch = tvm.var("batch_n")
+            input_sizes[0] = dedy_batch
+        if dedx_depth == -1:
+            dx_depth = tvm.var("dedx_d")
+            dedy_depth = tvm.var("dedy_d")
+            input_sizes[1] = dx_depth
+        if dedx_h == -1:
+            dx_h = tvm.var("dedx_h")
+            dedy_h = tvm.var("dedy_h")
+            input_sizes[2] = dx_h
+        if dedx_w == -1:
+            dx_w = tvm.var("dedx_w")
+            dedy_w = tvm.var("dedy_w")
+            input_sizes[3] = dx_w
 
     shape_out_backprop = [dedy_batch, dedy_depth, dedy_h, dedy_w, dedy_channel]
     [dedy_batch, dedy_depth, dedy_h, dedy_w, dedy_channel] = _modify_dedy(shape_out_backprop, range_dedy)
@@ -622,7 +639,7 @@ def check_conv3dbp_input_params(shape_filter,
 
 
 def check_and_config_para(weight, out_backprop, y, input_size, strides, pads,
-                          dilations, groups, data_format, kernel_name):
+                          dilations, groups, data_format, kernel_name, is_fuzzy_build=False):
     """
     algorithm: check_and_config_para
 
@@ -715,9 +732,9 @@ def check_and_config_para(weight, out_backprop, y, input_size, strides, pads,
                        util_common.ceil(shape_out_backprop[4], _C0_SIZE)),
                       (1, None), (1, None), (_C0_SIZE, _C0_SIZE)]
     # get placeholder
+    attrs_list = [filters_dtype, out_backprop_dtype, range_dedy, range_input, groups, is_fuzzy_build]
     dx_shape, dedy, filter_frac, input_sizes, shape_out_backprop, group_dict = \
-        _config_placeholder(shape_out_backprop, shape_filters, input_sizes, filters_dtype,
-                            out_backprop_dtype, range_dedy, range_input, groups)
+        _config_placeholder(shape_out_backprop, shape_filters, input_sizes, attrs_list)
 
     res = check_conv3dbp_input_params(shape_filters, shape_out_backprop,
                                       input_sizes, shape_strides, pads,
@@ -900,11 +917,9 @@ def _check_correct_fuzz_input_range(fmap, kernel, pads, stride, dilation, is_dyn
             warnings.warn("The output calculated based on the lower limit of the input w \
                 range is less than 1, and the lower limit of the input w range is corrected \
                 as {}".format(fmap_range_w_lower))
-    if correct_range_flag:
-        if is_dynamic_fuzz_mode:
-            return LOWER_LIST
-        else:
-            return []
+    if correct_range_flag and is_dynamic_fuzz_mode:
+        return LOWER_LIST
+    return []
 
 
 @tbe_register.register_param_generalization("Conv3DBackpropInput")
@@ -1014,10 +1029,10 @@ def conv3d_backprop_input_generalization(input_size, filter,
         util_conv3d.generalize_input_keep_rank(y)
         input_size["const_value"] = None
     # check attrs and filter
+    util_conv3d.get_range(y)
     try:
-        util_conv3d.get_range(y)
         check_and_config_para(filter, out_backprop, y, input_size, strides, new_pads,
-                              dilations, groups, data_format, kernel_name)
+                              dilations, groups, data_format, kernel_name, is_fuzzy_build=True)
     except RuntimeError as exc:
         return UNSUPPORT_LIST
     finally:

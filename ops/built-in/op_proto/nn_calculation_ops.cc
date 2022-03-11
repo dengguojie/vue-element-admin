@@ -7813,6 +7813,8 @@ IMPLEMT_INFERFUNC(Conv3DBackpropInput, Conv3DBackpropInputInfer) {
   }
 
   bool is_input_size_const = false; // means dynamic shape mode if false
+  const GeShape &dy_shape = dy_desc->GetShape();
+  bool is_dynamic = dy_shape.IsUnknownShape();  // dynamic fuzzy build mode is_input_size_const = true
   std::vector<int64_t> input_sizes;
   Tensor input_sizes_tensor;
   auto input_sizes_desc = op_desc->MutableInputDesc("input_size");
@@ -7822,8 +7824,7 @@ IMPLEMT_INFERFUNC(Conv3DBackpropInput, Conv3DBackpropInputInfer) {
     GetConstValue(input_sizes_tensor, dtype, input_sizes);
     is_input_size_const = true;
   }
-
-  if (!is_input_size_const &&
+  if ((!is_input_size_const || is_dynamic) &&
       !InferConv3dBpInputOutShapeRange(op, input_sizes_desc, dy_desc, y_desc, input_sizes)) {
     return GRAPH_FAILED;
   }

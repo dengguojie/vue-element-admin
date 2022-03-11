@@ -261,22 +261,22 @@ def check_para_fuzz_compile_3d(x, y, weight, dilations, strides, pads,
                 warnings.warn("{} ori_range length illegal".format(op_type))
                 return [{"result": "UNSUPPORTED"}]
             dynamic_lower_range_illegal = \
-                any([_check_fuzz_shape_range_illegal(dim_range[0], 1, MAX_DHW_FUZZ_BUILD) for dim_range in
-                [ori_range[d_pos], ori_range[h_pos], ori_range[w_pos]]]) or \
+                any([_check_fuzz_shape_range_illegal(dim_range[0], 1, MAX_DHW_FUZZ_BUILD)
+                     for dim_range in [ori_range[d_pos], ori_range[h_pos], ori_range[w_pos]]]) or \
                 _check_fuzz_shape_range_illegal(ori_range[n_pos][0], 1, MAX_N_FUZZ_BUILD)
             if dynamic_lower_range_illegal:
                 return [{"result": "UNSUPPORTED", "reason": {"param_index": [x_index], "type": ["lower_limit"]}}]
             dynamic_upper_range_illegal = \
-                any([_check_fuzz_shape_range_illegal(dim_range[1], 1, MAX_DHW_FUZZ_BUILD) for dim_range in
-                [ori_range[d_pos], ori_range[h_pos], ori_range[w_pos]]]) or \
+                any([_check_fuzz_shape_range_illegal(dim_range[1], 1, MAX_DHW_FUZZ_BUILD)
+                     for dim_range in [ori_range[d_pos], ori_range[h_pos], ori_range[w_pos]]]) or \
                 _check_fuzz_shape_range_illegal(ori_range[n_pos][1], 1, MAX_N_FUZZ_BUILD)
             if dynamic_upper_range_illegal:
                 return [{"result": "UNSUPPORTED", "reason": {"param_index": [x_index], "type": ["upper_limit"]}}]
         # single mode check shape
         ori_shape = tensor.get("ori_shape")
         static_shape_illegal = not is_dynamic_fuzz_mode and \
-            (any([_check_fuzz_shape_range_illegal(dim_shape, 1, MAX_DHW_FUZZ_BUILD) for dim_shape in
-            [ori_shape[d_pos], ori_shape[h_pos], ori_shape[w_pos]]]) or \
+            (any([_check_fuzz_shape_range_illegal(dim_shape, 1, MAX_DHW_FUZZ_BUILD)
+                  for dim_shape in [ori_shape[d_pos], ori_shape[h_pos], ori_shape[w_pos]]]) or \
             _check_fuzz_shape_range_illegal(ori_shape[n_pos], 1, MAX_N_FUZZ_BUILD))
         if static_shape_illegal:
             return [{"result": "UNSUPPORTED"}]
