@@ -163,6 +163,11 @@ class ConcatClassifier:
         one_axis_min_range = [_range[1][0] for _range in self.merged_ranges]
         self.only_empty = 0 in zero_axis_shape or all(s == 0 for s in one_axis_shape)
         self.maybe_empty = 0 in zero_axis_min_range or all(0 == s for s in one_axis_min_range)
+        if self.only_empty or not self.maybe_empty:
+            return
+        for index, _range in enumerate(self.merged_ranges):
+            if _range[0][0] == 0:
+                self.merged_ranges[index][0] = (1, _range[0][1])
 
     def classify(self):
         self._check_inputs()
