@@ -3021,11 +3021,12 @@ static bool SetConv2dBpInputOutShapeRange(const OpDetailInfo &op_info, const Pos
     if (is_infer_shape) {
       y_range[n_y_position] = input_range[n_y_position];
     }
-    is_infer_shape = dx_h == -1 || (input_h == -1 && input_range[h_y_position].second != -1);
+    // input_size all zero need to infer range
+    is_infer_shape = dx_h == -1 || (input_h == -1 && (input_range[h_y_position].second != -1 || dx_h == 0));
     if (is_infer_shape) {
       SetConv2dBpInputOutRange(op_info.op_desc, h_y_position, attr_paras.h_attr, input_range, y_range);
     }
-    is_infer_shape = dx_w == -1 || (input_w == -1 && input_range[w_y_position].second != -1);
+    is_infer_shape = dx_w == -1 || (input_w == -1 && (input_range[w_y_position].second != -1 || dx_w == 0));
     if (is_infer_shape) {
       SetConv2dBpInputOutRange(op_info.op_desc, w_y_position, attr_paras.w_attr, input_range, y_range);
     }
