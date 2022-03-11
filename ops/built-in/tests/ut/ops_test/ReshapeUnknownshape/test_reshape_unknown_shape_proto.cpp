@@ -357,3 +357,40 @@ TEST_F(RESHAPE_UNKNOWN_SHAPE_UT, EmptyTensorProcess) {
   op.SetAttr("allowzero", 0);
   EXPECT_EQ(op.InferShapeAndType(), ge::GRAPH_SUCCESS);
 }
+
+
+TEST_F(RESHAPE_UNKNOWN_SHAPE_UT, EmptyTensorWithScalarShape) {
+  auto tensor_desc = create_desc({0, 1}, ge::DT_INT64);
+  auto data0 = ge::op::Data("data0").set_attr_index(0);
+  data0.update_input_desc_x(tensor_desc);
+  data0.update_output_desc_y(tensor_desc);
+
+  ge::TensorDesc const_desc(ge::Shape(), ge::FORMAT_ND, ge::DT_INT64);
+  int64_t const_value[1] = {0};
+  auto const_op = ge::op::Const("Const").set_attr_value(
+          ge::Tensor(const_desc, (uint8_t *)const_value, sizeof(int64_t)));
+
+  ge::op::Reshape reshape_op("Reshape");
+  reshape_op.UpdateInputDesc("x", create_desc({0, 1}, ge::DT_INT64));
+  reshape_op.UpdateInputDesc("shape", create_desc({}, ge::DT_INT64));
+  reshape_op.set_input_x(data0).set_input_shape(const_op);
+
+  std::vector<ge::Operator> inputs{data0};
+  std::vector<ge::Operator> outputs{reshape_op};
+  ge::Graph graph("reshape_infer_shape_test");
+  graph.SetInputs(inputs).SetOutputs(outputs);
+  ge::ComputeGraphPtr compute_graph = ge::GraphUtils::GetComputeGraph(graph);
+  auto node = compute_graph->FindFirstNodeMatchType("Reshape");
+  EXPECT_NE(node, nullptr);
+
+  ge::GeTensorDesc ge_tensor(ge::GeShape(), ge::FORMAT_ND, ge::DT_INT64);
+  ge_tensor.SetOriginShape(ge::GeShape());
+  node->GetOpDesc()->UpdateInputDesc("shape", ge_tensor);
+  ge::Operator op = ge::OpDescUtils::CreateOperatorFromNode(node);
+  op.SetAttr("allowzero", 0);
+  EXPECT_EQ(op.InferShapeAndType(), ge::GRAPH_SUCCESS);
+  const ge::GeTensorDesc &output_desc = node->GetOpDesc()->GetOutputDesc(0);
+  vector<int64_t> dims = output_desc.GetShape().GetDims();
+  EXPECT_EQ(dims.size(), 1);
+  EXPECT_EQ(dims[0], 0);
+}

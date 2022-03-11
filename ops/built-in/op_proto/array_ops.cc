@@ -1162,14 +1162,16 @@ static graphStatus CaffeReshapeInferShape(const vector<int64_t> &dims, const int
 
 template <typename T>
 graphStatus GetOutShapeFromTensor(OpDescPtr op_desc, GeTensor* tensor, std::vector<int64_t> &v_out) {
-  auto shape_desc = tensor->MutableTensorDesc();
   T* shape_data = const_cast<T*>(reinterpret_cast<const T*>(tensor->GetData().GetData()));
   if (shape_data == nullptr) {
     GE_OP_LOGE(op_desc->GetName().c_str(), "const shape data is invalid");
     return GRAPH_PARAM_INVALID;
   }
-  for (int i = 0; i < shape_desc.MutableShape().GetDim(0); i++) {
-    v_out.emplace_back(shape_data[i]);
+
+  size_t tensor_size = tensor->GetData().size() / sizeof(T);
+  v_out.resize(tensor_size);
+  for (size_t idx = 0UL; idx < tensor_size; ++idx) {
+    v_out[idx] = shape_data[idx];
   }
   return GRAPH_SUCCESS;
 }
