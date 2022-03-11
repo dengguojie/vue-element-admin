@@ -2549,24 +2549,23 @@ static void CalcMte2LoopNum(const CompilerInfo& compilerInfo, const ShapeInfo& s
   }
   for (int64_t i = 0; i < compilerInfo.coreNum; i++) {
     InfoPerCoreLastAxisNT& info = runtimeInfo.infoPerCoreLastAxisNT[i];
+
     if (info.num < 1) {
       continue;
     }
-    if (info.num == 1) {
-      info.aggregateLoopUnit = 1;
-      info.aggregateLoopNum = 1;
-      continue;
-    }
+
     info.aggregateLoopUnit = compilerInfo.ubSizeCouldUse / shapeInfo.lastAxisBurstLen;
-    if (info.aggregateLoopUnit >= info.num) {
-      info.aggregateLoopUnit = info.num - 1;
+
+    if (info.aggregateLoopUnit > info.num) {
+      info.aggregateLoopUnit = info.num;
     }
+
     if (shapeInfo.alignElement == 0) {
       info.aggregateLoopNum = info.num / info.aggregateLoopUnit;
       info.aggregateLoopTail = info.num - (info.aggregateLoopUnit * info.aggregateLoopNum);
     } else {
       info.aggregateLoopNum = (info.num - 1) / info.aggregateLoopUnit;
-      info.aggregateLoopTail = info.num - 1 - (info.aggregateLoopUnit * info.aggregateLoopNum);
+      info.aggregateLoopTail = (info.num - 1) - (info.aggregateLoopUnit * info.aggregateLoopNum);
     }
   }
 }
@@ -3452,6 +3451,9 @@ static bool CalcDstBorrowAxisIndex(const CompilerInfo& ci,
             bi.dstIndexIn[dstNum].loop = si.reducedOutShape[id] / bi.dstIndexIn[dstNum].step;
             bi.dstIndexIn[dstNum].tail =
                 si.reducedOutShape[id] % (bi.dstIndexIn[dstNum].step * bi.dstIndexIn[dstNum].loop);
+            if (tailEle * bi.dstIndexIn[dstNum].step < si.elePerBlock) {
+                return false;
+            }
           } else {
             break;
           }
