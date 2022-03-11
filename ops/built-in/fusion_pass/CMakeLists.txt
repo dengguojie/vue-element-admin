@@ -345,6 +345,7 @@ set(_aicore_fusion_srcs
   graph_fusion/ai_core/tril_fusion_pass.cc
   graph_fusion/ai_core/affine_grid_fussion_pass.cc
   graph_fusion/ai_core/batch_matmul_v2_reshape_fusion_pass.cc
+  graph_fusion/ai_core/batch_matmul_v2_reduce_fusion_pass.cc
   graph_fusion/ai_core/sub_sample_fusion_pass.cc
   graph_fusion/ai_core/transposed_update_fusion_pass.cc
   graph_fusion/ai_core/dynamic_rnn_v3_fusion_pass.cc
