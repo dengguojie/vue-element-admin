@@ -1,0 +1,84 @@
+[
+  {
+    "case_name": "test_spacetobatch_001",
+    "op": "SpaceToBatch",
+    "input_desc": [
+      {
+        "format": [
+          "NC1HWC0"
+        ],
+        "ori_format": [
+          "NHWC"
+        ],
+        "shape": [
+          1024, 1, 24, 36, 16
+        ],
+        "ori_shape": [
+          1024, 24, 36, 8
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "name":  "x",
+        "type": [
+          "float16"
+        ],
+        "value_range": [
+          [0.1, 1.0]
+        ]
+      },
+      {
+        "format": [
+          "NHWC"
+        ],
+        "ori_format": [
+          "NHWC"
+        ],
+        "ori_shape": [
+          2, 2
+        ],
+        "type": [
+          "int32"
+        ],
+        "shape": [
+          2, 2
+        ], 
+        "data_distribute": [
+          "uniform"
+        ],
+        "is_const": true,
+        "value": [
+          [0, 0], [0, 0]
+        ],
+        "name": "paddings"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          4096, 1, 12, 18, 16
+        ],
+        "format": [
+          "NC1HWC0"
+        ],
+        "ori_shape": [
+          4096, 12, 18, 8
+        ],
+        "ori_format": [
+          "NHWC"
+        ],
+        "name": "y",
+        "type": [
+          "float16"
+        ]
+      }
+    ],
+    "attr": [
+      {
+        "name": "block_size",
+        "type": "int",
+        "value": 2
+      }
+    ]
+  }
+]

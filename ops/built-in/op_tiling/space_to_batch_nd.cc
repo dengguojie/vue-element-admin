@@ -51,6 +51,8 @@ namespace {
   constexpr uint32_t SIZE_4 = 4;
   constexpr uint32_t SIZE_6 = 6;
   constexpr uint32_t SIZE_8 = 8;
+  constexpr uint32_t SPACE_TO_BATCH_PADDING_INDEX = 1;
+  constexpr uint32_t SPACE_TO_BATCH_ND_PADDING_INDEX = 2;
 }  // namespace
 
 namespace optiling {
@@ -248,13 +250,13 @@ bool SpaceToBatchNDTiling(const std::string& op_type, const ge::Operator& opPara
                                     input_format);
     return false;
   }
-  if ((input_format == ge::FORMAT_NC1HWC0) && (input_shape.GetDimNum() != 5)) {
+  if ((input_format == ge::FORMAT_NC1HWC0) && (input_shape.GetDimNum() != SHAPE_LIMIT_5D)) {
     VECTOR_INNER_ERR_REPORT_TILIING(
         op_type, "Get input shape failed at format NC1HWC0, the length of input shape must be 5, but got %lu.",
         input_shape.GetDimNum());
     return false;
   }
-  if ((input_format == ge::FORMAT_NDC1HWC0) && (input_shape.GetDimNum() != 6)) {
+  if ((input_format == ge::FORMAT_NDC1HWC0) && (input_shape.GetDimNum() != SHAPE_LIMIT_6D)) {
     VECTOR_INNER_ERR_REPORT_TILIING(
         op_type, "Get input shape failed at format NDC1HWC0, the length of input shape must be 6, but got %lu.",
         input_shape.GetDimNum());
@@ -273,17 +275,20 @@ bool SpaceToBatchNDTiling(const std::string& op_type, const ge::Operator& opPara
 
   vector<int64_t> block_vec;
   vector<int64_t> pads_vec;
-  static const int64_t block_size_index = 1;
-  static const int64_t paddings_size_index = 2;
-
+  
   // calc block_vec and pads_vec and check supported
   // cppcheck-suppress *
+  // the parameters order in op proto is: x, block_shape, paddings, y
+  int64_t paddings_size_index = SPACE_TO_BATCH_ND_PADDING_INDEX;
+  if (op_type == "SpaceToBatch") {
+    // the parameters order in op proto is: x, paddings, y
+    paddings_size_index = SPACE_TO_BATCH_PADDING_INDEX;
+  }
+  
   if (block_size != 0) {
-    // SpaceToBatch
     block_vec.push_back(block_size);
     block_vec.push_back(block_size);
 
-    // the parameters order in op proto is: x, block_shape, paddings, y
     if (!ops::GetConstIntData(opParas, paddings_size_index, pads_vec)) {
       VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get const size failed!");
       return false;
@@ -293,8 +298,7 @@ bool SpaceToBatchNDTiling(const std::string& op_type, const ge::Operator& opPara
       return false;
     }
   } else {
-    // SpaceToBatchND
-    // the parameters order in op proto is: x, block_shape, paddings, y
+    static const int64_t block_size_index = 1;
     if (!ops::GetConstIntData(opParas, block_size_index, block_vec)) {
       VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get const block_vec size failed!");
       return false;
@@ -304,7 +308,7 @@ bool SpaceToBatchNDTiling(const std::string& op_type, const ge::Operator& opPara
       return false;
     }
 
-    // the parameters order in op proto is: x, block_shape, paddings, y
+    // the parameters order in op proto is: x, block_shape, paddings, y    
     if (!ops::GetConstIntData(opParas, paddings_size_index, pads_vec)) {
       VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get const pads_vec size failed!");
       return false;
