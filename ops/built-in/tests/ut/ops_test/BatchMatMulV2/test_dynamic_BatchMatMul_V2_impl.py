@@ -131,6 +131,12 @@ def test_op_select_format(test_arg):
                       "ori_shape": (7, 4, 5), "ori_format": "ND", "range": ((7, 7), (4, 4), (5, 5))},
                      )
 
+    op_select_format({"shape": (-2,), "dtype": "float16", "format": "ND",
+                      "ori_shape": (-2,), "ori_format": "ND", "range": ((1, 8), (2, 2), (4, 4))},
+                     {"shape": (7, 4, 5), "dtype": "float16", "format": "ND",
+                      "ori_shape": (7, 4, 5), "ori_format": "ND", "range": ((7, 7), (4, 4), (5, 5))},
+                     )
+
 
 def test_op_check_supported_empty_range(test_arg):
     from impl.dynamic.batch_matmul_v2 import op_select_format

@@ -256,11 +256,16 @@ def check_batch_range(input_x, input_y):
     """
     shape_a = input_x.get("ori_shape")
     shape_b = input_y.get("ori_shape")
+    if list(shape_a) == DYNAMIC_FLAG_UNRANK or list(shape_b) == DYNAMIC_FLAG_UNRANK:
+        return True
 
     range_x1 = input_x.get("range")
     range_x2 = input_y.get("range")
-    if len(shape_a) <= ND_LENGTH:
-        warnings.warn("shape_a length is at least 3-dimensional")
+
+    range_x1 = [[v, v] for v in shape_a] if not range_x1 and all(v > 0 for v in shape_a) else range_x1
+    range_x2 = [[v, v] for v in shape_b] if not range_x2 and all(v > 0 for v in shape_b) else range_x2
+    if len(shape_a) < ND_LENGTH:
+        warnings.warn("shape_a length is at least 2-dimensional")
         return False
     if len(shape_b) < ND_LENGTH:
         warnings.warn("shape_b length is at least 2-dimensional")
@@ -269,7 +274,7 @@ def check_batch_range(input_x, input_y):
     batch_range_x1 = range_x1[:(len(shape_a) - ND_LENGTH)]
     batch_range_x2 = range_x2[:(len(shape_b) - ND_LENGTH)]
 
-    if not batch_range_x2:
+    if (not batch_range_x1) or (not batch_range_x2):
         return True
 
     if len(batch_range_x1) != len(batch_range_x2):
