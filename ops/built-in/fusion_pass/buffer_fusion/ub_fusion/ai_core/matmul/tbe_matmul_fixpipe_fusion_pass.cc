@@ -33,6 +33,7 @@ static const string kOpTypeTransData = "TransData";
 static const int kFusionOpNumMax = 10;
 static const int kNumTwo = 2;
 static const string kFusedOpType = "FusedOp";
+static const vector<string> matmulList = {"MatMul", "MatMulV2", "BatchMatMul", "BatchMatMulV2"};
 
 /*
  * @brief: define transdata_cube fusion pattern
@@ -41,7 +42,7 @@ static const string kFusedOpType = "FusedOp";
  *  pattern limit:
  *          1.Transdata,Dequent/Quent/Requent are optional,Cube is required.
  *          2.Cube supports Matmul,Conv2d,Conv_dx,Conv_dw.
- *          3.Matmul only support Matmul
+ *          3.Matmul only support Matmul and BatchMatmul
  *
  * @return BufferFusionPattern: return all valid patterns
  */
@@ -55,7 +56,8 @@ vector<BufferFusionPattern *> TbeMatmulFixpipeFusionPass::DefinePatterns() {
   pattern
       ->AddOpDesc(kTypeTransData1, {kOpTypeTransData}, TBE_PATTERN_NUM_NONE, TBE_PATTERN_NUM_DEFAULT,
                   TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE, true)
-      .AddOpDesc(kPatternCube, {kPatternGEMM}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT,
+      .AddOpDesc(kPatternCube, {kPatternGEMM, OP_PATTERN_BATCH_MATMUL},
+                 TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT,
                  TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
       .AddOpDesc(kPatternQuant, {OP_PATTERN_DEQUANT, OP_PATTERN_QUANT, OP_PATTERN_REQUANT}, TBE_PATTERN_NUM_NONE,
                  TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
@@ -90,7 +92,7 @@ void TbeMatmulFixpipeFusionPass::CheckCubeSupportTransNodes(const vector<ge::Nod
     return;
   }
   ge::NodePtr cube_node = cube_nodes.at(0);
-  bool cube_is_matmul = cube_node->GetType() == "MatMulV2" || cube_node->GetType() == "MatMul";
+  bool cube_is_matmul = find(matmulList.begin(), matmulList.end(), cube_node->GetType()) != matmulList.end();
   if (!cube_is_matmul) {
     fusion_nodes.clear();
     return;
@@ -139,7 +141,9 @@ Status TbeMatmulFixpipeFusionPass::GetFusionNodes(const BufferFusionMapping &map
   FUSION_PASS_CHECK(
               PlatformInfoManager::Instance().GetPlatformInfoWithOutSocVersion(platformInfo, optionalInfo) != SUCCESS,
               OP_LOGW(kFusedOpType.c_str(), "Get platform info failed, not fusion."), return SUCCESS);
-  FUSION_PASS_CHECK(platformInfo.ai_core_spec.cube_vector_split != 1,
+  map<string, vector<string>> intrinsic_map = platformInfo.ai_core_intrinsic_dtype_map;
+  bool support_l0c2out = (intrinsic_map.find("Intrinsic_fix_pipe_l0c2out") != intrinsic_map.end());
+  FUSION_PASS_CHECK(!support_l0c2out,
                     OP_LOGD(kFusedOpType.c_str(), "Fusion pass not support cube vector split."), return SUCCESS);
   fusion_nodes = GetMatchedNodes(mapping);
 
