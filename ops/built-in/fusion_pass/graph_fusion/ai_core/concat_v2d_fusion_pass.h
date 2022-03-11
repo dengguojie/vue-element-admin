@@ -1,5 +1,5 @@
 /**
- * Copyright (c) Huawei Technologies Co., Ltd. 2020-2021. All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2020-2022. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,13 +26,13 @@ namespace fe {
 class Concatv2dFusionPass : public PatternFusionBasePass {
  protected:
   vector<FusionPattern*> DefinePatterns() override;
-  Status Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes) override;
+  Status Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusion_nodes) override;
  private:
   bool CheckConcatValid(const ge::NodePtr& node, const ge::Format format, const ge::GeShape shape,
                         const int32_t dimNum);
   static bool HasUnKnowInputShape(const std::vector<ge::NodePtr>& input_nodes);
-  Status PatternParse(ge::NodePtr concatv2dNode, vector<ge::NodePtr>& fusedInputNodes,
-                      vector<ge::NodePtr>& concatNodes);
+  Status PatternParse(ge::NodePtr concat_v2d_node, vector<ge::NodePtr>& fused_input_nodes,
+                      vector<ge::NodePtr>& concat_nodes);
   const string FUSED_OP_TYPE = "ConcatV2D";
 };
 }  // namespace fe

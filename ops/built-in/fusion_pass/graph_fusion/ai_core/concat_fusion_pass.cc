@@ -91,8 +91,8 @@ Status ConcatFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vecto
   int64_t max_inputs = GetMaxInputsNum(fused_node);
   FUSION_PASS_CHECK(
       !CheckNeedChanged(fused_desc, max_inputs),
-      OP_LOGD(FUSED_OP_TYPE, "The amount of input of ConcatD node is less than %lld.", max_inputs),
-      return NOT_CHANGED);
+      OP_LOGD(FUSED_OP_TYPE, "The amount of input of ConcatD node is less than %lld.", max_inputs);
+      new_nodes.emplace_back(fused_node), return SUCCESS);
 
   // split concatd node
   FUSION_PASS_CHECK(

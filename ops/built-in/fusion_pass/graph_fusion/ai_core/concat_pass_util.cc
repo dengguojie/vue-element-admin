@@ -64,6 +64,18 @@ bool CheckNeedChanged(const ge::OpDescPtr& fused_desc, const int64_t max_inputs)
   return false;
 }
 
+void UpdateInputName(const ge::OpDescPtr& input_desc_ptr) {
+  auto input_count = input_desc_ptr->GetAllInputsSize();
+  map<string, uint32_t> name_index_map;
+  string name_val = "x";
+
+  for (size_t idx = 0; idx < input_count; ++idx) {
+    name_index_map.insert({name_val + std::to_string(idx), idx});
+  }
+
+  input_desc_ptr->UpdateInputName(name_index_map);
+}
+
 Status RemoveInvalidEdge(ge::NodePtr& fused_node, ge::OpDescPtr& fused_desc, const string op_type) {
   int64_t num_n;
   int64_t num_n_del = 0;
@@ -94,9 +106,10 @@ Status RemoveInvalidEdge(ge::NodePtr& fused_node, ge::OpDescPtr& fused_desc, con
                                                    fused_node->GetInDataAnchor(bad_edges[i] - i)) != SUCCESS,
                         VECTOR_FUSION_INNER_ERR_REPORT(op_type, "Remove edge failed."), return FAILED);
 
-      RemoveInputDesc(fused_desc, bad_edges[i] - i);
+      OpDescUtils::ClearInputDesc(fused_desc, bad_edges[i] - i);
       ge::NodeUtils::ClearInDataAnchor(fused_node, fused_node->GetInDataAnchor(bad_edges[i] - i));
     }
+    UpdateInputName(fused_desc);
   }
 
   num_n_new = num_n - num_n_del;
@@ -105,18 +118,6 @@ Status RemoveInvalidEdge(ge::NodePtr& fused_node, ge::OpDescPtr& fused_desc, con
                     return FAILED);
 
   return SUCCESS;
-}
-
-void UpdateInputName(const ge::OpDescPtr& input_desc_ptr) {
-  auto input_count = input_desc_ptr->GetAllInputsSize();
-  map<string, uint32_t> name_index_map;
-  string name_val = "x";
-
-  for (size_t idx = 0; idx < input_count; ++idx) {
-    name_index_map.insert({name_val + std::to_string(idx), idx});
-  }
-
-  input_desc_ptr->UpdateInputName(name_index_map);
 }
 
 Status UnlinkUselessNodes(ge::ComputeGraph& graph, const vector<ge::NodePtr>& base_node_vec, const string& op_type) {
