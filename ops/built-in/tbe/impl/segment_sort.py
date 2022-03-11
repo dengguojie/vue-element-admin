@@ -64,7 +64,7 @@ class SegmentSort:
         self.merge_sort = MergeSort(self.cont, self.data_type, self.ub_size)
         self.ub_pro_num_max, self.ub_sort_num, self.each_loop_index_num = self.merge_sort.get_pro_num_info(index_num)
         self.fp16_index_num = index_num
-        self.fp16_ne_inf = -65504.0
+        self.fp16_ne_inf = -(2**16 - 1)
         self.tail_proposal_num = self.pro_repeat_num
         self.merge_channel = self.merge_sort.merge_channel_num
         self.result_shape = proposal_shape_result

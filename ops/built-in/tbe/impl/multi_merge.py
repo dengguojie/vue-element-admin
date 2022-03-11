@@ -69,7 +69,7 @@ class MultiMerge:
 
         self.tail_proposal_num = self.pro_repeat_num
         self.merge_channel = min(self.merge_sort.merge_channel_num, input_shape[0])
-        self.fp16_ne_inf = -65504.0
+        self.fp16_ne_inf = -(2**16 - 1)
 
         self.result_shape = output_shape
         self.ai_core_use = output_shape[0]
