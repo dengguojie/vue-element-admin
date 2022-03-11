@@ -463,8 +463,9 @@ def layer_norm_x_backprop_v2(input_dy, input_x, input_variance, input_mean,
     first_dim = shape_x[0]
     last_dim = shape_x[-1]
     shape_gamma = input_gamma.get("shape")
+    dy_format = input_dy.get("format")
 
-    if len(shape_dy) == 4:
+    if dy_format == "FRACTAL_NZ" and len(shape_dy) == 4:
         dim_0 = tbe.var("dim_0")
         dim_1 = tbe.var("dim_1")
         dim_2 = tbe.var("dim_2")
@@ -476,12 +477,10 @@ def layer_norm_x_backprop_v2(input_dy, input_x, input_variance, input_mean,
             "mean_num": first_dim * last_dim
         }
     else:
-        dim_0 = tbe.var("dim_0")
-        dim_1 = tbe.var("dim_1")
-        dim_2 = tbe.var("dim_2")
-        dynamic_shape_dy = (dim_0, dim_1, last_dim)
-        dynamic_shape_variance = (dim_0, dim_1, 1)
-        dynamic_shape_gamma = _update_gamma_shape(shape_x, shape_gamma)[0]
+        fuse_dim = tbe.var("fuse_dim")
+        dynamic_shape_dy = (fuse_dim, last_dim)
+        dynamic_shape_variance = (fuse_dim, 1)
+        dynamic_shape_gamma = (last_dim, )
         params = _get_params(dynamic_shape_dy, dynamic_shape_variance, dynamic_shape_gamma)
 
     data_gm = _get_data_gm({"shape_dy": dynamic_shape_dy, "shape_x": dynamic_shape_dy,

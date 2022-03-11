@@ -269,12 +269,19 @@ class LayerNormXBackpropScheduleV2:
         core_num = util.get_core_num()
         ub_factor = self._tensor_space // (self._max_dtype_bytes * last_dim)
 
-        ub_outer, ub_inner = self._schedule[res].split(res.op.axis[1], factor=ub_factor)
-        fuse_axis = self._schedule[res].fuse(res.op.axis[0], ub_outer)
-        block_outer, block_inner = self._schedule[res].split(fuse_axis, nparts=core_num)
+        normalized_dim = int(res.shape[-1])
+        # a threshold for normalized dim, larger than this threshold, need to split else not
+        max_norm = 512
+        if normalized_dim > max_norm:
+            ub_outer, ub_inner = self._schedule[res].split(res.op.axis[-1], factor=max_norm)
+            block_outer, block_inner = self._schedule[res].split(res.op.axis[0], nparts=core_num)
+            self._compute_at_axis = ub_outer
+        else:
+            ub_outer, ub_inner = self._schedule[res].split(res.op.axis[0], factor=ub_factor)
+            block_outer, block_inner = self._schedule[res].split(ub_outer, nparts=core_num)
+            self._compute_at_axis = block_inner
 
         self.sum_x_block_outer = block_outer
-        self._compute_at_axis = block_inner
         self._emit_insn_axis = ub_inner
 
     def _do_storage_bound(self):

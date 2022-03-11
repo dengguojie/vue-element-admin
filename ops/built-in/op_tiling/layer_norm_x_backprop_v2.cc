@@ -71,14 +71,12 @@ bool LayerNormXBackpropV2Tiling(const std::string& op_type, const ge::Operator& 
   auto operator_info = ge::OpDescUtils::GetOpDescFromOperator(op_paras);
   auto input0_desc = operator_info->MutableInputDesc(0);
   std::vector<int64_t> input_shape = input0_desc->MutableShape().GetDims();
-  int32_t fmap_x0 = input_shape[0];
-  int32_t fmap_x1 = input_shape[1];
-  int32_t fmap_muli = input_shape[1] * input_shape[INDEX_TWO];
   int32_t core_num = 0;
   int32_t ub_size = 0;
   int32_t max_dtype = 0;
   int32_t THREE_DIMEN_KEY = 10000;
   int32_t FOUR_DIMEN_KEY = 20000;
+  ge::Format in_format = input0_desc->GetFormat();
 
   bool ret = GetLayerNormXBackpropV2CompileParams(op_info, core_num, ub_size, max_dtype);
   if (!ret) {
@@ -87,15 +85,25 @@ bool LayerNormXBackpropV2Tiling(const std::string& op_type, const ge::Operator& 
   }
   GELOGI("op[%s] GetLayerNormXBackpropV2CompileParams success.", op_type.c_str());
 
-  run_info.AddTilingData(fmap_x0);
-  run_info.AddTilingData(fmap_x1);
-  run_info.AddTilingData(fmap_muli);
-  run_info.SetBlockDim(core_num);
-  if (input_shape.size() > BASE_INPUT_SIZE) {
+  if (in_format == FORMAT_FRACTAL_NZ) {
+    // nz format is not completely supported now
+    int32_t fmap_x0 = input_shape[0];
+    int32_t fmap_x1 = input_shape[1];
+    int32_t fmap_muli = input_shape[1] * input_shape[INDEX_TWO];
+    run_info.AddTilingData(fmap_x0);
+    run_info.AddTilingData(fmap_x1);
+    run_info.AddTilingData(fmap_muli);
     run_info.SetTilingKey(FOUR_DIMEN_KEY);
-  } else if (input_shape.size() == BASE_INPUT_SIZE) {
+  } else {
+    int32_t fuse_dim = 1;
+    for (int32_t i = 0; i < input_shape.size() - 1; i++) {
+      fuse_dim *= input_shape[i];
+    }
+    run_info.AddTilingData(fuse_dim);
     run_info.SetTilingKey(THREE_DIMEN_KEY);
   }
+
+  run_info.SetBlockDim(core_num);
 
   GELOGI("LayerNormXBackpropTilingV2 end.");
   return true;

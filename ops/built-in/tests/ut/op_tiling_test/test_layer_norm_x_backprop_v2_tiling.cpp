@@ -99,7 +99,7 @@ TEST_F(LayerNormXBackpropV2Tiling, LayerNormXBackpropV2_tiling_test_1) {
   RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
   EXPECT_EQ(runInfo.GetBlockDim(), 32);
   EXPECT_EQ(runInfo.GetTilingKey(), 10000);
-  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "13 32 16384 ");
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "416 ");
 }
 
 TEST_F(LayerNormXBackpropV2Tiling, LayerNormXBackpropV2_tiling_test_2) {
