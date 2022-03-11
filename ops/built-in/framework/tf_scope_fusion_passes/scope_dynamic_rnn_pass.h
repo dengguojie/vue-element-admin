@@ -42,6 +42,7 @@ class ScopeDynamicRNNPass : public ScopeBasePass {
   void GenLTCRNNScopePatterns(ScopeFusionPatterns& patterns);
   void GenChinaMobileScopePatterns(ScopeFusionPatterns& patterns);
   void GenQuantScopePatterns(ScopeFusionPatterns& patterns);
+  void GenBiLSTMCRNNScopePatterns(ScopeFusionPatterns& patterns);
   void DynamicRNNPassParserParams(const std::unordered_map<std::string, ge::OperatorPtr>& nodes_map, const std::string &origin_node_name, const std::string &op_type, ge::Operator* inner_node);
   void QuantWeightRollBack(const std::unordered_map<std::string, ge::OperatorPtr>& nodes_map,
                            const std::string &origin_node_name, const std::string &type, ge::Operator* inner_node,
@@ -50,10 +51,14 @@ class ScopeDynamicRNNPass : public ScopeBasePass {
                      float &scale_x, float &scale_b);
   void GenerateFusionResultForQuant(const Scope* scope, FusionScopesResult* fusion_rlt, const std::string& sub_type);
   void GenerateFusionResultForLTCRNN(const Scope* scope, FusionScopesResult* fusion_rlt);
+  void GenerateFusionResultForBiLSTMCRNN(const Scope* scope, FusionScopesResult* fusion_rlt);
   void GenerateFusionResultForMultiLSTM(const Scope* scope, FusionScopesResult* fusion_rlt);
   void GenerateFusionResultForMultiNetease(const Scope* scope, FusionScopesResult* fusion_rlt);
   void ConcatParserParams(const std::string &origin_node_name, const std::string &op_type, ge::Operator* inner_node, FusionScopesResult *fusion_rlt);
+  void ParserParamByName(ge::OperatorPtr node_def, ge::Operator *inner_node, const std::vector<string> &ParamsName);
   std::string GetNodeNameFromScope(const std::unordered_map<std::string, ge::OperatorPtr>& nodes_map, const std::string &sub_name);
+  std::string GetWeightNameFromScope(const std::unordered_map<std::string, ge::OperatorPtr>& nodes_map,
+                                     const std::string &sub_name, const std::string &left_name);
 };
 }  // namespace ge
 
