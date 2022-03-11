@@ -1,11 +1,27 @@
-#include <iostream>
-#include <vector>
+/*
+ * Copyright (C) 2022. Huawei Technologies Co., Ltd. All rights reserved.
 
-#include <gtest/gtest.h>
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the Apache License Version 2.0.You may not use this file except in compliance with the License.
+
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Apache License for more details at
+ * http://www.apache.org/licenses/LICENSE-2.0
+ */
+#include "all_ops.h"
+#include <vector>
+#include <iostream>
 #define private public
+#include <gtest/gtest.h>
+#include "common/utils/ut_op_util.h"
 #include "register/op_tiling_registry.h"
 
+
+using namespace ge;
 using namespace std;
+using namespace ut_util;
 
 class SparseApplyFtrlDTiling : public testing::Test {
  protected:
@@ -18,7 +34,7 @@ class SparseApplyFtrlDTiling : public testing::Test {
   }
 };
 
-static string to_string(const stringstream &tiling_data) {
+static string to_string(const stringstream& tiling_data) {
   auto data = tiling_data.str();
   string result;
   int32_t tmp = 0;
@@ -31,263 +47,83 @@ static string to_string(const stringstream &tiling_data) {
 }
 
 TEST_F(SparseApplyFtrlDTiling, sparseapplyftrld_tiling_0) {
-  using namespace optiling;
-  string op_name = "SparseApplyFtrlD";
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("SparseApplyFtrlD");
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
-  string compileInfo = "{\"vars\": {\"core_num\": 32, \"ub_size\": 131072, \"indices_dsize\": 4, \"ub_take_parts\": 1, \"ub_block_num\":4, \"cache_threshold_col\":7}}";
+  string compileInfo =
+      "{\"vars\": {\"core_num\": 32, \"ub_size\": 131072, \"indices_dsize\": 4, \"ub_take_parts\": 1, "
+      "\"ub_block_num\":4, \"cache_threshold_col\":7}}";
 
-  vector<int64_t> input1{12, 16, 32};
-  vector<int64_t> input2{12, 16, 32};
-  vector<int64_t> input3{12, 16, 32};
-  vector<int64_t> input4{12, 16, 32};
-  vector<int64_t> input5{12,};
-  vector<int64_t> output1{12, 16, 32};
-  vector<int64_t> output2{12, 16, 32};
-  vector<int64_t> output3{12, 16, 32};
+  auto opParas = op::SparseApplyFtrlD("SparseApplyFtrlD");
+  vector<vector<int64_t>> input_shapes = {{12, 16, 32}, {12, 16, 32}, {12, 16, 32}, {12, 16, 32}, {12}};
+  vector<vector<int64_t>> output_shapes = {{12, 16, 32}, {12, 16, 32}, {12, 16, 32}};
+  vector<ge::DataType> dtypes = {ge::DT_FLOAT, ge::DT_FLOAT, ge::DT_FLOAT, ge::DT_FLOAT, ge::DT_INT32};
 
-  TeOpTensor tensor_input1;
-  tensor_input1.shape = input1;
-  tensor_input1.dtype = "float32";
-  TeOpTensor tensor_input2;
-  tensor_input2.shape = input2;
-  tensor_input2.dtype = "float32";
-  TeOpTensor tensor_input3;
-  tensor_input3.shape = input3;
-  tensor_input3.dtype = "float32";
-  TeOpTensor tensor_input4;
-  tensor_input4.shape = input4;
-  tensor_input4.dtype = "float32";
-  TeOpTensor tensor_input5;
-  tensor_input5.shape = input5;
-  tensor_input5.dtype = "int32";
-  TeOpTensor tensor_output1;
-  tensor_output1.shape = output1;
-  tensor_output1.dtype = "float32";
-  TeOpTensor tensor_output2;
-  tensor_output2.shape = output2;
-  tensor_output2.dtype = "float32";
-  TeOpTensor tensor_output3;
-  tensor_output3.shape = output3;
-  tensor_output3.dtype = "float32";
+  TENSOR_INPUT_WITH_SHAPE(opParas, var, input_shapes[0], dtypes[0], ge::FORMAT_NHWC, {});
+  TENSOR_INPUT_WITH_SHAPE(opParas, accum, input_shapes[1], dtypes[1], ge::FORMAT_NHWC, {});
+  TENSOR_INPUT_WITH_SHAPE(opParas, linear, input_shapes[2], dtypes[2], ge::FORMAT_NHWC, {});
+  TENSOR_INPUT_WITH_SHAPE(opParas, grad, input_shapes[3], dtypes[3], ge::FORMAT_NHWC, {});
+  TENSOR_INPUT_WITH_SHAPE(opParas, indices, input_shapes[4], dtypes[4], ge::FORMAT_NHWC, {});
 
-  TeOpTensorArg tensor_arg1;
-  tensor_arg1.tensor.push_back(tensor_input1);
-  tensor_arg1.arg_type = TensorArgType::TA_SINGLE;
-  TeOpTensorArg tensor_arg2;
-  tensor_arg2.tensor.push_back(tensor_input2);
-  tensor_arg2.arg_type = TensorArgType::TA_SINGLE;
-  TeOpTensorArg tensor_arg3;
-  tensor_arg3.tensor.push_back(tensor_input3);
-  tensor_arg3.arg_type = TensorArgType::TA_SINGLE;
-  TeOpTensorArg tensor_arg4;
-  tensor_arg4.tensor.push_back(tensor_input4);
-  tensor_arg4.arg_type = TensorArgType::TA_SINGLE;
-  TeOpTensorArg tensor_arg5;
-  tensor_arg5.tensor.push_back(tensor_input5);
-  tensor_arg5.arg_type = TensorArgType::TA_SINGLE;
-  TeOpTensorArg tensor_arg_output1;
-  tensor_arg_output1.tensor.push_back(tensor_output1);
-  tensor_arg_output1.arg_type = TensorArgType::TA_SINGLE;
-  TeOpTensorArg tensor_arg_output2;
-  tensor_arg_output2.tensor.push_back(tensor_output2);
-  tensor_arg_output2.arg_type = TensorArgType::TA_SINGLE;
-  TeOpTensorArg tensor_arg_output3;
-  tensor_arg_output3.tensor.push_back(tensor_output3);
-  tensor_arg_output3.arg_type = TensorArgType::TA_SINGLE;
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, var, output_shapes[0], ge::DT_FLOAT, ge::FORMAT_NHWC, {});
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, accum, output_shapes[1], ge::DT_FLOAT, ge::FORMAT_NHWC, {});
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, linear, output_shapes[2], ge::DT_FLOAT, ge::FORMAT_NHWC, {});
 
-  TeOpParas opParas;
-  opParas.inputs.push_back(tensor_arg1);
-  opParas.inputs.push_back(tensor_arg2);
-  opParas.inputs.push_back(tensor_arg3);
-  opParas.inputs.push_back(tensor_arg4);
-  opParas.inputs.push_back(tensor_arg5);
-  opParas.outputs.push_back(tensor_arg_output1);
-  opParas.outputs.push_back(tensor_arg_output2);
-  opParas.outputs.push_back(tensor_arg_output3);
-  opParas.op_type = op_name;
-  OpCompileInfo op_compile_info;
-  op_compile_info.str = compileInfo;
-  op_compile_info.key = "aa";
-  OpRunInfo runInfo;
-
-  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
-
-  EXPECT_EQ(to_string(runInfo.tiling_data), "1 12 0 1 0 0 1 512 12 0 32 0 0 0 0 0 0 0 ");
+  optiling::utils::OpRunInfo runInfo;
+  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "1 12 0 1 0 0 1 512 12 0 32 0 0 0 0 0 0 0 ");
 }
 TEST_F(SparseApplyFtrlDTiling, sparseapplyftrld_tiling_1) {
-  using namespace optiling;
-  string op_name = "SparseApplyFtrlD";
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("SparseApplyFtrlD");
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
-  string compileInfo = "{\"vars\": {\"core_num\": 32, \"ub_size\": 131072, \"indices_dsize\": 4, \"ub_take_parts\": 1, \"ub_block_num\":4, \"cache_threshold_col\":7}}";
+  string compileInfo =
+      "{\"vars\": {\"core_num\": 32, \"ub_size\": 131072, \"indices_dsize\": 4, \"ub_take_parts\": 1, "
+      "\"ub_block_num\":4, \"cache_threshold_col\":7}}";
 
-  vector<int64_t> input1{12, 2, 3};
-  vector<int64_t> input2{12, 2, 3};
-  vector<int64_t> input3{12, 2, 3};
-  vector<int64_t> input4{12, 2, 3};
-  vector<int64_t> input5{12,};
-  vector<int64_t> output1{12, 2, 3};
-  vector<int64_t> output2{12, 2, 3};
-  vector<int64_t> output3{12, 2, 3};
+  auto opParas = op::SparseApplyFtrlD("SparseApplyFtrlD");
+  vector<vector<int64_t>> input_shapes = {{12, 2, 3}, {12, 2, 3}, {12, 2, 3}, {12, 2, 3}, {12}};
+  vector<vector<int64_t>> output_shapes = {{12, 2, 3}, {12, 2, 3}, {12, 2, 3}};
+  vector<ge::DataType> dtypes = {ge::DT_FLOAT, ge::DT_FLOAT, ge::DT_FLOAT, ge::DT_FLOAT, ge::DT_INT32};
 
-  TeOpTensor tensor_input1;
-  tensor_input1.shape = input1;
-  tensor_input1.dtype = "float32";
-  TeOpTensor tensor_input2;
-  tensor_input2.shape = input2;
-  tensor_input2.dtype = "float32";
-  TeOpTensor tensor_input3;
-  tensor_input3.shape = input3;
-  tensor_input3.dtype = "float32";
-  TeOpTensor tensor_input4;
-  tensor_input4.shape = input4;
-  tensor_input4.dtype = "float32";
-  TeOpTensor tensor_input5;
-  tensor_input5.shape = input5;
-  tensor_input5.dtype = "int32";
-  TeOpTensor tensor_output1;
-  tensor_output1.shape = output1;
-  tensor_output1.dtype = "float32";
-  TeOpTensor tensor_output2;
-  tensor_output2.shape = output2;
-  tensor_output2.dtype = "float32";
-  TeOpTensor tensor_output3;
-  tensor_output3.shape = output3;
-  tensor_output3.dtype = "float32";
+  TENSOR_INPUT_WITH_SHAPE(opParas, var, input_shapes[0], dtypes[0], ge::FORMAT_NHWC, {});
+  TENSOR_INPUT_WITH_SHAPE(opParas, accum, input_shapes[1], dtypes[1], ge::FORMAT_NHWC, {});
+  TENSOR_INPUT_WITH_SHAPE(opParas, linear, input_shapes[2], dtypes[2], ge::FORMAT_NHWC, {});
+  TENSOR_INPUT_WITH_SHAPE(opParas, grad, input_shapes[3], dtypes[3], ge::FORMAT_NHWC, {});
+  TENSOR_INPUT_WITH_SHAPE(opParas, indices, input_shapes[4], dtypes[4], ge::FORMAT_NHWC, {});
 
-  TeOpTensorArg tensor_arg1;
-  tensor_arg1.tensor.push_back(tensor_input1);
-  tensor_arg1.arg_type = TensorArgType::TA_SINGLE;
-  TeOpTensorArg tensor_arg2;
-  tensor_arg2.tensor.push_back(tensor_input2);
-  tensor_arg2.arg_type = TensorArgType::TA_SINGLE;
-  TeOpTensorArg tensor_arg3;
-  tensor_arg3.tensor.push_back(tensor_input3);
-  tensor_arg3.arg_type = TensorArgType::TA_SINGLE;
-  TeOpTensorArg tensor_arg4;
-  tensor_arg4.tensor.push_back(tensor_input4);
-  tensor_arg4.arg_type = TensorArgType::TA_SINGLE;
-  TeOpTensorArg tensor_arg5;
-  tensor_arg5.tensor.push_back(tensor_input5);
-  tensor_arg5.arg_type = TensorArgType::TA_SINGLE;
-  TeOpTensorArg tensor_arg_output1;
-  tensor_arg_output1.tensor.push_back(tensor_output1);
-  tensor_arg_output1.arg_type = TensorArgType::TA_SINGLE;
-  TeOpTensorArg tensor_arg_output2;
-  tensor_arg_output2.tensor.push_back(tensor_output2);
-  tensor_arg_output2.arg_type = TensorArgType::TA_SINGLE;
-  TeOpTensorArg tensor_arg_output3;
-  tensor_arg_output3.tensor.push_back(tensor_output3);
-  tensor_arg_output3.arg_type = TensorArgType::TA_SINGLE;
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, var, output_shapes[0], ge::DT_FLOAT, ge::FORMAT_NHWC, {});
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, accum, output_shapes[1], ge::DT_FLOAT, ge::FORMAT_NHWC, {});
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, linear, output_shapes[2], ge::DT_FLOAT, ge::FORMAT_NHWC, {});
 
-  TeOpParas opParas;
-  opParas.inputs.push_back(tensor_arg1);
-  opParas.inputs.push_back(tensor_arg2);
-  opParas.inputs.push_back(tensor_arg3);
-  opParas.inputs.push_back(tensor_arg4);
-  opParas.inputs.push_back(tensor_arg5);
-  opParas.outputs.push_back(tensor_arg_output1);
-  opParas.outputs.push_back(tensor_arg_output2);
-  opParas.outputs.push_back(tensor_arg_output3);
-  opParas.op_type = op_name;
-  OpCompileInfo op_compile_info;
-  op_compile_info.str = compileInfo;
-  op_compile_info.key = "bb";
-  OpRunInfo runInfo;
-
-  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
-
-  EXPECT_EQ(to_string(runInfo.tiling_data), "2 1 0 12 0 0 12 6 12 12 12 0 0 0 0 0 0 0 ");
+  optiling::utils::OpRunInfo runInfo;
+  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "2 1 0 12 0 0 12 6 12 12 12 0 0 0 0 0 0 0 ");
 }
 TEST_F(SparseApplyFtrlDTiling, sparseapplyftrld_tiling_2) {
-  using namespace optiling;
-  string op_name = "SparseApplyFtrlD";
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("SparseApplyFtrlD");
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
-  string compileInfo = "{\"vars\": {\"core_num\": 32, \"ub_size\": 131072, \"indices_dsize\": 4, \"ub_take_parts\": 1, \"ub_block_num\":4, \"cache_threshold_col\":7}}";
+  string compileInfo =
+      "{\"vars\": {\"core_num\": 32, \"ub_size\": 131072, \"indices_dsize\": 4, \"ub_take_parts\": 1, "
+      "\"ub_block_num\":4, \"cache_threshold_col\":7}}";
 
-  vector<int64_t> input1{12, 32, 32};
-  vector<int64_t> input2{12, 32, 32};
-  vector<int64_t> input3{12, 32, 32};
-  vector<int64_t> input4{12, 32, 32};
-  vector<int64_t> input5{12,};
-  vector<int64_t> output1{12, 32, 32};
-  vector<int64_t> output2{12, 32, 32};
-  vector<int64_t> output3{12, 32, 32};
+  auto opParas = op::SparseApplyFtrlD("SparseApplyFtrlD");
+  vector<vector<int64_t>> input_shapes = {{12, 32, 32}, {12, 32, 32}, {12, 32, 32}, {12, 32, 32}, {12}};
+  vector<vector<int64_t>> output_shapes = {{12, 32, 32}, {12, 32, 32}, {12, 32, 32}};
+  vector<ge::DataType> dtypes = {ge::DT_FLOAT, ge::DT_FLOAT, ge::DT_FLOAT, ge::DT_FLOAT, ge::DT_INT32};
 
-  TeOpTensor tensor_input1;
-  tensor_input1.shape = input1;
-  tensor_input1.dtype = "float32";
-  TeOpTensor tensor_input2;
-  tensor_input2.shape = input2;
-  tensor_input2.dtype = "float32";
-  TeOpTensor tensor_input3;
-  tensor_input3.shape = input3;
-  tensor_input3.dtype = "float32";
-  TeOpTensor tensor_input4;
-  tensor_input4.shape = input4;
-  tensor_input4.dtype = "float32";
-  TeOpTensor tensor_input5;
-  tensor_input5.shape = input5;
-  tensor_input5.dtype = "int32";
-  TeOpTensor tensor_output1;
-  tensor_output1.shape = output1;
-  tensor_output1.dtype = "float32";
-  TeOpTensor tensor_output2;
-  tensor_output2.shape = output2;
-  tensor_output2.dtype = "float32";
-  TeOpTensor tensor_output3;
-  tensor_output3.shape = output3;
-  tensor_output3.dtype = "float32";
+  TENSOR_INPUT_WITH_SHAPE(opParas, var, input_shapes[0], dtypes[0], ge::FORMAT_NHWC, {});
+  TENSOR_INPUT_WITH_SHAPE(opParas, accum, input_shapes[1], dtypes[1], ge::FORMAT_NHWC, {});
+  TENSOR_INPUT_WITH_SHAPE(opParas, linear, input_shapes[2], dtypes[2], ge::FORMAT_NHWC, {});
+  TENSOR_INPUT_WITH_SHAPE(opParas, grad, input_shapes[3], dtypes[3], ge::FORMAT_NHWC, {});
+  TENSOR_INPUT_WITH_SHAPE(opParas, indices, input_shapes[4], dtypes[4], ge::FORMAT_NHWC, {});
 
-  TeOpTensorArg tensor_arg1;
-  tensor_arg1.tensor.push_back(tensor_input1);
-  tensor_arg1.arg_type = TensorArgType::TA_SINGLE;
-  TeOpTensorArg tensor_arg2;
-  tensor_arg2.tensor.push_back(tensor_input2);
-  tensor_arg2.arg_type = TensorArgType::TA_SINGLE;
-  TeOpTensorArg tensor_arg3;
-  tensor_arg3.tensor.push_back(tensor_input3);
-  tensor_arg3.arg_type = TensorArgType::TA_SINGLE;
-  TeOpTensorArg tensor_arg4;
-  tensor_arg4.tensor.push_back(tensor_input4);
-  tensor_arg4.arg_type = TensorArgType::TA_SINGLE;
-  TeOpTensorArg tensor_arg5;
-  tensor_arg5.tensor.push_back(tensor_input5);
-  tensor_arg5.arg_type = TensorArgType::TA_SINGLE;
-  TeOpTensorArg tensor_arg_output1;
-  tensor_arg_output1.tensor.push_back(tensor_output1);
-  tensor_arg_output1.arg_type = TensorArgType::TA_SINGLE;
-  TeOpTensorArg tensor_arg_output2;
-  tensor_arg_output2.tensor.push_back(tensor_output2);
-  tensor_arg_output2.arg_type = TensorArgType::TA_SINGLE;
-  TeOpTensorArg tensor_arg_output3;
-  tensor_arg_output3.tensor.push_back(tensor_output3);
-  tensor_arg_output3.arg_type = TensorArgType::TA_SINGLE;
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, var, output_shapes[0], ge::DT_FLOAT, ge::FORMAT_NHWC, {});
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, accum, output_shapes[1], ge::DT_FLOAT, ge::FORMAT_NHWC, {});
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, linear, output_shapes[2], ge::DT_FLOAT, ge::FORMAT_NHWC, {});
 
-  TeOpParas opParas;
-  opParas.inputs.push_back(tensor_arg1);
-  opParas.inputs.push_back(tensor_arg2);
-  opParas.inputs.push_back(tensor_arg3);
-  opParas.inputs.push_back(tensor_arg4);
-  opParas.inputs.push_back(tensor_arg5);
-  opParas.outputs.push_back(tensor_arg_output1);
-  opParas.outputs.push_back(tensor_arg_output2);
-  opParas.outputs.push_back(tensor_arg_output3);
-  opParas.op_type = op_name;
-  OpCompileInfo op_compile_info;
-  op_compile_info.str = compileInfo;
-  op_compile_info.key = "cc";
-  OpRunInfo runInfo;
-
-  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
-
-  EXPECT_EQ(to_string(runInfo.tiling_data), "3 24 0 12 0 0 12 1024 12 0 32 2 512 512 0 512 0 512 ");
+  optiling::utils::OpRunInfo runInfo;
+  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "3 24 0 12 0 0 12 1024 12 0 32 2 512 512 0 512 0 512 ");
 }
-
-
-
