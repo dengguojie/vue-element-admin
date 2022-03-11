@@ -574,7 +574,7 @@ class MaxpoolGrad:
             self.tik_instance.vector_dup(mask_value, src[src_addr],
                                          dup_reg, self.remain_repeate_time,
                                          1, 8)
-        if self.remain_ele > 0:
+        with self.tik_instance.if_scope(self.remain_ele > 0):
             src_addr.set_as(src_start + self.repeate_max_time * Constant.MAX_VECTOR_REPEATE_TIME * mask_value +
                             self.remain_repeate_time * mask_value)
             self.tik_instance.vector_dup(self.remain_ele, src[src_addr], dup_reg, 1, 1, 8)

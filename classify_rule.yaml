@@ -2801,6 +2801,7 @@ unkown:
       - ops/built-in/tbe/impl/dynamic/unsorted_segment_min.py
       - ops/built-in/tbe/impl/dynamic/apply_momentum_d.py
       - ops/built-in/tbe/impl/dynamic/tanh_grad.py
+      - ops/built-in/tbe/impl/dynamic/max_pool_grad_with_argmaxv2.py
       - ops/built-in/tbe/impl/dynamic/max_pool_grad_with_argmax_v2_resnet50.py
       - ops/built-in/tbe/impl/dynamic/mod.py
       - ops/built-in/tbe/impl/dynamic/atan.py
