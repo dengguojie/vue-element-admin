@@ -601,6 +601,9 @@ def tik_func_vconv(tik_instance, dst_ub, src_ub, do_len, mode="", mini_mid_ub=No
     elif src_dtype in ("int32",) and dst_dtype in ("float16",):
         do_vconv(4, 8, 1.0)
 
+    elif src_dtype in ("int16",) and dst_dtype in ("float16",):
+        do_vconv(4, 4)
+
     elif src_dtype in ("float16",) and dst_dtype in ("float32",):
         do_vconv(8, 4)
 

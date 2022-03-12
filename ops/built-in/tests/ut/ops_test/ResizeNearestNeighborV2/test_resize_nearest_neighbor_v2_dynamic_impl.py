@@ -48,7 +48,7 @@ case2 = {"params": [{"shape": (-1, -1, -1, -1, 16), "dtype": "float32", "format"
                      "ori_shape": (34, 2, 1, 1, 16), "ori_format": "NCHW",
                      "range": [(1, None), (1, None), (1, None), (1, None), (1, None)]},
                     False, False],
-         "case_name": "dynamic_resize_nearest_neighbor_v2_d_1",
+         "case_name": "dynamic_resize_nearest_neighbor_v2_d_2",
          "expect": "success",
          "format_expect": [],
          "support_expect": True}
@@ -62,7 +62,78 @@ case3 = {"params": [{"shape": (-1, -1, -1, -1, 16), "dtype": "float16", "format"
                      "ori_shape": (34, 2, 1, 1, 16), "ori_format": "NCHW",
                      "range": [(1, None), (1, None), (1, None), (1, None), (1, None)]},
                     False, False],
-         "case_name": "dynamic_resize_nearest_neighbor_v2_d_1",
+         "case_name": "dynamic_resize_nearest_neighbor_v2_d_3",
+         "expect": "success",
+         "format_expect": [],
+         "support_expect": True}
+
+case4 = {"params": [{"shape": (-1, -1, -1, -1, 16), "dtype": "float16", "format": "NCHW",
+                     "ori_shape": (1, 1, 3, 2, 16), "ori_format": "NCHW",
+                     "range": [(1, None), (1, None), (1, None), (1, None), (1, None)]},
+                    {"shape": (-1,), "dtype": "int32", "format": "NCHW",
+                     "ori_shape": (2,), "ori_format": "NCHW", "range": [(1, None)]},
+                    {"shape": (-1, -1, -1, -1, 16), "dtype": "float16", "format": "NCHW",
+                     "ori_shape": (1, 1, 1, 2, 16), "ori_format": "NCHW",
+                     "range": [(1, None), (1, None), (1, None), (1, None), (1, None)]},
+                    False, False],
+         "case_name": "dynamic_resize_nearest_neighbor_v2_d_4",
+         "expect": "success",
+         "format_expect": [],
+         "support_expect": True}
+
+case5 = {"params": [{"shape": (-1, -1, -1, -1, 16), "dtype": "float16", "format": "NCHW",
+                     "ori_shape": (1, 1, 3, 1, 16), "ori_format": "NCHW",
+                     "range": [(1, None), (1, None), (1, None), (1, None), (1, None)]},
+                    {"shape": (-1,), "dtype": "int32", "format": "NCHW",
+                     "ori_shape": (2,), "ori_format": "NCHW", "range": [(1, None)]},
+                    {"shape": (-1, -1, -1, -1, 16), "dtype": "float16", "format": "NCHW",
+                     "ori_shape": (1, 1, 2, 1, 16), "ori_format": "NCHW",
+                     "range": [(1, None), (1, None), (1, None), (1, None), (1, None)]},
+                    False, False],
+         "case_name": "dynamic_resize_nearest_neighbor_v2_d_5",
+         "expect": "success",
+         "format_expect": [],
+         "support_expect": True}
+
+case6 = {"params": [{"shape": (-1, -1, -1, -1, 16), "dtype": "float16", "format": "NCHW",
+                     "ori_shape": (1, 1, 16, 4, 16), "ori_format": "NCHW",
+                     "range": [(1, None), (1, None), (1, None), (1, None), (1, None)]},
+                    {"shape": (-1,), "dtype": "int32", "format": "NCHW",
+                     "ori_shape": (2,), "ori_format": "NCHW", "range": [(1, None)]},
+                    {"shape": (-1, -1, -1, -1, 16), "dtype": "float16", "format": "NCHW",
+                     "ori_shape": (1, 1, 15, 2, 16), "ori_format": "NCHW",
+                     "range": [(1, None), (1, None), (1, None), (1, None), (1, None)]},
+                    False, False],
+         "case_name": "dynamic_resize_nearest_neighbor_v2_d_6",
+         "expect": "success",
+         "format_expect": [],
+         "support_expect": True}
+
+case7 = {"params": [{"shape": (-1, -1, -1, -1, 16), "dtype": "float16", "format": "NCHW",
+                     "ori_shape": (16, 16, 16, 16, 16), "ori_format": "NCHW",
+                     "range": [(1, None), (1, None), (1, None), (1, None), (1, None)]},
+                    {"shape": (-1,), "dtype": "int32", "format": "NCHW",
+                     "ori_shape": (2,), "ori_format": "NCHW", "range": [(1, None)]},
+                    {"shape": (-1, -1, -1, -1, 16), "dtype": "float16", "format": "NCHW",
+                     "ori_shape": (16, 16, 16, 31, 16), "ori_format": "NCHW",
+                     "range": [(1, None), (1, None), (1, None), (1, None), (1, None)]},
+                    False, False],
+         "case_name": "dynamic_resize_nearest_neighbor_v2_d_7",
+         "expect": "success",
+         "format_expect": [],
+         "support_expect": True}
+
+
+case8 = {"params": [{"shape": (-1, -1, -1, -1, 16), "dtype": "float16", "format": "NCHW",
+                     "ori_shape": (16, 16, 16, 16, 16), "ori_format": "NCHW",
+                     "range": [(1, None), (1, None), (1, None), (1, None), (1, None)]},
+                    {"shape": (-1,), "dtype": "int32", "format": "NCHW",
+                     "ori_shape": (2,), "ori_format": "NCHW", "range": [(1, None)]},
+                    {"shape": (-1, -1, -1, -1, 16), "dtype": "float16", "format": "NCHW",
+                     "ori_shape": (16, 16, 32, 8, 16), "ori_format": "NCHW",
+                     "range": [(1, None), (1, None), (1, None), (1, None), (1, None)]},
+                    False, False],
+         "case_name": "dynamic_resize_nearest_neighbor_v2_d_8",
          "expect": "success",
          "format_expect": [],
          "support_expect": True}
@@ -70,6 +141,29 @@ case3 = {"params": [{"shape": (-1, -1, -1, -1, 16), "dtype": "float16", "format"
 ut_case.add_case("all", case1)
 ut_case.add_case("all", case2)
 ut_case.add_case("all", case3)
+ut_case.add_case("all", case4)
+ut_case.add_case("all", case5)
+ut_case.add_case("all", case6)
+ut_case.add_case("all", case7)
+ut_case.add_case("all", case8)
+
+# 'pylint: disable=unused-argument
+def test_op_check_supported_1(test_arg):
+    from impl.dynamic.resize_nearest_neighbor_v2 import check_supported
+    images = {"shape": (-1, -1, -1, -1, 16), "dtype": "float32", "format": "NC1HWC0",
+              "ori_shape": (34, 2, 1, 1, 16), "ori_format": "NC1HWC0",
+              "range": [(1, None), (1, None), (1, None), (1, None), (1, None)]}
+    size = {'ori_shape': (2,), 'shape': (2,), 'ori_format': 'NHWC', 'format': 'NHWC',
+            'dtype': 'int32', "const_value": (10, 10)}
+    y = {"shape": (-1, -1, 10, 10, 16), "dtype": "float32", "format": "NC1HWC0",
+         "ori_shape": (34, 2, 10, 10, 16), "ori_format": "NC1HWC0",
+         "range": [(1, None), (1, None), (10, 10), (10, 10), (1, None)]}
+
+    if not check_supported(images, size, y, align_corners=False, half_pixel_centers=False,
+                       kernel_name="resize_nearest_neighbor_v2"):
+        raise Exception("Failed to call check_supported in resize_nearest_neighbor_v2.")
+
+ut_case.add_cust_test_func(test_func=test_op_check_supported_1)
 
 
 def calc_expect_func(images, size, y, align_corners, half_pixel_center):

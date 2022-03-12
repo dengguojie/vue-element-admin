@@ -17,6 +17,7 @@ resize_nearest_neighbor_v2.py
 """
 from abc import ABCMeta, abstractmethod
 from functools import partial
+from impl import common_util
 from impl.util import util_tik_comm_func
 from impl.util.util_tik_comm_func import OpBase
 from impl.util.platform_adapter import tik
@@ -45,6 +46,8 @@ class Constant:
     BURST_STRIDE_MAX = 65535
     # whether exceed BURST_STRIDE_MAX
     EXCEED_BURST_STRIDE = 1
+    # max h/w value in compute dtype of float16
+    MAX_H_W = 2048
 
 
 # 'pylint: disable=too-many-instance-attributes,too-many-arguments,unused-argument
@@ -102,12 +105,20 @@ class ResizeNearestNeighbor(OpBase):
         self.images_gm, self.size_gm = self.input_gm_list
         self.out_gm = self.output_gm_list[0]
 
-        self.is_support_vdiv = tbe_platform.api_check_support("tik.vdiv", "float32")
+        self.compute_dtype = "float32" if tbe_platform.api_check_support("tik.vadds", "float32") else "float16"
+        self.coordinate_dtype = "int32"
+        if self.compute_dtype == "float16" and tbe_platform.api_check_support("tik.vconv", "s162f16"):
+            self.coordinate_dtype = "int16"
+        self.tiling_dtype = self.coordinate_dtype if self.compute_dtype == "float16" else "int64"
+        self.compute_block_num = 32 // common_util.get_data_size(self.compute_dtype)
+        self.block_strides = 64 // self.compute_block_num
+
+        self.is_support_vdiv = tbe_platform.api_check_support("tik.vdiv", self.compute_dtype)
         self.is_support_vgatherb = tbe_platform.api_check_support("tik.vgatherb")
 
         # will be set as `(IN_X / OUT_X)` or `((IN_X - 1)/(OUT_X - 1))` when needed
-        self.h_rec_scale_fp32 = self.tik_instance.Scalar("float32", name="h_rec_scale_fp32")
-        self.w_rec_scale_fp32 = self.tik_instance.Scalar("float32", name="w_rec_scale_fp32")
+        self.h_rec_scale_fpx = self.tik_instance.Scalar(self.compute_dtype, name="h_rec_scale_fpx")
+        self.w_rec_scale_fpx = self.tik_instance.Scalar(self.compute_dtype, name="w_rec_scale_fpx")
         # will be set as `(OUT_X // IN_X)` w/o considering align_corners
         self.h_scale = self.tik_instance.Scalar("int64", name="h_scale")
         self.w_scale = self.tik_instance.Scalar("int64", name="w_scale")
@@ -283,7 +294,7 @@ class ResizeNearestNeighbor(OpBase):
 
     def _calculate_scale(self):
         """ calculate scale by input h/w and output h/w """
-        def _do_calculate(input_value, output_value, scale_fp32):
+        def _do_calculate(input_value, output_value, scale_fpx):
             with self.tik_instance.new_stmt_scope():
                 if self.is_support_vgatherb:
                     # for A920 precision fall down issue. Fix later
@@ -301,42 +312,42 @@ class ResizeNearestNeighbor(OpBase):
                     with self.tik_instance.if_scope(tik.all(self.align_corners, output_value > 1)):
                         input_fp32.set_as(input_fp32 - 1.0)
                         output_fp32.set_as(output_fp32 - 1.0)
-                    scale_fp32.set_as(input_fp32 / output_fp32)
+                    scale_fpx.set_as(input_fp32 / output_fp32)
                 else:
-                    tmp_int32_tensor = self.tik_instance.Tensor("int32", (Constant.FP32_PER_BLOCK * 2,),
-                                                                name="tmp_int32_tensor", scope=tik.scope_ubuf)
-                    tmp_fp32_tensor = self.tik_instance.Tensor("float32", (Constant.FP32_PER_BLOCK * 3,),
-                                                            name="tmp_fp32_tensor", scope=tik.scope_ubuf)
+                    tmp_intx_tensor = self.tik_instance.Tensor(self.coordinate_dtype, (self.compute_block_num * 2,),
+                                                               name="tmp_intx_tensor", scope=tik.scope_ubuf)
+                    tmp_fpx_tensor = self.tik_instance.Tensor(self.compute_dtype, (self.compute_block_num * 3,),
+                                                              name="tmp_fpx_tensor", scope=tik.scope_ubuf)
 
-                    tmp_int32_tensor[0].set_as(input_value)
-                    tmp_int32_tensor[Constant.FP32_PER_BLOCK].set_as(output_value)
-                    util_tik_comm_func.tik_func_vconv(self.tik_instance, tmp_fp32_tensor[0:], tmp_int32_tensor[0:], 1)
-                    util_tik_comm_func.tik_func_vconv(self.tik_instance, tmp_fp32_tensor[Constant.FP32_PER_BLOCK:],
-                                                      tmp_int32_tensor[Constant.FP32_PER_BLOCK:], 1)
+                    tmp_intx_tensor[0].set_as(input_value)
+                    tmp_intx_tensor[self.compute_block_num].set_as(output_value)
+                    util_tik_comm_func.tik_func_vconv(self.tik_instance, tmp_fpx_tensor[0:], tmp_intx_tensor[0:], 1)
+                    util_tik_comm_func.tik_func_vconv(self.tik_instance, tmp_fpx_tensor[self.compute_block_num:],
+                                                      tmp_intx_tensor[self.compute_block_num:], 1)
 
                     with self.tik_instance.if_scope(tik.all(self.align_corners, output_value > 1)):
-                        self.tik_instance.vadds(1, tmp_fp32_tensor[0:], tmp_fp32_tensor[0:], -1.0, 2, 1, 1, 1, 1)
+                        self.tik_instance.vadds(1, tmp_fpx_tensor[0:], tmp_fpx_tensor[0:], -1.0, 2, 1, 1, 1, 1)
 
                     if self.is_support_vdiv:
-                        self.tik_instance.vdiv(1, tmp_fp32_tensor[0:], tmp_fp32_tensor[0:],
-                                               tmp_fp32_tensor[Constant.FP32_PER_BLOCK:], 1, 1, 1, 1, 1, 1, 1)
+                        self.tik_instance.vdiv(1, tmp_fpx_tensor[0:], tmp_fpx_tensor[0:],
+                                               tmp_fpx_tensor[self.compute_block_num:], 1, 1, 1, 1, 1, 1, 1)
                     else:
                         # for A310
                         util_tik_comm_func.tik_func_vrec(self.tik_instance,
-                                                         tmp_fp32_tensor[Constant.FP32_PER_BLOCK * 2:],
-                                                         tmp_fp32_tensor[Constant.FP32_PER_BLOCK:], 1, 1, 1, 1, 1, 1)
-                        self.tik_instance.vmul(1, tmp_fp32_tensor[0:], tmp_fp32_tensor[0:],
-                                               tmp_fp32_tensor[Constant.FP32_PER_BLOCK * 2:], 1, 1, 1, 1, 1, 1, 1)
-                    scale_fp32.set_as(tmp_fp32_tensor[0])
+                                                         tmp_fpx_tensor[self.compute_block_num * 2:],
+                                                         tmp_fpx_tensor[self.compute_block_num:], 1, 1, 1, 1, 1, 1)
+                        self.tik_instance.vmul(1, tmp_fpx_tensor[0:], tmp_fpx_tensor[0:],
+                                               tmp_fpx_tensor[self.compute_block_num * 2:], 1, 1, 1, 1, 1, 1, 1)
+                    scale_fpx.set_as(tmp_fpx_tensor[0])
 
         self.h_scale.set_as(self.output_height // self.input_height)
         self.w_scale.set_as(self.output_width // self.input_width)
 
         with self.tik_instance.if_scope(tik.any(self.tiling_key == 101000, self.tiling_key == 103000)):
-            _do_calculate(self.input_height, self.output_height, self.h_rec_scale_fp32)
+            _do_calculate(self.input_height, self.output_height, self.h_rec_scale_fpx)
         with self.tik_instance.elif_scope(self.tiling_key == 100000):
-            _do_calculate(self.input_height, self.output_height, self.h_rec_scale_fp32)
-            _do_calculate(self.input_width, self.output_width, self.w_rec_scale_fp32)
+            _do_calculate(self.input_height, self.output_height, self.h_rec_scale_fpx)
+            _do_calculate(self.input_width, self.output_width, self.w_rec_scale_fpx)
 
     def _functions(self, key: int):
         """invoke each tiling functions
@@ -391,16 +402,17 @@ class ProcessorBase(metaclass=ABCMeta):
             calc_out_in_idx_tmp_ub = tik_instance.Tensor(out_idx_fp_ub.dtype, out_idx_fp_ub.shape,
                                                          name="calc_out_in_idx_tmp_ub", scope=tik.scope_ubuf)
             vector_repeat_num = (idx_num + 63) // 64
+            block_stride = 64 // (32 // common_util.get_data_size(out_idx_fp_ub.dtype))
             if half_pixel_centers:
                 # `calc: (idx + 0.5) * scale`
                 tik_instance.vadds(64, calc_out_in_idx_tmp_ub, out_idx_fp_ub, 0.5,
-                                   vector_repeat_num, 1, 1, 8, 8)
+                                   vector_repeat_num, 1, 1, block_stride, block_stride)
                 tik_instance.vmuls(64, calc_out_in_idx_tmp_ub, calc_out_in_idx_tmp_ub, scale,
-                                   vector_repeat_num, 1, 1, 8, 8)
+                                   vector_repeat_num, 1, 1, block_stride, block_stride)
             else:
                 # `calc: idx * scale`
                 tik_instance.vmuls(64, calc_out_in_idx_tmp_ub, out_idx_fp_ub, scale,
-                                   vector_repeat_num, 1, 1, 8, 8)
+                                   vector_repeat_num, 1, 1, block_stride, block_stride)
             if align_corners:
                 # will use vconv_f322s32r to cast to int32
                 util_tik_comm_func.tik_func_vconv(tik_instance, in_idx_ub, calc_out_in_idx_tmp_ub,
@@ -903,11 +915,11 @@ class AlignOnlyW(ProcessorBase):
         # prepare to batch calculate height-in index
         self.h_in_idx_ub = self.tik_inst.Tensor("int32", (self.height_idx_per_loop,),
                                                 name="h_in_idx_ub", scope=tik.scope_ubuf)
-        self.h_out_idx_ub_fp32 = self.tik_inst.Tensor("float32", (self.height_idx_per_loop,),
-                                                      name="h_out_idx_ub_fp32", scope=tik.scope_ubuf)
+        self.h_out_idx_ub_fpx = self.tik_inst.Tensor(self.op.compute_dtype, (self.height_idx_per_loop,),
+                                                     name="h_out_idx_ub_fpx", scope=tik.scope_ubuf)
         # fill in 0,1,2,3,4,...,63 into h_out_idx_ub_fp32
         # NOTE: DO NOT move function below after malloc_buf because of some unknown issues...
-        fill_index_in_ub(self.tik_inst, self.h_out_idx_ub_fp32, self.height_idx_per_loop)
+        fill_index_in_ub(self.tik_inst, self.h_out_idx_ub_fpx, self.height_idx_per_loop)
 
     def adjust_w_per_loop(self) -> None:
         """Limits:
@@ -973,22 +985,22 @@ class AlignOnlyW(ProcessorBase):
         with self.tik_inst.new_stmt_scope():
             op = self.op
 
-            scalar_idx_fp32 = self.tik_inst.Scalar("float32", name="scalar_idx_fp32")
-            scalar_vconv_int32_to_fp32(self.tik_inst, op.core_height_start, scalar_idx_fp32)
+            scalar_idx_fpx = self.tik_inst.Scalar(op.compute_dtype, name="scalar_idx_fpx")
+            scalar_vconv_int_to_fp(self.tik_inst, op.core_height_start, scalar_idx_fpx)
             # do vadds 0,1,2,3,4,...,63 + core_height_start
-            self.tik_inst.vadds(64, self.h_out_idx_ub_fp32, self.h_out_idx_ub_fp32, scalar_idx_fp32,
-                                (self.height_idx_per_loop + 63) // 64, 1, 1, 8, 8)
+            self.tik_inst.vadds(64, self.h_out_idx_ub_fpx, self.h_out_idx_ub_fpx, scalar_idx_fpx,
+                                (self.height_idx_per_loop + 63) // 64, 1, 1, op.block_strides, op.block_strides)
             # convert height_idx_per_loop for the loop below
-            scalar_vconv_int32_to_fp32(self.tik_inst, self.height_idx_per_loop, scalar_idx_fp32)
+            scalar_vconv_int_to_fp(self.tik_inst, self.height_idx_per_loop, scalar_idx_fpx)
 
             with self.tik_inst.for_range(0, op.h_per_core) as _h_idx:
                 # batch calculate height-in index once per 64
                 with self.tik_inst.if_scope((_h_idx % self.height_idx_per_loop) == 0):
-                    self.calculate_src_idx(self.tik_inst, op.h_rec_scale_fp32, self.h_in_idx_ub,
-                                           self.h_out_idx_ub_fp32, self.height_idx_per_loop,
+                    self.calculate_src_idx(self.tik_inst, op.h_rec_scale_fpx, self.h_in_idx_ub,
+                                           self.h_out_idx_ub_fpx, self.height_idx_per_loop,
                                            op.align_corners, op.half_pixel_centers)
-                    self.tik_inst.vadds(64, self.h_out_idx_ub_fp32, self.h_out_idx_ub_fp32, scalar_idx_fp32,
-                                        (self.height_idx_per_loop + 63) // 64, 1, 1, 8, 8)
+                    self.tik_inst.vadds(64, self.h_out_idx_ub_fpx, self.h_out_idx_ub_fpx, scalar_idx_fpx,
+                                        (self.height_idx_per_loop + 63) // 64, 1, 1, op.block_strides, op.block_strides)
 
                 self.h_out_idx.set_as(op.core_height_start + _h_idx)
                 self.h_in_idx.set_as(self.h_in_idx_ub[_h_idx % self.height_idx_per_loop])
@@ -1064,13 +1076,13 @@ class Default(ProcessorBase):
         # width index array for batch calculation
         self.w_in_idx_array = self.tik_inst.Tensor("int32", (self.width_idx_per_loop,),
                                                    name="w_in_idx_array", scope=tik.scope_ubuf)
-        self.w_out_idx_ub_fp32 = self.tik_inst.Tensor("float32", (self.width_idx_per_loop,),
-                                                      name="w_out_idx_ub_fp32", scope=tik.scope_ubuf)
-        self.scalar_idx_fp32 = self.tik_inst.Scalar("float32", name="scalar_idx_fp32")
+        self.w_out_idx_ub_fpx = self.tik_inst.Tensor(self.op.compute_dtype, (self.width_idx_per_loop,),
+                                                     name="w_out_idx_ub_fpx", scope=tik.scope_ubuf)
+        self.scalar_idx_fpx = self.tik_inst.Scalar(self.op.compute_dtype, name="scalar_idx_fpx")
 
         # fill 0-127 into fp32 index array
         # NOTE: DO NOT move function below after malloc_buf because of some unknown issues...
-        fill_index_in_ub(self.tik_inst, self.w_out_idx_ub_fp32, self.width_idx_per_loop)
+        fill_index_in_ub(self.tik_inst, self.w_out_idx_ub_fpx, self.width_idx_per_loop)
 
     def adjust_w_per_loop(self) -> None:
         op = self.op
@@ -1195,11 +1207,11 @@ class Default(ProcessorBase):
         op = self.op
 
         # vconv start idx from int32 scalar to fp32 scalar
-        scalar_vconv_int32_to_fp32(self.tik_inst, op.core_width_start, self.scalar_idx_fp32)
+        scalar_vconv_int_to_fp(self.tik_inst, op.core_width_start, self.scalar_idx_fpx)
         # do vadds 0,1,2,3,4 + fp32_scalar
-        self.tik_inst.vadds(64, self.w_out_idx_ub_fp32, self.w_out_idx_ub_fp32, self.scalar_idx_fp32,
-                            (self.w_out_per_loop + 63) // 64, 1, 1, 8, 8)
-        scalar_vconv_int32_to_fp32(self.tik_inst, self.w_out_per_loop, self.scalar_idx_fp32)
+        self.tik_inst.vadds(64, self.w_out_idx_ub_fpx, self.w_out_idx_ub_fpx, self.scalar_idx_fpx,
+                            (self.w_out_per_loop + 63) // 64, 1, 1, op.block_strides, op.block_strides)
+        scalar_vconv_int_to_fp(self.tik_inst, self.w_out_per_loop, self.scalar_idx_fpx)
 
         with self.tik_inst.for_range(0, self.w_loop_num) as _w_loop_idx:
             self.w_out_start.set_as(op.core_width_start + _w_loop_idx * self.w_out_per_loop)
@@ -1211,11 +1223,11 @@ class Default(ProcessorBase):
     def _do_one_w_loop(self, w_out_len) -> None:
         op = self.op
         # batch calculate src width index
-        self.calculate_src_idx(self.tik_inst, op.w_rec_scale_fp32,
-                               self.w_in_idx_array, self.w_out_idx_ub_fp32, self.width_idx_per_loop,
+        self.calculate_src_idx(self.tik_inst, op.w_rec_scale_fpx,
+                               self.w_in_idx_array, self.w_out_idx_ub_fpx, self.width_idx_per_loop,
                                op.align_corners, op.half_pixel_centers)
-        self.tik_inst.vadds(64, self.w_out_idx_ub_fp32, self.w_out_idx_ub_fp32, self.scalar_idx_fp32,
-                            (self.width_idx_per_loop + 63) // 64, 1, 1, 8, 8)
+        self.tik_inst.vadds(64, self.w_out_idx_ub_fpx, self.w_out_idx_ub_fpx, self.scalar_idx_fpx,
+                            (self.width_idx_per_loop + 63) // 64, 1, 1, op.block_strides, op.block_strides)
         self.w_in_start_idx.set_as(self.w_in_idx_array[0])
         self.w_in_end_idx.set_as(self.w_in_idx_array[w_out_len-1])
         self.w_in_len.set_as(self.w_in_end_idx - self.w_in_start_idx + 1)
@@ -1245,17 +1257,19 @@ class Default(ProcessorBase):
     def _do_one_height(self, h_out_idx, nc_len, w_in_len, w_out_len, in_image_buf, reorder_buf) -> None:
         with self.tik_inst.new_stmt_scope():
             op = self.op
-            h_in_idx = self.tik_inst.Scalar("int32", name="h_in_idx")
-            h_in_idx_array = self.tik_inst.Tensor("int32", (64,), name="h_in_idx_array", scope=tik.scope_ubuf)
-            h_in_idx_array_fp32 = self.tik_inst.Tensor("float32", (64,), name="h_in_idx_array_fp32",
-                                                       scope=tik.scope_ubuf)
+            h_in_idx = self.tik_inst.Scalar(op.coordinate_dtype, name="h_in_idx")
+            h_in_idx_array = self.tik_inst.Tensor(op.coordinate_dtype, (64,),
+                                                  name="h_in_idx_array", scope=tik.scope_ubuf)
+            h_in_idx_array_int = self.tik_inst.Tensor("int32", (64,), name="h_in_idx_array_int", scope=tik.scope_ubuf)
+            h_in_idx_array_fpx = self.tik_inst.Tensor(op.compute_dtype, (64,), name="h_in_idx_array_fpx",
+                                                      scope=tik.scope_ubuf)
 
             util_tik_comm_func.tik_func_vector(self.tik_inst, h_in_idx_array, h_out_idx, 64)
-            util_tik_comm_func.tik_func_vconv(self.tik_inst, h_in_idx_array_fp32, h_in_idx_array, 64)
-            self.calculate_src_idx(self.tik_inst, op.h_rec_scale_fp32, h_in_idx_array, h_in_idx_array_fp32, 1,
+            util_tik_comm_func.tik_func_vconv(self.tik_inst, h_in_idx_array_fpx, h_in_idx_array, 64)
+            self.calculate_src_idx(self.tik_inst, op.h_rec_scale_fpx, h_in_idx_array_int, h_in_idx_array_fpx, 1,
                                    op.align_corners, op.half_pixel_centers)
 
-            h_in_idx.set_as(h_in_idx_array[0])
+            h_in_idx.set_as(h_in_idx_array_int[0])
 
             gm_in_offset = op.shape_c0 * (self.gm_in_start + h_in_idx * op.input_width)
             gm_out_offset = op.shape_c0 * (self.gm_out_start + h_out_idx * op.output_width)
@@ -1284,6 +1298,31 @@ class Default(ProcessorBase):
                                         0, burst_num, burst_len, burst_src_gap, burst_dst_gap)
 
 
+
+# 'pylint: disable=unused-argument
+def check_supported(images, size, y, align_corners=False, half_pixel_centers=False,
+                    kernel_name="resize_nearest_neighbor_v2"):
+    """
+    check whether ai_core is supported
+    """
+    image_shape = images.get("shape")
+    h_in = image_shape[2]
+    w_in = image_shape[3]
+    is_support_vadds = tbe_platform.api_check_support("tik.vadds", "float32")
+    if not is_support_vadds:
+        size_value = size.get("const_value")
+        if not size_value:
+            return False, "size is not const."
+        h_out = size_value[0]
+        w_out = size_value[1]
+        axis_list = [h_in, h_out, w_in, w_out]
+        for axis in axis_list:
+            if axis < 1 or axis > Constant.MAX_H_W:
+                return False, "H or W is too large to compute with float16."
+
+    return True, ""
+
+
 def fill_index_in_ub(tik_instance: tik.Tik, idx_ub, idx_num, vector_num=64) -> None:
     """
     fill 0,1,2  .... (idx_num -1) in idx_ub
@@ -1295,36 +1334,44 @@ def fill_index_in_ub(tik_instance: tik.Tik, idx_ub, idx_num, vector_num=64) -> N
     with tik_instance.new_stmt_scope():
         vector_num_ub = tik_instance.Tensor(idx_ub.dtype, (vector_num,),
                                             name="vector_num_ub", scope=tik.scope_ubuf)
-        for _idx in range(vector_num // 8):
+        block_num = 32 // common_util.get_data_size(idx_ub.dtype)
+        loop_num = vector_num // block_num
+        for _idx in range(block_num):
             idx_ub[_idx].set_as(_idx)
-        tik_instance.vector_dup(vector_num, vector_num_ub, vector_num // 8, 1, 1, 8)
-        with tik_instance.for_range(1, 8) as add_idx:
-            add_offset = add_idx * vector_num // 8
-            tik_instance.vadd(vector_num // 8, idx_ub[add_offset:], vector_num_ub,
-                              idx_ub[add_offset - (vector_num // 8):],
-                              1, 1, 1, 1, 8, 0, 8)
+        tik_instance.vector_dup(vector_num, vector_num_ub, block_num, 1, 1, block_num)
+        with tik_instance.for_range(1, loop_num) as add_idx:
+            add_offset = add_idx * block_num
+            tik_instance.vadd(block_num, idx_ub[add_offset:], vector_num_ub,
+                              idx_ub[add_offset - block_num:],
+                              1, 1, 1, 1, block_num, 0, block_num)
 
         idx_vector_num = (idx_num + vector_num - 1) // vector_num
         with tik_instance.if_scope(idx_vector_num > 1):
-            tik_instance.vector_dup(vector_num, vector_num_ub, vector_num, 1, 1, 8)
+            tik_instance.vector_dup(vector_num, vector_num_ub, vector_num, 1, 1, block_num)
             with tik_instance.for_range(1, idx_vector_num) as add_idx:
                 add_offset = add_idx * vector_num
                 tik_instance.vadd(vector_num, idx_ub[add_offset:], vector_num_ub, idx_ub[add_offset - vector_num:],
-                                  1, 1, 1, 1, 8, 0, 8)
+                                  1, 1, 1, 1, block_num, 0, block_num)
 
 
-def scalar_vconv_int32_to_fp32(tik_instance: tik.Tik, int32_value, float32_value) -> None:
+def scalar_vconv_int_to_fp(tik_instance: tik.Tik, int_value, float_value) -> None:
     """
     vconv one scalar from int32 to fp32 using vector
     """
     with tik_instance.new_stmt_scope():
-        idx_int32_tmp = tik_instance.Tensor("int32", (Constant.FP32_PER_BLOCK,),
-                                            name="idx_int32_tmp", scope=tik.scope_ubuf)
-        idx_fp32_tmp = tik_instance.Tensor("float32", (Constant.FP32_PER_BLOCK,),
-                                           name="idx_fp32_tmp", scope=tik.scope_ubuf)
-        idx_int32_tmp[0].set_as(int32_value)
-        util_tik_comm_func.tik_func_vconv(tik_instance, idx_fp32_tmp, idx_int32_tmp, 1)
-        float32_value.set_as(idx_fp32_tmp[0])
+        compute_block_num = 32 // common_util.get_data_size(float_value.dtype)
+        int_value_dtype = "int16" if float_value.dtype == "float16" else "int32"
+        idx_int_tmp = tik_instance.Tensor(int_value_dtype, (compute_block_num,),
+                                          name="idx_int_tmp", scope=tik.scope_ubuf)
+        idx_fp_tmp = tik_instance.Tensor(float_value.dtype, (compute_block_num,),
+                                         name="idx_fp_tmp", scope=tik.scope_ubuf)
+        if float_value.dtype == "float16":
+            int_value_tmp = tik_instance.Scalar(int_value_dtype, name="int_value_tmp", init_value=int_value)
+            util_tik_comm_func.tik_func_vector(tik_instance, idx_int_tmp, int_value_tmp, 1)
+        else:
+            idx_int_tmp[0].set_as(int_value)
+        util_tik_comm_func.tik_func_vconv(tik_instance, idx_fp_tmp, idx_int_tmp, 1)
+        float_value.set_as(idx_fp_tmp[0])
 
 
 @register_operator("ResizeNearestNeighborV2")
