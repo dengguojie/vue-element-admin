@@ -38,7 +38,7 @@ using namespace ge;
 namespace fe {
 static const char* REALDIV = "RealDiv";
 static const char* MULS = "Muls";
-static const string PATTERN_REALDIV= "RealDiv";
+static const string PATTERN_REALDIV = "RealDiv";
 static const string CONSTANT = "Const";
 static const string CONSTANTOP = "Constant";
 static const float EPSILON = 1e-6;
@@ -70,7 +70,7 @@ Status RealDiv2MulsFusionPass::IsMatch(ge::NodePtr& realDivNode, float& constVal
   vector<ge::GeTensorPtr> constTensortPtr = ge::OpDescUtils::MutableWeights(peerOutNode);
   FUSION_PASS_CHECK(constTensortPtr.empty(), OP_LOGI(FUSED_OP_TYPE.c_str(), "RealDiv input y is tensor!"),
                    return NOT_CHANGED);
-  ge:: ConstGeTensorPtr constTensor0 = constTensortPtr[0];
+  ge::ConstGeTensorPtr constTensor0 = constTensortPtr[0];
   size_t constSize = constTensor0->GetData().GetSize();
   ge::DataType constDType = constTensor0->GetTensorDesc().GetDataType();
   if (constDType != ge::DT_FLOAT || constSize != FLOATBYTES) {
@@ -177,7 +177,8 @@ Status RealDiv2MulsFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
                     return FAILED);
 
   FUSION_PASS_CHECK(graph.RemoveNode(realDivNode) != SUCCESS,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove RealDiv node failed."), return FAILED);
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove RealDiv node failed."),
+                    return FAILED);
   newNodes.push_back(mulsNode);
   OP_LOGD(FUSED_OP_TYPE.c_str(), "Node[%s] do RealDiv2Muls fusion success!", mulsNode->GetName().c_str());
 

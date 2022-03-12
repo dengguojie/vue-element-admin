@@ -22,6 +22,7 @@ from te.platform.fusion_manager import fusion_manager
 from te.utils import shape_util
 from impl.util.util_compute import check_batchmatmul_fuse
 
+
 def _muls_compute_with_batchmatmul(lhs_tensor, const_tensor):
     """
     calculating data's muls, c = a * b
@@ -45,6 +46,7 @@ def _muls_compute_with_batchmatmul(lhs_tensor, const_tensor):
     res.op.attrs["para_name"] = para_name
 
     return res
+
 
 # 'pylint: disable=invalid-name,unused-argument
 @fusion_manager.register("muls")
