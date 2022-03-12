@@ -154,7 +154,7 @@ def _format_transfer(shape, x, c1_index):
     trans_shape[-1] = trans_shape[-1] * 2
     res = tvm.compute(trans_shape,
                       _format_compute(x, trans_shape, c1_index),
-                      name="data_transfer",
+                      name="requant_s16_data_transfer",
                       tag="requant_s16_data_transfer")
     return res
 

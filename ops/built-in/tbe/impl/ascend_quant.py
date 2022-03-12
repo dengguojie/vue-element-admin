@@ -84,28 +84,6 @@ def _check_params(x, y, scale, offset, sqrt_mode, round_mode, dst_type, kernel_n
     para_check.check_dtype(y_dtype, y_check_list, param_name="dst_type")
 
 
-def _check_l1_fusion(x, y):
-    """
-    check the l1 fusion parameters
-    """
-    x_addr_type = x.get("addr_type", 0)
-    x_l1_fusion_type = x.get("L1_fusion_type", -1)
-    y_l1_fusion_type = y.get("L1_fusion_type", -1)
-
-    if x_l1_fusion_type not in (-1, 0):
-        rule = "quant L1_fusion_type only  support (-1, 0)"
-        error_manager_vector.raise_err_check_params_rules("ascend_quant", rule, "L1_fusion_type", x_l1_fusion_type)
-
-    if y_l1_fusion_type not in (-1, 0):
-        rule = "quant L1_fusion_type only  support (-1, 0)"
-        error_manager_vector.raise_err_check_params_rules("ascend_quant", rule, "L1_fusion_type", y_l1_fusion_type)
-
-    attr = {"addr_type": x_addr_type,
-            "L1_fusion_type": x_l1_fusion_type}
-
-    return x_l1_fusion_type, attr
-
-
 def _reform_compute_generate(tensor, in_shape, out_shape, val_info, nz_format_flag):
     """
     generate lambda func
@@ -324,27 +302,6 @@ def _get_input_attr(x, attr_name, default_value, is_list):
     return value
 
 
-def _get_input_l1_info(x):
-    """
-    get the l1 fusion info from input tensor
-    """
-    l1_fusion_flag = _get_input_attr(x, "l1_fusion_flag", -1, False)
-    in_shape = shape_util.shape_to_list(x.shape)
-    return in_shape, l1_fusion_flag
-
-
-def _get_out_l1_info(y):
-    """
-    get the l1 fusion info from output tensor
-    """
-    y_addr_type = 0
-    if isinstance(y, dict):
-        y_addr_type = y.get("addr_type", 0)
-    elif isinstance(y, tvm.tensor.Tensor):
-        y_addr_type = _get_input_attr(y, "addr_type", 0, False)
-    return y_addr_type
-
-
 @tbe_platform.fusion_manager.fusion_manager.register("ascend_quant")
 def ascend_quant_compute(x, y, scale, offset, sqrt_mode=False, round_mode="Round", dst_type=2,
                          kernel_name="ascend_quant"):
@@ -396,8 +353,7 @@ def ascend_quant_compute(x, y, scale, offset, sqrt_mode=False, round_mode="Round
         return res
 
     x_dtype = x.dtype
-    in_shape, l1_fusion_flag = _get_input_l1_info(x)
-    y_addr_type = _get_out_l1_info(y)
+    in_shape = shape_util.shape_to_list(x.shape)
 
     nz_format_flag = util.is_nz_format(x, True)
 
@@ -434,9 +390,7 @@ def ascend_quant_compute(x, y, scale, offset, sqrt_mode=False, round_mode="Round
                              "round_mode": round_mode,
                              "input_format": tensor_format,
                              "c1_dim": c1_dim,
-                             "l1_fusion_flag": l1_fusion_flag,
-                             "c1_transform": c1_transform,
-                             "addr_type": y_addr_type})
+                             "c1_transform": c1_transform})
     return res
 
 
@@ -494,22 +448,15 @@ def ascend_quant(x, y, scale, offset, sqrt_mode=False, round_mode="Round", dst_t
     input_dtype = x.get("dtype").lower()
     input_format = x.get("format")
 
-    x_l1_fusion_type, attr = _check_l1_fusion(x, y)
-
     if input_format == "NC1HWC0":
-        if x_l1_fusion_type != -1:
-            attr["l1_fusion_flag"] = x_l1_fusion_type
         # change to N,C1,H*W,C0
         input_shape = (shape[0], shape[1], shape[2] * shape[3], shape[4])
     else:
-        if x_l1_fusion_type != -1:
-            rule = "FRACTAL_NZ not support L1 fusion"
-            error_manager_vector.raise_err_check_params_rules(kernel_name, rule, "L1_fusion_type", x_l1_fusion_type)
         batch = 1
         if len(shape) > 4:
             batch = functools.reduce(lambda x, y: x * y, shape[:-4])
         input_shape = (batch, shape[-4], shape[-3] * shape[-2], shape[-1])
-    input_x = tvm.placeholder(input_shape, name="input_x", dtype=input_dtype, attrs=attr)
+    input_x = tvm.placeholder(input_shape, name="input_x", dtype=input_dtype)
 
     res = ascend_quant_compute(input_x, y, scale, offset, sqrt_mode, round_mode, dst_type, kernel_name)
     with tvm.target.cce():

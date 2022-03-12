@@ -418,9 +418,6 @@ def _get_block_num(res):
     get the core number
     """
     core_num = get_soc_spec("CORE_NUM")
-    l1_fusion_flag = res.op.attrs['l1_fusion_flag'].value
-    if l1_fusion_flag != -1:
-        return 1
     return core_num
 
 
@@ -451,23 +448,11 @@ def ascend_quant_schedule(res, input_tensors):
             "offset": res.op.attrs['offset'],
             "round_mode": res.op.attrs['round_mode'],
             "input_c1": res.op.attrs['c1_dim'].value,
-            "l1_fusion_flag": res.op.attrs['l1_fusion_flag'].value,
             'input_format': res.op.attrs['input_format'],
             "c1_transform": res.op.attrs['c1_transform'].value,
-            'addr_type': res.op.attrs['addr_type'].value
         }
-        l1_fusion_flag = attr_dic.get("l1_fusion_flag")
         if "input_x" in tensor_map:
             tensor = tensor_map.pop("input_x")
-            attr_type = 0
-            if tensor.op.attrs:
-                if 'addr_type' in tensor.op.attrs:
-                    attr_type = tensor.op.attrs["addr_type"].value
-            if l1_fusion_flag != -1 and attr_type == 1:
-                sch[tensor].set_scope(scope_cbuf_fusion)
-        out_addr_type = attr_dic.get("addr_type")
-        if l1_fusion_flag != -1 and out_addr_type == 1:
-            sch[res].set_scope(scope_cbuf_fusion)
         _set_buffer_scope(sch, tensor_map)
         _reorder_buffer(sch, res, tensor_map)
         axis_outer, axis_inner = _bind_core(out_shape, sch, res, tensor_map)
@@ -528,8 +513,6 @@ class QuantSchedule(ElewiseSchedule):
         self.attrs["c1_dim"] = self._quant_output_tensor.op.attrs[
             'c1_dim'].value
         self.attrs["c1_transform"] = self._quant_output_tensor.op.attrs['c1_transform'].value
-        self.attrs["addr_type"] = self._quant_output_tensor.op.attrs[
-            'addr_type'].value
 
     def _calculate_emit_insn_map(self, tensor):
         """
@@ -672,13 +655,6 @@ class QuantSchedule(ElewiseSchedule):
         """
         cache read operations
         """
-        for i in self._cache_read_tensors_and_readers_map:
-            fusion_type = -1
-            if i.op.attrs:
-                if "L1_fusion_type" in i.op.attrs:
-                    fusion_type = i.op.attrs["L1_fusion_type"].value
-            if fusion_type != -1:
-                raise RuntimeError("quant fuse not support L1 fusion!")
         ElewiseSchedule._do_cache_read(self)
 
     def do_schedule(self, out_tensors, sch_list, spec_node_list):
