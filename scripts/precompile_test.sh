@@ -59,7 +59,7 @@ install_stest() {
   do
       line_realpath=${CANN_ROOT}/${line}
       line_dir=${line_realpath%/*}
-      if [[ ${line_dir%/*} =~ "ops/built-in/tests/st" ]] && [[ ! $all_cases =~ ${line_dir}  ]]
+      if [[ ${line_dir%/*} =~ "ops/built-in/tests/st" ]] && [[ ! $all_cases =~ ${line_dir} ]] && [[ ! ${line} =~ "st/aicpu_test" ]]
       then
         echo "[INFO]copy ${line_dir} to st dirctory"
         cp -rf "${line_dir}" "${TEST_INSTALL_PATH}"

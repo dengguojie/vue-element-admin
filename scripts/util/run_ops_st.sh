@@ -135,12 +135,14 @@ delete_unmatch_cases() {
   if [[ $supported_soc == "Ascend310" ]]; then
       find "${CANN_ST_SOURCE}" -name *910*.json|xargs rm -rf
       find "${CANN_ST_SOURCE}" -name *710*.json|xargs rm -rf
+      find "${CANN_ST_SOURCE}" -name "*custom.py"|xargs rm -rf
   elif [[ $supported_soc == "Ascend910" ]]; then
       find "${CANN_ST_SOURCE}" -name *310*.json|xargs rm -rf
       find "${CANN_ST_SOURCE}" -name *710*.json|xargs rm -rf
   elif [[ $supported_soc == "Ascend710" ]]; then
       find "${CANN_ST_SOURCE}" -name *310*.json|xargs rm -rf
       find "${CANN_ST_SOURCE}" -name *910*.json|xargs rm -rf
+      find "${CANN_ST_SOURCE}" -name "*custom.py"|xargs rm -rf
   fi
 }
 
