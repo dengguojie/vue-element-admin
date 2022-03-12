@@ -132,6 +132,38 @@ class ScanPQCodes():
         self.bucket_offsets_ub_int64 = None
         self.ivf_cur_process_ub_fp32 = None
 
+    def scan_pq_codes_operator(self, kernel_name):
+        """
+        scan_pq_codes_operator
+        """
+        self._tiling_args()
+        self._init_gm_tensor()
+        self._init_ub_tensor()
+        self._init_assist_ub()
+        self._run_multi_core()
+        # Build CCE
+        # this "global_variable_link" flag suggest ccec.py do link without "-r" option
+        # which will result in global variable in cce file with wrong address
+        tbe_context.get_context().add_compile_info("vars", {
+            "core_nums": self.core_nums,
+            "split_count": self.split_count,
+            "split_index": self.split_index
+        })
+        input_list = [
+            self.ivf_gm, self.bucket_list_gm, self.bucket_base_distance_gm, self.bucket_limits_gm,
+            self.bucket_offsets_gm, self.adc_tables_gm
+        ]
+        output_list = [
+            self.actual_count_gm, self.pq_distance_gm, self.grouped_extrim_distance_gm, self.pq_ivf_gm, self.pq_index_gm
+        ]
+        self.tik_instance.BuildCCE(kernel_name=kernel_name,
+                                   inputs=input_list,
+                                   outputs=output_list,
+                                   flowtable=(self.tiling_gm,),
+                                   config=self.opt_config)
+
+        return self.tik_instance
+
     def _init_gm_tensor(self):
         # input gm
         self.ivf_gm = self.tik_instance.Tensor(self.ivf_dtype, (Constant.MAX_INT64,), name="ivf", scope=tik.scope_gm)
@@ -427,38 +459,6 @@ class ScanPQCodes():
         self.tik_instance.vreduce((slice_size // self.group_size) * 2, self.grouped_extrim_distance_ub_fp16,
                                   self.block_extrim_ub_fp16, 1, 1, 1, 1, 0, 0, None, "counter")
 
-    def scan_pq_codes_operator(self, kernel_name):
-        """
-        scan_pq_codes_operator
-        """
-        self._tiling_args()
-        self._init_gm_tensor()
-        self._init_ub_tensor()
-        self._init_assist_ub()
-        self._run_multi_core()
-        # Build CCE
-        # this "global_variable_link" flag suggest ccec.py do link without "-r" option
-        # which will result in global variable in cce file with wrong address
-        tbe_context.get_context().add_compile_info("vars", {
-            "core_nums": self.core_nums,
-            "split_count": self.split_count,
-            "split_index": self.split_index
-        })
-        input_list = [
-            self.ivf_gm, self.bucket_list_gm, self.bucket_base_distance_gm, self.bucket_limits_gm,
-            self.bucket_offsets_gm, self.adc_tables_gm
-        ]
-        output_list = [
-            self.actual_count_gm, self.pq_distance_gm, self.grouped_extrim_distance_gm, self.pq_ivf_gm, self.pq_index_gm
-        ]
-        self.tik_instance.BuildCCE(kernel_name=kernel_name,
-                                   inputs=input_list,
-                                   outputs=output_list,
-                                   flowtable=(self.tiling_gm,),
-                                   config=self.opt_config)
-
-        return self.tik_instance
-
     def _run_one_core_loop(self, args):
         (bucket_idx, bucket_id, bucket_base_dis, bucket_limit, bucket_offset_input, bucket_offset_output,
          bucket_offset_max) = args
@@ -583,6 +583,7 @@ class ScanPQCodes():
                                         0, 0)
             self.tik_instance.data_move(self.pq_ivf_gm[bucket_offset_output + Constant.SLICE_SIZE * thread_loop],
                                         pq_ivf_ub_int32, 0, 1, Constant.SLICE_SIZE // Constant.BLOCK_INT32, 0, 0)
+
 
 def _para_dtype_check(args_list):
     (ivf, bucket_list, bucket_base_distance, bucket_limits, bucket_offsets, adc_tables, actual_count, pq_distance,

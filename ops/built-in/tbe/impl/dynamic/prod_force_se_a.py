@@ -103,6 +103,37 @@ class ProdForceSeA:
         self.natoms_gm = None
         self.force_gm = None
 
+    def prod_force_se_a_operator(self, kernel_name):
+        """
+        prod_force_se_a_operator
+        """
+        self._tiling_args()
+        self._init_gm_data_fp32()
+        self._run_multi_core_loop()
+        # Build CCE
+        # this "global_variable_link" flag suggest ccec.py do link without "-r" option
+        # which will result in global variable in cce file with wrong address
+        tbe_context.get_context().add_compile_info("vars", {
+            "core_nums": self.core_nums,
+            "n_a_sel" : self.n_a_sel,
+            "n_r_sel" : self.n_r_sel,
+            "split_count" : self.split_count,
+            "split_index" : self.split_index
+        })
+        input_list = [
+            self.net_deriv_gm, self.in_deriv_gm, self.nlist_gm, self.natoms_gm
+        ]
+        output_list = [
+            self.force_gm
+        ]
+        self.tik_instance.BuildCCE(kernel_name=kernel_name,
+                                   inputs=input_list,
+                                   outputs=output_list,
+                                   flowtable=(self.tiling_gm,),
+                                   config=self.opt_config)
+
+        return self.tik_instance
+
     def _init_gm_data_fp32(self):
         """
         init gm data
@@ -150,37 +181,6 @@ class ProdForceSeA:
                     self._run_one_core_loop(core_idx, self.core_loop_unit)
                 with self.tik_instance.else_scope():
                     self._run_one_core_loop(core_idx, self.core_loop_left)
-
-    def prod_force_se_a_operator(self, kernel_name):
-        """
-        prod_force_se_a_operator
-        """
-        self._tiling_args()
-        self._init_gm_data_fp32()
-        self._run_multi_core_loop()
-        # Build CCE
-        # this "global_variable_link" flag suggest ccec.py do link without "-r" option
-        # which will result in global variable in cce file with wrong address
-        tbe_context.get_context().add_compile_info("vars", {
-            "core_nums": self.core_nums,
-            "n_a_sel" : self.n_a_sel,
-            "n_r_sel" : self.n_r_sel,
-            "split_count" : self.split_count,
-            "split_index" : self.split_index
-        })
-        input_list = [
-            self.net_deriv_gm, self.in_deriv_gm, self.nlist_gm, self.natoms_gm
-        ]
-        output_list = [
-            self.force_gm
-        ]
-        self.tik_instance.BuildCCE(kernel_name=kernel_name,
-                                   inputs=input_list,
-                                   outputs=output_list,
-                                   flowtable=(self.tiling_gm,),
-                                   config=self.opt_config)
-
-        return self.tik_instance
 
     # 'pylint:disable=too-many-locals,too-many-branches,too-many-statements
     def _run_one_core_loop(self, core_idx, core_loop_unit):
@@ -984,8 +984,6 @@ class ProdForceSeA:
                                                         force_out_ub_fp32,
                                                         0, 1, _ceil_div(self.nall, Constant.BLOCK_FLOAT32), 0, 0)
                             self.tik_instance.set_atomic_add(0)
-
-
 
 
 def _para_dtype_check(args_list):
