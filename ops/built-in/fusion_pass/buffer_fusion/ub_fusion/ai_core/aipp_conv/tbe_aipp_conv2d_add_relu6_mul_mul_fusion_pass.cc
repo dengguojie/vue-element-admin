@@ -72,7 +72,8 @@ vector<BufferFusionPattern*> AippConv2dAddRelu6MulMulFusionPass::DefinePatterns(
   return patterns;
 }
 
-Status AippConv2dAddRelu6MulMulFusionPass::GetFusionNodes(const BufferFusionMapping& mapping, vector<ge::NodePtr>& fusion_nodes) {
+Status AippConv2dAddRelu6MulMulFusionPass::GetFusionNodes(const BufferFusionMapping& mapping,
+                                                          vector<ge::NodePtr>& fusion_nodes) {
   OP_LOGD(fused_op_type_.c_str(), "Begin to do TbeAippConv2dAddRelu6MulMulFusionPass.");
   std::vector<ge::NodePtr> conv_nodes = GetMatchedNodesByDescName(kPatternConv, mapping);
   std::vector<ge::NodePtr> aipp_nodes = GetMatchedNodesByDescName(kPatternAipp, mapping);
@@ -144,5 +145,7 @@ Status AippConv2dAddRelu6MulMulFusionPass::GetFusionNodes(const BufferFusionMapp
   return SUCCESS;
 }
 
-REGISTER_BUFFER_FUSION_PASS("TbeAippConv2dAddRelu6MulMulFusionPass", BUILT_IN_AI_CORE_BUFFER_FUSION_PASS, AippConv2dAddRelu6MulMulFusionPass);
+REGISTER_BUFFER_FUSION_PASS("TbeAippConv2dAddRelu6MulMulFusionPass",
+                            BUILT_IN_AI_CORE_BUFFER_FUSION_PASS,
+                            AippConv2dAddRelu6MulMulFusionPass);
 }  // namespace fe
