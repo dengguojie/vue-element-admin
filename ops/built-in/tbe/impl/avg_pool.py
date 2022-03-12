@@ -29,6 +29,7 @@ from impl.conv2d import conv2d
 from impl.conv2d import conv2d_compute
 from impl.util.platform_adapter import error_manager_vector
 from impl.reduce_mean_d import reduce_mean_d
+from te.platform.fusion_manager import fusion_manager
 
 
 # 'pylint: disable=too-few-public-methods
@@ -538,6 +539,7 @@ def avg_pool(x, filter, bias, y, ksize, strides,
             # based on 710 global avg pool default value
             impl_mode = "high_precision"
         reduce_mean_d(x, y, axes, keepdims=True, kernel_name=kernel_name, impl_mode=impl_mode)
+        fusion_manager.set_current_op_pattern("Pool2d")
     else:
         # set tensor attrs, during L1 fusion these attrs will assign by te_fusion
         addr_type = x.get("addr_type", 0)
