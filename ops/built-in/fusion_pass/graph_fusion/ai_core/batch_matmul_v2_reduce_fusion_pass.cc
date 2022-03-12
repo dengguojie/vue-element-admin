@@ -66,8 +66,7 @@ bool BatchMatMulV2ReduceFusionPass::IsMatchScenario1(const ge::NodePtr &fused_no
                     return false);
 
   auto out_anchor = fused_node->GetOutDataAnchor(0);
-  FUSION_PASS_CHECK(out_anchor == nullptr, CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "out_anchor is null."),
-                    return false);
+  FUSION_PASS_CHECK(out_anchor == nullptr, OP_LOGD(FUSED_OP_TYPE.c_str(), "out_anchor is null."), return false);
   auto peer_in_anchors = out_anchor->GetPeerInDataAnchors();
   if (peer_in_anchors.size() != 1) {
     OP_LOGD(FUSED_OP_TYPE.c_str(), "fused_node peer_in_anchors.size() is not 1.");
@@ -76,8 +75,7 @@ bool BatchMatMulV2ReduceFusionPass::IsMatchScenario1(const ge::NodePtr &fused_no
 
   // check if next_node is ReduceSumD
   auto next_node = peer_in_anchors.at(0)->GetOwnerNode();
-  FUSION_PASS_CHECK(next_node == nullptr, CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "next_node is null."),
-                    return false);
+  FUSION_PASS_CHECK(next_node == nullptr, OP_LOGD(FUSED_OP_TYPE.c_str(), "next_node is null."), return false);
   return (next_node->GetType() == REDUCESUMD);
 }
 
@@ -90,8 +88,7 @@ bool BatchMatMulV2ReduceFusionPass::IsMatchScenario2(const ge::NodePtr &fused_no
                     return false);
 
   auto out_anchor = fused_node->GetOutDataAnchor(0);
-  FUSION_PASS_CHECK(out_anchor == nullptr, CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "out_anchor is null."),
-                    return false);
+  FUSION_PASS_CHECK(out_anchor == nullptr, OP_LOGD(FUSED_OP_TYPE.c_str(), "out_anchor is null."), return false);
   auto peer_in_anchors = out_anchor->GetPeerInDataAnchors();
   if (peer_in_anchors.size() != 1) {
     OP_LOGD(FUSED_OP_TYPE.c_str(), "fused_node peer_in_anchors.size() is not 1.");
@@ -100,8 +97,7 @@ bool BatchMatMulV2ReduceFusionPass::IsMatchScenario2(const ge::NodePtr &fused_no
 
   // check if next_node is Cast32
   auto next_node = peer_in_anchors.at(0)->GetOwnerNode();
-  FUSION_PASS_CHECK(next_node == nullptr, CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "next_node is null."),
-                    return false);
+  FUSION_PASS_CHECK(next_node == nullptr, OP_LOGD(FUSED_OP_TYPE.c_str(), "next_node is null."), return false);
   if (next_node->GetType() != CAST) {
     return false;
   }
@@ -115,16 +111,15 @@ bool BatchMatMulV2ReduceFusionPass::IsMatchScenario2(const ge::NodePtr &fused_no
 
   // check if next_next_node is ReduceSumD
   out_anchor = next_node->GetOutDataAnchor(0);
-  FUSION_PASS_CHECK(out_anchor == nullptr,
-                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "next_node out_anchor is null."), return false);
+  FUSION_PASS_CHECK(out_anchor == nullptr, OP_LOGD(FUSED_OP_TYPE.c_str(), "next_node out_anchor is null."),
+                    return false);
   peer_in_anchors = out_anchor->GetPeerInDataAnchors();
   if (peer_in_anchors.size() != 1) {
     OP_LOGD(FUSED_OP_TYPE.c_str(), "next_node peer_in_anchors.size() is not 1.");
     return false;
   }
   auto next_next_node = peer_in_anchors.at(0)->GetOwnerNode();
-  FUSION_PASS_CHECK(next_next_node == nullptr, CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "next_next_node is null."),
-                    return false);
+  FUSION_PASS_CHECK(next_next_node == nullptr, OP_LOGD(FUSED_OP_TYPE.c_str(), "next_next_node is null."), return false);
   return (next_next_node->GetType() == REDUCESUMD);
 }
 
@@ -402,6 +397,35 @@ Status BatchMatMulV2ReduceFusionPass::DoFusionWithKOne(ge::ComputeGraph &graph, 
   return SUCCESS;
 }
 
+Status BatchMatMulV2ReduceFusionPass::LinkEdgeWithKNotOne(ge::NodePtr &fused_node, ge::NodePtr &transposedNode,
+                                                          ge::NodePtr &reshape_node, int index) const {
+  auto x_anchor_peer_anchor = fused_node->GetInDataAnchor(index)->GetPeerOutAnchor();
+  auto x_anchor_peer_node = x_anchor_peer_anchor->GetOwnerNode();
+
+  // add edge
+  FUSION_PASS_CHECK(GraphUtils::RemoveEdge(x_anchor_peer_anchor, fused_node->GetInDataAnchor(index)) == FAILED,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove fused_node input edge Failed."), return FAILED);
+  FUSION_PASS_CHECK(SUCCESS != GraphUtils::AddEdge(x_anchor_peer_anchor, transposedNode->GetInDataAnchor(0)),
+                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
+                                          x_anchor_peer_node->GetName().c_str(), transposedNode->GetName().c_str()),
+                    return FAILED);
+  FUSION_PASS_CHECK(
+      SUCCESS != GraphUtils::AddEdge(transposedNode->GetOutDataAnchor(0), reshape_node->GetInDataAnchor(0)),
+      CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
+                            transposedNode->GetName().c_str(), reshape_node->GetName().c_str()),
+      return FAILED);
+
+  std::string name = (index == 0) ? "x1" : "x2";
+  fused_node->GetOpDesc()->AddInputDesc(name, *(reshape_node->GetOpDesc()->MutableOutputDesc(0)));
+
+  FUSION_PASS_CHECK(
+      SUCCESS != GraphUtils::AddEdge(reshape_node->GetOutDataAnchor(0), fused_node->GetInDataAnchor(index)),
+      CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
+                            reshape_node->GetName().c_str(), fused_node->GetName().c_str()),
+      return FAILED);
+  return SUCCESS;
+}
+
 Status BatchMatMulV2ReduceFusionPass::DealWithInputWithKNotOne(
     ge::ComputeGraph &graph, ge::NodePtr &fused_node,
     std::tuple<int, std::vector<int64_t>, int, std::vector<int64_t>, std::vector<bool>> &param) const {
@@ -462,27 +486,8 @@ Status BatchMatMulV2ReduceFusionPass::DealWithInputWithKNotOne(
     reshape_node = graph.AddNode(reshape_desc);
     FUSION_PASS_CHECK(reshape_node == nullptr, CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "reshape_node is null"),
                       return FAILED);
-
-    // add edge
-    FUSION_PASS_CHECK(GraphUtils::RemoveEdge(x1_anchor_peer_anchor, fused_node->GetInDataAnchor(index_x1)) == FAILED,
-                      OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove fused_node input edge Failed."), return FAILED);
-    FUSION_PASS_CHECK(SUCCESS != GraphUtils::AddEdge(x1_anchor_peer_anchor, transposedNode->GetInDataAnchor(0)),
-                      CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
-                                            x1_anchor_peer_node->GetName().c_str(), transposedNode->GetName().c_str()),
-                      return FAILED);
-    FUSION_PASS_CHECK(
-        SUCCESS != GraphUtils::AddEdge(transposedNode->GetOutDataAnchor(0), reshape_node->GetInDataAnchor(0)),
-        CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
-                              transposedNode->GetName().c_str(), reshape_node->GetName().c_str()),
-        return FAILED);
-
-    fused_node->GetOpDesc()->AddInputDesc("x1", *(reshape_node->GetOpDesc()->MutableOutputDesc(0)));
-
-    FUSION_PASS_CHECK(
-        SUCCESS != GraphUtils::AddEdge(reshape_node->GetOutDataAnchor(0), fused_node->GetInDataAnchor(index_x1)),
-        CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
-                              reshape_node->GetName().c_str(), fused_node->GetName().c_str()),
-        return FAILED);
+    FUSION_PASS_CHECK(SUCCESS != LinkEdgeWithKNotOne(fused_node, transposedNode, reshape_node, index_x1),
+                      CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "LinkEdgeWithKNotOne x1 failed"), return FAILED);
   }
   if (trans_b) {
     // TransposeD + Reshape; b,n,k --> n,b,k --> n,b*k
@@ -508,27 +513,8 @@ Status BatchMatMulV2ReduceFusionPass::DealWithInputWithKNotOne(
     reshape_node = graph.AddNode(reshape_desc);
     FUSION_PASS_CHECK(reshape_node == nullptr, CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "reshape_node is null"),
                       return FAILED);
-
-    // add edge
-    FUSION_PASS_CHECK(GraphUtils::RemoveEdge(x2_anchor_peer_anchor, fused_node->GetInDataAnchor(index_x2)) == FAILED,
-                      OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove fused_node input edge Failed."), return FAILED);
-    FUSION_PASS_CHECK(SUCCESS != GraphUtils::AddEdge(x2_anchor_peer_anchor, transposedNode->GetInDataAnchor(0)),
-                      CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
-                                            x2_anchor_peer_node->GetName().c_str(), transposedNode->GetName().c_str()),
-                      return FAILED);
-    FUSION_PASS_CHECK(
-        SUCCESS != GraphUtils::AddEdge(transposedNode->GetOutDataAnchor(0), reshape_node->GetInDataAnchor(0)),
-        CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
-                              transposedNode->GetName().c_str(), reshape_node->GetName().c_str()),
-        return FAILED);
-
-    fused_node->GetOpDesc()->AddInputDesc("x2", *(reshape_node->GetOpDesc()->MutableOutputDesc(0)));
-
-    FUSION_PASS_CHECK(
-        SUCCESS != GraphUtils::AddEdge(reshape_node->GetOutDataAnchor(0), fused_node->GetInDataAnchor(index_x2)),
-        CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
-                              reshape_node->GetName().c_str(), fused_node->GetName().c_str()),
-        return FAILED);
+    FUSION_PASS_CHECK(SUCCESS != LinkEdgeWithKNotOne(fused_node, transposedNode, reshape_node, index_x2),
+                      CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "LinkEdgeWithKNotOne x2 failed"), return FAILED);
   } else {
     // Reshape
     FUSION_PASS_CHECK(SUCCESS != InsertReshapeNode(graph, fused_node, index_x2, new_x2_out_shape),

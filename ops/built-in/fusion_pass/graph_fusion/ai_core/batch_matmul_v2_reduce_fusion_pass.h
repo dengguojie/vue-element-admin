@@ -55,6 +55,8 @@ class BatchMatMulV2ReduceFusionPass : public PatternFusionBasePass {
   Status DealWithInputWithKNotOne(
       ge::ComputeGraph &graph, ge::NodePtr &fused_node,
       std::tuple<int, std::vector<int64_t>, int, std::vector<int64_t>, std::vector<bool>> &param) const;
+  Status LinkEdgeWithKNotOne(ge::NodePtr &fused_node, ge::NodePtr &transposedNode, ge::NodePtr &reshape_node,
+                             int index) const;
   Status DoFusionWithKNotOne(ge::ComputeGraph &graph, ge::NodePtr &fused_node, const vector<int64_t> &new_x1_out_shape,
                              const vector<int64_t> &new_x2_out_shape, const vector<bool> &trans) const;
   const string FUSED_OP_TYPE = "BatchMatMulV2";
