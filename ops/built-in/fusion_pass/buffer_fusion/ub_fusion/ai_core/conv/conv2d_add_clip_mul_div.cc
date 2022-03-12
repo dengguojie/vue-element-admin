@@ -37,6 +37,7 @@ static const char kPatternAdd1[] = "add1";
 static const char kPatternClip[] = "clip";
 static const char kPatternMul1[] = "mul";
 static const char kPatternDiv[] = "div";
+static const char kPatternMuls[] = "muls";
 static const char kPatternOtherInput[] = "otherInput";
 static const char kPatternOtherInput1[] = "otherInput1";
 static const char kPatternOtherInput2[] = "otherInput2";
@@ -81,65 +82,46 @@ vector<BufferFusionPattern*> Conv2dAddClipMulDivFusionPass::DefinePatterns()
       .AddOpDesc(kPatternOtherInput2, {TBE_PATTERN_INPUT_NODE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
       .AddOpDesc(kPatternOtherInput3, {TBE_PATTERN_INPUT_NODE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
       .AddOpDesc(kPatternOtherInput4, {TBE_PATTERN_INPUT_NODE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
-      .AddOpDesc(kPatternOtherInput, {TBE_PATTERN_INPUT_NODE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
-      .AddOpDesc(kPatternOtherOutput, {TBE_PATTERN_OUTPUT_NODE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
       .SetHead({kPatternConv})
-      .SetOutputs(kPatternConv, {kPatternAdd, kPatternOtherOutput}, TBE_OUTPUT_BRANCH_MULTI)
+      .SetOutputs(kPatternConv, {kPatternAdd, kPatternMul1}, TBE_OUTPUT_BRANCH_MULTI)
       .SetOutputs(kPatternOtherInput1, {kPatternAdd})
       .SetOutputs(kPatternAdd, {kPatternClip}, TBE_OUTPUT_BRANCH_SINGLE)
       .SetOutputs(kPatternClip, {kPatternMul1}, TBE_OUTPUT_BRANCH_SINGLE)
       .SetOutputs(kPatternMul1, {kPatternDiv}, TBE_OUTPUT_BRANCH_SINGLE)
-      .SetOutputs(kPatternOtherInput, {kPatternMul1})
       .SetOutputs(kPatternOtherInput2, {kPatternDiv})
       .SetOutputs(kPatternOtherInput3, {kPatternClip})
       .SetOutputs(kPatternOtherInput4, {kPatternClip});
-  patterns.push_back(pattern);
   OP_LOGD(fused_op_type_.c_str(), "End to define %s pass pattern.", pattern_name.c_str());
-  return patterns;
-}
+  patterns.push_back(pattern);
 
-Status Conv2dAddClipMulDivFusionPass::GetFusionNodes(const BufferFusionMapping &mapping,
-                                                      vector<ge::NodePtr> &fusion_nodes)
-{
-  OP_LOGD(fused_op_type_.c_str(), "Begin to do Conv2dAddClipMulDivFusionPass.");
-  auto kPatternAdd_nodes = GetMatchedNodesByDescName(kPatternAdd, mapping);
-  auto kPatternClip_nodes = GetMatchedNodesByDescName(kPatternClip, mapping);
-  auto kPatternMul1_nodes = GetMatchedNodesByDescName(kPatternMul1, mapping);
-  auto kPatternDiv_nodes = GetMatchedNodesByDescName(kPatternDiv, mapping);
-  auto OtherOutput_nodes = GetMatchedNodesByDescName(kPatternOtherOutput, mapping);
-  auto OtherInput_nodes = GetMatchedNodesByDescName(kPatternOtherInput, mapping);
-  auto OtherInputd_nodes = GetMatchedNodesByDescName(kPatternOtherInputd, mapping);
-  FUSION_PASS_CHECK(kPatternAdd_nodes.empty() || kPatternAdd_nodes[0]->GetType() != "Add",
-                    OP_LOGD(fused_op_type_.c_str(), "Add not support ub fusion"),
-                    return SUCCESS);
-  FUSION_PASS_CHECK(kPatternClip_nodes.empty() || kPatternClip_nodes[0]->GetType() != "ClipByValue",
-                    OP_LOGD(fused_op_type_.c_str(), "[%s] not support ub fusion",kPatternClip_nodes[0]->GetType().c_str()),
-                    return SUCCESS);
-  FUSION_PASS_CHECK(kPatternMul1_nodes.empty() || kPatternMul1_nodes[0]->GetType() != "Mul",
-                    OP_LOGD(fused_op_type_.c_str(), "Mul1 not support ub fusion"),
-                    return SUCCESS);
-  FUSION_PASS_CHECK(kPatternDiv_nodes.empty() || kPatternDiv_nodes[0]->GetType() != "RealDiv",
-                    OP_LOGD(fused_op_type_.c_str(), "Div not support ub fusion"),
-                    return SUCCESS);
-  if (!OtherOutput_nodes.empty()) {
-    if ((OtherOutput_nodes[0]->GetType() != "Mul")) {
-      OP_LOGI(fused_op_type_.c_str(),
-              "The optype of node[%s] should be Mul, but actually is [%s], no need to do fusion.",
-              OtherOutput_nodes[0]->GetName().c_str(), OtherOutput_nodes[0]->GetType().c_str());
-      return SUCCESS;
-    }
-  }
-  if (!OtherInput_nodes.empty()) {
-    if ((OtherInput_nodes[0]->GetType() != "Conv2d")) {
-      OP_LOGI(fused_op_type_.c_str(),
-              "The optype of node[%s] should be conv, but actually is [%s], no need to do fusion.",
-              OtherInput_nodes[0]->GetName().c_str(), OtherInput_nodes[0]->GetType().c_str());
-      return SUCCESS;
-    }
-  }
-  fusion_nodes = GetMatchedNodes(mapping);
-  OP_LOGD(fused_op_type_.c_str(), "End of Conv2dAddClipMulDiv ub fusion pass.");
-  return SUCCESS;
+  string pattern2_name = "ConvAddClipMulDiv2mulsFusionPass";
+  BufferFusionPattern* pattern2 = new (std::nothrow) BufferFusionPattern(pattern2_name);
+  FUSION_PASS_CHECK((pattern == nullptr), OP_LOGE(fused_op_type_.c_str(), "new an object failed."), return patterns);
+  OP_LOGD(fused_op_type_.c_str(), "Start to define %s pass pattern.", pattern2_name.c_str());
+ /* div translate muls on ge fusion if divisor is scalar
+ * define pattern    conv2d  -->                add  -->  clip  -->   mul1   -->    muls
+ *            otheroutput|           otherinput1--/            otherInput/
+ *                       |----------------------------------------------/
+ */
+  pattern2->AddOpDesc(kPatternConv, {OP_PATTERN_CONV}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
+      .AddOpDesc(kPatternAdd, {OP_PATTERN_ELEMWISE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
+      .AddOpDesc(kPatternClip, {OP_PATTERN_ELEMWISE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
+      .AddOpDesc(kPatternMul1, {OP_PATTERN_ELEMWISE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
+      .AddOpDesc(kPatternMuls, {OP_PATTERN_ELEMWISE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
+      .AddOpDesc(kPatternOtherInput1, {TBE_PATTERN_INPUT_NODE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
+      .AddOpDesc(kPatternOtherInput3, {TBE_PATTERN_INPUT_NODE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
+      .AddOpDesc(kPatternOtherInput4, {TBE_PATTERN_INPUT_NODE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
+      .SetHead({kPatternConv})
+      .SetOutputs(kPatternConv, {kPatternAdd, kPatternMul1}, TBE_OUTPUT_BRANCH_MULTI)
+      .SetOutputs(kPatternOtherInput1, {kPatternAdd})
+      .SetOutputs(kPatternAdd, {kPatternClip}, TBE_OUTPUT_BRANCH_SINGLE)
+      .SetOutputs(kPatternClip, {kPatternMul1}, TBE_OUTPUT_BRANCH_SINGLE)
+      .SetOutputs(kPatternMul1, {kPatternMuls}, TBE_OUTPUT_BRANCH_SINGLE)
+      .SetOutputs(kPatternOtherInput3, {kPatternClip})
+      .SetOutputs(kPatternOtherInput4, {kPatternClip});
+  OP_LOGD(fused_op_type_.c_str(), "End to define %s pass pattern.", pattern2_name.c_str());
+  patterns.push_back(pattern2);
+  return patterns;
 }
 
 Status Conv2dAddClipMulDivFusionPass::CalcFusionOpSliceInfo(vector<ge::NodePtr> &fusion_nodes, OpCalcInfo &op_slice_info)
@@ -154,6 +136,6 @@ Status Conv2dAddClipMulDivFusionPass::CalcFusionOpSliceInfo(vector<ge::NodePtr> 
   return SUCCESS;
 }
 
-REGISTER_BUFFER_FUSION_PASS("TbeConv2dClipMulDivFusionPass", BUILT_IN_AI_CORE_BUFFER_FUSION_PASS,
+REGISTER_BUFFER_FUSION_PASS("TbeConv2dAddClipMulDivFusionPass", BUILT_IN_AI_CORE_BUFFER_FUSION_PASS,
                             Conv2dAddClipMulDivFusionPass);
 }  // namespace fe
