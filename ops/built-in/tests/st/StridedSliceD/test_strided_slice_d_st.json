@@ -601,7 +601,7 @@
         "output_desc": [
           {
             "format": "ND",
-            "shape": [37, 3],
+            "shape": [6, 3],
             "type": ["int32"],
             "name": "y"
           }
@@ -796,7 +796,7 @@
         "output_desc": [
           {
             "format": "ND",
-            "shape": [3, 6],
+            "shape": [2, 6],
             "type": ["int8"],
             "name": "y"
           }

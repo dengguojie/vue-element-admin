@@ -191,7 +191,7 @@ class StridedSliceStridesLargerThanOne:
         self.aicore_num_used = ceil_div(self.out_dims, self.rows_each_core)
         if self.aicore_num_used == 1:
             self.rows_each_core = self.out_dims
-            self.rows_each_repeat = self.out_dims
+            self.rows_each_repeat = min(self.rows_each_repeat, self.out_dims)
         self.loop_times = ceil_div(self.repeat_times, 16)
         self.last_loop_rows = self.repeat_times % 16
         if self.last_loop_rows == 0:

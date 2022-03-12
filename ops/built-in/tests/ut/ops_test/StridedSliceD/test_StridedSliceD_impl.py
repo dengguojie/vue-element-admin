@@ -14,7 +14,7 @@ http://www.apache.org/licenses/LICENSE-2.0
 SpaceToBatch ut case
 """
 import json
-from unicodedata import name
+from impl.strided_slice_strides_larger_than_one import StridedSliceStridesLargerThanOne
 from op_test_frame.ut import OpUT
 from op_test_frame.common import precision_info
 import numpy as np
@@ -695,6 +695,22 @@ ut_case.add_cust_test_func(test_func=test_get_op_support_info3)
 ut_case.add_cust_test_func(test_func=test_get_op_support_info4)
 ut_case.add_cust_test_func(test_func=test_get_op_support_info5)
 ut_case.add_cust_test_func(test_func=test_get_op_support_info6)
+
+# 'pylint: disable=protected-access
+def test_get_last_strides_parameters(test_arg):
+    """
+    test for _get_last_strides_parameters
+    """
+    strided_slice = StridedSliceStridesLargerThanOne([1, 3, 320, 640], "float16",
+                                                     [0, 0, 0, 1], [1, 3, 320, 640], [1, 1, 1, 2],
+                                                     "strided_slice_strides_larger_than_one")
+    strided_slice.aicore_num = 1
+    strided_slice.ub_size = 63488
+    strided_slice.total_ub_length = 126976
+    strided_slice._get_last_strides_parameters()
+    assert strided_slice.rows_each_repeat == 6
+
+ut_case.add_cust_test_func(test_func=test_get_last_strides_parameters)
 
 def calc_expect_func(x, y, begin, end, strides):
     inputArr = x['value']
