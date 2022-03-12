@@ -13,6 +13,7 @@ using namespace op;
 class concatv2_fusion_test : public testing::Test {
 protected:
     static void SetUpTestCase() {
+	setenv("ASCEND_GLOBAL_LOG_LEVEL", "2", true);
         std::cout << "concatv2_fusion_test SetUp" << std::endl;
     }
 
@@ -354,7 +355,7 @@ TEST_F(concatv2_fusion_test, concatv2_fusion_test_5) {
   auto concat_dim = op::Constant("concat_dim").set_attr_value(crops_tensor);
 
   auto concat_layer = op::ConcatV2("concatv2");
-  const int64_t input_count = 10000;
+  const int64_t input_count = 1000;
   concat_layer.create_dynamic_input_x(input_count);
   for (int64_t n = 0; n < input_count; n++) {
     concat_layer.set_dynamic_input_x(n, inputx0Data);
@@ -378,7 +379,7 @@ TEST_F(concatv2_fusion_test, concatv2_fusion_test_5) {
     }
   }
   EXPECT_EQ(findConcatV2, true);
-  EXPECT_EQ(concat_v2_d_node_count, 163);
+  EXPECT_EQ(concat_v2_d_node_count, 17);
 }
 
 TEST_F(concatv2_fusion_test, concatv2_fusion_test_6) {

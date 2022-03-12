@@ -59,7 +59,7 @@ vector<FusionPattern*> ConcatExt2FusionPass::DefinePatterns() {
 // including newly added nodes and fused but not deleted nodes
 Status ConcatExt2FusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& new_nodes) {
   std::string fusion_op_type = "ConcatV2D";
-  std::vector<PassAttrInfo> concatv2_attr_info;
+  std::vector<PassAttrInfo> concatv2_attr;
   ge::NodePtr fused_node = nullptr;
   ge::NodePtr fused_node1 = GetNodeFromMapping(PATTERN_FUSEDNODE, mapping);
   FUSION_PASS_CHECK(fused_node1 == nullptr,
@@ -67,16 +67,16 @@ Status ConcatExt2FusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
                     return PARAM_INVALID);
   int32_t inputsize = fused_node1->GetAllInDataAnchors().size();
   PassAttrInfo axis = {inputsize - 1, "concat_dim", "SetInt"};
-  concatv2_attr_info.push_back(axis);
+  concatv2_attr.push_back(axis);
 
-  Status ret = PatternFusionUtil::ConstToAttrWithNode(graph, fused_node1, fusion_op_type, concatv2_attr_info, fused_node);
+  Status ret = PatternFusionUtil::ConstToAttrWithNode(graph, fused_node1, fusion_op_type, concatv2_attr, fused_node);
   if (ret != SUCCESS) {
     OP_LOGI(FUSED_OP_TYPE, "Concatv2 has input which is not a constant, graph not changed.");
     return NOT_CHANGED;
   }
 
   ClearOpInferDepends(fused_node1);
-  OP_LOGI(fused_node->GetName(), "Concatv2-->ConcatV2D fusion SUCCESSS!!!!!");
+  OP_LOGI(fused_node->GetName(), "ConcatV2-->ConcatV2D fusion SUCCESS!");
 
   ge::OpDescPtr fused_desc = fused_node->GetOpDesc();
   FUSION_PASS_CHECK(
@@ -93,7 +93,7 @@ Status ConcatExt2FusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
   int64_t max_inputs = GetMaxInputsNum(fused_node);
   FUSION_PASS_CHECK(
       !CheckNeedChanged(fused_desc, max_inputs),
-      OP_LOGD(FUSED_OP_TYPE, "The amount of input of ConcatV2D node is less than %lld.", max_inputs);
+      OP_LOGD(FUSED_OP_TYPE, "The amount of inputs of ConcatV2D node is less than %lld.", max_inputs);
       new_nodes.emplace_back(fused_node), return SUCCESS);
 
   // split concatv2d node

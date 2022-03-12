@@ -35,10 +35,12 @@ using namespace std;
 namespace fe {
 int64_t GetMaxInputsNum(const ge::NodePtr& fused_node) {
   int64_t max_inputs = 63;
+  int64_t dynamic_max_inputs = 48;
+  int64_t dynamic_max_inputs_310 = 21;
 
   // due to compile time cost
   if (HasUnKnowShape(fused_node)) {
-    max_inputs = 48;
+    max_inputs = dynamic_max_inputs;
 
     PlatformInfo platform_info;
     OptionalInfo optional_info;
@@ -48,7 +50,7 @@ int64_t GetMaxInputsNum(const ge::NodePtr& fused_node) {
     }
     OP_LOGD("Concat", "Get soc_version is: [%s].", optional_info.soc_version.c_str());
     if (optional_info.soc_version == "Ascend310") {
-      max_inputs = 21;
+      max_inputs = dynamic_max_inputs_310;
     }
   }
 

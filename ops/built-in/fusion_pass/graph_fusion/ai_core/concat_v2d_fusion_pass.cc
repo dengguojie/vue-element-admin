@@ -159,8 +159,10 @@ Status Concatv2dFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, ve
     return NOT_CHANGED;
   }
   size_t max_count = 63;
+  size_t dynamic_max_count = 48;
+  size_t dynamic_max_count_310 = 21;
   if (HasUnKnowInputShape(fused_input_nodes)) {
-    max_count = 48;
+    max_count = dynamic_max_count;
 
     PlatformInfo platform_info;
     OptionalInfo optional_info;
@@ -170,7 +172,7 @@ Status Concatv2dFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, ve
     }
     OP_LOGD(FUSED_OP_TYPE, "Get soc_version is: [%s].", optional_info.soc_version.c_str());
     if (optional_info.soc_version == "Ascend310") {
-      max_count = 21;
+      max_count = dynamic_max_count_310;
     }
   }
 
