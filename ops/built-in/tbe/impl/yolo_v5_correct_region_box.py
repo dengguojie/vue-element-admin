@@ -934,7 +934,7 @@ class CorrectBoxComputer():
         # x
         with self.instance.if_scope(param['co_id'] == Constant.VALUE_ZERO):
             # move windex to ub b
-            self.instance.data_move(param['ub_b'],param['windex'][cycle * param['mov_len']],
+            self.instance.data_move(param['ub_b'], param['windex'][cycle * param['mov_len']],
                                     Constant.SID, Constant.NBURST_ONE, param['burlen'], 0, 0)
 
             self.instance.vec_muls(self.mask, param['ub_c'], param['ub_a'], 2.0, repeat,
