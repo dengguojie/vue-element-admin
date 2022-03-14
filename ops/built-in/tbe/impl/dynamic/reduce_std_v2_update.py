@@ -15,6 +15,7 @@
 """
 reduce_std_v2_update
 """
+import math
 import operator as op
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tvm
@@ -28,7 +29,20 @@ from impl.util.platform_adapter import OpPatternMode
 
 
 # 'pylint: disable=invalid-name,too-many-locals,unused-argument,too-many-arguments,too-many-branches
-@register_operator_compute("reduce_std_v2_update", op_mode="dynamic", support_fusion=True)
+def reduce_std_check_dim(axis_dim, shape_x, dim):
+    """
+    reduce_std_check_dim
+    """
+    dim_number = len(shape_x)
+
+    for i in dim:
+        if ((i < 0) and ((i + dim_number) in axis_dim)) or (i in axis_dim):
+            continue
+        axis_dim.append(int((i + dim_number) % dim_number))
+    return axis_dim
+
+
+@register_operator_compute("ReduceStdV2Update", op_mode="dynamic", support_fusion=True)
 def reduce_std_v2_update_compute(x, mean, dim, if_std, unbiased, keepdim, kernel_name="reduce_std_v2_update"):
     """
     calculating data
@@ -62,9 +76,12 @@ def reduce_std_v2_update_compute(x, mean, dim, if_std, unbiased, keepdim, kernel
 
     shape_x = shape_util.shape_to_list(x.shape)
 
+    axis_dim = []
+    axis_dim = reduce_std_check_dim(axis_dim, shape_x, dim)
+
     reduce_ele = 1.0
-    for i in shape_x:
-        reduce_ele *= i
+    for i in axis_dim:
+        reduce_ele *= shape_x[i]
     dtype = x.dtype
 
     x_sub = tbe.vsub(x, mean)
@@ -72,8 +89,10 @@ def reduce_std_v2_update_compute(x, mean, dim, if_std, unbiased, keepdim, kernel
 
     if unbiased:
         if isinstance(reduce_ele, float):
-            cof_unbiased = (reduce_ele - 1.0) ** (-1)
-            cof_unbiased = tvm.const(cof_unbiased, dtype=dtype)
+            cof_unbiased = 1.0
+            if reduce_ele > 1:
+                cof_unbiased = (reduce_ele - 1.0)**(-1)
+                cof_unbiased = tvm.const(cof_unbiased, dtype=dtype)
         else:
             cof_unbiased = tbe.var("cof_unbiased", dtype=dtype)
             if dtype == "float16":
@@ -81,7 +100,7 @@ def reduce_std_v2_update_compute(x, mean, dim, if_std, unbiased, keepdim, kernel
             tbe_context.get_context().add_compile_info("reduce_mean_cof_dtype", dtype)
             tbe_context.get_context().add_compile_info("attr_unbiased", "true")
         var_muls = tbe.vmuls(var_mul, cof_unbiased)
-    else:
+    else: 
         if isinstance(reduce_ele, float):
             cof = reduce_ele ** (-1)
             cof = tvm.const(cof, dtype=dtype)

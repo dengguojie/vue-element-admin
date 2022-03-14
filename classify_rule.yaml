@@ -832,6 +832,7 @@ vector_B:
       - ops/built-in/op_tiling/pad_v3.cc
       - ops/built-in/op_tiling/prelu.cc
       - ops/built-in/op_tiling/reduce_mean.cc
+      - ops/built-in/op_tiling/reduce_std_v2_update.cc
       - ops/built-in/op_tiling/resize_bilinear_v2_grad.cc
       - ops/built-in/op_tiling/resize_register.cc
       - ops/built-in/op_tiling/reverse.cc
@@ -999,6 +1000,7 @@ vector_B:
       - ops/built-in/tbe/impl/dynamic/reciprocal.py
       - ops/built-in/tbe/impl/dynamic/reduce_mean.py
       - ops/built-in/tbe/impl/dynamic/reduce_min.py
+      - ops/built-in/tbe/impl/dynamic/reduce_std_v2_update.py
       - ops/built-in/tbe/impl/dynamic/relu.py
       - ops/built-in/tbe/impl/dynamic/relu_grad_v2.py
       - ops/built-in/tbe/impl/dynamic/relu_v2.py
