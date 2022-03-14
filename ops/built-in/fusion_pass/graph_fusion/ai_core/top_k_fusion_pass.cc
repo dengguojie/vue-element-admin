@@ -57,7 +57,7 @@ Status PermVecGen(int64_t dim_size, int64_t dim_aim, vector<int64_t>& perm) {
   return SUCCESS;
 }
 
-Status AssitHelp(const int32_t n, uint16_t* output, bool is_segment_sort=false) {
+Status AssitHelp(const int32_t n, uint16_t* output, bool is_segment_sort = false) {
   for (int32_t i = 0; i < n; ++i) {
     fp16_t t;
     t.val = 0;
@@ -95,10 +95,10 @@ bool TopKFusionPass::CheckMultiCoreSegment(NodePtr& topk_node, SegmentCalcParams
   // init soc version params
   PlatformInfo platform_info;
   OptionalInfo optional_info;
-  FUSION_PASS_CHECK(PlatformInfoManager::Instance().GetPlatformInfoWithOutSocVersion(platform_info,
-                                                                                     optional_info) != SUCCESS,
-                    VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "CheckMultiCoreSegment: Get platform_info failed."),
-                    return false);
+  FUSION_PASS_CHECK(
+      PlatformInfoManager::Instance().GetPlatformInfoWithOutSocVersion(platform_info, optional_info) != SUCCESS,
+      VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "CheckMultiCoreSegment: Get platform_info failed."),
+      return false);
   // check input_data shape
   OpDescPtr topk_desc = topk_node->GetOpDesc();
   GeTensorDesc input_data_desc = topk_desc->GetInputDesc(0);
@@ -115,9 +115,10 @@ bool TopKFusionPass::CheckMultiCoreSegment(NodePtr& topk_node, SegmentCalcParams
   if (dim_aim < 0) {
     dim_aim = input_shape.size() + dim_aim;
   }
-  FUSION_PASS_CHECK(dim_aim != 0,
-                    VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "CheckMultiCoreSegment: The attr dim is invalid."),
-                    return false);
+  FUSION_PASS_CHECK(
+      dim_aim != 0,
+      VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "CheckMultiCoreSegment: The attr dim is invalid."),
+      return false);
 
   calcParams.data_size = input_shape[dim_aim];
   if (optional_info.soc_version.find("Ascend310") != string::npos ||
@@ -134,11 +135,13 @@ bool TopKFusionPass::CheckMultiCoreSegment(NodePtr& topk_node, SegmentCalcParams
     calcParams.ai_core_num = platform_info.soc_info.ai_core_cnt;
   } else if (optional_info.soc_version.find("Ascend920") != string::npos) {
     calcParams.soc_version = "Ascend920";
+    // 32: proposal num processed for each repeat
     calcParams.core_align_num = 32;
     calcParams.pro_repeat_num = 32;
-    calcParams.core_min_num = 12288;
+    calcParams.core_min_num = 12288; // 12288: max proposal num limited by ub size
+    // 2: only supports k larger than half of core_min_num currently
     FUSION_PASS_CHECK(calcParams.k_num <= calcParams.core_min_num / 2,
-                      OP_LOGW(kFusedOpType.c_str(), "The attr k_num not support."),
+                      OP_LOGW(kFusedOpType.c_str(), "CheckMultiCoreSegment: The attr k_num not support."),
                       return false);
     // check data type
     if (input_data_desc.GetDataType() == ge::DT_FLOAT16) {
@@ -146,12 +149,12 @@ bool TopKFusionPass::CheckMultiCoreSegment(NodePtr& topk_node, SegmentCalcParams
     } else if (input_data_desc.GetDataType() == ge::DT_FLOAT) {
       calcParams.pro_data_num = 2;
     } else {
-      OP_LOGW(kFusedOpType.c_str(), "Input data type not support");
+      OP_LOGW(kFusedOpType.c_str(), "CheckMultiCoreSegment: Input data type not support");
       return false;
     }
     // check data size
     FUSION_PASS_CHECK(calcParams.data_size <= calcParams.core_min_num,
-                      OP_LOGW(kFusedOpType.c_str(), "Input data size not support."),
+                      OP_LOGW(kFusedOpType.c_str(), "CheckMultiCoreSegment: Input data size not support."),
                       return false);
     calcParams.ai_core_num = platform_info.soc_info.vector_core_cnt;
   } else {
@@ -170,18 +173,23 @@ Status TopKFusionPass::AddMultiMergeNode(ComputeGraph& graph, NodePtr& topk_node
   GeTensorDesc output_index_desc = topk_node->GetOpDesc()->GetOutputDesc(1);
   while (segment_num > calcParams.merge_channel) {
     // define multimerge Opdesc
-    std::shared_ptr<ge::OpDesc> multimerge_desc = std::make_shared<ge::OpDesc>(topk_node->GetName() + "_multimerge_" + to_string(index), "MultiMerge");
-    FUSION_PASS_CHECK(multimerge_desc == nullptr,
-                      VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "The multimerge_desc is null, Build MultiMerge Op failed."),
-                      return FAILED);
+    std::shared_ptr<ge::OpDesc> multimerge_desc =
+        std::make_shared<ge::OpDesc>(topk_node->GetName() + "_multimerge_" + to_string(index), "MultiMerge");
+    FUSION_PASS_CHECK(
+        multimerge_desc == nullptr,
+        VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "multimerge_desc is null, Build MultiMerge Op failed."),
+        return FAILED);
     GeTensorDesc input_proposal_desc = input_node->GetOpDesc()->GetOutputDesc(0);
-    FUSION_PASS_CHECK(multimerge_desc->AddInputDesc("input_proposal", input_proposal_desc) != GRAPH_SUCCESS,
-                      VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "MultiMerge add input_proposal desc failed."), return FAILED);
+    FUSION_PASS_CHECK(
+        multimerge_desc->AddInputDesc("input_proposal", input_proposal_desc) != GRAPH_SUCCESS,
+        VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "MultiMerge add input_proposal desc failed."),
+        return FAILED);
     // update output proposal shape and dtype
     int64_t channel_num = input_proposal_desc.GetShape().GetDim(0);
     int64_t data_num = input_proposal_desc.GetShape().GetDim(1);
     int64_t result_data_num = data_num * calcParams.merge_channel;
-    int64_t k_align_num = (calcParams.k_num + calcParams.pro_repeat_num - 1) / calcParams.pro_repeat_num * calcParams.pro_repeat_num;
+    int64_t k_align_num =
+        (calcParams.k_num + calcParams.pro_repeat_num - 1) / calcParams.pro_repeat_num * calcParams.pro_repeat_num;
     if (k_align_num < result_data_num) {
       result_data_num = k_align_num;
     }
@@ -198,19 +206,23 @@ Status TopKFusionPass::AddMultiMergeNode(ComputeGraph& graph, NodePtr& topk_node
     output_proposal_desc.SetShape(GeShape(output_proposal_shape));
     output_proposal_desc.SetOriginShape(GeShape(output_proposal_shape));
     output_proposal_desc.SetDataType(input_proposal_desc.GetDataType());
-    FUSION_PASS_CHECK(multimerge_desc->AddOutputDesc("output_proposal", output_proposal_desc) != GRAPH_SUCCESS,
-                      VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "MultiMerge add output_proposal desc failed."), return FAILED);
+    FUSION_PASS_CHECK(
+        multimerge_desc->AddOutputDesc("output_proposal", output_proposal_desc) != GRAPH_SUCCESS,
+        VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "MultiMerge add output_proposal desc failed."),
+        return FAILED);
     vector<int64_t> output_index_shape = {1};
     output_index_desc.SetShape(GeShape(output_index_shape));
     output_index_desc.SetOriginShape(GeShape(output_index_shape));
     output_index_desc.SetDataType(DT_INT32);
     FUSION_PASS_CHECK(multimerge_desc->AddOutputDesc("output_index", output_index_desc) != GRAPH_SUCCESS,
-                      VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "MultiMerge add output_index desc failed."), return FAILED);
+                      VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "MultiMerge add output_index desc failed."),
+                      return FAILED);
 
     NodePtr multiMergeNode = graph.AddNode(multimerge_desc);
-    FUSION_PASS_CHECK(multiMergeNode == nullptr,
-                      VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "The multiMergeNode is null, Build MultiMerge Op failed."),
-                      return PARAM_INVALID);
+    FUSION_PASS_CHECK(
+        multiMergeNode == nullptr,
+        VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "The multiMergeNode is null, Build MultiMerge Op failed."),
+        return PARAM_INVALID);
     Operator multiMerge = OpDescUtils::CreateOperatorFromNode(multiMergeNode);
     multiMerge.SetAttr("k_num", calcParams.k_num);
     fusion_nodes.push_back(multiMergeNode);
@@ -220,30 +232,39 @@ Status TopKFusionPass::AddMultiMergeNode(ComputeGraph& graph, NodePtr& topk_node
   }
 
   // define last multimerge(include_index) Opdesc
-  std::shared_ptr<ge::OpDesc> last_multimerge_desc = std::make_shared<ge::OpDesc>(topk_node->GetName() + "_multimerge_" + to_string(index), "MultiMerge");
-  FUSION_PASS_CHECK(last_multimerge_desc == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "The last multimerge_desc is null, Build MultiMerge Op failed."),
-                    return FAILED);
+  std::shared_ptr<ge::OpDesc> last_multimerge_desc =
+      std::make_shared<ge::OpDesc>(topk_node->GetName() + "_multimerge_" + to_string(index), "MultiMerge");
+  FUSION_PASS_CHECK(
+      last_multimerge_desc == nullptr,
+      VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "last_multimerge_desc is null, Build MultiMerge Op failed."),
+      return FAILED);
   GeTensorDesc input_proposal_desc = input_node->GetOpDesc()->GetOutputDesc(0);
-  FUSION_PASS_CHECK(last_multimerge_desc->AddInputDesc("input_proposal", input_proposal_desc) != GRAPH_SUCCESS,
-                    VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "LastMultiMerge add input_proposal desc failed."), return FAILED);
+  FUSION_PASS_CHECK(
+      last_multimerge_desc->AddInputDesc("input_proposal", input_proposal_desc) != GRAPH_SUCCESS,
+      VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "LastMultiMerge add input_proposal desc failed."),
+      return FAILED);
   vector<int64_t> output_shape;
   output_shape.push_back(calcParams.k_num);
   output_proposal_desc.SetShape(GeShape(output_shape));
   output_proposal_desc.SetOriginShape(GeShape(output_shape));
   output_proposal_desc.SetDataType(input_proposal_desc.GetDataType());
-  FUSION_PASS_CHECK(last_multimerge_desc->AddOutputDesc("output_proposal", output_proposal_desc) != GRAPH_SUCCESS,
-                    VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "LastMultiMerge add output_proposal desc failed."), return FAILED);
+  FUSION_PASS_CHECK(
+      last_multimerge_desc->AddOutputDesc("output_proposal", output_proposal_desc) != GRAPH_SUCCESS,
+      VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "LastMultiMerge add output_proposal desc failed."),
+      return FAILED);
   output_index_desc.SetShape(GeShape(output_shape));
   output_index_desc.SetOriginShape(GeShape(output_shape));
   output_index_desc.SetDataType(DT_INT32);
-  FUSION_PASS_CHECK(last_multimerge_desc->AddOutputDesc("output_index", output_index_desc) != GRAPH_SUCCESS,
-                    VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "LastMultiMerge add output_index desc failed."), return FAILED);
+  FUSION_PASS_CHECK(
+      last_multimerge_desc->AddOutputDesc("output_index", output_index_desc) != GRAPH_SUCCESS,
+      VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "LastMultiMerge add output_index desc failed."),
+      return FAILED);
 
   NodePtr lastMultiMergeNode = graph.AddNode(last_multimerge_desc);
-  FUSION_PASS_CHECK(lastMultiMergeNode == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "The last multiMergeNode is null, Build MultiMerge Op failed."),
-                    return PARAM_INVALID);
+  FUSION_PASS_CHECK(
+      lastMultiMergeNode == nullptr,
+      VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "lastMultiMergeNode is null, Build MultiMerge Op failed."),
+      return PARAM_INVALID);
   Operator lastMultiMerge = OpDescUtils::CreateOperatorFromNode(lastMultiMergeNode);
   lastMultiMerge.SetAttr("k_num", calcParams.k_num);
   lastMultiMerge.SetAttr("include_index", true);
@@ -266,18 +287,22 @@ Status TopKFusionPass::AddSegmentSortAndMergeNode(ComputeGraph& graph, NodePtr& 
                                                   SegmentCalcParams& calcParams, vector<NodePtr>& fusion_nodes) {
   OP_LOGI(kFusedOpType.c_str(), "AddSegmentSortAndMergeNode start.");
   // define segmentsort Opdesc
-  std::shared_ptr<ge::OpDesc> segmentsort_desc = std::make_shared<ge::OpDesc>(topk_node->GetName() + "_segmentsort", "SegmentSort");
-  FUSION_PASS_CHECK(segmentsort_desc == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "The segmentsort_desc is null, Build SegmentSort Op failed."),
-                    return FAILED);
+  std::shared_ptr<ge::OpDesc> segmentsort_desc = std::make_shared<ge::OpDesc>(topk_node->GetName() + "_segmentsort",
+                                                                              "SegmentSort");
+  FUSION_PASS_CHECK(
+      segmentsort_desc == nullptr,
+      VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "segmentsort_desc is null, Build SegmentSort Op failed."),
+      return FAILED);
   GeTensorDesc input_data_desc = topk_node->GetOpDesc()->GetInputDesc(0);
   FUSION_PASS_CHECK(segmentsort_desc->AddInputDesc("input_data", input_data_desc) != GRAPH_SUCCESS,
-                    VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "SegmentSort add input_data desc failed."), return FAILED);
+                    VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "SegmentSort add input_data desc failed."),
+                    return FAILED);
   GeTensorDesc output_desc = topk_node->GetOpDesc()->GetOutputDesc(0);
   // update segmentsort output shape
   int64_t ai_core_num = calcParams.ai_core_num;
   int64_t result_data_num = (calcParams.data_size + ai_core_num - 1) / ai_core_num;
-  result_data_num = (result_data_num + calcParams.core_align_num - 1) / calcParams.core_align_num * calcParams.core_align_num;
+  result_data_num =
+      (result_data_num + calcParams.core_align_num - 1) / calcParams.core_align_num * calcParams.core_align_num;
   if (result_data_num < calcParams.core_min_num) {
     result_data_num = calcParams.core_min_num;
   }
@@ -294,28 +319,32 @@ Status TopKFusionPass::AddSegmentSortAndMergeNode(ComputeGraph& graph, NodePtr& 
   output_desc.SetShape(GeShape(output_proposal_shape));
   output_desc.SetOriginShape(GeShape(output_proposal_shape));
   output_desc.SetDataType(input_data_desc.GetDataType());
-  FUSION_PASS_CHECK(segmentsort_desc->AddOutputDesc("output_proposal", output_desc) != GRAPH_SUCCESS,
-                    VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "SegmentSort add output_proposal desc failed."),
-                    return FAILED);
+  FUSION_PASS_CHECK(
+      segmentsort_desc->AddOutputDesc("output_proposal", output_desc) != GRAPH_SUCCESS,
+      VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "SegmentSort add output_proposal desc failed."),
+      return FAILED);
 
   NodePtr segmentSortNode = graph.AddNode(segmentsort_desc);
-  FUSION_PASS_CHECK(segmentSortNode == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "The segmentSortNode is null, Build SegmentSort Op failed."),
-                    return PARAM_INVALID);
+  FUSION_PASS_CHECK(
+      segmentSortNode == nullptr,
+      VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "The segmentSortNode is null, Build SegmentSort Op failed."),
+      return PARAM_INVALID);
 
   Operator segmentSort = OpDescUtils::CreateOperatorFromNode(segmentSortNode);
   segmentSort.SetAttr("k_num", calcParams.k_num);
   fusion_nodes.push_back(segmentSortNode);
 
   // define multimerge Opdesc
-  FUSION_PASS_CHECK(AddMultiMergeNode(graph, topk_node, segmentSortNode, ai_core_num, calcParams, fusion_nodes) != GRAPH_SUCCESS,
-                    VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "AddMultiMergeNode failed, fusion failed."), return FAILED);
+  FUSION_PASS_CHECK(
+      AddMultiMergeNode(graph, topk_node, segmentSortNode, ai_core_num, calcParams, fusion_nodes) != GRAPH_SUCCESS,
+      VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "AddMultiMergeNode failed, fusion failed."), return FAILED);
 
   // connect inputdata_node with segmentsort_node
-  FUSION_PASS_CHECK(GraphUtils::AddEdge(topk_node->GetInDataAnchor(0)->GetPeerOutAnchor(),
-                                        segmentSortNode->GetInDataAnchor(0)) != GRAPH_SUCCESS,
-                    VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "Add input_data node to segmentsort node edge failed."),
-                    return FAILED);
+  FUSION_PASS_CHECK(
+      GraphUtils::AddEdge(topk_node->GetInDataAnchor(0)->GetPeerOutAnchor(),
+                          segmentSortNode->GetInDataAnchor(0)) != GRAPH_SUCCESS,
+      VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "Add input_data node to segmentsort node edge failed."),
+      return FAILED);
 
   // create assist_seq and connect with segmentsort
   Status ret = SUCCESS;
@@ -325,75 +354,89 @@ Status TopKFusionPass::AddSegmentSortAndMergeNode(ComputeGraph& graph, NodePtr& 
   if (calcParams.soc_version == "Ascend920") {
     unique_ptr<int32_t[]> inputAssit(new (nothrow) int32_t[kAssistLen]());
     FUSION_PASS_CHECK(inputAssit.get() == nullptr,
-                      VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "Add SegmentSort: InputAssit is NULL"), return FAILED);
+                      VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "Add SegmentSort: InputAssit is NULL"),
+                      return FAILED);
     for (int32_t i = 0; i < kAssistLen; ++i) {
       inputAssit.get()[i] = i;
     }
     // define shape
     GeTensorDesc tensor_desc(GeShape(assist_dim_info), FORMAT_ND, DT_INT32);
-    FUSION_PASS_MAKE_SHARED((assit_ptr = make_shared<GeTensor>(tensor_desc, reinterpret_cast<uint8_t*>(inputAssit.get()),
-                                                               kAssistLen * sizeof(int32_t))),
-                            assit_ptr = nullptr;
-                            return PARAM_INVALID);
+    FUSION_PASS_MAKE_SHARED(
+        (assit_ptr = make_shared<GeTensor>(tensor_desc, reinterpret_cast<uint8_t*>(inputAssit.get()),
+                                           kAssistLen * sizeof(int32_t))),
+        assit_ptr = nullptr;
+        return PARAM_INVALID);
   } else {
     unique_ptr<uint16_t[]> inputAssit(new (nothrow) uint16_t[kAssistLen]());
     FUSION_PASS_CHECK(inputAssit.get() == nullptr,
-                      VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "Add SegmentSort: InputAssit is NULL"), return FAILED);
+                      VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "Add SegmentSort: InputAssit is NULL"),
+                      return FAILED);
     ret = AssitHelp(kAssistLen, inputAssit.get(), true);
-    FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGW(kFusedOpType.c_str(), "Add SegmentSort: AssitHelp failed."), return NOT_CHANGED);
+    FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGW(kFusedOpType.c_str(), "Add SegmentSort: AssitHelp failed."),
+                      return NOT_CHANGED);
 
     // define shape
     GeTensorDesc tensor_desc(GeShape(assist_dim_info), FORMAT_ND, DT_FLOAT16);
-    FUSION_PASS_MAKE_SHARED((assit_ptr = make_shared<GeTensor>(tensor_desc, reinterpret_cast<uint8_t*>(inputAssit.get()),
-                                                               kAssistLen * sizeof(uint16_t))),
-                            assit_ptr = nullptr;
-                            return PARAM_INVALID);
+    FUSION_PASS_MAKE_SHARED(
+        (assit_ptr = make_shared<GeTensor>(tensor_desc, reinterpret_cast<uint8_t*>(inputAssit.get()),
+                                           kAssistLen * sizeof(uint16_t))),
+        assit_ptr = nullptr;
+        return PARAM_INVALID);
   }
 
   vector<GeTensorPtr> weights = {assit_ptr};
   FUSION_PASS_CHECK(OpDescUtils::SetWeights(segmentSortNode, weights) != GRAPH_SUCCESS,
-                    VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "Add SegmentSort: SetWeights failed"), return FAILED);
+                    VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "Add SegmentSort: SetWeights failed"),
+                    return FAILED);
   auto const_input_nodes = OpDescUtils::GetConstInputs(segmentSortNode);
   FUSION_PASS_CHECK(const_input_nodes.size() <= 0,
                     VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "Add SegmentSort: GetConstInputs Error"),
                     return PARAM_INVALID);
   NodePtr const_input = const_input_nodes[0];
-  FUSION_PASS_CHECK(const_input == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "The const_input is null, Build SegmentSort Op failed."),
-                    return PARAM_INVALID);
+  FUSION_PASS_CHECK(
+      const_input == nullptr,
+      VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "The const_input is null, Build SegmentSort Op failed."),
+      return PARAM_INVALID);
   auto const_input_desc = const_input->GetOpDesc();
-  FUSION_PASS_CHECK(const_input_desc == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "The const_input_desc is null, Build SegmentSort Op failed."),
-                    return PARAM_INVALID);
+  FUSION_PASS_CHECK(
+      const_input_desc == nullptr,
+      VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "const_input_desc is null, Build SegmentSort Op failed."),
+      return PARAM_INVALID);
   const_input_desc->SetType(kConstantOp);
 
   // segmentsort --> multimerge * N --> last multimerge
   NodePtr input_node = segmentSortNode;
   for (int i = 1; i < fusion_nodes.size(); ++i) {
-    FUSION_PASS_CHECK(GraphUtils::AddEdge(input_node->GetOutDataAnchor(0),
-                                          fusion_nodes[i]->GetInDataAnchor(0)) != GRAPH_SUCCESS,
-                      VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "Add segmentsort to multimerge edge failed."),
-                      return FAILED);
+    FUSION_PASS_CHECK(
+        GraphUtils::AddEdge(input_node->GetOutDataAnchor(0), fusion_nodes[i]->GetInDataAnchor(0)) != GRAPH_SUCCESS,
+        VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "Add segmentsort to multimerge edge failed."),
+        return FAILED);
     input_node = fusion_nodes[i];
   }
 
   // last multimerge --> next node
   NodePtr lastMergeNode = fusion_nodes[fusion_nodes.size() - 1];
   for (auto inDataAnchor : topk_node->GetOutDataAnchor(0)->GetPeerInDataAnchors()) {
-    FUSION_PASS_CHECK(GraphUtils::RemoveEdge(topk_node->GetOutDataAnchor(0), inDataAnchor) != GRAPH_SUCCESS,
-                      VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "Add SegmentSort: Remove out data edge failed."),
-                      return FAILED);
-    FUSION_PASS_CHECK(GraphUtils::AddEdge(lastMergeNode->GetOutDataAnchor(0), inDataAnchor) != GRAPH_SUCCESS,
-                      VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "Add last multimerge output data to next node edge failed."),
-                      return FAILED);
+    FUSION_PASS_CHECK(
+        GraphUtils::RemoveEdge(topk_node->GetOutDataAnchor(0), inDataAnchor) != GRAPH_SUCCESS,
+        VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "Add SegmentSort: Remove out data edge failed."),
+        return FAILED);
+    FUSION_PASS_CHECK(
+        GraphUtils::AddEdge(lastMergeNode->GetOutDataAnchor(0), inDataAnchor) != GRAPH_SUCCESS,
+        VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(),
+                                       "Add last multimerge output data to next node edge failed."),
+        return FAILED);
   }
   for (auto inDataAnchor : topk_node->GetOutDataAnchor(1)->GetPeerInDataAnchors()) {
-    FUSION_PASS_CHECK(GraphUtils::RemoveEdge(topk_node->GetOutDataAnchor(1), inDataAnchor) != GRAPH_SUCCESS,
-                      VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "Add SegmentSort: Remove out index edge failed."),
-                      return FAILED);
-    FUSION_PASS_CHECK(GraphUtils::AddEdge(lastMergeNode->GetOutDataAnchor(1), inDataAnchor) != GRAPH_SUCCESS,
-                      VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "Add last multimerge output index to next node edge failed."),
-                      return FAILED);
+    FUSION_PASS_CHECK(
+        GraphUtils::RemoveEdge(topk_node->GetOutDataAnchor(1), inDataAnchor) != GRAPH_SUCCESS,
+        VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "Add SegmentSort: Remove out index edge failed."),
+        return FAILED);
+    FUSION_PASS_CHECK(
+        GraphUtils::AddEdge(lastMergeNode->GetOutDataAnchor(1), inDataAnchor) != GRAPH_SUCCESS,
+        VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(),
+                                       "Add last multimerge output index to next node edge failed."),
+        return FAILED);
   }
 
   FUSION_PASS_CHECK(graph.RemoveNode(topk_node) != SUCCESS,

@@ -108,7 +108,7 @@ TEST_F(topk_fusion_test, diag_fusion_test_3) {
     topk_input_data.update_output_desc_y(tensorDesc);
 
     int64_t *k_data = new int64_t[1];
-    k_data[0]=1;
+    k_data[0]=1000;
     TensorDesc k_desc(ge::Shape({1}),FORMAT_ND, DT_INT64);
     Tensor k_tensor(k_desc, (uint8_t *)k_data,sizeof(int64_t));
     auto k_const = op::Const().set_attr_value(k_tensor);
@@ -123,6 +123,15 @@ TEST_F(topk_fusion_test, diag_fusion_test_3) {
     std::vector<Operator> outputs{topk_op};
     graph.SetInputs(inputs).SetOutputs(outputs);
     ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
+
+    // set soc_version
+    fe::PlatformInfo platform_info;
+    fe::OptionalInfo opti_compilation_info;
+    platform_info.soc_info.ai_core_cnt = 32;
+    opti_compilation_info.soc_version = "Ascend910A";
+    fe::PlatformInfoManager::Instance().platform_info_map_["Ascend910A"] = platform_info;
+    fe::PlatformInfoManager::Instance().SetOptionalCompilationInfo(opti_compilation_info);
+
     fe::FusionPassTestUtils::InferShapeAndType(compute_graph_ptr);
     fe::FusionPassTestUtils::RunGraphFusionPass("TopKFusionPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
     bool findTopKD = false;
