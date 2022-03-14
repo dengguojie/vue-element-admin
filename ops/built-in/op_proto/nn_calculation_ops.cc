@@ -1620,13 +1620,12 @@ IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DBackpropInputInferShape) {
                                                    groups, unknown_rank, attr_params)) {
       return GRAPH_FAILED;
     }
-    for (size_t i = 0; i < dx_range.size(); i++) {
-      if (dx_range[i].first == dx_range[i].second) {
-        input_sizes.push_back(dx_range[i].first);
-      } else {
-        input_sizes.push_back(-1);
+    if (input_sizes.size() == 0) {
+      for (size_t i = 0; i < dx_range.size(); i++) {
+        input_sizes.push_back(dx_range[i].first == dx_range[i].second ? dx_range[i].first : -1);
       }
     }
+
     if (!unknown_rank) {
       reset_conv2d_backprop_input_out_shape(op, dy_sizes, dy_format, input_sizes, input_format);
     }
