@@ -261,7 +261,7 @@ bool ParamCheck(const std::string& opType, const ge::Operator& opParas, const st
     return false;
   }
 
-  int32_t var_dims = var_shape.GetDimNum();
+  uint32_t var_dims = var_shape.GetDimNum();
   if (accum_shape.GetDimNum() < var_dims ||
       linear_shape.GetDimNum() < var_dims ||
       grad_shape.GetDimNum() < var_dims) {
@@ -271,7 +271,7 @@ bool ParamCheck(const std::string& opType, const ge::Operator& opParas, const st
     return false;
   }
 
-  for (int32_t i = 0; i < var_dims; i++) {
+  for (uint32_t i = 0; i < var_dims; i++) {
     int64_t var_dim = var_shape.GetDim(i);
     if (var_dim != accum_shape.GetDim(i) || var_dim != linear_shape.GetDim(i)) {
       VECTOR_INNER_ERR_REPORT_TILIING(opType,
