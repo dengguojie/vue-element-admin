@@ -28,7 +28,7 @@ from impl.batch_multi_class_non_max_suppression import filter_score_compute
 from impl.util.platform_adapter import tbe_platform
 from impl.util.util_tik_comm_func import tik_func_vmins
 from impl.util.util_tik_comm_func import tik_func_vmaxs
-from impl.util.util_tik_comm_func import cur_sort_score_idx
+from impl.util.util_tik_comm_func import sort_score_idx_by_desc
 from impl.util.util_tik_comm_func import init_index
 from impl.util.util_tik_comm_func import gm2ub_for_vsort32
 from impl.util.util_common import get_mask_rep_stride
@@ -1101,6 +1101,8 @@ class CNMS:
                     with tik_instance.for_range(0, self.classes) as class_idx:
                         with tik_instance.new_stmt_scope():
                             self.process_nms_mode(real_batch_idx, class_idx, boxes, scores)
+                    with tik_instance.if_scope(self.classes != 1):
+                        self.sort_class_per_batch(real_batch_idx)
             else:
                 with tik_instance.if_scope(core_idx < self.core_used_b - 1):
                     with tik_instance.for_range(0, self.batch_per_core) as batch_idx:
@@ -1108,6 +1110,8 @@ class CNMS:
                         with tik_instance.for_range(0, self.classes) as class_idx:
                             with tik_instance.new_stmt_scope():
                                 self.process_nms_mode(real_batch_idx, class_idx, boxes, scores)
+                        with tik_instance.if_scope(self.classes != 1):
+                            self.sort_class_per_batch(real_batch_idx)
 
                 with tik_instance.else_scope():
                     with tik_instance.for_range(0, self.batch_last_core) as batch_idx:
@@ -1115,6 +1119,8 @@ class CNMS:
                         with tik_instance.for_range(0, self.classes) as class_idx:
                             with tik_instance.new_stmt_scope():
                                 self.process_nms_mode(real_batch_idx, class_idx, boxes, scores)
+                        with tik_instance.if_scope(self.classes != 1):
+                            self.sort_class_per_batch(real_batch_idx)
 
     def process_nms_mode(self, real_batch_idx, class_idx, boxes, scores):
         """
@@ -1169,7 +1175,6 @@ class CNMS:
                 self.sort_single_class_per_batch(real_batch_idx, eff_lens, x1_ub, x2_ub, y1_ub, y2_ub, scores_ub)
             else:
                 self.store_data(x1_ub, x2_ub, y1_ub, y2_ub, scores_ub, real_batch_idx, class_idx)
-                self.sort_class_per_batch(real_batch_idx)
 
         with tik_instance.else_scope():
             # to process the second round
@@ -1190,7 +1195,6 @@ class CNMS:
                 self.sort_single_class_per_batch(real_batch_idx, eff_lens, x1_ub, x2_ub, y1_ub, y2_ub, scores_ub)
             else:
                 self.store_data(x1_ub, x2_ub, y1_ub, y2_ub, scores_ub, real_batch_idx, class_idx)
-                self.sort_class_per_batch(real_batch_idx)
 
     def set_default_to_scores(self, scores, data_size, whole_size=Constant.PER_LOOP_UNIT):
         """
@@ -1275,7 +1279,7 @@ class CNMS:
                                                real_batch_idx, class_idx, score_idx_lens * loop_idx],
                                            0, 1, burst_lens_base, 0, 0)
                     tik_instance.data_move(scores_idx_ub[score_idx_lens], dst, 0, 1, burst_lens_base, 0, 0)
-                    cur_sort_score_idx(tik_instance, scores_idx_ub, dst, score_idx_lens * 2)
+                    sort_score_idx_by_desc(tik_instance, scores_idx_ub, dst, score_idx_lens * 2)
 
                 with tik_instance.if_scope(tail > 0):
                     # init scores_ub & scores_idx_ub in order to clear the pre data
@@ -1292,7 +1296,7 @@ class CNMS:
 
                     tik_instance.data_move(scores_idx_ub[score_idx_lens], dst, 0, 1, burst_lens_base, 0, 0)
                     self.init_tensor(dst, score_idx_lens * 2, Constant.FP16_MINS)
-                    cur_sort_score_idx(tik_instance, scores_idx_ub, dst, score_idx_lens * 2)
+                    sort_score_idx_by_desc(tik_instance, scores_idx_ub, dst, score_idx_lens * 2)
 
             else:
                 self.init_tensor(scores_idx_ub, score_idx_lens * 2)
@@ -1304,7 +1308,7 @@ class CNMS:
                 with tik_instance.for_range(0, tail_left) as _idx:
                     scores_idx_ub[burst_lens * Constant.BLOCK_ELE + _idx].set_as(
                         self.workspace_score_idx[real_batch_idx, class_idx, left_size - tail_left + _idx])
-                cur_sort_score_idx(tik_instance, scores_idx_ub, dst, score_idx_lens)
+                sort_score_idx_by_desc(tik_instance, scores_idx_ub, dst, score_idx_lens)
 
     def init_tensor(self, src, size=Constant.PER_LOOP_UNIT, init_value=0):
         """
@@ -1399,7 +1403,7 @@ class CNMS:
 
                     tik_instance.vsort32(scores_idx_ub, scores_ub, index, repeat_times)
                     tik_instance.data_move(scores_idx_ub[score_idx_lens], scores_idx_out, 0, 1, burst_lens_idx, 0, 0)
-                    cur_sort_score_idx(tik_instance, scores_idx_ub, scores_idx_out, score_idx_lens * 2)
+                    sort_score_idx_by_desc(tik_instance, scores_idx_ub, scores_idx_out, score_idx_lens * 2)
 
                     # move last 4096 scores_index uints to workspace
                     tik_instance.data_move(
@@ -1418,7 +1422,7 @@ class CNMS:
                     tik_instance.vsort32(scores_idx_ub, scores_ub, index, repeat_times)
                     tik_instance.data_move(scores_idx_ub[score_idx_lens], scores_idx_out, 0, 1, burst_lens_idx, 0, 0)
                     self.init_tensor(scores_idx_out, score_idx_lens * 2, Constant.FP16_MINS)
-                    cur_sort_score_idx(tik_instance, scores_idx_ub, scores_idx_out, score_idx_lens * 2)
+                    sort_score_idx_by_desc(tik_instance, scores_idx_ub, scores_idx_out, score_idx_lens * 2)
 
                     # move last 4096 scores_idx in to workspace
                     tik_instance.data_move(
@@ -1432,7 +1436,7 @@ class CNMS:
                 tik_instance.vsort32(scores_idx_ub, scores_ub, index, repeat_times)
                 do_lens = ceil_div(self.boxes_num,
                                    Constant.UNIT_ELE * Constant.REPEAT_ELE) * Constant.UNIT_ELE * Constant.REPEAT_ELE
-                cur_sort_score_idx(tik_instance, scores_idx_ub, scores_idx_out, do_lens)
+                sort_score_idx_by_desc(tik_instance, scores_idx_ub, scores_idx_out, do_lens)
 
     def select_threshold(self, scores_index, eff_size, shape_size=Constant.PER_LOOP_UNIT, gate_value=0):
         """
@@ -1923,7 +1927,7 @@ class CNMS:
         mask, _ = get_mask_rep_stride(src)
         size = ceil_div(self.classes * max(self.max_size_per_class, self.max_total_size), mask) * mask
 
-        size_out = ceil_div(self.max_total_size, mask) * mask
+        size_out = ceil_div(max(self.max_total_size, self.max_size_per_class), mask) * mask * Constant.UNIT_ELE
         score_idx_out = tik_instance.Tensor("float16", [size_out * Constant.UNIT_ELE * 2, ], name="score_idx_out",
                                             scope=tik.scope_ubuf)
 
@@ -1955,7 +1959,7 @@ class CNMS:
                 repeat_times = size // Constant.REPEAT_ELE
                 tik_instance.vsort32(score_idx_sort, score_tmp, index, repeat_times)
                 do_lens = size * Constant.UNIT_ELE
-                cur_sort_score_idx(tik_instance, score_idx_sort, score_idx_out, do_lens)
+                sort_score_idx_by_desc(tik_instance, score_idx_sort, score_idx_out, do_lens)
 
         else:
             self.gen_batch_score_index(real_batch_idx, src, score_idx_out)
@@ -2027,17 +2031,17 @@ class CNMS:
                     tik_instance.data_move(scores_idx_ub[score_idx_lens], scores_idx_out, 0, 1, burst_lens, 0, 0)
 
                     do_lens = score_idx_lens * 2
-                    cur_sort_score_idx(tik_instance, scores_idx_ub, scores_idx_out, do_lens)
+                    sort_score_idx_by_desc(tik_instance, scores_idx_ub, scores_idx_out, do_lens)
 
 
             else:
                 with tik_instance.for_range(0, Constant.UNIT_ELE) as class_idx:
-                    gm2ub_for_vsort32(tik_instance, src[batch_idx, class_idx, 0], scores_ub[uint_lens * class_idx],
+                    gm2ub_for_vsort32(tik_instance, src, [batch_idx, class_idx, 0], scores_ub[uint_lens * class_idx],
                                       self.max_size_per_class)
                 tik_instance.vsort32(scores_idx_ub, scores_ub, index, repeat_times)
 
                 do_lens = score_idx_lens
-                cur_sort_score_idx(tik_instance, scores_idx_ub, scores_idx_out, do_lens)
+                sort_score_idx_by_desc(tik_instance, scores_idx_ub, scores_idx_out, do_lens)
 
     def sort_single_class_per_batch(self, batch_idx, data_lens, xx1, xx2, yy1, yy2, scores_ub):
         """

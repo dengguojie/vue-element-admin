@@ -116,6 +116,12 @@ case8 = {"params": get_impl_list(2, 1000, 150, 150, 0.5, 0.5, 300, 0, False, Fal
          "expect": RuntimeError,
          "support_expect": True}
 
+case9 = {"params": get_impl_list(51, 2, 150, 150, 0.5, 0.5, 100, 100, False, False, False),
+         "case_name": "large_batches",
+         "expect": "success",
+         "support_expect": True}
+
+
 ut_case.add_case(["Ascend920A", "Ascend310"], case1)
 ut_case.add_case(["Ascend920A", "Ascend310"], case2)
 ut_case.add_case(["Ascend920A", "Ascend310"], case3)
@@ -124,6 +130,7 @@ ut_case.add_case(["Ascend920A", "Ascend310"], case5)
 ut_case.add_case(["Ascend920A", "Ascend310"], case6)
 ut_case.add_case(["Ascend920A", "Ascend310"], case7)
 ut_case.add_case(["Ascend920A", "Ascend310"], case8)
+ut_case.add_case(["Ascend920A", "Ascend310"], case9)
 
 from impl.combined_non_max_suppression import check_supported
 

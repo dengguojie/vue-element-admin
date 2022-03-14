@@ -42,7 +42,7 @@ REPEAT_NUM = 32
 SORT_LIST_NUM = 4
 PER_LOOP_NUM = 4096
 BLOCK_ELE_B32 = 8
-
+INVALID_VALUE = -1
 
 # 'pylint: disable=too-many-instance-attributes
 class OpBase:
@@ -777,7 +777,7 @@ def floor_align(count, base):
     return count // base * base
 
 
-def cur_sort_score_idx(tik_instance, score_idx, score_idx_out, do_lens, level=1):
+def sort_score_idx_by_desc(tik_instance, score_idx, score_idx_out, do_lens, level=1):
     """
     Sort score_index data with vmrgsort
     Parameters
@@ -822,9 +822,9 @@ def cur_sort_score_idx(tik_instance, score_idx, score_idx_out, do_lens, level=1)
     if whole_lens >= do_lens:
         if level % 2 == 0:
             ub2ub(tik_instance, score_idx, score_idx_out, do_lens)
-        return
+        return INVALID_VALUE
     level += 1
-    return cur_sort_score_idx(tik_instance, score_idx_out, score_idx, do_lens, level)
+    return sort_score_idx_by_desc(tik_instance, score_idx_out, score_idx, do_lens, level)
 
 
 def init_index(tik_instance, src, index, offset, do_lens=PER_LOOP_NUM):

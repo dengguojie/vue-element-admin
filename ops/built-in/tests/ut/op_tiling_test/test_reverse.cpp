@@ -54,7 +54,7 @@ TEST_F(ReverseV2Tiling, rReverseV2_tiling_0) {
   std::string compileInfo =
       "{\"vars\": {\"topk_threshold\": 16, \"max_elements\": 61440, \"max_elements_last_large_size\": 512, "
       "\"core_num\": 32, \"dtype_rate\": "
-      "2}}";
+      "2, \"is_vconcat\": 1}}";
 
   std::vector<int64_t> input{200, 200, 200, 4};
   std::vector<int64_t> axes_shape{1};
@@ -79,7 +79,7 @@ TEST_F(ReverseV2Tiling, rReverseV2_tiling_1) {
   std::string compileInfo =
       "{\"vars\": {\"topk_threshold\": 16, \"max_elements\": 61440, \"max_elements_last_large_size\": 512, "
       "\"core_num\": 32, \"dtype_rate\": "
-      "2}}";
+      "2, \"is_vconcat\": 1}}";
 
   std::vector<int64_t> input{200, 200, 200, 200};
   std::vector<int64_t> axes_shape{2};
@@ -104,7 +104,7 @@ TEST_F(ReverseV2Tiling, rReverseV2_tiling_2) {
   std::string compileInfo =
       "{\"vars\": {\"topk_threshold\": 16, \"max_elements\": 61440, \"max_elements_last_large_size\": 512, "
       "\"core_num\": 32, \"dtype_rate\": "
-      "2}}";
+      "2, \"is_vconcat\": 1}}";
 
   std::vector<int64_t> input{200, 200, 200, 23};
   std::vector<int64_t> axes_shape{1};
@@ -129,7 +129,7 @@ TEST_F(ReverseV2Tiling, rReverseV2_tiling_3) {
   std::string compileInfo =
       "{\"vars\": {\"topk_threshold\": 16, \"max_elements\": 61440, \"max_elements_last_large_size\": 512, "
       "\"core_num\": 32, \"dtype_rate\": "
-      "2}}";
+      "2, \"is_vconcat\": 1}}";
 
   std::vector<int64_t> input{200, 200, 200, 6400};
   std::vector<int64_t> axes_shape{1};
@@ -154,7 +154,7 @@ TEST_F(ReverseV2Tiling, rReverseV2_tiling_4) {
   std::string compileInfo =
       "{\"vars\": {\"topk_threshold\": 16, \"max_elements\": 61440, \"max_elements_last_large_size\": 512, "
       "\"core_num\": 32, \"dtype_rate\": "
-      "1}}";
+      "1, \"is_vconcat\": 1}}";
 
   std::vector<int64_t> input{64, 64, 64, 4};
   std::vector<int64_t> axes_shape{3};
@@ -179,7 +179,7 @@ TEST_F(ReverseV2Tiling, rReverseV2_tiling_5) {
   std::string compileInfo =
       "{\"vars\": {\"topk_threshold\": 16, \"max_elements\": 61440, \"max_elements_last_large_size\": 512, "
       "\"core_num\": 32, \"dtype_rate\": "
-      "1}}";
+      "1, \"is_vconcat\": 1}}";
 
   std::vector<int64_t> input{64, 64, 64, 129};
   std::vector<int64_t> axes_shape{3};
@@ -204,7 +204,7 @@ TEST_F(ReverseV2Tiling, rReverseV2_tiling_6) {
   std::string compileInfo =
       "{\"vars\": {\"topk_threshold\": 16, \"max_elements\": 61440, \"max_elements_last_large_size\": 512, "
       "\"core_num\": 32, \"dtype_rate\": "
-      "1}}";
+      "1, \"is_vconcat\": 1}}";
 
   std::vector<int64_t> input{64, 64, 64, 6400};
   std::vector<int64_t> axes_shape{3};
@@ -229,7 +229,7 @@ TEST_F(ReverseV2Tiling, rReverseV2_only_one_dim) {
   std::string compileInfo =
       "{\"vars\": {\"topk_threshold\": 16, \"max_elements\": 61440, \"max_elements_last_large_size\": 512, "
       "\"core_num\": 32, \"dtype_rate\": "
-      "1}}";
+      "1, \"is_vconcat\": 1}}";
 
   std::vector<int64_t> input{2};
   std::vector<int64_t> axes_shape{1};
@@ -254,7 +254,7 @@ TEST_F(ReverseV2Tiling, rReverseV2_only_one_dim_1) {
   std::string compileInfo =
       "{\"vars\": {\"topk_threshold\": 16, \"max_elements\": 61440, \"max_elements_last_large_size\": 512, "
       "\"core_num\": 32, \"dtype_rate\": "
-      "1}}";
+      "1, \"is_vconcat\": 1}}";
 
   std::vector<int64_t> input{1};
   std::vector<int64_t> axes_shape{1};
@@ -278,7 +278,7 @@ TEST_F(ReverseV2Tiling, rReverseV2_only_one_dim_scalar) {
   std::string compileInfo =
       "{\"vars\": {\"topk_threshold\": 16, \"max_elements\": 61440, \"max_elements_last_large_size\": 512, "
       "\"core_num\": 32, \"dtype_rate\": "
-      "1}}";
+      "1, \"is_vconcat\": 1}}";
 
   std::vector<int64_t> input;
   std::vector<int64_t> axes_shape{1};
@@ -302,7 +302,7 @@ TEST_F(ReverseV2Tiling, rReverseV2_test_1) {
   std::string compileInfo =
       "{\"vars\": {\"topk_threshold\": 16, \"max_elements\": 61440, \"max_elements_last_large_size\": 512, "
       "\"core_num\": 32, \"dtype_rate\": "
-      "1}}";
+      "1, \"is_vconcat\": 1}}";
 
   std::vector<int64_t> input{1, 1, 31, 36};
   std::vector<int64_t> axes_shape{4};
@@ -327,7 +327,7 @@ TEST_F(ReverseV2Tiling, rReverseV2_test_big_first) {
   std::string compileInfo =
       "{\"vars\": {\"topk_threshold\": 16, \"max_elements\": 61440, \"max_elements_last_large_size\": 512, "
       "\"core_num\": 32, \"dtype_rate\": "
-      "2}}";
+      "2, \"is_vconcat\": 1}}";
 
   std::vector<int64_t> input{1, 79, 79, 3};
   std::vector<int64_t> axes_shape{1};
@@ -342,4 +342,29 @@ TEST_F(ReverseV2Tiling, rReverseV2_test_big_first) {
   RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()),
             "11 1 1 1 1 79 3 2 0 0 0 0 0 1 0 1 1 1 1 1 1 79 0 0 0 0 0 0 0 0 79 79 3 1 ");
+}
+
+TEST_F(ReverseV2Tiling, rReverseV2_test_is_vgatherb) {
+  std::string op_name = "ReverseV2";
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
+
+  std::string compileInfo =
+      "{\"vars\": {\"topk_threshold\": 16, \"max_elements\": 61440, \"max_elements_last_large_size\": 512, "
+      "\"core_num\": 32, \"dtype_rate\": "
+      "2, \"is_vconcat\": 0}}";
+
+  std::vector<int64_t> input{1, 79, 79, 3};
+  std::vector<int64_t> axes_shape{1};
+  std::vector<int32_t> axes_value{3};
+  std::vector<int64_t> output{1, 79, 79, 3};
+
+  auto opParas = op::ReverseV2("ReverseV2");
+  TENSOR_INPUT_WITH_SHAPE(opParas, x, input, ge::DT_FLOAT, ge::FORMAT_ND, {});
+  TENSOR_INPUT_WITH_SHAPE_AND_CONST_VALUE(opParas, axis, axes_shape, ge::DT_INT32, ge::FORMAT_ND, axes_value);
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, y, output, ge::DT_FLOAT, ge::FORMAT_ND, {});
+  optiling::utils::OpRunInfo runInfo;
+  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()),
+            "0 1 1 1 1 79 3 2 0 0 0 0 0 1 0 1 1 1 1 1 1 79 0 0 0 0 0 0 0 0 79 79 3 1 ");
 }

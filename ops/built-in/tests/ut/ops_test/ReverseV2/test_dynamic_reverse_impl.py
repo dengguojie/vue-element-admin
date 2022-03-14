@@ -70,5 +70,14 @@ ut_case.add_case(["all"],
                   "expect": "success",
                   "support_expect": True})
 
-if __name__ == '__main__':
-    ut_case.run("Ascend310")
+case1 = {"params": [tensor_dict([-2], "ND", "float32"),
+                    tensor_dict([-2], "ND", "int64"),
+                    tensor_dict([-2], "ND", "float16")
+                   ],
+         "case_name": "dynamic_pad_case_3_is_vgatherb",
+         "expect": "success",
+         "support_expect": True}
+
+ut_case.add_case(["Ascend920A", "Ascend310"], case1)
+
+ut_case.run(['Ascend920A', 'Ascend310'])

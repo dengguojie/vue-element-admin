@@ -37,6 +37,8 @@ class Constant:
     RESERVED_UB = 1024 * 8
     VNHW_MIN_NUM = 256
     TILING_NUM = 34
+    TOPK_THRESHOLD = 16
+    MAX_ELE_LAST_LARGE_SIZE = 512
 
 
 # 'pylint: disable=too-many-lines,too-many-instance-attributes,too-many-statements,too-many-arguments,too-many-locals
@@ -147,6 +149,12 @@ class ReverseExt2:
         self.max_vnchw_block_num = (self.avaliable_ub // 16 // 256) * 256
         self.axis_tmp_scalar = self.tik_instance.Scalar("int64", name="axis_tmp_scalar")
         self.outer_total_num = self.tik_instance.Scalar(dtype="int64", name="outer_total_num")
+
+        # get vconcat support info
+        if tbe_platform.api_check_support("tik.vconcat"):
+            self.is_vconcat_int = 1
+        else:
+            self.is_vconcat_int = 0
 
     def execute_tilling(self):
         """
@@ -327,10 +335,10 @@ class ReverseExt2:
                 self.tiling_key.set_as(0)
                 with self.tik_instance.if_scope(self.inner_axis_6 == 1):
                     self.tiling_key.set_as(4)
-
-        with self.tik_instance.if_scope(self.tiling_key == 11):
-            with self.tik_instance.new_stmt_scope():
-                self.tiling_topk_compute()
+        if self.is_vconcat_int == 1:
+            with self.tik_instance.if_scope(self.tiling_key == 11):
+                with self.tik_instance.new_stmt_scope():
+                    self.tiling_topk_compute()
 
         # update inner_dividends for case than last dim do not reverse
         self.axis_tmp_scalar.set_as(1)
@@ -441,6 +449,7 @@ class ReverseExt2:
             self.tiling_rules()
 
         opt_config = {"out_of_bound_sync_check": True, "enable_const_fold": True}
+
         tbe_context.get_context().add_compile_info("global_variable_link", True)
         self.tik_instance.BuildCCE(kernel_name=self.kernel_name,
                                    inputs=(self.input_data, self.input_axis),
@@ -455,9 +464,10 @@ class ReverseExt2:
         tbe_context.get_context().add_compile_info("vars", {
             "core_num": self.aicore_num,
             "max_elements": self.max_vnchw_block_num * 16,
-            "max_elements_last_large_size": 512,
+            "max_elements_last_large_size": Constant.MAX_ELE_LAST_LARGE_SIZE,
             "dtype_rate": dtype_rate,
-            "topk_threshold": 16
+            "topk_threshold": Constant.TOPK_THRESHOLD,
+            "is_vconcat": self.is_vconcat_int
         })
 
         return self.tik_instance

@@ -38,6 +38,7 @@ const int64_t MERGED_SHAPE_TOTAL_SIZE = 512;
 const int64_t MAX_ELEMENTS_LAST_LARGE_SIZE_INDEX = 2;
 const int64_t DTYPE_RATE_INDEX = 3;
 const int64_t TOPK_THRESHOLD_INDEX = 4;
+const int64_t IS_VCONCAT_INDEX = 5;
 
 struct ResizeV2TilingParams {
   int64_t tiling_key;
@@ -83,6 +84,7 @@ struct ReverseV2CompileParams {
   int64_t max_elements_last_large_size;
   int64_t dtype_rate;
   int64_t topk_threshold;
+  int64_t is_vconcat;
   std::string op_type;
 };
 
@@ -169,7 +171,7 @@ void PrintTilingParams(const ResizeV2TilingParams& tiling_params, const std::str
 }
 
 static const std::vector<std::string> COMPILE_INFO_KEY = {"core_num", "max_elements", "max_elements_last_large_size",
-                                                          "dtype_rate", "topk_threshold"};
+                                                          "dtype_rate", "topk_threshold", "is_vconcat"};
 
 bool ReverseV2Tiling(const std::string& op_type, const ge::Operator& op_paras, const std::vector<int64_t>& op_info,
                      utils::OpRunInfo& run_info) {
@@ -191,6 +193,8 @@ bool ReverseV2Tiling(const std::string& op_type, const ge::Operator& op_paras, c
   compile_params.dtype_rate = op_info[DTYPE_RATE_INDEX];
   // get topk_threshold
   compile_params.topk_threshold = op_info[TOPK_THRESHOLD_INDEX];
+  // get platform info
+  compile_params.is_vconcat = op_info[IS_VCONCAT_INDEX];
   PROFILING_TILING_AFTER_GET_SHAPE_REG();
 
   OP_LOGI(op_type, "tiling run begin.");
@@ -346,7 +350,8 @@ bool ReverseV2Tiling(const std::string& op_type, const ge::Operator& op_paras, c
   }
 
   // topk tiling charge
-  if (merged_shape[merged_shape.size() - 1] < compile_params.topk_threshold && total_num > 128) {
+  if (merged_shape[merged_shape.size() - 1] < compile_params.topk_threshold && total_num > 128 &&
+      compile_params.is_vconcat == 1) {
     tiling_params.tiling_key = 11;
   }
 
