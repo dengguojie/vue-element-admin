@@ -31,7 +31,8 @@
 #include "graph/utils/node_utils.h"
 #include "op_log.h"
 #include "op_desc.h"
-
+#include "all_ops.h"
+#include "common/utils/ut_op_util.h"
 
 class LayerNormTest : public testing::Test {
  protected:
@@ -290,4 +291,96 @@ TEST_F(LayerNormTest, layer_norm_data_slice_test_007) {
   EXPECT_EQ(expect_x_data_slice, x_data_slice);
   EXPECT_EQ(expect_gamma_data_slice, gamma_data_slice);
   EXPECT_EQ(expect_beta_data_slice, beta_data_slice);
+}
+
+TEST_F(LayerNormTest, layer_norm_test_unknow_dim) {
+  // input x info
+  using namespace ge;
+  auto input_x_shape = vector<int64_t>({-1, -1, -1});
+  std::vector<std::pair<int64_t, int64_t>> shape_range = {{100, 200}, {1, -1}, {1, -1}};
+  auto input_x_dtype = DT_FLOAT;
+
+  // attr value
+  int begin_norm_axis = -1;
+
+  // expect result
+  std::vector<int64_t> expected_y_shape = input_x_shape;
+  std::vector<int64_t> expected_mv_shape = {-1, -1, 1};
+  std::vector<std::pair<int64_t, int64_t>> expected_y_range = shape_range;
+  std::vector<std::pair<int64_t, int64_t>> expected_mv_range = {{100, 200}, {1, -1}, {1, 1}};
+
+  // gen LayerNorm op
+  auto test_op = op::LayerNorm("LayerNorm");
+  TENSOR_INPUT_WITH_SHAPE(test_op, x, input_x_shape, input_x_dtype, FORMAT_ND, shape_range);
+  TENSOR_INPUT_WITH_SHAPE(test_op, gamma, input_x_shape, input_x_dtype, FORMAT_ND, shape_range);
+  TENSOR_INPUT_WITH_SHAPE(test_op, beta, input_x_shape, input_x_dtype, FORMAT_ND, shape_range);
+  test_op.SetAttr("begin_norm_axis", begin_norm_axis);
+
+  auto ret = test_op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+
+  auto output_y_desc = test_op.GetOutputDesc("y");
+  auto output_mean_desc = test_op.GetOutputDesc("mean");
+  auto output_var_desc = test_op.GetOutputDesc("variance");
+
+  EXPECT_EQ(output_y_desc.GetDataType(), ge::DT_FLOAT);
+  EXPECT_EQ(output_mean_desc.GetDataType(), ge::DT_FLOAT);
+  EXPECT_EQ(output_var_desc.GetDataType(), ge::DT_FLOAT);
+
+  EXPECT_EQ(output_y_desc.GetShape().GetDims(), expected_y_shape);
+  EXPECT_EQ(output_mean_desc.GetShape().GetDims(), expected_mv_shape);
+  EXPECT_EQ(output_var_desc.GetShape().GetDims(), expected_mv_shape);
+  std::vector<std::pair<int64_t, int64_t>> output_shape_range;
+  EXPECT_EQ(output_y_desc.GetShapeRange(output_shape_range), ge::GRAPH_SUCCESS);
+  EXPECT_EQ(output_shape_range, expected_y_range);
+
+  std::vector<std::pair<int64_t, int64_t>> output_mean_shape_range;
+  EXPECT_EQ(output_mean_desc.GetShapeRange(output_mean_shape_range), ge::GRAPH_SUCCESS);
+  EXPECT_EQ(output_mean_shape_range, expected_mv_range);
+}
+
+TEST_F(LayerNormTest, layer_norm_test_unknow_rank) {
+  // input x info
+  using namespace ge;
+  auto input_x_shape = vector<int64_t>({-2});
+  std::vector<std::pair<int64_t, int64_t>> shape_range;
+  auto input_x_dtype = DT_FLOAT;
+
+  // attr value
+  int begin_norm_axis = -1;
+
+  // expect result
+  std::vector<int64_t> expected_y_shape = input_x_shape;
+  std::vector<int64_t> expected_mv_shape = input_x_shape;
+  std::vector<std::pair<int64_t, int64_t>> expected_y_range = shape_range;
+  std::vector<std::pair<int64_t, int64_t>> expected_mv_range = shape_range;
+
+  // gen LayerNorm op
+  auto test_op = op::LayerNorm("LayerNorm");
+  TENSOR_INPUT_WITH_SHAPE(test_op, x, input_x_shape, input_x_dtype, FORMAT_ND, shape_range);
+  TENSOR_INPUT_WITH_SHAPE(test_op, gamma, input_x_shape, input_x_dtype, FORMAT_ND, shape_range);
+  TENSOR_INPUT_WITH_SHAPE(test_op, beta, input_x_shape, input_x_dtype, FORMAT_ND, shape_range);
+  test_op.SetAttr("begin_norm_axis", begin_norm_axis);
+
+  auto ret = test_op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+
+  auto output_y_desc = test_op.GetOutputDesc("y");
+  auto output_mean_desc = test_op.GetOutputDesc("mean");
+  auto output_var_desc = test_op.GetOutputDesc("variance");
+
+  EXPECT_EQ(output_y_desc.GetDataType(), ge::DT_FLOAT);
+  EXPECT_EQ(output_mean_desc.GetDataType(), ge::DT_FLOAT);
+  EXPECT_EQ(output_var_desc.GetDataType(), ge::DT_FLOAT);
+
+  EXPECT_EQ(output_y_desc.GetShape().GetDims(), expected_y_shape);
+  EXPECT_EQ(output_mean_desc.GetShape().GetDims(), expected_mv_shape);
+  EXPECT_EQ(output_var_desc.GetShape().GetDims(), expected_mv_shape);
+  std::vector<std::pair<int64_t, int64_t>> output_shape_range;
+  EXPECT_EQ(output_y_desc.GetShapeRange(output_shape_range), ge::GRAPH_SUCCESS);
+  EXPECT_EQ(output_shape_range, expected_y_range);
+
+  std::vector<std::pair<int64_t, int64_t>> output_mean_shape_range;
+  EXPECT_EQ(output_mean_desc.GetShapeRange(output_mean_shape_range), ge::GRAPH_SUCCESS);
+  EXPECT_EQ(output_mean_shape_range, expected_mv_range);
 }

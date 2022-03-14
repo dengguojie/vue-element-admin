@@ -1106,6 +1106,7 @@ vector_B:
       - ops/built-in/tbe/impl/util/util_select_op_base.py
       - ops/built-in/tbe/impl/util/norm_pattern_adapter.py
       - ops/built-in/tbe/impl/util/reduce_pattern_adapter.py
+      - ops/built-in/tbe/impl/util/util_attr_common.py
       - ops/built-in/tbe/impl_mode/all_ops_impl_mode.ini
       - ops/built-in/tbe/impl_mode/high_performance.ini
       - ops/built-in/tbe/impl_mode/high_performance_for_all.ini

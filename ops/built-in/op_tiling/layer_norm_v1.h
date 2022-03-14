@@ -77,6 +77,8 @@ struct layerNormOpInfo {
   int32_t max_ub_size_normal_fp16;
   int32_t max_ub_size_normal_fp32;
   string mode;
+  bool is_unknown_mode;
+  ge::DataType reduce_mean_cof_ge_dtype;
 };
 
 bool LayerNormTilingV1(const string &op_type, const ge::Operator &op_paras, const layerNormOpInfo &op_info,

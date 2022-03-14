@@ -23,6 +23,9 @@
 #include "vector_tiling_log.h"
 
 namespace optiling {
+
+const struct ops::AttrBase LAYERNORM_BEGIN_NORM_AXIS(0, "begin_norm_axis");
+
 bool LayerNormParseFunc(const std::string &op_type, const nlohmann::json &compile_info,
                         layerNormOpInfo &compile_value) {
   OP_TILING_CHECK(!GetCompileValue(compile_info, "is_support_vexp_pattern", compile_value.is_support_vexp_pattern),
@@ -33,12 +36,19 @@ bool LayerNormParseFunc(const std::string &op_type, const nlohmann::json &compil
     compile_value.tiling_handler = CreateAutoTilingHandler(op_type, PATTERN_NORM, compile_info);
     OP_TILING_CHECK(compile_value.tiling_handler == nullptr,
                     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "CreateAutoTilingHandler return nullptr"), return false);
-    OP_TILING_CHECK(!GetCompileValue(compile_info, "_ori_reduce_axis", compile_value.ori_reduce_axis),
-                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "LayerNormParseFunc, get _ori_reduce_axis error"),
-                    return false);
     if (compile_info.count("reduce_mean_cof_dtype") > 0) {
       GetCompileValue(compile_info, "reduce_mean_cof_dtype", compile_value.reduce_mean_cof_dtype);
+      // change str to Ge DataType
+      compile_value.reduce_mean_cof_ge_dtype = GetGeTypeFromStr(compile_value.reduce_mean_cof_dtype);
     }
+    // add for unknown axis mode
+    (void)GetCompileValue(compile_info, "unknown_mode", compile_value.is_unknown_mode, false);
+    if (!compile_value.is_unknown_mode) {
+      OP_TILING_CHECK(!GetCompileValue(compile_info, "_ori_reduce_axis", compile_value.ori_reduce_axis),
+                      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "LayerNormParseFunc, get _ori_reduce_axis error"),
+                      return false);
+    }
+
     OP_LOGI(op_type.c_str(), "GetCompileParams success.");
     return true;
   }
@@ -103,43 +113,76 @@ bool LayerNormParseFunc(const std::string &op_type, const nlohmann::json &compil
   return true;
 }
 
+bool LayerNormUnknowAxisTiling(const string &op_type, const ge::Operator &op_paras, const layerNormOpInfo &op_info,
+                               utils::OpRunInfo &run_info) {
+  OP_LOGI(op_type.c_str(), "LayerNormUnknowAxisTiling running.");
+  auto operator_info = ge::OpDescUtils::GetOpDescFromOperator(op_paras);
+  OP_TILING_CHECK(operator_info == nullptr,
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "GetOpDescFromOperator return nullptr!"), return false);
+  auto input_x_desc = operator_info->MutableInputDesc(0);
+  OP_TILING_CHECK(input_x_desc == nullptr,
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get input x desc return nullptr!"), return false);
+  const GeShape &input_shape = input_x_desc->MutableShape();
+  std::size_t input_shape_dim = input_shape.GetDimNum();
+  // get attr for reduce axis
+  int32_t reduce_attr = 0;
+  ops::GetAttrValue(op_paras, LAYERNORM_BEGIN_NORM_AXIS, reduce_attr);
+  OP_TILING_CHECK(reduce_attr < 0,
+                  OP_LOGD(op_type.c_str(), "BEGIN_NORM_AXIS is < 0, will do += input_x_shape"),
+                  reduce_attr += input_shape_dim);
+  OP_TILING_CHECK(reduce_attr < 0,
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "BEGIN_NORM_AXIS is < 0, return failed"),
+                  return false);
+  OP_TILING_CHECK(reduce_attr >= static_cast<int32_t>(input_shape_dim),
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "BEGIN_NORM_AXIS is > input dim size, return failed"),
+                  return false);
+  std::vector<int32_t> reduce_axis(input_shape_dim - reduce_attr, 0);
+  for (int32_t i = 0; i < input_shape_dim - reduce_attr; i++) {
+    reduce_axis[i] = reduce_attr + i;
+  }
+  std::vector<int64_t> input_shape_vec = input_shape.GetDims();
+  std::vector<std::vector<int64_t>> shapes = {input_shape_vec};
+  std::vector<std::vector<int32_t>> axes{reduce_axis};
+  ge::DataType input_x_dtype = input_x_desc->GetDataType();
+
+  // now the norm parttern doesn't need this, so the shapes and input_x_dtype in norm_info is reserved
+  OpInfo norm_info(shapes, input_x_dtype, axes);
+  OP_TILING_CHECK(!op_info.tiling_handler->DoTiling(op_paras, run_info, norm_info),
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "LayerNormUnknowAxisTiling, do DoTiling failed"),
+                  return false);
+  OP_TILING_CHECK(op_info.reduce_mean_cof_dtype.empty(),
+                  OP_LOGI(op_type.c_str(), "need not do AddReducMeanCof, return true"),
+                  return true);
+  OP_TILING_CHECK(!AddReducMeanCof(input_shape, op_info.reduce_mean_cof_ge_dtype, reduce_axis, run_info),
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "LayerNormUnknowAxisTiling, do AddReducMeanCof failed"),
+                  return false);
+  OP_LOGI(op_type.c_str(), "LayerNormUnknowAxisTiling end.");
+  return true;
+}
+
 bool LayerNormTiling(const string &op_type, const ge::Operator &op_paras, const layerNormOpInfo &op_info,
                      utils::OpRunInfo &run_info) {
   if (op_info.is_support_vexp_pattern) {
     // norm template tiling_stratery
     OP_LOGI(op_type.c_str(), "LayerNormNormalTiling running.");
+
+    // change to unknow reduce mode
+    if (op_info.is_unknown_mode) {
+      return LayerNormUnknowAxisTiling(op_type, op_paras, op_info, run_info);
+    }
     bool ret = op_info.tiling_handler->DoTiling(op_paras, run_info);
     if (!ret) {
       VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op_info.tiling_handler->DoTiling(op_paras, run_info) request failed.");
       return false;
     }
-    if (op_info.reduce_mean_cof_dtype.empty()) {
-      return ret;
-    }
+    OP_TILING_CHECK(op_info.reduce_mean_cof_dtype.empty(),
+                    OP_LOGI(op_type.c_str(), "need not do AddReducMeanCof, return true"),
+                    return true);
     const auto &input_shape = ge::OpDescUtils::GetOpDescFromOperator(op_paras)->MutableInputDesc(0)->GetShape();
-    std::size_t dim_len = input_shape.GetDimNum();
-    std::size_t ori_reduce_axis_len = op_info.ori_reduce_axis.size();
-    float reduce_mean_cof = 1.0;
-    for (std::size_t i = 0; i < ori_reduce_axis_len; i++) {
-      int32_t single_reduce_axis = op_info.ori_reduce_axis[i];
-      // convert reduce axis (-1 -> dim_len-1)
-      if (single_reduce_axis < 0) {
-        single_reduce_axis = dim_len + single_reduce_axis;
-      }
-      // check reduce axis value
-      V_OP_TILING_CHECK(
-          (single_reduce_axis < static_cast<int32_t>(dim_len)),
-          VECTOR_INNER_ERR_REPORT_TILIING(op_type, "value of reduce axis %d is illegel", single_reduce_axis),
-          return false);
-      reduce_mean_cof = reduce_mean_cof / input_shape.GetDim(single_reduce_axis);
-    }
-    const string &reduce_mean_cof_dtype = op_info.reduce_mean_cof_dtype;
-    if (reduce_mean_cof_dtype == "float32") {
-      run_info.AddTilingData((float)reduce_mean_cof);
-    } else if (reduce_mean_cof_dtype == "float16") {
-      run_info.AddTilingData((fe::fp16_t)reduce_mean_cof);
-      run_info.AddTilingData((uint16_t)0);
-    }
+    OP_TILING_CHECK(!AddReducMeanCof(input_shape, op_info.reduce_mean_cof_ge_dtype,
+                                     op_info.ori_reduce_axis, run_info),
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "LayerNormTiling, do AddReducMeanCof failed"),
+                    return false);
     OP_LOGI(op_type.c_str(), "LayerNormTiling end.");
     return ret;
   } else {

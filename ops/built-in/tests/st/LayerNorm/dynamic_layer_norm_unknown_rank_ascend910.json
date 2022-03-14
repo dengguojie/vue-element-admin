@@ -1,0 +1,83 @@
+[
+  {
+    "op": "LayerNorm",
+    "input_desc": [
+      {
+        "shape": [-2],
+        "format": "NCHW",
+        "typical_shape": [32, 16, 32],
+        "shape_range": [[1, 32]],
+        "name": "input_x",
+        "type": "float16"
+      },
+      {
+        "shape": [-2],
+        "format": "NCHW",
+        "typical_shape": [32],
+        "shape_range": [[1, 32]],
+        "name": "input_gamma",
+        "type": "float16"
+      },
+      {
+        "shape": [-2],
+        "format": "NCHW",
+        "typical_shape": [32],
+        "shape_range": [[1, 32]],
+        "name": "input_beta",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [32, 16, -1],
+        "format": "NCHW",
+        "typical_shape": [32, 16, 32],
+        "shape_range": [[1, 32]],
+        "name": "output_y",
+        "type": "float16"
+      },
+      {
+        "shape": [32, 16, 1],
+        "format": "NCHW",
+         "typical_shape": [32, 16, 1],
+        "shape_range": [
+          [32, 32],
+          [16, 16],
+          [1, 1]
+        ],
+        "name": "output_mean",
+        "type": "float16"
+      },
+      {
+        "shape": [32, 16, 1],
+        "format": "NCHW",
+        "typical_shape": [32, 16, 1],
+        "shape_range": [
+          [32, 32],
+          [16, 16],
+          [1, 1]
+        ],
+        "name": "output_variance",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "begin_norm_axis",
+        "type": "int",
+        "value": -1
+      },
+      {
+        "name": "begin_params_axis",
+        "type": "int",
+        "value": 2
+      },
+      {
+        "name": "impl_mode",
+        "type": "string",
+        "value": "keep_fp16"
+      }
+    ],
+    "case_name": "test_dynamicLayerNorm_910_unknown_rank"
+  }
+]

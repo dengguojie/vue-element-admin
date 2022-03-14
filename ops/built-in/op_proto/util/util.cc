@@ -1460,7 +1460,7 @@ bool OneInOneOutDynamicInfer(const Operator& op,
   auto input_desc = op_info->MutableInputDesc(input_idx);
   CHECK(input_desc == nullptr,
         VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), OtherErrMsg("invalid input_desc")), return false);
-  auto &input_shape = input_desc->MutableShape();
+  const GeShape &input_shape = input_desc->MutableShape();
   DataType input_dtype = input_desc->GetDataType();
 
   if (input_shape.IsUnknownShape()) {

@@ -230,6 +230,13 @@ string to_string(const ByteBuffer& tiling_data) {
 int64_t GetByteLenByString(const std::string& op_type);
 
 /*
+ * @brief: get Byte size base on dtype(string)
+ * @param [in] op_type: string dtype
+ * @return DataType: ge dtype
+ */
+ge::DataType GetGeTypeFromStr(const std::string& dtype_str);
+
+/*
  * @brief: get data block elements
  * @param [in] dtype: ge DataType
  * @return Int: dataBlock;
@@ -291,5 +298,8 @@ void* ParseCompileToInt64Vec(const ge::Operator& op, const ge::AscendString comp
 bool ParseCompileToInt64Vec(const ge::Operator& op, const ge::AscendString compile_info,
                             const std::vector<std::string>& compile_info_key,
                             const std::map<std::string, int64_t>& optional_key, std::vector<int64_t>& compile_vec);
+
+bool AddReducMeanCof(const GeShape &input_shape, const DataType input_dtype,
+                     const std::vector<int32_t>& reduce_axis, utils::OpRunInfo &run_info);
 }  // namespace optiling
 #endif  // CANN_OPS_BUILT_IN_OP_TILING_OP_TILING_UTIL_H_

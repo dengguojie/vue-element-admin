@@ -262,6 +262,26 @@ case54 = {"params": [{"shape": (32, 304, 512), "dtype": "float16", "format": "NC
           "format_expect": [],
           "support_expect": True}
 
+case_unknown_rank = {"params": [{"shape": (-2,), "dtype": "float16", "format": "NCHW", "ori_shape": (-2,),
+                      "ori_format": "NCHW", "range": ((1, None),)},
+                     {"shape": (32, 304, 512), "dtype": "float16", "format": "NCHW", "ori_shape": (32, 304, 512),
+                      "ori_format": "NCHW", "range": ((1, None), (1, None), (1, None))},
+                     {"shape": (32, 304, 512), "dtype": "float16", "format": "NCHW", "ori_shape": (32, 304, 512),
+                      "ori_format": "NCHW", "range": ((1, None), (1, None), (1, None))},
+                     {"shape": (32, 304, 512), "dtype": "float16", "format": "NCHW", "ori_shape": (32, 304, 512),
+                      "ori_format": "NCHW", "range": ((1, None), (1, None), (1, None))},
+                     {"shape": (32, 1, 1), "dtype": "float16", "format": "NCHW", "ori_shape": (32, 1, 1),
+                      "ori_format": "NCHW", "range": ((1, None), (1, None), (1, None))},
+                     {"shape": (32, 1, 1), "dtype": "float16", "format": "NCHW", "ori_shape": (32, 1, 1),
+                      "ori_format": "NCHW", "range": ((1, None), (1, None), (1, None))},
+                     1, 0],
+          "addition_params": {'impl_mode': 'keep_fp16'},
+          "case_name": "layer_norm_unknown_rank",
+          "expect": "success",
+          "format_expect": [],
+          "support_expect": True}
+
+
 ut_case.add_case(["Ascend910A", "Ascend310"], case1)
 ut_case.add_case(["Ascend910A", "Ascend310"], case2)
 ut_case.add_case(["Ascend910A", "Ascend310"], case3)
@@ -277,6 +297,7 @@ ut_case.add_case(["Ascend910A", "Ascend310"], case51)
 ut_case.add_case(["Ascend910A", "Ascend310"], case52)
 ut_case.add_case(["Ascend910A", "Ascend310"], case53)
 ut_case.add_case(["Ascend910A", "Ascend710"], case54)
+ut_case.add_case(["Ascend910A"], case_unknown_rank)
 
 if __name__ == "__main__":
     ut_case.run("Ascend910A")

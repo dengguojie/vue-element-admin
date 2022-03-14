@@ -618,22 +618,38 @@ COMMON_INFER_FUNC_REG(LayerNormGrad, LayerNormGradInferShape);
 // ------------------------LayerNorm--------------------------
 IMPLEMT_COMMON_INFERFUNC(LayerNormInferShape) {
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
-  auto input_x = op_desc -> GetInputDescPtr(0);
-  auto input_gamma = op_desc -> GetInputDescPtr(1);
-  auto input_beta = op_desc -> GetInputDescPtr(2);
-  auto output_y = op_desc -> MutableOutputDesc(0);
-  auto output_mean = op_desc -> MutableOutputDesc(1);
-  auto output_var = op_desc -> MutableOutputDesc(2);
+  auto input_x = op_desc->MutableInputDesc(0);
+  auto input_gamma = op_desc->MutableInputDesc(1);
+  auto input_beta = op_desc->MutableInputDesc(2);
+  auto output_y = op_desc->MutableOutputDesc(0);
+  auto output_mean = op_desc->MutableOutputDesc(1);
+  auto output_var = op_desc->MutableOutputDesc(2);
 
-  GeShape output_shape1 = input_x -> GetShape();
-  GeShape &output_y_shape = output_y -> MutableShape();
-  GeShape &output_mean_shape = output_mean -> MutableShape();
-  GeShape &output_var_shape = output_var -> MutableShape();
+  // set the output dtype
+  output_y->SetDataType(input_x->GetDataType());
+  output_mean->SetDataType(input_gamma->GetDataType());
+  output_var->SetDataType(input_beta->GetDataType());
+
+  // set the output shape
+  const GeShape &output_shape1 = input_x->MutableShape();
+
+  GeShape &output_y_shape = output_y->MutableShape();
+  GeShape &output_mean_shape = output_mean->MutableShape();
+  GeShape &output_var_shape = output_var->MutableShape();
+
+  // if inputx is unknown rank set output unknown rank
+  if (output_shape1.IsUnknownDimNum()) {
+    OP_LOGD(TbeGetName(op), "input_x is unknown rank, output is {-2}");
+    output_y_shape.SetIsUnknownDimNum();
+    output_mean_shape.SetIsUnknownDimNum();
+    output_var_shape.SetIsUnknownDimNum();
+    return GRAPH_SUCCESS;
+  }
+
   size_t real_dim_num = output_shape1.GetDimNum();
   output_y_shape.SetDimNum(real_dim_num);
   output_mean_shape.SetDimNum(real_dim_num);
   output_var_shape.SetDimNum(real_dim_num);
-
 
   int64_t begin_norm_axis = 0;
   if (!AttrUtils::GetInt(op_desc, "begin_norm_axis", begin_norm_axis)) {
@@ -651,6 +667,9 @@ IMPLEMT_COMMON_INFERFUNC(LayerNormInferShape) {
         begin_norm_axis, real_dim_num);
     return GRAPH_FAILED;
   }
+
+  // the shape of y is equal with input x
+  output_y_shape = output_shape1;
   for (size_t i = 0; i < real_dim_num; ++i) {
     if (i >= (size_t)begin_norm_axis) {
       output_mean_shape.SetDim(i, 1);
@@ -659,11 +678,27 @@ IMPLEMT_COMMON_INFERFUNC(LayerNormInferShape) {
       output_mean_shape.SetDim(i, output_shape1.GetDim(i));
       output_var_shape.SetDim(i, output_shape1.GetDim(i));
     }
-    output_y_shape.SetDim(i, output_shape1.GetDim(i));
   }
-  output_y -> SetDataType(input_x -> GetDataType());
-  output_mean -> SetDataType(input_gamma -> GetDataType());
-  output_var -> SetDataType(input_beta -> GetDataType());
+
+  // set the output range when output is dynamic
+  if (output_y_shape.IsUnknownShape()) {
+    std::vector<std::pair<int64_t, int64_t>> input_shape_range;
+    input_x->GetShapeRange(input_shape_range);
+    std::vector<int64_t> input_shape_vec = output_shape1.GetDims();
+    MakeUpShapeRange(input_shape_vec, input_shape_range);
+    // get range for mean and var
+    std::vector<std::pair<int64_t, int64_t>> output_shape_range = input_shape_range;
+    for (size_t i = 0; i < output_shape_range.size(); ++i) {
+      if (i >= (size_t)begin_norm_axis) {
+        output_shape_range[i] = std::pair<int64_t, int64_t>(1, 1);
+      }
+    }
+
+    // set range
+    output_y->SetShapeRange(input_shape_range);
+    output_mean->SetShapeRange(output_shape_range);
+    output_var->SetShapeRange(output_shape_range);
+  }
 
   return GRAPH_SUCCESS;
 }

@@ -31,6 +31,31 @@
 namespace ops {
 using namespace ge;
 
+// attr base struct
+struct AttrBase {
+  const int32_t attr_idx;
+  const std::string attr_name;
+  AttrBase(const int attr_idx, const std::string& attr_name): attr_idx(attr_idx), attr_name(attr_name) {}
+};
+
+/*
+ * @brief: read constvalue from paras store into values
+ * @param [in] paras: ge::Operator
+ * @param [in] attr_info: attr info pair(attr_idx, attr_name)
+ * @param [out] value: store value.
+ * @return bool: flag of success or not
+ */
+template <typename T>
+bool GetAttrValue(const T& paras, const struct AttrBase& attr_info, int32_t& value) {
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(paras);
+  if (!AttrUtils::GetInt(op_desc, attr_info.attr_name, value)) {
+    OP_LOGW("GetAttrValue", "Get the attr of %s is failed. return false", attr_info.attr_name.c_str());
+    return false;
+  }
+  OP_LOGD("GetAttrValue", "Get the attr of %s is %d", attr_info.attr_name.c_str(), value);
+  return true;
+}
+
 /*
  * @brief: read constvalue from paras store into values
  * @param [in] paras: ge::Operator
