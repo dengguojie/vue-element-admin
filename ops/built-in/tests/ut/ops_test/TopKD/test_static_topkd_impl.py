@@ -34,6 +34,15 @@ case1 = {"params": [{"shape": (8, 32), "dtype": "float16", "ori_shape": (8, 32),
          "expect": "success",
          "support_expect": True}
 
+case2 = {"params": [{"shape": (8, 32), "dtype": "float16", "ori_shape": (8, 32), "format": "ND", "ori_format": "ND", "range": ((1, 880), (1, 48))},
+                    {"shape": (8192,), "dtype": "float16", "format": "ND", "ori_shape": (8192,),"ori_format": "ND", "range": ((8192,8192),)},
+                    {"shape": (8,8), "dtype": "float16", "format": "ND", "ori_shape": (8,8),"ori_format": "ND", "range": ((1, 880), (1, 16))},
+                    {"shape": (8,8), "dtype": "int32", "format": "ND", "ori_shape": (8,8),"ori_format": "ND", "range": ((1, 880), (1, 16))},
+                    8,True,-1,False],
+         "case_name": "TopkD_k_8",
+         "expect": "success",
+         "support_expect": True}
+
 case3 = {"params": [{"shape": (8, 5000), "dtype": "float16", "ori_shape": (8, 5000), "format": "ND", "ori_format": "ND", "range": ((1, 880), (1, 48))},
                     {"shape": (8192,), "dtype": "float16", "format": "ND", "ori_shape": (8192,),"ori_format": "ND", "range": ((8192,8192),)},
                     {"shape": (8,6), "dtype": "float16", "format": "ND", "ori_shape": (8,6),"ori_format": "ND", "range": ((1, 880), (1, 16))},
@@ -44,6 +53,7 @@ case3 = {"params": [{"shape": (8, 5000), "dtype": "float16", "ori_shape": (8, 50
          "support_expect": False}
 # TODO fix me, this comment, run failed
 ut_case.add_case(["Ascend910A","Ascend310","Ascend610", "Ascend710"], case1)
+ut_case.add_case(["Ascend910A","Ascend310","Ascend610", "Ascend710"], case2)
 ut_case.add_case(["Ascend910A","Ascend310","Ascend610", "Ascend710"], case3)
 
 def test_static_1951(test_arg):

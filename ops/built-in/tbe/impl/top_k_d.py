@@ -33,6 +33,7 @@ from impl.dynamic.top_k_d import top_k_d as top_k_template
 from impl.top_k_v220 import build_topk_10w_v220
 
 FP16_MINIMUM = -65520
+FP16_MAXMUM = 65520
 MAX_INT32 = 2**31 - 1
 INDICES_NUM = MAX_INT32
 DTYPE_INT32 = "int32"
@@ -855,10 +856,14 @@ def _copy_gm_to_ubuf_func(tik_instance, dst, src, num_rows, cols, col_start, gm_
                               dst_offset=cols_padding * i,
                               src_offset=cols * i + col_start + gm_offset)
     if not largest:
+        with tik_instance.for_range(0, num_rows, name='gm2ub_i0') as i:
+            with tik_instance.for_range(0, cols_padding - cols) as j:
+                dst[cols_padding * i + cols + j].set_as(FP16_MAXMUM)
         _emit_vmuls(tik_instance, dst, dst, cnt=num_rows * cols_padding)
-    with tik_instance.for_range(0, num_rows, name='gm2ub_i0') as i:
-        with tik_instance.for_range(0, cols_padding - cols) as j:
-            dst[cols_padding * i + cols + j].set_as(reg_min_number)
+    else:
+        with tik_instance.for_range(0, num_rows, name='gm2ub_i0') as i:
+            with tik_instance.for_range(0, cols_padding - cols) as j:
+                dst[cols_padding * i + cols + j].set_as(reg_min_number)
 
 
 # 'pylint: disable=too-many-arguments
