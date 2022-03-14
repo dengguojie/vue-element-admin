@@ -73,6 +73,5 @@ TEST_F(TileDTiling, TileD_tiling1) {
   TENSOR_OUTPUT_WITH_SHAPE(opParas, y, output, dtype, ge::FORMAT_ND, {});
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
-  EXPECT_EQ(runInfo.GetBlockDim(), 32);
-  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "777 1337 2 ");
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "777 669 2 ");
 }

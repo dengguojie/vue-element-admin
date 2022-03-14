@@ -61,7 +61,7 @@ TEST_F(GerTilingTest, Ger_Tiling_Test_1) {
   // do tilling, get runInfo
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
-  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "10 10 10 ");
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "10 1 10 ");
 }
 
 TEST_F(GerTilingTest, Ger_Tiling_Test_2) {
@@ -149,5 +149,5 @@ TEST_F(GerTilingTest, SmoothL1LossV2_Tiling_Test_5) {
   // do tilling, get runInfo
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
-  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "10 10 10 ");
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "10 1 10 ");
 }

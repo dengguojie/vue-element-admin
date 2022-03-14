@@ -145,6 +145,30 @@ bool Broadcast::Init() {
   return true;
 }
 
+ void Broadcast::TrySwitchToElewise() {
+   int64_t input_size = std::accumulate(input_shapes[0].begin(), input_shapes[0].end(), 1LL, std::multiplies<int64_t>());
+   for (size_t i = 1; i < input_num; i++) {
+     int64_t cur_input_size = std::accumulate(input_shapes[i].begin(), input_shapes[i].end(), 1LL, std::multiplies<int64_t>());
+     if (cur_input_size > input_size) {
+       input_size = cur_input_size;
+     }
+   }
+
+   int32_t ori_dim_len = dim_len;
+   std::vector<size_t> cur_index = {0};
+   for (int32_t i = 1; i < ori_dim_len; i++) {
+     cur_index.push_back(i);
+   }
+   fusion_index.push_back(cur_index);
+
+   dim_len = 1;
+   fusion_shapes.push_back({input_size});
+   input_shapes[0][0] = input_size;
+   output_shape.push_back(input_size);
+   broadcast_axis[0] = false;
+   s_pattern = Pattern::COMMON;
+ }
+
 void Broadcast::FusionContinuousAxis(std::vector<int64_t>& fused_shape_x, std::vector<int64_t>& fused_shape_y) {
   const std::array<int64_t, B_MAX_DIM_LEN>& input_shape_x = input_shapes[0];
   const std::array<int64_t, B_MAX_DIM_LEN>& input_shape_y = input_shapes[1];
@@ -384,9 +408,6 @@ bool Broadcast::GenerateOutputShape() {
         fusion_index.push_back({i});
       }
   } else {
-    V_OP_TILING_CHECK(is_support_broadcast_compile,
-                      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "compile shape and runtime shape not same"),
-                      return false);
     if (is_milan_soc) {
       if (!broadcast_compile_info.fusion_index_compile.first) {
         original_dim_len = dim_len;
@@ -394,7 +415,9 @@ bool Broadcast::GenerateOutputShape() {
         original_dim_len = broadcast_compile_info.fusion_index_compile.second.size();
       }
     }
-    if (input_num == SPECIAL_BROADCAST_INPUT_NUMS) {
+    if (!is_support_broadcast_compile) {
+      TrySwitchToElewise();
+    } else if (input_num == SPECIAL_BROADCAST_INPUT_NUMS) {
       TrySwitchToPerfPattern();
     } else {
       MulTrySwitchToPerfPattern();
@@ -654,7 +677,7 @@ bool Broadcast::CalcTiling() {
   const int64_t block_align_threshold = BGetElementByType(out_type) * BLOCK_NUM *
                                         MAX_REPEAT_TIMES * core_num_compile;
   if (output_size <= multi_core_threshold) {
-    need_multi_core = false;
+    need_tiling_cut = false;
   } else if (output_size <= block_align_threshold) {
     need_block_align = true;
   }
@@ -723,7 +746,7 @@ bool Broadcast::DoBlockTiling() {
 }
 
 void Broadcast::CheckUpdateBlockTiling() {
-  bool need_single_core = false;
+  need_single_core = false;
   if (is_multi_output) {
     // multi output check
     for (size_t i = 0; i < op_paras.GetOutputsSize(); i++) {
@@ -746,6 +769,8 @@ void Broadcast::CheckUpdateBlockTiling() {
       if (cut_output % block_factor != 0 && (cut_output % block_factor) * under_block < ele_in_block) {
         block_factor = multi_core_output;
         output_shape[block_axis] = multi_core_output;
+        block_dims = std::accumulate(output_shape.begin(), output_shape.begin() + block_axis, 1LL,
+                std::multiplies<int64_t>());
         cur_block_factor = std::min(multi_core_output, cut_output);
       }
       need_single_core = cut_output % cur_block_factor == 0 && cur_block_factor * under_block < ele_in_block;
@@ -761,6 +786,8 @@ void Broadcast::CheckUpdateBlockTiling() {
     if (multi_core_output % block_factor != 0 && (multi_core_output % block_factor) * under_block < ele_in_block) {
       block_factor = multi_core_output;
       output_shape[block_axis] = multi_core_output;
+      block_dims = std::accumulate(output_shape.begin(), output_shape.begin() + block_axis, 1LL,
+                std::multiplies<int64_t>());
     }
     need_single_core = block_factor * under_block < ele_in_block;
   }
@@ -974,7 +1001,7 @@ void Broadcast::AdjustUbTiling(const int64_t under_ub_shape, const int64_t limit
 }
 
 void Broadcast::CheckUpdateUbTiling() {
-  bool need_single_core = false;
+  need_single_core = false;
   if (is_multi_output) {
     // multi output check
     for (size_t i = 0; i < op_paras.GetOutputsSize(); i++) {
@@ -1037,7 +1064,7 @@ void Broadcast::CalcKey() {
     base_key += doubleBufferKey;
   }
   key = base_key;
-  if (output_shape.size() != 1 && need_multi_core) {
+  if (output_shape.size() != 1 && need_tiling_cut) {
     key = base_key + block_axis * output_shape.size() + ub_axis + 1;
   }
 }
@@ -1052,7 +1079,7 @@ bool Broadcast::WriteTilingData() const {
 
   run_info.SetBlockDim(static_cast<uint32_t>(block_dims));
   if (only_const_tiling) {
-    run_info.AddTilingData(static_cast<int32_t>(need_multi_core));
+    run_info.AddTilingData(static_cast<int32_t>(need_tiling_cut));
     run_info.AddTilingData(static_cast<int32_t>(block_axis));
     run_info.AddTilingData(static_cast<int32_t>(block_factor));
     run_info.AddTilingData(static_cast<int32_t>(ub_axis));
@@ -1118,7 +1145,8 @@ bool Broadcast::WriteTilingData() const {
 }
 
 bool Broadcast::IsNeedDoubleBuffer() const {
-  return ((s_pattern == Pattern::COMMON_BROADCAST) && (output_shape[1] >= max_available_ub));
+  return ((s_pattern == Pattern::COMMON_BROADCAST && output_shape[1] >= max_available_ub) ||
+       s_pattern == Pattern::COMMON);
 }
 
 bool Broadcast::DoTiling() {
@@ -1126,7 +1154,7 @@ bool Broadcast::DoTiling() {
   bool ret = Init();
   ret = ret && GenerateOutputShape();
   ret = ret && CalcTiling();
-  if (need_multi_core) {
+  if (need_tiling_cut) {
     // cut block
     ret = ret && DoBlockTiling();
     if (ret && IsNeedDoubleBuffer()) {
@@ -1141,10 +1169,39 @@ bool Broadcast::DoTiling() {
     block_axis = 0;
     block_factor = output_shape[0];
   }
+
+  // modify split facor because of block fuse split at compile stage
+  ret = ret && ModifyTiling();
+
   if (ret && !only_const_tiling) {
     CalcKey();
   }
   return ret;
+}
+
+bool Broadcast::ModifyTiling() {
+  // avoid invalid block_axis or ub_axis when tiling failed
+  if (block_axis == -1 || ub_axis == -1) {
+    return false;
+  }
+
+  if (!need_tiling_cut) {
+    block_dims = 1;
+    block_factor = 1;
+  } else {
+    output_shape[block_axis] = multi_core_output;
+    int64_t shape_before_ub = std::accumulate(output_shape.begin(),
+        output_shape.begin() + ub_axis, 1LL, std::multiplies<int64_t>());
+    int64_t ub_split_out = std::ceil(output_shape[ub_axis] * 1.0 / ub_factor);
+    block_factor = std::ceil(shape_before_ub * ub_split_out * 1.0 / block_dims);
+    if(block_factor == 0) {
+      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "block_factor must not be 0");
+      return false;
+    }
+    block_dims = std::ceil(shape_before_ub * ub_split_out * 1.0 / block_factor);
+  }
+  block_axis = 0;
+  return true;
 }
 
 bool Broadcast::CompletedShapes() {
@@ -1393,6 +1450,11 @@ BroadcastCompileInfo::BroadcastCompileInfo(const std::string& op_type, const nlo
   if (outer_compile_info.count("_attr_vars") > 0 && !ParseVarAttr(outer_compile_info, var_attr_map)) {
     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "broadcast get _attr_vars of compile_info error");
   }
+
+  if (outer_compile_info.contains("_contains_elewise_sch")) {
+    contains_elewise_sch = outer_compile_info.at("_contains_elewise_sch").get<bool>();
+  }
+
 }
 
 bool Broadcast::BroadcastTiling() {
@@ -1422,7 +1484,8 @@ bool Broadcast::BroadcastTiling() {
     key = INT32_MAX;
     block_dims = 1;
     ret = WriteConstTiling();
-  } else if ((is_pure_elementwise && !(is_support_broadcast && !use_special_pattern)) || !is_support_broadcast) {
+  } else if (is_support_broadcast && broadcast_compile_info.contains_elewise_sch && is_pure_elementwise &&
+       !(is_support_broadcast && !use_special_pattern)) {
     OP_LOGD(op_type.c_str(), "broadcast turn to elewise_tiling");
     std::vector<std::vector<int64_t>> elewise_input_shapes(input_num, std::vector<int64_t>(dim_len));
     for (size_t i = 0; i < input_num; i++) {
@@ -1469,7 +1532,8 @@ bool Broadcast::BroadcastTiling(const OpInfo& op_info) {
     key = INT32_MAX;
     block_dims = 1;
     ret = WriteConstTiling();
-  } else if ((is_pure_elementwise && !(is_support_broadcast && !use_special_pattern)) || !is_support_broadcast) {
+  } else if (is_support_broadcast && broadcast_compile_info.contains_elewise_sch && is_pure_elementwise &&
+       !(is_support_broadcast && !use_special_pattern)) {
     OP_LOGD(op_type.c_str(), "broadcast turn to elewise_tiling");
     std::vector<std::vector<int64_t>> elewise_input_shapes(input_num, std::vector<int64_t>(dim_len));
     for (size_t i = 0; i < input_num; i++) {

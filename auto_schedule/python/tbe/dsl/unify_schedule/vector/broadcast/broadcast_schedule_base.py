@@ -97,61 +97,35 @@ class BaseBroadcastSchedule:
             self._emit_insn_axis = axis
 
     def __init__(self, outs, tiling_case):
+        # init compute graph variable
+        self._init_compute_graph(outs)
+
+        # init tiling variable
+        self._init_tiling(tiling_case)
+
+        #  init schedule variable
+        self._init_schedule()
+
+    def _init_compute_graph(self, outs):
         self._out: Optional[tvm.tensor.Tensor] = None
         self._outs = outs
-        self._schedule = None
-        self._tiling_case: Optional[BroadcastTilingCase] = tiling_case
-        self._tiling_strategy = self._tiling_case.tiling_strategy
-        self._enable_db = self._tiling_case.enable_db
-        self._is_one_dim = self._tiling_case.is_one_dim
-        self._mode = operation.get_context().get_current_compute().get("_mode")
-
-        self._scope = "local.UB"
-
         self._input_tensors = set()
         self._middle_tensors = set()
         self._pure_middle_tensors = set()
         self._middle_out_tensors = set()
         self._out_tensors = set()
-
         self._broadcast_tensors = set()
         self._absorbable_broadcast_tensors = set()
         self._broadcast_axis_num = {}
-
-        self._broadcast_store_predicate = set()
-        self._store_predicate_common_tensors = set()
-        self._all_pre_node_broadcast = set()
-
         self._dtypes = set()
         self._outs_dtypes = set()
         self._max_dtype_bytes = 4
         self._coexisting_quantity = 1
-        self._tensor_space = None
-        self._ub_size = util.get_ub_size()
-        self._correct_factor = 2 if self._enable_db else 1
-        self._tmp_ub_size = 0
-        self._min_storage_bound = -1
-
-        # input -> outputs mapping relations
         self._in_out_map = {}
 
-        self._cache_read_tensors = set()
-        self._cache_read_buffer_tensor_map = {}
-        self._input_tensor_map = {}
-        self._middle_out_cache_read_buffer_map = {}
-
-        self._cache_write_tensors = set()
-        self._cache_write_buffer_tensor_map = {}
-        self._out_tensor_map = {}
-        self._middle_out_cache_write_buffer_map = {}
-
-        self._compute_inline_tensors = set()
-
-        self._compute_at_map = {}
-
-        self._copy_out_tensors = set()
-        self._remove_out_tensors = set()
-
+    def _init_tiling(self, tiling_case):
+        self._tiling_case: Optional[BroadcastTilingCase] = tiling_case
+        self._tiling_strategy = self._tiling_case.tiling_strategy
         self._need_do_block = False
         self._block_dims = 1
         self._block_split_axis = \
@@ -159,23 +133,44 @@ class BaseBroadcastSchedule:
         self._block_factor = 1
         self._ub_split_axis = 0 if self._tiling_case.ub_split_axis is None else self._tiling_case.ub_split_axis
         self._ub_factor = 1
-
         self._block_tiling_vars = {}
         self._ub_tiling_vars = {}
+
+    def _init_schedule(self):
+        self._schedule = None
+        self._enable_db = self._tiling_case.enable_db
+        self._is_one_dim = self._tiling_case.is_one_dim
+        self._mode = operation.get_context().get_current_compute().get("_mode")
+        self._scope = "local.UB"
         self._block_bind_axis = None
         self._compute_at_axis = self.ComputeAt()
         self._compute_at_axis_idx = None
         self._emit_insn_axis = self.EmitInsn()
-
+        self._tensor_space = None
+        self._ub_size = util.get_ub_size()
+        self._correct_factor = 2 if self._enable_db else 1
+        self._tmp_ub_size = 0
+        self._min_storage_bound = -1
+        self._cache_read_tensors = set()
+        self._cache_read_buffer_tensor_map = {}
+        self._input_tensor_map = {}
+        self._middle_out_cache_read_buffer_map = {}
+        self._cache_write_tensors = set()
+        self._cache_write_buffer_tensor_map = {}
+        self._out_tensor_map = {}
+        self._middle_out_cache_write_buffer_map = {}
+        self._broadcast_store_predicate = set()
+        self._store_predicate_common_tensors = set()
+        self._all_pre_node_broadcast = set()
+        self._compute_inline_tensors = set()
+        self._compute_at_map = {}
+        self._copy_out_tensors = set()
+        self._remove_out_tensors = set()
         self._inner_shape = []
-
         self._constraints = set()
-
         self._mem_reuse_map = {}
         self._data_reuse_map = {}
-
         self._emit_insn_map = {}
-
         self._compute_align_map = {}
         self._remove_pad_map = {}
 
@@ -439,7 +434,7 @@ class BaseBroadcastSchedule:
         shape = util.shape_to_list(res.shape)
         b_i = self._block_split_axis
         u_i = self._ub_split_axis
-        b_bound = (1, util.get_bound(shape[b_i])[1])
+        b_bound = (1, 2147483647)
         u_bound = self._tiling_case.ub_factor_bound
         if u_bound is None:
             u_bound = (1, util.get_bound(shape[u_i])[1])
@@ -485,8 +480,12 @@ class BaseBroadcastSchedule:
                                     BLOCK_SIZE_BYTE) * BLOCK_SIZE_BYTE) // self._max_dtype_bytes
             base_info = {"000": [util.get_core_num(), self._max_dtype_bytes, max_available_ub, max_available_ub_db]}
 
+            only_const_tiling = True
+            is_const_shapes = False
+            support_broadcast = support_broadcast = operation.get_context().get("_support_broadcast")
+            use_special_pattern = False
             const_compile_info = {
-                CompileInfo.FLAG_INFO: [True],
+                CompileInfo.FLAG_INFO: [only_const_tiling, is_const_shapes, support_broadcast, use_special_pattern],
                 CompileInfo.BASE_INFO: base_info,
                 CompileInfo.SOC_VERSION: get_soc_spec(SOC_VERSION),
                 CompileInfo.BROADCAST_AXIS: broadcast_axis,
@@ -507,7 +506,7 @@ class BaseBroadcastSchedule:
         run_info = _get_const_tiling()
 
         tiling_format = {
-            "need_multi_core": "int",
+            "need_tiling_cut": "int",
             "block_axis": "int",
             "block_factor": "int",
             "ub_axis": "int",
@@ -515,7 +514,7 @@ class BaseBroadcastSchedule:
             "is_need_db": "int"}
         tiling_data = op_tiling.decode(run_info.get('tiling_data'), tiling_format)
         self._block_dims = run_info.get("block_dim")
-        self._need_do_block = True if tiling_data.get("need_multi_core") > 0 else False
+        self._need_do_block = True if tiling_data.get("need_tiling_cut") > 0 else False
         if self._need_do_block:
             self._block_split_axis = tiling_data.get("block_axis")
             self._block_factor = tiling_data.get("block_factor")
@@ -682,15 +681,9 @@ class BaseBroadcastSchedule:
         for shape in ub_shapes:
             add_condition(shape <= self._min_storage_bound)
         if self._tiling_strategy != TilingStrategy.NONE_CUT:
-            block_shapes = shapes[:self._block_split_axis]
-            core_num = util.get_core_num()
-            for shape in block_shapes:
-                add_condition(shape <= core_num)
             ub_shapes.insert(0, self._ub_factor)
             shape_size = reduce(lambda x, y: x * y, ub_shapes)
             add_condition(shape_size <= self._min_storage_bound)
-            block_size = reduce(lambda x, y: x * y, block_shapes or [1])
-            add_condition(block_size <= core_num)
             add_condition(self._ub_factor <= self._min_storage_bound)
 
     def _calc_emit_insn(self):
@@ -771,30 +764,29 @@ class BaseBroadcastSchedule:
         block_axes = []
         ub_axes = []
         inner_axes = []
-        for i in range(b_idx):
+
+        # 1. split ub first
+        u_o, u_i = sch[res].split(res.op.axis[u_idx], factor=self._ub_tiling_vars.get(u_idx))
+        ub_axes.append([u_o, u_idx])
+        inner_axes.append([u_i, u_idx])
+        self._inner_shape.append([self._ub_tiling_vars[u_idx], u_idx])
+        for i in range(u_idx):
             block_axes.append([res.op.axis[i], i])
-        b_o, b_i = sch[res].split(res.op.axis[b_idx], factor=self._block_tiling_vars.get(b_idx))
-        block_axes.append([b_o, b_idx])
-        if b_idx == u_idx:
-            u_o, u_i = sch[res].split(b_i, factor=self._ub_tiling_vars.get(u_idx))
-            ub_axes.append([u_o, u_idx])
-            inner_axes.append([u_i, u_idx])
-            self._inner_shape.append([self._ub_tiling_vars[u_idx], u_idx])
-        else:
-            ub_axes.append([b_i, b_idx])
-            for i in range(b_idx + 1, u_idx):
-                ub_axes.append([res.op.axis[i], i])
-            u_o, u_i = sch[res].split(res.op.axis[u_idx], factor=self._ub_tiling_vars.get(u_idx))
-            ub_axes.append([u_o, u_idx])
-            inner_axes.append([u_i, u_idx])
-            self._inner_shape.append([self._ub_tiling_vars.get(u_idx), u_idx])
+        block_axes.append([u_o, u_idx])
+
+        #2. fuse block axis
+        block_fuse_axis = sch[res].fuse(*[x[0] for x in block_axes])
+
+        #3. spilt block
+        b_o, b_i = sch[res].split(block_fuse_axis, factor=self._block_tiling_vars.get(b_idx))
+
         for i in range(u_idx + 1, len(res.op.axis)):
             inner_axes.append([res.op.axis[i], i])
             self._inner_shape.append([shape[i], i])
 
-        self._block_bind_axis = sch[res].fuse(*[x[0] for x in block_axes])
-        self._compute_at_axis.compute_at_axis = ub_axes[-1][0]
-        self._compute_at_axis_idx = ub_axes[-1][1]
+        self._block_bind_axis = b_o
+        self._compute_at_axis.compute_at_axis = b_i
+        self._compute_at_axis_idx = u_idx
         self._emit_insn_axis.emit_insn_axis = inner_axes[0][0]
 
     def _do_tiling_static(self):
@@ -803,21 +795,37 @@ class BaseBroadcastSchedule:
     def _do_tiling_const(self):
         sch = self._schedule
         res = self._out
+        shape = util.shape_to_list(res.shape)
         block_axes = []
+        ub_axes = []
+        inner_axes = []
+        b_idx = self._block_split_axis
+        u_idx = self._ub_split_axis
+
         if self._need_do_block:
-            for i in range(self._block_split_axis):
+            # 1. split ub first
+            u_o, u_i = sch[res].split(res.op.axis[u_idx], factor=self._ub_factor)
+            ub_axes.append([u_o, u_idx])
+            inner_axes.append([u_i, u_idx])
+            self._inner_shape.append([self._ub_factor, u_idx])
+            for i in range(u_idx):
                 block_axes.append([res.op.axis[i], i])
-            b_o, b_i = sch[res].split(res.op.axis[self._block_split_axis],
-                                      factor=self._block_factor)
-            block_axes.append([b_o, self._block_split_axis])
-            self._block_bind_axis = sch[res].fuse(*[x[0] for x in block_axes])
-            if self._block_split_axis >= 0 and self._block_split_axis == self._ub_split_axis:
-                u_o, u_i = sch[res].split(b_i, factor=self._ub_factor)
-            else:
-                u_o, u_i = sch[res].split(res.op.axis[self._ub_split_axis],
-                                          factor=self._ub_factor)
-            self._compute_at_axis.compute_at_axis = u_o
-            self._emit_insn_axis.emit_insn_axis = u_i
+            block_axes.append([u_o, u_idx])
+
+            # 2. fuse block axis
+            block_fuse_axis = sch[res].fuse(*[x[0] for x in block_axes])
+
+            # 3. spilt block
+            b_o, b_i = sch[res].split(block_fuse_axis, factor=self._block_factor)
+
+            for i in range(u_idx + 1, len(res.op.axis)):
+                inner_axes.append([res.op.axis[i], i])
+                self._inner_shape.append([shape[i], i])
+
+            self._block_bind_axis = b_o
+            self._compute_at_axis.compute_at_axis = b_i
+            self._compute_at_axis_idx = u_idx
+            self._emit_insn_axis.emit_insn_axis = inner_axes[0][0]
         else:
             self._emit_insn_axis.emit_insn_axis = res.op.axis[0]
 
@@ -853,17 +861,33 @@ class BaseBroadcastSchedule:
             sch[tensor_i].compute_at(sch[param[0]], param[1].compute_at_axis)
 
     def _do_store_predicate(self):
+
+        def calc_predicate_condition(tensor, ub_split_src):
+            u_idx = self._ub_split_axis
+            b_idx = self._block_split_axis
+            ub_factor = None
+            block_factor = None
+            ub_out_shape = None
+
+            if self._tiling_strategy == TilingStrategy.CONST:
+                ub_factor = self._ub_factor
+                block_factor = self._block_factor
+            else:
+                ub_factor = self._ub_tiling_vars.get(u_idx)
+                block_factor = self._block_tiling_vars.get(b_idx)
+            ub_out_shape = tvm.floordiv(self._out.shape[u_idx] - 1, ub_factor) + 1
+
+            if self._enable_db:
+                return tvm.any(
+                    (self._block_bind_axis * block_factor + self._compute_at_axis.compute_at_axis) % ub_out_shape < 2,
+                    self._compute_at_axis.compute_at_axis < 2,
+                    ub_split_src != 1)
+            return tvm.any(
+                (self._block_bind_axis * block_factor + self._compute_at_axis.compute_at_axis) % ub_out_shape < 1,
+                self._compute_at_axis.compute_at_axis < 1,
+                ub_split_src != 1)
+
         sch = self._schedule
-        cond_limit = 1
-        if self._enable_db:
-            # pass double buffer error, avoid it in schedule
-            # double buffer IR:
-            # ' for i:a
-            # '   if i * 2 < cond_limit:
-            # '     do()
-            # '   if i * 2 + 1 < cond_limit:
-            # '     do()
-            cond_limit = 2
         u_idx = self._ub_split_axis
         for tensor_i in self._broadcast_store_predicate:
             input_tensors = tensor_i.op.input_tensors
@@ -875,7 +899,7 @@ class BaseBroadcastSchedule:
                 ub_split_src = tensor_i.op.input_tensors[0].op.input_tensors[0].shape[u_idx]
             else:
                 ub_split_src = tensor_i.shape[u_idx]
-            cond = tvm.any(self._compute_at_axis.compute_at_axis < cond_limit, ub_split_src != 1)
+            cond = calc_predicate_condition(tensor_i, ub_split_src)
             sch[self._get_ub_tensor(tensor_i)].set_store_predicate(cond)
             sch[self._get_ub_tensor(tensor_i)].mem_unique()
         for tensor_i in self._all_pre_node_broadcast:
@@ -883,7 +907,7 @@ class BaseBroadcastSchedule:
                 ub_split_src = tensor_i.op.input_tensors[0].shape[u_idx]
             else:
                 ub_split_src = tensor_i.shape[u_idx]
-            cond = tvm.any(self._compute_at_axis.compute_at_axis < cond_limit, ub_split_src != 1)
+            cond = calc_predicate_condition(tensor_i, ub_split_src)
             if tensor_i in self._input_tensor_map:
                 sch[self._input_tensor_map.get(tensor_i)].set_store_predicate(cond)
             else:

@@ -104,7 +104,7 @@ TEST_F(BNReduceGradTiling, BnReduceGradTiling1) {
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
   EXPECT_EQ(runInfo.GetBlockDim(), 32);
-  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "128 128 16 16 16 16 16 16 16 20 20 20 20 1 1 4 1 933484298 -1213999350 ");
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "128 128 16 16 16 16 16 16 16 20 20 20 20 1 1 64 1 933484298 -1213999350 ");
 }
 
 TEST_F(BNReduceGradTiling, BnReduceGradTiling2) {
@@ -130,5 +130,5 @@ TEST_F(BNReduceGradTiling, BnReduceGradTiling2) {
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
   EXPECT_EQ(runInfo.GetBlockDim(), 32);
-  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "128 128 16 16 16 16 16 16 16 20 20 20 20 1 1 4 1 933484298 -1213999350 ");
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "128 128 16 16 16 16 16 16 16 20 20 20 20 1 1 64 1 933484298 -1213999350 ");
 }

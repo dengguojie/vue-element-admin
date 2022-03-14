@@ -58,7 +58,7 @@ TEST_F(MseLossGradTiling, MseLossGrad_tiling_test_1) {
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()),
-            "16 16 16 16 11264 ");
+            "16 16 1 16 11264 ");
 }
 
 TEST_F(MseLossGradTiling, MseLossGrad_tiling_test_2) {
@@ -83,5 +83,5 @@ TEST_F(MseLossGradTiling, MseLossGrad_tiling_test_2) {
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()),
-            "16 16 16 16 11264 ");
+            "16 16 1 16 11264 ");
 }

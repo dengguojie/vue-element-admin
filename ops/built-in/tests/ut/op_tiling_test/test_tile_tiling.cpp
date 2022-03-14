@@ -73,7 +73,7 @@ TEST_F(TileTiling, Tile_tiling1) {
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
   EXPECT_EQ(runInfo.GetBlockDim(), 30);
-  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "4 78 78 ");
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "4 1 78 ");
 }
 
 TEST_F(TileTiling, Tile_tiling2) {
@@ -99,7 +99,7 @@ TEST_F(TileTiling, Tile_tiling2) {
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
   EXPECT_EQ(runInfo.GetBlockDim(), 24);
-  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "3 2 2 ");
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "3 1 2 ");
 }
 
 TEST_F(TileTiling, Tile_tiling3) {
@@ -125,10 +125,8 @@ TEST_F(TileTiling, Tile_tiling3) {
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
   EXPECT_EQ(runInfo.GetBlockDim(), 1);
-  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "3 3 3 ");
-}
-
-TEST_F(TileTiling, Tile_tiling4) {
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "3 1 3 ");
+}TEST_F(TileTiling, Tile_tiling4) {
   std::string op_name = "Tile";
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
@@ -151,5 +149,5 @@ TEST_F(TileTiling, Tile_tiling4) {
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
   EXPECT_EQ(runInfo.GetBlockDim(), 30);
-  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "4 78 26 ");
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "4 3 26 ");
 }

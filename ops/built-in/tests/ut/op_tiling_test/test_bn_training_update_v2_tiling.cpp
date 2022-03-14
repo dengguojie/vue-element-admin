@@ -157,6 +157,6 @@ TEST_F(BNTrainingUpdateV2Tiling, BNTrainingUpdateV2Tiling1) {
     optiling::utils::OpRunInfo runInfo;
     RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
     EXPECT_EQ(runInfo.GetBlockDim(), 32);
-    EXPECT_EQ(runInfo.GetTilingKey(), 8);
+    EXPECT_EQ(runInfo.GetTilingKey(), 3);
     EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "32 16 26 26 16 26 943842492 ");
 }

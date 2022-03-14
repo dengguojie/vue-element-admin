@@ -77,7 +77,7 @@ TEST_F(SelectTiling, Select_tiling1) {
   // do tilling, get runInfo
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
-  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "16 16 16 ");
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "16 1 16 ");
 }
 
 TEST_F(SelectTiling, Select_tiling2) {
@@ -102,7 +102,7 @@ TEST_F(SelectTiling, Select_tiling2) {
   // do tilling, get runInfo
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
-  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "256 256 256 ");
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "256 1 256 ");
 }
 
 TEST_F(SelectTiling, Select_tiling3) {
@@ -127,5 +127,5 @@ TEST_F(SelectTiling, Select_tiling3) {
   // do tilling, get runInfo
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
-  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "4 4 4 ");
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "256 1 256 ");
 }

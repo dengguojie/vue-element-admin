@@ -57,7 +57,7 @@ TEST_F(TileWithAxisTiling, TileWithAxisTiling_test_1) {
 
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
-  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "5 16 16 ");
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "5 1 16 ");
 }
 
 TEST_F(TileWithAxisTiling, TileWithAxisTiling_test_2) {
@@ -80,7 +80,7 @@ TEST_F(TileWithAxisTiling, TileWithAxisTiling_test_2) {
 
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
-  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "5 16 16 ");
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "5 1 16 ");
 }
 
 TEST_F(TileWithAxisTiling, TileWithAxisTiling_test_3) {
@@ -103,7 +103,7 @@ TEST_F(TileWithAxisTiling, TileWithAxisTiling_test_3) {
 
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
-  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "5 16 16 ");
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "5 1 16 ");
 }
 
 TEST_F(TileWithAxisTiling, TileWithAxisTiling_test_4) {
@@ -126,7 +126,7 @@ TEST_F(TileWithAxisTiling, TileWithAxisTiling_test_4) {
 
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
-  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "5 16 16 ");
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "5 1 16 ");
 }
 
 TEST_F(TileWithAxisTiling, TileWithAxisTiling_test_5) {
@@ -149,7 +149,7 @@ TEST_F(TileWithAxisTiling, TileWithAxisTiling_test_5) {
 
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
-  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "5 16 16 ");
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "5 1 16 ");
 }
 
 TEST_F(TileWithAxisTiling, TileWithAxisTiling_test_6) {
@@ -172,7 +172,7 @@ TEST_F(TileWithAxisTiling, TileWithAxisTiling_test_6) {
 
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
-  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "5 16 16 ");
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "5 1 16 ");
 }
 
 TEST_F(TileWithAxisTiling, TileWithAxisTiling_test_7) {
@@ -195,7 +195,7 @@ TEST_F(TileWithAxisTiling, TileWithAxisTiling_test_7) {
 
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
-  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "5 16 16 ");
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "5 1 16 ");
 }
 
 TEST_F(TileWithAxisTiling, TileWithAxisTiling_test_8) {
@@ -218,7 +218,7 @@ TEST_F(TileWithAxisTiling, TileWithAxisTiling_test_8) {
 
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
-  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "5 16 16 ");
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "5 1 16 ");
 }
 
 TEST_F(TileWithAxisTiling, TileWithAxisTiling_test_9) {
@@ -241,7 +241,7 @@ TEST_F(TileWithAxisTiling, TileWithAxisTiling_test_9) {
 
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
-  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "5 16 16 ");
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "5 1 16 ");
 }
 
 TEST_F(TileWithAxisTiling, TileWithAxisTiling_test_a) {
@@ -264,5 +264,5 @@ TEST_F(TileWithAxisTiling, TileWithAxisTiling_test_a) {
 
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
-  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "5 16 16 ");
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "5 1 16 ");
 }

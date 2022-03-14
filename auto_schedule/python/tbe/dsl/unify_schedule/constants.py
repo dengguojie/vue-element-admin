@@ -198,6 +198,7 @@ class CompileInfo:
     BROADCAST_AXIS = "_broadcast_axis"
     OUTS_UINT1 = "_outs_uint1"
     SOC_VERSION = "_soc_version"
+    CONTAINS_ELEWISE_SCH = "_contains_elewise_sch"
 
 
 FAKE_NODE_TAG = "elewise_empty_intrin"

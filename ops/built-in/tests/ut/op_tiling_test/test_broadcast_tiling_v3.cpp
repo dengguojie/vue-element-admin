@@ -162,7 +162,7 @@ TEST_F(BroadcastTilingV3, TilingTest2) {
   v3::Broadcast broadcast("autotiling", op_paras, actual_ptr, runInfo);
   ASSERT_TRUE(broadcast.BroadcastTiling());
   EXPECT_EQ(runInfo.GetBlockDim(), 25);
-  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "5824 4 2 ");
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "5824 2 2 ");
 }
 
 TEST_F(BroadcastTilingV3, TilingTest3) {
@@ -207,7 +207,7 @@ TEST_F(BroadcastTilingV3, TilingTest3) {
 }
 
 TEST_F(BroadcastTilingV3, TilingTest4) {
-    std::vector<std::vector<int64_t>> inputs {{1, 33, 1}, {1, 33, 1089}};
+  std::vector<std::vector<int64_t>> inputs {{1, 33, 1}, {1, 33, 1089}};
   std::vector<std::vector<int64_t>> outputs {{1, 33, 1089}};;
   ge::DataType dtype = ge::DT_FLOAT;
   ge::OpDescPtr op_desc = std::make_shared<ge::OpDesc>();
@@ -244,7 +244,7 @@ TEST_F(BroadcastTilingV3, TilingTest4) {
 
 
   v3::Broadcast broadcast("autotiling", op_paras, actual_ptr, runInfo);
-ASSERT_TRUE(!broadcast.BroadcastTiling());
+  ASSERT_TRUE(!broadcast.BroadcastTiling());
 }
 
 TEST_F(BroadcastTilingV3, TilingTest5) {
@@ -367,9 +367,7 @@ TEST_F(BroadcastTilingV3, TilingTest7) {
 
 
   v3::Broadcast broadcast("autotiling", op_paras, actual_ptr, runInfo);
-ASSERT_TRUE(broadcast.BroadcastTiling());
-  EXPECT_EQ(runInfo.GetBlockDim(), 32);
-  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "1 4000 14 1 8 1 22 22 125 12 ");
+  ASSERT_TRUE(broadcast.BroadcastTiling());
 }
 
 TEST_F(BroadcastTilingV3, TilingTest8) {
@@ -410,9 +408,7 @@ TEST_F(BroadcastTilingV3, TilingTest8) {
 
 
   v3::Broadcast broadcast("autotiling", op_paras, actual_ptr, runInfo);
-ASSERT_TRUE(broadcast.BroadcastTiling());
-  EXPECT_EQ(runInfo.GetBlockDim(), 48);
-  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "1 3200 5824 1 67 3 ");
+  ASSERT_TRUE(broadcast.BroadcastTiling());
 }
 
 TEST_F(BroadcastTilingV3, TilingTest9) {
@@ -453,9 +449,8 @@ TEST_F(BroadcastTilingV3, TilingTest9) {
 
 
   v3::Broadcast broadcast("autotiling", op_paras, actual_ptr, runInfo);
-ASSERT_TRUE(broadcast.BroadcastTiling());
-  EXPECT_EQ(runInfo.GetBlockDim(), 48);
-  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "1 3200 5824 1 67 2 ");
+  ASSERT_TRUE(broadcast.BroadcastTiling());
+
 }
 
 TEST_F(BroadcastTilingV3, TilingTest10) {
@@ -496,7 +491,7 @@ TEST_F(BroadcastTilingV3, TilingTest10) {
 
 
   v3::Broadcast broadcast("autotiling", op_paras, actual_ptr, runInfo);
-ASSERT_TRUE(broadcast.BroadcastTiling());
+  ASSERT_TRUE(broadcast.BroadcastTiling());
   EXPECT_EQ(runInfo.GetBlockDim(), 1);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "");
 }
@@ -539,7 +534,7 @@ TEST_F(BroadcastTilingV3, TilingTest11) {
 
 
   v3::Broadcast broadcast("autotiling", op_paras, actual_ptr, runInfo);
-ASSERT_TRUE(broadcast.BroadcastTiling());
+  ASSERT_TRUE(broadcast.BroadcastTiling());
 }
 
 TEST_F(BroadcastTilingV3, TilingTest12) {
@@ -580,7 +575,7 @@ TEST_F(BroadcastTilingV3, TilingTest12) {
 
 
   v3::Broadcast broadcast("autotiling", op_paras, actual_ptr, runInfo);
-ASSERT_TRUE(broadcast.BroadcastTiling());
+  ASSERT_TRUE(broadcast.BroadcastTiling());
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "");
 }
 
@@ -599,7 +594,7 @@ TEST_F(BroadcastTilingV3, TilingTest13) {
   optiling::utils::OpRunInfo runInfo;
 
 
-  std::string compileInfo = R"({ "_outs_uint1": false, "_pattern": "Broadcast", "push_status": 0, "_flag_info": [false, false, true, true, false, false, false], "_base_info": {"100": [32, 4, 32768, 16384]}, "_elewise_vars": { "210000000": [ 10000, 20000, 30000 ] }, "_vars": { "210000000": [ "_dim_0_0", "_block_factor_0", "_ub_factor_0" ] } })";
+  std::string compileInfo = R"({ "_outs_uint1": false, "_contains_elewise_sch": true, "_pattern": "Broadcast", "push_status": 0, "_flag_info": [false, false, true, true, false, false, false], "_base_info": {"100": [32, 4, 32768, 16384]}, "_elewise_vars": { "210000000": [ 10000, 20000, 30000 ] }, "_vars": { "210000000": [ "_dim_0_0", "_block_factor_0", "_ub_factor_0" ] } })";
   std::shared_ptr<AutoTilingHandler> outer_compile_info = \
     CreateBroadcastTilingHandler(this->test_info_->name(),
                               "autotiling",
@@ -827,65 +822,6 @@ TEST_F(BroadcastTilingV3, TilingTest20) {
   ASSERT_TRUE(outer_compile_info->DoTiling(op_paras, runInfo));
 }
 
-TEST_F(BroadcastTilingV3, TilingTest21) {
-  std::vector<std::vector<int64_t>> inputs {{32, 100, 1}, {32, 100, 1}, {1, 1, 1}};
-  std::vector<std::vector<int64_t>> outputs {{32, 100, 1}};
-  ge::DataType dtype = ge::DT_FLOAT;
-  ge::OpDescPtr op_desc = std::make_shared<ge::OpDesc>();
-  for (std::size_t i = 0; i < inputs.size(); i++) {
-    contruct_tensor(op_desc, inputs[i], dtype);
-  }
-  for (std::size_t i = 0; i < outputs.size(); i++) {
-    contruct_tensor(op_desc, outputs[i], dtype, false);
-  }
-  ge::Operator op_paras = ge::OpDescUtils::CreateOperatorFromOpDesc(op_desc);
-  optiling::utils::OpRunInfo runInfo;
-
-  v3::BroadcastCompileInfo actual_ptr;
-  actual_ptr.base_info_compile.first = true;
-  actual_ptr.base_info_compile.second = {{"100", {48, 2, 32768, 16384}}, {"120", {48, 2, 16384, 8192}}, {"121", {48, 2, 16384, 8192}}, {"210", {48, 2, 16384, 8192}}, {"200", {48, 2, 24576, 12288}}, {"000", {48, 2, 16384, 8192}}, {"999", {48, 2, 16384, 8192}}};
-  actual_ptr.flag_info_compile = {false, false, false, true, true, false, true};
-  actual_ptr.outs_uint1_compile = false;
-  actual_ptr.elewise_vars_compile.first = true;
-  actual_ptr.elewise_vars_compile.second = {{"210000000", {10000, 20000, 30000}}, {"210010000", {10000, 20000, 30000}}, {"212000000", {10000, 10100, 10101}}, {"212000001", {10000, 10100, 10101, 20000, 30000}}, {"212000002", {10000, 10100, 10101, 20000, 30001}}, {"212010002", {10000, 10100, 10101, 20000, 30001}}, {"212000004", {10000, 10100, 10101, 20001, 30001}}, {"212010004", {10000, 10100, 10101, 20001, 30001}}, {"212100000", {10000, 10100, 10101, 10200}}, {"212100001", {10000, 10100, 10101, 10200, 20000, 30000}}, {"212100002", {10000, 10100, 10101, 10200, 20000, 30001}}, {"212100003", {10000, 10100, 10101, 10200, 20000, 30002}}, {"212100005", {10000, 10100, 10101, 10200, 20001, 30001}}, {"212100006", {10000, 10100, 10101, 10200, 20001, 30002}}, {"212100009", {10000, 10100, 10101, 10200, 20002, 30002}}, {"221000000", {10000, 10001, 10100}}, {"221000001", {10000, 10001, 10100, 20000, 30000}}, {"221000002", {10000, 10001, 10100, 20000, 30001}}, {"221000004", {10000, 10001, 10100, 20001, 30001}}, {"220000000", {10000, 10001, 20000, 30000}}, {"0", {10000, 10001, 10100, 10101, 10200, 10201}}, {"1", {10000, 10001, 10100, 10101, 10200, 10201, 20000, 30000}}, {"2", {10000, 10001, 10100, 10101, 10200, 10201, 20000, 30001}}, {"3", {10000, 10001, 10100, 10101, 10200, 10201, 20000, 30002}}, {"5", {10000, 10001, 10100, 10101, 10200, 10201, 20001, 30001}}, {"6", {10000, 10001, 10100, 10101, 10200, 10201, 20001, 30002}}, {"9", {10000, 10001, 10100, 10101, 10200, 10201, 20002, 30002}}, {"299900000", {10000, 10001, 10100, 10101}}, {"299900001", {10000, 10001, 10100, 10101, 20000, 30000}}, {"299900002", {10000, 10001, 10100, 10101, 20000, 30001}}, {"299900004", {10000, 10001, 10100, 10101, 20001, 30001}}};
-  actual_ptr.const_block_dims_compile.first = false;
-  actual_ptr.const_block_dims_compile.second = {};
-
-  actual_ptr.const_shapes_compile.first = false;
-  actual_ptr.const_shapes_compile.second = {};
-
-  actual_ptr.fusion_index_compile.first = true;
-  actual_ptr.fusion_index_compile.second = {{0}, {1}, {2}};
-
-  actual_ptr.broadcast_axis_compile.first = false;
-  actual_ptr.broadcast_axis_compile.second = {};
-
-  actual_ptr.soc_version.first = true;
-  actual_ptr.soc_version.second = "Ascend920";
-  // elewise compile info
-  actual_ptr.pure_elewise_compile_info.has_outs_uint1 = true;
-  actual_ptr.pure_elewise_compile_info.outs_uint1 = false;
-  actual_ptr.pure_elewise_compile_info.has_flag_info = true;
-  actual_ptr.pure_elewise_compile_info.flag_size = 7;
-  actual_ptr.pure_elewise_compile_info.only_const_tiling = false;
-  actual_ptr.pure_elewise_compile_info.is_const_shapes = false;
-  actual_ptr.pure_elewise_compile_info.use_special_pattern = true;
-  actual_ptr.pure_elewise_compile_info.pattern_key = 1;
-  actual_ptr.pure_elewise_compile_info.core_num = 48;
-  actual_ptr.pure_elewise_compile_info.max_dtype = 2;
-  actual_ptr.pure_elewise_compile_info.max_available_ub = 32768;
-  actual_ptr.pure_elewise_compile_info.max_available_ub_db = 16384;
-  actual_ptr.pure_elewise_compile_info.const_block_dims = -1;
-  actual_ptr.pure_elewise_compile_info.elewise_vars_size = 3;
-  actual_ptr.pure_elewise_compile_info.broadcast_pattern = true;
-
-  optiling::OpInfo custom_op_info(inputs, ge::DT_FLOAT);
-  const std::pair<bool, optiling::OpInfo> op_custom(true, custom_op_info);
-
-  v3::Broadcast broadcast("autotiling", op_paras, actual_ptr, runInfo);
-  ASSERT_TRUE(broadcast.BroadcastTiling(custom_op_info));
-}
-
 TEST_F(BroadcastTilingV3, TilingTest22) {
   std::vector<std::vector<int64_t>> inputs {{2, 26, 26, 3, 80}, {1}};
   std::vector<std::vector<int64_t>> outputs {{2, 26, 26, 3, 80}};
@@ -962,3 +898,4 @@ TEST_F(BroadcastTilingV3, TilingTest23) {
   v3::Broadcast broadcast("autotiling", op_paras, actual_ptr, runInfo);
   ASSERT_TRUE(broadcast.BroadcastTiling());
 }
+

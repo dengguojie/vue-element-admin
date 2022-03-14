@@ -57,7 +57,7 @@ TEST_F(SmoothL1LossGradV2Tiling, SmoothL1LossGradV2_tiling_test_1) {
   // do tilling, get runInfo
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
-  EXPECT_EQ(to_string(runInfo.GetAllTilingData()),"16 16 16 16 1031798784 ");
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()),"16 16 1 16 1031798784 ");
 }
 
 TEST_F(SmoothL1LossGradV2Tiling, SmoothL1LossGradV2_tiling_test_2) {
@@ -81,7 +81,7 @@ TEST_F(SmoothL1LossGradV2Tiling, SmoothL1LossGradV2_tiling_test_2) {
   // do tilling, get runInfo
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
-  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "16 16 16 16 11264 ");
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "16 16 1 16 11264 ");
 }
 
 TEST_F(SmoothL1LossGradV2Tiling, SmoothL1LossGradV2_tiling_test_3) {
@@ -105,7 +105,7 @@ TEST_F(SmoothL1LossGradV2Tiling, SmoothL1LossGradV2_tiling_test_3) {
   // do tilling, get runInfo
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
-  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "16 16 16 16 11264 ");
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "16 16 1 16 11264 ");
 }
 
 TEST_F(SmoothL1LossGradV2Tiling, SmoothL1LossGradV2_tiling_test_4) {
@@ -129,5 +129,5 @@ TEST_F(SmoothL1LossGradV2Tiling, SmoothL1LossGradV2_tiling_test_4) {
   // do tilling, get runInfo
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
-  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "16 16 16 16 1031798784 ");
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "16 16 1 16 1031798784 ");
 }

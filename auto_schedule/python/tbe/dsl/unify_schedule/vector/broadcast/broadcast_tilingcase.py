@@ -213,20 +213,21 @@ class BroadcastComputation(Computation):
         # block tiling: fused the axis(which before multi-core axis)
         # and multi-core axis
         # ub tiling axis >= block tiling axis
+        # block_axis == 0. don't mean real axis
+        block_axis = 0
         base_key += 1
         for i in range(dim_len):
-            for j in range(i, dim_len):
-                tiling_key = base_key + i * dim_len + j
-                one_cut_tiling_case = BroadcastTilingCase()
-                one_cut_tiling_case.set_one_cut_tiling_case(tiling_key, i, j)
-                tiling_case.append(one_cut_tiling_case)
+            tiling_key = tiling_key = base_key + block_axis * dim_len + i
+            one_cut_tiling_case = BroadcastTilingCase()
+            one_cut_tiling_case.set_one_cut_tiling_case(tiling_key, block_axis, i)
+            tiling_case.append(one_cut_tiling_case)
 
-                db_params = {"ub_tiling_axis": j, "dim_len": dim_len}
-                if enable_db_func(db_params):
-                    tiling_key = base_key + i * dim_len + j + DB_KEY
-                    one_cut_db_tiling_case = BroadcastTilingCase()
-                    one_cut_db_tiling_case.set_one_cut_tiling_case(tiling_key, i, j, enable_db=True)
-                    tiling_case.append(one_cut_db_tiling_case)
+            db_params = {"ub_tiling_axis": i, "dim_len": dim_len}
+            if enable_db_func(db_params):
+                tiling_key = base_key + block_axis * dim_len + i + DB_KEY
+                one_cut_db_tiling_case = BroadcastTilingCase()
+                one_cut_db_tiling_case.set_one_cut_tiling_case(tiling_key, block_axis, i, enable_db=True)
+                tiling_case.append(one_cut_db_tiling_case)
 
         return tiling_case
 
@@ -288,6 +289,7 @@ def _pre_build():
     has_all_unknown = operation.get_context().get("_has_all_unknown") or False
     cpt_computes = operation.get_context().get_computes()
     is_const = False
+    compute_patterns = set()
     for compute in cpt_computes:
         if compute.get("_mode") in [SPECIAL, SPECIAL_SCALAR]:
             use_special_pattern = True
@@ -295,6 +297,13 @@ def _pre_build():
             support_absorbable_broadcast = True
         if compute.get("_mode") == CONST:
             is_const = True
+
+        compute_patterns.add(compute.get_pattern())
+
+    operation.add_compile_info_inner(CompileInfo.CONTAINS_ELEWISE_SCH, False)
+    if {Pattern.ELEMWISE, Pattern.BROADCAST} == compute_patterns:
+        operation.add_compile_info_inner(CompileInfo.CONTAINS_ELEWISE_SCH, True)
+
     operation.add_compile_info_inner(CompileInfo.SOC_VERSION, get_soc_spec(SOC_VERSION))
     if is_const:
         _add_const_compile_info()

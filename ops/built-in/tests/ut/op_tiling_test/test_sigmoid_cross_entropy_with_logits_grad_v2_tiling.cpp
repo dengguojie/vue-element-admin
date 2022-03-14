@@ -83,7 +83,7 @@ TEST_F(SigmoidCrossEntropyWithLogitsGradV2Tiling, SigmoidCrossEntropyWithLogitsG
   // do tilling, get runInfo
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
-  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "48000 1536 1536 934200126 ");
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "48000 1 1536 934200126 ");
 }
 
 TEST_F(SigmoidCrossEntropyWithLogitsGradV2Tiling, SigmoidCrossEntropyWithLogitsGradV2_tiling_test_2) {
@@ -111,5 +111,5 @@ TEST_F(SigmoidCrossEntropyWithLogitsGradV2Tiling, SigmoidCrossEntropyWithLogitsG
   // do tilling, get runInfo
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
-  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "48000 1536 1536 350 ");
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "48000 1 1536 350 ");
 }

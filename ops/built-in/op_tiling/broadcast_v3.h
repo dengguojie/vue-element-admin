@@ -42,6 +42,7 @@ struct BroadcastCompileInfo {
   std::pair<bool, std::unordered_map<std::string, std::vector<int64_t>>> base_info_compile;
   std::vector<bool> flag_info_compile;
   bool outs_uint1_compile {false};
+  bool contains_elewise_sch {false};
   std::pair<bool, std::unordered_map<std::string, std::vector<int64_t>>> elewise_vars_compile;
   std::unordered_map<std::uint64_t, vector<VarAttr>> var_attr_map;
   std::pair<bool, std::vector<int64_t>> const_block_dims_compile;
@@ -82,6 +83,7 @@ class Broadcast {
     bool Init();
     bool GenerateOutputShape();
     bool TryMatchAllUnknown();
+    void TrySwitchToElewise();
     void TrySwitchToPerfPattern();
     void TrySwitchToPerfPatternMilan();
     void FusionContinuousAxis(std::vector<int64_t>& fused_shape_x, std::vector<int64_t>& fused_shape_y);
@@ -116,6 +118,7 @@ class Broadcast {
     bool CalcConstKey(const bool is_support_broadcast);
     bool IsEmptyTensor();
     bool WriteConstTiling();
+    bool ModifyTiling();
 
     bool DoTiling();
     bool WriteTilingData() const;
@@ -149,7 +152,8 @@ class Broadcast {
     Pattern s_pattern{Pattern::ORIGINAL};
     bool is_const{false};
     bool only_const_tiling{false};
-    bool need_multi_core{true};
+    bool need_tiling_cut{true};
+    bool need_single_core{false};
     bool need_double_buffer{false};
     bool need_block_align{false};
     bool is_milan_soc{false};
