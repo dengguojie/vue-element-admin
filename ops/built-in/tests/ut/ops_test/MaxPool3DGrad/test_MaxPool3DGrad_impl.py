@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
+from unittest.mock import MagicMock
+from unittest.mock import patch
 from op_test_frame.ut import OpUT
 import math
 
@@ -183,21 +185,21 @@ paddings = "VALID"
 data_format = "NCDHW"
 do_case_error_one(ori_shape0, ori_shape1, ksize, strides, paddings, data_format)
 
-# ori_shape0 = [32, 12, 3, 3, 48]
-# ori_shape1 = [32, 6, 1, 1, 48]
-# ksize = [1, 2, 2, 2, 1]
-# strides = [1, 2, 2, 2, 1]
-# paddings = "VALID"
-# data_format = "NDHWC"
-# do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format)
+ori_shape0 = [32, 12, 3, 3, 48]
+ori_shape1 = [32, 6, 1, 1, 48]
+ksize = [1, 2, 2, 2, 1]
+strides = [1, 2, 2, 2, 1]
+paddings = "VALID"
+data_format = "NDHWC"
+do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format)
 
-# ori_shape0 = [32, 12, 3, 3, 48]
-# ori_shape1 = [32, 11, 2, 2, 48]
-# ksize = [1, 2, 2, 2, 1]
-# strides = [1, 1, 1, 1, 1]
-# paddings = "VALID"
-# data_format = "NDHWC"
-# do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format)
+ori_shape0 = [32, 12, 3, 3, 48]
+ori_shape1 = [32, 11, 2, 2, 48]
+ksize = [1, 2, 2, 2, 1]
+strides = [1, 1, 1, 1, 1]
+paddings = "VALID"
+data_format = "NDHWC"
+do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format)
 
 # tiling_do
 ori_shape0 = [32, 32, 32, 32, 16]
@@ -208,21 +210,21 @@ paddings = "VALID"
 data_format = "NDHWC"
 do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format)
 
-# ori_shape0 = [32, 32, 32, 32, 16]
-# ori_shape1 = [32, 16, 16, 16, 16]
-# ksize = [1, 2, 2, 2, 1]
-# strides = [1, 2, 2, 2, 1]
-# paddings = "VALID"
-# data_format = "NDHWC"
-# do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format)
+ori_shape0 = [32, 32, 32, 32, 16]
+ori_shape1 = [32, 16, 16, 16, 16]
+ksize = [1, 2, 2, 2, 1]
+strides = [1, 2, 2, 2, 1]
+paddings = "VALID"
+data_format = "NDHWC"
+do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format)
 
-# ori_shape0 = [32, 16, 16, 16, 16]
-# ori_shape1 = [32, 15, 15, 15, 16]
-# ksize = [1, 2, 2, 2, 1]
-# strides = [1, 1, 1, 1, 1]
-# paddings = "VALID"
-# data_format = "NDHWC"
-# do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format)
+ori_shape0 = [32, 16, 16, 16, 16]
+ori_shape1 = [32, 15, 15, 15, 16]
+ksize = [1, 2, 2, 2, 1]
+strides = [1, 1, 1, 1, 1]
+paddings = "VALID"
+data_format = "NDHWC"
+do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format)
 
 # tiling_do_ho
 ori_shape0 = [32, 64, 64, 64, 16]
@@ -233,21 +235,21 @@ paddings = "VALID"
 data_format = "NDHWC"
 do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format)
 
-# ori_shape0 = [32, 64, 64, 64, 16]
-# ori_shape1 = [32, 32, 32, 32, 16]
-# ksize = [1, 2, 2, 2, 1]
-# strides = [1, 2, 2, 2, 1]
-# paddings = "VALID"
-# data_format = "NDHWC"
-# do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format)
+ori_shape0 = [32, 64, 64, 64, 16]
+ori_shape1 = [32, 32, 32, 32, 16]
+ksize = [1, 2, 2, 2, 1]
+strides = [1, 2, 2, 2, 1]
+paddings = "VALID"
+data_format = "NDHWC"
+do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format)
 
-# ori_shape0 = [32, 64, 64, 64, 16]
-# ori_shape1 = [32, 63, 63, 63, 16]
-# ksize = [1, 2, 2, 2, 1]
-# strides = [1, 1, 1, 1, 1]
-# paddings = "VALID"
-# data_format = "NDHWC"
-# do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format)
+ori_shape0 = [32, 64, 64, 64, 16]
+ori_shape1 = [32, 63, 63, 63, 16]
+ksize = [1, 2, 2, 2, 1]
+strides = [1, 1, 1, 1, 1]
+paddings = "VALID"
+data_format = "NDHWC"
+do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format)
 
 # tiling_do_ho_wo
 ori_shape0 = [32, 16, 16, 1280, 16]
@@ -258,21 +260,21 @@ paddings = "VALID"
 data_format = "NDHWC"
 do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format)
 
-# ori_shape0 = [32, 16, 16, 1280, 16]
-# ori_shape1 = [32, 8, 8, 640, 16]
-# ksize = [1, 2, 2, 2, 1]
-# strides = [1, 2, 2, 2, 1]
-# paddings = "VALID"
-# data_format = "NDHWC"
-# do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format)
+ori_shape0 = [32, 16, 16, 1280, 16]
+ori_shape1 = [32, 8, 8, 640, 16]
+ksize = [1, 2, 2, 2, 1]
+strides = [1, 2, 2, 2, 1]
+paddings = "VALID"
+data_format = "NDHWC"
+do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format)
 
-# ori_shape0 = [32, 16, 16, 1280, 16]
-# ori_shape1 = [32, 15, 15, 1279, 16]
-# ksize = [1, 2, 2, 2, 1]
-# strides = [1, 1, 1, 1, 1]
-# paddings = "VALID"
-# data_format = "NDHWC"
-# do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format)
+ori_shape0 = [32, 16, 16, 1280, 16]
+ori_shape1 = [32, 15, 15, 1279, 16]
+ksize = [1, 2, 2, 2, 1]
+strides = [1, 1, 1, 1, 1]
+paddings = "VALID"
+data_format = "NDHWC"
+do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format)
 
 # ============================================
 # VALID: split n c1 x as core, x maybe d,h,w.
@@ -286,21 +288,29 @@ paddings = "VALID"
 data_format = "NDHWC"
 do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format)
 
-# ori_shape0 = [16, 12, 3, 3, 16]
-# ori_shape1 = [16, 6, 1, 1, 16]
-# ksize = [1, 2, 2, 2, 1]
-# strides = [1, 2, 2, 2, 1]
-# paddings = "VALID"
-# data_format = "NDHWC"
-# do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format)
+ori_shape0 = [16, 144, 3, 3, 16]
+ori_shape1 = [16, 48, 1, 1, 16]
+ksize = [1, 2, 2, 2, 1]
+strides = [1, 3, 3, 3, 1]
+paddings = "VALID"
+data_format = "NDHWC"
+do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format)
 
-# ori_shape0 = [16, 12, 3, 3, 16]
-# ori_shape1 = [16, 11, 2, 2, 16]
-# ksize = [1, 2, 2, 2, 1]
-# strides = [1, 1, 1, 1, 1]
-# paddings = "VALID"
-# data_format = "NDHWC"
-# do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format)
+ori_shape0 = [16, 12, 3, 3, 16]
+ori_shape1 = [16, 6, 1, 1, 16]
+ksize = [1, 2, 2, 2, 1]
+strides = [1, 2, 2, 2, 1]
+paddings = "VALID"
+data_format = "NDHWC"
+do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format)
+
+ori_shape0 = [16, 12, 3, 3, 16]
+ori_shape1 = [16, 11, 2, 2, 16]
+ksize = [1, 2, 2, 2, 1]
+strides = [1, 1, 1, 1, 1]
+paddings = "VALID"
+data_format = "NDHWC"
+do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format)
 
 # tiling_do_ho
 ori_shape0 = [16, 64, 64, 64, 16]
@@ -311,21 +321,21 @@ paddings = "VALID"
 data_format = "NDHWC"
 do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format)
 
-# ori_shape0 = [16, 64, 64, 64, 16]
-# ori_shape1 = [16, 32, 32, 32, 16]
-# ksize = [1, 2, 2, 2, 1]
-# strides = [1, 2, 2, 2, 1]
-# paddings = "VALID"
-# data_format = "NDHWC"
-# do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format)
+ori_shape0 = [16, 64, 64, 64, 16]
+ori_shape1 = [16, 32, 32, 32, 16]
+ksize = [1, 2, 2, 2, 1]
+strides = [1, 2, 2, 2, 1]
+paddings = "VALID"
+data_format = "NDHWC"
+do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format)
 
-# ori_shape0 = [16, 64, 64, 64, 16]
-# ori_shape1 = [16, 63, 63, 63, 16]
-# ksize = [1, 2, 2, 2, 1]
-# strides = [1, 1, 1, 1, 1]
-# paddings = "VALID"
-# data_format = "NDHWC"
-# do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format)
+ori_shape0 = [16, 64, 64, 64, 16]
+ori_shape1 = [16, 63, 63, 63, 16]
+ksize = [1, 2, 2, 2, 1]
+strides = [1, 1, 1, 1, 1]
+paddings = "VALID"
+data_format = "NDHWC"
+do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format)
 
 # tiling_do_ho_wo
 ori_shape0 = [16, 16, 16, 1280, 16]
@@ -336,21 +346,21 @@ paddings = "VALID"
 data_format = "NDHWC"
 do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format)
 
-# ori_shape0 = [16, 16, 16, 1280, 16]
-# ori_shape1 = [16, 8, 8, 640, 16]
-# ksize = [1, 2, 2, 2, 1]
-# strides = [1, 2, 2, 2, 1]
-# paddings = "VALID"
-# data_format = "NDHWC"
-# do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format)
+ori_shape0 = [16, 16, 16, 1280, 16]
+ori_shape1 = [16, 8, 8, 640, 16]
+ksize = [1, 2, 2, 2, 1]
+strides = [1, 2, 2, 2, 1]
+paddings = "VALID"
+data_format = "NDHWC"
+do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format)
 
-# ori_shape0 = [16, 16, 16, 1280, 16]
-# ori_shape1 = [16, 15, 15, 1279, 16]
-# ksize = [1, 2, 2, 2, 1]
-# strides = [1, 1, 1, 1, 1]
-# paddings = "VALID"
-# data_format = "NDHWC"
-# do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format)
+ori_shape0 = [16, 16, 16, 1280, 16]
+ori_shape1 = [16, 15, 15, 1279, 16]
+ksize = [1, 2, 2, 2, 1]
+strides = [1, 1, 1, 1, 1]
+paddings = "VALID"
+data_format = "NDHWC"
+do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format)
 
 # SPECIAL SPLIT CORE
 ori_shape0 = [1, 25, 13, 4, 16]
@@ -361,124 +371,124 @@ paddings = "VALID"
 data_format = "NDHWC"
 do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format)
 
-# ori_shape0 = [1, 25, 7, 7, 16]
-# ori_shape1 = [1, 8, 2, 2, 16]
-# ksize = [1, 2, 2, 2, 1]
-# strides = [1, 3, 3, 3, 1]
-# paddings = "VALID"
-# data_format = "NDHWC"
-# do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format)
+ori_shape0 = [1, 25, 7, 7, 16]
+ori_shape1 = [1, 8, 2, 2, 16]
+ksize = [1, 2, 2, 2, 1]
+strides = [1, 3, 3, 3, 1]
+paddings = "VALID"
+data_format = "NDHWC"
+do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format)
 
-# ori_shape0 = [1, 4, 4, 4, 16]
-# ori_shape1 = [1, 1, 1, 1, 16]
-# ksize = [1, 2, 2, 2, 1]
-# strides = [1, 3, 3, 3, 1]
-# paddings = "VALID"
-# data_format = "NDHWC"
-# do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format)
+ori_shape0 = [1, 4, 4, 4, 16]
+ori_shape1 = [1, 1, 1, 1, 16]
+ksize = [1, 2, 2, 2, 1]
+strides = [1, 3, 3, 3, 1]
+paddings = "VALID"
+data_format = "NDHWC"
+do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format)
 
 # ============================================
 # SAME:SPLIT DIFFERENT AXIS AS CORE
 # ============================================
 # not_tiling
-# ori_shape0 = [32, 12, 3, 3, 16]
-# ori_shape1 = [32, 4, 1, 1, 16]
-# ksize = [1, 2, 2, 2, 1]
-# strides = [1, 3, 3, 3, 1]
-# paddings = "SAME"
-# data_format = "NDHWC"
-# do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format)
+ori_shape0 = [32, 12, 3, 3, 16]
+ori_shape1 = [32, 4, 1, 1, 16]
+ksize = [1, 2, 2, 2, 1]
+strides = [1, 3, 3, 3, 1]
+paddings = "SAME"
+data_format = "NDHWC"
+do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format)
 
-# ori_shape0 = [32, 12, 3, 3, 16]
-# ori_shape1 = [32, 6, 2, 2, 16]
-# ksize = [1, 2, 2, 2, 1]
-# strides = [1, 2, 2, 2, 1]
-# paddings = "SAME"
-# data_format = "NDHWC"
-# do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format)
+ori_shape0 = [32, 12, 3, 3, 16]
+ori_shape1 = [32, 6, 2, 2, 16]
+ksize = [1, 2, 2, 2, 1]
+strides = [1, 2, 2, 2, 1]
+paddings = "SAME"
+data_format = "NDHWC"
+do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format)
 
-# ori_shape0 = [32, 12, 3, 3, 16]
-# ori_shape1 = [32, 12, 3, 3, 16]
-# ksize = [1, 2, 2, 2, 1]
-# strides = [1, 1, 1, 1, 1]
-# paddings = "SAME"
-# data_format = "NDHWC"
-# do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format)
+ori_shape0 = [32, 12, 3, 3, 16]
+ori_shape1 = [32, 12, 3, 3, 16]
+ksize = [1, 2, 2, 2, 1]
+strides = [1, 1, 1, 1, 1]
+paddings = "SAME"
+data_format = "NDHWC"
+do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format)
 
 # tiling_do
-# ori_shape0 = [16, 12, 3, 3, 16]
-# ori_shape1 = [16, 4, 1, 1, 16]
-# ksize = [1, 2, 2, 2, 1]
-# strides = [1, 3, 3, 3, 1]
-# paddings = "SAME"
-# data_format = "NDHWC"
-# do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format)
+ori_shape0 = [16, 12, 3, 3, 16]
+ori_shape1 = [16, 4, 1, 1, 16]
+ksize = [1, 2, 2, 2, 1]
+strides = [1, 3, 3, 3, 1]
+paddings = "SAME"
+data_format = "NDHWC"
+do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format)
 
-# ori_shape0 = [16, 12, 3, 3, 16]
-# ori_shape1 = [16, 6, 2, 2, 16]
-# ksize = [1, 2, 2, 2, 1]
-# strides = [1, 2, 2, 2, 1]
-# paddings = "SAME"
-# data_format = "NDHWC"
-# do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format)
+ori_shape0 = [16, 12, 3, 3, 16]
+ori_shape1 = [16, 6, 2, 2, 16]
+ksize = [1, 2, 2, 2, 1]
+strides = [1, 2, 2, 2, 1]
+paddings = "SAME"
+data_format = "NDHWC"
+do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format)
 
-# ori_shape0 = [16, 12, 3, 3, 16]
-# ori_shape1 = [16, 12, 3, 3, 16]
-# ksize = [1, 2, 2, 2, 1]
-# strides = [1, 1, 1, 1, 1]
-# paddings = "SAME"
-# data_format = "NDHWC"
-# do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format)
+ori_shape0 = [16, 12, 3, 3, 16]
+ori_shape1 = [16, 12, 3, 3, 16]
+ksize = [1, 2, 2, 2, 1]
+strides = [1, 1, 1, 1, 1]
+paddings = "SAME"
+data_format = "NDHWC"
+do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format)
 
 # tiling_do_ho
-# ori_shape0 = [16, 64, 64, 64, 16]
-# ori_shape1 = [16, 22, 22, 22, 16]
-# ksize = [1, 2, 2, 2, 1]
-# strides = [1, 3, 3, 3, 1]
-# paddings = "SAME"
-# data_format = "NDHWC"
-# do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format)
+ori_shape0 = [16, 64, 64, 64, 16]
+ori_shape1 = [16, 22, 22, 22, 16]
+ksize = [1, 2, 2, 2, 1]
+strides = [1, 3, 3, 3, 1]
+paddings = "SAME"
+data_format = "NDHWC"
+do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format)
 
-# ori_shape0 = [16, 64, 64, 64, 16]
-# ori_shape1 = [16, 32, 32, 32, 16]
-# ksize = [1, 2, 2, 2, 1]
-# strides = [1, 2, 2, 2, 1]
-# paddings = "SAME"
-# data_format = "NDHWC"
-# do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format)
+ori_shape0 = [16, 64, 64, 64, 16]
+ori_shape1 = [16, 32, 32, 32, 16]
+ksize = [1, 2, 2, 2, 1]
+strides = [1, 2, 2, 2, 1]
+paddings = "SAME"
+data_format = "NDHWC"
+do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format)
 
-# ori_shape0 = [16, 64, 64, 64, 16]
-# ori_shape1 = [16, 64, 64, 64, 16]
-# ksize = [1, 2, 2, 2, 1]
-# strides = [1, 1, 1, 1, 1]
-# paddings = "SAME"
-# data_format = "NDHWC"
-# do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format)
+ori_shape0 = [16, 64, 64, 64, 16]
+ori_shape1 = [16, 64, 64, 64, 16]
+ksize = [1, 2, 2, 2, 1]
+strides = [1, 1, 1, 1, 1]
+paddings = "SAME"
+data_format = "NDHWC"
+do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format)
 
 # tiling_do_ho_wo
-# ori_shape0 = [16, 16, 16, 1280, 16]
-# ori_shape1 = [16, 6, 6, 427, 16]
-# ksize = [1, 2, 2, 2, 1]
-# strides = [1, 3, 3, 3, 1]
-# paddings = "SAME"
-# data_format = "NDHWC"
-# do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format)
+ori_shape0 = [16, 16, 16, 1280, 16]
+ori_shape1 = [16, 6, 6, 427, 16]
+ksize = [1, 2, 2, 2, 1]
+strides = [1, 3, 3, 3, 1]
+paddings = "SAME"
+data_format = "NDHWC"
+do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format)
 
-# ori_shape0 = [16, 16, 16, 1280, 16]
-# ori_shape1 = [16, 8, 8, 640, 16]
-# ksize = [1, 2, 2, 2, 1]
-# strides = [1, 2, 2, 2, 1]
-# paddings = "VALID"
-# data_format = "NDHWC"
-# do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format)
+ori_shape0 = [16, 16, 16, 1280, 16]
+ori_shape1 = [16, 8, 8, 640, 16]
+ksize = [1, 2, 2, 2, 1]
+strides = [1, 2, 2, 2, 1]
+paddings = "VALID"
+data_format = "NDHWC"
+do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format)
 
-# ori_shape0 = [16, 16, 16, 1280, 16]
-# ori_shape1 = [16, 16, 16, 1280, 16]
-# ksize = [1, 2, 2, 2, 1]
-# strides = [1, 1, 1, 1, 1]
-# paddings = "VALID"
-# data_format = "NDHWC"
-# do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format)
+ori_shape0 = [16, 16, 16, 1280, 16]
+ori_shape1 = [16, 16, 16, 1280, 16]
+ksize = [1, 2, 2, 2, 1]
+strides = [1, 1, 1, 1, 1]
+paddings = "VALID"
+data_format = "NDHWC"
+do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format)
 
 # ============================================
 # NCDHW AND ERROR
@@ -541,5 +551,12 @@ do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format)
 # list_ori_shape[2] = [16, 64, 63, 64, 16]
 # # do_case_error(list_ori_shape, ksize, strides, paddings, data_format)
 
-if __name__ == '__main__':
+# if __name__ == '__main__':
+#     ut_case.run("Ascend910A")
+
+vals = {("tik.load3dv1",): False}
+def side_effects(*args):
+    return vals[args]
+with patch("te.platform.cce_conf.api_check_support", MagicMock(side_effect=side_effects)):
     ut_case.run("Ascend910A")
+
