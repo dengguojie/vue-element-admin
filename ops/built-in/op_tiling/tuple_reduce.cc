@@ -25,7 +25,6 @@
 
 namespace optiling {
 namespace TupleReduce {
-
 // TupleReduceCompileInfo
 bool TupleReduceCompileInfo::GetCommonInfo(const std::string &op_type, const nlohmann::json &json_info) {
   common_info = json_info.at("_common_info").get<std::vector<int32_t>>();
@@ -273,16 +272,19 @@ bool TupleReduce::TimeTiling_ub() {
   while (ub_axis_lb < ub_axis_ub && suffix_product[ub_axis_lb + 1] > compileInfo.each_buffer_size) ++ub_axis_lb;
   tupleReduceTilingInfo.ub_tiling_axis = map_rtoo[ub_axis_lb];
   // find best ub factor
-  tupleReduceTilingInfo.ub_tiling_factor =
-      compileInfo.each_buffer_size / ((ub_axis_lb < ub_axis_ub) ? suffix_product[ub_axis_lb + 1] : 1);
-  tupleReduceTilingInfo.ub_tiling_factor = TUPLE_REDUCE_REFINE(fused_shape[ub_axis_lb], tupleReduceTilingInfo.ub_tiling_factor);
+  tupleReduceTilingInfo.ub_tiling_factor = compileInfo.each_buffer_size /
+                                           ((ub_axis_lb < ub_axis_ub) ? suffix_product[ub_axis_lb + 1] : 1);
+  tupleReduceTilingInfo.ub_tiling_factor = TUPLE_REDUCE_REFINE(fused_shape[ub_axis_lb],
+                                                               tupleReduceTilingInfo.ub_tiling_factor);
 
   return true;
 }
 
 bool TupleReduce::TimeTiling() {
-  V_OP_TILING_CHECK(TimeTiling_block(), VECTOR_INNER_ERR_REPORT_TILIING(op_type, "TimeTiling_block Failed"), return false);
-  V_OP_TILING_CHECK(TimeTiling_ub(), VECTOR_INNER_ERR_REPORT_TILIING(op_type, "TimeTiling_ub Failed"), return false);
+  V_OP_TILING_CHECK(TimeTiling_block(),
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "TimeTiling_block Failed"), return false);
+  V_OP_TILING_CHECK(TimeTiling_ub(),
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "TimeTiling_ub Failed"), return false);
   return true;
 }
 
@@ -309,8 +311,8 @@ bool TupleReduce::SpatialTiling_block() {
   // find best block factor
   tmp_product = 1;
   for (std::size_t i = 0; i < block_axis_lb; ++i) tmp_product *= reduced_shape[i];
-  tupleReduceTilingInfo.block_tiling_factor = TUPLE_REDUCE_CEILING(reduced_shape[block_axis_lb],
-                                                                   TUPLE_REDUCE_CEILING(compileInfo.core_num, tmp_product));
+  tupleReduceTilingInfo.block_tiling_factor
+    = TUPLE_REDUCE_CEILING(reduced_shape[block_axis_lb], TUPLE_REDUCE_CEILING(compileInfo.core_num, tmp_product));
   // hard constraint: tensor numel after reduce on every block must greater than block size
   tmp_product = tupleReduceTilingInfo.block_tiling_factor;
   for (std::size_t i = reduced_shape.size() - 1; i > block_axis_lb; --i) tmp_product *= reduced_shape[i];
@@ -348,7 +350,7 @@ bool TupleReduce::SpatialTiling_ub() {
   tupleReduceTilingInfo.ub_tiling_factor =
       ((compileInfo.each_buffer_size / tmp_product) / (compileInfo.block_size / compileInfo.min_dtype_size))
           * (compileInfo.block_size / compileInfo.min_dtype_size);
-  if (tupleReduceTilingInfo.ub_tiling_factor > reordered_fused_shape[ub_axis_lb]){
+  if (tupleReduceTilingInfo.ub_tiling_factor > reordered_fused_shape[ub_axis_lb]) {
     tupleReduceTilingInfo.ub_tiling_factor = reordered_fused_shape[ub_axis_lb];
   }
   if (tupleReduceTilingInfo.ub_tiling_axis == tupleReduceTilingInfo.block_tiling_axis) {
@@ -356,29 +358,37 @@ bool TupleReduce::SpatialTiling_ub() {
       tupleReduceTilingInfo.ub_tiling_factor = tupleReduceTilingInfo.block_tiling_factor;
     }
     tupleReduceTilingInfo.ub_tiling_factor = (compileInfo.block_size / compileInfo.min_dtype_size)
-        * TUPLE_REDUCE_REFINE(tupleReduceTilingInfo.block_tiling_factor / (compileInfo.block_size / compileInfo.min_dtype_size),
-                              tupleReduceTilingInfo.ub_tiling_factor / (compileInfo.block_size / compileInfo.min_dtype_size));
+        * TUPLE_REDUCE_REFINE(tupleReduceTilingInfo.block_tiling_factor 
+                              / (compileInfo.block_size / compileInfo.min_dtype_size),
+                              tupleReduceTilingInfo.ub_tiling_factor
+                              / (compileInfo.block_size / compileInfo.min_dtype_size));
   } else {
     tupleReduceTilingInfo.ub_tiling_factor = (compileInfo.block_size / compileInfo.min_dtype_size)
-        * TUPLE_REDUCE_REFINE(reordered_fused_shape[ub_axis_lb] / (compileInfo.block_size / compileInfo.min_dtype_size),
-                              tupleReduceTilingInfo.ub_tiling_factor / (compileInfo.block_size / compileInfo.min_dtype_size));
+        * TUPLE_REDUCE_REFINE(reordered_fused_shape[ub_axis_lb]
+                              / (compileInfo.block_size / compileInfo.min_dtype_size),
+                              tupleReduceTilingInfo.ub_tiling_factor
+                              / (compileInfo.block_size / compileInfo.min_dtype_size));
   }
 
   return true;
 }
 
 bool TupleReduce::SpatialTiling() {
-  V_OP_TILING_CHECK(SpatialTiling_block(), VECTOR_INNER_ERR_REPORT_TILIING(op_type, "SpatialTiling_block Failed"), return false);
-  V_OP_TILING_CHECK(SpatialTiling_ub(), VECTOR_INNER_ERR_REPORT_TILIING(op_type, "SpatialTiling_ub Failed"), return false);
+  V_OP_TILING_CHECK(SpatialTiling_block(),
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "SpatialTiling_block Failed"), return false);
+  V_OP_TILING_CHECK(SpatialTiling_ub(),
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "SpatialTiling_ub Failed"), return false);
   return true;
 }
 
 bool TupleReduce::Tiling() {
   V_OP_TILING_CHECK(Reorder(), VECTOR_INNER_ERR_REPORT_TILIING(op_type, "Reorder Failed"), return false);
   if (tupleReduceTilingInfo.atomic) {
-    V_OP_TILING_CHECK(TimeTiling(), VECTOR_INNER_ERR_REPORT_TILIING(op_type, "TimeTiling Failed"), return false);
+    V_OP_TILING_CHECK(TimeTiling(),
+                      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "TimeTiling Failed"), return false);
   } else {
-    V_OP_TILING_CHECK(SpatialTiling(), VECTOR_INNER_ERR_REPORT_TILIING(op_type, "SpatialTiling Failed"), return false);
+    V_OP_TILING_CHECK(SpatialTiling(),
+                      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "SpatialTiling Failed"), return false);
   }
   return true;
 }
@@ -406,13 +416,17 @@ bool TupleReduce::DoTupleReduceTiling() {
 bool TupleReduce::CalcTilingKey() {
   std::int64_t base = 256;
   std::int64_t reduce_pattern = 0;
+  std::int64_t reduce_pattern_keybase = 1000;
+  std::int64_t atomic_keybase = 100;
+  std::int64_t block_tiling_axis_keybase = 10;
+  std::int64_t ub_tiling_axis_keybase = 1;
   for (const auto &item: reduce_one_hot) reduce_pattern += (std::int64_t) item * (base >>= 1);
   // [...][.][.][.] == [reduce_pattern][schedule_type][block][ub]
   tupleReduceTilingInfo.tiling_key
-      = reduce_pattern * 1000
-      + tupleReduceTilingInfo.atomic * 100
-      + tupleReduceTilingInfo.block_tiling_axis * 10
-      + tupleReduceTilingInfo.ub_tiling_axis;
+      = reduce_pattern * reduce_pattern_keybase
+      + tupleReduceTilingInfo.atomic * atomic_keybase
+      + tupleReduceTilingInfo.block_tiling_axis * block_tiling_axis_keybase
+      + tupleReduceTilingInfo.ub_tiling_axis * ub_tiling_axis_keybase;
 
   return true;
 }
@@ -442,7 +456,6 @@ bool TupleReduce::DoTiling() {
   ret = ret && WriteTilingData();
   return ret;
 }
-
 } // namespace TupleReduce
 
 
@@ -465,5 +478,4 @@ std::shared_ptr<AutoTilingHandler> CreateTupleReduceTilingHandler(const std::str
   auto CompileInfo = std::make_shared<TupleReduceTilingHandler>(op_type, pattern, parsed_compile_info);
   return CompileInfo->ParsedSuccess() ? CompileInfo : std::shared_ptr<AutoTilingHandler>(nullptr);
 } // TupleReduceTilingHandler
-
 } // namespace optiling
