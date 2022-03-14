@@ -46,7 +46,9 @@ TEST_F(avg_pool_v2_fusion_test, avg_pool_v2_fusion_test_1) {
   graph.SetInputs(inputs).SetOutputs(outputs);
   ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
   fe::FusionPassTestUtils::InferShapeAndType(compute_graph_ptr);
-  fe::FusionPassTestUtils::RunGraphFusionPass("AvgPoolV2FusionPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
+  fe::FusionPassTestUtils::RunGraphFusionPass("AvgPoolV2FusionPass",
+                                              fe::BUILT_IN_BEFORE_QUANT_OPTIMIZATION_GRAPH_PASS,
+                                              *compute_graph_ptr);
 
   bool findMul = false;
   bool shapeMatch = false;
@@ -87,7 +89,9 @@ TEST_F(avg_pool_v2_fusion_test, avg_pool_v2_fusion_test_111) {
   graph.SetInputs(inputs).SetOutputs(outputs);
   ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
   fe::FusionPassTestUtils::InferShapeAndType(compute_graph_ptr);
-  fe::FusionPassTestUtils::RunGraphFusionPass("AvgPoolV2FusionPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
+  fe::FusionPassTestUtils::RunGraphFusionPass("AvgPoolV2FusionPass",
+                                              fe::BUILT_IN_BEFORE_QUANT_OPTIMIZATION_GRAPH_PASS,
+                                              *compute_graph_ptr);
 
   bool findMul = false;
   bool shapeMatch = false;
@@ -124,7 +128,9 @@ TEST_F(avg_pool_v2_fusion_test, avg_pool_v2_fusion_test_3) {
   graph.SetInputs(inputs).SetOutputs(outputs);
   ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
   fe::FusionPassTestUtils::InferShapeAndType(compute_graph_ptr);
-  fe::FusionPassTestUtils::RunGraphFusionPass("AvgPoolV2FusionPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
+  fe::FusionPassTestUtils::RunGraphFusionPass("AvgPoolV2FusionPass",
+                                              fe::BUILT_IN_BEFORE_QUANT_OPTIMIZATION_GRAPH_PASS,
+                                              *compute_graph_ptr);
 
   bool findMul = false;
   bool shapeMatch = false;
@@ -168,7 +174,9 @@ TEST_F(avg_pool_v2_fusion_test, avg_pool_v2_fusion_test_4) {
   graph.SetInputs(inputs).SetOutputs(outputs);
   ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
   fe::FusionPassTestUtils::InferShapeAndType(compute_graph_ptr);
-  fe::FusionPassTestUtils::RunGraphFusionPass("AvgPoolV2FusionPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
+  fe::FusionPassTestUtils::RunGraphFusionPass("AvgPoolV2FusionPass",
+                                              fe::BUILT_IN_BEFORE_QUANT_OPTIMIZATION_GRAPH_PASS,
+                                              *compute_graph_ptr);
 
   bool findMul = false;
   bool shapeMatch = false;
@@ -209,7 +217,9 @@ TEST_F(avg_pool_v2_fusion_test, avg_pool_v2_fusion_test_5) {
   graph.SetInputs(inputs).SetOutputs(outputs);
   ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
   fe::FusionPassTestUtils::InferShapeAndType(compute_graph_ptr);
-  fe::FusionPassTestUtils::RunGraphFusionPass("AvgPoolV2FusionPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
+  fe::FusionPassTestUtils::RunGraphFusionPass("AvgPoolV2FusionPass",
+                                              fe::BUILT_IN_BEFORE_QUANT_OPTIMIZATION_GRAPH_PASS,
+                                              *compute_graph_ptr);
 
   bool findMul = false;
   bool shapeMatch = false;
@@ -253,7 +263,9 @@ TEST_F(avg_pool_v2_fusion_test, avg_pool_v2_fusion_test_6) {
   graph.SetInputs(inputs).SetOutputs(outputs);
   ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
   fe::FusionPassTestUtils::InferShapeAndType(compute_graph_ptr);
-  fe::FusionPassTestUtils::RunGraphFusionPass("AvgPoolV2FusionPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
+  fe::FusionPassTestUtils::RunGraphFusionPass("AvgPoolV2FusionPass",
+                                              fe::BUILT_IN_BEFORE_QUANT_OPTIMIZATION_GRAPH_PASS,
+                                              *compute_graph_ptr);
 
   bool findMul = false;
   bool shapeMatch = false;
@@ -294,7 +306,9 @@ TEST_F(avg_pool_v2_fusion_test, avg_pool_v2_fusion_dynamic_rank) {
   graph.SetInputs(inputs).SetOutputs(outputs);
   ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
   fe::FusionPassTestUtils::InferShapeAndType(compute_graph_ptr);
-  fe::FusionPassTestUtils::RunGraphFusionPass("AvgPoolV2FusionPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
+  fe::FusionPassTestUtils::RunGraphFusionPass("AvgPoolV2FusionPass",
+                                              fe::BUILT_IN_BEFORE_QUANT_OPTIMIZATION_GRAPH_PASS,
+                                              *compute_graph_ptr);
   bool avgPoolMatch = false;
   for (auto node : compute_graph_ptr->GetAllNodes()) {
     if (node->GetType() == "AvgPoolV2") {
@@ -326,7 +340,9 @@ TEST_F(avg_pool_v2_fusion_test, avg_pool_v2_fusion_dynamic_nhw) {
   graph.SetInputs(inputs).SetOutputs(outputs);
   ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
   fe::FusionPassTestUtils::InferShapeAndType(compute_graph_ptr);
-  fe::FusionPassTestUtils::RunGraphFusionPass("AvgPoolV2FusionPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
+  fe::FusionPassTestUtils::RunGraphFusionPass("AvgPoolV2FusionPass",
+                                              fe::BUILT_IN_BEFORE_QUANT_OPTIMIZATION_GRAPH_PASS,
+                                              *compute_graph_ptr);
   bool avgPoolMatch = false;
   for (auto node : compute_graph_ptr->GetAllNodes()) {
     if (node->GetType() == "AvgPoolV2") {
@@ -358,7 +374,9 @@ TEST_F(avg_pool_v2_fusion_test, avg_pool_v2_fusion_dynamic_c) {
   graph.SetInputs(inputs).SetOutputs(outputs);
   ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
   fe::FusionPassTestUtils::InferShapeAndType(compute_graph_ptr);
-  fe::FusionPassTestUtils::RunGraphFusionPass("AvgPoolV2FusionPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
+  fe::FusionPassTestUtils::RunGraphFusionPass("AvgPoolV2FusionPass",
+                                              fe::BUILT_IN_BEFORE_QUANT_OPTIMIZATION_GRAPH_PASS,
+                                              *compute_graph_ptr);
   bool avgPoolMatch = false;
   for (auto node : compute_graph_ptr->GetAllNodes()) {
     if (node->GetType() == "AvgPoolV2") {
@@ -390,7 +408,9 @@ TEST_F(avg_pool_v2_fusion_test, avg_pool_v2_fusion_dynamic_hw) {
   graph.SetInputs(inputs).SetOutputs(outputs);
   ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
   fe::FusionPassTestUtils::InferShapeAndType(compute_graph_ptr);
-  fe::FusionPassTestUtils::RunGraphFusionPass("AvgPoolV2FusionPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
+  fe::FusionPassTestUtils::RunGraphFusionPass("AvgPoolV2FusionPass",
+                                              fe::BUILT_IN_BEFORE_QUANT_OPTIMIZATION_GRAPH_PASS,
+                                              *compute_graph_ptr);
   bool avgPoolMatch = false;
   for (auto node : compute_graph_ptr->GetAllNodes()) {
     if (node->GetType() == "AvgPoolV2") {
@@ -422,7 +442,9 @@ TEST_F(avg_pool_v2_fusion_test, avg_pool_v2_fusion_dynamic_w) {
   graph.SetInputs(inputs).SetOutputs(outputs);
   ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
   fe::FusionPassTestUtils::InferShapeAndType(compute_graph_ptr);
-  fe::FusionPassTestUtils::RunGraphFusionPass("AvgPoolV2FusionPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
+  fe::FusionPassTestUtils::RunGraphFusionPass("AvgPoolV2FusionPass",
+                                              fe::BUILT_IN_BEFORE_QUANT_OPTIMIZATION_GRAPH_PASS,
+                                              *compute_graph_ptr);
   bool avgPoolMatch = false;
   for (auto node : compute_graph_ptr->GetAllNodes()) {
     if (node->GetType() == "AvgPoolV2") {
@@ -454,7 +476,9 @@ TEST_F(avg_pool_v2_fusion_test, avg_pool_v2_fusion_dynamic_h) {
   graph.SetInputs(inputs).SetOutputs(outputs);
   ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
   fe::FusionPassTestUtils::InferShapeAndType(compute_graph_ptr);
-  fe::FusionPassTestUtils::RunGraphFusionPass("AvgPoolV2FusionPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
+  fe::FusionPassTestUtils::RunGraphFusionPass("AvgPoolV2FusionPass",
+                                              fe::BUILT_IN_BEFORE_QUANT_OPTIMIZATION_GRAPH_PASS,
+                                              *compute_graph_ptr);
   bool avgPoolMatch = false;
   for (auto node : compute_graph_ptr->GetAllNodes()) {
     if (node->GetType() == "AvgPoolV2") {
@@ -495,7 +519,9 @@ TEST_F(avg_pool_v2_fusion_test, avg_pool_v2_fusion_test_77) {
   graph.SetInputs(inputs).SetOutputs(outputs);
   ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
   fe::FusionPassTestUtils::InferShapeAndType(compute_graph_ptr);
-  fe::FusionPassTestUtils::RunGraphFusionPass("AvgPoolV2FusionPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr,
+  fe::FusionPassTestUtils::RunGraphFusionPass("AvgPoolV2FusionPass",
+                                              fe::BUILT_IN_BEFORE_QUANT_OPTIMIZATION_GRAPH_PASS,
+                                              *compute_graph_ptr,
                                               false);
 
   bool findMul = false;
@@ -551,7 +577,9 @@ TEST_F(avg_pool_v2_fusion_test, avg_pool_v2_fusion_quant_test_1) {
   graph.SetInputs(inputs).SetOutputs(outputs);
   ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
   fe::FusionPassTestUtils::InferShapeAndType(compute_graph_ptr);
-  fe::FusionPassTestUtils::RunGraphFusionPass("AvgPoolV2FusionPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
+  fe::FusionPassTestUtils::RunGraphFusionPass("AvgPoolV2FusionPass",
+                                              fe::BUILT_IN_BEFORE_QUANT_OPTIMIZATION_GRAPH_PASS,
+                                              *compute_graph_ptr);
   bool avgPoolV2Match = false;
   for (auto node : compute_graph_ptr->GetAllNodes()) {
     if (node->GetType() == "AvgPoolV2") {
@@ -597,7 +625,9 @@ TEST_F(avg_pool_v2_fusion_test, avg_pool_v2_fusion_quant_test_2) {
   graph.SetInputs(inputs).SetOutputs(outputs);
   ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
   fe::FusionPassTestUtils::InferShapeAndType(compute_graph_ptr);
-  fe::FusionPassTestUtils::RunGraphFusionPass("AvgPoolV2FusionPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
+  fe::FusionPassTestUtils::RunGraphFusionPass("AvgPoolV2FusionPass",
+                                              fe::BUILT_IN_BEFORE_QUANT_OPTIMIZATION_GRAPH_PASS,
+                                              *compute_graph_ptr);
   bool avgPoolV2Match = false;
   for (auto node : compute_graph_ptr->GetAllNodes()) {
     if (node->GetType() == "AvgPoolV2") {
@@ -643,7 +673,9 @@ TEST_F(avg_pool_v2_fusion_test, avg_pool_v2_fusion_quant_test_3) {
   graph.SetInputs(inputs).SetOutputs(outputs);
   ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
   fe::FusionPassTestUtils::InferShapeAndType(compute_graph_ptr);
-  fe::FusionPassTestUtils::RunGraphFusionPass("AvgPoolV2FusionPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
+  fe::FusionPassTestUtils::RunGraphFusionPass("AvgPoolV2FusionPass",
+                                              fe::BUILT_IN_BEFORE_QUANT_OPTIMIZATION_GRAPH_PASS,
+                                              *compute_graph_ptr);
   bool avgPoolV2Match = false;
   for (auto node : compute_graph_ptr->GetAllNodes()) {
     if (node->GetType() == "AvgPoolV2") {

@@ -1073,5 +1073,5 @@ Status AvgPoolV2FusionPass::Fusion(ComputeGraph &graph, Mapping &mapping, vector
   return SUCCESS;
 }
 
-REGISTER_PASS("AvgPoolV2FusionPass", BUILT_IN_GRAPH_PASS, AvgPoolV2FusionPass);
+REGISTER_PASS("AvgPoolV2FusionPass", BUILT_IN_BEFORE_QUANT_OPTIMIZATION_GRAPH_PASS, AvgPoolV2FusionPass);
 }  // namespace fe
