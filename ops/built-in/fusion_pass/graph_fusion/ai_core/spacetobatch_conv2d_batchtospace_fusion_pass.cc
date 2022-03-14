@@ -53,6 +53,8 @@ constexpr uint32_t DILATIONS_MAX_VALUE = 255;
 constexpr uint32_t SPACETOBATCH_CONST_INPUT = 2;
 constexpr uint32_t SPACETOBATCH_BLOCK = 0;
 constexpr uint32_t SPACETOBATCH_PAD = 1;
+constexpr uint32_t FILTER_SHAPE_SIZE = 4;
+constexpr int32_t KERNEL_SIZE_MAX = 255;
 
 /*!
   * @brief Define pattern.
@@ -206,6 +208,31 @@ Status SpacetobatchConv2dBatchtospacePass::CheckCrops(ge::NodePtr batchtospaceNo
     return SUCCESS;
 }
 
+Status SpacetobatchConv2dBatchtospacePass::CheckKernelSize(ge::OpDescPtr convDesc,
+    int64_t dilationH, int64_t dilationW) const
+{
+    auto filterDesc = convDesc->GetInputDesc("filter");
+    FUSION_PASS_CHECK(filterDesc.IsValid() != GRAPH_SUCCESS,
+        OP_LOGI(fusedOpType_.c_str(), "no filter no fusion."), return NOT_CHANGED);
+    auto shape = filterDesc.GetShape().GetDims();
+    FUSION_PASS_CHECK(shape.size() != FILTER_SHAPE_SIZE,
+        OP_LOGI(fusedOpType_.c_str(), "invalid filter shape dim %zu, no fusion.", shape.size()),
+        return NOT_CHANGED);
+
+    std::string format = TypeUtils::FormatToSerialString(filterDesc.GetFormat());
+    size_t kernelH = format.find('H');
+    size_t kernelW = format.find('W');
+    FUSION_PASS_CHECK(kernelH >= shape.size() || kernelW >= shape.size(),
+        OP_LOGI(fusedOpType_.c_str(), "invalid format, no fusion."), return NOT_CHANGED);
+
+    int64_t kernelSizeH = (shape[kernelH] - 1) * dilationH + 1;
+    int64_t kernelSizeW = (shape[kernelW] - 1) * dilationW + 1;
+    FUSION_PASS_CHECK(kernelSizeH > KERNEL_SIZE_MAX || kernelSizeW > KERNEL_SIZE_MAX,
+        OP_LOGI(fusedOpType_.c_str(), "kernel size over size, no fusion."), return NOT_CHANGED);
+
+    return SUCCESS;
+}
+
 Status SpacetobatchConv2dBatchtospacePass::CheckConvStrides(ge::OpDescPtr convDesc) const
 {
     std::vector<int64_t> strides;
@@ -324,6 +351,8 @@ Status SpacetobatchConv2dBatchtospacePass::CheckConvDilations(ge::ConstGeTensorP
     dilations[fondW] *= blockW;
     FUSION_PASS_CHECK(dilations[fondH] > DILATIONS_MAX_VALUE || dilations[fondW] > DILATIONS_MAX_VALUE,
         OP_LOGI(fusedOpType_.c_str(), "dilations > max, no fusion."), return NOT_CHANGED);
+    FUSION_PASS_CHECK(CheckKernelSize(convDesc, dilations[fondH], dilations[fondW]) != SUCCESS,
+        OP_LOGI(fusedOpType_.c_str(), "over kernel size, no fusion."), return NOT_CHANGED);
 
     OP_LOGI(fusedOpType_.c_str(), "fusion dilations %lu %lu.", dilations[fondH], dilations[fondW]);
     return SUCCESS;

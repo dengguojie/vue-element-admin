@@ -34,6 +34,7 @@ private:
     Status CheckNodes(ge::NodePtr spacetobatchNode, ge::NodePtr batchtospaceNode,
         ge::NodePtr conv2dNode) const;
     Status CheckCrops(ge::NodePtr batchtospaceNode) const;
+    Status CheckKernelSize(ge::OpDescPtr convDesc, int64_t dilationH, int64_t dilationW) const;
     Status CheckConvStrides(ge::OpDescPtr convDesc) const;
     Status CheckConvPads(ge::ConstGeTensorPtr spacePadPtr, ge::OpDescPtr convDesc,
         std::vector<int64_t>& convPads) const;

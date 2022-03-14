@@ -383,6 +383,41 @@ protected:
         graph.SetInputs(inputs).SetOutputs(outputs);
         computeGraph = ge::GraphUtils::GetComputeGraph(graph);
     }
+
+    void BuildGraphKernelSizeOverSize(ComputeGraphPtr &computeGraph)
+    {
+        auto inputOp = BuildDataOp("input", {1, 12, 1920, 1}, FORMAT_NHWC, DT_FLOAT);
+
+        std::vector<uint32_t> block {3, 3};
+        auto blockOp = BuildConstOp("space_block", {2}, reinterpret_cast<uint8_t*>(block.data()), block.size() * sizeof(uint32_t), FORMAT_ND, DT_INT32);
+        std::vector<uint32_t> paddings {0, 0, 0, 0};
+        auto paddingsOp = BuildConstOp("space_paddings", {2, 2}, reinterpret_cast<uint8_t*>(paddings.data()), paddings.size() * sizeof(uint32_t), FORMAT_ND, DT_INT32);
+        auto spacetobatchOp = BuildSpaceToBatchOp("spacetobatch", inputOp, blockOp, paddingsOp);
+
+        std::vector<float> filter {0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1};
+        auto convFilterOp = BuildConstOp("conv_filter", {1, 3, 3, 1}, reinterpret_cast<uint8_t*>(filter.data()), filter.size() * sizeof(float), FORMAT_NHWC, DT_FLOAT);
+        std::vector<float> bias {0.1, 0.1, 0.1};
+        auto convBiasOp = BuildConstOp("conv_bias", {1}, reinterpret_cast<uint8_t*>(bias.data()), bias.size() * sizeof(float), FORMAT_NHWC, DT_FLOAT);
+        auto conv2dOp = BuildConv2dOp("conv2d", spacetobatchOp, convFilterOp, convBiasOp, "NHWC", {1, 1, 1, 1}, {0, 0, 0, 0}, {1, 1, 75, 1});
+
+        std::vector<uint32_t> batchBlock {3, 3};
+        auto batchBlockOp = BuildConstOp("batch_block", {2}, reinterpret_cast<uint8_t*>(batchBlock.data()), batchBlock.size() * sizeof(uint32_t), FORMAT_ND, DT_INT32);
+
+        std::vector<uint32_t> crops {0, 0, 0, 0};
+        auto batchCropsOp = BuildConstOp("batch_crops", {2, 2}, reinterpret_cast<uint8_t*>(crops.data()), crops.size() * sizeof(uint32_t), FORMAT_ND, DT_INT32);
+        auto batchtospaceOp = BuildBatchToSpaceOp("batchtospace", conv2dOp, batchBlockOp, batchCropsOp);
+
+        auto outputOp = BuildDataOp("output", {1, 6, 1470, 1}, FORMAT_NHWC, DT_FLOAT);
+        outputOp.set_input_x(batchtospaceOp);
+
+        // create graph
+        std::vector<Operator> inputs {inputOp, blockOp, paddingsOp, convFilterOp, convBiasOp, batchBlockOp, batchCropsOp};
+        std::vector<Operator> outputs {outputOp};
+
+        ge::Graph graph("test");
+        graph.SetInputs(inputs).SetOutputs(outputs);
+        computeGraph = ge::GraphUtils::GetComputeGraph(graph);
+    }
 };
 
 TEST_F(spacetobatch_conv2d_batchtospace_test, spacetobatch_conv2d_batchtospace_test_smoke)
@@ -531,6 +566,26 @@ TEST_F(spacetobatch_conv2d_batchtospace_test, spacetobatch_conv2d_batchtospace_t
 {
     ge::ComputeGraphPtr computeGraph;
     BuildGraphCropsNot0(computeGraph);
+    FusionPassTestUtils::InferShapeAndType(computeGraph);
+    FusionPassTestUtils::RunGraphFusionPass("SpaceToBatchConv2dBatchToSpacePass", fe::BUILT_IN_GRAPH_PASS, *computeGraph);
+    bool findSpacetobatch = false;
+    bool findBatchtospace = false;
+    for (auto node: computeGraph->GetAllNodes()) {
+        if (node->GetType() == "SpaceToBatchND") {
+            findSpacetobatch = true;
+        }
+        if (node->GetType() == "BatchToSpaceND") {
+            findBatchtospace = true;
+        }
+    }
+    EXPECT_EQ(findSpacetobatch, true);
+    EXPECT_EQ(findBatchtospace, true);
+}
+
+TEST_F(spacetobatch_conv2d_batchtospace_test, spacetobatch_conv2d_batchtospace_test_kernel_oversize)
+{
+    ge::ComputeGraphPtr computeGraph;
+    BuildGraphKernelSizeOverSize(computeGraph);
     FusionPassTestUtils::InferShapeAndType(computeGraph);
     FusionPassTestUtils::RunGraphFusionPass("SpaceToBatchConv2dBatchToSpacePass", fe::BUILT_IN_GRAPH_PASS, *computeGraph);
     bool findSpacetobatch = false;
