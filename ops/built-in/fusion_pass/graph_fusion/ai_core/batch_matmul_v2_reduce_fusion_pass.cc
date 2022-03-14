@@ -176,7 +176,7 @@ bool BatchMatMulV2ReduceFusionPass::CheckNeedChange(const ge::NodePtr &fused_nod
   return false;
 }
 
-Status BatchMatMulV2ReduceFusionPass::CreateReshapeNode(ge::ComputeGraph &graph, ge::NodePtr &fused_node,
+Status BatchMatMulV2ReduceFusionPass::CreateReshapeNode(ge::ComputeGraph &graph, const ge::NodePtr &fused_node,
                                                         const ge::OutDataAnchorPtr &out_anchor,
                                                         const vector<int64_t> &shape, ge::NodePtr &shape_node) const {
   auto previous_node = out_anchor->GetOwnerNode();
@@ -273,7 +273,7 @@ Status BatchMatMulV2ReduceFusionPass::LinkEdge(ge::NodePtr &fused_node, ge::Node
 }
 
 Status BatchMatMulV2ReduceFusionPass::InsertTransposeDNode(
-    ge::ComputeGraph &graph, ge::NodePtr &fused_node,
+    ge::ComputeGraph &graph, const ge::NodePtr &fused_node,
     std::tuple<int, std::vector<int64_t>, std::vector<int32_t>> &param, ge::NodePtr &transposedNode) const {
   int index = std::get<0>(param);
   std::vector<int64_t> new_shape = std::get<1>(param);

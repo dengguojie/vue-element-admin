@@ -39,11 +39,12 @@ class BatchMatMulV2ReduceFusionPass : public PatternFusionBasePass {
   bool IsMatchScenario2(const ge::NodePtr &fused_node) const;
   bool CheckNeedChange(const ge::NodePtr &fused_node, const vector<int64_t> &shape_x, const vector<int64_t> &shape_y,
                        const vector<int64_t> &product_shape_x, const vector<int64_t> &product_shape_y) const;
-  Status CreateReshapeNode(ge::ComputeGraph &graph, ge::NodePtr &fused_node, const ge::OutDataAnchorPtr &out_anchor,
-                           const vector<int64_t> &shape, ge::NodePtr &shape_node) const;
+  Status CreateReshapeNode(ge::ComputeGraph &graph, const ge::NodePtr &fused_node,
+                           const ge::OutDataAnchorPtr &out_anchor, const vector<int64_t> &shape,
+                           ge::NodePtr &shape_node) const;
   Status InsertReshapeNode(ge::ComputeGraph &graph, ge::NodePtr &fused_node, int32_t index,
                            const vector<int64_t> &new_shape) const;
-  Status InsertTransposeDNode(ge::ComputeGraph &graph, ge::NodePtr &fused_node,
+  Status InsertTransposeDNode(ge::ComputeGraph &graph, const ge::NodePtr &fused_node,
                               std::tuple<int, std::vector<int64_t>, std::vector<int32_t>> &param,
                               ge::NodePtr &transposedNode) const;
   Status LinkEdge(ge::NodePtr &fused_node, ge::NodePtr &tgt_node) const;
