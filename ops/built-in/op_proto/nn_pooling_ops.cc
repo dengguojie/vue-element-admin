@@ -5919,11 +5919,9 @@ IMPLEMT_COMMON_INFERFUNC(AvgPoolGradInferShape) {
                                           output_range, tensordesc_output, input_grad_desc, unknown_rank)) {
       return GRAPH_FAILED;
     }
-    for (size_t i = 0; i < output_range.size(); i++) {
-      if (output_range[i].first == output_range[i].second) {
-        orig_input_size.push_back(output_range[i].first);
-      } else {
-        orig_input_size.push_back(-1);
+    if (orig_input_size.empty()) {
+      for (size_t i = 0; i < output_range.size(); i++) {
+        orig_input_size.push_back(output_range[i].first == output_range[i].second ? output_range[i].first : -1);
       }
     }
     if (!unknown_rank) {

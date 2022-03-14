@@ -371,6 +371,72 @@ def _generalize_tensor_shape(tensor_dict):
     return general_shape
 
 
+def _correct_generalized_range(input_tensor_list, input_attr_list):
+    """
+    Check and modify generalized range.
+    """
+    orig_input_shape, input_grad, kernel_matrix, out_grad = input_tensor_list
+    strides, padding, data_format, kernel_name, dynamic_flag = input_attr_list
+    param_list = [strides, padding, (1, 1, 1, 1), data_format]
+    is_pass_check, dedy_modify = modify_dy_w_range_max_opti(input_grad, kernel_matrix, param_list,
+                                                            OP_TYPE, dynamic_flag)
+    if not is_pass_check:
+        return dedy_modify
+    input_grad = dedy_modify
+
+    # if over l1 size then modify dy h/w range
+    upper_range_result = modify_w_range_max(out_grad, kernel_matrix, input_grad, strides, data_format, OP_TYPE,
+                                            dynamic_flag)
+    dedy_h_range_max = upper_range_result.get("dedy_h_max")
+    dedy_w_range_max = upper_range_result.get("w_max")
+    is_single_point = upper_range_result.get("is_single_point")
+
+    if upper_range_result.get("is_exceed_l1"):
+        return UNSUPPORTED_FUZZ_RES
+
+    # get dx_range depends on dy_range
+    dy_range = input_grad["ori_range"]
+    ori_data_format = input_grad["ori_format"]
+    pos_c = ori_data_format.find('C')
+    groups = input_grad["ori_shape"][pos_c]
+    pads = [0, 0, 0, 0] if padding == "VALID" else [-1, -1, -1, -1]
+    ori_paras = {
+        "input_size": orig_input_shape, "x": input_grad, "filters": kernel_matrix, "bias": None, "offset_w": None,
+        "y": out_grad, "strides": strides, "pads": pads, "dilations": (1, 1, 1, 1), "groups": groups,
+        "data_format": data_format, "output_padding": (0, 0, 0, 0), "offset_x": 0, "kernel_name": kernel_name}
+    conv2d_tranpose = Conv2dTransposeParaProcess(ori_paras)
+    conv2d_tranpose.get_attr_nchw(data_format)
+    filter_shape_nchw = conv2d_tranpose.get_input_nchw(kernel_matrix.get("ori_shape"), kernel_matrix.get("ori_format"))
+    _, dy_range_nchw = conv2d_tranpose.get_input_nchw(input_grad.get("ori_shape"), input_grad.get("ori_format"),
+                                                      dy_range)
+
+    dy_range_nchw[H_DIM] = [dy_range_nchw[H_DIM][0], min(dedy_h_range_max, dy_range_nchw[H_DIM][1])]
+    if is_single_point:
+        dy_range_nchw[W_DIM] = [dedy_w_range_max, dedy_w_range_max]
+    else:
+        dy_range_nchw[W_DIM] = [dy_range_nchw[W_DIM][0], min(dedy_w_range_max, dy_range_nchw[W_DIM][1])]
+    if input_grad["ori_shape"][input_grad.get("ori_format").find("W")] > dy_range_nchw[W_DIM][1]:
+        warnings.warn(
+            OP_TYPE, "{}, invalid input_grad ori_shape {}, w should not larger than {}".format(
+                OP_TYPE, str(input_grad.get("shape")), dy_range_nchw[W_DIM][1]))
+        return UNSUPPORTED_FUZZ_RES
+
+    dx_range_nchw, _, new_dy_range_nchw = conv2d_tranpose.get_input_range(filter_shape_nchw, dy_range_nchw)
+
+    input_grad["ori_range"] = list(input_grad["ori_range"])
+    input_grad["ori_range"][input_grad.get("ori_format").find("H")] = new_dy_range_nchw[H_DIM]
+    input_grad["ori_range"][input_grad.get("ori_format").find("W")] = new_dy_range_nchw[W_DIM]
+
+    input_grad["ori_shape"] = _generalize_tensor_shape(input_grad)
+    out_grad["ori_shape"] = _generalize_tensor_shape(out_grad)
+
+    orig_input_shape["const_value"] = None
+    orig_input_shape["const_value_range"] = transform_shape_with_format("NCHW", data_format, dx_range_nchw,
+                                                                        ["NCHW", "NHWC"])
+
+    return ""
+
+
 def _collect_ori_tensors(ori_paras):
     """
     get valid tensors
@@ -536,6 +602,10 @@ def avg_pool_grad_generalization(orig_input_shape,
     upper_limit_dict = {"N": FUZZ_MODE_N_MAX, "H": FUZZ_MODE_HW_MAX, "W": FUZZ_MODE_HW_MAX}
     fuzz_res_dict = {"unsupported": UNSUPPORTED_FUZZ_RES, "lower_limit": LOWER_LIMIT_FUZZ_RES,
                      "upper_limit": UPPER_LIMIT_FUZZ_RES}
+    if kernel_matrix is None:
+        kernel_shape = list(ksize)
+        kernel_shape[data_format.find("N")] = input_grad.get("ori_shape")[data_format.find("C")]
+        kernel_matrix = {"ori_shape": kernel_shape, "dtype": "float16", "ori_format": data_format}
     if dynamic_flag:
         dedy_range_status = _check_tensor_range(input_grad, upper_limit_dict)
         if dedy_range_status:
@@ -552,68 +622,12 @@ def avg_pool_grad_generalization(orig_input_shape,
             return UNSUPPORTED_FUZZ_RES
         # generalize input range
         input_grad = gen_conv_shape_range(input_grad, OP_TYPE, dynamic_flag)
-        param_list = [strides, padding, (1, 1, 1, 1), data_format]
-        is_pass_check, dedy_modify = modify_dy_w_range_max_opti(input_grad, kernel_matrix, param_list,
-                                                                OP_TYPE, dynamic_flag)
-        if not is_pass_check:
-            return dedy_modify
-        input_grad = dedy_modify
-
-        correct_fuzzy_build_range(input_grad, strides, data_format)
-        # if over l1 size then modify dy h/w range
-        upper_range_result = modify_w_range_max(out_grad, kernel_matrix, input_grad, strides, data_format, OP_TYPE,
-                                                dynamic_flag)
-        dedy_h_range_max = upper_range_result.get("dedy_h_max")
-        dedy_w_range_max = upper_range_result.get("w_max")
-        is_single_point = upper_range_result.get("is_single_point")
-
-        if upper_range_result.get("is_exceed_l1"):
-            return UNSUPPORTED_FUZZ_RES
-
-        # get dx_range depends on dy_range
-        dy_range = input_grad["ori_range"]
-        ori_data_format = input_grad["ori_format"]
-        pos_c = ori_data_format.find('C')
-        groups = input_grad["ori_shape"][pos_c]
-        pads = [0, 0, 0, 0] if padding == "VALID" else [-1, -1, -1, -1]
-        ori_paras = {
-            "input_size": orig_input_shape, "x": input_grad, "filters": kernel_matrix, "bias": None, "offset_w": None,
-            "y": out_grad, "strides": strides, "pads": pads, "dilations": (1, 1, 1, 1), "groups": groups,
-            "data_format": data_format, "output_padding": (0, 0, 0, 0), "offset_x": 0, "kernel_name": kernel_name}
-        conv2d_tranpose = Conv2dTransposeParaProcess(ori_paras)
-        conv2d_tranpose.get_attr_nchw(data_format)
-        filter_shape_nchw = conv2d_tranpose.get_input_nchw(kernel_matrix["ori_shape"], kernel_matrix["ori_format"])
-        _, dy_range_nchw = conv2d_tranpose.get_input_nchw(input_grad["ori_shape"], input_grad["ori_format"], dy_range)
-
-        dy_range_nchw[H_DIM] = [dy_range_nchw[H_DIM][0], min(dedy_h_range_max, dy_range_nchw[H_DIM][1])]
-        if is_single_point:
-            dy_range_nchw[W_DIM] = [dedy_w_range_max, dedy_w_range_max]
-        else:
-            dy_range_nchw[W_DIM] = [dy_range_nchw[W_DIM][0], min(dedy_w_range_max, dy_range_nchw[W_DIM][1])]
-        if input_grad["ori_shape"][input_grad.get("ori_format").find("W")] > dy_range_nchw[W_DIM][1]:
-            warnings.warn(OP_TYPE, "{}, invalid input_grad ori_shape {}, w should not larger than {}".format(
-                                    OP_TYPE, str(input_grad.get("shape")), dy_range_nchw[W_DIM][1]))
-            return UNSUPPORTED_FUZZ_RES
-
-        dx_range_nchw, _, new_dy_range_nchw = conv2d_tranpose.get_input_range(filter_shape_nchw, dy_range_nchw)
-
-        input_grad["ori_range"] = list(input_grad["ori_range"])
-        input_grad["ori_range"][input_grad.get("ori_format").find("H")] = new_dy_range_nchw[H_DIM]
-        input_grad["ori_range"][input_grad.get("ori_format").find("W")] = new_dy_range_nchw[W_DIM]
-
-        input_grad["ori_shape"] = _generalize_tensor_shape(input_grad)
-        out_grad["ori_shape"] = _generalize_tensor_shape(out_grad)
-
-        orig_input_shape["const_value"] = None
-        orig_input_shape["const_value_range"] = transform_shape_with_format("NCHW", data_format, dx_range_nchw,
-                                                                            ["NCHW", "NHWC"])
-
-    try:
-        _avgpoolgrad_check_rule(input_grad, kernel_matrix, out_grad, ksize, strides, padding, data_format, kernel_name)
-    except RuntimeError:
-        return UNSUPPORTED_FUZZ_RES
-    finally:
-        pass
+        # correct generalized range
+        input_tensor_list = [orig_input_shape, input_grad, kernel_matrix, out_grad]
+        input_attr_list = [strides, padding, data_format, kernel_name, dynamic_flag]
+        range_status = _correct_generalized_range(input_tensor_list, input_attr_list)
+        if range_status:
+            return range_status
 
     result.append([orig_input_shape, input_grad, kernel_matrix, out_grad, {"strides": strides}, {"padding": padding},
                    {"ksize": ksize}, {"kernel_name": kernel_name}, {"data_format": data_format}])

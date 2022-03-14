@@ -145,6 +145,36 @@ def test_avg_pool_grad_fuzzy_compile_head_node_6():
         {'kernel_name': 'test_avg_pool_grad_fuzzy_compile_head_node_6'}, {'data_format': 'NCHW'}]]
 
 
+def test_avg_pool_grad_fuzzy_compile_head_node_7():
+    # kernel_matrix is None
+    input_list = [
+        {'ori_shape': (4,), 'format': 'NCHW', 'ori_format': 'NCHW', 'dtype': 'float16'},
+        {'ori_shape': (1, 16, 26, 28), 'shape': (1, 1, 26, 28, 16) ,'ori_format': 'NCHW', 'dtype': 'float16',
+         'ori_range': ((1, 1), (16, 16), (26, 26), (28, 28)),
+         'range': ((1, 1), (1, 1), (26, 26), (28, 28), (16, 16))},
+        None,
+        {'ori_shape': (1, 16, 28, 30), 'shape': (1, 1, 28, 30, 16), 'ori_format': 'NCHW', 'dtype': 'float16',
+         'range': ((1, 1), (1, 1), (28, 28), (30, 30), (16, 16))},
+        (16, 1, 3, 3),
+        (1, 1, 1, 1),
+        'VALID',
+        'NCHW',
+        'test_avg_pool_grad_fuzzy_compile_head_node_7',
+        {'mode': 'keep_rank'}
+    ]
+    res = avg_pool_grad_generalization(*input_list)
+    assert res == [[
+        {'ori_shape': (4,), 'format': 'NCHW', 'ori_format': 'NCHW', 'dtype': 'float16', 'const_value': None,
+        'const_value_range': [(1, 1), (1, 1), (18, 33), (18, 33)]},
+        {'ori_shape': [-1, 16, -1, -1], 'shape': (1, 1, 26, 28, 16), 'ori_format': 'NCHW', 'dtype': 'float16',
+        'ori_range': [[1, 1], (16, 16), [16, 31], [16, 31]], 'range': ((1, 1), (1, 1), (26, 26), (28, 28), (16, 16))},
+        {'ori_shape': [16, 1, 3, 3], 'ori_format': 'NCHW', 'dtype': 'float16'},
+        {'ori_shape': [-1, 16, -1, -1], 'shape': (1, 1, 28, 30, 16), 'ori_format': 'NCHW', 'dtype': 'float16',
+        'range': ((1, 1), (1, 1), (28, 28), (30, 30), (16, 16))},
+        {'strides': (1, 1, 1, 1)}, {'padding': 'VALID'}, {'ksize': (16, 1, 3, 3)},
+        {'kernel_name': 'test_avg_pool_grad_fuzzy_compile_head_node_7'}, {'data_format': 'NCHW'}]]
+
+
 def test_avg_pool_grad_fuzzy_compile_body_node_1():
     input_list = [
         {'ori_shape': (4,), 'format': 'NCHW', 'ori_format': 'NCHW', 'dtype': 'float16'},
@@ -283,6 +313,7 @@ if __name__ == "__main__":
     test_avg_pool_grad_fuzzy_compile_head_node_4()
     test_avg_pool_grad_fuzzy_compile_head_node_5()
     test_avg_pool_grad_fuzzy_compile_head_node_6()
+    test_avg_pool_grad_fuzzy_compile_head_node_7()
     test_avg_pool_grad_fuzzy_compile_body_node_1()
     test_avg_pool_grad_fuzzy_compile_body_node_2()
     test_avg_pool_grad_fuzzy_compile_body_node_3()

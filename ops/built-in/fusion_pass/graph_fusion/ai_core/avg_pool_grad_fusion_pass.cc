@@ -31,6 +31,7 @@
 #include "graph/utils/graph_utils.h"
 #include "graph/utils/node_utils.h"
 #include "graph/utils/op_desc_utils.h"
+#include "graph/ge_context.h"
 #include "graph_optimizer/graph_fusion/fusion_pass_manager/fusion_pass_registry.h"
 #include "op_log.h"
 #include "pattern_fusion_util.h"
@@ -385,7 +386,9 @@ Status AvgPoolGradFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vect
                                      orig_input_shape_const_tensor_ptr[2], orig_input_shape_const_tensor_ptr[3]};
   bool is_dynamic = false;
   bool fuzzy_flag = false;
-  ge::AttrUtils::GetBool(avg_pool_grad_fused_node_desc, ge::ATTR_NAME_FUZZ_BUILD, fuzzy_flag);
+  std::string build_mode;
+  ge::GetContext().GetOption("ge.shape_generalized_build_mode", build_mode);
+  fuzzy_flag = build_mode == "shape_generalized";
   is_dynamic = is_dynamic || fuzzy_flag;
   for (size_t i = 0; i < orig_input_shape_v.size(); i++) {
     auto dim = orig_input_shape_const_tensor_ptr[i];
