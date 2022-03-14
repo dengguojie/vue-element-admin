@@ -534,6 +534,24 @@ REG_OP(Expm1)
     .OP_END_FACTORY_REG(Expm1)
 
 /**
+* @brief Computes the expint(x). \n
+
+* @par Inputs:
+* One input:
+* x: A Tensor. Must be one of the following types: bfloat16, half, float32, double. \n
+
+* @par Outputs:
+* y: A Tensor of the same type as "x". \n
+
+* @par Third-party framework compatibility
+* Compatible with TensorFlow operator Expint.
+*/
+REG_OP(Expint)
+    .INPUT(x, TensorType({DT_BF16, DT_FLOAT16, DT_FLOAT, DT_DOUBLE}))
+    .OUTPUT(y, TensorType({DT_BF16, DT_FLOAT16, DT_FLOAT, DT_DOUBLE}))
+    .OP_END_FACTORY_REG(Expint)
+
+/**
 *@brief: Computes the reciprocal of "x". \n
 
 *@par Inputs:\n

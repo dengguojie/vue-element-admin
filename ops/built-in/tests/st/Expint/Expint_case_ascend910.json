@@ -1,0 +1,171 @@
+[
+    {
+        "case_name": "Expint_static_shape_test_case_name_0",
+        "op": "Expint",
+        "calc_expect_func_file": "./test_Expint_st.py:calc_expect_func",
+        "input_desc": [
+            {
+                "format": "ND",
+                "type": "float32",
+                "shape": [
+                    9
+                ],
+                "ori_format": "ND",
+                "ori_shape": [
+                    9
+                ],
+                "param_type": "input",
+                "name": "x",
+                "value": [
+                    0.0, -1.0, 1.0, 3.0, 7.0, 9.0, 31.0, 63.0, 65.0
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": "ND",
+                "type": "float32",
+                "shape": [
+                    9
+                ],
+                "ori_format": "ND",
+                "ori_shape": [
+                    9
+                ],
+                "param_type": "output",
+                "name": "y"
+            }
+        ],
+        "attr": []
+    },
+    {
+        "case_name": "Expint_static_shape_test_case_name_1",
+        "op": "Expint",
+        "calc_expect_func_file": "./test_Expint_st.py:calc_expect_func",
+        "input_desc": [
+            {
+                "format": "ND",
+                "type": "float32",
+                "shape": [
+                    1,
+                    1
+                ],
+                "ori_format": "ND",
+                "ori_shape": [
+                    1,
+                    1
+                ],
+                "param_type": "input",
+                "name": "x"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": "ND",
+                "type": "float32",
+                "shape": [
+                    1,
+                    1
+                ],
+                "ori_format": "ND",
+                "ori_shape": [
+                    1,
+                    1
+                ],
+                "param_type": "output",
+                "name": "y"
+            }
+        ],
+        "attr": []
+    },
+    {
+        "case_name": "Expint_static_shape_test_case_name_2",
+        "op": "Expint",
+        "calc_expect_func_file": "./test_Expint_st.py:calc_expect_func",
+        "input_desc": [
+            {
+                "format": "ND",
+                "type": "float32",
+                "shape": [
+                    2,
+                    16,
+                    32
+                ],
+                "ori_format": "ND",
+                "ori_shape": [
+                    2,
+                    16,
+                    32
+                ],
+                "param_type": "input",
+                "name": "x"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": "ND",
+                "type": "float32",
+                "shape": [
+                    2,
+                    16,
+                    32
+                ],
+                "ori_format": "ND",
+                "ori_shape": [
+                    2,
+                    16,
+                    32
+                ],
+                "param_type": "output",
+                "name": "y"
+            }
+        ],
+        "attr": []
+    },
+    {
+        "case_name": "Expint_dynamic_shape_test_case_name_0",
+        "op": "Expint",
+        "calc_expect_func_file": "./test_Expint_st.py:calc_expect_func",
+        "input_desc": [
+            {
+                "format": "ND",
+                "type": "float32",
+                "shape": [
+                    -1
+                ],
+                "param_type": "input",
+                "name": "x",
+                "shape_range": [
+                    [
+                        1,
+                        100
+                    ]
+                ],
+                "typical_shape": [
+                    10
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": "ND",
+                "type": "float32",
+                "shape": [
+                    -1
+                ],
+                "param_type": "output",
+                "name": "y",
+                "shape_range": [
+                    [
+                        1,
+                        100
+                    ]
+                ],
+                "typical_shape": [
+                    10
+                ]
+            }
+        ],
+        "attr": []
+    }
+]

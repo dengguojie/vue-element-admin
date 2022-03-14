@@ -176,6 +176,7 @@ set(_tf_plugins
   euclidean_norm_plugin.cc
   expm1_plugin.cc
   exp_plugin.cc
+  expint_plugin.cc
   extract_glimpse_plugin.cc
   extract_image_patches_plugin.cc
   extract_volume_patches_plugin.cc

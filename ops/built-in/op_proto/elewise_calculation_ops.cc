@@ -4606,6 +4606,9 @@ IMPLEMT_COMMON_INFERFUNC(Expm1InferShape) {
 COMMON_INFER_FUNC_REG(Expm1, Expm1InferShape);
 // ----------------Expm1 END-----------------
 
+// ----------------Expint---------------------
+COMMON_INFER_FUNC_REG(Expint, OneInOneOutCommonInferShape);
+// ----------------Expint END-----------------
 
 // -------------------DataCompare----------------------
 IMPLEMT_VERIFIER(DataCompare, DataCompareVerify) {
