@@ -33,7 +33,7 @@ static const string kOpTypeTransData = "TransData";
 static const int kFusionOpNumMax = 10;
 static const int kNumTwo = 2;
 static const string kFusedOpType = "FusedOp";
-static const vector<string> matmulList = {"MatMul", "MatMulV2", "BatchMatMul", "BatchMatMulV2"};
+static const vector<string> kMatmulList = {"MatMul", "MatMulV2", "BatchMatMul", "BatchMatMulV2"};
 
 /*
  * @brief: define transdata_cube fusion pattern
@@ -92,7 +92,7 @@ void TbeMatmulFixpipeFusionPass::CheckCubeSupportTransNodes(const vector<ge::Nod
     return;
   }
   ge::NodePtr cube_node = cube_nodes.at(0);
-  bool cube_is_matmul = find(matmulList.begin(), matmulList.end(), cube_node->GetType()) != matmulList.end();
+  bool cube_is_matmul = find(kMatmulList.begin(), kMatmulList.end(), cube_node->GetType()) != kMatmulList.end();
   if (!cube_is_matmul) {
     fusion_nodes.clear();
     return;

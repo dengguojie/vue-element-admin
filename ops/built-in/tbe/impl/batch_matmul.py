@@ -581,8 +581,6 @@ def batch_matmul(input_x, input_y, bias=None, output_z=None, trans_a=False,
     if support_l0c2out:
         shape_a_dup = input_x.get("shape")[-4:]
         shape_b_dup = input_y.get("shape")[-4:]
-        format_a = input_x.get("format")
-        format_b = input_y.get("format")
     batch_shape_a = None
     ori_batch_shape_a = []
     if len(shape_a) > 2:

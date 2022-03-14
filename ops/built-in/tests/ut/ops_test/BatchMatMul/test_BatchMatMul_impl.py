@@ -590,7 +590,6 @@ def test_op_select_format_1():
     }
     assert res_dict == expect_res
 
-
 # test mock case
 def test_mock_cases(test_args):
     with patch("tbe.common.platform.platform_info.get_soc_spec", MagicMock(side_effect=side_effects)):

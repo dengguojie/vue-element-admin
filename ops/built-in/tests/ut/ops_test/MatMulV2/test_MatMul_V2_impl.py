@@ -520,7 +520,7 @@ def test_nbuffer_case1(test_arg):
         'mad_dtype': 'float32', 'padl': 0, 'padr': 0, 'padu': 0, 'padd': 0, 'strideH': 1,
         "strideW": 1, 'strideH_expand': 1, 'strideW_expand': 1, 'dilationH': 1, 'dilationW': 1,
         'group': 1, 'bias_flag': False, 'fused_double_operand_num': 0.0, 'shape_a_align': 1,
-        'shape_b_align': 1, 'kernel_name': "matmul_nbuffer_case1", 'scalar_size': 0}
+        'shape_b_align': 1, 'kernel_name': "matmul_nbuffer_case1", 'scalar_size': 0, 'tiling_access_version': 0}
     tiling_dict = {
         "matmul_nbuffer_case1": {
             'AL0_matrix': [2, 1, 16, 16, 1, 1], 'AL1_shape': [16, 1, 1, 1], 'AUB_channel_wise_flag': None,
@@ -565,7 +565,7 @@ def test_nbuffer_case2(test_arg):
         'mad_dtype': 'float32', 'padl': 0, 'padr': 0, 'padu': 0, 'padd': 0, 'strideH': 1,
         "strideW": 1, 'strideH_expand': 1, 'strideW_expand': 1, 'dilationH': 1, 'dilationW': 1,
         'group': 1, 'bias_flag': False, 'fused_double_operand_num': 0.0, 'shape_a_align': 1,
-        'shape_b_align': 1, 'kernel_name': "matmul_nbuffer_case1", 'scalar_size': 0}
+        'shape_b_align': 1, 'kernel_name': "matmul_nbuffer_case1", 'scalar_size': 0, 'tiling_access_version': 0}
     tiling_dict = {
         "matmul_nbuffer_case2": {
             'AL0_matrix': [2, 1, 16, 16, 1, 1], 'AL1_shape': [16, 1, 1, 1], 'AUB_channel_wise_flag': None,
@@ -610,7 +610,7 @@ def test_nbuffer_case3(test_arg):
         'mad_dtype': 'float32', 'padl': 0, 'padr': 0, 'padu': 0, 'padd': 0, 'strideH': 1,
         "strideW": 1, 'strideH_expand': 1, 'strideW_expand': 1, 'dilationH': 1, 'dilationW': 1,
         'group': 1, 'bias_flag': False, 'fused_double_operand_num': 1.0, 'shape_a_align': 1,
-        'shape_b_align': 1, 'kernel_name': "matmul_nbuffer_case1", 'scalar_size': 0}
+        'shape_b_align': 1, 'kernel_name': "matmul_nbuffer_case1", 'scalar_size': 0, 'tiling_access_version': 0}
     tiling_dict = {
         "matmul_nbuffer_case3": {
             'AL0_matrix': [2, 1, 16, 16, 1, 1], 'AL1_shape': [16, 1, 1, 1], 'AUB_channel_wise_flag': None,

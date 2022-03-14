@@ -585,31 +585,32 @@ def test_op_select_format_1():
     expect_res = {
         "input0": {
             "name": "x1",
-            "dtype": "float16,float32,int8,int8,bfloat16",
-            "format": "FRACTAL_NZ,FRACTAL_NZ,FRACTAL_NZ,FRACTAL_NZ,FRACTAL_NZ"
+            "dtype": "float16,float32,int8,int8,bfloat16,float16",
+            "format": "FRACTAL_NZ,FRACTAL_NZ,FRACTAL_NZ,FRACTAL_NZ,FRACTAL_NZ,FRACTAL_NZ"
         },
         "input1": {
             "name": "x2",
-            "dtype": "float16,float32,int8,int8,bfloat16",
-            "format": "FRACTAL_NZ,FRACTAL_NZ,FRACTAL_NZ,FRACTAL_Z,FRACTAL_NZ"
+            "dtype": "float16,float32,int8,int8,bfloat16,float16",
+            "format": "FRACTAL_NZ,FRACTAL_NZ,FRACTAL_NZ,FRACTAL_Z,FRACTAL_NZ,FRACTAL_ZN_RNN"
         },
         "input2": {
             "name": "bias",
-            "dtype": "float32,float32,int32,int32,float32",
-            "format": "ND,ND,ND,ND,ND"
+            "dtype": "float32,float32,int32,int32,float32,float32",
+            "format": "ND,ND,ND,ND,ND,ND"
         },
         "input3": {
             "name": "offset_w",
-            "dtype": "int8,int8,int8,int8,int8",
-            "format": "ND,ND,ND,ND,ND"
+            "dtype": "int8,int8,int8,int8,int8,int8",
+            "format": "ND,ND,ND,ND,ND,ND"
         },
         "output0": {
             "name": "y",
-            "dtype": "float16,float32,int32,int32,bfloat16",
-            "format": "FRACTAL_NZ,FRACTAL_NZ,FRACTAL_NZ,FRACTAL_NZ,FRACTAL_NZ"
+            "dtype": "float16,float32,int32,int32,bfloat16,float16",
+            "format": "FRACTAL_NZ,FRACTAL_NZ,FRACTAL_NZ,FRACTAL_NZ,FRACTAL_NZ,FRACTAL_NZ"
         },
     }
     assert expect_res == res_dict
+
 
 # test mock case
 def test_mock_cases(test_args):

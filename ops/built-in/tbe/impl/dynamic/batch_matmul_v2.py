@@ -174,13 +174,12 @@ def base_op_select_format(input_x, input_y, src_dtype, trans_b, src_fp16_flag: b
          ("int8", "ND"), ("float16", "FRACTAL_NZ")),
         (("float32", "FRACTAL_NZ"), ("float32", "FRACTAL_NZ"), ("float32", "ND"),
          ("int8", "ND"), ("float32", "FRACTAL_NZ")),
-        (("int8", "FRACTAL_NZ"), ("int8", "FRACTAL_NZ"), ("int32", "ND"),
-         ("int8", "ND"), ("int32", "FRACTAL_NZ")),
-        (("int8", "FRACTAL_NZ"), ("int8", "FRACTAL_Z"), ("int32", "ND"),
-         ("int8", "ND"), ("int32", "FRACTAL_NZ")),
+        (("int8", "FRACTAL_NZ"), ("int8", "FRACTAL_NZ"), ("int32", "ND"), ("int8", "ND"), ("int32", "FRACTAL_NZ")),
+        (("int8", "FRACTAL_NZ"), ("int8", "FRACTAL_Z"), ("int32", "ND"), ("int8", "ND"), ("int32", "FRACTAL_NZ")),
         (("bfloat16", "FRACTAL_NZ"), ("bfloat16", "FRACTAL_NZ"), ("float32", "ND"),
-         ("int8", "ND"), ("bfloat16", "FRACTAL_NZ"))
-    ]
+         ("int8", "ND"), ("bfloat16", "FRACTAL_NZ")),
+        (("float16", "FRACTAL_NZ"), ("float16", "FRACTAL_ZN_RNN"), ("float32", "ND"),
+         ("int8", "ND"), ("float16", "FRACTAL_NZ"))]
     support_l0c2out = tbe_platform.intrinsic_check_support("Intrinsic_fix_pipe_l0c2out")
 
     dyn_case_scenario_list = base_case_scenario
