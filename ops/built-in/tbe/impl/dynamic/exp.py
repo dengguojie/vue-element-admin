@@ -25,6 +25,7 @@ from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import OpImplMode
 
 
 # 'pylint: disable=too-many-locals,redefined-argument-from-local
@@ -37,7 +38,7 @@ def isclose(valuex, valuey, rel_tol=1e-08, abs_tol=0.0):
 
 # 'pylint: disable=locally-disabled,unused-argument,too-many-arguments
 def exp_compute(input_x, output_y, base=-1.0, scale=1.0, shift=0.0,
-                kernel_name="exp"):
+                kernel_name="exp", impl_mode=OpImplMode.HIGH_PERFORMANCE):
     """
     algorithm: exp
     calculating data's exp
@@ -59,11 +60,15 @@ def exp_compute(input_x, output_y, base=-1.0, scale=1.0, shift=0.0,
     -------
     res : the result of compute
     """
-    input_x_dtype = input_x.dtype
-    api_check = tbe_platform.api_check_support("tbe.dsl.vexp",
-                                               "float32")
+    x_dtype = input_x.dtype
+    api_check = tbe_platform.api_check_support("tbe.dsl.vexp", "float32")
     if (not api_check) and (input_x.dtype == "float32"):
         input_x = tbe.cast_to(input_x, "float16")
+
+    if api_check and input_x.dtype == "float16":
+        if impl_mode == OpImplMode.HIGH_PRECISION:
+            input_x = tbe.cast_to(input_x, "float32")
+    input_x_dtype = input_x.dtype
     if isclose(scale, 1.0) and isclose(shift, 0.0):
         input_x_vadds = input_x
     else:
@@ -78,15 +83,16 @@ def exp_compute(input_x, output_y, base=-1.0, scale=1.0, shift=0.0,
     # base is -1 value
     else:
         res = tbe.vexp(input_x_vadds)
-    if input_x.dtype != input_x_dtype:
-        res = tbe.cast_to(res, input_x_dtype)
+
+    if input_x.dtype != x_dtype:
+        res = tbe.cast_to(res, x_dtype)
     return res
 
 
 @register_operator("Exp")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_FLOAT,
                             para_check.OPTION_ATTR_FLOAT, para_check.OPTION_ATTR_FLOAT, para_check.KERNEL_NAME)
-def exp(input_x, output_y, base=-1.0, scale=1.0, shift=0.0, kernel_name="exp"):
+def exp(input_x, output_y, base=-1.0, scale=1.0, shift=0.0, kernel_name="exp", impl_mode=OpImplMode.HIGH_PERFORMANCE):
     """
     algorithm: exp
         calculating data's exp
@@ -126,7 +132,7 @@ def exp(input_x, output_y, base=-1.0, scale=1.0, shift=0.0, kernel_name="exp"):
             data_input = tvm.placeholder(shape_x[0], name="data_input",
                                          dtype=input_dtype)
             res = exp_compute(data_input, output_y, base, scale, shift,
-                              kernel_name)
+                              kernel_name, impl_mode)
             tensors.append([data_input, res])
         with tvm.target.cce():
             sch = tbe.auto_schedule(res)

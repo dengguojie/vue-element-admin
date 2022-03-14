@@ -23,6 +23,7 @@ from te import tvm
 import te.platform as tbe_platform
 from te.utils import para_check
 from impl.util.platform_adapter import error_manager_vector
+from impl.util.platform_adapter import OpImplMode
 
 
 # 'pylint: disable=too-many-locals
@@ -35,7 +36,8 @@ def isclose(valuex, valuey, rel_tol=1e-08, abs_tol=0.0):
 
 # 'pylint: disable=locally-disabled,unused-argument,too-many-arguments
 @tbe_platform.fusion_manager.fusion_manager.register("exp")
-def exp_compute(input_x, output_y, base=-1.0, scale=1.0, shift=0.0, kernel_name="exp"):
+def exp_compute(input_x, output_y, base=-1.0, scale=1.0, shift=0.0, kernel_name="exp",
+                impl_mode=OpImplMode.HIGH_PERFORMANCE):
     """
     algorithm: exp
     calculating data's exp
@@ -51,6 +53,7 @@ def exp_compute(input_x, output_y, base=-1.0, scale=1.0, shift=0.0, kernel_name=
     base: (optional, default -1 for a value of e the base gamma
     scale: (optional, default 1) the scale alpha
     shift: (optional, default 0) the shift beta
+    impl_mode: (optional, default None) the precision mode
     kernel_name : str, kernel name, default value is "exp"
 
     Returns
@@ -59,7 +62,8 @@ def exp_compute(input_x, output_y, base=-1.0, scale=1.0, shift=0.0, kernel_name=
     """
     x_dtype = input_x.dtype
     if tbe_platform.api_check_support("tbe.dsl.vexp", "float32") and x_dtype == "float16":
-        input_x = tbe.cast_to(input_x, "float32")
+        if impl_mode == OpImplMode.HIGH_PRECISION:
+            input_x = tbe.cast_to(input_x, "float32")
     input_x_dtype = input_x.dtype
     if isclose(scale, 1.0) and isclose(shift, 0.0):
         input_x_vadds = input_x
@@ -76,7 +80,7 @@ def exp_compute(input_x, output_y, base=-1.0, scale=1.0, shift=0.0, kernel_name=
     # base is -1 value
     else:
         res = tbe.vexp(input_x_vadds)
-    if x_dtype == "float16" and res.dtype != "float16":
+    if input_x.dtype != x_dtype:
         res = tbe.cast_to(res, "float16")
     return res
 
@@ -84,7 +88,7 @@ def exp_compute(input_x, output_y, base=-1.0, scale=1.0, shift=0.0, kernel_name=
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.OPTION_ATTR_FLOAT, para_check.OPTION_ATTR_FLOAT,
                             para_check.OPTION_ATTR_FLOAT, para_check.KERNEL_NAME)
-def exp(input_x, output_y, base=-1.0, scale=1.0, shift=0.0, kernel_name="exp"):
+def exp(input_x, output_y, base=-1.0, scale=1.0, shift=0.0, kernel_name="exp", impl_mode=OpImplMode.HIGH_PERFORMANCE):
     """
     algorithm: exp
         calculating data's exp
@@ -100,6 +104,7 @@ def exp(input_x, output_y, base=-1.0, scale=1.0, shift=0.0, kernel_name="exp"):
     base: (optional, default -1 for a value of e the base gamma
     scale: (optional, default 1) the scale alpha
     shift: (optional, default 0) the shift beta
+    impl_mode: (optional, default None) the precision mode
     kernel_name : str, kernel name, default value is "exp"
 
     Returns
@@ -123,7 +128,7 @@ def exp(input_x, output_y, base=-1.0, scale=1.0, shift=0.0, kernel_name="exp"):
     fuseshape[0] = functools.reduce(lambda x, y: x*y, shape)
     data_input = tvm.placeholder(fuseshape, name="data_input", dtype=input_dtype)
 
-    res = exp_compute(data_input, output_y, base, scale, shift, kernel_name)
+    res = exp_compute(data_input, output_y, base, scale, shift, kernel_name, impl_mode)
     with tvm.target.cce():
         sch = tbe.auto_schedule(res)
 
