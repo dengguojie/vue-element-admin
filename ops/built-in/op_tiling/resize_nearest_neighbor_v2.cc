@@ -68,6 +68,7 @@ static bool IsSmallImageTilingBranch(const ResizeClassTilingParams& tiling_param
 bool GetResizeNearestNeighborV2Tiling(const ResizeClassCompileParams& compile_params,
                                       ResizeClassTilingParams& tiling_params) {
   auto data_each_block = 8; // float32
+  int64_t uint16_max = 65535;
   if (tiling_params.input_dtype == ge::DT_FLOAT16) {
     data_each_block = 16;
   }
@@ -88,7 +89,7 @@ bool GetResizeNearestNeighborV2Tiling(const ResizeClassCompileParams& compile_pa
     // 1. if w_scale is larger than ub_max // C0, w_in_per_loop will less than 1
     // 2. data_move dst_gap stride should be less than 65536
     if (w_scale > compile_params.max_w_len ||
-        h_scale * tiling_params.input_width * w_scale * c0_blocks > 65535) {
+        h_scale * tiling_params.input_width * w_scale * c0_blocks > uint16_max) {
       is_w_nw = false;
     }
   }

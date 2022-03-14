@@ -171,7 +171,8 @@ void GetTilingForHW2MHNW(const ResizeClassCompileParams& compile_params, ResizeC
 }
 
 bool IsIntegerResize(const ResizeClassCompileParams& compile_params, int64_t input, int64_t output) {
-  return ((input != 0 && output % input == 0 && compile_params.align_corners + compile_params.half_pixel_centers == 0) ||
-          output == input);
+  return (
+      (input != 0 && output % input == 0 && compile_params.align_corners + compile_params.half_pixel_centers == 0) ||
+      output == input);
 }
 }  // namespace optiling
