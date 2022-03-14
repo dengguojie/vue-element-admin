@@ -182,6 +182,7 @@ class BinaryMatchBase:
             # the args for compile must be > arg_minest_num
             # arg_minest_num is from ini config, value = input + output + attr
             return None
+
         for op_rule_item in self.binary_rule_list:
             is_match = True
             # check_tensors
@@ -204,8 +205,9 @@ class BinaryMatchBase:
 
             if not is_match:
                 continue
-            # match kernel, will return tyhe update info
-            return update_args(args, op_rule_item)
+            # match kernel, will return the update info
+            match_kernel_res = update_args(args, op_rule_item)
+            return [match_kernel_res]
 
         # do not match the kernel, return None
         return None
@@ -226,10 +228,11 @@ def match_format(input_tensor, target_tensor, special_format=BinaryMatchBase.SPE
             # do not care format, all format use ND kernel
             is_legal_format = True
         elif format_type == BinaryMatchBase.FORMAT_MODE_DEFAULT:
+            # when target_format is ND
             # special_format(5HD/6HD) can not use ND kernel
             # NHWC/NCHW/.... can use ND kernel
-            if target_format == "ND" and input_format in special_format:
-                is_legal_format = False
+            if target_format == "ND" and input_format not in special_format:
+                is_legal_format = True
 
         return is_legal_format
 

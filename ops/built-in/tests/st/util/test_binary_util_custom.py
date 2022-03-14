@@ -31,26 +31,27 @@ def test_util_binary_api(test_arg):
     from impl.util.util_binary import binary_match
     add_match_func = binary_match("Add")
     assert add_match_func
-    assert not add_match_func({
-        "dtype": "None",
-        "format": "ND",
-        "shape": [-2],
-        "ori_shape": [-2],
-        "ori_format": "ND"
-    }, {
-        "dtype": "int32",
-        "format": "ND",
-        "shape": [-2],
-        "ori_shape": [-2],
-        "ori_format": "ND"
-    }, {
-        "dtype": "int32",
-        "format": "ND",
-        "shape": [-2],
-        "ori_shape": [-2],
-        "ori_format": "ND"
-    },
-                              generalize_config={"mode": "keep_rank"})
+    assert not add_match_func(
+        {
+            "dtype": "None",
+            "format": "ND",
+            "shape": [-2],
+            "ori_shape": [-2],
+            "ori_format": "ND"
+        }, {
+            "dtype": "int32",
+            "format": "ND",
+            "shape": [-2],
+            "ori_shape": [-2],
+            "ori_format": "ND"
+        }, {
+            "dtype": "int32",
+            "format": "ND",
+            "shape": [-2],
+            "ori_shape": [-2],
+            "ori_format": "ND"
+        },
+        generalize_config={"mode": "keep_rank"})
 
     from impl.util.util_binary import get_module_name
     assert get_module_name("Add") == "add"
@@ -85,7 +86,13 @@ def test_match_tenser(test_arg):
     assert match_tenser(input_tensor, target_tensor1)
 
     # case 4, format is not equal, return false
-    input_tensor = {"dtype": "int32", "format": "NC1HWC0", "shape": [-2], "ori_shape": [-2], "ori_format": "NC1HWC0"}
+    input_tensor = {
+        "dtype": "int32",
+        "format": "NC1HWC0",
+        "shape": [-2],
+        "ori_shape": [-2],
+        "ori_format": "NC1HWC0"
+    }
     assert not match_tenser(input_tensor, target_tensor)
 
     # case 5, format is not equal, return
@@ -229,6 +236,7 @@ def test_update_args(test_arg):
     assert args_res[3]
     assert args_res[4]
 
+
 def test_import_lib(test_arg):
     """
     test_import_lib
@@ -298,8 +306,16 @@ def test_match(test_arg):
         'param_name': 'y'
     }
     input_args = (input_1, input_2, output_1, False, False)
-    input_key_compile = {BinaryMatchBase.GENERALIZATIO_KEY_NAME: {BinaryMatchBase.GENERALIZATIO_MODE_KEY_NAME: BinaryMatchBase.GENERALIZATIO_MODE_COMPILE}}
-    input_key_binary = {BinaryMatchBase.GENERALIZATIO_KEY_NAME: {BinaryMatchBase.GENERALIZATIO_MODE_KEY_NAME: BinaryMatchBase.GENERALIZATIO_MODE_BINARY}}
+    input_key_compile = {
+        BinaryMatchBase.GENERALIZATIO_KEY_NAME: {
+            BinaryMatchBase.GENERALIZATIO_MODE_KEY_NAME: BinaryMatchBase.GENERALIZATIO_MODE_COMPILE
+        }
+    }
+    input_key_binary = {
+        BinaryMatchBase.GENERALIZATIO_KEY_NAME: {
+            BinaryMatchBase.GENERALIZATIO_MODE_KEY_NAME: BinaryMatchBase.GENERALIZATIO_MODE_BINARY
+        }
+    }
     rule_op = BinaryMatchBase("Add")
 
     assert rule_op.match_result(*input_args, **input_key_compile) is None
@@ -307,6 +323,47 @@ def test_match(test_arg):
     rule_op.get_binary_rule()
     assert rule_op.match_result(*input_args, **input_key_binary) is None
 
+    # match case
+    rule_op.input_num = 2
+    rule_op.output_num = 1
+    rule_op.attr_num = 0
+    rule_op.arg_minest_num = 3
+    target_inputs = [{
+        "shape": [-2],
+        "dtype": "float16",
+        "format": "ND"
+    }, {
+        "shape": [-2],
+        "dtype": "float16",
+        "format": "ND"
+    }]
+    target_outputs = [{"shape": [-2], "dtype": "float16", "format": "ND"}]
+    target_attrs = []
+    rule_op.binary_rule_list = [{"inputs": target_inputs, "outputs": target_outputs, "attrs": target_attrs}]
+    match_input_args = ({
+        "shape": [10],
+        "dtype": "float16",
+        "format": "ND"
+    }, {
+        "shape": [10],
+        "dtype": "float16",
+        "format": "ND"
+    }, {
+        "shape": [10],
+        "dtype": "float16",
+        "format": "ND"
+    })
+    match_res = rule_op.match_result(*match_input_args, **input_key_binary)
+    assert match_res[0][0] == {"shape": [-2], "dtype": "float16", "format": "ND"}
+
+
+def test_match_format(test_arg):
+    from impl.util.util_binary import match_format
+    input_tensor = {'format': 'NC1HWC0'}
+    target_tensor = {'format': 'ND'}
+    assert not match_format(input_tensor, target_tensor)
+    input_tensor = {'format': 'NCHW'}
+    assert match_format(input_tensor, target_tensor)
 
 
 ut_case.add_cust_test_func("all", test_func=test_util_binary_api)
@@ -315,6 +372,7 @@ ut_case.add_cust_test_func("all", test_func=test_match_attr)
 ut_case.add_cust_test_func("all", test_func=test_update_args)
 ut_case.add_cust_test_func("all", test_func=test_import_lib)
 ut_case.add_cust_test_func("all", test_func=test_match)
+ut_case.add_cust_test_func("all", test_func=test_match_format)
 
 
 if __name__ == "__main__":
