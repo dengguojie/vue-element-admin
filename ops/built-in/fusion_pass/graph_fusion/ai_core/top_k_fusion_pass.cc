@@ -132,6 +132,28 @@ bool TopKFusionPass::CheckMultiCoreSegment(NodePtr& topk_node, SegmentCalcParams
                       OP_LOGW(kFusedOpType.c_str(), "CheckMultiCoreSegment: Input data size not support."),
                       return false);
     calcParams.ai_core_num = platform_info.soc_info.ai_core_cnt;
+  } else if (optional_info.soc_version.find("Ascend920") != string::npos) {
+    calcParams.soc_version = "Ascend920";
+    calcParams.core_align_num = 32;
+    calcParams.pro_repeat_num = 32;
+    calcParams.core_min_num = 12288;
+    FUSION_PASS_CHECK(calcParams.k_num <= calcParams.core_min_num / 2,
+                      OP_LOGW(kFusedOpType.c_str(), "The attr k_num not support."),
+                      return false);
+    // check data type
+    if (input_data_desc.GetDataType() == ge::DT_FLOAT16) {
+      calcParams.pro_data_num = 4;
+    } else if (input_data_desc.GetDataType() == ge::DT_FLOAT) {
+      calcParams.pro_data_num = 2;
+    } else {
+      OP_LOGW(kFusedOpType.c_str(), "Input data type not support");
+      return false;
+    }
+    // check data size
+    FUSION_PASS_CHECK(calcParams.data_size <= calcParams.core_min_num,
+                      OP_LOGW(kFusedOpType.c_str(), "Input data size not support."),
+                      return false);
+    calcParams.ai_core_num = platform_info.soc_info.vector_core_cnt;
   } else {
     OP_LOGW(kFusedOpType.c_str(), "CheckMultiCoreSegment: SocVersion not support.");
     return false;

@@ -21,6 +21,9 @@ from impl.ascend import AContainer
 from impl.merge_sort import CommonMethod
 from impl.merge_sort import MergeSort
 from impl.util import util_select_op_base
+from impl.util.platform_adapter import PlatformApi
+from impl.segment_sort_v2 import segment_sort_v2
+from impl.merge_sort_v2 import check_soc_version_support
 
 
 # 'pylint: disable=unused-argument
@@ -28,15 +31,27 @@ def op_select_format(input_data, input_index, output_proposal, k_num, kernel_nam
     """
     select format dynamically
     """
-    input0 = util_select_op_base.gen_param(classify="input0", name="input_data",
-                                           datatype="float16",
-                                           format="ND")
-    input1 = util_select_op_base.gen_param(classify="input1", name="input_index",
-                                           datatype="float16",
-                                           format="ND")
-    output0 = util_select_op_base.gen_param(classify="output0", name="output_proposal",
-                                            datatype="float16",
-                                            format="ND")
+    soc_version = PlatformApi.get_soc_spec(PlatformApi.SOC_VERSION)
+    if check_soc_version_support(soc_version, ("Ascend920",)):
+        input0 = util_select_op_base.gen_param(classify="input0", name="input_data",
+                                               datatype="float16,float",
+                                               format="ND,ND")
+        input1 = util_select_op_base.gen_param(classify="input1", name="input_index",
+                                               datatype="int32,int32",
+                                               format="ND,ND")
+        output0 = util_select_op_base.gen_param(classify="output0", name="output_proposal",
+                                                datatype="float16,float",
+                                                format="ND,ND")
+    else:
+        input0 = util_select_op_base.gen_param(classify="input0", name="input_data",
+                                               datatype="float16",
+                                               format="ND")
+        input1 = util_select_op_base.gen_param(classify="input1", name="input_index",
+                                               datatype="float16",
+                                               format="ND")
+        output0 = util_select_op_base.gen_param(classify="output0", name="output_proposal",
+                                                datatype="float16",
+                                                format="ND")
     param_list = [input0, input1, output0]
     param_dynamic_in_json = util_select_op_base.get_dynamic_param_in_json(param_list)
     return param_dynamic_in_json
@@ -64,7 +79,7 @@ class SegmentSort:
         self.merge_sort = MergeSort(self.cont, self.data_type, self.ub_size)
         self.ub_pro_num_max, self.ub_sort_num, self.each_loop_index_num = self.merge_sort.get_pro_num_info(index_num)
         self.fp16_index_num = index_num
-        self.fp16_ne_inf = -(2**16 - 1)
+        self.fp16_ne_inf = -(2**16 - 1.0)
         self.tail_proposal_num = self.pro_repeat_num
         self.merge_channel = self.merge_sort.merge_channel_num
         self.result_shape = proposal_shape_result
@@ -255,6 +270,9 @@ def segment_sort(input_data, input_index, output_proposal, k_num, kernel_name="S
     -------
     None
     """
+    soc_version = PlatformApi.get_soc_spec(PlatformApi.SOC_VERSION)
+    if check_soc_version_support(soc_version, ("Ascend920",)):
+        return segment_sort_v2(input_data, input_index, output_proposal, k_num, kernel_name)
     input_shape = input_data.get("shape")
     input_dtype = input_data.get("dtype").lower()
     input_format = input_data.get("format")

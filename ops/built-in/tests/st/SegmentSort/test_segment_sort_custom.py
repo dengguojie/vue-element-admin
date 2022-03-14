@@ -1,9 +1,6 @@
-# # -*- coding:utf-8 -*-
-from op_test_frame.ut import OpUT
-from impl.segment_sort import segment_sort, op_select_format
-ut_case = OpUT("SegmentSort", None, None)
 import te
 from te.platform.cce_conf import te_set_version
+from impl.segment_sort import segment_sort, op_select_format
 
 
 class SegmentSortParams:
@@ -24,7 +21,7 @@ class SegmentSortParams:
         self.pro_data_num = pro_data_num
 
 
-def add_case(params, num):
+def add_case(params):
     data_format = "ND"
     input_shape_0 = (params.data_num,)
     input_shape_1 = (2048,)
@@ -37,8 +34,8 @@ def add_case(params, num):
         ai_core_num = (ai_core_num + params.merge_channel - 1) // params.merge_channel * params.merge_channel
     result_data_num = result_data_num + params.tail_num
     output_shape_0 = (ai_core_num, result_data_num, params.pro_data_num)
-    case_temp = {
-        "params": [
+    params = \
+        [
             {"shape": input_shape_0, "format": data_format, "dtype": params.data_type,
              "ori_shape": input_shape_0, "ori_format": data_format},
             {"shape": input_shape_1, "format": data_format, "dtype": params.index_type,
@@ -46,38 +43,22 @@ def add_case(params, num):
             {"shape": output_shape_0, "format": data_format, "dtype": params.data_type,
              "ori_shape": output_shape_0, "ori_format": data_format},
             params.k_num,
-        ],
-        "case_name": "segment_sort_{}".format(num),
-        "expect": "success",
-        "format_expect": [],
-        "support_expect": True}
-    return case_temp
+        ]
+    return params
 
 
-params_910_0 = SegmentSortParams(246016, 7936)
-params_910_1 = SegmentSortParams(104857600, 1808412)
-case_0 = add_case(params_910_0, 0)
-case_1 = add_case(params_910_1, 1)
-
-ut_case.add_case(["Ascend910A"], case_0)
-ut_case.add_case(["Ascend910A"], case_1)
-
-
-def test_op_select_format(_):
-    params_1 = case_1.get("params")
-    op_select_format(*params_1)
+def reload_check_support():
+    """
+    reload_check_support to improve cov
+    """
     soc_version = te.platform.cce_conf.get_soc_spec("SOC_VERSION")
     te_set_version("Ascend920A", "VectorCore")
     params_920_0 = SegmentSortParams(12288 * 5, 12288 * 5, "float16", "int32", 48, 32, 12288, 4, 32, 4)
-    case_2 = add_case(params_920_0, 2)
-    params_2 = case_2.get("params")
-    op_select_format(*params_2)
-    segment_sort(*params_2)
+    case_2 = add_case(params_920_0)
+    op_select_format(*case_2)
+    segment_sort(*case_2)
     te_set_version(soc_version)
 
 
-ut_case.add_cust_test_func(["Ascend910A"], test_op_select_format)
-
 if __name__ == '__main__':
-    ut_case.run(["Ascend910A", "Ascend920A"])
-    exit(0)
+    reload_check_support()

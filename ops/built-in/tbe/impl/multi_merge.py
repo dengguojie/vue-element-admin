@@ -23,6 +23,9 @@ from impl.merge_sort import CommonMethod
 from impl.merge_sort import MergeSort
 from impl.util import util_select_op_base
 from impl.single_merge import single_merge
+from impl.util.platform_adapter import PlatformApi
+from impl.multi_merge_v2 import multi_merge_v2
+from impl.merge_sort_v2 import check_soc_version_support
 
 
 # 'pylint: disable=unused-argument
@@ -31,15 +34,27 @@ def op_select_format(input_proposal, output_proposal, output_index, k_num,
     """
     select format dynamically
     """
-    input0 = util_select_op_base.gen_param(classify="input0", name="input_proposal",
-                                           datatype="float16",
-                                           format="ND")
-    output0 = util_select_op_base.gen_param(classify="output0", name="output_proposal",
-                                            datatype="float16",
-                                            format="ND")
-    output1 = util_select_op_base.gen_param(classify="output1", name="output_index",
-                                            datatype="int32",
-                                            format="ND")
+    soc_version = PlatformApi.get_soc_spec(PlatformApi.SOC_VERSION)
+    if check_soc_version_support(soc_version, ("Ascend920",)):
+        input0 = util_select_op_base.gen_param(classify="input0", name="input_proposal",
+                                               datatype="float16,float",
+                                               format="ND,ND")
+        output0 = util_select_op_base.gen_param(classify="output0", name="output_proposal",
+                                                datatype="float16,float",
+                                                format="ND,ND")
+        output1 = util_select_op_base.gen_param(classify="output1", name="output_index",
+                                                datatype="int32,int32",
+                                                format="ND,ND")
+    else:
+        input0 = util_select_op_base.gen_param(classify="input0", name="input_proposal",
+                                               datatype="float16",
+                                               format="ND")
+        output0 = util_select_op_base.gen_param(classify="output0", name="output_proposal",
+                                                datatype="float16",
+                                                format="ND")
+        output1 = util_select_op_base.gen_param(classify="output1", name="output_index",
+                                                datatype="int32",
+                                                format="ND")
     param_list = [input0, output0, output1]
     param_dynamic_in_json = util_select_op_base.get_dynamic_param_in_json(param_list)
     return param_dynamic_in_json
@@ -69,7 +84,7 @@ class MultiMerge:
 
         self.tail_proposal_num = self.pro_repeat_num
         self.merge_channel = min(self.merge_sort.merge_channel_num, input_shape[0])
-        self.fp16_ne_inf = -(2**16 - 1)
+        self.fp16_ne_inf = -(2**16 - 1.0)
 
         self.result_shape = output_shape
         self.ai_core_use = output_shape[0]
@@ -149,6 +164,9 @@ def multi_merge(input_proposal, output_proposal, output_index, k_num, include_in
     -------
     None
     """
+    soc_version = PlatformApi.get_soc_spec(PlatformApi.SOC_VERSION)
+    if check_soc_version_support(soc_version, ("Ascend920",)):
+        return multi_merge_v2(input_proposal, output_proposal, output_index, k_num, include_index, kernel_name)
     if include_index:
         single_merge(input_proposal, output_proposal, output_index, k_num, kernel_name)
     else:
