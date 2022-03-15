@@ -19,6 +19,8 @@ from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tik
+from impl.util.util_tik_comm_func import ceil_align
+from impl.util.util_tik_comm_func import ceil_div
 from te.utils import para_check
 
 
@@ -55,7 +57,6 @@ class ProdEnvMatACalcDescrpt:
         self.sel_a_back_list = [0]
         for i in range(1, self.type_num):
             self.sel_a_back_list.append((sum(sel_a[:i]) + 7) // 8 * 8)
-
         self.sel_a_back = self.tik_instance.ScalarArray(self.type_dtype, name="sel_a_back", length=self.type_num,
                                                         init_value=self.sel_a_back_list)
 
@@ -66,29 +67,28 @@ class ProdEnvMatACalcDescrpt:
 
         self.block_num = 32 // ProdEnvMatACalcDescrpt.DTYPE_BYTES.get(self.coord_dtype)
 
-        self.nnei_align = (self.nnei + self.block_num - 1) // self.block_num * self.block_num
+        self.nnei_align = ceil_align(self.nnei, self.block_num)
 
         self.descrpt_size = self.nnei * 4
 
         self.kernel_name = kernel_name
 
-        self.repeat_once_size = self.block_num * self.block_num
+        self.nnei_once_repeat_nums = self.block_num * self.block_num
+        self.nnei_repeat_times = ceil_div(self.nnei, self.nnei_once_repeat_nums)
+        self.nnei_repeat_align = ceil_align(self.nnei, self.nnei_once_repeat_nums)
+
         self.block_stride = 1
         self.repeat_stride = 8
         self.default_mask_fp32 = 64
 
-        self.cur_type_neighbour_nums = self.tik_instance.Scalar("uint32", "cur_type_neighbour_nums", init_value=0)
-        self.cur_loc_nei_num = self.tik_instance.Scalar("uint32", "cur_loc_nei_num",
-                                                        init_value=self.max_nbor_size)
-        self.INT32_TYPE = "int32"
-        self.nloc_d = self.tik_instance.Scalar(self.INT32_TYPE, "nloc_d", init_value=0)
-        self.nall_d = self.tik_instance.Scalar(self.INT32_TYPE, "nall_d", init_value=0)
-        self.total_nloc = self.tik_instance.Scalar(self.INT32_TYPE, "total_nloc", init_value=0)
-        self.nnei_once_repeat_nums = self.block_num * self.block_num
-        self.nnei_repeat_times = self.nnei // self.nnei_once_repeat_nums
+        self.cur_loc_nei_num = self.tik_instance.Scalar("uint32", "cur_loc_nei_num", init_value=self.max_nbor_size)
+        self.int32_type = "int32"
+        self.nloc_d = self.tik_instance.Scalar(self.int32_type, "nloc_d", init_value=0)
+        self.nall_d = self.tik_instance.Scalar(self.int32_type, "nall_d", init_value=0)
+        self.total_nloc = self.tik_instance.Scalar(self.int32_type, "total_nloc", init_value=0)
 
         self.cur_op_core_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
-        self.cur_op_core_num_scalar = self.tik_instance.Scalar(self.INT32_TYPE, "cur_op_core_num_scalar",
+        self.cur_op_core_num_scalar = self.tik_instance.Scalar(self.int32_type, "cur_op_core_num_scalar",
                                                                init_value=self.cur_op_core_num)
 
         self._gm_tensors = None
@@ -122,28 +122,28 @@ class ProdEnvMatACalcDescrpt:
         init the gm input buffer and the output buffer
         """
         distance_gm = self.tik_instance.Tensor(self.coord_dtype, [self.max_gm_size], name="distance_gm",
-                                                    scope=self.tik.scope_gm)
+                                               scope=self.tik.scope_gm)
         rij_x_gm = self.tik_instance.Tensor(self.coord_dtype, [self.max_gm_size], name="rij_x_gm",
-                                                 scope=self.tik.scope_gm)
+                                            scope=self.tik.scope_gm)
         rij_y_gm = self.tik_instance.Tensor(self.coord_dtype, [self.max_gm_size], name="rij_y_gm",
-                                                 scope=self.tik.scope_gm)
+                                            scope=self.tik.scope_gm)
         rij_z_gm = self.tik_instance.Tensor(self.coord_dtype, [self.max_gm_size], name="rij_z_gm",
-                                                 scope=self.tik.scope_gm)
-        type_gm = self.tik_instance.Tensor(self.type_dtype, [self.max_gm_size],
-                                                 name="type_gm", scope=self.tik.scope_gm)
+                                            scope=self.tik.scope_gm)
+        type_gm = self.tik_instance.Tensor(self.type_dtype, [self.max_gm_size], name="type_gm",
+                                           scope=self.tik.scope_gm)
         natoms_gm = self.tik_instance.Tensor(self.type_dtype, self.natoms_shape, name="natoms_gm",
-                                                 scope=self.tik.scope_gm)
+                                             scope=self.tik.scope_gm)
         mesh_gm = self.tik_instance.Tensor(self.type_dtype, [self.max_gm_size], name="mesh_gm",
-                                                scope=self.tik.scope_gm)
+                                           scope=self.tik.scope_gm)
         davg_gm = self.tik_instance.Tensor(self.coord_dtype, [self.max_gm_size], name="davg_gm",
-                                                scope=self.tik.scope_gm)
+                                           scope=self.tik.scope_gm)
         dstd_gm = self.tik_instance.Tensor(self.coord_dtype, [self.max_gm_size], name="dstd_gm",
-                                                scope=self.tik.scope_gm)
+                                           scope=self.tik.scope_gm)
 
         descrpt_gm = self.tik_instance.Tensor(self.coord_dtype, [self.max_gm_size], name="descrpt_gm",
-                                                   scope=self.tik.scope_gm)
-        descrpt_deriv_gm = self.tik_instance.Tensor(self.coord_dtype, [self.max_gm_size],
-                                                         name="descrpt_deriv_gm", scope=self.tik.scope_gm)
+                                              scope=self.tik.scope_gm)
+        descrpt_deriv_gm = self.tik_instance.Tensor(self.coord_dtype, [self.max_gm_size], name="descrpt_deriv_gm",
+                                                    scope=self.tik.scope_gm)
 
         GMTensors = collections.namedtuple("GMTensors", ["distance_gm", "rij_x_gm", "rij_y_gm", "rij_z_gm",
                                                          "type_gm", "natoms_gm", "mesh_gm", "davg_gm", "dstd_gm",
@@ -156,7 +156,7 @@ class ProdEnvMatACalcDescrpt:
         """
         copy type data in ub from gm
         """
-        src_offset = self.tik_instance.Scalar(self.INT32_TYPE, "src_offset",
+        src_offset = self.tik_instance.Scalar(self.int32_type, "src_offset",
                                               init_value=cur_nsample_index * self.nall_d * self.coord_dim_num)
         self.tik_instance.data_move(type_ub[0], self._gm_tensors.type_gm[src_offset // 3],
                                     sid=0, nburst=1, burst=self.nall_d // self.block_num,
@@ -166,7 +166,7 @@ class ProdEnvMatACalcDescrpt:
         """
         copy davg data in ub from gm.
         """
-        avg_offset = self.tik_instance.Scalar(self.INT32_TYPE, "avg_offset",
+        avg_offset = self.tik_instance.Scalar(self.int32_type, "avg_offset",
                                               init_value=cur_type_idx * self.descrpt_size)
         self.tik_instance.data_move(davg_ub[0], self._gm_tensors.davg_gm[avg_offset],
                                     sid=0, nburst=1, burst=self.descrpt_size // self.block_num,
@@ -177,7 +177,7 @@ class ProdEnvMatACalcDescrpt:
 
     def _set_last_block_value(self, tensor, last_block_tensor, offset):
         """
-        set the last block nums when copy ub to out.
+        set the last block nums when copy ub to out
         """
         for i in range(0, self.block_num):
             index = self.nnei * offset - self.block_num + i
@@ -185,7 +185,7 @@ class ProdEnvMatACalcDescrpt:
 
     def _data_move_res_to_gm(self, src_tensor, dst_gm, last_block_tensor, block_nums, gm_offset, stride_offset):
         """
-        copy res data to gm from ub buffer.
+        copy res data to gm from ub buffer
         """
         self.tik_instance.data_move(dst_gm[gm_offset], src_tensor,
                                     sid=0, nburst=1, burst=block_nums,
@@ -205,57 +205,56 @@ class ProdEnvMatACalcDescrpt:
         """
         last_block_tensor = self.tik_instance.Tensor(self.coord_dtype, [self.block_num],
                                                      name="last_block_tensor", scope=self.tik.scope_ubuf)
-        descrpt_offset = self.tik_instance.Scalar(self.INT32_TYPE, "rij_dst_offset",
+        descrpt_offset = self.tik_instance.Scalar(self.int32_type, "rij_dst_offset",
                                                   init_value=cur_nsample_index * self.nloc_d * self.nnei * 4 +
                                                              cur_nloc_index * self.nnei * 4)
 
         descrpt_move_blocks = (self.nnei * 4) // self.block_num
 
         self._data_move_res_to_gm(res_descrpt_a_tensor, self._gm_tensors.descrpt_gm, last_block_tensor,
-                                 descrpt_move_blocks, descrpt_offset, 4)
+                                  descrpt_move_blocks, descrpt_offset, 4)
 
-        descrpt_deriv_offset = self.tik_instance.Scalar(self.INT32_TYPE, "descrpt_deriv_offset",
+        descrpt_deriv_offset = self.tik_instance.Scalar(self.int32_type, "descrpt_deriv_offset",
                                                         init_value=cur_nsample_index * self.nloc_d * self.nnei * 12 +
                                                              cur_nloc_index * self.nnei * 12)
 
         descrpt_deriv_move_blocks = (self.nnei * 12) // self.block_num
 
         self._data_move_res_to_gm(res_descrpt_a_deriv_tensor, self._gm_tensors.descrpt_deriv_gm, last_block_tensor,
-                                 descrpt_deriv_move_blocks, descrpt_deriv_offset, 12)
+                                  descrpt_deriv_move_blocks, descrpt_deriv_offset, 12)
 
     def _data_move_to_gm(self, res_descrpt_a_tensor, res_descrpt_a_deriv_tensor, cur_nsample_index, cur_nloc_index):
         """
-        copy nlist descrpt descrpt_derive data to gm from ub buffer when block align.
+        copy nlist descrpt descrpt_derive data to gm from ub buffer when block align
         """
-        descrpt_offset = self.tik_instance.Scalar(self.INT32_TYPE, "descrpt_offset",
+        descrpt_offset = self.tik_instance.Scalar(self.int32_type, "descrpt_offset",
                                                   init_value=cur_nsample_index * self.nloc_d * self.nnei * 4 +
                                                              cur_nloc_index * self.nnei * 4)
 
-        descrpt_move_blocks = self.tik_instance.Scalar(self.INT32_TYPE, "descrpt_move_blocks",
+        descrpt_move_blocks = self.tik_instance.Scalar(self.int32_type, "descrpt_move_blocks",
                                                        init_value=(self.nnei * 4 + self.block_num - 1)
                                                                    // self.block_num)
         self.tik_instance.data_move(self._gm_tensors.descrpt_gm[descrpt_offset], res_descrpt_a_tensor,
                                     sid=0, nburst=1, burst=descrpt_move_blocks, src_stride=0, dst_stride=0)
 
-        descrpt_deriv_offset = self.tik_instance.Scalar(self.INT32_TYPE, "descrpt_deriv_offset",
+        descrpt_deriv_offset = self.tik_instance.Scalar(self.int32_type, "descrpt_deriv_offset",
                                                         init_value=cur_nsample_index * self.nloc_d * self.nnei * 12 +
                                                                    cur_nloc_index * self.nnei * 12)
 
-        descrpt_deriv_move_blocks = self.tik_instance.Scalar(self.INT32_TYPE, "descrpt_deriv_move_blocks",
+        descrpt_deriv_move_blocks = self.tik_instance.Scalar(self.int32_type, "descrpt_deriv_move_blocks",
                                                              init_value=(self.nnei * 12 + self.block_num - 1)
-                                                                  // self.block_num)
-        self.tik_instance.data_move(self._gm_tensors.descrpt_deriv_gm[descrpt_deriv_offset], res_descrpt_a_deriv_tensor,
+                                                                         // self.block_num)
+        self.tik_instance.data_move(self._gm_tensors.descrpt_deriv_gm[descrpt_deriv_offset],
+                                    res_descrpt_a_deriv_tensor,
                                     sid=0, nburst=1, burst=descrpt_deriv_move_blocks, src_stride=0, dst_stride=0)
 
     def _do_avg_process(self, descrpt_tensor, descrpt_deriv_tensor, cur_type_idx):
         """
-        do avg std process for descrpt and descrpt_deriv.
+        do avg std process for descrpt and descrpt_deriv
         """
-        nnei_repeat_align = (self.nnei + self.nnei_once_repeat_nums - 1) // self.nnei_once_repeat_nums \
-                            * self.nnei_once_repeat_nums
-        dstd_ub = self.tik_instance.Tensor(self.coord_dtype, [nnei_repeat_align * 12],
+        dstd_ub = self.tik_instance.Tensor(self.coord_dtype, [self.nnei_repeat_align * 12],
                                            name="dstd_ub", scope=self.tik.scope_ubuf)
-        davg_ub = dstd_ub[nnei_repeat_align * 4]
+        davg_ub = dstd_ub[self.nnei_repeat_align * 4]
 
         self._data_move_avg_to_ub(cur_type_idx, davg_ub, dstd_ub)
 
@@ -269,13 +268,12 @@ class ProdEnvMatACalcDescrpt:
         if descrpt_tail != 0:
             self.tik_instance.vsub(descrpt_tail, descrpt_tensor[descrpt_align * self.nnei_once_repeat_nums],
                                    descrpt_tensor[descrpt_align * self.nnei_once_repeat_nums],
-                                   dstd_ub[nnei_repeat_align * 4 + descrpt_align * self.nnei_once_repeat_nums], 1,
+                                   dstd_ub[self.nnei_repeat_align * 4 + descrpt_align * self.nnei_once_repeat_nums],
+                                   1,
                                    self.block_stride, self.block_stride, self.block_stride,
                                    self.repeat_stride, self.repeat_stride, self.repeat_stride)
 
-        self.tik_instance.vdiv(self.nnei_once_repeat_nums, descrpt_tensor, descrpt_tensor, dstd_ub, descrpt_align,
-                               self.block_stride, self.block_stride, self.block_stride,
-                               self.repeat_stride, self.repeat_stride, self.repeat_stride)
+        self._simple_vdiv_fp32(descrpt_tensor, descrpt_tensor, dstd_ub, descrpt_align)
 
         if descrpt_tail != 0:
             self.tik_instance.vdiv(descrpt_tail, descrpt_tensor[descrpt_align * self.nnei_once_repeat_nums],
@@ -284,20 +282,20 @@ class ProdEnvMatACalcDescrpt:
                                    self.block_stride, self.block_stride, self.block_stride,
                                    self.repeat_stride, self.repeat_stride, self.repeat_stride)
 
-        self._simple_trans_fp32_8x_4(dstd_ub, nnei_repeat_align * 12 - self.nnei_align * 3 - nnei_repeat_align,
-                                     dstd_ub, self.nnei_align)
+        trans_dst_offset = self.nnei_repeat_align * 12 - self.nnei_align * 3 - self.nnei_repeat_align
+        self._simple_trans_fp32_8x_4(dstd_ub, trans_dst_offset, dstd_ub, self.nnei_align)
 
         for des in range(3):
             for nn in range(3):
-                self._simple_move_fp32(dstd_ub, des * 3 * nnei_repeat_align + nn * nnei_repeat_align, dstd_ub,
-                                       nnei_repeat_align * 12 - self.nnei_align * 3 - nnei_repeat_align +
-                                           des * self.nnei_align,
-                                       self.nnei)
+                move_dst_offset = des * 3 * self.nnei_repeat_align + nn * self.nnei_repeat_align
+                move_src_offset = self.nnei_repeat_align * 12 - self.nnei_align * 3 - self.nnei_repeat_align +\
+                                  des * self.nnei_align
+                self._simple_move_fp32(dstd_ub, move_dst_offset, dstd_ub, move_src_offset, self.nnei)
 
-        self._simple_move_fp32(dstd_ub, 9 * nnei_repeat_align, dstd_ub, nnei_repeat_align * 11, self.nnei)
-        self._simple_move_fp32(dstd_ub, 10 * nnei_repeat_align, dstd_ub, nnei_repeat_align * 11, self.nnei)
+        self._simple_move_fp32(dstd_ub, 9 * self.nnei_repeat_align, dstd_ub, self.nnei_repeat_align * 11, self.nnei)
+        self._simple_move_fp32(dstd_ub, 10 * self.nnei_repeat_align, dstd_ub, self.nnei_repeat_align * 11, self.nnei)
 
-        descrpt_deriv_align = (nnei_repeat_align * 12) // self.nnei_once_repeat_nums
+        descrpt_deriv_align = (self.nnei_repeat_align * 12) // self.nnei_once_repeat_nums
         descrpt_deriv_align_tail = 0
 
         max_repeat_times = 255
@@ -305,261 +303,204 @@ class ProdEnvMatACalcDescrpt:
             descrpt_deriv_align_tail = descrpt_deriv_align % max_repeat_times
             descrpt_deriv_align = max_repeat_times
 
-        self.tik_instance.vdiv(self.nnei_once_repeat_nums, descrpt_deriv_tensor, descrpt_deriv_tensor, dstd_ub,
-                               descrpt_deriv_align, self.block_stride, self.block_stride, self.block_stride,
-                               self.repeat_stride, self.repeat_stride, self.repeat_stride)
+        self._simple_vdiv_fp32(descrpt_deriv_tensor, descrpt_deriv_tensor, dstd_ub, descrpt_deriv_align)
 
         if descrpt_deriv_align_tail != 0:
-            self.tik_instance.vdiv(self.nnei_once_repeat_nums,
-                                   descrpt_deriv_tensor[descrpt_deriv_align * self.nnei_once_repeat_nums],
+            self._simple_vdiv_fp32(descrpt_deriv_tensor[descrpt_deriv_align * self.nnei_once_repeat_nums],
                                    descrpt_deriv_tensor[descrpt_deriv_align * self.nnei_once_repeat_nums],
                                    dstd_ub[descrpt_deriv_align * self.nnei_once_repeat_nums],
-                                   descrpt_deriv_align_tail, self.block_stride, self.block_stride, self.block_stride,
-                                   self.repeat_stride, self.repeat_stride, self.repeat_stride)
+                                   descrpt_deriv_align_tail)
 
         with self.tik_instance.new_stmt_scope(disable_sync=False):
             for deriv_idx in range(12):
                 self._simple_move_fp32(dstd_ub, self.nnei_align * deriv_idx,
-                                       descrpt_deriv_tensor, nnei_repeat_align * deriv_idx, self.nnei_align)
+                                       descrpt_deriv_tensor, self.nnei_repeat_align * deriv_idx, self.nnei_align)
             self._simple_trans_fp32_12_8x(descrpt_deriv_tensor, dstd_ub, self.nnei_align)
 
-    def _concat_result(self, res_descrpt_a_tensor, nnei_repeat_times, free_buffer):
+    def _concat_result(self, res_descrpt_a_tensor, free_buffer):
         """
-        concat rij descrpt descrpt_deriv data in res ub buffer.
+        concat rij descrpt descrpt_deriv data in res ub buffer
         """
-        nnei_align = (self.nnei + self.block_num - 1) // self.block_num * self.block_num
-
         with self.tik_instance.new_stmt_scope(disable_sync=False):
             descrpt_a_tensor = free_buffer
 
-            self._simple_move_fp32(descrpt_a_tensor, 0, res_descrpt_a_tensor, 0, nnei_align)
+            self._simple_move_fp32(descrpt_a_tensor, 0, res_descrpt_a_tensor, 0, self.nnei_align)
 
-            self._simple_move_fp32(descrpt_a_tensor, nnei_align,
-                                   res_descrpt_a_tensor, nnei_repeat_times * self.nnei_once_repeat_nums,
-                                   nnei_align)
+            self._simple_move_fp32(descrpt_a_tensor, self.nnei_align, res_descrpt_a_tensor,
+                                   self.nnei_repeat_align, self.nnei_align)
 
-            self._simple_move_fp32(descrpt_a_tensor, nnei_align * 2,
-                                   res_descrpt_a_tensor, nnei_repeat_times * self.nnei_once_repeat_nums * 2,
-                                   nnei_align)
+            self._simple_move_fp32(descrpt_a_tensor, self.nnei_align * 2, res_descrpt_a_tensor,
+                                   self.nnei_repeat_align * 2, self.nnei_align)
 
-            self._simple_move_fp32(descrpt_a_tensor, nnei_align * 3,
-                                   res_descrpt_a_tensor, nnei_repeat_times * self.nnei_once_repeat_nums * 3,
-                                   nnei_align)
+            self._simple_move_fp32(descrpt_a_tensor, self.nnei_align * 3, res_descrpt_a_tensor,
+                                   self.nnei_repeat_align * 3, self.nnei_align)
+
             self._simple_trans_fp32_4_8x(res_descrpt_a_tensor, descrpt_a_tensor, self.nnei_align)
 
     def _compute_descrpt_a_deriv_three(self, left_value_save, rr0_factor_tensor,
                                        rr0_tensor, rr1_tensor, rr2_tensor,
                                        sw_tensor, res_vec_tensor_2, res_vec_tensor_1,
                                        descrpt_a_1, dsw_tensor, dis_rev_tensor,
-                                       not_one, descrpt_a_deriv_3, descrpt_a_deriv_4,
+                                       descrpt_a_deriv_3, descrpt_a_deriv_4,
                                        descrpt_a_deriv_5):
         """
-        compute the group res for deriv.
+        compute the group res for deriv
         """
-        nnei_repeat_times = (self.nnei + self.nnei_once_repeat_nums - 1) // self.nnei_once_repeat_nums
+        self._simple_vmuls_fp32(left_value_save, rr0_factor_tensor, 2)
 
-        self.tik_instance.vmuls(self.nnei_once_repeat_nums, left_value_save, rr0_factor_tensor, 2,
-                                nnei_repeat_times,
-                                self.block_stride, self.block_stride,
-                                self.repeat_stride, self.repeat_stride)
+        self._simple_vmul_fp32(left_value_save, left_value_save, sw_tensor, self.nnei_repeat_times)
+        self._simple_vmul_fp32(left_value_save, left_value_save, res_vec_tensor_2, self.nnei_repeat_times)
+        self._simple_vmul_fp32(descrpt_a_deriv_3, descrpt_a_1, dsw_tensor, self.nnei_repeat_times)
+        self._simple_vmul_fp32(descrpt_a_deriv_3, descrpt_a_deriv_3, dis_rev_tensor, self.nnei_repeat_times)
 
-        self._simple_vmul_fp32(left_value_save, left_value_save, sw_tensor, nnei_repeat_times)
-        self._simple_vmul_fp32(left_value_save, left_value_save, res_vec_tensor_2, nnei_repeat_times)
-        self._simple_vmul_fp32(descrpt_a_deriv_3, descrpt_a_1, dsw_tensor, nnei_repeat_times)
-        self._simple_vmul_fp32(descrpt_a_deriv_3, descrpt_a_deriv_3, dis_rev_tensor, nnei_repeat_times)
+        self._simple_vmuls_fp32(descrpt_a_deriv_3, descrpt_a_deriv_3, -1.0)
 
-        self.tik_instance.vmuls(self.nnei_once_repeat_nums, descrpt_a_deriv_3, descrpt_a_deriv_3, not_one,
-                                nnei_repeat_times,
-                                self.block_stride, self.block_stride,
-                                self.repeat_stride, self.repeat_stride)
+        self._simple_vadd_fp32(left_value_save, left_value_save, descrpt_a_deriv_3)
 
-        self.tik_instance.vadd(self.nnei_once_repeat_nums, left_value_save, left_value_save, descrpt_a_deriv_3,
-                               nnei_repeat_times,
-                               self.block_stride, self.block_stride, self.block_stride,
-                               self.repeat_stride, self.repeat_stride, self.repeat_stride)
-
-        self._simple_vmul_fp32(descrpt_a_deriv_3, left_value_save, rr0_tensor, nnei_repeat_times)
-        self._simple_vmul_fp32(descrpt_a_deriv_4, left_value_save, rr1_tensor, nnei_repeat_times)
-        self._simple_vmul_fp32(descrpt_a_deriv_5, left_value_save, rr2_tensor, nnei_repeat_times)
-        self._simple_vmul_fp32(left_value_save, sw_tensor, res_vec_tensor_1, nnei_repeat_times)
+        self._simple_vmul_fp32(descrpt_a_deriv_3, left_value_save, rr0_tensor, self.nnei_repeat_times)
+        self._simple_vmul_fp32(descrpt_a_deriv_4, left_value_save, rr1_tensor, self.nnei_repeat_times)
+        self._simple_vmul_fp32(descrpt_a_deriv_5, left_value_save, rr2_tensor, self.nnei_repeat_times)
+        self._simple_vmul_fp32(left_value_save, sw_tensor, res_vec_tensor_1, self.nnei_repeat_times)
 
         self.tik_instance.vsub(self.nnei_once_repeat_nums, descrpt_a_deriv_3, descrpt_a_deriv_3, left_value_save,
-                               nnei_repeat_times,
+                               self.nnei_repeat_times,
                                self.block_stride, self.block_stride, self.block_stride,
                                self.repeat_stride, self.repeat_stride, self.repeat_stride)
 
-    def _vector_compute_last_process(self, dis_rev_tensor, neighbour_coords,
-                                     dis_dot_tensor,
-                                     sw_tensor, dsw_tensor,
+    def _vector_compute_last_process(self, dis_rev_tensor, neighbour_coords, dis_dot_tensor, sw_tensor, dsw_tensor,
                                      res_vec_tensor, res_vec_tensor_1, res_vec_tensor_2, res_vec_tensor_3,
-                                     res_descrpt_a_tensor,
-                                     res_descrpt_a_deriv_tensor, free_buffer):
+                                     res_descrpt_a_tensor, res_descrpt_a_deriv_tensor, free_buffer):
         """
-        compute descrpt and descrpt_deriv last process.
+        compute descrpt and descrpt_deriv last process
         """
-        nnei_repeat_times = (self.nnei + 63) // self.nnei_once_repeat_nums
-
         descrpt_a_0 = res_descrpt_a_tensor[0]
-        descrpt_a_1 = res_descrpt_a_tensor[nnei_repeat_times * self.nnei_once_repeat_nums]
-        descrpt_a_2 = res_descrpt_a_tensor[nnei_repeat_times * self.nnei_once_repeat_nums * 2]
-        descrpt_a_3 = res_descrpt_a_tensor[nnei_repeat_times * self.nnei_once_repeat_nums * 3]
+        descrpt_a_1 = res_descrpt_a_tensor[self.nnei_repeat_align]
+        descrpt_a_2 = res_descrpt_a_tensor[self.nnei_repeat_align * 2]
+        descrpt_a_3 = res_descrpt_a_tensor[self.nnei_repeat_align * 3]
 
-        self._simple_vrec_fp32(descrpt_a_0, res_vec_tensor, nnei_repeat_times)
+        self._simple_vrec_fp32(descrpt_a_0, res_vec_tensor, self.nnei_repeat_times)
 
-        self.tik_instance.vdiv(self.nnei_once_repeat_nums, descrpt_a_1, neighbour_coords[0],
-                               dis_dot_tensor,
-                               nnei_repeat_times,
-                               self.block_stride, self.block_stride, self.block_stride,
-                               self.repeat_stride, self.repeat_stride, self.repeat_stride)
+        self._simple_vdiv_fp32(descrpt_a_1, neighbour_coords[0], dis_dot_tensor, self.nnei_repeat_times)
+        self._simple_vdiv_fp32(descrpt_a_2, neighbour_coords[1], dis_dot_tensor, self.nnei_repeat_times)
+        self._simple_vdiv_fp32(descrpt_a_3, neighbour_coords[2], dis_dot_tensor, self.nnei_repeat_times)
 
-        self.tik_instance.vdiv(self.nnei_once_repeat_nums, descrpt_a_2, neighbour_coords[1],
-                               dis_dot_tensor,
-                               nnei_repeat_times,
-                               self.block_stride, self.block_stride, self.block_stride,
-                               self.repeat_stride, self.repeat_stride, self.repeat_stride)
-
-        self.tik_instance.vdiv(self.nnei_once_repeat_nums, descrpt_a_3, neighbour_coords[2],
-                               dis_dot_tensor,
-                               nnei_repeat_times,
-                               self.block_stride, self.block_stride, self.block_stride,
-                               self.repeat_stride, self.repeat_stride, self.repeat_stride)
-
-        left_value_save = self.tik_instance.Tensor(self.coord_dtype,
-                                                   [nnei_repeat_times * self.nnei_once_repeat_nums],
+        left_value_save = self.tik_instance.Tensor(self.coord_dtype, [self.nnei_repeat_align],
                                                    name="left_value_save", scope=self.tik.scope_ubuf)
 
-        self._simple_vmul_fp32(left_value_save, res_vec_tensor_3, sw_tensor, nnei_repeat_times)
+        self._simple_vmul_fp32(left_value_save, res_vec_tensor_3, sw_tensor, self.nnei_repeat_times)
 
         descrpt_a_deriv_0 = res_descrpt_a_deriv_tensor[0]
-        descrpt_a_deriv_1 = res_descrpt_a_deriv_tensor[nnei_repeat_times * self.nnei_once_repeat_nums]
-        descrpt_a_deriv_2 = res_descrpt_a_deriv_tensor[nnei_repeat_times * self.nnei_once_repeat_nums * 2]
-        descrpt_a_deriv_3 = res_descrpt_a_deriv_tensor[nnei_repeat_times * self.nnei_once_repeat_nums * 3]
-        descrpt_a_deriv_4 = res_descrpt_a_deriv_tensor[nnei_repeat_times * self.nnei_once_repeat_nums * 4]
-        descrpt_a_deriv_5 = res_descrpt_a_deriv_tensor[nnei_repeat_times * self.nnei_once_repeat_nums * 5]
-        descrpt_a_deriv_6 = res_descrpt_a_deriv_tensor[nnei_repeat_times * self.nnei_once_repeat_nums * 6]
-        descrpt_a_deriv_7 = res_descrpt_a_deriv_tensor[nnei_repeat_times * self.nnei_once_repeat_nums * 7]
-        descrpt_a_deriv_8 = res_descrpt_a_deriv_tensor[nnei_repeat_times * self.nnei_once_repeat_nums * 8]
-        descrpt_a_deriv_9 = res_descrpt_a_deriv_tensor[nnei_repeat_times * self.nnei_once_repeat_nums * 9]
-        descrpt_a_deriv_10 = res_descrpt_a_deriv_tensor[nnei_repeat_times * self.nnei_once_repeat_nums * 10]
-        descrpt_a_deriv_11 = res_descrpt_a_deriv_tensor[nnei_repeat_times * self.nnei_once_repeat_nums * 11]
+        descrpt_a_deriv_1 = res_descrpt_a_deriv_tensor[self.nnei_repeat_align]
+        descrpt_a_deriv_2 = res_descrpt_a_deriv_tensor[self.nnei_repeat_align * 2]
+        descrpt_a_deriv_3 = res_descrpt_a_deriv_tensor[self.nnei_repeat_align * 3]
+        descrpt_a_deriv_4 = res_descrpt_a_deriv_tensor[self.nnei_repeat_align * 4]
+        descrpt_a_deriv_5 = res_descrpt_a_deriv_tensor[self.nnei_repeat_align * 5]
+        descrpt_a_deriv_6 = res_descrpt_a_deriv_tensor[self.nnei_repeat_align * 6]
+        descrpt_a_deriv_7 = res_descrpt_a_deriv_tensor[self.nnei_repeat_align * 7]
+        descrpt_a_deriv_8 = res_descrpt_a_deriv_tensor[self.nnei_repeat_align * 8]
+        descrpt_a_deriv_9 = res_descrpt_a_deriv_tensor[self.nnei_repeat_align * 9]
+        descrpt_a_deriv_10 = res_descrpt_a_deriv_tensor[self.nnei_repeat_align * 10]
+        descrpt_a_deriv_11 = res_descrpt_a_deriv_tensor[self.nnei_repeat_align * 11]
 
-        self._simple_vmul_fp32(descrpt_a_deriv_0, descrpt_a_0, dsw_tensor, nnei_repeat_times)
-        self._simple_vmul_fp32(descrpt_a_deriv_0, descrpt_a_deriv_0, dis_rev_tensor, nnei_repeat_times)
+        self._simple_vmul_fp32(descrpt_a_deriv_0, descrpt_a_0, dsw_tensor, self.nnei_repeat_times)
+        self._simple_vmul_fp32(descrpt_a_deriv_0, descrpt_a_deriv_0, dis_rev_tensor, self.nnei_repeat_times)
 
-        not_one = self.tik_instance.Scalar("float32", "not_one", init_value=-1)
+        self._simple_vmuls_fp32(descrpt_a_deriv_0, descrpt_a_deriv_0, -1.0)
 
-        self.tik_instance.vmuls(self.nnei_once_repeat_nums, descrpt_a_deriv_0,
-                                descrpt_a_deriv_0,
-                                not_one,
-                                nnei_repeat_times,
-                                self.block_stride, self.block_stride,
-                                self.repeat_stride, self.repeat_stride)
+        self._simple_vadd_fp32(left_value_save, left_value_save, descrpt_a_deriv_0)
 
-        self.tik_instance.vadd(self.nnei_once_repeat_nums, left_value_save, left_value_save,
-                               descrpt_a_deriv_0,
-                               nnei_repeat_times,
-                               self.block_stride, self.block_stride, self.block_stride,
-                               self.repeat_stride, self.repeat_stride, self.repeat_stride)
-
-        self._simple_vmul_fp32(descrpt_a_deriv_0, left_value_save, neighbour_coords[0], nnei_repeat_times)
-        self._simple_vmul_fp32(descrpt_a_deriv_1, left_value_save, neighbour_coords[1], nnei_repeat_times)
-        self._simple_vmul_fp32(descrpt_a_deriv_2, left_value_save, neighbour_coords[2], nnei_repeat_times)
+        self._simple_vmul_fp32(descrpt_a_deriv_0, left_value_save, neighbour_coords[0], self.nnei_repeat_times)
+        self._simple_vmul_fp32(descrpt_a_deriv_1, left_value_save, neighbour_coords[1], self.nnei_repeat_times)
+        self._simple_vmul_fp32(descrpt_a_deriv_2, left_value_save, neighbour_coords[2], self.nnei_repeat_times)
 
         # compute res 456
-        self._compute_descrpt_a_deriv_three(left_value_save, neighbour_coords[0],
-                                            neighbour_coords[0], neighbour_coords[1], neighbour_coords[2],
-                                            sw_tensor, res_vec_tensor_2, res_vec_tensor_1,
-                                            descrpt_a_1, dsw_tensor, dis_rev_tensor,
-                                            not_one, descrpt_a_deriv_3, descrpt_a_deriv_4,
-                                            descrpt_a_deriv_5)
+        self._compute_descrpt_a_deriv_three(left_value_save, neighbour_coords[0], neighbour_coords[0],
+                                            neighbour_coords[1], neighbour_coords[2], sw_tensor, res_vec_tensor_2,
+                                            res_vec_tensor_1, descrpt_a_1, dsw_tensor, dis_rev_tensor,
+                                            descrpt_a_deriv_3, descrpt_a_deriv_4, descrpt_a_deriv_5)
 
         # compute res 789
-        self._compute_descrpt_a_deriv_three(left_value_save, neighbour_coords[1],
-                                            neighbour_coords[1], neighbour_coords[0], neighbour_coords[2],
-                                            sw_tensor, res_vec_tensor_2, res_vec_tensor_1,
-                                            descrpt_a_2, dsw_tensor, dis_rev_tensor,
-                                            not_one, descrpt_a_deriv_7, descrpt_a_deriv_6,
-                                            descrpt_a_deriv_8)
+        self._compute_descrpt_a_deriv_three(left_value_save, neighbour_coords[1], neighbour_coords[1],
+                                            neighbour_coords[0], neighbour_coords[2], sw_tensor, res_vec_tensor_2,
+                                            res_vec_tensor_1, descrpt_a_2, dsw_tensor, dis_rev_tensor,
+                                            descrpt_a_deriv_7, descrpt_a_deriv_6, descrpt_a_deriv_8)
 
         # compute res 10 11 12
-        self._compute_descrpt_a_deriv_three(left_value_save, neighbour_coords[2],
-                                            neighbour_coords[2], neighbour_coords[0], neighbour_coords[1],
-                                            sw_tensor, res_vec_tensor_2, res_vec_tensor_1,
-                                            descrpt_a_3, dsw_tensor, dis_rev_tensor,
-                                            not_one, descrpt_a_deriv_11, descrpt_a_deriv_9,
-                                            descrpt_a_deriv_10)
+        self._compute_descrpt_a_deriv_three(left_value_save, neighbour_coords[2], neighbour_coords[2],
+                                            neighbour_coords[0], neighbour_coords[1], sw_tensor, res_vec_tensor_2,
+                                            res_vec_tensor_1, descrpt_a_3, dsw_tensor, dis_rev_tensor,
+                                            descrpt_a_deriv_11, descrpt_a_deriv_9, descrpt_a_deriv_10)
 
-        self._simple_vmul_fp32(descrpt_a_0, descrpt_a_0, sw_tensor, nnei_repeat_times)
-        self._simple_vmul_fp32(descrpt_a_1, descrpt_a_1, sw_tensor, nnei_repeat_times)
-        self._simple_vmul_fp32(descrpt_a_2, descrpt_a_2, sw_tensor, nnei_repeat_times)
-        self._simple_vmul_fp32(descrpt_a_3, descrpt_a_3, sw_tensor, nnei_repeat_times)
+        self._simple_vmul_fp32(descrpt_a_0, descrpt_a_0, sw_tensor, self.nnei_repeat_times)
+        self._simple_vmul_fp32(descrpt_a_1, descrpt_a_1, sw_tensor, self.nnei_repeat_times)
+        self._simple_vmul_fp32(descrpt_a_2, descrpt_a_2, sw_tensor, self.nnei_repeat_times)
+        self._simple_vmul_fp32(descrpt_a_3, descrpt_a_3, sw_tensor, self.nnei_repeat_times)
 
-        self._concat_result(res_descrpt_a_tensor, nnei_repeat_times, free_buffer)
+        self._concat_result(res_descrpt_a_tensor, free_buffer)
 
     def _vector_compute_process(self, dis_tensor, dis_dot_tensor,
                                 sw_tensor, dsw_tensor, res_vec_tensor, res_vec_tensor_1,
                                 res_vec_tensor_2, res_vec_tensor_3, dis_revert_tensor,
                                 res_descrpt_a_deriv_tensor, sorted_coords,
-                                rcut_ub, free_buffer, nnei_repeat_align):
+                                rcut_ub, free_buffer):
         """
-        the first vec compute process for descrpt and descrpt_deriv.
+        the first vec compute process for descrpt and descrpt_deriv
         """
-        nnei_mask_repeat = (self.nnei + self.nnei_once_repeat_nums - 1) // self.nnei_once_repeat_nums
-
-        self.tik_instance.vec_dup(self.nnei_once_repeat_nums, sw_tensor, 0, nnei_mask_repeat, self.repeat_stride)
-        self.tik_instance.vec_dup(self.nnei_once_repeat_nums, dsw_tensor, 0, nnei_mask_repeat, self.repeat_stride)
+        self.tik_instance.vec_dup(self.nnei_once_repeat_nums, sw_tensor, 0,
+                                  self.nnei_repeat_times, self.repeat_stride)
+        self.tik_instance.vec_dup(self.nnei_once_repeat_nums, dsw_tensor, 0,
+                                  self.nnei_repeat_times, self.repeat_stride)
 
         # copy data from dis_tensor to res_vec_tensor
-        self._simple_move_fp32(free_buffer, nnei_repeat_align * 2, dis_tensor, 0, self.nnei)
+        self._simple_move_fp32(free_buffer, self.nnei_repeat_align * 2, dis_tensor, 0, self.nnei)
 
-        self._simple_vrec_fp32(dis_revert_tensor, dis_tensor, nnei_mask_repeat)
-        self._simple_vrec_fp32(res_vec_tensor_1, dis_dot_tensor, nnei_mask_repeat)
+        self._simple_vrec_fp32(dis_revert_tensor, dis_tensor, self.nnei_repeat_times)
+        self._simple_vrec_fp32(res_vec_tensor_1, dis_dot_tensor, self.nnei_repeat_times)
 
-        self._simple_vmul_fp32(res_vec_tensor_2, dis_dot_tensor, dis_dot_tensor, nnei_mask_repeat)
+        self._simple_vmul_fp32(res_vec_tensor_2, dis_dot_tensor, dis_dot_tensor, self.nnei_repeat_times)
 
-        self._simple_vrec_fp32(res_vec_tensor_2, res_vec_tensor_2, nnei_mask_repeat)
+        self._simple_vrec_fp32(res_vec_tensor_2, res_vec_tensor_2, self.nnei_repeat_times)
 
-        self._simple_vmul_fp32(res_vec_tensor_3, res_vec_tensor_1, dis_revert_tensor, nnei_mask_repeat)
+        self._simple_vmul_fp32(res_vec_tensor_3, res_vec_tensor_1, dis_revert_tensor, self.nnei_repeat_times)
 
-        mask_length = (self.nnei + self.nnei_once_repeat_nums - 1) // self.nnei_once_repeat_nums
-
-        mask_tensor = self.tik_instance.Tensor("uint64", [mask_length],
+        mask_tensor = self.tik_instance.Tensor("uint64", [self.nnei_repeat_times],
                                                name="mask_tensor", scope=self.tik.scope_ubuf)
 
-        mask_tensor_1 = self.tik_instance.Tensor("uint64", [mask_length],
+        mask_tensor_1 = self.tik_instance.Tensor("uint64", [self.nnei_repeat_times],
                                                  name="mask_tensor_1", scope=self.tik.scope_ubuf)
 
-        mask_tensor_2 = self.tik_instance.Tensor("uint64", [mask_length],
+        mask_tensor_2 = self.tik_instance.Tensor("uint64", [self.nnei_repeat_times],
                                                  name="mask_tensor_2", scope=self.tik.scope_ubuf)
 
-        mask_tensor_3 = self.tik_instance.Tensor("uint64", [mask_length],
+        mask_tensor_3 = self.tik_instance.Tensor("uint64", [self.nnei_repeat_times],
                                                  name="mask_tensor_3", scope=self.tik.scope_ubuf)
 
         self.tik_instance.vec_dup(8, rcut_ub, self.rcut, 1, 0)
-        self.tik_instance.vcmpv_lt(mask_tensor, res_vec_tensor, rcut_ub, mask_length,
+        self.tik_instance.vcmpv_lt(mask_tensor, res_vec_tensor, rcut_ub, self.nnei_repeat_times,
                                    self.block_stride, 0, self.repeat_stride, 0)
 
         self.tik_instance.vec_dup(8, rcut_ub, self.rcut_smth, 1, 0)
-        self.tik_instance.vcmpv_ge(mask_tensor_1, res_vec_tensor, rcut_ub, mask_length,
+        self.tik_instance.vcmpv_ge(mask_tensor_1, res_vec_tensor, rcut_ub, self.nnei_repeat_times,
                                    self.block_stride, 0, self.repeat_stride, 0)
 
         mask_tensor_2_int16 = mask_tensor_2.reinterpret_cast_to("int16")
         mask_tensor_int16 = mask_tensor.reinterpret_cast_to("int16")
 
         mask_repeat_times = 1
-        self.tik_instance.vnot(mask_length * 4, mask_tensor_2_int16, mask_tensor_int16,
+        self.tik_instance.vnot(self.nnei_repeat_times * 4, mask_tensor_2_int16, mask_tensor_int16,
                                mask_repeat_times,
                                self.block_stride, self.block_stride,
                                self.repeat_stride, self.repeat_stride)
 
         mask_tensor_3_int16 = mask_tensor_3.reinterpret_cast_to("int16")
         mask_tensor_1_int16 = mask_tensor_1.reinterpret_cast_to("int16")
-        self.tik_instance.vnot(mask_length * 4, mask_tensor_3_int16, mask_tensor_1_int16,
+        self.tik_instance.vnot(self.nnei_repeat_times * 4, mask_tensor_3_int16, mask_tensor_1_int16,
                                mask_repeat_times,
                                self.block_stride, self.block_stride,
                                self.repeat_stride, self.repeat_stride)
 
-        self.tik_instance.vand(mask_length * 4, mask_tensor_2_int16, mask_tensor_2_int16, mask_tensor_3_int16,
+        self.tik_instance.vand(self.nnei_repeat_times * 4,
+                               mask_tensor_2_int16, mask_tensor_2_int16, mask_tensor_3_int16,
                                mask_repeat_times,
                                self.block_stride, self.block_stride, self.block_stride,
                                self.repeat_stride, self.repeat_stride, self.repeat_stride)
@@ -570,8 +511,8 @@ class ProdEnvMatACalcDescrpt:
         mask_nlist_one = self.tik_instance.Scalar(dtype="uint64", name="mask_nlist_one", init_value=0)
 
         uu_tensor = res_descrpt_a_deriv_tensor[0]
-        uu_tensor_back = res_descrpt_a_deriv_tensor[nnei_mask_repeat * self.nnei_once_repeat_nums]
-        uu_tensor_pow = res_descrpt_a_deriv_tensor[nnei_mask_repeat * self.nnei_once_repeat_nums * 2]
+        uu_tensor_back = res_descrpt_a_deriv_tensor[self.nnei_repeat_align]
+        uu_tensor_pow = res_descrpt_a_deriv_tensor[self.nnei_repeat_align * 2]
 
         revert_min = self.tik_instance.Scalar(dtype="float32", name="revert_min", init_value=self.rcut * (-1))
 
@@ -583,7 +524,7 @@ class ProdEnvMatACalcDescrpt:
         not_ten = self.tik_instance.Scalar(dtype="float32", name="not_ten", init_value=10 * (-1))
         fifthen = self.tik_instance.Scalar(dtype="float32", name="fifthen", init_value=15)
 
-        with self.tik_instance.for_range(0, mask_length) as i:
+        with self.tik_instance.for_range(0, self.nnei_repeat_times) as i:
             mask_right.set_as(mask_tensor_2[i])
             mask_right_one.set_as(mask_tensor[i])
             mask_nlist_one.set_as(mask_tensor_1[i])
@@ -784,10 +725,10 @@ class ProdEnvMatACalcDescrpt:
         """
         Get core nums for comppute process.
         """
-        one_cor_nloc_num = self.tik_instance.Scalar(self.INT32_TYPE, "one_cor_nloc_num",
+        one_cor_nloc_num = self.tik_instance.Scalar(self.int32_type, "one_cor_nloc_num",
                                                     init_value=self.nloc_d // self.cur_op_core_num)
 
-        last_core_num = self.tik_instance.Scalar(self.INT32_TYPE, "last_core_num",
+        last_core_num = self.tik_instance.Scalar(self.int32_type, "last_core_num",
                                                  init_value=self.nloc_d -
                                                             one_cor_nloc_num * (self.cur_op_core_num - 1))
 
@@ -800,12 +741,11 @@ class ProdEnvMatACalcDescrpt:
 
     def _compute_one_core(self, start_loc, stop_loc, block_idx, cur_sample, one_cor_nloc_num):
         """
-        Compute process, the main fuc.
+        Compute process, the main function.
         """
         with self.tik_instance.for_range(start_loc, stop_loc) as loc_nei_idx:
             extract_length = max(self.max_nbor_size, self.nnei)
-            extract_length_align = (extract_length + self.nnei_once_repeat_nums - 1) // \
-                                   self.nnei_once_repeat_nums * self.nnei_once_repeat_nums
+            extract_length_align = ceil_align(extract_length, self.nnei_once_repeat_nums)
 
             sorted_neighbour_coord_x = self.tik_instance.Tensor(self.coord_dtype, [extract_length_align],
                                                                 name="sorted_neighbour_coord_x",
@@ -831,21 +771,21 @@ class ProdEnvMatACalcDescrpt:
                                                              scope=self.tik.scope_ubuf)
             init_dis = self.tik_instance.Scalar("float32", "init_dis", init_value=self.rcut_smth + 1)
 
-            cur_loc = self.tik_instance.Scalar(self.INT32_TYPE, "loc_idx",
+            cur_loc = self.tik_instance.Scalar(self.int32_type, "loc_idx",
                                                init_value=block_idx * one_cor_nloc_num + loc_nei_idx)
 
-            for_input_cur_loc = self.tik_instance.Scalar(self.INT32_TYPE, "for_input_cur_loc",
+            for_input_cur_loc = self.tik_instance.Scalar(self.int32_type, "for_input_cur_loc",
                                                          init_value=block_idx * one_cor_nloc_num + loc_nei_idx)
 
-            cur_loc_index = self.tik_instance.Scalar(self.INT32_TYPE, "cur_loc_index",
+            cur_loc_index = self.tik_instance.Scalar(self.int32_type, "cur_loc_index",
                                                      init_value=for_input_cur_loc + 1)
             mesh_ub = self.tik_instance.Tensor(self.type_dtype, [8], name="mesh_ub", scope=self.tik.scope_ubuf)
             self.tik_instance.data_move(mesh_ub, self._gm_tensors.mesh_gm[cur_loc_index], 0, 1, 1, 0, 0)
             cur_loc_index.set_as(mesh_ub[0])
 
-            cur_loc_type_id = self.tik_instance.Scalar(self.INT32_TYPE, "cur_loc_type_id",
+            cur_loc_type_id = self.tik_instance.Scalar(self.int32_type, "cur_loc_type_id",
                                                        init_value=0)
-            nei_num_index = self.tik_instance.Scalar(self.INT32_TYPE, "nei_num_index",
+            nei_num_index = self.tik_instance.Scalar(self.int32_type, "nei_num_index",
                                                      init_value=1 + self.total_nloc + for_input_cur_loc)
             self.tik_instance.data_move(mesh_ub, self._gm_tensors.mesh_gm[nei_num_index], 0, 1, 1, 0, 0)
             self.cur_loc_nei_num.set_as(mesh_ub[0])
@@ -855,7 +795,7 @@ class ProdEnvMatACalcDescrpt:
                     self._data_move_to_ub_phase1(cur_sample, type_ub)
                     cur_loc_type_id.set_as(type_ub[cur_loc_index])
 
-            nn_offset = self.tik_instance.Scalar(self.INT32_TYPE, "nn_offset",
+            nn_offset = self.tik_instance.Scalar(self.int32_type, "nn_offset",
                                                  init_value=cur_sample * self.nloc_d * self.nnei + cur_loc * self.nnei)
             self._gm_data_to_ub(self._gm_tensors.rij_x_gm, sorted_neighbour_coord_x, nn_offset, -1,
                                 extract_length, extract_length_align, rep_tail_ub)
@@ -868,60 +808,38 @@ class ProdEnvMatACalcDescrpt:
             self._simple_vmul_fp32(sorted_dis_dot_tensor, sorted_dis_tensor, sorted_dis_tensor,
                                    extract_length_align // self.nnei_once_repeat_nums)
 
-            nnei_repeat_align = (self.nnei + self.repeat_once_size - 1) // self.repeat_once_size * self.repeat_once_size
-            res_descrpt_a_tensor = self.tik_instance.Tensor(self.coord_dtype, [nnei_repeat_align * 4],
+            res_descrpt_a_tensor = self.tik_instance.Tensor(self.coord_dtype, [self.nnei_repeat_align * 4],
                                                             name="res_descrpt_a_tensor",
                                                             scope=self.tik.scope_ubuf)
-
-            res_descrpt_a_deriv_tensor = self.tik_instance.Tensor(self.coord_dtype, [nnei_repeat_align * 12],
+            res_descrpt_a_deriv_tensor = self.tik_instance.Tensor(self.coord_dtype, [self.nnei_repeat_align * 12],
                                                                   name="res_descrpt_a_deriv_tensor",
                                                                   scope=self.tik.scope_ubuf)
             with self.tik_instance.if_scope(self.cur_loc_nei_num == -1):
-                self.tik_instance.vector_dup(self.repeat_once_size, res_descrpt_a_tensor, 0,
-                                             nnei_repeat_align * 4 // self.nnei_once_repeat_nums, self.block_stride,
-                                             self.repeat_stride)
-                vd_repeat_times = nnei_repeat_align * 12 // self.nnei_once_repeat_nums
-                max_repeat_times = 255
-                if vd_repeat_times > max_repeat_times:
-                    tail_repeat_times = vd_repeat_times - max_repeat_times
-                    self.tik_instance.vector_dup(self.repeat_once_size, res_descrpt_a_deriv_tensor, 0,
-                                                 max_repeat_times, self.block_stride,
-                                                 self.repeat_stride)
-                    self.tik_instance.vector_dup(self.repeat_once_size,
-                                                 res_descrpt_a_deriv_tensor[max_repeat_times * self.repeat_once_size],
-                                                 0,
-                                                 tail_repeat_times, self.block_stride,
-                                                 self.repeat_stride)
-                else:
-                    self.tik_instance.vector_dup(self.repeat_once_size, res_descrpt_a_deriv_tensor, 0,
-                                                 vd_repeat_times, self.block_stride,
-                                                 self.repeat_stride)
+                self._default_output(res_descrpt_a_tensor, res_descrpt_a_deriv_tensor)
             with self.tik_instance.else_scope():
                 with self.tik_instance.new_stmt_scope(disable_sync=False):
-                    free_buffer = self.tik_instance.Tensor(self.coord_dtype, [nnei_repeat_align * 12],
-                                                           name="free_buffer",
-                                                           scope=self.tik.scope_ubuf)
+                    free_buffer = self.tik_instance.Tensor(self.coord_dtype, [self.nnei_repeat_align * 12],
+                                                           name="free_buffer", scope=self.tik.scope_ubuf)
                     rcut_ub = self.tik_instance.Tensor(self.coord_dtype, [8], name="rcut_ub",
                                                        scope=self.tik.scope_ubuf)
 
                     sw_tensor = free_buffer[0]
-                    dsw_tensor = free_buffer[nnei_repeat_align]
-                    res_vec_tensor = free_buffer[nnei_repeat_align * 2]
-                    res_vec_tensor_1 = free_buffer[nnei_repeat_align * 3]
-                    res_vec_tensor_2 = free_buffer[nnei_repeat_align * 4]
-                    res_vec_tensor_3 = free_buffer[nnei_repeat_align * 5]
-                    dis_revert_tensor = free_buffer[nnei_repeat_align * 6]
+                    dsw_tensor = free_buffer[self.nnei_repeat_align]
+                    res_vec_tensor = free_buffer[self.nnei_repeat_align * 2]
+                    res_vec_tensor_1 = free_buffer[self.nnei_repeat_align * 3]
+                    res_vec_tensor_2 = free_buffer[self.nnei_repeat_align * 4]
+                    res_vec_tensor_3 = free_buffer[self.nnei_repeat_align * 5]
+                    dis_revert_tensor = free_buffer[self.nnei_repeat_align * 6]
 
                     with self.tik_instance.new_stmt_scope(disable_sync=False):
-                        self._vector_compute_process(sorted_dis_tensor,
-                                                     sorted_dis_dot_tensor,
+                        self._vector_compute_process(sorted_dis_tensor, sorted_dis_dot_tensor,
                                                      sw_tensor, dsw_tensor, res_vec_tensor, res_vec_tensor_1,
                                                      res_vec_tensor_2, res_vec_tensor_3, dis_revert_tensor,
                                                      res_descrpt_a_deriv_tensor,
                                                      [sorted_neighbour_coord_x,
                                                       sorted_neighbour_coord_y,
                                                       sorted_neighbour_coord_z],
-                                                     rcut_ub, free_buffer, nnei_repeat_align)
+                                                     rcut_ub, free_buffer)
 
                     with self.tik_instance.new_stmt_scope(disable_sync=False):
                         self._vector_compute_last_process(dis_revert_tensor,
@@ -951,7 +869,7 @@ class ProdEnvMatACalcDescrpt:
 
     def _get_dynamic_args(self):
         """
-        Get the nloc value in natoms data.
+        get the nloc value in natoms data
         """
         with self.tik_instance.new_stmt_scope(disable_sync=False):
             natoms_ub = self.tik_instance.Tensor(self.type_dtype, [self.block_num],
@@ -968,19 +886,19 @@ class ProdEnvMatACalcDescrpt:
     def _gm_data_to_ub(self, gm_tensor, ub_tensor, gm_offset, default_value,
                        extract_length, extract_length_align, rep_tail_ub):
         """
-        Copy distance / rij_x / rij_y / rij_z data to ub
+        copy distance / rij_x / rij_y / rij_z data to ub
         """
         if extract_length == extract_length_align:
             self.tik_instance.data_move(ub_tensor, gm_tensor[gm_offset], 0, 1,
                                         extract_length_align // self.repeat_stride, 0, 0)
         else:
-            align_num = extract_length_align - self.repeat_once_size
+            align_num = extract_length_align - self.nnei_once_repeat_nums
             tail_num = extract_length - align_num
 
-            if extract_length > self.repeat_once_size:
+            if extract_length > self.nnei_once_repeat_nums:
                 self.tik_instance.data_move(ub_tensor, gm_tensor[gm_offset], 0, 1,
                                             align_num // self.block_num, 0, 0)
-            self.tik_instance.vector_dup(self.repeat_once_size, ub_tensor[align_num], default_value,
+            self.tik_instance.vector_dup(self.nnei_once_repeat_nums, ub_tensor[align_num], default_value,
                                             1, self.block_stride, self.repeat_stride)
             self.tik_instance.data_move(rep_tail_ub, gm_tensor[gm_offset + align_num], 0, 1,
                                         (tail_num + self.block_num - 1) // self.block_num, 0, 0)
@@ -988,18 +906,79 @@ class ProdEnvMatACalcDescrpt:
                                     self.block_stride, self.block_stride,
                                     self.repeat_stride, self.repeat_stride)
 
+    def _default_output(self, res_descrpt_a_tensor, res_descrpt_a_deriv_tensor):
+        """
+        default descrpt and descrpt_deriv for nnei is -1
+        """
+        self.tik_instance.vector_dup(self.nnei_once_repeat_nums,
+                                     res_descrpt_a_tensor,
+                                     0,
+                                     self.nnei_repeat_align * 4 // self.nnei_once_repeat_nums,
+                                     self.block_stride,
+                                     self.repeat_stride)
+        vd_repeat_times = self.nnei_repeat_align * 12 // self.nnei_once_repeat_nums
+        max_repeat_times = 255
+        if vd_repeat_times > max_repeat_times:
+            tail_repeat_times = vd_repeat_times - max_repeat_times
+            self.tik_instance.vector_dup(self.nnei_once_repeat_nums,
+                                         res_descrpt_a_deriv_tensor,
+                                         0,
+                                         max_repeat_times,
+                                         self.block_stride,
+                                         self.repeat_stride)
+            self.tik_instance.vector_dup(self.nnei_once_repeat_nums,
+                                         res_descrpt_a_deriv_tensor[max_repeat_times * self.nnei_once_repeat_nums],
+                                         0,
+                                         tail_repeat_times,
+                                         self.block_stride,
+                                         self.repeat_stride)
+        else:
+            self.tik_instance.vector_dup(self.nnei_once_repeat_nums,
+                                         res_descrpt_a_deriv_tensor,
+                                         0,
+                                         vd_repeat_times,
+                                         self.block_stride,
+                                         self.repeat_stride)
+
+    def _simple_vmuls_fp32(self, dst_ub, src_ub, scalar):
+        """
+        simple vmuls for fp32 with default repeat viriables
+        """
+        self.tik_instance.vmuls(self.nnei_once_repeat_nums, dst_ub, src_ub, scalar,
+                                self.nnei_repeat_times,
+                                self.block_stride, self.block_stride,
+                                self.repeat_stride, self.repeat_stride)
+
+    def _simple_vadd_fp32(self, dst_ub, src0_ub, src1_ub):
+        """
+        simple vadd for fp32 with default repeat viriables
+        """
+        self.tik_instance.vadd(self.nnei_once_repeat_nums, dst_ub, src0_ub, src1_ub,
+                               self.nnei_repeat_times,
+                               self.block_stride, self.block_stride, self.block_stride,
+                               self.repeat_stride, self.repeat_stride, self.repeat_stride)
+
     def _simple_vrec_fp32(self, dst_ub, src_ub, repeat_times):
         """
-        Simple vrec for fp32 with default repeat viriables
+        simple vrec for fp32 with default repeat viriables
         """
         self.tik_instance.vrec(self.nnei_once_repeat_nums, dst_ub, src_ub,
                                repeat_times,
                                self.block_stride, self.block_stride,
                                self.repeat_stride, self.repeat_stride)
 
+    def _simple_vdiv_fp32(self, dst_ub, src0_ub, src1_ub, repeat_times):
+        """
+        simple vdiv for fp32 with default repeat viriables
+        """
+        self.tik_instance.vdiv(self.nnei_once_repeat_nums, dst_ub, src0_ub, src1_ub,
+                               repeat_times,
+                               self.block_stride, self.block_stride, self.block_stride,
+                               self.repeat_stride, self.repeat_stride, self.repeat_stride)
+
     def _simple_vmul_fp32(self, dst_ub, src0_ub, src1_ub, repeat_times):
         """
-        Simple vmul for fp32 with default repeat viriables
+        simple vmul for fp32 with default repeat viriables
         """
         self.tik_instance.vmul(self.nnei_once_repeat_nums, dst_ub, src0_ub, src1_ub,
                                repeat_times,
@@ -1008,7 +987,7 @@ class ProdEnvMatACalcDescrpt:
 
     def _simple_trans_fp32_8x_4(self, dst_ub, dst_offset, src_ub, hw):
         """
-        Simple transpose fp32 data from (8x, 4) to (4, 8x)
+        simple transpose fp32 data from (8x, 4) to (4, 8x)
         Suppose:
         (1) A is an array, shape is (8m, n)
         (2) AT is transpose of A, shape is (n, 8m)
@@ -1052,7 +1031,7 @@ class ProdEnvMatACalcDescrpt:
 
     def _simple_trans_fp32_4_8x(self, dst_ub, src_ub, hw):
         """
-        Simple transpose fp32 data from (4, 8x) to (8x, 4)
+        simple transpose fp32 data from (4, 8x) to (8x, 4)
         Suppose:
         (1) A is an array, shape is (n, 8m)
         (2) AT is transpose of A, shape is (8m, n)
@@ -1099,7 +1078,7 @@ class ProdEnvMatACalcDescrpt:
 
     def _simple_trans_fp32_12_8x(self, dst_ub, src_ub, hw):
         """
-        Simple transpose fp32 data from (12, 8x) to (8x, 12)
+        simple transpose fp32 data from (12, 8x) to (8x, 12)
         The transpose is same to (4, 8x).
         Note that `src_ub` will be overwrite for UB space is limited.
         """
@@ -1181,7 +1160,7 @@ class ProdEnvMatACalcDescrpt:
 def _check_params(distance, rij_x, rij_y, rij_z, types, natoms, mesh, davg, dstd, descrpt, descrpt_deriv,
                   rcut_a, rcut_r, rcut_r_smth, sel_a, kernel_name):
     """
-    Check the input args value.
+    check the input args value
     """
     para_check.check_dtype(distance.get("dtype").lower(), ("float32"), param_name="distance")
 

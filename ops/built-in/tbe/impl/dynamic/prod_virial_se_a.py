@@ -360,6 +360,7 @@ class ProdVirialSeA:
     def _simple_trans_fp32_256_3(self, drv_ub, trans_ub):
         """
         Simple transpose fp32 data from (256, 3) to (3, 256)
+        Note: Some address of trans_ub is used as temporary UB space when transpose data.
         """
         if tbe_platform.api_check_support("tik.v4dtrans", "float32"):
             self.tik_inst.v4dtrans(False, drv_ub, trans_ub, ProdVirialSeA.NNEI_UB, 3)
@@ -385,6 +386,7 @@ class ProdVirialSeA:
     def _simple_trans_fp32_256_12(self, drv_ub, tmpv_ub):
         """
         Simple transpose fp32 data from (256, 12) to (12, 256)
+        Note: Some address of tmpv_ub is used as temporary UB space when transpose data.
         """
         if tbe_platform.api_check_support("tik.v4dtrans", "float32"):
             self.tik_inst.v4dtrans(False, drv_ub, tmpv_ub, ProdVirialSeA.NNEI_UB, 12)
@@ -410,6 +412,7 @@ class ProdVirialSeA:
     def _simple_trans_fp32_16_256(self, drv_ub, tmpv_ub):
         """
         Simple transpose fp32 data from (16, 256) to (256, 16)
+        Note: Some address of tmpv_ub is used as temporary UB space when transpose data.
         """
         if tbe_platform.api_check_support("tik.v4dtrans", "float32"):
             self.tik_inst.v4dtrans(True, tmpv_ub, drv_ub, ProdVirialSeA.NNEI_UB, 16)
