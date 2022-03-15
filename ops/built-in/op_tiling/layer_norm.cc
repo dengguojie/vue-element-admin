@@ -23,7 +23,6 @@
 #include "vector_tiling_log.h"
 
 namespace optiling {
-
 const struct ops::AttrBase LAYERNORM_BEGIN_NORM_AXIS(0, "begin_norm_axis");
 
 bool LayerNormParseFunc(const std::string &op_type, const nlohmann::json &compile_info,
@@ -137,7 +136,7 @@ bool LayerNormUnknowAxisTiling(const string &op_type, const ge::Operator &op_par
                   VECTOR_INNER_ERR_REPORT_TILIING(op_type, "BEGIN_NORM_AXIS is > input dim size, return failed"),
                   return false);
   std::vector<int32_t> reduce_axis(input_shape_dim - reduce_attr, 0);
-  for (int32_t i = 0; i < input_shape_dim - reduce_attr; i++) {
+  for (int32_t i = 0; i < static_cast<int32_t>(input_shape_dim - reduce_attr); i++) {
     reduce_axis[i] = reduce_attr + i;
   }
   std::vector<int64_t> input_shape_vec = input_shape.GetDims();
