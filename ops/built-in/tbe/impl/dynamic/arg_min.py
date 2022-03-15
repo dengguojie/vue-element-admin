@@ -375,7 +375,8 @@ class Argmin():
                 nburst_len.set_as(_get_ceil_int(self.axis_size, self.data_each_block))
                 repeat_block.set_as(nburst_len)
                 repeat_vcmin.set_as(nburst)
-                src_nburst_stride = _get_ceil_int(self.axis_size * self.align_num, self.data_each_block) - nburst_len
+                src_nburst_stride = _get_ceil_int(self.axis_size * self.align_num, self.data_each_block) - \
+                                    _get_ceil_int(self.axis_size, self.data_each_block)
                 des_nburst_stride = 0
                 with self.tik_instance.if_scope(self.align_num == 1):
                     nburst_len.set_as(nburst_len * nburst)
