@@ -42,6 +42,15 @@
         "ori_shape": [
           1
         ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            10,
+            10
+          ]
+        ],
         "ori_format": "ND",
         "name": "max_output_size",
         "type": "int32"
@@ -75,14 +84,14 @@
           2,
           1,
           6,
-          3
+          4
         ],
         "format": "ND",
         "ori_shape": [
           2,
           1,
           6,
-          3
+          4
         ],
         "ori_format": "ND",
         "name": "index_id",
@@ -162,6 +171,15 @@
         "ori_shape": [
           1
         ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            5,
+            5
+          ]
+        ],
         "ori_format": "ND",
         "name": "max_output_size",
         "type": "int32"
@@ -195,14 +213,14 @@
           2,
           1,
           6,
-          3
+          4
         ],
         "format": "ND",
         "ori_shape": [
           2,
           1,
           6,
-          3
+          4
         ],
         "ori_format": "ND",
         "name": "index_id",
@@ -282,6 +300,15 @@
         "ori_shape": [
           1
         ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            25,
+            25
+          ]
+        ],
         "ori_format": "ND",
         "name": "max_output_size",
         "type": "int32"
@@ -315,14 +342,14 @@
           2,
           2,
           720,
-          3
+          4
         ],
         "format": "ND",
         "ori_shape": [
           2,
           2,
           720,
-          3
+          4
         ],
         "ori_format": "ND",
         "name": "index_id",

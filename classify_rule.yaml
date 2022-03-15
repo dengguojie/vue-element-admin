@@ -2355,6 +2355,7 @@ unkown:
       - ops/built-in/tbe/impl/renorm.py
       - ops/built-in/tbe/impl/scatter_nd_d_help.py
       - ops/built-in/tbe/impl/top_k_d.py
+      - ops/built-in/tbe/impl/non_max_suppression_v7.py
       - ops/built-in/tbe/impl/merge_sort.py
       - ops/built-in/tbe/impl/multi_merge.py
       - ops/built-in/tbe/impl/segment_sort.py
