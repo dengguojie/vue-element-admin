@@ -565,12 +565,7 @@ def gemm(tensor_a, tensor_b, para_dict):
 def filter_case(tensor_a, tensor_b, kernel_name):
     # vgg16_faster_rcnn_coco_int8 sppnet vgg16_faster_rcnn_coco vgg_ilsvrc_16
     black_list_compress_fc = [
-        "304_25088_784_256_16_32_int8",
-        "1_4096_128_63_16_32_int8",
         "1_12800_400_256_16_32_int8",
-        "1_4096_128_256_16_32_int8",
-        "1_25088_784_256_16_32_int8",
-        "128_19_16_32_128_256_16_32_int8",
         "128_19_16_32_128_6_16_32_int8",
         "128_19_16_32_128_21_16_32_int8"
     ]
@@ -687,7 +682,7 @@ def filter_case(tensor_a, tensor_b, kernel_name):
                        "64_1000_16_16_64_195_16_16_float16",
                        "16_1000_16_16_8_16_16_16_float16",
                        "32_1000_16_16_16_32_16_16_float16",
-                       "8_1000_16_16_1_1000_16_16_float16" 
+                       "8_1000_16_16_1_1000_16_16_float16"
         ],
         "Ascend910ProA": [
             # FusionOp_MatMul_Mul

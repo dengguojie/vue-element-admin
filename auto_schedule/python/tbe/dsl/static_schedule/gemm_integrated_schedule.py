@@ -166,6 +166,7 @@ class GemmSchedule:
     FRACTAL_Z_M_INDEX = -4
     FRACTAL_Z_N_INDEX = -3
     FRACTAL_Z_KA_INDEX = -3
+    FRACTAL_Z_LEN = 4
     FRACTAL_LEN_WITH_BATCH = 5
     BLOCK_BATCH_DIM_INDEX = 0
     BLOCK_N_DIM_INDEX = 1
@@ -2150,6 +2151,13 @@ class GemmSchedule:
         tiling["block_dim"] = block_dim
         return tiling
 
+    def check_tiling_value(self, tiling):
+        if len(tiling.get("block_dim")) != self.FRACTAL_Z_LEN:
+            error_manager_cube.raise_err_message_cube("block_dim should be 4 dim")
+        batch_dim, n_dim, m_dim, reduce_dim = tiling.get("block_dim")
+        if batch_dim < 1 or n_dim < 1 or m_dim < 1 or reduce_dim < 1:
+            error_manager_cube.raise_err_message_cube("block_dim cannot be less than 1")
+
     def _tiling_process(self):
         """
         :param None:
@@ -2253,6 +2261,7 @@ class GemmSchedule:
                 "value": "None"
             }
             raise RuntimeError(args_dict, error_manager_util.get_error_message(args_dict))
+        self.check_tiling_value(tiling)
         self.tiling = tiling
         self.status_controller.attach_at_flag = tiling.get("attach_at_flag")
         self._print_debug(tiling, "auto tiling result")
@@ -4657,16 +4666,10 @@ class GemmSchedule:
         block_size_max = 32 * 1024
         block_unit = 512
         data_size = tile_k * tile_n * block_unit
-        size_max = block_size_max
-        if 0 < data_size < size_max:
-            size_max = data_size
-        block_size = block_unit
-        for block_idx in range(size_max, 0, block_unit * (-1)):
-            if data_size % block_idx == 0:
-                block_size = block_idx
-                break
+        if data_size > block_size_max:
+            error_manager_cube.raise_err_message_cube("block_size cannot be greater than block_size_max")
 
-        return int(block_size)
+        return int(data_size)
 
     def _set_compress_info(self, compress_tensor, compress_index, tile_k, tile_n, out_axis):
         """
@@ -4683,12 +4686,16 @@ class GemmSchedule:
 
         tile_k_value = compress_tensor.op.attrs["tile_L1_k"]
         tile_n_value = compress_tensor.op.attrs["tile_L1_n"]
+        block_dim_n = compress_tensor.op.attrs["block_dim_n"]
 
         block_size = self._get_compress_block_info(tile_k, tile_n)
-        k_value = block_size // (tile_n * frac_size)
+        k_value = tile_k
 
         self.sch.set_var_range(tile_k_value, k_value, k_value)
         self.sch.set_var_range(tile_n_value, tile_n, tile_n)
+
+        batch_dim, n_dim, m_dim, reduce_dim = self.tiling.get("block_dim")
+        self.sch.set_var_range(block_dim_n, n_dim, n_dim)
 
         k_block_num = (dim_k + k_value - 1) // k_value
         n_block_num = (dim_n + tile_n - 1) // tile_n
@@ -4703,17 +4710,23 @@ class GemmSchedule:
 
         conflict = tvm.make.Call("int32", "tvm_tuple",
                                 (block_size, index_size, mode, engine,
-                                channel, ratios, k_value, tile_n),
+                                channel, ratios, k_value, tile_n, n_dim),
                                 tvm.expr.Call.PureIntrinsic, None, 0)
         self.sch[compress_tensor].pragma(compress_tensor.op.axis[0],
                                     "json_info_compress_parameters", conflict)
         tensor_len = len(compress_tensor.shape)
         # transform data to continue by block_size
-        self.sch[compress_tensor].emit_insn(compress_tensor.op.axis[tensor_len - 4],
-                                            "unzip",
-                                            {"compress_mode": mode,
-                                            "block_size": block_size,
-                                            "hoist_axis": out_axis})
+        if batch_dim * n_dim * m_dim * reduce_dim > 1:  # unzip don't support multi core
+            self.sch[compress_tensor].emit_insn(compress_tensor.op.axis[tensor_len - self.FRACTAL_Z_LEN],
+                                                "unzip",
+                                                {"compress_mode": mode,
+                                                "block_size": block_size})
+        else:
+            self.sch[compress_tensor].emit_insn(compress_tensor.op.axis[tensor_len - self.FRACTAL_Z_LEN],
+                                                "unzip",
+                                                {"compress_mode": mode,
+                                                "block_size": block_size,
+                                                "hoist_axis": out_axis})
 
     def _get_index_at_axis(self):
         axis = self.sch_agent[self.root_tensor].get_active_scopes()
@@ -4727,6 +4740,8 @@ class GemmSchedule:
         m_shape = self.container.TENSOR_MAP.get("a_l0a").shape[-4].value
         m_factor = (m_shape + block_dim_m - 1) // block_dim_m
         index_at_axis = axis_m if self.al1_tiling_m * 2 < m_factor else -1
+        if index_at_axis != -1 and self.status_controller.bl1_attach_status == 'full_load':
+            index_at_axis = self.sch_agent[self.container.TENSOR_MAP.get('b_l1')].get_active_scopes()[0]
         return index_at_axis
 
     def _choose_dma_copy_for_res(self):

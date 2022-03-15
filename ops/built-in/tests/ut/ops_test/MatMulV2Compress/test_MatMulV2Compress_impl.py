@@ -132,6 +132,47 @@ ut_case.add_case(["Ascend310"], case7)
 ut_case.add_case(["Ascend310"], case8)
 ut_case.add_case(["Ascend310"], case9)
 
+# case from vgg16
+case10 = {"params": [{"shape": (784,19,16,32), "dtype": "int8", "format": "FRACTAL_NZ", "ori_shape": (304,25088),"ori_format": "ND"},
+                    {"shape": (784,256,16,32), "dtype": "int8", "format": "FRACTAL_Z", "ori_shape": (25088,4096),"ori_format": "HWCN"},
+                    {"shape": (1, ), "dtype": "int8", "format": "ND", "ori_shape": (1, ), "ori_format": "ND"},
+                    {"shape": (4096, ), "dtype": "int32", "format": "ND", "ori_shape": (4096, ),"ori_format": "ND"},
+                    None,
+                    {"shape": (256,19,16,16), "dtype": "int32", "format": "FRACTAL_NZ", "ori_shape": (304,4096),"ori_format": "ND"},
+                    False, False],
+         "case_name": "MatMulV2Compress_10",
+         "expect": "success",
+         "format_expect": [],
+         "support_expect": True}
+ut_case.add_case(["Ascend710", "SD3403", "Ascend910A"], case10)
+
+# case from vgg16
+case11 = {"params": [{"shape": (128,1,16,32), "dtype": "int8", "format": "FRACTAL_NZ", "ori_shape": (1,4096),"ori_format": "ND"},
+                    {"shape": (128,63,16,32), "dtype": "int8", "format": "FRACTAL_Z", "ori_shape": (4096,1008),"ori_format": "HWCN"},
+                    {"shape": (1, ), "dtype": "int8", "format": "ND", "ori_shape": (1, ), "ori_format": "ND"},
+                    None,
+                    None,
+                    {"shape": (63,1,16,16), "dtype": "int32", "format": "FRACTAL_NZ", "ori_shape": (1,1008),"ori_format": "ND"},
+                    False, False],
+         "case_name": "MatMulV2Compress_11",
+         "expect": "success",
+         "format_expect": [],
+         "support_expect": True}
+ut_case.add_case(["Ascend710", "SD3403", "Ascend310"], case11)
+
+# batch_matmul
+case12 = {"params": [{"shape": (2,784,19,16,32), "dtype": "int8", "format": "FRACTAL_NZ", "ori_shape": (2,304,25088),"ori_format": "ND"},
+                    {"shape": (2,784,256,16,32), "dtype": "int8", "format": "FRACTAL_Z", "ori_shape": (2,25088,4096),"ori_format": "HWCN"},
+                    {"shape": (1, ), "dtype": "int8", "format": "ND", "ori_shape": (1, ), "ori_format": "ND"},
+                    {"shape": (4096, ), "dtype": "int32", "format": "ND", "ori_shape": (4096, ),"ori_format": "ND"},
+                    None,
+                    {"shape": (2,256,19,16,16), "dtype": "int32", "format": "FRACTAL_NZ", "ori_shape": (2,304,4096),"ori_format": "ND"},
+                    False, False],
+         "case_name": "MatMulV2Compress_12",
+         "expect": "failed",
+         "format_expect": [],
+         "support_expect": True}
+ut_case.add_case(["Ascend910A"], case12)
 
 def test_split_matmul(test_arg):
     x1 = {"format": "FRACTAL_NZ","ori_format": "ND", "dtype": "int8", "shape": (1, 1, 16, 32), "ori_shape": (16, 32)}

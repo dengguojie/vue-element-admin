@@ -30,6 +30,7 @@ from tbe.dsl.compute import cube_util
 from tbe.dsl.base.operation import in_dynamic
 from tbe.common.utils import para_check
 from tbe.common.utils import shape_util
+from tbe.common.utils.errormgr import error_manager_cube
 from tbe.common.utils.errormgr import error_manager_util
 from tbe.tvm.tensor import Tensor
 from .gemm_compute_util import FormatCompute
@@ -344,7 +345,7 @@ class GEMMCompute(FormatCompute):
     # K_DIM is k * k0
     GEVM_MODE_K_DIM_LIMIT = 9216
     # if (K_DIM, N_DIM) in GEVM_MODE_LIMIT_LIST, use gemm mode. N_DIM is n*n0
-    GEVM_MODE_LIMIT_LIST = [(4096, 4096), ]
+    GEVM_MODE_LIMIT_LIST = [(4096, 4096), (4096, 1008)]
 
     def __init__(self, tensor_a, tensor_b, para_dict):
         super(GEMMCompute, self).__init__()
@@ -938,8 +939,9 @@ class GEMMCompute(FormatCompute):
         if (len(a_shape) in (3, 5)) or (len(b_shape) in (3, 5)):
             have_batch = True
 
+        compress_flag = self.compress_index is not None
         not_split_k = (not_fp16_in_fp32_out or not_fractal_nz_out or is_gemm or have_bias or self.is_fusion
-                       or self.cache_tiling_flag or have_batch or self.fc_flag)
+                       or self.cache_tiling_flag or have_batch or self.fc_flag or compress_flag)
         if not_split_k:
             return
 
@@ -1565,31 +1567,30 @@ class GEMMCompute(FormatCompute):
 
         tile_k_value = tvm.var("tile_L1_k", dtype="int32")
         tile_n_value = tvm.var("tile_L1_n", dtype="int32")
+        n_dim = tvm.var("block_dim_n", dtype="int32")
 
         shape_src = tensor_src.shape
         block_n_num = (shape_src[-3] + tile_n_value - 1) // tile_n_value
         block_k_num = (shape_src[-4] + tile_k_value - 1) // tile_k_value
+        n_dim_num = (block_n_num + n_dim - 1) // n_dim
+        n_dim_value = n_dim_num * tile_n_value
 
         # tile_mode is 1 when tile_n < dim_n, or tile_mode is 0
         if len(shape_src) == 4:
-            tensor = tvm.compute(shape_src, lambda i, j, k, l:tvm.unzip(
-                comp_index((j // tile_n_value * block_k_num + i // tile_k_value) * comp_size),
-                tensor_src(i, j, k, l)),
-                name=op_name,
-                attrs={"tile_L1_k": tile_k_value,
-                        "tile_L1_n": tile_n_value}
-            )
-        elif len(shape_src) == 5:
-            # get multi n block number
-            batch_block_num = block_n_num * block_k_num
-            tensor = tvm.compute(shape_src, lambda batch, i, j, k, l:tvm.unzip(
-                comp_index(((j // tile_n_value * block_k_num + i // tile_k_value)
-                            + batch * batch_block_num) * comp_size),
-                tensor_src(batch, i, j, k, l)),
-                name=op_name,
-                attrs={"tile_L1_k": tile_k_value,
-                        "tile_L1_n": tile_n_value}
-            )
+            tensor = tvm.compute(shape_src,
+                                 lambda i, j, k, l: tvm.unzip(
+                                     comp_index((j // n_dim_value * n_dim_num * block_k_num
+                                                 + (j % n_dim_value) // tile_n_value * block_k_num
+                                                 + i // tile_k_value) * comp_size),
+                                     tensor_src(i, j, k, l)),
+                                 name=op_name,
+                                 attrs={"tile_L1_k": tile_k_value,
+                                        "tile_L1_n": tile_n_value,
+                                        "block_dim_n": n_dim}
+                                 )
+        else:
+            error_manager_cube.raise_err_message_cube("The compress tensor is not supported, dim is {}".format(
+                len(shape_src)))
         return tensor
 
     def _get_beta_c_matrix(self):
