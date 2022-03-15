@@ -18,7 +18,7 @@
 extract_image_patches tiling
 """
 from enum import Enum, auto
-
+from tbe.dsl.base import operation
 from tbe.dsl.base.operation import register_tiling_case
 from .constants import Pattern
 
@@ -28,6 +28,7 @@ class TilingStrategy(Enum):
     TilingStrategy
     """
     FOUR_DIMEN = auto()
+    SPECIAL_DIMEN_KEY = auto()
 
 
 @register_tiling_case(pattern=Pattern.EXTRACT_IMAGE_PATCHES)
@@ -45,10 +46,21 @@ def calc_extract_image_patches(outs, option=None):
     """
     cases = []
     four_dimen_key = 10000
-    cases.append({
-        "key":four_dimen_key,
-        "block_tiling_axis":0,
-        "ub_tiling_axis": 1,
-        "tiling_strategy": TilingStrategy.FOUR_DIMEN})
+    special_dimen_key = 20000
+    mode = operation.get_context().get("mode")
+    if mode == "special":
+        cases.append({
+            "key": special_dimen_key,
+            "block_tiling_axis": 0,
+            "ub_tiling_axis": 1,
+            "tiling_strategy": TilingStrategy.SPECIAL_DIMEN_KEY
+        })
+    else:
+        cases.append({
+            "key": four_dimen_key,
+            "block_tiling_axis": 0,
+            "ub_tiling_axis": 1,
+            "tiling_strategy": TilingStrategy.FOUR_DIMEN
+        })
 
     return cases

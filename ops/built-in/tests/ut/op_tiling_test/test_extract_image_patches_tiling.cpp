@@ -56,21 +56,11 @@ TEST_F(ExtractImagePatchesTiling, ExtractImagePatches_tiling_test_1) {
   std::string op_name = "ExtractImagePatches";
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
-  std::string compileInfo = R"({
-                        "_pattern": "ExtractImagePatches",
-                        "ubSize":253952,
-                        "coreNum":32,
-                        "avgSplitUbSize": 63488,
-                        "resUbNum": 9,
-                        "alignBlockSize": 16,
-                        "workspaceOutput": 9,
-                        "workspaceFilter": 4,
-                        "workspaceC": 16,
-                        "_vars": {"10000": ["dim_0", "multi_core_factor_0"]},
-                        "_normal_vars": {"10000": []},
-                        "_attr_vars": {"10000": []},
-                        "_custom_vars": {"10000": ["dim_0", "multi_core_factor_0"]}
-                        })";
+  std::string compileInfo =
+      "{\"_pattern\": \"ExtractImagePatches\", \"coreNum\":32, \"inSpecialDevice\": false,"
+      "\"workspaceDimen\": [9, 4, 16], \"realC\": 2, \"ksizeHW\": [2, 2], \"strideHW\": [2, 2], \"dilateHW\": [1, 1],"
+      "\"_vars\": {\"10000\": [\"dim_0\", \"multi_core_factor_0\"]}, \"_normal_vars\": {\"10000\":[]}, "
+      "\"_attr_vars\": {\"10000\":[]}, \"_custom_vars\": {\"10000\": [\"dim_0\", \"multi_core_factor_0\"]}}";
 
   std::vector<int64_t> input{2, 6, 6, 2};
   std::vector<int64_t> output{2, 3, 3, 8};
