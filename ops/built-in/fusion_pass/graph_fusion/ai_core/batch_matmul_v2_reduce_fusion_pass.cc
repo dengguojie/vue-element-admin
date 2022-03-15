@@ -319,24 +319,7 @@ Status BatchMatMulV2ReduceFusionPass::DealWithInputWithKOne(
   return SUCCESS;
 }
 
-Status BatchMatMulV2ReduceFusionPass::DoFusionWithKOne(ge::ComputeGraph &graph, ge::NodePtr &fused_node,
-                                                       const vector<int64_t> &new_x1_out_shape,
-                                                       const vector<int64_t> &new_x2_out_shape,
-                                                       const vector<bool> &trans) const {
-  auto param_tuple = std::make_tuple(0, new_x1_out_shape, 1, new_x2_out_shape, trans);
-  FUSION_PASS_CHECK(SUCCESS != DealWithInputWithKOne(graph, fused_node, param_tuple),
-                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "DealWithInputWithKOne failed!"), return FAILED);
-
-  auto op_desc = fused_node->GetOpDesc();
-  FUSION_PASS_CHECK(op_desc == nullptr, CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "op_desc is null."),
-                    return FAILED);
-  if (!trans[0]) {
-    AttrUtils::SetBool(op_desc, "adj_x1", true);
-  }
-  if (trans[1]) {
-    AttrUtils::SetBool(op_desc, "adj_x2", false);
-  }
-
+Status BatchMatMulV2ReduceFusionPass::DoFusionGraph(ge::ComputeGraph &graph, ge::NodePtr &fused_node) const {
   auto out_anchor = fused_node->GetOutDataAnchor(0);
   FUSION_PASS_CHECK(out_anchor == nullptr, CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "out_anchor is null."),
                     return FAILED);
@@ -394,6 +377,28 @@ Status BatchMatMulV2ReduceFusionPass::DoFusionWithKOne(ge::ComputeGraph &graph, 
     FUSION_PASS_CHECK(graph.RemoveNode(next_node) == ge::GRAPH_FAILED,
                       OP_LOGD(FUSED_OP_TYPE.c_str(), "remove reducesumd node failed"), return FAILED);
   }
+  return SUCCESS;
+}
+
+Status BatchMatMulV2ReduceFusionPass::DoFusionWithKOne(ge::ComputeGraph &graph, ge::NodePtr &fused_node,
+                                                       const vector<int64_t> &new_x1_out_shape,
+                                                       const vector<int64_t> &new_x2_out_shape,
+                                                       const vector<bool> &trans) const {
+  auto param_tuple = std::make_tuple(0, new_x1_out_shape, 1, new_x2_out_shape, trans);
+  FUSION_PASS_CHECK(SUCCESS != DealWithInputWithKOne(graph, fused_node, param_tuple),
+                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "DealWithInputWithKOne failed!"), return FAILED);
+
+  auto op_desc = fused_node->GetOpDesc();
+  FUSION_PASS_CHECK(op_desc == nullptr, CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "op_desc is null."),
+                    return FAILED);
+  if (!trans[0]) {
+    AttrUtils::SetBool(op_desc, "adj_x1", true);
+  }
+  if (trans[1]) {
+    AttrUtils::SetBool(op_desc, "adj_x2", false);
+  }
+  FUSION_PASS_CHECK(SUCCESS != DoFusionGraph(graph, fused_node),
+                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "DoFusionGraph with k one failed!"), return FAILED);
   return SUCCESS;
 }
 
@@ -530,62 +535,9 @@ Status BatchMatMulV2ReduceFusionPass::DoFusionWithKNotOne(ge::ComputeGraph &grap
   auto param_tuple = std::make_tuple(0, new_x1_out_shape, 1, new_x2_out_shape, trans);
   FUSION_PASS_CHECK(SUCCESS != DealWithInputWithKNotOne(graph, fused_node, param_tuple),
                     CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "DealWithInputWithKNotOne failed!"), return FAILED);
-
-  // check if next_node is Cast32
-  auto out_anchor = fused_node->GetOutDataAnchor(0);
-  FUSION_PASS_CHECK(out_anchor == nullptr, CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "out_anchor is null."),
+  FUSION_PASS_CHECK(SUCCESS != DoFusionGraph(graph, fused_node),
+                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "DoFusionGraph with k not one failed!"),
                     return FAILED);
-  auto peer_in_anchors = out_anchor->GetPeerInDataAnchors();
-  if (peer_in_anchors.size() != 1) {
-    OP_LOGD(FUSED_OP_TYPE.c_str(), "fused_node peer_in_anchors.size() is not 1.");
-    return FAILED;
-  }
-  auto next_node = peer_in_anchors.at(0)->GetOwnerNode();
-  FUSION_PASS_CHECK(next_node == nullptr, CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "next_node is null."),
-                    return FAILED);
-  if (next_node->GetType() == CAST) {
-    ge::DataType batchmatmul_output_dtype = fused_node->GetOpDesc()->GetOutputDesc(0).GetDataType();
-    ge::DataType cast_output_dtype = next_node->GetOpDesc()->GetOutputDesc(0).GetDataType();
-    if (batchmatmul_output_dtype != ge::DT_FLOAT16 || cast_output_dtype != ge::DT_FLOAT) {
-      OP_LOGD(FUSED_OP_TYPE.c_str(), "BatchMatMul output dtype is %u, Cast output dtype is %u",
-              batchmatmul_output_dtype, cast_output_dtype);
-      return FAILED;
-    }
-
-    // check if next_next_node is ReduceSumD
-    out_anchor = next_node->GetOutDataAnchor(0);
-    FUSION_PASS_CHECK(out_anchor == nullptr,
-                      CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "next_node out_anchor is null."), return FAILED);
-    peer_in_anchors = out_anchor->GetPeerInDataAnchors();
-    if (peer_in_anchors.size() != 1) {
-      OP_LOGD(FUSED_OP_TYPE.c_str(), "next_node peer_in_anchors.size() is not 1.");
-      return FAILED;
-    }
-    auto next_next_node = peer_in_anchors.at(0)->GetOwnerNode();
-    FUSION_PASS_CHECK(next_next_node == nullptr,
-                      CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "next_next_node is null."), return FAILED);
-    // bmm + cast32 + reducesumd : fused_node -> next_node -> next_next_node
-    if (next_next_node->GetType() == REDUCESUMD) {
-      FUSION_PASS_CHECK(LinkEdge(fused_node, next_node) == FAILED,
-                        OP_LOGD(FUSED_OP_TYPE.c_str(), "link next_node edge Failed."), return FAILED);
-      FUSION_PASS_CHECK(LinkEdge(fused_node, next_next_node) == FAILED,
-                        OP_LOGD(FUSED_OP_TYPE.c_str(), "link edge Failed."), return FAILED);
-      FUSION_PASS_CHECK(graph.RemoveNode(next_node) == ge::GRAPH_FAILED,
-                        OP_LOGD(FUSED_OP_TYPE.c_str(), "cast32 node remove failed"), return FAILED);
-      FUSION_PASS_CHECK(graph.RemoveNode(next_next_node) == ge::GRAPH_FAILED,
-                        OP_LOGD(FUSED_OP_TYPE.c_str(), "reducesumd node remove failed"), return FAILED);
-
-      // set batchmatmul output dtype fp32
-      auto batchmatmul_output_desc = fused_node->GetOpDesc()->MutableOutputDesc(0);
-      batchmatmul_output_desc->SetDataType(ge::DT_FLOAT);
-      batchmatmul_output_desc->SetOriginDataType(ge::DT_FLOAT);
-    }
-  } else if (next_node->GetType() == REDUCESUMD) {  // bmm + reducesumd : fused_node -> next_node
-    FUSION_PASS_CHECK(LinkEdge(fused_node, next_node) == FAILED,
-                      OP_LOGD(FUSED_OP_TYPE.c_str(), "link next_node edge Failed."), return FAILED);
-    FUSION_PASS_CHECK(graph.RemoveNode(next_node) == ge::GRAPH_FAILED,
-                      OP_LOGD(FUSED_OP_TYPE.c_str(), "reducesumd node remove failed"), return FAILED);
-  }
   return SUCCESS;
 }
 

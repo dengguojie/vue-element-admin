@@ -48,6 +48,7 @@ class BatchMatMulV2ReduceFusionPass : public PatternFusionBasePass {
                               std::tuple<int, std::vector<int64_t>, std::vector<int32_t>> &param,
                               ge::NodePtr &transposedNode) const;
   Status LinkEdge(ge::NodePtr &fused_node, ge::NodePtr &tgt_node) const;
+  Status DoFusionGraph(ge::ComputeGraph &graph, ge::NodePtr &fused_node) const;
   Status DealWithInputWithKOne(
       ge::ComputeGraph &graph, ge::NodePtr &fused_node,
       std::tuple<int, std::vector<int64_t>, int, std::vector<int64_t>, std::vector<bool>> &param) const;
