@@ -43,4 +43,7 @@ if __name__ == '__main__':
     set_current_compile_soc_info("Ascend710")
     test_prod_force_se_a_01()
     test_prod_force_se_a_02()
+    set_current_compile_soc_info("Ascend910")
+    test_prod_force_se_a_01()
+    test_prod_force_se_a_02()
     exit(0)
