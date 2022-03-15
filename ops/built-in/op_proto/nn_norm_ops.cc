@@ -55,7 +55,7 @@ IMPLEMT_COMMON_INFERFUNC(DropoutWithMulsAndSoftmaxGradInferShape) {
 COMMON_INFER_FUNC_REG(DropoutWithMulsAndSoftmaxGrad, DropoutWithMulsAndSoftmaxGradInferShape);
 // ------------------------DropoutWithMulsAndSoftmaxGrad END-----------------------
 
-//-------------SparseSoftmaxCrossEntropyWithLogits----------------
+// -------------SparseSoftmaxCrossEntropyWithLogits----------------
 IMPLEMT_VERIFIER(SparseSoftmaxCrossEntropyWithLogits, SparseSoftmaxCrossEntropyWithLogitsVerify) {
   return GRAPH_SUCCESS;
 }
@@ -78,7 +78,7 @@ IMPLEMT_INFERFUNC(SparseSoftmaxCrossEntropyWithLogits, SparseSoftmaxCrossEntropy
 
 INFER_FUNC_REG(SparseSoftmaxCrossEntropyWithLogits, SparseSoftmaxCrossEntropyWithLogitsInferShape);
 VERIFY_FUNC_REG(SparseSoftmaxCrossEntropyWithLogits, SparseSoftmaxCrossEntropyWithLogitsVerify);
-//-------------SparseSoftmaxCrossEntropyWithLogits----------------
+// -------------SparseSoftmaxCrossEntropyWithLogits----------------
 
 // ---------------------------SoftmaxV2-----------------------------
 IMPLEMT_COMMON_INFERFUNC(SoftmaxV2InferShape) {
@@ -291,7 +291,49 @@ IMPLEMT_COMMON_INFERFUNC(BinaryCrossEntropyGradInferShape) {
 COMMON_INFER_FUNC_REG(BinaryCrossEntropyGrad, BinaryCrossEntropyGradInferShape);
 // --------------------------BinaryCrossEntropyGrad END---------------------
 
-//----------------SoftmaxCrossEntropyWithLogits-------------------
+// -------------SoftmaxCrossEntropyLoss----------------
+IMPLEMT_VERIFIER(SoftmaxCrossEntropyLoss, SoftmaxCrossEntropyLossVerify) {
+  return GRAPH_SUCCESS;
+}
+IMPLEMT_COMMON_INFERFUNC(SoftmaxCrossEntropyLossInferShape) {
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  auto scores_desc = op_desc->MutableInputDesc("scores");
+  auto labels_desc = op_desc->MutableInputDesc("labels");
+  DataType scores_type = scores_desc->GetDataType();
+
+  auto loss_desc = op_desc->MutableOutputDesc("loss");
+  auto log_prop_desc = op_desc->MutableOutputDesc("log_prop");
+  std::string reduceType = "mean";
+  if (op.GetAttr("reduction", reduceType) == GRAPH_FAILED) {
+    OP_LOGE(op.GetName().c_str(), "get attr reduction failed");
+    return GRAPH_FAILED;
+  }
+  if (reduceType == "none") {
+    // if reduction == "none" , output shape == x.shape
+    OP_LOGI(op.GetName().c_str(), "the attr reduction = none");
+    loss_desc->SetDataType(scores_type);
+    log_prop_desc->SetDataType(scores_type);
+    loss_desc->SetShape(labels_desc->GetShape());
+    log_prop_desc->SetShape(scores_desc->GetShape());
+    return GRAPH_SUCCESS;
+  } else {
+    std::vector<int64_t> o_shape;
+    std::vector<std::pair<int64_t, int64_t>> o_range;
+    loss_desc->SetShape(GeShape(o_shape));
+    loss_desc->SetShapeRange(o_range);
+    loss_desc->SetDataType(scores_type);
+    log_prop_desc->SetDataType(scores_type);
+    log_prop_desc->SetShape(scores_desc->GetShape());
+    return GRAPH_SUCCESS;
+  }
+  return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(SoftmaxCrossEntropyLoss, SoftmaxCrossEntropyLossInferShape);
+VERIFY_FUNC_REG(SoftmaxCrossEntropyLoss, SoftmaxCrossEntropyLossVerify);
+// -------------SoftmaxCrossEntropyLoss END----------------
+
+// ----------------SoftmaxCrossEntropyWithLogits-------------------
 IMPLEMT_VERIFIER(SoftmaxCrossEntropyWithLogits, SoftmaxCrossEntropyWithLogitsVerify) {
   if (!CheckTwoInputDtypeSame(op, "features", "labels")) {
     OP_LOGE(op.GetName().c_str(), "[TBE Compiler] input dtypes are different");
@@ -507,7 +549,7 @@ IMPLEMT_COMMON_INFERFUNC(SoftmaxV2WithDropoutDoMaskV3InferShape) {
 COMMON_INFER_FUNC_REG(SoftmaxV2WithDropOutDoMaskV3D, SoftmaxV2WithDropoutDoMaskV3InferShape);
 // ------------------------SoftmaxV2WithDropoutDoMaskV3 END-----------------------
 
-//------------------------MVN---------------------------
+// ------------------------MVN---------------------------
 IMPLEMT_INFERFUNC(MVN, MVNInferShape) {
   auto outShape = op.GetInputDesc("x").GetShape();
   auto outDtype = op.GetInputDesc("x").GetDataType();
@@ -563,7 +605,7 @@ INFER_FUNC_REG(Normalize, NormalizeInfer);
 VERIFY_FUNC_REG(Normalize, NormalizeVerify);
 // ------------------------Normalize---------------------------
 
-//----------------------Renorm begin------------------------
+// ----------------------Renorm begin------------------------
 IMPLEMT_COMMON_INFERFUNC(RenormInferShape) {
     TensorDesc output_desc = op.GetOutputDesc("y");
     DataType predict_dtype = op.GetInputDesc("x").GetDataType();
@@ -589,7 +631,7 @@ IMPLEMT_VERIFIER(Renorm, RenormVerify) {
 
 COMMON_INFER_FUNC_REG(Renorm, RenormInferShape);
 VERIFY_FUNC_REG(Renorm, RenormVerify);
-//----------------------Renorm end------------------------
+// ----------------------Renorm end------------------------
 
 // ----------------------LayerNormGrad------------------------
 IMPLEMT_COMMON_INFERFUNC(LayerNormGradInferShape) {
@@ -952,7 +994,7 @@ VERIFY_FUNC_REG(DropOutDoMaskV3D, DropOutDoMaskV3DVerify);
 // ----------------DropOutDoMaskV3D Op End-------------------
 
 
-//---------------------------------Scale------------------------------------
+// ---------------------------------Scale------------------------------------
 IMPLEMT_INFERFUNC(Scale, ScaleInferShape) {
   OP_LOGI("Scale", "infer shape begin---");
   DataType dtype_x = op.GetInputDesc("x").GetDataType();
@@ -1242,7 +1284,7 @@ IMPLEMT_VERIFIER(Scale, ScaleVerify) {
 
 INFER_FUNC_REG(Scale, ScaleInferShape);
 VERIFY_FUNC_REG(Scale, ScaleVerify);
-//-------------------------------------Scale--------------------------------------------
+// -------------------------------------Scale--------------------------------------------
 
 // ----------------LRNGrad   ------------------
 IMPLEMT_VERIFIER(LRNGrad, LRNGradVerify) {
@@ -2085,7 +2127,7 @@ IMPLEMT_COMMON_INFERFUNC(NormalizeBatchInferShape) {
 }
 
 COMMON_INFER_FUNC_REG(NormalizeBatch, NormalizeBatchInferShape);
-//-----------------------NormalizeBatch END---------------------
+// -----------------------NormalizeBatch END---------------------
 // ------------GroupNormRelu Op Start----------------
 IMPLEMT_COMMON_INFERFUNC(GroupNormReluInferShape) {
   TensorDesc tensordesc_output = op.GetOutputDesc("y");

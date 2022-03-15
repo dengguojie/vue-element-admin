@@ -74,6 +74,7 @@ from .histogram_fixed_width_d import histogram_fixed_width_d
 from .invert import invert
 from .split_v_d import split_v_d
 from .mod import mod
+from .softmax_cross_entropy_loss import softmax_cross_entropy_loss
 from .softmax_cross_entropy_with_logits import softmax_cross_entropy_with_logits
 from .log1p import log1p
 from .xlogy import xlogy

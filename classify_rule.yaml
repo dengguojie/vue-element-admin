@@ -2326,6 +2326,7 @@ unkown:
       - ops/built-in/tbe/impl/greater_equal.py
       - ops/built-in/tbe/impl/pad_v2_align_reorder_ub.py
       - ops/built-in/tbe/impl/apply_ftrl_v2_d.py
+      - ops/built-in/tbe/impl/softmax_cross_entropy_loss.py
       - ops/built-in/tbe/impl/softmax_cross_entropy_with_logits.py
       - ops/built-in/tbe/impl/in_top_k.py
       - ops/built-in/tbe/impl/strided_slice_last_dim_one.py

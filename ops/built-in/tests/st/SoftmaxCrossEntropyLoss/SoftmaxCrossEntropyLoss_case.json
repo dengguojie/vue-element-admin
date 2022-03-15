@@ -1,0 +1,274 @@
+[
+  {
+    "op": "SoftmaxCrossEntropyLoss",
+    "input_desc": [
+      {
+        "shape": [
+          3,
+          5,
+          6
+        ],
+        "format": "ND",
+        "ori_shape": [
+          3,
+          5,
+          6
+        ],
+        "ori_format": "ND",
+        "name": "features",
+        "type": "float"
+      },
+      {
+        "shape": [
+          3,
+          6
+        ],
+        "format": "ND",
+        "ori_shape": [
+          3,
+          6
+        ],
+        "ori_format": "ND",
+        "name": "labels",
+        "type": "int32"
+      },
+      {
+        "shape": [
+          5         
+        ],
+        "format": "ND",
+        "ori_shape": [
+          5
+        ],
+        "ori_format": "ND",
+        "name": "weights",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          3,
+          6
+        ],
+        "format": "ND",
+        "ori_shape": [
+          3,
+          6
+        ],
+        "ori_format": "ND",
+        "name": "loss",
+        "type": "float"
+      },
+      {
+        "shape": [
+          3,
+          5,
+          6
+        ],
+        "format": "ND",
+        "ori_shape": [
+          3,
+          5,
+          6
+        ],
+        "ori_format": "ND",
+        "name": "log_prop",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "ignore_index",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "reduction",
+        "type": "string",
+        "value": "none"
+      }
+    ],
+    "case_name": "test_SoftmaxCrossEntropyLoss_0"
+  },
+  {
+    "op": "SoftmaxCrossEntropyLoss",
+    "input_desc": [
+      {
+        "shape": [
+          3,
+          5,
+          6
+        ],
+        "format": "ND",
+        "ori_shape": [
+          3,
+          5,
+          6
+        ],
+        "ori_format": "ND",
+        "name": "features",
+        "type": "float"
+      },
+      {
+        "shape": [
+          3,
+          6
+        ],
+        "format": "ND",
+        "ori_shape": [
+          3,
+          6
+        ],
+        "ori_format": "ND",
+        "name": "labels",
+        "type": "int32"
+      },
+      {
+        "shape": [
+          5         
+        ],
+        "format": "ND",
+        "ori_shape": [
+          5
+        ],
+        "ori_format": "ND",
+        "name": "weights",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "loss",
+        "type": "float"
+      },
+      {
+        "shape": [
+          3,
+          5,
+          6
+        ],
+        "format": "ND",
+        "ori_shape": [
+          3,
+          5,
+          6
+        ],
+        "ori_format": "ND",
+        "name": "log_prop",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "ignore_index",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "reduction",
+        "type": "string",
+        "value": "mean"
+      }
+    ],
+    "case_name": "test_SoftmaxCrossEntropyLoss_1"
+  },
+  {
+    "op": "SoftmaxCrossEntropyLoss",
+    "input_desc": [
+      {
+        "shape": [
+          3,
+          5,
+          6
+        ],
+        "format": "ND",
+        "ori_shape": [
+          3,
+          5,
+          6
+        ],
+        "ori_format": "ND",
+        "name": "features",
+        "type": "float"
+      },
+      {
+        "shape": [
+          3,
+          6
+        ],
+        "format": "ND",
+        "ori_shape": [
+          3,
+          6
+        ],
+        "ori_format": "ND",
+        "name": "labels",
+        "type": "int32"
+      },
+      {
+        "shape": [
+          5         
+        ],
+        "format": "ND",
+        "ori_shape": [
+          5
+        ],
+        "ori_format": "ND",
+        "name": "weights",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "loss",
+        "type": "float"
+      },
+      {
+        "shape": [
+          3,
+          5,
+          6
+        ],
+        "format": "ND",
+        "ori_shape": [
+          3,
+          5,
+          6
+        ],
+        "ori_format": "ND",
+        "name": "log_prop",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "ignore_index",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "reduction",
+        "type": "string",
+        "value": "sum"
+      }
+    ],
+    "case_name": "test_SoftmaxCrossEntropyLoss_2"
+  }
+]
