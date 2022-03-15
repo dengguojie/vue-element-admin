@@ -97,18 +97,6 @@ vector<int64_t> get_hw_after_dilation(const vector<int64_t> input_shape, const v
 }
 
 
-vector<int64_t> get_pad_value(const vector<int64_t> dilation_hw, const vector<int64_t> y_shape,
-                              size_t pos_y_h, size_t pos_y_w, const vector<int64_t> filter_shape,
-                              size_t pos_filter_h, size_t pos_filter_w, const vector<int64_t> pads) {
-  int pad_down = y_shape[pos_y_h] - filter_shape[pos_filter_h] + pads[0] + pads[kIndex2] + 1 - dilation_hw[0];
-  int pad_right = y_shape[pos_y_w] - filter_shape[pos_filter_w] + pads[1] + pads[kIndex3] + 1 - dilation_hw[1];
-  vector<int64_t> pad_hw;
-  pad_hw.push_back(pad_down);
-  pad_hw.push_back(pad_right);
-  return pad_hw;
-}
-
-
 Status Conv2DbpInputDilationFusionPass::generate_pre_dilation_node(
     ge::ComputeGraph *graph, ge::GeTensorDesc *prev_out_desc, ge::GeTensorDesc *next_in_desc,
     ge::NodePtr *dilation_node, const vector<int64_t> strides, const std::string &basename) {
@@ -346,7 +334,7 @@ Status Conv2DbpInputDilationFusionPass::Fusion(ge::ComputeGraph &graph, Mapping 
                                           dx_node_name.c_str()),
                     return FAILED);
   FUSION_PASS_CHECK(
-      op.GetAttr("input_size", input_size) != GRAPH_SUCCESS,
+      op.GetAttr("input_size", input_size) != GRAPH_SUCCESS && op_type != kDeconvolutionOpType,
       CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
                             "op [%s] get attribute input_size failed or input_size not exist",
                             dx_node_name.c_str()),
@@ -389,7 +377,7 @@ Status Conv2DbpInputDilationFusionPass::Fusion(ge::ComputeGraph &graph, Mapping 
                     return FAILED);
 
   vector<int64_t> dilation_hw;
-  vector<int64_t> pad_hw;
+  vector<int64_t> pad_hw(kNum2);
   std::string backprop_out_fmt_str = TypeUtils::FormatToSerialString(conv2dbp_input_outbackprop_desc.GetOriginFormat());
   FUSION_PASS_CHECK(find(kOriFormatSupportByOutBackprop.begin(), kOriFormatSupportByOutBackprop.end(),
                          backprop_out_fmt_str) == kOriFormatSupportByOutBackprop.end(),
@@ -448,8 +436,9 @@ Status Conv2DbpInputDilationFusionPass::Fusion(ge::ComputeGraph &graph, Mapping 
   }
 
   dilation_hw = get_hw_after_dilation(out_backprop_ori_shape, strides, pos_backprop_out_h, pos_backprop_out_w);
-  pad_hw = get_pad_value(dilation_hw, y_shape, pos_y_h, pos_y_w,
-                         filter_ori_shape, pos_filter_h, pos_filter_w, pads);
+  pad_hw[0] = y_shape[pos_y_h] - filter_ori_shape[pos_filter_h] + pads[0] + pads[1] + 1 - dilation_hw[0];
+  pad_hw[1] = y_shape[pos_y_w] - filter_ori_shape[pos_filter_w] + pads[kIndex2] + pads[kIndex3] + 1 - dilation_hw[1];
+
   OP_LOGD(FUSED_OP_TYPE.c_str(), "the pad_hw is %d and %d", pad_hw[0], pad_hw[1]);
 
   int out_backprop_idx = peer_out_anchor->GetIdx();
@@ -510,7 +499,7 @@ Status Conv2DbpInputDilationFusionPass::Fusion(ge::ComputeGraph &graph, Mapping 
     new_pads[kIndex3] = pads[kIndex3] - pad_hw[1];
     OP_LOGD(FUSED_OP_TYPE.c_str(), "the pad_new is %d and %d", new_pads[1], new_pads[kIndex3]);
     op.SetAttr("pads", new_pads);
-  } else {
+  } else if (op_type != kDeconvolutionOpType) {
     std::vector<int64_t> input_size_new = input_size;
     input_size_new[pos_backprop_out_h] = out_backprop_ori_shape[pos_backprop_out_h];
     input_size_new[pos_backprop_out_w] = out_backprop_ori_shape[pos_backprop_out_w];
