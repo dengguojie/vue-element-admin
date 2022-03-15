@@ -275,9 +275,10 @@ def test_conv3d_dx_mock_default_tiling(test_args):
                      'pad': [0, 0, 1, 0, 1, 0], 'stride': [2, 1, 1], 'strideh_expand': 2, 'stridew_expand': 2,
                      'dilation': [1, 1, 1], 'group': 1, 'fused_coefficient': [0, 0, 0], 'bias_flag': False,
                      'op_type': 'conv3d_backprop_input', 'kernel_name': 'conv3d_dx_fault',
-                     'model_type': 'xgboost', 'dynamic_shape_flag': False, 'fused_channel_wise': [0, 0, 0],
+                     'model_type': 'xgboost', 'tiling_access_version': 0, 'dynamic_shape_flag': False, 'fused_channel_wise': [0, 0, 0],
                      'fusion_type': 0, 'l1_fusion_type': -1, 'l2_fusion_type': -1, 'fm_l1_valid_size': 0,
                      'fm_l1_valid_size_level': 0}
+
     tiling_dict = {
         'conv3d_dx_fault': {'AL0_matrix': [50, 1, 32, 16, 1, 2], 'AL1_shape': [224, 1, 1, 1],
                             'AUB_channel_wise_flag': None, 'AUB_shape': [896, 3, 1, 1], 'A_overhead_opt_flag': 0,
@@ -376,7 +377,7 @@ def test_conv3d_dx_dsl_exceed_l1(test_args):
         print(e)
 ut_case.add_cust_test_func(test_func=test_conv3d_dx_dsl_exceed_l1)
 
-# dsl suffix ub fusion 
+# dsl suffix ub fusion
 def test_conv3d_dx_mul_fusion_ub(test_args):
     from tvm.target import cce
     from impl.util.platform_adapter import tvm

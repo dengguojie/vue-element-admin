@@ -213,7 +213,7 @@ namespace {
     const auto& tiling_range = compile_info.at("tiling_range");
     for (auto it = tiling_range.begin(); it != tiling_range.end(); it++) {
       auto& range = it.value();
-      if (is_shape_in_range_cube(cur_shape, x_format, range)){
+      if (is_shape_in_range_cube(cur_shape, x_format, range)) {
         tiling_id = it.key();
       }
     }

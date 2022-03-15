@@ -44,7 +44,7 @@ namespace fe {
 const string Conv2DbpInputDilationFusionPass::FUSED_OP_TYPE = "Conv2DBackpropInputD";
 const vector<std::string> Conv2DbpInputDilationFusionPass::kOriFormatSupportByFilter{"HWCN", "NHWC", "NCHW"};
 const vector<std::string> Conv2DbpInputDilationFusionPass::kOriFormatSupportByOutBackprop{"NHWC", "NCHW"};
-const vector<std::string> Conv2DbpInputDilationFusionPass::kOriFormatSupportByY{
+const vector<std::string> Conv2DbpInputDilationFusionPass::kOriFormatSupportByY {
     Conv2DbpInputDilationFusionPass::kOriFormatSupportByOutBackprop.begin(),
     Conv2DbpInputDilationFusionPass::kOriFormatSupportByOutBackprop.end()};
 
@@ -392,7 +392,7 @@ Status Conv2DbpInputDilationFusionPass::Fusion(ge::ComputeGraph &graph, Mapping 
   std::string y_fmt_str = TypeUtils::FormatToSerialString(conv2dbp_input_y_desc.GetOriginFormat());
   FUSION_PASS_CHECK(
       find(kOriFormatSupportByY.begin(), kOriFormatSupportByY.end(), y_fmt_str) == kOriFormatSupportByY.end(),
-      OP_LOGE(FUSED_OP_TYPE, "%s only support NHWC, NCHW, actually %s", kAttrOrgFmt.c_str(), y_fmt_str.c_str()), 
+      OP_LOGE(FUSED_OP_TYPE, "%s only support NHWC, NCHW, actually %s", kAttrOrgFmt.c_str(), y_fmt_str.c_str()),
       return FAILED);
   size_t pos_y_h = y_fmt_str.find('H');
   CHECK_POSITION(pos_y_h);
@@ -422,7 +422,7 @@ Status Conv2DbpInputDilationFusionPass::Fusion(ge::ComputeGraph &graph, Mapping 
     pre_dilation = (conv2dbp_input_op_desc->GetInputDescPtr(kBiasAnchoridx) != nullptr);
   }
 
-  for (size_t i = 0; i < strides.size(); ++i){
+  for (size_t i = 0; i < strides.size(); ++i) {
     if (strides[i] > kNum2 || (strides[i] > 1 and !pre_dilation)) {
       need_dilation_flag = true;
       break;

@@ -838,7 +838,8 @@ def check_supported(fmap,
     The groups should <= the feature map's and the filter's channel dimension. \n
     Feature map's channel dimension or filter's channel dimension must be divisible by groups. \n
     The channel dimension of the feature map should = filter's channel dimension * groups. \n
-    The D,H or W dimension of the feature map after padding should >= the filter's corresponding dimension after dilation. \n
+    The D,H or W dimension of the feature map after padding should >= the filter's corresponding \
+    dimension after dilation. \n
     The padding in each dimension should < the filter's corresponding dimension after dilation. \n
 
     If the output H dimension is not 1, the output W dimension should >= 2. \n

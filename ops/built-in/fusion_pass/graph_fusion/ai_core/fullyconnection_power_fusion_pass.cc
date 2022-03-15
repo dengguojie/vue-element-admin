@@ -296,13 +296,13 @@ Status FullyConnectionPowerPass::AddBiasNode(ge::ComputeGraph& graph, ge::NodePt
       return PARAM_INVALID);
 
   auto ret = biasPtr->SetData(reinterpret_cast<uint8_t*>(biasDataTemp.get()), num_output * sizeof(float));
-  if (ret != SUCCESS){
+  if (ret != SUCCESS) {
     biasPtr = nullptr;
     OP_LOGW(FUSED_OP_TYPE, "set bias data failed!");
     return ret;
   }
   ge::NodePtr constNode = graph.AddNode(constOpDesc);
-  if (constNode == nullptr){
+  if (constNode == nullptr) {
     biasPtr = nullptr;
     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE, "constNode is nullptr");
     return PARAM_INVALID;
@@ -315,7 +315,7 @@ Status FullyConnectionPowerPass::AddBiasNode(ge::ComputeGraph& graph, ge::NodePt
   fusionNodes.push_back(constNode);
   // bias is the name of the third input of fc in IR fc.h
   ret = fcNode->AddLinkFrom("b", constNode);
-  if (ret != SUCCESS){
+  if (ret != SUCCESS) {
     biasPtr = nullptr;
     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE,
                                    "FcNode[%s]: add edge between new const node and fc node failed!",

@@ -638,7 +638,8 @@ Status MatmulAtomicAddUbFusion::AddCustomNode(int cur_add_node_type, ge::NodePtr
   return SUCCESS;
 }
 
-Status MatmulAtomicAddUbFusion::MatMulLinkControlEdge(ge::NodePtr &matmul_node, ge::NodePtr &next_node) const {
+Status MatmulAtomicAddUbFusion::MatMulLinkControlEdge(const ge::NodePtr &matmul_node,
+                                                      const ge::NodePtr &next_node) const {
   if (matmul_node->GetOutControlAnchor() != nullptr) {
     if (matmul_node->GetOutControlAnchor()->GetPeerInControlAnchors().size() > 0) {
       for (auto in_control_anchor : matmul_node->GetOutControlAnchor()->GetPeerInControlAnchors()) {

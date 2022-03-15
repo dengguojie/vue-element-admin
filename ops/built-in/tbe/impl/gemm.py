@@ -89,7 +89,8 @@ def check_supported(
         _check_param(input_x1, input_x2, bias, trans_a, trans_b)
         return True, ""
     except Exception:
-        reason = "the input_shape is not supported, input_x1_shape:%s, input_x2_shape:%s, bias_shape:%s, trans_a:%s, trans_b:%s"\
+        reason = "the input_shape is not supported, input_x1_shape:%s, input_x2_shape:%s, "\
+                 "bias_shape:%s, trans_a:%s, trans_b:%s"\
                  % (input_x1.get("ori_shape"), input_x2.get("ori_shape"), bias.get("ori_shape"), trans_a, trans_b)
         return False, reason
 
@@ -523,10 +524,10 @@ def _format_check(
         "int8float32":
             ["FRACTAL_NZ", "FRACTAL_Z", "FRACTAL_NZ", "ND", "ND", "FRACTAL_NZ"],
     }
-    if (support_combine[flow_type] is not None
-            and support_combine[flow_type] != format_combine):
+    if (support_combine.get(flow_type) is not None
+            and support_combine.get(flow_type) != format_combine):
         error_detail = "for src_dtype = %s and dst_type = %s, format need to be %s or %s" % (src_dtype,
-                         dst_dtype, "ND, ND, ND, ND, ND, ND", support_combine[flow_type])
+                         dst_dtype, "ND, ND, ND, ND, ND, ND", support_combine.get(flow_type))
         error_manager_vector.raise_err_specific_reson("gemm", error_detail)
 
 

@@ -212,19 +212,19 @@ bool CheckParams(const DxParas& dx_paras) {
       (static_cast<int64_t>(!CheckUBSizeLimit(dx_paras)) << shift++);
   if (invalid != 0) {
     string error_info[shift++] = {"kh value invalid", "kw value invalid", "batch value invalid", "co1 value invalid",
-                             "ho value invalid", "wo value invalid", "co value invalid", "c1 value invalid",
-                             "cin value invalid", "dilations value invalid", "groups value invalid",
-                             "dedy's H after expands is invalid", "dedy's W after expands is invalid",
-                             "c dim of dedy must be div by groups", "c dim of dedx must be div by groups",
-                             "c dim of dedx must be equal with filter c multi groups",
-                             "c dim of dedy must be equal with filter n", "dedx batch not equal with dedy batch",
-                             "filter_h_dilation or fmap_h_padding invalid",
-                             "filter_w_dilation or fmap_w_padding invalid", "h value invalid", "w value invalid",
-                             "stride_h invalid", "stride_w invalid", "fmap_h does not match dedy_h",
-                             "fmap_w does not match dedy_h", "dedy_c_16 is invalid", "dedx_c_16 is invalid",
-                             "filter_c_16 is invalid", "filter_n_16 is invalid", "dedy size large than int64",
-                             "dedx size large than int64", "filter size large than int64",
-                             "this case may exceed L1size", "this case may exceed UBsize"};
+                                  "ho value invalid", "wo value invalid", "co value invalid", "c1 value invalid",
+                                  "cin value invalid", "dilations value invalid", "groups value invalid",
+                                  "dedy's H after expands is invalid", "dedy's W after expands is invalid",
+                                  "c dim of dedy must be div by groups", "c dim of dedx must be div by groups",
+                                  "c dim of dedx must be equal with filter c multi groups",
+                                  "c dim of dedy must be equal with filter n", "dedx batch not equal with dedy batch",
+                                  "filter_h_dilation or fmap_h_padding invalid",
+                                  "filter_w_dilation or fmap_w_padding invalid", "h value invalid", "w value invalid",
+                                  "stride_h invalid", "stride_w invalid", "fmap_h does not match dedy_h",
+                                  "fmap_w does not match dedy_h", "dedy_c_16 is invalid", "dedx_c_16 is invalid",
+                                  "filter_c_16 is invalid", "filter_n_16 is invalid", "dedy size large than int64",
+                                  "dedx size large than int64", "filter size large than int64",
+                                  "this case may exceed L1size", "this case may exceed UBsize"};
     string error_flag = IntToBinary(invalid);
     OutputErrorMsg(error_info, error_flag);
     return false;
@@ -312,12 +312,12 @@ bool Conv2DBackpropInputParseFunc(const ge::OpDescPtr& op_desc, const nlohmann::
     }
     if (parse_func_invalid != 0) {
       string error_info[shift++] = {"get block_dim failed", "get core_num failed", "tensor filter desc failed",
-                               "tensor out_backprop desc failed", "tensor y desc failed", "y ori_format invalid",
-                               "out_backprop ori_format failed", "filter format failed", "filter ori_format failed",
-                               "y format invalid", "out_backprop ori_shape len is invalid",
-                               "filter ori_shape len is invalid", "filter shape len is invalid",
-                               "y ori_shape len is invalid", "y shape len is invalid",
-                               "out_backprop shape len is invalid", "out_backprop format failed"};
+                                    "tensor out_backprop desc failed", "tensor y desc failed", "y ori_format invalid",
+                                    "out_backprop ori_format failed", "filter format failed", "filter ori_format failed",
+                                    "y format invalid", "out_backprop ori_shape len is invalid",
+                                    "filter ori_shape len is invalid", "filter shape len is invalid",
+                                    "y ori_shape len is invalid", "y shape len is invalid",
+                                    "out_backprop shape len is invalid", "out_backprop format failed"};
       int64_t error_num = static_cast<int64_t>(parse_func_invalid);
       string error_flag = IntToBinary(error_num);
       OutputErrorMsg(error_info, error_flag);

@@ -36,9 +36,9 @@ class DeconvWeightTransFusionPass : public PatternFusionBasePass {
                                                             const vector<int64_t>& shape_NCHW, vector<int64_t>& complement_dimension,
                                                             vector<int64_t>& reshape_in, vector<int64_t>& permute_shape,
                                                             vector<int64_t>& reverse_axis, vector<int64_t>& reshape_out);
-  static Status Relink(ge::NodePtr filter_node, ge::NodePtr complement_dimension_node, ge::NodePtr transpose_node,
+  static Status Relink(ge::NodePtr filter_node, ge::NodePtr dim_comp_node, ge::NodePtr transpose_node,
                        ge::NodePtr reformat_node, ge::NodePtr reshape_in_node, ge::NodePtr reverse_node,
-                       ge::NodePtr reshape_out_node, ge::NodePtr deconv_node, const int filter_anchor);
+                       ge::NodePtr reshape_out_node, ge::NodePtr filter_next_node, const int filter_anchor);
   static Status GenerateTransposeNode(ge::ComputeGraph& graph, ge::GeTensorDesc& previous_out_desc,
                                ge::GeTensorDesc& next_in_desc, const vector<int64_t>& perm, ge::NodePtr& transpose_node,
                                const std::string& basename);
@@ -52,7 +52,7 @@ class DeconvWeightTransFusionPass : public PatternFusionBasePass {
                                      ge::GeTensorDesc& next_in_desc, const ge::Format& format,
                                      ge::NodePtr& reformat_node, const std::string& basename);
   static Status UpdateWeightQuantShape(const vector<int64_t>& reshape_out,
-                                       ge::NodePtr& quant_node, ge::NodePtr deconv_node);
+                                       const ge::NodePtr& quant_node, const ge::NodePtr deconv_node);
   static const string FUSED_OP_TYPE;
   };
 }  // namespace fe

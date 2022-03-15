@@ -40,11 +40,11 @@ def get_format(x, w, b, offset_w, y, num_output, transpose, axis, offset_x, form
     if dtype_x == 'float32':
         dtype_x = 'float16'
 
-    kShape = 1
+    k_shape = 1
     for i in range(1, length_x_ori):
-        kShape *= shape_x_ori[i]
+        k_shape *= shape_x_ori[i]
 
-    shape_x = (shape_x_ori[0], kShape)
+    shape_x = (shape_x_ori[0], k_shape)
     tensor_x = tvm.placeholder(shape_x, dtype=dtype_x, name='tensor_a')
 
     shape_w_ori = w.get('shape')
@@ -52,13 +52,13 @@ def get_format(x, w, b, offset_w, y, num_output, transpose, axis, offset_x, form
     if dtype_w == 'float32':
         dtype_w = 'float16'
     if not transpose:
-        kwShape = shape_w_ori[1] * shape_w_ori[2] * shape_w_ori[3]
-        nShape = shape_w_ori[0]
-        shape_w = (kwShape, shape_w_ori[0])
+        kw_shape = shape_w_ori[1] * shape_w_ori[2] * shape_w_ori[3]
+        n_shape = shape_w_ori[0]
+        shape_w = (kw_shape, shape_w_ori[0])
     else:
-        kwShape = shape_w_ori[0] * shape_w_ori[1] * shape_w_ori[2]
-        nShape = shape_w_ori[3]
-        shape_w = (shape_w_ori[3], kwShape)
+        kw_shape = shape_w_ori[0] * shape_w_ori[1] * shape_w_ori[2]
+        n_shape = shape_w_ori[3]
+        shape_w = (shape_w_ori[3], kw_shape)
 
     tensor_w = tvm.placeholder(shape_w, dtype=dtype_w, name='tensor_b')
 
@@ -66,7 +66,7 @@ def get_format(x, w, b, offset_w, y, num_output, transpose, axis, offset_x, form
         dtype_b = b.get('dtype')
         if dtype_b  == 'float32':
             dtype_b = 'float16'
-        shape_bias = (nShape,)
+        shape_bias = (n_shape,)
         tensor_b = tvm.placeholder(shape_bias, dtype=dtype_b, name='tensor_bias')
     else:
         tensor_b = None

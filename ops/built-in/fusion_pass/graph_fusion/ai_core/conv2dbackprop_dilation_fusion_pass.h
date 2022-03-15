@@ -25,7 +25,7 @@
 
 #include "graph_optimizer/fusion_common/pattern_fusion_base_pass.h"
 
-namespace fe{
+namespace fe {
 class Conv2DbpInputDilationFusionPass : public PatternFusionBasePass {
 protected:
   vector<FusionPattern*> DefinePatterns() override;

@@ -89,7 +89,7 @@ void MatmulReduceSumUbFusion::SetSplitInfo(const BufferFusionMapping &mapping, s
     OP_LOGE(FUSED_OP_TYPE.c_str(), "Matmul output shape dims < 2."), return);
   int batch_lenth = output0desc->GetOriginShape().GetDims().size() - kNumTwo;
 
-  for (int batch_index = 0; batch_index < batch_lenth; batch_index++){
+  for (int batch_index = 0; batch_index < batch_lenth; batch_index++) {
     DelSplitInfoByOutputAxis(split_maps, batch_index);
   }
 

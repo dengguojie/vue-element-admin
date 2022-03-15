@@ -75,7 +75,7 @@ bool AvgPoolGradTiling(const std::string& opType, const ge::Operator& opParas, c
   int32_t hDim = 2;
   int32_t wDim = 3;
   if (opParas.GetInputsSize() < 2 || opParas.GetOutputsSize() == 0 ||
-      opParas.GetInputDesc(1).GetShape().GetDimNum() < 4 || opParas.GetOutputDesc(0).GetShape().GetDimNum() < 4){
+      opParas.GetInputDesc(1).GetShape().GetDimNum() < 4 || opParas.GetOutputDesc(0).GetShape().GetDimNum() < 4) {
     return false;
   }
 

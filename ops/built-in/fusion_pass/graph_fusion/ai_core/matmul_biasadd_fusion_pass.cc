@@ -110,7 +110,7 @@ Status MatMulBiasAddFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
     int64_t inputNDim;
     if (secondInputShape.GetDims().size() == 1) {
       bool valid_op_type = nodeMatMul->GetType() == TF_MATMUL || nodeMatMul->GetType() == TF_MATMULV2;
-      if (valid_op_type){
+      if (valid_op_type) {
         FUSION_PASS_CHECK(firstInputShape.GetDims().size() != 2,
                           OP_LOGI(FUSED_OP_TYPE.c_str(), "Matmul output shape not martch."), return NOT_CHANGED);
       }
@@ -125,7 +125,7 @@ Status MatMulBiasAddFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
       inputNDim = firstInputShape.GetDim(inputDimLength - 1);
     } else {
       bool valid_op_type = nodeMatMul->GetType() == TF_MATMUL || nodeMatMul->GetType() == TF_MATMULV2;
-      if (valid_op_type){
+      if (valid_op_type) {
         FUSION_PASS_CHECK(secondInputShape.GetDims().size() != 2,
                           OP_LOGI(FUSED_OP_TYPE.c_str(), "Matmul output shape not martch."), return NOT_CHANGED);
       }

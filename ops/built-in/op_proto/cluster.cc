@@ -93,19 +93,19 @@ IMPLEMT_INFERFUNC(KMeansCentroids, KMeansCentroidsInfer) {
   y_d = input_y_shape.GetDim(1);
   n_ssy = input_ssy_shape.GetDim(1);
 
-  if (x_d != y_d){
+  if (x_d != y_d) {
     OP_LOGE(op_name.GetString(),
             "The second dimension of input x should be equal to the second dimension of input y");
     return GRAPH_FAILED;
   }
 
-  if (y_n != n_ssy){
+  if (y_n != n_ssy) {
     OP_LOGE(op_name.GetString(),
             "The first dimension of input y should be equal to the second dimension of input sum_square_y");
     return GRAPH_FAILED;
   }
 
-  if (use_actual_distance){
+  if (use_actual_distance) {
     ge::ConstGeTensorDescPtr input_ssx_desc = op_desc->GetInputDescPtr(3);
     if (input_ssx_desc == nullptr) {
       OP_LOGE(op_name.GetString(), "get input sum_square_x failed.");
@@ -113,7 +113,7 @@ IMPLEMT_INFERFUNC(KMeansCentroids, KMeansCentroidsInfer) {
     }
     const GeShape &input_ssx_shape = input_ssx_desc->GetShape();
     m_ssx = input_ssx_shape.GetDim(0);
-    if (x_m != m_ssx){
+    if (x_m != m_ssx) {
       OP_LOGE(op_name.GetString(),
               "The first dimension of input x should be equal to the first dimension of input sum_square_x");
       return GRAPH_FAILED;
@@ -123,7 +123,7 @@ IMPLEMT_INFERFUNC(KMeansCentroids, KMeansCentroidsInfer) {
   int64_t m_tail = x_m % 16;
   int64_t d_tail = x_d % 16;
   int64_t n_tail = y_n % 16;
-  if (m_tail != 0 || n_tail != 0 || d_tail != 0){
+  if (m_tail != 0 || n_tail != 0 || d_tail != 0) {
     OP_LOGE(op_name.GetString(), "input shape non-16 alignment");
     return GRAPH_FAILED;
   }

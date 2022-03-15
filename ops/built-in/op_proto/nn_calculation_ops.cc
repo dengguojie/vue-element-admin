@@ -294,7 +294,7 @@ IMPLEMT_INFER_DATA_SLICE(DepthwiseConv2D, DepthwiseConv2DInferDataSlice) {
   std::vector<int32_t> dilation_list;
   std::vector<int32_t> pad_list;
   if (GRAPH_SUCCESS != op.GetAttr("strides", stride_list) || GRAPH_SUCCESS != op.GetAttr("dilations", dilation_list)
-      || GRAPH_SUCCESS != op.GetAttr("pads", pad_list)){
+      || GRAPH_SUCCESS != op.GetAttr("pads", pad_list)) {
     return GRAPH_FAILED;
   }
   CHECK(pad_list.size() < 4, CUBE_INNER_ERR_REPORT(op_name.GetString(), "pads size less then 4."),
@@ -4287,7 +4287,7 @@ static bool SetConv2dOutShapeRange(const AscendString& op_name,
 
   // update pads if padding is SAME
   std::string pad_str;
-  if (x_shape.GetDimNum() == 4 && ge::AttrUtils::GetStr(op_desc, "padding", pad_str) &&
+  if (x_shape.GetDimNum() == kConv2dInputSizeLimit && ge::AttrUtils::GetStr(op_desc, "padding", pad_str) &&
       pad_str == "SAME" && (x_shape.GetDim(idx_h) == -1 or x_shape.GetDim(idx_w) == -1)) {
     ge::AttrUtils::SetListInt(op_desc, "pads", {-1, -1, -1, -1});
     OP_LOGD(op_name.GetString(), "set pads to {-1, -1, -1, -1} when padding is SAME in dynamic_shape");
@@ -4793,7 +4793,7 @@ IMPLEMT_INFER_DATA_SLICE(Conv2D, Conv2DInferDataSlice) {
   std::vector<int32_t> dilation_list;
   std::vector<int32_t> pad_list;
   if (GRAPH_SUCCESS != op.GetAttr("strides", stride_list) || GRAPH_SUCCESS != op.GetAttr("dilations", dilation_list)
-      || GRAPH_SUCCESS != op.GetAttr("pads", pad_list)){
+      || GRAPH_SUCCESS != op.GetAttr("pads", pad_list)) {
     return GRAPH_FAILED;
   }
   CHECK(pad_list.size() < 4, CUBE_INNER_ERR_REPORT(op_name.GetString(), "pads size less then 4."),
@@ -5395,7 +5395,7 @@ static bool GetAttrsDfmConv2D(ge::Operator& op, Format refer, int32_t& strh, int
   * @param DeformableConv2DInfer Infer function.
   * @return Status The processing flow result.
   */
-IMPLEMT_INFERFUNC(DeformableConv2D, DeformableConv2DInfer){
+IMPLEMT_INFERFUNC(DeformableConv2D, DeformableConv2DInfer) {
   AscendString op_name;
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
 
@@ -5678,7 +5678,7 @@ IMPLEMT_INFERFUNC(DeformableConv2D, DeformableConv2DInfer){
   * @param DeformableConv2DVerify Input validity check function.
   * @return Status The processing flow result.
   */
-IMPLEMT_VERIFIER(DeformableConv2D, DeformableConv2DVerify){
+IMPLEMT_VERIFIER(DeformableConv2D, DeformableConv2DVerify) {
   AscendString op_name;
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
 
@@ -7085,7 +7085,7 @@ IMPLEMT_INFER_DATA_SLICE(Conv3D, Conv3DInferSliceData) {
                   return GRAPH_FAILED,
                   "set x data slice attr failed.");
   }
-  if (needUpdateW){
+  if (needUpdateW) {
     CHECK_OP_FUNC(!AttrUtils::SetListListInt(tensor_desc_w, ge::ATTR_NAME_DATA_SLICE, w_data_slice),
                   return GRAPH_FAILED,
                   "set w data slice attr failed");
@@ -10516,10 +10516,10 @@ IMPLEMT_COMMON_INFERFUNC(DilationInferShape)
   for (size_t i = 0; i < x_shape.size(); i++) {
     int shape_value = (x_shape[i] - 1) * dilations[i] + 1;
     if (!pads.empty()) {
-      if (i == h_position) {
+      if (i == static_cast<size_t>(h_position)) {
         shape_value += (pads[0] + pads[1]);
       }
-      else if (i == w_position) {
+      else if (i == static_cast<size_t>(w_position)) {
         shape_value += (pads[2] + pads[3]);
       }
     }

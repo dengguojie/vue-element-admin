@@ -398,7 +398,7 @@ int32_t GetBlockDim(const string &op_type, const BatchmatmulParas &params, L2Sta
 
   OP_LOGD(op_type.c_str(), "input shape batch:%lld, m:%lld, k:%lld, n:%lld", params.batch, params.m, params.k,
           params.n);
-  if (params.batch_32 * params.m_32 * params.n_32 < params.core_num) {
+  if (static_cast<uint32_t>(params.batch_32 * params.m_32 * params.n_32) < params.core_num) {
     l2Status.batch_dim = params.batch_32;
     l2Status.n_dim = params.n_32;
     l2Status.m_dim = params.m_32;

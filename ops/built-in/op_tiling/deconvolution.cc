@@ -43,7 +43,7 @@ bool DeConvlutionTiling(const std::string& opType, const ge::Operator& opParas, 
   int32_t wDim = 3;
 
   if (opParas.GetInputsSize() == 0 || opParas.GetOutputsSize() == 0 ||
-      opParas.GetInputDesc(0).GetShape().GetDimNum() == 0 || opParas.GetOutputDesc(0).GetShape().GetDimNum() == 0){
+      opParas.GetInputDesc(0).GetShape().GetDimNum() == 0 || opParas.GetOutputDesc(0).GetShape().GetDimNum() == 0) {
     return false;
   }
 

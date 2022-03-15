@@ -276,7 +276,6 @@ bool CheckShapeRelation(const conv2d_dw::Conv2dBpFilterParas& params) {
 
 bool CheckL1Size(const conv2d_dw::Conv2dBpFilterParas& params) {
   int32_t kernel_dilation_h = (params.kh - 1) * params.dilation_h + 1;
-  int32_t kernel_dilation_w = (params.kw - 1) * params.dilation_w + 1;
   int32_t al1_min_size = params.co0 * params.k0 * params.a_dtype * kFloat16Bytes;
   int32_t bl1_align_factor = (params.ci0 + params.wo - 1) / params.wo;
   if (params.ci0 % params.wo != 0 || params.wo % params.ci0 != 0) {
@@ -374,7 +373,7 @@ bool ParseOpInfo(const nlohmann::json& compile_info, const ge::OpDescPtr& op_des
     op_dw_desc = op_desc;
   }
   OP_LOGE_IF(!SetCacheTilingParamsFromOpDesc(op_dw_desc, params), false, params.op_type,
-              "Set cache tiling params failed.");
+             "Set cache tiling params failed.");
   OP_LOGE_IF(!SetShapeParams(op_desc, params, dedy_index), false, params.op_type, "Set shape params failed.");
   OP_LOGE_IF(!compile_info.contains("max_core_num"), false, params.op_type,
              "compile info attrs not contains max_core_num.");

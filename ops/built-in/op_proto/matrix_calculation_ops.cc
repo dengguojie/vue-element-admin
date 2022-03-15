@@ -124,7 +124,7 @@ bool InferFCNZ(vector<vector<int64_t>>& x_data_slice, vector<vector<int64_t>>& w
     }
     if (axis == kAxisReduceIdx) {
       // 0 and 2 is index of m and m0
-      if (static_cast<int64_t>(i) == 0 || static_cast<int64_t>(i) == 2){
+      if (static_cast<int64_t>(i) == 0 || static_cast<int64_t>(i) == 2) {
         x_data_slice[i] = y_data_slice[i];
         infer_x = 1;
       } else if (static_cast<int64_t>(i) == 1) {
@@ -159,7 +159,7 @@ bool InferFullyConnectionDataSlice(ge::Operator& op) {
 
   int64_t num_output;
   int64_t axis;
-  if (GRAPH_SUCCESS != op.GetAttr("num_output", num_output) || GRAPH_SUCCESS != op.GetAttr("axis", axis)){
+  if (GRAPH_SUCCESS != op.GetAttr("num_output", num_output) || GRAPH_SUCCESS != op.GetAttr("axis", axis)) {
     return false;
   }
   vector<vector<int64_t> > x_data_slice;
@@ -1592,7 +1592,7 @@ bool InferBatchMatmulInputNZ(const Operator &op,
       OP_LOGI(opName.GetString(), "infer input in M success");
       return true;
     // using index -4 to get batch_dim of output
-    } else if (i < y_dims - 4){
+    } else if (i < y_dims - 4) {
       // split batch
       x1_data_slice[i] = output[i];
       CHECK(!AttrUtils::SetListListInt(tensor_desc_x1, ge::ATTR_NAME_DATA_SLICE, x1_data_slice),
@@ -4097,7 +4097,7 @@ static bool InferShapeAndTypeTrace(Operator& op, const std::string& inputName, c
   }
 
   if (inputDtype != DT_FLOAT16 && inputDtype != DT_FLOAT) {
-    OP_LOGE(op.GetName().c_str(), "the input dtype must is float16 or float.\n");
+    OP_LOGE(outputName.c_str(), "the input dtype must is float16 or float.\n");
     return false;
   }
 

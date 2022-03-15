@@ -26,7 +26,7 @@
 #include <string>
 #include "graph_optimizer/fusion_common/pattern_fusion_base_pass.h"
 
-namespace fe{
+namespace fe {
 class Resnet50DbnDwFusionPass : public PatternFusionBasePass {
 protected:
   vector<FusionPattern*> DefinePatterns() override;

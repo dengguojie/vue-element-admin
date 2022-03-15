@@ -1389,7 +1389,7 @@ class GEMMCompute(FormatCompute):
         nd2Zz_normal_flag = nd2Zz_normal_flag or in_dynamic()
 
         nd2Zz_vnchwconv_flag = False
-        nd2Zz_vnchwconv_flag = nd2Zz_vnchwconv_flag or (not self.ops_data_flow_mode  in ("int82int32", "int4int32"))
+        nd2Zz_vnchwconv_flag = nd2Zz_vnchwconv_flag or (self.ops_data_flow_mode not in ("int82int32", "int4int32"))
 
         compute_params = {
             "tensor_name": "tensor_a_matrix",

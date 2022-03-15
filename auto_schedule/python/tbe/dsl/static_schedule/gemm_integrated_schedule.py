@@ -2155,7 +2155,10 @@ class GemmSchedule:
         if len(tiling.get("block_dim")) != self.FRACTAL_Z_LEN:
             error_manager_cube.raise_err_message_cube("block_dim should be 4 dim")
         batch_dim, n_dim, m_dim, reduce_dim = tiling.get("block_dim")
-        if batch_dim < 1 or n_dim < 1 or m_dim < 1 or reduce_dim < 1:
+        if ((isinstance(batch_dim, int) and batch_dim < 1) or
+            (isinstance(n_dim, int) and n_dim < 1) or
+            (isinstance(m_dim, int) and m_dim < 1) or
+            (isinstance(reduce_dim, int) and reduce_dim < 1)):
             error_manager_cube.raise_err_message_cube("block_dim cannot be less than 1")
 
     def _tiling_process(self):

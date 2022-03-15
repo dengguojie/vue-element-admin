@@ -184,7 +184,7 @@ void TbeFullyconnectionElemwiseFusionPass::SetSplitInfo(const BufferFusionMappin
   if (elemWiseNodes.empty()) {
     elemWiseNodes = reluNodes;
   }
-  if (!elemWiseNodes.empty()){
+  if (!elemWiseNodes.empty()) {
     AddElemwiseSplitMap(split_maps, elemWiseNodes[0], pre);
   }
   SetSplitMap(split_maps, fusion_nodes, FUSED_OP_TYPE, fusion_type, min_tbe_l1space);
@@ -228,7 +228,7 @@ bool TbeFullyconnectionElemwiseFusionPass::CheckMatmulDequantGeluQuantFusion(con
 
 Status TbeFullyconnectionElemwiseFusionPass::CheckDynamicMode(vector<ge::NodePtr>& matmulNodes,
                                                               vector<ge::NodePtr>& fusionNodes) const {
-  for (const auto& matmulNode : matmulNodes){
+  for (const auto& matmulNode : matmulNodes) {
     auto input0desc = GetCurrNodeInputDesc(matmulNode, 0);
     auto input1desc = GetCurrNodeInputDesc(matmulNode, 1);
     FUSION_PASS_CHECK(input0desc == nullptr,

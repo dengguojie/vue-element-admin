@@ -18,8 +18,8 @@
  * \file cache_tiling.h
  * \brief
  */
-#ifndef OPS_BUILT_IN_OP_TILING_CACHE_TILING_H_
-#define OPS_BUILT_IN_OP_TILING_CACHE_TILING_H_
+#ifndef OPS_BUILT_IN_OP_TILING_CACHE_TILING_H
+#define OPS_BUILT_IN_OP_TILING_CACHE_TILING_H
 
 #include <algorithm>
 #include <ctime>

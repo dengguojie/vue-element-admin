@@ -313,24 +313,24 @@ Status Resnet50DbnDwFusionPass::CheckSupportCase(OpDescPtr &dw_op_desc) {
 }
 
 vector<int64_t> Resnet50DbnDwFusionPass::GetNchwVec(vector<int64_t> &dim_info,
-                                                    Format &origin_format){
+                                                    Format &origin_format) {
   int64_t param_n;
   int64_t param_c;
   int64_t param_h;
   int64_t param_w;
   vector<int64_t> params_nchw = {};
   if (dim_info.size() == 4) {
-    if (origin_format == FORMAT_NHWC){
+    if (origin_format == FORMAT_NHWC) {
       param_n = dim_info[0];
       param_h = dim_info[1];
       param_w = dim_info[2];
       param_c = dim_info[3];
-    } else if (origin_format == FORMAT_NCHW){
+    } else if (origin_format == FORMAT_NCHW) {
       param_n = dim_info[0];
       param_c = dim_info[1];
       param_h = dim_info[2];
       param_w = dim_info[3];
-    } else if (origin_format == FORMAT_HWCN){
+    } else if (origin_format == FORMAT_HWCN) {
       param_h = dim_info[0];
       param_w = dim_info[1];
       param_c = dim_info[2];

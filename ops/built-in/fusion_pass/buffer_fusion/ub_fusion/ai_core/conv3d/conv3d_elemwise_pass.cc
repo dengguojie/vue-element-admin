@@ -161,7 +161,7 @@ Status TbeConv3dElemwisePass::GetFusionNodes(const BufferFusionMapping& mapping,
 
   // buffer fusion do not support dynamic shape now
   vector<ge::NodePtr> conv3dNodes = GetMatchedNodesByDescName(PATTERN_CONV3D, mapping);
-  for (const auto& conv3dNode : conv3dNodes){
+  for (const auto& conv3dNode : conv3dNodes) {
     auto conv3dinput0desc = GetCurrNodeInputDesc(conv3dNode, 0);
     auto conv3dinput1desc = GetCurrNodeInputDesc(conv3dNode, 1);
     FUSION_PASS_CHECK(conv3dinput0desc == nullptr,

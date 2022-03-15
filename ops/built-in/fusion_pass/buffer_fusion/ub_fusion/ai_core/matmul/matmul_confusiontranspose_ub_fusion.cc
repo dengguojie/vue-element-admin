@@ -93,7 +93,7 @@ Status MatmulConfusiontransposeUbFusion::GetFusionNodes(const BufferFusionMappin
   fusionNodes = GetMatchedNodes(mapping);
 
   // buffer fusion do not support dynamic shape now
-  for (const auto& matmulNode : matmulNodes){
+  for (const auto& matmulNode : matmulNodes) {
     auto input0desc = GetCurrNodeInputDesc(matmulNode, 0);
     auto input1desc = GetCurrNodeInputDesc(matmulNode, 1);
     FUSION_PASS_CHECK(input0desc == nullptr,

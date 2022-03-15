@@ -268,7 +268,7 @@ Status MatMulReshapeBiasAddFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& 
   OP_LOGD(FUSED_OP_TYPE.c_str(), "node reshape output format is [%s]",
           ge::TypeUtils::FormatToSerialString(node_reshape_output_format).c_str());
 
-  if (node_biasadd_output_format != node_reshape_output_format){
+  if (node_biasadd_output_format != node_reshape_output_format) {
     OP_LOGD(FUSED_OP_TYPE.c_str(), "The output format of biasadd and reshape is different");
     node_reshape_output_desc.SetFormat(node_biasadd_output_format);
     node_reshape_output_desc.SetOriginFormat(node_biasadd_output_format);

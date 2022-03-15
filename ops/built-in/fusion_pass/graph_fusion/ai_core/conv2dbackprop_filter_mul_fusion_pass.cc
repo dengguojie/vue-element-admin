@@ -257,17 +257,17 @@ Status Conv2DbpFilterMulFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& map
     return NOT_CHANGED;
   }
   if (outputDimInfo.size() == kDimSize) {
-    if (dwOutputOriginFormat == FORMAT_NHWC){
+    if (dwOutputOriginFormat == FORMAT_NHWC) {
       filterN = outputDimInfo[0];
       filterH = outputDimInfo[1];
       filterW = outputDimInfo[kIndex2];
       filterC = outputDimInfo[kIndex3];
-    } else if (dwOutputOriginFormat == FORMAT_NCHW){
+    } else if (dwOutputOriginFormat == FORMAT_NCHW) {
       filterN = outputDimInfo[0];
       filterC = outputDimInfo[1];
       filterH = outputDimInfo[kIndex2];
       filterW = outputDimInfo[kIndex3];
-    } else if (dwOutputOriginFormat == FORMAT_HWCN){
+    } else if (dwOutputOriginFormat == FORMAT_HWCN) {
       filterH = outputDimInfo[0];
       filterW = outputDimInfo[1];
       filterC = outputDimInfo[kIndex2];

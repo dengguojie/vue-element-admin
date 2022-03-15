@@ -462,7 +462,8 @@ def check_supported(filters,
     The channel dimension of feature map should = the filter's channel dimension * groups. \n
     The out_backprop's channel dimension should = the filter's batch dimension. \n
     The feature map's batch dimension should = the out_backprop's batch dimension. \n
-    The D,H or W dimension of the feature map after padding should >= the filter's corresponding dimension after dilation. \n
+    The D,H or W dimension of the feature map after padding should >= the filter's corresponding \
+    dimension after dilation. \n
     The out_backprop's H * stride's H should < 4096. \n
     The out_backprop's W * stride's W should < 4096. \n
     If the output H dimension is not 1, the output W dimension should >= 2. \n
@@ -927,9 +928,9 @@ def _conv3d_backprop_input_cce(shape_filter, # pylint: disable=R0913,R0914
                   dedy_deep,
                   util_common.ceil(dedy_channel, _C0_SIZE), dedy_h, dedy_w, _C0_SIZE)
 
-    real_g = group_dict["real_g"]
-    cin1_g = group_dict["cin1_g"]
-    cout_g = group_dict["cout_g"]
+    real_g = group_dict.get("real_g")
+    cin1_g = group_dict.get("cin1_g")
+    cout_g = group_dict.get("cout_g")
 
     shape_filter_frac = (real_g * filter_depth * cin1_g * filter_h * filter_w,
                          cout_g // _C0_SIZE, _C0_SIZE, _C0_SIZE)

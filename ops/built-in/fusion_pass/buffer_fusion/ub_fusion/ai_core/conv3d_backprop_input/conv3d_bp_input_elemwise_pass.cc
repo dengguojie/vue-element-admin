@@ -175,7 +175,7 @@ Status TbeConv3dDxElemwisePass::GetFusionNodes(const BufferFusionMapping& mappin
   OP_LOGD(FUSED_OP_TYPE.c_str(), "Begin to do conv3d_bp_input_elemwise!");
   // buffer fusion do not support dynamic shape now
   vector<ge::NodePtr> dxNodes = GetMatchedNodesByDescName(PATTERN_DX, mapping);
-  for (const auto& dxNode : dxNodes){
+  for (const auto& dxNode : dxNodes) {
     auto input0desc = GetCurrNodeInputDesc(dxNode, 0);
     auto input1desc = GetCurrNodeInputDesc(dxNode, 1);
     FUSION_PASS_CHECK(input0desc == nullptr,

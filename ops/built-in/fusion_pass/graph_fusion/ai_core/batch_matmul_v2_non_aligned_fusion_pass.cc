@@ -229,7 +229,7 @@ Status BatchMatMulNonAlignedFusionPass::GetBatchMatMulShape(map<std::string, int
   }
   int64_t bmm_2_n_dim_align;
   int64_t bmm_1_n_dim_align;
-  if (add_2_node != nullptr){
+  if (add_2_node != nullptr) {
     bool batchmatmul_3_adj_x2 = false;
     FUSION_PASS_CHECK(
         !AttrUtils::GetBool(batchmatmul_3_node->GetOpDesc(), "adj_x2", batchmatmul_3_adj_x2),

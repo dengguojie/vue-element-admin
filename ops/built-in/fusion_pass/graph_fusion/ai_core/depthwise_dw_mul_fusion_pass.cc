@@ -175,8 +175,8 @@ NodePtr DepthwiseDwMulFusionPass::AddMul(ge::ComputeGraph& graph, ge::NodePtr& d
   return mul_node;
 }
 
-Status DepthwiseDwMulFusionPass::AddCoffe(ge::NodePtr& mul_node, const int64_t matrix_size, vector<int64_t>& dim_info,
-                                          const bool& is_dynamic) {
+Status DepthwiseDwMulFusionPass::AddCoffe(ge::NodePtr& mul_node, const int64_t matrix_size,
+                                          const vector<int64_t>& dim_info, const bool& is_dynamic) {
   OP_LOGI("Enter DepthwiseDwMulFusionPass::AddCoffe");
   int64_t output_n = 0;
   int64_t output_h = 0;

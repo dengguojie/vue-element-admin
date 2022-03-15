@@ -47,6 +47,7 @@ L1FUSION_INPUT_CTR = 2
 MKN_MIN = 1
 LOWER_LIMIT_STR = "LOWER_LIMIT"
 
+
 class Format(str, Enum):
     """
     class of format

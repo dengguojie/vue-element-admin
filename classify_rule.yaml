@@ -237,6 +237,11 @@ cube:
       - ops/built-in/op_proto/inc/matrix_calculation_ops.h
       - ops/built-in/op_proto/inc/cluster.h
       - ops/built-in/op_proto/cluster.cc
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/resnet50_dbn_dw_fusion_pass.h
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/matmul_reshape_biasadd_fusion_pass.cc
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/resnet50_dbn_dw_fusion_pass.cc
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/fullyconnection_power_fusion_pass.cc
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/matmul_biasadd_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/conv2dbackprop_dilation_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/conv2dbackprop_dilation_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/conv2dbackprop_filter_mul_fusion_pass.cc

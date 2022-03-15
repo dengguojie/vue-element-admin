@@ -244,7 +244,8 @@ def check_supported(x_dict,
     The padding in each dimension should be in range [0, 255]. \n
     The feature map's H,W and D dimension should be in [1, 4096]. \n
     The out_backprop's H and W dimension should be in [1, 4096]. \n
-    If filter h,w in [1,11] and fmap h/w after padding equals to filter h/w, the out_backprop's h,w,d dimension should be in range [2, 4096]. \n
+    If filter h,w in [1,11] and fmap h/w after padding equals to filter h/w, the out_backprop's \
+    h,w,d dimension should be in range [2, 4096]. \n
     The D,H or W dimension of the stride should be in range [1, 63]. \n
 
     The groups should <= the feature map's and the out_backprop's channel dimension. \n
@@ -252,7 +253,8 @@ def check_supported(x_dict,
     The channel dimension of feature map should = the filter's channel dimension * groups. \n
     The out_backprop's channel dimension should = the filter's batch dimension. \n
     The feature map's batch dimension should = the out_backprop's batch dimensionss. \n
-    The D,H or W dimension of the feature map after padding should >= the filter's corresponding dimension after dilation. \n
+    The D,H or W dimension of the feature map after padding should >= the filter's corresponding \
+    dimension after dilation. \n
     The padding in each dimension should < the filter's corresponding dimension after dilation. \n
     The out_backprop's H * stride's H should < 4096. \n
     The out_backprop's W * stride's W should < 4096. \n

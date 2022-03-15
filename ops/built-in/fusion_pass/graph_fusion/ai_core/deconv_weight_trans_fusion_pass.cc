@@ -223,15 +223,16 @@ void DeconvWeightTransFusionPass::GetShapeUsedByIntermediateProcessInDeconvWeigh
 }
 
 Status DeconvWeightTransFusionPass::UpdateWeightQuantShape(const vector<int64_t>& reshape_out,
-                                                           ge::NodePtr& quant_node, ge::NodePtr deconv_node) {
+                                                           const ge::NodePtr& quant_node,
+                                                           const ge::NodePtr deconv_node) {
   ge::GeTensorDesc quant_weight_out_desc = quant_node->GetOpDesc()->GetOutputDesc(0);
   quant_weight_out_desc.SetShape(ge::GeShape(reshape_out));
   quant_weight_out_desc.SetOriginShape(ge::GeShape(reshape_out));
   FUSION_PASS_CHECK(quant_node->GetOpDesc()->UpdateOutputDesc(0, quant_weight_out_desc) != SUCCESS,
-                    ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(),"fail to update output description of quant"),
+                    ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "fail to update output description of quant"),
                     return FAILED);
   FUSION_PASS_CHECK(deconv_node->GetOpDesc()->UpdateInputDesc(1, quant_weight_out_desc) != SUCCESS,
-                    ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(),"fail to update input description of deconv"),
+                    ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "fail to update input description of deconv"),
                     return FAILED);
   return SUCCESS;
 }

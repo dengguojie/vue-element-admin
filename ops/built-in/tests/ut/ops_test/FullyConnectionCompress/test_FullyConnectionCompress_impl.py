@@ -22,7 +22,7 @@ case1 = {"params": [{"shape": (1, 16, 1, 1, 32), "dtype": "int8", "format": "NC1
          "support_expect": True}
 case2 = {"params": [{"shape": (32, 1, 1, 1, 32), "dtype": "int8", "format": "NC1HWC0", "ori_shape": (32, 1, 1, 1, 32), "ori_format": "NC1HWC0"},
                     {"shape": (1, 8, 16, 32), "dtype": "int8", "format": "FRACTAL_Z", "ori_shape": (1, 8, 16, 32), "ori_format": "FRACTAL_Z"},
-                    compress_index, 
+                    compress_index,
                     {"shape": (1, 8, 1, 1, 16), "dtype": "int32", "format": "NC1HWC0", "ori_shape": (1, 8, 1, 1, 16), "ori_format": "NC1HWC0"},
                     None, {"shape": (1, 1, 1, 1, 16), "dtype": "int32", "format": "NC1HWC0", "ori_shape": (1, 1, 1, 1, 16), "ori_format": "NC1HWC0"},
                     128, False, 1, 0],
@@ -103,7 +103,7 @@ case9 = {"params": [{"shape": (1, 16, 1, 1, 32), "dtype": "int8", "format": "NC1
 
 case10 = {"params": [{"shape": (32, 1, 1, 1, 32), "dtype": "int8", "format": "NC1HWC0", "ori_shape": (32, 1, 1, 1, 32), "ori_format": "NC1HWC0"},
                     {"shape": (1, 8, 16, 32), "dtype": "int8", "format": "FRACTAL_Z", "ori_shape": (1, 8, 16, 32), "ori_format": "FRACTAL_Z"},
-                    compress_index, 
+                    compress_index,
                     {"shape": (1, 8, 1, 1, 8), "dtype": "int32", "format": "NC1HWC0", "ori_shape": (1, 8, 1, 1, 16), "ori_format": "NC1HWC0"},
                     None, {"shape": (1, 1, 1, 1, 16), "dtype": "int32", "format": "NC1HWC0", "ori_shape": (1, 1, 1, 1, 16), "ori_format": "NC1HWC0"},
                     128, False, 1, 0],
@@ -114,7 +114,7 @@ case10 = {"params": [{"shape": (32, 1, 1, 1, 32), "dtype": "int8", "format": "NC
 
 case11 = {"params": [{"shape": (32, 1, 1, 1, 32), "dtype": "int8", "format": "NC1HWC0", "ori_shape": (32, 1, 1, 1, 32), "ori_format": "NC1HWC0"},
                     {"shape": (1, 8, 16, 32), "dtype": "int8", "format": "FRACTAL_Z", "ori_shape": (1, 8, 16, 32), "ori_format": "FRACTAL_Z"},
-                    compress_index, None, 
+                    compress_index, None,
                     {"shape": (1, 8, 16, 32), "dtype": "int8", "format": "FRACTAL_Z", "ori_shape": (1, 8, 16, 32), "ori_format": "FRACTAL_Z"},
                     {"shape": (1, 1, 1, 1, 16), "dtype": "int32", "format": "NC1HWC0", "ori_shape": (1, 1, 1, 1, 16), "ori_format": "NC1HWC0"},
                     128, False, 1, 0],
@@ -169,6 +169,26 @@ def test_split_fc_compress_3(test_arg):
     y = {'shape': (1, 1, 16, 16), 'dtype': 'int32', 'format': 'FRACTAL_NZ', "ori_format":"FRACTAL_NZ", "ori_shape":(1, 1, 16, 16)}
     get_op_support_info(x, w, compress_index, None, None, y, 16, False, 1, 0, kernel_name="compress_fully_connection")
 
+
+def test_op_select_format(test_arg):
+    from impl.compress_fully_connection import op_select_format
+    op_select_format({'shape': (8, 1, 2, 2, 32), 'dtype': 'int8', 'format': 'NC1HWC0', "ori_format":"NC1HWC0", "ori_shape":(8, 1, 2, 2, 32)},
+                    {'shape': (4, 2, 16, 32), 'dtype': 'int8', 'format': 'FRACTAL_Z', "ori_format":"FRACTAL_Z", "ori_shape":(4, 2, 16, 32)},
+                    {"shape": (1, ), "dtype": "int8", "format": "ND", "ori_shape": (1, ), "ori_format": "ND"},
+                    {'shape': (1, 2, 1, 1, 16), 'dtype': 'int32', 'format': 'NC1HWC0', "ori_format":"NC1HWC0", "ori_shape":(1, 2, 1, 1, 16)},
+                    None,
+                    {'shape': (8, 2, 1, 1, 16), 'dtype': 'int32', 'format': 'NC1HWC0', "ori_format":"NC1HWC0", "ori_shape":(8, 2, 1, 1, 16)},
+                    32, False, 1, 0, kernel_name="test_compress_fully_connection_op_select_format")
+    op_select_format({'shape': (8, 1, 2, 2, 32), 'dtype': 'int8', 'format': 'NC1HWC0', "ori_format":"NC1HWC0", "ori_shape":(8, 1, 2, 2, 32)},
+                    {'shape': (4, 2, 16, 32), 'dtype': 'int8', 'format': 'FRACTAL_Z', "ori_format":"FRACTAL_Z", "ori_shape":(4, 2, 16, 32)},
+                    {"shape": (1, ), "dtype": "int8", "format": "ND", "ori_shape": (1, ), "ori_format": "ND"},
+                    {'shape': (1, 2, 1, 1, 16), 'dtype': 'int32', 'format': 'NC1HWC0', "ori_format":"NC1HWC0", "ori_shape":(1, 2, 1, 1, 16)},
+                    None,
+                    {'shape': (8, 2, 1, 1, 16), 'dtype': 'int32', 'format': 'NC1HWC0', "ori_format":"NC1HWC0", "ori_shape":(8, 2, 1, 1, 16)},
+                    32, True, 1, 0, kernel_name="test_compress_fully_connection_op_select_format")
+
+
+ut_case.add_cust_test_func(test_func=test_op_select_format)
 ut_case.add_cust_test_func(test_func=test_split_fc_compress)
 ut_case.add_cust_test_func(test_func=test_split_fc_compress_1)
 ut_case.add_cust_test_func(test_func=test_split_fc_compress_2)
