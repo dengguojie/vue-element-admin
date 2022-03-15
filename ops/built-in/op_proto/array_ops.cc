@@ -3185,13 +3185,6 @@ IMPLEMT_INFERFUNC(ViewCopy, ViewCopyInferShape) {
 
 IMPLEMT_VERIFIER(ViewCopy, ViewCopyVerify) {
   const char *op_name = "ViewCopy";
-  DataType src_dtype = op.GetInputDesc("src_size").GetDataType();
-  DataType dst_dtype = op.GetInputDesc("dst_size").GetDataType();
-
-  if (src_dtype != dst_dtype) {
-    OP_LOGE(op_name, "the input src dtype and dst dtype must be same.");
-    return GRAPH_FAILED;
-  }
   Shape src_size_shape = op.GetInputDescByName("src_size").GetShape();
   Shape dst_size_shape = op.GetInputDescByName("dst_size").GetShape();
   if (src_size_shape.GetShapeSize() == dst_size_shape.GetShapeSize()) {

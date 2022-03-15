@@ -34,46 +34,6 @@ class TEST_VIEWCOPY_UT : public testing::Test {
   }
 };
 
-TEST_F(TEST_VIEWCOPY_UT, viewcopy_datatype_match) {
-    ge::op::ViewCopy op;
-    ge::TensorDesc src_size_td;
-    ge::TensorDesc dst_size_td;
-    ge::Shape src_size_shape({3, 1, 1});
-    ge::Shape dst_size_shape({5, 3, 4, 1});
-    src_size_td.SetDataType(ge::DT_UINT8);
-    dst_size_td.SetDataType(ge::DT_UINT8);
-    src_size_td.SetShape(src_size_shape);
-    src_size_td.SetOriginShape(src_size_shape);
-    dst_size_td.SetShape(dst_size_shape);
-    dst_size_td.SetOriginShape(dst_size_shape);
-
-    op.UpdateInputDesc("src_size", src_size_td);
-    op.UpdateInputDesc("dst_size", dst_size_td);
-
-    auto ret = op.InferShapeAndType();
-    EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
-}
-
-TEST_F(TEST_VIEWCOPY_UT, viewcopy_datatype_not_match) {
-    ge::op::ViewCopy op;
-    ge::TensorDesc src_size_td;
-    ge::TensorDesc dst_size_td;
-    ge::Shape src_size_shape({3, 1, 1});
-    ge::Shape dst_size_shape({5, 3, 4, 1});
-    src_size_td.SetDataType(ge::DT_FLOAT16);
-    dst_size_td.SetDataType(ge::DT_UINT8);
-    src_size_td.SetShape(src_size_shape);
-    src_size_td.SetOriginShape(src_size_shape);
-    dst_size_td.SetShape(dst_size_shape);
-    dst_size_td.SetOriginShape(dst_size_shape);
-
-    op.UpdateInputDesc("src_size", src_size_td);
-    op.UpdateInputDesc("dst_size", dst_size_td);
-
-    auto ret = op.VerifyAllAttr(true);
-    EXPECT_EQ(ret, ge::GRAPH_FAILED);
-}
-
 TEST_F(TEST_VIEWCOPY_UT, viewcopy_src_size_bigger_than_dst_size) {
     ge::op::ViewCopy op;
     ge::TensorDesc src_size_td;
