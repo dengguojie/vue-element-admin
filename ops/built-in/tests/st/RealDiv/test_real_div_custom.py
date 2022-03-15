@@ -9,6 +9,7 @@ from te.lang.cce import cce_build_code
 from te.tvm.target import cce
 from tbe.dsl import auto_schedule
 
+
 def test_batchmatmul_realdiv_add():
     with op_context.OpContext("pre_static"):
         with cce():
@@ -34,5 +35,4 @@ def test_batchmatmul_realdiv_add():
 
 
 if __name__ == "__main__":
-    # test_batchmatmul_realdiv_add()
-    pass
+    test_batchmatmul_realdiv_add()

@@ -433,6 +433,7 @@ def test_batchmatmul_realdiv_add(test_arg):
             "name": "batch_matmul_realdiv_fused_mul_add",
             "tensor_list": tensor_list,
         }
+
         cce_build_code(sch, config)
 
 def test_op_check_supported(test_arg):
