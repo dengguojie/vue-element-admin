@@ -118,5 +118,21 @@ def test_get_op_support_info(test_arg):
 ut_case.add_cust_test_func(test_func=test_get_op_support_info)
 
 
+def test_check_support(test_arg):
+    from impl.dynamic.inplace_index_add import check_supported
+    check_supported({"shape": (-1, 256, 256, 256, 24), "dtype": "int32", "format": "ND", "ori_shape": (64, 256, 256, 256, 24), "ori_format": "ND"},
+                     {"shape": (-1,), "dtype": "int32", "format": "ND", "ori_shape": (16000,), "ori_format": "ND"},
+                     {"shape": (-1, 16000, 256, 256, 24), "dtype": "int32", "format": "ND", "ori_shape": (64, 16000, 256, 256, 24), "ori_format": "ND"},
+                     {"shape": (64, 256, 256, 256, 24), "dtype": "int32", "format": "ND", "ori_shape": (64, 256, 256, 256, 24), "ori_format": "ND"},
+                     1,)
+    check_supported({"shape": (-1,), "dtype": "int32", "format": "ND", "ori_shape": (16000,), "ori_format": "ND"},
+                     {"shape": (-1,), "dtype": "int32", "format": "ND", "ori_shape": (16000,), "ori_format": "ND"},
+                     {"shape": (-1,), "dtype": "int32", "format": "ND", "ori_shape": (16000,), "ori_format": "ND"},
+                     {"shape": (16000,), "dtype": "int32", "format": "ND", "ori_shape": (16000,), "ori_format": "ND"},
+                     0,)
+
+ut_case.add_cust_test_func(test_func=test_check_support)
+
+
 if __name__ == "__main__":
     ut_case.run("Ascend910A")

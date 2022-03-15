@@ -154,6 +154,8 @@ def kl_div_loss_grad(grad, input, target, y, reduction="mean",
     if reduction not in reduction_list:
         raise RuntimeError("The reduction ({}) is not supported".format(reduction))
 
+    if reduction != "none":
+        shape_grad = [1] * len(input_shape)
     data_grad = tvm.placeholder(shape_grad, name="data_1", dtype=input_dtype)
     data_input = tvm.placeholder(input_shape, name="data_2", dtype=input_dtype)
     data_target = tvm.placeholder(shape_target, name="data_3", dtype=input_dtype)

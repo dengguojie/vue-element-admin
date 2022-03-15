@@ -29,6 +29,18 @@ from impl.util.util_select_op_base import SplitOutput
 from impl.util.util_select_op_base import get_op_cal_info
 
 
+# 'pylint: disable=locally-disabled,unused-argument,invalid-name
+def check_supported(var, indices, updates, var_out, axis, kernel_name="index_add"):
+    """
+    When var has only one dimension, AICPU performance is better.
+    """
+    var_shape = var.get("ori_shape")
+    var_shape_len = len(var_shape)
+    if var_shape_len == 1:
+        return False, "When var has only one dimension, AICPU performance is better."
+    return True, ""
+
+
 # 'pylint: disable=too-few-public-methods,too-many-instance-attributes
 class Constant:
     """

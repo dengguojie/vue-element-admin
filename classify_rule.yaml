@@ -473,6 +473,7 @@ cube-tiling:
       - ops/built-in/host_cpu/convcatv2_host_cpu_op.cpp
       - ops/built-in/framework/tf_plugin/conv2d_plugin.cc
       - ops/built-in/framework/onnx_plugin/conv2d_plugin.cc
+      - ops/built-in/framework/onnx_plugin/split_plugin.cc
       - ops/built-in/framework/caffe_plugin/caffe_conv2d_plugin.cc
       - ops/built-in/tbe/impl/dynamic/avg_pool.py
     unrelease:
@@ -2832,6 +2833,7 @@ unkown:
       - ops/built-in/tbe/impl/dynamic/apply_centered_rms_prop_d.py
       - ops/built-in/tbe/impl/dynamic/split_v.py
       - ops/built-in/tbe/impl/dynamic/inplace_update.py
+      - ops/built-in/tbe/impl/dynamic/inplace_index_add.py
       - ops/built-in/tbe/impl/dynamic/fake_quant_with_min_max_vars.py
       - ops/built-in/tbe/impl/dynamic/pack_tik.py
       - ops/built-in/tbe/impl/dynamic/resize_nearest_neighbor_v2.py
