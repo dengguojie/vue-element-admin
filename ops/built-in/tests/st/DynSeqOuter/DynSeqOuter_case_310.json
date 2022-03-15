@@ -1,15 +1,14 @@
 [
     {
-        "case_name":"Test_MovingSumWithSigmoid_000",
-        "calc_expect_func_file":"test_msws.py:calc_expect_func", 
-        "op":"MovingSumWithSigmoid",
+        "case_name":"Test_DynSeqOuter_000",
+        "op":"DynSeqOuter",
         "calc_expect_func_file":"",
         "gui_calc_expect_func_file":"",
         "fuzz_impl":"",
         "user_fuzz_impl":"",
         "input_desc":[
             {
-                "name":"alpha",
+                "name":"x1",
                 "format":[
                     "ND"
                 ],
@@ -17,7 +16,7 @@
                     "float16"
                 ],
                 "shape":[
-                    5120
+                    -1, -1
                 ],
                 "value_range":[
                     [
@@ -27,10 +26,23 @@
                 ],
                 "data_distribute":[
                     "uniform"
+                ],
+                "shape_range":[
+                    [
+                        1,
+                        -1
+                    ],
+                    [
+                        1,
+                        -1
+                    ]
+                ],
+                "typical_shape":[
+                    41, 512
                 ]
             },
             {
-                "name":"energy",
+                "name":"x2",
                 "format":[
                     "ND"
                 ],
@@ -38,7 +50,7 @@
                     "float16"
                 ],
                 "shape":[
-                    5120
+                    -1, -1
                 ],
                 "value_range":[
                     [
@@ -48,10 +60,23 @@
                 ],
                 "data_distribute":[
                     "uniform"
+                ],
+                "shape_range":[
+                    [
+                        1,
+                        -1
+                    ],
+                    [
+                        1,
+                        -1
+                    ]
+                ],
+                "typical_shape":[
+                    27, 512
                 ]
             },
             {
-                "name":"beam_size",
+                "name":"seq_len1",
                 "format":[
                     "ND"
                 ],
@@ -59,26 +84,29 @@
                     "int32"
                 ],
                 "shape":[
-                    1
+                    -1
                 ],
                 "value_range":[
                     [
-                        0.1,
-                        1.0
+                        1,
+                        8
                     ]
                 ],
                 "data_distribute":[
                     "uniform"
                 ],
-                "value":[
-                    10
+                "shape_range":[
+                    [
+                        1,
+                        -1
+                    ]
                 ],
-                "user_value":[
-                    10
+                "typical_shape":[
+                    8
                 ]
             },
             {
-                "name":"frame_size",
+                "name":"seq_len2",
                 "format":[
                     "ND"
                 ],
@@ -86,22 +114,25 @@
                     "int32"
                 ],
                 "shape":[
-                    1
+                    -1
                 ],
                 "value_range":[
                     [
-                        0.1,
-                        1.0
+                        1,
+                        8
                     ]
                 ],
                 "data_distribute":[
                     "uniform"
                 ],
-                "value":[
-                    512
+                "shape_range":[
+                    [
+                        1,
+                        -1
+                    ]
                 ],
-                "user_value":[
-                    512
+                "typical_shape":[
+                    8
                 ]
             }
         ],
@@ -115,15 +146,22 @@
                     "float16"
                 ],
                 "shape":[
-                    5120
+                    -1,
+                    -1
+                ],
+                "shape_range":[
+                    [
+                        1,
+                        -1
+                    ],
+                    [
+                        1,
+                        -1
+                    ]
+                ],
+                "typical_shape":[
+                    141, 512
                 ]
-            }
-        ],
-        "attr":[
-            {
-                "name":"window_size",
-                "value":100,
-                "type":"int"
             }
         ]
     }

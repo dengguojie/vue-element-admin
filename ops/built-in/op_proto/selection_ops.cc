@@ -5040,30 +5040,114 @@ INFER_VALUE_RANGE_DEFAULT_REG(StridedSliceV3);
 
 // ----------------MovingSumWithSigmoidInferShape Begin-------------------
 IMPLEMT_COMMON_INFERFUNC(MovingSumWithSigmoidInferShape) {
-  OP_LOGD(op.GetName().c_str(), "MovingSumWithSigmoidInferShape started.");
-  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
-  auto input_energy_desc = op_desc->GetInputDescPtr(1);
-  auto output_y_desc = op_desc->MutableOutputDesc(0);
-
-  auto energy_dtype = input_energy_desc->GetDataType();
+  OP_LOGD(op.GetName().c_str(), "MovingSumWithSigmoidInferShape begin.");
+  auto ms_op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  auto input_energy_desc = ms_op_desc->GetInputDescPtr(1);
+  auto input_offset_desc = ms_op_desc->GetInputDescPtr(2);
+ 
   auto energy_shape = input_energy_desc->GetShape();
 
-  output_y_desc->SetShape(energy_shape);
-  output_y_desc->SetDataType(energy_dtype);
+  auto output_y_desc = ms_op_desc->MutableOutputDesc(0);
+  auto offset_shape = input_offset_desc->GetShape();
+  int64_t batch_size = offset_shape.GetDim(0) / 2;
 
-  auto input_dims = energy_shape.GetDims();
-  if (IsUnknown(input_dims)) {
-    std::vector<std::pair<int64_t, int64_t>> energy_range;
-    input_energy_desc->GetShapeRange(energy_range);
-    output_y_desc->SetShapeRange(energy_range);
+  Tensor data;
+  const vector<string> const_names = {"offset"};
+  PREPARE_DYNAMIC_SHAPE(const_names);
+  if (op.GetInputConstData("offset", data) != GRAPH_SUCCESS) {
+    OP_LOGD(op.GetName().c_str(), "failed to get constValue of [offset]");
+    std::vector<int64_t> energy_dims = energy_shape.GetDims();
+    if (!IsUnknown(energy_dims)) {
+      OP_LOGE(op.GetName().c_str(), "static case is not supported.");
+      return GRAPH_FAILED;
+    }
+    GeShape &output_shape = output_y_desc->MutableShape();
+    output_shape.SetDimNum(2);
+    output_shape.SetDim(0, -1);
+    output_shape.SetDim(1, -1);
+
+    std::vector<std::pair<int64_t, int64_t>> range_vector;
+    range_vector.push_back(std::make_pair(1, -1));
+    range_vector.push_back(std::make_pair(1, -1));
+    output_y_desc->SetShapeRange(range_vector);
+  } else {
+    int64_t beam_sum = 0;
+    for (int64_t i = 0; i < batch_size; i++) {
+      int32_t dim = *((int32_t *)data.GetData() + i);
+      beam_sum += dim;
+    }
+    int64_t frame_sum = 0;
+    for (int64_t i = 0; i < batch_size; i++) {
+      int32_t dim = *((int32_t *)data.GetData() + i + batch_size);
+      frame_sum += dim;
+    }
+    GeShape &output_shape = output_y_desc->MutableShape();
+    output_shape.SetDimNum(2);
+    output_shape.SetDim(0, beam_sum);
+    output_shape.SetDim(1, frame_sum);
   }
 
-  OP_LOGD(op.GetName().c_str(), "MovingSumWithSigmoidInferShape finished.");
+  auto energy_dtype = input_energy_desc->GetDataType();
+  output_y_desc->SetDataType(energy_dtype);
+  OP_LOGD(op.GetName().c_str(), "MovingSumWithSigmoidInferShape end.");
   return GRAPH_SUCCESS;
 }
 
 COMMON_INFER_FUNC_REG(MovingSumWithSigmoid, MovingSumWithSigmoidInferShape);
 // ----------------MovingSumWithSigmoidInferShape END---------------------
 
+// ------------DynSeqOuter------------------------
+IMPLEMT_INFERFUNC(DynSeqOuter, DynSeqOuterInferShape) {
+  OP_LOGD(op.GetName().c_str(), "DynSeqOuterInferShape begin.");
+  auto add_op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  auto input_energy_desc = add_op_desc->GetInputDescPtr(1);
+  auto seq_len1_desc = add_op_desc->GetInputDescPtr(2);
+  auto seq_len2_desc = add_op_desc->GetInputDescPtr(3);
+ 
+  auto energy_shape = input_energy_desc->GetShape();
+
+  auto output_y_desc = add_op_desc->MutableOutputDesc(0);
+  auto offset_shape = seq_len1_desc->GetShape();
+  int64_t batch_size = offset_shape.GetDim(0);
+
+  Tensor data1;
+  Tensor data2;
+  GeShape &output_shape = output_y_desc->MutableShape();
+  const vector<string> const_names = {"seq_len1", "seq_len2"};
+  PREPARE_DYNAMIC_SHAPE(const_names);
+  if (op.GetInputConstData("seq_len1", data1) == GRAPH_SUCCESS &&
+      op.GetInputConstData("seq_len2", data2) == GRAPH_SUCCESS) {
+    int64_t bst = 0;
+    for (int64_t i = 0; i < batch_size; i++) {
+      int32_t dim1 = *((int32_t *)data1.GetData() + i);
+      int32_t dim2 = *((int32_t *)data2.GetData() + i);
+      bst += dim1 * dim2;
+    }
+    output_shape.SetDimNum(2);
+    output_shape.SetDim(0, bst);
+    output_shape.SetDim(1, energy_shape.GetDim(1));
+  } else {
+    OP_LOGD(op.GetName().c_str(), "failed to get constValue of [seq_len1, seq_len2]");
+    std::vector<int64_t> energy_dims = energy_shape.GetDims();
+    if (!IsUnknown(energy_dims)) {
+      OP_LOGE(op.GetName().c_str(), "static case is not supported.");
+      return GRAPH_FAILED;
+    }
+    output_shape.SetDimNum(2);
+    output_shape.SetDim(0, -1);
+    output_shape.SetDim(1, energy_shape.GetDim(1));
+
+    std::vector<std::pair<int64_t, int64_t>> range_vector;
+    range_vector.push_back(std::make_pair(1, -1));
+    range_vector.push_back(std::make_pair(1, -1));
+    output_y_desc->SetShapeRange(range_vector);
+  }
+  auto energy_dtype = input_energy_desc->GetDataType();
+  output_y_desc->SetDataType(energy_dtype);
+  OP_LOGD(op.GetName().c_str(), "DynSeqOuterInferShape end.");
+  return GRAPH_SUCCESS;
+}
+INFER_FUNC_REG(DynSeqOuter, DynSeqOuterInferShape);
+// ------------DynSeqOuter Op End-----------------
 }  // namespace ge
 

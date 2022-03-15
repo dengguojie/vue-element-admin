@@ -1887,6 +1887,7 @@ unkown:
       - ops/built-in/op_tiling/layer_norm_beta_gamma_backprop.cc
       - ops/built-in/op_tiling/avg_pool_1d.cc
       - ops/built-in/op_tiling/moving_sum_with_sigmoid.cc
+      - ops/built-in/op_tiling/dyn_seq_outer.cc
       - ops/built-in/op_tiling/tabulate_fusion_grad.cc
       - ops/built-in/op_tiling/layer_norm_x_backprop_v2.cc
       - ops/built-in/op_tiling/extract_image_patches.cc
@@ -2769,6 +2770,7 @@ unkown:
       - ops/built-in/tbe/impl/dynamic/layer_norm_v1.py
       - ops/built-in/tbe/impl/dynamic/batch_to_space.py
       - ops/built-in/tbe/impl/dynamic/moving_sum_with_sigmoid.py
+      - ops/built-in/tbe/impl/dynamic/dyn_seq_outer.py
       - ops/built-in/tbe/impl/dynamic/assign_add.py
       - ops/built-in/tbe/impl/dynamic/max_pool_with_argmax_v2_resnet50.py
       - ops/built-in/tbe/impl/dynamic/unsorted_segment.py
@@ -4051,6 +4053,21 @@ unkown:
       - auto_schedule/python/lang/cce/te_compute/dim_conv.py
       - auto_schedule/python/utils/scatter/__init__.py
     unrelease:
+  llt:
+    ut_check: true
+    st_check: false
+
+
+pytorch:
+  commiter:
+    "QiuXueWen"
+  team: "pytorch"
+  src:
+    release:
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/lstmp_fusion_pass.cc
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/lstmp_fusion_pass.h
+    unrelease:
+      - ops/built-in/tests/ut/graph_fusion/ai_core/lstmp_fusion_test.cpp
   llt:
     ut_check: true
     st_check: false

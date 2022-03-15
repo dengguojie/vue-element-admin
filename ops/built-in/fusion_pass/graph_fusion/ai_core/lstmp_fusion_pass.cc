@@ -47,6 +47,7 @@
 #include "op_log.h"
 #include "error_util.h"
 #include "pattern_fusion_util.h"
+#include "external/graph/operator_factory.h"
 #include "graph_optimizer/graph_fusion/fusion_pass_manager/fusion_pass_registry.h"
 
 using namespace ge;
@@ -324,6 +325,16 @@ void LSTMPFusionPass::SetTensorDescription(ge::GeTensorDesc &tensorDesc, const v
     return;
 }
 
+void LSTMPFusionPass::SetTensorDescription(ge::GeTensorDescPtr descPtr, const ge::GeShape& shape,
+                                           const ge::Format& format, const ge::DataType& dtype) {
+    descPtr->SetShape(shape);
+    descPtr->SetDataType(dtype);
+    descPtr->SetFormat(format);
+    descPtr->SetOriginShape(shape);
+    descPtr->SetOriginFormat(format);
+    return;
+}
+
 template <class T>
 static Status SetWeightTensorData(ge::GeTensorPtr wTensorPtr, ge::GeTensorPtr rTensorPtr,
                                   std::vector<int32_t> &inputDims, ge::GeTensorDesc tensorDesc,
@@ -515,23 +526,41 @@ Status LSTMPFusionPass::AddEdgeForInput(ge::ComputeGraph& graph, const ge::NodeP
   OP_LOGD(FUSED_OP_TYPE.c_str(), "AddEdgeForInput");
   auto fused_desc = fused_node->GetOpDesc();
   auto input_x_desc = fused_desc->GetInputDesc("x");
-  ge::NodePtr trans_x = nullptr;
-  std::vector<int32_t> perm_x = {1, 0, 2};
-  FUSION_PASS_CHECK(CreateTransposeNode(graph, input_x_desc, trans_x, perm_x, "x") != SUCCESS,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "X CreateTransposeNode FAIL"),
-                    return FAILED);
 
-  FUSION_PASS_CHECK(
+  auto dims = input_x_desc.GetShape().GetDims();
+  if (dims.size() == 3 && dims[1] == 1) {
+    ge::NodePtr reshape_node = nullptr;
+    std::vector<int64_t> new_shape = {dims[1], dims[0], dims[2]};
+    FUSION_PASS_CHECK(CreateReshapeNode(graph, input_x_desc, reshape_node, new_shape, "x") != SUCCESS,
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "X Create Reshape Node FAIL"),
+                      return FAILED);
+    FUSION_PASS_CHECK(
+        SUCCESS != ge::GraphUtils::AddEdge(fused_node->GetInDataAnchor(LSTMP_INPUT_INDEX["x"])->GetPeerOutAnchor(),
+                                           reshape_node->GetInDataAnchor(0)),
+        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add x input edge to reshape_x failed."), return FAILED);
+
+    FUSION_PASS_CHECK(
+        SUCCESS != ge::GraphUtils::AddEdge(reshape_node->GetOutDataAnchor(0),
+                                           dynamicv3_node->GetInDataAnchor(V3_INPUT_INDEX["x"])),
+        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add reshape_x edge to fusion node failed."),
+        return FAILED);
+  } else {
+    ge::NodePtr trans_x = nullptr;
+    std::vector<int32_t> perm_x = {1, 0, 2};
+    FUSION_PASS_CHECK(CreateTransposeNode(graph, input_x_desc, trans_x, perm_x, "x") != SUCCESS,
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "X CreateTransposeNode FAIL"),
+                      return FAILED);
+
+    FUSION_PASS_CHECK(
         SUCCESS != ge::GraphUtils::AddEdge(fused_node->GetInDataAnchor(LSTMP_INPUT_INDEX["x"])->GetPeerOutAnchor(),
                                            trans_x->GetInDataAnchor(0)),
-        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add x input edge to trans_x failed."),
-        return FAILED);
+        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add x input edge to trans_x failed."), return FAILED);
 
-  FUSION_PASS_CHECK(
-        SUCCESS != ge::GraphUtils::AddEdge(trans_x->GetOutDataAnchor(0),
-                                           dynamicv3_node->GetInDataAnchor(V3_INPUT_INDEX["x"])),
-        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add trans_x edge to fusion node failed."),
-        return FAILED);
+    FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(trans_x->GetOutDataAnchor(0),
+                                                         dynamicv3_node->GetInDataAnchor(V3_INPUT_INDEX["x"])),
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add trans_x edge to fusion node failed."),
+                      return FAILED);
+  }
 
   int32_t idx_offset = 0;
   if (fused_desc->MutableInputDesc("init_h") != nullptr) {
@@ -582,30 +611,8 @@ Status LSTMPFusionPass::AddEdgeForOutput(ge::ComputeGraph& graph, const ge::Node
   OP_LOGD(FUSED_OP_TYPE.c_str(), "AddEdgeForOutput");
 
   auto dynamicv3_desc = dynamicv3_node->GetOpDesc();
-  auto input_y_desc = dynamicv3_desc->GetOutputDesc("y");
-  std::vector<int32_t> perm = {1, 0, 2};
-  ge::NodePtr trans_y = nullptr;
-  FUSION_PASS_CHECK(CreateTransposeNode(graph, input_y_desc, trans_y, perm, "y") != SUCCESS,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Y CreateTransposeNode FAIL"),
-                    return FAILED);
-
-  FUSION_PASS_CHECK(
-        SUCCESS != ge::GraphUtils::AddEdge(dynamicv3_node->GetOutDataAnchor(0), trans_y->GetInDataAnchor(0)),
-        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add y output edge to trans_y failed."),
-        return FAILED);
-
-  for (auto in_anchor : fused_node->GetOutDataAnchor(0)->GetPeerInDataAnchors()) {
-      FUSION_PASS_CHECK(
-          SUCCESS != ge::GraphUtils::RemoveEdge(fused_node->GetOutDataAnchor(0), in_anchor),
-          VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove edge for y fail"),
-          return FAILED);
-      FUSION_PASS_CHECK(
-        SUCCESS != ge::GraphUtils::AddEdge(trans_y->GetOutDataAnchor(0), in_anchor),
-        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add trans_y edge to fusion node failed."),
-        return FAILED);
-  }
-
   auto output_desc = dynamicv3_desc->GetOutputDesc("output_h");
+  auto output_y_desc = dynamicv3_desc->GetOutputDesc("y");
   auto dims = output_desc.GetShape().GetDims();
   int32_t num_size = dims[0];
 
@@ -623,10 +630,7 @@ Status LSTMPFusionPass::AddEdgeForOutput(ge::ComputeGraph& graph, const ge::Node
           return FAILED);
 
     for (auto in_anchor : fused_node->GetOutDataAnchor(OUTPUT_INDEX["output_h"])->GetPeerInDataAnchors()) {
-        FUSION_PASS_CHECK(
-            SUCCESS != ge::GraphUtils::RemoveEdge(fused_node->GetOutDataAnchor(1), in_anchor),
-            VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove edge for init_h fail"),
-            return FAILED);
+        in_anchor->UnlinkAll();
         FUSION_PASS_CHECK(
           SUCCESS != ge::GraphUtils::AddEdge(splith_node->GetOutDataAnchor(1), in_anchor),
           VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add splith edge to fusion node failed."),
@@ -646,21 +650,49 @@ Status LSTMPFusionPass::AddEdgeForOutput(ge::ComputeGraph& graph, const ge::Node
           return FAILED);
 
     for (auto in_anchor : fused_node->GetOutDataAnchor(OUTPUT_INDEX["output_c"])->GetPeerInDataAnchors()) {
-        FUSION_PASS_CHECK(
-            SUCCESS != ge::GraphUtils::RemoveEdge(fused_node->GetOutDataAnchor(OUTPUT_INDEX["output_c"]), in_anchor),
-            VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove edge for init_c fail"),
-            return FAILED);
+        in_anchor->UnlinkAll();
         FUSION_PASS_CHECK(
           SUCCESS != ge::GraphUtils::AddEdge(splitc_node->GetOutDataAnchor(1), in_anchor),
           VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add splitc edge to fusion node failed."),
           return FAILED);
     }
-  } else {
-    for (auto in_anchor : fused_node->GetOutDataAnchor(OUTPUT_INDEX["output_h"])->GetPeerInDataAnchors()) {
+
+    std::vector<int32_t> perm = {1, 0, 2};
+    ge::NodePtr trans_y = nullptr;
+    FUSION_PASS_CHECK(CreateTransposeNode(graph, output_y_desc, trans_y, perm, "y") != SUCCESS,
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Y CreateTransposeNode FAIL"),
+                      return FAILED);
+
+    FUSION_PASS_CHECK(
+        SUCCESS != ge::GraphUtils::AddEdge(dynamicv3_node->GetOutDataAnchor(0), trans_y->GetInDataAnchor(0)),
+        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add y output edge to trans_y failed."), return FAILED);
+
+    for (auto in_anchor : fused_node->GetOutDataAnchor(0)->GetPeerInDataAnchors()) {
+        in_anchor->UnlinkAll();
         FUSION_PASS_CHECK(
-            SUCCESS != ge::GraphUtils::RemoveEdge(fused_node->GetOutDataAnchor(1), in_anchor),
-            VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove edge for init_h fail"),
+            SUCCESS != ge::GraphUtils::AddEdge(trans_y->GetOutDataAnchor(0), in_anchor),
+            VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add trans_y edge to fusion node failed."),
             return FAILED);
+    }
+  } else {
+    ge::NodePtr reshape_node = nullptr;
+    std::vector<int64_t> new_shape = {dims[1], dims[0], dims[2]};
+    FUSION_PASS_CHECK(CreateReshapeNode(graph, output_y_desc, reshape_node, new_shape, "y") != SUCCESS,
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "y Create Reshape Node FAIL"),
+                      return FAILED);
+    FUSION_PASS_CHECK(
+        SUCCESS != ge::GraphUtils::AddEdge(dynamicv3_node->GetOutDataAnchor(0), reshape_node->GetInDataAnchor(0)),
+        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "link dynamicv3 with reshape failed."), return FAILED);
+    for (auto in_anchor : fused_node->GetOutDataAnchor(0)->GetPeerInDataAnchors()) {
+        in_anchor->UnlinkAll();
+        FUSION_PASS_CHECK(
+            SUCCESS != ge::GraphUtils::AddEdge(reshape_node->GetOutDataAnchor(0), in_anchor),
+            VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "link reshape_y with fusion node failed."),
+            return FAILED);
+    }
+
+    for (auto in_anchor : fused_node->GetOutDataAnchor(OUTPUT_INDEX["output_h"])->GetPeerInDataAnchors()) {
+        in_anchor->UnlinkAll();
         FUSION_PASS_CHECK(
           SUCCESS != ge::GraphUtils::AddEdge(dynamicv3_node->GetOutDataAnchor(OUTPUT_INDEX["output_h"]), in_anchor),
           VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add splith edge to fusion node failed."),
@@ -668,10 +700,7 @@ Status LSTMPFusionPass::AddEdgeForOutput(ge::ComputeGraph& graph, const ge::Node
     }
 
     for (auto in_anchor : fused_node->GetOutDataAnchor(OUTPUT_INDEX["output_c"])->GetPeerInDataAnchors()) {
-        FUSION_PASS_CHECK(
-            SUCCESS != ge::GraphUtils::RemoveEdge(fused_node->GetOutDataAnchor(OUTPUT_INDEX["output_c"]), in_anchor),
-            VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove edge for init_c fail"),
-            return FAILED);
+        in_anchor->UnlinkAll();
         FUSION_PASS_CHECK(
           SUCCESS != ge::GraphUtils::AddEdge(dynamicv3_node->GetOutDataAnchor(OUTPUT_INDEX["output_c"]), in_anchor),
           VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add splitc edge to fusion node failed."),
@@ -832,5 +861,64 @@ Status LSTMPFusionPass::RemoveFusedNode(ge::ComputeGraph& graph, ge::NodePtr& fu
   OP_LOGD(FUSED_OP_TYPE.c_str(), "RemoveFusedNode success.");
   return SUCCESS;
 }
+
+Status LSTMPFusionPass::CreateReshapeNode(ge::ComputeGraph& graph, const ge::GeTensorDesc& previous_node_desc,
+                                          ge::NodePtr& new_node, const vector<int64_t> &output_shape, 
+                                          const std::string& name) {
+  std::string op_name(name + "/Reshape");
+  auto reshape_op = ge::OperatorFactory::CreateOperator(op_name.c_str(), "Reshape");
+  FUSION_PASS_CHECK(reshape_op.IsEmpty(), OP_LOGE(FUSED_OP_TYPE.c_str(), "Create Reshape Op error"), return FAILED);
+  auto reshape_desc = ge::OpDescUtils::GetOpDescFromOperator(reshape_op);
+  reshape_op.BreakConnect();
+
+  reshape_desc->UpdateInputDesc(0, previous_node_desc);
+
+  ge::GeShape output_tensor_shape = ge::GeShape(output_shape);
+  SetTensorDescription(reshape_desc->MutableOutputDesc(0), output_tensor_shape, previous_node_desc.GetFormat(),
+                       previous_node_desc.GetDataType());
+
+  int64_t dim = output_shape.size();
+  ge::GeShape dim_shape = ge::GeShape({dim});
+  SetTensorDescription(reshape_desc->MutableInputDesc(1), dim_shape, ge::FORMAT_ND, ge::DT_INT64);
+
+  std::vector<string> dep_inputs = {"shape"};
+  reshape_desc->SetOpInferDepends(dep_inputs);
+
+  ge::OpDescPtr const_opdesc = CreateListConstDesc(name + "/Reshape_Const", output_shape);
+  FUSION_PASS_CHECK(const_opdesc == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "Create Const Op error"), return FAILED);
+  new_node = graph.AddNode(reshape_desc);
+  FUSION_PASS_CHECK(new_node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "failed to add Reshape to graph."),
+                    return FAILED);
+  auto new_shape_const_node = graph.AddNode(const_opdesc);
+  FUSION_PASS_CHECK(new_shape_const_node == nullptr,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "failed to add Reshape_Const to graph."), return FAILED);
+  ge::GraphUtils::AddEdge(new_shape_const_node->GetOutDataAnchor(0), new_node->GetInDataAnchor(1));
+  return SUCCESS;
+}
+
+ge::OpDescPtr LSTMPFusionPass::CreateListConstDesc(const string &name, vector<int64_t> values) {
+  OpDescPtr const_op_desc = nullptr;
+  FUSION_PASS_MAKE_SHARED((const_op_desc = std::make_shared<ge::OpDesc>(name, "Const")), return nullptr);
+
+  GeTensorDesc data_desc(GeShape({static_cast<int64_t>(values.size())}), FORMAT_ND, DT_INT64);
+  GeTensorPtr const_value = nullptr;
+  FUSION_PASS_MAKE_SHARED((const_value = std::make_shared<ge::GeTensor>(
+                               data_desc, reinterpret_cast<uint8_t*>(values.data()), sizeof(int64_t) * values.size())),
+                          return nullptr);
+  if (const_value == nullptr) {
+    return nullptr;
+  }
+  if (!AttrUtils::SetTensor(const_op_desc, ATTR_NAME_WEIGHTS, const_value)) {
+    return nullptr;
+  }
+
+  if (const_op_desc->AddOutputDesc("y", data_desc) != GRAPH_SUCCESS) {
+    return nullptr;
+  }
+
+  return const_op_desc;
+}
+
+
 REGISTER_PASS("LSTMPFusionPass", BUILT_IN_GRAPH_PASS, LSTMPFusionPass);
 } // fe

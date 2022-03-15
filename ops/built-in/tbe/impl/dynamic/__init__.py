@@ -398,5 +398,6 @@ from .reduce_mean_with_count import reduce_mean_with_count
 from .prod_force_se_a import prod_force_se_a
 from .softsign_grad import softsign_grad
 from .moving_sum_with_sigmoid import moving_sum_with_sigmoid
+from .dyn_seq_outer import dyn_seq_outer
 from .extract_image_patches import extract_image_patches
 from .expint import expint

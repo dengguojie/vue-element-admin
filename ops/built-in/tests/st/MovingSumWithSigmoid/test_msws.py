@@ -10,17 +10,19 @@ def sigmoid(x):
     s = 1 / (1 + np.exp(-x))
     return s
 
-def calc_expect_func(alpha, energy, beam_size, frame_size, y, window_size):
+def calc_expect_func(alpha, energy, offset, y, window_size):
     alpha_array = alpha["value"]
     energy_array = energy["value"]
-    beam_size_array = beam_size["value"]
-    frame_size_array = frame_size["value"]
+    
+    batch_size = offset["shape"][0] // 2
+    beam_size_array = beam_size["value"][0:batch_size]
+    frame_size_array = frame_size["value"][batch_size:]
 
-    out_shape = energy["shape"]
+    bs = np.sum(beam_size_array)
+    col_offset = np.sum(frame_size_array)
+    out_shape = [bs, col_offset]
     res = np.zeros(out_shape)
 
-    batch_size = frame_size["shape"][0]
-    col_offset = np.sum(frame_size_array)
  
     alpha_offset_tmp = 0
     enery_row_offset_tmp = 0
@@ -53,6 +55,6 @@ def calc_expect_func(alpha, energy, beam_size, frame_size, y, window_size):
                     moving_sum += alpha_array[alpha_offset_v + beam_idx * frame_num + i + j]
 
                 res[(energy_row_offset_v + beam_idx) * col_offset + energy_col_offset_v + i] = moving_sum *
-                    sigmoid(energy_array[(energy_row_offset_v + beam_idx) * col_offset + energy_col_offset_v + i]
+                    sigmoid(energy_array[alpha_offset_v + beam_idx * frame_num + i + j])
 
     return [res, ]

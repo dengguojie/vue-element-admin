@@ -43,7 +43,7 @@ class MovingSumWithSigmoid(object):
     """class for moving_sum_with_sigmoid"""
 
     # 'pylint: disable=too-many-arguments
-    def __init__(self, alpha, energy, beam_size, frame_size, y, window_size, kernel_name):
+    def __init__(self, alpha, energy, offset, y, window_size, kernel_name):
         self.tik_instance = tik.Tik(tik.Dprofile())
         self.kernel_name = kernel_name
 
@@ -55,10 +55,7 @@ class MovingSumWithSigmoid(object):
         self.energy_gm = self.tik_instance.Tensor(self.dtype, [Constant.MAX_INT32], name="energy_gm",
                                                   scope=tik.scope_gm)
 
-        self.beam_size_gm = self.tik_instance.Tensor("int32", [Constant.MAX_INT32], name="beam_size_gm",
-                                                     scope=tik.scope_gm)
-        self.frame_size_gm = self.tik_instance.Tensor("int32", [Constant.MAX_INT32], name="frame_size_gm",
-                                                      scope=tik.scope_gm)
+        self.offset_gm = self.tik_instance.Tensor("int32", [Constant.MAX_INT32], name="offset_gm", scope=tik.scope_gm)
 
         self.y_gm = self.tik_instance.Tensor(self.dtype, [Constant.MAX_INT32], name="y", scope=tik.scope_gm,
                                              is_atomic_add=True)
@@ -71,25 +68,24 @@ class MovingSumWithSigmoid(object):
                                  Constant.BLOCK_ALIGN * Constant.BLOCK_ALIGN
 
         self.used_aicore_num = tik.Dprofile().get_aicore_num()
-        self.offset_gm = self.tik_instance.Tensor("int32", [Constant.OFFSET_NUMS * Constant.BATCH_MAX],
-                                                  name="offset_gm",
-                                                  scope=tik.scope_gm, is_workspace=True)
+        self.tmp_offset_gm = self.tik_instance.Tensor("int32", [Constant.OFFSET_NUMS * Constant.BATCH_MAX],
+                                                      name="tmp_offset_gm",
+                                                      scope=tik.scope_gm, is_workspace=True)
 
-        self.batch_size = None
-        self.batch_size_align = None
-        self.col_offset = None
+        self.batch_size = self.tik_instance.Scalar("int32")
+        self.batch_size_align = self.tik_instance.Scalar("int32")
+        self.col_offset = self.tik_instance.Scalar("int32")
 
     def get_tiling_args(self):
         """get_tiling_args"""
         tiling_ub = self.tik_instance.Tensor("int32", [Constant.BLOCK_ALIGN],
                                              name='tiling_ub', scope=tik.scope_ubuf)
         self.tik_instance.data_move(tiling_ub, self.tiling_gm, 0, 1, 1, 0, 0)
-        self.batch_size = self.tik_instance.Scalar("int32", init_value=tiling_ub[0])
+        self.batch_size.set_as(tiling_ub[0])
 
     def moving_sum_with_sigmoid_compute(self):
         self.get_tiling_args()
 
-        self.batch_size_align = self.tik_instance.Scalar("int32")
         self.batch_size_align.set_as(
             (self.batch_size + Constant.BLOCK_ALIGN - 1) // Constant.BLOCK_ALIGN * Constant.BLOCK_ALIGN)
 
@@ -105,12 +101,12 @@ class MovingSumWithSigmoid(object):
         frame_size_ub = self.tik_instance.Tensor("int32", [self.batch_size_align], name="frame_size_ub",
                                                  scope=tik.scope_ubuf)
 
-        self.tik_instance.data_move(beam_size_ub, self.beam_size_gm, 0, 1,
+        self.tik_instance.data_move(beam_size_ub, self.offset_gm[0], 0, 1,
                                     2 * self.batch_size_align // Constant.BLOCK_ALIGN, 0, 0)
-        self.tik_instance.data_move(frame_size_ub, self.frame_size_gm, 0, 1,
+        self.tik_instance.data_move(frame_size_ub, self.offset_gm[self.batch_size], 0, 1,
                                     2 * self.batch_size_align // Constant.BLOCK_ALIGN, 0, 0)
 
-        self.col_offset = self.tik_instance.Scalar("int32", init_value=0)
+        self.col_offset.set_as(0)
         tmp = self.tik_instance.Scalar("int32")
         with self.tik_instance.for_range(0, self.batch_size) as idx:
             tmp.set_as(frame_size_ub[idx])
@@ -139,11 +135,11 @@ class MovingSumWithSigmoid(object):
             energy_row_offset_ub[idx + 1].set_as(energy_row_offset)
             energy_col_offset_ub[idx + 1].set_as(energy_col_offset)
 
-        self.tik_instance.data_move(self.offset_gm, alpha_offset_ub, 0, 1,
+        self.tik_instance.data_move(self.tmp_offset_gm, alpha_offset_ub, 0, 1,
                                     2 * self.batch_size_align // Constant.BLOCK_ALIGN, 0, 0)
-        self.tik_instance.data_move(self.offset_gm[Constant.BATCH_MAX], energy_row_offset_ub, 0, 1,
+        self.tik_instance.data_move(self.tmp_offset_gm[Constant.BATCH_MAX], energy_row_offset_ub, 0, 1,
                                     2 * self.batch_size_align // Constant.BLOCK_ALIGN, 0, 0)
-        self.tik_instance.data_move(self.offset_gm[Constant.BATCH_MAX * 2], energy_col_offset_ub, 0, 1,
+        self.tik_instance.data_move(self.tmp_offset_gm[Constant.BATCH_MAX * 2], energy_col_offset_ub, 0, 1,
                                     2 * self.batch_size_align // Constant.BLOCK_ALIGN, 0, 0)
 
         batch_num_per_aicore = self.tik_instance.Scalar("int32", init_value=self.batch_size // self.used_aicore_num)
@@ -161,7 +157,7 @@ class MovingSumWithSigmoid(object):
                 "core_num": self.used_aicore_num,
             })
         self.tik_instance.BuildCCE(kernel_name=self.kernel_name,
-                                   inputs=[self.alpha_gm, self.energy_gm, self.beam_size_gm, self.frame_size_gm],
+                                   inputs=[self.alpha_gm, self.energy_gm, self.offset_gm],
                                    outputs=[self.y_gm], flowtable=[self.tiling_gm], config=opt_config)
 
         return self.tik_instance
@@ -178,12 +174,13 @@ class MovingSumWithSigmoid(object):
         frame_size_ub = self.tik_instance.Tensor("int32", [Constant.BLOCK_ALIGN], name="frame_size_ub",
                                                  scope=tik.scope_ubuf)
 
-        self.tik_instance.data_move(alpha_offset_ub, self.offset_gm[task_idx], 0, 1, 1, 0, 0)
-        self.tik_instance.data_move(energy_row_offset_ub, self.offset_gm[Constant.BATCH_MAX + task_idx], 0, 1, 1, 0, 0)
-        self.tik_instance.data_move(energy_col_offset_ub, self.offset_gm[Constant.BATCH_MAX * 2 + task_idx], 0, 1, 1, 0,
-                                    0)
-        self.tik_instance.data_move(beam_size_ub, self.beam_size_gm[task_idx], 0, 1, 1, 0, 0)
-        self.tik_instance.data_move(frame_size_ub, self.frame_size_gm[task_idx], 0, 1, 1, 0, 0)
+        self.tik_instance.data_move(alpha_offset_ub, self.tmp_offset_gm[task_idx], 0, 1, 1, 0, 0)
+        self.tik_instance.data_move(energy_row_offset_ub, self.tmp_offset_gm[Constant.BATCH_MAX + task_idx],
+                                    0, 1, 1, 0, 0)
+        self.tik_instance.data_move(energy_col_offset_ub, self.tmp_offset_gm[Constant.BATCH_MAX * 2 + task_idx],
+                                    0, 1, 1, 0, 0)
+        self.tik_instance.data_move(beam_size_ub, self.offset_gm[task_idx], 0, 1, 1, 0, 0)
+        self.tik_instance.data_move(frame_size_ub, self.offset_gm[task_idx + self.batch_size], 0, 1, 1, 0, 0)
 
         alpha_offset = self.tik_instance.Scalar("int32", init_value=alpha_offset_ub[0])
         energy_row_offset = self.tik_instance.Scalar("int32", init_value=energy_row_offset_ub[0])
@@ -207,8 +204,7 @@ class MovingSumWithSigmoid(object):
                                                           scope=tik.scope_ubuf)
                 self.tik_instance.data_move(alpha_ub_fp16, self.alpha_gm[alpha_offset + beam_idx * frame_size], 0, 1,
                                             frame_size_align // Constant.BLOCK_ALIGN, 0, 0)
-                self.tik_instance.data_move(energy_ub_fp16, self.energy_gm[
-                    (energy_row_offset + beam_idx) * self.col_offset + energy_col_offset],
+                self.tik_instance.data_move(energy_ub_fp16, self.energy_gm[alpha_offset + beam_idx * frame_size],
                                             0, 1, frame_size_align // Constant.BLOCK_ALIGN, 0, 0)
                 self.tik_instance.vec_conv(Constant.BLOCK_ALIGN, "none", alpha_ub, alpha_ub_fp16,
                                            frame_size_align // Constant.BLOCK_ALIGN, 2, 1)
@@ -217,8 +213,7 @@ class MovingSumWithSigmoid(object):
             else:
                 self.tik_instance.data_move(alpha_ub, self.alpha_gm[alpha_offset + beam_idx * frame_size], 0, 1,
                                             2 * frame_size_align // Constant.BLOCK_ALIGN, 0, 0)
-                self.tik_instance.data_move(energy_ub, self.energy_gm[
-                    (energy_row_offset + beam_idx) * self.col_offset + energy_col_offset], 0, 1,
+                self.tik_instance.data_move(energy_ub, self.energy_gm[alpha_offset + beam_idx * frame_size], 0, 1,
                                             2 * frame_size_align // Constant.BLOCK_ALIGN, 0, 0)
 
             ones_ub = self.tik_instance.Tensor("float32", [frame_size_align], name="ones_ub", scope=tik.scope_ubuf)
@@ -275,9 +270,9 @@ class MovingSumWithSigmoid(object):
                         with self.tik_instance.else_scope():
                             self.tik_instance.vec_reduce_add(Constant.REDUCE_ALIGN, tmp_ub, alpha_ub, work_tensor_ub,
                                                              block_len // Constant.REDUCE_ALIGN, 8)
+
                     with self.tik_instance.else_scope():
                         self.tik_instance.vec_reduce_add(block_len, tmp_ub, alpha_ub, work_tensor_ub, 1, 0)
-
                     sum_ub[idx].set_as(tmp_ub[0])
                     alpha_ub[idx].set_as(0)
             else:
@@ -378,15 +373,14 @@ class MovingSumWithSigmoid(object):
 
 
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
-                            para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_INT,
-                            para_check.KERNEL_NAME)
-def moving_sum_with_sigmoid(alpha, energy, beam_size, frame_size, y, window_size,
-                            kernel_name="moving_sum_with_sigmoid"):
+                            para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_INT, para_check.KERNEL_NAME)
+def moving_sum_with_sigmoid(alpha, energy, offset, y, ksize, kernel_name="moving_sum_with_sigmoid"):
     """
     To do: Implement the operator by referring to the
            TBE Operator Development Guide.
+    offset = beam_size + frame_size
     """
 
-    op_obj = MovingSumWithSigmoid(alpha, energy, beam_size, frame_size, y, window_size, kernel_name)
+    op_obj = MovingSumWithSigmoid(alpha, energy, offset, y, ksize, kernel_name)
 
     return op_obj.moving_sum_with_sigmoid_compute()

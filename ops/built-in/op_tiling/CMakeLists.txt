@@ -206,6 +206,7 @@ set(_optiling_files
   prod_force_se_a.cc
   trace.cc
   moving_sum_with_sigmoid.cc
+  dyn_seq_outer.cc
 )
 
 set(_op_tiling_include

@@ -144,6 +144,7 @@ set(_onnx_plugins
   custom/group_normal_relu_plugin.cc
   custom/lstmp_plugin.cc
   custom/moving_sum_with_sigmoid_plugin.cc
+  custom/dyn_seq_outer.cc
 )
 
 set(_ops_all_onnx_plugin_include

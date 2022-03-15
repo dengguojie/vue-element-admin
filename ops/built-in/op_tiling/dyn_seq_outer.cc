@@ -15,7 +15,7 @@
  */
 
 /*!
- * \file moving_sum_with_sigmoid.cc
+ * \file dyn_seq_outer.cc
  * \brief
  */
 #include <math.h>
@@ -31,17 +31,17 @@ namespace optiling {
     const int64_t OFFSET_NUMS = 3;
     const int64_t BATCHSIZE_MAX = 256;
     const int64_t INT_BTYES = 4;
-    struct MovingSumWithSigmoidTilingParam {
-        int32_t core_num;
+    struct DynSeqOuterTilingParam {
         int32_t batch_size;
+        int32_t feature_dim;
     };
-    void InitRunningParams(MovingSumWithSigmoidTilingParam& params) {
-        params.core_num = 0;
-        params.batch_size = 0;
+    void InitRunningParams(DynSeqOuterTilingParam& params) {
+        params.batch_size = 1;
+        params.feature_dim = 1;
     }
 
-    bool GetCompileParams(const std::string& op_type, const std::vector<int64_t>& compile_info,
-                          int32_t& core_num) {
+    bool GetCoreNum(const std::string& op_type, const std::vector<int64_t>& compile_info,
+                    int32_t& core_num) {
         OP_LOGD("GetCompileParams is running.");
         OP_TILING_CHECK(compile_info.size() < 1,
                   VECTOR_INNER_ERR_REPORT_TILIING(op_type, "the compile info num must == 1, is %zu",
@@ -52,36 +52,40 @@ namespace optiling {
         return true;
     }
 
-    void SetRunningInfo(const MovingSumWithSigmoidTilingParam & tiling_params, utils::OpRunInfo& run_info)
+    void SetRunningInfo(const DynSeqOuterTilingParam & tiling_params, utils::OpRunInfo& run_info)
     {
         OP_LOGD("SetRunningInfo is running.");
         run_info.AddTilingData(tiling_params.batch_size);
+        run_info.AddTilingData(tiling_params.feature_dim);
     }
 
-    void PrintTilingParams(const MovingSumWithSigmoidTilingParam &tiling_params)
+    void PrintTilingParams(const DynSeqOuterTilingParam &tiling_params)
     {
         OP_LOGD("PrintTilingParams is running.");
-        OP_LOGD("op [MovingSumWithSigmoidTilingParam] : core_used=%d.", tiling_params.core_used);
-        OP_LOGD("op [MovingSumWithSigmoidTilingParam] : batch_size=%d.", tiling_params.batch_size);
+        OP_LOGD("op [DynSeqOuterTilingParam] : batch_size=%d.", tiling_params.batch_size);
+        OP_LOGD("op [DynSeqOuterTilingParam] : feature_dim=%d.", tiling_params.feature_dim);
     }
 
-    bool MovingSumWithSigmoidTiling(const std::string& op_type, const ge::Operator& op_paras, const std::vector<int64_t>& op_compile_info,
-                                    utils::OpRunInfo& run_info)
+    bool DynSeqOuterTiling(const std::string& op_type, const ge::Operator& op_paras, const std::vector<int64_t>& op_compile_info,
+                           utils::OpRunInfo& run_info)
     {
-        OP_LOGD("MovingSumWithSigmoidTiling is running.");
-        MovingSumWithSigmoidTilingParam run_params;
+        OP_LOGD("DynSeqOuterTiling is running.");
+        DynSeqOuterTilingParam run_params;
         InitRunningParams(run_params);
         int32_t core_num = 0;
 
-        OP_TILING_CHECK(!GetCompileParams(op_type, op_compile_info, core_num),
+        OP_TILING_CHECK(!GetCoreNum(op_type, op_compile_info, core_num),
                   VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get compile info from nlohmann json failed."),
                   return false);
-        run_params.core_num = core_num;
 
         auto op_desc = OpDescUtils::GetOpDescFromOperator(op_paras);
+        auto x1_desc = op_desc->GetInputDescPtr(0);
+        auto x1_shape = x1_desc->GetShape();
+        run_params.feature_dim = x1_shape.GetDim(1);
+
         auto offset_desc = op_desc->GetInputDescPtr(2);
-        auto offset_shape = offset_desc->GetShape();
-        run_params.batch_size = offset_shape.GetDim(0) / 2;
+        auto offse_shape = offset_desc->GetShape();
+        run_params.batch_size = offse_shape.GetDim(0);
         if (run_params.batch_size > BATCHSIZE_MAX)
         {
           VECTOR_INNER_ERR_REPORT_TILIING(op_type, "batch_size is over 256.");
@@ -94,13 +98,13 @@ namespace optiling {
         run_info.AddWorkspace(workspace);
         run_info.SetBlockDim(core_num);
  
-        OP_LOGI(op_type.c_str(), "MovingSumWithSigmoidTiling run success.");
+        OP_LOGI(op_type.c_str(), "DynSeqOuterTiling run success.");
 
         return true;
     }
 
-    static const std::vector<std::string> MovingSumWithSigmoid_COMPILE_INFO_KEY = {"core_num"};
-    REGISTER_OP_TILING_V3_WITH_VECTOR(MovingSumWithSigmoid, MovingSumWithSigmoidTiling,
-                                      MovingSumWithSigmoid_COMPILE_INFO_KEY, NO_OPTIONAL_VALUE);
+    static const std::vector<std::string> DynSeqOuter_COMPILE_INFO_KEY = {"core_num"};
+    REGISTER_OP_TILING_V3_WITH_VECTOR(DynSeqOuter, DynSeqOuterTiling,
+                                      DynSeqOuter_COMPILE_INFO_KEY, NO_OPTIONAL_VALUE);
 }
 // namespace optiling.

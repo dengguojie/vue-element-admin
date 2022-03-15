@@ -5,20 +5,20 @@ from onnx import TensorProto
 def make_moving_sum_with_sigmoid(version):
     alpha = helper.make_tensor_value_info('alpha', TensorProto.FLOAT, [-1])
     energy = helper.make_tensor_value_info('energy', TensorProto.FLOAT, [-1])
-    frame_size = helper.make_tensor_value_info('frame_size', TensorProto.INT32, [1])
+    offset = helper.make_tensor_value_info('offset', TensorProto.INT32, [2])
     y = helper.make_tensor_value_info('y', TensorProto.FLOAT, [-1])
 
     node_def = helper.make_node(
         'MovingSumWithSigmoid',
-        inputs=['alpha','energy','frame_size'],
+        inputs=['alpha','energy','offset'],
         outputs=['y'],
-        window_size=10
+        ksize=10
     )
 
     graph = helper.make_graph(
         [node_def],
         'test_moving_sum_with_sigmoid',
-        inputs=[alpha,energy,frame_size],
+        inputs=[alpha,energy,offset],
         outputs=[y]
     )
 

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 /*!
- * \file test_moving_sum_with_sigmoid_tiling.cpp
+ * \file test_dyn_seq_outer_tiling.cpp
  * \brief
  */
 #include <iostream>
@@ -31,14 +31,14 @@
 
 using namespace std;
 using namespace ge;
-class MovingSumWithSigmoidTiling : public testing::Test {
+class DynSeqOuterTiling : public testing::Test {
  protected:
   static void SetUpTestCase() {
-    std::cout << "MovingSumWithSigmoidTiling SetUp" << std::endl;
+    std::cout << "DynSeqOuterTiling SetUp" << std::endl;
   }
 
   static void TearDownTestCase() {
-    std::cout << "MovingSumWithSigmoidTiling TearDown" << std::endl;
+    std::cout << "DynSeqOuterTiling TearDown" << std::endl;
   }
 };
 
@@ -55,27 +55,28 @@ static string to_string(const std::stringstream& tiling_data) {
   return result;
 }
 
-TEST_F(MovingSumWithSigmoidTiling, tset_0) {
+TEST_F(DynSeqOuterTiling, tset_0) {
   using namespace ut_util;
-  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("MovingSumWithSigmoid");
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("DynSeqOuter");
  
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   std::string compile_info = "{\"vars\": {\"core_num\": 32}}";
-  auto test_op = op::MovingSumWithSigmoid("MovingSumWithSigmoid");
+  auto test_op = op::DynSeqOuter("DynSeqOuter");
 
-  std::vector<int64_t> input_shape_0{5120};
-  std::vector<int64_t> input_shape_1{2};
+  std::vector<int64_t> input_shape_0{41, 512};
+  std::vector<int64_t> input_shape_1{8};
 
-  TENSOR_INPUT_WITH_SHAPE(test_op, alpha, input_shape_0, DT_FLOAT,
+  TENSOR_INPUT_WITH_SHAPE(test_op, x1, input_shape_0, DT_FLOAT,
                           FORMAT_ND, {});
-  TENSOR_INPUT_WITH_SHAPE(test_op, energy, input_shape_0, DT_FLOAT,
+  TENSOR_INPUT_WITH_SHAPE(test_op, x2, input_shape_0, DT_FLOAT,
                           FORMAT_ND, {});
-  TENSOR_INPUT_WITH_SHAPE(test_op, offset, input_shape_1, DT_INT32,
+  TENSOR_INPUT_WITH_SHAPE(test_op, seq_len1, input_shape_1, DT_INT32,
                           FORMAT_ND, {});
-
+  TENSOR_INPUT_WITH_SHAPE(test_op, seq_len2, input_shape_1, DT_INT32,
+                          FORMAT_ND, {});
 
   // do tilling, get runInfo
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V3(test_op, iter->second, compile_info, runInfo);
-  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "1 ");
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "8 512 ");
 }

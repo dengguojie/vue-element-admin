@@ -15,7 +15,7 @@
  */
 
 /*!
- * \file affine_grid.cc
+ * \file moving_sum_with_sigmoid.cc
  * \brief
  */
 #include "../onnx_common.h"
@@ -31,8 +31,8 @@ Status ParseParamsMovingSumWithSigmoid(const Message *op_src, ge::Operator &op_d
   }
 
   for (const auto &attr : node->attribute()) {
-    if (attr.name() == "window_size") {
-        op_dest.SetAttr("window_size", attr.i());
+    if (attr.name() == "ksize") {
+        op_dest.SetAttr("ksize", attr.i());
     }
   }
 

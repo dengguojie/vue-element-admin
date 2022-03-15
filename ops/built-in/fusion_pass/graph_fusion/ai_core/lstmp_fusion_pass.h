@@ -33,6 +33,8 @@ class LSTMPFusionPass : public PatternFusionBasePass {
   Status ProcessLSTMb(const ge::NodePtr fused_node, vector<ge::GeTensorPtr> &tensorPtr);
   void SetTensorDescription(ge::GeTensorDesc &tensorDesc, const vector<int64_t> &dims, const ge::Format &format,
                             const ge::DataType &dtype);
+  void SetTensorDescription(ge::GeTensorDescPtr descPtr, const ge::GeShape &shape, const ge::Format &format,
+                            const ge::DataType &dtype);
 
   Status CreateTransposeNode(ge::ComputeGraph& graph, const ge::GeTensorDesc& input_desc, ge::NodePtr& new_node,
                              std::vector<int32_t>& perm, const std::string& name);
@@ -44,6 +46,9 @@ class LSTMPFusionPass : public PatternFusionBasePass {
   Status AddEdgeForInput(ge::ComputeGraph& graph, const ge::NodePtr& fused_node, ge::NodePtr& dynamicv3_node);
   Status AddEdgeForOutput(ge::ComputeGraph& graph, const ge::NodePtr& fused_node, ge::NodePtr& dynamicv3_node);
   Status RemoveFusedNode(ge::ComputeGraph& graph, ge::NodePtr& fused_node);
+  Status CreateReshapeNode(ge::ComputeGraph& graph, const ge::GeTensorDesc& previous_node_desc, ge::NodePtr& new_node,
+                           const vector<int64_t> &output_shape, const std::string& name);
+  ge::OpDescPtr CreateListConstDesc(const string &name, vector<int64_t> values);
 
   const string FUSED_OP_TYPE = "LSTMP";
 };
