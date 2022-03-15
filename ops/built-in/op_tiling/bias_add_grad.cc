@@ -37,6 +37,12 @@ static constexpr size_t SHAPE_DIM_NUM_FRACTAL_Z_3D = 7;
 static constexpr size_t SHAPE_DIM_NUM_NDC1HWC0 = 6;
 // FORMAT_NC1HWC0
 static constexpr size_t SHAPE_DIM_NUM_NC1HWC0 = 5;
+// FORMAT_ND c dim index
+static constexpr int32_t FORMAT_ND_C_INDEX = -1;
+// FORMAT_FRACTAL_NZ c0 index
+static constexpr int32_t FORMAT_NZ_C0_INDEX = -1;
+// FORMAT_FRACTAL_NZ c1 index
+static constexpr int32_t FORMAT_NZ_C1_INDEX = -4;
 
 struct format_dimnum_axis {
   ge::Format format;
@@ -88,20 +94,20 @@ bool CalcShapeAndAxes(const ge::Format format, const bool data_nchw, std::vector
         OP_LOGW("BiasAddGrad", "dim_num < %ud", SHAPE_DIM_NUM_FRACTAL_NZ1);
         return false;
       }
-      c_axes.push_back(dim_num - 1);
-      c_axes.push_back(dim_num - 4);
+      c_axes.push_back(dim_num + FORMAT_NZ_C0_INDEX);
+      c_axes.push_back(dim_num + FORMAT_NZ_C1_INDEX);
     }
   } else {
     // ND
     if (data_nchw) {
       c_axes.push_back(1);
     } else {
-      c_axes.push_back(dim_num - 1);
+      c_axes.push_back(dim_num + FORMAT_ND_C_INDEX);
     }
   }
   if (c_axes.size() > 0) {
     std::vector<int32_t>::iterator it;
-    for(int32_t i = 0; i < static_cast<int32_t>(dim_num); i++) {
+    for (int32_t i = 0; i < static_cast<int32_t>(dim_num); i++) {
       it = find(c_axes.begin(), c_axes.end(), i);
       if (it == c_axes.end()) {
         axes.push_back(i);
@@ -176,7 +182,7 @@ bool BiasAddGradTiling(const std::string& op_type, const ge::Operator& op_paras,
   OP_LOGI("BiasAddGrad", "is_unknown_rank : [%d]", parsed_info.is_unknown_rank);
   if (parsed_info.is_unknown_rank) {
     std::vector<int32_t> reduce_axis;
-    OP_TILING_CHECK(!CalcShapeAndAxes(format, (ori_format == ge::FORMAT_NCHW), new_shape, reduce_axis), 
+    OP_TILING_CHECK(!CalcShapeAndAxes(format, (ori_format == ge::FORMAT_NCHW), new_shape, reduce_axis),
                     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "is_unknown_rank CalcShapeAndAxes failed."),
                     return false);
     PROFILING_TILING_AFTER_GET_COMPILE_INFO_REG();

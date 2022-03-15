@@ -634,24 +634,7 @@ IMPLEMT_VERIFIER(Equal, EqualVerify) {
   return GRAPH_SUCCESS;
 }
 
-IMPLEMT_COMMON_INFERFUNC(EqualInferShape) {
-  if (!InferShapeAndTypeTwoInOneOutBroadcast(op, "x1", "x2", "y")) {
-    return GRAPH_FAILED;
-  }
-
-  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
-  auto vec_y = op_desc->MutableOutputDesc("y")->MutableShape().GetDims();
-  if (IsUnknownRankShape(vec_y) || IsUnknownVec(vec_y)) {
-    if (!InferShapeRangeTwoInOneOutBroadcase(op, "x1", "x2", "y")) {
-      return GRAPH_FAILED;
-    }
-  }
-
-  op_desc->MutableOutputDesc("y")->SetDataType(DT_BOOL);
-  return GRAPH_SUCCESS;
-}
-
-COMMON_INFER_FUNC_REG(Equal, EqualInferShape);
+COMMON_INFER_FUNC_REG(Equal, CompareTwoOutBoolInferShape);
 VERIFY_FUNC_REG(Equal, EqualVerify);
 // ------------------Equal END--------------------
 
@@ -1620,14 +1603,7 @@ COMMON_INFER_FUNC_REG(ZerosLike, OneInOneOutCommonInferShape);
 // ----------------ZerosLike END-----------------
 
 // ----------------LogicalNot-------------------
-IMPLEMT_COMMON_INFERFUNC(LogicalNotInferShape) {
-  if (OneInOneOutDynamicInfer(op, "x", {"y"})) {
-    return GRAPH_SUCCESS;
-  }
-
-  return GRAPH_FAILED;
-}
-COMMON_INFER_FUNC_REG(LogicalNot, LogicalNotInferShape);
+COMMON_INFER_FUNC_REG(LogicalNot, OneInOneOutCommonInferShape);
 // --------------LogicalNot END-----------------
 
 // ----------------------LogicalAnd--------------------------
@@ -2170,16 +2146,8 @@ IMPLEMT_VERIFIER(Pow, PowVerify) {
   return GRAPH_SUCCESS;
 }
 
-IMPLEMT_COMMON_INFERFUNC(PowInferShape) {
-  bool is_dynamic_output = true;
-  if (!InferShapeAndTypeTwoInOneOutBroadcast(op, "x1", "x2", "y", is_dynamic_output)) {
-    return GRAPH_FAILED;
-  }
-  return GRAPH_SUCCESS;
-}
-
 INFER_DATA_SLICE_FUNC_REG(Pow, ElewiseTwoInputInferDataSlice);
-COMMON_INFER_FUNC_REG(Pow, PowInferShape);
+COMMON_INFER_FUNC_REG(Pow, TwoInOneOutCommonInferShape);
 VERIFY_FUNC_REG(Pow, PowVerify);
 // -------------------Pow END------------------------
 

@@ -308,6 +308,7 @@ def match_attr(input_attr, target_attr):
         return True
     return target_attr_value == input_attr
 
+
 def update_tenser(input_tensor, target_tensor):
     """
     update_tenser "shape", "ori_shape", "dtype", "format", "ori_format"
