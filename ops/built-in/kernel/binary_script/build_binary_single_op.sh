@@ -97,13 +97,15 @@ main() {
   fi
 
   # step 5: do opc compile
-  cmd="python3.7 /usr/local/Ascend/python/site-packages/opc_tool/opc.py ${op_python_full_path} --main_func=${op_func} --input_param=${binary_config_full_path} --soc_version=${soc_version} --output=${binary_compile_full_path}"
+  opc_install_path="/usr/local/Ascend/latest/compiler/python/site-packages"
+  cmd="python3.7 ${opc_install_path}/opc_tool/opc.py ${op_python_full_path} --main_func=${op_func} --input_param=${binary_config_full_path} --soc_version=${soc_version} --output=${binary_compile_full_path}"
   echo "[INFO]op:${op_type} do opc compile cmdis is ${cmd}"
   ${cmd}
 
   # step6: post process to gen op.json
   cmd="python3.7 gen_output_json.py ${binary_config_full_path} ${binary_compile_full_path} ${binary_compile_json_full_path}"
-  # ${cmd}
+  echo "[INFO]op:${op_type} gen compile json cmdis is ${cmd}"
+  ${cmd}
 }
 set -o pipefail
 main "$@"|gawk '{print strftime("[%Y-%m-%d %H:%M:%S]"), $0}'
