@@ -75,8 +75,7 @@ bool BatchMatMulV2ReshapeFusionPass::CheckNextNode(const ge::NodePtr &fused_node
     return false;
   }
   next_node = peer_in_anchors.at(0)->GetOwnerNode();
-  FUSION_PASS_CHECK(next_node == nullptr, CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "next_node is null."),
-                    return false);
+  FUSION_PASS_CHECK(next_node == nullptr, OP_LOGD(FUSED_OP_TYPE.c_str(), "next_node is null."), return false);
   return true;
 }
 
@@ -115,7 +114,7 @@ bool BatchMatMulV2ReshapeFusionPass::IsMatchScenario2(const ge::NodePtr &fused_n
     }
     auto next_next_node = peer_in_anchors.at(0)->GetOwnerNode();
     FUSION_PASS_CHECK(next_next_node == nullptr,
-                      CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "next_next_node is null."), return FAILED);
+                      OP_LOGD(FUSED_OP_TYPE.c_str(), "next_next_node is null."), return FAILED);
     auto out_node_num = next_next_node->GetOutDataNodesSize();
     if (out_node_num != 1) {
       OP_LOGD(FUSED_OP_TYPE.c_str(), "next_next_node out_node_num is not 1.");
@@ -140,7 +139,7 @@ bool BatchMatMulV2ReshapeFusionPass::IsMatchScenario2(const ge::NodePtr &fused_n
 bool BatchMatMulV2ReshapeFusionPass::IsMatchScenario3(const ge::NodePtr &fused_node) const {
   ge::NodePtr next_node = nullptr;
   FUSION_PASS_CHECK(!CheckNextNode(fused_node, next_node),
-                    OP_LOGD(FUSED_OP_TYPE.c_str(), "do not match elemwise fusion scenario1!"), return false);
+                    OP_LOGD(FUSED_OP_TYPE.c_str(), "do not match elemwise fusion scenario3!"), return false);
   auto out_node_num = next_node->GetOutDataNodesSize();
   if (out_node_num != 2) {
     OP_LOGD(FUSED_OP_TYPE.c_str(), "next_node out_node_num is not 2.");
@@ -150,33 +149,30 @@ bool BatchMatMulV2ReshapeFusionPass::IsMatchScenario3(const ge::NodePtr &fused_n
   auto next_next_node_0 = peer_in_anchors.at(0)->GetOwnerNode();
   auto next_next_node_1 = peer_in_anchors.at(1)->GetOwnerNode();
   FUSION_PASS_CHECK(next_next_node_0 == nullptr || next_next_node_1 == nullptr,
-                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "node is null."), return false);
+                    OP_LOGD(FUSED_OP_TYPE.c_str(), "node is null."), return false);
   FUSION_PASS_CHECK(next_next_node_0->GetType() != "Mul" || next_next_node_1->GetType() != "Mul",
-                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "The next node is not Mul."), return false);
+                    OP_LOGD(FUSED_OP_TYPE.c_str(), "The next node is not Mul."), return false);
   auto out_anchor = next_next_node_0->GetOutDataAnchor(0);
-  FUSION_PASS_CHECK(out_anchor == nullptr, CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "out_anchor is null."),
-                    return false);
+  FUSION_PASS_CHECK(out_anchor == nullptr, OP_LOGD(FUSED_OP_TYPE.c_str(), "out_anchor is null."), return false);
   peer_in_anchors = out_anchor->GetPeerInDataAnchors();
-  FUSION_PASS_CHECK(peer_in_anchors.size() != 1,
-                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "peer_in_anchors.size() != 1."), return false);
+  FUSION_PASS_CHECK(peer_in_anchors.size() != 1, OP_LOGD(FUSED_OP_TYPE.c_str(), "peer_in_anchors.size() != 1."),
+                    return false);
   auto sigmoid_node = peer_in_anchors.at(0)->GetOwnerNode();
   FUSION_PASS_CHECK(sigmoid_node == nullptr || sigmoid_node->GetType() != "Sigmoid",
-                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "The node is not Sigmoid."), return false);
+                    OP_LOGD(FUSED_OP_TYPE.c_str(), "The node is not Sigmoid."), return false);
   out_anchor = sigmoid_node->GetOutDataAnchor(0);
-  FUSION_PASS_CHECK(out_anchor == nullptr, CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "out_anchor is null."),
-                    return false);
+  FUSION_PASS_CHECK(out_anchor == nullptr, OP_LOGD(FUSED_OP_TYPE.c_str(), "out_anchor is null."), return false);
   peer_in_anchors = out_anchor->GetPeerInDataAnchors();
-  FUSION_PASS_CHECK(peer_in_anchors.size() != 1,
-                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "peer_in_anchors.size() != 1."), return false);
+  FUSION_PASS_CHECK(peer_in_anchors.size() != 1, OP_LOGD(FUSED_OP_TYPE.c_str(), "peer_in_anchors.size() != 1."),
+                    return false);
   auto mul_node = peer_in_anchors.at(0)->GetOwnerNode();
   FUSION_PASS_CHECK(mul_node == nullptr || mul_node->GetName() != next_next_node_1->GetName(),
-                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "The end node must be same Mul node."), return false);
+                    OP_LOGD(FUSED_OP_TYPE.c_str(), "The end node must be same Mul node."), return false);
   out_anchor = mul_node->GetOutDataAnchor(0);
-  FUSION_PASS_CHECK(out_anchor == nullptr, CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "out_anchor is null."),
-                    return false);
+  FUSION_PASS_CHECK(out_anchor == nullptr, OP_LOGD(FUSED_OP_TYPE.c_str(), "out_anchor is null."), return false);
   peer_in_anchors = out_anchor->GetPeerInDataAnchors();
-  FUSION_PASS_CHECK(peer_in_anchors.size() != 1,
-                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "peer_in_anchors.size() != 1."), return false);
+  FUSION_PASS_CHECK(peer_in_anchors.size() != 1, OP_LOGD(FUSED_OP_TYPE.c_str(), "peer_in_anchors.size() != 1."),
+                    return false);
   return true;
 }
 
@@ -250,8 +246,8 @@ bool BatchMatMulV2ReshapeFusionPass::CheckNeedChange(const ge::NodePtr &fused_no
               fused_node->GetName().c_str());
       return true;
     }
-    is_big_batch_fusion = !is_elemwise_fusion && IsBigBatchFusionScenario(fused_node, shape_x, trans_a) &&
-                          CheckProduct(x0_desc->GetOriginShape().GetDims(), 2);
+    is_big_batch_fusion =
+        IsBigBatchFusionScenario(fused_node, shape_x, trans_a) && CheckProduct(x0_desc->GetOriginShape().GetDims(), 2);
     if (is_big_batch_fusion) {
       OP_LOGD(FUSED_OP_TYPE.c_str(), "node name [%s], match big batch senario, return need change!",
               fused_node->GetName().c_str());
