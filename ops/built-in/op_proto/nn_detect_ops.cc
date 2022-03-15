@@ -1415,12 +1415,13 @@ IMPLEMT_VERIFIER(BatchMultiClassNonMaxSuppression, BatchMultiClassNonMaxSuppress
     return GRAPH_FAILED;
   }
   auto inputShape = op.GetInputDesc("boxes").GetShape().GetDims();
+  bool is_unknown = IsUnknown(inputShape);
   // check input shape
   if (inputShape.empty()) {
     OP_LOGE(op.GetName().c_str(), "can not get input boxes shape.");
     return GRAPH_FAILED;
   }
-  if (inputShape[inputShape.size() - 1] != 4) {
+  if (inputShape[inputShape.size() - 1] != 4 && inputShape[inputShape.size() - 2] != 4 && !is_unknown) {
     std::stringstream tmpVecToStr;
     std::string wrongString;
     tmpVecToStr.str("");
@@ -1483,6 +1484,27 @@ IMPLEMT_VERIFIER(BatchMultiClassNonMaxSuppression, BatchMultiClassNonMaxSuppress
   return GRAPH_SUCCESS;
 }
 
+void SetRangeShape(ge::Operator& op, ge::TensorDesc& desc, const std::string& input_name, bool is_unknown,
+                   std::vector<int64_t>& infer_shape) {
+  if (!is_unknown) {
+    return;
+  }
+  std::vector<std::pair<int64_t, int64_t>> input_range;
+  std::vector<std::pair<int64_t, int64_t>> output_range;
+  op.GetInputDesc(input_name).GetShapeRange(input_range);
+  if (input_range.empty()) {
+    output_range.push_back(std::pair<int64_t, int64_t>(1, -1));
+  } else {
+    output_range.push_back(input_range[0]);
+  }
+
+  int size = infer_shape.size();
+  for (int i = 1; i < size; ++i) {
+    output_range.push_back(std::pair<int64_t, int64_t>(infer_shape[i], infer_shape[i]));
+  }
+  desc.SetShapeRange(output_range);
+}
+
 IMPLEMT_COMMON_INFERFUNC(BatchMultiClassNonMaxSuppressionInferShape) {
   std::int64_t maxOutNum = 0;
   CHECK(ge::GRAPH_SUCCESS != op.GetAttr("max_total_size", maxOutNum),
@@ -1499,9 +1521,15 @@ IMPLEMT_COMMON_INFERFUNC(BatchMultiClassNonMaxSuppressionInferShape) {
     transposeBox = false;
   }
 
+  int64_t score_dim0 = inputScoreShape[0];
+  bool is_unknown = IsUnknown(inputScoreShape);
+  if (is_unknown) {
+    score_dim0 = -1;
+  }
+  
   vector<int64_t> nmsedBoxesShape;
-  nmsedBoxesShape.push_back(inputScoreShape[0]);
-  vector<int64_t> nmsedValidNum = {inputScoreShape[0]};
+  nmsedBoxesShape.push_back(score_dim0);
+  vector<int64_t> nmsedValidNum = {score_dim0};
   if (!transposeBox) {
     nmsedBoxesShape.push_back(maxOutNum);
     nmsedBoxesShape.push_back(4);
@@ -1513,27 +1541,31 @@ IMPLEMT_COMMON_INFERFUNC(BatchMultiClassNonMaxSuppressionInferShape) {
   TensorDesc tdBoxes = op.GetOutputDesc("nmsed_boxes");
   tdBoxes.SetShape(ge::Shape(nmsedBoxesShape));
   tdBoxes.SetDataType(inputDtype);
+  SetRangeShape(op, tdBoxes, "scores", is_unknown, nmsedBoxesShape);
   CHECK(op.UpdateOutputDesc("nmsed_boxes", tdBoxes) != GRAPH_SUCCESS,
         OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc failed."), return GRAPH_FAILED);
 
   vector<int64_t> nmsedScoreShape;
-  nmsedScoreShape.push_back(inputScoreShape[0]);
+  nmsedScoreShape.push_back(score_dim0);
   nmsedScoreShape.push_back(maxOutNum);
   TensorDesc tdScore = op.GetOutputDesc("nmsed_scores");
   tdScore.SetShape(ge::Shape(nmsedScoreShape));
   tdScore.SetDataType(inputDtype);
+  SetRangeShape(op, tdScore, "scores", is_unknown, nmsedScoreShape);
   CHECK(op.UpdateOutputDesc("nmsed_scores", tdScore) != GRAPH_SUCCESS,
         OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc failed."), return GRAPH_FAILED);
 
   TensorDesc tdClass = op.GetOutputDesc("nmsed_classes");
   tdClass.SetShape(ge::Shape(nmsedScoreShape));
   tdClass.SetDataType(inputDtype);
+  SetRangeShape(op, tdClass, "scores", is_unknown, nmsedScoreShape);
   CHECK(op.UpdateOutputDesc("nmsed_classes", tdClass) != GRAPH_SUCCESS,
         OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc failed."), return GRAPH_FAILED);
 
   TensorDesc tdNum = op.GetOutputDesc("nmsed_num");
   tdNum.SetShape(ge::Shape(nmsedValidNum));
   tdNum.SetDataType(DT_INT32);
+  SetRangeShape(op, tdNum, "scores", is_unknown, nmsedValidNum);
   CHECK(op.UpdateOutputDesc("nmsed_num", tdNum) != GRAPH_SUCCESS,
         OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc failed."), return GRAPH_FAILED);
 

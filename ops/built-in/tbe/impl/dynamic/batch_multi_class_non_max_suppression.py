@@ -1,4 +1,4 @@
-# Copyright 2021 Huawei Technologies Co., Ltd
+# Copyright 2022 Huawei Technologies Co., Ltd
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -23,6 +23,7 @@ from impl.util.platform_adapter import register_operator
 from impl.dynamic.batch_multi_class_nms_topk import sort_within_ub
 from impl.dynamic.batch_multi_class_nms_topk import sort_within_ub_scalar
 from impl.dynamic.batch_multi_class_nms_topk import sort_with_ub
+from impl.dynamic.batch_multi_class_non_max_suppression_new import BMCNMS
 from impl.util.platform_adapter import tbe_context
 
 
@@ -54,7 +55,7 @@ class Constant:
 class BatchMultiClassNonMaxSuppression():
     """
     Function: use to store BatchMultiClassNonMaxSuppression base parameters
-    Modify : 2021-7-1
+    Modify : 2022-3-15
     """
 
     def __init__(self,
@@ -2006,8 +2007,8 @@ def batch_multi_class_nms_output(tik_instance, core_idx, _batch_idx, nms):
                     dup_len.set_as(tmp_output_proposal_num - copy_tail * nms.max_selected_nms_num_in_ub)
                     dup_offset = tik_instance.Scalar(dtype='int32', name='dup_offset')
                     dup_offset.set_as(copy_tail * nms.max_selected_nms_num_in_ub)
-                    tik_func_vector(tik_instance, ub_result_boxes[dup_offset:], 0.0, dup_len * 8)
-                    tik_func_vector(tik_instance, ub_result_boxes_class[dup_offset:], 0.0, dup_len * 8)
+                    tik_func_vector_scalar(tik_instance, ub_result_boxes[dup_offset:], 0.0, dup_len * 8)
+                    tik_func_vector_scalar(tik_instance, ub_result_boxes_class[dup_offset:], 0.0, dup_len * 8)
                 tik_func_sort_with_ub(tik_instance, [ub_out_result, ub_result_boxes], [ub_out_result, ub_result_boxes],
                                       tmp_output_proposal_num)
                 tik_func_sort_with_ub(tik_instance, [ub_out_result_class, ub_result_boxes_class],
@@ -2018,22 +2019,9 @@ def batch_multi_class_nms_output(tik_instance, core_idx, _batch_idx, nms):
 
 
 @register_operator('BatchMuiltClassNonMaxSuppression')
-def batch_multi_class_non_max_suppression(
-        boxes,
-        scores,
-        clip_window,
-        num_valid_boxes,
-        nmsed_boxes,
-        nmsed_scores,
-        nmsed_classes,
-        nmsed_num,
-        score_threshold,
-        iou_threshold,
-        max_size_per_class,
-        max_total_size,
-        change_coordinate_frame,
-        transpose_box,
-        kernel_name="batch_multi_class_non_max_suppression",
+def batch_multi_class_non_max_suppression(boxes, scores, clip_window, num_valid_boxes, nmsed_boxes, nmsed_scores,
+        nmsed_classes, nmsed_num, score_threshold, iou_threshold, max_size_per_class, max_total_size,
+        change_coordinate_frame, transpose_box, kernel_name="batch_multi_class_non_max_suppression",
         impl_mode="high_performance"):
     """
     do non_max_suppression for multi batch and multi class
@@ -2097,6 +2085,11 @@ def batch_multi_class_non_max_suppression(
     -------
     tik_instance
     """
+    if tbe_platform.api_check_support("tik.vgatherb"):
+        obj = BMCNMS(boxes, scores, clip_window, num_valid_boxes, score_threshold,
+                     iou_threshold, max_size_per_class, max_total_size,
+                     change_coordinate_frame, transpose_box, kernel_name)
+        return obj.bmcnms_compute()
     tiling_mode_1 = 1
     nms = BatchMultiClassNonMaxSuppression(boxes, scores, num_valid_boxes, clip_window, score_threshold, iou_threshold,
                                            max_size_per_class, max_total_size, change_coordinate_frame, impl_mode)

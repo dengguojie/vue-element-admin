@@ -106,9 +106,34 @@ TEST_F(BatchMultiClassNonMaxSuppression, InfershapeBatchMultiClassNonMax_005) {
 }
 
 TEST_F(BatchMultiClassNonMaxSuppression, InfershapeBatchMultiClassNonMax_006) {
+  int64_t batchSize = -1;
+  int64_t outputNum = 100; 
   ge::op::BatchMultiClassNonMaxSuppression op;
-  op.SetAttr("transpose_box", {});
+  op.UpdateInputDesc("boxes", create_desc_with_ori({batchSize, -1, -1, 4}, ge::DT_FLOAT16, ge::FORMAT_ND, {batchSize, -1, -1, 4}, ge::FORMAT_ND));
+  op.UpdateInputDesc("scores", create_desc_with_ori({batchSize, -1, 1}, ge::DT_FLOAT16, ge::FORMAT_ND, {batchSize, -1, 1}, ge::FORMAT_ND));
+  op.SetAttr("score_threshold", (float)0.3);
+  op.SetAttr("iou_threshold", (float)0.6);
+  op.SetAttr("max_size_per_class", 100);
+  op.SetAttr("max_total_size", outputNum);
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
 
-  auto status = op.VerifyAllAttr(true);
-  EXPECT_EQ(status, ge::GRAPH_FAILED);
+  auto out_var_desc = op.GetOutputDesc("nmsed_boxes");
+  std::vector<int64_t> expected_var_output_shape = {batchSize, outputNum, 4};
+  EXPECT_EQ(out_var_desc.GetDataType(), ge::DT_FLOAT16);
+  EXPECT_EQ(out_var_desc.GetShape().GetDims(), expected_var_output_shape);
+
+  out_var_desc = op.GetOutputDesc("nmsed_scores");
+  expected_var_output_shape = {batchSize, outputNum};
+  EXPECT_EQ(out_var_desc.GetDataType(), ge::DT_FLOAT16);
+  EXPECT_EQ(out_var_desc.GetShape().GetDims(), expected_var_output_shape);
+
+  out_var_desc = op.GetOutputDesc("nmsed_classes");
+  EXPECT_EQ(out_var_desc.GetDataType(), ge::DT_FLOAT16);
+  EXPECT_EQ(out_var_desc.GetShape().GetDims(), expected_var_output_shape);
+
+  out_var_desc = op.GetOutputDesc("nmsed_num");
+  expected_var_output_shape = {batchSize};
+  EXPECT_EQ(out_var_desc.GetDataType(), ge::DT_INT32);
+  EXPECT_EQ(out_var_desc.GetShape().GetDims(), expected_var_output_shape);
 }

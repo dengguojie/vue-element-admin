@@ -35,12 +35,14 @@
 #include "op_log.h"
 #include "error_util.h"
 #include "pattern_fusion_util.h"
+#include "graph_optimizer/graph_fusion/fusion_pass_manager/fusion_pass_registry.h"
 
 using namespace ge;
 using namespace std;
 
 namespace fe {
 static const string FUSED_TRANSPOSE_NODE = "TransposeD";
+static const string FUSED_TRANSPOSE_DYNAMIC_NODE = "Transpose";
 static const string FUSED_CAST_NODE = "Cast";
 
 Status AddTransposeBeforeNode(const ge::NodePtr& fusedNode, const int64_t& inputIndex, const vector<int64_t>& permList,
@@ -85,6 +87,103 @@ Status AddTransposeBeforeNode(const ge::NodePtr& fusedNode, const int64_t& input
   FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(fusedNode->GetInDataAnchor(inputIndex)->GetPeerOutAnchor(),
                                             beforeTransposeNode->GetInDataAnchor(0)) != SUCCESS,
                     VECTOR_FUSION_INNER_ERR_REPORT(fuseNodeType.c_str(), "AddEdge edge failed."), return FAILED);
+  // remove fused node input edge
+  FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(fusedNode->GetInDataAnchor(inputIndex)->GetPeerOutAnchor(),
+                                               fusedNode->GetInDataAnchor(inputIndex)) != SUCCESS,
+                    VECTOR_FUSION_INNER_ERR_REPORT(fuseNodeType.c_str(), "Remove out data edge failed."),
+                    return FAILED);
+  // add output for transpose
+  FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(beforeTransposeNode->GetOutDataAnchor(0),
+                                            fusedNode->GetInDataAnchor(inputIndex)) != SUCCESS,
+                    VECTOR_FUSION_INNER_ERR_REPORT(fuseNodeType.c_str(), "AddEdge edge failed."), return FAILED);
+  // add transpose input boxes end
+
+  // update fused node input info
+  auto opInputDesc = fusedNode->GetOpDesc();
+  opInputDesc->UpdateInputDesc(inputIndex, inputDesc);
+  OP_LOGI(fuseNodeType.c_str(), "end to insert Transpose before %s.", fusedNode->GetName().c_str());
+  return SUCCESS;
+}
+
+Status Vec2ConstNode(vector<int64_t>& vals, ge::NodePtr& constNode, 
+                     ge::DataType dtype, ge::Format format, ge::ComputeGraph& graph) {
+  vector<int64_t> dims = {static_cast<int64_t>(vals.size())};
+  ge::GeShape shape(dims);
+  ge::GeTensorDesc desc(shape, format, dtype);
+  size_t len = vals.size() * sizeof(int64_t);
+  auto tensorPtr = std::make_shared<ge::GeTensor>(desc, reinterpret_cast<uint8_t*>(vals.data()), len);
+  ge::OpDescPtr constDesc = ge::OpDescUtils::CreateConstOp(tensorPtr);
+  constNode = graph.AddNode(constDesc);
+  return SUCCESS;
+}
+
+void SetInputDesc(vector<int64_t>& val, ge::GeTensorDesc& desc) {
+  std::vector<int64_t> dims = {val.size()};
+  ge::GeShape input_shape(dims);
+  desc.SetShape(input_shape);
+  desc.SetDataType(DataType::DT_INT64);
+  desc.SetOriginDataType(DataType::DT_INT64);
+  desc.SetOriginShape(input_shape);
+}
+
+Status AddDynamicTransposeBeforeNode(const ge::NodePtr& fusedNode, const int64_t& inputIndex, vector<int64_t>& permList,
+                                     ge::ComputeGraph& graph) {
+  string fuseNodeType = fusedNode->GetType();
+  OP_LOGI(fuseNodeType.c_str(), "begin to insert Transpose before %s.", fusedNode->GetName().c_str());
+
+  std::shared_ptr<ge::OpDesc> beforeTransposeDesc = nullptr;
+  std::string beforeTransposeName = fusedNode->GetName() + "_Input" + to_string(inputIndex) + "_TransposeBefore";
+  beforeTransposeDesc = std::make_shared<ge::OpDesc>(beforeTransposeName, FUSED_TRANSPOSE_DYNAMIC_NODE);
+  FUSION_PASS_CHECK(
+      beforeTransposeDesc == nullptr,
+      VECTOR_FUSION_INNER_ERR_REPORT(fuseNodeType.c_str(), "beforeTransposeDesc is null, fusion failed."),
+      return FAILED);
+  ge::GeTensorDesc inputDesc = fusedNode->GetOpDesc()->GetInputDesc(inputIndex);
+  FUSION_PASS_CHECK(beforeTransposeDesc->AddInputDesc("x", inputDesc) != SUCCESS,
+                    VECTOR_FUSION_INNER_ERR_REPORT(fuseNodeType.c_str(), "add before transpose of %s failed.",
+                                                   fusedNode->GetName().c_str()),
+                    return FAILED);
+  vector<int64_t> inputShape = inputDesc.GetShape().GetDims();
+  size_t inputShapeDims = inputShape.size();
+  FUSION_PASS_CHECK(
+      permList.size() < inputShapeDims,
+      VECTOR_FUSION_INNER_ERR_REPORT(fuseNodeType.c_str(), "permList size less then %lu .", inputShapeDims),
+      return FAILED);
+  vector<int64_t> outputShapeVec;
+  for (size_t n = 0; n < inputShapeDims; n++) {
+    outputShapeVec.push_back(inputShape[permList[n]]);
+  }
+  ge::GeShape outputShape(outputShapeVec);
+  inputDesc.SetShape(outputShape);
+  inputDesc.SetOriginShape(outputShape);
+  FUSION_PASS_CHECK(beforeTransposeDesc->AddOutputDesc("y", inputDesc) != SUCCESS,
+                    VECTOR_FUSION_INNER_ERR_REPORT(fuseNodeType.c_str(), "add before transpose of %s failed.",
+                                                   fusedNode->GetName().c_str()),
+                    return FAILED);
+  ge::GeTensorDesc PermDesc;
+  SetInputDesc(permList, PermDesc);
+  FUSION_PASS_CHECK(beforeTransposeDesc->AddInputDesc("perm", PermDesc) != SUCCESS,
+                    VECTOR_FUSION_INNER_ERR_REPORT(fuseNodeType.c_str(), "add before transpose of %s failed.",
+                                                   fusedNode->GetName().c_str()),
+                    return FAILED);
+  vector<string> permVec;
+  permVec.push_back("perm");
+  beforeTransposeDesc->SetOpInferDepends(permVec);
+
+  // add node to graph
+  ge::NodePtr beforeTransposeNode = graph.AddNode(beforeTransposeDesc);
+
+  // get perm the const node
+  ge::NodePtr PermNode = nullptr;
+  Vec2ConstNode(permList, PermNode, DataType::DT_INT64, ge::FORMAT_ND, graph);
+  // add input for transpose
+  FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(fusedNode->GetInDataAnchor(inputIndex)->GetPeerOutAnchor(),
+                                            beforeTransposeNode->GetInDataAnchor(0)) != SUCCESS,
+                    VECTOR_FUSION_INNER_ERR_REPORT(fuseNodeType.c_str(), "AddEdge edge failed."), return FAILED);
+
+  FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(PermNode->GetOutDataAnchor(0),
+                                            beforeTransposeNode->GetInDataAnchor(1)) != SUCCESS,
+                    VECTOR_FUSION_INNER_ERR_REPORT(fuseNodeType.c_str(), "AddEdge edge failed."), return FAILED);       
   // remove fused node input edge
   FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(fusedNode->GetInDataAnchor(inputIndex)->GetPeerOutAnchor(),
                                                fusedNode->GetInDataAnchor(inputIndex)) != SUCCESS,
@@ -155,6 +254,75 @@ Status AddTransposeAfterNode(const ge::NodePtr& fusedNode, const int64_t& output
       VECTOR_FUSION_INNER_ERR_REPORT(fuseNodeType.c_str(), "Add edge failed."), return FAILED);
   OP_LOGI(fuseNodeType.c_str(), "end to insert Transpose after %s.", fusedNode->GetName().c_str());
 
+  return SUCCESS;
+}
+
+Status AddDynamicTransposeAfterNode(const ge::NodePtr& fusedNode, const int64_t& outputIndex, vector<int64_t>& permList,
+                                    ge::ComputeGraph& graph) {
+  string fuseNodeType = fusedNode->GetType();
+  OP_LOGI(fuseNodeType.c_str(), "begin to insert Transpose after %s.", fusedNode->GetName().c_str());
+
+  std::shared_ptr<ge::OpDesc> afterTransposeDesc = nullptr;
+  std::string TransposeName = fusedNode->GetName() + "_Output" + to_string(outputIndex) + "TransposeAfter";
+  afterTransposeDesc = std::make_shared<ge::OpDesc>(TransposeName, FUSED_TRANSPOSE_DYNAMIC_NODE);
+  FUSION_PASS_CHECK(afterTransposeDesc == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(fuseNodeType.c_str(), "afterTransposeDesc is null, fusion failed."),
+                    return FAILED);
+  ge::GeTensorDesc outputDesc = fusedNode->GetOpDesc()->GetOutputDesc(outputIndex);
+  FUSION_PASS_CHECK(afterTransposeDesc->AddInputDesc("x", outputDesc) != SUCCESS,
+                    VECTOR_FUSION_INNER_ERR_REPORT(fuseNodeType.c_str(), "add after transpose of %s failed.",
+                                                   fusedNode->GetName().c_str()),
+                    return FAILED);
+  vector<int64_t> inputShape = outputDesc.GetShape().GetDims();
+  size_t inputShapeDims = inputShape.size();
+  FUSION_PASS_CHECK(
+      permList.size() < inputShapeDims,
+      VECTOR_FUSION_INNER_ERR_REPORT(fuseNodeType.c_str(), "permList size less then %lu .", inputShapeDims),
+      return FAILED);
+  vector<int64_t> outputShapeVec;
+  for (size_t n = 0; n < inputShapeDims; n++) {
+    outputShapeVec.push_back(inputShape[permList[n]]);
+  }
+  ge::GeShape outputShape(outputShapeVec);
+  outputDesc.SetShape(outputShape);
+  outputDesc.SetOriginShape(outputShape);
+  FUSION_PASS_CHECK(afterTransposeDesc->AddOutputDesc("y", outputDesc) != SUCCESS,
+                    VECTOR_FUSION_INNER_ERR_REPORT(fuseNodeType.c_str(), "add after transpose of %s failed.",
+                                                   fusedNode->GetName().c_str()),
+                    return FAILED);
+  ge::GeTensorDesc PermDesc;
+  SetInputDesc(permList, PermDesc);
+  FUSION_PASS_CHECK(afterTransposeDesc->AddInputDesc("perm", PermDesc) != SUCCESS,
+                    VECTOR_FUSION_INNER_ERR_REPORT(fuseNodeType.c_str(), "add before transpose of %s failed.",
+                                                   fusedNode->GetName().c_str()),
+                    return FAILED);
+  vector<string> permVec;
+  permVec.push_back("perm");
+  afterTransposeDesc->SetOpInferDepends(permVec);
+
+  // add node to graph
+  ge::NodePtr transposeNode = graph.AddNode(afterTransposeDesc);
+
+  // get perm the const node
+  ge::NodePtr PermNode = nullptr;
+  Vec2ConstNode(permList, PermNode, DataType::DT_INT64, ge::FORMAT_ND, graph);
+
+  // add edge transpose output with other node input
+  for (auto inDataAnchor : fusedNode->GetOutDataAnchor(outputIndex)->GetPeerInDataAnchors()) {
+    FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(fusedNode->GetOutDataAnchor(outputIndex), inDataAnchor) != SUCCESS,
+                      VECTOR_FUSION_INNER_ERR_REPORT(fuseNodeType.c_str(), "Remove edge failed."), return FAILED);
+    FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(transposeNode->GetOutDataAnchor(0), inDataAnchor) != SUCCESS,
+                      VECTOR_FUSION_INNER_ERR_REPORT(fuseNodeType.c_str(), "Add edge failed."), return FAILED);
+  }
+
+  // add input for transpose
+  FUSION_PASS_CHECK(
+      ge::GraphUtils::AddEdge(fusedNode->GetOutDataAnchor(outputIndex), transposeNode->GetInDataAnchor(0)) != SUCCESS,
+      VECTOR_FUSION_INNER_ERR_REPORT(fuseNodeType.c_str(), "Add edge failed."), return FAILED);
+  FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(PermNode->GetOutDataAnchor(0),
+                                            transposeNode->GetInDataAnchor(1)) != SUCCESS,
+                    VECTOR_FUSION_INNER_ERR_REPORT(fuseNodeType.c_str(), "AddEdge edge failed."), return FAILED);
+  OP_LOGI(fuseNodeType.c_str(), "end to insert Transpose after %s.", fusedNode->GetName().c_str());
   return SUCCESS;
 }
 

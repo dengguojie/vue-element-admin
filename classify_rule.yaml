@@ -2775,6 +2775,7 @@ unkown:
       - ops/built-in/tbe/impl/dynamic/atan2.py
       - ops/built-in/tbe/impl/dynamic/split.py
       - ops/built-in/tbe/impl/dynamic/batch_multi_class_non_max_suppression.py
+      - ops/built-in/tbe/impl/dynamic/batch_multi_class_non_max_suppression_new.py
       - ops/built-in/tbe/impl/dynamic/split_d.py
       - ops/built-in/tbe/impl/dynamic/pad_not_align.py
       - ops/built-in/tbe/impl/dynamic/reduce_prod.py

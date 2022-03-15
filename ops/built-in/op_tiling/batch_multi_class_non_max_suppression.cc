@@ -163,7 +163,8 @@ namespace optiling {
     PrintTilingParams(tiling_params);
 
     run_info.block_dim = tiling_params.core_used;
-    std::vector<int64_t> workspace;
+    int work_size = 9600000;
+    std::vector<int64_t> workspace = {work_size};
     run_info.workspaces = workspace;
     return true;
   }

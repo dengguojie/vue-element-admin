@@ -1,5 +1,5 @@
 """
-Copyright (C) 2021. Huawei Technologies Co., Ltd. All rights reserved.
+Copyright (C) 2022. Huawei Technologies Co., Ltd. All rights reserved.
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the Apache License Version 2.0.You may not use this file
@@ -14,6 +14,7 @@ http://www.apache.org/licenses/LICENSE-2.0
 dynamic BatchMultiClassNonMaxSuppression ut case
 """
 from op_test_frame.ut import OpUT
+from tbe.common.context.op_context import OpContext
 ut_case = OpUT("BatchMultiClassNonMaxSuppression", "impl.dynamic.batch_multi_class_non_max_suppression", "batch_multi_class_non_max_suppression")
 
 
@@ -110,7 +111,68 @@ ut_case.add_case(["Ascend910A"], case4)
 ut_case.add_case(["Ascend910A"], case5)
 ut_case.add_case(["Ascend910A"], case6)
 
-if __name__ == '__main__':
-    ut_case.run("Ascend910A")
-    exit(0)
+ut_case.run("Ascend910A")
 
+
+def get_impl_list_920(batch_size, num_boxes, num_class, num_class_boxes,
+                  score_threshold, iou_threshold, max_size_per_class,
+                  max_total_size, change_coordinate_frame, is_need_clip,
+                  is_need_valid):
+    if num_class_boxes == 0:
+        boxes_shape = [batch_size, 4, num_boxes]
+        boxes_range = [(1, None), (4,4), (1, None)]
+    else:
+        boxes_shape = [batch_size, num_class_boxes, 4, num_boxes]
+        boxes_range = [(1, None), (1, None), (4,4), (1, None)]
+    if num_class == 0:
+        score_shape = [batch_size, num_boxes]
+        score_range = [(1, None), (1, None)]
+    else:
+        score_shape = [batch_size, num_class, num_boxes]
+        score_range = [(1, None), (1, None), (1, None)]
+    if is_need_clip:
+        clip_shape = [batch_size, 4]
+        clip_range = [(1, None), (4,4)]
+    else:
+        clip_shape = None
+        clip_range = [(1, None), (4,4)]
+    if is_need_valid:
+        num_shape = [batch_size]
+        num_range = [(1, None)]
+    else:
+        num_shape = None
+        num_range = [(1, None)]
+
+    input_list = [get_dict(boxes_shape, boxes_range),
+                  get_dict(score_shape, score_range),
+                  get_dict(clip_shape, clip_range),
+                  get_dict(num_shape, num_range)]
+    par_list = [score_threshold, iou_threshold, max_size_per_class,
+                max_total_size, change_coordinate_frame, False]
+
+    return input_list + par_list
+
+
+def test_op_nms_1981_test_1(test_arg):
+    from impl.dynamic.batch_multi_class_non_max_suppression_new import BMCNMS
+    with OpContext("dynamic") as _:
+        from tbe.common.platform.platform_info import set_current_compile_soc_info
+        set_current_compile_soc_info("Ascend920A")
+        lis = get_impl_list_920(-1, -1, -1, -1, 0, 0.7, 100, 100, False, False, False)
+        obj = BMCNMS(*lis, "test_op_nms_1981_test_1")
+        obj.bmcnms_compute()
+        set_current_compile_soc_info(test_arg)
+
+
+def test_op_nms_1981_test_2(test_arg):
+    from impl.dynamic.batch_multi_class_non_max_suppression_new import BMCNMS
+    with OpContext("dynamic") as _:
+        from tbe.common.platform.platform_info import set_current_compile_soc_info
+        set_current_compile_soc_info("Ascend920A")
+        lis = get_impl_list_920(-1, -1, -1, -1, 0.1, 0.7, 1000, 1000, False, False, False)
+        obj = BMCNMS(*lis, "test_op_nms_1981_test_2")
+        obj.bmcnms_compute()
+        set_current_compile_soc_info(test_arg)
+
+ut_case.add_cust_test_func(test_func=test_op_nms_1981_test_1)
+ut_case.add_cust_test_func(test_func=test_op_nms_1981_test_2)

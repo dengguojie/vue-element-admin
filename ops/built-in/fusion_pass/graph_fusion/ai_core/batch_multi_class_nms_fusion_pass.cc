@@ -94,6 +94,10 @@ Status BatchMultiClassNonMaxSuppressionFusionPass::Fusion(ge::ComputeGraph& grap
   auto boxesSize = boxesInputShape.size();
   bool isNeedTranposeBeforeScore = true;
   vector<int64_t> permBoxesList;
+  bool isDynamic = false;
+  if (PatternFusionUtil::IsUnknownShape(boxesInputShape[1])) {
+    isDynamic = true;
+  }
 
   // insert transpose at input 0
   if (boxesSize != BOXES_SIZE_ASTRICT) {
@@ -102,7 +106,11 @@ Status BatchMultiClassNonMaxSuppressionFusionPass::Fusion(ge::ComputeGraph& grap
   } else {
     permBoxesList = {0, 2, 3, 1};
   }
-  AddTransposeBeforeNode(fusedNode, 0, permBoxesList, graph);
+  if (isDynamic) {
+    AddDynamicTransposeBeforeNode(fusedNode, 0, permBoxesList, graph);
+  } else {
+    AddTransposeBeforeNode(fusedNode, 0, permBoxesList, graph);
+  }
   // insert transpose at input 1
 
   // get the input 1 peer node op type
@@ -117,6 +125,10 @@ Status BatchMultiClassNonMaxSuppressionFusionPass::Fusion(ge::ComputeGraph& grap
   bool isfindSoftmax = false;
   isNeedTransposeBeforeSlice = CheckTransposeBeforeSlice(peerNode);
   isfindSoftmax = CheckfindSoftmax(peerNode);
+  if (PatternFusionUtil::IsUnknownShape(boxesInputShape[1])) {
+    isfindSoftmax = false;
+    isNeedTransposeBeforeSlice = false;
+  }
 
   if (isNeedTranposeBeforeScore && isNeedTransposeBeforeSlice) {
     OP_LOGI(FUSED_OP_TYPE.c_str(), "will insert transpose before Slice + BatchMultiClassNonMaxSuppression");
@@ -491,8 +503,11 @@ Status BatchMultiClassNonMaxSuppressionFusionPass::Fusion(ge::ComputeGraph& grap
                       fusedNode->GetName().c_str(), 0),
                       return FAILED);
     }
-    AddTransposeBeforeNode(fusedNode, 1, permScoreList, graph);
-
+    if (isDynamic) {
+      AddDynamicTransposeBeforeNode(fusedNode, 1, permScoreList, graph);
+    } else {
+      AddTransposeBeforeNode(fusedNode, 1, permScoreList, graph);
+    }
   }
 
   // do infer for fused node again, and update fused node output shape
@@ -513,7 +528,11 @@ Status BatchMultiClassNonMaxSuppressionFusionPass::Fusion(ge::ComputeGraph& grap
   opOutputDesc->UpdateOutputDesc(0, outputDesc);
 
   // insert transpose at output 0
-  AddTransposeAfterNode(fusedNode, 0, permScoreList, graph);
+  if (isDynamic) {
+    AddDynamicTransposeAfterNode(fusedNode, 0, permScoreList, graph);
+  } else {
+    AddTransposeAfterNode(fusedNode, 0, permScoreList, graph);
+  }
 
   ge::AttrUtils::SetBool(fusedNode->GetOpDesc(), "transpose_box", true);
 
@@ -531,6 +550,9 @@ Status BatchMultiClassNonMaxSuppressionFusionPass::Fusion(ge::ComputeGraph& grap
   std::shared_ptr<ge::OpDesc> reduceDesc = nullptr;
   std::string reduceDescName = fusedNode->GetName() + "_Output_3_reduce";
   reduceDesc = std::make_shared<ge::OpDesc>(reduceDescName, "StridedSliceD");
+  if (isDynamic) {
+    reduceDesc = std::make_shared<ge::OpDesc>(reduceDescName, "StridedSlice");
+  }
   FUSION_PASS_CHECK(reduceDesc == nullptr,
                     OP_LOGE(FUSED_OP_TYPE.c_str(), "add reduce after valid num is null, fusion failed."),
                     return FAILED);
@@ -545,12 +567,43 @@ Status BatchMultiClassNonMaxSuppressionFusionPass::Fusion(ge::ComputeGraph& grap
   FUSION_PASS_CHECK(reduceDesc->AddInputDesc("x", nmsNumDesc) != SUCCESS,
                     OP_LOGE(FUSED_OP_TYPE.c_str(), "add input x for reduce after valid num is null, fusion failed."),
                     return FAILED);
-  ge::AttrUtils::SetListInt(reduceDesc, "begin", {0, 0});
-  ge::AttrUtils::SetListInt(reduceDesc, "end", {oriNmsNumShape[0], 1});
-  ge::AttrUtils::SetListInt(reduceDesc, "strides", {1, 1});
+  
+  std::vector<int64_t> attr_begin = {0, 0};
+  std::vector<int64_t> attr_end = {oriNmsNumShape[0], 1};
+  std::vector<int64_t> attr_strides = {1, 1};
+  if (isDynamic) {
+    ge::GeTensorDesc begin_desc;
+    SetInputDesc(attr_begin, begin_desc);
+    FUSION_PASS_CHECK(
+        reduceDesc->AddInputDesc("begin", begin_desc) != SUCCESS,
+        OP_LOGE(FUSED_OP_TYPE.c_str(), "add input begin for reduce after valid num is null, fusion failed."),
+        return FAILED);
+
+    ge::GeTensorDesc end_desc;
+    SetInputDesc(attr_end, end_desc);
+    FUSION_PASS_CHECK(reduceDesc->AddInputDesc("end", end_desc) != SUCCESS,
+                      OP_LOGE(FUSED_OP_TYPE.c_str(), "add input end for reduce after valid num is null, fusion failed."),
+                      return FAILED);
+
+    ge::GeTensorDesc strides_desc;
+    SetInputDesc(attr_strides, strides_desc);
+    FUSION_PASS_CHECK(
+        reduceDesc->AddInputDesc("strides", strides_desc) != SUCCESS,
+        OP_LOGE(FUSED_OP_TYPE.c_str(), "add strides begin for reduce after valid num is null, fusion failed."),
+        return FAILED);
+    vector<string> dependVec = {"begin", "end", "strides"};
+    reduceDesc->SetOpInferDepends(dependVec);
+  } else {
+    ge::AttrUtils::SetListInt(reduceDesc, "begin", {0, 0});
+    ge::AttrUtils::SetListInt(reduceDesc, "end", {oriNmsNumShape[0], 1});
+    ge::AttrUtils::SetListInt(reduceDesc, "strides", {1, 1});
+  }
   ge::AttrUtils::SetInt(reduceDesc, "begin_mask", 0);
   ge::AttrUtils::SetInt(reduceDesc, "end_mask", 0);
   ge::AttrUtils::SetInt(reduceDesc, "ellipsis_mask", 0);
+  if (isDynamic) {
+    ge::AttrUtils::SetInt(reduceDesc, "ellipsis_mask", 1);
+  }
   ge::AttrUtils::SetInt(reduceDesc, "new_axis_mask", 0);
   ge::AttrUtils::SetInt(reduceDesc, "shrink_axis_mask", 0);
 
@@ -574,6 +627,23 @@ Status BatchMultiClassNonMaxSuppressionFusionPass::Fusion(ge::ComputeGraph& grap
   // add input for reduce node
   FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(fusedNode->GetOutDataAnchor(3), reduceNode->GetInDataAnchor(0)) != SUCCESS,
                     OP_LOGE(FUSED_OP_TYPE.c_str(), "AddEdge edge failed."), return FAILED);
+  if (isDynamic) {
+    ge::NodePtr beginNode = nullptr;
+    Vec2ConstNode(attr_begin, beginNode, DataType::DT_INT64, ge::FORMAT_ND, graph);
+    FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(beginNode->GetOutDataAnchor(0), reduceNode->GetInDataAnchor(1)) != SUCCESS,
+                      OP_LOGE(FUSED_OP_TYPE.c_str(), "Add begin edge failed."), return FAILED);
+
+    ge::NodePtr endNode = nullptr;
+    Vec2ConstNode(attr_end, endNode, DataType::DT_INT64, ge::FORMAT_ND, graph);
+    FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(endNode->GetOutDataAnchor(0), reduceNode->GetInDataAnchor(2)) != SUCCESS,
+                      OP_LOGE(FUSED_OP_TYPE.c_str(), "Add end edge failed."), return FAILED);
+
+    ge::NodePtr stridesNode = nullptr;
+    Vec2ConstNode(attr_strides, stridesNode, DataType::DT_INT64, ge::FORMAT_ND, graph);
+    FUSION_PASS_CHECK(
+        ge::GraphUtils::AddEdge(stridesNode->GetOutDataAnchor(0), reduceNode->GetInDataAnchor(3)) != SUCCESS,
+        OP_LOGE(FUSED_OP_TYPE.c_str(), "Add strides edge failed."), return FAILED);
+  }
 
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Define BatchMultiClassNonMaxSuppressionFusionPass fusion end");
   return SUCCESS;

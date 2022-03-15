@@ -30,6 +30,37 @@
 
 namespace fe {
 /**
+ * change a vector to a const node
+ * @param [in] vals the vals of const node
+ * @param [in] constNode the const node
+ * @param [in] dtype the datatype of const node
+ * @param [in] format the format of const node
+ * @param [in] graph
+ * @return a nodeptr of const node
+ */
+Status Vec2ConstNode(vector<int64_t>& vals, ge::NodePtr& constNode, 
+                     ge::DataType dtype, ge::Format format, ge::ComputeGraph& graph);
+
+/**
+ * change a vector to a tensor desc
+ * @param [in] val the val of the tensor desc
+ * @param [in] desc the new created tensor desc, which will set the data
+ * @return nothing
+ */
+void SetInputDesc(vector<int64_t>& val, ge::GeTensorDesc& desc);
+
+/**
+ * Insert a dynamic transpose before one dynamic input of one op
+ * @param [in] fusedNode which node will be inserted
+ * @param [in] inputIndex which input index will be inserted
+ * @param [in] permList transpose list
+ * @param [in] graph
+ * @return status whether insert success
+ */
+Status AddDynamicTransposeBeforeNode(const ge::NodePtr& fusedNode, const int64_t& inputIndex,
+                                     vector<int64_t>& permList, ge::ComputeGraph& graph);
+
+/**
  * Insert a transpose before one input of one op
  * @param [in] fusedNode which node will be inserted
  * @param [in] inputIndex which input index will be inserted
@@ -41,14 +72,24 @@ Status AddTransposeBeforeNode(const ge::NodePtr& fusedNode, const int64_t& input
                               ge::ComputeGraph& graph);
 
 /**
- * Insert a transpose after one output of one op
+ * Insert a dynamic transpose after one dynamic output of one op
  * @param [in] fusedNode which node will be inserted
- * @param [in] inputIndex which output index will be inserted
+ * @param [in] outputIndex which output index will be inserted
  * @param [in] permList transpose list
  * @param [in] graph
  * @return status whether insert success
  */
+Status AddDynamicTransposeAfterNode(const ge::NodePtr& fusedNode, const int64_t& outputIndex,
+                                    vector<int64_t>& permList, ge::ComputeGraph& graph);
 
+/**
+ * Insert a transpose after one output of one op
+ * @param [in] fusedNode which node will be inserted
+ * @param [in] outputIndex which output index will be inserted
+ * @param [in] permList transpose list
+ * @param [in] graph
+ * @return status whether insert success
+ */
 Status AddTransposeAfterNode(const ge::NodePtr& fusedNode, const int64_t& outputIndex, const vector<int64_t>& permList,
                              ge::ComputeGraph& graph);
 
