@@ -32,6 +32,8 @@
 #include "graph/utils/op_desc_utils.h"
 #include "register/infer_data_slice_registry.h"
 #include "graph/debug/ge_attr_define.h"
+#include "graph/axis_type_info.h"
+#include "register/infer_axis_slice_registry.h"
 
 namespace ge {
 bool BroadCastTwoShape(const Operator& op, const ge::Shape& shape_x, const ge::Shape& shape_y,
@@ -227,6 +229,15 @@ if ((x1_format == FORMAT_NHWC and x2_format == FORMAT_ND) or (x1_format == FORMA
   return GRAPH_SUCCESS;
 }
 // --------------------------elewise data slice end--------------------------
+
+// --------------------------infer elewise axis type begin--------------------------
+IMPLEMT_COMMON_INFER_AXIS_TYPE_INFO(OneInOneOutElewiseAxisType) {
+  if (OneInOneOutElewiseDynamicAxisType(op, axis_type)) {
+    return GRAPH_SUCCESS;
+  }
+  return GRAPH_FAILED;
+}
+// --------------------------infer elewise axis type end--------------------------
 
 // ----------------MaximumGrad-------------------
 IMPLEMT_COMMON_INFERFUNC(MaximumGradInferShape) {
@@ -470,6 +481,7 @@ IMPLEMT_COMMON_INFERFUNC(CastInferShape) {
 }
 
 COMMON_INFER_FUNC_REG(Cast, CastInferShape);
+INFER_AXIS_TYPE_INFO_REG(Cast, OneInOneOutElewiseAxisType);
 INFER_VALUE_RANGE_DEFAULT_REG(Cast);
 // --------------Cast END-----------------
 

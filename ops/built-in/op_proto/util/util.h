@@ -39,6 +39,7 @@
 #include "graph/tensor.h"
 #include "graph/node.h"
 #include "graph/ge_tensor.h"
+#include "graph/axis_type_info.h"
 
 #include "op_log.h"
 
@@ -437,6 +438,14 @@ bool IsEmptyTensor(GeTensorDescPtr tensor_desc);
 bool IsEmptyTensor(const GeShape& ge_shape);
 
 std::string RangeToString(const std::vector<std::pair<int64_t, int64_t>>& ranges);
+
+/*
+ * @brief: do axis type infer for op
+ * @param [in] op: ge Operator
+ * @param [out] axis_type_info: the output of axis type
+ * @return bool: the status of infershape
+ */
+bool OneInOneOutElewiseDynamicAxisType(const Operator& op, std::vector<AxisTypeInfo>& axis_type_info);
 
 namespace array_ops {
 bool CheckInt64MulOverflow(int64_t a, int64_t b);

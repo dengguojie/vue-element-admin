@@ -1639,6 +1639,33 @@ std::string RangeToString(const std::vector<std::pair<int64_t, int64_t>> &ranges
   return ss.str();
 }
 
+bool OneInOneOutElewiseDynamicAxisType(const Operator& op, std::vector<AxisTypeInfo>& axis_type_info) {
+  // get input desc and input shape
+  auto op_info = OpDescUtils::GetOpDescFromOperator(op);
+  CHECK(op_info == nullptr, OP_LOGW(TbeGetName(op), "invalid op desc."), return false);
+  auto input_desc = op_info->MutableInputDesc(0);
+  CHECK(input_desc == nullptr, OP_LOGW(TbeGetName(op), "invalid input desc."), return false);
+  vector<int64_t> input_shape = input_desc->MutableShape().GetDims();
+
+  // set axis_type
+  if (IsUnknownRankShape(input_shape)) {
+    OP_LOGW(TbeGetName(op), "input shape is unknow rank shape.");
+    return false;
+  }
+  // set dims axis type one by one
+  axis_type_info.reserve(input_shape.size());
+  for (int64_t i = 0; i < input_shape.size(); ++i) {
+    AxisTypeInfo axis_type;
+    axis_type.SetAxisType(AxisType::ELEMENTWISE);
+    std::pair<int64_t, std::vector<int64_t>> input_cut_info(0, {i});
+    axis_type.AddInputCutInfo(input_cut_info);
+    std::pair<int64_t, std::vector<int64_t>> output_cut_info(0, {i});
+    axis_type.AddOutputCutInfo(output_cut_info);
+    axis_type_info.push_back(axis_type);
+  }
+  return true;
+}
+
 namespace array_ops {
 // If not overflow return true
 bool CheckInt64MulOverflow(int64_t a, int64_t b) {
