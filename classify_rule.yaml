@@ -256,6 +256,8 @@ cube:
       - ops/built-in/fusion_pass/graph_fusion/ai_core/depthwise_df_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/depthwise_dw_mul_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/depthwise_dw_mul_fusion_pass.h
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/einsum_fusion_pass.cc
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/einsum_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/avg_pool3d_grad_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/avg_pool3d_grad_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/gemm_transpose_fusion_pass.cc

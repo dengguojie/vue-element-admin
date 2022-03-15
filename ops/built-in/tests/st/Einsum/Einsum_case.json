@@ -1,0 +1,354 @@
+[
+    {
+      "op": "Einsum",
+      "case_name": "test_Einsum_001",
+      "calc_expect_func_file" : "test_einsum_golden.py:calc_expect_func",
+      "input_desc": [
+        {
+          "format": "ND",
+          "ori_format": "ND",
+          "shape": [2, 3],
+          "ori_shape": [2, 3],
+          "type": "float16",
+          "value_range": [-1, 1],
+          "data_distribute": "uniform",
+          "name": "x1"
+        },
+        {
+          "format": "ND",
+          "ori_format": "ND",
+          "shape": [3, 4],
+          "ori_shape": [3, 4],
+          "type": "float16",
+          "value_range": [-1, 1],
+          "data_distribute": "uniform",
+          "name": "x2"
+        }
+      ],
+      "output_desc": [
+        {
+          "format": "ND",
+          "ori_format": "ND",
+          "shape": [2, 4],
+          "ori_shape": [2, 4],
+          "type": "float16",
+          "name": "y"
+        }
+      ],
+      "attr": [
+        {
+          "name": "equation",
+          "value": "ab,bc->ac",
+          "type": "string"
+        }
+      ]
+    },
+    {
+        "op": "Einsum",
+        "case_name": "test_Einsum_002",
+        "calc_expect_func_file" : "test_einsum_golden.py:calc_expect_func",
+        "input_desc": [
+          {
+            "format": "ND",
+            "ori_format": "ND",
+            "shape": [2, 3],
+            "ori_shape": [2, 3],
+            "type": "float16",
+            "value_range": [-1, 1],
+            "data_distribute": "uniform",
+            "name": "x1"
+          },
+          {
+            "format": "ND",
+            "ori_format": "ND",
+            "shape": [2, 3],
+            "ori_shape": [2, 3],
+            "type": "float16",
+            "value_range": [-1, 1],
+            "data_distribute": "uniform",
+            "name": "x2"
+          }
+        ],
+        "output_desc": [
+          {
+            "format": "ND",
+            "ori_format": "ND",
+            "shape": [2, 3],
+            "ori_shape": [2, 3],
+            "type": "float16",
+            "name": "y"
+          }
+        ],
+        "attr": [
+          {
+            "name": "equation",
+            "value": "ab,ab->ab",
+            "type": "string"
+          }
+        ]
+    },
+    {
+        "op": "Einsum",
+        "case_name": "test_Einsum_003",
+        "calc_expect_func_file" : "test_einsum_golden.py:calc_expect_func",
+        "input_desc": [
+          {
+            "format": "ND",
+            "ori_format": "ND",
+            "shape": [4, 2, 3],
+            "ori_shape": [4, 2, 3],
+            "type": "float16",
+            "value_range": [-1, 1],
+            "data_distribute": "uniform",
+            "name": "x1"
+          },
+          {
+            "format": "ND",
+            "ori_format": "ND",
+            "shape": [1, 2],
+            "ori_shape": [1, 2],
+            "type": "float16",
+            "value_range": [-1, 1],
+            "data_distribute": "uniform",
+            "name": "x2"
+          }
+        ],
+        "output_desc": [
+          {
+            "format": "ND",
+            "ori_format": "ND",
+            "shape": [4, 3],
+            "ori_shape": [4, 3],
+            "type": "float16",
+            "name": "y"
+          }
+        ],
+        "attr": [
+          {
+            "name": "equation",
+            "value": "...ab,...a->...b",
+            "type": "string"
+          }
+        ]
+    },
+    {
+        "op": "Einsum",
+        "case_name": "test_Einsum_004",
+        "calc_expect_func_file" : "test_einsum_golden.py:calc_expect_func",
+        "input_desc": [
+          {
+            "format": "ND",
+            "ori_format": "ND",
+            "shape": [4, 3],
+            "ori_shape": [4, 3],
+            "type": "float16",
+            "value_range": [-1, 1],
+            "data_distribute": "uniform",
+            "name": "x1"
+          },
+          {
+            "format": "ND",
+            "ori_format": "ND",
+            "shape": [2, 1],
+            "ori_shape": [2, 1],
+            "type": "float16",
+            "value_range": [-1, 1],
+            "data_distribute": "uniform",
+            "name": "x2"
+          }
+        ],
+        "output_desc": [
+          {
+            "format": "ND",
+            "ori_format": "ND",
+            "shape": [4, 2, 3],
+            "ori_shape": [4, 2, 3],
+            "type": "float16",
+            "name": "y"
+          }
+        ],
+        "attr": [
+          {
+            "name": "equation",
+            "value": "...a,b...->...ba",
+            "type": "string"
+          }
+        ]
+    },
+    {
+        "op": "Einsum",
+        "case_name": "test_Einsum_005",
+        "calc_expect_func_file" : "test_einsum_golden.py:calc_expect_func",
+        "input_desc": [
+          {
+            "format": "ND",
+            "ori_format": "ND",
+            "shape": [4, 3],
+            "ori_shape": [4, 3],
+            "type": "float16",
+            "value_range": [-1, 1],
+            "data_distribute": "uniform",
+            "name": "x1"
+          },
+          {
+            "format": "ND",
+            "ori_format": "ND",
+            "shape": [2, 3],
+            "ori_shape": [2, 3],
+            "type": "float16",
+            "value_range": [-1, 1],
+            "data_distribute": "uniform",
+            "name": "x2"
+          }
+        ],
+        "output_desc": [
+          {
+            "format": "ND",
+            "ori_format": "ND",
+            "shape": [4, 2],
+            "ori_shape": [4, 2],
+            "type": "float16",
+            "name": "y"
+          }
+        ],
+        "attr": [
+          {
+            "name": "equation",
+            "value": "...a,ba->...b",
+            "type": "string"
+          }
+        ]
+    },
+    {
+        "op": "Einsum",
+        "case_name": "test_Einsum_006",
+        "calc_expect_func_file" : "test_einsum_golden.py:calc_expect_func",
+        "input_desc": [
+          {
+            "format": "ND",
+            "ori_format": "ND",
+            "shape": [2, 4, 6],
+            "ori_shape": [2, 4, 6],
+            "type": "float16",
+            "value_range": [-1, 1],
+            "data_distribute": "uniform",
+            "name": "x1"
+          },
+          {
+            "format": "ND",
+            "ori_format": "ND",
+            "shape": [8, 6, 4],
+            "ori_shape": [8, 6, 4],
+            "type": "float16",
+            "value_range": [-1, 1],
+            "data_distribute": "uniform",
+            "name": "x2"
+          }
+        ],
+        "output_desc": [
+          {
+            "format": "ND",
+            "ori_format": "ND",
+            "shape": [8, 2],
+            "ori_shape": [8, 2],
+            "type": "float16",
+            "name": "y"
+          }
+        ],
+        "attr": [
+          {
+            "name": "equation",
+            "value": "...abc,...dcb->da",
+            "type": "string"
+          }
+        ]
+    },
+    {
+        "op": "Einsum",
+        "case_name": "test_Einsum_007",
+        "calc_expect_func_file" : "test_einsum_golden.py:calc_expect_func",
+        "input_desc": [
+          {
+            "format": "ND",
+            "ori_format": "ND",
+            "shape": [2, 4, 6, 8],
+            "ori_shape": [2, 4, 6, 8],
+            "type": "float16",
+            "value_range": [-1, 1],
+            "data_distribute": "uniform",
+            "name": "x1"
+          },
+          {
+            "format": "ND",
+            "ori_format": "ND",
+            "shape": [8, 6, 4, 10],
+            "ori_shape": [8, 6, 4, 10],
+            "type": "float16",
+            "value_range": [-1, 1],
+            "data_distribute": "uniform",
+            "name": "x2"
+          }
+        ],
+        "output_desc": [
+          {
+            "format": "ND",
+            "ori_format": "ND",
+            "shape": [4, 10, 8, 2],
+            "ori_shape": [4, 10, 8, 2],
+            "type": "float16",
+            "name": "y"
+          }
+        ],
+        "attr": [
+          {
+            "name": "equation",
+            "value": "...abcd,dc...be->beda...",
+            "type": "string"
+          }
+        ]
+    },
+    {
+        "op": "Einsum",
+        "case_name": "test_Einsum_008",
+        "calc_expect_func_file" : "test_einsum_golden.py:calc_expect_func",
+        "input_desc": [
+          {
+            "format": "ND",
+            "ori_format": "ND",
+            "shape": [12, 2, 4, 6, 8],
+            "ori_shape": [12, 2, 4, 6, 8],
+            "type": "float16",
+            "value_range": [-1, 1],
+            "data_distribute": "uniform",
+            "name": "x1"
+          },
+          {
+            "format": "ND",
+            "ori_format": "ND",
+            "shape": [8, 6, 12, 4, 10],
+            "ori_shape": [8, 6, 12, 4, 10],
+            "type": "float16",
+            "value_range": [-1, 1],
+            "data_distribute": "uniform",
+            "name": "x2"
+          }
+        ],
+        "output_desc": [
+          {
+            "format": "ND",
+            "ori_format": "ND",
+            "shape": [4, 10, 8, 2, 12],
+            "ori_shape": [4, 10, 8, 2, 12],
+            "type": "float16",
+            "name": "y"
+          }
+        ],
+        "attr": [
+          {
+            "name": "equation",
+            "value": "...abcd,dc...be->beda...",
+            "type": "string"
+          }
+        ]
+    }
+]

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) Huawei Technologies Co., Ltd. 2020-2021. All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2020-2022. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,21 +30,8 @@ class EinsumPass : public PatternFusionBasePass {
   Status Fusion(ge::ComputeGraph &graph, Mapping &mapping, vector<ge::NodePtr> &fusionNodes) override;
 
  private:
-  Status CheckProduct(const std::vector<int64_t> &shape);
-  Status CheckInputArgs(const Mapping &mapping);
-
-  // ============= begin to define static shape handle =============
-  // 001:reshape+reshape+matmul+reshape
-  Status HandleStaticABCxCDE2ABDE(ge::ComputeGraph &graph, ge::NodePtr &node);
-
-  // 008:reshape+reshape+matmul+reshape
-  Status HandleStaticABCxDEC2ABDE(ge::ComputeGraph &graph, ge::NodePtr &node);
-
-  // 009:reshape+reshape+matmul+reshape(swap input)
-  Status HandleStaticABCxABDE2DEC(ge::ComputeGraph &graph, ge::NodePtr &node);
-
-  // 013:reshape+reshape+matmul+reshape(swap input)
-  Status HandleStaticABCDxABE2ECD(ge::ComputeGraph &graph, ge::NodePtr &node);
+  Status CheckProduct(const std::vector<int64_t> &shape) const;
+  Status CheckInputArgs(const Mapping &mapping, bool &is_dynamic_shape) const;
 
   // ============= begin to define dynamic shape handle =============
   // 001:reshape+reshape+matmul+reshape
@@ -93,26 +80,120 @@ class EinsumPass : public PatternFusionBasePass {
   // 005 & 006
   Status HandleBatchMatmul(bool adj_x2, ge::ComputeGraph &graph, ge::NodePtr &node);
 
-  std::shared_ptr<ge::OpDesc> CreateTransposeOpDesc(bool unknown_shape, const ge::NodePtr &node,
+  std::shared_ptr<ge::OpDesc> CreateTransposeOpDesc(const ge::NodePtr &node,
                                                     const std::string &op_name);
   std::shared_ptr<ge::OpDesc> CreateReshapeOpDesc(bool unknown_shape, const ge::NodePtr &node, uint32_t seq);
 
-  bool SetTransposePerm(bool unknown_shape, const std::vector<int32_t> &perm, ge::ComputeGraph &graph,
+  bool SetTransposePerm(const std::vector<int32_t> &perm, ge::ComputeGraph &graph,
                         std::shared_ptr<ge::OpDesc> &transpose_desc, ge::NodePtr &transpose_node);
 
   ge::NodePtr CreateReshapeNode(const std::vector<int64_t> &dims, ge::ComputeGraph &graph,
                                 std::shared_ptr<ge::OpDesc> &reshape_desc, int32_t axis = 0, int32_t end_axis = 0);
 
-  Status LinkNode(ge::OutDataAnchor::Vistor<ge::InDataAnchorPtr> &anchors, ge::NodePtr &node);
-  void UnlinkAll(ge::NodePtr &node);
+  Status LinkEinsumOutputNode(const ge::OutDataAnchor::Vistor<ge::InDataAnchorPtr> &anchors,
+                              const ge::NodePtr &node) const;
+  void UnlinkAllDataAnchors(const ge::NodePtr &node) const;
 
   Status RelinkMatmulNode(ge::NodePtr &origin_node, ge::NodePtr &input0, ge::NodePtr &input1, ge::NodePtr &matmul_node,
                           bool swap_input);
 
+  enum EinsumDimensionType {
+    BROAD_CAST = 0,  // ...
+    BATCH,           // exist in both two inputs, also in output
+    FREE,            // exist in both two inputs, not in output
+    CONTRACT,        // only exist in one inputs, also in output
+    REDUCE,          // only exist in one inputs, not in output
+    DIM_TYPE_NUM
+  };
+
+  struct LabelInfo {
+    std::string labels;
+    std::vector<int32_t> indices;
+  };
+
+  using LabelCount = std::map<char, uint32_t>;
+  using DimensionType2LabelInfo = std::vector<LabelInfo>;
+  void ResetFusionPass();
+  Status SplitOpInFuzzScene(const std::string &equation, ge::ComputeGraph &graph, ge::NodePtr &node);
+  Status ParseEquation(const std::string &equation, std::vector<std::string> &in_equations, std::string &out_equation);
+
+  void SplitStr2Vector(const std::string &input, const std::string &delimiter, std::vector<std::string> &output) const;
+
+  void CountLabels(const std::string &equation, LabelCount &label_count, std::set<char> &labels) const;
+
+  void CollectDimensionType(size_t dim_num, const std::string &equation, DimensionType2LabelInfo &label_info) const;
+
+  void MapDimensionType(const std::set<char> &labels, const LabelCount &input0_label_count,
+                        const LabelCount &input1_label_count, const LabelCount &output_label_count);
+
+  void ReorderAxes(DimensionType2LabelInfo &label_infos) const;
+
+  void CompareAxes(EinsumDimensionType dim_type, const DimensionType2LabelInfo &output_label_info,
+                   DimensionType2LabelInfo &input_label_info) const;
+
+  bool GetTransposeDstEquation(const std::string &ori_equation, const DimensionType2LabelInfo &label_infos,
+                               std::vector<int32_t> &perm_list, bool &input_free_contract_order,
+                               std::string &dst_equation) const;
+
+  void CheckMergeFreeLabels(const ge::NodePtr &node, const std::string &out_equation);
+
+  void CheckBatchMatmulSwapInputs();
+
+  void CalcBatchMatmulOutput(size_t input_num, const ge::NodePtr &node, bool &need_reshape,
+                             std::string &bmm_out_equation, std::vector<int64_t> &bmm_dims) const;
+
+  ge::GeTensorDescPtr GetPrevOutputDescAfterBmm(const ge::NodePtr &node) const;
+
+  ge::GeTensorDescPtr GetPrevOutputDesc(const ge::NodePtr &node, size_t idx) const;
+
+  Status TransposeInput(const std::vector<std::string> &in_equations, const ge::NodePtr &node, ge::ComputeGraph &graph);
+
+  Status TransposeOutput(const std::string &out_equation, const ge::NodePtr &node,
+                         ge::ComputeGraph &graph, std::string &cur_out_equation);
+
+  Status StrideInput(const std::vector<std::string> &in_equations) const;
+
+  Status InflatedOutput(const std::string &out_equation) const;
+
+  Status ReduceInput(const std::vector<std::string> &in_equations, const ge::NodePtr &node, ge::ComputeGraph &graph);
+
+  Status ReshapeInput(const std::vector<std::string> &in_equations, const std::string &out_equation,
+                      const ge::NodePtr &node, ge::ComputeGraph &graph);
+
+  Status ReshapeOutput(const std::string &out_equation, const ge::NodePtr &node,
+                       ge::ComputeGraph &graph, std::string &cur_out_equation,
+                       const std::vector<std::string> &in_equations);
+
+  Status DoBatchMatmul(const std::vector<std::string> &in_equations, const ge::NodePtr &node, ge::ComputeGraph &graph);
+
+  Status LinkEinsumInputNode(const ge::NodePtr &node, const ge::NodePtr &first_node, int32_t anchor_idx,
+                             int32_t first_node_anchor_idx) const;
+  Status LinkContinuousNodes(const std::vector<ge::NodePtr> &nodes) const;
+
+  Status ReLinkCtrlEdges(const ge::NodePtr &node, const ge::NodePtr &last_node) const;
+
+  Status ReLinkNodes(const ge::NodePtr &node);
+
+  const std::vector<std::string> kDimensionType2Str = {"BroadCast", "Batch", "Free", "Contract", "Reduce"};
+
   using ProcFunc = Status (EinsumPass::*)(ge::ComputeGraph &graph, ge::NodePtr &node);
-  const string kFusedOpType = "Einsum";
-  static std::unordered_map<std::string, ProcFunc> staticShapeProcs_;
   static std::unordered_map<std::string, ProcFunc> dynamicShapeProcs_;
+
+  uint32_t transpose_seq = 1;
+  uint32_t reduce_seq = 1;
+  uint32_t reshape_seq = 1;
+  uint32_t batchmatmul_seq = 1;
+  bool swap_bmm_inputs = false;
+  bool merge_free_labels = true;
+  std::map<char, EinsumDimensionType> dim_types_map;
+  std::vector<bool> input_free_contract_orders;
+  std::vector<std::vector<ge::NodePtr>> bmm_input_nodes;
+  ge::NodePtr batchmatmul_node;
+  std::vector<ge::NodePtr> bmm_output_nodes;
+
+  std::vector<DimensionType2LabelInfo> input_label_infos;
+  DimensionType2LabelInfo output_label_info;
+  DimensionType2LabelInfo ori_output_label_info;
 };
 }  // namespace fe
 #endif  // OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_EINSUM_FUSION_PASS_H_
