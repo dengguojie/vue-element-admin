@@ -598,7 +598,7 @@ def _get_pattern(out):
 @register_operator("LayerNorm", pattern=_get_pattern)
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT,
-                            para_check.REQUIRED_ATTR_INT, para_check.REQUIRED_ATTR_INT, para_check.OPTION_ATTR_FLOAT,
+                            para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_FLOAT,
                             para_check.KERNEL_NAME, para_check.OPTION_ATTR_STR)
 def layer_norm(input_x,
                input_gamma,
@@ -649,13 +649,7 @@ def layer_norm(input_x,
         layer_norm_v1(input_x, input_gamma, input_beta, output_y, output_mean, output_variance, begin_norm_axis,
                       begin_params_axis, epsilon, kernel_name, impl_mode)
     else:
-        shape_x = list(input_x.get("shape"))
-        range_x = list(input_x.get("range"))
-        ori_shape_x = list(input_x.get("ori_shape"))
         input_format = input_x.get("format").upper()
-        input_gamma_format = input_gamma.get("format").upper()
-        input_beta_format = input_beta.get("format").upper()
-
         check_list = ("float16", "float32")
         dtype = input_x.get("dtype").lower()
         dtype_gamma = input_gamma.get("dtype").lower()
@@ -674,6 +668,12 @@ def layer_norm(input_x,
             operation.add_compile_info("unknown_mode", True)
             extra_params.update({"broadcast_axes_type": {1: "opposite_reduce", 2: "opposite_reduce"}})
         else:
+            shape_x = list(input_x.get("shape"))
+            ori_shape_x = list(input_x.get("ori_shape"))
+            input_gamma_format = input_gamma.get("format").upper()
+            input_beta_format = input_beta.get("format").upper()
+
+            range_x = list(input_x.get("range"))
             shape_gamma = list(input_gamma.get("shape"))
             shape_beta = list(input_beta.get("shape"))
             range_gamma = list(input_gamma.get("range"))
