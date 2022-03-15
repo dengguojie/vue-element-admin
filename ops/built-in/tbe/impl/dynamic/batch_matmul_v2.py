@@ -447,6 +447,22 @@ def _check_dynamic_mode_of_matmul(shape_x1: tuple, shape_x2: tuple) -> None:
         )
 
 
+def _reset_range_by_shape(input_x1: dict, input_x2: dict, range_x1: tuple, range_x2: tuple) -> tuple:
+    shape_x1 = input_x1.get("shape")
+    shape_x2 = input_x2.get("shape")
+    # if all dim known, range may be empty
+    range_x1 = tuple([dim, dim] for dim in shape_x1) if not range_x1 and all(dim > 0 for dim in shape_x1) else range_x1
+    range_x2 = tuple([dim, dim] for dim in shape_x2) if not range_x2 and all(dim > 0 for dim in shape_x2) else range_x2
+    # if shape is not -1, reset range as known
+    if len(shape_x1) == len(range_x1):
+        range_x1 = tuple(dim_range if shape_x1[idx] == -1 else (shape_x1[idx], shape_x1[idx])
+                         for idx, dim_range in enumerate(range_x1))
+    if len(shape_x2) == len(range_x2):
+        range_x2 = tuple(dim_range if shape_x2[idx] == -1 else (shape_x2[idx], shape_x2[idx])
+                         for idx, dim_range in enumerate(range_x2))
+    return range_x1, range_x2
+
+
 def _get_matmul_unrank_shape_and_range(input_x1: dict, input_x2: dict) -> list:
     shape_x1 = input_x1.get("ori_shape")
     shape_x2 = input_x2.get("ori_shape")
@@ -465,6 +481,7 @@ def _get_matmul_unrank_shape_and_range(input_x1: dict, input_x2: dict) -> list:
         range_x2 = range_nd if format_x2 == "ND" else range_nz
     range_x1 = tuple(dim_range if dim_range[0] >= MKN_MIN else (MKN_MIN, dim_range[1]) for dim_range in range_x1)
     range_x2 = tuple(dim_range if dim_range[0] >= MKN_MIN else (MKN_MIN, dim_range[1]) for dim_range in range_x2)
+    range_x1, range_x2 = _reset_range_by_shape(input_x1, input_x2, range_x1, range_x2)
     return [list(shape_x1), range_x1, list(shape_x2), range_x2]
 
 
