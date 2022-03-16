@@ -252,7 +252,7 @@ uint32_t CpuKernelCache::ParseExtShapeType(const FWKAdapter::ExtInfo *ext_info,
 /*
  * parse extend tensor shape and types information.
  */
-uint32_t CpuKernelCache::ParseExtShapeAndType (
+uint32_t CpuKernelCache::ParseExtShapeAndType(
     bool unknown_shape, FWKAdapter::ExtInfo *ext_info,
     std::vector<FWKAdapter::ShapeAndType *> &shape_and_type) const {
   if (!unknown_shape) {
