@@ -31,6 +31,7 @@ SCALE = 1.0507009873554804934193349852946
 # define product of scale and alpha
 SCALE_ALPHA_PRODUCT = 1.7580993408473768599402175208123
 
+
 @register_operator_compute("SeluGrad", op_mode="dynamic")
 def selu_grad_compute(input_gradients, input_outputs, y, kernel_name="selu_grad"):
     """
@@ -78,6 +79,7 @@ def selu_grad_compute(input_gradients, input_outputs, y, kernel_name="selu_grad"
         res = tbe.cast_to(res, dtype, f1628IntegerFlag=True)
 
     return res
+
 
 @register_operator("SeluGrad")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
