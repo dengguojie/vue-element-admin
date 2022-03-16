@@ -3227,40 +3227,6 @@ class MaxpoolV3GradAtomic:
 
         self.check_load3d_support = tbe_platform.cce_conf.api_check_support("tik.load3dv1")
 
-    def set_tik_instance(self):
-        """
-        set tik_instance
-        """
-        tik_instance = tik.Tik()
-        self.set_src_dst_tensor(tik_instance)
-
-        return tik_instance
-
-    def set_src_dst_tensor(self, tik_instance):
-        """
-        set input and output tensor
-        """
-        self.orig_x_gm = tik_instance.Tensor(self.dtype,
-                                             self.forward_in_shape,
-                                             name="orig_x_gm",
-                                             scope=tik.scope_gm)
-
-        self.orig_y_gm = tik_instance.Tensor(self.dtype,
-                                             self.forward_ou_shape,
-                                             name="orig_y_gm",
-                                             scope=tik.scope_gm)
-
-        self.grads_gm = tik_instance.Tensor(self.dtype,
-                                            self.grad_shape,
-                                            name="grads_gm",
-                                            scope=tik.scope_gm)
-
-        self.ou_y_gm = tik_instance.Tensor("float32",
-                                           self.ou_shape,
-                                           name="ou_y_gm",
-                                           scope=tik.scope_gm,
-                                           is_atomic_add=True)
-
     @staticmethod
     def set_vector_dup(tik_instance, psm, dst, idx, number, dtype):
         """
@@ -3322,6 +3288,249 @@ class MaxpoolV3GradAtomic:
                                burst_len,
                                src_stride,
                                dst_stride)
+
+    @staticmethod
+    def grad(tik_instance, split_model,
+             param, total_num, core_num, func):
+        """
+        grad
+        """
+        # just tiling do ho
+        # support valid
+        core_loop = tik_instance.Scalar("int64")
+        sum_core = tik_instance.Scalar("int64")
+        with tik_instance.for_range(0, core_num,
+                                    block_num=core_num) as blk_idx:
+
+            core_loop_uint64, sum_core_uint64 = cal_core(tik_instance, total_num,
+                                                          blk_idx, core_num)
+            core_loop.set_as(core_loop_uint64)
+            sum_core.set_as(sum_core_uint64)
+
+            func(tik_instance, core_loop, sum_core, split_model, param)
+
+    @staticmethod
+    def _overlap_mode(stride, size, xo, xi):
+        # xo: direction of x can be slided by xo times
+        # xi: the length of x
+        if xo == 1:
+            # If xo is 1,only xi >= stride, stride has work.
+            # If xo is 1 and xi < stride, only kernel has work
+            if xi >= stride:
+                overlap = size - stride
+            else:
+                overlap = 0
+        else:
+            overlap = size - stride
+
+        return overlap
+
+    @staticmethod
+    def _check_cut_model(cut_model, split_model, all_do, core_branch):
+        # "not_tiling": 0
+        # "tiling_do": 1
+        # "tiling_do_ho": 2
+        # "tiling_do_ho_wo": 3
+        branch_list = ["not_tiling", "tiling_do",
+                       "tiling_do_ho", "tiling_do_ho_wo"]
+
+        if cut_model == [True, False, False]:
+            if split_model[0] == all_do:
+                model = 0
+            else:
+                model = 1
+        elif cut_model == [True, True, False]:
+            model = 2
+        else:
+            model = 3
+
+        model = max(model, core_branch)
+        return branch_list[model]
+
+    @staticmethod
+    def _ultimate_data_move(tik_instance, src_buf, dst_buf, in_list, num_bit):
+        src_idx, dst_idx = in_list[-2], in_list[-1]
+        n_burst, burst_len = in_list[0], in_list[1]
+        src_stride, dst_stride = in_list[2], in_list[3]
+
+        with tik_instance.for_range(0, n_burst) as i:
+            src_idx += i * (src_stride + burst_len) * BLOCK_SIZE // num_bit
+            dst_idx += i * (dst_stride + burst_len) * BLOCK_SIZE // num_bit
+
+            tik_instance.data_move(dst_buf[dst_idx],
+                                   src_buf[src_idx],
+                                   0, 1, burst_len, 0, 0)
+
+    @staticmethod
+    def _vconv(tik_instance, src, src_start, dst,
+               dst_start, ele_num, src_dtype):
+        total_repeat_time = ele_num // VECTOR_FP32_SIZE
+        remain_ele = ele_num % VECTOR_FP32_SIZE
+        mask_value = VECTOR_FP32_SIZE
+
+        repeat_max_time = total_repeat_time // MAX_VECTOR_REPEATE_TIME
+        remain_repeat_time = total_repeat_time % MAX_VECTOR_REPEATE_TIME
+
+        if src_dtype == 'float16':
+            src_stride, dst_stride = 4, 8
+            if repeat_max_time > 0:
+                with tik_instance.for_range(0, repeat_max_time) as loop1:
+                    tik_instance.vconv(
+                        MASK64_VALUE, "",
+                        dst[
+                            dst_start + loop1 * MAX_VECTOR_REPEATE_TIME * mask_value],
+                        src[
+                            src_start + loop1 * MAX_VECTOR_REPEATE_TIME * mask_value],
+                        MAX_VECTOR_REPEATE_TIME, 1, 1, dst_stride, src_stride)
+            if remain_repeat_time > 0:
+                tik_instance.vconv(
+                    MASK64_VALUE, "",
+                    dst[
+                        dst_start + repeat_max_time * MAX_VECTOR_REPEATE_TIME * mask_value],
+                    src[
+                        src_start + repeat_max_time * MAX_VECTOR_REPEATE_TIME * mask_value],
+                    remain_repeat_time, 1, 1, dst_stride, src_stride)
+            if remain_ele > 0:
+                tik_instance.vconv(
+                    remain_ele, "",
+                    dst[dst_start + repeat_max_time * MAX_VECTOR_REPEATE_TIME *
+                        mask_value + remain_repeat_time * mask_value],
+                    src[src_start + repeat_max_time * MAX_VECTOR_REPEATE_TIME *
+                        mask_value + remain_repeat_time * mask_value],
+                    1, 1, 1, dst_stride, src_stride)
+
+        else:
+            src_stride, dst_stride = 8, 4
+            if repeat_max_time > 0:
+                with tik_instance.for_range(0, repeat_max_time) as loop1:
+                    tik_instance.vconv(
+                        MASK64_VALUE, "",
+                        dst[
+                            dst_start + loop1 * MAX_VECTOR_REPEATE_TIME * mask_value],
+                        src[
+                            src_start + loop1 * MAX_VECTOR_REPEATE_TIME * mask_value],
+                        MAX_VECTOR_REPEATE_TIME, 1, 1, dst_stride, src_stride)
+            if remain_repeat_time > 0:
+                tik_instance.vconv(
+                    MASK64_VALUE, "",
+                    dst[
+                        dst_start + repeat_max_time * MAX_VECTOR_REPEATE_TIME * mask_value],
+                    src[
+                        src_start + repeat_max_time * MAX_VECTOR_REPEATE_TIME * mask_value],
+                    remain_repeat_time, 1, 1, dst_stride, src_stride)
+            if remain_ele > 0:
+                tik_instance.vconv(
+                    remain_ele, "",
+                    dst[dst_start + repeat_max_time * MAX_VECTOR_REPEATE_TIME *
+                        mask_value + remain_repeat_time * mask_value],
+                    src[src_start + repeat_max_time * MAX_VECTOR_REPEATE_TIME *
+                        mask_value + remain_repeat_time * mask_value],
+                    1, 1, 1, dst_stride, src_stride)
+
+    @staticmethod
+    def _rewrite_fmap(tik_instance, operator,
+                      src1, src2, dst, dtype, once_elem,
+                      repeat_times, shape_map, shape_grad, config=None):
+        # once_elem: amount of data processed at a time in the Wo direction.
+        # shape_map: container size of src1[1:].
+        # shape_grad: valid data size of src2.
+
+        _, w, c0 = shape_map[0], shape_map[1], shape_map[2]
+        _, wo = shape_grad[0], shape_grad[1]
+        config = list(config)
+        if dtype == "float16":
+            max_mask = 128
+            num_block = 8
+            block_size = 16
+        else:
+            max_mask = 64
+            num_block = 8
+            block_size = 8
+
+        # num_instr_loop_w: num of instructions on direct W
+        # num_instr_loop_h: num of instructions on direct H
+        num_instr_loop_w = math.ceil(once_elem/max_mask)
+        remain_mask = once_elem % max_mask
+        if remain_mask == 0 and once_elem != 0:
+            remain_mask = max_mask
+        num_instr_loop_h = math.ceil(repeat_times/MAX_VECTOR_REPEATE_TIME)
+        remain_repeat = repeat_times % MAX_VECTOR_REPEATE_TIME
+        if remain_repeat == 0 and repeat_times != 0:
+            remain_repeat = MAX_VECTOR_REPEATE_TIME
+
+        dst_offset = src1_offset = src2_offset = 0
+        if operator == "vadd":
+            for idx_h, _ in enumerate(range(num_instr_loop_h)):
+                for idx_w, _ in enumerate(range(num_instr_loop_w)):
+                    src1_offset = idx_w * num_block * config[1] * block_size + \
+                                  idx_h * MAX_VECTOR_REPEATE_TIME * w * c0
+                    src2_offset = idx_w * num_block * config[2] * block_size + \
+                                  idx_h * MAX_VECTOR_REPEATE_TIME * wo * c0
+                    dst_offset = idx_w * num_block * config[0] * block_size + \
+                                 idx_h * MAX_VECTOR_REPEATE_TIME * w * c0
+
+                    if idx_w < num_instr_loop_w - 1:
+                        mask = max_mask
+                    else:
+                        mask = remain_mask
+                    if idx_h < num_instr_loop_h - 1:
+                        rep = MAX_VECTOR_REPEATE_TIME
+                    else:
+                        rep = remain_repeat
+                    tik_instance.vadd(mask, dst[dst_offset],
+                                      src1[src1_offset], src2[src2_offset],
+                                      rep,
+                                      config[0], config[1],
+                                      config[2], config[3],
+                                      config[4], config[5])
+
+    @staticmethod
+    def _division_nearest(number, base_num):
+        # split number as n0 and n1,
+        # return n1, base_num*n0 as new_number and core_num
+        n1 = number
+        new_base_num = base_num
+        for n0 in range(1, number + 1):
+            if number % n0 == 0:
+                new_base_num = base_num * n0
+                n1 = int(number / n0)
+                if new_base_num >= CORE_NUM:
+                    break
+        return n1, new_base_num
+
+    def set_tik_instance(self):
+        """
+        set tik_instance
+        """
+        tik_instance = tik.Tik()
+        self.set_src_dst_tensor(tik_instance)
+
+        return tik_instance
+
+    def set_src_dst_tensor(self, tik_instance):
+        """
+        set input and output tensor
+        """
+        self.orig_x_gm = tik_instance.Tensor(self.dtype,
+                                             self.forward_in_shape,
+                                             name="orig_x_gm",
+                                             scope=tik.scope_gm)
+
+        self.orig_y_gm = tik_instance.Tensor(self.dtype,
+                                             self.forward_ou_shape,
+                                             name="orig_y_gm",
+                                             scope=tik.scope_gm)
+
+        self.grads_gm = tik_instance.Tensor(self.dtype,
+                                            self.grad_shape,
+                                            name="grads_gm",
+                                            scope=tik.scope_gm)
+
+        self.ou_y_gm = tik_instance.Tensor("float32",
+                                           self.ou_shape,
+                                           name="ou_y_gm",
+                                           scope=tik.scope_gm,
+                                           is_atomic_add=True)
 
     def not_tiling_main(self, tik_instance, core_loop, sum_core,
                         model, param):
@@ -5360,26 +5569,6 @@ class MaxpoolV3GradAtomic:
                                     dst_buf, 0, MIN_VALUE_FP16, "float16")
                 mark.set_as(1)
 
-    @staticmethod
-    def grad(tik_instance, split_model,
-             param, total_num, core_num, func):
-        """
-        grad
-        """
-        # just tiling do ho
-        # support valid
-        core_loop = tik_instance.Scalar("int64")
-        sum_core = tik_instance.Scalar("int64")
-        with tik_instance.for_range(0, core_num,
-                                    block_num=core_num) as blk_idx:
-
-            core_loop_uint64, sum_core_uint64 = cal_core(tik_instance, total_num,
-                                                          blk_idx, core_num)
-            core_loop.set_as(core_loop_uint64)
-            sum_core.set_as(sum_core_uint64)
-
-            func(tik_instance, core_loop, sum_core, split_model, param)
-
     def get_tik_instance(self):
         """
         obtain tik instance
@@ -5486,22 +5675,6 @@ class MaxpoolV3GradAtomic:
 
         return di, hi, wi
 
-    @staticmethod
-    def _overlap_mode(stride, size, xo, xi):
-        # xo: direction of x can be slided by xo times
-        # xi: the length of x
-        if xo == 1:
-            # If xo is 1,only xi >= stride, stride has work.
-            # If xo is 1 and xi < stride, only kernel has work
-            if xi >= stride:
-                overlap = size - stride
-            else:
-                overlap = 0
-        else:
-            overlap = size - stride
-
-        return overlap
-
     def _invalid_part(self):
         # return area of kernel doesn't slides
         di, hi, wi = self._infer_dim_return(self.do, self.ho, self.wo, False)
@@ -5510,28 +5683,6 @@ class MaxpoolV3GradAtomic:
         invalid_w = self.w - wi
 
         return invalid_d, invalid_h, invalid_w
-
-    @staticmethod
-    def _check_cut_model(cut_model, split_model, all_do, core_branch):
-        # "not_tiling": 0
-        # "tiling_do": 1
-        # "tiling_do_ho": 2
-        # "tiling_do_ho_wo": 3
-        branch_list = ["not_tiling", "tiling_do",
-                       "tiling_do_ho", "tiling_do_ho_wo"]
-
-        if cut_model == [True, False, False]:
-            if split_model[0] == all_do:
-                model = 0
-            else:
-                model = 1
-        elif cut_model == [True, True, False]:
-            model = 2
-        else:
-            model = 3
-
-        model = max(model, core_branch)
-        return branch_list[model]
 
     def _check_process_space(self, do, ho, wo):
         """
@@ -5658,20 +5809,6 @@ class MaxpoolV3GradAtomic:
                                        all_do, core_branch)
 
         return branch, split_model, param
-
-    @staticmethod
-    def _ultimate_data_move(tik_instance, src_buf, dst_buf, in_list, num_bit):
-        src_idx, dst_idx = in_list[-2], in_list[-1]
-        n_burst, burst_len = in_list[0], in_list[1]
-        src_stride, dst_stride = in_list[2], in_list[3]
-
-        with tik_instance.for_range(0, n_burst) as i:
-            src_idx += i * (src_stride + burst_len) * BLOCK_SIZE // num_bit
-            dst_idx += i * (dst_stride + burst_len) * BLOCK_SIZE // num_bit
-
-            tik_instance.data_move(dst_buf[dst_idx],
-                                   src_buf[src_idx],
-                                   0, 1, burst_len, 0, 0)
 
     def _copy_gm_to_l1(self, tik_instance, l1_buf, src_idx, dst_idx, in_shape):
         n_burst = in_shape[0]
@@ -5929,129 +6066,6 @@ class MaxpoolV3GradAtomic:
                                    src_stride,
                                    dst_stride)
 
-    @staticmethod
-    def _vconv(tik_instance, src, src_start, dst,
-               dst_start, ele_num, src_dtype):
-        total_repeat_time = ele_num // VECTOR_FP32_SIZE
-        remain_ele = ele_num % VECTOR_FP32_SIZE
-        mask_value = VECTOR_FP32_SIZE
-
-        repeat_max_time = total_repeat_time // MAX_VECTOR_REPEATE_TIME
-        remain_repeat_time = total_repeat_time % MAX_VECTOR_REPEATE_TIME
-
-        if src_dtype == 'float16':
-            src_stride, dst_stride = 4, 8
-            if repeat_max_time > 0:
-                with tik_instance.for_range(0, repeat_max_time) as loop1:
-                    tik_instance.vconv(
-                        MASK64_VALUE, "",
-                        dst[
-                            dst_start + loop1 * MAX_VECTOR_REPEATE_TIME * mask_value],
-                        src[
-                            src_start + loop1 * MAX_VECTOR_REPEATE_TIME * mask_value],
-                        MAX_VECTOR_REPEATE_TIME, 1, 1, dst_stride, src_stride)
-            if remain_repeat_time > 0:
-                tik_instance.vconv(
-                    MASK64_VALUE, "",
-                    dst[
-                        dst_start + repeat_max_time * MAX_VECTOR_REPEATE_TIME * mask_value],
-                    src[
-                        src_start + repeat_max_time * MAX_VECTOR_REPEATE_TIME * mask_value],
-                    remain_repeat_time, 1, 1, dst_stride, src_stride)
-            if remain_ele > 0:
-                tik_instance.vconv(
-                    remain_ele, "",
-                    dst[dst_start + repeat_max_time * MAX_VECTOR_REPEATE_TIME *
-                        mask_value + remain_repeat_time * mask_value],
-                    src[src_start + repeat_max_time * MAX_VECTOR_REPEATE_TIME *
-                        mask_value + remain_repeat_time * mask_value],
-                    1, 1, 1, dst_stride, src_stride)
-
-        else:
-            src_stride, dst_stride = 8, 4
-            if repeat_max_time > 0:
-                with tik_instance.for_range(0, repeat_max_time) as loop1:
-                    tik_instance.vconv(
-                        MASK64_VALUE, "",
-                        dst[
-                            dst_start + loop1 * MAX_VECTOR_REPEATE_TIME * mask_value],
-                        src[
-                            src_start + loop1 * MAX_VECTOR_REPEATE_TIME * mask_value],
-                        MAX_VECTOR_REPEATE_TIME, 1, 1, dst_stride, src_stride)
-            if remain_repeat_time > 0:
-                tik_instance.vconv(
-                    MASK64_VALUE, "",
-                    dst[
-                        dst_start + repeat_max_time * MAX_VECTOR_REPEATE_TIME * mask_value],
-                    src[
-                        src_start + repeat_max_time * MAX_VECTOR_REPEATE_TIME * mask_value],
-                    remain_repeat_time, 1, 1, dst_stride, src_stride)
-            if remain_ele > 0:
-                tik_instance.vconv(
-                    remain_ele, "",
-                    dst[dst_start + repeat_max_time * MAX_VECTOR_REPEATE_TIME *
-                        mask_value + remain_repeat_time * mask_value],
-                    src[src_start + repeat_max_time * MAX_VECTOR_REPEATE_TIME *
-                        mask_value + remain_repeat_time * mask_value],
-                    1, 1, 1, dst_stride, src_stride)
-
-    @staticmethod
-    def _rewrite_fmap(tik_instance, operator,
-                      src1, src2, dst, dtype, once_elem,
-                      repeat_times, shape_map, shape_grad, config=None):
-        # once_elem: amount of data processed at a time in the Wo direction.
-        # shape_map: container size of src1[1:].
-        # shape_grad: valid data size of src2.
-
-        _, w, c0 = shape_map[0], shape_map[1], shape_map[2]
-        _, wo = shape_grad[0], shape_grad[1]
-        config = list(config)
-        if dtype == "float16":
-            max_mask = 128
-            num_block = 8
-            block_size = 16
-        else:
-            max_mask = 64
-            num_block = 8
-            block_size = 8
-
-        # num_instr_loop_w: num of instructions on direct W
-        # num_instr_loop_h: num of instructions on direct H
-        num_instr_loop_w = math.ceil(once_elem/max_mask)
-        remain_mask = once_elem % max_mask
-        if remain_mask == 0 and once_elem != 0:
-            remain_mask = max_mask
-        num_instr_loop_h = math.ceil(repeat_times/MAX_VECTOR_REPEATE_TIME)
-        remain_repeat = repeat_times % MAX_VECTOR_REPEATE_TIME
-        if remain_repeat == 0 and repeat_times != 0:
-            remain_repeat = MAX_VECTOR_REPEATE_TIME
-
-        dst_offset = src1_offset = src2_offset = 0
-        if operator == "vadd":
-            for idx_h, _ in enumerate(range(num_instr_loop_h)):
-                for idx_w, _ in enumerate(range(num_instr_loop_w)):
-                    src1_offset = idx_w * num_block * config[1] * block_size + \
-                                  idx_h * MAX_VECTOR_REPEATE_TIME * w * c0
-                    src2_offset = idx_w * num_block * config[2] * block_size + \
-                                  idx_h * MAX_VECTOR_REPEATE_TIME * wo * c0
-                    dst_offset = idx_w * num_block * config[0] * block_size + \
-                                 idx_h * MAX_VECTOR_REPEATE_TIME * w * c0
-
-                    if idx_w < num_instr_loop_w - 1:
-                        mask = max_mask
-                    else:
-                        mask = remain_mask
-                    if idx_h < num_instr_loop_h - 1:
-                        rep = MAX_VECTOR_REPEATE_TIME
-                    else:
-                        rep = remain_repeat
-                    tik_instance.vadd(mask, dst[dst_offset],
-                                      src1[src1_offset], src2[src2_offset],
-                                      rep,
-                                      config[0], config[1],
-                                      config[2], config[3],
-                                      config[4], config[5])
-
     def _vector_op(self, tik_instance, operator,
                    src1, src2, dst, dtype, ele_num,
                    stride_config=None):
@@ -6244,20 +6258,6 @@ class MaxpoolV3GradAtomic:
                               grad_buf[grad_offset],
                               zero_buf,
                               1, 1, 1, 1, 8, 8, 0)
-
-    @staticmethod
-    def _division_nearest(number, base_num):
-        # split number as n0 and n1,
-        # return n1, base_num*n0 as new_number and core_num
-        n1 = number
-        new_base_num = base_num
-        for n0 in range(1, number + 1):
-            if number % n0 == 0:
-                new_base_num = base_num * n0
-                n1 = int(number / n0)
-                if new_base_num >= CORE_NUM:
-                    break
-        return n1, new_base_num
 
     def _split_core(self):
         # ============================

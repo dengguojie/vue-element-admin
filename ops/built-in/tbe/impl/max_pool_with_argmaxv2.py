@@ -286,6 +286,51 @@ class MaxPoolWithargmaxPytorch():
                                                        name="output_mask_gm",
                                                        scope=tik.scope_gm)
 
+    # 'pylint: disable=no-self-use
+    @staticmethod
+    def _pooling_output_shape_pad_lr(input_size, kernel_size, pad_l,
+                                     pad_r, stride, dilation, ceil_mode):
+        temp = input_size + pad_l + pad_r - dilation * (kernel_size - 1) - 1
+
+        if ceil_mode == True:
+            output_size = ((temp + (stride - 1)) // stride) + 1
+        else:
+            output_size = (temp // stride) + 1
+
+        if pad_l > 0:
+            # ensure that the last pooling starts inside the image
+            # needed to avoid problems in ceil mode
+            if (output_size - 1) * stride >= (input_size + pad_l):
+                output_size = output_size - 1
+
+        return output_size
+
+    @staticmethod
+    def _pool2d_shape_check(kernel_h, kernel_w, stride_h, stride_w,
+                            pad_h, pad_w, dilation_h, dilation_w, output_h,
+                            output_w):
+        if kernel_w <= 0 or kernel_h <= 0:
+            raise RuntimeError("kernel size should be greater than zero, but \
+                got ", "kH: ", kernel_h, " kW: ", kernel_w)
+
+        if stride_h <= 0 or stride_w <= 0:
+            raise RuntimeError("stride should be greater than zero, but got ",
+                               "dH= ", stride_h, "dW= ", stride_w)
+
+        if dilation_h <= 0 or dilation_w <= 0:
+            raise RuntimeError("dilation should be greater than 0, but got",
+                               "dilationH= ", dilation_h, ", dilationW= ",
+                               dilation_w)
+
+        if (kernel_w // 2) < pad_w or (kernel_h // 2) < pad_h:
+            raise RuntimeError("pad should be smaller than half of kernel "
+                               "size, but got", "padW=", pad_w, ", padH= ",
+                               pad_h, ", kW= ", kernel_w, ", kH= ", kernel_h)
+
+        if output_h < 1 or output_w < 1:
+            raise RuntimeError("Output size is too small ", "outW= ",
+                               output_w, "outH= ", output_h)
+
     # 'pylint: disable=too-many-locals, too-many-function-args
     def tik_instance_function(self, kernel_name):
         """
@@ -521,25 +566,6 @@ class MaxPoolWithargmaxPytorch():
                     offset_output_mask + w_index * (self.fmap_h_num + 1) * SCALAR_C0],
                 mask_ub[w_index * self.fmap_h_num * self.c0_size],
                 0, 1, self.fmap_h_num, 0, 0)
-
-    # 'pylint: disable=no-self-use
-    @staticmethod
-    def _pooling_output_shape_pad_lr(input_size, kernel_size, pad_l,
-                                     pad_r, stride, dilation, ceil_mode):
-        temp = input_size + pad_l + pad_r - dilation * (kernel_size - 1) - 1
-
-        if ceil_mode == True:
-            output_size = ((temp + (stride - 1)) // stride) + 1
-        else:
-            output_size = (temp // stride) + 1
-
-        if pad_l > 0:
-            # ensure that the last pooling starts inside the image
-            # needed to avoid problems in ceil mode
-            if (output_size - 1) * stride >= (input_size + pad_l):
-                output_size = output_size - 1
-
-        return output_size
 
     # 'pylint: disable=too-many-locals,too-many-statements
     def _calc_only_cut_h(self, cur_h_idx, cut_h_size, cut_stride, cut_h_num,
@@ -954,32 +980,6 @@ class MaxPoolWithargmaxPytorch():
                 self._calc_only_cut_h(cur_h_idx, cut_h_size, cut_stride,
                                       cut_h_num, input_fmap_l1, fmap_ub,
                                       fmap_cut_h, mask_shape_ub, nc1_num)
-
-    @staticmethod
-    def _pool2d_shape_check(kernel_h, kernel_w, stride_h, stride_w,
-                            pad_h, pad_w, dilation_h, dilation_w, output_h,
-                            output_w):
-        if kernel_w <= 0 or kernel_h <= 0:
-            raise RuntimeError("kernel size should be greater than zero, but \
-                got ", "kH: ", kernel_h, " kW: ", kernel_w)
-
-        if stride_h <= 0 or stride_w <= 0:
-            raise RuntimeError("stride should be greater than zero, but got ",
-                               "dH= ", stride_h, "dW= ", stride_w)
-
-        if dilation_h <= 0 or dilation_w <= 0:
-            raise RuntimeError("dilation should be greater than 0, but got",
-                               "dilationH= ", dilation_h, ", dilationW= ",
-                               dilation_w)
-
-        if (kernel_w // 2) < pad_w or (kernel_h // 2) < pad_h:
-            raise RuntimeError("pad should be smaller than half of kernel "
-                               "size, but got", "padW=", pad_w, ", padH= ",
-                               pad_h, ", kW= ", kernel_w, ", kH= ", kernel_h)
-
-        if output_h < 1 or output_w < 1:
-            raise RuntimeError("Output size is too small ", "outW= ",
-                               output_w, "outH= ", output_h)
 
     def _pooling_output_shape(self, input_size, kernel_size, pad, stride,
                               dilation, ceil_mode):

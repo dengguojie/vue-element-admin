@@ -244,6 +244,23 @@ class MaxPool3DGradCompute:
         self.check_load3d_support = tbe_platform.cce_conf.api_check_support(
             "tik.load3dv1")
 
+    @staticmethod
+    def norm_data_move(tik_instance, src_buf, dst_buf, in_list):
+        """
+        norm_data_move
+        """
+        src_idx, dst_idx = in_list[-2], in_list[-1]
+        n_burst, burst_len = in_list[0], in_list[1]
+        src_stride, dst_stride = in_list[2], in_list[3]
+
+        tik_instance.data_move(dst_buf[dst_idx],
+                               src_buf[src_idx],
+                               0,
+                               n_burst,
+                               burst_len,
+                               src_stride,
+                               dst_stride)
+
     def set_tik_instance(self):
         """
         set tik_instance
@@ -321,23 +338,6 @@ class MaxPool3DGradCompute:
                                         1,
                                         dst_blk_stride,
                                         dst_rep_stride)
-
-    @staticmethod
-    def norm_data_move(tik_instance, src_buf, dst_buf, in_list):
-        """
-        norm_data_move
-        """
-        src_idx, dst_idx = in_list[-2], in_list[-1]
-        n_burst, burst_len = in_list[0], in_list[1]
-        src_stride, dst_stride = in_list[2], in_list[3]
-
-        tik_instance.data_move(dst_buf[dst_idx],
-                               src_buf[src_idx],
-                               0,
-                               n_burst,
-                               burst_len,
-                               src_stride,
-                               dst_stride)
 
     def not_tiling_main(self, tik_instance, core_loop, sum_core,
                         model, param):

@@ -54,5 +54,57 @@
             "type": "bool"
            }
        ]
+    },
+    {
+      "op": "MaxPoolWithArgmaxV2",
+      "case_name" : "test_max_pool_001",
+       "input_desc": [
+         {
+           "format": "NC1HWC0",
+           "shape": [1, 4, 56, 56, 16],
+           "shape_range": [[1, 6]],
+           "type": "float16",
+           "value_range": [[0, 1]],
+           "name": "x"
+         }
+       ],
+       "output_desc": [
+         {
+           "format": "NC1HWC0",
+           "shape": [1, 4, 28, 28, 16],
+           "shape_range": [[1, 6]],
+           "type": "float16",
+           "name": "y"
+         },
+         {
+          "format": "NC1HWC0",
+          "shape": [1, 4, 4, 50, 16],
+          "shape_range": [[1, 6]],
+          "type": "uint16",
+          "name": "argmax"
+        }
+       ],
+       "attr": [
+           {
+            "name": "ksize",
+            "value": [1, 1, 2, 2],
+            "type": "list_int"
+           },
+           {
+            "name": "pads",
+            "value": [1, 1, 0, 0],
+            "type": "list_int"
+           },
+           {
+            "name": "strides",
+            "value": [1, 1, 2, 2],
+            "type": "list_int"
+           },
+           {
+            "name": "ceil_mode",
+            "value": false,
+            "type": "bool"
+           }
+       ]
     }
   ]
