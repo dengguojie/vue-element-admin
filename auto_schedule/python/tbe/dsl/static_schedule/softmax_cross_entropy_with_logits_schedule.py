@@ -39,7 +39,7 @@ softmax_cross_logits_nhw = [11842605]
 softmax_cross_logits_nd = [2105352]
 
 # softmax_logits_2d_csize includes shapes that auto tiling can not support
-softmax_logits_2d_csize = [11760, 14320]
+softmax_logits_2d_csize = [11760, 14320, 13768]
 
 def get_mask_fp16_skip_one(length):
     """
