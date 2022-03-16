@@ -374,9 +374,10 @@ bool AvgPoolTiling(const std::string& opType, const ge::Operator& opParas, const
   int32_t strides_w = opInfo.at("strides_w");
   int32_t k_size_h = opInfo.at("k_size_h");
   int32_t k_size_w = opInfo.at("k_size_w");
+  int32_t filter = opInfo.at("filter");
   bool result = true;
 
-  if (strides_h <= MAX_STRIDE && strides_w <= MAX_STRIDE && k_size_h * k_size_w <= MAX_K_SIZE) {
+  if (strides_h <= MAX_STRIDE && strides_w <= MAX_STRIDE && k_size_h * k_size_w <= MAX_K_SIZE && filter == 1) {
     result = AvgPoolTilingCube(opType, opParas, opInfo, runInfo);
   } else {
     result = AvgPoolTilingVector(opType, opParas, opInfo, runInfo);

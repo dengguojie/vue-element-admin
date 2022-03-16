@@ -1570,6 +1570,7 @@ def avg_pool(x, filter, bias, y, ksize, strides,
     tbe_context.get_context().add_compile_info("k_size_w", window[1])
 
     if bias is None and filter is not None:
+        tbe_context.get_context().add_compile_info("filter", 1)
         dilations = (1, 1, 1, 1)
         _check_filter_window(x, filter, window, stride)
         offset_w = None
@@ -1591,6 +1592,7 @@ def avg_pool(x, filter, bias, y, ksize, strides,
         tbe.build(sch, config)
     else:
         if filter is None:
+            tbe_context.get_context().add_compile_info("filter", 0)
             obj = AvgPool(input_dtype, window, [strides_h, strides_w], padding, kernel_name)
             obj.avg_pool_operator()
         if bias is not None:
