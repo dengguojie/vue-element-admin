@@ -28,6 +28,7 @@ import warnings
 from functools import reduce as functools_reduce
 
 from tbe import tvm
+import tbe.common.context.op_context as op_context
 from tbe.common.platform import scope_ubuf
 from tbe.common.platform import scope_cbuf_fusion
 from tbe.common.buildcfg import get_L1_info
@@ -315,7 +316,14 @@ def schedule_cce(outs, option=None):  # 'pylint: disable=R0912, R0914, R0915
     # for RL tune getting res
     ConvParam.conv_deq_req_double_out = False
     ConvParam.conv_reluv2_flag = False
-    bank_manager.set_op_res(outs)
+    sch = bank_manager.set_op_res(outs)
+    log.debug("schedule_cce, sch from bank_manager.set_op_res is: %s", sch)
+    # no default schedule for conv2d + conv2d fusion, so not need do following steps when RL tune
+    # call compile op
+    context = op_context.get_context()
+    is_rl_conv2d_l1fusion_key = "is_rl_conv2d_l1fusion"
+    if context and context.get_addition(is_rl_conv2d_l1fusion_key):
+        return sch
 
     outs = reget_tensor_list(outs)
     outs = reget_layernorm_multioutput(outs)
@@ -524,6 +532,8 @@ def check_support_muti_output(outs):
 
         for sub_opt in operation_list:
             tag = sub_opt.op.tag
+            if ConvParam.multi_conv2d_fusion_flag:
+                return True
             if 'matmul' in tag:
                 return True
             if "cube_layer_norm" in tag:

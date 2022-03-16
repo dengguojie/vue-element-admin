@@ -530,6 +530,7 @@ class ConvParam:
     kernel_name = None
     impl_mode = ""
     cache_tiling_flag = False
+    multi_conv2d_fusion_flag = False
 
 
 def shape_to_list(shape):
