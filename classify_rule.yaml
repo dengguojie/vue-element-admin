@@ -975,6 +975,8 @@ vector_B:
       - ops/built-in/tbe/impl/dynamic/floor_mod.py
       - ops/built-in/tbe/impl/dynamic/fused_mul_add.py
       - ops/built-in/tbe/impl/dynamic/fused_mul_add_n.py
+      - ops/built-in/tbe/impl/dynamic/fresnel_cos.py
+      - ops/built-in/tbe/impl/dynamic/fresnel_sin.py
       - ops/built-in/tbe/impl/dynamic/gather.py
       - ops/built-in/tbe/impl/dynamic/gather_nd.py
       - ops/built-in/tbe/impl/dynamic/gather_v2.py
@@ -1473,6 +1475,10 @@ vector_B:
       - ops/built-in/tests/ut/ops_test/FusedMulAddAdd/test_FusedMulAddAdd_proto.cpp
       - ops/built-in/tests/ut/ops_test/FusedMulAddN/test_FusedMulAddN_proto.cpp
       - ops/built-in/tests/ut/ops_test/FusedMulApplyMomentum/test_FusedMulApplyMomentum_proto.cpp
+      - ops/built-in/tests/ut/ops_test/FresnelCos/test_FresnelCos_dynamic_impl.py
+      - ops/built-in/tests/ut/ops_test/FresnelCos/test_FresnelCos_proto.cpp
+      - ops/built-in/tests/ut/ops_test/FresnelSin/test_FresnelSin_dynamic_impl.py
+      - ops/built-in/tests/ut/ops_test/FresnelSin/test_FresnelSin_proto.cpp
       - ops/built-in/tests/ut/ops_test/Gather/test_Gather_impl.py
       - ops/built-in/tests/ut/ops_test/Gather/test_gather_proto.cpp
       - ops/built-in/tests/ut/ops_test/GatherNd/test_gather_nd_proto.cpp
@@ -3218,6 +3224,8 @@ unkown:
       - ops/built-in/framework/tf_plugin/expm1_plugin.cc
       - ops/built-in/framework/tf_plugin/bias_add_plugin.cc
       - ops/built-in/framework/tf_plugin/fifo_queue_plugin.cc
+      - ops/built-in/framework/tf_plugin/fresnel_cos_plugin.cc
+      - ops/built-in/framework/tf_plugin/fresnel_sin_plugin.cc
       - ops/built-in/framework/tf_plugin/scatter_nd_add_plugin.cc
       - ops/built-in/framework/tf_plugin/minimum_plugin.cc
       - ops/built-in/framework/tf_plugin/split_v_plugin.cc

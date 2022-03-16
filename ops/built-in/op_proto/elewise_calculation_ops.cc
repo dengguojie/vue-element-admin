@@ -4524,6 +4524,14 @@ IMPLEMT_COMMON_INFERFUNC(AsinhGradInferShape) {
 COMMON_INFER_FUNC_REG(AsinhGrad, AsinhGradInferShape);
 // --------------AsinhGrad END-----------------
 
+// ----------------FresnelCos--------------------
+COMMON_INFER_FUNC_REG(FresnelCos, OneInOneOutCommonInferShape);
+// --------------FresnelCos END-----------------
+
+// ----------------FresnelSin--------------------
+COMMON_INFER_FUNC_REG(FresnelSin, OneInOneOutCommonInferShape);
+// --------------FresnelSin END-----------------
+
 // -----------------TruncateDiv--------------------
 IMPLEMT_COMMON_INFERFUNC(TruncateDivInferShape) {
   bool is_dynamic_output = true;

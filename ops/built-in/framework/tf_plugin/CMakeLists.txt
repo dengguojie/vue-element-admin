@@ -180,6 +180,8 @@ set(_tf_plugins
   extract_glimpse_plugin.cc
   extract_image_patches_plugin.cc
   extract_volume_patches_plugin.cc
+  fresnel_cos_plugin.cc
+  fresnel_sin_plugin.cc
   fake_quant_with_min_max_args_gradient_plugin.cc
   fake_quant_with_min_max_args_plugin.cc
   fake_quant_with_min_max_vars_gradient_plugin.cc

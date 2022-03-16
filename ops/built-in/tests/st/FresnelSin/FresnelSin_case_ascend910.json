@@ -1,0 +1,221 @@
+[
+  {
+    "case_name": "fresnel_sin_dynamic_shape_fresnel_sin_0_ascend910a",
+    "calc_expect_func_file": "./test_fresnel_sin.py:calc_expect_func",
+    "op": "FresnelSin",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          2
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x",
+        "shape_range": [
+          [
+            2,
+            16
+          ]
+        ],
+        "typical_shape": [
+          2
+        ]
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          1
+        ],
+        "name": "y"
+      }
+    ]
+  },
+  {
+    "case_name": "fresnel_sin_dynamic_shape_fresnel_sin_1_ascend910a",
+    "calc_expect_func_file": "./test_fresnel_sin.py:calc_expect_func",
+    "op": "FresnelSin",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          1
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x",
+        "shape_range": [
+          [
+            1,
+            100
+          ]
+        ],
+        "typical_shape": [
+          1
+        ]
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          1
+        ],
+        "name": "y",
+        "shape_range": [
+          [
+            1,
+            100
+          ]
+        ],
+        "typical_shape": [
+          1
+        ]
+      }
+    ]
+  },
+  {
+    "case_name": "fresnel_sin_dynamic_shape_fresnel_sin_2_ascend910a",
+    "calc_expect_func_file": "./test_fresnel_sin.py:calc_expect_func",
+    "op": "FresnelSin",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          8
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "name": "x",
+        "value": [
+          1.0, 4.0, 100.0, 0, 0, -1.0, -4.0, -100.0
+        ]
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          8
+        ],
+        "name": "y",
+        "shape_range": [
+          [
+            1,
+            100
+          ]
+        ],
+        "typical_shape": [
+          1
+        ]
+      }
+    ]
+  },
+  {
+    "case_name": "fresnel_sin_dynamic_shape_fresnel_sin_3_ascend910a",
+    "calc_expect_func_file": "./test_fresnel_sin.py:calc_expect_func",
+    "op": "FresnelSin",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          -1
+        ],
+        "shape_range": [
+          [
+            1,
+            100
+          ]
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "name": "x",
+        "value_range": [
+          [
+            -100.0,
+            100.0
+          ]
+        ],
+        "typical_shape": [
+          1
+        ]
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          -1
+        ],
+        "name": "y",
+        "shape_range": [
+          [
+            1,
+            100
+          ]
+        ],
+        "typical_shape": [
+          1
+        ]
+      }
+    ]
+  }
+]

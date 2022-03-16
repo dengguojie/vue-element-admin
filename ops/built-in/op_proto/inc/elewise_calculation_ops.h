@@ -1706,6 +1706,44 @@ REG_OP(Atan2)
     .OP_END_FACTORY_REG(Atan2)
 
 /**
+* @brief Computes fresnel_cos of x element-wise. \n
+ 
+* 
+* @par Inputs:
+*  x: A tensor. Must be one of the following types: bfloat16, float16, float32, double.
+* 
+* @par Outputs:
+*  y: A tensor. Has the same type as "x".
+* 
+* @par Third-party framework compatibility
+* Compatible with the TensorFlow operator FresnelCos.
+* 
+*/
+REG_OP(FresnelCos)
+    .INPUT(x, TensorType({DT_BF16, DT_FLOAT16, DT_FLOAT, DT_DOUBLE}))
+    .OUTPUT(y, TensorType({DT_BF16, DT_FLOAT16, DT_FLOAT, DT_DOUBLE}))
+    .OP_END_FACTORY_REG(FresnelCos)
+
+/**
+* @brief Computes fresnel_sin of x element-wise. \n
+ 
+* 
+* @par Inputs:
+*  x: A tensor. Must be one of the following types: bfloat16, float16, float32, double.
+* 
+* @par Outputs:
+*  y: A tensor. Has the same type as "x".
+* 
+* @par Third-party framework compatibility
+* Compatible with the TensorFlow operator FresnelSin.
+* 
+*/
+REG_OP(FresnelSin)
+    .INPUT(x, TensorType({DT_BF16, DT_FLOAT16, DT_FLOAT, DT_DOUBLE}))
+    .OUTPUT(y, TensorType({DT_BF16, DT_FLOAT16, DT_FLOAT, DT_DOUBLE}))
+    .OP_END_FACTORY_REG(FresnelSin)
+
+/**
 *@brief Returns the truth value of abs(x1-x2) < tolerance element-wise. \n
 
 *

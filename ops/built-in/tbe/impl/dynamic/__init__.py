@@ -260,6 +260,8 @@ from .tan import tan
 from .scale import scale
 from .asinh import asinh
 from .asinh_grad import asinh_grad
+from .fresnel_cos import fresnel_cos
+from .fresnel_sin import fresnel_sin
 from .expm1 import expm1
 from .mse_loss import mse_loss
 from .dynamic_rnn import dynamic_rnn
