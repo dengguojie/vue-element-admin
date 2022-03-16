@@ -126,7 +126,7 @@ def reduce_mean_d_compute(x,
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_LIST_INT,
                             para_check.OPTION_ATTR_BOOL, para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
 def reduce_mean_d(input_x, output_y, axes,
-                  keepdims=None, noop_with_empty_axes=True, kernel_name="reduce_mean_d",
+                  keepdims=None, noop_with_empty_axes=False, kernel_name="reduce_mean_d",
                   impl_mode=OpImplMode.HIGH_PERFORMANCE):
     """
     Reduce a tensor on a certa in axes based on mean.

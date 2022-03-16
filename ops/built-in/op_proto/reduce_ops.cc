@@ -291,7 +291,7 @@ static void GetTensorValue(const GeTensor* data, std::vector<int64_t>& vec_dim) 
   }
 }
 
-static bool ConvertAxis(std::vector<int64_t>& axis, int64_t input_length, bool noop_with_empty_axes = true) {
+static bool ConvertAxis(std::vector<int64_t>& axis, int64_t input_length, bool noop_with_empty_axes = false) {
   // Convert reduce axis
   for (size_t i = 0; i < axis.size(); ++i) {
     if (axis[i] < -input_length || axis[i] > (input_length - 1)) {
@@ -575,7 +575,7 @@ static bool InferReduceDShapeProcess(const ge::Operator& op, const string& input
     return false;
   }
 
-  bool noop_with_empty_axes = true;
+  bool noop_with_empty_axes = false;
   op.GetAttr("noop_with_empty_axes", noop_with_empty_axes);
   // Convert "-1" -> "length-1";
   if (!ConvertAxis(axis, (int64_t)input_length, noop_with_empty_axes)) {

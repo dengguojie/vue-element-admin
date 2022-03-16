@@ -146,7 +146,7 @@ def reduce_mean_d(input_x,
                   output_y,
                   axes,
                   keepdims=None,
-                  noop_with_empty_axes=True,
+                  noop_with_empty_axes=False,
                   kernel_name="reduce_mean_d",
                   impl_mode=None):
     """
