@@ -229,6 +229,82 @@
     },
     {
         "op": "StridedSlice",
+        "case_name": "test_strided_slice_tiling_mode_005",
+        "calc_expect_func_file": "strided_slice_golden.py:calc_expect_func",
+        "input_desc": [
+            {
+                "format": "ND",
+                "shape": [-1, 9],
+                "typical_shape": [640000, 9],
+                "shape_range": [[1, 1000000]],
+                "type": "float",
+                "value_range": [[0, 1]],
+                "data_distribute": "uniform",
+                "name": "x"
+            },
+            {
+                "format": "ND",
+                "shape": [2],
+                "type": "int32",
+                "is_const":true,
+                "value": [0, 1],
+                "name": "begin"
+            },
+            {
+                "format": "ND",
+                "shape": [2],
+                "type": "int32",
+                "is_const":true,
+                "value": [640000, 9],
+                "name": "end"
+            },
+            {
+                "format": "ND",
+                "shape": [2],
+                "type": "int32",
+                "is_const":true,
+                "value": [1, 1],
+                "name": "strides"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": "ND",
+                "shape": [640000, 8],
+                "type": "float",
+                "name": "y"
+            }
+        ],
+        "attr": [
+            {
+                "name": "begin_mask",
+                "value": 0,
+                "type": "int"
+            },
+            {
+                "name": "end_mask",
+                "value": 0,
+                "type": "int"
+            },
+            {
+                "name": "ellipsis_mask",
+                "value": 0,
+                "type": "int"
+            },
+            {
+                "name": "new_axis_mask",
+                "value": 0,
+                "type": "int"
+            },
+            {
+                "name": "shrink_axis_mask",
+                "value": 0,
+                "type": "int"
+            }
+        ]
+    },
+    {
+        "op": "StridedSlice",
         "case_name": "test_strided_slice_tiling_mode_006",
         "calc_expect_func_file": "strided_slice_golden.py:calc_expect_func",
         "input_desc": [
