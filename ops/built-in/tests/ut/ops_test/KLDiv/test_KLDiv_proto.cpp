@@ -33,6 +33,24 @@ TEST_F(KLDivTest, kl_div_infershape_test) {
   EXPECT_EQ(out_var_desc.GetShape().GetDims(), expected_var_output_shape);
 }
 
+TEST_F(KLDivTest, kl_div_infershape_test_02) {
+
+  ge::op::KLDiv op;
+
+  op.UpdateInputDesc("x", create_desc({16, 2, 16, 16}, ge::DT_FLOAT));
+  op.UpdateInputDesc("target", create_desc({16, 2, 16, 16}, ge::DT_FLOAT));
+  op.SetAttr("reduction", "none");
+
+  auto status = op.InferShapeAndType();
+  EXPECT_EQ(status, ge::GRAPH_SUCCESS);
+
+  auto out_var_desc = op.GetOutputDesc("y");
+  EXPECT_EQ(out_var_desc.GetDataType(), ge::DT_FLOAT);
+  
+  std::vector<int64_t> expected_var_output_shape = {16, 2, 16, 16};
+  EXPECT_EQ(out_var_desc.GetShape().GetDims(), expected_var_output_shape);
+}
+
 TEST_F(KLDivTest, kl_div_verify_success_test_01) {
 
   ge::op::KLDiv op;

@@ -537,5 +537,74 @@
       }
     ],
     "case_name": "test_KLDiv_008"
+  },
+  {
+    "op": "KLDiv",
+    "input_desc": [
+      {
+        "shape": [
+          16,
+          1,
+          8,
+          8
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          16,
+          1,
+          8,
+          8
+        ],
+        "ori_format": "NCHW",
+        "name": "input_x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          16,
+          1,
+          8,
+          8
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          16,
+          1,
+          8,
+          8
+        ],
+        "ori_format": "NCHW",
+        "name": "input_target",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          16,
+          1,
+          8,
+          8
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          16,
+          1,
+          8,
+          8
+        ],
+        "ori_format": "NCHW",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "reduction",
+        "type": "string",
+        "value": "none"
+      }
+    ],
+    "case_name": "test_KLDiv_009"
   }
 ]

@@ -3752,11 +3752,18 @@ IMPLEMT_COMMON_INFERFUNC(KLDivInferShape) {
 
   auto x_desc = op_info->MutableInputDesc("x");
   auto x_dtype = x_desc->GetDataType();
-  std::vector<int64_t> x_dims;
 
   auto y_desc = op_info->MutableOutputDesc("y");
 
-  y_desc->SetShape(GeShape(x_dims));
+  std::string reduction;
+  op.GetAttr("reduction", reduction);
+  if (reduction == "none") {
+    y_desc->SetShape(x_desc->GetShape());
+  } else {
+    std::vector<int64_t> x_dims;
+    y_desc->SetShape(GeShape(x_dims));
+  }
+
   y_desc->SetDataType(x_dtype);
   
   return GRAPH_SUCCESS;

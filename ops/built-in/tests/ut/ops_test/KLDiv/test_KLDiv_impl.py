@@ -23,6 +23,8 @@ def calc_expect_func(x, target, y, reduction):
     output_pos = target["value"] * (np.log(target["value"]) - x["value"])
     cond_gt_0 = target["value"] > 0
     tmpResult = np.where(cond_gt_0, output_pos, 0)
+    if reduction == "none":
+        return tmpResult
     batch_size = x["shape"][0]
     if reduction == "batchmean":
         tmpResult = tmpResult * 1.0 / batch_size
@@ -118,3 +120,41 @@ ut_case.add_precision_case(["Ascend910", "Ascend310"], {
     "precision_standard": precision_info.PrecisionStandard(0.005, 0.005)
 })
 
+ut_case.add_case("all", {
+    "params": [{'shape': (16, 1, 8, 8), 'dtype': 'float16', 'format': 'NCHW',
+                'ori_shape': (16, 1, 8, 8), 'ori_format': 'NCHW'},
+               {'shape': (16, 1, 8, 8), 'dtype': 'float16', 'format': 'NCHW',
+                'ori_shape': (16, 1, 8, 8), 'ori_format': 'NCHW'},
+               {'shape': (16, 1, 8, 8), 'dtype': 'float16', 'format': 'NCHW',
+                'ori_shape': (16, 1, 8, 8), 'ori_format': 'NCHW'},
+               "none"],
+    "expect": "success"
+})
+
+ut_case.add_precision_case(["Ascend910", "Ascend310"], {
+    "params": [{'shape': (16, 1, 77), 'dtype': 'float16', 'format': 'NCHW',
+                'ori_shape': (16, 1, 77), 'ori_format': 'NCHW',"param_type":"input"},
+               {'shape': (16, 1, 77), 'dtype': 'float16', 'format': 'NCHW',
+                'ori_shape': (16, 1, 77), 'ori_format': 'NCHW',"param_type":"input"},
+               {'shape': (16, 1, 77), 'dtype': 'float16', 'format': 'NCHW',
+                'ori_shape': (16, 1, 77), 'ori_format': 'NCHW',"param_type":"output"},
+               "none"],
+    "expect": "success",
+    "calc_expect_func": calc_expect_func,
+    "precision_standard": precision_info.PrecisionStandard(0.005, 0.005)
+})
+
+def test_op_select_format(test_arg):
+
+    from impl.kl_div import op_select_format
+    op_select_format({"shape":(1,1,2,1,1,16), "ori_shape":(1,1,2,1,1,16), "dtype":"float32", "format":"NDC1HWC0", "ori_format":"NDC1HWC0"},
+                     {"shape":(1,1,2,1,1,16), "ori_shape":(1,1,2,1,1,16), "dtype":"float32", "format":"NDC1HWC0", "ori_format":"NDC1HWC0"},
+                     {"shape":(1,1,2,1,1,16), "ori_shape":(1,1,2,1,1,16), "dtype":"float32", "format":"NDC1HWC0", "ori_format":"NDC1HWC0"},"none")
+    op_select_format({"shape":(1,2,1,1), "ori_shape":(1,2,1,1), "dtype":"float32", "format":"NCHW", "ori_format":"NCHW"},
+                     {"shape":(1,2,1,1), "ori_shape":(1,2,1,1), "dtype":"float32", "format":"NCHW", "ori_format":"NCHW"},
+                     {"shape":(1,), "ori_shape":(1,), "dtype":"float32", "format":"ND", "ori_format":"ND"},"sum")
+    op_select_format({"shape":(-1,-1,-1,-1,-1), "ori_shape":(-1,-1,-1,-1), "dtype":"float32", "format":"NC1HWC0", "ori_format":"NCHW"},
+                     {"shape":(-1,-1,-1,-1,-1), "ori_shape":(-1,-1,-1,-1), "dtype":"float32", "format":"NC1HWC0", "ori_format":"NCHW"},
+                     {"shape":(1,), "ori_shape":(1,), "dtype":"float32", "format":"ND", "ori_format":"ND"},"sum")
+
+ut_case.add_cust_test_func(test_func=test_op_select_format)
