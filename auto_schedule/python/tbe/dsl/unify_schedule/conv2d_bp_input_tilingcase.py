@@ -510,14 +510,14 @@ class Conv2dBpInputTiling(CubeTilingOp):
         list: all selections of flags
         """
         (al1_pb, bl1_pb, l0c_pb, abkl1_attach, al1_attach_flag,
-        bl1_attach_flag, min_kl1_cmp_kl0, no_overlap_default_flag) = (
+        bl1_attach_flag, min_kl1_cmp_kl0) = (
             [utils.DB_OFF, utils.DB_ON], [utils.DB_OFF, utils.DB_ON], [utils.DB_OFF, utils.DB_ON],
             [utils.ATTACH_FULL_LOAD, utils.ATTACH_EQUAL, utils.ATTACH_LESS],
             [utils.ATTACH_FULL_LOAD, utils.ATTACH_EQUAL, utils.ATTACH_LESS],
-            [utils.ATTACH_FULL_LOAD, utils.ATTACH_EQUAL, utils.ATTACH_LESS], [0, 1], [0, 1])
+            [utils.ATTACH_FULL_LOAD, utils.ATTACH_EQUAL, utils.ATTACH_LESS], [0, 1])
         attach_choices = list(
             product(al1_pb, bl1_pb, l0c_pb, abkl1_attach,
-                    al1_attach_flag, bl1_attach_flag, min_kl1_cmp_kl0, no_overlap_default_flag))
+                    al1_attach_flag, bl1_attach_flag, min_kl1_cmp_kl0))
         return attach_choices
 
     def get_repo_tiling(self):
@@ -591,7 +591,7 @@ class Conv2dBpInputTiling(CubeTilingOp):
                 'cl0_attach_flag': utils.ATTACH_LARGE, 'al0_attach_flag': utils.ATTACH_LESS,
                 'bl0_attach_flag': utils.ATTACH_LESS,
                 'al1_attach_flag': -1, 'bl1_attach_flag': -1, 'aub_attach_flag': utils.ATTACH_LESS,
-                'abkl1_attach_flag': -1, 'aub_multi_flag': -1, 'bub_multi_flag': -1}, 'no_overlap_default_flag': 0
+                'abkl1_attach_flag': -1, 'aub_multi_flag': -1, 'bub_multi_flag': -1}
             }
             if self._check_template_valid(choice):
                 continue
@@ -602,7 +602,6 @@ class Conv2dBpInputTiling(CubeTilingOp):
             cache_tiling.get('attach_at_flag')['al1_attach_flag'] = choice[4]
             cache_tiling.get('attach_at_flag')['bl1_attach_flag'] = choice[5]
             cache_tiling.get('attach_at_flag')['min_kl1_cmp_kl0'] = choice[6]
-            cache_tiling['no_overlap_default_flag'] = choice[7]
             name = int(''.join((str(i) for i in choice))) * 10 + stride_expand_flag
             cache_tiling_all[name] = [[], cache_tiling, []]
             tiling_cases = [self.assembly_case(v[1], v[0], k) for k, v in cache_tiling_all.items()]

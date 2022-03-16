@@ -2611,10 +2611,8 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):
             _, channel_axis_inner = sch[c_ddr].split(channel_axis, factor=2)
             sch[c_ddr].emit_insn(channel_axis_inner, emit_str, {"layout_transform": "channel_split"})
         elif tensor_attr.get("5HD_TRANS_NCHW"):
-            no_overlap_flag = ("default" if dyn_util.tiling_case.get("no_overlap_default_flag")
-                                else "process_data_smaller_than_one_block")
             sch[c_ddr].emit_insn(sch_agent[c_ddr].nlast_scopes(2)[0], 'dma_copy',
-                                    {'no_overlap': no_overlap_flag})
+                                    {'no_overlap': "default"})
         elif c_ddr.dtype == "int8" and tensor_attr.get("support_l0c_to_out"):
             hw_dim, c_dim = sch_agent[c_ddr].nlast_scopes(2)
             sch_agent[c_ddr].split(c_dim, 16)

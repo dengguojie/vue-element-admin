@@ -369,6 +369,18 @@ bool Conv2DBackpropInputParseFunc(const ge::OpDescPtr& op_desc, const nlohmann::
   return true;
 }
 
+bool ConfigNoOverlapPara(DxParas &params) {
+  // no_overlap is for non-32B aligned scenes to move out
+  params.hw = params.h * params.w;
+  params.dx_hw_align_flag = params.hw % kBlockSize == 0;
+  params.dx_c_align_flag = params.cin % kBlockSize == 0;
+  // The first case is that dx_hw is greater than 16, while non-16 alignment
+  params.dx_no_overlap_condition_1 = !params.dx_hw_align_flag && (params.hw > kBlockSize);
+  // The second case is that dx_hw is less than 16, dx_c is greater than 16 and dx_c is not 16 aligned
+  params.dx_no_overlap_condition_2 = (params.hw < kBlockSize) && !params.dx_c_align_flag && params.cin > kBlockSize;
+  return true;
+}
+
 /*
  * @brief: tiling function of conv2d_backprop_input
  * @param [in] op_type: op_type of conv2d_backprop_input
@@ -387,7 +399,8 @@ bool Conv2DBpInputTiling(const std::string& opType, const ge::Operator& opParas,
     if (dx_paras.repo_binary_flag) {
       int32_t tiling_id;
       Tiling tiling;
-      bool cache_tiling_invalid = !CheckParams(dx_paras) || !GenTiling(dx_paras, tiling, tiling_id) ||
+      bool cache_tiling_invalid = !CheckParams(dx_paras) || !ConfigNoOverlapPara(dx_paras) ||
+                                  !GenTiling(dx_paras, tiling, tiling_id) ||
                                   !UpdateRunInfoBinary(dx_paras, tiling, tiling_id, runInfo);
       if (cache_tiling_invalid) {
         OP_LOGE("Conv2DBackpropInput", "binary mode failed");

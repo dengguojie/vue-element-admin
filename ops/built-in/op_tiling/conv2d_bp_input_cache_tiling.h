@@ -80,6 +80,7 @@ struct DxParas {
   int32_t cin = 0;
   int32_t h = 0;
   int32_t w = 0;
+  int32_t hw = 0;
   int32_t fmap_h_padding = 0;
   int32_t fmap_w_padding = 0;
   int32_t filter_h_dilation = 0;
@@ -88,6 +89,10 @@ struct DxParas {
   bool repo_seed_flag = false;
   bool repo_costmodel_flag = false;
   bool repo_binary_flag = false;
+  bool dx_hw_align_flag = false;
+  bool dx_c_align_flag = false;
+  bool dx_no_overlap_condition_1 = false;
+  bool dx_no_overlap_condition_2 = false;
 };
 
 struct Tiling {
