@@ -63,8 +63,6 @@ class HostBNFusionPass : public PatternFusionBasePass {
    */
   Status GetSwapInputTensorDesc(const ge::OpDescPtr& preOpDescPtr,
                                 ge::GeTensorDesc& inputTensorDesc) const;
-  Status GetInputDataTensorDesc(const ge::NodePtr& dataNodePtr, const ge::NodePtr& preNodePtr,
-                                ge::GeTensorDesc& inputTensorDesc) const;
 
   /**
    * Get new input desc info of SwapCi

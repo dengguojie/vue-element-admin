@@ -200,10 +200,7 @@ Status HostBNFusionPass::BNFuison(ge::ComputeGraph& graph, ge::NodePtr& bnNodePt
       GetSwapInputTensorDesc(varNodePtr->GetOpDesc(), bninfervarInputTensorDesc) != SUCCESS,
       OP_LOGW(FUSED_OP_TYPE.c_str(), "Create bnhost input var opDesc failed, fusion failed."), return NOT_CHANGED);
   // get bninferenced output
-  ge::GeTensorDesc bninferdataInputTensorDesc;
-  FUSION_PASS_CHECK(GetInputDataTensorDesc(dataNodePtr, bnNodePtr, bninferdataInputTensorDesc) != SUCCESS,
-                    OP_LOGW(FUSED_OP_TYPE.c_str(), "Create bnhost input var opDesc failed, fusion failed."),
-                    return NOT_CHANGED);
+  ge::GeTensorDesc bninferdataInputTensorDesc = bnOpDescPtr->GetInputDesc("x");
   ge::GeTensorDesc bninferOutputTensorDesc;
   FUSION_PASS_CHECK(GetInferOutputTensorDesc(bnOpDescPtr,
                                              bninferOutputTensorDesc) != SUCCESS,
@@ -328,13 +325,6 @@ Status HostBNFusionPass::BNFuison(ge::ComputeGraph& graph, ge::NodePtr& bnNodePt
 
 Status HostBNFusionPass::GetSwapInputTensorDesc(const ge::OpDescPtr& preOpDescPtr, ge::GeTensorDesc& inputTensorDesc) const {
   inputTensorDesc = preOpDescPtr->GetOutputDesc(0);
-  return SUCCESS;
-}
-
-Status HostBNFusionPass::GetInputDataTensorDesc(const ge::NodePtr& dataNodePtr, const ge::NodePtr& preNodePtr,
-                                                ge::GeTensorDesc& inputTensorDesc) const {
-  int32_t node_index = preNodePtr->GetInDataAnchor(0)->GetPeerOutAnchor()->GetIdx();
-  inputTensorDesc = dataNodePtr->GetOpDesc()->GetOutputDesc(node_index);
   return SUCCESS;
 }
 
