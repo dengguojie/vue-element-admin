@@ -394,6 +394,7 @@ set(_cpu_kernels_ut_files
   testcase/not_equal/src/not_equal_utest.cpp
   testcase/ones_like/src/ones_like_utest.cpp
   testcase/pad_d/src/pad_utest.cpp
+  testcase/pad/src/pad_utest.cpp
   testcase/parameterized_truncated_normal/src/parameterized_truncated_normal_utest.cpp
   testcase/pinverse/src/pinverse_utest.cpp
   testcase/poisson/src/poisson_utest.cpp

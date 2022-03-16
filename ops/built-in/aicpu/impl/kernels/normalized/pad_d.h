@@ -31,13 +31,14 @@ public:
   uint32_t Compute(CpuKernelContext &ctx) override;
 
 private:
-  int64_t multi(int64_t x, int64_t rank, std::vector<int64_t> &dims_y);
 
-  int64_t sumLR(int64_t x, std::vector<int64_t> &vec);
+  void SetMap_pad();
 
-  template <typename T>
-  uint32_t DoCompute(CpuKernelContext &ctx);
+  void SetMap_padd();
 
+  std::map<int, std::function<uint32_t(CpuKernelContext &)>> calls_pad;
+
+  std::map<int, std::function<uint32_t(CpuKernelContext &)>> calls_padd;
 };
 } // namespace aicpu
 #endif
