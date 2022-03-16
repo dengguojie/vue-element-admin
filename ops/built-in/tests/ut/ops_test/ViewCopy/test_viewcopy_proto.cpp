@@ -34,6 +34,26 @@ class TEST_VIEWCOPY_UT : public testing::Test {
   }
 };
 
+TEST_F(TEST_VIEWCOPY_UT, viewcopy_infershape) {
+    ge::op::ViewCopy op;
+    ge::TensorDesc src_td;
+    ge::TensorDesc dst_td;
+    ge::Shape src_shape({3, 1, 1});
+    ge::Shape dst_shape({5, 3, 4, 1});
+    src_td.SetDataType(ge::DT_UINT8);
+    dst_td.SetDataType(ge::DT_UINT8);
+    src_td.SetShape(src_shape);
+    src_td.SetOriginShape(src_shape);
+    dst_td.SetShape(dst_shape);
+    dst_td.SetOriginShape(dst_shape);
+
+    op.UpdateInputDesc("src", src_td);
+    op.UpdateInputDesc("dst", dst_td);
+    op.UpdateOutputDesc("dst", dst_td);
+    auto ret = op.InferShapeAndType();
+    EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+}
+
 TEST_F(TEST_VIEWCOPY_UT, viewcopy_src_size_bigger_than_dst_size) {
     ge::op::ViewCopy op;
     ge::TensorDesc src_size_td;

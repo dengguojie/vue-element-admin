@@ -3180,6 +3180,12 @@ INFER_FUNC_REG(Expand, ExpandInferShape);
 
 // ----------------ViewCopy Begin-------------------
 IMPLEMT_INFERFUNC(ViewCopy, ViewCopyInferShape) {
+  TensorDesc output_td = op.GetOutputDescByName("dst");
+  DataType dst_dtype = op.GetInputDesc("dst").GetDataType();
+  Shape dst_shape = op.GetInputDescByName("dst").GetShape();
+  output_td.SetDataType(dst_dtype);
+  output_td.SetShape(dst_shape);
+  op.UpdateOutputDesc("dst", output_td);
   return GRAPH_SUCCESS;
 }
 
