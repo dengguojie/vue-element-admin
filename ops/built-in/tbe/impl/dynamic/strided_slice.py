@@ -694,7 +694,9 @@ class StridedSlice:
             output_32bytes_align_rows.set_as(output_32bytes_align_rows // output_inner_dim)
         with inst.elif_scope(output_inner_dim % output_32bytes_align_rows == 0):
             output_32bytes_align_rows.set_as(1)
-        max_rows_in_ub = floor_align(ub_size // (input_inner_dim * vnchwconv_column), output_32bytes_align_rows)
+        reserve_input_32bytes_align_ub = vnchwconv_column * constant.BLOCK_SIZE
+        max_rows_in_ub = floor_align((ub_size - reserve_input_32bytes_align_ub) // (input_inner_dim * vnchwconv_column),
+                                     output_32bytes_align_rows)
         rows_each_core = inst.Scalar("int64", name="rows_each_core")
         repeat_times = inst.Scalar("int64", name="repeat_times")
         rows_each_repeat = inst.Scalar("int64", name="rows_each_repeat")

@@ -44,7 +44,7 @@ case2 = {"params": [{"shape": (8, 8, 16), "dtype": "float16", "format": "ND",
                      "ori_shape": (3,), "ori_format": "ND", "const_value": [1, 1, 1]},
                     {"shape": (8, 16), "dtype": "float16", "format": "ND",
                      "ori_shape": (8, 16), "ori_format": "ND"},
-                     1, 1, 0, 0, 2
+                     5, 5, 0, 0, 2
                     ],
          "case_name": "StridedSlice_2",
          "expect": "success",
@@ -141,6 +141,7 @@ ut_case.add_case(["all"], case5)
 ut_case.add_case(["all"], case6)
 ut_case.add_case(["all"], case7)
 
+# 'pylint: disable=unused-argument
 def test_op_check_supported_1(test_arg):
     from impl.strided_slice import check_supported
     shape = {'ori_shape': (8, 8, 16), 'shape': (8, 8, 16), 'ori_format': 'NHWC', 'format': 'NHWC', 'dtype': 'float16'}
@@ -150,7 +151,8 @@ def test_op_check_supported_1(test_arg):
     output = {'ori_shape': (8, 16), 'shape': (8, 16), 'ori_format': 'NHWC', 'format': 'NHWC', 'dtype': 'float16'}
     if check_supported(shape, begin, end, strides, output, 0, 0, 0, 0, 1) == True:
         raise Exception("Failed to call check_supported in stridedslice.")
-        
+
+# 'pylint: disable=unused-argument
 def test_op_check_supported_2(test_arg):
     from impl.strided_slice import check_supported
     shape = {'ori_shape': (8, 8, 16), 'shape': (8, 8, 16), 'ori_format': 'NHWC', 'format': 'NHWC', 'dtype': 'float16'}
@@ -161,6 +163,7 @@ def test_op_check_supported_2(test_arg):
     if check_supported(shape, begin, end, strides, output, 0, 0, 0, 0, 1) == True:
         raise Exception("Failed to call check_supported in stridedslice.")
 
+# 'pylint: disable=unused-argument
 def test_op_check_supported_3(test_arg):
     from impl.strided_slice import check_supported
     shape = {'ori_shape': (8, 8, 16), 'shape': (8, 8, 16), 'ori_format': 'NHWC', 'format': 'NHWC', 'dtype': 'float16'}
@@ -171,6 +174,7 @@ def test_op_check_supported_3(test_arg):
     if check_supported(shape, begin, end, strides, output, 0, 0, 0, 0, 1) == False:
         raise Exception("Failed to call check_supported in stridedslice.")
 
+# 'pylint: disable=unused-argument
 def test_op_check_supported_4(test_arg):
     from impl.strided_slice import check_supported
     shape = {'ori_shape': (8, 8, 16), 'shape': (8, 8, 16), 'ori_format': 'NHWC', 'format': 'NHWC', 'dtype': 'float16'}

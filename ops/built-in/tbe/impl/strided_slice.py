@@ -276,14 +276,14 @@ def strided_slice(input_x,
             for index, _ in enumerate(sparse_spec.get("strides")):
                 bit_value = 1 << index
                 if ellipsis_seen and (new_axis_mask & bit_value != 0):
-                    sparse_spec["num_add_axis_after_ellipsis"] = sparse_spec["num_add_axis_after_ellipsis"] + 1
+                    sparse_spec["num_add_axis_after_ellipsis"] = sparse_spec.get("num_add_axis_after_ellipsis") + 1
 
                 if ellipsis_mask & bit_value != 0:
                     ellipsis_seen = True
 
             # If no ellipsis insert one at the end
             if not ellipsis_seen:
-                sparse_spec["ellipsis_mask"] |= (1 << sparse_spec["dims"])
+                sparse_spec["ellipsis_mask"] |= (1 << sparse_spec.get("dims"))
                 sparse_spec["dims"] += 1
 
             # Step 2: Make a sparse spec into a full index spec
@@ -293,8 +293,6 @@ def strided_slice(input_x,
             #
             # For example suppose foo[...,3:] on foo.shape=(2,2,3) then
             # we need to produce the missing begin_mask for the first two
-            # dimensions i.e. from begin_mask_spec=0, end_mask_spec=2
-            # we achieve begin_mask=6, end_mask=7
             len_array = max(len(shape), len(strides))
             begin_array = tiling_inst.tik_instance.ScalarArray(dtype=begin_dtype, length=len_array, name="begin_array")
             end_array = tiling_inst.tik_instance.ScalarArray(dtype=begin_dtype, length=len_array, name="end_array")
@@ -311,9 +309,9 @@ def strided_slice(input_x,
                 "shrink_axis_mask": 0
             }
             _build_dense_spec(sparse_spec, dense_spec)
-            dense_begin = dense_spec["begin"]
-            dense_end = dense_spec["end"]
-            dense_stride = list(dense_spec["strides"])
+            dense_begin = dense_spec.get("begin")
+            dense_end = dense_spec.get("end")
+            dense_stride = list(dense_spec.get("strides"))
             # Step 3: Make implicit ranges (non-zero begin_masks and end_masks) explicit
             #         and bounds check!
             is_simple_slice = True
@@ -330,7 +328,7 @@ def strided_slice(input_x,
 
             for i, dim_i in enumerate(shape):
                 bit_value = 1 << i
-                shrink_i = (dense_spec["shrink_axis_mask"] & bit_value)
+                shrink_i = (dense_spec.get("shrink_axis_mask") & bit_value)
                 if dim_i == -1:
                     processing_shape.append(1 if shrink_i != 0 else -1)
                     processing_begin[i].set_as(dense_begin[i])
@@ -341,7 +339,7 @@ def strided_slice(input_x,
                     processing_stride.append(dense_stride[i])
                     continue
 
-                masks = (dense_spec["begin_mask"] & bit_value, dense_spec["end_mask"] & bit_value)
+                masks = (dense_spec.get("begin_mask") & bit_value, dense_spec.get("end_mask") & bit_value)
                 valid_range = (0 if dense_stride[i] > 0 else -1, dim_i if dense_stride[i] > 0 else dim_i - 1)
 
                 # 'pylint: disable=invalid-name,cell-var-from-loop
@@ -355,19 +353,17 @@ def strided_slice(input_x,
                         x_fwd.set_as(x)
                     with tiling_inst.tik_instance.if_scope(x_fwd < valid_range[0]):
                         res.set_as(valid_range[0])
+                    with tiling_inst.tik_instance.elif_scope(x_fwd < valid_range[1]):
+                        res.set_as(x_fwd)
                     with tiling_inst.tik_instance.else_scope():
-                        res.set_as(min(x_fwd, valid_range[1]))
+                        res.set_as(valid_range[1])
                     return res
 
                 is_simple_slice &= (dense_stride[i] == 1)
                 begin_and_end_masked = (
-                    (dense_spec["begin_mask"] & bit_value != 0) and (dense_spec["end_mask"] & bit_value != 0))
-                if dense_spec["begin_valid"] and dense_spec["end_valid"]:
+                    (dense_spec.get("begin_mask") & bit_value != 0) and (dense_spec.get("end_mask") & bit_value != 0))
+                if dense_spec.get("begin_valid") and dense_spec.get("end_valid"):
                     if shrink_i != 0:
-                        # If we are shrinking, the end index is now possibly incorrect. In
-                        # particular foo[-1] produces sparse_begin = -1, sparse_end = 0.
-                        # and canonical puts these to n-1 and 0, which implies a degenerate
-                        # interval. Fortunately, it is now safe to re-create end as begin+1.
                         with tiling_inst.tik_instance.if_scope(dense_begin[i] < 0):
                             x_fwd.set_as(dim_i + dense_begin[i])
                         with tiling_inst.tik_instance.else_scope():
@@ -434,7 +430,7 @@ def strided_slice(input_x,
             final_input_end = []
             final_input_stride = []
             shrink_gather_index = 0
-            for _, gather_index in enumerate(dense_spec["final_shape_gather_indices"]):
+            for _, gather_index in enumerate(dense_spec.get("final_shape_gather_indices")):
                 if gather_index >= 0:
                     final_shape.append(processing_shape[gather_index])
                     final_input_shape.append(shape[gather_index])
@@ -456,7 +452,8 @@ def strided_slice(input_x,
                     final_input_stride.append(1)
                     shrink_gather_index += 1
 
-            return tuple(final_shape), final_input_shape, final_input_begin, final_input_end, final_input_stride
+            res = (tuple(final_shape), final_input_shape, final_input_begin, final_input_end, final_input_stride)
+            return res
 
         def _set_params(scope_gm, scope_ub, value_list):
             with tiling_inst.tik_instance.new_stmt_scope():
@@ -508,9 +505,9 @@ def strided_slice(input_x,
                 perf_params_strides[last_second_index] == 1:
                 perf_params_input[last_second_index] = perf_params_input[last_second_index] * perf_params_input[-1]
                 perf_params_begin[last_second_index].set_as(perf_params_begin[last_second_index] *
-                                                            perf_params_input[len(perf_params_input) -1])
+                                                            perf_params_input[len(perf_params_input) - 1])
                 perf_params_end[last_second_index].set_as(perf_params_end[last_second_index] *
-                                                          perf_params_input[len(perf_params_input) -1])
+                                                          perf_params_input[len(perf_params_input) - 1])
                 perf_params_strides[last_second_index] = perf_params_strides[last_second_index] * \
                                                          perf_params_strides[-1]
                 perf_params_output[last_second_index] = perf_params_output[last_second_index] * perf_params_output[-1]
@@ -518,7 +515,9 @@ def strided_slice(input_x,
                 perf_params_input.pop()
                 perf_params_strides.pop()
                 perf_params_output.pop()
-            return perf_params_input, perf_params_output, perf_params_begin, perf_params_end, perf_params_strides
+
+            res = (perf_params_input, perf_params_output, perf_params_begin, perf_params_end, perf_params_strides)
+            return res
 
         def _cal_vnchw_ub_size():
             need_ub_size = (ub_size // dtype_size - block_element) // 2 // block_element * block_element

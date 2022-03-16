@@ -568,16 +568,15 @@ class StridedSliceStridesLargerThanOne:
                            self.multi_times, (self.strides[-1] - 1) * self.multi_times, 0)
             vnchw_conv_repeat_times = ceil_div(loop_num, self.vnchwconv_column)
             self._do_with_vnchwconv2output(vnchw_conv_ub, input_ub, vnchw_conv_repeat_times)
-            dst_stride = (self.inner_loops - 1) * self.inner_loop_num // self.element_each_block
-            if self.roll_back_num == 0 and dst_stride <= MAX_STRIDE:
+            tmp_stride = (self.inner_loops - 1) * self.inner_loop_num // self.element_each_block
+            if self.roll_back_num == 0 and tmp_stride <= MAX_STRIDE:
                 dst_addr_out = output_addr + inner_loops_idx * self.inner_loop_num
-                if self.inner_loops == 1:
-                    dst_stride = 0
-                elif inner_loops_idx == self.inner_loops - 1:
-                    dst_stride = (self.inner_loops - 1) * self.inner_loop_num // self.element_each_block
-                else:
-                    dst_stride = ((self.inner_loops - 2) * self.inner_loop_num + self.last_inner_loop_num) // \
-                                  self.element_each_block
+                dst_stride = inst.Scalar("int32", name="dst_stride", init_value=0)
+                with inst.if_scope(tik.all(self.inner_loops > 1, inner_loops_idx == self.inner_loops - 1)):
+                    dst_stride.set_as((self.inner_loops - 1) * self.inner_loop_num // self.element_each_block)
+                with inst.elif_scope(self.inner_loops > 1):
+                    dst_stride.set_as(((self.inner_loops - 2) * self.inner_loop_num + self.last_inner_loop_num) // \
+                                      self.element_each_block)
                 inst.data_move(self.output_gm[dst_addr_out], vnchw_conv_ub, 0, loop_rows,
                                vnchw_conv_repeat_times, 0, dst_stride)
             else:

@@ -20,16 +20,18 @@
                 "shape": [2],
                 "type": "int32",
                 "param_type": "input",
-                "value_range": [[0.1, 1.0]],
+                "value_range": [[1, 20]],
+                "value": [0, 0],
                 "data_distribute": "uniform",
                 "name": "offsets"
             },
             {
                 "format": "ND",
                 "shape": [2],
+                "value": [19, 19],
                 "type": "int32",
                 "param_type": "input",
-                "value_range": [[0.1, 1.0]],
+                "value_range": [[1, 20]],
                 "data_distribute": "uniform",
                 "name": "size"
             }
@@ -37,9 +39,9 @@
         "output_desc": [
             {
                 "format": "ND",
-                "shape": [38, -1],
-                "shape_range": [[38, 38]],
-                "typical_shape": [38, 38],
+                "shape": [-1, -1],
+                "shape_range": [[0, -1], [0, -1]],
+                "typical_shape": [19, 19],
                 "type": "float16",
                 "name": "y",
                 "param_type": "output"
