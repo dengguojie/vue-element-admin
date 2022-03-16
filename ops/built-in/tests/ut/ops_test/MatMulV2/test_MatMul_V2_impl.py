@@ -13,6 +13,7 @@ from impl.mat_mul import mat_mul_compute
 from impl.mat_mul import mat_mul_compute_self
 from topi.generic import auto_schedule
 from tbe.common.tiling.tiling_helper import TILING_INSTANCE
+from te.platform.cce_conf import te_set_version
 
 ut_case = OpUT("MatMul", None, None)
 
@@ -272,6 +273,23 @@ ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case11)
 ut_case.add_case(["Ascend710", "SD3403", "Ascend910A"], case12)
 
 # precision cases
+
+# DTS2022030712323
+test_atomic_add_k_dts_case_1 = {"params": [{"shape": (41, 41, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ",
+                                "ori_shape": (656, 656), "ori_format": "ND"},
+                                {"shape": (1, 41, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (
+                                    656, 1), "ori_format": "ND"},
+                                None,
+                                None,
+                                {"shape": (1, 41, 16, 16), "dtype": "float32", "format": "FRACTAL_NZ", "ori_shape": (
+                                    656, 16), "ori_format": "ND"},
+                                False, False],
+                                "case_name": "MatMul_test_split_k_dts1",
+                                "expect": "success",
+                                "format_expect": [],
+                                "support_expect": True}
+
+ut_case.add_case(["Ascend910"], test_atomic_add_k_dts_case_1)
 
 align_bias_case1 = {"params": [{"shape": (6, 2, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ",
                                 "ori_shape": (32, 96), "ori_format": "ND", "param_type": "input"},
@@ -702,11 +720,62 @@ def test_atomic_add_k(test_arg):
         }
         cce_build_code(sch, config)
 
+def test_atomic_add_k_dts_case_1(test_arg):
+    """
+    for DTS2022030712323
+    """
+    te_set_version("Ascend910A")
+    tiling_params = {
+        'op_type': 'matmul', 'A_shape': [1, 41, 41, 16, 16], 'B_shape': [656, 1, 1, 1, 16],
+        'C_shape': None, 'A_dtype': 'float16', 'B_dtype': 'float16', 'C_dtype': 'float32',
+        'mad_dtype': 'float32', 'padl': 0, 'padr': 0, 'padu': 0, 'padd': 0, 'strideH': 1,
+        "strideW": 3, 'strideH_expand': 1, 'strideW_expand': 1, 'dilationH': 1, 'dilationW': 1,
+        'group': 1, 'bias_flag': False, 'fused_double_operand_num': 0.0, 'shape_a_align': 1,
+        'shape_b_align': 1, 'kernel_name': "matmul_atomic_add_k_dts_case_1", 'scalar_size': 0,
+        "tiling_access_version": 0}
+    tiling_dict = {
+        "matmul_atomic_add_k_dts_case_1": {
+            'AL0_matrix': [6, 10, 16, 16, 1, 1], 'AL1_shape': [160, 1, 1, 1], 'AUB_channel_wise_flag': None,
+            'AUB_shape': None, 'A_overhead_opt_flag': 0,
+            'BL0_matrix': [10, 1, 16, 16, 1, 1], 'BL1_shape': [160, 1, 1, 1], 'BUB_channel_wise_flag': None,
+            'BUB_shape': None, 'B_overhead_opt_flag': 0,
+            'CL0_matrix': [1, 6, 16, 16, 1, 1], 'CUB_channel_wise_flag': False, 'CUB_matrix': [1, 6, 16, 16, 1, 1],
+            'batch_bef_group_flag': 0, 'block_dim': [1, 1, 8, 4],
+            'manual_pingpong_buffer': {
+                'AL0_pbuffer': 2, 'AL1_pbuffer': 2, 'AUB_pbuffer': 2, 'BL0_pbuffer': 2,
+                'BL1_pbuffer': 2, 'BUB_pbuffer': 2, 'CL0_pbuffer': 2, 'CUB_pbuffer': 2, 'UBG_pbuffer': 1
+            },
+            'n_bef_batch_flag': 0, 'n_bef_group_flag': 0, 'tbe_compile_para': 0
+        }
+    }
+    with cce():
+        x1 = tvm.placeholder((41, 41, 16, 16), name="x1",
+                             attrs={'format': "FRACTAL_NZ", "ori_shape": (656, 656)}, dtype="float16")
+        x2 = tvm.placeholder((1, 41, 16, 16), name="x2",
+                             attrs={'format': "FRACTAL_NZ", "ori_shape": (656, 16)}, dtype="float16")
+        output_y = {"shape": (1, 41, 16, 16), "dtype": "float32",
+                    "ori_shape": (656, 16), "format": "FRACTAL_NZ", "ori_format": "FRACTAL_NZ"}
+        matmul_out = mat_mul_compute_self(x1, x2, None, None, output_y, False, False, 0, "matmul_atomic_add_k_dts_case_1", "")
+        tensor_list = [x1, x2, matmul_out]
+        cur_tiling_type = TILING_INSTANCE.get_tiling_type()
+        TILING_INSTANCE.instance_refresh("tuning_tiling", tiling_params, tiling_dict)
+        sch = auto_schedule(matmul_out)
+        TILING_INSTANCE.instance_refresh(cur_tiling_type, tiling_params, {})
+        config = {
+            "print_ir": False,
+            "need_build": True,
+            "name": "matmul_atomic_add_k_dts_case_1",
+            "tensor_list": tensor_list,
+        }
+        cce_build_code(sch, config)
+    te_set_version("Ascend310")
+
 ut_case.add_cust_test_func(test_func=test_nbuffer_case1)
 ut_case.add_cust_test_func(test_func=test_nbuffer_case2)
 ut_case.add_cust_test_func(test_func=test_nbuffer_case3)
 ut_case.add_cust_test_func(test_func=test_auto_tiling)
 ut_case.add_cust_test_func(test_func=test_atomic_add_k)
+ut_case.add_cust_test_func(test_func=test_atomic_add_k_dts_case_1)
 
 if __name__ == '__main__':
     ut_case._case_info_map = {}

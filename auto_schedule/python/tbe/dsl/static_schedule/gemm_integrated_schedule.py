@@ -595,32 +595,57 @@ class GemmSchedule:
         self.container.TENSOR_MAP.clear()
         return True
 
+    def _get_real_k_multi_core_axis(self):
+        """
+        The multi-core loop range must be correctly identified during the operation of removing dirty data when multiple
+        cores are bound to the k axis.
+        When the bound multi-core is a non-factor, the cyclic range of the inner axis is upward aligned. If the length
+        of the X axis is A and N cores are bound, the (N-1)th core has loaded the length A, and if the X axis has no
+        segmentation other than the multi-core, In this case, the actual multi-core cycle range is N-1.
+        """
+        block_dims = self.tiling.get("block_dim")
+        m_dim = block_dims[2]
+        n_dim = block_dims[1]
+        real_multi_core_axis = self.container.axis_core
+        if self.is_dynamic:
+            block_dims_without_k_dim = n_dim * m_dim
+        else:
+            tensor_a_l0a = self.container.TENSOR_MAP.get("a_l0a")
+            m_shape = self._get_value(tensor_a_l0a.shape[self.FRACTAL_Z_M_INDEX])
+            core_align_m = self._int_ceil_div(m_shape, m_dim)
+            if (core_align_m * (m_dim - 1) >= m_shape) and (self.al1_tiling_m == core_align_m):
+                m_dim -= 1
+            tensor_b_l0b = self.container.TENSOR_MAP.get("b_l0b")
+            n_shape = self._get_value(tensor_b_l0b.shape[self.FRACTAL_Z_N_INDEX])
+            core_align_n = self._int_ceil_div(n_shape, n_dim)
+            if (core_align_n * (n_dim - 1) >= n_shape) and (self.bl1_tiling_n == core_align_n):
+                n_dim -= 1
+            block_dims_without_k_dim = n_dim * m_dim
+        if block_dims_without_k_dim != 1:
+            real_multi_core_axis //= block_dims_without_k_dim
+        return real_multi_core_axis
+
     def _solve_split_k_dirty_data(self):
         if not self.status_controller.split_k_axis_by_tiling:
             return
 
         block_dims = self.tiling.get("block_dim")
-        block_dims_without_k_dim = block_dims[0] * block_dims[1] * block_dims[2]
-        real_multi_core_axis = self.container.axis_core
-        if block_dims_without_k_dim != 1:
-            real_multi_core_axis = self.container.axis_core // block_dims_without_k_dim
-
+        real_multi_core_axis = self._get_real_k_multi_core_axis()
         a_l0 = self.container.TENSOR_MAP.get("a_l0a")
         a_l0_shape_k = self._get_value(a_l0.shape[-3])
         temp_block_k_dim = block_dims[3] - 1
         no_tail_core_k_len = (a_l0_shape_k + temp_block_k_dim) // block_dims[3]
         tail_core_k_len = a_l0_shape_k % no_tail_core_k_len
-        lastest_core = (a_l0_shape_k - tail_core_k_len) // no_tail_core_k_len
+        lastest_core = a_l0_shape_k // no_tail_core_k_len
         lastest_core_limit = lastest_core
         c_gm = self.container.TENSOR_MAP.get("c_gm")
         if self.is_dynamic:
             lastest_core_limit = tvm.select(no_tail_core_k_len * lastest_core == a_l0_shape_k, lastest_core_limit - 1,
                                             lastest_core_limit)
-            self.sch[c_gm].set_store_predicate(real_multi_core_axis <= lastest_core_limit, partition=True)
         else:
             if no_tail_core_k_len * lastest_core == a_l0_shape_k:
                 lastest_core_limit -= 1
-                self.sch[c_gm].set_store_predicate(real_multi_core_axis <= lastest_core_limit, partition=True)
+        self.sch[c_gm].set_store_predicate(real_multi_core_axis <= lastest_core_limit, partition=True)
         no_tail_core_condition = self._get_condition_of_multi_k_axis(real_multi_core_axis, lastest_core,
                                                                      no_tail_core_k_len)
         tail_core_condition = self._get_condition_of_multi_k_axis(real_multi_core_axis,
