@@ -294,6 +294,13 @@ REGISTER_CUSTOM_OP("DropOutGenMask")
     .ParseParamsFn(AutoMappingFn)
     .ImplyType(ImplyType::AI_CPU);
 
+// register DropOutGenMaskV3 op to GE
+REGISTER_CUSTOM_OP("DropOutGenMaskV3")
+    .FrameworkType(TENSORFLOW)
+    .OriginOpType("DropOutGenMaskV3")
+    .ParseParamsFn(AutoMappingFn)
+    .ImplyType(ImplyType::AI_CPU);
+
 // register EncodeBase64 op to GE
 REGISTER_CUSTOM_OP("EncodeBase64")
     .FrameworkType(TENSORFLOW)
