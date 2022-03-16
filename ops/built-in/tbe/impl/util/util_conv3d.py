@@ -34,6 +34,7 @@ DILATION_LENGTH = 5
 PADS_LENGTH = 6
 FILTER_FORMAT_WHITE_LIST = ["NCDHW", "NDHWC", "DHWCN"]
 
+
 def transform_shape_with_exception(src_format, to_format, ori_shape,
                                    format_white_list, attr_name):
     """

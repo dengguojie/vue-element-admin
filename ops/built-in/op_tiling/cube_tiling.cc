@@ -307,7 +307,8 @@ bool cube_tiling1(const std::string &op_type, const std::vector<int64_t> &input_
                   utils::OpRunInfo &run_info) {
   try {
     OP_LOGD(op_type.c_str(), "input compile info: %s", compile_info.dump().c_str());
-    std::vector<std::string> custom_vars = compile_info.at("_custom_vars").begin().value().get<std::vector<std::string>>();
+    std::vector<std::string> custom_vars =
+        compile_info.at("_custom_vars").begin().value().get<std::vector<std::string>>();
     std::string tiling_id("");
 
     if (compile_info["tiling_type"] == "default_tiling") {
