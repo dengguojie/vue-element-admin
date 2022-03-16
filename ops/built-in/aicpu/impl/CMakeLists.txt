@@ -298,7 +298,6 @@ if(BUILD_OPEN_PROJECT)
     target_compile_options(cpu_kernels_static PRIVATE
         -O2
         -std=c++11
-        -ftrapv
         -fstack-protector-all
         -DEIGEN_MPL2_ONLY
     )
@@ -421,7 +420,6 @@ target_link_libraries(cpu_kernels_static PRIVATE
 target_compile_options(cpu_kernels_static PRIVATE
     -O2
     -std=c++11
-    -ftrapv
     -fstack-protector-all
     -DEIGEN_MPL2_ONLY
 )
@@ -439,7 +437,6 @@ target_link_options(cpu_kernels_host PRIVATE
 target_compile_options(cpu_kernels_host PRIVATE
     -O2
     -std=c++11
-    -ftrapv
     -fvisibility-inlines-hidden
     -fvisibility=hidden
     -fstack-protector-all
