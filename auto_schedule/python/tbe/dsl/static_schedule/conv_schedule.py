@@ -1508,12 +1508,14 @@ class CceConvOp:
 
                 for var_name, var_range in tiling_var_range_dict.items():
                     sch.set_var_range(self._cache_tiling[var_name], *var_range)
-                sch.set_var_value(self._cache_tiling["batch_n"], self._cache_tiling["batch_dim"]*self._cache_tiling["batch_single_core"])
-                sch.set_var_value(self._cache_tiling["c_out"], self._cache_tiling["cub_n1"] * \
-                                  self._cache_tiling["n_ub_l0c_factor"] * self._cache_tiling["n_bl1_factor"] * \
-                                  self._cache_tiling["n_single_core"] * self._cache_tiling["n_dim"])
-                sch.set_var_value(self._cache_tiling["c_in"], self._cache_tiling["kbl1_16"] * \
-                                  self._cache_tiling["kbl1_factor"] // (self._cache_tiling["k_h"] * self._cache_tiling["k_w"]))
+                sch.set_var_value(self._cache_tiling.get("batch_n"),
+                    self._cache_tiling.get("batch_dim") * self._cache_tiling.get("batch_single_core"))
+                sch.set_var_value(self._cache_tiling.get("c_out"), self._cache_tiling.get("cub_n1") * \
+                    self._cache_tiling.get("n_ub_l0c_factor") * self._cache_tiling.get("n_bl1_factor") * \
+                    self._cache_tiling.get("n_single_core") * self._cache_tiling.get("n_dim"))
+                sch.set_var_value(self._cache_tiling.get("c_in"), self._cache_tiling.get("kbl1_16") * \
+                    self._cache_tiling.get("kbl1_factor") // \
+                    (self._cache_tiling.get("k_h") * self._cache_tiling.get("k_w")))
 
             fmap_shape_nc1hwc0 = ConvParam.tiling_query_param["fmap_shape_nc1hwc0"]
             shape_w_nc1hwc0 = ConvParam.tiling_query_param["shape_w_nc1hwc0"]
@@ -3393,7 +3395,8 @@ class CceConvOp:
                             self._schedule[lop["dst_buffer"]].compute_inline()
                     else:
                         # dynamic reluv2 mask tensor compute at c_outer_inner_inner
-                        if ("res_mask_u8" in lop["op"] or "elewise_binary_vcmpv_gt" in lop["op"]) and self._dynamic_flag:
+                        if ("res_mask_u8" in lop["op"] or "elewise_binary_vcmpv_gt" in lop["op"]) and \
+                            self._dynamic_flag:
                             self._schedule[lop["dst_buffer"]].compute_at(
                                 self._schedule[self._compute_at_buffer[1]],
                                 self._compute_at_axis[2])
@@ -5858,9 +5861,9 @@ class CceConvOp:
                             out_extract_axis = m_outer_outer_outer_inner
                 if not self._dynamic_flag and out_extract_axis == -1 and \
                       dim_map["out_img_shape"][0] > 1:
-                    out_extract_axis = noo
+                    out_extract_axis = cout1_group_inner_outer
             else:
-                if self._l0b_first_flag:
+                if self._l0b_first_flag and tiling["BL1_shape"] is not None:
                     # no use bl_shape should be None when _l0b_first_flag is true
                     sch[bl1].compute_at(sch[res_c], c_outer_outer_outer_inner)
                 elif tiling["BL1_shape"] == [] and tiling["CL0_matrix"][5] > 1:

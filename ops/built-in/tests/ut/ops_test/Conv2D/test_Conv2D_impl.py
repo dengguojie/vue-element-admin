@@ -148,8 +148,7 @@ def test_conv2d_fuzz_build_tilingcase(test_arg):
     with op_context.OpContext("dynamic"):
         get_context().set_build_type("fuzzily_build")
         get_context().add_addition("max_kernel_id", -1)
-        missing_info = [{
-                            "inputs": [{
+        missing_info = [{"inputs": [{
                                 "index": 0,
                                 "tensor": [{
                                     "range": [

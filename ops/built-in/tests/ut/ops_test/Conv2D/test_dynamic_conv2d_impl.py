@@ -51,7 +51,6 @@ for test_case  in cache_tiling_ut_testcases:
     ut_case.add_case(test_case[0], gen_cache_tilingcase_params(test_case[1:]))
 
 
-
 def test_conv2d_param_process(test_arg):
     fmap = tvm.placeholder((-1, 2, 8, 8, 16), name="fmap", dtype="float16", attrs={"ori_shape": (-1, 32, 8, 8), "format": "NCHW", "ori_format": "NCHW", "range": [(1, 2), (32, 32), (8, 8), (8, 8)]})
     weight = tvm.placeholder((8, 2, 16, 16), name="weight", dtype="float16", attrs={"ori_shape": (32, 32, 2, 2), "format": "FRACTAL_Z", "ori_format": "NCHW"})

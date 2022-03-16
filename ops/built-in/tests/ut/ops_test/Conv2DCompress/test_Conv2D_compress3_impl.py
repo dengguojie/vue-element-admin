@@ -91,6 +91,7 @@ def test_conv2d_compress_impl1(test_arg):
         return requant_res, input_tensors
 
     def fusion_conv2dcompress_compute(testcases):
+        testcase_idx = 0
         for testcase in testcases:
             fmap_shape = testcase["fmap_shape"]
             filters_shape = testcase["filters_shape"]
@@ -102,7 +103,7 @@ def test_conv2d_compress_impl1(test_arg):
 
             total_input_tensors = []
             conv_res, input_tensors = conv2d_compress_compute_fusion(fmap_shape, filters_shape, bias_flag,
-                                                            strides, pads, dilations, dtype)
+                                                                     strides, pads, dilations, dtype)
             total_input_tensors += input_tensors
 
             requant_res, input_tensors = requant_compute_fusion(conv_res, sqrt_mode=False,
@@ -113,7 +114,8 @@ def test_conv2d_compress_impl1(test_arg):
             res = requant_res
 
             config = {"print_ir": False, "need_build": True,
-                      "name": "conv2d_compress_fusion", "tensor_list": total_input_tensors}
+                      "name": "conv2d_compress_fusion" + str(testcase_idx), "tensor_list": total_input_tensors}
+            testcase_idx += 1
             
             with tvm.target.cce():
                 sch = auto_schedule(res)
@@ -124,7 +126,6 @@ def test_conv2d_compress_impl1(test_arg):
 
     ]
     fusion_conv2dcompress_compute(testcases)
-
     cce_conf.te_set_version(soc_version)
 
 print("conv2d_compress fusion ut testcases")
