@@ -1,5 +1,5 @@
 """
-Copyright (C) 2021. Huawei Technologies Co., Ltd. All rights reserved.
+Copyright (c) Huawei Technologies Co., Ltd. 2022. All rights reserved.
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the Apache License Version 2.0.You may not use
@@ -15,6 +15,7 @@ fused_mul_add_add
 """
 
 from collections import namedtuple
+
 import tbe.dsl as tbe
 from tbe import tvm
 from tbe.common.utils import shape_util
@@ -22,9 +23,6 @@ from tbe.common.utils import para_check
 from impl.util.platform_adapter import error_manager_vector
 
 
-# 'pylint: disable=locally-disabled,unused-variable,unused-argument
-# 'pylint: disable=locally-disabled,too-many-locals,too-many-statements
-# 'pylint: disable=locally-disabled,too-many-branches,unused-variable
 def _check_format_pattern(input0, input1, input2, input3):
     """
     check format pattern of inputs. must be NZ+ND+ND+NZ
@@ -42,7 +40,6 @@ def _check_format_pattern(input0, input1, input2, input3):
         error_manager_vector.raise_err_specific_reson("fused_mul_add_add", error_detail)
 
 
-# 'pylint: disable=arguments-out-of-order
 def _infer_shape(input0, input1, input2, input3):
     """
     shape_input0 : FRACTAL_NZ, [N,...,A,B,16,16]
@@ -88,7 +85,7 @@ def _infer_shape(input0, input1, input2, input3):
     return res
 
 
-def data_broadcast(data_1, data_2):
+def _data_broadcast(data_1, data_2):
     """
     broadcast data to same shape by their max shape of inputs
 
@@ -114,6 +111,7 @@ def data_broadcast(data_1, data_2):
     return data_1, data_2
 
 
+# 'pylint: disable=unused-argument,too-many-arguments
 def fused_mul_add_add_compute(data_input0, data_input1, data_input2, data_input3, output,
                               kernel_name="fused_mul_add_add"):
     """
@@ -132,13 +130,13 @@ def fused_mul_add_add_compute(data_input0, data_input1, data_input2, data_input3
     -------
     res tensor
     """
+    data_input0, data_input1 = _data_broadcast(data_input0, data_input1)
+    data_input0, data_input2 = _data_broadcast(data_input0, data_input2)
     # mul
-    data_input0, data_input1 = data_broadcast(data_input0, data_input1)
     mul_res = tbe.vmul(data_input0, data_input1)
 
     # first add
-    mul_result, data_input2 = data_broadcast(mul_res, data_input2)
-    first_add_res = tbe.vadd(mul_result, data_input2)
+    first_add_res = tbe.vadd(mul_res, data_input2)
 
     # second add
     res = tbe.vadd(first_add_res, data_input3)
@@ -163,7 +161,7 @@ def fused_mul_add_add(input0, input1, input2, input3, output, kernel_name="fused
     input3: dict
          the dict of input of second add, support float16, float32, int32
     output: dict
-         the dict of output of second add, support float16, float32, int32
+         the dict of output
     kernel_name: str
         cce kernel name, default value is fused_mul_add_add
 

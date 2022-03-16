@@ -567,6 +567,8 @@ vector_A:
       - ops/built-in/fusion_pass/graph_fusion/ai_core/logsoftmaxgrad_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/map_index_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/map_index_pass.h
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/mul_add_add_fusion_pass.cc
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/mul_add_add_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/normalize_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/normalize_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/pad_addn_fusion_pass.cc

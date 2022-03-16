@@ -22,7 +22,7 @@
 
 namespace domi {
 Status AutoMappingFnGetShape(const google::protobuf::Message* op_src, ge::Operator& op) {
-  op.SetAttr("N",1);
+  op.SetAttr("N", 1);
   map<string, pair<string, string>> value;
   value["in"] = pair<string, string>("x", "N");
   AutoMappingFnDynamic(op_src, op, value);
