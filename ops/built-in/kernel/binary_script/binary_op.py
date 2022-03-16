@@ -19,6 +19,13 @@ import itertools
 import json
 import os
 import stat
+import sys
+import ast
+import csv
+import configparser
+from importlib import import_module
+from gen_opcinfo_from_opinfo import convert_to_snake as get_op_name
+from tbe.common.platform.platform_info import set_current_compile_soc_info
 
 # 'pylint: disable=too-many-locals,too-many-arguments,too-many-statements
 def get_bit_len(data_type_string):
@@ -48,15 +55,39 @@ def fuzz_dtype(data_type_bit):
     return dtype_dict.get(data_type_bit)
 
 
-def get_op_supported_case(op_type, op_json, op_fixed_case=None):
+def get_op_select_format(soc, select_format, tensor_num, attrs):
+    soc = "Ascend920A" if soc == "Ascend920" else soc
+    set_current_compile_soc_info(soc)
+    sys.path.append(PATH.IMPL_PATH)
+
+    try:
+        dynamic_module = "impl.dynamic." + select_format
+        func = getattr(import_module(dynamic_module), 'op_select_format')
+    except AttributeError:
+        static_module = "impl." + select_format
+        func = getattr(import_module(static_module), 'op_select_format')
+
+    input_list = [{"shape": [-2], "format": "ND", "ori_shape":[-2], "ori_format":"ND"}] * tensor_num
+    if attrs is not None:
+        input_list = input_list + [None] * len(attrs)
+    dynamic_json = func(*input_list)
+    dynamic_json = json.loads(dynamic_json)
+
+    support_format, support_dtype = [], []
+    for k in dynamic_json:
+        tensor = dynamic_json.get(k)
+        tensor_format = tensor.get("unknownshape_format")
+        tensor_format = tensor.get("format") if tensor_format is None else tensor_format
+        support_format.append(tensor_format)
+        support_dtype.append(tensor.get("dtype"))
+    return [support_dtype, support_format]
+
+
+def get_op_supported_case(op_type, op_json, soc, select_format):
     is_format_agnostic = op_json.get("op") is not None and op_json.get("op").get("pattern") == "formatAgnostic"
     is_format_broadcast = op_json.get("op") is not None and op_json.get("op").get("pattern") == "broadcast"
     is_format_reduce = op_json.get("op") is not None and op_json.get("op").get("pattern") == "reduce"
     is_op_select = op_json.get("dynamicFormat") is not None and op_json.get("dynamicFormat").get("flag") == "true"
-
-    if is_op_select and op_fixed_case is None:
-        print("[ERROR]{} is is_op_select, op_fixed_case can not be None.".format(op_type))
-        return None
 
     input_num = 0
     output_num = 0
@@ -65,6 +96,29 @@ def get_op_supported_case(op_type, op_json, op_fixed_case=None):
             input_num += 1
         elif op_key.startswith("output"):
             output_num += 1
+    tensor_num = input_num + output_num
+
+    # get attrs
+    attrs = []
+    if "attr" in op_json.keys():
+        attr_list = op_json.get("attr").get("list").split(",")
+        for i, attr_name in enumerate(attr_list):
+            attr_key = "attr_" + attr_name
+            attr_info = op_json.get(attr_key)
+            if attr_info is None:
+                print("[ERROR]{} attr is not in ops json".format(op_type))
+                return None
+            attr_type = attr_info.get("type")
+            attr_dict = dict()
+            attr_dict["name"] = attr_name
+            if attr_type == "listInt":
+                attr_type = "list_int"
+            attr_dict["dtype"] = attr_type
+            attrs.append(attr_dict)
+
+    op_fixed_case = None
+    if is_op_select:
+        op_fixed_case = get_op_select_format(soc, select_format, tensor_num, attrs)
 
     # process tensor info
     def get_tensor_info(_op_key, op_fixed_case_idx):
@@ -114,23 +168,6 @@ def get_op_supported_case(op_type, op_json, op_fixed_case=None):
             return None
         outputs.append(outputs_tensor)
 
-    # get attrs
-    attrs = []
-    if "attr" in op_json.keys():
-        attr_list = op_json.get("attr").get("list").split(",")
-        for i, attr_name in enumerate(attr_list):
-            attr_key = "attr_" + attr_name
-            attr_info = op_json.get(attr_key)
-            if attr_info is None:
-                print("[ERROR]{} attr is not in ops json".format(op_type))
-                return None
-            attr_type = attr_info.get("type")
-            attr_dict = dict()
-            attr_dict["name"] = attr_name
-            if attr_type == "listInt":
-                attr_type = "list_int"
-            attr_dict["dtype"] = attr_type
-            attrs.append(attr_dict)
     return inputs, outputs, attrs
 
 
@@ -146,7 +183,6 @@ def set_tensor(tensor_list):
             else:
                 tmp_tensor["dtype"] = tensor.get("dtype")[i]
             tmp_tensor["format"] = tensor.get("format")[i]
-            tmp_tensor["ori_format"] = tensor.get("format")[i]
             param_type = tensor.get("paramType")
             if param_type == "optional":
                 case_list.append([tmp_tensor, None])
@@ -183,6 +219,17 @@ def set_attr(attr_list):
     if res_list:
         res_list = list(itertools.product(*res_list))
     return res_list
+
+
+class PATH:
+    """
+    path
+    """
+    OPP_PATH = os.environ.get("ASCEND_OPP_PATH", "/usr/local/Ascend/opp")
+    CONFIG_PATH = OPP_PATH + "/op_impl/built-in/ai_core/tbe/config/"
+    IMPL_PATH = OPP_PATH + "/op_impl/built-in/ai_core/tbe/"
+    BINARY_CONFIG_PATH = "../binary_config/"
+    CSV_PATH = "./opc_info.csv"
 
 
 class FormatConstant:
@@ -245,7 +292,6 @@ class BinaryBase:
             tensor["dtype"] = [fuzz_dtype(get_bit_len(old_dtype)) for old_dtype in tensor["dtype"]]
         # join in shape
         tensor["shape"] = [-2]
-        tensor["ori_shape"] = [-2]
         return tensor
 
     def fuzz_attr(self, attrs, attr_type):
@@ -556,7 +602,7 @@ class BinaryBase:
             self.add_attr(attr_list)
             self.add_binary_case()
 
-    def gen_binary_json(self, ops_info_file, format_type, dtype_type, attr_type, format_nd_info, op_fixed_case):
+    def gen_binary_json(self, ops_info_file, format_type, dtype_type, attr_type, format_nd_info, soc, select_format):
         """
         gen_binary_json
 
@@ -582,20 +628,20 @@ class BinaryBase:
         # fuzz the supported case
         if not op_json:
             return False
-        ana_res = get_op_supported_case(self.op_type, op_json, op_fixed_case)
+        ana_res = get_op_supported_case(self.op_type, op_json, soc, select_format)
         if ana_res is None:
             print("[ERROR]{} get_op_supported_case failed".format(self.op_type))
             return False
         self.input_num, self.output_num = len(ana_res[0]), len(ana_res[1])
 
-        if format_type is None:
-            format_type = [BinaryBase.FORMAT_MODE_DEFAULT] * (self.input_num + self.output_num)
+        if len(format_type) == 1:
+            format_type = format_type * (self.input_num + self.output_num)
         elif not isinstance(format_type, list):
             format_type = [format_type] * (self.input_num + self.output_num)
         format_type = [BinaryBase.FORMAT_MODE_DEFAULT if key is None else key for key in format_type]
 
-        if dtype_type is None:
-            dtype_type = [BinaryBase.DTYPE_MODE_DEFAULT] * (self.input_num + self.output_num)
+        if len(dtype_type) == 1:
+            dtype_type = dtype_type * (self.input_num + self.output_num)
         elif not isinstance(dtype_type, list):
             dtype_type = [dtype_type] * (self.input_num + self.output_num)
         dtype_type = [BinaryBase.DTYPE_MODE_DEFAULT if key is None else key for key in dtype_type]
@@ -641,7 +687,6 @@ class BinaryBase:
         self.one_binary_case_info["bin_filename"] = ""
         self.one_binary_case_info["inputs"] = []
         self.one_binary_case_info["outputs"] = []
-        self.one_binary_case_info["attrs"] = []
 
     def add_binary_case(self):
         """
@@ -720,7 +765,8 @@ class BinaryBase:
         """
         if self.one_binary_case_info is None:
             self.init_binary_case()
-        self.one_binary_case_info["attrs"] = attr_list
+        if attr_list != []:
+            self.one_binary_case_info["attrs"] = attr_list
 
     def get_attr(self, attr_key):
         """
@@ -754,3 +800,135 @@ class BinaryBase:
             self.binary_json = None
         with open(file_path, "r") as file_op:
             self.binary_json = json.load(file_op)
+
+
+def fuzz_opinfo_cfg(op_info, soc_version, format_type, dtype_type, attrs, nd_info):
+    op_type = op_info.get("op_type")
+    op_name = op_info.get("op_name")
+    select_format = op_info.get("select_format")
+    for soc in soc_version:
+        op_ob = BinaryBase(op_type)
+        cfg_soc = soc.lower()
+        op_info_cfg = PATH.CONFIG_PATH + cfg_soc + "/aic-" + cfg_soc + "-ops-info.json"
+        op_info_binary_cfg_path = PATH.BINARY_CONFIG_PATH + cfg_soc + "/" + op_type + "/"
+
+        try:
+            is_gen = op_ob.gen_binary_json(op_info_cfg, format_type, dtype_type,
+                                           attrs, nd_info, soc, select_format)
+            if is_gen:
+                os.makedirs(op_info_binary_cfg_path)
+                op_info_binary_cfg = op_info_binary_cfg_path + op_name + ".json"
+                op_ob.dump_binary_json_to_file(op_info_binary_cfg)
+                print("[INFO] success, {} dump binary json in {}".format(op_type, soc))
+            else:
+                print("[ERROR]{} dump binary json fail in {}".format(op_type, soc))
+
+        except FileExistsError:
+            print("[Warning]{} binary config already exists in {}".format(op_type, soc))
+
+
+def get_operator_func():
+    """
+    get_operator_func
+    """
+    with open (PATH.CSV_PATH) as f:
+        f_csv = csv.DictReader(f)
+        operator_func = {}
+        for item in f_csv:
+            func = item.get("file_name")
+            func = func.replace(".py", "")
+            func = func.replace("dynamic/", "")
+            operator_func[item.get("op_type")] = func
+    return operator_func
+
+
+def get_attrs(var_attrs, enumerate_attrs):
+    """
+    get_attrs
+    """
+    attrs = {}
+    if var_attrs is not None:
+        var_attrs = var_attrs.strip(',').split(',')
+        values = [None] * len(var_attrs)
+        var_attrs = dict(zip(var_attrs, values))
+        attrs.update(var_attrs)
+    if enumerate_attrs is not None:
+        enumerate_attrs = ast.literal_eval(enumerate_attrs)
+        attrs.update(enumerate_attrs)
+    return attrs
+
+
+def binary_cfg(op_type, soc_version):
+    """
+    read binary_json_cfg
+    """
+
+    # mode dict
+    format_mode = {"DEFAULT": BinaryBase.FORMAT_MODE_DEFAULT, "AGNOSTIC": BinaryBase.FORMAT_MODE_AGNOSTIC,
+                   "FIXED": BinaryBase.FORMAT_MODE_FIXED}
+    dtype_mode = {"DEFAULT": BinaryBase.DTYPE_MODE_DEFAULT, "BYTE": BinaryBase.DTYPE_MODE_BYTE}
+
+    # 读取ini文件
+    cfg = configparser.ConfigParser()
+    cfg.read("binary_json_cfg.ini")
+
+    # 获取需要生成json的算子
+    if op_type == "all":
+        op_type = cfg.sections()
+    else:
+        op_type = op_type.strip(',').split(',')
+
+    # 获取需要生成json的平台
+    if soc_version == "all":
+        soc_version = ["Ascend310", "Ascend320", "Ascend610", "Ascend615", "Ascend710",
+                       "Ascend910", "Ascend920", "Hi3796CV300ES", "Hi3796CV300CS", "SD3403"]
+    else:
+        soc_version = soc_version.strip(',').split(',')
+
+    # 获取实际算子执行文件
+    operator_func = get_operator_func()
+
+    # 生成算子的json
+    for operator in op_type:
+        try:
+            items = dict(cfg.items(operator))
+        except configparser.NoSectionError:
+            sys.exit("[ERROR]{} not in binary json config".format(operator))
+
+        # get format_type
+        format_type = items.get("format_type")
+        if format_type is None:
+            format_type = ["DEFAULT"]
+        else:
+            format_type = format_type.strip(',').split(',')
+        for i, dtype in enumerate(format_type):
+            format_type[i] = format_mode.get(dtype)
+
+        # get dtype_type
+        dtype_type = items.get("dtype_type")
+        if dtype_type is None:
+            dtype_type = ["DEFAULT"]
+        else:
+            dtype_type = dtype_type.strip(',').split(',')
+        for i, dtype in enumerate(dtype_type):
+            dtype_type[i] = dtype_mode.get(dtype)
+
+        # get optional parameter
+        op_name = get_op_name(operator)
+        nd_info = items.get("nd_info")
+        var_attrs = items.get("var_attrs")
+        enumerate_attrs = items.get("enumerate_attrs")
+        attrs = get_attrs(var_attrs, enumerate_attrs)
+        attrs = None if attrs == {} else attrs
+
+        # fuzz json
+        select_format = operator_func.get(operator)
+        op_info = {"op_type": operator, "op_name": op_name, "select_format": select_format}
+        fuzz_opinfo_cfg(op_info, soc_version, format_type, dtype_type, attrs, nd_info)
+
+
+def mate_json(op_type, binary_file, input_tensors):
+    op_ob = BinaryBase(op_type)
+    with open(input_tensors, 'r') as tensours:
+        input_tensour = json.load(tensours)
+    op_ob.update_tensor(binary_file, input_tensour)

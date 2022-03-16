@@ -26,7 +26,7 @@ main(){
   op_type=$1
   binary_file=$2
   input_tensors=$3
-  python3 -c "import binary_json; binary_json.mate_json('$op_type','$binary_file','$input_tensors')"
+  python3 -c "import binary_op; binary_op.mate_json('$op_type','$binary_file','$input_tensors')"
 }
 set -o pipefail
 main "$@"|gawk '{print strftime("[%Y-%m-%d %H:%M:%S]"), $0}'

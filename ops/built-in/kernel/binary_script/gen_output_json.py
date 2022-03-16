@@ -47,7 +47,7 @@ def main(binary_file, kernel_output, output_json):
         bin_json_item["jsonFilePath"] = json_file_path
         one_binary_case_info["binInfo"] = bin_json_item
         binary_new_json.get("binList").append(one_binary_case_info)
-    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
+    flags = os.O_WRONLY | os.O_CREAT
     modes = stat.S_IWUSR | stat.S_IRUSR
     with os.fdopen(os.open(output_json, flags, modes), "w") as f:
         json.dump(binary_new_json, f, indent=2)
