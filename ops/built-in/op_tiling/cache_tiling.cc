@@ -300,7 +300,7 @@ void NeitherFullLoadBlock(const L2Status &l2Status, BlockDimCalculator &blockDim
 }
 
 void GetBlockDimHelper(L2Status &l2Status, BlockDimCalculator &blockDimCalculator, const int32_t m0s[][kCandidateLen],
-                       const int32_t n0s[][kCandidateLen], bool b_have_batch, int32_t core_num)
+                       const int32_t n0s[][kCandidateLen], const BatchmatmulParas &params)
 {
   int32_t iIdx = blockDimCalculator.i_idx;
   int32_t jIdx = blockDimCalculator.j_idx;
@@ -308,7 +308,7 @@ void GetBlockDimHelper(L2Status &l2Status, BlockDimCalculator &blockDimCalculato
   int32_t nFactor = blockDimCalculator.n_dim_array[jIdx];
   for (int32_t mIdx = 0; mIdx < blockDimCalculator.m_dim_cnt; mIdx++) {
     int32_t mFactor = blockDimCalculator.m_dim_array[mIdx];
-    if (bFactor * nFactor * mFactor > core_num) {
+    if (bFactor * nFactor * mFactor > params.core_num) {
       break;
     }
     l2Status.batch = blockDimCalculator.batch / bFactor;
@@ -317,7 +317,7 @@ void GetBlockDimHelper(L2Status &l2Status, BlockDimCalculator &blockDimCalculato
     // load size of A matrix is batch * m
     // load size of B matrix is n
     blockDimCalculator.ori_amat_size = l2Status.batch * l2Status.m;
-    blockDimCalculator.ori_bmat_size = b_have_batch ? l2Status.batch * l2Status.n : l2Status.n;
+    blockDimCalculator.ori_bmat_size = params.b_have_batch ? l2Status.batch * l2Status.n : l2Status.n;
     blockDimCalculator.amat_size = blockDimCalculator.ori_amat_size;
     blockDimCalculator.bmat_size = blockDimCalculator.ori_bmat_size;
     blockDimCalculator.total_load_size = blockDimCalculator.amat_size + blockDimCalculator.bmat_size;
@@ -327,7 +327,7 @@ void GetBlockDimHelper(L2Status &l2Status, BlockDimCalculator &blockDimCalculato
       // BL1 full load
       int32_t n0 =
         min(min((kL1Size / kFp16Bytes - kMinFractalSize) / blockDimCalculator.k_num, l2Status.n), kMaxFactor);
-      BL1FullLoadBlock(l2Status, blockDimCalculator, n0, b_have_batch);
+      BL1FullLoadBlock(l2Status, blockDimCalculator, n0, params.b_have_batch);
       // AL1 full load
       int32_t m0 = min(min((kL1Size / kFp16Bytes - kMinFractalSize) /
                              (kMinFractalSize * blockDimCalculator.k * blockDimCalculator.ori_amat_size),
@@ -447,7 +447,7 @@ int32_t GetBlockDim(const string &op_type, const BatchmatmulParas &params, L2Sta
     for (int32_t jIdx = 0; jIdx < blockDimCalculator.n_dim_cnt; jIdx++) {
       blockDimCalculator.i_idx = iIdx;
       blockDimCalculator.j_idx = jIdx;
-      GetBlockDimHelper(l2Status, blockDimCalculator, m0s, n0s, params.b_have_batch, params.core_num);
+      GetBlockDimHelper(l2Status, blockDimCalculator, m0s, n0s, params);
     }
   }
   l2Status.batch_dim = blockDimCalculator.batch_dim_factor;
