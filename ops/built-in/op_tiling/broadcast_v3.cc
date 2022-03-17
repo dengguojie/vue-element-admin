@@ -300,7 +300,7 @@ void Broadcast::MulTrySwitchToPerfPattern() {
   fusion_shapes = std::move(shapes);
   size_t fusion_length = 0;
   MulFusionContinuousAxis(fusion_shapes, fusion_length);
-  if (!use_special_pattern_compile && !is_milan_soc) {
+  if (!use_special_pattern_compile) {
     return ;
   }
   if (is_milan_soc) {
@@ -633,7 +633,7 @@ bool Broadcast::RefineShapesForBroadcast() {
     }
   }
   bool maybe_all_unknown = !is_milan_soc && has_all_unknown_compile;
-  if (maybe_all_unknown) {
+  if (maybe_all_unknown && use_special_pattern_compile) {
     return TryMatchAllUnknown();
   }
   return true;
