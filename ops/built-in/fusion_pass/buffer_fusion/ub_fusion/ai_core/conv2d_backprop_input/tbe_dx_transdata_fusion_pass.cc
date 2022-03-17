@@ -67,19 +67,6 @@ vector<BufferFusionPattern *> TbeDxTransDataFusionPass::DefinePatterns() {
   return patterns;
 }
 
-bool TbeDxTransDataFusionPass::CheckPlatform() const {
-  PlatformInfo platformInfo;
-  OptionalInfo optionalInfo;
-  FUSION_PASS_CHECK(
-    PlatformInfoManager::Instance().GetPlatformInfoWithOutSocVersion(platformInfo, optionalInfo) != SUCCESS,
-    OP_LOGW(kFusedOpType.c_str(), "Get platform info failed."),
-    return false);
-  FUSION_PASS_CHECK(optionalInfo.soc_version.find("Ascend910") == string::npos,
-                    OP_LOGW(kFusedOpType.c_str(), "Only support platform Ascend910"),
-                    return false);
-  return true;
-}
-
 bool TbeDxTransDataFusionPass::CheckTransDataFormat(const ge::NodePtr &node, const bool &is_input) const {
   bool is_support_format = false;
   if (is_input) {
@@ -174,9 +161,6 @@ void TbeDxTransDataFusionPass::DeleteFusionNodes(const ge::NodePtr &transdata_no
 Status TbeDxTransDataFusionPass::GetFusionNodes(const BufferFusionMapping &mapping,
                                                 vector<ge::NodePtr> &fusion_nodes) {
   OP_LOGD(kFusedOpType.c_str(), "Begin to do TbeDxTransDataFusionPass.");
-  FUSION_PASS_CHECK(!CheckPlatform(),
-                    OP_LOGW(kFusedOpType.c_str(), "Platform unsupported, abort fusion."),
-                    return SUCCESS);
 
   vector<ge::NodePtr> transdata1_nodes = GetMatchedNodesByDescName(kPatternTransData1, mapping);
   vector<ge::NodePtr> cube_nodes = GetMatchedNodesByDescName(kPatternCube, mapping);

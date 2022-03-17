@@ -15,7 +15,7 @@
  */
 
 /*!
- * \file conv2d_bp_input_transdata_fusion_pass.h
+ * \file tbe_dx_transdata_fusion_pass.h
  * \brief (transdata) + conv2d_backprop_input + transdata fusion pass
  */
 #ifndef OPS_BUILT_IN_FUSION_PASS_BUFFER_FUSION_UB_FUSION_AI_CORE_CONV2D_BP_INPUT_TRANSDATA_FUSION_PASS_H
@@ -51,7 +51,6 @@ class TbeDxTransDataFusionPass : public BufferFusionPassBase {
    */
   Status GetFusionNodes(const BufferFusionMapping &mapping, vector<ge::NodePtr> &fusion_nodes) override;
 
-  bool CheckPlatform() const;
   bool CheckTransDataFormat(const ge::NodePtr &node, const bool &is_input) const;
   bool CheckOpCube(const ge::NodePtr &cube_node) const;
   bool CheckInputNoRange(const ge::NodePtr &cube_node) const;
