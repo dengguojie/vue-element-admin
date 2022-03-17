@@ -770,11 +770,31 @@ def test_atomic_add_k_dts_case_1(test_arg):
         cce_build_code(sch, config)
     te_set_version("Ascend310")
 
+def test_matmul_nd(test_arg):
+    with cce():
+        x1 = tvm.placeholder((1024, 512), name="x1",
+                             attrs={'format': "ND", "ori_shape": (1024, 512)}, dtype="float16")
+        x2 = tvm.placeholder((512, 1024), name="x2",
+                             attrs={'format': "ND", "ori_shape": (512, 1024)}, dtype="float16")
+        output_y = {"shape": (1024, 1024), "dtype": "float16",
+                    "ori_shape": (1024, 1024), "format": "ND", "ori_format": "ND"}
+        matmul_out = mat_mul_compute(x1, x2, None, None, output_y, kernel_name="matmul_nd")
+        tensor_list = [x1, x2, matmul_out]
+        sch = auto_schedule(matmul_out)
+        config = {
+            "print_ir": False,
+            "need_build": True,
+            "name": "matmul_nd",
+            "tensor_list": tensor_list,
+        }
+        cce_build_code(sch, config)
+
 ut_case.add_cust_test_func(test_func=test_nbuffer_case1)
 ut_case.add_cust_test_func(test_func=test_nbuffer_case2)
 ut_case.add_cust_test_func(test_func=test_nbuffer_case3)
 ut_case.add_cust_test_func(test_func=test_auto_tiling)
 ut_case.add_cust_test_func(test_func=test_atomic_add_k)
+ut_case.add_cust_test_func(test_func=test_matmul_nd)
 ut_case.add_cust_test_func(test_func=test_atomic_add_k_dts_case_1)
 
 if __name__ == '__main__':

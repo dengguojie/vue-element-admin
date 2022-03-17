@@ -54,6 +54,7 @@ static const unsigned int kIndexK = 1;
 static const unsigned int kIndexN = 2;
 static const int kFloat16Size = 2;
 static const float kAtomicAddBwLoseRadio = 0.5;
+static const float kAtomicAddrCleanCostMulti = 2;
 static const int kBlockSize = 16;
 static const int kScheduleTime = 10;
 static const int kLimitCoreNumber = 8;
@@ -231,8 +232,10 @@ bool MatmulAtomicAddUbFusion::computePerf(vector<int64_t> shapes, vector<int> bl
   float cast_node_cost = 0;
   float transdata_node_cost = 0;
   float mte3_cost = 0;
+  float atomic_addr_clean_cost = 0;
   cur_cost = 0;
   if (k_dim != 1) {
+    atomic_addr_clean_cost = (m_shape * n_shape * out_data_size_fp32 / cur_bandwidth) * kAtomicAddrCleanCostMulti;
     mte3_cost = (static_cast<float>(k_dim * (m_shape_inner * n_shape_inner * out_data_size_fp32)) /
                  (kAtomicAddBwLoseRadio * cur_bandwidth));
     if (out_dtype == ge::DT_FLOAT16) {
@@ -258,8 +261,8 @@ bool MatmulAtomicAddUbFusion::computePerf(vector<int64_t> shapes, vector<int> bl
       (static_cast<float>((m_dim - 1) * k_shape_inner * n_shape_inner * in_data_size)) / cur_bandwidth;
   float a_repeat_load_cost =
       (static_cast<float>((n_dim - 1) * k_shape_inner * m_shape_inner * in_data_size)) / cur_bandwidth;
-  cur_cost +=
-      base_load_cost + mte3_cost + a_repeat_load_cost + b_repeat_load_cost + cast_node_cost + transdata_node_cost;
+  cur_cost += base_load_cost + mte3_cost + a_repeat_load_cost + b_repeat_load_cost + cast_node_cost +
+              transdata_node_cost + atomic_addr_clean_cost;
   return true;
 }
 

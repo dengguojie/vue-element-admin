@@ -196,6 +196,7 @@ class GetPerfCoreNum:
     }
     soc_hbm_bandwidth_info = {8: 250, 32: 1100}
     soc_l2_bandwidth_info = {8: 1300, 32: 3300}
+    atomic_addr_clean_cost_multi = 2
 
     def __init__(self):
         pass
@@ -271,8 +272,11 @@ class GetPerfCoreNum:
         cast_node_cost = 0
         transdata_node_cost = 0
         atomic_add_bw_lose_radio = 1
+        atomic_addr_clean_cost = 0
         if k_dim != 1:
             atomic_add_bw_lose_radio = 0.5
+            atomic_addr_clean_cost = (m_shape * n_shape * out_data_size_fp32 /
+                                      cur_bandwidth) * self.atomic_addr_clean_cost_multi
 
         mte3_cost = k_dim * (m_shape_inner * n_shape_inner * out_data_size_fp32) / (atomic_add_bw_lose_radio *
                                                                                     cur_bandwidth)
@@ -280,7 +284,7 @@ class GetPerfCoreNum:
         b_repeat_load_cost = (m_dim - 1) * k_shape_inner * n_shape_inner * in_data_size / cur_bandwidth
         a_repeat_load_cost = (n_dim - 1) * k_shape_inner * m_shape_inner * in_data_size / cur_bandwidth
         total_cost = (base_load_cost + mte3_cost + a_repeat_load_cost + b_repeat_load_cost + cast_node_cost +
-                      transdata_node_cost)
+                      transdata_node_cost + atomic_addr_clean_cost)
 
         return total_cost
 
@@ -1381,12 +1385,12 @@ class GEMMCompute(FormatCompute):
         return tensor_a_matrix
 
     def _compute_a_matrix_nd(self, tensor_a_normalize, use_normal_func):
-        nd2Zz_normal_flag = False
-        nd2Zz_normal_flag = nd2Zz_normal_flag or self.cube_vector_split
-        nd2Zz_normal_flag = nd2Zz_normal_flag or (self.ops_data_flow_mode in ("int82int32", "int4int32"))
-        nd2Zz_normal_flag = nd2Zz_normal_flag or (self.mmad_mode == "gevm")
-        nd2Zz_normal_flag = nd2Zz_normal_flag or use_normal_func
-        nd2Zz_normal_flag = nd2Zz_normal_flag or in_dynamic()
+        nd_to_zz_normal_flag = False
+        nd_to_zz_normal_flag = nd_to_zz_normal_flag or self.cube_vector_split
+        nd_to_zz_normal_flag = nd_to_zz_normal_flag or (self.ops_data_flow_mode in ("int82int32", "int4int32"))
+        nd_to_zz_normal_flag = nd_to_zz_normal_flag or (self.mmad_mode == "gevm")
+        nd_to_zz_normal_flag = nd_to_zz_normal_flag or use_normal_func
+        nd_to_zz_normal_flag = nd_to_zz_normal_flag or in_dynamic()
 
         nd2Zz_vnchwconv_flag = False
         nd2Zz_vnchwconv_flag = nd2Zz_vnchwconv_flag or (self.ops_data_flow_mode not in ("int82int32", "int4int32"))
@@ -1398,7 +1402,7 @@ class GEMMCompute(FormatCompute):
             "data_flow": self.ops_data_flow_mode,
             "trans": self.trans_a
         }
-        if nd2Zz_normal_flag:
+        if nd_to_zz_normal_flag:
             mode_info = "nd2Zz" if (self.ops_data_flow_mode != "int82int32") else "nd2Zz_int8"
             compute_params["mode_info"] = mode_info
             format_in_a_l1 = "Zz"
@@ -1521,10 +1525,10 @@ class GEMMCompute(FormatCompute):
         return tensor_b_matrix
 
     def _compute_b_matrix_nd(self, tensor_b_normalize):
-        nd2Zn_normal_flag = False
-        nd2Zn_normal_flag = nd2Zn_normal_flag or self.cube_vector_split
-        nd2Zn_normal_flag = nd2Zn_normal_flag or (self.ops_data_flow_mode == "int82int32")
-        nd2Zn_normal_flag = nd2Zn_normal_flag or in_dynamic()
+        nd_to_zn_normal_flag = False
+        nd_to_zn_normal_flag = nd_to_zn_normal_flag or self.cube_vector_split
+        nd_to_zn_normal_flag = nd_to_zn_normal_flag or (self.ops_data_flow_mode == "int82int32")
+        nd_to_zn_normal_flag = nd_to_zn_normal_flag or in_dynamic()
 
         nd2Zn_vnchwconv_flag = False
         nd2Zn_vnchwconv_flag = nd2Zn_vnchwconv_flag or (self.ops_data_flow_mode != "int82int32")
@@ -1537,7 +1541,7 @@ class GEMMCompute(FormatCompute):
             "data_flow": self.ops_data_flow_mode,
             "trans": self.trans_b
         }
-        if nd2Zn_normal_flag:
+        if nd_to_zn_normal_flag:
             compute_params["mode_info"] = "nd2Zn" if self.ops_data_flow_mode != "int82int32" else "nd2Zn_int8"
             format_in_b_l1 = "Zn"
             if self.trans_b and (self.ops_data_flow_mode != "int82int32"):
