@@ -155,13 +155,14 @@ static int32_t DivRtn(int32_t x, int32_t y) {
 }
 
 bool check_resnet50(const vector<int64_t>& input_shape, int32_t ksize_h, int32_t ksize_w, 
-                    int32_t strides_h, int32_t strides_w, int32_t pad_t, int32_t pad_l) {
+                    int32_t strides_h, int32_t strides_w, int32_t pad_t, int32_t pad_l, int32_t ceil_mode) {
   if ((ksize_h == RESNET50_ksize) && (ksize_w == RESNET50_ksize) && 
       (strides_h == RESNET50_stride) && (strides_w == RESNET50_stride) && 
       (pad_t == RESNET50_pads) && (pad_l == RESNET50_pads) &&
       (input_shape[INPUT_INDEX_TWO] == RESNET50_IN) &&
       (input_shape[INPUT_INDEX_THREE] == RESNET50_IN) &&
-      (input_shape[INPUT_INDEX_FOUR] == C_ZERO)) {
+      (input_shape[INPUT_INDEX_FOUR] == C_ZERO) &&
+      (ceil_mode == 0)) {
         return true;
       }
   return false;
@@ -294,7 +295,7 @@ static void CalTilingParam(TilingParam& param, const vector<int64_t>& input_shap
     param.one_core_loop_left = param.one_core_ele % max_ele;
     param.last_core_loop_num = param.last_core_ele / max_ele;
     param.last_core_loop_left = param.last_core_ele % max_ele;
-  } else if (check_resnet50(input_shape, ksize_h, ksize_w, strides_h, strides_w, pad_top, pad_left)) {
+  } else if (check_resnet50(input_shape, ksize_h, ksize_w, strides_h, strides_w, pad_top, pad_left, ceil_mode)) {
     param.tiling_mode = TILING_MODE_6;
     param.n_c1 = input_shape[INPUT_INDEX_ZERO] * input_shape[INPUT_INDEX_ONE];
     CalCoreNum(param, param.n_c1, core_num);

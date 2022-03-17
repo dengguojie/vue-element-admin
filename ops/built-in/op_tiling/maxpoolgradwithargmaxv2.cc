@@ -191,7 +191,7 @@ static int32_t CeilDiv(int32_t num, int32_t divisor) {
 
 bool check_resnet50(const vector<int64_t>& grad_shape, const vector<int64_t>& argmax_shape,
                     const vector<int64_t>& x_shape, int32_t ksize_h, int32_t ksize_w, 
-                    int32_t strides_h, int32_t strides_w, int32_t pad_t, int32_t pad_l) {
+                    int32_t strides_h, int32_t strides_w, int32_t pad_t, int32_t pad_l, int32_t ceil_mode) {
   OP_LOGD("Resnet50", "grad_shape[SHAPE_INDEX_H]=%d.", grad_shape[SHAPE_INDEX_H]);
   OP_LOGD("Resnet50", "grad_shape[SHAPE_INDEX_W]=%d.", grad_shape[SHAPE_INDEX_W]);
   OP_LOGD("Resnet50", "argmax_shape[SHAPE_INDEX_H]=%d.", argmax_shape[SHAPE_INDEX_H]);
@@ -210,7 +210,8 @@ bool check_resnet50(const vector<int64_t>& grad_shape, const vector<int64_t>& ar
       (argmax_shape[SHAPE_INDEX_C0] == C0) &&
       (x_shape[SHAPE_INDEX_H] == RESNET50_IN_X) &&
       (x_shape[SHAPE_INDEX_W] == RESNET50_IN_X) &&
-      (x_shape[SHAPE_INDEX_C0] == C0)) {
+      (x_shape[SHAPE_INDEX_C0] == C0) &&
+      (ceil_mode == 0)) {
         return true;
       }
   return false;
@@ -376,7 +377,7 @@ static void CalTilingParam(MaxPoolGradWithArgmaxV2TilingParams& tiling_params, C
     VECTOR_INNER_ERR_REPORT_TILIING("max_pool_grad_with_argmax_v2", "tiling_params.wo is %d", tiling_params.wo);
   }
   // branch for resnet50
-  if (check_resnet50(grad_shape, argmax_shape, input_shape, kh, kw, stride_h, stride_w, pad_top, pad_left)) {
+  if (check_resnet50(grad_shape, argmax_shape, input_shape, kh, kw, stride_h, stride_w, pad_top, pad_left, ceil_mode)) {
     tiling_params.tiling_mode = TILING_MODE_3;
     int32_t total_ele = grad_shape[SHAPE_INDEX_N] * grad_shape[SHAPE_INDEX_C1];
     // Instead of defining a new tiling parameter for resnet50,
