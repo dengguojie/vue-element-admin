@@ -13,8 +13,8 @@ import os
 import tensorflow as tf
 from tensorflow.core.framework import tensor_shape_pb2
 
-from .. import utils
-from ..const_manager import ConstManager
+from op_test_frame.st.interface import utils
+from op_test_frame.st.interface.const_manager import ConstManager
 
 
 def _map_tf_input_output_dtype(tf_dtype):
@@ -160,15 +160,13 @@ def _get_node_lists_match_ini_op(i, op_type, node_info, ops):
     input_shape = _tensor_shape_list(ops[i]['input_shape'])
     op_infos["input_shape"] = input_shape
     # input_dtype
-    input_dtype = (_map_tf_input_output_dtype(x.name) for x in
-                   ops[i]['input_dtype'])
+    input_dtype = (_map_tf_input_output_dtype(x.name) for x in ops[i]['input_dtype'])
     op_infos["input_dtype"] = list(input_dtype)
     # output_shape
     output_shape = _tensor_shape_list(ops[i]['output_shape'])
     op_infos["output_shape"] = output_shape
     # output_dtype
-    output_dtype = (_map_tf_input_output_dtype(x.name) for x in
-                    ops[i]['output_dtype'])
+    output_dtype = (_map_tf_input_output_dtype(x.name) for x in ops[i]['output_dtype'])
     op_infos["output_dtype"] = list(output_dtype)
 
     # attr
@@ -249,8 +247,7 @@ class TFModelParse:
         prefix, _ = os.path.splitext(tmp_filename)
         first_new_shape = '_'.join(
             str(i) for i in list(new_shape_map.values())[0]['new_shape'])
-        new_graph_path = os.path.realpath(
-            os.path.join(self.output_path, prefix + "_%s.pb" % first_new_shape))
+        new_graph_path = os.path.realpath(os.path.join(self.output_path, prefix + "_%s.pb" % first_new_shape))
         _tf_utils_write_graph(graph_def, dir_name, new_graph_path)
         return node_shape, new_graph_path
 

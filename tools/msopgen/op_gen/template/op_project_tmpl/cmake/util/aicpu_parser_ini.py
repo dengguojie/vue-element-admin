@@ -61,7 +61,7 @@ def check_custom_op_opinfo(required_custom_op_info_keys, ops, op_key):
     op_info = ops["opInfo"]
     missing_keys = []
     for required_op_info_key in required_custom_op_info_keys:
-        if not required_op_info_key in op_info:
+        if required_op_info_key not in op_info:
             missing_keys.append(required_op_info_key)
     if len(missing_keys) > 0:
         print("op: " + op_key + " opInfo missing: " + ",".join(missing_keys))

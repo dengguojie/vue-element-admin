@@ -17,11 +17,11 @@ from shutil import Error
 
 from op_test_frame.common import op_status
 from op_test_frame.st.interface.global_config_parser import GlobalConfig as GC
-from .const_manager import ConstManager
-from . import utils
-from . import op_st_case_info
-from ..template.code_snippet import CodeTemplate
-from . import dynamic_handle
+from op_test_frame.st.interface.const_manager import ConstManager
+from op_test_frame.st.interface import utils
+from op_test_frame.st.interface import op_st_case_info
+from op_test_frame.st.template.code_snippet import CodeTemplate
+from op_test_frame.st.interface import dynamic_handle
 
 
 def _append_content_to_file(content, file_path):
@@ -290,12 +290,9 @@ class AclOpGenerator:
                 testcase_content=testcase_content)
             testcase_cpp_content += testcase_function_content
             # deal with report
-            output_abs_paths = (
-                os.path.join(self.output_path, 'run', 'out', x + ".bin") for x
-                in output_paths)
+            output_abs_paths = (os.path.join(self.output_path, 'run', 'out', x + ".bin") for x in output_paths)
             case_report = self.report.get_case_report(testcase_name)
-            case_report.trace_detail.st_case_info.planned_output_data_paths = \
-                list(output_abs_paths)
+            case_report.trace_detail.st_case_info.planned_output_data_paths =  list(output_abs_paths)
         output_testcase_cpp_path = self.output_path + \
                                    ConstManager.TESTCASE_CPP_RELATIVE_PATH
         _append_content_to_file(testcase_cpp_content,

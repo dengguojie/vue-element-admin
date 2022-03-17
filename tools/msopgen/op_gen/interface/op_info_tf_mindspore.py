@@ -8,8 +8,8 @@ Copyright Information:
 Huawei Technologies Co., Ltd. All Rights Reserved © 2020
 """
 
-from . import utils
-from .op_info_tf import TFOpInfo
+from op_gen.interface import utils
+from op_gen.interface.op_info_tf import TFOpInfo
 
 
 class MSTFOpInfo(TFOpInfo):

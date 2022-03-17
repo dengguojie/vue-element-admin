@@ -11,10 +11,10 @@ Huawei Technologies Co., Ltd. All Rights Reserved © 2020
 import os
 import sys
 
-from . import utils
-from .op_info import OpInfo
-from .arg_parser import ArgParser
-from .const_manager import ConstManager
+from op_gen.interface import utils
+from op_gen.interface.op_info import OpInfo
+from op_gen.interface.arg_parser import ArgParser
+from op_gen.interface.const_manager import ConstManager
 
 
 class IrRow:

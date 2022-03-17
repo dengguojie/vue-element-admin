@@ -172,13 +172,10 @@ class MsOpGenerator:
 
         # deal with report
         path_name = os.path.split(self.output_path)[1]
-        input_data_abs_paths_tuple = (
-            os.path.join(path_name, 'run', 'out', x + ".bin") for x
-            in input_paths)
+        input_data_abs_paths_tuple = (os.path.join(path_name, 'run', 'out', x + ".bin") for x in input_paths)
         input_data_abs_paths = list(input_data_abs_paths_tuple)
         case_report = self.report.get_case_report(testcase_name)
-        case_report.trace_detail.st_case_info.planned_output_data_paths = \
-            input_data_abs_paths
+        case_report.trace_detail.st_case_info.planned_output_data_paths = input_data_abs_paths
         return input_data_abs_paths
 
     def _generate_output_content(self, testcase_struct, tensor_list,

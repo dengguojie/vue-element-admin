@@ -13,10 +13,10 @@ import sys
 import importlib
 import copy
 
-from . import utils
-from . import dynamic_handle
-from . import subcase_design as SD
-from .const_manager import ConstManager
+from op_test_frame.st.interface import utils
+from op_test_frame.st.interface import dynamic_handle
+from op_test_frame.st.interface import subcase_design as SD
+from op_test_frame.st.interface.const_manager import ConstManager
 
 
 class SubCaseDesignFuzz(SD.SubCaseDesign):

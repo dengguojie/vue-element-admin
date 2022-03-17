@@ -10,10 +10,10 @@ Huawei Technologies Co., Ltd. All Rights Reserved © 2020
 
 import itertools
 
-from .const_manager import ConstManager
-from . import utils
-from . import dynamic_handle
-from . import subcase_design as SD
+from op_test_frame.st.interface.const_manager import ConstManager
+from op_test_frame.st.interface import utils
+from op_test_frame.st.interface import dynamic_handle
+from op_test_frame.st.interface import subcase_design as SD
 
 
 def combine_ori_field_to_cross(tensor, cross_key_list):
@@ -42,8 +42,8 @@ def combine_ori_field_to_cross(tensor, cross_key_list):
     combine_shape_ori_shape_list = list(
         zip(tensor.get('shape'), tensor.get('ori_shape')))
     # orthonormalize format_ori_format, shape_ori_shape, and other filed: 'type', etc.
-    combine_cross_tuple = (list(x) for x in itertools.product(
-        combine_format_ori_format_list, combine_shape_ori_shape_list, *cross_list))
+    combine_cross_tuple = (list(x) for x in itertools.product(combine_format_ori_format_list,
+                                                              combine_shape_ori_shape_list, *cross_list))
     result_cross_list = []
     for each_cross_list in list(combine_cross_tuple):
         data_list = _get_data_list(each_cross_list)
@@ -191,8 +191,7 @@ class SubCaseDesignCross(SD.SubCaseDesign):
     def _get_case_list(self, tensor, cross_list, cross_key_list):
         case_list = []
         for case in cross_list:
-            cur_params = {cross_key_list[x]: case[x] for x, _ in
-                          enumerate(cross_key_list)}
+            cur_params = {cross_key_list[x]: case[x] for x, _ in enumerate(cross_key_list)}
             self._check_cur_params_undefined(cur_params)
             if cur_params.get('shape'):
                 dynamic_handle.set_typical_shape_in_cur_params(

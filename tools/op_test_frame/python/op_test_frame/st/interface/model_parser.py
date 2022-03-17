@@ -11,8 +11,8 @@ Change History: 2020-07-11 file Created
 import os
 import importlib
 
-from . import utils
-from .const_manager import ConstManager
+from op_test_frame.st.interface import utils
+from op_test_frame.st.interface.const_manager import ConstManager
 
 
 def _get_framework_type(path):

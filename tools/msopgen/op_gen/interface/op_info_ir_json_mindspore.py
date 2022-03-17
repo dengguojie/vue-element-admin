@@ -8,9 +8,9 @@ Copyright Information:
 Huawei Technologies Co., Ltd. All Rights Reserved © 2020
 """
 
-from . import utils
-from .op_info_ir_json import JsonIROpInfo
-from .const_manager import ConstManager
+from op_gen.interface import utils
+from op_gen.interface.op_info_ir_json import JsonIROpInfo
+from op_gen.interface.const_manager import ConstManager
 
 
 class JsonMSIROpInfo(JsonIROpInfo):

@@ -12,9 +12,9 @@ import time
 
 from op_test_frame.common import op_status
 
-from . import utils
-from .const_manager import ConstManager
-from . import op_st_case_info
+from op_test_frame.st.interface import utils
+from op_test_frame.st.interface.const_manager import ConstManager
+from op_test_frame.st.interface import op_st_case_info
 
 
 class AclOpRunner:

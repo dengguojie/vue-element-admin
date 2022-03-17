@@ -10,8 +10,8 @@ Huawei Technologies Co., Ltd. All Rights Reserved © 2021
 from io import StringIO
 from configparser import ConfigParser
 
-from . import utils
-from .const_manager import ConstManager
+from op_test_frame.st.interface import utils
+from op_test_frame.st.interface.const_manager import ConstManager
 
 
 class AdvanceIniArgs:

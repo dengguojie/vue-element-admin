@@ -18,7 +18,7 @@ import json
 import numpy as np
 
 from op_test_frame.st.interface.data_generator import DataGenerator
-from .const_manager import ConstManager
+from op_test_frame.st.interface.const_manager import ConstManager
 
 
 def create_attr_list_str(attr_value):

@@ -12,12 +12,12 @@ import os
 
 from op_test_frame.st.interface.global_config_parser import GlobalConfig as GC
 
-from . import utils
-from . import st_report
-from . import op_st_case_info
-from . import dynamic_handle
-from . import case_design as CD
-from .const_manager import ConstManager
+from op_test_frame.st.interface import utils
+from op_test_frame.st.interface import st_report
+from op_test_frame.st.interface import op_st_case_info
+from op_test_frame.st.interface import dynamic_handle
+from op_test_frame.st.interface import case_design as CD
+from op_test_frame.st.interface.const_manager import ConstManager
 
 
 class SubCaseDesign:

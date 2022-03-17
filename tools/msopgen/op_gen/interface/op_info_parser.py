@@ -8,15 +8,15 @@ Copyright Information:
 Huawei Technologies Co., Ltd. All Rights Reserved © 2020
 """
 
-from .arg_parser import ArgParser
-from .op_info_ir import IROpInfo
-from .op_info_tf import TFOpInfo
-from .op_info_ir_mindspore import MSIROpInfo
-from .op_info_tf_mindspore import MSTFOpInfo
-from .op_info_ir_json import JsonIROpInfo
-from .op_info_ir_json_mindspore import JsonMSIROpInfo
-from .const_manager import ConstManager
-from . import utils
+from op_gen.interface.arg_parser import ArgParser
+from op_gen.interface.op_info_ir import IROpInfo
+from op_gen.interface.op_info_tf import TFOpInfo
+from op_gen.interface.op_info_ir_mindspore import MSIROpInfo
+from op_gen.interface.op_info_tf_mindspore import MSTFOpInfo
+from op_gen.interface.op_info_ir_json import JsonIROpInfo
+from op_gen.interface.op_info_ir_json_mindspore import JsonMSIROpInfo
+from op_gen.interface.const_manager import ConstManager
+from op_gen.interface import utils
 
 
 class OpInfoParser:

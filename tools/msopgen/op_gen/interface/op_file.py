@@ -9,11 +9,11 @@ Huawei Technologies Co., Ltd. All Rights Reserved © 2020
 import os
 from abc import ABCMeta
 from abc import abstractmethod
-from . import utils
-from .op_tmpl import OPTmpl
-from .arg_parser import ArgParser
-from .op_info_parser import OpInfoParser
-from .const_manager import ConstManager
+from op_gen.interface import utils
+from op_gen.interface.op_tmpl import OPTmpl
+from op_gen.interface.arg_parser import ArgParser
+from op_gen.interface.op_info_parser import OpInfoParser
+from op_gen.interface.const_manager import ConstManager
 
 
 class OPFile(metaclass=ABCMeta):

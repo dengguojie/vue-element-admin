@@ -6,8 +6,8 @@ This method mainly handle the dynamic scenario.
 Copyright Information:
 Huawei Technologies Co., Ltd. All Rights Reserved © 2021
 """
-from . import utils
-from .const_manager import ConstManager
+from op_test_frame.st.interface import utils
+from op_test_frame.st.interface.const_manager import ConstManager
 
 
 def check_typical_shape_valid(typical_shape, json_path):

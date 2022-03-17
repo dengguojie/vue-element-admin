@@ -9,8 +9,8 @@ Huawei Technologies Co., Ltd. All Rights Reserved © 2020
 import os
 import sys
 import argparse
-from . import utils
-from .const_manager import ConstManager
+from op_gen.interface import utils
+from op_gen.interface.const_manager import ConstManager
 
 
 class ArgParser:

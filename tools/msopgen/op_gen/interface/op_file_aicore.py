@@ -7,10 +7,10 @@ Copyright Information:
 Huawei Technologies Co., Ltd. All Rights Reserved © 2020
 """
 import os
-from .op_file import OPFile
-from .op_tmpl import OPTmpl
-from . import utils
-from .const_manager import ConstManager
+from op_gen.interface.op_file import OPFile
+from op_gen.interface.op_tmpl import OPTmpl
+from op_gen.interface import utils
+from op_gen.interface.const_manager import ConstManager
 
 
 class OpFileAiCore(OPFile):
@@ -105,8 +105,7 @@ class OpFileAiCore(OPFile):
                 input_data=input_data,
                 output_data=output_data)
         else:
-            attr = ", ".join(a[0] for a in
-                             self.op_info.parsed_attr_info)
+            attr = ", ".join(a[0] for a in self.op_info.parsed_attr_info)
             head_str += OPTmpl.PY_RES_WIT_ATTR.format(
                 name=self.op_info.fix_op_type,
                 input_data=input_data,
@@ -222,9 +221,7 @@ class OpFileAiCore(OPFile):
     def _generate_input_output_info_cfg(self: any, parsed_info: any, template_string: str) -> str:
         new_str = ""
         for (index, name) in enumerate(parsed_info):
-            ir_types = (x for x in
-                        parsed_info[name][ConstManager.INFO_IR_TYPES_KEY] if
-                        x != "")
+            ir_types = (x for x in parsed_info[name][ConstManager.INFO_IR_TYPES_KEY] if x != "")
             ini_types = (self._mapping_info_cfg_type(x) for x in ir_types)
             ini_types = (x for x in ini_types if x != "")
             ini_types = ",".join(ini_types)

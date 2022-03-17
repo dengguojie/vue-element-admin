@@ -25,9 +25,9 @@ import json
 import numpy as np
 from op_test_frame.common import op_status
 from op_test_frame.utils import file_util
-from .op_st_case_info import OpSTCaseTrace
-from .const_manager import ConstManager
-from . import utils
+from op_test_frame.st.interface.op_st_case_info import OpSTCaseTrace
+from op_test_frame.st.interface.const_manager import ConstManager
+from op_test_frame.st.interface import utils
 
 
 class ReportJsonEncoder(json.JSONEncoder):
@@ -162,8 +162,7 @@ class OpSTReport:
         :param case_name: the test case name
         :return: the OpSTCaseReport object
         """
-        case_reports_tuple = (x for x in self.report_list if x.case_name ==
-                              case_name)
+        case_reports_tuple = (x for x in self.report_list if x.case_name == case_name)
         case_reports = list(case_reports_tuple)
         case_count = len(case_reports)
         if case_count < 1:
@@ -264,7 +263,6 @@ run command: %s
         :return: the OpSTReport object
         """
         rpt = OpSTReport(json_obj.get("run_cmd"))
-        for case_rpt in (OpSTCaseReport.parser_json_obj(case_obj) for case_obj
-                         in json_obj.get("report_list")):
+        for case_rpt in (OpSTCaseReport.parser_json_obj(case_obj) for case_obj in json_obj.get("report_list")):
             rpt.add_case_report(case_rpt)
         return rpt

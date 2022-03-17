@@ -14,7 +14,7 @@ import re
 import json
 from shutil import copytree
 from shutil import copy2
-from .const_manager import ConstManager
+from op_gen.interface.const_manager import ConstManager
 
 
 class MsOpGenException(Exception):

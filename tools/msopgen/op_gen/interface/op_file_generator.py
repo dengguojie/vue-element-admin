@@ -6,12 +6,12 @@ This file mainly involves class for generating operator files.
 Copyright Information:
 Huawei Technologies Co., Ltd. All Rights Reserved © 2020
 """
-from .arg_parser import ArgParser
-from .op_file_aicore import OpFileAiCore
-from .op_file_aicpu import OpFileAiCpu
-from .op_file_mindspore import OpFileMindSpore
-from . import utils
-from .const_manager import ConstManager
+from op_gen.interface.arg_parser import ArgParser
+from op_gen.interface.op_file_aicore import OpFileAiCore
+from op_gen.interface.op_file_aicpu import OpFileAiCpu
+from op_gen.interface.op_file_mindspore import OpFileMindSpore
+from op_gen.interface import utils
+from op_gen.interface.const_manager import ConstManager
 
 
 class OpFileGenerator:

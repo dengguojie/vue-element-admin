@@ -16,8 +16,8 @@ from onnx import helper
 from onnx import shape_inference
 from onnx import TensorProto
 
-from ..const_manager import ConstManager
-from .. import utils
+from op_test_frame.st.interface.const_manager import ConstManager
+from op_test_frame.st.interface import utils
 
 
 class PytorchConstVaraible:
@@ -403,11 +403,9 @@ class PyTorchModelParse:
         utils.print_info_log("The {} input shape has been changed.".format(self.model_path))
         _, tmp_filename = os.path.split(real_path)
         prefix, suffix = os.path.splitext(tmp_filename)
-        first_new_shape = '_'.join(
-            str(i) for i in list(new_shape_map.values())[0].get('new_shape'))
+        first_new_shape = '_'.join(str(i) for i in list(new_shape_map.values())[0].get('new_shape'))
         new_model_name = (prefix + '{}' + suffix).format(first_new_shape)
-        new_model_path = os.path.realpath(
-            os.path.join(self.output_path, new_model_name))
+        new_model_path = os.path.realpath(os.path.join(self.output_path, new_model_name))
         onnx.save(infer_model, new_model_path)
         return new_model_path
 
@@ -418,8 +416,7 @@ class PyTorchModelParse:
         self._check_change_shape_argument_valid()
         new_shape_map = utils.load_json_file(self.input_file)
         new_model_path = self._change_shape_fn(new_shape_map)
-        json_path = os.path.realpath(os.path.join(self.output_path,
-                                                  PytorchConstVaraible.TMP_GA_PATH_FILE))
+        json_path = os.path.realpath(os.path.join(self.output_path, PytorchConstVaraible.TMP_GA_PATH_FILE))
         utils.write_json_file(json_path, {'new_model_path': new_model_path})
 
     def get_model_nodes(self, ini_op_type):

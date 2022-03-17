@@ -89,8 +89,7 @@ class CaseGenerator:
             default_value_tuple = (x.strip() for x in value_list)
             default_value = list(default_value_tuple)
         elif attr_type == 'listBool':
-            default_value_tuple = (self._parse_bool_value(x) for x in
-                                   value_list)
+            default_value_tuple = (self._parse_bool_value(x) for x in value_list)
             default_value = list(default_value_tuple)
         return default_value
 
@@ -107,8 +106,7 @@ class CaseGenerator:
             elif attr_type == 'str':
                 default_value = default_value_str
             elif attr_type.startswith('list'):
-                default_value = self._get_attr_type_list_value(
-                    attr_type, default_value_str)
+                default_value = self._get_attr_type_list_value(attr_type, default_value_str)
         except ValueError as ex:
             utils.print_warn_log(
                 'The default value(%s) is invalid for type(%s). Please modify '
@@ -654,10 +652,8 @@ class CaseGenerator:
 
     def _generate_input_desc(self, value, base_case):
         input_name = value.get('name')
-        input_format = [] if len(value['format']) == 0 else \
-            list(set(value['format'].split(',')))
-        input_dtype = [] if len(value['dtype']) == 0 else \
-            list(set(value['dtype'].split(',')))
+        input_format = [] if len(value['format']) == 0 else list(set(value['format'].split(',')))
+        input_dtype = [] if len(value['dtype']) == 0 else list(set(value['dtype'].split(',')))
         if value.get('paramType') == 'optional':
             input_format_len = len(input_format)
             input_dtype_len = len(input_dtype)
@@ -687,10 +683,8 @@ class CaseGenerator:
 
     def _generate_output_desc(self, value, base_case):
         output_name = value.get('name')
-        output_format = [] if len(value['format']) == 0 else \
-            list(set(value['format'].split(',')))
-        output_dtype = [] if len(value['dtype']) == 0 else \
-            list(set(value['dtype'].split(',')))
+        output_format = [] if len(value['format']) == 0 else list(set(value['format'].split(',')))
+        output_dtype = [] if len(value['dtype']) == 0 else list(set(value['dtype'].split(',')))
         if self.input_file_path.endswith(".py"):
             output_desc = {'type': output_dtype,
                            'shape': []}

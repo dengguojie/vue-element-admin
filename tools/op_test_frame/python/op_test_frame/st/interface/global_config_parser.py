@@ -9,8 +9,8 @@ Change History: 2021-04-12 file Created
 """
 import os
 
-from . import utils
-from .const_manager import ConstManager
+from op_test_frame.st.interface import utils
+from op_test_frame.st.interface.const_manager import ConstManager
 
 
 class WhiteLists:
