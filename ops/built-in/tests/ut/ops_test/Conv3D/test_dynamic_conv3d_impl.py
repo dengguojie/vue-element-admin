@@ -388,6 +388,30 @@ fuzzy_test_case = [
         (1, 2, 2, 2, 1), (0, 0, 0, 0, 0, 0), (1, 1, 1, 1, 1), 1, 'NDHWC', 0,
         'test_conv3d_generalization_dynamic_mode_lower_range_exceed_l1_case', {"mode": "keep_rank"}],
      "expect": "lower_limit"},
+     {"inputs": [
+        {'ori_shape': (1, 44, 24, 8, 8),
+         'ori_format': 'NCDHW',
+         'dtype': 'float16'},
+        {'ori_shape': (112, 5, 1, 7, 44),
+         'ori_format': 'NDHWC',
+         'dtype': 'float16'}, None, None,
+        {'ori_shape': (1, 112, 8, 3, 3),
+         'ori_format': 'NCDHW',
+         'dtype': 'float16'}, (1, 1, 3, 3, 3), (1, 1, 0, 0, 2, 3), (1, 1, 1, 1, 1), 1, 'NCDHW', 0,
+        'test_conv3d_generalization_static_mode_w_unsupport_case', {"mode": "keep_rank"}],
+     "expect": "unsupported"},
+     {"inputs": [
+        {'ori_shape': (1, 44, 24, 8, 10),
+         'ori_format': 'NCDHW',
+         'dtype': 'float16'},
+        {'ori_shape': (112, 5, 1, 7, 44),
+         'ori_format': 'NDHWC',
+         'dtype': 'float16'}, None, None,
+        {'ori_shape': (1, 112, 8, 3, 3),
+         'ori_format': 'NCDHW',
+         'dtype': 'float16'}, (1, 1, 3, 3, 3), (1, 1, 0, 0, 2, 3), (1, 1, 1, 1, 1), 1, 'NCDHW', 0,
+        'test_conv3d_generalization_static_mode_w_range_modify_case', {"mode": "keep_rank"}],
+     "expect": "success"}
 ]
 for case in fuzzy_test_case:
     ut_case.add_cust_test_func('Ascend910A', test_func=test_conv3d_fuzzy_build_generalization(case))

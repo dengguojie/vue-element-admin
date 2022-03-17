@@ -869,6 +869,7 @@ def _modify_w_range_max(weight: dict, dedy: dict, strides: list, dilation: list,
 def _check_correct_fuzz_input_range(fmap, kernel, pads, stride, dilation, is_dynamic_fuzz_mode):
     fmap_range = fmap.get("ori_range")
     fmap_format = fmap.get("ori_format")
+    fmap_shape = fmap.get("ori_shape")
     pos_d = fmap_format.find("D")
     pos_h = fmap_format.find("H")
     pos_w = fmap_format.find("W")
@@ -888,8 +889,6 @@ def _check_correct_fuzz_input_range(fmap, kernel, pads, stride, dilation, is_dyn
             correct_range_flag = True
             fmap_range_d_lower = min(w_d, fmap_range_d[1]) if fmap_range_d[1] else w_d
             fmap_range[pos_d] = (fmap_range_d_lower, fmap_range_d[1])
-            out_d_lower, _ = _get_output(fmap_range_d, w_d, (pads[_PADS_FRONT_POS], pads[_PADS_TAIL_POS]),
-                                                   stride[pos_d], dilation[pos_d])
             warnings.warn("The output calculated based on the lower limit of the input d \
                 range is less than 1, and the lower limit of the input d range is corrected \
                 as {}".format(fmap_range_d_lower))
@@ -900,8 +899,6 @@ def _check_correct_fuzz_input_range(fmap, kernel, pads, stride, dilation, is_dyn
             correct_range_flag = True
             fmap_range_h_lower = min(w_h, fmap_range_h[1]) if fmap_range_h[1] else w_h
             fmap_range[pos_h] = (fmap_range_h_lower, fmap_range_h[1])
-            out_h_lower, _ = _get_output(fmap_range_h, w_h, (pads[_PADS_TOP_POS], pads[_PADS_BOTTOM_POS]),
-                                                   stride[pos_h], dilation[pos_h])
             warnings.warn("The output calculated based on the lower limit of the input h \
                 range is less than 1, and the lower limit of the input h range is corrected \
                 as {}".format(fmap_range_h_lower))
@@ -912,13 +909,15 @@ def _check_correct_fuzz_input_range(fmap, kernel, pads, stride, dilation, is_dyn
             correct_range_flag = True
             fmap_range_w_lower = min(w_w, fmap_range_w[1]) if fmap_range_w[1] else w_w
             fmap_range[pos_w] = (fmap_range_w_lower, fmap_range_w[1])
-            out_w_lower, _ = _get_output(fmap_range_w, w_w, (pads[_PADS_LEFT_POS], pads[_PADS_RIGHT_POS]),
-                                                   stride[pos_w], dilation[pos_w])
             warnings.warn("The output calculated based on the lower limit of the input w \
                 range is less than 1, and the lower limit of the input w range is corrected \
                 as {}".format(fmap_range_w_lower))
-    if correct_range_flag and is_dynamic_fuzz_mode:
-        return LOWER_LIST
+    if correct_range_flag:
+        if is_dynamic_fuzz_mode:
+            return LOWER_LIST
+        if (fmap_range[pos_d][0] > fmap_shape[pos_d] or fmap_range[pos_h][0] > fmap_shape[pos_h] or
+            fmap_range[pos_w][0] > fmap_shape[pos_w]):
+            return UNSUPPORT_LIST
     return []
 
 

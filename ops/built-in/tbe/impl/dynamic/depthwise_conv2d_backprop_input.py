@@ -36,24 +36,34 @@ LOWER_STR = [{"result": "UNSUPPORTED", "reason": {"param_index": [2], "type": ["
 UPPER_STR = [{"result": "UNSUPPORTED", "reason": {"param_index": [2], "type": ["upper_limit"]}}]
 UNSUPPORED_STR = [{"result": "UNSUPPORTED"}]
 DYNAMIC_RANK_FLAG = [-2]
+DYNAMIC_FMAP_W_MAX = 4096
+
+
+def _check_opti_scene(filter_grad):
+    """
+    Both filter H/W is 1 is opti scene
+    """
+    filter_h = filter_grad.get("ori_shape")[filter_grad.get("ori_format").find("H")]
+    filter_w = filter_grad.get("ori_shape")[filter_grad.get("ori_format").find("W")]
+    return filter_h == 1 and filter_w == 1
 
 
 def check_or_update_w_range(input_list, param_list, op_type, dynamic_flag):
     """
     update w_range
     """
-    [input_grad, filter_grad, out_backprop] = input_list
-    filter_h = filter_grad.get("ori_shape")[filter_grad.get("ori_format").find("H")]
-    filter_w = filter_grad.get("ori_shape")[filter_grad.get("ori_format").find("W")]
+    [_, filter_grad, out_backprop] = input_list
+
     supports = "no_limit"
-    if filter_h == 1 and filter_w == 1:
+    if _check_opti_scene(filter_grad):
         opti_graph_correct, dedy_modify = modify_dy_w_range_max_opti(out_backprop, filter_grad, param_list,
                                                                      op_type, dynamic_flag)
         if not opti_graph_correct:
             supports = dedy_modify[0].get("reason").get("type")[0]
-            return supports
         dedy_range_w = dedy_modify.get("ori_range")[dedy_modify.get("ori_format").find("W")]
-        fmap_range_w = input_grad.get("ori_range")[input_grad.get("ori_format").find("W")]
+        strides, _, _, data_format = param_list
+        fmap_range_w = [min(dedy_range_w[0] * strides[data_format.find("W")], DYNAMIC_FMAP_W_MAX),
+                        min(dedy_range_w[1] * strides[data_format.find("W")], DYNAMIC_FMAP_W_MAX)]
     else:
         supports, dedy_range_w, fmap_range_w = check_modify_w_range(input_list, param_list, op_type, dynamic_flag)
     return supports, dedy_range_w, fmap_range_w
@@ -73,6 +83,15 @@ def check_input_para(input_size, input_list, param_list,
     }
     depthwise_conv2dbp_para = DepthwiseConv2dBackpropParaProcess(ori_paras)
     depthwise_conv2dbp_para.check_paras()
+
+
+def _update_ori_shape(tensor):
+    """
+    update static ori_shape to dynamic
+    """
+    tensor["ori_shape"] = (-1, tensor["ori_shape"][1], -1, -1) \
+        if tensor.get("ori_format") == TAR_FORMAT else (-1, -1, -1, tensor["ori_shape"][3])
+    return tensor
 
 
 @tbe_register.register_param_generalization("DepthwiseConv2DBackpropInput")
@@ -161,18 +180,17 @@ def depthwise_conv2d_backprop_input_generalization(input_size,  # pylint: disabl
         dx_range_nchw, _, new_dy_range = conv2d_tranpose.get_input_range(filter_shape_nchw, dy_range_nchw)
         dx_c = input_grad.get("ori_shape")[input_grad.get("ori_format").find("C")]
         dx_range_nchw[1] = [dx_c, dx_c]
-        dx_range_nchw[3] = fmap_range_w
+        if fmap_range_w[0] == fmap_range_w[1]:
+            dx_range_nchw[3] = fmap_range_w
         out_backprop["ori_range"] = list(out_backprop["ori_range"])
         out_backprop["ori_range"][out_backprop.get("ori_format").find("H")] = new_dy_range[2]
         out_backprop["ori_range"][out_backprop.get("ori_format").find("W")] = new_dy_range[3]
         input_size["const_value"] = None
         input_size["const_value_range"] = transform_shape_with_format(TAR_FORMAT, data_format,
                                                                       dx_range_nchw, DATA_FORMAT_WHITE_LIST)
-    have_range = {"inputs": out_backprop, "outputs": input_grad}
-    for _, tensor in have_range.items():
         # modify tesnors have range
-        tensor["ori_shape"] = [-1, tensor["ori_shape"][1], -1, -1] \
-            if tensor.get("ori_format") == TAR_FORMAT else [-1, -1, -1, tensor["ori_shape"][3]]
+        out_backprop = _update_ori_shape(out_backprop)
+        input_grad = _update_ori_shape(input_grad)
     result.append([input_size, filter, out_backprop, input_grad, {"strides": strides}, {"pads": pads},
                   {"dilations": dilations}, {"data_format": data_format}])
     return result

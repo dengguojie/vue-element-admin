@@ -432,6 +432,21 @@ fuzzy_test_case = [
         (1, 1, 1, 1, 1), (0, 0, 0, 0, 0, 0), (1, 1, 1, 1, 1), 1, 'NDHWC',
         'test_conv3d_backprop_input_generalization_dynamic_mode_output_h_lower_case', {"mode": "keep_rank"}],
      "expect": "lower_limit"},
+    {"inputs": [
+        {'ori_shape': (5,),
+         'ori_format': 'ND',
+         'dtype': 'int32'},
+        {'ori_shape': (5, 1, 1, 12, 8),
+         'ori_format': 'DHWCN',
+         'dtype': 'float16'},
+        {'ori_shape': (32, 1, 48, 48, 8),
+         'ori_format': 'NDHWC',
+         'dtype': 'float16'},
+        {'ori_shape': (32, 6, 48, 48, 12),
+         'ori_format': 'NDHWC',
+         'dtype': 'float16'}, (1, 2, 1, 1, 1), (0, 0, 0, 0, 0, 0), (1, 1, 1, 1, 1), 1, 'NDHWC',
+        'test_conv3d_backprop_input_generalization_static_mode_w_unsupported_case', {"mode": "keep_rank"}],
+     "expect": "unsupported"},
 ]
 for case in fuzzy_test_case:
     ut_case.add_cust_test_func("Ascend910A", test_func=test_conv3d_backprop_input_fuzz_build_generalization(case))

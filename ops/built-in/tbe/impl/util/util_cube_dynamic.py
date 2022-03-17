@@ -470,7 +470,10 @@ def _cal_dy_hw_max(input_filter, strides, data_format):
     """
     cal the hw max in dx
     """
-    stride_h, stride_w = strides[data_format.find("H")], strides[data_format.find("W")]
+    if len(strides) == FORMAT_NCHW_DIM:
+        stride_h, stride_w = strides[data_format.find("H")], strides[data_format.find("W")]
+    else:
+        stride_h, stride_w = strides
     _, _, filter_h, filter_w = _get_nchw_dims(input_filter)
 
     h_max = ceil_div(MAX_HW_FUZZ_BUILD - filter_h, stride_h)

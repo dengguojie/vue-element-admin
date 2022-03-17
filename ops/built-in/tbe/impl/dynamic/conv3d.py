@@ -977,6 +977,10 @@ def _conv3d_compute(fmap,
 
 
 def _check_correct_fuzz_input_range(fmap, weight, pads, strides, dilations, groups, is_dynamic_fuzz_mode):
+    def _get_range_by_format():
+        if in_format == "NDHWC":
+            return [fmap_range_n, fmap_range_d, fmap_range_h, fmap_range_w, fmap_range_c]
+        return [fmap_range_n, fmap_range_c, fmap_range_d, fmap_range_h, fmap_range_w]
     in_shape = list(fmap.get("ori_shape"))
     w_shape = list(weight.get("ori_shape"))
     in_format = fmap.get("ori_format")
@@ -1002,10 +1006,10 @@ def _check_correct_fuzz_input_range(fmap, weight, pads, strides, dilations, grou
             return LOWER_LIST
         else:
             fmap_range_n, fmap_range_d, fmap_range_c, fmap_range_h, fmap_range_w = correct_fmap_range
-            if in_format == "NDHWC":
-                fmap_range = [fmap_range_n, fmap_range_d, fmap_range_h, fmap_range_w, fmap_range_c]
-            else:
-                fmap_range = [fmap_range_n, fmap_range_c, fmap_range_d, fmap_range_h, fmap_range_w]
+            if (fmap_range_d[0] > in_shape[in_format.find("D")] or fmap_range_h[0] > in_shape[in_format.find("H")] or
+                fmap_range_w[0] > in_shape[in_format.find("W")]):
+                return UNSUPPORT_LIST
+            fmap_range = _get_range_by_format()
         fmap["ori_range"] = fmap_range
     return []
 
@@ -1158,7 +1162,6 @@ def conv3d_generalization(fmap,
     if check_result:
         return check_result
     fmap = util_cube_dynamic.gen_conv_shape_range(fmap, _OP_TYPE, is_dynamic_fuzz_mode)
-    util_conv3d.get_range(fmap)
     # check output_d and output_h and output_w
     new_pads = util_conv3d.correct_pads(fmap, output, weight, strides, pads, is_dynamic_fuzz_mode)
     err_json = _check_correct_fuzz_input_range(fmap, weight, new_pads, strides, dilations, groups, is_dynamic_fuzz_mode)
@@ -1171,6 +1174,7 @@ def conv3d_generalization(fmap,
     if not is_dynamic_fuzz_mode:
         util_conv3d.generalize_input_keep_rank(fmap)
         util_conv3d.generalize_input_keep_rank(output)
+    util_conv3d.get_range(fmap)
     try:
         _check_and_config_para(fmap, weight, bias, offset_w, output, strides, new_pads, dilations, groups)
     except RuntimeError as exc:

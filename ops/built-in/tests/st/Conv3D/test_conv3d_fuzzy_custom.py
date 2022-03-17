@@ -24,7 +24,7 @@ def test_conv3d_fuzz_build_static():
     ]
     conv3d_generalization(*input_list)
 
-def test_conv3d_fuzz_build_dynamic():
+def test_conv3d_fuzz_build_dynamic_general():
     input_list = [
         {'shape': (-1, -1, -1, -1, 320),
          'ori_shape': (-1, -1, -1, -1, 320),
@@ -48,7 +48,38 @@ def test_conv3d_fuzz_build_dynamic():
     ]
     conv3d_generalization(*input_list)
 
+def test_conv3d_fuzz_build_static_unsupport():
+    input_list = [
+        {'ori_shape': (1, 44, 24, 8, 8),
+         'ori_format': 'NCDHW',
+         'dtype': 'float16'},
+        {'ori_shape': (112, 5, 1, 7, 44),
+         'ori_format': 'NDHWC',
+         'dtype': 'float16'}, None, None,
+        {'ori_shape': (1, 112, 8, 3, 3),
+         'ori_format': 'NCDHW',
+         'dtype': 'float16'}, (1, 1, 3, 3, 3), (1, 1, 0, 0, 2, 3), (1, 1, 1, 1, 1), 1, 'NCDHW', 0,
+        'test_conv3d_generalization_static_mode_w_unsupport_case', {"mode": "keep_rank"}
+    ]
+    conv3d_generalization(*input_list)
+
+def test_conv3d_fuzz_build_static_modify_range():
+    input_list = [
+        {'ori_shape': (1, 44, 24, 8, 10),
+         'ori_format': 'NCDHW',
+         'dtype': 'float16'},
+        {'ori_shape': (112, 5, 1, 7, 44),
+         'ori_format': 'NDHWC',
+         'dtype': 'float16'}, None, None,
+        {'ori_shape': (1, 112, 8, 3, 3),
+         'ori_format': 'NCDHW',
+         'dtype': 'float16'}, (1, 1, 3, 3, 3), (1, 1, 0, 0, 2, 3), (1, 1, 1, 1, 1), 1, 'NCDHW', 0,
+        'test_conv3d_generalization_static_mode_w_range_modify_case', {"mode": "keep_rank"}
+    ]
+    conv3d_generalization(*input_list)
 
 if __name__ == '__main__':
     test_conv3d_fuzz_build_static()
-    test_conv3d_fuzz_build_dynamic()
+    test_conv3d_fuzz_build_dynamic_general()
+    test_conv3d_fuzz_build_static_unsupport()
+    test_conv3d_fuzz_build_static_modify_range()

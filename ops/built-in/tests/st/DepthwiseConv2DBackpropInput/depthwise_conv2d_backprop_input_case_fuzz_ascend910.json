@@ -146,5 +146,79 @@
           "type": "string"
         }
       ]
+    },
+    {
+      "op": "DepthwiseConv2DBackpropInput",
+      "case_name" : "test_depthwise_conv2d_backprop_input_dyanmic_nchw_fuzz_opti",
+      "calc_expect_func_file" : "test_depthwise_conv2d_backprop_input_golden.py:calc_expect_func",
+      "input_desc": [
+        {
+          "format": "ND",
+          "ori_format": "ND",
+          "shape": [4],
+          "ori_shape": [4],
+          "type": "int32",
+          "is_const": true,
+          "value": [4,16,16,16],
+          "name": "input_size"
+        },
+        {
+          "format": "NCHW",
+          "ori_format": "NCHW",
+          "shape": [16,1,1,1],
+          "ori_shape": [16,1,1,1],
+          "type": "float16",
+          "value_range": [[0, 0.001]],
+          "data_distribute" : "uniform",
+          "name": "weight"
+        },
+        {
+          "format": "NCHW",
+          "ori_format": "NCHW",
+          "shape": [4,16,16,16],
+          "ori_shape": [4,16,16,16],
+          "type": "float16",
+          "value_range": [[0, 0.001]],
+          "data_distribute" : "uniform",
+          "name": "out_backprop"
+        }
+      ],
+      "output_desc": [
+        {
+          "format": "NCHW",
+          "ori_format": "NCHW",
+          "shape": [4,16,16,16],
+          "ori_shape": [4,16,16,16],
+          "type": "float16",
+          "name": "input_grad"
+        }
+      ],
+      "attr": [
+        {
+          "name": "strides",
+          "value": [1,1,1,1],
+          "type": "list_int"
+        },
+        {
+          "name": "padding",
+          "value": "VALID",
+          "type": "string"
+        },
+        {
+          "name": "pads",
+          "value": [0,0,0,0],
+          "type": "list_int"
+        },
+        {
+          "name": "dilations",
+          "value": [1,1,1,1],
+          "type": "list_int"
+        },
+        {
+          "name": "data_format",
+          "value": "NCHW",
+          "type": "string"
+        }
+      ]
     }
 ]
