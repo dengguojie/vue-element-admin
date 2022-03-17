@@ -31,6 +31,14 @@
   paras.set_input_##key(data##key);                                                             \
   paras.UpdateInputDesc(#key, tensor_desc_##key)
 
+#define TENSOR_INPUT_WITH_ORI_SHAPE(paras, key, shape, dtype, foramt, ori_shape, ori_foramt, range)                        \
+  auto tensor_desc_##key = create_desc_shape_and_origin_shape_range(shape, dtype, foramt, ori_shape, ori_foramt,range); \
+  auto data##key = op::Data(#key);                                                              \
+  data##key.update_input_desc_x(tensor_desc_##key);                                             \
+  data##key.update_output_desc_y(tensor_desc_##key);                                            \
+  paras.set_input_##key(data##key);                                                             \
+  paras.UpdateInputDesc(#key, tensor_desc_##key)
+
 #define TENSOR_DY_INPUT_WITH_SHAPE(paras, key, idx, shape, dtype, foramt, range)                \
   auto tensor_desc_##key = create_desc_shape_range(shape, dtype, foramt, shape, foramt, range); \
   auto data##key = op::Data(#key);                                                              \

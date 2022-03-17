@@ -51,64 +51,72 @@
       ]
   },
   {
-    "case_name": "Test_BiasAdd_002",
-    "op": "BiasAdd",
-    "input_desc": [
-        {
-            "format": ["NHWC"],
-            "type": ["float16"],
-            "shape": [10,10,10,16],
-            "data_distribute": [
-                "uniform"
-            ],
-            "value_range": [
-                [
-                    0.1,
-                    1.0
-                ]
-            ],
-            "name": "x"
-        },
-        {
-            "format": ["NHWC"],
-            "type": ["float16"],
-            "shape": [16],
-            "data_distribute": [
-                "uniform"
-            ],
-            "value_range": [
-                [
-                    0.1,
-                    1.0
-                ]
-            ],
-            "name": "bias"
-        }
-    ],
-    "output_desc": [
-        {
-            "format": ["NHWC"],
-            "type": ["float16"],
-            "shape": [10, 10, 10, 16],
-            "name": "y"
-        }
-    ],
-    "attr": [
-        {
-            "name": "data_format",
-            "type": "string",
-            "value": "NHWC"
-        }
-    ]
+      "case_name": "Test_BiasAdd_002",
+      "calc_expect_func_file" : "test_bias_add_golden.py:calc_expect_func",
+      "op": "BiasAdd",
+      "input_desc": [
+          {
+              "format": ["NHWC"],
+              "type": ["float16"],
+              "shape": [-2],
+	          "typical_shape": [1240,16],
+	          "shape_range": [[1,2240],[1,2240]],
+              "data_distribute": [
+                  "uniform"
+              ],
+              "value_range": [
+                  [
+                      0.1,
+                      1.0
+                  ]
+              ],
+              "name": "x"
+          },
+          {
+              "format": ["NHWC"],
+              "type": ["float16"],
+              "shape": [-2],
+	          "typical_shape": [16],
+	          "shape_range": [[1,2240]],
+              "data_distribute": [
+                  "uniform"
+              ],
+              "value_range": [
+                  [
+                      0.1,
+                      1.0
+                  ]
+              ],
+              "name": "bias"
+          }
+      ],
+      "output_desc": [
+          {
+              "format": ["NHWC"],
+              "type": ["float16"],
+              "shape": [1240, 16],
+              "name": "y"
+          }
+      ],
+      "attr": [
+          {
+              "name": "data_format",
+              "type": "string",
+              "value": "NHWC"
+          }
+      ]
   },
   {
     "case_name": "Test_BiasAdd_003",
+    "calc_expect_func_file" : "test_bias_add_golden.py:calc_expect_func",
     "op": "BiasAdd",
     "input_desc": [
         {
             "format": ["NHWC"],
             "type": ["float16"],
-            "shape": [10,10,10,10],
+            "shape": [-2],
+            "typical_shape": [10,1,1,16],
+            "shape_range": [[1,2240],[1,2240],[1,2240],[1,2240]],
             "data_distribute": [
                 "uniform"
             ],
@@ -123,7 +131,9 @@
         {
             "format": ["NHWC"],
             "type": ["float16"],
-            "shape": [10],
+            "shape": [-2],
+            "typical_shape": [16],
+            "shape_range": [[1,2240]],
             "data_distribute": [
                 "uniform"
             ],
@@ -140,7 +150,7 @@
         {
             "format": ["NHWC"],
             "type": ["float16"],
-            "shape": [10, 10, 10, 10],
+            "shape": [10,1,1,16],
             "name": "y"
         }
     ],
@@ -151,5 +161,5 @@
             "value": "NHWC"
         }
     ]
-  }
+}
 ]
