@@ -59,7 +59,7 @@ class Constant:
     # max int32
     MAX_INT32 = 2 ** 31 - 1
     # workspace size
-    WORKSPACE_SIZE = 2 ** 30
+    WORKSPACE_SIZE = 2 ** 31 - 1
 
 
 # 'pylint: disable=too-many-arguments,too-many-statements,too-many-branches
@@ -184,18 +184,38 @@ class MaxpoolGrad:
         self.init_gm_tensor()
 
         # define some scalar
-        self.scalar_zero = self.tik_instance.Scalar(dtype='float32',
-                                                    name='scalar_zero')
-        self.scalar_zero_fp16 = self.tik_instance.Scalar(dtype='float16',
-                                                         name='scalar_zero_fp16')
-        self.offset_gm = self.tik_instance.Scalar(dtype='int64',
-                                                  name='offset_gm')
+        self.scalar_zero = self.tik_instance.Scalar(dtype='float32', name='scalar_zero')
+        self.scalar_zero_fp16 = self.tik_instance.Scalar(dtype='float16', name='scalar_zero_fp16')
+        self.offset_gm = self.tik_instance.Scalar(dtype='int64', name='offset_gm')
+        self.offset_overlap = self.tik_instance.Scalar(dtype='int64',  name='offset_overlap')
         self.temp_scalar_int64 = self.tik_instance.Scalar(dtype='int64', name='temp_scalar_int64')
 
         self.scalar_zero_fp16.set_as(0)
         self.scalar_zero.set_as(0)
 
         # tiling params
+        self.init_tiling_param()
+
+        self.resnet50_branch = resnet50.MaxpoolGradV2Resnet50(self.dtype,
+                                                              self.ori_input_gm, self.grad_gm, self.argmax_gm,
+                                                              self.res_gm, self.tik_instance)
+
+        self.total_repeate_time = None
+        self.remain_ele = None
+        self.repeate_max_time = None
+        self.remain_repeate_time = None
+        self.ele_num = None
+        self.ub_a = None
+        self.ub_b = None
+        self.ub_c = None
+        self.ub_d = None
+        self.ub_e = None
+        self.pad = None
+        self.pad_value = None
+
+    def init_tiling_param(self):
+        """init tiling params
+        """
         self.tiling_mode = self.tik_instance.Scalar("int32", name="tiling_mode")
         self.real_block = self.tik_instance.Scalar("int32", name="real_block")
         self.block_cycle = self.tik_instance.Scalar("int32", name="block_cycle")
@@ -227,23 +247,6 @@ class MaxpoolGrad:
         self.shape_ho = self.tik_instance.Scalar("int32", name="shape_ho")
         self.shape_hi = self.tik_instance.Scalar("int32", name="shape_hi")
         self.one_window_size = self.tik_instance.Scalar("int32", name="one_window_size")
-
-        self.resnet50_branch = resnet50.MaxpoolGradV2Resnet50(self.dtype,
-                                                              self.ori_input_gm, self.grad_gm, self.argmax_gm,
-                                                              self.res_gm, self.tik_instance)
-
-        self.total_repeate_time = None
-        self.remain_ele = None
-        self.repeate_max_time = None
-        self.remain_repeate_time = None
-        self.ele_num = None
-        self.ub_a = None
-        self.ub_b = None
-        self.ub_c = None
-        self.ub_d = None
-        self.ub_e = None
-        self.pad = None
-        self.pad_value = None
 
     def get_tiling_args(self):
         """Get runtime params from tiling
@@ -1360,14 +1363,16 @@ class MaxpoolGrad:
         col2img_ub_shape = (each_process_hi, each_process_wi, Constant.C0)
         col2img_fp32_ub = self.ub_d
 
+        # when tile h to block, n*c1 is small and no need to calc offset for overlap
         if offset_gm_block is not None:
             self.offset_gm.set_as(offset_gm_block)
+            self.offset_overlap.set_as(offset_gm_block)
 
         overlap_shape_w = self.tik_instance.Scalar(dtype='int64', name='overlap_shape_w')
         overlap_offset = self.tik_instance.Scalar(dtype='int64', name='overlap_offset')
         with self.tik_instance.if_scope(self.stride_h < self.kh):
             overlap_shape_w.set_as((self.wi + pad_left + pad_right) * Constant.C0)
-            overlap_offset.set_as(self.offset_gm)
+            overlap_offset.set_as(self.offset_overlap)
             # save every h overlap on gm
             overlap_buffer = self.overlap_gm
 
@@ -1936,6 +1941,9 @@ class MaxpoolGrad:
                                 shape = (self.ho, self.wo, self.hi, self.wi)
                                 self.offset_gm.set_as(
                                     (n_index * self.c1 + c1_index) * self.hi * self.wi * Constant.C0)
+                                self.offset_overlap.set_as(
+                                    (n_index * self.c1 + c1_index) * (self.kh - self.stride_h) * 
+                                    (self.wi + self.pad_left + self.pad_right) * Constant.C0)
                                 with self.tik_instance.if_scope(self.tiling_mode == 2):
                                     with self.tik_instance.new_stmt_scope():
                                         self._tilling_ho_wo(self.each_process_wo, n_index, c1_index,
@@ -2116,6 +2124,9 @@ class MaxpoolGrad:
                             with self.tik_instance.for_range(0, self.nc1, thread_num=1) as nc1_index:
                                 self.offset_gm.set_as((block_index * self.nc1 + nc1_index) *
                                                     self.hi * self.wi * Constant.C0)
+                                self.offset_overlap.set_as((block_index * self.nc1 + nc1_index) * 
+                                                    (self.kh - self.stride_h) * 
+                                                    (self.wi + self.pad_left + self.pad_right) * Constant.C0)
                                 n_index = (block_index * self.nc1 + nc1_index) // self.c1
                                 c1_index = (block_index * self.nc1 + nc1_index) % self.c1
 

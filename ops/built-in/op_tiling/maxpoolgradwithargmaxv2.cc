@@ -658,20 +658,29 @@ bool MaxPoolGradWithArgmaxV2Tiling(const std::string& op_type, const TeOpParas& 
   // block_dim and workspace, use fot tik op
   run_info.block_dim = tiling_params.act_core_num;
   const int64_t WORKSPACE_DIM = 1;
-  const int64_t WORKSPACE_SIZE = 1073741824;
+  const int64_t WORKSPACE_SIZE = 2147483647;
   vector<int64_t> workspace(WORKSPACE_DIM, WORKSPACE_SIZE);
   run_info.workspaces = workspace;
 
-  if (compile_params.kh > compile_params.stride_h) {
-    // calc actual used workspace
-    int64_t n = input_shape[SHAPE_INDEX_N];
-    int64_t c1 = input_shape[SHAPE_INDEX_C1];
-    int64_t hi = input_shape[SHAPE_INDEX_H];
-    int64_t wi = input_shape[SHAPE_INDEX_W];
-    int64_t actual_workspace = n * c1 * hi * wi * BLOCK_ALLIGN * DTYPE_SIZE_FP32;
-    if (actual_workspace > WORKSPACE_SIZE) {
-      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "Overlap is too large to support, please decrease input_shape.");
-      return false;
+  if (tiling_params.tiling_mode == TILING_MODE_2){
+    // check workspace support
+    if (compile_params.kh > compile_params.stride_h) {
+      // calc actual used workspace
+      int64_t n = input_shape[SHAPE_INDEX_N];
+      int64_t c1 = input_shape[SHAPE_INDEX_C1];
+      int64_t hi = input_shape[SHAPE_INDEX_H];
+      int64_t wi = input_shape[SHAPE_INDEX_W];
+      int64_t actual_workspace;
+      if (tiling_params.if_block == 1){
+        actual_workspace = n * c1 * hi * wi * BLOCK_ALLIGN * DTYPE_SIZE_FP32;
+      } else {
+        wi = tiling_params.wi + tiling_params.pad_left + tiling_params.pad_right;
+        actual_workspace = n * c1 * (compile_params.kh - compile_params.stride_h) * wi * BLOCK_ALLIGN * DTYPE_SIZE_FP32;
+      }
+      if (actual_workspace > WORKSPACE_SIZE) {
+        VECTOR_INNER_ERR_REPORT_TILIING(op_type, "Overlap is too large to support, please decrease input_shape.");
+        return false;
+      }
     }
   }
 
