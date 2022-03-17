@@ -16,7 +16,6 @@ def _gen_data_case(case, expect, case_name_val, support_expect=True):
             "format_expect": [],
             "support_expect": support_expect}
 
-
 def _run_api_end_with_d(
     fmap={'ori_shape': (1, 8, 60, 88, 32), 'shape': (1, 8, 60, 88, 32),
           'ori_format': 'NDHWC', 'format': 'NDHWC', 'dtype': 'float16'},
