@@ -73,14 +73,15 @@ class ProdForceSeA:
                                                   name="tiling_gm",
                                                   scope=tik.scope_gm)
         self.core_nums = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
-        self.cur_cce_product = tbe_platform.get_soc_spec("SOC_VERSION")
+        self.is_support_v4dtrans = tbe_platform.api_check_support("tik.v4dtrans", "float32")
         (net_deriv_dtype, in_deriv_dtype, nlist_dtype, natoms_dtype, force_dtype) = dtypes
         (natoms_shape) = shapes
-        (n_a_sel, n_r_sel, split_count, split_index) = attrs
+        (n_a_sel, n_r_sel, split_count, split_index, impl_mode) = attrs
         self.n_a_sel = n_a_sel
         self.n_r_sel = n_r_sel
         self.split_count = split_count
         self.split_index = split_index
+        self.is_high_performance_mode = impl_mode == "high_performance"
         self.nnei = n_a_sel + n_r_sel
         self.net_deriv_dtype = net_deriv_dtype
         self.in_deriv_dtype = in_deriv_dtype
@@ -95,11 +96,11 @@ class ProdForceSeA:
         self.core_loop_left = self.tik_instance.Scalar("int64", name="core_loop_left")
         self.core_offset = self.tik_instance.Scalar("int64", name="core_offset")
         self.core_nums_used = self.tik_instance.Scalar("int64", name="core_nums_used")
-        if self.cur_cce_product in (tbe_platform.ASCEND_710,):
+        if self.is_support_v4dtrans:
             nnei_unit_max = _floor_fill(Constant.UB_MAX_SIZE // 2 // Constant.UNIT_MAX_LEN_0, Constant.BLOCK_FLOAT32)
         else:
             nnei_unit_max = _floor_fill(Constant.UB_MAX_SIZE // 2 // Constant.UNIT_MAX_LEN_1, Constant.MASK_FLOAT32)
-        self.nnei_unit_len = _ceil_fill(self.nnei, Constant.UB_MAX_SIZE)
+        self.nnei_unit_len = _ceil_fill(self.nnei, Constant.MASK_FLOAT32)
         if self.nnei_unit_len > nnei_unit_max:
             self.nnei_unit_len = nnei_unit_max
         self.nall_ub_len = _floor_fill(Constant.UB_MAX_SIZE // 2 - self.nnei_unit_len * 14,
@@ -272,7 +273,7 @@ class ProdForceSeA:
                         self.tik_instance.data_move(deriv_input_ub_fp32,
                                                     self.in_deriv_gm[deriv_offset * 3],
                                                     0, 1, 3 * ndescrpt // Constant.BLOCK_FLOAT32, 0, 0)
-                        if self.cur_cce_product in (tbe_platform.ASCEND_710,):
+                        if self.is_support_v4dtrans:
                             self.tik_instance.v4dtrans(False, deriv_trans_ub_fp32[0, 0, 0, 0],
                                                        deriv_input_ub_fp32[0, 0, 0, 0], ndescrpt, 3)
                         else:
@@ -309,7 +310,7 @@ class ProdForceSeA:
                                                    deriv_trans_ub_fp32[2 * ndescrpt + vmul_floor],
                                                    deriv_input_ub_fp32[vmul_floor],
                                                    1, 1, 1, 1, 8, 8, 8)
-                        if self.cur_cce_product in (tbe_platform.ASCEND_710,):
+                        if self.is_support_v4dtrans:
                             vcpadd_repeat_1 = (3 * ndescrpt) // Constant.MASK_FLOAT32
                             vcpadd_left_1 = (3 * ndescrpt) % Constant.MASK_FLOAT32
                             if vcpadd_repeat_1 > 0:
@@ -405,7 +406,7 @@ class ProdForceSeA:
                         self.tik_instance.vmuls(Constant.NLOC_UNIT_LEN * 3, force_add_ub_fp32,
                             force_add_ub_fp32, -1, 1, 1, 1, 8, 8)
                         force_offset = frame_idx * self.nall * 3 + nloc_offset_vector + nloc_offset
-                        if self.cur_cce_product in (tbe_platform.ASCEND_710,):
+                        if self.is_support_v4dtrans:
                             self.tik_instance.vadds(Constant.NLOC_UNIT_LEN, force_assis_ub_fp32,
                                 force_add_ub_fp32, 0, 3, 0, 0, 8, Constant.NLOC_UNIT_LEN, stride_unit=2)
                         else:
@@ -431,7 +432,7 @@ class ProdForceSeA:
                     #second
                     with self.tik_instance.for_range(0, 3) as local_idx:
                         with self.tik_instance.for_range(0, Constant.NLOC_UNIT_LEN) as nu_idx:
-                            if self.cur_cce_product in (tbe_platform.ASCEND_710,):
+                            if self.is_support_v4dtrans and self.is_high_performance_mode:
                                 nlist_assis_ub_int32 = self.tik_instance.Tensor(self.nlist_dtype,
                                                                                 (self.nnei_unit_len, ),
                                                                                 name="nlist_assis_ub_int32",
@@ -481,7 +482,7 @@ class ProdForceSeA:
                                     0, full_left, 1, 8)
                             offset = \
                                 Constant.NLOC_UNIT_LEN * self.nnei_unit_len * local_idx + self.nnei_unit_len * nu_idx
-                            if self.cur_cce_product in (tbe_platform.ASCEND_710,):
+                            if self.is_support_v4dtrans and self.is_high_performance_mode:
                                 self.tik_instance.vscatter(self.nnei_unit_len, force_out_ub_fp32,
                                                            deriv_nnei_vcpadd_ub_fp32[offset],
                                                            nlist_assis_ub_int32,
@@ -549,7 +550,7 @@ class ProdForceSeA:
                         self.tik_instance.data_move(deriv_input_ub_fp32,
                                                     self.in_deriv_gm[deriv_offset * 3],
                                                     0, 1, 3 * ndescrpt_tail // Constant.BLOCK_FLOAT32, 0, 0)
-                        if self.cur_cce_product in (tbe_platform.ASCEND_710,):
+                        if self.is_support_v4dtrans:
                             self.tik_instance.v4dtrans(False, deriv_trans_ub_fp32[0, 0, 0, 0],
                                                        deriv_input_ub_fp32[0, 0, 0, 0], ndescrpt_tail, 3)
                         else:
@@ -586,7 +587,7 @@ class ProdForceSeA:
                                                    deriv_trans_ub_fp32[2 * ndescrpt_tail + vmul_floor],
                                                    deriv_input_ub_fp32[vmul_floor],
                                                    1, 1, 1, 1, 8, 8, 8)
-                        if self.cur_cce_product in (tbe_platform.ASCEND_710,):
+                        if self.is_support_v4dtrans:
                             vcpadd_repeat_1 = (3 * ndescrpt_tail) // Constant.MASK_FLOAT32
                             vcpadd_left_1 = (3 * ndescrpt_tail) % Constant.MASK_FLOAT32
                             if vcpadd_repeat_1 > 0:
@@ -646,14 +647,14 @@ class ProdForceSeA:
                                                            nnei_tail_loop,
                                                            1, 1, 1, 8, 8, 8)
                                     self.tik_instance.vadd(Constant.MASK_FLOAT32,
-                                                           deriv_nnei_vcpadd_ub_fp32[dev_vadd_offset],
-                                                           deriv_nnei_vcpadd_ub_fp32[dev_vadd_offset],
+                                                           deriv_nnei_vcpadd_ub_fp32[dev_vadd_base],
+                                                           deriv_nnei_vcpadd_ub_fp32[dev_vadd_base],
                                                            deriv_input_ub_fp32[nnei_tail_fill * idx + nnei_dst_len * 2],
                                                            nnei_tail_loop,
                                                            1, 1, 1, 8, 8, 8)
                                     self.tik_instance.vadd(Constant.MASK_FLOAT32,
-                                                           deriv_nnei_vcpadd_ub_fp32[dev_vadd_offset],
-                                                           deriv_nnei_vcpadd_ub_fp32[dev_vadd_offset],
+                                                           deriv_nnei_vcpadd_ub_fp32[dev_vadd_base],
+                                                           deriv_nnei_vcpadd_ub_fp32[dev_vadd_base],
                                                            deriv_input_ub_fp32[nnei_tail_fill * idx + nnei_dst_len * 3],
                                                            nnei_tail_loop,
                                                            1, 1, 1, 8, 8, 8)
@@ -713,7 +714,7 @@ class ProdForceSeA:
                         self.tik_instance.vmuls(Constant.NLOC_UNIT_LEN * 3, force_add_ub_fp32,
                                                 force_add_ub_fp32, -1, 1, 1, 1, 8, 8)
                         force_offset = frame_idx * self.nall * 3 + nloc_offset_vector + nloc_offset
-                        if self.cur_cce_product in (tbe_platform.ASCEND_710,):
+                        if self.is_support_v4dtrans:
                             self.tik_instance.vadds(Constant.NLOC_UNIT_LEN, force_assis_ub_fp32,
                                                     force_add_ub_fp32, 0, 3, 0, 0, 8,
                                                     Constant.NLOC_UNIT_LEN, stride_unit=2)
@@ -741,7 +742,7 @@ class ProdForceSeA:
                     with self.tik_instance.for_range(0, 3) as local_idx:
                         nnei_mask_len = _ceil_fill(nnei_tail, Constant.MASK_FLOAT32)
                         with self.tik_instance.for_range(0, Constant.NLOC_UNIT_LEN) as nu_idx:
-                            if self.cur_cce_product in (tbe_platform.ASCEND_710,):
+                            if self.is_support_v4dtrans and self.is_high_performance_mode:
                                 nlist_assis_ub_int32 = self.tik_instance.Tensor(self.nlist_dtype,
                                                                                 (nnei_mask_len, ),
                                                                                 name="nlist_assis_ub_int32",
@@ -791,7 +792,7 @@ class ProdForceSeA:
                                     force_out_ub_fp32[full_loop * 255 * Constant.MASK_FLOAT32],
                                     0, full_left, 1, 8)
                             offset = Constant.NLOC_UNIT_LEN * nnei_tail_fill * local_idx + nnei_tail_fill * nu_idx
-                            if self.cur_cce_product in (tbe_platform.ASCEND_710,):
+                            if self.is_support_v4dtrans and self.is_high_performance_mode:
                                 self.tik_instance.vscatter(nnei_tail, force_out_ub_fp32,
                                                         deriv_nnei_vcpadd_ub_fp32[offset],
                                                         nlist_assis_ub_int32,
@@ -867,7 +868,7 @@ class ProdForceSeA:
                             self.tik_instance.data_move(deriv_input_ub_fp32,
                                                         self.in_deriv_gm[deriv_offset * 3],
                                                         0, 1, 3 * ndescrpt // Constant.BLOCK_FLOAT32, 0, 0)
-                            if self.cur_cce_product in (tbe_platform.ASCEND_710,):
+                            if self.is_support_v4dtrans:
                                 self.tik_instance.v4dtrans(False, deriv_trans_ub_fp32[0, 0, 0, 0],
                                                         deriv_input_ub_fp32[0, 0, 0, 0], ndescrpt, 3)
                             else:
@@ -904,7 +905,7 @@ class ProdForceSeA:
                                                     deriv_trans_ub_fp32[2 * ndescrpt + vmul_floor],
                                                     deriv_input_ub_fp32[vmul_floor],
                                                     1, 1, 1, 1, 8, 8, 8)
-                            if self.cur_cce_product in (tbe_platform.ASCEND_710,):
+                            if self.is_support_v4dtrans:
                                 vcpadd_repeat_1 = (3 * ndescrpt) // Constant.MASK_FLOAT32
                                 vcpadd_left_1 = (3 * ndescrpt) % Constant.MASK_FLOAT32
                                 if vcpadd_repeat_1 > 0:
@@ -998,7 +999,7 @@ class ProdForceSeA:
                             self.tik_instance.vmuls(1 * 3, force_add_ub_l_fp32,
                                 force_add_ub_l_fp32, -1, 1, 1, 1, 8, 8)
                             force_offset = frame_idx * self.nall * 3 + nloc_offset_vector + nloc_offset + l_idx
-                            if self.cur_cce_product in (tbe_platform.ASCEND_710,):
+                            if self.is_support_v4dtrans:
                                 self.tik_instance.vadds(1, force_assis_ub_l_fp32,
                                     force_add_ub_l_fp32, 0, 3, 0, 0, 8, 1, stride_unit=2)
                             else:
@@ -1023,7 +1024,7 @@ class ProdForceSeA:
 
                         #second
                         with self.tik_instance.for_range(0, 3) as local_idx:
-                            if self.cur_cce_product in (tbe_platform.ASCEND_710,):
+                            if self.is_support_v4dtrans and self.is_high_performance_mode:
                                 nlist_assis_ub_int32 = self.tik_instance.Tensor(self.nlist_dtype,
                                                                                 (self.nnei_unit_len, ),
                                                                                 name="nlist_assis_ub_int32",
@@ -1072,7 +1073,7 @@ class ProdForceSeA:
                                     force_out_ub_fp32[full_loop * 255 * Constant.MASK_FLOAT32],
                                     0, full_left, 1, 8)
                             offset = self.nnei_unit_len * local_idx
-                            if self.cur_cce_product in (tbe_platform.ASCEND_710,):
+                            if self.is_support_v4dtrans and self.is_high_performance_mode:
                                 self.tik_instance.vscatter(self.nnei_unit_len, force_out_ub_fp32,
                                                         deriv_nnei_vcpadd_ub_fp32[offset],
                                                         nlist_assis_ub_int32,
@@ -1141,7 +1142,7 @@ class ProdForceSeA:
                             self.tik_instance.data_move(deriv_input_ub_fp32,
                                                         self.in_deriv_gm[deriv_offset * 3],
                                                         0, 1, 3 * ndescrpt_tail // Constant.BLOCK_FLOAT32, 0, 0)
-                            if self.cur_cce_product in (tbe_platform.ASCEND_710,):
+                            if self.is_support_v4dtrans:
                                 self.tik_instance.v4dtrans(False, deriv_trans_ub_fp32[0, 0, 0, 0],
                                                         deriv_input_ub_fp32[0, 0, 0, 0], ndescrpt_tail, 3)
                             else:
@@ -1178,7 +1179,7 @@ class ProdForceSeA:
                                                     deriv_trans_ub_fp32[2 * ndescrpt_tail + vmul_floor],
                                                     deriv_input_ub_fp32[vmul_floor],
                                                     1, 1, 1, 1, 8, 8, 8)
-                            if self.cur_cce_product in (tbe_platform.ASCEND_710,):
+                            if self.is_support_v4dtrans:
                                 vcpadd_repeat_1 = (3 * ndescrpt_tail) // Constant.MASK_FLOAT32
                                 vcpadd_left_1 = (3 * ndescrpt_tail) % Constant.MASK_FLOAT32
                                 if vcpadd_repeat_1 > 0:
@@ -1273,7 +1274,7 @@ class ProdForceSeA:
                             self.tik_instance.vmuls(1 * 3, force_add_ub_fp32,
                                 force_add_ub_fp32, -1, 1, 1, 1, 8, 8)
                             force_offset = frame_idx * self.nall * 3 + nloc_offset_vector + nloc_offset + l_idx
-                            if self.cur_cce_product in (tbe_platform.ASCEND_710,):
+                            if self.is_support_v4dtrans:
                                 self.tik_instance.vadds(1, force_assis_ub_fp32,
                                     force_add_ub_fp32, 0, 3, 0, 0, 8, 1, stride_unit=2)
                             else:
@@ -1299,7 +1300,7 @@ class ProdForceSeA:
                         #second
                         with self.tik_instance.for_range(0, 3) as local_idx:
                             nnei_mask_len = _ceil_fill(nnei_tail, Constant.MASK_FLOAT32)
-                            if self.cur_cce_product in (tbe_platform.ASCEND_710,):
+                            if self.is_support_v4dtrans and self.is_high_performance_mode:
                                 nlist_assis_ub_int32 = self.tik_instance.Tensor(self.nlist_dtype,
                                                                                 (nnei_mask_len, ),
                                                                                 name="nlist_assis_ub_int32",
@@ -1348,7 +1349,7 @@ class ProdForceSeA:
                                     force_out_ub_fp32[full_loop * 255 * Constant.MASK_FLOAT32],
                                     0, full_left, 1, 8)
                             offset = nnei_tail_fill * local_idx
-                            if self.cur_cce_product in (tbe_platform.ASCEND_710,):
+                            if self.is_support_v4dtrans and self.is_high_performance_mode:
                                 self.tik_instance.vscatter(nnei_tail, force_out_ub_fp32,
                                                            deriv_nnei_vcpadd_ub_fp32[offset],
                                                            nlist_assis_ub_int32,
@@ -1432,7 +1433,7 @@ def _para_dtype_check(args_list):
                             para_check.KERNEL_NAME)
 def prod_force_se_a(net_deriv, in_deriv, nlist, natoms,
                     force, n_a_sel, n_r_sel, split_count, split_index,
-                    kernel_name="prod_force_se_a"):
+                    kernel_name="prod_force_se_a", impl_mode="high_precision"):
     """
     prod_force_se_a
     """
@@ -1447,6 +1448,6 @@ def prod_force_se_a(net_deriv, in_deriv, nlist, natoms,
     dtypes = (net_deriv_dtype, in_deriv_dtype, nlist_dtype,
               natoms_dtype, force_dtype)
     shapes = (natoms_shape)
-    attrs = (n_a_sel, n_r_sel, split_count, split_index)
+    attrs = (n_a_sel, n_r_sel, split_count, split_index, impl_mode)
     obj = ProdForceSeA(attrs, dtypes, shapes)
     return obj.prod_force_se_a_operator(kernel_name)
