@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 2022 Huawei Technologies Co., Ltd
+# Copyright (c) Huawei Technologies Co., Ltd. 2022. All rights reserved. 
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -98,6 +98,9 @@ main() {
 
   # step 5: do opc compile
   opc_install_path="/usr/local/Ascend/latest/compiler/python/site-packages"
+  if [ $(id -u) -ne 0 ];then
+    opc_install_path="${HOME}/Ascend/latest/compiler/python/site-packages"
+  fi
   cmd="python3.7 ${opc_install_path}/opc_tool/opc.py ${op_python_full_path} --main_func=${op_func} --input_param=${binary_config_full_path} --soc_version=${soc_version} --output=${binary_compile_full_path}"
   echo "[INFO]op:${op_type} do opc compile cmdis is ${cmd}"
   ${cmd}
