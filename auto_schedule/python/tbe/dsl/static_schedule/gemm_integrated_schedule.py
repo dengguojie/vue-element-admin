@@ -4744,7 +4744,9 @@ class GemmSchedule:
                                     "json_info_compress_parameters", conflict)
         tensor_len = len(compress_tensor.shape)
         # transform data to continue by block_size
-        if batch_dim * n_dim * m_dim * reduce_dim > 1:  # unzip don't support multi core
+        al1_multi_m = self.tiling.get("AL1_shape")[self.IDX_MULTI_M1]
+        if batch_dim * n_dim * m_dim * reduce_dim > 1 or (isinstance(al1_multi_m, int) and al1_multi_m > 1):
+            # unzip don't support set hoist_axis when multi core or al1_multi_m > 1
             self.sch[compress_tensor].emit_insn(compress_tensor.op.axis[tensor_len - self.FRACTAL_Z_LEN],
                                                 "unzip",
                                                 {"compress_mode": mode,

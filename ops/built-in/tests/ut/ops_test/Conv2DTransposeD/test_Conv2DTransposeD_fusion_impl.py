@@ -194,6 +194,74 @@ def _gen_conv2d_transpose_op_fusion_case():
 _gen_conv2d_transpose_op_fusion_case()
 
 
+def _test_conv2d_transpose_fusion_exception(
+    soc_version,
+    case_dtype,
+    dedy_shape,
+    filter_shape,
+    dedx_shape,
+    padding,
+    stride,
+    dilations,
+    bias_flag,
+    fusion_para,
+):
+    """
+    the fusion test for conv2dTranspose
+    """
+
+    def _test_conv2d_transpose_ubfusion_exception(test_arg):
+        with tvm.target.cce():
+            # gen conv2dtranspose
+            out, tensor_list = _gen_conv2dtranpose_node(
+                dedy_shape,
+                filter_shape,
+                dedx_shape,
+                padding,
+                stride,
+                dilations,
+                bias_flag,
+                case_dtype,
+            )
+            channel_in = dedx_shape[1]
+            if fusion_para[2]:
+                shape_deq = (1, util.ceil(channel_in, 16), 1, 1, 16)
+            else:
+                shape_deq = (1, 1, 1, 1, 16)
+            deq_tensor = tvm.placeholder(
+                shape_deq,
+                name="deq_scale",
+                dtype="float16",
+                attrs={"ori_shape": [channel_in if fusion_para[2] else 1]},
+            )
+            tensor_list.append(deq_tensor)
+            out = ascend_dequant_compute(out, deq_tensor, None, fusion_para[1], fusion_para[3])
+            out = ascend_quant_compute(out, None, fusion_para[5], fusion_para[6], fusion_para[4], fusion_para[7])
+            tensor_list.append(out)
+            try:
+                sch = tbe.auto_schedule(out)
+                config = {
+                    "print_ir": False,
+                    "need_build": True,
+                    "name": _gen_kernel_name(dedy_shape, filter_shape, dedx_shape, stride, fusion_para[0]),
+                    "tensor_list": tensor_list,
+                }
+                tbe.cce_build_code(sch, config)
+            except RuntimeError as e:
+                print(e)
+                print('_gen_conv2d_transpose_op_fusion_exception_case success')
+
+    return _test_conv2d_transpose_ubfusion_exception
+
+
+def _gen_conv2d_transpose_op_fusion_exception_case():
+    for fusion_case in conv2d_transpose_ut_testcase.conv2d_transpose_ut_fusion_exception_case:
+        ut_case.add_cust_test_func(fusion_case[0], test_func=_test_conv2d_transpose_fusion_exception(*fusion_case))
+
+
+_gen_conv2d_transpose_op_fusion_exception_case()
+
+
 if __name__ == "__main__":
     ut_case.run(["Ascend910", "Ascend710", "Ascend310"])
     sys.exit(0)

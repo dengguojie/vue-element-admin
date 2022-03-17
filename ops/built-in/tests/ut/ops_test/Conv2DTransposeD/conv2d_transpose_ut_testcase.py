@@ -256,9 +256,9 @@ conv2d_transpose_ut_fusion_case = [
         ["Ascend310"],
         "int8",
         (1, 32, 3, 3),
-        (32, 32, 3, 3),
+        (32, 32, 1, 1),
         (1, 32, 3, 3),
-        (1, 1, 1, 1),
+        (0, 0, 0, 0),
         (1, 1, 1, 1),
         (1, 1, 1, 1),
         True,
@@ -289,4 +289,34 @@ conv2d_transpose_ut_fusion_case = [
         True,
         ["requant", False, True],
     ),
+]
+
+
+conv2d_transpose_ut_fusion_exception_case = [
+    # soc, dtype, dedy_shape, filter_shape, dedx_shape, padding, stride, dilution, bias_flag, fusionpass
+    # deconv + dequant + quant [quant, sqrt, vector_mode, relu_mode, sqrt, scalar, offset, round_mode]
+    (
+        ["Ascend310", "Ascend710", "Ascend910"],
+        "int8",
+        (2, 32, 3, 3),
+        (32, 32, 3, 3),
+        (2, 32, 3, 3),
+        (1, 1, 1, 1),
+        (1, 1, 1, 1),
+        (1, 1, 1, 1),
+        True,
+        ["quant", False, False, False, False, 1.1, -7, 'ceil'],
+    ),
+    (
+        ["Ascend310", "Ascend710", "Ascend910"],
+        "int8",
+        (2, 32, 3, 3),
+        (32, 32, 1, 1),
+        (2, 32, 3, 3),
+        (0, 0, 0, 0),
+        (1, 1, 1, 1),
+        (1, 1, 1, 1),
+        True,
+        ["quant", True, True, False, True, 0.2, 0, 'ceil'],
+    )
 ]

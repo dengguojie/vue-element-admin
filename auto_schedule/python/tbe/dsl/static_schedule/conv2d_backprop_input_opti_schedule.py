@@ -24,6 +24,7 @@ from tbe import tvm
 from tbe.common import platform as tbe_platform
 from tbe.common.platform import platform_info as tbe_platform_info
 from tbe.common.tiling.get_tiling import get_tiling
+from tbe.common.utils.errormgr import error_manager_cube
 from tbe.common.utils.errormgr import error_manager_util
 from tbe.dsl.compute import cube_util
 from tbe.dsl.compute.conv2d_backprop_input_opti_compute import DeConvKernelSize1Pattern
@@ -2397,9 +2398,11 @@ class Conv2dDxOptiSchedule:
                                                                    "dma_padding")
                     elif tensor_name == "cast_i8_ub":
                         cast_i8_ub = TENSOR_MAP.get(tensor_name)
-                        round_mode_emit_insn = ("vector_conv_%s" % quan_para.get("q_round").lower())
-                        if cube_util.is_mini_version():
-                            round_mode_emit_insn = "vector_conv"
+                        round_mode = quan_para.get("q_round").lower()
+                        if round_mode != 'round':
+                            error_manager_cube.raise_err_message_cube(
+                                f'Round mode should be Round only, {round_mode} is not supported')
+                        round_mode_emit_insn = "vector_conv"
                         sch[cast_i8_ub].emit_insn(cast_i8_ub.op.axis[0], round_mode_emit_insn)
 
             if fusion_type in [FUSION_DX_ADD_DRELU, FUSION_DX_DRELU]:

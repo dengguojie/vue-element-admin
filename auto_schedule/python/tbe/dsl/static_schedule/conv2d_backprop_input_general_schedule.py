@@ -24,6 +24,7 @@ from tbe.common import platform as tbe_platform
 from tbe.common.context import op_context
 from tbe.common.platform import platform_info as tbe_platform_info
 from tbe.common.tiling import tiling_api
+from tbe.common.utils.errormgr import error_manager_cube
 from tbe.common.utils.errormgr import error_manager_util
 from tbe.dsl.compute.conv2d_backprop_input_general_compute import DeConvPattern
 from tbe.dsl.compute import cube_util
@@ -2347,15 +2348,11 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):
                     sch[ub_tensor].reorder(coo, *axis_list)
                     sch[ub_tensor].emit_insn(sch[ub_tensor].op.axis[2], "vector_auto")
                 elif ub_tensor.op.name == "cast_i8_ub":
-                    if (
-                        cube_util.is_v200_version_new()
-                        or cube_util.is_lhisi_version()
-                    ):
-                        conv_mode = "vector_conv_{}".format(
-                            tensor_attr.get("q_mode").lower()
-                        )
-                    else:
-                        conv_mode = "vector_conv"
+                    round_mode = tensor_attr.get("q_mode").lower()
+                    if round_mode != 'round':
+                        error_manager_cube.raise_err_message_cube(
+                            f'Round mode should be Round only, {round_mode} is not supported')
+                    conv_mode = "vector_conv"
                     sch_agent[ub_tensor].emit_insn(
                         sch_agent[ub_tensor].op.axis[0], conv_mode
                     )
