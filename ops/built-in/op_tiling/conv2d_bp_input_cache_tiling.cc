@@ -58,6 +58,7 @@ static const int32_t kIdxTwo = 2;
 static const int32_t kIdxThree = 3;
 static const int32_t kIdxFour = 4;
 static const int32_t kNumTwo = 2;
+static const int32_t kL0CutOffPointNum = 6;
 
 struct FactorArray {
   int32_t min_kl1_dim[3L];
@@ -301,16 +302,39 @@ inline bool CheckL0Overflow(const int32_t &m0, const int32_t &n0, const int32_t 
   return !l0_invalid;
 }
 
+int32_t gcd(int32_t param1, int32_t param2) {
+  // get greatest common divisor of param1 and param2
+  if (param1 < param2) {
+    swap(param1, param2);
+  }
+  if (param2 == 0) {
+    return 0;
+  }
+  if (param1 % param2 == 0) {
+    return param2;
+  } else {
+    return gcd(param2, param1 - param2);
+  }
+}
+
+inline int32_t InitialKl1(int32_t &k_l0, int32_t &k_hw) {
+  int32_t gcd_num = gcd(k_l0, k_hw);
+  if (gcd_num == 0 || k_hw == 0) {
+    return 0;
+  }
+  int32_t lcm_num = k_l0 * k_hw / gcd_num;
+  int32_t k_l1 = lcm_num / k_hw;
+  return k_l1;
+}
+
 bool CheckL1Overflow(const DxParas &params, const Tiling &tiling,
-                     const int32_t &m0, const int32_t &n0, const int32_t &k0) {
+                     const int32_t &m0, const int32_t &n0, int32_t &k0) {
   int32_t l1_fp16_size = kL1Size / kFp16Bytes;
   int32_t m_al1 = 1;
   int32_t n_bl1 = 1;
-  int32_t k_al1_optional[2L] = {0, 0};
-  CHECK_OP_FUNC(
-      !GenNearestFactor((k0 + params.kh * params.kw - 1) / (params.kh * params.kw), params.co1, k_al1_optional),
-      return false, "get k_al1_factor failed");
-  int32_t k_al1 = k_al1_optional[1];
+  int32_t k_hw = (params.kh * params.kw);
+  int32_t k_al1 = InitialKl1(k0, k_hw);
+  CHECK_OP_FUNC(k_al1 == 0, return false, "initial kl1 failed");
   int32_t h_num = (params.kh - 1) + m_al1 * m0 * kBlockSize / params.w + khnumWNoDivided;
   if (m_al1 * m0 * kBlockSize < params.w) {
     h_num = (params.kh - 1) + khnumWNoDivided;
@@ -434,7 +458,7 @@ bool GetCandMKN(const DxParas &params, Tiling &tiling) {
   // get cand from m
   int32_t cand[16L][2L] = {{0, 0}};
   int32_t arr_len = 1;
-  int32_t mn_cand_mkn[5L];
+  int32_t mn_cand_mkn[5L] = {0, 0, 0, 0, 0};
   int32_t factor = kM0N0OptimalNode;
   CHECK_OP_FUNC(!GetSameCutOff(tiling.m_single_core_size - 1, tiling.n_single_core_size - 1, factor, cand, arr_len),
                 return false, "m get cut off failed");
@@ -483,9 +507,9 @@ bool GetCandMKN(const DxParas &params, Tiling &tiling) {
     PushMNCandidate(params, cand[i], tiling, mn_cand_mkn, i + (1 << 8L));
   }
   if (mn_cand_mkn[0] != 0) {
-    tiling.m_l0 = mn_cand_mkn[0];
-    tiling.n_l0 = mn_cand_mkn[1];
-    tiling.k_l0 = mn_cand_mkn[kIdxTwo];
+    tiling.m_l0_opti = mn_cand_mkn[0];
+    tiling.n_l0_opti = mn_cand_mkn[1];
+    tiling.k_l0_opti = mn_cand_mkn[kIdxTwo];
   }
   return true;
 }
@@ -508,19 +532,19 @@ bool GetCutOffPoint(Tiling &tiling, int32_t m0_factor[], int32_t n0_factor[],
   int32_t n;
   int32_t idx_n = 1;
   int32_t idx_m = 1;
-  CHECK_OP_FUNC(!GetNMFactor(tiling.m_l0, tiling.k_single_core_size, tiling.n_single_core_size, n) ||
-                !GetNMFactor(tiling.n_l0, tiling.k_single_core_size, tiling.m_single_core_size, m),
+  CHECK_OP_FUNC(!GetNMFactor(tiling.m_l0_opti, tiling.k_single_core_size, tiling.n_single_core_size, n) ||
+                !GetNMFactor(tiling.n_l0_opti, tiling.k_single_core_size, tiling.m_single_core_size, m),
                 return false, "tiling param invalid");
   if (std::find(n0_factor, n0_factor + n0_factor_size, n) == (n0_factor + n0_factor_size)) {
     n0_factor[idx_n++] = n;
   }
-  CHECK_OP_FUNC(!GetNMFactor(tiling.n_l0, tiling.k_single_core_size, tiling.m_single_core_size, m),
+  CHECK_OP_FUNC(!GetNMFactor(tiling.n_l0_opti, tiling.k_single_core_size, tiling.m_single_core_size, m),
                 return false, "tiling param invalid");
   if (std::find(m0_factor, m0_factor + m0_factor_size, m) == (m0_factor + m0_factor_size)) {
     m0_factor[idx_m++] = m;
   }
   // m right
-  int32_t mt = max((tiling.m_single_core_size - 1) / tiling.m_l0, 1);
+  int32_t mt = max((tiling.m_single_core_size - 1) / tiling.m_l0_opti, 1);
   int32_t mt_r = mt > 0 ? (tiling.m_single_core_size - 1) / mt + 1 : tiling.m_single_core_size;
   mt_r = min(mt_r, kL0aNzSize);
   if (std::find(m0_factor, m0_factor + m0_factor_size, mt_r) == (m0_factor + m0_factor_size)) {
@@ -543,7 +567,7 @@ bool GetCutOffPoint(Tiling &tiling, int32_t m0_factor[], int32_t n0_factor[],
     }
   }
   // n right
-  int32_t nt = max((tiling.n_single_core_size - 1) / tiling.n_l0, 1);
+  int32_t nt = max((tiling.n_single_core_size - 1) / tiling.n_l0_opti, 1);
   int32_t nt_r = nt > 0 ? (tiling.n_single_core_size - 1) / nt + 1 : tiling.n_single_core_size;
   nt_r = min(nt_r, kL0bNzSize);
   if (std::find(n0_factor, n0_factor + n0_factor_size, nt_r) == (n0_factor + n0_factor_size)) {
@@ -568,18 +592,46 @@ bool GetCutOffPoint(Tiling &tiling, int32_t m0_factor[], int32_t n0_factor[],
   return true;
 }
 
-bool GetL0FactorsOptiNew(const DxParas &params, Tiling &tiling) {
+bool GetCin1Factor(int32_t n0_factor[], int32_t m0_factor[], const Tiling &tiling, const int32_t &n0_factor_size,
+                   const int32_t &m0_factor_size) {
+  int32_t n0_optional[2] = {0, 0};
+  int32_t idx_m = kL0CutOffPointNum;
+  int32_t idx_n = kL0CutOffPointNum;
+  for (int32_t i = 0; i < kL0CutOffPointNum; i++) {
+    if (n0_factor[i] == 0) {
+      continue;
+    }
+    GenNearestFactor(n0_factor[i], tiling.n_single_core_size, n0_optional);
+    if (std::find(n0_factor, n0_factor + n0_factor_size, n0_optional[0]) == (n0_factor + n0_factor_size)) {
+      n0_factor[idx_n++] = n0_optional[0];
+    }
+    if (std::find(n0_factor, n0_factor + n0_factor_size, n0_optional[1]) == (n0_factor + n0_factor_size)) {
+      n0_factor[idx_n++] = n0_optional[1];
+    }
+  }
+  int32_t m0 = 0;
+  for (int32_t i = kL0CutOffPointNum; i < n0_factor_size; i++) {
+    if (n0_factor[i] == 0) {
+      continue;
+    }
+    CHECK_OP_FUNC(!GetNMFactor(n0_factor[i], tiling.k_single_core_size, tiling.m_single_core_size, m0),
+                  return false, "tiling param invalid");
+    if (std::find(m0_factor, m0_factor + m0_factor_size, m0) == (m0_factor + m0_factor_size)) {
+      m0_factor[idx_m++] = m0;
+    }
+  }
+  return true;
+}
+
+bool GetL0FactorsOpti(const DxParas &params, Tiling &tiling) {
   // x0 is optimal of min load size equation of ((m2-1)/m0)*n2 + ((n2-1)/n0)*m2
   int32_t x0 = kM0N0OptimalNode;
-  tiling.k_l0 = 1;
-  tiling.m_l0 = 1;
-  tiling.n_l0 = 1;
   if (tiling.m_single_core_size <= x0 && tiling.n_single_core_size <= x0) {
-    tiling.k_l0 = min(min(kL0aNzSize / tiling.m_single_core_size, kL0bNzSize / tiling.n_single_core_size),
-                      tiling.k_single_core_size);
-    CHECK_OP_FUNC(!ModifyKl0(params, tiling.k_l0), return false, "k_l0 is 0");
-    tiling.m_l0 = min(kL0aNzSize / tiling.k_l0, tiling.m_single_core_size);
-    tiling.n_l0 = min(kL0bNzSize / tiling.k_l0, tiling.n_single_core_size);
+    tiling.k_l0_opti = min(min(kL0aNzSize / tiling.m_single_core_size, kL0bNzSize / tiling.n_single_core_size),
+                           tiling.k_single_core_size);
+    CHECK_OP_FUNC(!ModifyKl0(params, tiling.k_l0_opti), return false, "k_l0 is 0");
+    tiling.m_l0_opti = min(kL0aNzSize / tiling.k_l0_opti, tiling.m_single_core_size);
+    tiling.n_l0_opti = min(kL0bNzSize / tiling.k_l0_opti, tiling.n_single_core_size);
   } else if (tiling.m_single_core_size > x0 && tiling.n_single_core_size > x0) {
     CHECK_OP_FUNC(!GetCandMKN(params, tiling), return false, "get candiate mkn factor failed");
   } else if (tiling.m_single_core_size <= x0 && tiling.n_single_core_size > x0) {
@@ -587,41 +639,63 @@ bool GetL0FactorsOptiNew(const DxParas &params, Tiling &tiling) {
     CHECK_OP_FUNC(m_temp == 0, return false, "m_temp invalid");
     int32_t n_temp = min(min(kL0cNzSize / m_temp, tiling.n_single_core_size), kL0bNzSize);
     CHECK_OP_FUNC(n_temp == 0, return false, "n_temp invalid");
-    tiling.k_l0 = min(min(kL0aNzSize / m_temp, kL0bNzSize /n_temp), tiling.k_single_core_size);
-    CHECK_OP_FUNC(!ModifyKl0(params, tiling.k_l0), return false, "k_l0 is 0");
-    tiling.m_l0 = min(kL0aNzSize / tiling.k_l0, m_temp);
-    tiling.n_l0 = min(kL0bNzSize / tiling.k_l0, n_temp);
+    tiling.k_l0_opti = min(min(kL0aNzSize / m_temp, kL0bNzSize /n_temp), tiling.k_single_core_size);
+    CHECK_OP_FUNC(!ModifyKl0(params, tiling.k_l0_opti), return false, "k_l0 is 0");
+    tiling.m_l0_opti = min(kL0aNzSize / tiling.k_l0_opti, m_temp);
+    tiling.n_l0_opti = min(kL0bNzSize / tiling.k_l0_opti, n_temp);
   } else if (tiling.n_single_core_size <= x0 && tiling.m_single_core_size > x0) {
     int32_t n_temp = min(tiling.n_single_core_size, kL0bNzSize);
     CHECK_OP_FUNC(n_temp == 0, return false, "n_temp invalid");
     int32_t m_temp = min(min(kL0cNzSize / n_temp, tiling.m_single_core_size), kL0aNzSize);
     CHECK_OP_FUNC(m_temp == 0, return false, "m_temp invalid");
-    tiling.k_l0 = min(min(kL0aNzSize / m_temp, kL0bNzSize / n_temp), tiling.k_single_core_size);
-    CHECK_OP_FUNC(!ModifyKl0(params, tiling.k_l0), return false, "k_l0 is 0");
-    tiling.m_l0 = min(kL0aNzSize / tiling.k_l0, m_temp);
-    tiling.n_l0 = min(kL0bNzSize / tiling.k_l0, n_temp);
+    tiling.k_l0_opti = min(min(kL0aNzSize / m_temp, kL0bNzSize / n_temp), tiling.k_single_core_size);
+    CHECK_OP_FUNC(!ModifyKl0(params, tiling.k_l0_opti), return false, "k_l0 is 0");
+    tiling.m_l0_opti = min(kL0aNzSize / tiling.k_l0_opti, m_temp);
+    tiling.n_l0_opti = min(kL0bNzSize / tiling.k_l0_opti, n_temp);
   }
-  int32_t m0_factor[6L] = {tiling.m_l0};
-  int32_t n0_factor[6L] = {tiling.n_l0};
+  return true;
+}
+
+bool GetL0FactorsGeneral(const DxParas &params, Tiling &tiling) {
+  tiling.k_l0 = 1;
+  tiling.m_l0 = 1;
+  tiling.n_l0 = 1;
+  CHECK_OP_FUNC(!GetL0FactorsOpti(params, tiling), return false, "get l0 optimal value failed");
+  int32_t m0_factor[18L] = {tiling.m_l0_opti};
+  int32_t n0_factor[18L] = {tiling.n_l0_opti};
   int32_t n0_factor_size = end(n0_factor) - begin(n0_factor);
   int32_t m0_factor_size = end(m0_factor) - begin(m0_factor);
   CHECK_OP_FUNC(!GetCutOffPoint(tiling, m0_factor, n0_factor, m0_factor_size, n0_factor_size), return false,
                 "get cutoff of mkn factor failed");
-  int32_t min_load_size = ((tiling.m_single_core_size - 1) / tiling.m_l0) * tiling.n_single_core_size +
-                          ((tiling.n_single_core_size - 1) / tiling.n_l0) * tiling.m_single_core_size;
+  int32_t min_load_size = ((tiling.m_single_core_size - 1)) * tiling.n_single_core_size +
+                          ((tiling.n_single_core_size - 1)) * tiling.m_single_core_size;
   int32_t max_mkn = 1;
   int32_t max_mk = 1;
   int32_t load_size;
   int32_t mkn;
   int32_t mk;
-  bool l0_invalid = tiling.k_l0 <= 0 || tiling.m_l0 * tiling.n_l0 > kL0cNzSize ||
-                    !CheckL0Overflow(tiling.m_l0, tiling.n_l0, tiling.k_l0) ||
-                    !CheckL1Overflow(params, tiling, tiling.m_l0, tiling.n_l0, tiling.k_l0) ||
-                    !CheckUbDb(params, tiling, tiling.m_l0) || (params.co1 * params.kw * params.kh) % tiling.k_l0 != 0;
+  bool l0_invalid = tiling.k_l0_opti <= 0 || tiling.m_l0_opti * tiling.n_l0_opti > kL0cNzSize ||
+                    !CheckL0Overflow(tiling.m_l0_opti, tiling.n_l0_opti, tiling.k_l0_opti) ||
+                    !CheckL1Overflow(params, tiling, tiling.m_l0_opti, tiling.n_l0_opti, tiling.k_l0_opti) ||
+                    !CheckUbDb(params, tiling, tiling.m_l0_opti) ||
+                    (params.co1 * params.kw * params.kh) % tiling.k_l0_opti != 0 ||
+                    tiling.n_single_core_size % tiling.n_l0_opti != 0;
   if (params.dx_no_overlap_condition_2) {
     l0_invalid = l0_invalid || tiling.n_l0 < kNumTwo;
   }
   bool l0_valid_res = !l0_invalid;
+  if (l0_invalid) {
+    CHECK_OP_FUNC(!GetCin1Factor(n0_factor, m0_factor, tiling, n0_factor_size, m0_factor_size), return false,
+                  "get cin1 facotr fail");
+  } else {
+    min_load_size = ((tiling.m_single_core_size - 1) / tiling.m_l0_opti) * tiling.n_single_core_size +
+                    ((tiling.n_single_core_size - 1) / tiling.n_l0_opti) * tiling.m_single_core_size;
+    max_mkn = tiling.m_l0_opti * tiling.n_l0_opti * tiling.k_l0_opti;
+    max_mk = max(tiling.m_l0_opti, tiling.k_l0_opti) / min(tiling.m_l0_opti, tiling.k_l0_opti);
+    tiling.m_l0 = tiling.m_l0_opti;
+    tiling.n_l0 = tiling.n_l0_opti;
+    tiling.k_l0 = tiling.k_l0_opti;
+  }
   bool l0_valid = false;
   for (auto &m0 : m0_factor) {
     for (auto &n0 : n0_factor) {
@@ -633,7 +707,11 @@ bool GetL0FactorsOptiNew(const DxParas &params, Tiling &tiling) {
       CHECK_OP_FUNC(k0 == 0, return false, "k_l0 is 0");
       l0_invalid = k0 <= 0 || m0 * n0 > kL0cNzSize || !CheckL0Overflow(m0, n0, k0) ||
                         !CheckL1Overflow(params, tiling, m0, n0, k0) || !CheckUbDb(params, tiling, m0) ||
-                        (params.co1 * params.kw * params.kh) % k0 != 0;
+                        (params.co1 * params.kw * params.kh) % k0 != 0 ||
+                        tiling.n_single_core_size % n0 != 0;
+      if (params.dx_no_overlap_condition_2) {
+        l0_invalid = l0_invalid || n0 < kNumTwo;
+      }
       if (l0_invalid) {
         continue;
       }
@@ -641,13 +719,8 @@ bool GetL0FactorsOptiNew(const DxParas &params, Tiling &tiling) {
                   ((tiling.n_single_core_size - 1) / n0) * tiling.m_single_core_size;
       mkn = m0 * n0 * k0;
       mk = max(m0, k0) / min(m0, k0);
-      l0_valid =
-          (load_size < min_load_size) ||
-          ((load_size == min_load_size) && (mkn > max_mkn ||
-                                            (mkn == max_mkn && mk > max_mk)));
-      if (params.dx_no_overlap_condition_2) {
-        l0_invalid = l0_invalid || n0 < kNumTwo;
-      }
+      l0_valid = (load_size < min_load_size) ||
+                 ((load_size == min_load_size) && (mkn > max_mkn || (mkn == max_mkn && mk > max_mk)));
       if (l0_valid) {
         tiling.m_l0 = m0;
         tiling.n_l0 = n0;
@@ -710,7 +783,7 @@ bool GetL0Factors(const DxParas &params, Tiling &tiling) {
   if (params.dx_no_overlap_condition_1) {
     return GetL0FactorsNoOverlap(params, tiling);
   } else {
-    return GetL0FactorsOptiNew(params, tiling);
+    return GetL0FactorsGeneral(params, tiling);
   }
 }
 
@@ -722,8 +795,10 @@ bool GetInitialL1(const DxParas &params, Tiling &tiling, int32_t min_kl1_dim[]) 
   tiling.init_db_bl1 = kDbOn;
   tiling.m_al1 = 1;
   tiling.n_bl1 = 1;
-  tiling.k_al1 = min_kl1_dim[1];
-  tiling.k_bl1 = min_kl1_dim[1];
+  int32_t k_hw = (params.kh * params.kw);
+  tiling.k_al1 = InitialKl1(tiling.k_l0, k_hw);
+  CHECK_OP_FUNC(tiling.k_al1 == 0, return false, "initial kl1 failed");
+  tiling.k_bl1 = tiling.k_al1;
   return true;
 }
 

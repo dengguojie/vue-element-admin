@@ -101,6 +101,9 @@ struct Tiling {
   int32_t m_l0 = 1;
   int32_t k_l0 = 1;
   int32_t n_l0 = 1;
+  int32_t m_l0_opti = 1;
+  int32_t k_l0_opti = 1;
+  int32_t n_l0_opti = 1;
   int32_t batch_dim = 1;
   int32_t n_dim = 1;
   int32_t m_dim = 1;
