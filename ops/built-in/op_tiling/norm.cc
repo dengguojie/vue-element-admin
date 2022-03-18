@@ -27,44 +27,44 @@
 
 namespace optiling {
 namespace {
-  bool IsElementInVector(const std::vector<int32_t>& shape, const int32_t& value) {
-    for (const auto& single_dim : shape) {
-      if (single_dim == value) {
+  template<std::size_t N>
+  bool IsElementInArray(const std::array<int32_t, N>& shape, const int32_t& value, const std::size_t& shape_size) {
+    if (shape_size > N) {
+      return false;
+    }
+    for (std::size_t i = 0; i < shape_size; i++) {
+      if (shape[i] == value) {
         return true;
       }
     }
     return false;
   }
 
-  int64_t CalcAfterReduceShapeProduct(const std::vector<int64_t>& shape, const std::vector<int32_t>& axis) {
-    int64_t result = 1;
-    for (std::size_t i = 0; i < shape.size(); i++) {
-      if (!IsElementInVector(axis, i)) {
-        result = result * shape[i];
+  std::pair<int64_t, int64_t> CalcShapeProduct(const std::array<int64_t, NORM_MAX_DIM_LEN>& shape,
+                                               const std::array<int32_t, NORM_MAX_DIM_LEN>& axis,
+                                               const std::size_t& shape_size, const std::size_t& axis_size) {
+    int64_t reduce_product = 1;
+    int64_t after_reduce_product = 1;
+    for (std::size_t i = 0; i < std::min(shape_size, NORM_MAX_DIM_LEN); i++) {
+      if (IsElementInArray(axis, i, axis_size)) {
+        reduce_product = reduce_product * shape[i];
+      } else {
+        after_reduce_product = after_reduce_product * shape[i];
       }
     }
-    return result;
+    return std::make_pair(reduce_product, after_reduce_product);
   }
 
-  int64_t CalcReduceShapeProduct(const std::vector<int64_t>& shape, const std::vector<int32_t>& axis) {
-    int64_t result = 1;
-    for (std::size_t i = 0; i < shape.size(); i++) {
-      if (IsElementInVector(axis, i)) {
-        result = result * shape[i];
-      }
-    }
-    return result;
-  }
-
-  int32_t CalcPattern(const std::vector<int64_t>& shape, const std::vector<int32_t>& axis) {
+  int32_t CalcPattern(const std::array<int32_t, NORM_MAX_DIM_LEN>& axis, const std::size_t& axis_size,
+                      const std::size_t& shape_size) {
     int32_t pattern = 0;
     uint32_t special_axis_weight = 2;
-    for (std::size_t i = 0; i < shape.size(); i++) {
-      if (IsElementInVector(axis, i)) {
-        pattern += special_axis_weight << (shape.size() - i - 1);
+    for (std::size_t i = 0; i < shape_size; i++) {
+      if (IsElementInArray(axis, i, axis_size)) {
+        pattern += special_axis_weight << (shape_size - i - 1);
       } else {
-        pattern += static_cast<int32_t>(shape.size() - special_axis_weight - i) >= 0 ?
-                   special_axis_weight << (shape.size() - special_axis_weight - i) :
+        pattern += static_cast<int32_t>(shape_size - special_axis_weight - i) >= 0 ?
+                   special_axis_weight << (shape_size - special_axis_weight - i) :
                    1;
       }
     }
@@ -72,8 +72,23 @@ namespace {
   }
 
   template<typename T>
-  bool NormalizeAxis(const std::vector<T>& src, std::vector<int32_t>& dst, std::size_t dim_len) {
+  void CopyArrayValue(const std::array<T, NORM_MAX_DIM_LEN>& src, std::array<T, NORM_MAX_DIM_LEN>& dst,
+                      const std::size_t& src_len, std::size_t& dst_len) {
+    for (std::size_t i = 0; i < std::min(src_len, NORM_MAX_DIM_LEN); i++) {
+      dst[i] = src[i];
+    }
+    dst_len = src_len;
+    return;
+  }
+
+  template<typename T>
+  bool NormalizeAxis(const std::vector<T>& src, std::array<int32_t, NORM_MAX_DIM_LEN>& dst,
+                     const std::size_t& dim_len, std::size_t& dst_len) {
     std::size_t src_len = src.size();
+    V_OP_TILING_CHECK((src_len <= NORM_MAX_DIM_LEN),
+                      VECTOR_INNER_ERR_REPORT_TILIING("norm", "axis length %zu is illegal", src_len),
+                      return false);
+
     for (std::size_t i = 0; i < src_len; i++) {
       auto single_axis = static_cast<int32_t>(src[i]);
       // convert axis (-1 -> dim_len - 1)
@@ -86,9 +101,21 @@ namespace {
                         return false);
       dst[i] = single_axis;
     }
-    dst.resize(src_len);
-
+    dst_len = src_len;
     return true;
+  }
+
+  template<typename T>
+  void ArrayInsertToFront(std::array<T, NORM_MAX_DIM_LEN>& src, std::size_t& actual_len, const int32_t& value) {
+    if (actual_len == NORM_MAX_DIM_LEN) {
+      return;
+    }
+    for (int32_t i = static_cast<int32_t>(actual_len) - 1; i >= 0; i--) {
+      src[i + 1] = src[i];
+    }
+    src[0] = static_cast<T>(value);
+    actual_len++;
+    return;
   }
 }
 
@@ -112,11 +139,11 @@ bool Norm::GetMaxDimLen(const ge::OpDescPtr& op_desc) {
   for (std::size_t i = 0; i < compileInfo.input_type.size(); i++) {
     const auto& cur_input_shape = op_desc->MutableInputDesc(i)->GetShape();
     std::size_t cur_dim_len = cur_input_shape.GetDimNum();
-    if (cur_dim_len > max_dim_len) {
-      max_dim_len = cur_dim_len;
+    if (cur_dim_len > dim_len_ori) {
+      dim_len_ori = cur_dim_len;
     }
   }
-  V_OP_TILING_CHECK((max_dim_len <= NORM_MAX_DIM_LEN),
+  V_OP_TILING_CHECK((dim_len_ori <= NORM_MAX_DIM_LEN),
                     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "more than %zu dims are not supported",
                                                     NORM_MAX_DIM_LEN),
                     return false);
@@ -146,20 +173,20 @@ bool Norm::GetInput() {
     input_flag[single_input_type] = true;
     if (single_input_type == 0) {
       // get after broadcast shape(input type is 0)
-      V_OP_TILING_CHECK((cur_dim_len == max_dim_len),
+      V_OP_TILING_CHECK((cur_dim_len == dim_len_ori),
                         VECTOR_INNER_ERR_REPORT_TILIING(op_type,
                                                         "the shape length of after broadcast input %zu should be"
                                                         "equal to max dim len %zu",
-                                                        cur_dim_len, max_dim_len),
+                                                        cur_dim_len, dim_len_ori),
                         return false);
-      for (std::size_t j = 0; j < max_dim_len; j++) {
+      for (std::size_t j = 0; j < dim_len_ori; j++) {
         input_shape_ori[j] = cur_input_shape.GetDim(j);
       }
       continue;
     }
     // get before broadcast shape(input type is not 0)
-    std::size_t diff_len = max_dim_len - cur_dim_len;
-    for (std::size_t j = 0; j < max_dim_len; j++) {
+    std::size_t diff_len = dim_len_ori - cur_dim_len;
+    for (std::size_t j = 0; j < dim_len_ori; j++) {
       if (j < diff_len) {
         // padding 1
         before_broadcast_shapes[before_broadcast_input_num][j] = 1;
@@ -176,12 +203,10 @@ bool Norm::GetInput() {
 
   // dont have after broadcast input
   if (!input_flag[0]) {
-    for (std::size_t j = 0; j < max_dim_len; j++) {
+    for (std::size_t j = 0; j < dim_len_ori; j++) {
       input_shape_ori[j] = max_shape[j];
     }
   }
-
-  input_shape_ori.resize(max_dim_len);
 
   return true;
 }
@@ -192,30 +217,31 @@ bool Norm::InitReduce() {
     if (compileInfo.reduce_axis_type == static_cast<int32_t>(NormAxisType::AFTER)) {
       int32_t single_reduce_axis = compileInfo.ori_reduce_axis[0];
       if (single_reduce_axis < 0) {
-        single_reduce_axis = max_dim_len + single_reduce_axis;
+        single_reduce_axis = dim_len_ori + single_reduce_axis;
       }
-      for (int32_t i = single_reduce_axis; i < static_cast<int32_t>(max_dim_len); i++) {
+      for (int32_t i = single_reduce_axis; i < static_cast<int32_t>(dim_len_ori); i++) {
         reduce_axis_ori[i - single_reduce_axis] = i;
       }
-      reduce_axis_ori.resize(max_dim_len - single_reduce_axis);
+      reduce_axis_len_ori = dim_len_ori - single_reduce_axis;
       return true;
     }
     // reduce axis is assigned in compile
-    return NormalizeAxis(compileInfo.ori_reduce_axis, reduce_axis_ori, max_dim_len);
+    return NormalizeAxis(compileInfo.ori_reduce_axis, reduce_axis_ori, dim_len_ori, reduce_axis_len_ori);
   }
   // reduce axis is variable in compile
-  auto reduce_attr_name = compileInfo.reduce_attr_name.c_str();
   std::vector<int64_t> reduce_axis_list;
   if (compileInfo.is_reduce_attr_is_int) {
     int64_t single_reduce_axis{0};
-    V_OP_TILING_CHECK((ge::GRAPH_SUCCESS == op_paras.GetAttr(reduce_attr_name, single_reduce_axis)),
-                      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "failed to get attr %s", reduce_attr_name),
+    V_OP_TILING_CHECK((ge::GRAPH_SUCCESS == op_paras.GetAttr(compileInfo.reduce_attr_name.c_str(),
+                                                             single_reduce_axis)),
+                      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "failed to get attr %s",
+                                                      compileInfo.reduce_attr_name.c_str()),
                       return false);
     if (single_reduce_axis < 0) {
-      single_reduce_axis = max_dim_len + single_reduce_axis;
+      single_reduce_axis = dim_len_ori + single_reduce_axis;
     }
     if (compileInfo.reduce_axis_type == static_cast<int32_t>(NormAxisType::AFTER)) {
-      for (int64_t i = single_reduce_axis; i < static_cast<int64_t>(max_dim_len); i++) {
+      for (int64_t i = single_reduce_axis; i < static_cast<int64_t>(dim_len_ori); i++) {
         reduce_axis_list.push_back(i);
       }
     } else if (compileInfo.reduce_axis_type == static_cast<int32_t>(NormAxisType::BEFORE)) {
@@ -226,12 +252,14 @@ bool Norm::InitReduce() {
       reduce_axis_list.push_back(single_reduce_axis);
     }
   } else {
-    V_OP_TILING_CHECK((ge::GRAPH_SUCCESS == op_paras.GetAttr(reduce_attr_name, reduce_axis_list)),
-                      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "failed to get attr %s", reduce_attr_name),
+    V_OP_TILING_CHECK((ge::GRAPH_SUCCESS == op_paras.GetAttr(compileInfo.reduce_attr_name.c_str(),
+                                                             reduce_axis_list)),
+                      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "failed to get attr %s",
+                                                      compileInfo.reduce_attr_name.c_str()),
                       return false);
   }
 
-  return NormalizeAxis(reduce_axis_list, reduce_axis_ori, max_dim_len);
+  return NormalizeAxis(reduce_axis_list, reduce_axis_ori, dim_len_ori, reduce_axis_len_ori);
 }
 
 bool Norm::InitReduce(const OpInfo& op_info) {
@@ -241,33 +269,33 @@ bool Norm::InitReduce(const OpInfo& op_info) {
     return false;
   }
 
-  return NormalizeAxis(op_info.GetReduceAxes()[0], reduce_axis_ori, max_dim_len);
+  return NormalizeAxis(op_info.GetReduceAxes()[0], reduce_axis_ori, dim_len_ori, reduce_axis_len_ori);
 }
 
 bool Norm::InitBroadcast() {
   // init broadcast axis
   if (!compileInfo.is_broadcast_axis_known) {
     // compile broadcast axes are not the same
-    broadcast_axis_ori.clear();
+    broadcast_axis_len_ori = 0;
     return true;
   }
 
   if (compileInfo.broadcast_axis_type.empty()) {
     // broadcast axis is assigned in compile
-    return NormalizeAxis(compileInfo.ori_broadcast_axis, broadcast_axis_ori, max_dim_len);
+    return NormalizeAxis(compileInfo.ori_broadcast_axis, broadcast_axis_ori, dim_len_ori, broadcast_axis_len_ori);
   }
 
   // broadcast axis is variable in compile
   int32_t single_broadcast_axis_type = compileInfo.broadcast_axis_type[0];
   if (single_broadcast_axis_type == static_cast<int32_t>(NormAxisType::OPPOSITE_REDUCE)) {
     int32_t count = 0;
-    for (int32_t i = 0; i < static_cast<int32_t>(max_dim_len); i++) {
-      if (!IsElementInVector(reduce_axis_ori, i)) {
+    for (int32_t i = 0; i < static_cast<int32_t>(dim_len_ori); i++) {
+      if (!IsElementInArray(reduce_axis_ori, i, reduce_axis_len_ori)) {
         broadcast_axis_ori[count] = i;
         count++;
       }
     }
-    broadcast_axis_ori.resize(max_dim_len - reduce_axis_ori.size());
+    broadcast_axis_len_ori = dim_len_ori - reduce_axis_len_ori;
   } else {
     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "norm tiling don't support this broadcast axis type now.");
     return false;
@@ -281,13 +309,13 @@ bool Norm::Init() {
 
   for (const auto& i : compileInfo.ori_disable_fuse_axes) {
     // check disable fuse axes value
-    V_OP_TILING_CHECK((i < static_cast<int32_t>(max_dim_len)),
+    V_OP_TILING_CHECK((i < static_cast<int32_t>(dim_len_ori)),
                       VECTOR_INNER_ERR_REPORT_TILIING(op_type, "value of disable fuse axes %d is illegal", i),
                       return false);
   }
 
-  std::sort(reduce_axis_ori.begin(), reduce_axis_ori.end());
-  std::sort(broadcast_axis_ori.begin(), broadcast_axis_ori.end());
+  std::sort(reduce_axis_ori.begin(), reduce_axis_ori.begin() + reduce_axis_len_ori);
+  std::sort(broadcast_axis_ori.begin(), broadcast_axis_ori.begin() + broadcast_axis_len_ori);
 
   block_size = compileInfo.min_block_size;
 
@@ -301,14 +329,13 @@ NormBroadcastMode Norm::JudgeBroadcastMode(const std::array<int64_t,
   bool is_opposite_reduce = true;
   bool is_all_broadcast = true;
 
-  std::size_t ori_reduce_axis_len = reduce_axis_ori.size();
   std::size_t count_reduce_axis = 0;
 
-  for (std::size_t i = 0; i < max_dim_len; i++) {
+  for (std::size_t i = 0; i < dim_len_ori; i++) {
     if (input_shape_ori[i] == before_broadcast_shape[i] && input_shape_ori[i] != 1) {
       // unbroadcast axis
       is_all_broadcast = false;
-      if (count_reduce_axis != ori_reduce_axis_len && static_cast<int32_t>(i) == reduce_axis_ori[count_reduce_axis]) {
+      if (count_reduce_axis != reduce_axis_len_ori && static_cast<int32_t>(i) == reduce_axis_ori[count_reduce_axis]) {
         // reduce axis
         count_reduce_axis++;
         is_same_reduce = false;
@@ -319,7 +346,7 @@ NormBroadcastMode Norm::JudgeBroadcastMode(const std::array<int64_t,
     } else {
       // broadcast axis
       is_no_broadcast = false;
-      if (count_reduce_axis != ori_reduce_axis_len && static_cast<int32_t>(i) == reduce_axis_ori[count_reduce_axis]) {
+      if (count_reduce_axis != reduce_axis_len_ori && static_cast<int32_t>(i) == reduce_axis_ori[count_reduce_axis]) {
         // reduce axis
         count_reduce_axis++;
         is_opposite_reduce = false;
@@ -350,12 +377,14 @@ NormBroadcastMode Norm::JudgeBroadcastMode(const std::array<int64_t,
 }
 
 int32_t Norm::CalcMinEliminateOneIndex() const {
-  for (int32_t i = static_cast<int32_t>(max_dim_len) - 1 - 1; i >= 0; i--) {
-    if (IsElementInVector(reduce_axis_ori, i) != IsElementInVector(reduce_axis_ori, i + 1)) {
+  for (int32_t i = static_cast<int32_t>(dim_len_ori) - 1 - 1; i >= 0; i--) {
+    if (IsElementInArray(reduce_axis_ori, i, reduce_axis_len_ori) !=
+          IsElementInArray(reduce_axis_ori, i + 1, reduce_axis_len_ori)) {
       return i + 1;
     }
     if (compileInfo.is_broadcast_axis_known) {
-      if (IsElementInVector(broadcast_axis_ori, i) != IsElementInVector(broadcast_axis_ori, i + 1)) {
+      if (IsElementInArray(broadcast_axis_ori, i, broadcast_axis_len_ori) !=
+            IsElementInArray(broadcast_axis_ori, i + 1, broadcast_axis_len_ori)) {
         return i + 1;
       }
     }
@@ -365,6 +394,10 @@ int32_t Norm::CalcMinEliminateOneIndex() const {
 }
 
 bool Norm::EliminateOne() {
+  // back is not 1
+  if (input_shape_ori[dim_len_ori - 1] != 1) {
+    return true;
+  }
   // no fuse case
   bool is_no_fuse_axis = !compileInfo.is_fuse_axis;
   // dont have after broadcast input
@@ -379,13 +412,9 @@ bool Norm::EliminateOne() {
   if (is_cannot_eliminate_one) {
     return true;
   }
-  // back is not 1
-  if (input_shape_ori.back() != 1) {
-    return true;
-  }
 
   int32_t min_index = CalcMinEliminateOneIndex();
-  for (int32_t i = static_cast<int32_t>(max_dim_len) - 1; i >= min_index; i--) {
+  for (int32_t i = static_cast<int32_t>(dim_len_ori) - 1; i >= min_index; i--) {
     // dim is not one
     if (input_shape_ori[i] != 1) {
       return true;
@@ -393,19 +422,19 @@ bool Norm::EliminateOne() {
   }
 
   bool ori_broadcast_axis_is_empty = false;
-  for (int32_t i = static_cast<int32_t>(max_dim_len) - 1; i >= min_index; i--) {
-    if (reduce_axis_ori.empty()) {
+  for (int32_t i = static_cast<int32_t>(dim_len_ori) - 1; i >= min_index; i--) {
+    if (reduce_axis_len_ori == 0) {
       break;
     }
-    input_shape_ori.pop_back();
-    if (reduce_axis_ori.back() == i) {
-      reduce_axis_ori.pop_back();
+    dim_len_ori--;
+    if (reduce_axis_ori[reduce_axis_len_ori - 1] == i) {
+      reduce_axis_len_ori--;
     }
     if (compileInfo.is_broadcast_axis_known) {
-      if (broadcast_axis_ori.empty()) {
+      if (broadcast_axis_len_ori == 0) {
         ori_broadcast_axis_is_empty = true;
-      } else if (broadcast_axis_ori.back() == i) {
-        broadcast_axis_ori.pop_back();
+      } else if (broadcast_axis_ori[broadcast_axis_len_ori - 1] == i) {
+        broadcast_axis_len_ori--;
       }
     }
   }
@@ -414,15 +443,16 @@ bool Norm::EliminateOne() {
   // input shape (A, ) -> (1, A)
   // reduce axis () -> (0, )
   // broadcast axis (m, ) -> (0, m + 1)
-  if (reduce_axis_ori.empty()) {
-    input_shape_ori.insert(input_shape_ori.begin(), 1);
-    reduce_axis_ori.emplace_back(0);
-    for (auto& j : broadcast_axis_ori) {
-      j++;
+  if (reduce_axis_len_ori == 0) {
+    ArrayInsertToFront(input_shape_ori, dim_len_ori, 1);
+    reduce_axis_ori[0] = 0;
+    reduce_axis_len_ori = 1;
+    for (std::size_t i = 0; i < broadcast_axis_len_ori; i++) {
+      broadcast_axis_ori[i]++;
     }
     bool is_broadcast_insert_zero = compileInfo.is_broadcast_axis_known && !ori_broadcast_axis_is_empty;
     if (is_broadcast_insert_zero) {
-      broadcast_axis_ori.insert(broadcast_axis_ori.begin(), 0);
+      ArrayInsertToFront(broadcast_axis_ori, broadcast_axis_len_ori, 0);
     }
   }
 
@@ -431,15 +461,16 @@ bool Norm::EliminateOne() {
 
 void Norm::InitAxisBaseFlag(std::array<int32_t, NORM_MAX_DIM_LEN>& flags, const int32_t& reduce_flag,
                             const int32_t& broadcast_flag, const int32_t& reduce_broadcast_flag) const {
-  for (const auto& idx : reduce_axis_ori) {
-    flags[idx] = reduce_flag;
+  for (std::size_t i = 0; i < reduce_axis_len_ori; i++) {
+    flags[reduce_axis_ori[i]] = reduce_flag;
   }
 
-  for (const auto& idx : broadcast_axis_ori) {
-    if (flags[idx] == reduce_flag) {
-      flags[idx] = reduce_broadcast_flag;
+  for (std::size_t i = 0; i < broadcast_axis_len_ori; i++) {
+    const auto& single_broadcast_axis = broadcast_axis_ori[i];
+    if (flags[single_broadcast_axis] == reduce_flag) {
+      flags[single_broadcast_axis] = reduce_broadcast_flag;
     } else {
-      flags[idx] = broadcast_flag;
+      flags[single_broadcast_axis] = broadcast_flag;
     }
   }
 }
@@ -465,26 +496,25 @@ bool Norm::FusedAxis() {
 
   std::size_t first = 0;
   std::size_t second = 0;
-  std::size_t length = input_shape_ori.size();
 
   std::size_t capacity_shape = 0;
   std::size_t capacity_reduce_axis = 0;
   std::size_t capacity_broadcast_axis = 0;
 
-  while (second <= length) {
-    if (second <= length - 1 && flags[first] == flags[second]) {
+  while (second <= dim_len_ori) {
+    if (second <= dim_len_ori - 1 && flags[first] == flags[second]) {
       // look for different type idx
       second++;
     } else {
       // fuse same type idx
       input_shape[capacity_shape] = std::accumulate(input_shape_ori.begin() + first, input_shape_ori.begin() + second,
                                                     1, std::multiplies<int64_t>());
-      bool is_reduce_axis = (second <= length - 1 && flags[first] % modulo == reduce_flag) ||
-                                (second == length && flags[second - 1] % modulo == reduce_flag);
-      bool is_broadcast_axis = (second <= length - 1 && flags[first] % modulo == broadcast_flag) ||
-                                   (second == length && flags[second - 1] % modulo == broadcast_flag);
-      bool is_reduce_broadcast_axis = (second <= length - 1 && flags[first] % modulo == reduce_broadcast_flag) ||
-                                          (second == length && flags[second - 1] % modulo == reduce_broadcast_flag);
+      bool is_reduce_axis = (second <= dim_len_ori - 1 && flags[first] % modulo == reduce_flag) ||
+        (second == dim_len_ori && flags[second - 1] % modulo == reduce_flag);
+      bool is_broadcast_axis = (second <= dim_len_ori - 1 && flags[first] % modulo == broadcast_flag) ||
+        (second == dim_len_ori && flags[second - 1] % modulo == broadcast_flag);
+      bool is_reduce_broadcast_axis = (second <= dim_len_ori - 1 && flags[first] % modulo == reduce_broadcast_flag) ||
+        (second == dim_len_ori && flags[second - 1] % modulo == reduce_broadcast_flag);
       if (is_reduce_axis || is_reduce_broadcast_axis) {
         reduce_axis[capacity_reduce_axis] = capacity_shape;
         capacity_reduce_axis++;
@@ -499,68 +529,70 @@ bool Norm::FusedAxis() {
     }
   }
 
-  input_shape.resize(capacity_shape);
-  reduce_axis.resize(capacity_reduce_axis);
-  broadcast_axis.resize(capacity_broadcast_axis);
+  dim_len = capacity_shape;
+  reduce_axis_len = capacity_reduce_axis;
+  broadcast_axis_len = capacity_broadcast_axis;
+
+  return true;
+}
+
+bool Norm::GetNormPatternCommon() {
+  broadcast_pattern = CalcPattern(broadcast_axis, broadcast_axis_len, dim_len);
+  reduce_pattern = CalcPattern(reduce_axis, reduce_axis_len, dim_len);
+  norm_pattern = reduce_pattern * NORM_REDUCE_PATTERN_WEIGHT + broadcast_pattern;
 
   return true;
 }
 
 bool Norm::GetNormPattern() {
-  bool is_can_not_fuse = false;
-  int32_t weight = 10;
-
   if (compileInfo.is_broadcast_axis_known) {
-    broadcast_pattern = CalcPattern(input_shape, broadcast_axis);
-  } else {
-    // if there is only one norm pattern, norm pattern is no need to calculate
-    if (compileInfo.available_ub_size.size() == 1) {
-      norm_pattern = compileInfo.available_ub_size.begin()->first;
-      int32_t local_broadcast_pattern = norm_pattern % NORM_REDUCE_PATTERN_WEIGHT;
-      while (local_broadcast_pattern != 0) {
-        int32_t single_pattern = local_broadcast_pattern % weight;
-        if (single_pattern == static_cast<int32_t>(NormBroadcastMode::OTHERS)) {
-          input_shape = input_shape_ori;
-          reduce_axis = reduce_axis_ori;
-          break;
-        }
-        local_broadcast_pattern = local_broadcast_pattern / weight;
-      }
+    return GetNormPatternCommon();
+  }
 
-      return true;
+  int32_t weight = 10;
+  // if there is only one norm pattern, norm pattern is no need to calculate
+  if (compileInfo.available_ub_size.size() == 1) {
+    norm_pattern = compileInfo.available_ub_size.begin()->first;
+    int32_t local_broadcast_pattern = norm_pattern % NORM_REDUCE_PATTERN_WEIGHT;
+    while (local_broadcast_pattern != 0) {
+      int32_t single_pattern = local_broadcast_pattern % weight;
+      if (single_pattern == static_cast<int32_t>(NormBroadcastMode::OTHERS)) {
+        CopyArrayValue(input_shape_ori, input_shape, dim_len_ori, dim_len);
+        CopyArrayValue(reduce_axis_ori, reduce_axis, reduce_axis_len_ori, reduce_axis_len);
+        break;
+      }
+      local_broadcast_pattern = local_broadcast_pattern / weight;
     }
-    for (std::size_t i = 0; i < before_broadcast_input_num; i++) {
-      NormBroadcastMode single_mode;
-      if (i < compileInfo.broadcast_axis_type.size()) {
-        if (compileInfo.broadcast_axis_type[i] == static_cast<int32_t>(NormAxisType::OPPOSITE_REDUCE)) {
-          single_mode = NormBroadcastMode::OPPOSITE_REDUCE;
-        } else if (compileInfo.broadcast_axis_type[i] == static_cast<int32_t>(NormAxisType::SAME_REDUCE)) {
-          single_mode = NormBroadcastMode::SAME_REDUCE;
-        } else {
-          single_mode = JudgeBroadcastMode(before_broadcast_shapes[i]);
-        }
+    return true;
+  }
+
+  for (std::size_t i = 0; i < before_broadcast_input_num; i++) {
+    NormBroadcastMode single_mode;
+    if (i < compileInfo.broadcast_axis_type.size()) {
+      if (compileInfo.broadcast_axis_type[i] == static_cast<int32_t>(NormAxisType::OPPOSITE_REDUCE)) {
+        single_mode = NormBroadcastMode::OPPOSITE_REDUCE;
+      } else if (compileInfo.broadcast_axis_type[i] == static_cast<int32_t>(NormAxisType::SAME_REDUCE)) {
+        single_mode = NormBroadcastMode::SAME_REDUCE;
       } else {
         single_mode = JudgeBroadcastMode(before_broadcast_shapes[i]);
       }
-      broadcast_pattern = broadcast_pattern * weight + static_cast<int32_t>(single_mode);
-      // cannot fuse axis
-      if (single_mode == NormBroadcastMode::OTHERS) {
-        input_shape = input_shape_ori;
-        reduce_axis = reduce_axis_ori;
-        is_can_not_fuse = true;
-        break;
-      }
+    } else {
+      single_mode = JudgeBroadcastMode(before_broadcast_shapes[i]);
     }
-
-    if (is_can_not_fuse) {
+    broadcast_pattern = broadcast_pattern * weight + static_cast<int32_t>(single_mode);
+    // cannot fuse axis
+    if (single_mode == NormBroadcastMode::OTHERS) {
+      CopyArrayValue(input_shape_ori, input_shape, dim_len_ori, dim_len);
+      CopyArrayValue(reduce_axis_ori, reduce_axis, reduce_axis_len_ori, reduce_axis_len);
       broadcast_pattern = 0;
       for (std::size_t i = 0; i < before_broadcast_input_num; i++) {
         broadcast_pattern = broadcast_pattern * weight + static_cast<int32_t>(NormBroadcastMode::OTHERS);
       }
+      break;
     }
   }
 
-  reduce_pattern = CalcPattern(input_shape, reduce_axis);
+  reduce_pattern = CalcPattern(reduce_axis, reduce_axis_len, dim_len);
   norm_pattern = reduce_pattern * NORM_REDUCE_PATTERN_WEIGHT + broadcast_pattern;
 
   return true;
@@ -569,7 +601,7 @@ bool Norm::GetNormPattern() {
 bool Norm::GetUbSizeInfo() {
   try {
     const auto& available_ub_size_vec = compileInfo.available_ub_size.at(norm_pattern);
-    std::size_t expect_vec_len = 3;
+    std::size_t expect_vec_len = 4;
     V_OP_TILING_CHECK((available_ub_size_vec.size() == expect_vec_len),
                       VECTOR_INNER_ERR_REPORT_TILIING(op_type, "size of available_ub_size_vec is %zu that is illegal",
                                                       available_ub_size_vec.size()),
@@ -577,9 +609,11 @@ bool Norm::GetUbSizeInfo() {
     std::size_t common_max_ub_count_index = 0;
     std::size_t workspace_max_ub_count_index = 1;
     std::size_t pad_max_ub_count_index = 2;
+    std::size_t reduce_trans_max_ub_count_index = 3;
     common_max_ub_count = available_ub_size_vec[common_max_ub_count_index];
     workspace_max_ub_count = available_ub_size_vec[workspace_max_ub_count_index];
     pad_max_ub_count = available_ub_size_vec[pad_max_ub_count_index];
+    reduce_trans_max_ub_count = available_ub_size_vec[reduce_trans_max_ub_count_index];
     V_OP_TILING_CHECK((common_max_ub_count > 0),
                       VECTOR_INNER_ERR_REPORT_TILIING(op_type, "common_max_ub_count is %d that is illegal",
                                                       common_max_ub_count),
@@ -592,6 +626,10 @@ bool Norm::GetUbSizeInfo() {
                       VECTOR_INNER_ERR_REPORT_TILIING(op_type, "pad_max_ub_count is %d that is illegal",
                                                       pad_max_ub_count),
                       return false);
+    V_OP_TILING_CHECK((reduce_trans_max_ub_count > 0),
+                      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "reduce_trans_max_ub_count is %d that is illegal",
+                                                      reduce_trans_max_ub_count),
+                      return false);
   } catch (const std::exception &e) {
     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get ub size info failed. Error message: %s", e.what());
     return false;
@@ -601,25 +639,24 @@ bool Norm::GetUbSizeInfo() {
 }
 
 bool Norm::CalcInputAlignShape() {
-  for (std::size_t i = 0; i < input_shape.size(); i++) {
-    if (i == input_shape.size() - 1) {
+  for (std::size_t i = 0; i < dim_len; i++) {
+    if (i == dim_len - 1) {
       input_align_shape[i] = (input_shape[i] + block_size - 1) / block_size * block_size;
       continue;
     }
     input_align_shape[i] = input_shape[i];
   }
-  input_align_shape.resize(input_shape.size());
 
   return true;
 }
 
 bool Norm::IsNeedPartialReorder() {
-  if (reduce_axis.size() <= 1) {
+  if (reduce_axis_len <= 1) {
     return false;
   }
 
   std::size_t discontinuous_axis_num = 1;
-  for (std::size_t i = 1; i < reduce_axis.size(); i++) {
+  for (std::size_t i = 1; i < reduce_axis_len; i++) {
     // continuous reduce axis
     if (reduce_axis[i] == reduce_axis[i - 1] + 1) {
       continue;
@@ -629,7 +666,7 @@ bool Norm::IsNeedPartialReorder() {
   }
   is_discontinuous_reduce_axis = discontinuous_axis_num > 1;
 
-  return is_discontinuous_reduce_axis && input_shape.back() < block_size;
+  return is_discontinuous_reduce_axis && input_shape[dim_len - 1] < block_size;
 }
 
 
@@ -639,58 +676,76 @@ bool Norm::IsNeedWorkspace() const {
     return false;
   }
 
-  int64_t shape_product = 1;
-  for (std::size_t i = 0; i < input_align_shape.size(); i++) {
-    if (IsElementInVector(reduce_axis, i)) {
-      shape_product = input_align_shape[i] * shape_product;
-    }
-  }
+  int64_t shape_product = reduce_align_product;
 
   // nlast reduce need judge r_product * align(last_a) and ub_size
-  for (std::size_t i = last_r_axis_index + 1; i < input_align_shape.size(); i++) {
+  for (std::size_t i = last_r_axis_index + 1; i < dim_len; i++) {
     shape_product = shape_product * input_align_shape[i];
   }
 
   return shape_product > common_max_ub_count;
 }
 
+bool Norm::IsNeedReduceTranspose() const {
+  // AR pattern
+  bool is_ar_pattern = dim_len == 2 && first_a_axis_index == 0 && last_r_axis_index == 1;
+  if (!is_ar_pattern) {
+    return false;
+  }
+
+  // last dim of input_shape should be small enough
+  const auto& last_dim = input_shape[dim_len - 1];
+  if (reduce_trans_max_ub_count / compileInfo.transpose_max_entire_size < last_dim) {
+    return false;
+  }
+
+  // num of not_1 axes should be greater than or equal to 2
+  if (input_shape[0] == 1 || input_shape[1] == 1) {
+    return false;
+  }
+
+  if (last_dim > NORM_REDUCE_TRANSPOSE_THRESHOLD || last_dim % block_size == 0) {
+    return false;
+  }
+
+  // reduce product should be less than reduce_trans_max_ub_count
+  return reduce_align_product <= reduce_trans_max_ub_count;
+}
+
 bool Norm::IsNeedAlignedInUb() const {
+  if (is_reduce_transpose) {
+    return false;
+  }
+
+  // last dim is not align
+  if (input_shape[dim_len - 1] % block_size == 0) {
+    return false;
+  }
+
   // data move should be continuous
   if (!is_continuous_data_move) {
     return false;
   }
 
-  // last dim is not align
-  if (input_shape.back() % block_size == 0) {
-    return false;
-  }
-
   // last dim of input_align_shape should be small enough
-  if (pad_max_ub_count / compileInfo.pad_max_entire_size < input_align_shape.back()) {
+  if (pad_max_ub_count / compileInfo.transpose_max_entire_size < input_align_shape[dim_len - 1]) {
     return false;
   }
 
   // num of not_1 axes should be greater than or equal to 2
   std::size_t count_one = 0;
-  for (const auto& singe_dim : input_shape) {
-    if (singe_dim == 1) {
+  for (std::size_t i = 0; i < dim_len; i++) {
+    if (input_shape[i] == 1) {
       count_one++;
     }
   }
   std::size_t min_not_one_axis_num = 2;
-  if (input_shape.size() - count_one < min_not_one_axis_num) {
+  if (dim_len - count_one < min_not_one_axis_num) {
     return false;
   }
 
   // reduce product should be less than pad_max_ub_count
-  int64_t shape_product = 1;
-  for (std::size_t i = 0; i < input_align_shape.size(); i++) {
-    if (IsElementInVector(reduce_axis, i)) {
-      shape_product = input_align_shape[i] * shape_product;
-    }
-  }
-
-  return shape_product <= pad_max_ub_count;
+  return reduce_align_product <= pad_max_ub_count;
 }
 
 bool Norm::JudgePartialReorderZeroDimSplitBlock(const int64_t& right_product, const int64_t& right_align_product,
@@ -736,9 +791,9 @@ bool Norm::GetPartialReorderBlockTilingInfo() {
   }
 
   int64_t right_align_product = after_reduce_align_shape_product;
-  for (std::size_t i = 0; i < input_shape.size(); i++) {
+  for (std::size_t i = 0; i < dim_len; i++) {
     // block split A
-    if (IsElementInVector(reduce_axis, i)) {
+    if (IsElementInArray(reduce_axis, i, reduce_axis_len)) {
       continue;
     }
     // only block split at first a axis can enable multi_core
@@ -825,28 +880,29 @@ bool Norm::JudgeCurDimSplitBlock(const int64_t& left_product, const int64_t& rig
                                                         post_right_product),
                         return false);
       int64_t tail_block_inner_elem_count = tail_block_factor * post_right_product;
-      if (tail_block_inner_elem_count >= block_size) {
-        // calculation of block factor should according to cur_block_dim,
-        // but tail_block_inner_elem_count > block_size is according to considered_block_dim,
-        // cur_block_dim >= considered_block_dim in continuous_data_move case,
-        // so actual_block_factor may not large enough,
-        // if actual_block_factor * (right_product / input_shape[index]) < block,
-        // actual_block_factor should be refined
-        int64_t actual_block_factor = (input_shape[index] + cur_block_dim - 1) / cur_block_dim;
-        tilingInfo.block_tiling_axis = index;
-        tilingInfo.block_tiling_factor = is_continuous_data_move &&
-                                         (actual_block_factor * post_right_product < block_size) ?
-                                         (block_size + post_right_product - 1) / post_right_product:
-                                         actual_block_factor;
-        if (max_block_factor == 0) {
-          return true;
-        }
-        // storage align last axis but align block factor is larger than max_block_factor
-        bool is_illegal_cut = index == input_shape.size() - 1 &&
-          (tilingInfo.block_tiling_factor + block_size - 1) / block_size * block_size > max_block_factor;
-        if (!is_illegal_cut) {
-          return true;
-        }
+      if (tail_block_inner_elem_count < block_size) {
+        continue;
+      }
+      // calculation of block factor should according to cur_block_dim,
+      // but tail_block_inner_elem_count > block_size is according to considered_block_dim,
+      // cur_block_dim >= considered_block_dim in continuous_data_move case,
+      // so actual_block_factor may not large enough,
+      // if actual_block_factor * (right_product / input_shape[index]) < block,
+      // actual_block_factor should be refined
+      int64_t actual_block_factor = (input_shape[index] + cur_block_dim - 1) / cur_block_dim;
+      tilingInfo.block_tiling_axis = index;
+      tilingInfo.block_tiling_factor = is_continuous_data_move &&
+                                        (actual_block_factor * post_right_product < block_size) ?
+                                        (block_size + post_right_product - 1) / post_right_product:
+                                        actual_block_factor;
+      if (max_block_factor == 0) {
+        return true;
+      }
+      // storage align last axis but align block factor is larger than max_block_factor
+      bool is_illegal_cut = index == dim_len - 1 &&
+        (tilingInfo.block_tiling_factor + block_size - 1) / block_size * block_size > max_block_factor;
+      if (!is_illegal_cut) {
+        return true;
       }
     }
   }
@@ -872,9 +928,9 @@ bool Norm::GetWorkspaceBlockTilingInfo() {
   }
 
   std::size_t a_axis_count = 0;
-  for (std::size_t i = 0; i < input_shape.size(); i++) {
+  for (std::size_t i = 0; i < dim_len; i++) {
     // block split A
-    if (IsElementInVector(reduce_axis, i)) {
+    if (IsElementInArray(reduce_axis, i, reduce_axis_len)) {
       right_product = exist_after_reduce_tensor ? right_product : right_product / input_shape[i];
       continue;
     }
@@ -905,7 +961,7 @@ bool Norm::GetWorkspaceBlockTilingInfo() {
 
     // all right_product > block_size and left_product < compileInfo.core_num
     // split last a and factor is 1
-    if (a_axis_count == input_shape.size() - reduce_axis.size()) {
+    if (a_axis_count == dim_len - reduce_axis_len) {
       tilingInfo.block_tiling_axis = i;
       tilingInfo.block_tiling_factor = 1;
       return true;
@@ -949,9 +1005,9 @@ bool Norm::GetBlockTilingInfo() {
   }
 
   std::size_t a_axis_count = 0;
-  for (std::size_t i = 0; i < input_shape.size(); i++) {
+  for (std::size_t i = 0; i < dim_len; i++) {
     // block split A
-    if (IsElementInVector(reduce_axis, i)) {
+    if (IsElementInArray(reduce_axis, i, reduce_axis_len)) {
       right_product = compileInfo.exist_output_after_reduce ? right_product : right_product / input_shape[i];
       continue;
     }
@@ -970,7 +1026,7 @@ bool Norm::GetBlockTilingInfo() {
     }
     // all right_product > block_size and left_product < compileInfo.core_num
     // split last a and factor is 1
-    if (a_axis_count == input_shape.size() - reduce_axis.size()) {
+    if (a_axis_count == dim_len - reduce_axis_len) {
       tilingInfo.block_tiling_axis = i;
       tilingInfo.block_tiling_factor = 1;
       return true;
@@ -985,7 +1041,7 @@ bool Norm::GetBlockTilingInfo() {
 int32_t Norm::GetBlockDim(int32_t tiling_axis, int64_t tiling_factor) const {
   int32_t block_dim = 1;
   for (int32_t i = 0; i <= tiling_axis; i++) {
-    if (IsElementInVector(reduce_axis, i)) {
+    if (IsElementInArray(reduce_axis, i, reduce_axis_len)) {
       continue;
     }
     if (i == tiling_axis) {
@@ -1009,45 +1065,43 @@ bool Norm::ProcessReorderAxis() {
    * */
   std::array<bool, NORM_MAX_DIM_LEN> reduce_flag = {false};
 
-  reorderInfo.reorder_input_shape.resize(input_shape.size());
-  reorderInfo.reorderPos_oriPos.resize(input_shape.size());
-
-  std::size_t num_a = input_shape.size() - reduce_axis.size();
-  for (const auto& item : reduce_axis) {
-    reduce_flag[item] = true;
+  for (std::size_t i = 0; i < reduce_axis_len; i++) {
+    reduce_flag[reduce_axis[i]] = true;
   }
   // position of first R index in reorder shape
-  std::size_t pos_r = num_a - (input_shape.size() - (last_r_axis_index + 1));
+  std::size_t pos_r = last_r_axis_index + 1 - reduce_axis_len;
   std::size_t pos_a = 0;
 
   // [0: last_r_axis_index]
   for (int32_t i = 0; i <= last_r_axis_index; i++) {
     if (reduce_flag[i]) {
       reorderInfo.reorder_input_shape[pos_r] = input_shape[i];
-      reorderInfo.reorderPos_oriPos[pos_r] = i;
+      reorderInfo.reorder_to_ori_pos[pos_r] = i;
       pos_r++;
     } else {
       if (i < tilingInfo.block_tiling_axis) {
-        reorderInfo.fused_block_tiling_axis.emplace_back(pos_a);
+        reorderInfo.fused_block_tiling_axis[reorderInfo.fused_block_tiling_axis_len] = pos_a;
+        reorderInfo.fused_block_tiling_axis_len++;
       }
       reorderInfo.reorder_input_shape[pos_a] = input_shape[i];
-      reorderInfo.reorderPos_oriPos[pos_a] = i;
+      reorderInfo.reorder_to_ori_pos[pos_a] = i;
       pos_a++;
     }
   }
 
   // order last normal axis, maybe several axis
-  for (int32_t i = last_r_axis_index + 1; i < static_cast<int32_t>(input_shape.size()); i++) {
+  for (int32_t i = last_r_axis_index + 1; i < static_cast<int32_t>(dim_len); i++) {
     if (i < tilingInfo.block_tiling_axis) {
-      reorderInfo.fused_block_tiling_axis.emplace_back(pos_r);
+      reorderInfo.fused_block_tiling_axis[reorderInfo.fused_block_tiling_axis_len] = pos_r;
+      reorderInfo.fused_block_tiling_axis_len++;
     }
     reorderInfo.reorder_input_shape[pos_r] = input_shape[i];
-    reorderInfo.reorderPos_oriPos[pos_r] = i;
+    reorderInfo.reorder_to_ori_pos[pos_r] = i;
     pos_r++;
   }
 
-  for (int32_t i = 0; i < static_cast<int32_t>(reorderInfo.reorderPos_oriPos.size()); i++) {
-    if (reorderInfo.reorderPos_oriPos[i] == tilingInfo.block_tiling_axis) {
+  for (int32_t i = 0; i < static_cast<int32_t>(dim_len); i++) {
+    if (reorderInfo.reorder_to_ori_pos[i] == tilingInfo.block_tiling_axis) {
       block_tiling_axis_index_in_reorder = i;
       break;
     }
@@ -1058,15 +1112,15 @@ bool Norm::ProcessReorderAxis() {
 
 int64_t Norm::CalcReorderShapeProduct(int32_t axis_index, bool exclude_reduce_axis) const {
   int64_t result = 1;
-  for (int32_t i = axis_index + 1; i < static_cast<int32_t>(reorderInfo.reorder_input_shape.size()); i++) {
+  for (int32_t i = axis_index + 1; i < static_cast<int32_t>(dim_len); i++) {
     if (exclude_reduce_axis) {
-      int32_t first_r_axis_in_reorder = last_r_axis_index - reduce_axis.size() + 1;
+      int32_t first_r_axis_in_reorder = last_r_axis_index + 1 - reduce_axis_len;
       int32_t last_r_axis_in_reorder = last_r_axis_index;
       if (first_r_axis_in_reorder <= i && i <= last_r_axis_in_reorder) {
         continue;
       }
     }
-    if (IsElementInVector(reorderInfo.fused_block_tiling_axis, i)) {
+    if (IsElementInArray(reorderInfo.fused_block_tiling_axis, i, reorderInfo.fused_block_tiling_axis_len)) {
       continue;
     }
     if (i == block_tiling_axis_index_in_reorder) {
@@ -1081,19 +1135,19 @@ int64_t Norm::CalcReorderShapeProduct(int32_t axis_index, bool exclude_reduce_ax
 
 int64_t Norm::CalcReorderAlignShapeProduct(int32_t axis_index) const {
   int64_t result = 1;
-  for (int32_t i = axis_index + 1; i < static_cast<int32_t>(reorderInfo.reorder_input_shape.size()); i++) {
-    if (IsElementInVector(reorderInfo.fused_block_tiling_axis, i)) {
+  for (int32_t i = axis_index + 1; i < static_cast<int32_t>(dim_len); i++) {
+    if (IsElementInArray(reorderInfo.fused_block_tiling_axis, i, reorderInfo.fused_block_tiling_axis_len)) {
       continue;
     }
 
     if (i == block_tiling_axis_index_in_reorder) {
-      if (i == static_cast<int32_t>(reorderInfo.reorder_input_shape.size()) - 1) {
+      if (i == static_cast<int32_t>(dim_len) - 1) {
         result = result * ((tilingInfo.block_tiling_factor + block_size - 1) / block_size * block_size);
       } else {
         result = result * tilingInfo.block_tiling_factor;
       }
     } else {
-      if (i == static_cast<int32_t>(reorderInfo.reorder_input_shape.size()) - 1) {
+      if (i == static_cast<int32_t>(dim_len) - 1) {
         result = result * ((reorderInfo.reorder_input_shape[i] + block_size - 1) / block_size * block_size);
       } else {
         result = result * reorderInfo.reorder_input_shape[i];
@@ -1109,13 +1163,14 @@ int64_t Norm::CalcReorderAlignShapeProduct(int32_t axis_index) const {
 }
 
 bool Norm::GetPartialReorderUbTilingInfo() {
-  for (std::size_t i = 0; i < input_shape.size(); i++) {
-    if (!IsElementInVector(reduce_axis, i)) {
+  for (std::size_t i = 0; i < dim_len; i++) {
+    if (!IsElementInArray(reduce_axis, i, reduce_axis_len)) {
       continue;
     }
-    int64_t right_product_align = (i == input_shape.size() - 1 ?
+    int64_t right_product_align = (i == dim_len - 1 ?
                                    1:
-                                   std::accumulate(input_align_shape.begin() + i + 1, input_align_shape.end(), 1,
+                                   std::accumulate(input_align_shape.begin() + i + 1,
+                                                   input_align_shape.begin() + dim_len, 1,
                                                    std::multiplies<int64_t>()));
     if (right_product_align <= ub_size) {
       int64_t cur_ub_factor = ub_size / right_product_align;
@@ -1159,14 +1214,13 @@ bool Norm::CheckNormalCurUbFactor(const int64_t& cur_ub_factor, const int64_t& c
 }
 
 bool Norm::JudgeNormalCurDimSplitUb(const std::size_t& index) {
-  // right_product: mte3 element num >= block
   // right_align_product: ub can put in A axis after block_inner
-  int64_t right_product = CalcReorderShapeProduct(index, compileInfo.exist_output_after_reduce);
   int64_t right_product_align = CalcReorderAlignShapeProduct(index);
   if (right_product_align > ub_size) {
     return false;
   }
-
+  // right_product: mte3 element num >= block
+  int64_t right_product = CalcReorderShapeProduct(index, compileInfo.exist_output_after_reduce);
   int64_t current_dim = (static_cast<int32_t>(index) == block_tiling_axis_index_in_reorder) ?
                         tilingInfo.block_tiling_factor:
                         reorderInfo.reorder_input_shape[index];
@@ -1197,7 +1251,7 @@ bool Norm::JudgeNormalCurDimSplitUb(const std::size_t& index) {
   int64_t cur_ub_factor = ub_size / right_product_align;
   for (; cur_ub_factor >= 1; cur_ub_factor--) {
     if (CheckNormalCurUbFactor(cur_ub_factor, current_dim, current_dim_tail, right_product)) {
-      tilingInfo.ub_tiling_axis = reorderInfo.reorderPos_oriPos[index];
+      tilingInfo.ub_tiling_axis = reorderInfo.reorder_to_ori_pos[index];
       // entire_cut: ub factor tail should better equal to ub factor
       int64_t ub_loop = cur_ub_factor > current_dim ? 1 : (current_dim + cur_ub_factor - 1) / cur_ub_factor;
       tilingInfo.ub_tiling_factor = (current_dim + ub_loop - 1) / ub_loop;
@@ -1208,7 +1262,7 @@ bool Norm::JudgeNormalCurDimSplitUb(const std::size_t& index) {
         tilingInfo.ub_tiling_factor = std::min(cur_ub_factor, current_dim);
       }
       // storage align last A when is nlast reduce, but align_factor * right_product is larger than max_ub
-      bool is_common_cut_illegal = !is_last_axis_reduce && index == reorderInfo.reorder_input_shape.size() - 1 &&
+      bool is_common_cut_illegal = !is_last_axis_reduce && index == dim_len - 1 &&
                                    (tilingInfo.ub_tiling_factor + block_size - 1) / block_size * block_size *
                                    right_product_align > ub_size;
       if (!is_common_cut_illegal) {
@@ -1221,22 +1275,21 @@ bool Norm::JudgeNormalCurDimSplitUb(const std::size_t& index) {
 }
 
 bool Norm::JudgeWorkspaceCurDimSplitUb(const std::size_t& index) {
-  // right_product: mte3 element num >= block
   // right_align_product: ub can put in A axis after block_inner
-  // after reduce output compute at block_outer, so only consider mte3 of before reduce output
-  int64_t right_product = CalcReorderShapeProduct(index, false);
   int64_t right_product_align = CalcReorderAlignShapeProduct(index);
   if (right_product_align > ub_size) {
     return false;
   }
-
+  // right_product: mte3 element num >= block
+  // after reduce output compute at block_outer, so only consider mte3 of before reduce output
+  int64_t right_product = CalcReorderShapeProduct(index, false);
   int64_t current_dim = reorderInfo.reorder_input_shape[index];
   int64_t cur_ub_factor = ub_size / right_product_align;
   for (; cur_ub_factor >= 1; cur_ub_factor--) {
     int64_t tail_ub_factor = current_dim % cur_ub_factor == 0 ? cur_ub_factor : current_dim % cur_ub_factor;
     int64_t tail_ub_tilling_inner_ddr_count = tail_ub_factor * right_product;
     if (tail_ub_tilling_inner_ddr_count >= block_size) {
-      tilingInfo.ub_tiling_axis = reorderInfo.reorderPos_oriPos[index];
+      tilingInfo.ub_tiling_axis = reorderInfo.reorder_to_ori_pos[index];
       // entire_cut: ub factor tail should better equal to ub factor
       int64_t ub_loop = cur_ub_factor > current_dim ? 1 : (current_dim + cur_ub_factor - 1) / cur_ub_factor;
       tilingInfo.ub_tiling_factor = (current_dim + ub_loop - 1) / ub_loop;
@@ -1247,7 +1300,7 @@ bool Norm::JudgeWorkspaceCurDimSplitUb(const std::size_t& index) {
         tilingInfo.ub_tiling_factor = std::min(cur_ub_factor, current_dim);
       }
       // storage align last R when is last reduce, but align_factor * right_product is larger than max_ub
-      bool is_common_cut_illegal = is_last_axis_reduce && index == reorderInfo.reorder_input_shape.size() - 1 &&
+      bool is_common_cut_illegal = is_last_axis_reduce && index == dim_len - 1 &&
                                    (tilingInfo.ub_tiling_factor + block_size - 1) / block_size * block_size *
                                    right_product_align > ub_size;
       if (!is_common_cut_illegal) {
@@ -1264,17 +1317,17 @@ bool Norm::GetUbTilingInfo() {
     return GetPartialReorderUbTilingInfo();
   }
 
-  int32_t first_r_axis_in_reorder = last_r_axis_index - reduce_axis.size() + 1;
+  int32_t first_r_axis_in_reorder = last_r_axis_index - reduce_axis_len + 1;
   int32_t last_r_axis_in_reorder = last_r_axis_index;
 
   // normal, ub split A
   if (!is_need_workspace) {
     // dont split ub if all reduce
-    if (reduce_axis.size() == input_shape.size()) {
+    if (reduce_axis_len == dim_len) {
       return true;
     }
-    for (int32_t i = 0; i < static_cast<int32_t>(reorderInfo.reorder_input_shape.size()); i++) {
-      if (IsElementInVector(reorderInfo.fused_block_tiling_axis, i)) {
+    for (int32_t i = 0; i < static_cast<int32_t>(dim_len); i++) {
+      if (IsElementInArray(reorderInfo.fused_block_tiling_axis, i, reorderInfo.fused_block_tiling_axis_len)) {
         continue;
       }
       if (first_r_axis_in_reorder <= i && i <= last_r_axis_in_reorder) {
@@ -1286,8 +1339,8 @@ bool Norm::GetUbTilingInfo() {
     }
   } else {
     // workspace, ub split R
-    for (int32_t i = 0; i < static_cast<int32_t>(reorderInfo.reorder_input_shape.size()); i++) {
-      if (IsElementInVector(reorderInfo.fused_block_tiling_axis, i)) {
+    for (int32_t i = 0; i < static_cast<int32_t>(dim_len); i++) {
+      if (IsElementInArray(reorderInfo.fused_block_tiling_axis, i, reorderInfo.fused_block_tiling_axis_len)) {
         continue;
       }
       if (!(first_r_axis_in_reorder <= i && i <= last_r_axis_in_reorder)) {
@@ -1304,14 +1357,14 @@ bool Norm::GetUbTilingInfo() {
 
 bool Norm::NeedRefineBlockTiling() {
   // block split last common axis, block factor can refine to align
+  if (is_last_axis_reduce || tilingInfo.block_tiling_axis != static_cast<int32_t>(dim_len) - 1) {
+    return false;
+  }
 
   if (is_partial_reorder) {
     return false;
   }
 
-  if (is_last_axis_reduce || tilingInfo.block_tiling_axis != static_cast<int32_t>(input_shape.size()) - 1) {
-    return false;
-  }
   int64_t refined_block_tiling_factor = (tilingInfo.block_tiling_factor + block_size - 1) / block_size * block_size;
   if (refined_block_tiling_factor > input_shape[tilingInfo.block_tiling_axis]) {
     return false;
@@ -1332,7 +1385,7 @@ bool Norm::NeedRefineBlockTiling() {
 bool Norm::ProcessBlockTilingAndReorder() {
   bool ret = true;
   // has A axis
-  if (reduce_axis.size() != input_shape.size()) {
+  if (reduce_axis_len != dim_len) {
     ret = ret && GetBlockTilingInfo();
     if (!ret) {
       VECTOR_INNER_ERR_REPORT_TILIING(op_type, "GetBlockTilingInfo error");
@@ -1398,35 +1451,24 @@ bool Norm::CalcTilingKey() {
 
 bool Norm::CalcWorkspace() {
   if (compileInfo.is_const && !compileInfo.is_const_post) {
-    workspace.clear();
+    workspace_len = 0;
     return true;
   }
 
-  std::size_t workspace_count = 0;
   try {
     const auto& workspace_info = compileInfo.workspace_info.at(tiling_key);
-    workspace_count = workspace_info.size();
-    if (workspace_count == 0) {
-      workspace.clear();
-      return true;
-    }
+    workspace_len = workspace_info.size();
 
-    int64_t shape_after_reduce_align_product = CalcAfterReduceShapeProduct(input_align_shape, reduce_axis);
-    int64_t shape_before_reduce_align_product = 1;
-    for (const auto& single_dim : input_align_shape) {
-      shape_before_reduce_align_product *= single_dim;
-    }
-
-    for (std::size_t i = 0; i < workspace_count; i++) {
+    for (std::size_t i = 0; i < workspace_len; i++) {
       // fake workspace is represented by 32
       // after reduce workspace tensor is represented by a negative number
       // before reduce workspace tensor is represented by a positive number
       if (workspace_info[i] == NORM_FAKE_WORKSPACE_SIZE) {
         workspace[i] = NORM_FAKE_WORKSPACE_SIZE;
       } else if (workspace_info[i] < 0) {
-        workspace[i] = shape_after_reduce_align_product * workspace_info[i] * -1;
+        workspace[i] = after_reduce_align_shape_product * workspace_info[i] * -1;
       } else {
-        workspace[i] = shape_before_reduce_align_product * workspace_info[i];
+        workspace[i] = after_reduce_align_shape_product * reduce_align_product * workspace_info[i];
       }
     }
   } catch (const std::exception &e) {
@@ -1434,20 +1476,17 @@ bool Norm::CalcWorkspace() {
     return false;
   }
 
-  workspace.resize(workspace_count);
-
   return true;
 }
 
 bool Norm::GetVarValue() {
+  var_value_len = 0;
   if (compileInfo.is_const) {
-    var_value.clear();
     return true;
   }
 
   // obtain var value
   try {
-    std::size_t count_var = 0;
     int32_t ub_tiling_factor_encode = 40000;
     int32_t block_tiling_factor_encode = 30000;
     int32_t known_broadcast_encode = 20000;
@@ -1456,21 +1495,20 @@ bool Norm::GetVarValue() {
     const auto& var_pattern = compileInfo.norm_vars.at(tiling_key);
     for (const auto& var : var_pattern) {
       if (var >= ub_tiling_factor_encode) {
-        var_value[count_var] = static_cast<int32_t>(tilingInfo.ub_tiling_factor);
-        count_var++;
+        var_value[var_value_len] = static_cast<int32_t>(tilingInfo.ub_tiling_factor);
+        var_value_len++;
       } else if (var >= block_tiling_factor_encode) {
-        var_value[count_var] = static_cast<int32_t>(tilingInfo.block_tiling_factor);
-        count_var++;
+        var_value[var_value_len] = static_cast<int32_t>(tilingInfo.block_tiling_factor);
+        var_value_len++;
       } else if (var >= known_broadcast_encode) {
-        var_value[count_var] = static_cast<int32_t>(input_shape[var % unknown_broadcast_encode]);
-        count_var++;
+        var_value[var_value_len] = static_cast<int32_t>(input_shape[var % unknown_broadcast_encode]);
+        var_value_len++;
       } else {
-        var_value[count_var] = static_cast<int32_t>(before_broadcast_shapes[
+        var_value[var_value_len] = static_cast<int32_t>(before_broadcast_shapes[
           (var % unknown_broadcast_encode) / dim_encode][(var % unknown_broadcast_encode) % dim_encode]);
-        count_var++;
+        var_value_len++;
       }
     }
-    var_value.resize(count_var);
   } catch (const std::exception &e) {
     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get var value error. Error message: %s", e.what());
     return false;
@@ -1485,38 +1523,47 @@ bool Norm::ConstPostCalcTiling() {
   ret = ret && GetNormPattern();
   tiling_key = norm_pattern;
   ret = ret && CalcInputAlignShape();
+  auto align_product_pair = CalcShapeProduct(input_align_shape, reduce_axis, dim_len, reduce_axis_len);
+  reduce_align_product = align_product_pair.first;
+  after_reduce_align_shape_product = align_product_pair.second;
   ret = ret && CalcWorkspace();
 
   return ret;
 }
 
 bool Norm::CalcNormInfo() {
-  after_reduce_shape_product = CalcAfterReduceShapeProduct(input_shape, reduce_axis);
-  after_reduce_align_shape_product = CalcAfterReduceShapeProduct(input_align_shape, reduce_axis);
-  reduce_product = CalcReduceShapeProduct(input_shape, reduce_axis);
+  auto product_pair = CalcShapeProduct(input_shape, reduce_axis, dim_len, reduce_axis_len);
+  reduce_product = product_pair.first;
+  after_reduce_shape_product = product_pair.second;
+  auto align_product_pair = CalcShapeProduct(input_align_shape, reduce_axis, dim_len, reduce_axis_len);
+  reduce_align_product = align_product_pair.first;
+  after_reduce_align_shape_product = align_product_pair.second;
 
-  for (int32_t i = 0; i < static_cast<int32_t>(input_shape.size()); i++) {
-    if (!IsElementInVector(reduce_axis, i)) {
+  for (int32_t i = 0; i < static_cast<int32_t>(dim_len); i++) {
+    if (!IsElementInArray(reduce_axis, i, reduce_axis_len)) {
       first_a_axis_index = i;
       break;
     }
   }
-  last_r_axis_index = static_cast<int32_t>(*max_element(reduce_axis.begin(), reduce_axis.end()));
-  is_last_axis_reduce = last_r_axis_index == static_cast<int32_t>(input_shape.size()) - 1;
-  auto input_shape_size = static_cast<int32_t>(input_shape.size());
-  last_a_axis_index_in_reorder = is_last_axis_reduce ?
-                                 input_shape_size - static_cast<int32_t>(reduce_axis.size()) - 1 :
-                                 input_shape_size - 1;
+  last_r_axis_index = reduce_axis[reduce_axis_len - 1];
+  is_last_axis_reduce = last_r_axis_index == static_cast<int32_t>(dim_len) - 1;
+  last_a_axis_index_in_reorder =
+    static_cast<int32_t>(is_last_axis_reduce ? dim_len - reduce_axis_len - 1 : dim_len - 1);
   // calculate is_partial_reorder and is_discontinuous_reduce_axis
   is_partial_reorder = IsNeedPartialReorder();
   is_need_workspace = IsNeedWorkspace();
   is_continuous_data_move =
-    is_last_axis_reduce && (!is_discontinuous_reduce_axis) && (input_shape.size() - reduce_axis.size() <= 1);
+    is_last_axis_reduce && (!is_discontinuous_reduce_axis) && (dim_len - reduce_axis_len <= 1);
+  is_reduce_transpose = IsNeedReduceTranspose();
   is_align_and_remove_pad = IsNeedAlignedInUb();
-  bool is_last_reduce_align = is_last_axis_reduce && input_shape.back() % block_size == 0;
+  bool is_last_reduce_align =
+    !is_reduce_transpose && is_last_axis_reduce && input_shape[dim_len - 1] % block_size == 0;
   // determine ub size
   if (is_need_workspace) {
     ub_size = workspace_max_ub_count;
+  } else if (is_reduce_transpose) {
+    ub_size = reduce_trans_max_ub_count;
+    sch_type = NORM_REDUCE_TRANSPOSE_SCH_TYPE;
   } else if (is_align_and_remove_pad) {
     ub_size = pad_max_ub_count;
     sch_type = NORM_ALIGNED_IN_UB_SCH_TYPE;
@@ -1547,14 +1594,14 @@ bool Norm::CalcTiling() {
     if (compileInfo.is_const_post) {
       return ConstPostCalcTiling();
     } else {
-      reduce_axis = reduce_axis_ori;
-      broadcast_axis = broadcast_axis_ori;
-      input_shape = input_shape_ori;
+      CopyArrayValue(input_shape_ori, input_shape, dim_len_ori, dim_len);
+      CopyArrayValue(reduce_axis_ori, reduce_axis, reduce_axis_len_ori, reduce_axis_len);
+      CopyArrayValue(broadcast_axis_ori, broadcast_axis, broadcast_axis_len_ori, broadcast_axis_len);
     }
   } else if (!compileInfo.is_fuse_axis) {
-    reduce_axis = reduce_axis_ori;
-    broadcast_axis = broadcast_axis_ori;
-    input_shape = input_shape_ori;
+    CopyArrayValue(input_shape_ori, input_shape, dim_len_ori, dim_len);
+    CopyArrayValue(reduce_axis_ori, reduce_axis, reduce_axis_len_ori, reduce_axis_len);
+    CopyArrayValue(broadcast_axis_ori, broadcast_axis, broadcast_axis_len_ori, broadcast_axis_len);
   } else {
     // input(unknown)
     ret = ret && EliminateOne();
@@ -1584,8 +1631,8 @@ bool Norm::ConstPostWriteTilingData() {
   try {
     run_info.SetBlockDim(compileInfo.const_block_dims.at(tiling_key));
     run_info.SetTilingKey(tiling_key);
-    for (const auto& item : workspace) {
-      run_info.AddWorkspace(item);
+    for (std::size_t i = 0; i < workspace_len; i++) {
+      run_info.AddWorkspace(workspace[i]);
     }
     auto tiling_key_uint = static_cast<uint64_t>(tiling_key);
     if (compileInfo.var_attr_map.count(tiling_key_uint) > 0) {
@@ -1625,12 +1672,12 @@ bool Norm::WriteTilingData() {
   run_info.SetTilingKey(tiling_key);
   run_info.SetBlockDim(tilingInfo.block_dim);
 
-  for (const auto& item : workspace) {
-    run_info.AddWorkspace(item);
+  for (std::size_t i = 0; i < workspace_len; i++) {
+    run_info.AddWorkspace(workspace[i]);
   }
 
-  for (const auto& item : var_value) {
-    run_info.AddTilingData(item);
+  for (std::size_t i = 0; i < var_value_len; i++) {
+    run_info.AddTilingData(var_value[i]);
   }
 
   auto tiling_key_uint = static_cast<uint64_t>(tiling_key);
@@ -1673,9 +1720,9 @@ bool NormCompileInfo::Check(const std::string& op_type) const {
                     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "min_block_size is %d that is illegal",
                                                     min_block_size),
                     return false);
-  V_OP_TILING_CHECK((pad_max_entire_size > 0),
-                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "pad_max_entire_size is %d that is illegal",
-                                                    pad_max_entire_size),
+  V_OP_TILING_CHECK((transpose_max_entire_size > 0),
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "transpose_max_entire_size is %d that is illegal",
+                                                    transpose_max_entire_size),
                     return false);
   return true;
 }
@@ -1712,6 +1759,9 @@ void NormCompileInfo::ParseGraphInfo(const nlohmann::json& parsed_json_obj) {
   input_type = parsed_json_obj.at("_input_type").get<std::vector<int32_t>>();
   exist_output_after_reduce = parsed_json_obj.at("_exist_output_after_reduce").get<bool>();
   exist_workspace_after_reduce = parsed_json_obj.at("_exist_workspace_after_reduce").get<bool>();
+  if (parsed_json_obj.contains("_exist_vc_unsupported_type")) {
+    exist_vc_unsupported_type = parsed_json_obj.at("_exist_vc_unsupported_type").get<bool>();
+  }
   const auto& local_available_ub_size =
     parsed_json_obj.at("_available_ub_size").get<std::unordered_map<std::string, std::vector<int32_t>>>();
   for (const auto& single_item : local_available_ub_size) {
@@ -1734,10 +1784,10 @@ void NormCompileInfo::ParseCommonInfo(const nlohmann::json& parsed_json_obj) {
   if (common_info.size() == expect_common_info_len) {
     std::size_t core_num_index = 0;
     std::size_t min_block_size_index = 1;
-    std::size_t pad_max_entire_size_index = 2;
+    std::size_t transpose_max_entire_size_index = 2;
     core_num = common_info[core_num_index];
     min_block_size = common_info[min_block_size_index];
-    pad_max_entire_size = common_info[pad_max_entire_size_index];
+    transpose_max_entire_size = common_info[transpose_max_entire_size_index];
   }
 }
 

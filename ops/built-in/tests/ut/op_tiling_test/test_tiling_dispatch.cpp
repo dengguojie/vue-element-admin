@@ -94,7 +94,7 @@ TEST_F(TilingDispatch, TilingDispatchNorm) {
   ASSERT_TRUE(op_func_info.IsFunctionV4());
   const OpTilingFuncV4& tiling_func = op_func_info.GetOpTilingFuncV4();
   const OpParseFuncV4& parse_func = op_func_info.GetOpParseFuncV4();
-  ge::AscendString compileInfo(R"({ "_fuse_axis": true, "_input_type": [0], "_ori_reduce_axis": [2], "_pattern": "Norm", "_common_info": [32, 16, 128], "_available_ub_size": {"4000": [15792, 16120, 15792]}, "_exist_workspace_after_reduce": false, "_exist_output_after_reduce": false, "_workspace_info": {"200400000": [32]}, "_norm_vars": {"200400000": [20000, 20001, 30000, 40000]}})");
+  ge::AscendString compileInfo(R"({ "_fuse_axis": true, "_input_type": [0], "_ori_reduce_axis": [2], "_pattern": "Norm", "_common_info": [32, 16, 128], "_available_ub_size": {"4000": [15792, 16120, 15792, 15792]}, "_exist_workspace_after_reduce": false, "_exist_output_after_reduce": false, "_workspace_info": {"200400000": [32]}, "_norm_vars": {"200400000": [20000, 20001, 30000, 40000]}})");
   std::shared_ptr<CompileInfoBase> op_compile_info = parse_func(op, compileInfo);
   ASSERT_TRUE(op_compile_info != nullptr);
   ASSERT_TRUE(tiling_func(op, op_compile_info, runInfo));

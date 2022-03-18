@@ -196,22 +196,6 @@ class NormBroadcastAxis:
                      {"errCode": "E90001",
                       "detailed_cause": f"broadcast axis must be {UNKNOWN} when type is {axis_type.value}."})
 
-    def _init_value(self, axis_value, mode):
-        """
-        value init
-        """
-        if mode == "runtime" and self.type != BroadcastAxisType.ASSIGNED:
-            return []
-
-        if isinstance(axis_value, (list, tuple)):
-            value = list(set(axis_value))
-        elif isinstance(axis_value, int):
-            value = [axis_value]
-        else:
-            value = axis_value
-
-        return value
-
     def convert_value_to_positive(self, max_dim_len):
         """
         convert negative value to positive
@@ -247,6 +231,22 @@ class NormBroadcastAxis:
         get compile broadcast axis
         """
         return self.compile_value if (self.is_compile_broadcast and not self.is_variable) else None
+
+    def _init_value(self, axis_value, mode):
+        """
+        value init
+        """
+        if mode == "runtime" and self.type != BroadcastAxisType.ASSIGNED:
+            return []
+
+        if isinstance(axis_value, (list, tuple)):
+            value = list(set(axis_value))
+        elif isinstance(axis_value, int):
+            value = [axis_value]
+        else:
+            value = axis_value
+
+        return value
 
 
 class NormBroadcastAxisList:
@@ -345,19 +345,6 @@ class NormClassifyInfo:
                  {"errCode": "E90001",
                   "detailed_cause": "element in disable_fuse_axes must be positive."})
 
-    def _check_input_type(self, input_type_list):
-        """
-        check input_type
-        """
-        _is_true(isinstance(input_type_list, (list, tuple)) and len(input_type_list) == self.input_num,
-                {"errCode": "E90001",
-                 "detailed_cause": "input_shape_type in norm classifier must be a list/tuple and"
-                                   "its len must be equal to input num."})
-        for single_value in input_type_list:
-            _is_true(single_value in (0, 1),
-                     {"errCode": "E90001",
-                      "detailed_cause": "value in input_shape_type in norm classifier must be 0 or 1."})
-
     @staticmethod
     def _check_same_input_shape_group(same_input_shape_group):
         """
@@ -379,6 +366,19 @@ class NormClassifyInfo:
         _is_true(isinstance(value, dict),
                  {"errCode": "E90001",
                   "detailed_cause": f"{key} in norm classifier must be a dict."})
+
+    def _check_input_type(self, input_type_list):
+        """
+        check input_type
+        """
+        _is_true(isinstance(input_type_list, (list, tuple)) and len(input_type_list) == self.input_num,
+                {"errCode": "E90001",
+                 "detailed_cause": "input_shape_type in norm classifier must be a list/tuple and"
+                                   "its len must be equal to input num."})
+        for single_value in input_type_list:
+            _is_true(single_value in (0, 1),
+                     {"errCode": "E90001",
+                      "detailed_cause": "value in input_shape_type in norm classifier must be 0 or 1."})
 
     def _parse_is_fuse_axis(self):
         """
@@ -1067,7 +1067,8 @@ class NormClassifier:
             return "common"
 
         if not self.classify_info.is_fuse_axis:
-            return self.shape_before_fuse, self.range_before_fuse, self.reduce_axis, self.unify_broadcast_axis
+            res = (self.shape_before_fuse, self.range_before_fuse, self.reduce_axis, self.unify_broadcast_axis)
+            return res
 
         f_shape, f_ranges, f_reduce_axis, f_broadcast_axis, f_pad_axis = [], [], [], [], []
         state = "init"
@@ -1100,8 +1101,9 @@ class NormClassifier:
             state = state_i
 
         self.disable_fuse_axes_after_fuse.append(f_pad_axis)
+        res = (f_shape, f_ranges, f_reduce_axis, f_broadcast_axis)
 
-        return f_shape, f_ranges, f_reduce_axis, f_broadcast_axis
+        return res
 
     def _judge_remove_last_one(self):
         """

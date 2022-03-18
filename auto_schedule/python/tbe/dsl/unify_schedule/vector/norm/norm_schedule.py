@@ -22,6 +22,9 @@ from tbe.dsl.base.operation import add_build_arg
 from tbe.dsl.base.operation import get_context
 from tbe.dsl.base.operation import var_inner
 
+from .norm_tilingcase import NormComputeGraphInfo
+from .norm_tilingcase import NormInfo
+from .norm_tilingcase import NormTilingCase
 from .norm_tilingcase import get_broadcast_axis
 from .norm_tilingcase import get_block_size as get_align_factor
 from .norm_tilingcase import judge_tvm_shape_equal
@@ -40,6 +43,7 @@ STORAGE_BOUND = "storage_bound"
 ENABLE_VNCHWCONV = "enable_vnchwconv"
 TRANS_THRESHOLD = "trans_threshold"
 AVOID_BANK_CONFLICT = "avoid_bank_conflict"
+REDUCE_TRANS = "trans"
 TRANS_THRESHOLD_VALUE = 32
 
 
@@ -176,7 +180,7 @@ class NormNormalSchedule:
     """
     norm schedule when ub split common axis
     """
-    def __init__(self, graph_info, norm_info, tiling_case, outs):
+    def __init__(self, graph_info: NormComputeGraphInfo, norm_info: NormInfo, tiling_case: NormTilingCase, outs):
         self._outs = outs
         self._sch = None
         self._scope = LOCAL_UB
@@ -226,15 +230,13 @@ class NormNormalSchedule:
         self._is_split_block_and_ub = not norm_info.is_all_reduce
         self._is_const = not get_context().get("_const_and_dynamic_mixed") and \
             get_context().get_current_compute().get("_mode") == "const"
-        self._available_size = self._graph_info.pad_available_ub_size \
-            if tiling_case.is_aligned_in_ub_case else self._graph_info.available_ub_size
-        if self._tiling_case.is_enable_db:
-            self._available_size = self._graph_info.const_db_size
+        self._available_size = None
 
     def do_schedule(self):
         """
         normal norm schedule process
         """
+        self._pre_process()
         # normal schedule do not need workspace
         workspace_compile_info = {"common_workspace": [], "reduce_workspace": [], "broadcast_fork_workspace": []}
         current_schedule = get_context().get_current_compute().get_current_schedule()
@@ -292,6 +294,17 @@ class NormNormalSchedule:
 
         return self._sch
 
+    def _pre_process(self):
+        if self._tiling_case.is_aligned_in_ub_case:
+            self._available_size = self._graph_info.pad_available_ub_size
+        elif self._tiling_case.is_reduce_transpose_case:
+            self._available_size = self._graph_info.reduce_transpose_available_ub_size
+        else:
+            self._available_size = self._graph_info.available_ub_size
+
+        if self._tiling_case.is_enable_db:
+            self._available_size = self._graph_info.const_db_size
+
     def _calc_cache_read(self):
         self._cache_read_tensors.update(self._graph_info.input_tensor_set)
 
@@ -343,24 +356,33 @@ class NormNormalSchedule:
             self._sch[special_tensor].reused_by(reuse_data=True)
 
     def _calc_compute_inline(self):
-        for broadcast_tensor in self._graph_info.broadcast_tensor_set:
-            # scalar broadcast can compute align
-            # nlast broadcast, broadcast can compute_inline, but broadcast can not compute inline to reduce
-            if util.is_unified_broadcast(broadcast_tensor):
-                broadcast_axis = get_broadcast_axis(broadcast_tensor)
-                if len(broadcast_tensor.shape) - 1 in broadcast_axis:
+        # broadcast can compute inline when:
+        # 1. not reduce transpose case
+        # 2. reduce transpose case while last axis is align
+        match_broadcast_compute_inline = not self._tiling_case.is_reduce_transpose_case or (
+            isinstance(self._norm_info.shape_before_reduce[-1], int) and
+            self._norm_info.shape_before_reduce[-1] % get_align_factor(self._graph_info.min_type) == 0
+        )
+
+        if match_broadcast_compute_inline:
+            for broadcast_tensor in self._graph_info.broadcast_tensor_set:
+                # scalar broadcast can compute inline
+                # nlast broadcast, broadcast can compute_inline, but broadcast can not compute inline to reduce
+                if util.is_unified_broadcast(broadcast_tensor):
+                    broadcast_axis = get_broadcast_axis(broadcast_tensor)
+                    if len(broadcast_tensor.shape) - 1 in broadcast_axis:
+                        continue
+                elif len(broadcast_tensor.op.input_tensors) != 0:
                     continue
-            elif len(broadcast_tensor.op.input_tensors) != 0:
-                continue
-            if self._forward_compute_graph_map.get(broadcast_tensor) & self._graph_info.reduce_tensor_set:
-                continue
-            # broadcast can not be output tensor
-            if broadcast_tensor in self._graph_info.real_output_tensor_set:
-                continue
-            self._compute_inline_tensors.add(broadcast_tensor)
-            # compute_inlined_tensor may has been cache_write
-            for compute_inlined_tensor in self._forward_compute_graph_map.get(broadcast_tensor):
-                self._compute_inlined_tensors.add(compute_inlined_tensor)
+                if self._forward_compute_graph_map.get(broadcast_tensor) & self._graph_info.reduce_tensor_set:
+                    continue
+                # broadcast can not be output tensor
+                if broadcast_tensor in self._graph_info.real_output_tensor_set:
+                    continue
+                self._compute_inline_tensors.add(broadcast_tensor)
+                # compute_inlined_tensor may has been cache_write
+                for compute_inlined_tensor in self._forward_compute_graph_map.get(broadcast_tensor):
+                    self._compute_inlined_tensors.add(compute_inlined_tensor)
 
     def _do_compute_inline(self):
         for compute_inline_tensor in self._compute_inline_tensors:
@@ -548,6 +570,9 @@ class NormNormalSchedule:
         if len(self._norm_info.shape_before_reduce) == 1:
             return
 
+        if self._tiling_case.is_reduce_transpose_case:
+            return
+
         storage_axis = -2
         # reduce last axis and last axis is align do not need storage align except broadcast tensor
         if self._tiling_case.is_last_reduce_align_case:
@@ -713,7 +738,7 @@ class NormNormalSchedule:
                 # enable nooverlap 2:
                 # output is before reduce tensor and last common axis is split or reduce axis is discontinuous
                 # copy ub to gm with stride, the last block need process the overlap too
-                need_enable_no_overlap_two =  \
+                need_enable_no_overlap_two = \
                     out_tensor in self._graph_info.before_reduce_tensor_set and \
                     (self._is_last_common_axis_split_block or self._norm_info.is_discontinuous_reduce_axis)
                 can_enable_no_overlap_zero = out_tensor in self._graph_info.before_reduce_tensor_set and \
@@ -728,15 +753,19 @@ class NormNormalSchedule:
 
                 self._emit_insn_map[out_tensor] = [_emit_insn_axis, "dma_copy", attrs]
 
-        def __broadcast_tensor_enable_vnchwconv():
-            for single_tensor, param in self._emit_insn_map.items():
-                is_enable_vnchwconv = param[1] == "vector_broadcast"
+        def __handle_special_insn():
+            for _single_tensor, _param in self._emit_insn_map.items():
+                if self._tiling_case.is_reduce_transpose_case:
+                    if _param[1] in ("vector_reduce_sum", "vector_reduce_max", "vector_reduce_min"):
+                        _param[2].update({REDUCE_TRANS: True})
+
+                is_enable_vnchwconv = _param[1] == "vector_broadcast"
                 if is_enable_vnchwconv:
-                    broadcast_axis_list = get_broadcast_axis(single_tensor)
+                    broadcast_axis_list = get_broadcast_axis(_single_tensor)
                     # fp32 broadcast two axis dont enable vnchwconv now
-                    if single_tensor.dtype == "float32" and len(broadcast_axis_list) > 1:
+                    if _single_tensor.dtype == "float32" and len(broadcast_axis_list) > 1:
                         continue
-                    param.append({ENABLE_VNCHWCONV: True, TRANS_THRESHOLD: TRANS_THRESHOLD_VALUE})
+                    _param.append({ENABLE_VNCHWCONV: True, TRANS_THRESHOLD: TRANS_THRESHOLD_VALUE})
 
         emit_insn_axis_index = 0
         __handle_real_output_tensor()
@@ -776,7 +805,7 @@ class NormNormalSchedule:
             self._emit_insn_map[source] = [source.op.axis[emit_insn_axis_index], "remove_pad",
                                            {AVOID_BANK_CONFLICT: True}]
 
-        __broadcast_tensor_enable_vnchwconv()
+        __handle_special_insn()
 
     def _do_emit_insn(self):
         for single_tensor, param in self._emit_insn_map.items():
@@ -873,7 +902,7 @@ class NormWorkspaceSchedule:
     """
     norm schedule when ub split reduce axis
     """
-    def __init__(self, graph_info, norm_info, tiling_case, outs):
+    def __init__(self, graph_info: NormComputeGraphInfo, norm_info: NormInfo, tiling_case: NormTilingCase, outs):
         self._outs = outs
         self._sch = None
         self._scope = LOCAL_UB
@@ -1181,7 +1210,7 @@ class NormWorkspaceSchedule:
 
         for special_tensor, ori_tensor in self._graph_info.special_cast_tensor_and_ori_tensor_map.items():
             if ori_tensor in self._workspace_map:
-                ori_tensor = self._workspace_map.get(ori_tensor).get("reread_ub_tensor")[0]
+                ori_tensor = _get_sub_dict_first_key(self._workspace_map.get(ori_tensor), "reread_ub_tensor")
             self._sch[ori_tensor].reused_by(special_tensor)
             self._sch[special_tensor].reused_by(reuse_data=True)
 
@@ -1563,6 +1592,11 @@ class NormWorkspaceSchedule:
             return _ori_compute_at_tensor
 
         def __handle_special_after_reduce_tensor(_single_tensor, _compute_at_tensor):
+            if self._tiling_case.is_partial_reorder_case and \
+                    self._tiling_case.block_split_axis_index > self._tiling_case.ub_split_axis_index:
+                self._compute_at_map[_single_tensor] = \
+                    [_compute_at_tensor, self._ub_split_result.get(_compute_at_tensor).get("outer_itervar")]
+                return
             # reduce fork tensor and after reduce tensor around mid output tensor should compute at block_outer
             if _compute_at_tensor not in self._block_split_result:
                 self._compute_root_tensors.add(_single_tensor)
@@ -1863,10 +1897,6 @@ class NormWorkspaceSchedule:
             self._emit_insn_map[self._res_tensor] = [self._ub_split_result.get(self._res_tensor).get("inner_itervar"),
                                                      "phony_insn"]
 
-        for single_tensor, param in self._emit_insn_map.items():
-            if param[1] == "vector_broadcast":
-                param.append({ENABLE_VNCHWCONV: True})
-
     def _do_emit_insn(self):
         for single_tensor, param in self._emit_insn_map.items():
             if len(param) > 2:
@@ -1973,7 +2003,7 @@ class NormWorkspaceSchedule:
             for reread_workspace_ub_tensor in reread_workspace_ub_tensor_map:
                 __mark_group_axis_on_common_tensor(reread_workspace_ub_tensor, "dma_tensor")
 
-        for single_tensor in self._graph_info.real_output_tensor_set:
+        for single_tensor in self._graph_info.real_output_tensor_set - self._workspace_tensor_set:
             if single_tensor != self._res_tensor:
                 __mark_group_axis_on_common_tensor(single_tensor, "dma_tensor")
 

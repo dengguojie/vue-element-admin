@@ -51,8 +51,8 @@ TEST_F(LayerNormTiling, LayerNorm_Norm_tiling_test_1) {
                         "_common_info": [30, 16, 128],
                         "_exist_output_after_reduce": true,
                         "_available_ub_size": {
-                        "4005": [21128, 16112, 15848],
-                        "5006": [16320, 13072, 13056]},
+                        "4005": [21128, 16112, 15848, 15848],
+                        "5006": [16320, 13072, 13056, 15848]},
                         "_exist_workspace_after_reduce": false,
                         "_workspace_info": {
                           "1000400500": [32],
@@ -163,8 +163,8 @@ TEST_F(LayerNormTiling, LayerNorm_Norm_tiling_test_2) {
                         "_common_info": [30, 16, 128],
                         "_exist_output_after_reduce": true,
                         "_available_ub_size": {
-                        "4005": [21128, 16112, 15848],
-                        "5006": [16320, 13072, 13056]},
+                        "4005": [21128, 16112, 15848, 15848],
+                        "5006": [16320, 13072, 13056, 13056]},
                         "_exist_workspace_after_reduce": false,
                         "_workspace_info": {
                           "1000400500": [32],
@@ -275,8 +275,8 @@ TEST_F(LayerNormTiling, LayerNorm_Norm_tiling_test_3) {
                         "_common_info": [30, 16, 128],
                         "_exist_output_after_reduce": true,
                         "_available_ub_size": {
-                        "4005": [21128, 16112, 15848],
-                        "5006": [16320, 13072, 13056]},
+                        "4005": [21128, 16112, 15848, 15848],
+                        "5006": [16320, 13072, 13056, 13056]},
                         "_exist_workspace_after_reduce": false,
                         "_workspace_info": {
                           "1000400500": [32],
@@ -1956,7 +1956,7 @@ TEST_F(LayerNormTiling, LayerNorm_tiling_test_unknown_rank) {
   std::string op_name = "LayerNorm";
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
-  std::string compileInfo = R"({"is_support_vexp_pattern": true, "unknown_mode": true, "_fuse_axis": true, "_input_type": [0, 1, 1], "_reduce_axis_type": 3, "_broadcast_axis_type_list": [2], "_ori_broadcast_axis": [0, 1], "is_support_vexp": true, "reduce_mean_cof_dtype": "float16", "_pattern": "Norm", "_common_info": [32, 16, 256], "_exist_output_after_reduce": true, "_available_ub_size": {"2001": [32560, 32720, 26048], "4005": [32560, 32720, 32560], "5006": [32688, 26176, 26144]}, "_exist_workspace_after_reduce": false, "_workspace_info": {"1000200190": [2], "1000200199": [32], "1300200199": [32], "1000400500": [32], "1000400501": [2], "1200400500": [32], "1300400500": [32], "1000500610": [2], "1000500611": [32]}, "_vars": {"1000200190": ["_dim_0", "_ub_factor", "mean_cof"], "1000200199": ["_dim_0", "mean_cof"], "1300200199": ["_dim_0", "mean_cof"], "1000400500": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor", "mean_cof"], "1000400501": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor", "mean_cof"], "1200400500": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor", "mean_cof"], "1300400500": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor", "mean_cof"], "1000500610": ["_dim_1", "_block_factor", "_ub_factor"], "1000500611": ["_dim_1", "_block_factor", "_ub_factor"]}, "_normal_vars": {"1000200190": ["_dim_0", "_ub_factor"], "1000200199": ["_dim_0"], "1300200199": ["_dim_0"], "1000400500": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor"], "1000400501": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor"], "1200400500": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor"], "1300400500": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor"], "1000500610": ["_dim_1", "_block_factor", "_ub_factor"], "1000500611": ["_dim_1", "_block_factor", "_ub_factor"]}, "_attr_vars": {"1000200190": [], "1000200199": [], "1300200199": [], "1000400500": [], "1000400501": [], "1200400500": [], "1300400500": [], "1000500610": [], "1000500611": []}, "_custom_vars": {"1000200190": ["mean_cof"], "1000200199": ["mean_cof"], "1300200199": ["mean_cof"], "1000400500": ["mean_cof"], "1000400501": ["mean_cof"], "1200400500": ["mean_cof"], "1300400500": ["mean_cof"], "1000500610": [], "1000500611": []}, "_norm_vars": {"1000200190": [20000, 40000], "1000200199": [20000], "1300200199": [20000], "1000400500": [20000, 20001, 30000, 40000], "1000400501": [20000, 20001, 30000, 40000], "1200400500": [20000, 20001, 30000, 40000], "1300400500": [20000, 20001, 30000, 40000], "1000500610": [20001, 30000, 40000], "1000500611": [20001, 30000, 40000]}})";
+  std::string compileInfo = R"({"is_support_vexp_pattern": true, "unknown_mode": true, "_fuse_axis": true, "_input_type": [0, 1, 1], "_reduce_axis_type": 3, "_broadcast_axis_type_list": [2], "_ori_broadcast_axis": [0, 1], "is_support_vexp": true, "reduce_mean_cof_dtype": "float16", "_pattern": "Norm", "_common_info": [32, 16, 256], "_exist_output_after_reduce": true, "_available_ub_size": {"2001": [32560, 32720, 26048, 26048], "4005": [32560, 32720, 32560, 32560], "5006": [32688, 26176, 26144, 26144]}, "_exist_workspace_after_reduce": false, "_workspace_info": {"1000200190": [2], "1000200199": [32], "1300200199": [32], "1000400500": [32], "1000400501": [2], "1200400500": [32], "1300400500": [32], "1000500610": [2], "1000500611": [32]}, "_vars": {"1000200190": ["_dim_0", "_ub_factor", "mean_cof"], "1000200199": ["_dim_0", "mean_cof"], "1300200199": ["_dim_0", "mean_cof"], "1000400500": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor", "mean_cof"], "1000400501": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor", "mean_cof"], "1200400500": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor", "mean_cof"], "1300400500": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor", "mean_cof"], "1000500610": ["_dim_1", "_block_factor", "_ub_factor"], "1000500611": ["_dim_1", "_block_factor", "_ub_factor"]}, "_normal_vars": {"1000200190": ["_dim_0", "_ub_factor"], "1000200199": ["_dim_0"], "1300200199": ["_dim_0"], "1000400500": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor"], "1000400501": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor"], "1200400500": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor"], "1300400500": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor"], "1000500610": ["_dim_1", "_block_factor", "_ub_factor"], "1000500611": ["_dim_1", "_block_factor", "_ub_factor"]}, "_attr_vars": {"1000200190": [], "1000200199": [], "1300200199": [], "1000400500": [], "1000400501": [], "1200400500": [], "1300400500": [], "1000500610": [], "1000500611": []}, "_custom_vars": {"1000200190": ["mean_cof"], "1000200199": ["mean_cof"], "1300200199": ["mean_cof"], "1000400500": ["mean_cof"], "1000400501": ["mean_cof"], "1200400500": ["mean_cof"], "1300400500": ["mean_cof"], "1000500610": [], "1000500611": []}, "_norm_vars": {"1000200190": [20000, 40000], "1000200199": [20000], "1300200199": [20000], "1000400500": [20000, 20001, 30000, 40000], "1000400501": [20000, 20001, 30000, 40000], "1200400500": [20000, 20001, 30000, 40000], "1300400500": [20000, 20001, 30000, 40000], "1000500610": [20001, 30000, 40000], "1000500611": [20001, 30000, 40000]}})";
 
   std::vector<std::vector<int64_t>> inputs{{20, 304, 512}, {512}, {512}};
   std::vector<std::vector<int64_t>> outputs{{20, 304, 512}, {20, 304, 1}, {20, 304, 1}};

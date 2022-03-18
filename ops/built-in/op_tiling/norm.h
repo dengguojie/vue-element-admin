@@ -22,6 +22,7 @@
 #ifndef NORM_TILING_H
 #define NORM_TILING_H
 
+#include <array>
 #include <cmath>
 #include <vector>
 
@@ -40,6 +41,8 @@ constexpr int32_t NORM_COMMON_SCH_TYPE = 0;
 constexpr int32_t NORM_PARTIAL_REORDER_SCH_TYPE = 1;
 constexpr int32_t NORM_ALIGNED_IN_UB_SCH_TYPE = 2;
 constexpr int32_t NORM_LAST_REDUCE_ALIGN_SCH_TYPE = 3;
+constexpr int32_t NORM_REDUCE_TRANSPOSE_SCH_TYPE = 4;
+constexpr int32_t NORM_REDUCE_TRANSPOSE_THRESHOLD = 128;
 
 struct NormCompileInfo {
   // construct func
@@ -64,10 +67,11 @@ struct NormCompileInfo {
   bool exist_output_after_reduce{false};
   bool exist_workspace_after_reduce{false};
   std::unordered_map<int32_t, std::vector<int32_t>> available_ub_size;
+  bool exist_vc_unsupported_type{false};
   // common info
   int32_t core_num{-1};
   int32_t min_block_size{-1};
-  int32_t pad_max_entire_size{-1};
+  int32_t transpose_max_entire_size{-1};
   // workspace info
   std::unordered_map<int32_t, std::vector<int32_t>> workspace_info;
   // norm vars
@@ -96,11 +100,10 @@ struct NormTilingInfo {
 };
 
 struct NormReorderInfo {
-  std::vector<int64_t> reorder_input_shape{std::vector<int64_t>(NORM_MAX_DIM_LEN, 0)};
-  std::vector<int32_t> fused_block_tiling_axis;
-  // pos after reorder : pos before reorder
-  //    vector.idx     :      vector[idx]
-  std::vector<int32_t> reorderPos_oriPos{std::vector<int32_t>(NORM_MAX_DIM_LEN, 0)};
+  std::array<int64_t, NORM_MAX_DIM_LEN> reorder_input_shape{};
+  std::array<int32_t, NORM_MAX_DIM_LEN> reorder_to_ori_pos{};
+  std::array<int32_t, NORM_MAX_DIM_LEN> fused_block_tiling_axis{};
+  std::size_t fused_block_tiling_axis_len{0};
 };
 
 enum class NormBroadcastMode {
@@ -138,6 +141,7 @@ class Norm {
     bool InitReduce(const OpInfo& op_info);
     bool InitBroadcast();
     bool Init();
+    bool GetNormPatternCommon();
     bool GetNormPattern();
     bool EliminateOne();
     void InitAxisBaseFlag(std::array<int32_t, NORM_MAX_DIM_LEN>& flags, const int32_t& reduce_flag,
@@ -172,6 +176,7 @@ class Norm {
 
     bool IsNeedPartialReorder();
     bool IsNeedWorkspace() const;
+    bool IsNeedReduceTranspose() const;
     bool IsNeedAlignedInUb() const;
     bool GetVarValue();
     bool CalcInputAlignShape();
@@ -189,17 +194,18 @@ class Norm {
     NormReorderInfo reorderInfo;
 
     std::array<std::array<int64_t, NORM_MAX_DIM_LEN>, NORM_MAX_INPUT_NUMS> before_broadcast_shapes{};
-    std::vector<int64_t> input_shape_ori{std::vector<int64_t>(NORM_MAX_DIM_LEN, 0)};
-    std::vector<int32_t> reduce_axis_ori{std::vector<int32_t>(NORM_MAX_DIM_LEN, 0)};
-    std::vector<int32_t> broadcast_axis_ori{std::vector<int32_t>(NORM_MAX_DIM_LEN, 0)};
-    std::vector<int64_t> input_shape{std::vector<int64_t>(NORM_MAX_DIM_LEN, 0)};
-    std::vector<int32_t> reduce_axis{std::vector<int32_t>(NORM_MAX_DIM_LEN, 0)};
-    std::vector<int32_t> broadcast_axis{std::vector<int32_t>(NORM_MAX_DIM_LEN, 0)};
+
+    std::array<int64_t, NORM_MAX_DIM_LEN> input_shape_ori{};
+    std::array<int64_t, NORM_MAX_DIM_LEN> input_shape{};
+    std::array<int32_t, NORM_MAX_DIM_LEN> reduce_axis_ori{};
+    std::array<int32_t, NORM_MAX_DIM_LEN> reduce_axis{};
+    std::array<int32_t, NORM_MAX_DIM_LEN> broadcast_axis_ori{};
+    std::array<int32_t, NORM_MAX_DIM_LEN> broadcast_axis{};
 
     // assistant
-    std::vector<int64_t> input_align_shape{std::vector<int64_t>(NORM_MAX_DIM_LEN, 0)};
-    std::vector<int64_t> workspace{std::vector<int64_t>(NORM_MAX_WORKSPACE_NUMS, 0)};
-    std::vector<int32_t> var_value{std::vector<int32_t>(NORM_MAX_VAR_NUMS, 0)};
+    std::array<int64_t, NORM_MAX_DIM_LEN> input_align_shape{};
+    std::array<int64_t, NORM_MAX_WORKSPACE_NUMS> workspace{};
+    std::array<int32_t, NORM_MAX_VAR_NUMS> var_value{};
 
     bool is_last_axis_reduce{false};
     bool is_need_workspace{false};
@@ -207,10 +213,12 @@ class Norm {
     bool is_continuous_data_move{false};
     bool is_discontinuous_reduce_axis{false};
     bool is_align_and_remove_pad{false};
+    bool is_reduce_transpose{false};
 
-    int64_t after_reduce_align_shape_product{-1};
     int64_t after_reduce_shape_product{-1};
     int64_t reduce_product{-1};
+    int64_t after_reduce_align_shape_product{-1};
+    int64_t reduce_align_product{-1};
 
     int32_t last_r_axis_index{-1};
     int32_t first_a_axis_index{-1};
@@ -225,12 +233,22 @@ class Norm {
     int32_t block_size{-1};
     int64_t ub_size{-1};
     int32_t tiling_key{0};
-    std::size_t max_dim_len{0};
+
+    std::size_t dim_len_ori{0};
+    std::size_t dim_len{0};
+    std::size_t reduce_axis_len_ori{0};
+    std::size_t reduce_axis_len{0};
+    std::size_t broadcast_axis_len_ori{0};
+    std::size_t broadcast_axis_len{0};
+    std::size_t workspace_len{0};
+    std::size_t var_value_len{0};
+
     std::size_t before_broadcast_input_num{0};
 
     int32_t common_max_ub_count{-1};
     int32_t workspace_max_ub_count{-1};
     int32_t pad_max_ub_count{-1};
+    int32_t reduce_trans_max_ub_count{-1};
 };
 
 class NormTilingHandler: public AutoTilingHandler {
