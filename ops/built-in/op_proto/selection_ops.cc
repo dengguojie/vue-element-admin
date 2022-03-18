@@ -394,8 +394,8 @@ static graphStatus TileInferShapeAndType(ge::Operator& op, std::vector<int64_t>&
     (void)op.UpdateOutputDesc("y", output_desc);
     return GRAPH_SUCCESS;
   } else if (input_len == 1) {
-    if (input_shape.GetDim(0) > 0 && (!multiples.empty())) {
-      OP_LOGI(op.GetName().c_str(), "Get into align_input len 1 and input shape > 0.");
+    if (input_shape.GetDim(0) >= 0 && (!multiples.empty())) {
+      OP_LOGI(op.GetName().c_str(), "Get into align_input len 1 and input shape >= 0.");
       input_shape.SetDim(0, input_shape.GetDim(0) * multiples[0]);
       output_range.push_back(std::make_pair(input_shape.GetDim(0), input_shape.GetDim(0)));
       output_desc.SetShape(input_shape);
@@ -423,7 +423,7 @@ static graphStatus TileInferShapeAndType(ge::Operator& op, std::vector<int64_t>&
 
   } else if (input_len <= 8 && input_len >= 2) {
     for (uint64_t i = 0; i < input_len; i++) {
-      if (input_shape.GetDim(i) > 0) {
+      if (input_shape.GetDim(i) >= 0) {
         input_shape.SetDim(i, input_shape.GetDim(i) * multiples[i]);
         output_range.push_back(std::make_pair(input_shape.GetDim(i), input_shape.GetDim(i)));
       } else if (input_shape.GetDim(i) == -1) {
