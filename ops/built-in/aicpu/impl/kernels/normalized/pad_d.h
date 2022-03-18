@@ -27,17 +27,11 @@ class PadDCpuKernel : public CpuKernel {
 public:
   PadDCpuKernel() = default;
   ~PadDCpuKernel() = default;
-
   uint32_t Compute(CpuKernelContext &ctx) override;
-
 private:
-
   void SetMap_pad();
-
   void SetMap_padd();
-
   std::map<int, std::function<uint32_t(CpuKernelContext &)>> calls_pad;
-
   std::map<int, std::function<uint32_t(CpuKernelContext &)>> calls_padd;
 };
 } // namespace aicpu

@@ -10,31 +10,17 @@
 #undef protected
 #include "Eigen/Core"
 
-
 using namespace std;
 using namespace aicpu;
 
-class TEST_PAD_UT : public testing::Test {
-
-
-
-
-
-
-
-
-
-
-
-};
+class TEST_PAD_UT : public testing::Test {};
 
 #define CREATE_NODEDEF(shapes, data_types, datas)                                  \
   auto node_def = CpuKernelUtils::CpuKernelUtils::CreateNodeDef();                 \
   NodeDefBuilder(node_def.get(), "Pad", "Pad")                                     \
-      .Input({"x", data_types[0], shapes[0], datas[0]})                            \
-      .Input({"paddings", data_types[2], shapes[2], datas[2]})                      \
-      .Output({"y", data_types[1], shapes[1], datas[1]});                          \
-
+    .Input({"x", data_types[0], shapes[0], datas[0]})                              \
+    .Input({"paddings", data_types[2], shapes[2], datas[2]})                       \
+    .Output({"y", data_types[1], shapes[1], datas[1]});                            \
 
 TEST_F(TEST_PAD_UT, DATA_SUCCESS1) {
   vector<DataType> data_types = {DT_INT32, DT_INT32, DT_INT64};
@@ -50,7 +36,7 @@ TEST_F(TEST_PAD_UT, DATA_SUCCESS1) {
                             0, 5, 6, 7, 8, 0,
                             0, 0, 0, 0, 0, 0};
   bool compare = CompareResult(output, output_exp, 24);
-  EXPECT_EQ(compare, true); 
+  EXPECT_EQ(compare, true);
 }
 
 TEST_F(TEST_PAD_UT, DATA_SUCCESS2) {
@@ -70,7 +56,6 @@ TEST_F(TEST_PAD_UT, DATA_SUCCESS2) {
   EXPECT_EQ(compare, true);
 }
 
-
 TEST_F(TEST_PAD_UT, DATA_SUCCESS3) {
   vector<DataType> data_types = {DT_FLOAT16, DT_FLOAT16, DT_INT64};
   vector<vector<int64_t>> shapes = {{2, 4}, {4, 6}, {2,2}};
@@ -81,15 +66,15 @@ TEST_F(TEST_PAD_UT, DATA_SUCCESS3) {
   vector<void *> datas = {(void *)input, (void *)output, (void *)pad};
   CREATE_NODEDEF(shapes, data_types, datas);
   RUN_KERNEL(node_def, HOST, KERNEL_STATUS_OK);
-  Eigen::half output_exp[24] = {(Eigen::half)0.0, (Eigen::half)0.0, (Eigen::half)0.0, (Eigen::half)0.0, (Eigen::half)0.0, (Eigen::half)0.0,
-                                (Eigen::half)0.0, (Eigen::half)1.1, (Eigen::half)2.1, (Eigen::half)3.1, (Eigen::half)4.1, (Eigen::half)0.0,
-                                (Eigen::half)0.0, (Eigen::half)5.1, (Eigen::half)6.1, (Eigen::half)7.1, (Eigen::half)8.1, (Eigen::half)0.0,
-                                (Eigen::half)0.0, (Eigen::half)0.0, (Eigen::half)0.0, (Eigen::half)0.0, (Eigen::half)0.0, (Eigen::half)0.0};
+  Eigen::half output_exp[24] = {(Eigen::half)0.0, (Eigen::half)0.0, (Eigen::half)0.0, (Eigen::half)0.0,
+                                (Eigen::half)0.0, (Eigen::half)0.0, (Eigen::half)0.0, (Eigen::half)1.1,
+                                (Eigen::half)2.1, (Eigen::half)3.1, (Eigen::half)4.1, (Eigen::half)0.0,
+                                (Eigen::half)0.0, (Eigen::half)5.1, (Eigen::half)6.1, (Eigen::half)7.1,
+                                (Eigen::half)8.1, (Eigen::half)0.0, (Eigen::half)0.0, (Eigen::half)0.0,
+                                (Eigen::half)0.0, (Eigen::half)0.0, (Eigen::half)0.0, (Eigen::half)0.0};
   bool compare = CompareResult(output, output_exp, 24);
   EXPECT_EQ(compare, true);
 }
-
-
 
 TEST_F(TEST_PAD_UT, DATA_SUCCESS4) {
   vector<DataType> data_types = {DT_INT32, DT_INT32, DT_INT64};
@@ -104,8 +89,6 @@ TEST_F(TEST_PAD_UT, DATA_SUCCESS4) {
   bool compare = CompareResult(output, output_exp, 8);
   EXPECT_EQ(compare, true);
 }
-
-
 
 TEST_F(TEST_PAD_UT, DATA_SUCCESS5) {
   vector<DataType> data_types = {DT_INT32, DT_INT32, DT_INT32};
@@ -141,7 +124,6 @@ TEST_F(TEST_PAD_UT, DATA_SUCCESS6) {
   EXPECT_EQ(compare, true);
 }
 
-
 TEST_F(TEST_PAD_UT, DATA_SUCCESS7) {
   vector<DataType> data_types = {DT_FLOAT16, DT_FLOAT16, DT_INT32};
   vector<vector<int64_t>> shapes = {{2, 4}, {4, 6}, {2,2}};
@@ -152,14 +134,15 @@ TEST_F(TEST_PAD_UT, DATA_SUCCESS7) {
   vector<void *> datas = {(void *)input, (void *)output, (void *)pad};
   CREATE_NODEDEF(shapes, data_types, datas);
   RUN_KERNEL(node_def, HOST, KERNEL_STATUS_OK);
-  Eigen::half output_exp[24] = {(Eigen::half)0.0, (Eigen::half)0.0, (Eigen::half)0.0, (Eigen::half)0.0, (Eigen::half)0.0, (Eigen::half)0.0,
-                                (Eigen::half)0.0, (Eigen::half)1.1, (Eigen::half)2.1, (Eigen::half)3.1, (Eigen::half)4.1, (Eigen::half)0.0,
-                                (Eigen::half)0.0, (Eigen::half)5.1, (Eigen::half)6.1, (Eigen::half)7.1, (Eigen::half)8.1, (Eigen::half)0.0,
-                                (Eigen::half)0.0, (Eigen::half)0.0, (Eigen::half)0.0, (Eigen::half)0.0, (Eigen::half)0.0, (Eigen::half)0.0};
+  Eigen::half output_exp[24] = {(Eigen::half)0.0, (Eigen::half)0.0, (Eigen::half)0.0, (Eigen::half)0.0,
+                                (Eigen::half)0.0, (Eigen::half)0.0, (Eigen::half)0.0, (Eigen::half)1.1,
+                                (Eigen::half)2.1, (Eigen::half)3.1, (Eigen::half)4.1, (Eigen::half)0.0,
+                                (Eigen::half)0.0, (Eigen::half)5.1, (Eigen::half)6.1, (Eigen::half)7.1,
+                                (Eigen::half)8.1, (Eigen::half)0.0, (Eigen::half)0.0, (Eigen::half)0.0,
+                                (Eigen::half)0.0, (Eigen::half)0.0, (Eigen::half)0.0, (Eigen::half)0.0};
   bool compare = CompareResult(output, output_exp, 24);
   EXPECT_EQ(compare, true);
 }
-
 
 TEST_F(TEST_PAD_UT, DATA_SUCCESS8) {
   vector<DataType> data_types = {DT_INT32, DT_INT32, DT_INT32};
@@ -175,7 +158,6 @@ TEST_F(TEST_PAD_UT, DATA_SUCCESS8) {
   EXPECT_EQ(compare, true);
 }
 
-
 TEST_F(TEST_PAD_UT, DATA_SUCCESS9) {
   vector<DataType> data_types = {DT_INT8, DT_INT8, DT_INT64};
   vector<vector<int64_t>> shapes = {{2, 4}, {4, 6}, {2,2}};
@@ -186,9 +168,9 @@ TEST_F(TEST_PAD_UT, DATA_SUCCESS9) {
   CREATE_NODEDEF(shapes, data_types, datas);
   RUN_KERNEL(node_def, HOST, KERNEL_STATUS_OK);
   int8_t output_exp[24] = {0, 0, 0, 0, 0, 0,
-                            0, 1, 2, 3, 4, 0,
-                            0, 5, 6, 7, 8, 0,
-                            0, 0, 0, 0, 0, 0};
+                           0, 1, 2, 3, 4, 0,
+                           0, 5, 6, 7, 8, 0,
+                           0, 0, 0, 0, 0, 0};
   bool compare = CompareResult(output, output_exp, 24);
   EXPECT_EQ(compare, true);
 }
@@ -202,15 +184,13 @@ TEST_F(TEST_PAD_UT, DATA_SUCCESS10) {
   vector<void *> datas = {(void *)input, (void *)output, (void *)pad};
   CREATE_NODEDEF(shapes, data_types, datas);
   RUN_KERNEL(node_def, HOST, KERNEL_STATUS_OK);
-  double output_exp[24] = {0, 0, 0, 0, 0, 0,
-                           0, 1.1, 2.1, 3.1, 4.1, 0,
-                           0, 5.1, 6.1, 7.1, 8.1, 0,
-                           0, 0, 0, 0, 0, 0};
+  double output_exp[24] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                           0.0, 1.1, 2.1, 3.1, 4.1, 0.0,
+                           0.0, 5.1, 6.1, 7.1, 8.1, 0.0,
+                           0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
   bool compare = CompareResult(output, output_exp, 24);
   EXPECT_EQ(compare, true);
 }
-
-
 
 TEST_F(TEST_PAD_UT, DATA_SUCCESS11) {
   vector<DataType> data_types = {DT_UINT8, DT_UINT8, DT_INT64};
@@ -226,8 +206,6 @@ TEST_F(TEST_PAD_UT, DATA_SUCCESS11) {
   EXPECT_EQ(compare, true);
 }
 
-
-
 TEST_F(TEST_PAD_UT, DATA_SUCCESS12) {
   vector<DataType> data_types = {DT_INT64, DT_INT64, DT_INT32};
   vector<vector<int64_t>> shapes = {{2, 4}, {4, 6}, {2,2}};
@@ -242,7 +220,7 @@ TEST_F(TEST_PAD_UT, DATA_SUCCESS12) {
                             0, 5, 6, 7, 8, 0,
                             0, 0, 0, 0, 0, 0};
   bool compare = CompareResult(output, output_exp, 24);
-  EXPECT_EQ(compare, true); 
+  EXPECT_EQ(compare, true);
 }
 
 TEST_F(TEST_PAD_UT, DATA_SUCCESS13) {
@@ -254,15 +232,13 @@ TEST_F(TEST_PAD_UT, DATA_SUCCESS13) {
   vector<void *> datas = {(void *)input, (void *)output, (void *)pad};
   CREATE_NODEDEF(shapes, data_types, datas);
   RUN_KERNEL(node_def, HOST, KERNEL_STATUS_OK);
-  double output_exp[24] = {0, 0, 0, 0, 0, 0,
-                           0, 1.1, 2.1, 3.1, 4.1, 0,
-                           0, 5.1, 6.1, 7.1, 8.1, 0,
-                           0, 0, 0, 0, 0, 0};
+  double output_exp[24] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                           0.0, 1.1, 2.1, 3.1, 4.1, 0.0,
+                           0.0, 5.1, 6.1, 7.1, 8.1, 0.0,
+                           0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
   bool compare = CompareResult(output, output_exp, 24);
   EXPECT_EQ(compare, true);
 }
-
-
 
 TEST_F(TEST_PAD_UT, DATA_SUCCESS14) {
   vector<DataType> data_types = {DT_UINT64, DT_UINT64, DT_INT32};
@@ -277,8 +253,6 @@ TEST_F(TEST_PAD_UT, DATA_SUCCESS14) {
   bool compare = CompareResult(output, output_exp, 8);
   EXPECT_EQ(compare, true);
 }
-
-
 
 TEST_F(TEST_PAD_UT, DATA_FAILED1) {
   vector<DataType> data_types = {DT_COMPLEX64, DT_COMPLEX64, DT_INT64};
@@ -323,8 +297,6 @@ TEST_F(TEST_PAD_UT, DATA_FAILED4) {
   CREATE_NODEDEF(shapes, data_types, datas);
   RUN_KERNEL(node_def, HOST, KERNEL_STATUS_PARAM_INVALID);
 }
-
-
 
 TEST_F(TEST_PAD_UT, DATA_FAILED5) {
   vector<DataType> data_types = {DT_UINT64, DT_UINT64, DT_UINT32};
