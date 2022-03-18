@@ -18,6 +18,7 @@ anchor_response_flags.py
 
 from impl.util.platform_adapter import tik
 from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import tbe_platform
 
 
 class AnchorResponseFlags():
@@ -246,7 +247,7 @@ class AnchorResponseFlags():
             bboxes_tensor = self.tik_instance.Tensor(self.input_dtype, self.input_shape, scope=tik.scope_ubuf,
                                                      name="bboxes_tensor")
             add_tensor = self.tik_instance.Tensor(self.input_dtype, [self.aligned_n * 2], scope=tik.scope_ubuf,
-                                                  name="bboxes_tensor")
+                                                  name="add_tensor")
             featmap_tensor = self.tik_instance.Tensor("int32", (64,), scope=tik.scope_ubuf, name="featmap_tensor")
 
             self.data_move(bboxes_tensor, self.input_gm, [0, 0], num=self.input_size)
@@ -310,12 +311,15 @@ def check_params(gt_bboxes, flags, featmap_size, num_base_anchors):
     featmap_w = featmap_size[1]
     output_size = output_shape[0]
     calc_size = featmap_w * featmap_h * num_base_anchors
+    ub_size = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
+
+    max_n = (ub_size // 4 - 256) // 8
 
     n = input_shape[0]
     c = input_shape[1]
 
-    if n > 8160:
-        raise RuntimeError("the first shape of gt_bboxes must be smaller than 8160")
+    if n > max_n:
+        raise RuntimeError("the first shape of gt_bboxes must be smaller than %s" % max_n)
     if c != 4:
         raise RuntimeError("the second shape of gt_bboxes must be 4")
     if input_dtype != "float32":
