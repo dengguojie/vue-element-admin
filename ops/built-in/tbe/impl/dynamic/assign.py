@@ -45,8 +45,9 @@ class Assign:
         reserved_ub_size = 8 * 1024
         self.tik_instance = tik.Tik(tik.Dprofile)
         self.ref_dtype = ref.get("dtype").lower()
+        self.ref_dtype = "int8" if self.ref_dtype == "bool" else self.ref_dtype
         self.value_dtype = value.get("dtype").lower()
-        self.out_dtype = output.get("dtype").lower()
+        self.value_dtype = "int8" if self.value_dtype  == "bool" else self.value_dtype
 
         # check dtype
         para_check.check_dtype(self.ref_dtype,
