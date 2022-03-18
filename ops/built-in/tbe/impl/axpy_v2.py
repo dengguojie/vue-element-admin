@@ -62,13 +62,13 @@ def get_format_same(dtype_list, format_list, dtype_total, alpha_dtypes, alpha_fo
     get format
     """
     for dtype in dtype_list:
-        dtype_total = dtype_total + [dtype] * len(format_list) * 2
+        dtype_total = dtype_total + [dtype] * len(format_list) * 3
 
     alpha_dtypes2 = []
     for dtype in alpha_dtypes:
-        alpha_dtypes2 = alpha_dtypes2 + [dtype] * (len(dtype_total) // 2)
-    alpha_formats = alpha_formats * (len(dtype_total) // 2)
-    format_list = format_list * len(dtype_list) * 2
+        alpha_dtypes2 = alpha_dtypes2 + [dtype] * (len(dtype_total) // 3)
+    alpha_formats = alpha_formats * (len(dtype_total) // 3)
+    format_list = format_list * len(dtype_list) * 3
 
     dtypes = [dtype_total, dtype_total, alpha_dtypes2, dtype_total]
     formats = [format_list, format_list, alpha_formats, format_list]
@@ -89,11 +89,11 @@ def get_format_mix(dtype_list, format_list, dtype_total, alpha_dtypes, alpha_for
 
     alpha_formats = alpha_formats * len(dtype_total)
     alpha_dtypes = alpha_dtypes * len(dtype_total)
-    dtype_total = dtype_total * 2
+    dtype_total = dtype_total * 3
     format_list0 = format_list + format_nz * len_format_list
     format_list1 = format_list + format_nd * len_format_list
-    format_list0 = format_list0 * 2
-    format_list1 = format_list1 * 2
+    format_list0 = format_list0 * 3
+    format_list1 = format_list1 * 3
 
     dtypes = [dtype_total, dtype_total, alpha_dtypes, dtype_total]
     formats0 = [format_list0, format_list1, alpha_formats, format_list0]
@@ -151,8 +151,8 @@ def op_select_format(input_x, input_y, alpha, output_z, kernel_name="axpy_v2"):
     else:
         dtype_list = ["float16", "float32", "int32"]
 
-    alpha_dtypes = ["float16", "float32"]
-    alpha_formats = ["ND", "ND"]
+    alpha_dtypes = ["float16", "float32", "int32"]
+    alpha_formats = ["ND", "ND", "ND"]
 
     format_x = input_x.get("ori_format")
     format_y = input_y.get("ori_format")
@@ -443,11 +443,10 @@ def axpy_v2(x1, x2, alpha, y, kernel_name="axpy_v2"):
 
     # check dtype
     dtype_list0 = ("float16", "float32", "int32")
-    dtype_list1 = ("float16", "float32")
 
     check_dtype(dtype_x1, dtype_list0)
     check_dtype(dtype_x2, dtype_list0)
-    check_dtype(alpha_dtype, dtype_list1)
+    check_dtype(alpha_dtype, dtype_list0)
     shape_util.compare_tensor_dict_key(x1, x2, "dtype")
 
     # check alpha is 0D or 1D tensor

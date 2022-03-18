@@ -119,10 +119,10 @@ def axpy_v2(x1, x2, alpha, y, kernel_name="axpy_v2"):
     alpha_dtype = alpha.get("dtype").lower()
     # check dtype
     dtype_list0 = ("float16", "float32", "int32")
-    dtype_list1 = ("float16", "float32")
+
     para_check.check_dtype(dtype_x1, dtype_list0)
     para_check.check_dtype(dtype_x2, dtype_list0)
-    para_check.check_dtype(alpha_dtype, dtype_list1)
+    para_check.check_dtype(alpha_dtype, dtype_list0)
     para_check.check_elewise_shape_range([x1, x2])
     ins = classify([x1, x2, alpha], OpPatternMode.ELEWISE_WITH_BROADCAST)
     schedules, tensors = [], []

@@ -651,6 +651,8 @@ vector_A:
       - ops/built-in/tbe/impl/roi_align_true.py
       - ops/built-in/tbe/impl/dynamic/resize_bilinear_v2_grad.py
       - ops/built-in/tbe/impl/dynamic/sync_resize_bilinear_v2_grad.py
+      - ops/built-in/tbe/impl/axpy_v2.py
+      - ops/built-in/tbe/impl/dynamic/axpy_v2.py
     unrelease:
       - auto_schedule/python/tbe/dsl/compute/avg_pool2d.py
       - auto_schedule/python/tbe/dsl/static_schedule/ascend_anti_quant_schedule.py
