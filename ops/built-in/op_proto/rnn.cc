@@ -1457,5 +1457,76 @@ INFER_FUNC_REG(LSTMP, LSTMPInferShape);
 VERIFY_FUNC_REG(LSTMP, LSTMPVerify);
 // ----------------LSTMP-------------------
 
+// ----------DynamicRNNV2Grad begin----------
+IMPLEMT_VERIFIER(DynamicRNNV2Grad, DynamicRNNV2GradVerify) {
+  return GRAPH_SUCCESS;
+}
+
+IMPLEMT_INFERFUNC(DynamicRNNV2Grad, DynamicRNNV2GradInferShape) {
+  AscendString op_name;
+  op.GetName(op_name);
+  OP_LOGD(op_name.GetString(), "DynamicRNNV2GradInferShape begin");
+
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  if (op_desc == nullptr) {
+    OP_LOGE(op_name.GetString(), "GetOpDescFromOperator return nullptr!");
+    return GRAPH_FAILED;
+  }
+
+  auto x_desc = op_desc->MutableInputDesc("x");
+  auto wx_desc = op_desc->MutableInputDesc("w_x");
+  auto wh_desc = op_desc->MutableInputDesc("w_h");
+  auto h0_desc = op_desc->MutableInputDesc("init_h");
+  auto c0_desc = op_desc->MutableInputDesc("init_c");
+  auto y_desc = op_desc->MutableInputDesc("y");
+  if (x_desc == nullptr || wx_desc == nullptr || wh_desc == nullptr || h0_desc == nullptr || c0_desc == nullptr ||
+      y_desc == nullptr) {
+    OP_LOGE(op_name.GetString(), "MutableInputDesc return nullptr!");
+    return GRAPH_FAILED;
+  }
+
+  const auto &shape_x = x_desc->GetShape();
+  if (shape_x.GetDimNum() != 3 || shape_x.GetDims().at(0) != 1) {
+    OP_LOGE(op_name.GetString(), "The input shape of X only support [1, batch_size, input_size], please check!");
+    return GRAPH_FAILED;
+  }
+
+  DataType x_dtye = x_desc->GetDataType();
+  DataType y_dtye = y_desc->GetDataType();
+  auto dwx_desc = op_desc->MutableOutputDesc("dw_x");
+  dwx_desc->SetShape(wx_desc->GetShape());
+  dwx_desc->SetDataType(x_dtye);
+
+  auto dwh_desc = op_desc->MutableOutputDesc("dw_h");
+  dwh_desc->SetShape(wh_desc->GetShape());
+  dwh_desc->SetDataType(x_dtye);
+
+  const auto &shape_wh = wh_desc->GetShape();
+  int64_t hidden_size = shape_wh.GetDims().at(0);
+  vector<int64_t> db_shape = {4 * hidden_size};
+  auto db_desc = op_desc->MutableOutputDesc("db");
+  db_desc->SetShape(ge::GeShape(db_shape));
+  db_desc->SetDataType(y_dtye);
+
+  auto dx_desc = op_desc->MutableOutputDesc("dx");
+  dx_desc->SetShape(x_desc->GetShape());
+  dx_desc->SetDataType(x_dtye);
+
+  auto dh_prev_desc = op_desc->MutableOutputDesc("dh_prev");
+  dh_prev_desc->SetShape(h0_desc->GetShape());
+  dh_prev_desc->SetDataType(y_dtye);
+
+  auto dc_prev_desc = op_desc->MutableOutputDesc("dc_prev");
+  dc_prev_desc->SetShape(c0_desc->GetShape());
+  dc_prev_desc->SetDataType(y_dtye);
+
+  OP_LOGD(op_name.GetString(), "DynamicRNNV2GradInferShape end");
+  return GRAPH_SUCCESS;
+}
+
+INFER_FUNC_REG(DynamicRNNV2Grad, DynamicRNNV2GradInferShape);
+VERIFY_FUNC_REG(DynamicRNNV2Grad, DynamicRNNV2GradVerify);
+// ----------DynamicRNNV2Grad end-----------------
+
 }  // namespace ge
 
