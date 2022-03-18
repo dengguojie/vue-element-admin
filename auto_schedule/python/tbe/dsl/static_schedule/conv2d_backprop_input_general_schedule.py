@@ -271,6 +271,27 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):
             tensor_attr["support_fixpipe"] = (tbe_platform.intrinsic_check_support("Intrinsic_fix_pipe_l0c2out") or
                                                 tbe_platform.intrinsic_check_support("Intrinsic_fix_pipe_l0c2ub"))
 
+        def _get_vadd_tensors_three_inputs(vadd_res_tensor):
+            all_tensors, _ = _get_all_tensors(vadd_res_tensor)
+            c_ub_cut, vadd_tensor, vadd_tensor_1, inter_add_compute_tensor = None, None, None, None
+            if len(all_tensors) == 2:
+                c_ub_cut, vadd_tensor = _get_vadd_tensors(vadd_res_tensor)
+            elif len(all_tensors) == 4:
+                placeholder_tensors = []
+                for one_tensor in all_tensors.values():
+                    if isinstance(one_tensor.op, tvm.tensor.PlaceholderOp):
+                        placeholder_tensors.append(one_tensor)
+                    elif one_tensor.op.tag == "conv2d_backprop_input":
+                        c_ub_cut = one_tensor
+                    elif one_tensor.op.tag == "elewise_binary_add":
+                        inter_add_compute_tensor = one_tensor
+                vadd_tensor = placeholder_tensors[1]
+                vadd_tensor_1 = placeholder_tensors[0]
+            tensor_map["vadd_tensor"] = vadd_tensor
+            tensor_map["vadd_tensor_1"] = vadd_tensor_1
+            tensor_map["inter_add_compute_tensor"] = inter_add_compute_tensor
+            return c_ub_cut
+
         def _get_vadd_tensors(vadd_res_tensor):
             left_tensor = vadd_res_tensor.op.input_tensors[0]
             right_tensor = vadd_res_tensor.op.input_tensors[1]
@@ -720,12 +741,22 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):
                 (dyn_util.dynamic_mode and deconv_res.op.tag == "elewise_multiple_sel")):
                 fusion_param = 1 / 16
                 if "elewise_binary_add" in deconv_res.op.input_tensors[1].op.tag:
+                    vadd_res = tensor_map.get("vadd_res")
+                    vadd_tensor = tensor_map.get("vadd_tensor")
+                    vadd_tensor_1 = tensor_map.get("vadd_tensor_1")
+                    inter_add_compute_tensor = tensor_map.get("inter_add_compute_tensor")
                     fusion_param += 1
                     sch[vadd_res].set_scope(tbe_platform_info.scope_ubuf)
                     vadd_tensor_ub = sch.cache_read(
                         vadd_tensor, tbe_platform_info.scope_ubuf, [vadd_res]
                     )
                     tensor_map["vadd_tensor_ub"] = vadd_tensor_ub
+                    if vadd_tensor_1 is not None:
+                        sch[inter_add_compute_tensor].set_scope(tbe_platform_info.scope_ubuf)
+                        vadd_tensor_1_ub = sch.cache_read(vadd_tensor_1, tbe_platform_info.scope_ubuf,
+                                                          [inter_add_compute_tensor])
+                        fusion_param += 1
+                        tensor_map["vadd_tensor_1_ub"] = vadd_tensor_1_ub
                 sch[c_ub_cut].set_scope(tbe_platform_info.scope_ubuf)
                 mask_ub = sch.cache_read(mask, tbe_platform_info.scope_ubuf, [deconv_res])
                 c_ub_drelu = sch.cache_write(deconv_res, tbe_platform_info.scope_ubuf)
@@ -815,9 +846,8 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):
             c_ub_cut = deconv_res.op.input_tensors[1]
             if "elewise_binary_add" in deconv_res.op.input_tensors[1].op.tag:
                 vadd_res = deconv_res.op.input_tensors[1]
-                c_ub_cut, vadd_tensor = _get_vadd_tensors(vadd_res)
+                c_ub_cut = _get_vadd_tensors_three_inputs(vadd_res)
                 tensor_map["vadd_res"] = vadd_res
-
             c_ub = c_ub_cut.op.input_tensors[0]
             output_shape = cube_util.shape_to_list(c_ub_cut.op.attrs["output_shape"])
             group_dict = c_ub_cut.op.attrs["group_dict"]
@@ -1062,6 +1092,8 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):
     a_ub = tensor_map.get("a_ub")
     a_l1_full = tensor_map.get("a_l1_full")
     vadd_tensor_ub = tensor_map.get("vadd_tensor_ub")
+    vadd_tensor_1_ub = tensor_map.get("vadd_tensor_1_ub")
+    inter_add_compute_tensor = tensor_map.get("inter_add_compute_tensor")
     mask_ub = tensor_map.get("mask_ub")
     c_ub_drelu = tensor_map.get("c_ub_drelu")
     c_ub_vadd = tensor_map.get("c_ub_vadd")
@@ -1586,21 +1618,26 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):
                 _raise_dx_general_err("c_ub attach error.")
             return status
 
+        def _handle_dx_drelu_fusion_cub_process():
+            if "elewise_binary_add" in deconv_res.op.input_tensors[1].op.tag:
+                sch_agent[c_ub].reused_by(c_ub_cut, vadd_res, c_ub_drelu)
+                sch_agent.same_attach(vadd_res, c_ub)
+                sch_agent.same_attach(vadd_tensor_ub, c_ub)
+                sch_agent.same_attach(mask_ub, c_ub)
+                if vadd_tensor_1_ub is not None:
+                    sch_agent.same_attach(vadd_tensor_1_ub, c_ub)
+                    sch_agent.same_attach(inter_add_compute_tensor, c_ub)
+            else:
+                sch_agent[c_ub].reused_by(c_ub_cut, c_ub_drelu)
+                if not out_of_order:
+                    sch_agent.same_attach(mask_ub, c_ub)
+            sch_agent.same_attach(c_ub_cut, c_ub)
+            sch_agent.same_attach(c_ub_drelu, c_ub)
+
         def _fusion_cub_process():
             if (deconv_res.op.tag == "emit_insn_elewise_multiple_sel|bool" or
                 (dyn_util.dynamic_mode and deconv_res.op.tag == "elewise_multiple_sel")):
-                if "elewise_binary_add" in deconv_res.op.input_tensors[1].op.tag:
-                    sch_agent[c_ub].reused_by(c_ub_cut, vadd_res, c_ub_drelu)
-                    sch_agent.same_attach(vadd_res, c_ub)
-                    sch_agent.same_attach(vadd_tensor_ub, c_ub)
-                    sch_agent.same_attach(mask_ub, c_ub)
-                else:
-                    sch_agent[c_ub].reused_by(c_ub_cut, c_ub_drelu)
-                    if not out_of_order:
-                        sch_agent.same_attach(mask_ub, c_ub)
-
-                sch_agent.same_attach(c_ub_cut, c_ub)
-                sch_agent.same_attach(c_ub_drelu, c_ub)
+                _handle_dx_drelu_fusion_cub_process()
             elif deconv_res.op.tag == "requant_remove_pad":
                 sch_agent.same_attach(tensor_map.get("deq"), c_ub)
             elif tensor_attr.get("quant_fuse"):
@@ -2378,9 +2415,11 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):
 
             if "elewise_binary_add" in deconv_res.op.input_tensors[1].op.tag:
                 sch[vadd_tensor_ub].emit_insn(vadd_tensor_ub.op.axis[0], "dma_copy")
+                if vadd_tensor_1_ub is not None:
+                    sch[vadd_tensor_1_ub].emit_insn(vadd_tensor_1_ub.op.axis[0], "dma_copy")
+                    sch[inter_add_compute_tensor].emit_insn(inter_add_compute_tensor.op.axis[0], "vector_add")
                 sch[vadd_res].emit_insn(vadd_res.op.axis[0], "vector_add")
             sch[c_ub_drelu].emit_insn(c_ub_drelu.op.axis[0], "vector_selects_bool")
-
             sch[c_ub_cut].emit_insn(c_ub_cut.op.axis[0], "phony_insn")
         elif "elewise" in deconv_res.op.tag and not tensor_attr.get("quant_fuse"):
             for ub_tensor in tensor_map.get("ub_list"):

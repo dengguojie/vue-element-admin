@@ -996,8 +996,7 @@ class Conv2dDxOptiSchedule:
             tensor_add_input_ub = sch.cache_read(
                 tensor_add_input_gm, tbe_platform_info.scope_ubuf, [tensor_add_res]
             )
-            TENSOR_MAP["add_input_ub"] = tensor_add_input_ub
-            return tensor_dx_gm
+            return tensor_dx_gm, tensor_add_input_ub
 
         def _check_dx_fusion_type(res, fusion_tensor_map):
             """
@@ -1051,7 +1050,39 @@ class Conv2dDxOptiSchedule:
                 fusion_tensor_map["input_tensor_list"] = input_tensor_list
                 fusion_tensor_map["ub_list"] = ub_list
                 fusion_tensor_map["fusion_dx_gm"] = tensor_dx_gm
-                return tensor_dx_gm
+
+            def _handle_dx_add_drelu_fusion():
+                tensor_dx_gm = None
+                tensor_add_input_ub = None
+                tensor_add_input_1_ub = None
+                inter_add_compute_tensor = None
+                self.dx_para.update_para_map("FUSION_TYPE", FUSION_DX_ADD_DRELU)
+                tensor_add_res = drelu_gm.op.input_tensors[1]
+                sch[tensor_add_res].set_scope(tbe_platform_info.scope_ubuf)
+                fusion_tensor_map["add_res_ub"] = tensor_add_res
+                all_tensor, _ = self._get_all_tensors(tensor_add_res)
+                if len(all_tensor) == 2:
+                    tensor_dx_gm, tensor_add_input_ub = _get_tensor_dx_gm(tensor_add_res)
+                if len(all_tensor) == 4:
+                    placeholder_list = []
+                    for one_tensor in all_tensor.values():
+                        if isinstance(one_tensor.op, tvm.tensor.PlaceholderOp):
+                            placeholder_list.append(one_tensor)
+                        elif one_tensor.op.tag == "conv2d_backprop_input_opti":
+                            tensor_dx_gm = one_tensor
+                        elif one_tensor.op.tag == "elewise_binary_add":
+                            inter_add_compute_tensor = one_tensor
+                    tensor_add_input_gm = placeholder_list[1]
+                    tensor_add_input_1_gm = placeholder_list[0]
+                    sch[inter_add_compute_tensor].set_scope(tbe_platform_info.scope_ubuf)
+                    tensor_add_input_1_ub = sch.cache_read(tensor_add_input_gm, tbe_platform_info.scope_ubuf,
+                                                               [tensor_add_res])
+                    tensor_add_input_ub = sch.cache_read(tensor_add_input_1_gm, tbe_platform_info.scope_ubuf,
+                                                             [inter_add_compute_tensor])
+                fusion_tensor_map["fusion_dx_gm"] = tensor_dx_gm
+                fusion_tensor_map["add_input_ub"] = tensor_add_input_ub
+                fusion_tensor_map["add_input_1_ub"] = tensor_add_input_1_ub
+                fusion_tensor_map["inter_add_compute_tensor"] = inter_add_compute_tensor
 
             if self.dx_para.get_para_map("FUSION_TYPE") in (
                 FUSION_DX_DEQUANT,
@@ -1068,16 +1099,13 @@ class Conv2dDxOptiSchedule:
 
                 _handle_elewise_tensor()
                 tensor_dx_gm = fusion_tensor_map["c_ub"].op.input_tensors[0]
-            elif (res.op.tag == "emit_insn_elewise_multiple_sel|bool" or
-                  (var_range and res.op.tag == "elewise_multiple_sel")):
+            elif (res.op.tag == "emit_insn_elewise_multiple_sel|bool"
+                  or (var_range and res.op.tag == "elewise_multiple_sel")):
                 drelu_gm = res
                 # dx+add+drelu
                 if "elewise_binary_add" in drelu_gm.op.input_tensors[1].op.tag:
-                    self.dx_para.update_para_map("FUSION_TYPE", FUSION_DX_ADD_DRELU)
-                    tensor_add_res = drelu_gm.op.input_tensors[1]
-                    sch[tensor_add_res].set_scope(tbe_platform_info.scope_ubuf)
-                    TENSOR_MAP["add_res_ub"] = tensor_add_res
-                    tensor_dx_gm = _get_tensor_dx_gm(tensor_add_res)
+                    _handle_dx_add_drelu_fusion()
+                    tensor_dx_gm = fusion_tensor_map.get("fusion_dx_gm")
                 # dx+drelu
                 else:
                     self.dx_para.update_para_map("FUSION_TYPE", FUSION_DX_DRELU)
@@ -1095,7 +1123,8 @@ class Conv2dDxOptiSchedule:
                 fusion_tensor_map["fusion_dx_gm"] = tensor_dx_gm  # inter_gm
             # dx+add
             elif "elewise" in res.op.tag:
-                tensor_dx_gm = _handle_elewise_fusion()
+                _handle_elewise_fusion()
+                tensor_dx_gm = fusion_tensor_map.get("fusion_dx_gm")
             elif res.op.tag == "conv2d_backprop_input_opti":
                 self.dx_para.update_para_map("FUSION_TYPE", FUSION_NONE)
                 tensor_dx_gm = res
@@ -2114,7 +2143,7 @@ class Conv2dDxOptiSchedule:
                     else:
                         sch[bias_ub].compute_at(sch[c_gm], batch_in_out_axis)
 
-            if fusion_type in [FUSION_DX_DRELU]:
+            def _do_fusion_dx_drelu_compute_at():
                 sch[drelu_ub].compute_at(sch[c_gm], l0c_m_inner_outer)
                 if self.dx_para.get_para_map("out_of_order"):
                     # if cub_m%16!=0, when copy bitmask to ub, for every n0,
@@ -2132,12 +2161,21 @@ class Conv2dDxOptiSchedule:
                 else:
                     sch[bitmask_ub].compute_at(sch[c_gm], l0c_m_inner_outer)
                 sch[fusion_dx_gm].compute_at(sch[c_gm], l0c_m_inner_outer)
-            elif fusion_type in [FUSION_DX_ADD_DRELU]:
+
+            def _do_fusion_dx_add_drelu_compute_at():
                 sch[add_res_ub].compute_at(sch[c_gm], l0c_m_inner_outer)
                 sch[add_input_ub].compute_at(sch[c_gm], add_input_at)
+                if add_input_1_ub is not None:
+                    sch[add_input_1_ub].compute_at(sch[c_gm], add_input_at)
+                    sch[inter_add_compute_tensor].compute_at(sch[c_gm], l0c_m_inner_outer)
                 sch[drelu_ub].compute_at(sch[c_gm], l0c_m_inner_outer)
                 sch[bitmask_ub].compute_at(sch[c_gm], l0c_m_inner_outer)
                 sch[fusion_dx_gm].compute_at(sch[c_gm], l0c_m_inner_outer)
+
+            if fusion_type in [FUSION_DX_DRELU]:
+                _do_fusion_dx_drelu_compute_at()
+            elif fusion_type in [FUSION_DX_ADD_DRELU]:
+                _do_fusion_dx_add_drelu_compute_at()
             elif fusion_type == FUSION_DX_ELEWISE:
                 for input_tensor in TENSOR_MAP.get("input_tensor_list"):
                     sch[input_tensor].compute_at(sch[c_gm], l0c_m_inner_outer)
@@ -2292,6 +2330,10 @@ class Conv2dDxOptiSchedule:
                         if dilate_ub is not None:
                             sch[add_input_ub].double_buffer()
                             sch[add_input_ub].preload()
+                            if add_input_1_ub is not None:
+                                sch[inter_add_compute_tensor].double_buffer()
+                                sch[add_input_1_ub].double_buffer()
+                                sch[add_input_1_ub].preload()
                 elif fusion_type == FUSION_DX_ELEWISE:
                     for ub_tensor in TENSOR_MAP.get("ub_list"):
                         sch[ub_tensor].double_buffer()
@@ -2308,7 +2350,10 @@ class Conv2dDxOptiSchedule:
                 if dilate_ub is not None:
                     filling_zero_ub = TENSOR_MAP.get("tensor_fillling_zero")
                     sch[filling_zero_ub].reused_by(add_input_ub)
-                    sch[dx_output_ub].reused_by(fusion_dx_gm, add_res_ub)
+                    if add_input_1_ub is not None:
+                        sch[dx_output_ub].reused_by(fusion_dx_gm, add_res_ub, inter_add_compute_tensor)
+                    else:
+                        sch[dx_output_ub].reused_by(fusion_dx_gm, add_res_ub)
                     if var_map:
                         sch[dx_output_ub].reused_by(drelu_ub)
                 else:
@@ -2332,7 +2377,7 @@ class Conv2dDxOptiSchedule:
 
         def _fusion_intrin_mapping(fusion_type):
             def _add_res_ub_insn():
-                if dilate_ub is None:
+                if dilate_ub is None or add_input_1_ub is not None:
                     sch[add_res_ub].emit_insn(add_res_ub.op.axis[0], "vector_add")
                 else:
                     sch[add_res_ub].emit_insn(add_res_ub.op.axis[0], "phony_insn")
@@ -2411,6 +2456,9 @@ class Conv2dDxOptiSchedule:
                 sch[fusion_dx_gm].emit_insn(fusion_dx_gm.op.axis[0], "phony_insn")
                 if fusion_type == FUSION_DX_ADD_DRELU:
                     sch[add_input_ub].emit_insn(add_input_ub.op.axis[0], "dma_copy")
+                    if add_input_1_ub is not None:
+                        sch[add_input_1_ub].emit_insn(add_input_1_ub.op.axis[0], "dma_copy")
+                        sch[inter_add_compute_tensor].emit_insn(inter_add_compute_tensor.op.axis[0], "phony_insn")
                     _add_res_ub_insn()
             elif fusion_type == FUSION_DX_ELEWISE:
                 for input_tensor in TENSOR_MAP.get("input_tensor_list"):
@@ -2732,11 +2780,13 @@ class Conv2dDxOptiSchedule:
             DIM_MAP.get("dx_6GD_shape")[5] = DIM_MAP.get("dx_6GD_shape")[5] // 2
         if self.dx_para.get_para_map("load3d_flag"):
             a_l0a_before = TENSOR_MAP.get("a_l0a_before")
-        drelu_ub, bitmask_ub, add_res_ub, add_input_ub, fusion_dx_gm = (
+        drelu_ub, bitmask_ub, add_res_ub, add_input_ub, add_input_1_ub, inter_add_compute_tensor, fusion_dx_gm = (
             TENSOR_MAP.get("drelu_ub"),
             TENSOR_MAP.get("bitmask_ub"),
             TENSOR_MAP.get("add_res_ub"),
             TENSOR_MAP.get("add_input_ub"),
+            TENSOR_MAP.get("add_input_1_ub"),
+            TENSOR_MAP.get("inter_add_compute_tensor"),
             TENSOR_MAP.get("fusion_dx_gm")
         )
         bias_add_vector_ub, bias_ub = TENSOR_MAP.get("bias_add_vector"), TENSOR_MAP.get(
@@ -2988,6 +3038,9 @@ class Conv2dDxOptiSchedule:
                 if dilate_ub is None:
                     sch[add_input_ub].double_buffer()
                     sch[add_input_ub].preload()
+                    if add_input_1_ub is not None:
+                        sch[add_input_1_ub].double_buffer()
+                        sch[add_input_1_ub].preload()
 
             self._print_ir_conv("preload", sch)
         # intrin mapping
