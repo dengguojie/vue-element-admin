@@ -188,6 +188,8 @@ def check_op_params(*type_args, **type_kwargs):
                                            error_info['param_name'],
                                            error_info['param_type'],
                                            error_info['actual_type']))
+        if -2 in op_param.get("shape"):
+            op_param["range"] = [(0, -1)]
         error_info = {}
 
         if OpParamInfoKey.SHAPE.value not in op_param.keys():
@@ -250,7 +252,7 @@ def check_op_params(*type_args, **type_kwargs):
                 error_info,
                 "In op[%s], the ori format of input[%s] should be one of [%s]"
                 ", but actually is [%s]."
-                % (error_info['op_name'],
+                % (error_info.get('op_name'),
                    error_info['param_name'], ",".join(ALL_FORMAT_LIST),
                    error_info['format']))
 
@@ -495,7 +497,7 @@ def check_op_params(*type_args, **type_kwargs):
                 error_info,
                 "In op[%s], the parameter[%s] should be in "
                 "the range of [%s, %s], but actually is [%s]."
-                % (error_info['op_name'], error_info['param_name'],
+                % (error_info.get('op_name'), error_info.get('param_name'),
                    error_info['min_value'], error_info['max_value'],
                    error_info['real_value']))
 

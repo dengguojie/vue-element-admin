@@ -41,7 +41,7 @@ static string to_string(const std::stringstream &tiling_data) {
 
 static void Compute(vector <int64_t> inputA, vector <int64_t> inputB, vector <int64_t> inputC, vector <int32_t> axis,
                     vector <int64_t> output, ge::DataType dtypeA, ge::DataType dtypeB, ge::DataType dtypeC,
-                    ge::DataType dtypeOutput, string infoKey, string compileInfo, string expectTilingData) {
+                    ge::DataType dtypeOutput, string infoKey, string compileInfo, string expectTilingData, int64_t value) {
   std::string op_name = "GatherV2";
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("GatherV2");
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
@@ -65,6 +65,7 @@ static void Compute(vector <int64_t> inputA, vector <int64_t> inputB, vector <in
   TENSOR_INPUT(opParas, tensor_inputB, indices);
   TENSOR_INPUT_CONST(opParas, tensor_inputC, axis, (const uint8_t *) axis.data(), axis.size() * 4);
   TENSOR_OUTPUT(opParas, tensor_output, y);
+  opParas.SetAttr("batch_dims", value);
 
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
@@ -86,9 +87,10 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_0) {
   ge::DataType dtypeB = ge::DT_INT32;
   ge::DataType dtypeC = ge::DT_INT32;
   ge::DataType dtypeOutput = dtypeA;
+  int64_t batch_dims = 0;
   string expectTilingData = "13 1 87552 1 174 0 8 0 21 6 0 32512 21 65024 32512 0 65024 21 0 87552 0 0 0 0 1 1 0 1 ";
   Compute(inputA, inputB, inputC, axis, output, dtypeA, dtypeB, dtypeC, dtypeOutput, this->test_info_->name(),
-          compileInfo, expectTilingData);
+          compileInfo, expectTilingData, batch_dims);
 }
 
 TEST_F(GatherV2Tiling, gather_v2_tiling_1) {
@@ -107,9 +109,10 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_1) {
   ge::DataType dtypeB = ge::DT_INT32;
   ge::DataType dtypeC = ge::DT_INT32;
   ge::DataType dtypeOutput = dtypeA;
+  int64_t batch_dims = 0;
   string expectTilingData = "8 81 6 3 6 0 32 0 6 0 0 19712 6 13136 6576 1 13136 6 0 1458 0 0 2 17 1 1 0 1 ";
   Compute(inputA, inputB, inputC, axis, output, dtypeA, dtypeB, dtypeC, dtypeOutput, this->test_info_->name(),
-          compileInfo, expectTilingData);
+          compileInfo, expectTilingData, batch_dims);
 }
 
 TEST_F(GatherV2Tiling, gather_v2_tiling_2) {
@@ -127,9 +130,10 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_2) {
   ge::DataType dtypeB = ge::DT_INT32;
   ge::DataType dtypeC = ge::DT_INT32;
   ge::DataType dtypeOutput = dtypeA;
+  int64_t batch_dims = 0;
   string expectTilingData = "10 81 6 32 6 0 32 0 6 0 0 19712 6 1232 0 16 1232 6 0 15552 0 0 2 17 1 1 0 1 ";
   Compute(inputA, inputB, inputC, axis, output, dtypeA, dtypeB, dtypeC, dtypeOutput, this->test_info_->name(),
-          compileInfo, expectTilingData);
+          compileInfo, expectTilingData, batch_dims);
 }
 
 TEST_F(GatherV2Tiling, gather_v2_tiling_3) {
@@ -147,9 +151,10 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_3) {
   ge::DataType dtypeB = ge::DT_INT32;
   ge::DataType dtypeC = ge::DT_INT32;
   ge::DataType dtypeOutput = dtypeA;
+  int64_t batch_dims = 0;
   string expectTilingData = "6 1 81 192 6 0 6 0 1 0 0 19712 1 205 32 96 205 1 0 15552 0 0 0 0 1 1 0 1 ";
   Compute(inputA, inputB, inputC, axis, output, dtypeA, dtypeB, dtypeC, dtypeOutput, this->test_info_->name(),
-          compileInfo, expectTilingData);
+          compileInfo, expectTilingData, batch_dims);
 }
 
 TEST_F(GatherV2Tiling, gather_v2_tiling_4) {
@@ -167,9 +172,10 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_4) {
   ge::DataType dtypeB = ge::DT_INT32;
   ge::DataType dtypeC = ge::DT_INT32;
   ge::DataType dtypeOutput = dtypeA;
+  int64_t batch_dims = 0;
   string expectTilingData = "3 1 16 4096 32 0 32 0 1 0 0 32512 1 15 7 2167 15 1 0 65536 0 0 0 0 1 1 0 1 ";
   Compute(inputA, inputB, inputC, axis, output, dtypeA, dtypeB, dtypeC, dtypeOutput, this->test_info_->name(),
-          compileInfo, expectTilingData);
+          compileInfo, expectTilingData, batch_dims);
 }
 
 TEST_F(GatherV2Tiling, gather_v2_tiling_5) {
@@ -187,9 +193,10 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_5) {
   ge::DataType dtypeB = ge::DT_INT32;
   ge::DataType dtypeC = ge::DT_INT32;
   ge::DataType dtypeOutput = dtypeA;
+  int64_t batch_dims = 0;
   string expectTilingData = "7 1 16 4096 320 0 32 0 10 0 0 32512 10 15 7 2167 15 10 0 65536 0 0 0 0 1 1 0 1 ";
   Compute(inputA, inputB, inputC, axis, output, dtypeA, dtypeB, dtypeC, dtypeOutput, this->test_info_->name(),
-          compileInfo, expectTilingData);
+          compileInfo, expectTilingData, batch_dims);
 }
 
 TEST_F(GatherV2Tiling, gather_v2_tiling_6) {
@@ -207,9 +214,10 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_6) {
   ge::DataType dtypeB = ge::DT_INT32;
   ge::DataType dtypeC = ge::DT_INT32;
   ge::DataType dtypeOutput = dtypeA;
+  int64_t batch_dims = 0;
   string expectTilingData = "4 1 180 4 4 0 1 0 4 0 0 19712 4 9856 0 2 9856 4 0 720 0 0 0 0 1 1 0 1 ";
   Compute(inputA, inputB, inputC, axis, output, dtypeA, dtypeB, dtypeC, dtypeOutput, this->test_info_->name(),
-          compileInfo, expectTilingData);
+          compileInfo, expectTilingData, batch_dims);
 }
 
 TEST_F(GatherV2Tiling, gather_v2_tiling_7) {
@@ -227,9 +235,10 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_7) {
   ge::DataType dtypeB = ge::DT_INT32;
   ge::DataType dtypeC = ge::DT_INT32;
   ge::DataType dtypeOutput = dtypeA;
+  int64_t batch_dims = 0;
   string expectTilingData = "5 1 180 400000 4 0 4 0 1 0 0 32512 1 0 0 0 0 0 0 72000000 6 9856 0 0 1 1 0 1 ";
   Compute(inputA, inputB, inputC, axis, output, dtypeA, dtypeB, dtypeC, dtypeOutput, this->test_info_->name(),
-          compileInfo, expectTilingData);
+          compileInfo, expectTilingData, batch_dims);
 }
 
 TEST_F(GatherV2Tiling, gather_v2_tiling_10) {
@@ -247,9 +256,10 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_10) {
   ge::DataType dtypeB = ge::DT_INT32;
   ge::DataType dtypeC = ge::DT_INT32;
   ge::DataType dtypeOutput = dtypeA;
+  int64_t batch_dims = 0;
   string expectTilingData = "11 64 8 512 32 0 32 0 32 0 0 32512 32 127 0 256 127 32 0 262144 0 0 2 0 1 1 0 1 ";
   Compute(inputA, inputB, inputC, axis, output, dtypeA, dtypeB, dtypeC, dtypeOutput, this->test_info_->name(),
-          compileInfo, expectTilingData);
+          compileInfo, expectTilingData, batch_dims);
 }
 
 TEST_F(GatherV2Tiling, gather_v2_tiling_11) {
@@ -267,9 +277,10 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_11) {
   ge::DataType dtypeB = ge::DT_INT32;
   ge::DataType dtypeC = ge::DT_INT32;
   ge::DataType dtypeOutput = dtypeA;
+  int64_t batch_dims = 0;
   string expectTilingData = "10 64 8 48 32 0 32 0 32 0 0 19712 32 821 8 24 821 32 0 24576 0 0 2 0 1 1 0 1 ";
   Compute(inputA, inputB, inputC, axis, output, dtypeA, dtypeB, dtypeC, dtypeOutput, this->test_info_->name(),
-          compileInfo, expectTilingData);
+          compileInfo, expectTilingData, batch_dims);
 }
 
 TEST_F(GatherV2Tiling, gather_v2_tiling_20) {
@@ -285,9 +296,10 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_20) {
   ge::DataType dtypeB = ge::DT_INT32;
   ge::DataType dtypeC = ge::DT_INT32;
   ge::DataType dtypeOutput = dtypeA;
+  int64_t batch_dims = 1;
   string expectTilingData = "20 1 16 3 400 0 10 0 40 0 0 40 0 6568 40 0 0 0 0 48 0 0 0 0 40 1 0 10 ";
   Compute(inputA, inputB, inputC, axis, output, dtypeA, dtypeB, dtypeC, dtypeOutput, this->test_info_->name(),
-          compileInfo, expectTilingData);
+          compileInfo, expectTilingData, batch_dims);
 }
 
 TEST_F(GatherV2Tiling, gather_v2_tiling_20_02) {
@@ -303,9 +315,10 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_20_02) {
   ge::DataType dtypeB = ge::DT_INT32;
   ge::DataType dtypeC = ge::DT_INT32;
   ge::DataType dtypeOutput = dtypeA;
+  int64_t batch_dims = 1;
   string expectTilingData = "20 1 16 3 80000 0 32 0 2400 3200 0 800 0 6568 800 0 0 0 0 144 0 0 0 0 800 3 4 100 ";
   Compute(inputA, inputB, inputC, axis, output, dtypeA, dtypeB, dtypeC, dtypeOutput, this->test_info_->name(),
-          compileInfo, expectTilingData);
+          compileInfo, expectTilingData, batch_dims);
 }
 
 TEST_F(GatherV2Tiling, gather_v2_tiling_21) {
@@ -321,9 +334,10 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_21) {
   ge::DataType dtypeB = ge::DT_INT32;
   ge::DataType dtypeC = ge::DT_INT32;
   ge::DataType dtypeOutput = dtypeA;
+  int64_t batch_dims = 1;
   string expectTilingData = "21 1 16 3 800000 0 32 0 24000 32000 0 8000 0 6568 1432 1 0 0 0 144 0 0 0 0 8000 3 4 100 ";
   Compute(inputA, inputB, inputC, axis, output, dtypeA, dtypeB, dtypeC, dtypeOutput, this->test_info_->name(),
-          compileInfo, expectTilingData);
+          compileInfo, expectTilingData, batch_dims);
 }
 
 TEST_F(GatherV2Tiling, gather_v2_tiling_22) {
@@ -339,9 +353,10 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_22) {
   ge::DataType dtypeB = ge::DT_INT32;
   ge::DataType dtypeC = ge::DT_INT32;
   ge::DataType dtypeOutput = dtypeA;
+  int64_t batch_dims = 1;
   string expectTilingData = "22 1 16 3 400000 0 10 0 40000 0 2 19712 576 6568 8 3 6568 576 0 48 0 0 0 0 40000 1 0 10 ";
   Compute(inputA, inputB, inputC, axis, output, dtypeA, dtypeB, dtypeC, dtypeOutput, this->test_info_->name(),
-          compileInfo, expectTilingData);
+          compileInfo, expectTilingData, batch_dims);
 }
 
 TEST_F(GatherV2Tiling, gather_v2_tiling_23) {
@@ -357,9 +372,10 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_23) {
   ge::DataType dtypeB = ge::DT_INT32;
   ge::DataType dtypeC = ge::DT_INT32;
   ge::DataType dtypeOutput = dtypeA;
+  int64_t batch_dims = 1;
   string expectTilingData = "23 1 16000 3 400 0 10 0 40 0 0 40 0 10832 40 0 0 0 0 48000 0 0 0 0 40 1 0 10 ";
   Compute(inputA, inputB, inputC, axis, output, dtypeA, dtypeB, dtypeC, dtypeOutput, this->test_info_->name(),
-          compileInfo, expectTilingData);
+          compileInfo, expectTilingData, batch_dims);
 }
 
 TEST_F(GatherV2Tiling, gather_v2_tiling_23_02) {
@@ -375,9 +391,10 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_23_02) {
   ge::DataType dtypeB = ge::DT_INT32;
   ge::DataType dtypeC = ge::DT_INT32;
   ge::DataType dtypeOutput = dtypeA;
+  int64_t batch_dims = 1;
   string expectTilingData = "23 1 16000 3 80000 0 32 0 2400 3200 0 800 0 10832 800 0 0 0 0 144000 0 0 0 0 800 3 4 100 ";
   Compute(inputA, inputB, inputC, axis, output, dtypeA, dtypeB, dtypeC, dtypeOutput, this->test_info_->name(),
-          compileInfo, expectTilingData);
+          compileInfo, expectTilingData, batch_dims);
 }
 
 TEST_F(GatherV2Tiling, gather_v2_tiling_24) {
@@ -393,11 +410,12 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_24) {
   ge::DataType dtypeB = ge::DT_INT32;
   ge::DataType dtypeC = ge::DT_INT32;
   ge::DataType dtypeOutput = dtypeA;
+  int64_t batch_dims = 1;
   string expectTilingData =
       "24 1 16000 3 1800000 0 32 0 54000 72000 0 18000 0 10832 "
       "7168 1 0 0 0 144000 0 0 0 0 18000 3 4 100 ";
   Compute(inputA, inputB, inputC, axis, output, dtypeA, dtypeB, dtypeC, dtypeOutput, this->test_info_->name(),
-          compileInfo, expectTilingData);
+          compileInfo, expectTilingData, batch_dims);
 }
 
 TEST_F(GatherV2Tiling, gather_v2_tiling_25) {
@@ -413,10 +431,11 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_25) {
   ge::DataType dtypeB = ge::DT_INT32;
   ge::DataType dtypeC = ge::DT_INT32;
   ge::DataType dtypeOutput = dtypeA;
+  int64_t batch_dims = 1;
   string expectTilingData =
       "25 1 16000 3 400000 0 10 0 40000 0 1 32512 7488 10832 16 3 10832 7488 0 48000 0 0 0 0 40000 1 0 10 ";
   Compute(inputA, inputB, inputC, axis, output, dtypeA, dtypeB, dtypeC, dtypeOutput, this->test_info_->name(),
-          compileInfo, expectTilingData);
+          compileInfo, expectTilingData, batch_dims);
 }
 
 TEST_F(GatherV2Tiling, gather_v2_tiling_26) {
@@ -432,9 +451,10 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_26) {
   ge::DataType dtypeB = ge::DT_INT32;
   ge::DataType dtypeC = ge::DT_INT32;
   ge::DataType dtypeOutput = dtypeA;
+  int64_t batch_dims = 1;
   string expectTilingData = "26 1 16 33 400 0 10 0 40 0 0 40 0 985 40 0 0 0 0 528 0 0 0 0 40 1 0 10 ";
   Compute(inputA, inputB, inputC, axis, output, dtypeA, dtypeB, dtypeC, dtypeOutput, this->test_info_->name(),
-          compileInfo, expectTilingData);
+          compileInfo, expectTilingData, batch_dims);
 }
 
 TEST_F(GatherV2Tiling, gather_v2_tiling_27) {
@@ -450,10 +470,11 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_27) {
   ge::DataType dtypeB = ge::DT_INT32;
   ge::DataType dtypeC = ge::DT_INT32;
   ge::DataType dtypeOutput = dtypeA;
+  int64_t batch_dims = 1;
   string expectTilingData =
       "27 1 16 33 1800000 0 32 0 54000 72000 0 18000 0 985 270 18 0 0 0 1584 0 0 0 0 18000 3 4 100 ";
   Compute(inputA, inputB, inputC, axis, output, dtypeA, dtypeB, dtypeC, dtypeOutput, this->test_info_->name(),
-          compileInfo, expectTilingData);
+          compileInfo, expectTilingData, batch_dims);
 }
 
 TEST_F(GatherV2Tiling, gather_v2_tiling_28) {
@@ -469,10 +490,11 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_28) {
   ge::DataType dtypeB = ge::DT_INT32;
   ge::DataType dtypeC = ge::DT_INT32;
   ge::DataType dtypeOutput = dtypeA;
+  int64_t batch_dims = 1;
   string expectTilingData =
       "28 1 16 33 400000 0 10 0 40000 0 1 32512 7488 985 7 33 985 593 7 528 0 0 0 0 40000 1 0 10 ";
   Compute(inputA, inputB, inputC, axis, output, dtypeA, dtypeB, dtypeC, dtypeOutput, this->test_info_->name(),
-          compileInfo, expectTilingData);
+          compileInfo, expectTilingData, batch_dims);
 }
 
 TEST_F(GatherV2Tiling, gather_v2_tiling_29) {
@@ -488,9 +510,10 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_29) {
   ge::DataType dtypeB = ge::DT_INT32;
   ge::DataType dtypeC = ge::DT_INT32;
   ge::DataType dtypeOutput = dtypeA;
+  int64_t batch_dims = 1;
   string expectTilingData = "29 1 16 32 40 0 10 0 4 0 0 4 0 616 4 0 0 0 0 512 0 0 0 0 4 1 0 10 ";
   Compute(inputA, inputB, inputC, axis, output, dtypeA, dtypeB, dtypeC, dtypeOutput, this->test_info_->name(),
-          compileInfo, expectTilingData);
+          compileInfo, expectTilingData, batch_dims);
 }
 
 TEST_F(GatherV2Tiling, gather_v2_tiling_30) {
@@ -506,9 +529,10 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_30) {
   ge::DataType dtypeB = ge::DT_INT32;
   ge::DataType dtypeC = ge::DT_INT32;
   ge::DataType dtypeOutput = dtypeA;
+  int64_t batch_dims = 1;
   string expectTilingData = "30 1 16 32 800000 0 32 0 24800 6400 0 800 0 616 184 1 0 0 0 15872 0 0 0 0 800 31 8 1000 ";
   Compute(inputA, inputB, inputC, axis, output, dtypeA, dtypeB, dtypeC, dtypeOutput, this->test_info_->name(),
-          compileInfo, expectTilingData);
+          compileInfo, expectTilingData, batch_dims);
 }
 
 TEST_F(GatherV2Tiling, gather_v2_tiling_31) {
@@ -524,9 +548,10 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_31) {
   ge::DataType dtypeB = ge::DT_INT32;
   ge::DataType dtypeC = ge::DT_INT32;
   ge::DataType dtypeOutput = dtypeA;
+  int64_t batch_dims = 1;
   string expectTilingData = "31 6 5 32 400000 0 10 0 40000 0 2 19712 576 616 0 32 616 576 0 960 0 0 0 0 40000 1 0 10 ";
   Compute(inputA, inputB, inputC, axis, output, dtypeA, dtypeB, dtypeC, dtypeOutput, this->test_info_->name(),
-          compileInfo, expectTilingData);
+          compileInfo, expectTilingData, batch_dims);
 }
 
 TEST_F(GatherV2Tiling, gather_v2_tiling_32) {
@@ -542,9 +567,10 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_32) {
   ge::DataType dtypeB = ge::DT_INT32;
   ge::DataType dtypeC = ge::DT_INT32;
   ge::DataType dtypeOutput = dtypeA;
+  int64_t batch_dims = 1;
   string expectTilingData = "32 1 16000 32 40 0 10 0 4 0 0 4 0 1016 4 0 0 0 0 512000 0 0 0 0 4 1 0 10 ";
   Compute(inputA, inputB, inputC, axis, output, dtypeA, dtypeB, dtypeC, dtypeOutput, this->test_info_->name(),
-          compileInfo, expectTilingData);
+          compileInfo, expectTilingData, batch_dims);
 }
 
 TEST_F(GatherV2Tiling, gather_v2_tiling_33) {
@@ -560,11 +586,12 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_33) {
   ge::DataType dtypeB = ge::DT_INT32;
   ge::DataType dtypeC = ge::DT_INT32;
   ge::DataType dtypeOutput = dtypeA;
+  int64_t batch_dims = 1;
   string expectTilingData =
       "33 1 16000 8 1800000 0 32 0 55800 14400 0 1800 0 4064 "
       "1800 0 0 0 0 3968000 0 0 0 0 1800 31 8 1000 ";
   Compute(inputA, inputB, inputC, axis, output, dtypeA, dtypeB, dtypeC, dtypeOutput, this->test_info_->name(),
-          compileInfo, expectTilingData);
+          compileInfo, expectTilingData, batch_dims);
 }
 
 TEST_F(GatherV2Tiling, gather_v2_tiling_34) {
@@ -580,11 +607,12 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_34) {
   ge::DataType dtypeB = ge::DT_INT32;
   ge::DataType dtypeC = ge::DT_INT32;
   ge::DataType dtypeOutput = dtypeA;
+  int64_t batch_dims = 1;
   string expectTilingData =
       "34 6 500 32 400000 0 10 0 40000 0 1 32512 7488 1016 0 "
       "32 1016 376 7 96000 0 0 0 0 40000 1 0 10 ";
   Compute(inputA, inputB, inputC, axis, output, dtypeA, dtypeB, dtypeC, dtypeOutput, this->test_info_->name(),
-          compileInfo, expectTilingData);
+          compileInfo, expectTilingData, batch_dims);
 }
 
 TEST_F(GatherV2Tiling, gather_v2_tiling_35) {
@@ -600,9 +628,10 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_35) {
   ge::DataType dtypeB = ge::DT_INT32;
   ge::DataType dtypeC = ge::DT_INT32;
   ge::DataType dtypeOutput = dtypeA;
+  int64_t batch_dims = 1;
   string expectTilingData = "35 1 16 33000 400 0 10 0 40 0 0 40 0 0 0 0 0 0 0 528000 1 488 0 0 40 1 0 10 ";
   Compute(inputA, inputB, inputC, axis, output, dtypeA, dtypeB, dtypeC, dtypeOutput, this->test_info_->name(),
-          compileInfo, expectTilingData);
+          compileInfo, expectTilingData, batch_dims);
 }
 
 TEST_F(GatherV2Tiling, gather_v2_tiling_36) {
@@ -618,9 +647,10 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_36) {
   ge::DataType dtypeB = ge::DT_INT32;
   ge::DataType dtypeC = ge::DT_INT32;
   ge::DataType dtypeOutput = dtypeA;
+  int64_t batch_dims = 1;
   string expectTilingData = "36 1 16 33000 79996 0 2 0 39998 0 0 19999 0 0 0 0 0 0 0 1056000 1 488 0 0 19999 2 0 4 ";
   Compute(inputA, inputB, inputC, axis, output, dtypeA, dtypeB, dtypeC, dtypeOutput, this->test_info_->name(),
-          compileInfo, expectTilingData);
+          compileInfo, expectTilingData, batch_dims);
 }
 
 TEST_F(GatherV2Tiling, gather_v2_tiling_37) {
@@ -636,9 +666,10 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_37) {
   ge::DataType dtypeB = ge::DT_INT32;
   ge::DataType dtypeC = ge::DT_INT32;
   ge::DataType dtypeOutput = dtypeA;
+  int64_t batch_dims = 1;
   string expectTilingData = "37 1 16 33000 80000 0 2 0 40000 0 1 32512 7488 0 0 0 0 0 0 528000 1 488 0 0 40000 1 0 2 ";
   Compute(inputA, inputB, inputC, axis, output, dtypeA, dtypeB, dtypeC, dtypeOutput, this->test_info_->name(),
-          compileInfo, expectTilingData);
+          compileInfo, expectTilingData, batch_dims);
 }
 
 TEST_F(GatherV2Tiling, gather_v2_tiling_38) {
@@ -654,9 +685,10 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_38) {
   ge::DataType dtypeB = ge::DT_INT32;
   ge::DataType dtypeC = ge::DT_INT32;
   ge::DataType dtypeOutput = dtypeA;
+  int64_t batch_dims = 1;
   string expectTilingData = "38 160 2 1 4 0 32 31 10 0 0 10 0 19712 10 0 0 0 0 640 0 0 0 0 2 5 0 2 ";
   Compute(inputA, inputB, inputC, axis, output, dtypeA, dtypeB, dtypeC, dtypeOutput, this->test_info_->name(),
-          compileInfo, expectTilingData);
+          compileInfo, expectTilingData, batch_dims);
 }
 
 TEST_F(GatherV2Tiling, gather_v2_tiling_39) {
@@ -672,9 +704,10 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_39) {
   ge::DataType dtypeB = ge::DT_INT32;
   ge::DataType dtypeC = ge::DT_INT32;
   ge::DataType dtypeOutput = dtypeA;
+  int64_t batch_dims = 1;
   string expectTilingData = "39 16000 2 1 4 0 32 31 1000 0 0 1000 0 32512 1000 0 0 0 0 64000 0 0 0 0 2 500 0 2 ";
   Compute(inputA, inputB, inputC, axis, output, dtypeA, dtypeB, dtypeC, dtypeOutput, this->test_info_->name(),
-          compileInfo, expectTilingData);
+          compileInfo, expectTilingData, batch_dims);
 }
 
 TEST_F(GatherV2Tiling, gather_v2_tiling_40) {
@@ -690,9 +723,10 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_40) {
   ge::DataType dtypeB = ge::DT_INT32;
   ge::DataType dtypeC = ge::DT_INT32;
   ge::DataType dtypeOutput = dtypeA;
+  int64_t batch_dims = 1;
   string expectTilingData = "40 1 16 2 200 0 32 31 6 0 0 6 0 9856 6 0 0 0 0 96 0 0 0 0 2 3 4 100 ";
   Compute(inputA, inputB, inputC, axis, output, dtypeA, dtypeB, dtypeC, dtypeOutput, this->test_info_->name(),
-          compileInfo, expectTilingData);
+          compileInfo, expectTilingData, batch_dims);
 }
 
 TEST_F(GatherV2Tiling, gather_v2_tiling_41) {
@@ -708,9 +742,10 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_41) {
   ge::DataType dtypeB = ge::DT_INT32;
   ge::DataType dtypeC = ge::DT_INT32;
   ge::DataType dtypeOutput = dtypeA;
+  int64_t batch_dims = 1;
   string expectTilingData = "41 1 16000 2 4 0 1 0 4 0 0 4 0 16256 4 0 0 0 0 64000 0 0 0 0 2 2 0 2 ";
   Compute(inputA, inputB, inputC, axis, output, dtypeA, dtypeB, dtypeC, dtypeOutput, this->test_info_->name(),
-          compileInfo, expectTilingData);
+          compileInfo, expectTilingData, batch_dims);
 }
 
 TEST_F(GatherV2Tiling, gather_v2_tiling_42) {
@@ -742,7 +777,8 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_42) {
   ge::DataType dtypeB = ge::DT_INT32;
   ge::DataType dtypeC = ge::DT_INT32;
   ge::DataType dtypeOutput = dtypeA;
+  int64_t batch_dims = 0;
   string expectTilingData = "2748779069440001 4294967376 85899345942551 1880 ";
   Compute(inputA, inputB, inputC, axis, output, dtypeA, dtypeB, dtypeC, dtypeOutput,
-  this->test_info_->name(),compileInfo, expectTilingData);
+  this->test_info_->name(),compileInfo, expectTilingData, batch_dims);
 }

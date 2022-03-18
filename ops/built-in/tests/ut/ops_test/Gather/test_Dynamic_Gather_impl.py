@@ -48,7 +48,7 @@ def gen_dynamic_gather_case(dict_params, dict_indices, dict_y, batch_dims, kerne
             "support_expect": True}
 
 
-ut_case.add_case(["Ascend910A"],
+ut_case.add_case(["Ascend910A", "Ascend310"],
                  gen_dynamic_gather_case(
                      {"shape": (163623, 80), "dtype": "float32", "ori_shape": (163623, 80),
                       "format": "ND", "ori_format": "ND", "range": ((163623, 163623), (80, 80))},
@@ -58,7 +58,7 @@ ut_case.add_case(["Ascend910A"],
                       "format": "ND", "ori_format": "ND", "range": ((22551, 22551), (80, 80))},
                      0, "dynamic_gather_01", "success"))
 
-ut_case.add_case(["Ascend910A"],
+ut_case.add_case(["Ascend910A", "Ascend310"],
                  gen_dynamic_gather_case(
                      {"shape": (163623, 1), "dtype": "float32", "ori_shape": (163623, 1),
                       "format": "ND", "ori_format": "ND", "range": ((163623, 163623), (1, 1))},
@@ -68,7 +68,7 @@ ut_case.add_case(["Ascend910A"],
                       "format": "ND", "ori_format": "ND", "range": ((22551, 22551), (1, 1))},
                      0, "dynamic_gather_02", "success"))
 
-ut_case.add_case(["Ascend910A"],
+ut_case.add_case(["Ascend910A", "Ascend310"],
                  gen_dynamic_gather_case(
                      {"shape": (163623, 1), "dtype": "float16", "ori_shape": (163623, 1),
                       "format": "ND", "ori_format": "ND", "range": ((163623, 163623), (1, 1))},
@@ -78,7 +78,7 @@ ut_case.add_case(["Ascend910A"],
                       "format": "ND", "ori_format": "ND", "range": ((22551, 22551), (1, 1))},
                      0, "dynamic_gather_03", "success"))
 
-ut_case.add_case(["Ascend910A"],
+ut_case.add_case(["Ascend910A", "Ascend310"],
                  gen_dynamic_gather_case(
                      {"shape": (163623, 1), "dtype": "int32", "ori_shape": (163623, 1),
                       "format": "ND", "ori_format": "ND", "range": ((163623, 163623), (1, 1))},
@@ -88,7 +88,7 @@ ut_case.add_case(["Ascend910A"],
                       "format": "ND", "ori_format": "ND", "range": ((22551, 22551), (1, 1))},
                      0, "dynamic_gather_04", "success"))
 
-ut_case.add_case(["Ascend910A"],
+ut_case.add_case(["Ascend910A", "Ascend310"],
                  gen_dynamic_gather_case(
                      {"shape": (-1, -1), "dtype": "float32", "ori_shape": (-1, -1),
                       "format": "ND", "ori_format": "ND", "range": ((163623, 163623), (1, 1))},
@@ -98,7 +98,7 @@ ut_case.add_case(["Ascend910A"],
                       "format": "ND", "ori_format": "ND", "range": ((22551, 22551), (1, 1))},
                      0, "dynamic_gather_05", "success"))
 
-ut_case.add_case(["Ascend910A"],
+ut_case.add_case(["Ascend910A", "Ascend310"],
                  gen_dynamic_gather_case(
                      {"shape": (-1, -1), "dtype": "bool", "ori_shape": (-1, -1),
                       "format": "ND", "ori_format": "ND", "range": ((163623, 163623), (1, 1))},
@@ -110,4 +110,4 @@ ut_case.add_case(["Ascend910A"],
 
 ut_case.add_cust_test_func(test_func=test_get_op_support_info)
 if __name__ == '__main__':
-    ut_case.run("Ascend910A")
+    ut_case.run(["Ascend910A", "Ascend310"])

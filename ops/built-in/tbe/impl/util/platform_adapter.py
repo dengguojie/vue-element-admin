@@ -68,6 +68,7 @@ class OpPatternMode:
     op pattern mode
     """
     NONE = ""
+    GATHER = "gather"
     ELEWISE = "elewise"
     ELEWISE_WITH_BROADCAST = "broadcast"
     REDUCE = "reduce"

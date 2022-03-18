@@ -121,6 +121,12 @@ const int64_t TILING_MODE_39 = 39;
 const int64_t TILING_MODE_40 = 40;
 const int64_t TILING_MODE_41 = 41;
 
+// define batch_dims of gather_v2 attr idx and name
+const struct ops::AttrBase GATHER_V2_BATCH_DIMS_INFO(0, "batch_dims");
+// define batch_dims of gather attr idx and name
+const struct ops::AttrBase GATHER_BATCH_DIMS_INFO(1, "batch_dims");
+static const int64_t BATCH_DIMS_DEFAULT_VALUE = 0;
+
 struct GatherCompileInfo  {
   std::shared_ptr<AutoTilingHandler> outer_compile_info;
   int64_t ub_size{1};
@@ -128,8 +134,8 @@ struct GatherCompileInfo  {
   int64_t core_num{1};
   int64_t params_d_size{1};
   int64_t indices_d_size{1};
-  int64_t batch_dims{0};
   bool is_tik{false};
+  bool is_gather_v2{false};
 };
 
 struct GatherCompileParams {
@@ -377,15 +383,21 @@ bool CheckAxisAndBatchdims(const std::string& op_type, const GatherShapeInfo& sh
   return true;
 }
 
-bool GetV2GatherCompileParams(const std::string& op_type, const GatherCompileInfo& compile_info_vec,
-                              GatherCompileParams& params) {
+void GetV2GatherCompileParams(const std::string& op_type, const GatherCompileInfo& compile_info_vec,
+                              const ge::Operator& op_paras, GatherCompileParams& params) {  
+
+  params.batch_dims = BATCH_DIMS_DEFAULT_VALUE;
+  if (compile_info_vec.is_gather_v2) {
+    ops::GetAttrValue(op_paras, GATHER_V2_BATCH_DIMS_INFO, params.batch_dims);
+  } else {
+    ops::GetAttrValue(op_paras, GATHER_BATCH_DIMS_INFO, params.batch_dims);
+  }
+
   params.core_num = compile_info_vec.core_num;
   params.ub_size = compile_info_vec.ub_size;
   params.l1_size = compile_info_vec.l1_size;
   params.params_d_size = compile_info_vec.params_d_size;
   params.indices_d_size = compile_info_vec.indices_d_size;
-  params.batch_dims = compile_info_vec.batch_dims;
-  return true;
 }
 
 // compute tiling params for tiling_mode 8&9
@@ -1124,10 +1136,7 @@ bool GatherTIKTiling(const std::string &op_type, const ge::Operator &op_paras, c
   // get compile info
   GatherCompileParams compile_params;
   InitGatherCompileParams(compile_params);
-  if (!GetV2GatherCompileParams(op_type, op_info, compile_params)) {
-    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op GatherV2Tiling: [GetV2GatherCompileParams] failed.");
-    return false;
-  }
+  GetV2GatherCompileParams(op_type, op_info, op_paras, compile_params);
   PROFILING_TILING_AFTER_GET_COMPILE_INFO_REG();
   // Compatible with gather scenarios, set axis and batch_dims equal if gather operator has batch_dims attribute.
   if (op_type == "Gather" && compile_params.batch_dims != 0) {
@@ -1204,9 +1213,6 @@ bool GatherParseFunc(const std::string &op_type, const nlohmann::json &compile_i
     OP_TILING_CHECK(!GetCompileValue(all_vars, "indices_dsize", op_info.indices_d_size),
                     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "GatherParseFunc, get indices_d_size error"),
                     return false);
-    OP_TILING_CHECK(!GetCompileValue(all_vars, "batch_dims", op_info.batch_dims),
-                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "GatherParseFunc, get batch_dims error"),
-                    return false);
   } else {
     op_info.outer_compile_info = CreateGatherTilingHandler(op_type, "Gather", compile_info);
     if (op_info.outer_compile_info == nullptr) {
@@ -1214,6 +1220,10 @@ bool GatherParseFunc(const std::string &op_type, const nlohmann::json &compile_i
       return false;
     }
     op_info.is_tik = false;
+  }
+
+  if (op_type == "GatherV2") {
+    op_info.is_gather_v2 = true;
   }
 
   return true;

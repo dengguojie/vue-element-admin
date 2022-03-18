@@ -23,11 +23,13 @@ from impl.util.util_select_op_base import get_op_cal_info
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import classify
+from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import tbe_platform
-from . import gather_v2
+from impl.util.platform_adapter import tbe_context
+from impl.dynamic.gather_v2 import GatherV2
 
 
 # 'pylint: disable=locally-disabled,invalid-name,unused-argument,too-many-arguments
@@ -57,7 +59,7 @@ def gather_tik(x, indices, y, validate_indices=True, batch_dims=0, kernel_name="
     gather interface for tik
     """
     axis_dict = {"dtype": "int32"}
-    obj = gather_v2.GatherV2(x, indices, axis_dict, y, batch_dims, kernel_name)
+    obj = GatherV2(x, indices, axis_dict, y, batch_dims, kernel_name)
     return obj.gather_compute()
 
 
@@ -97,7 +99,9 @@ def gather_dsl(x, indices, y, validate_indices=True, batch_dims=0, kernel_name="
     para_check.check_dtype(dtype_indices, check_list_indices, param_name="indices")
 
     # In the gather scenario, when batch_dims is not 0, set axis and batch_dims to the same value.
-    ins = classify([x, indices, None, batch_dims], "gather")
+    batch_dims = "unknown" if batch_dims is None else batch_dims
+    tbe_context.get_context().add_compile_info("attr_name", "batch_dims")
+    ins = classify([x, indices, None, batch_dims], OpPatternMode.GATHER)
     schedules, tensors = [], []
     for shape_x, shape_indices, axis_input, batch_dims_input in ins:
         with tbe.compute():

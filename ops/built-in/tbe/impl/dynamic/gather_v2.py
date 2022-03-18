@@ -25,6 +25,7 @@ from impl.util.platform_adapter import tbe_platform as tbe_platform_adapter
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import classify
+from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tvm
@@ -287,6 +288,8 @@ class GatherV2():
         self.cached_types = {"cached_types_params": Constant.PARAMS_CACHED_UB,
                              "cached_types_indices": Constant.INDICES_CACHED_ALL,
                              "aligned_types_params": Constant.MODE_LESS_THAN_32B}
+        self.opt_config = {"out_of_bound_sync_check": True,
+                           "enable_const_fold": True}
 
     def get_tiling_args(self, tiling_ub):
         """
@@ -2530,6 +2533,30 @@ class GatherV2():
                 with tik_instance.for_range(0, self.params_pre) as pre_i:
                     self.process_large_indices_row(indices_num_offset, batch_i, block_id, pre_i)
 
+    def add_gather_compile_info(self):
+        """
+        add compile info
+        """
+        self.x = self.tik_instance.Tensor(self.params_dtype, self.x_shape,
+                                          name="x", scope=tik.scope_gm)
+        self.indices = self.tik_instance.Tensor(self.indices_dtype, self.indices_shape,
+                                                name="indices", scope=tik.scope_gm)
+        self.tiling_gm = self.tik_instance.Tensor(self.tiling_dtype, (Constant.TILING_ARG_NUM,),
+                                                  name="ddr_arg", scope=tik.scope_gm)
+        self.y = self.tik_instance.Tensor(self.y_dtype, shape=self.y_shape,
+                                          name="y", scope=tik.scope_gm)
+
+        self.gather_v2_compute_tiling()
+        # add compile info
+        tbe_context.get_context().add_compile_info("vars", {"core_num": self.core_num,
+                                                            "ub_size": self.ub_size,
+                                                            "l1_size": self.l1_size,
+                                                            "params_dsize": self.params_dsize,
+                                                            "indices_dsize": self.indices_dsize
+                                                            })
+        # It is used to distinguish between Tik implementation and DSL implementation in the tilling phase
+        tbe_context.get_context().add_compile_info("is_tik", True)
+
     def gather_v2_compute(self):
         """
         compute of gather_v2
@@ -2542,39 +2569,13 @@ class GatherV2():
         -------
         compile info
         """
-        self.x = self.tik_instance.Tensor(self.params_dtype, self.x_shape,
-                                          name="x", scope=tik.scope_gm)
-        self.indices = self.tik_instance.Tensor(self.indices_dtype, self.indices_shape,
-                                                name="indices", scope=tik.scope_gm)
+        self.add_gather_compile_info()
         self.axis = self.tik_instance.Tensor(self.axis_dtype, self.axis_shape,
                                              name="axis", scope=tik.scope_gm)
-        self.tiling_gm = self.tik_instance.Tensor(self.tiling_dtype, (Constant.TILING_ARG_NUM,),
-                                                  name="ddr_arg", scope=tik.scope_gm)
-        self.y = self.tik_instance.Tensor(self.y_dtype, shape=self.y_shape,
-                                          name="y", scope=tik.scope_gm)
-
-        self.gather_v2_compute_tiling()
-
-        opt_config = {
-            "out_of_bound_sync_check": True,
-            "enable_const_fold": True
-        }
-
-        # add compile info
-        tbe_context.get_context().add_compile_info("vars", {"core_num": self.core_num,
-                                                            "ub_size": self.ub_size,
-                                                            "l1_size": self.l1_size,
-                                                            "params_dsize": self.params_dsize,
-                                                            "indices_dsize": self.indices_dsize,
-                                                            "batch_dims": self.batch_dims
-                                                            })
-        # It is used to distinguish between Tik implementation and DSL implementation in the tilling phase
-        tbe_context.get_context().add_compile_info("is_tik", True)
-
         self.tik_instance.BuildCCE(kernel_name=self.kernel_name,
                                    inputs=(self.x, self.indices, self.axis),
                                    outputs=(self.y,),
-                                   flowtable=(self.tiling_gm,), enable_l2=True, config=opt_config)
+                                   flowtable=(self.tiling_gm,), enable_l2=True, config=self.opt_config)
 
     def gather_compute(self):
         """
@@ -2588,36 +2589,11 @@ class GatherV2():
         -------
         compile info
         """
-        self.x = self.tik_instance.Tensor(self.params_dtype, self.x_shape,
-                                          name="x", scope=tik.scope_gm)
-        self.indices = self.tik_instance.Tensor(self.indices_dtype, self.indices_shape,
-                                                name="indices", scope=tik.scope_gm)
-        self.tiling_gm = self.tik_instance.Tensor(self.tiling_dtype, (Constant.TILING_ARG_NUM,),
-                                                  name="ddr_arg", scope=tik.scope_gm)
-        self.y = self.tik_instance.Tensor(self.y_dtype, shape=self.y_shape,
-                                          name="y", scope=tik.scope_gm)
-
-        self.gather_v2_compute_tiling()
-
-        opt_config = {
-            "out_of_bound_sync_check": True,
-            "enable_const_fold": True
-        }
-
-        # add compile info
-        tbe_context.get_context().add_compile_info("vars", {"core_num": self.core_num,
-                                                            "ub_size": self.ub_size,
-                                                            "l1_size": self.l1_size,
-                                                            "params_dsize": self.params_dsize,
-                                                            "indices_dsize": self.indices_dsize,
-                                                            "batch_dims": self.batch_dims})
-        # It is used to distinguish between Tik implementation and DSL implementation in the tilling phase
-        tbe_context.get_context().add_compile_info("is_tik", True)
-
+        self.add_gather_compile_info()
         self.tik_instance.BuildCCE(kernel_name=self.kernel_name,
                                    inputs=(self.x, self.indices),
                                    outputs=(self.y,),
-                                   flowtable=(self.tiling_gm,), enable_l2=True, config=opt_config)
+                                   flowtable=(self.tiling_gm,), enable_l2=True, config=self.opt_config)
 
     def _set_mode_paras(self, aligned_types_params, cached_types_params, cached_types_indices):
         self.cached_types["aligned_types_params"] = aligned_types_params
@@ -2720,8 +2696,10 @@ def gather_v2_dsl(x, indices, axis, y, batch_dims=0, kernel_name="GatherV2"):
             real_axis = axis_value[0]
     else:
         real_axis = "unknown"
+    batch_dims = "unknown" if batch_dims is None else batch_dims
+    tbe_context.get_context().add_compile_info("attr_name", "batch_dims")
 
-    ins = classify([x, indices, real_axis, batch_dims], "gather", {"gather_type": "gather"})
+    ins = classify([x, indices, real_axis, batch_dims],  OpPatternMode.GATHER, {"gather_type": "gather"})
     schedules, tensors = [], []
     for shape_x, shape_indices, shape_axis, batch_dims_input in ins:
         with tbe.compute():
@@ -2740,6 +2718,8 @@ def gather_v2_dsl(x, indices, axis, y, batch_dims=0, kernel_name="GatherV2"):
 
 
 @register_operator("GatherV2")
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_INT, para_check.KERNEL_NAME)
 def gather_v2(x, indices, axis, y, batch_dims=0, kernel_name="GatherV2"):
     """
     gather_v2 interface

@@ -38,5 +38,53 @@
       }
     ],
     "case_name": "test_GatherV2_000"
+  },
+  {
+    "op": "GatherV2",
+    "input_desc": [
+      {
+        "shape": [4,256,37],
+        "typical_shape": [4,256,37],
+        "oir_shape": [4,256,37],
+        "format": "ND",
+        "oir_format": "ND",
+        "name": "x",
+        "type": "float16"
+      },
+      {
+        "shape": [4,256,4,4],
+        "oir_shape": [4,256,4,4],
+        "format": "ND",
+        "oir_format": "ND",
+        "name": "indices",
+        "type": "int32"
+      },
+      {
+        "shape": [1],
+        "format": "NCHW",
+        "value":[-1],
+        "name": "axis",
+        "is_const": true,
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [4,256,4,4],
+        "oir_shape": [4,256,4,4],
+        "format": "NCHW",
+        "oir_format": "ND",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr":[
+      {
+        "name": "batch_dims",
+        "value": 2,
+        "type": "int"
+      }
+    ],
+    "case_name": "test_GatherV2_001"
   }
 ]
