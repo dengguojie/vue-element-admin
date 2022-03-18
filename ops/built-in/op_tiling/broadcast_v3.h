@@ -97,7 +97,6 @@ class Broadcast {
     bool RefineShapesForBroadcast();
     bool CalcTiling();
     bool DoBlockTiling();
-    void CheckUpdateBlockTiling();
     int64_t SplitUb(const int64_t& max_ub_shape, const int64_t& ele_in_block);
     int64_t FindLowestMiddle();
     bool DoUbTiling();

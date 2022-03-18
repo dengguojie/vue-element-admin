@@ -739,65 +739,8 @@ bool Broadcast::DoBlockTiling() {
     block_factor = std::ceil(block_factor * 1.0 / ele_in_block) * ele_in_block;
     output_shape[0] = block_factor;
     block_dims = std::ceil(multi_core_output * 1.0 / block_factor);
-  } else if (!is_milan_soc) {
-    CheckUpdateBlockTiling();
   }
   return true;
-}
-
-void Broadcast::CheckUpdateBlockTiling() {
-  need_single_core = false;
-  if (is_multi_output) {
-    // multi output check
-    for (size_t i = 0; i < op_paras.GetOutputsSize(); i++) {
-      auto output = ge::OpDescUtils::GetOpDescFromOperator(op_paras)->MutableOutputDesc(i);
-      int64_t ele_in_block = BGetElementByType(output->GetDataType());
-      const auto& out_shape = output->MutableShape().GetDims();
-      int64_t start = fusion_index[block_axis][0] - max_output_shape_size + out_shape.size();
-      int64_t end = fusion_index[block_axis].back() - max_output_shape_size + out_shape.size();
-      int64_t cut_output = 1;
-      int64_t under_block = 1;
-      if (start >= 0) {
-        cut_output = std::accumulate(out_shape.begin() + start, out_shape.begin() + end + 1,
-                                     1LL, std::multiplies<int64_t>());
-        under_block = std::accumulate(out_shape.begin() + end + 1, out_shape.end(),
-                                      1LL, std::multiplies<int64_t>());
-      } else {
-        under_block = std::accumulate(out_shape.begin(), out_shape.end(), 1LL, std::multiplies<int64_t>());
-      }
-      int64_t cur_block_factor = block_factor;
-      if (cut_output % block_factor != 0 && (cut_output % block_factor) * under_block < ele_in_block) {
-        block_factor = multi_core_output;
-        output_shape[block_axis] = multi_core_output;
-        block_dims = std::accumulate(output_shape.begin(), output_shape.begin() + block_axis, 1LL,
-                std::multiplies<int64_t>());
-        cur_block_factor = std::min(multi_core_output, cut_output);
-      }
-      need_single_core = cut_output % cur_block_factor == 0 && cur_block_factor * under_block < ele_in_block;
-      if (need_single_core) {
-        break;
-      }
-    }
-  } else {
-    // single output check
-    int64_t ele_in_block = BGetElementByType(out_type);
-    int64_t under_block = std::accumulate(output_shape.begin() + block_axis + 1,
-                                          output_shape.end(), 1LL, std::multiplies<int64_t>());
-    if (multi_core_output % block_factor != 0 && (multi_core_output % block_factor) * under_block < ele_in_block) {
-      block_factor = multi_core_output;
-      output_shape[block_axis] = multi_core_output;
-      block_dims = std::accumulate(output_shape.begin(), output_shape.begin() + block_axis, 1LL,
-                std::multiplies<int64_t>());
-    }
-    need_single_core = block_factor * under_block < ele_in_block;
-  }
-  if (need_single_core) {
-    output_shape[block_axis] = multi_core_output;
-    block_axis = 0;
-    block_factor = output_shape[block_axis];
-    multi_core_output = block_factor;
-    block_dims = 1;
-  }
 }
 
 int64_t Broadcast::FindLowestMiddle() {
@@ -1193,7 +1136,7 @@ bool Broadcast::ModifyTiling() {
     int64_t shape_before_ub = std::accumulate(output_shape.begin(),
         output_shape.begin() + ub_axis, 1LL, std::multiplies<int64_t>());
     int64_t ub_split_out = std::ceil(output_shape[ub_axis] * 1.0 / ub_factor);
-    block_factor = std::ceil(shape_before_ub * ub_split_out * 1.0 / block_dims);
+    block_factor = std::ceil(shape_before_ub * ub_split_out * 1.0 / core_num_compile);
     if(block_factor == 0) {
       VECTOR_INNER_ERR_REPORT_TILIING(op_type, "block_factor must not be 0");
       return false;
