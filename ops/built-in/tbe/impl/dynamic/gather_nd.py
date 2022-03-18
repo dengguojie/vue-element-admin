@@ -155,7 +155,7 @@ class GatherNd():
         self.indices_dtype = indices_dict.get("dtype").lower()
         self.y_dtype = y_dict.get("dtype").lower()
         self.tiling_dtype = constant.DATA_TYPE_INT32
-        params_support_dtype_list = ("float16", "float32", "int32", "int8", "uint8")
+        params_support_dtype_list = ("float16", "float32", "int32", "int8", "uint8", "int64")
         indices_support_dtype_list = ("int32", "int64")
         para_check.check_dtype(self.params_dtype, params_support_dtype_list, param_name="params")
         para_check.check_dtype(self.indices_dtype, indices_support_dtype_list, param_name="indices")
