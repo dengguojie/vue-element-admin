@@ -79,7 +79,7 @@ Status BatchNormGradPreprocessFusionPass::Fusion(ge::ComputeGraph& graph, Mappin
     return PARAM_INVALID);
 
   // add input edge to new node
-  for(int32_t i = 0; i < REAL_INPUTS_SIZE; i++) {
+  for (int32_t i = 0; i < REAL_INPUTS_SIZE; i++) {
     ge::GraphUtils::AddEdge(bn_grad_node->GetInDataAnchor(i)->GetPeerOutAnchor(), new_bn_grad_node->GetInDataAnchor(i));
   }
 
@@ -92,7 +92,7 @@ Status BatchNormGradPreprocessFusionPass::Fusion(ge::ComputeGraph& graph, Mappin
   }
 
   // add output edge from new node
-  for(size_t i = 0; i < outputs_size; i++) {
+  for (size_t i = 0; i < outputs_size; i++) {
     auto anchor_out = bn_grad_node->GetOutDataAnchor(i);
     for (InDataAnchorPtr anchor_out_in : anchor_out->GetPeerInDataAnchors()) {
       anchor_out_in ->UnlinkAll();
