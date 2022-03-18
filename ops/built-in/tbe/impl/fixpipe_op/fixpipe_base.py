@@ -20,7 +20,7 @@ from tbe import tvm
 from tbe.tvm.tensor import Tensor
 from tbe.common.utils import log
 from tbe.common.utils import shape_to_list
-from impl.fixpipe_op.fixpipe_util import *
+from impl.fixpipe_op import fixpipe_util
 
 
 class FixpipeBase(object):
@@ -54,18 +54,18 @@ class FixpipeBase(object):
         self.eltwise_mode = eltwise_mode
 
         self.vector_inputs_dict = {
-            QUANT_SCALE_0_STR: self.quant_scale_0,
-            RELU_WEIGHT_0_STR: self.relu_weight_0,
-            QUANT_SCALE_1_STR: self.quant_scale_1,
-            RELU_WEIGHT_1_STR: self.relu_weight_1,
-            ELTWISE_SRC_STR: self.x2
+            fixpipe_util.QUANT_SCALE_0_STR: self.quant_scale_0,
+            fixpipe_util.RELU_WEIGHT_0_STR: self.relu_weight_0,
+            fixpipe_util.QUANT_SCALE_1_STR: self.quant_scale_1,
+            fixpipe_util.RELU_WEIGHT_1_STR: self.relu_weight_1,
+            fixpipe_util.ELTWISE_SRC_STR: self.x2
         }
 
         # set vector tendor flag
-        self.quant_scale_0_vector_flag = is_vector_input(self.quant_scale_0)
-        self.relu_weight_0_vector_flag = is_vector_input(self.relu_weight_0)
-        self.quant_scale_1_vector_flag = is_vector_input(self.quant_scale_1)
-        self.relu_weight_1_vector_flag = is_vector_input(self.relu_weight_1)
+        self.quant_scale_0_vector_flag = fixpipe_util.is_vector_input(self.quant_scale_0)
+        self.relu_weight_0_vector_flag = fixpipe_util.is_vector_input(self.relu_weight_0)
+        self.quant_scale_1_vector_flag = fixpipe_util.is_vector_input(self.quant_scale_1)
+        self.relu_weight_1_vector_flag = fixpipe_util.is_vector_input(self.relu_weight_1)
 
         self.attrs = {}
         self.op_dict = {}
@@ -96,7 +96,7 @@ class FixpipeBase(object):
         """
         get c0 c1 index
         """
-        return NC1HWC0_C0_IDX, NC1HWC0_C1_IDX
+        return fixpipe_util.NC1HWC0_C0_IDX, fixpipe_util.NC1HWC0_C1_IDX
 
     def _get_input_shape(self):
         """
@@ -120,21 +120,21 @@ class FixpipeBase(object):
         def _get_pre_dst_dtype(quant_scale_1, output_dtype):
             dst_pre_conv_dtype_ = output_dtype
             if quant_scale_1 is not None:
-                dst_pre_conv_dtype_ = DTYPE_FLOAT16
+                dst_pre_conv_dtype_ = fixpipe_util.DTYPE_FLOAT16
             return dst_pre_conv_dtype_
 
         conv_mode = ""
-        if is_vector_input(self.quant_scale_0):
+        if fixpipe_util.is_vector_input(self.quant_scale_0):
             conv_mode += "V"
 
         dst_pre_conv_dtype = _get_pre_dst_dtype(self.quant_scale_1, self.output_dtype)
-        conv_mode += DTYPE_TRANS_MAP.get(self.input_dtype) + "2" + DTYPE_TRANS_MAP.get(
-            dst_pre_conv_dtype)
+        conv_mode += fixpipe_util.DTYPE_TRANS_MAP.get(self.input_dtype) + "2" + \
+                     fixpipe_util.DTYPE_TRANS_MAP.get(dst_pre_conv_dtype)
 
-        if conv_mode in PASS_PRE_CONVERT_MODE:
+        if conv_mode in fixpipe_util.PASS_PRE_CONVERT_MODE:
             return ""
 
-        if conv_mode not in PRE_CONVERT_MODE:
+        if conv_mode not in fixpipe_util.PRE_CONVERT_MODE:
             raise RuntimeError("{} is not supported for fixpipe pre_conv".format(conv_mode))
 
         return conv_mode
@@ -144,12 +144,12 @@ class FixpipeBase(object):
         get pre_activation for op_dict
         """
         if self.relu_weight_0 is not None:
-            if is_scaler_input(self.relu_weight_0):
-                return SCALAR_RELU_MODE
-            return VECTOR_RELU_MODE
+            if fixpipe_util.is_scaler_input(self.relu_weight_0):
+                return fixpipe_util.SCALAR_RELU_MODE
+            return fixpipe_util.VECTOR_RELU_MODE
 
-        if PRE_ACT_UNIT_STR in self.unit_list:
-            return NORMAL_RELU_MODE
+        if fixpipe_util.PRE_ACT_UNIT_STR in self.unit_list:
+            return fixpipe_util.NORMAL_RELU_MODE
 
         return ""
 
@@ -161,10 +161,10 @@ class FixpipeBase(object):
             return ""
 
         anti_quant_dtype = self.x2.dtype
-        if anti_quant_dtype not in ANTI_QUANT_MAP.keys():
+        if anti_quant_dtype not in fixpipe_util.ANTI_QUANT_MAP.keys():
             raise RuntimeError("{} is not supported for fixpipe anti_quant".format(anti_quant_dtype))
 
-        return ANTI_QUANT_MAP.get(anti_quant_dtype)
+        return fixpipe_util.ANTI_QUANT_MAP.get(anti_quant_dtype)
 
     def _get_post_eltwise(self):
         """
@@ -183,12 +183,12 @@ class FixpipeBase(object):
         get post_activation for op_dict
         """
         if self.relu_weight_1 is not None:
-            if is_scaler_input(self.relu_weight_1):
-                return SCALAR_RELU_MODE
-            return VECTOR_RELU_MODE
+            if fixpipe_util.is_scaler_input(self.relu_weight_1):
+                return fixpipe_util.SCALAR_RELU_MODE
+            return fixpipe_util.VECTOR_RELU_MODE
 
-        if POST_ACT_UNIT_STR in self.unit_list:
-            return NORMAL_RELU_MODE
+        if fixpipe_util.POST_ACT_UNIT_STR in self.unit_list:
+            return fixpipe_util.NORMAL_RELU_MODE
 
         return ""
 
@@ -200,11 +200,12 @@ class FixpipeBase(object):
             return ""
 
         conv_mode = ""
-        if is_vector_input(self.quant_scale_1):
+        if fixpipe_util.is_vector_input(self.quant_scale_1):
             conv_mode += "V"
 
-        conv_mode += DTYPE_TRANS_MAP.get(DTYPE_FLOAT16) + "2" + DTYPE_TRANS_MAP.get(self.output_dtype)
-        if conv_mode not in POST_QUANT_MODE:
+        conv_mode += fixpipe_util.DTYPE_TRANS_MAP.get(fixpipe_util.DTYPE_FLOAT16) + "2" + \
+                     fixpipe_util.DTYPE_TRANS_MAP.get(self.output_dtype)
+        if conv_mode not in fixpipe_util.POST_QUANT_MODE:
             raise RuntimeError("{} is not supported for fixpipe post_quant".format(conv_mode))
 
         return conv_mode
@@ -232,7 +233,7 @@ class FixpipeBase(object):
         if self._is_nz2nd():
             return False
 
-        if self.output_dtype == DTYPE_FLOAT32:
+        if self.output_dtype == fixpipe_util.DTYPE_FLOAT32:
             return True
         return False
 
@@ -256,7 +257,12 @@ class FixpipeBase(object):
 
         for input_name in self.vector_inputs_dict.keys():
             input_tensor = self.vector_inputs_dict.get(input_name)
-            if is_vector_input(input_tensor):
+            if input_name == fixpipe_util.ELTWISE_SRC_STR and input_tensor is not None:
+                vector_params.append(input_name)
+                vector_tensors.append(input_tensor)
+                continue
+
+            if fixpipe_util.is_vector_input(input_tensor):
                 vector_params.append(input_name)
                 vector_tensors.append(input_tensor)
 
@@ -338,18 +344,18 @@ class FixpipeBase(object):
                                  lambda *indices:
                                  tvm.fixpipe_op(self.x1(*indices),
                                                 self.output_dtype,
-                                                pre_conv_param=self.quant_scale_0(0, indices[c1_index], 0, 0, indices[c0_index]) if self.quant_scale_0_vector_flag else get_input_scalar_value(self.quant_scale_0),
-                                                pre_relu_param=self.relu_weight_0(0, indices[c1_index], 0, 0, indices[c0_index]) if self.relu_weight_0_vector_flag else get_input_scalar_value(self.relu_weight_0),
-                                                pre_clip_relu_param=get_input_scalar_value(self.clip_value_0),
+                                                pre_conv_param=self.quant_scale_0(0, indices[c1_index], 0, 0, indices[c0_index]) if self.quant_scale_0_vector_flag else fixpipe_util.get_input_scalar_value(self.quant_scale_0),
+                                                pre_relu_param=self.relu_weight_0(0, indices[c1_index], 0, 0, indices[c0_index]) if self.relu_weight_0_vector_flag else fixpipe_util.get_input_scalar_value(self.relu_weight_0),
+                                                pre_clip_relu_param=fixpipe_util.get_input_scalar_value(self.clip_value_0),
                                                 post_eltwise_src=self._x2_reform_generate_func(self.x2, self.input_shape)(*indices) if self.x2 is not None else self.x2,
-                                                post_anti_quant_scale=get_input_scalar_value(self.anti_quant_scale),
-                                                post_anti_quant_offset=get_input_scalar_value(self.anti_quant_offset),
-                                                post_clip_relu_param=get_input_scalar_value(self.clip_value_1),
-                                                post_quant_param=self.quant_scale_1(0, indices[c1_index], 0, 0, indices[c0_index]) if self.quant_scale_1_vector_flag else get_input_scalar_value(self.quant_scale_1),
-                                                post_relu_param=self.relu_weight_1(0, indices[c1_index], 0, 0, indices[c0_index]) if self.relu_weight_1_vector_flag else get_input_scalar_value(self.relu_weight_1),
+                                                post_anti_quant_scale=fixpipe_util.get_input_scalar_value(self.anti_quant_scale),
+                                                post_anti_quant_offset=fixpipe_util.get_input_scalar_value(self.anti_quant_offset),
+                                                post_clip_relu_param=fixpipe_util.get_input_scalar_value(self.clip_value_1),
+                                                post_quant_param=self.quant_scale_1(0, indices[c1_index], 0, 0, indices[c0_index]) if self.quant_scale_1_vector_flag else fixpipe_util.get_input_scalar_value(self.quant_scale_1),
+                                                post_relu_param=self.relu_weight_1(0, indices[c1_index], 0, 0, indices[c0_index]) if self.relu_weight_1_vector_flag else fixpipe_util.get_input_scalar_value(self.relu_weight_1),
                                                 op_dict=self.op_dict),
-                                 name=FIXPIPE_OP_TAG,
-                                 tag=FIXPIPE_OP_TAG,
+                                 name=fixpipe_util.FIXPIPE_OP_TAG,
+                                 tag=fixpipe_util.FIXPIPE_OP_TAG,
                                  attrs=self.attrs)
         return fixpipe_op
 
@@ -359,8 +365,8 @@ class FixpipeBase(object):
         """
         res_reform = tvm.compute(self.output_shape,
                                  lambda *indice: res(*indice),
-                                 name=FIXPIPE_REFORM_TAG,
-                                 tag=FIXPIPE_REFORM_TAG)
+                                 name=fixpipe_util.FIXPIPE_REFORM_TAG,
+                                 tag=fixpipe_util.FIXPIPE_REFORM_TAG)
         return res_reform
 
     def fixpipe_compute(self):

@@ -18,6 +18,7 @@ fixpipe common function
 from typing import List
 import functools
 import tbe
+from tbe import tvm
 from tbe.tvm.tensor import Tensor
 from tbe.common.utils import shape_to_list
 from te.platform.cce_params import scope_fb0
@@ -25,6 +26,7 @@ from te.platform.cce_params import scope_fb1
 from te.platform.cce_params import scope_fb2
 from te.platform.cce_params import scope_fb3
 from te.platform.cce_params import scope_cbuf
+from tbe.common.register import set_fusion_buildcfg
 
 DTYPE_TRANS_MAP = {
     "int4": "S4",
@@ -80,6 +82,28 @@ FIXPIPE_SCOPE_MAP = {
     RELU_WEIGHT_1_STR: scope_fb2,
     ELTWISE_SRC_STR: scope_cbuf
 }
+
+
+def set_build_cfg():
+    build_cfg = {
+            "dummy_placeholder": True
+    }
+
+    set_fusion_buildcfg("FixPipe", build_cfg)
+
+
+def create_placeholder(input_dict, name):
+    if "ori_shape" not in input_dict:
+        raise RuntimeError("ori_shape not in dict")
+
+    attrs = {}
+    if is_scaler_input(input_dict):
+        if "const_value" not in input_dict.keys():
+            raise RuntimeError("const_value not in dict")
+        attrs["const_value"] = input_dict.get("const_value")
+
+    attrs["ori_shape"] = input_dict.get("ori_shape")
+    return tvm.placeholder(input_dict.get("shape"), input_dict.get("dtype"), name=name, attrs=attrs)
 
 
 def get_op_type(x: Tensor):

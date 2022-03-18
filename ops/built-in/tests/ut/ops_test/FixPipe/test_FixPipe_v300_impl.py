@@ -586,6 +586,8 @@ def run_v300_case(case_config, is_hf32_flag=False):
 
 
 def run_v300_batch_cases(case_list, is_hf32_flag=False):
+    from te.platform.cce_conf import te_set_version
+    te_set_version("Ascend320", "AiCore")
     with op_context.OpContext():
         for case in case_list:
             if is_hf32_flag:
@@ -595,7 +597,7 @@ def run_v300_batch_cases(case_list, is_hf32_flag=False):
 
 def check_FixpipeBase():
     from impl.fixpipe_op.fixpipe_base import FixpipeBase
-    from impl.fix_pipe import _create_placeholder
+    from impl.fixpipe_op.fixpipe_util import create_placeholder
     from impl.fix_pipe import fixpipe_compute
 
     input_dict = {
@@ -644,22 +646,22 @@ def check_FixpipeBase():
     }
 
     try:
-        input = _create_placeholder(input_dict, "in")
-        relu = _create_placeholder(relu_vector_dict, "relu")
+        input = create_placeholder(input_dict, "in")
+        relu = create_placeholder(relu_vector_dict, "relu")
         fixpipe = FixpipeBase("test", input, None, None, relu, None, None, None, None, None, None, output, [], [], "None")
         fixpipe._get_pre_activation()
         fixpipe.fixpipe_compute()
 
-        x2 = _create_placeholder(x2_dict, "eltwise_src")
+        x2 = create_placeholder(x2_dict, "eltwise_src")
         fixpipe = FixpipeBase("test", input, x2, None, relu, None, None, relu, None, None, None, output, [], [], "ADD")
         fixpipe._get_pre_activation()
         fixpipe._get_post_activation()
 
-        x2 = _create_placeholder(x2_int8_dict, "eltwise_src")
+        x2 = create_placeholder(x2_int8_dict, "eltwise_src")
         fixpipe = FixpipeBase("test", input, x2, None, relu, None, None, relu, None, None, None, output, [], [], "ADD")
         fixpipe._get_post_anti_quant()
 
-        relu = _create_placeholder(relu_scalar_dict, "relu")
+        relu = create_placeholder(relu_scalar_dict, "relu")
         fixpipe = FixpipeBase("test", input, None, None, relu, None, None, relu, None, None, None, output, [], [], "None")
         fixpipe._get_pre_activation()
         fixpipe._get_post_activation()
@@ -704,10 +706,10 @@ def check_FixpipeBase():
         "ori_shape": [1, 2, 112, 112, 16]
     }
 
-    x1 = _create_placeholder(x1_dict, "x1")
-    x2 = _create_placeholder(x2_dict, "x2")
-    anti_quant = _create_placeholder(scalar_dict, "scalar")
-    offset = _create_placeholder(offset_dict, "offset")
+    x1 = create_placeholder(x1_dict, "x1")
+    x2 = create_placeholder(x2_dict, "x2")
+    anti_quant = create_placeholder(scalar_dict, "scalar")
+    offset = create_placeholder(offset_dict, "offset")
 
     fixpipe = FixpipeBase("test", x1, x2, None, None, None, None, None, None, anti_quant, offset, output, [], [], "ADD")
     fixpipe.fixpipe_compute()
@@ -719,7 +721,7 @@ def check_fix_pipe():
     from impl.fixpipe_op.fixpipe_util import is_vector_input
     from impl.fixpipe_op.fixpipe_util import get_input_scalar_value
     from impl.fixpipe_op.fixpipe_util import get_op_type
-    from impl.fix_pipe import _create_placeholder
+    from impl.fixpipe_op.fixpipe_util import create_placeholder
 
     input_dict = {
         "shape": [1, 1, 112, 112, 16],
@@ -739,7 +741,7 @@ def check_fix_pipe():
     }
     value = get_input_scalar_value(scalar_dict)
 
-    tensor = _create_placeholder(scalar_dict, "TEST")
+    tensor = create_placeholder(scalar_dict, "TEST")
     op_type = get_op_type(tensor)
 
     try:
@@ -749,7 +751,7 @@ def check_fix_pipe():
             "dtype": "float16",
             "ori_shape": [1],
         }
-        tensor = _create_placeholder(scalar_dict, "TEST")
+        tensor = create_placeholder(scalar_dict, "TEST")
     except:
         print("=======>check _create_placeholder no const_value")
 
@@ -760,7 +762,7 @@ def check_fix_pipe():
             "dtype": "float16",
             "const_value": [0],
         }
-        tensor = _create_placeholder(scalar_dict, "TEST")
+        tensor = create_placeholder(scalar_dict, "TEST")
     except:
         print("=======>check _create_placeholder no ori_shape")
 
@@ -775,7 +777,7 @@ def check_fix_pipe():
     flag = is_scaler_input(scalar_input)
     assert flag == True
 
-    tensor = _create_placeholder(scalar_input, "TEST")
+    tensor = create_placeholder(scalar_input, "TEST")
     flag = is_scaler_input(tensor)
     assert flag == True
 
