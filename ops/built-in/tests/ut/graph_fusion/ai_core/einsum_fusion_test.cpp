@@ -77,7 +77,7 @@ static EinsumTestParam einsum_general_cases_params[] = {
      {{10, 10}, {20, 20}, {30, 30}},
      {{30, 30}, {40, 40}, {50, 50}},
      {{10, 10}, {20, 20}, {40, 40}, {50, 50}},
-     {{"BatchMatMulV2", 1}, {"Constant", 3}, {"Data", 2}, {"Reshape", 3}}},
+     {{"MatMulV2", 1}, {"Constant", 3}, {"Data", 2}, {"Reshape", 3}}},
 
     {2,
      "static_shape_scene_2",
@@ -86,7 +86,7 @@ static EinsumTestParam einsum_general_cases_params[] = {
      {{10, 10}, {20, 20}, {30, 30}, {40, 40}},
      {{10, 10}, {50, 50}, {30, 30}, {40, 40}},
      {{10, 10}, {30, 30}, {50, 50}, {20, 20}},
-     {{"BatchMatMulV2", 1}, {"Transpose", 2}, {"Const", 2}, {"Data", 2}}},
+     {{"BatchMatMulV2", 1}, {"TransposeD", 2}, {"Data", 2}}},
 
     {2,
      "static_shape_scene_3",
@@ -95,7 +95,7 @@ static EinsumTestParam einsum_general_cases_params[] = {
      {{10, 10}, {30, 30}, {50, 50}, {20, 20}},
      {{10, 10}, {20, 20}, {30, 30}, {40, 40}},
      {{10, 10}, {50, 50}, {30, 30}, {40, 40}},
-     {{"BatchMatMulV2", 1}, {"Transpose", 2}, {"Const", 2}, {"Data", 2}}},
+     {{"BatchMatMulV2", 1}, {"TransposeD", 2}, {"Data", 2}}},
 
     {2,
      "static_shape_scene_4",
@@ -131,7 +131,7 @@ static EinsumTestParam einsum_general_cases_params[] = {
      {{10, 10}, {20, 20}, {40, 40}},
      {{10, 10}, {20, 20}, {30, 30}},
      {{30, 30}, {40, 40}},
-     {{"BatchMatMulV2", 1}, {"Reshape", 2}, {"Data", 2}, {"Constant", 2}}},
+     {{"MatMulV2", 1}, {"Reshape", 2}, {"Data", 2}, {"Constant", 2}}},
 
     {2,
      "static_shape_scene_8",
@@ -140,7 +140,7 @@ static EinsumTestParam einsum_general_cases_params[] = {
      {{10, 10}, {20, 20}, {50, 50}},
      {{30, 30}, {40, 40}, {50, 50}},
      {{10, 10}, {20, 20}, {30, 30}, {40, 40}},
-     {{"BatchMatMulV2", 1}, {"Reshape", 3}, {"Data", 2}, {"Constant", 3}}},
+     {{"MatMulV2", 1}, {"Reshape", 3}, {"Data", 2}, {"Constant", 3}}},
 
     {2,
      "static_shape_scene_9",
@@ -149,7 +149,7 @@ static EinsumTestParam einsum_general_cases_params[] = {
      {{10, 10}, {20, 20}, {50, 50}},
      {{10, 10}, {20, 20}, {30, 30}, {40, 40}},
      {{30, 30}, {40, 40}, {50, 50}},
-     {{"BatchMatMulV2", 1}, {"Reshape", 3}, {"Data", 2}, {"Constant", 3}}},
+     {{"MatMulV2", 1}, {"Reshape", 3}, {"Data", 2}, {"Constant", 3}}},
 
     {2,
      "static_shape_scene_10",
@@ -158,7 +158,7 @@ static EinsumTestParam einsum_general_cases_params[] = {
      {{10, 10}, {20, 20}, {30, 30}, {40, 40}},
      {{10, 10}, {50, 50}, {30, 30}, {40, 40}},
      {{10, 10}, {30, 30}, {20, 20}, {50, 50}},
-     {{"BatchMatMulV2", 1}, {"Data", 2}, {"Transpose", 2}, {"Const", 2}}},
+     {{"BatchMatMulV2", 1}, {"Data", 2}, {"TransposeD", 2}}},
 
     {2,
      "static_shape_scene_11",
@@ -167,7 +167,7 @@ static EinsumTestParam einsum_general_cases_params[] = {
      {{10, 10}, {20, 20}, {30, 30}, {40, 40}},
      {{10, 10}, {30, 30}, {20, 20}, {50, 50}},
      {{10, 10}, {50, 50}, {30, 30}, {40, 40}},
-     {{"BatchMatMulV2", 1}, {"Data", 2}, {"Transpose", 2}, {"Const", 2}}},
+     {{"BatchMatMulV2", 1}, {"Data", 2}, {"TransposeD", 2}}},
 
     {2,
      "static_shape_scene_12",
@@ -185,7 +185,7 @@ static EinsumTestParam einsum_general_cases_params[] = {
      {{10, 10}, {20, 20}, {40, 40}, {50, 50}},
      {{10, 10}, {20, 20}, {30, 30}},
      {{30, 30}, {40, 40}, {50, 50}},
-     {{"BatchMatMulV2", 1}, {"Data", 2}, {"Reshape", 3}, {"Constant", 3}}},
+     {{"MatMulV2", 1}, {"Data", 2}, {"Reshape", 3}, {"Constant", 3}}},
 
     {2,
      "static_shape_scene_14",
@@ -194,7 +194,7 @@ static EinsumTestParam einsum_general_cases_params[] = {
      {{10, 10}, {20, 20}, {30, 30}, {40, 40}},
      {{10, 10}, {30, 30}, {20, 20}, {50, 50}},
      {{10, 10}, {40, 40}, {20, 20}, {50, 50}},
-     {{"BatchMatMulV2", 1}, {"Data", 2}, {"Transpose", 2}, {"Const", 2}}},
+     {{"BatchMatMulV2", 1}, {"Data", 2}, {"TransposeD", 2}}},
 
     {2,
      "dynamic_shape_scene_1",
@@ -212,7 +212,7 @@ static EinsumTestParam einsum_general_cases_params[] = {
      {{10, 10}, {20, 40}, {30, 30}, {40, 40}},
      {{10, 10}, {50, 50}, {30, 30}, {40, 40}},
      {{10, 10}, {30, 30}, {50, 50}, {20, 40}},
-     {{"Transpose", 2}, {"Const", 2}, {"Data", 2}, {"BatchMatMul", 1}}},
+     {{"Transpose", 1}, {"TransposeD", 1}, {"Const", 1}, {"Data", 2}, {"BatchMatMul", 1}}},
 
     {2,
      "dynamic_shape_scene_3",
@@ -329,7 +329,7 @@ static EinsumTestParam einsum_general_cases_params[] = {
      {{18, 18}, {62, 62}, {55, 55}, {4, 4}},
      {},
      {{62, 62}, {4, 4}},
-     {{"Transpose", 1}, {"Const", 1}, {"ReduceSumD", 1}, {"Data", 1}}},
+     {{"TransposeD", 1}, {"ReduceSumD", 1}, {"Data", 1}}},
 
     {1,
      "static_shape_fuzz_single_input_2",
@@ -338,7 +338,7 @@ static EinsumTestParam einsum_general_cases_params[] = {
      {{42, 42}, {45, 45}},
      {},
      {{45, 45}, {42, 42}},
-     {{"Transpose", 1}, {"Const", 1}, {"Data", 1}}},
+     {{"TransposeD", 1}, {"Data", 1}}},
 
     {2,
      "static_shape_fuzz_two_input_1",
@@ -358,11 +358,10 @@ static EinsumTestParam einsum_general_cases_params[] = {
      {{32, 32}, {25, 25}, {41, 41}, {2, 2}, {9, 9}},
      {{"ReduceSumD", 1},
       {"Data", 2},
-      {"BatchMatMulV2", 1},
+      {"MatMulV2", 1},
       {"Reshape", 3},
       {"Constant", 3},
-      {"Transpose", 2},
-      {"Const", 2}}},
+      {"TransposeD", 2}}},
 
     {2,
      "static_shape_fuzz_two_input_3",
@@ -373,11 +372,10 @@ static EinsumTestParam einsum_general_cases_params[] = {
      {{13, 13}, {4, 4}},
      {{"ReduceSumD", 2},
       {"Data", 2},
-      {"BatchMatMulV2", 1},
+      {"MatMulV2", 1},
       {"Constant", 3},
       {"Reshape", 3},
-      {"Transpose", 2},
-      {"Const", 2}}},
+      {"TransposeD", 2}}},
 
     {2,
      "static_shape_fuzz_two_input_broad_cast_1",
@@ -388,11 +386,10 @@ static EinsumTestParam einsum_general_cases_params[] = {
      {{8, 8}, {17, 17}},
      {{"ReduceSumD", 2},
       {"Data", 2},
-      {"BatchMatMulV2", 1},
+      {"MatMulV2", 1},
       {"Constant", 3},
       {"Reshape", 3},
-      {"Transpose", 1},
-      {"Const", 1}}},
+      {"TransposeD", 1}}},
 
     {2,
      "static_shape_fuzz_two_input_broad_cast_2",
@@ -401,7 +398,7 @@ static EinsumTestParam einsum_general_cases_params[] = {
      {{13, 13}, {64, 64}},
      {{15, 15}, {4, 4}, {33, 33}},
      {{13, 13}},
-     {{"ReduceSumD", 2}, {"Data", 2}, {"BatchMatMulV2", 1}, {"Constant", 3}, {"Reshape", 3}}},
+     {{"ReduceSumD", 2}, {"Data", 2}, {"MatMulV2", 1}, {"Constant", 3}, {"Reshape", 3}}},
 
     {2,
      "static_shape_fuzz_two_input_broad_cast_3",
@@ -415,8 +412,7 @@ static EinsumTestParam einsum_general_cases_params[] = {
       {"BatchMatMulV2", 1},
       {"Constant", 3},
       {"Reshape", 3},
-      {"Transpose", 2},
-      {"Const", 2}}},
+      {"TransposeD", 2}}},
 
 };
 

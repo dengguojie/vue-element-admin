@@ -124,33 +124,42 @@ vector<FusionPattern *> EinsumPass::DefinePatterns() {
   return patterns;
 }
 
-std::shared_ptr<ge::OpDesc> EinsumPass::CreateTransposeOpDesc(const NodePtr &node, const std::string &op_name) {
+std::shared_ptr<ge::OpDesc> EinsumPass::CreateTransposeOpDesc(bool unknown_shape, const NodePtr &node,
+                                                              const std::string &op_name) {
   std::shared_ptr<ge::OpDesc> transpose_desc = nullptr;
-  FUSION_PASS_MAKE_SHARED(transpose_desc = std::make_shared<ge::OpDesc>(node->GetName() + op_name, kTranspose),
-                          return nullptr);
+  if (unknown_shape) {
+    FUSION_PASS_MAKE_SHARED(transpose_desc = std::make_shared<ge::OpDesc>(node->GetName() + op_name, kTranspose),
+                            return nullptr);
+  } else {
+    FUSION_PASS_MAKE_SHARED(transpose_desc = std::make_shared<ge::OpDesc>(node->GetName() + op_name, kTransposeD),
+                            return nullptr);
+  }
+
   return transpose_desc;
 }
 
-bool EinsumPass::SetTransposePerm(const std::vector<int32_t> &perm, ge::ComputeGraph &graph,
+bool EinsumPass::SetTransposePerm(bool unknown_shape, const std::vector<int32_t> &perm, ge::ComputeGraph &graph,
                                   std::shared_ptr<ge::OpDesc> &transpose_desc, ge::NodePtr &transpose_node) {
-  OP_LOGD(kFusedOpType.c_str(), "set perm list[%s] for node[%s]", Vector2Str(perm).c_str(),
-          transpose_node->GetName().c_str());
-  std::vector<std::string> perm_depends({"perm"});
-  transpose_desc->SetOpInferDepends(perm_depends);
-  vector<int64_t> perm_shape({static_cast<int64_t>(perm.size())});
-  auto perm_input_desc = ge::GeTensorDesc(ge::GeShape(perm_shape), ge::FORMAT_ND, ge::DT_INT32);
-  ge::GeTensorPtr out_tensor = nullptr;
-  FUSION_PASS_MAKE_SHARED(out_tensor = std::make_shared<ge::GeTensor>(perm_input_desc), return false);
-  out_tensor->SetData(reinterpret_cast<const uint8_t *>(perm.data()), perm.size() * sizeof(int32_t));
-  ge::OpDescPtr out_op_desc = ge::OpDescUtils::CreateConstOp(out_tensor);
-  FUSION_PASS_CHECK(out_op_desc == nullptr, OP_LOGE(kFusedOpType.c_str(), "out_op_desc is null"), return false);
-  auto const_node = graph.AddNode(out_op_desc);
-  FUSION_PASS_CHECK(const_node == nullptr, OP_LOGE(kFusedOpType.c_str(), "const_node is null"), return false);
-  FUSION_PASS_CHECK(transpose_node->AddLinkFrom("perm", const_node) != SUCCESS,
-                    OP_LOGE(kFusedOpType.c_str(), "Failed to add perm."), return false);
+  if (unknown_shape) {
+    std::vector<std::string> perm_depends({"perm"});
+    transpose_desc->SetOpInferDepends(perm_depends);
+    vector<int64_t> perm_shape({static_cast<int64_t>(perm.size())});
+    auto perm_input_desc = ge::GeTensorDesc(ge::GeShape(perm_shape), ge::FORMAT_ND, ge::DT_INT32);
+    ge::GeTensorPtr out_tensor = nullptr;
+    FUSION_PASS_MAKE_SHARED(out_tensor = std::make_shared<ge::GeTensor>(perm_input_desc), return false);
+    out_tensor->SetData(reinterpret_cast<const uint8_t *>(perm.data()), perm.size() * sizeof(int32_t));
+    ge::OpDescPtr out_op_desc = ge::OpDescUtils::CreateConstOp(out_tensor);
+    FUSION_PASS_CHECK(out_op_desc == nullptr, OP_LOGE(kFusedOpType.c_str(), "out_op_desc is null"), return false);
+    auto const_node = graph.AddNode(out_op_desc);
+    FUSION_PASS_CHECK(const_node == nullptr, OP_LOGE(kFusedOpType.c_str(), "const_node is null"), return false);
+    FUSION_PASS_CHECK(transpose_node->AddLinkFrom("perm", const_node) != SUCCESS,
+                      OP_LOGE(kFusedOpType.c_str(), "Failed to add perm."), return false);
 
-  transpose_desc->MutableInputDesc(1)->SetOriginShape(transpose_desc->MutableInputDesc(1)->MutableShape());
-  return true;
+    transpose_desc->MutableInputDesc(1)->SetOriginShape(transpose_desc->MutableInputDesc(1)->MutableShape());
+    return true;
+  } else {
+    return AttrUtils::SetListInt(transpose_desc, "perm", perm);
+  }
 }
 
 std::shared_ptr<ge::OpDesc> EinsumPass::CreateReshapeOpDesc(bool unknown_shape, const NodePtr &node, uint32_t seq) {
@@ -457,8 +466,8 @@ Status EinsumPass::HandleABCDxAECD2ACEB(ComputeGraph &graph, NodePtr &node) {
       batchmatmul_desc = std::make_shared<ge::OpDesc>(node->GetName() + "/BatchMatMul", kBatchMatMul),
       return PARAM_INVALID);
   // create transpose op desc
-  std::shared_ptr<ge::OpDesc> transpose_1_desc = CreateTransposeOpDesc(node, "/Transpose1");
-  std::shared_ptr<ge::OpDesc> transpose_2_desc = CreateTransposeOpDesc(node, "/Transpose2");
+  std::shared_ptr<ge::OpDesc> transpose_1_desc = CreateTransposeOpDesc(x0_is_unknown_shape, node, "/Transpose1");
+  std::shared_ptr<ge::OpDesc> transpose_2_desc = CreateTransposeOpDesc(x1_is_unknown_shape, node, "/Transpose2");
 
   FUSION_PASS_CHECK((x0_dims.size() != 4) && (x1_dims.size() != 4),
                     OP_LOGI(kFusedOpType.c_str(), "input dims size must be four and four."), return NOT_CHANGED);
@@ -475,7 +484,7 @@ Status EinsumPass::HandleABCDxAECD2ACEB(ComputeGraph &graph, NodePtr &node) {
   x1_desc.SetOriginShape(GeShape(tmp_dims));
   transpose_2_desc->AddOutputDesc("y", x1_desc);
   NodePtr transpose_2_node = graph.AddNode(transpose_2_desc);
-  SetTransposePerm(perm, graph, transpose_2_desc, transpose_2_node);
+  SetTransposePerm(x1_is_unknown_shape, perm, graph, transpose_2_desc, transpose_2_node);
   FUSION_PASS_CHECK(x1_is_unknown_shape && transpose_2_node->InferShapeAndType() != ge::GRAPH_SUCCESS,
                     OP_LOGE(kFusedOpType.c_str(), "transpose infershape failed."), return FAILED);
 
@@ -485,7 +494,7 @@ Status EinsumPass::HandleABCDxAECD2ACEB(ComputeGraph &graph, NodePtr &node) {
   x0_desc.SetOriginShape(GeShape(tmp_dims));
   transpose_1_desc->AddOutputDesc("y", x0_desc);
   NodePtr transpose_1_node = graph.AddNode(transpose_1_desc);
-  SetTransposePerm(perm, graph, transpose_1_desc, transpose_1_node);
+  SetTransposePerm(x0_is_unknown_shape, perm, graph, transpose_1_desc, transpose_1_node);
   FUSION_PASS_CHECK(x0_is_unknown_shape && transpose_1_node->InferShapeAndType() != ge::GRAPH_SUCCESS,
                     OP_LOGE(kFusedOpType.c_str(), "transpose infershape failed."), return FAILED);
 
@@ -529,7 +538,7 @@ Status EinsumPass::HandleABCDxADBE2ACBE(ComputeGraph &graph, NodePtr &node) {
       batchmatmul_desc = std::make_shared<ge::OpDesc>(node->GetName() + "/BatchMatMul", kBatchMatMul),
       return PARAM_INVALID);
   // create transpose op desc
-  std::shared_ptr<ge::OpDesc> transpose_1_desc = CreateTransposeOpDesc(node, "/Transpose1");
+  std::shared_ptr<ge::OpDesc> transpose_1_desc = CreateTransposeOpDesc(x1_is_unknown_shape, node, "/Transpose1");
 
   FUSION_PASS_CHECK((x0_dims.size() != 4) && (x1_dims.size() != 4),
                     OP_LOGI(kFusedOpType.c_str(), "input dims size must be four and four."), return NOT_CHANGED);
@@ -547,7 +556,7 @@ Status EinsumPass::HandleABCDxADBE2ACBE(ComputeGraph &graph, NodePtr &node) {
   x1_desc.SetOriginShape(GeShape(tmp_dims));
   transpose_1_desc->AddOutputDesc("y", x1_desc);
   NodePtr transpose_1_node = graph.AddNode(transpose_1_desc);
-  SetTransposePerm(perm, graph, transpose_1_desc, transpose_1_node);
+  SetTransposePerm(x1_is_unknown_shape, perm, graph, transpose_1_desc, transpose_1_node);
   FUSION_PASS_CHECK(x1_is_unknown_shape && transpose_1_node->InferShapeAndType() != ge::GRAPH_SUCCESS,
                     OP_LOGE(kFusedOpType.c_str(), "transpose infershape failed."), return FAILED);
 
@@ -561,11 +570,12 @@ Status EinsumPass::HandleABCDxADBE2ACBE(ComputeGraph &graph, NodePtr &node) {
                         batchmatmul_node->InferShapeAndType() != ge::GRAPH_SUCCESS,
                     OP_LOGE(kFusedOpType.c_str(), "batchmatmul infershape failed."), return FAILED);
 
-  std::shared_ptr<ge::OpDesc> transpose_2_desc = CreateTransposeOpDesc(node, "/Transpose2");
+  bool is_unknown_shape = batchmatmul_desc->MutableOutputDesc(0)->MutableShape().IsUnknownShape();
+  std::shared_ptr<ge::OpDesc> transpose_2_desc = CreateTransposeOpDesc(is_unknown_shape, node, "/Transpose2");
   transpose_2_desc->AddInputDesc("x", *(batchmatmul_desc->MutableOutputDesc(0)));
   transpose_2_desc->AddOutputDesc("y", *(op_desc->MutableOutputDesc(0)));
   NodePtr transpose_2_node = graph.AddNode(transpose_2_desc);
-  SetTransposePerm(perm, graph, transpose_2_desc, transpose_2_node);
+  SetTransposePerm(is_unknown_shape, perm, graph, transpose_2_desc, transpose_2_node);
 
   // unlink
   UnlinkAllDataAnchors(node);
@@ -1121,8 +1131,8 @@ Status EinsumPass::HandleABCDxAECD2ACBE(ComputeGraph &graph, NodePtr &node) {
       batchmatmul_desc = std::make_shared<ge::OpDesc>(node->GetName() + "/BatchMatMul", kBatchMatMul),
       return PARAM_INVALID);
   // create transpose op desc
-  std::shared_ptr<ge::OpDesc> transpose_1_desc = CreateTransposeOpDesc(node, "/Transpose1");
-  std::shared_ptr<ge::OpDesc> transpose_2_desc = CreateTransposeOpDesc(node, "/Transpose2");
+  std::shared_ptr<ge::OpDesc> transpose_1_desc = CreateTransposeOpDesc(x0_is_unknown_shape, node, "/Transpose1");
+  std::shared_ptr<ge::OpDesc> transpose_2_desc = CreateTransposeOpDesc(x1_is_unknown_shape, node, "/Transpose2");
 
   FUSION_PASS_CHECK((x0_dims.size() != 4) && (x1_dims.size() != 4),
                     OP_LOGI(kFusedOpType.c_str(), "input dims size must be four and four."), return NOT_CHANGED);
@@ -1139,7 +1149,7 @@ Status EinsumPass::HandleABCDxAECD2ACBE(ComputeGraph &graph, NodePtr &node) {
   x0_desc.SetOriginShape(GeShape(tmp_dims));
   transpose_1_desc->AddOutputDesc("y", x0_desc);
   NodePtr transpose_1_node = graph.AddNode(transpose_1_desc);
-  SetTransposePerm(perm, graph, transpose_1_desc, transpose_1_node);
+  SetTransposePerm(x0_is_unknown_shape, perm, graph, transpose_1_desc, transpose_1_node);
   FUSION_PASS_CHECK(x0_is_unknown_shape && transpose_1_node->InferShapeAndType() != ge::GRAPH_SUCCESS,
                     OP_LOGE(kFusedOpType.c_str(), "transpose infershape failed."), return FAILED);
 
@@ -1149,7 +1159,7 @@ Status EinsumPass::HandleABCDxAECD2ACBE(ComputeGraph &graph, NodePtr &node) {
   x1_desc.SetOriginShape(GeShape(tmp_dims));
   transpose_2_desc->AddOutputDesc("y", x1_desc);
   NodePtr transpose_2_node = graph.AddNode(transpose_2_desc);
-  SetTransposePerm(perm, graph, transpose_2_desc, transpose_2_node);
+  SetTransposePerm(x1_is_unknown_shape, perm, graph, transpose_2_desc, transpose_2_node);
   FUSION_PASS_CHECK(x1_is_unknown_shape && transpose_2_node->InferShapeAndType() != ge::GRAPH_SUCCESS,
                     OP_LOGE(kFusedOpType.c_str(), "transpose infershape failed."), return FAILED);
 
@@ -1193,7 +1203,7 @@ Status EinsumPass::HandleABCDxACBE2AECD(ComputeGraph &graph, NodePtr &node) {
       batchmatmul_desc = std::make_shared<ge::OpDesc>(node->GetName() + "/BatchMatMul", kBatchMatMul),
       return PARAM_INVALID);
   // create transpose op desc
-  std::shared_ptr<ge::OpDesc> transpose_1_desc = CreateTransposeOpDesc(node, "/Transpose1");
+  std::shared_ptr<ge::OpDesc> transpose_1_desc = CreateTransposeOpDesc(x0_is_unknown_shape, node, "/Transpose1");
 
   FUSION_PASS_CHECK((x0_dims.size() != 4) && (x1_dims.size() != 4),
                     OP_LOGI(kFusedOpType.c_str(), "input dims size must be four and four."), return NOT_CHANGED);
@@ -1211,7 +1221,7 @@ Status EinsumPass::HandleABCDxACBE2AECD(ComputeGraph &graph, NodePtr &node) {
   x0_desc.SetOriginShape(GeShape(tmp_dims));
   transpose_1_desc->AddOutputDesc("y", x0_desc);
   NodePtr transpose_1_node = graph.AddNode(transpose_1_desc);
-  SetTransposePerm(perm, graph, transpose_1_desc, transpose_1_node);
+  SetTransposePerm(x0_is_unknown_shape, perm, graph, transpose_1_desc, transpose_1_node);
   FUSION_PASS_CHECK(x0_is_unknown_shape && transpose_1_node->InferShapeAndType() != ge::GRAPH_SUCCESS,
                     OP_LOGE(kFusedOpType.c_str(), "transpose infershape failed."), return FAILED);
 
@@ -1225,11 +1235,12 @@ Status EinsumPass::HandleABCDxACBE2AECD(ComputeGraph &graph, NodePtr &node) {
                         batchmatmul_node->InferShapeAndType() != ge::GRAPH_SUCCESS,
                     OP_LOGE(kFusedOpType.c_str(), "batchmatmul infershape failed."), return FAILED);
 
-  std::shared_ptr<ge::OpDesc> transpose_2_desc = CreateTransposeOpDesc(node, "/Transpose2");
+  bool is_unknown_shape = batchmatmul_desc->MutableOutputDesc(0)->MutableShape().IsUnknownShape();
+  std::shared_ptr<ge::OpDesc> transpose_2_desc = CreateTransposeOpDesc(is_unknown_shape, node, "/Transpose2");
   transpose_2_desc->AddInputDesc("x", *(batchmatmul_desc->MutableOutputDesc(0)));
   transpose_2_desc->AddOutputDesc("y", *(op_desc->MutableOutputDesc(0)));
   NodePtr transpose_2_node = graph.AddNode(transpose_2_desc);
-  SetTransposePerm(perm, graph, transpose_2_desc, transpose_2_node);
+  SetTransposePerm(is_unknown_shape, perm, graph, transpose_2_desc, transpose_2_node);
 
   // unlink
   UnlinkAllDataAnchors(node);
@@ -1528,7 +1539,7 @@ Status EinsumPass::HandleABCDxACBE2ADBE(ComputeGraph &graph, NodePtr &node) {
       batchmatmul_desc = std::make_shared<ge::OpDesc>(node->GetName() + "/BatchMatMul", kBatchMatMul),
       return PARAM_INVALID);
   // create transpose op desc
-  std::shared_ptr<ge::OpDesc> transpose_2_desc = CreateTransposeOpDesc(node, "/Transpose2");
+  std::shared_ptr<ge::OpDesc> transpose_2_desc = CreateTransposeOpDesc(x1_is_unknown_shape, node, "/Transpose2");
 
   FUSION_PASS_CHECK((x0_dims.size() != 4) && (x1_dims.size() != 4),
                     OP_LOGI(kFusedOpType.c_str(), "input dims size must be four and four."), return NOT_CHANGED);
@@ -1546,7 +1557,7 @@ Status EinsumPass::HandleABCDxACBE2ADBE(ComputeGraph &graph, NodePtr &node) {
   x1_desc.SetOriginShape(GeShape(tmp_dims));
   transpose_2_desc->AddOutputDesc("y", x1_desc);
   NodePtr transpose_2_node = graph.AddNode(transpose_2_desc);
-  SetTransposePerm(perm, graph, transpose_2_desc, transpose_2_node);
+  SetTransposePerm(x1_is_unknown_shape, perm, graph, transpose_2_desc, transpose_2_node);
   FUSION_PASS_CHECK(x1_is_unknown_shape && transpose_2_node->InferShapeAndType() != ge::GRAPH_SUCCESS,
                     OP_LOGE(kFusedOpType.c_str(), "transpose infershape failed."), return FAILED);
 
@@ -1560,11 +1571,12 @@ Status EinsumPass::HandleABCDxACBE2ADBE(ComputeGraph &graph, NodePtr &node) {
                         batchmatmul_node->InferShapeAndType() != ge::GRAPH_SUCCESS,
                     OP_LOGE(kFusedOpType.c_str(), "batchmatmul infershape failed."), return FAILED);
 
-  std::shared_ptr<ge::OpDesc> transpose_3_desc = CreateTransposeOpDesc(node, "/Transpose3");
+  bool is_unknown_shape = batchmatmul_desc->MutableOutputDesc(0)->MutableShape().IsUnknownShape();
+  std::shared_ptr<ge::OpDesc> transpose_3_desc = CreateTransposeOpDesc(is_unknown_shape, node, "/Transpose3");
   transpose_3_desc->AddInputDesc("x", *(batchmatmul_desc->MutableOutputDesc(0)));
   transpose_3_desc->AddOutputDesc("y", *(op_desc->MutableOutputDesc(0)));
   NodePtr transpose_3_node = graph.AddNode(transpose_3_desc);
-  SetTransposePerm(perm, graph, transpose_3_desc, transpose_3_node);
+  SetTransposePerm(is_unknown_shape, perm, graph, transpose_3_desc, transpose_3_node);
 
   // unlink
   UnlinkAllDataAnchors(node);
@@ -1702,7 +1714,6 @@ Status EinsumPass::Fusion(ComputeGraph &graph, Mapping &mapping, vector<NodePtr>
       return NOT_CHANGED;
     }
   } else {
-    // no einsum op in cann, return FAILED is ok
     return SplitOpInFuzzScene(equation, graph, node);
   }
 }
@@ -1909,7 +1920,7 @@ void EinsumPass::CompareAxes(EinsumDimensionType dim_type, const DimensionType2L
   }
 
   if (input_labels.size() != new_labels.size()) {
-    size_t pos = 0;
+    pos = 0;
     while (pos < input_labels.size()) {
       char label = input_labels[pos];
       size_t new_labels_pos = new_labels.find_first_of(label);
@@ -2041,7 +2052,8 @@ Status EinsumPass::TransposeInput(const std::vector<std::string> &in_equations, 
     if (GetTransposeDstEquation(in_equations[idx], input_label_infos[idx], perm_list, input_free_contract_order,
                                 dst_equation)) {
       input_free_contract_orders[idx] = input_free_contract_order;
-      auto transpose_desc = CreateTransposeOpDesc(node, "/Transpose" + std::to_string(transpose_seq++));
+      auto transpose_desc = CreateTransposeOpDesc(x_desc->MutableShape().IsUnknownShape(), node,
+                                                  "/Transpose" + std::to_string(transpose_seq++));
       FUSION_PASS_CHECK(transpose_desc == nullptr, OP_LOGE(kFusedOpType.c_str(), "tranpose_desc is null"),
                         return FAILED);
       transpose_desc->AddInputDesc("x", *x_desc);
@@ -2049,7 +2061,7 @@ Status EinsumPass::TransposeInput(const std::vector<std::string> &in_equations, 
       auto transpose_node = graph.AddNode(transpose_desc);
       FUSION_PASS_CHECK(transpose_node == nullptr, OP_LOGE(kFusedOpType.c_str(), "transpose_node is null"),
                         return FAILED);
-      SetTransposePerm(perm_list, graph, transpose_desc, transpose_node);
+      SetTransposePerm(x_desc->MutableShape().IsUnknownShape(), perm_list, graph, transpose_desc, transpose_node);
       FUSION_PASS_CHECK(
           transpose_node->InferShapeAndType() != ge::GRAPH_SUCCESS,
           OP_LOGE(kFusedOpType.c_str(), "einsum[%s] transpose infershape failed", node->GetName().c_str()),
@@ -2108,13 +2120,14 @@ Status EinsumPass::TransposeOutput(const std::string &out_equation, const NodePt
     return SUCCESS;
   }
 
-  auto transpose_desc = CreateTransposeOpDesc(node, "/Transpose" + std::to_string(transpose_seq++));
+  auto transpose_desc = CreateTransposeOpDesc(x_desc->MutableShape().IsUnknownShape(), node,
+                                              "/Transpose" + std::to_string(transpose_seq++));
   FUSION_PASS_CHECK(transpose_desc == nullptr, OP_LOGE(kFusedOpType.c_str(), "tranpose_desc is null"), return FAILED);
   transpose_desc->AddInputDesc("x", *x_desc);
   transpose_desc->AddOutputDesc("y", *x_desc);
   auto transpose_node = graph.AddNode(transpose_desc);
   FUSION_PASS_CHECK(transpose_node == nullptr, OP_LOGE(kFusedOpType.c_str(), "transpose_node is null"), return FAILED);
-  SetTransposePerm(perm_list, graph, transpose_desc, transpose_node);
+  SetTransposePerm(x_desc->MutableShape().IsUnknownShape(), perm_list, graph, transpose_desc, transpose_node);
   FUSION_PASS_CHECK(transpose_node->InferShapeAndType() != ge::GRAPH_SUCCESS,
                     OP_LOGE(kFusedOpType.c_str(), "einsum[%s] transpose infershape failed", node->GetName().c_str()),
                     return FAILED);
@@ -2147,9 +2160,8 @@ Status EinsumPass::StrideInput(const std::vector<std::string> &in_equations) con
 Status EinsumPass::InflatedOutput(const std::string &out_equation) const {
   std::string out_equation_bak(out_equation);
   auto start_idx = out_equation_bak.find(kBroadCastLabel);
-  int ellipsis_len = 3;
   if (start_idx != std::string::npos) {
-    out_equation_bak.erase(start_idx, ellipsis_len);
+    out_equation_bak.erase(start_idx, kBroadCastLabelLen);
   }
   // temporarily not support inflated
   std::set<char> out_label_set(out_equation_bak.begin(), out_equation_bak.end());
@@ -2399,7 +2411,7 @@ void EinsumPass::CheckBatchMatmulSwapInputs() {
     return;
   }
 
-  auto &output_free_lable_infos = output_label_info[EinsumDimensionType::FREE];
+  const auto &output_free_lable_infos = output_label_info[EinsumDimensionType::FREE];
   bool free_label_from_input1 = true;
   for (char label : output_free_lable_infos.labels) {
     if (free_label_from_input1) {
@@ -2421,20 +2433,21 @@ Status EinsumPass::DoBatchMatmul(const std::vector<std::string> &in_equations, c
     return SUCCESS;
   }
 
-  std::shared_ptr<ge::OpDesc> batchmatmul_desc = nullptr;
-  FUSION_PASS_MAKE_SHARED(batchmatmul_desc = std::make_shared<ge::OpDesc>(
-                              node->GetName() + "/BatchMatMul" + std::to_string(batchmatmul_seq), kBatchMatMulV2),
-                          return FAILED);
-
   // free contract, free contract: adj_x1 = false, adj_x2 = true
   // free contract, contract free: adj_x1 = false, adj_x2 = false
   // contract free, free contract: adj_x1 = true, adj_x2 = true
   // contract free, contract free: adj_x1 = true, adj_x2 = false
   bool adj_x1 = !(input_free_contract_orders[0]);
   bool adj_x2 = input_free_contract_orders[1];
-
   auto x1_desc = GetPrevOutputDesc(node, 0);
   auto x2_desc = GetPrevOutputDesc(node, 1);
+  bool use_matmul = (x1_desc->MutableShape().GetDimNum() == 2) && (x2_desc->MutableShape().GetDimNum() == 2);
+  std::shared_ptr<ge::OpDesc> batchmatmul_desc = nullptr;
+  FUSION_PASS_MAKE_SHARED(
+      batchmatmul_desc = std::make_shared<ge::OpDesc>(
+          node->GetName() + "/BatchMatMul" + std::to_string(batchmatmul_seq), use_matmul ? kMatMul : kBatchMatMulV2),
+      return FAILED);
+
   CheckBatchMatmulSwapInputs();
   if (swap_bmm_inputs) {
     OP_LOGD(kFusedOpType.c_str(), "swap einsum[%s] batchmatmul inputs", node->GetName().c_str());
@@ -2447,9 +2460,15 @@ Status EinsumPass::DoBatchMatmul(const std::vector<std::string> &in_equations, c
     batchmatmul_desc->AddInputDesc("x2", *x2_desc);
   }
   batchmatmul_desc->AddOutputDesc("y", *x1_desc);
-  FUSION_PASS_CHECK(!(AttrUtils::SetBool(batchmatmul_desc, "adj_x1", adj_x1) &&
-                      AttrUtils::SetBool(batchmatmul_desc, "adj_x2", adj_x2)),
-                    OP_LOGE(kFusedOpType.c_str(), "failed to set attr for reduce."), return FAILED);
+  if (use_matmul) {
+    FUSION_PASS_CHECK(!(AttrUtils::SetBool(batchmatmul_desc, "transpose_x1", adj_x1) &&
+                        AttrUtils::SetBool(batchmatmul_desc, "transpose_x2", adj_x2)),
+                      OP_LOGE(kFusedOpType.c_str(), "failed to set attr for reduce."), return FAILED);
+  } else {
+    FUSION_PASS_CHECK(!(AttrUtils::SetBool(batchmatmul_desc, "adj_x1", adj_x1) &&
+                        AttrUtils::SetBool(batchmatmul_desc, "adj_x2", adj_x2)),
+                      OP_LOGE(kFusedOpType.c_str(), "failed to set attr for reduce."), return FAILED);
+  }
 
   batchmatmul_node = graph.AddNode(batchmatmul_desc);
   FUSION_PASS_CHECK(batchmatmul_node == nullptr, OP_LOGE(kFusedOpType.c_str(), "batchmatmul_node is null"),

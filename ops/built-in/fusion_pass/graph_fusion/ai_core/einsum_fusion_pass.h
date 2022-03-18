@@ -80,11 +80,11 @@ class EinsumPass : public PatternFusionBasePass {
   // 005 & 006
   Status HandleBatchMatmul(bool adj_x2, ge::ComputeGraph &graph, ge::NodePtr &node);
 
-  std::shared_ptr<ge::OpDesc> CreateTransposeOpDesc(const ge::NodePtr &node,
+  std::shared_ptr<ge::OpDesc> CreateTransposeOpDesc(bool unknown_shape, const ge::NodePtr &node,
                                                     const std::string &op_name);
   std::shared_ptr<ge::OpDesc> CreateReshapeOpDesc(bool unknown_shape, const ge::NodePtr &node, uint32_t seq);
 
-  bool SetTransposePerm(const std::vector<int32_t> &perm, ge::ComputeGraph &graph,
+  bool SetTransposePerm(bool unknown_shape, const std::vector<int32_t> &perm, ge::ComputeGraph &graph,
                         std::shared_ptr<ge::OpDesc> &transpose_desc, ge::NodePtr &transpose_node);
 
   ge::NodePtr CreateReshapeNode(const std::vector<int64_t> &dims, ge::ComputeGraph &graph,
