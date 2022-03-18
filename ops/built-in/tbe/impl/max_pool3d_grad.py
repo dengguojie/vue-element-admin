@@ -3461,11 +3461,9 @@ class MaxPool3DGradCompute:
                 # in "SAME", return the filled di
                 di = self.d + self.pad[0][0] + self.pad[0][1]
             if self.ho == ho:
-                hi = self.h if self.ho != 1 else self.h + \
-                    self.pad[1][0] + self.pad[1][1]
+                hi = self.h if self.ho != 1 else self.h + self.pad[1][0] + self.pad[1][1]
             if self.wo == wo:
-                wi = self.w if self.wo != 1 else self.w + \
-                    self.pad[2][0] + self.pad[2][1]
+                wi = self.w if self.wo != 1 else self.w + self.pad[2][0] + self.pad[2][1]
 
         return di, hi, wi
 
