@@ -169,7 +169,7 @@ def select(condition, x1, x2, y, kernel_name="select"):
         error_detail = "Dtype of tensor x1 and x2 must be equal!"
         error_manager_vector.raise_err_two_input_dtype_invalid(kernel_name, "x1", "x2", error_detail)
 
-    x_target = x1.copy() if is_unknown_rank_input(x2) else x2.copy()
+    x_target = x2.copy() if is_unknown_rank_input(x2) else x1.copy()
     if is_unknown_rank_input([x_target, condition]):
         x_target, condition = [x_target, x_target] if is_unknown_rank_input(x_target) else [condition, condition]
     else:
