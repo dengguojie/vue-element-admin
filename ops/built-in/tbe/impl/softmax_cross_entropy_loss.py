@@ -76,45 +76,33 @@ def softmax_cross_entropy_loss_compute(
 
     dtype = scores.dtype.lower()
 
-    if list(shape_scores) != list(shape_labels):
-        shape_scores, shape_labels, shape_broadcast = \
-            shape_util.broadcast_shapes(shape_scores, shape_labels)
-        input_scores = tbe.broadcast(scores, shape_broadcast,
-                                       dtype)
-        input_labels = tbe.broadcast(labels, shape_broadcast,
-                                     dtype)
-        if weights_flag:
-            input_weights = tbe.broadcast(weights, shape_broadcast,
-                                        dtype)
-
-    else:
-        shape_broadcast = shape_scores
-
     has_improve_precision = False
     if dtype == "float16" and \
             tbe_platform.api_check_support("te.lang.cce.vexp",
                                            "float32"):
-        input_scores = tbe.cast_to(input_scores, "float32")
+        scores = tbe.cast_to(scores, "float32")
         has_improve_precision = True
 
-    input_labels = tbe.cast_to(input_labels, "float32")
-    data_max = tbe.reduce_max(input_scores, axis=1, keepdims=True)
-    data_max_broadcast = tbe.broadcast(data_max, shape_broadcast)
-    data_sub = tbe.vsub(input_scores, data_max_broadcast)
+    data_max = tbe.reduce_max(scores, axis=1, keepdims=True)
+    data_max_broadcast = tbe.broadcast(data_max, shape_scores)
+    data_sub = tbe.vsub(scores, data_max_broadcast)
     data_exp = tbe.vexp(data_sub)
     data_sum = tbe.sum(data_exp, axis=1, keepdims=True)
-    data_sum_broadcast = tbe.broadcast(data_sum, shape_broadcast)
+    data_sum_broadcast = tbe.broadcast(data_sum, shape_scores)
     data_log_tmp = tbe.vlog(data_sum_broadcast)
     log_prop = tbe.vsub(data_sub, data_log_tmp)
+
+    input_labels = tbe.broadcast(labels, shape_scores)
     data_mul = tbe.vmul(input_labels, log_prop)
     data_muls = tbe.vmuls(data_mul, SCALAR_MINUS_ONE)
     if weights_flag:
+        input_weights = tbe.broadcast(weights, shape_scores)
         data_loss = tbe.vmul(data_muls, input_weights)
-        loss = tbe.sum(data_loss, axis=1, keepdims=True)
+        loss = tbe.sum(data_loss, axis=1, keepdims=False)
     else:
-        loss = tbe.sum(data_muls, axis=1, keepdims=True)
+        loss = tbe.sum(data_muls, axis=1, keepdims=False)
 
-    loss = loss_compute(loss, reduction, shape_scores)
+    loss = loss_compute(loss, reduction, shape_labels)
 
     if has_improve_precision:
         loss = tbe.cast_to(loss, "float16")
@@ -125,17 +113,16 @@ def softmax_cross_entropy_loss_compute(
     return res
 
 
-def loss_compute(loss, reduction, shape_scores):
+def loss_compute(loss, reduction, shape_labels):
     reduce_elts = 1.0
-    for i in shape_scores:
+    for i in shape_labels:
         reduce_elts *= i
     cof = reduce_elts**(-1)
 
     # get total axis for reduce
     axis_d = []
-    for i, _ in enumerate(shape_scores):
+    for i in range(len(shape_labels) - 1):
         axis_d.append(i)
-    axis_d = shape_util.axis_check(len(shape_scores), axis_d)
 
     if reduction == 'mean':
         # calcu mean

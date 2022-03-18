@@ -75,6 +75,7 @@ set(_onnx_plugins
   roiAlign_plugin.cc
   similar_opp_plugins.cc
   size_plugin.cc
+  softmax_cross_entropy_loss.cc
   softmax_plugin.cc
   split_plugin.cc
   squeeze_plugin.cc
