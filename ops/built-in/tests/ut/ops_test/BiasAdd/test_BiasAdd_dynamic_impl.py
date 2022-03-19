@@ -197,9 +197,9 @@ case24 = {"params": [{"shape": (-1,1,16), "dtype": "float16", "format": "ND", "o
          "expect": RuntimeError,
          "support_expect": True}
 
-case25 = {"params": [{"shape": (16), "dtype": "float16", "format": "ND", "ori_shape": (16),"ori_format": "ND","range":[(16, 16)]}, #x
+case25 = {"params": [{"shape": (16,), "dtype": "float16", "format": "ND", "ori_shape": (16,),"ori_format": "ND","range":[(16, 16)]}, #x
                     {"shape": (1,), "dtype": "float16", "format": "ND", "ori_shape": (1,),"ori_format": "ND","range":[(1, 1)]},
-                    {"shape": (16), "dtype": "float16", "format": "ND", "ori_shape": (16),"ori_format": "ND","range":[(16, 16)]},
+                    {"shape": (16,), "dtype": "float16", "format": "ND", "ori_shape": (16,),"ori_format": "ND","range":[(16, 16)]},
                     "NCHW"
                     ],
          "case_name": "BiasAdd_25",
@@ -251,4 +251,3 @@ ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case24)
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case25)
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case26)
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case27)
-

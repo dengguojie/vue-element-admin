@@ -36,6 +36,7 @@ def get_bit_len(data_type_string):
         'int16': 16,
         'uint16': 16,
         'float': 32,
+        'float32': 32,
         'int32': 32,
         'uint32': 32,
         'int64': 64,

@@ -82,7 +82,7 @@ def reduce_sum(x, axes, y, keepdims=False, kernel_name="reduce_sum"):
     -------
     None
     """
-
+    keepdims = False if keepdims is None else keepdims
     dtype_x = x["dtype"]
     dtype_lower_x = dtype_x.lower()
     check_list_x = ("float16", "float32")

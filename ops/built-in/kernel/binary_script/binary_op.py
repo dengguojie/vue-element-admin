@@ -26,25 +26,10 @@ import configparser
 from importlib import import_module
 from gen_opcinfo_from_opinfo import convert_to_snake as get_op_name
 from tbe.common.platform.platform_info import set_current_compile_soc_info
+from impl.util.util_binary import get_bit_len
+
 
 # 'pylint: disable=too-many-locals,too-many-arguments,too-many-statements
-def get_bit_len(data_type_string):
-    dtype_dict = {
-        'float16': 16,
-        'int16': 16,
-        'uint16': 16,
-        'float': 32,
-        'int32': 32,
-        'uint32': 32,
-        'int64': 64,
-        'uint64': 64,
-        'int8': 8,
-        'uint8': 8,
-        'bool': 8,
-    }
-    return dtype_dict.get(data_type_string)
-
-
 def fuzz_dtype(data_type_bit):
     dtype_dict = {
         8: 'int8',
@@ -55,7 +40,24 @@ def fuzz_dtype(data_type_bit):
     return dtype_dict.get(data_type_bit)
 
 
+def convert_attr_dtype(attr_type):
+    """
+    convert_attr_dtype, convert the attr dtype in ops json to opc input dtype
+    """
+    _dict = {
+        "str": 'string',
+        "listInt": 'list_int',
+        "listFloat": 'list_float',
+        "listBool": 'list_bool'
+    }
+
+    return _dict.get(attr_type, attr_type.lower())
+
+
 def get_op_select_format(soc, select_format, tensor_num, attrs):
+    """
+    get_op_select_format, do op_select_format to get ops info
+    """
     soc = "Ascend920A" if soc == "Ascend920" else soc
     set_current_compile_soc_info(soc)
     sys.path.append(PATH.IMPL_PATH)
@@ -84,6 +86,9 @@ def get_op_select_format(soc, select_format, tensor_num, attrs):
 
 
 def get_op_supported_case(op_type, op_json, soc, select_format):
+    """
+    get_op_supported_case
+    """
     is_format_agnostic = op_json.get("op") is not None and op_json.get("op").get("pattern") == "formatAgnostic"
     is_format_broadcast = op_json.get("op") is not None and op_json.get("op").get("pattern") == "broadcast"
     is_format_reduce = op_json.get("op") is not None and op_json.get("op").get("pattern") == "reduce"
@@ -111,9 +116,7 @@ def get_op_supported_case(op_type, op_json, soc, select_format):
             attr_type = attr_info.get("type")
             attr_dict = dict()
             attr_dict["name"] = attr_name
-            if attr_type == "listInt":
-                attr_type = "list_int"
-            attr_dict["dtype"] = attr_type
+            attr_dict["dtype"] = convert_attr_dtype(attr_type)
             attrs.append(attr_dict)
 
     op_fixed_case = None
@@ -143,11 +146,12 @@ def get_op_supported_case(op_type, op_json, soc, select_format):
         else:
             tensor_support_dtype = op_fixed_case[0][tensor_idx + op_fixed_case_idx].split(",")
             tensor_support_unknownshape_format = op_fixed_case[1][tensor_idx + op_fixed_case_idx].split(",")
+
         desc_dict = dict()
         desc_dict["name"] = tensor_name
         desc_dict["index"] = tensor_idx
-        desc_dict["dtype"] = tensor_support_dtype
-        desc_dict["format"] = tensor_support_unknownshape_format
+        desc_dict["dtype"] = [_dtype.replace(" ", "") for _dtype in tensor_support_dtype]
+        desc_dict["format"] = [_format.replace(" ", "") for _format in tensor_support_unknownshape_format]
         desc_dict["paramType"] = tensor_type
 
         return desc_dict

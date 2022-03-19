@@ -80,7 +80,7 @@ def reduce_all(x, axes, y, keepdims=False, kernel_name="reduce_all"):
     -------
     None
     """
-
+    keepdims = False if keepdims is None else keepdims
     dtype_x = x["dtype"]
     dtype_lower_x = dtype_x.lower()
     if dtype_lower_x == "bool":

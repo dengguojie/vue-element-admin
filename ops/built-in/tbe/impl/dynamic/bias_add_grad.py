@@ -1,4 +1,4 @@
-# Copyright 2020 Huawei Technologies Co., Ltd
+# Copyright (c) Huawei Technologies Co., Ltd. 2020-2022. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -139,7 +139,7 @@ def bias_add_grad_compute(x, y, data_format, kernel_name="bias_add_grad"):
 
 
 @register_operator("BiasAddGrad")
-@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_STR,
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_STR,
                             para_check.KERNEL_NAME)
 def bias_add_grad(x, y, data_format, kernel_name="bias_add_grad"):
     """
@@ -163,17 +163,17 @@ def bias_add_grad(x, y, data_format, kernel_name="bias_add_grad"):
     y = util_common.update_shape_base_other_format_dynamic(y)
     dtype = x.get("dtype").lower()
     shape = x.get("shape")
-    data_format = data_format.upper()
     check_list = ("float16", "float32")
     para_check.check_dtype(dtype, check_list, param_name="x")
-    data_format_tuple = ("NCHW", "NHWC")
     input_data_format = x.get("format").upper()
-    para_check.check_format(data_format, data_format_tuple, param_name="x")
     x["rel_pos_to_reduce"] = "before"
     is_unknown_rank = util_common.is_unknown_rank_input(x)
     if is_unknown_rank:
         input_axis = {"shape": [-1], "rel_pos_to_reduce": "axis"}
     else:
+        data_format = data_format.upper()
+        data_format_tuple = ("NCHW", "NHWC")
+        para_check.check_format(data_format, data_format_tuple, param_name="x")
         if len(shape) < 2:
             error_detail = "cce_bias_add_grad shape should be larger than 2D"
             error_manager_vector.raise_err_input_shape_invalid(kernel_name, "x", error_detail)

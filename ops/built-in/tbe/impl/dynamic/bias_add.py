@@ -1,4 +1,4 @@
-# Copyright 2020 Huawei Technologies Co., Ltd
+# Copyright (c) Huawei Technologies Co., Ltd. 2020-2022. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -81,7 +81,7 @@ def bias_add_compute(x, bias, y, data_format, kernel_name="bias_add"):
 
 @register_operator("BiasAdd")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
-                 para_check.REQUIRED_ATTR_STR, para_check.KERNEL_NAME)
+                            para_check.OPTION_ATTR_STR, para_check.KERNEL_NAME)
 def bias_add(x, bias, y, data_format="NHWC", kernel_name="bias_add"):
     """
     algorithm: bias_and
@@ -111,14 +111,11 @@ def bias_add(x, bias, y, data_format="NHWC", kernel_name="bias_add"):
     dtype_x = x.get("dtype").lower()
     dtype_bias = bias.get("dtype").lower()
     dtype_y = y.get("dtype").lower()
-    data_format = data_format.upper()
 
     check_tuple = ("float16", "float32", "int32")
-    data_format_tuple = ("NCHW", "NHWC", "NDHWC", "NCDHW")
     para_check.check_dtype(dtype_x, check_tuple, param_name="x")
     para_check.check_dtype(dtype_bias, check_tuple, param_name="bias")
     para_check.check_dtype(dtype_y, check_tuple, param_name="y")
-    para_check.check_format(data_format, data_format_tuple, param_name='input_format')
 
     if dtype_x != dtype_bias:
         error_manager_vector.raise_err_inputs_dtype_not_equal("BiasAdd", "x", "bias",
@@ -128,6 +125,9 @@ def bias_add(x, bias, y, data_format="NHWC", kernel_name="bias_add"):
         x, bias = [x, x] if is_unknown_rank_input(x) else [bias, bias]
         shape_bias = [-2]
     else:
+        data_format = data_format.upper()
+        data_format_tuple = ("NCHW", "NHWC", "NDHWC", "NCDHW")
+        para_check.check_format(data_format, data_format_tuple, param_name='input_format')
         if x.get("format") is not None and x.get("format").upper() == "NC1HWC0":
             ori_format_x = x.get("ori_format").upper()
             ori_shape_x = x.get("ori_shape")
