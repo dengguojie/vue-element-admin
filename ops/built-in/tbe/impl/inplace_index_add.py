@@ -82,10 +82,8 @@ class Scatter:
         self.updates_dtype = updates.get("dtype").lower()
         self.var_out = var_out
         self.axis = axis if axis >= 0 else axis + len(self.var_shape)
-        self.indices_num = functools_reduce(lambda x, y: x * y,
-                                            self.indices_shape)
-        self.updates_num = functools_reduce(lambda x, y: x * y,
-                                            self.updates_shape[axis:])
+        self.indices_num = functools_reduce(lambda x, y: x * y, self.indices_shape)
+        self.updates_num = functools_reduce(lambda x, y: x * y, self.updates_shape[axis:])
         self.kernel_name = kernel_name
         self.ai_core_num = tik.Dprofile().get_aicore_num()
         self.vconv_dst_dtype = "float16"
@@ -120,7 +118,26 @@ class Scatter:
             self.block_num = 1
 
         # init some variable
-        self.init_variable()
+        self.var_vconv_ub = None
+        self.updates_vconv_ub = None
+        self.var_tail_vconv_ub = None
+        self.updates_tail_vconv_ub = None
+
+        self.var_ub = None
+        self.updates_ub = None
+        self.indices_ub = None
+        self.var_tail_ub = None
+        self.updates_tail_ub = None
+
+        self.var_read_index = None
+        self.updates_read_index = None
+        self.indices_loop_index = None
+        self.indices_tmp = None
+
+        self.outer_loop_start_index_every_block = None
+        self.outer_loops_ub_per_block = None
+        self.outer_loop_start_index_of_var = None
+        self.outer_loop_start_index_of_updates = None
 
         # init gm of input
         self.create_gm_tensors()
@@ -172,33 +189,6 @@ class Scatter:
                 self.update_data_num = 1
             self.max_indices = self.var_shape[self.axis]
             self.index_dims = 1
-
-    def init_variable(self):
-        """
-        init Variable
-        :return:
-        """
-        # state some ub tensor
-        self.var_vconv_ub = None
-        self.updates_vconv_ub = None
-        self.var_tail_vconv_ub = None
-        self.updates_tail_vconv_ub = None
-
-        self.var_ub = None
-        self.updates_ub = None
-        self.indices_ub = None
-        self.var_tail_ub = None
-        self.updates_tail_ub = None
-
-        self.var_read_index = None
-        self.updates_read_index = None
-        self.indices_loop_index = None
-        self.indices_tmp = None
-
-        self.outer_loop_start_index_every_block = None
-        self.outer_loops_ub_per_block = None
-        self.outer_loop_start_index_of_var = None
-        self.outer_loop_start_index_of_updates = None
 
     def create_gm_tensors(self):
         """
