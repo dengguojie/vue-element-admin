@@ -29,6 +29,7 @@ class Constant:
     """
     MININUM_NUM_FLOAT = -(3.4028235 ** 38)
     DTYPE_BYTES = {"float32": 4, "float16": 2}
+    NLOC_NUM = 1026
 
 
 # 'pylint: disable=too-many-public-methods
@@ -55,6 +56,9 @@ class ProdEnvMatA:
         self.split_index = split_index
 
         self.nsample = 1
+        if self.coord_shape[0] != -1:
+            self.nsample = self.coord_shape[0]
+
         self.nall = self.type_shape[1]
         self.max_nall = 31040
         self.nnei = sum(sel_a)
@@ -84,6 +88,12 @@ class ProdEnvMatA:
         self.rcut_smth = rcut
 
         self.coord_dim_num = 3
+        self.mode = 3
+        self.nloc = -1
+        cur_nsample_mesh_size = self.mesh_shape[0] // self.nsample
+        if (cur_nsample_mesh_size - 1) % Constant.NLOC_NUM != 0:
+            self.mode = 1
+            self.nloc = (cur_nsample_mesh_size - 1 - self.type_shape[1]) // Constant.NLOC_NUM
 
         self.block_num = 32 // Constant.DTYPE_BYTES.get(self.coord_dtype)
 
@@ -168,19 +178,22 @@ class ProdEnvMatA:
         copy type data in ub from gm.
         """
         src_offset = self.tik_instance.Scalar(self.int32_type, "src_offset",
-                                              init_value=cur_nsample_index * self.nall_d *
-                                                         self.coord_dim_num)
-        self.tik_instance.data_move(type_ub[0], self.type_gm[src_offset // 3],
+                                              init_value=cur_nsample_index * self.nall_d)
+        self.tik_instance.data_move(type_ub[0], self.type_gm[src_offset],
                                     sid=0, nburst=1, burst=self.nall_d // self.block_num,
                                     src_stride=0, dst_stride=0)
 
-    def data_move_to_ub_phase0(self, cur_nloc_index, mesh_ub):
+    def data_move_to_ub_phase0(self, cur_nloc_index, mesh_ub, cur_sample):
         """
         copy mesh data in ub from gm.
         """
         mesh_offset = self.tik_instance.Scalar(self.int32_type, "mesh_offset",
-                                               init_value=1 + 2 * self.total_nloc + cur_nloc_index * 1024)
+                                               init_value=1 + 2 * self.total_nloc +
+                                                          cur_nloc_index * self.max_nbor_size)
 
+        if self.mode != 3:
+            mesh_offset.set_as(cur_sample * (1 + Constant.NLOC_NUM * self.nloc + self.type_shape[1]) + 1 +
+                               2 * self.total_nloc + cur_nloc_index * self.max_nbor_size)
         self.tik_instance.data_move(mesh_ub[0], self.mesh_gm[mesh_offset],
                                     sid=0, nburst=1, burst=self.max_nbor_data_size,
                                     src_stride=0, dst_stride=0)
@@ -1264,6 +1277,45 @@ class ProdEnvMatA:
                 dis_dot_tensor[self.sel_a_back[temp_idx] + i].set_as(1)
                 dis_tensor[self.sel_a_back[temp_idx] + i].set_as(self.rcut_smth + 1)
 
+    def mapping_nlist(self, sorted_index, cur_sample):
+        """
+        mapping the nlist data to origin data.
+        """
+        mapping_dict = self.tik_instance.Tensor(self.type_dtype, [self.type_shape[1]],
+                                                name="mapping_dict", scope=self.tik.scope_ubuf)
+        mapping_offset = self.tik_instance.Scalar(self.type_dtype, "mapping_offset",
+                                                  init_value=cur_sample * (1 + self.nloc * Constant.NLOC_NUM +
+                                                                           self.type_shape[1]) +
+                                                             1 + self.nloc * Constant.NLOC_NUM)
+        mapping_burst = self.tik_instance.Scalar(self.type_dtype, "mapping_burst",
+                                                 init_value=self.nall_d // self.block_num)
+        self.tik_instance.data_move(mapping_dict, self.mesh_gm[mapping_offset],
+                                    sid=0, nburst=1, burst=mapping_burst,
+                                    src_stride=0, dst_stride=0)
+        dst_inlist_length = max(self.max_nbor_size, self.nnei)
+        dst_inlist = self.tik_instance.Tensor(self.type_dtype, [dst_inlist_length],
+                                              name="dst_inlist", scope=self.tik.scope_ubuf)
+        self.tik_instance.vmuls(self.nnei,
+                                sorted_index[0],
+                                sorted_index[0], 4,
+                                1,
+                                self.block_stride, self.block_stride,
+                                self.repeat_stride, self.repeat_stride,
+                                0, "counter")
+        self.tik_instance.vgather(self.nnei,
+                                  dst_inlist, mapping_dict, sorted_index,
+                                  1,
+                                  self.repeat_stride,
+                                  0,
+                                  0, "counter")
+        self.tik_instance.vadds(self.nnei,
+                                sorted_index[0],
+                                dst_inlist[0], 0,
+                                1,
+                                self.block_stride, self.block_stride,
+                                self.repeat_stride, self.repeat_stride,
+                                0, "counter")
+
     def sort_distance_for_neighbour(self, dst_proposal, tensor_proposal):
         """
         sort proposal by score.
@@ -1480,7 +1532,7 @@ class ProdEnvMatA:
                                 self.block_stride, self.block_stride,
                                 self.repeat_stride, self.repeat_stride)
 
-    def get_neighbour_coords(self, neighbour_coords, index_one_type, nums):
+    def get_neighbour_coords(self, neighbour_coords, index_one_type, nums, cur_sample):
         """
         Get all neighbour coords for nloc.
         """
@@ -1504,26 +1556,31 @@ class ProdEnvMatA:
                                 self.repeat_stride, self.repeat_stride,
                                 0, "counter")
 
+        coord_nsample_offset = self.tik_instance.Scalar(self.int32_type, "coord_nsample_offset",
+                                                        init_value=cur_sample * self.type_shape[1] * 3)
         ub_idx.set_as(nums // 4)
 
         with self.tik_instance.for_range(0, ub_idx) as mesh_idx:
             gm_idx.set_as(mul3s[mesh_idx * 4])
-            self.tik_instance.data_move(neighbour_coord[mesh_idx * 32], self.coord_gm[gm_idx],
+            self.tik_instance.data_move(neighbour_coord[mesh_idx * 32], self.coord_gm[coord_nsample_offset + gm_idx],
                                         sid=0, nburst=1, burst=1,
                                         src_stride=0, dst_stride=0)
 
             gm_idx.set_as(mul3s[mesh_idx * 4 + 1])
-            self.tik_instance.data_move(neighbour_coord[mesh_idx * 32 + 8], self.coord_gm[gm_idx],
+            self.tik_instance.data_move(neighbour_coord[mesh_idx * 32 + 8],
+                                        self.coord_gm[coord_nsample_offset + gm_idx],
                                         sid=0, nburst=1, burst=1,
                                         src_stride=0, dst_stride=0)
 
             gm_idx.set_as(mul3s[mesh_idx * 4 + 2])
-            self.tik_instance.data_move(neighbour_coord[mesh_idx * 32 + 16], self.coord_gm[gm_idx],
+            self.tik_instance.data_move(neighbour_coord[mesh_idx * 32 + 16],
+                                        self.coord_gm[coord_nsample_offset + gm_idx],
                                         sid=0, nburst=1, burst=1,
                                         src_stride=0, dst_stride=0)
 
             gm_idx.set_as(mul3s[mesh_idx * 4 + 3])
-            self.tik_instance.data_move(neighbour_coord[mesh_idx * 32 + 24], self.coord_gm[gm_idx],
+            self.tik_instance.data_move(neighbour_coord[mesh_idx * 32 + 24],
+                                        self.coord_gm[coord_nsample_offset + gm_idx],
                                         sid=0, nburst=1, burst=1,
                                         src_stride=0, dst_stride=0)
 
@@ -1531,7 +1588,7 @@ class ProdEnvMatA:
             ub_idx.set_as(nums - nums % 4)
             with self.tik_instance.for_range(ub_idx, nums) as tail_idx:
                 gm_idx.set_as(mul3s[tail_idx])
-                self.tik_instance.data_move(neighbour_coord[tail_idx * 8], self.coord_gm[gm_idx],
+                self.tik_instance.data_move(neighbour_coord[tail_idx * 8], self.coord_gm[coord_nsample_offset + gm_idx],
                                             sid=0, nburst=1, burst=1,
                                             src_stride=0, dst_stride=0)
 
@@ -1690,21 +1747,42 @@ class ProdEnvMatA:
 
             cur_loc_index = self.tik_instance.Scalar(self.int32_type, "cur_loc_index",
                                                      init_value=for_input_cur_loc + 1)
-
-            cur_loc_index.set_as(self.mesh_gm[cur_loc_index])
+            mesh_nframe_offset = self.tik_instance.Scalar(self.int32_type, "mesh_nframe_offset",
+                                                          init_value=0)
+            if self.mode != 3:
+                mesh_nframe_offset.set_as(cur_sample * (1 + Constant.NLOC_NUM * self.nloc + self.type_shape[1]))
+                self.tik_instance.data_move(sorted_index[0],
+                                            self.mesh_gm[mesh_nframe_offset + cur_loc_index],
+                                            sid=0, nburst=1, burst=1,
+                                            src_stride=0, dst_stride=0)
+            else:
+                self.tik_instance.data_move(sorted_index[0], self.mesh_gm[cur_loc_index],
+                                            sid=0, nburst=1, burst=1,
+                                            src_stride=0, dst_stride=0)
+            cur_loc_index.set_as(sorted_index[0])
 
             cur_loc_type_id = self.tik_instance.Scalar(self.int32_type, "cur_loc_type_id",
                                                        init_value=0)
             nei_num_index = self.tik_instance.Scalar(self.int32_type, "nei_num_index",
                                                      init_value=1 + self.total_nloc  + for_input_cur_loc)
-            self.cur_loc_nei_num.set_as(self.mesh_gm[nei_num_index])
+            if self.mode != 3:
+                self.tik_instance.data_move(sorted_index[0],
+                                            self.mesh_gm[mesh_nframe_offset + nei_num_index],
+                                            sid=0, nburst=1, burst=1,
+                                            src_stride=0, dst_stride=0)
+            else:
+                self.tik_instance.data_move(sorted_index[0], self.mesh_gm[nei_num_index],
+                                            sid=0, nburst=1, burst=1,
+                                            src_stride=0, dst_stride=0)
+            self.cur_loc_nei_num.set_as(sorted_index[0])
+
             self.tik_instance.vector_dup(self.repeat_once_size, sorted_index, -1,
                                          extract_length_align // self.nnei_once_repeat_nums, self.block_stride,
                                          self.repeat_stride)
             with self.tik_instance.if_scope(self.cur_loc_nei_num != -1):
                 with self.tik_instance.new_stmt_scope(disable_sync=False):
                     mesh_ub, cur_type_tensor = self.apply_ub_tensor_phase0()
-                    self.data_move_to_ub_phase0(for_input_cur_loc, mesh_ub)
+                    self.data_move_to_ub_phase0(for_input_cur_loc, mesh_ub, cur_sample)
 
                     if self.type_num > 2:
                         self.sort_index(mesh_ub)
@@ -1761,11 +1839,18 @@ class ProdEnvMatA:
 
                             self.get_neighbour_coords([neighbour_coord_x, neighbour_coord_y,
                                                        neighbour_coord_z],
-                                                      index_one_type, self.cur_type_neighbour_nums)
+                                                      index_one_type, self.cur_type_neighbour_nums, cur_sample)
 
-                        loc_coord_x.set_as(self.coord_gm[cur_loc_index * 3])
-                        loc_coord_y.set_as(self.coord_gm[cur_loc_index * 3 + 1])
-                        loc_coord_z.set_as(self.coord_gm[cur_loc_index * 3 + 2])
+                        temp_tensor = self.tik_instance.Tensor(self.coord_dtype, [self.block_num],
+                                                               name="temp_tensor",
+                                                               scope=self.tik.scope_ubuf)
+                        self.tik_instance.data_move(temp_tensor[0], self.coord_gm[cur_sample * self.nall_d * 3 +
+                                                                                  cur_loc_index * 3],
+                                                    sid=0, nburst=1, burst=1,
+                                                    src_stride=0, dst_stride=0)
+                        loc_coord_x.set_as(temp_tensor[0])
+                        loc_coord_y.set_as(temp_tensor[1])
+                        loc_coord_z.set_as(temp_tensor[2])
 
                         dis_tensor = self.tik_instance.Tensor(self.coord_dtype, [self.max_nbor_size],
                                                               name="dis_tensor",
@@ -1847,10 +1932,14 @@ class ProdEnvMatA:
                                             sorted_neighbour_coord_z],
                                            res_rij_tensor, rij_trans_buffer)
 
-                    self.data_move_rij_to_gm(res_rij_tensor, cur_sample, cur_loc, loc_nei_idx, one_cor_nloc_num)
+                    self.data_move_rij_to_gm(res_rij_tensor, cur_sample, cur_loc, loc_nei_idx, stop_loc)
 
             if self.type_num == 3:
                 _rij_data_output(sorted_neighbour_coord_x, sorted_neighbour_coord_y, sorted_neighbour_coord_z)
+
+            if self.mode != 3:
+                with self.tik_instance.new_stmt_scope(disable_sync=False):
+                    self.mapping_nlist(sorted_index, cur_sample)
 
             nnei_repeat_align = (self.nnei + self.repeat_once_size - 1) // self.repeat_once_size * self.repeat_once_size
             res_descrpt_a_tensor = self.tik_instance.Tensor(self.coord_dtype, [nnei_repeat_align * 4],
@@ -1927,12 +2016,12 @@ class ProdEnvMatA:
                                      res_descrpt_a_deriv_tensor, sorted_index,
                                      cur_sample, cur_loc)
             else:
-                with self.tik_instance.if_scope(loc_nei_idx != (one_cor_nloc_num - 1)):
+                with self.tik_instance.if_scope(loc_nei_idx != (stop_loc - 1)):
                     self.data_move_to_gm(res_descrpt_a_tensor,
                                          res_descrpt_a_deriv_tensor, sorted_index,
                                          cur_sample, cur_loc)
 
-                with self.tik_instance.if_scope(loc_nei_idx == (one_cor_nloc_num - 1)):
+                with self.tik_instance.if_scope(loc_nei_idx == (stop_loc - 1)):
                     self.data_move_to_gm_last_loc(res_descrpt_a_tensor,
                                                   res_descrpt_a_deriv_tensor,
                                                   sorted_index,
@@ -1953,6 +2042,10 @@ class ProdEnvMatA:
             self.nloc_d.set_as(natoms_ub[0])
             self.total_nloc.set_as(natoms_ub[0])
             self.nall_d.set_as(natoms_ub[1])
+            if self.mode != 3:
+                self.nall_d.set_as(self.type_shape[1])
+                self.nloc_d.set_as(self.nloc)
+                self.total_nloc.set_as(self.nloc)
             self.nall_d.set_as((self.nall_d + self.block_num - 1) // self.block_num * self.block_num)
 
             if self.split_count > 1:

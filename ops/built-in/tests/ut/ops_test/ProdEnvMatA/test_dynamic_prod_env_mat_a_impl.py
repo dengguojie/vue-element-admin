@@ -27,7 +27,9 @@ ut_case = OpUT("ProdEnvMatA", "impl.dynamic.prod_env_mat_a",
 def simple_water_test(test_args, nsample, nloc, n_a_sel, n_r_sel, nall,
                       rcut_a, rcut_r, rcut_r_smth, sel_a, sel_r, split_count=1, split_index=0, kernel_name = "prod_env_mat_a"):
     nnei = n_a_sel + n_r_sel
-
+    mesh_dim = 1 + 1026 * nloc
+    if nloc == 192:
+        mesh_dim = 1 + 1026 * nloc + nall
     set_current_compile_soc_info("Ascend710")
     with tbe.common.context.op_context.OpContext("dynamic"):
         prod_env_mat_a({"shape": (nsample, nall * 3), "dtype": "float32", "format": "ND",
@@ -43,9 +45,8 @@ def simple_water_test(test_args, nsample, nloc, n_a_sel, n_r_sel, nall,
                         "ori_shape": (nsample, 9), "ori_format": "ND",
                         "range": ((nsample, nsample), (9, 9))},
 
-                       {"shape": (1 + 1026 * nloc,), "dtype": "int32", "format": "ND",
-                        "ori_shape": (1 + 1026 * nloc,), "ori_format": "ND", "range": ((1 + 1026 * nloc,
-                                                                                        1 + 1026 * nloc))},
+                       {"shape": (mesh_dim,), "dtype": "int32", "format": "ND",
+                        "ori_shape": (mesh_dim,), "ori_format": "ND", "range": ((mesh_dim, mesh_dim))},
                        {"shape": (2, nnei * 4), "dtype": "float32", "format": "ND",
                         "ori_shape": (2, nnei * 4),
                         "ori_format": "ND", "range": ((2, 2), (nnei * 4, nnei * 4))},
@@ -84,10 +85,29 @@ def test_prod_env_mat_a_case001(test_args):
     split_count = 1
     split_index = 0
 
-    simple_water_test(test_args, nframes, nloc, n_a_sel, n_r_sel, nall, rcut_a, rcut_r, rcut_r_smth, sel_a, sel_r, split_count, split_index, kernel_name)
+    simple_water_test(test_args, nframes, nloc, n_a_sel, n_r_sel, nall, rcut_a, rcut_r, rcut_r_smth,
+                      sel_a, sel_r, split_count, split_index, kernel_name)
 
+def test_prod_env_mat_a_case002(test_args):
+    nframes = 1
+    nloc = 192
+    n_a_sel = 138
+    n_r_sel = 0
+    nall = 1536
+    rcut_a = 0.0
+    rcut_r = 8.0
+    rcut_r_smth = 2.0
+    sel_a = [46, 92]
+    sel_r = []
+    kernel_name = "prod_env_mat_a"
+    split_count = 1
+    split_index = 0
+
+    simple_water_test(test_args, nframes, nloc, n_a_sel, n_r_sel, nall, rcut_a, rcut_r, rcut_r_smth,
+                      sel_a, sel_r, split_count, split_index, kernel_name)
 
 ut_case.add_cust_test_func(test_func=test_prod_env_mat_a_case001)
+ut_case.add_cust_test_func(test_func=test_prod_env_mat_a_case002)
 
 if __name__ == '__main__':
     ut_case.run("Ascend710")
