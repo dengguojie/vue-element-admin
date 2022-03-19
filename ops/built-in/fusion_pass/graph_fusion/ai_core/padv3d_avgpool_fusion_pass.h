@@ -33,7 +33,7 @@ class Padv3dAvgpoolFusionPass : public PatternFusionBasePass {
                 vector<ge::NodePtr> &fusionNodes) override;
 private:
     Status CheckFormatAndPading(ge::Format& input_format, std::vector<std::vector<int64_t>>& paddings,
-                              bool paddings_contiguous);
+                                bool paddings_contiguous, std::vector<int32_t>& pooling_pads);
     Status CheckPadAndKsize(ge::Format& input_format, std::vector<int32_t>& pads, std::vector<int32_t>& ksize);
     void UpdateAttrPads(ge::Format& input_format, std::vector<std::vector<int64_t>>& paddings,
                         std::vector<int32_t>& new_pad, bool paddings_contiguous);

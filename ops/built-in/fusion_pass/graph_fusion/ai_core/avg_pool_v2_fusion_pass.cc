@@ -629,6 +629,50 @@ Status AvgPoolV2FusionPass::Fusion(ComputeGraph &graph, Mapping &mapping, vector
   if (find(dimInfo.begin(), dimInfo.end(), -1) != dimInfo.end()) {
     isDynamic = true;
   }
+
+  string dataFormat;
+  string padding;
+  vector<int64_t> ksize;
+  vector<int64_t> strides;
+  vector<int64_t> window;
+  vector<int64_t> stride;
+  int64_t ksizeH = 0;
+  int64_t ksizeW = 0;
+  int64_t stridesH = 0;
+  int64_t stridesW = 0;
+  bool global_pooling;
+  bool ceil_mode;
+  bool exclusive;
+  vector<int64_t> pads;
+  vector<int64_t> padv3_pads;
+  // get windowsize padding strides value dataFormat
+  AttrUtils::GetStr(avgPoolDesc, "data_format", dataFormat);
+  AttrUtils::GetStr(avgPoolDesc, "padding_mode", padding);
+  AttrUtils::GetListInt(avgPoolDesc, "ksize", ksize);
+  AttrUtils::GetListInt(avgPoolDesc, "strides", strides);
+  AttrUtils::GetBool(avgPoolDesc, "global_pooling", global_pooling);
+  AttrUtils::GetBool(avgPoolDesc, "ceil_mode", ceil_mode);
+  AttrUtils::GetBool(avgPoolDesc, "exclusive", exclusive);
+  AttrUtils::GetListInt(avgPoolDesc, "pads", pads);
+  AttrUtils::GetListInt(avgPoolDesc, "_padv3_pads", padv3_pads);
+  if (!padv3_pads.empty()) {
+    // if enable padv3+avgpool fusion, need to remove pad from padv3
+    if (padv3_pads.size() != 4) {
+      CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "padv3_pads size should be same as pads.");
+      return NOT_CHANGED;
+    }
+    for (int pads_idx = 0; pads_idx < pads.size(); ++pads_idx) {
+      pads[pads_idx] = pads[pads_idx] - padv3_pads[pads_idx];
+    }
+    if (inputOriginFormat == FORMAT_NHWC) {
+      dimInfo[1] = dimInfo[1] + padv3_pads[0] + padv3_pads[1];
+      dimInfo[2] = dimInfo[2] + padv3_pads[2] + padv3_pads[3];
+    } else if (inputOriginFormat == FORMAT_NCHW) {
+      dimInfo[2] = dimInfo[2] + padv3_pads[0] + padv3_pads[1];
+      dimInfo[3] = dimInfo[3] + padv3_pads[2] + padv3_pads[3];
+    }
+  }
+
   if (dimInfo.size() == 4) {
     if (inputOriginFormat == FORMAT_NHWC) {
       inputC = dimInfo[3];
@@ -647,30 +691,6 @@ Status AvgPoolV2FusionPass::Fusion(ComputeGraph &graph, Mapping &mapping, vector
     CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "dimInfo is invalid, please check!");
     return PARAM_INVALID;
   }
-
-  string dataFormat;
-  string padding;
-  vector<int64_t> ksize;
-  vector<int64_t> strides;
-  vector<int64_t> window;
-  vector<int64_t> stride;
-  int64_t ksizeH = 0;
-  int64_t ksizeW = 0;
-  int64_t stridesH = 0;
-  int64_t stridesW = 0;
-  bool global_pooling;
-  bool ceil_mode;
-  bool exclusive;
-  vector<int64_t> pads;
-  // get windowsize padding strides value dataFormat
-  AttrUtils::GetStr(avgPoolDesc, "data_format", dataFormat);
-  AttrUtils::GetStr(avgPoolDesc, "padding_mode", padding);
-  AttrUtils::GetListInt(avgPoolDesc, "ksize", ksize);
-  AttrUtils::GetListInt(avgPoolDesc, "strides", strides);
-  AttrUtils::GetBool(avgPoolDesc, "global_pooling", global_pooling);
-  AttrUtils::GetBool(avgPoolDesc, "ceil_mode", ceil_mode);
-  AttrUtils::GetBool(avgPoolDesc, "exclusive", exclusive);
-  AttrUtils::GetListInt(avgPoolDesc, "pads", pads);
 
   if (dataFormat == "NHWC") {
     if (ksize.size() == 4 and strides.size() == 4) {
@@ -1073,5 +1093,5 @@ Status AvgPoolV2FusionPass::Fusion(ComputeGraph &graph, Mapping &mapping, vector
   return SUCCESS;
 }
 
-REGISTER_PASS("AvgPoolV2FusionPass", BUILT_IN_BEFORE_QUANT_OPTIMIZATION_GRAPH_PASS, AvgPoolV2FusionPass);
+REGISTER_PASS("AvgPoolV2FusionPass", BUILT_IN_GRAPH_PASS, AvgPoolV2FusionPass);
 }  // namespace fe

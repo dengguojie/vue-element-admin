@@ -131,8 +131,11 @@ Status Padv3dAvgpoolFusionPass::Fusion(ge::ComputeGraph& graph,
   bool paddings_contiguous = false;
   op_pad.GetAttr("paddings_contiguous", paddings_contiguous);
 
+  std::vector<int32_t> pooling_pads;
+  op_Pooling.GetAttr("pads", pooling_pads);
+
   // verify
-  if (CheckFormatAndPading(input_format, paddings, paddings_contiguous) != SUCCESS) {
+  if (CheckFormatAndPading(input_format, paddings, paddings_contiguous, pooling_pads) != SUCCESS) {
     return NOT_CHANGED;
   }
 
@@ -146,6 +149,8 @@ Status Padv3dAvgpoolFusionPass::Fusion(ge::ComputeGraph& graph,
     return NOT_CHANGED;
   }
 
+  // for avgpool_v2 fusion pass
+  ge::AttrUtils::SetListInt(Pooling_desc, "_padv3_pads", new_pad);
   op_Pooling.SetAttr("pads", new_pad);
   Pooling_desc->UpdateInputDesc(0, input_desc);
   FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(pooling_node->GetInDataAnchor(0)->GetPeerOutAnchor(),
@@ -237,7 +242,8 @@ void Padv3dAvgpoolFusionPass::UpdateAttrPads(ge::Format& input_format,
 
 Status Padv3dAvgpoolFusionPass::CheckFormatAndPading(ge::Format& input_format,
                                                      std::vector<std::vector<int64_t>>& paddings,
-                                                     bool paddings_contiguous) {
+                                                     bool paddings_contiguous,
+                                                     std::vector<int32_t>& pooling_pads) {
   if ((input_format != FORMAT_NHWC) && (input_format != FORMAT_NCHW) &&
       (input_format != FORMAT_NCDHW) && (input_format != FORMAT_NDHWC)) {
     OP_LOGI(FUSED_OP_TYPE.c_str(), "input format is not match.");
@@ -254,6 +260,18 @@ Status Padv3dAvgpoolFusionPass::CheckFormatAndPading(ge::Format& input_format,
     if (paddings[i].size() != 2) {
       OP_LOGI(FUSED_OP_TYPE.c_str(), "paddings[%d] size shoud be 2, cur is %d", i, paddings[i].size());
       return NOT_CHANGED;
+    }
+  }
+
+  if (pooling_pads.empty()) {
+    OP_LOGI(FUSED_OP_TYPE.c_str(), "pooling_pads is empty");
+    return NOT_CHANGED;
+  } else {
+    for (auto pad_item : pooling_pads) {
+      if (pad_item != 0) {
+        OP_LOGI(FUSED_OP_TYPE.c_str(), "only support pooling_pads all zero");
+        return NOT_CHANGED;
+      }
     }
   }
 
