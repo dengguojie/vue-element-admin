@@ -7501,7 +7501,9 @@ static bool SetConv3dBpInputOutShapeRange(ge::Operator& op, bool unknown_rank,
   CHECK_PTR_NULL(y_desc, "tensor y desc", return false);
   std::vector<int64_t> filter_sizes = filter_desc->MutableShape().GetDims();
   std::vector<int64_t> dx_sizes = y_desc->MutableShape().GetDims();
-  if (filter_sizes.size() < kConv3dInputSizeLimit || dx_sizes.size() < kConv3dInputSizeLimit) {
+  bool shape_check_flag =
+      filter_sizes.size() < kConv3dInputSizeLimit || (!dx_sizes.empty() && dx_sizes.size() < kConv3dInputSizeLimit);
+  if (shape_check_flag) {
     OP_LOGE(op_name.GetString(), "filter_sizes or dx_sizes is illegal");
     map<std::string, std::string> err_map;
     err_map["param_name"] = "filter_size and dx_sizes";
@@ -7557,6 +7559,12 @@ static bool SetConv3dBpInputOutShapeRange(ge::Operator& op, bool unknown_rank,
     dx_shape[c_input_position] = groups * filter_c;
     y_desc->SetShape(GeShape(dx_shape));
     return true;
+  }
+
+  if (dx_sizes.empty()) {
+    dx_sizes.resize(kConv3dInputSizeLimit, -1);
+    dx_sizes[c_input_position] = groups * filter_c;
+    y_desc->SetShape(GeShape(dx_sizes));
   }
 
   std::vector<int32_t> stride_list;

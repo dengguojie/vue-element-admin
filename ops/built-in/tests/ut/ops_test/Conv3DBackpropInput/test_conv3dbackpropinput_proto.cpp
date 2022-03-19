@@ -312,3 +312,38 @@ TEST_F(Conv3DBackpropInputProtoTest, Input_Size_Const_Case) {
     auto ret = op.InferShapeAndType();
     EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
 }
+
+// y shape is empty
+TEST_F(Conv3DBackpropInputProtoTest, y_shape_empty) {
+    ge::op::Conv3DBackpropInput op;
+
+    op.UpdateInputDesc("filter", create_desc_with_ori(
+      {2, 3, 18, 18, 32}, ge::DT_FLOAT16, ge::FORMAT_NDHWC,
+      {2, 3, 18, 18, 32}, ge::FORMAT_NDHWC));
+    op.UpdateInputDesc("out_backprop", create_desc_with_ori(
+      {16, 2, 3, 3, 32}, ge::DT_FLOAT16, ge::FORMAT_NDHWC,
+      {16, 2, 3, 3, 32}, ge::FORMAT_NDHWC));
+
+    std::vector<int64_t> dims_input_size{2 ,2 ,16 ,16 ,16};
+    ge::TensorDesc tensor_desc_input_size(ge::Shape(),
+      ge::FORMAT_NCDHW, ge::DT_INT32);
+    int element_size = dims_input_size.size();
+    tensor_desc_input_size.SetSize(element_size * sizeof(int32_t));
+
+    op.UpdateOutputDesc("y", create_desc_with_ori(
+      {}, ge::DT_FLOAT16, ge::FORMAT_NDHWC,
+      {}, ge::FORMAT_NDHWC));
+
+    op.UpdateInputDesc("input_size", tensor_desc_input_size);
+
+    op.SetAttr("strides", {1, 1, 1, 1, 1});
+    op.SetAttr("pads", {0, 0, 0, 0, 0, 0});
+
+    auto status = op.VerifyAllAttr(true);
+    EXPECT_EQ(status, ge::GRAPH_SUCCESS);
+    auto ret = op.InferShapeAndType();
+    EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+
+    auto output_desc = op.GetOutputDesc("y");
+    EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT16);
+}
