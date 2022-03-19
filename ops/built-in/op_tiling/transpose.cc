@@ -3336,8 +3336,12 @@ static void CalcBorrowBurstLen(const ShapeInfo& si, RuntimeInfo& ri) {
   bi.tailBurstLen_out = (bi.tailBurstLen_out * lastAxisLen + si.elePerBlock - 1) / si.elePerBlock;
 }
 
-static bool UpdateStep(const CompilerInfo& ci, const ShapeInfo& si, RuntimeInfo& ri, BorrowInfo& bi, int64_t ubSize) {
-  // Update step to avoid repeat_num > 255 or ub overflow
+
+static bool IsDstUbOverFlow(const CompilerInfo& ci,
+                            const ShapeInfo& si,
+                            const RuntimeInfo& ri,
+                            BorrowInfo& bi,
+                            int64_t ubSize) {
   bool lastAxisTrans = si.isLastAxisTranspose;
   int64_t dstOnlyVol = 1;
   int64_t srcVol = 1;
@@ -3363,14 +3367,21 @@ static bool UpdateStep(const CompilerInfo& ci, const ShapeInfo& si, RuntimeInfo&
     }
   }
   if (dstOnlyVol * AlignX(srcVol * (lastAxisTrans ? 1 : si.lastAxisLen), si.elePerBlock) * ci.fp16Times >= ubSize) {
-    if (bi.dstIndexIn[bi.dstNum - 1].step > STEP_NUM_TWO) {
-      bi.dstIndexIn[bi.dstNum - 1].step--;
-    }
     overflowFlag = true;
   }
-  
+  return overflowFlag;
+}
+
+
+static bool IsSrcUbOverFlow(const CompilerInfo& ci,
+                            const ShapeInfo& si,
+                            const RuntimeInfo& ri,
+                            BorrowInfo& bi,
+                            int64_t ubSize) {
+  bool lastAxisTrans = si.isLastAxisTranspose;
   int64_t dstVol = 1;
   int64_t srcOnlyVol = 1;
+  bool overflowFlag = false;
   for (int64_t i = 0; i < bi.srcNum; i++) {
     bool dupFlag = false;
     for (int64_t j = 0; j < bi.dstNum; j++) {
@@ -3392,6 +3403,27 @@ static bool UpdateStep(const CompilerInfo& ci, const ShapeInfo& si, RuntimeInfo&
     }
   }
   if (srcOnlyVol * AlignX(dstVol * (lastAxisTrans ? 1 : si.lastAxisLen), si.elePerBlock) * ci.fp16Times >= ubSize) {
+    overflowFlag = true;
+  }
+  return overflowFlag;
+}
+
+
+static bool UpdateStep(const CompilerInfo& ci,
+                       const ShapeInfo& si,
+                       const RuntimeInfo& ri,
+                       BorrowInfo& bi,
+                       int64_t ubSize) {
+  // Update step to avoid repeat_num > 255 or ub overflow
+  bool overflowFlag = false;
+  if (IsDstUbOverFlow(ci, si, ri, bi, ubSize)) {
+    if (bi.dstIndexIn[bi.dstNum - 1].step > STEP_NUM_TWO) {
+      bi.dstIndexIn[bi.dstNum - 1].step--;
+    }
+    overflowFlag = true;
+  }
+
+  if (IsSrcUbOverFlow(ci, si, ri, bi, ubSize)) {
     if (bi.dstIndexIn[bi.dstNum - 1].step > STEP_NUM_TWO) {
       bi.dstIndexIn[bi.dstNum - 1].step--;
     }
@@ -3409,6 +3441,7 @@ static bool CalcDstBorrowAxisIndex(const CompilerInfo& ci,
   int64_t borrowed = 1;
   int64_t tailEle = si.lastAxisLen;
   int64_t offset = GetOffset(si);
+  bool overflowFlag = false;
 
   if (si.isLastAxisTranspose) {
     tailEle = 1;
@@ -3428,14 +3461,23 @@ static bool CalcDstBorrowAxisIndex(const CompilerInfo& ci,
       }
 
       if (si.reducedOutShape[id] * borrowed <= bi.dstVol) {
-        borrowed *= si.reducedOutShape[id];
         bi.dstNum++;
-        bi.dstIndexIn[dstNum].loop = 1;
         bi.dstIndexIn[dstNum].step = si.reducedOutShape[id];
-        tailEle *= bi.dstIndexIn[dstNum].step;
+
+        if (!IsDstUbOverFlow(ci, si, ri, bi, ubSize) && !IsSrcUbOverFlow(ci, si, ri, bi, ubSize)) {
+          borrowed *= si.reducedOutShape[id];
+          bi.dstIndexIn[dstNum].loop = 1;
+          tailEle *= bi.dstIndexIn[dstNum].step;
+        } else {
+          overflowFlag = true; 
+        }
       } else {
         bi.dstNum++;
         bi.dstIndexIn[dstNum].step = (bi.dstVol / borrowed) == 0 ? 1 : (bi.dstVol / borrowed);
+        overflowFlag = true; 
+      }
+     
+      if (overflowFlag) {
         for (int j = 0; j < LOOP_FOR_UB_PADDING; j++) {
           if(!UpdateStep(ci, si, ri, bi, ubSize)) {
             break;
@@ -3459,7 +3501,7 @@ static bool CalcDstBorrowAxisIndex(const CompilerInfo& ci,
           }
         }
         break;
-      }
+      } 
     }
   }
   bi.dstIndexIn[bi.dstNum - 1].pivot = 1;
