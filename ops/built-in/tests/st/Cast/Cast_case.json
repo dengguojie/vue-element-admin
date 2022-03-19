@@ -1192,5 +1192,63 @@
       }
     ],
     "case_name": "test_dynamic_Cast_001"
+  },
+  {
+    "op": "Cast",
+    "input_desc": [
+      {
+        "shape": [-1, -1],
+        "shape_range": [[1, 1024],[1, 1024]],
+        "typical_shape": [16, 32],
+        "format": "ND",
+        "name": "x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [16, 32],
+        "format": "ND",
+        "name": "y",
+        "type": "int8"
+      }
+    ],
+    "attr": [
+      {
+        "name": "dst_type",
+        "type": "int",
+        "value": 2
+      }
+    ],
+    "case_name": "test_dynamic_Cast_002"
+  },
+  {
+    "op": "Cast",
+    "input_desc": [
+      {
+        "shape": [-1, -1],
+        "shape_range": [[1, 1024],[1, 1024]],
+        "typical_shape": [16, 32],
+        "format": "ND",
+        "name": "x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [16, 32],
+        "format": "ND",
+        "name": "y",
+        "type": "bool"
+      }
+    ],
+    "attr": [
+      {
+        "name": "dst_type",
+        "type": "int",
+        "value": 12
+      }
+    ],
+    "case_name": "test_dynamic_Cast_003"
   }
 ]

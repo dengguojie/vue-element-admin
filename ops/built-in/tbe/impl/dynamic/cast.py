@@ -114,13 +114,20 @@ def _float16_process(data, dst_type):
     """
     deal with src dtype=float16 case
     """
-    check_list_value = ("uint8", "int32", "float32", "bfloat16")
+    check_list_value = ("uint8", "int32", "float32", "bfloat16", "int8", "bool")
     para_check.check_dtype(dst_type, check_list_value, param_name="from_fp16_to_dsttype")
     if dst_type == "float32":
         return tbe.cast_to(data, "float32")
 
     if dst_type == "int32":
         return tbe.cast_to(data, "int32")
+    
+    if dst_type == "int8":
+        return tbe.cast_to(data, "int8")
+
+    if dst_type == "bool":
+        res = tbe.vcmp(data, 0.0, "ne")
+        return res
 
     if dst_type == "uint8":
         if not tbe_platform.api_check_support("tbe.dsl.cast_to", "s322f16") and \
@@ -207,7 +214,7 @@ def check_supported(input_x, output_y, dst_type, kernel_name="cast"):
 
     check_list = []
     if src_type == "float16":
-        check_list = ["float32", "int32", "uint8", "bfloat16"]
+        check_list = ["float32", "int32", "uint8", "bfloat16", "int8", "bool"]
     elif src_type == "float32":
         check_list = ["float16", "int32", "int64", "bfloat16"]
     elif src_type == "int8":
