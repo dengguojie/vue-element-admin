@@ -43,6 +43,7 @@ class TopKFusionPass : public PatternFusionBasePass {
 
  private:
   const string kFusedOpType = "TopKD";
+  bool IsInsertTransposeForOutput(NodePtr& src_node, const int32_t output_index);
   bool CheckMultiCoreSegment(ge::NodePtr& topk_node, SegmentCalcParams& calcParams);
   Status AddMultiMergeNode(ge::ComputeGraph& graph, ge::NodePtr& topk_node, ge::NodePtr& segmentsort_node,
                            int64_t segment_num, SegmentCalcParams& calcParams, vector<NodePtr>& fusion_nodes);
