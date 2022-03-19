@@ -127,8 +127,8 @@ static Status AddReduceSumNode(ge::ComputeGraph& graph, const ge::GeTensorDesc& 
 }
 
 template<typename _InAnchor>
-static Status AddTransposeNode(ge::ComputeGraph& graph, const ge::GeTensorDesc& x_desc, const ge::GeTensorDesc& y_desc, 
-    ge::NodePtr& new_node, const vector<int64_t>& perm, const vector<int64_t>& shape, 
+static Status AddTransposeNode(ge::ComputeGraph& graph, const ge::GeTensorDesc& x_desc, const ge::GeTensorDesc& y_desc,
+    ge::NodePtr& new_node, const vector<int64_t>& perm, const vector<int64_t>& shape,
     bool transpose_first, const string& node_name, _InAnchor in_anchor)
 {
     OP_LOGI("MultiHeadAttentionGrad", "Define %s begin", node_name.c_str());
@@ -147,7 +147,7 @@ static Status AddTransposeNode(ge::ComputeGraph& graph, const ge::GeTensorDesc& 
 
 template<typename _InAnchor1, typename _InAnchor2>
 static Status AddBatchMatmulNode(ge::ComputeGraph& graph, ge::OpDescPtr& opDesc, const ge::GeTensorDesc& x1_desc, const ge::GeTensorDesc& x2_desc,
-    const ge::GeTensorDesc& y_desc, ge::NodePtr& new_node, bool adj_x1, bool adj_x2, 
+    const ge::GeTensorDesc& y_desc, ge::NodePtr& new_node, bool adj_x1, bool adj_x2,
     const string& node_name, _InAnchor1 in_anchor1, _InAnchor2 in_anchor2)
 {
     OP_LOGI("MultiHeadAttentionGrad", "Define %s begin", node_name.c_str());
@@ -164,7 +164,7 @@ static Status AddBatchMatmulNode(ge::ComputeGraph& graph, ge::OpDescPtr& opDesc,
     return SUCCESS;
 }
 
-static Status AddConstNode(ge::ComputeGraph& graph, const ge::GeTensorDesc& y_desc, ge::NodePtr& new_node, 
+static Status AddConstNode(ge::ComputeGraph& graph, const ge::GeTensorDesc& y_desc, ge::NodePtr& new_node,
     uint8_t* data_ptr, size_t size, const string& node_name)
 {
     OP_LOGI("MultiHeadAttentionGrad", "Define %s begin", node_name.c_str());
@@ -179,7 +179,7 @@ static Status AddConstNode(ge::ComputeGraph& graph, const ge::GeTensorDesc& y_de
 }
 
 template<typename _InAnchor>
-static Status AddCastNode(ge::ComputeGraph& graph, ge::OpDescPtr& opDesc, const ge::GeTensorDesc& x_desc, 
+static Status AddCastNode(ge::ComputeGraph& graph, ge::OpDescPtr& opDesc, const ge::GeTensorDesc& x_desc,
     const ge::GeTensorDesc& y_desc, ge::NodePtr& new_node, int32_t dst_type,
     const string& node_name, _InAnchor in_anchor)
 {
@@ -195,7 +195,7 @@ static Status AddCastNode(ge::ComputeGraph& graph, ge::OpDescPtr& opDesc, const 
 }
 
 template<typename _InAnchor1, typename _InAnchor2>
-static Status AddSoftmaxGradNode(ge::ComputeGraph& graph, ge::OpDescPtr& opDesc, const ge::GeTensorDesc& softmax_desc, 
+static Status AddSoftmaxGradNode(ge::ComputeGraph& graph, ge::OpDescPtr& opDesc, const ge::GeTensorDesc& softmax_desc,
     const ge::GeTensorDesc& grad_softmax_desc, const ge::GeTensorDesc& y_desc, ge::NodePtr& new_node, vector<int64_t> axes,
     const string& node_name, _InAnchor1 in_anchor1, _InAnchor2 in_anchor2)
 {
@@ -236,17 +236,17 @@ Status MultiHeadAttentionGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping
     AttrUtils::GetFloat(multiHeadAttentionGradDesc, "keep_prob", keep_prob);
     AttrUtils::GetBool(multiHeadAttentionGradDesc, "softmax_use_float", softmax_use_float);
     AttrUtils::GetListBool(multiHeadAttentionGradDesc, "bias_grad_mask", bias_grad_mask);
-    FUSION_PASS_CHECK((attn_head_num == 0 || attn_dim_per_head ==0 || src_len == 0 || tgt_len==0), 
+    FUSION_PASS_CHECK((attn_head_num == 0 || attn_dim_per_head ==0 || src_len == 0 || tgt_len==0),
         OP_LOGE(FUSED_OP_TYPE.c_str(), "MultiHeadAttention's attn_head_num, attn_dim_per_head, src_len, tgt_len should not be 0, fusion failed."),
                     return PARAM_INVALID);
-    FUSION_PASS_CHECK(!(attn_head_num % 16 == 0 && attn_dim_per_head % 16 ==  0 && src_len % 16 ==  0 && tgt_len % 16 == 0), 
+    FUSION_PASS_CHECK(!(attn_head_num % 16 == 0 && attn_dim_per_head % 16 ==  0 && src_len % 16 ==  0 && tgt_len % 16 == 0),
         OP_LOGE(FUSED_OP_TYPE.c_str(), "MultiHeadAttention's attn_head_num, attn_dim_per_head, src_len, tgt_len should align of 16, fusion failed."),
                     return PARAM_INVALID);
     const int64_t batch = query_shape[0] / tgt_len;
     const int64_t weight_col = attn_head_num * attn_dim_per_head;
     const float scale = 1.0 / sqrt(attn_dim_per_head);
 
-    const vector<int64_t> perm({0,2,1,3});
+    const vector<int64_t> perm({0, 2, 1, 3});
     const vector<int64_t> out_proj_input_matmul_shape({batch * tgt_len, weight_col});
     const vector<int64_t> out_proj_weight_matmul_shape({weight_col, weight_col});
     const vector<int64_t> bias_reducesum_shape({1, weight_col});
@@ -281,7 +281,7 @@ Status MultiHeadAttentionGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping
         multiHeadAttentionGradNode->GetInDataAnchor(13)->GetPeerOutAnchor(),
         multiHeadAttentionGradNode->GetInDataAnchor(12)->GetPeerOutAnchor()
     );
-    AddNodeLinkOut(outProjWeightMatmulNode->GetOutDataAnchor(0), 
+    AddNodeLinkOut(outProjWeightMatmulNode->GetOutDataAnchor(0),
         multiHeadAttentionGradNode->GetOutDataAnchor(3), "out_proj_weight_matmul");
 
     // bias_empty
@@ -300,7 +300,7 @@ Status MultiHeadAttentionGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping
         OP_LOGI(FUSED_OP_TYPE.c_str(), "Define out_proj_bias empty begin");
         outProjBiasNode = biasEmptyNode;
     }
-    AddNodeLinkOut(outProjBiasNode->GetOutDataAnchor(0), 
+    AddNodeLinkOut(outProjBiasNode->GetOutDataAnchor(0),
         multiHeadAttentionGradNode->GetOutDataAnchor(10), "out_proj_bias");
 
     // context_trans
@@ -446,7 +446,7 @@ Status MultiHeadAttentionGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping
         attnScoresMulsNode->GetOutDataAnchor(0),
         multiHeadAttentionGradNode->GetInDataAnchor(3)->GetPeerOutAnchor()
     );
-    AddNodeLinkOut(queryMatmulNode->GetOutDataAnchor(0), 
+    AddNodeLinkOut(queryMatmulNode->GetOutDataAnchor(0),
         multiHeadAttentionGradNode->GetOutDataAnchor(4), "query_matmul");
 
     // query_weight_matmul
@@ -458,7 +458,7 @@ Status MultiHeadAttentionGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping
         attnScoresMulsNode->GetOutDataAnchor(0),
         multiHeadAttentionGradNode->GetInDataAnchor(0)->GetPeerOutAnchor()
     );
-    AddNodeLinkOut(queryWeightMatmulNode->GetOutDataAnchor(0), 
+    AddNodeLinkOut(queryWeightMatmulNode->GetOutDataAnchor(0),
         multiHeadAttentionGradNode->GetOutDataAnchor(0), "query_weight_matmul");
 
     // query_bias
@@ -470,7 +470,7 @@ Status MultiHeadAttentionGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping
         OP_LOGI(FUSED_OP_TYPE.c_str(), "Define query_bias empty begin");
         queryBiasNode = biasEmptyNode;
     }
-    AddNodeLinkOut(queryBiasNode->GetOutDataAnchor(0), 
+    AddNodeLinkOut(queryBiasNode->GetOutDataAnchor(0),
         multiHeadAttentionGradNode->GetOutDataAnchor(7), "query_bias");
 
     // key_matmul
@@ -482,7 +482,7 @@ Status MultiHeadAttentionGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping
         keyTransNode->GetOutDataAnchor(0),
         multiHeadAttentionGradNode->GetInDataAnchor(4)->GetPeerOutAnchor()
     );
-    AddNodeLinkOut(keyMatmulNode->GetOutDataAnchor(0), 
+    AddNodeLinkOut(keyMatmulNode->GetOutDataAnchor(0),
         multiHeadAttentionGradNode->GetOutDataAnchor(5), "key_matmul");
 
     // key_weight_matmul
@@ -494,7 +494,7 @@ Status MultiHeadAttentionGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping
         keyTransNode->GetOutDataAnchor(0),
         multiHeadAttentionGradNode->GetInDataAnchor(1)->GetPeerOutAnchor()
     );
-    AddNodeLinkOut(keyWeightMatmulNode->GetOutDataAnchor(0), 
+    AddNodeLinkOut(keyWeightMatmulNode->GetOutDataAnchor(0),
         multiHeadAttentionGradNode->GetOutDataAnchor(1), "key_weight_matmul");
 
     // key_bias
@@ -506,7 +506,7 @@ Status MultiHeadAttentionGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping
         OP_LOGI(FUSED_OP_TYPE.c_str(), "Define key_bias empty begin");
         keyBiasNode = biasEmptyNode;
     }
-    AddNodeLinkOut(keyBiasNode->GetOutDataAnchor(0), 
+    AddNodeLinkOut(keyBiasNode->GetOutDataAnchor(0),
         multiHeadAttentionGradNode->GetOutDataAnchor(8), "key_bias");
 
     // value_matmul
@@ -518,7 +518,7 @@ Status MultiHeadAttentionGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping
         valueTransNode->GetOutDataAnchor(0),
         multiHeadAttentionGradNode->GetInDataAnchor(5)->GetPeerOutAnchor()
     );
-    AddNodeLinkOut(valueMatmulNode->GetOutDataAnchor(0), 
+    AddNodeLinkOut(valueMatmulNode->GetOutDataAnchor(0),
         multiHeadAttentionGradNode->GetOutDataAnchor(6), "value_matmul");
 
     // value_weight_matmul
@@ -530,7 +530,7 @@ Status MultiHeadAttentionGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping
         valueTransNode->GetOutDataAnchor(0),
         multiHeadAttentionGradNode->GetInDataAnchor(2)->GetPeerOutAnchor()
     );
-    AddNodeLinkOut(valueWeightMatmulNode->GetOutDataAnchor(0), 
+    AddNodeLinkOut(valueWeightMatmulNode->GetOutDataAnchor(0),
         multiHeadAttentionGradNode->GetOutDataAnchor(2), "value_weight_matmul");
 
     // value_bias
@@ -542,7 +542,7 @@ Status MultiHeadAttentionGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping
         OP_LOGI(FUSED_OP_TYPE.c_str(), "Define value_bias empty begin");
         valueBiasNode = biasEmptyNode;
     }
-    AddNodeLinkOut(valueBiasNode->GetOutDataAnchor(0), 
+    AddNodeLinkOut(valueBiasNode->GetOutDataAnchor(0),
         multiHeadAttentionGradNode->GetOutDataAnchor(9), "value_bias");
 
     // unlink all control input
@@ -576,4 +576,4 @@ Status MultiHeadAttentionGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping
 }
 
 REGISTER_PASS("MultiHeadAttentionGradFusionPass", BUILT_IN_GRAPH_PASS, MultiHeadAttentionGradFusionPass);
-} // namespace 
+} // namespace

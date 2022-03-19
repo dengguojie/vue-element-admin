@@ -105,8 +105,8 @@ static Status AddMatmulNode(ge::ComputeGraph& graph, const ge::GeTensorDesc& x1_
 }
 
 template<typename _InAnchor, typename _OutAnchor>
-static Status AddTransposeNode(ge::ComputeGraph& graph, const ge::GeTensorDesc& x_desc, const ge::GeTensorDesc& y_desc, 
-    ge::NodePtr& new_node, const vector<int64_t>& perm, const vector<int64_t>& shape, 
+static Status AddTransposeNode(ge::ComputeGraph& graph, const ge::GeTensorDesc& x_desc, const ge::GeTensorDesc& y_desc,
+    ge::NodePtr& new_node, const vector<int64_t>& perm, const vector<int64_t>& shape,
     bool transpose_first, const string& node_name, _InAnchor in_anchor, _OutAnchor out_anchor)
 {
     OP_LOGI("MultiHeadAttention", "Define %s begin", node_name.c_str());
@@ -126,7 +126,7 @@ static Status AddTransposeNode(ge::ComputeGraph& graph, const ge::GeTensorDesc& 
 
 template<typename _InAnchor1, typename _InAnchor2>
 static Status AddBatchMatmulNode(ge::ComputeGraph& graph, const ge::GeTensorDesc& x1_desc, const ge::GeTensorDesc& x2_desc,
-    const ge::GeTensorDesc& y_desc, ge::NodePtr& new_node, bool adj_x1, bool adj_x2, 
+    const ge::GeTensorDesc& y_desc, ge::NodePtr& new_node, bool adj_x1, bool adj_x2,
     const string& node_name, _InAnchor1 in_anchor1, _InAnchor2 in_anchor2)
 {
     OP_LOGI("MultiHeadAttention", "Define %s begin", node_name.c_str());
@@ -144,7 +144,7 @@ static Status AddBatchMatmulNode(ge::ComputeGraph& graph, const ge::GeTensorDesc
     return SUCCESS;
 }
 
-static Status AddConstNode(ge::ComputeGraph& graph, const ge::GeTensorDesc& y_desc, ge::NodePtr& new_node, 
+static Status AddConstNode(ge::ComputeGraph& graph, const ge::GeTensorDesc& y_desc, ge::NodePtr& new_node,
     uint8_t* data_ptr, size_t size, const string& node_name)
 {
     OP_LOGI("MultiHeadAttention", "Define %s begin", node_name.c_str());
@@ -159,8 +159,8 @@ static Status AddConstNode(ge::ComputeGraph& graph, const ge::GeTensorDesc& y_de
 }
 
 template<typename _InAnchor1, typename _InAnchor2, typename _InAnchor3>
-static Status AddDropOutDoMaskNode(ge::ComputeGraph& graph, ge::OpDescPtr& opDesc, const ge::GeTensorDesc& x_desc, 
-    const ge::GeTensorDesc& mask_desc, const ge::GeTensorDesc& prob_desc, const ge::GeTensorDesc& y_desc, ge::NodePtr& new_node, 
+static Status AddDropOutDoMaskNode(ge::ComputeGraph& graph, ge::OpDescPtr& opDesc, const ge::GeTensorDesc& x_desc,
+    const ge::GeTensorDesc& mask_desc, const ge::GeTensorDesc& prob_desc, const ge::GeTensorDesc& y_desc, ge::NodePtr& new_node,
     const string& node_name, _InAnchor1 in_anchor1, _InAnchor2 in_anchor2, _InAnchor3 in_anchor3)
 {
     OP_LOGI("MultiHeadAttention", "Define %s begin", node_name.c_str());
@@ -178,7 +178,7 @@ static Status AddDropOutDoMaskNode(ge::ComputeGraph& graph, ge::OpDescPtr& opDes
 }
 
 template<typename _InAnchor>
-static Status AddCastNode(ge::ComputeGraph& graph, ge::OpDescPtr& opDesc, const ge::GeTensorDesc& x_desc, 
+static Status AddCastNode(ge::ComputeGraph& graph, ge::OpDescPtr& opDesc, const ge::GeTensorDesc& x_desc,
     const ge::GeTensorDesc& y_desc, ge::NodePtr& new_node, int32_t dst_type,
     const string& node_name, _InAnchor in_anchor)
 {
@@ -194,7 +194,7 @@ static Status AddCastNode(ge::ComputeGraph& graph, ge::OpDescPtr& opDesc, const 
 }
 
 template<typename _InAnchor>
-static Status AddSoftmaxNode(ge::ComputeGraph& graph, ge::OpDescPtr& opDesc, const ge::GeTensorDesc& x_desc, 
+static Status AddSoftmaxNode(ge::ComputeGraph& graph, ge::OpDescPtr& opDesc, const ge::GeTensorDesc& x_desc,
     const ge::GeTensorDesc& y_desc, ge::NodePtr& new_node, vector<int64_t> axes,
     const string& node_name, _InAnchor in_anchor)
 {
@@ -231,10 +231,10 @@ Status MultiHeadAttentionFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& ma
     AttrUtils::GetInt(multiHeadAttentionDesc, "tgt_len", tgt_len);
     AttrUtils::GetFloat(multiHeadAttentionDesc, "keep_prob", keep_prob);
     AttrUtils::GetBool(multiHeadAttentionDesc, "softmax_use_float", softmax_use_float);
-    FUSION_PASS_CHECK((attn_head_num <= 0 || attn_dim_per_head <= 0 || src_len <= 0 || tgt_len <= 0), 
+    FUSION_PASS_CHECK((attn_head_num <= 0 || attn_dim_per_head <= 0 || src_len <= 0 || tgt_len <= 0),
         OP_LOGE(FUSED_OP_TYPE.c_str(), "MultiHeadAttention's attn_head_num, attn_dim_per_head, src_len, tgt_len should greater than 0, fusion failed."),
                     return PARAM_INVALID);
-    FUSION_PASS_CHECK(!(attn_head_num % 16 == 0 && attn_dim_per_head % 16 ==  0 && src_len % 16 ==  0 && tgt_len % 16 == 0), 
+    FUSION_PASS_CHECK(!(attn_head_num % 16 == 0 && attn_dim_per_head % 16 ==  0 && src_len % 16 ==  0 && tgt_len % 16 == 0),
         OP_LOGE(FUSED_OP_TYPE.c_str(), "MultiHeadAttention's attn_head_num, attn_dim_per_head, src_len, tgt_len should align of 16, fusion failed."),
                     return PARAM_INVALID);
     const int64_t batch = query_shape[0] / tgt_len;
@@ -243,8 +243,8 @@ Status MultiHeadAttentionFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& ma
     const int64_t attn_res_shape = batch * attn_head_num * src_len * tgt_len;
     const float scale = 1.0 / sqrt(attn_dim_per_head);
     
-    const vector<int64_t> perm({0,2,1,3});
-    const vector<int64_t> query_matmul_shape({batch*tgt_len, weight_col}); 
+    const vector<int64_t> perm({0, 2, 1, 3});
+    const vector<int64_t> query_matmul_shape({batch*tgt_len, weight_col});
     const vector<int64_t> kv_matmul_shape({batch*src_len, weight_col});
     const vector<int64_t> new_query_shape({batch, tgt_len, attn_head_num, attn_dim_per_head});
     const vector<int64_t> transpose_new_query_shape({batch, attn_head_num, tgt_len, attn_dim_per_head});
@@ -321,7 +321,7 @@ Status MultiHeadAttentionFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& ma
     GeTensorDesc attnScoresBatchOutputDesc;
     SetNZTensorDesc(attnScoresBatchOutputDesc, attn_batchmatmul_shape);
     NodePtr attnScoresBatchNode;
-    AddBatchMatmulNode(graph, queryTransOutputDesc, keyTransOutputDesc, attnScoresBatchOutputDesc, attnScoresBatchNode, 
+    AddBatchMatmulNode(graph, queryTransOutputDesc, keyTransOutputDesc, attnScoresBatchOutputDesc, attnScoresBatchNode,
         false, true, "attn_scores_batchmatmul", queryTransNode->GetOutDataAnchor(0), keyTransNode->GetOutDataAnchor(0)
     );
  
@@ -351,15 +351,15 @@ Status MultiHeadAttentionFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& ma
         // attn_scores_softmax
         AddSoftmaxNode(graph, beforeCastOpDesc, castOutputDesc, castOutputDesc, beforeCastNode, {-1}, "attn_scores_softmax",
             castNode->GetOutDataAnchor(0));
-        AddNodeLinkOut(beforeCastNode->GetOutDataAnchor(0), 
+        AddNodeLinkOut(beforeCastNode->GetOutDataAnchor(0),
             multiHeadAttentionNode->GetOutDataAnchor(5), "attn_scores_softmax");
         // cast_after_softmax
         AddCastNode(graph, softmaxOpDesc, castOutputDesc, attnScoresBatchOutputDesc, softmaxNode, DT_FLOAT16, "cast_after_softmax",
             beforeCastNode->GetOutDataAnchor(0));
     } else {
-        AddSoftmaxNode(graph, softmaxOpDesc, attnScoresBatchOutputDesc, attnScoresBatchOutputDesc, 
+        AddSoftmaxNode(graph, softmaxOpDesc, attnScoresBatchOutputDesc, attnScoresBatchOutputDesc,
             softmaxNode, {-1}, "attn_scores_softmax", attnScoresAddNode->GetOutDataAnchor(0));
-        AddNodeLinkOut(softmaxNode->GetOutDataAnchor(0), 
+        AddNodeLinkOut(softmaxNode->GetOutDataAnchor(0),
             multiHeadAttentionNode->GetOutDataAnchor(5), "attn_scores_softmax");
     }
 
@@ -377,7 +377,7 @@ Status MultiHeadAttentionFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& ma
             // attn_res_shape
             GeTensorDesc attnResOutputDesc = GeTensorDesc(GeShape({1}), FORMAT_ND, DT_INT64);
             NodePtr attnResShapeNode;
-            AddConstNode(graph, attnResOutputDesc, attnResShapeNode, reinterpret_cast<uint8_t*>(const_cast<int64_t*>(&attn_res_shape)), 
+            AddConstNode(graph, attnResOutputDesc, attnResShapeNode, reinterpret_cast<uint8_t*>(const_cast<int64_t*>(&attn_res_shape)),
                 sizeof(int64_t), "attn_res_shape");
 
             // dropout_gen_mask
@@ -392,7 +392,7 @@ Status MultiHeadAttentionFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& ma
             NodePtr dropoutMaskNode = graph.AddNode(dropoutGenMaskOpDesc);
             GraphUtils::AddEdge(attnResShapeNode->GetOutDataAnchor(0), dropoutMaskNode->GetInDataAnchor(0));
             GraphUtils::AddEdge(probNode->GetOutDataAnchor(0), dropoutMaskNode->GetInDataAnchor(1));
-            AddNodeLinkOut(dropoutMaskNode->GetOutDataAnchor(0), 
+            AddNodeLinkOut(dropoutMaskNode->GetOutDataAnchor(0),
                 multiHeadAttentionNode->GetOutDataAnchor(1), "dropout_gen_mask");
             // dropout_do_mask
             AddDropOutDoMaskNode(graph, attnResOpDesc, attnScoresBatchOutputDesc, dropoutMaskTensorDesc, probTensorDesc,
@@ -400,13 +400,13 @@ Status MultiHeadAttentionFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& ma
                 dropoutMaskNode->GetOutDataAnchor(0), probNode->GetOutDataAnchor(0)
             );
         } else {
-            AddNodeLinkOut(multiHeadAttentionNode->GetInDataAnchor(12)->GetPeerOutAnchor(), 
+            AddNodeLinkOut(multiHeadAttentionNode->GetInDataAnchor(12)->GetPeerOutAnchor(),
                 multiHeadAttentionNode->GetOutDataAnchor(1), "dropout_mask");
             // dropout_do_mask
-            AddDropOutDoMaskNode(graph, attnResOpDesc, attnScoresBatchOutputDesc, 
-                *(multiHeadAttentionDesc->MutableInputDesc("dropout_mask")), 
-                probTensorDesc, attnScoresBatchOutputDesc, attnResNode, "dropout_do_mask", 
-                softmaxNode->GetOutDataAnchor(0), multiHeadAttentionNode->GetInDataAnchor(12)->GetPeerOutAnchor(), 
+            AddDropOutDoMaskNode(graph, attnResOpDesc, attnScoresBatchOutputDesc,
+                *(multiHeadAttentionDesc->MutableInputDesc("dropout_mask")),
+                probTensorDesc, attnScoresBatchOutputDesc, attnResNode, "dropout_do_mask",
+                softmaxNode->GetOutDataAnchor(0), multiHeadAttentionNode->GetInDataAnchor(12)->GetPeerOutAnchor(),
                 probNode->GetOutDataAnchor(0)
             );
         }
@@ -416,21 +416,21 @@ Status MultiHeadAttentionFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& ma
         std::fill(outmask.begin(), outmask.end(), full_mask);
         GeTensorPtr maskValue = std::make_shared<ge::GeTensor>(dropoutMaskTensorDesc, outmask.data(), gen_mask_shape);
         NodePtr dropoutMaskNode;
-        AddConstNode(graph, dropoutMaskTensorDesc, dropoutMaskNode, 
+        AddConstNode(graph, dropoutMaskTensorDesc, dropoutMaskNode,
             outmask.data(), gen_mask_shape, "dropout_empty");
-        AddNodeLinkOut(dropoutMaskNode->GetOutDataAnchor(0), 
+        AddNodeLinkOut(dropoutMaskNode->GetOutDataAnchor(0),
             multiHeadAttentionNode->GetOutDataAnchor(1), "dropout_empty");
         attnResOpDesc = softmaxOpDesc;
         attnResNode = softmaxNode;
     }
     // relink out
-    AddNodeLinkOut(attnResNode->GetOutDataAnchor(0), 
+    AddNodeLinkOut(attnResNode->GetOutDataAnchor(0),
         multiHeadAttentionNode->GetOutDataAnchor(6), "attn_res");
     // context_batchmatmul
     GeTensorDesc contextBatchOutputDesc;
     SetNZTensorDesc(contextBatchOutputDesc, context_batchmatmul_shape);
     NodePtr contextBatchNode;
-    AddBatchMatmulNode(graph, attnScoresBatchOutputDesc, valueTransOutputDesc, contextBatchOutputDesc, contextBatchNode, 
+    AddBatchMatmulNode(graph, attnScoresBatchOutputDesc, valueTransOutputDesc, contextBatchOutputDesc, contextBatchNode,
         false, false, "context_batchmatmul", attnResNode->GetOutDataAnchor(0), valueTransNode->GetOutDataAnchor(0)
     );
 
@@ -445,13 +445,13 @@ Status MultiHeadAttentionFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& ma
     // result
     NodePtr resultNode;
     AddMatmulNode(graph, contextTransOutputDesc, multiHeadAttentionDesc->GetInputDesc("out_proj_weight"),
-        multiHeadAttentionDesc->MutableInputDesc("out_proj_bias"), multiHeadAttentionDesc->GetOutputDesc("y"), 
+        multiHeadAttentionDesc->MutableInputDesc("out_proj_bias"), multiHeadAttentionDesc->GetOutputDesc("y"),
         resultNode, false, true, "result",
         contextTransNode->GetOutDataAnchor(0), multiHeadAttentionNode->GetInDataAnchor(7)->GetPeerOutAnchor(),
         multiHeadAttentionNode->GetInDataAnchor(11)->GetPeerOutAnchor()
     );
     // link out
-    AddNodeLinkOut(resultNode->GetOutDataAnchor(0), 
+    AddNodeLinkOut(resultNode->GetOutDataAnchor(0),
         multiHeadAttentionNode->GetOutDataAnchor(0), "result");
 
     // unlink all control input
@@ -481,4 +481,4 @@ Status MultiHeadAttentionFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& ma
 }
 
 REGISTER_PASS("MultiHeadAttentionFusionPass", BUILT_IN_GRAPH_PASS, MultiHeadAttentionFusionPass);
-} // namespace 
+} // namespace
