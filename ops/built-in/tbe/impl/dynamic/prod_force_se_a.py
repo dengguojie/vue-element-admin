@@ -358,17 +358,20 @@ class ProdForceSeA:
                             self._v4dtrans_change_4(deriv_input_ub_fp32, deriv_trans_ub_fp32, nnei_dst_len)
                             for idx in range(0, 3):
                                 dev_vadd_offset = ndescrpt * idx + self.nnei_unit_len * i
-                                self.tik_instance.vadd(Constant.MASK_FLOAT32, deriv_nnei_vcpadd_ub_fp32[dev_vadd_offset],
+                                self.tik_instance.vadd(Constant.MASK_FLOAT32,
+                                                       deriv_nnei_vcpadd_ub_fp32[dev_vadd_offset],
                                                        deriv_input_ub_fp32[self.nnei_unit_len * idx],
                                                        deriv_input_ub_fp32[self.nnei_unit_len * idx + nnei_dst_len],
                                                        self.nnei_unit_len // Constant.MASK_FLOAT32,
                                                        1, 1, 1, 8, 8, 8)
-                                self.tik_instance.vadd(Constant.MASK_FLOAT32, deriv_nnei_vcpadd_ub_fp32[dev_vadd_offset],
+                                self.tik_instance.vadd(Constant.MASK_FLOAT32,
+                                                       deriv_nnei_vcpadd_ub_fp32[dev_vadd_offset],
                                                        deriv_nnei_vcpadd_ub_fp32[dev_vadd_offset],
                                                        deriv_input_ub_fp32[self.nnei_unit_len * idx + nnei_dst_len * 2],
                                                        self.nnei_unit_len // Constant.MASK_FLOAT32,
                                                        1, 1, 1, 8, 8, 8)
-                                self.tik_instance.vadd(Constant.MASK_FLOAT32, deriv_nnei_vcpadd_ub_fp32[dev_vadd_offset],
+                                self.tik_instance.vadd(Constant.MASK_FLOAT32,
+                                                       deriv_nnei_vcpadd_ub_fp32[dev_vadd_offset],
                                                        deriv_nnei_vcpadd_ub_fp32[dev_vadd_offset],
                                                        deriv_input_ub_fp32[self.nnei_unit_len * idx + nnei_dst_len * 3],
                                                        self.nnei_unit_len // Constant.MASK_FLOAT32,
@@ -442,11 +445,12 @@ class ProdForceSeA:
                                                                               (self.nnei_unit_len, ),
                                                                               name="nlist_ub_int32",
                                                                               scope=tik.scope_ubuf)
-                                    nlist_offset = \
-                                        (loop_offset + nloc_offset + nu_idx) * self.nnei + nnei_idx * self.nnei_unit_len
+                                    nlist_offset = (loop_offset + nloc_offset + nu_idx) * self.nnei \
+                                        + nnei_idx * self.nnei_unit_len
                                     self.tik_instance.data_move(nlist_ub_int32,
                                                                 self.nlist_gm[nlist_offset],
-                                                                0, 1, self.nnei_unit_len // Constant.BLOCK_FLOAT32, 0, 0)
+                                                                0, 1, self.nnei_unit_len // Constant.BLOCK_FLOAT32,
+                                                                0, 0)
                                     if self.nnei_unit_len // Constant.MASK_FLOAT32 > 0:
                                         self.tik_instance.vmuls(Constant.MASK_FLOAT32, nlist_assis_ub_int32,
                                                                 nlist_ub_int32, 4,
@@ -619,13 +623,13 @@ class ProdForceSeA:
                             if vcpadd_left_2 > 0:
                                 vcpadd_offset = vcpadd_repeat_2 * Constant.MASK_FLOAT32
                                 self.tik_instance.vcpadd(vcpadd_left_2,
-                                                        deriv_nnei_vcpadd_ub_fp32[i * nnei_tail_fill + vcpadd_offset // 2],
-                                                        deriv_input_ub_fp32[vcpadd_offset],
-                                                        1, 1, 1, 8)
+                                    deriv_nnei_vcpadd_ub_fp32[i * nnei_tail_fill + vcpadd_offset // 2],
+                                    deriv_input_ub_fp32[vcpadd_offset],
+                                    1, 1, 1, 8)
                                 self.tik_instance.vcpadd(vcpadd_left_2,
-                                                        deriv_nnei_vcpadd_ub_fp32[vcpadd_nloc_offset + vcpadd_offset // 2],
-                                                        deriv_input_ub_fp32[nnei_tail_fill * 2 + vcpadd_offset],
-                                                        1, 1, 1, 8)
+                                    deriv_nnei_vcpadd_ub_fp32[vcpadd_nloc_offset + vcpadd_offset // 2],
+                                    deriv_input_ub_fp32[nnei_tail_fill * 2 + vcpadd_offset],
+                                    1, 1, 1, 8)
                                 self.tik_instance.vcpadd(vcpadd_left_2,
                                     deriv_nnei_vcpadd_ub_fp32[vcpadd_nloc_offset_1 + vcpadd_offset // 2],
                                     deriv_input_ub_fp32[nnei_tail_fill * 4 + vcpadd_offset],
@@ -647,17 +651,17 @@ class ProdForceSeA:
                                                            nnei_tail_loop,
                                                            1, 1, 1, 8, 8, 8)
                                     self.tik_instance.vadd(Constant.MASK_FLOAT32,
-                                                           deriv_nnei_vcpadd_ub_fp32[dev_vadd_base],
-                                                           deriv_nnei_vcpadd_ub_fp32[dev_vadd_base],
-                                                           deriv_input_ub_fp32[nnei_tail_fill * idx + nnei_dst_len * 2],
-                                                           nnei_tail_loop,
-                                                           1, 1, 1, 8, 8, 8)
+                                        deriv_nnei_vcpadd_ub_fp32[dev_vadd_base],
+                                        deriv_nnei_vcpadd_ub_fp32[dev_vadd_base],
+                                        deriv_input_ub_fp32[nnei_tail_fill * idx + nnei_dst_len * 2],
+                                        nnei_tail_loop,
+                                        1, 1, 1, 8, 8, 8)
                                     self.tik_instance.vadd(Constant.MASK_FLOAT32,
-                                                           deriv_nnei_vcpadd_ub_fp32[dev_vadd_base],
-                                                           deriv_nnei_vcpadd_ub_fp32[dev_vadd_base],
-                                                           deriv_input_ub_fp32[nnei_tail_fill * idx + nnei_dst_len * 3],
-                                                           nnei_tail_loop,
-                                                           1, 1, 1, 8, 8, 8)
+                                        deriv_nnei_vcpadd_ub_fp32[dev_vadd_base],
+                                        deriv_nnei_vcpadd_ub_fp32[dev_vadd_base],
+                                        deriv_input_ub_fp32[nnei_tail_fill * idx + nnei_dst_len * 3],
+                                        nnei_tail_loop,
+                                        1, 1, 1, 8, 8, 8)
                                 if nnei_tail_left > 0:
                                     left_base = nnei_tail_fill * idx + nnei_tail_floor
                                     self.tik_instance.vadd(nnei_tail_left,
@@ -1038,11 +1042,13 @@ class ProdForceSeA:
                                         nnei_idx * self.nnei_unit_len
                                     self.tik_instance.data_move(nlist_ub_int32,
                                                                 self.nlist_gm[nlist_offset],
-                                                                0, 1, self.nnei_unit_len // Constant.BLOCK_FLOAT32, 0, 0)
+                                                                0, 1,
+                                                                self.nnei_unit_len // Constant.BLOCK_FLOAT32, 0, 0)
                                     if self.nnei_unit_len // Constant.MASK_FLOAT32 > 0:
                                         self.tik_instance.vmuls(Constant.MASK_FLOAT32, nlist_assis_ub_int32,
                                                                 nlist_ub_int32, 4,
-                                                                self.nnei_unit_len // Constant.MASK_FLOAT32, 1, 1, 8, 8)
+                                                                self.nnei_unit_len // Constant.MASK_FLOAT32,
+                                                                1, 1, 8, 8)
                                     if self.nnei_unit_len % Constant.MASK_FLOAT32 > 0:
                                         nlist_floor = _floor_fill(self.nnei_unit_len, Constant.MASK_FLOAT32)
                                         self.tik_instance.vmuls(self.nnei_unit_len % Constant.MASK_FLOAT32,
