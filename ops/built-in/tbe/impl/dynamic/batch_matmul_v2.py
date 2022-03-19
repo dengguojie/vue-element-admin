@@ -579,7 +579,7 @@ def _get_batch_range(range_x1: tuple, range_x2: tuple) -> list:
     return batch_range
 
 
-def _get_input_x1_range(range_x1: tuple, format_x1: str, trans_a: bool, op_type: str) -> list:
+def _get_input_x1_range(range_x1: tuple, format_x1: str, trans_a: bool, op_type: str, is_graph_mode: bool) -> list:
     range_len = BATCH_ND_LENGTH if format_x1 == 'ND' else BATCH_NZ_LENGTH
     if len(range_x1) >= range_len - 1:
         if format_x1 == 'FRACTAL_NZ':
@@ -596,12 +596,14 @@ def _get_input_x1_range(range_x1: tuple, format_x1: str, trans_a: bool, op_type:
         error_manager_vector.raise_err_specific_reson(op_type, "Lenth of x1_range illegal")
     m_range = list(range_x1[m_index])
     k_range_x1 = list(range_x1[k_x1_index])
+    if not is_graph_mode:
+        operation.get_op_context().add_addition("batch_range_x1", batch_range_x1)
     if trans_a:
         m_range, k_range_x1 = k_range_x1, m_range
     return [m_range, k_range_x1, batch_range_x1]
 
 
-def _get_input_x2_range(range_x2: tuple, format_x2: str, trans_b: bool, op_type: str) -> list:
+def _get_input_x2_range(range_x2: tuple, format_x2: str, trans_b: bool, op_type: str, is_graph_mode: bool) -> list:
     range_len = BATCH_ND_LENGTH if format_x2 == 'ND' else BATCH_NZ_LENGTH
     if len(range_x2) >= range_len - 1:
         if format_x2 == 'FRACTAL_NZ':
@@ -622,6 +624,8 @@ def _get_input_x2_range(range_x2: tuple, format_x2: str, trans_b: bool, op_type:
         error_manager_vector.raise_err_specific_reson(op_type, "Lenth of x1_range illegal")
     k_range_x2 = list(range_x2[k_x2_index])
     n_range = list(range_x2[n_index])
+    if not is_graph_mode:
+        operation.get_op_context().add_addition("batch_range_x2", batch_range_x2)
     if trans_b:
         k_range_x2, n_range = n_range, k_range_x2
     return [k_range_x2, n_range, batch_range_x2]
@@ -632,14 +636,15 @@ def _get_input_range(range_x1: tuple, format_x1: str, range_x2: tuple, format_x2
     """
     get range in batch, m, k, n and check range
     """
+    batch_range_x1, batch_range_x2 = None, None
     if range_x1:
-        m_range, k_range_x1, batch_range_x1 = _get_input_x1_range(range_x1, format_x1, trans_a, op_type)
+        m_range, k_range_x1, batch_range_x1 = _get_input_x1_range(range_x1, format_x1, trans_a, op_type, is_graph_mode)
     else:
         m_range = [1, None]
         k_range_x1 = [1, None]
 
     if range_x2:
-        k_range_x2, n_range, batch_range_x2 = _get_input_x2_range(range_x2, format_x2, trans_b, op_type)
+        k_range_x2, n_range, batch_range_x2 = _get_input_x2_range(range_x2, format_x2, trans_b, op_type, is_graph_mode)
     else:
         k_range_x2 = [1, None]
         n_range = [1, None]
@@ -660,8 +665,6 @@ def _get_input_range(range_x1: tuple, format_x1: str, range_x2: tuple, format_x2
     # in generalization func of fuzzy compile, only need check. Not add_addition
     batch_range = None
     if not is_graph_mode:
-        operation.get_op_context().add_addition("batch_range_x1", batch_range_x1)
-        operation.get_op_context().add_addition("batch_range_x2", batch_range_x2)
         batch_range = _get_batch_range(batch_range_x1, batch_range_x2)
 
     return [batch_range, m_range, k_range, n_range]
