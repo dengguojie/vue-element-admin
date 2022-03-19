@@ -27,6 +27,9 @@ FRAME_LEVEL = 2
 INT8_DTYPES = ("int8", "uint8")
 NEED_CAST_DTYPES = ("float32", "int32", "uint32")
 VNC_SUPPORT_DTYPES = ("int8", "uint8", "float16")
+DATA_MOVE_MODE = 2010
+VNCHWCONV_MODE_2011 = 2011
+VNCHWCONV_MODE_2012 = 2012
 
 
 # 'pylint: disable=too-many-locals
@@ -233,22 +236,22 @@ def _tiling_params_negative(args):
     else:
         c_gate = 56 * c0_len
     if axis_src_c1_size * c0_len >= c_gate or axis_dst_c_size == c0_len:  # use ubuf_2_ubuf
-        tp_201_tiling_mode = 2010
+        tp_201_tiling_mode = DATA_MOVE_MODE
         if axis_dst_r2nd_size < tdc.NI_16:  # in order to use more bandwidth
             tmp_src_c1_lp_unit = tp_201_ub_offset // axis_dst_r2nd_size // c0_len
         else:
             tmp_src_c1_lp_unit = tp_201_ub_offset // tdc.NI_16 // c0_len
     elif in_dtype not in INT8_DTYPES:
         if axis_dst_c_size * axis_dst_r2nd_size >= vnc_col_size // tdc.VNC_LINES:  # use full vnchwconv
-            tp_201_tiling_mode = 2011
+            tp_201_tiling_mode = VNCHWCONV_MODE_2011
         else:
-            tp_201_tiling_mode = 2012  # use part vnchwconv
+            tp_201_tiling_mode = VNCHWCONV_MODE_2012  # use part vnchwconv
         tmp_src_c1_lp_unit = vnc_col_size // c0_len // block_elem_cnt * block_elem_cnt
     else:
         if axis_dst_c_size * axis_dst_r2nd_size >= vnc_col_size // 2 // tdc.VNC_LINES:
-            tp_201_tiling_mode = 2011
+            tp_201_tiling_mode = VNCHWCONV_MODE_2011
         else:
-            tp_201_tiling_mode = 2012
+            tp_201_tiling_mode = VNCHWCONV_MODE_2012
         tmp_src_c1_lp_unit = vnc_col_size // 2 // c0_len // block_elem_cnt * block_elem_cnt
     tp_201_src_c1_lp_unit = tmp_src_c1_lp_unit if axis_src_c1_size > tmp_src_c1_lp_unit else axis_src_c1_size
     src_c1_lp_cnt = tdc.ceil_div(axis_src_c1_size, tp_201_src_c1_lp_unit)
@@ -265,7 +268,7 @@ def _tiling_params_negative(args):
 
     # axis -2 tiling parameters
     tp_201_dst_r2nd_dims = 2
-    if tp_201_tiling_mode == 2010:
+    if tp_201_tiling_mode == DATA_MOVE_MODE:
         if in_dtype not in NEED_CAST_DTYPES:
             if axis_dst_c_size == c0_len and axis_src_left_size <= tdc.C0_16:
                 max_r2nd_pl_size = 127  # for vor in copy data in
@@ -288,11 +291,11 @@ def _tiling_params_negative(args):
         tmp_dst_r2nd_lp_unit = vnc_col_size // 2 // (tp_201_src_c1_lp_unit * c0_len)
     tp_201_dst_r2nd_lp_unit = tmp_dst_r2nd_lp_unit if axis_dst_r2nd_size > tmp_dst_r2nd_lp_unit else axis_dst_r2nd_size
     r2nd_unit_c_mod_block = tp_201_dst_r2nd_lp_unit * axis_dst_c_size % block_elem_cnt
-    if (tp_201_tiling_mode == 2011 and r2nd_unit_c_mod_block > 0 and
+    if (tp_201_tiling_mode == VNCHWCONV_MODE_2011 and r2nd_unit_c_mod_block > 0 and
             axis_dst_r2nd_size > tp_201_dst_r2nd_lp_unit > block_elem_cnt):
         tp_201_dst_r2nd_lp_unit = tp_201_dst_r2nd_lp_unit // block_elem_cnt * block_elem_cnt
     # c1 will be nburst of vor, r2nd is block stride, to avoid bank conflict
-    if (tp_201_tiling_mode == 2010 and tp_201_dst_r2nd_lp_unit*dtype_factor % tdc.C0_16 == 0 and
+    if (tp_201_tiling_mode == DATA_MOVE_MODE and tp_201_dst_r2nd_lp_unit*dtype_factor % tdc.C0_16 == 0 and
             (tp_201_dst_r2nd_lp_unit < tp_201_src_c1_lp_unit or tp_201_src_c1_lp_unit*dtype_factor % tdc.C0_16 == 0)):
         tp_201_dst_r2nd_lp_unit -= 1
     dst_r2nd_lp_cnt = tdc.ceil_div(axis_dst_r2nd_size, tp_201_dst_r2nd_lp_unit)
@@ -322,7 +325,7 @@ def _tiling_params_negative(args):
     tp_201_dst_r2nd_lp_step_out = tdc.get_shape_size([tp_201_dst_r2nd_lp_unit, tp_201_dst_r2nd_step_out])
 
     # axis left parameters
-    if tp_201_tiling_mode == 2010:
+    if tp_201_tiling_mode == DATA_MOVE_MODE:
         tmp_src_left_lp_unit = tp_201_ub_offset // (tp_201_src_c1_lp_unit * tp_201_dst_r2nd_lp_unit * c0_len)
         if tmp_src_left_lp_unit > axis_src_left_size // tdc.CORE_DIM_NUM and axis_src_left_size >= tdc.CORE_DIM_NUM:
             tmp_src_left_lp_unit = axis_src_left_size // tdc.CORE_DIM_NUM
@@ -330,11 +333,11 @@ def _tiling_params_negative(args):
         tmp_src_left_lp_unit = vnc_col_size // (tp_201_src_c1_lp_unit * tp_201_dst_r2nd_lp_unit * c0_len)
     else:
         tmp_src_left_lp_unit = vnc_col_size // 2 // (tp_201_src_c1_lp_unit * tp_201_dst_r2nd_lp_unit * c0_len)
-    if tp_201_tiling_mode == 2011:
+    if tp_201_tiling_mode == VNCHWCONV_MODE_2011:
         tmp_src_left_lp_unit = tdc.NI_16
     tp_201_src_left_lp_unit = tmp_src_left_lp_unit if axis_src_left_size > tmp_src_left_lp_unit else axis_src_left_size
     left_r2nd_unit_c_mod_block = tp_201_src_left_lp_unit * tp_201_dst_r2nd_lp_unit * axis_dst_c_size % block_elem_cnt
-    if (tp_201_tiling_mode == 2012 and left_r2nd_unit_c_mod_block > 0 and
+    if (tp_201_tiling_mode == VNCHWCONV_MODE_2012 and left_r2nd_unit_c_mod_block > 0 and
             axis_src_left_size > tp_201_src_left_lp_unit > block_elem_cnt):
         tp_201_src_left_lp_unit = tp_201_src_left_lp_unit // block_elem_cnt * block_elem_cnt
     src_left_lp_cnt = tdc.ceil_div(axis_src_left_size, tp_201_src_left_lp_unit)
@@ -442,7 +445,7 @@ def _chtn_2_hctn_transfer(trans_args):
                     tik_inst.data_move(src_ub[c1_dst_ub_offset], dst_ub[c1_src_ub_offset], 0, r2nd_pl_size,
                                        c0_len * dtype_factor, 0, (c1_pl_size - 1) * c0_len * dtype_factor)
 
-    with tik_inst.if_scope(tiling_mode == 2011):
+    with tik_inst.if_scope(tiling_mode == VNCHWCONV_MODE_2011):
         with tik_inst.if_scope(r2nd_pl_size <= c1_pl_size):
             _chtn_2_hctn_process_r2nd(0, 0)
         with tik_inst.else_scope():
@@ -470,7 +473,7 @@ def _twice_vnchwconv_no_invert(args):
         src_stride = tik_inst.Scalar()
         dst_stride = tik_inst.Scalar()
         tmp_reg = [tik_inst.Scalar(dtype=dst_ub.dtype) for i in tdc.REG_IDX_LIST[:ele_per_block]]
-        with tik_inst.if_scope(tiling_mode == 2011):
+        with tik_inst.if_scope(tiling_mode == VNCHWCONV_MODE_2011):
             vnc_col_data.set_as(c1_pl_size * r2nd_pl_size * c0_len)
         with tik_inst.else_scope():
             vnc_col_data.set_as(left_pl_size * r2nd_pl_size * c1_pl_size * c0_len)
@@ -541,14 +544,14 @@ def _twice_vnchwconv_no_invert(args):
         # adjust tail block for output
         left_r2nd_c_size = left_pl_size * r2nd_pl_size * sub_c_size
         r2nd_c_size = r2nd_pl_size * sub_c_size
-        with tik_inst.if_scope(tik.all(tiling_mode == 2012, left_r2nd_c_size > ele_per_block,
+        with tik_inst.if_scope(tik.all(tiling_mode == VNCHWCONV_MODE_2012, left_r2nd_c_size > ele_per_block,
                                        left_r2nd_c_size % ele_per_block > 0)):
             left_r2nd_c_block_align = left_r2nd_c_size // ele_per_block * ele_per_block
             for i in tdc.REG_IDX_LIST[:ele_per_block]:
                 tmp_reg[i].set_as(dst_ub[left_r2nd_c_size - ele_per_block + i])
             for i in tdc.REG_IDX_LIST[:ele_per_block]:
                 dst_ub[left_r2nd_c_block_align + i:].set_as(tmp_reg[i])
-        with tik_inst.if_scope(tik.all(tiling_mode == 2011, r2nd_c_size % ele_per_block > 0)):
+        with tik_inst.if_scope(tik.all(tiling_mode == VNCHWCONV_MODE_2011, r2nd_c_size % ele_per_block > 0)):
             left_lp_cnt = tik_inst.Scalar(name="left_lp_cnt")
             with tik_inst.if_scope(r2nd_lp_idx > 0):
                 left_lp_cnt.set_as(left_pl_size * r2nd_lp_idx)
@@ -989,12 +992,13 @@ def _copy_data_out(copy_out_args):
                 tik_inst.data_move(dst_out_gm[gm_out_offset], dst_ub[ub_out_offset],
                                    0, 1, tdc.ceil_div(nburst, ele_per_block), 0, 0)
 
-        with tik_inst.if_scope(tik.any(tiling_mode == 2012,
-                                       tik.all(tiling_mode == 2010, all_r2nd_in == 1,
+        with tik_inst.if_scope(tik.any(tiling_mode == VNCHWCONV_MODE_2012,
+                                       tik.all(tiling_mode == DATA_MOVE_MODE, all_r2nd_in == 1,
                                                all_c_in == 1, sub_c_size == c0_len))):
             burst_len = left_pl_size * r2nd_pl_size * sub_c_size
             _inner_copy(0, 0, burst_len)
-        with tik_inst.elif_scope(tik.all(tik.any(tiling_mode == 2011, sub_c_size % c0_len == 0), all_c_in == 1)):
+        with tik_inst.elif_scope(tik.all(tik.any(tiling_mode == VNCHWCONV_MODE_2011, sub_c_size % c0_len == 0),
+                                         all_c_in == 1)):
             burst_len = r2nd_pl_size * sub_c_size
             with tik_inst.new_stmt_scope(disable_sync=True):
                 with tik_inst.for_range(0, left_pl_size) as left_idx:
@@ -1014,7 +1018,7 @@ def _copy_data_out(copy_out_args):
                             burst_len_block_align = burst_len // ele_per_block * ele_per_block
                             tik_inst.data_move(dst_out_gm[burst_len - ele_per_block + left_gm_offset + r2nd_gm_offset],
                                                dst_ub[left_ub_offset + burst_len_block_align], 0, 1, 1, 0, 0)
-        with tik_inst.elif_scope(tiling_mode == 2010):
+        with tik_inst.elif_scope(tiling_mode == DATA_MOVE_MODE):
             with tik_inst.if_scope(all_c_in == 0):
                 with tik_inst.new_stmt_scope(disable_sync=True):
                     with tik_inst.for_range(0, left_pl_size) as left_idx:
@@ -1114,7 +1118,8 @@ def _func_transform_201(tensor_args, tp_args):
     transform function for tiling mode 201
     """
 
-    tik_inst, block_idx, src_in_gm, dst_out_gm, src_ub, dst_ub, zero_ub, ele_per_block, in_dtype = tensor_args
+    (tik_inst, block_idx, src_in_gm, dst_out_gm, src_ub,
+     dst_ub, zero_ub, ele_per_block, in_dtype, dst_format) = tensor_args
     (tiling_mode, ub_offset, mc_pos, used_core_cnt, srcr2nd_dstr2nd_same, c0_len, core_step_in, core_step_out,
      nlc_dst_r2nd_lp_cnt, nlc_src_c1_lp_cnt, nlc_src_left_lp_cnt, nlc_dst_r2nd_left, nlc_src_c1_left,
      nlc_src_left_left, lc_dst_r2nd_lp_cnt, lc_src_c1_lp_cnt, lc_src_left_lp_cnt, lc_dst_r2nd_left, lc_src_c1_left,
@@ -1220,12 +1225,12 @@ def _func_transform_201(tensor_args, tp_args):
                             is_left_back.set_as(0)
                     left_backend = is_left_back * left_back
 
-                    with tik_inst.if_scope(tiling_mode == 2011):
+                    with tik_inst.if_scope(tiling_mode == VNCHWCONV_MODE_2011):
                         vnc_col_len.set_as(vnc_col_size)
                     with tik_inst.else_scope():
                         vnc_col_len.set_as(c1_pl_size * r2nd_pl_size * c0_len)
 
-                    with tik_inst.if_scope(tik.all(tiling_mode == 2011, r2nd_vnc_cnt > 1,
+                    with tik_inst.if_scope(tik.all(tiling_mode == VNCHWCONV_MODE_2011, r2nd_vnc_cnt > 1,
                                                    r2nd_lp_idx < r2nd_backend_idx)):
                         ub_offset_2011.set_as(r2nd_lp_idx % r2nd_vnc_cnt * src_left_lp_unit * vnc_col_len)
                         r2nd_lp_idx_2011.set_as(r2nd_lp_idx % r2nd_vnc_cnt + 1)
@@ -1264,7 +1269,7 @@ def _func_transform_201(tensor_args, tp_args):
                     copy_out_args = (tik_inst, dst_out_gm[out_gm_offset], dst_ub, left_pl_size, src_left_step_out,
                                      r2nd_pl_size, dst_r2nd_step_out, c1_pl_size, sub_c_size, all_c_in, ele_per_block,
                                      c0_len, tiling_mode, vnc_col_len, all_r2nd_in, r2nd_lp_idx_2011)
-                    with tik_inst.if_scope(tiling_mode == 2010):  # use ubuf_2_ubuf
+                    with tik_inst.if_scope(tiling_mode == DATA_MOVE_MODE):  # use ubuf_2_ubuf
                         with tik_inst.if_scope(tik.all(all_c_in == 1, sub_c_size == c0_len)):
                             tik_inst.data_move(dst_ub, src_ub, 0, 1,
                                                left_pl_size * r2nd_pl_size * sub_c_size // ele_per_block, 0, 0)
@@ -1290,6 +1295,11 @@ def _func_transform_201(tensor_args, tp_args):
         lc_args = (lc_src_left_lp_cnt, lc_src_left_left, lc_src_c1_lp_cnt,
                    lc_src_c1_left, lc_dst_r2nd_lp_cnt, lc_dst_r2nd_left)
         _inner_func(lc_args)
+
+    # setting zero to ub to avoid precision impact on other elemwise op
+    b32_ele_per_block = 8
+    if ele_per_block == b32_ele_per_block and dst_format == "NHWC" and tiling_mode != DATA_MOVE_MODE:
+        tdc.clean_ubuf(tik_inst, src_ub, 0, ub_offset)
 
 
 def trans_data_negative_target_tc(src, dst, src_format, dst_format, kernel_name="trans_data_negative_target_tc"):
@@ -1341,7 +1351,7 @@ def trans_data_negative_target_tc(src, dst, src_format, dst_format, kernel_name=
     with tik_inst.for_range(0, tdc.CORE_DIM_NUM, block_num=tdc.CORE_DIM_NUM) as block_idx:
         with tik_inst.if_scope(block_idx < used_core_cnt):
             tensor_args = [tik_inst, block_idx, src_in_gm, dst_out_gm,
-                           src_ub, dst_ub, zero_ub, block_elem_cnt, in_dtype]
+                           src_ub, dst_ub, zero_ub, block_elem_cnt, in_dtype, dst_format]
             tp_args = tiling_params
             _func_transform_201(tensor_args, tp_args)
 
