@@ -4084,8 +4084,12 @@ pytorch:
     release:
       - ops/built-in/fusion_pass/graph_fusion/ai_core/lstmp_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/lstmp_fusion_pass.h
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/dynamic_rnn_v2_grad_fusion_pass.cc
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/dynamic_rnn_v2_grad_fusion_pass.h
     unrelease:
       - ops/built-in/tests/ut/graph_fusion/ai_core/lstmp_fusion_test.cpp
+      - ops/built-in/tests/ut/graph_fusion/ai_core/dynamic_rnn_v2_grad_fusion_test.cpp
+      - ops/built-in/tests/ut/ops_test/DynamicRNNV2Grad/test_dynamic_rnn_v2_grad_proto.cpp
   llt:
     ut_check: true
     st_check: false

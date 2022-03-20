@@ -1486,8 +1486,8 @@ IMPLEMT_INFERFUNC(DynamicRNNV2Grad, DynamicRNNV2GradInferShape) {
   }
 
   const auto &shape_x = x_desc->GetShape();
-  if (shape_x.GetDimNum() != 3 || shape_x.GetDims().at(0) != 1) {
-    OP_LOGE(op_name.GetString(), "The input shape of X only support [1, batch_size, input_size], please check!");
+  if (shape_x.GetDimNum() != 2) {
+    OP_LOGE(op_name.GetString(), "The input shape of X only support [batch_size, input_size], please check!");
     return GRAPH_FAILED;
   }
 

@@ -30,13 +30,12 @@ class DynamicRnnV2GradTest : public testing::Test {
 };
 
 TEST_F(DynamicRnnV2GradTest, dynamic_rnn_v2_grad_normal_shape) {
-  int t = 1;
   int batch = 16;
   int inputSize = 32;
   int hiddenSize = 48;
   ge::op::DynamicRNNV2Grad rnn_op;
   ge::TensorDesc xDesc;
-  ge::Shape xShape({t, batch, inputSize});
+  ge::Shape xShape({batch, inputSize});
   xDesc.SetDataType(ge::DT_FLOAT16);
   xDesc.SetShape(xShape);
   xDesc.SetOriginShape(xShape);
@@ -53,13 +52,13 @@ TEST_F(DynamicRnnV2GradTest, dynamic_rnn_v2_grad_normal_shape) {
   whDesc.SetOriginShape(whShape);
 
   ge::TensorDesc yDesc;
-  ge::Shape yShape({t, batch, hiddenSize});
+  ge::Shape yShape({batch, hiddenSize});
   yDesc.SetDataType(ge::DT_FLOAT16);
   yDesc.SetShape(yShape);
   yDesc.SetOriginShape(yShape);
 
   ge::TensorDesc cellDesc;
-  ge::Shape cellShape({1, batch, hiddenSize});
+  ge::Shape cellShape({batch, hiddenSize});
   cellDesc.SetDataType(ge::DT_FLOAT16);
   cellDesc.SetShape(cellShape);
   cellDesc.SetOriginShape(cellShape);
@@ -88,7 +87,7 @@ TEST_F(DynamicRnnV2GradTest, dynamic_rnn_v2_grad_normal_shape) {
 
   auto output_desc = rnn_op.GetOutputDesc("dx");
   EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT16);
-  std::vector<int64_t> expected_output_shape = {t, batch, inputSize};
+  std::vector<int64_t> expected_output_shape = {batch, inputSize};
   EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
 }
 
