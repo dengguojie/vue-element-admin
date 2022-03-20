@@ -188,6 +188,7 @@ class AtcTransformOm:
         utils.print_step_log("[%s] Generate acl_op.json for atc tools." % (os.path.basename(__file__)))
         self._write_content_to_file(acl_json_content, os.path.join(output_test_data_config_path, 'acl_op.json'))
 
+
     def transform_acl_json_to_om(self, soc_version, advance_args):
         """
         Transform acl_op.json to om models.
@@ -206,14 +207,7 @@ class AtcTransformOm:
         cmd_str = "cd %s && %s " % (run_out_path, " ".join(atc_cmd))
         utils.print_info_log("ATC command line: %s" % cmd_str)
         try:
-            atc_start_time = time.time()
-            utils.execute_command(atc_cmd)
-            atc_end_time = time.time()
-            utils.print_info_log('Atc execute time: %f s.'
-                                 % (atc_end_time - atc_start_time))
-            self.add_op_st_stage_result(op_status.SUCCESS,
-                                        "atc_single_op_convert",
-                                        None, cmd_str)
+            self._execute_atc_cmd(atc_cmd, cmd_str)
         except utils.OpTestGenException:
             self.add_op_st_stage_result(op_status.FAILED,
                                         "atc_single_op_convert",
@@ -222,3 +216,14 @@ class AtcTransformOm:
             pass
         utils.print_info_log('Finish to convert single op.')
         os.chdir(origin_path)
+
+
+    def _execute_atc_cmd(self, atc_cmd, cmd_str):
+        atc_start_time = time.time()
+        utils.execute_command(atc_cmd)
+        atc_end_time = time.time()
+        utils.print_info_log('Atc execute time: %f s.'
+                             % (atc_end_time - atc_start_time))
+        self.add_op_st_stage_result(op_status.SUCCESS,
+                                    "atc_single_op_convert",
+                                    None, cmd_str)

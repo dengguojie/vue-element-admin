@@ -34,10 +34,12 @@ class TestUtilsMethods(unittest.TestCase):
                          ConstManager.OP_TEST_GEN_WRITE_FILE_ERROR)
 
     def test_msopst_copy_template_error1(self):
-        with pytest.raises(SystemExit) as error:
+        with pytest.raises(utils.OpTestGenException) as error:
             with mock.patch('os.path.isdir', return_value=True):
                 with mock.patch('os.listdir', return_value=["a","b","c"]):
                     acl_op_generator.copy_template("/home", "/home")
+        self.assertEqual(error.value.args[0],
+                         ConstManager.OP_TEST_GEN_MAKE_DIR_ERROR)
 
     def test_msopst_copy_template_error2(self):
         with pytest.raises(OSError) as error:

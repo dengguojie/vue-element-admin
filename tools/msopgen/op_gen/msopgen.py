@@ -16,27 +16,27 @@ from op_gen.interface.const_manager import ConstManager
 
 
 def _do_gen_cmd(argument: ArgParser) -> None:
-    try:
-        op_file_generator = OpFileGenerator(argument)
-        if not op_file_generator.op_file:
-            utils.print_error_log(
-                "AICPU is not supported by MindSpore operators.")
-            raise utils.MsOpGenException(ConstManager.MS_OP_GEN_NONE_ERROR)
-        op_file_generator.generate()
-    except utils.MsOpGenException as ex:
-        sys.exit(ex.error_info)
-    finally:
-        pass
+    op_file_generator = OpFileGenerator(argument)
+    if not op_file_generator.op_file:
+        utils.print_error_log(
+            "AICPU is not supported by MindSpore operators.")
+        raise utils.MsOpGenException(ConstManager.MS_OP_GEN_NONE_ERROR)
+    op_file_generator.generate()
 
 
 def _do_mi_cmd(argument: ArgParser) -> None:
-    try:
-        if argument.mi_cmd == ConstManager.INPUT_ARGUMENT_CMD_MI_QUERY:
-            OpInfoParser(argument)
-    except utils.MsOpGenException as ex:
-        sys.exit(ex.error_info)
-    finally:
-        pass
+    if argument.mi_cmd == ConstManager.INPUT_ARGUMENT_CMD_MI_QUERY:
+        OpInfoParser(argument)
+
+
+def _msopgen_task():
+    # 1.parse input argument and check arguments valid
+    argument = ArgParser()
+    # 2.generate file, according to gen and mi
+    if argument.gen_flag:
+        _do_gen_cmd(argument)
+    else:
+        _do_mi_cmd(argument)
 
 
 def main():
@@ -45,16 +45,11 @@ def main():
     """
     # 1.parse input argument and check arguments valid
     try:
-        argument = ArgParser()
+        _msopgen_task()
     except utils.MsOpGenException as ex:
         sys.exit(ex.error_info)
     finally:
         pass
-    # 2.generate file, according to gen and mi
-    if argument.gen_flag:
-        _do_gen_cmd(argument)
-    else:
-        _do_mi_cmd(argument)
     utils.print_info_log("Generation completed.")
     sys.exit(ConstManager.MS_OP_GEN_NONE_ERROR)
 

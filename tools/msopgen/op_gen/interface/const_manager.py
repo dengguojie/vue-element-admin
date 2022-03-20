@@ -46,6 +46,7 @@ class ConstManager:
     # call os/sys error:
     MS_OP_GEN_MAKE_DIRS_ERROR = 1002
     MS_OP_GEN_COPY_DIRS_ERROR = 1003
+    MS_OP_GEN_IMPORT_MODULE_ERROR = 1004
 
     LEFT_BRACES = "{"
     RIGHT_BRACES = "}"

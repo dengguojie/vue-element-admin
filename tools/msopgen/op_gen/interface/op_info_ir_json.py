@@ -163,12 +163,12 @@ class JsonIROpInfo(OpInfo):
         op_name = self._choose_op(op_names)
         if not op_name:
             utils.print_error_log("Failed to obtain the op type.")
-            sys.exit(ConstManager.MS_OP_GEN_INVALID_SHEET_PARSE_ERROR)
+            raise utils.MsOpGenException(ConstManager.MS_OP_GEN_INVALID_SHEET_PARSE_ERROR)
         ir_info = ir_map.get(op_name)
         if not ir_info:
             utils.print_error_log("Failed to obtain op info for '%s'. Please "
                                   "check the json." % op_name)
-            sys.exit(ConstManager.MS_OP_GEN_INVALID_SHEET_PARSE_ERROR)
+            raise utils.MsOpGenException(ConstManager.MS_OP_GEN_INVALID_SHEET_PARSE_ERROR)
         self.op_type = op_name
         self.fix_op_type = utils.fix_name_lower_with_under(op_name)
         return ir_info
@@ -182,7 +182,7 @@ class JsonIROpInfo(OpInfo):
                     "Failed to find '%s' in json. Please check "
                     "that the value for '-op' is valid."
                     % self.choose_op)
-                sys.exit(ConstManager.MS_OP_GEN_INVALID_PARAM_ERROR)
+                raise utils.MsOpGenException(ConstManager.MS_OP_GEN_INVALID_PARAM_ERROR)
             return self.choose_op
         if len(op_names) > 1:
             utils.print_info_log("There is more than one operator in "

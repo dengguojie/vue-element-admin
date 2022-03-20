@@ -293,7 +293,7 @@ def check_output_path(output_path, testcase_list, machine_type):
             except OSError as err:
                 print_error_log(
                     "Failed to create %s. %s" % (op_name_path, str(err)))
-                sys.exit(ConstManager.OP_TEST_GEN_INVALID_PATH_ERROR)
+                raise OpTestGenException(ConstManager.OP_TEST_GEN_INVALID_PATH_ERROR)
             finally:
                 pass
         else:
@@ -301,7 +301,7 @@ def check_output_path(output_path, testcase_list, machine_type):
             if os.path.exists(src_path):
                 print_error_log("Specified output path already has %s directory, "
                                 "please delete or move it and retry." % testcase_list[0]['op'])
-                sys.exit(ConstManager.OP_TEST_GEN_INVALID_PATH_ERROR)
+                raise OpTestGenException(ConstManager.OP_TEST_GEN_INVALID_PATH_ERROR)
         output_path = op_name_path
     return output_path
 
@@ -338,7 +338,7 @@ def get_content_from_double_quotes(line):
     if match:
         return match
     print_error_log("(\" \") format error. Please check.")
-    sys.exit(ConstManager.OP_TEST_GEN_CONFIG_OP_DEFINE_ERROR)
+    raise OpTestGenException(ConstManager.OP_TEST_GEN_CONFIG_OP_DEFINE_ERROR)
 
 
 def check_value_valid(fe_type, value, name, prefix=""):

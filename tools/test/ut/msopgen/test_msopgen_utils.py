@@ -16,6 +16,12 @@ class TestUtilsMethods(unittest.TestCase):
         self.assertEqual(error.value.args[0],
                          ConstManager.MS_OP_GEN_OPEN_FILE_ERROR)
 
+    def test_load_json_expection(self):
+        with pytest.raises(utils.MsOpGenException) as error:
+            utils.json_load('home/json_read', '')
+        self.assertEqual(error.value.args[0],
+                         ConstManager.MS_OP_GEN_READ_FILE_ERROR)
+
     def test_check_name_valid(self):
         utils.check_name_valid("")
         utils.check_name_valid('***')

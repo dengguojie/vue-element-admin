@@ -11,6 +11,7 @@ Change History: 2020-07-11 file Created
 import os
 import shutil
 import sys
+import collections
 from shutil import copytree
 from shutil import copy2
 from shutil import Error
@@ -100,6 +101,8 @@ def _get_output_desc(testcase_struct):
     output_shape_list = []
     output_data_type_list = []
     output_format_list = []
+    OutputInfo = collections.namedtuple("OutputInfo", ["output_shape_data", "output_data_type", "output_format",
+                                                       "output_file_path_list"])
     for output_desc_dic in testcase_struct.get('output_desc'):
         # consider dynamic shape scenario
         output_shape = dynamic_handle.replace_shape_to_typical_shape(
@@ -120,7 +123,7 @@ def _get_output_desc(testcase_struct):
         output_data_path = os.path.join("result_files", output_data_name)
         output_file_path_list.append(output_data_path)
         output_num = output_num + 1
-    return output_shape_data, output_data_type, output_format, output_file_path_list
+    return OutputInfo(output_shape_data, output_data_type, output_format, output_file_path_list)
 
 
 def _replace_dict_list(attr_dic, attr_code_str, attr_index):
@@ -190,10 +193,9 @@ def _create_exact_testcase_content(testcase_struct, device_id):
     # do acl const_status op description
     const_status = utils.ConstInput.get_acl_const_status(testcase_struct)
     # do acl output op description
-    output_shape_data, output_data_type, output_format, output_file_path_list = \
-        _get_output_desc(testcase_struct)
+    output_info = _get_output_desc(testcase_struct)
     output_file_path = str(
-        ', '.join('"{}"'.format(item) for item in output_file_path_list))
+        ', '.join('"{}"'.format(item) for item in output_info.output_file_path_list))
     # do acl attr code generation
     all_attr_code_snippet = _get_attr_desc(testcase_struct)
 
@@ -205,13 +207,13 @@ def _create_exact_testcase_content(testcase_struct, device_id):
         input_file_path=input_file_path,
         output_file_path=output_file_path,
         is_const=const_status,
-        output_shape_data=output_shape_data,
-        output_data_type=output_data_type,
-        output_format=output_format,
+        output_shape_data=output_info.output_shape_data,
+        output_data_type=output_info.output_data_type,
+        output_format=output_info.output_format,
         all_attr_code_snippet=all_attr_code_snippet,
         device_id=device_id,
         testcase_name=testcase_struct.get('case_name'))
-    return testcase_content, output_file_path_list
+    return testcase_content, output_info.output_file_path_list
 
 
 def _copy_src_to_dst(name, src, dst, srcname, dstname):
@@ -224,7 +226,7 @@ def _copy_src_to_dst(name, src, dst, srcname, dstname):
             return
         utils.print_error_log("%s is not empty,please settle it "
                               "and retry ." % dstname)
-        sys.exit()
+        raise utils.OpTestGenException(ConstManager.OP_TEST_GEN_MAKE_DIR_ERROR)
     if os.path.isdir(srcname):
         copytree(srcname, dstname)
     else:

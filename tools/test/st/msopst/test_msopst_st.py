@@ -1115,7 +1115,6 @@ class TestUtilsMethods(unittest.TestCase):
             args.get_input_file()
             args.get_output_path()
 
-
     def test_clas_report_json_encoder(self):
         value1 = np.int8(1)
         value2 = np.float16(1.0)
@@ -1127,6 +1126,26 @@ class TestUtilsMethods(unittest.TestCase):
                    }
         json.dumps(json_obj, indent=4, cls=ReportJsonEncoder)
 
+    def test_arg_parser_expection(self):
+        argument1 = ['msopst']
+        with pytest.raises(utils.OpTestGenException) as error:
+            with mock.patch('sys.argv', argument1):
+                args = MsopstArgParser()
+        self.assertEqual(error.value.args[0],
+                         ConstManager.OP_TEST_GEN_INVALID_PARAM_ERROR)
+        argument2 = ['msopst', 'mi']
+        with pytest.raises(utils.OpTestGenException) as error:
+            with mock.patch('sys.argv', argument2):
+                args = MsopstArgParser()
+        self.assertEqual(error.value.args[0],
+                         ConstManager.OP_TEST_GEN_INVALID_PARAM_ERROR)
+        argument3 = ['msopst', 'mi', 'gen_testcase', '-i', ST_GOLDEN_OP_POOLING_REPORT_JSON_INPUT,
+                     '-d', 'test']
+        with pytest.raises(utils.OpTestGenException) as error:
+            with mock.patch('sys.argv', argument3):
+                args = MsopstArgParser()
+        self.assertEqual(error.value.args[0],
+                         ConstManager.OP_TEST_GEN_INVALID_DEVICE_ID_ERROR)
 
 
 if __name__ == '__main__':

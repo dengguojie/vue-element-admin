@@ -53,7 +53,7 @@ class IrRow:
             self.op_format = row[IrRow.IR_TEMPLATE_FORMAT_CLO]
         else:
             utils.print_error_log("The row information is insufficient.")
-            sys.exit(ConstManager.MS_OP_GEN_INVALID_SHEET_PARSE_ERROR)
+            raise utils.MsOpGenException(ConstManager.MS_OP_GEN_INVALID_SHEET_PARSE_ERROR)
 
     def get_name(self: any) -> str:
         """
@@ -103,12 +103,12 @@ class IROpInfo(OpInfo):
         op_name = self._choose_op(op_names)
         if not op_name:
             utils.print_error_log("Failed to obtain the op type.")
-            sys.exit(ConstManager.MS_OP_GEN_INVALID_SHEET_PARSE_ERROR)
+            raise utils.MsOpGenException(ConstManager.MS_OP_GEN_INVALID_SHEET_PARSE_ERROR)
         ir_info = ir_map.get(op_name)
         if not ir_info:
             utils.print_error_log("Failed to obtain the op info for '%s'. Please "
                                   "check the excel." % op_name)
-            sys.exit(ConstManager.MS_OP_GEN_INVALID_SHEET_PARSE_ERROR)
+            raise utils.MsOpGenException(ConstManager.MS_OP_GEN_INVALID_SHEET_PARSE_ERROR)
         self.op_type = op_name
         self.fix_op_type = utils.fix_name_lower_with_under(op_name)
         for ir_row in ir_info:
@@ -161,10 +161,10 @@ class IROpInfo(OpInfo):
     def _get_ir_map(self: any, sheet_data: any) -> dict:
         if sheet_data is None:
             utils.print_error_log("Failed to obtain the sheet data.")
-            sys.exit(ConstManager.MS_OP_GEN_INVALID_SHEET_PARSE_ERROR)
+            raise utils.MsOpGenException(ConstManager.MS_OP_GEN_INVALID_SHEET_PARSE_ERROR)
         if not self._check_sheet_data(sheet_data):
             utils.print_error_log("Failed to obtain the sheet format.")
-            sys.exit(ConstManager.MS_OP_GEN_INVALID_SHEET_PARSE_ERROR)
+            raise utils.MsOpGenException(ConstManager.MS_OP_GEN_INVALID_SHEET_PARSE_ERROR)
         ir_map = self._read_sheet_data(sheet_data)
         return ir_map
 
@@ -185,7 +185,8 @@ class IROpInfo(OpInfo):
             ir_template = xlrd.open_workbook(ir_file)
             sheet_names = ir_template.sheet_names()
         except ImportError as import_error:
-            sys.exit("[ERROR][op_info_ir] Unable to import module: %s." % str(import_error))
+            utils.print_error_log("Unable to import module: %s." % str(import_error))
+            raise utils.MsOpGenException(ConstManager.MS_OP_GEN_IMPORT_MODULE_ERROR)
         except OSError as err:
             utils.print_error_log("Failed to load the excel, %s " % str(err.args[0]))
             raise utils.MsOpGenException(ConstManager.MS_OP_GEN_READ_FILE_ERROR)
@@ -287,7 +288,7 @@ class IROpInfo(OpInfo):
                     "Failed to find '%s' in the excel. Please check that the "
                     "value for '-op' is valid."
                     % self.choose_op)
-                sys.exit(ConstManager.MS_OP_GEN_INVALID_PARAM_ERROR)
+                raise utils.MsOpGenException(ConstManager.MS_OP_GEN_INVALID_PARAM_ERROR)
             return self.choose_op
         if len(op_names) > 1:
             return self._choose_op_name(op_names)
@@ -300,10 +301,10 @@ class IROpInfo(OpInfo):
     @staticmethod
     def _choose_op_name(op_names: list) -> str:
         utils.print_info_log("There is more than one operator in the sheet:")
-        i = 1
+        count = 1
         for op_name in op_names:
-            print(i, op_name)
-            i += 1
+            print(count, op_name)
+            count += 1
         while True:
             op_number = input('Input the number of the ops:')
             if op_number.isdigit():
@@ -414,7 +415,7 @@ class IROpInfo(OpInfo):
             return ConstManager.PARAM_TYPE_MAP_INI.get(param_type)
         utils.print_error_log("The '%s' config in the IR Excel is "
                               "invalid." % param_type)
-        sys.exit(ConstManager.MS_OP_GEN_PARSER_EXCEL_FILE_ERROR)
+        raise utils.MsOpGenException(ConstManager.MS_OP_GEN_PARSER_EXCEL_FILE_ERROR)
 
     @staticmethod
     def _mapping_input_output_type(ir_type: any, ir_name: str) -> any:

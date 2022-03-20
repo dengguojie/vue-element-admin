@@ -8,6 +8,15 @@ project(acl_op)
 
 # Compile options
 add_compile_options(-std=c++11)
+set(CMAKE_BUILD_TYPE "Release")
+set(CMAKE_CXX_FLAGS_RELEASE "-fPIC -O2 -Wall -s")
+set(CMAKE_CXX_FLAGS_DEBUG "-fPIC -O0 -g -Wall")
+set(CAMKE_SKIP_RPATH TRUE)
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,-z,relro,-z,now,-z,noexecstack -pie")
+add_compile_options(
+    -fstack-protector-all
+    -D_FORTIFY_SOURCE=2 -O2
+    )
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/run/out")
 message(${CMAKE_RUNTIME_OUTPUT_DIRECTORY})

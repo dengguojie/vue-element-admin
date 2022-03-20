@@ -4,6 +4,8 @@ import pytest
 from unittest import mock
 import os
 from op_gen.interface.const_manager import ConstManager
+from op_gen.interface.arg_parser import ArgParser
+from op_gen.interface import utils
 from op_gen import msopgen
 sys.path.append(os.path.dirname(__file__)+"/../../")
 from util import test_utils
@@ -117,6 +119,42 @@ class TestUtilsMethods(unittest.TestCase):
                 msopgen.main()
         self.assertTrue(test_utils.check_result(IR_EXCEL_OUTPUT,
                                                 IR_EXCEL_GOLDEN_OUTPUT))
+
+    def test_arg_parser_expection(self):
+        argument1 = ['msopgen.py']
+        with pytest.raises(utils.MsOpGenException) as error:
+            with mock.patch('sys.argv', argument1):
+                args = ArgParser()
+        self.assertEqual(error.value.args[0],
+                         ConstManager.MS_OP_GEN_INVALID_PARAM_ERROR)
+        argument2 = ['msopgen.py', 'mi']
+        with pytest.raises(utils.MsOpGenException) as error:
+            with mock.patch('sys.argv', argument2):
+                args = ArgParser()
+        self.assertEqual(error.value.args[0],
+                         ConstManager.MS_OP_GEN_INVALID_PARAM_ERROR)
+        argument3 = ['msopgen.py', 'gen', '-i', IR_EXCEL_PATH, '-f', 'test', '-c',
+                     'ai_core-ascend310', '-op', 'Conv2DTik', '-out', IR_EXCEL_OUTPUT]
+        with pytest.raises(utils.MsOpGenException) as error:
+            with mock.patch('sys.argv', argument3):
+                args = ArgParser()
+        self.assertEqual(error.value.args[0],
+                         ConstManager.MS_OP_GEN_CONFIG_UNSUPPORTED_FMK_TYPE_ERROR)
+        argument4 = ['msopgen.py', 'gen', '-i', IR_EXCEL_PATH, '-f', 'tf', '-c',
+                     'ai_core-ascend310', '-op', 'Conv2DTik', '-out', '/root']
+        with pytest.raises(utils.MsOpGenException) as error:
+            with mock.patch('sys.argv', argument4):
+                args = ArgParser()
+        self.assertEqual(error.value.args[0],
+                         ConstManager.MS_OP_GEN_CONFIG_INVALID_OUTPUT_PATH_ERROR)
+        argument5 = ['msopgen.py', 'gen', '-i', '/root/test.txt', '-f', 'tf', '-c',
+                     'ai_core-ascend310', '-op', 'Conv2DTik', '-out', IR_EXCEL_OUTPUT]
+        with pytest.raises(utils.MsOpGenException) as error:
+            with mock.patch('sys.argv', argument5):
+                args = ArgParser()
+        self.assertEqual(error.value.args[0],
+                         ConstManager.MS_OP_GEN_CONFIG_INVALID_OPINFO_FILE_ERROR)
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -158,18 +158,21 @@ class DataGenerator:
             data = data.astype(np_type)
         return data
 
-    def _gen_input_data(self, input_shape, input_desc, file_path):
+    def _gen_op_iput_data(self, input_shape, input_desc):
         range_min, range_max = input_desc.get('value_range')
         dtype = input_desc.get('type')
         value = input_desc.get('value')
+        if value:
+            data = self.gen_data_with_value(input_shape, value, dtype)
+        else:
+            data = self.gen_data(
+                input_shape, range_min, range_max, dtype,
+                input_desc.get('data_distribute'))
+        return data
+
+    def _gen_input_data(self, input_shape, input_desc, file_path):
         try:
-            if value:
-                data = self.gen_data_with_value(input_shape, value, dtype)
-            else:
-                data = self.gen_data(
-                    input_shape, range_min, range_max, dtype,
-                    input_desc['data_distribute'])
-            return data
+            data = self._gen_op_iput_data(input_shape, input_desc)
         except MemoryError as error:
             utils.print_warn_log(
                 'Failed to generate data for %s. The shape is too '
@@ -178,6 +181,7 @@ class DataGenerator:
                 ConstManager.OP_TEST_GEN_WRITE_FILE_ERROR)
         finally:
             pass
+        return data
 
     def _get_input_dict_with_data(self, input_desc, file_path, input_shape):
         """
@@ -214,13 +218,13 @@ class DataGenerator:
             raise utils.OpTestGenException(
                 ConstManager.OP_TEST_GEN_WRITE_FILE_ERROR)
         data = self._gen_input_data(input_shape, input_desc, file_path)
+        input_dic = {
+            'value': data,
+            'dtype': input_desc.get('type'),
+            'shape': input_shape,
+            'format': input_desc.get('format')
+        }
         try:
-            input_dic = {
-                'value': data,
-                'dtype': input_desc.get('type'),
-                'shape': input_shape,
-                'format': input_desc.get('format')
-            }
             data.tofile(file_path)
             os.chmod(file_path, ConstManager.WRITE_MODES)
         except OSError as error:

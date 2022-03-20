@@ -93,20 +93,24 @@ class CaseGenerator:
             default_value = list(default_value_tuple)
         return default_value
 
+    def _get_default_value(self, attr_type, default_value_str):
+        if attr_type == 'float':
+            default_value = float(default_value_str)
+        elif attr_type == 'int':
+            default_value = int(default_value_str)
+        elif attr_type == 'bool':
+            default_value = self._parse_bool_value(default_value_str)
+        elif attr_type == 'str':
+            default_value = default_value_str
+        elif attr_type.startswith('list'):
+            default_value = self._get_attr_type_list_value(attr_type, default_value_str)
+        return default_value
+
     def _get_default_attr_value(self, attr_type, default_value_str, attr_name):
         default_value_str = default_value_str.strip()
         default_value = None
         try:
-            if attr_type == 'float':
-                default_value = float(default_value_str)
-            elif attr_type == 'int':
-                default_value = int(default_value_str)
-            elif attr_type == 'bool':
-                default_value = self._parse_bool_value(default_value_str)
-            elif attr_type == 'str':
-                default_value = default_value_str
-            elif attr_type.startswith('list'):
-                default_value = self._get_attr_type_list_value(attr_type, default_value_str)
+            default_value = self._get_default_value(attr_type, default_value_str)
         except ValueError as ex:
             utils.print_warn_log(
                 'The default value(%s) is invalid for type(%s). Please modify '
@@ -755,41 +759,46 @@ class CaseGenerator:
         for (index, dtype) in enumerate(node['output_dtype']):
             new_base_case['output_desc'][index]['type'] = dtype
 
+    def _get_new_base_case(self, base_case, node):
+        layer_name = node.get('layer').replace('/', '_')
+        new_base_case = {}
+        if len(node.get('input_shape')) != len(
+                base_case.get('input_desc')):
+            utils.print_warn_log(
+                'The \"%s\" layer is skipped, because its number of '
+                'inputs(%d) is different from '
+                'that(%d) specified in the .ini file.Ignore if you have '
+                'change the "placeholder" shape.'
+                % (layer_name, len(node.get('input_shape')),
+                   len(base_case.get('input_desc')),
+                   ))
+            return new_base_case
+        if len(node.get('output_shape')) != len(
+                base_case.get('output_desc')):
+            utils.print_warn_log(
+                'The \"%s\" layer is skipped, because its number of '
+                'outputs(%d) is different from '
+                'that(%d) specified in the .ini file. Ignore if you have '
+                'changed the "Placeholder" shape.'
+                % (layer_name,
+                   len(node.get('output_shape')),
+                   len(base_case.get('output_desc')),))
+            return new_base_case
+
+        new_base_case = {
+            'case_name': 'Test_%s' % layer_name,
+            'op': copy.deepcopy(base_case.get('op')),
+            'input_desc': copy.deepcopy(base_case.get('input_desc')),
+            'output_desc': copy.deepcopy(base_case.get('output_desc'))}
+        self._modify_new_base_case_dict(node, new_base_case)
+        return new_base_case
+
     def _update_aicore_io_from_model(self, base_case, node):
         # The node won't be None and must has the keys like 'layer'...
         # The base_case won't be None and must has the keys like 'input..'
-        layer_name = node.get('layer').replace('/', '_')
         try:
             # when the length not equal, skip to next layer
-            if len(node.get('input_shape')) != len(
-                    base_case.get('input_desc')):
-                utils.print_warn_log(
-                    'The \"%s\" layer is skipped, because its number of '
-                    'inputs(%d) is different from '
-                    'that(%d) specified in the .ini file.Ignore if you have '
-                    'change the "placeholder" shape.'
-                    % (layer_name, len(node.get('input_shape')),
-                       len(base_case.get('input_desc')),
-                       ))
-                return {}
-            if len(node.get('output_shape')) != len(
-                    base_case.get('output_desc')):
-                utils.print_warn_log(
-                    'The \"%s\" layer is skipped, because its number of '
-                    'outputs(%d) is different from '
-                    'that(%d) specified in the .ini file. Ignore if you have '
-                    'changed the "Placeholder" shape.'
-                    % (layer_name,
-                       len(node.get('output_shape')),
-                       len(base_case.get('output_desc')),))
-                return {}
-
-            new_base_case = {
-                'case_name': 'Test_%s' % layer_name,
-                'op': copy.deepcopy(base_case.get('op')),
-                'input_desc': copy.deepcopy(base_case.get('input_desc')),
-                'output_desc': copy.deepcopy(base_case.get('output_desc'))}
-            self._modify_new_base_case_dict(node, new_base_case)
+            new_base_case = self._get_new_base_case(base_case, node)
         except KeyError as error:
             utils.print_error_log("Failed to create case. %s" % error)
             raise utils.OpTestGenException(

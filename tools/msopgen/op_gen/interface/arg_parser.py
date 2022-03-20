@@ -32,7 +32,7 @@ class ArgParser:
         args = parse.parse_args(sys.argv[1:])
         if len(sys.argv) <= 1:
             parse.print_usage()
-            sys.exit(ConstManager.MS_OP_GEN_INVALID_PARAM_ERROR)
+            raise utils.MsOpGenException(ConstManager.MS_OP_GEN_INVALID_PARAM_ERROR)
         if sys.argv[1] == ConstManager.INPUT_ARGUMENT_CMD_GEN:
             self.gen_flag = True
             self.input_path = ""
@@ -53,7 +53,7 @@ class ArgParser:
             self.gen_flag = False
             if len(sys.argv) <= 2:
                 mi_parser.print_usage()
-                sys.exit(ConstManager.MS_OP_GEN_INVALID_PARAM_ERROR)
+                raise utils.MsOpGenException(ConstManager.MS_OP_GEN_INVALID_PARAM_ERROR)
             self.mi_cmd = sys.argv[2]
             self._check_mi_cmd_param(args)
 
@@ -141,7 +141,7 @@ class ArgParser:
         else:
             utils.print_error_log(
                 "Unsupported framework type: " + args_framework)
-            sys.exit(ConstManager.MS_OP_GEN_CONFIG_UNSUPPORTED_FMK_TYPE_ERROR)
+            raise utils.MsOpGenException(ConstManager.MS_OP_GEN_CONFIG_UNSUPPORTED_FMK_TYPE_ERROR)
 
     def _check_output_path(self: any, args_output_path: str) -> None:
         args_output_path = os.path.realpath(args_output_path)
@@ -154,7 +154,7 @@ class ArgParser:
             utils.print_error_log(args_output_path +
                                   " does not exist or does not allow data "
                                   "write.")
-            sys.exit(ConstManager.MS_OP_GEN_CONFIG_INVALID_OUTPUT_PATH_ERROR)
+            raise utils.MsOpGenException(ConstManager.MS_OP_GEN_CONFIG_INVALID_OUTPUT_PATH_ERROR)
 
     def _check_input_path(self: any, args_input: str) -> None:
         if not args_input.endswith(ConstManager.GEN_VALID_TYPE):
@@ -169,7 +169,7 @@ class ArgParser:
             utils.print_error_log("Input path: " + args_input +
                                   " error. Please check whether it is an existing "
                                   "and readable file.")
-            sys.exit(ConstManager.MS_OP_GEN_CONFIG_INVALID_OPINFO_FILE_ERROR)
+            raise utils.MsOpGenException(ConstManager.MS_OP_GEN_CONFIG_INVALID_OPINFO_FILE_ERROR)
 
     def _init_core_type(self: any, unit_parse_list: list, type_list: list, core_type: any) -> None:
         if unit_parse_list[0].lower() in type_list:

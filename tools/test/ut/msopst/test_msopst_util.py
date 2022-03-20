@@ -70,7 +70,7 @@ class TestUtilsMethods(unittest.TestCase):
                          ConstManager.OP_TEST_GEN_INVALID_PATH_ERROR)
 
     def test_msopst_get_content_from_double_quotes(self):
-        with pytest.raises(SystemExit) as error:
+        with pytest.raises(utils.OpTestGenException) as error:
             utils.get_content_from_double_quotes("test")
         self.assertEqual(error.value.args[0],
                          ConstManager.OP_TEST_GEN_CONFIG_OP_DEFINE_ERROR)

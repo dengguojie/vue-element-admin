@@ -29,7 +29,7 @@ class MsopstArgParser:
             'mi', help='Interaction with the IDE.', allow_abbrev=False)
         if len(sys.argv) <= 1:
             parse.print_usage()
-            sys.exit(ConstManager.OP_TEST_GEN_INVALID_PARAM_ERROR)
+            raise utils.OpTestGenException(ConstManager.OP_TEST_GEN_INVALID_PARAM_ERROR)
         self._create_parser(create_parser)
         self._mi_parser(mi_parser)
         self._run_parser(run_parser)
@@ -53,7 +53,7 @@ class MsopstArgParser:
         elif sys.argv[1] == 'mi':
             if len(sys.argv) <= 2:
                 mi_parser.print_usage()
-                sys.exit(ConstManager.OP_TEST_GEN_INVALID_PARAM_ERROR)
+                raise utils.OpTestGenException(ConstManager.OP_TEST_GEN_INVALID_PARAM_ERROR)
             else:
                 self._check_mi_args(args)
         else:
@@ -103,7 +103,7 @@ class MsopstArgParser:
             utils.print_error_log(
                 'please enter an integer number for device id,'
                 ' now is %s.' % device_id)
-            sys.exit(ConstManager.OP_TEST_GEN_INVALID_DEVICE_ID_ERROR)
+            raise utils.OpTestGenException(ConstManager.OP_TEST_GEN_INVALID_DEVICE_ID_ERROR)
         self.device_id = device_id
 
     def _gen_error_threshold(self, err_thr):

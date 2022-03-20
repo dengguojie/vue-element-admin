@@ -9,6 +9,7 @@ Huawei Technologies Co., Ltd. All Rights Reserved © 2020
 """
 
 import re
+import collections
 
 from op_gen.interface import utils
 from op_gen.interface.op_info import OpInfo
@@ -53,6 +54,10 @@ class TFOpInfo(OpInfo):
         output_info_lines = []
         attr_info_lines = []
         op_name = ""
+        OperatorInfo = collections.namedtuple("OperatorInfo", ["input_info_lines",
+                                                               "output_info_lines",
+                                                               "attr_info_lines"])
+        operator_info = OperatorInfo(input_info_lines, output_info_lines, attr_info_lines)
         new_line = txt.replace('\n', ConstManager.EMPTY).replace('\r', ConstManager.EMPTY) \
             .replace('\t', ConstManager.EMPTY)
         pattern = re.compile(ConstManager.SPACE)
@@ -63,12 +68,11 @@ class TFOpInfo(OpInfo):
             continue_flag, op_name = self._check_info_str(info_str, op_name)
             if continue_flag:
                 continue
-            continue_flag, input_info_lines, output_info_lines, attr_info_lines = self._parse_info_lines(
-                info_str, input_info_lines, output_info_lines, attr_info_lines)
+            continue_flag, operator_info = self._parse_info_lines(info_str, operator_info)
             if continue_flag:
                 continue
-        self._init_op_info(op_name, input_info_lines, output_info_lines,
-                           attr_info_lines)
+        self._init_op_info(op_name, operator_info.input_info_lines, operator_info.output_info_lines,
+                           operator_info.attr_info_lines)
 
     @staticmethod
     def _check_info_str(info_str: str, op_name: str) -> (bool, str):
@@ -86,24 +90,23 @@ class TFOpInfo(OpInfo):
         return False, op_name
 
     @staticmethod
-    def _parse_info_lines(info_str: str, input_info_lines: list, output_info_lines: list,
-                          attr_info_lines: list) -> (bool, list, list, list):
+    def _parse_info_lines(info_str: str, operator_info: any) -> any:
         if info_str.startswith("Input") or info_str.startswith("Output") \
                 or info_str.startswith("Attr"):
             match_list = utils.get_content_from_double_quotes(info_str)
             if not match_list:
                 utils.print_warn_log("An error occurs during parsing by (\"key:value\"), "
                                      "continue.")
-                return True, input_info_lines, output_info_lines, attr_info_lines
+                return True, operator_info
             if info_str.startswith("Input"):
-                input_info_lines.append(match_list[0])
+                operator_info.input_info_lines.append(match_list[0])
             elif info_str.startswith("Output"):
-                output_info_lines.append(match_list[0])
+                operator_info.output_info_lines.append(match_list[0])
             elif info_str.startswith("Attr"):
-                attr_info_lines.append(match_list[0])
+                operator_info.attr_info_lines.append(match_list[0])
             else:
-                return True, input_info_lines, output_info_lines, attr_info_lines
-        return False, input_info_lines, output_info_lines, attr_info_lines
+                return True, operator_info
+        return False, operator_info
 
     def _init_op_info(self: any, op_name: str, input_info_lines: list, output_info_lines: list,
                       attr_info_lines: list) -> None:

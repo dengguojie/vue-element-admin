@@ -62,6 +62,18 @@ def print_info_log(info_msg: str) -> None:
     _print_log("INFO", info_msg)
 
 
+def json_load(json_path: str, jsonfile: any) -> any:
+    try:
+        return json.load(jsonfile)
+    except Exception as ex:
+        print_error_log(
+            'Failed to load json file %s. Please modify it. %s'
+            % (json_path, str(ex)))
+        raise MsOpGenException(ConstManager.MS_OP_GEN_READ_FILE_ERROR)
+    finally:
+        pass
+
+
 def read_json_file(json_path: str) -> any:
     """
     read json file to get json object
@@ -70,15 +82,7 @@ def read_json_file(json_path: str) -> any:
     """
     try:
         with open(json_path, 'rb') as jsonfile:
-            try:
-                return json.load(jsonfile)
-            except Exception as ex:
-                print_error_log(
-                    'Failed to load json file %s. Please modify it. %s'
-                    % (json_path, str(ex)))
-                raise MsOpGenException(ConstManager.MS_OP_GEN_READ_FILE_ERROR)
-            finally:
-                pass
+            return json_load(json_path, jsonfile)
     except IOError as io_error:
         print_error_log(
             'Failed to open json file %s. %s' % (json_path, str(io_error)))
@@ -329,7 +333,7 @@ def copy_template(src: str, dst: str, is_skip_exist: bool = False) -> None:
         try:
             if copy_src_to_dst(srcname, dstname, is_skip_exist):
                 continue
-        except (OSError, os.error) as why:
+        except OSError as why:
             errors.append((srcname, dstname, str(why)))
         finally:
             pass
@@ -365,7 +369,7 @@ def copy_exist_file(dstname: str, is_skip_exist: bool) -> bool:
         if is_skip_exist:
             return True
         print_error_log("{} is not empty. Please check.".format(dstname))
-        sys.exit(ConstManager.MS_OP_GEN_INVALID_PATH_ERROR)
+        MsOpGenException(ConstManager.MS_OP_GEN_INVALID_PATH_ERROR)
     return False
 
 
