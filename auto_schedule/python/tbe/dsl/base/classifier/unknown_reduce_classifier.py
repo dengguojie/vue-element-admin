@@ -41,7 +41,7 @@ class UnknownReduceClassifier:
         self.input_x = helper.generate_reduce_input(inputs_before_reduce)
         self.keepdims = keepdims
 
-        self.zero_axis_status = self._handle_zero_axis()
+        self.zero_axis_status = helper.handle_zero_axis(self.input_x)
 
         self.n_shape, self.n_ranges = self._normalize()
         self.dim_len = len(self.n_shape)
@@ -56,38 +56,14 @@ class UnknownReduceClassifier:
         """
         classify function
         """
-        from tbe.common.buildcfg import get_current_build_config
-        if get_current_build_config("enable_op_prebuild"):
-            return [helper.ins_of_prebuild(self.ins, list(range(0, self.reduce_axis_size)))]
-
         if self.zero_axis_status == ZeroAxisStatus.EXIST:
             return helper.generate_zero_ins()
-
         return self._classify_const() if self._is_const() else self._classify_var()
 
-    def _handle_zero_axis(self):
-        shape_x = self.input_x["shape"]
-        range_x = self.input_x["range"]
-
-        exist, maybe = False, False
-        for i, dim_i in enumerate(shape_x):
-            if dim_i == 0:
-                exist = True
-                break
-            elif range_x[i][0] == 0:
-                maybe = True
-
-        if exist:
-            return ZeroAxisStatus.EXIST
-        elif maybe:
-            for i, r in enumerate(range_x):
-                if range_x[i][0] == 0:
-                    range_x[i] = (1, range_x[i][1])
-            return ZeroAxisStatus.MAYBE
-        else:
-            return ZeroAxisStatus.NON_EXIST
-
     def _normalize(self):
+        """
+        _normalize unknown reduce
+        """
         shape0, ranges0 = list(self.input_x["shape"]), self.input_x.get("range")
         ranges0 = list(ranges0) if ranges0 else util.generate_range(shape0)
 

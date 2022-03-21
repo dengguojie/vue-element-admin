@@ -22,6 +22,7 @@ from typing import Dict
 from typing import Optional
 
 from tbe.common.utils.errormgr import get_error_message
+from tbe.common.buildcfg import get_current_build_config
 from tbe.dsl.base.operation import add_compile_info_inner
 
 from .known_reduce_classifier import KnownReduceClassifier
@@ -82,7 +83,8 @@ def classify(ins: list, extra_params: Optional[Dict[str, Any]] = None):
         elif _known_axis is not None:
             add_compile_info_inner("_ori_axis", _known_axis)
 
-        return MixedReduceClassifier(ins, keepdims, _known_axis).classify()
+        ins_classify = MixedReduceClassifier(ins, keepdims, _known_axis).classify()
+        return [ins_classify[0]] if get_current_build_config("enable_op_prebuild") else ins_classify
 
     _check_keepdims(keepdims)
     result = None
@@ -109,8 +111,10 @@ def classify(ins: list, extra_params: Optional[Dict[str, Any]] = None):
                 result = KnownReduceClassifier(ins, keepdims).classify()
             else:
                 result = UnknownReduceClassifier(ins, keepdims).classify()
-    result = [ins] if not result else result
-    return result
+    ins_classify = [ins] if not result else result
+
+    return [ins_classify[0]] if get_current_build_config("enable_op_prebuild") else ins_classify
+
 
 
 def _check_keepdims(keepdims: bool):

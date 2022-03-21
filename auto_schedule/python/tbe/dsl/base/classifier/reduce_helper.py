@@ -400,3 +400,26 @@ class ZeroAxisStatus(Enum):
     EXIST = auto()
     MAYBE = auto()
     NON_EXIST = auto()
+
+
+def handle_zero_axis(input_x):
+    shape_x = input_x["shape"]
+    range_x = input_x["range"]
+
+    exist, maybe = False, False
+    for i, dim_i in enumerate(shape_x):
+        if dim_i == 0:
+            exist = True
+            break
+        elif range_x[i][0] == 0:
+            maybe = True
+
+    if exist:
+        return ZeroAxisStatus.EXIST
+    elif maybe:
+        for i, r in enumerate(range_x):
+            if range_x[i][0] == 0:
+                range_x[i] = (1, range_x[i][1])
+        return ZeroAxisStatus.MAYBE
+    else:
+        return ZeroAxisStatus.NON_EXIST
