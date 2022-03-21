@@ -56,34 +56,34 @@ uint32_t CompareAndBitpackCpuKernel::Compute(CpuKernelContext &ctx) {
 }
 
 uint32_t CompareAndBitpackCpuKernel::ParaCheck(CpuKernelContext &ctx) const {
-  Tensor *input_0 = ctx.Input(kFirstInputIndex);
-  Tensor *input_1 = ctx.Input(kSecondInputIndex);
+  Tensor *input0 = ctx.Input(kFirstInputIndex);
+  Tensor *input1 = ctx.Input(kSecondInputIndex);
   Tensor *output = ctx.Output(kFirstOutputIndex);
 
-  KERNEL_CHECK_NULLPTR(input_0->GetData(), KERNEL_STATUS_PARAM_INVALID, "Get input 0 data failed.")
-  KERNEL_CHECK_NULLPTR(input_1->GetData(), KERNEL_STATUS_PARAM_INVALID, "Get input 1 data failed.")
+  KERNEL_CHECK_NULLPTR(input0->GetData(), KERNEL_STATUS_PARAM_INVALID, "Get input0 data failed.")
+  KERNEL_CHECK_NULLPTR(input1->GetData(), KERNEL_STATUS_PARAM_INVALID, "Get input1 data failed.")
   KERNEL_CHECK_NULLPTR(output->GetData(), KERNEL_STATUS_PARAM_INVALID, "Get output data failed")
-  int32_t last_dim_index = input_0->GetTensorShape()->GetDims() - 1;
-  KERNEL_CHECK_FALSE((IsScalar(input_1->GetTensorShape()->GetDimSizes())), KERNEL_STATUS_PARAM_INVALID,
-                     "Input_1[threshold] must be a scalar");
-  KERNEL_CHECK_FALSE((IsVectorOrHigher(input_0->GetTensorShape()->GetDimSizes())), KERNEL_STATUS_PARAM_INVALID,
-                     "Input_0 should be at least a vector, but saw a scalar");
-  KERNEL_CHECK_FALSE((((input_0->GetTensorShape()->GetDimSize(last_dim_index)) % 8) == 0), KERNEL_STATUS_PARAM_INVALID,
-                     "Inner dimension of input_0 should be divisible by 8");
+  int32_t last_dim_index = input0->GetTensorShape()->GetDims() - 1;
+  KERNEL_CHECK_FALSE((IsScalar(input1->GetTensorShape()->GetDimSizes())), KERNEL_STATUS_PARAM_INVALID,
+                     "Input1[threshold] must be a scalar");
+  KERNEL_CHECK_FALSE((IsVectorOrHigher(input0->GetTensorShape()->GetDimSizes())), KERNEL_STATUS_PARAM_INVALID,
+                     "Input0 should be at least a vector, but saw a scalar");
+  KERNEL_CHECK_FALSE((((input0->GetTensorShape()->GetDimSize(last_dim_index)) % 8) == 0), KERNEL_STATUS_PARAM_INVALID,
+                     "Inner dimension of input0 should be divisible by 8");
   return KERNEL_STATUS_OK;
 }
 
 template <typename T>
 uint32_t CompareAndBitpackCpuKernel::CompareAndBitpackCompute(CpuKernelContext &ctx) {
-  T *input_0 = reinterpret_cast<T *>(ctx.Input(kFirstInputIndex)->GetData());
-  T *input_1 = reinterpret_cast<T *>(ctx.Input(kSecondInputIndex)->GetData());
+  T *input0 = reinterpret_cast<T *>(ctx.Input(kFirstInputIndex)->GetData());
+  T *input1 = reinterpret_cast<T *>(ctx.Input(kSecondInputIndex)->GetData());
   uint8_t *output = reinterpret_cast<uint8_t *>(ctx.Output(kFirstOutputIndex)->GetData());
   int64_t data_num = ctx.Output(kFirstOutputIndex)->NumElements();
-  T thresh = *input_1;
+  T thresh = *input1;
   if (data_num <= kParallelDataNums) {
     for (int64_t i = 0; i < data_num; ++i) {
       uint8_t* out = output + i;
-      const T* input = input_0 + 8 * i;
+      const T* input = input0 + 8 * i;
       *out = ((((input[0] > thresh) << 7)) | (((input[1] > thresh) << 6)) |
                 (((input[2] > thresh) << 5)) | (((input[3] > thresh) << 4)) |
                 (((input[4] > thresh) << 3)) | (((input[5] > thresh) << 2)) |
@@ -98,7 +98,7 @@ uint32_t CompareAndBitpackCpuKernel::CompareAndBitpackCompute(CpuKernelContext &
     auto shard = [&](size_t start, size_t end) {
       for (size_t i = start; i < end; i++) {
         uint8_t* out = output + i;
-        const T* input = input_0 + 8 * i;
+        const T* input = input0 + 8 * i;
         *out = ((((input[0] > thresh) << 7)) | (((input[1] > thresh) << 6)) |
                   (((input[2] > thresh) << 5)) | (((input[3] > thresh) << 4)) |
                   (((input[4] > thresh) << 3)) | (((input[5] > thresh) << 2)) |

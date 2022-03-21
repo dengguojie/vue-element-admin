@@ -15,8 +15,8 @@
  */
 
 #include "pad_d.h"
-#include "cpu_tensor.h"
 #include <algorithm>
+#include "cpu_tensor.h"
 #include "cpu_tensor_shape.h"
 #include "cpu_types.h"
 #include "utils/kernel_util.h"
@@ -25,7 +25,6 @@
 #include "status.h"
 #include "log.h"
 #include "securec.h"
-
 namespace {
 // Add pad op
 const char *kPadD = "PadD";
