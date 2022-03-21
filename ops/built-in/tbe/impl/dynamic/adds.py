@@ -26,7 +26,7 @@ from impl.util.platform_adapter import register_operator
 
 
 # 'pylint: disable=locally-disabled,invalid-name,unused-argument,too-many-locals
-def adds_compute(x, scalar, kernel_name="adds"):
+def adds_compute(x, y, value, kernel_name="adds"):
     """
     calculating data
 
@@ -34,7 +34,9 @@ def adds_compute(x, scalar, kernel_name="adds"):
     ----------
     x : TVM tensor
         the placeholder of input
-    scalar : a number of float or int
+    y : dict
+        dict of output
+    value : a number of float or int
     kernel_name : str
         kernel name, default value is "adds"
 
@@ -43,7 +45,7 @@ def adds_compute(x, scalar, kernel_name="adds"):
     res: TVM tensor
         the calculation results
     """
-    res = tbe.vadds(x, scalar)
+    res = tbe.vadds(x, value)
     return res
 
 
@@ -80,7 +82,7 @@ def adds(x, y, value, kernel_name="adds"):
             fuseshape[0] = functools.reduce(lambda x, y: x * y, shape[0])
             data_input = tvm.placeholder(fuseshape, name="data_input", dtype=dtype)
             scalar = tvm.const(value, dtype=dtype)
-            res = adds_compute(data_input, scalar)
+            res = adds_compute(data_input, y, scalar)
             tensors.append([data_input, res])
         with tvm.target.cce():
             sch = tbe.auto_schedule(res)

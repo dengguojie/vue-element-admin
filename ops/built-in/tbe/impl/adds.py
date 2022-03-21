@@ -23,7 +23,7 @@ from te.utils import para_check
 
 # 'pylint: disable=invalid-name,unused-argument
 @fusion_manager.register("adds")
-def adds_compute(x, scalar, kernel_name="adds"):
+def adds_compute(x, y, value, kernel_name="adds"):
     """
     calculating data
 
@@ -31,7 +31,9 @@ def adds_compute(x, scalar, kernel_name="adds"):
     ----------
     x : TVM tensor
         the placeholder of input
-    scalar : a number of float or int
+    y : dict
+        dict of output
+    value : a number of float or int
     kernel_name : str
         kernel name, default value is "adds"
 
@@ -40,7 +42,7 @@ def adds_compute(x, scalar, kernel_name="adds"):
     res: TVM tensor
         the calculation results
     """
-    res = te.lang.cce.vadds(x, scalar)
+    res = te.lang.cce.vadds(x, value)
     return res
 
 
@@ -72,7 +74,7 @@ def adds(x, y, value, kernel_name="adds"):
 
     scalar = tvm.const(value, dtype=dtype)
     data_input = tvm.placeholder(shape, name="data_input", dtype=dtype)
-    res = adds_compute(data_input, scalar)
+    res = adds_compute(data_input, y, scalar)
 
     with tvm.target.cce():
         sch = te.lang.cce.auto_schedule(res)
