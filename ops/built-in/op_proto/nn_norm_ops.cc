@@ -47,6 +47,24 @@ IMPLEMT_COMMON_INFERFUNC(LogSoftmaxGradInferShape) {
 COMMON_INFER_FUNC_REG(LogSoftmaxGrad, LogSoftmaxGradInferShape);
 // --------------------------LogSoftmaxGrad END---------------------
 
+// -------------------AxpyWithSoftmaxAndDropOutDoMask---------------------
+IMPLEMT_COMMON_INFERFUNC(AxpyWithSoftmaxAndDropOutDoMaskInferShape) {
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  GeTensorDescPtr input_desc = op_desc->MutableInputDesc(0);
+  DataType input_type = input_desc->GetDataType();
+
+  auto y1 = op_desc->MutableOutputDesc(0);
+  y1->SetShape(input_desc->GetShape());
+  y1->SetDataType(input_type);
+  auto y2 = op_desc->MutableOutputDesc(1);
+  y2->SetShape(input_desc->GetShape());
+  y2->SetDataType(input_type);
+
+  return GRAPH_SUCCESS;
+}
+COMMON_INFER_FUNC_REG(AxpyWithSoftmaxAndDropOutDoMask, AxpyWithSoftmaxAndDropOutDoMaskInferShape);
+// ------------------AxpyWithSoftmaxAndDropOutDoMask END------------------ 
+
 // --------------------------DropoutWithMulsAndSoftmaxGrad-------------------------
 IMPLEMT_COMMON_INFERFUNC(DropoutWithMulsAndSoftmaxGradInferShape) {
   return GRAPH_SUCCESS;

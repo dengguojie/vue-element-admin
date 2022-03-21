@@ -15,7 +15,7 @@
 # limitations under the License.
 # ============================================================================
 """
-axpy_with_softmax_and_dropoutdomask
+axpy_with_softmax_and_drop_out_do_mask
 """
 from impl.util.platform_adapter import tik
 from impl.util.platform_adapter import tbe_platform
@@ -238,8 +238,8 @@ def cal_prarms_list(input_tensor, input_keep_prob):
                             para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_FLOAT,
                             para_check.REQUIRED_ATTR_FLOAT, para_check.OPTION_ATTR_LIST_INT,
                             para_check.KERNEL_NAME)
-def axpy_with_softmax_and_dropoutdomask(x1, x2, mask, y1, y2, alpha, input_keep_prob, axis=-1,
-                                        kernel_name="axpy_with_softmax_and_dropoutdomask"):
+def axpy_with_softmax_and_drop_out_do_mask(x1, x2, mask, y1, y2, alpha, input_keep_prob, axis=-1,
+                                           kernel_name="axpy_with_softmax_and_drop_out_do_mask"):
     mask_shape = mask.get("shape")
     tensor_dtype = x1.get("dtype").lower()
     mask_dtype = mask.get("dtype").lower()
@@ -247,8 +247,8 @@ def axpy_with_softmax_and_dropoutdomask(x1, x2, mask, y1, y2, alpha, input_keep_
     params_list, core_attr_list = cal_prarms_list(x1, input_keep_prob)
     w_dim, line, tensor_shape, tik_instance, _ = params_list
     if w_dim == 512:
-        axpy_with_softmax_and_dropoutdomask_w_large(x1, x2, mask, y1, y2, alpha, input_keep_prob, axis=-1,
-                                                    kernel_name="axpy_with_softmax_and_dropoutdomask")
+        return axpy_with_softmax_and_drop_out_do_mask_w_large(x1, x2, mask, y1, y2, alpha, input_keep_prob, axis,
+                                                              kernel_name)
     else:
         aicore_num, batch_per_core, ele_per_core, ele_per_batch, batch_range, shape = core_attr_list
 
@@ -294,8 +294,8 @@ def axpy_with_softmax_and_dropoutdomask(x1, x2, mask, y1, y2, alpha, input_keep_
         return tik_instance
 
 
-def axpy_with_softmax_and_dropoutdomask_w_large(x1, x2, mask, y1, y2, alpha, input_keep_prob, axis=-1,
-                                                kernel_name="axpy_with_softmax_and_dropoutdomask"):
+def axpy_with_softmax_and_drop_out_do_mask_w_large(x1, x2, mask, y1, y2, alpha, input_keep_prob, axis=-1,
+                                                   kernel_name="axpy_with_softmax_and_drop_out_do_mask"):
     """
     axpy_v2 + softmax_v2 + drop_out_do_mask_v3_d
     """
@@ -376,6 +376,7 @@ def axpy_with_softmax_and_dropoutdomask_w_large(x1, x2, mask, y1, y2, alpha, inp
                           outputs=[tensor_output_y1, tensor_output_y2])
     return tik_instance
 
+
 def check_input(x1, x2, mask, kernel_name):
     para_check.check_kernel_name(kernel_name)
     para_check.check_dtype_rule(x1.get('dtype').lower(), ("float16"))
@@ -388,6 +389,7 @@ def check_input(x1, x2, mask, kernel_name):
     para_check.check_shape_size(x2.get('shape'), SHAPE_SIZE_LIMIT)
     para_check.check_shape_size(mask.get('shape'), SHAPE_SIZE_LIMIT)
 
+
 def get_shape_and_dtype(x1,  x2, mask):
     tensor_shape_x1 = x1.get("shape")
     tensor_shape_x2 = x2.get("shape")
@@ -398,6 +400,7 @@ def get_shape_and_dtype(x1,  x2, mask):
     tensor_shape = tensor_shape_x1
     tensor_dtype = tensor_dtype_x1
     return (tensor_shape, tensor_dtype, tensor_mask_dtype)
+
 
 def create_gm_tensor(tik_instance, tensor_shape, tensor_dtype, tensor_mask_dtype):
     tensor_input_x1 = tik_instance.Tensor(tensor_dtype,
@@ -422,6 +425,7 @@ def create_gm_tensor(tik_instance, tensor_shape, tensor_dtype, tensor_mask_dtype
                                            scope=tbe_platform.scope_gm)
     gm_tensor_tuple = (tensor_input_x1, tensor_input_x2, tensor_mask, tensor_output_y1, tensor_output_y2)
     return gm_tensor_tuple
+
 
 def create_ub_tensor(tik_instance, w_len):
     ub_1 = tik_instance.Tensor("float16", (w_len, 32, 16), scope=tbe_platform.scope_ubuf, name="ub_1")
@@ -448,6 +452,7 @@ def create_ub_tensor(tik_instance, w_len):
                        ub_reduceadd, ub_reduceadd_fp16, ub_dup, ub_broadcast, ub_mask, ub_mask_fp16)
     return ub_tensor_tuple
 
+
 def get_max_ele(tik_instance, ub_1, ub_2, ub_reducemax, w_len):
     tik_instance.vmax(VEC_MASK, ub_2[0], ub_1[0], ub_1[w_len * 32 * 8], w_len * 2, 1, 1, 1, 8, 8, 8)
     tik_instance.vmax(VEC_MASK, ub_2[0], ub_2[0], ub_2[w_len * 32 * 4], w_len, 1, 1, 1, 8, 8, 8)
@@ -455,6 +460,7 @@ def get_max_ele(tik_instance, ub_1, ub_2, ub_reducemax, w_len):
     tik_instance.vmax(VEC_MASK, ub_2[0], ub_2[0], ub_2[w_len * 32], 8, 1, 1, 1, 8, 8, 8)
     tik_instance.vmax(VEC_MASK, ub_2[0], ub_2[0], ub_2[w_len * 16], 4, 1, 1, 1, 8, 8, 8)
     tik_instance.vcgmax(VEC_MASK, ub_reducemax[0], ub_2[0], 4, 1, 1, 8)
+
 
 def broadcast(tik_instance, ub_dup, ub_need_broadcast, ub_broadcast):
     tik_instance.vector_dup(VEC_MASK, ub_dup[0], tik_instance.Scalar(init_value=0, dtype="uint16"), 1, 1, 8)
@@ -467,6 +473,7 @@ def broadcast(tik_instance, ub_dup, ub_need_broadcast, ub_broadcast):
     ub_broadcast_fp16 = ub_broadcast.reinterpret_cast_to("float16")
     return ub_broadcast_fp16
 
+
 def exp(tik_instance, ub_2, ub_3, ub_cast, w_len):
     tik_instance.vconv(VEC_MASK_FP32, "", ub_cast[0], ub_2[0], MAX_REPEAT, 1, 1, 8, 4)
     tik_instance.vconv(VEC_MASK_FP32, "", ub_cast[VEC_MASK_FP32 * MAX_REPEAT],
@@ -477,6 +484,7 @@ def exp(tik_instance, ub_2, ub_3, ub_cast, w_len):
     tik_instance.vconv(VEC_MASK_FP32, "", ub_3[0], ub_cast[0], MAX_REPEAT, 1, 1, 4, 8)
     tik_instance.vconv(VEC_MASK_FP32, "", ub_3[VEC_MASK_FP32 * MAX_REPEAT],
                        ub_cast[VEC_MASK_FP32 * MAX_REPEAT], 1, 1, 1, 4, 8)
+
 
 def sum_exp(tik_instance, ub_cast, ub_reduceadd, w_len):
     tik_instance.vadd(VEC_MASK_FP32, ub_cast[0], ub_cast[0], ub_cast[w_len * 32 * 8], w_len * 4, 1, 1, 1, 8, 8, 8)

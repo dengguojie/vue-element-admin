@@ -1773,5 +1773,43 @@ REG_OP(SoftmaxCrossEntropyLoss)
     .OUTPUT(loss, TensorType({DT_DOUBLE,DT_FLOAT16,DT_FLOAT,DT_BFLOAT16}))
     .OUTPUT(log_prop, TensorType({DT_DOUBLE,DT_FLOAT16,DT_FLOAT,DT_BFLOAT16}))
     .OP_END_FACTORY_REG(SoftmaxCrossEntropyLoss)
+
+/**
+* @brief Function axpy with softmax and dropoutdomask . \n
+
+* @par Inputs:
+* Three inputs, including:
+* @li x1: A mutable Tensor. The type only support float16.
+* @li x2: A mutable Tensor. The type only support float16.
+* @li mask: A mutable Tensor. Must meet all of the following rules:
+*     shape of mask should be 1D.
+*     dtype of mask should be uint8.
+*     value of shape should meet the following algorithm:
+*     value = (size(x) + 128 - 1) // 128 * 128 . \n
+
+* @par Attributes:
+* @li alpha: A attribute used to scale tensor. The type is float . \n
+* @li input_keep_prob: A attribute used to judge which units should be keep.
+*     The type is float . \n
+* @li axis: A list of int. The dimension softmax would be performed on. Defaults
+*     to "[-1]" . \n
+
+* @par Outputs:
+* y1: A mutable Tensor. Has the same type as "x1". \n
+* y2: A mutable Tensor. Has the same type as "x1". \n
+
+* @par Restrictions:
+* Warning: THIS FUNCTION IS EXPERIMENTAL. Please do not use.
+*/
+REG_OP(AxpyWithSoftmaxAndDropOutDoMask)
+    .INPUT(x1, TensorType({DT_FLOAT16}))
+    .INPUT(x2, TensorType({DT_FLOAT16}))
+    .INPUT(mask, TensorType({DT_UINT8}))
+    .OUTPUT(y1, TensorType({DT_FLOAT16}))
+    .OUTPUT(y2, TensorType({DT_FLOAT16}))
+    .REQUIRED_ATTR(alpha, Float)
+    .REQUIRED_ATTR(input_keep_prob, Float)
+    .ATTR(axis, ListInt, {-1})
+    .OP_END_FACTORY_REG(AxpyWithSoftmaxAndDropOutDoMask)
 }  // namespace ge
 #endif  // OPS_BUILT_IN_OP_PROTO_INC_NN_NORM_OPS_H_
