@@ -710,5 +710,4 @@ namespace optiling {
         return true;
     }
     // register tiling interface of the MaxPoolGradWithArgmaxV1 op.
-    REGISTER_OP_TILING_FUNC_BUFFERED(MaxPoolGradWithArgmaxV1, MaxPoolGradWithArgmaxV1Tiling);
 } // namespace optiling.

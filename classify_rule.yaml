@@ -1002,6 +1002,7 @@ vector_B:
       - ops/built-in/tbe/impl/dynamic/logical_not.py
       - ops/built-in/tbe/impl/dynamic/max_pool_grad.py
       - ops/built-in/tbe/impl/dynamic/max_pool_with_argmaxv1.py
+      - ops/built-in/tbe/impl/dynamic/max_pool_grad_with_argmaxv1.py
       - ops/built-in/tbe/impl/dynamic/maximum.py
       - ops/built-in/tbe/impl/dynamic/maximum_grad.py
       - ops/built-in/tbe/impl/dynamic/minimum.py

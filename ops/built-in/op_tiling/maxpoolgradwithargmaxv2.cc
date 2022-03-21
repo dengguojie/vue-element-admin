@@ -689,4 +689,5 @@ bool MaxPoolGradWithArgmaxV2Tiling(const std::string& op_type, const TeOpParas& 
 }
 // register tiling interface of the MaxPoolGradWithArgmaxV2 op.
 REGISTER_OP_TILING_FUNC_BUFFERED(MaxPoolGradWithArgmaxV2, MaxPoolGradWithArgmaxV2Tiling);
+REGISTER_OP_TILING_FUNC_BUFFERED(MaxPoolGradWithArgmaxV1, MaxPoolGradWithArgmaxV2Tiling);
 }  // namespace optiling.

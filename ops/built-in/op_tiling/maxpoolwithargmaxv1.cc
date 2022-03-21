@@ -558,5 +558,4 @@ namespace optiling {
         return true;
     }
     // register tiling interface of the MaxPoolWithArgmaxV1 op.
-    REGISTER_OP_TILING_FUNC_BUFFERED(MaxPoolWithArgmaxV1, MaxPoolWithArgmaxV1Tiling);
 } // namespace optiling.

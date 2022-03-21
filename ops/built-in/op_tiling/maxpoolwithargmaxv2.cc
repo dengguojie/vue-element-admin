@@ -487,4 +487,5 @@ bool MaxPoolWithArgmaxV2Tiling(const string& op_type, const TeOpParas& op_paras,
 
 // register tiling interface of maxpool op.
 REGISTER_OP_TILING_FUNC_BUFFERED(MaxPoolWithArgmaxV2, MaxPoolWithArgmaxV2Tiling);
+REGISTER_OP_TILING_FUNC_BUFFERED(MaxPoolWithArgmaxV1, MaxPoolWithArgmaxV2Tiling);
 }  // namespace optiling
