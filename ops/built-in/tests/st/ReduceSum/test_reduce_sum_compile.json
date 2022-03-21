@@ -1,4 +1,5 @@
 [
+    {"compile_flag": 1},
     {
         "op": "ReduceSum",
         "case_name": "test_sum_keep_dims_false",
@@ -6,8 +7,7 @@
         "input_desc": [
             {
                 "format": "NHWC",
-                "shape": [-2],
-                "typical_shape": [4, 16, 16, 16],
+                "shape": [4, 16, 16, 16],
                 "type": "float",
                 "value_range": [[0, 1]],
                 "data_distribute": "uniform",
@@ -15,8 +15,7 @@
             },
             {
                 "format": "NHWC",
-                "shape": [-2],
-                "typical_shape": [2],
+                "shape": [2],
                 "shape_range": [[1, 2240]],
                 "type": "int32",
                 "value": [0, 1],
@@ -46,8 +45,7 @@
         "input_desc": [
             {
                 "format": "NHWC",
-                "shape": [-2],
-                "typical_shape": [4, 16, 16, 16],
+                "shape": [4, 16, 16, 16],
                 "type": "float",
                 "value_range": [[0, 1]],
                 "data_distribute": "uniform",
@@ -55,8 +53,7 @@
             },
             {
                 "format": "NHWC",
-                "shape": [-2],
-                "typical_shape": [2],
+                "shape": [2],
                 "shape_range": [[1, 2240]],
                 "type": "int32",
                 "value": [0, 1],

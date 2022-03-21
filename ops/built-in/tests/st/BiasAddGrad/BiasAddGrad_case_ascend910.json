@@ -1,6 +1,7 @@
 [
   {
     "op": "BiasAddGrad",
+    "calc_expect_func_file" : "test_biasaddgrad_golden.py:calc_expect_func_other",
     "input_desc": [
       {
         "shape": [
@@ -20,12 +21,10 @@
     "output_desc": [
       {
         "shape": [
-          2,
           3
         ],
         "format": "NHWC",
         "ori_shape": [
-          2,
           3
         ],
         "ori_format": "NHWC",
@@ -44,6 +43,7 @@
   },
   {
     "op": "BiasAddGrad",
+    "calc_expect_func_file" : "test_biasaddgrad_golden.py:calc_expect_func_other",
     "input_desc": [
       {
         "shape": [
@@ -63,12 +63,10 @@
     "output_desc": [
       {
         "shape": [
-          77,
           30522
         ],
         "format": "NHWC",
         "ori_shape": [
-          77,
           30522
         ],
         "ori_format": "NHWC",
@@ -87,6 +85,7 @@
   },
   {
     "op": "BiasAddGrad",
+    "calc_expect_func_file" : "test_biasaddgrad_golden.py:calc_expect_func_other",
     "input_desc": [
       {
         "shape": [
@@ -110,16 +109,10 @@
     "output_desc": [
       {
         "shape": [
-          10,
-          10,
-          10,
           10
         ],
         "format": "NCHW",
         "ori_shape": [
-          10,
-          10,
-          10,
           10
         ],
         "ori_format": "NCHW",
@@ -139,6 +132,7 @@
   {
     "case_name": "BiasAddGrad_dynamic_shape_BiasAddGrad_1_ascend910a",
     "op": "BiasAddGrad",
+    "calc_expect_func_file" : "test_biasaddgrad_golden.py:calc_expect_func_other",
     "input_desc": [
       {
         "format": [
