@@ -232,6 +232,7 @@ from .space_to_depth import space_to_depth
 from .greater import greater
 from .l2_loss import l2_loss
 from .expand import expand
+from .dawsn import dawsn
 from .log import log
 from .logical_and import logical_and
 from .logical_not import logical_not

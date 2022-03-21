@@ -3933,6 +3933,25 @@ REG_OP(ApplyAdamV2)
     .OUTPUT(v, TensorType({ DT_FLOAT, DT_FLOAT16 }))
     .ATTR(adam_mode, String, "adam")
     .OP_END_FACTORY_REG(ApplyAdamV2)
+
+/**
+* @brief Computes Dawsn operation.  \n
+
+*
+* @par Inputs:
+* x: A tensor. Must be one of the following types: bfloat16, float16, float32, float64.
+*
+* @par Outputs:
+* y: A tensor. Has the same type as "x".
+*
+* @par Third-party framework compatibility
+* Compatible with the TensorFlow operator Dawsn.
+*
+*/
+REG_OP(Dawsn)
+    .INPUT(x, TensorType({DT_BF16, DT_FLOAT16, DT_FLOAT, DT_DOUBLE}))
+    .OUTPUT(y, TensorType({DT_BF16, DT_FLOAT16, DT_FLOAT, DT_DOUBLE}))
+    .OP_END_FACTORY_REG(Dawsn)
 }  // namespace ge
 
 #endif  // OPS_BUILT_IN_OP_PROTO_INC_ELEWISE_CALCULATION_OPS_H_

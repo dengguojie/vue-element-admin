@@ -137,6 +137,7 @@ set(_tf_plugins
   cumsum_plugin.cc
   cumulative_logsumexp_plugin.cc
   data_format_dim_map_plugin.cc
+  dawsn_plugin.cc
   decode_bbox_plugin.cc
   decode_bbox_v2_plugin.cc
   depth_to_space_plugin.cc

@@ -4299,6 +4299,10 @@ IMPLEMT_COMMON_INFERFUNC(CeilInferShape) {
 COMMON_INFER_FUNC_REG(Ceil, CeilInferShape);
 // --------------Ceil END----------------
 
+// ----------------Dawsn--------------------
+COMMON_INFER_FUNC_REG(Dawsn, OneInOneOutCommonInferShape);
+// --------------Dawsn END-----------------
+
 // ----------------Cos-------------------
 IMPLEMT_COMMON_INFERFUNC(CosInferShape) {
   OP_LOGI(op.GetName().c_str(), "Enter CosInferShape");

@@ -957,6 +957,7 @@ vector_B:
       - ops/built-in/tbe/impl/dynamic/cos.py
       - ops/built-in/tbe/impl/dynamic/cosh.py
       - ops/built-in/tbe/impl/dynamic/data_format_dim_map.py
+      - ops/built-in/tbe/impl/dynamic/dawsn.py
       - ops/built-in/tbe/impl/dynamic/dequantize.py
       - ops/built-in/tbe/impl/dynamic/div.py
       - ops/built-in/tbe/impl/dynamic/div_no_nan.py
@@ -3214,6 +3215,7 @@ unkown:
       - ops/built-in/framework/tf_plugin/ocr_plugin.cc
       - ops/built-in/framework/tf_plugin/dynamic_rnn_v2_tf_plugin.cc
       - ops/built-in/framework/tf_plugin/acos_plugin.cc
+      - ops/built-in/framework/tf_plugin/dawsn_plugin.cc
       - ops/built-in/framework/tf_plugin/floor_plugin.cc
       - ops/built-in/framework/tf_plugin/equal_plugin.cc
       - ops/built-in/framework/tf_plugin/get_next_from_queue_plugin.cc
