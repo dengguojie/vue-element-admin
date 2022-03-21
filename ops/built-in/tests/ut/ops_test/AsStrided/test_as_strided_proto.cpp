@@ -98,4 +98,12 @@ TEST_F(AsStrided, case1) {
   EXPECT_EQ(expect_output_shape, output_shape);
 }
 
+TEST_F(AsStrided, case2) {
+  vector<int64_t> output_shape;
+  vector<int64_t> expect_output_shape;
+  expect_output_shape.push_back(-2);
+  vector<std::pair<int64_t, int64_t>> output_range;
+  test<int32_t>({-1, 1000}, {-1, 1000}, {}, {}, 0, {{2000, 2000}, {1000, 1000}}, output_shape, output_range);
+  EXPECT_EQ(expect_output_shape, output_shape);
+}
 };

@@ -3381,40 +3381,40 @@ VERIFY_FUNC_REG(AffineGrid, AffineGridVerify);
 // ----------------AffineGrid-------------------
 
 // ----------------AsStrided Op Begin-------------------
+static void SetOutputForRank(GeTensorDescPtr& output_desc) {
+  GeShape& output_shape = output_desc->MutableShape();
+  output_shape.SetIsUnknownDimNum();
+}
+
 IMPLEMT_COMMON_INFERFUNC(AsStridedInferShape) {
   const vector<string> depend_names = {"size", "stride", "storage_offset"};
   PREPARE_DYNAMIC_SHAPE(depend_names);
-  std::vector<int64_t> size_list;
-  // get size parameter
-  if (!ops::GetConstIntData(op, 1, size_list)) {
-    OP_LOGW(op.GetName().c_str(), "get const size failed!");
-    return GRAPH_FAILED;
-  }
 
   auto input_desc = op_desc->MutableInputDesc("x");
   auto input_dtype = input_desc->GetDataType();
   auto output_desc = op_desc->MutableOutputDesc("y");
   output_desc->SetDataType(input_dtype);
 
-  std::vector<std::pair<int64_t, int64_t>> output_range;
+  std::vector<int64_t> size_list;
+  // get size parameter
+  if (!ops::GetConstIntData(op, 1, size_list)) {
+    OP_LOGW(TbeGetName(op), "get const size failed!");
+    SetOutputForRank(output_desc);
+    return GRAPH_SUCCESS;
+  }
+
   auto size_desc = op_desc->MutableInputDesc("size");
-  std::vector<int64_t> size_shape = size_desc->MutableShape().GetDims();
-  if (!IsUnknown(size_shape)) {
-    for (size_t i = 0; i < size_list.size(); ++i) {
-      if (size_list[i] == -1) {
-        output_range.push_back(std::pair<int64_t, int64_t>(0, size_list[i]));
-      } else {
-        output_range.push_back(std::pair<int64_t, int64_t>(size_list[i], size_list[i]));
-      }
-    }
-    output_desc->SetShapeRange(output_range);
-    output_desc->SetShape(GeShape(size_list));
-    output_desc->SetOriginShape(GeShape(size_list));
+  GeShape& size_shape = size_desc->MutableShape();
+  if (size_shape.IsUnknownShape() || size_shape.IsUnknownDimNum()) {
+    SetOutputForRank(output_desc);
   } else {
-    std::vector<int64_t> unknown_list;
-    unknown_list.push_back(-2);
-    output_desc->SetShape(GeShape(unknown_list));
-    output_desc->SetOriginShape(GeShape(unknown_list));
+    CHECK(IsUnknown(size_list),
+	  VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), OtherErrMsg("Invalid attribute size!")),
+	  return GRAPH_FAILED);
+
+    auto size_attr_shape = GeShape(size_list);
+    output_desc->SetShape(size_attr_shape);
+    output_desc->SetOriginShape(size_attr_shape);
   }
 
   return GRAPH_SUCCESS;
