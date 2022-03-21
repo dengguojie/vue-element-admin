@@ -121,6 +121,8 @@ TEST_F(prodvirialsea_fusion_test, prodvirialsea_fusion_test_01) {
   fe::FusionPassTestUtils::RunGraphFusionPass("ProdVirialSeAFusionPass", fe::BUILT_IN_GRAPH_PASS, *computeGraph);
   GE_DUMP(computeGraph, testCaseName + "_after_fusion");
 
+  fe::PlatformInfoManager::Instance().platform_info_map_.clear();
+
   bool findAiCoreNode = false;
   bool findVectorCoreNode = false;
   for (auto iNode : computeGraph->GetAllNodes()) {
@@ -189,6 +191,8 @@ TEST_F(prodvirialsea_fusion_test, prodvirialsea_fusion_test_02) {
   GE_DUMP(computeGraph, testCaseName + "_after_infer_shape");
   fe::FusionPassTestUtils::RunGraphFusionPass("ProdVirialSeAFusionPass", fe::BUILT_IN_GRAPH_PASS, *computeGraph);
   GE_DUMP(computeGraph, testCaseName + "_after_fusion");
+
+  fe::PlatformInfoManager::Instance().platform_info_map_.clear();
 
   bool findAiCoreNode = false;
   bool findVectorCoreNode = false;

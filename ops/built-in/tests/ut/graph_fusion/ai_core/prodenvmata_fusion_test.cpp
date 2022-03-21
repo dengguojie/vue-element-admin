@@ -131,6 +131,8 @@ TEST_F(prodenvmata_fusion_test, prodenvmata_fusion_test_01) {
   fe::FusionPassTestUtils::RunGraphFusionPass("ProdEnvMatAFusionPass", fe::BUILT_IN_GRAPH_PASS, *computeGraph);
   GE_DUMP(computeGraph, testCaseName + "_after_fusion");
 
+  fe::PlatformInfoManager::Instance().platform_info_map_.clear();
+
   bool findAiCoreNode = false;
   bool findVectorCoreNode = false;
   for (auto iNode : computeGraph->GetAllNodes()) {

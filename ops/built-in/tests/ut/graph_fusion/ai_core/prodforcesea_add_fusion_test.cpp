@@ -28,6 +28,8 @@
 #include "split_combination_ops.h"
 #include "deep_md.h"
 #include "fusion_pass_test_utils.h"
+#define private public
+#include "common/util/platform_info.h"
 
 using namespace ge;
 using namespace op;
@@ -103,10 +105,20 @@ TEST_F(prodforcesea_add_fusion_test, prodforcesea_add_fusion_test_01) {
   graph.SetInputs(inputs).SetOutputs(outputs);
   ComputeGraphPtr computeGraph = GraphUtils::GetComputeGraph(graph);
 
+  fe::PlatformInfo platformInfo;
+  fe::OptionalInfo optiCompilationInfo;
+  platformInfo.soc_info.ai_core_cnt = 1;
+  platformInfo.str_info.ccec_aic_version = "dav-s200";
+  optiCompilationInfo.soc_version = "Ascend710";
+  fe::PlatformInfoManager::Instance().platform_info_map_["Ascend710"] = platformInfo;
+  fe::PlatformInfoManager::Instance().SetOptionalCompilationInfo(optiCompilationInfo);
+
   fe::FusionPassTestUtils::InferShapeAndType(computeGraph);
   GE_DUMP(computeGraph, testCaseName + "_after_infer_shape");
   fe::FusionPassTestUtils::RunGraphFusionPass("ProdForceSeAVectorFusionPass", fe::BUILT_IN_GRAPH_PASS, *computeGraph);
   GE_DUMP(computeGraph, testCaseName + "_after_fusion");
+
+  fe::PlatformInfoManager::Instance().platform_info_map_.clear();
 
   bool findAiCoreNode = false;
   bool findVectorCoreNode = false;
@@ -164,10 +176,20 @@ TEST_F(prodforcesea_add_fusion_test, prodforcesea_add_fusion_test_02) {
   graph.SetInputs(inputs).SetOutputs(outputs);
   ComputeGraphPtr computeGraph = GraphUtils::GetComputeGraph(graph);
 
+  fe::PlatformInfo platformInfo;
+  fe::OptionalInfo optiCompilationInfo;
+  platformInfo.soc_info.ai_core_cnt = 1;
+  platformInfo.str_info.ccec_aic_version = "dav-s200";
+  optiCompilationInfo.soc_version = "Ascend710";
+  fe::PlatformInfoManager::Instance().platform_info_map_["Ascend710"] = platformInfo;
+  fe::PlatformInfoManager::Instance().SetOptionalCompilationInfo(optiCompilationInfo);
+
   fe::FusionPassTestUtils::InferShapeAndType(computeGraph);
   GE_DUMP(computeGraph, testCaseName + "_after_infer_shape");
   fe::FusionPassTestUtils::RunGraphFusionPass("ProdForceSeAVectorFusionPass", fe::BUILT_IN_GRAPH_PASS, *computeGraph);
   GE_DUMP(computeGraph, testCaseName + "_after_fusion");
+
+  fe::PlatformInfoManager::Instance().platform_info_map_.clear();
 
   bool findAiCoreNode = false;
   bool findVectorCoreNode = false;

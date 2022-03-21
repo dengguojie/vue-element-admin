@@ -282,6 +282,7 @@ set(_aicore_fusion_srcs
   graph_fusion/ai_core/tabulatefusiongrad_transpose_fusion_pass.cc
   graph_fusion/ai_core/tabulatefusiongrad_fusion_pass.cc
   graph_fusion/ai_core/prodenvmata_fusion_pass.cc
+  graph_fusion/ai_core/prodenvmata_v2_fusion_pass.cc
   graph_fusion/ai_core/concatv2_mean_mul_gatherv2_fusion_pass.cc
   graph_fusion/ai_core/single_batch_norm_fusion_pass.cc
   graph_fusion/ai_core/batchnorm_preprocess_fusion_pass.cc

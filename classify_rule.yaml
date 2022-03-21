@@ -583,6 +583,8 @@ vector_A:
       - ops/built-in/fusion_pass/graph_fusion/ai_core/prelu_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/prior_box_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/prior_box_fusion_pass.h
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/prodenvmata_v2_fusion_pass.h
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/prodenvmata_v2_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/proposal_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/proposal_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/rnn_fusion_pass.cc
