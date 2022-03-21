@@ -27,12 +27,17 @@ class PadDCpuKernel : public CpuKernel {
 public:
   PadDCpuKernel() = default;
   ~PadDCpuKernel() = default;
+
   uint32_t Compute(CpuKernelContext &ctx) override;
+
 private:
-  void SetMap_pad();
-  void SetMap_padd();
-  std::map<int, std::function<uint32_t(CpuKernelContext &)>> calls_pad;
-  std::map<int, std::function<uint32_t(CpuKernelContext &)>> calls_padd;
+  int64_t multi(int64_t x, int64_t rank, std::vector<int64_t> &dims_y);
+
+  int64_t sumLR(int64_t x, std::vector<int64_t> &vec);
+
+  template <typename T>
+  uint32_t DoCompute(CpuKernelContext &ctx);
+
 };
 } // namespace aicpu
 #endif
