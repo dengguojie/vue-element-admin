@@ -16,6 +16,7 @@
 lp_norm
 """
 
+import math
 import te.lang.cce as tbe
 from te import tvm
 import te.platform as tbe_platform
@@ -28,6 +29,7 @@ class Constant:
     The class for constant
     """
     CONST_INF = 2147483647
+    CONST_EPSILON_FP16 = 1e-7
 
 
 # 'pylint: disable=locally-disabled,too-many-arguments,unused-argument
@@ -208,7 +210,6 @@ def lp_norm(x, y, p=2, axes=None, keepdim=False, epsilon=1e-12, kernel_name="lp_
     -------
     None
     """
-    _CONST_EPSILON_FP16 = 1e-7
     para_check.check_kernel_name(kernel_name)
     xtype_list = ["float16", "float32"]
     x_type = x.get("dtype").lower()
@@ -237,11 +238,11 @@ def lp_norm(x, y, p=2, axes=None, keepdim=False, epsilon=1e-12, kernel_name="lp_
     else:
         res = lp_norm_compute(abs_data, x_type, y, p, axes, keepdim, kernel_name)
 
-    if x_type == "float16" and float(epsilon) <= _CONST_EPSILON_FP16:
-        if epsilon == 0.0:
+    if x_type == "float16" and float(epsilon) <= Constant.CONST_EPSILON_FP16:
+        if math.isclose(epsilon, 0.0):
             std_no = tvm.const(0.0, dtype=x_type)
         else:
-            std_no = tvm.const(_CONST_EPSILON_FP16, dtype=x_type)
+            std_no = tvm.const(Constant.CONST_EPSILON_FP16, dtype=x_type)
     else:
         std_no = tvm.const(float(epsilon), dtype=x_type)
     res = tbe.vmaxs(res, std_no)

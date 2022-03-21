@@ -66,6 +66,14 @@ case8 = {"params": [{"shape": (32, 2, 4, 16), "dtype": "float32", "format": "ND"
          "expect": "success",
          "format_expect": ["ND"],
          "support_expect": True}
+case9 = {"params": [{"shape": (400, 416, 5, 69), "dtype": "float16", "format": "ND", "ori_shape": (400, 416, 5, 69), "ori_format": "ND"},
+                    {"shape": (400, 416, 5, 1), "dtype": "float16", "format": "ND", "ori_shape": (400, 416, 5, 1), "ori_format": "ND"},
+                    2147483647, [-1], True, 0.0],
+         "case_name": "lp_norm_9",
+         "expect": "success",
+         "format_expect": ["ND"],
+         "support_expect": True}
+
 ut_case.add_case("all", case1)
 ut_case.add_case("all", case2)
 ut_case.add_case("all", case3)
@@ -74,6 +82,7 @@ ut_case.add_case(platforms, case5)
 ut_case.add_case(platforms, case6)
 ut_case.add_case(platforms, case7)
 ut_case.add_case(platforms, case8)
+ut_case.add_case(platforms, case9)
 
 if __name__ == '__main__':
     ut_case.run("Ascend910A")

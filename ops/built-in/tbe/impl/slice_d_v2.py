@@ -20,6 +20,7 @@ slice_d_v2
 # 'pylint: disable=too-many-statements,invalid-name,too-many-branches,unused-argument,too-many-locals
 from types import MethodType
 import math
+from functools import reduce
 
 from te.utils import para_check
 from te import tik
@@ -193,10 +194,11 @@ def slice_d_v2(x, offsets, y, size, kernel_name="slice_d_v2"):
             else:
                 tiling_mode = 2
 
+            math_prob = reduce(lambda a, b:a*b, output_shape[:-2], 1)
             if output_shape[-1] * dtype_size < constant.BLOCK_SIZE \
                     and shape_len >= 2 \
                     and dtype == "float16" \
-                    and math.prod(output_shape[:-2]) % tmp_profile.get_aicore_num() == 0 \
+                    and math_prob % tmp_profile.get_aicore_num() == 0 \
                     and output_shape[-2] >= 16 \
                     and input_shape[-1] * 256 <= ub_size_with_vnchwconv:
                 tiling_mode = 3

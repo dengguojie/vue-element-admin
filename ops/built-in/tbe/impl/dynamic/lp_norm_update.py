@@ -16,15 +16,16 @@
 lp_norm_update
 """
 
+import math
 from impl.util.platform_adapter import tbe
-from impl.util.platform_adapter import tbe_platform
-from impl.util.platform_adapter import tvm
-from impl.util.platform_adapter import classify
-from impl.util.platform_adapter import para_check
-from impl.util.platform_adapter import shape_util
-from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
+from impl.util.platform_adapter import tbe_platform
+from impl.util.platform_adapter import shape_util
+from impl.util.platform_adapter import tvm
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import OpPatternMode
+from impl.util.platform_adapter import classify
 
 
 # 'pylint: disable=too-few-public-methods
@@ -32,8 +33,8 @@ class Constant:
     """
     The class for constant
     """
-    CONST_INF = 2147483647
     CONST_EPSILON_FP16 = 1e-7
+    CONST_INF = 2147483647
     CCE_PLAT = tbe_platform.get_soc_spec('SOC_VERSION')
 
 
@@ -114,7 +115,7 @@ def lp_norm_update(x, y, p=2, epsilon=1e-12, kernel_name="lp_norm_update"):
                 res = lp_norm_update_compute(input_data, y, p, kernel_name)
 
             if x_type == "float16" and float(epsilon) <= Constant.CONST_EPSILON_FP16:
-                if epsilon == 0.0:
+                if math.isclose(epsilon, 0.0):
                     std_no = tvm.const(0.0, dtype=x_type)
                 else:
                     std_no = tvm.const(Constant.CONST_EPSILON_FP16, dtype=x_type)

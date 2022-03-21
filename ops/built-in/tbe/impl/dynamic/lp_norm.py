@@ -16,6 +16,7 @@
 lp_norm
 """
 
+import math
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tvm
@@ -214,20 +215,19 @@ def lp_norm(x, y, p=2, axes=None, keepdim=False, epsilon=1e-12, kernel_name="lp_
     None
     """
     para_check.check_kernel_name(kernel_name)
-    xtype_list = ["float16", "float32"]
+    type_list = ["float16", "float32"]
     x_type = x.get("dtype").lower()
     x_shape = x.get("shape")
-    para_check.check_dtype(x_type, xtype_list)
+    para_check.check_dtype(x_type, type_list)
     para_check.check_shape(x_shape)
     p_inf_list = ("inf", "-inf")
-    no_shape = len(x_shape)
 
     if isinstance(axes, int):
         axes = [axes]
     if axes is None:
-        axes = list(range(no_shape))
+        axes = list(range(len(x_shape)))
     if len(axes) == 0:
-        axes = list(range(no_shape))
+        axes = list(range(len(x_shape)))
 
     x["rel_pos_to_reduce"] = "before"
 
@@ -254,7 +254,7 @@ def lp_norm(x, y, p=2, axes=None, keepdim=False, epsilon=1e-12, kernel_name="lp_
                 res = lp_norm_compute(abs_data, x_type, y, p, axes_dict.get("value"), keepdim, kernel_name)
 
             if x_type == "float16" and float(epsilon) <= Constant.CONST_EPSILON_FP16:
-                if epsilon == 0.0:
+                if math.isclose(epsilon, 0.0):
                     std_no = tvm.const(0.0, dtype=x_type)
                 else:
                     std_no = tvm.const(Constant.CONST_EPSILON_FP16, dtype=x_type)
