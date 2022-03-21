@@ -426,7 +426,7 @@ Status TopKFusionPass::AddSegmentSortAndMergeNode(ComputeGraph& graph, NodePtr& 
 
   // segmentsort --> multimerge * N --> last multimerge
   NodePtr input_node = segmentSortNode;
-  for (int i = 1; i < fusion_nodes.size(); ++i) {
+  for (unsigned int i = 1; i < fusion_nodes.size(); ++i) {
     FUSION_PASS_CHECK(
         GraphUtils::AddEdge(input_node->GetOutDataAnchor(0), fusion_nodes[i]->GetInDataAnchor(0)) != GRAPH_SUCCESS,
         VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "Add segmentsort to multimerge edge failed."),
