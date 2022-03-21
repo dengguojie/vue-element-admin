@@ -139,7 +139,6 @@ Status SameInputConv2dPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, st
     quantPattern_ = false;
     requantPattern_ = false;
 
-    GE_DUMP(make_shared<ComputeGraph>(graph), "same_input_conv2d_fusion_pass_begin");
     OP_LOGI(FUSED_OP_TYPE.c_str(), "enter SameInputConv2dPass.");
     auto ret = CheckFusion(mapping);
     FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGI(FUSED_OP_TYPE.c_str(), "check fusion."), return ret);
@@ -153,7 +152,6 @@ Status SameInputConv2dPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, st
     ret = UpdateConvNode(graph);
     FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGI(FUSED_OP_TYPE.c_str(), "update conv failed."), return ret);
 
-    GE_DUMP(make_shared<ComputeGraph>(graph), "same_input_conv2d_fusion_pass_finish");
     OP_LOGI(FUSED_OP_TYPE.c_str(), "leave SameInputConv2dPass.");
     return SUCCESS;
 }
@@ -435,7 +433,6 @@ Status SameInputConv2dPass::CheckQuantNodes()
         ge::AttrUtils::GetFloat(quantNode->GetOpDesc(), "scale", nodeScale);
         ge::AttrUtils::GetBool(quantNode->GetOpDesc(), "sqrt_mode", nodeSqrtMode);
         ge::AttrUtils::GetStr(quantNode->GetOpDesc(), "round_mode", nodeRoundMode);
-        OP_LOGI(FUSED_OP_TYPE.c_str(), "quant node, offset %f, scale %f.", nodeOffset, nodeScale);
         if (i == 0) {
             dstType = nodeDstType;
             offset = nodeOffset;
@@ -559,11 +556,9 @@ Status SameInputConv2dPass::GetSplitAttr(const std::vector<ge::NodePtr>& preNode
         FUSION_PASS_CHECK(axis >= preDim.size(),
             OP_LOGE(FUSED_OP_TYPE.c_str(), "invalid split shape, fusion failed."), return PARAM_INVALID);
         sizeSplits.emplace_back(preDim[axis]);
-        OP_LOGI(FUSED_OP_TYPE.c_str(), "split dim %d value %d.", axis, preDim[axis]);
     }
 
     splitDim = static_cast<int32_t>(axis);
-    OP_LOGI(FUSED_OP_TYPE.c_str(), "split dim %d, split num %zu.", splitDim, sizeSplits.size());
 
     return SUCCESS;
 }
@@ -583,10 +578,8 @@ Status SameInputConv2dPass::GetConvInDimValue(int64_t& dimValue) const
         FUSION_PASS_CHECK(axis >= filterDim.size(),
             OP_LOGE(FUSED_OP_TYPE.c_str(), "invalid filter shape, fusion failed."), return PARAM_INVALID);
         dimValue += filterDim[axis];
-        OP_LOGI(FUSED_OP_TYPE.c_str(), "conv in dim %d value %d.", axis, filterDim[axis]);
     }
 
-    OP_LOGI(FUSED_OP_TYPE.c_str(), "conv in dim sum value %d.", dimValue);
     return SUCCESS;
 }
 
@@ -605,10 +598,8 @@ Status SameInputConv2dPass::GetConvOutDimValue(int64_t& dimValue) const
         FUSION_PASS_CHECK(axis >= convDim.size(),
             OP_LOGE(FUSED_OP_TYPE.c_str(), "invalid conv shape, fusion failed."), return PARAM_INVALID);
         dimValue += convDim[axis];
-        OP_LOGI(FUSED_OP_TYPE.c_str(), "conv out dim %d value %d.", axis, convDim[axis]);
     }
 
-    OP_LOGI(FUSED_OP_TYPE.c_str(), "conv out dim sum value %d.", dimValue);
     return SUCCESS;
 }
 
@@ -627,10 +618,8 @@ Status SameInputConv2dPass::GetReluDimValue(int64_t& dimValue) const
         FUSION_PASS_CHECK(axis >= reluDim.size(),
             OP_LOGE(FUSED_OP_TYPE.c_str(), "invalid relu shape, fusion failed."), return PARAM_INVALID);
         dimValue += reluDim[axis];
-        OP_LOGI(FUSED_OP_TYPE.c_str(), "relu dim %d value %d.", axis, reluDim[axis]);
     }
 
-    OP_LOGI(FUSED_OP_TYPE.c_str(), "relu dim sum value %d.", dimValue);
     return SUCCESS;
 }
 
@@ -649,10 +638,8 @@ Status SameInputConv2dPass::GetDequantDimValue(int64_t& dimValue) const
         FUSION_PASS_CHECK(axis >= dim.size(),
             OP_LOGE(FUSED_OP_TYPE.c_str(), "invalid dequant shape, fusion failed."), return PARAM_INVALID);
         dimValue += dim[axis];
-        OP_LOGI(FUSED_OP_TYPE.c_str(), "dequant dim %d value %d.", axis, dim[axis]);
     }
 
-    OP_LOGI(FUSED_OP_TYPE.c_str(), "dequant dim sum value %d.", dimValue);
     return SUCCESS;
 }
 
@@ -671,10 +658,8 @@ Status SameInputConv2dPass::GetQuantDimValue(int64_t& dimValue) const
         FUSION_PASS_CHECK(axis >= dim.size(),
             OP_LOGE(FUSED_OP_TYPE.c_str(), "invalid quant shape, fusion failed."), return PARAM_INVALID);
         dimValue += dim[axis];
-        OP_LOGI(FUSED_OP_TYPE.c_str(), "quant dim %d value %d.", axis, dim[axis]);
     }
 
-    OP_LOGI(FUSED_OP_TYPE.c_str(), "quant dim sum value %d.", dimValue);
     return SUCCESS;
 }
 
@@ -693,10 +678,8 @@ Status SameInputConv2dPass::GetRequantDimValue(int64_t& dimValue) const
         FUSION_PASS_CHECK(axis >= dim.size(),
             OP_LOGE(FUSED_OP_TYPE.c_str(), "invalid requant shape, fusion failed."), return PARAM_INVALID);
         dimValue += dim[axis];
-        OP_LOGI(FUSED_OP_TYPE.c_str(), "requant dim %d value %d.", axis, dim[axis]);
     }
 
-    OP_LOGI(FUSED_OP_TYPE.c_str(), "requant dim sum value %d.", dimValue);
     return SUCCESS;
 }
 
@@ -1400,7 +1383,8 @@ Status SameInputConv2dPass::UpdateBiasConcat(const std::vector<ge::NodePtr>& bia
     return SUCCESS;
 }
 
-ge::NodePtr SameInputConv2dPass::AddDequantConcatNode(ge::ComputeGraph& graph, std::vector<ge::NodePtr>& newNodes) const
+ge::NodePtr SameInputConv2dPass::AddDequantConcatNode(ge::ComputeGraph& graph,
+    std::vector<ge::NodePtr>& newNodes) const
 {
     std::vector<ge::NodePtr> scaleNodes;
     for (auto& node : fusionNodes_) {
@@ -1422,11 +1406,12 @@ ge::NodePtr SameInputConv2dPass::AddDequantConcatNode(ge::ComputeGraph& graph, s
     FUSION_PASS_CHECK(GetDequantDimValue(dimValue) != SUCCESS,
         OP_LOGE(FUSED_OP_TYPE.c_str(), "dequant concat dim failed, fusion failed."), return nullptr);
 
-    auto dequantInDesc = fusionNodes_.at(0).dequantNode->GetOpDesc()->GetInputDesc(1).Clone();
-    FUSION_PASS_CHECK(SetShapeDims(0, dimValue, dequantInDesc) != SUCCESS,
+    auto dequantConstNode = fusionNodes_.at(0).dequantNode->GetInNodes().at(1);
+    auto constDesc = dequantConstNode->GetOpDesc()->GetOutputDesc(0).Clone();
+    FUSION_PASS_CHECK(SetShapeDims(0, dimValue, constDesc) != SUCCESS,
         OP_LOGE(FUSED_OP_TYPE.c_str(), "dequant set dim failed, fusion failed."), return nullptr);
 
-    FUSION_PASS_CHECK(concatDesc->AddOutputDesc("y", dequantInDesc) != GRAPH_SUCCESS,
+    FUSION_PASS_CHECK(concatDesc->AddOutputDesc("y", constDesc) != GRAPH_SUCCESS,
         OP_LOGE(FUSED_OP_TYPE.c_str(), "concat add output desc failed, fusion failed."), return nullptr);
 
     std::string concatDimName = fusionNodes_.at(0).dequantNode->GetName() + "/dequant_concat_dim";
@@ -1448,7 +1433,6 @@ ge::NodePtr SameInputConv2dPass::AddDequantConcatNode(ge::ComputeGraph& graph, s
     FUSION_PASS_CHECK(GraphUtils::AddEdge(concatDimAnchor, concatInAnchor) != GRAPH_SUCCESS,
         OP_LOGE(FUSED_OP_TYPE.c_str(), "add const-concat failed, fusion failed."), return nullptr);
 
-    OP_LOGI(FUSED_OP_TYPE.c_str(), "add dequant concat node success.");
     return concatNode;
 }
 
@@ -1711,7 +1695,7 @@ ge::NodePtr SameInputConv2dPass::CreateStridedReadNode(ge::ComputeGraph& graph, 
 
     auto strideNode = graph.AddNode(stridedReadOpDesc);
     FUSION_PASS_CHECK(strideNode == nullptr,
-        OP_LOGE(FUSED_OP_TYPE.c_str(), "add size_split node failed, fusion failed."), return nullptr);
+        OP_LOGE(FUSED_OP_TYPE.c_str(), "add stride node failed, fusion failed."), return nullptr);
     newNodes.emplace_back(strideNode);
 
     return strideNode;
@@ -1729,12 +1713,14 @@ Status SameInputConv2dPass::AddStrideNode(ge::ComputeGraph& graph, std::vector<g
         OP_LOGI(FUSED_OP_TYPE.c_str(), "stride value is %u.", strideValue);
         std::string name = splitNode->GetName() + "/stride_read_" + to_string(i);
         auto strideNode = CreateStridedReadNode(graph, newNodes, name, strideValue);
+        FUSION_PASS_CHECK(strideNode == nullptr,
+            OP_LOGE(FUSED_OP_TYPE.c_str(), "create stride node failed, fusion failed."), return FAILED);
         strideReads.emplace_back(strideNode);
     }
 
     FUSION_PASS_CHECK(LinkSplitStrideRead(strideReads, splitNode) != SUCCESS,
         OP_LOGE(FUSED_OP_TYPE.c_str(), "link split-stride failed, fusion failed."), return FAILED);
-    FUSION_PASS_CHECK(TransSplitStrideRead(strideReads, splitNode) != SUCCESS,
+    FUSION_PASS_CHECK(TransSplitStrideRead(strideReads) != SUCCESS,
         OP_LOGE(FUSED_OP_TYPE.c_str(), "link trans split-stride failed, fusion failed."), return FAILED);
 
     return SUCCESS;
@@ -1865,32 +1851,24 @@ Status SameInputConv2dPass::JudgeOp(ge::NodePtr node) const
     return SUCCESS;
 }
 
-Status SameInputConv2dPass::TransSplitStrideRead(const std::vector<ge::NodePtr>& strideReads,
-    ge::NodePtr splitNode) const
+Status SameInputConv2dPass::TransSplitStrideRead(const std::vector<ge::NodePtr>& strideReads) const
 {
-    for (size_t i = 0; i < splitNode->GetAllOutDataAnchors().size(); ++i) {
-        auto outputDesc = splitNode->GetOpDesc()->MutableOutputDesc(i);
-        FUSION_PASS_CHECK(outputDesc == nullptr,
-            OP_LOGE(FUSED_OP_TYPE.c_str(), "split output desc is null."), return FAILED);
-
-        auto dataType = splitNode->GetOpDesc()->GetOutputDesc(i).GetDataType();
-        FUSION_PASS_CHECK(GetNC1HWC0Shape(outputDesc, dataType) != SUCCESS,
-            OP_LOGE(FUSED_OP_TYPE.c_str(), "get shape of NC1HWC0 failed."), return FAILED);
-        FUSION_PASS_CHECK(JudgeOp(strideReads[i]) != SUCCESS,
-            OP_LOGE(FUSED_OP_TYPE.c_str(), "judge stride failed."), return FAILED);
-    }
-
-    auto inDataType = splitNode->GetOpDesc()->GetInputDesc(0).GetDataType();
-    OP_LOGI(FUSED_OP_TYPE.c_str(), "split input datatype %u.", inDataType);
-    auto splitInDesc = splitNode->GetOpDesc()->MutableInputDesc(0);
-    FUSION_PASS_CHECK(GetNC1HWC0Shape(splitInDesc, inDataType) != SUCCESS,
-        OP_LOGE(FUSED_OP_TYPE.c_str(), "get shape of NC1HWC0 failed."), return FAILED);
-
     for (auto& stride : strideReads) {
+        FUSION_PASS_CHECK(JudgeOp(stride) != SUCCESS,
+            OP_LOGE(FUSED_OP_TYPE.c_str(), "judge stride failed."), return FAILED);
+
         auto strideDesc = stride->GetOpDesc()->MutableOutputDesc(0);
         auto dataType = stride->GetOpDesc()->GetOutputDesc(0).GetDataType();
         FUSION_PASS_CHECK(GetNC1HWC0Shape(strideDesc, dataType) != SUCCESS,
-            OP_LOGE(FUSED_OP_TYPE.c_str(), "get shape of NC1HWC0 failed."), return FAILED);
+            OP_LOGE(FUSED_OP_TYPE.c_str(), "get out shape of NC1HWC0 failed."), return FAILED);
+
+        auto strideInDesc = stride->GetOpDesc()->MutableInputDesc(0);
+        auto dataInType = stride->GetOpDesc()->GetInputDesc(0).GetDataType();
+        FUSION_PASS_CHECK(GetNC1HWC0Shape(strideInDesc, dataInType) != SUCCESS,
+            OP_LOGE(FUSED_OP_TYPE.c_str(), "get in shape of NC1HWC0 failed."), return FAILED);
+
+        auto splitShape = stride->GetOpDesc()->MutableInputDesc(0)->MutableShape();
+        ge::AttrUtils::SetInt(stride->GetOpDesc(), "stride", splitShape.GetDim(1));
     }
 
     return SUCCESS;
