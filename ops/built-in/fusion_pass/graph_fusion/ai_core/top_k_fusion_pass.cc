@@ -95,17 +95,17 @@ bool TopKFusionPass::IsInsertTransposeForOutput(NodePtr& topk_node, const int32_
   auto out_anchor = topk_node->GetOutAnchor(output_index);
   FUSION_PASS_CHECK(out_anchor == nullptr,
                     OP_LOGI(topk_node->GetName().c_str(),
-                            "Insert transpose node for topk output:Out anchor is nullptr."), 
+                            "Insert transpose node for topk output:Out anchor is nullptr."),
                     return false);
   auto peer_anchors = out_anchor->GetPeerAnchors();
   FUSION_PASS_CHECK(peer_anchors.empty(),
                     OP_LOGI(topk_node->GetName().c_str(),
-                            "Insert transpose node for topk output:Out data anchor's peer_anchors is empty."), 
+                            "Insert transpose node for topk output:Out data anchor's peer_anchors is empty."),
                     return false);
   for (auto peer_anchor : peer_anchors) {
     FUSION_PASS_CHECK(peer_anchor == nullptr,
-                      OP_LOGI(topk_node->GetName().c_str(), 
-                              "Insert transpose node for topk output:Peer anchor is nullptr."), 
+                      OP_LOGI(topk_node->GetName().c_str(),
+                              "Insert transpose node for topk output:Peer anchor is nullptr."),
                       return false);
   }
   return true;
@@ -757,7 +757,7 @@ Status TopKFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<Node
                     VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "SetShapeRange failed"), return FAILED);
   
   bool isInsert = IsInsertTransposeForOutput(fusion_node, 0);
-  vector<pair<int64_t, int64_t>> shape_range_val_k_sorted; 
+  vector<pair<int64_t, int64_t>> shape_range_val_k_sorted;
   if (isInsert) {
     NodePtr trans_output_node =
       PatternFusionUtil::InsertSingleNode(graph, fusion_node, kPatternTranspose, false, 0, fusion_nodes);
