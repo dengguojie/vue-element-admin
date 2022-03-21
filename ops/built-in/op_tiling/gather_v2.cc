@@ -384,8 +384,7 @@ bool CheckAxisAndBatchdims(const std::string& op_type, const GatherShapeInfo& sh
 }
 
 void GetV2GatherCompileParams(const std::string& op_type, const GatherCompileInfo& compile_info_vec,
-                              const ge::Operator& op_paras, GatherCompileParams& params) {  
-
+                              const ge::Operator& op_paras, GatherCompileParams& params) {
   params.batch_dims = BATCH_DIMS_DEFAULT_VALUE;
   if (compile_info_vec.is_gather_v2) {
     ops::GetAttrValue(op_paras, GATHER_V2_BATCH_DIMS_INFO, params.batch_dims);
