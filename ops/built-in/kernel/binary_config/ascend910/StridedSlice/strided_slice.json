@@ -1,0 +1,521 @@
+{
+  "op_type": "StridedSlice",
+  "op_list": [
+    {
+      "bin_filename": "StridedSlice_0",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ],
+          "dtype_match_mode": "DtypeByte"
+        },
+        {
+          "name": "begin",
+          "index": 1,
+          "dtype": "int64",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "end",
+          "index": 2,
+          "dtype": "int64",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "strides",
+          "index": 3,
+          "dtype": "int64",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ],
+          "dtype_match_mode": "DtypeByte"
+        }
+      ],
+      "attrs": [
+        {
+          "name": "begin_mask",
+          "dtype": "int",
+          "value": null
+        },
+        {
+          "name": "end_mask",
+          "dtype": "int",
+          "value": null
+        },
+        {
+          "name": "ellipsis_mask",
+          "dtype": "int",
+          "value": null
+        },
+        {
+          "name": "new_axis_mask",
+          "dtype": "int",
+          "value": null
+        },
+        {
+          "name": "shrink_axis_mask",
+          "dtype": "int",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "StridedSlice_1",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ],
+          "dtype_match_mode": "DtypeByte"
+        },
+        {
+          "name": "begin",
+          "index": 1,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "end",
+          "index": 2,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "strides",
+          "index": 3,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ],
+          "dtype_match_mode": "DtypeByte"
+        }
+      ],
+      "attrs": [
+        {
+          "name": "begin_mask",
+          "dtype": "int",
+          "value": null
+        },
+        {
+          "name": "end_mask",
+          "dtype": "int",
+          "value": null
+        },
+        {
+          "name": "ellipsis_mask",
+          "dtype": "int",
+          "value": null
+        },
+        {
+          "name": "new_axis_mask",
+          "dtype": "int",
+          "value": null
+        },
+        {
+          "name": "shrink_axis_mask",
+          "dtype": "int",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "StridedSlice_2",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ],
+          "dtype_match_mode": "DtypeByte"
+        },
+        {
+          "name": "begin",
+          "index": 1,
+          "dtype": "int64",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "end",
+          "index": 2,
+          "dtype": "int64",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "strides",
+          "index": 3,
+          "dtype": "int64",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ],
+          "dtype_match_mode": "DtypeByte"
+        }
+      ],
+      "attrs": [
+        {
+          "name": "begin_mask",
+          "dtype": "int",
+          "value": null
+        },
+        {
+          "name": "end_mask",
+          "dtype": "int",
+          "value": null
+        },
+        {
+          "name": "ellipsis_mask",
+          "dtype": "int",
+          "value": null
+        },
+        {
+          "name": "new_axis_mask",
+          "dtype": "int",
+          "value": null
+        },
+        {
+          "name": "shrink_axis_mask",
+          "dtype": "int",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "StridedSlice_3",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "int8",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ],
+          "dtype_match_mode": "DtypeByte"
+        },
+        {
+          "name": "begin",
+          "index": 1,
+          "dtype": "int64",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "end",
+          "index": 2,
+          "dtype": "int64",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "strides",
+          "index": 3,
+          "dtype": "int64",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "int8",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ],
+          "dtype_match_mode": "DtypeByte"
+        }
+      ],
+      "attrs": [
+        {
+          "name": "begin_mask",
+          "dtype": "int",
+          "value": null
+        },
+        {
+          "name": "end_mask",
+          "dtype": "int",
+          "value": null
+        },
+        {
+          "name": "ellipsis_mask",
+          "dtype": "int",
+          "value": null
+        },
+        {
+          "name": "new_axis_mask",
+          "dtype": "int",
+          "value": null
+        },
+        {
+          "name": "shrink_axis_mask",
+          "dtype": "int",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "StridedSlice_4",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "int8",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ],
+          "dtype_match_mode": "DtypeByte"
+        },
+        {
+          "name": "begin",
+          "index": 1,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "end",
+          "index": 2,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "strides",
+          "index": 3,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "int8",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ],
+          "dtype_match_mode": "DtypeByte"
+        }
+      ],
+      "attrs": [
+        {
+          "name": "begin_mask",
+          "dtype": "int",
+          "value": null
+        },
+        {
+          "name": "end_mask",
+          "dtype": "int",
+          "value": null
+        },
+        {
+          "name": "ellipsis_mask",
+          "dtype": "int",
+          "value": null
+        },
+        {
+          "name": "new_axis_mask",
+          "dtype": "int",
+          "value": null
+        },
+        {
+          "name": "shrink_axis_mask",
+          "dtype": "int",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "StridedSlice_5",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ],
+          "dtype_match_mode": "DtypeByte"
+        },
+        {
+          "name": "begin",
+          "index": 1,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "end",
+          "index": 2,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        },
+        {
+          "name": "strides",
+          "index": 3,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ],
+          "dtype_match_mode": "DtypeByte"
+        }
+      ],
+      "attrs": [
+        {
+          "name": "begin_mask",
+          "dtype": "int",
+          "value": null
+        },
+        {
+          "name": "end_mask",
+          "dtype": "int",
+          "value": null
+        },
+        {
+          "name": "ellipsis_mask",
+          "dtype": "int",
+          "value": null
+        },
+        {
+          "name": "new_axis_mask",
+          "dtype": "int",
+          "value": null
+        },
+        {
+          "name": "shrink_axis_mask",
+          "dtype": "int",
+          "value": null
+        }
+      ]
+    }
+  ]
+}

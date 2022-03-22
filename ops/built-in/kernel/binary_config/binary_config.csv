@@ -1,7 +1,6 @@
 OpType,OpBinaryFile
 Sample,sample.json
 Add,add.json
-AddV2,add_V2.json
 ApplyAdamD,apply_adam_d.json
 ApplyMomentumD,apply_momentum_d.json
 ApplyRMSPropD,apply_rms_prop_d.json
@@ -18,6 +17,7 @@ Gather,gather.json
 GatherV2,gather_v2.json
 Greater,greater.json
 GreaterEqual,greater_equal.json
+LayerNorm,layer_norm.json
 L2Loss,l2_loss.json
 Less,less.json
 Maximum,maximum.json
@@ -25,6 +25,7 @@ Minimum,minimum.json
 Mul,mul.json
 Muls,muls.json
 Neg,neg.json
+Pad,pad.json
 Pow,pow.json
 RealDiv,real_div.json
 ReduceAll,reduce_all.json
