@@ -80,21 +80,21 @@ vector<BufferFusionPattern *> BnupdateEltwiseEltwiseFusionPass::DefinePatterns()
 }
 
 std::vector<ge::NodePtr> BnupdateEltwiseEltwiseFusionPass::GetMatchedNodes(
-  const BufferFusionMapping &mapping, ge::NodePtr &eltwise_0, ge::NodePtr &bn) {
-    std::vector<ge::NodePtr> nodes;
-    for (const auto &item : mapping) {
-      if (item.first->desc_name == kPatternEltwise0) {
-        eltwise_0 = item.second[0];
-      }
-      if (item.first->desc_name == kPatternBnupdate) {
-        bn = item.second[0];
-      }
-      for (const auto &node : item.second) {
-        nodes.push_back(node);
-      }
+    const BufferFusionMapping &mapping, ge::NodePtr &eltwise_0, ge::NodePtr &bn) {
+  std::vector<ge::NodePtr> nodes;
+  for (const auto &item : mapping) {
+    if (item.first->desc_name == kPatternEltwise0) {
+      eltwise_0 = item.second[0];
     }
-    return nodes;
+    if (item.first->desc_name == kPatternBnupdate) {
+      bn = item.second[0];
+    }
+    for (const auto &node : item.second) {
+      nodes.push_back(node);
+    }
   }
+  return nodes;
+}
 /*
  * @brief: parse nodes matched in mapping and call DoFusion
  * @param [in] graph: original graph
