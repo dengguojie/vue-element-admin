@@ -534,7 +534,7 @@ def cal_dedx_range(input_tensor, strides, data_format):
     _, dedx_c, _, _ = _get_nchw_dims(dedx)
     dedy_n_range, _, dedy_h_range, dedy_w_range = _get_nchw_dims(dedy, DYNAMIC_FLAG)
     stride_h, stride_w = strides[pos_h], strides[pos_w]
-    input_size_range[pos_n] = dedy_n_range,
+    input_size_range[pos_n] = dedy_n_range
     input_size_range[pos_c][0] = input_size_range[pos_c][1] = dedx_c
     pad_mode = _cal_dx_pads(dedy, dedx, strides, data_format)
     if pad_mode == "SAME":

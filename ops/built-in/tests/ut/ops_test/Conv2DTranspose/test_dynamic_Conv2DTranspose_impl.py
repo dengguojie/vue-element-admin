@@ -186,7 +186,7 @@ for case in dynamic_conv2d_transpose_testcase:
     ut_case.add_case(["Ascend910A"], _gen_trans_data_case(case))
 
 
-def test_conv2d_transpose_fuzz_build_generalization_general(test_arg):
+def test_conv2d_transpose_fuzz_build_generalization(test_arg):
     from impl.dynamic.conv2d_transpose import conv2d_transpose_generalization
     input_list = [
         {
@@ -196,59 +196,28 @@ def test_conv2d_transpose_fuzz_build_generalization_general(test_arg):
             'format': 'ND',
             'dtype': 'int32'
         }, {
-            'shape': (16, 3, 14, 12, 16),
-            'ori_shape': (16, 33, 14, 12),
+            'shape': (10, 1, 7, 7, 16),
+            'ori_shape': (10, 16, 7, 7),
             'ori_format': 'NCHW',
             'format': 'NC1HWC0',
             'dtype': 'float16'
         }, {
-            'ori_shape': (33, 3, 3, 5),
+            'ori_shape': (16, 16, 3, 3),
             'ori_format': 'NCHW',
             'format': 'FRACTAL_Z',
             'dtype': 'float16'
         }, None, None, {
-            'shape': (16, 1, 16, 16, 16),
-            'ori_shape': (16, 3, 16, 16),
+            'shape': (10, 1, 9, 9, 16),
+            'ori_shape': (10, 16, 9, 9),
             'ori_format': 'NCHW',
             'format': 'NC1HWC0',
             'dtype': 'float16'
         }, (1, 1, 1, 1), (0, 0, 0, 0), (1, 1, 1, 1), 1, 'NCHW', (0, 0, 0, 0), 0,
-        'conv2d_transpose_fuzz_build_generalization_general']
-    conv2d_transpose_generalization(*input_list)
-
-
-ut_case.add_cust_test_func(test_func=test_conv2d_transpose_fuzz_build_generalization_general)
-
-
-def test_conv2d_transpose_fuzz_build_generalization_range_max_fixed(test_arg):
-    from impl.dynamic.conv2d_transpose import conv2d_transpose_generalization
-    input_list = [
-        {
-            'shape': (4,),
-            'ori_shape': (4,),
-            'ori_format': 'ND',
-            'format': 'ND',
-            'dtype': 'int32'
-        }, {
-            'shape': (50, 1, 26, 2888, 16),
-            'ori_shape': (50, 2, 26, 2888),
-            'ori_format': 'NCHW',
-            'format': 'NC1HWC0',
-            'dtype': 'float16'
-        }, {
-            'ori_shape': (1, 2, 10, 10),
-            'ori_format': 'NCHW',
-            'format': 'FRACTAL_Z',
-            'dtype': 'float16'
-        }, None, None, {
-            'shape': (50, 1, 35, 2896, 16),
-            'ori_shape': (50, 2, 35, 2896),
-            'ori_format': 'NCHW',
-            'format': 'NC1HWC0',
-            'dtype': 'float16'
-        }, (1, 1, 1, 1), (0, 0, 0, 0), (1, 1, 1, 1), 1, 'NCHW', (0, 0, 0, 0), 0,
-        'conv2d_transpose_fuzz_build_generalization_range_max_fixed']
-    conv2d_transpose_generalization(*input_list)
+        'test_conv2d_transpose_fuzz_build_generalization']
+    res = conv2d_transpose_generalization(*input_list)
+    input_range = res[0][0]["const_value_range"]
+    if input_range != [[8, 15], [16, 16], [6, 17], [6, 17]]:
+        raise RuntimeError("the output range is wrong")
 def test_conv2d_transpose_fuzz_build_generalization_pad_same(test_arg):
     from impl.dynamic.conv2d_transpose import conv2d_transpose_generalization
     input_list = [
@@ -278,7 +247,7 @@ def test_conv2d_transpose_fuzz_build_generalization_pad_same(test_arg):
         }, (1, 1, 1, 1), (0, 0, 0, 0), (1, 1, 1, 1), 1, 'NCHW', (0, 0, 0, 0), 0,
         'conv2d_transpose_fuzz_build_generalization_pad_same']
     conv2d_transpose_generalization(*input_list)
-ut_case.add_cust_test_func(test_func=test_conv2d_transpose_fuzz_build_generalization_range_max_fixed)
+ut_case.add_cust_test_func(test_func=test_conv2d_transpose_fuzz_build_generalization)
 ut_case.add_cust_test_func(test_func=test_conv2d_transpose_fuzz_build_generalization_pad_same)
 
 
