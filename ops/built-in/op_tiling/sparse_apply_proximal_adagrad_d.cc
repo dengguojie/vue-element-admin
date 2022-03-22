@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2022. Huawei Technologies Co., Ltd. All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2022. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -153,7 +153,7 @@ bool SparseApplyProximalAdagradTiling(const std::string& opType, const ge::Opera
   const ge::GeShape& grad_shape = input_grad_dec->MutableShape();
   const ge::GeShape& indices_shape = input_indices_dec->MutableShape();
   const int64_t& grad_size = GetTensorSize(grad_shape);
-  const int64_t& indices_size =GetTensorSize(indices_shape);
+  const int64_t& indices_size = GetTensorSize(indices_shape);
   if (indices_size == 0) {
     VECTOR_INNER_ERR_REPORT_TILIING(opType, "indices_size is 0");
     return false;

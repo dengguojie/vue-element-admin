@@ -308,7 +308,7 @@ bool SpaceToBatchNDTiling(const std::string& op_type, const ge::Operator& opPara
       return false;
     }
 
-    // the parameters order in op proto is: x, block_shape, paddings, y    
+    // the parameters order in op proto is: x, block_shape, paddings, y
     if (!ops::GetConstIntData(opParas, paddings_size_index, pads_vec)) {
       VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get const pads_vec size failed!");
       return false;
