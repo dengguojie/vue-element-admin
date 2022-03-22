@@ -657,19 +657,19 @@ Status AvgPoolV2FusionPass::Fusion(ComputeGraph &graph, Mapping &mapping, vector
   AttrUtils::GetListInt(avgPoolDesc, "_padv3_pads", padv3_pads);
   if (!padv3_pads.empty()) {
     // if enable padv3+avgpool fusion, need to remove pad from padv3
-    if (padv3_pads.size() != 4) {
+    if (padv3_pads.size() != 4) {  // avgpoolv2 pads size must be 4
       CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "padv3_pads size should be same as pads.");
       return NOT_CHANGED;
     }
-    for (int pads_idx = 0; pads_idx < pads.size(); ++pads_idx) {
+    for (size_t pads_idx = 0; pads_idx < pads.size(); ++pads_idx) {
       pads[pads_idx] = pads[pads_idx] - padv3_pads[pads_idx];
     }
     if (inputOriginFormat == FORMAT_NHWC) {
-      dimInfo[1] = dimInfo[1] + padv3_pads[0] + padv3_pads[1];
-      dimInfo[2] = dimInfo[2] + padv3_pads[2] + padv3_pads[3];
+      dimInfo[1] = dimInfo[1] + padv3_pads[0] + padv3_pads[1];  // idx 0 1 means H pads idx
+      dimInfo[2] = dimInfo[2] + padv3_pads[2] + padv3_pads[3];  // idx 2 3 means W pads idx
     } else if (inputOriginFormat == FORMAT_NCHW) {
-      dimInfo[2] = dimInfo[2] + padv3_pads[0] + padv3_pads[1];
-      dimInfo[3] = dimInfo[3] + padv3_pads[2] + padv3_pads[3];
+      dimInfo[2] = dimInfo[2] + padv3_pads[0] + padv3_pads[1];  // idx 0 1 2 means H pads idx
+      dimInfo[3] = dimInfo[3] + padv3_pads[2] + padv3_pads[3];  // idx 2 3 means H pads idx
     }
   }
 
