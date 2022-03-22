@@ -542,7 +542,12 @@ class SparseApplyDynamic:
         -------
         None
         """
-        batch_cnt = min(self.num_indices, self.indices_ub_number)
+        batch_cnt = self.tik_instance.Scalar(dtype="int32", name="batch_cnt")
+        with self.tik_instance.if_scope(self.num_indices < self.indices_ub_number):
+            batch_cnt.set_as(self.num_indices)
+        with self.tik_instance.else_scope():
+            batch_cnt.set_as(self.indices_ub_number)
+       
         num_indices_per_core = self.num_indices // self.need_core_num
         turning = self.num_indices % self.need_core_num
 
