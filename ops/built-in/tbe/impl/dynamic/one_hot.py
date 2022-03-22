@@ -2467,12 +2467,12 @@ def check_supported(x, depth, on_value, off_value, y, axis,
     if on_value_dtype not in ("float16", "float32", "int32"):
         reason = "on_value not in (\"float16\", \"float32\", \"int32\"), but is %s" % on_value_dtype
         return False, reason
-    # when static and x shape[0] is 2048 and axis is 0, one_hot is support
-    shape_list = [(2048,)]
+    # when static and x shape is in special list, one_hot is support
+    shape_list = [(2048,), (240, 21128)]
     if util_common.is_unknown([x, y]):
         return True, ""
-    if x_shape in shape_list and axis == 0:
-        reason = "when static and shape is 2048 and axis is 0"
+    if x_shape in shape_list:
+        reason = "when static and shape is in special list, one_hot is support"
         return True, reason
     # when static and the input0_shape ends wtih 1, the compilestatic process dose not support
     reason = "when static, x_shape[0] is not 2048 or axis is not 0, one_hot not support"

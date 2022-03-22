@@ -36,6 +36,7 @@ ON_OFF_VAL_SPACE = 32 * 2
 MAX_DEPTH = 131072
 
 
+# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument
 def check_supported(input_x,
                     input_on_val,
                     input_off_val,
@@ -44,9 +45,9 @@ def check_supported(input_x,
                     axis=-1,
                     kernel_name="one_hot_d"):
     x_shape = input_x.get("shape")
-    shape_list = [(2048,)]
-    if x_shape in shape_list and axis == 0:
-        reason = "when static and shape is 2048 and axis is 0, go to dynamic onehot op"
+    shape_list = [(2048,), (240, 21128)]
+    if x_shape in shape_list:
+        reason = "when static and shape is in special list, go to dynamic onehot op"
         return False, reason
     return True, ""
 
