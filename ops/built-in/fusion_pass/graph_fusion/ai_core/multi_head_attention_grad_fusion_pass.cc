@@ -274,7 +274,7 @@ Status MultiHeadAttentionGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping
 
     // out_proj_weight_matmul
     GeTensorDesc outProjWeightMatmulOutputDesc;
-    SetNZTensorDesc(outProjWeightMatmulOutputDesc, out_proj_input_matmul_shape);
+    SetNZTensorDesc(outProjWeightMatmulOutputDesc, out_proj_weight_matmul_shape);
     NodePtr outProjWeightMatmulNode;
     AddMatmulNode(graph, multiHeadAttentionGradDesc->GetInputDesc("y_grad"), multiHeadAttentionGradDesc->GetInputDesc("context"),
         outProjWeightMatmulOutputDesc, outProjWeightMatmulNode, true, false, "out_proj_weight_matmul",
