@@ -164,8 +164,6 @@ set(_optiling_files
   embedding_dense_grad.cc
   one_hot.cc
   pad_v3.cc
-  maxpoolwithargmaxv1.cc
-  maxpoolgradwithargmaxv1.cc
   maxpoolgradwithargmaxv2.cc
   maxpoolwithargmaxv2.cc
   bounding_box_decode.cc
