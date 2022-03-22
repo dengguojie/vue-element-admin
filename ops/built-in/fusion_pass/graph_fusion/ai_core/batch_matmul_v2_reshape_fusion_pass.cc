@@ -192,8 +192,7 @@ bool BatchMatMulV2ReshapeFusionPass::IsElemwiseFusionScenario(const ge::NodePtr 
   return is_elemwise_fusion;
 }
 
-bool BatchMatMulV2ReshapeFusionPass::IsBigBatchFusionScenario(const ge::NodePtr &fused_node,
-                                                              const vector<int64_t> &shape_x,
+bool BatchMatMulV2ReshapeFusionPass::IsBigBatchFusionScenario(const vector<int64_t> &shape_x,
                                                               const bool &trans_a) const {
   bool is_big_batch_fusion = shape_x[0] >= kBigBatchBatchDim && shape_x[1] <= kBigBatchMDim && !trans_a;
   return is_big_batch_fusion;
@@ -247,7 +246,7 @@ bool BatchMatMulV2ReshapeFusionPass::CheckNeedChange(const ge::NodePtr &fused_no
       return true;
     }
     is_big_batch_fusion =
-        IsBigBatchFusionScenario(fused_node, shape_x, trans_a) && CheckProduct(x0_desc->GetOriginShape().GetDims(), 2);
+        IsBigBatchFusionScenario(shape_x, trans_a) && CheckProduct(x0_desc->GetOriginShape().GetDims(), 2);
     if (is_big_batch_fusion) {
       OP_LOGD(FUSED_OP_TYPE.c_str(), "node name [%s], match big batch senario, return need change!",
               fused_node->GetName().c_str());

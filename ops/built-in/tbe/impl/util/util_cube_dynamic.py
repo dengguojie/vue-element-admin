@@ -548,6 +548,8 @@ def cal_dedx_range(input_tensor, strides, data_format):
         input_size_range[pos_h][1] = dedy_h_range[1]*stride_h + filter_h - 1
         input_size_range[pos_w][1] = dedy_w_range[1]*stride_w + filter_w - 1
     return input_size_range
+
+
 def check_graph_range(tensor: dict, op_type: str, is_graph_mode=False) -> str:
     """
     check wether range of N dim exceed 2**31 -1 or H/W dim exceed 4096

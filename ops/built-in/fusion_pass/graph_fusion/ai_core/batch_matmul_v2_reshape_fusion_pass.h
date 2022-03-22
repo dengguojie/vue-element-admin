@@ -39,7 +39,7 @@ class BatchMatMulV2ReshapeFusionPass : public PatternFusionBasePass {
   bool CheckValidDim(const int64_t &x_dims, const int64_t &y_dims) const;
   bool IsElemwiseFusionScenario(const ge::NodePtr &fused_node, const vector<int64_t> &shape_x,
                                 const bool &trans_a) const;
-  bool IsBigBatchFusionScenario(const ge::NodePtr &fused_node, const vector<int64_t> &shape_x,
+  bool IsBigBatchFusionScenario(const vector<int64_t> &shape_x,
                                 const bool &trans_a) const;
   Status InputInsertReshapeNode(ge::ComputeGraph &graph, const ge::NodePtr &fused_node, int32_t index,
                                 const vector<int64_t> &new_shape);

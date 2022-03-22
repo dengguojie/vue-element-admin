@@ -1178,13 +1178,13 @@ class Conv2dBpFilterTiling(CubeTilingOp):
             choice[10] == 1
         )
 
-        # 7) a_l1 full_load => a_l1_pb off
+        # 7) a_l1 full_load to a_l1_pb off
         invalid_choice |= (
             choice[4] == utils.ATTACH_FULL_LOAD and
             choice[0] != utils.DB_OFF
         )
 
-        # 8) b_l1 full_load => b_l1_pb off
+        # 8) b_l1 full_load to b_l1_pb off
         invalid_choice |= (
             choice[5] == utils.ATTACH_FULL_LOAD and
             choice[1] != utils.DB_OFF

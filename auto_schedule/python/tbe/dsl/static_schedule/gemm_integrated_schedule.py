@@ -2176,14 +2176,15 @@ class GemmSchedule:
         tiling["block_dim"] = block_dim
         return tiling
 
-    def check_tiling_value(self, tiling):
+    def _check_tiling_value(self, tiling):
         if len(tiling.get("block_dim")) != self.FRACTAL_Z_LEN:
             error_manager_cube.raise_err_message_cube("block_dim should be 4 dim")
         batch_dim, n_dim, m_dim, reduce_dim = tiling.get("block_dim")
-        if ((isinstance(batch_dim, int) and batch_dim < 1) or
-            (isinstance(n_dim, int) and n_dim < 1) or
-            (isinstance(m_dim, int) and m_dim < 1) or
-            (isinstance(reduce_dim, int) and reduce_dim < 1)):
+        is_valid = ((isinstance(batch_dim, int) and batch_dim < 1) or
+                    (isinstance(n_dim, int) and n_dim < 1) or
+                    (isinstance(m_dim, int) and m_dim < 1) or
+                    (isinstance(reduce_dim, int) and reduce_dim < 1))
+        if is_valid:
             error_manager_cube.raise_err_message_cube("block_dim cannot be less than 1")
 
     def _tiling_process(self):
@@ -2289,7 +2290,7 @@ class GemmSchedule:
                 "value": "None"
             }
             raise RuntimeError(args_dict, error_manager_util.get_error_message(args_dict))
-        self.check_tiling_value(tiling)
+        self._check_tiling_value(tiling)
         self.tiling = tiling
         self.status_controller.attach_at_flag = tiling.get("attach_at_flag")
         self._print_debug(tiling, "auto tiling result")

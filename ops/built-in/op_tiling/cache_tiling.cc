@@ -308,7 +308,7 @@ void GetBlockDimHelper(L2Status &l2Status, BlockDimCalculator &blockDimCalculato
   int32_t nFactor = blockDimCalculator.n_dim_array[jIdx];
   for (int32_t mIdx = 0; mIdx < blockDimCalculator.m_dim_cnt; mIdx++) {
     int32_t mFactor = blockDimCalculator.m_dim_array[mIdx];
-    if (bFactor * nFactor * mFactor > params.core_num) {
+    if (static_cast<uint32_t>(bFactor * nFactor * mFactor) > params.core_num) {
       break;
     }
     l2Status.batch = blockDimCalculator.batch / bFactor;

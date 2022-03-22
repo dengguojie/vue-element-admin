@@ -642,12 +642,14 @@ def batch_matmul_v2(input_x, input_y, bias=None, offset_w=None, output_z=None, t
         c1hw = functools.reduce(lambda x, y: x * y, shape_b_dup[:-3])
         shape_b_dup = (c1hw, ) + shape_b_dup[-3:]
 
-    tensor_a = tvm.placeholder(shape_a_dup, name='tensor_a',
+    tensor_a = tvm.placeholder(shape_a_dup,
+                               name='tensor_a',
                                attrs={'format': format_a,
                                       'ori_batch_shape': ori_batch_shape_a,
                                       "ori_shape": input_x.get("ori_shape")},
                                dtype=inp_src_dtype)
-    tensor_b = tvm.placeholder(shape_b_dup, name='tensor_b',
+    tensor_b = tvm.placeholder(shape_b_dup,
+                               name='tensor_b',
                                attrs={'format': format_b,
                                       'ori_batch_shape': ori_batch_shape_b,
                                       "ori_shape": input_y.get("ori_shape")},
@@ -656,7 +658,8 @@ def batch_matmul_v2(input_x, input_y, bias=None, offset_w=None, output_z=None, t
     if shape_bias_length > 0:
         bias_dtype = bias.get("dtype")
         tensor_bias = tvm.placeholder(shape_bias_dup, name='tensor_bias',
-                                      dtype=bias_dtype, attrs={'ori_shape': bias['ori_shape']})
+                                      dtype=bias_dtype,
+                                      attrs={'ori_shape': bias['ori_shape']})
 
     if offset_w is None:
         tensor_offset_w = None
@@ -664,8 +667,9 @@ def batch_matmul_v2(input_x, input_y, bias=None, offset_w=None, output_z=None, t
         error_manager_vector.raise_err_specific_reson(
             "batch_matmul", "offset w must be None!")
 
-    result = batch_matmul_compute_self(tensor_a, tensor_b, tensor_bias, tensor_offset_w,
-                                       output_z, trans_a, trans_b, offset_x, kernel_name)
+    result = batch_matmul_compute_self(tensor_a, tensor_b, tensor_bias,
+                                       tensor_offset_w, output_z, trans_a,
+                                       trans_b, offset_x, kernel_name)
     with tvm.target.cce():
         schedule = tbe.auto_schedule(result)
     tensor_list = [tensor_a, tensor_b, result]
