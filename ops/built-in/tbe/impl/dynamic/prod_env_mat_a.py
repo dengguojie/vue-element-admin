@@ -30,6 +30,7 @@ class Constant:
     MININUM_NUM_FLOAT = -(3.4028235 ** 38)
     DTYPE_BYTES = {"float32": 4, "float16": 2}
     NLOC_NUM = 1026
+    NEI_NUM = 1024
 
 
 # 'pylint: disable=too-many-public-methods
@@ -189,11 +190,11 @@ class ProdEnvMatA:
         """
         mesh_offset = self.tik_instance.Scalar(self.int32_type, "mesh_offset",
                                                init_value=1 + 2 * self.total_nloc +
-                                                          cur_nloc_index * self.max_nbor_size)
+                                                          cur_nloc_index * Constant.NEI_NUM)
 
         if self.mode != 3:
             mesh_offset.set_as(cur_sample * (1 + Constant.NLOC_NUM * self.nloc + self.type_shape[1]) + 1 +
-                               2 * self.total_nloc + cur_nloc_index * self.max_nbor_size)
+                               2 * self.total_nloc + cur_nloc_index * Constant.NEI_NUM)
         self.tik_instance.data_move(mesh_ub[0], self.mesh_gm[mesh_offset],
                                     sid=0, nburst=1, burst=self.max_nbor_data_size,
                                     src_stride=0, dst_stride=0)
