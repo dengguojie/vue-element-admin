@@ -97,8 +97,7 @@ inline bool IsSatisfyM(const DxParas &params, const int32_t &m_dim) {
 inline bool IsSatisfyN(const DxParas &params, const int32_t &n_dim) {
   CHECK_OP_FUNC(n_dim == 0, return false, "n_dim is 0");
   int32_t n_single_core_size_tmp = params.c1 / n_dim;
-  bool satisfy_constraint_n =
-      !params.dx_no_overlap_condition_2 || (params.dx_no_overlap_condition_2 && n_single_core_size_tmp >= kNumTwo);
+  bool satisfy_constraint_n = !params.dx_no_overlap_condition_2 || n_single_core_size_tmp >= kNumTwo;
   return satisfy_constraint_n;
 }
 
@@ -117,7 +116,7 @@ bool MdimTune(const DxParas &params, const int32_t &m1, const int32_t &n_dim_fac
   bool min_hw = ((m1 + m_dim_factor - 1) / m_dim_factor) <= min_m;
   if (min_hw && m_dim_factor > 1) {
     int32_t m_dim_tmp = max(m1 / min_m, kMinCoreNum);
-    m_dim_tmp = min(tiling.m_dim, params.core_num);
+    m_dim_tmp = min(m_dim_tmp, params.core_num);
     if (IsSatisfyM(params, m_dim_tmp)) {
       tiling.m_dim = m_dim_tmp;
       return min_hw;
@@ -302,7 +301,7 @@ inline bool CheckL0Overflow(const int32_t &m0, const int32_t &n0, const int32_t 
   return !l0_invalid;
 }
 
-int32_t gcd(int32_t param1, int32_t param2) {
+int32_t Gcd(int32_t param1, int32_t param2) {
   // get greatest common divisor of param1 and param2
   if (param1 < param2) {
     swap(param1, param2);
@@ -313,12 +312,12 @@ int32_t gcd(int32_t param1, int32_t param2) {
   if (param1 % param2 == 0) {
     return param2;
   } else {
-    return gcd(param2, param1 - param2);
+    return Gcd(param2, param1 - param2);
   }
 }
 
 inline int32_t InitialKl1(int32_t &k_l0, int32_t &k_hw) {
-  int32_t gcd_num = gcd(k_l0, k_hw);
+  int32_t gcd_num = Gcd(k_l0, k_hw);
   if (gcd_num == 0 || k_hw == 0) {
     return 0;
   }
