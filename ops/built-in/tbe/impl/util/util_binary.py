@@ -240,34 +240,39 @@ def match_format(input_tensor, target_tensor, special_format=BinaryMatchBase.SPE
     input_real_format = input_tensor.get("format")
     target_real_format = target_tensor.get("format")
     is_match_real_format = _match(input_real_format, target_real_format)
-    # ori_format match
-    # to do
+    # ori_format match to do
     return is_match_real_format
 
 
 def match_dtype(input_tensor, target_tensor):
     """
     do_match dtype
+    rule as follow:
+    1. when dtype_type is DTYPE_MODE_BYTE, will use byte len to cmp, example: len("int32") == len("float32")
+    2. when both the dtype of input and target in ("bool", "int8"), return True
+    3. otherwise, return input_dtype == target_dtype
     """
     dtype_type = target_tensor.get(BinaryMatchBase.DTYPE_MODE_KEY, BinaryMatchBase.DTYPE_MODE_DEFAULT)
+    special_dtype = ("bool", "int8")
 
     def _match(input_dtype, target_dtype):
         if input_dtype is None or target_dtype is None:
             return False
 
-        is_match_dtype = True
+        is_match_dtype = input_dtype == target_dtype
         if dtype_type == BinaryMatchBase.DTYPE_MODE_BYTE:
             # the same byte use the same mode
             is_match_dtype = get_bit_len(input_dtype) == get_bit_len(target_dtype)
-        else:
-            is_match_dtype = input_dtype == target_dtype
+        elif input_dtype in special_dtype and target_dtype in special_dtype:
+            is_match_dtype = True
 
         return is_match_dtype
 
     input_dtype = input_tensor.get("dtype")
     target_dtype = target_tensor.get("dtype")
-    is_match_dtype = _match(input_dtype, target_dtype)
-    return is_match_dtype
+    is_match = _match(input_dtype, target_dtype)
+
+    return is_match
 
 
 def match_shape(input_tensor, target_tensor):

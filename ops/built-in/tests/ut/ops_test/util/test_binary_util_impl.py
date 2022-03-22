@@ -112,6 +112,16 @@ def test_match_tenser(test_arg):
     input_tensor = {"dtype": "int32", "format": "ND", "shape": [-1], "ori_shape": [-1], "ori_format": "ND"}
     assert match_tenser(input_tensor, target_tensor)
 
+    # case 7, support bool == int8
+    target_tensor = {"dtype": "bool", "format": "ND", "shape": [-1], "ori_shape": [-1], "ori_format": "ND"}
+    input_tensor = {"dtype": "int8", "format": "ND", "shape": [-1], "ori_shape": [-1], "ori_format": "ND"}
+    assert match_tenser(input_tensor, target_tensor)
+
+    # case 8, support bool != uint8
+    target_tensor = {"dtype": "bool", "format": "ND", "shape": [-1], "ori_shape": [-1], "ori_format": "ND"}
+    input_tensor = {"dtype": "uint8", "format": "ND", "shape": [-1], "ori_shape": [-1], "ori_format": "ND"}
+    assert not match_tenser(input_tensor, target_tensor)
+
 
 def test_match_attr(test_arg):
     """
