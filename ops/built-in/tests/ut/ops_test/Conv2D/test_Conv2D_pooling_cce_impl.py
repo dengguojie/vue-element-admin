@@ -81,6 +81,7 @@ def test_conv2d_pooling(test_arg):
                 fusion_type = 43
             else:
                 fusion_type = 42
+
         else:
             # the op_type with quant
             # the fusion_type added from
