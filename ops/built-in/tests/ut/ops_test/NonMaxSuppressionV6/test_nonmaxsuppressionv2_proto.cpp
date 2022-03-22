@@ -78,3 +78,13 @@ TEST_F(NonMaxSuppressionV2Test, non_max_suppressio_test_case_7) {
   auto ret = op.InferShapeAndType();
   EXPECT_EQ(ret, ge::GRAPH_FAILED);
 }
+
+TEST_F(NonMaxSuppressionV2Test, non_max_suppressio_test_case_8) {
+  ge::op::NonMaxSuppressionV2 op;
+  op.UpdateInputDesc("boxes", create_desc_with_ori({0, 4}, ge::DT_FLOAT, ge::FORMAT_ND, {0, 4}, ge::FORMAT_ND));
+  op.UpdateInputDesc("scores", create_desc_with_ori({0}, ge::DT_FLOAT, ge::FORMAT_ND, {0}, ge::FORMAT_ND));
+  op.UpdateInputDesc("max_output_size", create_desc_with_ori({}, ge::DT_FLOAT, ge::FORMAT_ND, {2}, ge::FORMAT_ND));
+  op.UpdateInputDesc("iou_threshold", create_desc_with_ori({}, ge::DT_FLOAT, ge::FORMAT_ND, {}, ge::FORMAT_ND));
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+}

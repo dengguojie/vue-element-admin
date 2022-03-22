@@ -1012,7 +1012,7 @@ IMPLEMT_INFERFUNC(NonMaxSuppression, NonMaxSuppressionInfer) {
 
   auto selected_indices_desc = op_desc->MutableOutputDesc("selected_indices");
   selected_indices_desc->SetShape(GeShape({UNKNOWN_DIM}));
-  selected_indices_desc->SetShapeRange({std::pair<int64_t, int64_t>(1, -1)});
+  selected_indices_desc->SetShapeRange({std::pair<int64_t, int64_t>(0, -1)});
   selected_indices_desc->SetDataType(DT_INT32);
   return GRAPH_SUCCESS;
 }
@@ -1081,7 +1081,7 @@ IMPLEMT_INFERFUNC(NonMaxSuppressionV2, NonMaxSuppressionV2Infer) {
 
   auto selected_indices_desc = op_desc->MutableOutputDesc("selected_indices");
   selected_indices_desc->SetShape(GeShape({UNKNOWN_DIM}));
-  selected_indices_desc->SetShapeRange({std::pair<int64_t, int64_t>(1, -1)});
+  selected_indices_desc->SetShapeRange({std::pair<int64_t, int64_t>(0, -1)});
   selected_indices_desc->SetDataType(DT_INT32);
   return GRAPH_SUCCESS;
 }
@@ -1166,7 +1166,7 @@ IMPLEMT_INFERFUNC(NonMaxSuppressionV3, NonMaxSuppressionV3Infer) {
   auto selected_indices_desc = op_desc->MutableOutputDesc(0);
   selected_indices_desc->SetDataType(DT_INT32);
   selected_indices_desc->SetShape(GeShape({UNKNOWN_DIM}));
-  selected_indices_desc->SetShapeRange({std::pair<int64_t, int64_t>(1, -1)});
+  selected_indices_desc->SetShapeRange({std::pair<int64_t, int64_t>(0, -1)});
 
   return GRAPH_SUCCESS;
 }
