@@ -189,7 +189,7 @@ def check_op_params(*type_args, **type_kwargs):
                                            error_info['param_type'],
                                            error_info['actual_type']))
         if -2 in op_param.get("shape"):
-            op_param["range"] = [(0, -1)]
+            op_param["range"] = [(0, None)]
         error_info = {}
 
         if OpParamInfoKey.SHAPE.value not in op_param.keys():
