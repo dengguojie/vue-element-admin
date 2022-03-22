@@ -26,8 +26,8 @@ from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tvm
 
-from .cos import cos_compute
-from .sin import sin_compute
+from impl.dynamic.cos import cos_compute
+from impl.dynamic.sin import sin_compute
 
 
 # 'pylint: disable=too-few-public-methods
@@ -150,7 +150,7 @@ def p1evl(data_x, coef, num):
     -------
     """
     res = tbe.vadds(data_x, tvm.const(coef[0], data_x.dtype))
-    for index in range(1, num):
+    for index in range(1, num + 1):
         res = tbe.vmul(res, data_x)
         res = tbe.vadds(res, tvm.const(coef[index], data_x.dtype))
 
@@ -201,7 +201,7 @@ def generic_fresnel_asymp(x, y):
 def _generic_fresnel_cos_interval(x):
     """
     do internel fresnel_cos compute
-    res = x * polevel(x^4, CN, 5) / plevel(x^4, CD, 6)
+    res = x * polevel(x^4, CN, 5) / polevel(x^4, CD, 6)
     """
     tmp_x2 = tbe.vmul(x, x)
     tmp_x4 = tbe.vmul(tmp_x2, tmp_x2)
@@ -293,7 +293,6 @@ def fresnel_cos(x, y, kernel_name="fresnel_cos"):
     dtype_input = x.get("dtype").lower()
 
     para_check.check_shape(shape_input, param_name="x")
-    shape_input, _ = shape_util.refine_shape_axes(shape_input, [])
 
     check_list = ("float16", "float32")
     para_check.check_dtype(dtype_input, check_list, param_name="x")

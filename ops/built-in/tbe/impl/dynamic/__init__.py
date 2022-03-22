@@ -270,6 +270,7 @@ from .mse_loss_grad import mse_loss_grad
 from .floor import floor
 from .rint import rint
 from .round import round
+from .spence import spence
 from .leaky_relu import leaky_relu
 from .mod import mod
 from .power import power

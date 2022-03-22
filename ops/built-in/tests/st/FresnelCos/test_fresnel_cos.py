@@ -115,7 +115,7 @@ def p1evl(data_x, coef, num):
     -------
     """
     res = np.add(data_x, coef[0])
-    for index in range(1, num):
+    for index in range(1, num + 1):
         mul_res = np.multiply(res, data_x)
         res = np.add(mul_res, coef[index])
     return res
@@ -162,7 +162,7 @@ def generic_fresnel_asymp(x):
 def _generic_fresnel_cos_interval(x):
     """
     do internel fresnel_cos compute
-    res = x * polevel(x^4, CN, 5) / plevel(x^4, CD, 6)
+    res = x * polevel(x^4, CN, 5) / polevel(x^4, CD, 6)
     """
     tmp_x2 = np.multiply(x, x)
     tmp_x4 = np.multiply(tmp_x2, tmp_x2)

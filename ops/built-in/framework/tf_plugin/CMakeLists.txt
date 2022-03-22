@@ -412,6 +412,7 @@ set(_tf_plugins
   sparse_apply_rms_prop.cc
   sparse_softmax_cross_entropy_with_logits_plugin.cc
   sparse_tensor_dense_add_plugin.cc
+  spence_plugin.cc
   split_plugin.cc
   split_v_plugin.cc
   sqrt_grad_plugin.cc

@@ -26,8 +26,8 @@ from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tvm
 
-from .cos import cos_compute
-from .sin import sin_compute
+from impl.dynamic.cos import cos_compute
+from impl.dynamic.sin import sin_compute
 
 
 # 'pylint: disable=too-few-public-methods
@@ -150,7 +150,7 @@ def p1evl(data_x, coef, num):
     -------
     """
     res = tbe.vadds(data_x, tvm.const(coef[0], data_x.dtype))
-    for index in range(1, num):
+    for index in range(1, num + 1):
         res = tbe.vmul(res, data_x)
         res = tbe.vadds(res, tvm.const(coef[index], data_x.dtype))
 
@@ -266,7 +266,7 @@ def fresnel_sin_compute(x, y, kernel_name="fresnel_sin"):
     # Restore sign
     res = tbe.vmul(res, sign)
 
-     # Restore dtype
+    # Restore dtype
     if dtype == "float16":
         res = tbe.cast_to(res, "float16")
 
@@ -291,7 +291,6 @@ def fresnel_sin(x, y, kernel_name="fresnel_sin"):
     dtype_input = x.get("dtype").lower()
 
     para_check.check_shape(shape_input, param_name="x")
-    shape_input, _ = shape_util.refine_shape_axes(shape_input, [])
 
     check_list = ("float16", "float32")
     para_check.check_dtype(dtype_input, check_list, param_name="x")

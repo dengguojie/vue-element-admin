@@ -4899,6 +4899,10 @@ INFER_FUNC_REG(ArgMaxGrad, ArgMaxGradInferShape);
 VERIFY_FUNC_REG(ArgMaxGrad, ArgMaxGradVerify);
 // ------------------ArgMaxGrad END---------------------
 
+// ----------------Spence--------------------
+COMMON_INFER_FUNC_REG(Spence, OneInOneOutCommonInferShape);
+// --------------Spence END-----------------
+
 // ----------------AddMatMatElements-------------------
 IMPLEMT_VERIFIER(AddMatMatElements, AddMatMatElementsVerify) {
   if (!CheckTwoInputDtypeSame(op, "c", "a") || !CheckTwoInputDtypeSame(op, "c", "b")) {

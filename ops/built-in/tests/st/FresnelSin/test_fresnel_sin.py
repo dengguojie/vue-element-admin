@@ -115,7 +115,7 @@ def p1evl(data_x, coef, num):
     -------
     """
     res = np.add(data_x, coef[0])
-    for index in range(1, num):
+    for index in range(1, num + 1):
         mul_res = np.multiply(res, data_x)
         res = np.add(mul_res, coef[index])
     return res

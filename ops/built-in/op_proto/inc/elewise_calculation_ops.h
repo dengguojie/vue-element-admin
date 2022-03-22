@@ -989,6 +989,25 @@ REG_OP(LogicalOr)
     .OP_END_FACTORY_REG(LogicalOr)
 
 /**
+* @brief Computes spence of x element-wise. \n
+
+*
+* @par Inputs:
+*  x: A tensor. Must be one of the following types: bfloat16, float16, float32, double.
+*
+* @par Outputs:
+*  y: A tensor. Has the same type as "x".
+*
+* @par Third-party framework compatibility
+* Compatible with the TensorFlow operator Spence.
+*
+*/
+REG_OP(Spence)
+    .INPUT(x, TensorType({DT_BF16, DT_FLOAT16, DT_FLOAT, DT_DOUBLE}))
+    .OUTPUT(y, TensorType({DT_BF16, DT_FLOAT16, DT_FLOAT, DT_DOUBLE}))
+    .OP_END_FACTORY_REG(Spence)
+
+/**
 *@brief Returns the truth value of x1 AND x2 element-wise. \n
 
 *

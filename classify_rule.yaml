@@ -1059,6 +1059,7 @@ vector_B:
       - ops/built-in/tbe/impl/dynamic/softplus.py
       - ops/built-in/tbe/impl/dynamic/softsign.py
       - ops/built-in/tbe/impl/dynamic/space_to_depth.py
+      - ops/built-in/tbe/impl/dynamic/spence.py
       - ops/built-in/tbe/impl/dynamic/sqrt.py
       - ops/built-in/tbe/impl/dynamic/sqrt_grad.py
       - ops/built-in/tbe/impl/dynamic/square.py
@@ -1690,6 +1691,8 @@ vector_B:
       - ops/built-in/tests/ut/ops_test/SplitD/test_SplitD_impl.py
       - ops/built-in/tests/ut/ops_test/SplitD/test_SplitD_op_select_format_impl.py
       - ops/built-in/tests/ut/ops_test/SplitVD/test_SplitVD_impl.py
+      - ops/built-in/tests/ut/ops_test/Spence/test_Spence_dynamic_impl.py
+      - ops/built-in/tests/ut/ops_test/Spence/test_Spence_proto.cpp
       - ops/built-in/tests/ut/ops_test/SqrtGrad/test_dynamic_SqrtGrad_impl.py
       - ops/built-in/tests/ut/ops_test/SqrtGrad/test_SqrtGrad_impl.py
       - ops/built-in/tests/ut/ops_test/Square/test_Dynamic_Square_impl.py
@@ -3244,6 +3247,7 @@ unkown:
       - ops/built-in/framework/tf_plugin/to_absolute_bbox_plugin.cc
       - ops/built-in/framework/tf_plugin/pack_plugin.cc
       - ops/built-in/framework/tf_plugin/space_to_batch_nd_plugin.cc
+      - ops/built-in/framework/tf_plugin/spence_plugin.cc
       - ops/built-in/framework/tf_plugin/avg_pool_grad_plugin.cc
       - ops/built-in/framework/tf_plugin/scatter_nd_sub_plugin.cc
       - ops/built-in/framework/tf_plugin/reduce_min_plugin.cc
