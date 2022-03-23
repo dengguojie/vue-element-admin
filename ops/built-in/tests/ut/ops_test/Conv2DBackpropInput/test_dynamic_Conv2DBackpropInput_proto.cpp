@@ -491,3 +491,36 @@ TEST_F(Conv2DBackpropInputProtoTest, conv2dbackpropinputVerifyPadsTest) {
     auto status = op.VerifyAllAttr(true);
     EXPECT_EQ(status, ge::GRAPH_FAILED);
 }
+
+// fix y shape is empty
+TEST_F(Conv2DBackpropInputProtoTest, conv2dbackpropinputyShapeEmpty) {
+    ge::op::Conv2DBackpropInput op;
+    op.UpdateInputDesc("filter", create_desc_with_ori({32, 16, 1, 1}, ge::DT_FLOAT16, ge::FORMAT_NCHW,
+                                            {32, 16, 1, 1}, ge::FORMAT_NCHW));
+    op.UpdateInputDesc("out_backprop",
+                       create_desc_with_ori({1, 32, 24, 24}, ge::DT_FLOAT16, ge::FORMAT_NCHW,
+                                            {1, 32, 24, 24}, ge::FORMAT_NCHW));
+    op.UpdateOutputDesc("y", create_desc_with_ori({}, ge::DT_FLOAT16, ge::FORMAT_NCHW,
+                                                  {}, ge::FORMAT_NCHW));
+    op.SetAttr("strides", {1, 1, 1, 1});
+    op.SetAttr("pads", {0, 0, 0, 0});
+    op.SetAttr("dilations", {1, 1, 1, 1});
+    op.SetAttr("padding", "VALID");
+    op.SetAttr("data_format", "NCHW");
+
+    std::vector<int64_t> dims_input_size{1, 16, 24, 24};
+    ge::TensorDesc tensor_desc_input_size(ge::Shape(),
+      ge::FORMAT_NCHW, ge::DT_INT32);
+    int element_size = dims_input_size.size();
+    tensor_desc_input_size.SetSize(element_size * sizeof(int32_t));
+
+    op.UpdateInputDesc("input_size", tensor_desc_input_size);
+
+    auto status = op.VerifyAllAttr(true);
+    EXPECT_EQ(status, ge::GRAPH_SUCCESS);
+    auto ret = op.InferShapeAndType();
+    EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+
+    auto output_desc = op.GetOutputDescByName("y");
+    EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT16);
+}

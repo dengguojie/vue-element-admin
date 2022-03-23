@@ -2398,7 +2398,7 @@ static bool VerifyConv2dbpPads(const AscendString& op_name, const OpDescPtr& op_
     ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
     return false;
   }
-  if (std::any_of(pads.begin(), pads.end(), [](int32_t val){ return val < 0;})) {
+  if (std::any_of(pads.begin(), pads.end(), [](int32_t val) {return val < 0;})) {
     OP_LOGE(op_name.GetString(), "op get pads is illegal");
     map<string, string> err_map;
     err_map["op_name"] = "conv2Dbp";
@@ -2982,8 +2982,9 @@ static bool SetConv2dBpInputOutShapeRange(const OpDetailInfo &op_info, const Pos
     return true;
   }
 
-  const GeShape &y_shape = y_desc->GetShape();
-  if (y_shape.GetDimNum() != kConv2dDimSizeLimit) {
+  GeShape &y_shape = y_desc->MutableShape();
+  bool y_shape_check_flag = y_shape.GetDimNum() && (y_shape.GetDimNum() != kConv2dDimSizeLimit);
+  if (y_shape_check_flag) {
     OP_LOGE(op_info.op_name.GetString(), "y_shape list should be 4D. actual is: %lu.", y_shape.GetDimNum());
     map<string, string> err_map;
     err_map["param_name"] = "y_shape";
@@ -2993,6 +2994,16 @@ static bool SetConv2dBpInputOutShapeRange(const OpDetailInfo &op_info, const Pos
     std::string report_error_code = "E50029";
     ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
     return false;
+  }
+
+  // deal with y shape is empty
+  if (!y_shape.GetDimNum()) {
+    y_shape.SetDimNum(kConv2dDimSizeLimit);
+    for (std::size_t i = 0; i < y_shape.GetDimNum(); i++) {
+      y_shape.SetDim(i, -1);
+    }
+    y_shape.SetDim(y_format_pos.c_position, groups * filter_value.c_value);
+    y_desc->SetShape(y_shape);
   }
 
   AttrInfo attr_paras;
