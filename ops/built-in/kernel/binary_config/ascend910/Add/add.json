@@ -7,49 +7,39 @@
         {
           "name": "x1",
           "index": 0,
-          "dtype": "int32",
+          "dtype": "float16",
           "format": "ND",
           "paramType": "required",
           "shape": [
             -2
           ],
-          "ori_shape": [
-            -2
-          ],
-          "ori_format": "ND"
+          "format_match_mode": "FormatAgnostic"
         },
         {
           "name": "x2",
           "index": 1,
-          "dtype": "int32",
+          "dtype": "float16",
           "format": "ND",
           "paramType": "required",
           "shape": [
             -2
           ],
-          "ori_shape": [
-            -2
-          ],
-          "ori_format": "ND"
+          "format_match_mode": "FormatAgnostic"
         }
       ],
       "outputs": [
         {
           "name": "y",
           "index": 0,
-          "dtype": "int32",
+          "dtype": "float16",
           "format": "ND",
           "paramType": "required",
           "shape": [
             -2
           ],
-          "ori_shape": [
-            -2
-          ],
-          "ori_format": "ND"
+          "format_match_mode": "FormatAgnostic"
         }
-      ],
-      "attrs": []
+      ]
     },
     {
       "bin_filename": "Add_1",
@@ -57,49 +47,39 @@
         {
           "name": "x1",
           "index": 0,
-          "dtype": "int8",
+          "dtype": "int32",
           "format": "ND",
           "paramType": "required",
           "shape": [
             -2
           ],
-          "ori_shape": [
-            -2
-          ],
-          "ori_format": "ND"
+          "format_match_mode": "FormatAgnostic"
         },
         {
           "name": "x2",
           "index": 1,
-          "dtype": "int8",
+          "dtype": "int32",
           "format": "ND",
           "paramType": "required",
           "shape": [
             -2
           ],
-          "ori_shape": [
-            -2
-          ],
-          "ori_format": "ND"
+          "format_match_mode": "FormatAgnostic"
         }
       ],
       "outputs": [
         {
           "name": "y",
           "index": 0,
-          "dtype": "int8",
+          "dtype": "int32",
           "format": "ND",
           "paramType": "required",
           "shape": [
             -2
           ],
-          "ori_shape": [
-            -2
-          ],
-          "ori_format": "ND"
+          "format_match_mode": "FormatAgnostic"
         }
-      ],
-      "attrs": []
+      ]
     },
     {
       "bin_filename": "Add_2",
@@ -113,10 +93,7 @@
           "shape": [
             -2
           ],
-          "ori_shape": [
-            -2
-          ],
-          "ori_format": "ND"
+          "format_match_mode": "FormatAgnostic"
         },
         {
           "name": "x2",
@@ -127,10 +104,7 @@
           "shape": [
             -2
           ],
-          "ori_shape": [
-            -2
-          ],
-          "ori_format": "ND"
+          "format_match_mode": "FormatAgnostic"
         }
       ],
       "outputs": [
@@ -143,13 +117,9 @@
           "shape": [
             -2
           ],
-          "ori_shape": [
-            -2
-          ],
-          "ori_format": "ND"
+          "format_match_mode": "FormatAgnostic"
         }
-      ],
-      "attrs": []
+      ]
     },
     {
       "bin_filename": "Add_3",
@@ -157,49 +127,39 @@
         {
           "name": "x1",
           "index": 0,
-          "dtype": "float16",
+          "dtype": "int8",
           "format": "ND",
           "paramType": "required",
           "shape": [
             -2
           ],
-          "ori_shape": [
-            -2
-          ],
-          "ori_format": "ND"
+          "format_match_mode": "FormatAgnostic"
         },
         {
           "name": "x2",
           "index": 1,
-          "dtype": "float16",
+          "dtype": "int8",
           "format": "ND",
           "paramType": "required",
           "shape": [
             -2
           ],
-          "ori_shape": [
-            -2
-          ],
-          "ori_format": "ND"
+          "format_match_mode": "FormatAgnostic"
         }
       ],
       "outputs": [
         {
           "name": "y",
           "index": 0,
-          "dtype": "float16",
+          "dtype": "int8",
           "format": "ND",
           "paramType": "required",
           "shape": [
             -2
           ],
-          "ori_shape": [
-            -2
-          ],
-          "ori_format": "ND"
+          "format_match_mode": "FormatAgnostic"
         }
-      ],
-      "attrs": []
+      ]
     },
     {
       "bin_filename": "Add_4",
@@ -213,10 +173,7 @@
           "shape": [
             -2
           ],
-          "ori_shape": [
-            -2
-          ],
-          "ori_format": "ND"
+          "format_match_mode": "FormatAgnostic"
         },
         {
           "name": "x2",
@@ -227,10 +184,7 @@
           "shape": [
             -2
           ],
-          "ori_shape": [
-            -2
-          ],
-          "ori_format": "ND"
+          "format_match_mode": "FormatAgnostic"
         }
       ],
       "outputs": [
@@ -243,13 +197,9 @@
           "shape": [
             -2
           ],
-          "ori_shape": [
-            -2
-          ],
-          "ori_format": "ND"
+          "format_match_mode": "FormatAgnostic"
         }
-      ],
-      "attrs": []
+      ]
     }
   ]
 }
