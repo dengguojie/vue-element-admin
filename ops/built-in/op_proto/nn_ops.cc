@@ -284,6 +284,28 @@ IMPLEMT_COMMON_INFERFUNC(MultiMergeInferShape) {
 
 COMMON_INFER_FUNC_REG(MultiMerge, MultiMergeInferShape);
 //-----------------------MultiMerge END---------------------
+// ----------------------SingleMerge----------------------
+IMPLEMT_COMMON_INFERFUNC(SingleMergeInferShape) {
+    TensorDesc tensordesc_output_data = op.GetOutputDesc("output_data");
+    TensorDesc tensordesc_output_index = op.GetOutputDesc("output_index");
+    TensorDesc tensordesc_input = op.GetInputDesc("input_proposal");
+    int64_t k_num = 0;
+    if (GRAPH_SUCCESS != op.GetAttr("k_num", k_num)) {
+        OP_LOGE(op.GetName().c_str(), "Get attr k_num failed");
+        return GRAPH_FAILED;
+    }
+    vector<int64_t> output_shape;
+    output_shape.push_back(k_num);
+    tensordesc_output_data.SetShape(Shape(output_shape));
+    tensordesc_output_data.SetDataType(tensordesc_input.GetDataType());
+    (void)op.UpdateOutputDesc("output_data", tensordesc_output_data);
+    tensordesc_output_index.SetShape(Shape(output_shape));
+    tensordesc_output_index.SetDataType(DT_INT32);
+    (void)op.UpdateOutputDesc("output_index", tensordesc_output_index);
+     return GRAPH_SUCCESS;
+    }
+COMMON_INFER_FUNC_REG(SingleMerge, SingleMergeInferShape);
+// -----------------------SingleMerge END---------------------
 // ----------------------MultiHeadAttention Start----------------------
 IMPLEMT_COMMON_INFERFUNC(MultiHeadAttentionInferShape) {
   TensorDesc query_tensordesc = op.GetInputDescByName("query");

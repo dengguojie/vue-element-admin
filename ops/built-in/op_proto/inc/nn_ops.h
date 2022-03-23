@@ -148,6 +148,26 @@ REG_OP(MultiMerge)
     .OP_END_FACTORY_REG(MultiMerge)
 
 /**
+ * @brief Large amount of data sort.Third operator of TopK.
+ * @par Inputs:
+ * One input, including:
+ * input_proposal: A Tensor. Proposal sorted for each channel. Support float16
+ * @par Attributes:
+ * k_num: Int.Number to be sorted.
+ * @par Outputs:
+ * Two output, including:
+ * @li output_data: A Tensor. Datatype and format is same as input_data. Data sorted.
+ * @li output_index: A Tensor. int32. Data index.
+ * Warning: THIS FUNCTION IS EXPERIMENTAL. Please do not use.
+ */
+REG_OP(SingleMerge)
+    .INPUT(input_proposal, TensorType({ DT_FLOAT16 }))
+    .OUTPUT(output_data, TensorType({ DT_FLOAT16 }))
+    .OUTPUT(output_index, TensorType({ DT_INT32 }))
+    .REQUIRED_ATTR(k_num, Int)
+    .OP_END_FACTORY_REG(SingleMerge)
+
+/**
  * @brief MultiHeadAttention.
  * @par Inputs:
  * thirteen input, including:
