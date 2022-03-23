@@ -22,6 +22,9 @@ from tbe import tvm
 from tbe.common.utils.errormgr import error_manager_util
 from tbe.common.utils import para_check
 
+# pad length
+PAD_LEN = 4
+
 
 def _calc_dilated_shape(shape, dilations, pads):
     """
@@ -34,11 +37,13 @@ def _calc_dilated_shape(shape, dilations, pads):
     return list(map(lambda a, b, c: (a - 1)*b + 1 + c[0] + c[1], shape, dilations, pads))
 
 
-def _param_check(tensor_x, dilations):
+def _param_check(tensor_x, dilations, pads):
     """
     check param
     :param tensor_x: tvm.tensor
     :param dilations: list or tuple
+    :param pads: list or tuple or None
+    return : list, modify pads
     """
     shape_x = [i.value for i in tensor_x.shape]
     para_check.check_shape(shape_x, param_name="x")
@@ -50,6 +55,16 @@ def _param_check(tensor_x, dilations):
             "desc": "Elements in dilations should be positive integer"
         }
         raise RuntimeError(args_dict, error_manager_util.get_error_message(args_dict))
+    if not pads:
+        pads = [0, 0, 0, 0]
+    if not isinstance(pads, (list, tuple)) or len(pads) != PAD_LEN:
+        args_dict = {
+            "errCode": "E60038",
+            "desc": "pads length must be 4"
+        }
+        raise RuntimeError(args_dict, error_manager_util.get_error_message(args_dict))
+    pads = [(0, 0), (pads[0], pads[1]), (pads[2], pads[3]), (0, 0)]
+    return pads
 
 
 def dilation_compute(tensor_x, dilations, pads=None, padding_value=0.0):
@@ -60,12 +75,8 @@ def dilation_compute(tensor_x, dilations, pads=None, padding_value=0.0):
     :param pads: list or tuple or None
     :param padding_value: float
     """
-    _param_check(tensor_x, dilations)
+    pads = _param_check(tensor_x, dilations, pads)
     shape_x = [i.value for i in tensor_x.shape]
-    if pads is None:
-        pads = [(0, 0)] * len(dilations)
-    else:
-        pads = [(0, 0), (pads[0], pads[1]), (pads[2], pads[3]), (0, 0)]
     shape_dilated = _calc_dilated_shape(shape_x, dilations, pads)
     dtype_x = tensor_x.dtype
     zero_tensor = tvm.compute(
