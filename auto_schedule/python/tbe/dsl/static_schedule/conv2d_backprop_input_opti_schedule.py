@@ -2334,6 +2334,8 @@ class Conv2dDxOptiSchedule:
                                 sch[inter_add_compute_tensor].double_buffer()
                                 sch[add_input_1_ub].double_buffer()
                                 sch[add_input_1_ub].preload()
+                        elif inter_add_compute_tensor is not None:
+                            sch[inter_add_compute_tensor].double_buffer()
                 elif fusion_type == FUSION_DX_ELEWISE:
                     for ub_tensor in TENSOR_MAP.get("ub_list"):
                         sch[ub_tensor].double_buffer()
@@ -2356,6 +2358,8 @@ class Conv2dDxOptiSchedule:
                         sch[dx_output_ub].reused_by(fusion_dx_gm, add_res_ub)
                     if var_map:
                         sch[dx_output_ub].reused_by(drelu_ub)
+                elif inter_add_compute_tensor is not None:
+                    sch[dx_output_ub].reused_by(fusion_dx_gm, drelu_ub, add_res_ub, inter_add_compute_tensor)
                 else:
                     sch[dx_output_ub].reused_by(fusion_dx_gm, drelu_ub, add_res_ub)
             elif fusion_type == FUSION_DX_DRELU:
@@ -2458,7 +2462,10 @@ class Conv2dDxOptiSchedule:
                     sch[add_input_ub].emit_insn(add_input_ub.op.axis[0], "dma_copy")
                     if add_input_1_ub is not None:
                         sch[add_input_1_ub].emit_insn(add_input_1_ub.op.axis[0], "dma_copy")
-                        sch[inter_add_compute_tensor].emit_insn(inter_add_compute_tensor.op.axis[0], "phony_insn")
+                        if dilate_ub is not None:
+                            sch[inter_add_compute_tensor].emit_insn(inter_add_compute_tensor.op.axis[0], "phony_insn")
+                        else:
+                            sch[inter_add_compute_tensor].emit_insn(inter_add_compute_tensor.op.axis[0], "vector_add")
                     _add_res_ub_insn()
             elif fusion_type == FUSION_DX_ELEWISE:
                 for input_tensor in TENSOR_MAP.get("input_tensor_list"):

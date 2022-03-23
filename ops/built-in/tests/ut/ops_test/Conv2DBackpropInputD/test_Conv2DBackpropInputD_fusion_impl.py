@@ -369,6 +369,60 @@ def test_conv2d_bp_input_addn_relugradv2_fusion_opti_schedule(test_arg):
         sch = auto_schedule(out)
     te_set_version("Ascend310")
 
+def test_conv2d_bp_input_addn_relugradv2_fusion_empty_dilate_ub(test_arg):
+    te_set_version("Ascend910")
+    with cce():
+        out_backprop = tvm.placeholder((2, 1, 416, 416, 16),
+                                       name="out_backprop",
+                                       attrs={
+                                           "format": "NC1HWC0",
+                                           "ori_format": "NCHW",
+                                           "ori_shape": (2, 2, 416, 416),
+                                       },
+                                       dtype="float16")
+        filters = tvm.placeholder((1, 1, 16, 16),
+                                  name="filters",
+                                  attrs={
+                                      "format": "Fractal_Z",
+                                      "ori_format": "NCHW",
+                                      "ori_shape": (2, 5, 1, 1)
+                                  },
+                                  dtype="float16")
+        y = {"shape": (2, 1, 416, 416, 16), "ori_shape": (2, 5, 416, 416), "format": "NC1HWC0", "ori_format": "NCHW", "dtype": "float16"}
+        input_size_tuple = (2, 5, 416, 416)
+        strides_tuple = (1, 1, 1, 1)
+        pads_tuple = (0, 0, 0, 0)
+        dx_out = conv2d_backprop_input_d_compute(filters, out_backprop, y, input_size_tuple, strides_tuple, pads_tuple)
+        addn_1 = tvm.placeholder(dx_out.shape,
+                                 name="addn_1",
+                                 attrs={
+                                     "format": "NC1HWC0",
+                                     "ori_format":"NHWC",
+                                     "ori_shape": (2, 416, 416, 5)
+                                 },
+                                 dtype="float16")
+        addn_2 = tvm.placeholder(dx_out.shape,
+                                 name="addn_2",
+                                 attrs={
+                                     "format": "NC1HWC0",
+                                     "ori_shape": (2, 5, 416, 416)
+                                 },
+                                 dtype="float16")
+        addn_output = {"shape": dx_out.shape, "ori_shape": (2, 5, 416, 416), "format": "NCHW", "ori_format": "NHWC", "dtype": "float16"}
+        addn_result = add_n_compute_for_fusion([dx_out, addn_1, addn_2], addn_output, 3)
+        relu_mask = tvm.placeholder((2, 1, 173056, 16),
+                                    name="relu_mask",
+                                    attrs={
+                                        'format': "NC1HWC0",
+                                        "ori_shape": (24, 1, 173056, 16)
+                                    },
+                                    dtype="bool")
+        backprops = {"shape": (2, 1, 416, 416, 16), "ori_shape": (2, 5, 416, 416), "format": "NC1HWC0", "ori_format": "NCHW", "dtype": "float16"}
+        out = relu_grad_v2_compute(addn_result, relu_mask, backprops)
+        tensor_list = [out_backprop, filters, dx_out, addn_1, addn_2, addn_result, relu_mask, out]
+        sch = auto_schedule(out)
+    te_set_version("Ascend310")
+
 def _gen_conv2d_bp_input_op_fusion_case():
     for fusion_case in conv2d_bp_input_ut_testcase.conv2d_bp_input_fusion_testcase:
         ut_case.add_cust_test_func(
@@ -393,6 +447,7 @@ def _gen_conv2d_bp_input_check_support_case():
 # _gen_conv2d_bp_input_check_support_case()
 ut_case.add_cust_test_func(test_func=test_conv2d_bp_input_addn_relugradv2_fusion)
 ut_case.add_cust_test_func(test_func=test_conv2d_bp_input_addn_relugradv2_fusion_opti_schedule)
+ut_case.add_cust_test_func(test_func=test_conv2d_bp_input_addn_relugradv2_fusion_empty_dilate_ub)
 
 if __name__ == "__main__":
     ut_case.run(["Ascend910A", "Ascend710", "Ascend310"])
