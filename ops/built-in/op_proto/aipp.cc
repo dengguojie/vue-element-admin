@@ -734,6 +734,47 @@ void SetPadding(nlohmann::json& root, ::domi::AippOpParams* aipp_op_params) {
   }
 }
 
+static void SaveImagesDesc(Operator& op, const std::string& aipp_config_path) {
+  OP_LOGD(op.GetName().c_str(), "aipp infershape, SaveImagesDesc start");
+  int64_t has_infered_verified = 0;
+  if (op.GetAttr("has_infered_verified", has_infered_verified) != GRAPH_SUCCESS) {
+    OP_LOGD(op.GetName().c_str(), "SaveImagesDesc, aipp_config_path is %s", aipp_config_path.c_str());
+    op.SetAttr("aipp_config_file_path", aipp_config_path);
+
+    auto images_desc = op.GetInputDesc("images");
+    Tensor images_tensor(images_desc);
+    OP_LOGD(op.GetName().c_str(), "SaveImagesDesc, images_shape is %s",
+            to_string(images_desc.GetShape().GetDims()).c_str());
+    OP_LOGD(op.GetName().c_str(), "SaveImagesDesc, images_dtype value is %ld", int64_t(images_desc.GetDataType()));
+    OP_LOGD(op.GetName().c_str(), "SaveImagesDesc, images_format value is %ld", int64_t(images_desc.GetFormat()));
+    std::vector<std::pair<int64_t, int64_t>> shape_range;
+    images_desc.GetShapeRange(shape_range);
+    OP_LOGD(op.GetName().c_str(), "SaveImagesDesc, shape range is %s", to_string(shape_range).c_str());
+    op.SetAttr("aipp_images_tensor_bak", images_tensor);
+  }
+  OP_LOGD(op.GetName().c_str(), "aipp infershape, SaveImagesDesc end");
+}
+
+static void GetImagesDesc(Operator& op, TensorDesc& images_desc) {
+  OP_LOGD(op.GetName().c_str(), "aipp infershape, GetImagesDesc start");
+  Tensor images_tensor;
+  if (op.GetAttr("aipp_images_tensor_bak", images_tensor) == GRAPH_SUCCESS) {
+    OP_LOGD(op.GetName().c_str(), "GetImagesDesc, get aipp_images_tensor_bak success");
+    images_desc = images_tensor.GetTensorDesc();
+    OP_LOGD(op.GetName().c_str(), "GetImagesDesc, images_shape is %s",
+            to_string(images_desc.GetShape().GetDims()).c_str());
+    OP_LOGD(op.GetName().c_str(), "GetImagesDesc, images_dtype value is %ld", int64_t(images_desc.GetDataType()));
+    OP_LOGD(op.GetName().c_str(), "GetImagesDesc, images_format value is %ld", int64_t(images_desc.GetFormat()));
+    std::vector<std::pair<int64_t, int64_t>> shape_range;
+    images_desc.GetShapeRange(shape_range);
+    OP_LOGD(op.GetName().c_str(), "GetImagesDesc, shape range is %s", to_string(shape_range).c_str());
+  } else {
+    OP_LOGD(op.GetName().c_str(), "GetImagesDesc, first, get images_desc from images");
+    images_desc = op.GetInputDesc("images");
+  }
+  OP_LOGD(op.GetName().c_str(), "aipp infershape, GetImagesDesc end");
+}
+
 static graphStatus DynamicShapeInfershape(Operator& op, const Tensor& params_data) {
   OP_LOGI(op.GetName().c_str(), "aipp infershape, aipp dynamic shape start");
   // parse params data
@@ -838,12 +879,18 @@ static graphStatus DynamicModeInfershape(Operator& op, ::domi::AippOpParams* aip
     return GRAPH_FAILED;
   }
 
-  auto images_desc = op.GetInputDesc("images");
+  TensorDesc images_desc;
+  GetImagesDesc(op, images_desc);
   OP_LOGD(op.GetName().c_str(), "images_desc size is %u", images_desc.GetSize());
   auto images_shape = images_desc.GetShape().GetDims();
   if (IsUnknownRankShape(images_shape)) {
     OP_LOGE(op.GetName().c_str(), "The shape is unknown rank, not support!");
     return GRAPH_FAILED;
+  }
+  if (IsUnKnownShape(images_shape)) {
+    OP_LOGD(op.GetName().c_str(), "aipp dynamic shape, set depend");
+    const vector<string> depend_name = {"params"};
+    PREPARE_DYNAMIC_SHAPE(depend_name);
   }
   (void)op.UpdateOutputDesc("features", images_desc);
 
@@ -880,8 +927,10 @@ static graphStatus DynamicModeInfershape(Operator& op, ::domi::AippOpParams* aip
 
 static graphStatus StaticInferShape(Operator& op, ::domi::AippOpParams* aipp_op_params) {
   OP_LOGI(op.GetName().c_str(), "aipp infershape, aipp static mode, start");
-  auto images_desc = op.GetInputDesc("images");
+  TensorDesc images_desc;
+  GetImagesDesc(op, images_desc);
   auto images_shape = images_desc.GetShape().GetDims();
+
   int64_t batch = 0;
   int64_t height = 0;
   int64_t width = 0;
@@ -990,10 +1039,10 @@ IMPLEMT_COMMON_INFERFUNC(AippInfer) {
   std::string aipp_config_path;
   if (op.GetAttr("aipp_config_path", aipp_config_path) != GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "AippInfer, failed to get attr aipp_config_path");
-    return GRAPH_SUCCESS;
+    return GRAPH_FAILED;
   }
+  SaveImagesDesc(op, aipp_config_path);
 
-  // dynamic shape, running
   if (nlohmann::json::accept(aipp_config_path)) {
     OP_LOGD(op.GetName().c_str(), "AippInfer, aipp_config_path is json");
     int64_t modePosition = aipp_config_path.find("aipp_mode");
@@ -1008,13 +1057,14 @@ IMPLEMT_COMMON_INFERFUNC(AippInfer) {
         return DynamicShapeInfershape(op, params_data);
       }
     }
-  }
 
-  int64_t has_infered_verified = 0;
-  if (op.GetAttr("has_infered_verified", has_infered_verified) == GRAPH_SUCCESS) {
-    OP_LOGI(op.GetName().c_str(), "This aipp has infered, return success");
-    return GRAPH_SUCCESS;
+    // compiling state
+    if (op.GetAttr("aipp_config_file_path", aipp_config_path) != GRAPH_SUCCESS) {
+      OP_LOGE(op.GetName().c_str(), "AippInfer, failed to get attr aipp_config_file_path");
+      return GRAPH_FAILED;
+    }
   }
+  OP_LOGD(op.GetName().c_str(), "AippInfer, aipp_config_path is %s", aipp_config_path.c_str());
 
   char resolved_file_path[PATH_MAX] = {0x00};
   if (realpath(aipp_config_path.c_str(), resolved_file_path) == nullptr) {
@@ -1103,10 +1153,6 @@ IMPLEMT_COMMON_INFERFUNC(AippInfer) {
   op.SetAttr("aipp_config_path", aipp_config_json);
 
   if (aipp_op_params->aipp_mode() == ::domi::AippOpParams_AippMode_dynamic) {
-    OP_LOGI(op.GetName().c_str(), "aipp dynamic mode");
-    const vector<string> depend_name = {"params"};
-    PREPARE_DYNAMIC_SHAPE(depend_name);
-
     return DynamicModeInfershape(op, aipp_op_params);
   } else {
     return StaticInferShape(op, aipp_op_params);
