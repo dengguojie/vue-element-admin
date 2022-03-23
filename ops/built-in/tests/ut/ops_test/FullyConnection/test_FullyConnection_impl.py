@@ -18,6 +18,7 @@ from te.lang.cce import cce_build_code
 from te.platform.cce_conf import te_set_version
 from te.tvm.target import cce
 from impl.fix_pipe import fixpipe_compute
+from impl.trans_data import trans_data_compute
 
 from op_test_frame.ut import OpUT
 ut_case = OpUT("FullyConnection", None, None)
@@ -392,6 +393,20 @@ def test_split_fc_4(test_arg):
     op_select_format(x, w, b, None, y, 32, False, 1, 0)
 
 
+def test_fc_nd_transdata():
+    with cce():
+        tensor_a_ori = tvm.placeholder((1, 1, 1, 8), name="tensor_a", dtype="float16")
+        tensor_a = trans_data_compute(tensor_a_ori, None, "NHWC", "NC1HWC0")
+        tensor_b = tvm.placeholder((1, 2, 16, 16), name="tensor_b", dtype="float16", attrs={
+            "format": "FRACTAL_Z", "ori_shape":(1, 1, 8, 32), "ori_format": "NHWC"})
+        output = {"shape": (1, 2, 1, 1, 16), "dtype": "float16", "format": "NC1HWC0", "ori_format": "NHWC"}
+        fc_res = fully_connection_compute(tensor_a, tensor_b, None, None, output, 1, False, 1)
+        x2 = tvm.placeholder((1, 2, 1, 1, 16), name="add_01",
+                             attrs={"format": "NC1HWC0", "ori_format": "NHWC",
+                                    "shape":(1, 2, 1, 1, 16), "ori_shape":(1, 1, 1, 32)})
+        res = fixpipe_compute(fc_res, x2, None, None, None, None, None, None, None, None, output, [], [], "")
+        sch = auto_schedule(res)
+
 # test mock case
 def test_mock_cases(test_args):
     with patch("tbe.common.platform.platform_info.get_soc_spec", MagicMock(side_effect=side_effects)):
@@ -408,6 +423,7 @@ def test_mock_cases(test_args):
                 test_split_fc_2("")
                 test_split_fc_4("")
                 test_fc_fixpipe_nhwc()
+                test_fc_nd_transdata()
 
 ut_case.add_cust_test_func(test_func=test_mock_cases)
 

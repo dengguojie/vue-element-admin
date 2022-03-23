@@ -18,29 +18,17 @@
 fixpipe fusion with matmul
 """
 from functools import reduce
-from tbe import tvm
+
 from impl.fixpipe_op.fixpipe_base import FixpipeBase
+from impl.util.platform_adapter import shape_util
+from impl.util.platform_adapter import tbe_platform
+from tbe import tvm
 
 
 class FixpipeMatmul(FixpipeBase):
     """
     matmul Fixpipe
     """
-    def _get_c0_c1_index(self):
-        """
-        get c0 c1 index according to format
-        """
-        nz_c0_idx = -1
-        nz_c1_idx = -4
-        return nz_c0_idx, nz_c1_idx
-
-    def _update_inputs(self):
-        """
-        skip matmul ddr tensor
-        """
-        if self.x1.op.input_tensors is not None:
-            self.x1 = self.x1.op.input_tensors[0]
-
     def fixpipe_reform(self, res):
         """
         shape or format transform for fixpipe_op
@@ -51,8 +39,6 @@ class FixpipeMatmul(FixpipeBase):
             fixpipe_name += "_nz2nd"
             m_block = self.input_shape[-1]
             n_block = self.input_shape[-2]
-            if self.output.get("format") == "NHWC":
-                self.output_shape = (reduce(lambda x, y: x * y, self.output_shape[:-2]), self.output_shape[-1])
             res_reform = tvm.compute(self.output_shape,
                                      lambda *indices: res(*indices[:-2],
                                                           indices[-1] // m_block,
@@ -80,3 +66,91 @@ class FixpipeMatmul(FixpipeBase):
                                     name=fixpipe_name,
                                     tag=fixpipe_tag)
         return res_reform
+
+    def _check_fc_nd_out(self):
+        """
+        if out format is NHWC or NC1HWC0, the op type is fc,
+        not support NCHW
+        """
+        out_format = self.output.get("format")
+        return out_format in ["NHWC", "NC1HWC0"]
+
+    def _get_post_transform(self):
+        """
+        get post_transform for op_dict
+
+        Returns
+        -------
+        string
+        """
+        if self._is_nz2nd():
+            return "NZ2ND"
+        return ""
+
+    def _get_output_shape(self):
+        """
+        get output shape
+        """
+        shape = self.output.get("shape")
+        out_shape = shape
+        if self._check_fc_nd_out():
+            out_shape = (shape[0], reduce(lambda x, y: x * y, shape[1:]))
+        return out_shape
+
+    def _get_c0_c1_index(self):
+        """
+        get c0 c1 index according to format
+        """
+        nz_c0_idx = -1
+        nz_c1_idx = -4
+        return nz_c0_idx, nz_c1_idx
+
+    def _update_inputs(self):
+        """
+        skip matmul ddr tensor
+        """
+        while self.x1.op.name != "tensor_c_matrix":
+            self.x1 = self.x1.op.input_tensors[0]
+
+    def _is_nz2nd(self):
+        """
+        check nz2nd scene
+
+        Returns
+        -------
+        bool
+        """
+        return self.output.get("format") in ("NHWC", "ND", "NC1HWC0")
+
+    def _x2_reform_generate_func(self, x2, input_shape):
+        """
+        x2 index reform
+
+        Parameters
+        ----------
+        x2 : tensor
+            elewise input
+        input_shape : tuple or list
+            shape of x1
+
+        Returns
+        -------
+        lambda description
+            new description for elewise input
+        """
+        if not self._check_fc_nd_out():
+            return self._x2_reform_generate_func_default(x2, input_shape)
+        # (N,C1,H,W,C0) -> (C1HW,N1,N0,C0)
+        _, _, x2_h, x2_w, _ = shape_util.shape_to_list(x2.shape)
+
+        def lambda_func(*indice):
+            new_indice = [
+                indice[-3] * tbe_platform.BLOCK_IN + indice[-2],
+                indice[-4] // (x2_h * x2_w),
+                indice[-4] // x2_w % x2_h,
+                indice[-4] % x2_w,
+                indice[-1]
+            ]
+            return x2(*new_indice)
+
+        return lambda_func

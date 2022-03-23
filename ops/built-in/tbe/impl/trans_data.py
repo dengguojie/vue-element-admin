@@ -235,10 +235,10 @@ def trans_data_compute(src, dst, src_format, dst_format, groups=1, kernel_name='
         dst_tensor = tvm.compute(dst_shape,
             lambda n_idx, c1_idx, h_idx, w_idx, c0_idx: tvm.select(
                 tvm.any(c1_idx * dst_c0 + c0_idx < src_c),
-                src(n_idx, h_idx, w_idx, c1_idx * dst_c0 + c0_idx),
-                tvm.const(0, src.dtype)),
+                src(n_idx, h_idx, w_idx, c1_idx * dst_c0 + c0_idx)),
                 name="res_nc1hwc0",
-                attrs={"ori_format": "NHWC", "ori_shape": src.shape},
+                attrs={"ori_format": "NHWC", "ori_shape": src.shape,
+                       "format": "NC1HWC0"},
                 tag="NHWC_trans_5HD")
     elif src_format == "NC1HWC0" and dst_format == "NHWC":
         src_n, src_c1, src_hw, src_c0 = tuple(i.value for i in src.shape)

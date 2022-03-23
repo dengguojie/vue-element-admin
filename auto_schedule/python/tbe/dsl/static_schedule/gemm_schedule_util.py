@@ -118,6 +118,7 @@ def get_all_tensors(res):
     all_tensor = {}
     leaf_tensor = {}
     all_tensor["res"] = res
+    all_tensor[res.op.name] = res
 
     def get(tensor):
         """
@@ -175,6 +176,14 @@ def set_matmul_scope(all_tensor, sch, tensor_map):
         sch[al1].set_scope(tbe_platform_info.scope_cbuf)
         tensor_map["a_l1"] = al1
         tensor_map["a_placehold"] = al1.op.input_tensors[0]
+    elif al1.op.tag == "5HD_trans_FZ":
+        # origin data flow is (N,H,W,C)->(N,C1,H,W,C0)->(C1HW,N1,N0,C0)
+        # can be simplified as (N,H,W,C) -> (C1HW,N1,N0,C0)
+        al1_5hd = al1.op.input_tensors[0]
+        sch[al1].set_scope(tbe_platform.scope_cbuf)
+        tensor_map["a_l1"] = al1
+        tensor_map["a_placehold"] = al1_5hd.op.input_tensors[0]
+        sch[al1_5hd].compute_inline()
 
     if not bl1.op.input_tensors:
         tensor_map["b_l1"] = sch.cache_read(bl1, tbe_platform_info.scope_cbuf, [all_tensor.get("tensor_b_matrix")])
@@ -203,7 +212,11 @@ def set_out_scope(all_tensor, leaf_tensor, sch, tensor_map):
             tensor_map = set_matmul_ub_scope(res, all_tensor, leaf_tensor, sch, tensor_map)
         else:
             tensor_map = set_matmul_fixpipe_scope(res, sch, tensor_map)
-
+    tensor_c_gm = all_tensor.get("tensor_c_gm")
+    if tensor_c_gm is not None:
+        if tensor_c_gm.op.input_tensors[0].op.tag == "fixpipe":
+            fixpipe_interim = tensor_c_gm.op.input_tensors[0]
+            sch[fixpipe_interim].compute_inline()
     return tensor_map
 
 

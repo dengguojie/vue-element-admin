@@ -4090,16 +4090,23 @@ class MatMulCompute:
             self._check_attrs()
         self._get_l1_shape()
 
-        tensor_a_length = len(self.tensor_a.shape)
         tensor_b_length = len(self.tensor_b.shape)
-
-        MatMulComputeParam.batch_a = (tensor_a_length == 5)
-        MatMulComputeParam.batch_b = (tensor_b_length == 5)
+        MatMulComputeParam.batch_a = self._check_batch_a()
+        MatMulComputeParam.batch_b = (tensor_b_length == BATCH_MATMUL_LENGTH)
 
         a_matrix = self._get_a_matrix()
         b_matrix = self._get_b_matrix()
         self.c_matrix = self._compute_c_matrix(a_matrix, b_matrix)
         self._set_dynamic_param(a_matrix, b_matrix)
+
+    def _check_batch_a(self):
+        """
+        check if tensor_a has batch:
+        for nz input, the first dim of 5 dims input is batch
+        for 5hd input, have no batch(op_type is fc, nhwc--transdata_compute-->5hd)
+        """
+        tensor_a_length = len(self.tensor_a.shape)
+        return (tensor_a_length == BATCH_MATMUL_LENGTH) and ("NHWC_trans_5HD" not in self.tensor_a.op.tag)
 
     def _set_dynamic_param(self, a_matrix, b_matrix):
         """
@@ -4179,6 +4186,35 @@ class MatMulCompute:
         else:
             b_5hd_shape = [tensor_b_l0b.shape[0] * 16, tensor_b_l0b.shape[1], 1, 1, 16]
         return b_5hd_shape
+
+    def _handle_front_trans_fusion(self):
+        """
+        for 5hd input, trans 5hd to fractal_z
+        """
+        src_n, src_c1, src_h, src_w, src_c0 = tuple(i.value for i in self.tensor_a.shape)
+        dst_n1 = self._ceil_div(src_n, self.block_in)
+        nhwc_shape = self.tensor_a.op.attrs["ori_shape"]
+        self.origin_reduce_axis = _get_value(functools_reduce(lambda x, y: x * y, nhwc_shape[1:]))
+        fz_shape = (
+            src_c1 * src_h * src_w,
+            dst_n1,
+            self.block_in,
+            src_c0
+        )
+        self.tensor_a = tvm.compute(
+            fz_shape,
+            lambda * indices: self.tensor_a(
+                indices[-3] * self.block_in + indices[-2],
+                indices[-4] // (src_h * src_w),
+                indices[-4] // src_w % src_h,
+                indices[-4] % src_w,
+                indices[-1]
+            ),
+            name=self.tensor_a.name + "_fractal_z",
+            tag="5HD_trans_FZ"
+        )
+        self.m_shape = _get_value(self.tensor_a.shape[-3])
+        self.km_shape = _get_value(self.tensor_a.shape[-4])
 
     def _al1_trans_nd2nz(self):
         """
@@ -4267,7 +4303,10 @@ class MatMulCompute:
         Return : tensor, Zz matrix for mad
         """
         if self.format_a == "ND":
-            self._al1_trans_nd2nz()
+            if "NHWC_trans_5HD" in self.tensor_a.op.tag:
+                self._handle_front_trans_fusion()
+            else:
+                self._al1_trans_nd2nz()
         if self.src_dtype == "int8" and not self.trans_a:
             block_reduce_multiple_in = self.block_reduce // self.block_in
             a_matrix_shape = [self.m_shape * block_reduce_multiple_in,
@@ -4406,6 +4445,46 @@ class MatMulCompute:
 
         return b_matrix
 
+    def _handle_5hd_output(self, l0c_shape, tensor_c_matrix):
+        """handle 5hd output, nz2nd must be implemented by fixpipe op
+        Input:
+            l0c_shape: list, shape_of l0c
+            tensor_c_matrix: tensor, c_matrix on l0c
+        ---------------------------------
+        Return:
+            tensor, nd tensor of fc
+        """
+        out_shape = (self.origin_m_shape, self.origin_n_shape)
+        op_dict = {
+            "post_transfrom": "NZ2ND"
+        }
+        attrs = {
+            "vector_params": [],
+            "vector_tensors": [],
+            "nz2nd_flag": True,
+            "anti_quant_flag": False
+        }
+        fixpipe_tensor = tvm.compute(
+            l0c_shape,
+            lambda *indices: tvm.fixpipe_op(
+                tensor_c_matrix(*indices),
+                self.dst_dtype,
+                op_dict=op_dict),
+            name="fixpipe",
+            tag="fixpipe",
+            attrs=attrs)
+        tensor_c_gm = tvm.compute(
+            out_shape,
+            lambda *indices: fixpipe_tensor(*indices[:-2],
+                                            indices[-1] // self.block_in,
+                                            indices[-2] // self.block_out,
+                                            indices[-2] % self.block_out,
+                                            indices[-1] % self.block_in),
+            name="tensor_c_gm",
+            tag="gemm"
+        )
+        return tensor_c_gm
+
     def _compute_c_matrix(self, a_matrix_in, b_matrix_in):
         """ MatMul calculation
         Input:
@@ -4457,18 +4536,7 @@ class MatMulCompute:
                 attrs={"kernel_name": self.kernel_name})
         if self.format_out == "NC1HWC0":
             # ND output
-            tensor_c_gm = tvm.compute(
-                ori_shape,
-                lambda *indices: tensor_c_matrix(*indices[:-2],
-                                                 indices[-1] // l0c_shape[-1],
-                                                 indices[-2] // l0c_shape[-2],
-                                                 indices[-2] % l0c_shape[-2],
-                                                 indices[-1] % l0c_shape[-1]).astype(self.dst_dtype),
-                tag="gemm",
-                name="tensor_c_gm",
-                attrs={"ori_format": "NCHW",
-                       "ori_shape": ori_shape}
-            )
+            tensor_c_gm = self._handle_5hd_output(l0c_shape, tensor_c_matrix)
         elif self.dst_dtype == "float32" and self.src_dtype == "float32":
             output_shape[-4] = self._ceil_div(self.origin_n_shape, self.block_reduce)
             output_shape[-1] = self.block_reduce
@@ -4525,7 +4593,7 @@ class MatMulCompute:
         """
         # matrix A
         self.batch_shape_a = None
-        if len(self.tensor_a.shape) == BATCH_MATMUL_LENGTH:
+        if self._check_batch_a():
             self.batch_shape_a = _get_value(self.tensor_a.shape[0])
         self.batch_shape_b = None
         if len(self.tensor_b.shape) == BATCH_MATMUL_LENGTH:
