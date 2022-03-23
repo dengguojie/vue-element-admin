@@ -41,6 +41,12 @@ class TbeConv3dElemwisePass : public BufferFusionPassBase {
 
  private:
   void SetSplitInfo(const BufferFusionMapping &mapping, std::vector<ge::NodePtr> &fusion_nodes);
+  Status CheckPattern1(const BufferFusionMapping &mapping) const;
+  Status CheckPattern2(const BufferFusionMapping &mapping) const;
+  Status CheckPattern3(const BufferFusionMapping &mapping) const;
+  Status CheckDynamicShape(const BufferFusionMapping& mapping) const;
+  Status CheckElemInput(const BufferFusionMapping& mapping) const;
+  Status CheckElemType(const BufferFusionMapping& mapping, const char* elem, const vector<string>& elem_types) const;
   const std::string FUSED_OP_TYPE = "FusedOp";
 };
 
