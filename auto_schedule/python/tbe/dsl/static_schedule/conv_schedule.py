@@ -6390,11 +6390,8 @@ class AutoScheduleOp:
             self.fused_double_operand_num += len(tmp_op["src_buffer"])
         self._visited_node_list.append(res_tensor.op.name)
         self._op.append(tmp_op)
-        MaxPoolParam.tensor_map["is_conv_pool_fused"] = False
         for i in tmp_op["src_buffer"]:
             # distinguish the maxpool fusion
-            if "pooling2d_max" in tmp_op.get("op"):
-                MaxPoolParam.tensor_map["is_conv_pool_fused"] = True
             if tmp_op["op"] == "convolution_c_col":
                 i.tag = "convolution_Input"
             if tmp_op["op"] == "convolution_im2col_fractal_v2_convolution_Input":
@@ -6500,6 +6497,14 @@ class AutoScheduleOp:
         elif is_support_v200() and weight.dtype in ("int4", "int8") \
             and out_src not in ('convolution_C_UB', 'convolution_remove_padded_column'):
             ConvParam.tensor_map["v200_data_flow_type"] = DataFlowType.V200_GENERAL_FUSION
+        # if conv_maxpool_quant ,out_src tensor is quant
+        # so is_conv_pool_fused need to set True
+        max_pool_quant_flag = "quant" == self.output_ops[0]['op'] \
+            and 'max_pool_res' in MaxPoolParam.tensor_map.keys()
+        if "pooling2d_max" in out_src or max_pool_quant_flag:
+            MaxPoolParam.tensor_map["is_conv_pool_fused"] = True
+        else:
+            MaxPoolParam.tensor_map["is_conv_pool_fused"] = False
 
     def __analyse_fused_double_operand_num(self):
         """

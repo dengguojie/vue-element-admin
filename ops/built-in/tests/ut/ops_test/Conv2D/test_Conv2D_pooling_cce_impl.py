@@ -94,6 +94,7 @@ def test_conv2d_pooling(test_arg):
                 fusion_type = 72
             else:
                 fusion_type = 73
+
         return fusion_type
 
     def _conv_pool_fusion_case(shape_in, shape_w, pads, strides, c_out, \
@@ -101,6 +102,7 @@ def test_conv2d_pooling(test_arg):
             quant_flag=0, quant_scale=0.5,quant_offset=10.32, sqrt_mode=False):
         with tvm.target.cce():
             # conv2d
+
             dilations = [1, 1, 1, 1]
             shape_c = (c_out * 16,)
             fm = tvm.placeholder(shape_in, name='fm', dtype="float16", attrs={'ori_format': 'NCHW', 'format':'NC1HWC0_C04'})

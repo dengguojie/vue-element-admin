@@ -469,6 +469,7 @@ def test_conv2d_v200(test_arg):
         data_flow, bias_flag, relu_flag, vector_flag, kernel_name):
         from te.platform.cce_policy import disableL2
         disableL2()
+
         block_size_k = 32
         block_size_n = 16
         batch, channel, height, weight = fm_shape
