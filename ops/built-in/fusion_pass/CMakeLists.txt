@@ -211,6 +211,7 @@ set(_aicore_fusion_srcs
   graph_fusion/ai_core/gemm_transpose_fusion_pass.cc
   graph_fusion/ai_core/gru_fusion_pass.cc
   graph_fusion/ai_core/hostbn_fusion_pass.cc
+  graph_fusion/ai_core/padv3_fusion_pass.cc
   graph_fusion/ai_core/hostin_fusion_pass.cc
   graph_fusion/ai_core/hard_max_fusion_pass.cc
   graph_fusion/ai_core/imgwarp_fusion_pass.cc

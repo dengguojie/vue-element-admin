@@ -461,6 +461,7 @@ class BMCNMS:
         self.bacth = None
         self.align_boxes = self.tik_instance.Scalar("int32", name="align_boxes")
         self.init_gm_tensor()
+        self.batch, self.boxes_num, self.cal_mode, self.classes = [None, None, None, None]
 
     def init_gm_tensor(self):
         """

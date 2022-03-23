@@ -183,7 +183,7 @@ Status AddDynamicTransposeBeforeNode(const ge::NodePtr& fusedNode, const int64_t
 
   FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(PermNode->GetOutDataAnchor(0),
                                             beforeTransposeNode->GetInDataAnchor(1)) != SUCCESS,
-                    VECTOR_FUSION_INNER_ERR_REPORT(fuseNodeType.c_str(), "AddEdge edge failed."), return FAILED);       
+                    VECTOR_FUSION_INNER_ERR_REPORT(fuseNodeType.c_str(), "AddEdge edge failed."), return FAILED); 
   // remove fused node input edge
   FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(fusedNode->GetInDataAnchor(inputIndex)->GetPeerOutAnchor(),
                                                fusedNode->GetInDataAnchor(inputIndex)) != SUCCESS,

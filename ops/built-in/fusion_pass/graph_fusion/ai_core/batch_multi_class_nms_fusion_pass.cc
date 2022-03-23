@@ -630,7 +630,8 @@ Status BatchMultiClassNonMaxSuppressionFusionPass::Fusion(ge::ComputeGraph& grap
   if (isDynamic) {
     ge::NodePtr beginNode = nullptr;
     Vec2ConstNode(attr_begin, beginNode, DataType::DT_INT64, ge::FORMAT_ND, graph);
-    FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(beginNode->GetOutDataAnchor(0), reduceNode->GetInDataAnchor(1)) != SUCCESS,
+    FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(beginNode->GetOutDataAnchor(0),
+                      reduceNode->GetInDataAnchor(1)) != SUCCESS,
                       OP_LOGE(FUSED_OP_TYPE.c_str(), "Add begin edge failed."), return FAILED);
 
     ge::NodePtr endNode = nullptr;
