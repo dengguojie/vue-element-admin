@@ -19,11 +19,23 @@
  * \brief
  */
 #include "register/register.h"
+#include "op_log.h"
 
 namespace domi {
+Status AutoMappingFnReduceMean(const google::protobuf::Message* op_src, ge::Operator& op) {
+  Status ret = AutoMappingFn(op_src, op);
+  if (ret != SUCCESS) {
+    OP_LOGE("ReduceMean", "tensorflow plugin parser failed. auto mapping failed.");
+    return FAILED;
+  }
+  op.SetAttr("noop_with_empty_axes", true);
+  OP_LOGI("ReduceMean", "tensorflow plugin parser[AutoMapping] success.");
+  return SUCCESS;
+}
+
 REGISTER_CUSTOM_OP("ReduceMean")
     .FrameworkType(TENSORFLOW)
     .OriginOpType("Mean")
-    .ParseParamsFn(AutoMappingFn)
+    .ParseParamsFn(AutoMappingFnReduceMean)
     .ImplyType(ImplyType::TVM);
 }  // namespace domi

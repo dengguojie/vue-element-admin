@@ -126,9 +126,9 @@ def reduce_mean_compute(x,
 
 @register_operator("ReduceMean")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
-                            para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
+                            para_check.OPTION_ATTR_BOOL, para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
 def reduce_mean(x, axes, y,
-                keepdims=False, kernel_name="reduce_mean"):
+                keepdims=False, noop_with_empty_axes=True, kernel_name="reduce_mean"):
     """
     Reduce a tensor on a certa in axes based on mean.
 
