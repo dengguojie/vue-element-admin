@@ -65,6 +65,7 @@ static const int32_t WC_IDX = 1;
 static const int32_t RR_IDX = 2;
 static const int32_t RC_IDX = 3;
 static const int32_t I_IDX = 2;
+static const int32_t COMMON_SHAPE_DIMS = 3;
 
 static map<std::string, int> LSTMP_INPUT_INDEX = {
     {"x", 0}, {"wx", 1}, {"bias", 2}, {"wr", 3}, {"project", 4}, {"real_mask", 5},
@@ -136,7 +137,7 @@ Status LSTMPFusionPass::CreateTransposeNode(ge::ComputeGraph& graph, const ge::G
                     return FAILED);
 
   auto input_dims = input_desc.GetShape().GetDims();
-  int64_t dim_num = input_desc.GetShape().GetDimNum();
+  std::size_t dim_num = input_desc.GetShape().GetDimNum();
   FUSION_PASS_CHECK(dim_num != perm.size(),
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
                                                    "input dims size[%ld] should be equal perm size[%ld]",
@@ -326,7 +327,7 @@ void LSTMPFusionPass::SetTensorDescription(ge::GeTensorDesc &tensorDesc, const v
 }
 
 void LSTMPFusionPass::SetTensorDescription(ge::GeTensorDescPtr descPtr, const ge::GeShape& shape,
-                                           const ge::Format& format, const ge::DataType& dtype) {
+                                           const ge::Format& format, const ge::DataType& dtype) const {
     descPtr->SetShape(shape);
     descPtr->SetDataType(dtype);
     descPtr->SetFormat(format);
@@ -528,7 +529,7 @@ Status LSTMPFusionPass::AddEdgeForInput(ge::ComputeGraph& graph, const ge::NodeP
   auto input_x_desc = fused_desc->GetInputDesc("x");
 
   auto dims = input_x_desc.GetShape().GetDims();
-  if (dims.size() == 3 && dims[1] == 1) {
+  if (dims.size() == COMMON_SHAPE_DIMS && dims[1] == 1) {
     ge::NodePtr reshape_node = nullptr;
     std::vector<int64_t> new_shape = {dims[1], dims[0], dims[2]};
     FUSION_PASS_CHECK(CreateReshapeNode(graph, input_x_desc, reshape_node, new_shape, "x") != SUCCESS,
@@ -712,7 +713,7 @@ Status LSTMPFusionPass::AddEdgeForOutput(ge::ComputeGraph& graph, const ge::Node
 }
 
 Status LSTMPFusionPass::CreateSplitNode(ge::ComputeGraph& graph, const ge::OpDescPtr& dynamicv3_desc,
-                                        ge::NodePtr& new_node, const std::string& name) {
+                                        ge::NodePtr& new_node, const std::string& name) const {
   OP_LOGD(FUSED_OP_TYPE.c_str(), "CreateSplitNode start.");
   auto input_desc = dynamicv3_desc->GetOutputDesc(name);
   std::shared_ptr<ge::OpDesc> split_desc = nullptr;
@@ -833,7 +834,7 @@ Status LSTMPFusionPass::CreateSplitNode(ge::ComputeGraph& graph, const ge::OpDes
   return SUCCESS;
 }
 
-Status LSTMPFusionPass::RemoveFusedNode(ge::ComputeGraph& graph, ge::NodePtr& fused_node) {
+Status LSTMPFusionPass::RemoveFusedNode(ge::ComputeGraph& graph, ge::NodePtr& fused_node) const {
   // unlink all control input of LSTMP
   OP_LOGD(FUSED_OP_TYPE.c_str(), "RemoveFusedNode start.");
   if (fused_node->GetInControlAnchor() != nullptr) {
@@ -863,7 +864,7 @@ Status LSTMPFusionPass::RemoveFusedNode(ge::ComputeGraph& graph, ge::NodePtr& fu
 }
 
 Status LSTMPFusionPass::CreateReshapeNode(ge::ComputeGraph& graph, const ge::GeTensorDesc& previous_node_desc,
-                                          ge::NodePtr& new_node, const vector<int64_t> &output_shape, 
+                                          ge::NodePtr& new_node, const vector<int64_t> &output_shape,
                                           const std::string& name) {
   std::string op_name(name + "/Reshape");
   auto reshape_op = ge::OperatorFactory::CreateOperator(op_name.c_str(), "Reshape");
@@ -901,14 +902,14 @@ ge::OpDescPtr LSTMPFusionPass::CreateListConstDesc(const string &name, vector<in
   FUSION_PASS_MAKE_SHARED((const_op_desc = std::make_shared<ge::OpDesc>(name, "Const")), return nullptr);
 
   GeTensorDesc data_desc(GeShape({static_cast<int64_t>(values.size())}), FORMAT_ND, DT_INT64);
-  GeTensorPtr const_value = nullptr;
-  FUSION_PASS_MAKE_SHARED((const_value = std::make_shared<ge::GeTensor>(
+  GeTensorPtr current_const_value = nullptr;
+  FUSION_PASS_MAKE_SHARED((current_const_value = std::make_shared<ge::GeTensor>(
                                data_desc, reinterpret_cast<uint8_t*>(values.data()), sizeof(int64_t) * values.size())),
                           return nullptr);
-  if (const_value == nullptr) {
+  if (current_const_value == nullptr) {
     return nullptr;
   }
-  if (!AttrUtils::SetTensor(const_op_desc, ATTR_NAME_WEIGHTS, const_value)) {
+  if (!AttrUtils::SetTensor(const_op_desc, ATTR_NAME_WEIGHTS, current_const_value)) {
     return nullptr;
   }
 

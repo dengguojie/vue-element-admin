@@ -1299,7 +1299,7 @@ IMPLEMT_INFERFUNC(Reshape, ReshapeInfer) {
       // At present, some operators do not support the shape range exceeding INT32MAX.
       // Here is a temporary process to set the exceeding range to INT32MAX.
       // This process will be deleted when all operators fully support INT64.
-      // Note: When dim is really greater than INT32MAX, 
+      // Note: When dim is really greater than INT32MAX,
       // the current processing will cause cause errors in the infer result.
       ge::array_ops::FixRangeMaxToInt32max(y_shape, y_shape_range);
 
@@ -2999,19 +2999,16 @@ INFER_FUNC_REG(EditDistance, EditDistanceInfer);
 
 // ----------------SortV2 Begin-------------------
 IMPLEMT_INFERFUNC(SortV2, SortV2InferShape) {
-  const char *op_name = "SortV2";
-  OP_LOGD(op_name, "SortV2InferShape begin.");
-  TensorDesc tensordesc_input = op.GetInputDescByName("x");
-  Shape input_shape = tensordesc_input.GetShape();
-  std::vector<int64_t> dims_input = input_shape.GetDims();
-  DataType input_dtype = tensordesc_input.GetDataType();
+  OP_LOGD(op.GetName().c_str(), "SortV2InferShape start.");
+  auto sort_v2_op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  auto input_desc = sort_v2_op_desc->GetInputDescPtr(0);
+  auto output_y_desc = sort_v2_op_desc->MutableOutputDesc(0);
 
-  TensorDesc tensordesc_output1 = op.GetOutputDescByName("y");
-  tensordesc_output1.SetDataType(input_dtype);
-  tensordesc_output1.SetShape(ge::Shape(dims_input));
-
-  (void)op.UpdateOutputDesc("y", tensordesc_output1);
-  OP_LOGD(op_name, "SortV2InferShape end.");
+  auto input_shape = input_desc->GetShape();
+  output_y_desc->SetShape(input_shape);
+  auto input_dtype = input_desc->GetDataType();
+  output_y_desc->SetDataType(input_dtype);
+  OP_LOGD(op.GetName().c_str(), "SortV2InferShape finish.");
   return GRAPH_SUCCESS;
 }
 
@@ -3105,10 +3102,9 @@ template<typename T> static bool ExpandCalDim(const Tensor &data,
 
 IMPLEMT_INFERFUNC(Expand, ExpandInferShape) {
   const char *op_name = "Expand";
-  OP_LOGD(op_name, "ExpandInferShape begin.");
+  OP_LOGD(op_name, "ExpandInferShape start.");
   const vector<string> const_names = {"shape"};
   PREPARE_DYNAMIC_SHAPE(const_names);
-  OP_LOGD(op_name, "get input x's tensordesc.");
   TensorDesc tensordesc_input = op.GetInputDescByName("x");
   Shape x_shape = tensordesc_input.GetShape();
   std::vector<int64_t> x_dims = x_shape.GetDims();
@@ -3122,13 +3118,12 @@ IMPLEMT_INFERFUNC(Expand, ExpandInferShape) {
 
   if (op.GetInputConstData("shape", data) != GRAPH_SUCCESS) {
     OP_LOGD(op_name, "Get constValue failed of [shape]");
-
     TensorDesc tensordesc_shape = op.GetInputDescByName("shape"); 
     vector<int64_t> shape_dims = tensordesc_shape.GetShape().GetDims(); 
     size_t dim_num = shape_dims.size();
 
     if (dim_num > 1) {
-      OP_LOGE(op_name, "The dim numbers of constnode are more than one.");
+      OP_LOGE(op_name, "The dim numbers of shape [%zu] are more than one.", dim_num);
       return GRAPH_FAILED;
     }
     int64_t max_len = x_dims.size();
@@ -3144,7 +3139,7 @@ IMPLEMT_INFERFUNC(Expand, ExpandInferShape) {
     TensorDesc tensordesc_shape = data.GetTensorDesc();
     vector<int64_t> shape_dims = tensordesc_shape.GetShape().GetDims();
     if (shape_dims.size() > 1) {
-      OP_LOGE(op_name, "The dim numbers of constValue [%zu] are more than one.",
+      OP_LOGE(op_name, "The dim numbers of shape [%zu] are more than one.",
               shape_dims.size());
       return GRAPH_FAILED;
     }
@@ -3164,13 +3159,11 @@ IMPLEMT_INFERFUNC(Expand, ExpandInferShape) {
       return GRAPH_PARAM_INVALID;
     }
   }
-  OP_LOGD(op_name, "reset output y's tensordesc.");
   tensordesc_output.SetDataType(x_dtype);
   tensordesc_output.SetShape(ge::Shape(vec_dim));
   tensordesc_output.SetShapeRange(range_vector);
-  OP_LOGD(op_name, "update output y's tensordesc.");
   (void)op.UpdateOutputDesc("y", tensordesc_output);
-  OP_LOGD(op_name, "ExpandInferShape end.");
+  OP_LOGD(op_name, "ExpandInferShape finish.");
 
   return GRAPH_SUCCESS;
 }
@@ -3354,6 +3347,7 @@ COMMON_INFER_FUNC_REG(NonZeroWithValueShape, NonZeroWithValueShapeInfer);
 
 // ----------------ExpandD Begin-------------------
 IMPLEMT_COMMON_INFERFUNC(ExpandDInferShape) {
+  OP_LOGD(op.GetName().c_str(), "ExpandDInferShape start.");
   Shape x_shape = op.GetInputDesc("x").GetShape();
   DataType x_dtype = op.GetInputDesc("x").GetDataType();
   std::vector<int64_t> shape;
@@ -3387,6 +3381,7 @@ IMPLEMT_COMMON_INFERFUNC(ExpandDInferShape) {
   td.SetShape(ge::Shape(dim_vec));
   td.SetDataType(x_dtype);
   (void)op.UpdateOutputDesc("y", td);
+  OP_LOGD(op.GetName().c_str(), "ExpandDInferShape finish.");
   return GRAPH_SUCCESS;
 }
 
