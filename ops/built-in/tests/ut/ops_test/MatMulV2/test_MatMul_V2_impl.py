@@ -797,6 +797,7 @@ ut_case.add_cust_test_func(test_func=test_atomic_add_k)
 ut_case.add_cust_test_func(test_func=test_matmul_nd)
 ut_case.add_cust_test_func(test_func=test_atomic_add_k_dts_case_1)
 
+
 if __name__ == '__main__':
     ut_case._case_info_map = {}
     from case_nd_in_nd_out import cases

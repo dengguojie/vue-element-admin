@@ -15,13 +15,18 @@
  */
 
 /*!
- * \file matmul_atmoic_add_ub_fusion.cpp
+ * \file matmul_atmoic_add_ub_fusion.cc
  * \brief
  * support dtype: float16
  * unsupported scene: cube_vector_split
  * trans MatMul(out:FRACTAL_NZ/float16) to MatMul(out:FRACTAL_NZ/float32) -> Cast(out:FRACTAL_NZ/float16)
  * trans MatMul(out:ND/float16) to MatMul(out:FRACTAL_NZ/float32) -> Cast(out:ND/float16)
  * -> TransData(out:FRACTAL_NZ/float16)
+ *
+ * This ub fusion has following limit:
+ *   When static, if the shape of the matmul node is in the following shape, will disable this ub fusion:
+ *     1. (1024, 12288, 1024)
+ *     2. (1824, 30528, 1024)
  */
 #include "matmul_atomic_add_ub_fusion.h"
 
@@ -108,9 +113,12 @@ bool MatmulAtomicAddUbFusion::EnableAtomicAdd(const ge::NodePtr &matmul_node) {
 }
 
 bool MatmulAtomicAddUbFusion::NeedSplitK(const ge::NodePtr &matmul_node) {
+  bool need_split_k = false;
   vector<int64_t> shapes = GetMatMulDims(matmul_node);
   auto src_dtype = matmul_node->GetOpDesc()->GetInputDesc(0).GetDataType();
-
+  if (FilterCase(matmul_node, shapes)) {
+    return false;
+  }
   FUSION_PASS_CHECK(src_dtype != ge::DT_FLOAT16,
                     OP_LOGD(kFusedOpType.c_str(), "only support float16 input, will not split k."),
                     return false);
@@ -121,7 +129,6 @@ bool MatmulAtomicAddUbFusion::NeedSplitK(const ge::NodePtr &matmul_node) {
   }
   ge::DataType out_dtype = matmul_node->GetOpDesc()->GetOutputDesc(0).GetDataType();
   ge::Format out_format = matmul_node->GetOpDesc()->GetOutputDesc(0).GetFormat();
-  bool need_split_k = false;
   auto m_shape = shapes[kIndexM];
   auto k_shape = shapes[kIndexK];
   auto n_shape = shapes[kIndexN];
@@ -667,6 +674,28 @@ Status MatmulAtomicAddUbFusion::MatMulLinkControlEdge(const ge::NodePtr &matmul_
     }
   }
   return SUCCESS;
+}
+
+bool MatmulAtomicAddUbFusion::FilterCase(const ge::NodePtr &matmul_node, const vector<int64_t> &shapes) {
+  if (is_dynamic_flag) {
+    return false;
+  }
+  vector<vector<int64_t>> filter_case = {
+    {1024, 12288, 1024},
+    {1824, 30528, 1024}
+  };
+  for (auto one_case : filter_case) {
+    if (IsSameShape(one_case, shapes)) {
+      OP_LOGD(kFusedOpType.c_str(), "this shape is filtered");
+      return true;
+    }
+  }
+
+  return false;
+}
+
+bool MatmulAtomicAddUbFusion::IsSameShape(const vector<int64_t> &shape_a, const vector<int64_t> &shape_b) const {
+  return (shape_a.size() == shape_b.size() && equal(shape_a.begin(), shape_a.end(), shape_b.begin()));
 }
 
 Status MatmulAtomicAddUbFusion::GetFusionNodes(const BufferFusionMapping &mapping, vector<ge::NodePtr> &fusion_nodes) {

@@ -49,6 +49,8 @@ class MatmulAtomicAddUbFusion : public BufferFusionPassBase {
   Status AddSuperKernelId(ge::NodePtr &matmul_node);
   Status AddCustomNode(int cur_add_node_type, ge::NodePtr &matmul_node, vector<ge::NodePtr> &fusion_nodes);
   Status MatMulLinkControlEdge(const ge::NodePtr &matmul_node, const ge::NodePtr &next_node) const;
+  bool FilterCase(const ge::NodePtr &matmul_node, const vector<int64_t> &shapes);
+  bool IsSameShape(const vector<int64_t> &shape_a, const vector<int64_t> &shape_b) const;
  protected:
   vector<BufferFusionPattern *> DefinePatterns() override;
   /*
