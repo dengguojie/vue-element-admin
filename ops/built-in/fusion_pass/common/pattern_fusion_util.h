@@ -92,6 +92,7 @@ class PatternFusionUtil {
  public:
   static Status ConstToAttrWithNode(ge::ComputeGraph& graph, ge::NodePtr& fusedNode, std::string fusionOpType,
                                     std::vector<PassAttrInfo>& attrInfo, ge::NodePtr& fusionNode);
+  static bool HasControlEdge(NodePtr node);
   static size_t GetOutEdgeSize(NodePtr node);
   static ge::OpDescPtr GetFusionOpDesc(ge::NodePtr fusedNodePtr, std::string fusionOpType,
                                        std::vector<PassAttrInfo>& attrInfos);
@@ -137,7 +138,7 @@ class PatternFusionUtil {
                                      const int32_t &index, std::atomic<uint64_t> &name_id);
   static ge::NodePtr InsertOutputNode(ge::ComputeGraph &graph, ge::NodePtr &src_node, const string &op_type,
                                       const int32_t &index, std::atomic<uint64_t> &name_id);
-  static Status LinkControlAnchorForConst(ge::NodePtr oneConstNode, ge::NodePtr fusionNode);
+  static Status LinkControlAnchorForConst(ge::NodePtr oneConstNode, ge::NodePtr fusionNode, bool has_in_control);
 };
 
 }  // namespace fe
