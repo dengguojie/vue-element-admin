@@ -32,6 +32,7 @@
 #include "pattern_fusion_util.h"
 #include "graph_optimizer/graph_fusion/fusion_pass_manager/fusion_pass_registry.h"
 #include "error_util.h"
+#include "common/util/platform_info.h"
 
 namespace fe {
 static const std::string PATTERN_SPACETOBATCH = "spacetobatch";
@@ -98,6 +99,16 @@ std::vector<FusionPattern*> SpacetobatchConv2dBatchtospacePass::DefinePatterns()
 Status SpacetobatchConv2dBatchtospacePass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
     std::vector<ge::NodePtr>& newNodes)
 {
+    PlatformInfo platformInfo;
+    OptionalInfo optionalInfo;
+    auto platRet = PlatformInfoManager::Instance().GetPlatformInfoWithOutSocVersion(platformInfo, optionalInfo);
+    FUSION_PASS_CHECK(platRet != SUCCESS,
+        OP_LOGW(fusedOpType_.c_str(), "get platform info failed, no fusion."),
+        return SUCCESS);
+    FUSION_PASS_CHECK(optionalInfo.soc_version == "SD3403" || optionalInfo.soc_version == "Hi3796CV300CS",
+        OP_LOGI(fusedOpType_.c_str(), "soc version SD3403/Hi3796CV300CS, no fusion."),
+        return SUCCESS);
+
     OP_LOGI(fusedOpType_.c_str(), "enter SpacetobatchConv2dBatchtospacePass.");
     auto spacetobatchNode = GetNodeFromMapping(PATTERN_SPACETOBATCH, mapping);
     auto batchtospaceNode = GetNodeFromMapping(PATTERN_BATCHTOSPACE, mapping);

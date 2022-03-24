@@ -8,6 +8,8 @@
 #include "array_ops.h"
 #include "fusion_pass_test_utils.h"
 #include "fp16_t.hpp"
+#define private public
+#include "common/util/platform_info.h"
 
 using namespace ge;
 
@@ -424,6 +426,15 @@ TEST_F(spacetobatch_conv2d_batchtospace_test, spacetobatch_conv2d_batchtospace_t
 {
     ge::ComputeGraphPtr computeGraph;
     BuildGraph(computeGraph);
+
+    // set soc_version
+    fe::PlatformInfo platform_info;
+    fe::OptionalInfo opti_compilation_info;
+    platform_info.soc_info.ai_core_cnt = 1;
+    opti_compilation_info.soc_version = "Ascend910A";
+    fe::PlatformInfoManager::Instance().platform_info_map_["Ascend910A"] = platform_info;
+    fe::PlatformInfoManager::Instance().SetOptionalCompilationInfo(opti_compilation_info);
+
     FusionPassTestUtils::InferShapeAndType(computeGraph);
     FusionPassTestUtils::RunGraphFusionPass("SpaceToBatchConv2dBatchToSpacePass", fe::BUILT_IN_GRAPH_PASS, *computeGraph);
     bool findSpacetobatch = false;
@@ -586,6 +597,35 @@ TEST_F(spacetobatch_conv2d_batchtospace_test, spacetobatch_conv2d_batchtospace_t
 {
     ge::ComputeGraphPtr computeGraph;
     BuildGraphKernelSizeOverSize(computeGraph);
+    FusionPassTestUtils::InferShapeAndType(computeGraph);
+    FusionPassTestUtils::RunGraphFusionPass("SpaceToBatchConv2dBatchToSpacePass", fe::BUILT_IN_GRAPH_PASS, *computeGraph);
+    bool findSpacetobatch = false;
+    bool findBatchtospace = false;
+    for (auto node: computeGraph->GetAllNodes()) {
+        if (node->GetType() == "SpaceToBatchND") {
+            findSpacetobatch = true;
+        }
+        if (node->GetType() == "BatchToSpaceND") {
+            findBatchtospace = true;
+        }
+    }
+    EXPECT_EQ(findSpacetobatch, true);
+    EXPECT_EQ(findBatchtospace, true);
+}
+
+TEST_F(spacetobatch_conv2d_batchtospace_test, spacetobatch_conv2d_batchtospace_test_sd3403)
+{
+    ge::ComputeGraphPtr computeGraph;
+    BuildGraph(computeGraph);
+
+    // set soc_version
+    fe::PlatformInfo platform_info;
+    fe::OptionalInfo opti_compilation_info;
+    platform_info.soc_info.ai_core_cnt = 1;
+    opti_compilation_info.soc_version = "SD3403";
+    fe::PlatformInfoManager::Instance().platform_info_map_["SD3403"] = platform_info;
+    fe::PlatformInfoManager::Instance().SetOptionalCompilationInfo(opti_compilation_info);
+
     FusionPassTestUtils::InferShapeAndType(computeGraph);
     FusionPassTestUtils::RunGraphFusionPass("SpaceToBatchConv2dBatchToSpacePass", fe::BUILT_IN_GRAPH_PASS, *computeGraph);
     bool findSpacetobatch = false;
