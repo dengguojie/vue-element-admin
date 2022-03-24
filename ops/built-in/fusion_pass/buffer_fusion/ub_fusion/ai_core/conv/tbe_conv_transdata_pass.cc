@@ -23,7 +23,7 @@
 namespace fe {
 using std::vector;
 static const string PATTERN_CONV = "convolution";
-static const string PATTERN_QUANT = "quant";
+static const string PATTERN_ELEMWISE = "elemwise";
 static const string PATTERN_TRANSDATA = "TransData";
 
 vector<BufferFusionPattern*> ConvTransdataFusionPass::DefinePatterns() {
@@ -34,12 +34,17 @@ vector<BufferFusionPattern*> ConvTransdataFusionPass::DefinePatterns() {
   FUSION_PASS_CHECK((pattern == nullptr), OP_LOGE(fused_op_type_.c_str(), "new an object failed."), return patterns);
   OP_LOGD(fused_op_type_.c_str(), "Start to define %s pass pattern.", pattern_name.c_str());
   // define pattern rules
-  pattern->AddOpDesc(PATTERN_CONV, {OP_PATTERN_CONV}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, 
+  /* conv2d + transdata */
+  /* conv2d + eltwise + transdata */
+  pattern->AddOpDesc(PATTERN_CONV, {OP_PATTERN_CONV}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT,
                      TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
-          .AddOpDesc(PATTERN_TRANSDATA, {"TransData"}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, 
+          .AddOpDesc(PATTERN_ELEMWISE, {OP_PATTERN_ELEMWISE}, TBE_PATTERN_NUM_NONE, TBE_PATTERN_NUM_DEFAULT,
+                     TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
+          .AddOpDesc(PATTERN_TRANSDATA, {"TransData"}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT,
                      TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE, true)
           .SetHead({PATTERN_CONV})
-          .SetOutputs(PATTERN_CONV, {PATTERN_TRANSDATA});
+          .SetOutputs(PATTERN_CONV, {PATTERN_ELEMWISE})
+          .SetOutputs(PATTERN_ELEMWISE, {PATTERN_TRANSDATA}, TBE_OUTPUT_BRANCH_SINGLE, true);
   patterns.push_back(pattern);
   OP_LOGD(fused_op_type_.c_str(), "End to define %s pass pattern.", pattern_name.c_str());
   return patterns;
@@ -49,11 +54,26 @@ Status ConvTransdataFusionPass::GetFusionNodes(const BufferFusionMapping& mappin
   OP_LOGD(fused_op_type_.c_str(), "Begin to do ConvTransdataFusionPass!");
 
   vector<ge::NodePtr> conv_nodes = GetMatchedNodesByDescName(PATTERN_CONV, mapping);
+  vector<ge::NodePtr> elemwise_nodes = GetMatchedNodesByDescName(PATTERN_ELEMWISE, mapping);
   vector<ge::NodePtr> transdata_nodes = GetMatchedNodesByDescName(PATTERN_TRANSDATA, mapping);
 
   if (conv_nodes.size() != 1 || transdata_nodes.size() != 1) {
     OP_LOGD(fused_op_type_.c_str(), "conv_nodes or transdata_nodes size is not 1.");
     return SUCCESS;
+  }
+
+  if (!elemwise_nodes.empty()) {
+    FUSION_PASS_CHECK(elemwise_nodes[0]->GetType() != "Eltwise",
+                      OP_LOGD(fused_op_type_.c_str(), "elemwise node type check fail"),
+                      return SUCCESS);
+    int64_t mode;
+    ge::AttrUtils::GetInt(elemwise_nodes[0]->GetOpDesc(), "mode", mode);
+    // mode:  0:product, 1:sum, 2:max, only support sum in this pass
+    OP_LOGD(fused_op_type_.c_str(), "elemwise node mode is [%d]", mode);
+    int64_t eltModeSum = 1;  // mode 1 means sum
+    FUSION_PASS_CHECK(mode != eltModeSum,
+                      OP_LOGD(fused_op_type_.c_str(), "elemwise node mode check fail"),
+                      return SUCCESS);
   }
 
   PlatformInfo platform_info;

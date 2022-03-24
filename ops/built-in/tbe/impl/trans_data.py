@@ -261,17 +261,39 @@ def trans_data_compute(src, dst, src_format, dst_format, groups=1, kernel_name='
             tag="5HD_trans_NHWC")
 
     elif src_format == "NC1HWC0" and dst_format == "NCHW":
-        src_n =  src.shape[0].value
-        src_c1 =  src.shape[1].value
-        src_hw =  src.shape[2].value
-        src_c0 =  src.shape[3].value
+        src_n = src.shape[0].value
+        src_c1 = src.shape[1].value
+        src_hw = src.shape[2].value
+        src_c0 = src.shape[3].value
         dst_ori_shape = dst.get("shape")
         dst_shape = [src_n, dst_ori_shape[1], src_hw]
-        dst_tensor = tvm.compute(dst_shape,
-                                 lambda n_idx, c_idx, hw_idx:
-                                 src(n_idx, c_idx // src_c0, hw_idx, c_idx % src_c0),
-                                 name="res_nchw",
-                                 tag="5HD_trans_NCHW")
+        m0_fp16 = 16
+        src_hw_align = _ceil_div(src_hw, m0_fp16) * m0_fp16
+        if src_hw != src_hw_align:
+            pad_shape_nc1hwc0 = [src_n, src_c1, src_hw_align, src_c0]
+            pad_shape_nchw = [src_n, dst_ori_shape[1], src_hw_align]
+            add_pad = tvm.compute(pad_shape_nc1hwc0,
+                                  lambda n_idx, c1_idx, hw_idx, c0_idx:
+                                      tvm.select(hw_idx < src_hw,
+                                                 src(n_idx, c1_idx, hw_idx, c0_idx)),
+                                  name="res_add_pad",
+                                  tag="5HD_trans_NCHW_add_pad")
+            transdata_tensor = tvm.compute(pad_shape_nchw,
+                                           lambda n_idx, c_idx, hw_idx:
+                                               add_pad(n_idx, c_idx // src_c0, hw_idx, c_idx % src_c0),
+                                           name="res_nchw",
+                                           tag="5HD_trans_NCHW")
+            dst_tensor = tvm.compute(dst_shape,
+                                     lambda n_idx, c_idx, hw_idx:
+                                         transdata_tensor(n_idx, c_idx, hw_idx),
+                                     name="res_rm_pad",
+                                     tag="5HD_trans_NCHW_rm_pad")
+        else:
+            dst_tensor = tvm.compute(dst_shape,
+                                     lambda n_idx, c_idx, hw_idx:
+                                         src(n_idx, c_idx // src_c0, hw_idx, c_idx % src_c0),
+                                     name="res_nchw",
+                                     tag="5HD_trans_NCHW")
 
     elif src_format == "NHWC" and dst_format == "FRACTAL_Z":
         src_n, src_h, src_w, src_c = tuple(i.value for i in src.shape)

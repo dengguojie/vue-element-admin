@@ -19,6 +19,7 @@ Schedule of conv2d.
 """
 import re
 import math
+from collections import deque
 from enum import Enum
 from tbe.dsl.base import operation
 from tbe.dsl.compute.conv_compute import ConvParam
@@ -4576,12 +4577,40 @@ class CceConvOp:
                 sch[c_ub].mem_unique()
 
         def _handle_transdata_ubfusion():
-            if res.op.tag == "conv2d_data_rm" and res.op.input_tensors[0].op.tag == "5HD_trans_NCHW":
-                # conv+transdata ub fusion, cout must be 1
-                transdata_tensor = res.op.input_tensors[0]
+            transdata_tensor = None
+            transdata_add_pad_tensor = None
+            transdata_elt_tensor = None
+            tensor_queue = deque()
+            align_tensors = []
+            tensor_queue.append(res)
+            while tensor_queue:
+                process_tensor = tensor_queue.popleft()
+                tmp_op_tag = process_tensor.op.tag
+
+                if tmp_op_tag == "5HD_trans_NCHW":
+                    # conv+transdata ub fusion, cout must be 1
+                    transdata_tensor = process_tensor
+
+                if tmp_op_tag == "5HD_trans_NCHW_add_pad":
+                    transdata_add_pad_tensor = process_tensor
+
+                if tmp_op_tag == "elewise_binary_add":
+                    transdata_elt_tensor = process_tensor
+
+                if process_tensor.op.input_tensors:
+                    # need storage_align all tensors between transdata tensor and c_ub tensor
+                    if transdata_tensor is not None and process_tensor != transdata_tensor:
+                        align_tensors.append(process_tensor)
+                    append_list = list(i for i in process_tensor.op.input_tensors if i != tensor_map["c_ub"])
+                    tensor_queue.extend(append_list)
+
+            if transdata_tensor is not None:
+                # when res_nchw is res, transdata_tensor is res_nchw.local.UB
+                if transdata_tensor == res and len(self._op_graph.output_ops) == 1:
+                    transdata_tensor = self._op_graph.output_ops[0]['dst_buffer']
+
                 # hardware must process 16*16 block, cout is 1, so need reserved extras 15*16 ub space
                 storage_bound = c_tiling_factor[1] + 15 * 16
-                process_tensor = transdata_tensor.op.input_tensors[0]
                 sch[transdata_tensor].set_buffer_size(storage_bound)
                 # vnchwconv min emit size is 16*16
                 sch[transdata_tensor].buffer_align((1, 1), (1, 1), (16, 16))
@@ -4592,14 +4621,20 @@ class CceConvOp:
                     sch[transdata_tensor].emit_insn(sch[transdata_tensor].op.axis[0], "vnchwconv")
                 else:
                     sch[transdata_tensor].emit_insn(sch[transdata_tensor].op.axis[0], "data_mov")
-                # need storage_align all tensors between res tensor and c_ub tensor
-                while True:
-                    if process_tensor.op.name == tensor_map["c_ub"].op.name:
-                        break
-                    sch[process_tensor].storage_align(sch[process_tensor].op.axis[-1], 16, 0)
-                    if not process_tensor.op.input_tensors:
-                        break
-                    process_tensor = process_tensor.op.input_tensors[0]
+
+                if transdata_add_pad_tensor is not None:
+                    trans_rm_pad_tensor = self._op_graph.output_ops[0]['dst_buffer']
+                    sch[transdata_add_pad_tensor].emit_insn(sch[transdata_add_pad_tensor].op.axis[0], "dma_copy")
+                    sch[trans_rm_pad_tensor].emit_insn(sch[trans_rm_pad_tensor].op.axis[0], "dma_copy")
+
+                if transdata_elt_tensor is not None:
+                    # find input_y.local.UB to align
+                    for lop in self._op_graph.input_ops:
+                        if transdata_elt_tensor == lop['next_op'][0]['dst_buffer']:
+                            align_tensors.append(lop['cache_buffer'])
+                            break
+                for tensor in align_tensors:
+                    sch[tensor].storage_align(sch[tensor].op.axis[-1], 16, 0)
 
         def _l0a_dma_load3d_support_check():
             """
@@ -6636,6 +6671,7 @@ class AutoScheduleOp:
             conv_pool_flag = 0
             requant_s16_op_flag = 0
             dequant_s16_op_flag = 0
+            post_transdata_nchw_op_flag = 0
             temp_flag = None
             for lop in self.body_ops:
                 op_to_fusion_type = op_to_fusion_type_map.setdefault(
@@ -6670,6 +6706,9 @@ class AutoScheduleOp:
                 elif op_to_fusion_type == OpFusionype.REQUANTS16_OP:
                     temp_flag = requant_s16_op_flag
                     requant_s16_op_flag += 1
+                elif op_to_fusion_type == OpFusionype.POST_TRANSDATA_NCHW:
+                    temp_flag = post_transdata_nchw_op_flag
+                    post_transdata_nchw_op_flag += 1
                 elif op_to_fusion_type == OpFusionype.OP_EMPTY:
                     temp_flag = 1
                 else:
@@ -6892,7 +6931,11 @@ class AutoScheduleOp:
             # relu + conv2d
             "elewise_single_relu_convolution_A":OpFusionype.AHEAD_ELTWISE_ONE_OP,
             # quant_s4
-            "cast_i4_ub": OpFusionype.QUANT_S4
+            "cast_i4_ub": OpFusionype.QUANT_S4,
+            # post transdata nc1hwc0 to nchw
+            "5HD_trans_NCHW": OpFusionype.POST_TRANSDATA_NCHW,
+            "5HD_trans_NCHW_add_pad": OpFusionype.POST_TRANSDATA_NCHW,
+            "5HD_trans_NCHW_rm_pad": OpFusionype.POST_TRANSDATA_NCHW
             }
 
         fusion_type_dict = {
@@ -7076,7 +7119,11 @@ class AutoScheduleOp:
             # convfp16_maxpool_bias_quant
             "fusion_type_7_12_2_1":72,
             # convfp16_maxpool_quant
-            "fusion_type_7_12_1":73
+            "fusion_type_7_12_1":73,
+            # conv2d + transdata(nc1hwc0 to nchw)
+            "fusion_type_17_1": 74,
+            # conv2d + eltwise + transdata(nc1hwc0 to nchw)
+            "fusion_type_17_4_1": 75
         }
 
         fusion_type_list = __fusion_type_list_get()
@@ -7136,6 +7183,7 @@ class OpFusionype(Enum):
     REQUANTS16_OP = 14
     AHEAD_ELTWISE_ONE_OP = 15
     QUANT_S4 = 16
+    POST_TRANSDATA_NCHW = 17
     OP_EMPTY = 100
 
 
