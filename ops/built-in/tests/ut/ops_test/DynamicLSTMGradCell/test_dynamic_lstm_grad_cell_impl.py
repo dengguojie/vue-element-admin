@@ -252,11 +252,57 @@ case5 = {
     "case_name": "dynamic_lstm_grad_cell_5",
     "expect": "success",
 }
+case6 = {
+    "params": [
+        {"shape": (1, 5, 10, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (16, 64),
+         "ori_format": "ND",
+         "desc": "init_c"},
+        {"shape": (2, 5, 10, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (16, 64),
+         "ori_format": "ND",
+         "desc": "c"},
+        {},
+        {"shape": (1, 5, 10, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (16, 64),
+         "ori_format": "ND",
+         "desc": "dht"},
+        {"shape": (1, 5, 10, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (16, 64),
+         "ori_format": "ND",
+         "desc": "dct"},
+        {"shape": (2, 5, 10, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (16, 64),
+         "ori_format": "ND",
+         "desc": "it"},
+        {"shape": (2, 5, 10, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (16, 64),
+         "ori_format": "ND",
+         "desc": "jt"},
+        {"shape": (2, 5, 10, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (16, 64),
+         "ori_format": "ND",
+         "desc": "ft"},
+        {"shape": (2, 5, 10, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (16, 64),
+         "ori_format": "ND",
+         "desc": "ot"},
+        {"shape": (2, 5, 10, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (16, 64),
+         "ori_format": "ND",
+         "desc": "tanhct"},
+        {"shape": (1,), "dtype": "int64", "format": "ND", "ori_shape": (1,), "ori_format": "ND",
+         "desc": "t_state"},
+        {},
+        {"shape": (1, 20, 10, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (16, 64),
+         "ori_format": "ND",
+         "desc": "dgate"},
+        {"shape": (1, 5, 10, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (16, 64),
+         "ori_format": "ND",
+         "desc": "dct_1"},
+        0.0, 'tanh', 'UNIDIRECTIONAL', 'ifjo'
+    ],
+    "case_name": "dynamic_lstm_grad_cell_6",
+    "expect": "success",
+}
+
 ut_case.add_case(['Ascend910A'], case1)
 ut_case.add_case(['Ascend910A'], case2)
 ut_case.add_case(['Ascend910A'], case3)
 ut_case.add_case(['Ascend910A'], case4)
 ut_case.add_case(['Ascend910A'], case5)
+ut_case.add_case(['Ascend910A'], case6)
 
 if __name__ == '__main__':
     ut_case.run(["Ascend910A"])

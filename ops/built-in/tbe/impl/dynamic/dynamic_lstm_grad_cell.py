@@ -149,7 +149,7 @@ class LstmCellGradInput:
         Returns:
         None
         """
-        if sorted(self.gate_order) != sorted('ijfo'):
+        if self.gate_order not in ['ijfo', 'ifjo']:
             raise RuntimeError('gate_order illegal')
         shape_list = (self.c_shape, self.it_shape, self.jt_shape, self.ft_shape, self.ot_shape, self.tanh_ct_shape)
         no_t_shape = self.c_shape[1:]
@@ -802,12 +802,14 @@ class LstmCellGrad(LstmCellGradInput):
         add_compile_info("vars", {"device_aicore_num": self.aicore_num,
                                   "ub_size": tbe_platform.get_soc_spec(tbe_platform.UB_SIZE),
                                   "mask_input": 0 if self.mask_shape is None else 1})
+        opt_config = {"enable_const_fold": True}
         self.tik_instance.BuildCCE(
             kernel_name=self.kernel_name,
             inputs=input_list,
             outputs=(self.gm_dgate, self.gm_dct1),
             flowtable=(self.tilling_gm,),
-            enable_l2=False)
+            enable_l2=False,
+            config=opt_config)
 
 
 # 'pylint: disable=unused-argument,too-many-arguments,invalid-name,too-many-locals
