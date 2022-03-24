@@ -330,6 +330,35 @@ case21 = {"params": [{"shape": (3, 64, 112), "dtype": "float32", "format": "ND",
          "expect": "success",
          "support_expect": True}
 
+# alphafold2
+case22 = {"params": [{"shape": (16, 16, 32), "dtype": "float16", "format": "ND",
+                      "ori_shape": (16, 16, 32),"ori_format": "ND"},
+                    {"shape": (1, 1, 2, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ",
+                     "ori_shape": (1, 32, 16),"ori_format": "ND"},
+                    None,
+                    None,
+                    {"shape": (16, 1, 1, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ",
+                     "ori_shape": (16, 16, 16),"ori_format": "ND"},
+                    False,False,
+                    ],
+         "case_name": "BatchMatmul_22",
+         "expect": "success",
+         "support_expect": True}
+
+case23 = {"params": [{"shape": (16, 16, 32), "dtype": "float16", "format": "ND",
+                      "ori_shape": (16, 16, 32),"ori_format": "ND"},
+                    {"shape": (1, 32, 16), "dtype": "float16", "format": "ND",
+                     "ori_shape": (1, 32, 16),"ori_format": "ND"},
+                    None,
+                    None,
+                    {"shape": (16, 16, 16), "dtype": "float16", "format": "ND",
+                     "ori_shape": (16, 16, 16),"ori_format": "ND"},
+                    False,False,
+                    ],
+         "case_name": "BatchMatmul_23",
+         "expect": "success",
+         "support_expect": True}
+
 # TODO fix me, this comment, run failed
 ut_case.add_case(["Ascend910A"], case1)
 ut_case.add_case(["Ascend910A"], case2)
@@ -343,6 +372,8 @@ ut_case.add_case(["Ascend910A"], case17)
 ut_case.add_case(["Ascend910A"], case18)
 ut_case.add_case(["Ascend910A"], case20)
 ut_case.add_case(["Ascend910A"], case21)
+ut_case.add_case(["Ascend910A"], case22)
+ut_case.add_case(["Ascend910A"], case23)
 
 def test_split_batch_matmul_v2(test_arg):
     x1 = {"format": "FRACTAL_NZ","ori_format": "ND", "dtype": "float16",

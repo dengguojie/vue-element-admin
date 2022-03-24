@@ -1154,6 +1154,8 @@ class GEMMCompute(FormatCompute):
                 lambda *indices: tensor_need_align(*indices),
                 name="tensor_{}_normalize_ub".format(tensor_name)
             )
+            if "ori_batch_shape" in tensor_need_align.op.attrs:
+                tensor_normalize_ub.op.attrs["ori_batch_shape"] = tensor_need_align.op.attrs["ori_batch_shape"]
             return tensor_normalize_ub
 
         ori_shape = [self._get_value(i) for i in tensor_need_align.shape]
@@ -1379,9 +1381,9 @@ class GEMMCompute(FormatCompute):
                 "format_in_a_l1": "Nz",
                 "format_in_a_ub": "none"
             }
-            if "ori_batch_shape" in tensor_a_normalize.op.attrs:
-                compute_params_fractal["ori_batch_shape"] = tensor_a_normalize.op.attrs["ori_batch_shape"]
             tensor_a_matrix = self.fract_change_outer_axis(tensor_a_normalize, compute_params_fractal)
+            if "ori_batch_shape" in tensor_a_normalize.op.attrs:
+                tensor_a_matrix.op.attrs["ori_batch_shape"] = tensor_a_normalize.op.attrs["ori_batch_shape"]
         return tensor_a_matrix
 
     def _compute_a_matrix_nd(self, tensor_a_normalize, use_normal_func):
@@ -1420,6 +1422,8 @@ class GEMMCompute(FormatCompute):
                 "format_in_a_ub": "nd"
             }
             tensor_a_matrix = self.compute_nd2zz_vnchwconv(tensor_a_normalize, compute_params)
+            if "ori_batch_shape" in tensor_a_normalize.op.attrs:
+                tensor_a_matrix.op.attrs["ori_batch_shape"] = tensor_a_normalize.op.attrs["ori_batch_shape"]
         return tensor_a_matrix
 
     def _compute_b_matrix(self):
@@ -1519,9 +1523,9 @@ class GEMMCompute(FormatCompute):
             "format_in_b_l1": "Nz",
             "format_in_b_ub": "none"
         }
-        if "ori_batch_shape" in tensor_b_normalize.op.attrs:
-            compute_params_fractal["ori_batch_shape"] = tensor_b_normalize.op.attrs["ori_batch_shape"]
         tensor_b_matrix = self.fract_change_both_axis(tensor_b_normalize, compute_params_fractal)
+        if "ori_batch_shape" in tensor_b_normalize.op.attrs:
+            tensor_b_matrix.op.attrs["ori_batch_shape"] = tensor_b_normalize.op.attrs["ori_batch_shape"]
         return tensor_b_matrix
 
     def _compute_b_matrix_nd(self, tensor_b_normalize):
@@ -1558,7 +1562,8 @@ class GEMMCompute(FormatCompute):
                 "format_in_b_ub": "nd"
             }
             tensor_b_matrix = self.compute_nd2zn_vnchwconv(tensor_b_normalize, compute_params)
-
+            if "ori_batch_shape" in tensor_b_normalize.op.attrs:
+                tensor_b_matrix.op.attrs["ori_batch_shape"] = tensor_b_normalize.op.attrs["ori_batch_shape"]
         return tensor_b_matrix
 
     @staticmethod

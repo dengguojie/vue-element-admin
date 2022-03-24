@@ -278,6 +278,7 @@ class GemmSchedule:
             self.split_k_axis_by_tiling = False
             self.split_k = False
             self.over_head_flag = False
+            self.batch_broadcast_flag = False
 
     def __init__(self, res, sch_list, dynamic_para):
         self.res_ori = res
@@ -465,6 +466,13 @@ class GemmSchedule:
         self.status_controller.have_batch_a = len(tensor_l0a.shape) in (3, 5)
         self.status_controller.have_batch_b = len(tensor_l0b.shape) in (3, 5)
         self.status_controller.have_batch = len(tensor_l0c.shape) in (3, 5)
+        if "ori_batch_shape" in tensor_l0a.op.attrs and "ori_batch_shape" in tensor_l0b.op.attrs:
+            batch_a = [self._get_value(i) for i in tensor_l0a.op.attrs["ori_batch_shape"]]
+            batch_b = [self._get_value(i) for i in tensor_l0b.op.attrs["ori_batch_shape"]]
+            batch_broadcast_flag = batch_a != batch_b
+            batch_broadcast_flag &= (len(batch_a) > 0 and self._prod(batch_a) != 1)
+            batch_broadcast_flag &= (len(batch_b) > 0 and self._prod(batch_b) != 1)
+            self.status_controller.batch_broadcast_flag = batch_broadcast_flag
 
     @staticmethod
     def _is_full_load(item):
@@ -3091,6 +3099,8 @@ class GemmSchedule:
         else:
             status = Compare.compare(al1_tiling_shape, cl0_tiling_shape)
             status_ori = Compare.compare(tiling_ori_al1, al1_shape)
+            if self.status_controller.batch_broadcast_flag and self.format_a == "ND":
+                status_ori = Compare.LESS_EQ
 
         return status_ori, status
 
@@ -3234,6 +3244,8 @@ class GemmSchedule:
         else:
             status = Compare.compare(bl1_tiling_shape, cl0_tiling_shape)
             status_ori = Compare.compare(tiling_ori_bl1, bl1_shape)
+            if self.status_controller.batch_broadcast_flag and self.format_b == "ND":
+                status_ori = Compare.LESS_EQ
 
         return status_ori, status
 
@@ -3400,6 +3412,23 @@ class GemmSchedule:
         self._fix_affine_params_for_atomic_k(aub_l0c_affine_shape)
         self._fix_affine_params_for_atomic_k(aub_out_affine_shape)
 
+        compare_params = [
+            tiling_ori_aub, a_ub_ori_shape,
+            tiling_ori_aub_with_l1, tiling_ori_al1,
+            aub_tiling_shape_with_lc0, cl0_tiling_shape
+        ]
+        status_ori, status_l1, status_l0c = self._aub_attach_modus(compare_params)
+
+        self._print_debug([tiling_ori_aub, a_ub_ori_shape], "tiling_ori_aub with a_ub_ori_shape")
+        self._print_debug([tiling_ori_aub_with_l1, tiling_ori_al1], "tiling_ori_aub_with_l1 with tiling_ori_al1")
+        self._print_debug([aub_tiling_shape_with_lc0, cl0_tiling_shape], "aub_tiling_shape_with_lc0 cl0_tiling_shape")
+        self._do_attach_aub(status_ori, status_l1, status_l0c, a_ub,
+            aub_l1_affine_shape, aub_l0c_affine_shape, aub_out_affine_shape)
+        self._print_debug("-------debug info in aub_process end-------")
+
+    def _aub_attach_modus(self, compare_params):
+        (tiling_ori_aub, a_ub_ori_shape, tiling_ori_aub_with_l1,
+            tiling_ori_al1, aub_tiling_shape_with_lc0, cl0_tiling_shape) = compare_params
         if self.status_controller.attach_at_flag:
             status_ori = Compare.LESS_EQ
             status_l1 = Compare.LESS_EQ
@@ -3408,13 +3437,9 @@ class GemmSchedule:
             status_ori = Compare.compare(tiling_ori_aub, a_ub_ori_shape)
             status_l1 = Compare.compare(tiling_ori_aub_with_l1, tiling_ori_al1)
             status_l0c = Compare.compare(aub_tiling_shape_with_lc0, cl0_tiling_shape)
-
-        self._print_debug([tiling_ori_aub, a_ub_ori_shape], "tiling_ori_aub with a_ub_ori_shape")
-        self._print_debug([tiling_ori_aub_with_l1, tiling_ori_al1], "tiling_ori_aub_with_l1 with tiling_ori_al1")
-        self._print_debug([aub_tiling_shape_with_lc0, cl0_tiling_shape], "aub_tiling_shape_with_lc0 cl0_tiling_shape")
-        self._do_attach_aub(status_ori, status_l1, status_l0c, a_ub,
-            aub_l1_affine_shape, aub_l0c_affine_shape, aub_out_affine_shape)
-        self._print_debug("-------debug info in aub_process end-------")
+            if self.status_controller.batch_broadcast_flag and self.format_a == "ND":
+                status_ori = Compare.LESS_EQ
+        return status_ori, status_l1, status_l0c
 
     def _do_attach_aub(self, status_ori, status_l1, status_l0c, a_ub,
         aub_l1_affine_shape, aub_l0c_affine_shape, aub_out_affine_shape):
@@ -3543,14 +3568,12 @@ class GemmSchedule:
         self._fix_affine_params_for_atomic_k(bub_l0c_affine_shape)
         self._fix_affine_params_for_atomic_k(bub_out_affine_shape)
 
-        if self.status_controller.attach_at_flag:
-            status_ori = Compare.LESS_EQ
-            status_l1 = Compare.LESS_EQ
-            status_l0c = Compare.GREATE_EQ
-        else:
-            status_ori = Compare.compare(tiling_ori_bub, b_ub_ori_shape)
-            status_l1 = Compare.compare(tiling_ori_bub_with_l1, tiling_ori_bl1)
-            status_l0c = Compare.compare(bub_tiling_shape_with_lc0, cl0_tiling_shape)
+        compare_params = [
+            tiling_ori_bub, b_ub_ori_shape,
+            tiling_ori_bub_with_l1, tiling_ori_bl1,
+            bub_tiling_shape_with_lc0, cl0_tiling_shape
+        ]
+        status_ori, status_l1, status_l0c = self._bub_attach_modus(compare_params)
 
         self._print_debug([tiling_ori_bub, b_ub_ori_shape], "tiling_ori_bub with b_ub_ori_shape")
         self._print_debug([tiling_ori_bub_with_l1, tiling_ori_bl1], "tiling_ori_bub_with_l1 with tiling_ori_bl1")
@@ -3559,6 +3582,21 @@ class GemmSchedule:
         self._do_attach_bub(status_ori, status_l1, status_l0c, b_ub,
             bub_l1_affine_shape, bub_l0c_affine_shape, bub_out_affine_shape)
         self._print_debug("-------debug info in bub_process end-------")
+
+    def _bub_attach_modus(self, compare_params):
+        (tiling_ori_bub, b_ub_ori_shape, tiling_ori_bub_with_l1, tiling_ori_bl1,
+            bub_tiling_shape_with_lc0, cl0_tiling_shape) = compare_params
+        if self.status_controller.attach_at_flag:
+            status_ori = Compare.LESS_EQ
+            status_l1 = Compare.LESS_EQ
+            status_l0c = Compare.GREATE_EQ
+        else:
+            status_ori = Compare.compare(tiling_ori_bub, b_ub_ori_shape)
+            status_l1 = Compare.compare(tiling_ori_bub_with_l1, tiling_ori_bl1)
+            status_l0c = Compare.compare(bub_tiling_shape_with_lc0, cl0_tiling_shape)
+            if self.status_controller.batch_broadcast_flag and self.format_b == "ND":
+                status_ori = Compare.LESS_EQ
+        return status_ori, status_l1, status_l0c
 
     def _do_attach_bub(self, status_ori, status_l1, status_l0c, b_ub,
         bub_l1_affine_shape, bub_l0c_affine_shape, bub_out_affine_shape):

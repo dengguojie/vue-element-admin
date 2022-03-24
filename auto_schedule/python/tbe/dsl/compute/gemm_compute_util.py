@@ -247,10 +247,8 @@ class FormatCompute(object):
         if "ori_batch_shape" in tensor_a.op.attrs and "ori_batch_shape" in tensor_b.op.attrs:
             ori_batch_a = tensor_a.op.attrs["ori_batch_shape"]
             ori_batch_b = tensor_b.op.attrs["ori_batch_shape"]
-            if ori_batch_a != "none":
-                batch_a = [self._get_value(i) for i in ori_batch_a]
-            if ori_batch_b != "none":
-                batch_b = [self._get_value(i) for i in ori_batch_b]
+            batch_a = [self._get_value(i) for i in ori_batch_a]
+            batch_b = [self._get_value(i) for i in ori_batch_b]
         batch_a_dim = len(batch_a)
         batch_b_dim = len(batch_b)
         is_batch_broadcast = (batch_a_dim > 0 and batch_b_dim > 0 and batch_a != batch_b)
@@ -408,7 +406,6 @@ class FormatCompute(object):
         trans = compute_params.get("trans")
         mode_info = compute_params.get("mode_info")
         format_info = compute_params.get("format_info")
-        ori_batch_shape = compute_params.get("ori_batch_shape", "none")
         if trans:
             compute_params["trans"] = False
             res = self.fract_change_inner_axis(ori_tensor, compute_params)
@@ -434,7 +431,7 @@ class FormatCompute(object):
             lambda_expression = lambda i, j, k, l: ori_tensor[j, i, k, l]
 
         res = tvm.compute(shapes, lambda_expression, name=tensor_name,
-            attrs={"mode": mode_info, "format_info": format_info, "ori_batch_shape": ori_batch_shape})
+            attrs={"mode": mode_info, "format_info": format_info})
         return res
 
     def fract_change_inner_axis(self, ori_tensor, compute_params):
@@ -450,7 +447,6 @@ class FormatCompute(object):
         trans = compute_params.get("trans")
         mode_info = compute_params.get("mode_info")
         format_info = compute_params.get("format_info")
-        ori_batch_shape = compute_params.get("ori_batch_shape", "none")
         if trans:
             compute_params["trans"] = False
             res = self.fract_change_outer_axis(ori_tensor, compute_params)
@@ -475,7 +471,7 @@ class FormatCompute(object):
             lambda_expression = lambda i, j, k, l: ori_tensor[i, j, l, k]
 
         res = tvm.compute(shapes, lambda_expression, name=tensor_name,
-            attrs={"mode": mode_info, "format_info": format_info, "ori_batch_shape": ori_batch_shape})
+            attrs={"mode": mode_info, "format_info": format_info})
         return res
 
     def fract_change_both_axis(self, ori_tensor, compute_params):
@@ -491,7 +487,6 @@ class FormatCompute(object):
         trans = compute_params.get("trans")
         mode_info = compute_params.get("mode_info")
         format_info = compute_params.get("format_info")
-        ori_batch_shape = compute_params.get("ori_batch_shape", "none")
         ori_tensor_shape = [self._get_value(i) for i in ori_tensor.shape]
         if trans:
             shapes = ori_tensor_shape
@@ -520,10 +515,9 @@ class FormatCompute(object):
                 shapes,
                 lambda_expression,
                 name=tensor_name,
-                attrs={"mode": mode_info, "format_info": format_info, "ori_batch_shape": ori_batch_shape})
+                attrs={"mode": mode_info, "format_info": format_info})
         else:
-            res = tvm.compute(shapes, lambda_expression, name=tensor_name,
-                attrs={"ori_batch_shape": ori_batch_shape})
+            res = tvm.compute(shapes, lambda_expression, name=tensor_name)
         return res
 
     def compute_nd2zz_vnchwconv(self, ori_tensor, compute_params):
