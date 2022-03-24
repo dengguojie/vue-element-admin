@@ -1,0 +1,257 @@
+[
+    {
+        "case_name": "Ndtri_static_shape_test_case_name_0",
+        "calc_expect_func_file": "./test_ndtri_st.py:calc_expect_func",
+        "op": "Ndtri",
+        "input_desc": [
+            {
+                "format": "ND",
+                "type": "float32",
+                "shape": [
+                    3
+                ],
+                "ori_format": "ND",
+                "ori_shape": [
+                    3
+                ],
+                "param_type": "input",
+                "name": "x",
+                "value": [
+                    0.2, 0.5, 0.7
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": "ND",
+                "type": "float32",
+                "shape": [
+                    3
+                ],
+                "ori_format": "ND",
+                "ori_shape": [
+                    3
+                ],
+                "param_type": "output",
+                "name": "y"
+            }
+        ],
+        "attr": []
+    },
+    {
+        "case_name": "Ndtri_static_shape_test_case_name_1",
+        "op": "Ndtri",
+        "input_desc": [
+            {
+                "format": "ND",
+                "type": "float32",
+                "shape": [
+                    1,
+                    1
+                ],
+                "ori_format": "ND",
+                "ori_shape": [
+                    1,
+                    1
+                ],
+                "param_type": "input",
+                "name": "x"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": "ND",
+                "type": "float32",
+                "shape": [
+                    1,
+                    1
+                ],
+                "ori_format": "ND",
+                "ori_shape": [
+                    1,
+                    1
+                ],
+                "param_type": "output",
+                "name": "y"
+            }
+        ],
+        "attr": []
+    },
+    {
+        "case_name": "Ndtri_static_shape_test_case_name_2",
+        "op": "Ndtri",
+        "input_desc": [
+            {
+                "format": "ND",
+                "type": "float16",
+                "shape": [
+                    1,
+                    1
+                ],
+                "ori_format": "ND",
+                "ori_shape": [
+                    1,
+                    1
+                ],
+                "param_type": "input",
+                "name": "x"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": "ND",
+                "type": "float16",
+                "shape": [
+                    1,
+                    1
+                ],
+                "ori_format": "ND",
+                "ori_shape": [
+                    1,
+                    1
+                ],
+                "param_type": "output",
+                "name": "y"
+            }
+        ],
+        "attr": []
+    },
+    {
+        "case_name": "Ndtri_static_shape_test_case_name_3",
+        "op": "Ndtri",
+        "input_desc": [
+            {
+                "format": "ND",
+                "type": "float32",
+                "shape": [
+                    -1
+                ],
+                "typical_shape": [
+                    128
+                ],
+                "param_type": "input",
+                "name": "x"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": "ND",
+                "type": "float32",
+                "shape": [
+                    -1
+                ],
+                "typical_shape": [
+                    128
+                ],
+                "param_type": "output",
+                "name": "y"
+            }
+        ],
+        "attr": []
+    },
+    {
+        "case_name": "Ndtri_static_shape_test_case_name_4",
+        "op": "Ndtri",
+        "input_desc": [
+            {
+                "format": "ND",
+                "type": "float32",
+                "shape": [
+                    -2
+                ],
+                "typical_shape": [
+                    128,
+                    1
+                ],
+                "param_type": "input",
+                "name": "x"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": "ND",
+                "type": "float32",
+                "shape": [
+                    -2
+                ],
+                "typical_shape": [
+                    128,
+                    1
+                ],
+                "param_type": "output",
+                "name": "y"
+            }
+        ],
+        "attr": []
+    },
+    {
+        "case_name": "Ndtri_static_shape_test_case_name_5",
+        "op": "Ndtri",
+        "input_desc": [
+            {
+                "format": "ND",
+                "type": "float16",
+                "shape": [
+                    -2
+                ],
+                "typical_shape": [
+                    128,
+                    1
+                ],
+                "param_type": "input",
+                "name": "x"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": "ND",
+                "type": "float16",
+                "shape": [
+                    -2
+                ],
+                "typical_shape": [
+                    128,
+                    1
+                ],
+                "param_type": "output",
+                "name": "y"
+            }
+        ],
+        "attr": []
+    },
+    {
+        "case_name": "Ndtri_static_shape_test_case_name_6",
+        "op": "Ndtri",
+        "input_desc": [
+            {
+                "format": "NCHW",
+                "type": "float32",
+                "shape": [
+                    -2
+                ],
+                "typical_shape": [
+                    128,
+                    1
+                ],
+                "param_type": "input",
+                "name": "x"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": "NCHW",
+                "type": "float32",
+                "shape": [
+                    -2
+                ],
+                "typical_shape": [
+                    128,
+                    1
+                ],
+                "param_type": "output",
+                "name": "y"
+            }
+        ],
+        "attr": []
+    }
+]

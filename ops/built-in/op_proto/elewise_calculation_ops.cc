@@ -712,6 +712,10 @@ COMMON_INFER_FUNC_REG(NotEqual, NotEqualInferShape);
 VERIFY_FUNC_REG(NotEqual, NotEqualVerify);
 // ------------------NotEqual END--------------------
 
+// ----------------Ndtri-------------------
+COMMON_INFER_FUNC_REG(Ndtri, OneInOneOutCommonInferShape);
+// ---------------Ndtri END-----------------
+
 // ----------------Neg-------------------
 COMMON_INFER_FUNC_REG(Neg, OneInOneOutCommonInferShape);
 // ---------------Neg EDN-----------------

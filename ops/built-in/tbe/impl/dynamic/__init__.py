@@ -405,3 +405,4 @@ from .moving_sum_with_sigmoid import moving_sum_with_sigmoid
 from .dyn_seq_outer import dyn_seq_outer
 from .extract_image_patches import extract_image_patches
 from .expint import expint
+from .ndtri import ndtri

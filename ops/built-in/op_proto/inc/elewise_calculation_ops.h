@@ -684,6 +684,24 @@ REG_OP(NotEqual)
     .OP_END_FACTORY_REG(NotEqual)
 
 /**
+* @brief Computes ndtri element-wise (y = sqrt(2) * erfinv(2 * x - 1))
+
+* @par Inputs:
+* One input:
+* x: A Tensor. Must be one of the following types: bfloat16, float16, float32, double \n
+
+* @par Outputs:
+* y: A Tensor. Has the same type and format as input "x". \n
+
+* @par Third-party framework compatibility
+* Compatible with the TensorFlow operator Ndtri.
+*/
+REG_OP(Ndtri)
+    .INPUT(x, TensorType({DT_BF16, DT_FLOAT16, DT_FLOAT, DT_DOUBLE}))
+    .OUTPUT(y, TensorType({DT_BF16, DT_FLOAT16, DT_FLOAT, DT_DOUBLE}))
+    .OP_END_FACTORY_REG(Ndtri)
+
+/**
 *@brief Computes numerical negative value element-wise (y = -x)
 
 *@par Inputs:

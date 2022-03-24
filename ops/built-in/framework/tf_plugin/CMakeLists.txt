@@ -291,6 +291,7 @@ set(_tf_plugins
   mul_no_nan_plugin.cc
   mul_plugin.cc
   multinomial_plugin.cc
+  ndtri_plugin.cc
   neg_plugin.cc
   non_max_suppression_plugin.cc
   non_max_suppressionv2_plugin.cc
