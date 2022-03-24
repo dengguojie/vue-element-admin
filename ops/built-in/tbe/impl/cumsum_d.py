@@ -31,6 +31,16 @@ class Constant:
     SUM_TYPE = "sum"
 
 
+def check_supported(x, y, axis=0, exclusive=False, reverse=False, kernel_name="cumsum_d"):
+    shape = x.get("shape")
+    if axis < 0:
+        axis = len(shape) + axis
+    if axis == len(shape) - 1:
+        reason = "Performance is not good when axis is the last dim"
+        return False, reason
+    return True, ""
+
+
 # 'pylint: disable = unused-argument,too-many-arguments,invalid-name,consider-using-in
 def get_op_support_info(x, y, axis=0, exclusive=False, reverse=False, kernel_name="cumsum_d"):
     """

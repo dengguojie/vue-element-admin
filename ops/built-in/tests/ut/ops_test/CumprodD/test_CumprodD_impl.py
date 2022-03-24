@@ -19,6 +19,12 @@ import numpy as np
 ut_case = OpUT("CumprodD", "impl.cumprod_d", "cumprod_d")
 
 
+def test_check_support(test_arg):
+    from impl.cumprod_d import check_supported
+    check_supported({"shape": (15, 80, 2, 32), "dtype": "float32", "format": "ND", "ori_shape": (15, 80, 2, 32),"ori_format": "ND"}, 
+                    {"shape": (15, 80, 2, 32), "dtype": "float32", "format": "ND", "ori_shape": (15, 80, 2, 32),"ori_format": "ND"},
+                    axis=-1)
+
 def test_get_op_support_info(test_arg):
     from impl.cum_computer import get_computer_by_ctype
     from impl.cumprod_d import get_op_support_info
@@ -151,6 +157,7 @@ ut_case.add_cust_test_func(test_func=test_get_op_support_info)
 ut_case.add_cust_test_func(test_func=test_get_op_support_info2)
 ut_case.add_cust_test_func(test_func=test_get_op_support_info3)
 ut_case.add_cust_test_func(test_func=test_get_op_support_info4)
+ut_case.add_cust_test_func(test_func=test_check_support)
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case1)
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case2)
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case3)

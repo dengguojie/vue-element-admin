@@ -4,11 +4,15 @@
     "input_desc": [
       {
         "shape": [
-          1
+          1,
+          16,
+          16
         ],
         "format": "ND",
         "ori_shape": [
-          1
+          1,
+          16,
+          16
         ],
         "ori_format": "ND",
         "param_type": "input",
@@ -19,11 +23,15 @@
     "output_desc": [
       {
         "shape": [
-          1
+          1,
+          16,
+          16
         ],
         "format": "ND",
         "ori_shape": [
-          1
+          1,
+          16,
+          16
         ],
         "ori_format": "ND",
         "param_type": "output",
@@ -354,11 +362,15 @@
     "input_desc": [
       {
         "shape": [
-          1
+          1,
+          16,
+          16
         ],
         "format": "ND",
         "ori_shape": [
-          1
+          1,
+          16,
+          16
         ],
         "ori_format": "ND",
         "param_type": "input",
@@ -369,11 +381,15 @@
     "output_desc": [
       {
         "shape": [
-          1
+          1,
+          16,
+          16
         ],
         "format": "ND",
         "ori_shape": [
-          1
+          1,
+          16,
+          16
         ],
         "ori_format": "ND",
         "param_type": "output",
@@ -704,11 +720,15 @@
     "input_desc": [
       {
         "shape": [
-          1
+          1,
+          16,
+          16
         ],
         "format": "ND",
         "ori_shape": [
-          1
+          1,
+          16,
+          16
         ],
         "ori_format": "ND",
         "param_type": "input",
@@ -719,11 +739,15 @@
     "output_desc": [
       {
         "shape": [
-          1
+          1,
+          16,
+          16
         ],
         "format": "ND",
         "ori_shape": [
-          1
+          1,
+          16,
+          16
         ],
         "ori_format": "ND",
         "param_type": "output",
@@ -1119,11 +1143,15 @@
     "input_desc": [
       {
         "shape": [
-          1
+          1,
+          16,
+          16
         ],
         "format": "ND",
         "ori_shape": [
-          1
+          1,
+          16,
+          16
         ],
         "ori_format": "ND",
         "param_type": "input",
@@ -1134,11 +1162,15 @@
     "output_desc": [
       {
         "shape": [
-          1
+          1,
+          16,
+          16
         ],
         "format": "ND",
         "ori_shape": [
-          1
+          1,
+          16,
+          16
         ],
         "ori_format": "ND",
         "param_type": "output",

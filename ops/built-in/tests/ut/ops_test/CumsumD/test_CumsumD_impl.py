@@ -69,6 +69,12 @@ def test_get_op_support_info(test_arg):
     get_op_support_info({"shape": (15, 80, 2, 32), "dtype": "float32", "format": "ND", "ori_shape": (15, 80, 2, 32),"ori_format": "ND"}, 
                         {"shape": (15, 80, 2, 32), "dtype": "float32", "format": "ND", "ori_shape": (15, 80, 2, 32),"ori_format": "ND"})
 
+def test_check_support(test_arg):
+    from impl.cumsum_d import check_supported
+    check_supported({"shape": (15, 80, 2, 32), "dtype": "float32", "format": "ND", "ori_shape": (15, 80, 2, 32),"ori_format": "ND"}, 
+                    {"shape": (15, 80, 2, 32), "dtype": "float32", "format": "ND", "ori_shape": (15, 80, 2, 32),"ori_format": "ND"},
+                    axis=-1)
+
 case1 = {"params": [{"shape": (1, 1), "dtype": "float32", "format": "ND", "ori_shape": (1, 1),"ori_format": "ND"}, #x
                     {"shape": (1, 1), "dtype": "float32", "format": "ND", "ori_shape": (1, 1),"ori_format": "ND"},
                     ],
@@ -158,6 +164,7 @@ ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case8)
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case9)
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case10)
 ut_case.add_cust_test_func(test_func=test_get_op_support_info)
+ut_case.add_cust_test_func(test_func=test_check_support)
 
 precision_case1 = {"params": [{"shape": (1, 2), "dtype": "float16", "format": "ND", "ori_shape": (1, 2), "ori_format": "ND","param_type":"input"}, #x
                               {"shape": (1, 2), "dtype": "float16", "format": "ND", "ori_shape": (1, 2), "ori_format": "ND","param_type":"output"},
