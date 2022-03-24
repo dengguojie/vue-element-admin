@@ -46,7 +46,7 @@ class TbeConv3dElemwisePass : public BufferFusionPassBase {
   Status CheckPattern3(const BufferFusionMapping &mapping) const;
   Status CheckDynamicShape(const BufferFusionMapping& mapping) const;
   Status CheckElemInput(const BufferFusionMapping& mapping) const;
-  Status CheckElemType(const BufferFusionMapping& mapping, const char* elem, const vector<string>& elem_types) const;
+  Status CheckElemType(const BufferFusionMapping& mapping, const string&  elem, const vector<string>& elem_types) const;
   const std::string FUSED_OP_TYPE = "FusedOp";
 };
 

@@ -214,8 +214,9 @@ Status TbeConv3dElemwisePass::CheckElemInput(const BufferFusionMapping& mapping)
  * @param [in] mapping: nodes matched by pattern
  * @return uint32_t: fusion status or not.
  */
-Status TbeConv3dElemwisePass::CheckElemType(const BufferFusionMapping& mapping, const char* elem, const vector<string>& elem_types) const {
+Status TbeConv3dElemwisePass::CheckElemType(const BufferFusionMapping& mapping, const string& elem, const vector<string>& elem_types) const {
   vector<ge::NodePtr> elemNode = GetMatchedNodesByDescName(elem, mapping);
+  FUSION_PASS_CHECK(elemNode.empty(), OP_LOGW(FUSED_OP_TYPE.c_str(), "ElemWise node not match!"), return NOT_CHANGED);
   auto ret = find(elem_types.begin(), elem_types.end(), elemNode[0]->GetType());
   if (ret == elem_types.end()) {
     OP_LOGD(FUSED_OP_TYPE.c_str(), "only supported add and Relu in first elemwise");
