@@ -99,8 +99,7 @@ def _get_node_attr(node, key):
     except KeyError as ex:
         utils.print_error_log(
             'Failed to load tf graph . %s' % (str(ex)))
-        raise utils.OpTestGenException(
-            ConstManager.OP_TEST_GEN_GET_KEY_ERROR)
+        raise utils.OpTestGenException(ConstManager.OP_TEST_GEN_GET_KEY_ERROR) from ex
     finally:
         pass
 
@@ -115,23 +114,25 @@ def _tf_utils_load_graph_def(filename):
     except Exception as ex:
         utils.print_error_log(
             'Failed to load tf graph "%s". %s' % (filename, str(ex)))
-        raise utils.OpTestGenException(
-            ConstManager.OP_TEST_GEN_TF_LOAD_ERROR)
+        raise utils.OpTestGenException(ConstManager.OP_TEST_GEN_TF_LOAD_ERROR) from ex
     finally:
         pass
+
+
+def _get_all_ops(graph_def):
+    tf.import_graph_def(graph_def, name='')
+    all_ops = tf.compat.v1.get_default_graph().get_operations()
+    return all_ops
 
 
 def _tf_utils_get_operators(graph_def):
     # get operators
     try:
-        tf.import_graph_def(graph_def, name='')
-        all_ops = tf.compat.v1.get_default_graph().get_operations()
-        return all_ops
+        return _get_all_ops(graph_def)
     except Exception as ex:
         utils.print_error_log(
             'Failed to get operators. %s' % (str(ex)))
-        raise utils.OpTestGenException(
-            ConstManager.OP_TEST_GEN_TF_GET_OPERATORS_ERROR)
+        raise utils.OpTestGenException(ConstManager.OP_TEST_GEN_TF_GET_OPERATORS_ERROR) from ex
     finally:
         pass
 
@@ -145,7 +146,7 @@ def _tf_utils_write_graph(graph_def, dir_name, new_graph_path):
         utils.print_error_log(
             'Failed to write new graph file %s. %s' % (new_graph_path,
                                                        str(ex)))
-        raise utils.OpTestGenException(ConstManager.OP_TEST_GEN_WRITE_FILE_ERROR)
+        raise utils.OpTestGenException(ConstManager.OP_TEST_GEN_WRITE_FILE_ERROR) from ex
     finally:
         pass
 
@@ -245,8 +246,7 @@ class TFModelParse:
                 ConstManager.OP_TEST_GEN_TF_CHANGE_PLACEHOLDER_ERROR)
         dir_name, tmp_filename = os.path.split(real_path)
         prefix, _ = os.path.splitext(tmp_filename)
-        first_new_shape = '_'.join(
-            str(i) for i in list(new_shape_map.values())[0]['new_shape'])
+        first_new_shape = '_'.join(str(i) for i in list(new_shape_map.values())[0]['new_shape'])
         new_graph_path = os.path.realpath(os.path.join(self.output_path, prefix + "_%s.pb" % first_new_shape))
         _tf_utils_write_graph(graph_def, dir_name, new_graph_path)
         return node_shape, new_graph_path

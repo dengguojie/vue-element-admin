@@ -90,6 +90,11 @@ class MsOpGenerator:
         self.report = report
         self.device_id = path_and_device_id[1]
 
+    @staticmethod
+    def _get_ms_ops_info(op_name_impl, op_name_op_info):
+        params = importlib.import_module(op_name_impl)
+        return getattr(params, op_name_op_info)
+
     def _mkdir_output_dir(self):
         ####### [step 1]
         ####### create output_path dir
@@ -104,8 +109,7 @@ class MsOpGenerator:
         op_name_op_info = "{}_op_info".format(op_name_lower)
         ms_input_param_type_list = []
         try:
-            params = importlib.import_module(op_name_impl)
-            mindspore_ops_info = getattr(params, op_name_op_info)
+            mindspore_ops_info = self._get_ms_ops_info(op_name_impl, op_name_op_info)
         except Exception as error:
             utils.print_error_log(
                 'Failed to import "%s" to get operation information of "%s",'

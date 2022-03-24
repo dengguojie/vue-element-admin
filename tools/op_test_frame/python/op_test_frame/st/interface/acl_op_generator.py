@@ -10,7 +10,6 @@ Change History: 2020-07-11 file Created
 
 import os
 import shutil
-import sys
 import collections
 from shutil import copytree
 from shutil import copy2
@@ -32,9 +31,8 @@ def _append_content_to_file(content, file_path):
                                ConstManager.WRITE_MODES), 'a+') as file_object:
             file_object.write(content)
     except OSError as err:
-        utils.print_error_log("Unable to write file(%s): %s." % (file_path,
-                                                                 str(err)))
-        raise utils.OpTestGenException(ConstManager.OP_TEST_GEN_WRITE_FILE_ERROR)
+        utils.print_error_log("Unable to write file(%s): %s." % (file_path, str(err)))
+        raise utils.OpTestGenException(ConstManager.OP_TEST_GEN_WRITE_FILE_ERROR) from err
     finally:
         pass
     utils.print_info_log("Content appended to %s successfully." % file_path)
@@ -60,6 +58,8 @@ def _get_input_desc(testcase_struct):
     input_shape_list = []
     input_data_type_list = []
     input_format_list = []
+    InputInfo = collections.namedtuple("InputInfo", ["input_shape_data", "input_data_type", "input_format",
+                                                     "input_file_path"])
     for input_desc_dic in testcase_struct['input_desc']:
         # consider dynamic shape scenario
         input_shape = dynamic_handle.replace_shape_to_typical_shape(
@@ -94,7 +94,7 @@ def _get_input_desc(testcase_struct):
         input_num = input_num + 1
     input_file_path = str(
         ', '.join('"{}"'.format(item) for item in input_file_path_list))
-    return input_shape_data, input_data_type, input_format, input_file_path
+    return InputInfo(input_shape_data, input_data_type, input_format, input_file_path)
 
 
 def _get_output_desc(testcase_struct):
@@ -188,8 +188,7 @@ def _get_attr_desc(testcase_struct):
 
 def _create_exact_testcase_content(testcase_struct, device_id):
     # do acl input op description
-    input_shape_data, input_data_type, input_format, input_file_path = \
-        _get_input_desc(testcase_struct)
+    input_info = _get_input_desc(testcase_struct)
     # do acl const_status op description
     const_status = utils.ConstInput.get_acl_const_status(testcase_struct)
     # do acl output op description
@@ -201,10 +200,10 @@ def _create_exact_testcase_content(testcase_struct, device_id):
 
     testcase_content = CodeTemplate.TESTCASE_CONTENT.format(
         op_name=testcase_struct.get('op'),
-        input_shape_data=input_shape_data,
-        input_data_type=input_data_type,
-        input_format=input_format,
-        input_file_path=input_file_path,
+        input_shape_data=input_info.input_shape_data,
+        input_data_type=input_info.input_data_type,
+        input_format=input_info.input_format,
+        input_file_path=input_info.input_file_path,
         output_file_path=output_file_path,
         is_const=const_status,
         output_shape_data=output_info.output_shape_data,

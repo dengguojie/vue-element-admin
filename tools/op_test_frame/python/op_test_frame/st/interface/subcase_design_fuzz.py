@@ -24,6 +24,14 @@ class SubCaseDesignFuzz(SD.SubCaseDesign):
     the class for design test subcase by fuzz.
     """
 
+    @staticmethod
+    def _get_fuzz_func(module_name, fuzz_func, real_fuzz_path):
+        module = importlib.import_module(module_name)
+        if not hasattr(module, fuzz_func):
+            raise utils.OpTestGenException(
+                '%s has no attribute "%s"' % (real_fuzz_path, fuzz_func))
+        return getattr(module, fuzz_func)
+
     def check_fuzz_valid(self, json_obj):
         """
         check number match
@@ -57,16 +65,12 @@ class SubCaseDesignFuzz(SD.SubCaseDesign):
         utils.print_info_log("Start to import %s in %s." % (module_name,
                                                             real_fuzz_path))
         try:
-            module = importlib.import_module(module_name)
-            if not hasattr(module, fuzz_func):
-                raise utils.OpTestGenException('%s has no attribute "%s"' % (real_fuzz_path, fuzz_func))
-            fuzz_function = getattr(module, fuzz_func)
+            fuzz_function = self._get_fuzz_func(module_name, fuzz_func, real_fuzz_path)
         except Exception as ex:
             utils.print_error_log(
                 'Failed to execute function "%s" in %s. %s' % (
                     fuzz_func, fuzz_file, str(ex)))
-            raise utils.OpTestGenException(
-                ConstManager.OP_TEST_GEN_INVALID_PARAM_ERROR)
+            raise utils.OpTestGenException(ConstManager.OP_TEST_GEN_INVALID_PARAM_ERROR) from ex
         finally:
             pass
         return fuzz_function

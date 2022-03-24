@@ -34,16 +34,18 @@ class ReportJsonEncoder(json.JSONEncoder):
     """
     class ReportJsonEncoder
     """
-    def default(self, o):
-        if isinstance(o, np.integer):
-            return int(o)
-        if isinstance(o, np.floating):
-            return float(o)
-        if isinstance(o, complex):
-            return {o.__class__.__name__: True, "real": o.real, "imag": o.imag}
-        if isinstance(o, np.ndarray):
-            return o.tolist()
-        return json.JSONEncoder.default(self, o)
+
+    def default(self, obj):
+        if isinstance(obj, np.integer):
+            return int(obj)
+        if isinstance(obj, np.floating):
+            return float(obj)
+        if isinstance(obj, complex):
+            return {obj.__class__.__name__: True, "real": obj.real,
+                    "imag": obj.imag}
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+        return json.JSONEncoder.default(self, obj)
 
 
 class OpSTCaseReport:
@@ -118,6 +120,14 @@ class OpSTReport:
         self.success_cnt = 0
         self.report_list = []
         self.expect_dict = {}
+
+    @staticmethod
+    def _save_json_file(report_data_path, json_str):
+        if os.path.exists(report_data_path):
+            os.remove(report_data_path)
+        with os.fdopen(os.open(report_data_path, ConstManager.DATA_FILE_FLAGS,
+                               ConstManager.DATA_FILE_MODES), 'w') as rpt_fout:
+            rpt_fout.write(json_str)
 
     def set_expect(self, input_json_path):
         """
@@ -242,16 +252,12 @@ run command: %s
             file_util.makedirs(report_data_dir, mode=ConstManager.DATA_DIR_MODES)
         json_str = json.dumps(json_obj, indent=4, cls=ReportJsonEncoder)
         try:
-            if os.path.exists(report_data_path):
-                os.remove(report_data_path)
-            with os.fdopen(os.open(report_data_path, ConstManager.DATA_FILE_FLAGS,
-                                   ConstManager.DATA_FILE_MODES), 'w') as rpt_fout:
-                rpt_fout.write(json_str)
+            self._save_json_file(report_data_path, json_str)
         except OSError as ex:
             utils.print_error_log(
                 'Failed to create {}. Please check the path permission or '
                 'disk space. {} '.format(report_data_dir, str(ex)))
-            raise utils.OpTestGenException(ConstManager.OP_TEST_GEN_INVALID_PATH_ERROR)
+            raise utils.OpTestGenException(ConstManager.OP_TEST_GEN_INVALID_PATH_ERROR) from ex
         finally:
             pass
 

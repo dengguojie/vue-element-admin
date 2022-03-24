@@ -160,14 +160,10 @@ class AdvanceIniParser:
         get advance config option.
         """
         try:
-            with open(self.config_file) as msopst_conf_file:
-                conf_file_context = msopst_conf_file.read()
-            with StringIO('[RUN]\n%s' % conf_file_context) as section_file:
-                self.config.read_file(section_file)
-        except utils.OpTestGenException:
+            self._read_config_file()
+        except utils.OpTestGenException as err:
             utils.print_error_log('Failed to add section to config file')
-            raise utils.OpTestGenException(
-                ConstManager.OP_TEST_GEN_AND_RUN_ERROR)
+            raise utils.OpTestGenException(ConstManager.OP_TEST_GEN_AND_RUN_ERROR) from err
         finally:
             pass
         advance_ini_option_list = self.config.options(ConstManager.ADVANCE_SECTION)
@@ -221,3 +217,9 @@ class AdvanceIniParser:
                 self.advance_ini_args.performance_mode == ConstManager.TRUE_OR_FALSE_LIST[1]:
             return False
         return True
+
+    def _read_config_file(self):
+        with open(self.config_file) as msopst_conf_file:
+            conf_file_context = msopst_conf_file.read()
+        with StringIO('[RUN]\n%s' % conf_file_context) as section_file:
+            self.config.read_file(section_file)

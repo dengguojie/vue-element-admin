@@ -112,11 +112,10 @@ class MsopstArgParser:
         else:
             try:
                 err_thr = ast.literal_eval(err_thr)
-            except ValueError:
+            except ValueError as err:
                 utils.print_error_log(
                     "Error_threshold is unsupported. Example [0.01, 0.01].")
-                raise utils.OpTestGenException(
-                    ConstManager.OP_TEST_GEN_INVALID_ERROR_THRESHOLD_ERROR)
+                raise utils.OpTestGenException(ConstManager.OP_TEST_GEN_INVALID_ERROR_THRESHOLD_ERROR) from err
             finally:
                 pass
         self._check_error_threshold(err_thr)

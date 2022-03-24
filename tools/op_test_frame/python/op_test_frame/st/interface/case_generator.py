@@ -17,9 +17,9 @@ import re
 import importlib
 
 from op_test_frame.st.interface.global_config_parser import GlobalConfig as GC
-from .const_manager import ConstManager
-from . import utils
-from .model_parser import get_model_nodes
+from op_test_frame.st.interface.const_manager import ConstManager
+from op_test_frame.st.interface import utils
+from op_test_frame.st.interface.model_parser import get_model_nodes
 
 
 class CaseGenerator:
@@ -70,6 +70,11 @@ class CaseGenerator:
                 raise ValueError
             new_value.append(list(map(int, item.split(','))))
         return new_value
+
+    @staticmethod
+    def _get_ms_ops_info(module_name, class_name):
+        params = importlib.import_module(module_name)
+        return getattr(params, class_name)
 
     def _get_attr_type_list_value(self, attr_type, default_value_str):
         default_value = None
@@ -186,8 +191,7 @@ class CaseGenerator:
             module_name, py_file))
         class_name = "{}op_info".format(module_name.rstrip("impl"))
         try:
-            params = importlib.import_module(module_name)
-            mindspore_ops_info = getattr(params, class_name)
+            mindspore_ops_info = self._get_ms_ops_info(module_name, class_name)
         except Exception as error:
             utils.print_error_log(
                 'Failed to import "%s" to get operation information of "%s",'
@@ -399,6 +403,12 @@ class CaseGenerator:
             return False
         return True
 
+    @staticmethod
+    def _split_type_attrs(type_attrs):
+        attr_tensor_type = type_attrs.split(',', 1)[0]
+        default_value_str = type_attrs.split(',', 1)[1]
+        return attr_tensor_type, default_value_str
+
     def _parse_name_from_op_proto_file(self, op_key, start_str):
         # regular match to get input/output/attr name.
         head_file = utils.fix_name_lower_with_under(self.op_type) + '.h'
@@ -483,8 +493,7 @@ class CaseGenerator:
         if op_key == 'ATTR':
             # example: .ATTR(attr1, Float, 0.001)
             try:
-                attr_tensor_type = type_attrs.split(',', 1)[0]
-                default_value_str = type_attrs.split(',', 1)[1]
+                attr_tensor_type, default_value_str = self._split_type_attrs(type_attrs)
             except IndexError:
                 utils.print_warn_log(
                     "Can't parse operator information of %s, "

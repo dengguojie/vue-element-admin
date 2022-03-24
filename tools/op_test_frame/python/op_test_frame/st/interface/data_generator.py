@@ -158,6 +158,11 @@ class DataGenerator:
             data = data.astype(np_type)
         return data
 
+    @staticmethod
+    def _save_data(data, file_path):
+        data.tofile(file_path)
+        os.chmod(file_path, ConstManager.WRITE_MODES)
+
     def _gen_op_iput_data(self, input_shape, input_desc):
         range_min, range_max = input_desc.get('value_range')
         dtype = input_desc.get('type')
@@ -177,8 +182,7 @@ class DataGenerator:
             utils.print_warn_log(
                 'Failed to generate data for %s. The shape is too '
                 'large to invoke MemoryError. %s' % (file_path, error))
-            raise utils.OpTestGenException(
-                ConstManager.OP_TEST_GEN_WRITE_FILE_ERROR)
+            raise utils.OpTestGenException(ConstManager.OP_TEST_GEN_WRITE_FILE_ERROR) from error
         finally:
             pass
         return data
@@ -225,14 +229,12 @@ class DataGenerator:
             'format': input_desc.get('format')
         }
         try:
-            data.tofile(file_path)
-            os.chmod(file_path, ConstManager.WRITE_MODES)
+            self._save_data(data, file_path)
         except OSError as error:
             utils.print_warn_log(
                 'Failed to generate data for %s. %s' % (
                     file_path, error))
-            raise utils.OpTestGenException(
-                ConstManager.OP_TEST_GEN_WRITE_FILE_ERROR)
+            raise utils.OpTestGenException(ConstManager.OP_TEST_GEN_WRITE_FILE_ERROR) from error
         finally:
             pass
         return input_dic
@@ -337,7 +339,11 @@ class DataGenerator:
         utils.print_info_log("Generate data for testcase in %s." % self.output_path)
 
     @staticmethod
-    def _get_tensors_and_func(case, calc_func_params_tmp):
+    def _get_expect_result_tensors(module, expect_func, calc_func_params_tmp):
+        func = getattr(module, expect_func)
+        return func(**calc_func_params_tmp)
+
+    def _get_tensors_and_func(self, case, calc_func_params_tmp):
         expect_func_file = case.get("calc_expect_func_file")
         expect_func = case.get("calc_expect_func_file_func")
         sys.path.append(os.path.dirname(expect_func_file))
@@ -347,14 +353,12 @@ class DataGenerator:
                                                             py_file))
         module = importlib.import_module(module_name)
         try:
-            func = getattr(module, expect_func)
-            expect_result_tensors = func(**calc_func_params_tmp)
+            expect_result_tensors = self._get_expect_result_tensors(module, expect_func, calc_func_params_tmp)
         except Exception as ex:
             utils.print_error_log(
                 'Failed to execute function "%s" in %s. %s' % (
                     expect_func, expect_func_file, str(ex)))
-            raise utils.OpTestGenException(
-                ConstManager.OP_TEST_GEN_INVALID_PARAM_ERROR)
+            raise utils.OpTestGenException(ConstManager.OP_TEST_GEN_INVALID_PARAM_ERROR) from ex
         finally:
             pass
         if not isinstance(expect_result_tensors, (list, tuple)):

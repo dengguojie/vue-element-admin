@@ -122,11 +122,10 @@ def check_shape_and_notice(shape):
 def _load_model(model_path):
     try:
         model = onnx.load(model_path)
-    except google.protobuf.message.DecodeError:
+    except google.protobuf.message.DecodeError as err:
         utils.print_error_log("{} is not a valid model file. "
                               "Please check the model.".format(model_path))
-        raise utils.OpTestGenException(
-            ConstManager.OP_TEST_GEN_INVALID_DATA_ERROR)
+        raise utils.OpTestGenException(ConstManager.OP_TEST_GEN_INVALID_DATA_ERROR) from err
     finally:
         pass
     return model
@@ -353,6 +352,12 @@ class PyTorchModelParse:
         utils.write_json_file(json_path, input_shape_map)
 
     @staticmethod
+    def get_infer_model(onnx_model):
+        onnx.checker.check_model(onnx_model)
+        infer_model = shape_inference.infer_shapes(onnx_model)
+        return infer_model
+
+    @staticmethod
     def _insert_new_shape(onnx_model, new_shape_map):
         graph = onnx_model.graph
         op_info = []
@@ -371,11 +376,10 @@ class PyTorchModelParse:
                         elem_type=input_tensor.type.tensor_type.elem_type,
                         shape=list(map(int, op_info.get("new_shape")))
                     )
-                except ValueError:
+                except ValueError as err:
                     utils.print_error_log("Input {} new shape dim must be int, "
                                           "please check it.".format(input_tensor.name))
-                    raise utils.OpTestGenException(
-                        ConstManager.OP_TEST_GEN_INVALID_DATA_ERROR)
+                    raise utils.OpTestGenException(ConstManager.OP_TEST_GEN_INVALID_DATA_ERROR) from err
                 finally:
                     pass
                 graph.input.remove(input_tensor)
@@ -389,14 +393,12 @@ class PyTorchModelParse:
         op_info = self._insert_new_shape(onnx_model, new_shape_map)
 
         try:
-            onnx.checker.check_model(onnx_model)
-            infer_model = shape_inference.infer_shapes(onnx_model)
-        except RuntimeError:
+            infer_model = self.get_infer_model(onnx_model)
+        except RuntimeError as err:
             utils.print_error_log("{} model input shape cannot be changed into {}"
                                   .format(self.model_path,
                                           list(map(int, op_info.get("new_shape")))))
-            raise utils.OpTestGenException(
-                ConstManager.OP_TEST_GEN_INVALID_DATA_ERROR)
+            raise utils.OpTestGenException(ConstManager.OP_TEST_GEN_INVALID_DATA_ERROR) from err
         finally:
             pass
 

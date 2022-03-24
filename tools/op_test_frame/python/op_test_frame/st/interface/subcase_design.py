@@ -226,18 +226,16 @@ class SubCaseDesign:
                 raise utils.OpTestGenException(
                     ConstManager.OP_TEST_GEN_INVALID_PARAM_ERROR)
             try:
-                fuzz_result_param = fuzz_dict.get(param_type).get(name)\
-                    .get(key)
-                json_obj[key] = fuzz_result_param
+                fuzz_result_param = fuzz_dict.get(param_type).get(name).get(key)
             except AttributeError as ex:
                 utils.print_error_log('Analyze the return value of the fuzz '
                                       'script, %s in %s or %s in %s may '
                                       'invalid. %s' % (name, param_type, key,
                                                        name, str(ex)))
-                raise utils.OpTestGenException(
-                    ConstManager.OP_TEST_GEN_INVALID_PARAM_ERROR)
+                raise utils.OpTestGenException(ConstManager.OP_TEST_GEN_INVALID_PARAM_ERROR) from ex
             finally:
                 pass
+            json_obj[key] = fuzz_result_param
         return json_obj
 
     def _check_attr_value_valid(self, attr, fuzz_dict=None):

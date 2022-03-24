@@ -28,6 +28,11 @@ class AclOpRunner:
         self.report = report
         self.advance_args = advance_args
 
+    @staticmethod
+    def _execute_cmake_cmd(cmake_cmd):
+        utils.execute_command(cmake_cmd)
+        utils.execute_command(['make'])
+
     def acl_compile(self):
         """
         Compile acl op
@@ -54,15 +59,13 @@ class AclOpRunner:
         utils.print_info_log("Compile command line: %s " % cmd_str)
         main_path = os.path.join(self.path, 'run', 'out', ConstManager.MAIN)
         try:
-            utils.execute_command(cmake_cmd)
-            utils.execute_command(['make'])
-        except utils.OpTestGenException:
+            self._execute_cmake_cmd(cmake_cmd)
+        except utils.OpTestGenException as err:
             self.add_op_st_stage_result(op_status.FAILED, "compile_acl_code",
                                         None, cmd_str)
             if not os.path.exists(main_path):
                 utils.print_error_log("Please check the env LD_LIBRARAY_PATH or env NPU_HOST_LIB.")
-                raise utils.OpTestGenException(
-                    ConstManager.ACL_COMPILE_ERROR)
+                raise utils.OpTestGenException(ConstManager.ACL_COMPILE_ERROR) from err
         finally:
             pass
         utils.print_info_log('Finish to compile %s.' % self.path)
@@ -258,19 +261,22 @@ class AclOpRunner:
         :return:
         """
         try:
-            job_path = self._get_job_path(prof_base_path)
-            if not job_path:
-                return
-            # start to read result.txt and get op execute times
-            run_result_list = self._read_result_txt()
-            if not run_result_list:
-                return
-            # start to do export summary
-            self._get_data_from_csv_summary(job_path, run_result_list)
+            self._profiling_analysis(prof_base_path)
         except IOError:
             utils.print_error_log("Operate directory of profiling data failed")
         finally:
             pass
+
+    def _profiling_analysis(self, prof_base_path):
+        job_path = self._get_job_path(prof_base_path)
+        if not job_path:
+            return
+        # start to read result.txt and get op execute times
+        run_result_list = self._read_result_txt()
+        if not run_result_list:
+            return
+        # start to do export summary
+        self._get_data_from_csv_summary(job_path, run_result_list)
 
 
 def _get_op_case_info_list(column_line_list, row_list, op_name_list, op_case_info_list):

@@ -244,7 +244,7 @@ def check_path_valid(path, isdir=False):
             print_error_log(
                 'Failed to create {}. Please check the path permission or '
                 'disk space. {} '.format(path, str(ex)))
-            raise OpTestGenException(ConstManager.OP_TEST_GEN_INVALID_PATH_ERROR)
+            raise OpTestGenException(ConstManager.OP_TEST_GEN_INVALID_PATH_ERROR) from ex
         finally:
             pass
     if not os.path.exists(path):
@@ -293,7 +293,7 @@ def check_output_path(output_path, testcase_list, machine_type):
             except OSError as err:
                 print_error_log(
                     "Failed to create %s. %s" % (op_name_path, str(err)))
-                raise OpTestGenException(ConstManager.OP_TEST_GEN_INVALID_PATH_ERROR)
+                raise OpTestGenException(ConstManager.OP_TEST_GEN_INVALID_PATH_ERROR) from err
             finally:
                 pass
         else:
@@ -414,6 +414,24 @@ def check_attr_value_valid(attr):
         check_value_valid(attr_type, attr.get('value'), attr.get('name'))
 
 
+def json_load(json_path, input_file):
+    """
+    load json
+    :param json_path: the json path
+    :param input_file: input file path
+    :return: the json object
+    """
+    try:
+        return json.load(input_file)
+    except Exception as ex:
+        print_error_log(
+            'Failed to load json file %s. Please modify it. %s'
+            % (json_path, str(ex)))
+        raise OpTestGenException(ConstManager.OP_TEST_GEN_PARSE_JSON_FILE_ERROR) from ex
+    finally:
+        pass
+
+
 def load_json_file(json_path):
     """
     load json file to json object
@@ -423,19 +441,11 @@ def load_json_file(json_path):
 
     try:
         with open(json_path, 'r') as input_file:
-            try:
-                return json.load(input_file)
-            except Exception as ex:
-                print_error_log(
-                    'Failed to load json file %s. Please modify it. %s'
-                    % (json_path, str(ex)))
-                raise OpTestGenException(ConstManager.OP_TEST_GEN_PARSE_JSON_FILE_ERROR)
-            finally:
-                pass
+            return json_load(json_path, input_file)
     except IOError as io_error:
         print_error_log(
             'Failed to open file %s. %s' % (json_path, str(io_error)))
-        raise OpTestGenException(ConstManager.OP_TEST_GEN_OPEN_FILE_ERROR)
+        raise OpTestGenException(ConstManager.OP_TEST_GEN_OPEN_FILE_ERROR) from io_error
     finally:
         pass
 
@@ -453,7 +463,7 @@ def read_file(op_file):
     except IOError as io_err:
         print_error_log(
             'Failed to open file %s. %s, please check it.' % (op_file, str(io_err)))
-        raise OpTestGenException(ConstManager.OP_TEST_GEN_OPEN_FILE_ERROR)
+        raise OpTestGenException(ConstManager.OP_TEST_GEN_OPEN_FILE_ERROR) from io_err
     finally:
         pass
 
@@ -474,7 +484,7 @@ def write_json_file(json_path, content):
     except IOError as io_error:
         print_error_log(
             'Failed to generate file %s. %s' % (json_path, str(io_error)))
-        raise OpTestGenException(ConstManager.OP_TEST_GEN_WRITE_FILE_ERROR)
+        raise OpTestGenException(ConstManager.OP_TEST_GEN_WRITE_FILE_ERROR) from io_error
     finally:
         pass
     print_info_log(
@@ -491,7 +501,7 @@ def make_dirs(op_dir):
             os.makedirs(op_dir, ConstManager.FOLDER_MASK)
     except OSError as err:
         print_error_log("Unable to make dir: %s." % str(err))
-        raise OpTestGenException(ConstManager.OP_TEST_GEN_MAKE_DIRS_ERROR)
+        raise OpTestGenException(ConstManager.OP_TEST_GEN_MAKE_DIRS_ERROR) from err
     finally:
         pass
 
@@ -589,14 +599,6 @@ class ScanFile:
             if dir_info[1].startswith(self.second_prefix):
                 files_list.append(each_file_path)
 
-    def _get_files_list(self, file_path, files_list):
-        all_files = os.listdir(file_path)
-        for each_file in all_files:
-            each_file_path = os.path.join(file_path, each_file)
-            if os.path.isdir(each_file_path):
-                self._check_second_prefix_dir(each_file_path, files_list)
-        return files_list
-
     def scan_subdirs(self):
         """
         scan the specified path to get the list of subdirectories.
@@ -620,6 +622,14 @@ class ScanFile:
         """
         return self.prefix
 
+    def _get_files_list(self, file_path, files_list):
+        all_files = os.listdir(file_path)
+        for each_file in all_files:
+            each_file_path = os.path.join(file_path, each_file)
+            if os.path.isdir(each_file_path):
+                self._check_second_prefix_dir(each_file_path, files_list)
+        return files_list
+
 
 class ConstInput:
     """
@@ -628,26 +638,6 @@ class ConstInput:
     """
     def __init__(self, is_const=None):
         self.is_const = is_const
-
-    def _check_is_const(self):
-        if self.is_const is None:
-            return False
-        if not isinstance(self.is_const, bool):
-            print_error_log('The value of "is_const" only support bool '
-                            'type: true or false.')
-            raise OpTestGenException(ConstManager.OP_TEST_GEN_INVALID_DATA_ERROR)
-        return True
-
-    def deal_with_const(self, input_desc, for_fuzz):
-        """
-        Function: update is_const field in input_desc dict.
-        return:
-        """
-        if self._check_is_const():
-            if for_fuzz:
-                input_desc.update({ConstManager.IS_CONST: self.is_const})
-            else:
-                input_desc.update({ConstManager.IS_CONST: [self.is_const]})
 
     @staticmethod
     def add_const_info_in_acl_json(desc_dict, res_desc_dic, output_path, case_name, index):
@@ -720,3 +710,23 @@ class ConstInput:
         os.chmod(file_path, ConstManager.WRITE_MODES)
         const_value = const_data.tolist()
         return const_value
+
+    def deal_with_const(self, input_desc, for_fuzz):
+        """
+        Function: update is_const field in input_desc dict.
+        return:
+        """
+        if self._check_is_const():
+            if for_fuzz:
+                input_desc.update({ConstManager.IS_CONST: self.is_const})
+            else:
+                input_desc.update({ConstManager.IS_CONST: [self.is_const]})
+
+    def _check_is_const(self):
+        if self.is_const is None:
+            return False
+        if not isinstance(self.is_const, bool):
+            print_error_log('The value of "is_const" only support bool '
+                            'type: true or false.')
+            raise OpTestGenException(ConstManager.OP_TEST_GEN_INVALID_DATA_ERROR)
+        return True

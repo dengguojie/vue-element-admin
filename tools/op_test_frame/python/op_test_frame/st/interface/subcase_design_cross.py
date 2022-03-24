@@ -42,8 +42,9 @@ def combine_ori_field_to_cross(tensor, cross_key_list):
     combine_shape_ori_shape_list = list(
         zip(tensor.get('shape'), tensor.get('ori_shape')))
     # orthonormalize format_ori_format, shape_ori_shape, and other filed: 'type', etc.
-    combine_cross_tuple = (list(x) for x in itertools.product(combine_format_ori_format_list,
-                                                              combine_shape_ori_shape_list, *cross_list))
+    orthonormalize_itertools = itertools.product(combine_format_ori_format_list,
+                                                 combine_shape_ori_shape_list, *cross_list)
+    combine_cross_tuple = (list(x) for x in orthonormalize_itertools)
     result_cross_list = []
     for each_cross_list in list(combine_cross_tuple):
         data_list = _get_data_list(each_cross_list)

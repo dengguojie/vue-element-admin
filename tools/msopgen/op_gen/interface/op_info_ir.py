@@ -182,16 +182,20 @@ class IROpInfo(OpInfo):
     def _get_sheets(ir_file: str) -> any:
         try:
             import xlrd
-            ir_template = xlrd.open_workbook(ir_file)
-            sheet_names = ir_template.sheet_names()
         except ImportError as import_error:
             utils.print_error_log("Unable to import module: %s." % str(import_error))
-            raise utils.MsOpGenException(ConstManager.MS_OP_GEN_IMPORT_MODULE_ERROR)
-        except OSError as err:
-            utils.print_error_log("Failed to load the excel, %s " % str(err.args[0]))
-            raise utils.MsOpGenException(ConstManager.MS_OP_GEN_READ_FILE_ERROR)
+            raise utils.MsOpGenException(ConstManager.MS_OP_GEN_IMPORT_MODULE_ERROR) from import_error
         finally:
             pass
+
+        try:
+            ir_template = xlrd.open_workbook(ir_file)
+        except OSError as err:
+            utils.print_error_log("Failed to load the excel, %s " % str(err.args[0]))
+            raise utils.MsOpGenException(ConstManager.MS_OP_GEN_READ_FILE_ERROR) from err
+        finally:
+            pass
+        sheet_names = ir_template.sheet_names()
         return ir_template, sheet_names
 
     @staticmethod
