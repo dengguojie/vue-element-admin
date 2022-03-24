@@ -374,7 +374,7 @@ Status ProdEnvMatAV2FusionPass::FusionAiScense(ge::ComputeGraph& graph, ge::Node
                     OP_LOGD(FUSED_OP_TYPE.c_str(), "the number of envmatNode input node is not equal to 7"),
                     return FAILED);
   size_t envmatNodeOutputNum = 4;
-  FUSION_PASS_CHECK(envmatNode->GetOutDataNodes().size() != envmatNodeOutputNum,
+  FUSION_PASS_CHECK(envmatNode->GetAllOutDataAnchors().size() != envmatNodeOutputNum,
                     OP_LOGD(FUSED_OP_TYPE.c_str(), "the number of envmatNode output node is not equal to 4"),
                     return FAILED);
 
