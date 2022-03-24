@@ -24,6 +24,7 @@ static const int64_t DIM_NUM_NDC1HWC0 = 6;
 static const int64_t DIM_NUM_NC1HWC0 = 5;
 static const int64_t NC1HWC0_DIM_INDEX_C0 = 4;
 static const int64_t NDC1HWC0_DIM_INDEX_C0 = 5;
+static const int64_t NDC1HWC0_DIM_INDEX_C1 = 2;
 
 struct BiasAddCompileInfo {
   std::shared_ptr<AutoTilingHandler> tiling_handler;
@@ -34,8 +35,6 @@ struct BiasAddCompileInfo {
 static bool GetBiasShapeForUnknownRank(const std::string& op_type, const GeTensorDescPtr& input_x_desc,
                                        const GeTensorDescPtr& bias_desc, std::vector<int64_t>& broadcast_bias_shape) {
   const ge::Format x_format = input_x_desc->GetFormat();
-  const ge::Format ori_format_x = input_x_desc->GetOriginFormat();
-  const ge::Format data_format = input_x_desc->GetOriginFormat();
   const GeShape& input_shape_x = input_x_desc->MutableShape();
   const GeShape& input_shape_bias = bias_desc->MutableShape();
   OP_TILING_CHECK((input_shape_bias.GetDimNum() < 1),
@@ -59,7 +58,7 @@ static bool GetBiasShapeForUnknownRank(const std::string& op_type, const GeTenso
           input_x_rank_num != DIM_NUM_NDC1HWC0,
           VECTOR_INNER_ERR_REPORT_TILIING(op_type, "bias_add only support 6D when input format is NDC1HWC0"),
           return false);
-      broadcast_bias_shape[2] = input_shape_x.GetDim(2);
+      broadcast_bias_shape[NDC1HWC0_DIM_INDEX_C1] = input_shape_x.GetDim(NDC1HWC0_DIM_INDEX_C1);
       broadcast_bias_shape[NDC1HWC0_DIM_INDEX_C0] = input_shape_x.GetDim(NDC1HWC0_DIM_INDEX_C0);
       break;
     case FORMAT_NCDHW:
