@@ -184,7 +184,7 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/kernels/normalized/non_zero_with_value_shape.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/not_equal.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/ones_like.cc
-  ${CPU_KERNELS_DIR}/kernels/normalized/pad_d.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/pad.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/pinverse.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/poisson.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/random_uniform.cc
@@ -394,6 +394,7 @@ set(_cpu_kernels_ut_files
   testcase/not_equal/src/not_equal_utest.cpp
   testcase/ones_like/src/ones_like_utest.cpp
   testcase/pad_d/src/pad_utest.cpp
+  testcase/pad/src/pad_utest.cpp
   testcase/parameterized_truncated_normal/src/parameterized_truncated_normal_utest.cpp
   testcase/pinverse/src/pinverse_utest.cpp
   testcase/poisson/src/poisson_utest.cpp

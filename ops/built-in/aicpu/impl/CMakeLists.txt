@@ -67,7 +67,7 @@ set(local_kernels_src_files
     kernels/normalized/non_zero_with_value_shape.cc
     kernels/normalized/not_equal.cc
     kernels/normalized/ones_like.cc
-    kernels/normalized/pad_d.cc
+    kernels/normalized/pad.cc
     kernels/normalized/pinverse.cc
     kernels/normalized/poisson.cc
     kernels/normalized/prodenvmata_calcrij.cc
