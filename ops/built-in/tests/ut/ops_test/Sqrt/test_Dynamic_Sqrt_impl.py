@@ -32,6 +32,27 @@ ut_case.add_case("all",
                                        (-1,),
                                        "dynamic_sqrt_int8_ND",
                                        "failed"))
+ut_case.add_case("all",{"params":[
+                       {"shape": (1, 1), "dtype": "float32", "range": [(1, None), (1, None)],
+                        "format": "ND", "ori_shape": (1, 1), "ori_format": "ND"},
+                       {"shape": (1, 1), "dtype": "float32", "range": [(1, None), (1, None)],
+                        "format": "ND", "ori_shape": (1, 1), "ori_format": "ND"}],
+                "addition_params": {"impl_mode": "high_precision"},
+                "case_name": "no_high_performance_case",
+                "expect": "success",
+                "format_expect": [],
+                "support_expect": True})
+
+ut_case.add_case("all",{"params":[
+                       {"shape": (1, 1), "dtype": "float32", "range": [(1, None), (1, None)],
+                        "format": "ND", "ori_shape": (1, 1), "ori_format": "ND"},
+                       {"shape": (1, 1), "dtype": "float32", "range": [(1, None), (1, None)],
+                        "format": "ND", "ori_shape": (1, 1), "ori_format": "ND"}],
+                "addition_params": {"impl_mode": "high_performance"},
+                "case_name": "is_high_performance_case",
+                "expect": "success",
+                "format_expect": [],
+                "support_expect": True})
 
 if __name__ == '__main__':
     ut_case.run("Ascend910A")

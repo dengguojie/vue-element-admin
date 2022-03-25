@@ -24,10 +24,11 @@ from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import OpImplMode
 
 
 # 'pylint: disable=locally-disabled,unused-argument
-def sqrt_compute(input_data, output_data, kernel_name="sqrt"):
+def sqrt_compute(input_data, output_data, kernel_name="sqrt", impl_mode=OpImplMode.HIGH_PERFORMANCE):
     """
     calculating data sqrt,y= x**0.5,mini not support vsqrt, use exp(0.5*log(x))
 
@@ -51,7 +52,11 @@ def sqrt_compute(input_data, output_data, kernel_name="sqrt"):
             "tbe.dsl.vsqrt", "float32"):
         input_data = tbe.cast_to(input_data, "float32")
         has_improve_precision = True
-    result = tbe.vsqrt(input_data)
+
+    if impl_mode == OpImplMode.HIGH_PERFORMANCE:
+        result = tbe.vsqrt(input_data)
+    else:
+        result = tbe.vsqrt(input_data, 1)
 
     if has_improve_precision:
         result = tbe.cast_to(result, "float16")
@@ -60,8 +65,9 @@ def sqrt_compute(input_data, output_data, kernel_name="sqrt"):
 
 
 @register_operator("Sqrt")
-@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
-def sqrt(input_x, output_y, kernel_name="sqrt"):
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.KERNEL_NAME, para_check.OPTION_ATTR_STR)
+def sqrt(input_x, output_y, kernel_name="sqrt", impl_mode=OpImplMode.HIGH_PERFORMANCE):
     """
     algorithm: sqrt
     calculating data sqrt,y= x**0.5, mini not support vsqrt, use exp(0.5*log(x))
@@ -96,7 +102,7 @@ def sqrt(input_x, output_y, kernel_name="sqrt"):
             # div_compute
             input_data = tvm.placeholder(fuseshape, name="input_data",
                                          dtype=x_dtype)
-            res = sqrt_compute(input_data, output_y, kernel_name)
+            res = sqrt_compute(input_data, output_y, kernel_name, impl_mode)
 
             tensors.append([input_data, res])
         with tvm.target.cce():
