@@ -26,6 +26,34 @@
 #include "./util/error_util.h"
 
 namespace ge {
+bool CheckTwoInputShapeSame(const Operator& op, const string& input_name1,
+                            const string& input_name2) {
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  GeTensorDescPtr tensordesc_input1 = op_desc->MutableInputDesc(input_name1);
+  GeTensorDescPtr tensordesc_input2 = op_desc->MutableInputDesc(input_name2);
+  CHECK(op_desc == nullptr ||
+        tensordesc_input1 == nullptr ||
+        tensordesc_input2 == nullptr,
+        OP_LOGE(TbeGetName(op), "invalid OpDesc."), return false);
+  std::vector<int64_t> dimsX = tensordesc_input1->GetShape().GetDims();
+  std::vector<int64_t> dimsY = tensordesc_input2->GetShape().GetDims();
+  // unknown rank
+  if (IsUnknownRankShape(dimsX) || IsUnknownRankShape(dimsY)) {
+    OP_LOGI(TbeGetName(op), "One of input is Unknown Rank Shape");
+    return true;
+  }
+  if (dimsX.size() != dimsY.size()) {
+    OP_LOGE(TbeGetName(op), "The two input dimensions are different.");
+    return false;
+  } else {
+    for (size_t i = 0; i < dimsX.size(); i++) {
+      CHECK((dimsX[i] != dimsY[i]) && (dimsX[i] != -1) && (dimsY[i] != -1),
+            OP_LOGE(TbeGetName(op), "The two input shape are different."),
+            return false);
+    }
+    return true;
+  }
+}
 
 IMPLEMT_COMMON_INFERFUNC(OneInOneOutCommonInferShape) {
   static const int64_t input_x_idx = 0;
@@ -464,17 +492,21 @@ COMMON_INFER_FUNC_REG(Softsign, SoftsignInferShape);
 
 // ----------------SoftsignGrad-------------------
 IMPLEMT_VERIFIER(SoftsignGrad, SoftsignGradVerify) {
-  if (!CheckTwoInputDtypeSame(op, "gradients", "features")) {
+  if (!CheckTwoInputDtypeSame(op, "y_grad", "x")) {
+    return GRAPH_FAILED;
+  }
+  if (!CheckTwoInputShapeSame(op, "y_grad", "x")) {
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
 }
 
 IMPLEMT_COMMON_INFERFUNC(SoftsignGradInferShape) {
-  if (!InferShapeAndTypeTwoInOneOutBroadcast(op, "gradients", "features", "output")) {
+  bool is_dynamic_output = true;
+  if (!InferShapeAndTypeTwoInOneOutBroadcast(op, 0, 1, 0, is_dynamic_output)) {
     return GRAPH_FAILED;
   }
-  if (!InferShapeRangeTwoInOneOutBroadcase(op, "gradients", "features", "output")) {
+  if (!InferShapeRangeTwoInOneOutBroadcase(op, "y_grad", "x", "x_grad")) {
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -497,40 +529,21 @@ COMMON_INFER_FUNC_REG(Selu, SeluInferShape);
 
 // ----------------SeluGrad-------------------
 IMPLEMT_VERIFIER(SeluGrad, SeluGradVerify) {
-  if (!CheckTwoInputDtypeSame(op, "gradients", "outputs")) {
+  if (!CheckTwoInputDtypeSame(op, "y_grad", "y")) {
     return GRAPH_FAILED;
   }
-  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
-  GeTensorDescPtr tensordesc_input1 = op_desc->MutableInputDesc("gradients");
-  GeTensorDescPtr tensordesc_input2 = op_desc->MutableInputDesc("outputs");
-  CHECK(op_desc == nullptr ||
-        tensordesc_input1 == nullptr ||
-        tensordesc_input2 == nullptr,
-        OP_LOGE(op.GetName().c_str(), "invalid OpDesc."), return GRAPH_FAILED);
-  std::vector<int64_t> dimsX = tensordesc_input1->GetShape().GetDims();
-  std::vector<int64_t> dimsY = tensordesc_input2->GetShape().GetDims();
-  // unknown rank
-  if (IsUnknownRankShape(dimsX) || IsUnknownRankShape(dimsY)) {
-    OP_LOGI(op.GetName().c_str(), "One of input is Unknown Rank Shape");
-    return GRAPH_SUCCESS;
-  }
-  if (dimsX.size() != dimsY.size()) {
-    OP_LOGE(op.GetName().c_str(), "The two input dimensions are different.");
+  if (!CheckTwoInputShapeSame(op, "y_grad", "y")) {
     return GRAPH_FAILED;
-  } else {
-    for (size_t i = 0; i < dimsX.size(); i++) {
-      CHECK((dimsX[i] != dimsY[i]) && (dimsX[i] != -1) && (dimsY[i] != -1),
-            OP_LOGE(op.GetName().c_str(), "The two input shape are different."),
-            return GRAPH_FAILED);
-    }
-    return GRAPH_SUCCESS;
   }
+  return GRAPH_SUCCESS;
 }
+
 IMPLEMT_COMMON_INFERFUNC(SeluGradInferShape) {
-  if (!InferShapeAndTypeTwoInOneOutBroadcast(op, "gradients", "outputs", "y")) {
+  bool is_dynamic_output = true;
+  if (!InferShapeAndTypeTwoInOneOutBroadcast(op, 0, 1, 0, is_dynamic_output)) {
     return GRAPH_FAILED;
   }
-  if (!InferShapeRangeTwoInOneOutBroadcase(op, "gradients", "outputs", "y")) {
+  if (!InferShapeRangeTwoInOneOutBroadcase(op, "y_grad", "y", "x_grad")) {
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;

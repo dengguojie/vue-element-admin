@@ -21,13 +21,13 @@ TEST_F(seluGrad,seluGrad_test_1){
                                                 ge::DT_FLOAT16,ge::FORMAT_ND,
                                                 {64},
                                                 ge::FORMAT_ND,shape_range);
-    op.UpdateInputDesc("gradients",tensor_desc);
-    op.UpdateInputDesc("outputs",tensor_desc);
+    op.UpdateInputDesc("y_grad",tensor_desc);
+    op.UpdateInputDesc("y",tensor_desc);
     auto status = op.VerifyAllAttr(true);
     EXPECT_EQ(status, ge::GRAPH_SUCCESS);
     auto ret = op.InferShapeAndType();
     EXPECT_EQ(ret,ge::GRAPH_SUCCESS);
-    auto output_y1_desc = op.GetOutputDesc("y");
+    auto output_y1_desc = op.GetOutputDesc("x_grad");
     EXPECT_EQ(output_y1_desc.GetDataType(),ge::DT_FLOAT16);
     std::vector<int64_t> expected_output_shape = {-1};
     EXPECT_EQ(output_y1_desc.GetShape().GetDims(),expected_output_shape);
@@ -43,13 +43,13 @@ TEST_F(seluGrad,seluGrad_test_2){
                                                 ge::DT_FLOAT16,ge::FORMAT_ND,
                                                 {-2},
                                                 ge::FORMAT_ND,shape_range);
-    op.UpdateInputDesc("gradients",tensor_desc);
-    op.UpdateInputDesc("outputs",tensor_desc);
+    op.UpdateInputDesc("y_grad",tensor_desc);
+    op.UpdateInputDesc("y",tensor_desc);
     auto status = op.VerifyAllAttr(true);
     EXPECT_EQ(status, ge::GRAPH_SUCCESS);
     auto ret = op.InferShapeAndType();
     EXPECT_EQ(ret,ge::GRAPH_SUCCESS);
-    auto output_y1_desc = op.GetOutputDesc("y");
+    auto output_y1_desc = op.GetOutputDesc("x_grad");
     EXPECT_EQ(output_y1_desc.GetDataType(),ge::DT_FLOAT16);
     std::vector<int64_t> expected_output_shape = {-2};
     EXPECT_EQ(output_y1_desc.GetShape().GetDims(),expected_output_shape);

@@ -458,22 +458,22 @@ REG_OP(Softsign)
     .OP_END_FACTORY_REG(Softsign)
 
 /**
- * @brief Computes softsignGrad: gradients / (1 + abs(features)) ** 2 .
+ * @brief Computes softsignGrad: y_grad / (1 + abs(x)) ** 2 .
  *
  * @par Inputs:
  * Two inputs, including:
- * @li gradients: A Tensor.Must be one of the following types:float16, float32,
- * @li features: A Tensor of the same type and shape as "gradients".
+ * @li y_grad: A Tensor.Must be one of the following types:float16, float32,
+ * @li x: A Tensor of the same type and shape as "gradients".
 
- * @par Outputs:
- * output:A Tensor. Has the same type as "gradients".
+ * @par x_grad:
+ * output:A Tensor. Has the same type as "y_grad".
  * @par Third-party framework compatibility
  * Compatible with the TensorFlow operator SoftsignGrad.
  */
 REG_OP(SoftsignGrad)
-    .INPUT(gradients, TensorType::FloatingDataType())
-    .INPUT(features, TensorType::FloatingDataType())
-    .OUTPUT(output, TensorType::FloatingDataType())
+    .INPUT(y_grad, TensorType::FloatingDataType())
+    .INPUT(x, TensorType::FloatingDataType())
+    .OUTPUT(x_grad, TensorType::FloatingDataType())
     .OP_END_FACTORY_REG(SoftsignGrad)
 
 /**
@@ -500,25 +500,23 @@ REG_OP(Selu)
     .OP_END_FACTORY_REG(Selu)
 
 /**
-*@brief Computes SeluGrad backprops: gradients * (outputs + scale * alpha)
-*    if outputs < 0, scale * gradients otherwise .
+* @brief Computes SeluGrad backprops: y_grad * (y + scale * alpha)
+*    if y < 0, scale * y_grad otherwise .
 
-*@par Inputs:
+* @par Inputs:
 * Two inputs, including:
-*@li gradients: A Tensor. Must be one of the following types: float32, float16,
-* int32, int8, uint8
-*@li outputs: A Tensor. Must be one of the following types: float32, float16,
-* int32, int8, uint8
-*@par Outputs:
-*y: A Tensor. Must have the same type as "gradients" .
+* @li y_grad: A Tensor of type RealNumberType .
+* @li y: A Tensor of type RealNumberType .
+* @par Outputs:
+* x_grad: A Tensor. Must have the same type as "y_grad" .
 
-*@par Third-party framework compatibility
+* @par Third-party framework compatibility
 * Compatible with the TensorFlow operator SeluGrad.
 */
 REG_OP(SeluGrad)
-    .INPUT(gradients, TensorType::RealNumberType())
-    .INPUT(outputs, TensorType::RealNumberType())
-    .OUTPUT(y, TensorType::RealNumberType())
+    .INPUT(y_grad, TensorType::RealNumberType())
+    .INPUT(y, TensorType::RealNumberType())
+    .OUTPUT(x_grad, TensorType::RealNumberType())
     .OP_END_FACTORY_REG(SeluGrad)
 
 /**
