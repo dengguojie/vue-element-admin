@@ -312,7 +312,7 @@ def get_padlist(  # pylint: disable=too-many-locals
 
     filter_h_dilation = (filter_h - 1) * dilation_h + 1
     filter_w_dilation = (filter_w - 1) * dilation_w + 1
-    if pads == 'SAME' or DYNAMIC_FLAG in pads:
+    if pads == 'SAME':
         pad_h = \
             align(fmap_h, stride_h) - stride_h + filter_h_dilation - fmap_h
         pad_h = tvm.max(pad_h, 0)

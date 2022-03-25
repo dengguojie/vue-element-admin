@@ -16,9 +16,11 @@ dynamic_conv2d_bp_filter_op_testcase = [
     ((3, 40, 200, 75), (3, 40, 200, 75), (40, 1, 9, 9), [1,1,1,1], [1,1,1,1], (-1, -1, -1, -1), "NCHW", [-2], "success", "dynamic_conv2d_bp_filter_op_testcase_14"),
     # dynamic_nh in input, dynamic_hw in dedy
     ((3, 40, 200, 75), (3, 40, 200, 75), (40, 1, 9, 9), [1,1,1,1], [1,1,1,1], (0, 0, 0, 0), "NCHW", [[0,2],[2,3]], "success", "dynamic_conv2d_bp_filter_op_testcase_16"),
+
     # dynamic_w in input, dynamic_hw in dedy
     ((3, 40, 200, 75), (3, 40, 200, 75), (40, 1, 9, 9), [1,1,1,1], [1,1,1,1], (0, 0, 0, 0), "NCHW", [[3],[2,3]], "success", "dynamic_conv2d_bp_filter_op_testcase_17"),
     ((3, 40, 200, 75), (3, 40, 200, 75), (40, 1, 9, 9), [1,1,1,1], [1,1,1,1], (0, 0, 0, 0), "NCHW", [[2,3],[3]], "success", "dynamic_conv2d_bp_filter_op_testcase_18"),
+        ((2, 33, 33, 128), (2, 16, 16, 128), (3,3,1,128), [1,2,2,1],[1,1,1,1],(0,0,0,0), "NHWC", [0], "success", "dynamic_conv2d_bp_filter_op_testcase_19"),
     # dedy_c != fmap_c * filter_n
     ((3, 40, 200, 75), (3, 41, 200, 75), (40, 1, 9, 9), [1,1,1,1], [1,1,1,1], (-1, -1, -1, -1), "NCHW", [0, 2, 3], RuntimeError, "dynamic_conv2d_bp_filter_op_testcase_3"),
     # filter_c != fmap_c

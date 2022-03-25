@@ -378,7 +378,8 @@ def check_and_config_para(input_fm, out_backprop, filter_grad, strides, dilation
     _check_attr_range_dw("stride's H", strides[2], STRIDE_HW_MIN, STRIDE_HW_MAX)
     _check_attr_range_dw("stride's W", strides[3], STRIDE_HW_MIN, STRIDE_HW_MAX)
     config_dict = {"shape_in": shape_in, "in_range": in_range, "dedy_range": dedy_range,
-        "shape_dedy": shape_dedy, "padding": padding, "dilations": dilations, "shape_dedw": shape_dedw}
+        "shape_dedy": shape_dedy, "padding": padding, "dilations": dilations,
+        "strides": strides, "shape_dedw": shape_dedw}
     return config_dict
 
 
@@ -401,6 +402,7 @@ def _depthwise_conv2dbp_filter_compute(input_fm, filter_size, out_backprop, filt
     dedy_range = config_dict.get("dedy_range")
     padding = config_dict.get("padding")
     dilations = config_dict.get("dilations")
+    strides = config_dict.get("strides")
     fmap_n, fmap_c, fmap_h, fmap_w = shape_in
     _, _, dedy_h, dedy_w = shape_dedy
     fmap_c1 = (fmap_c + BLOCK_SIZE - 1) // BLOCK_SIZE

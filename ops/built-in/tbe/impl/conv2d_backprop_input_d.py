@@ -218,30 +218,27 @@ def _check_conv2dbp_input_para(  # pylint: disable=W0622,C0103,R0913,R0914
 
     Parameters
     ----------
-    filter: dict with keys(shape and dtype) or Tensor
-        input weight tensor
+    filter: dict with keys(shape and dtype) or Tensor, input weight tensor
 
-    out_backprop: dict with keys(shape and dtype) or Tensor
-        The shape of gradients.
+    out_backprop: dict with keys(shape and dtype) or Tensor, The shape of gradients.
 
     y: dict with keys(shape and dtype)
-        conv2d_backprop_input output tensor, dtype must be assigned.
+    conv2d_backprop_input output tensor, dtype must be assigned.
 
     input_size: The shape of feature map.
-        4-D with shape [batch, channels, height, weight].
+    4-D with shape [batch, channels, height, weight].
 
-    strides: tuple/list of 4 integers
-        filter move stride.
+    strides: tuple/list of 4 integers, filter move stride.
 
     dilations: tuple/list of 4 integers
-        filter expand size of dilated conv2d_backprop_input.
+    filter expand size of dilated conv2d_backprop_input.
 
     data_format: str
-        input data format. Specify the data format of the input and output data.
-        Default to "NHWC".
+    input data format. Specify the data format of the input and output data.
+    Default to "NHWC".
 
     topi_flag: input para from topi or compute
-        False: compute; True: topi. Default to False.
+    False: compute; True: topi. Default to False.
 
     Returns
     -------
