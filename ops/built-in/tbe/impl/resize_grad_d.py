@@ -240,9 +240,10 @@ class UpSampleBicubic2dBackward:
 
             zero_scalar = self.tik_instance.Scalar(
                 dtype=self.dtype_grads, init_value=0.0)
-            repeat_time = (math.ceil(self.output_num / self.vector_mask_max)
-                           if self.output_num < self.ub_tensor_size
-                           else math.ceil(self.ub_tensor_size / self.vector_mask_max))
+            with self.tik_instance.if_scope(self.output_num < self.ub_tensor_size):
+                repeat_time = math.ceil(self.output_num / self.vector_mask_max)
+            with self.tik_instance.else_scope():
+                repeat_time = math.ceil(self.ub_tensor_size / self.vector_mask_max)
             repeat_loop = repeat_time // 255
             with self.tik_instance.if_scope(repeat_loop > 0):
                 with self.tik_instance.for_range(0, repeat_loop) as repeat_loop_index:

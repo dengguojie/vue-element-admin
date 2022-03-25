@@ -604,6 +604,7 @@ class ResizeLinear:
                                                   name="output_gm",
                                                   scope=tik.scope_gm)
 
+    # 'pylint: disable=too-many-locals, too-many-branches
     def resize_linear_compute(self):
         """
         ResizeLinear main logic
@@ -622,11 +623,12 @@ class ResizeLinear:
                                                                     init_value=i * (self.dim1 * self.size) +
                                                                     j * self.size)
                     with self.tik_instance.for_range(0, self.size) as k:
-                        res_lastdim_ub[current_index_output + k].set_as(
-                            self.get_number_in_global_memory(i * (self.dim1 * self.dim2) +
-                                                             j * self.dim2) if self.size ==
-                            1 else self.compute_helper(self.scale_w, k,
-                                                       i * (self.dim1 * self.dim2) + j * self.dim2))
+                        with self.tik_instance.if_scope(self.size == 1):
+                            res_lastdim_ub[current_index_output + k].set_as(
+                                self.get_number_in_global_memory(i * (self.dim1 * self.dim2) + j * self.dim2))
+                        with self.tik_instance.else_scope():
+                            res_lastdim_ub[current_index_output + k].set_as(
+                                self.compute_helper(self.scale_w, k, i * (self.dim1 * self.dim2) + j * self.dim2))
 
             self.tik_instance.data_move(self.output_gm, res_lastdim_ub, 0, 1, 1, 0, 0)
 
@@ -639,9 +641,12 @@ class ResizeLinear:
                 with self.tik_instance.for_range(0, self.data_each_block) as j:
                     current_index = i * self.data_each_block + j
                     current_dim1 = current_index // self.size
-                    res_lastdim_ub[j].set_as(
-                        self.get_number_in_global_memory(current_dim1 * self.dim2) if self.size ==
-                        1 else self.compute_helper(self.scale_w, current_index % self.size, current_dim1 * self.dim2))
+                    with self.tik_instance.if_scope(self.size == 1):
+                        res_lastdim_ub[j].set_as(
+                            self.get_number_in_global_memory(current_dim1 * self.dim2))
+                    with self.tik_instance.else_scope():
+                        res_lastdim_ub[j].set_as(
+                            self.compute_helper(self.scale_w, current_index % self.size, current_dim1 * self.dim2))
                 self.tik_instance.data_move(self.output_gm[i * self.data_each_block], res_lastdim_ub, 0, 1, 1, 0, 0)
 
             remainder = self.output_num % self.data_each_block
@@ -653,9 +658,12 @@ class ResizeLinear:
                 with self.tik_instance.for_range(0, self.data_each_block) as k:
                     current_index = remainder_begin_index + k
                     current_dim1 = current_index // self.size
-                    res_lastdim_ub[k].set_as(
-                        self.get_number_in_global_memory(current_dim1 * self.dim2) if self.size ==
-                        1 else self.compute_helper(self.scale_w, current_index % self.size, current_dim1 * self.dim2))
+                    with self.tik_instance.if_scope(self.size == 1):
+                        res_lastdim_ub[k].set_as(
+                            self.get_number_in_global_memory(current_dim1 * self.dim2))
+                    with self.tik_instance.else_scope():
+                        res_lastdim_ub[k].set_as(
+                            self.compute_helper(self.scale_w, current_index % self.size, current_dim1 * self.dim2))
                 self.tik_instance.data_move(self.output_gm[remainder_begin_index], res_lastdim_ub, 0, 1, 1, 0, 0)
 
         else:
@@ -671,11 +679,13 @@ class ResizeLinear:
                                                                   scope=tik.scope_ubuf)
 
                         with self.tik_instance.for_range(0, self.data_each_block) as n:
-                            res_lastdim_ub[n].set_as(
-                                self.get_number_in_global_memory(i * (self.dim1 * self.dim2) +
-                                                                 j * self.dim2) if self.size ==
-                                1 else self.compute_helper(self.scale_w, m * self.data_each_block + n,
-                                                           i * (self.dim1 * self.dim2) + j * self.dim2))
+                            with self.tik_instance.if_scope(self.size == 1):
+                                res_lastdim_ub[n].set_as(
+                                    self.get_number_in_global_memory(i * (self.dim1 * self.dim2) + j * self.dim2))
+                            with self.tik_instance.else_scope():
+                                res_lastdim_ub[n].set_as(
+                                    self.compute_helper(self.scale_w, m * self.data_each_block + n,
+                                                        i * (self.dim1 * self.dim2) + j * self.dim2))
                         self.tik_instance.data_move(self.output_gm[current_index_output], res_lastdim_ub, 0, 1, 1, 0, 0)
                         current_index_output.set_as(current_index_output + self.data_each_block)
                     res_lastdim_remainder_ub = self.tik_instance.Tensor(self.x_dtype, [self.data_each_block],
@@ -686,11 +696,13 @@ class ResizeLinear:
                     with self.tik_instance.if_scope(remainder != 0):
                         remainder_begin_index = self.size - self.data_each_block
                         with self.tik_instance.for_range(0, self.data_each_block) as k:
-                            res_lastdim_remainder_ub[k].set_as(
-                                self.get_number_in_global_memory(i * (self.dim1 * self.dim2) +
-                                                                 j * self.dim2) if self.size ==
-                                1 else self.compute_helper(self.scale_w, remainder_begin_index + k,
-                                                           i * (self.dim1 * self.dim2) + j * self.dim2))
+                            with self.tik_instance.if_scope(self.size == 1):
+                                res_lastdim_remainder_ub[k].set_as(
+                                    self.get_number_in_global_memory(i * self.dim1 * self.dim2 + j * self.dim2))
+                            with self.tik_instance.else_scope():
+                                res_lastdim_remainder_ub[k].set_as(
+                                    self.compute_helper(self.scale_w, remainder_begin_index + k,
+                                                        i * (self.dim1 * self.dim2) + j * self.dim2))
                         self.tik_instance.data_move(
                             self.output_gm[i * (self.dim1 * self.size) + (j + 1) * self.size - self.data_each_block],
                             res_lastdim_remainder_ub, 0, 1, 1, 0, 0)

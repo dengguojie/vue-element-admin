@@ -116,9 +116,7 @@ class NonMaxSuppression():
         self.init_tik_input_mem()
         self.max_total_size = self.get_max_output_size(max_boxes_size)
         self.max_output_class = self.get_max_class_size(max_boxes_size)
-        self.init_param()
 
-    def init_param(self):
         # get init value of iou_thresh,score_thresh,max_total_size
         if self.has_iou_thresh:
             self.iou_thresh = self.get_iou_threshold()
@@ -1173,6 +1171,7 @@ def tik_func_sort_with_ub(tik_instance, src_ub_list, dst_ub_list, sorted_num, wh
                                    0, 1, loop_burst_len, 0, 0)
 
 
+# 'pylint: disable=too-many-locals, too-many-branches
 def nms_for_single_class(batch_idx, class_idx, nms, core_idx):
     """
     main func to get nms for each class,
@@ -1294,8 +1293,10 @@ def nms_for_single_class(batch_idx, class_idx, nms, core_idx):
     # if the select nms output num of the first top 4096 highest score boxes is less the output need
     # and the impl_mode is high_precision
     # will do nms again from the tail boxes 4096 boxes by 4096 boxes
-    tool_loop = nms.topk_loop_time if nms.topk_loop_tail == 0 else (
-        nms.topk_loop_time + 1)
+    if nms.topk_loop_tail == 0:
+        tool_loop = nms.topk_loop_time
+    else:
+        tool_loop = nms.topk_loop_time + 1
     if nms.is_second_nms and tool_loop >= 3:
         # if not to output num
         with tik_instance.for_range(1, tool_loop) as _top_n_idx:
