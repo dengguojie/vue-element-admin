@@ -32,6 +32,24 @@
 
 namespace optiling {
 /*
+ * @brief: The struct that Conv2D/DepthwiseConv2D Tiling needs to save compile info from the info in json format.
+ */
+struct Conv2DTilingParseInfo {
+    int32_t fmapC1 = 0;
+    bool correctRangeFlag = false;
+    std::string tilingType = "";
+    std::vector<std::string> varMap;
+    std::vector<std::string> tilingKeyList;
+    std::vector<std::vector<std::string>> customVarsList;
+    std::vector<std::vector<int64_t>> defaultRangeList;
+    std::vector<std::vector<int64_t>> tilingRangeList;
+    std::vector<int32_t> blockDimList;
+    std::vector<std::vector<int32_t>> repoSeedsList;
+    std::vector<std::vector<int64_t>> repoRangeList;
+    std::vector<std::vector<int64_t>> costRangeList;
+};
+
+/*
  * @brief: tiling function of cube category operators
  * @param [in] curShape: execution time shape info
  * @param [in] opInfo: compile time generated info of operator
@@ -41,6 +59,10 @@ namespace optiling {
 bool cube_tiling1(const std::string &op_type, const std::vector<int64_t> &input_shape, const std::string &x_format,
                   const std::vector<int64_t> &var_value, const nlohmann::json &compile_info,
                   utils::OpRunInfo &run_info);
+// For op tiling registry version 4
+bool cube_tiling1_v4(const std::string& opType, const std::vector<int64_t>& inputShape,
+                     const std::string& xFormat, const std::vector<int64_t>& varValue,
+                     const optiling::Conv2DTilingParseInfo& compileInfo, utils::OpRunInfo& runInfo);
 
 /*
  * @brief: tiling function of cube operators

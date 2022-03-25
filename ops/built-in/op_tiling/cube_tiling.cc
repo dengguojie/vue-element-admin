@@ -269,6 +269,66 @@ namespace {
     return tiling_id;
   }
 
+  size_t cube_tiling_index_batch(const std::string &opType, const std::vector<int64_t> &curShape,
+      const std::string &xFormat, const optiling::Conv2DTilingParseInfo& compileInfo, size_t tilingIdIndex)
+  {
+      if (curShape.empty()) {
+          return tilingIdIndex;
+      }
+      if (compileInfo.tilingRangeList.size() == 0) {
+          CUBE_INNER_ERR_REPORT(opType.c_str(), "no tiling_range in compile info struct.");
+          return tilingIdIndex;
+      }
+      for (size_t i = 0; i < compileInfo.tilingRangeList.size(); i++) {
+          if (is_shape_in_range_cube(curShape, xFormat, compileInfo.tilingRangeList[i])) {
+              tilingIdIndex = i;
+          }
+      }
+      return tilingIdIndex;
+  }
+
+  size_t cube_tiling_index_nhw(const std::string &opType, const std::vector<int64_t> &curShape,
+      const std::string &xFormat, const optiling::Conv2DTilingParseInfo& compileInfo, size_t tilingIdIndex)
+  {
+      int32_t seedHDim = 1;
+      int32_t seedWDim = 2;
+      int32_t hDim = 2;
+      int32_t wDim = 3;
+      if (xFormat == "NHWC") {
+          hDim = xFormat.find("H");
+          wDim = xFormat.find("W");
+      }
+      size_t rangeIndex = 0;
+      int64_t min_dist = std::numeric_limits<int64_t>::max();
+      for (size_t i = 0; i < compileInfo.repoSeedsList.size(); i++) {
+          const std::vector<int32_t>& seeds = compileInfo.repoSeedsList[i];
+          auto& range = compileInfo.repoRangeList[i];
+          if (is_shape_in_range_cube(curShape, xFormat, range)) {
+              int32_t dist = abs(curShape[hDim] - seeds[seedHDim]) + abs(curShape[wDim] - seeds[seedWDim]);
+              if (dist < min_dist) {
+                  tilingIdIndex = rangeIndex;
+                  min_dist = dist;
+              }
+          }
+          rangeIndex++;
+      }
+      if (tilingIdIndex >= compileInfo.tilingKeyList.size()) {
+          if (compileInfo.costRangeList.size() == 0) {
+              CUBE_INNER_ERR_REPORT(opType.c_str(), "no cost_range in compile info struct.");
+              return tilingIdIndex;
+          }
+          for (size_t i = 0; i < compileInfo.costRangeList.size(); i++) {
+              auto& range = compileInfo.costRangeList[i];
+              if (is_shape_in_range_cube(curShape, xFormat, range)) {
+                  tilingIdIndex = rangeIndex;
+                  break;
+              }
+              rangeIndex++;
+          }
+      }
+      return tilingIdIndex;
+  }
+
   void deal_with_compile_info_array(const nlohmann::json& compile_info, nlohmann::json &opInfo) {
     nlohmann::json item;
     opInfo = compile_info[0];
@@ -349,6 +409,54 @@ bool cube_tiling1(const std::string &op_type, const std::vector<int64_t> &input_
     CUBE_INNER_ERR_REPORT(op_type.c_str(), "get unknown exception, please check compile info json.");
     return false;
   }
+}
+
+  bool cube_tiling1_v4(const std::string& opType, const std::vector<int64_t>& inputShape,
+      const std::string& xFormat, const std::vector<int64_t>& varValue,
+      const optiling::Conv2DTilingParseInfo& compileInfo, utils::OpRunInfo& runInfo)
+  {
+      try {
+          const std::vector<std::string>& customVars = compileInfo.customVarsList.at(0);
+          size_t tilingIdIndex = compileInfo.tilingKeyList.size();
+
+          if (compileInfo.tilingType == "default_tiling") {
+              const std::vector<int64_t>& defaultRange = compileInfo.defaultRangeList.at(0);
+              if (is_shape_in_range_cube(inputShape, xFormat, defaultRange)) {
+                  tilingIdIndex = 0;
+              }
+          } else if (customVars.size() != 1) {
+              tilingIdIndex = cube_tiling_index_nhw(opType, inputShape, xFormat, compileInfo, tilingIdIndex);
+          } else {
+              tilingIdIndex = cube_tiling_index_batch(opType, inputShape, xFormat, compileInfo, tilingIdIndex);
+          }
+
+          if (tilingIdIndex >= compileInfo.tilingKeyList.size()) {
+              if (compileInfo.correctRangeFlag) {
+                  CUBE_INNER_ERR_REPORT(opType.c_str(),
+                      "The original range does not meet requirements,"
+                      "new range is generated during op compile, but the shape is not covered by new range.");
+              }
+              CUBE_INNER_ERR_REPORT(opType.c_str(),
+                                    "This shape is not covered by any tiling,"
+                                    "please modify range and recompile.");
+              return false;
+          }
+          if (compileInfo.blockDimList.size() == 0) {
+              CUBE_INNER_ERR_REPORT(opType.c_str(), "no block_dim in compile info struct.");
+              return false;
+          }
+
+          OP_LOGD(opType.c_str(), "get tiling_id: %s", compileInfo.tilingKeyList[tilingIdIndex].c_str());
+          runInfo.SetBlockDim(compileInfo.blockDimList[tilingIdIndex]);
+          runInfo.SetTilingKey(std::stoi(compileInfo.tilingKeyList[tilingIdIndex]));
+          update_run_info_cube(varValue, runInfo);
+
+          return true;
+      } catch (...) {
+          CUBE_INNER_ERR_REPORT(opType.c_str(),
+              "get unknown exception, please check the compile info json and struct.");
+          return false;
+      }
 }
 
   /*
