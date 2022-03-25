@@ -1072,7 +1072,7 @@ class CubeParaProcess:
         """
         get binary mode, True if -1 in attr or None in range
         """
-        if self.fusion_flag and "Ascend910" in get_soc_spec("SOC_VERSION"):
+        if self.fusion_flag:
             for idx_range in dynamic_range:
                 if not idx_range:
                     return True
@@ -1420,8 +1420,9 @@ class Conv2dBackpropParaProcess(CubeParaProcess):
         operation.var("n_l0_div_ub")
         operation.var("n_ub")
         operation.var("k_l0")
-        operation.var("k_al1_div_16")
-        operation.var("k_bl1_div_16")
+        operation.var("min_kl1_div_kl0")
+        operation.var("max_kl1_div_min_kl1")
+        operation.var("k_div_max_kl1")
         operation.var("al1_bound")
         operation.var("bl1_bound")
         operation.var("aub_bound")

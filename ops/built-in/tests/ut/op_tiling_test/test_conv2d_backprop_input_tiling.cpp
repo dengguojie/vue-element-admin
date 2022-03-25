@@ -409,7 +409,7 @@ TEST_F(Conv2DBackpropInputTiling, Conv2d_bp_input_binary_stride_large_one) {
   optiling::utils::OpRunInfo runInfo;
   ASSERT_TRUE(iter->second.tiling_func_v2_(conv2dbackpropinput, op_compile_info, runInfo));
   EXPECT_EQ(runInfo.GetBlockDim(), 16);
-  EXPECT_EQ(runInfo.GetTilingKey(), 21201011);
+  EXPECT_EQ(runInfo.GetTilingKey(), 21210101);
 }
 
 TEST_F(Conv2DBackpropInputTiling, Conv2d_bp_input_binary_stride_large_one_m2_n2_large_x0) {

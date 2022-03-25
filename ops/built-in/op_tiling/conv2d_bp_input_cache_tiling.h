@@ -143,11 +143,10 @@ struct RunInfoRaras {
   int32_t pad_down_after;
   int32_t pad_right_after;
   int32_t batch_single_core;
-  int32_t n_single_core;
-  int32_t m_single_core;
   int32_t n_l0_div_ub;
-  int32_t k_al1_div_16;
-  int32_t k_bl1_div_16;
+  int32_t min_kl1_div_kl0;
+  int32_t max_kl1_div_min_kl1;
+  int32_t k_div_max_kl1;
   int32_t al1_bound;
   int32_t bl1_bound;
   int32_t aub_bound;
@@ -195,8 +194,9 @@ struct RunInfoParaStrideLargeOne {
   int32_t n_l0_div_ub;
   int32_t n_cub;
   int32_t k_l0;
-  int32_t k_al1_div_16;
-  int32_t k_bl1_div_16;
+  int32_t min_kl1_div_kl0;
+  int32_t max_kl1_div_min_kl1;
+  int32_t k_div_max_kl1;
   int32_t al1_bound;
   int32_t bl1_bound;
   int32_t aub_bound;
@@ -242,8 +242,9 @@ struct RunInfoParaStrideEqualOne {
   int32_t n_l0_div_ub;
   int32_t n_cub;
   int32_t k_l0;
-  int32_t k_al1_div_16;
-  int32_t k_bl1_div_16;
+  int32_t min_kl1_div_kl0;
+  int32_t max_kl1_div_min_kl1;
+  int32_t k_div_max_kl1;
   int32_t al1_bound;
   int32_t bl1_bound;
   int32_t aub_bound;

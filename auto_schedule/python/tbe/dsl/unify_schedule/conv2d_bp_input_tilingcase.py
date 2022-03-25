@@ -479,7 +479,7 @@ class Conv2dBpInputTiling(CubeTilingOp):
         -------
         bool: True, the template is valid
         """
-        al1_pb, bl1_pb, _, abkl1_attach, al1_attach_flag, bl1_attach_flag, *_ = choice
+        al1_pb, bl1_pb, _, _, abkl1_attach, al1_attach_flag, bl1_attach_flag, *_ = choice
         # al1 full load
         invalid_choice = (al1_attach_flag == utils.ATTACH_FULL_LOAD) and (
             (bl1_attach_flag in (utils.ATTACH_FULL_LOAD, utils.ATTACH_EQUAL) and abkl1_attach != 0) or
@@ -509,15 +509,15 @@ class Conv2dBpInputTiling(CubeTilingOp):
         -------
         list: all selections of flags
         """
-        (al1_pb, bl1_pb, l0c_pb, abkl1_attach, al1_attach_flag,
-        bl1_attach_flag, min_kl1_cmp_kl0) = (
-            [utils.DB_OFF, utils.DB_ON], [utils.DB_OFF, utils.DB_ON], [utils.DB_OFF, utils.DB_ON],
+        (al1_pb, bl1_pb, l0c_pb, cub_pb, abkl1_attach, al1_attach_flag, bl1_attach_flag) = (
+            [utils.DB_OFF, utils.DB_ON], [utils.DB_OFF, utils.DB_ON],
+            [utils.DB_OFF, utils.DB_ON], [utils.DB_OFF, utils.DB_ON],
             [utils.ATTACH_FULL_LOAD, utils.ATTACH_EQUAL, utils.ATTACH_LESS],
             [utils.ATTACH_FULL_LOAD, utils.ATTACH_EQUAL, utils.ATTACH_LESS],
-            [utils.ATTACH_FULL_LOAD, utils.ATTACH_EQUAL, utils.ATTACH_LESS], [0, 1])
+            [utils.ATTACH_FULL_LOAD, utils.ATTACH_EQUAL, utils.ATTACH_LESS])
         attach_choices = list(
-            product(al1_pb, bl1_pb, l0c_pb, abkl1_attach,
-                    al1_attach_flag, bl1_attach_flag, min_kl1_cmp_kl0))
+            product(al1_pb, bl1_pb, l0c_pb, cub_pb, abkl1_attach,
+                    al1_attach_flag, bl1_attach_flag))
         return attach_choices
 
     def get_repo_tiling(self):
@@ -583,25 +583,26 @@ class Conv2dBpInputTiling(CubeTilingOp):
                 'AUB_shape': [-1, -1, 1, 1], 'n_bef_batch_flag': 0, 'n_bef_group_flag': 0, 'batch_bef_group_flag': 0,
                 'A_overhead_opt_flag': 0, 'B_overhead_opt_flag': 0,
                 'AUB_channel_wise_flag': None, 'BUB_channel_wise_flag': None, 'CUB_channel_wise_flag': None,
-                'manual_pingpong_buffer': {'AUB_pbuffer': utils.DB_OFF, 'BUB_pbuffer': utils.DB_ON,
-                'AL1_pbuffer': utils.DB_ON, 'BL1_pbuffer': utils.DB_ON,
-                'AL0_pbuffer': utils.DB_ON, 'BL0_pbuffer': utils.DB_ON, 'CL0_pbuffer': utils.DB_ON,
-                'CUB_pbuffer': utils.DB_OFF, 'UBG_pbuffer': utils.DB_OFF},
+                'manual_pingpong_buffer': {'AUB_pbuffer': utils.DB_OFF, 'BUB_pbuffer': utils.DB_OFF,
+                                           'AL1_pbuffer': -1, 'BL1_pbuffer': -1,
+                                           'AL0_pbuffer': utils.DB_ON, 'BL0_pbuffer': utils.DB_ON,
+                                           'CL0_pbuffer': -1,
+                                           'CUB_pbuffer': -1, 'UBG_pbuffer': utils.DB_OFF},
                 'attach_at_flag': {'cub_attach_flag': utils.ATTACH_LESS,
-                'cl0_attach_flag': utils.ATTACH_LARGE, 'al0_attach_flag': utils.ATTACH_LESS,
-                'bl0_attach_flag': utils.ATTACH_LESS,
-                'al1_attach_flag': -1, 'bl1_attach_flag': -1, 'aub_attach_flag': utils.ATTACH_LESS,
-                'abkl1_attach_flag': -1, 'aub_multi_flag': -1, 'bub_multi_flag': -1}
+                                   'cl0_attach_flag': utils.ATTACH_LARGE, 'al0_attach_flag': utils.ATTACH_LESS,
+                                   'bl0_attach_flag': utils.ATTACH_LESS,
+                                   'al1_attach_flag': -1, 'bl1_attach_flag': -1, 'aub_attach_flag': utils.ATTACH_LESS,
+                                   'abkl1_attach_flag': -1, 'aub_multi_flag': -1}
             }
             if self._check_template_valid(choice):
                 continue
             cache_tiling.get('manual_pingpong_buffer')['AL1_pbuffer'] = choice[0]
             cache_tiling.get('manual_pingpong_buffer')['BL1_pbuffer'] = choice[1]
             cache_tiling.get('manual_pingpong_buffer')['CL0_pbuffer'] = choice[2]
-            cache_tiling.get('attach_at_flag')['abkl1_attach_flag'] = choice[3]
-            cache_tiling.get('attach_at_flag')['al1_attach_flag'] = choice[4]
-            cache_tiling.get('attach_at_flag')['bl1_attach_flag'] = choice[5]
-            cache_tiling.get('attach_at_flag')['min_kl1_cmp_kl0'] = choice[6]
+            cache_tiling.get('manual_pingpong_buffer')['CUB_pbuffer'] = choice[3]
+            cache_tiling.get('attach_at_flag')['abkl1_attach_flag'] = choice[4]
+            cache_tiling.get('attach_at_flag')['al1_attach_flag'] = choice[5]
+            cache_tiling.get('attach_at_flag')['bl1_attach_flag'] = choice[6]
             name = int(''.join((str(i) for i in choice))) * 10 + stride_expand_flag
             cache_tiling_all[name] = [[], cache_tiling, []]
             tiling_cases = [self.assembly_case(v[1], v[0], k) for k, v in cache_tiling_all.items()]

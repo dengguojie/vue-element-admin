@@ -777,11 +777,19 @@ bool GetL0Factors(const DxParas &params, Tiling &tiling) {
   // get m_l0, n_l0, k_l0 factor when singlecore m, n, k is know
   // m_l0, n_l0, k_l0 is a factor of single core m, n, k
   tiling.db_l0c = kDbOn;
-  tiling.db_cub = kDbOff;
+  tiling.db_cub = kDbOn;
   tiling.db_aub = kDbOff;
   if (params.dx_no_overlap_condition_1) {
+    if (GetL0FactorsNoOverlap(params, tiling)) {
+      return true;
+    }
+    tiling.db_cub = kDbOff;
     return GetL0FactorsNoOverlap(params, tiling);
   } else {
+    if (GetL0FactorsGeneral(params, tiling)) {
+      return true;
+    }
+    tiling.db_cub = kDbOff;
     return GetL0FactorsGeneral(params, tiling);
   }
 }
@@ -1074,17 +1082,10 @@ void GetAubM(const int32_t &aub_size, const DxParas &params,
   }
 }
 
-bool GetUbFactors(const DxParas &params, Tiling &tiling) {
-  tiling.m_aub = 1;
-  tiling.k_aub = 1;
-  tiling.n_cub = 1;
-  int32_t ub_fp16_size = kUbSize / kFp16Bytes;
-  vector<int32_t> n_l0_factors;
-  vector<int32_t> k_al1_factors;
-  GetFactors(tiling.n_l0, n_l0_factors);
-  GetFactors(tiling.k_al1, k_al1_factors);
+bool InitUbDb(const DxParas &params, Tiling &tiling) {
   int32_t loadin_size = tiling.k_aub * tiling.m_aub * params.wo * kC0 * params.stride_w;
   int32_t copyout_size = kAfterUbFusionMulti * tiling.n_cub * tiling.m_l0 * kC0 * kC0;
+  int32_t ub_fp16_size = kUbSize / kFp16Bytes;
   if (params.stride_h != 1 || params.stride_w != 1) {
     if (loadin_size * tiling.db_aub + copyout_size * tiling.db_cub > ub_fp16_size) {
       tiling.db_aub = 1;
@@ -1104,7 +1105,20 @@ bool GetUbFactors(const DxParas &params, Tiling &tiling) {
   }
   CHECK_OP_FUNC(loadin_size * tiling.db_aub + copyout_size * tiling.db_cub > ub_fp16_size, return false,
                 "ub factor exceed buffer");
-  int32_t max_dma_size = loadin_size * tiling.db_aub + copyout_size * tiling.db_cub;
+  return loadin_size * tiling.db_aub + copyout_size * tiling.db_cub;
+}
+
+bool GetUbFactors(const DxParas &params, Tiling &tiling) {
+  tiling.m_aub = 1;
+  tiling.k_aub = 1;
+  tiling.n_cub = 1;
+  int32_t ub_fp16_size = kUbSize / kFp16Bytes;
+  vector<int32_t> n_l0_factors;
+  vector<int32_t> k_al1_factors;
+  GetFactors(tiling.n_l0, n_l0_factors);
+  GetFactors(tiling.k_al1, k_al1_factors);
+
+  int32_t max_dma_size = InitUbDb(params, tiling);
   bool first_flag = true;
   int32_t aub_m;
   int32_t aub_size;
@@ -1115,6 +1129,9 @@ bool GetUbFactors(const DxParas &params, Tiling &tiling) {
     for (auto &n1 : n_l0_factors) {
       if (params.dx_no_overlap_condition_2 && n1 < kNumTwo) {
         continue;
+      }
+      if (tiling.db_cub == kDbOn && tiling.n_l0 / n1 == 1) {
+        tiling.db_cub = kDbOff;
       }
       aub_size = (ub_fp16_size - kAfterUbFusionMulti * n1 * tiling.m_l0 * kC0 * kC0 * tiling.db_cub) / tiling.db_aub;
       GetAubM(aub_size, params, k_aub, tiling, aub_m);
@@ -1220,10 +1237,10 @@ void SetTilingId(const DxParas &params, const Tiling &tiling, int32_t &tiling_id
   tiling_id = tiling.db_al1;
   tiling_id = tiling_id * kDecimal + tiling.db_bl1;
   tiling_id = tiling_id * kDecimal + tiling.db_l0c;
+  tiling_id = tiling_id * kDecimal + tiling.db_cub;
   tiling_id = tiling_id * kDecimal + abkl1_attach_flag;
   tiling_id = tiling_id * kDecimal + al1_attach_flag;
   tiling_id = tiling_id * kDecimal + bl1_attach_flag;
-  tiling_id = tiling_id * kDecimal + min_kl1_cmp_kl0;
   tiling_id = tiling_id * kDecimal + params.stride_expand_flag;
 }
 

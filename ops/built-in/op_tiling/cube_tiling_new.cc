@@ -205,8 +205,9 @@ namespace optiling {
     run.n_l0_div_ub = run_info_params.n_l0_div_ub;
     run.n_cub = tiling.n_cub;
     run.k_l0 = tiling.k_l0;
-    run.k_al1_div_16 = run_info_params.k_al1_div_16;
-    run.k_bl1_div_16 = run_info_params.k_bl1_div_16;
+    run.min_kl1_div_kl0 = run_info_params.min_kl1_div_kl0;
+    run.max_kl1_div_min_kl1 = run_info_params.max_kl1_div_min_kl1;
+    run.k_div_max_kl1 = run_info_params.k_div_max_kl1;
     run.al1_bound = run_info_params.al1_bound;
     run.bl1_bound = run_info_params.bl1_bound;
     run.aub_bound = run_info_params.aub_bound;
@@ -256,8 +257,9 @@ namespace optiling {
     run.n_l0_div_ub = run_info_params.n_l0_div_ub;
     run.n_cub = tiling.n_cub;
     run.k_l0 = tiling.k_l0;
-    run.k_al1_div_16 = run_info_params.k_al1_div_16;
-    run.k_bl1_div_16 = run_info_params.k_bl1_div_16;
+    run.min_kl1_div_kl0 = run_info_params.min_kl1_div_kl0;
+    run.max_kl1_div_min_kl1 = run_info_params.max_kl1_div_min_kl1;
+    run.k_div_max_kl1 = run_info_params.k_div_max_kl1;
     run.al1_bound = run_info_params.al1_bound;
     run.bl1_bound = run_info_params.bl1_bound;
     run.aub_bound = run_info_params.aub_bound;
@@ -315,12 +317,7 @@ namespace optiling {
     if (tiling.m_al1 == 0) {
       m_single_size = tiling.m_single_core_size;
     }
-    run_info_params.m_single_core =
-        max((params.h * params.w + kBlockSize - 1) / kBlockSize / (tiling.n_dim * n_single_size), 1);
-    run_info_params.n_single_core = max(params.c1 / (tiling.m_dim * m_single_size), 1);
     run_info_params.n_l0_div_ub = tiling.n_l0 / tiling.n_cub;
-    run_info_params.k_al1_div_16 = tiling.k_al1 * params.kh * params.kw;
-    run_info_params.k_bl1_div_16 = tiling.k_bl1 * params.kh * params.kw;
     int32_t hosh = (params.kh - 1) + m_single_size * kBlockSize / params.w + kHoshWNoDivided;
     if (m_single_size * kBlockSize < params.w) {
       hosh = (params.kh - 1) + kHoshWNoDivided;
@@ -341,6 +338,13 @@ namespace optiling {
       run_info_params.aub_bound = tiling.k_aub * kBlockSize *
           ((tiling.m_aub * params.wo + params.kw - 1 + kBlockSize - 1) / kBlockSize) * kBlockSize;
     }
+    CHECK_OP_FUNC(tiling.k_al1 == 0, return false, "k_al1 is zero");
+    CHECK_OP_FUNC(tiling.k_bl1 == 0, return false, "k_bl1 is zero");
+    int32_t max_kl1 = max(tiling.k_al1, tiling.k_bl1);
+    int32_t min_kl1 = min(tiling.k_al1, tiling.k_bl1);
+    run_info_params.min_kl1_div_kl0 = min_kl1 * params.kh * params.kw / tiling.k_l0;
+    run_info_params.max_kl1_div_min_kl1 = max_kl1 / min_kl1;
+    run_info_params.k_div_max_kl1 = params.co1 / max_kl1;
 
     SetRunInfo(run_info_params, params, tiling, run_info);
     run_info.SetBlockDim(static_cast<uint32_t>(tiling.batch_dim * tiling.n_dim * tiling.m_dim));

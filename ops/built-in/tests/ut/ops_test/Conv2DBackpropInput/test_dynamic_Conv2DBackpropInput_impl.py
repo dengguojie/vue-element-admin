@@ -571,6 +571,7 @@ def test_get_op_support_info_dynamic_dx_0(test_arg):
              }
     input_size =  (-1, -1, -1, 64)
     get_op_support_info(input_size, filter, out_backprop, y, (1, 1, 1, 1), (0, 0, 0, 0))
+
 def test_get_op_support_info_dynamic_dx_1(test_arg):
     y = {"shape": (-1, 4, -1, -1, 16), 'ori_shape': (-1, -1, -1, 64),
          "ori_format": "NHWC", "format": "NC1HWC0", "dtype": "float16",

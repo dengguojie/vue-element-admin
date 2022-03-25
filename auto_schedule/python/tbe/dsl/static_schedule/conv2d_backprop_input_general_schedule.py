@@ -1073,6 +1073,7 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):
     deconv_res = _get_deconv_out()
     dyn_util = DxDynamicUtil(tiling_case, var_range)
     dyn_util.set_dynamic_scene()
+    dyn_util.get_buffer_status()
 
     tensor_map, tensor_attr = _fetch_tensor_info(dyn_util)
     vadd_res = tensor_map.get("vadd_res")
@@ -1300,7 +1301,7 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):
         tiling = tiling_api.get_tiling(info_dict)
     else:
         tiling = tiling_case
-        dyn_util.set_cache_tiling()
+        dyn_util.set_cache_tiling(sch)
 
     if dyn_util.dynamic_mode or (not tensor_attr.get("support_ub_to_l1") and (stride_h > 1 or stride_w > 1)):
         # close overhead flag in dynamic mode
@@ -1613,7 +1614,8 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):
                 pass
             elif status == Compare.LESS_EQ:
                 sch_agent.attach_at(c_ub, c_ddr, affine_shape=affine_cub,
-                                    ceil_mode_dict=dyn_util.get_ceil_mode())
+                                    ceil_mode_dict=dyn_util.get_ceil_mode(
+                                        affine_cub, dyn_util.g_dim, dyn_util.gnm_dim))
             else:
                 _raise_dx_general_err("c_ub attach error.")
             return status
@@ -1787,7 +1789,8 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):
                 sch_agent.attach_at(c_col, c_ub, affine_shape=affine_l0c)
             elif status == Compare.GREATE_EQ:
                 sch_agent.attach_at(c_col, c_ddr, affine_shape=affine_l0c,
-                                    ceil_mode_dict=dyn_util.get_ceil_mode())
+                                    ceil_mode_dict=dyn_util.get_ceil_mode(
+                                        affine_l0c, dyn_util.g_dim, dyn_util.gnm_dim))
             else:
                 _raise_dx_general_err("c_col attach error.")
         if (deconv_res.op.tag == "emit_insn_elewise_multiple_sel|bool" or
@@ -1853,7 +1856,8 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):
             sch_agent.same_attach(a_col, c_col)
         elif status == Compare.LESS_EQ:
             sch_agent.attach_at(a_col, c_col, affine_shape=l0a2l0c_affine_shape,
-                                ceil_mode_dict=dyn_util.get_ceil_mode())
+                                ceil_mode_dict=dyn_util.get_ceil_mode(
+                                    l0a2l0c_affine_shape, split_ceil_dim=dyn_util.m_dim))
         elif status == Compare.GREATE_EQ:
             sch_agent.attach_at(a_col, c_ddr, affine_shape=l0a2out_affine_shape)
         else:
@@ -1899,7 +1903,7 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):
                 sch_agent.same_attach(b_col, c_col)
             elif status == Compare.LESS_EQ:
                 sch_agent.attach_at(b_col, c_col, affine_shape=l0b2l0c_affine_shape,
-                                    ceil_mode_dict=dyn_util.get_ceil_mode())
+                                    ceil_mode_dict=dyn_util.get_ceil_mode(l0b2l0c_affine_shape))
             elif status == Compare.GREATE_EQ:
                 sch_agent.attach_at(b_col, c_ddr, affine_shape=l0b2out_affine_shape)
             else:
@@ -1961,10 +1965,10 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):
                 sch_agent.same_attach(attach_tensor, c_col)
             elif status == Compare.LESS_EQ:
                 sch_agent.attach_at(attach_tensor, c_col, affine_shape=l1a2l0c_affine_shape,
-                                    ceil_mode_dict=dyn_util.get_ceil_mode())
+                                    ceil_mode_dict=dyn_util.get_ceil_mode(
+                                        l1a2l0c_affine_shape, split_ceil_dim=dyn_util.m_dim))
             elif status == Compare.GREATE_EQ:
-                sch_agent.attach_at(attach_tensor, c_ddr, affine_shape=l1a2out_affine_shape,
-                                    ceil_mode_dict=dyn_util.get_ceil_mode())
+                sch_agent.attach_at(attach_tensor, c_ddr, affine_shape=l1a2out_affine_shape)
             else:
                 _raise_dx_general_err("A_L1 atach error.")
         _al1_attach_process()
@@ -2048,7 +2052,8 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):
                     sch_agent.same_attach(b_l1, c_col)
                 elif status == Compare.LESS_EQ:
                     sch_agent.attach_at(b_l1, c_col, affine_shape=l1b2l0c_affine_shape,
-                                        ceil_mode_dict=dyn_util.get_ceil_mode())
+                                        ceil_mode_dict=dyn_util.get_ceil_mode(
+                                            l1b2l0c_affine_shape, dyn_util.nm_dim, dyn_util.nm_dim))
                 elif status == Compare.GREATE_EQ:
                     l1_nb = bl1_tilling_n * bl0_tiling_nb
                     _, _, _n0 = tbe_platform.CUBE_MKN.get(b_l1.dtype)["mac"]
@@ -2058,8 +2063,7 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):
                     l1b2out_affine_shape = [1, None, l1_nb, cl0_tiling_m0, _n0]
                     if tensor_attr.get("5HD_TRANS_NHWC"):
                         l1b2out_affine_shape = [1, cl0_tiling_m0, l1_nb * _n0]
-                    sch_agent.attach_at(b_l1, c_ddr, affine_shape=l1b2out_affine_shape,
-                                        ceil_mode_dict=dyn_util.get_ceil_mode())
+                    sch_agent.attach_at(b_l1, c_ddr, affine_shape=l1b2out_affine_shape)
                 else:
                     _raise_dx_general_err("b_l1 attach error.")
             _bl1_attach()
@@ -2139,7 +2143,8 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):
             ub_shape_k = aub_tiling_k // (kernel_h * kernel_w * 16)
             ub_shape = _get_ub_shape(ub_shape_k, aub_h, aub_w, filling_w)
             if dyn_util.dynamic_mode == "binary":
-                sch_agent.attach_at(dy_vn, a_l1, ub_shape, ceil_mode_dict=dyn_util.get_ceil_mode())
+                sch_agent.attach_at(dy_vn, a_l1, ub_shape, ceil_mode_dict=dyn_util.get_ceil_mode(
+                    ub_shape, split_ceil_dim=dyn_util.khw_dim))
             else:
                 if not l0a_dma_flag:
                     sch_agent.attach_at(a_filling, a_l1, ub_shape)
@@ -2805,7 +2810,7 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):
             sch[b_l1].set_buffer_size(dyn_util.tiling_vars.get("bl1_bound"))
         _set_aub_bound()
         _set_cub_bound()
-        dyn_util.set_var_value(sch)
+        dyn_util.set_spec_var_value(sch, b_col)
 
         sch.sequential_malloc(tbe_platform_info.scope_cbuf)
         sch.sequential_malloc(tbe_platform_info.scope_ca)
@@ -2960,7 +2965,6 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):
 
     _split_group()
 
-    dyn_util.get_buffer_status()
     affine_cub = _cub_process()
     _cl0_process(affine_cub)
     _fixpipe_process()
@@ -2980,7 +2984,7 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):
             ax_batch_outer, ax_batch_inner = sch_agent[c_ddr].split(ax_ni, nparts=batch_dim, ceil_mode=False)
             ax_m_outer, ax_m_inner = sch_agent[c_ddr].split(ax_hw, nparts=m_dim)
             ax_n_outer, ax_n_inner = sch_agent[c_ddr].split(ax_ci, nparts=n_dim)
-            ax_g_outer, ax_g_inner = sch_agent[c_ddr].split(ax_g, nparts=group_dim)
+            ax_g_outer, ax_g_inner = sch_agent[c_ddr].split(ax_g, nparts=group_dim, ceil_mode=False)
             sch[c_ddr].reorder(ax_g_outer, ax_batch_outer, ax_n_outer, ax_m_outer,
                                ax_g_inner, ax_batch_inner, ax_n_inner, ax_m_inner)
             sch.bind_axes([ax_g_outer, ax_batch_outer, ax_n_outer, ax_m_outer], tvm.thread_axis('blockIdx.x'))
@@ -3142,8 +3146,8 @@ class DxDynamicUtil():
                                 'pad_up_before', 'pad_left_before', 'pad_down_after', 'pad_right_after',
                                 'shape_up_modify', 'shape_left_modify', 'shape_down_modify', 'shape_right_modify')
         self.tiling_var_names = ('batch_dim', 'n_dim', 'm_dim', 'batch_single_core',
-                                 'm_al1', 'n_bl1', 'k_al1_div_16', 'k_bl1_div_16', 'k_aub', 'm_aub',
-                                 'm_l0', 'n_l0_div_ub', 'n_ub', 'k_l0', 'al1_bound', 'bl1_bound', 'aub_bound')
+                                 'm_al1', 'n_bl1', 'k_div_max_kl1', 'max_kl1_div_min_kl1', 'min_kl1_div_kl0', 'k_aub',
+                                 'm_aub', 'm_l0', 'n_l0_div_ub', 'n_ub', 'k_l0', 'al1_bound', 'bl1_bound', 'aub_bound')
         self.status_ori_dict_dx = {
             0: Compare.EQUAL,
             1: Compare.LESS_EQ,
@@ -3156,19 +3160,33 @@ class DxDynamicUtil():
             2: Compare.LESS_EQ,
             3: Compare.GREATE_EQ
         }
+        self.g_dim = (0,)
+        self.m_dim = (3,)
+        self.nm_dim = (2, 3)
+        self.gnm_dim = (0, 2, 3)
+        self.khw_dim = (2, 3, 4)
 
     @staticmethod
     def _get_optional_te_var(var_name):
         return None if not get_te_var(var_name) else get_te_var(var_name).get_tvm_var()
 
-    @staticmethod
-    def get_ceil_mode():
+    def get_ceil_mode(self, affine_shape=None, factor_ceil_dim=None, split_ceil_dim=None):
         """
         calculate factor with factor_ceil_mode in schedule_agent, split with split_ceil_mode in schedule_agent/
         False for divisible scene, default is True
         """
-        ceil_mode_dict = {"factor_ceil_mode": True, "split_ceil_mode": True}
-        return ceil_mode_dict
+        factor_ceil_mode = True
+        split_ceil_mode = True
+        if self.dynamic_mode == "binary" and affine_shape:
+            factor_ceil_mode = [False] * len(affine_shape)
+            split_ceil_mode = [False] * len(affine_shape)
+            if factor_ceil_dim:
+                for dim in factor_ceil_dim:
+                    factor_ceil_mode[dim] = True
+            if split_ceil_dim:
+                for dim in split_ceil_dim:
+                    split_ceil_mode[dim] = True
+        return {"factor_ceil_mode": factor_ceil_mode, "split_ceil_mode": split_ceil_mode}
 
     def set_dynamic_scene(self):
         """
@@ -3233,7 +3251,8 @@ class DxDynamicUtil():
 
             tiling_var_range = {
                 "batch_dim": range_block_dim, "n_dim": range_block_dim, "m_dim": range_block_dim,
-                "k_al1_div_16": range_1024, "k_bl1_div_16": range_1024, "m_al1": range_1024, "n_bl1": range_1024,
+                "k_div_max_kl1": range_1024, "max_kl1_div_min_kl1": range_1024, "min_kl1_div_kl0": range_1024,
+                "m_al1": range_1024, "n_bl1": range_1024,
                 "n_ub": range_64, "m_l0": range_64, "k_l0": range_64, "n_l0_div_ub": range_64,
                 "m_aub": range_256, "k_aub": range_1024,
                 "aub_bound": self.range_const.get("range_ub_bound"),
@@ -3245,7 +3264,7 @@ class DxDynamicUtil():
                 if isinstance(var, tvm.expr.Var):
                     sch.set_var_range(var, *var_range)
 
-    def set_var_value(self, sch):
+    def set_spec_var_value(self, sch, b_col):
         """
         set variable's value by const or expr
         """
@@ -3259,24 +3278,47 @@ class DxDynamicUtil():
         if self.attach_flag.get("bl1_attach_flag") == 1:
             sch.set_var_value(self.tiling_vars.get("n_bl1"), 1)
 
+        kernel_h = self.shape_vars.get("kernel_h")
+        kernel_w = self.shape_vars.get("kernel_w")
         sch.set_var_value(self.shape_vars.get("batch_n"),
-                            self.tiling_vars.get("batch_dim") * self.tiling_vars.get("batch_single_core"))
+                          self.tiling_vars.get("batch_dim") * self.tiling_vars.get("batch_single_core"))
+        sch.set_var_value(self.shape_vars.get('dy_c1_extend'),
+            tvm.div(self.tiling_vars.get('k_div_max_kl1') * self.tiling_vars.get('max_kl1_div_min_kl1') *
+            self.tiling_vars.get('min_kl1_div_kl0') * self.tiling_vars.get("k_l0"), kernel_h * kernel_w))
+        sch.set_constraint((
+            ((self.shape_vars.get('dy_c1_extend') * kernel_h * kernel_w) % self.tiling_vars.get("k_l0") == 0)
+            ).asnode())
         sch.set_var_value(self.shape_vars.get("filter_ci1hw"),
-                            self.shape_vars.get("g_extend") * self.shape_vars.get("dx_c1_extend") *
-                            self.shape_vars.get("kernel_h") * self.shape_vars.get("kernel_w"))
+                          self.shape_vars.get("g_extend") * self.shape_vars.get("dx_c1_extend") *
+                          kernel_h * kernel_w)
+        sch[b_col].skip_bound_check()
 
-    def set_cache_tiling(self):
+    def set_cache_tiling(self, sch):
         """
         config tiling variables for cache tiling
         """
         if self.dynamic_mode != "binary":
             return
 
+        min_kl1 = self.tiling_vars.get('min_kl1_div_kl0') * self.tiling_vars.get('k_l0') * 16
+        max_kl1 = self.tiling_vars.get('max_kl1_div_min_kl1') * min_kl1
+
+        abkl1_attach_flag = self.attach_flag.get('abkl1_attach_flag')
+        if abkl1_attach_flag == 0:
+            sch.set_var_value(self.tiling_vars.get('max_kl1_div_min_kl1'), 1)
+            k_bl1 = k_al1 = max_kl1
+        elif abkl1_attach_flag == 1:
+            k_al1 = max_kl1
+            k_bl1 = min_kl1
+        else:
+            k_al1 = min_kl1
+            k_bl1 = max_kl1
+
         self.tiling_case['block_dim'][:3] = (self.tiling_vars.get('batch_dim'), self.tiling_vars.get('n_dim'),
                                                 self.tiling_vars.get('m_dim'))
         self.tiling_case['AUB_shape'][:2] = self.tiling_vars.get('k_aub'), self.tiling_vars.get('m_aub')
-        self.tiling_case['AL1_shape'][:2] = self.tiling_vars.get('k_al1_div_16') * 16, self.tiling_vars.get('m_al1')
-        self.tiling_case['BL1_shape'][:2] = self.tiling_vars.get('k_bl1_div_16') * 16, self.tiling_vars.get('n_bl1')
+        self.tiling_case['AL1_shape'][:2] = k_al1, self.tiling_vars.get('m_al1')
+        self.tiling_case['BL1_shape'][:2] = k_bl1, self.tiling_vars.get('n_bl1')
         self.tiling_case['AL0_matrix'][:2] = self.tiling_vars.get('m_l0'), self.tiling_vars.get('k_l0')
         self.tiling_case['BL0_matrix'][:2] = (self.tiling_vars.get('k_l0'),
                                                 self.tiling_vars.get('n_l0_div_ub') * self.tiling_vars.get('n_ub'))
@@ -3323,4 +3365,6 @@ class DxDynamicUtil():
         if self.attach_flag.get("al1_attach_flag") == 0:
             sch[a_l1].compute_at(sch[c_ddr], sch[c_ddr].leaf_iter_vars[5])
         if self.attach_flag.get("bl1_attach_flag") == 0:
+            # the value of n_bl1 does not affect buffer size when full load
+            sch.set_var_value(self.tiling_vars.get('n_bl1'), 1)
             sch[b_l1].compute_at(sch[c_ddr], sch[c_ddr].leaf_iter_vars[5])

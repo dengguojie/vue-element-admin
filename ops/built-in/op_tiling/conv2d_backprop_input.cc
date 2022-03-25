@@ -152,7 +152,7 @@ inline string IntToBinary(uint64_t& n) {
   string ans = "";
   do {
     uint64_t t = n % 2UL;
-    if (t >= 0 && t <= 9UL) {
+    if (t >= 0UL && t <= 9UL) {
       ans += (t + '0');
     } else {
       ans += (t + 'a' - 10UL);
@@ -207,10 +207,10 @@ bool CheckParams(const DxParas& dx_paras) {
   invalid = invalid + (!CheckRange(dx_paras.w, kDimHWLow, kDimHWUp) << shift++);
   invalid = invalid + (!CheckRange(dx_paras.stride_h, kDimLow, kStrideHWUp) << shift++);
   invalid = invalid + (!CheckRange(dx_paras.stride_w, kDimLow, kStrideHWUp) << shift++);
-  invalid = invalid + (((dx_paras.fmap_h_padding - dx_paras.filter_h_dilation) / dx_paras.stride_h + 1 != dx_paras.ho)
-                       << shift++);
-  invalid = invalid + (((dx_paras.fmap_w_padding - dx_paras.filter_w_dilation) / dx_paras.stride_w + 1 != dx_paras.wo)
-                       << shift++);
+  int32_t ho_temp = (dx_paras.fmap_h_padding - dx_paras.filter_h_dilation) / dx_paras.stride_h + 1;
+  int32_t wo_temp = (dx_paras.fmap_w_padding - dx_paras.filter_w_dilation) / dx_paras.stride_w + 1;
+  invalid = invalid + ((ho_temp != dx_paras.ho) << shift++);
+  invalid = invalid + ((wo_temp != dx_paras.wo) << shift++);
   invalid = invalid + ((dedy_c_16 == 0) << shift++);
   invalid = invalid + ((dedx_c_16 == 0) << shift++);
   invalid = invalid + ((filter_c_16 == 0) << shift++);
