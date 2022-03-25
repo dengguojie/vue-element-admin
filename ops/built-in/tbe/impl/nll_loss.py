@@ -120,7 +120,7 @@ class NllLossCompute:
     -------
     None
     """
-    def __init__(self, x, target, weight, reduction, ignore_index, kernel_name):
+    def __init__(self, x, target, weight, reduction, ignore_index, kernel_name, impl_mode):
         two_kb = 2048
         self.init_tik_instance()
         self.target = target
@@ -139,6 +139,8 @@ class NllLossCompute:
         self.c_dim = self.x_shape[-1]
         self.invalid_target = (ignore_index < 0 or ignore_index >= self.c_dim) \
             and ignore_index != -100
+        if impl_mode == "high_precision":
+            self.invalid_target = ignore_index < 0 or ignore_index >= self.c_dim
         self.ub_size_bytes = tbe_platform.CceProductParams().getParams(
             "Unified_Buffer") - two_kb
         self.init_gm_size()
@@ -1293,7 +1295,7 @@ class NllLossCompute:
 
 @para_check.check_input_type(dict, dict, dict, dict, dict, str, int, str)
 def nll_loss(x, target, weight, y, total_weight, reduction="mean",
-             ignore_index=-100, kernel_name="nll_loss"):
+             ignore_index=-100, kernel_name="nll_loss", impl_mode="high_performance"):
     """
     calculating data
 
@@ -1323,5 +1325,5 @@ def nll_loss(x, target, weight, y, total_weight, reduction="mean",
     """
     _shape_and_dtype_check(x, target, weight, kernel_name)
     nll_loss_function = NllLossCompute(x, target, weight,
-                                       reduction, ignore_index, kernel_name)
+                                       reduction, ignore_index, kernel_name, impl_mode)
     return nll_loss_function.nll_loss_compute_start()

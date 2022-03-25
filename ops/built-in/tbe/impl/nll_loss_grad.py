@@ -144,7 +144,7 @@ class NllLossGradCompute:
     -------
     None
     """
-    def __init__(self, x, y_grad, target, weight, reduction, ignore_index, kernel_name):
+    def __init__(self, x, y_grad, target, weight, reduction, ignore_index, kernel_name, impl_mode):
         self.init_tik_instance()
         self.reduction = reduction
         self.ignore_index = ignore_index
@@ -161,6 +161,8 @@ class NllLossGradCompute:
         self.c_dim = self.x_shape[-1]
         self.invalid_target = (ignore_index < 0 or ignore_index >= self.c_dim) \
             and ignore_index != -100
+        if impl_mode == "high_precision":
+            self.invalid_target = ignore_index < 0 or ignore_index >= self.c_dim
         self.init_size()
         self.init_gm()
 
@@ -996,7 +998,8 @@ class NllLossGradCompute:
 
 @para_check.check_input_type(dict, dict, dict, dict, dict, dict, str, int, str)
 def nll_loss_grad(x, y_grad, target, weight, total_weight, x_grad,
-                  reduction="mean", ignore_index=-100, kernel_name="nll_loss_grad"):
+                  reduction="mean", ignore_index=-100, kernel_name="nll_loss_grad",
+                  impl_mode="high_performance"):
     """
     calculating data
 
@@ -1029,5 +1032,5 @@ def nll_loss_grad(x, y_grad, target, weight, total_weight, x_grad,
     _shape_and_dtype_check(x, y_grad, target, weight, total_weight,
                            reduction, kernel_name)
     nll_loss_function = NllLossGradCompute(x, y_grad, target, weight,
-                                           reduction, ignore_index, kernel_name)
+                                           reduction, ignore_index, kernel_name, impl_mode)
     return nll_loss_function.nll_loss_compute_start()
