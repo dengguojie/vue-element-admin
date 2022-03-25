@@ -22,7 +22,7 @@
 #include "op_log.h"
 #include "error_log.h"
 
-namespace optiling{
+namespace optiling {
   struct RnnGenMaskV2TilingParams
   {
     int32_t cal_mode;
@@ -80,7 +80,7 @@ namespace optiling{
   }
 
   static void CalCoreInfo(RnnGenMaskV2TilingParams &tiling_params, int32_t core_num,
-                          const std::vector<int64_t> & x_shape){
+                          const std::vector<int64_t> & x_shape) {
     OP_LOGD("CalCoreInfo is running");
     int32_t batch = x_shape[1];
     int32_t num_step = x_shape[0];
@@ -169,7 +169,7 @@ namespace optiling{
     PrintTilingParams(tiling_params);
 
     run_info.block_dim = tiling_params.core_used;
-    std::vector<int64_t> workspace={81920};
+    std::vector<int64_t> workspace = {81920};
     run_info.workspaces = workspace;
     return true;
   }

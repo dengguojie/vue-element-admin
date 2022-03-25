@@ -551,9 +551,11 @@ class PadV3Init:
         self.tik_instance.data_move(used_ub[copy_len * self.block_num:], ub_one_block[self.block_num:], 0, burst_num,
                                     burst_len, 0, 0)
         vnchw_src_list = [used_ub[i * Constant.TRANS_MIN_BLKS] for i in range(Constant.TRANS_MIN_BLKS)]
-        vnchw_dst_list = \
-            [used_ub[i * Constant.TRANS_MIN_BLKS + Constant.TRANS_MIN_BLKS * Constant.TRANS_MIN_BLKS] for i in
-             range(Constant.TRANS_MIN_BLKS)]
+        vnchw_dst_list = []
+        for i in range(Constant.TRANS_MIN_BLKS):
+            vnchw_dst_list.append(used_ub[i * Constant.TRANS_MIN_BLKS + Constant.TRANS_MIN_BLKS *
+                                          Constant.TRANS_MIN_BLKS])
+
         self.tik_instance.vnchwconv(False, False, vnchw_dst_list, vnchw_src_list, 1, 0, 0)
         self.tik_instance.data_move(output_gm[output_offset],
                                     used_ub[Constant.TRANS_MIN_BLKS * Constant.TRANS_MIN_BLKS], 0, 1, bursn_len, 0, 0)
@@ -1162,9 +1164,8 @@ class PadV3Init:
                                                     self.input_gm[input_gm_offset + src_offset], 0, 1, burst_len, 0, 0)
 
                     # step2. vnchw 16 dims origin_data_ub to vnchw_data_ub
-                    origin_data_ub_list = [
-                        origin_data_ub[i * max_output_size] for i in range(0, Constant.TRANS_MIN_BLKS)
-                    ]
+                    origin_data_ub_list = [origin_data_ub[i * max_output_size] for i
+                                           in range(0, Constant.TRANS_MIN_BLKS)]
                     vnchw_data_ub_list = [vnchw_data_ub[i * 16] for i in range(0, Constant.TRANS_MIN_BLKS)]
                     self.tik_instance.vnchwconv(False, False, vnchw_data_ub_list, origin_data_ub_list, vnchw_repeat0,
                                                 vnchw_dst_stride0, vnchw_src_stride0)

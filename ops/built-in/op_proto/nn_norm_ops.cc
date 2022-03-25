@@ -67,6 +67,13 @@ COMMON_INFER_FUNC_REG(AxpyWithSoftmaxAndDropOutDoMask, AxpyWithSoftmaxAndDropOut
 
 // --------------------------DropoutWithMulsAndSoftmaxGrad-------------------------
 IMPLEMT_COMMON_INFERFUNC(DropoutWithMulsAndSoftmaxGradInferShape) {
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  GeTensorDescPtr input_desc = op_desc->MutableInputDesc(0);
+  DataType input_type = input_desc->GetDataType();
+
+  auto y = op_desc->MutableOutputDesc(0);
+  y->SetShape(input_desc->GetShape());
+  y->SetDataType(input_type);
   return GRAPH_SUCCESS;
 }
 
