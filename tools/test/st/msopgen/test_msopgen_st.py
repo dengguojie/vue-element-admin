@@ -155,6 +155,45 @@ class TestUtilsMethods(unittest.TestCase):
         self.assertEqual(error.value.args[0],
                          ConstManager.MS_OP_GEN_CONFIG_INVALID_OPINFO_FILE_ERROR)
 
+    def test_read_json_file(self):
+        with pytest.raises(utils.MsOpGenException) as error:
+            utils.read_json_file('home/json_read')
+        self.assertEqual(error.value.args[0],
+                         ConstManager.MS_OP_GEN_OPEN_FILE_ERROR)
+
+    def test_load_json_expection(self):
+        with pytest.raises(utils.MsOpGenException) as error:
+            utils.json_load('home/json_read', '')
+        self.assertEqual(error.value.args[0],
+                         ConstManager.MS_OP_GEN_READ_FILE_ERROR)
+
+    def test_check_path_valid1(self):
+        with pytest.raises(utils.MsOpGenException) as error:
+            utils.check_path_valid('', True)
+        self.assertEqual(error.value.args[0],
+                         ConstManager.MS_OP_GEN_INVALID_PATH_ERROR)
+
+    def test_make_dirs(self):
+        with pytest.raises(utils.MsOpGenException) as error:
+            with mock.patch('os.path.isdir', return_value=False):
+                with mock.patch('os.makedirs', side_effect=OSError):
+                    utils.make_dirs('/home/test1')
+        self.assertEqual(error.value.args[0],
+                         ConstManager.MS_OP_GEN_MAKE_DIRS_ERROR)
+
+    def test_read_file(self):
+        with pytest.raises(utils.MsOpGenException) as error:
+            utils.read_file("/home/test_read_file")
+        self.assertEqual(error.value.args[0],
+                         ConstManager.MS_OP_GEN_READ_FILE_ERROR)
+
+    def test_write_json_file(self):
+        with pytest.raises(utils.MsOpGenException) as error:
+            with mock.patch('os.fdopen', side_effect=IOError):
+                utils.write_json_file('/home/test1', "ok")
+        self.assertEqual(error.value.args[0],
+                         ConstManager.MS_OP_GEN_WRITE_FILE_ERROR)
+
 
 if __name__ == '__main__':
     unittest.main()

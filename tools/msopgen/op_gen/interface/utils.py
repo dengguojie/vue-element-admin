@@ -69,7 +69,7 @@ def json_load(json_path: str, jsonfile: any) -> any:
         print_error_log(
             'Failed to load json file %s. Please modify it. %s'
             % (json_path, str(ex)))
-        raise MsOpGenException(ConstManager.MS_OP_GEN_READ_FILE_ERROR)
+        raise MsOpGenException(ConstManager.MS_OP_GEN_READ_FILE_ERROR) from ex
     finally:
         pass
 
@@ -86,7 +86,7 @@ def read_json_file(json_path: str) -> any:
     except IOError as io_error:
         print_error_log(
             'Failed to open json file %s. %s' % (json_path, str(io_error)))
-        raise MsOpGenException(ConstManager.MS_OP_GEN_OPEN_FILE_ERROR)
+        raise MsOpGenException(ConstManager.MS_OP_GEN_OPEN_FILE_ERROR) from io_error
     finally:
         pass
 
@@ -287,7 +287,7 @@ def check_path_valid(path: str, isdir: bool = False) -> None:
             print_error_log(
                 'Failed to create {}. Please check the path permission or '
                 'disk space. {} '.format(path, str(ex)))
-            raise MsOpGenException(ConstManager.MS_OP_GEN_INVALID_PATH_ERROR)
+            raise MsOpGenException(ConstManager.MS_OP_GEN_INVALID_PATH_ERROR) from ex
         finally:
             pass
     if not os.path.exists(path):
@@ -400,7 +400,7 @@ def make_dirs(op_dir: str) -> None:
             os.makedirs(op_dir, ConstManager.FOLDER_MASK)
     except OSError as err:
         print_error_log("Unable to make dir: %s." % str(err))
-        raise MsOpGenException(ConstManager.MS_OP_GEN_MAKE_DIRS_ERROR)
+        raise MsOpGenException(ConstManager.MS_OP_GEN_MAKE_DIRS_ERROR) from err
     finally:
         pass
 
@@ -418,7 +418,7 @@ def read_file(op_file: str) -> None:
     except IOError as io_error:
         print_error_log(
             'Failed to open file %s. %s' % (op_file, str(io_error)))
-        raise MsOpGenException(ConstManager.MS_OP_GEN_READ_FILE_ERROR)
+        raise MsOpGenException(ConstManager.MS_OP_GEN_READ_FILE_ERROR) from io_error
     finally:
         pass
 
@@ -463,7 +463,7 @@ def write_json_file(json_path: str, content: str) -> None:
     except IOError as io_error:
         print_error_log(
             'Failed to generate json file %s. %s' % (json_path, str(io_error)))
-        raise MsOpGenException(ConstManager.MS_OP_GEN_WRITE_FILE_ERROR)
+        raise MsOpGenException(ConstManager.MS_OP_GEN_WRITE_FILE_ERROR) from io_error
     finally:
         pass
     print_info_log(

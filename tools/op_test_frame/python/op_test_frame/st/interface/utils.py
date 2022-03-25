@@ -468,6 +468,15 @@ def read_file(op_file):
         pass
 
 
+def dump_json(json_path, content):
+    if os.path.exists(json_path) and os.path.isfile(json_path):
+        os.remove(json_path)
+    with os.fdopen(os.open(json_path, ConstManager.WRITE_FLAGS,
+                           ConstManager.WRITE_MODES), 'w') as file_object:
+        file_object.write(
+            json.dumps(content, sort_keys=False, indent=4))
+
+
 def write_json_file(json_path, content):
     """
     write  content to json file
@@ -475,12 +484,7 @@ def write_json_file(json_path, content):
     :param json_path: the json path
     """
     try:
-        if os.path.exists(json_path) and os.path.isfile(json_path):
-            os.remove(json_path)
-        with os.fdopen(os.open(json_path, ConstManager.WRITE_FLAGS,
-                               ConstManager.WRITE_MODES), 'w') as file_object:
-            file_object.write(
-                json.dumps(content, sort_keys=False, indent=4))
+        dump_json(json_path, content)
     except IOError as io_error:
         print_error_log(
             'Failed to generate file %s. %s' % (json_path, str(io_error)))
@@ -593,12 +597,6 @@ class ScanFile:
         self.first_prefix = first_prefix
         self.second_prefix = second_prefix
 
-    def _check_second_prefix_dir(self, each_file_path, files_list):
-        dir_info = os.path.split(each_file_path)
-        if self.first_prefix:
-            if dir_info[1].startswith(self.second_prefix):
-                files_list.append(each_file_path)
-
     def scan_subdirs(self):
         """
         scan the specified path to get the list of subdirectories.
@@ -629,6 +627,12 @@ class ScanFile:
             if os.path.isdir(each_file_path):
                 self._check_second_prefix_dir(each_file_path, files_list)
         return files_list
+
+    def _check_second_prefix_dir(self, each_file_path, files_list):
+        dir_info = os.path.split(each_file_path)
+        if self.first_prefix:
+            if dir_info[1].startswith(self.second_prefix):
+                files_list.append(each_file_path)
 
 
 class ConstInput:

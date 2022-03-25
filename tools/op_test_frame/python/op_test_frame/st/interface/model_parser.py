@@ -44,8 +44,7 @@ def _function_call(args, op_type, func_name):
     except Exception as ex:
         utils.print_error_log(
             'Failed to execute "%s". %s' % (func_name, str(ex)))
-        raise utils.OpTestGenException(
-            ConstManager.OP_TEST_GEN_INVALID_PARAM_ERROR)
+        raise utils.OpTestGenException(ConstManager.OP_TEST_GEN_INVALID_PARAM_ERROR) from ex
     finally:
         pass
 

@@ -196,8 +196,7 @@ class CaseGenerator:
             utils.print_error_log(
                 'Failed to import "%s" to get operation information of "%s",'
                 ' the reason is %s.' % (module_name, class_name, error))
-            raise utils.OpTestGenException(
-                ConstManager.OP_TEST_GEN_INVALID_DATA_ERROR)
+            raise utils.OpTestGenException(ConstManager.OP_TEST_GEN_INVALID_DATA_ERROR) from error
         finally:
             pass
         self._get_basic_op_info_mindspore(mindspore_ops_info)
@@ -810,8 +809,7 @@ class CaseGenerator:
             new_base_case = self._get_new_base_case(base_case, node)
         except KeyError as error:
             utils.print_error_log("Failed to create case. %s" % error)
-            raise utils.OpTestGenException(
-                ConstManager.OP_TEST_GEN_CONFIG_INVALID_OPINFO_FILE_ERROR)
+            raise utils.OpTestGenException(ConstManager.OP_TEST_GEN_CONFIG_INVALID_OPINFO_FILE_ERROR) from error
         finally:
             pass
         return new_base_case
@@ -963,7 +961,7 @@ class CaseGenerator:
         except IOError as io_error:
             utils.print_error_log(
                 'Failed to generate file %s. %s' % (json_path, str(io_error)))
-            raise utils.OpTestGenException(ConstManager.OP_TEST_GEN_WRITE_FILE_ERROR)
+            raise utils.OpTestGenException(ConstManager.OP_TEST_GEN_WRITE_FILE_ERROR) from io_error
         finally:
             pass
         utils.print_info_log(

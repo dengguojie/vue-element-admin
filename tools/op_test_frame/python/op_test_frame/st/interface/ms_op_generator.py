@@ -70,7 +70,7 @@ def _append_content_to_file(content, file_path):
     except OSError as err:
         utils.print_error_log("Unable to write file(%s): %s." % file_path
                               % str(err))
-        raise utils.OpTestGenException(ConstManager.OP_TEST_GEN_WRITE_FILE_ERROR)
+        raise utils.OpTestGenException(ConstManager.OP_TEST_GEN_WRITE_FILE_ERROR) from err
     finally:
         pass
     utils.print_info_log("Content appended to %s successfully." % file_path)
@@ -114,8 +114,7 @@ class MsOpGenerator:
             utils.print_error_log(
                 'Failed to import "%s" to get operation information of "%s",'
                 ' the reason is %s.' % (op_name_impl, op_name_op_info, error))
-            raise utils.OpTestGenException(
-                ConstManager.OP_TEST_GEN_INVALID_DATA_ERROR)
+            raise utils.OpTestGenException(ConstManager.OP_TEST_GEN_INVALID_DATA_ERROR) from error
         finally:
             pass
         ms_ops_input_list = mindspore_ops_info.get('inputs')

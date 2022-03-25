@@ -24,6 +24,7 @@ from op_test_frame.st.interface.st_report import ReportJsonEncoder
 from op_test_frame.st.interface.op_st_case_info import OpSTCase
 from op_test_frame.st.interface.op_st_case_info import OpSTCaseTrace
 from op_test_frame.st.interface.acl_op_runner import AclOpRunner
+from op_test_frame.st.interface.atc_transform_om import AtcTransformOm
 from op_test_frame.st.interface import acl_op_runner
 from op_test_frame.st.interface import ms_op_generator
 from util import test_utils
@@ -1146,6 +1147,20 @@ class TestUtilsMethods(unittest.TestCase):
                 args = MsopstArgParser()
         self.assertEqual(error.value.args[0],
                          ConstManager.OP_TEST_GEN_INVALID_DEVICE_ID_ERROR)
+
+    def test_msopst_write_content_to_file_error(self):
+        with pytest.raises(utils.OpTestGenException) as error:
+            with mock.patch('os.fdopen', side_effect=OSError):
+                AtcTransformOm._write_content_to_file("content", "/home")
+        self.assertEqual(error.value.args[0],
+                         ConstManager.OP_TEST_GEN_WRITE_FILE_ERROR)
+
+    def test_msopst_write_json_file1(self):
+        with pytest.raises(utils.OpTestGenException) as error:
+            with mock.patch('os.fdopen', side_effect=IOError):
+                utils.write_json_file('/home/result', "test")
+        self.assertEqual(error.value.args[0],
+                         ConstManager.OP_TEST_GEN_WRITE_FILE_ERROR)
 
 
 if __name__ == '__main__':

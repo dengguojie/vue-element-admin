@@ -134,7 +134,7 @@ class AtcTransformOm:
         except OSError as err:
             utils.print_error_log("Unable to write file(%s): %s." % (file_path,
                                                                      str(err)))
-            raise utils.OpTestGenException(ConstManager.OP_TEST_GEN_WRITE_FILE_ERROR)
+            raise utils.OpTestGenException(ConstManager.OP_TEST_GEN_WRITE_FILE_ERROR) from err
         finally:
             pass
         utils.print_info_log("File %s generated successfully." % file_path)

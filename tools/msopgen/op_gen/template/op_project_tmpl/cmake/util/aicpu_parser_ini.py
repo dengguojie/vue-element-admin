@@ -142,14 +142,21 @@ def write_json_file(aicpu_ops_info, json_file_path):
     print("Compile aicpu op info cfg successfully.")
 
 
+def dump_json(aicpu_ops_info, outfile_path_arg):
+    '''
+    dump_json
+    '''
+    check_op_info(aicpu_ops_info)
+    write_json_file(aicpu_ops_info, outfile_path_arg)
+
+
 def parse_ini_to_json(ini_file_paths_arg, outfile_path_arg):
     '''
     parse ini to json
     '''
     aicpu_ops_info = parse_ini_files(ini_file_paths_arg)
     try:
-        check_op_info(aicpu_ops_info)
-        write_json_file(aicpu_ops_info, outfile_path_arg)
+        dump_json(aicpu_ops_info, outfile_path_arg)
     except KeyError:
         print("bad format key value, failed to generate json file")
 
