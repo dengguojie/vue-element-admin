@@ -1466,5 +1466,81 @@
                 "type": "int"
             }
         ]
+    },
+    {
+        "op": "StridedSlice",
+        "case_name": "test_strided_slice_int64_014",
+        "calc_expect_func_file": "strided_slice_golden.py:calc_expect_func",
+        "input_desc": [
+            {
+                "format": "ND",
+                "shape": [-1, 4],
+                "typical_shape": [3164, 4],
+                "shape_range": [[1, 1000000]],
+                "type": "int64",
+                "value_range": [[0, 1]],
+                "data_distribute": "uniform",
+                "name": "x"
+            },
+            {
+                "format": "ND",
+                "shape": [2],
+                "type": "int32",
+                "is_const":true,
+                "value": [0, 1],
+                "name": "begin"
+            },
+            {
+                "format": "ND",
+                "shape": [2],
+                "type": "int32",
+                "is_const":true,
+                "value": [3164, 2],
+                "name": "end"
+            },
+            {
+                "format": "ND",
+                "shape": [2],
+                "type": "int32",
+                "is_const":true,
+                "value": [1, 1],
+                "name": "strides"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": "ND",
+                "shape": [3164, 1],
+                "type": "int64",
+                "name": "y"
+            }
+        ],
+        "attr": [
+            {
+                "name": "begin_mask",
+                "value": 0,
+                "type": "int"
+            },
+            {
+                "name": "end_mask",
+                "value": 0,
+                "type": "int"
+            },
+            {
+                "name": "ellipsis_mask",
+                "value": 0,
+                "type": "int"
+            },
+            {
+                "name": "new_axis_mask",
+                "value": 0,
+                "type": "int"
+            },
+            {
+                "name": "shrink_axis_mask",
+                "value": 0,
+                "type": "int"
+            }
+        ]
     }
 ]

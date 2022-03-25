@@ -1312,7 +1312,7 @@ def strided_slice(input_x,
     tik_instance
     """
     input_dtype = input_x.get("dtype").lower()
-    check_list = ("float16", "float32", "int32", "uint8", "bool", "int8")
+    check_list = ("float16", "float32", "int32", "uint8", "bool", "int8", "int64")
     para_check.check_dtype(input_dtype, check_list, param_name="input_x")
     strided_slice_instance = StridedSlice(input_x, strides, begin_mask, end_mask, ellipsis_mask, new_axis_mask,
                                           shrink_axis_mask, kernel_name)
