@@ -116,7 +116,7 @@ bool MatmulAtomicAddUbFusion::NeedSplitK(const ge::NodePtr &matmul_node) {
   bool need_split_k = false;
   vector<int64_t> shapes = GetMatMulDims(matmul_node);
   auto src_dtype = matmul_node->GetOpDesc()->GetInputDesc(0).GetDataType();
-  if (FilterCase(matmul_node, shapes)) {
+  if (FilterCase(shapes)) {
     return false;
   }
   FUSION_PASS_CHECK(src_dtype != ge::DT_FLOAT16,
@@ -676,7 +676,7 @@ Status MatmulAtomicAddUbFusion::MatMulLinkControlEdge(const ge::NodePtr &matmul_
   return SUCCESS;
 }
 
-bool MatmulAtomicAddUbFusion::FilterCase(const ge::NodePtr &matmul_node, const vector<int64_t> &shapes) {
+bool MatmulAtomicAddUbFusion::FilterCase(const vector<int64_t> &shapes) {
   if (is_dynamic_flag) {
     return false;
   }
@@ -684,18 +684,14 @@ bool MatmulAtomicAddUbFusion::FilterCase(const ge::NodePtr &matmul_node, const v
     {1024, 12288, 1024},
     {1824, 30528, 1024}
   };
-  for (auto one_case : filter_case) {
-    if (IsSameShape(one_case, shapes)) {
-      OP_LOGD(kFusedOpType.c_str(), "this shape is filtered");
-      return true;
-    }
+  if (std::any_of(filter_case.begin(), filter_case.end(), [shapes](vector<int64_t> one_case) {
+        return (one_case.size() == shapes.size() && equal(one_case.begin(), one_case.end(), shapes.begin()));
+      })) {
+    OP_LOGD(kFusedOpType.c_str(), "this shape is filtered");
+    return true;
   }
 
   return false;
-}
-
-bool MatmulAtomicAddUbFusion::IsSameShape(const vector<int64_t> &shape_a, const vector<int64_t> &shape_b) const {
-  return (shape_a.size() == shape_b.size() && equal(shape_a.begin(), shape_a.end(), shape_b.begin()));
 }
 
 Status MatmulAtomicAddUbFusion::GetFusionNodes(const BufferFusionMapping &mapping, vector<ge::NodePtr> &fusion_nodes) {
