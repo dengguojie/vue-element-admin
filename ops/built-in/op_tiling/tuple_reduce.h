@@ -131,7 +131,7 @@ class TupleReduce {
   private:
   bool last_axis_reduce {false};
   std::int64_t reduce_pattern = 0;
-  std::int64_t tmp_product;
+  std::int64_t tmp_product = 1;
   std::size_t block_axis_lb = 0;
   std::size_t block_axis_ub = 0;
   std::size_t core_num = 1;
