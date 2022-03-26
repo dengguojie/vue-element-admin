@@ -144,10 +144,6 @@ bool TopKFusionPass::CheckMultiCoreSegment(NodePtr& topk_node, SegmentCalcParams
   if (optional_info.soc_version.find("Ascend310") != string::npos ||
       optional_info.soc_version.find("Ascend710") != string::npos ||
       optional_info.soc_version.find("Ascend910") != string::npos) {
-    // check data type
-    FUSION_PASS_CHECK(input_data_desc.GetDataType() != ge::DT_FLOAT16,
-                      OP_LOGW(kFusedOpType.c_str(), "CheckMultiCoreSegment: Input data type not support."),
-                      return false);
     // check data size
     FUSION_PASS_CHECK(calcParams.data_size <= calcParams.core_min_num,
                       OP_LOGW(kFusedOpType.c_str(), "CheckMultiCoreSegment: Input data size not support."),

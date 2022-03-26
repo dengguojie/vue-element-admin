@@ -101,7 +101,7 @@ TEST_F(topk_fusion_test, diag_fusion_test_2) {
 TEST_F(topk_fusion_test, diag_fusion_test_3) {
     ge::Graph graph("topk_fusion_test_1");
     auto topk_input_data = op::Data("topk_input_data");
-    std::vector<int64_t> dims{10000};
+    std::vector<int64_t> dims{1000};
     ge::Shape shape(dims);
     ge::TensorDesc tensorDesc(shape);
     topk_input_data.update_input_desc_x(tensorDesc);
