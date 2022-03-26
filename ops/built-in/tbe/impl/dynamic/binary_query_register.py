@@ -24,6 +24,7 @@ def register_binary_match(op_name):
 
 
 register_binary_match("Add")
+register_binary_match("AddV2")
 register_binary_match("ApplyAdamD")
 register_binary_match("ApplyMomentumD")
 register_binary_match("ApplyRMSPropD")

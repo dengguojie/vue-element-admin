@@ -253,6 +253,7 @@ def test_import_lib(test_arg):
     """
     import sys
     import importlib
+
     importlib.reload(sys.modules.get("impl.dynamic.binary_query_register"))
 
 
