@@ -34,7 +34,7 @@ TEST_F(resize_onnx_plugin_test, resize_onnx_plugin_test_case_1) {
   EXPECT_EQ(status, ge::GRAPH_SUCCESS);
   // check op count, some op need check op attr, op input count.
   std::vector<ge::GNode> nodes = graph.GetAllNodes();
-  EXPECT_EQ(nodes.size(), 14);
+  EXPECT_EQ(nodes.size(), 4);
 }
 
 TEST_F(resize_onnx_plugin_test, resize_onnx_plugin_test_case_2) {
@@ -53,7 +53,7 @@ TEST_F(resize_onnx_plugin_test, resize_onnx_plugin_test_case_2) {
   EXPECT_EQ(status, ge::GRAPH_SUCCESS);
   // check op count, some op need check op attr, op input count.
   std::vector<ge::GNode> nodes = graph.GetAllNodes();
-  EXPECT_EQ(nodes.size(), 13);
+  EXPECT_EQ(nodes.size(), 5);
 }
 
 TEST_F(resize_onnx_plugin_test, resize_onnx_plugin_test_case_3) {
@@ -72,7 +72,7 @@ TEST_F(resize_onnx_plugin_test, resize_onnx_plugin_test_case_3) {
   EXPECT_EQ(status, ge::GRAPH_SUCCESS);
   // check op count, some op need check op attr, op input count.
   std::vector<ge::GNode> nodes = graph.GetAllNodes();
-  EXPECT_EQ(nodes.size(), 13);
+  EXPECT_EQ(nodes.size(), 5);
 }
 
 TEST_F(resize_onnx_plugin_test, resize_onnx_plugin_test_case_4) {
@@ -91,7 +91,7 @@ TEST_F(resize_onnx_plugin_test, resize_onnx_plugin_test_case_4) {
   EXPECT_EQ(status, ge::GRAPH_SUCCESS);
   // check op count, some op need check op attr, op input count.
   std::vector<ge::GNode> nodes = graph.GetAllNodes();
-  EXPECT_EQ(nodes.size(), 14);
+  EXPECT_EQ(nodes.size(), 4);
 }
 
 TEST_F(resize_onnx_plugin_test, resize_onnx_plugin_test_case_5) {
@@ -107,10 +107,10 @@ TEST_F(resize_onnx_plugin_test, resize_onnx_plugin_test_case_5) {
 
   auto status = aclgrphParseONNX(modelFile.c_str(), parser_params, graph);
 
-  EXPECT_EQ(status, ge::GRAPH_FAILED);
+  EXPECT_EQ(status, ge::GRAPH_SUCCESS);
   // check op count, some op need check op attr, op input count.
   std::vector<ge::GNode> nodes = graph.GetAllNodes();
-  EXPECT_EQ(nodes.size(), 0);
+  EXPECT_EQ(nodes.size(), 4);
 }
 
 TEST_F(resize_onnx_plugin_test, resize_onnx_plugin_test_case_6) {
@@ -129,7 +129,7 @@ TEST_F(resize_onnx_plugin_test, resize_onnx_plugin_test_case_6) {
   EXPECT_EQ(status, ge::GRAPH_SUCCESS);
   // check op count, some op need check op attr, op input count.
   std::vector<ge::GNode> nodes = graph.GetAllNodes();
-  EXPECT_EQ(nodes.size(), 11);
+  EXPECT_EQ(nodes.size(), 6);
 }
 
 TEST_F(resize_onnx_plugin_test, resize_onnx_plugin_test_case_7) {
@@ -148,5 +148,5 @@ TEST_F(resize_onnx_plugin_test, resize_onnx_plugin_test_case_7) {
   EXPECT_EQ(status, ge::GRAPH_SUCCESS);
   // check op count, some op need check op attr, op input count.
   std::vector<ge::GNode> nodes = graph.GetAllNodes();
-  EXPECT_EQ(nodes.size(), 11);
+  EXPECT_EQ(nodes.size(), 6);
 }
