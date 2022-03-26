@@ -205,6 +205,7 @@ set(_optiling_files
   trace.cc
   moving_sum_with_sigmoid.cc
   dyn_seq_outer.cc
+  resize.cc
 )
 
 set(_op_tiling_include

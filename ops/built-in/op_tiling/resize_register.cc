@@ -42,8 +42,8 @@
 #include "resize_common.h"
 
 namespace optiling {
-static bool ResizeCommonTiling(const std::string& op_type, const ge::Operator& op_paras,
-                               const ResizeCommonInputCompile& op_info, utils::OpRunInfo& run_info) {
+bool ResizeCommonTiling(const std::string& op_type, const ge::Operator& op_paras,
+                        const ResizeCommonInputCompile& op_info, utils::OpRunInfo& run_info) {
   using namespace ge;
   auto operator_info = OpDescUtils::GetOpDescFromOperator(op_paras);
   if (operator_info == nullptr) {

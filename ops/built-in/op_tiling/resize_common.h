@@ -112,6 +112,16 @@ bool ResizeCommonParseFunc(const std::string& op_type, const nlohmann::json& com
                            ResizeCommonInputCompile& compile_value);
 
 /*
+ * @brief: resize common tiling function
+ * @param [in] op_type: the op name
+ * @param [in] op_paras: the op node
+ * @param [in] op_info: compile_info structural
+ * @param [out] run_info: info to dynamic params
+ */
+bool ResizeCommonTiling(const std::string& op_type, const ge::Operator& op_paras,
+                        const ResizeCommonInputCompile& op_info, utils::OpRunInfo& run_info);
+
+/*
  * @brief: print the tiling info and compile info
  * @param [in] compile_info: the compile json info
  * @param [in] compile_params: the compile info struct

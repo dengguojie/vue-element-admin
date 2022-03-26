@@ -2881,62 +2881,114 @@ static graphStatus HadleSizeOut(const Operator& op,
 
 // ---------------ResizeNearest Op start-------------------
 IMPLEMT_INFERFUNC(Resize, ResizeNearestInferShape) {
-  vector<int64_t> images_shape = op.GetInputDesc("x").GetShape().GetDims();
-  DataType input_dtype = op.GetInputDesc("x").GetDataType();
-  Format input_format = op.GetInputDesc("x").GetFormat();
-  int64_t inputs_size = op.GetInputsSize();
-  DataType inputs_dtype_scales = op.GetInputDesc("scales").GetDataType();
-  TensorDesc td = op.GetOutputDesc("y");
-  Tensor scales_tensor;
-  Tensor sizes_tensor;
-  vector<int64_t> size_out;
-  vector<float_t> scale_out;
-
-  if (op.GetInputConstData("scales", scales_tensor) != GRAPH_SUCCESS) {
-    OP_LOGW(op.GetName().c_str(), "Get constValue failed of [scales]");
-  }
-
-  if (inputs_size == 4) {  // 4 is number of inputs
-    if (op.GetInputConstData("sizes", sizes_tensor) != GRAPH_SUCCESS) {
-      OP_LOGW(op.GetName().c_str(), "Get constValue failed of [sizes]");
-    }
-    DataType input_dtype_sizes = op.GetInputDesc("sizes").GetDataType();
-    GetConstValue(op, sizes_tensor, input_dtype_sizes, size_out);
-  }
-  if (size_out.size() == 0) {
-    GetConstValueFloat(op, scales_tensor, inputs_dtype_scales, scale_out);
-    if (!CalculateSizeOut(op, images_shape, scale_out, input_format, size_out)) {
-      std::string  err_msg = OtherErrMsg("calculate size out failed.");
-      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName().c_str(), err_msg);
+  OP_LOGI(op.GetName().c_str(), "Resize Start Infer Shape!");
+  auto op_desc_info = OpDescUtils::GetOpDescFromOperator(op);
+  auto input_desc_x = op_desc_info->MutableInputDesc("x");
+  auto input_sizes = op_desc_info->MutableInputDesc("sizes");
+  auto input_scales = op_desc_info->MutableInputDesc("scales");
+  auto output_desc = op_desc_info->MutableOutputDesc("y");
+  DataType input_dtype = input_desc_x->GetDataType();
+  Format input_format = input_desc_x->GetFormat();
+  vector<int64_t> x_shape = input_desc_x->MutableShape().GetDims();
+  std::vector<std::pair<int64_t, int64_t>> x_range;
+  // check format and get rank num
+  int64_t dim_num;
+  if (input_format == FORMAT_NCHW || input_format == FORMAT_NHWC) {
+    dim_num = 4;
+  } else if (input_format == FORMAT_NDHWC || input_format == FORMAT_NCDHW) {
+    dim_num = 5;
+  } else {
+    dim_num = x_shape.size();
+    if (dim_num == 4) {
+      input_format = FORMAT_NCHW;
+      input_desc_x->SetFormat(input_format);
+    } else if (dim_num == 5) {
+      input_format = FORMAT_NCDHW;
+      input_desc_x->SetFormat(input_format);
+    } else {
+      OP_LOGE(op.GetName().c_str(), "Input format not support");
       return GRAPH_FAILED;
     }
   }
-  HadleSizeOut(op, input_format, size_out);
-
-  vector<int64_t> y_shape;
-  if (input_format == FORMAT_NHWC && images_shape.size() > 3) {
-    y_shape.push_back(images_shape[0]);  // 0 is index
-    y_shape.push_back(size_out[0]);      // 0 is index
-    y_shape.push_back(size_out[1]);      // 1 is index
-    y_shape.push_back(images_shape[3]);  // 3 is index
-  } else if (input_format == FORMAT_NCHW && images_shape.size() > 1) {
-    y_shape.push_back(images_shape[0]);  // 0 is index
-    y_shape.push_back(images_shape[1]);  // 1 is index
-    y_shape.push_back(size_out[0]);      // 0 is index
-    y_shape.push_back(size_out[1]);      // 1 is index
-  } else {
-    std::string err_msg = GetInputFormatNotSupportErrMsg("input_format",
-                                                           ConcatString("FORMAT_NHWC, FORMAT_NCHW"),
-                                                           std::to_string(input_format));
-    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
-    return false;
+  // unknown rank
+  bool is_unknown_rank_x = x_shape == UNKNOWN_RANK;
+  if (is_unknown_rank_x) {
+    OP_LOGE(op.GetName().c_str(), "Unknown rank not support");
+    return GRAPH_FAILED;
   }
-  td.SetShape(ge::Shape(y_shape));
-  td.SetDataType(input_dtype);
-  td.SetFormat(input_format);
-  (void)op.UpdateOutputDesc("y", td);
+  input_desc_x->GetShapeRange(x_range);
+  // get x_shape and x_range
+  MakeUpShapeRange(x_shape, x_range);
+  if (x_shape.size() != dim_num) {
+    OP_LOGE(op.GetName().c_str(), "Rank of x_shape not support");
+    return GRAPH_FAILED;
+  }
+
+  // infer y_range and y_shape
+  std::vector<std::pair<int64_t, int64_t>> y_range;
+  vector<int64_t> y_shape;
+
+  Tensor sizes_tensor;
+  Tensor scales_tensor;
+  vector<int64_t> sizes_out;
+  vector<float_t> scales_out;
+  if (input_sizes != nullptr) {
+    // infer shape by sizes
+    const vector<string> depend_names = {"sizes"};
+    PREPARE_DYNAMIC_SHAPE(depend_names);
+    if (op.GetInputConstData("sizes", sizes_tensor) == GRAPH_SUCCESS) {
+      DataType sizes_dtype = op.GetInputDesc("sizes").GetDataType();
+      GetConstValue(op, sizes_tensor, sizes_dtype, sizes_out);
+      if (sizes_out.size() != dim_num) {
+        OP_LOGE(op.GetName().c_str(), "Rank of sizesnot support");
+        return GRAPH_FAILED;
+      }
+      for (int64_t i = 0; i < dim_num; i++) {
+        y_shape.push_back(sizes_out[i]);
+        y_range.push_back({ sizes_out[i], sizes_out[i] });
+      }
+    }
+  } else if (input_scales != nullptr) {
+    // infer shape by scales
+    const vector<string> depend_names = {"scales"};
+    PREPARE_DYNAMIC_SHAPE(depend_names);
+    if (op.GetInputConstData("scales", scales_tensor) == GRAPH_SUCCESS) {
+      DataType scales_dtype = op.GetInputDesc("scales").GetDataType();
+      GetConstValueFloat(op, scales_tensor, scales_dtype, scales_out);
+      if (scales_out.size() != dim_num) {
+        OP_LOGE(op.GetName().c_str(), "Rank of scales support");
+        return GRAPH_FAILED;
+      }
+      for (int64_t i = 0; i < dim_num; i++) {
+        if (x_shape[i] == -1) {
+          y_shape.push_back(-1);
+          y_range.push_back({ 1, -1 });
+        } else {
+          int64_t output_dim_num = floor(x_shape[i] * scales_out[i]);
+          y_shape.push_back(output_dim_num);
+          y_range.push_back({ output_dim_num, output_dim_num });
+        }
+      }
+    }
+  } else {
+    OP_LOGE(op.GetName().c_str(), "Can not get sizes and scales");
+    return GRAPH_FAILED;
+  }
+  if (y_shape.size() == 0) {
+    for (int64_t i = 0; i < dim_num; i++) {
+      y_shape.push_back(-1);
+      y_range.push_back({ 0, -1 });
+    }
+  }
+  output_desc->SetShape(GeShape(y_shape));
+  output_desc->SetOriginShape(GeShape(y_shape));
+  output_desc->SetShapeRange(y_range);
+  output_desc->SetDataType(input_dtype);
+  output_desc->SetFormat(input_format);
+  OP_LOGI(op.GetName().c_str(), "Resize Infer Shape Success!");
   return GRAPH_SUCCESS;
 }
+
 INFER_FUNC_REG(Resize, ResizeNearestInferShape);
 // ---------------ResizeNearest Op End-------------------
 // ----------------Resize END---------------------

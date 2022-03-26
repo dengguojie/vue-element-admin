@@ -1958,6 +1958,7 @@ unkown:
       - ops/built-in/op_tiling/gen_adc.cc
       - ops/built-in/op_tiling/pad_common.cc
       - ops/built-in/op_tiling/avg_poolv2.cc
+      - ops/built-in/op_tiling/resize.cc
       - ops/built-in/op_proto/sdca_ops.cc
       - ops/built-in/op_proto/avg_pool_1d_ops.cc
       - ops/built-in/op_proto/selection_ops.cc
@@ -2883,6 +2884,7 @@ unkown:
       - ops/built-in/tbe/impl/dynamic/mirror_pad.py
       - ops/built-in/tbe/impl/dynamic/sigmoid_cross_entropy_with_logits_v2.py
       - ops/built-in/tbe/impl/dynamic/resize_bilinear_v2.py
+      - ops/built-in/tbe/impl/dynamic/resize.py
       - ops/built-in/tbe/impl/dynamic/logical_and.py
       - ops/built-in/tbe/impl/auto_tune/__init__.py
       - ops/built-in/tbe/impl/auto_tune/resize_bilinear_v2.py
