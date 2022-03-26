@@ -32,6 +32,7 @@ namespace {
   constexpr int32_t TILING_MODE_1 = 1;
   constexpr int32_t TILING_MODE_2 = 2;
   constexpr int32_t TILING_MODE_3 = 3;
+  constexpr int32_t TILING_MODE_4 = 4;
   constexpr int32_t TILING_MODE_5 = 5;
   constexpr int32_t TILING_MODE_6 = 6;
   constexpr int32_t ALLIGN_NUM = 16;
@@ -46,6 +47,7 @@ namespace {
   constexpr int32_t RESNET50_pads = 1;
   constexpr int32_t RESNET50_DILATION = 1;  
   constexpr int32_t RESNET50_IN = 112;
+  constexpr int32_t GATHER_LEN = 256;
 }
 
 namespace optiling {
@@ -154,7 +156,7 @@ static int32_t DivRtn(int32_t x, int32_t y) {
   return q;
 }
 
-bool check_resnet50(const vector<int64_t>& input_shape, int32_t ksize_h, int32_t ksize_w, 
+bool check_resnet50(const vector<int64_t>& input_shape, int32_t ksize_h, int32_t ksize_w,
                     int32_t strides_h, int32_t strides_w, int32_t pad_t, int32_t pad_l, int32_t ceil_mode) {
   if ((ksize_h == RESNET50_ksize) && (ksize_w == RESNET50_ksize) && 
       (strides_h == RESNET50_stride) && (strides_w == RESNET50_stride) && 
@@ -170,6 +172,7 @@ bool check_resnet50(const vector<int64_t>& input_shape, int32_t ksize_h, int32_t
 
 static int32_t GetRequireMemory(TilingParam& param, int32_t mode, int32_t input_memory, int32_t k_h, int32_t k_w) {
   int32_t align_output_w = 0;
+  int32_t align_output_hw = 0;
   int32_t mask_memory = 0;
   int32_t require_memory = 0;
   if (param.output_w % ALLIGN_NUM != 0) {
@@ -178,7 +181,12 @@ static int32_t GetRequireMemory(TilingParam& param, int32_t mode, int32_t input_
     align_output_w = param.output_w;
   }
   if (mode == TILING_MODE_1) {
-    mask_memory = align_output_w * param.output_h * k_h * k_w;
+    align_output_hw = param.output_w * param.output_h;
+    if (align_output_hw % ALLIGN_NUM != 0) {
+      align_output_hw = (align_output_hw / ALLIGN_NUM + 1) * ALLIGN_NUM;
+    }
+    align_output_hw = (align_output_hw / ALLIGN_NUM + 1) * ALLIGN_NUM;
+    mask_memory = align_output_hw * k_h * k_w;
   } else if (mode == TILING_MODE_2) {
     mask_memory = align_output_w * k_h * k_w;
   }
@@ -308,15 +316,27 @@ static void CalTilingParam(TilingParam& param, const vector<int64_t>& input_shap
     int32_t require_memory_2 = GetRequireMemory(param, TILING_MODE_2,
                                                 ksize_h * param.pad_w * input_shape[INPUT_INDEX_FOUR],
                                                 ksize_h, ksize_w);
-    if (require_memory_1 <= one_sixth_ub_ele) {
+    if (require_memory_1 <= (one_sixth_ub_ele - GATHER_LEN * C_ZERO)) {
       param.tiling_mode = TILING_MODE_1;
       CalCoreNum(param, param.n_c1, core_num);
-      param.c_factor = one_sixth_ub_ele / require_memory_1;
+      if (require_memory_1 == 0) {
+        VECTOR_INNER_ERR_REPORT_TILIING("MaxPoolWithArgMaxV2", "require_memory_1 value cannot be zero");
+      }
+      param.c_factor = (one_sixth_ub_ele - GATHER_LEN * C_ZERO) / require_memory_1;
       param.one_core_loop_num = param.one_core_ele / param.c_factor;
       param.one_core_loop_left = param.one_core_ele % param.c_factor;
       param.last_core_loop_num = param.last_core_ele / param.c_factor;
       param.last_core_loop_left = param.last_core_ele % param.c_factor;
-    } else if (require_memory_2 <= one_sixth_ub_ele) {
+    } else if (require_memory_2 <= (one_sixth_ub_ele - GATHER_LEN * C_ZERO)) {
+      param.tiling_mode = TILING_MODE_4;
+      param.h_factor = GetFactor(param, TILING_MODE_2, (one_sixth_ub_ele - GATHER_LEN * C_ZERO), input_shape[INPUT_INDEX_FOUR],
+                                 ksize_h, ksize_w, strides_h, strides_w);
+      CalCoreNum(param, param.n_c1, core_num);
+      param.one_core_loop_num = param.output_h / param.h_factor;
+      param.one_core_loop_left = param.output_h % param.h_factor;
+      param.last_core_loop_num = param.one_core_loop_num;
+      param.last_core_loop_left = param.one_core_loop_left;
+    }  else if (require_memory_2 <= one_sixth_ub_ele) {
       param.tiling_mode = TILING_MODE_2;
       param.h_factor = GetFactor(param, TILING_MODE_2, one_sixth_ub_ele, input_shape[INPUT_INDEX_FOUR],
                                  ksize_h, ksize_w, strides_h, strides_w);

@@ -127,7 +127,7 @@ TEST_F(MaxPoolWithArgmaxV1Tiling, maxpool_with_argmax_v1_tiling_1) {
     op_compile_info.key = "maxpool_with_argmax_v1_tiling_1";
     OpRunInfo runInfo;
     ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
-    EXPECT_EQ(to_string(runInfo.tiling_data), "1 20 1 1 35 35 17 17 34 34 0 0 0 0 1 1 1 1 0 1 0 20 16 0 32 320 ");
+    EXPECT_EQ(to_string(runInfo.tiling_data), "4 20 1 1 35 35 17 17 34 34 0 0 0 0 1 15 1 1 2 1 2 20 16 16 32 320 ");
 }
 
 TEST_F(MaxPoolWithArgmaxV1Tiling, maxpool_with_argmax_v1_tiling_2) {
@@ -177,5 +177,5 @@ TEST_F(MaxPoolWithArgmaxV1Tiling, maxpool_with_argmax_v1_tiling_2) {
     op_compile_info.key = "maxpool_with_argmax_v1_tiling_2";
     OpRunInfo runInfo;
     ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
-    EXPECT_EQ(to_string(runInfo.tiling_data), "2 20 1 1 100 100 50 50 100 100 0 0 0 0 1 6 1 8 2 8 2 20 16 16 64 2528 ");
+    EXPECT_EQ(to_string(runInfo.tiling_data), "4 20 1 1 100 100 50 50 100 100 0 0 0 0 1 5 1 10 0 10 0 20 16 0 64 2528 ");
 }

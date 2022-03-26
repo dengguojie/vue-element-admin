@@ -87,12 +87,12 @@ TEST_F(MaxPoolWithArgmaxV2Tiling, maxpool_with_argmax_v2_tiling_1) {
     ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
     std::string compileInfo =
-        "{\"vars\": {\"ub_ele\": 126976, \"core_num\": 32, \"ksize_h\": 2, \"ksize_w\": 2, \"strides_h\": 2, "
+        "{\"vars\": {\"ub_ele\": 126976, \"core_num\": 32, \"ksize_h\": 3, \"ksize_w\": 3, \"strides_h\": 2, "
         "\"strides_w\": 2, \"padding\": 0, \"ceil_mode\": 0, \"pad_top\": 0, \"pad_bottom\": 0, \"pad_left\": 0, \"pad_right\": 0, \"global\": 0}}";
 
-    std::vector<int64_t> input0{4, 5, 35, 35, 16};
-    std::vector<int64_t> output0{4, 5, 17, 17, 16};
-    std::vector<int64_t> output1{4, 5, 4, 20, 16};
+    std::vector<int64_t> input0{4, 5, 28, 28, 16};
+    std::vector<int64_t> output0{4, 5, 13, 13, 16};
+    std::vector<int64_t> output1{4, 5, 9, 12, 16};
 
     TeOpTensor tensor_input0;
     tensor_input0.shape = input0;
@@ -127,7 +127,7 @@ TEST_F(MaxPoolWithArgmaxV2Tiling, maxpool_with_argmax_v2_tiling_1) {
     op_compile_info.key = "maxpool_with_argmax_v2_tiling_1";
     OpRunInfo runInfo;
     ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
-    EXPECT_EQ(to_string(runInfo.tiling_data), "1 20 1 1 35 35 17 17 34 34 0 0 0 0 1 1 1 1 0 1 0 20 16 0 32 320 ");
+    EXPECT_EQ(to_string(runInfo.tiling_data), "1 20 1 1 28 28 13 13 27 27 0 0 0 0 1 1 1 1 0 1 0 20 16 0 16 192 ");
 }
 
 TEST_F(MaxPoolWithArgmaxV2Tiling, maxpool_with_argmax_v2_tiling_2) {
@@ -177,7 +177,7 @@ TEST_F(MaxPoolWithArgmaxV2Tiling, maxpool_with_argmax_v2_tiling_2) {
     op_compile_info.key = "maxpool_with_argmax_v2_tiling_2";
     OpRunInfo runInfo;
     ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
-    EXPECT_EQ(to_string(runInfo.tiling_data), "2 20 1 1 100 100 50 50 100 100 0 0 0 0 1 6 1 8 2 8 2 20 16 16 64 2528 ");
+    EXPECT_EQ(to_string(runInfo.tiling_data), "4 20 1 1 100 100 50 50 100 100 0 0 0 0 1 5 1 10 0 10 0 20 16 0 64 2528 ");
 }
 
 TEST_F(MaxPoolWithArgmaxV2Tiling, maxpool_with_argmax_v2_tiling_3) {
@@ -328,4 +328,54 @@ TEST_F(MaxPoolWithArgmaxV2Tiling, maxpool_with_argmax_v2_tiling_5) {
     OpRunInfo runInfo;
     ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
     EXPECT_EQ(to_string(runInfo.tiling_data), "6 32 4 4 112 112 56 56 113 113 1 0 1 0 1 1 1 0 0 0 0 128 16 0 64 3152 ");
+}
+
+TEST_F(MaxPoolWithArgmaxV2Tiling, maxpool_with_argmax_v2_tiling_6) {
+    using namespace optiling;
+    std::string op_name = "MaxPoolWithArgmaxV2";
+    auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+    ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
+
+    std::string compileInfo =
+        "{\"vars\": {\"ub_ele\": 126976, \"core_num\": 32, \"ksize_h\": 2, \"ksize_w\": 2, \"strides_h\": 2, "
+        "\"strides_w\": 2, \"padding\": 0, \"ceil_mode\": 0, \"pad_top\": 1, \"pad_bottom\": 0, \"pad_left\": 1, \"pad_right\": 0, \"global\": 0}}";
+
+    std::vector<int64_t> input0{8, 3, 640, 640, 16};
+    std::vector<int64_t> output0{8, 3, 321, 321, 16};
+    std::vector<int64_t> output1{8, 3, 4, 6442, 16};
+
+    TeOpTensor tensor_input0;
+    tensor_input0.shape = input0;
+    tensor_input0.dtype = "float16";
+    tensor_input0.format = "NC1HWC0";
+    TeOpTensor tensor_output0;
+    tensor_output0.shape = output0;
+    tensor_output0.dtype = "float16";
+    tensor_output0.format = "NC1HWC0";
+    TeOpTensor tensor_output1;
+    tensor_output1.shape = output1;
+    tensor_output1.dtype = "uint16";
+    tensor_output1.format = "NC1HWC0";
+
+    TeOpTensorArg tensor_input_arg0;
+    tensor_input_arg0.tensor.push_back(tensor_input0);
+    tensor_input_arg0.arg_type = TensorArgType::TA_SINGLE;
+    TeOpTensorArg tensor_output_arg0;
+    tensor_output_arg0.tensor.push_back(tensor_output0);
+    tensor_output_arg0.arg_type = TensorArgType::TA_SINGLE;
+    TeOpTensorArg tensor_output_arg1;
+    tensor_output_arg1.tensor.push_back(tensor_output1);
+    tensor_output_arg1.arg_type = TensorArgType::TA_SINGLE;
+
+    TeOpParas opParas;
+    opParas.inputs.push_back(tensor_input_arg0);
+    opParas.outputs.push_back(tensor_output_arg0);
+    opParas.outputs.push_back(tensor_output_arg1);
+    opParas.op_type = op_name;
+    OpCompileInfo op_compile_info;
+    op_compile_info.str = compileInfo;
+    op_compile_info.key = "maxpool_with_argmax_v2_tiling_6";
+    OpRunInfo runInfo;
+    ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
+    EXPECT_EQ(to_string(runInfo.tiling_data), "2 24 1 1 640 640 321 321 642 642 1 1 1 1 1 1 1 321 0 321 0 24 16 0 336 103072 ");
 }

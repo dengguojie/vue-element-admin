@@ -24,6 +24,7 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
 from impl.dynamic import max_pool_with_argmax_v2_resnet50 as resnet50
 
+
 # 'pylint: disable=too-few-public-methods
 class Constant:
     """
@@ -52,6 +53,10 @@ class Constant:
     MIN_FL16 = -65504.0
     # min float32
     MIN_FL32 = -3.40282346638e38
+    # gather len
+    GATHER_LEN = 256
+    # UB_SRC_SIZE
+    UB_SRC_SIZE = 256 * 16
 
 
 # 'pylint: disable=too-many-lines,invalid-name,too-many-arguments,consider-using-in
@@ -128,9 +133,10 @@ class MaxPoolWithargmaxPytorch:
 
         self.ub_ele = (tbe_platform.get_soc_spec(tbe_platform.UB_SIZE) - Constant.RESERVED_UB_SIZE) \
                       // self.dtype_size
+        self.c_zero = 16
         # reduce need three buffer and open double buffer
         self.one_sixth_ub_ele = self.ub_ele // 6
-        self.c_zero = 16
+        self.ub_avg_size = (self.ub_ele - Constant.GATHER_LEN * self.c_zero) // 6
         # using dtype_size to caculate mask
         self.mask = 256 // self.dtype_size
         # burst num of each c0, float16:1, float32:2
@@ -205,6 +211,10 @@ class MaxPoolWithargmaxPytorch:
         self.Scalar_zero = None
         self.max_ele = None
         self.tiling_ub = None
+        self.data_repeat = None
+        self.data_repeat_left = None
+        self.ub_src = None
+        self.align_ele_w = None
 
     def tiling_args(self):
         """Get runtime params from tiling
@@ -261,6 +271,12 @@ class MaxPoolWithargmaxPytorch:
         self.align_output_w.set_as(self.tiling_ub[24])
         self.align_output_hw = self.tik_instance.Scalar("int32", name="align_output_hw")
         self.align_output_hw.set_as(self.tiling_ub[25])
+        # for gather tensor
+        self.align_ele_w = self.tik_instance.Scalar("int32", name="align_ele_w")
+        self.data_repeat = self.tik_instance.Scalar("int32", name="data_repeat")
+        self.data_repeat.set_as(self.output_w * self.output_h // Constant.GATHER_LEN)
+        self.data_repeat_left = self.tik_instance.Scalar("int32", name="data_repeat_left")
+        self.data_repeat_left.set_as(self.output_w * self.output_h % Constant.GATHER_LEN)
 
     def init_gm_tensor(self):
         """Init gm tensor
@@ -283,6 +299,18 @@ class MaxPoolWithargmaxPytorch:
         self.ub_d = self.tik_instance.Tensor(self.dtype, (self.one_sixth_ub_ele,), name="ub_d", scope=tik.scope_ubuf)
         self.ub_e = self.tik_instance.Tensor(self.dtype, (self.one_sixth_ub_ele,), name="ub_e", scope=tik.scope_ubuf)
         self.ub_f = self.tik_instance.Tensor(self.dtype, (self.one_sixth_ub_ele,), name="ub_f", scope=tik.scope_ubuf)
+
+    def dynamic_ub_tensor(self):
+        """Init ub tensor
+        """
+        self.ub_src = self.tik_instance.Tensor(self.dtype, (Constant.UB_SRC_SIZE,), name="ub_src", scope=tik.scope_ubuf)
+
+        self.ub_a = self.tik_instance.Tensor(self.dtype, (self.ub_avg_size,), name="ub_a", scope=tik.scope_ubuf)
+        self.ub_b = self.tik_instance.Tensor(self.dtype, (self.ub_avg_size,), name="ub_b", scope=tik.scope_ubuf)
+        self.ub_c = self.tik_instance.Tensor(self.dtype, (self.ub_avg_size,), name="ub_c", scope=tik.scope_ubuf)
+        self.ub_d = self.tik_instance.Tensor(self.dtype, (self.ub_avg_size,), name="ub_d", scope=tik.scope_ubuf)
+        self.ub_e = self.tik_instance.Tensor(self.dtype, (self.ub_avg_size,), name="ub_e", scope=tik.scope_ubuf)
+        self.ub_f = self.tik_instance.Tensor(self.dtype, (self.ub_avg_size,), name="ub_f", scope=tik.scope_ubuf)
 
     def init_ub_scalar(self):
         """Init ub scalar
@@ -333,7 +361,7 @@ class MaxPoolWithargmaxPytorch:
 
         with self.tik_instance.for_range(0, loop_num) as loop_idx:
             with self.tik_instance.if_scope(tik.all(core_idx == self.act_core_num - 1,
-                                            loop_left == 0, loop_idx == loop_num - 1)):
+                                                    loop_left == 0, loop_idx == loop_num - 1)):
                 self.copy_only_process(core_idx, loop_idx, self.max_ele, align_max_ele, 1)
             with self.tik_instance.else_scope():
                 self.copy_only_process(core_idx, loop_idx, self.max_ele, align_max_ele, 0)
@@ -669,9 +697,65 @@ class MaxPoolWithargmaxPytorch:
                     offset_src0 = p_idx * size_pw * self.strides_h + ks_h * size_pw + ks_w * self.c_zero
                     offset_src1 = p_idx * size_ow
                     self.mask_repeat_width(ub_y[offset_dst:], ub_x[offset_src0:], ub_z[offset_src1:],
-                                           size_ow, align_w, self.strides_w, 1)
+                                           size_ow, self.strides_w, 1)
 
-    def mask_repeat_width(self, dst, src0, src1, size, align_size, src0_blk=1, src1_blk=1):
+    def gather_tensor_w(self, raw_src, src_len, src_offset):
+        first_row = self.output_w - src_offset
+        with self.tik_instance.if_scope(first_row < src_len):
+            with self.tik_instance.if_scope(first_row > 0):
+                self.tik_instance.data_move(self.ub_src, raw_src, 0, first_row, 1, self.strides_w - 1, 0)
+
+            mid_repeat = (src_len - first_row) // self.output_w
+            last_left = (src_len - first_row) % self.output_w
+
+            with self.tik_instance.for_range(0, mid_repeat) as mid_idx:
+                src_idx = first_row * self.c_zero + self.output_w * mid_idx * self.c_zero
+                raw_src_idx = ((first_row - 1) * self.strides_w + self.ksize_w) * self.c_zero + \
+                              (self.strides_h - 1) * self.pad_w * self.c_zero + \
+                              mid_idx * self.strides_h * self.pad_w * self.c_zero
+                self.tik_instance.data_move(self.ub_src[src_idx], raw_src[raw_src_idx], 0, self.output_w, 1,
+                                            self.strides_w - 1, 0)
+
+            with self.tik_instance.if_scope(last_left > 0):
+                src_idx = first_row * self.c_zero + self.output_w * mid_repeat * self.c_zero
+                raw_src_idx = ((first_row - 1) * self.strides_w + self.ksize_w) * self.c_zero + \
+                              (self.strides_h - 1) * self.pad_w * self.c_zero + \
+                              mid_repeat * self.strides_h * self.pad_w * self.c_zero
+                self.tik_instance.data_move(self.ub_src[src_idx], raw_src[raw_src_idx], 0, last_left, 1,
+                                            self.strides_w - 1, 0)
+        with self.tik_instance.else_scope():
+            self.tik_instance.data_move(self.ub_src, raw_src, 0, src_len, 1, self.strides_w - 1, 0)
+
+    def caculate_mask_gather(self, ub_x, ub_y, ub_z, size_pw, align_w, ksize_h, ksize_w):
+        """caculate mask gather, ub_x:input, ub_y:mask, ub_z:max
+        """
+        with self.tik_instance.for_range(0, ksize_h) as ks_h:
+            with self.tik_instance.for_range(0, ksize_w) as ks_w:
+                with self.tik_instance.for_range(0, self.data_repeat) as p_idx:
+                    src_h = (p_idx * Constant.GATHER_LEN // self.output_w) * self.strides_h + ks_h
+                    src_w = (p_idx * Constant.GATHER_LEN % self.output_w) * self.strides_w + ks_w
+                    src_offset = src_h * size_pw + src_w * self.c_zero
+                    max_offset = p_idx * Constant.GATHER_LEN * self.c_zero
+                    offset_dst = ks_h * ksize_w * align_w + \
+                                 ks_w * align_w + p_idx * Constant.GATHER_LEN
+                    self.gather_tensor_w(ub_x[src_offset:], Constant.GATHER_LEN,
+                                         p_idx * Constant.GATHER_LEN % self.output_w)
+                    self.mask_repeat_width(ub_y[offset_dst:], self.ub_src, ub_z[max_offset:],
+                                           Constant.GATHER_LEN * self.c_zero, 1, 1)
+
+                with self.tik_instance.if_scope(self.data_repeat_left > 0):
+                    src_h = (self.data_repeat * Constant.GATHER_LEN // self.output_w) * self.strides_h + ks_h
+                    src_w = (self.data_repeat * Constant.GATHER_LEN % self.output_w) * self.strides_w + ks_w
+                    src_offset = src_h * size_pw + src_w * self.c_zero
+                    max_offset = self.data_repeat * Constant.GATHER_LEN * self.c_zero
+                    offset_dst = ks_h * ksize_w * align_w + \
+                                 ks_w * align_w + self.data_repeat * Constant.GATHER_LEN
+                    self.gather_tensor_w(ub_x[src_offset:], self.data_repeat_left,
+                                         self.data_repeat * Constant.GATHER_LEN % self.output_w)
+                    self.mask_repeat_width(ub_y[offset_dst:], self.ub_src, ub_z[max_offset:],
+                                           self.data_repeat_left * self.c_zero, 1, 1)
+
+    def mask_repeat_width(self, dst, src0, src1, size, src0_blk=1, src1_blk=1):
         """caculate mask
         """
         # strides_w less and equal to 31
@@ -777,7 +861,7 @@ class MaxPoolWithargmaxPytorch:
                 self.dst_stride.set_as(self.pad_r + self.pad_l)
 
         # run loop
-        self.init_ub_tensor()
+        self.dynamic_ub_tensor()
         with self.tik_instance.for_range(0, loop_num // 2) as loop_idx:
             self.tiling_c_dim_core_nc_process(self.ub_a, self.ub_b, self.ub_c, core_idx, loop_idx * 2, self.c_factor)
             self.tiling_c_dim_core_nc_process(self.ub_d, self.ub_e, self.ub_f, core_idx, loop_idx * 2 + 1,
@@ -831,33 +915,23 @@ class MaxPoolWithargmaxPytorch:
         ub_y = ub_y.reinterpret_cast_to("uint16")
         with self.tik_instance.for_range(0, ele) as ele_idx:
             offset_a = ele_idx * self.pad_h * self.pad_w * self.c_zero
-            offset_b = ele_idx * self.output_h * self.align_output_w * self.ksize_w * self.ksize_h
             offset_c = ele_idx * self.output_h * self.output_w * self.c_zero
-            self.caculate_mask(ub_x[offset_a:], ub_y[offset_b:], ub_z[offset_c:],
-                               self.output_h, self.output_w * self.c_zero, self.align_output_w,
-                               self.pad_w * self.c_zero, self.ksize_h, self.ksize_w)
+            offset_b = ele_idx * self.align_output_hw * self.ksize_w * self.ksize_h
+            self.caculate_mask_gather(ub_x[offset_a:], ub_y[offset_b:], ub_z[offset_c:], self.pad_w * self.c_zero,
+                                      self.align_output_hw, self.ksize_h, self.ksize_w)
 
         # remove repeated mask, ub_x:mask_or, ub_y:mask, ub_z:mask_and
         ub_x = ub_x.reinterpret_cast_to("uint16")
         ub_z = ub_z.reinterpret_cast_to("uint16")
         with self.tik_instance.for_range(0, ele) as ele_idx:
-            offset = ele_idx * self.output_h * self.align_output_w * self.ksize_w * self.ksize_h
-            # reduce max width
-            self.remove_repeated_mask(ub_x[offset:], ub_y[offset:], ub_z[offset:], self.output_h * self.align_output_w,
+            offset = ele_idx * self.align_output_hw * self.ksize_w * self.ksize_h
+            self.remove_repeated_mask(ub_x[offset:], ub_y[offset:], ub_z[offset:], self.align_output_hw,
                                       self.ksize_h, self.ksize_w)
 
-        # move out the mask and gather the mask in gm at the same time
-        with self.tik_instance.for_range(0, ele) as ele_idx:
-            base_src = ele_idx * self.output_h * self.align_output_w * self.ksize_w * self.ksize_h
-            base_dst = (core_idx * self.one_core_ele + loop_idx * self.c_factor) * \
-                       self.ksize_w * self.ksize_h * self.align_output_hw + \
-                       ele_idx * self.ksize_w * self.ksize_h * self.align_output_hw
-            with self.tik_instance.for_range(0, self.ksize_h * self.ksize_w) as k_idx:
-                with self.tik_instance.for_range(0, self.output_h) as h_idx:
-                    offset_src = base_src + k_idx * self.output_h * self.align_output_w + h_idx * self.align_output_w
-                    offset_dst = base_dst + k_idx * self.align_output_hw + h_idx * self.output_w
-                    self.tik_instance.data_move(self.mask_output_gm[offset_dst], ub_y[offset_src], 0, 1,
-                                                self.align_output_w // self.c_zero, 0, 0)
+        offset_mask_out = (core_idx * self.one_core_ele + loop_idx * self.c_factor) \
+                          * self.ksize_w * self.ksize_h * self.align_output_hw
+        self.tik_instance.data_move(self.mask_output_gm[offset_mask_out], ub_y, 0, 1,
+                                    ele * self.ksize_w * self.ksize_h * self.align_output_hw // 16, 0, 0)
 
     def tiling_h_dim_core_nc(self, core_idx, core_ele, loop_num, loop_left):
         """Tiling h dim when core num at nc1
@@ -868,9 +942,37 @@ class MaxPoolWithargmaxPytorch:
         with self.tik_instance.if_scope(loop_left > 0):
             self.tiling_h_dim_core_nc_process(core_idx, core_ele, loop_num, loop_left)
 
-    def tiling_h_dim_core_nc_process(self, core_idx, core_ele, loop_idx, ele):
-        """Tiling h dim process when core num at nc1
+    def tiling_h_dim_core_nc_gather(self, core_idx, core_ele, loop_num, loop_left):
+        """Tiling h dim when core num at nc1
         """
+        # run loop
+        with self.tik_instance.for_range(0, loop_num) as loop_idx:
+            self.tiling_h_dim_core_nc_gather_process(core_idx, core_ele, loop_idx, self.h_factor)
+        with self.tik_instance.if_scope(loop_left > 0):
+            self.tiling_h_dim_core_nc_gather_process(core_idx, core_ele, loop_num, loop_left)
+
+    def tiling_h_pad_cut_data(self):
+        # when pad and cut at same time
+        with self.tik_instance.if_scope((self.pad_l > 0) & ((self.pad_w - self.pad_l) < self.input_w)):
+            self.offset_3.set_as(self.size_1 + (self.pad_w - self.pad_l - self.pad_r) * self.c_zero)
+            self.src_stride.set_as(self.input_w - self.pad_w + self.pad_l)
+            self.dst_stride.set_as(self.pad_l)
+            self.burst_len.set_as(self.pad_w - self.pad_l)
+        with self.tik_instance.else_scope():
+            with self.tik_instance.if_scope(self.pad_w <= self.input_w):
+                self.src_stride.set_as(self.input_w - self.pad_w)
+                self.dst_stride.set_as(0)
+                with self.tik_instance.if_scope(self.pad_w < self.input_w):
+                    self.burst_len.set_as(self.pad_w)
+                with self.tik_instance.else_scope():
+                    self.burst_len.set_as(self.nburst * self.pad_w)
+                    self.nburst.set_as(1)
+            with self.tik_instance.else_scope():
+                self.burst_len.set_as(self.input_w)
+                self.src_stride.set_as(0)
+                self.dst_stride.set_as(self.pad_r + self.pad_l)
+
+    def tiling_h_load_input_data(self, loop_idx, ele):
         # move in and vector dup params
         self.before_h.set_as(loop_idx * self.h_factor * self.strides_h)
         self.after_h.set_as((loop_idx * self.h_factor + ele - 1) * self.strides_h + self.ksize_h)
@@ -911,58 +1013,88 @@ class MaxPoolWithargmaxPytorch:
                 self.repeat_3.set_as(self.pad_h - self.pad_b - self.before_h - 1)
                 self.size_3.set_as((self.pad_r + self.pad_l) * self.c_zero)
                 self.nburst.set_as(self.pad_h - self.pad_b - self.before_h)
-        # when pad and cut at same time
-        with self.tik_instance.if_scope((self.pad_l > 0) & ((self.pad_w - self.pad_l) < self.input_w)):
-            self.offset_3.set_as(self.size_1 + (self.pad_w - self.pad_l - self.pad_r) * self.c_zero)
-            self.src_stride.set_as(self.input_w - self.pad_w + self.pad_l)
-            self.dst_stride.set_as(self.pad_l)
-            self.burst_len.set_as(self.pad_w - self.pad_l)
+        self.tiling_h_pad_cut_data()
+
+    def tiling_h_caculate_max(self, ub_x, ub_y, ub_z, ele_idx, core_idx, loop_idx, ele):
+        offset_in = (core_idx * self.one_core_ele + ele_idx) * self.input_h * self.input_w * self.c_zero + \
+                    self.offset_gm
+        # vector dup and move in
+        with self.tik_instance.if_scope(self.before_h <= self.pad_h - self.pad_b):
+            with self.tik_instance.new_stmt_scope(disable_sync=True):
+                self.tik_instance.data_move(ub_x[self.size_1], self.input_gm[offset_in], 0, self.nburst,
+                                            self.burst_len * self.burst_c0, self.src_stride * self.burst_c0,
+                                            self.dst_stride * self.burst_c0)
+                self.vector_dup_continuous(ub_x, self.size_1)
+                self.vector_dup_continuous(ub_x[self.offset_2:], self.size_2)
+                self.vector_dup_discrete(ub_x[self.offset_3:], self.repeat_3, self.size_3, 1, self.pad_w)
         with self.tik_instance.else_scope():
-            with self.tik_instance.if_scope(self.pad_w <= self.input_w):
-                self.src_stride.set_as(self.input_w - self.pad_w)
-                self.dst_stride.set_as(0)
-                with self.tik_instance.if_scope(self.pad_w < self.input_w):
-                    self.burst_len.set_as(self.pad_w)
-                with self.tik_instance.else_scope():
-                    self.burst_len.set_as(self.nburst * self.pad_w)
-                    self.nburst.set_as(1)
-            with self.tik_instance.else_scope():
-                self.burst_len.set_as(self.input_w)
-                self.src_stride.set_as(0)
-                self.dst_stride.set_as(self.pad_r + self.pad_l)
+            self.vector_dup_continuous(ub_x, self.len_h * self.pad_w * self.c_zero)
+        # reduce max width
+        if self.ksize_w == 1:
+            self.reduce_max_repeat_width_ksize_one_width(ub_x, ub_y, self.len_h, self.output_w * self.c_zero,
+                                                         self.pad_w * self.c_zero)
+        else:
+            self.reduce_max_repeat_width_ksize_more_width(ub_x, ub_y, self.len_h, self.output_w * self.c_zero,
+                                                          self.pad_w * self.c_zero)
+        # reduce max height
+        if self.ksize_h == 1:
+            self.reduce_max_repeat_width_ksize_one_height(ub_y, ub_z, ele, self.output_w * self.c_zero)
+        else:
+            self.reduce_max_repeat_width_ksize_more_height(ub_y, ub_z, ele, self.output_w * self.c_zero)
+        # move out
+        offset_out = (core_idx * self.one_core_ele + ele_idx) * self.output_h * self.output_w * self.c_zero + \
+                     loop_idx * self.h_factor * self.output_w * self.c_zero
+        self.tik_instance.data_move(self.max_output_gm[offset_out], ub_z, 0, 1,
+                                    ele * self.output_w * self.burst_c0, 0, 0)
+
+    def tiling_h_dim_core_nc_gather_process(self, core_idx, core_ele, loop_idx, ele):
+        """Tiling h dim process when core num at nc1
+        """
+        self.tiling_h_load_input_data(loop_idx, ele)
 
         def _inner(ub_x, ub_y, ub_z, ele_idx):
-            offset_in = (core_idx * self.one_core_ele + ele_idx) * self.input_h * self.input_w * self.c_zero + \
-                        self.offset_gm
-            # vector dup and move in
-            with self.tik_instance.if_scope(self.before_h <= self.pad_h - self.pad_b):
-                with self.tik_instance.new_stmt_scope(disable_sync=True):
-                    self.tik_instance.data_move(ub_x[self.size_1], self.input_gm[offset_in], 0, self.nburst,
-                                                self.burst_len * self.burst_c0, self.src_stride * self.burst_c0,
-                                                self.dst_stride * self.burst_c0)
-                    self.vector_dup_continuous(ub_x, self.size_1)
-                    self.vector_dup_continuous(ub_x[self.offset_2:], self.size_2)
-                    self.vector_dup_discrete(ub_x[self.offset_3:], self.repeat_3, self.size_3, 1, self.pad_w)
-            with self.tik_instance.else_scope():
-                self.vector_dup_continuous(ub_x, self.len_h * self.pad_w * self.c_zero)
-            # reduce max width
-            if self.ksize_w == 1:
-                self.reduce_max_repeat_width_ksize_one_width(ub_x, ub_y, self.len_h, self.output_w * self.c_zero,
-                                                             self.pad_w * self.c_zero)
-            else:
-                self.reduce_max_repeat_width_ksize_more_width(ub_x, ub_y, self.len_h, self.output_w * self.c_zero,
-                                                              self.pad_w * self.c_zero)
-            # reduce max height
-            if self.ksize_h == 1:
-                self.reduce_max_repeat_width_ksize_one_height(ub_y, ub_z, ele, self.output_w * self.c_zero)
-            else:
-                self.reduce_max_repeat_width_ksize_more_height(ub_y, ub_z, ele, self.output_w * self.c_zero)
-            # move out
-            offset_out = (core_idx * self.one_core_ele + ele_idx) * self.output_h * self.output_w * self.c_zero + \
-                         loop_idx * self.h_factor * self.output_w * self.c_zero
-            self.tik_instance.data_move(self.max_output_gm[offset_out], ub_z, 0, 1,
-                                        ele * self.output_w * self.burst_c0, 0, 0)
+            self.tiling_h_caculate_max(ub_x, ub_y, ub_z, ele_idx, core_idx, loop_idx, ele)
 
+            self.align_ele_w.set_as(ele * self.output_w)
+            with self.tik_instance.if_scope(self.align_ele_w % self.c_zero != 0):
+                self.align_ele_w.set_as((self.align_ele_w // self.c_zero + 1) * self.c_zero)
+            self.data_repeat.set_as(ele * self.output_w // Constant.GATHER_LEN)
+            self.data_repeat_left.set_as(ele * self.output_w % Constant.GATHER_LEN)
+
+            # caculate mask, ub_x:input, ub_y:mask, ub_z:max
+            ub_y = ub_y.reinterpret_cast_to("uint16")
+            self.caculate_mask_gather(ub_x, ub_y, ub_z, self.pad_w * self.c_zero,
+                                      self.align_ele_w, self.ksize_h, self.ksize_w)
+
+            # remove repeated mask, ub_x:mask_or, ub_y:mask, ub_z:mask_and
+            ub_x = ub_x.reinterpret_cast_to("uint16")
+            ub_z = ub_z.reinterpret_cast_to("uint16")
+            self.remove_repeated_mask(ub_x, ub_y, ub_z, self.align_ele_w,
+                                      self.ksize_h, self.ksize_w)
+
+            # move out the mask and gather the mask in gm at the same time
+            base_dst = (core_idx * self.one_core_ele + ele_idx) * self.ksize_w * self.ksize_h * self.align_output_hw \
+                       + loop_idx * self.h_factor * self.output_w
+            with self.tik_instance.for_range(0, self.ksize_h * self.ksize_w) as k_idx:
+                offset_dst = base_dst + k_idx * self.align_output_hw
+                offset_src = k_idx * self.align_ele_w
+                self.tik_instance.data_move(self.mask_output_gm[offset_dst], ub_y[offset_src], 0, 1,
+                                            self.align_ele_w // self.c_zero, 0, 0)
+
+        self.dynamic_ub_tensor()
+        with self.tik_instance.for_range(0, core_ele // 2) as ele_idx:
+            _inner(self.ub_a, self.ub_b, self.ub_c, ele_idx * 2)
+            _inner(self.ub_d, self.ub_e, self.ub_f, ele_idx * 2 + 1)
+        with self.tik_instance.if_scope(core_ele % 2 == 1):
+            _inner(self.ub_a, self.ub_b, self.ub_c, core_ele - 1)
+
+    def tiling_h_dim_core_nc_process(self, core_idx, core_ele, loop_idx, ele):
+        """Tiling h dim process when core num at nc1
+        """
+        self.tiling_h_load_input_data(loop_idx, ele)
+
+        def _inner(ub_x, ub_y, ub_z, ele_idx):
+            self.tiling_h_caculate_max(ub_x, ub_y, ub_z, ele_idx, core_idx, loop_idx, ele)
             # caculate mask, ub_x:input, ub_y:mask, ub_z:max
             ub_y = ub_y.reinterpret_cast_to("uint16")
             self.caculate_mask(ub_x, ub_y, ub_z, ele, self.output_w * self.c_zero,
@@ -1173,7 +1305,10 @@ class MaxPoolWithargmaxPytorch:
                 with self.tik_instance.if_scope(self.tiling_mode == 1):
                     with self.tik_instance.new_stmt_scope():
                         self.tiling_c_dim_core_nc(core_idx, self.loop_num, self.loop_left)
-                # tiling h dim when core num at nc1
+                # gather tensor
+                with self.tik_instance.if_scope(self.tiling_mode == 4):
+                    with self.tik_instance.new_stmt_scope():
+                        self.tiling_h_dim_core_nc_gather(core_idx, self.core_ele, self.loop_num, self.loop_left)
                 with self.tik_instance.if_scope(self.tiling_mode == 2):
                     with self.tik_instance.new_stmt_scope():
                         self.tiling_h_dim_core_nc(core_idx, self.core_ele, self.loop_num, self.loop_left)
