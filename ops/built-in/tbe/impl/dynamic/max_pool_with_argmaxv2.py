@@ -403,7 +403,7 @@ class MaxPoolWithargmaxPytorch:
         with self.tik_instance.if_scope(last_flag == 1):
             mask_left = self.align_output_hw * self.n_c1 - (mask_offset + align_ele)
             last_offset = mask_offset + align_ele
-            with self.tik_instance.if_scope(mask_left < align_ele):
+            with self.tik_instance.if_scope(tik.all(mask_left < align_ele, mask_left >= self.c_zero)):
                 self.tik_instance.data_move(self.mask_output_gm[last_offset], ub_tensor,
                                             0, 1, mask_left // self.c_zero, 0, 0)
             with self.tik_instance.else_scope():
