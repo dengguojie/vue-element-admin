@@ -241,8 +241,6 @@ def _run_ut_case_file(run_arg: RunUTCaseFileArgs):
     return res
 
 
-
-
 def _check_args(case_dir, test_report, cov_report):
     if not case_dir:
         logger.log_err("Not set case dir")
@@ -301,17 +299,23 @@ def run_ut(case_dir, soc_version, case_name=None,  # 'pylint: disable=too-many-a
     if not _check_args(case_dir, test_report, cov_report):
         return failed
 
+    cov_combine_dir = _build_cov_data_path(cov_report_path)
+    if cov_report:
+        init_cov_data_path = os.path.join(cov_combine_dir, ".coverage_init")
+        ut_cover = coverage.Coverage(source=Constant.cube_source_dirs, data_file=init_cov_data_path)
+        ut_cover.start()
     case_file_info_list, load_has_err = ut_loader.load_ut_cases(case_dir)
+    if cov_report:
+        ut_cover.stop()
+        ut_cover.save()
     if not case_file_info_list:
         logger.log_err("Not found any test cases.")
         return failed
 
-    cov_combine_dir = _build_cov_data_path(cov_report_path)
     rpt_combine_dir = _build_report_data_path(test_report_path)
 
     def _build_multiprocess_run_args():
-
-        ps_count = 1
+        ps_count = 0
         if not isinstance(soc_version, (tuple, list)):
             soc_version_list = str(soc_version).split(",")
         else:

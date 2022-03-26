@@ -4323,7 +4323,9 @@ class GemmSchedule:
             self.sch[tensor_a_l1].mem_unique()
         else:
             a_run_once = self.ALLOCATE_OFF
-        if b_run_once != self.ALLOCATE_OFF and (not self.status_controller.l1_fusion_and_l1_size_0):
+        # unzip donot support allocate_at
+        if (b_run_once != self.ALLOCATE_OFF and (not self.status_controller.l1_fusion_and_l1_size_0)
+            and (not self.status_controller.compress_flag)):
             tensor_b_l1 = self.container.TENSOR_MAP.get("b_l1")
             self.sch[tensor_b_l1].allocate_at(self.sch[self.res], m_outer, run_once_axes=[m_outer])
             self.sch[tensor_b_l1].mem_unique()
