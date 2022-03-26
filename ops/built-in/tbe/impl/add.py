@@ -602,6 +602,46 @@ def _add_compute_with_batchmatmul(lhs_tensor, rhs_tensor):
     return res
 
 
+def static_reshape(input_x, input_y):
+    """static reshape"""
+    # check shape
+    shape_x = input_x.get("shape")
+    shape_y = input_y.get("shape")
+    shape_x = shape_util.scalar2tensor_one(shape_x)
+    shape_y = shape_util.scalar2tensor_one(shape_y)
+    if shape_y[0] == 1 and len(shape_y) == 1:
+        broadcast_flag = True
+        is_scene_1d = True
+
+        # check x2 is 1D or not
+        if para_check.is_scalar(shape_y):
+            broadcast_flag = False
+            shape_y = tuple([1] * (len(shape_x) - len(shape_y))) + tuple(shape_y)
+    else:
+        is_scene_1d = False
+        broadcast_flag = True
+
+        # format_pattern value means
+        # 1: Nz and vector
+        # 2: vector and Nz
+        # 0:  Nz scalar  Nz Nz  ND ND
+        format_pattern = _add_check_format(input_x, input_y)
+        shape_x, shape_y = _infer_shape(format_pattern, input_x, input_y)
+        shape_x = shape_util.scalar2tensor_one(shape_x)
+        shape_y = shape_util.scalar2tensor_one(shape_y)
+        para_check.check_shape(shape_x, param_name="input_x")
+        para_check.check_shape(shape_y, param_name="input_y")
+
+        shape_x, shape_y, shape_max = shape_util.broadcast_shapes(shape_x, shape_y,
+                                                                  param_name_input1="input_x",
+                                                                  param_name_input2="input_y")
+        if shape_x[-1] == 1 and shape_y[-1] == 1 and shape_max[-1] == 1:
+            shape_x = shape_x if len(shape_x) == 1 else shape_x[:-1]
+            shape_y = shape_y if len(shape_y) == 1 else shape_y[:-1]
+            shape_max = shape_max if len(shape_max) == 1 else shape_max[:-1]
+    return shape_x, shape_y, broadcast_flag, is_scene_1d
+
+
 # 'pylint: disable=locally-disabled,too-many-arguments,unused-argument
 @tbe_platform.fusion_manager.fusion_manager.register("add")
 def add_compute(input_x, input_y, output_z, is_scene_1d=False, broadcast_flag=True, kernel_name="add"):
@@ -710,41 +750,8 @@ def add(input_x, input_y, output_z, kernel_name="add"):
     input_data_type = input_x.get("dtype").lower()
     para_check.check_dtype(input_data_type, check_tuple, param_name="input_x")
 
-    # check shape
-    shape_x = input_x.get("shape")
-    shape_y = input_y.get("shape")
-    shape_x = shape_util.scalar2tensor_one(shape_x)
-    shape_y = shape_util.scalar2tensor_one(shape_y)
-    if shape_y[0] == 1 and len(shape_y) == 1:
-        broadcast_flag = True
-        is_scene_1d = True
-
-        # check x2 is 1D or not
-        if para_check.is_scalar(shape_y):
-            broadcast_flag = False
-            shape_y = tuple([1] * (len(shape_x) - len(shape_y))) + tuple(shape_y)
-    else:
-        is_scene_1d = False
-        broadcast_flag = True
-
-        # format_pattern value means
-        # 1: Nz and vector
-        # 2: vector and Nz
-        # 0:  Nz scalar  Nz Nz  ND ND
-        format_pattern = _add_check_format(input_x, input_y)
-        shape_x, shape_y = _infer_shape(format_pattern, input_x, input_y)
-        shape_x = shape_util.scalar2tensor_one(shape_x)
-        shape_y = shape_util.scalar2tensor_one(shape_y)
-        para_check.check_shape(shape_x, param_name="input_x")
-        para_check.check_shape(shape_y, param_name="input_y")
-
-        shape_x, shape_y, shape_max = shape_util.broadcast_shapes(shape_x, shape_y,
-                                                                  param_name_input1="input_x",
-                                                                  param_name_input2="input_y")
-        if shape_x[-1] == 1 and shape_y[-1] == 1 and shape_max[-1] == 1:
-            shape_x = shape_x if len(shape_x) == 1 else shape_x[:-1]
-            shape_y = shape_y if len(shape_y) == 1 else shape_y[:-1]
-            shape_max = shape_max if len(shape_max) == 1 else shape_max[:-1]
+    broadcast_flag, is_scene_1d = None, None
+    shape_x, shape_y, broadcast_flag, is_scene_1d = static_reshape(input_x, input_y)
 
     data_x = tvm.placeholder(shape_x, dtype=input_data_type, name="data_1")
     data_y = tvm.placeholder(shape_y, dtype=input_data_type, name="data_2")

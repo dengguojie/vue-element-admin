@@ -25,9 +25,41 @@ from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import error_manager_vector
 from impl.util import util_common
+from impl.add import static_reshape
+from impl.add import op_select_format as add_op_select_format
 
 
 # 'pylint: disable=locally-disabled,too-many-arguments,unused-argument
+def op_select_format(input_x, input_y, output_z, kernel_name="add"):
+    """
+    select format dynamically \n
+    op_select_format support desc:
+
+    1.when input x's ori_shape is 4, and bias's shape is not 1. \n
+    The Op Bias can support
+    ND + ND = ND,
+    NC1HWC0 + NC1HWC0 = NC1HWC0.
+
+        for example:
+        inputs:
+            x        ori shape = [16, 16, 16, 16, 16] ori_format = "NC1HWC0"
+            bias     ori shape = [16, 16, 16, 16, 16] ori_format = "NC1HWC0"
+        outputs:
+            y        ori shape = [16, 16, 16, 16, 16] ori_format = "NC1HWC0"
+
+    2.In other scenes, all input(x, bias) only support ND.
+
+        for example:
+        inputs:
+            x        ori shape = [2] ori_format = "ND"
+            bias     ori shape = [2] ori_format = "ND"
+        outputs:
+            y        ori shape = [2] ori_format = "ND"
+
+    """
+    return add_op_select_format(input_x, input_y, output_z, kernel_name)
+
+
 @register_operator_compute("Add", op_mode="dynamic", support_fusion=True)
 def add_compute(input_x, input_y, output_z, kernel_name="add"):
     """
@@ -105,15 +137,23 @@ def add(input_x, input_y, output_z, kernel_name="add"):
     para_check.check_dtype(x_dtype, check_list, param_name="input_x")
     para_check.check_dtype(y_dtype, check_list, param_name="input_y")
     if x_dtype != y_dtype:
-        error_manager_vector.raise_err_inputs_dtype_not_equal("add", "input_x", "input_y",
-                                                              str(x_dtype), str(y_dtype))
+        error_manager_vector.raise_err_inputs_dtype_not_equal("add", "input_x", "input_y", str(x_dtype), str(y_dtype))
+
+    # calc for static and dynamic merge
+    if not util_common.is_unknown([input_x, input_y]):
+        shape_x, shape_y, _, _ = static_reshape(input_x, input_y)
+        range_x = util_common.gen_range(shape_x)
+        range_y = util_common.gen_range(shape_y)
+        input_x["shape"] = shape_x
+        input_x["range"] = range_x
+        input_y["shape"] = shape_y
+        input_y["range"] = range_y
 
     ins = classify([input_x, input_y], OpPatternMode.ELEWISE_WITH_BROADCAST)
     schedules, tensors = [], []
     for (_input_x, _input_y) in ins:
         with tbe.compute():
-            shape_x, shape_y = \
-                shape_util.variable_shape([_input_x, _input_y])
+            shape_x, shape_y = shape_util.variable_shape([_input_x, _input_y])
             data_x = tvm.placeholder(shape_x, name="data_1", dtype=x_dtype)
             data_y = tvm.placeholder(shape_y, name="data_2", dtype=y_dtype)
             res = add_compute(data_x, data_y, output_z, kernel_name)
@@ -123,7 +163,6 @@ def add(input_x, input_y, output_z, kernel_name="add"):
             schedule = tbe.auto_schedule(res)
         schedules.append(schedule)
 
-    config = {"print_ir": False, "name": kernel_name,
-              "tensor_list": tensors}
+    config = {"print_ir": False, "name": kernel_name, "tensor_list": tensors}
 
     tbe.build(schedules, config)

@@ -25,6 +25,81 @@ from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import tbe_context
 from impl.util.platform_adapter import tbe_platform
+from impl.util.platform_adapter import register_operator_compute
+from impl.bn_training_reduce_grad import get_op_support_info as bn_get_op_support_info
+from impl.bn_training_reduce_grad import op_select_format as bn_op_select_format
+
+
+# 'pylint: disable = unused-argument
+# 'pylint: disable=invalid-name,too-many-arguments,consider-using-in
+def get_op_support_info(grads,
+                        x,
+                        diff_scale,
+                        diff_offset,
+                        scale,
+                        batch_mean,
+                        batch_variance,
+                        y,
+                        epsilon=0.0001,
+                        kernel_name="bn_training_reduce_grad"):
+    """
+    get_op_support_info
+    """
+    return bn_get_op_support_info(grads,
+                                  x,
+                                  diff_scale,
+                                  diff_offset,
+                                  scale,
+                                  batch_mean,
+                                  batch_variance,
+                                  y,
+                                  epsilon=0.0001,
+                                  kernel_name="bn_training_reduce_grad")
+
+
+# 'pylint: disable=locally-disabled,invalid-name,too-many-arguments
+# 'pylint: disable=locally-disabled,too-many-statements,unused-argument
+# 'pylint: disable=locally-disabled,too-many-locals
+def op_select_format(grads,
+                     x,
+                     diff_scale,
+                     diff_offset,
+                     scale,
+                     batch_mean,
+                     batch_variance,
+                     y,
+                     epsilon,
+                     kernel_name="bn_training_reduce_grad"):
+    """
+    1. when input(grads)'s ori_shape is [1, ? ,1, ?] and the format is NCHW
+    the Op BNTrainingReduceGrad can support NCHW.
+    > for example:
+    > grads : Tensor of (shape=(1, 16, 1, 16), "NCHW")
+    > x : Tensor of (shape=(1, 16, 1, 16), "NCHW")
+    > diff_scale : Tensor of (shape=(1, 16, 1, 16), "NCHW")
+    > diff_offset : Tensor of (shape=(1, 16, 1, 16), "NCHW")
+    > scale : Tensor of (shape=(1, 16, 1, 16), "NCHW")
+    > batch_mean : Tensor of (shape=(1, 16, 1, 16), "NCHW")
+    > batch_variance : Tensor of (shape=(1, 16, 1, 16), "NCHW")
+    > the Op BNTrainingReduce can process with NC1HWC0:
+    > grads : Tensor of (shape=(1, 16, 1, 2, 8), "NC1HWC0")
+    > x : Tensor of (shape=(1, 16, 1, 2, 8), "NC1HWC0")
+    > diff_scale : Tensor of (shape=(1, 16, 1, 2, 8), "NC1HWC0")
+    > diff_offset : Tensor of (shape=(1, 16, 1, 2, 8), "NC1HWC0")
+    > scale : Tensor of (shape=(1, 16, 1, 2, 8), "NC1HWC0")
+    > batch_mean : Tensor of (shape=(1, 16, 1, 2, 8), "NC1HWC0")
+    > batch_variance : Tensor of (shape=(1, 16, 1, 2, 8), "NC1HWC0")
+    """
+    return bn_op_select_format(grads,
+                               x,
+                               diff_scale,
+                               diff_offset,
+                               scale,
+                               batch_mean,
+                               batch_variance,
+                               y,
+                               epsilon,
+                               kernel_name="bn_training_reduce_grad")
 
 
 def _check_format_nd(data_format, origin_foramt):
@@ -53,6 +128,7 @@ def _check_format_nd(data_format, origin_foramt):
 
 # 'pylint: disable=too-many-branches,too-many-arguments,too-many-locals
 # 'pylint: disable=unused-argument,invalid-name
+@register_operator_compute("BNTrainingReduceGrad", op_mode="dynamic", support_fusion=False)
 def bn_training_reduce_grad_compute(grads,
                                     x,
                                     diff_scale,
@@ -307,7 +383,8 @@ def bn_training_reduce_grad(grads,
     for (_grads, _x, _diff_scale, _diff_offset, _scale, _batch_mean, _batch_variance) in ins:
         with tbe.compute():
             _shape_grads, _, _, _, _shape_scale, _, _ = \
-                shape_util.variable_shape([_grads, _x, _diff_scale, _diff_offset, _scale, _batch_mean, _batch_variance])
+                shape_util.variable_shape(
+                    [_grads, _x, _diff_scale, _diff_offset, _scale, _batch_mean, _batch_variance])
 
             grads_input = tvm.placeholder(_shape_grads, name="grads_input", dtype=input_grads_dtype)
             x_input = tvm.placeholder(_shape_grads, name="x_input", dtype=x_dtype)

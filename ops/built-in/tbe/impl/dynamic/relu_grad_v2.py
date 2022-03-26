@@ -101,6 +101,9 @@ def relu_grad_v2(gradients, mask, backprops, kernel_name="relu_grad_v2"):
     dtype_input_gradients = gradients.get("dtype").lower()
     dtype_input_features = mask.get("dtype").lower()
 
+    if dtype_input_features in ("uint8",):
+        dtype_input_features = "uint1"
+
     check_list = ("float16", "float32", "int32", "int8", "uint8")
     para_check.check_dtype(dtype_input_gradients, check_list, param_name="gradients")
 

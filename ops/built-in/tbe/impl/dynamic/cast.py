@@ -22,6 +22,7 @@ from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import register_operator_compute
 
 
 # 'pylint: disable=inconsistent-return-statements,too-many-function-args
@@ -236,7 +237,7 @@ def check_supported(input_x, output_y, dst_type, kernel_name="cast"):
 
 
 # 'pylint: disable=locally-disabled,too-many-arguments,unused-argument
-
+@register_operator_compute("Cast", op_mode="dynamic", support_fusion=True)
 def cast_compute(data, output_y, dst_type, kernel_name="cast"):
     """
     core func of tensor casting. cast a tensor form src data type to dst data
@@ -282,8 +283,7 @@ def cast_compute(data, output_y, dst_type, kernel_name="cast"):
         the compute result tensor with type dst_type
     """
     src_data_type = data.dtype
-    para_check.check_dtype(src_data_type,
-                           ("float16", "float32", "int8", "uint8", "int32", "int64", "bfloat16"),
+    para_check.check_dtype(src_data_type, ("float16", "float32", "int8", "uint8", "int32", "int64", "bfloat16"),
                            param_name="input_x")
 
     if src_data_type in ("int8", "uint8"):
@@ -306,8 +306,8 @@ def cast_compute(data, output_y, dst_type, kernel_name="cast"):
 
 
 @register_operator("Cast")
-@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
-                            para_check.OPTION_ATTR_INT, para_check.KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_INT,
+                            para_check.KERNEL_NAME)
 def cast(input_x, output_y, dst_type, kernel_name="cast"):
     """
     cast a tensor/scaler with input shape form src data type to dst data
@@ -378,9 +378,5 @@ def cast(input_x, output_y, dst_type, kernel_name="cast"):
             sch = tbe.auto_schedule(res)
         schedules.append(sch)
 
-    config = {
-        "print_ir": False,
-        "name": kernel_name,
-        "tensor_list": tensors
-    }
+    config = {"print_ir": False, "name": kernel_name, "tensor_list": tensors}
     tbe.build(schedules, config)

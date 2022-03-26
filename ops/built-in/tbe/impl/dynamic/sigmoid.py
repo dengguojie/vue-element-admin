@@ -25,12 +25,11 @@ from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
-from impl.util.platform_adapter import OpImplMode
 
 
 # 'pylint: disable=unused-argument,too-many-locals,invalid-name
 @register_operator_compute("Sigmoid", op_mode="dynamic", support_fusion=True)
-def sigmoid_compute(x, y, kernel_name="sigmoid"):
+def sigmoid_compute(x, y, kernel_name="sigmoid", impl_mode="high_precision"):
     """
     calculating data
 
@@ -42,6 +41,8 @@ def sigmoid_compute(x, y, kernel_name="sigmoid"):
         dict of y, include keys(shape and dtype)
     kernel_name : str
         kernel name, default value is "sigmoid"
+    impl_mode : str
+        impl_mode, default value is "high_precision"
 
     Returns
     -------
@@ -69,14 +70,14 @@ def sigmoid_compute(x, y, kernel_name="sigmoid"):
         tensor_one = tbe.broadcast(tvm.const(1, dtype), inp_shape)
         tmp_rec = tbe.vdiv(tensor_one, tmp_sum)
     else:
-        tmp_rec = tbe.vrec(tmp_sum, OpImplMode.HIGH_PRECISION)
+        tmp_rec = tbe.vrec(tmp_sum, impl_mode)
 
     return tmp_rec
 
 
 @register_operator("Sigmoid")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
-def sigmoid(x, y, kernel_name="sigmoid"):
+def sigmoid(x, y, kernel_name="sigmoid", impl_mode="high_precision"):
     """
     calculating data
 
@@ -88,6 +89,8 @@ def sigmoid(x, y, kernel_name="sigmoid"):
         shape and dtype of output, should be same shape and type as input
     kernel_name : str
         kernel name, default value is "sigmoid"
+    impl_mode : str
+        impl_mode, default value is "high_precision"
 
     Returns
     -------
@@ -104,7 +107,7 @@ def sigmoid(x, y, kernel_name="sigmoid"):
             x_shape = shape_util.variable_shape([_x])
             data_input = tvm.placeholder(x_shape[0], dtype=dtype,
                                          name="dtype")
-            res = sigmoid_compute(data_input, y, kernel_name)
+            res = sigmoid_compute(data_input, y, kernel_name, impl_mode)
             tensors.append([data_input, res])
         with tvm.target.cce():
             sch = tbe.auto_schedule(res)

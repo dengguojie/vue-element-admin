@@ -775,12 +775,12 @@
           128,
           1
         ],
-        "format": "FRACTAL_NZ",
+        "format": "ND",
 	"ori_shape": [
           -1,
           1
         ],
-        "ori_format": "FRACTAL_NZ",
+        "ori_format": "ND",
         "name": "y",
         "type": "float"
       }
@@ -794,12 +794,12 @@
           128,
           1
         ],
-        "format": "FRACTAL_NZ",
+        "format": "ND",
         "ori_shape": [
           -1,
           1
         ],
-        "ori_format": "FRACTAL_NZ",
+        "ori_format": "ND",
         "name": "output",
         "type": "float"
       }

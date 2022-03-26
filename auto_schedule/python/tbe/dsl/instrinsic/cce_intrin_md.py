@@ -9972,6 +9972,7 @@ def vector_dichotomy_reduce(tensor_op):
 
     # part 1, (64,32,16) reduce into (1,32,16)
     reset_mask_insn(tvm_ib, CALL_TYPE, bits=repeat_per_nums)
+    is_v220_m300 = intrinsic_check_support("Intrinsic_vgatherb")
     if reduce_front > 1:
         dichotomy_size = math.ceil(reduce_front / 2) * 2
         dichotomy_per_size = reduce_tail * reduce_const
@@ -9992,10 +9993,16 @@ def vector_dichotomy_reduce(tensor_op):
                                     dichotomy_reduce_temp_buffer.access_ptr("r", offset=8),
                                     dichotomy_reduce_temp_buffer.access_ptr("r", offset=0),
                                     reduce_const, 2, 2, 2, 16, 16, 16))
-            tvm_ib.emit(call_extern(CALL_TYPE, instr_cmd[2],
-                                    buffers[dst].access_ptr("w", offset=0),
-                                    dichotomy_reduce_temp_buffer.access_ptr("r", offset=0),
-                                    reduce_const, 1, 2 * reduce_const, 2))
+            if is_v220_m300:
+                tvm_ib.emit(call_extern(CALL_TYPE, instr_cmd[2],
+                                        buffers[dst].access_ptr("w", offset=0),
+                                        dichotomy_reduce_temp_buffer.access_ptr("r", offset=0),
+                                        reduce_const, 1, 2 * reduce_const, 2, 0))
+            else:
+                tvm_ib.emit(call_extern(CALL_TYPE, instr_cmd[2],
+                                        buffers[dst].access_ptr("w", offset=0),
+                                        dichotomy_reduce_temp_buffer.access_ptr("r", offset=0),
+                                        reduce_const, 1, 2 * reduce_const, 2))
             reset_mask_insn(tvm_ib, CALL_TYPE, bits=full_mask_nums)
             return tvm_ib.get()
 
@@ -10052,10 +10059,16 @@ def vector_dichotomy_reduce(tensor_op):
         if len(instr_cmd) == 3:
             # use vc model
             reset_mask_insn(tvm_ib, CALL_TYPE, bits=reduce_tail)
-            tvm_ib.emit(call_extern(dtype, instr_cmd[2],
-                                    buffers[dst].access_ptr("w", offset=0),
-                                    buffers[src].access_ptr("r", offset=0),
-                                    temp_repeats, 1, 1, repeat_stride))
+            if is_v220_m300:
+                tvm_ib.emit(call_extern(dtype, instr_cmd[2],
+                                        buffers[dst].access_ptr("w", offset=0),
+                                        buffers[src].access_ptr("r", offset=0),
+                                        temp_repeats, 1, 1, repeat_stride, 0))
+            else:
+                tvm_ib.emit(call_extern(dtype, instr_cmd[2],
+                                        buffers[dst].access_ptr("w", offset=0),
+                                        buffers[src].access_ptr("r", offset=0),
+                                        temp_repeats, 1, 1, repeat_stride))
         # handle max/min
         else:
             # use vc + vcpadd model
@@ -10064,10 +10077,16 @@ def vector_dichotomy_reduce(tensor_op):
                                            'vcpadd_temp_buffer',
                                            scope=cce_params.scope_ubuf)
             reset_mask_insn(tvm_ib, CALL_TYPE, bits=reduce_tail)
-            tvm_ib.emit(call_extern(dtype, instr_cmd[2],
-                                    vcpadd_temp_buffer.access_ptr("w", offset=0),
-                                    buffers[src].access_ptr("r", offset=0),
-                                    temp_repeats, 1, 1, repeat_stride))
+            if is_v220_m300:
+                tvm_ib.emit(call_extern(dtype, instr_cmd[2],
+                                        vcpadd_temp_buffer.access_ptr("w", offset=0),
+                                        buffers[src].access_ptr("r", offset=0),
+                                        temp_repeats, 1, 1, repeat_stride, 0))
+            else:
+                tvm_ib.emit(call_extern(dtype, instr_cmd[2],
+                                        vcpadd_temp_buffer.access_ptr("w", offset=0),
+                                        buffers[src].access_ptr("r", offset=0),
+                                        temp_repeats, 1, 1, repeat_stride))
             full_part = temp_buffer_size // repeat_per_nums
             rest_part = temp_buffer_size % repeat_per_nums
             if full_part:

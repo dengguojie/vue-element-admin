@@ -163,6 +163,10 @@ def reduce_mean(x, axes, y,
     para_check.check_dtype(dtype_lower_axes, check_list_axes, param_name="axes")
     axes["rel_pos_to_reduce"] = "axis"
 
+    tbe_context.get_context().add_compile_info("axes_idx", 1)
+    if "const_value" in axes.keys():
+        axes["value"] = list(axes["const_value"])
+
     schedules = []
     tensors = []
     ins = classify([x, axes], OpPatternMode.REDUCE, {"keepdims": keepdims is True})

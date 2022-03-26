@@ -1057,6 +1057,32 @@ def _mul_compute_ex(input_x, input_y, shape_x, shape_y, shape_max):
     return res
 
 
+def static_reshape(x, y):
+    """static reshape"""
+    # format_pattern = 1  Nz and vector
+    # format_pattern = 2  vector and Nz
+    # format_pattern = 0  Nz scalar  Nz Nz  ND ND
+    format_pattern = _mul_check_format(x, y)
+    shape_x, shape_y = _infer_shape(format_pattern, x, y)
+
+    shape_x = shape_util.scalar2tensor_one(shape_x)
+    shape_y = shape_util.scalar2tensor_one(shape_y)
+    para_check.check_shape(shape_x, param_name="x")
+    para_check.check_shape(shape_y, param_name="y")
+    cce_product = tbe_platform.get_soc_spec("SOC_VERSION")
+    if para_check.is_scalar(shape_y) and cce_product == "Ascend910":
+        is_scene_1d = True
+        shape_y = tuple([1] * (len(shape_x) - len(shape_y))) + tuple(shape_y)
+    else:
+        is_scene_1d = False
+        shape_x, shape_y, shape_max = shape_util.broadcast_shapes(shape_x,
+                                                                  shape_y,
+                                                                  param_name_input1="x",
+                                                                  param_name_input2="y")
+        shape_x, shape_y = shape_util.refine_shapes_for_broadcast(shape_x, shape_y)
+    return shape_x, shape_y, is_scene_1d
+
+
 # 'pylint: disable=unused-argument, too-many-locals
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.KERNEL_NAME)
@@ -1079,19 +1105,8 @@ def mul(x, y, output, kernel_name="mul"):
     -------
     None
     """
-    # `format_pattern = 1  Nz and vector`
-    # `format_pattern = 2  vector and Nz`
-    # format_pattern = 0  Nz scalar  Nz Nz  ND ND
-    format_pattern = _mul_check_format(x, y)
-    shape_x, shape_y = _infer_shape(format_pattern, x, y)
-
-    shape_x = shape_util.scalar2tensor_one(shape_x)
     dtype_x = x.get("dtype").lower()
-    shape_y = shape_util.scalar2tensor_one(shape_y)
     dtype_y = y.get("dtype").lower()
-
-    para_check.check_shape(shape_x, param_name="x")
-    para_check.check_shape(shape_y, param_name="y")
 
     if dtype_x != dtype_y:
         error_manager_vector.raise_err_inputs_dtype_not_equal(kernel_name, 'x', 'y', dtype_x, dtype_y)
@@ -1104,17 +1119,7 @@ def mul(x, y, output, kernel_name="mul"):
         new_check_list.remove("float32")
         para_check.check_dtype(dtype_x, new_check_list, param_name="x")
 
-    cce_product = tbe_platform.get_soc_spec("SOC_VERSION")
-    if para_check.is_scalar(shape_y) and cce_product == "Ascend910":
-        is_scene_1d = True
-        shape_y = tuple([1] * (len(shape_x) - len(shape_y))) + tuple(shape_y)
-    else:
-        is_scene_1d = False
-        shape_x, shape_y, shape_max = shape_util.broadcast_shapes(shape_x,
-                                                                  shape_y,
-                                                                  param_name_input1="x",
-                                                                  param_name_input2="y")
-        shape_x, shape_y = shape_util.refine_shapes_for_broadcast(shape_x, shape_y)
+    shape_x, shape_y, is_scene_1d = static_reshape(x, y)
 
     input_x = tvm.placeholder(shape_x, dtype=dtype_x, name="x")
     input_y = tvm.placeholder(shape_y, dtype=dtype_x, name="y")

@@ -34,10 +34,12 @@ def get_special_shape(ori_shape, ori_format, dst_format, align_num=16):
 
     dst_shape = []
     if dst_format in ("FRACTAL_NZ",):
-        dst_shape = ori_shape[:-2] + [_ceil_div(ori_shape[-1]), _ceil_div(ori_shape[-2]), align_num, align_num]
+        dst_shape = ori_shape[:-2] + [_ceil_div(ori_shape[-1]), _ceil_div(
+            ori_shape[-2]), align_num, align_num]
     if dst_format in ("NC1HWC0",):
         foramt_dim = dict(zip(list(ori_format), ori_shape))
-        dst_shape = [foramt_dim["N"], _ceil_div(foramt_dim["C"]), foramt_dim["H"], foramt_dim["W"], align_num]
+        dst_shape = [foramt_dim["N"], _ceil_div(
+            foramt_dim["C"]), foramt_dim["H"], foramt_dim["W"], align_num]
 
     dst_shape_len = len(dst_shape)
 
@@ -55,7 +57,8 @@ def tensor_dict(tensor_ori_shape,
     """
     if tensor_format is None:
         tensor_format = tensor_ori_format
-    tensor_shape = get_special_shape(tensor_ori_shape, tensor_ori_format, tensor_format)
+    tensor_shape = get_special_shape(
+        tensor_ori_shape, tensor_ori_format, tensor_format)
 
     gen_dict = dict()
     gen_dict["ori_shape"] = tensor_ori_shape
@@ -84,17 +87,6 @@ def test_op_select_format(test_arg):
     -------
     None
     """
-    x0_shape = [16, 16, 3, 7]
-    x1_shape = [16, 16, 3, 7]
-    x_dtype = "float32"
-    ret = op_select_format(
-        tensor_dict(x0_shape, "NCHW", x_dtype),
-        tensor_dict(x1_shape, "NCHW", x_dtype),
-        tensor_dict(x0_shape, "NCHW", x_dtype, is_output=True),
-    )
-    assert ret.find("NC1HWC0") != -1
-    assert ret.find("FRACTAL_Z") != -1
-    assert ret.find("FRACTAL_NZ") != -1
 
     x0_shape = [-1, 16, -1, -1]
     x1_shape = [16, 16, -1, -1]
@@ -144,17 +136,6 @@ def test_op_select_format(test_arg):
     assert ret.find("FRACTAL_Z") == -1
     assert ret.find("FRACTAL_NZ") == -1
 
-    x0_shape = [16, 16, 16, 16, 16]
-    x1_shape = [16, 16, 16, 16, 16]
-    x_dtype = "float32"
-    ret = op_select_format(
-        tensor_dict(x0_shape, "NCDHW", x_dtype),
-        tensor_dict(x1_shape, "NCDHW", x_dtype),
-        tensor_dict(x0_shape, "NCDHW", x_dtype, is_output=True),
-    )
-    assert ret.find("FRACTAL_Z") != -1
-    assert ret.find("FRACTAL_Z_3D") != -1
-    assert ret.find("FRACTAL_NZ") != -1
     set_current_compile_soc_info(test_arg)
 
 

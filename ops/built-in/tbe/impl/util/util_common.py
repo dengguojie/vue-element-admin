@@ -380,7 +380,7 @@ def is_dynamic_input(_inputs):
         _inputs = [_inputs]
 
     for _, _input in enumerate(_inputs):
-        if -1 in _input.get("shape") or -1 in _input.get("ori_shape"):
+        if -1 in _input.get("shape") or (_input.get("ori_shape") and -1 in _input.get("ori_shape")):
             return True
 
     return False
@@ -403,7 +403,7 @@ def is_unknown_rank_input(input_list):
         input_list = [input_list]
 
     for _, _input in enumerate(input_list):
-        if -2 in _input.get("shape") or -2 in _input.get("ori_shape"):
+        if -2 in _input.get("shape") or (_input.get("ori_shape") and -2 in _input.get("ori_shape")):
             return True
 
     return False
@@ -695,6 +695,13 @@ def is_vector_core():
     return aicore_type == "VectorCore"
 
 
+def gen_range(shape):
+    """
+    generate range by shape
+    param shape:
+    return
+    """
+    return [(1, None) if v == -1 else (v, v) for v in shape]
 
 
 def get_mask_rep_stride(src):
