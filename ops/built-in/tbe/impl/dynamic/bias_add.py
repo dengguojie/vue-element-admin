@@ -25,6 +25,30 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
 from impl.util.platform_adapter import error_manager_vector
 from impl.util.util_common import is_unknown_rank_input
+from impl.bias_add import op_select_format as bias_add_op_select_format
+
+
+def op_select_format(x, bias, y, data_format="NHWC", kernel_name="bias_add"):
+    """
+    1.when the length of x's ori_shape is less than or equal
+    to 4 and the first element of the shape of bias is a multiple
+    of 16. The Op BiasAdd can support NC1HWC0, NCHW and NHWC.
+
+        for example:
+        x : Tensor of (shape=(16, 16, 16, 16), "NHWC")
+        bias : Tensor of (shape=(16, 16, 16, 16), "NHWC")
+        The Op BiasAdd can process with NC1HWC0
+        x : Tensor of (shape=(16, 1, 16, 16, 16), "NC1HWC0")
+        bias : Tensor of (shape=(2), "ND")
+
+    2.when the length of x's ori_shape is greater then 4 and
+    the first element of the shape of bias is a multiple of 16.
+    The Op BiasAdd can support NDHWC, NCDHW, NDC1HWC0.
+
+        x : Tensor of (shape=(16, 1, 16, 16, 16), "NDHWC")
+        bias : Tensor of (shape=(2), "ND")
+    """
+    return bias_add_op_select_format(x, bias, y, data_format, kernel_name)
 
 
 # 'pylint: disable=too-many-locals,unused-argument

@@ -25,6 +25,7 @@ from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import OpImplMode
 
 
@@ -37,6 +38,7 @@ def isclose(valuex, valuey, rel_tol=1e-08, abs_tol=0.0):
 
 
 # 'pylint: disable=locally-disabled,unused-argument,too-many-arguments
+@register_operator_compute("Exp", op_mode="dynamic", support_fusion=True)
 def exp_compute(input_x, output_y, base=-1.0, scale=1.0, shift=0.0,
                 kernel_name="exp", impl_mode=OpImplMode.HIGH_PERFORMANCE):
     """

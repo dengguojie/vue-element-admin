@@ -22,10 +22,12 @@ from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import tbe_platform
 
 
 # 'pylint: disable=unused-argument,too-many-locals,invalid-name
+@register_operator_compute("Ceil", op_mode="dynamic", support_fusion=True)
 def ceil_compute(input_x, output_x, kernel_name="ceil"):
     """
     ceil compute

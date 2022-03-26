@@ -23,9 +23,11 @@ from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import register_operator_compute
 
 
 # 'pylint: disable=locally-disabled,invalid-name,unused-argument,too-many-locals
+@register_operator_compute("Adds", op_mode="dynamic", support_fusion=True)
 def adds_compute(x, y, value, kernel_name="adds"):
     """
     calculating data

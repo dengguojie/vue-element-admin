@@ -22,10 +22,12 @@ from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import register_operator_compute
 from impl.common_util import get_attr
 
 
 # 'pylint: disable=too-many-locals,unused-argument
+@register_operator_compute("Muls", op_mode="dynamic", support_fusion=True)
 def muls_compute(input_x, value, kernel_name="muls"):
     """
     calculating data
