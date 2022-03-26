@@ -64,7 +64,7 @@ def generate_case(x_shape, roi_shape, y_shape, dtype, output_size=7, vrange=None
         "format": "NC1HWC0",
         "param_type": "output",
     }
-    case["params"] = [x, rois, y, 56, 0, (1./4, 1./8, 1./16, 1./32), output_size, output_size, 0, "avg", True]
+    case["params"] = [x, rois, None, y, 56, 0, (1./4, 1./8, 1./16, 1./32), output_size, output_size, 0, "avg", True]
     if iserror:
         case["expect"] = RuntimeError
     if precision_standard is None:
@@ -125,7 +125,7 @@ def test_710(test_arg):
         "format": "NC1HWC0",
         "param_type": "output",
     }
-    params = [x, rois, y, 56, 0, (1./4, 1./8, 1./16, 1./32), 7, 7, 0, "avg", True, "roi_extractor"]
+    params = [x, rois, None, y, 56, 0, (1./4, 1./8, 1./16, 1./32), 7, 7, 0, "avg", True, "roi_extractor"]
     roi_extractor(*params)
     te_set_version("Ascend310")
 

@@ -1835,6 +1835,34 @@ COMMON_INFER_FUNC_REG(RoiExtractor, RoiExtractorInferShape);
 VERIFY_FUNC_REG(RoiExtractor, RoiExtractorVerify);
 // ----------------RoiExtractor-------------------
 
+// ----------------BalanceRois-------------------
+IMPLEMT_COMMON_INFERFUNC(BalanceRoisInferShape) {
+  auto rois_shape = op.GetInputDesc("rois").GetShape();
+  auto rois_dtype = op.GetInputDesc("rois").GetDataType();
+
+  std::vector<int64_t> dim_tmp;
+  dim_tmp.push_back(rois_shape.GetDim(0));
+  Shape index_shape(dim_tmp);
+
+  auto output_rois = op.GetOutputDesc("balance_rois");
+  auto output_index = op.GetOutputDesc("index");
+  output_rois.SetShape(rois_shape);
+  output_rois.SetDataType(rois_dtype);
+  output_index.SetShape(index_shape);
+  output_index.SetDataType(ge::DT_INT32);
+  (void)op.UpdateOutputDesc("balance_rois", output_rois);
+  (void)op.UpdateOutputDesc("index", output_index);
+
+  return GRAPH_SUCCESS;
+}
+
+IMPLEMT_VERIFIER(BalanceRois, BalanceRoisVerify) {
+  return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(BalanceRois, BalanceRoisInferShape);
+VERIFY_FUNC_REG(BalanceRois, BalanceRoisVerify);
+// ----------------BalanceRois-------------------
 
 // ----------------YoloBoxesEncode-------------------
 IMPLEMT_COMMON_INFERFUNC(YoloBoxesEncodeInferShape)

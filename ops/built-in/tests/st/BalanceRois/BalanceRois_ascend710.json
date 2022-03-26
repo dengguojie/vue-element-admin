@@ -1,0 +1,38 @@
+[
+  {
+      "case_name": "Test_BalanceRois_001",
+      "op": "BalanceRois",
+      "input_desc": [
+          {
+              "format": ["ND"],
+              "type": ["float16"],
+              "shape": [1000,5],
+              "data_distribute": [
+                  "uniform"
+              ],
+              "value_range": [
+                  [
+                      0.1,
+                      1.0
+                  ]
+              ],
+              "name": "rois"
+          }
+      ],
+      "output_desc": [
+          {
+              "format": ["ND"],
+              "type": ["float16"],
+              "shape": [1000, 5],
+              "name": "balance_rois"
+          },
+		  {
+              "format": ["ND"],
+              "type": ["int32"],
+              "shape": [1000],
+              "name": "index"
+          }
+      ],
+      "attr": []
+}
+]
