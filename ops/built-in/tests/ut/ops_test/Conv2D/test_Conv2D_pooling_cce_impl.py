@@ -114,14 +114,15 @@ def test_conv2d_pooling(test_arg):
                 bias_tensor = tvm.placeholder(shape_c, name='bias_tensor', dtype="float16")
             conv_res = conv2d_compute(fm, filter_w, bias_tensor, None, None, strides, pads, dilations)
 
-
             if relu_flag:
                 conv_res = relu_compute(conv_res, None)
+
             window = window_pool
             padding = [0, 0, 0, 0]
             strides = strides_pool
             mode = pad_mode
             print("the conv shape is : ", conv_res.shape)
+
             out = pool_fuse_compute(conv_res, None, None, None, window, strides, pad=padding)
             if quant_flag != 0:
                 out = ascend_quant_compute(out, None, quant_scale, quant_offset, sqrt_mode)
