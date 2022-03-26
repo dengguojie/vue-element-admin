@@ -504,6 +504,131 @@ COMMON_INFER_FUNC_REG(ProdEnvMatA, ProdEnvMatAInferShape);
 VERIFY_FUNC_REG(ProdEnvMatA, ProdEnvMatAVerify);
 // --------------------------ProdEnvMatA END---------------------
 
+// --------------------------ProdEnvMatACalcRij Begin---------------------
+IMPLEMT_VERIFIER(ProdEnvMatACalcRij, ProdEnvMatACalcRijVerify) {
+  AscendString opName;
+  CHECK(op.GetName(opName) != GRAPH_SUCCESS, OP_LOGE("ProdEnvMatACalcRij", "Failed to get op name of ProdEnvMatACalcRij"),
+        return GRAPH_FAILED);
+
+  auto opDesc = OpDescUtils::GetOpDescFromOperator(op);
+
+  GeTensorDescPtr coordDesc = opDesc->MutableInputDesc(0);
+  std::vector<int64_t> coordShape = coordDesc->MutableShape().GetDims();
+  CHECK(coordShape.size() != 2, OP_LOGE(opName.GetString(), "Dim of coordShape should be 2"), return GRAPH_FAILED);
+  int64_t nframes = coordShape[0];
+
+  GeTensorDescPtr typeDesc = opDesc->MutableInputDesc(1);
+  std::vector<int64_t> typeShape = typeDesc->MutableShape().GetDims();
+  CHECK(typeShape.size() != 2, OP_LOGE(opName.GetString(), "Dim of typeShape should be 2"), return GRAPH_FAILED);
+  CHECK(typeShape[0] != nframes,
+        OP_LOGE(opName.GetString(), "Number of typeShape samples should match with coords"), return GRAPH_FAILED);
+
+  GeTensorDescPtr natomsDesc = opDesc->MutableInputDesc("natoms");
+  std::vector<int64_t> natomsShape = natomsDesc->MutableShape().GetDims();
+  CHECK(natomsShape.size() != 1, OP_LOGE(opName.GetString(), "Dim of natoms should be 1"), return GRAPH_FAILED);
+  CHECK(natomsShape[0] < 3,
+        OP_LOGE(opName.GetString(), "Number of atoms should be larger than (or equal to) 3"), return GRAPH_FAILED);
+
+  return GRAPH_SUCCESS;
+}
+
+void SetProdEnvMatACalcRijOutputUnknowShape(OpDescPtr op_desc, DataType coord_type) {
+  auto output_rij = op_desc->MutableOutputDesc("rij");
+  auto output_nlist = op_desc->MutableOutputDesc("nlist");
+  auto output_distance = op_desc->MutableOutputDesc("distance");
+  auto output_rij_x = op_desc->MutableOutputDesc("rij_x");
+  auto output_rij_y = op_desc->MutableOutputDesc("rij_y");
+  auto output_rij_z = op_desc->MutableOutputDesc("rij_z");
+  
+  output_rij->SetDataType(coord_type);
+  output_rij->SetShape(ge::GeShape(UNKNOWN_SHAPE));
+  output_rij->SetOriginShape(ge::GeShape(UNKNOWN_SHAPE));
+  output_nlist->SetDataType(DT_INT32);
+  output_nlist->SetShape(ge::GeShape(UNKNOWN_SHAPE));
+  output_nlist->SetOriginShape(ge::GeShape(UNKNOWN_SHAPE));
+  output_distance->SetDataType(coord_type);
+  output_distance->SetShape(ge::GeShape(UNKNOWN_SHAPE));
+  output_distance->SetOriginShape(ge::GeShape(UNKNOWN_SHAPE));
+  output_rij_x->SetDataType(coord_type);
+  output_rij_x->SetShape(ge::GeShape(UNKNOWN_SHAPE));
+  output_rij_x->SetOriginShape(ge::GeShape(UNKNOWN_SHAPE));
+  output_rij_y->SetDataType(coord_type);
+  output_rij_y->SetShape(ge::GeShape(UNKNOWN_SHAPE));
+  output_rij_y->SetOriginShape(ge::GeShape(UNKNOWN_SHAPE));
+  output_rij_z->SetDataType(coord_type);
+  output_rij_z->SetShape(ge::GeShape(UNKNOWN_SHAPE));
+  output_rij_z->SetOriginShape(ge::GeShape(UNKNOWN_SHAPE));
+  
+  return;
+}
+
+IMPLEMT_COMMON_INFERFUNC(ProdEnvMatACalcRijInferShape) {
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  auto input_coord = op_desc->MutableInputDesc("coord");
+  DataType coord_type = op.GetInputDescByName("coord").GetDataType();
+
+  std::vector<int64_t> input_coord_dims = input_coord->GetShape().GetDims();
+  const bool coord_known_shape = IsUnknownVec(input_coord_dims);
+  if (coord_known_shape) {
+    SetProdEnvMatACalcRijOutputUnknowShape(op_desc, coord_type);
+    return GRAPH_SUCCESS;
+  }
+
+  Tensor natoms;
+  if (op.GetInputConstData("natoms", natoms) != GRAPH_SUCCESS) {
+    SetProdEnvMatACalcRijOutputUnknowShape(op_desc, coord_type);
+    return GRAPH_SUCCESS;
+  }
+
+  DataType natomsDType = op_desc->MutableInputDesc("natoms")->GetDataType();
+  std::vector<int64_t> constVec;
+  GetConstValue(op, natoms, natomsDType, constVec);
+  AscendString opName;
+  CHECK(constVec.size() < 3, OP_LOGE(opName.GetString(), "Failed to get natoms value"),
+        return GRAPH_FAILED);
+  int64_t nloc = constVec[0];
+
+  /* Caculate */
+  auto nsample = input_coord_dims[0];
+  int32_t nnei = 0;
+  vector<int32_t> sel_a_arr;
+  (void)op.GetAttr("sel_a", sel_a_arr);
+  for (size_t i = 0; i < sel_a_arr.size(); i++) {
+    nnei += sel_a_arr[i];
+  }
+
+  auto output_rij = op_desc->MutableOutputDesc("rij");
+  auto output_nlist = op_desc->MutableOutputDesc("nlist");
+  auto output_distance = op_desc->MutableOutputDesc("distance");
+  auto output_rij_x = op_desc->MutableOutputDesc("rij_x");
+  auto output_rij_y = op_desc->MutableOutputDesc("rij_y");
+  auto output_rij_z = op_desc->MutableOutputDesc("rij_z");
+  std::vector<int64_t> output_rij_dims;
+  output_rij_dims.push_back(nsample);
+  output_rij_dims.push_back(nloc * nnei * 3);
+  output_rij->SetShape(GeShape(output_rij_dims));
+  output_rij->SetDataType(coord_type);
+  std::vector<int64_t> dims;
+  dims.push_back(nsample);
+  dims.push_back(nloc * nnei);
+  output_nlist->SetShape(GeShape(dims));
+  output_nlist->SetDataType(DT_INT32);
+  output_distance->SetShape(GeShape(dims));
+  output_distance->SetDataType(coord_type);
+  output_rij_x->SetShape(GeShape(dims));
+  output_rij_x->SetDataType(coord_type);
+  output_rij_y->SetShape(GeShape(dims));
+  output_rij_y->SetDataType(coord_type);
+  output_rij_z->SetShape(GeShape(dims));
+  output_rij_z->SetDataType(coord_type);
+
+  return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(ProdEnvMatACalcRij, ProdEnvMatACalcRijInferShape);
+VERIFY_FUNC_REG(ProdEnvMatACalcRij, ProdEnvMatACalcRijVerify);
+// --------------------------ProdEnvMatACalcRij END---------------------
+
 // --------------------------ProdEnvMatACalcDescrpt Begin---------------------
 IMPLEMT_VERIFIER(ProdEnvMatACalcDescrpt, ProdEnvMatACalcDescrptVerify) {
   AscendString opName;
