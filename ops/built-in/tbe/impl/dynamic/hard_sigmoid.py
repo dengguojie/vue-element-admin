@@ -1,4 +1,4 @@
-# Copyright 2019 Huawei Technologies Co., Ltd
+# Copyright (C) Huawei Technologies Co., Ltd 2022-2022. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,16 +15,20 @@
 """
 hard_sigmoid
 """
-from impl.util.platform_adapter import tbe
-from impl.util.platform_adapter import tvm
-from impl.util.platform_adapter import para_check
-from te.platform.fusion_manager import fusion_manager
-from impl.util.platform_adapter import tbe_platform
+from ..util.platform_adapter import tbe
+from ..util.platform_adapter import para_check
+from ..util.platform_adapter import shape_util
+from ..util.platform_adapter import tbe_platform
+from ..util.platform_adapter import tvm
+from ..util.platform_adapter import register_operator
+from ..util.platform_adapter import register_operator_compute
+from ..util.platform_adapter import classify
+from ..util.platform_adapter import OpPatternMode
 
 
 # 'pylint: disable=unused-argument,too-many-locals
-@fusion_manager.register("hard_sigmoid")
-def hard_sigmoid_compute(input_x, output_y, alpha, beta, kernel_name="hard_shaoligmoid"):
+@register_operator_compute("HardSigmoid", op_mode="dynamic", support_fusion=True)
+def hard_sigmoid_compute(input_x, output_y, alpha, beta, kernel_name="hard_sigmoid"):
     """
     calculating data
 
@@ -37,7 +41,7 @@ def hard_sigmoid_compute(input_x, output_y, alpha, beta, kernel_name="hard_shaol
     kernel_name : str
         kernel name, default value is "hard_sigmoid"
 
-    Returnst
+    Return Result
     -------
     output tensor
     """
@@ -63,6 +67,7 @@ def hard_sigmoid_compute(input_x, output_y, alpha, beta, kernel_name="hard_shaol
     return result
 
 
+@register_operator("HardSigmoid")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.OPTION_ATTR_FLOAT, para_check.OPTION_ATTR_FLOAT, para_check.KERNEL_NAME)
 def hard_sigmoid(input_x, output_y, alpha=0.16666666, beta=0.5, kernel_name="hard_sigmoid"):
@@ -88,13 +93,22 @@ def hard_sigmoid(input_x, output_y, alpha=0.16666666, beta=0.5, kernel_name="har
     check_tuple = ("int32", "float16", "float32")
     para_check.check_dtype(input_dtype, check_tuple, param_name="input_x")
 
-    input_data = tvm.placeholder(input_shape, name="input_x", dtype=input_dtype)
-    res = hard_sigmoid_compute(input_data, output_y, alpha, beta, kernel_name)
+    schedules, tensors = [], []
+    ins = classify([input_x], OpPatternMode.ELEWISE)
 
-    with tvm.target.cce():
-        schedule = tbe.auto_schedule(res)
+    for (_x, ) in ins:
+        with tbe.compute():
+            x_shape,  = shape_util.variable_shape([_x])
+            data_input = tvm.placeholder(x_shape, dtype=input_dtype, name="data_input")
+            res = hard_sigmoid_compute(data_input, output_y=output_y, alpha=alpha, beta=beta, kernel_name=kernel_name)
+            tensors.append([data_input, res])
+        with tvm.target.cce():
+            sch = tbe.auto_schedule(res)
+        schedules.append(sch)
 
-    config = {"name": kernel_name,
-              "tensor_list": [input_data, res]}
-
-    tbe.build(schedule, config)
+    config = {
+        "name": kernel_name,
+        "tensor_list": tensors,
+        "bool_storage_as_1bit": False
+    }
+    tbe.build(schedules, config)

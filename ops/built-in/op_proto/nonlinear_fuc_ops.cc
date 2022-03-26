@@ -920,17 +920,15 @@ VERIFY_FUNC_REG(HardShrinkGrad, HardShrinkGradVerify);
 // ----------------HardShrinkGrad END---------------------
 
 // ----------------HardSigmoid Begin-------------------
-IMPLEMT_INFERFUNC(HardSigmoid,HardSigmoidInferShape) {
-  TensorDesc tensordesc_output = op.GetOutputDesc("output_y");
-  tensordesc_output.SetShape(op.GetInputDesc("input_x").GetShape());
-  tensordesc_output.SetDataType(op.GetInputDesc("input_x").GetDataType());
-  tensordesc_output.SetFormat(op.GetInputDesc("input_x").GetFormat());
-
-  (void)op.UpdateOutputDesc("output_y", tensordesc_output);
-  return GRAPH_SUCCESS;
+IMPLEMT_COMMON_INFERFUNC(HardSigmoidInferShape) {
+  OP_LOGI(op.GetName().c_str(), "Enter HardSigmoidInferShape");
+  if (OneInOneOutDynamicInfer(op, "input_x", {"output_y"})) {
+    return GRAPH_SUCCESS;
+  }
+  return GRAPH_FAILED;
 }
 
-INFER_FUNC_REG(HardSigmoid, HardSigmoidInferShape);
+COMMON_INFER_FUNC_REG(HardSigmoid, HardSigmoidInferShape);
 // ----------------HardSigmoid END---------------------
 
 // ----------------SoftShrink Begin-------------------

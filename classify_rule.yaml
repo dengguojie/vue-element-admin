@@ -4120,6 +4120,7 @@ pytorch:
       - ops/built-in/tbe/impl/dynamic/lp_norm.py
       - ops/built-in/tbe/impl/dynamic/lp_norm_update.py
       - ops/built-in/tbe/impl/balance_rois.py
+      - ops/built-in/tbe/impl/dynamic/hard_sigmoid.py
     unrelease:
       - ops/built-in/tests/ut/graph_fusion/ai_core/lstmp_fusion_test.cpp
       - ops/built-in/tests/ut/graph_fusion/ai_core/dynamic_rnn_v2_grad_fusion_test.cpp
