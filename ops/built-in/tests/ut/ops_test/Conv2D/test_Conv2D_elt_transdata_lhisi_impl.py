@@ -1,19 +1,19 @@
 #!/usr/bin/env python
 # -*- coding:UTF-8 -*-
 from op_test_frame.ut import OpUT
-from impl.conv2d import conv2d_compute
-from impl.trans_data import trans_data_compute
-from impl.eltwise import eltwise_compute
-from tbe.common.context import op_context
-from tbe.dsl import auto_schedule
-from tbe.dsl import build
-from te import tvm
-from te import platform as cce_conf
-import te.lang.cce as tbe
 
 ut_case = OpUT("Conv2D", "impl.conv2d", "conv2d")
 
 def test_conv2d_eltwise_transdata(test_arg):
+    from impl.conv2d import conv2d_compute
+    from impl.trans_data import trans_data_compute
+    from impl.eltwise import eltwise_compute
+    from tbe.common.context import op_context
+    from tbe.dsl import auto_schedule
+    from tbe.dsl import build
+    from te import tvm
+    from te import platform as cce_conf
+    import te.lang.cce as tbe
     # case name: ((fm_shape), (weight_shape), (paddings), (strides), (dilations), bias_flag)
     testcase = {
         "conv2d_eltwise_transdata_align_1": ((1, 16, 8, 8), (1, 16, 3, 3), [1, 1, 1, 1], [1, 1, 1, 1], [1, 1, 1, 1], False),
