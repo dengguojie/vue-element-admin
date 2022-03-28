@@ -556,6 +556,75 @@ def test_conv2d_backprop_input_fuzz_build_gragh_mode_pass(test_arg):
 
 ut_case.add_cust_test_func(test_func=test_conv2d_backprop_input_fuzz_build_gragh_mode_pass)
 
+def test_conv2d_backprop_input_fuzz_build_tilingcase(test_arg):
+    import json
+    from impl.dynamic.conv2d_backprop_input import conv2d_backprop_input
+    from tbe.common.context import get_context
+    from tbe.common.context import op_context
+    with op_context.OpContext("dynamic"):
+        get_context().set_build_type("fuzzily_build")
+        get_context().add_addition("max_kernel_id", -1)
+        missing_info = [{
+                            "inputs": [{
+                                "index": 2,
+                                "tensor": [{
+                                    "range": [
+                                        [16, 32],
+                                        [33, 33],
+                                        [256, 512],
+                                        [256, 512]
+                                    ],
+                                    "shape": [-1, 33, -1, -1]
+                                }]
+                            }]
+                        }, {
+                            "inputs": [{
+                                "index": 2,
+                                "tensor": [{
+                                    "range": [
+                                        [16, 32],
+                                        [33, 33],
+                                        [512, 1024],
+                                        [512, 1024]
+                                    ],
+                                    "shape": [-1, 33, -1, -1]
+                                }]
+                            }]
+                        }]
+        get_context().add_addition("missing_support_info", json.dumps(missing_info))
+        input_list = [
+            {
+                'shape': (4,),
+                'ori_shape': (4,),
+                'ori_format': 'ND',
+                'format': 'ND',
+                'dtype': 'int32',
+                'range': ()
+            }, {
+                'shape': (33, 3, 3, 5),
+                'ori_shape': (33, 3, 3, 5),
+                'ori_format': 'NCHW',
+                'format': 'NCHW',
+                'dtype': 'float16'
+            }, {
+                'shape': (-1, 3, -1, -1, 16),
+                'ori_shape': (-1, 33, -1, -1),
+                'ori_format': 'NCHW',
+                'format': 'NC1HWC0',
+                'dtype': 'float16',
+                'range': ((16, 32), (3, 3), (256, 1024), (256, 1024), (16, 16))
+            }, {
+                'shape': (-1, 1, -1, -1, 16),
+                'ori_shape': (-1, 3, -1, -1),
+                'ori_format': 'NCHW',
+                'format': 'NC1HWC0',
+                'dtype': 'float16',
+                'range': ((16, 32), (1, 1), (256, 1024), (256, 1024), (16, 16))
+            }, (1, 1, 1, 1), (0, 0, 0, 0), (1, 1, 1, 1), 1, 'NCHW', 'test_conv2d_fuzz_build_tilingcase']
+        conv2d_backprop_input(*input_list)
+print("adding conv2d_backprop_input test_conv2d_backprop_input_fuzz_build_tilingcase testcase")
+ut_case.add_cust_test_func(support_soc="Ascend910A", test_func=test_conv2d_backprop_input_fuzz_build_tilingcase)
+
 def test_get_op_support_info_dynamic_dx_0(test_arg):
     y = {"shape": (-1, 4, -1, -1, 16), 'ori_shape': (-1, -1, -1, 64),
          "ori_format": "NHWC", "format": "NC1HWC0", "dtype": "float16",

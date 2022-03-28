@@ -196,7 +196,7 @@ ut_case.add_case(
                                         [(128, 128), (64, 64), (112, 142), (112, 142)],
                                         (1, 1, 2, 2), [0, 0, 0, 0], (1, 1, 1, 1),
                                         "dynamic_conv2d_backprop_filter_case1_1",
-                                        RuntimeError))
+                                        TypeError))
 
 # dynamic_hw, dedy shape is less than 4
 ut_case.add_case(
@@ -1045,6 +1045,73 @@ def test_conv2d_backprop_filter_fuzz_build_stc_dyn(test_arg):
     conv2d_bp_filter_generalization(*input_list)
 
 ut_case.add_cust_test_func(test_func=test_conv2d_backprop_filter_fuzz_build_stc_dyn)
+
+def test_conv2d_backprop_filter_fuzz_build_tilingcase(test_arg):
+    import json
+    from impl.dynamic.conv2d_backprop_filter import conv2d_backprop_filter
+    from tbe.common.context import get_context
+    from tbe.common.context import op_context
+    with op_context.OpContext("dynamic"):
+        get_context().set_build_type("fuzzily_build")
+        get_context().add_addition("max_kernel_id", -1)
+        missing_info = [{
+                            "inputs": [{
+                                "index": 0,
+                                "tensor": [{
+                                    "range": [
+                                        [2, 3],
+                                        [3, 3],
+                                        [768, 1023],
+                                        [1024, 2000]
+                                    ],
+                                    "shape": [-1, 3, -1, -1]
+                                }]
+                            }, {
+                                "index": 0,
+                                "tensor": [{
+                                    "range": [
+                                        [2, 3],
+                                        [3, 3],
+                                        [768, 1023],
+                                        [2000, 2001]
+                                    ],
+                                    "shape": [-1, 3, -1, -1]
+                                }]
+                            }]
+                        }]
+        get_context().add_addition("missing_support_info", json.dumps(missing_info))
+        input_list = [
+            {
+                'shape': (-1, 1, -1, -1, 16),
+                'ori_shape': (-1, 3, -1, -1),
+                'ori_format': 'NCHW',
+                'format': 'NC1HWC0',
+                'dtype': 'float16',
+                'range': ((2, 3), (1, 1), (768, 1023), (1024, 4096), (16, 16))
+            }, {
+                'shape': (4,),
+                'ori_shape': (4,),
+                'ori_format': 'ND',
+                'format': 'ND',
+                'dtype': 'int32',
+                'range': ()
+            }, {
+                'shape': (-1, 4, -1, -1, 16),
+                'ori_shape': (-1, 64, -1, -1),
+                'ori_format': 'NCHW',
+                'format': 'NC1HWC0',
+                'dtype': 'float16',
+                'range': ((2, 3), (4, 4), (256, 511), (512, 767), (16, 16))
+            }, {
+                'ori_shape': (64, 3, 7, 7),
+                'shape': (49, 4, 16, 16),
+                'ori_format': 'NCHW',
+                'format': 'FRACTAL_Z',
+                'dtype': 'float32'
+            }, (1, 1, 2, 2), (2, 3, 2, 3), (1, 1, 1, 1), 1, 'NCHW', 'test_conv2d_backprop_filter_fuzz_build_tilingcase']
+        conv2d_backprop_filter(*input_list)
+print("adding conv2d_backprop_filter test_conv2d_backprop_filter_fuzz_build_tilingcase testcase")
+ut_case.add_cust_test_func(test_func=test_conv2d_backprop_filter_fuzz_build_tilingcase)
 
 gen_dynamic_conv2d_backprop_filter_case([3, 3, 64, 64], [-1, -1, -1, 64], [-1, -1, -1, 64],
                                         "float32", "float16", "float16",
