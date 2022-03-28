@@ -50,7 +50,7 @@ run_ut() {
     pr_file=""
   fi
 
-  python3.7 "${CANN_ROOT}/ops/built-in/tests/common/ci/run_op_cfg_ut.py"                     
+  python3.7 "${CANN_ROOT}/ops/built-in/tests/common/ci/run_op_cfg_ut.py"
   if [[ $? -ne 0 ]]; then
     echo "run ops cfg utest failed."
     exit $STATUS_FAILED
@@ -77,13 +77,15 @@ run_ut() {
     coverage_file=$(find $OPS_UT_COV_REPORT -name ".coverage*" | head -n1)
     if [[ -f "$coverage_file" ]]; then
       coverage_dir="$(dirname $coverage_file)"
-      cd $coverage_dir; coverage combine -a; coverage xml -o ${OPS_UT_COV_REPORT}/coverage.xml >/dev/null 2>&1
+      cd $coverage_dir; coverage combine -a; coverage xml -o ${OPS_UT_COV_REPORT}/coverage.xml 2>&1
+      echo "coverage.xml generated."
       diff-cover --compare-branch=origin/master ${OPS_UT_COV_REPORT}/coverage.xml --html-report ${OPS_UT_COV_REPORT}/report.html
       echo "diff-cover generated."
     else
       echo "coverage data is not exist, do not need generate inc report."
     fi
   fi
+  ls -al ${OPS_UT_COV_REPORT}
 }
 
 set_st_env() {

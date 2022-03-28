@@ -30,8 +30,8 @@ from multiprocessing import Pool
 from functools import reduce
 import signal
 import coverage
+import cube_ut_loader
 from op_test_frame.common import logger
-from op_test_frame.ut import ut_loader
 from op_test_frame.ut import ut_report
 from op_test_frame.ut import op_ut
 from op_test_frame.utils import file_util
@@ -47,6 +47,10 @@ class Constant:
     DATA_DIR_MODES = stat.S_IWUSR | stat.S_IRUSR | stat.S_IXUSR | stat.S_IRGRP | stat.S_IXGRP
     cube_source_dirs = [
         "impl", "tbe.dsl.compute", "tbe.dsl.static_schedule", "tbe.dsl.unify_schedule", "tbe.common.utils"
+    ]
+    init_source_dir = [
+        "impl.ascend", "impl.auto_tune", "impl.util", "impl.fixpipe_op", "tbe.dsl.compute", "tbe.dsl.static_schedule",
+        "tbe.dsl.unify_schedule", "tbe.common.utils"
     ]
 
 
@@ -194,8 +198,8 @@ def _run_ut_case_file(run_arg: RunUTCaseFileArgs):
     res = True
 
     if run_arg.cov_report:
-        cov_src = get_cov_relate_source(run_arg.op_module_name)
-        ut_cover = coverage.Coverage(source=cov_src + Constant.cube_source_dirs, data_file=run_arg.cov_data_path)
+        ut_cover = coverage.Coverage(source=[run_arg.op_module_name] + Constant.init_source_dir,
+                                     data_file=run_arg.cov_data_path)
         ut_cover.start()
 
     try:
@@ -300,14 +304,9 @@ def run_ut(case_dir, soc_version, case_name=None,  # 'pylint: disable=too-many-a
         return failed
 
     cov_combine_dir = _build_cov_data_path(cov_report_path)
-    if cov_report:
-        init_cov_data_path = os.path.join(cov_combine_dir, ".coverage_init")
-        ut_cover = coverage.Coverage(source=Constant.cube_source_dirs, data_file=init_cov_data_path)
-        ut_cover.start()
-    case_file_info_list, load_has_err = ut_loader.load_ut_cases(case_dir)
-    if cov_report:
-        ut_cover.stop()
-        ut_cover.save()
+    case_file_info_list, load_has_err = cube_ut_loader.load_ut_cases(case_dir,
+                                                                     source_dir=Constant.init_source_dir,
+                                                                     data_dir=cov_combine_dir)
     if not case_file_info_list:
         logger.log_err("Not found any test cases.")
         return failed
@@ -324,11 +323,11 @@ def run_ut(case_dir, soc_version, case_name=None,  # 'pylint: disable=too-many-a
         for one_soc in soc_version_list:
             total_run_arg_list[one_soc] = []
         for case_file_info in case_file_info_list:
-            case_file_tmp = '%s_%s' % (os.path.basename(case_file_info.case_file)[:-3], time.time())
             for one_soc_version in soc_version_list:
-                single_cov_data_path = os.path.join(cov_combine_dir, ".coverage_" + str(ps_count) + "_" + case_file_tmp)
-                single_rpt_data_path = os.path.join(rpt_combine_dir,
-                                                    "rpt_" + str(ps_count) + "_" + case_file_tmp + ".data")
+                case_file_tmp = '%s.%s.%s' % (os.path.basename(case_file_info.case_file)[:-3],
+                                              one_soc_version, time.time())
+                single_cov_data_path = os.path.join(cov_combine_dir, ".coverage.%d.%s" % (ps_count, case_file_tmp))
+                single_rpt_data_path = os.path.join(rpt_combine_dir, "rpt.%d.%s.data" % (ps_count, case_file_tmp))
                 run_arg = RunUTCaseFileArgs(case_file=case_file_info.case_file,
                                             op_module_name=case_file_info.op_module_name,
                                             soc_version=one_soc_version,
@@ -412,8 +411,8 @@ def _combine_coverage(cov_report_path, cov_combine_dir):
     total_cov_data_file = os.path.join(cov_report_path, ".coverage")
     cov = coverage.Coverage(source=Constant.cube_source_dirs, data_file=total_cov_data_file)
     combine_files = [os.path.join(cov_combine_dir, cov_file) for cov_file in os.listdir(cov_combine_dir)]
-    cov.combine(combine_files)
+    logger.log_info("combine_files: %s" % combine_files)
+    cov.combine(combine_files, keep=True)
     cov.save()
     cov.load()
     cov.html_report(directory=cov_report_path)
-    os.removedirs(cov_combine_dir)
