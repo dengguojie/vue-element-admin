@@ -9,7 +9,8 @@
 #include "array_ops.h"
 #include "fusion_pass_test_utils.h"
 #include "fp16_t.hpp"
-
+#define private public
+#include "common/util/platform_info.h"
 
 using namespace ge;
 
@@ -847,6 +848,15 @@ TEST_F(same_input_conv2d_test, same_input_conv2d_smoke_test_01)
 {
     ge::ComputeGraphPtr computeGraph;
     BuildGraph(computeGraph);
+
+    // set soc_version
+    fe::PlatformInfo platform_info;
+    fe::OptionalInfo opti_compilation_info;
+    platform_info.soc_info.ai_core_cnt = 1;
+    opti_compilation_info.soc_version = "Ascend910A";
+    fe::PlatformInfoManager::Instance().platform_info_map_["Ascend910A"] = platform_info;
+    fe::PlatformInfoManager::Instance().SetOptionalCompilationInfo(opti_compilation_info);
+
     FusionPassTestUtils::InferShapeAndType(computeGraph);
     FusionPassTestUtils::RunGraphFusionPass("SameInputConv2dPass", fe::BUILT_IN_GRAPH_PASS, *computeGraph);
 
@@ -1138,6 +1148,30 @@ TEST_F(same_input_conv2d_test, same_input_conv2d_quant_next_test_19)
     uint32_t constNodeExpect = 4;
     uint32_t reluNodeExpect = 0;
     uint32_t concatNodeExpect = 2;
+    CheckNodesCnt(computeGraph, conv2dNodeExpect, splitNodeExpect, constNodeExpect, reluNodeExpect, concatNodeExpect);
+}
+
+TEST_F(same_input_conv2d_test, same_input_conv2d_test_sd3403)
+{
+    ge::ComputeGraphPtr computeGraph;
+    BuildGraph(computeGraph);
+
+    // set soc_version
+    fe::PlatformInfo platform_info;
+    fe::OptionalInfo opti_compilation_info;
+    platform_info.soc_info.ai_core_cnt = 1;
+    opti_compilation_info.soc_version = "SD3403";
+    fe::PlatformInfoManager::Instance().platform_info_map_["SD3403"] = platform_info;
+    fe::PlatformInfoManager::Instance().SetOptionalCompilationInfo(opti_compilation_info);
+
+    FusionPassTestUtils::InferShapeAndType(computeGraph);
+    FusionPassTestUtils::RunGraphFusionPass("SameInputConv2dPass", fe::BUILT_IN_GRAPH_PASS, *computeGraph);
+
+    uint32_t conv2dNodeExpect = 4;
+    uint32_t splitNodeExpect = 0;
+    uint32_t constNodeExpect = 10;
+    uint32_t reluNodeExpect = 2;
+    uint32_t concatNodeExpect = 0;
     CheckNodesCnt(computeGraph, conv2dNodeExpect, splitNodeExpect, constNodeExpect, reluNodeExpect, concatNodeExpect);
 }
 
