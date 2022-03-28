@@ -313,7 +313,7 @@ def ndtri_compute(input_x, output_y, kernel_name="ndtri"):
     zeros = tbe.vmuls(input_x, 0)
     res_maxnum = tbe.vrec(zeros)
     tmp_one = tbe.vcmpsel(input_x, tvm.const(1, dtype), 'ge', res_maxnum, res_ndtri)
-    res = tbe.vcmpsel(input_x, tvm.const(-1, dtype), 'le', res_maxnum, tmp_one)
+    res = tbe.vcmpsel(input_x, tvm.const(0, dtype), 'le', res_maxnum, tmp_one)
 
     # Restore dtype
     if has_improve_precision:

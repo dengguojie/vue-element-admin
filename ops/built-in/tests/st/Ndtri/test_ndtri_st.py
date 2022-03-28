@@ -130,12 +130,12 @@ def calc_expect_func(x, y):
     """
     input_x = x["value"]
     for i in np.nditer(input_x, op_flags=['readwrite']):
-        if i <= -1.0:
-            i[...] = 0.0
+        if i <= 0.0:
+            i[...] = np.nan
         elif i < 1.0:
             i[...] = cal_ndtri(i)
         else:
-            i[...] = 0.0
+            i[...] = np.nan
 
     return [
         input_x,

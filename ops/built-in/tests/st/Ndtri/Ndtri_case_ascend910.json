@@ -8,16 +8,16 @@
                 "format": "ND",
                 "type": "float32",
                 "shape": [
-                    3
+                    5
                 ],
                 "ori_format": "ND",
                 "ori_shape": [
-                    3
+                    5
                 ],
                 "param_type": "input",
                 "name": "x",
                 "value": [
-                    0.2, 0.5, 0.7
+                    0, 0.2, 0.5, 0.7, 1
                 ]
             }
         ],
@@ -26,11 +26,11 @@
                 "format": "ND",
                 "type": "float32",
                 "shape": [
-                    3
+                    5
                 ],
                 "ori_format": "ND",
                 "ori_shape": [
-                    3
+                    5
                 ],
                 "param_type": "output",
                 "name": "y"
