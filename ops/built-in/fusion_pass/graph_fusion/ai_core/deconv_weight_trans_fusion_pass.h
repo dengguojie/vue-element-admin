@@ -52,7 +52,8 @@ class DeconvWeightTransFusionPass : public PatternFusionBasePass {
                                      ge::GeTensorDesc& next_in_desc, const ge::Format& format,
                                      ge::NodePtr& reformat_node, const std::string& basename);
   static Status UpdateWeightQuantShape(const vector<int64_t>& reshape_out,
-                                       const ge::NodePtr& quant_node, const ge::NodePtr deconv_node);
+                                       const ge::NodePtr& quant_node);
+  static Status CheckQuantLinkNode(const ge::NodePtr& quant_node);
   static const string FUSED_OP_TYPE;
   };
 }  // namespace fe

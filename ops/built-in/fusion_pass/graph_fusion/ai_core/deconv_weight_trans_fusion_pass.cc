@@ -62,6 +62,7 @@ vector<FusionPattern*> DeconvWeightTransFusionPass::DefinePatterns() {
   OP_LOGI(FUSED_OP_TYPE.c_str(),
           "Enter DeconvWeightTransFusionPass::DefinePatterns.");
   vector<FusionPattern*> patterns;
+  // patterns DeconvWeightTransFusionPass0 and DeconvWeightTransFusionPass can be fused to improve performance
   FusionPattern* pattern_0 = new (std::nothrow) FusionPattern("DeconvWeightTransFusionPass0");
   FUSION_PASS_CHECK(
       pattern_0 == nullptr,
@@ -223,17 +224,21 @@ void DeconvWeightTransFusionPass::GetShapeUsedByIntermediateProcessInDeconvWeigh
 }
 
 Status DeconvWeightTransFusionPass::UpdateWeightQuantShape(const vector<int64_t>& reshape_out,
-                                                           const ge::NodePtr& quant_node,
-                                                           const ge::NodePtr deconv_node) {
+                                                           const ge::NodePtr& quant_node) {
   ge::GeTensorDesc quant_weight_out_desc = quant_node->GetOpDesc()->GetOutputDesc(0);
   quant_weight_out_desc.SetShape(ge::GeShape(reshape_out));
   quant_weight_out_desc.SetOriginShape(ge::GeShape(reshape_out));
   FUSION_PASS_CHECK(quant_node->GetOpDesc()->UpdateOutputDesc(0, quant_weight_out_desc) != SUCCESS,
                     ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "fail to update output description of quant"),
                     return FAILED);
-  FUSION_PASS_CHECK(deconv_node->GetOpDesc()->UpdateInputDesc(1, quant_weight_out_desc) != SUCCESS,
-                    ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "fail to update input description of deconv"),
-                    return FAILED);
+  auto out_data_anchor_quant = quant_node->GetOutDataAnchor(0);
+  for (auto peer_in_data_anchor : out_data_anchor_quant->GetPeerInDataAnchors()) {
+    ge::NodePtr next_node = peer_in_data_anchor->GetOwnerNode();
+    // 1 is anchor of weight input
+    FUSION_PASS_CHECK(next_node->GetOpDesc()->UpdateInputDesc(1, quant_weight_out_desc) != SUCCESS,
+                      ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "fail to update input description of deconv"),
+                      return FAILED);
+  }
   return SUCCESS;
 }
 
@@ -464,6 +469,24 @@ int64_t GetBatchCeilGroups(int64_t& groups, int64_t& number) {
   return SUCCESS;
 }
 
+Status DeconvWeightTransFusionPass::CheckQuantLinkNode(const ge::NodePtr& quant_node) {
+  auto out_data_anchor = quant_node->GetOutDataAnchor(0);
+  FUSION_PASS_CHECK(out_data_anchor == nullptr,
+                    ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "OutdataAnchor 0 of quant is null, fusion failed."),
+                    return FAILED);
+  for (auto peer_in_data_anchor : out_data_anchor->GetPeerInDataAnchors()) {
+    ge::NodePtr next_node = peer_in_data_anchor->GetOwnerNode();
+    FUSION_PASS_CHECK(next_node == nullptr,
+                      ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "next_node is null."),
+                      return FAILED);
+    if (next_node->GetType() != DECONV && next_node->GetType() != CONV2D_TRANSPOSE) {
+      return FAILED;
+    }
+  }
+
+  return SUCCESS;
+}
+
 Status DeconvWeightTransFusionPass::Fusion(ge::ComputeGraph& graph,
                                            Mapping& mapping,
                                            vector<ge::NodePtr>& /* fusion_nodes */) {
@@ -491,11 +514,14 @@ Status DeconvWeightTransFusionPass::Fusion(ge::ComputeGraph& graph,
     filter_anchor = 0;
     with_quant = true;
     filter_next_node = quant_node;
+    FUSION_PASS_CHECK(CheckQuantLinkNode(quant_node) != SUCCESS,
+                      CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "Quant Node do not link to Deconv Node"),
+                      return NOT_CHANGED);
   }
 
   // prerequisite
   ge::NodePtr filter_node = GetPeerOutNodeWithInDataAnchor(filter_next_node, filter_anchor);
-  int filter_index = GetPeerOutAnchorWithInDataAnchor(filter_next_node, 1)->GetIdx();
+  int filter_index = GetPeerOutAnchorWithInDataAnchor(filter_next_node, filter_anchor)->GetIdx();
   FUSION_PASS_CHECK(filter_node == nullptr,
                     CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "Failed to get peer out node of filter"),
                     return NOT_CHANGED);
@@ -627,7 +653,7 @@ Status DeconvWeightTransFusionPass::Fusion(ge::ComputeGraph& graph,
       CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "fail to relink nodes"), return FAILED);
   if (with_quant) {
     FUSION_PASS_CHECK(
-        UpdateWeightQuantShape(reshape_out, quant_node, deconv_node) != SUCCESS,
+        UpdateWeightQuantShape(reshape_out, quant_node) != SUCCESS,
         CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "fail to update quant and deconv node"), return FAILED);
   }
 
