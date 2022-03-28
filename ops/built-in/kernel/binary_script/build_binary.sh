@@ -14,6 +14,9 @@
 # limitations under the License.
 # ============================================================================
 # bash build_binary.sh {opp_run_path} {output_path} {soc_version}
+export ASCEND_SLOG_PRINT_TO_STDOUT=1
+export ASCEND_GLOBAL_LOG_LEVEL=1
+
 OPP_RUN_PATH=$1
 OUTPUT_PATH=$2
 SOC_VERSION=$3
