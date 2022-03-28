@@ -62,10 +62,10 @@ Status RoiExtractorFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vec
      optional_info.soc_version == "";
   }
   OP_LOGD("RoiExtractor", "Get soc_version is: [%s].", optional_info.soc_version.c_str());
-  if (optional_info.soc_version != "Ascend710") {
-     OP_LOGW("RoiExtractor", "not support this soc_version");
-     return FAILED;
-  }
+  FUSION_PASS_CHECK(
+      optional_info.soc_version != "Ascend710",
+      OP_LOGW(FUSED_OP_TYPE.c_str(), "not support this soc_version."),
+      return NOT_CHANGED);
 
   NodePtr roi_node = GetNodeFromMapping(PatternRoi, mapping);
   FUSION_PASS_CHECK(roi_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "The roi_node is null, fusion failed."),
@@ -83,8 +83,8 @@ Status RoiExtractorFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vec
   GeTensorDesc rois_data_desc = roi_node->GetOpDesc()->GetInputDesc("rois");
 
   FUSION_PASS_CHECK(roi_node->GetOpDesc()->GetInputDesc("index").GetShape().GetDim(0) != IndexDim,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "index dim is not 0."),
-                    return FAILED);
+                    OP_LOGW(FUSED_OP_TYPE.c_str(), "index dim is not 0."),
+                    return NOT_CHANGED);
   FUSION_PASS_CHECK(balancerois_desc->AddInputDesc("rois", rois_data_desc) != GRAPH_SUCCESS,
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "BalanceRois add rois_data desc failed."),
                     return FAILED);
