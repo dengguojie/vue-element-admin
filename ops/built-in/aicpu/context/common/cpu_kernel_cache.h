@@ -191,7 +191,7 @@ class CpuKernelCache : public KernelCache<CpuCacheData> {
    * @return uint32_t: 0 indicates success, while the others fail
    */
   std::shared_ptr<CpuKernelContext> GetCpuKernelContext(
-      bool has_sess_info, uint64_t kernel_id, const char *nodedef,
+      std::shared_ptr<ExtInfoMsg> extInfoMsg, const char *nodedef,
       uint32_t nodedef_len, std::shared_ptr<NodeDef> &nodedef_proto);
 
   /*

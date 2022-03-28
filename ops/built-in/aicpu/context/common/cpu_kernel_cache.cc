@@ -492,9 +492,11 @@ uint32_t CpuKernelCache::ParseIoAddr(AicpuParamHead *param_head,
  * get cpu kernel context from cache
  */
 std::shared_ptr<CpuKernelContext> CpuKernelCache::GetCpuKernelContext(
-    bool has_sess_info, uint64_t kernel_id, const char *nodedef,
+    std::shared_ptr<ExtInfoMsg> extInfoMsg, const char *nodedef,
     uint32_t nodedef_len, std::shared_ptr<NodeDef> &nodedef_proto) {
   std::shared_ptr<CpuKernelContext> ctx = nullptr;
+  bool has_sess_info = extInfoMsg->has_sess_info;
+  uint64_t kernel_id = extInfoMsg->kernel_id;
   KERNEL_LOG_INFO("Get cpu kernel context begin, kernel id[%lu].", kernel_id);
   if (has_sess_info) {
     CpuCacheData *cache = GetCache(kernel_id);
@@ -506,16 +508,22 @@ std::shared_ptr<CpuKernelContext> CpuKernelCache::GetCpuKernelContext(
 
   std::string str_data(nodedef, nodedef_len);
   nodedef_proto = CpuKernelUtils::CreateNodeDef();
-  KERNEL_CHECK_NULLPTR(nodedef_proto,
-                       std::shared_ptr<CpuKernelContext>(nullptr),
-                       "Create node def failed.")
+  KERNEL_CHECK_NULLPTR(nodedef_proto, std::shared_ptr<CpuKernelContext>(nullptr), "Create node def failed.")
   if (!nodedef_proto->ParseFromString(str_data)) {
     return std::shared_ptr<CpuKernelContext>(nullptr);
   }
 
+  auto waitType = CpuKernelUtils::CreateAttrValue();
+  waitType->SetInt(extInfoMsg->wait_type);
+  nodedef_proto->AddAttrs("wait_type", waitType.get());
+
+  auto waitId = CpuKernelUtils::CreateAttrValue();
+  waitId->SetInt(extInfoMsg->wait_id);
+  nodedef_proto->AddAttrs("wait_id", waitId.get());
+  KERNEL_LOG_INFO("AddAttrs wait info , waitType[%u] waitId[%u].", extInfoMsg->wait_type, extInfoMsg->wait_id);
+
   CpuKernelContext *tmp = new (std::nothrow) CpuKernelContext(DEVICE);
-  KERNEL_CHECK_NULLPTR(tmp, std::shared_ptr<CpuKernelContext>(nullptr),
-                       "Create context failed.")
+  KERNEL_CHECK_NULLPTR(tmp, std::shared_ptr<CpuKernelContext>(nullptr), "Create context failed.")
   ctx = std::shared_ptr<CpuKernelContext>(tmp);
   uint32_t ret = ctx->Init(nodedef_proto.get());
   if (ret != KERNEL_STATUS_OK) {
@@ -523,18 +531,14 @@ std::shared_ptr<CpuKernelContext> CpuKernelCache::GetCpuKernelContext(
   }
 
   if (has_sess_info) {
-    CpuCacheData *cache_ptr =
-        new (std::nothrow) CpuCacheData(nodedef_proto, ctx);
+    CpuCacheData *cache_ptr = new (std::nothrow) CpuCacheData(nodedef_proto, ctx);
     KERNEL_CHECK_NULLPTR(cache_ptr, std::shared_ptr<CpuKernelContext>(nullptr),
                          "Create cpu cache data failed.")
-    std::shared_ptr<CpuCacheData> cache_shared =
-        std::shared_ptr<CpuCacheData>(cache_ptr);
+    std::shared_ptr<CpuCacheData> cache_shared = std::shared_ptr<CpuCacheData>(cache_ptr);
     SetCache(kernel_id, cache_shared);
-    KERNEL_LOG_INFO("Cache cpu kernel data success, kernel id[%lu].",
-                    kernel_id);
+    KERNEL_LOG_INFO("Cache cpu kernel data success, kernel id[%lu].", kernel_id);
   }
-  KERNEL_LOG_INFO("Get cpu kernel context success, kernel id[%lu].",
-                  kernel_id);
+  KERNEL_LOG_INFO("Get cpu kernel context success, kernel id[%lu].", kernel_id);
   return ctx;
 }
 
@@ -563,11 +567,8 @@ int32_t CpuKernelCache::RunKernel(void *param) {
   }
 
   std::shared_ptr<NodeDef> nodedef_proto = nullptr;
-  auto ctx =
-      GetCpuKernelContext(ext_info_msg->has_sess_info, ext_info_msg->kernel_id,
-                          nodedef, nodedef_len, nodedef_proto);
-  KERNEL_CHECK_NULLPTR(ctx, KERNEL_STATUS_INNER_ERROR,
-                       "Get cpu kernel context from buff failed.")
+  auto ctx = GetCpuKernelContext(ext_info_msg, nodedef, nodedef_len, nodedef_proto);
+  KERNEL_CHECK_NULLPTR(ctx, KERNEL_STATUS_INNER_ERROR, "Get cpu kernel context from buff failed.")
 
   ret = UpdateTensor(io_addrs, *ext_info_msg, *ctx);
   if (ret != KERNEL_STATUS_OK) {
