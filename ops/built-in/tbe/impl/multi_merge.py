@@ -166,8 +166,8 @@ def multi_merge(input_proposal, output_proposal, output_index, k_num, include_in
     """
     soc_version = PlatformApi.get_soc_spec(PlatformApi.SOC_VERSION)
     if check_soc_version_support(soc_version, ("Ascend920",)):
-        return multi_merge_v2(input_proposal, output_proposal, output_index, k_num, include_index, kernel_name)
-    if include_index:
+        multi_merge_v2(input_proposal, output_proposal, output_index, k_num, include_index, kernel_name)
+    elif include_index:
         single_merge(input_proposal, output_proposal, output_index, k_num, kernel_name)
     else:
         proposal_shape_result = output_proposal.get("shape")

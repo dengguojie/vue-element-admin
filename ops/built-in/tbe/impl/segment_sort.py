@@ -272,20 +272,21 @@ def segment_sort(input_data, input_index, output_proposal, k_num, kernel_name="S
     """
     soc_version = PlatformApi.get_soc_spec(PlatformApi.SOC_VERSION)
     if check_soc_version_support(soc_version, ("Ascend920",)):
-        return segment_sort_v2(input_data, input_index, output_proposal, k_num, kernel_name)
-    input_shape = input_data.get("shape")
-    input_dtype = input_data.get("dtype").lower()
-    input_format = input_data.get("format")
-    check_list = ("float16", )
-    para_check.check_dtype(input_dtype, check_list, param_name="input_data")
-    para_check.check_shape(input_shape, param_name="input_data")
-    para_check.check_format(input_format)
-    check_params(input_data, input_index, kernel_name)
+        segment_sort_v2(input_data, input_index, output_proposal, k_num, kernel_name)
+    else:
+        input_shape = input_data.get("shape")
+        input_dtype = input_data.get("dtype").lower()
+        input_format = input_data.get("format")
+        check_list = ("float16", )
+        para_check.check_dtype(input_dtype, check_list, param_name="input_data")
+        para_check.check_shape(input_shape, param_name="input_data")
+        para_check.check_format(input_format)
+        check_params(input_data, input_index, kernel_name)
 
-    AContainer.reset_instance()
-    cont = AContainer.get_instance()
-    data_num = input_shape[0]
-    index_num = input_index.get("shape")[0]
-    proposal_shape_result = output_proposal.get("shape")
-    obj = SegmentSort(data_num, index_num, input_dtype, k_num, proposal_shape_result, kernel_name, cont)
-    obj.mode_compute()
+        AContainer.reset_instance()
+        cont = AContainer.get_instance()
+        data_num = input_shape[0]
+        index_num = input_index.get("shape")[0]
+        proposal_shape_result = output_proposal.get("shape")
+        obj = SegmentSort(data_num, index_num, input_dtype, k_num, proposal_shape_result, kernel_name, cont)
+        obj.mode_compute()
