@@ -25,6 +25,7 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
 from impl.dynamic import max_pool_grad_with_argmax_v2_resnet50 as resnet50
 
+
 # 'pylint: disable=too-few-public-methods
 class Constant:
     """

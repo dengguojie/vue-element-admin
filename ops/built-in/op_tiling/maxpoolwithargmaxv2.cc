@@ -42,10 +42,10 @@ namespace {
   constexpr int32_t INPUT_INDEX_TWO = 2;
   constexpr int32_t INPUT_INDEX_THREE = 3;
   constexpr int32_t INPUT_INDEX_FOUR = 4;
-  constexpr int32_t RESNET50_ksize = 3;
-  constexpr int32_t RESNET50_stride = 2;
-  constexpr int32_t RESNET50_pads = 1;
-  constexpr int32_t RESNET50_DILATION = 1;  
+  constexpr int32_t RESNET50_KSIZE = 3;
+  constexpr int32_t RESNET50_STRIDE = 2;
+  constexpr int32_t RESNET50_PADS = 1;
+  constexpr int32_t RESNET50_DILATION = 1;
   constexpr int32_t RESNET50_IN = 112;
   constexpr int32_t GATHER_LEN = 256;
 }
@@ -158,9 +158,9 @@ static int32_t DivRtn(int32_t x, int32_t y) {
 
 bool check_resnet50(const vector<int64_t>& input_shape, int32_t ksize_h, int32_t ksize_w,
                     int32_t strides_h, int32_t strides_w, int32_t pad_t, int32_t pad_l, int32_t ceil_mode) {
-  if ((ksize_h == RESNET50_ksize) && (ksize_w == RESNET50_ksize) && 
-      (strides_h == RESNET50_stride) && (strides_w == RESNET50_stride) && 
-      (pad_t == RESNET50_pads) && (pad_l == RESNET50_pads) &&
+  if ((ksize_h == RESNET50_KSIZE) && (ksize_w == RESNET50_KSIZE) &&
+      (strides_h == RESNET50_STRIDE) && (strides_w == RESNET50_STRIDE) &&
+      (pad_t == RESNET50_PADS) && (pad_l == RESNET50_PADS) &&
       (input_shape[INPUT_INDEX_TWO] == RESNET50_IN) &&
       (input_shape[INPUT_INDEX_THREE] == RESNET50_IN) &&
       (input_shape[INPUT_INDEX_FOUR] == C_ZERO) &&

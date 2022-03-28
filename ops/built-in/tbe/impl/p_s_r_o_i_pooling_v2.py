@@ -1201,14 +1201,11 @@ class PSROIPoolingV2Class(object):
             self._load_rois_to_ub(rois_ub, rois_offset, roi_step)
 
             # calculate spatial scale rois
-            rois_floor_ub = self.tik_instance.Tensor(INT32, \
-                                                     (DIGIT_5, roi_step), \
+            rois_floor_ub = self.tik_instance.Tensor(INT32, (DIGIT_5, roi_step), \
                                                      name="rois_floor_ub", scope=tbe_platform.scope_ubuf)
-            rois_spatial_ub = self.tik_instance.Tensor(self.dtype, \
-                                                       (DIGIT_8, roi_step), \
+            rois_spatial_ub = self.tik_instance.Tensor(self.dtype, (DIGIT_8, roi_step), \
                                                        name="rois_spatial_ub", scope=tbe_platform.scope_ubuf)
-            self._spatial_scale_rois(rois_ub, rois_floor_ub, rois_spatial_ub,
-                                     roi_step)
+            self._spatial_scale_rois(rois_ub, rois_floor_ub, rois_spatial_ub, roi_step)
 
             with self.tik_instance.if_scope(inner_i == (roi_loop - 1)):
                 self._process_step1_roi(rois_floor_ub, rois_spatial_ub, \
@@ -1237,8 +1234,7 @@ class PSROIPoolingV2Class(object):
         """
         with self.tik_instance.for_range(0, roi_loop) as inner_i:
             rois_ub = self.tik_instance.Tensor(self.dtype, (DIGIT_5, roi_step),
-                                               name="rois_ub",
-                                               scope=tbe_platform.scope_ubuf)
+                                               name="rois_ub", scope=tbe_platform.scope_ubuf)
             # rois addr offset
             rois_offset = self.tik_instance.Scalar(INT32, name="rois_offset")
             rois_offset.set_as(rois_num_offset + \
@@ -1407,55 +1403,49 @@ class PSROIPoolingV2Class(object):
                 num2 = outer_loop
 
             roi_loop1 = _ceil_value(num1, roi_step)
-            roi_step1_l = roi_step if (num1 % roi_step == 0) \
-                else (num1 % roi_step)
+            if (num1 % roi_step == 0):
+                roi_step1_l = roi_step
+            else:
+                roi_step1_l = num1 % roi_step
             roi_loop2 = _ceil_value(num2, roi_step)
-            roi_step2_l = roi_step if (num2 % roi_step == 0) \
-                else (num2 % roi_step)
+            if (num2 % roi_step == 0):
+                roi_step2_l = roi_step
+            else:
+                roi_step2_l = num2 % roi_step
 
-        with self.tik_instance.for_range(0, block_num,
-                                         block_num=block_num) as block_id:
+        with self.tik_instance.for_range(0, block_num, block_num=block_num) as block_id:
             # process of one aicore
             self._init_const_0_127_ub()
             self._init_const_1_128_ub()
 
-            rois_num_offset = self.tik_instance.Scalar(INT32,
-                                                       name="rois_num_offset")
+            rois_num_offset = self.tik_instance.Scalar(INT32, name="rois_num_offset")
 
             if self.fm_batch == 1:
                 # process roi nums: num1
                 with self.tik_instance.if_scope(block_id < outer_tail):
                     # rois_num_offset is the offset in block_id aicore
                     rois_num_offset.set_as(block_id * num1)
-                    self._process_rois(roi_step, rois_num_offset, roi_loop1,
-                                       roi_step1_l)
+                    self._process_rois(roi_step, rois_num_offset, roi_loop1, roi_step1_l)
                 # process roi nums: num2
                 with self.tik_instance.else_scope():
                     if outer_loop > 0:
-                        rois_num_offset.set_as(outer_tail * num1 +
-                                               (block_id - outer_tail) * num2)
-                        self._process_rois(roi_step, rois_num_offset, roi_loop2,
-                                           roi_step2_l)
+                        rois_num_offset.set_as(outer_tail * num1 + (block_id - outer_tail) * num2)
+                        self._process_rois(roi_step, rois_num_offset, roi_loop2, roi_step2_l)
 
             else:
                 # process roi nums: num1*fm_batch
                 with self.tik_instance.if_scope(block_id < outer_tail):
                     # rois_num_offset is the offset in block_id aicore
-                    with self.tik_instance.for_range(0, self.fm_batch) \
-                            as batch_id:
+                    with self.tik_instance.for_range(0, self.fm_batch) as batch_id:
                         rois_num_offset.set_as(block_id * num1)
-                        self._process_rois_multi_batch(roi_step, \
-                                                       rois_num_offset, roi_loop1, \
+                        self._process_rois_multi_batch(roi_step, rois_num_offset, roi_loop1, \
                                                        roi_step1_l, batch_id)
                 # process roi nums: num2*fm_batch
                 with self.tik_instance.else_scope():
                     if outer_loop > 0:
-                        with self.tik_instance.for_range(0, self.fm_batch) \
-                                as batch_id:
-                            rois_num_offset.set_as(outer_tail * num1 + \
-                                                   (block_id - outer_tail) * num2)
-                            self._process_rois_multi_batch(roi_step, \
-                                                           rois_num_offset, roi_loop2, \
+                        with self.tik_instance.for_range(0, self.fm_batch) as batch_id:
+                            rois_num_offset.set_as(outer_tail * num1 + (block_id - outer_tail) * num2)
+                            self._process_rois_multi_batch(roi_step, rois_num_offset, roi_loop2, \
                                                            roi_step2_l, batch_id)
 
     def psroi_pooling_main(self):
@@ -1472,8 +1462,7 @@ class PSROIPoolingV2Class(object):
         """
         self.x = self.tik_instance.Tensor(self.dtype, self.x_shape,
                                           name="x", scope=tbe_platform.scope_gm)
-        rois_shape = (self.roi_shape[0] * self.roi_shape[2] * self.roi_shape[1] +
-                      self.vec_elem_num,)
+        rois_shape = (self.roi_shape[0] * self.roi_shape[2] * self.roi_shape[1] + self.vec_elem_num,)
         self.rois = self.tik_instance.Tensor(self.dtype, rois_shape,
                                              name="rois", scope=tbe_platform.scope_gm)
         self.y = self.tik_instance.Tensor(self.dtype, shape=self.y_shape,
@@ -1482,8 +1471,7 @@ class PSROIPoolingV2Class(object):
         self.psroi_pooling_compute()
 
         self.tik_instance.BuildCCE(kernel_name=self.kernel_name,
-                                   inputs=(self.x, self.rois),
-                                   outputs=(self.y,))
+                                   inputs=(self.x, self.rois), outputs=(self.y,))
 
 
 # 'pylint: disable=too-many-arguments

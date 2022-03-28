@@ -190,7 +190,7 @@ static int32_t CeilDiv(int32_t num, int32_t divisor) {
 }
 
 bool check_resnet50(const vector<int64_t>& grad_shape, const vector<int64_t>& argmax_shape,
-                    const vector<int64_t>& x_shape, int32_t ksize_h, int32_t ksize_w, 
+                    const vector<int64_t>& x_shape, int32_t ksize_h, int32_t ksize_w,
                     int32_t strides_h, int32_t strides_w, int32_t pad_t, int32_t pad_l, int32_t ceil_mode) {
   OP_LOGD("Resnet50", "grad_shape[SHAPE_INDEX_H]=%d.", grad_shape[SHAPE_INDEX_H]);
   OP_LOGD("Resnet50", "grad_shape[SHAPE_INDEX_W]=%d.", grad_shape[SHAPE_INDEX_W]);
@@ -199,8 +199,8 @@ bool check_resnet50(const vector<int64_t>& grad_shape, const vector<int64_t>& ar
   OP_LOGD("Resnet50", "x_shape[SHAPE_INDEX_H]=%d.", x_shape[SHAPE_INDEX_H]);
   OP_LOGD("Resnet50", "x_shape[SHAPE_INDEX_W]=%d.", x_shape[SHAPE_INDEX_W]);
 
-  if ((ksize_h == RESNET50_KSIZE) && (ksize_w == RESNET50_KSIZE) && 
-      (strides_h == RESNET50_STRIDE) && (strides_w == RESNET50_STRIDE) && 
+  if ((ksize_h == RESNET50_KSIZE) && (ksize_w == RESNET50_KSIZE) &&
+      (strides_h == RESNET50_STRIDE) && (strides_w == RESNET50_STRIDE) &&
       (pad_t == RESNET50_PADS) && (pad_l == RESNET50_PADS) &&
       (grad_shape[SHAPE_INDEX_H] == RESNET50_IN_GRAD) &&
       (grad_shape[SHAPE_INDEX_W] == RESNET50_IN_GRAD) &&
@@ -229,7 +229,7 @@ static void TilingFactor(MaxPoolGradWithArgmaxV2TilingParams& tiling_params, con
   }
   int32_t col2img_process_wi = one_seventh_ub_ele / (tiling_params.each_process_hi * C0);
   if (compile_info.kw > compile_info.stride_w) {
-    if (col2img_process_wi >= compile_info.kw){
+    if (col2img_process_wi >= compile_info.kw) {
         col2img_process_wo = (col2img_process_wi - compile_info.kw) / compile_info.stride_w + 1;
     } else {
         col2img_process_wo = col2img_process_wi / compile_info.kw;
@@ -392,7 +392,6 @@ static void CalTilingParam(MaxPoolGradWithArgmaxV2TilingParams& tiling_params, C
       ++tiling_params.act_core_num;
     }
     last_core_ele = total_ele - (tiling_params.act_core_num - 1) * one_core_ele;
-
   } else {
     // get block num
     tiling_params.block_num = n * c1;
@@ -662,7 +661,7 @@ bool MaxPoolGradWithArgmaxV2Tiling(const std::string& op_type, const TeOpParas& 
   vector<int64_t> workspace(WORKSPACE_DIM, WORKSPACE_SIZE);
   run_info.workspaces = workspace;
 
-  if (tiling_params.tiling_mode == TILING_MODE_2){
+  if (tiling_params.tiling_mode == TILING_MODE_2) {
     // check workspace support
     if (compile_params.kh > compile_params.stride_h) {
       // calc actual used workspace
@@ -671,7 +670,7 @@ bool MaxPoolGradWithArgmaxV2Tiling(const std::string& op_type, const TeOpParas& 
       int64_t hi = input_shape[SHAPE_INDEX_H];
       int64_t wi = input_shape[SHAPE_INDEX_W];
       int64_t actual_workspace;
-      if (tiling_params.if_block == 1){
+      if (tiling_params.if_block == 1) {
         actual_workspace = n * c1 * hi * wi * BLOCK_ALLIGN * DTYPE_SIZE_FP32;
       } else {
         wi = tiling_params.wi + tiling_params.pad_left + tiling_params.pad_right;
