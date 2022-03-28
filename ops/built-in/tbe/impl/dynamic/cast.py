@@ -282,6 +282,7 @@ def cast_compute(data, output_y, dst_type, kernel_name="cast"):
     -------
         the compute result tensor with type dst_type
     """
+    dst_type = _cast_dsttype_conversion(dst_type)
     src_data_type = data.dtype
     para_check.check_dtype(src_data_type, ("float16", "float32", "int8", "uint8", "int32", "int64", "bfloat16"),
                            param_name="input_x")
