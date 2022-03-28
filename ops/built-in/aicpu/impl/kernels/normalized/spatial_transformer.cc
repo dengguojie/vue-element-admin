@@ -229,24 +229,28 @@ uint32_t SpatialTransformerCpuKernel::DoCompute4D(CpuKernelContext &ctx) {
 
 template <typename T, typename T1>
 uint32_t SpatialTransformerCpuKernel::DoCompute5D(CpuKernelContext &ctx) {
-  KERNEL_LOG_INFO("Enter SpatialTransformerCpuKernel::DoCompute5D.");
-  const T* input_data_ptr = reinterpret_cast<T *>(input_tensor_->GetData());
-  const T1* input_theta = reinterpret_cast<T1 *>(input_theta_->GetData());
-  T* output_data_ptr = reinterpret_cast<T *>(output_tensor_->GetData());
+  KERNEL_LOG_INFO("Enter SpatialTransformerCpuKernel::DoCompute5D");
+  const T* input_data = reinterpret_cast<T *>(input_tensor_->GetData());
+  const T1* input_theta = reinterpret_cast<T1*>(input_theta_->GetData());
+  T* output_data_ptr = reinterpret_cast<T*>(output_tensor_->GetData());
 
   // init ouput_grid and input_grid, [M, 3] * [3, 2] = [M, 2]
-  float* input_grid = (float *)malloc(sizeof(float) * output_h_ * output_w_ * 2);
-  KERNEL_CHECK_NULLPTR(input_grid, KERNEL_STATUS_INNER_ERROR, "Can't malloc input_grid.");
+  float* input_grid = (float *)malloc(sizeof(float) * output_w_ * output_h_ * 2);
+  KERNEL_CHECK_NULLPTR(input_grid, KERNEL_STATUS_INNER_ERROR, "Can't malloc input_grid");
 
+  float *res = (float *)malloc(sizeof(float) * input_c0_);
+  if (res == nullptr) {
+    KERNEL_LOG_ERROR("Can't malloc res.");
+    free(input_grid);
+    return KERNEL_STATUS_INNER_ERROR;
+  }
   // init var
   std::vector<float> theta(6);
   uint32_t input_theta_idx = 0;
-  uint32_t output_idx = 0;
   uint32_t input_idx = 0;
-  float x_floor, y_floor, x_ref_1, y_ref_1, x_ref_0, y_ref_0, x, y;
+  uint32_t output_index = 0;
   int32_t m, n;
-  float *res = (float*)malloc(sizeof(float) * input_c0_);
-  KERNEL_CHECK_NULLPTR(input_grid, KERNEL_STATUS_INNER_ERROR, "Can't malloc input_grid.");
+  float x_floor, y_floor, x_ref_1, y_ref_1, x_ref_0, y_ref_0, x, y;
   for (int32_t i = 0; i < input_n_; i++) {
     // init theta
     uint32_t predf_theta_idx = 0;
@@ -296,7 +300,7 @@ uint32_t SpatialTransformerCpuKernel::DoCompute5D(CpuKernelContext &ctx) {
         if (m >= 0 && m < input_h_ && n >= 0 && n < input_w_) {
           uint32_t input_data_spos = input_idx + m * input_w_ * input_c0_ + n * input_c0_;
           for (int32_t c0_i = 0; c0_i < input_c0_; c0_i++) {
-            res[c0_i] += x_ref_0 * y_ref_0 * (float)input_data_ptr[input_data_spos + c0_i];
+            res[c0_i] += x_ref_0 * y_ref_0 * (float)input_data[input_data_spos + c0_i];
           }
         }
 
@@ -305,7 +309,7 @@ uint32_t SpatialTransformerCpuKernel::DoCompute5D(CpuKernelContext &ctx) {
         if (m >= 0 && m < input_h_ && n >= 0 && n < input_w_) {
           uint32_t input_data_spos = input_idx + m * input_w_ * input_c0_ + n * input_c0_;
           for (int32_t c0_i = 0; c0_i < input_c0_; c0_i++) {
-            res[c0_i] += x_ref_0 * y_ref_1 * (float)input_data_ptr[input_data_spos + c0_i];
+            res[c0_i] += x_ref_0 * y_ref_1 * (float)input_data[input_data_spos + c0_i];
           }
         }
 
@@ -314,7 +318,7 @@ uint32_t SpatialTransformerCpuKernel::DoCompute5D(CpuKernelContext &ctx) {
         if (m >= 0 && m < input_h_ && n >= 0 && n < input_w_) {
           uint32_t input_data_spos = input_idx + m * input_w_ * input_c0_ + n * input_c0_;
           for (int32_t c0_i = 0; c0_i < input_c0_; c0_i++) {
-            res[c0_i] += x_ref_1 * y_ref_0 * (float)input_data_ptr[input_data_spos + c0_i];
+            res[c0_i] += x_ref_1 * y_ref_0 * (float)input_data[input_data_spos + c0_i];
           }
         }
 
@@ -323,39 +327,39 @@ uint32_t SpatialTransformerCpuKernel::DoCompute5D(CpuKernelContext &ctx) {
         if (m >= 0 && m < input_h_ && n >= 0 && n < input_w_) {
           uint32_t input_data_spos = input_idx + m * input_w_ * input_c0_ + n * input_c0_;
           for (int32_t c0_i = 0; c0_i < input_c0_; c0_i++) {
-            res[c0_i] += x_ref_1 * y_ref_1 * (float)input_data_ptr[input_data_spos + c0_i];
+            res[c0_i] += x_ref_1 * y_ref_1 * (float)input_data[input_data_spos + c0_i];
           }
         }
 
         for (int32_t c0_i = 0; c0_i < input_c0_; c0_i++) {
-          output_data_ptr[output_idx + c0_i] = (T)res[c0_i];
+          output_data_ptr[output_index + c0_i] = (T)res[c0_i];
         }
         input_grid_idx += 2;
-        output_idx += input_c0_;
+        output_index += input_c0_;
       }
 
       input_idx += input_h_ * input_w_ * input_c0_;
     }
   }
 
-  free(res);
-  res = nullptr;
   free(input_grid);
   input_grid = nullptr;
+  free(res);
+  res = nullptr;
 
   return KERNEL_STATUS_OK;
 }
 
 template <typename T, typename T1>
 uint32_t SpatialTransformerCpuKernel::DoCompute5D_C1(CpuKernelContext &ctx) {
-  KERNEL_LOG_INFO("Enter SpatialTransformerCpuKernel::DoCompute5D_C1.");
+  KERNEL_LOG_INFO("Enter SpatialTransformerCpuKernel::DoCompute5D_C1");
   const T* input_data_ptr = reinterpret_cast<T *>(input_tensor_->GetData());
   const T1* input_theta = reinterpret_cast<T1 *>(input_theta_->GetData());
   T* output_data_ptr = reinterpret_cast<T *>(output_tensor_->GetData());
 
   // init ouput_grid and input_grid, [M, 3] * [3, 2] = [M, 2]
   float* input_grid = (float *)malloc(sizeof(float) * output_h_ * output_w_ * 2);
-  KERNEL_CHECK_NULLPTR(input_grid, KERNEL_STATUS_INNER_ERROR, "Can't malloc input_grid.");
+  KERNEL_CHECK_NULLPTR(input_grid, KERNEL_STATUS_INNER_ERROR, "Can't malloc input_grid");
 
   // init var
   std::vector<float> theta(6);
@@ -449,7 +453,7 @@ uint32_t SpatialTransformerCpuKernel::DoCompute5D_C1(CpuKernelContext &ctx) {
 
 template <typename T>
 uint32_t SpatialTransformerCpuKernel::DoCompute(CpuKernelContext &ctx) {
-  KERNEL_LOG_INFO("Enter SpatialTransformerCpuKernel::DoCompute.");
+  KERNEL_LOG_INFO("Enter SpatialTransformerCpuKernel::DoCompute");
 
   switch (input_theta_type_) {
     STN_INNER_COMPUTE_CASE(DT_FLOAT16, Eigen::half, ctx)
@@ -474,7 +478,7 @@ uint32_t SpatialTransformerCpuKernel::DoCompute(CpuKernelContext &ctx) {
 uint32_t SpatialTransformerCpuKernel::Compute(CpuKernelContext &ctx) {
   uint32_t res = GetInputAndCheckValid(ctx);
   KERNEL_CHECK_FALSE((res == KERNEL_STATUS_OK), KERNEL_STATUS_PARAM_INVALID,
-      "GetInputAndCheckValid process failed.");
+      "GetInputAndCheckValid process failed");
 
   switch (input_data_type_) {
     STN_COMPUTE_CASE(DT_FLOAT16, Eigen::half, ctx)
