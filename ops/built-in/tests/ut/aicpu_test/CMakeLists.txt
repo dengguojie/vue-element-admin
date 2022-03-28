@@ -188,7 +188,7 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/kernels/normalized/pinverse.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/poisson.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/random_uniform.cc
-  ${CPU_KERNELS_DIR}/kernels/normalized/random_standard.cc  
+  ${CPU_KERNELS_DIR}/kernels/normalized/random_standard.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/realdiv.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/reshape.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/resize_bilinear.cc
