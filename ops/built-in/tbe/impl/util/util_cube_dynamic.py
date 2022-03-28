@@ -707,8 +707,8 @@ def check_modify_w_range(input_list, param_list, op_type, dynamic_flag):
         paras = {"data_format": data_format, "pads": pads, "strides": strides}
         cube_para = CubeParaProcess(paras)
         new_pads = cube_para.correct_pads(input_grad, out_backprop, filter_grad)
-        fmap_range_w_up, fmap_range_w_down = get_input(dedy_w, filter_w_dilations, new_pads[2:], strides_w)
-        fmap_range_w = [fmap_range_w_up, fmap_range_w_down]
+        fmap_range_w_low, fmap_range_w_high = get_input(dedy_w, filter_w_dilations, new_pads[2:], strides_w)
+        fmap_range_w = [min(fmap_range_w_low, fmap_w), max(fmap_range_w_high, fmap_w)]
     bl1_size = filter_h * filter_w * BLOCK_K_DICT.get(filter_dtype) * FP16_N * BIT_RATIO_DICT.get(filter_dtype)
     l1_size = get_soc_spec("L1_SIZE")
     al1_max_size = l1_size - bl1_size
@@ -1095,8 +1095,8 @@ class CubeParaProcess:
                                                              filters.get("ori_shape"), "HW")
         stride_h = self.strides[self.data_format.find("H")]
         stride_w = self.strides[self.data_format.find("W")]
-        need_correct_pads = list(self.pads) == [0, 0, 0, 0] and (out_backprop_h != (fmap_h - filter_h + 1) // stride_h
-            or out_backprop_w != (fmap_w - filter_w + 1) // stride_w)
+        need_correct_pads = list(self.pads) == [0, 0, 0, 0] and ((out_backprop_h - 1) * stride_h + filter_h > fmap_h
+            or (out_backprop_w - 1) * stride_w + filter_w > fmap_w)
         if need_correct_pads:
             self.pads = [-1, -1, -1, -1]
         return self.pads

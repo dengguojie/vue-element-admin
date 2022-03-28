@@ -421,7 +421,7 @@ def _correct_generalized_range(input_tensor_list, input_attr_list):
                 OP_TYPE, str(input_grad.get("shape")), dy_range_nchw[W_DIM][1]))
         return UNSUPPORTED_FUZZ_RES
 
-    dx_range_nchw, _, new_dy_range_nchw = conv2d_tranpose.get_input_range(filter_shape_nchw, dy_range_nchw)
+    _, _, new_dy_range_nchw = conv2d_tranpose.get_input_range(filter_shape_nchw, dy_range_nchw)
 
     input_grad["ori_range"] = list(input_grad["ori_range"])
     input_grad["ori_range"][input_grad.get("ori_format").find("H")] = new_dy_range_nchw[H_DIM]
@@ -429,10 +429,6 @@ def _correct_generalized_range(input_tensor_list, input_attr_list):
 
     input_grad["ori_shape"] = _generalize_tensor_shape(input_grad)
     out_grad["ori_shape"] = _generalize_tensor_shape(out_grad)
-
-    orig_input_shape["const_value"] = None
-    orig_input_shape["const_value_range"] = transform_shape_with_format("NCHW", data_format, dx_range_nchw,
-                                                                        ["NCHW", "NHWC"])
 
     return ""
 

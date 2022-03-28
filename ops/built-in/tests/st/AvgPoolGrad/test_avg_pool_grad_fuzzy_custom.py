@@ -27,8 +27,7 @@ def test_avg_pool_grad_fuzzy_compile_head_node_1():
     ]
     res = avg_pool_grad_generalization(*input_list)
     assert res == [[
-        {'ori_shape': (4,), 'format': 'NCHW', 'ori_format': 'NCHW', 'dtype': 'float16', 'const_value': None,
-        'const_value_range': [(1, 1), (1, 1), (18, 33), (18, 33)]},
+        {'ori_shape': (4,), 'format': 'NCHW', 'ori_format': 'NCHW', 'dtype': 'float16'},
         {'ori_shape': [-1, 16, -1, -1], 'shape': (1, 1, 26, 28, 16), 'ori_format': 'NCHW', 'dtype': 'float16',
         'ori_range': [[1, 1], (16, 16), [16, 31], [16, 31]], 'range': ((1, 1), (1, 1), (26, 26), (28, 28), (16, 16))},
         {'ori_shape': (16, 1, 3, 3), 'ori_format': 'NCHW', 'dtype': 'float16'},
@@ -133,8 +132,7 @@ def test_avg_pool_grad_fuzzy_compile_head_node_6():
     ]
     res = avg_pool_grad_generalization(*input_list)
     assert res == [[
-        {'ori_shape': (4,), 'format': 'NCHW', 'ori_format': 'NCHW', 'dtype': 'float16', 'const_value': None,
-        'const_value_range': [(1, 1), (1, 1), (62, 93), (770, 979)]},
+        {'ori_shape': (4,), 'format': 'NCHW', 'ori_format': 'NCHW', 'dtype': 'float16'},
         {'ori_shape': [-1, 16, -1, -1], 'shape': (1, 1, 60, 900, 16), 'ori_format': 'NCHW', 'dtype': 'float16',
         'ori_range': [[1, 1], (16, 16), [32, 63], [768, 977]],
         'range': ((1, 1), (1, 1), (60, 60), (900, 900), (16, 16))},
@@ -164,8 +162,7 @@ def test_avg_pool_grad_fuzzy_compile_head_node_7():
     ]
     res = avg_pool_grad_generalization(*input_list)
     assert res == [[
-        {'ori_shape': (4,), 'format': 'NCHW', 'ori_format': 'NCHW', 'dtype': 'float16', 'const_value': None,
-        'const_value_range': [(1, 1), (1, 1), (18, 33), (18, 33)]},
+        {'ori_shape': (4,), 'format': 'NCHW', 'ori_format': 'NCHW', 'dtype': 'float16'},
         {'ori_shape': [-1, 16, -1, -1], 'shape': (1, 1, 26, 28, 16), 'ori_format': 'NCHW', 'dtype': 'float16',
         'ori_range': [[1, 1], (16, 16), [16, 31], [16, 31]], 'range': ((1, 1), (1, 1), (26, 26), (28, 28), (16, 16))},
         {'ori_shape': [16, 1, 3, 3], 'ori_format': 'NCHW', 'dtype': 'float16'},
