@@ -451,8 +451,8 @@ class ElewiseSchedule(VectorSchedule):
             ub_split_outer = math.ceil(ub_split_axis_count / ub_split_inner)
             if ub_split_outer == 1:
                 tail_size = DTYPE_WIDTH_MAP.get(dtype) * 2 * ub_split_inner * data_size
-                if tail_size < 32:
-                    ub_tail_tag == 1
+                if tail_size < 32 or ub_split_axis_count < ub_split_inner:
+                    ub_tail_tag = 1
                     break
                 else:
                     continue
