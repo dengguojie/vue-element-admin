@@ -567,3 +567,38 @@ TEST_F(einsum_fusion_test, einsum_fusion_fuzz_SplitStr2Vector) {
   expect_output = {"abc", "cde", "abe->abcd->adce->"};
   ASSERT_EQ(expect_output, output);
 }
+
+TEST_F(einsum_fusion_test, einsum_fusion_fuzz_stride) {
+  ge::Graph graph("einsum_fusion_fuzz_stride");
+  auto input_x1 = op::Data().set_attr_index(0);
+  auto input_x2 = op::Data().set_attr_index(0);
+  auto einsum = op::Einsum("einsum");
+
+  std::vector<int64_t> input_x1_vec{10, 10, 30, 40};
+  ge::Shape input_x1_shape(input_x1_vec);
+  ge::TensorDesc input_x1_desc(input_x1_shape, FORMAT_ND, DT_FLOAT);
+  std::vector<int64_t> input_x2_vec{30, 40, 50};
+  ge::Shape input_x2_shape(input_x2_vec);
+  ge::TensorDesc input_x2_desc(input_x2_shape, FORMAT_ND, DT_FLOAT);
+  std::vector<int64_t> output_vec{10, 10, 50};
+  ge::Shape output_shape(output_vec);
+  ge::TensorDesc output_desc(output_shape, FORMAT_NHWC, DT_FLOAT16);
+
+  einsum.create_dynamic_input_x(2);
+  einsum.set_dynamic_input_x(0, input_x1);
+  einsum.set_dynamic_input_x(1, input_x2);
+  einsum.update_dynamic_input_desc_x(0, input_x1_desc);
+  einsum.update_dynamic_input_desc_x(1, input_x2_desc);
+  einsum.update_output_desc_y(output_desc);
+  einsum.set_attr_equation("aacd,cde->aae");
+  einsum.set_attr_N(2);
+
+  std::vector<Operator> inputs{input_x1, input_x2};
+  std::vector<Operator> outputs{einsum};
+  graph.SetInputs(inputs).SetOutputs(outputs);
+
+  ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
+  auto ret = fe::FusionPassTestUtils::RunGraphFusionPass("EinsumPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
+
+  EXPECT_EQ(ret, fe::NOT_CHANGED);
+}

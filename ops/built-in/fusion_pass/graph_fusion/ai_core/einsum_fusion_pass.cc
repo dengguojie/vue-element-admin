@@ -1713,8 +1713,11 @@ Status EinsumPass::Fusion(ComputeGraph &graph, Mapping &mapping, vector<NodePtr>
       OP_LOGI(kFusedOpType.c_str(), "equation[%s] is not match.", equation.c_str());
       return NOT_CHANGED;
     }
+  } else if (SplitOpInFuzzScene(equation, graph, node) == SUCCESS) {
+    return SUCCESS;
   } else {
-    return SplitOpInFuzzScene(equation, graph, node);
+    OP_LOGW(kFusedOpType.c_str(), "equation[%s] is not support now.", equation.c_str());
+    return NOT_CHANGED;
   }
 }
 
@@ -2648,7 +2651,7 @@ Status EinsumPass::SplitOpInFuzzScene(const std::string &equation, ComputeGraph 
                     OP_LOGE(kFusedOpType.c_str(), "failed to process input transpose"), return FAILED);
 
   FUSION_PASS_CHECK(StrideInput(in_equations) != SUCCESS,
-                    OP_LOGE(kFusedOpType.c_str(), "failed to process input stirde"), return FAILED);
+                    OP_LOGW(kFusedOpType.c_str(), "failed to process input stride"), return FAILED);
 
   FUSION_PASS_CHECK(ReduceInput(in_equations, node, graph) != SUCCESS,
                     OP_LOGE(kFusedOpType.c_str(), "failed to process input reduce"), return FAILED);
@@ -2663,7 +2666,7 @@ Status EinsumPass::SplitOpInFuzzScene(const std::string &equation, ComputeGraph 
                     OP_LOGE(kFusedOpType.c_str(), "failed to process output reshape"), return FAILED);
 
   FUSION_PASS_CHECK(InflatedOutput(out_equation) != SUCCESS,
-                    OP_LOGE(kFusedOpType.c_str(), "failed to process output inflated"), return FAILED);
+                    OP_LOGW(kFusedOpType.c_str(), "failed to process output inflated"), return FAILED);
 
   FUSION_PASS_CHECK(TransposeOutput(out_equation, node, graph, cur_out_equation) != SUCCESS,
                     OP_LOGE(kFusedOpType.c_str(), "failed to process output transpose"), return FAILED);
