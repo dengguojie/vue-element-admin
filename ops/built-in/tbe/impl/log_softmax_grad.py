@@ -30,7 +30,8 @@ def is_white_shape(shape):
     """
     is_white_shape
     """
-    white_list_shape = [[2105352, 21], [8, 81, 25276]]
+    white_list_shape = [[2105352, 21], [8, 81, 25276], [4096, 21128],
+                        [8192, 21128], [16384, 21128], [24576, 21128]]
     shape_t = list(shape)
     if shape_t in white_list_shape:
         return True
