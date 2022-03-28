@@ -36,7 +36,7 @@ def gen_matmul_fuzzy_case(shape_a, shape_b, batch_range, m_range, k_range, n_ran
     y_range = [*batch_range, n_range, m_range] + block_range
     shape_m = shape_a[1] if trans_a else shape_a[0]
     shape_n = shape_a[0] if trans_a else shape_b[1]
-    
+
     x1_ori_shape = (-1,) * (len(x1_range) - 2)
     x2_ori_shape = (-1,) * (len(x2_range) - 2)
     x1 = {"ori_shape": x1_ori_shape, "dtype": src_dtype, "shape":  x1_ori_shape + (CUBE_BLOCK, CUBE_BLOCK),
@@ -59,7 +59,7 @@ def gen_matmul_fuzzy_case(shape_a, shape_b, batch_range, m_range, k_range, n_ran
     return {
         "params": [x1, x2, bias, y, trans_a, trans_b],
         "case_name": case_name,
-        "expect": "success" 
+        "expect": "success"
     }
 
 
@@ -68,7 +68,7 @@ def _generate_missing_support_info(range_m, range_k, range_n, batch_range):
         {
             "inputs": [
                 {
-                    "index": 0, 
+                    "index": 0,
                     "tensor": [
                         {
                             "shape": [-1, -1, -1, -1],
@@ -77,7 +77,7 @@ def _generate_missing_support_info(range_m, range_k, range_n, batch_range):
                     ]
                 },
                 {
-                    "index": 0, 
+                    "index": 0,
                     "tensor": [
                         {
                             "shape": [-1, -1],
@@ -88,7 +88,7 @@ def _generate_missing_support_info(range_m, range_k, range_n, batch_range):
             ],
             "outputs": [
                 {
-                    "index": 0, 
+                    "index": 0,
                     "tensor": [
                         {
                             "shape": [-1, -1],
@@ -107,11 +107,42 @@ for case in matmul_case_succ:
     ut_case.add_case("Ascend910A", gen_matmul_fuzzy_case(*case))
 
 
-if __name__ == "__main__":
+# ut for tilingcase fuzzy compile
+def test_bmm_fuzz_build_tilingcase(test_arg):
+    from impl.dynamic.batch_matmul import batch_matmul
     with op_context.OpContext("dynamic"):
         context = op_context.get_context()
         context.set_build_type("fuzzily_build")
+        context.add_addition("max_kernel_id", 1)
         batch_range = [[2, 3], [4, 7]]
         missing_support_info = _generate_missing_support_info([1, 3], [4, 15], [4, 15], batch_range)
         context.add_addition("missing_support_info", json.dumps(missing_support_info))
-        ut_case.run(soc="Ascend910A")
+        input_list = [
+            {
+                'shape': (-1, -1, -1, -1, 16, 16),
+                'ori_shape': (-1, -1, -1, -1),
+                'ori_format': 'ND',
+                'format': 'FRACTAL_NZ',
+                'dtype': 'float16',
+                'range': ((2, 3), (4, 7), (1, 2), (1, 2), (16, 16), (16, 16))
+            }, {
+                'shape': (-1, -1, -1, -1, 16, 16),
+                'ori_shape': (-1, -1, -1, -1),
+                'ori_format': 'ND',
+                'format': 'FRACTAL_NZ',
+                'dtype': 'float16',
+                'range': ((2, 3), (4, 7), (1, 2), (1, 2), (16, 16), (16, 16))
+            }, None, {
+                'shape': (-1, -1, -1, -1, 16, 16),
+                'ori_shape': (-1, -1, -1, -1),
+                'ori_format': 'ND',
+                'format': 'FRACTAL_NZ',
+                'dtype': 'float16',
+                'range': ((2, 3), (4, 7), (1, 2), (1, 2), (16, 16), (16, 16))
+            }, False, False, 'bmm_fuzz_build_generalization']
+        batch_matmul(*input_list)
+
+ut_case.add_cust_test_func(support_soc=('Ascend910A'), test_func=test_bmm_fuzz_build_tilingcase)
+
+if __name__ == '__main__':
+    ut_case.run("Ascend910A")

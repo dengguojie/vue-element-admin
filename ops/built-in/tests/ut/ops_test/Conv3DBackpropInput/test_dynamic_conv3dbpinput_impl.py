@@ -452,5 +452,60 @@ for case in fuzzy_test_case:
     ut_case.add_cust_test_func("Ascend910A", test_func=test_conv3d_backprop_input_fuzz_build_generalization(case))
 
 
+def test_conv3d_dx_fuzz_build_tilingcase(test_arg):
+    import json
+    from impl.dynamic.conv3d_backprop_input import conv3d_backprop_input
+    from tbe.common.context import get_context
+    from tbe.common.context import op_context
+    with op_context.OpContext("dynamic"):
+        get_context().set_build_type("fuzzily_build")
+        get_context().add_addition("max_kernel_id", -1)
+        missing_info = [{
+                            "inputs": [{
+                                "index": 2,
+                                "tensor": [{
+                                    "range": [
+                                        [16, 32],
+                                        [32, 32],
+                                        [1, 2],
+                                        [16, 32],
+                                        [16, 32]
+                                    ],
+                                    "shape": [-1, 32, -1, -1, -1]
+                                }]
+                            }]
+                        }]
+        get_context().add_addition("missing_support_info", json.dumps(missing_info))
+
+        input_list = [
+            {
+                'ori_shape': (5,),
+                'ori_format': 'ND',
+                'dtype': 'int32'
+            }, {
+                'ori_shape': (32, 32, 1, 1, 1),
+                'shape': (2, 2, 16, 16),
+                'ori_format': 'NCDHW',
+                'format': 'FRACTAL_Z_3D',
+                'dtype': 'float16'
+            }, {
+                'shape': (-1, -1, 2, -1, -1, 16),
+                'ori_shape': (-1, 32, -1, -1, -1),
+                'ori_format': 'NCDHW',
+                'format': 'NDC1HWC0',
+                'dtype': 'float16',
+                'range':  ((16, 32), (1, 2), (2, 2), (16, 32), (16, 32), (16, 16))
+            }, {
+                'shape': (-1, -1, 2, -1, -1, 16),
+                'ori_shape': (-1, 32, -1, -1, -1),
+                'ori_format': 'NCDHW',
+                'format': 'NDC1HWC0',
+                'dtype': 'float16',
+                'range':  ((16, 32), (1, 2), (2, 2), (16, 32), (16, 32), (16, 16))
+            }, (1, 1, 1, 1, 1), [0, 0, 0, 0, 0, 0], (1, 1, 1, 1, 1), 1, 'NCDHW', 'conv3d_dx_fuzz_build_generalization']
+        conv3d_backprop_input(*input_list)
+print("adding test_conv3d_dx_fuzz_build_tilingcase testcase")
+ut_case.add_cust_test_func(support_soc=('Ascend910A'), test_func=test_conv3d_dx_fuzz_build_tilingcase)
+
 if __name__ == '__main__':
     ut_case.run("Ascend910A")
