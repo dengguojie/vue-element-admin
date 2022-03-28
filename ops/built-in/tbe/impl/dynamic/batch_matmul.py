@@ -62,13 +62,14 @@ def base_op_select_format(input_x, input_y, src_dtype, trans_b, src_fp16_flag: b
     fp32_out_scenario = [(("float16", "FRACTAL_NZ"), ("float16", "FRACTAL_NZ"),
                           ("float", "ND"), ("float", "FRACTAL_NZ"))]
 
-    fp32_int32_dtype_scenario = [(("float", "NHWC"), ("float", "NHWC"), ("float", "NHWC"), ("float", "NHWC")),
-                           (("float", "ND"), ("float", "ND"), ("float", "ND"), ("float", "ND")),
-                           (("int32", "NHWC"), ("int32", "NHWC"), ("int32", "NHWC"), ("int32", "NHWC")),
-                           (("int32", "ND"), ("int32", "ND"), ("int32", "ND"), ("int32", "ND"))]
+    fp32_dtype_scenario = [(("float", "NHWC"), ("float", "NHWC"), ("float", "NHWC"), ("float", "NHWC")),
+                           (("float", "ND"), ("float", "ND"), ("float", "ND"), ("float", "ND"))]
+    int32_dtype_scenario = [(("int32", "NHWC"), ("int32", "NHWC"), ("int32", "NHWC"), ("int32", "NHWC")),
+                            (("int32", "ND"), ("int32", "ND"), ("int32", "ND"), ("int32", "ND"))]
 
     if not check_fp32_case_scenario(shape_a, shape_b, trans_b, src_dtype):
-        fp32_int32_dtype_scenario = []
+        fp32_dtype_scenario = []
+        int32_dtype_scenario = []
     
     # ND input and output scenario
     nd_case_scenario = [(("float16", "ND"), ("float16", "ND"), ("float16", "ND"), ("float16", "ND")),
@@ -85,6 +86,8 @@ def base_op_select_format(input_x, input_y, src_dtype, trans_b, src_fp16_flag: b
         (("bfloat16", "FRACTAL_NZ"), ("bfloat16", "FRACTAL_NZ"), ("float32", "ND"), ("bfloat16", "FRACTAL_NZ"))
     ]
     support_l0c2out = tbe_platform.intrinsic_check_support("Intrinsic_fix_pipe_l0c2out")
+    support_s322f32 = tbe_platform.intrinsic_check_support("Intrinsic_vconv", "s322f32")
+
     dyn_case_scenario_list = base_case_scenario + nd_case_scenario
     if dynamic_flag and not check_batch_range(input_x, input_y):
         warnings.warn("input_x, input_y out of batch_range")
@@ -95,7 +98,9 @@ def base_op_select_format(input_x, input_y, src_dtype, trans_b, src_fp16_flag: b
     elif src_fp16_flag:
         full_case_scenario_list = base_case_scenario + fp32_out_scenario + nd_case_scenario + nd_fp32out_scenario
     else:
-        full_case_scenario_list = base_case_scenario + fp32_int32_dtype_scenario
+        full_case_scenario_list = base_case_scenario + fp32_dtype_scenario
+        if support_s322f32:
+            full_case_scenario_list += int32_dtype_scenario
     return dyn_case_scenario_list, full_case_scenario_list
 
 

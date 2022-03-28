@@ -146,7 +146,7 @@ REG_OP(MatMulV2Compress)
     .OP_END_FACTORY_REG(MatMulV2Compress)
 
 /**
-*@brief Performs Matrix-to-matrix Multiply, producing c=alpha[0]*a*b+beta[0]*c . \n
+*@brief Performs Matrix-to-matrix Multiply, producing y=alpha[0]*a*b+beta[0]*c . \n
 
 *@attention Constraints:
 * For better performance, The k-axis must be aligned to 16 (input type

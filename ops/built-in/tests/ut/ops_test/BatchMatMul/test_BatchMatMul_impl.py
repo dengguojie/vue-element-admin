@@ -51,7 +51,8 @@ vals = {("CORE_NUM", ): 48,
         ("L0C_SIZE", ): 131072,
         ("Intrinsic_fix_pipe_l0c2out",): True,
         ("Intrinsic_fix_pipe_unit_list",): True,
-        ("Intrinsic_fix_pipe_unit_list", "post_eltwise"): True
+        ("Intrinsic_fix_pipe_unit_list", "post_eltwise"): True,
+        ("Intrinsic_vconv", "s322f32"): True
         }
 def side_effects(*args):
     return vals[args]

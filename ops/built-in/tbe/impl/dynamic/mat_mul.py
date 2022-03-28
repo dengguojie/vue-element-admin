@@ -15,19 +15,22 @@
 """
 dynamic mat_mul
 """
+from impl.dynamic.batch_matmul_v2 import batch_matmul_compute
+from impl.dynamic.batch_matmul_v2 import batch_matmul_v2_fuse_compute
+from impl.dynamic.batch_matmul_v2 import gen_op_select_format_params
+from impl.dynamic.batch_matmul_v2 import batch_matmul_v2_generalization
+from impl.dynamic.batch_matmul_v2 import get_none_range_flag
 from impl.util import util_common
 from impl.util import util_select_op_base
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import tbe
+from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tbe_register
 from impl.util.platform_adapter import tvm
-from impl.dynamic.batch_matmul_v2 import batch_matmul_compute
-from impl.dynamic.batch_matmul_v2 import batch_matmul_v2_fuse_compute
-from impl.dynamic.batch_matmul_v2 import gen_op_select_format_params
-from impl.dynamic.batch_matmul_v2 import batch_matmul_v2_generalization
-from impl.dynamic.batch_matmul_v2 import get_none_range_flag
+
+
 from tbe.common.context import get_context
 from tbe.common.buildcfg import get_current_build_config
 
@@ -123,10 +126,12 @@ def base_op_select_format(src_fp16_flag: bool, bias_fp32_flag: bool, impl_mode: 
     base_quant_case_scenario = [(("int8", "FRACTAL_NZ"), ("int8", "FRACTAL_Z"), ("int32", "ND"), ("int8", "ND"),
                                  ("int32", "FRACTAL_NZ"))]
 
-    quant_case_scenario = [(("float", "NHWC"), ("float", "NHWC"), ("float", "NHWC"), ("int8", "ND"), ("float", "NHWC")),
-                           (("float", "ND"), ("float", "ND"), ("float", "ND"), ("int8", "ND"), ("float", "ND")),
-                           (("int32", "NHWC"), ("int32", "NHWC"), ("int32", "NHWC"), ("int8", "ND"), ("int32", "NHWC")),
-                           (("int32", "ND"), ("int32", "ND"), ("int32", "ND"), ("int8", "ND"), ("int32", "ND"))]
+    fp32_dtype_scenario = [(("float", "NHWC"), ("float", "NHWC"), ("float", "NHWC"), ("int8", "ND"), ("float", "NHWC")),
+                           (("float", "ND"), ("float", "ND"), ("float", "ND"), ("int8", "ND"), ("float", "ND"))]
+
+    int32_dtype_scenario = [(("int32", "NHWC"), ("int32", "NHWC"), ("int32", "NHWC"), ("int8", "ND"),
+                            ("int32", "NHWC")),
+                            (("int32", "ND"), ("int32", "ND"), ("int32", "ND"), ("int8", "ND"), ("int32", "ND"))]
 
     base_case_nzz_fp16_scenario = [(("float16", "FRACTAL_NZ"), ("float16", "FRACTAL_ZN_RNN"), ("float16", "ND"),
                                    ("int8", "ND"), ("float16", "FRACTAL_NZ"))]
@@ -142,6 +147,7 @@ def base_op_select_format(src_fp16_flag: bool, bias_fp32_flag: bool, impl_mode: 
             (("float16", "ND"), ("float16", "FRACTAL_NZ"), ("float", "ND"), ("int8", "ND"), ("float", "ND"))
         ]
     nd_fp32out_scenario = []
+    support_s322f32 = tbe_platform.intrinsic_check_support("Intrinsic_vconv", "s322f32")
 
     dyn_case_scenario_list = base_case_scenario + nd_case_scenario + base_case_nzz_fp16_scenario
     # Construct scenario list for static
@@ -154,9 +160,11 @@ def base_op_select_format(src_fp16_flag: bool, bias_fp32_flag: bool, impl_mode: 
                 nd_case_scenario + nd_fp32out_scenario
     else:
         if bias_fp32_flag and impl_mode == "keep_bias_fp32":
-            full_case_scenario_list = base_case_bias_fp32_scenario + base_quant_case_scenario + quant_case_scenario
+            full_case_scenario_list = base_case_bias_fp32_scenario + base_quant_case_scenario + fp32_dtype_scenario
         else:
-            full_case_scenario_list = base_case_scenario + base_quant_case_scenario + quant_case_scenario
+            full_case_scenario_list = base_case_scenario + base_quant_case_scenario + fp32_dtype_scenario
+        if support_s322f32:
+            full_case_scenario_list += int32_dtype_scenario
     return dyn_case_scenario_list, full_case_scenario_list
 
 
