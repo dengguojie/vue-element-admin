@@ -45,6 +45,7 @@ def _find_all_test_case_file(case_path_list, file_name_pattern):
                     test_case_file = os.path.join(path, file_name)
                     if test_case_file not in case_file_list_inner:
                         case_file_list_inner.append(test_case_file)
+    case_file_list_inner.sort()
     return case_file_list_inner
 
 
@@ -89,6 +90,7 @@ def load_ut_cases(case_dir,
             if not c_f or not c_m:
                 continue
             test_case_file_list.append(op_ut_case_info.UTCaseFileInfo(c_f, c_m))
+    test_case_file_list.sort(key=lambda x:x.case_file)
     logger.log_debug("load_ut_cases end, load case files total count: %d" % len(test_case_file_list))
     return test_case_file_list, has_error
 
