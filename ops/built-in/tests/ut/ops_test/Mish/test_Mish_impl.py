@@ -96,3 +96,14 @@ ut_case.add_elewise_case_simple(["Ascend710"], ["float"], (1, 32, 38, 38, 16))
 ut_case.add_elewise_case_simple(["Ascend710"], ["float"], (1, 64, 19, 19, 16))
 ut_case.add_elewise_case_simple(["Ascend710"], ["int32"], (256,256), expect=op_status.FAILED)
 ut_case.add_elewise_case_simple(["Ascend710"], ["int8"], (256,256), expect=op_status.FAILED)
+case1 = {
+    "params": [
+        {"shape": (1, 1), "dtype": "float16", "format": "ND", "ori_shape": (1, 1), "ori_format": "ND"},
+        {"shape": (1, 1), "dtype": "float16", "format": "ND", "ori_shape": (1, 1), "ori_format": "ND"}
+    ],
+    "addition_params": {"impl_mode": "super_performance"},
+    "case_name": "mish_1",
+    "expect": "success",
+    "format_expect": [],
+    "support_expect": True}
+ut_case.add_case(["Ascend910A"], case1)

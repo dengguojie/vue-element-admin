@@ -824,5 +824,60 @@
     ],
     "attr": [],
     "case_name": "test_Mish_017"
+  },
+  {
+    "op": "Mish",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          64,
+          19,
+          19,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          64,
+          19,
+          19,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          64,
+          19,
+          19,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          64,
+          19,
+          19,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "output_y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+      "name": "impl_mode",
+      "type": "string",
+      "value": "super_performance"
+      }
+    ],
+    "case_name": "test_Mish_super_performance"
   }
 ]

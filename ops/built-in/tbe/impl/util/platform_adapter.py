@@ -83,6 +83,7 @@ class OpImplMode:
     """
     HIGH_PERFORMANCE = "high_performance"
     HIGH_PRECISION = "high_precision"
+    SUPER_PERFORMANCE = "super_performance"
 
 
 # 'pylint: disable=too-few-public-methods, too-many-instance-attributes

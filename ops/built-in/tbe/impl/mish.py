@@ -21,11 +21,12 @@ import te.lang.cce as tbe
 import te.platform as tbe_platform
 from te import tvm
 from te.utils import para_check
+from impl.util.platform_adapter import OpImplMode
 
 
 # 'pylint: disable=unused-argument
 @tbe_platform.fusion_manager.fusion_manager.register("mish")
-def mish_compute(input_x, output_y, kernel_name="mish", impl_mode="high_performance"):
+def mish_compute(input_x, output_y, kernel_name="mish", impl_mode=OpImplMode.HIGH_PERFORMANCE):
     """
     algorithm: mish
     calculating data's mish,y= x*(1 - 2/(1+(1+exp(x))^2))
@@ -45,22 +46,44 @@ def mish_compute(input_x, output_y, kernel_name="mish", impl_mode="high_performa
         the result of mish
     """
     dtype = input_x.dtype
-    exp_val = tbe.vexp(input_x)
-    add_exp_val = tbe.vadds(exp_val, tvm.const(1, dtype))
-    pow_var = tbe.vmul(add_exp_val, add_exp_val)
-    add_val = tbe.vadds(pow_var, tvm.const(1, dtype))
-    if impl_mode == "high_performance":
-        rec_val = tbe.vrec(add_val, priority_flag=0)
+    if impl_mode == OpImplMode.SUPER_PERFORMANCE:
+        """
+        `x*(1-2/(1+(1+(1+x/64)^64)^2))`
+        """
+        res_1 = tbe.vadds(tbe.vmuls(input_x, 0.015625), 1)
+        res_pow_2 = tbe.vmul(res_1, res_1)
+        res_pow_4 = tbe.vmul(res_pow_2, res_pow_2)
+        res_pow_8 = tbe.vmul(res_pow_4, res_pow_4)
+        res_pow_16 = tbe.vmul(res_pow_8, res_pow_8)
+        res_pow_32 = tbe.vmul(res_pow_16, res_pow_16)
+        res_pow_64 = tbe.vmul(res_pow_32, res_pow_32)
+        res_2 = tbe.vadds(res_pow_64, 1)
+        res_3 = tbe.vmul(res_2, res_2)
+        res_4 = tbe.vadds(res_3, 1)
+        res_rec = tbe.vrec(res_4, priority_flag=0)
+        res_5 = tbe.vmuls(res_rec, -2)
+        res_6 = tbe.vadds(res_5, 1)
+        res = tbe.vmul(res_6, input_x)
+        return res
+        
     else:
-        rec_val = tbe.vrec(add_val, priority_flag=1)
-    mul_val = tbe.vmuls(rec_val, tvm.const(-2, dtype=dtype))
-    add_val2 = tbe.vadds(mul_val, tvm.const(1, dtype=dtype))
-    res = tbe.vmul(input_x, add_val2)
+        exp_val = tbe.vexp(input_x)
+        add_exp_val = tbe.vadds(exp_val, tvm.const(1, dtype))
+        pow_var = tbe.vmul(add_exp_val, add_exp_val)
+        add_val = tbe.vadds(pow_var, tvm.const(1, dtype))
+        if impl_mode == OpImplMode.HIGH_PERFORMANCE:
+            rec_val = tbe.vrec(add_val, priority_flag=0)
+        else:
+            rec_val = tbe.vrec(add_val, priority_flag=1)
+        mul_val = tbe.vmuls(rec_val, tvm.const(-2, dtype=dtype))
+        add_val2 = tbe.vadds(mul_val, tvm.const(1, dtype=dtype))
+        res = tbe.vmul(input_x, add_val2)
+
     return res
 
 
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
-def mish(input_x, output_y, kernel_name="mish", impl_mode="high_performance"):
+def mish(input_x, output_y, kernel_name="mish", impl_mode=OpImplMode.HIGH_PERFORMANCE):
     """
     algorithm: mish
     calculating data's mish,y= x*(1 - 2/(1+(1+exp(x))^2))
