@@ -411,9 +411,8 @@ Status ProdEnvMatAV2FusionPass::FusionAiScense(ge::ComputeGraph& graph, ge::Node
                     OP_LOGD(FUSED_OP_TYPE.c_str(), "the dim size of rijOutDesc is less than 2"), return FAILED);
 
   nsample = rijOutDesc.GetShape().GetDim(0);
+  // nlocNnei is a multiple of 3 or -1
   nlocNnei = rijOutDesc.GetShape().GetDim(1);
-
-  // nlocNnei is a multiple of 3
   if (nlocNnei != -1) {
     nlocNnei = nlocNnei / divisorNumberThree;
   }

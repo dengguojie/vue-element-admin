@@ -35,6 +35,8 @@ class MulAddAddFusionPass : public PatternFusionBasePass {
   Status CheckFusedNode(vector<ge::NodePtr>& fusedNodes, ge::NodePtr& transdataDstNode);
   Status CheckFusedControlAnchor(ge::NodePtr& fusedNode, ge::NodePtr& mulAddAddNode);
   Status GetTransdataNode(ge::NodePtr& srcNode, ge::NodePtr& mulDstNode);
+  Status AddMulPadDNode(ge::ComputeGraph& graph, ge::NodePtr& mulNode, ge::NodePtr& mulPadDNode);
+  Status AddPadDNode(ge::ComputeGraph& graph, ge::NodePtr& addNode, ge::NodePtr& padDNode);
   Status AddAndDeleteEdge(vector<ge::NodePtr>& fusedNodes, ge::NodePtr& fusedMulAddAddNode, ge::NodePtr& mulPadDNode,
                           ge::NodePtr& padDNode, ge::NodePtr& transdataDstNode);
   Status FusionUnalignedScense(ge::ComputeGraph& graph, vector<ge::NodePtr>& fusedNodes, vector<ge::NodePtr>& newNodes,

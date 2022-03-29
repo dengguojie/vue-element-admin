@@ -145,7 +145,7 @@ void ScopeDynamicGRUPass::GenerateFusionResult(const std::vector<Scope*>& scopes
       }
     }
 
-    if (scope->SubType() == kGruFwWhileNoTransposeType || scope->SubType() == kGruBwWhileNoTransposeType){
+    if (scope->SubType() == kGruFwWhileNoTransposeType || scope->SubType() == kGruBwWhileNoTransposeType) {
       fusion_rlt->InsertInputs("TensorArrayUnstack/TensorArrayScatter/TensorArrayScatterV3",
                                {kFusionDisableIndex, kFusionDisableIndex, 0, kFusionDisableIndex});  // Input 0 : x
       fusion_rlt->InsertInputs(w_in_node_name, {1});  // Input index 1 : w

@@ -83,7 +83,7 @@ std::string ScopeDynamicRNNPass::PassName() {
   return std::string("ScopeDynamicRNNPass");
 }
 
-void ScopeDynamicRNNPass::GenBiLSTMCRNNScopePatterns(ScopeFusionPatterns &patterns){
+void ScopeDynamicRNNPass::GenBiLSTMCRNNScopePatterns(ScopeFusionPatterns &patterns) {
   std::vector<ScopePattern *> batch1;
   ScopePattern *lstm_crnn = new(std::nothrow) ScopePattern();
   if (lstm_crnn == nullptr) {
@@ -343,7 +343,7 @@ void ScopeDynamicRNNPass::GenScopePatterns(ScopeFusionPatterns& patterns) {
   patterns.push_back(batch3);
 }
 
-void ScopeDynamicRNNPass::GenLTCRNNScopePatterns(ScopeFusionPatterns &patterns){
+void ScopeDynamicRNNPass::GenLTCRNNScopePatterns(ScopeFusionPatterns &patterns) {
   std::vector<ScopePattern *> batch1;
   ScopePattern *lstm_crnn = new(std::nothrow) ScopePattern();
   if (lstm_crnn == nullptr) {
@@ -367,7 +367,7 @@ void ScopeDynamicRNNPass::GenLTCRNNScopePatterns(ScopeFusionPatterns &patterns){
   patterns.push_back(batch1);
 }
 
-void ScopeDynamicRNNPass::GenTacotronScopePatterns(ScopeFusionPatterns &patterns){
+void ScopeDynamicRNNPass::GenTacotronScopePatterns(ScopeFusionPatterns &patterns) {
   // distinguish lstm
   std::vector<ScopePattern *> batch1;
   ScopePattern *lstm_while = new(std::nothrow) ScopePattern();
@@ -433,7 +433,7 @@ void ScopeDynamicRNNPass::GenTacotronScopePatterns(ScopeFusionPatterns &patterns
   patterns.push_back(batch2);
 }
 
-void ScopeDynamicRNNPass::GenChinaMobileScopePatterns(ScopeFusionPatterns &patterns){
+void ScopeDynamicRNNPass::GenChinaMobileScopePatterns(ScopeFusionPatterns &patterns) {
   // distinguish lstm
   std::vector<ScopePattern *> batch1;
   ScopePattern *basic_lstm_cell_tanh = new(std::nothrow) ScopePattern();
@@ -672,7 +672,8 @@ void ScopeDynamicRNNPass::DynamicRNNPassParserParams(const std::unordered_map<st
   }
 }
 
-void ScopeDynamicRNNPass::ConcatParserParams(const std::string &origin_node_name, const std::string &op_type, ge::Operator* inner_node, FusionScopesResult *fusion_rlt){
+void ScopeDynamicRNNPass::ConcatParserParams(const std::string& origin_node_name, const std::string& op_type,
+                                             ge::Operator* inner_node, FusionScopesResult* fusion_rlt) {
   std::vector<domi::DynamicInputOutputInfo> dynamic_name_attr_value;
   domi::DynamicInputOutputInfo dyn_info;
   dyn_info.type = domi::kInput;
@@ -689,13 +690,14 @@ void ScopeDynamicRNNPass::ConcatParserParams(const std::string &origin_node_name
   op_src.BreakConnect();
 }
 
-std::string ScopeDynamicRNNPass::GetNodeNameFromScope(const std::unordered_map<std::string, ge::OperatorPtr>& nodes_map, const std::string &sub_name){
-  for (auto& it : nodes_map){
+std::string ScopeDynamicRNNPass::GetNodeNameFromScope(const std::unordered_map<std::string, ge::OperatorPtr>& nodes_map,
+                                                      const std::string& sub_name) {
+  for (auto& it : nodes_map) {
     auto node_def = it.second;
     std::string sub_node_name = node_def->GetName().c_str();
     int src_len = sub_node_name.size();
     int sub_len = sub_name.size();
-    if (sub_node_name.find(sub_name) != string::npos && sub_node_name.substr(src_len - sub_len, sub_len) == sub_name){
+    if (sub_node_name.find(sub_name) != string::npos && sub_node_name.substr(src_len - sub_len, sub_len) == sub_name) {
       return sub_node_name;
     }
   }
@@ -705,14 +707,14 @@ std::string ScopeDynamicRNNPass::GetNodeNameFromScope(const std::unordered_map<s
 
 std::string ScopeDynamicRNNPass::GetWeightNameFromScope(const std::unordered_map<std::string,
                                                         ge::OperatorPtr>& nodes_map, const std::string &sub_name,
-                                                        const std::string &left_name){
-  for (auto& it : nodes_map){
+                                                        const std::string &left_name) {
+  for (auto& it : nodes_map) {
     auto node_def = it.second;
     std::string sub_node_name = node_def->GetName().c_str();
     int src_len = sub_node_name.size();
     int sub_len = sub_name.size();
     if (sub_node_name.find(sub_name) != string::npos && sub_node_name.substr(src_len - sub_len, sub_len) == sub_name &&
-        sub_node_name.find(left_name) != string::npos){
+        sub_node_name.find(left_name) != string::npos) {
       return sub_node_name;
     }
   }
@@ -1308,7 +1310,7 @@ void ScopeDynamicRNNPass::GenerateFusionResultForLTCRNN(const Scope* scope, Fusi
   return;
 }
 
-void ScopeDynamicRNNPass::GenerateFusionResultForMultiNetease(const Scope* scope, FusionScopesResult* fusion_rlt){
+void ScopeDynamicRNNPass::GenerateFusionResultForMultiNetease(const Scope* scope, FusionScopesResult* fusion_rlt) {
   OP_LOGD(kOpType, "Match DynamicRNN scope name is %s ", scope->Name().c_str());
   const std::unordered_map<std::string, ge::OperatorPtr> &nodes_map = scope->AllNodesMap();
   fusion_rlt->InsertInputs("transpose", {0, kFusionDisableIndex});
@@ -1367,7 +1369,7 @@ void ScopeDynamicRNNPass::GenerateFusionResultForMultiNetease(const Scope* scope
   *(beginBatchData) = 0;
   Tensor batchTensor(batchDesc, (uint8_t*)beginBatchData, sizeof(int32_t));
   auto constNodeOp = concat_axis->MutableOperator();
-  if (constNodeOp != nullptr){
+  if (constNodeOp != nullptr) {
     constNodeOp->SetAttr("value", batchTensor);
   }
   delete[] beginBatchData;
@@ -1483,7 +1485,7 @@ void ScopeDynamicRNNPass::GenerateFusionResult(const std::vector<Scope*>& scopes
       fusion_rlt->InsertInputs("transpose", {0, kFusionDisableIndex});  // Input 0 : x
       fusion_rlt->InsertOutputs("transpose_1", {0});                    // Output index 0 : outputs
     }
-    if (scope->SubType() == kLstmTransType){
+    if (scope->SubType() == kLstmTransType) {
       fusion_rlt->InsertInputs("transpose", {0, kFusionDisableIndex});  // Input 0 : x
       fusion_rlt->InsertOutputs("transpose_2", {0});                    // Output index 0 : outputs
     }

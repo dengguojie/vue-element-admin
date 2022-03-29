@@ -29,7 +29,7 @@
 
 using namespace ge;
 
-namespace domi{
+namespace domi {
 Status ParseParamsByOperatorCorrelation(const ge::Operator& op_src, ge::Operator& op_dest)
 {
     OP_LOGI("Correlation Parse Params for Correlation begin");

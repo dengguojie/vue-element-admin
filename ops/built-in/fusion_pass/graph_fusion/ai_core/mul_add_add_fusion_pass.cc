@@ -95,14 +95,11 @@ Status MulAddAddFusionPass::RemoveFusedNode(ge::ComputeGraph& graph, ge::NodePtr
 Status MulAddAddFusionPass::CheckFusedNode(vector<ge::NodePtr>& fusedNodes, ge::NodePtr& transdataDstNode) {
   OP_LOGD(FUSED_OP_TYPE.c_str(), "CheckFusedNode begin");
 
-  FUSION_PASS_CHECK(fusedNodes[0]->GetOpDesc() == nullptr, OP_LOGD(FUSED_OP_TYPE.c_str(), "mulNode get desc failed."),
-                    return NOT_CHANGED);
-  FUSION_PASS_CHECK(fusedNodes[1]->GetOpDesc() == nullptr, OP_LOGD(FUSED_OP_TYPE.c_str(), "addNode1 get desc failed."),
-                    return NOT_CHANGED);
-  FUSION_PASS_CHECK(fusedNodes[2]->GetOpDesc() == nullptr,
-                    OP_LOGD(FUSED_OP_TYPE.c_str(), "transdataNode get desc failed."), return NOT_CHANGED);
-  FUSION_PASS_CHECK(fusedNodes[3]->GetOpDesc() == nullptr, OP_LOGD(FUSED_OP_TYPE.c_str(), "addNode2 get desc failed."),
-                    return NOT_CHANGED);
+  for (size_t index = 0; index < fusedNodes.size(); index++) {
+    FUSION_PASS_CHECK(fusedNodes[index]->GetOpDesc() == nullptr,
+                      OP_LOGD(FUSED_OP_TYPE.c_str(), "[%s] get desc failed.", fusedNodes[index]->GetName().c_str()),
+                      return NOT_CHANGED);
+  }
 
   const std::vector<ge::Format> kFormatList = {ge::FORMAT_ND, ge::FORMAT_ND, ge::FORMAT_ND, ge::FORMAT_FRACTAL_NZ};
   std::vector<ge::Format> nodeFormatList;
@@ -123,9 +120,7 @@ Status MulAddAddFusionPass::CheckFusedNode(vector<ge::NodePtr>& fusedNodes, ge::
   FUSION_PASS_CHECK(muldimInfo.size() < MIN_DIM_LEN,
                     OP_LOGI(FUSED_OP_TYPE.c_str(), "The input dimension of mul is less than 2!"), return NOT_CHANGED);
 
-  if (muldimInfo[muldimInfo.size() - DIM_NUM_TWO] % ALIGN_UNIT_16 == 0) {
-    alignFlag = true;
-  }
+  alignFlag = muldimInfo[muldimInfo.size() - DIM_NUM_TWO] % ALIGN_UNIT_16 == 0;
 
   FUSION_PASS_CHECK(
       muldimInfo[muldimInfo.size() - 1] != 1,
@@ -202,6 +197,79 @@ Status MulAddAddFusionPass::GetTransdataNode(ge::NodePtr& srcNode, ge::NodePtr& 
   return FAILED;
 }
 
+Status MulAddAddFusionPass::AddMulPadDNode(ge::ComputeGraph& graph, ge::NodePtr& mulNode, ge::NodePtr& mulPadDNode) {
+  OP_LOGD(FUSED_OP_TYPE.c_str(), "Enter into AddMulPadDNode");
+
+  ge::OpDescPtr mulPadDesc = nullptr;
+  FUSION_PASS_MAKE_SHARED((mulPadDesc = std::make_shared<ge::OpDesc>(mulNode->GetName() + '_' + "PadD", "PadD")),
+                          return INTERNAL_ERROR);
+  vector<vector<int64_t>> mulPaddingsValue = {{0, 0}, {0, 0}};
+  vector<int64_t> mulConstDimInfo = mulNode->GetOpDesc()->GetInputDesc(0).GetShape().GetDims();
+  mulPaddingsValue[0][1] = ALIGN_UNIT_16 - (mulConstDimInfo[mulConstDimInfo.size() - DIM_NUM_TWO] % ALIGN_UNIT_16);
+  ge::GeTensorDesc mulPadDInputputDesc = mulNode->GetOpDesc()->GetInputDesc(0);
+  FUSION_PASS_CHECK(mulPadDesc->AddInputDesc("x", mulPadDInputputDesc) != SUCCESS,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add mulPadDesc input failed."),
+                    return FAILED);
+  FUSION_PASS_CHECK(!ge::AttrUtils::SetListListInt(mulPadDesc, "paddings", mulPaddingsValue),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "set mulPadDesc attr paddings failed."),
+                    return FAILED);
+
+  ge::GeTensorDesc mulPadDOutputDesc = mulNode->GetOpDesc()->GetInputDesc(0);
+  vector<int64_t> mulPadDOutputShape = mulPadDOutputDesc.GetShape().GetDims();
+  mulPadDOutputShape[0] = mulPadDOutputShape[0] + mulPaddingsValue[0][1];
+
+  ge::GeShape mulPadDShape(mulPadDOutputShape);
+  mulPadDOutputDesc.SetShape(mulPadDShape);
+  mulPadDOutputDesc.SetOriginShape(mulPadDShape);
+  FUSION_PASS_CHECK(mulPadDesc->AddOutputDesc("y", mulPadDOutputDesc) != SUCCESS,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add mulPadDesc output failed."),
+                    return FAILED);
+
+  mulPadDNode = graph.AddNode(mulPadDesc);
+  FUSION_PASS_CHECK(mulPadDNode == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "mulPadDNode is null, fusion failed."),
+                    return PARAM_INVALID);
+
+  OP_LOGD(FUSED_OP_TYPE.c_str(), "End to AddMulPadDNode");
+  return SUCCESS;
+}
+
+Status MulAddAddFusionPass::AddPadDNode(ge::ComputeGraph& graph, ge::NodePtr& addNode, ge::NodePtr& padDNode) {
+  OP_LOGD(FUSED_OP_TYPE.c_str(), "Enter into AddPadDNode");
+
+  ge::OpDescPtr padDDesc = nullptr;
+  FUSION_PASS_MAKE_SHARED((padDDesc = std::make_shared<ge::OpDesc>(addNode->GetName() + '_' + "PadD", "PadD")),
+                          return INTERNAL_ERROR);
+  vector<int64_t> paddingsValue = {0, 0};
+  vector<int64_t> constDimInfo = addNode->GetOpDesc()->GetInputDesc(1).GetShape().GetDims();
+  paddingsValue[1] = ALIGN_UNIT_16 - (constDimInfo[0] % ALIGN_UNIT_16);
+  ge::GeTensorDesc padDInputputDesc = addNode->GetOpDesc()->GetInputDesc(1);
+  FUSION_PASS_CHECK(padDDesc->AddInputDesc("x", padDInputputDesc) != SUCCESS,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add padDNode input failed."), return FAILED);
+  FUSION_PASS_CHECK(!ge::AttrUtils::SetListInt(padDDesc, "paddings", paddingsValue),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "set padDNode attr paddings failed."),
+                    return FAILED);
+
+  ge::GeTensorDesc padDOutputDesc = addNode->GetOpDesc()->GetInputDesc(1);
+  vector<int64_t> padDOutputShape = padDInputputDesc.GetShape().GetDims();
+  padDOutputShape[0] = padDOutputShape[0] + paddingsValue[1];
+
+  ge::GeShape padDShape(padDOutputShape);
+  padDOutputDesc.SetShape(padDShape);
+  padDOutputDesc.SetOriginShape(padDShape);
+  FUSION_PASS_CHECK(padDDesc->AddOutputDesc("y", padDOutputDesc) != SUCCESS,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add padDNode output failed."),
+                    return FAILED);
+
+  padDNode = graph.AddNode(padDDesc);
+  FUSION_PASS_CHECK(padDNode == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "padDNode is null, fusion failed."),
+                    return PARAM_INVALID);
+
+  OP_LOGD(FUSED_OP_TYPE.c_str(), "End to AddPadDNode");
+  return SUCCESS;
+}
+
 Status MulAddAddFusionPass::AddAndDeleteEdge(vector<ge::NodePtr>& fusedNodes, ge::NodePtr& fusedMulAddAddNode,
                                              ge::NodePtr& mulPadDNode, ge::NodePtr& padDNode,
                                              ge::NodePtr& transdataDstNode) {
@@ -263,66 +331,13 @@ Status MulAddAddFusionPass::FusionUnalignedScense(ge::ComputeGraph& graph, vecto
 
   ge::NodePtr mulPadDNode = nullptr;
   if (!alignFlag) {
-    ge::OpDescPtr mulPadDesc = nullptr;
-    FUSION_PASS_MAKE_SHARED(
-        (mulPadDesc = std::make_shared<ge::OpDesc>(fusedNodes[0]->GetName() + '_' + "PadD", "PadD")),
-        return INTERNAL_ERROR);
-    vector<vector<int64_t>> mulPaddingsValue = {{0, 0}, {0, 0}};
-    vector<int64_t> mulConstDimInfo = fusedNodes[0]->GetOpDesc()->GetInputDesc(0).GetShape().GetDims();
-    mulPaddingsValue[0][1] = ALIGN_UNIT_16 - (mulConstDimInfo[mulConstDimInfo.size() - DIM_NUM_TWO] % ALIGN_UNIT_16);
-    ge::GeTensorDesc mulPadDInputputDesc = fusedNodes[0]->GetOpDesc()->GetInputDesc(0);
-    FUSION_PASS_CHECK(mulPadDesc->AddInputDesc("x", mulPadDInputputDesc) != SUCCESS,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add mulPadDesc input failed."),
-                      return FAILED);
-    FUSION_PASS_CHECK(!ge::AttrUtils::SetListListInt(mulPadDesc, "paddings", mulPaddingsValue),
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "set mulPadDesc attr paddings failed."),
-                      return FAILED);
-
-    ge::GeTensorDesc mulPadDOutputDesc = fusedNodes[0]->GetOpDesc()->GetInputDesc(0);
-    vector<int64_t> mulPadDOutputShape = mulPadDOutputDesc.GetShape().GetDims();
-    mulPadDOutputShape[0] = mulPadDOutputShape[0] + mulPaddingsValue[0][1];
-
-    ge::GeShape mulPadDShape(mulPadDOutputShape);
-    mulPadDOutputDesc.SetShape(mulPadDShape);
-    mulPadDOutputDesc.SetOriginShape(mulPadDShape);
-    FUSION_PASS_CHECK(mulPadDesc->AddOutputDesc("y", mulPadDOutputDesc) != SUCCESS,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add mulPadDesc output failed."),
-                      return FAILED);
-
-    mulPadDNode = graph.AddNode(mulPadDesc);
-    FUSION_PASS_CHECK(mulPadDNode == nullptr,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "mulPadDNode is null, fusion failed."),
-                      return PARAM_INVALID);
+    FUSION_PASS_CHECK(AddMulPadDNode(graph, fusedNodes[0], mulPadDNode) != SUCCESS,
+                      OP_LOGD(FUSED_OP_TYPE.c_str(), "add mulPadD node failed!"), return NOT_CHANGED);
   }
 
-  ge::OpDescPtr padDDesc = nullptr;
-  FUSION_PASS_MAKE_SHARED((padDDesc = std::make_shared<ge::OpDesc>(fusedNodes[1]->GetName() + '_' + "PadD", "PadD")),
-                          return INTERNAL_ERROR);
-  vector<int64_t> paddingsValue = {0, 0};
-  vector<int64_t> constDimInfo = fusedNodes[1]->GetOpDesc()->GetInputDesc(1).GetShape().GetDims();
-  paddingsValue[1] = ALIGN_UNIT_16 - (constDimInfo[0] % ALIGN_UNIT_16);
-  ge::GeTensorDesc padDInputputDesc = fusedNodes[1]->GetOpDesc()->GetInputDesc(1);
-  FUSION_PASS_CHECK(padDDesc->AddInputDesc("x", padDInputputDesc) != SUCCESS,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add padDNode input failed."), return FAILED);
-  FUSION_PASS_CHECK(!ge::AttrUtils::SetListInt(padDDesc, "paddings", paddingsValue),
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "set padDNode attr paddings failed."),
-                    return FAILED);
-
-  ge::GeTensorDesc padDOutputDesc = fusedNodes[1]->GetOpDesc()->GetInputDesc(1);
-  vector<int64_t> padDOutputShape = padDInputputDesc.GetShape().GetDims();
-  padDOutputShape[0] = padDOutputShape[0] + paddingsValue[1];
-
-  ge::GeShape padDShape(padDOutputShape);
-  padDOutputDesc.SetShape(padDShape);
-  padDOutputDesc.SetOriginShape(padDShape);
-  FUSION_PASS_CHECK(padDDesc->AddOutputDesc("y", padDOutputDesc) != SUCCESS,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add padDNode output failed."),
-                    return FAILED);
-
-  ge::NodePtr padDNode = graph.AddNode(padDDesc);
-  FUSION_PASS_CHECK(padDNode == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "padDNode is null, fusion failed."),
-                    return PARAM_INVALID);
+  ge::NodePtr padDNode = nullptr;
+  FUSION_PASS_CHECK(AddPadDNode(graph, fusedNodes[1], padDNode) != SUCCESS,
+                    OP_LOGD(FUSED_OP_TYPE.c_str(), "add addPadD Node failed!"), return NOT_CHANGED);
 
   ge::OpDescPtr fusedMulAddAddDesc = nullptr;
   FUSION_PASS_MAKE_SHARED((fusedMulAddAddDesc = std::make_shared<ge::OpDesc>(
@@ -398,18 +413,12 @@ Status MulAddAddFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, ve
   FUSION_PASS_CHECK(FusionUnalignedScense(graph, fusedNodes, newNodes, transdataDstNode) != SUCCESS,
                     OP_LOGD(FUSED_OP_TYPE.c_str(), "Unaligned Scense fusion failed"), return FAILED);
 
-  FUSION_PASS_CHECK(RemoveFusedNode(graph, fusedNodes[0]) != ge::GRAPH_SUCCESS,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Failed to remove mulNode node"),
-                    return FAILED);
-  FUSION_PASS_CHECK(RemoveFusedNode(graph, fusedNodes[1]) != ge::GRAPH_SUCCESS,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Failed to remove addNode1 node"),
-                    return FAILED);
-  FUSION_PASS_CHECK(RemoveFusedNode(graph, fusedNodes[2]) != ge::GRAPH_SUCCESS,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Failed to remove Transdata node"),
-                    return FAILED);
-  FUSION_PASS_CHECK(RemoveFusedNode(graph, fusedNodes[3]) != ge::GRAPH_SUCCESS,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Failed to remove addNode2 node"),
-                    return FAILED);
+  for (size_t index = 0; index < fusedNodes.size(); index++) {
+    FUSION_PASS_CHECK(RemoveFusedNode(graph, fusedNodes[index]) != ge::GRAPH_SUCCESS,
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Failed to remove [%s]",
+                                                     fusedNodes[index]->GetName().c_str()),
+                      return FAILED);
+  }
 
   OP_LOGD(FUSED_OP_TYPE.c_str(), "End to MulAddAddFusionPass");
   return SUCCESS;
