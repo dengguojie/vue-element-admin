@@ -34,6 +34,7 @@
 #include "error_util.h"
 #include "graph_optimizer/graph_fusion/fusion_pass_manager/fusion_pass_registry.h"
 #include "pattern_fusion_util.h"
+#include "tbe_ops_pass_util.h"
 
 using namespace ge;
 namespace fe {
@@ -86,6 +87,9 @@ Status MulAddFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vecto
     OP_LOGI(FUSED_OP_TYPE.c_str(), "fusedmuladd fusion pass only used in bert network.");
     return NOT_CHANGED;
   }
+
+  // dynamic op not change
+  NOT_CHANGED_WITH_DYNAMIC_NODE({mul_node});
 
   ge::OpDescPtr mul_desc = mul_node->GetOpDesc();
   ge::OpDescPtr add_desc = add_node->GetOpDesc();
