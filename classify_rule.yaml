@@ -1089,6 +1089,7 @@ vector_B:
       - ops/built-in/tbe/impl/dynamic/unsorted_segment_sum.py
       - ops/built-in/tbe/impl/dynamic/unsorted_segment_sum_no_atomic.py
       - ops/built-in/tbe/impl/dynamic/xdivy.py
+      - ops/built-in/tbe/impl/dynamic/xlog1py.py
       - ops/built-in/tbe/impl/dynamic/xlogy.py
       - ops/built-in/tbe/impl/elu.py
       - ops/built-in/tbe/impl/equal.py
@@ -1749,6 +1750,8 @@ vector_B:
       - ops/built-in/tests/ut/ops_test/Upsample/test_Upsample_impl.py
       - ops/built-in/tests/ut/ops_test/Xdivy/test_Xdivy_dynamic_impl.py
       - ops/built-in/tests/ut/ops_test/Xdivy/test_Xdivy_proto.cpp
+      - ops/built-in/tests/ut/ops_test/Xlog1py/test_Xlog1py_dynamic_impl.py
+      - ops/built-in/tests/ut/ops_test/Xlog1py/test_Xlog1py_proto.py
       - ops/built-in/tests/ut/ops_test/Xlogy/test_Xlogy_dynamic_impl.py
       - ops/built-in/tests/ut/ops_test/Xlogy/test_Xlogy_proto.cpp
       - ops/built-in/tests/ut/ops_test/Yolo/test_Yolo_impl.py
@@ -3219,6 +3222,7 @@ unkown:
       - ops/built-in/framework/tf_plugin/apply_gradient_descent_plugin.cc
       - ops/built-in/framework/tf_plugin/lru_cache_plugin.cc
       - ops/built-in/framework/tf_plugin/inv_grad_plugin.cc
+      - ops/built-in/framework/tf_plugin/xlog1py_plugin.cc
       - ops/built-in/framework/tf_plugin/xlogy_plugin.cc
       - ops/built-in/framework/tf_plugin/hcom_all_gather_plugin.cc
       - ops/built-in/framework/tf_plugin/pad_v2_plugin.cc

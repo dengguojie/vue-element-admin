@@ -1,0 +1,202 @@
+[
+  {
+    "op": "Xlog1py",
+    "case_name": "test_Xlog1py_001",
+    "calc_expect_func_file": "./test_xlog1py_gloden.py:calc_expect_func",
+    "input_desc": [
+      {
+        "name": "x",
+        "type": ["float"],
+        "shape": [4],
+        "format": ["ND"],
+        "data_distribute": ["uniform"],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "ori_shape": [4],
+        "ori_format": "ND",
+        "value": [1,2,3,4]
+      },
+      {
+        "name": "y",
+        "type": ["float"],
+        "shape": [4],
+        "format": ["ND"],
+        "data_distribute": ["uniform"],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "ori_shape": [4],
+        "ori_format": "ND",
+        "value": [1,2,3,4]
+      }
+    ],
+    "output_desc": [
+      {
+        "name": "z",
+        "type": ["float"],
+        "shape": [4],
+        "format": ["ND"],
+        "ori_shape": [4],
+        "ori_format": "ND"
+      }
+    ]
+
+  },
+  {
+    "op": "Xlog1py",
+    "case_name": "test_Xlog1py_002",
+    "calc_expect_func_file": "./test_xlog1py_gloden.py:calc_expect_func",
+    "input_desc": [
+      {
+        "name": "x",
+        "type": ["float"],
+        "shape": [1],
+        "format": ["ND"],
+        "data_distribute": ["uniform"],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "ori_shape": [1],
+        "ori_format": "ND",
+        "value": [10]
+      },
+      {
+        "name": "y",
+        "type": ["float"],
+        "shape": [1],
+        "format": ["ND"],
+        "data_distribute": ["uniform"],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "ori_shape": [1],
+        "ori_format": "ND",
+        "value": [10]
+      }
+    ],
+    "output_desc": [
+      {
+        "name": "z",
+        "type": ["float"],
+        "shape": [1],
+        "format": ["ND"],
+        "ori_shape": [1],
+        "ori_format": "ND"
+      }
+    ]
+
+  },
+  {
+    "op": "Xlog1py",
+    "case_name": "test_Xlog1py_003",
+    "calc_expect_func_file": "./test_xlog1py_gloden.py:calc_expect_func",
+    "input_desc": [
+      {
+        "name": "x",
+        "type": ["float16"],
+        "shape": [1, 2, 3, 4],
+        "format": ["ND"],
+        "data_distribute": ["uniform"],
+        "value_range": [
+          [
+            1,
+            1000
+          ]
+        ],
+        "ori_shape": [1, 2, 3, 4],
+        "ori_format": "ND"
+      },
+      {
+        "name": "y",
+        "type": ["float16"],
+        "shape": [1, 2, 3, 4],
+        "format": ["ND"],
+        "data_distribute": ["uniform"],
+        "value_range": [
+          [
+            1,
+            120
+          ]
+        ],
+        "ori_shape": [1, 2, 3, 4],
+        "ori_format": "ND"
+      }
+    ],
+    "output_desc": [
+      {
+        "name": "z",
+        "type": ["float16"],
+        "shape": [1, 2, 3, 4],
+        "format": ["ND"],
+        "ori_shape": [1, 2, 3, 4],
+        "ori_format": "ND"
+      }
+    ]
+
+  },
+  {
+    "op": "Xlog1py",
+    "case_name": "test_Xlog1py_004",
+    "calc_expect_func_file": "./test_xlog1py_gloden.py:calc_expect_func",
+    "input_desc": [
+      {
+        "name": "x",
+        "type": ["float16"],
+        "shape": [3],
+        "format": ["ND"],
+        "data_distribute": ["uniform"],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "ori_shape": [3],
+        "ori_format": "ND",
+        "value": [1, 10, 555]
+      },
+      {
+        "name": "y",
+        "type": ["float16"],
+        "shape": [3],
+        "format": ["ND"],
+        "data_distribute": ["uniform"],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "ori_shape": [3],
+        "ori_format": "ND",
+        "value": [104, 105, 1090]
+      }
+    ],
+    "output_desc": [
+      {
+        "name": "z",
+        "type": ["float16"],
+        "shape": [3],
+        "format": ["ND"],
+        "ori_shape": [3],
+        "ori_format": "ND"
+      }
+    ]
+
+  }
+
+]
+

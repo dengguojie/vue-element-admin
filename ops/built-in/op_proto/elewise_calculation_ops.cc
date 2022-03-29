@@ -83,12 +83,12 @@ bool InferShapeForMaximumAndMinimum(Operator& op) {
     return false;
   }
   if (attr_grad_x) {
-    if(!OneInOneOutDynamicInfer(op,"x1",{"y1"})){
+    if (!OneInOneOutDynamicInfer(op, "x1", {"y1"})) {
         return false;
     }
   }
   if (attr_grad_y) {
-    if(!OneInOneOutDynamicInfer(op,"x2",{"y2"})){
+    if (!OneInOneOutDynamicInfer(op, "x2", {"y2"})) {
         return false;
     }
   }
@@ -4499,6 +4499,18 @@ IMPLEMT_COMMON_INFERFUNC(XdivyInferShape) {
 COMMON_INFER_FUNC_REG(Xdivy, XdivyInferShape);
 VERIFY_FUNC_REG(Xdivy, XdivyVerify);
 // ------------Xdivy END-----------------
+
+// ------------Xlog1py---------------------
+IMPLEMT_VERIFIER(Xlog1py, Xlog1pyVerify) {
+  if (!CheckTwoInputDtypeSame(op, "x", "y")) {
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(Xlog1py, TwoInOneOutCommonInferShape);
+VERIFY_FUNC_REG(Xlog1py, Xlog1pyVerify);
+// ------------Xlog1py END------------------
 
 // ------------Xlogy---------------------
 IMPLEMT_VERIFIER(Xlogy, XlogyVerify) {

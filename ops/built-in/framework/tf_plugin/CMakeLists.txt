@@ -456,6 +456,7 @@ set(_tf_plugins
   where_plugin.cc
   while_plugin.cc
   xdivy_plugin.cc
+  xlog1py_plugin.cc
   xlogy_plugin.cc
   zeros_like_plugin.cc
   nonzero_plugin.cc

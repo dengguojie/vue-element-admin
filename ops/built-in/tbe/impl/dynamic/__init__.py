@@ -279,6 +279,7 @@ from .truncate_div import truncate_div
 from .truncate_mod import truncate_mod
 from .dynamic_lstm_grad_cell import dynamic_lstm_grad_cell
 from .xdivy import xdivy
+from .xlog1py import xlog1py
 from .xlogy import xlogy
 from .atan import atan
 from .atanh import atanh

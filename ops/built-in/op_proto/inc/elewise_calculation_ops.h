@@ -777,6 +777,31 @@ REG_OP(Xdivy)
     .OP_END_FACTORY_REG(Xdivy)
 
 /**
+* @brief Computes "x" multiplied by the logarithm of y element-wise,
+* if "x" == 0, return "0". \n
+
+* @par Inputs:
+* Two inputs, including:
+* @li x: A Tensor. Must be one of the following types: float16, float32,
+* double, complex64, complex128.
+* @li y: A Tensor. Has the same type as "x". \n
+
+* @par Outputs:
+* z: A Tensor. Has the same type as "x". \n
+
+* @par Third-party framework compatibility
+* Compatible with TensorFlow operator Xlog1py.
+*/
+REG_OP(Xlog1py)
+    .INPUT(x, TensorType({DT_HALF, DT_FLOAT, DT_DOUBLE, DT_COMPLEX64,
+                          DT_COMPLEX128}))
+    .INPUT(y, TensorType({DT_HALF, DT_FLOAT, DT_DOUBLE, DT_COMPLEX64,
+                          DT_COMPLEX128}))
+    .OUTPUT(z, TensorType({DT_HALF, DT_FLOAT, DT_DOUBLE, DT_COMPLEX64,
+                           DT_COMPLEX128}))
+    .OP_END_FACTORY_REG(Xlog1py)
+
+/**
 *@brief Computes "x" multiplied by the logarithm of y element-wise,
 * if "x" == 0, return "0". \n
 
