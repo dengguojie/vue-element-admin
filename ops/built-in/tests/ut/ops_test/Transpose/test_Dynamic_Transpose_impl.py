@@ -135,7 +135,29 @@ def test_get_ub_core_for_cov(test_arg):
             self.x_dtype="int8"
     m = mocker()
     Transpose._move_data_s8(m, "abc")
-    
+
+def test_get_op_support_info(test_arg):
+    from impl.dynamic.transpose import get_op_support_info 
+    input_x = {'ori_shape': (128, 12, 197, 64), 'shape': (128, 12, 197, 64), 'ori_format': 'NCDHW', 'format': 'NCDHW', 'dtype': 'float16'}
+    perm = {'ori_shape': (4,), 'shape': (4,), 'ori_format': 'NCDHW', 'format': 'NCDHW', 'dtype': 'float16', 'const_value':(3, 2, 0, 1)}
+    output_y = {'ori_shape': (128, 12, 197, 64), 'shape': (128, 12, 197, 64), 'ori_format': 'NCDHW', 'format': 'NCDHW', 'dtype': 'float16'}
+    actual_res = get_op_support_info(input_x, perm, output_y)
+    expect_res = '{"_op_slice_info": {"splitMaps": [{"inputList": [{"idx": 0, "axis": [3], "headOverLap": [-1], "tailOverLap": [-1]}], '\
+                                                    '"outputList": [{"idx": 0, "axis": [0]}]}, '\
+                                                    '{"inputList": [{"idx": 0, "axis": [2], "headOverLap": [-1], '\
+                                                    '"tailOverLap": [-1]}], "outputList": [{"idx": 0, "axis": [1]}]}, '\
+                                                    '{"inputList": [{"idx": 0, "axis": [0], "headOverLap": [-1], "tailOverLap": [-1]}], '\
+                                                    '"outputList": [{"idx": 0, "axis": [2]}]}, '\
+                                                    '{"inputList": [{"idx": 0, "axis": [1], "headOverLap": [-1], "tailOverLap": [-1]}], '\
+                                                    '"outputList": [{"idx": 0, "axis": [3]}]}], '\
+                                                    '"reduceMaps": [], "l1FusionEnable": 0, "minTbeL1Space": 0}}'
+
+    print(actual_res)
+    print(expect_res)
+    res = (actual_res == expect_res)
+    if not res:
+        print("test_get_op_support not equal")
+        raise Exception("get_op_support_info failed")
 
 ut_case.add_cust_test_func(test_func=test_op_check_supported)
 ut_case.add_cust_test_func(test_func=test_op_check_supported_in_white_list_return_false)
@@ -145,6 +167,7 @@ ut_case.add_cust_test_func(test_func=test_op_check_supported_in_white_list_fuzzy
 ut_case.add_cust_test_func(test_func=test_op_check_supported_in_white_list_fuzzy_match_return_true_2)
 ut_case.add_cust_test_func(test_func=test_get_ub_core_for_cov)
 ut_case.add_cust_test_func(test_func=test_nd_2_nz_shape_mismatch)
+ut_case.add_cust_test_func(test_func=test_get_op_support_info)
 
 
 def add_ts_case(soc, d_type, x, perm, y, value_type="default", op_imply_type="dynamic"):

@@ -5298,15 +5298,23 @@ static void Composite3D(const CompilerInfo& compilerInfo, const ShapeInfo& shape
   }
 }
 
+static int64_t GetColUnit(const CompilerInfo & ci) {
+    if (ci.ubSize == BLOCK_NUM_256K || ci.ubSize == BLOCK_NUM_248K) {
+      return COL_UNIT_UB_256K;
+    } else {
+      return COL_UNIT_UB_192K;
+    }
+}
+
 static int64_t CalcNUnit(const CompilerInfo& ci, const ShapeInfo& si) {
   int64_t dim = si.dim;
-  if (si.reducedInShape[dim - 2] > COL_UNIT) {
+  if (si.reducedInShape[dim - 2] > GetColUnit(ci)) {
     return 1;
   }
   if (si.reducedInShape[dim - 1] > ROW_UNIT) {
     return 1;
   }
-  int64_t nUnit = (COL_UNIT * ROW_UNIT) / (si.reducedInShape[dim - 2] * si.reducedInShape[dim - 1] * ci.fp16Times) ;
+  int64_t nUnit = (GetColUnit(ci) * ROW_UNIT) / (si.reducedInShape[dim - 2] * si.reducedInShape[dim - 1] * ci.fp16Times) ;
   return nUnit == 0 ? 1 : nUnit;
 }
 
@@ -5325,7 +5333,7 @@ static bool TilingDataScenario11(const CompilerInfo & compilerInfo,
   int64_t nVol = 1;
   int64_t cFactor = 1;
   int64_t rFactor = 1;
-  int64_t colUnit = COL_UNIT;
+  int64_t colUnit = GetColUnit(compilerInfo);
   int64_t rowUnit = ROW_UNIT;
   int64_t colUnitNum = 1;
   int64_t rowUnitNum = 1;

@@ -35,7 +35,7 @@
 namespace optiling {
 
 #define TRANSPOSE_MAX_AXIS_NUM 8
-#define MAX_CORE_NUM 64 
+#define MAX_CORE_NUM 64
 #define BORROW_SRC_AXIS_NUM 2
 #define BORROW_DST_AXIS_NUM 2
 #define BORROW_MAX_AXIS_NUM (BORROW_SRC_AXIS_NUM + BORROW_DST_AXIS_NUM)
@@ -65,10 +65,11 @@ namespace optiling {
 #define MDTS 1
 #define TDMS 2
 #define TDTS 3
-#define COL_UNIT 240 
-#define ROW_UNIT 128 
-#define MAX_INFO_NUM 16 // keep same with GE threads, too huge will result in init timeout 
-#define MAX_TILING_NUM 16 * 1024 
+#define COL_UNIT_UB_256K 240
+#define COL_UNIT_UB_192K 176
+#define ROW_UNIT 128
+#define MAX_INFO_NUM 16 // keep same with GE threads, too huge will result in init timeout
+#define MAX_TILING_NUM 16 * 1024
 #define TILING_HEAD_SIZE 4
 #define MAX_RETRY_SCENARIO 5
 
@@ -226,7 +227,7 @@ public:
       : coreNum(c), ubBlocks(u), priority(p), maxCol(0), maxRow(0), subScenario(scenario),
         isf2t(false), ist2f(false) {
   }
-  virtual ~TilingModel(){};
+  virtual ~TilingModel() {};
   virtual bool Decision(const NCR& ncr, int64_t dim){
     return false;
   }
@@ -273,7 +274,7 @@ struct ShapeInfo {
   int64_t inShapeSize;
   int64_t outShapeSize;
   int64_t permSize;
-  
+
   int64_t origDim;
   int64_t dim;
   int64_t totalVolumeActual;
@@ -898,7 +899,7 @@ struct TwoDInfo {
   int64_t nSrcStride[TRANSPOSE_MAX_AXIS_NUM];
   int64_t nDstStride[TRANSPOSE_MAX_AXIS_NUM];
   InfoPerCore2D infoPerCore2D[MAX_CORE_NUM];
-  
+
   int64_t nFactorSize;
   int64_t nSrcStrideSize;
   int64_t nDstStrideSize;
@@ -1025,7 +1026,7 @@ struct RuntimeInfo {
   void ResetCommon() {
     id = 0;
     coreNum = MAX_CORE_NUM;
-    scenarioSize = 0; 
+    scenarioSize = 0;
     ubReorderFactor = 1;
     ubThreshold = 1;
     fp16Offset1 = 0;
@@ -1253,7 +1254,7 @@ struct RuntimeInfo {
   }
 
   RuntimeInfo(): coreNum(MAX_CORE_NUM), scenarioSize(0) {
-    // set coreNum & scenarioSize before Reset for in Reset() will use them 
+    // set coreNum & scenarioSize before Reset for in Reset() will use them
     Reset();
   }
 };

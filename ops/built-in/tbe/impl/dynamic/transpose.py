@@ -21,6 +21,9 @@ from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
 from tbe.common.platform.platform_info import api_check_support
+from impl.util.util_select_op_base import SplitInput
+from impl.util.util_select_op_base import SplitOutput
+from impl.util.util_select_op_base import get_op_cal_info
 
 # 'pylint: disable=too-few-public-methods
 ACCU_BLOCK_SIZE = 128  # should less than 240 for both 310 and 910
@@ -148,7 +151,7 @@ def _fuzzy_match_black(shape_t):
                                [-1, 128, 128, 32], [-1, 128, 128, 64], [-1, 16, 256, 256], [-1, 16, 512, 512],
                                [-1, 256, 256, 16], [-1, 256, 256, 32], [-1, 256, 32, 32], [-1, 256, 64, 64],
                                [-1, 32, 128, 128], [-1, 32, 256, 256], [-1, 512, 512, 16], [-1, 32, 32, 256],
-                               [-1, 64, 128, 128], [-1, 64, 64, 256], [-1, 512, 512, 1], 
+                               [-1, 64, 128, 128], [-1, 64, 64, 256], [-1, 512, 512, 1],
                               ]
     for shape_w in black_list_shape_fuzzy:
         if len(shape_t) != len(shape_w):
@@ -341,6 +344,22 @@ def _by_dynamic_static_union_version(shape, core_num):
         return True
 
     return False
+
+
+# 'pylint: disable=unused-argument
+def get_op_support_info(input_x, perm, output_y, kernel_name="dynamic_transpose"):
+    """
+    transpose support lxfusion: \n
+    """
+    perm_list = list(perm.get("const_value"))
+    perm_size = len(perm_list)
+    axis_split_matrix = []
+    for i in range(0, perm_size):
+        for j in range (0, perm_size):
+            if perm_list[j] == perm_list[i]:
+                axis_split_matrix.append([SplitInput([0, [perm_list[i]], [-1], [-1]]), SplitOutput([0, [j]])])
+                break
+    return get_op_cal_info(axis_split_matrix, None, 0, 0)
 
 
 # 'pylint: disable=unused-argument,too-many-return-statements
@@ -1449,7 +1468,7 @@ class Transpose:
         if get_ub_size() == 248 * 1024:
             return 245  # 310, 245 to avoid bank conflict
         if get_ub_size() == 192 * 1024:
-            return 191  # cs & a100
+            return 187  # cs & a100
         if get_ub_size() == 128 * 1024:
             return 123  # es
         return 247
