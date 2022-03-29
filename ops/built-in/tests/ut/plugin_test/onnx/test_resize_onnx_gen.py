@@ -15,11 +15,7 @@ def make_resize_v11():
         inputs=['x', 'roi', 'scales'],
         outputs=['y'],
         coordinate_transformation_mode='pytorch_half_pixel',
-        cubic_coeff_a = -0.75,
-        exclude_outside = 0,
-        extrapolation_value = 0,
-        mode='linear',
-        nearest_mode = "round_prefer_floor"
+        mode='linear'
     )
 
     graph = helper.make_graph(
@@ -147,11 +143,7 @@ def make_resize_v10():
         inputs=['x', 'scales'],
         outputs=['y'],
         coordinate_transformation_mode='pytorch_half_pixel',
-        cubic_coeff_a = -0.75,
-        exclude_outside = 0,
-        extrapolation_value = 0,
-        mode='linear',
-        nearest_mode = "round_prefer_floor"
+        mode='linear'
     )
 
     graph = helper.make_graph(

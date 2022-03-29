@@ -35,21 +35,15 @@ Status ParseParamsReduceMean(const Message* op_src, ge::Operator& op_dest) {
       keep_dims = (attr.i() == 1);
     }
   }
-  int num = axes.size();
-  std::vector<int64_t> dims = {};
-  if (num != 0) {
-    dims.push_back(num);
-  }
-  ge::Tensor tensor = Vec2Tensor(axes, dims, ge::DT_INT32, ge::FORMAT_NCHW);
 
-  op_dest.SetAttr("axes", tensor);
+  op_dest.SetAttr("axes", axes);
   op_dest.SetAttr("keep_dims", keep_dims);
   auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op_dest);
   if (op_desc == nullptr) {
     ONNX_PLUGIN_LOGE(op_dest.GetName().c_str(), "Get OpDesc from operator failed.");
     return FAILED;
   }
-  op_desc->AddDynamicInputDesc("x", 2);
+  op_desc->AddDynamicInputDesc("x", 1);
   op_desc->AddDynamicOutputDesc("y", 1);
   op_dest.SetAttr("original_type", "ai.onnx::11::ReduceMean");
 
@@ -59,12 +53,22 @@ Status ParseParamsReduceMean(const Message* op_src, ge::Operator& op_dest) {
 static Status ParseOpToGraphReduceMean(const ge::Operator& op, Graph& graph) {
   auto data0 = op::Data("data0").set_attr_index(0);
 
-  ge::Tensor axes;
+  std::vector<int> axes = {};
   if (op.GetAttr("axes", axes) != SUCCESS) {
     ONNX_PLUGIN_LOGE(op.GetName().c_str(), "get axes from op failed");
     return FAILED;
   }
-  auto data1 = op::Const("data1").set_attr_value(axes);
+
+  int num = axes.size();
+  std::vector<int64_t> dims = {};
+  if (num != 0) {
+    dims.push_back(num);
+  } else {
+    dims.push_back(0);
+  }
+  ge::Tensor axes_tensor = Vec2Tensor(axes, dims, ge::DT_INT32, ge::FORMAT_ND);
+
+  auto data1 = op::Const("data1").set_attr_value(axes_tensor);
   auto Reducemean = op::ReduceMean().set_input_x(data0).set_input_axes(data1);
 
   bool keep_dims = false;
@@ -73,6 +77,7 @@ static Status ParseOpToGraphReduceMean(const ge::Operator& op, Graph& graph) {
     return FAILED;
   }
   Reducemean.set_attr_keep_dims(keep_dims);
+  Reducemean.set_attr_noop_with_empty_axes(false);
 
   std::vector<ge::Operator> inputs{data0};
   std::vector<std::pair<ge::Operator, std::vector<size_t> > > outputs;
