@@ -367,6 +367,40 @@ def test_match(test_arg):
     match_res = rule_op.match_result(*match_input_args, **input_key_binary)
     assert match_res[0][0] == {"shape": [-2], "dtype": "float16", "format": "ND"}
 
+    # output not match
+    output_not_match_args = ({
+        "shape": [10],
+        "dtype": "float16",
+        "format": "ND"
+    }, {
+        "shape": [10],
+        "dtype": "float16",
+        "format": "ND"
+    }, {
+        "shape": [10],
+        "dtype": "float32",
+        "format": "ND"
+    })
+    match_res = rule_op.match_result(*output_not_match_args, **input_key_binary)
+    assert match_res is None
+
+    # input not match
+    input_not_match_args = ({
+        "shape": [10],
+        "dtype": "float16",
+        "format": "ND"
+    }, {
+        "shape": [10],
+        "dtype": "float32",
+        "format": "ND"
+    }, {
+        "shape": [10],
+        "dtype": "float16",
+        "format": "ND"
+    })
+    match_res = rule_op.match_result(*input_not_match_args, **input_key_binary)
+    assert match_res is None
+
 
 def test_match_format(test_arg):
     from impl.util.util_binary import match_format

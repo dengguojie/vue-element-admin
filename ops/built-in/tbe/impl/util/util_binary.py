@@ -187,10 +187,18 @@ class BinaryMatchBase:
         for op_rule_item in self.binary_rule_list:
             is_match = True
             # check_tensors
+
+            # check input tensors
             inputs = op_rule_item.get("inputs", list())
-            # check_input_tensors
-            for idx, input_tensor in enumerate(inputs):
-                if not match_tenser(args[idx], input_tensor):
+            for idx, _tensor in enumerate(inputs):
+                if not match_tenser(args[idx], _tensor):
+                    is_match = False
+                    break
+
+            # check output tensors
+            outputs = op_rule_item.get("outputs", list())
+            for idx, _tensor in enumerate(outputs):
+                if not match_tenser(args[idx + self.input_num], _tensor):
                     is_match = False
                     break
 
