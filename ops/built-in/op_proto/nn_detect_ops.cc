@@ -1992,50 +1992,61 @@ VERIFY_FUNC_REG(GridAssignPositive, GridAssignPositiveVerify);
 // ----------------GridAssignPositive END-------------------
 
 // ----------------GIoUGrad Started-------------------
-IMPLEMT_COMMON_INFERFUNC(GIoUGradInferShape) {
- 
-  TensorDesc bboxes_desc = op.GetInputDesc("bboxes");
-  TensorDesc gtboxes_desc = op.GetInputDesc("gtboxes");
-  
-  auto shape_bboxes = bboxes_desc.GetShape().GetDims();
-  auto shape_gtboxes = gtboxes_desc.GetShape().GetDims();
-  
-  if (shape_bboxes != shape_gtboxes) {
+IMPLEMT_INFERFUNC(GIoUGrad, GIoUGradInferShape) {
+  OP_LOGD(op.GetName().c_str(), "GIoUGradInferShape begin.");
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+
+  auto bboxes_desc = op_desc->GetInputDescPtr(1);
+  auto gtboxes_desc = op_desc->GetInputDescPtr(2);
+  auto dbboxes_desc = op_desc->MutableOutputDesc(0);
+  auto dgtboxes_desc = op_desc->MutableOutputDesc(1);
+
+  auto shape_bboxes = bboxes_desc->GetShape();
+  auto shape_gtboxes = gtboxes_desc->GetShape();
+
+  if (shape_bboxes.GetDims() != shape_gtboxes.GetDims()) {
     OP_LOGE(op.GetName().c_str(), "shape_bboxes shoule equal to shape_gtboxes.");
     return GRAPH_FAILED;
-  }  
+  }
 
-  (void)op.UpdateOutputDesc("dbboxes", bboxes_desc);
-  (void)op.UpdateOutputDesc("dgtboxes", gtboxes_desc);
+  dbboxes_desc->SetShape(shape_bboxes);
+  dgtboxes_desc->SetShape(shape_bboxes);
 
+  auto input_dtype = bboxes_desc->GetDataType();
+  dbboxes_desc->SetDataType(input_dtype);
+  dgtboxes_desc->SetDataType(input_dtype);
+
+  OP_LOGD(op.GetName().c_str(), "GIoUGradInferShape end.");
   return GRAPH_SUCCESS;
 }
 
-COMMON_INFER_FUNC_REG(GIoUGrad, GIoUGradInferShape);
+INFER_FUNC_REG(GIoUGrad, GIoUGradInferShape);
 // ----------------GIoUGrad Finished-------------------
 
 // ----------------RotatedOverlaps Started-------------------
 IMPLEMT_COMMON_INFERFUNC(RotatedOverlapsInferShape) {
-  OP_LOGI("RotatedOverlaps", "RotatedOverlapsInferShape");
-  TensorDesc boxes_desc = op.GetInputDesc("boxes");
-  TensorDesc query_boxes_desc = op.GetInputDesc("query_boxes");
-  
-  auto shape_boxes = boxes_desc.GetShape().GetDims();
-  auto shape_query_boxes = query_boxes_desc.GetShape().GetDims();
-  
-  if (shape_boxes[0] != shape_query_boxes[0]) {
+  OP_LOGD(op.GetName().c_str(), "RotatedOverlapsInferShape begin.");
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+
+  auto boxes_desc = op_desc->GetInputDescPtr(0);
+  auto query_boxes_desc = op_desc->GetInputDescPtr(1);
+  auto output_y_desc = op_desc->MutableOutputDesc(0);
+  auto shape_boxes = boxes_desc->GetShape();
+  auto shape_query_boxes = query_boxes_desc->GetShape();
+
+  if (shape_boxes.GetDim(0) != shape_query_boxes.GetDim(0)) {
     OP_LOGE(op.GetName().c_str(), "shape_boxes[0] shoule equal to shape_query_boxes[0].");
     return GRAPH_FAILED;
   }
+  GeShape &output_shape = output_y_desc->MutableShape();
+  output_shape.SetDimNum(3);
+  output_shape.SetDim(0, shape_boxes.GetDim(0));
+  output_shape.SetDim(1, shape_boxes.GetDim(2));
+  output_shape.SetDim(2, shape_query_boxes.GetDim(2));
 
-  std::vector<int64_t> output_shape;
-  output_shape.push_back(shape_boxes[0]);
-  output_shape.push_back(shape_boxes[2]);
-  output_shape.push_back(shape_query_boxes[2]);
-
-  boxes_desc.SetShape(ge::Shape(output_shape));
-  (void)op.UpdateOutputDesc("overlaps", boxes_desc);
-
+  auto input_dtype = boxes_desc->GetDataType();
+  output_y_desc->SetDataType(input_dtype);
+  OP_LOGD(op.GetName().c_str(), "RotatedOverlapsInferShape end.");
   return GRAPH_SUCCESS;
 }
 
@@ -2044,26 +2055,28 @@ COMMON_INFER_FUNC_REG(RotatedOverlaps, RotatedOverlapsInferShape);
 
 // ----------------RotatedIou Started-------------------
 IMPLEMT_COMMON_INFERFUNC(RotatedIouInferShape) {
-  OP_LOGI("RotatedIou", "RotatedIou");
-  TensorDesc boxes_desc = op.GetInputDesc("boxes");
-  TensorDesc query_boxes_desc = op.GetInputDesc("query_boxes");
-  
-  auto shape_boxes = boxes_desc.GetShape().GetDims();
-  auto shape_query_boxes = query_boxes_desc.GetShape().GetDims();
-  
-  if (shape_boxes[0] != shape_query_boxes[0]) {
+  OP_LOGD(op.GetName().c_str(), "RotatedIouInferShape begin.");
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+
+  auto boxes_desc = op_desc->GetInputDescPtr(0);
+  auto query_boxes_desc = op_desc->GetInputDescPtr(1);
+  auto output_y_desc = op_desc->MutableOutputDesc(0);
+  auto shape_boxes = boxes_desc->GetShape();
+  auto shape_query_boxes = query_boxes_desc->GetShape();
+
+  if (shape_boxes.GetDim(0) != shape_query_boxes.GetDim(0)) {
     OP_LOGE(op.GetName().c_str(), "shape_boxes[0] shoule equal to shape_query_boxes[0].");
     return GRAPH_FAILED;
   }
+  GeShape &output_shape = output_y_desc->MutableShape();
+  output_shape.SetDimNum(3);
+  output_shape.SetDim(0, shape_boxes.GetDim(0));
+  output_shape.SetDim(1, shape_boxes.GetDim(2));
+  output_shape.SetDim(2, shape_query_boxes.GetDim(2));
 
-  std::vector<int64_t> output_shape;
-  output_shape.push_back(shape_boxes[0]);
-  output_shape.push_back(shape_boxes[2]);
-  output_shape.push_back(shape_query_boxes[2]);
-
-  boxes_desc.SetShape(ge::Shape(output_shape));
-  (void)op.UpdateOutputDesc("iou", boxes_desc);
-
+  auto input_dtype = boxes_desc->GetDataType();
+  output_y_desc->SetDataType(input_dtype);
+  OP_LOGD(op.GetName().c_str(), "RotatedIouInferShape end.");
   return GRAPH_SUCCESS;
 }
 

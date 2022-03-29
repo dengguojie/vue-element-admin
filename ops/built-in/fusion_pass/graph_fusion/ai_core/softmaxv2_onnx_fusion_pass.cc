@@ -171,16 +171,18 @@ Status ASoftmaxFusionPass::CreateReshapeNode(ge::ComputeGraph& graph,
   ge::Operator reshape_op;
   ge::GeTensorDesc x_desc;
   ge::GeTensorDesc y_desc;
+  ge::string op_name = "Reshape_" + anchor_desc->GetName();
+  std::string op_type = "Reshape";
   if (dims.size() == 2) {
     // the first reshape
-    reshape_op = ge::OperatorFactory::CreateOperator("Reshape_" + anchor_desc->GetName(), "Reshape");
+    reshape_op = ge::OperatorFactory::CreateOperator(op_name.c_str(), op_type.c_str());
     x_desc = anchor_node->GetOpDesc()->GetInputDesc(0);
     y_desc = anchor_node->GetOpDesc()->GetOutputDesc(0);
     y_desc.SetShape(ge::GeShape(dims));
     y_desc.SetOriginShape(ge::GeShape(dims));
   } else {
     // the second reshape
-    reshape_op = ge::OperatorFactory::CreateOperator(anchor_desc->GetName() + "_reshape", "Reshape");
+    reshape_op = ge::OperatorFactory::CreateOperator(op_name.c_str(), op_type.c_str());
     x_desc = anchor_node->GetOpDesc()->GetOutputDesc(0);
     y_desc = anchor_node->GetOpDesc()->GetInputDesc(0);
   }

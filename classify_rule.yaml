@@ -4120,6 +4120,11 @@ pytorch:
       - ops/built-in/tbe/impl/dynamic/lp_norm_update.py
       - ops/built-in/tbe/impl/balance_rois.py
       - ops/built-in/tbe/impl/dynamic/hard_sigmoid.py
+      - ops/built-in/tbe/impl/giou_grad.py
+      - ops/built-in/tbe/impl/rotated_iou.py
+      - ops/built-in/tbe/impl/rotated_overlaps.py
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/softmaxv2_onnx_fusion_pass.cc
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/softmaxv2_onnx_fusion_pass.h
     unrelease:
       - ops/built-in/tests/ut/graph_fusion/ai_core/lstmp_fusion_test.cpp
       - ops/built-in/tests/ut/graph_fusion/ai_core/dynamic_rnn_v2_grad_fusion_test.cpp

@@ -1,4 +1,4 @@
-# Copyright 2021 Huawei Technologies Co., Ltd
+# Copyright 2022 Huawei Technologies Co., Ltd
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -53,14 +53,16 @@ class Constant(object):
     COEF = 0.01745329252
     # limit of k's size of query_boxes
     K_LIMIT = 2000
+    # to avoid denominator zero
+    EPSILON = 1e-6
 
 
 # 'pylint: disable=locally-disabled, unused-argument, invalid-name
-@tbe_platform.fusion_manager.fusion_manager.register("rotated_overlaps")
 class RotatedOverlaps(object):
     """
     The class for RotatedOverlaps.
     """
+
     # 'pylint:disable=too-many-arguments, disable=too-many-statements
     def __init__(self, boxes, query_boxes, overlaps, trans, kernel_name):
         """
@@ -400,6 +402,21 @@ class RotatedOverlaps(object):
                 self.corners_num.set_as(self.corners_num + 1)
 
     # 'pylint:disable=too-many-arguments, disable=too-many-statements
+    def record_intersection_point_compute(self):
+        self.b1_x2.set_as(self.x2_of_boxes_ub[self.b1_offset])
+        self.b1_y2.set_as(self.y2_of_boxes_ub[self.b1_offset])
+        self.record_intersection_point_core()
+        self.b1_x1.set_as(self.x3_of_boxes_ub[self.b1_offset])
+        self.b1_y1.set_as(self.y3_of_boxes_ub[self.b1_offset])
+        self.record_intersection_point_core()
+        self.b1_x2.set_as(self.x4_of_boxes_ub[self.b1_offset])
+        self.b1_y2.set_as(self.y4_of_boxes_ub[self.b1_offset])
+        self.record_intersection_point_core()
+        self.b1_x1.set_as(self.x1_of_boxes_ub[self.b1_offset])
+        self.b1_y1.set_as(self.y1_of_boxes_ub[self.b1_offset])
+        self.record_intersection_point_core()
+
+    # 'pylint:disable=too-many-arguments, disable=too-many-statements
     def record_intersection_point(self, b2_idx):
         """
         record_intersection_point
@@ -420,50 +437,19 @@ class RotatedOverlaps(object):
         self.b2_x1.set_as(self.x3_of_boxes_ub[b2_idx])
         self.b2_y1.set_as(self.y3_of_boxes_ub[b2_idx])
 
-        self.b1_x2.set_as(self.x2_of_boxes_ub[self.b1_offset])
-        self.b1_y2.set_as(self.y2_of_boxes_ub[self.b1_offset])
-        self.record_intersection_point_core()
-        self.b1_x1.set_as(self.x3_of_boxes_ub[self.b1_offset])
-        self.b1_y1.set_as(self.y3_of_boxes_ub[self.b1_offset])
-        self.record_intersection_point_core()
-        self.b1_x2.set_as(self.x4_of_boxes_ub[self.b1_offset])
-        self.b1_y2.set_as(self.y4_of_boxes_ub[self.b1_offset])
-        self.record_intersection_point_core()
-        self.b1_x1.set_as(self.x1_of_boxes_ub[self.b1_offset])
-        self.b1_y1.set_as(self.y1_of_boxes_ub[self.b1_offset])
-        self.record_intersection_point_core()
+        self.record_intersection_point_compute()
+
         # part3 BC->CD == B->D
         self.b2_x2.set_as(self.x4_of_boxes_ub[b2_idx])
         self.b2_y2.set_as(self.y4_of_boxes_ub[b2_idx])
 
-        self.b1_x2.set_as(self.x2_of_boxes_ub[self.b1_offset])
-        self.b1_y2.set_as(self.y2_of_boxes_ub[self.b1_offset])
-        self.record_intersection_point_core()
-        self.b1_x1.set_as(self.x3_of_boxes_ub[self.b1_offset])
-        self.b1_y1.set_as(self.y3_of_boxes_ub[self.b1_offset])
-        self.record_intersection_point_core()
-        self.b1_x2.set_as(self.x4_of_boxes_ub[self.b1_offset])
-        self.b1_y2.set_as(self.y4_of_boxes_ub[self.b1_offset])
-        self.record_intersection_point_core()
-        self.b1_x1.set_as(self.x1_of_boxes_ub[self.b1_offset])
-        self.b1_y1.set_as(self.y1_of_boxes_ub[self.b1_offset])
-        self.record_intersection_point_core()
+        self.record_intersection_point_compute()
+
         # part4 CD->DA == C->A
         self.b2_x1.set_as(self.x1_of_boxes_ub[b2_idx])
         self.b2_y1.set_as(self.y1_of_boxes_ub[b2_idx])
 
-        self.b1_x2.set_as(self.x2_of_boxes_ub[self.b1_offset])
-        self.b1_y2.set_as(self.y2_of_boxes_ub[self.b1_offset])
-        self.record_intersection_point_core()
-        self.b1_x1.set_as(self.x3_of_boxes_ub[self.b1_offset])
-        self.b1_y1.set_as(self.y3_of_boxes_ub[self.b1_offset])
-        self.record_intersection_point_core()
-        self.b1_x2.set_as(self.x4_of_boxes_ub[self.b1_offset])
-        self.b1_y2.set_as(self.y4_of_boxes_ub[self.b1_offset])
-        self.record_intersection_point_core()
-        self.b1_x1.set_as(self.x1_of_boxes_ub[self.b1_offset])
-        self.b1_y1.set_as(self.y1_of_boxes_ub[self.b1_offset])
-        self.record_intersection_point_core()
+        self.record_intersection_point_compute()
 
     # 'pylint:disable=too-many-arguments, disable=too-many-statements
     def record_vertex_point(self, b2_idx):
@@ -770,7 +756,6 @@ class RotatedOverlaps(object):
 
         self.tik_instance.h_mul(self.half_w_cos_of_boxes_ub, self.cos_t_of_boxes_ub, self.half_w_of_boxes_ub)
         self.tik_instance.h_mul(self.half_w_sin_of_boxes_ub, self.sin_t_of_boxes_ub, self.half_w_of_boxes_ub)
-
         self.tik_instance.h_mul(self.half_h_cos_of_boxes_ub, self.cos_t_of_boxes_ub, self.half_h_of_boxes_ub)
         self.tik_instance.h_mul(self.half_h_sin_of_boxes_ub, self.sin_t_of_boxes_ub, self.half_h_of_boxes_ub)
 
@@ -779,30 +764,16 @@ class RotatedOverlaps(object):
         self.tik_instance.h_add(self.x_add_w_of_boxes_ub, self.x_of_boxes_ub, self.half_w_cos_of_boxes_ub)
         self.tik_instance.h_add(self.y_add_w_of_boxes_ub, self.y_of_boxes_ub, self.half_w_sin_of_boxes_ub)
 
-        # func: x_aim = x + (x1 - x) * cos - (y1 - y) * sin & y_aim = y + (x1 - x) * sin + (y1 - y) * cos
-
-        # func: x1 = x - 0.5w; y1 = y + 0.5h:
-        #       x_aim = x - 0.5w * cos - 0.5h * sin
         self.tik_instance.h_sub(self.x1_of_boxes_ub, self.x_sub_w_of_boxes_ub, self.half_h_sin_of_boxes_ub)
-        #       y_aim = y - 0.5w * sin + 0.5h * cos
         self.tik_instance.h_add(self.y1_of_boxes_ub, self.y_sub_w_of_boxes_ub, self.half_h_cos_of_boxes_ub)
 
-        # func: x1 = x + 0.5w; y1 = y + 0.5h:
-        #       x_aim = x + 0.5w * cos - 0.5h * sin
         self.tik_instance.h_sub(self.x2_of_boxes_ub, self.x_add_w_of_boxes_ub, self.half_h_sin_of_boxes_ub)
-        #       y_aim = y + 0.5w * sin + 0.5h * cos
         self.tik_instance.h_add(self.y2_of_boxes_ub, self.y_add_w_of_boxes_ub, self.half_h_cos_of_boxes_ub)
 
-        # func: x1 = x + 0.5w; y1 = y - 0.5h:
-        #       x_aim = x + 0.5w * cos - 0.5h * sin
         self.tik_instance.h_add(self.x3_of_boxes_ub, self.x_add_w_of_boxes_ub, self.half_h_sin_of_boxes_ub)
-        #       y_aim = y + 0.5w * sin + 0.5h * cos
         self.tik_instance.h_sub(self.y3_of_boxes_ub, self.y_add_w_of_boxes_ub, self.half_h_cos_of_boxes_ub)
 
-        # func: x1 = x - 0.5w; y1 = y - 0.5h:
-        #       x_aim = x - 0.5w * cos - 0.5h * sin
         self.tik_instance.h_add(self.x4_of_boxes_ub, self.x_sub_w_of_boxes_ub, self.half_h_sin_of_boxes_ub)
-        #       y_aim = y - 0.5w * sin + 0.5h * cos
         self.tik_instance.h_sub(self.y4_of_boxes_ub, self.y_sub_w_of_boxes_ub, self.half_h_cos_of_boxes_ub)
 
     # 'pylint:disable=too-many-arguments, disable=too-many-statements
@@ -1042,6 +1013,7 @@ class RotatedOverlaps(object):
 
 
 # 'pylint:disable=too-many-arguments, disable=too-many-statements
+@tbe_platform.fusion_manager.fusion_manager.register("rotated_overlaps")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
 def rotated_overlaps(boxes, query_boxes, overlaps, trans=False, kernel_name="rotated_overlaps"):
