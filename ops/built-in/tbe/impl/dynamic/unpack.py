@@ -524,7 +524,9 @@ class Unpack:
             self.rules.append(case.get("key").value)
             self.compile_vars[case.get("key").value] = [var.get_name() for var in tvm_vars]
 
-        build_config_items = {"parse_ddr_args": True, "build_fatbin": True}
+        build_config_items = {"parse_ddr_args": True,
+                              "build_fatbin": True,
+                              "enable_branch_eliminator_else_case": False}
         dynamic_config = buildcfg.default_buildcfg.dynamic_build_config_dict
         with buildcfg.build_config(**dynamic_config):
             upper_config = buildcfg.get_current_build_config("all")
