@@ -662,7 +662,6 @@ def filter_case(tensor_a, tensor_b, kernel_name):
                        "256_288_16_16_64_288_16_16_float16",
                        "64_288_16_16_64_288_16_16_float16",
                        "64_192_16_16_256_64_16_16_float16",
-                       "1536_4_8_16_16_1536_4_8_16_16_float16",
                        "64_192_16_16_256_192_16_16_float16",
                        "64_768_16_16_64_2285_16_16_float16",
                        "2285_768_16_16_64_2285_16_16_float16",
@@ -689,8 +688,6 @@ def filter_case(tensor_a, tensor_b, kernel_name):
             "64_768_16_16_256_768_16_16_float16",
             "256_768_16_16_64_768_16_16_float16",
             # FusionOp_MatMul_AddN
-            "256_768_16_16_64_256_16_16_float16",
-            "64_768_16_16_64_64_16_16_float16",
             "48_2048_16_16_48_48_16_16_float16",
             # FusionOp_BatchMatMul_Add
             "3072_4_8_16_16_3072_4_8_16_16_float16",
@@ -765,7 +762,6 @@ def filter_case(tensor_a, tensor_b, kernel_name):
             "256_288_16_16_64_288_16_16_float16",
             "64_288_16_16_64_288_16_16_float16",
             "64_192_16_16_256_64_16_16_float16",
-            "1536_4_8_16_16_1536_4_8_16_16_float16",
             "64_192_16_16_256_192_16_16_float16",
             "256_768_16_16_256_64_16_16_float16",
             "64_768_16_16_64_2285_16_16_float16",
@@ -792,8 +788,6 @@ def filter_case(tensor_a, tensor_b, kernel_name):
             "64_768_16_16_256_768_16_16_float16",
             "256_768_16_16_64_768_16_16_float16",
             # FusionOp_MatMul_AddN
-            "256_768_16_16_64_256_16_16_float16",
-            "64_768_16_16_64_64_16_16_float16",
             "48_2048_16_16_48_48_16_16_float16",
             # FusionOp_BatchMatMul_Add
             "3072_4_8_16_16_3072_4_8_16_16_float16",
@@ -868,7 +862,6 @@ def filter_case(tensor_a, tensor_b, kernel_name):
             "256_288_16_16_64_288_16_16_float16",
             "64_288_16_16_64_288_16_16_float16",
             "64_192_16_16_256_64_16_16_float16",
-            "1536_4_8_16_16_1536_4_8_16_16_float16",
             "64_192_16_16_256_192_16_16_float16",
             "256_768_16_16_256_64_16_16_float16",
             "64_768_16_16_64_2285_16_16_float16",
@@ -1256,6 +1249,26 @@ class GEMMCompute:
     """
 
     def __init__(self, tensor_a, tensor_b, para_dict):
+        self.tensor_alpha = None
+        self.tensor_beta = None
+        self.in_a_dtype = None
+        self.in_b_dtype = None
+        self.is_nd_int82fp32 = None
+        self.nz_a = None
+        self.nz_b = None
+        self.kn_shape = None
+        self.m_shape = None
+        self.m_shape_ori = None
+        self.km_shape = None
+        self.n_shape = None
+        self.n_shape_ori = None
+        self.kn_shape_ori = None
+        self.matmul_batch = None
+        self.is_fractal_a = None
+        self.is_fractal_b = None
+        self.out_shape = None
+        self.tensor_a_length = None
+        self.tensor_b_length = None
         self.tensor_a = tensor_a
         self.tensor_b = tensor_b
         self.tensor_bias = para_dict.get("tensor_c")
