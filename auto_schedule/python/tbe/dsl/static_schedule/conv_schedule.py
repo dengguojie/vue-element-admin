@@ -1362,7 +1362,6 @@ class CceConvOp:
                         tiling["AL1_shape"] = tiling_new["AL1_shape"]
                         tiling["AUB_shape"] = tiling_new["AUB_shape"]
                         tiling["BL1_shape"] = tiling_new["BL1_shape"]
-                        tiling["attach_at_flag"] = tiling_new["attach_at_flag"]
 
                     tiling["block_dim"] = tiling_new["block_dim"]
                     if "CUB_channel_wise_flag" in tiling_new:

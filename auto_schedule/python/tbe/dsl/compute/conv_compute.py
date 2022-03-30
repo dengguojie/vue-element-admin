@@ -518,6 +518,7 @@ class ConvParam:
     bias_init_align_dim_flag = False
     invalid_data_rm_disable = False
     int4_width_out_align_flag = False
+    binary_mode = False
     dynamic_para = None
     compress_index_shape = {}
     compress_tiling_ = {}
