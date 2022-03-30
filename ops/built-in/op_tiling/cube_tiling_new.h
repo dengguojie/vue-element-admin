@@ -48,7 +48,6 @@ bool cube_tiling(const std::string& op_type, const std::vector<int64_t>& input_s
                  utils::OpRunInfo& run_info);
 bool UpdateRunInfoBinary(const DxParas &params, const Tiling &tiling,
                          const int32_t &tilingId, utils::OpRunInfo& runInfo);
-int64_t Lcm(const int64_t &param1, const int64_t &param2);
 }  // namespace optiling
 
 #endif  // OPS_BUILT_IN_OP_TILING_CUBE_TILING_H_

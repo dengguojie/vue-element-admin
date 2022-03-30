@@ -86,6 +86,18 @@ struct DxParas {
   int32_t filter_h_dilation = 0;
   int32_t filter_w_dilation = 0;
   int32_t stride_expand_flag = 0;
+  int32_t g_extend = 0;
+  int32_t dx_c1_extend = 0;
+  int32_t dy_c_ori = 0;
+  int32_t multiple_extend = 0;
+  int32_t shape_up_modify = 0;
+  int32_t shape_left_modify = 0;
+  int32_t shape_down_modify = 0;
+  int32_t shape_right_modify = 0;
+  int32_t pad_up_before = 0;
+  int32_t pad_left_before = 0;
+  int32_t pad_down_after = 0;
+  int32_t pad_right_after = 0;
   bool repo_seed_flag = false;
   bool repo_costmodel_flag = false;
   bool repo_binary_flag = false;
@@ -126,30 +138,14 @@ struct Tiling {
   int32_t init_db_al1 = 1;
   int32_t init_db_bl1 = 1;
   int32_t init_db_l0c = 1;
+  int32_t min_kl1_div_kl0 = 1;
+  int32_t max_kl1_div_min_kl1 = 1;
+  int32_t k_div_max_kl1 = 1;
+  int32_t aub_bound = 1;
+  int32_t n_l0_div_ub = 1;
+  int32_t bl1_bound = 1;
+  int32_t al1_bound = 1;
   bool update_l1 = false;
-};
-
-struct RunInfoRaras {
-  int32_t g_extend;
-  int32_t dx_c1_extend;
-  int32_t dy_c_ori;
-  int32_t multiple_extend;
-  int32_t shape_up_modify;
-  int32_t shape_left_modify;
-  int32_t shape_down_modify;
-  int32_t shape_right_modify;
-  int32_t pad_up_before;
-  int32_t pad_left_before;
-  int32_t pad_down_after;
-  int32_t pad_right_after;
-  int32_t batch_single_core;
-  int32_t n_l0_div_ub;
-  int32_t min_kl1_div_kl0;
-  int32_t max_kl1_div_min_kl1;
-  int32_t k_div_max_kl1;
-  int32_t al1_bound;
-  int32_t bl1_bound;
-  int32_t aub_bound;
 };
 
 struct RunInfoParaStrideLargeOne {

@@ -1150,7 +1150,7 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):
         cou1_g = group_dict[cube_util.GroupDictKeys.dy_c1_extend].value
     cou1_g_factor = 1 if (a_col is None or a_col.dtype != "float32") else 2
 
-    dyn_util.set_var_range(sch, var_range)
+    dyn_util.set_spec_var_range(sch, var_range)
 
     # fetch tiling
     def _get_padding():
@@ -2140,12 +2140,13 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):
                 aub_h = 1
                 aub_w = aub_tiling_m
 
-            ub_shape_k = aub_tiling_k // (kernel_h * kernel_w * 16)
-            ub_shape = _get_ub_shape(ub_shape_k, aub_h, aub_w, filling_w)
             if dyn_util.dynamic_mode == "binary":
+                ub_shape = _get_ub_shape(aub_tiling_k, aub_h, aub_w, filling_w)
                 sch_agent.attach_at(dy_vn, a_l1, ub_shape, ceil_mode_dict=dyn_util.get_ceil_mode(
                     ub_shape, split_ceil_dim=dyn_util.khw_dim))
             else:
+                ub_shape_k = aub_tiling_k // (kernel_h * kernel_w * 16)
+                ub_shape = _get_ub_shape(ub_shape_k, aub_h, aub_w, filling_w)
                 if not l0a_dma_flag:
                     sch_agent.attach_at(a_filling, a_l1, ub_shape)
                 else:
@@ -2178,7 +2179,7 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):
             ub_shape = (
                 al1_tiling_g,
                 1,
-                aub_tiling_k // (kernel_h * kernel_w * 16),
+                aub_tiling_k,
                 aub_tiling_m,
                 filling_w + kernel_w - 1,
                 al1_co0
@@ -2575,6 +2576,9 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):
                     tvm.all(tvm.floormod(
                         afill_w_inner.var - dyn_util.shape_vars.get("pad_left_before"), stride_w) == 0).asnode()
                 )
+                id_val = tvm.make.Call('int32', 'axis_group', [0, 'overwrite'], tvm.expr.Call.Extern, None, 0)
+                sch_agent[a_zero].pragma(sch_agent[a_zero].op.axis[2], 'axis_group', id_val)
+                sch_agent[a_zero].pragma(sch_agent[a_zero].op.axis[3], 'axis_group', id_val)
             else:
                 sch_agent[a_filling].reorder(
                     afill_h_inner,
@@ -3132,6 +3136,9 @@ class DxDynamicUtil():
         self.attach_flag = {}
         self.range_const = {
             "range_one": (1, 1),
+            "range_pad": (0, 255),
+            "range_stride": (1, 63),
+            "range_shape_modify": (-255, 0),
             "range_block_dim": (1, 32),
             "range_64": (1, 64),
             "range_256": (1, 256),
@@ -3216,7 +3223,7 @@ class DxDynamicUtil():
             self.shape_vars['dedy_w'], _) = dy.shape
         (self.shape_vars['filter_ci1hw'], self.shape_vars['dy_c1_extend'], _, _) = weight.shape
 
-    def set_var_range(self, sch, dim_var_range):
+    def set_spec_var_range(self, sch, dim_var_range):
         """
         set var range for all variables
         """
@@ -3225,6 +3232,8 @@ class DxDynamicUtil():
                 sch.set_var_range(self.shape_vars.get(var_name), *var_range)
         elif self.dynamic_mode == "binary":
             range_one = self.range_const.get("range_one")
+            range_pad = self.range_const.get("range_pad")
+            range_shape_modify = self.range_const.get("range_shape_modify")
             range_block_dim = self.range_const.get("range_block_dim")
             range_64 = self.range_const.get("range_64")
             range_256 = self.range_const.get("range_256")
@@ -3234,16 +3243,16 @@ class DxDynamicUtil():
                 "dedy_h": range_4096, "dedy_w": range_4096,
                 "dx_h": range_4096, "dx_w": range_4096, "kernel_h": range_64, "kernel_w": range_64,
                 "dx_c": range_4096, "dx_c1": range_256,
-                "padt": range_256, "padb": range_256, "padl": range_256, "padr": range_256,
+                "padt": range_pad, "padb": range_pad, "padl": range_pad, "padr": range_pad,
                 "dx_c1_extend": range_256,  "g_extend": range_one, "multiple_extend": range_one,
-                "pad_up_before": range_256, "pad_left_before": range_256,
-                "pad_down_after": range_256, "pad_right_after": range_256,
-                "shape_up_modify": range_256, "shape_left_modify": range_256,
-                "shape_down_modify": range_256, "shape_right_modify": range_256
+                "pad_up_before": range_pad, "pad_left_before": range_pad,
+                "pad_down_after": range_pad, "pad_right_after": range_pad,
+                "shape_up_modify": range_shape_modify, "shape_left_modify": range_shape_modify,
+                "shape_down_modify": range_shape_modify, "shape_right_modify": range_shape_modify
             }
             if self.stride_expand:
-                shape_var_range["stride_h"] = range_64
-                shape_var_range["stride_w"] = range_64
+                shape_var_range["stride_h"] = self.range_const.get("range_stride")
+                shape_var_range["stride_w"] = self.range_const.get("range_stride")
             for var_name, var_range in shape_var_range.items():
                 var = self.shape_vars.get(var_name)
                 if isinstance(var, tvm.expr.Var):

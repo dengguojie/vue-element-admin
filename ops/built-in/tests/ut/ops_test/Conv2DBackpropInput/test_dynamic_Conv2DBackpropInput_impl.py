@@ -165,6 +165,7 @@ test_case_error_format = _gen_trans_data_case(((3, 3, 16, 16), (2, 5, 5, 16), (2
 test_case_error_format["params"][3]["ori_format"] = "NCHW"
 ut_case.add_case(["Ascend910A"], test_case_error_format)
 
+
 def test_conv2d_backprop_input_fuzz_build_generalization_general(test_arg):
     from impl.dynamic.conv2d_backprop_input import conv2d_backprop_input_generalization
     input_list = [

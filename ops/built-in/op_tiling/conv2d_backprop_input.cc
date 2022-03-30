@@ -80,6 +80,7 @@ const int32_t kConv2dNC1HWC0Size = 5;
 const int32_t kConv2dNCHWSize = 4;
 const int32_t kInputIndexTwo = 2;
 const int32_t kDefaultDilations = 1;
+const int32_t kNumTwo = 2;
 
 inline int32_t Align(const int32_t& param1, const int32_t& param2) {
   if (param2 == 0) {
@@ -171,6 +172,19 @@ inline void OutputErrorMsg(const string error_info[], string& error_flag) {
       break;
     }
   }
+}
+
+inline int32_t Lcm(const int32_t &param1, const int32_t &param2) {
+  int32_t pram1_lcm = param1;
+  int32_t pram2_lcm = param2;
+  int32_t temp = pram1_lcm * pram2_lcm;
+  int32_t param1_temp = pram1_lcm;
+  while (pram1_lcm % pram2_lcm != 0) {
+    param1_temp = pram1_lcm;
+    pram1_lcm = pram2_lcm;
+    pram2_lcm = param1_temp % pram2_lcm;
+  }
+  return temp / pram2_lcm;
 }
 
 bool CheckParams(const DxParas& dx_paras) {
@@ -292,6 +306,41 @@ void CalPads(DxParas& dx_paras) {
   }
 }
 
+void CalShapeInfo(DxParas& dx_paras) {
+  dx_paras.fmap_h_padding = dx_paras.h + dx_paras.padu + dx_paras.padd;
+  dx_paras.fmap_w_padding = dx_paras.w + dx_paras.padl + dx_paras.padr;
+  dx_paras.filter_h_dilation = (dx_paras.kh - 1) * dx_paras.dilations_h + 1;
+  dx_paras.filter_w_dilation = (dx_paras.kw - 1) * dx_paras.dilations_w + 1;
+  dx_paras.dy_c_ori = ((dx_paras.co + dx_paras.groups - 1) / dx_paras.groups) * dx_paras.groups;
+  int32_t block_size = kBlockSize;
+  int32_t dx_c_extend = Lcm(dx_paras.cin, block_size) / dx_paras.cin;
+  int32_t dy_c_extend = Lcm(dx_paras.dy_c_ori, block_size) / dx_paras.dy_c_ori;
+  int32_t c_lcm = Lcm(dx_c_extend, dy_c_extend);
+  dx_paras.multiple_extend = min(c_lcm, dx_paras.groups);
+  dx_paras.g_extend = (dx_paras.groups + dx_paras.multiple_extend - 1) / dx_paras.multiple_extend;
+  dx_paras.dx_c1_extend = (dx_paras.multiple_extend * dx_paras.cin + kBlockSize - 1) / kBlockSize;
+  dx_paras.pad_up_before = (dx_paras.kh - 1) * dx_paras.dilations_h - dx_paras.padu;
+  dx_paras.pad_left_before = (dx_paras.kw - 1) * dx_paras.dilations_w - dx_paras.padl;
+  dx_paras.pad_down_after =
+      dx_paras.h - dx_paras.ho * dx_paras.stride_h - dx_paras.pad_up_before + (dx_paras.kh - 1) * dx_paras.dilations_h;
+  dx_paras.pad_right_after =
+      dx_paras.w - dx_paras.wo * dx_paras.stride_w -
+      dx_paras.pad_left_before + (dx_paras.kw - 1) * dx_paras.dilations_w;
+  dx_paras.shape_up_modify = (dx_paras.pad_up_before - abs(dx_paras.pad_up_before)) / kNumTwo;
+  dx_paras.shape_left_modify =
+      (dx_paras.pad_left_before - abs(dx_paras.pad_left_before)) / kNumTwo;
+  dx_paras.shape_down_modify =
+      (dx_paras.pad_down_after - abs(dx_paras.pad_down_after)) / kNumTwo;
+  dx_paras.shape_right_modify =
+      (dx_paras.pad_right_after - abs(dx_paras.pad_right_after)) / kNumTwo;
+  dx_paras.pad_up_before = (dx_paras.pad_up_before + abs(dx_paras.pad_up_before)) / kNumTwo;
+  dx_paras.pad_left_before =
+      (dx_paras.pad_left_before + abs(dx_paras.pad_left_before)) / kNumTwo;
+  dx_paras.pad_down_after = (dx_paras.pad_down_after + abs(dx_paras.pad_down_after)) / kNumTwo;
+  dx_paras.pad_right_after =
+      (dx_paras.pad_right_after + abs(dx_paras.pad_right_after)) / kNumTwo;
+}
+
 bool Conv2DBackpropInputParseFunc(const ge::OpDescPtr& op_desc, const nlohmann::json& compile_info,
                                   DxParas& dx_paras) {
   if (compile_info.contains("tiling_type") && compile_info["tiling_type"] == "binary") {
@@ -383,10 +432,7 @@ bool Conv2DBackpropInputParseFunc(const ge::OpDescPtr& op_desc, const nlohmann::
     dx_paras.h = y_desc->GetShape().GetDim(kHDimNC1HWC0Idx);
     dx_paras.w = y_desc->GetShape().GetDim(kWDimNC1HWC0Idx);
     CalPads(dx_paras);
-    dx_paras.fmap_h_padding = dx_paras.h + dx_paras.padu + dx_paras.padd;
-    dx_paras.fmap_w_padding = dx_paras.w + dx_paras.padl + dx_paras.padr;
-    dx_paras.filter_h_dilation = (dx_paras.kh - 1) * dx_paras.dilations_h + 1;
-    dx_paras.filter_w_dilation = (dx_paras.kw - 1) * dx_paras.dilations_w + 1;
+    CalShapeInfo(dx_paras);
   }
   return true;
 }
@@ -401,6 +447,28 @@ bool ConfigNoOverlapPara(DxParas &params) {
   // The second case is that dx_hw is less than 16, dx_c is greater than 16 and dx_c is not 16 aligned
   params.dx_no_overlap_condition_2 = (params.hw < kBlockSize) && !params.dx_c_align_flag && params.cin > kBlockSize;
   return true;
+}
+
+void PretreatCompileInfo(const nlohmann::json &op_compile_info, nlohmann::json &op_info) {
+  nlohmann::json item;
+  for (size_t i = 1; i < op_compile_info.size(); ++i) {
+    item = op_compile_info[i];
+    std::vector<std::string> key_list = {"repo_seeds", "repo_range", "cost_range"};
+    for (auto &key : key_list) {
+      auto &item_key = item[key];
+      bool item_key_valid = item_key.is_object() && !item_key.empty();
+      if (item_key_valid) {
+        std::vector<int32_t> list_value = item_key.begin().value().get<std::vector<int32_t>>();
+        op_info[key][item_key.begin().key()] = list_value;
+      }
+    }
+    std::string key_int = "block_dim";
+    auto &item_key_int = item[key_int];
+    if (item_key_int.is_object() && !item_key_int.empty()) {
+      int32_t int_value = item_key_int.begin().value().get<int32_t>();
+      op_info[key_int][item_key_int.begin().key()] = int_value;
+    }
+  }
 }
 
 /*
@@ -452,25 +520,7 @@ bool Conv2DBpInputTiling(const std::string& opType, const ge::Operator& opParas,
       // >>> start: splice compile info
       opInfo = opCompileInfo[0];
       varMap = opInfo.at("_vars").begin().value().get<std::vector<std::string>>();
-      nlohmann::json item;
-      for (size_t i = 1; i < opCompileInfo.size(); ++i) {
-        item = opCompileInfo[i];
-        std::vector<std::string> key_list = {"repo_seeds", "repo_range", "cost_range"};
-        for (auto &key : key_list) {
-          auto &item_key = item[key];
-          bool item_key_valid = item_key.is_object() && !item_key.empty();
-          if (item_key_valid) {
-            std::vector<int32_t> list_value = item_key.begin().value().get<std::vector<int32_t>>();
-            opInfo[key][item_key.begin().key()] = list_value;
-          }
-        }
-        std::string key_int = "block_dim";
-        auto &item_key_int = item[key_int];
-        if (item_key_int.is_object() && !item_key_int.empty()) {
-          int32_t int_value = item_key_int.begin().value().get<int32_t>();
-          opInfo[key_int][item_key_int.begin().key()] = int_value;
-        }
-      }
+      PretreatCompileInfo(opCompileInfo, opInfo);
       // <<< end: put together compile info
       GELOGD("compile info after splice is: %s", opInfo.dump().c_str());
     } else if (opCompileInfo.is_object()) {

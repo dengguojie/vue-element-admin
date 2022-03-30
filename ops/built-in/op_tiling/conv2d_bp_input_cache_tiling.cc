@@ -61,7 +61,7 @@ static const int32_t kNumTwo = 2;
 static const int32_t kL0CutOffPointNum = 6;
 
 struct FactorArray {
-  int32_t min_kl1_dim[3L];
+  int32_t min_kl1_dim = 1;
   int32_t kn_factors[3L];
   int32_t size_para[3L];
 };
@@ -152,50 +152,38 @@ void GetFactors(const int32_t& bm_dim, vector<int32_t>& bm_dim_opt) {
   bm_dim_opt.push_back(bm_dim);
 }
 
-bool ModifyBatchDim(Tiling &tiling, const DxParas &params, const bool &min_hw) {
-  // modify batch dim
-  CHECK_OP_FUNC(tiling.n_dim == 0, return false, "ndim is 0");
-  bool modify_batch_dim = tiling.m_dim * tiling.batch_dim < params.core_num / tiling.n_dim && !min_hw;
-  if (modify_batch_dim) {
-    int32_t bm_dim = params.core_num / tiling.n_dim;
-    vector<int32_t> bm_dim_factor_opt;
-    GetFactors(bm_dim, bm_dim_factor_opt);
-    for (auto &bm_dim_factor : bm_dim_factor_opt) {
-      if (params.batch % (bm_dim / bm_dim_factor) == 0 && params.ho * params.stride_h % bm_dim_factor == 0 &&
-          IsSatisfyM(params, bm_dim_factor)) {
-        tiling.batch_dim = bm_dim / bm_dim_factor;
-        tiling.m_dim = bm_dim_factor;
-        break;
-      }
-    }
+int32_t CalLoopNum(const DxParas &params, const int32_t &m1, const int32_t &m_dim, const int32_t &n_dim,
+                   const int32_t &batch_dim) {
+  int32_t l0c_size = kL0cNzSize;
+  int32_t m_single_core_size = CeilDivision(m1, m_dim);
+  if (m_single_core_size == 0 || n_dim == 0 || batch_dim == 0) {
+    return 0;
   }
-  return true;
+  l0c_size = min(m_single_core_size * (params.c1 / n_dim), l0c_size);
+  if (l0c_size == 0) {
+    return 0;
+  }
+  int32_t loop_num = (params.batch / batch_dim) * m_single_core_size * (params.c1 / n_dim) / l0c_size;
+  // special scence n_single_core_size is 1 or m_single_core_size is 1
+  if ((params.c1 / n_dim) == 1) {
+    int32_t l0a_size = min(m_single_core_size, kL0aNzSize);
+    int32_t m_single_ml0_num = CeilDivision(m_single_core_size, l0a_size);
+    if (m_single_ml0_num == 0) {
+      return 0;
+    }
+    loop_num = (params.batch / batch_dim) * m_single_ml0_num * (params.c1 / n_dim);
+  }
+  return loop_num;
 }
 
-bool ModifyNDim(Tiling &tiling, const DxParas &params, const bool &min_hw, const int32_t m1) {
-  // modify n dim
-  CHECK_OP_FUNC(tiling.m_dim == 0, return false, "mdim is 0");
-  bool modify_n_dim = m1 / tiling.m_dim <= kBlockSize && !min_hw;
-  if (modify_n_dim) {
-    vector<int32_t> n_dim_factor_opt;
-    GetFactors(params.c1 / tiling.n_dim, n_dim_factor_opt);
-    int32_t nm_dim = params.core_num / tiling.batch_dim;
-    for (auto &n_dim_factor : n_dim_factor_opt) {
-      int32_t n_temp = min(tiling.n_dim * n_dim_factor, params.core_num);
-      CHECK_OP_FUNC(n_temp == 0, return false, "n_temp is 0");
-      while (params.c1 % n_temp != 0) {
-        n_temp--;
-      }
-      CHECK_OP_FUNC(n_temp == 0, return false, "n_temp is 0");
-      int32_t m_dim_temp = max(nm_dim / n_temp, kMinCoreNum);
-      if (m1 / m_dim_temp >= kBlockSize && IsSatisfyM(params, m_dim_temp) && IsSatisfyN(params, n_temp)) {
-        tiling.m_dim = m_dim_temp;
-        tiling.n_dim = n_temp;
-        break;
-      }
+void GetFactors(int32_t dim_factor[], const int32_t &factor_max, const int32_t &factor_min,
+                const int32_t &target_num, size_t &index) {
+  for (int32_t temp = factor_max; temp >= factor_min; temp--) {
+    if (target_num % temp != 0) {
+      continue;
     }
+    dim_factor[index++] = temp;
   }
-  return true;
 }
 
 bool GetBlockDim(const DxParas &params, const int32_t &core_num, Tiling &tiling) {
@@ -233,60 +221,53 @@ bool GetBlockDim(const DxParas &params, const int32_t &core_num, Tiling &tiling)
   }
   int64_t b_size = static_cast<int64_t>(params.co1 * params.c1 * params.kh * params.kw) *
                    static_cast<int64_t>(kBlockSize * kBlockSize);
-  // Derivation of load size: a_size * n_dim + b_size * core_num / n_dim
-  float n_factor =
-      max(min(sqrt(static_cast<float>(core_num * b_size) / static_cast<float>(a_size)), static_cast<float>(params.c1)),
-          1.0f);
-  CHECK_OP_FUNC(EqualWith(n_factor, kFloatZero), return false, "n_factor is invalid");
-  float bm_factor = min(static_cast<float>(core_num) / n_factor, static_cast<float>(m1 * params.batch));
-  float b_factor = min(static_cast<float>(params.batch), bm_factor);
-  float m_factor = min(static_cast<float>(core_num) / (n_factor * b_factor), static_cast<float>(m1));
-  float factor_temp[3L] = {floor(n_factor), floor(b_factor), floor(m_factor)};
-  int32_t factor[3L];
-  for (size_t i = 0; i < 3L; i++) {
-    factor_temp[i] = min(factor_temp[i], static_cast<float>(core_num));
-    factor_temp[i] = max(factor_temp[i], static_cast<float>(kMinCoreNum));
-    factor[i] = static_cast<int32_t>(factor_temp[i]);
-  }
-  n_factor = factor[0];
-  b_factor = factor[1];
-  m_factor = factor[kIdxTwo];
-  int32_t batch_dim_opti[2L] = {0, 0};
-  int32_t n_dim_opti[2L] = {0, 0};
-  CHECK_OP_FUNC(!GenNearestFactor(b_factor, params.batch, batch_dim_opti), return false, "get b_factor failed");
-  CHECK_OP_FUNC(!GenNearestFactor(n_factor, params.c1, n_dim_opti), return false, "get n_factor failed");
+  // get n_dim cand
+  int32_t n_dim_factor[32L] = {0};
+  size_t idx_n = 0;
+  GetFactors(n_dim_factor, core_num, 1, params.c1, idx_n);
+  // get batch_dim cand
+  int32_t batch_dim_factor[32L] = {0};
+  size_t idx_batch = 0;
+  GetFactors(batch_dim_factor, core_num, 1, params.batch, idx_batch);
+  // initial block dim
   tiling.batch_dim = 1;
   tiling.n_dim = 1;
   tiling.m_dim = 1;
   int64_t min_load_size = static_cast<int64_t>(tiling.batch_dim * tiling.m_dim) * b_size +
                           static_cast<int64_t>(tiling.n_dim) * a_size;
   int32_t core_use = tiling.batch_dim * tiling.n_dim * tiling.m_dim;
-  for (auto &batch_dim : batch_dim_opti) {
-    for (auto &n_dim : n_dim_opti) {
+  int32_t loop_num = CalLoopNum(params, m1, tiling.m_dim, tiling.n_dim, tiling.batch_dim);
+  CHECK_OP_FUNC(loop_num == 0, return false, "loop_num is 0");
+  for (size_t i = 0; i < idx_n; i++) {
+    for (size_t j = 0; j < idx_batch; j++) {
+      int32_t n_dim = n_dim_factor[i];
+      int32_t batch_dim = batch_dim_factor[j];
       if (batch_dim * n_dim > core_num) {
         continue;
       }
-      int32_t m_dim_temp = min(core_num / (batch_dim * n_dim), m1);
-      int64_t load_size = static_cast<int64_t>(batch_dim * m_dim_temp) * b_size + static_cast<int64_t>(n_dim) * a_size;
-      int32_t core_use_temp = batch_dim * n_dim * m_dim_temp;
-      bool modify_dim = core_use < core_use_temp || (core_use == core_use_temp and load_size < min_load_size) ||
-                        (core_use == core_use_temp and abs(load_size - min_load_size) < kLoadSizeThreshold &&
-                                                        tiling.batch_dim * tiling.n_dim < batch_dim * n_dim);
-      bool satisfy_constraint_m = IsSatisfyM(params, m_dim_temp);
+      int32_t m_dim = min(core_num / (batch_dim * n_dim), m1);
+      int32_t loop_num_temp = CalLoopNum(params, m1, m_dim, n_dim, batch_dim);
+      if (loop_num_temp == 0) {
+        continue;
+      }
+      int64_t load_size = static_cast<int64_t>(batch_dim * m_dim) * b_size + static_cast<int64_t>(n_dim) * a_size;
+      int32_t core_use_temp = batch_dim * n_dim * m_dim;
+      bool modify_dim = loop_num_temp < loop_num || (loop_num_temp == loop_num && core_use < core_use_temp) ||
+                        (core_use == core_use_temp && load_size < min_load_size) ||
+                        (core_use == core_use_temp && abs(load_size - min_load_size) < kLoadSizeThreshold &&
+                         tiling.batch_dim * tiling.n_dim < batch_dim * n_dim);
+      bool satisfy_constraint_m = IsSatisfyM(params, m_dim);
       bool satisfy_constraint_n = IsSatisfyN(params, n_dim);
       if (modify_dim && satisfy_constraint_m && satisfy_constraint_n) {
         min_load_size = load_size;
         tiling.batch_dim = batch_dim;
         tiling.n_dim = n_dim;
-        tiling.m_dim = m_dim_temp;
+        tiling.m_dim = m_dim;
         core_use = tiling.batch_dim * tiling.n_dim * tiling.m_dim;
+        loop_num = loop_num_temp;
       }
     }
   }
-  bool min_hw = MdimTune(params, m1, tiling.n_dim, tiling.m_dim, tiling);
-  CHECK_OP_FUNC(!min_hw && tiling.m_dim == 0, return false, "m_dim or n_dim is 0");
-  CHECK_OP_FUNC(!ModifyBatchDim(tiling, params, min_hw), return false, "modify batch dim failed");
-  CHECK_OP_FUNC(!ModifyNDim(tiling, params, min_hw, m1), return false, "modify n dim failed");
   tiling.m_single_core_size = (m1 + tiling.m_dim - 1) / tiling.m_dim;
   tiling.n_single_core_size = params.c1 / tiling.n_dim;
   tiling.k_single_core_size = k2;
@@ -326,28 +307,49 @@ inline int32_t InitialKl1(int32_t &k_l0, int32_t &k_hw) {
   return k_l1;
 }
 
-bool CheckL1Overflow(const DxParas &params, const Tiling &tiling,
-                     const int32_t &m0, const int32_t &n0, int32_t &k0) {
-  int32_t l1_fp16_size = kL1Size / kFp16Bytes;
-  int32_t m_al1 = 1;
-  int32_t n_bl1 = 1;
-  int32_t k_hw = (params.kh * params.kw);
-  int32_t k_al1 = InitialKl1(k0, k_hw);
-  CHECK_OP_FUNC(k_al1 == 0, return false, "initial kl1 failed");
+int32_t GetBl1Bound(const DxParas &params, const Tiling &tiling, int32_t tiling_factor[]) {
+  int32_t idx = 0;
+  int32_t k_bl1 = tiling_factor[idx++];
+  int32_t n0 = tiling_factor[idx++];
+  int32_t n_bl1 = tiling_factor[idx++];
+  int32_t db_bl1 = tiling_factor[idx++];
+  int32_t b_l1_size =
+      k_bl1 * kBlockSize * params.kh * params.kw * n_bl1 * n0 * kBlockSize * db_bl1;
+  if (CeilDivision(tiling.n_single_core_size, (n_bl1 * n0)) == 1 && k_bl1 == params.co1) {
+    b_l1_size = params.co1 * kBlockSize * params.kh * params.kw * tiling.n_single_core_size * kBlockSize;
+  }
+  return b_l1_size;
+}
+
+int32_t GetAl1Bound(const DxParas &params, const Tiling &tiling, const int32_t tiling_factor[]) {
+  int32_t idx = 0;
+  int32_t k_al1 = tiling_factor[idx++];
+  int32_t m0 = tiling_factor[idx++];
+  int32_t m_al1 = tiling_factor[idx++];
+  int32_t db_al1 = tiling_factor[idx++];
   int32_t h_num = (params.kh - 1) + m_al1 * m0 * kBlockSize / params.w + khnumWNoDivided;
   if (m_al1 * m0 * kBlockSize < params.w) {
     h_num = (params.kh - 1) + khnumWNoDivided;
   } else if (m_al1 * m0 * kBlockSize % params.w == 0) {
     h_num = (params.kh - 1) + m_al1 * m0 * kBlockSize / params.w;
   }
-  int32_t b_l1_size =
-      k_al1 * params.kh * params.kw * n_bl1 * n0 * kC0 * kBlockSize;
-  int32_t a_l1_size = k_al1 * params.wo * params.stride_w * kC0 * h_num;
+  int32_t a_l1_size = k_al1 * params.wo * params.stride_w * kC0 * h_num * db_al1;
   if (m_al1 * m0 == tiling.m_single_core_size && k_al1 == params.co1 && tiling.m_dim == 1) {
     int32_t hw_ceil_align = CeilAlign(params.ho * params.stride_h * params.wo * params.stride_w, kBlockSize);
-    CHECK_OP_FUNC(hw_ceil_align == 0, return false, "hw_ceil_align is invalid");
     a_l1_size = k_al1 * kBlockSize * hw_ceil_align;
   }
+  return a_l1_size;
+}
+
+bool CheckL1Overflow(const DxParas &params, const Tiling &tiling,
+                     const int32_t &m0, const int32_t &n0, int32_t &k0) {
+  int32_t l1_fp16_size = kL1Size / kFp16Bytes;
+  int32_t m_al1 = 1;
+  int32_t n_bl1 = 1;
+  int32_t tiling_factor[4L] = {tiling.k_al1, n0, n_bl1, kDbOff};
+  int32_t b_l1_size = GetBl1Bound(params, tiling, tiling_factor);
+  int32_t tiling_al1_factor[4L] = {tiling.k_al1, m0, m_al1, kDbOff};
+  int32_t a_l1_size = GetAl1Bound(params, tiling, tiling_al1_factor);
   return a_l1_size + b_l1_size <= l1_fp16_size;
 }
 
@@ -366,291 +368,21 @@ bool CheckUbDb(const DxParas &params, const Tiling &tiling, const int32_t &m0) {
   return loadin_size * tiling.db_aub + copyout_size * tiling.db_cub <= ub_fp16_size;
 }
 
-bool GetSameCutOff(const int32_t &first, const int32_t &second, const int32_t &factor,
-                   int32_t cand[][2L], int32_t &arr_len) {
-  CHECK_OP_FUNC(factor == 0, return false, "factor is 0");
-  int32_t mt = first / factor;
-  int32_t factor_fir = first / (mt + 1) + 1;
-  int32_t factor_sec = min(kL0cNzSize / factor_fir, second);
-  CHECK_OP_FUNC(factor_sec == 0, return false, "factor_sec is 0");
-  mt = first / factor_fir;
-  int32_t mt_1 = second / factor_sec;
-  cand[0][0] = factor_fir;
-  cand[0][1] = factor_sec;
-  for (int32_t i = factor_fir + 1; i <= first; i++) {
-    factor_sec = min(kL0cNzSize / i, second);
-    if (first / i == mt && second / factor_sec == mt_1) {
-      arr_len += 1;
-      if (arr_len > 16L) {
-        break;
-      }
-      cand[arr_len][0] = i;
-      cand[arr_len][1] = factor_sec;
-    } else {
+bool GetM0(const int32_t &n0, int32_t &k0, Tiling &tiling, const DxParas & params, int32_t &m0) {
+  CHECK_OP_FUNC(k0 == 0 || n0 == 0, return false, "k0 or n0 is 0");
+  m0 = min(min(kL0aNzSize / k0, kL0cNzSize / n0), tiling.m_single_core_size);
+  int32_t k_hw = params.kh * params.kw;
+  tiling.k_al1 = InitialKl1(k0, k_hw);
+  CHECK_OP_FUNC(tiling.k_al1 == 0, return false, "Initial kl1 failed");
+  int32_t m_tail_size = params.hw % (m0 * kBlockSize);
+  bool update_m = (params.dx_no_overlap_condition_1 && m_tail_size != 0 && m_tail_size < kBlockSize);
+  while (m0 > 0 && (!CheckL1Overflow(params, tiling, m0, n0, k0) || update_m)) {
+    m0--;
+    if (m0 == 0) {
       break;
     }
-  }
-  return true;
-}
-
-bool ModifyKl0(const DxParas &params, int32_t &k_l0) {
-  CHECK_OP_FUNC(k_l0 == 0, return false, "k_l0 is 0");
-  while ((params.co1 * params.kh * params.kw) % k_l0 != 0) {
-    k_l0--;
-  }
-  return true;
-}
-
-bool PushMNCandidate(const DxParas &params, const int32_t cand[], Tiling &tiling,
-                     int32_t mn_cand_mkn[], const int32_t &index) {
-  int32_t cand_m = cand[0];
-  int32_t cand_n = cand[1];
-  if ((index & 0x100) != 0) {
-    cand_m = cand[1];
-    cand_n = cand[0];
-  }
-
-  if (cand_m == 0 || cand_n == 0) {
-    return false;
-  }
-
-  int32_t cand_k =
-      min(min(static_cast<int32_t>(floor(static_cast<float>(kL0aNzSize) / static_cast<float>(cand_m))),
-              static_cast<int32_t>(floor(static_cast<float>(kL0bNzSize) / static_cast<float>(cand_n)))),
-          tiling.k_single_core_size);
-  CHECK_OP_FUNC(!ModifyKl0(params, cand_k), return false, "cand_k is 0");
-
-  int32_t load_size = ((tiling.m_single_core_size - 1) / cand_m) * tiling.n_single_core_size +
-                      ((tiling.n_single_core_size - 1) / cand_n) * tiling.m_single_core_size;
-  int32_t mkn = cand_m * cand_n * cand_k;
-  float max_mk = static_cast<float>(max(cand_m, cand_k)) / static_cast<float>(min(cand_m, cand_k));
-  bool l0_invalid = !CheckL0Overflow(cand_m, cand_n, cand_k) ||
-                    !CheckL1Overflow(params, tiling, cand_m, cand_n, cand_k) || !CheckUbDb(params, tiling, cand_m);
-  if (l0_invalid) {
-    return false;
-  }
-  if (mn_cand_mkn[0] == 0 && mn_cand_mkn[1] == 0 && mn_cand_mkn[kIdxTwo] == 0) {
-    mn_cand_mkn[0] = cand_m;
-    mn_cand_mkn[1L] = cand_n;
-    mn_cand_mkn[kIdxTwo] = cand_k;
-    mn_cand_mkn[kIdxThree] = load_size;
-    mn_cand_mkn[kIdxFour] = mkn;
-  } else {
-    float max_mk_temp = static_cast<float>(max(mn_cand_mkn[0], mn_cand_mkn[kIdxTwo])) /
-                        static_cast<float>(min(mn_cand_mkn[0], mn_cand_mkn[kIdxTwo]));
-    bool l0_valid =
-        (load_size < mn_cand_mkn[kIdxThree]) ||
-        ((load_size == mn_cand_mkn[kIdxThree]) && (mkn > mn_cand_mkn[kIdxFour] ||
-                                           (mkn == mn_cand_mkn[kIdxFour] && max_mk > max_mk_temp)));
-    if (l0_valid) {
-      mn_cand_mkn[0] = cand_m;
-      mn_cand_mkn[1L] = cand_n;
-      mn_cand_mkn[kIdxTwo] = cand_k;
-      mn_cand_mkn[kIdxThree] = load_size;
-      mn_cand_mkn[kIdxFour] = mkn;
-    }
-  }
-  return true;
-}
-
-bool GetCandMKN(const DxParas &params, Tiling &tiling) {
-  // get cand from m
-  int32_t cand[16L][2L] = {{0, 0}};
-  int32_t arr_len = 1;
-  int32_t mn_cand_mkn[5L] = {0, 0, 0, 0, 0};
-  int32_t factor = kM0N0OptimalNode;
-  CHECK_OP_FUNC(!GetSameCutOff(tiling.m_single_core_size - 1, tiling.n_single_core_size - 1, factor, cand, arr_len),
-                return false, "m get cut off failed");
-  for (int32_t i = 0; i < arr_len; i++) {
-    PushMNCandidate(params, cand[i], tiling, mn_cand_mkn, i);
-  }
-  // m right
-  arr_len = 1;
-  int32_t mt = (tiling.m_single_core_size - 1) / factor;
-  int32_t mt_r = (tiling.m_single_core_size - 1) / (mt + 1);
-  CHECK_OP_FUNC(!GetSameCutOff(tiling.m_single_core_size - 1, tiling.n_single_core_size - 1, mt_r, cand, arr_len),
-                return false, "mt_r get cut off failed");
-  for (int32_t i = 0; i < arr_len; i++) {
-    PushMNCandidate(params, cand[i], tiling, mn_cand_mkn, i);
-  }
-  // m_left
-  arr_len = 1;
-  int32_t mt_l = mt > kNumTwo ? (tiling.m_single_core_size - 1) / (mt - 1) : tiling.m_single_core_size;
-  CHECK_OP_FUNC(!GetSameCutOff(tiling.m_single_core_size - 1, tiling.n_single_core_size - 1, mt_l, cand, arr_len),
-                return false, "mt_l get cut off failed");
-  for (int32_t i = 0; i < arr_len; i++) {
-    PushMNCandidate(params, cand[i], tiling, mn_cand_mkn, i);
-  }
-  // get cand from n
-  arr_len = 1;
-  CHECK_OP_FUNC(!GetSameCutOff(tiling.n_single_core_size - 1, tiling.m_single_core_size - 1, factor, cand, arr_len),
-                return false, "n get cut off failed");
-  for (int32_t i = 0; i < arr_len; i++) {
-    PushMNCandidate(params, cand[i], tiling, mn_cand_mkn, i + (1 << 8L));
-  }
-  // n right
-  arr_len = 1;
-  int32_t nt = (tiling.n_single_core_size - 1) / factor;
-  int32_t nt_r = (tiling.n_single_core_size - 1) / (nt + 1);
-  CHECK_OP_FUNC(!GetSameCutOff(tiling.n_single_core_size - 1, tiling.m_single_core_size - 1, nt_r, cand, arr_len),
-                return false, "nt_r get cut off failed");
-  for (int32_t i = 0; i < arr_len; i++) {
-    PushMNCandidate(params, cand[i], tiling, mn_cand_mkn, i + (1 << 8L));
-  }
-  // n_left
-  arr_len = 1;
-  int32_t nt_l = nt > kNumTwo ? (tiling.n_single_core_size - 1) / (nt - 1) : tiling.n_single_core_size;
-  CHECK_OP_FUNC(!GetSameCutOff(tiling.n_single_core_size - 1, tiling.m_single_core_size - 1, nt_l, cand, arr_len),
-                return false, "nt_l get cut off failed");
-  for (int32_t i = 0; i < arr_len; i++) {
-    PushMNCandidate(params, cand[i], tiling, mn_cand_mkn, i + (1 << 8L));
-  }
-  if (mn_cand_mkn[0] != 0) {
-    tiling.m_l0_opti = mn_cand_mkn[0];
-    tiling.n_l0_opti = mn_cand_mkn[1];
-    tiling.k_l0_opti = mn_cand_mkn[kIdxTwo];
-  }
-  return true;
-}
-
-bool GetNMFactor(const int32_t &factor, const int32_t &k2, const int32_t &max_factor, int32_t &nm) {
-  if (factor == 0) {
-    return false;
-  }
-  int32_t k0 = min(kL0aNzSize / factor, k2);
-  if (k0 == 0) {
-    return false;
-  }
-  nm = min(min(kL0cNzSize / factor, kL0aNzSize / k0), max_factor);
-  return true;
-}
-
-bool GetCutOffPoint(Tiling &tiling, int32_t m0_factor[], int32_t n0_factor[],
-                    const int32_t &m0_factor_size, const int32_t &n0_factor_size) {
-  int32_t m;
-  int32_t n;
-  int32_t idx_n = 1;
-  int32_t idx_m = 1;
-  CHECK_OP_FUNC(!GetNMFactor(tiling.m_l0_opti, tiling.k_single_core_size, tiling.n_single_core_size, n) ||
-                !GetNMFactor(tiling.n_l0_opti, tiling.k_single_core_size, tiling.m_single_core_size, m),
-                return false, "tiling param invalid");
-  if (std::find(n0_factor, n0_factor + n0_factor_size, n) == (n0_factor + n0_factor_size)) {
-    n0_factor[idx_n++] = n;
-  }
-  CHECK_OP_FUNC(!GetNMFactor(tiling.n_l0_opti, tiling.k_single_core_size, tiling.m_single_core_size, m),
-                return false, "tiling param invalid");
-  if (std::find(m0_factor, m0_factor + m0_factor_size, m) == (m0_factor + m0_factor_size)) {
-    m0_factor[idx_m++] = m;
-  }
-  // m right
-  int32_t mt = max((tiling.m_single_core_size - 1) / tiling.m_l0_opti, 1);
-  int32_t mt_r = mt > 0 ? (tiling.m_single_core_size - 1) / mt + 1 : tiling.m_single_core_size;
-  mt_r = min(mt_r, kL0aNzSize);
-  if (std::find(m0_factor, m0_factor + m0_factor_size, mt_r) == (m0_factor + m0_factor_size)) {
-    m0_factor[idx_m++] = mt_r;
-    CHECK_OP_FUNC(!GetNMFactor(mt_r, tiling.k_single_core_size, tiling.n_single_core_size, n),
-                  return false, "tiling param invalid");
-    if (std::find(n0_factor, n0_factor + n0_factor_size, n) == (n0_factor + n0_factor_size)) {
-      n0_factor[idx_n++] = n;
-    }
-  }
-  // m left
-  int32_t mt_l = max((tiling.m_single_core_size - 1) / (mt + 1), 1);
-  mt_l = min(mt_l, kL0aNzSize);
-  if (std::find(m0_factor, m0_factor + m0_factor_size, mt_l) == (m0_factor + m0_factor_size)) {
-    m0_factor[idx_m++] = mt_l;
-    CHECK_OP_FUNC(!GetNMFactor(mt_l, tiling.k_single_core_size, tiling.n_single_core_size, n),
-                  return false, "tiling param invalid");
-    if (std::find(n0_factor, n0_factor + n0_factor_size, n) == (n0_factor + n0_factor_size)) {
-      n0_factor[idx_n++] = n;
-    }
-  }
-  // n right
-  int32_t nt = max((tiling.n_single_core_size - 1) / tiling.n_l0_opti, 1);
-  int32_t nt_r = nt > 0 ? (tiling.n_single_core_size - 1) / nt + 1 : tiling.n_single_core_size;
-  nt_r = min(nt_r, kL0bNzSize);
-  if (std::find(n0_factor, n0_factor + n0_factor_size, nt_r) == (n0_factor + n0_factor_size)) {
-    n0_factor[idx_n++] = nt_r;
-    CHECK_OP_FUNC(!GetNMFactor(nt_r, tiling.k_single_core_size, tiling.m_single_core_size, m),
-                  return false, "tiling param invalid");
-    if (std::find(m0_factor, m0_factor + m0_factor_size, m) == (m0_factor + m0_factor_size)) {
-      m0_factor[idx_m++] = m;
-    }
-  }
-  // n left
-  int32_t nt_l = max((tiling.n_single_core_size - 1) / (nt + 1), 1);
-  nt_l = min(nt_l, kL0bNzSize);
-  if (std::find(n0_factor, n0_factor + n0_factor_size, nt_l) == (n0_factor + n0_factor_size)) {
-    n0_factor[idx_n++] = nt_l;
-    CHECK_OP_FUNC(!GetNMFactor(nt_l, tiling.k_single_core_size, tiling.m_single_core_size, m),
-                  return false, "tiling param invalid");
-    if (std::find(m0_factor, m0_factor + m0_factor_size, m) == (m0_factor + m0_factor_size)) {
-      m0_factor[idx_m++] = m;
-    }
-  }
-  return true;
-}
-
-bool GetCin1Factor(int32_t n0_factor[], int32_t m0_factor[], const Tiling &tiling, const int32_t &n0_factor_size,
-                   const int32_t &m0_factor_size) {
-  int32_t n0_optional[2] = {0, 0};
-  int32_t idx_m = kL0CutOffPointNum;
-  int32_t idx_n = kL0CutOffPointNum;
-  for (int32_t i = 0; i < kL0CutOffPointNum; i++) {
-    if (n0_factor[i] == 0) {
-      continue;
-    }
-    GenNearestFactor(n0_factor[i], tiling.n_single_core_size, n0_optional);
-    if (std::find(n0_factor, n0_factor + n0_factor_size, n0_optional[0]) == (n0_factor + n0_factor_size)) {
-      n0_factor[idx_n++] = n0_optional[0];
-    }
-    if (std::find(n0_factor, n0_factor + n0_factor_size, n0_optional[1]) == (n0_factor + n0_factor_size)) {
-      n0_factor[idx_n++] = n0_optional[1];
-    }
-  }
-  int32_t m0 = 0;
-  for (int32_t i = kL0CutOffPointNum; i < n0_factor_size; i++) {
-    if (n0_factor[i] == 0) {
-      continue;
-    }
-    CHECK_OP_FUNC(!GetNMFactor(n0_factor[i], tiling.k_single_core_size, tiling.m_single_core_size, m0),
-                  return false, "tiling param invalid");
-    if (std::find(m0_factor, m0_factor + m0_factor_size, m0) == (m0_factor + m0_factor_size)) {
-      m0_factor[idx_m++] = m0;
-    }
-  }
-  return true;
-}
-
-bool GetL0FactorsOpti(const DxParas &params, Tiling &tiling) {
-  // x0 is optimal of min load size equation of ((m2-1)/m0)*n2 + ((n2-1)/n0)*m2
-  int32_t x0 = kM0N0OptimalNode;
-  if (tiling.m_single_core_size <= x0 && tiling.n_single_core_size <= x0) {
-    tiling.k_l0_opti = min(min(kL0aNzSize / tiling.m_single_core_size, kL0bNzSize / tiling.n_single_core_size),
-                           tiling.k_single_core_size);
-    CHECK_OP_FUNC(!ModifyKl0(params, tiling.k_l0_opti), return false, "k_l0 is 0");
-    tiling.m_l0_opti = min(kL0aNzSize / tiling.k_l0_opti, tiling.m_single_core_size);
-    tiling.n_l0_opti = min(kL0bNzSize / tiling.k_l0_opti, tiling.n_single_core_size);
-  } else if (tiling.m_single_core_size > x0 && tiling.n_single_core_size > x0) {
-    CHECK_OP_FUNC(!GetCandMKN(params, tiling), return false, "get candiate mkn factor failed");
-  } else if (tiling.m_single_core_size <= x0 && tiling.n_single_core_size > x0) {
-    int32_t m_temp = min(tiling.m_single_core_size, kL0aNzSize);
-    CHECK_OP_FUNC(m_temp == 0, return false, "m_temp invalid");
-    int32_t n_temp = min(min(kL0cNzSize / m_temp, tiling.n_single_core_size), kL0bNzSize);
-    CHECK_OP_FUNC(n_temp == 0, return false, "n_temp invalid");
-    tiling.k_l0_opti = min(min(kL0aNzSize / m_temp, kL0bNzSize /n_temp), tiling.k_single_core_size);
-    CHECK_OP_FUNC(!ModifyKl0(params, tiling.k_l0_opti), return false, "k_l0 is 0");
-    tiling.m_l0_opti = min(kL0aNzSize / tiling.k_l0_opti, m_temp);
-    tiling.n_l0_opti = min(kL0bNzSize / tiling.k_l0_opti, n_temp);
-  } else if (tiling.n_single_core_size <= x0 && tiling.m_single_core_size > x0) {
-    int32_t n_temp = min(tiling.n_single_core_size, kL0bNzSize);
-    CHECK_OP_FUNC(n_temp == 0, return false, "n_temp invalid");
-    int32_t m_temp = min(min(kL0cNzSize / n_temp, tiling.m_single_core_size), kL0aNzSize);
-    CHECK_OP_FUNC(m_temp == 0, return false, "m_temp invalid");
-    tiling.k_l0_opti = min(min(kL0aNzSize / m_temp, kL0bNzSize / n_temp), tiling.k_single_core_size);
-    CHECK_OP_FUNC(!ModifyKl0(params, tiling.k_l0_opti), return false, "k_l0 is 0");
-    tiling.m_l0_opti = min(kL0aNzSize / tiling.k_l0_opti, m_temp);
-    tiling.n_l0_opti = min(kL0bNzSize / tiling.k_l0_opti, n_temp);
+    m_tail_size = params.hw % (m0 * kBlockSize);
+    update_m = (params.dx_no_overlap_condition_1 && m_tail_size != 0 && m_tail_size < kBlockSize);
   }
   return true;
 }
@@ -659,68 +391,57 @@ bool GetL0FactorsGeneral(const DxParas &params, Tiling &tiling) {
   tiling.k_l0 = 1;
   tiling.m_l0 = 1;
   tiling.n_l0 = 1;
-  CHECK_OP_FUNC(!GetL0FactorsOpti(params, tiling), return false, "get l0 optimal value failed");
-  int32_t m0_factor[18L] = {tiling.m_l0_opti};
-  int32_t n0_factor[18L] = {tiling.n_l0_opti};
-  int32_t n0_factor_size = end(n0_factor) - begin(n0_factor);
-  int32_t m0_factor_size = end(m0_factor) - begin(m0_factor);
-  CHECK_OP_FUNC(!GetCutOffPoint(tiling, m0_factor, n0_factor, m0_factor_size, n0_factor_size), return false,
-                "get cutoff of mkn factor failed");
-  int32_t min_load_size = ((tiling.m_single_core_size - 1)) * tiling.n_single_core_size +
-                          ((tiling.n_single_core_size - 1)) * tiling.m_single_core_size;
+  int32_t n_l0_min = 1;
+  if (params.dx_no_overlap_condition_2) {
+    tiling.n_l0 = kNumTwo;
+    n_l0_min = kNumTwo;
+  }
+  if (params.dx_no_overlap_condition_1) {
+    tiling.m_l0 = kNumTwo;
+  }
+  // get n0 factor
+  int32_t n0_factor[64L] = {0};
+  size_t idx_n = 0;
+  int32_t n_l0_max = min(kL0aNzSize, tiling.n_single_core_size);
+  GetFactors(n0_factor, n_l0_max, n_l0_min, tiling.n_single_core_size, idx_n);
+  // get k0 factor
+  int32_t k0_factor[64L] = {0};
+  size_t idx_k = 0;
+  int32_t k_l0_max = min(kL0aNzSize, tiling.k_single_core_size);
+  GetFactors(k0_factor, k_l0_max, 1, tiling.k_single_core_size, idx_k);
+  int32_t m_single_ml0_num = CeilDivision(tiling.m_single_core_size, tiling.m_l0);
+  int32_t n_single_nl0_num = CeilDivision(tiling.n_single_core_size, tiling.n_l0);
+  int32_t min_load_size = m_single_ml0_num * tiling.n_single_core_size + n_single_nl0_num * tiling.m_single_core_size;
   int32_t max_mkn = 1;
   int32_t max_mk = 1;
-  int32_t load_size;
-  int32_t mkn;
-  int32_t mk;
-  bool l0_invalid = tiling.k_l0_opti <= 0 || tiling.m_l0_opti * tiling.n_l0_opti > kL0cNzSize ||
-                    !CheckL0Overflow(tiling.m_l0_opti, tiling.n_l0_opti, tiling.k_l0_opti) ||
-                    !CheckL1Overflow(params, tiling, tiling.m_l0_opti, tiling.n_l0_opti, tiling.k_l0_opti) ||
-                    !CheckUbDb(params, tiling, tiling.m_l0_opti) ||
-                    (params.co1 * params.kw * params.kh) % tiling.k_l0_opti != 0 ||
-                    tiling.n_single_core_size % tiling.n_l0_opti != 0;
-  if (params.dx_no_overlap_condition_2) {
-    l0_invalid = l0_invalid || tiling.n_l0 < kNumTwo;
-  }
-  bool l0_valid_res = !l0_invalid;
-  if (l0_invalid) {
-    CHECK_OP_FUNC(!GetCin1Factor(n0_factor, m0_factor, tiling, n0_factor_size, m0_factor_size), return false,
-                  "get cin1 facotr fail");
-  } else {
-    min_load_size = ((tiling.m_single_core_size - 1) / tiling.m_l0_opti) * tiling.n_single_core_size +
-                    ((tiling.n_single_core_size - 1) / tiling.n_l0_opti) * tiling.m_single_core_size;
-    max_mkn = tiling.m_l0_opti * tiling.n_l0_opti * tiling.k_l0_opti;
-    max_mk = max(tiling.m_l0_opti, tiling.k_l0_opti) / min(tiling.m_l0_opti, tiling.k_l0_opti);
-    tiling.m_l0 = tiling.m_l0_opti;
-    tiling.n_l0 = tiling.n_l0_opti;
-    tiling.k_l0 = tiling.k_l0_opti;
-  }
-  bool l0_valid = false;
-  for (auto &m0 : m0_factor) {
-    for (auto &n0 : n0_factor) {
-      if (m0 == 0 || n0 == 0) {
+  int32_t load_size = 1;
+  int32_t mkn = 1;
+  int32_t mk = 1;
+  bool l0_invalid = true;
+  bool l0_valid_res = false;
+  bool l0_update = false;
+  for (size_t i = 0; i < idx_n; i++) {
+    for (size_t j = 0; j < idx_k; j++) {
+      int32_t n0 = n0_factor[i];
+      int32_t k0 = k0_factor[j];
+      if (k0 == 0 || n0 == 0) {
         continue;
       }
-      int32_t k0 = min(min(kL0aNzSize / m0, kL0bNzSize / n0), tiling.k_single_core_size);
-      CHECK_OP_FUNC(!ModifyKl0(params, k0), return false, "k_l0 is 0");
-      CHECK_OP_FUNC(k0 == 0, return false, "k_l0 is 0");
-      l0_invalid = k0 <= 0 || m0 * n0 > kL0cNzSize || !CheckL0Overflow(m0, n0, k0) ||
-                        !CheckL1Overflow(params, tiling, m0, n0, k0) || !CheckUbDb(params, tiling, m0) ||
-                        (params.co1 * params.kw * params.kh) % k0 != 0 ||
-                        tiling.n_single_core_size % n0 != 0;
-      if (params.dx_no_overlap_condition_2) {
-        l0_invalid = l0_invalid || n0 < kNumTwo;
-      }
+      int32_t m0 = 0;
+      CHECK_OP_FUNC(!GetM0(n0, k0, tiling, params, m0), return false, "get m0 failed");
+      m_single_ml0_num = CeilDivision(tiling.m_single_core_size, m0);
+      n_single_nl0_num = CeilDivision(tiling.n_single_core_size, n0);
+      l0_invalid = m0 <= 0 || !CheckL0Overflow(m0, n0, k0) || !CheckUbDb(params, tiling, m0) ||
+                   m_single_ml0_num == 0 || n_single_nl0_num == 0;
       if (l0_invalid) {
         continue;
       }
-      load_size = ((tiling.m_single_core_size - 1) / m0) * tiling.n_single_core_size +
-                  ((tiling.n_single_core_size - 1) / n0) * tiling.m_single_core_size;
+      load_size = m_single_ml0_num * tiling.n_single_core_size + n_single_nl0_num * tiling.m_single_core_size;
       mkn = m0 * n0 * k0;
       mk = max(m0, k0) / min(m0, k0);
-      l0_valid = (load_size < min_load_size) ||
+      l0_update = (load_size < min_load_size) ||
                  ((load_size == min_load_size) && (mkn > max_mkn || (mkn == max_mkn && mk > max_mk)));
-      if (l0_valid) {
+      if (l0_update) {
         tiling.m_l0 = m0;
         tiling.n_l0 = n0;
         tiling.k_l0 = k0;
@@ -734,77 +455,28 @@ bool GetL0FactorsGeneral(const DxParas &params, Tiling &tiling) {
   return l0_valid_res;
 }
 
-bool GetL0FactorsNoOverlap(const DxParas &params, Tiling &tiling) {
-  // It is necessary to ensure that the tail block of the tail core is greater than 1 block
-  int32_t m_l0_max = min(kL0aNzSize, tiling.m_single_core_size);
-  for (int32_t m_l0_temp = m_l0_max; m_l0_temp >= kNumTwo; m_l0_temp--) {
-    int32_t m_tail_size = params.hw % (m_l0_temp * kBlockSize);
-    if (m_tail_size != 0 && m_tail_size < kBlockSize) {
-      continue;
-    }
-    int32_t n_l0_max = kL0bNzSize;
-    int32_t n_l0_temp = tiling.n_single_core_size;
-    CHECK_OP_FUNC(!GetNMFactor(m_l0_temp, tiling.k_single_core_size, tiling.n_single_core_size, n_l0_max),
-                  return false, "tiling param invalid");
-    // On the premise that m is determined, obtain the maximum N factor
-    for (int32_t i = n_l0_max; i >= 1; i--) {
-      if (tiling.n_single_core_size % i == 0) {
-        n_l0_temp = i;
-        break;
-      }
-    }
-    // After MN is determined, the appropriate factor K is obtained
-    int32_t k_l0_temp = min(min(kL0aNzSize / m_l0_temp, kL0bNzSize / n_l0_temp), tiling.k_single_core_size);
-    CHECK_OP_FUNC(!ModifyKl0(params, k_l0_temp), return false, "k_l0 is 0");
-    CHECK_OP_FUNC(k_l0_temp == 0, return false, "k_l0 is 0");
-    bool l0_invalid = k_l0_temp <= 0 || m_l0_temp * n_l0_temp > kL0cNzSize ||
-                      !CheckL0Overflow(m_l0_temp, n_l0_temp, k_l0_temp) ||
-                      !CheckL1Overflow(params, tiling, m_l0_temp, n_l0_temp, k_l0_temp) ||
-                      !CheckUbDb(params, tiling, m_l0_temp) ||
-                      (params.co1 * params.kw * params.kh) % k_l0_temp != 0;
-    if (l0_invalid) {
-      continue;
-    }
-    tiling.m_l0 = m_l0_temp;
-    tiling.n_l0 = n_l0_temp;
-    tiling.k_l0 = k_l0_temp;
-    return true;
-  }
-  return false;
-}
-
 bool GetL0Factors(const DxParas &params, Tiling &tiling) {
   // get m_l0, n_l0, k_l0 factor when singlecore m, n, k is know
   // m_l0, n_l0, k_l0 is a factor of single core m, n, k
   tiling.db_l0c = kDbOn;
   tiling.db_cub = kDbOn;
   tiling.db_aub = kDbOff;
-  if (params.dx_no_overlap_condition_1) {
-    if (GetL0FactorsNoOverlap(params, tiling)) {
-      return true;
-    }
-    tiling.db_cub = kDbOff;
-    return GetL0FactorsNoOverlap(params, tiling);
-  } else {
-    if (GetL0FactorsGeneral(params, tiling)) {
-      return true;
-    }
-    tiling.db_cub = kDbOff;
-    return GetL0FactorsGeneral(params, tiling);
+  if (GetL0FactorsGeneral(params, tiling)) {
+    return true;
   }
+  tiling.db_cub = kDbOff;
+  return GetL0FactorsGeneral(params, tiling);
 }
 
-bool GetInitialL1(const DxParas &params, Tiling &tiling, int32_t min_kl1_dim[]) {
-  CHECK_OP_FUNC(
-      !GenNearestFactor((tiling.k_l0 + params.kh * params.kw - 1) / (params.kh * params.kw), params.co1, min_kl1_dim),
-      return false, "get k_l1_factor failed");
+bool GetInitialL1(const DxParas &params, Tiling &tiling, int32_t &min_kl1_dim) {
   tiling.init_db_al1 = kDbOn;
   tiling.init_db_bl1 = kDbOn;
   tiling.m_al1 = 1;
   tiling.n_bl1 = 1;
   int32_t k_hw = (params.kh * params.kw);
-  tiling.k_al1 = InitialKl1(tiling.k_l0, k_hw);
-  CHECK_OP_FUNC(tiling.k_al1 == 0, return false, "initial kl1 failed");
+  min_kl1_dim = InitialKl1(tiling.k_l0, k_hw);
+  CHECK_OP_FUNC(min_kl1_dim == 0, return false, "initial kl1 failed");
+  tiling.k_al1 = min_kl1_dim;
   tiling.k_bl1 = tiling.k_al1;
   return true;
 }
@@ -914,34 +586,18 @@ void GetMinloadSize(const FactorArray &factor_size, Tiling &tiling, const DxPara
 
 bool CheckL1Size(const int32_t kn_factors[], const int32_t m_h[],
                  const Tiling &tiling, const DxParas &params) {
-  int32_t a_size;
   size_t idx = 0;
   int32_t k_bl1 = kn_factors[idx++];
   int32_t k_al1 = kn_factors[idx++];
   int32_t nbl1 = kn_factors[idx++];
   idx = 0;
   int32_t m_1 = m_h[idx++];
-  int32_t h2 = m_h[idx++];
   int32_t db_al1_end = m_h[idx++];
   int32_t db_bl1_end = m_h[idx++];
-  int32_t b_size =
-      k_bl1 * kBlockSize * params.kh * params.kw * nbl1 * tiling.n_l0 * kBlockSize * db_bl1_end * kFp16Bytes;
-  if (static_cast<int32_t>(
-          ceil(static_cast<double>(tiling.n_single_core_size) / static_cast<double>(nbl1 * tiling.n_l0))) == 1 &&
-      k_bl1 == params.co1) {
-    b_size = params.co1 * kBlockSize * params.kh * params.kw * nbl1 * tiling.n_l0 * kBlockSize * kFp16Bytes;
-  }
-  if (m_1 * tiling.m_l0 == tiling.m_single_core_size && k_al1 == params.co1 && tiling.m_dim == 1) {
-    a_size = h2 * params.stride_h * params.wo * params.stride_w * params.co1 * kBlockSize * kFp16Bytes;
-  } else {
-    int32_t h_num = (params.kh - 1) + khnumWNoDivided + (m_1 * tiling.m_l0 * kBlockSize) / params.w;
-    if (m_1 * tiling.m_l0 * kBlockSize < params.w) {
-      h_num = (params.kh - 1) + khnumWNoDivided;
-    } else if ((m_1 * tiling.m_l0 * kBlockSize) % params.w == 0) {
-      h_num = (params.kh - 1) + (m_1 * tiling.m_l0 * kBlockSize) / params.w;
-    }
-    a_size = h_num * params.wo * params.stride_w * k_al1 * kBlockSize * db_al1_end * kFp16Bytes;
-  }
+  int32_t tiling_factor[4L] = {k_bl1, tiling.n_l0, nbl1, db_bl1_end};
+  int32_t b_size = GetBl1Bound(params, tiling, tiling_factor) * kFp16Bytes;
+  int32_t tiling_al1_factor[4L] = {k_al1, tiling.m_l0, m_1, db_al1_end};
+  int32_t a_size = GetAl1Bound(params, tiling, tiling_al1_factor) * kFp16Bytes;
   return a_size + b_size <= kL1Size;
 }
 
@@ -957,7 +613,7 @@ bool GetL1FactorsOpti(const FactorArray &factor_size,
     return true;
   }
   bool modify_l1 = (k_bl1 % k_al1 == 0 || k_al1 % k_bl1 == 0) &&
-                   (k_bl1 >= factor_size.min_kl1_dim[1] && k_al1 >= factor_size.min_kl1_dim[1]) &&
+                   (k_bl1 >= factor_size.min_kl1_dim && k_al1 >= factor_size.min_kl1_dim) &&
                    (k_bl1 * params.kh * params.kw) % tiling.k_l0 == 0 &&
                    (k_al1 * params.kh * params.kw) % tiling.k_l0 == 0;
   if (modify_l1) {
@@ -972,7 +628,7 @@ bool GetL1FactorsOpti(const FactorArray &factor_size,
       int32_t load_size = db_size[0];
       int32_t db_al1_end = db_size[1];
       int32_t db_bl1_end = db_size[kIdxTwo];
-      int32_t m_h[4L] = {m_1, h2, db_al1_end, db_bl1_end};
+      int32_t m_h[4L] = {m_1, db_al1_end, db_bl1_end};
       modify_l1 = CheckL1Size(factor_size.kn_factors, m_h, tiling, params) &&
                   (min_load_size > load_size ||
                    (static_cast<double>(abs(min_load_size - load_size)) < kLoadSizeThreshold &&
@@ -1000,9 +656,6 @@ bool GetL1Factors(const DxParas &params, Tiling &tiling) {
   // get m_al1, n_bl1, kal1_16, kbl1_16 factors when L0, singlecore factor is know
   // get al1, bl1 double buffer factors
   struct FactorArray factor_size;
-  factor_size.min_kl1_dim[0] = 0;
-  factor_size.min_kl1_dim[1] = 0;
-  factor_size.min_kl1_dim[2L] = 0;
   tiling.db_al1 = kDbOn;
   tiling.db_bl1 = kDbOn;
   CHECK_OP_FUNC(!GetInitialL1(params, tiling, factor_size.min_kl1_dim), return false, "initial l1 failed");
@@ -1056,6 +709,17 @@ bool GetL1Factors(const DxParas &params, Tiling &tiling) {
       }
     }
   }
+  int32_t max_kl1 = max(tiling.k_al1, tiling.k_bl1);
+  int32_t min_kl1 = min(tiling.k_al1, tiling.k_bl1);
+  CHECK_OP_FUNC(min_kl1 == 0, return false, "k_al1 is zero");
+  CHECK_OP_FUNC(max_kl1 == 0, return false, "k_bl1 is zero");
+  tiling.min_kl1_div_kl0 = min_kl1 * params.kh * params.kw / tiling.k_l0;
+  tiling.max_kl1_div_min_kl1 = max_kl1 / min_kl1;
+  tiling.k_div_max_kl1 = params.co1 / max_kl1;
+  int32_t tiling_factor[4L] = {tiling.k_bl1, tiling.n_l0, tiling.n_bl1, kDbOff};
+  tiling.bl1_bound = GetBl1Bound(params, tiling, tiling_factor);
+  int32_t tiling_al1_factor[4L] = {tiling.k_al1, tiling.m_l0, tiling.m_al1, kDbOff};
+  tiling.al1_bound = GetAl1Bound(params, tiling, tiling_al1_factor);
   return true;
 }
 
@@ -1082,7 +746,7 @@ void GetAubM(const int32_t &aub_size, const DxParas &params,
   }
 }
 
-bool InitUbDb(const DxParas &params, Tiling &tiling) {
+bool InitUbDb(const DxParas &params, Tiling &tiling, int32_t &max_dma_size) {
   int32_t loadin_size = tiling.k_aub * tiling.m_aub * params.wo * kC0 * params.stride_w;
   int32_t copyout_size = kAfterUbFusionMulti * tiling.n_cub * tiling.m_l0 * kC0 * kC0;
   int32_t ub_fp16_size = kUbSize / kFp16Bytes;
@@ -1105,7 +769,8 @@ bool InitUbDb(const DxParas &params, Tiling &tiling) {
   }
   CHECK_OP_FUNC(loadin_size * tiling.db_aub + copyout_size * tiling.db_cub > ub_fp16_size, return false,
                 "ub factor exceed buffer");
-  return loadin_size * tiling.db_aub + copyout_size * tiling.db_cub;
+  max_dma_size = loadin_size * tiling.db_aub + copyout_size * tiling.db_cub;
+  return true;
 }
 
 bool GetUbFactors(const DxParas &params, Tiling &tiling) {
@@ -1118,13 +783,15 @@ bool GetUbFactors(const DxParas &params, Tiling &tiling) {
   GetFactors(tiling.n_l0, n_l0_factors);
   GetFactors(tiling.k_al1, k_al1_factors);
 
-  int32_t max_dma_size = InitUbDb(params, tiling);
+  int32_t max_dma_size;
+  CHECK_OP_FUNC(!InitUbDb(params, tiling, max_dma_size), return false, "get ub factor fail");
   bool first_flag = true;
   int32_t aub_m;
   int32_t aub_size;
   int32_t aub_temp_size;
   int32_t dma_size;
   bool modify_ub;
+  bool stride_equal_one = params.stride_h == 1 && params.stride_w == 1;
   for (auto &k_aub : k_al1_factors) {
     for (auto &n1 : n_l0_factors) {
       if (params.dx_no_overlap_condition_2 && n1 < kNumTwo) {
@@ -1135,11 +802,8 @@ bool GetUbFactors(const DxParas &params, Tiling &tiling) {
       }
       aub_size = (ub_fp16_size - kAfterUbFusionMulti * n1 * tiling.m_l0 * kC0 * kC0 * tiling.db_cub) / tiling.db_aub;
       GetAubM(aub_size, params, k_aub, tiling, aub_m);
-      if (k_aub < params.co1) {
-        aub_m = 1;
-      }
       aub_temp_size = k_aub * aub_m * params.wo * params.stride_w * kC0;
-      if (params.stride_h == 1 && params.stride_w == 1) {
+      if (stride_equal_one) {
         aub_temp_size = kFrontUbFusionMulti * k_aub * kBlockSize *
                         ((aub_m * params.wo + params.kw - 1 + kBlockSize - 1) / kBlockSize) *
                         kBlockSize;
@@ -1159,6 +823,12 @@ bool GetUbFactors(const DxParas &params, Tiling &tiling) {
         first_flag = false;
       }
     }
+  }
+  tiling.n_l0_div_ub = tiling.n_l0 / tiling.n_cub;
+  tiling.aub_bound = tiling.k_aub * tiling.m_aub * params.wo * kBlockSize * params.stride_w;
+  if (stride_equal_one) {
+    tiling.aub_bound = tiling.k_aub * kBlockSize *
+                       ((tiling.m_aub * params.wo + params.kw - 1 + kBlockSize - 1) / kBlockSize) * kBlockSize;
   }
   return true;
 }

@@ -151,20 +151,7 @@ namespace optiling {
   * @param [out] run_info: runtime information
   * @return bool: success or not
   */
-  inline int32_t Lcm(const int32_t &param1, const int32_t &param2) {
-    int32_t pram1_lcm = param1;
-    int32_t pram2_lcm = param2;
-    int32_t temp = pram1_lcm * pram2_lcm;
-    int32_t param1_temp = pram1_lcm;
-    while (pram1_lcm % pram2_lcm != 0) {
-      param1_temp = pram1_lcm;
-      pram1_lcm = pram2_lcm;
-      pram2_lcm = param1_temp % pram2_lcm;
-    }
-    return temp / pram2_lcm;
-  }
-
-  void SetRunInfoStrideOne(const RunInfoRaras &run_info_params, const DxParas &params, const Tiling &tiling,
+  void SetRunInfoStrideOne(const DxParas &params, const Tiling &tiling,
                            utils::OpRunInfo &run_info, RunInfoParaStrideEqualOne &run) {
     run.batch = params.batch;
     run.co = params.co;
@@ -178,43 +165,43 @@ namespace optiling {
     run.w = params.w;
     run.kh = params.kh;
     run.kw = params.kw;
-    run.g_extend = run_info_params.g_extend;
-    run.dx_c1_extend = run_info_params.dx_c1_extend;
-    run.multiple_extend = run_info_params.multiple_extend;
+    run.g_extend = params.g_extend;
+    run.dx_c1_extend = params.dx_c1_extend;
+    run.multiple_extend = params.multiple_extend;
     run.padu = params.padu;
     run.padd = params.padd;
     run.padl = params.padl;
     run.padr = params.padr;
-    run.shape_up_modify = run_info_params.shape_up_modify;
-    run.shape_left_modify = run_info_params.shape_left_modify;
-    run.shape_down_modify = run_info_params.shape_down_modify;
-    run.shape_right_modify = run_info_params.shape_right_modify;
-    run.pad_up_before = run_info_params.pad_up_before;
-    run.pad_left_before = run_info_params.pad_left_before;
-    run.pad_down_after = run_info_params.pad_down_after;
-    run.pad_right_after = run_info_params.pad_right_after;
+    run.shape_up_modify = params.shape_up_modify;
+    run.shape_left_modify = params.shape_left_modify;
+    run.shape_down_modify = params.shape_down_modify;
+    run.shape_right_modify = params.shape_right_modify;
+    run.pad_up_before = params.pad_up_before;
+    run.pad_left_before = params.pad_left_before;
+    run.pad_down_after = params.pad_down_after;
+    run.pad_right_after = params.pad_right_after;
     run.batch_dim = tiling.batch_dim;
     run.n_dim = tiling.n_dim;
     run.m_dim = tiling.m_dim;
-    run.batch_single_core = run_info_params.batch_single_core;
+    run.batch_single_core = tiling.batch_single_core_size;
     run.m_al1 = tiling.m_al1;
     run.n_bl1 = tiling.n_bl1;
-    run.k_aub = tiling.k_aub * params.kh * params.kw * kBlockSize;
+    run.k_aub = tiling.k_aub;
     run.m_aub = tiling.m_aub;
     run.m_l0 = tiling.m_l0;
-    run.n_l0_div_ub = run_info_params.n_l0_div_ub;
+    run.n_l0_div_ub = tiling.n_l0_div_ub;
     run.n_cub = tiling.n_cub;
     run.k_l0 = tiling.k_l0;
-    run.min_kl1_div_kl0 = run_info_params.min_kl1_div_kl0;
-    run.max_kl1_div_min_kl1 = run_info_params.max_kl1_div_min_kl1;
-    run.k_div_max_kl1 = run_info_params.k_div_max_kl1;
-    run.al1_bound = run_info_params.al1_bound;
-    run.bl1_bound = run_info_params.bl1_bound;
-    run.aub_bound = run_info_params.aub_bound;
+    run.min_kl1_div_kl0 = tiling.min_kl1_div_kl0;
+    run.max_kl1_div_min_kl1 = tiling.max_kl1_div_min_kl1;
+    run.k_div_max_kl1 = tiling.k_div_max_kl1;
+    run.al1_bound = tiling.al1_bound;
+    run.bl1_bound = tiling.bl1_bound;
+    run.aub_bound = tiling.aub_bound;
     run_info.AddTilingData(run);
   }
 
- void SetRunInfoStrideLargeOne(const RunInfoRaras &run_info_params, const DxParas &params, const Tiling &tiling,
+ void SetRunInfoStrideLargeOne(const DxParas &params, const Tiling &tiling,
                                utils::OpRunInfo &run_info, RunInfoParaStrideLargeOne &run) {
     run.filter_cin1hw = params.filter_cin1hw;
     run.filter_cout1 = params.filter_cout1;
@@ -228,125 +215,59 @@ namespace optiling {
     run.w = params.w;
     run.kh = params.kh;
     run.kw = params.kw;
-    run.g_extend = run_info_params.g_extend;
-    run.dx_c1_extend = run_info_params.dx_c1_extend;
-    run.multiple_extend = run_info_params.multiple_extend;
+    run.g_extend = params.g_extend;
+    run.dx_c1_extend = params.dx_c1_extend;
+    run.multiple_extend = params.multiple_extend;
     run.padu = params.padu;
     run.padd = params.padd;
     run.padl = params.padl;
     run.padr = params.padr;
     run.stride_h = params.stride_h;
     run.stride_w = params.stride_w;
-    run.shape_up_modify = run_info_params.shape_up_modify;
-    run.shape_left_modify = run_info_params.shape_left_modify;
-    run.shape_down_modify = run_info_params.shape_down_modify;
-    run.shape_right_modify = run_info_params.shape_right_modify;
-    run.pad_up_before = run_info_params.pad_up_before;
-    run.pad_left_before = run_info_params.pad_left_before;
-    run.pad_down_after = run_info_params.pad_down_after;
-    run.pad_right_after = run_info_params.pad_right_after;
+    run.shape_up_modify = params.shape_up_modify;
+    run.shape_left_modify = params.shape_left_modify;
+    run.shape_down_modify = params.shape_down_modify;
+    run.shape_right_modify = params.shape_right_modify;
+    run.pad_up_before = params.pad_up_before;
+    run.pad_left_before = params.pad_left_before;
+    run.pad_down_after = params.pad_down_after;
+    run.pad_right_after = params.pad_right_after;
     run.batch_dim = tiling.batch_dim;
     run.n_dim = tiling.n_dim;
     run.m_dim = tiling.m_dim;
-    run.batch_single_core = run_info_params.batch_single_core;
+    run.batch_single_core = tiling.batch_single_core_size;
     run.m_al1 = tiling.m_al1;
     run.n_bl1 = tiling.n_bl1;
-    run.k_aub = tiling.k_aub * params.kw * params.kh * kBlockSize;
+    run.k_aub = tiling.k_aub;
     run.m_aub = tiling.m_aub;
     run.m_l0 = tiling.m_l0;
-    run.n_l0_div_ub = run_info_params.n_l0_div_ub;
+    run.n_l0_div_ub = tiling.n_l0_div_ub;
     run.n_cub = tiling.n_cub;
     run.k_l0 = tiling.k_l0;
-    run.min_kl1_div_kl0 = run_info_params.min_kl1_div_kl0;
-    run.max_kl1_div_min_kl1 = run_info_params.max_kl1_div_min_kl1;
-    run.k_div_max_kl1 = run_info_params.k_div_max_kl1;
-    run.al1_bound = run_info_params.al1_bound;
-    run.bl1_bound = run_info_params.bl1_bound;
-    run.aub_bound = run_info_params.aub_bound;
+    run.min_kl1_div_kl0 = tiling.min_kl1_div_kl0;
+    run.max_kl1_div_min_kl1 = tiling.max_kl1_div_min_kl1;
+    run.k_div_max_kl1 = tiling.k_div_max_kl1;
+    run.al1_bound = tiling.al1_bound;
+    run.bl1_bound = tiling.bl1_bound;
+    run.aub_bound = tiling.aub_bound;
     run_info.AddTilingData(run);
   }
 
-  void SetRunInfo(const RunInfoRaras &run_info_params, const DxParas &params, const Tiling &tiling,
+  void SetRunInfo(const DxParas &params, const Tiling &tiling,
                   utils::OpRunInfo &run_info) {
     bool stride_equal_one = params.stride_h == 1 && params.stride_w == 1;
     if (stride_equal_one) {
       RunInfoParaStrideEqualOne run;
-      SetRunInfoStrideOne(run_info_params, params, tiling, run_info, run);
+      SetRunInfoStrideOne(params, tiling, run_info, run);
     } else {
       RunInfoParaStrideLargeOne run;
-      SetRunInfoStrideLargeOne(run_info_params, params, tiling, run_info, run);
+      SetRunInfoStrideLargeOne(params, tiling, run_info, run);
     }
   }
 
   bool UpdateRunInfoBinary(const DxParas &params, const Tiling &tiling,
                            const int32_t &tiling_id, utils::OpRunInfo &run_info) {
-    RunInfoRaras run_info_params;
-    run_info_params.dy_c_ori = ((params.co + params.groups - 1) / params.groups) * params.groups;
-    int32_t block_size = kBlockSize;
-    int32_t dx_c_extend = Lcm(params.cin, block_size) / params.cin;
-    int32_t dy_c_extend = Lcm(run_info_params.dy_c_ori, block_size) / run_info_params.dy_c_ori;
-    run_info_params.multiple_extend = min(Lcm(dx_c_extend, dy_c_extend), params.groups);
-    run_info_params.g_extend = (params.groups + run_info_params.multiple_extend - 1) / run_info_params.multiple_extend;
-    run_info_params.dx_c1_extend = (run_info_params.multiple_extend * params.cin + kBlockSize - 1) / kBlockSize;
-    run_info_params.pad_up_before = (params.kh - 1) * params.dilations_h - params.padu;
-    run_info_params.pad_left_before = (params.kw - 1) * params.dilations_w - params.padl;
-    run_info_params.pad_down_after =
-        params.h - params.ho * params.stride_h - run_info_params.pad_up_before + (params.kh - 1) * params.dilations_h;
-    run_info_params.pad_right_after =
-        params.w - params.wo * params.stride_w -
-        run_info_params.pad_left_before + (params.kw - 1) * params.dilations_w;
-    run_info_params.shape_up_modify = (run_info_params.pad_up_before - abs(run_info_params.pad_up_before)) / kNumTwo;
-    run_info_params.shape_left_modify =
-        (run_info_params.pad_left_before - abs(run_info_params.pad_left_before)) / kNumTwo;
-    run_info_params.shape_down_modify =
-        (run_info_params.pad_down_after - abs(run_info_params.pad_down_after)) / kNumTwo;
-    run_info_params.shape_right_modify =
-        (run_info_params.pad_right_after - abs(run_info_params.pad_right_after)) / kNumTwo;
-    run_info_params.pad_up_before = (run_info_params.pad_up_before + abs(run_info_params.pad_up_before)) / kNumTwo;
-    run_info_params.pad_left_before =
-        (run_info_params.pad_left_before + abs(run_info_params.pad_left_before)) / kNumTwo;
-    run_info_params.pad_down_after = (run_info_params.pad_down_after + abs(run_info_params.pad_down_after)) / kNumTwo;
-    run_info_params.pad_right_after =
-        (run_info_params.pad_right_after + abs(run_info_params.pad_right_after)) / kNumTwo;
-    run_info_params.batch_single_core = params.batch / tiling.batch_dim;
-    int32_t n_single_size = tiling.n_bl1 * tiling.n_l0;
-    int32_t m_single_size = tiling.m_al1 * tiling.m_l0;
-    if (tiling.n_bl1 == 0) {
-      n_single_size = tiling.n_single_core_size;
-    }
-    if (tiling.m_al1 == 0) {
-      m_single_size = tiling.m_single_core_size;
-    }
-    run_info_params.n_l0_div_ub = tiling.n_l0 / tiling.n_cub;
-    int32_t hosh = (params.kh - 1) + m_single_size * kBlockSize / params.w + kHoshWNoDivided;
-    if (m_single_size * kBlockSize < params.w) {
-      hosh = (params.kh - 1) + kHoshWNoDivided;
-    } else if (m_single_size * kBlockSize % params.w == 0) {
-      hosh = (params.kh - 1) + m_single_size * kBlockSize / params.w;
-    }
-    run_info_params.al1_bound =  tiling.k_al1 * params.wo * params.stride_w * kBlockSize * hosh;
-    if (tiling.m_al1 == 0) {
-      run_info_params.al1_bound = tiling.k_al1 * kBlockSize *
-                  ((params.wo * params.stride_w * params.ho * params.stride_h + kBlockSize - 1) / kBlockSize) *
-                  kBlockSize;
-    }
-    run_info_params.bl1_bound =
-        tiling.k_bl1 * params.kh * params.kw * n_single_size * kBlockSize * kBlockSize;
-    run_info_params.aub_bound = tiling.k_aub * tiling.m_aub * params.wo * kBlockSize * params.stride_w;
-    bool stride_equal_one = params.stride_h == 1 && params.stride_w == 1;
-    if (stride_equal_one) {
-      run_info_params.aub_bound = tiling.k_aub * kBlockSize *
-          ((tiling.m_aub * params.wo + params.kw - 1 + kBlockSize - 1) / kBlockSize) * kBlockSize;
-    }
-    CHECK_OP_FUNC(tiling.k_al1 == 0, return false, "k_al1 is zero");
-    CHECK_OP_FUNC(tiling.k_bl1 == 0, return false, "k_bl1 is zero");
-    int32_t max_kl1 = max(tiling.k_al1, tiling.k_bl1);
-    int32_t min_kl1 = min(tiling.k_al1, tiling.k_bl1);
-    run_info_params.min_kl1_div_kl0 = min_kl1 * params.kh * params.kw / tiling.k_l0;
-    run_info_params.max_kl1_div_min_kl1 = max_kl1 / min_kl1;
-    run_info_params.k_div_max_kl1 = params.co1 / max_kl1;
-
-    SetRunInfo(run_info_params, params, tiling, run_info);
+    SetRunInfo(params, tiling, run_info);
     run_info.SetBlockDim(static_cast<uint32_t>(tiling.batch_dim * tiling.n_dim * tiling.m_dim));
     run_info.SetTilingKey(static_cast<int64_t>(tiling_id));
     return true;

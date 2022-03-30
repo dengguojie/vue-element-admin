@@ -458,6 +458,7 @@ class Conv2dBpInputTiling(CubeTilingOp):
         self.binary_mode = DynamicConv2dBpInputParams.binary_mode
         self.var_map = DynamicConv2dBpInputParams.var_map
         self._get_calc_info()
+        op_get_context().add('_use_cache_tiling', self.binary_mode)
         self.key = 'C_shape'
         self.op_type = "conv2d_bp_input"
 
