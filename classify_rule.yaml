@@ -496,6 +496,8 @@ cube-tiling:
       - ops/built-in/tbe/impl/dynamic/avg_pool.py
       - ops/built-in/tbe/impl/fixpipe_op/fixpipe_util.py
       - ops/built-in/tbe/impl/dynamic/fix_pipe.py
+      - ops/built-in/op_tiling/conv2d_fast_tiling.cc
+      - ops/built-in/op_tiling/conv2d_fast_tiling.h
     unrelease:
   llt:
     ut_check: true

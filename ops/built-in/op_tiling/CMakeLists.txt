@@ -60,6 +60,7 @@ set(_optiling_files
   conv3d_transpose.cc
   sigmoid_cross_entropy_with_logits_grad_v2.cc
   conv2d.cc
+  conv2d_fast_tiling.cc
   conv2d_transpose.cc
   conv3d.cc
   pad_v3_grad.cc
