@@ -118,3 +118,20 @@ def error(log_msg, *log_paras):
         S_LOGGER.error(S_LOGGER.module.tbe, log_all_msg)
     else:
         LOGGER.error(log_all_msg)
+
+
+def event(log_msg, *log_paras):
+    """
+    event log
+    :param log_msg:
+    :param log_paras:
+    """
+    line_no = inspect.currentframe().f_back.f_lineno
+    funcname = inspect.currentframe().f_back.f_code.co_name
+    co_filename = inspect.currentframe().f_back.f_code.co_filename
+    filename = os.path.relpath(co_filename, FILE_PATH)
+    log_str = '[%s:%d][%s] ' % (filename, line_no, funcname)
+    log_all_msg = log_str + log_msg % log_paras
+
+    if IS_USE_SLOG:
+        S_LOGGER.event(S_LOGGER.module.tbe, log_all_msg)

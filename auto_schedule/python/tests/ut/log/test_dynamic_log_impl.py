@@ -31,11 +31,19 @@ def test_log_error(_):
         return False
     return True
 
+def test_log_event(_):
+    try:
+        log.event("input=[%s] and output=[%s]"%("input", "output"))
+    except RuntimeError as e:
+        return False
+    return True
+
 case_list = [
     test_log_info,
     test_log_debug,
     test_log_warn,
     test_log_error,
+    test_log_event,
 ]
 
 for item in case_list:

@@ -13,3 +13,5 @@ def debug(log_msg, *log_paras):
 def warn(log_msg, *log_paras):
 
 def error(log_msg, *log_paras):
+
+def event(log_msg, *log_paras):
