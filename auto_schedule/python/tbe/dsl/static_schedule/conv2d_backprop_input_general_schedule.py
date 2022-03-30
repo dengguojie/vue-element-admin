@@ -1006,7 +1006,7 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):
             return batch_dim, n_dim, m_dim
 
         if not _check_tiling(tiling):
-            tiling = {}
+            tiling = {"default_tiling": True}
             _, cin1, _, k_w, _ = filter_shape
             bit_dir = {
                 "float32": 16,
@@ -2451,30 +2451,21 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):
                 sch_agent[a_l1].emit_insn(sch_agent[a_l1].op.axis[0], "phony_insn")
             else:
                 if tensor_attr.get("FM_NHWC_TRANS_5HD"):
-                    #nd2nz emit insn should be under the batch axis
+                    # nd2nz emit insn should be under the batch axis
                     sch_agent[a_l1].emit_insn(sch_agent[a_l1].op.axis[1], "dma_copy", {"layout_transform": "nd2nz"})
                 else:
                     sch_agent[a_l1].emit_insn(sch_agent[a_l1].op.axis[0], "dma_copy")
                 if l1_fusion_type != -1:
                     sch_agent[a_l1].pragma(a_l1.op.axis[0], "jump_data", 1)
         else:
-            afill_n, afill_c, afill_h, afill_w, _ = sch_agent[
-                a_filling
-            ].get_active_scopes()
-            afill_w_out, afill_w_inner = sch_agent[a_filling].split(
-                afill_w, factor=stride_w
-            )
-            afill_h_out, afill_h_inner = sch_agent[a_filling].split(
-                afill_h, factor=stride_h
-            )
-            sch_agent[a_filling].reorder(
-                afill_h_inner, afill_w_inner, afill_n, afill_c, afill_h_out, afill_w_out
-            )
+            afill_n, afill_c, afill_h, afill_w, _ = sch_agent[a_filling].get_active_scopes()
+            afill_w_out, afill_w_inner = sch_agent[a_filling].split(afill_w, factor=stride_w)
+            afill_h_out, afill_h_inner = sch_agent[a_filling].split(afill_h, factor=stride_h)
+            sch_agent[a_filling].reorder(afill_h_inner, afill_w_inner, afill_n, afill_c, afill_h_out, afill_w_out)
             sch_agent[a_filling].unroll(afill_h_inner)
             sch_agent[a_filling].unroll(afill_w_inner)
 
             al1_insn, _, _ = sch_agent[a_l1].nlast_scopes(3)
-
             if not tensor_attr.get("support_ub_to_l1") and (stride_h > 1 or stride_w > 1):
                 sch_agent[a_filling].reused_by(a_zero)
                 sch_agent[a_zero].emit_insn(sch_agent[a_zero].op.axis[0], "set_2d")
@@ -2500,7 +2491,9 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):
         setfmatrix_dict["conv_fm_w"] = a_l1.shape[3]
         if not l0a_dma_flag:
             sch_agent[a_col_before].emit_insn(a_col_before.op.axis[0], 'set_fmatrix', setfmatrix_dict)
-            sch_agent[a_col].emit_insn(a_col.op.axis[1], 'im2col')
+            # load3d not effect with full pads, init to zero of l0a
+            sch_agent[a_col].emit_insn(a_col.op.axis[1], 'im2col',
+                                       {'l0a_enable_zero': tiling.get("default_tiling", False)})
         else:
             sch[a_l1].compute_inline()
             sch_agent[a_col].emit_insn(a_col.op.axis[1], 'dma_copy')

@@ -212,7 +212,6 @@ def _test_op_check_supported(test_arg):
 def _gen_conv2d_bp_input_check_support_case():
     ut_case.add_cust_test_func("Ascend910A", test_func=_test_op_check_supported)
 
-
 def _test_nhwc_in_nhwc_out_case_1(test_arg):
     with patch("tbe.common.platform.intrinsic_check_support", MagicMock(side_effect=check_intrinsic_cube_vector_split)):
         with patch("tbe.common.platform.platform_info.get_soc_spec", MagicMock(side_effect=side_effects)):
@@ -276,7 +275,6 @@ def _test_nhwc_in_nhwc_out_case_2(test_arg):
                 }
                 cce_build_code(sch, config)
 
-
 def _test_set2d_case_1(test_arg):
     with patch("tbe.common.platform.intrinsic_check_support", MagicMock(side_effect=check_intrinsic_cube_vector_split)):
         with patch("tbe.common.platform.platform_info.get_soc_spec", MagicMock(side_effect=side_effects)):
@@ -302,7 +300,6 @@ def _test_set2d_case_1(test_arg):
                 }
                 cce_build_code(sch, config)
 
-
 def _gen_conv2d_bp_input_920A_case():
     ut_case.add_cust_test_func(test_func=_test_nhwc_in_nhwc_out_case_1)
     ut_case.add_cust_test_func(test_func=_test_nhwc_in_nhwc_out_case_2)
@@ -321,7 +318,6 @@ def _gen_conv2d_bp_input_cube_vector_split_case_mock(test_arg):
                     trans_out = {"shape": (2, 14, 14, 32), "ori_shape": (2, 14, 14, 32), "format": "NHWC", "ori_format": "NHWC", "dtype": "float16"}
                     out = trans_data_compute(dx_res, trans_out, "NC1HWC0", "NHWC")
                     sch = auto_schedule(out)
-
 
 def _test_conv2d_bp_input_bf16_case_1(test_arg):
     with patch("tbe.common.platform.intrinsic_check_support", MagicMock(side_effect=check_intrinsic_cube_vector_split)):
@@ -368,7 +364,6 @@ def _test_conv2d_bp_input_fp32_case_1(test_arg):
                     trans_out = {"shape": (16, 4, 4, 32), "ori_shape": (16, 4, 4, 32), "format": "NHWC", "ori_format": "NHWC", "dtype": "float32"}
                     out = trans_data_compute(dx, trans_out, "NC1HWC0", "NHWC")
                     sch = auto_schedule(out)
-
 
 def _test_conv2d_bp_input_fp32_case_2(test_arg):
    with patch("tbe.common.platform.intrinsic_check_support", MagicMock(side_effect=check_intrinsic_cube_vector_split)):
