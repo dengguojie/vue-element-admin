@@ -404,6 +404,7 @@ set(_aicore_fusion_srcs
   graph_fusion/ai_core/mul_add_add_fusion_pass.cc
   graph_fusion/ai_core/dynamic_rnn_v2_grad_fusion_pass.cc
   graph_fusion/ai_core/roi_extractor_fusion_pass.cc
+  graph_fusion/ai_core/double_ascend_antiquant_add_relu_ascend_quant_fusion_pass.cc
 )
 
 set(ops_fusion_pass_path "${INSTALL_PATH}/opp/fusion_pass/built_in")

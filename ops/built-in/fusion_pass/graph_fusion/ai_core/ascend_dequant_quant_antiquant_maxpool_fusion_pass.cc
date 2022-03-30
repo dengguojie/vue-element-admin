@@ -147,7 +147,7 @@ Status AscendDequantQuantAntiquantMaxpoolFusionPass::IsMatch(ge::NodePtr& dequan
   }
   size_t maxpool_in_nodes_size = ge::OpDescUtils::GetNonConstInputsSize(maxpoolNode);
   if (maxpool_in_nodes_size != 1) {
-    OP_LOGI(FUSED_OP_TYPE.c_str(), "aintiquant node need 1 inputs,but now is %d.", (int)maxpool_in_nodes_size);
+    OP_LOGI(FUSED_OP_TYPE.c_str(), "maxpool node need 1 inputs,but now is %d.", (int)maxpool_in_nodes_size);
     return NOT_CHANGED;
   }
   // 通过inAnchor拿到outAnchor，再通过outAnchor拿到对应的子图node，再获取到const输入
