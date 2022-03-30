@@ -349,9 +349,12 @@ class Conv2dParaProcess(CubeParaProcess):
             self.weights_tensor = paras.get("weights")
             self.bias_tensor = paras.get("bias")
 
-            self.inputs = conver_tensor2dict(self.input_tensor, True)
-            self.weights = conver_tensor2dict(self.weights_tensor, False)
-            self.bias = conver_tensor2dict(self.bias_tensor, False)
+            if self.input_tensor.op.name == "split_hw" and self.input_tensor.op.tag == "NCHW_trans_5HD":
+                pass
+            else:
+                self.inputs = conver_tensor2dict(self.input_tensor, True)
+                self.weights = conver_tensor2dict(self.weights_tensor, False)
+                self.bias = conver_tensor2dict(self.bias_tensor, False)
             self.dtype = self.input_tensor.dtype
 
         self.outputs = paras.get("outputs")

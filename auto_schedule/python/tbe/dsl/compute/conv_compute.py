@@ -469,6 +469,7 @@ class ConvParam:
         cls.aipp_fuse_flag = False
         cls.l0a_dma_flag = False
         cls.dynamic_flag = False
+        cls.binary_mode = False
         cls.has_padding = False
         cls.dequant_doubleout_flag = False # mark v100 v200 conv_dequant_*_quant doubleout
         cls.v220_c04_mode = "disabled"
@@ -2553,6 +2554,7 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
     slice_offset = para_dict["fusion_para"]["slice_offset"]
     ConvParam.fusion_para["slice_offset"] = slice_offset if slice_offset else (0, 0, 0, 0, 0)
     ConvParam.cache_tiling_flag = para_dict.get("cache_tiling_flag", False)
+    ConvParam.binary_mode = ConvParam.cache_tiling_flag
     #===========================================================================================
     _int4_width_out_align_flag_set()
     _v200_width_out_1_flag_set()

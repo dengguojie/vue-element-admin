@@ -4,6 +4,16 @@ from op_test_frame.ut import OpUT
 import conv2D_ut_testcase as tc
 from te import tvm
 from impl.util.util_conv2d_dynamic import Conv2dParaProcess
+from tbe.dsl.base import operation
+import tbe.dsl as tbe_base
+from tbe.dsl import auto_schedule
+from tbe.dsl import build
+from impl.dynamic.trans_data import trans_data_fusion_compute_conv2d
+from impl.dynamic.conv2d import conv2d_fusion_compute
+from impl.dynamic.conv2d import _conv2d_compute
+from impl.dynamic.conv2d import conv2d
+from impl.util.platform_adapter import operation
+from impl.util.platform_adapter import tvm
 
 ut_case = OpUT("Conv2D", "impl.dynamic.conv2d", "conv2d")
 
@@ -110,6 +120,61 @@ def test_conv2d_param_process_dynamic_cdim(test_arg):
 
 print("adding Conv2D cdim dyanmic op param process")
 ut_case.add_cust_test_func(test_func=test_conv2d_param_process_dynamic_cdim)
+
+
+def pre_and_post_ubfusion_binary(test_arg):
+    from tbe.common.context.op_context import OpContext
+    from tbe.dsl.base import operation
+    with OpContext("dynamic"):
+        with operation.ComputeContext():
+            binary_test_case = [
+                # case 0
+                ["Ascend910A",
+                {'ori_shape': (-1, -1, -1, -1), 'shape': (-1, -1, -1, -1, 16),'ori_format': 'NCHW', 'dtype': 'float16'},
+                {"ori_shape": [-1, -1, -1, -1], "dtype": "float16", "ori_format": "NCHW",},
+                None, None,
+                {'shape': [-1, -1, -1, -1, -1], 'ori_shape': [-1, -1, -1, -1], 'ori_format': 'NCHW', 'dtype': 'float16'},
+                (-1, -1, -1, -1), (0, 0, 0, 0), (1, 1, 1, 1), 1, "NCHW", 0, "success", "cache_tiling_case0"]
+            ]
+            # define_var
+            dtype = "float16"
+            batch_idx = operation.var("batch")
+            fmap_c = operation.var("fmap_c")
+            fmap_h = operation.var("fmap_h")
+            fmap_w = operation.var("fmap_w")
+            var_filter_ci1hw = operation.var("filter_ci1hw")
+            var_filter_co1 = operation.var("filter_co1")
+        
+            dst = {"dtype": "float16", "shape": [-1, -1, -1, -1, 16], "ori_shape": [-1, -1, -1, -1],
+                   "format": "NC1HWC0", "ori_format": "NCHW",
+                   "range": [[1, None], [1, None], [1, None],[1, None], [16, 16]]}
+            # define_shape
+            fmap_nchw = (batch_idx, fmap_c, fmap_h, fmap_w)
+            fmap_nc_hw = (batch_idx, fmap_c, fmap_h * fmap_w)
+            filter_fz = (var_filter_ci1hw, var_filter_co1, 16, 16)
+            # define_tensor
+            filter_tensor = tvm.placeholder(filter_fz, name="filter", dtype=dtype)
+            transdata_in_tensor = tvm.placeholder(fmap_nc_hw, name="fmap", dtype="float16", attrs={"shape": fmap_nchw})
+            fmap_nc1hwc0 = trans_data_fusion_compute_conv2d(transdata_in_tensor, dst, "NCHW", "NC1HWC0")
+            # conv
+            inputs, weights, bias, offset_w, outputs, strides, pads, dilations, groups, data_format, offset_x, expect, casename = binary_test_case[0][1:]
+            res = conv2d_fusion_compute(
+                        fmap_nc1hwc0, filter_tensor, bias, offset_w, outputs, strides, pads, dilations,
+                        groups, data_format, offset_x, casename)
+            fusion_result_post = trans_data_fusion_compute_conv2d(res, {"ori_shape": [-1, -1, -1, -1]}, "NC1HWC0", "NCHW")
+            tensor_list = [transdata_in_tensor, filter_tensor,  fusion_result_post ]
+            with tvm.target.cce():
+                sch = auto_schedule(fusion_result_post)
+            config = {
+                "name": "conv2d_binary_fusion_pre_and_post",
+                "tensor_list": tensor_list,
+                "build_args": {"constant_realize_extend_in_infer_bound": False}
+            }
+            
+            build(sch, config)
+
+
+ut_case.add_cust_test_func(test_func=pre_and_post_ubfusion_binary)
 
 if __name__ == '__main__':
     test_conv2d_param_process_dynamic_cdim()  

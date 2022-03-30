@@ -276,3 +276,108 @@ def trans_data_fusion_compute(src, dst, src_format=None, dst_format=None, group=
         error_manager_vector.raise_err_specific_reson(
             "trans_data", "only support format transfer between NCHW and NC1HWC0"
         )
+
+
+def _nchw_to_5hd_conv2d(input_x):
+    """
+    trans nchw to nc1hwc0
+    """
+    input_dtype = input_x.dtype
+    input_shape = shape_util.shape_to_list(input_x.shape)
+    if len(input_shape) == NCHW_LENTH:
+        shape_n, shape_c, shape_h, shape_w = input_shape
+    else:
+        shape_n, shape_c, shape_h, shape_w = shape_util.shape_to_list(input_x.op.attrs["shape"])
+    shape_c0 = tbe_platform.CUBE_MKN[input_dtype]["mac"][1]
+    shape_c1 = (shape_c + shape_c0 - 1) // shape_c0
+
+    input_align_shape = (shape_n, shape_c1 * shape_c0, shape_h * shape_w)
+    reshape_shape = (shape_n, shape_c1, shape_c0, shape_h * shape_w)
+    transpose_shape = (shape_n, shape_c1, shape_h * shape_w, shape_c0)
+    output_shape = (shape_n, shape_c1, shape_h, shape_w, shape_c0)
+
+    if len(input_shape) == NCHW_LENTH:
+        input_ub = tvm.compute(input_align_shape,
+                               lambda n, c, hw: tvm.select(c < shape_c, input_x(n, c, hw // shape_w, hw % shape_w)),
+                               name="input_ub_binary"
+                              )
+    else:
+        input_ub = tvm.compute(input_align_shape,
+                               lambda n, c, hw: tvm.select(c < shape_c, input_x(n, c, hw)),
+                               name="input_ub_binary"
+                              )
+    input_ub_pad = tvm.compute(input_align_shape,
+                               lambda n, c, hw: tvm.select(c >= shape_c, tvm.const(0, input_dtype)),
+                               name="input_ub_pad"
+                              )
+    input_ub_vn = tvm.compute(input_align_shape,
+                              lambda n, c, hw: input_ub(n, c, hw) + input_ub_pad(n, c, hw),
+                              name="input_ub_vn"
+                             )
+    reshape_c = tvm.compute(reshape_shape,
+                            lambda n, c1, c0, hw: input_ub_vn(n, c1*shape_c0 + c0, hw),
+                            name="reshape_c"
+                           )
+    transpose_hw_c0 = tvm.compute(transpose_shape,
+                                  lambda n, c1, hw, c0: reshape_c(n, c1, c0, hw),
+                                  name="transpose_hw_c0"
+                                 )
+    res = tvm.compute(output_shape,
+                      lambda n, c1, h, w, c0: transpose_hw_c0(n, c1, h*shape_w + w, c0),
+                      name="split_hw",
+                      tag="NCHW_trans_5HD"
+                     )
+    return res
+
+
+def _nc1hwc0_to_nchw_conv2d(src, dst):
+    """
+    algorithm: trans nc1hwc0 to nchw
+
+    Parameters
+    ----------
+    src : Tensor, Tensor of input
+
+    dst: dict, shape and dtype of output, should be same shape and type as input
+
+    Returns
+    -------
+    Tensor
+    """
+    src_n, src_c1, src_hw, src_c0 = src.shape
+    if src.op.tag == "conv2d":
+        real_c = get_te_var("c").get_tvm_var()
+    else:
+        real_c = dst.get("ori_shape")[1]
+    transpose_shape = (src_n, src_c1, src_c0, src_hw)
+    transpose_tensor = tvm.compute(
+        transpose_shape,
+        lambda n_idx, c1_idx, c0_idx, hw_idx:
+            src(n_idx, c1_idx, hw_idx, c0_idx),
+        name="transpose")
+    dst_shape = (src_n, real_c, src_hw)
+    dst_tensor = tvm.compute(
+        dst_shape,
+        lambda n_idx, c_idx, hw_idx:
+            transpose_tensor(n_idx, c_idx // src_c0, c_idx % src_c0, hw_idx),
+        name="nchw_res",
+        tag="5HD_TRANS_NCHW")
+    return dst_tensor
+
+
+@register_operator_compute("TransData", op_mode="dynamic", support_fusion=True)
+def trans_data_fusion_compute_conv2d(src, dst, src_format, dst_format):
+    """
+    algorithm: format_transfer
+    transfer between NHWC and NC1HWC0
+    """
+    fusion_util.check_fusion_input([src])
+    
+    if src_format == "NCHW" and dst_format == "NC1HWC0":
+        return _nchw_to_5hd_conv2d(src)
+    elif src_format == "NC1HWC0" and dst_format == "NCHW":
+        return _nc1hwc0_to_nchw_conv2d(src, dst)
+    else:
+        error_manager_vector.raise_err_specific_reson(
+            "trans_data", "only support format transfer between NCHW and NC1HWC0"
+        )

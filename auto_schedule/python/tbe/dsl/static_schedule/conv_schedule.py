@@ -113,6 +113,9 @@ DYNAMIC_FMAP_MAX_WIDTH = 4096
 DMA_COPY_BLOCK = 32
 UINT1_BIT_ALIGN = 8
 
+# binary
+CUBE_DIM = 16
+CUBE_MUL_SHAPE = 256
 
 def get_srctensor(tensor):
     """
@@ -602,9 +605,11 @@ class CceConvOp:
         self._filter_muti_groups_in = False
         self._l0a_dma_flag = False
         self._dynamic_flag = False
+        self._binary_flag = False
         self._cache_tiling_flag = False
         self._cache_tiling = None
         self._flag_dict = {}
+        self._fmap_in_ub = {}
         self._channel_wise_optim_list = []
         self._lhisi_dequant_quant_para = {'deq_sqrt': False,
                                           'deq_relu': False,
@@ -4000,6 +4005,7 @@ class CceConvOp:
             self._preload = 0
             self._l0a_dma_flag = ConvParam.l0a_dma_flag
             self._dynamic_flag = ConvParam.dynamic_flag
+            self._binary_flag = ConvParam.binary_mode
             self._cache_tiling_flag = ConvParam.cache_tiling_flag
             if ConvParam.invalid_data_rm_disable:
                 ConvParam.invalid_data_rm_flag = True
@@ -4576,7 +4582,96 @@ class CceConvOp:
                 sch.sequential_malloc(cce.scope_ubuf)
                 sch[c_ub].mem_unique()
 
+        def _handle_transdata_ubfusion_pre_post():
+            """
+            (NCHW -> NC1HWC0) in UB
+            """
+            binary_schedule_ub_tensor_list = ["transpose_hw_c0",  "input_ub_vn", "input_ub_pad","input_ub_binary"]
+            binary_schedule_emit_insn_dict = {
+                    "input_ub_binary": "dma_copy",
+                    "input_ub_pad": "vector_dup",
+                    "input_ub_vn": "phony_insn",
+                    "transpose_hw_c0": "vnchwconv",
+            }
+            def _get_previous_ub_list(tensor, ub_list):
+                """
+                get ub fusion tensor.
+                """
+                def get(tensor):
+                    """
+                    find all tensor
+                    :return: all tensor
+                    """
+                    tensor_list = tensor.op.input_tensors
+                    for one_tensor in tensor_list:
+                        # check which tensor has not been checked
+                        ub_list[one_tensor.op.name] = one_tensor
+                        get(one_tensor)
+                get(tensor)
+            
+            def _set_bound_ub():
+                """
+                set bound for ub tensor
+                """
+                if not self._binary_flag:
+                    return
+                tiling["AUB_shape"] = [1, 1]
+                # define ub_bound
+                ub_bound = (tiling.get("AUB_shape")[0] * fmap.shape[3] + CUBE_DIM - 1) // CUBE_DIM \
+                         * CUBE_DIM * tiling.get("AUB_shape")[1] * CUBE_DIM
+                for tensor_name in binary_schedule_ub_tensor_list:
+                    tensor_b = self._fmap_in_ub.get(tensor_name)
+                    sch[tensor_b].set_buffer_size(ub_bound)
+                sch[self._fmap_in_ub.get("transpose_hw_c0")].mem_unique()
+
+            if fmap.op.tag == "NCHW_trans_5HD" and self._binary_flag:
+                _get_previous_ub_list(al1, self._fmap_in_ub)
+                
+                c1_outer, c1_inner = sch[al1].split(sch[al1].op.axis[2], 1)
+                h_outer, h_inner = sch[al1].split(sch[al1].op.axis[3], 1)
+                sch[al1].reorder(c1_outer, h_outer, sch[al1].op.axis[0],
+                                        sch[al1].op.axis[1], c1_inner, h_inner)
+                sch[fmap].compute_inline()
+                sch[self._fmap_in_ub.get("reshape_c")].compute_inline()
+                input_ub_vn = self._fmap_in_ub.get("input_ub_vn")
+                input_ub_binary = self._fmap_in_ub.get("input_ub_binary")
+                input_ub_pad = self._fmap_in_ub.get("input_ub_pad")
+                sch[input_ub_vn].reused_by(input_ub_binary, input_ub_pad)
+                
+                for tensor_name in binary_schedule_ub_tensor_list:
+                    tensor = self._fmap_in_ub.get(tensor_name)
+                    sch[tensor].set_scope(cce.scope_ubuf)
+                    sch[tensor].compute_at(sch[al1], h_outer)
+                    if tensor_name == "transpose_hw_c0":
+                        sch[tensor].compute_align(tensor.op.axis[-2], CUBE_DIM)
+                        sch[tensor].storage_align(tensor.op.axis[-3], CUBE_MUL_SHAPE, 0)
+                    else:
+                        sch[tensor].compute_align(tensor.op.axis[-1], CUBE_DIM)
+                        sch[tensor].storage_align(tensor.op.axis[-2], CUBE_DIM, 0)
+                _set_bound_ub()
+                
+                # emit_insn
+                for tensor_name in binary_schedule_ub_tensor_list:
+                    tensor_b = self._fmap_in_ub.get(tensor_name)
+                    if tensor_name == "transpose_hw_c0":
+                        sch[tensor_b].emit_insn(tensor_b.op.axis[-2], binary_schedule_emit_insn_dict.get(tensor_name))
+                    else:
+                        sch[tensor_b].emit_insn(tensor_b.op.axis[0], binary_schedule_emit_insn_dict.get(tensor_name))
+            
+            if self._res_tensor.op.tag == "5HD_TRANS_NCHW" and self._binary_flag:
+                c_ub_transpose = self._res_tensor.op.input_tensors[0]
+                post_result = self._res_tensor
+                leaf_ivars = list(sch[post_result].leaf_iter_vars)
+                sch[c_ub_transpose].compute_at(sch[post_result], sch[post_result].op.axis[0])
+                sch[res_c].compute_at(sch[post_result], sch[post_result].op.axis[0])
+                sch[c_ub_transpose].emit_insn(sch[c_ub_transpose].op.axis[-2], "vnchwconv")
+                res_emit_insn_axis = leaf_ivars[-2::][0]
+                sch[post_result].emit_insn(res_emit_insn_axis, 
+                                           "dma_copy", 
+                                           {'no_overlap': "process_data_smaller_than_one_block"})
+
         def _handle_transdata_ubfusion():
+
             transdata_tensor = None
             transdata_add_pad_tensor = None
             transdata_elt_tensor = None
@@ -4928,7 +5023,11 @@ class CceConvOp:
             multi_out = None
 
         dim_map = self._dim_map
-        res_c = self._res_tensor
+        if self._res_tensor.op.tag == "5HD_TRANS_NCHW" and self._binary_flag:
+            res_c = self._res_tensor.op.input_tensors[0].op.input_tensors[0]
+            res = self._res_tensor.op.input_tensors[0].op.input_tensors[0]
+        else:
+            res_c = self._res_tensor
         _non_convolution_body_set_scope()
 
         if self._lhisi_data_flow_type:
@@ -5761,7 +5860,8 @@ class CceConvOp:
             else:
                 nbuffer_flag_al1 = False
 
-        if "fmap_h" in self._dyn_var_map or "fmap_w" in self._dyn_var_map or tiling["CL0_matrix"][5] > 1:
+        if "fmap_h" in self._dyn_var_map or "fmap_w" in self._dyn_var_map or tiling["CL0_matrix"][5] > 1 \
+            or self._binary_flag:
             tiling["A_overhead_opt_flag"] = False
 
         if l0a_load2d_flag:
@@ -5854,7 +5954,7 @@ class CceConvOp:
                 sch[scale_ub].compute_at(sch[res_c], m_outer_outer_inner)
 
         if self.unzip_parameters.get("weight_zip_flag") or (self._dynamic_flag and tiling["BL1_shape"] == []) \
-        or tiling["CL0_matrix"][5] > 1 or (tiling["BL0_matrix"] and tiling["BL0_matrix"][5] > 1):
+        or tiling["CL0_matrix"][5] > 1 or (tiling["BL0_matrix"] and tiling["BL0_matrix"][5] > 1) or self._binary_flag:
             tiling["B_overhead_opt_flag"] = False
 
         out_extract_axis = -1
@@ -5988,6 +6088,7 @@ class CceConvOp:
 
         _conv_pooling_optm()
         _remove_padded_column()
+        _handle_transdata_ubfusion_pre_post()
         _handle_transdata_ubfusion()
         if self._dynamic_flag:
             _handle_memory_process()
@@ -6192,7 +6293,10 @@ class CceConvOp:
             """
             if self._convbn1_flag:
                 self._schedule[c_ub].reused_by(cache_buffer)
-            self._schedule[cache_buffer].emit_insn(self._schedule[cache_buffer].op.axis[0], 'dma_copy')
+            if self._res_tensor.op.tag == "5HD_TRANS_NCHW" and self._binary_flag:
+                self._schedule[cache_buffer].compute_inline()
+            else:
+                self._schedule[cache_buffer].emit_insn(self._schedule[cache_buffer].op.axis[0], 'dma_copy')
             if lop["op"] == "convolution_C" and self._flag_dict["addrelu_flag"]:
                 self._schedule[cache_buffer].compute_inline()
 
@@ -6490,8 +6594,11 @@ class AutoScheduleOp:
         for lop in self._op:
             if (not lop["prev_op"]) and (lop["op"] != "broadcast"):
                 if lop["dst_buffer"].name not in input_tensor_name:
-                    input_ops.append(lop)
-                    input_tensor_name.append(lop["dst_buffer"].name)
+                    if ConvParam.binary_mode and lop["dst_buffer"].name == "input_ub_pad":
+                        pass
+                    else:
+                        input_ops.append(lop)
+                        input_tensor_name.append(lop["dst_buffer"].name)
                 else:
                     continue
             else:

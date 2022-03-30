@@ -287,11 +287,16 @@ def calc_conv2d(outs, option=None):
     shape_dict = {"batch_n": conv_info.get("a_shape")[0],
                   "fmap_h": conv_info.get("a_shape")[2],
                   "fmap_w": conv_info.get("a_shape")[3]}
-    for var_name in var_names:
-        if get_te_var(var_name):
-            tgt_area[var_name] = tuple(get_te_var(var_name).get_bound())
-        else:
-            tgt_area[var_name] = (int(shape_dict.get(var_name)), int(shape_dict.get(var_name)))
+    if ConvParam.binary_mode:
+        tgt_area = {"batch_n": (1, None),
+                    "fmap_h": (1, None),
+                    "fmap_w": (1, None)}
+    else:
+        for var_name in var_names:
+            if get_te_var(var_name):
+                tgt_area[var_name] = tuple(get_te_var(var_name).get_bound())
+            else:
+                tgt_area[var_name] = (int(shape_dict.get(var_name)), int(shape_dict.get(var_name)))
     new_in_range = ConvParam.dynamic_para.get("new_in_range")
     correct_range_flag = ConvParam.dynamic_para.get("correct_range_flag", False)
     if correct_range_flag:
@@ -410,6 +415,7 @@ class Conv2dTiling(CubeTilingOp):
         self.w_type = tiling_info.get("b_dtype")
         self._quant_fusion_muti_groups_in_cl0 = False
         self._l1_fusion_type = ConvParam.fusion_para.get("l1_fusion_type")
+        self.binary_mode = ConvParam.binary_mode
         self._input_memory_type = ConvParam.fusion_para.get("input_memory_type")
         if ConvParam.para_dict["cout1_opt"] % 2 == 1 and ConvParam.para_dict["group_opt"] > 1 and \
            ("virtual_res" in res.op.name or res.dtype == "int8"):
