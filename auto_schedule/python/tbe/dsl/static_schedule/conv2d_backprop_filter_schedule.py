@@ -1987,15 +1987,13 @@ class CceConv2dBackpropFilterOp:
                         # hw splited one time before BL1  attach
                         hw_parts_offset = hw_mad_1_l1_out_at.var * bl1_k
                 else:
-                    if not self.var_map and grads_l1_tiling_nparts[0] > fmap_l1_tiling_nparts[0]:
-                        # hw splited one time before BL1  attach
-                        hw_parts_offset = hw_mad_1_l1_out_at * tiling.get("BL1_shape")[0]
-                    else:
+                    hw_parts_offset = tvm.select(
+                        tvm.all(grads_l1_tiling_nparts[0] > fmap_l1_tiling_nparts[0]),
+                        # hw splited one time before BL1 attach
+                        hw_mad_1_l1_out_at * tiling.get("BL1_shape")[0],
                         # hw splited 2 times before BL1 attach
-                        hw_parts_offset = \
-                            ((hw_mad_1_l1_out_at * fmap_l1_tiling_nparts[0] //
-                                grads_l1_tiling_nparts[0] + hw_mad_1_l1_in_at) *
-                                tiling.get("BL1_shape")[0])
+                        (hw_mad_1_l1_out_at * fmap_l1_tiling_nparts[0] // grads_l1_tiling_nparts[0] + hw_mad_1_l1_in_at)
+                        * tiling.get("BL1_shape")[0])
 
                 hw_offset = hw_block_offset + hw_parts_offset
             else:
