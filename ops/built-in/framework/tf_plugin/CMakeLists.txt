@@ -266,6 +266,7 @@ set(_tf_plugins
   lrn_grad_plugin.cc
   lrn_plugin.cc
   lru_cache_plugin.cc
+  lru_cache_plugin_v2.cc
   many_dynamic_plugin.cc
   mask_2_argmax_plugin.cc
   matmul_plugin.cc

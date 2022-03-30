@@ -3223,6 +3223,7 @@ unkown:
       - ops/built-in/framework/tf_plugin/bitwise_or_plugin.cc
       - ops/built-in/framework/tf_plugin/apply_gradient_descent_plugin.cc
       - ops/built-in/framework/tf_plugin/lru_cache_plugin.cc
+      - ops/built-in/framework/tf_plugin/lru_cache_plugin_v2.cc
       - ops/built-in/framework/tf_plugin/inv_grad_plugin.cc
       - ops/built-in/framework/tf_plugin/xlog1py_plugin.cc
       - ops/built-in/framework/tf_plugin/xlogy_plugin.cc

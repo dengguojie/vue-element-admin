@@ -49,7 +49,8 @@ class Constant:
     TILING_NUMS = 8
     MODE0 = 0
     FP32_MIN_VALUE = 0.00001
-
+    THREAD_NUM = 4
+    INT32_BYTES = 4
 
 # 'pylint: disable=no-member,attribute-defined-outside-init,dangerous-default-value,consider-using-enumerate
 
@@ -122,26 +123,19 @@ class Lru(OpBase):
         self.vcmax_scalar_index = None
         self.not_in_cache_count_ub = None
         self.index_offset_ub = None
-        self.miss_index_wsp = self.tik_instance.Tensor(self.tag_dtype,
-                                                       self.unknown_max_shape,
-                                                       name="miss_index_wsp",
-                                                       is_workspace=True,
-                                                       scope=tik.scope_gm)
+        self.miss_index_wsp = self.tik_instance.Tensor(self.tag_dtype, self.unknown_max_shape, name="miss_index_wsp",
+                                                       is_workspace=True, scope=tik.scope_gm)
         # the last is iterate timestamp
         self.time_stamp_wsp = self.tik_instance.Tensor(self.time_stamp_dtype, [self.set_number * self.way_number + 1],
-                                                       name="time_stamp_wsp",
-                                                       is_global_tensor=True,
-                                                       is_atomic_add=True,
+                                                       name="time_stamp_wsp", is_global_tensor=True, is_atomic_add=True,
                                                        scope=tik.scope_gm)
         # vsort32 use
         sorted_index_init_list = [i for i in range(0, self.sorted_index_shape)]
         self.sorted_index_gm = self.tik_instance.Tensor("uint32", [self.sorted_index_shape],
-                                                        name="sorted_index_gm",
-                                                        scope=tik.scope_gm,
+                                                        name="sorted_index_gm", scope=tik.scope_gm,
                                                         init_value=sorted_index_init_list)
         self.sorted_index_ub = self.tik_instance.Tensor("uint32", [self.sorted_index_shape],
-                                                        name="sorted_index_ub",
-                                                        scope=tik.scope_ubuf)
+                                                        name="sorted_index_ub", scope=tik.scope_ubuf)
         # position_index help
         position_index_list = [
                                i
@@ -215,7 +209,8 @@ class Lru(OpBase):
         self.vreduce_addr = self.tik_instance.Tensor("uint16", [self.way_number * self.tag_rate_int32],
                                                      name="position_index_ub",
                                                      scope=tik.scope_ubuf)
-        self.move_out_tmp_ub = self.tik_instance.Tensor(self.index_list_dtype, [8],
+        self.move_out_tmp_ub = self.tik_instance.Tensor(self.index_list_dtype,
+                                                        [Constant.BLOCK_BYTES // Constant.INT32_BYTES],
                                                         name="move_out_tmp_ub",
                                                         scope=tik.scope_ubuf)
         self.time_stamp_ub = self.tik_instance.Tensor("float32", [self.sorted_index_shape],
@@ -227,9 +222,6 @@ class Lru(OpBase):
         self.vsort_ub_b = self.tik_instance.Tensor("float32", [self.sorted_index_shape, 2],
                                                    name="vsort_ub_b",
                                                    scope=tik.scope_ubuf)
-        self.data_exchange_ub = self.tik_instance.Tensor(self.data_dtype, [self.embedding_size],
-                                                         name="data_exchange_ub",
-                                                         scope=tik.scope_ubuf)
 
         self.tag_index = self.tik_instance.Scalar(dtype="int32", name="tag_index", init_value=0)
         self.min_timestamp_index = self.tik_instance.Scalar(dtype="int32", name="min_timestamp_index", init_value=0)
@@ -440,44 +432,57 @@ class Lru(OpBase):
                 self.vsort_ub_b.reinterpret_cast_to("int32")
                 self.miss_cnt_scalar.set_as(self.miss_cnt_ub[set_id])
                 self.cache_cnt_scalar.set_as(self.cache_cnt_ub[set_id])
-                with self.tik_instance.for_range(0, self.miss_cnt_scalar) as miss_id:
+                # set thread_num as 4 to accelerate the data_move process
+                with self.tik_instance.for_range(0, self.miss_cnt_scalar, thread_num=Constant.THREAD_NUM) as miss_id:
+                    data_exchange_ub = self.tik_instance.Tensor(self.data_dtype,
+                                                                [self.embedding_size * Constant.THREAD_NUM],
+                                                                name="data_exchange_ub",
+                                                                scope=tik.scope_ubuf)
+                    move_out_ub = self.tik_instance.Tensor(self.index_list_dtype,
+                                                           [Constant.BLOCK_BYTES // Constant.INT32_BYTES *
+                                                            Constant.THREAD_NUM],
+                                                           name="move_out_ub",
+                                                           scope=tik.scope_ubuf)
                     self.tik_instance.data_move_pad(
-                        self.move_out_tmp_ub.reinterpret_cast_to("int32"),
+                        move_out_ub.reinterpret_cast_to("int32"),
                         self.miss_index_wsp[set_id * self.index_list_len + miss_id].reinterpret_cast_to("int32"), 1,
                         self.index_list_bytes, 0, 0)
                     with self.tik_instance.if_scope(miss_id < self.way_number - self.cache_cnt_scalar):
-                        self.exchane_in_index.set_as(self.move_out_tmp_ub[0])
+                        self.exchane_in_index.set_as(move_out_ub[0])
                         self.min_timestamp_index.set_as(self.vsort_ub_b[self.sorted_index_shape * 2 - 1 - miss_id * 2])
                         self.tag_index.set_as(self.min_timestamp_index + set_id * self.way_number)
-                        self.tik_instance.data_move_pad(self.move_out_tmp_ub.reinterpret_cast_to("int32"),
+                        self.tik_instance.data_move_pad(move_out_ub.reinterpret_cast_to("int32"),
                                                         self.tag_gm[self.tag_index].reinterpret_cast_to("int32"), 1,
                                                         self.index_list_bytes, 0, 0)
-                        self.exchane_out_index.set_as(self.move_out_tmp_ub[0])
-                        self.cache_exchange(self.exchane_out_index, self.exchane_in_index, self.tag_index)
+                        self.exchane_out_index.set_as(move_out_ub[0])
+                        self.cache_exchange(self.exchane_out_index, self.exchane_in_index, self.tag_index,
+                                            move_out_ub, data_exchange_ub)
 
-    def cache_exchange(self, out_index, in_index, tag_index):
+    def cache_exchange(self, out_index, in_index, tag_index, move_out_ub, data_exchange_ub):
         """
         exchange cache and data
         """
-        # last time stamp cache move to data
-        self.tik_instance.data_move_pad(self.data_exchange_ub, self.cache_gm[tag_index * self.embedding_size], 1,
-                                        self.embedding_bytes, 0, 0)
-        self.tik_instance.data_move_pad(self.out_data_gm[out_index * self.embedding_size], self.data_exchange_ub, 1,
-                                        self.embedding_bytes, 0, 0)
-        # not in cache list move in cahce
-        self.tik_instance.data_move_pad(self.data_exchange_ub, self.data_gm[in_index * self.embedding_size], 1,
-                                        self.embedding_bytes, 0, 0)
-        self.tik_instance.data_move_pad(self.out_cache_gm[tag_index * self.embedding_size], self.data_exchange_ub, 1,
-                                        self.embedding_bytes, 0, 0)
-        # tag exchange
-        self.move_out_tmp_ub[0].set_as(in_index)
-        self.tik_instance.data_move_pad(self.out_tag_gm[tag_index].reinterpret_cast_to("int32"),
-                                        self.move_out_tmp_ub.reinterpret_cast_to("int32"), 1, self.index_list_bytes, 0,
-                                        0)
-        # timestamp exchange
-        self.time_stamp_ub[0].set_as(self.iterate_timestamp_scalar)
-        self.tik_instance.data_move_pad(self.time_stamp_wsp[tag_index], self.time_stamp_ub, 1, self.time_stamp_bytes, 0,
-                                        0)
+        # disable the sync to accelerate the data_move process
+        with self.tik_instance.new_stmt_scope(disable_sync=True):
+            # last time stamp cache move to data
+            self.tik_instance.data_move_pad(data_exchange_ub, self.cache_gm[tag_index * self.embedding_size], 1,
+                                            self.embedding_bytes, 0, 0)
+            self.tik_instance.data_move_pad(self.out_data_gm[out_index * self.embedding_size], data_exchange_ub, 1,
+                                            self.embedding_bytes, 0, 0)
+            # not in cache list move in cahce
+            self.tik_instance.data_move_pad(data_exchange_ub, self.data_gm[in_index * self.embedding_size], 1,
+                                            self.embedding_bytes, 0, 0)
+            self.tik_instance.data_move_pad(self.out_cache_gm[tag_index * self.embedding_size], data_exchange_ub, 1,
+                                            self.embedding_bytes, 0, 0)
+            # tag exchange
+            move_out_ub[0].set_as(in_index)
+            self.tik_instance.data_move_pad(self.out_tag_gm[tag_index].reinterpret_cast_to("int32"),
+                                            move_out_ub.reinterpret_cast_to("int32"), 1, self.index_list_bytes, 0,
+                                            0)
+            # timestamp exchange
+            self.time_stamp_ub[0].set_as(self.iterate_timestamp_scalar)
+            self.tik_instance.data_move_pad(self.time_stamp_wsp[tag_index], self.time_stamp_ub, 1,
+                                            self.time_stamp_bytes, 0, 0)
 
     def check_param(self):
         """
