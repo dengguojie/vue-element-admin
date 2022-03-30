@@ -17,7 +17,7 @@ import json
 from unittest.mock import MagicMock
 from unittest.mock import patch
 from op_test_frame.ut import OpUT
-ut_case = OpUT("BatchMatmulV2", None, None)
+ut_case = OpUT("BatchMatMulV2", "impl.batch_matmul_v2", "batch_matmul_v2")
 
 from tbe import tvm
 from impl.batch_matmul_v2 import get_op_support_info

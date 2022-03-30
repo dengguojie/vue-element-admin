@@ -304,9 +304,13 @@ def run_ut(case_dir, soc_version, case_name=None,  # 'pylint: disable=too-many-a
         return failed
 
     cov_combine_dir = _build_cov_data_path(cov_report_path)
-    case_file_info_list, load_has_err = cube_ut_loader.load_ut_cases(case_dir,
-                                                                     source_dir=Constant.init_source_dir,
-                                                                     data_dir=cov_combine_dir)
+    if isinstance(case_dir, dict):
+        cube_case_list, cube_load_err = cube_ut_loader.load_ut_cases(case_dir.get('cube'))
+        vector_case_list, vector_load_err = cube_ut_loader.load_ut_cases(case_dir.get('vector'))
+        case_file_info_list = cube_case_list + vector_case_list
+        load_has_err = cube_load_err and vector_load_err
+    else:
+        case_file_info_list, load_has_err = cube_ut_loader.load_ut_cases(case_dir)
     if not case_file_info_list:
         logger.log_err("Not found any test cases.")
         return failed
@@ -384,8 +388,7 @@ def run_ut(case_dir, soc_version, case_name=None,  # 'pylint: disable=too-many-a
             for _, soc_args in multiprocess_run_args.items():
                 with Pool(processes=cpu_count) as pool:
                     one_soc_results = pool.map(_run_ut_case_file, soc_args)
-                for result in one_soc_results:
-                    results.append(result)
+                results.extend(one_soc_results)
             run_success = reduce(lambda x, y: x and y, results)
 
     test_report = ut_report.OpUTReport()
