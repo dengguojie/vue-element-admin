@@ -10,7 +10,7 @@ from impl.conv2d import conv2d_compute
 from impl.ascend_dequant import ascend_dequant_compute
 from impl.ascend_quant import ascend_quant_compute
 from impl.relu_v2 import relu_v2_compute
-
+from tbe.dsl.compute.conv_compute import ConvParam
 
 ut_case = OpUT("conv_schedule", "conv_schedule.test_static_conv_schedule_impl")
 def test_bias_preload(test_arg):
@@ -221,6 +221,45 @@ def test_static_conv_schedule_quant_fusion(test_arg):
 
 print("adding test_static_conv_schedule_quant_fusion")
 ut_case.add_cust_test_func("Ascend710", test_func=test_static_conv_schedule_quant_fusion)
+
+def test_static_conv_schedule_blo_buffer_tile(test_arg):
+    try:
+        with tbe.common.context.op_context.OpContext(None):
+            with tbe.dsl.base.operation.compute():
+                x_ = tvm.placeholder([1, 23, 4, 4, 16], name="x", dtype="float16", attrs={"ori_shape": [1, 360, 4, 4,], "format": "NC1HWC0", "ori_format": "NCHW"})
+                filter_ = tvm.placeholder([23, 23, 16, 16], name="filter", dtype="float16", attrs={"ori_shape": [120, 360, 1, 1], "format": "FRACTAL_Z", "ori_format": "NCHW"})
+                bias_ = tvm.placeholder([360], name="bias", dtype="float16", attrs={"ori_shape": [360], "format": "ND", "ori_format": "ND"})
+                output_ = {"dtype": "float16", "format": "NC1HWC0", "ori_format": "NHWC"}
+                strides = [1, 1, 1, 1]
+                pads = [0, 0, 0, 0]
+                dilations = [1, 1, 1, 1]
+                conv_out = conv2d_compute(x_, filter_, bias_, None, output_, strides, pads, dilations, 1, "NHWC")
+                tensor_list = [x_, filter_, bias_, conv_out]
+                tiling = {'AL0_matrix':[1, 1, 16, 16], 'CL0_matrix': [1, 1, 16, 16, 1], 'CUB_matrix': [1, 1, 16, 16], 
+                    'A_overhead_opt_flag': 0, 'B_overhead_opt_flag': 0, 'BL0_matrix': [ ],
+                    'manual_pingpong_buffer': {'AL0_pbuffer': 1, 'AL1_pbuffer': 1, 'AUB_pbuffer': 1, 'BL0_pbuffer': 1, 
+                    'BL1_pbuffer': 1, 'BUB_pbuffer': 1, 'CL0_pbuffer': 1, 'CUB_pbuffer': 1, 'UBG_pbuffer': 1},
+                    'n_bef_batch_flag': 0, 'AL1_shape': [], 'BL1_shape': None, 'block_dim': [1, 8, 1, 1], 'CUB_channel_wise_flag': False}
+                ConvParam.tiling = tiling
+                with te.tvm.target.cce():
+                    sch = te.utils.cce.auto_schedule(conv_out)
+                config = {
+                    "name": "static_conv_schedule_quant_fusion",
+                    "tensor_list": tensor_list,
+                    "build_args": {"constant_realize_extent_in_infer_bound": False}
+                }
+
+                tbe.dsl.unify_schedule.build.build(sch, config)
+
+    except (RuntimeError, ValueError, TypeError, AttributeError):
+        msg = traceback.format_exc()
+        print(msg)
+        return False
+    else:
+        return True
+
+print("adding static_conv_schedule_blo_buffer_tile")
+ut_case.add_cust_test_func("Ascend710",test_func=test_static_conv_schedule_blo_buffer_tile)
 
 
 if __name__ == '__main__':

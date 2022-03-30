@@ -5618,6 +5618,28 @@ class CceConvOp:
                     mc_flag = True
                     if blocks == block_dim[0]:
                         sch[res_c].pragma(bidi, 'json_info_batchBindOnly', 1)
+                    # after block tiling, cout has tail block.
+                    if tiling["BL0_matrix"] == [] and not MaxPoolParam.tensor_map["is_conv_pool_fused"]:
+                        origin_n = int_ceil_div(ConvParam.tiling_query_param["shape_w_nc1hwc0"][0], 16)
+                        data_pre_core = int_ceil_div(origin_n, block_dim[1])
+                        if self._dynamic_flag:
+                            cout_bound_min = ((block.var // block_dim[2]) % block_dim[1]) * data_pre_core % origin_n
+                        else:
+                            # m split by factor = m_c_tiling_factor
+                            m_outer_outer_extent = int_ceil_div(m_c_tiling_axis.dom.extent, m_c_tiling_factor)
+                            # m split by nparts = al1_factor[1]
+                            m_outer_outer_outer_extent = tvm.select(m_outer_outer_extent > al1_factor[1],
+                                                                    al1_factor[1],
+                                                                    m_outer_outer_extent)
+                            # m split by nparts = block_dim[2]
+                            m_outer_outer_outer_outer_extent = tvm.select(m_outer_outer_outer_extent > block_dim[2],
+                                                                          block_dim[2],
+                                                                          m_outer_outer_outer_extent)
+                            cout_bound_min = ((block.var // m_outer_outer_outer_outer_extent) % block_dim[1]) * \
+                                               data_pre_core % origin_n
+                        sch[bl0].buffer_tile((None, None),
+                                             (cout_bound_min, tvm.min(origin_n - cout_bound_min, data_pre_core)),
+                                             (None, None), (None, None))
             else:
                 noo_true = batch_inner_outer
 
