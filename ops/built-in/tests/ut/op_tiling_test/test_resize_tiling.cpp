@@ -78,3 +78,43 @@ TEST_F(ResizeTiling, resize_tiling_1) {
   RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "113000 16 1 1000 1000 1000 1000 16 1 2 ");
 }
+
+TEST_F(ResizeTiling, resize_tiling_2) {
+  std::string op_name = "Resize";
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
+  auto opParas = op::Resize("Resize");
+  opParas.SetAttr("mode", "nearest");
+  std::string compileInfo =
+      "{\"vars\": {\"core_num\": 32,  \"left_w\": 3764, \"mode_name\": 22}}";
+
+  std::vector<int64_t> input{32, 1, 16, 128, 64, 16};
+  std::vector<int64_t> output{32, 16, 16, 128, 32, 16};
+
+  TENSOR_INPUT_WITH_SHAPE(opParas, x, input, DT_FLOAT, FORMAT_NDC1HWC0, {});
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, y, output, DT_FLOAT, FORMAT_NDC1HWC0, {});
+
+  optiling::utils::OpRunInfo runInfo;
+  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "0 32 16 1 128 64 16 128 32 0 0 0 512 16 16 32 1 128 1 32 0 0 0 ");
+}
+
+TEST_F(ResizeTiling, resize_tiling_3) {
+  std::string op_name = "Resize";
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
+  auto opParas = op::Resize("Resize");
+  opParas.SetAttr("mode", "nearest");
+  std::string compileInfo =
+      "{\"vars\": {\"core_num\": 32,  \"left_w\": 3764, \"mode_name\": 22}}";
+
+  std::vector<int64_t> input{1, 1, 16, 1, 64, 16};
+  std::vector<int64_t> output{1, 1, 16, 1, 256, 16};
+
+  TENSOR_INPUT_WITH_SHAPE(opParas, x, input, DT_FLOAT, FORMAT_NDC1HWC0, {});
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, y, output, DT_FLOAT, FORMAT_NDC1HWC0, {});
+
+  optiling::utils::OpRunInfo runInfo;
+  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "3 1 16 1 1 64 1 1 256 0 0 0 1 1 1 1 1 1 1 256 4 4 4 ");
+}

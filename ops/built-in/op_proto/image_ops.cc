@@ -2893,22 +2893,17 @@ IMPLEMT_INFERFUNC(Resize, ResizeNearestInferShape) {
   std::vector<std::pair<int64_t, int64_t>> x_range;
   // check format and get rank num
   int64_t dim_num;
-  if (input_format == FORMAT_NCHW || input_format == FORMAT_NHWC) {
-    dim_num = 4;
-  } else if (input_format == FORMAT_NDHWC || input_format == FORMAT_NCDHW) {
-    dim_num = 5;
+  
+  dim_num = x_shape.size();
+  if (dim_num == 4) {
+    input_format = FORMAT_NCHW;
+    input_desc_x->SetFormat(input_format);
+  } else if (dim_num == 5) {
+    input_format = FORMAT_NCDHW;
+    input_desc_x->SetFormat(input_format);
   } else {
-    dim_num = x_shape.size();
-    if (dim_num == 4) {
-      input_format = FORMAT_NCHW;
-      input_desc_x->SetFormat(input_format);
-    } else if (dim_num == 5) {
-      input_format = FORMAT_NCDHW;
-      input_desc_x->SetFormat(input_format);
-    } else {
-      OP_LOGE(op.GetName().c_str(), "Input format not support");
-      return GRAPH_FAILED;
-    }
+    OP_LOGE(op.GetName().c_str(), "Input format not support");
+    return GRAPH_FAILED;
   }
   // unknown rank
   bool is_unknown_rank_x = x_shape == UNKNOWN_RANK;

@@ -98,6 +98,8 @@ struct ResizeCommonInputCompile {
   int64_t max_w_len;
   int64_t align_corners;
   int64_t half_pixel_centers;
+  int64_t core_num2;
+  int64_t left_w;
   // tune_params{tiling_key, cut_batch_c1_num, cut_height_num, cut_width_num}
   vector<int64_t> tune_params{0, 0, 0, 0};
 };
