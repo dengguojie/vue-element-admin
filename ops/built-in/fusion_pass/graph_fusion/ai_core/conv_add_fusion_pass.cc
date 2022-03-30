@@ -360,11 +360,11 @@ Status ConvAddFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
   auto bias_add_weight_size = weights.size();
   if (bias_add_weight_size == 0 && add_node->GetType() == kAdd &&
       (conv_node->GetType() == kConvolution3D || conv_node->GetType() == kConvolution2D)) {
-    bool check_null = add_node->GetInDataAnchor(1) == nullptr ||
+    bool checkNull = add_node->GetInDataAnchor(1) == nullptr ||
                       add_node->GetInDataAnchor(1)->GetPeerOutAnchor() == nullptr ||
                       add_node->GetInDataAnchor(1)->GetPeerOutAnchor()->GetOwnerNode() == nullptr;
 
-    FUSION_PASS_CHECK(check_null,
+    FUSION_PASS_CHECK(checkNull,
                       OP_LOGI(fused_op_type_.c_str(), "The input of add %s is null!", add_node->GetName().c_str()),
                       return NOT_CHANGED);
     auto node_in_front_of_add = add_node->GetInDataAnchor(1)->GetPeerOutAnchor()->GetOwnerNode();
