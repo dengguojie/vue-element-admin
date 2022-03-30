@@ -30,22 +30,41 @@ Status ParseParamsResize(const Message *op_src, Operator &op_dst) {
     return FAILED;
   }
 
-  std::string coordinate_transformation_mode_value = "half_pixel";
+  int input_size = node->input_size();
+
+  std::string coordinate_transformation_mode = "half_pixel";
+  float cubic_coeff_a = -0.75;
+  int exclude_outside = 0;
+  float extrapolation_value = 0;
   std::string mode_value = "nearest";
+  std::string nearest_mode = "round_prefer_floor";
   for (auto attr : node->attribute()) {
-    if (attr.name() == "coordinate_transformation_mode" &&
-        attr.type() == ge::onnx::AttributeProto::STRING) {
-      coordinate_transformation_mode_value = attr.s();
-    } else if (attr.name() == "mode" &&
-               attr.type() == ge::onnx::AttributeProto::STRING) {
+    if (attr.name() == "coordinate_transformation_mode" && attr.type() == ge::onnx::AttributeProto::STRING) {
+      coordinate_transformation_mode = attr.s();
+    }
+    if (attr.name() == "cubic_coeff_a" && attr.type() == ge::onnx::AttributeProto::FLOAT) {
+      cubic_coeff_a = attr.f();
+    }
+    if (attr.name() == "exclude_outside" && attr.type() == ge::onnx::AttributeProto::INT) {
+      exclude_outside = attr.i();
+    }
+    if (attr.name() == "extrapolation_value" && attr.type() == ge::onnx::AttributeProto::FLOAT) {
+      extrapolation_value = attr.f();
+    }
+    if (attr.name() == "mode" && attr.type() == ge::onnx::AttributeProto::STRING) {
       mode_value = attr.s();
     }
+    if (attr.name() == "nearest_mode" && attr.type() == ge::onnx::AttributeProto::STRING) {
+      nearest_mode = attr.s();
+    }
   }
-  int input_size = node->input_size();
   op_dst.SetAttr("input_size", input_size);
-  op_dst.SetAttr("coordinate_transformation_mode", coordinate_transformation_mode_value);
+  op_dst.SetAttr("coordinate_transformation_mode", coordinate_transformation_mode);
+  op_dst.SetAttr("cubic_coeff_a", cubic_coeff_a);
+  op_dst.SetAttr("exclude_outside", exclude_outside);
+  op_dst.SetAttr("extrapolation_value", extrapolation_value);
   op_dst.SetAttr("mode", mode_value);
-  
+  op_dst.SetAttr("nearest_mode", nearest_mode);
   auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op_dst);
   if (op_desc == nullptr) {
     ONNX_PLUGIN_LOGE(op_dst.GetName().c_str(), "Get op desc failed.");
@@ -67,86 +86,87 @@ static Status ParseOpToGraphResize(const Operator& op, Graph& graph) {
   auto resize_scales = op::Identity().set_input_x(data2);
   auto resize_sizes = op::Identity().set_input_x(data3);
 
-  std::string coordinate_transformation_mode_value = "pytorch_half_pixel";
-  if (op.GetAttr("coordinate_transformation_mode", coordinate_transformation_mode_value) != GRAPH_SUCCESS) {
-    OP_LOGW(op.GetName().c_str(), "Get attr coordinate transformation mode failed, set to default.");
+  std::vector<float> roi_vector(1, 0);
+  int64_t len_roi = roi_vector.size();
+  std::vector<int64_t> dims_roi = {len_roi};
+  ge::Tensor roi_tensor = Vec2Tensor(roi_vector, dims_roi, ge::DT_FLOAT, ge::FORMAT_ND);
+  auto const_roi_tensor = op::Const().set_attr_value(roi_tensor);
+
+  std::string coordinate_transformation_mode = "half_pixel";
+  if (op.GetAttr("coordinate_transformation_mode", coordinate_transformation_mode) != SUCCESS) {
+    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "get coordinate_transformation_mode from op failed.");
+    return FAILED;
   }
-  bool half_pixel_centers = false;
-  bool align_corners = false;
-  if (coordinate_transformation_mode_value == "pytorch_half_pixel") {
-    half_pixel_centers = true;
-  } else if (coordinate_transformation_mode_value == "align_corners") {
-    align_corners = true;
+  float cubic_coeff_a = -0.75;
+  if (op.GetAttr("cubic_coeff_a", cubic_coeff_a) != SUCCESS) {
+    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "get cubic_coeff_a from op failed.");
+    return FAILED;
+  }
+  int exclude_outside = 0;
+  if (op.GetAttr("exclude_outside", exclude_outside) != SUCCESS) {
+    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "get exclude_outside from op failed.");
+    return FAILED;
+  }
+  float extrapolation_value = 0;
+  if (op.GetAttr("extrapolation_value", extrapolation_value) != SUCCESS) {
+    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "get extrapolation_value from op failed.");
+    return FAILED;
+  }
+  std::string mode_value = "nearest";
+  if (op.GetAttr("mode", mode_value) != SUCCESS) {
+    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "get mode_value from op failed.");
+    return FAILED;
+  }
+  std::string nearest_mode = "round_prefer_floor";
+  if (op.GetAttr("nearest_mode", nearest_mode) != SUCCESS) {
+    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "get nearest_mode from op failed.");
+    return FAILED;
+  }
+  int input_size = 0;
+  if (op.GetAttr("input_size", input_size) != SUCCESS) {
+    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "get input_size from op failed.");
+    return FAILED;
   }
 
-  int input_size = 0;
-  ge::Operator sizes;
-  std::string mode_value;
   std::vector<Operator> inputs {data0};
   std::vector<std::pair<Operator, std::vector<size_t> > > output_indexs;
-  if (op.GetAttr("input_size", input_size) != SUCCESS) {
-    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "get input_size from op failed");
-    return FAILED;
-  }
   if (input_size == INPUT_SIZES_FOUR) {
-    sizes = op::Cast().set_input_x(resize_sizes).set_attr_dst_type(ge::DT_INT32);
+    inputs.push_back(data3);
+
+    std::vector<float> scales_vector(1, 0);
+    int64_t len_scales = scales_vector.size();
+    std::vector<int64_t> dims_scales = {len_scales};
+    ge::Tensor scales_tensor = Vec2Tensor(scales_vector, dims_scales, ge::DT_FLOAT, ge::FORMAT_ND);
+    auto const_scales_tensor = op::Const().set_attr_value(scales_tensor);
+
+    auto resizeout4 = op::Resize().set_input_x(resize_x)
+                                  .set_input_roi(const_roi_tensor)
+                                  .set_input_scales(const_scales_tensor)
+                                  .set_input_sizes(resize_sizes)
+                                  .set_attr_coordinate_transformation_mode(coordinate_transformation_mode)
+                                  .set_attr_cubic_coeff_a(cubic_coeff_a)
+                                  .set_attr_exclude_outside(exclude_outside)
+                                  .set_attr_extrapolation_value(extrapolation_value)
+                                  .set_attr_mode(mode_value)
+                                  .set_attr_nearest_mode(nearest_mode);
+    resizeout4.AddControlInput(resize_roi);
+    resizeout4.AddControlInput(resize_scales);
+    output_indexs.emplace_back(resizeout4, vector<std::size_t> {0});
   } else if (input_size == INPUT_SIZES_THREE) {
-    int dtype = 0;
-    int sizes_type = 3;
-    auto resize = op::Shape().set_input_x(resize_x);
-    auto resize_cast = op::Cast().set_input_x(resize).set_attr_dst_type(dtype);
-    auto mul_sizes = op::Mul().set_input_x1(resize_cast).set_input_x2(resize_scales);
-    sizes = op::Cast().set_input_x(mul_sizes).set_attr_dst_type(sizes_type);
+    inputs.push_back(data2);
+    auto resizeout3 = op::Resize().set_input_x(resize_x)
+                                  .set_input_roi(const_roi_tensor)
+                                  .set_input_scales(resize_scales)
+                                  .set_attr_coordinate_transformation_mode(coordinate_transformation_mode)
+                                  .set_attr_cubic_coeff_a(cubic_coeff_a)
+                                  .set_attr_exclude_outside(exclude_outside)
+                                  .set_attr_extrapolation_value(extrapolation_value)
+                                  .set_attr_mode(mode_value)
+                                  .set_attr_nearest_mode(nearest_mode);
+    resizeout3.AddControlInput(resize_roi);
+    output_indexs.emplace_back(resizeout3, vector<std::size_t> {0});
   } else {
     ONNX_PLUGIN_LOGE(op.GetName().c_str(), "The input_size is error.");
-    return FAILED;
-  }
-
-  int32_t offsets = 2;
-  int32_t size_num = 2;
-  std::vector<int64_t> dims = {1};
-  ge::Tensor tensor_offsets = Scalar2Tensor(offsets, dims, ge::DT_INT32);
-  ge::Tensor tensor_size = Scalar2Tensor(size_num, dims, ge::DT_INT32);
-  auto data_offsets = op::Const("data_offsets").set_attr_value(tensor_offsets);
-  auto data_size = op::Const("data_size").set_attr_value(tensor_size);
-
-  auto size = op::Slice().set_input_x(sizes).set_input_offsets(data_offsets).set_input_size(data_size);
-  inputs.push_back(size);
-  auto ret_resize_x = ChangeFormatFromOnnx(resize_x, 0, ge::FORMAT_NCHW, false);
-  if (ret_resize_x != ge::GRAPH_SUCCESS) {
-    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "update resize_x format failed.");
-    return FAILED;
-  }
-  if (op.GetAttr("mode", mode_value) != GRAPH_SUCCESS) {
-    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "Get attr mode failed, set to default.");
-    return FAILED;
-  }
-  if (mode_value == "nearest") {
-    auto resizeout_1 = op::ResizeNearestNeighborV2().set_input_x(resize_x)
-                                                   .set_input_size(size)
-                                                   .set_attr_align_corners(align_corners)
-                                                   .set_attr_half_pixel_centers(half_pixel_centers);
-    resizeout_1.AddControlInput(resize_roi);
-    if (input_size == INPUT_SIZES_FOUR) {
-      resizeout_1.AddControlInput(resize_scales);
-    }
-    ChangeFormatFromOnnx(resizeout_1, 0, ge::FORMAT_NCHW, false);
-    ChangeFormatFromOnnx(resizeout_1, 0, ge::FORMAT_NCHW, true);
-    output_indexs.emplace_back(resizeout_1, vector<std::size_t> {0});
-  } else if (mode_value == "linear") {
-    auto resizeout_2 = op::ResizeBilinearV2().set_input_x(resize_x)
-                                            .set_input_size(size)
-                                            .set_attr_align_corners(align_corners)
-                                            .set_attr_half_pixel_centers(half_pixel_centers);
-    resizeout_2.AddControlInput(resize_roi);
-    if (input_size == INPUT_SIZES_FOUR) {
-      resizeout_2.AddControlInput(resize_scales);
-    }
-    ChangeFormatFromOnnx(resizeout_2, 0, ge::FORMAT_NCHW, false);
-    ChangeFormatFromOnnx(resizeout_2, 0, ge::FORMAT_NCHW, true);
-    output_indexs.emplace_back(resizeout_2, vector<std::size_t> {0});
-  } else {
-    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "Unsupported interpolation mode");
     return FAILED;
   }
   graph.SetInputs(inputs).SetOutputs(output_indexs);
@@ -160,20 +180,47 @@ Status ParseParamsResizeV10(const Message *op_src, Operator &op_dst) {
     return FAILED;
   }
 
+  int input_size = node->input_size();
+
+  std::string coordinate_transformation_mode = "asymmetric";
+  float cubic_coeff_a = -0.75;
+  int exclude_outside = 0;
+  float extrapolation_value = 0;
   std::string mode_value = "nearest";
+  std::string nearest_mode = "round_prefer_floor";
   for (auto attr : node->attribute()) {
+    if (attr.name() == "coordinate_transformation_mode" && attr.type() == ge::onnx::AttributeProto::STRING) {
+      coordinate_transformation_mode = attr.s();
+    }
+    if (attr.name() == "cubic_coeff_a" && attr.type() == ge::onnx::AttributeProto::FLOAT) {
+      cubic_coeff_a = attr.f();
+    }
+    if (attr.name() == "exclude_outside" && attr.type() == ge::onnx::AttributeProto::INT) {
+      exclude_outside = attr.i();
+    }
+    if (attr.name() == "extrapolation_value" && attr.type() == ge::onnx::AttributeProto::FLOAT) {
+      extrapolation_value = attr.f();
+    }
     if (attr.name() == "mode" && attr.type() == ge::onnx::AttributeProto::STRING) {
       mode_value = attr.s();
     }
+    if (attr.name() == "nearest_mode" && attr.type() == ge::onnx::AttributeProto::STRING) {
+      nearest_mode = attr.s();
+    }
   }
+  op_dst.SetAttr("input_size", input_size);
+  op_dst.SetAttr("coordinate_transformation_mode", coordinate_transformation_mode);
+  op_dst.SetAttr("cubic_coeff_a", cubic_coeff_a);
+  op_dst.SetAttr("exclude_outside", exclude_outside);
+  op_dst.SetAttr("extrapolation_value", extrapolation_value);
   op_dst.SetAttr("mode", mode_value);
-  
+  op_dst.SetAttr("nearest_mode", nearest_mode);
   auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op_dst);
-  if (op_desc == nullptr) {
+  if (op_desc == nullptr){
     ONNX_PLUGIN_LOGE(op_dst.GetName().c_str(), "Get op desc failed.");
     return FAILED;
   }
-  op_desc->AddDynamicInputDesc("x", INPUT_SIZES_TWO);
+  op_desc->AddDynamicInputDesc("x", input_size);
   op_desc->AddDynamicOutputDesc("y", 1);
   ge::AttrUtils::SetStr(op_desc, "original_type", "ai.onnx::10::Resize");
   return SUCCESS;
@@ -182,60 +229,66 @@ Status ParseParamsResizeV10(const Message *op_src, Operator &op_dst) {
 static Status ParseOpToGraphResizeV10(const Operator& op, Graph& graph) {
   auto data0 = op::Data("data0").set_attr_index(0);
   auto data1 = op::Data("data1").set_attr_index(1);
-  auto resize_x = op::Identity().set_input_x(data0);
-  
-  int dtype = 0;
-  int sizes_type = 3;
-  auto resize = op::Shape().set_input_x(resize_x);
-  auto resize_cast = op::Cast().set_input_x(resize).set_attr_dst_type(dtype);
-  auto mul_sizes = op::Mul().set_input_x1(resize_cast).set_input_x2(data1);
-  auto sizes = op::Cast().set_input_x(mul_sizes).set_attr_dst_type(sizes_type);
- 
-  int32_t offsets = 2;
-  int32_t size_num = 2;
-  std::vector<int64_t> dims = {1};
-  ge::Tensor tensor_offsets = Scalar2Tensor(offsets, dims, ge::DT_INT32);
-  ge::Tensor tensor_size = Scalar2Tensor(size_num, dims, ge::DT_INT32);
-  auto data_offsets = op::Const("data_offsets").set_attr_value(tensor_offsets);
-  auto data_size = op::Const("data_size").set_attr_value(tensor_size);
+  auto input_x = op::Identity().set_input_x(data0);
+  auto input_scales = op::Identity().set_input_x(data1);
 
-  auto size = op::Slice().set_input_x(sizes).set_input_offsets(data_offsets).set_input_size(data_size);
-  auto ret_resize_x = ChangeFormatFromOnnx(resize_x, 0, ge::FORMAT_NCHW, false);
-  if (ret_resize_x != ge::GRAPH_SUCCESS) {
-    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "update resize_x format failed.");
+  std::vector<float> roi_vector(1, 0);
+  int64_t len_roi = roi_vector.size();
+  std::vector<int64_t> dims_roi = {len_roi};
+  ge::Tensor roi_tensor = Vec2Tensor(roi_vector, dims_roi, ge::DT_FLOAT, ge::FORMAT_ND);
+  auto const_roi_tensor = op::Const().set_attr_value(roi_tensor);
+
+  std::vector<Operator> inputs {data0, data1};
+
+  auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
+  if (op_desc == nullptr) {
+    ONNX_PLUGIN_LOGE("Resize", "Get op desc failed.");
     return FAILED;
   }
 
-  std::string mode_value;
-  if (op.GetAttr("mode", mode_value) != GRAPH_SUCCESS) {
-    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "Get attr mode failed, set to default.");
+  std::string coordinate_transformation_mode = "asymmetric";
+  if (op.GetAttr("coordinate_transformation_mode", coordinate_transformation_mode) != SUCCESS) {
+    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "get coordinate_transformation_mode from op failed.");
     return FAILED;
   }
+  float cubic_coeff_a = -0.75;
+  if (op.GetAttr("cubic_coeff_a", cubic_coeff_a) != SUCCESS) {
+    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "get cubic_coeff_a from op failed.");
+    return FAILED;
+  }
+  int exclude_outside = 0;
+  if (op.GetAttr("exclude_outside", exclude_outside) != SUCCESS) {
+    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "get exclude_outside from op failed.");
+    return FAILED;
+  }
+  float extrapolation_value = 0;
+  if (op.GetAttr("extrapolation_value", extrapolation_value) != SUCCESS) {
+    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "get extrapolation_value from op failed.");
+    return FAILED;
+  }
+  std::string mode_value = "nearest";
+  if (op.GetAttr("mode", mode_value) != SUCCESS) {
+    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "get mode_value from op failed.");
+    return FAILED;
+  }
+  std::string nearest_mode = "round_prefer_floor";
+  if (op.GetAttr("nearest_mode", nearest_mode) != SUCCESS) {
+    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "get nearest_mode from op failed.");
+    return FAILED;
+  }
+
+  auto resizeout = op::Resize().set_input_x(input_x)
+                               .set_input_roi(const_roi_tensor)
+                               .set_input_scales(input_scales)
+                               .set_attr_coordinate_transformation_mode(coordinate_transformation_mode)
+                               .set_attr_cubic_coeff_a(cubic_coeff_a)
+                               .set_attr_exclude_outside(exclude_outside)
+                               .set_attr_extrapolation_value(extrapolation_value)
+                               .set_attr_mode(mode_value)
+                               .set_attr_nearest_mode(nearest_mode);
 
   std::vector<std::pair<Operator, std::vector<size_t> > > output_indexs;
-  bool half_pixel_centers = false;
-  bool align_corners = false;
-  if (mode_value == "nearest") {
-    auto resizeout_1 = op::ResizeNearestNeighborV2().set_input_x(resize_x)
-                                                   .set_input_size(size)
-                                                   .set_attr_align_corners(align_corners)
-                                                   .set_attr_half_pixel_centers(half_pixel_centers);
-    ChangeFormatFromOnnx(resizeout_1, 0, ge::FORMAT_NCHW, false);
-    ChangeFormatFromOnnx(resizeout_1, 0, ge::FORMAT_NCHW, true);
-    output_indexs.emplace_back(resizeout_1, vector<std::size_t> {0});
-  } else if (mode_value == "linear") {
-    auto resizeout_2 = op::ResizeBilinearV2().set_input_x(resize_x)
-                                            .set_input_size(size)
-                                            .set_attr_align_corners(align_corners)
-                                            .set_attr_half_pixel_centers(half_pixel_centers);
-    ChangeFormatFromOnnx(resizeout_2, 0, ge::FORMAT_NCHW, false);
-    ChangeFormatFromOnnx(resizeout_2, 0, ge::FORMAT_NCHW, true);
-    output_indexs.emplace_back(resizeout_2, vector<std::size_t> {0});
-  } else {
-    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "Unsupported interpolation mode");
-    return FAILED;
-  }
-  std::vector<Operator> inputs {data0, data1};
+  output_indexs.emplace_back(resizeout, vector<std::size_t> {0});
   graph.SetInputs(inputs).SetOutputs(output_indexs);
   return SUCCESS;
 }

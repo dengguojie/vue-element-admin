@@ -4136,8 +4136,6 @@ pytorch:
       - ops/built-in/tbe/impl/rotated_overlaps.py
       - ops/built-in/fusion_pass/graph_fusion/ai_core/softmaxv2_onnx_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/softmaxv2_onnx_fusion_pass.h
-      - ops/built-in/fusion_pass/graph_fusion/ai_core/resize_fusion_pass.cc
-      - ops/built-in/fusion_pass/graph_fusion/ai_core/resize_fusion_pass.h
       - ops/built-in/tbe/impl/dynamic/resize_nearest3d.py
     unrelease:
       - ops/built-in/tests/ut/graph_fusion/ai_core/lstmp_fusion_test.cpp
