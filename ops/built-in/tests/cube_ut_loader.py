@@ -65,7 +65,7 @@ def load_ut_cases(case_dir, file_name_pattern="test_*_impl.py") -> List[op_ut_ca
         with Pool(processes=cpu_cnt) as pool:
             all_res = pool.map(_get_op_module_info, case_file_list)
         for res in all_res:
-            status, c_f, c_m = res.get()
+            status, c_f, c_m = res
             if not status:
                 has_error = True
             if not c_f or not c_m:

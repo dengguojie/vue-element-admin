@@ -17,11 +17,7 @@ from tbe.common.context import op_context
 from test_mock_case import *
 
 
-ut_case = OpUT(
-    "conv2d_backprop_filter_d",
-    "impl.conv2d_backprop_filter_d",
-    "conv2d_backprop_filter_d",
-)
+ut_case = OpUT("Conv2DBackpropFilterD", "impl.conv2d_backprop_filter_d", "conv2d_backprop_filter_d")
 DEBUG_MODE = False
 
 
