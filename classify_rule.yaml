@@ -441,6 +441,8 @@ cube-tiling:
       - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/conv/conv2d_dequant_add_mul_quant_pass.h
       - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/conv/conv2d_reluv2_pass.cc
       - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/conv/conv2d_reluv2_pass.h
+      - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/conv/conv2d_transdata_fusion_pass.cc
+      - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/conv/conv2d_transdata_fusion_pass.h
       - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/conv/conv2d_writeselect_stridewrite_pass.cc
       - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/conv/conv2d_writeselect_stridewrite_pass.h
       - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/conv/tbe_conv_dequantS16_pass.cc

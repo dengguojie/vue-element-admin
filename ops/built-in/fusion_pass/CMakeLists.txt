@@ -78,6 +78,7 @@ set(_aicore_fusion_srcs
   buffer_fusion/ub_fusion/ai_core/conv3d/conv3d_elemwise_pass.cc
   buffer_fusion/ub_fusion/ai_core/conv3d_backprop_input/conv3d_bp_input_elemwise_pass.cc
   buffer_fusion/ub_fusion/ai_core/conv/conv2d_reluv2_pass.cc
+  buffer_fusion/ub_fusion/ai_core/conv/conv2d_transdata_fusion_pass.cc
   buffer_fusion/ub_fusion/ai_core/conv/conv2d_dequant_add_mul_quant_pass.cc
   buffer_fusion/ub_fusion/ai_core/conv/conv2d_add_clip_mul_div.cc
   buffer_fusion/ub_fusion/ai_core/conv/conv2d_writeselect_stridewrite_pass.cc
