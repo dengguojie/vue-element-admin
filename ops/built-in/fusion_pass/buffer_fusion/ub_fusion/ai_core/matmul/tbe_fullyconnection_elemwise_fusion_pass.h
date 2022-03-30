@@ -53,6 +53,11 @@ private:
   Status CheckDynamicMode(vector<ge::NodePtr>& matmulNodes, std::vector<ge::NodePtr>& fusionNodes) const;
   bool CheckMatmulDequantGeluQuantFusion(const vector<ge::NodePtr> &reluNodes);
   void CheckOutputFusion(const BufferFusionMapping &mapping, vector<ge::NodePtr> &fusionNodes);
+  Status CheckReluNode(const ge::NodePtr &relu_node, const std::vector<ge::NodePtr> &elemwise_nodes,
+                       vector<ge::NodePtr> &fusion_nodes);
+  Status CheckElemwiseNode(const ge::NodePtr &elemwise_node, const std::vector<ge::NodePtr> &fc_nodes,
+                           const std::vector<ge::NodePtr> &relu_nodes, const std::vector<ge::NodePtr> &dequant_nodes,
+                           vector<ge::NodePtr> &fusion_nodes);
 };
 
 }  // namespace fe

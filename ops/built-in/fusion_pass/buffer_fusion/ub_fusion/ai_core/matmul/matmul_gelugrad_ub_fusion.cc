@@ -177,6 +177,14 @@ Status MatmulGelugradUbFusion::GetFusionNodes(const BufferFusionMapping& mapping
     }
   }
 
+  for (auto &elemwiseNode : elemwiseNodes) {
+    if (elemwiseNode->GetType() == "TanhGrad") {
+      fusionNodes.clear();
+      OP_LOGW(FUSED_OP_TYPE.c_str(), "ub fusion not support TanhGrad.");
+      return SUCCESS;
+    }
+  }
+
   // multi input node can not be fused except head node
   for (auto& item : mapping) {
     auto opdesc = find(item.first->types.begin(), item.first->types.end(), TBE_PATTERN_OUTPUT_NODE);

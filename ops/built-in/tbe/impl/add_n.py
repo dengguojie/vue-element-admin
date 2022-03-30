@@ -73,10 +73,15 @@ def add_n_compute_for_fusion(datas, output, tensor_num, kernel_name="add_n"):
 
     if not batchmatmul_flag:
         res = datas[0]
+        format_out = ""
         for i, data_n in enumerate(datas):
             if i == 0:
                 continue
+            if "format" in data_n.op.attrs:
+                format_out = data_n.op.attrs["format"].value
             res = tbe.vadd(res, data_n)
+        if format_out:
+            res.op.attrs["format"] = format_out
         return res
 
     for i, nz_add in enumerate(nz_addn):

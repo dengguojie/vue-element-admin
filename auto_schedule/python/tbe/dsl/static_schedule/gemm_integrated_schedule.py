@@ -57,6 +57,55 @@ def gemm_schedule(res, sch_list, dynamic_para=None):
     return True
 
 
+def _check_double_out(outs):
+    """ check double out condition for matmul ub fusion
+    """
+    if not isinstance(outs, list):
+        return False
+    # 2 means two output tensors
+    if len(outs) != 2:
+        return False
+
+    for tensor in outs:
+        if not isinstance(tensor, tvm.tensor.Tensor):
+            return False
+        # not support matmul multi-output
+        if tensor.op.name == "tensor_c_gm":
+            return False
+
+    all_tags = GemmSchedule.get_all_tags(outs[-1])
+    if "matmul" not in all_tags:
+        return False
+
+    shape0 = [x.value for x in outs[0].shape]
+    shape1 = [x.value for x in outs[1].shape]
+    # only support elementwise
+    return shape0 == shape1
+
+
+def reget_matmul_multioutput(outs):
+    """ add a virtual node to connect double outs for tvm coding rule
+    """
+    if _check_double_out(outs):
+        out1, out2 = outs
+        out1_copy = tvm.compute(
+            out1.shape,
+            lambda *indices: out1(*indices),
+            name="out1",
+            tag="out1"
+        )
+        # 4 means that virtual node only support four dims for now
+        if len(out1.shape) == 4 and len(out2.shape) == 4:
+            virtual_res = tvm.compute(
+                out1.shape,
+                lambda i, j, jj, ii: out1_copy(i, j, jj, ii) + out2(i, j, jj, ii),
+                name="matmul_virtual_res",
+                tag="matmul_virtual_res"
+            )
+            outs = [virtual_res, out1_copy, out2]
+    return outs
+
+
 class GemmSchedule:
     """
     schedule enter
@@ -231,6 +280,7 @@ class GemmSchedule:
             self.vector_muls_attr = {}
             self.custom_block_dim = []
             self.axis_core = None
+            self.double_out_tensor = []
 
     class GemmScheduleStatusController:
         """
@@ -265,7 +315,8 @@ class GemmSchedule:
             self.mmad_mode = "gemm"
             self.align_a, self.align_b = True, True
             self.a_use_aligned_pattern, self.b_use_aligned_pattern = False, False
-            self.multi_output_flag = False
+            self.matmul_multi_output_flag = False
+            self.fusion_multi_output_flag = False
             self.storage_m_bound_change = False
             self.storage_ka_bound_change = False
             self.storage_kb_bound_change = False
@@ -351,28 +402,28 @@ class GemmSchedule:
         self.tensor_b_reshape = 0
 
     @staticmethod
-    def _get_all_tags(res):
+    def get_all_tags(res):
         """
         get all tags
         :param res: tensor
         :return: list
         """
-        tensor_tags = set()
+        op_tags = set()
 
-        def get_tag(tenosr):
+        def get_tag(tensor):
             """
-            find all tag
+            find all tags
             :param tensor: tensor
             :return: all tags
             """
-            tensor_list = tenosr.op.input_tensors
-            tensor_tags.add(tenosr.op.tag)
+            tensor_list = tensor.op.input_tensors
+            op_tags.add(tensor.op.tag)
             for one_tensor in tensor_list:
-                tensor_tags.add(one_tensor.op.tag)
+                op_tags.add(one_tensor.op.tag)
                 get_tag(one_tensor)
 
         get_tag(res)
-        return tensor_tags
+        return op_tags
 
     @staticmethod
     def _copy_attrs(src_tensor, dst_tensor):
@@ -560,6 +611,8 @@ class GemmSchedule:
         the main func of gemm_schedule
         """
         self._print_ir_matmul("orgin ir", self.sch)
+        self._get_root_tensor()
+        self._get_double_out_tensor()
         self.container.ori_tensors = self._get_all_tensors(self.res)
         self._get_global_para_phase_0(self.container.ori_tensors)
         self._get_global_para_phase_1(self.container.ori_tensors)
@@ -602,6 +655,20 @@ class GemmSchedule:
         self.tiling.clear()
         self.container.TENSOR_MAP.clear()
         return True
+
+    def _get_root_tensor(self):
+        """ get root tensor for multi-output scene
+        """
+        if isinstance(self.res_ori, list):
+            for res_tensor in self.res_ori:
+                if res_tensor.op.tag == "matmul_virtual_res":
+                    self.root_tensor = res_tensor
+
+    def _get_double_out_tensor(self):
+        if self.root_tensor.op.tag == "matmul_virtual_res":
+            self.container.double_out_tensor.append(self.root_tensor.op.input_tensors[0])
+            self.container.double_out_tensor.append(self.root_tensor.op.input_tensors[1])
+            self.status_controller.fusion_multi_output_flag = True
 
     def _get_real_k_multi_core_axis(self):
         """
@@ -735,7 +802,6 @@ class GemmSchedule:
             schedule_pattern = self.dynamic_para.get("tiling_strategy").get("schedule_pattern")
             if schedule_pattern == "Aligned":
                 self.schedule_mode = self.DYN_ALIGNED_MODE
-        self.root_tensor = self.res
         tensor_l0c = ori_tensors.get("tensor_c_matrix")
         self.ops_format = tensor_l0c.op.attrs["ops_format"].value
         self.status_controller.have_bias = tensor_l0c.op.attrs["have_bias"].value
@@ -867,6 +933,7 @@ class GemmSchedule:
             self._set_data_layout_a_matrix()
             self._set_data_layout_b_matrix()
             self._set_data_layout_fusion()
+            self._set_data_layout_multi_output()
 
     def _set_nd_out_compute_inline(self):
         """
@@ -1233,6 +1300,16 @@ class GemmSchedule:
         if self.status_controller.compute_inline_c_ub_fract:
             self._add_tensor_to_list(c_ub_fract, [self.container.compute_inline_list])
 
+    def _set_data_layout_multi_output(self):
+        """ set tensor_c_gm to ubuf scope and not do compute_inline
+        """
+        if self.status_controller.fusion_multi_output_flag:
+            tensor_c_gm = self.container.TENSOR_MAP.get("c_gm")
+            self._add_tensor_to_list(tensor_c_gm, [self.container.tensors_in_cub])
+            self.sch[tensor_c_gm].set_scope(tbe_platform_info.scope_ubuf)
+            if tensor_c_gm in self.container.compute_inline_list:
+                self.container.compute_inline_list.remove(tensor_c_gm)
+
     def _get_tensor_and_set_scope(self, tensor_name, buffer_name, save_name=None):
         if save_name is None:
             save_name = tensor_name
@@ -1444,6 +1521,8 @@ class GemmSchedule:
                 self.sch[tensor].set_scope(tbe_platform_info.scope_ubuf)
 
         for tensor in self.container.fusion_list:
+            if tensor in self.container.double_out_tensor:
+                continue
             self.sch[tensor].set_scope(tbe_platform_info.scope_ubuf)
 
         self._get_tensor_deq(dequant_tensor_list)
@@ -1642,7 +1721,7 @@ class GemmSchedule:
             res_ub = self.sch.cache_write(self.res, tbe_platform_info.scope_ubuf)
             self.container.elemwise_tensors.append(res_ub)
 
-        if self.res != self.container.TENSOR_MAP.get("c_gm") and not self.status_controller.multi_output_flag:
+        if self.res != self.container.TENSOR_MAP.get("c_gm") and not self.status_controller.matmul_multi_output_flag:
             self.container.compute_inline_list.append(self.container.TENSOR_MAP.get("c_gm"))
         compute_inline_c_ub = self.status_controller.quantify_fusion
         if compute_inline_c_ub:
@@ -1834,7 +1913,7 @@ class GemmSchedule:
         tensor_c_gm = self.container.TENSOR_MAP.get("c_gm")
         if tensor_c_gm != self.res and tensor_c_gm is not None:
             for ten_in in self.container.compute_tensors:
-                if ten_in == self.res:
+                if ten_in == self.res and self.root_tensor.op.tag != "matmul_virtual_res":
                     continue
                 if ten_in not in matmul_tensors:
                     fusion_list.append(ten_in)
@@ -2653,7 +2732,6 @@ class GemmSchedule:
     def _do_attach_cub(self, status, c_ub_fract, affine_cub):
         if self.container.fusion_tensor_cub:
             self.container.tensors_in_cub += self.container.fusion_tensor_cub
-        same_attach_cub = self.container.tensors_in_cub
 
         if self.is_dynamic and not self.cache_tiling:
             status = Compare.LESS_EQ
@@ -2661,17 +2739,7 @@ class GemmSchedule:
         if status == Compare.EQUAL:
             pass
         elif status == Compare.LESS_EQ:
-            if self.status_controller.quant_fusion or self.status_controller.requant_fusion:
-                affine_cub[-1] *= 2
-                self._print_debug(affine_cub, "affine_cub in quant_fusion and requant_fusion")
-            self.sch_agent.attach_at(
-                c_ub_fract, self.root_tensor, affine_shape=affine_cub, ceil_mode_dict=self.ceil_mode)
-            self.status_controller.c_ub_attach_status = "c_gm"
-
-            for tensor in same_attach_cub:
-                if tensor in (c_ub_fract, self.root_tensor):
-                    continue
-                self.sch_agent.same_attach(tensor, c_ub_fract)
+            self._do_attach_cub_less_eq(c_ub_fract, affine_cub)
         else:
             args_dict = {
                 "errCode": "E60114",
@@ -2681,6 +2749,24 @@ class GemmSchedule:
             raise RuntimeError(
                 args_dict, error_manager_util.get_error_message(args_dict)
             )
+
+    def _do_attach_cub_less_eq(self, c_ub_fract, affine_cub):
+        """ sub func of _do_attach_cub
+        """
+        if self.status_controller.quant_fusion or self.status_controller.requant_fusion:
+            affine_cub[-1] *= 2
+            self._print_debug(affine_cub, "affine_cub in quant_fusion and requant_fusion")
+        self.sch_agent.attach_at(
+            c_ub_fract, self.root_tensor, affine_shape=affine_cub, ceil_mode_dict=self.ceil_mode)
+        self.status_controller.c_ub_attach_status = "c_gm"
+
+        same_attach_cub = self.container.tensors_in_cub
+        for tensor in same_attach_cub:
+            if tensor in (c_ub_fract, self.root_tensor):
+                continue
+            self.sch_agent.same_attach(tensor, c_ub_fract)
+        if self.container.double_out_tensor:
+            self.sch_agent.same_attach(self.container.double_out_tensor[0], c_ub_fract)
 
     def _get_dynamic_l0c_shape(self, l0c_shape, have_batch):
         if self.is_dynamic:
@@ -3857,6 +3943,8 @@ class GemmSchedule:
                 if tensor in (self.res, self.container.TENSOR_MAP.get("c_gm")):
                     continue
                 self.sch[tensor].double_buffer()
+            if self.status_controller.fusion_multi_output_flag:
+                self.sch[self.container.TENSOR_MAP.get("c_gm")].double_buffer()
 
     def _emit_insn_func(self, insn_tensor, insn_axis_num, insn_tag, insn_dict=None, mode=0, offset=0):
 
@@ -3976,18 +4064,24 @@ class GemmSchedule:
         self._quantify_fusion_entry()
         self._tensor_a_l1_workspace_emit()
         self._emit_insn_elemwise_tensor()
-
-        if self.status_controller.gm_ub is not None:
-            if not self.status_controller.multi_output_flag:
-                self._emit_insn_func(self.container.TENSOR_MAP.get("c_gm"), 0, "dma_copy", mode=1)
-            else:
-                self._emit_insn_for_multi_output()
-            self._emit_insn_func(self.status_controller.gm_ub, 0, "phony_insn", mode=1)
+        self._do_emit_insn_multi_output()
 
         if self.status_controller.reduce_fusion:
             self._emit_insn_func(self.container.TENSOR_MAP.get("res_atomic_add_ub"), 0, "dma_copy", mode=1)
 
         self._emit_insn_after_split_k()
+
+    def _do_emit_insn_multi_output(self):
+        if self.status_controller.gm_ub is not None:
+            if not self.status_controller.matmul_multi_output_flag:
+                self._emit_insn_func(self.container.TENSOR_MAP.get("c_gm"), 0, "dma_copy", mode=1)
+            else:
+                self._emit_insn_for_multi_output()
+            self._emit_insn_func(self.status_controller.gm_ub, 0, "phony_insn", mode=1)
+        elif self.container.double_out_tensor:
+            self._emit_insn_for_multi_output()
+            self._emit_insn_func(self.container.double_out_tensor[0], 0, "dma_copy", mode=1)
+            self._emit_insn_func(self.root_tensor, 0, "phony_insn", mode=1)
 
     def _emit_insn_for_multi_output(self):
         if len(self.container.TENSOR_MAP.get("c_gm").shape) in (4, 5):
@@ -3997,7 +4091,10 @@ class GemmSchedule:
                 self.container.TENSOR_MAP.get("c_gm").op.axis[-3], nparts=1)
             self.sch_agent[self.container.TENSOR_MAP.get("c_gm")].reorder(
                 gm_n_outer, gm_m_outer, gm_n_inner, gm_m_inner)
-            self.sch_agent[self.container.TENSOR_MAP.get("c_gm")].emit_insn(gm_n_inner, "dma_copy")
+            if self.status_controller.fusion_multi_output_flag:
+                self.sch_agent[self.container.TENSOR_MAP.get("c_gm")].emit_insn(gm_n_inner, "phony_insn")
+            else:
+                self.sch_agent[self.container.TENSOR_MAP.get("c_gm")].emit_insn(gm_n_inner, "dma_copy")
         else:
             gm_n_outer, gm_n_inner = self.sch_agent[self.container.TENSOR_MAP.get("c_gm")].split(
                 self.container.TENSOR_MAP.get("c_gm").op.axis[-1], nparts=1)
@@ -4213,6 +4310,9 @@ class GemmSchedule:
         if self.status_controller.need_init_bias:
             self._add_key_value(self.container.TENSOR_MAP.get("virtual_add_bias"),
                 [self.container.TENSOR_MAP.get("bias_ub"), self.container.TENSOR_MAP.get("init_value_of_bias_ub")])
+
+        if self.status_controller.fusion_multi_output_flag:
+            self._add_key_value(self.container.TENSOR_MAP.get("cast_to_fp16"), self.container.TENSOR_MAP.get("c_gm"))
         # Enable aub/bub to select schedule pattern
         a_ub = self.container.TENSOR_MAP.get("a_ub")
         b_ub = self.container.TENSOR_MAP.get("b_ub")
@@ -4288,7 +4388,7 @@ class GemmSchedule:
         if not enable_nbuffer or self.is_dynamic:
             return self.ALLOCATE_OFF, self.ALLOCATE_OFF
         a_run_once, b_run_once, batch_double, double_once = self._init_run_once_flag()
-        axis_outer = self.sch_agent[self.res].get_active_scopes()
+        axis_outer = self.sch_agent[self.root_tensor].get_active_scopes()
         if self.format_out == "FRACTAL_NZ":
             m_outer = axis_outer[self.FRACTAL_NZ_M_INDEX]
             n_outer = axis_outer[self.FRACTAL_NZ_N_INDEX]
@@ -4319,7 +4419,7 @@ class GemmSchedule:
                               and self.status_controller.input_l1_flag != 1)
         if a_run_once != self.ALLOCATE_OFF and al1_ddr_to_l1_flag:
             tensor_a_l1 = self.container.TENSOR_MAP.get("a_l1")
-            self.sch[tensor_a_l1].allocate_at(self.sch[self.res], n_outer, run_once_axes=[n_outer])
+            self.sch[tensor_a_l1].allocate_at(self.sch[self.root_tensor], n_outer, run_once_axes=[n_outer])
             self.sch[tensor_a_l1].mem_unique()
         else:
             a_run_once = self.ALLOCATE_OFF
@@ -4327,7 +4427,7 @@ class GemmSchedule:
         if (b_run_once != self.ALLOCATE_OFF and (not self.status_controller.l1_fusion_and_l1_size_0)
             and (not self.status_controller.compress_flag)):
             tensor_b_l1 = self.container.TENSOR_MAP.get("b_l1")
-            self.sch[tensor_b_l1].allocate_at(self.sch[self.res], m_outer, run_once_axes=[m_outer])
+            self.sch[tensor_b_l1].allocate_at(self.sch[self.root_tensor], m_outer, run_once_axes=[m_outer])
             self.sch[tensor_b_l1].mem_unique()
         else:
             b_run_once = self.ALLOCATE_OFF
@@ -4337,7 +4437,7 @@ class GemmSchedule:
         not_need_nbuffer = (tensor_a_reuse_local == self.ALLOCATE_OFF) and (tensor_b_reuse_local == self.ALLOCATE_OFF)
         if not enable_nbuffer or not_need_nbuffer:
             return
-        axis_outer = self.sch_agent[self.res].get_active_scopes()
+        axis_outer = self.sch_agent[self.root_tensor].get_active_scopes()
         if self.format_out == "FRACTAL_NZ":
             m_outer = axis_outer[self.FRACTAL_NZ_M_INDEX]
             n_outer = axis_outer[self.FRACTAL_NZ_N_INDEX]
@@ -4361,14 +4461,14 @@ class GemmSchedule:
         self._do_reorder_axis(l1_reuse_axis_outter, l1_reuse_axis_inner)
 
     def _do_reorder_axis(self, outer_axis, inner_axis):
-        axis_outer = self.sch_agent[self.res].get_active_scopes()
+        axis_outer = self.sch_agent[self.root_tensor].get_active_scopes()
         reorder_list = [outer_axis, inner_axis]
         if self.format_out == "FRACTAL_NZ":
             reorder_list.append(axis_outer[self.FRACTAL_NZ_M0_INDEX])
             reorder_list.append(axis_outer[self.FRACTAL_NZ_N0_INDEX])
         if self.status_controller.have_batch:
             reorder_list.insert(0, axis_outer[0])
-        self.sch[self.res].reorder(*reorder_list)
+        self.sch[self.root_tensor].reorder(*reorder_list)
 
         if self.format_out == "ND":
             tensor_at_res_stage = []
@@ -4674,6 +4774,8 @@ class GemmSchedule:
     def _do_compute_inline(self):
         self.container.elewise_compute_inline_list += self.container.compute_inline_list
         for tensor in self.container.elewise_compute_inline_list:
+            if tensor in self.container.double_out_tensor:
+                continue
             self.sch[tensor].compute_inline()
 
     def _set_requant_transfer_buffer_align(self):
@@ -4881,15 +4983,15 @@ class GemmSchedule:
             return gm_ub, ele_header_ub_tensors, {}
 
         in_out_tensor_map = {}
-        self._gen_in_out_tensor_map(self.res, in_out_tensor_map)
+        self._gen_in_out_tensor_map(self.root_tensor, in_out_tensor_map)
         tensor_c_gm = self.container.TENSOR_MAP.get("c_gm")
         # multi output fusion with elementwise
-        multi_output_flag = isinstance(self.res_ori, list)
-        multi_output_flag = multi_output_flag and self.container.fusion_ele and tensor_c_gm in self.res_ori
-        self.status_controller.multi_output_flag = multi_output_flag
-        if multi_output_flag:
+        matmul_multi_output_flag = (isinstance(self.res_ori, list) and self.container.fusion_ele and
+                                    tensor_c_gm in self.res_ori)
+        self.status_controller.matmul_multi_output_flag = matmul_multi_output_flag
+        if matmul_multi_output_flag:
             gm_ub = self.sch.cache_read(tensor_c_gm, tbe_platform_info.scope_ubuf,
-                                       in_out_tensor_map.get(tensor_c_gm))
+                                        in_out_tensor_map.get(tensor_c_gm))
             self.container.fusion_tensor_cub.append(gm_ub)
             self.container.fusion_tensor_cub.append(tensor_c_gm)
             self.sch[tensor_c_gm.op.input_tensors[0]].reused_by(gm_ub)
@@ -4924,7 +5026,7 @@ class GemmSchedule:
                 current_op.pragma(pragma_axis, "json_info_cache_read_mode", 1)
 
     def _set_buffer_used_multi_custom(self, fused_num):
-        all_tags = self._get_all_tags(self.res)
+        all_tags = self.get_all_tags(self.res)
         if "dropout_broadcast" in all_tags:
             fused_num = 2.5
         return fused_num

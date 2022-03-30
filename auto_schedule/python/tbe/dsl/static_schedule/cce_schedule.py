@@ -66,8 +66,9 @@ from .layer_norm_cube_schedule import reget_layernorm_multioutput
 from .depthwise_conv2d_schedule import depthwise_conv2d_schedule
 from .elewise_schedule import CceOp
 from .elewise_speel_schedule import CceSpeelOp
-from .mmad_schedule import mmad_schedule
+from .gemm_integrated_schedule import reget_matmul_multioutput
 from .gemm_schedule import gemm_schedule
+from .mmad_schedule import mmad_schedule
 from .pooling2d_schedule import pooling2d_schedule
 from .pooling3d_schedule import pooling3d_schedule
 from .segment_schedule import CceSegmentOp
@@ -327,6 +328,7 @@ def schedule_cce(outs, option=None):  # 'pylint: disable=R0912, R0914, R0915
 
     outs = reget_tensor_list(outs)
     outs = reget_layernorm_multioutput(outs)
+    outs = reget_matmul_multioutput(outs)
 
     cce_emitinsn_params.cceEmitParamsIns.clear_param()
     if isinstance(outs, (tuple, list)):

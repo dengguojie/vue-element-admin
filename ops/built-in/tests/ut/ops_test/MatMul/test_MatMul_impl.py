@@ -13,12 +13,14 @@ from tbe.dsl import auto_schedule
 from op_test_frame.ut import OpUT
 from op_test_frame.common import precision_info
 import numpy as np
+from impl.add_n import add_n_compute_for_fusion
 from impl.mat_mul import get_op_support_info
 from impl.mat_mul import mat_mul_compute
 from impl.cast import cast_compute
 from impl.leaky_relu import leaky_relu_compute
 from impl.mat_mul import check_supported
 from impl.confusion_transpose_d import confusion_transpose_d_compute
+from impl.tanh_grad import tanh_grad_compute
 from impl.trans_data import trans_data_compute
 from te.platform.cce_conf import te_set_version
 from impl.mat_mul import op_select_format
@@ -519,6 +521,34 @@ def test_matmul_multi_output(test_arg):
         }
         cce_build_code(sch, config)
 ut_case.add_cust_test_func(test_func=test_matmul_multi_output)
+
+
+def test_matmul_fusion_multi_output(test_arg):
+    te_set_version("Ascend710")
+    with cce():
+        x1 = tvm.placeholder((2, 1, 16, 16), name="x1", attrs={'format': "FRACTAL_NZ", "ori_shape": (16, 32)}, dtype="float16")
+        x2 = tvm.placeholder((1, 2, 16, 16), name="x2", attrs={'format': "FRACTAL_NZ", "ori_shape": (16, 32)}, dtype="float16")
+        output_y = {"shape": (1, 1, 16, 16), "dtype": "float16", "ori_shape": (16, 16), "format": "FRACTAL_NZ", "ori_format": "ND"}
+        matmul_out = mat_mul_compute(x1, x2, None, None, output_y)
+
+        x3 = tvm.placeholder((1, 1, 16, 16), name="x3", attrs={'format': "FRACTAL_NZ", "ori_shape": (16, 16)}, dtype="float16")
+        addn_out = add_n_compute_for_fusion([matmul_out, x3], output_y, 2)
+
+        x4 = tvm.placeholder((1, 1, 16, 16), name="x4", attrs={'format': "FRACTAL_NZ", "ori_shape": (16, 16)}, dtype="float16")
+        tanh_grad_out = tanh_grad_compute(addn_out, x4, output_y)
+
+        tensor_list = [x1, x2, x3, x4, tanh_grad_out]
+        outs = [addn_out, tanh_grad_out]
+        sch = auto_schedule(outs)
+        config = {
+            "print_ir": False,
+            "need_build": True,
+            "name": "matmul_fusion_multi_output",
+            "tensor_list": tensor_list,
+        }
+        cce_build_code(sch, config)
+    te_set_version("Ascend310")
+ut_case.add_cust_test_func(test_func=test_matmul_fusion_multi_output)
 
 
 not_align_bias_case2 = {"params": [{"shape": (6, 2, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (32, 96), "ori_format": "ND", "param_type": "input"},
