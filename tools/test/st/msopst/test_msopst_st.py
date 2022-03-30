@@ -68,8 +68,8 @@ OPTIONAL_ST_GOLDEN_OUTPUT = './st/msopst/golden/base_case/' \
                             'golden_output/optional_input'
 ST_GOLDEN_OP_CASE_JSON_INPUT = './st/msopst/golden/base_case/input' \
                                '/Pooling_case_20210225145706.json'
-ST_GOLDEN_ACL_PROJECT_OUTPUT_SRC = './st/msopst/golden/base_case/golden_output' \
-                                   '/gen_optional_acl_prj/Pooling/src'
+ST_GOLDEN_ACL_PROJECT_OUTPUT_TESTCASE = './st/msopst/golden/base_case/golden_output' \
+                                   '/gen_optional_acl_prj/Pooling/src/testcase.cpp'
 ST_GOLDEN_ACL_PROJECT_OUTPUT_RUN = './st/msopst/golden/base_case/golden_output' \
                                    '/gen_optional_acl_prj/Pooling/run/out'\
                                    '/test_data/config/'
@@ -81,9 +81,8 @@ ST_GOLDEN_OP_DYNAMIC_SHAPE_INI_INPUT = './st/msopst/golden/base_case/input' \
 
 ST_GOLDEN_OP_DYNAMIC_SHAPE_JSON_INPUT = './st/msopst/golden/base_case/input' \
                                         '/add_case.json'
-ST_GOLDEN_DYNAMIC_SHAPE_ACL_PROJECT_OUTPUT = './st/msopst/golden/base_case' \
-                                             '/golden_output/' \
-                                             'gen_optional_acl_prj/Add/src'
+ST_GOLDEN_DYNAMIC_SHAPE_TESTCASE = './st/msopst/golden/base_case/golden_output/' \
+                                   'gen_optional_acl_prj/Add/src/testcase.cpp'
 
 # MINDSPORE OPERATOR INPUT/OUTPOUT
 ST_MS_GOLDEN_JSON_OUTPUT = './st/msopst/golden/base_case/golden_output' \
@@ -731,9 +730,9 @@ class TestUtilsMethods(unittest.TestCase):
                         'op_test_frame.st.interface.utils'
                         '.check_path_valid'):
                     msopst.main()
-        op_output_src = os.path.join(ST_OUTPUT, 'src')
-        self.assertTrue(test_utils.check_file_context(
-            op_output_src, ST_GOLDEN_ACL_PROJECT_OUTPUT_SRC))
+        op_output_testcase = os.path.join(ST_OUTPUT, 'src/testcase.cpp')
+        self.assertTrue(compare_context(
+            op_output_testcase, ST_GOLDEN_ACL_PROJECT_OUTPUT_TESTCASE))
 
     # ------------------------parse aicpu head file----------------
     def test_create_cmd_for_aicpu_parse_head_file(self):
@@ -804,11 +803,11 @@ class TestUtilsMethods(unittest.TestCase):
                 with mock.patch(
                         'op_test_frame.st.interface.utils.execute_command'):
                     msopst.main()
-        pooling_output_src = os.path.join(ST_OUTPUT, 'Pooling/src')
+        pooling_output_testcase = os.path.join(ST_OUTPUT, 'Pooling/src/testcase.cpp')
         pooling_output_json = os.path.join(ST_OUTPUT,
                                            'Pooling/run/out/test_data/config/')
-        self.assertTrue(test_utils.check_file_context(
-            pooling_output_src, ST_GOLDEN_ACL_PROJECT_OUTPUT_SRC))
+        self.assertTrue(compare_context(
+            pooling_output_testcase, ST_GOLDEN_ACL_PROJECT_OUTPUT_TESTCASE))
         self.assertTrue(test_utils.check_file_context(
             pooling_output_json, ST_GOLDEN_ACL_PROJECT_OUTPUT_RUN))
 
@@ -826,9 +825,9 @@ class TestUtilsMethods(unittest.TestCase):
                         'op_test_frame.st.interface.utils'
                         '.check_path_valid'):
                     msopst.main()
-        src_output = os.path.join(ST_OUTPUT, 'src')
-        self.assertTrue(test_utils.check_file_context(
-            src_output, ST_GOLDEN_DYNAMIC_SHAPE_ACL_PROJECT_OUTPUT))
+        src_output_testcase = os.path.join(ST_OUTPUT, 'src/testcase.cpp')
+        self.assertTrue(compare_context(
+            src_output_testcase, ST_GOLDEN_DYNAMIC_SHAPE_TESTCASE))
 
     # ---------------------------Mindspore----------------------
     @unittest.mock.patch('op_test_frame.st.interface.case_generator.getattr')
