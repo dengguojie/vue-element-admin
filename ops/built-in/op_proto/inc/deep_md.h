@@ -54,8 +54,6 @@ REG_OP(TabulateFusion)
     .INPUT(em, TensorType({DT_FLOAT16, DT_FLOAT, DT_DOUBLE}))
     .OUTPUT(descriptor, TensorType({DT_FLOAT16, DT_FLOAT, DT_DOUBLE}))
     .REQUIRED_ATTR(last_layer_size, Int)
-    .ATTR(split_count, Int, 1)
-    .ATTR(split_index, Int, 0)
     .OP_END_FACTORY_REG(TabulateFusion)
 
 /**
@@ -102,8 +100,6 @@ REG_OP(ProdEnvMatA)
     .ATTR(rcut_r_smth, Float, 1.0)
     .ATTR(sel_a, ListInt, {})
     .ATTR(sel_r, ListInt, {})
-    .ATTR(split_count, Int, 1)
-    .ATTR(split_index, Int, 0)
     .OP_END_FACTORY_REG(ProdEnvMatA)
 
 /**
@@ -232,8 +228,6 @@ REG_OP(ProdForceSeA)
     .OUTPUT(atom_force, TensorType({DT_FLOAT16, DT_FLOAT, DT_DOUBLE}))
     .REQUIRED_ATTR(n_a_sel, Int)
     .REQUIRED_ATTR(n_r_sel, Int)
-    .ATTR(split_count, Int, 1)
-    .ATTR(split_index, Int, 0)
     .OP_END_FACTORY_REG(ProdForceSeA)
 
 /**
@@ -269,8 +263,6 @@ REG_OP(ProdVirialSeA)
     .OUTPUT(atom_virial, TensorType({DT_FLOAT16, DT_FLOAT, DT_DOUBLE}))
     .REQUIRED_ATTR(n_a_sel, Int)
     .REQUIRED_ATTR(n_r_sel, Int)
-    .ATTR(split_count, Int, 1)
-    .ATTR(split_index, Int, 0)
     .OP_END_FACTORY_REG(ProdVirialSeA)
 
 /**
@@ -306,8 +298,6 @@ REG_OP(TabulateFusionGrad)
   .INPUT(descriptor, TensorType({DT_FLOAT16, DT_FLOAT, DT_DOUBLE}))
   .OUTPUT(dy_dem_x, TensorType({DT_FLOAT16, DT_FLOAT, DT_DOUBLE}))
   .OUTPUT(dy_dem, TensorType({DT_FLOAT16, DT_FLOAT, DT_DOUBLE}))
-  .ATTR(split_count, Int, 1)
-  .ATTR(split_index, Int, 0)
   .OP_END_FACTORY_REG(TabulateFusionGrad)
 } // namespace ge
 
