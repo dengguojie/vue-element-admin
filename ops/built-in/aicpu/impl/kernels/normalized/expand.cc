@@ -180,11 +180,6 @@ uint32_t DoExpandCompute(aicpu::CpuKernelContext& ctx) {
   std::vector<int64_t> size1 =
       input_tensor1->GetTensorShape()->GetDimSizes();  // input shape shape
 
-  if (size0.size() < 0) {
-    KERNEL_LOG_ERROR("The dimension of input tensor < 0");
-    return aicpu::KERNEL_STATUS_PARAM_INVALID;
-  }
-
   if (size0.size() == 0) {
     size0.push_back(static_cast<int64_t>(1));
   }
