@@ -25,6 +25,21 @@ from te.utils.error_manager import error_manager_vector
 # 'pylint: disable = locally-disabled,invalid-name,too-many-locals
 # 'pylint: disable = too-many-arguments,unused-argument,no-member
 @tbe_platform.fusion_manager.fusion_manager.register("inplace_update_d")
+def check_supported(x, v, y, indices, kernel_name="inplace_update_d"):
+    """
+    True: inplace_update -> inplace_update_d
+    False: remain inplace_update
+    """
+    shape_x = x.get("ori_shape")
+    shape_v = v.get("ori_shape")
+    inefficiency_shape_list = [[(30001, 3), (1, 3)], [(34686, 3), (1, 3)]]
+    if [shape_x, shape_v] in inefficiency_shape_list:
+        reason = "input shape x:{0}, v:{1} is inefficiency, op_type:InplaceUpdate not changed".format(shape_x, shape_v)
+        return False, reason
+
+    return True, ""
+
+
 def inplace_update_d_compute(x, v, y, indices, kernel_name="inplace_update_d"):
     """
     calculating data

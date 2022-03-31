@@ -74,6 +74,19 @@ precision_case2 = {"params": [{"shape": (4,4,5), "dtype": "float32", "format": "
                    "calc_expect_func": calc_expect_func,
                    "precision_standard": precision_info.PrecisionStandard(0.01, 0.01)}
 
+def test_check_support(test_arg):
+    """
+    test_check_support
+    """
+    from impl.inplace_update_d import check_supported
+    res, reason = check_supported({"shape": (30001, 3), "dtype": "float16", "format": "ND", "ori_shape": (30001, 3), "ori_format": "ND"},
+                    {"shape": (1, 3), "dtype": "float16", "format": "ND", "ori_shape": (1, 3), "ori_format": "ND"},
+                    {"shape": (30001, 3), "dtype": "float16", "format": "ND", "ori_shape": (30001, 3), "ori_format": "ND"},
+                    [-1],"inplace_update_d_check_support_case_001")
+    assert not res
+
+ut_case.add_cust_test_func(test_func=test_check_support)
+
 ut_case.add_precision_case("Ascend910",precision_case1)
 ut_case.add_precision_case("Ascend910",precision_case2)
 
