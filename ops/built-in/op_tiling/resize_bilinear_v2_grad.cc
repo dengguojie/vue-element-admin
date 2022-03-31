@@ -27,6 +27,19 @@
 #include "error_log.h"
 
 namespace optiling {
+const int32_t DIM_0 = 0;
+const int32_t DIM_1 = 1;
+const int32_t DIM_2 = 2;
+const int32_t DIM_3 = 3;
+const int32_t DIM_4 = 4;
+const int32_t TILING_0 = 0;
+const int32_t TILING_1 = 1;
+const int32_t TILING_2 = 2;
+const int32_t TILING_3 = 3;
+const int32_t TILING_4 = 4;
+const int32_t TILING_5 = 5;
+const int32_t TILING_6 = 6;
+
 struct ResizeBilinearV2GradTilingParams
 {
     int32_t tiling_mode;
@@ -71,7 +84,8 @@ void InitTilingParams(ResizeBilinearV2GradTilingParams& params) {
 }
 
 bool ShapeOne(int32_t h, int32_t w) {
-    if (h == 1 && w == 1) {
+    int32_t num_1 = 1;
+    if (h == num_1 && w == num_1) {
         return true;
     } else {
         return false;
@@ -82,9 +96,9 @@ bool GetCompileInfo2(const std::string& op_type, const std::vector<int64_t>& op_
                      int32_t& l1_support, int32_t& tensor_c) {
     OP_TILING_CHECK(COMPILE_INFO_KEY.size() != op_compile_info.size(),
                   VECTOR_INNER_ERR_REPORT_TILIING(op_type, "parse op_compile_info failed."), return false);
-    core_num = op_compile_info[0];
-    l1_support = op_compile_info[1];
-    tensor_c = op_compile_info[2];
+    core_num = op_compile_info[DIM_0];
+    l1_support = op_compile_info[DIM_1];
+    tensor_c = op_compile_info[DIM_2];
     return true;
 }
 
@@ -100,9 +114,10 @@ int32_t CeilDiv(int32_t nc1_value, int32_t core_value) {
 
 int32_t CalTail(int32_t grads_w, int32_t loop_num) {
     int32_t res = 0;
+    int32_t tail = 256;
     if (loop_num == 0) {
       VECTOR_INNER_ERR_REPORT_TILIING("ResizeBilinearV2GradTiling", "CeilDiv, loop_num cannot be zero");
-      return 256;
+      return tail;
     }
     res = grads_w % loop_num;
     if (res == 0) {
@@ -114,39 +129,49 @@ int32_t CalTail(int32_t grads_w, int32_t loop_num) {
 int32_t CalTilingMode(const GeShape& grads_shape, const GeShape& images_shape, int32_t l1_support,
                       int32_t tensor_c) {
     int32_t tiling_mode = 0;
-    int32_t grads_h = grads_shape.GetDim(2);
-    int32_t grads_w = grads_shape.GetDim(3);
-    int32_t images_h = images_shape.GetDim(2);
-    int32_t images_w = images_shape.GetDim(3);
+    int32_t max_w0 = 640;
+    int32_t max_w1 = 4096;
+    int32_t max_rep = 255;
+    int32_t support_num = 1;
+    int32_t grads_h = grads_shape.GetDim(DIM_2);
+    int32_t grads_w = grads_shape.GetDim(DIM_3);
+    int32_t images_h = images_shape.GetDim(DIM_2);
+    int32_t images_w = images_shape.GetDim(DIM_3);
+
+    if (images_w == 0) {
+       VECTOR_INNER_ERR_REPORT_TILIING("ResizeBilinearV2GradTiling", "images_w cannot be zero");
+       return tiling_mode;
+    }
 
     if (grads_h == images_h && grads_w == images_w) {
-        tiling_mode = 0;
+        tiling_mode = TILING_0;
         return tiling_mode;
     }
 
     if (ShapeOne(images_h, images_w) && !ShapeOne(grads_h, grads_w)) {
         if (grads_h * grads_w > tensor_c) {
-            tiling_mode = 2;
+            tiling_mode = TILING_2;
         } else {
-            tiling_mode = 1;
+            tiling_mode = TILING_1;
         }
         return tiling_mode;
     }
 
     if (ShapeOne(grads_h, grads_w) && !ShapeOne(images_h, images_w)) {
-        tiling_mode = 3;
+        tiling_mode = TILING_3;
         return tiling_mode;
     }
 
     if (images_h * images_w < tensor_c && grads_h * grads_w < tensor_c) {
-        tiling_mode = 4;
+        tiling_mode = TILING_4;
         return tiling_mode;
     }
 
-    if (images_w <= 640 && grads_w <= 4096 && grads_w > images_w && grads_w / images_w < 255 && l1_support==1) {
-        tiling_mode = 5;
+    if (images_w <= max_w0 && grads_w <= max_w1 && grads_w > images_w && grads_w / images_w < max_rep &&
+        l1_support == support_num) {
+        tiling_mode = TILING_5;
     } else {
-        tiling_mode = 6;
+        tiling_mode = TILING_6;
     }
 
     return tiling_mode;
@@ -163,9 +188,9 @@ bool CoreType(int32_t tiling_mode) {
 void CalCoreInfo(ResizeBilinearV2GradTilingParams& tiling_params, int32_t core_num,
                  const GeShape& grads_shape) {
     int32_t need_core_num = 0;
-    int32_t n = grads_shape.GetDim(0);
-    int32_t c1 = grads_shape.GetDim(1);
-    int32_t h = grads_shape.GetDim(2);
+    int32_t n = grads_shape.GetDim(DIM_0);
+    int32_t c1 = grads_shape.GetDim(DIM_1);
+    int32_t h = grads_shape.GetDim(DIM_2);
     int32_t nc1 = n * c1;
 
     if (CoreType(tiling_params.tiling_mode)) {
@@ -193,19 +218,20 @@ void CalCoreInfo(ResizeBilinearV2GradTilingParams& tiling_params, int32_t core_n
 
 void CalRunningInfo(ResizeBilinearV2GradTilingParams& tiling_params, int32_t core_num, int32_t l1_support,
                     int32_t tensor_c, const GeShape& grads_shape, const GeShape& images_shape) {
-    int32_t grad_each_core = grads_shape.GetDim(2) * grads_shape.GetDim(3) * grads_shape.GetDim(4);
-    int32_t output_each_core = images_shape.GetDim(2) * images_shape.GetDim(3) * images_shape.GetDim(4);
-    int32_t grad_move_num = grads_shape.GetDim(3) * grads_shape.GetDim(4);
-    int32_t output_move_num = images_shape.GetDim(3) * images_shape.GetDim(4);
-    int32_t nc1 = grads_shape.GetDim(0) * grads_shape.GetDim(1);
-    int32_t grads_w = grads_shape.GetDim(3);
-    int32_t w_loop = CeilDiv(grads_w, 256);
-    int32_t w_tail = CalTail(grads_w, 256);
+    int32_t base_num = 256;
+    int32_t grad_each_core = grads_shape.GetDim(DIM_2) * grads_shape.GetDim(DIM_3) * grads_shape.GetDim(DIM_4);
+    int32_t output_each_core = images_shape.GetDim(DIM_2) * images_shape.GetDim(DIM_3) * images_shape.GetDim(DIM_4);
+    int32_t grad_move_num = grads_shape.GetDim(DIM_3) * grads_shape.GetDim(DIM_4);
+    int32_t output_move_num = images_shape.GetDim(DIM_3) * images_shape.GetDim(DIM_4);
+    int32_t nc1 = grads_shape.GetDim(DIM_0) * grads_shape.GetDim(DIM_1);
+    int32_t grads_w = grads_shape.GetDim(DIM_3);
+    int32_t w_loop = CeilDiv(grads_w, base_num);
+    int32_t w_tail = CalTail(grads_w, base_num);
 
-    tiling_params.grads_h = grads_shape.GetDim(2);
-    tiling_params.grads_w = grads_shape.GetDim(3);
-    tiling_params.images_h = images_shape.GetDim(2);
-    tiling_params.images_w = images_shape.GetDim(3);
+    tiling_params.grads_h = grads_shape.GetDim(DIM_2);
+    tiling_params.grads_w = grads_shape.GetDim(DIM_3);
+    tiling_params.images_h = images_shape.GetDim(DIM_2);
+    tiling_params.images_w = images_shape.GetDim(DIM_3);
     tiling_params.grad_each_core = grad_each_core;
     tiling_params.output_each_core = output_each_core;
     tiling_params.grad_move_num = grad_move_num;

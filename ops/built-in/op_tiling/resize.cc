@@ -190,8 +190,7 @@ int64_t NearestTilingMode(ResizeNearest3DTilingParams& params, int64_t left_w) {
     }
     if (output_w >= max_out && input_w < left_w - max_out) {
         return tiling_6;
-    }
-    if (output_w >= max_out && input_w >= left_w - max_out) {
+    } else {
         int64_t avg_input = left_w - max_out;
         int64_t loop_input = CeilDivNearest(input_w, avg_input);
         int64_t tail_input = CalTailNearest(input_w, avg_input);
