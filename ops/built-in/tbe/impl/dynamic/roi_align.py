@@ -309,13 +309,13 @@ class RoiAlign():
         self.feature_map_to_l1_verify = self.l1_size // \
                                         (self.c1_num * self.x_height * self.x_width * Constant.C0_SIZE * n_bust * 2)
 
-        with tik_instance.if_scope(self.feature_map_to_ub_verify == 0 and self.feature_map_to_l1_verify == 0):
+        with tik_instance.if_scope(tik.all(self.feature_map_to_ub_verify == 0, self.feature_map_to_l1_verify == 0)):
             self.w_number_ub = ub_size_available // \
                                (self.c1_num * self.x_width *
                                 Constant.C0_SIZE * n_bust * 2)
-        with tik_instance.if_scope(self.feature_map_to_ub_verify == 0 and \
-                                   self.feature_map_to_l1_verify == 0 and
-                                   self.w_number_ub == 0):
+        with tik_instance.if_scope(tik.all(self.feature_map_to_ub_verify == 0, \
+                                   self.feature_map_to_l1_verify == 0,
+                                   self.w_number_ub == 0)):
             with tik_instance.if_scope((self.x_width - 1) * n_bust < 65535):
                 self.w_number_l1 = self.l1_size // (self.c1_num * self.x_width * Constant.C0_SIZE * n_bust * 2)
 

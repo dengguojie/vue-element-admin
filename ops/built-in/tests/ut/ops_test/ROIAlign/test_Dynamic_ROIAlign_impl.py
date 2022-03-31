@@ -81,3 +81,6 @@ ut_case.add_case(["Ascend910A"], case2)
 ut_case.add_case(["Ascend910A"], case3)
 ut_case.add_case(["Ascend910A"], case4)
 ut_case.add_case(["Ascend910A"], case5)
+
+if __name__ == "__main__":
+    ut_case.run(["Ascend910A"])
