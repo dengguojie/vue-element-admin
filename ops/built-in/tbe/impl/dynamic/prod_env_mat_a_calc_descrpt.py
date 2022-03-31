@@ -770,6 +770,7 @@ class ProdEnvMatACalcDescrpt:
                                                              name="sorted_dis_dot_tensor",
                                                              scope=self.tik.scope_ubuf)
             init_dis = self.tik_instance.Scalar("float32", "init_dis", init_value=self.rcut_smth + 1)
+            init_dis_dot = self.tik_instance.Scalar("float32", "init_dis_dot", init_value=init_dis * init_dis)
 
             cur_loc = self.tik_instance.Scalar(self.int32_type, "loc_idx",
                                                init_value=block_idx * one_cor_nloc_num + loc_nei_idx)
@@ -803,10 +804,11 @@ class ProdEnvMatACalcDescrpt:
                                 extract_length, extract_length_align, rep_tail_ub)
             self._gm_data_to_ub(self._gm_tensors.rij_z_gm, sorted_neighbour_coord_z, nn_offset, -1,
                                 extract_length, extract_length_align, rep_tail_ub)
-            self._gm_data_to_ub(self._gm_tensors.distance_gm, sorted_dis_tensor, nn_offset, init_dis,
+            self._gm_data_to_ub(self._gm_tensors.distance_gm, sorted_dis_dot_tensor, nn_offset, init_dis_dot,
                                 extract_length, extract_length_align, rep_tail_ub)
-            self._simple_vmul_fp32(sorted_dis_dot_tensor, sorted_dis_tensor, sorted_dis_tensor,
-                                   extract_length_align // self.nnei_once_repeat_nums)
+            self.tik_instance.vsqrt(self.nnei_once_repeat_nums, sorted_dis_tensor, sorted_dis_dot_tensor,
+                                    extract_length_align // self.nnei_once_repeat_nums,
+                                    self.block_stride, self.block_stride, self.repeat_stride, self.repeat_stride)
 
             res_descrpt_a_tensor = self.tik_instance.Tensor(self.coord_dtype, [self.nnei_repeat_align * 4],
                                                             name="res_descrpt_a_tensor",
@@ -899,7 +901,7 @@ class ProdEnvMatACalcDescrpt:
                 self.tik_instance.data_move(ub_tensor, gm_tensor[gm_offset], 0, 1,
                                             align_num // self.block_num, 0, 0)
             self.tik_instance.vector_dup(self.nnei_once_repeat_nums, ub_tensor[align_num], default_value,
-                                            1, self.block_stride, self.repeat_stride)
+                                         1, self.block_stride, self.repeat_stride)
             self.tik_instance.data_move(rep_tail_ub, gm_tensor[gm_offset + align_num], 0, 1,
                                         (tail_num + self.block_num - 1) // self.block_num, 0, 0)
             self.tik_instance.vadds(tail_num, ub_tensor[align_num], rep_tail_ub, 0, 1,
