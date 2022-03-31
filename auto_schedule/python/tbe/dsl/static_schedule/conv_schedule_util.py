@@ -89,3 +89,14 @@ def is_support_fixpipe_op():
             INTRINSIC_FIXPIPE_UNIT_LIST, UNIT_POST_ELTWISE)
 
     return False
+
+
+def is_v300_soc():
+    """
+    check v300 soc.
+    """
+    soc_version = tbe.common.platform.platform_info.get_soc_spec("SOC_VERSION")
+    if soc_version in ["Ascend320"]:
+        return True
+
+    return False

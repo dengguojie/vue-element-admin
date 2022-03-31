@@ -80,16 +80,13 @@ def aipp_compute(input_data, input_dync_param, output_data,
     :return:
     """
     aipp_config = json.loads(aipp_config_json)
-
     input_shape = input_data.shape
     input_format = input_data.op.attrs['format']
     output_dtype = output_data.get('dtype')
     output_shape = output_data.get('shape')
     output_format = output_data.get('format')
     ori_format = output_data.get('ori_format')
-
     res_shape = output_shape
-
     c0_channel = output_shape[4]
 
     aipp_map = {}
@@ -119,6 +116,8 @@ def aipp_compute(input_data, input_dync_param, output_data,
                     aipp_map["spr_1"] = tvm.const(1 << 63, dtype="uint64")
 
         aipp_comm.get_spr2_spr9(aipp_config, output_dtype, cur_cce_product, output_format, aipp_map)
+        if cur_cce_product in aipp_comm.Const.V300_SOC_VERSION_LIST:
+            aipp_comm.get_spr18_spr21(aipp_config, output_dtype, aipp_map)
 
         if 'crop' in aipp_config and aipp_config.get('crop') == 1:
             if "load_start_pos_h" in aipp_config:
@@ -126,21 +125,18 @@ def aipp_compute(input_data, input_dync_param, output_data,
             if "load_start_pos_w" in aipp_config:
                 load_start_pos_w = aipp_config.get('load_start_pos_w')
 
+            crop_size_h = output_shape[2]
             if "crop_size_h" in aipp_config:
                 crop_size_h = aipp_config["crop_size_h"]
-            else:
-                crop_size_h = output_shape[2]
 
+            crop_size_w = output_shape[3]
             if "crop_size_w" in aipp_config:
                 crop_size_w = aipp_config["crop_size_w"]
-            else:
-                crop_size_w = output_shape[3]
 
         if input_format == "NCHW":
             channel = input_shape[1]
             height = input_shape[2]
             width = input_shape[3]
-
         elif input_format == "NHWC":
             height = input_shape[1]
             width = input_shape[2]
@@ -158,12 +154,11 @@ def aipp_compute(input_data, input_dync_param, output_data,
         aipp_map["src_image_h"] = src_image_size_h
         aipp_map["src_image_w"] = src_image_size_w
 
+    load_image_h = src_image_size_h
+    load_image_w = src_image_size_w
     if 'crop' in aipp_config and aipp_config.get('crop') == 1:
         load_image_h = crop_size_h
         load_image_w = crop_size_w
-    else:
-        load_image_h = src_image_size_h
-        load_image_w = src_image_size_w
 
     aipp_map["load_start_pos_h"] = load_start_pos_h
     aipp_map["load_start_pos_w"] = load_start_pos_w

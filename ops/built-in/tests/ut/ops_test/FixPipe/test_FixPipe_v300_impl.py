@@ -101,7 +101,7 @@ single_conv2d = [
 ]
 
 aipp_conv2d = [
-    ("conv2d", "conv2d", "float16", (1, 64, 32, 32), (32, 64, 3, 3), (1, 1, 1, 1), (1, 1), 1, 1, False, 0, 0, 0),
+    ("conv2d", "conv2d", "float16", (1, 3, 32, 32), (32, 3, 3, 3), (1, 1, 1, 1), (1, 1), 1, 1, False, 0, 0, 0),
 ]
 
 
@@ -1075,6 +1075,24 @@ def test_aipp_conv2d(config_dict):
                                 aipp_config_dict_json,
                                 kernel_name="aipp")
         aipp_res.op.attrs["is_first_layer"] = True
+        weight = tvm.placeholder(shape_w_fracz,
+                                 name='weight',
+                                 dtype=conv_type,
+                                 attrs={
+                                     'ori_shape': shape_w,
+                                     'ori_format': "NCHW",
+                                     'format': weight_format
+                                 })
+        conv_res = conv2d_compute(aipp_res,
+                                  weight,
+                                  None,
+                                  None,
+                                  None,
+                                  strides,
+                                  pads,
+                                  dilations,
+                                  offset_x=0)
+        sch = auto_schedule(conv_res)
 
 
 def run_v300_batch_cases_aipp(case_list, is_hf32_flag=False):
@@ -1083,7 +1101,6 @@ def run_v300_batch_cases_aipp(case_list, is_hf32_flag=False):
     with op_context.OpContext():
         te_set_version("Ascend320", "AiCore")
         soc_version = get_soc_spec("SOC_VERSION")
-        print("=================get soc:", soc_version)
         for case in case_list:
             if is_hf32_flag:
                 set_impl_mode()

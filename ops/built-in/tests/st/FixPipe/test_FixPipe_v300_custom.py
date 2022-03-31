@@ -989,6 +989,24 @@ def test_aipp_conv2d(config_dict):
                                 aipp_config_dict_json,
                                 kernel_name="aipp")
         aipp_res.op.attrs["is_first_layer"] = True
+        weight = tvm.placeholder(shape_w_fracz,
+                                 name='weight',
+                                 dtype=conv_type,
+                                 attrs={
+                                     'ori_shape': shape_w,
+                                     'ori_format': "NCHW",
+                                     'format': weight_format
+                                 })
+        conv_res = conv2d_compute(aipp_res,
+                                  weight,
+                                  None,
+                                  None,
+                                  None,
+                                  strides,
+                                  pads,
+                                  dilations,
+                                  offset_x=0)
+        sch = auto_schedule(conv_res)
 
 
 def run_v300_batch_cases_aipp(case_list, is_hf32_flag=False):
@@ -1014,10 +1032,7 @@ def test_aipp_compute():
     te_set_version("Ascend320", "AiCore")
     run_v300_batch_cases_aipp(single_conv2d)
 
-    te_set_version("Ascend310", "AiCore")
-    run_v300_batch_cases_aipp(single_conv2d)
-
-    te_set_version("SD3403", "AiCore")
+    te_set_version("Ascend710", "AiCore")
     run_v300_batch_cases_aipp(single_conv2d)
 
 

@@ -1429,12 +1429,9 @@ def set_spr2_spr9(ib, aipp_config, dtype, cur_cce_product, output_format="NC1HWC
                             tvm.const(spr7, dtype="uint64")))
 
 
-def set_spr18_spr21(ib, aipp_config, dtype):
+def get_spr18_spr21(aipp_config, dtype, aipp_map):
     """
-    :param ib: ir builder
-    :param aipp_config: config dict of aipp
-    :param dtype: output dtype of aipp
-    :return: None
+    get spr18-spr21, only v300 soc
     """
     chn_offset = 32
     data_mask = 0xffffffff
@@ -1452,10 +1449,7 @@ def set_spr18_spr21(ib, aipp_config, dtype):
     if 'var_reci_chn_3' in aipp_config:
         var_reci_chn_3 = get_bin_value_from_fp32(float(aipp_config.get('var_reci_chn_3')))
         spr19 = spr19 | (var_reci_chn_3 & data_mask) << chn_offset
-    ib.emit(tvm.call_extern(dtype, "set_aipp_spr_18",
-                            tvm.const(spr18, dtype="uint64")))
-    ib.emit(tvm.call_extern(dtype, "set_aipp_spr_19",
-                            tvm.const(spr19, dtype="uint64")))
+
     spr20 = 0
     spr21 = 0
     if dtype == "float16":
@@ -1476,6 +1470,30 @@ def set_spr18_spr21(ib, aipp_config, dtype):
             spr21 = spr21 | (aipp_config.get('mean_chn_2') & data_mask)
         if 'mean_chn_3' in aipp_config:
             spr21 = spr21 | (aipp_config.get('mean_chn_3') & data_mask) << chn_offset
+
+    aipp_map["spr_18"] = spr18
+    aipp_map["spr_19"] = spr19
+    aipp_map["spr_20"] = spr20
+    aipp_map["spr_21"] = spr21
+
+
+def set_spr18_spr21(ib, aipp_config, dtype):
+    """
+    :param ib: ir builder
+    :param aipp_config: config dict of aipp
+    :param dtype: output dtype of aipp
+    :return: None
+    """
+    aipp_map = {}
+    get_spr18_spr21(aipp_config, dtype, aipp_map)
+    spr18 = aipp_map.get("spr_18")
+    spr19 = aipp_map.get("spr_19")
+    spr20 = aipp_map.get("spr_20")
+    spr21 = aipp_map.get("spr_21")
+    ib.emit(tvm.call_extern(dtype, "set_aipp_spr_18",
+                            tvm.const(spr18, dtype="uint64")))
+    ib.emit(tvm.call_extern(dtype, "set_aipp_spr_19",
+                            tvm.const(spr19, dtype="uint64")))
     ib.emit(tvm.call_extern(dtype, "set_aipp_spr_20",
                             tvm.const(spr20, dtype="uint64")))
     ib.emit(tvm.call_extern(dtype, "set_aipp_spr_21",

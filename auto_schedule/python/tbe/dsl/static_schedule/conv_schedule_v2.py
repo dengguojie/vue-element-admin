@@ -30,6 +30,7 @@ from tbe.dsl.static_schedule import util
 from tbe.dsl.static_schedule.conv_fixpipefusion_schedule import FixpipeFusion
 from tbe.dsl.static_schedule.conv_fixpipefusion_schedule import FixpipeFusionNew
 from tbe.dsl.static_schedule.conv_schedule_util import ceil, ceil_div, is_support_fixpipe_op, get_src_tensor
+from tbe.dsl.static_schedule.conv_schedule_util import is_v300_soc
 from tbe.dsl.static_schedule.conv_ubfusion_schedule import EltwiseUBFusion
 from tbe.dsl.static_schedule.conv_ubfusion_schedule import QuantFusion
 from tbe.dsl.static_schedule.conv_maxpoolfusion_schedule import MaxpoolFusion
@@ -239,11 +240,18 @@ class AippFusion:
                         "load_start_pos_w": aipp_map["load_start_pos_w"],
                         "crop_size_h": aipp_map["crop_size_h"],
                         "crop_size_w": aipp_map["crop_size_w"]}
-        # v300 spr5-7 is deleted
-        if not is_support_fixpipe_op():
+        # v300 spr5-7 are deleted
+        if not is_v300_soc():
             aipp_map_res["spr_5"] = aipp_map["spr_5"]
             aipp_map_res["spr_6"] = aipp_map["spr_6"]
             aipp_map_res["spr_7"] = aipp_map["spr_7"]
+
+        if is_v300_soc():
+            # v300 spr18-spr21 are added
+            aipp_map_res["spr_18"] = aipp_map["spr_18"]
+            aipp_map_res["spr_19"] = aipp_map["spr_19"]
+            aipp_map_res["spr_20"] = aipp_map["spr_20"]
+            aipp_map_res["spr_21"] = aipp_map["spr_21"]
 
         sch[al1].emit_insn(al1.op.axis[1], "load_image_to_cbuf", aipp_map_res)
 
