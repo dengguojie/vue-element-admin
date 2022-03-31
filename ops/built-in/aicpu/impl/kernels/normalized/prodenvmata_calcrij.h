@@ -42,13 +42,16 @@ namespace aicpu {
         // Array stores the core region atom's neighbor index
         int32_t (*firstneigh)[1024];
 
-        InputNlist() : nlocnum(0), ilist(NULL), numneigh(NULL), firstneigh(NULL){};
+        int32_t *nallmaptable;
+
+        InputNlist() : nlocnum(0), ilist(NULL), numneigh(NULL), firstneigh(NULL), nallmaptable(NULL){};
         InputNlist(int32_t nlocnum_, int32_t *ilist_, int32_t *numneigh_,
-                   int32_t (*firstneigh_)[1024])
+                   int32_t (*firstneigh_)[1024], int32_t *nallmaptable_)
                    : nlocnum(nlocnum_),
                      ilist(ilist_),
                      numneigh(numneigh_),
-                     firstneigh(firstneigh_){};
+                     firstneigh(firstneigh_),
+                     nallmaptable(nallmaptable_){};
         ~InputNlist(){};
       };
 
@@ -79,16 +82,20 @@ namespace aicpu {
       int32_t max_numneigh(const InputNlist &nlist);
       void cum_sum(std::vector<int64_t> &sec, const std::vector<int64_t> &n_sel);
       template <typename FPTYPE>
-      int32_t format_nlist_i_cpu(int32_t batchIndex,
-                                SingleNatomInfo<FPTYPE> &singleNatomInfo,
-                                CpuKernelContext &ctx, const int32_t &i_idx,
-                                const std::vector<int32_t> &nei_idx_a);
+      int32_t format_nlist_i_cpu(SingleNatomInfo<FPTYPE> &singleNatomInfo,
+                                 const int32_t &i_idx,
+                                 const std::vector<int32_t> &nei_idx_a,
+                                 std::vector<int64_t> &sec_a,
+                                 const FPTYPE *coord, const int32_t *type,
+                                 float rcutsquared);
       template <typename FPTYPE>
-      void env_mat_a_cpu(std::vector<FPTYPE> &rij_a, const int32_t &i_idx,
-                        const std::vector<int32_t> &fmt_nlist_a, CpuKernelContext &ctx, int32_t batchIndex);
+      void env_mat_a_cpu(FPTYPE *rij_a, const int32_t &i_idx,
+                         const std::vector<int32_t> &fmt_nlist_a,
+                         std::vector<int64_t> &sec_a, const FPTYPE *coord);
       template <typename FPTYPE>
       void prod_env_mat_a_rij_cal(FPTYPE *rij, CpuKernelContext &ctx,
-                                  int32_t batchIndex, int32_t nnei);
+                                  int32_t batchIndex, int32_t nnei,
+                                  std::vector<int64_t> &sec_a);
       template <typename FPTYPE>
       inline FPTYPE dot3(const FPTYPE *r0,
                         const FPTYPE *r1);

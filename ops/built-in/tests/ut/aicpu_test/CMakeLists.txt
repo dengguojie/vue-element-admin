@@ -187,6 +187,7 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/kernels/normalized/pad.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/pinverse.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/poisson.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/prodenvmata_calcrij.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/random_uniform.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/random_standard.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/realdiv.cc
@@ -398,6 +399,7 @@ set(_cpu_kernels_ut_files
   testcase/parameterized_truncated_normal/src/parameterized_truncated_normal_utest.cpp
   testcase/pinverse/src/pinverse_utest.cpp
   testcase/poisson/src/poisson_utest.cpp
+  testcase/prodenvmata_calcrij/src/prodenvmata_calcrij_utest.cpp
   testcase/qr/src/qr_utest.cpp
   testcase/random_gamma/src/random_gamma_utest.cpp
   testcase/random_uniform/src/random_uniform_utest.cpp

@@ -38,6 +38,7 @@ namespace
   const uint32_t kIndexFive = 5;
   const uint32_t coordinateXyzNum = 3;
   const uint32_t neighborMaxNum = 1024;
+  const uint32_t meshDataLength = 1026;
 } // namespace
 
 namespace aicpu
@@ -64,7 +65,9 @@ namespace aicpu
     int32_t batchOutputDataLen = nloc * nnei * coordinateXyzNum;
     for (int32_t ff = 0; ff < nsamples; ff++) {
       FPTYPE *rij = p_rij + ff * batchOutputDataLen;
-      prod_env_mat_a_rij_cal(rij, ctx, ff, nnei);
+      int32_t len = nloc * nnei * coordinateXyzNum * sizeof(FPTYPE);
+      (void)memset_s(rij, len, 0.0, len);
+      prod_env_mat_a_rij_cal(rij, ctx, ff, nnei, sec_a);
     }
     return KERNEL_STATUS_OK;
   }
@@ -137,25 +140,15 @@ namespace aicpu
     return KERNEL_STATUS_OK;
   }
 
-  template<typename FPTYPE>
-  int32_t ProdEnvMatACalcRijCpuKernel::format_nlist_i_cpu(int32_t batchIndex,
-      SingleNatomInfo<FPTYPE> &singleNatomInfo, CpuKernelContext &ctx,
-      const int32_t &i_idx, const std::vector<int32_t> &nei_idx_a) {
-    Tensor *coord_tensor = ctx.Input(kIndexZero);
-    Tensor *type_tensor = ctx.Input(kIndexOne);
-    int32_t nall =  coord_tensor->GetTensorShape()->GetDimSize(1) / coordinateXyzNum;
-    auto rcut = ctx.GetAttr("rcut_r")->GetFloat();
-    auto p_coord = static_cast<FPTYPE *>(coord_tensor->GetData());
-    auto p_type = static_cast<int32_t *>(type_tensor->GetData());
-    const FPTYPE *coord = p_coord + batchIndex * nall * coordinateXyzNum;
-    const int32_t *type = p_type + batchIndex * nall;
-    std::vector<int64_t> sel_a = ctx.GetAttr("sel_a")->GetListInt();
-    std::vector<int64_t> sec_a;
-    cum_sum(sec_a, sel_a);
+  template <typename FPTYPE>
+  int32_t ProdEnvMatACalcRijCpuKernel::format_nlist_i_cpu(
+      SingleNatomInfo<FPTYPE> &singleNatomInfo, const int32_t &i_idx,
+      const std::vector<int32_t> &nei_idx_a, std::vector<int64_t> &sec_a,
+      const FPTYPE *coord, const int32_t *type, float rcutsquared) {
     singleNatomInfo.fmt_nlist_a.resize(sec_a.back());
     fill(singleNatomInfo.fmt_nlist_a.begin(), singleNatomInfo.fmt_nlist_a.end(), -1);
     singleNatomInfo.d_distance_a.resize(sec_a.back());
-    FPTYPE defaultDistance = 6.0;
+    FPTYPE defaultDistance = rcutsquared + 1.0;
     fill(singleNatomInfo.d_distance_a.begin(), singleNatomInfo.d_distance_a.end(), defaultDistance);
     // gether all neighbors
     std::vector<int32_t> nei_idx(nei_idx_a);
@@ -165,12 +158,11 @@ namespace aicpu
     for (uint32_t kk = 0; kk < nei_idx.size(); kk++) {
       FPTYPE diff[coordinateXyzNum];
       const int32_t &j_idx = nei_idx[kk];
-      for (uint32_t dd = 0; dd < coordinateXyzNum; dd++)
-      {
+      for (uint32_t dd = 0; dd < coordinateXyzNum; dd++) {
         diff[dd] = coord[j_idx * coordinateXyzNum + dd] - coord[i_idx * coordinateXyzNum + dd];
       }
-      FPTYPE rr = sqrt(dot3(diff, diff));
-      if (rr < rcut) {
+      FPTYPE rr = dot3(diff, diff);
+      if (rr < rcutsquared) {
         sel_nei.push_back(NeighborInfo(type[j_idx], rr, j_idx));
       }
     }
@@ -191,17 +183,8 @@ namespace aicpu
   }
 
   template<typename FPTYPE>
-  void ProdEnvMatACalcRijCpuKernel::env_mat_a_cpu(std::vector<FPTYPE> &rij_a, const int32_t &i_idx,
-      const std::vector<int32_t> &fmt_nlist_a, CpuKernelContext &ctx, int32_t batchIndex) {
-      Tensor *coord_tensor = ctx.Input(kIndexZero);
-      auto p_coord = static_cast<FPTYPE *>(coord_tensor->GetData());
-      const FPTYPE *coord = p_coord + batchIndex * coord_tensor->GetTensorShape()->GetDimSize(1);
-      std::vector<int64_t> sel_a = ctx.GetAttr("sel_a")->GetListInt();
-      std::vector<int64_t> sec_a;
-      cum_sum(sec_a, sel_a);
-      // compute the diff of the neighbors
-      rij_a.resize(sec_a.back() * coordinateXyzNum);
-      fill(rij_a.begin(), rij_a.end(), 0.0);
+  void ProdEnvMatACalcRijCpuKernel::env_mat_a_cpu(FPTYPE *rij_a, const int32_t &i_idx,
+      const std::vector<int32_t> &fmt_nlist_a, std::vector<int64_t> &sec_a, const FPTYPE *coord) {
       for (int32_t ii = 0; ii < int32_t(sec_a.size()) - 1; ii++) {
         for (int64_t jj = sec_a[ii]; jj < sec_a[ii + 1]; jj++) {
           if (fmt_nlist_a[jj] < 0) {
@@ -217,58 +200,69 @@ namespace aicpu
   }
 
   template <typename FPTYPE>
-  void ProdEnvMatACalcRijCpuKernel::prod_env_mat_a_rij_cal(FPTYPE *rij, CpuKernelContext &ctx,
-                                                           int32_t batchIndex, int32_t nnei) {
-    Tensor *natoms_tensor = ctx.Input(kIndexTwo);
-    Tensor *mesh_tensor = ctx.Input(kIndexFour);
-    Tensor *nlist_tensor = ctx.Output(kIndexOne);
-    Tensor *distance_tensor = ctx.Output(kIndexTwo);
-    FPTYPE *p_distance = static_cast<FPTYPE *>(distance_tensor->GetData());
-    int32_t *p_nlist = static_cast<int32_t *>(nlist_tensor->GetData());
-    auto natoms = static_cast<int32_t *>(natoms_tensor->GetData());
-    auto p_mesh = static_cast<int32_t *>(mesh_tensor->GetData());
+  void ProdEnvMatACalcRijCpuKernel::prod_env_mat_a_rij_cal(
+      FPTYPE *rij, CpuKernelContext &ctx, int32_t batchIndex, int32_t nnei,
+      std::vector<int64_t> &sec_a) {
+    FPTYPE *p_distance = static_cast<FPTYPE *>(ctx.Output(kIndexTwo)->GetData());
+    int32_t *p_nlist = static_cast<int32_t *>(ctx.Output(kIndexOne)->GetData());
+    auto natoms = static_cast<int32_t *>(ctx.Input(kIndexTwo)->GetData());
+    auto p_mesh = static_cast<int32_t *>(ctx.Input(kIndexFour)->GetData());
     int32_t nloc = natoms[0];
     int32_t *nlist = p_nlist + batchIndex * nloc * nnei;
     FPTYPE *distance = p_distance + batchIndex * nloc * nnei;
     // out
-    Tensor *rij_x_tensor = ctx.Output(kIndexThree);
-    Tensor *rij_y_tensor = ctx.Output(kIndexFour);
-    Tensor *rij_z_tensor = ctx.Output(kIndexFive);
-    FPTYPE *p_rij_x = static_cast<FPTYPE *>(rij_x_tensor->GetData());
-    FPTYPE *p_rij_y = static_cast<FPTYPE *>(rij_y_tensor->GetData());
-    FPTYPE *p_rij_z = static_cast<FPTYPE *>(rij_z_tensor->GetData());
+    FPTYPE *p_rij_x = static_cast<FPTYPE *>(ctx.Output(kIndexThree)->GetData());
+    FPTYPE *p_rij_y = static_cast<FPTYPE *>(ctx.Output(kIndexFour)->GetData());
+    FPTYPE *p_rij_z = static_cast<FPTYPE *>(ctx.Output(kIndexFive)->GetData());
     FPTYPE *rij_x = p_rij_x + batchIndex * nloc * nnei;
     FPTYPE *rij_y = p_rij_y + batchIndex * nloc * nnei;
     FPTYPE *rij_z = p_rij_z + batchIndex * nloc * nnei;
+
+    Tensor *coord_tensor = ctx.Input(kIndexZero);
+    Tensor *type_tensor = ctx.Input(kIndexOne);
+    int32_t nall = coord_tensor->GetTensorShape()->GetDimSize(1) / coordinateXyzNum;
+    float rcut = ctx.GetAttr("rcut_r")->GetFloat();
+    float rcutsquared = rcut * rcut;
+    auto p_coord = static_cast<FPTYPE *>(coord_tensor->GetData());
+    auto p_type = static_cast<int32_t *>(type_tensor->GetData());
+    const FPTYPE *coord = p_coord + batchIndex * nall * coordinateXyzNum;
+    const int32_t *type = p_type + batchIndex * nall;
     // get meshdata
     InputNlist meshdata;
     meshdata.nlocnum = p_mesh[0];
     meshdata.ilist = &p_mesh[1];
     meshdata.numneigh = &p_mesh[1 + meshdata.nlocnum];
     meshdata.firstneigh = (int32_t(*)[neighborMaxNum]) &p_mesh[1 + kIndexTwo * meshdata.nlocnum];
+    bool needmap = false;
+    if (ctx.Input(kIndexFour)->GetTensorShape()->GetDimSize(0) > (1 + meshDataLength * meshdata.nlocnum)) {
+      meshdata.nallmaptable = &p_mesh[1 + meshDataLength * meshdata.nlocnum];
+      needmap = true;
+    }
     int32_t max_nbor_size = max_numneigh(meshdata);
-    // build nlist
-    std::vector<std::vector<int32_t>> d_nlist_a(nloc);
+
     auto ComputeRijDistance = [&](int32_t start, int32_t end) {
       for (int32_t ii = start; ii < end; ii++) {
         int32_t coreNatomIndex = meshdata.ilist[ii];
-        d_nlist_a[coreNatomIndex].reserve(max_nbor_size);
+        std::vector<int32_t> d_nlist_a;
+        d_nlist_a.reserve(max_nbor_size);
         for (int32_t jj = 0; jj < meshdata.numneigh[ii]; jj++) {
-          int32_t j_idx = meshdata.firstneigh[ii][jj];
-          d_nlist_a[coreNatomIndex].push_back(j_idx);
+          d_nlist_a.push_back(meshdata.firstneigh[ii][jj]);
         }
-
         SingleNatomInfo<FPTYPE> singleNatomInfo;
-        format_nlist_i_cpu(batchIndex, singleNatomInfo, ctx, coreNatomIndex, d_nlist_a[coreNatomIndex]);
-        std::vector<FPTYPE> d_rij_a;
-        env_mat_a_cpu(d_rij_a, coreNatomIndex, singleNatomInfo.fmt_nlist_a, ctx, batchIndex);
+        format_nlist_i_cpu(singleNatomInfo, coreNatomIndex, d_nlist_a, sec_a, coord, type, rcutsquared);
+
+        FPTYPE *coreNatomRij = rij + ii * nnei * coordinateXyzNum;
+        env_mat_a_cpu(coreNatomRij, coreNatomIndex, singleNatomInfo.fmt_nlist_a, sec_a, coord);
         // record outputs
-        for (uint32_t jj = 0; jj < nnei * coordinateXyzNum; jj++) {
-          rij[ii * nnei * coordinateXyzNum + jj] = d_rij_a[jj];
-        }
         for (int32_t jj = 0; jj < nnei; jj++) {
           int32_t index = ii * nnei + jj;
-          nlist[index] = singleNatomInfo.fmt_nlist_a[jj];
+          if (needmap) {
+            nlist[index] =
+                singleNatomInfo.fmt_nlist_a[jj] == -1
+                ? -1 : meshdata.nallmaptable[singleNatomInfo.fmt_nlist_a[jj]];
+          } else {
+            nlist[index] = singleNatomInfo.fmt_nlist_a[jj];
+          }
           distance[index] = singleNatomInfo.d_distance_a[jj];
           rij_x[index] = rij[index * coordinateXyzNum];
           rij_y[index] = rij[index * coordinateXyzNum + kIndexOne];
