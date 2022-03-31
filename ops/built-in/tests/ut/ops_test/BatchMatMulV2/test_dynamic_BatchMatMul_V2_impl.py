@@ -176,7 +176,12 @@ normal_case = [
      ((-1, -1, -1), ((1, 196608), (1, 196608), (1, 196608)), 'float16', 'FRACTAL_NZ', False),
      (None, None, None, None),
      ((-1, -1, -1), ((1, 2147483647), (1, 2147483647), (1, 2147483647)), 'float16', 'FRACTAL_NZ'),
-     "dynamic_batch_matmul_v2_succ_case2"]
+     "dynamic_batch_matmul_v2_succ_case2"],
+     [((-1, -1), ((1, 2147483647), (1, 2147483647)), 'float16', 'FRACTAL_NZ', False),
+     ((-1, -1, -1), ((1, 196608), (1, 196608), (1, 196608)), 'float16', 'FRACTAL_NZ', False),
+     ((-1,), ((1, 2147483647),), 'float16', 'ND'),
+     ((-1, -1, -1), ((1, 2147483647), (1, 2147483647), (1, 2147483647)), 'float16', 'FRACTAL_NZ'),
+     "dynamic_batch_matmul_v2_succ_case3"]
 ]
 
 def cus_ceil(v, base):
@@ -245,6 +250,14 @@ def test_get_op_support_info_dynamic_batchmatmul_v2(test_arg):
     get_op_support_info(x1, x2, trans_b=True)
 ut_case.add_cust_test_func(test_func=test_get_op_support_info_dynamic_batchmatmul_v2)
 
+def test_get_op_support_info_dynamic_batchmatmul_v2_case2(test_arg):
+    x1 = {"format": "FRACTAL_NZ","ori_format": "ND", "dtype": "float16", "shape": (-1, -1, -1, 16, 16), "ori_shape": (-1, -1, -1),
+          "range": ((1, 6), (16, 48), (16, 48), (16, 16), (16, 16))}
+    x2 = {"format": "FRACTAL_NZ","ori_format": "ND", "dtype": "float16", "shape": (-1, -1, -1, 16, 16), "ori_shape": (-1, -1, -1),
+          "range": ((1, 6), (16, 48), (16, 48), (16, 16), (16, 16))}
+    get_op_support_info(x1, x2, trans_a=True)
+ut_case.add_cust_test_func(test_func=test_get_op_support_info_dynamic_batchmatmul_v2_case2)
+
 
 def test_batch_matmul_v2_fuzzy_generalization(test_arg):
     from impl.dynamic.batch_matmul_v2 import batch_matmul_v2_generalization
@@ -256,6 +269,7 @@ def test_batch_matmul_v2_fuzzy_generalization(test_arg):
                                    trans_a=False, trans_b=False, offset_x=0, kernel_name="batchmatmul_generalization",
                                    generalize_config={"mode": "keep_rank"})
 ut_case.add_cust_test_func(test_func=test_batch_matmul_v2_fuzzy_generalization)
+
 
 if __name__ == "__main__":
     ut_case.run(["Ascend310", "Ascend910"])

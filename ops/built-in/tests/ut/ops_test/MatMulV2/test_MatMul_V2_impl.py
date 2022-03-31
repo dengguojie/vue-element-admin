@@ -259,6 +259,17 @@ case12 = {"params": [{"shape": (784,19,16,32), "dtype": "int8", "format": "FRACT
          "format_expect": [],
          "support_expect": True}
 
+case13 = {"params": [{"shape": (32, 32), "dtype": "float32", "format": "ND", "ori_shape": (32, 32), "ori_format": "ND"},
+                    {"shape": (32, 1), "dtype": "float32", "format": "ND", "ori_shape": (32, 1), "ori_format": "ND"},
+                    None,
+                    None,
+                    {"shape": (32, 1), "dtype": "float32", "format": "ND", "ori_shape": (32, 1), "ori_format": "ND"},
+                    False, False],
+         "case_name": "MatMul_13",
+         "expect": "success",
+         "format_expect": [],
+         "support_expect": True}
+
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case2)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case3)
@@ -271,7 +282,7 @@ ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case9)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case10)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case11)
 ut_case.add_case(["Ascend710", "SD3403", "Ascend910A"], case12)
-
+ut_case.add_case(["Ascend710", "SD3403", "Ascend910A"], case13)
 # precision cases
 
 # DTS2022030712323
@@ -539,7 +550,97 @@ def test_check_support(test_arg):
                     kernel_name="matmul")
 
 
+def test_check_support_vector_ori_shape_not_fractal(test_arg):
+    from impl.mat_mul import check_supported
+    input_x1 = {
+        "shape": (6, 2, 16, 16),
+        "dtype": "float32",
+        "format": "FRACTAL_NZ",
+        "ori_shape": (6, 2, 16, 16),
+        "ori_format": "FRACTAL_NZ"
+    }
+    input_x2 = {
+        "shape": (4, 6, 16, 16),
+        "dtype": "float32",
+        "format": "FRACTAL_NZ",
+        "ori_shape": (4, 6, 16, 16),
+        "ori_format": "FRACTAL_NZ"
+    }
+    bias = {"shape": (64, ), "dtype": "float32", "format": "ND", "ori_shape": (64, ), "ori_format": "ND"}
+    ret = check_supported(input_x1, input_x2, bias)
+    assert not ret[0], f"test test_check_support_vector_ori_shape_not_fractal fail."
+
+
+def test_check_support_cube_ori_shape_not_fractal(test_arg):
+    from impl.mat_mul import check_supported
+    input_x1 = {
+        "shape": (6, 2, 16, 16),
+        "dtype": "float16",
+        "format": "ND",
+        "ori_shape": (6, 2, 16, 16),
+        "ori_format": "ND"
+    }
+    input_x2 = {
+        "shape": (4, 6, 16, 16),
+        "dtype": "float16",
+        "format": "ND",
+        "ori_shape": (4, 6, 16, 16),
+        "ori_format": "ND"
+    }
+    bias = {"shape": (64, ), "dtype": "float16", "format": "ND", "ori_shape": (64, ), "ori_format": "ND"}
+    ret = check_supported(input_x1, input_x2, bias)
+    assert not ret[0], f"test test_check_support_cube_ori_shape_not_fractal fail."
+
+
+def test_check_support_vector_k_dim_not_equal(test_arg):
+    from impl.mat_mul import check_supported
+    input_x1 = {"shape": (32, 128), "dtype": "float32", "format": "ND", "ori_shape": (32, 128), "ori_format": "ND"}
+    input_x2 = {"shape": (128, 512), "dtype": "float32", "format": "ND", "ori_shape": (128, 512), "ori_format": "ND"}
+    bias = {"shape": (512, ), "dtype": "float32", "format": "ND", "ori_shape": (512, ), "ori_format": "ND"}
+    ret = check_supported(input_x1, input_x2, bias, trans_a=True, trans_b=False)
+    assert not ret[0], f"test check_support_vector_not_dynamic trans_a fail."
+
+    ret = check_supported(input_x1, input_x2, bias, trans_a=False, trans_b=True)
+    assert not ret[0], f"test check_support_vector_not_dynamic trans_a fail."
+
+    ret = check_supported(input_x1, input_x2, bias, trans_a=True, trans_b=True)
+    assert not ret[0], f"test check_support_vector_not_dynamic trans_a fail."
+
+    input_x1 = {"shape": (32, 256), "dtype": "float32", "format": "ND", "ori_shape": (32, 256), "ori_format": "ND"}
+    input_x2 = {"shape": (128, 512), "dtype": "float32", "format": "ND", "ori_shape": (128, 512), "ori_format": "ND"}
+    ret = check_supported(input_x1, input_x2, bias, trans_a=False, trans_b=False)
+    assert not ret[0], f"test check_support_vector_not_dynamic fail."
+
+
+def test_check_support_cube_k_dim_not_equal(test_arg):
+    from impl.mat_mul import check_supported
+    input_x1 = {"shape": (32, 128), "dtype": "float16",
+                "format": "ND", "ori_shape": (32, 128), "ori_format": "ND"}
+    input_x2 = {"shape": (128, 512), "dtype": "float16",
+                "format": "ND", "ori_shape": (128, 512), "ori_format": "ND"}
+    bias = {"shape": (512, ), "dtype": "float16", "format": "ND",
+            "ori_shape": (512, ), "ori_format": "ND"}
+    ret = check_supported(input_x1, input_x2, bias, trans_a = True, trans_b = False)
+    assert not ret[0], f"test check_support_vector_not_dynamic trans_a fail."
+
+    ret = check_supported(input_x1, input_x2, bias, trans_a = False, trans_b = True)
+    assert not ret[0], f"test check_support_vector_not_dynamic trans_a fail."
+
+    ret = check_supported(input_x1, input_x2, bias, trans_a = True, trans_b = True)
+    assert not ret[0], f"test check_support_vector_not_dynamic trans_a fail."
+
+    input_x1 = {"shape": (32, 256), "dtype": "float16",
+                "format": "ND", "ori_shape": (32, 256), "ori_format": "ND"}
+    input_x2 = {"shape": (128, 512), "dtype": "float16",
+                "format": "ND", "ori_shape": (128, 512), "ori_format": "ND"}
+    ret = check_supported(input_x1, input_x2, bias, trans_a = False, trans_b = False)
+    assert not ret[0], f"test check_support_vector_not_dynamic fail."
+
 ut_case.add_cust_test_func(test_func=test_check_support)
+ut_case.add_cust_test_func(test_func=test_check_support_vector_ori_shape_not_fractal)
+ut_case.add_cust_test_func(test_func=test_check_support_cube_ori_shape_not_fractal)
+ut_case.add_cust_test_func(test_func=test_check_support_vector_k_dim_not_equal)
+ut_case.add_cust_test_func(test_func=test_check_support_cube_k_dim_not_equal)
 
 ut_case.add_case(["Ascend310"], not_align_bias_case1)
 ut_case.add_case(["Ascend310", "Ascend920A"], not_align_bias_case2)
@@ -796,6 +897,8 @@ ut_case.add_cust_test_func(test_func=test_auto_tiling)
 ut_case.add_cust_test_func(test_func=test_atomic_add_k)
 ut_case.add_cust_test_func(test_func=test_matmul_nd)
 ut_case.add_cust_test_func(test_func=test_atomic_add_k_dts_case_1)
+
+
 
 
 if __name__ == '__main__':
