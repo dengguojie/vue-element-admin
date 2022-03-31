@@ -41,7 +41,7 @@ class Constant:
     NUM_SIXTYFOUR = MASK64
     MAX_INT64_VALUE = 2**64 - 1
     # used for tiling data
-    TILING_CTRL_PARAM = ("int64", 128)
+    TILING_CTRL_PARAM = ("int64", 128, 42)
 
 
 # 'pylint: disable=unused-argument, invalid-name, too-many-arguments
@@ -274,7 +274,7 @@ class NllLossGradCompute:
         ele_per_block = Constant.BLOCK_BYTE_SIZE // self.tiling_dtype_bytes
         self.tik_instance.data_move(self.tiling_ub, self.tiling_gm, 0, 1,
                                     Constant.TILING_CTRL_PARAM[1] // ele_per_block, 0, 0)
-        for reg_idx in range(Constant.TILING_CTRL_PARAM[1]):
+        for reg_idx in range(Constant.TILING_CTRL_PARAM[2]):
             self.tiling_params[reg_idx].set_as(self.tiling_ub[reg_idx])
 
     def init_ub(self):
