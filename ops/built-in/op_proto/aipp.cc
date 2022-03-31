@@ -743,13 +743,10 @@ static void SaveImagesDesc(Operator& op, const std::string& aipp_config_path) {
 
     auto images_desc = op.GetInputDesc("images");
     Tensor images_tensor(images_desc);
-    OP_LOGD(op.GetName().c_str(), "SaveImagesDesc, images_shape is %s",
-            to_string(images_desc.GetShape().GetDims()).c_str());
-    OP_LOGD(op.GetName().c_str(), "SaveImagesDesc, images_dtype value is %ld", int64_t(images_desc.GetDataType()));
-    OP_LOGD(op.GetName().c_str(), "SaveImagesDesc, images_format value is %ld", int64_t(images_desc.GetFormat()));
-    std::vector<std::pair<int64_t, int64_t>> shape_range;
-    images_desc.GetShapeRange(shape_range);
-    OP_LOGD(op.GetName().c_str(), "SaveImagesDesc, shape range is %s", to_string(shape_range).c_str());
+    OP_LOGD(op.GetName().c_str(),
+            "SaveImagesDesc, images_shape is %s, images_dtype value is %ld, images_format value is %ld",
+            to_string(images_desc.GetShape().GetDims()).c_str(),
+            int64_t(images_desc.GetDataType()), int64_t(images_desc.GetFormat()));
     op.SetAttr("aipp_images_tensor_bak", images_tensor);
   }
   OP_LOGD(op.GetName().c_str(), "aipp infershape, SaveImagesDesc end");
@@ -761,13 +758,10 @@ static void GetImagesDesc(Operator& op, TensorDesc& images_desc) {
   if (op.GetAttr("aipp_images_tensor_bak", images_tensor) == GRAPH_SUCCESS) {
     OP_LOGD(op.GetName().c_str(), "GetImagesDesc, get aipp_images_tensor_bak success");
     images_desc = images_tensor.GetTensorDesc();
-    OP_LOGD(op.GetName().c_str(), "GetImagesDesc, images_shape is %s",
-            to_string(images_desc.GetShape().GetDims()).c_str());
-    OP_LOGD(op.GetName().c_str(), "GetImagesDesc, images_dtype value is %ld", int64_t(images_desc.GetDataType()));
-    OP_LOGD(op.GetName().c_str(), "GetImagesDesc, images_format value is %ld", int64_t(images_desc.GetFormat()));
-    std::vector<std::pair<int64_t, int64_t>> shape_range;
-    images_desc.GetShapeRange(shape_range);
-    OP_LOGD(op.GetName().c_str(), "GetImagesDesc, shape range is %s", to_string(shape_range).c_str());
+    OP_LOGD(op.GetName().c_str(),
+            "GetImagesDesc, images_shape is %s, images_dtype value is %ld, images_format value is %ld",
+            to_string(images_desc.GetShape().GetDims()).c_str(),
+            int64_t(images_desc.GetDataType()), int64_t(images_desc.GetFormat()));
   } else {
     OP_LOGD(op.GetName().c_str(), "GetImagesDesc, first, get images_desc from images");
     images_desc = op.GetInputDesc("images");

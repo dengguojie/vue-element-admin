@@ -473,16 +473,6 @@ case49 = {"params": [{"shape": (77, 31, 40), "dtype": "float32", "format": "ND",
           "expect": "success",
           "support_expect": True}
 
-case50 = {"params": [{"shape": (1, 512, 32000), "dtype": "int64", "format": "ND",
-                     "ori_shape": (1, 512, 32000), "ori_format": "ND"},
-                    {"shape": (1, 512, 32000), "dtype": "int64", "format": "ND",
-                     "ori_shape": (1, 512, 32000), "ori_format": "ND"},
-                    [0, 0, 0], [1, 512, 32000], [1, 16, 1], 0, 0, 0, 0, 1
-                    ],
-         "case_name": "StridedSliceD_50",
-         "expect": "success",
-         "support_expect": True}
-
 case51 = {"params": [{"shape": [], "dtype": "float16", "format": "ND",
                      "ori_shape": [], "ori_format": "ND"},
                     {"shape": [1], "dtype": "float16", "format": "ND",
@@ -685,7 +675,6 @@ ut_case.add_case(["all"], case46)
 ut_case.add_case(["all"], case47)
 ut_case.add_case(["all"], case48)
 ut_case.add_case(["all"], case49)
-ut_case.add_case(["all"], case50)
 ut_case.add_case(["all"], case51)
 
 ut_case.add_cust_test_func(test_func=test_op_select_format)
