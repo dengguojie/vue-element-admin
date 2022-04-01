@@ -220,8 +220,11 @@ def save_report(report, output_path):
         return
     report_file = os.path.join(os.path.realpath(output_path),
                                'st_report.json')
-    report.save(report_file)
-    utils.print_info_log('The st report saved in: %s.' % report_file)
+    try:
+        report.save(report_file)
+        utils.print_info_log('The st report saved in: %s.' % report_file)
+    except (OSError, utils.OpTestGenException) as ex:
+        sys.exit(ex.error_info)
 
 
 def main():

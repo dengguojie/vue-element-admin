@@ -136,7 +136,7 @@ class CaseDesign:
         utils.print_step_log("[%s] Start to parser testcase json." % (os.path.basename(__file__)))
         case_list = self.generate_cases()
 
-        if len(case_list) == 0:
+        if len(case_list[0]) == 0:
             case_info = 'all'
             if self.case_name_list:
                 case_info = str(self.case_name_list)
