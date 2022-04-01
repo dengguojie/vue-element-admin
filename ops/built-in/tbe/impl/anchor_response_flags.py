@@ -315,6 +315,10 @@ def check_params(gt_bboxes, flags, featmap_size, num_base_anchors):
 
     max_n = (ub_size // 4 - 256) // 8
 
+    use_ub = 8 * max_n
+    left_ub = ub_size - use_ub
+    max_out = left_ub // 3
+
     n = input_shape[0]
     c = input_shape[1]
 
@@ -328,8 +332,8 @@ def check_params(gt_bboxes, flags, featmap_size, num_base_anchors):
         raise RuntimeError("output dtype must be uint8")
     if output_size != calc_size:
         raise RuntimeError("output_size should be equal to featmap_w * featmap_h * num_base_anchors")
-    if calc_size > 60000:
-        raise RuntimeError("output_size must be smaller than 60000")
+    if calc_size > max_out:
+        raise RuntimeError("output_size must be smaller than %s" % max_out)
 
 
 # 'pylint: disable=too-many-arguments

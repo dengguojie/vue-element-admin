@@ -32,8 +32,21 @@ case2 = {
     "format_expect": [],
     "support_expect": True}
 
+
+case3 = {
+    "params": [
+        {"shape": shape_2, "dtype": data_type, "format": data_format, "ori_shape": shape_2, "ori_format": data_format},
+        {"shape": [70000], "dtype": "uint8", "format": data_format, "ori_shape": [70000], "ori_format": data_format},
+        [100, 100], [32, 32], 7
+    ],
+    "case_name": "mmdet_flags_2",
+    "expect": "failed",
+    "format_expect": [],
+    "support_expect": True}
+
 ut_case.add_case(["Ascend910A"], case1)
 ut_case.add_case(["Ascend910A"], case2)
+ut_case.add_case(["Ascend910A"], case3)
 
 
 if __name__ == '__main__':
