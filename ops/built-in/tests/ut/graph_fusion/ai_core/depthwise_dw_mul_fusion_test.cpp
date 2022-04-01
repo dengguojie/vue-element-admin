@@ -71,20 +71,20 @@ TEST_F(depthwise_dw_mul_fusion_test, depthwise_dw_mul_fusion_test_1) {
     fe::FusionPassTestUtils::InferShapeAndType(compute_graph_ptr);
     fe::FusionPassTestUtils::RunGraphFusionPass("DepthwiseDwMulFusionPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
 
-    bool findMul = false;
+    bool findTransposeD = false;
     for (auto node: compute_graph_ptr->GetAllNodes()) {
-        if (node->GetType() == "Mul") {
-            findMul = true;
+        if (node->GetType() == "TransposeD") {
+            findTransposeD = true;
         }
     }
-    EXPECT_EQ(findMul, true);
+    EXPECT_EQ(findTransposeD, true);
 }
 
 TEST_F(depthwise_dw_mul_fusion_test, depthwise_dw_mul_fusion_test_3) {
     ge::Graph graph("depthwise_dw_mul_fusion_test_3");
 
     auto dedy_shape = vector<int64_t>({128, 214, 214, 1});
-    
+
     ge::TensorDesc desc_dedy(ge::Shape(dedy_shape), FORMAT_NHWC, DT_FLOAT16);
     auto data1 = op::Data("data1");
     data1.update_input_desc_x(desc_dedy);
@@ -127,11 +127,11 @@ TEST_F(depthwise_dw_mul_fusion_test, depthwise_dw_mul_fusion_test_3) {
     fe::FusionPassTestUtils::InferShapeAndType(compute_graph_ptr);
     fe::FusionPassTestUtils::RunGraphFusionPass("DepthwiseDwMulFusionPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
 
-    bool findMul = false;
+    bool findReshape = false;
     for (auto node: compute_graph_ptr->GetAllNodes()) {
-        if (node->GetType() == "Mul") {
-            findMul = true;
+        if (node->GetType() == "Reshape") {
+            findReshape = true;
         }
     }
-    EXPECT_EQ(findMul, true);
+    EXPECT_EQ(findReshape, false);
 }

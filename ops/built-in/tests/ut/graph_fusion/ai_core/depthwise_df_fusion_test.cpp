@@ -56,7 +56,7 @@ TEST_F(depthwise_df_fusion_test, depthwise_df_fusion_test_dynamic_HWCN) {
         .set_attr_data_format("NHWC");
     ge::TensorDesc input_desc_input_size(ge::Shape(fmap_shape), FORMAT_ND, DT_INT32);
     ge::TensorDesc input_desc_filter(ge::Shape(filter_shape), FORMAT_HWCN, DT_FLOAT16);
-    ge::TensorDesc input_desc_out_backprop(ge::Shape(dedy_shape), FORMAT_NHWC, DT_FLOAT16);    
+    ge::TensorDesc input_desc_out_backprop(ge::Shape(dedy_shape), FORMAT_NHWC, DT_FLOAT16);
     ge::TensorDesc output_desc_input_grad(ge::Shape(dedx_shape), FORMAT_NHWC, DT_FLOAT);
     depthwiseConv2DBackpropInput.update_input_desc_input_size(input_desc_input_size);
     depthwiseConv2DBackpropInput.update_input_desc_filter(input_desc_filter);
@@ -114,7 +114,7 @@ TEST_F(depthwise_df_fusion_test, depthwise_df_fusion_test_dynamic_NCHW) {
         .set_attr_data_format("NCHW");
     ge::TensorDesc input_desc_input_size(ge::Shape(fmap_shape), FORMAT_ND, DT_INT32);
     ge::TensorDesc input_desc_filter(ge::Shape(filter_shape), FORMAT_NCHW, DT_FLOAT16);
-    ge::TensorDesc input_desc_out_backprop(ge::Shape(dedy_shape), FORMAT_NCHW, DT_FLOAT16);    
+    ge::TensorDesc input_desc_out_backprop(ge::Shape(dedy_shape), FORMAT_NCHW, DT_FLOAT16);
     ge::TensorDesc output_desc_input_grad(ge::Shape(dedx_shape), FORMAT_NCHW, DT_FLOAT);
     depthwiseConv2DBackpropInput.update_input_desc_input_size(input_desc_input_size);
     depthwiseConv2DBackpropInput.update_input_desc_filter(input_desc_filter);
@@ -131,11 +131,11 @@ TEST_F(depthwise_df_fusion_test, depthwise_df_fusion_test_dynamic_NCHW) {
     fe::FusionPassTestUtils::InferShapeAndType(compute_graph_ptr);
     fe::FusionPassTestUtils::RunGraphFusionPass("DepthwiseDfFusionPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
 
-    bool findReshape = false;
+    bool findTransposeD = false;
     for (auto node: compute_graph_ptr->GetAllNodes()) {
-        if (node->GetType() == "Reshape") {
-            findReshape = true;
+        if (node->GetType() == "TransposeD") {
+            findTransposeD = true;
         }
     }
-    EXPECT_EQ(findReshape, false);
+    EXPECT_EQ(findTransposeD, true);
 }

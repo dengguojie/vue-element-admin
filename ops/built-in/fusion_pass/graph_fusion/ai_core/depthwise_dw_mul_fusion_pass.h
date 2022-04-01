@@ -28,17 +28,17 @@
 
 namespace fe {
 class DepthwiseDwMulFusionPass : public PatternFusionBasePass {
-  protected:
-    vector<FusionPattern*> DefinePatterns() override;
-    Status Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes) override;
+ protected:
+  vector<FusionPattern*> DefinePatterns() override;
+  Status Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes) override;
 
-  private:
-    ge::NodePtr AddMul(ge::ComputeGraph& graph, ge::NodePtr& depthwiseDwNode, ge::Format& inputOriginFormat,
-                       const bool& is_dynamic);
-    Status AddCoffe(ge::NodePtr& mulNode, const int64_t matrixSize, const vector<int64_t>& dimInfo,
-                    const bool& is_dynamic);
+ private:
+  ge::NodePtr AddMul(ge::ComputeGraph& graph, ge::NodePtr& depthwise_dw_node, const vector<int64_t>& ori_shape_reset,
+                     const vector<int64_t>& fractal_shape_reset);
 
-    const string FUSED_OP_TYPE = "DepthwiseConv2DBackpropFilterD";
+  ge::OpDescPtr CreateTranspose(const string& node_name, const ge::GeTensorDesc& output_desc);
+
+  const string FUSED_OP_TYPE = "DepthwiseConv2DBackpropFilterD";
 };
-} // namespace fe
-#endif // OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_DEPTHWISE_DW_MUL_FUSION_PASS_H_
+}  // namespace fe
+#endif  // OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_DEPTHWISE_DW_MUL_FUSION_PASS_H_

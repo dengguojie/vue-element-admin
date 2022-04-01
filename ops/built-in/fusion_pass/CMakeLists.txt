@@ -184,6 +184,7 @@ set(_aicore_fusion_srcs
   graph_fusion/ai_core/a_depthwise_fusion_pass.cc
   graph_fusion/ai_core/depthwise_dw_mul_fusion_pass.cc
   graph_fusion/ai_core/depthwise_df_fusion_pass.cc
+  graph_fusion/ai_core/conv_fusion_pass_utils.cc
   graph_fusion/ai_core/derelu_fusion_pass.cc
   graph_fusion/ai_core/diag_fusion_pass.cc
   graph_fusion/ai_core/diag_part_fusion_pass.cc

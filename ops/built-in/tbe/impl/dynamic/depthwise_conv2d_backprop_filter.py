@@ -144,15 +144,9 @@ def _check_shape(shape_in, shape_dedy, shape_dedw):
     if filter_c != 1:
         error_manager_cube.raise_err_three_paras("E62304", "depthwise_conv2d_backprop_filter",
                                        "filter_c", "1", str(filter_c))
-    if fmap_c * filter_c != dedy_c:
-        error_manager_cube.raise_err_specific_user("depthwise_conv2d_backprop_filter",
-                                         "fmap_c*filter_c must be equal with dedy_c.")
     if fmap_n != dedy_n:
         error_manager_cube.raise_err_specific_user("depthwise_conv2d_backprop_filter",
                                          "fmap_n must be equal with dedy_n.")
-    if fmap_c != filter_n:
-        error_manager_cube.raise_err_specific_user("depthwise_conv2d_backprop_filter",
-                                         "fmap_c must be equal with filter_n.")
     if DYNAMIC_FLAG in shape_dedw:
         error_manager_cube.raise_err_specific_user("depthwise_conv2d_backprop_filter",
                                          "dynamic filter_shape is not supported yet.")
@@ -211,9 +205,14 @@ def _get_dynamic_shape(fmap, dedy, dedw, fmap_range, dedy_range, strides, pads, 
                 calculated_dedy_w = _get_output(fmap_w, kernel_w, [pads[2], pads[3]], strides[1], dilations[3])
             dedy_w = calculated_dedy_w
 
-    if fmap_c == DYNAMIC_FLAG:
+    if fmap_c == DYNAMIC_FLAG or dedy_c == DYNAMIC_FLAG:
         fmap_c = dedw_n
         dedy_c = fmap_c * dedw_c
+
+    if (all(i != 1 for i in (fmap_n, fmap_c, fmap_h, fmap_w)) and
+        all(i != 1 for i in (dedy_n, dedy_c, dedy_h, dedy_w))):
+        fmap_n = DYNAMIC_FLAG
+
     if fmap_n == DYNAMIC_FLAG:
         fmap_n = operation.var("batch", bound=fmap_range[0])
         dedy_n = fmap_n
@@ -404,10 +403,11 @@ def _depthwise_conv2dbp_filter_compute(input_fm, filter_size, out_backprop, filt
     dilations = config_dict.get("dilations")
     strides = config_dict.get("strides")
     fmap_n, fmap_c, fmap_h, fmap_w = shape_in
-    _, _, dedy_h, dedy_w = shape_dedy
+    _, dedy_c, dedy_h, dedy_w = shape_dedy
     fmap_c1 = (fmap_c + BLOCK_SIZE - 1) // BLOCK_SIZE
+    dedy_c1 = (dedy_c + BLOCK_SIZE - 1) // BLOCK_SIZE
     fmap_shape_nc1hwc0 = (fmap_n, fmap_c1, fmap_h, fmap_w, BLOCK_SIZE)
-    dedy_shape_nc1hwc0 = (fmap_n, fmap_c1, dedy_h, dedy_w, BLOCK_SIZE)
+    dedy_shape_nc1hwc0 = (fmap_n, dedy_c1, dedy_h, dedy_w, BLOCK_SIZE)
     fmap = tvm.placeholder(fmap_shape_nc1hwc0, name="fmap", dtype=in_dtype)
     filter_size = tvm.placeholder([4], name="filter_size", dtype="int32")
     dedy = tvm.placeholder(dedy_shape_nc1hwc0, name="dedy", dtype=dedy_dtype)

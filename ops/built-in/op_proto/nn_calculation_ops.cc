@@ -1073,6 +1073,7 @@ IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DBackpropInputDInferShape) {
 
   int64_t hPosition = 0;
   int64_t wPosition = 0;
+  int64_t cPosition = 0;
   int64_t fhPosition = 0;
   int64_t fwPosition = 0;
   int64_t fcPosition = 0;
@@ -1081,6 +1082,7 @@ IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DBackpropInputDInferShape) {
   int64_t inW = 0;
   int64_t filterH = 0;
   int64_t filterW = 0;
+  int64_t filterC = 0;
   int64_t dilationH = 0;
   int64_t dilationW = 0;
   int64_t strideH = 0;
@@ -1110,8 +1112,7 @@ IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DBackpropInputDInferShape) {
 
   filterH = shapeW.GetDim(fhPosition);
   filterW = shapeW.GetDim(fwPosition);
-  groups = tensorDescW.GetOriginShape().GetDim(fcPosition) * tensorDescW.GetOriginShape().GetDim(fnPosition);
-  op.SetAttr("groups", groups);
+  filterC = shapeW.GetDim(fcPosition);
 
   if (!GetDimInFormat(string(op_name.GetString()), dataFormat, "H", hPosition)) {
     return GRAPH_FAILED;
@@ -1119,10 +1120,16 @@ IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DBackpropInputDInferShape) {
   if (!GetDimInFormat(string(op_name.GetString()), dataFormat, "W", wPosition)) {
     return GRAPH_FAILED;
   }
+  if (!GetDimInFormat(string(op_name.GetString()), dataFormat, "C", cPosition)) {
+    return GRAPH_FAILED;
+  }
 
   // NC1HWC0(NCHW)
   inH = input_size[hPosition];
   inW = input_size[wPosition];
+
+  // groups
+  op.SetAttr("groups", filterC);
 
   dilationH = dilations.at(hPosition);
   dilationW = dilations.at(wPosition);
@@ -1566,6 +1573,7 @@ IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DBackpropInputInferShape) {
   int64_t in_w = 0;
   int64_t filter_h = 0;
   int64_t filter_w = 0;
+  int64_t filter_c = 0;
   int64_t dilation_h = 0;
   int64_t dilation_w = 0;
   int64_t stride_h = 0;
@@ -1589,6 +1597,7 @@ IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DBackpropInputInferShape) {
 
   filter_h = shapeW.GetDim(fh_position);
   filter_w = shapeW.GetDim(fw_position);
+  filter_c = shapeW.GetDim(fc_position);
 
   bool data_format_invalid = !GetDimInFormat(string(op_name.GetString()), dataFormat, "H", h_position) ||
                              !GetDimInFormat(string(op_name.GetString()), dataFormat, "W", w_position);
@@ -1601,6 +1610,8 @@ IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DBackpropInputInferShape) {
   stride_h = strides.at(h_position);
   stride_w = strides.at(w_position);
 
+  groups = filter_c;
+  op.SetAttr("groups", groups);
   bool need_infer_range = is_dynamic || (!is_input_size_const && unknown_rank);
   if (need_infer_range) {
     // get shape for output from input_size
@@ -1609,15 +1620,11 @@ IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DBackpropInputInferShape) {
     x_desc->GetShapeRange(dy_range);
     std::vector<std::pair<int64_t, int64_t>> dx_range;
     input_sizes_desc->GetValueRange(dx_range);
-    if (filterFormatStr == "HWCN") {
-      groups = 1;
-    } else {
-      groups = tensorDescW.GetOriginShape().GetDim(fn_position);
-    }
     vector<int64_t> attr_params = {stride_h, stride_w, dilation_h, dilation_w};
     if (!set_conv2d_backprop_input_out_shape_range(op, pad_str, dy_sizes, dy_format, dy_range, filter_sizes,
                                                    filter_format, input_format, dx_range, y_desc, x_desc,
-                                                   groups, unknown_rank, attr_params)) {
+                                                   1, // for depthwise, cin == filter_c
+                                                   unknown_rank, attr_params)) {
       return GRAPH_FAILED;
     }
     if (input_sizes.size() == 0) {
@@ -1648,12 +1655,6 @@ IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DBackpropInputInferShape) {
   if (input_sizes.size() == kConv2dDimSizeLimit) {
     y_desc->SetShape(GeShape(input_sizes));
   }
-  if (filterFormatStr == "HWCN") {
-    groups = tensorDescW.GetOriginShape().GetDim(fc_position);
-  } else {
-    groups = tensorDescW.GetOriginShape().GetDim(fn_position);
-  }
-  op.SetAttr("groups", groups);
   OP_LOGI(op_name.GetString(), "Leaving DepthwiseConv2dBackpropInput inferfunction!");
 
   return GRAPH_SUCCESS;
@@ -1730,7 +1731,7 @@ IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DBackpropFilterDInferShape) {
   DataType output_dtype = op.GetInputDescByName("out_backprop").GetDataType();
   TensorDesc tensordesc_output = op.GetOutputDescByName("filter_grad");
   tensordesc_output.SetShape(Shape(filter_size));
-  tensordesc_output.SetDataType(output_dtype);
+  tensordesc_output.SetDataType(DT_FLOAT);
   (void)op.UpdateOutputDesc("filter_grad", tensordesc_output);
 
   std::vector<int64_t> strides;
@@ -1759,13 +1760,15 @@ IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DBackpropFilterDInferShape) {
 
   int64_t hPosition = 0;
   int64_t wPosition = 0;
+  int64_t cPosition = 0;
   int64_t fhPosition = 0;
   int64_t fwPosition = 0;
-  int64_t cPosition = 0;
+  int64_t fcPosition = 0;
   int64_t inH = 0;
   int64_t inW = 0;
   int64_t filterH = 0;
   int64_t filterW = 0;
+  int64_t filterC = 0;
   int64_t dilationH = 0;
   int64_t dilationW = 0;
   int64_t strideH = 0;
@@ -1783,8 +1786,12 @@ IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DBackpropFilterDInferShape) {
   if (!GetDimInFormat(string(op_name.GetString()), filterFormatStr, "W", fwPosition)) {
     return GRAPH_FAILED;
   }
+  if (!GetDimInFormat(string(op_name.GetString()), filterFormatStr, "C", fcPosition)) {
+    return GRAPH_FAILED;
+  }
   filterH = filter_size[fhPosition];
   filterW = filter_size[fwPosition];
+  filterC = filter_size[fcPosition];
 
   auto tensorDescIn = op.GetInputDesc(0);
   auto shapeIn = tensorDescIn.GetShape();
@@ -1798,9 +1805,8 @@ IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DBackpropFilterDInferShape) {
   if (!GetDimInFormat(string(op_name.GetString()), dataFormat, "C", cPosition)) {
     return GRAPH_FAILED;
   }
-  int64_t groups = 0;
-  groups = shapeIn.GetDim(cPosition);
-  op.SetAttr("groups", groups);
+
+  op.SetAttr("groups", filterC);
 
   // NC1HWC0(NCHW)
   inH = shapeIn.GetDim(hPosition);
@@ -1924,6 +1930,7 @@ IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DBackpropFilterInferShape) {
   }
 
   tensordesc_output->SetShape(GeShape(filter_size));
+  tensordesc_output->SetDataType(DT_FLOAT);
   std::vector<int64_t> strides;
   strides = GetAttrValue(op, "strides");
   CHECK_SIZE(strides.size() != DIM_SIZE4, return GRAPH_FAILED, "strides is invalid");
@@ -1968,12 +1975,7 @@ IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DBackpropFilterInferShape) {
   filter_w = filter_size[fw_position];
   filter_c = filter_size[fc_position];
   filter_n = filter_size[fn_position];
-  int64_t groups = 0;
-  if (filter_format_str == "HWCN") {
-    groups = filter_c;
-  } else {
-    groups = filter_n;
-  }
+  int64_t groups = filter_c;
   op.SetAttr("groups", groups);
 
   auto tensorDescIn = op.GetInputDesc(0);

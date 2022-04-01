@@ -25,6 +25,7 @@
 #include <string>
 #include <map>
 
+#include "conv_fusion_pass_utils.h"
 #include "quant_host_cpu_op_common.h"
 #include "op_log.h"
 #include "fp16_t.hpp"
@@ -45,7 +46,11 @@ namespace fe {
 static const string PATTERN_DEPTHWISE_DF = "DepthwiseConv2DBackpropInputD";
 static const char* DEPTHWISE = "DepthwiseConv2DBackpropInputD";
 static const char* DEPTHWISE_DYN = "DepthwiseConv2DBackpropInput";
-const int MAX_DIM_NUM = 4;
+const std::vector<ge::Format> kFormatList = {FORMAT_NCHW, FORMAT_HWCN};
+const std::vector<int32_t> kTransposePerm = {1, 0, 2, 3};
+const int32_t MAX_DIM_NUM = 4;
+const int32_t NCHW_N_DIM = 0;
+const int32_t NCHW_C_DIM = 1;
 
 vector<FusionPattern*> DepthwiseDfFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
@@ -61,63 +66,50 @@ vector<FusionPattern*> DepthwiseDfFusionPass::DefinePatterns() {
   return patterns;
 }
 
-ge::NodePtr DepthwiseDfFusionPass::CreateReshapeNode(ge::ComputeGraph& graph,
-                                                     vector<int64_t> src_shape,
-                                                     vector<int64_t> tar_shape,
-                                                     const ge::DataType& desc_type,
-                                                     const std::string& node_name) {
-  ge::GeShape input_shape(src_shape);
-  ge::GeTensorDesc filter_input_desc(input_shape, FORMAT_HWCN, desc_type);
-  filter_input_desc.SetShape(input_shape);
-  filter_input_desc.SetOriginShape(input_shape);
-  filter_input_desc.SetOriginDataType(desc_type);
-
-  ge::GeShape output_shape(tar_shape);
-  ge::GeTensorDesc filter_output_desc(output_shape, FORMAT_HWCN, desc_type);
-  filter_output_desc.SetShape(output_shape);
-  filter_output_desc.SetOriginShape(output_shape);
-  filter_output_desc.SetOriginDataType(desc_type);
-
-  ge::OpDescPtr reshape_desc;
-  FUSION_PASS_MAKE_SHARED((reshape_desc = std::make_shared<ge::OpDesc>(
-                          node_name + "/Reshape", "Reshape")), return nullptr);
-  FUSION_PASS_CHECK(reshape_desc->AddInputDesc("x", filter_input_desc) != GRAPH_SUCCESS,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "failed to add input desc x to reshape."), return nullptr);
-  FUSION_PASS_CHECK(reshape_desc->AddOutputDesc("y", filter_output_desc) != GRAPH_SUCCESS,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "failed to add input desc y to reshape."), return nullptr);
-  ge::AttrUtils::SetListInt(reshape_desc, "shape", tar_shape);
-
-  auto reshape_node = graph.AddNode(reshape_desc);
-  FUSION_PASS_CHECK(reshape_node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "failed to add reshape to graph."),
+ge::NodePtr DepthwiseDfFusionPass::CreateTransposeNode(ge::ComputeGraph& graph, const ge::GeTensorDesc& filter_desc,
+                                                       const string& node_name) {
+  ge::Format filter_format = filter_desc.GetOriginFormat();
+  FUSION_PASS_CHECK(filter_format != ge::FORMAT_NCHW,
+                    OP_LOGD(FUSED_OP_TYPE.c_str(), "only filter_format is nchw, need insert transpose node."),
                     return nullptr);
-  return reshape_node;
+  ge::DataType filter_dtype = filter_desc.GetDataType();
+  vector<int64_t> filter_output_shape_vec = filter_desc.GetShape().GetDims();
+  std::swap(filter_output_shape_vec[NCHW_N_DIM], filter_output_shape_vec[NCHW_C_DIM]);
+
+  ge::GeTensorDesc transpose_output_desc;
+  transpose_output_desc.SetOriginShape(ge::GeShape(filter_output_shape_vec));
+  transpose_output_desc.SetShape(ge::GeShape(filter_output_shape_vec));
+  transpose_output_desc.SetOriginFormat(filter_format);
+  transpose_output_desc.SetFormat(filter_format);
+  transpose_output_desc.SetOriginDataType(filter_dtype);
+  transpose_output_desc.SetDataType(filter_dtype);
+
+  ge::OpDescPtr transpose_desc = nullptr;
+  FUSION_PASS_MAKE_SHARED(transpose_desc = std::make_shared<ge::OpDesc>(node_name + "/TransposeD", "TransposeD"),
+                          return nullptr);
+  FUSION_PASS_CHECK(transpose_desc->AddInputDesc("x", filter_desc) != SUCCESS,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "failed to add input desc x to transposed."), return nullptr);
+  FUSION_PASS_CHECK(transpose_desc->AddOutputDesc("y", transpose_output_desc) != SUCCESS,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "failed to add output desc ]y to transposed."), return nullptr);
+  ge::AttrUtils::SetListInt(transpose_desc, "perm", kTransposePerm);
+  NodePtr transpose_node = graph.AddNode(transpose_desc);
+  FUSION_PASS_CHECK(transpose_node == nullptr,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "failed to add transpose node into graph."), return nullptr);
+  return transpose_node;
 }
 
-Status DepthwiseDfFusionPass::InsertNode(const ge::OutDataAnchorPtr &src, const ge::InDataAnchorPtr &dst,
+Status DepthwiseDfFusionPass::InsertNode(const ge::OutDataAnchorPtr& src, const ge::InDataAnchorPtr& dst,
                                          ge::NodePtr& new_node) {
   ge::NodePtr src_node = src->GetOwnerNode();
   ge::NodePtr dst_node = dst->GetOwnerNode();
-
-  if (new_node->GetOpDesc()->UpdateInputDesc(0, src_node->GetOpDesc()->GetOutputDesc(src->GetIdx())) != GRAPH_SUCCESS) {
-    OP_LOGI(new_node->GetName().c_str(), "update input_desc failed.");
-    return FAILED;
-  }
-  if (new_node->GetOpDesc()->UpdateOutputDesc(0, dst_node->GetOpDesc()->GetInputDesc(dst->GetIdx())) != GRAPH_SUCCESS) {
-    OP_LOGI(new_node->GetName().c_str(), "update output_desc failed.");
-    return FAILED;
-  }
-  if(ge::GraphUtils::RemoveEdge(src, dst) != SUCCESS) {
-    OP_LOGE(dst_node->GetName().c_str(), "Remove ori_filter edge error.");
-    return FAILED;
-  }
-  if(ge::GraphUtils::AddEdge(src, new_node->GetInDataAnchor(0)) != SUCCESS) {
-    OP_LOGE(src_node->GetName().c_str(), "Add edge to node %s failed.", new_node->GetName().c_str());
-    return FAILED;
-  }
-  if(ge::GraphUtils::AddEdge(new_node->GetOutDataAnchor(0), dst)!= SUCCESS) {
-   OP_LOGE(new_node->GetName().c_str(), "Add edge to node %s failed.", dst_node->GetName().c_str());
-    return FAILED; 
-  }
+  FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(src, dst) != SUCCESS,
+                    OP_LOGE(dst_node->GetName().c_str(), "Remove ori_filter edge error."), return FAILED);
+  FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(src, new_node->GetInDataAnchor(0)) != SUCCESS,
+                    OP_LOGE(src_node->GetName().c_str(), "Add edge to node %s failed.", new_node->GetName().c_str()),
+                    return FAILED);
+  FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(new_node->GetOutDataAnchor(0), dst) != SUCCESS,
+                    OP_LOGE(new_node->GetName().c_str(), "Add edge to node %s failed.", dst_node->GetName().c_str()),
+                    return FAILED);
   return SUCCESS;
 }
 
@@ -134,40 +126,53 @@ Status DepthwiseDfFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, 
 
   ge::GeTensorDesc filter_desc = depthwise_desc->GetInputDesc(index);
   ge::Format origin_format = filter_desc.GetOriginFormat();
-  ge::DataType filter_dtype = filter_desc.GetDataType();
 
-  if (origin_format != FORMAT_HWCN) {
-    OP_LOGI(FUSED_OP_TYPE.c_str(), "filter format is not HWCN, no need to do fusion.");
-    return NOT_CHANGED;
-  }
+  int groups = 0;
+  ge::AttrUtils::GetInt(depthwise_node->GetOpDesc(), "groups", groups);
+  FUSION_PASS_CHECK(groups <= 0, OP_LOGE(FUSED_OP_TYPE.c_str(), "groups should not be less or equal with 0."),
+                    return PARAM_INVALID);
 
-  vector<int64_t> filter_src_shape = filter_desc.GetShape().GetDims();
-  vector<int64_t> filter_tar_shape = filter_src_shape;
-  filter_tar_shape[2] = 1;
-  filter_tar_shape[3] = filter_src_shape[2] * filter_src_shape[3];
+  FUSION_PASS_CHECK(std::find(kFormatList.begin(), kFormatList.end(), origin_format) == kFormatList.end(),
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "input origin_format only support NCHW and HWCN."),
+                    return PARAM_INVALID);
 
-  // update filter input desc
-  filter_desc.SetShape(ge::GeShape(filter_tar_shape));
-  filter_desc.SetOriginShape(ge::GeShape(filter_tar_shape));
-  FUSION_PASS_CHECK(depthwise_node->GetOpDesc()->UpdateInputDesc(index, filter_desc) != GRAPH_SUCCESS,
-                    OP_LOGI(FUSED_OP_TYPE.c_str(), "update depthwise filter input desc failed."),
-                    return FAILED);
+  vector<int64_t> filter_shape_vec = filter_desc.GetShape().GetDims();
+  vector<int64_t> filter_reset_shape_vec;
+  vector<int64_t> fractal_reset_shape_vec;
+  FUSION_PASS_CHECK(!ConvFusionPassUtils::GetResizeDepthwiseFilter(filter_shape_vec, origin_format, groups,
+                                                                   filter_reset_shape_vec, fractal_reset_shape_vec),
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "get filter resize shape failed."), return PARAM_INVALID);
 
+  ge::NodePtr transpose_node = CreateTransposeNode(graph, filter_desc, depthwise_node->GetName());
+  ge::GeTensorDesc reshape_input_desc =
+      transpose_node == nullptr ? filter_desc : transpose_node->GetOpDesc()->GetOutputDesc(0);
+
+  filter_desc.SetShape(ge::GeShape(filter_reset_shape_vec));
+  filter_desc.SetOriginShape(ge::GeShape(filter_reset_shape_vec));
 
   std::string node_name = depthwise_node->GetName();
-  ge::NodePtr reshape_node = CreateReshapeNode(graph, filter_src_shape, filter_tar_shape, filter_dtype, node_name);
-  FUSION_PASS_CHECK(reshape_node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "failed to add reshape to graph."),
-                    return FAILED);
+  ge::OpDescPtr reshape_desc_ptr =
+      ConvFusionPassUtils::CreateReshape(depthwise_node->GetName(), reshape_input_desc, filter_desc);
+  ge::NodePtr reshape_node = graph.AddNode(reshape_desc_ptr);
+  FUSION_PASS_CHECK(reshape_node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "failed to add reshape into graph."),
+                    return PARAM_INVALID);
   auto in_anchor = depthwise_node->GetInDataAnchor(index);
   FUSION_PASS_CHECK(in_anchor == nullptr || in_anchor->GetPeerOutAnchor() == nullptr,
                     OP_LOGE(FUSED_OP_TYPE.c_str(), "filter in anchor is nullptr or peer anchor is nullptr."),
                     return FAILED);
   FUSION_PASS_CHECK(InsertNode(in_anchor->GetPeerOutAnchor(), in_anchor, reshape_node) != SUCCESS,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "failed to add reshape to graph."),
-                    return FAILED);
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "failed to link reshape to graph."), return FAILED);
+  if (transpose_node != nullptr) {
+    in_anchor = reshape_node->GetInDataAnchor(0);
+    FUSION_PASS_CHECK(InsertNode(in_anchor->GetPeerOutAnchor(), in_anchor, transpose_node) != SUCCESS,
+                      OP_LOGE(FUSED_OP_TYPE.c_str(), "failed to link transpose node."), return FAILED);
+  }
+  // update filter desc
+  FUSION_PASS_CHECK(depthwise_node->GetOpDesc()->UpdateInputDesc(index, filter_desc) != GRAPH_SUCCESS,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "update depthwise filter input desc failed."), return FAILED);
 
   OP_LOGI("Leave DepthwiseDfFusionPass");
   return SUCCESS;
 }
 REGISTER_PASS("DepthwiseDfFusionPass", BUILT_IN_GRAPH_PASS, DepthwiseDfFusionPass);
-}
+}  // namespace fe
