@@ -66,6 +66,7 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/kernels/device/where.cc
   ${CPU_KERNELS_DIR}/kernels/device/stateless_drop_out_gen_mask.cc
   ${CPU_KERNELS_DIR}/kernels/host/assign.cc
+  ${CPU_KERNELS_DIR}/kernels/host/clip_by_value.cc
   ${CPU_KERNELS_DIR}/kernels/host/format_transfer/format_transfer_fractal_nz.cc
   ${CPU_KERNELS_DIR}/kernels/host/format_transfer/format_transfer_fractal_z.cc
   ${CPU_KERNELS_DIR}/kernels/host/format_transfer/format_transfer_fractalz_3d.cc
@@ -290,6 +291,7 @@ set(_cpu_kernels_ut_files
   testcase/acos/src/acos_utest.cpp
   testcase/acosh/src/acosh_utest.cpp
   testcase/adaptiveMaxPool/adaptiveMaxPool2d_utest.cpp
+  testcase/clip/src/clip_by_value_utest.cpp
   testcase/add/src/add_utest.cpp
   testcase/add_n/src/add_n_utest.cpp
   testcase/adjust_saturation/src/adjust_saturation_utest.cpp

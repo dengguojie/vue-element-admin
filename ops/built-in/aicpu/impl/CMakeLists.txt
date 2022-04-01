@@ -168,6 +168,7 @@ message("# ADD with custom op files: " ${WITH_CUSTOM_OP}\r\n ${local_kernels_src
 
 set(local_host_kernels_src_files
     kernels/host/assign.cc
+    kernels/host/clip_by_value.cc
     kernels/host/format_transfer/format_transfer_fractal_nz.cc
     kernels/host/format_transfer/format_transfer_fractal_z.cc
     kernels/host/format_transfer/format_transfer_fractalz_3d.cc
