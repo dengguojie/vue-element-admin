@@ -15,6 +15,7 @@
 """
 reduce_std_with_mean
 """
+import math
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import classify
@@ -98,7 +99,7 @@ def reduce_std_with_mean_compute(x, mean, dim, unbiased, keepdim, invert, epsilo
         # Divided by N or (N-1)
         if isinstance(reduce_ele, float):
             cof_unbiased = 1.0
-            if reduce_ele != 1.0:
+            if not math.isclose(reduce_ele, 1.0):
                 cof_unbiased = (reduce_ele - 1.0)**(-1)
                 cof_unbiased = tvm.const(cof_unbiased, dtype=dtype)
         else:

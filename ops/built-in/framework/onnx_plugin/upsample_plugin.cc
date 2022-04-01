@@ -66,6 +66,7 @@ Status ParseOpToGraphUpsample(const ge::Operator& op, Graph& graph) {
   auto resize_op = op::Resize("resize").set_input_x(data0)
                                        .set_input_roi(const_op)
                                        .set_input_scales(data1)
+                                       .set_attr_coordinate_transformation_mode("asymmetric")
                                        .set_attr_mode(mode_value1);
   
   ChangeFormatFromOnnx(resize_op, 0, ge::FORMAT_NCHW, true);

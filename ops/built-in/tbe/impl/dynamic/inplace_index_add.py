@@ -646,7 +646,7 @@ class InplaceIndexAdd():
         :return:
         """
         need_vconv_dtype = ("int8", "uint8")
-        mask, dst_ub, src1_ub, src2_ub, compute_repeat_stride = self.compute_paras(
+        (mask, dst_ub, src1_ub, src2_ub, compute_repeat_stride) = self.compute_paras(
             mask, dest_addr, src_addr1, src_addr2, repeat_times, is_tail)
 
         self.tik_instance.vadd(mask, dst_ub, src1_ub, src2_ub, repeat_times,
@@ -719,7 +719,8 @@ class InplaceIndexAdd():
                 src2_ub = self.updates_ub[src_addr2]
                 dst_ub = self.var_ub[dest_addr]
 
-        return mask, dst_ub, src1_ub, src2_ub, compute_repeat_stride
+        compute_info_dict = (mask, dst_ub, src1_ub, src2_ub, compute_repeat_stride)
+        return compute_info_dict
 
     def traversing_indices(self):
         """

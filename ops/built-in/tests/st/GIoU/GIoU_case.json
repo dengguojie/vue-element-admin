@@ -1,0 +1,136 @@
+[
+    {
+        "op": "GIoU",
+        "case_name": "test_GIoU_000",
+        "input_desc": [
+            {
+                "shape": [
+                    1,
+                    4
+                  ],
+                  "format": "ND",
+                  "ori_shape": [
+                    1,
+                    4
+                  ],
+                  "ori_format": "ND",
+                  "name": "bboxes",
+                  "type": "float32"
+            },
+            {
+                "shape": [
+                    1,
+                    4
+                  ],
+                  "format": "ND",
+                  "ori_shape": [
+                    1,
+                    4
+                  ],
+                  "ori_format": "ND",
+                  "name": "gtboxes",
+                  "type": "float32"
+            }
+        ],
+        "output_desc": [
+            {
+                "shape": [
+                    1,
+                    1
+                  ],
+                  "format": "ND",
+                  "ori_shape": [
+                    1,
+                    1
+                  ],
+                  "ori_format": "ND",
+                  "name": "overlap",
+                  "type": "float32"
+            }
+        ],
+        "attr": [
+            {
+                "name": "trans",
+                "value": false,
+                "type": "bool"
+            },
+            {
+                "name": "is_cross",
+                "value": true,
+                "type": "bool"
+            },
+            {
+                "name": "mode",
+                "value": "iou",
+                "type": "string"
+            }
+        ]
+    },
+    {
+        "op": "GIoU",
+        "case_name": "test_GIoU_001",
+        "input_desc": [
+            {
+                "shape": [
+                    16,
+                    4
+                  ],
+                  "format": "ND",
+                  "ori_shape": [
+                    16,
+                    4
+                  ],
+                  "ori_format": "ND",
+                  "name": "bboxes",
+                  "type": "float32"
+            },
+            {
+                "shape": [
+                    16,
+                    4
+                  ],
+                  "format": "ND",
+                  "ori_shape": [
+                    16,
+                    4
+                  ],
+                  "ori_format": "ND",
+                  "name": "gtboxes",
+                  "type": "float32"
+            }
+        ],
+        "output_desc": [
+            {
+                "shape": [
+                    16,
+                    16
+                  ],
+                  "format": "ND",
+                  "ori_shape": [
+                    16,
+                    16
+                  ],
+                  "ori_format": "ND",
+                  "name": "overlap",
+                  "type": "float32"
+            }
+        ],
+        "attr": [
+            {
+                "name": "trans",
+                "value": false,
+                "type": "bool"
+            },
+            {
+                "name": "is_cross",
+                "value": true,
+                "type": "bool"
+            },
+            {
+                "name": "mode",
+                "value": "iou",
+                "type": "string"
+            }
+        ]
+    }
+]

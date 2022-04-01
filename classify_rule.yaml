@@ -4142,6 +4142,9 @@ pytorch:
       - ops/built-in/tbe/impl/dynamic/resize_nearest3d.py
       - ops/built-in/tbe/impl/dynamic/celu_v2.py
       - ops/built-in/tbe/impl/celu_v2.py
+      - ops/built-in/tbe/impl/dynamic/sync_batch_norm_gather_stats_with_counts.py
+      - ops/built-in/tbe/impl/giou.py
+      - ops/built-in/tbe/impl/dynamic/reduce_std_with_mean.py
     unrelease:
       - ops/built-in/tests/ut/graph_fusion/ai_core/lstmp_fusion_test.cpp
       - ops/built-in/tests/ut/graph_fusion/ai_core/dynamic_rnn_v2_grad_fusion_test.cpp

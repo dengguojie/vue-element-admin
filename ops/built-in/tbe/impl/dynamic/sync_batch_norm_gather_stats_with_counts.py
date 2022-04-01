@@ -76,11 +76,13 @@ def sync_batch_norm_gather_stats_with_counts_compute(mean_all,
     """
 
     dtype = mean_all.dtype
+    sum_support_fp32 = tbe_platform.api_check_support("te.lang.cce.sum", "float32")
+    vdiv_support_fp32 = tbe_platform.api_check_support("te.lang.cce.vdiv", "float32")
     if dtype == "float32":
         calc_dtype = "float32"
     elif dtype == "float16":
         cce_product = tbe_platform.get_soc_spec("SOC_VERSION")
-        if not tbe_platform.api_check_support("te.lang.cce.sum", "float32") and not tbe_platform.api_check_support("te.lang.cce.vdiv", "float32"):
+        if not sum_support_fp32 and not vdiv_support_fp32:
             calc_dtype = "float16"
         elif cce_product == "Ascend310" and impl_mode == OpImplMode.HIGH_PERFORMANCE:
             calc_dtype = "float16"
@@ -107,33 +109,27 @@ def sync_batch_norm_gather_stats_with_counts_compute(mean_all,
 
     var_all = tbe.vrec(data_invert_std_all_tmp, "high_precision")
     var_all_square = tbe.vmul(var_all, var_all)
-    epsilon_value = tvm.const(epsilon, dtype=calc_dtype)
-    n_epsilon_value = tvm.const(-epsilon, dtype=calc_dtype)
-    var_all_square_epsilon = tbe.vadds(var_all_square, n_epsilon_value)
+    var_all_square_epsilon = tbe.vadds(var_all_square, tvm.const(-epsilon, dtype=calc_dtype))
     mean_sub = tbe.vsub(data_mean_all_tmp, data_mean_broadcast_tmp)
     mean_var = tbe.vmul(mean_sub, mean_sub)
     mean_var_sum = tbe.vadd(var_all_square_epsilon, mean_var)
     mean_var_count = tbe.vmul(mean_var_sum, data_count_all_tmp)
     var_sum = tbe.reduce_sum(mean_var_count, axis=axes, keepdims=True)
     var_sum_count = tbe.vdiv(var_sum, data_count_sum_tmp)
-    var_sum_count_epsilon = tbe.vadds(var_sum_count, epsilon_value)
+    var_sum_count_epsilon = tbe.vadds(var_sum_count, tvm.const(epsilon, dtype=calc_dtype))
     var_sqrt = tbe.vsqrt(var_sum_count_epsilon)
     invert_std = tbe.vrec(var_sqrt, "high_precision")
-    momentum_value = tvm.const(momentum, dtype=calc_dtype)
-    one_momentum_value = tvm.const(1 - momentum, dtype=calc_dtype)
-    one_value = tvm.const(-1, dtype=calc_dtype)
-    count_sum_one = tbe.vadds(data_count_sum_tmp, one_value)
+    count_sum_one = tbe.vadds(data_count_sum_tmp, tvm.const(-1, dtype=calc_dtype))
     unbiased_var = tbe.vdiv(var_sum, count_sum_one)
-    running_var_tmp = tbe.vmuls(data_running_var_tmp, one_momentum_value)
-    running_var_update_tmp = tbe.vmuls(unbiased_var, momentum_value)
+    running_var_tmp = tbe.vmuls(data_running_var_tmp, tvm.const(1 - momentum, dtype=calc_dtype))
+    running_var_update_tmp = tbe.vmuls(unbiased_var, tvm.const(momentum, dtype=calc_dtype))
     running_var_update = tbe.vadd(running_var_tmp, running_var_update_tmp)
 
     if dtype != calc_dtype:
         invert_std = tbe.cast_to(invert_std, dtype)
         running_var_update = tbe.cast_to(running_var_update, dtype)
 
-    res = [invert_std, running_var_update]
-    return res
+    return [invert_std, running_var_update]
 
 
 @register_operator("SyncBatchNormGatherStatsWithCounts")
