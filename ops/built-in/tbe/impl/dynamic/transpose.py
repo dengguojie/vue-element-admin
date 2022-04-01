@@ -351,14 +351,15 @@ def get_op_support_info(input_x, perm, output_y, kernel_name="dynamic_transpose"
     """
     transpose support lxfusion: \n
     """
-    perm_list = list(perm.get("const_value"))
-    perm_size = len(perm_list)
     axis_split_matrix = []
-    for i in range(0, perm_size):
-        for j in range (0, perm_size):
-            if perm_list[j] == perm_list[i]:
-                axis_split_matrix.append([SplitInput([0, [perm_list[i]], [-1], [-1]]), SplitOutput([0, [j]])])
-                break
+    if perm.get("const_value"):
+        perm_list = list(perm.get("const_value"))
+        perm_size = len(perm_list)
+        for i in range(0, perm_size):
+            for j in range (0, perm_size):
+                if perm_list[j] == perm_list[i]:
+                    axis_split_matrix.append([SplitInput([0, [perm_list[i]], [-1], [-1]]), SplitOutput([0, [j]])])
+                    break
     return get_op_cal_info(axis_split_matrix, None, 0, 0)
 
 

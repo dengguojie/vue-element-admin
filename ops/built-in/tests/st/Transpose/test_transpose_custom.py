@@ -39,9 +39,45 @@ def test_get_ub_core_for_cov():
     m = mocker()
     Transpose._move_data_s8(m, "abc")
 
+def test_get_op_support_info():
+    from impl.dynamic.transpose import get_op_support_info
+    input_x = {'ori_shape': (128, 12, 197, 64), 'shape': (128, 12, 197, 64), 'ori_format': 'NCDHW', 'format': 'NCDHW', 'dtype': 'float16'}
+    perm = {'ori_shape': (4,), 'shape': (4,), 'ori_format': 'NCDHW', 'format': 'NCDHW', 'dtype': 'float16', 'const_value':(3, 2, 0, 1)}
+    output_y = {'ori_shape': (128, 12, 197, 64), 'shape': (128, 12, 197, 64), 'ori_format': 'NCDHW', 'format': 'NCDHW', 'dtype': 'float16'}
+    actual_res = get_op_support_info(input_x, perm, output_y)
+    expect_res = '{"_op_slice_info": {"splitMaps": [{"inputList": [{"idx": 0, "axis": [3], "headOverLap": [-1], "tailOverLap": [-1]}], '\
+                                                    '"outputList": [{"idx": 0, "axis": [0]}]}, '\
+                                                    '{"inputList": [{"idx": 0, "axis": [2], "headOverLap": [-1], '\
+                                                    '"tailOverLap": [-1]}], "outputList": [{"idx": 0, "axis": [1]}]}, '\
+                                                    '{"inputList": [{"idx": 0, "axis": [0], "headOverLap": [-1], "tailOverLap": [-1]}], '\
+                                                    '"outputList": [{"idx": 0, "axis": [2]}]}, '\
+                                                    '{"inputList": [{"idx": 0, "axis": [1], "headOverLap": [-1], "tailOverLap": [-1]}], '\
+                                                    '"outputList": [{"idx": 0, "axis": [3]}]}], '\
+                                                    '"reduceMaps": [], "l1FusionEnable": 0, "minTbeL1Space": 0}}'
+
+    print(actual_res)
+    print(expect_res)
+    res = (actual_res == expect_res)
+    if not res:
+        print("test_get_op_support not equal")
+        raise Exception("get_op_support_info failed")
+
+def test_get_op_support_info_no_const_value():
+    from impl.dynamic.transpose import get_op_support_info
+    input_x = {'ori_shape': (128, 12, 197, 64), 'shape': (128, 12, 197, 64), 'ori_format': 'NCDHW', 'format': 'NCDHW', 'dtype': 'float16'}
+    perm = {'ori_shape': (4,), 'shape': (4,), 'ori_format': 'NCDHW', 'format': 'NCDHW', 'dtype': 'float16'}
+    output_y = {'ori_shape': (128, 12, 197, 64), 'shape': (128, 12, 197, 64), 'ori_format': 'NCDHW', 'format': 'NCDHW', 'dtype': 'float16'}
+    actual_res = get_op_support_info(input_x, perm, output_y)
+    expect_res = '{"_op_slice_info": {"splitMaps": [], "reduceMaps": [], "l1FusionEnable": 0, "minTbeL1Space": 0}}'
+    res = (actual_res == expect_res)
+    if not res:
+        raise Exception("get_op_support_info_no_const_should_return false")
+
 if __name__ == '__main__':
     soc_version = cce_conf.get_soc_spec("SOC_VERSION")
     cce_conf.te_set_version("Ascend310")
     test_get_ub_core_for_cov()
     test_nd_2_nz_shape_mismatch()
+    test_get_op_support_info()
+    test_get_op_support_info_no_const_value()
     cce_conf.te_set_version(soc_version)

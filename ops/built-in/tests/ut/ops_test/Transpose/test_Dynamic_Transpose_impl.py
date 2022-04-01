@@ -159,6 +159,17 @@ def test_get_op_support_info(test_arg):
         print("test_get_op_support not equal")
         raise Exception("get_op_support_info failed")
 
+def test_get_op_support_info_no_const_value(test_arg):
+    from impl.dynamic.transpose import get_op_support_info
+    input_x = {'ori_shape': (128, 12, 197, 64), 'shape': (128, 12, 197, 64), 'ori_format': 'NCDHW', 'format': 'NCDHW', 'dtype': 'float16'}
+    perm = {'ori_shape': (4,), 'shape': (4,), 'ori_format': 'NCDHW', 'format': 'NCDHW', 'dtype': 'float16'}
+    output_y = {'ori_shape': (128, 12, 197, 64), 'shape': (128, 12, 197, 64), 'ori_format': 'NCDHW', 'format': 'NCDHW', 'dtype': 'float16'}
+    actual_res = get_op_support_info(input_x, perm, output_y)
+    expect_res = '{"_op_slice_info": {"splitMaps": [], "reduceMaps": [], "l1FusionEnable": 0, "minTbeL1Space": 0}}'
+    res = (actual_res == expect_res)
+    if not res:
+        raise Exception("get_op_support_info_no_const_should_return false")
+
 ut_case.add_cust_test_func(test_func=test_op_check_supported)
 ut_case.add_cust_test_func(test_func=test_op_check_supported_in_white_list_return_false)
 ut_case.add_cust_test_func(test_func=test_op_check_supported_dtype_not_in_white_list_return_true)
@@ -168,6 +179,7 @@ ut_case.add_cust_test_func(test_func=test_op_check_supported_in_white_list_fuzzy
 ut_case.add_cust_test_func(test_func=test_get_ub_core_for_cov)
 ut_case.add_cust_test_func(test_func=test_nd_2_nz_shape_mismatch)
 ut_case.add_cust_test_func(test_func=test_get_op_support_info)
+ut_case.add_cust_test_func(test_func=test_get_op_support_info_no_const_value)
 
 
 def add_ts_case(soc, d_type, x, perm, y, value_type="default", op_imply_type="dynamic"):
@@ -246,7 +258,7 @@ def add_ts_case(soc, d_type, x, perm, y, value_type="default", op_imply_type="dy
 #------------------------------------------------------------------------------------------------
 add_ts_case(["Ascend910A"], "float16",   (16, 12, 30, 26),           (0, 2, 1, 3),           (16, 30,12,26),        "random", op_imply_type="dynamic")
 add_ts_case(["Ascend910A"], "float16",   (16, 12, 30, 26),           (0, 2, 1, 3),           (16, 30,12,26),        "random", op_imply_type="static")
-#add_ts_case(["Ascend910A"], "int8",    (3, 1900, 2, 13),           (0, 2, 1, 3),           (3, 2, 1900, 13),        "arange")
+add_ts_case(["Ascend910A"], "int8",    (3, 1900, 2, 13),           (0, 2, 1, 3),           (3, 2, 1900, 13),        "arange")
 #add_ts_case(["Ascend910A"], "int16",    (3, 1900, 2, 13),           (0, 2, 1, 3),           (3, 2, 1900, 13),        "arange")
 #add_ts_case(["Ascend910A"], "uint8",   (8, 16),                    (1, 0),                 (16, 8),                 "random")
 #add_ts_case(["Ascend910A"], "uint8",   (10,3,4,2,3,4),             (2, 1, 0, 5, 4, 3),     (4, 3, 10, 4, 3, 2),     "random")

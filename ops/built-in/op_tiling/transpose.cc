@@ -3469,14 +3469,14 @@ static bool CalcDstBorrowAxisIndex(const CompilerInfo& ci,
           bi.dstIndexIn[dstNum].loop = 1;
           tailEle *= bi.dstIndexIn[dstNum].step;
         } else {
-          overflowFlag = true; 
+          overflowFlag = true;
         }
       } else {
         bi.dstNum++;
         bi.dstIndexIn[dstNum].step = (bi.dstVol / borrowed) == 0 ? 1 : (bi.dstVol / borrowed);
-        overflowFlag = true; 
+        overflowFlag = true;
       }
-     
+
       if (overflowFlag) {
         for (int j = 0; j < LOOP_FOR_UB_PADDING; j++) {
           if(!UpdateStep(ci, si, ri, bi, ubSize)) {
@@ -3487,7 +3487,12 @@ static bool CalcDstBorrowAxisIndex(const CompilerInfo& ci,
         bi.dstIndexIn[dstNum].loop = si.reducedOutShape[id] / bi.dstIndexIn[dstNum].step;
         bi.dstIndexIn[dstNum].tail = si.reducedOutShape[id] % (bi.dstIndexIn[dstNum].step * bi.dstIndexIn[dstNum].loop);
 
-        for (int j = 0; j < ELE_NUM_PER_BLOCK_B16; j++) {
+        if (si.scenario == SCENARIO_10) {
+            // scenario_10 always be block align, so no need to decrease step to make Ele * step gt one block
+            break;
+        }
+
+        for (int j = 0; j < si.elePerBlock; j++) {
           if ((bi.dstIndexIn[dstNum].tail != 0) && (tailEle * bi.dstIndexIn[dstNum].tail < si.elePerBlock)) {
             bi.dstIndexIn[dstNum].step -= 1;
             bi.dstIndexIn[dstNum].loop = si.reducedOutShape[id] / bi.dstIndexIn[dstNum].step;
@@ -3501,7 +3506,7 @@ static bool CalcDstBorrowAxisIndex(const CompilerInfo& ci,
           }
         }
         break;
-      } 
+      }
     }
   }
   bi.dstIndexIn[bi.dstNum - 1].pivot = 1;
