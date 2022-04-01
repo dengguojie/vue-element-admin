@@ -308,6 +308,20 @@ TEST_F(TENSOR_LIST_UT, PushBackBatchInferErrorShape) {
 
 }
 
+TEST_F(TENSOR_LIST_UT, PushBackBatchInferShapeNoInputHandle) {
+  ge::op::TensorListPushBackBatch op;
+  op.UpdateInputDesc("input_handles", create_desc({2}, ge::DT_VARIANT));
+  op.UpdateInputDesc("tensor", create_desc({2, 2}, ge::DT_INT32));
+  op.SetAttr("element_dtype", ge::DT_INT32);
+  ge::InferenceContextPtr inferCtxPtr = std::shared_ptr<ge::InferenceContext>(ge::InferenceContext::Create());
+  std::vector<std::vector<ge::ShapeAndType>> key_value_vec;
+  key_value_vec.clear();
+  inferCtxPtr->SetInputHandleShapesAndTypes(std::move(key_value_vec));
+  op.SetInferenceContext(inferCtxPtr);
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
 TEST_F(TENSOR_LIST_UT, StackInferShape) {
   ge::op::TensorListStack op;
   op.UpdateInputDesc("input_handle", create_desc({}, ge::DT_VARIANT));

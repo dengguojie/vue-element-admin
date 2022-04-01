@@ -262,6 +262,13 @@ IMPLEMT_INFERFUNC(EmptyTensorList, EmptyTensorListInfer) {
     OP_LOGE(op_name, "Update handle desc failed.");
     return GRAPH_FAILED;
   }
+  std::vector<AscendString> marks = {op_name};
+  context->SetMarks(marks);
+  OP_LOGI(op_name, "SetShapeAndType: shape = %s, dtype = %d.",
+    DebugString(shape_handle.GetDims()).c_str(), element_dtype);
+  if (SetShapeAndType(op, shape_handle, element_dtype) != GRAPH_SUCCESS) {
+      OP_LOGE(op_name, "SetShapeAndType failed.");
+  }
   return GRAPH_SUCCESS;
 }
 INFER_FUNC_REG(EmptyTensorList, EmptyTensorListInfer);
@@ -706,17 +713,28 @@ IMPLEMT_INFERFUNC(TensorListPushBackBatch, TensorListPushBackBatchInfer) {
     OP_LOGE(op_name, "Get context failed, it is null.");
     return GRAPH_FAILED;
   }
+  bool is_shape_and_type_empty = false;
+  std::vector<ShapeAndType> handle_data;
   const auto& shapes_and_types = p_context->GetInputHandleShapesAndTypes();
   if (shapes_and_types.size() == 0) {
-    OP_LOGE(op_name, "Get shapes_and_types failed, it must not be equal 0.");
-    return GRAPH_FAILED;
+    OP_LOGI(op_name, "Get shapes_and_types failed, it must not be equal 0");
+    ShapeAndType shape_and_type;
+    if (GetShapeAndType(op, shape_and_type, is_shape_and_type_empty, p_context) != GRAPH_SUCCESS) {
+      OP_LOGE(op_name, "GetShapeAndType get shape and type failed.");
+      return GRAPH_FAILED;
+    }
+    handle_data.emplace_back(shape_and_type);
+    OP_LOGI(op_name, "GetShapeAndType: shape = %s, dtype = %d.",
+      DebugString(shape_and_type.GetShape().GetDims()).c_str(), shape_and_type.GetDataType());
+  } else {
+    handle_data = shapes_and_types[0];
+    is_shape_and_type_empty = (shapes_and_types.empty()) ? true : false;
   }
-  auto handle_data = shapes_and_types[0];
-  if ((!shapes_and_types.empty()) && (handle_data.size() > 1)) {
+  if ((!is_shape_and_type_empty) && (handle_data.size() > 1)) {
     OP_LOGE(op_name, "Trying to push to list with wrong variant data.");
     return GRAPH_FAILED;
   }
-  if ((!shapes_and_types.empty()) && (handle_data.size() == 1)) {
+  if ((!is_shape_and_type_empty) && (handle_data.size() == 1)) {
     const ShapeAndType& list_shape_type = handle_data[0];
     if (list_shape_type.GetDataType() != element_dtype) {
       OP_LOGE(op_name,
