@@ -365,7 +365,6 @@ def _nc1hwc0_to_nchw_conv2d(src, dst):
     return dst_tensor
 
 
-@register_operator_compute("TransData", op_mode="dynamic", support_fusion=True)
 def trans_data_fusion_compute_conv2d(src, dst, src_format, dst_format):
     """
     algorithm: format_transfer
