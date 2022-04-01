@@ -1,0 +1,79 @@
+[
+    {"compile_flag": 1},
+    {
+        "op": "ApplyMomentumD",
+        "case_name": "test_ApplyMomentumD_000",
+        "calc_expect_func_file":"test_applymomentumd_golden.py:calc_expect_func",
+        "input_desc": [
+            {
+                "format": "ND",
+                "shape": [1, 16],
+                "typical_shape": [16, 16],
+                "shape_range": [[1, 100]],
+                "type": "float32",
+                "name": "var"
+            },
+            {
+                "format": "ND",
+                "shape": [1, 16],
+                "typical_shape": [1, 16],
+                "shape_range": [[1, 100]],
+                "type": "float32",
+                "name": "accum"
+            },
+            {
+                "format": "ND",
+                "shape": [1],
+                "type": "float32",
+                "value":[0.5],
+                "name": "lr"
+            },
+            {
+                "format": "ND",
+                "shape": [1, 16],
+                "typical_shape": [1, 16],
+                "shape_range": [[1, 100]],
+                "type": "float32",
+                "name": "grad"
+            },
+            {
+                "format": "ND",
+                "shape": [1],
+                "type": "float32",
+                "value":[0.5],
+                "name": "momentum"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": "ND",
+                "shape": [1, 16],
+                "typical_shape": [16, 16],
+                "shape_range": [[1, 100]],
+                "type": "float32",
+                "name": "var_out"
+            },
+            {
+                "format": "ND",
+                "shape": [1, 16],
+                "typical_shape": [16, 16],
+                "shape_range": [[1, 100]],
+                "type": "float32",
+                "name": "accum_out"
+            }
+        ],
+        "attr": [
+            {
+                "name": "use_locking",
+                "value": false,
+                "type": "bool"
+            },
+            {
+                "name": "use_nesterov",
+                "value": false,
+                "type": "bool"
+            }
+        ]
+    }
+]
+

@@ -1,0 +1,38 @@
+[
+  {"compile_flag": 1},
+  {
+    "op": "Assign",
+    "calc_expect_func_file":"test_assign_golden.py:calc_expect_func",
+    "input_desc": [
+      {
+        "shape": [15, 32],
+        "format": "ND",
+        "ori_shape": [15, 32],
+        "ori_format": "ND",
+        "name": "ref",
+        "type": "float16"
+      },
+      {
+        "shape": [15, 32],
+        "format": "ND",
+        "ori_shape": [15, 32],
+        "ori_format": "ND",
+        "name": "value",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [15, 32],
+        "format": "ND",
+        "ori_shape": [15, 32],
+        "ori_format": "ND",
+        "name": "output",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Assign_000"
+  }
+]
+

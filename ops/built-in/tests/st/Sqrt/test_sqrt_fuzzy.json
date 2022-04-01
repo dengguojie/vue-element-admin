@@ -1,0 +1,58 @@
+[
+    {"compile_flag": 1},
+    {
+        "op": "Sqrt",
+        "calc_expect_func_file" : "test_sqrt_golden.py:calc_expect_func",
+        "input_desc": [
+          {
+            "shape": [
+              2,
+              10,
+              5
+            ],
+            "ori_shape": [
+              2,
+              10,
+              5
+            ],
+            "format": "ND",
+            "ori_format": "ND",
+            "type": "float",
+            "value_range": [[0, 1]],
+            "data_distribute": "uniform",
+            "name": "x1"
+          }
+        ],
+        "output_desc": [
+          {
+            "shape": [
+                2,
+                10,
+                5
+            ],
+            "ori_shape": [
+                2,
+                10,
+                5
+            ],
+            "typical_shape": [
+              2,
+              10,
+              5
+            ],
+            "format": "ND",
+            "ori_format": "ND",
+            "name": "y",
+            "type": "float"
+          }
+        ],
+        "attr": [
+          {
+          "name": "impl_mode",
+          "type": "string",
+          "value": "high_performance"
+          }
+        ],
+        "case_name": "test_dynamic_sqrt_000"
+      }
+]

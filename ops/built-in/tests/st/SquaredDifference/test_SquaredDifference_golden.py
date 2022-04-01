@@ -13,26 +13,28 @@
 # limitations under the License.
 # ============================================================================
 """
-test_sqrt_golden.py
+test_golden.py
 """
 import tensorflow as tf
 
 # pylint: disable=unused-argument,invalid-name
-def by_tf(x):
+def by_tf(x1, x2):
     """
     slice_by_tf
     """
-    x_holder = tf.placeholder(x.dtype, shape=x.shape)
-    re = tf.sqrt(x_holder)
+    x1_holder = tf.placeholder(x1.dtype, shape=x1.shape)
+    x2_holder = tf.placeholder(x2.dtype, shape=x2.shape)
+
+    re = tf.squared_difference(x1_holder, x2_holder)
     with tf.Session() as sess:
-        result = sess.run(re, feed_dict={x_holder: x})
+        result = sess.run(re, feed_dict={x1_holder: x1, x2_holder: x2})
     return result
 
 
-def calc_expect_func(x1, y, impl_mode):
+def calc_expect_func(x1, x2, y):
     """
     calc_expect_func
     """
-
-    res = by_tf(x1["value"])
+    res = by_tf(x1["value"], x2["value"])
     return [res]
+

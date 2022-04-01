@@ -1,0 +1,87 @@
+[
+    {"compile_flag": 1},
+    {
+        "op": "ApplyRMSPropD",
+        "calc_expect_func_file":"test_apply_rms_prop_d_golden.py:calc_expect_func",
+        "input_desc": [
+          {
+            "format": "ND",
+            "shape": [1,16],
+            "typical_shape": [1,16],
+            "shape_range": [[1, 100]],
+            "type": "float32",
+            "name": "var"
+            },
+          {
+            "format": "ND",
+            "shape": [1,16],
+            "typical_shape": [1,16],
+            "shape_range": [[1, 100]],
+            "type": "float32",
+            "name": "ms"
+          },
+          {
+            "format": "ND",
+            "shape": [1,16],
+            "typical_shape": [1,16],
+            "shape_range": [[1, 100]],
+            "type": "float32",
+            "name": "mom"
+          },
+          {
+            "shape": [1],
+            "format": "ND",
+            "name": "lr",
+            "value":[0.01],
+            "type": "float32"
+          },
+          {
+            "format": "ND",
+            "shape": [1,16],
+            "typical_shape": [1,16],
+            "shape_range": [[1, 100]],
+            "type": "float32",
+            "name": "grad"
+          }
+        ],
+        "output_desc": [
+          {
+            "shape": [1, 16],
+            "format": "ND",
+            "name": "var_out",
+            "type": "float32"
+          },
+          {
+            "shape": [1, 16],
+            "format": "ND",
+            "name": "ms_out",
+            "type": "float32"
+          },
+          {
+            "shape": [1, 16],
+            "format": "ND",
+            "name": "mom_out",
+            "type": "float32"
+          }
+        ],
+        "attr": [
+          {
+            "name": "rho",
+            "type": "float",
+            "value": 0.9
+          },
+          {
+            "name": "momentum",
+            "type": "float",
+            "value": 0.9
+          },
+          {
+            "name": "epsilon",
+            "type": "float",
+            "value": 1e-07
+          }
+        ],
+        "case_name": "test_dynamic_ApplyRMSPropD_001"
+      }
+]
+

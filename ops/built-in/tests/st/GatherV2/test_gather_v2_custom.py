@@ -1,4 +1,3 @@
-import imp
 from importlib import reload
 
 
@@ -9,10 +8,7 @@ def reload_check_support():
     import importlib
     import sys
     import impl.dynamic.gather_v2
-    import impl.gather_v2
     importlib.reload(sys.modules.get("impl.dynamic.gather_v2"))
-    importlib.reload(sys.modules.get("impl.gather_v2"))
 
 if __name__ == '__main__':
     reload_check_support()
-    

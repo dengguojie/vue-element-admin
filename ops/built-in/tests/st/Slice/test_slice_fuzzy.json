@@ -1,0 +1,53 @@
+[
+    {"compile_flag": 1},
+    {
+        "op": "Slice",
+        "case_name": "test_slice_001",
+        "calc_expect_func_file": "slice_golden.py:calc_expect_func",
+        "input_desc": [
+            {
+                "format": "ND",
+                "shape": [38, 38],
+                "typical_shape": [38, 38],
+                "shape_range": [[38, 38]],
+                "type": "float16",
+                "param_type": "input",
+                "value_range": [[0, 1]],
+                "data_distribute": "uniform",
+                "name": "x"
+            },
+            {
+                "format": "ND",
+                "shape": [2],
+                "type": "int32",
+                "param_type": "input",
+                "value_range": [[1, 20]],
+                "value": [0, 0],
+                "data_distribute": "uniform",
+                "name": "offsets"
+            },
+            {
+                "format": "ND",
+                "shape": [2],
+                "value": [19, 19],
+                "type": "int32",
+                "param_type": "input",
+                "value_range": [[1, 20]],
+                "data_distribute": "uniform",
+                "name": "size"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": "ND",
+                "shape": [19, 19],
+                "shape_range": [[19, 19], [19, 19]],
+                "typical_shape": [19, 19],
+                "type": "float16",
+                "name": "y",
+                "param_type": "output"
+            }
+        ]
+    }
+]
+

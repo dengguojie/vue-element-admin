@@ -1,0 +1,52 @@
+[
+    {"compile_flag": 1},
+    {
+        "op": "Relu",
+        "calc_expect_func_file" : "test_relu_golden.py:calc_expect_func",
+        "input_desc": [
+          {
+            "shape": [
+              1,
+              3,
+              100,
+              16
+            ],
+            "format": "ND",
+            "ori_shape": [
+              1,
+              3,
+              100,
+              16
+            ],
+            "ori_format": "ND",
+            "param_type": "input",
+            "name": "x",
+            "type": "float16"
+          }
+        ],
+        "output_desc": [
+          {
+            "shape": [
+              1,
+              3,
+              100,
+              16
+            ],
+            "format": "ND",
+            "ori_shape": [
+              1,
+              3,
+              100,
+              16
+            ],
+            "ori_format": "ND",
+            "param_type": "output",
+            "name": "y",
+            "type": "float16"
+          }
+        ],
+        "attr": [],
+        "case_name": "test_Relu_001"
+      }
+]
+

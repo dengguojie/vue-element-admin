@@ -1,0 +1,48 @@
+[
+    {"compile_flag": 1},
+    {
+        "op": "Square",
+        "calc_expect_func_file" : "test_square_golden.py:calc_expect_func",
+        "input_desc": [
+          {
+            "shape": [
+              2,
+              16,
+              32
+            ],
+            "format": "ND",
+            "ori_shape": [
+              2,
+              16,
+              32
+            ],
+            "ori_format": "ND",
+            "param_type": "input",
+            "name": "input_x",
+            "type": "int32"
+          }
+        ],
+        "output_desc": [
+          {
+            "shape": [
+              2,
+              16,
+              32
+            ],
+            "format": "ND",
+            "ori_shape": [
+              2,
+              16,
+              32
+            ],
+            "ori_format": "ND",
+            "param_type": "output",
+            "name": "output_y",
+            "type": "int32"
+          }
+        ],
+        "attr": [],
+        "case_name": "test_Square_001"
+      }
+]
+

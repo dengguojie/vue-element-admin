@@ -1,0 +1,65 @@
+[
+    {"compile_flag": 1},
+    {
+        "op": "Pow",
+        "calc_expect_func_file" : "test_pow_golden.py:calc_expect_func",
+        "input_desc": [
+          {
+            "shape": [
+              2,
+              16,
+              32
+            ],
+            "format": "ND",
+            "ori_shape": [
+              2,
+              16,
+              32
+            ],
+            "ori_format": "ND",
+            "param_type": "input",
+            "name": "input_x",
+            "type": "float"
+          },
+          {
+            "shape": [
+              2,
+              16,
+              32
+            ],
+            "format": "ND",
+            "ori_shape": [
+              2,
+              16,
+              32
+            ],
+            "ori_format": "ND",
+            "param_type": "input",
+            "name": "input_y",
+            "type": "float"
+          }
+        ],
+        "output_desc": [
+          {
+            "shape": [
+              2,
+              16,
+              32
+            ],
+            "format": "ND",
+            "ori_shape": [
+              2,
+              16,
+              32
+            ],
+            "ori_format": "ND",
+            "param_type": "output",
+            "name": "output_z",
+            "type": "float"
+          }
+        ],
+        "attr": [],
+        "case_name": "test_Pow_001"
+      }
+]
+
