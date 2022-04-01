@@ -455,3 +455,4 @@ from .ifmr import ifmr
 from .update_tensor_desc import update_tensor_desc
 from .reduce_mean_variance import reduce_mean_variance
 from .fused_bn2_reluv2_conv2d_bn1 import fused_bn2_reluv2_conv2d_bn1
+from .celu import celu

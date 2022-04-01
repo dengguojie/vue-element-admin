@@ -345,6 +345,17 @@ IMPLEMT_COMMON_INFERFUNC(CeluInferShape) {
 COMMON_INFER_FUNC_REG(Celu, CeluInferShape);
 // --------------Celu END-----------------
 
+// ----------------CeluV2-------------------
+IMPLEMT_COMMON_INFERFUNC(CeluV2InferShape) {
+  OP_LOGI(op.GetName().c_str(), "Enter CeluV2InferShape");
+  if (OneInOneOutDynamicInfer(op, "x", {"y"})) {
+    return GRAPH_SUCCESS;
+  }
+  return GRAPH_FAILED;
+}
+COMMON_INFER_FUNC_REG(CeluV2, CeluV2InferShape);
+// --------------CeluV2 END-----------------
+
 // ----------------EluGrad-------------------
 IMPLEMT_VERIFIER(EluGrad, EluGradVerify) {
   if (!CheckTwoInputDtypeSame(op, "grads", "activations")) {

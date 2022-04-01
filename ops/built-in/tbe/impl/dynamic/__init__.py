@@ -407,3 +407,4 @@ from .dyn_seq_outer import dyn_seq_outer
 from .extract_image_patches import extract_image_patches
 from .expint import expint
 from .ndtri import ndtri
+from .celu_v2 import celu_v2

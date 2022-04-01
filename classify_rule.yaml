@@ -375,7 +375,6 @@ cube:
       - ops/built-in/tbe/impl/avg_pool3d_grad_d.py
       - ops/built-in/tbe/impl/gemm.py
       - ops/built-in/tbe/impl/dilation.py
-      - ops/built-in/tbe/impl/dynamic/celu.py
       - ops/built-in/tbe/impl/dynamic/conv2d_backprop_filter.py
       - ops/built-in/tbe/impl/dynamic/conv2d_backprop_input.py
       - ops/built-in/tbe/impl/dynamic/conv2d_transpose.py
@@ -4141,6 +4140,8 @@ pytorch:
       - ops/built-in/fusion_pass/graph_fusion/ai_core/softmaxv2_onnx_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/softmaxv2_onnx_fusion_pass.h
       - ops/built-in/tbe/impl/dynamic/resize_nearest3d.py
+      - ops/built-in/tbe/impl/dynamic/celu_v2.py
+      - ops/built-in/tbe/impl/celu_v2.py
     unrelease:
       - ops/built-in/tests/ut/graph_fusion/ai_core/lstmp_fusion_test.cpp
       - ops/built-in/tests/ut/graph_fusion/ai_core/dynamic_rnn_v2_grad_fusion_test.cpp

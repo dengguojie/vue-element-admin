@@ -1,7 +1,7 @@
 [
   {
-		"case_name":"Test_Celu_001",
-		"op":"Celu",
+		"case_name":"Test_CeluV2_001",
+		"op":"CeluV2",
 		"calc_expect_func_file":"test_celu_golden.py:calc_expect_func",
 		"gui_calc_expect_func_file":"",
 		"fuzz_impl":"",
@@ -12,6 +12,15 @@
 				"format":"ND",
 				"type":"float16",
 				"shape":[
+					2,
+					3,
+					4,
+					5,
+					6,
+					7,
+					8
+				],
+        "typical_shape":[
 					2,
 					3,
 					4,
@@ -44,6 +53,15 @@
 					6,
 					7,
 					8
+				],
+        "typical_shape":[
+					2,
+					3,
+					4,
+					5,
+					6,
+					7,
+					8
 				]
 			}
 		],
@@ -56,8 +74,8 @@
 		]
 	},
 	{
-		"case_name":"test_5hd",
-		"op":"Celu",
+		"case_name":"test_5hd_CeluV2",
+		"op":"CeluV2",
 		"calc_expect_func_file":"test_celu_golden.py:calc_expect_func",
 		"gui_calc_expect_func_file":"",
 		"fuzz_impl":"",
@@ -85,7 +103,13 @@
 					"uniform"
 				],
 				"shape_range":"",
-				"typical_shape":"",
+				"typical_shape":[
+					2,
+					4,
+					10,
+					3,
+					16
+				],
 				"user_value":""
 			}
 		],
@@ -102,7 +126,13 @@
 					16
 				],
 				"shape_range":"",
-				"typical_shape":""
+				"typical_shape":[
+					2,
+					4,
+					10,
+					3,
+					16
+				]
 			}
 		],
 		"attr":[
@@ -114,8 +144,8 @@
 		]
 	},
 	{
-		"case_name":"Test_fractal_nz",
-		"op":"Celu",
+		"case_name":"Test_fractal_nz_celuV2",
+		"op":"CeluV2",
 		"calc_expect_func_file":"test_celu_golden.py:calc_expect_func",
 		"gui_calc_expect_func_file":"",
 		"fuzz_impl":"",
@@ -126,6 +156,13 @@
 				"format":"FRACTAL_NZ",
 				"type":"float",
 				"shape":[
+					2,
+					3,
+					4,
+					16,
+					16
+				],
+        "typical_shape":[
 					2,
 					3,
 					4,
@@ -154,6 +191,13 @@
 					4,
 					16,
 					16
+				],
+        "typical_shape":[
+					2,
+					3,
+					4,
+					16,
+					16
 				]
 			}
 		],
@@ -166,8 +210,8 @@
 		]
 	},
 	{
-		"case_name":"test_framework_pt",
-		"op":"Celu",
+		"case_name":"test_framework_pt_CeluV2",
+		"op":"CeluV2",
 		"calc_expect_func_file":"test_celu_golden.py:calc_expect_func",
 		"gui_calc_expect_func_file":"",
 		"fuzz_impl":"",
@@ -194,7 +238,12 @@
 					"uniform"
 				],
 				"shape_range":"",
-				"typical_shape":"",
+				"typical_shape":[
+					16,
+					5,
+					7,
+					11
+				],
 				"user_value":""
 			}
 		],
@@ -210,7 +259,12 @@
 					11
 				],
 				"shape_range":"",
-				"typical_shape":""
+				"typical_shape":[
+					16,
+					5,
+					7,
+					11
+				]
 			}
 		],
 		"attr":[
@@ -222,7 +276,7 @@
 		]
 	},
   {
-    "op": "Celu",
+    "op": "CeluV2",
     "calc_expect_func_file":"test_celu_golden.py:calc_expect_func",
     "input_desc": [
       {
@@ -230,10 +284,14 @@
           1,
           2
         ],
+        "typical_shape":[
+					1,
+          2
+				],
         "format": "ND",
         "ori_shape": [
           1,
-          1
+          2
         ],
         "ori_format": "ND",
         "param_type": "input",
@@ -247,10 +305,14 @@
           1,
           2
         ],
+        "typical_shape":[
+					1,
+          2
+				],
         "format": "ND",
         "ori_shape": [
           1,
-          1
+          2
         ],
         "ori_format": "ND",
         "param_type": "output",
@@ -265,10 +327,10 @@
         "type":"float"
       }
     ],
-    "case_name": "test_Celu_000"
+    "case_name": "test_CeluV2_000"
   },
   {
-    "op": "Celu",
+    "op": "CeluV2",
     "calc_expect_func_file":"test_celu_golden.py:calc_expect_func",
     "input_desc": [
       {
@@ -277,6 +339,11 @@
           13,
           4
         ],
+        "typical_shape":[
+					5,
+          13,
+          4
+				],
         "format": "ND",
         "ori_shape": [
           5,
@@ -296,6 +363,11 @@
           13,
           4
         ],
+        "typical_shape":[
+					5,
+          13,
+          4
+				],
         "format": "ND",
         "ori_shape": [
           5,
@@ -315,10 +387,10 @@
         "type":"float"
       }
     ],
-    "case_name": "test_Celu_001"
+    "case_name": "test_CeluV2_001"
   },
   {
-    "op": "Celu",
+    "op": "CeluV2",
     "calc_expect_func_file":"test_celu_golden.py:calc_expect_func",
     "input_desc": [
       {
@@ -326,6 +398,10 @@
           16,
           32
         ],
+        "typical_shape":[
+					16,
+          32
+				],
         "format": "ND",
         "ori_shape": [
           16,
@@ -343,6 +419,10 @@
           16,
           32
         ],
+        "typical_shape":[
+					16,
+          32
+				],
         "format": "ND",
         "ori_shape": [
           16,
@@ -361,10 +441,10 @@
         "type":"float"
       }
     ],
-    "case_name": "test_Celu_002"
+    "case_name": "test_CeluV2_002"
   },
   {
-    "op": "Celu",
+    "op": "CeluV2",
     "calc_expect_func_file":"test_celu_golden.py:calc_expect_func",
     "input_desc": [
       {
@@ -373,6 +453,11 @@
           2,
           32
         ],
+        "typical_shape":[
+					16,
+          2,
+          32
+				],
         "format": "ND",
         "ori_shape": [
           16,
@@ -392,6 +477,11 @@
           2,
           32
         ],
+        "typical_shape":[
+					16,
+          2,
+          32
+				],
         "format": "ND",
         "ori_shape": [
           16,
@@ -411,198 +501,6 @@
         "type":"float"
       }
     ],
-    "case_name": "test_Celu_003"
-  },
-  {
-    "op": "Celu",
-    "calc_expect_func_file":"test_celu_golden.py:calc_expect_func",
-    "input_desc": [
-      {
-        "shape": [
-          1,
-          2
-        ],
-        "format": "ND",
-        "ori_shape": [
-          1,
-          1
-        ],
-        "ori_format": "ND",
-        "param_type": "input",
-        "name": "x",
-        "type": "float16"
-      }
-    ],
-    "output_desc": [
-      {
-        "shape": [
-          1,
-          2
-        ],
-        "format": "ND",
-        "ori_shape": [
-          1,
-          1
-        ],
-        "ori_format": "ND",
-        "param_type": "output",
-        "name": "y",
-        "type": "float16"
-      }
-    ],
-    "attr": [
-      {
-        "name":"alpha",
-        "value":-111.0,
-        "type":"float"
-      }
-    ],
-    "case_name": "test_Celu_004"
-  },
-  {
-    "op": "Celu",
-    "calc_expect_func_file":"test_celu_golden.py:calc_expect_func",
-    "input_desc": [
-      {
-        "shape": [
-          5,
-          13,
-          4
-        ],
-        "format": "ND",
-        "ori_shape": [
-          5,
-          13,
-          4
-        ],
-        "ori_format": "ND",
-        "param_type": "input",
-        "name": "x",
-        "type": "float16"
-      }
-    ],
-    "output_desc": [
-      {
-        "shape": [
-          5,
-          13,
-          4
-        ],
-        "format": "ND",
-        "ori_shape": [
-          5,
-          13,
-          4
-        ],
-        "ori_format": "ND",
-        "param_type": "output",
-        "name": "y",
-        "type": "float16"
-      }
-    ],
-    "attr": [
-      {
-        "name":"alpha",
-        "value":1.0,
-        "type":"float"
-      }
-    ],
-    "case_name": "test_Celu_005"
-  },
-  {
-    "op": "Celu",
-    "calc_expect_func_file":"test_celu_golden.py:calc_expect_func",
-    "input_desc": [
-      {
-        "shape": [
-          16,
-          32
-        ],
-        "format": "ND",
-        "ori_shape": [
-          16,
-          32
-        ],
-        "ori_format": "ND",
-        "param_type": "input",
-        "name": "x",
-        "type": "float16"
-      }
-    ],
-    "output_desc": [
-      {
-        "shape": [
-          16,
-          32
-        ],
-        "format": "ND",
-        "ori_shape": [
-          16,
-          32
-        ],
-        "ori_format": "ND",
-        "param_type": "output",
-        "name": "y",
-        "type": "float16"
-      }
-    ],
-    "attr": [
-      {
-        "name":"alpha",
-        "value":0.5,
-        "type":"float"
-      }
-    ],
-    "case_name": "test_Celu_006"
-  },
-  {
-    "op": "Celu",
-    "calc_expect_func_file":"test_celu_golden.py:calc_expect_func",
-    "input_desc": [
-      {
-        "shape": [
-          16,
-          2,
-          32
-        ],
-        "format": "ND",
-        "ori_shape": [
-          16,
-          2,
-          32
-        ],
-        "ori_format": "ND",
-        "param_type": "input",
-        "name": "x",
-        "type": "float16"
-      }
-    ],
-    "output_desc": [
-      {
-        "shape": [
-          16,
-          2,
-          32
-        ],
-        "format": "ND",
-        "ori_shape": [
-          16,
-          2,
-          32
-        ],
-        "ori_format": "ND",
-        "param_type": "output",
-        "name": "y",
-        "type": "float16"
-      }
-    ],
-    "attr": [
-      {
-        "name":"alpha",
-        "value":1.0,
-        "type":"float"
-      }
-    ],
-    "case_name": "test_Celu_007"
+    "case_name": "test_CeluV2_003"
   }
 ]

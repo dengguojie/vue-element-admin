@@ -13,7 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 
-celu
+celu_v2
 """
 from te import platform as tbe_platform
 from impl.util.platform_adapter import tbe
@@ -26,7 +26,7 @@ from impl.util.platform_adapter import register_operator
 
 
 # 'pylint:disable=too-many-arguments,too-many-locals,unused-argument
-def celu_compute(x, y, alpha=1.0, kernel_name="celu"):
+def celu_v2_compute(x, y, alpha=1.0, kernel_name="celu_v2"):
     """
     Implement the operator by referring to  the
             TBE Operator Development Guide.
@@ -71,14 +71,14 @@ def celu_compute(x, y, alpha=1.0, kernel_name="celu"):
 
 
 # 'pylint: disable=redefined-builtin
-@register_operator("Celu")
+@register_operator("CeluV2")
 @para_check.check_op_params(para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT,
                             para_check.OPTION_ATTR_FLOAT,
                             para_check.KERNEL_NAME)
-def celu(x, y, alpha=1.0, kernel_name="celu"):
+def celu_v2(x, y, alpha=1.0, kernel_name="celu_v2"):
     """
-    algorithm: celu
+    algorithm: celu_v2
 
     scale * (max(0, x) + min(0, alpha * (exp(x/input_scale) - 1)
 
@@ -91,7 +91,7 @@ def celu(x, y, alpha=1.0, kernel_name="celu"):
     alpha: float
         alpha of the min
     kernel_name : str
-        cce kernel name, default value is celu
+        cce kernel name, default value is celu_v2
 
     Returns
     -------
@@ -111,7 +111,7 @@ def celu(x, y, alpha=1.0, kernel_name="celu"):
             x_shape = shape_util.variable_shape([_x])
             data_input = tvm.placeholder(x_shape[0], name="data_input",
                                          dtype=dtype_input)
-            res = celu_compute(data_input, y, alpha=alpha, kernel_name=kernel_name)
+            res = celu_v2_compute(data_input, y, alpha=alpha, kernel_name=kernel_name)
             tensors.append([data_input, res])
         with tvm.target.cce():
             sch = tbe.auto_schedule(res)
