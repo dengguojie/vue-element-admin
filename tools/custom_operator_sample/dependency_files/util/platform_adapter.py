@@ -230,10 +230,6 @@ class PlatformApi:
     L0C_SIZE = platform.L0C_SIZE
     SMASK_SIZE = platform.SMASK_SIZE
     UNZIP = platform.UNZIP
-    VREG_SIZE = platform.VREG_SIZE
-    AREG_SIZE = platform.AREG_SIZE
-    PREG_SIZE = platform.PREG_SIZE
-    UREG_SIZE = platform.UREG_SIZE
     CUBE_VECTOR_SPLIT = platform.CUBE_VECTOR_SPLIT
     COMPILER_ARCH = platform.COMPILER_ARCH
 
