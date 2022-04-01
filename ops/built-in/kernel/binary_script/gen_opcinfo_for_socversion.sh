@@ -60,7 +60,11 @@ main() {
   fi
 
   # step2. gen opcinfo csv with script gen_opcinfo_from_opinfo.py
-  parer_cmd="python3.7 ${script_file1} ${workspace_json_file} ${out_opcinfo_csv_file}"
+  python_arg=${HI_PYTHON}
+  if [ "${python_args}" = "" ]; then
+    python_arg="python3.7"
+  fi
+  parer_cmd="${python_arg} ${script_file1} ${workspace_json_file} ${out_opcinfo_csv_file}"
   echo "[INFO]parser cmd: ${parer_cmd}"
   ${parer_cmd}
 }

@@ -47,7 +47,11 @@ main() {
     echo "[ERROR]the ops parser file in env is not exited, return fail"
     exit 1
   fi
-  parer_cmd="python3.7 ${parer_python_file} ${ini_file} ${output_file}"
+  python_arg=${HI_PYTHON}
+  if [ "${python_args}" = "" ]; then
+    python_arg="python3.7"
+  fi
+  parer_cmd="${python_arg} ${parer_python_file} ${ini_file} ${output_file}"
   echo "[INFO]parser cmd: ${parer_cmd}"
   ${parer_cmd}
 }
