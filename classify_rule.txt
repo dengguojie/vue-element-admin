@@ -1,6 +1,6 @@
 [canndev]
 ops/built-in/aicpu/
-ops/built-in/fusion_pass/graph_fusion/
+ops/built-in/fusion_pass/
 ops/built-in/framework/
 ops/built-in/fusion_rules/
 ops/built-in/op_proto/
@@ -10,7 +10,6 @@ ops/built-in/utils/
 
 [canndev_3RD]
 third_party/
-ops/built-in/fusion_pass/buffer_fusion
 
 [toolchain_op_test_frame]
 tools/msopgen/
