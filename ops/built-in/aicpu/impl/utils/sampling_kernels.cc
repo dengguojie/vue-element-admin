@@ -15,21 +15,28 @@
  */
 
 #include "sampling_kernels.h"
-#include <algorithm>
-#include "log.h"
-#include "status.h"
+#include <map>
 using namespace std;
 
 namespace aicpu {
-SamplingKernelType SamplingKernelTypeFromString(std::string str) {
-  if (str == "lanczos1") return Lanczos1Kernel;
-  if (str == "lanczos3") return Lanczos3Kernel;
-  if (str == "lanczos5") return Lanczos5Kernel;
-  if (str == "gaussian") return GaussianKernel;
-  if (str == "box") return BoxKernel;
-  if (str == "triangle") return TriangleKernel;
-  if (str == "keyscubic") return KeysCubicKernel;
-  if (str == "mitchellcubic") return MitchellCubicKernel;
+SamplingKernelType SamplingKernelTypeFromString(std::string &str) {
+  // Define map for different types of sampling kernels
+  static const std::map<std::string, SamplingKernelType> SamplingTypesInfo {
+    {"lanczos1",      Lanczos1Kernel},
+    {"lanczos3",      Lanczos3Kernel},
+    {"lanczos5",      Lanczos5Kernel},
+    {"gaussian",      GaussianKernel},
+    {"box",           BoxKernel},
+    {"triangle",      TriangleKernel},
+    {"keyscubic",     KeysCubicKernel},
+    {"mitchellcubic", MitchellCubicKernel},
+  };
+
+  std::map<std::string, SamplingKernelType>::const_iterator iter = SamplingTypesInfo.find(str);
+  if (iter != SamplingTypesInfo.end()) {
+    return iter->second;
+  }
+
   return SamplingKernelTypeEnd;
 }
 }  // namespace aicpu

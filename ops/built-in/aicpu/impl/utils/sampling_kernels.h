@@ -76,7 +76,7 @@ enum SamplingKernelType {
    * // Converts a string into the corresponding kernel type.
    * Returns SamplingKernelTypeEnd if the string couldn't be converted.
    */
-SamplingKernelType SamplingKernelTypeFromString(std::string str);
+SamplingKernelType SamplingKernelTypeFromString(std::string &str);
 
 // A function object for a Lanczos kernel.
 struct LanczosKernelFunc {

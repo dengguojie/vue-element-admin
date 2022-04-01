@@ -17,6 +17,7 @@
 #ifndef AICPU_SPARSETENSOR_H
 #define AICPU_SPARSETENSOR_H
 
+#include <algorithm>
 #include <memory>
 
 #include "cpu_tensor.h"

@@ -61,8 +61,8 @@ bool EnvironMgr::IsScalarTensor(const std::vector<int64_t> &shape) const {
     return true;
   }
 
-  if ((shape.size() == kScalarTensorShapeDim)
-      && (shape[0] == kScalarTensorShapeSize)) {
+  if ((shape.size() == kScalarTensorShapeDim) &&
+      (shape[0] == kScalarTensorShapeSize)) {
     KERNEL_LOG_DEBUG("The tensor is scalar.");
     return true;
   }

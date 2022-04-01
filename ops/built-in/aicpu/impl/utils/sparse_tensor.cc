@@ -75,30 +75,30 @@ uint32_t SparseTensor::CreateSparseTensor(Tensor *ix, Tensor *tensorvals,
 }
 
 uint32_t SparseTensor::IndicesValid() const {
-  KERNEL_LOG_INFO("Start execute IndicesValid.");
-  for (auto ord : order_) {
-    if (ord < 0) {
-      KERNEL_LOG_ERROR("Order was not provided.");
-      return KERNEL_STATUS_INNER_ERROR;
-    }
+  KERNEL_LOG_INFO("Execute IndicesValid begin");
+  if (std::any_of(order_.begin(), order_.end(),
+                  [](int64_t ord){ return ord < 0; })) {
+    KERNEL_LOG_ERROR("Order was not provided.");
+    return KERNEL_STATUS_INNER_ERROR;
   }
-  int64_t dim_size = (ix_->GetTensor()->GetTensorShape()->GetDims() == 0)
+
+  int64_t dims_size = (ix_->GetTensor()->GetTensorShape()->GetDims() == 0)
                          ? 1
                          : ix_->GetTensor()->GetTensorShape()->GetDimSize(0);
-  for (int64_t n = 0; n < dim_size; ++n) {
+  for (int64_t dim = 0; dim < dims_size; ++dim) {
     if (ix_->GetTensor()->GetDataType() == DT_INT32) {
-      if (EigenTensorIndicesValid<int32_t>(n) != KERNEL_STATUS_OK) {
+      if (EigenTensorIndicesValid<int32_t>(dim) != KERNEL_STATUS_OK) {
         KERNEL_LOG_ERROR("Indices valid failed.");
         return KERNEL_STATUS_PARAM_INVALID;
       }
     } else {
-      if (EigenTensorIndicesValid<int64_t>(n) != KERNEL_STATUS_OK) {
+      if (EigenTensorIndicesValid<int64_t>(dim) != KERNEL_STATUS_OK) {
         KERNEL_LOG_ERROR("Indices valid failed.");
         return KERNEL_STATUS_PARAM_INVALID;
       }
     }
   }
-  KERNEL_LOG_INFO("Execute IndicesValid end.");
+  KERNEL_LOG_INFO("Execute IndicesValid end");
   return KERNEL_STATUS_OK;
 }
 
