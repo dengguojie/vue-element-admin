@@ -349,6 +349,20 @@ def calc_conv2d(outs, option=None):
     tiling_dict["cache_tiling_flag"] = ConvParam.cache_tiling_flag
     if not tiling_dict["cache_tiling_flag"]:
         add_compile_info("fmap_c1", ConvParam.dim_map["fmap_5hd_shape"][1])
+    # >>> start: add op_type in compile_info
+    op_info_list = get_context().get_op_info()
+    op_type_list = []
+    conv_op_type_list = []
+    for info in op_info_list:
+        op_type_list.append(info.op_type)
+        if info.pattern != "Convolution":
+            continue
+        conv_op_type_list.append(info.op_type)
+    if len(conv_op_type_list) > 0:
+        add_compile_info("conv_op_type_list", conv_op_type_list)
+    else:
+        add_compile_info("op_type_list", op_type_list)
+    # <<< end: add op_type in compile_info
 
     tiling_cases = []
     total_info = {}

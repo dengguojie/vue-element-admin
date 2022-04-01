@@ -299,15 +299,15 @@ namespace {
           wDim = xFormat.find("W");
       }
       size_t rangeIndex = 0;
-      int64_t min_dist = std::numeric_limits<int64_t>::max();
+      int64_t minDist = std::numeric_limits<int64_t>::max();
       for (size_t i = 0; i < compileInfo.repoSeedsList.size(); i++) {
           const std::vector<int32_t>& seeds = compileInfo.repoSeedsList[i];
           auto& range = compileInfo.repoRangeList[i];
           if (is_shape_in_range_cube(curShape, xFormat, range)) {
               int32_t dist = abs(curShape[hDim] - seeds[seedHDim]) + abs(curShape[wDim] - seeds[seedWDim]);
-              if (dist < min_dist) {
+              if (dist < minDist) {
                   tilingIdIndex = rangeIndex;
-                  min_dist = dist;
+                  minDist = dist;
               }
           }
           rangeIndex++;

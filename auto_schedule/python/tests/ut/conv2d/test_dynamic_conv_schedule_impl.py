@@ -8,12 +8,14 @@ from te import tvm
 from impl.util.platform_adapter import operation
 from impl.dynamic.conv2d import conv2d_fusion_compute
 from impl.dynamic.ascend_dequant import ascend_dequant_compute
+from tbe.common.context.op_info import OpInfo
 
 ut_case = OpUT("conv_schedule", "conv_schedule.test_dynamic_conv_schedule_impl")
 def test_bias_not_support_preload_910A(test_arg):
     try:
         with tbe.common.context.op_context.OpContext("dynamic"):
             with tbe.dsl.base.operation.compute():
+                tbe.dsl.base.operation.get_op_context().add_op_info(OpInfo("conv2d_fusion_dequant", "Conv2D"))
                 shape_x = [-1, 1, 32, -1, 32]
                 range_x = [[1, 100], [1, 1], [32, 32], [12, 52]]
                 var_list = ["batch_n", "fmap_w"]

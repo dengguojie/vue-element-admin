@@ -8,6 +8,7 @@ from te import tvm
 from impl.util.platform_adapter import operation
 from impl.dynamic.conv2d import conv2d_fusion_compute
 from impl.dynamic.ascend_quant import ascend_quant_compute
+from tbe.common.context.op_info import OpInfo
 
 ut_case = OpUT("conv2d_tilingcase", "conv2d_tilingcase.test_dynamic_conv2d_tilingcase_impl")
 
@@ -15,6 +16,7 @@ def test_h_out_1_case(test_arg):
     try:
         with tbe.common.context.op_context.OpContext("dynamic"):
             with tbe.dsl.base.operation.compute():
+                tbe.dsl.base.operation.get_op_context().add_op_info(OpInfo("conv2d_fusion_dequant", "Conv2D"))
                 shape_x = [-1, 96, -1, -1, 16]
                 range_x = [[1, 101], [1536, 1536], [3, 3], [1, 110]]
                 var_list = ["batch_n", "fmap_h", "fmap_w"]
