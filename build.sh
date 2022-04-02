@@ -43,7 +43,7 @@ UT_VERSION="protoc,secure_c,c_sec,eigen,protobuf_static_build,external_protobuf,
 
 create_lib(){
   echo $dotted_line
-  echo "If you're in the yellow zone of Huawei.Method of proxy configuration. cancel the # before config proxy code in the front of build.sh, and fill in the correct account and password"
+  echo "If you're in the yellow zone of Huawei, please cancel the # before config proxy code in the front of build.sh, and fill in the correct account and password"
   git submodule init &&git submodule update
   down_third_libs
   if [ ! -d "${CMAKE_HOST_PATH}" ];then
@@ -60,7 +60,7 @@ create_lib(){
   echo "If you compile a shared or static lib, you can copy your lib from the subfolder of./build/cann to the corresponding folder of/usr/local/ascend"
   echo $dotted_line
   if [[  "$upload" =~ "TRUE" ]];then
-    
+
     piplist=`pip3 list`
     if [[ ! $piplist =~ "esdk-obs-python" ]];then
       wget https://ascend-cann.obs.cn-north-4.myhuaweicloud.com/huaweicloud-obs-sdk-python.zip
@@ -76,7 +76,7 @@ create_lib(){
     else
       username=$(date "+%Y%m%d%H%M%S")
     fi
-    
+
     declare -A lib_dir
     lib_dir=([optiling]="./build/cann/ops/built-in/op_tiling/liboptiling.so"
              [opsproto]="./build/cann/ops/built-in/op_proto/libopsproto.so"
@@ -104,7 +104,7 @@ set_env(){
   echo  "#######auto create,link to ascend home ########" >> ~/.bashrc
   echo  "#This is the environment variable set for ASCEND" >> ~/.bashrc
   echo  " ">> ~/.bashrc
-  
+
   echo unset PYTHONPATH >> ~/.bashrc
   echo  export ASCEND_CODE_HOME=$(cd "$(dirname $0)"; pwd) >> ~/.bashrc
   if [ $UID -ne 0 ];then
@@ -114,12 +114,12 @@ set_env(){
     echo  export ASCEND_HOME="/usr/local/Ascend" >> ~/.bashrc
     echo  unset ASCEND_CUSTOM_PATH >> ~/.bashrc
   fi
-  
+
   echo  export OP_TEST_FRAME_INSTALL_HOME=\$ASCEND_CODE_HOME/tools/op_test_frame/python >> ~/.bashrc
   echo  export OPS_SOURCE_PATH=\$ASCEND_CODE_HOME/ops/built-in/tbe>> ~/.bashrc
   echo  export ASCEND_OPP_PATH=\$ASCEND_HOME/opp >> ~/.bashrc
   echo  export TOOLCHAIN_HOME=\$ASCEND_HOME/toolkit >> ~/.bashrc
-    
+
   if [ ! $usr_local ];then
     echo  export PYTHONPATH=\$OPS_SOURCE_PATH:\$OP_TEST_FRAME_INSTALL_HOME:\$ASCEND_HOME/compiler/python/site-packages:\$ASCEND_HOME/toolkit/python/site-package:\$PYTHONPATH >> ~/.bashrc
   else
@@ -132,7 +132,7 @@ set_env(){
   echo "if [[ ! \$PATH =~ \$ASCEND_HOME/compiler/ccec_compiler/bin ]];then" >> ~/.bashrc
   echo  "  export PATH=\$ASCEND_HOME/compiler/ccec_compiler/bin:\$PATH" >> ~/.bashrc
   echo  fi >> ~/.bashrc
-  
+
   echo  " ">> ~/.bashrc
   echo   $star_line >> ~/.bashrc
   echo   $star_line
@@ -199,7 +199,7 @@ down_third_libs(){
     echo "export http_proxy=http//\$username:\$escape_pass@\${proxy:-proxy}.huawei.com:8080/"
     echo "NOTICE:password needs to be escaped"
     echo "export https_proxy=\$http_proxy"
-    echo "If you are not in Huawei yellow area"
+    echo "If you are not in Huawei yellow zone"
     echo "You need to configure a network proxy"
     exit -1
   else
@@ -230,15 +230,15 @@ down_third_libs(){
     do
       if [[ ! ${expect_md5[$mylib]} == ${read_md5[$mylib]} ]];then
         echo $mylib
-        echo ${expect_md5[$mylib]} 
+        echo ${expect_md5[$mylib]}
         echo ${read_md5[$mylib]}
         link=obs_${mylib}
         eval link=$(echo \$$link)
-        rm -rf ./build/cann/download/$mylib/* 
+        rm -rf ./build/cann/download/$mylib/*
         wget -P  ./build/cann/download/$mylib/  --no-check-certificate $link
       fi
-    done    
-    
+    done
+
   for mylib in ${libs[@]}
     do
       if [ ! -f ./build/cann/download/$mylib/* ];then
@@ -247,7 +247,7 @@ down_third_libs(){
         wget -P  ./build/cann/download/$mylib/  --no-check-certificate $link
       fi
     done
-    
+
   echo "check md5 begin"
   for i in $(seq 0 4)
     do
@@ -257,8 +257,8 @@ down_third_libs(){
         echo "${libs[i]} md5 not correct"
         exit -1
       fi
-    done  
-  echo "check md5 finish"    
+    done
+  echo "check md5 finish"
   set -e
 }
 
@@ -274,7 +274,7 @@ check_third_libs(){
       if [ ! -f "./build/cann/download/$mylib/$pack" ];then
         echo "dwonload from $link failed"
         exit -1
-      fi      
+      fi
     done
   echo "check third libs success"
 }
@@ -313,7 +313,7 @@ usage() {
   echo "    bash build.sh [-h] [-j[n]] [-u] [-s] [-v] [-g]"
   echo ""
   echo "If you are using it for the first time, it needs to be executed "
-  echo "If you're in the yellow zone of Huawei.Method of proxy configuration. cancel the # before config proxy code in the front of build.sh, and fill in the correct account and password"
+  echo "If you're in the yellow zone of Huawei, please cancel the # before config proxy code in the front of build.sh, and fill in the correct account and password"
   echo "./build.sh --down_and_check_third_libs "
   echo "./build.sh --set_env_gitee or ./build.sh --set_env_ascend . These two commands can help you set environment variables automatically"
   echo "./build.sh --install_python_libs"
@@ -323,13 +323,11 @@ usage() {
   echo "Options:"
   echo      $dotted_line
   echo "    Download and install ascend "
-  echo      $dotted_line  
-  echo "    --install_daily  download and install Ascend, using package/daily/ the latest daily package"
-  echo "    --install_etrans  download and install Ascend, using package/etrans/ the latest extrans package"
-  echo "        *** You must use a single quotation mark for your username and password.***"
-  echo "        *** example ./build.sh --install_daily 'username' 'password'   ***"
-  echo "    --install_local  If you use the above two commands to download and install, the installation fails for some reasons. "
-  echo "                     After solving the problem, you can use this command to install locally, so as to save download time."
+  echo      $dotted_line
+  echo "    --install_daily   download and install Ascend, using the latest daily compiled package"
+  echo "    --install_etrans  download and install Ascend, using the latest extrans / pre-publish package"
+  echo "    --install_local  If error happens while installing package with the commands above,"
+  echo "                     you may install mannualy with the package downloaded in ascend_download."
   echo ""
   echo ""
   echo      $dotted_line
@@ -344,12 +342,12 @@ usage() {
   echo "    Setting environment variables"
   echo      $dotted_line
   echo "    --set_env_gitee set env for ascend,use gitee download python operator code"
-  echo "    --set_env_ascend set env for ascend,use /usr/local/Ascend python operato code"  
+  echo "    --set_env_ascend set env for ascend,use /usr/local/Ascend python operato code"
   echo ""
   echo ""
   echo      $dotted_line
   echo "    Build parameters "
-  echo      $dotted_line  
+  echo      $dotted_line
   echo "    -h Print usage"
   echo "    -x Download git submodule"
   echo "    -j[n] Set the number of threads used to build CANN, default is 8"
@@ -448,9 +446,9 @@ checkopts() {
          exit 0;;
       h) usage
          exit 0 ;;
-      j) THREAD_NUM=$OPTARG 
+      j) THREAD_NUM=$OPTARG
          core_nums=$OPTARG ;;
-      u) UT_TEST_ALL=TRUE 
+      u) UT_TEST_ALL=TRUE
 	     UT_MODE=TRUE ;;
       s) ST_TEST=TRUE ;;
       v) VERBOSE="VERBOSE=1" ;;
@@ -459,7 +457,7 @@ checkopts() {
       c) WITH_CUSTOM_OP=TRUE ;;
       m) MINIRC_AICPU_ONLY=TRUE ;;
       f) CHANGED_FILES=$OPTARG
-         CI_MODE=TRUE ;; 
+         CI_MODE=TRUE ;;
       -) case $OPTARG in
            aicpu) AICPU_ONLY=TRUE ;;
            minirc) MINIRC_AICPU_ONLY=TRUE ;;
@@ -472,7 +470,7 @@ checkopts() {
                           exit 0;;
            set_env_gitee) usr_local=""
                            set_env
-                           exit 0;;          
+                           exit 0;;
            query_env) query_env
                       exit 0;;
            install_python_libs) install_python_libs
@@ -481,28 +479,19 @@ checkopts() {
                            exit 0;;
            make_clean) make_clean
                        exit 0;;
-           base_env) chmod 744 ./scripts/install_base_env.sh 
+           base_env) chmod 744 ./scripts/install_base_env.sh
                     ./scripts/install_base_env.sh
                     exit 0;;
            upload) upload=TRUE ;;
-           install_daily) username="$2"
-                          pwsswd="$3"
-                          echo $dotted_line
-                          if [[ "`echo $#`" -eq 4 ]];then
-                              day=$4
+           install_daily) if [[ "`echo $#`" -ge 2 ]];then
+                            day=$2
                           fi
-                          echo $day
-                          chmod 744 ./scripts/install_daily.sh 
-                          ./scripts/install_daily.sh $username $pwsswd $day
-                          exit 0;;
-           install_etrans) username="$2"
-                            pwsswd="$3"
-                            if [[ "`echo $#`" -eq 4 ]];then
-                              day=$4
-                            fi
-                            chmod 744 ./scripts/install_etrans.sh 
-                            ./scripts/install_etrans.sh $username $pwsswd $day
-                            exit 0;;
+                          chmod 744 ./scripts/install_daily.sh
+                          ./scripts/install_daily.sh $day
+                          exit $?;;
+           install_etrans) chmod 744 ./scripts/install_etrans.sh
+                           ./scripts/install_etrans.sh
+                           exit $?;;
            install_local) rm -rf ./ascend_download/out
                           if [[ -f "./ascend_download/ai_cann_x86.tar.gz" ]];then
                             chmod 744 ./scripts/install_etrans.sh
@@ -513,7 +502,7 @@ checkopts() {
                           else
                             chmod 744 ./scripts/install_daily.sh
                             ./scripts/install_daily.sh  "install_local"
-                          fi 
+                          fi
                           exit 0;;
            *) for m in [ O0 O1 O2 O3 g ]
                 do
@@ -521,7 +510,7 @@ checkopts() {
                     build_mode=$m
                   fi
                 done
-                
+
               get_target_lib
               if [[ "$RELEASE_VERSION" =~ "$OPTARG" ]];then
                 UT_TEST_ALL=FALSE
@@ -560,7 +549,7 @@ checkopts() {
                     usage
                     exit 1
                   fi
-              fi                  
+              fi
               esac;;
       *) logging "Undefined option: ${opt}"
          usage
@@ -581,15 +570,15 @@ parse_changed_files() {
   logging "changed lines:"
   cat $CHANGED_FILES
   logging '-----------------------------------------------'
-  
+
   if [[ "$UT_MODE" == "TRUE" ]]; then
     related_ut=`python3.7 scripts/parse_changed_files.py $1`
     logging "related ut "$related_ut
   else
     related=`python3.7 scripts/parse_compile_changed_files.py $1`
-  fi 
+  fi
 
-  if [[ "$UT_MODE" == "TRUE" ]]; then 
+  if [[ "$UT_MODE" == "TRUE" ]]; then
       if [[ $related_ut =~ "CPU_UT" ]];then
         logging "CPU_UT is triggered!"
         CPU_UT=TRUE
@@ -621,7 +610,7 @@ parse_changed_files() {
         EXEC_UT=TRUE
       fi
   fi
-  if [[ "$UT_MODE" == "TRUE" ]]; then 
+  if [[ "$UT_MODE" == "TRUE" ]]; then
     if [[ "$EXEC_UT" =~ "FALSE" ]];then
       logging "no ut matched! no need to run!"
       logging "---------------- CANN build finished ----------------"
@@ -666,18 +655,18 @@ compile_mod(){
           fi
           done
       cmake --build . --target repack_tbe -- -j ${THREAD_NUM}
-      
+
       if [[ "$related" =~ "CPU" ]]; then
         for lib in  constant_folding_ops aicpu_ops_json_info cpu_kernels_static
             do
                 cmake --build . --target $lib -- -j ${THREAD_NUM}
-            done 
+            done
         CMAKE_ARGS="-DBUILD_PATH=$BUILD_PATH -DBUILD_OPEN_PROJECT=TRUE -DPRODUCT_SIDE=device -DBUILD_MODE=$build_mode -DWITH_CUSTOM_OP=$WITH_CUSTOM_OP"
         logging "Start build device target. CMake Args: ${CMAKE_ARGS}"
         mk_dir "${CMAKE_DEVICE_PATH}"
         cd "${CMAKE_DEVICE_PATH}" && cmake ${CMAKE_ARGS} ../..
         make ${VERBOSE} -j${THREAD_NUM}
-      fi        
+      fi
 }
 
 # create build path
@@ -710,7 +699,7 @@ build_cann() {
             -DBUILD_MODE=$build_mode -DWITH_CUSTOM_OP=$WITH_CUSTOM_OP"
 
   logging "Start build host target. CMake Args: ${CMAKE_ARGS}"
-  
+
   computer_arch=`uname -m`
   if [[ "$UT_MODE" == "FALSE"  ]] && [[ "$CI_MODE" == "TRUE"  ]] && [[ ! "$related" =~ "OTHER_FILE" ]] ;then
       compile_mod
@@ -730,7 +719,7 @@ build_cann() {
         mk_dir "${CMAKE_DEVICE_PATH}"
         cd "${CMAKE_DEVICE_PATH}" && cmake ${CMAKE_ARGS} ../..
         make ${VERBOSE} -j${THREAD_NUM}
-      fi  
+      fi
   fi
   logging "CANN build success!"
 }
@@ -766,7 +755,7 @@ main() {
     create_lib $@
     exit 0
   fi
-  
+
   if [[ "$CHANGED_FILES" != "" ]]; then
     UT_TEST_ALL=FALSE
     parse_changed_files $CHANGED_FILES
@@ -775,7 +764,7 @@ main() {
   logging "---------------- CANN build start ----------------"
   if [ "$MINIRC_AICPU_ONLY" = "TRUE" ]; then
     ${GCC_PREFIX}g++ -v
-    minirc 
+    minirc
   else
     ${GCC_PREFIX}g++ -v
     build_cann
