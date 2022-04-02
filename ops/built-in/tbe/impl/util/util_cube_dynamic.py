@@ -1416,6 +1416,7 @@ class Conv2dBackpropParaProcess(CubeParaProcess):
         operation.var("n_bl1")
         operation.var("k_aub")
         operation.var("m_aub")
+        operation.var("wo_aub")
         operation.var("m_l0")
         operation.var("n_l0_div_ub")
         operation.var("n_ub")

@@ -2,6 +2,7 @@
 # -*- coding: UTF-8 -*-
 from impl.dynamic.conv2d_backprop_input import conv2d_backprop_input_generalization
 from te import tvm
+from te.platform.cce_conf import te_set_version
 from tbe.dsl.base import operation
 from tbe.dsl import auto_schedule
 from tbe.dsl import build
@@ -78,13 +79,14 @@ def test_conv2d_backprop_input_fuzz_build_upper_limit():
         'test_conv2d_backprop_input_fuzz_build_upper_limit', {"mode": "keep_rank"}]
     conv2d_backprop_input_generalization(*input_list)
 
-def _test_transdata_dx_transdata_fusion_op():
+def test_transdata_dx_transdata_fusion_op():
     """
     transdata + dx + transdata
     dy: nchw -> nc1hwc0
     filter: fz
     dx: nc1hwc0 -> nchw
     """
+    te_set_version("Ascend910")
     dtype = "float16"
     with OpContext("dynamic"):
         with operation.ComputeContext():
@@ -111,6 +113,7 @@ def _test_transdata_dx_transdata_fusion_op():
             filter_tensor = tvm.placeholder(filter_fz, name="filter", dtype=dtype)
             tensor_list = [input_tensor, filter_tensor, transdata_in_tensor]
             _build_dx_transdata_fusion_op(tensor_list, y, (1, 1, 1, 1), dy_tensor, "transdata_dx_transdata_fusion_binary")
+    te_set_version("Ascend310")
 
 def _build_dx_transdata_fusion_op(tensor_list, y, stride, dy_tensor, case_name):
     pads = [-1, -1, -1, -1]
@@ -128,13 +131,14 @@ def _build_dx_transdata_fusion_op(tensor_list, y, stride, dy_tensor, case_name):
     }
     build(sch, config)
 
-def _test_dx_transdata_fusion_op():
+def test_dx_transdata_fusion_op():
     """
     dx + transdata
     dy: nc1hwc0
     filter: fz
     dx: nc1hwc0 -> nchw
     """
+    te_set_version("Ascend910")
     dtype = "float16"
     with OpContext("dynamic"):
         with operation.ComputeContext():
@@ -161,12 +165,11 @@ def _test_dx_transdata_fusion_op():
 
             tensor_list = [input_tensor, filter_tensor, dy_tensor]
             _build_dx_transdata_fusion_op(tensor_list, y, (1, 1, 2, 2), dy_tensor, "dx_transdata_fusion_binary")
+    te_set_version("Ascend310")
 
 
 if __name__ == '__main__':
     test_conv2d_backprop_input_fuzz_build_lower_limit()
     test_conv2d_backprop_input_fuzz_build_upper_limit()
-    from te.platform import get_soc_spec
-    if "Ascend910" in get_soc_spec("SOC_VERSION"):
-        _test_dx_transdata_fusion_op()
-        _test_transdata_dx_transdata_fusion_op()
+    test_dx_transdata_fusion_op()
+    test_transdata_dx_transdata_fusion_op()

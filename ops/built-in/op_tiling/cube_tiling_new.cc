@@ -188,6 +188,7 @@ namespace optiling {
     run.n_bl1 = tiling.n_bl1;
     run.k_aub = tiling.k_aub;
     run.m_aub = tiling.m_aub;
+    run.wo_aub = tiling.wo_aub;
     run.m_l0 = tiling.m_l0;
     run.n_l0_div_ub = tiling.n_l0_div_ub;
     run.n_cub = tiling.n_cub;
@@ -240,6 +241,7 @@ namespace optiling {
     run.n_bl1 = tiling.n_bl1;
     run.k_aub = tiling.k_aub;
     run.m_aub = tiling.m_aub;
+    run.wo_aub = tiling.wo_aub;
     run.m_l0 = tiling.m_l0;
     run.n_l0_div_ub = tiling.n_l0_div_ub;
     run.n_cub = tiling.n_cub;

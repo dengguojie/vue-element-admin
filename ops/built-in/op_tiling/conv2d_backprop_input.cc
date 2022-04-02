@@ -125,8 +125,9 @@ bool CheckUBSizeLimit(const DxParas& dx_paras) {
   int32_t loadin_size = k_aub * m_aub * dx_paras.wo * kC0 * dx_paras.stride_w;
   int32_t copyout_size = kAfterUbFusionMulti * n_cub * m_l0 * kC0 * kC0;
   if (dx_paras.stride_expand_flag == 0) {
+    int32_t wo_aub = 1;
     loadin_size = kFrontUbFusionMulti * k_aub * kBlockSize *
-                  ((m_aub * dx_paras.wo + dx_paras.kw - 1 + kBlockSize - 1) / kBlockSize) * kBlockSize;
+                  ((m_aub * wo_aub + dx_paras.kw - 1 + kBlockSize - 1) / kBlockSize) * kBlockSize;
   }
   int32_t ub_fp16_size = kUbSize / kFp16Bytes;
   CHECK_OP_FUNC(loadin_size + copyout_size > ub_fp16_size, return false,
@@ -153,11 +154,7 @@ inline string IntToBinary(uint64_t& n) {
   string ans = "";
   do {
     uint64_t t = n % 2UL;
-    if (t >= 0UL && t <= 9UL) {
-      ans += (t + '0');
-    } else {
-      ans += (t + 'a' - 10UL);
-    }
+    ans += (t + '0');
     n /= 2UL;
   } while (n);
   return ans;

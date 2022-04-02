@@ -2174,14 +2174,14 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):
         if tensor_attr.get("a_filling_in_ub_flag"):
             _aub_process_stride_expand()
         elif tensor_attr.get("NCHW_TRANS_5HD"):
-            aub_tiling_k, aub_tiling_m, _, _ = tiling.get("AUB_shape")
+            aub_tiling_k, aub_tiling_m, aub_tiling_wo, _ = tiling.get("AUB_shape")
             filling_w = cube_util.shape_to_list(a_ub_nc1hwc0.shape)[3]
             ub_shape = (
                 al1_tiling_g,
                 1,
                 aub_tiling_k,
                 aub_tiling_m,
-                filling_w + kernel_w - 1,
+                aub_tiling_wo + kernel_w - 1,
                 al1_co0
             )
             sch_agent.attach_at(a_ub_padc, a_l1, ub_shape)
@@ -3147,7 +3147,8 @@ class DxDynamicUtil():
                                 'shape_up_modify', 'shape_left_modify', 'shape_down_modify', 'shape_right_modify')
         self.tiling_var_names = ('batch_dim', 'n_dim', 'm_dim', 'batch_single_core',
                                  'm_al1', 'n_bl1', 'k_div_max_kl1', 'max_kl1_div_min_kl1', 'min_kl1_div_kl0', 'k_aub',
-                                 'm_aub', 'm_l0', 'n_l0_div_ub', 'n_ub', 'k_l0', 'al1_bound', 'bl1_bound', 'aub_bound')
+                                 'm_aub', 'wo_aub', 'm_l0', 'n_l0_div_ub', 'n_ub', 'k_l0', 'al1_bound', 'bl1_bound',
+                                 'aub_bound')
         self.status_ori_dict_dx = {
             0: Compare.EQUAL,
             1: Compare.LESS_EQ,
@@ -3256,7 +3257,7 @@ class DxDynamicUtil():
                 "k_div_max_kl1": range_1024, "max_kl1_div_min_kl1": range_1024, "min_kl1_div_kl0": range_1024,
                 "m_al1": range_1024, "n_bl1": range_1024,
                 "n_ub": range_64, "m_l0": range_64, "k_l0": range_64, "n_l0_div_ub": range_64,
-                "m_aub": range_256, "k_aub": range_1024,
+                "m_aub": range_256, "wo_aub": range_4096, "k_aub": range_1024,
                 "aub_bound": self.range_const.get("range_ub_bound"),
                 "al1_bound": self.range_const.get("range_l1_bound"),
                 "bl1_bound": self.range_const.get("range_l1_bound")
@@ -3317,15 +3318,16 @@ class DxDynamicUtil():
             k_bl1 = max_kl1
 
         self.tiling_case['block_dim'][:3] = (self.tiling_vars.get('batch_dim'), self.tiling_vars.get('n_dim'),
-                                                self.tiling_vars.get('m_dim'))
-        self.tiling_case['AUB_shape'][:2] = self.tiling_vars.get('k_aub'), self.tiling_vars.get('m_aub')
+                                             self.tiling_vars.get('m_dim'))
+        self.tiling_case['AUB_shape'][:3] = (self.tiling_vars.get('k_aub'), self.tiling_vars.get('m_aub'),
+                                             self.tiling_vars.get('wo_aub'))
         self.tiling_case['AL1_shape'][:2] = k_al1, self.tiling_vars.get('m_al1')
         self.tiling_case['BL1_shape'][:2] = k_bl1, self.tiling_vars.get('n_bl1')
         self.tiling_case['AL0_matrix'][:2] = self.tiling_vars.get('m_l0'), self.tiling_vars.get('k_l0')
         self.tiling_case['BL0_matrix'][:2] = (self.tiling_vars.get('k_l0'),
-                                                self.tiling_vars.get('n_l0_div_ub') * self.tiling_vars.get('n_ub'))
+                                              self.tiling_vars.get('n_l0_div_ub') * self.tiling_vars.get('n_ub'))
         self.tiling_case['CL0_matrix'][:2] = (self.tiling_vars.get('n_l0_div_ub') * self.tiling_vars.get('n_ub'),
-                                                self.tiling_vars.get('m_l0'))
+                                              self.tiling_vars.get('m_l0'))
         self.tiling_case['CUB_matrix'][:2] = (self.tiling_vars.get('n_ub'), self.tiling_vars.get('m_l0'))
 
     def get_buffer_status(self):

@@ -59,6 +59,7 @@ static const int32_t kIdxThree = 3;
 static const int32_t kIdxFour = 4;
 static const int32_t kNumTwo = 2;
 static const int32_t kL0CutOffPointNum = 6;
+static const int32_t kLargeWo = 4065;
 
 struct FactorArray {
   int32_t min_kl1_dim = 1;
@@ -83,7 +84,7 @@ inline int32_t CeilAlign(const int32_t& num1, const int32_t& num2) {
 
 inline bool IsSatisfyM(const DxParas &params, const int32_t &m_dim) {
   CHECK_OP_FUNC(m_dim == 0, return false, "m_dim is 0");
-  int32_t m1 = (params.h * params.w + kBlockSize - 1) / kBlockSize;
+  int32_t m1 = CeilDivision(params.h * params.w, kBlockSize);
   int32_t m_single_core_size_tmp = (m1 + m_dim - 1) / m_dim;
   int32_t m_single_core_size_16 = m_single_core_size_tmp * kBlockSize;
   int32_t m_core_remainder = params.hw % m_single_core_size_16;
@@ -190,7 +191,7 @@ bool GetBlockDim(const DxParas &params, const int32_t &core_num, Tiling &tiling)
   // get batch_dim, m_dim and n_dim for single core
   // not support multi cores slicing along k dim
   // single core batch_dim, m_dim, n_dim is a factor of input batch, m, n
-  int32_t m1 = (params.h * params.w + kBlockSize - 1) / kBlockSize;
+  int32_t m1 = CeilDivision(params.h * params.w, kBlockSize);
   int32_t k2 = params.co1 * params.kh * params.kw;
   if (params.hw * params.cin < kBlockSize) {
     // no overlap condition 4
@@ -307,7 +308,7 @@ inline int32_t InitialKl1(int32_t &k_l0, int32_t &k_hw) {
   return k_l1;
 }
 
-int32_t GetBl1Bound(const DxParas &params, const Tiling &tiling, int32_t tiling_factor[]) {
+int32_t GetBl1Bound(const DxParas &params, const Tiling &tiling, const int32_t tiling_factor[]) {
   int32_t idx = 0;
   int32_t k_bl1 = tiling_factor[idx++];
   int32_t n0 = tiling_factor[idx++];
@@ -342,7 +343,7 @@ int32_t GetAl1Bound(const DxParas &params, const Tiling &tiling, const int32_t t
 }
 
 bool CheckL1Overflow(const DxParas &params, const Tiling &tiling,
-                     const int32_t &m0, const int32_t &n0, int32_t &k0) {
+                     const int32_t &m0, const int32_t &n0) {
   int32_t l1_fp16_size = kL1Size / kFp16Bytes;
   int32_t m_al1 = 1;
   int32_t n_bl1 = 1;
@@ -353,6 +354,10 @@ bool CheckL1Overflow(const DxParas &params, const Tiling &tiling,
   return a_l1_size + b_l1_size <= l1_fp16_size;
 }
 
+inline bool IsLargeWo(const DxParas &params) {
+  return params.stride_h == 1 && params.stride_w == 1 && (params.wo + params.kw - 1 >= kLargeWo);
+}
+
 bool CheckUbDb(const DxParas &params, const Tiling &tiling, const int32_t &m0) {
   int32_t aub_h = 1;
   int32_t aub_k = 1;
@@ -361,8 +366,12 @@ bool CheckUbDb(const DxParas &params, const Tiling &tiling, const int32_t &m0) {
   int32_t loadin_size = aub_k * aub_h * params.wo * kBlockSize * params.stride_w;
   int32_t copyout_size = kAfterUbFusionMulti * cub_n * m0 * kBlockSize * kBlockSize;
   if (params.stride_h == 1 && params.stride_w == 1) {
+    int32_t wo_aub = params.wo;
+    if (IsLargeWo(params)) {
+      wo_aub = 1;
+    }
     loadin_size = kFrontUbFusionMulti * aub_k * kBlockSize *
-              ((aub_h * params.wo + params.kw - 1 + kBlockSize - 1) / kBlockSize) * kBlockSize;
+                  CeilAlign(aub_h * wo_aub + params.kw - 1, kBlockSize);
     return loadin_size * tiling.db_aub + copyout_size * tiling.db_cub <= ub_fp16_size;
   }
   return loadin_size * tiling.db_aub + copyout_size * tiling.db_cub <= ub_fp16_size;
@@ -376,7 +385,7 @@ bool GetM0(const int32_t &n0, int32_t &k0, Tiling &tiling, const DxParas & param
   CHECK_OP_FUNC(tiling.k_al1 == 0, return false, "Initial kl1 failed");
   int32_t m_tail_size = params.hw % (m0 * kBlockSize);
   bool update_m = (params.dx_no_overlap_condition_1 && m_tail_size != 0 && m_tail_size < kBlockSize);
-  while (m0 > 0 && (!CheckL1Overflow(params, tiling, m0, n0, k0) || update_m)) {
+  while (m0 > 0 && (!CheckL1Overflow(params, tiling, m0, n0) || update_m)) {
     m0--;
     if (m0 == 0) {
       break;
@@ -723,30 +732,7 @@ bool GetL1Factors(const DxParas &params, Tiling &tiling) {
   return true;
 }
 
-void GetAubM(const int32_t &aub_size, const DxParas &params,
-             const int32_t &k_aub, const Tiling &tiling, int32_t &aub_m) {
-  aub_m = 1;
-  int32_t aub_in = aub_size / (k_aub * params.wo * kC0);
-  if (params.stride_h != 1 || params.stride_w != 1) {
-    for (int32_t h_num_temp = tiling.h_num; h_num_temp >= aub_m + 1; h_num_temp--) {
-      if (h_num_temp * params.stride_w <= aub_in) {
-        aub_m = h_num_temp;
-        break;
-      }
-    }
-  } else {
-    for (int32_t h_num_temp = tiling.h_num; h_num_temp >= aub_m + 1; h_num_temp--) {
-      if (kFrontUbFusionMulti * k_aub * kBlockSize *
-              ((h_num_temp * params.wo + params.kw - 1 + kBlockSize - 1) / kBlockSize) * kBlockSize <=
-          aub_size) {
-        aub_m = h_num_temp;
-        break;
-      }
-    }
-  }
-}
-
-bool InitUbDb(const DxParas &params, Tiling &tiling, int32_t &max_dma_size) {
+bool InitUbDb(const DxParas &params, Tiling &tiling, const int32_t &wo_aub, int32_t &max_dma_size) {
   int32_t loadin_size = tiling.k_aub * tiling.m_aub * params.wo * kC0 * params.stride_w;
   int32_t copyout_size = kAfterUbFusionMulti * tiling.n_cub * tiling.m_l0 * kC0 * kC0;
   int32_t ub_fp16_size = kUbSize / kFp16Bytes;
@@ -759,7 +745,7 @@ bool InitUbDb(const DxParas &params, Tiling &tiling, int32_t &max_dma_size) {
     }
   } else {
     loadin_size = kFrontUbFusionMulti * tiling.k_aub * kBlockSize *
-                  ((tiling.m_aub * params.wo + params.kw - 1 + kBlockSize - 1) / kBlockSize) * kBlockSize;
+                  CeilAlign(tiling.m_aub * wo_aub + params.kw - 1, kBlockSize);
     if (loadin_size * tiling.db_aub + copyout_size * tiling.db_cub > ub_fp16_size) {
       tiling.db_aub = 1;
     }
@@ -773,45 +759,108 @@ bool InitUbDb(const DxParas &params, Tiling &tiling, int32_t &max_dma_size) {
   return true;
 }
 
-bool GetUbFactors(const DxParas &params, Tiling &tiling) {
-  tiling.m_aub = 1;
-  tiling.k_aub = 1;
-  tiling.n_cub = 1;
-  int32_t ub_fp16_size = kUbSize / kFp16Bytes;
-  vector<int32_t> n_l0_factors;
-  vector<int32_t> k_al1_factors;
-  GetFactors(tiling.n_l0, n_l0_factors);
-  GetFactors(tiling.k_al1, k_al1_factors);
+int32_t GetAubM(const DxParas &params, const Tiling &tiling,
+                const int32_t &aub_size, const int32_t &k_aub) {
+  int32_t aub_m = 1;
+  if (IsLargeWo(params)) {
+    return aub_m;
+  }
 
-  int32_t max_dma_size;
-  CHECK_OP_FUNC(!InitUbDb(params, tiling, max_dma_size), return false, "get ub factor fail");
+  int32_t aub_in = aub_size / (k_aub * params.wo * kC0);
+  if (params.stride_h != 1 || params.stride_w != 1) {
+    for (int32_t h_num_temp = tiling.h_num; h_num_temp >= aub_m + 1; h_num_temp--) {
+      if (h_num_temp * params.stride_w <= aub_in) {
+        aub_m = h_num_temp;
+        break;
+      }
+    }
+  } else {
+    for (int32_t h_num_temp = tiling.h_num; h_num_temp >= aub_m + 1; h_num_temp--) {
+      if (kFrontUbFusionMulti * k_aub * kBlockSize *
+          CeilAlign(h_num_temp * params.wo + params.kw - 1, kBlockSize) <= aub_size) {
+        aub_m = h_num_temp;
+        break;
+      }
+    }
+  }
+  return aub_m;
+}
+
+int32_t GetWoAub(const DxParas &params,
+                 const int32_t &aub_size, const int32_t &k_aub, const int32_t &aub_m) {
+  int32_t wo_aub = params.wo;
+  if (IsLargeWo(params)) {
+    int32_t left = 1;
+    int32_t right = wo_aub;
+    int32_t mid;
+    int32_t aub_temp_size;
+    while (left < right) {
+      mid = left + ((right - left) >> 1);
+      aub_temp_size = kFrontUbFusionMulti * k_aub * kBlockSize *
+                      CeilAlign(aub_m * mid + params.kw - 1, kBlockSize);
+      if (aub_temp_size < aub_size) {
+        left = mid + 1;
+      } else if (aub_temp_size > aub_size) {
+        right = mid;
+      } else {
+        break;
+      }
+    }
+    wo_aub = left;
+  }
+  return wo_aub;
+}
+
+bool GetBestUbFactors(const DxParas &params, Tiling &tiling,
+                      int32_t &max_dma_size) {
+  int32_t ub_fp16_size = kUbSize / kFp16Bytes;
+  // get k_aub factor
+  int32_t k_al1_factors[tiling.k_al1] = {0};
+  size_t idx_k = 0;
+  GetFactors(k_al1_factors, tiling.k_al1 / kNumTwo, 1, tiling.k_al1, idx_k);
+  k_al1_factors[idx_k++] = tiling.k_al1;
+  // get n_cub factor
+  int32_t n_l0_factors[tiling.n_l0] = {0};
+  size_t idx_n = 0;
+  GetFactors(n_l0_factors, tiling.n_l0 / kNumTwo, 1, tiling.n_l0, idx_n);
+  n_l0_factors[idx_n++] = tiling.n_l0;
+
   bool first_flag = true;
+  int32_t k_aub;
+  int32_t n1;
   int32_t aub_m;
+  int32_t wo_aub;
   int32_t aub_size;
   int32_t aub_temp_size;
   int32_t dma_size;
   bool modify_ub;
+  int32_t db_cub_initial = tiling.db_cub;
+  int32_t db_cub = db_cub_initial;
   bool stride_equal_one = params.stride_h == 1 && params.stride_w == 1;
-  for (auto &k_aub : k_al1_factors) {
-    for (auto &n1 : n_l0_factors) {
+  for (int32_t i = 0; i < idx_k; i++) {
+    for (int32_t j = 0; j < idx_n; j++) {
+      k_aub = k_al1_factors[i];
+      n1 = n_l0_factors[j];
       if (params.dx_no_overlap_condition_2 && n1 < kNumTwo) {
         continue;
       }
-      if (tiling.db_cub == kDbOn && tiling.n_l0 / n1 == 1) {
-        tiling.db_cub = kDbOff;
+      db_cub = db_cub_initial;
+      if (db_cub_initial == kDbOn && tiling.n_l0 / n1 == 1) {
+        db_cub = kDbOff;
       }
-      aub_size = (ub_fp16_size - kAfterUbFusionMulti * n1 * tiling.m_l0 * kC0 * kC0 * tiling.db_cub) / tiling.db_aub;
-      GetAubM(aub_size, params, k_aub, tiling, aub_m);
+      aub_size = (ub_fp16_size - kAfterUbFusionMulti * n1 * tiling.m_l0 * kC0 * kC0 * db_cub) / tiling.db_aub;
+      aub_m = GetAubM(params, tiling, aub_size, k_aub);
+      wo_aub = GetWoAub(params, aub_size, k_aub, aub_m);
+
       aub_temp_size = k_aub * aub_m * params.wo * params.stride_w * kC0;
       if (stride_equal_one) {
         aub_temp_size = kFrontUbFusionMulti * k_aub * kBlockSize *
-                        ((aub_m * params.wo + params.kw - 1 + kBlockSize - 1) / kBlockSize) *
-                        kBlockSize;
+                        CeilAlign(aub_m * wo_aub + params.kw - 1, kBlockSize);
       }
       if (aub_temp_size > aub_size) {
         continue;
       }
-      dma_size = aub_temp_size * tiling.db_aub + kAfterUbFusionMulti * n1 * tiling.m_l0 * kC0 * kC0 * tiling.db_cub;
+      dma_size = aub_temp_size * tiling.db_aub + kAfterUbFusionMulti * n1 * tiling.m_l0 * kC0 * kC0 * db_cub;
       modify_ub =
           aub_m >= 1 && (tiling.k_aub < k_aub || (tiling.k_aub == k_aub && tiling.n_cub < n1) ||
                          (tiling.k_aub == k_aub && tiling.n_cub == n1 && dma_size > max_dma_size) or first_flag);
@@ -819,6 +868,8 @@ bool GetUbFactors(const DxParas &params, Tiling &tiling) {
         tiling.m_aub = aub_m;
         tiling.n_cub = n1;
         tiling.k_aub = k_aub;
+        tiling.wo_aub = wo_aub;
+        tiling.db_cub = db_cub;
         max_dma_size = dma_size;
         first_flag = false;
       }
@@ -828,8 +879,26 @@ bool GetUbFactors(const DxParas &params, Tiling &tiling) {
   tiling.aub_bound = tiling.k_aub * tiling.m_aub * params.wo * kBlockSize * params.stride_w;
   if (stride_equal_one) {
     tiling.aub_bound = tiling.k_aub * kBlockSize *
-                       ((tiling.m_aub * params.wo + params.kw - 1 + kBlockSize - 1) / kBlockSize) * kBlockSize;
+                       CeilAlign(tiling.m_aub * tiling.wo_aub + params.kw - 1, kBlockSize);
   }
+  return true;
+}
+
+bool GetUbFactors(const DxParas &params, Tiling &tiling) {
+  tiling.m_aub = 1;
+  tiling.k_aub = 1;
+  tiling.n_cub = 1;
+  tiling.wo_aub = 1;
+  bool is_large_wo = IsLargeWo(params);
+  int32_t max_dma_size = 1;
+  int32_t wo_aub = params.wo;
+  if (is_large_wo) {
+    wo_aub = 1;
+  }
+  if (!InitUbDb(params, tiling, wo_aub, max_dma_size)) {
+    return false;
+  }
+  GetBestUbFactors(params, tiling, max_dma_size);
   return true;
 }
 
@@ -859,13 +928,9 @@ void SetTilingId(const DxParas &params, const Tiling &tiling, int32_t &tiling_id
   bool condition8 = tiling.m_al1 == 1 && k_bl1_full_load && tiling.n_bl1 != 0;
   bool condition9 = tiling.m_al1 == 1 && tiling.n_bl1 == 1;
   // default condition1 is m_al1 is 0 and n_bl1 is 0;
-  int32_t min_kl1_cmp_kl0 = kAttachFlagOne;
   int32_t al1_attach_flag = kAttachFlagZero;
   int32_t bl1_attach_flag = kAttachFlagZero;
   int32_t abkl1_attach_flag = kAttachFlagZero;
-  if (min(tiling.k_al1 * params.kh * params.kw, tiling.k_bl1 * params.kh * params.kw) == tiling.k_l0) {
-    min_kl1_cmp_kl0 = kAttachFlagZero;
-  }
   if (condition2) {
     al1_attach_flag = kAttachFlagZero;
     bl1_attach_flag = kAttachFlagOne;

@@ -131,6 +131,7 @@ struct Tiling {
   int32_t db_bl1 = 1;
   int32_t k_aub = 1;
   int32_t m_aub = 1;
+  int32_t wo_aub = 1;
   int32_t db_aub = 1;
   int32_t k_org_dim = 1;
   int32_t db_l0c = 1;
@@ -186,6 +187,7 @@ struct RunInfoParaStrideLargeOne {
   int32_t n_bl1;
   int32_t k_aub;
   int32_t m_aub;
+  int32_t wo_aub;
   int32_t m_l0;
   int32_t n_l0_div_ub;
   int32_t n_cub;
@@ -234,6 +236,7 @@ struct RunInfoParaStrideEqualOne {
   int32_t n_bl1;
   int32_t k_aub;
   int32_t m_aub;
+  int32_t wo_aub;
   int32_t m_l0;
   int32_t n_l0_div_ub;
   int32_t n_cub;
