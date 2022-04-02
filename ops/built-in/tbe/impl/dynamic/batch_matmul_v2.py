@@ -847,19 +847,19 @@ def get_none_range_flag(input_x1: dict, input_x2: dict, bias: dict) -> bool:
     return False
 
 
-def _check_nd_in_nd_out(input_x1: dict, input_x2: dict, output_z: dict) -> bool:
+def _check_nd_in(input_x1: dict, input_x2: dict) -> bool:
     """
-    check format of inputs and output
+    check format of inputs
+    support ND in ND out or ND in NZ out
     """
     format_a = input_x1.get("format")
     format_b = input_x2.get("format")
-    format_out = output_z.get("format")
-    return format_a == "ND" and format_b == "ND" and format_out == "ND"
+    return format_a == "ND" and format_b == "ND"
 
 
-def _define_cache_tiling_var(input_x1: dict, input_x2: dict, bias:dict, output_z: dict) -> None:
+def _define_cache_tiling_var(input_x1: dict, input_x2: dict, bias:dict) -> None:
     if get_none_range_flag(input_x1, input_x2, bias):
-        if _check_nd_in_nd_out(input_x1, input_x2, output_z):
+        if _check_nd_in(input_x1, input_x2):
             operation.var("m")
             operation.var("k")
             operation.var("n")
@@ -869,6 +869,7 @@ def _define_cache_tiling_var(input_x1: dict, input_x2: dict, bias:dict, output_z
         operation.var("batch_dim")
         operation.var("n_dim")
         operation.var("m_dim")
+        operation.var("k_dim")
         operation.var("m_al1")
         operation.var("n_bl1")
         operation.var("cub_n1")
@@ -882,7 +883,7 @@ def _define_cache_tiling_var(input_x1: dict, input_x2: dict, bias:dict, output_z
         operation.var("kal1_16")
         operation.var("kbl1_16")
         operation.var("kl1_times")
-        if _check_nd_in_nd_out(input_x1, input_x2, output_z):
+        if _check_nd_in(input_x1, input_x2):
             operation.var("m_aub")
             operation.var("n_bub")
             operation.var("k_aub")
@@ -961,7 +962,7 @@ def batch_matmul_compute(input_x1: dict, input_x2: dict, bias: dict, offset_w: d
         error_manager_vector.raise_err_specific_reson(op_type, reason)
 
     if "Ascend910" in soc_version or "Ascend710" in soc_version:
-        _define_cache_tiling_var(input_x1, input_x2, bias, output_z)
+        _define_cache_tiling_var(input_x1, input_x2, bias)
 
     if len(shape_x1) >= BATCH_ND_LENGTH:
         shape_x1 = [batch_var, DYNAMIC_FLAG, DYNAMIC_FLAG]

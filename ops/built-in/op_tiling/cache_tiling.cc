@@ -48,6 +48,7 @@ static const int32_t kAttachFlagTwo = 2;
 static const int32_t kKbytes = 1024;
 static const int32_t kMaxFactor = 128;
 static const int32_t kFp16Bytes = 2;
+static const int32_t kFp32Bytes = 4;
 static const int32_t kMinMte1Load = 32;
 static const bool kL0DbFlag = false;
 static const int32_t kL0ParasComboLen = kL0DbFlag ? 8 : 2;
@@ -61,20 +62,28 @@ static const double kLoadSizeGate = 0.13;
 static const int32_t kCoreUseLowRange = 5;
 static const int32_t kCoreUseHighRange = 9;
 static const int32_t UbFp16Size = kUbSize / kFp16Bytes;
-static const int32_t kTypeZero = 0;
-static const int32_t kTypeOne = 1;
-static const int32_t kTypeTwo = 2;
-static const int32_t kTypeThree = 3;
+static const int32_t kNumZero = 0;
+static const int32_t kNumOne = 1;
+static const int32_t kNumTwo = 2;
+static const int32_t kNumThree = 3;
 static const int32_t kBankConflictFactor = 4;
 static const int32_t kL1FactorsLen = 6;
 static const int32_t kCandidateLen = 2;
+static const int32_t kMinSplitKCoreNum = 8;
+static const int32_t kHbmBandwidth8Core = 250;
+static const int32_t kHbmBandwidth32Core = 1100;
+static const int32_t kL2Bandwidth8Core = 1300;
+static const int32_t kL2Bandwidth32Core = 3300;
+static const int32_t kCoreNum32 = 32;
+static const int32_t kMNPntMax = 16;
 
-void Tiling::SetParams(const L2Status &l2Status, const L0Status &l0Status, const L1Status &l1Status,
+void Tiling::SetParams(const CoreStatus &coreStatus, const L0Status &l0Status, const L1Status &l1Status,
                        const UbStatus &ubStatus, const BatchmatmulParas &params)
 {
-  batch_dim = l2Status.batch_dim;
-  n_dim = l2Status.n_dim;
-  m_dim = l2Status.m_dim;
+  batch_dim = coreStatus.batch_dim;
+  n_dim = coreStatus.n_dim;
+  m_dim = coreStatus.m_dim;
+  k_dim = coreStatus.k_dim;
   m_l0 = l0Status.m_l0;
   k_l0 = l0Status.k_l0;
   n_l0 = l0Status.n_l0;
@@ -86,7 +95,7 @@ void Tiling::SetParams(const L2Status &l2Status, const L0Status &l0Status, const
   db_bl1 = l1Status.db_bl1;
   n_cub = ubStatus.n_cub;
   db_cub = ubStatus.db_cub;
-  k_org_dim = l2Status.k * kBlockSize;
+  k_org_dim = coreStatus.k * kBlockSize;
   db_l0c = l0Status.db_l0c;
   if (params.nd_flag) {
     k_aub = ubStatus.k_aub;
@@ -105,13 +114,13 @@ void Tiling::SetParams(const L2Status &l2Status, const L0Status &l0Status, const
 
   if (m_al1 == kNONE) {
     al1_full_load = true;
-    if (l2Status.batch == 1) {
+    if (coreStatus.batch == 1) {
       db_al1 = 1;
     }
   }
   if (n_bl1 == kNONE) {
     bl1_full_load = true;
-    if (!params.b_have_batch || l2Status.batch == 1) {
+    if (!params.b_have_batch || coreStatus.batch == 1) {
       db_bl1 = 1;
     }
   }
@@ -182,7 +191,7 @@ void Tiling::SetAttachFlag()
 
 void Tiling::GetTilingId(const BatchmatmulParas &params)
 {
-  int32_t tilingIDLongLong = 0;
+  int32_t tilingIDLongLong = params.split_k_flag ? 1 : 0;
   tilingIDLongLong = tilingIDLongLong * kDecimal + db_al1;
   tilingIDLongLong = tilingIDLongLong * kDecimal + db_bl1;
   tilingIDLongLong = tilingIDLongLong * kDecimal + db_l0c;
@@ -243,64 +252,86 @@ void GetNearestFactor(const int32_t &base, int32_t &factor)
   }
 }
 
-void BL1FullLoadBlock(const L2Status &l2Status, BlockDimCalculator &blockDimCalculator, int32_t &n0, bool b_have_batch)
+void BL1FullLoadBlock(const CoreStatus &coreStatus, BlockDimCalculator &blockDimCalculator,
+                      int32_t &n0, bool b_have_batch)
 {
   if (n0 >= 1) {
-    while (l2Status.n % n0 != 0) {
+    while (coreStatus.n % n0 != 0) {
       n0--;
     }
-    blockDimCalculator.amat_size = blockDimCalculator.ori_amat_size * (l2Status.n / n0);
-    blockDimCalculator.bmat_size = b_have_batch ? l2Status.batch * l2Status.n : l2Status.n;
+    blockDimCalculator.amat_size = blockDimCalculator.ori_amat_size * (coreStatus.n / n0);
+    blockDimCalculator.bmat_size = b_have_batch ? coreStatus.batch * coreStatus.n : coreStatus.n;
     blockDimCalculator.total_load_size = blockDimCalculator.amat_size + blockDimCalculator.bmat_size;
     blockDimCalculator.tmp_value = n0;
   }
 }
 
-void AL1FullLoadBlock(const L2Status &l2Status, BlockDimCalculator &blockDimCalculator, int32_t &m0)
+void UpdateBlockDimCalculator(BlockDimCalculator &blockDimCalculator)
 {
-  if (m0 >= 1) {
-    while (l2Status.m % m0 != 0) {
-      m0--;
-    }
-    blockDimCalculator.tmp_amat_size = blockDimCalculator.ori_amat_size;
-    blockDimCalculator.tmp_bmat_size = l2Status.n * (blockDimCalculator.ori_amat_size / m0);
-    blockDimCalculator.tmp_load_size = blockDimCalculator.tmp_amat_size + blockDimCalculator.tmp_bmat_size;
-    if (blockDimCalculator.total_load_size > blockDimCalculator.tmp_load_size) {
+  if (blockDimCalculator.total_load_size > blockDimCalculator.tmp_load_size) {
       blockDimCalculator.bmat_size = blockDimCalculator.tmp_bmat_size;
       blockDimCalculator.amat_size = blockDimCalculator.tmp_amat_size;
       blockDimCalculator.total_load_size = blockDimCalculator.tmp_load_size;
       blockDimCalculator.tmp_value = 0;
-    }
   }
 }
 
-void NeitherFullLoadBlock(const L2Status &l2Status, BlockDimCalculator &blockDimCalculator,
+void AL1FullLoadBlock(const CoreStatus &coreStatus, BlockDimCalculator &blockDimCalculator, int32_t &m0)
+{
+  if (m0 >= 1) {
+    while (coreStatus.m % m0 != 0) {
+      m0--;
+    }
+    blockDimCalculator.tmp_amat_size = blockDimCalculator.ori_amat_size;
+    blockDimCalculator.tmp_bmat_size = coreStatus.n * (blockDimCalculator.ori_amat_size / m0);
+    blockDimCalculator.tmp_load_size = blockDimCalculator.tmp_amat_size + blockDimCalculator.tmp_bmat_size;
+    UpdateBlockDimCalculator(blockDimCalculator);
+  }
+}
+
+void NeitherFullLoadBlock(const CoreStatus &coreStatus, BlockDimCalculator &blockDimCalculator,
                           const int32_t (&nFactorTwoCandidates)[kCandidateLen],
                           const int32_t (&mFactorTwoCandidates)[kCandidateLen])
 {
   for (auto const &n0: nFactorTwoCandidates) {
-    for (auto const &m0: mFactorTwoCandidates) {
-      if (m0 <= 0 || n0 <= 0) {
+    if (n0 <= 0) {
+      continue;
+    }
+    int32_t max_m0 = kL0cSize / (kKbytes * n0);
+    int32_t m0_arr[kCandidateLen] = {0};
+    GetTwoFactors(m0_arr, max_m0, coreStatus.m, max_m0);
+    for (auto const &m0: m0_arr) {
+      if (m0 <= 0) {
         continue;
       }
-      if (m0 * n0 * kKbytes > kL0cSize) {
-        continue;
-      }
-      blockDimCalculator.tmp_amat_size = blockDimCalculator.ori_amat_size * (l2Status.n / n0);
-      blockDimCalculator.tmp_bmat_size = l2Status.n * (blockDimCalculator.ori_amat_size / m0);
+      blockDimCalculator.tmp_amat_size = blockDimCalculator.ori_amat_size * (coreStatus.n / n0);
+      blockDimCalculator.tmp_bmat_size = coreStatus.n * (blockDimCalculator.ori_amat_size / m0);
       blockDimCalculator.tmp_load_size = blockDimCalculator.tmp_amat_size + blockDimCalculator.tmp_bmat_size;
-      if (blockDimCalculator.tmp_load_size < blockDimCalculator.total_load_size) {
-        blockDimCalculator.amat_size = blockDimCalculator.tmp_amat_size;
-        blockDimCalculator.bmat_size = blockDimCalculator.tmp_bmat_size;
-        blockDimCalculator.total_load_size = blockDimCalculator.tmp_load_size;
-        blockDimCalculator.tmp_value = 0;
+      UpdateBlockDimCalculator(blockDimCalculator);
+    }
+  }
+  for (auto const &m0: mFactorTwoCandidates) {
+    if (m0 <= 0) {
+      continue;
+    }
+    int32_t max_n0 = kL0cSize / (kKbytes * m0);
+    int32_t n0_arr[kCandidateLen] = {0};
+    GetTwoFactors(n0_arr, max_n0, coreStatus.n, max_n0);
+    for (auto const &n0: n0_arr) {
+      if (n0 <= 0) {
+        continue;
       }
+      blockDimCalculator.tmp_amat_size = blockDimCalculator.ori_amat_size * (coreStatus.n / n0);
+      blockDimCalculator.tmp_bmat_size = coreStatus.n * (blockDimCalculator.ori_amat_size / m0);
+      blockDimCalculator.tmp_load_size = blockDimCalculator.tmp_amat_size + blockDimCalculator.tmp_bmat_size;
+      UpdateBlockDimCalculator(blockDimCalculator);
     }
   }
 }
 
-void GetBlockDimHelper(L2Status &l2Status, BlockDimCalculator &blockDimCalculator, const int32_t m0s[][kCandidateLen],
-                       const int32_t n0s[][kCandidateLen], const BatchmatmulParas &params)
+void GetBlockDimHelper(CoreStatus &coreStatus, BlockDimCalculator &blockDimCalculator,
+                       const int32_t m0s[][kCandidateLen], const int32_t n0s[][kCandidateLen],
+                       const BatchmatmulParas &params)
 {
   int32_t iIdx = blockDimCalculator.i_idx;
   int32_t jIdx = blockDimCalculator.j_idx;
@@ -311,13 +342,13 @@ void GetBlockDimHelper(L2Status &l2Status, BlockDimCalculator &blockDimCalculato
     if (static_cast<uint32_t>(bFactor * nFactor * mFactor) > params.core_num) {
       break;
     }
-    l2Status.batch = blockDimCalculator.batch / bFactor;
-    l2Status.m = blockDimCalculator.m / mFactor;
-    l2Status.n = blockDimCalculator.n / nFactor;
+    coreStatus.batch = blockDimCalculator.batch / bFactor;
+    coreStatus.m = blockDimCalculator.m / mFactor;
+    coreStatus.n = blockDimCalculator.n / nFactor;
     // load size of A matrix is batch * m
     // load size of B matrix is n
-    blockDimCalculator.ori_amat_size = l2Status.batch * l2Status.m;
-    blockDimCalculator.ori_bmat_size = params.b_have_batch ? l2Status.batch * l2Status.n : l2Status.n;
+    blockDimCalculator.ori_amat_size = coreStatus.batch * coreStatus.m;
+    blockDimCalculator.ori_bmat_size = params.b_have_batch ? coreStatus.batch * coreStatus.n : coreStatus.n;
     blockDimCalculator.amat_size = blockDimCalculator.ori_amat_size;
     blockDimCalculator.bmat_size = blockDimCalculator.ori_bmat_size;
     blockDimCalculator.total_load_size = blockDimCalculator.amat_size + blockDimCalculator.bmat_size;
@@ -326,17 +357,17 @@ void GetBlockDimHelper(L2Status &l2Status, BlockDimCalculator &blockDimCalculato
       blockDimCalculator.total_load_size = INT_MAX;
       // BL1 full load
       int32_t n0 =
-        min(min((kL1Size / kFp16Bytes - kMinFractalSize) / blockDimCalculator.k_num, l2Status.n), kMaxFactor);
-      BL1FullLoadBlock(l2Status, blockDimCalculator, n0, params.b_have_batch);
+        min(min((kL1Size / kFp16Bytes - kMinFractalSize) / blockDimCalculator.k_num, coreStatus.n), kMaxFactor);
+      BL1FullLoadBlock(coreStatus, blockDimCalculator, n0, params.b_have_batch);
       // AL1 full load
       int32_t m0 = min(min((kL1Size / kFp16Bytes - kMinFractalSize) /
                              (kMinFractalSize * blockDimCalculator.k * blockDimCalculator.ori_amat_size),
                            blockDimCalculator.ori_amat_size),
                        kMaxFactor);
-      AL1FullLoadBlock(l2Status, blockDimCalculator, m0);
+      AL1FullLoadBlock(coreStatus, blockDimCalculator, m0);
       // neither full load max_m max_n
       // closest m and n
-      NeitherFullLoadBlock(l2Status, blockDimCalculator, n0s[nFactor], m0s[mFactor]);
+      NeitherFullLoadBlock(coreStatus, blockDimCalculator, n0s[nFactor], m0s[mFactor]);
     }
     int32_t loadSizeKb = blockDimCalculator.total_load_size * blockDimCalculator.k_bytes / kKbytes;
     int32_t minLoadSizeKb = blockDimCalculator.min_load_size * blockDimCalculator.k_bytes / kKbytes;
@@ -390,24 +421,228 @@ void GetBlockDimHelper(L2Status &l2Status, BlockDimCalculator &blockDimCalculato
   }
 }
 
-int32_t GetBlockDim(const string &op_type, const BatchmatmulParas &params, L2Status &l2Status)
+void GetBandwidth(const BatchmatmulParas &params, const int64_t &use_out_buffer_size, int32_t &hbm_bandwidth,
+                  int32_t &l2_bandwidth, int32_t &cur_bandwidth)
+{
+  int32_t abs_core_num_8 = abs(params.core_num - kMinSplitKCoreNum);
+  int32_t abs_core_num_32 = abs(params.core_num - kCoreNum32);
+  if (abs_core_num_8 < abs_core_num_32) {
+    hbm_bandwidth = kHbmBandwidth8Core;
+    l2_bandwidth = kL2Bandwidth8Core;
+  } else {
+    hbm_bandwidth = kHbmBandwidth32Core;
+    l2_bandwidth = kL2Bandwidth32Core;
+  }
+  cur_bandwidth = use_out_buffer_size < params.l2_size ? l2_bandwidth : hbm_bandwidth;
+}
+
+int32_t ComputePerfSplitK(const int32_t block_dims[], const int32_t single_core_shape[])
+{
+  int32_t m_dim = block_dims[0];
+  int32_t k_dim = block_dims[1];
+  int32_t n_dim = block_dims[kIdxTwo];
+  int32_t single_core_m = single_core_shape[0];
+  int32_t single_core_k = single_core_shape[1];
+  int32_t single_core_n = single_core_shape[kIdxTwo];
+  int32_t atomic_add_bw_lose = k_dim == 1 ? 1 : kNumTwo;
+  int32_t mte3_cost = k_dim * (single_core_m * single_core_n * kFp32Bytes) * atomic_add_bw_lose;
+  int32_t base_load_cost =
+      (single_core_m * single_core_k + single_core_k * single_core_n) * kFp16Bytes;
+  int32_t b_repeat_load_cost = (m_dim - 1) * single_core_k * single_core_n * kFp16Bytes;
+  int32_t a_repeat_load_cost = (n_dim - 1) * single_core_k * single_core_m * kFp16Bytes;
+  return base_load_cost + mte3_cost + a_repeat_load_cost + b_repeat_load_cost;
+}
+
+void GetSplitKdim(const string &op_type, const BatchmatmulParas &params, CoreStatus &coreStatus)
+{
+  // support multi cores slicing along k dim
+  // get batch_dim, m_dim, n_dim and k_dim
+  // batch_dim, m_dim, n_dim, k_dim is a factor of input batch, m, n, k
+
+  OP_LOGD(op_type.c_str(), "GetSplitKdim input shape batch:%d, m:%d, k:%d, n:%d", params.batch_32, params.m_32,
+          params.k_32, params.n_32);
+  if (params.core_num < kMinSplitKCoreNum) {
+    coreStatus.k_dim = 1;
+    OP_LOGD(op_type.c_str(), "CORENUM < 8 so multi-core slicing factor k_dim:%d", coreStatus.k_dim);
+    return;
+  }
+  int32_t use_out_buffer_size =
+      (params.m_32 * params.k_32 + params.k_32 * params.n_32 + params.m_32 * params.n_32) * kFp16Bytes;
+  int32_t cur_bandwidth = 0;
+  int32_t hbm_bandwidth = 0;
+  int32_t l2_bandwidth = 0;
+  GetBandwidth(params, use_out_buffer_size, hbm_bandwidth, l2_bandwidth, cur_bandwidth);
+  int32_t min_cost = params.core_num * use_out_buffer_size / hbm_bandwidth * cur_bandwidth;
+  int32_t m_dim_max = min(params.core_num, params.m_32);
+  int32_t k_dim_max = min(params.core_num, params.k_32);
+  int32_t n_dim_max = min(params.core_num, params.n_32);
+  int32_t cur_cost = min_cost;
+  int32_t block_dims[kNumThree] = {1, 1, 1};
+  int32_t single_core_shape[kNumThree] = {params.m_32, params.k_32, params.n_32};
+  for (int32_t k = 1; k < k_dim_max; k++) {
+    for (int32_t n = 1; n < n_dim_max; n++) {
+      if (k * n > params.core_num) {
+        continue;
+      }
+      for (int32_t m = 1; m < m_dim_max; m++) {
+        if (k * n * m > params.core_num) {
+          continue;
+        }
+        block_dims[0] = m;
+        block_dims[1] = k;
+        block_dims[kIdxTwo] = n;
+        single_core_shape[0] = params.m_32 / m;
+        single_core_shape[1] = params.k_32 / k;
+        single_core_shape[kIdxTwo] = params.n_32 / n;
+        cur_cost = ComputePerfSplitK(block_dims, single_core_shape);
+        if (cur_cost < min_cost) {
+          min_cost = cur_cost;
+          coreStatus.k_dim = k;
+        }
+      }
+    }
+  }
+  OP_LOGD(op_type.c_str(), "multi-core slicing factor k_dim:%d", coreStatus.k_dim);
+}
+
+void GetBlockDimKHelper(CoreStatus &coreStatus, BlockDimCalculator &blockDimCalculator,
+                        const int32_t m0s[][kCandidateLen], const int32_t n0s[][kCandidateLen],
+                        const BatchmatmulParas &params)
+{
+  int32_t kFactor = blockDimCalculator.k_dim_array[blockDimCalculator.k_idx];
+  int32_t nFactor = blockDimCalculator.n_dim_array[blockDimCalculator.n_idx];
+  blockDimCalculator.k_num = params.k_32 / kFactor * kBlockSize * kBlockSize;
+  blockDimCalculator.k_bytes = blockDimCalculator.k_num * kFp16Bytes;
+  for (int32_t mIdx = 0; mIdx < blockDimCalculator.m_dim_cnt; mIdx++) {
+    int32_t mFactor = blockDimCalculator.m_dim_array[mIdx];
+    blockDimCalculator.tmp_core_use = kFactor * nFactor * mFactor;
+    if (blockDimCalculator.tmp_core_use > params.core_num) {
+      break;
+    }
+    coreStatus.k = params.k_32 / kFactor;
+    coreStatus.m = params.m_32 / mFactor;
+    coreStatus.n = params.n_32 / nFactor;
+    // min load size of A matrix is m
+    // min load size of B matrix is n
+    blockDimCalculator.ori_amat_size = coreStatus.m;
+    blockDimCalculator.ori_bmat_size = coreStatus.n;
+    blockDimCalculator.total_load_size = blockDimCalculator.ori_amat_size + blockDimCalculator.ori_bmat_size;
+    blockDimCalculator.tmp_value = 0;
+    if (blockDimCalculator.total_load_size * blockDimCalculator.k_bytes > kL1Size) {
+      blockDimCalculator.total_load_size = INT_MAX;
+      // BL1 k full load
+      int32_t n0 =
+        min(min((kL1Size / kFp16Bytes - kMinFractalSize) / blockDimCalculator.k_num, coreStatus.n), kMaxFactor);
+      BL1FullLoadBlock(coreStatus, blockDimCalculator, n0, params.b_have_batch);
+      // AL1 full load
+      int32_t m0 = min(min((kL1Size / kFp16Bytes - kMinFractalSize) / (kMinFractalSize * coreStatus.k * coreStatus.m),
+                           coreStatus.m), kMaxFactor);
+      AL1FullLoadBlock(coreStatus, blockDimCalculator, m0);
+      // neither
+      NeitherFullLoadBlock(coreStatus, blockDimCalculator, n0s[nFactor], m0s[mFactor]);
+    }
+    // updateSolution: bool whether update to a new block factor solution
+    // has smaller LoadSize or the same LoadSize but use more CoreNums
+    bool update_condition_loadsize = blockDimCalculator.total_load_size < blockDimCalculator.min_load_size;
+    bool update_condition_corenums = blockDimCalculator.total_load_size == blockDimCalculator.min_load_size &&
+                                     blockDimCalculator.tmp_core_use > blockDimCalculator.core_use;
+    if (update_condition_loadsize || update_condition_corenums) {
+      blockDimCalculator.min_load_size = blockDimCalculator.total_load_size;
+      blockDimCalculator.n_dim_factor = nFactor;
+      blockDimCalculator.k_dim_factor = kFactor;
+      blockDimCalculator.m_dim_factor = mFactor;
+      blockDimCalculator.core_use = blockDimCalculator.tmp_core_use;
+      blockDimCalculator.final_value = blockDimCalculator.tmp_value;
+    }
+  }
+}
+
+int32_t GetBlockDimK(const string &op_type, const BatchmatmulParas &params, CoreStatus &coreStatus)
+{
+  // support multi cores slicing along k dim
+  // get batch_dim, m_dim, n_dim and k_dim
+  // batch_dim, m_dim, n_dim, k_dim is a factor of input batch, m, n, k
+  // now batch = 1, so batch_dim = 1
+
+  OP_LOGD(op_type.c_str(), "GetBlockDimK input shape batch:%d, m:%d, k:%d, n:%d", params.batch_32, params.m_32,
+          params.k_32, params.n_32);
+  if (params.k_32 * params.m_32 * params.n_32 <= params.core_num) {
+    coreStatus.k_dim = params.k_32;
+    coreStatus.n_dim = params.n_32;
+    coreStatus.m_dim = params.m_32;
+    coreStatus.batch = params.batch_32;
+    coreStatus.m = 1;
+    coreStatus.k = 1;
+    coreStatus.n = 1;
+    OP_LOGD(op_type.c_str(), "multi-core slicing factor k_dim:%d, n_dim:%d, m_dim:%d, m_block_pnt_point:0",
+            coreStatus.k_dim, coreStatus.n_dim, coreStatus.m_dim);
+    return 0;
+  }
+  BlockDimCalculator blockDimCalculator;
+  int32_t kDimArray[params.core_num] = {0};
+  int32_t nDimArray[params.core_num] = {0};
+  int32_t mDimArray[params.core_num] = {0};
+  GetTwoFactors(kDimArray, coreStatus.k_dim, params.k_32, params.core_num);
+  blockDimCalculator.k_dim_cnt = kCandidateLen;
+  GetFactors(&blockDimCalculator.n_dim_cnt, nDimArray, params.n_32, params.core_num);
+  GetFactors(&blockDimCalculator.m_dim_cnt, mDimArray, params.m_32, params.core_num);
+  int32_t m0s[params.core_num + 1][kCandidateLen] = {0};
+  int32_t n0s[params.core_num + 1][kCandidateLen] = {0};
+  for (int32_t idx = 0; idx < blockDimCalculator.n_dim_cnt; idx++) {
+    int32_t tmpNDim = nDimArray[idx];
+    int32_t tmpNSingleCore = params.n_32 / tmpNDim;
+    GetTwoFactors(n0s[tmpNDim], kMNPntMax, tmpNSingleCore, kMaxFactor);
+  }
+  for (int32_t idx = 0; idx < blockDimCalculator.m_dim_cnt; idx++) {
+    int32_t tmpMDim = mDimArray[idx];
+    int32_t tmpMSingleCore = params.m_32 / tmpMDim;
+    GetTwoFactors(m0s[tmpMDim], kMNPntMax, tmpMSingleCore, kMaxFactor);
+  }
+  blockDimCalculator.k_dim_factor = 1;
+  blockDimCalculator.n_dim_factor = 1;
+  blockDimCalculator.m_dim_factor = 1;
+  blockDimCalculator.k_dim_array = kDimArray;
+  blockDimCalculator.m_dim_array = mDimArray;
+  blockDimCalculator.n_dim_array = nDimArray;
+  blockDimCalculator.min_load_size = INT_MAX;
+  for (int32_t kIdx = 0; kIdx < blockDimCalculator.k_dim_cnt; kIdx++) {
+    for (int32_t nIdx = 0; nIdx < blockDimCalculator.n_dim_cnt; nIdx++) {
+      blockDimCalculator.k_idx = kIdx;
+      blockDimCalculator.n_idx = nIdx;
+      GetBlockDimKHelper(coreStatus, blockDimCalculator, m0s, n0s, params);
+    }
+  }
+  coreStatus.k_dim = blockDimCalculator.k_dim_factor;
+  coreStatus.n_dim = blockDimCalculator.n_dim_factor;
+  coreStatus.m_dim = blockDimCalculator.m_dim_factor;
+  coreStatus.m = params.m_32 / blockDimCalculator.m_dim_factor;
+  coreStatus.n = params.n_32 / blockDimCalculator.n_dim_factor;
+  coreStatus.k = params.k_32 / blockDimCalculator.k_dim_factor;
+  coreStatus.batch = params.batch_32;
+  OP_LOGD(op_type.c_str(),
+          "multi-core slicing factor k_dim:%d, n_dim:%d, m_dim:%d, m_block_pnt_point:%d",
+          coreStatus.k_dim, coreStatus.n_dim, coreStatus.m_dim, blockDimCalculator.final_value);
+  return blockDimCalculator.final_value;
+}
+
+int32_t GetBlockDim(const string &op_type, const BatchmatmulParas &params, CoreStatus &coreStatus)
 {
   // get batch_dim, m_dim and n_dim for single core
   // not support multi cores slicing along k dim
   // single core batch_dim, m_dim, n_dim is a factor of input batch, m, n
 
-  OP_LOGD(op_type.c_str(), "input shape batch:%lld, m:%lld, k:%lld, n:%lld", params.batch, params.m, params.k,
-          params.n);
-  if (static_cast<uint32_t>(params.batch_32 * params.m_32 * params.n_32) < params.core_num) {
-    l2Status.batch_dim = params.batch_32;
-    l2Status.n_dim = params.n_32;
-    l2Status.m_dim = params.m_32;
-    l2Status.batch = 1;
-    l2Status.m = 1;
-    l2Status.k = params.k_32;
-    l2Status.n = 1;
-    OP_LOGD(op_type.c_str(), "multi-core slicing factor batch dim:%lld, n dim:%lld, m dim:%lld, m block pnt point:0",
-            l2Status.batch_dim, l2Status.n_dim, l2Status.m_dim);
+  OP_LOGD(op_type.c_str(), "GetBlockDim input shape batch:%d, m:%d, k:%d, n:%d", params.batch_32, params.m_32,
+          params.k_32, params.n_32);
+  if (params.batch_32 * params.m_32 * params.n_32 < params.core_num) {
+    coreStatus.batch_dim = params.batch_32;
+    coreStatus.n_dim = params.n_32;
+    coreStatus.m_dim = params.m_32;
+    coreStatus.batch = 1;
+    coreStatus.m = 1;
+    coreStatus.k = params.k_32;
+    coreStatus.n = 1;
+    OP_LOGD(op_type.c_str(), "multi-core slicing factor batch_dim:%d, n_dim:%d, m_dim:%d, m_block_pnt_point:0",
+            coreStatus.batch_dim, coreStatus.n_dim, coreStatus.m_dim);
     return 0;
   }
   BlockDimCalculator blockDimCalculator;
@@ -421,18 +656,17 @@ int32_t GetBlockDim(const string &op_type, const BatchmatmulParas &params, L2Sta
   GetFactors(&blockDimCalculator.batch_dim_cnt, batchDimArray, params.batch_32, params.core_num);
   GetFactors(&blockDimCalculator.n_dim_cnt, nDimArray, params.n_32, params.core_num);
   GetFactors(&blockDimCalculator.m_dim_cnt, mDimArray, params.m_32, params.core_num);
-  int32_t mnMaxPnt = 16;
   int32_t m0s[params.core_num + 1][kCandidateLen] = {0};
   int32_t n0s[params.core_num + 1][kCandidateLen] = {0};
   for (int32_t idx = 0; idx < blockDimCalculator.n_dim_cnt; idx++) {
     int32_t tmpNDim = nDimArray[idx];
     int32_t tmpNSingleCore = params.n_32 / tmpNDim;
-    GetTwoFactors(n0s[tmpNDim], mnMaxPnt, tmpNSingleCore, kMaxFactor);
+    GetTwoFactors(n0s[tmpNDim], kMNPntMax, tmpNSingleCore, kMaxFactor);
   }
   for (int32_t idx = 0; idx < blockDimCalculator.m_dim_cnt; idx++) {
     int32_t tmpMDim = mDimArray[idx];
     int32_t tmpMSingleCore = params.m_32 / tmpMDim;
-    GetTwoFactors(m0s[tmpMDim], mnMaxPnt, tmpMSingleCore, kMaxFactor);
+    GetTwoFactors(m0s[tmpMDim], kMNPntMax, tmpMSingleCore, kMaxFactor);
   }
   blockDimCalculator.k_num = params.k_32 * kBlockSize * kBlockSize;
   blockDimCalculator.k_bytes = blockDimCalculator.k_num * kFp16Bytes;
@@ -447,50 +681,50 @@ int32_t GetBlockDim(const string &op_type, const BatchmatmulParas &params, L2Sta
     for (int32_t jIdx = 0; jIdx < blockDimCalculator.n_dim_cnt; jIdx++) {
       blockDimCalculator.i_idx = iIdx;
       blockDimCalculator.j_idx = jIdx;
-      GetBlockDimHelper(l2Status, blockDimCalculator, m0s, n0s, params);
+      GetBlockDimHelper(coreStatus, blockDimCalculator, m0s, n0s, params);
     }
   }
-  l2Status.batch_dim = blockDimCalculator.batch_dim_factor;
-  l2Status.n_dim = blockDimCalculator.n_dim_factor;
-  l2Status.m_dim = blockDimCalculator.m_dim_factor;
-  l2Status.m = params.m_32 / blockDimCalculator.m_dim_factor;
-  l2Status.n = params.n_32 / blockDimCalculator.n_dim_factor;
-  l2Status.k = params.k_32;
-  l2Status.batch = params.batch_32 / blockDimCalculator.batch_dim_factor;
+  coreStatus.batch_dim = blockDimCalculator.batch_dim_factor;
+  coreStatus.n_dim = blockDimCalculator.n_dim_factor;
+  coreStatus.m_dim = blockDimCalculator.m_dim_factor;
+  coreStatus.m = params.m_32 / blockDimCalculator.m_dim_factor;
+  coreStatus.n = params.n_32 / blockDimCalculator.n_dim_factor;
+  coreStatus.k = params.k_32;
+  coreStatus.batch = params.batch_32 / blockDimCalculator.batch_dim_factor;
   OP_LOGD(op_type.c_str(),
-          "multi-core slicing factor batch dim:%lld, n dim:%lld, m dim:%lld, m block pnt point:%lld",
-          l2Status.batch_dim, l2Status.n_dim, l2Status.m_dim, blockDimCalculator.final_value);
+          "multi-core slicing factor batch_dim:%d, n_dim:%d, m_dim:%d, m_block_pnt_point:%d",
+          coreStatus.batch_dim, coreStatus.n_dim, coreStatus.m_dim, blockDimCalculator.final_value);
   return blockDimCalculator.final_value;
 }
 
-int32_t GetLoadSize(const L2Status &l2Status, const L0Status &l0Status)
+int32_t GetLoadSize(const CoreStatus &coreStatus, const L0Status &l0Status)
 {
   bool al1FullLoad =
-    ((l2Status.m * l2Status.k + l0Status.n_l0 * l0Status.k_l0) * kBlockSize * kBlockSize * kFp16Bytes <=
+    ((coreStatus.m * coreStatus.k + l0Status.n_l0 * l0Status.k_l0) * kBlockSize * kBlockSize * kFp16Bytes <=
       kL1Size);
   bool bl1FullLoad =
-    ((l0Status.m_l0 * l0Status.k_l0 + l0Status.n_l0 * l2Status.k) * kBlockSize * kBlockSize * kFp16Bytes <=
+    ((l0Status.m_l0 * l0Status.k_l0 + l0Status.n_l0 * coreStatus.k) * kBlockSize * kBlockSize * kFp16Bytes <=
       kL1Size);
-  bool bothFullLoad = ((l2Status.m * l2Status.k + l0Status.n_l0 * l2Status.k) * kBlockSize *
+  bool bothFullLoad = ((coreStatus.m * coreStatus.k + l0Status.n_l0 * coreStatus.k) * kBlockSize *
     kBlockSize * kFp16Bytes <=
     kL1Size);
   int32_t num0a =
-    bl1FullLoad ? l2Status.n : ((l2Status.m + l0Status.m_l0 - 1) / l0Status.m_l0) * l2Status.n;
+    bl1FullLoad ? coreStatus.n : ((coreStatus.m + l0Status.m_l0 - 1) / l0Status.m_l0) * coreStatus.n;
   int32_t num0b =
-    al1FullLoad ? l2Status.m : ((l2Status.n + l0Status.n_l0 - 1) / l0Status.n_l0) * l2Status.m;
+    al1FullLoad ? coreStatus.m : ((coreStatus.n + l0Status.n_l0 - 1) / l0Status.n_l0) * coreStatus.m;
   if ((al1FullLoad && bl1FullLoad) && !bothFullLoad) {
-    return min(l2Status.n + ((l2Status.n + l0Status.n_l0 - 1) / l0Status.n_l0) * l2Status.m,
-               l2Status.m + ((l2Status.m + l0Status.m_l0 - 1) / l0Status.m_l0) * l2Status.n);
+    return min(coreStatus.n + ((coreStatus.n + l0Status.n_l0 - 1) / l0Status.n_l0) * coreStatus.m,
+               coreStatus.m + ((coreStatus.m + l0Status.m_l0 - 1) / l0Status.m_l0) * coreStatus.n);
   }
   return num0a + num0b;
 }
 
-void GetFinalMkn(L0Status &l0Status, const L2Status &l2Status)
+void GetFinalMkn(L0Status &l0Status, const CoreStatus &coreStatus)
 {
   float tmpL0cUse = l0Status.m_l0 * l0Status.n_l0 * l0Status.db_l0c * kBlockSize * kBlockSize * 4 * 1.0 / kL0cSize;
   int32_t tmpMte1Loop = ((l0Status.n_l0 != 1) ? l0Status.k_l0 : 1) + ((l0Status.k_l0 != 1) ? l0Status.m_l0 : 1);
   int32_t tmpMul = l0Status.m_l0 * l0Status.k_l0 * l0Status.n_l0;
-  int32_t tmpLoadSize = GetLoadSize(l2Status, l0Status);
+  int32_t tmpLoadSize = GetLoadSize(coreStatus, l0Status);
   auto condition1 = l0Status.final_ml0 == 0;
   auto condition2 = tmpLoadSize < l0Status.final_load_size;
   auto condition3 = (tmpLoadSize == l0Status.final_load_size && tmpMul > l0Status.final_mul &&
@@ -549,15 +783,15 @@ void SetResFactors(L0Factors &resFactors, const L0Status &l0Status)
   resFactors.final_mul = l0Status.final_mul;
 }
 
-void GetL0FactorsCand(L0Factors &resFactors, const L2Status &l2Status, L0Status &l0Status, int32_t *parasCombo) {
+void GetL0FactorsCand(L0Factors &resFactors, const CoreStatus &coreStatus, L0Status &l0Status, int32_t *parasCombo) {
   GetL0StatusFromParasCombo(l0Status, parasCombo);
-  int32_t majorDim = l2Status.m;
-  int32_t minorDim = l2Status.n;
+  int32_t majorDim = coreStatus.m;
+  int32_t minorDim = coreStatus.n;
   int32_t majorDimK = l0Status.max_mk;
   int32_t minorDimK = l0Status.max_nk;
   if (l0Status.max_axis_idx != 0) {
-    majorDim = l2Status.n;
-    minorDim = l2Status.m;
+    majorDim = coreStatus.n;
+    minorDim = coreStatus.m;
     majorDimK = l0Status.max_nk;
     minorDimK = l0Status.max_mk;
   }
@@ -576,7 +810,7 @@ void GetL0FactorsCand(L0Factors &resFactors, const L2Status &l2Status, L0Status 
       }
       int32_t k0Max = min(majorDimK / majorDimFactor, minorDimK / minorDimFactor);
       int32_t k0Factors[kCandidateLen] = {0};
-      GetTwoFactors(k0Factors, k0Max, l2Status.k, k0Max);
+      GetTwoFactors(k0Factors, k0Max, coreStatus.k, k0Max);
       for (auto &k0: k0Factors) {
         if (k0 == 0) {
           continue;
@@ -589,14 +823,14 @@ void GetL0FactorsCand(L0Factors &resFactors, const L2Status &l2Status, L0Status 
           l0Status.n_l0 = majorDimFactor;
         }
         l0Status.k_l0 = k0;
-        GetFinalMkn(l0Status, l2Status);
+        GetFinalMkn(l0Status, coreStatus);
       }
     }
   }
   SetResFactors(resFactors, l0Status);
 }
 
-void GetL0Factors(const string &op_type, const L2Status &l2Status, const int32_t &blockValue,
+void GetL0Factors(const string &op_type, const CoreStatus &coreStatus, const int32_t &blockValue,
                   L0Status &l0Status)
 {
   // get m_l0, n_l0, k_l0 factor when singlecore m, n, k is know
@@ -607,7 +841,7 @@ void GetL0Factors(const string &op_type, const L2Status &l2Status, const int32_t
   L0Factors resFactors[kL0ParasComboLen];
   for (int32_t i = 0; i < kL0ParasComboLen; ++i) {
     MKNParasCombo mknParasCombo = GetParasCombo(i, blockValue);
-    GetL0FactorsCand(resFactors[i], l2Status, l0Status, mknParasCombo.parasCombo);
+    GetL0FactorsCand(resFactors[i], coreStatus, l0Status, mknParasCombo.parasCombo);
   }
 
   // check both L0C utilization and loadsize to control LOC LOA LOB DB
@@ -643,10 +877,10 @@ void GetL0Factors(const string &op_type, const L2Status &l2Status, const int32_t
     l0Status.n_l0 = n0L0cDbOn;
   }
   l0Status.db_cub = kDbOn;
-  OP_LOGD(op_type.c_str(), "tiling m_l0:%lld, n_l0:%lld, k_l0:%lld", l0Status.m_l0, l0Status.n_l0, l0Status.k_l0);
-  OP_LOGD(op_type.c_str(), "tiling db_l0a:%lld, db_l0b:%lld, db_l0c:%lld", l0Status.db_l0a, l0Status.db_l0b,
+  OP_LOGD(op_type.c_str(), "tiling m_l0:%d, n_l0:%d, k_l0:%d", l0Status.m_l0, l0Status.n_l0, l0Status.k_l0);
+  OP_LOGD(op_type.c_str(), "tiling db_l0a:%d, db_l0b:%d, db_l0c:%d", l0Status.db_l0a, l0Status.db_l0b,
           l0Status.db_l0c);
-  OP_LOGD(op_type.c_str(), "tiling db_cub:%lld", l0Status.db_cub);
+  OP_LOGD(op_type.c_str(), "tiling db_cub:%d", l0Status.db_cub);
 }
 
 int32_t GetL1Size(const L1Status &l1Status, const L0Status &l0Status) {
@@ -656,13 +890,13 @@ int32_t GetL1Size(const L1Status &l1Status, const L0Status &l0Status) {
   return curL1Size;
 }
 
-void L1StatusBothFullLoad(const L2Status &l2Status, const L0Status &l0Status, L1Status &l1Status,
+void L1StatusBothFullLoad(const CoreStatus &coreStatus, const L0Status &l0Status, L1Status &l1Status,
                           int32_t res[][7])
 {
   int32_t curL1Size = GetL1Size(l1Status, l0Status);
   if (curL1Size <= kL1Size) {
     l1Status.both_full_load = true;
-    l1Status.load_size = l2Status.m + l2Status.n;
+    l1Status.load_size = coreStatus.m + coreStatus.n;
     res[kIdxZero][kIdxZero] = l1Status.kal1_16;
     res[kIdxZero][kIdxOne] = l1Status.m_al1;
     res[kIdxZero][kIdxTwo] = l1Status.db_al1;
@@ -673,16 +907,16 @@ void L1StatusBothFullLoad(const L2Status &l2Status, const L0Status &l0Status, L1
   }
 }
 
-void L1StatusAl1FullLoad(const L2Status &l2Status, const L0Status &l0Status, L1Status &l1Status,
+void L1StatusAl1FullLoad(const CoreStatus &coreStatus, const L0Status &l0Status, L1Status &l1Status,
                          int32_t res[][7])
 {
   int32_t curL1Size;
-  int32_t mRepeat = l2Status.m / l0Status.m_l0;
-  int32_t nRepeat = l2Status.n / l0Status.n_l0;
+  int32_t mRepeat = coreStatus.m / l0Status.m_l0;
+  int32_t nRepeat = coreStatus.n / l0Status.n_l0;
   curL1Size = GetL1Size(l1Status, l0Status);
   if (curL1Size <= kL1Size) {
     l1Status.al1_full_load = true;
-    l1Status.al1_size = l2Status.k * l2Status.m * kBlockSize * kBlockSize * kFp16Bytes;
+    l1Status.al1_size = coreStatus.k * coreStatus.m * kBlockSize * kBlockSize * kFp16Bytes;
     l1Status.bl1_size = kL1Size - l1Status.al1_size;
     l1Status.db_bl1 = kDbOn;
     if (GetL1Size(l1Status, l0Status) > kL1Size) {
@@ -690,17 +924,17 @@ void L1StatusAl1FullLoad(const L2Status &l2Status, const L0Status &l0Status, L1S
     }
     l1Status.kbl1_16 = min(
         l1Status.bl1_size / (l1Status.n_bl1 * l0Status.n_l0 * kBlockSize * l1Status.db_bl1 * kFp16Bytes * kBlockSize),
-        l2Status.k);
+        coreStatus.k);
     l1Status.bl1_times = min(l1Status.kbl1_16 / l0Status.k_l0, l1Status.max_k_bl1);
     GetNearestFactor(l1Status.all_times, l1Status.bl1_times);
     l1Status.kbl1_16 = l1Status.bl1_times * l0Status.k_l0;
-    if (l1Status.kbl1_16 == l2Status.k) {
+    if (l1Status.kbl1_16 == coreStatus.k) {
       l1Status.n_bl1 = min(l1Status.bl1_size / (l1Status.kbl1_16 * l0Status.n_l0 * kBlockSize * l1Status.db_bl1 *
                              kFp16Bytes * kBlockSize),
                            l1Status.max_n_bl1);
       GetNearestFactor(nRepeat, l1Status.n_bl1);
     }
-    l1Status.load_size = l2Status.m + (l1Status.kbl1_16 == l2Status.k ? 1 : mRepeat) * l2Status.n;
+    l1Status.load_size = coreStatus.m + (l1Status.kbl1_16 == coreStatus.k ? 1 : mRepeat) * coreStatus.n;
     res[kIdxOne][kIdxZero] = l1Status.kal1_16;
     res[kIdxOne][kIdxOne] = l1Status.m_al1;
     res[kIdxOne][kIdxTwo] = l1Status.db_al1;
@@ -711,16 +945,16 @@ void L1StatusAl1FullLoad(const L2Status &l2Status, const L0Status &l0Status, L1S
   }
 }
 
-void L1StatusBl1FullLoad(const L2Status &l2Status, const L0Status &l0Status, L1Status &l1Status,
+void L1StatusBl1FullLoad(const CoreStatus &coreStatus, const L0Status &l0Status, L1Status &l1Status,
                          int32_t res[][7])
 {
   int32_t curL1Size;
-  int32_t mRepeat = l2Status.m / l0Status.m_l0;
-  int32_t nRepeat = l2Status.n / l0Status.n_l0;
+  int32_t mRepeat = coreStatus.m / l0Status.m_l0;
+  int32_t nRepeat = coreStatus.n / l0Status.n_l0;
   curL1Size = GetL1Size(l1Status, l0Status);
   if (curL1Size <= kL1Size) {
     l1Status.bl1_full_load = true;
-    l1Status.bl1_size = l2Status.k * l2Status.n * kBlockSize * kBlockSize * kFp16Bytes;
+    l1Status.bl1_size = coreStatus.k * coreStatus.n * kBlockSize * kBlockSize * kFp16Bytes;
     l1Status.al1_size = kL1Size - l1Status.bl1_size;
     l1Status.db_al1 = kDbOn;
     if (GetL1Size(l1Status, l0Status) > kL1Size) {
@@ -728,20 +962,20 @@ void L1StatusBl1FullLoad(const L2Status &l2Status, const L0Status &l0Status, L1S
     }
     l1Status.kal1_16 = min(
         l1Status.al1_size / (l1Status.m_al1 * l0Status.m_l0 * kBlockSize * l1Status.db_al1 * kFp16Bytes * kBlockSize),
-        l2Status.k);
+        coreStatus.k);
     l1Status.al1_times = min(l1Status.kal1_16 / l0Status.k_l0, l1Status.max_k_al1);
     GetNearestFactor(l1Status.all_times, l1Status.al1_times);
     l1Status.kal1_16 = l1Status.al1_times * l0Status.k_l0;
-    if (l1Status.kal1_16 == l2Status.k) {
+    if (l1Status.kal1_16 == coreStatus.k) {
       l1Status.m_al1 = min(l1Status.al1_size / (l1Status.kal1_16 * l0Status.m_l0 * kBlockSize * l1Status.db_al1 *
                              kFp16Bytes * kBlockSize),
                            l1Status.max_m_al1);
       GetNearestFactor(mRepeat, l1Status.m_al1);
     }
     l1Status.load_size =
-      l2Status.n +
-        ((l2Status.m == l1Status.m_al1 * l0Status.m_l0 && l1Status.kal1_16 == l2Status.k) ? 1 : nRepeat) *
-          l2Status.m;
+      coreStatus.n +
+        ((coreStatus.m == l1Status.m_al1 * l0Status.m_l0 && l1Status.kal1_16 == coreStatus.k) ? 1 : nRepeat) *
+          coreStatus.m;
     res[kIdxTwo][kIdxZero] = l1Status.kal1_16;
     res[kIdxTwo][kIdxOne] = l1Status.m_al1;
     res[kIdxTwo][kIdxTwo] = l1Status.db_al1;
@@ -752,7 +986,7 @@ void L1StatusBl1FullLoad(const L2Status &l2Status, const L0Status &l0Status, L1S
   }
 }
 
-void NeitherFullLoadDb(const L2Status &l2Status, const L0Status &l0Status, L1Status &l1Status,
+void NeitherFullLoadDb(const CoreStatus &coreStatus, const L0Status &l0Status, L1Status &l1Status,
                        const int32_t &kbl1Db)
 {
   int32_t tmpKbl116 = l1Status.kbl1_16;
@@ -763,8 +997,8 @@ void NeitherFullLoadDb(const L2Status &l2Status, const L0Status &l0Status, L1Sta
       l1Status.db_al1 = kDbOff;
     }
   }
-  l1Status.kbl1_16 = l2Status.k;
-  bool bothDoubleBuffer = l2Status.m != l0Status.m_l0 && l2Status.k > l0Status.k_l0 &&
+  l1Status.kbl1_16 = coreStatus.k;
+  bool bothDoubleBuffer = coreStatus.m != l0Status.m_l0 && coreStatus.k > l0Status.k_l0 &&
     GetL1Size(l1Status, l0Status) > kL1Size;
   l1Status.kbl1_16 = tmpKbl116;
   if (bothDoubleBuffer) {
@@ -779,14 +1013,14 @@ void NeitherFullLoadDb(const L2Status &l2Status, const L0Status &l0Status, L1Sta
   }
 }
 
-void NeitherFullLoadMN(const L2Status &l2Status, const L0Status &l0Status, L1Status &l1Status,
+void NeitherFullLoadMN(const CoreStatus &coreStatus, const L0Status &l0Status, L1Status &l1Status,
                        const BatchmatmulParas &params)
 {
-  int32_t mRepeat = l2Status.m / l0Status.m_l0;
-  int32_t nRepeat = l2Status.n / l0Status.n_l0;
-  if (l0Status.k_l0 == params.k_32) {
+  int32_t mRepeat = coreStatus.m / l0Status.m_l0;
+  int32_t nRepeat = coreStatus.n / l0Status.n_l0;
+  if (l0Status.k_l0 == coreStatus.k) {
     if (params.m_32 > params.n_32) {
-      l1Status.bl1_size = params.k_32 * l0Status.n_l0 * kBlockSize * kBlockSize * l1Status.db_bl1 * kFp16Bytes;
+      l1Status.bl1_size = coreStatus.k * l0Status.n_l0 * kBlockSize * kBlockSize * l1Status.db_bl1 * kFp16Bytes;
       l1Status.al1_size = kL1Size - l1Status.bl1_size;
       l1Status.m_al1 = min(l1Status.al1_size / (l1Status.kal1_16 * l0Status.m_l0 * kBlockSize * l1Status.db_al1 *
                              kFp16Bytes * kBlockSize),
@@ -800,13 +1034,13 @@ void NeitherFullLoadMN(const L2Status &l2Status, const L0Status &l0Status, L1Sta
                            l1Status.max_n_bl1);
       GetNearestFactor(nRepeat, l1Status.n_bl1);
     } else {
-      l1Status.al1_size = params.k_32 * l0Status.m_l0 * kBlockSize * kBlockSize * l1Status.db_al1 * kFp16Bytes;
+      l1Status.al1_size = coreStatus.k * l0Status.m_l0 * kBlockSize * kBlockSize * l1Status.db_al1 * kFp16Bytes;
       l1Status.bl1_size = kL1Size - l1Status.al1_size;
       l1Status.n_bl1 = min(l1Status.bl1_size / (l1Status.kbl1_16 * l0Status.n_l0 * kBlockSize * l1Status.db_bl1 *
                              kFp16Bytes * kBlockSize),
                            l1Status.max_n_bl1);
       GetNearestFactor(nRepeat, l1Status.n_bl1);
-      l1Status.bl1_size = params.k_32 * l0Status.n_l0 * kBlockSize * kBlockSize * l1Status.db_bl1 * kFp16Bytes;
+      l1Status.bl1_size = coreStatus.k * l0Status.n_l0 * kBlockSize * kBlockSize * l1Status.db_bl1 * kFp16Bytes;
       l1Status.al1_size = kL1Size - l1Status.bl1_size;
       l1Status.m_al1 = min(l1Status.al1_size / (l1Status.kal1_16 * l0Status.m_l0 * kBlockSize * l1Status.db_al1 *
                              kFp16Bytes * kBlockSize),
@@ -816,16 +1050,16 @@ void NeitherFullLoadMN(const L2Status &l2Status, const L0Status &l0Status, L1Sta
   }
 }
 
-void NeitherFullLoadKforNZ(const L2Status &l2Status, const L0Status &l0Status, L1Status &l1Status,
+void NeitherFullLoadKforNZ(const CoreStatus &coreStatus, const L0Status &l0Status, L1Status &l1Status,
                            const BatchmatmulParas &params)
 {
-  l1Status.kbl1_16 = params.k_32;
+  l1Status.kbl1_16 = coreStatus.k;
   if (GetL1Size(l1Status, l0Status) <= kL1Size) {
-    l1Status.bl1_size = params.k_32 * l0Status.n_l0 * kBlockSize * kBlockSize * l1Status.db_bl1 * kFp16Bytes;
+    l1Status.bl1_size = coreStatus.k * l0Status.n_l0 * kBlockSize * kBlockSize * l1Status.db_bl1 * kFp16Bytes;
     l1Status.al1_size = kL1Size - l1Status.bl1_size;
     l1Status.kal1_16 = min(
         l1Status.al1_size / (l1Status.m_al1 * l0Status.m_l0 * kBlockSize * l1Status.db_al1 * kFp16Bytes * kBlockSize),
-        l2Status.k);
+        coreStatus.k);
     l1Status.al1_times = min(l1Status.kal1_16 / l0Status.k_l0, l1Status.max_k_al1);
     GetNearestFactor(l1Status.all_times, l1Status.al1_times);
     l1Status.kal1_16 = l1Status.al1_times * l0Status.k_l0;
@@ -834,7 +1068,7 @@ void NeitherFullLoadKforNZ(const L2Status &l2Status, const L0Status &l0Status, L
                          (l0Status.m_l0 * kBlockSize * kBlockSize * l1Status.db_al1 * kFp16Bytes +
                            kBlockSize * l0Status.n_l0 * kBlockSize * l1Status.db_bl1 * kFp16Bytes) /
                          l0Status.k_l0 * l0Status.k_l0,
-                       l2Status.k);
+                       coreStatus.k);
     int32_t perTimes = min(perK / l0Status.k_l0, max(l1Status.max_k_al1, l1Status.max_k_bl1));
     GetNearestFactor(l1Status.all_times, perTimes);
     perK = perTimes * l0Status.k_l0;
@@ -843,17 +1077,17 @@ void NeitherFullLoadKforNZ(const L2Status &l2Status, const L0Status &l0Status, L
   }
 }
 
-void NeitherFullLoadKforND(const L2Status &l2Status, const L0Status &l0Status, L1Status &l1Status,
+void NeitherFullLoadKforND(const CoreStatus &coreStatus, const L0Status &l0Status, L1Status &l1Status,
                            const int &kmax_axis)
 {
-  if (kmax_axis == kTypeOne) {
+  if (kmax_axis == kNumOne) {
     // first get k_al1, second get k_bl1
     l1Status.kbl1_16 = l0Status.k_l0;
     l1Status.bl1_size = l1Status.kbl1_16 * l0Status.n_l0 * kBlockSize * kBlockSize * l1Status.db_bl1 * kFp16Bytes;
     l1Status.al1_size = kL1Size - l1Status.bl1_size;
     l1Status.kal1_16 = min(
         l1Status.al1_size / (l1Status.m_al1 * l0Status.m_l0 * kBlockSize * l1Status.db_al1 * kFp16Bytes * kBlockSize),
-        l2Status.k);
+        coreStatus.k);
     l1Status.al1_times = l1Status.kal1_16 / l0Status.k_l0;
     GetNearestFactor(l1Status.all_times, l1Status.al1_times);
     l1Status.kal1_16 = l1Status.al1_times * l0Status.k_l0;
@@ -861,18 +1095,18 @@ void NeitherFullLoadKforND(const L2Status &l2Status, const L0Status &l0Status, L
     l1Status.bl1_size = kL1Size - l1Status.al1_size;
     l1Status.kbl1_16 = min(
         l1Status.bl1_size / (l1Status.n_bl1 * l0Status.n_l0 * kBlockSize * l1Status.db_bl1 * kFp16Bytes * kBlockSize),
-        l2Status.k);
+        coreStatus.k);
     l1Status.bl1_times = min(l1Status.kbl1_16 / l0Status.k_l0, l1Status.max_k_bl1);
     GetNearestFactor(l1Status.all_times, l1Status.bl1_times);
     l1Status.kbl1_16 = l1Status.bl1_times * l0Status.k_l0;
-  } else if (kmax_axis == kTypeTwo) {
+  } else if (kmax_axis == kNumTwo) {
     // first get k_bl1, second get k_al1
     l1Status.kal1_16 = l0Status.k_l0;
     l1Status.al1_size = l1Status.kal1_16 * l0Status.m_l0 * kBlockSize * kBlockSize * l1Status.db_al1 * kFp16Bytes;
     l1Status.bl1_size = kL1Size - l1Status.al1_size;
     l1Status.kbl1_16 = min(
         l1Status.bl1_size / (l1Status.n_bl1 * l0Status.n_l0 * kBlockSize * l1Status.db_bl1 * kFp16Bytes * kBlockSize),
-        l2Status.k);
+        coreStatus.k);
     l1Status.bl1_times = l1Status.kbl1_16 / l0Status.k_l0;
     GetNearestFactor(l1Status.all_times, l1Status.bl1_times);
     l1Status.kbl1_16 = l1Status.bl1_times * l0Status.k_l0;
@@ -880,55 +1114,55 @@ void NeitherFullLoadKforND(const L2Status &l2Status, const L0Status &l0Status, L
     l1Status.al1_size = kL1Size - l1Status.bl1_size;
     l1Status.kal1_16 = min(
         l1Status.al1_size / (l1Status.m_al1 * l0Status.m_l0 * kBlockSize * l1Status.db_al1 * kFp16Bytes * kBlockSize),
-        l2Status.k);
+        coreStatus.k);
     l1Status.al1_times = min(l1Status.kal1_16 / l0Status.k_l0, l1Status.max_k_al1);
     GetNearestFactor(l1Status.all_times, l1Status.al1_times);
     l1Status.kal1_16 = l1Status.al1_times * l0Status.k_l0;
   }
 }
 
-void NeitherFullLoadK(const L2Status &l2Status, const L0Status &l0Status, L1Status &l1Status,
+void NeitherFullLoadK(const CoreStatus &coreStatus, const L0Status &l0Status, L1Status &l1Status,
                       const BatchmatmulParas &params)
 {
   // 1 -> let k_al1 bigger, 2 -> let k_bl1 bigger, 0 -> no matter
-  int kmax_axis = kTypeZero;
+  int kmax_axis = kNumZero;
   if (!params.trans_a_flag && !params.trans_b_flag) {
-    kmax_axis = kTypeOne;
+    kmax_axis = kNumOne;
   } else if (params.trans_a_flag && params.trans_b_flag) {
-    kmax_axis = kTypeTwo;
+    kmax_axis = kNumTwo;
   } else if (!params.trans_a_flag && params.trans_b_flag) {
-    kmax_axis = l0Status.m_l0 > l0Status.n_l0 ? kTypeOne : kTypeTwo;
+    kmax_axis = l0Status.m_l0 > l0Status.n_l0 ? kNumOne : kNumTwo;
   }
 
-  if (params.nd_flag && kmax_axis != kTypeZero) {
-    NeitherFullLoadKforND(l2Status, l0Status, l1Status, kmax_axis);
+  if (params.nd_flag && kmax_axis != kNumZero) {
+    NeitherFullLoadKforND(coreStatus, l0Status, l1Status, kmax_axis);
   } else {
-    NeitherFullLoadKforNZ(l2Status, l0Status, l1Status, params);
+    NeitherFullLoadKforNZ(coreStatus, l0Status, l1Status, params);
   }
 }
 
-void L1StatusNeitherFullLoad(const L2Status &l2Status, const BatchmatmulParas &params,
+void L1StatusNeitherFullLoad(const CoreStatus &coreStatus, const BatchmatmulParas &params,
                              const L0Status &l0Status, L1Status &l1Status, int32_t res[][7])
 {
-  int32_t mRepeat = l2Status.m / l0Status.m_l0;
-  int32_t nRepeat = l2Status.n / l0Status.n_l0;
-  int32_t kBl1Db = (l2Status.m == l0Status.m_l0) ? l0Status.k_l0 : l2Status.k;
-  NeitherFullLoadDb(l2Status, l0Status, l1Status, kBl1Db);
-  NeitherFullLoadMN(l2Status, l0Status, l1Status, params);
-  NeitherFullLoadK(l2Status, l0Status, l1Status, params);
+  int32_t mRepeat = coreStatus.m / l0Status.m_l0;
+  int32_t nRepeat = coreStatus.n / l0Status.n_l0;
+  int32_t kBl1Db = (coreStatus.m == l0Status.m_l0) ? l0Status.k_l0 : coreStatus.k;
+  NeitherFullLoadDb(coreStatus, l0Status, l1Status, kBl1Db);
+  NeitherFullLoadMN(coreStatus, l0Status, l1Status, params);
+  NeitherFullLoadK(coreStatus, l0Status, l1Status, params);
   // k_al1 and k_bl1 must be a factor of each other
   if (l1Status.kal1_16 > l1Status.kbl1_16 && l1Status.kal1_16 % l1Status.kbl1_16 != 0) {
-    while (l1Status.kal1_16 % l1Status.kbl1_16 != 0 || l2Status.k % l1Status.kal1_16 != 0) {
+    while (l1Status.kal1_16 % l1Status.kbl1_16 != 0 || coreStatus.k % l1Status.kal1_16 != 0) {
       l1Status.kal1_16 -= 1;
     }
   } else if (l1Status.kal1_16 < l1Status.kbl1_16 && l1Status.kbl1_16 % l1Status.kal1_16 != 0) {
-    while (l1Status.kbl1_16 % l1Status.kal1_16 != 0 || l2Status.k % l1Status.kbl1_16 != 0) {
+    while (l1Status.kbl1_16 % l1Status.kal1_16 != 0 || coreStatus.k % l1Status.kbl1_16 != 0) {
       l1Status.kbl1_16 -= 1;
     }
   }
   l1Status.load_size =
-    ((l2Status.m == l1Status.m_al1 * l0Status.m_l0 && l1Status.kal1_16 == params.k_32) ? 1 : nRepeat) *
-      l2Status.m + (l1Status.kbl1_16 == params.k_32 ? 1 : mRepeat) * l2Status.n;
+    ((coreStatus.m == l1Status.m_al1 * l0Status.m_l0 && l1Status.kal1_16 == coreStatus.k) ? 1 : nRepeat) *
+      coreStatus.m + (l1Status.kbl1_16 == coreStatus.k ? 1 : mRepeat) * coreStatus.n;
   res[kIdxThree][kIdxZero] = l1Status.kal1_16;
   res[kIdxThree][kIdxOne] = l1Status.m_al1;
   res[kIdxThree][kIdxTwo] = l1Status.db_al1;
@@ -938,7 +1172,7 @@ void L1StatusNeitherFullLoad(const L2Status &l2Status, const BatchmatmulParas &p
   res[kIdxThree][kIdxSix] = l1Status.load_size;
 }
 
-void GetL1Factors(const string &op_type, const BatchmatmulParas &params, const L2Status &l2Status,
+void GetL1Factors(const string &op_type, const BatchmatmulParas &params, const CoreStatus &coreStatus,
                   const L0Status &l0Status, L1Status &l1Status)
 {
   // get m_al1, n_bl1, kal1_16, kbl1_16 factors when L0, singlecore factor is know
@@ -946,30 +1180,30 @@ void GetL1Factors(const string &op_type, const BatchmatmulParas &params, const L
 
   int32_t mte1Loop = 50 / ((l0Status.n_l0 == 1 ? 1 : l0Status.k_l0) + (l0Status.k_l0 == 1 ? 1 : l0Status.m_l0));
   int32_t res[4][7] = {0};
-  l1Status.all_times = l2Status.k / l0Status.k_l0;
-  l1Status.max_m_al1 = (l2Status.m + l0Status.m_l0 - 1) / l0Status.m_l0;
-  l1Status.max_n_bl1 = (l2Status.n + l0Status.n_l0 - 1) / l0Status.n_l0;
+  l1Status.all_times = coreStatus.k / l0Status.k_l0;
+  l1Status.max_m_al1 = (coreStatus.m + l0Status.m_l0 - 1) / l0Status.m_l0;
+  l1Status.max_n_bl1 = (coreStatus.n + l0Status.n_l0 - 1) / l0Status.n_l0;
   l1Status.max_k_al1 =
     max(mte1Loop, ((kMinMte1Load + l0Status.m_l0 - 1) / l0Status.m_l0 + l0Status.k_l0 - 1) / l0Status.k_l0);
   l1Status.max_k_bl1 =
     max(mte1Loop, ((kMinMte1Load + l0Status.n_l0 - 1) / l0Status.n_l0 + l0Status.k_l0 - 1) / l0Status.k_l0);
   // both AL1 and Bl1 full load
   int32_t both_full_load_factors[kL1FactorsLen] =
-      {l2Status.k, l2Status.k, l1Status.max_m_al1, l1Status.max_n_bl1, kDbOff, kDbOff};
+      {coreStatus.k, coreStatus.k, l1Status.max_m_al1, l1Status.max_n_bl1, kDbOff, kDbOff};
   l1Status.SetStatus(both_full_load_factors);
-  L1StatusBothFullLoad(l2Status, l0Status, l1Status, res);
+  L1StatusBothFullLoad(coreStatus, l0Status, l1Status, res);
   // only AL1 full load
-  int32_t al1_full_load_factors[kL1FactorsLen] = {l2Status.k, l0Status.k_l0, l1Status.max_m_al1, 1, kDbOff, kDbOff};
+  int32_t al1_full_load_factors[kL1FactorsLen] = {coreStatus.k, l0Status.k_l0, l1Status.max_m_al1, 1, kDbOff, kDbOff};
   l1Status.SetStatus(al1_full_load_factors);
-  L1StatusAl1FullLoad(l2Status, l0Status, l1Status, res);
+  L1StatusAl1FullLoad(coreStatus, l0Status, l1Status, res);
   // only BL1 full load
-  int32_t bl1_full_load_factors[kL1FactorsLen] = {l0Status.k_l0, l2Status.k, 1, l1Status.max_n_bl1, kDbOff, kDbOff};
+  int32_t bl1_full_load_factors[kL1FactorsLen] = {l0Status.k_l0, coreStatus.k, 1, l1Status.max_n_bl1, kDbOff, kDbOff};
   l1Status.SetStatus(bl1_full_load_factors);
-  L1StatusBl1FullLoad(l2Status, l0Status, l1Status, res);
+  L1StatusBl1FullLoad(coreStatus, l0Status, l1Status, res);
   // neither AL1 nor Bl1 full load
   int32_t neither_full_load_factors[kL1FactorsLen] = {l0Status.k_l0, l0Status.k_l0, 1, 1, kDbOn, kDbOn};
   l1Status.SetStatus(neither_full_load_factors);
-  L1StatusNeitherFullLoad(l2Status, params, l0Status, l1Status, res);
+  L1StatusNeitherFullLoad(coreStatus, params, l0Status, l1Status, res);
   // choose the final factors
   int32_t *tmpFactors = res[kIdxThree];
   int32_t tmpLoadSize = tmpFactors[kIdxSix];
@@ -996,10 +1230,10 @@ void GetL1Factors(const string &op_type, const BatchmatmulParas &params, const L
   int32_t res_l1_factors[kL1FactorsLen] = {tmpFactors[kIdxZero], tmpFactors[kIdxThree], tmpFactors[kIdxOne],
                                            tmpFactors[kIdxFour], tmpFactors[kIdxTwo], tmpFactors[kIdxFive]};
   l1Status.SetStatus(res_l1_factors);
-  OP_LOGD(op_type.c_str(), "tiling kal1_16:%lld, kbl1_16:%lld, k_l0:%lld", l1Status.kal1_16, l1Status.kbl1_16,
+  OP_LOGD(op_type.c_str(), "tiling kal1_16:%d, kbl1_16:%d, k_l0:%d", l1Status.kal1_16, l1Status.kbl1_16,
           l0Status.k_l0);
-  OP_LOGD(op_type.c_str(), "tiling m_al1:%lld, n_bl1:%lld", l1Status.m_al1, l1Status.n_bl1);
-  OP_LOGD(op_type.c_str(), "tiling db_al1:%lld, db_bl1:%lld", l1Status.db_al1, l1Status.db_bl1);
+  OP_LOGD(op_type.c_str(), "tiling m_al1:%d, n_bl1:%d", l1Status.m_al1, l1Status.n_bl1);
+  OP_LOGD(op_type.c_str(), "tiling db_al1:%d, db_bl1:%d", l1Status.db_al1, l1Status.db_bl1);
 }
 
 bool CheckABUbSize(const int32_t &ub_rest_size, const int32_t &k_aub, const int32_t &m_aub,
@@ -1016,27 +1250,27 @@ void GetABUbMax(const int32_t &ub_rest_size, const int32_t &k_aub, const int32_t
   // max_num: 0->k_aub, 1->k_bub, 2->m_aub, 3->n_bub
   ubStatus.aub_size = k_aub * kBlockSize * m_aub * kBlockSize * ubStatus.db_aub * (1 + params.aub_double_num);
   ubStatus.bub_size = k_bub * kBlockSize * n_bub * kBlockSize * ubStatus.db_bub * (1 + params.bub_double_num);
-  if (max_num == kTypeZero) {
+  if (max_num == kNumZero) {
     ubStatus.k_aub = (ub_rest_size - ubStatus.bub_size) /
       (kBlockSize * m_aub * kBlockSize * ubStatus.db_aub * (1 + params.aub_double_num));
-  } else if (max_num == kTypeOne) {
+  } else if (max_num == kNumOne) {
     ubStatus.k_bub = (ub_rest_size - ubStatus.aub_size) /
       (kBlockSize * n_bub * kBlockSize * ubStatus.db_bub * (1 + params.bub_double_num));
-  } else if (max_num == kTypeTwo) {
+  } else if (max_num == kNumTwo) {
     ubStatus.m_aub = (ub_rest_size - ubStatus.bub_size) /
       (k_aub * kBlockSize * kBlockSize * ubStatus.db_aub * (1 + params.aub_double_num));
-  } else if (max_num == kTypeThree) {
+  } else if (max_num == kNumThree) {
     ubStatus.n_bub = (ub_rest_size - ubStatus.aub_size) /
       (k_bub * kBlockSize * kBlockSize * ubStatus.db_bub * (1 + params.bub_double_num));
   }
 }
 
-void GetAUbFactors(const int32_t &ub_rest_size, const L2Status &l2Status, const L1Status &l1Status,
+void GetAUbFactors(const int32_t &ub_rest_size, const CoreStatus &coreStatus, const L1Status &l1Status,
                    const L0Status &l0Status, const BatchmatmulParas &params, UbStatus &ubStatus)
 {
   int32_t al1_m = l1Status.m_al1 * l0Status.m_l0;
   bool condition_m2_k2 = (!params.at_l1_flag &&
-    CheckABUbSize(ub_rest_size, l2Status.k, l2Status.m, ubStatus.k_bub, ubStatus.n_bub, params, ubStatus));
+    CheckABUbSize(ub_rest_size, coreStatus.k, coreStatus.m, ubStatus.k_bub, ubStatus.n_bub, params, ubStatus));
   bool condition_ml1_kl1 =
     CheckABUbSize(ub_rest_size, l1Status.kal1_16, al1_m, ubStatus.k_bub, ubStatus.n_bub, params, ubStatus);
   bool condition_ml1_kl0 = (params.trans_a_flag &&
@@ -1055,8 +1289,8 @@ void GetAUbFactors(const int32_t &ub_rest_size, const L2Status &l2Status, const 
     CheckABUbSize(ub_rest_size, l0Status.k_l0, 1, ubStatus.k_bub, ubStatus.n_bub, params, ubStatus));
   bool condition_m0_k0 = CheckABUbSize(ub_rest_size, 1, 1, ubStatus.k_bub, ubStatus.n_bub, params, ubStatus);
   if (condition_m2_k2) {
-    ubStatus.k_aub = l2Status.k;
-    ubStatus.m_aub = l2Status.m;
+    ubStatus.k_aub = coreStatus.k;
+    ubStatus.m_aub = coreStatus.m;
   } else if (condition_ml1_kl1) {
     ubStatus.k_aub = l1Status.kal1_16;
     ubStatus.m_aub = al1_m;
@@ -1066,7 +1300,7 @@ void GetAUbFactors(const int32_t &ub_rest_size, const L2Status &l2Status, const 
   } else if (condition_ml1_k0) {
     ubStatus.k_aub = 1;
     ubStatus.m_aub = al1_m;
-    GetABUbMax(ub_rest_size, 1, al1_m, ubStatus.k_bub, ubStatus.n_bub, params, ubStatus, kTypeZero);
+    GetABUbMax(ub_rest_size, 1, al1_m, ubStatus.k_bub, ubStatus.n_bub, params, ubStatus, kNumZero);
     GetNearestFactor(l1Status.kal1_16, ubStatus.k_aub);
   } else if (condition_ml0_kl1) {
     ubStatus.k_aub = l1Status.kal1_16;
@@ -1074,7 +1308,7 @@ void GetAUbFactors(const int32_t &ub_rest_size, const L2Status &l2Status, const 
   } else if (condition_m0_kl1) {
     ubStatus.k_aub = l1Status.kal1_16;
     ubStatus.m_aub = 1;
-    GetABUbMax(ub_rest_size, l1Status.kal1_16, 1, ubStatus.k_bub, ubStatus.n_bub, params, ubStatus, kTypeTwo);
+    GetABUbMax(ub_rest_size, l1Status.kal1_16, 1, ubStatus.k_bub, ubStatus.n_bub, params, ubStatus, kNumTwo);
     GetNearestFactor(al1_m, ubStatus.m_aub);
   } else if (condition_ml0_kl0) {
     ubStatus.k_aub = l0Status.k_l0;
@@ -1092,12 +1326,12 @@ void GetAUbFactors(const int32_t &ub_rest_size, const L2Status &l2Status, const 
   ubStatus.aub_align_bound = ubStatus.k_aub * kBlockSize * ubStatus.m_aub * kBlockSize;
 }
 
-void GetBUbFactors(const int32_t &ub_rest_size, const L2Status &l2Status, const L1Status &l1Status,
+void GetBUbFactors(const int32_t &ub_rest_size, const CoreStatus &coreStatus, const L1Status &l1Status,
                    const L0Status &l0Status, const BatchmatmulParas &params, UbStatus &ubStatus)
 {
   int32_t bl1_n = l1Status.n_bl1 * l0Status.n_l0;
   bool condition_k2_n2 = (!params.at_l1_flag &&
-    CheckABUbSize(ub_rest_size, ubStatus.k_aub, ubStatus.m_aub, l2Status.k, l2Status.n, params, ubStatus));
+    CheckABUbSize(ub_rest_size, ubStatus.k_aub, ubStatus.m_aub, coreStatus.k, coreStatus.n, params, ubStatus));
   bool condition_kl1_nl1 =
     CheckABUbSize(ub_rest_size, ubStatus.k_aub, ubStatus.m_aub, l1Status.kbl1_16, bl1_n, params, ubStatus);
   bool condition_kl0_nl1 = (!params.trans_b_flag &&
@@ -1116,8 +1350,8 @@ void GetBUbFactors(const int32_t &ub_rest_size, const L2Status &l2Status, const 
     CheckABUbSize(ub_rest_size, ubStatus.k_aub, ubStatus.m_aub, l0Status.k_l0, 1, params, ubStatus));
   bool condition_k0_n0 = CheckABUbSize(ub_rest_size, ubStatus.k_aub, ubStatus.m_aub, 1, 1, params, ubStatus);
   if (condition_k2_n2) {
-    ubStatus.k_bub = l2Status.k;
-    ubStatus.n_bub = l2Status.n;
+    ubStatus.k_bub = coreStatus.k;
+    ubStatus.n_bub = coreStatus.n;
   } else if (condition_kl1_nl1) {
     ubStatus.k_bub = l1Status.kbl1_16;
     ubStatus.n_bub = bl1_n;
@@ -1127,7 +1361,7 @@ void GetBUbFactors(const int32_t &ub_rest_size, const L2Status &l2Status, const 
   } else if (condition_k0_nl1) {
     ubStatus.k_bub = 1;
     ubStatus.n_bub = bl1_n;
-    GetABUbMax(ub_rest_size, ubStatus.k_aub, ubStatus.m_aub, 1, bl1_n, params, ubStatus, kTypeOne);
+    GetABUbMax(ub_rest_size, ubStatus.k_aub, ubStatus.m_aub, 1, bl1_n, params, ubStatus, kNumOne);
     GetNearestFactor(l1Status.kbl1_16, ubStatus.k_bub);
   } else if (condition_kl1_nl0) {
     ubStatus.k_bub = l1Status.kbl1_16;
@@ -1135,7 +1369,7 @@ void GetBUbFactors(const int32_t &ub_rest_size, const L2Status &l2Status, const 
   } else if (condition_kl1_n0) {
     ubStatus.k_bub = l1Status.kbl1_16;
     ubStatus.n_bub = 1;
-    GetABUbMax(ub_rest_size, ubStatus.k_aub, ubStatus.m_aub, l1Status.kbl1_16, 1, params, ubStatus, kTypeThree);
+    GetABUbMax(ub_rest_size, ubStatus.k_aub, ubStatus.m_aub, l1Status.kbl1_16, 1, params, ubStatus, kNumThree);
     GetNearestFactor(bl1_n, ubStatus.n_bub);
   } else if (condition_kl0_nl0) {
     ubStatus.k_bub = l0Status.k_l0;
@@ -1186,28 +1420,28 @@ void CheckBankConflict(const int32_t &ub_rest_size, const BatchmatmulParas &para
     ubStatus.bub_size = ubStatus.bub_bank_size;
   } else {
     // There‘s 3 align_mode here, 0->neither align, 1->AUB align and BUB not, 2->AUB not and BUB align
-    int align_mode = kTypeZero;
+    int align_mode = kNumZero;
     if (ubStatus.a_align_value != 1 && ubStatus.b_align_value != 1) {
       if (ubStatus.aub_bank_size > ubStatus.bub_bank_size) {
         align_mode = (ubStatus.aub_bank_size + ubStatus.bub_size <= ub_rest_size)
-                         ? kTypeOne
-                         : ((ubStatus.aub_size + ubStatus.bub_bank_size <= ub_rest_size) ? kTypeTwo : kTypeZero);
+                         ? kNumOne
+                         : ((ubStatus.aub_size + ubStatus.bub_bank_size <= ub_rest_size) ? kNumTwo : kNumZero);
       } else {
         align_mode = (ubStatus.aub_size + ubStatus.bub_bank_size <= ub_rest_size)
-                         ? kTypeTwo
-                         : ((ubStatus.aub_bank_size + ubStatus.bub_size <= ub_rest_size) ? kTypeOne : kTypeZero);
+                         ? kNumTwo
+                         : ((ubStatus.aub_bank_size + ubStatus.bub_size <= ub_rest_size) ? kNumOne : kNumZero);
       }
     }
-    if (align_mode == kTypeZero) {
+    if (align_mode == kNumZero) {
       ubStatus.a_align_value = 1;
       ubStatus.b_align_value = 1;
       ubStatus.aub_align_bound = ubStatus.k_aub * kBlockSize * ubStatus.m_aub * kBlockSize;
       ubStatus.bub_align_bound = ubStatus.k_bub * kBlockSize * ubStatus.n_bub * kBlockSize;
-    } else if (align_mode == kTypeOne) {
+    } else if (align_mode == kNumOne) {
       ubStatus.b_align_value = 1;
       ubStatus.bub_align_bound = ubStatus.k_bub * kBlockSize * ubStatus.n_bub * kBlockSize;
       ubStatus.aub_size = ubStatus.aub_bank_size;
-    } else if (align_mode == kTypeTwo) {
+    } else if (align_mode == kNumTwo) {
       ubStatus.a_align_value = 1;
       ubStatus.aub_align_bound = ubStatus.k_aub * kBlockSize * ubStatus.m_aub * kBlockSize;
       ubStatus.bub_size = ubStatus.bub_bank_size;
@@ -1215,15 +1449,15 @@ void CheckBankConflict(const int32_t &ub_rest_size, const BatchmatmulParas &para
   }
 }
 
-void GetABUbFactors(const int32_t &ub_rest_size, const L2Status &l2Status, const L1Status &l1Status,
+void GetABUbFactors(const int32_t &ub_rest_size, const CoreStatus &coreStatus, const L1Status &l1Status,
                     const L0Status &l0Status, const BatchmatmulParas &params, UbStatus &ubStatus)
 {
-  GetAUbFactors(ub_rest_size, l2Status, l1Status, l0Status, params, ubStatus);
-  GetBUbFactors(ub_rest_size, l2Status, l1Status, l0Status, params, ubStatus);
+  GetAUbFactors(ub_rest_size, coreStatus, l1Status, l0Status, params, ubStatus);
+  GetBUbFactors(ub_rest_size, coreStatus, l1Status, l0Status, params, ubStatus);
   CheckBankConflict(ub_rest_size, params, ubStatus);
 }
 
-void GetUbFactors(const string &op_type, const BatchmatmulParas &params, const L2Status &l2Status,
+void GetUbFactors(const string &op_type, const BatchmatmulParas &params, const CoreStatus &coreStatus,
                   const L1Status &l1Status, const L0Status &l0Status, UbStatus &ubStatus)
 {
   if (!params.ubdb_flag) {
@@ -1242,7 +1476,7 @@ void GetUbFactors(const string &op_type, const BatchmatmulParas &params, const L
   // first get AUB BUB factors
   if (params.nd_flag) {
     int32_t ub_rest_size = UbFp16Size - ubStatus.min_dma_size;
-    GetABUbFactors(ub_rest_size, l2Status, l1Status, l0Status, params, ubStatus);
+    GetABUbFactors(ub_rest_size, coreStatus, l1Status, l0Status, params, ubStatus);
     bool condition_db_bub = (params.ubdb_flag &&
       (ubStatus.bub_size * kDbOn + ubStatus.aub_size + ubStatus.min_dma_size <= UbFp16Size));
     bool condition_db_aub = (params.ubdb_flag &&
@@ -1289,22 +1523,22 @@ void GetUbFactors(const string &op_type, const BatchmatmulParas &params, const L
   if (params.bias_flag) {
     ubStatus.cub_size += l0Status.n_l0 * kBlockSize * ubStatus.db_cub;
   }
-  bool condition_db_cub =
-    params.ubdb_flag && (max(ubStatus.cub_size * kDbOn, ubStatus.min_load_size) + ubStatus.min_load_size <= UbFp16Size);
+  bool condition_db_cub = params.ubdb_flag &&
+    (max(ubStatus.cub_size * kDbOn, ubStatus.min_load_size) + ubStatus.min_load_size <= UbFp16Size);
   if (condition_db_cub) {
     ubStatus.db_cub = kDbOn;
   }
-  OP_LOGD(op_type.c_str(), "tiling n_cub:%lld, db_cub:%lld", l0Status.n_l0, l0Status.db_cub);
+  OP_LOGD(op_type.c_str(), "tiling n_cub:%d, db_cub:%d", l0Status.n_l0, l0Status.db_cub);
 }
 
-void CheckSpecialTemplate(const string &op_type, const L2Status &l2Status, const L0Status &l0Status,
+void CheckSpecialTemplate(const string &op_type, const CoreStatus &coreStatus, const L0Status &l0Status,
                           L1Status &l1Status)
 {
-  if (l2Status.m / (l1Status.m_al1 * l0Status.m_l0) == 1 && l1Status.kal1_16 == l2Status.k) {
+  if (coreStatus.m / (l1Status.m_al1 * l0Status.m_l0) == 1 && l1Status.kal1_16 == coreStatus.k) {
     l1Status.m_al1 = kNONE;
     OP_LOGD(op_type.c_str(), "check special template, tiling al1 changed to full load");
   }
-  if (l1Status.n_bl1 * l0Status.n_l0 == l2Status.n && l1Status.kbl1_16 == l2Status.k) {
+  if (l1Status.n_bl1 * l0Status.n_l0 == coreStatus.n && l1Status.kbl1_16 == coreStatus.k) {
     l1Status.n_bl1 = kNONE;
     OP_LOGD(op_type.c_str(), "check special template, tiling bl1 changed to full load");
   }
@@ -1312,19 +1546,27 @@ void CheckSpecialTemplate(const string &op_type, const L2Status &l2Status, const
 
 void GenTiling(const string &op_type, const BatchmatmulParas &params, Tiling &tiling, string &tilingId)
 {
-  OP_LOGD(op_type.c_str(), "cache tiling input shape batch:%lld, m:%lld, k:%lld, n:%lld", params.batch, params.m,
-          params.k, params.n);
-  L2Status l2Status;
+  OP_LOGD(op_type.c_str(), "cache tiling input shape batch:%d, m:%d, k:%d, n:%d", params.batch_32, params.m_32,
+          params.k_32, params.n_32);
+  CoreStatus coreStatus;
   L0Status l0Status;
   L1Status l1Status;
   UbStatus ubStatus;
   l0Status.SetInitLoadStatus();
-  int32_t blockValue = GetBlockDim(op_type, params, l2Status);
-  GetL0Factors(op_type, l2Status, blockValue, l0Status);
-  GetL1Factors(op_type, params, l2Status, l0Status, l1Status);
-  GetUbFactors(op_type, params, l2Status, l1Status, l0Status, ubStatus);
-  CheckSpecialTemplate(op_type, l2Status, l0Status, l1Status);
-  tiling.SetParams(l2Status, l0Status, l1Status, ubStatus, params);
+  if (params.split_k_flag) {
+    GetSplitKdim(op_type, params, coreStatus);
+  }
+  int32_t blockValue = 0;
+  if (coreStatus.k_dim == 1) {
+    blockValue = GetBlockDim(op_type, params, coreStatus);
+  } else {
+    blockValue = GetBlockDimK(op_type, params, coreStatus);
+  }
+  GetL0Factors(op_type, coreStatus, blockValue, l0Status);
+  GetL1Factors(op_type, params, coreStatus, l0Status, l1Status);
+  GetUbFactors(op_type, params, coreStatus, l1Status, l0Status, ubStatus);
+  CheckSpecialTemplate(op_type, coreStatus, l0Status, l1Status);
+  tiling.SetParams(coreStatus, l0Status, l1Status, ubStatus, params);
   tiling.SetAttachFlag();
   tiling.GetTilingId(params);
   tilingId = tiling.tiling_id;

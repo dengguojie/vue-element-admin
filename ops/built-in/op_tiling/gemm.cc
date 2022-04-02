@@ -65,7 +65,9 @@ const int64_t kNumTwo = 2;
 const int32_t BLOCK_SIZE = 16;
 const int64_t DIM_NUM = 3;
 const int32_t CACHE_TILING_ID_LEN_NZ = 7;
+const int32_t CACHE_TILING_ID_LEN_NZ_SPLIT_K = 8;
 const int32_t CACHE_TILING_ID_LEN_ND = 9;
+const int32_t CACHE_TILING_ID_LEN_ND_SPLIT_K = 10;
 const int64_t KBLOCK_SIZE = 16;
 const int64_t KMULTI = 4;
 /*
@@ -85,6 +87,7 @@ struct OpRunInfoParas {
   int32_t batch_dim = 1;
   int32_t n_dim = 1;
   int32_t m_dim = 1;
+  int32_t k_dim = 1;
   int32_t m_al1 = 1;
   int32_t n_bl1 = 1;
   int32_t cub_n1 = 1;
@@ -141,7 +144,7 @@ bool GetGEMMBatch(const string &op_type, const ge::GeShape &shape_a, const ge::G
     return true;
   }
 
-  params.b_have_batch = num_dimb > kNumTwo ? true : false;
+  params.b_have_batch = num_dimb > kNumTwo;
 
   const ge::GeShape& shape_short = num_dima < num_dimb ? shape_a : shape_b;
   const ge::GeShape& shape_long = num_dima < num_dimb ? shape_b : shape_a;
@@ -353,6 +356,7 @@ void FillRunInfoParas(const Tiling &tiling, OpRunInfoParas &runinfoparas) {
   runinfoparas.batch_dim = tiling.batch_dim;
   runinfoparas.n_dim = tiling.n_dim;
   runinfoparas.m_dim = tiling.m_dim;
+  runinfoparas.k_dim = tiling.k_dim;
   runinfoparas.m_l0 = tiling.m_l0;
   runinfoparas.k_l0 = tiling.k_l0;
   runinfoparas.n_l0 = tiling.n_l0;
@@ -360,14 +364,14 @@ void FillRunInfoParas(const Tiling &tiling, OpRunInfoParas &runinfoparas) {
     runinfoparas.k_al1 = tiling.kal1_16 * ::BLOCK_SIZE;
     runinfoparas.m_al1 = tiling.m_al1;
   } else {
-    runinfoparas.k_al1 = runinfoparas.params.k_32 * ::BLOCK_SIZE;
+    runinfoparas.k_al1 = runinfoparas.params.k_32 / runinfoparas.k_dim * ::BLOCK_SIZE;
     runinfoparas.m_al1 = ceil(static_cast<double>(runinfoparas.params.m_32 / runinfoparas.m_dim) / runinfoparas.m_l0);
   }
   if (!tiling.bl1_full_load) {
     runinfoparas.k_bl1 = tiling.kbl1_16 * ::BLOCK_SIZE;
     runinfoparas.n_bl1 = tiling.n_bl1;
   } else {
-    runinfoparas.k_bl1 = runinfoparas.params.k_32 * ::BLOCK_SIZE;
+    runinfoparas.k_bl1 = runinfoparas.params.k_32 / runinfoparas.k_dim * ::BLOCK_SIZE;
     runinfoparas.n_bl1 = ceil(static_cast<double>(runinfoparas.params.n_32 / runinfoparas.n_dim) / runinfoparas.n_l0);
   }
   runinfoparas.cub_n1 = tiling.n_cub;
@@ -389,8 +393,8 @@ void FillRunInfoParas(const Tiling &tiling, OpRunInfoParas &runinfoparas) {
   runinfoparas.kbl1_16 = runinfoparas.k_bl1 / ::BLOCK_SIZE;
   runinfoparas.kal0_factor = runinfoparas.kal1_16 / runinfoparas.k_l0;
   runinfoparas.kbl0_factor = runinfoparas.kbl1_16 / runinfoparas.k_l0;
-  runinfoparas.kal1_factor = runinfoparas.params.k_32 / runinfoparas.kal1_16;
-  runinfoparas.kbl1_factor = runinfoparas.params.k_32 / runinfoparas.kbl1_16;
+  runinfoparas.kal1_factor = runinfoparas.params.k_32 / runinfoparas.k_dim / runinfoparas.kal1_16;
+  runinfoparas.kbl1_factor = runinfoparas.params.k_32 / runinfoparas.k_dim / runinfoparas.kbl1_16;
   runinfoparas.kl1_times = (runinfoparas.kal1_16 > runinfoparas.kbl1_16)
                            ? (runinfoparas.kal1_16 / runinfoparas.kbl1_16)
                            : (runinfoparas.kbl1_16 / runinfoparas.kal1_16);
@@ -399,7 +403,7 @@ void FillRunInfoParas(const Tiling &tiling, OpRunInfoParas &runinfoparas) {
   runinfoparas.m_single_core =
     max(runinfoparas.params.m_32 / (runinfoparas.m_dim * runinfoparas.m_al1 * runinfoparas.m_l0), int32_t(1));
   runinfoparas.n_single_core = max(runinfoparas.params.n_32 / (runinfoparas.n_dim * runinfoparas.n_bl1 *
-                                     runinfoparas.n_ub_l0_time * runinfoparas.cub_n1),
+                                   runinfoparas.n_ub_l0_time * runinfoparas.cub_n1),
                                    int32_t(1));
 }
 
@@ -417,6 +421,7 @@ void SetRunInfoForCacheTiling(const OpRunInfoParas &runinfoparas, utils::OpRunIn
   run_info.AddTilingData(runinfoparas.batch_dim);
   run_info.AddTilingData(runinfoparas.n_dim);
   run_info.AddTilingData(runinfoparas.m_dim);
+  run_info.AddTilingData(runinfoparas.k_dim);
   run_info.AddTilingData(runinfoparas.m_al1);
   run_info.AddTilingData(runinfoparas.n_bl1);
   run_info.AddTilingData(runinfoparas.cub_n1);
@@ -448,10 +453,12 @@ void SetRunInfoForCacheTiling(const OpRunInfoParas &runinfoparas, utils::OpRunIn
 
 void SetRunInfo(const bool &isBatchMatmulMode, string &tiling_id, const map<string, int64_t> &block_dim_info,
                 const OpRunInfoParas &runinfoparas, utils::OpRunInfo &run_info) {
-  bool is_cache_tiling = tiling_id.length() == CACHE_TILING_ID_LEN_NZ || tiling_id.length() == CACHE_TILING_ID_LEN_ND;
+  bool is_cache_tiling = tiling_id.length() == CACHE_TILING_ID_LEN_NZ ||
+      tiling_id.length() == CACHE_TILING_ID_LEN_ND || tiling_id.length() == CACHE_TILING_ID_LEN_NZ_SPLIT_K ||
+      tiling_id.length() == CACHE_TILING_ID_LEN_ND_SPLIT_K;
   if (is_cache_tiling) {
-    uint32_t block_dim = runinfoparas.batch_dim * runinfoparas.n_dim * runinfoparas.m_dim;
-    run_info.SetBlockDim(block_dim);
+    int32_t block_dim = runinfoparas.batch_dim * runinfoparas.n_dim * runinfoparas.m_dim * runinfoparas.k_dim;
+    run_info.SetBlockDim(static_cast<uint32_t>(block_dim));
   } else {
     auto block_dim_value = block_dim_info.find(tiling_id);
     if (block_dim_value != block_dim_info.end()) {
@@ -498,6 +505,8 @@ bool GetGemmCompileValue(const json &compile_info, shared_ptr<GemmCompileInfo> &
     auto& binary_attrs = compile_info["binary_attrs"];
     compile_value->params.bias_flag = binary_attrs["bias_flag"];
     compile_value->params.nd_flag = binary_attrs["nd_flag"];
+    compile_value->params.split_k_flag = binary_attrs["split_k_flag"];
+    compile_value->params.l2_size = binary_attrs["l2_size"];
     compile_value->params.trans_a_flag = compile_value->trans_a;
     compile_value->params.trans_b_flag = compile_value->trans_b;
     compile_value->params.ubdb_flag = false;

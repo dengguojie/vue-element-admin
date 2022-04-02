@@ -95,6 +95,7 @@ class GEMMComputeParam:
     block_in = tbe_platform.BLOCK_IN
     block_out = tbe_platform.BLOCK_OUT
     block_reduce = tbe_platform.BLOCK_REDUCE
+    split_k_flag = False
 
     def __init__(self) -> None:
         pass
@@ -494,6 +495,7 @@ class GEMMCompute(FormatCompute):
         GEMMComputeParam.m_var_name = "m_ori" if self.format_a == "ND" else "m"
         GEMMComputeParam.k_var_name = "k_ori" if self.format_a == "ND" else "k"
         GEMMComputeParam.n_var_name = "n_ori" if self.format_b == "ND" else "n"
+        GEMMComputeParam.split_k_flag = self.split_k
         GEMMComputeParam.tiling_info_dict = {
             "A_shape": self._get_a_shape_in_nc1hwc0(tensor_l0a),
             "B_shape": self._get_b_shape_in_nc1hwc0(tensor_l0b),
@@ -942,10 +944,12 @@ class GEMMCompute(FormatCompute):
         have_batch = False
         if (len(a_shape) in (3, 5)) or (len(b_shape) in (3, 5)):
             have_batch = True
-
         compress_flag = self.compress_index is not None
         not_split_k = (not_fp16_in_fp32_out or not_fractal_nz_out or is_gemm or have_bias or self.is_fusion
-                       or self.cache_tiling_flag or have_batch or self.fc_flag or compress_flag)
+                       or have_batch or self.fc_flag or compress_flag)
+        if self.cache_tiling_flag:
+            self.split_k = not not_split_k
+            return
         if not_split_k:
             return
 

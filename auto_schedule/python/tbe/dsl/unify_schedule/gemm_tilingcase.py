@@ -682,9 +682,13 @@ class MatmulTiling(CubeTilingOp):
         info_dict = self.tiling_info
         bias_flag = info_dict.get("bias_flag")
         nd_flag = GEMMComputeParam.format_a == "ND" and GEMMComputeParam.format_b == "ND"
+        split_k_flag = GEMMComputeParam.split_k_flag
+        l2_size = tbe_platform_info.get_soc_spec("L2_SIZE")
         add_compile_info("binary_mode_flag", True)
         add_compile_info("binary_attrs", {"bias_flag": bias_flag,
-                                          "nd_flag": nd_flag})
+                                          "nd_flag": nd_flag,
+                                          "split_k_flag": split_k_flag,
+                                          "l2_size": l2_size})
         # get cache_tiling
         cache_tiling_all = {}
         (al1_pb, bl1_pb, l0c_pb, abkl1_attach, al1_attach_flag,
@@ -725,7 +729,6 @@ class MatmulTiling(CubeTilingOp):
                 'al1_attach_flag': -1, 'bl1_attach_flag': -1, 'aub_attach_flag': utils.ATTACH_LESS,
                 'abkl1_attach_flag': -1, 'aub_multi_flag': -1, 'bub_multi_flag': -1}
             }
-
             # if bl1 attach at l0c, nbl1, should be 1
             if choice[5] == utils.ATTACH_LESS:
                 cache_tiling.get("BL1_shape")[1] = 1
@@ -761,7 +764,10 @@ class MatmulTiling(CubeTilingOp):
                 cache_tiling.get('attach_at_flag')['aub_multi_flag'] = choice[7]
                 cache_tiling.get('attach_at_flag')['bub_multi_flag'] = choice[8]
                 cache_tiling["schedule_pattern"] = "Aligned"
-            name = int(''.join((str(i) for i in choice)))
+            if split_k_flag:
+                cache_tiling["block_dim"] = [1, UNKNOWN_DIM, UNKNOWN_DIM, UNKNOWN_DIM]
+            # in split k mode, tiling_id starts with 1
+            name = int(('1' if split_k_flag else '') + ''.join((str(i) for i in choice)))
             cache_tiling_all[name] = [[], cache_tiling, []]
 
         return cache_tiling_all

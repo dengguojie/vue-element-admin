@@ -18,6 +18,7 @@
  * \file cache_tiling.h
  * \brief
  */
+
 #ifndef OPS_BUILT_IN_OP_TILING_CACHE_TILING_H
 #define OPS_BUILT_IN_OP_TILING_CACHE_TILING_H
 
@@ -49,6 +50,7 @@ struct BatchmatmulParas {
   int64_t ori_shape_M = 1;
   int64_t ori_shape_K = 1;
   int64_t ori_shape_N = 1;
+  int32_t l2_size = (1024 * 1024);
   std::string format_a;
   std::string format_b;
   bool used_aligned_pattern = false;
@@ -61,13 +63,14 @@ struct BatchmatmulParas {
   float fused_double_operand_num = 0;
   float aub_double_num = 0;
   float bub_double_num = 0;
-  uint32_t core_num = 32;
+  int32_t core_num = 32;
   bool ubdb_flag = false;
   bool at_l1_flag = true;
   bool cub_reused_flag = false;
+  bool split_k_flag = false;
 };
 
-struct L2Status {
+struct CoreStatus {
   int32_t batch = 1;
   int32_t m = 1;
   int32_t k = 1;
@@ -75,6 +78,7 @@ struct L2Status {
   int32_t batch_dim = 1;
   int32_t m_dim = 1;
   int32_t n_dim = 1;
+  int32_t k_dim = 1;
 };
 
 struct BlockDimCalculator {
@@ -87,13 +91,18 @@ struct BlockDimCalculator {
   int32_t n_dim_factor = 1;
   int32_t batch_dim_factor = 1;
   int32_t m_dim_factor = 1;
+  int32_t k_dim_factor = 1;
   int32_t min_load_size = 1;
   int32_t core_use = 1;
+  int32_t tmp_core_use = 1;
   int32_t i_idx = 0;
   int32_t j_idx = 0;
+  int32_t k_idx = 0;
+  int32_t n_idx = 0;
   int32_t batch_dim_cnt = 0;
   int32_t m_dim_cnt = 0;
   int32_t n_dim_cnt = 0;
+  int32_t k_dim_cnt = 0;
   int32_t ori_amat_size = 0;
   int32_t ori_bmat_size = 0;
   int32_t amat_size = 0;
@@ -105,6 +114,7 @@ struct BlockDimCalculator {
   int32_t* batch_dim_array;
   int32_t* m_dim_array;
   int32_t* n_dim_array;
+  int32_t* k_dim_array;
   int32_t tmp_value = 0;
   int32_t final_value = 0;
   bool final_blocking_flag = false;
@@ -224,6 +234,7 @@ public:
   int32_t batch_dim = 1;
   int32_t n_dim = 1;
   int32_t m_dim = 1;
+  int32_t k_dim = 1;
   int32_t kal1_16 = 1;
   int32_t kbl1_16 = 1;
   int32_t m_al1 = 1;
@@ -251,7 +262,7 @@ public:
   bool al1_full_load = false;
   bool bl1_full_load = false;
   Tiling() = default;
-  void SetParams(const L2Status& l2Status, const L0Status& l0Status, const L1Status& l1Status,
+  void SetParams(const CoreStatus& coreStatus, const L0Status& l0Status, const L1Status& l1Status,
                  const UbStatus& ubStatus, const BatchmatmulParas& params);
   void SetAttachFlag();
   void GetTilingId(const BatchmatmulParas& params);
@@ -263,36 +274,36 @@ void GetFactors(int32_t* cnt, int32_t* factorList, const int32_t& num,
 void GetTwoFactors(int32_t* res, const int32_t& base, const int32_t& dim,
                    const int32_t& maxNum);
 void GetNearestFactor(const int32_t& base, int32_t& factor);
-void BL1FullLoadBlock(const L2Status& l2Status, BlockDimCalculator& blockDimCalculator, int32_t& n0);
-void AL1FullLoadBlock(const L2Status& l2Status, BlockDimCalculator& blockDimCalculator, int32_t& m0);
-int32_t GetBlockDim(const std::string& op_type, const BatchmatmulParas& params, L2Status& l2Status);
-int32_t GetLoadSize(const L2Status& l2Status, const L0Status& l0Status);
+void BL1FullLoadBlock(const CoreStatus& coreStatus, BlockDimCalculator& blockDimCalculator, int32_t& n0);
+void AL1FullLoadBlock(const CoreStatus& coreStatus, BlockDimCalculator& blockDimCalculator, int32_t& m0);
+int32_t GetBlockDim(const std::string& op_type, const BatchmatmulParas& params, CoreStatus& coreStatus);
+int32_t GetLoadSize(const CoreStatus& coreStatus, const L0Status& l0Status);
 MKNParasCombo GetParasCombo(const int32_t& index, const int32_t& blockValue);
-void GetFinalMkn(L0Status& l0Status, const L2Status& l2Status);
+void GetFinalMkn(L0Status& l0Status, const CoreStatus& coreStatus);
 void GetL0StatusFromParasCombo(L0Status& l0Status, int32_t* parasCombo);
 void SetResFactors(L0Factors* resFactors, const L0Status& l0Status);
-void GetL0FactorsCand(L0Factors *resFactors, const L2Status &l2Status, L0Status &l0Status,
+void GetL0FactorsCand(L0Factors *resFactors, const CoreStatus &coreStatus, L0Status &l0Status,
                       int32_t *parasCombo);
-void GetL0Factors(const std::string& op_type, const L2Status& l2Status, const int32_t& blockValue,
+void GetL0Factors(const std::string& op_type, const CoreStatus& coreStatus, const int32_t& blockValue,
                   L0Status& l0Status);
 int32_t GetL1Size(const L1Status& l1Status, const L0Status& l0Status);
-void CheckSpecialTemplate(const std::string& op_type, const L2Status& l2Status, const L0Status& l0Status,
+void CheckSpecialTemplate(const std::string& op_type, const CoreStatus& coreStatus, const L0Status& l0Status,
                           L1Status& l1Status);
-void L1StatusBothFullLoad(const L2Status& l2Status, const L0Status& l0Status, L1Status& l1Status,
+void L1StatusBothFullLoad(const CoreStatus& coreStatus, const L0Status& l0Status, L1Status& l1Status,
                           int32_t res[][7]);
-void L1StatusAl1FullLoad(const L2Status& l2Status, const L0Status& l0Status, L1Status& l1Status,
+void L1StatusAl1FullLoad(const CoreStatus& coreStatus, const L0Status& l0Status, L1Status& l1Status,
                          int32_t res[][7]);
-void L1StatusBl1FullLoad(const L2Status& l2Status, const L0Status& l0Status, L1Status& l1Status,
+void L1StatusBl1FullLoad(const CoreStatus& coreStatus, const L0Status& l0Status, L1Status& l1Status,
                          int32_t res[][7]);
-void NeitherFullLoadDb(const L2Status& l2Status, const L0Status& l0Status, L1Status& l1Status,
+void NeitherFullLoadDb(const CoreStatus& coreStatus, const L0Status& l0Status, L1Status& l1Status,
                        const int32_t& kbl1Db);
-void NeitherFullLoadMN(const L2Status& l2Status, const L0Status& l0Status, L1Status& l1Status,
+void NeitherFullLoadMN(const CoreStatus& coreStatus, const L0Status& l0Status, L1Status& l1Status,
                        const BatchmatmulParas& params);
-void NeitherFullLoadK(const L2Status& l2Status, const L0Status& l0Status, L1Status& l1Status,
+void NeitherFullLoadK(const CoreStatus& coreStatus, const L0Status& l0Status, L1Status& l1Status,
                       const BatchmatmulParas& params);
-void L1StatusNeitherFullLoad(const L2Status& l2Status, const BatchmatmulParas& params,
+void L1StatusNeitherFullLoad(const CoreStatus& coreStatus, const BatchmatmulParas& params,
                              const L0Status& l0Status, L1Status& l1Status, int32_t res[][7]);
-void GetL1Factors(const std::string& op_type, const BatchmatmulParas& params, const L2Status& l2Status,
+void GetL1Factors(const std::string& op_type, const BatchmatmulParas& params, const CoreStatus& coreStatus,
                   const L0Status& l0Status, L1Status& l1Status);
 void GetUbFactors(const std::string& op_type, const L0Status& l0Status, UbStatus& ubStatus);
 void GenTiling(const std::string& op_type, const BatchmatmulParas& params, Tiling& tiling, std::string& tilingId);

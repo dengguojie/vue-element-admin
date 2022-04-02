@@ -163,6 +163,23 @@ with patch("tbe.common.platform.platform_info.get_soc_spec", MagicMock(side_effe
     with patch("tbe.common.platform.platform_info.intrinsic_check_support", MagicMock(side_effect=side_effects)):
         ut_case.add_cust_test_func(test_func=test_dynamic_batchmamtul_920_mock)
 
+def test_dynamic_batchmamtul_norange_split_k(test_args):
+    input_x1 = {"ori_shape": (-1, -1), "shape": (-1, -1, -1, -1), "range": ((1,None), (1,None)), "dtype": 'float16', "format": "ND", "ori_format" : "ND"}
+    input_x2 = {"ori_shape": (-1, -1), "shape": (-1, -1, -1, -1), "range": ((1,None), (1,None)), "dtype": 'float16', "format": "ND", "ori_format" : "ND"}
+    output_z = {"ori_shape": (-1, -1), "shape": (-1, -1, -1, -1), "range": ((1,None), (1,None)), "dtype": 'float32', "format": "FRACTAL_NZ", "ori_format" : "ND"}
+
+    from impl.dynamic.batch_matmul_v2 import batch_matmul_compute
+    from te.tvm.target import cce
+    with tbe.common.context.op_context.OpContext("dynamic"):
+        from impl.util.platform_adapter import tbe as tbe1
+        with tbe1.compute():
+            res = batch_matmul_compute(input_x1, input_x2, {}, {}, output_z,
+                                       False, False, 0, "matmul_norange_split_k")
+        from impl.util.platform_adapter import tvm
+        with tvm.target.cce():
+            tbe1.auto_schedule(res.get("op_res"))
+ut_case.add_cust_test_func(test_func=test_dynamic_batchmamtul_norange_split_k)
+
 for case in matmul_case:
     ut_case.add_case("Ascend910A", gen_batch_matmul_dynamic(*case))
 

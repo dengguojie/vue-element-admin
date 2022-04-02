@@ -139,7 +139,6 @@ TEST_F(GEMMTiling, GEMM_op_tiling_obj_batchmatmul_repo) {
   EXPECT_EQ(runInfo.GetTilingKey(), 10114);
 }
 
-
 TEST_F(GEMMTiling, GEMM_op_tiling_obj_batchmatmul_formula01) {
   using namespace optiling;
   std::string op_name = "BatchMatMul";
@@ -593,6 +592,7 @@ TEST_F(GEMMTiling, GEMM_op_tiling_nd_aligned_pattern) {
   // In Aligned Mode. The key is changed
   EXPECT_EQ(runInfo.GetTilingKey(), 20000);
 }
+
 TEST_F(GEMMTiling, GEMM_op_tiling_nd_nonrange_pattern) {
   using namespace optiling;
   std::string op_name = "BatchMatMul";
@@ -601,7 +601,7 @@ TEST_F(GEMMTiling, GEMM_op_tiling_nd_nonrange_pattern) {
 
   const std::string compileInfo =
       R"({"_pattern": "MatMul", "attrs":{"transpose_a":false,"transpose_b":false},
-      "binary_attrs":{"bias_flag":false,"nd_flag":true},"binary_mode_flag":true,
+      "binary_attrs":{"bias_flag":false,"nd_flag":true, "split_k_flag":false, "l2_size":33554432},"binary_mode_flag":true,
       "block_dim":{"CORE_NUM":32},"corerect_range_flag":null,"dynamic_mode":"dynamic_mknb",
       "format_a":"ND","format_b":"ND","repo_range":{},"repo_seeds":{}})";
   ge::Graph graph("op_tiling_nd_nonrange_pattern");
@@ -649,7 +649,7 @@ TEST_F(GEMMTiling, GEMM_op_tiling_nd_nonrange_pattern_02) {
 
   const std::string compileInfo =
       R"({"_pattern": "MatMul", "attrs":{"transpose_a":true,"transpose_b":true},
-      "binary_attrs":{"bias_flag":false,"nd_flag":true},"binary_mode_flag":true,
+      "binary_attrs":{"bias_flag":false,"nd_flag":true, "split_k_flag":false, "l2_size":33554432},"binary_mode_flag":true,
       "block_dim":{"CORE_NUM":32},"corerect_range_flag":null,"dynamic_mode":"dynamic_mknb",
       "format_a":"ND","format_b":"ND","repo_range":{},"repo_seeds":{}})";
   ge::Graph graph("op_tiling_nd_nonrange_pattern_02");
@@ -697,7 +697,7 @@ TEST_F(GEMMTiling, GEMM_op_tiling_nd_nonrange_pattern_03) {
 
   const std::string compileInfo =
       R"({"_pattern": "MatMul", "attrs":{"transpose_a":false,"transpose_b":true},
-      "binary_attrs":{"bias_flag":false,"nd_flag":true},"binary_mode_flag":true,
+      "binary_attrs":{"bias_flag":false,"nd_flag":true, "split_k_flag":false, "l2_size":33554432},"binary_mode_flag":true,
       "block_dim":{"CORE_NUM":32},"corerect_range_flag":null,"dynamic_mode":"dynamic_mknb",
       "format_a":"ND","format_b":"ND","repo_range":{},"repo_seeds":{}})";
   ge::Graph graph("op_tiling_nd_nonrange_pattern_02");
@@ -745,7 +745,7 @@ TEST_F(GEMMTiling, GEMM_op_tiling_nd_nonrange_pattern_04) {
 
   const std::string compileInfo =
       R"({"_pattern": "MatMul", "attrs":{"transpose_a":true,"transpose_b":false},
-      "binary_attrs":{"bias_flag":false,"nd_flag":true},"binary_mode_flag":true,
+      "binary_attrs":{"bias_flag":false,"nd_flag":true, "split_k_flag":false, "l2_size":33554432},"binary_mode_flag":true,
       "block_dim":{"CORE_NUM":32},"corerect_range_flag":null,"dynamic_mode":"dynamic_mknb",
       "format_a":"ND","format_b":"ND","repo_range":{},"repo_seeds":{}})";
   ge::Graph graph("op_tiling_nd_nonrange_pattern_04");
@@ -793,7 +793,7 @@ TEST_F(GEMMTiling, GEMM_op_tiling_nd_nonrange_pattern_05) {
 
   const std::string compileInfo =
       R"({"_pattern": "MatMul", "attrs":{"transpose_a":false,"transpose_b":false},
-      "binary_attrs":{"bias_flag":false,"nd_flag":true},"binary_mode_flag":true,
+      "binary_attrs":{"bias_flag":false,"nd_flag":true, "split_k_flag":false, "l2_size":33554432},"binary_mode_flag":true,
       "block_dim":{"CORE_NUM":32},"corerect_range_flag":null,"dynamic_mode":"dynamic_mknb",
       "format_a":"ND","format_b":"ND","repo_range":{},"repo_seeds":{}})";
   ge::Graph graph("op_tiling_nd_nonrange_pattern_05");
@@ -831,6 +831,54 @@ TEST_F(GEMMTiling, GEMM_op_tiling_nd_nonrange_pattern_05) {
   EXPECT_EQ(runInfo.GetBlockDim(), 32);
   // In Aligned Mode. The key is changed
   EXPECT_EQ(runInfo.GetTilingKey(), 211220121);
+}
+
+TEST_F(GEMMTiling, GEMM_op_tiling_nd_nonrange_pattern_split_k) {
+  using namespace optiling;
+  std::string op_name = "MatMul";
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
+
+  const std::string compileInfo =
+      R"({"_pattern": "MatMul", "attrs":{"transpose_a":true,"transpose_b":false},
+      "binary_attrs":{"bias_flag":false,"nd_flag":true, "split_k_flag":true, "l2_size":33554432},"binary_mode_flag":true,
+      "block_dim":{"CORE_NUM":32},"corerect_range_flag":null,"dynamic_mode":"dynamic_mkn",
+      "format_a":"ND","format_b":"ND","repo_range":{},"repo_seeds":{}})";
+  ge::Graph graph("op_tiling_nd_nonrange_pattern_split_k");
+
+  auto x1_shape = vector<int64_t>({11776, 512});
+  ge::TensorDesc desc_x1(ge::Shape(x1_shape), ge::FORMAT_ND, ge::DT_FLOAT16);
+  desc_x1.SetOriginShape(ge::Shape(x1_shape));
+  auto x1 = op::Data("x1");
+  x1.update_input_desc_x(desc_x1);
+  x1.update_output_desc_y(desc_x1);
+
+  auto x2_shape = vector<int64_t>({11776, 512});
+  ge::TensorDesc desc_x2(ge::Shape(x2_shape), ge::FORMAT_ND, ge::DT_FLOAT16);
+  desc_x2.SetOriginShape(ge::Shape(x2_shape));
+  auto x2 = op::Data("x2");
+  x2.update_input_desc_x(desc_x2);
+  x2.update_output_desc_y(desc_x2);
+
+  auto matmul = op::MatMul(op_name)
+      .set_input_x1(x1)
+      .set_input_x2(x2);
+
+  auto y_shape = vector<int64_t>({512, 512});
+  ge::TensorDesc output_desc_y(ge::Shape(y_shape), ge::FORMAT_FRACTAL_NZ, ge::DT_FLOAT);
+  matmul.update_output_desc_y(output_desc_y);
+
+  std::vector<Operator> inputs{x1, x2};
+  std::vector<Operator> outputs{matmul};
+
+  graph.SetInputs(inputs).SetOutputs(outputs);
+  ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
+
+  optiling::utils::OpRunInfo runInfo;
+  RUN_TILING_V4(matmul, iter->second, compileInfo, runInfo);
+  EXPECT_EQ(runInfo.GetBlockDim(), 32);
+  // In Aligned Mode. The key is changed
+  EXPECT_EQ(runInfo.GetTilingKey(), 1222022121);
 }
 
 TEST_F(GEMMTiling, GEMM_op_tiling_fractal_z) {
