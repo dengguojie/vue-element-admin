@@ -23,13 +23,20 @@ from te.utils import shape_util
 from impl.util.platform_adapter import error_manager_vector
 
 
+class Constant:
+    """
+    Define constant in this class
+    """
+    FP32_MAX_VALID = 2 ** 24
+
+
 # 'pylint: disable=locally-disabled,unused-argument,too-many-locals,invalid-name
 # 'pylint: disable=unused-variable
 @tbe_platform.fusion_manager.fusion_manager.register("floor_mod")
-def floor_mod_compute(x1, x2, y, kernel_name="floor_mod"):
+def floor_mod_compute(x1, x2, y, kernel_name="floor_mod", impl_mode="high_performance"):
     """
     Compute remainder of division
-    res = x1 -floor(input_data_x / input_data_y)* input_data_y
+    res= x1 - floor(input_data_x / input_data_y) * input_data_y
 
     Parameters
     ----------
@@ -55,42 +62,57 @@ def floor_mod_compute(x1, x2, y, kernel_name="floor_mod"):
                                                          param_name_input1="x1",
                                                          param_name_input2="x2")
 
-    has_improve_precision = False
-    input_x_fp32 = x1
-    input_y_fp32 = x2
-    if tbe_platform.cce_conf.api_check_support("te.lang.cce.vlog", "float32"):
-        input_x_fp32 = tbe.cast_to(x1, "float32")
-        input_y_fp32 = tbe.cast_to(x2, "float32")
-        has_improve_precision = True
+    def _mod(x1, x2):
+        has_improve_precision = False
+        input_x_fp32 = x1
+        input_y_fp32 = x2
+        if tbe_platform.cce_conf.api_check_support("te.lang.cce.vlog", "float32"):
+            input_x_fp32 = tbe.cast_to(x1, "float32")
+            input_y_fp32 = tbe.cast_to(x2, "float32")
+            has_improve_precision = True
 
-    input_x_fp32 = tbe.broadcast(input_x_fp32, shape)
-    input_y_fp32 = tbe.broadcast(input_y_fp32, shape)
+        input_x_fp32 = tbe.broadcast(input_x_fp32, shape)
+        input_y_fp32 = tbe.broadcast(input_y_fp32, shape)
 
-    res = tbe.vdiv(input_x_fp32, input_y_fp32)
+        res_quot = tbe.vdiv(input_x_fp32, input_y_fp32)
 
-    res = tbe.floor(res)
+        res_quot = tbe.floor(res_quot)
 
-    if dtype != "int32":
-        if has_improve_precision:
-            res = tbe.cast_to(res, "float32")
+        if dtype != "int32":
+            if has_improve_precision:
+                result = tbe.cast_to(res_quot, "float32")
+            else:
+                result = tbe.cast_to(res_quot, "float16")
+            result = tbe.vmul(result, input_y_fp32)
+            res_rem = tbe.vsub(input_x_fp32, result)
+            if has_improve_precision:
+                res_rem = tbe.cast_to(res_rem, dtype)
         else:
-            res = tbe.cast_to(res, "float16")
-        res = tbe.vmul(res, input_y_fp32)
-        res = tbe.vsub(input_x_fp32, res)
-        if has_improve_precision:
-            res = tbe.cast_to(res, dtype)
+            x2_broad = tbe.broadcast(x2, shape)
+            x1_broad = tbe.broadcast(x1, shape)
+            result = tbe.vmul(res_quot, x2_broad)
+            res_rem = tbe.vsub(x1_broad, result)
+
+        return res_quot, res_rem
+
+    if impl_mode == "high_performance":
+        _, res = _mod(x1, x2)
     else:
-        x2_broad = tbe.broadcast(x2, shape)
-        x1_broad = tbe.broadcast(x1, shape)
-        res = tbe.vmul(res, x2_broad)
-        res = tbe.vsub(x1_broad, res)
+        # x1 can not be converted to a fp32 number absolute equality when its dtype is int32 and value is bigeer
+        # than 2^24 sometimes, so we use 2^24 as an intermediate constant to get the exact result.
+        fp32_max_valid_tensor = tbe.broadcast(Constant.FP32_MAX_VALID, shape)
+        quot_x_tmp, res_x_tmp = _mod(x1, fp32_max_valid_tensor)
+        quot_tmp_y, res_tmp_y = _mod(fp32_max_valid_tensor, x2)
+        res = tbe.vmul(quot_x_tmp, res_tmp_y)
+        res = tbe.vadd(res, res_x_tmp)
+        _, res = _mod(res, x2)
 
     return res
 
 
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
-def floor_mod(x1, x2, y, kernel_name="floor_mod"):
+def floor_mod(x1, x2, y, kernel_name="floor_mod", impl_mode="high_performance"):
     """
     calculate the remainder of division, support fp16,fp32,int32
     res = x1 -floor(input_data_x / input_data_y)* input_data_y
@@ -109,6 +131,8 @@ def floor_mod(x1, x2, y, kernel_name="floor_mod"):
         dict with keys(shape and dtype) of output
     kernel_name: str
         cce kernel name, default value is "floor_mod"
+    impl_mode: str
+        impl_mode, default value is "high_performance"
 
     Returns
     ------
@@ -139,7 +163,7 @@ def floor_mod(x1, x2, y, kernel_name="floor_mod"):
 
     input_data_x = tvm.placeholder(shape_x, name="input_data_x", dtype=dtype_x)
     input_data_y = tvm.placeholder(shape_y, name="input_data_y", dtype=dtype_y)
-    res = floor_mod_compute(input_data_x, input_data_y, y, kernel_name)
+    res = floor_mod_compute(input_data_x, input_data_y, y, kernel_name, impl_mode)
     with tvm.target.cce():
         auto_sch = tbe.auto_schedule(res)
 

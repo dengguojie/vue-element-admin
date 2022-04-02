@@ -60,5 +60,74 @@
         "name": "y"
       }
     ]
+  },
+  {
+    "case_name": "FloorMod_dynamic_shape_dynamic_floormod_int32_ND_ascend910a",
+    "op": "FloorMod",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int32"
+        ],
+        "shape": [
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x1"
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int32"
+        ],
+        "shape": [
+          1
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x2"
+      }
+    ],
+    "attr": [                        
+      {
+        "name": "impl_mode",
+        "type": "string",
+        "value": "high_precision"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int32"
+        ],
+        "shape": [
+          16
+        ],
+        "name": "y"
+      }
+    ]
   }
 ]

@@ -3,6 +3,7 @@
 from op_test_frame.ut import BroadcastOpUT
 from op_test_frame.common import precision_info
 import numpy as np
+import os
 ut_case = BroadcastOpUT("FloorMod", None, None)
 
 
@@ -25,6 +26,20 @@ ut_case.add_broadcast_case_simple(["Ascend910"], ["float16", "float32", "int32"]
 ut_case.add_broadcast_case_simple(["Ascend910"], ["float16", "float32", "int32"], (10, 12), (10, 11), expect=RuntimeError)
 # ut_case.add_broadcast_case_simple(["Ascend910"], ["float16", "float32", "int32"], (10, 13), (10, 11, 12), expect=RuntimeError)
 
+ut_case.add_case(
+    'Ascend910',
+    {
+        'params': [{"shape": (10, 12), "dtype": "int32", "format": "ND", "ori_shape": (10, 12),"ori_format": "ND"},
+                   {"shape": (10, 12), "dtype": "int32", "format": "ND", "ori_shape": (10, 12),"ori_format": "ND"},
+                   {"shape": (10, 12), "dtype": "int32", "format": "ND", "ori_shape": (10, 12),"ori_format": "ND"}
+        ],
+        'addition_params': {'impl_mode': 'high_precision'},
+        'case_name': 'floo_mod_case1',
+        'expect': 'success',
+        'format_expect': [],
+        'support_expect': True,
+    },
+)
 # ============ auto gen ["Ascend910"] test cases end =================
 
 def calc_expect_func(x, y, output):
@@ -57,8 +72,13 @@ precision_case3 = {"params": [{"shape": (16,2,32), "dtype": "float32", "format":
                    "calc_expect_func": calc_expect_func,
                    "precision_standard": precision_info.PrecisionStandard(0.005, 0.005)}
 
-ut_case.add_precision_case("Ascend910",precision_case1)
-ut_case.add_precision_case("Ascend910",precision_case2)
-ut_case.add_precision_case("Ascend910",precision_case3)
+ut_case.add_precision_case("Ascend910A",precision_case1)
+ut_case.add_precision_case("Ascend910A",precision_case2)
+ut_case.add_precision_case("Ascend910A",precision_case3)
 
 
+if __name__ == '__main__':
+    ut_case.run("Ascend910")
+    user_home_path = os.path.expanduser("~")
+    simulator_lib_path = os.path.join(user_home_path, ".mindstudio/huawei/adk/1.75.T15.0.B150/toolkit/tools/simulator")
+    ut_case.run(["Ascend910A"], simulator_mode="pv", simulator_lib_path=simulator_lib_path)
