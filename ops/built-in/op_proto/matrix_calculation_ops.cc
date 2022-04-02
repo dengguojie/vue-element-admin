@@ -3608,7 +3608,7 @@ IMPLEMT_VERIFIER(IndexPut, IndexPutVerify) {
   const char *op_name = op_name_str.GetString();
   if (x1_dtype != x2_dtype) {
     OP_LOGE(op_name,
-            "The input shape of x1 x2 y is equal, please check!");
+            "The input dtype of x1 x2 y is equal, please check!");
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;

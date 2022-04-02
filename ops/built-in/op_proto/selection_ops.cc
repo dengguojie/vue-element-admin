@@ -5136,5 +5136,33 @@ IMPLEMT_INFERFUNC(DynSeqOuter, DynSeqOuterInferShape) {
 }
 INFER_FUNC_REG(DynSeqOuter, DynSeqOuterInferShape);
 // ------------DynSeqOuter Op End-----------------
+
+// ----------------MaskedSelect Begin-------------------
+bool InferShapeAndTypeMaskedSelect(Operator& op) {
+  OpDescPtr op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  GeTensorDescPtr x_input = op_desc->MutableInputDesc(0);
+  GeShape x_shape = x_input->GetShape();
+  GeTensorDescPtr y_desc = op_desc->MutableOutputDesc(0);
+  DataType input_dtype = x_input->GetDataType();
+  y_desc->SetDataType(input_dtype);
+  std::vector<std::pair<int64_t, int64_t>> range;
+  y_desc->SetShape(GeShape({UNKNOWN_DIM}));
+  y_desc->SetOriginShape(GeShape({UNKNOWN_DIM}));
+  range.emplace_back(std::make_pair(1, x_shape.GetShapeSize()));
+  y_desc->SetShapeRange(range);
+  return true;
+}
+
+// Obtains the processing function of the output tensor description.
+IMPLEMT_COMMON_INFERFUNC(MaskedSelectInferShape) {
+  if (InferShapeAndTypeMaskedSelect(op)) {
+    return GRAPH_SUCCESS;
+  }
+  OP_LOGE(op.GetName().c_str(), "The shape of output y does not match that of x1 x2.");
+  return GRAPH_FAILED;
+}
+
+COMMON_INFER_FUNC_REG(MaskedSelect, MaskedSelectInferShape);
+// ----------------MaskedSelect END---------------------
 }  // namespace ge
 

@@ -2560,6 +2560,25 @@ REG_OP(MovingSumWithSigmoid)
     .REQUIRED_ATTR(ksize, Int)
     .OP_END_FACTORY_REG(MovingSumWithSigmoid)
 
+/**
+* @brief Choose the value of X with value according to mask.
+
+* @par Inputs:
+* two inputs, including:
+* @li x: A Tensor of dtype is BasicType.
+* @li mask: A Tensor of dtype is bool. \n
+
+* @par Outputs:
+* y: A tensor with the same type as x. \n
+
+* @par Third-party framework compatibility
+* Compatible with the Numpy operator select.\n
+*/
+REG_OP(MaskedSelect)
+    .INPUT(x, TensorType::BasicType())
+    .INPUT(mask, TensorType({DT_BOOL}))
+    .OUTPUT(y, TensorType::BasicType())
+    .OP_END_FACTORY_REG(MaskedSelect)
 
 /**
 * @brief Sum X1 and X2 according to the offset recorded in seq_len1 and seq_len2. \n
