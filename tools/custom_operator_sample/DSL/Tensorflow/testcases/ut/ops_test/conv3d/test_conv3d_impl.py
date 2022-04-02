@@ -294,7 +294,7 @@ ut_case.add_case(["Ascend910", "Ascend310"],
                  _gen_data_case(case4, RuntimeError, "case4", True))
 
 ut_case.add_case(["Ascend910", "Ascend310"],
-                 _gen_data_case(case5, RuntimeError, "case5", True))
+                 _gen_data_case(case5, TypeError, "case5", True))
 
 ut_case.add_case(["Ascend910", "Ascend310"],
                  _gen_data_case(case6, RuntimeError, "case6", True))
@@ -315,7 +315,7 @@ ut_case.add_case(["Ascend910", "Ascend310"],
                  _gen_data_case(case11, RuntimeError, "case11", True))
 
 ut_case.add_case(["Ascend910", "Ascend310"],
-                 _gen_data_case(case12, RuntimeError, "case12", True))
+                 _gen_data_case(case12, TypeError, "case12", True))
 
 ut_case.add_case(["Ascend910", "Ascend310"],
                  _gen_data_case(case13, RuntimeError, "case13", True))
@@ -363,7 +363,7 @@ ut_case.add_case(["Ascend910", "Ascend310"],
                  _gen_data_case(case27, RuntimeError, "case27", True))
 
 ut_case.add_case(["Ascend910", "Ascend310"],
-                 _gen_data_case(case28, "success", "Conv3D_default_bias", True))
+                 _gen_data_case(case28, RuntimeError, "Conv3D_default_bias", True))
 
 ut_case.add_case(["Ascend910", "Ascend310"],
                  _gen_data_case(case29, RuntimeError, "fmap_format_wrong", True))
