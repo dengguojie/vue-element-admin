@@ -26,6 +26,7 @@ from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import OpImplMode
+from impl.util.platform_adapter import tbe_platform
 
 
 # 'pylint: disable=locally-disabled,too-many-arguments
@@ -53,7 +54,7 @@ def real_div_compute(x1, x2, y, kernel_name="real_div", impl_mode=OpImplMode.HIG
     dtype = x1.dtype
     has_improve_precision = False
     if dtype == "float16" and impl_mode != OpImplMode.HIGH_PERFORMANCE and \
-            tbe.api_check_support("te.lang.cce.vdiv", "float32"):
+            tbe_platform.api_check_support("te.lang.cce.vdiv", "float32"):
         x1 = tbe.cast_to(x1, "float32")
         x2 = tbe.cast_to(x2, "float32")
         has_improve_precision = True
