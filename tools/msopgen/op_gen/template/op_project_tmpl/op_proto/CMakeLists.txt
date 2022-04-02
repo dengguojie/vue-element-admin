@@ -1,6 +1,11 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2020-2021. All rights reserved.
-set(CMAKE_CXX_COMPILER g++)
-set(CMAKE_C_COMPILER gcc)
+if("x${CMAKE_CXX_COMPILER}" STREQUAL "x")
+    set(CMAKE_CXX_COMPILER g++)
+endif()
+if("x${CMAKE_C_COMPILER}" STREQUAL "x")
+    set(CMAKE_C_COMPILER gcc)
+endif()
+
 set(CMAKE_BUILD_TYPE "Release")
 set(CMAKE_CXX_FLAGS_RELEASE "-fPIC -O2 -Wall -s")
 set(CMAKE_CXX_FLAGS_DEBUG "-fPIC -O0 -g -Wall")
