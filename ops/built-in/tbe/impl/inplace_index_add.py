@@ -20,7 +20,6 @@ from functools import reduce as functools_reduce
 from te import tik
 from te import platform as tbe_platform
 from te.utils import para_check
-from impl import common_util
 
 
 # 'pylint: disable=too-few-public-methods
@@ -37,6 +36,7 @@ class Constant:
     # Some basic global params
     ONE_BLOCK_SIZE = 32
     ONE_VECTOR_CALC_SIZE = 256
+    TYPE_BYTES_MAP = {"float16": 2, "float32": 4, "int8": 2, "uint8": 2, "int16": 2, "int32": 4}
     BITS_OF_ONE_BYTE = 8
     MAX_REPEAT_TIMES = 255
     MAX_UBSIZE_USE_RATE = 0.9
@@ -108,7 +108,7 @@ class Scatter:
         self.get_some_basic_info()
 
         # decide the mask of computation
-        self.max_num_one_repeat = Constant.ONE_VECTOR_CALC_SIZE // common_util.get_data_size(self.var_dtype)
+        self.max_num_one_repeat = Constant.ONE_VECTOR_CALC_SIZE // Constant.TYPE_BYTES_MAP.get(self.var_dtype)
 
         # open multi-cores even if update_data_num less than 32B, cause the operation keep distances
         # if the pre_loops muls indices num ge than 32B
