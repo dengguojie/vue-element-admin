@@ -439,13 +439,14 @@ class UnsortedSegmentTiling(object):
         return _ceil_div(val, self.ele_num_per_block) * self.ele_num_per_block
 
     def _get_tiling_params(self, scalar):
-        if scalar.e_num % self.ele_num_per_block == 0:
-            align_scalar = 0
-        else:
-            align_scalar = self.ele_num_per_block - (
-                    scalar.e_num - (scalar.e_num // self.ele_num_per_block) * self.ele_num_per_block)
-        if isinstance(align_scalar, int):
-            scalar.align_scalar = align_scalar
+        if isinstance(scalar.e_num, int):
+            if scalar.e_num % self.ele_num_per_block == 0:
+                align_scalar = 0
+            else:
+                align_scalar = self.ele_num_per_block - (
+                        scalar.e_num - (scalar.e_num // self.ele_num_per_block) * self.ele_num_per_block)
+            if isinstance(align_scalar, int):
+                scalar.align_scalar = align_scalar
 
         if isinstance(scalar.e_num, int) and isinstance(scalar.num_segments, int):
             e_max_block_ub = min(self._floor_align_mask(scalar.output_once_num // scalar.num_segments), 255 * self.mask)
