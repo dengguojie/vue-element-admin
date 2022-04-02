@@ -1365,6 +1365,88 @@
         ]
       }
     },
+    {
+      "RuleName": "SquareSumV1_2",
+      "OuterInputs": [
+        {
+          "name": "Input0"
+        },
+        {
+          "name": "Input1"
+        }
+      ],
+      "OuterOutputs": [
+        {
+          "name": "Output0"
+        }
+      ],
+      "OriginGraph": {
+        "Nodes": [
+          {
+            "name": "Square0",
+            "type": [
+              "Square"
+            ]
+          },
+          {
+            "name": "Sum0",
+            "type": [
+              "ReduceSumD"
+            ]
+          }
+        ],
+        "Edges": [
+          {
+            "src": "Input0",
+            "dst": "Square0:0"
+          },
+          {
+            "src": "Input1:-1",
+            "dst": "Sum0:-1"
+          },
+          {
+            "src": "Square0:0",
+            "dst": "Sum0:0"
+          },
+          {
+            "src": "Sum0:0",
+            "dst": "Output0"
+          }
+        ]
+      },
+      "FusionGraph": {
+        "Nodes": [
+          {
+            "name": "SquareSumV1",
+            "type": [
+              "SquareSumV1"
+            ]
+          }
+        ],
+        "Edges": [
+          {
+            "src": "Input0",
+            "dst": "SquareSumV1:0"
+          },
+          {
+            "src": "SquareSumV1:0",
+            "dst": "Output0"
+          }
+        ],
+        "Attrs": [
+          {
+            "attr": "SquareSumV1.axis",
+            "value": "Sum0.axes",
+            "expr": "="
+          },
+          {
+            "attr": "SquareSumV1.keep_dims",
+            "value": "Sum0.keep_dims",
+            "expr": "="
+          }
+        ]
+      }
+    },
         {
             "RuleName": "LambUpdateWithLrRuleCond1",
             "OuterInputs": [
