@@ -18,8 +18,8 @@
  * \file conv2d_squeeze_biasadd_fusion_pass.cpp
  * \brief conv-squeeze-biasadd fusion pass(conv2d-squeeze-biasadd --> conv2d-biasadd-squeeze)
  */
-#ifndef OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_CONV2D_SQUEEZE_BIASADD_FUSION_PASS_H_
-#define OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_CONV2D_SQUEEZE_BIASADD_FUSION_PASS_H_
+#ifndef OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_CONV2D_SQUEEZE_BIASADD_FUSION_PASS_H
+#define OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_CONV2D_SQUEEZE_BIASADD_FUSION_PASS_H
 
 #include <vector>
 #include "graph_optimizer/fusion_common/pattern_fusion_base_pass.h"
@@ -34,4 +34,4 @@ private:
     const string FUSED_OP_TYPE = "Conv2D";
 };
 }  // namespace fe
-#endif  // OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_CONV2D_SQUEEZE_BIASADD_FUSION_PASS_H_
+#endif  // OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_CONV2D_SQUEEZE_BIASADD_FUSION_PASS_H

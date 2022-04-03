@@ -18,8 +18,8 @@
  * \file bnupdate_reluv2_bnreduce_fusion_pass.h
  * \brief convert bnupdate+reluv2+conv2d+bnreduce to fusedbn2reluconvbn1
  */
-#ifndef OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_BNUPDATE_RELUV2_Conv2D_BNREDUCE_FUSION_PASS_H_
-#define OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_BNUPDATE_RELUV2_Conv2D_BNREDUCE_FUSION_PASS_H_
+#ifndef OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_BNUPDATE_RELUV2_Conv2D_BNREDUCE_FUSION_PASS_H
+#define OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_BNUPDATE_RELUV2_Conv2D_BNREDUCE_FUSION_PASS_H
 
 #include "graph_optimizer/fusion_common/pattern_fusion_base_pass.h"
 
@@ -54,4 +54,4 @@ private:
     const std::string fused_op_type_ = "BNupdate_ReluV2_Conv2D_BNreduce";
 };
 }  // namespace fe
-#endif  // OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_BNUPDATE_RELUV2_Conv2D_BNREDUCE_FUSION_PASS_H_
+#endif  // OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_BNUPDATE_RELUV2_Conv2D_BNREDUCE_FUSION_PASS_H
