@@ -67,7 +67,7 @@ std::vector<int64_t> setValValue(const std::string& opType, std::vector<std::str
             varValue.insert(varValue.end(), wo);
         } else {
             // elewise var name _dim_x_x when conv+add fusion
-            int32_t var_index = 0;
+            uint32_t var_index = 0;
             int32_t dim_index = 0;
             int32_t dim_value = 0;
             if (var.find("dim") != std::string::npos) {
