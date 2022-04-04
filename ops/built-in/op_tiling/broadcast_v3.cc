@@ -1397,7 +1397,7 @@ BroadcastCompileInfo::BroadcastCompileInfo(const std::string& op_type, const nlo
   if (outer_compile_info.contains("_contains_elewise_sch")) {
     contains_elewise_sch = outer_compile_info.at("_contains_elewise_sch").get<bool>();
   }
-
+  contains_elewise_sch = contains_elewise_sch || outer_compile_info.at("_pattern").get<std::string>() == "ElemWise";
 }
 
 bool Broadcast::BroadcastTiling() {

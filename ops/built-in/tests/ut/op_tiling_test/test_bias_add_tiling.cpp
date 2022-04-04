@@ -76,7 +76,7 @@ TEST_F(BiasAddTiling, BiasAdd_tiling1) {
   // do tilling, get runInfo
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
-  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "4 1 4 ");
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "4 4 4 ");
 }
 
 TEST_F(BiasAddTiling, BiasAdd_tiling2) {
@@ -296,7 +296,7 @@ TEST_F(BiasAddTiling, BiasAdd_tiling9) {
   // do tilling, get runInfo
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
-  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "16 1 16 ");
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "16 16 16 ");
 }
 
 TEST_F(BiasAddTiling, BiasAdd_tiling10) {
@@ -493,6 +493,6 @@ TEST_F(BiasAddTiling, BiasAdd_tiling16) {
   // do tilling, get runInfo
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
-  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "16 1 16 ");
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "16 16 16 ");
 }
 
