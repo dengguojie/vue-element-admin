@@ -290,6 +290,7 @@ set(_aicore_fusion_srcs
   graph_fusion/ai_core/single_batch_norm_fusion_pass.cc
   graph_fusion/ai_core/batchnorm_preprocess_fusion_pass.cc
   graph_fusion/ai_core/batchnormgrad_preprocess_fusion_pass.cc
+  graph_fusion/ai_core/softmax_cross_entropy_loss_fusion_pass.cc
   graph_fusion/ai_core/softmax_cross_entropy_with_logits.cc
   graph_fusion/ai_core/softmax_cross_entropy_with_logits_grad.cc
   graph_fusion/ai_core/softmax_fusion_pass.cc

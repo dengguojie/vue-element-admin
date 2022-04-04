@@ -92,17 +92,12 @@ def softmax_cross_entropy_loss_compute(
     data_log_tmp = tbe.vlog(data_sum_broadcast)
     log_prop = tbe.vsub(data_sub, data_log_tmp)
 
-    input_labels = tbe.broadcast(labels, shape_scores)
-    data_mul = tbe.vmul(input_labels, log_prop)
-    data_muls = tbe.vmuls(data_mul, SCALAR_MINUS_ONE)
+    data_muls = tbe.vmuls(log_prop, SCALAR_MINUS_ONE)
     if weights_flag:
         input_weights = tbe.broadcast(weights, shape_scores)
-        data_loss = tbe.vmul(data_muls, input_weights)
-        loss = tbe.sum(data_loss, axis=1, keepdims=False)
+        loss = tbe.vmul(data_muls, input_weights)
     else:
-        loss = tbe.sum(data_muls, axis=1, keepdims=False)
-
-    loss = loss_compute(loss, reduction, shape_labels)
+        loss = data_muls
 
     if has_improve_precision:
         loss = tbe.cast_to(loss, "float16")
@@ -111,30 +106,6 @@ def softmax_cross_entropy_loss_compute(
     res = [loss, log_prop]
 
     return res
-
-
-def loss_compute(loss, reduction, shape_labels):
-    reduce_elts = 1.0
-    for i in shape_labels:
-        reduce_elts *= i
-    cof = reduce_elts**(-1)
-
-    # get total axis for reduce
-    axis_d = []
-    for i in range(len(shape_labels) - 1):
-        axis_d.append(i)
-
-    if reduction == 'mean':
-        # calcu mean
-        loss = tbe.sum(loss, axis=axis_d, keepdims=False)
-        loss = tbe.vmuls(loss, cof)
-    elif reduction == 'sum':
-        # calcu sum
-        loss = tbe.sum(loss, axis=axis_d, keepdims=False)
-    elif reduction == 'none':
-        loss = loss
-
-    return loss
 
 
 # 'pylint: disable=unused-argument,too-many-locals,invalid-name
@@ -201,7 +172,7 @@ def softmax_cross_entropy_loss(
                                 name="data_weights")
         weights_flag = True
     else:
-        weights = None
+        data_weights = None
         weights_flag = False
 
     para_check.check_shape(shape_scores, param_name="scores")
@@ -224,8 +195,11 @@ def softmax_cross_entropy_loss(
 
     with tvm.target.cce():
         sch = tbe.auto_schedule(res)
+    if weights_flag:
+        tensor_list = [data_scores, data_labels, data_weights] + list(res)
+    else:
+        tensor_list = [data_scores, data_labels] + list(res)
 
-    tensor_list = [data_scores, data_labels, data_weights] + list(res)
 
     config = {"name": kernel_name,
                 "tensor_list": tensor_list}
