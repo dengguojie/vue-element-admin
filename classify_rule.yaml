@@ -2649,6 +2649,7 @@ unkown:
       - ops/built-in/tbe/impl/cdist.py
       - ops/built-in/tbe/impl/dynamic_gru.py
       - ops/built-in/tbe/impl/max_pool_grad_grad_with_argmax.py
+      - ops/built-in/tbe/impl/max_pool_grad_grad_with_argmax_without_cbuf.py
       - ops/built-in/tbe/impl/bitwise_or.py
       - ops/built-in/tbe/impl/copy_only.py
       - ops/built-in/tbe/impl/xlogy.py

@@ -23,6 +23,7 @@ from te import tvm
 from te.lang import cce as tbe
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
+from .max_pool_grad_grad_with_argmax_without_cbuf import MaxPoolGradGradWithArgmaxWithoutCbuf
 
 # `16, 32B = 16 * sizeof(float16)`
 BLOCK_SIZE = tbe_platform.BLOCK_REDUCE
@@ -222,15 +223,23 @@ def check_shape_and_format_vailded(x, grad, argmax, y, ksize, strides, padding):
     shape_argmax = argmax.get("shape")
     shape_y = y.get("shape")
 
-    if ori_format_x == "NCHW":
-        _, _, kernel_h, kernel_w = ksize
-        _, _, stride_h, stride_w = strides
-    elif ori_format_x == "NHWC":
-        _, kernel_h, kernel_w, _ = ksize
-        _, stride_h, stride_w, _ = strides
-    else:
-        error_manager_vector.raise_err_input_format_invalid("max_pool_grad_grad_with_argmax", "x", ('NHWC', 'NCHW'),
+    if ori_format_x not in ("NHWC", "NCHW"):
+        error_manager_vector.raise_err_input_format_invalid("max_pool_grad_grad_with_argmax", "x", ("NHWC", "NCHW"),
                                                             ori_format_x)
+    if ori_format_x == "NCHW":
+        ksize = [ksize[0], ksize[2], ksize[3], ksize[1]]
+        strides = [strides[0], strides[2], strides[3], strides[1]]
+
+    kernel_n, kernel_h, kernel_w, kernel_c = ksize
+    stride_n, stride_h, stride_w, stride_c = strides
+    if kernel_n != 1 or kernel_c != 1 or kernel_h <= 0 or kernel_w <= 0:
+        error_manager_vector.raise_err_check_params_rules("max_pool_grad_grad_with_argmax",
+                                                          "the dimensions of ksize are invalid",
+                                                          ["ksize"], [ksize])
+    if stride_n != 1 or stride_c != 1 or stride_h <= 0 or stride_w <= 0:
+        error_manager_vector.raise_err_check_params_rules("max_pool_grad_grad_with_argmax",
+                                                          "the dimensions of strides are invalid",
+                                                          ["strides"], [strides])
 
     if padding not in ("SAME", "VALID"):
         error_manager_vector.raise_err_input_value_invalid("max_pool_grad_grad_with_argmax", "padding",
@@ -268,7 +277,7 @@ def check_shape_and_format_vailded(x, grad, argmax, y, ksize, strides, padding):
             output_size = (input_size + stride - 1) // stride
             padding_needed = (output_size - 1) * stride + effective_kernel_size - input_size
             if padding_needed < 0:
-                error_manager_vector.raise_err_specific_reson('max_pool_grad_grad_with_argmax', "Not supported shape.")
+                error_manager_vector.raise_err_specific_reson("max_pool_grad_grad_with_argmax", "Not supported shape.")
 
     # cloud out_size_h = 1 or out_size_w = 1, img2col does not act normally
     if tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION) == "Ascend910" and (shape_max_pool_h != 1
@@ -295,36 +304,36 @@ def check_shape_and_format_vailded(x, grad, argmax, y, ksize, strides, padding):
         error_manager_vector.raise_err_input_value_invalid("max_pool_grad_grad_with_argmax", "y.shape", shape_max_pool,
                                                            shape_y)
     if list(expect_shape_argmax_1) != list(shape_argmax) and list(expect_shape_argmax_2) != list(shape_argmax):
-        error_manager_vector.raise_err_specific_reson('max_pool_grad_grad_with_argmax', "shape_argmax not support.")
+        error_manager_vector.raise_err_specific_reson("max_pool_grad_grad_with_argmax", "shape_argmax not support.")
 
     if stride_h > 63 or stride_h < 1 or stride_w > 63 or stride_w < 1:
-        error_manager_vector.raise_err_input_param_not_in_range('max_pool_grad_grad_with_argmax', "strides", 1, 63,
+        error_manager_vector.raise_err_input_param_not_in_range("max_pool_grad_grad_with_argmax", "strides", 1, 63,
                                                                 strides)
     if kernel_h > 255 or kernel_h < 1 or kernel_w > 255 or kernel_w < 1:
-        error_manager_vector.raise_err_input_param_not_in_range('max_pool_grad_grad_with_argmax', "ksize", 1, 255,
+        error_manager_vector.raise_err_input_param_not_in_range("max_pool_grad_grad_with_argmax", "ksize", 1, 255,
                                                                 ksize)
 
     def _check_5hd(param, shape_length):
         if shape_length != 5:
-            error_manager_vector.raise_err_input_param_range_invalid('max_pool_grad_grad_with_argmax', param, 5, 5,
+            error_manager_vector.raise_err_input_param_range_invalid("max_pool_grad_grad_with_argmax", param, 5, 5,
                                                                      shape_length)
 
-    _check_5hd('x', len(shape_x))
-    _check_5hd('grad', len(shape_grad))
-    _check_5hd('y', len(shape_y))
-    _check_5hd('argmax', len(shape_argmax))
+    _check_5hd("x", len(shape_x))
+    _check_5hd("grad", len(shape_grad))
+    _check_5hd("y", len(shape_y))
+    _check_5hd("argmax", len(shape_argmax))
 
     def _check_last_dim(param, shape):
         if shape[4] != 16:
-            error_manager_vector.raise_err_check_params_rules('max_pool_grad_grad_with_argmax',
-                                                              'the last dimension must be equal to 16', param, shape)
+            error_manager_vector.raise_err_check_params_rules("max_pool_grad_grad_with_argmax",
+                                                              "the last dimension must be equal to 16", param, shape)
 
     _check_last_dim("x", shape_x)
     _check_last_dim("y", shape_y)
     _check_last_dim("grad", shape_grad)
     if shape_argmax[4] != 16 and shape_argmax[4] != 1:
-        error_manager_vector.raise_err_check_params_rules('max_pool_grad_grad_with_argmax',
-                                                          'the last dimension must be equal to 16 or 1', "argmax",
+        error_manager_vector.raise_err_check_params_rules("max_pool_grad_grad_with_argmax",
+                                                          "the last dimension must be equal to 16 or 1", "argmax",
                                                           shape_argmax)
 
     return shape_max_pool, pad_list
@@ -437,7 +446,7 @@ def max_pool_grad_grad_with_argmax_compute(placeholders,
     shape_fractal = (
     grad_n, howo // tbe_platform.BLOCK_REDUCE, grad_c1 * kernel_h * kernel_w, tbe_platform.BLOCK_REDUCE,
     tbe_platform.BLOCK_REDUCE)
-    grad_fractal = tbe.te_compute.common.im2col_fractal(shape_fractal, grad_im2col, "ca", tag='')
+    grad_fractal = tbe.te_compute.common.im2col_fractal(shape_fractal, grad_im2col, "ca", tag="")
 
     # (n, howo/16, c1khkw, 16, c0) -> (n, c1khkw, howo/16, 16, c0)
     shape_grad_fratical_transp = (
@@ -445,14 +454,14 @@ def max_pool_grad_grad_with_argmax_compute(placeholders,
     tbe_platform.BLOCK_REDUCE)
     grad_fractal_transp = tvm.compute(shape_grad_fratical_transp,
                                       lambda i, j, k, n, m: grad_fractal[i, k, j, n, m],
-                                      name='grad_fractal_transp')
+                                      name="grad_fractal_transp")
 
     # declare a zero tensor, and move to ub for vsel
     dtype_tensor_zero = grad_tensor.dtype
     shape_tensor_zero = (tbe_platform.BLOCK_REDUCE, )
     tensor_zero_ub = tvm.compute(shape_tensor_zero,
                                  lambda *i: tvm.const(0, dtype=dtype_tensor_zero),
-                                 name='tensor_zero_ub')
+                                 name="tensor_zero_ub")
 
     # vsel compute
     shape_grad_grad_col = (
@@ -461,7 +470,7 @@ def max_pool_grad_grad_with_argmax_compute(placeholders,
     grad_grad_col = tvm.compute(shape_grad_grad_col,
                                 lambda i, j, k, n, m: tvm.select(argmax_ub[i, j, k, n, m], grad_fractal_transp[
                                     i, j, k, n, m], tensor_zero_ub[m]),
-                                name='grad_grad_col')
+                                name="grad_grad_col")
 
     # reduce_sum
     # (n, c1khkw, howo/16, 16, c0) -> (n, c1, howo/16, 16, c0)
@@ -504,8 +513,8 @@ def max_pool_grad_grad_with_argmax_compute(placeholders,
                              lambda i, j, n, m: grad_grad[i, j, n // 16, n % 16, m],
                              name="ub_to_out",
                              attrs={
-                                 'extract_params': extract_params,
-                                 'setfmatrix_dict': setfmatrix_dict
+                                 "extract_params": extract_params,
+                                 "setfmatrix_dict": setfmatrix_dict
                              })
 
     return grad_in_l1, grad_im2col, grad_fractal, grad_fractal_transp, argmax_ub, tensor_zero_ub, grad_grad_col, \
@@ -540,7 +549,7 @@ def _max_pool_grad_grad_with_argmax_schedule(compute_list, sch_list):
     grad_grad_col = compute_list[6]
     grad_grad = compute_list[7]
 
-    setfmatrix_map = res.op.attrs['setfmatrix_dict']
+    setfmatrix_map = res.op.attrs["setfmatrix_dict"]
     setfmatrix_dict = {}
     for key, value in setfmatrix_map.items():
         if hasattr(value, "value"):
@@ -548,7 +557,7 @@ def _max_pool_grad_grad_with_argmax_schedule(compute_list, sch_list):
         else:
             setfmatrix_dict[key] = value
 
-    extract_map = res.op.attrs['extract_params']
+    extract_map = res.op.attrs["extract_params"]
     extract_params = {}
     for key, value in extract_map.items():
         if hasattr(value, "value"):
@@ -556,14 +565,14 @@ def _max_pool_grad_grad_with_argmax_schedule(compute_list, sch_list):
         else:
             extract_params[key] = value
 
-    padding = extract_params['padding_mode']
-    fmap_shape = extract_params['fmap_shape']
-    shape_max_pool_h = extract_params['shape_max_pool_h']
-    shape_max_pool_w = extract_params['shape_max_pool_w']
-    stride_h = setfmatrix_dict["conv_stride_h"]
-    stride_w = setfmatrix_dict["conv_stride_w"]
-    kernel_h = setfmatrix_dict["conv_kernel_h"]
-    kernel_w = setfmatrix_dict["conv_kernel_w"]
+    padding = extract_params.get("padding_mode")
+    fmap_shape = extract_params.get("fmap_shape")
+    shape_max_pool_h = extract_params.get("shape_max_pool_h")
+    shape_max_pool_w = extract_params.get("shape_max_pool_w")
+    stride_h = setfmatrix_dict.get("conv_stride_h")
+    stride_w = setfmatrix_dict.get("conv_stride_w")
+    kernel_h = setfmatrix_dict.get("conv_kernel_h")
+    kernel_w = setfmatrix_dict.get("conv_kernel_w")
 
     # These calculations are on CB
     sch[grad_in_l1].set_scope(tbe_platform.scope_cbuf)
@@ -596,7 +605,7 @@ def _max_pool_grad_grad_with_argmax_schedule(compute_list, sch_list):
     if (is_tiling_valid, shape_in_l1, is_l1_double_buffer, shape_after_load3d,
             is_l0_ub_double_buffer) == (False, None, None, None, None):
         error_manager_vector.raise_err_specific_reson(
-            'max_pool_grad_grad_with_argmax',
+            "max_pool_grad_grad_with_argmax",
             "Not supported fmap shape = %s, kernel = (1, %u, %u, 1), stride = (1, %u, %u, 1)" %
             (fmap_shape, kernel_h, kernel_w, stride_h, stride_w))
 
@@ -651,7 +660,7 @@ def _max_pool_grad_grad_with_argmax_schedule(compute_list, sch_list):
     sch[grad_grad].compute_at(sch[res], res_mwo_outer)
 
     sch[grad_in_l1].emit_insn(grad_in_l1.op.axis[0], tbe_platform.DMA_COPY)
-    sch[grad_im2col].emit_insn(grad_im2col.op.axis[0], 'set_fmatrix', setfmatrix_dict)
+    sch[grad_im2col].emit_insn(grad_im2col.op.axis[0], "set_fmatrix", setfmatrix_dict)
     sch[grad_fractal].emit_insn(grad_fractal.op.axis[0], tbe_platform.IM2COL)
     sch[argmax_ub].emit_insn(argmax_ub.op.axis[0], tbe_platform.DMA_COPY)
     sch[tensor_zero_ub].emit_insn(tensor_zero_ub.op.axis[0], tbe_platform.DUP)
@@ -717,42 +726,41 @@ def max_pool_grad_grad_with_argmax(x,
     -------
     None
     """
-    check_shape_and_format_vailded(x, grad, argmax, y, ksize, strides, padding)
-    shape_x = x.get("shape")
-    shape_grad = grad.get("shape")
-    shape_argmax = argmax.get("shape")
-    shape_argmax = (shape_argmax[0], shape_argmax[1], shape_argmax[2], shape_argmax[3] * shape_argmax[4], 1)
+    if tbe_platform.cce_conf.intrinsic_check_support("Intrinsic_data_move_l12ub"):
+        check_shape_and_format_vailded(x, grad, argmax, y, ksize, strides, padding)
+        shape_x = x.get("shape")
+        shape_grad = grad.get("shape")
+        shape_argmax = argmax.get("shape")
+        shape_argmax = (shape_argmax[0], shape_argmax[1], shape_argmax[2], shape_argmax[3] * shape_argmax[4], 1)
 
-    dtype_x = x.get("dtype").lower()
-    dtype_grad = grad.get("dtype").lower()
+        dtype_x = x.get("dtype").lower()
+        dtype_grad = grad.get("dtype").lower()
 
-    ori_format_x = x.get("ori_format")
+        ori_format_x = x.get("ori_format")
 
-    if ksize[0] != 1 or ksize[3] != 1 or ksize[1] <= 0 or ksize[2] <= 0:
-        error_manager_vector.raise_err_check_params_rules(kernel_name, 'the dimensions of ksize are invalid',
-                                                          ['ksize'], [ksize])
-    if strides[0] != 1 or strides[3] != 1 or strides[1] <= 0 or strides[2] <= 0:
-        error_manager_vector.raise_err_check_params_rules(kernel_name, 'the dimensions of strides are invalid',
-                                                          ['strides'], [strides])
+        x_tensor = tvm.placeholder(shape_x, dtype=dtype_x, name="input_x")
 
-    x_tensor = tvm.placeholder(shape_x, dtype=dtype_x, name="input_x")
+        # argmax is continuous bool, real type is uint16
+        _, _, _, howo, _ = shape_argmax
+        shape_argmax_boolean = (shape_argmax[0], shape_argmax[1] * shape_argmax[2], howo // 16, 16, shape_argmax[4])
+        shape_argmax_boolean = list(shape_argmax_boolean[:-1]) + [shape_argmax_boolean[-1] * 16]
+        argmax_tensor = tvm.placeholder(shape_argmax_boolean, dtype="bool", name="argmax")
 
-    # argmax is continuous bool, real type is uint16
-    _, _, _, howo, _ = shape_argmax
-    shape_argmax_boolean = (shape_argmax[0], shape_argmax[1] * shape_argmax[2], howo // 16, 16, shape_argmax[4])
-    shape_argmax_boolean = list(shape_argmax_boolean[:-1]) + [shape_argmax_boolean[-1] * 16]
-    argmax_tensor = tvm.placeholder(shape_argmax_boolean, dtype="bool", name="argmax")
+        grad_tensor = tvm.placeholder(shape_grad, dtype=dtype_grad, name="input_grad")
 
-    grad_tensor = tvm.placeholder(shape_grad, dtype=dtype_grad, name="input_grad")
+        compute_list = max_pool_grad_grad_with_argmax_compute([x_tensor, argmax_tensor, grad_tensor],
+                                                              x, argmax, grad, y,
+                                                              ksize, strides, padding, ori_format_x, kernel_name)
 
-    compute_list = max_pool_grad_grad_with_argmax_compute([x_tensor, argmax_tensor, grad_tensor], x, argmax, grad, y,
-                                                          ksize, strides, padding, ori_format_x, kernel_name)
+        res = compute_list[-1]
+        sch = tvm.create_schedule(res.op)
+        _max_pool_grad_grad_with_argmax_schedule(compute_list, [sch])
 
-    res = compute_list[-1]
-    sch = tvm.create_schedule(res.op)
-    _max_pool_grad_grad_with_argmax_schedule(compute_list, [sch])
-
-    tensor_list = [x_tensor, grad_tensor, argmax_tensor, res]
-    new_config = tbe_platform.build_config_update(tbe_platform.build_config, "dummy_placeholder", True)
-    with new_config:
-        tvm.build(sch, tensor_list, "cce", name=kernel_name)
+        tensor_list = [x_tensor, grad_tensor, argmax_tensor, res]
+        new_config = tbe_platform.build_config_update(tbe_platform.build_config, "dummy_placeholder", True)
+        with new_config:
+            tvm.build(sch, tensor_list, "cce", name=kernel_name)
+    else:
+        max_pool_grad_grad_with_argmax_obj = MaxPoolGradGradWithArgmaxWithoutCbuf(x, grad, argmax, y,
+                                                                                  ksize, strides, padding, kernel_name)
+        max_pool_grad_grad_with_argmax_obj.build()

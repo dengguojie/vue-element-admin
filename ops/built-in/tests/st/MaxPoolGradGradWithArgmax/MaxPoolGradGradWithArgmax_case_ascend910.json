@@ -79,5 +79,86 @@
       }
     ],
     "case_name": "test_MaxPoolGradGradWithArgmax_000"
+  },
+  {
+    "op": "MaxPoolGradGradWithArgmax",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          184,
+          315,
+          16
+        ],
+        "format": "NHWC",
+        "name": "x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1,
+          184,
+          315,
+          16
+        ],
+        "format": "NHWC",
+        "name": "grad",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1,
+          1,
+          36,
+          1664,
+          1
+        ],
+        "format": "NC1HWC0",
+        "name": "argmax",
+        "type": "uint16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          1,
+          31,
+          53,
+          16
+        ],
+        "format": "NHWC",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "ksize",
+        "type": "list_int",
+        "value": [
+          1,
+          6,
+          6,
+          1
+        ]
+      },
+      {
+        "name": "strides",
+        "type": "list_int",
+        "value": [
+          1,
+          6,
+          6,
+          1
+        ]
+      },
+      {
+        "name": "padding",
+        "type": "string",
+        "value": "SAME"
+      }
+    ],
+    "case_name": "test_MaxPoolGradGradWithArgmax_001"
   }
 ]

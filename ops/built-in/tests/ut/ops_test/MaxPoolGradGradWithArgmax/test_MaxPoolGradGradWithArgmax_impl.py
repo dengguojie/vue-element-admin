@@ -14,6 +14,8 @@ http://www.apache.org/licenses/LICENSE-2.0
 MaxPoolGradGradWithArgmax ut case
 """
 import numpy as np
+from unittest.mock import MagicMock
+from unittest.mock import patch
 from op_test_frame.common import precision_info
 from op_test_frame.ut import OpUT
 ut_case = OpUT("MaxPoolGradGradWithArgmax", None, None)
@@ -423,13 +425,45 @@ case5 = {"params":[x, grad, argmax, y, ksize, strides, pad],
          "format_expect": [],
          "support_expect": True}
 
+inputShape, argmax_shape, outputShape, dtype, ksize, pad, strides, format = case_gen(inputShape=(100, 20, 20, 16), ksize=(1, 2, 2, 1), strides=(1, 1, 1, 1), pad="VALID")
+
+x = {"shape": inputShape, "ori_shape": inputShape, "format": format, "dtype": "float16", "ori_format": format}
+grad = {"shape": inputShape, "ori_shape": inputShape, "format": format, "dtype": "float16", "ori_format": format}
+argmax = {"shape": argmax_shape, "ori_shape": argmax_shape, "format": format, "dtype": "uint16", "ori_format": format}
+y = {"shape": outputShape, "ori_shape": outputShape, "format": format, "dtype": "float16", "ori_format": format}
+
+case6 = {"params":[x, grad, argmax, y, ksize, strides, pad],
+         "case_name": "max_pool_grad_grad_with_argmax_6",
+         "expect": "success",
+         "format_expect": [],
+         "support_expect": True}
+
+inputShape, argmax_shape, outputShape, dtype, ksize, pad, strides, format = case_gen(inputShape=(10, 10, 500, 16), ksize=(1, 10, 10, 1), strides=(1, 1, 1, 1), pad="VALID")
+
+x = {"shape": inputShape, "ori_shape": inputShape, "format": format, "dtype": "float16", "ori_format": format}
+grad = {"shape": inputShape, "ori_shape": inputShape, "format": format, "dtype": "float16", "ori_format": format}
+argmax = {"shape": argmax_shape, "ori_shape": argmax_shape, "format": format, "dtype": "uint16", "ori_format": format}
+y = {"shape": outputShape, "ori_shape": outputShape, "format": format, "dtype": "float16", "ori_format": format}
+
+case7 = {"params":[x, grad, argmax, y, ksize, strides, pad],
+         "case_name": "max_pool_grad_grad_with_argmax_7",
+         "expect": "success",
+         "format_expect": [],
+         "support_expect": True}
+
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case2)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case3)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case4)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case5)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case6)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case7)
 
-if __name__ == '__main__':
-    ut_case.run()
-    # ut_case.run("Ascend910")
-    exit(0)
+vals = {("Intrinsic_data_move_l12ub",):False}
+def side_effects(*args):
+    return vals[args]
+
+with patch("te.platform.cce_conf.intrinsic_check_support", MagicMock(side_effect=side_effects)):
+    ut_case.run("Ascend910")
+
+ut_case.run("Ascend910")
