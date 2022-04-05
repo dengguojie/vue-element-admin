@@ -21,16 +21,10 @@
 #include "register/register.h"
 
 namespace domi {
-Status AutoMappingFnNpuGetFloatStatusV2(const google::protobuf::Message* op_src, ge::Operator& op) {
-    map<string, pair<string, string>> value;
-    value["in"] = pair<string, string>("addr", "N");
-    AutoMappingFnDynamic(op_src, op, value);
-    return SUCCESS;
-}
 // register NPUGetFloatStatusV2 op to GE
 REGISTER_CUSTOM_OP("NPUGetFloatStatusV2")
     .FrameworkType(TENSORFLOW)
     .OriginOpType("NpuGetFloatStatusV2")
-    .ParseParamsFn(AutoMappingFnNpuGetFloatStatusV2)
+    .ParseParamsFn(AutoMappingFn)
     .ImplyType(ImplyType::TVM);
 }  // namespace domi

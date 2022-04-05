@@ -17,6 +17,8 @@ n_p_u_clear_float_status_v2
 """
 from te.utils import para_check
 from te import tik
+from te.platform.cce_build import build_config
+from te.platform.cce_build import build_config_update
 
 
 # 'pylint: disable=too-few-public-methods
@@ -24,7 +26,7 @@ class Constant:
     """
     The class for constant
     """
-    NUM_EIGHT = 8
+    ELE_NUM_PER_BLOCK_INT32 = 8
 
 
 # 'pylint:disable=invalid-name,too-many-locals,unused-argument,unused-variable
@@ -43,14 +45,17 @@ def n_p_u_clear_float_status_v2(kernel_name="n_p_u_clear_float_status_v2"):
     """
     tik_instance = tik.Tik()
 
-    spec_workspace = tik_instance.Tensor("float32", (Constant.NUM_EIGHT,),
+    scalar_zero = tik_instance.Scalar(dtype="int32", init_value=0)
+    spec_workspace = tik_instance.Tensor("int32", (Constant.ELE_NUM_PER_BLOCK_INT32,),
                                          name="spec_workspace", scope=tik.scope_gm, is_global_tensor=True)
 
-    ub_tensor = tik_instance.Tensor("float32", (Constant.NUM_EIGHT,), name="ub_tensor", scope=tik.scope_ubuf)
+    ub_tensor = tik_instance.Tensor("int32", (Constant.ELE_NUM_PER_BLOCK_INT32,), name="ub_tensor",
+                                    scope=tik.scope_ubuf)
 
-    tik_instance.vec_dup(8, ub_tensor, 0, 1, 8)
-
-    tik_instance.data_move(spec_workspace, ub_tensor, 0, 1, 1, 8, 8)
-
-    tik_instance.BuildCCE(kernel_name, inputs=[], outputs=[])
+    for i in range(Constant.ELE_NUM_PER_BLOCK_INT32):
+        ub_tensor[i].set_as(scalar_zero)
+    tik_instance.data_move(spec_workspace, ub_tensor, 0, 1, 1, 0, 0)
+    new_build_config = build_config_update(build_config, "status_check", False)
+    with new_build_config:
+        tik_instance.BuildCCE(kernel_name, inputs=[], outputs=[])
     return tik_instance

@@ -17,6 +17,8 @@ n_p_u_get_float_status_v2
 """
 from te.utils import para_check
 from te import tik
+from te.platform.cce_build import build_config
+from te.platform.cce_build import build_config_update
 
 
 # 'pylint: disable=too-few-public-methods
@@ -24,15 +26,12 @@ class Constant:
     """
     The class for constant
     """
-    NUM_EIGHT = 8
-    MASK_H = 0
-    # After binary conversion, it is 11111110, the last digit can be preserved.
-    MASK_L = 2**8 - 2
+    ELE_NUM_PER_BLOCK_INT32 = 8
 
 
 # 'pylint:disable=invalid-name,too-many-locals,unused-argument,unused-variable
-@para_check.check_op_params(para_check.DYNAMIC_INPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
-def n_p_u_get_float_status_v2(addr, data, kernel_name="n_p_u_get_float_status_v2"):
+@para_check.check_op_params(para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
+def n_p_u_get_float_status_v2(data, kernel_name="n_p_u_get_float_status_v2"):
     """
     the main function of n_p_u_get_float_status_v2
 
@@ -48,27 +47,19 @@ def n_p_u_get_float_status_v2(addr, data, kernel_name="n_p_u_get_float_status_v2
     """
     tik_instance = tik.Tik()
 
-    tensor_num = len(addr)
-    tensor_list = []
-    for i in range(tensor_num):
-        input_data = tik_instance.Tensor("float32", (Constant.NUM_EIGHT,),
-                                         name="input_data_" + str(i), scope=tik.scope_gm)
-        tensor_list.append(input_data)
-
-    spec_workspace = tik_instance.Tensor("float32", (Constant.NUM_EIGHT,),
+    spec_workspace = tik_instance.Tensor("int32", (Constant.ELE_NUM_PER_BLOCK_INT32,),
                                          name="spec_workspace", scope=tik.scope_gm, is_global_tensor=True)
+    ub_tensor = tik_instance.Tensor("int32", (Constant.ELE_NUM_PER_BLOCK_INT32,), name="ub_tensor",
+                                    scope=tik.scope_ubuf)
+    scalar_zero = tik_instance.Scalar(dtype="int32", init_value=0)
+    output_data = tik_instance.Tensor("int32", (Constant.ELE_NUM_PER_BLOCK_INT32,), name="output_data",
+                                      scope=tik.scope_gm)
 
-    ub_tensor = tik_instance.Tensor("float32", (Constant.NUM_EIGHT,), name="ub_tensor", scope=tik.scope_ubuf)
-    ub_tensor_keep_last_one = tik_instance.Tensor("float32", (Constant.NUM_EIGHT,), name="ub_tensor_keep_last_one",
-                                                  scope=tik.scope_ubuf)
-    output_data = tik_instance.Tensor("float32", (Constant.NUM_EIGHT,), name="output_data", scope=tik.scope_gm)
-
-    tik_instance.data_move(ub_tensor, spec_workspace, 0, 1, 1, 8, 8)
-    mask_list = [Constant.MASK_H, Constant.MASK_L]
-    tik_instance.vmuls(mask_list, ub_tensor_keep_last_one, ub_tensor,
-                       0,
-                       1, 1, 1, 8, 8)
-    tik_instance.data_move(output_data, ub_tensor_keep_last_one, 0, 1, 1, 8, 8)
-
-    tik_instance.BuildCCE(kernel_name, inputs=tensor_list, outputs=[output_data])
+    tik_instance.data_move(ub_tensor, spec_workspace, 0, 1, 1, 0, 0)
+    for i in range(1, Constant.ELE_NUM_PER_BLOCK_INT32):
+        ub_tensor[i].set_as(scalar_zero)
+    tik_instance.data_move(output_data, ub_tensor, 0, 1, 1, 0, 0)
+    new_build_config = build_config_update(build_config, "status_check", False)
+    with new_build_config:
+        tik_instance.BuildCCE(kernel_name, inputs=[], outputs=[output_data])
     return tik_instance
