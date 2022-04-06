@@ -66,7 +66,20 @@ case3 = {"params": [
     "support_expect": True
 }
 
+case4 = {
+    "params": [{"shape": (1, 1, 1), "dtype": "float32", "format": "ND"},
+               {"shape": (1, 1, 1), "dtype": "float32", "format": "ND"},
+               {"shape": (1, 1, 1), "dtype": "float32", "format": "ND"},
+               {"shape": (5, 5, 512), "dtype": "float32", "format": "ND"}
+               ],
+    "case_name": "test_dsl_mul_add_rsqrt_fuse_004",
+    "expect": "success",
+    "support_expect": True
+}
+
+
 ut_case.add_case(["all",], case1)
 ut_case.add_case(["all",], case2)
 ut_case.add_case(["all",], case3)
+ut_case.add_case(["all",], case4)
 

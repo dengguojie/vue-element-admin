@@ -439,6 +439,8 @@ class ElewiseSchedule(VectorSchedule):
             _out_dtype = tensor.dtype
             if _out_shape == shape and _out_dtype == dtype:
                 continue
+            if _out_shape[block_split_axis] < block_split_inner_size:
+                continue
             data_size = 1
             for i in range(ub_split_axis + 1, len(_out_shape), 1):
                 data_size = data_size * _out_shape[i]
@@ -450,8 +452,9 @@ class ElewiseSchedule(VectorSchedule):
                 ub_split_axis_count = _out_shape[ub_split_axis]
             ub_split_outer = math.ceil(ub_split_axis_count / ub_split_inner)
             if ub_split_outer == 1:
-                tail_size = DTYPE_WIDTH_MAP.get(dtype) * 2 * ub_split_inner * data_size
-                if tail_size < 32 or ub_split_axis_count < ub_split_inner:
+                true_ub_axis_count = min(ub_split_axis_count, ub_split_inner)
+                tail_size = DTYPE_WIDTH_MAP.get(dtype) * 2 * true_ub_axis_count * data_size
+                if tail_size < 32:
                     ub_tail_tag = 1
                     break
                 else:
@@ -462,7 +465,9 @@ class ElewiseSchedule(VectorSchedule):
                     allow_tail_count = 32 / (DTYPE_WIDTH_MAP.get(dtype) * 2 * data_size)
                     new_ub_split_inner = math.floor((ub_split_axis_count - allow_tail_count) / (ub_split_outer - 1))
                     new_ub_inner_size = DTYPE_WIDTH_MAP.get(dtype) * 2 * new_ub_split_inner * data_size
-                    if new_ub_inner_size < 32:
+                    new_tail_size = DTYPE_WIDTH_MAP.get(dtype) * 2 * \
+                                    (ub_split_axis_count % new_ub_split_inner) * data_size
+                    if new_ub_inner_size < 32 or new_tail_size < 32:
                         ub_tail_tag = 1
                         break
                     ub_split_inner = new_ub_split_inner
