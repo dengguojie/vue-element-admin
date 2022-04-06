@@ -16,7 +16,7 @@
 
 #ifndef AICPU_CONTEXT_COMMON_NOTIFICATION_H
 #define AICPU_CONTEXT_COMMON_NOTIFICATION_H
-#include <cassert>
+
 #include <atomic>
 #include <condition_variable>
 #include <mutex>

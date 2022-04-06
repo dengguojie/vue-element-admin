@@ -15,7 +15,7 @@
  */
 #include "cpu_kernel_cache.h"
 
-#include <limits.h>
+#include <climits>
 
 #include "cce/aicpu_engine_struct.h"
 #include "cpu_kernel.h"

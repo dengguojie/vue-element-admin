@@ -85,7 +85,7 @@ class AICPU_VISIBILITY CpuKernelUtils {
    * @param attr_value: attr value impl
    * @return std::shared_ptr<AttrValue>: attr value ptr
    */
-  static std::shared_ptr<AttrValue> CreateAttrValue(AttrValueImpl *attr_value);
+  static std::shared_ptr<AttrValue> CreateAttrValue(AttrValueImpl *impl);
 
   /*
    * get attr value impl.

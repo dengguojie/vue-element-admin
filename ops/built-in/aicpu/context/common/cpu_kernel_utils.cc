@@ -124,8 +124,8 @@ std::shared_ptr<TensorShape> CpuKernelUtils::CreateTensorShape(
  * get tensor shape impl.
  */
 std::shared_ptr<TensorShapeImpl> CpuKernelUtils::GetImpl(
-    const TensorShape *tensor_shape) {
-  return tensor_shape->impl_;
+    const TensorShape *tensorShape) {
+  return tensorShape->impl_;
 }
 
 /*

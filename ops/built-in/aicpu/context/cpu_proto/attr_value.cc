@@ -46,13 +46,13 @@ void AttrValue::SetListString(const std::vector<std::string> &bytes) {
 /*
  * set string value to attr.
  */
-void AttrValue::SetString(const std::string &byte) { impl_->SetString(byte); }
+void AttrValue::SetString(const std::string &string) { impl_->SetString(string); }
 
 /*
  * attr add string value to list.
  */
-void AttrValue::AddListString(const std::string &str) {
-  impl_->AddListString(str);
+void AttrValue::AddListString(const std::string &string) {
+  impl_->AddListString(string);
 }
 
 /*

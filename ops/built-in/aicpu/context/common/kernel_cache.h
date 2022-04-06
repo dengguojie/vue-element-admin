@@ -16,7 +16,7 @@
 #ifndef AICPU_CONTEXT_COMMON_KERNEL_CACHE_H
 #define AICPU_CONTEXT_COMMON_KERNEL_CACHE_H
 
-#include <stdint.h>
+#include <cstdint>
 
 #include <list>
 #include <memory>

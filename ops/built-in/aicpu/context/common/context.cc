@@ -31,27 +31,27 @@ CpuKernelContext::CpuKernelContext(DeviceType type) {
   }
 }
 
-uint32_t CpuKernelContext::Init(NodeDef *node_def) {
-  KERNEL_CHECK_NULLPTR(node_def, KERNEL_STATUS_PARAM_INVALID,
+uint32_t CpuKernelContext::Init(NodeDef *nodeDef) {
+  KERNEL_CHECK_NULLPTR(nodeDef, KERNEL_STATUS_PARAM_INVALID,
                        "Node def is null.")
-  op_ = node_def->GetOpType();
+  op_ = nodeDef->GetOpType();
   KERNEL_LOG_DEBUG("Construct the ctx of the op[%s] begin.", op_.c_str());
-  for (int32_t i = 0; i < node_def->InputsSize(); i++) {
-    auto input = node_def->MutableInputs(i);
+  for (int32_t i = 0; i < nodeDef->InputsSize(); i++) {
+    auto input = nodeDef->MutableInputs(i);
     KERNEL_CHECK_NULLPTR(input, KERNEL_STATUS_PARAM_INVALID,
                          "Get input[%d] tensor failed in op[%s].", i, op_.c_str())
     inputs_.emplace_back(std::move(input));
   }
 
-  for (int32_t i = 0; i < node_def->OutputsSize(); i++) {
-    auto output = node_def->MutableOutputs(i);
+  for (int32_t i = 0; i < nodeDef->OutputsSize(); i++) {
+    auto output = nodeDef->MutableOutputs(i);
     KERNEL_CHECK_NULLPTR(output, KERNEL_STATUS_PARAM_INVALID,
                          "Get output[%d] tensor failed in op[%s].", i,
                          op_.c_str())
     outputs_.emplace_back(std::move(output));
   }
 
-  auto attrMap = node_def->Attrs();
+  auto attrMap = nodeDef->Attrs();
   for (auto iter = attrMap.begin(); iter != attrMap.end(); ++iter) {
     auto attr_value_ptr = iter->second;
     KERNEL_CHECK_NULLPTR(attr_value_ptr, KERNEL_STATUS_PARAM_INVALID,
