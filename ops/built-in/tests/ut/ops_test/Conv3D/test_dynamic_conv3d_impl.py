@@ -793,6 +793,7 @@ def test_conv3d_fuzz_build_tilingcase(test_arg):
                 'range':  ((16, 32), (1, 2), (2, 2), (16, 32), (16, 32), (16, 16))
             }, (1, 1, 1, 1, 1), [0, 0, 0, 0, 0, 0], (1, 1, 1, 1, 1), 1, 'NCDHW', 0, 'conv3d_fuzz_build_generalization']
         conv3d(*input_list)
+
 print("adding test_conv3d_fuzz_build_tilingcase testcase")
 ut_case.add_cust_test_func(support_soc=('Ascend910A'), test_func=test_conv3d_fuzz_build_tilingcase)
 

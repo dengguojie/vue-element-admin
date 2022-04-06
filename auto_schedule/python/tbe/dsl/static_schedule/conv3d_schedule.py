@@ -1789,6 +1789,13 @@ class CceConv3dOp:
                     align_util = 16
                     al1_m = compute_util.align(al1_m, align_util)
                 return al1_m * cin1_g * fmap_c0 * kernel_d
+        # Reused UB memory
+        if bias_flag:
+            bias_add_tensor = tensor_map['bias_add_tensor']
+            sch[c_ub].reused_by(bias_add_tensor)
+            sch[bias_add_tensor].buffer_align((1, 1), (1, 1),
+                               (1, tbe_platform.CUBE_MKN[bias_add_tensor.dtype]["mac"][0]),
+                               (1, tbe_platform.CUBE_MKN[bias_add_tensor.dtype]["mac"][2]))
 
         if self.var_map:
             sch[al1].set_buffer_size(_get_al1_bound())
@@ -1807,14 +1814,6 @@ class CceConv3dOp:
             sch[bl0].mem_unique()
             sch[c_col].mem_unique()
             return True
-
-        # Reused UB memory
-        if bias_flag:
-            bias_add_tensor = tensor_map['bias_add_tensor']
-            sch[c_ub].reused_by(bias_add_tensor)
-            sch[bias_add_tensor].buffer_align((1, 1), (1, 1),
-                               (1, tbe_platform.CUBE_MKN[bias_add_tensor.dtype]["mac"][0]),
-                               (1, tbe_platform.CUBE_MKN[bias_add_tensor.dtype]["mac"][2]))
 
         tensor_map.clear()
         dim_map.clear()
