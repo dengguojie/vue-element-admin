@@ -17,5 +17,6 @@
 """
 concat
 """
-from . import concat_tilingcase
+from . import concat_pattern_parser
 from . import concat_schedule
+from . import concat_tilingcase

@@ -17,6 +17,7 @@
 """
 broadcast
 """
+from . import broadcast_pattern_parser
 from . import broadcast_schedule
-from . import broadcast_tilingcase
 from . import broadcast_schedule_milan
+from . import broadcast_tilingcase

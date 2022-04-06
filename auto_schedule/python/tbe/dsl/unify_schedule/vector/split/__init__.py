@@ -17,5 +17,6 @@
 """
 split
 """
-from . import split_tilingcase
+from . import split_pattern_parser
 from . import split_schedule
+from . import split_tilingcase

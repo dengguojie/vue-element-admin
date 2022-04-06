@@ -18,147 +18,17 @@
 auto_schedule template, if user call auto_schedule, this file will choose a
 corresponding schedule template for user's compute
 """
-from enum import Enum
-from enum import auto
 from typing import Tuple
-from typing import Set
 
 from tbe import tvm
 from tbe.common.register import get_operator
 from tbe.dsl.base import operation
+from tbe.dsl.unify_schedule.constants import COMPUTE_TYPE_INSN_MAPPING
+from tbe.dsl.unify_schedule.constants import ComputeType
+from tbe.dsl.unify_schedule.pattern_manager import parse
 
 from . import Pattern
 from . import util
-
-ELEWISE_COMPUTE = {
-    "elewise_binary_add", "elewise_binary_sub", "elewise_binary_div",
-    "elewise_binary_mul", "elewise_binary_min", "elewise_binary_max",
-    "elewise_binary_and", "elewise_binary_or", "elewise_binary_vcmpv_le",
-    "elewise_binary_vcmpv_lt", "elewise_binary_vcmpv_ge",
-    "elewise_binary_vcmpv_gt", "elewise_binary_vcmpv_ne",
-    "elewise_binary_vcmpv_eq", "emit_insn_elewise_binary_cmp",
-    "elewise_binary_logic", "elewise_single_log", "elewise_single_exp",
-    "elewise_single_rec", "elewise_single_VS_add", "elewise_single_VS_mul",
-    "elewise_single_VS_max", "elewise_single_VS_min", "elewise_single_abs",
-    "elewise_single_relu", "elewise_single_not", "elewise_single_sqrt",
-    "elewise_single_rsqrt", "elewise_single_lrelu", "elewise_multiple_mla",
-    "elewise_multiple_madd", "elewise_multiple_maddrelu",
-    "elewise_multiple_sel", "elewise_binary_scalar_axpy",
-    "elewise_binary_cmpsel_gt", "elewise_binary_cmpsel_ge",
-    "elewise_binary_cmpsel_lt", "elewise_binary_cmpsel_le",
-    "elewise_binary_cmpsel_eq", "elewise_binary_cmpsel_ne",
-    "elewise_binary_vcmpv_gt", "elewise_binary_vcmpv_ge",
-    "elewise_binary_vcmpv_lt", "elewise_binary_vcmpv_le",
-    "elewise_binary_vcmpv_eq", "elewise_binary_vcmpv_ne",
-    "elewise_binary_addrelu", "elewise_binary_subrelu",
-}
-
-CAST_COMPUTE = {
-    "elewise_single_cast", "elewise_single_ceil", "elewise_single_floor",
-    "elewise_single_trunc", "elewise_single_round", "elewise_single_round_d",
-}
-
-BROADCAST_COMPUTE = {
-    "unified_broadcast", "broadcast", "unknown_broadcast"
-}
-
-REDUCE_COMPUTE = {
-    "reduce_min", "reduce_max", "reduce_sum",
-    "reduce_prod", "tuple_reduce_sum",
-}
-
-TRANSPOSE_COMPUTE = {
-    "transpose"
-}
-
-TRANSDATA_COMPUTE = {
-    "transdata"
-}
-
-SET_VALUE_COMPUTE = {
-    "set_value"
-}
-
-CONCAT_COMPUTE = {
-    "concat"
-}
-
-SPLIT_COMPUTE = {
-    "split"
-}
-
-CONV2D_COMPUTE = {
-    "conv_vector_remove_pad",
-    "convolution_C",
-    "convolution_C_UB",
-    "convolution_c_col",
-    "convolution_c_col_bias",
-    "convolution_res_conv2d",
-    "convolution_res_fp32_conv2d"
-}
-
-CONV2D_BP_INPUT_COMPUTE = {
-    "conv2d_backprop_input",
-    "conv2d_backprop_input_opti"
-}
-
-CONV2D_BP_FILTER_COMPUTE = {
-    "conv2d_backprop_filterdw_ddr"
-}
-
-CONV3D_COMPUTE = {
-    "conv3d_fuse_fmap_tensor",
-    "conv3d_c_col"
-}
-
-MAT_MUL_COMPUTE = {
-    "matmul",
-    "gemm"
-}
-
-CONV3D_BP_INPUT_COMPUTE = {
-    "conv3d_backprop_input_c_ub"
-}
-
-CONV3D_BP_FILTER_COMPUTE = {
-    "conv3d_backprop_filterdw_ddr"
-}
-
-GATHER_COMPUTE = {
-    "gather",
-    "gather_nd",
-}
-
-SLICE_COMPUTE = {
-    "slice"
-}
-
-
-class ComputeType(Enum):
-    """
-    ComputeType
-    """
-    ANY = auto()
-    UNKNOWN = auto()
-    PLACEHOLDER = auto()
-    ELEWISE = auto()
-    BROADCAST = auto()
-    REDUCE = auto()
-    TRANSPOSE = auto()
-    TRANSDATA = auto()
-    SET_VALUE = auto()
-    CONCAT = auto()
-    SPLIT = auto()
-    CAST = auto()
-    CONV2D = auto()
-    CONV2D_BP_INPUT = auto()
-    CONV2D_BP_FILTER = auto()
-    CONV3D_BP_INPUT = auto()
-    CONV3D = auto()
-    MAT_MUL = auto()
-    CONV3D_BP_FILTER = auto()
-    GATHER = auto()
-    SLICE = auto()
 
 
 def _get_custom_pattern():
@@ -199,17 +69,6 @@ def _parse_pattern(outs):
     # key: compute type, @see enum(ComputeType)
     # value: the special compute type tensor
     compute_type_size_map, compute_type_tensor_map = _dfs_compute(outs)
-    funcs = [(lambda: _is_elewise(compute_type_size_map), Pattern.ELEMWISE),
-             (lambda: _is_broadcast(compute_type_size_map), Pattern.BROADCAST),
-             (lambda: _is_reduce(compute_type_size_map), Pattern.REDUCE),
-             (lambda: _is_norm(outs, compute_type_size_map, compute_type_tensor_map), Pattern.NORM),
-             (lambda: _is_gather(compute_type_size_map), Pattern.GATHER),
-             (lambda: _is_slice(compute_type_size_map), Pattern.SLICE),
-             (lambda: _is_transpose(compute_type_size_map), Pattern.TRANSPOSE),
-             (lambda: _is_transdata(compute_type_size_map), Pattern.TRANSDATA),
-             (lambda: _is_tuple_reduce(outs, compute_type_tensor_map), Pattern.TUPLE_REDUCE),
-             (lambda: _is_concat(compute_type_size_map), Pattern.CONCAT),
-             (lambda: _is_split(compute_type_size_map), Pattern.SPLIT)]
 
     if ComputeType.CONV3D in compute_type_size_map:
         return Pattern.CONV3D
@@ -224,198 +83,14 @@ def _parse_pattern(outs):
     if ComputeType.MAT_MUL in compute_type_size_map:
         return Pattern.MAT_MUL
 
-    for func, pattern in funcs:
-        if func():
-            return pattern
+    pattern = parse(outs, compute_type_size_map, compute_type_tensor_map)
+    if pattern is not None:
+        return pattern
 
     if ComputeType.CONV3D_BP_FILTER in compute_type_size_map:
         return Pattern.CONV3D_BACKPROP_FILTER
 
     return Pattern.OPAQUE
-
-
-def _is_elewise(compute_type_size_map: dict):
-    ph_size = compute_type_size_map.get(ComputeType.PLACEHOLDER, 0)
-    elewise_size = compute_type_size_map.get(ComputeType.ELEWISE, 0)
-    cast_size = compute_type_size_map.get(ComputeType.CAST, 0)
-    total = compute_type_size_map.get(ComputeType.ANY, 0)
-    return ph_size + elewise_size + cast_size == total
-
-
-def _is_broadcast(compute_type_size_map: dict):
-    ph_size = compute_type_size_map.get(ComputeType.PLACEHOLDER, 0)
-    elewise_size = compute_type_size_map.get(ComputeType.ELEWISE, 0)
-    broadcast_size = compute_type_size_map.get(ComputeType.BROADCAST, 0)
-    cast_size = compute_type_size_map.get(ComputeType.CAST, 0)
-    total = compute_type_size_map.get(ComputeType.ANY, 0)
-    return ph_size + elewise_size + broadcast_size + cast_size == total
-
-
-def _is_reduce(compute_type_size_map):
-    reduce_size = compute_type_size_map.get(ComputeType.REDUCE, 0)
-    if 1 != reduce_size:
-        return
-
-    placeholder_size = compute_type_size_map.get(ComputeType.PLACEHOLDER, 0)
-    elewise_size = compute_type_size_map.get(ComputeType.ELEWISE, 0)
-    cast_size = compute_type_size_map.get(ComputeType.CAST, 0)
-
-    total = compute_type_size_map.get(ComputeType.ANY, 0)
-    return placeholder_size + elewise_size + reduce_size + cast_size == total
-
-
-def _is_norm(outs, compute_type_size_map, compute_type_tensor_map):
-    # norm
-    # 1. support multi outs but out shape is before reduce shape or after reduce shape
-    # 2. exist reduce and broadcast at the same time
-    # 3. the axis of all reduce is same
-    # 4. before reduce shape is equal to after broadcast shape
-
-    def __judge_tvm_shape_equal(_shape_a, _shape_b):
-        _length_a = len(_shape_a)
-        _length_b = len(_shape_b)
-        if _length_a != _length_b:
-            return False
-        for _idx in range(_length_a):
-            if not util.expr_equal(_shape_a[_idx], _shape_b[_idx]):
-                return False
-
-        return True
-
-    def __judge_legal_output_shape(output_shape):
-        return True if __judge_tvm_shape_equal(before_reduce_shape, output_shape) or \
-                       __judge_tvm_shape_equal(after_reduce_shape, output_shape) else False
-
-    placeholder_size = compute_type_size_map.get(ComputeType.PLACEHOLDER, 0)
-    elewise_size = compute_type_size_map.get(ComputeType.ELEWISE, 0)
-    broadcast_size = compute_type_size_map.get(ComputeType.BROADCAST, 0)
-    cast_size = compute_type_size_map.get(ComputeType.CAST, 0)
-    reduce_size = compute_type_size_map.get(ComputeType.REDUCE, 0)
-    set_value_size = compute_type_size_map.get(ComputeType.SET_VALUE, 0)
-    total = compute_type_size_map.get(ComputeType.ANY, 0)
-
-    illegal_type_size = (reduce_size == 0 or broadcast_size == 0) or \
-                        (placeholder_size + elewise_size + reduce_size + cast_size +
-                         broadcast_size + set_value_size != total)
-    if illegal_type_size:
-        return False
-
-    reduce_tensor_list = compute_type_tensor_map[ComputeType.REDUCE]
-    broadcast_tensor_list = compute_type_tensor_map[ComputeType.BROADCAST]
-
-    before_reduce_shape = reduce_tensor_list[0].op.input_tensors[0].shape
-    after_reduce_shape = reduce_tensor_list[0].shape
-    after_broadcast_shape = broadcast_tensor_list[0].shape
-
-    if isinstance(outs, (list, tuple)):
-        for single_out in outs:
-            if not __judge_legal_output_shape(single_out.shape):
-                return False
-    else:
-        if not __judge_legal_output_shape(outs.shape):
-            return False
-
-    if not __judge_tvm_shape_equal(before_reduce_shape, after_broadcast_shape):
-        return False
-
-    if reduce_size > 1:
-        for i in range(1, reduce_size):
-            illegal_condition = \
-                not (__judge_tvm_shape_equal(before_reduce_shape, reduce_tensor_list[i].op.input_tensors[0].shape) and
-                     __judge_tvm_shape_equal(after_reduce_shape, reduce_tensor_list[i].shape))
-            if illegal_condition:
-                return False
-
-    if broadcast_size > 1:
-        for i in range(1, broadcast_size):
-            if not __judge_tvm_shape_equal(after_broadcast_shape, broadcast_tensor_list[i].shape):
-                return False
-
-    return True
-
-
-def _is_gather(compute_type_size_map: dict):
-    ph_size = compute_type_size_map.get(ComputeType.PLACEHOLDER, 0)
-    gather_size = compute_type_size_map.get(ComputeType.GATHER, 0)
-    total = compute_type_size_map.get(ComputeType.ANY, 0)
-    return ph_size + gather_size == total
-
-
-def _is_slice(compute_type_size_map: dict):
-    ph_size = compute_type_size_map.get(ComputeType.PLACEHOLDER, 0)
-    slice_size = compute_type_size_map.get(ComputeType.SLICE, 0)
-    total = compute_type_size_map.get(ComputeType.ANY, 0)
-    return ph_size + slice_size == total and slice_size == 1
-
-
-def _is_transpose(compute_type_size_map: dict):
-    ph_size = compute_type_size_map.get(ComputeType.PLACEHOLDER, 0)
-    transpose_size = compute_type_size_map.get(ComputeType.TRANSPOSE, 0)
-    total = compute_type_size_map.get(ComputeType.ANY, 0)
-    return ph_size + transpose_size == total
-
-
-def _is_transdata(compute_type_size_map: dict):
-    ph_size = compute_type_size_map.get(ComputeType.PLACEHOLDER, 0)
-    transdata_size = compute_type_size_map.get(ComputeType.TRANSDATA, 0)
-    total = compute_type_size_map.get(ComputeType.ANY, 0)
-    return ph_size + transdata_size == total
-
-
-def _is_concat(compute_type_size_map: dict):
-    ph_size = compute_type_size_map.get(ComputeType.PLACEHOLDER, 0)
-    concat_size = compute_type_size_map.get(ComputeType.CONCAT, 0)
-    total = compute_type_size_map.get(ComputeType.ANY, 0)
-    return ph_size + concat_size == total
-
-
-def _is_split(compute_type_size_map: dict):
-    ph_size = compute_type_size_map.get(ComputeType.PLACEHOLDER, 0)
-    split_size = compute_type_size_map.get(ComputeType.SPLIT, 0)
-    total = compute_type_size_map.get(ComputeType.ANY, 0)
-    return ph_size + split_size == total
-
-
-def _is_tuple_reduce(outs, compute_type_tensor_map):
-    if ComputeType.REDUCE not in compute_type_tensor_map:
-        return False
-    reduce_tensors = compute_type_tensor_map.get(ComputeType.REDUCE)
-    # check reduce tensors' shape
-    reduce_tensor_shape = [tensor.shape for tensor in reduce_tensors]
-    reduce_tensor_shape = set([tuple(map(str, _shape)) for _shape in reduce_tensor_shape])
-    if len(reduce_tensor_shape) > 1:
-        return False
-    # check reduce axis
-    reduce_axis = [axis.var for axis in reduce_tensors[0].op.body[0].axis]
-    for tensor in reduce_tensors:
-        axes = [axis.var for axis in tensor.op.body[0].axis]
-        if not reduce_axis == axes:
-            return False
-    # check intermediate output, res tensor should not be any tensor's input tensors
-    for tensor in compute_type_tensor_map[ComputeType.ANY]:
-        if set(tensor.op.input_tensors).intersection(set(outs)):
-            return False
-    # check reduce node cannot be followed by any broadcast node
-    # check broadcast node cannot be followed by any broadcast node
-    if ComputeType.BROADCAST not in compute_type_tensor_map:
-        return True
-    broadcast_tensors = compute_type_tensor_map[ComputeType.BROADCAST]
-    reduce_broadcast_tensor_set: Set = set(reduce_tensors).union(set(broadcast_tensors))
-    for tensor in broadcast_tensors:
-        if reduce_broadcast_tensor_set.intersection(_poset(tensor)):
-            return False
-    
-    return True
-
-
-def _poset(_tensor):
-    tensors = set(_tensor.op.input_tensors)
-    queue = set(_tensor.op.input_tensors)
-    while queue:
-        tensor = queue.pop()
-        tensors.update(tensor.op.input_tensors)
-        queue.update(tensor.op.input_tensors)
-    return tensors
 
 
 def _dfs_compute(outs) -> Tuple[dict, dict]:
@@ -460,27 +135,7 @@ def _get_compute_type(tensor: tvm.tensor.Tensor) -> ComputeType:
         return ComputeType.UNKNOWN
 
     insn = util.get_dsl_insn(tensor)
-    insn_compute_type_mapping = [
-        (ELEWISE_COMPUTE, ComputeType.ELEWISE),
-        (BROADCAST_COMPUTE, ComputeType.BROADCAST),
-        (CAST_COMPUTE, ComputeType.CAST),
-        (REDUCE_COMPUTE, ComputeType.REDUCE),
-        (GATHER_COMPUTE, ComputeType.GATHER),
-        (SLICE_COMPUTE, ComputeType.SLICE),
-        (TRANSPOSE_COMPUTE, ComputeType.TRANSPOSE),
-        (TRANSDATA_COMPUTE, ComputeType.TRANSDATA),
-        (SET_VALUE_COMPUTE, ComputeType.SET_VALUE),
-        (CONCAT_COMPUTE, ComputeType.CONCAT),
-        (SPLIT_COMPUTE, ComputeType.SPLIT),
-        (CONV3D_COMPUTE, ComputeType.CONV3D),
-        (CONV2D_COMPUTE, ComputeType.CONV2D),
-        (CONV2D_BP_INPUT_COMPUTE, ComputeType.CONV2D_BP_INPUT),
-        (CONV2D_BP_FILTER_COMPUTE, ComputeType.CONV2D_BP_FILTER),
-        (CONV3D_BP_INPUT_COMPUTE, ComputeType.CONV3D_BP_INPUT),
-        (MAT_MUL_COMPUTE, ComputeType.MAT_MUL),
-        (CONV3D_BP_FILTER_COMPUTE, ComputeType.CONV3D_BP_FILTER)
-    ]
-    for insns, compute_type in insn_compute_type_mapping:
+    for compute_type, insns in COMPUTE_TYPE_INSN_MAPPING.items():
         if insn in insns:
             return compute_type
 

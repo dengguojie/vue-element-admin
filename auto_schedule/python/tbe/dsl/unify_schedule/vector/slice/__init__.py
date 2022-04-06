@@ -17,5 +17,6 @@
 """
 slice schedule
 """
+from . import slice_pattern_parser
 from . import slice_schedule
 from . import slice_tilingcase

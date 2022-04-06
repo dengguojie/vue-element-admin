@@ -17,5 +17,6 @@
 """
 reduce
 """
+from . import reduce_pattern_parser
 from . import reduce_schedule
 from . import reduce_tilingcase

@@ -17,7 +17,8 @@
 """
 tuple reduce
 """
+from . import tuple_reduce_pattern_parser
 from . import tuple_reduce_schedule
-from . import tuple_reduce_tilingcase
 from . import tuple_reduce_schedule_helper
+from . import tuple_reduce_tilingcase
 from . import tuple_reduce_tilingcase_info

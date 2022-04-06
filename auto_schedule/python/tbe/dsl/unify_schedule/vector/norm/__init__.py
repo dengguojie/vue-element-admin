@@ -17,5 +17,6 @@
 """
 norm
 """
+from . import norm_pattern_parser
 from . import norm_schedule
 from . import norm_tilingcase

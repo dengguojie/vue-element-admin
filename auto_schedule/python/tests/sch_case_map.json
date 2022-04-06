@@ -505,5 +505,41 @@
     ],
     "auto_schedule/python/tbe/dsl/unify_schedule/extract_image_patches_schedule.py":[
         "extract_image_patches/test_dynamic_extract_image_patches_impl.py"
+    ],
+    "auto_schedule/python/tbe/dsl/unify_schedule/pattern_manager.py":[
+        "pattern_manager/test_pattern_manager_impl.py"
+    ],
+    "auto_schedule/python/tbe/dsl/unify_schedule/vector/elewise/elewise_pattern_parser.py":[
+        "elewise/test_elewise_pattern_parser_impl.py"
+    ],
+    "auto_schedule/python/tbe/dsl/unify_schedule/vector/broadcast/broadcast_pattern_parser.py":[
+        "broadcast/test_broadcast_pattern_parser_impl.py"
+    ],
+    "auto_schedule/python/tbe/dsl/unify_schedule/vector/reduce/reduce_pattern_parser.py":[
+        "reduce/test_reduce_pattern_parser_impl.py"
+    ],
+    "auto_schedule/python/tbe/dsl/unify_schedule/vector/norm/norm_pattern_parser.py":[
+        "norm/test_norm_pattern_parser_impl.py"
+    ],
+    "auto_schedule/python/tbe/dsl/unify_schedule/vector/tuple_reduce/tuple_reduce_pattern_parser.py":[
+        "tuple_reduce/test_tuple_reduce_pattern_parser_impl.py"
+    ],
+    "auto_schedule/python/tbe/dsl/unify_schedule/vector/transpose/transpose_pattern_parser.py":[
+        "transpose/test_transpose_pattern_parser_impl.py"
+    ],
+    "auto_schedule/python/tbe/dsl/unify_schedule/vector/transdata/transdata_pattern_parser.py":[
+        "transdata/test_transdata_pattern_parser_impl.py"
+    ],
+    "auto_schedule/python/tbe/dsl/unify_schedule/vector/concat/concat_pattern_parser.py":[
+        "concat/test_concat_pattern_parser_impl.py"
+    ],
+    "auto_schedule/python/tbe/dsl/unify_schedule/vector/split/split_pattern_parser.py":[
+        "split/test_split_pattern_parser_impl.py"
+    ],
+    "auto_schedule/python/tbe/dsl/unify_schedule/vector/gather/gather_pattern_parser.py":[
+        "gather/test_gather_pattern_parser_impl.py"
+    ],
+    "auto_schedule/python/tbe/dsl/unify_schedule/vector/slice/slice_pattern_parser.py":[
+        "slice/test_slice_pattern_parser_impl.py"
     ]
 }

@@ -20,6 +20,10 @@ corresponding schedule template for user's compute
 """
 
 
+from enum import Enum
+from enum import auto
+
+
 class Pattern:
     """
     Built-in Patterns
@@ -387,3 +391,119 @@ AtomicSupportMap910 = {"support_dtype": ["float32", ],
 
 AtomicSupportMap920A = {"support_dtype": ["float32", "float16", "int32", "int16", "int8", "bfloat16"],
                         "support_insn": ["reduce_sum", "reduce_max", "reduce_min"]}
+
+
+class ComputeType(Enum):
+    """
+    ComputeType
+    """
+    ANY = auto()
+    UNKNOWN = auto()
+    PLACEHOLDER = auto()
+    ELEWISE = auto()
+    BROADCAST = auto()
+    REDUCE = auto()
+    TRANSPOSE = auto()
+    TRANSDATA = auto()
+    SET_VALUE = auto()
+    CONCAT = auto()
+    SPLIT = auto()
+    CAST = auto()
+    CONV2D = auto()
+    CONV2D_BP_INPUT = auto()
+    CONV2D_BP_FILTER = auto()
+    CONV3D_BP_INPUT = auto()
+    CONV3D = auto()
+    MAT_MUL = auto()
+    CONV3D_BP_FILTER = auto()
+    GATHER = auto()
+    SLICE = auto()
+
+
+COMPUTE_TYPE_INSN_MAPPING = {
+    ComputeType.ELEWISE: {
+        "elewise_binary_add", "elewise_binary_sub", "elewise_binary_div",
+        "elewise_binary_mul", "elewise_binary_min", "elewise_binary_max",
+        "elewise_binary_and", "elewise_binary_or", "elewise_binary_vcmpv_le",
+        "elewise_binary_vcmpv_lt", "elewise_binary_vcmpv_ge",
+        "elewise_binary_vcmpv_gt", "elewise_binary_vcmpv_ne",
+        "elewise_binary_vcmpv_eq", "emit_insn_elewise_binary_cmp",
+        "elewise_binary_logic", "elewise_single_log", "elewise_single_exp",
+        "elewise_single_rec", "elewise_single_VS_add", "elewise_single_VS_mul",
+        "elewise_single_VS_max", "elewise_single_VS_min", "elewise_single_abs",
+        "elewise_single_relu", "elewise_single_not", "elewise_single_sqrt",
+        "elewise_single_rsqrt", "elewise_single_lrelu", "elewise_multiple_mla",
+        "elewise_multiple_madd", "elewise_multiple_maddrelu",
+        "elewise_multiple_sel", "elewise_binary_scalar_axpy",
+        "elewise_binary_cmpsel_gt", "elewise_binary_cmpsel_ge",
+        "elewise_binary_cmpsel_lt", "elewise_binary_cmpsel_le",
+        "elewise_binary_cmpsel_eq", "elewise_binary_cmpsel_ne",
+        "elewise_binary_vcmpv_gt", "elewise_binary_vcmpv_ge",
+        "elewise_binary_vcmpv_lt", "elewise_binary_vcmpv_le",
+        "elewise_binary_vcmpv_eq", "elewise_binary_vcmpv_ne",
+        "elewise_binary_addrelu", "elewise_binary_subrelu",
+    },
+    ComputeType.CAST: {
+        "elewise_single_cast", "elewise_single_ceil", "elewise_single_floor",
+        "elewise_single_trunc", "elewise_single_round", "elewise_single_round_d",
+    },
+    ComputeType.BROADCAST: {
+        "unified_broadcast", "broadcast", "unknown_broadcast"
+    },
+    ComputeType.REDUCE: {
+        "reduce_min", "reduce_max", "reduce_sum",
+        "reduce_prod", "tuple_reduce_sum",
+    },
+    ComputeType.TRANSPOSE: {
+        "transpose"
+    },
+    ComputeType.TRANSDATA: {
+        "transdata"
+    },
+    ComputeType.SET_VALUE: {
+        "set_value"
+    },
+    ComputeType.CONCAT: {
+        "concat"
+    },
+    ComputeType.SPLIT: {
+        "split"
+    },
+    ComputeType.CONV2D: {
+        "conv_vector_remove_pad",
+        "convolution_C",
+        "convolution_C_UB",
+        "convolution_c_col",
+        "convolution_c_col_bias",
+        "convolution_res_conv2d",
+        "convolution_res_fp32_conv2d"
+    },
+    ComputeType.CONV2D_BP_INPUT: {
+        "conv2d_backprop_input",
+        "conv2d_backprop_input_opti"
+    },
+    ComputeType.CONV2D_BP_FILTER: {
+        "conv2d_backprop_filterdw_ddr"
+    },
+    ComputeType.CONV3D: {
+        "conv3d_fuse_fmap_tensor",
+        "conv3d_c_col"
+    },
+    ComputeType.MAT_MUL: {
+        "matmul",
+        "gemm"
+    },
+    ComputeType.CONV3D_BP_INPUT: {
+        "conv3d_backprop_input_c_ub"
+    },
+    ComputeType.CONV3D_BP_FILTER: {
+        "conv3d_backprop_filterdw_ddr"
+    },
+    ComputeType.GATHER: {
+        "gather",
+        "gather_nd",
+    },
+    ComputeType.SLICE: {
+        "slice"
+    }
+}

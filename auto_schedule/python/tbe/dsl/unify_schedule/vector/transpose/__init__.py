@@ -17,5 +17,6 @@
 """
 transpose
 """
+from . import transpose_pattern_parser
 from . import transpose_schedule
 from . import transpose_tilingcase

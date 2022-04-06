@@ -17,8 +17,9 @@
 """
 transdata
 """
-from . import transdata_tilingcase
 from . import transdata_backward_schedule
 from . import transdata_forward_schedule
+from . import transdata_pattern_parser
+from . import transdata_tilingcase
 from .performance import transdata_backward_borrow_n_schedule
 from .performance import transdata_forward_borrow_n_schedule

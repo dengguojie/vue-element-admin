@@ -17,5 +17,6 @@
 """
 elewise
 """
+from . import elewise_pattern_parser
 from . import elewise_schedule
 from . import elewise_tilingcase

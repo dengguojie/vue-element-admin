@@ -146,6 +146,7 @@ auto_schedule:
       - auto_schedule/python/tbe/dsl/unify_schedule/schedule.py
       - auto_schedule/python/tbe/dsl/unify_schedule/unify_auto_schedule.py
       - auto_schedule/python/tbe/dsl/unify_schedule/util.py
+      - auto_schedule/python/tbe/dsl/unify_schedule/pattern_manager.py
       - auto_schedule/python/tbe/dsl/unify_schedule/vector/slice/__init__.py
       - auto_schedule/python/tbe/dsl/unify_schedule/vector/slice/slice_schedule.py
       - auto_schedule/python/tbe/dsl/unify_schedule/vector/slice/slice_tilingcase.py
