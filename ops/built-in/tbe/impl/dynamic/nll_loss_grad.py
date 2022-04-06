@@ -95,16 +95,16 @@ def _dynamic_static_union(shape, reduction):
     for dynamic and static union fully verified
     """
     white_list_dict = {
-        "none": [[818497, 2], [7353474, 2]],
-        "sum": [[818497, 2], [7353474, 2]],
-        "mean": [[818497, 2], [7353474, 2]]
+        "none": [],
+        "sum": [],
+        "mean": []
     }
 
     if reduction not in white_list_dict:
         return False
 
     x_shape = list(shape)
-    if x_shape in white_list_dict.get(reduction):
+    if x_shape not in white_list_dict.get(reduction):
         return True
 
     return False

@@ -148,5 +148,156 @@
       }
     ],
     "case_name": "test_dynamic_NLLLossGrad_000"
+  },
+
+  {
+    "op": "NLLLossGrad",
+    "input_desc": [
+      {
+        "shape": [
+          2,
+          16
+        ],
+        "ori_shape": [
+          2,
+          16
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "x",
+        "type": "float",
+        "shape_range": [
+          [
+            1,
+            200000000
+          ],
+          [
+            1,
+            200000000
+          ]
+        ],
+        "typical_shape": [
+          2,
+          16
+        ]
+      },
+      {
+        "shape": [
+          2
+        ],
+        "ori_shape": [
+          2
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "y_grad",
+        "type": "float",
+        "shape_range": [
+          [
+            1,
+            200000000
+          ]
+        ],
+        "typical_shape": [
+          2
+        ]
+      },
+      {
+        "shape": [
+          2
+        ],
+        "ori_shape": [
+          2
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "target",
+        "type": "int32",
+        "shape_range": [
+          [
+            1,
+            200000000
+          ]
+        ],
+        "typical_shape": [
+          2
+        ]
+      },
+      {
+        "shape": [
+          16
+        ],
+        "ori_shape": [
+          16
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "weight",
+        "type": "float",
+        "shape_range": [
+          [
+            1,
+            200000000
+          ]
+        ],
+        "typical_shape": [
+          16
+        ]
+      },
+      {
+        "shape": [
+          1
+        ],
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "total_weight",
+        "type": "float",
+        "shape_range": [
+          [
+            1,
+            200000000
+          ]
+        ],
+        "typical_shape": [
+          1
+        ]
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          2,
+          16
+        ],
+        "ori_shape": [
+          2,
+          16
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "x_grad",
+        "type": "float",
+        "typical_shape": [
+          2,
+          16
+        ]
+      }
+    ],
+    "attr": [
+      {
+        "name": "reduction",
+        "type": "string",
+        "value": "none"
+      },
+      {
+        "name": "ignore_index",
+        "type": "int",
+        "value": 3
+      }
+    ],
+    "case_name": "test_dynamic_NLLLossGrad_001"
   }
 ]
