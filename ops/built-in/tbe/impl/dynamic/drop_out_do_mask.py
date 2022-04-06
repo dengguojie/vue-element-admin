@@ -156,7 +156,7 @@ class DropOutDoMask:
                                    outputs=(self.out_gm,),
                                    flowtable=(self.tiling_gm,), config=opt_config)
         tbe_context.get_context().add_compile_info("vars",
-                                                   {"ub_size": self.ub_size_bytes, "core_num": self.ai_core_num})
+                                                   {"core_num": self.ai_core_num})
 
     def _tiling_args(self):
         """
