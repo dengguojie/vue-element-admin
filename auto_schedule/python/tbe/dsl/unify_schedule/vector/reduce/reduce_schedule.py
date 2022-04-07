@@ -525,6 +525,9 @@ class ReduceSchedule(VectorSchedule):
                     self.storage_align_list.append(storage_align_info)
 
     def _calc_compute_align(self):
+        if self.tiling_case.is_reduce_transpose_case:
+            return
+
         if get_soc_spec(SOC_VERSION) != ASCEND_920A:
             return
 
