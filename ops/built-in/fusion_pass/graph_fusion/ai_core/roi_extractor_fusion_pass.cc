@@ -43,6 +43,8 @@ namespace fe {
 static const string PatternRoi = "RoiExtractor";
 static const int FeatureNum = 4;
 static const int IndexDim = 0;
+static const int CoreNum = 8;
+
 
 vector<FusionPattern*> RoiExtractorFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
@@ -81,6 +83,12 @@ Status RoiExtractorFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vec
       VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "balancerois_desc is null, Build BalanceRois Op failed."),
       return FAILED);
   GeTensorDesc rois_data_desc = roi_node->GetOpDesc()->GetInputDesc("rois");
+
+  int64_t rois_n = rois_data_desc.GetShape().GetDim(0);
+
+  FUSION_PASS_CHECK(rois_n % CoreNum != 0,
+                    OP_LOGW(FUSED_OP_TYPE.c_str(), "rois_n can not be divided by core_num."),
+                    return NOT_CHANGED);
 
   FUSION_PASS_CHECK(roi_node->GetOpDesc()->GetInputDesc("index").GetShape().GetDim(0) != IndexDim,
                     OP_LOGW(FUSED_OP_TYPE.c_str(), "index dim is not 0."),
