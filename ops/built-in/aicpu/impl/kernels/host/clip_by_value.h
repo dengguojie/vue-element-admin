@@ -13,8 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef AICPU_KERNELS_HOST_CLIP_BY_VALUE_H_
-#define AICPU_KERNELS_HOST_CLIP_BY_VALUE_H_
+#ifndef AICPU_KERNELS_HOST_CLIP_BY_VALUE_H
+#define AICPU_KERNELS_HOST_CLIP_BY_VALUE_H
 
 #include "cpu_kernel.h"
 
@@ -27,4 +27,4 @@ class ClipByValueCpuKernel : public CpuKernel {
 };
 }  // namespace aicpu
 
-#endif  // AICPU_KERNELS_HOST_CLIP_BY_VALUE_H_
+#endif  // AICPU_KERNELS_HOST_CLIP_BY_VALUE_H

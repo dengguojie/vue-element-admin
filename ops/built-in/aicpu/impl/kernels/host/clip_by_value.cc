@@ -49,7 +49,7 @@ std::uint32_t DoComputeClipByValue(const CpuKernelContext &ctx) {
     isMulNum = true;
   }
 
-  KERNEL_LOG_INFO("data_num : [%llu], ctx.Input(1)->NumElements():[%llu]", data_num, ctx.Input(inputIdx1)->NumElements());
+  KERNEL_LOG_INFO("data_num: [%llu], NumElements:[%llu]", data_num, ctx.Input(inputIdx1)->NumElements());
   for (int64_t i = 0; i < data_num; i++) {
     auto x_index = input_x + i;
     auto y_index = output_y + i;
@@ -69,7 +69,6 @@ std::uint32_t DoComputeClipByValue(const CpuKernelContext &ctx) {
     } else {
       *y_index = *x_index;
     }
-    KERNEL_LOG_INFO("*x_index : [%lf], *y_index : [%lf]", (static_cast<double>(*x_index)), (static_cast<double>(*y_index)));
   }
 
   KERNEL_LOG_INFO("DoComputeClip::Stop");
