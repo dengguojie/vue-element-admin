@@ -1,0 +1,34 @@
+[
+  {"compile_flag": 1},
+  {
+    "case_name":"Test_Tile_001",
+    "op":"Tile",
+    "calc_expect_func_file" : "test_tile_golden.py:calc_expect_func",
+    "input_desc":[
+      {
+        "format": "ND",
+        "type": "int32",
+        "shape": [1, 16, 16, 16, 16, 16],
+        "value_range": [[0, 10]],
+        "shape_range": [[1, 2240]],
+        "data_distribute": "uniform",
+        "name": "x"
+      },
+      {
+        "format": "ND",
+        "type": "int32",
+        "shape": [6],
+        "value": [16, 1, 1, 1, 1, 1],
+        "name": "multiples"
+      }
+    ],
+    "output_desc":[
+      {
+        "format": "ND",
+        "type": "int32",
+        "shape":[16, 16, 16, 16, 16, 16],
+        "name": "y"
+      }
+    ]
+  }
+]

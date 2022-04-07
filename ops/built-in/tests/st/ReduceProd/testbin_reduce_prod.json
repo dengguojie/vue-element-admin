@@ -1,0 +1,53 @@
+[
+  {"compile_flag": 1},
+  {
+    "op": "ReduceProd",
+    "case_name": "test_reduceprod_001",
+    "calc_expect_func_file": "test_reduce_prod_golden.py:calc_expect_func",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [
+          3,
+          5,
+          2
+        ],
+        "shape_range": [[0,2240]],
+        "type": "float16",
+        "value_range":[[0,1]],
+        "data_distribute":"uniform",
+        "name": "x"
+      },
+      {
+        "format": "ND",
+        "shape": [
+          1
+        ],
+        "is_const": true,
+        "type": "int32",
+        "value": [1],
+        "name": "axes"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [
+          3,
+          1,
+          2
+        ],
+        "shape_range": [[0,2240]],
+        "type": "float16",
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "keep_dims",
+        "type": "bool",
+        "value": true
+      }
+    ]
+  }
+]

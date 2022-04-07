@@ -1,0 +1,33 @@
+[
+  {"compile_flag": 1},
+  {
+    "op": "Transpose",
+    "calc_expect_func_file": "transpose_func.py:calc_expect_10",
+    "input_desc": [
+      {
+        "shape": [2, 3],
+        "format": "ND",
+        "name": "x",
+        "type": "int32",
+        "shape_range": [[1,3]],        
+        "data_distribute": "uniform"
+      },
+      {
+        "shape": [2],
+        "format": "ND",
+        "name": "perm",
+        "type": "int32",
+        "value": [1,0]
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [3, 2],
+        "format": "ND",
+        "name": "y",
+        "type": "int32"
+      }
+    ],
+    "case_name": "test_Transpose_002"
+  }
+]

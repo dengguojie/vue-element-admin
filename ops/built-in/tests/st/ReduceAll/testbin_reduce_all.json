@@ -1,0 +1,37 @@
+[
+  {"compile_flag": 1},
+  {
+    "op": "ReduceAll",
+    "calc_expect_func_file" : "test_reduce_all_golden.py:calc_expect_func",
+    "input_desc": [
+      {
+        "shape": [2, 2, 2, 2],
+        "format": "ND",
+        "name": "x",
+        "type": "bool"
+      },
+      {
+        "shape": [1],
+        "format": "ND",
+        "name": "axes",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [2, 2, 2],
+        "format": "ND",
+        "name": "y",
+        "type": "bool"
+      }
+    ],
+    "attr": [
+      {
+        "name": "keep_dims",
+        "type": "bool",
+        "value": true
+      }
+    ],
+    "case_name": "test_ReduceAll_000"
+  }
+]

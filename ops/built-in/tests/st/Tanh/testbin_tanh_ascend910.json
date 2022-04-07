@@ -1,0 +1,37 @@
+[
+  {"compile_flag": 1},
+  {
+    "op": "Tanh",
+    "calc_expect_func_file" : "test_tanh_golden.py:calc_expect_func",
+    "input_desc": [
+      {
+        "shape": [
+          2,
+          1,
+          2,
+          2,
+          16
+        ],
+        "format": "ND",
+        "name": "x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          2,
+          1,
+          2,
+          2,
+          16
+        ],
+        "format": "ND",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_TanhGrad_004"
+  }
+]

@@ -1,0 +1,35 @@
+[
+  {"compile_flag": 1},
+  {
+    "op": "ZerosLike",
+    "calc_expect_func_file" : "test_zeros_like_golden.py:calc_expect_func",
+    "input_desc": [
+      {
+        "shape": [
+          3,
+          16,
+          32
+        ],
+        "format": "ND",
+        "param_type": "input",
+        "name": "x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          3,
+          16,
+          32
+        ],
+        "format": "ND",
+        "param_type": "output",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_ZerosLike_001"
+  }
+]
