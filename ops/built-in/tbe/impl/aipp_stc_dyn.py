@@ -1052,7 +1052,7 @@ def _static_aipp_compute(data, input_shape, input_format, output_data, aipp_conf
 
 
 def new_aipp_compute(input_data, input_dync_param, output_data, aipp_config, cur_cce_product, kernel_name="aipp"):
-    """Operation for 1981 & 1911 aipp.
+    """
     Parameters
     ----------
     input_data: dict of input, include shape and dtype, dtype support uint8
