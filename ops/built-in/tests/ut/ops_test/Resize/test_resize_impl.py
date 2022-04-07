@@ -1,4 +1,7 @@
 from op_test_frame.ut import OpUT
+from te import platform as cce_conf
+from impl.dynamic.resize import check_supported
+from impl.dynamic.resize import op_select_format
 ut_case = OpUT("Resize", "impl.dynamic.resize", "resize")
 
 
@@ -146,6 +149,23 @@ def add_case_3d():
 add_case()
 add_case_3d()
 
+
+def test_op_select_format(_):
+    soc_version_all = ("Ascend910A", "SD3403")
+    input_x_all = ({"shape": [1, 1, 5, 5], "ori_shape": [1, 1, 5, 5]},
+                   {"shape": [1, 1, 5, 5, 5], "ori_shape": [1, 1, 5, 5, 5]})
+    output_y_all = ({"shape": [1, 1, 6, 6], "ori_shape": [1, 1, 6, 6]},
+                    {"shape": [1, 1, 6, 6, 6], "ori_shape": [1, 1, 6, 6, 6]})
+    mode_name_all = ("nearest", "linear")
+    roi, scales, sizes = None, None, None
+    soc_version = cce_conf.get_soc_spec("SOC_VERSION")
+    for soc, input_x, output_y, mode_name in zip(soc_version_all, input_x_all, output_y_all, mode_name_all):
+        cce_conf.te_set_version(soc)
+        check_supported(input_x, roi, scales, sizes, output_y, mode=mode_name)
+        op_select_format(input_x, roi, scales, sizes, output_y, mode=mode_name)
+    cce_conf.te_set_version(soc_version)
+
+ut_case.add_cust_test_func("Ascend910A", test_op_select_format)
 
 if __name__ == '__main__':
     ut_case.run(["Ascend910A", "Ascend310"])

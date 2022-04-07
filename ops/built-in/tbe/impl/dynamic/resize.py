@@ -13,6 +13,7 @@ from impl import common_util
 from impl.util.util_tik_comm_func import OpBase
 from impl.util.platform_adapter import tik
 from impl.util import util_select_op_base
+from impl.util.platform_adapter import PlatformApi
 
 
 class ResizeModeNearestNeighbor(ResizeNearestNeighbor):
@@ -252,7 +253,7 @@ class ResizeModeNearest3D(ResizeNearest3D):
         super(ResizeModeNearest3D, self).__init__(image, output, size, scale_factor, align_corners, half_pixel_centers,
                                                   nearest_mode, kernel_name)
         self.rois = rois
-    
+
     def op_compute(self):
         with self.tik_instance.for_range(0, self.core_num, block_num=self.core_num) as block_idx:
             self.get_tiling_params()
@@ -269,24 +270,60 @@ class ResizeModeNearest3D(ResizeNearest3D):
         tbe_context.get_context().add_compile_info("vars", {"core_num": self.core_num, "left_w": self.left_w,
                                                             "mode_name": 22})
         opt_config = {"out_of_bound_sync_check": True, "enable_const_fold": True}
-        
+
         optional_gm = []
         if self.rois is not None:
             rois_dtype = self.rois.get("dtype")
             rois_gm = self.tik_instance.Tensor(rois_dtype, [MAX_INT32], scope=tik.scope_gm, name="rois_gm")
             optional_gm.append(rois_gm)
-            
+
         if self.scale is not None:
             optional_gm.append(self.scale_gm)
-            
+
         if self.size is not None:
             optional_gm.append(self.size_gm)
         inputs_gm = [self.image_gm] + optional_gm
-        
+
         self.tik_instance.BuildCCE(inputs=inputs_gm, outputs=[self.output_gm],
                                    flowtable=[self.tiling_gm], kernel_name=self.kernel_name, config=opt_config)
 
         return self.tik_instance
+
+
+# 'pylint: disable=unused-argument
+def check_supported(x, roi, scales, sizes, y, coordinate_transformation_mode="half_pixel", cubic_coeff_a=-0.75,
+                    exclude_outside=0, extrapolation_value=0.0, mode="nearest", nearest_mode="round_prefer_floor",
+                    kernel_name="Resize"):
+    """
+    check whether ai_core is supported
+    """
+    image_shape = x.get("shape")
+    h_in = image_shape[2]
+    w_in = image_shape[3]
+    is_support_vadds = tbe_platform.api_check_support("tik.vadds", "float32")
+    if mode != "nearest":
+        return False, "Attr mode only support nearest."
+    if not is_support_vadds:
+        output_shape = y.get("shape")
+        h_out = output_shape[2]
+        w_out = output_shape[3]
+        axis_list = [h_in, h_out, w_in, w_out]
+        for axis in axis_list:
+            if axis < 1 or axis > Constant.MAX_H_W:
+                return False, "H or W is too large to compute with float16."
+
+    return True, ""
+
+
+def check_soc_version_support(soc_version):
+    soc_support_fp32 = ("Ascend310", "Ascend320",
+                        "Ascend610", "Ascend615",
+                        "Ascend710", "Ascend910",
+                        "Ascend920")
+    for version_support in soc_support_fp32:
+        if soc_version.find(version_support) != -1:
+            return True
+    return False
 
 
 # 'pylint: disable=unused-argument,too-many-return-statements
@@ -296,17 +333,25 @@ def op_select_format(x, roi, scales, sizes, y, coordinate_transformation_mode="h
     """
     op_select_format for resize, when dimensions of x is 4, support NC1HWC0, is 5, support NDC1HWC0.
     """
-    x_shape = x.get("ori_shape")
-    support_format = ["NC1HWC0", "NC1HWC0", "NC1HWC0", "NC1HWC0"]
-    if len(x_shape) == 5:
-        support_format = ["NDC1HWC0", "NDC1HWC0", "NDC1HWC0", "NDC1HWC0"]
+    soc_version = PlatformApi.get_soc_spec(PlatformApi.SOC_VERSION)
+    if check_soc_version_support(soc_version):
+        x_shape = x.get("ori_shape")
+        support_format = ["NC1HWC0", "NC1HWC0", "NC1HWC0", "NC1HWC0"]
+        if len(x_shape) == 5:
+            support_format = ["NDC1HWC0", "NDC1HWC0", "NDC1HWC0", "NDC1HWC0"]
 
-    optional_formats = ["ND", "ND", "ND", "ND"]
-    x_dtypes = ["float16", "float16", "float", "float"]
-    roi_dtypes = ["float", "float", "float", "float"]
-    scales_dtypes = ["float", "float", "float", "float"]
-    sizes_dtypes = ["int32", "int64", "int32", "int64"]
-
+        optional_formats = ["ND", "ND", "ND", "ND"]
+        x_dtypes = ["float16", "float16", "float", "float"]
+        roi_dtypes = ["float", "float", "float", "float"]
+        scales_dtypes = ["float", "float", "float", "float"]
+        sizes_dtypes = ["int32", "int64", "int32", "int64"]
+    else:
+        support_format = ["NC1HWC0", "NC1HWC0"]
+        optional_formats = ["ND", "ND"]
+        x_dtypes = ["float16", "float16"]
+        roi_dtypes = ["float", "float"]
+        scales_dtypes = ["float", "float"]
+        sizes_dtypes = ["int32", "int64"]
     str_x_dtype = ",".join(x_dtypes)
     str_x_format = ",".join(support_format)
     str_optional_format = ",".join(optional_formats)
@@ -314,31 +359,16 @@ def op_select_format(x, roi, scales, sizes, y, coordinate_transformation_mode="h
     str_scales_dtype = ",".join(scales_dtypes)
     str_sizes_dtype = ",".join(sizes_dtypes)
 
-    input0 = util_select_op_base.gen_param(classify="input0",
-                                           name="x",
-                                           datatype=str_x_dtype,
-                                           format=str_x_format,
-                                           unknownshape_format=str_x_format)
-    input1 = util_select_op_base.gen_param(classify="input1",
-                                           name="roi",
-                                           datatype=str_roi_dtype,
-                                           format=str_optional_format,
-                                           unknownshape_format=str_optional_format)
-    input2 = util_select_op_base.gen_param(classify="input2",
-                                           name="scales",
-                                           datatype=str_scales_dtype,
-                                           format=str_optional_format,
-                                           unknownshape_format=str_optional_format)
-    input3 = util_select_op_base.gen_param(classify="input3",
-                                           name="sizes",
-                                           datatype=str_sizes_dtype,
-                                           format=str_optional_format,
-                                           unknownshape_format=str_optional_format)
-    output0 = util_select_op_base.gen_param(classify="output0",
-                                            name="y",
-                                            datatype=str_x_dtype,
-                                            format=str_x_format,
-                                            unknownshape_format=str_x_format)
+    input0 = util_select_op_base.gen_param(classify="input0", name="x", datatype=str_x_dtype,
+                                           format=str_x_format, unknownshape_format=str_x_format)
+    input1 = util_select_op_base.gen_param(classify="input1", name="roi", datatype=str_roi_dtype,
+                                           format=str_optional_format, unknownshape_format=str_optional_format)
+    input2 = util_select_op_base.gen_param(classify="input2", name="scales", datatype=str_scales_dtype,
+                                           format=str_optional_format, unknownshape_format=str_optional_format)
+    input3 = util_select_op_base.gen_param(classify="input3", name="sizes", datatype=str_sizes_dtype,
+                                           format=str_optional_format, unknownshape_format=str_optional_format)
+    output0 = util_select_op_base.gen_param(classify="output0", name="y", datatype=str_x_dtype,
+                                            format=str_x_format, unknownshape_format=str_x_format)
     param_list = [input0, input1, input2, input3, output0]
     param_dynamic_in_json = util_select_op_base.get_dynamic_param_in_json(param_list)
 
@@ -376,7 +406,7 @@ def resize(x, roi, scales, sizes, y,
         align_corners = False
     else:
         raise RuntimeError("Resize not support attr {} {}".format(attr_name, coordinate_transformation_mode))
-    
+
     if input_format == "NC1HWC0":
         if mode == "nearest":
             obj = ResizeModeNearestNeighbor(x, roi, scales, sizes, y, align_corners, half_pixel_centers, kernel_name)
