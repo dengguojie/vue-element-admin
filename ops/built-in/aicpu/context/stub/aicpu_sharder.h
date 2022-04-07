@@ -18,7 +18,6 @@
 #define OPS_BUILT_IN_AICPU_CONTEXT_STUB_AICPU_SHARDER_H_
 
 #include <functional>
-#include <vector>
 
 namespace aicpu {
 using Closure = std::function<void()>;

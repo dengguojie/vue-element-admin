@@ -16,7 +16,7 @@
 #ifndef AICPU_CONTEXT_COMMON_LOG_H
 #define AICPU_CONTEXT_COMMON_LOG_H
 
-#include <stdio.h>
+#include <cstdio>
 #include <sys/syscall.h>
 #include <unistd.h>
 
