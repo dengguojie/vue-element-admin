@@ -941,6 +941,13 @@ class CceConvOp:
                     for cache_buffer in v200_fm2_cache_buffer:
                         double_num_cl0 += 1
 
+                    # when read select op in no l1fusion mode, 4d and 5d tensor are calculated in ub space
+                    if self._v200_data_flow_type in (DataFlowType.S16ELTWISES8, DataFlowType.S16ELTWISES8S16):
+                        for lop in self._op_graph.body_ops:
+                            lop_op_name = remove_suffix_num_for_name(lop["dst_buffer"].op.name)
+                            read_select_tensor_list = ("output_ub_4d", "output_ub_5d")
+                            if lop_op_name in read_select_tensor_list:
+                                double_num_cl0 += 1
                 return double_num_cl0
 
             def get_compress_tiling_shape(tiling_ok_flag):
@@ -1662,6 +1669,12 @@ class CceConvOp:
                     for buffer_fm2 in v200_fm2_cache_buffer:
                         fm2_dtype = buffer_fm2.dtype
                         c_fused_coefficient += coeff(fm2_dtype, c_dtype)
+                    # when read select op in no l1fusion mode, 4d and 5d tensor are calculated in ub space
+                    for lop in self._op_graph.body_ops:
+                        lop_op_name = remove_suffix_num_for_name(lop["dst_buffer"].op.name)
+                        read_select_tensor_list = ("output_ub_4d", "output_ub_5d")
+                        if lop_op_name in read_select_tensor_list:
+                            c_fused_coefficient += 1
                 cub_channel_coefficient = get_cub_channel_wise()
                 c_fused_coefficient += calc_coeff_l0c_to_ub()
                 fused_coefficient = [0, 0, c_fused_coefficient]

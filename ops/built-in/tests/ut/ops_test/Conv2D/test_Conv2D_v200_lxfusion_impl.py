@@ -136,7 +136,6 @@ def test_conv2d_v200_lxfusion(test_arg):
 
         #  "fm_total_shape": [],
 
-
         #   "eltwise_shape": [],
         #   "eltwise_total_shape": [],
 
