@@ -93,6 +93,7 @@ struct MaxPoolGradWithArgmaxV2TilingParams {
   int32_t shape_ho;
   int32_t shape_hi;
   int32_t one_window_size;
+  int32_t workspace_shape;
 };
 
 struct CompileInfoParams {
@@ -141,6 +142,7 @@ static void InitTilingParams(MaxPoolGradWithArgmaxV2TilingParams& params) {
   params.shape_ho = 0;
   params.shape_hi = 0;
   params.one_window_size = 0;
+  params.workspace_shape = 1;
 }
 
 static bool GetCompileInfo(const std::string& op_type, const nlohmann::json& op_compile_info,
@@ -550,6 +552,7 @@ static void SetTilingParam(const MaxPoolGradWithArgmaxV2TilingParams& tiling_par
   ByteBufferPut(run_info.tiling_data, tiling_params.shape_ho);
   ByteBufferPut(run_info.tiling_data, tiling_params.shape_hi);
   ByteBufferPut(run_info.tiling_data, tiling_params.one_window_size);
+  ByteBufferPut(run_info.tiling_data, tiling_params.workspace_shape);
 }
 
 static void PrintTilingParam(const MaxPoolGradWithArgmaxV2TilingParams& tiling_params) {
@@ -584,6 +587,7 @@ static void PrintTilingParam(const MaxPoolGradWithArgmaxV2TilingParams& tiling_p
   OP_LOGD("MaxPoolGradWithArgmaxV2Tiling", "shape_ho=%d.", tiling_params.shape_ho);
   OP_LOGD("MaxPoolGradWithArgmaxV2Tiling", "shape_hi=%d.", tiling_params.shape_hi);
   OP_LOGD("MaxPoolGradWithArgmaxV2Tiling", "one_window_size=%d.", tiling_params.one_window_size);
+  OP_LOGD("MaxPoolGradWithArgmaxV2Tiling", "workspace_shape=%d.", tiling_params.workspace_shape);
 }
 
 bool MaxPoolGradWithArgmaxV2Tiling(const std::string& op_type, const TeOpParas& op_paras,
@@ -651,15 +655,12 @@ bool MaxPoolGradWithArgmaxV2Tiling(const std::string& op_type, const TeOpParas& 
                   return false);
 
   CalTilingParam(tiling_params, compile_params, grad_shape, argmax_shape, input_shape);
-  SetTilingParam(tiling_params, run_info);
-  PrintTilingParam(tiling_params);
 
   // block_dim and workspace, use fot tik op
   run_info.block_dim = tiling_params.act_core_num;
   const int64_t WORKSPACE_DIM = 1;
-  const int64_t WORKSPACE_SIZE = 2147483647;
-  vector<int64_t> workspace(WORKSPACE_DIM, WORKSPACE_SIZE);
-  run_info.workspaces = workspace;
+  const int64_t WORKSPACE_SIZE = 524288000;
+  int64_t actual_workspace = DTYPE_SIZE_FP32;
 
   if (tiling_params.tiling_mode == TILING_MODE_2) {
     // check workspace support
@@ -669,7 +670,7 @@ bool MaxPoolGradWithArgmaxV2Tiling(const std::string& op_type, const TeOpParas& 
       int64_t c1 = input_shape[SHAPE_INDEX_C1];
       int64_t hi = input_shape[SHAPE_INDEX_H];
       int64_t wi = input_shape[SHAPE_INDEX_W];
-      int64_t actual_workspace;
+      
       if (tiling_params.if_block == 1) {
         actual_workspace = n * c1 * hi * wi * BLOCK_ALLIGN * DTYPE_SIZE_FP32;
       } else {
@@ -682,6 +683,13 @@ bool MaxPoolGradWithArgmaxV2Tiling(const std::string& op_type, const TeOpParas& 
       }
     }
   }
+  tiling_params.workspace_shape = actual_workspace / DTYPE_SIZE_FP32;
+
+  vector<int64_t> workspace(WORKSPACE_DIM, actual_workspace);
+  run_info.workspaces = workspace;
+
+  SetTilingParam(tiling_params, run_info);
+  PrintTilingParam(tiling_params);
 
   OP_LOGI(op_type.c_str(), "MaxPoolGradWithArgmaxV2Tiling run success.");
   return true;

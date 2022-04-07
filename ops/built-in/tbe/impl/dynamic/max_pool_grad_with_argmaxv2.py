@@ -60,7 +60,7 @@ class Constant:
     # max int32
     MAX_INT32 = 2 ** 31 - 1
     # workspace size
-    WORKSPACE_SIZE = 2 ** 31 - 1
+    WORKSPACE_SIZE = 524288000
 
 
 # 'pylint: disable=too-many-arguments,too-many-statements,too-many-branches
@@ -181,7 +181,6 @@ class MaxpoolGrad:
         self.ub_ele = (Constant.UB_SIZE - Constant.RESERVED_UB_SIZE) // self.dtype_size
         # need seven buffers
         self.one_seventh_ub_ele = self.ub_ele // 7
-        self.workspace = [Constant.WORKSPACE_SIZE]
         self.init_gm_tensor()
 
         # define some scalar
@@ -194,8 +193,10 @@ class MaxpoolGrad:
         self.scalar_zero_fp16.set_as(0)
         self.scalar_zero.set_as(0)
 
-        # tiling params
+        # get tiling params and init workspace
         self.init_tiling_param()
+        self.get_tiling_args()
+        self.init_workspace()
 
         self.resnet50_branch = resnet50.MaxpoolGradV2Resnet50(self.dtype,
                                                               self.ori_input_gm, self.grad_gm, self.argmax_gm,
@@ -248,6 +249,7 @@ class MaxpoolGrad:
         self.shape_ho = self.tik_instance.Scalar("int32", name="shape_ho")
         self.shape_hi = self.tik_instance.Scalar("int32", name="shape_hi")
         self.one_window_size = self.tik_instance.Scalar("int32", name="one_window_size")
+        self.workspace_shape = self.tik_instance.Scalar("int32", name="workspace_shape")
 
     def get_tiling_args(self):
         """Get runtime params from tiling
@@ -293,6 +295,7 @@ class MaxpoolGrad:
             self.shape_ho.set_as(tiling_ub[28])
             self.shape_hi.set_as(tiling_ub[29])
             self.one_window_size.set_as(tiling_ub[30])
+            self.workspace_shape.set_as(tiling_ub[31])
 
     def init_gm_tensor(self):
         """Init gm tensor
@@ -307,9 +310,13 @@ class MaxpoolGrad:
                                                 scope=tik.scope_gm)
         self.res_gm = self.tik_instance.Tensor(self.dtype, (Constant.MAX_INT32,), name="res_gm",
                                                scope=tik.scope_gm)
-        # temporary storage of overlap in workspace
-        self.overlap_gm = self.tik_instance.Tensor("float32", (Constant.WORKSPACE_SIZE // 4,), name="overlap_gm",
-                                                   scope=tik.scope_gm, is_workspace=True)
+
+    def init_workspace(self):
+        """Init temporary storage of overlap in workspace
+        """
+        self.overlap_gm = self.tik_instance.Tensor("float32", (self.workspace_shape,), name="overlap_gm",
+                                                   scope=tik.scope_gm, is_workspace=True,
+                                                   max_mem_size=Constant.WORKSPACE_SIZE)
 
     def init_ub_tensor(self):
         """Init ub tensor
@@ -1909,9 +1916,6 @@ class MaxpoolGrad:
                                                                      "float16", str(self.dtype))
 
         with self.tik_instance.for_range(0, self.core_num, block_num=self.core_num) as block_index:
-            # define tiling ub and move tiling gm to tiling ub,then get tiling args
-            self.get_tiling_args()
-
             with self.tik_instance.if_scope(self.tiling_mode == 3):
                 # Instead of defining new tiling parameters for resnet50,
                 # using block_cycle represents one_core_ele

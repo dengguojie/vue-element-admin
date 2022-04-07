@@ -84,7 +84,7 @@ TEST_F(MaxPoolGradWithArgmaxV2Tiling, maxpoolgrad_with_argmax_v2_tiling_0) {
     op_compile_info.key = "maxpoolgrad_with_argmax_v2_tiling_0";
     OpRunInfo runInfo;
     ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
-    EXPECT_EQ(to_string(runInfo.tiling_data), "1 4 1 18 384 0 0 0 0 0 5 0 10 4 56 56 112 112 0 4 1 4 7 8 0 32 1 1 7 14 3152 ");
+    EXPECT_EQ(to_string(runInfo.tiling_data), "1 4 1 18 384 0 0 0 0 0 5 0 10 4 56 56 112 112 0 4 1 4 7 8 0 32 1 1 7 14 3152 1 ");
 }
 
 
@@ -141,7 +141,7 @@ TEST_F(MaxPoolGradWithArgmaxV2Tiling, maxpoolgrad_with_argmax_v2_tiling_1) {
     op_compile_info.key = "maxpoolgrad_with_argmax_v2_tiling_1";
     OpRunInfo runInfo;
     ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
-    EXPECT_EQ(to_string(runInfo.tiling_data), "3 2 2 0 0 1 0 1 0 0 0 0 0 34 56 56 112 112 0 0 0 0 0 0 0 17 0 0 0 0 0 ");
+    EXPECT_EQ(to_string(runInfo.tiling_data), "3 2 2 0 0 1 0 1 0 0 0 0 0 34 56 56 112 112 0 0 0 0 0 0 0 17 0 0 0 0 0 1 ");
 }
 
 // not tiling nc1h
@@ -202,7 +202,7 @@ TEST_F(MaxPoolGradWithArgmaxV2Tiling, maxpoolgrad_with_argmax_v2_tiling_2) {
     op_compile_info.key = "maxpoolgrad_with_argmax_v2_tiling_2";
     OpRunInfo runInfo;
     ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
-    EXPECT_EQ(to_string(runInfo.tiling_data), "0 4 1 2 128 0 0 0 0 0 12 0 47 4 12 12 24 24 0 4 1 4 2 6 0 24 1 1 2 4 160 ");
+    EXPECT_EQ(to_string(runInfo.tiling_data), "0 4 1 2 128 0 0 0 0 0 12 0 47 4 12 12 24 24 0 4 1 4 2 6 0 24 1 1 2 4 160 1 ");
 }
 
 // not tiling
@@ -259,7 +259,7 @@ TEST_F(MaxPoolGradWithArgmaxV2Tiling, maxpoolgrad_with_argmax_v2_tiling_3) {
     op_compile_info.key = "maxpoolgrad_with_argmax_v2_tiling_3";
     OpRunInfo runInfo;
     ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
-    EXPECT_EQ(to_string(runInfo.tiling_data), "0 32 1 9 256 0 0 0 0 0 12 0 47 32 12 12 24 24 0 32 0 0 0 0 0 32 0 0 0 0 160 ");
+    EXPECT_EQ(to_string(runInfo.tiling_data), "0 32 1 9 256 0 0 0 0 0 12 0 47 32 12 12 24 24 0 32 0 0 0 0 0 32 0 0 0 0 160 1 ");
 }
 
 
@@ -317,7 +317,7 @@ TEST_F(MaxPoolGradWithArgmaxV2Tiling, maxpoolgrad_with_argmax_v2_tiling_4) {
     op_compile_info.key = "maxpoolgrad_with_argmax_v2_tiling_4";
     OpRunInfo runInfo;
     ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
-    EXPECT_EQ(to_string(runInfo.tiling_data), "2 1 1 18 384 0 0 0 0 283 1 0 2 1 312 312 624 624 0 1 1 1 10 32 0 32 1 1 10 20 97360 ");
+    EXPECT_EQ(to_string(runInfo.tiling_data), "2 1 1 18 384 0 0 0 0 283 1 0 2 1 312 312 624 624 0 1 1 1 10 32 0 32 1 1 10 20 97360 1 ");
 }
 
 // tiling ho wo , kernel expand
@@ -374,7 +374,7 @@ TEST_F(MaxPoolGradWithArgmaxV2Tiling, maxpoolgrad_with_argmax_v2_tiling_5) {
     op_compile_info.key = "maxpoolgrad_with_argmax_v2_tiling_5";
     OpRunInfo runInfo;
     ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
-    EXPECT_EQ(to_string(runInfo.tiling_data), "2 1 1 1 128 0 0 0 0 1 1 0 31 1 4 4 124 124 1 1 1 1 1 4 1 1 0 0 0 0 32 ");
+    EXPECT_EQ(to_string(runInfo.tiling_data), "2 1 1 1 128 0 0 0 0 1 1 0 31 1 4 4 124 124 1 1 1 1 1 4 1 1 0 0 0 0 32 1 ");
 }
 
 // pad_h != pad_w case
@@ -430,7 +430,7 @@ TEST_F(MaxPoolGradWithArgmaxV2Tiling, maxpoolgrad_with_argmax_v2_tiling_6) {
     op_compile_info.key = "maxpoolgrad_with_argmax_v2_tiling_6";
     OpRunInfo runInfo;
     ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
-    EXPECT_EQ(to_string(runInfo.tiling_data), "1 32 2 11 256 1 0 2 1 0 3 0 10 34 56 56 112 112 0 34 0 0 0 0 0 17 0 0 0 0 3152 ");
+    EXPECT_EQ(to_string(runInfo.tiling_data), "1 32 2 11 256 1 0 2 1 0 3 0 10 34 56 56 112 112 0 34 0 0 0 0 0 17 0 0 0 0 3152 1 ");
 }
 
 // wrong output shape case
@@ -597,7 +597,7 @@ TEST_F(MaxPoolGradWithArgmaxV2Tiling, maxpoolgrad_with_argmax_v2_tiling_9) {
     op_compile_info.key = "maxpoolgrad_with_argmax_v2_tiling_9";
     OpRunInfo runInfo;
     ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
-    EXPECT_EQ(to_string(runInfo.tiling_data), "2 12 1 1 128 1 1 7 50 3 1 0 255 4 3 321 320 320 1 12 1 12 2 2 12 12 0 0 0 0 992 ");
+    EXPECT_EQ(to_string(runInfo.tiling_data), "2 12 1 1 128 1 1 7 50 3 1 0 255 4 3 321 320 320 1 12 1 12 2 2 12 12 0 0 0 0 992 11993856 ");
 }
 
 // kernel size or stride too large
