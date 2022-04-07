@@ -93,17 +93,17 @@ uint32_t RsqrtCpuKernel::RsqrtCompute(Tensor *x, Tensor *y, int64_t data_num,
     for (int64_t i = 0; i < data_num; i++) {
       if (x->GetDataType() == DT_FLOAT16) {
         if ((Eigen::half)input_x[i] == Eigen::half{0.0f}) {
-          KERNEL_LOG_ERROR("Rsqrt kernel input[%d] cannot be 0");
+          KERNEL_LOG_ERROR("Rsqrt kernel input[%ld] cannot be 0", i);
           return KERNEL_STATUS_PARAM_INVALID;
         }
       } else if (x->GetDataType() == DT_FLOAT) {
         if ((std::fabs(static_cast<float>(input_x[i])) < FLT_EPSILON)) {
-          KERNEL_LOG_ERROR("Rsqrt kernel input[%d] cannot be 0");
+          KERNEL_LOG_ERROR("Rsqrt kernel input[%ld] cannot be 0", i);
           return KERNEL_STATUS_PARAM_INVALID;
         }
       } else if (x->GetDataType() == DT_DOUBLE) {
         if ((std::fabs(static_cast<double>(input_x[i])) < DBL_EPSILON)) {
-          KERNEL_LOG_ERROR("Rsqrt kernel input[%d] cannot be 0");
+          KERNEL_LOG_ERROR("Rsqrt kernel input[%ld] cannot be 0", i);
           return KERNEL_STATUS_PARAM_INVALID;
         }
       }
@@ -116,20 +116,22 @@ uint32_t RsqrtCpuKernel::RsqrtCompute(Tensor *x, Tensor *y, int64_t data_num,
     if (max_core_num > data_num) {
       max_core_num = data_num;
     }
-
     auto shard_rsqrt = [&](size_t start, size_t end) {
       for (size_t i = start; i < end; i++) {
         if (x->GetDataType() == DT_FLOAT16) {
           if ((Eigen::half)input_x[i] == Eigen::half{0.0f}) {
-            KERNEL_LOG_ERROR("Rsqrt kernel input[%d] cannot be 0");
+            KERNEL_LOG_ERROR("Rsqrt kernel input[%zu] cannot be 0", i);
+            return KERNEL_STATUS_PARAM_INVALID;
           }
         } else if (x->GetDataType() == DT_FLOAT) {
           if ((std::fabs(static_cast<float>(input_x[i])) < FLT_EPSILON)) {
-            KERNEL_LOG_ERROR("Rsqrt kernel input[%d] cannot be 0");
+            KERNEL_LOG_ERROR("Rsqrt kernel input[%zu] cannot be 0", i);
+            return KERNEL_STATUS_PARAM_INVALID;
           }
         } else if (x->GetDataType() == DT_DOUBLE) {
           if ((std::fabs(static_cast<double>(input_x[i])) < DBL_EPSILON)) {
-            KERNEL_LOG_ERROR("Rsqrt kernel input[%d] cannot be 0");
+            KERNEL_LOG_ERROR("Rsqrt kernel input[%zu] cannot be 0", i);
+            return KERNEL_STATUS_PARAM_INVALID;
           }
         }
         output_y[i] = static_cast<T>(1) / (sqrt(input_x[i]));

@@ -321,3 +321,63 @@ TEST_F(TEST_RSQRT_UT, INPUT_BOOL_UNSUPPORT) {
   CREATE_NODEDEF(shapes, data_types, datas);
   RUN_KERNEL(node_def, HOST, KERNEL_STATUS_PARAM_INVALID);
 }
+
+TEST_F(TEST_RSQRT_UT, INPUT_ZERO_FLOAT_EXCEPTION) {
+  vector<DataType> data_types = {DT_FLOAT, DT_FLOAT};
+  vector<vector<int64_t>> shapes = {{2, 2}, {2, 2}};
+  float_t input[4] = {(float_t)0};
+  float_t output[4] = {(float_t)0};
+  vector<void *> datas = {(void *)input, (void *)output};
+  CREATE_NODEDEF(shapes, data_types, datas);
+  RUN_KERNEL(node_def, HOST, KERNEL_STATUS_INNER_ERROR);
+}
+
+TEST_F(TEST_RSQRT_UT, INPUT_ZERO_DOUBLE_EXCEPTION) {
+  vector<DataType> data_types = {DT_DOUBLE, DT_DOUBLE};
+  vector<vector<int64_t>> shapes = {{2, 2}, {2, 2}};
+  double_t input[4] = {(double_t)0};
+  double_t output[4] = {(double_t)0};
+  vector<void *> datas = {(void *)input, (void *)output};
+  CREATE_NODEDEF(shapes, data_types, datas);
+  RUN_KERNEL(node_def, HOST, KERNEL_STATUS_INNER_ERROR);
+}
+
+TEST_F(TEST_RSQRT_UT, INPUT_ZERO_FLOAT16_EXCEPTION) {
+  vector<DataType> data_types = {DT_FLOAT16, DT_FLOAT16};
+  vector<vector<int64_t>> shapes = {{2, 2}, {2, 2}};
+  Eigen::half input[4] = {(Eigen::half)0};
+  Eigen::half output[4] = {(Eigen::half)0};
+  vector<void *> datas = {(void *)input, (void *)output};
+  CREATE_NODEDEF(shapes, data_types, datas);
+  RUN_KERNEL(node_def, HOST, KERNEL_STATUS_INNER_ERROR);
+}
+
+TEST_F(TEST_RSQRT_UT, INPUT_ZERO_FLOAT_PARALLEL_EXCEPTION) {
+  vector<DataType> data_types = {DT_FLOAT, DT_FLOAT};
+  vector<vector<int64_t>> shapes = {{10, 1024}, {10,1024}};
+  float_t input[10240] = {(float_t)0};
+  float_t output[10240] = {(float_t)0};
+  vector<void *> datas = {(void *)input, (void *)output};
+  CREATE_NODEDEF(shapes, data_types, datas);
+  RUN_KERNEL(node_def, HOST, KERNEL_STATUS_OK);
+}
+
+TEST_F(TEST_RSQRT_UT, INPUT_ZERO_DOUBLE_PARALLEL_EXCEPTION) {
+  vector<DataType> data_types = {DT_DOUBLE, DT_DOUBLE};
+  vector<vector<int64_t>> shapes = {{10, 1024}, {10,1024}};
+  double_t input[10240] = {(double_t)0};
+  double_t output[10240] = {(double_t)0};
+  vector<void *> datas = {(void *)input, (void *)output};
+  CREATE_NODEDEF(shapes, data_types, datas);
+  RUN_KERNEL(node_def, HOST, KERNEL_STATUS_OK);
+}
+
+TEST_F(TEST_RSQRT_UT, INPUT_ZERO_FLOAT16_PARALLEL_EXCEPTION) {
+  vector<DataType> data_types = {DT_FLOAT16, DT_FLOAT16};
+  vector<vector<int64_t>> shapes = {{10, 1024}, {10,1024}};
+  Eigen::half input[10240] = {(Eigen::half)0};
+  Eigen::half output[10240] = {(Eigen::half)0};
+  vector<void *> datas = {(void *)input, (void *)output};
+  CREATE_NODEDEF(shapes, data_types, datas);
+  RUN_KERNEL(node_def, HOST, KERNEL_STATUS_OK);
+}
