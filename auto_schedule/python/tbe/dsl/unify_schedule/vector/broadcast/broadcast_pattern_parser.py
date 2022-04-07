@@ -41,6 +41,10 @@ class BroadcastPatternParser(PatternParser):
         broadcast_size = self.compute_type_size_map.get(ComputeType.BROADCAST, 0)
         cast_size = self.compute_type_size_map.get(ComputeType.CAST, 0)
         total = self.compute_type_size_map.get(ComputeType.ANY, 0)
+
+        if broadcast_size == 0:
+            return False
+
         return ph_size + elewise_size + broadcast_size + cast_size == total
 
     def get_pattern(self):
