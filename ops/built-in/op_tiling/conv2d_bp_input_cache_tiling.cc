@@ -837,8 +837,8 @@ bool GetBestUbFactors(const DxParas &params, Tiling &tiling,
   int32_t db_cub_initial = tiling.db_cub;
   int32_t db_cub = db_cub_initial;
   bool stride_equal_one = params.stride_h == 1 && params.stride_w == 1;
-  for (int32_t i = 0; i < idx_k; i++) {
-    for (int32_t j = 0; j < idx_n; j++) {
+  for (size_t i = 0; i < idx_k; i++) {
+    for (size_t j = 0; j < idx_n; j++) {
       k_aub = k_al1_factors[i];
       n1 = n_l0_factors[j];
       if (params.dx_no_overlap_condition_2 && n1 < kNumTwo) {
