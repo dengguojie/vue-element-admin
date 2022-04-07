@@ -419,7 +419,6 @@ def resize(x, roi, scales, sizes, y,
             raise RuntimeError("Resize not support mode {}".format(mode))
     else:
         if mode == "nearest":
-            align_corners, half_pixel_centers = False, False
             obj = ResizeModeNearest3D(x, y, roi, sizes, scales, align_corners, half_pixel_centers, nearest_mode,
                                       kernel_name)
             return obj.op_compute()

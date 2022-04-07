@@ -127,6 +127,7 @@ def add_case_3d():
              "format_expect": [],
              "support_expect": True}
 
+    nearest_mode = "round_prefer_ceil"
     case2 = {"params": [input_x,
                         input_roi,
                         None,
@@ -136,7 +137,8 @@ def add_case_3d():
                         cubic_coeff_a,
                         exclude_outside,
                         extrapolation_value,
-                        mode_name_0],
+                        mode_name_0,
+                        nearest_mode],
              "case_name": "resize_1",
              "expect": "success",
              "format_expect": [],

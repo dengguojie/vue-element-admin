@@ -36,10 +36,7 @@ class ResizeNearest3D(object):
         self.scale = scale_factor
         self.align_corners = align_corners
         self.half_pixel_centers = half_pixel_centers
-        if nearest_mode == "round_prefer_floor":
-            self.nearest_mode = "floor"
-        else:
-            self.nearest_mode = "ceil"
+        self.nearest_mode = nearest_mode
         self.kernel_name = kernel_name
 
         if self.dtype != "float32":
@@ -632,6 +629,26 @@ class ResizeNearest3D(object):
             tmp_scalar.set_as(n)
             idx_ub[n].set_as(tmp_scalar)
 
+    def calc_by_mode(self, idx_ub_fp, idx_ub):
+        """
+        calculate index by nearest mode
+        """
+        if self.nearest_mode == "round_prefer_floor":
+            fp_scalar = self.tik_instance.Scalar("float32")
+            int_scalar = self.tik_instance.Scalar("int32")
+            with self.tik_instance.for_range(0, 1024) as idx:
+                fp_scalar.set_as(idx_ub_fp[idx])
+                int_scalar.set_as(fp_scalar)
+                with self.tik_instance.if_scope(fp_scalar == int_scalar + 0.5):
+                    idx_ub[idx].set_as(int_scalar)
+                with self.tik_instance.else_scope():
+                    self.tik_instance.scalar_conv("round", int_scalar, fp_scalar)
+                    idx_ub[idx].set_as(int_scalar)
+        elif self.nearest_mode == "round_prefer_ceil":
+            self.data_conv(idx_ub, idx_ub_fp, [0, 0], mode="round", num=1024)
+        else:
+            self.data_conv(idx_ub, idx_ub_fp, [0, 0], mode=self.nearest_mode, num=1024)
+
     def calc_idx(self, ub_1024, idx_ub_fp, idx_ub, src_dim, scale, zero_ub, loop=0):
         """
         calculate index
@@ -644,7 +661,7 @@ class ResizeNearest3D(object):
                 self.data_muls(idx_ub_fp, idx_ub_fp, scale, [0, 0], 1024)
                 self.data_adds(idx_ub_fp, idx_ub_fp, -0.5, [0, 0], 1024)
 
-            self.data_conv(idx_ub, idx_ub_fp, [0, 0], mode=self.nearest_mode, num=1024)
+            self.calc_by_mode(idx_ub_fp, idx_ub)
             self.tik_instance.vec_min(64, idx_ub, idx_ub, src_dim, 16, 8, 8, 0)
 
         with self.tik_instance.else_scope():
@@ -656,7 +673,7 @@ class ResizeNearest3D(object):
                 self.data_muls(idx_ub_fp, idx_ub_fp, scale, [0, 0], 1024)
                 self.data_adds(idx_ub_fp, idx_ub_fp, -0.5, [0, 0], 1024)
 
-            self.data_conv(idx_ub, idx_ub_fp, [0, 0], mode=self.nearest_mode, num=1024)
+            self.calc_by_mode(idx_ub_fp, idx_ub)
             self.tik_instance.vec_min(64, idx_ub, idx_ub, src_dim, 16, 8, 8, 0)
 
         if self.half_pixel_centers:
@@ -675,7 +692,18 @@ class ResizeNearest3D(object):
         else:
             src_idx_fp.set_as((dst_idx_fp + 0.5) * scale - 0.5)
 
-        self.tik_instance.scalar_conv(self.nearest_mode, src_idx, src_idx_fp)
+        if self.nearest_mode == "round_prefer_floor":
+            int_scalar = self.tik_instance.Scalar("int32")
+            int_scalar.set_as(src_idx_fp)
+            with self.tik_instance.if_scope(src_idx_fp == int_scalar + 0.5):
+                self.tik_instance.scalar_conv("floor", src_idx, src_idx_fp)
+            with self.tik_instance.else_scope():
+                self.tik_instance.scalar_conv("round", src_idx, src_idx_fp)
+
+        elif self.nearest_mode == "round_prefer_ceil":
+            self.tik_instance.scalar_conv("round", src_idx, src_idx_fp)
+        else:
+            self.tik_instance.scalar_conv(self.nearest_mode, src_idx, src_idx_fp)
         with self.tik_instance.if_scope(src_idx > src_dim - 1):
             src_idx.set_as(src_dim - 1)
 
