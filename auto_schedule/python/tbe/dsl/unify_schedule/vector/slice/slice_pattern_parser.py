@@ -39,6 +39,10 @@ class SlicePatternParser(PatternParser):
         ph_size = self.compute_type_size_map.get(ComputeType.PLACEHOLDER, 0)
         slice_size = self.compute_type_size_map.get(ComputeType.SLICE, 0)
         total = self.compute_type_size_map.get(ComputeType.ANY, 0)
+
+        if slice_size != 1:
+            return False
+
         return ph_size + slice_size == total and slice_size == 1
 
     def get_pattern(self):

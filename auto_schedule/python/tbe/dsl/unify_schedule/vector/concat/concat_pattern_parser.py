@@ -39,6 +39,10 @@ class ConcatPatternParser(PatternParser):
         ph_size = self.compute_type_size_map.get(ComputeType.PLACEHOLDER, 0)
         concat_size = self.compute_type_size_map.get(ComputeType.CONCAT, 0)
         total = self.compute_type_size_map.get(ComputeType.ANY, 0)
+
+        if concat_size != 1:
+            return False
+
         return ph_size + concat_size == total
 
     def get_pattern(self):

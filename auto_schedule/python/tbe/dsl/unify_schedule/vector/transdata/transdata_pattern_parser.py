@@ -39,6 +39,10 @@ class TransdataPatternParser(PatternParser):
         ph_size = self.compute_type_size_map.get(ComputeType.PLACEHOLDER, 0)
         transdata_size = self.compute_type_size_map.get(ComputeType.TRANSDATA, 0)
         total = self.compute_type_size_map.get(ComputeType.ANY, 0)
+
+        if transdata_size == 0:
+            return False
+
         return ph_size + transdata_size == total
 
     def get_pattern(self):

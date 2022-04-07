@@ -39,6 +39,10 @@ class SplitPatternParser(PatternParser):
         ph_size = self.compute_type_size_map.get(ComputeType.PLACEHOLDER, 0)
         split_size = self.compute_type_size_map.get(ComputeType.SPLIT, 0)
         total = self.compute_type_size_map.get(ComputeType.ANY, 0)
+
+        if split_size == 0:
+            return False
+
         return ph_size + split_size == total
 
     def get_pattern(self):

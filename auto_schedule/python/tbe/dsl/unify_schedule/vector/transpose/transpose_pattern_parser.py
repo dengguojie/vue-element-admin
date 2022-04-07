@@ -39,6 +39,10 @@ class TransposePatternParser(PatternParser):
         ph_size = self.compute_type_size_map.get(ComputeType.PLACEHOLDER, 0)
         transpose_size = self.compute_type_size_map.get(ComputeType.TRANSPOSE, 0)
         total = self.compute_type_size_map.get(ComputeType.ANY, 0)
+
+        if transpose_size != 1:
+            return False
+
         return ph_size + transpose_size == total
 
     def get_pattern(self):

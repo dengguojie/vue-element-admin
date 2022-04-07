@@ -38,6 +38,17 @@ def test_match_with_not_concat_compute_graph(_):
 
 
 # noinspection PyTypeChecker
+def test_match_with_all_placeholder(_):
+    compute_type_size_map = {
+        ComputeType.PLACEHOLDER: 5,
+        ComputeType.ANY: 5,
+    }
+
+    matched = ConcatPatternParser(None, compute_type_size_map, None).match()
+    return matched is False
+
+
+# noinspection PyTypeChecker
 def test_get_pattern(_):
     pattern = ConcatPatternParser(None, None, None).get_pattern()
     return pattern == Pattern.CONCAT
@@ -46,6 +57,7 @@ def test_get_pattern(_):
 test_funcs = [
     test_match_with_concat_compute_graph,
     test_match_with_not_concat_compute_graph,
+    test_match_with_all_placeholder,
     test_get_pattern,
 ]
 
