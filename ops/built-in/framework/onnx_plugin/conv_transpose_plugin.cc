@@ -113,11 +113,9 @@ Status SetAttrToOpConvTranspose(const ge::onnx::NodeProto *node, ge::Operator &o
   for (const auto &attr : node->attribute()) {
     if (attr.type() == ge::onnx::AttributeProto::INTS) {
       if (attr.name() == "strides") {
+        SetIntListValue(attr, strides_list);
         if (attr.ints_size() == 1) {
-          strides_list.push_back(1);
           strides_list.push_back(attr.ints(0));
-        } else {
-          SetIntListValue(attr, strides_list);
         }
         op.SetAttr("strides", strides_list);
       } else if (attr.name() == "dilations") {
