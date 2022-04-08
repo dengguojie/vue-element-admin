@@ -10,7 +10,7 @@
 #include "common/lx_fusion_func.h"
 #define private public
 #define protected public
-#include "buffer_fusion/ub_fusion/ai_core/matmul/matmul_dropout_do_mask_v3_d_ub_fusion.h"
+#include "buffer_fusion/ub_fusion/ai_core/matmul/batch_matmul_dropout_do_mask_v3_d_ub_fusion.h"
 #include "inc/common/op_slice_info.h"
 #include "common/lxfusion_json_util.h"
 #include "fusion_pass_test_utils.h"
@@ -20,14 +20,14 @@
 using namespace ge;
 using namespace op;
 
-class matmul_dropout_do_mask_v3_ub_fusion_test : public testing::Test {
+class batch_matmul_dropout_do_mask_v3_ub_fusion_test : public testing::Test {
 protected:
   static void SetUpTestCase() {
-    std::cout << "matmul_dropout_do_mask_v3_ub_fusion_test SetUp" << std::endl;
+    std::cout << "batch_matmul_dropout_do_mask_v3_ub_fusion_test SetUp" << std::endl;
   }
 
   static void TearDownTestCase() {
-    std::cout << "matmul_dropout_do_mask_v3_ub_fusion_test TearDown" << std::endl;
+    std::cout << "batch_matmul_dropout_do_mask_v3_ub_fusion_test TearDown" << std::endl;
   }
 };
 
@@ -39,8 +39,8 @@ namespace fe {
       const auto &iter = createFns.find(fusionPassName);
       if (iter != createFns.end()) {
           if (passType == fe::BUILT_IN_AI_CORE_BUFFER_FUSION_PASS) {
-              auto BufferFusionPassBasePtr = std::unique_ptr<MatmulDropOutDoMaskV3DFusionPass>(
-                      dynamic_cast<MatmulDropOutDoMaskV3DFusionPass *>(iter->second()));
+              auto BufferFusionPassBasePtr = std::unique_ptr<BatchMatmulDropOutDoMaskV3DFusionPass>(
+                      dynamic_cast<BatchMatmulDropOutDoMaskV3DFusionPass *>(iter->second()));
               if (BufferFusionPassBasePtr == nullptr) {
                   return FAILED;
               }
@@ -56,24 +56,24 @@ namespace fe {
                 vector<ge::NodePtr> matmulNodes;
                 for (auto i : NodePtrs) {
                   auto opDesc = i->GetOpDesc();
-                  if (opDesc->GetType() == "MatMulV2") {
+                  if (opDesc->GetType() == "BatchMatMul") {
                     matmulNodes.push_back(i);
                   }
                   if (opDesc->GetType() == "DropOutDoMaskV3D") {
-                    opDesc->MutableInputDesc(0)->SetShape(ge::GeShape({512, 4096}));
-                    opDesc->MutableInputDesc(1)->SetShape(ge::GeShape({512, 4096}));
+                    opDesc->MutableInputDesc(0)->SetShape(ge::GeShape({16, 512, 4096}));
+                    opDesc->MutableInputDesc(1)->SetShape(ge::GeShape({16, 512, 4096}));
                     elemNodes.push_back(i);
                   }
                   if (opDesc->GetType() == "Add") {
-                    opDesc->MutableInputDesc(0)->SetShape(ge::GeShape({512, 4096}));
-                    opDesc->MutableInputDesc(1)->SetShape(ge::GeShape({512, 4096}));
+                    opDesc->MutableInputDesc(0)->SetShape(ge::GeShape({16, 512, 4096}));
+                    opDesc->MutableInputDesc(1)->SetShape(ge::GeShape({16, 512, 4096}));
                     elemNode1.push_back(i);
                   }
                 }
 
                 BufferFusionMapping mapping;
                 for (auto i : desc) {
-                  if (i->desc_name == "matmul") {
+                  if (i->desc_name == "batch_matmul") {
                     mapping[i] = matmulNodes;
                   }
                   if (i->desc_name == "dropout_do_mask_v3_d") {
@@ -103,7 +103,7 @@ namespace fe {
                 split_map.AddInputSplitInfo(input_split_info);
                 split_map.AddOutputSplitInfo(output_split_info);
                 vector<AxisSplitMap> split_map_vec = {split_map};
-                SetSplitMapMainNode(split_map_vec, matmulNodes, "MatMul");
+                SetSplitMapMainNode(split_map_vec, matmulNodes, "BatchMatMul");
                 BufferFusionPassBasePtr->GetFusionNodes(mapping, fusion_nodes);
                 BufferFusionPassBasePtr->SetSplitInfo(mapping, fusion_nodes);
               }
@@ -115,37 +115,36 @@ namespace fe {
 
   }
 }
-TEST_F(matmul_dropout_do_mask_v3_ub_fusion_test, matmul_dropout_do_mask_v3_ub_fusion_test_1) {
-  ge::Graph graph("matmul_dropout_do_mask_v3_ub_fusion_test_1");
+TEST_F(batch_matmul_dropout_do_mask_v3_ub_fusion_test, batch_matmul_dropout_do_mask_v3_ub_fusion_test_1) {
+  ge::Graph graph("batch_matmul_dropout_do_mask_v3_ub_fusion_test_1");
 
-  ge::TensorDesc a_desc(ge::Shape({512, 1024}), ge::FORMAT_NHWC, ge::DT_FLOAT16);
+  ge::TensorDesc a_desc(ge::Shape({16, 512, 1024}), ge::FORMAT_NHWC, ge::DT_FLOAT16);
   auto data_a = op::Data("data_a");
   data_a.update_input_desc_x(a_desc);
   data_a.update_output_desc_y(a_desc);
 
-  ge::TensorDesc b_desc(ge::Shape({1024, 4096}), ge::FORMAT_NHWC, DT_FLOAT16);
+  ge::TensorDesc b_desc(ge::Shape({16, 1024, 4096}), ge::FORMAT_NHWC, DT_FLOAT16);
   auto data_b = op::Data("data_b");
   data_b.update_input_desc_x(b_desc);
   data_b.update_output_desc_y(b_desc);
 
-  auto matmul_op = op::MatMulV2("MatMulV2")
+  auto batch_matmul_op = op::BatchMatMul("BatchMatMul")
     .set_input_x1(data_a)
     .set_input_x2(data_b)
-    .set_attr_transpose_x1(false)
-    .set_attr_transpose_x2(false)
-    .set_attr_offset_x(0);
+    .set_attr_adj_x1(false)
+    .set_attr_adj_x2(false);
 
-  ge::TensorDesc dropout_mask_desc(ge::Shape({512, 4096}), ge::FORMAT_NHWC, ge::DT_UINT8);
+  ge::TensorDesc dropout_mask_desc(ge::Shape({16, 512, 4096}), ge::FORMAT_NHWC, ge::DT_UINT8);
   auto data_dropout_mask = op::Data("data_dropout");
   data_dropout_mask.update_input_desc_x(dropout_mask_desc);
   data_dropout_mask.update_output_desc_y(dropout_mask_desc);
 
   auto dropout_op = op::DropOutDoMaskV3D("DropOutDoMaskV3D")
-    .set_input_x(matmul_op)
+    .set_input_x(batch_matmul_op)
     .set_input_mask(data_dropout_mask)
     .set_attr_keep_prob(0.5);
 
-  ge::TensorDesc add_desc(ge::Shape({512, 4096}), ge::FORMAT_NHWC, ge::DT_FLOAT16);
+  ge::TensorDesc add_desc(ge::Shape({16, 512, 4096}), ge::FORMAT_NHWC, ge::DT_FLOAT16);
   auto data_add = op::Data("data_add");
   data_add.update_input_desc_x(add_desc);
   data_add.update_output_desc_y(add_desc);
@@ -159,9 +158,26 @@ TEST_F(matmul_dropout_do_mask_v3_ub_fusion_test, matmul_dropout_do_mask_v3_ub_fu
 
   graph.SetInputs(inputs).SetOutputs(outputs);
   ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
-  fe::FusionPassTestUtils::InferShapeAndType(compute_graph_ptr);
-  Status res = fe::RunBufferFusionPass("MatmulDropOutDoMaskV3DFusionPass",
-                                        fe::BUILT_IN_AI_CORE_BUFFER_FUSION_PASS,
-                                        compute_graph_ptr);
+
+  NodePtr node1 = nullptr;
+  NodePtr node2 = nullptr;
+  NodePtr node3 = nullptr;
+  for (auto node : compute_graph_ptr->GetAllNodes()) {
+    if (node->GetType() == "BatchMatMul") {
+      node1 = node;
+    }
+    if (node->GetType() == "DropOutDoMaskV3D") {
+      node2 = node;
+    }
+    if (node->GetType() == "Add") {
+      node3 = node;
+    }
+  }
+  GraphUtils::AddEdge(node1->GetOutControlAnchor(), node2->GetInControlAnchor());
+  GraphUtils::AddEdge(node2->GetOutControlAnchor(), node3->GetInControlAnchor());
+  // fe::FusionPassTestUtils::InferShapeAndType(compute_graph_ptr);
+  Status res = fe::RunBufferFusionPass("BatchMatmulDropOutDoMaskV3DFusionPass",
+                                       fe::BUILT_IN_AI_CORE_BUFFER_FUSION_PASS,
+                                       compute_graph_ptr);
   EXPECT_EQ(res, SUCCESS);
 }
