@@ -29,7 +29,7 @@ if(NOT BUILD_OPEN_PROJECT)
   #message(${OPERATOR_SAMPLE_BUILD_PATH})
   add_custom_target(OperatorSampleFiles ALL DEPENDS ${OPERATOR_SAMPLE_NAME})
   add_custom_command(OUTPUT ${OPERATOR_SAMPLE_NAME}
-    DEPENDS ${_proto_cc} ${_proto_h}
+    DEPENDS ${_proto_cc} ${_proto_h} MsopgenFiles
     COMMAND echo ${CMAKE_CURRENT_SOURCE_DIR}
     COMMAND cp -r ${_proto_cc} ${CMAKE_CURRENT_SOURCE_DIR}/dependency_files
     COMMAND cp -r ${_proto_h} ${CMAKE_CURRENT_SOURCE_DIR}/dependency_files
