@@ -21,10 +21,10 @@
 #include "register/register.h"
 
 namespace domi {
-// register LruCacheV2 op to GE
-REGISTER_CUSTOM_OP("LruCacheV2")
+// register LRUCacheV2 op to GE
+REGISTER_CUSTOM_OP("LRUCacheV2")
     .FrameworkType(TENSORFLOW)
-    .OriginOpType("LruCacheV2")
+    .OriginOpType("LRUCacheV2")
     .ParseParamsFn(AutoMappingFn)
     .ImplyType(ImplyType::TVM);
 }  // namespace domi
