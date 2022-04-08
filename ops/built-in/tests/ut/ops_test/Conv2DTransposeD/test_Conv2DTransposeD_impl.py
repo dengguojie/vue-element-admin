@@ -48,7 +48,6 @@ def _gen_conv2d_transpose_case(
     expect="success",
     data_flow="default",
 ):
-
     kernel_name = _gen_kernel_name(dedy_shape, w_shape, dx_shape, stride, data_flow)
 
     dedy = {

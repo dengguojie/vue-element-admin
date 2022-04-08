@@ -340,7 +340,9 @@ def _check_input_params(
 
     # limitation under conv1d
     def _is_conv1d_situation():
-        if dx_h_after_pad == 1 and filter_h_dilation == 1 and stride_h == 1:
+        if dx_h_after_pad == 1 and filter_h_dilation == 1 and dy_h == 1:
+            if stride_h != 1:
+                strides[0] = 1
             return True
         return False
 
@@ -695,7 +697,7 @@ def conv2d_backprop_input_compute(filters, out_backprop, filter_sizes, input_siz
     dx_ddr: dE/dX tensor
     """
 
-    strides = para_dict.get("strides")
+    strides = list(para_dict.get("strides"))
     padding = para_dict.get("padding")
     dilations = para_dict.get("dilations")
     res_dtype = para_dict.get("res_dtype", "float16")

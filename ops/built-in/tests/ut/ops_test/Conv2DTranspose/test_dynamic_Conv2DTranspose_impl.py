@@ -16,6 +16,7 @@ dynamic_conv2d_transpose_testcase = [
     ((5, 5, 240, 240), (2, 1, 1, 240), (2, 2, 1, 240), (2, 1), (-1, -1, -1, -1), "NHWC", 1, [0, 2, 3], 0, None, "success", "conv2d_transpose_dynamic_nhw_padding_same"),
     ((3, 3, 16, 16), (2, 5, 5, 16), (2, 5, 5, 16), (1, 1), (-1, -1, -1, -1), "NHWC", 1, [0, 1, 2, 3], 0, None, "success", "conv2d_transpose_dynamic_nchw_padding_same"),
     ((32, 32, 3, 3), (32, 32, 7, 1), (32, 32, 7, 2), (1, 2), (1, 1, 1, 1), "NCHW", 1, [0], 0, None, "success", "conv2d_transpose_dynamic_n"),
+    ((64, 16, 1, 32), (1, 64, 1, 2048), (1, 16, 1, 4096), (2, 2), (0, 0, 15, 15), "NCHW", 1, [0, 3], 0, None, "success", "conv1d_transpose_dynamic_n"),
     ((1, 32, 1, 1), (1, 1, 4096, 4096), (1, 32, 4096, 4096), (1, 1), (100, 100, 100, 100), "NCHW", 1, [2, 3], 0, None, "success", "conv2d_transpose_dynamic_hw"),
     ((1, 1, 55, 2), (1, 16, 55, 2), (1, 32, 55, 55), (2, 1), (0, 0, 0, 0), "NHWC", 1, [2, 3], 0, None, "success", "conv2d_transpose_dynamic_hw_padding_valid"),
     ((16, 7, 3, 3), [-2], (1, 7, 3, 3), (2, 2), (-1, -1, -1, -1), "NCHW", 1, [0, 1, 2, 3], 0, None, "success", "conv2d_transpose_unknown_rank_padding_same"),

@@ -129,7 +129,7 @@ def _check_param(  # pylint: disable=invalid-name,R0913,R0914,W0613
     inout_limit_min = INOUT_HW_MIN
     inout_h_max = INOUT_H_MAX
     inout_w_max = INOUT_W_MAX
-    if fmap_h_pad == 1 and filter_h_dilation == 1 and strides[0] == 1:
+    if fmap_h_pad == 1 and filter_h_dilation == 1 and dedy_h == 1:
         inout_w_max = CONV1D_W_MAX
 
     util_deconv_comm.check_attr_range("the h of fmap(output)", fmap_h, inout_limit_min, inout_h_max)

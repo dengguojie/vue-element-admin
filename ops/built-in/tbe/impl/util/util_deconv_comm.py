@@ -629,7 +629,7 @@ def check_conv2dbp_input_params(shape_filter, shape_out_backprop, input_sizes,
             raise RuntimeError(args_dict, err_man.get_error_message(args_dict))
 
     def _is_conv1d_situation():
-        if fmap_h_padding == 1 and filter_h_dilation == 1 and stride_h == 1:
+        if fmap_h_padding == 1 and filter_h_dilation == 1 and dedy_h == 1:
             return True
         return False
 
