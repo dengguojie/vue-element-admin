@@ -339,7 +339,7 @@ void GetBlockDimHelper(CoreStatus &coreStatus, BlockDimCalculator &blockDimCalcu
   int32_t nFactor = blockDimCalculator.n_dim_array[jIdx];
   for (int32_t mIdx = 0; mIdx < blockDimCalculator.m_dim_cnt; mIdx++) {
     int32_t mFactor = blockDimCalculator.m_dim_array[mIdx];
-    if (static_cast<uint32_t>(bFactor * nFactor * mFactor) > params.core_num) {
+    if (bFactor * nFactor * mFactor > params.core_num) {
       break;
     }
     coreStatus.batch = blockDimCalculator.batch / bFactor;
@@ -436,11 +436,15 @@ void GetBandwidth(const BatchmatmulParas &params, const int64_t &use_out_buffer_
   cur_bandwidth = use_out_buffer_size < params.l2_size ? l2_bandwidth : hbm_bandwidth;
 }
 
-int32_t ComputePerfSplitK(const int32_t block_dims[], const int32_t single_core_shape[])
+void ComputePerfSplitK(const int32_t block_dims[], const int32_t single_core_shape[], int32_t &min_cost,
+                       const BatchmatmulParas &params, CoreStatus &coreStatus)
 {
   int32_t m_dim = block_dims[0];
   int32_t k_dim = block_dims[1];
   int32_t n_dim = block_dims[kIdxTwo];
+  if (k_dim * n_dim * m_dim > params.core_num) {
+    return;
+  }
   int32_t single_core_m = single_core_shape[0];
   int32_t single_core_k = single_core_shape[1];
   int32_t single_core_n = single_core_shape[kIdxTwo];
@@ -450,7 +454,11 @@ int32_t ComputePerfSplitK(const int32_t block_dims[], const int32_t single_core_
       (single_core_m * single_core_k + single_core_k * single_core_n) * kFp16Bytes;
   int32_t b_repeat_load_cost = (m_dim - 1) * single_core_k * single_core_n * kFp16Bytes;
   int32_t a_repeat_load_cost = (n_dim - 1) * single_core_k * single_core_m * kFp16Bytes;
-  return base_load_cost + mte3_cost + a_repeat_load_cost + b_repeat_load_cost;
+  int32_t cur_cost = base_load_cost + mte3_cost + a_repeat_load_cost + b_repeat_load_cost;
+  if (cur_cost < min_cost) {
+    min_cost = cur_cost;
+    coreStatus.k_dim = k_dim;
+  }
 }
 
 void GetSplitKdim(const string &op_type, const BatchmatmulParas &params, CoreStatus &coreStatus)
@@ -485,20 +493,13 @@ void GetSplitKdim(const string &op_type, const BatchmatmulParas &params, CoreSta
         continue;
       }
       for (int32_t m = 1; m < m_dim_max; m++) {
-        if (k * n * m > params.core_num) {
-          continue;
-        }
         block_dims[0] = m;
         block_dims[1] = k;
         block_dims[kIdxTwo] = n;
         single_core_shape[0] = params.m_32 / m;
         single_core_shape[1] = params.k_32 / k;
         single_core_shape[kIdxTwo] = params.n_32 / n;
-        cur_cost = ComputePerfSplitK(block_dims, single_core_shape);
-        if (cur_cost < min_cost) {
-          min_cost = cur_cost;
-          coreStatus.k_dim = k;
-        }
+        ComputePerfSplitK(block_dims, single_core_shape, min_cost, params, coreStatus);
       }
     }
   }
@@ -536,7 +537,7 @@ void GetBlockDimKHelper(CoreStatus &coreStatus, BlockDimCalculator &blockDimCalc
       BL1FullLoadBlock(coreStatus, blockDimCalculator, n0, params.b_have_batch);
       // AL1 full load
       int32_t m0 = min(min((kL1Size / kFp16Bytes - kMinFractalSize) / (kMinFractalSize * coreStatus.k * coreStatus.m),
-                           coreStatus.m), kMaxFactor);
+          coreStatus.m), kMaxFactor);
       AL1FullLoadBlock(coreStatus, blockDimCalculator, m0);
       // neither
       NeitherFullLoadBlock(coreStatus, blockDimCalculator, n0s[nFactor], m0s[mFactor]);
@@ -585,14 +586,14 @@ int32_t GetBlockDimK(const string &op_type, const BatchmatmulParas &params, Core
   GetTwoFactors(kDimArray, coreStatus.k_dim, params.k_32, params.core_num);
   blockDimCalculator.k_dim_cnt = kCandidateLen;
   GetFactors(&blockDimCalculator.n_dim_cnt, nDimArray, params.n_32, params.core_num);
-  GetFactors(&blockDimCalculator.m_dim_cnt, mDimArray, params.m_32, params.core_num);
-  int32_t m0s[params.core_num + 1][kCandidateLen] = {0};
   int32_t n0s[params.core_num + 1][kCandidateLen] = {0};
   for (int32_t idx = 0; idx < blockDimCalculator.n_dim_cnt; idx++) {
     int32_t tmpNDim = nDimArray[idx];
     int32_t tmpNSingleCore = params.n_32 / tmpNDim;
     GetTwoFactors(n0s[tmpNDim], kMNPntMax, tmpNSingleCore, kMaxFactor);
   }
+  GetFactors(&blockDimCalculator.m_dim_cnt, mDimArray, params.m_32, params.core_num);
+  int32_t m0s[params.core_num + 1][kCandidateLen] = {0};
   for (int32_t idx = 0; idx < blockDimCalculator.m_dim_cnt; idx++) {
     int32_t tmpMDim = mDimArray[idx];
     int32_t tmpMSingleCore = params.m_32 / tmpMDim;
@@ -719,8 +720,20 @@ int32_t GetLoadSize(const CoreStatus &coreStatus, const L0Status &l0Status)
   return num0a + num0b;
 }
 
-void GetFinalMkn(L0Status &l0Status, const CoreStatus &coreStatus)
+void GetFinalMkn(L0Status &l0Status, const CoreStatus &coreStatus, const int32_t &k0,
+                 const int32_t &majorDimFactor, const int32_t &minorDimFactor)
 {
+  if (k0 == 0) {
+    return;
+  }
+  if (l0Status.max_axis_idx == 0) {
+    l0Status.m_l0 = majorDimFactor;
+    l0Status.n_l0 = minorDimFactor;
+  } else {
+    l0Status.m_l0 = minorDimFactor;
+    l0Status.n_l0 = majorDimFactor;
+  }
+  l0Status.k_l0 = k0;
   float tmpL0cUse = l0Status.m_l0 * l0Status.n_l0 * l0Status.db_l0c * kBlockSize * kBlockSize * 4 * 1.0 / kL0cSize;
   int32_t tmpMte1Loop = ((l0Status.n_l0 != 1) ? l0Status.k_l0 : 1) + ((l0Status.k_l0 != 1) ? l0Status.m_l0 : 1);
   int32_t tmpMul = l0Status.m_l0 * l0Status.k_l0 * l0Status.n_l0;
@@ -812,18 +825,7 @@ void GetL0FactorsCand(L0Factors &resFactors, const CoreStatus &coreStatus, L0Sta
       int32_t k0Factors[kCandidateLen] = {0};
       GetTwoFactors(k0Factors, k0Max, coreStatus.k, k0Max);
       for (auto &k0: k0Factors) {
-        if (k0 == 0) {
-          continue;
-        }
-        if (l0Status.max_axis_idx == 0) {
-          l0Status.m_l0 = majorDimFactor;
-          l0Status.n_l0 = minorDimFactor;
-        } else {
-          l0Status.m_l0 = minorDimFactor;
-          l0Status.n_l0 = majorDimFactor;
-        }
-        l0Status.k_l0 = k0;
-        GetFinalMkn(l0Status, coreStatus);
+        GetFinalMkn(l0Status, coreStatus, k0, majorDimFactor, minorDimFactor);
       }
     }
   }
@@ -1050,8 +1052,7 @@ void NeitherFullLoadMN(const CoreStatus &coreStatus, const L0Status &l0Status, L
   }
 }
 
-void NeitherFullLoadKforNZ(const CoreStatus &coreStatus, const L0Status &l0Status, L1Status &l1Status,
-                           const BatchmatmulParas &params)
+void NeitherFullLoadKforNZ(const CoreStatus &coreStatus, const L0Status &l0Status, L1Status &l1Status)
 {
   l1Status.kbl1_16 = coreStatus.k;
   if (GetL1Size(l1Status, l0Status) <= kL1Size) {
@@ -1137,7 +1138,7 @@ void NeitherFullLoadK(const CoreStatus &coreStatus, const L0Status &l0Status, L1
   if (params.nd_flag && kmax_axis != kNumZero) {
     NeitherFullLoadKforND(coreStatus, l0Status, l1Status, kmax_axis);
   } else {
-    NeitherFullLoadKforNZ(coreStatus, l0Status, l1Status, params);
+    NeitherFullLoadKforNZ(coreStatus, l0Status, l1Status);
   }
 }
 
@@ -1236,58 +1237,58 @@ void GetL1Factors(const string &op_type, const BatchmatmulParas &params, const C
   OP_LOGD(op_type.c_str(), "tiling db_al1:%d, db_bl1:%d", l1Status.db_al1, l1Status.db_bl1);
 }
 
-bool CheckABUbSize(const int32_t &ub_rest_size, const int32_t &k_aub, const int32_t &m_aub,
-                   const int32_t &k_bub, const int32_t &n_bub, const BatchmatmulParas &params, UbStatus &ubStatus)
+bool CheckABUbSize(const int32_t &k_aub, const int32_t &m_aub, const int32_t &k_bub, const int32_t &n_bub,
+                   const BatchmatmulParas &params, UbStatus &ubStatus)
 {
   ubStatus.aub_size = k_aub * kBlockSize * m_aub * kBlockSize * ubStatus.db_aub * (1 + params.aub_double_num);
   ubStatus.bub_size = k_bub * kBlockSize * n_bub * kBlockSize * ubStatus.db_bub * (1 + params.bub_double_num);
-  return (ubStatus.aub_size + ubStatus.bub_size) <= ub_rest_size;
+  return (ubStatus.aub_size + ubStatus.bub_size) <= ubStatus.ub_rest_size;
 }
 
-void GetABUbMax(const int32_t &ub_rest_size, const int32_t &k_aub, const int32_t &m_aub, const int32_t &k_bub,
-                const int32_t &n_bub, const BatchmatmulParas &params, UbStatus &ubStatus, const int max_num)
+void GetABUbMax(const int32_t &k_aub, const int32_t &m_aub, const int32_t &k_bub, const int32_t &n_bub,
+                const BatchmatmulParas &params, UbStatus &ubStatus, const int max_num)
 {
   // max_num: 0->k_aub, 1->k_bub, 2->m_aub, 3->n_bub
   ubStatus.aub_size = k_aub * kBlockSize * m_aub * kBlockSize * ubStatus.db_aub * (1 + params.aub_double_num);
   ubStatus.bub_size = k_bub * kBlockSize * n_bub * kBlockSize * ubStatus.db_bub * (1 + params.bub_double_num);
   if (max_num == kNumZero) {
-    ubStatus.k_aub = (ub_rest_size - ubStatus.bub_size) /
+    ubStatus.k_aub = (ubStatus.ub_rest_size - ubStatus.bub_size) /
       (kBlockSize * m_aub * kBlockSize * ubStatus.db_aub * (1 + params.aub_double_num));
   } else if (max_num == kNumOne) {
-    ubStatus.k_bub = (ub_rest_size - ubStatus.aub_size) /
+    ubStatus.k_bub = (ubStatus.ub_rest_size - ubStatus.aub_size) /
       (kBlockSize * n_bub * kBlockSize * ubStatus.db_bub * (1 + params.bub_double_num));
   } else if (max_num == kNumTwo) {
-    ubStatus.m_aub = (ub_rest_size - ubStatus.bub_size) /
+    ubStatus.m_aub = (ubStatus.ub_rest_size - ubStatus.bub_size) /
       (k_aub * kBlockSize * kBlockSize * ubStatus.db_aub * (1 + params.aub_double_num));
   } else if (max_num == kNumThree) {
-    ubStatus.n_bub = (ub_rest_size - ubStatus.aub_size) /
+    ubStatus.n_bub = (ubStatus.ub_rest_size - ubStatus.aub_size) /
       (k_bub * kBlockSize * kBlockSize * ubStatus.db_bub * (1 + params.bub_double_num));
   }
 }
 
-void GetAUbFactors(const int32_t &ub_rest_size, const CoreStatus &coreStatus, const L1Status &l1Status,
-                   const L0Status &l0Status, const BatchmatmulParas &params, UbStatus &ubStatus)
+void GetAUbFactors(const CoreStatus &coreStatus, const L1Status &l1Status, const L0Status &l0Status,
+                   const BatchmatmulParas &params, UbStatus &ubStatus)
 {
   int32_t al1_m = l1Status.m_al1 * l0Status.m_l0;
   bool condition_m2_k2 = (!params.at_l1_flag &&
-    CheckABUbSize(ub_rest_size, coreStatus.k, coreStatus.m, ubStatus.k_bub, ubStatus.n_bub, params, ubStatus));
+    CheckABUbSize(coreStatus.k, coreStatus.m, ubStatus.k_bub, ubStatus.n_bub, params, ubStatus));
   bool condition_ml1_kl1 =
-    CheckABUbSize(ub_rest_size, l1Status.kal1_16, al1_m, ubStatus.k_bub, ubStatus.n_bub, params, ubStatus);
+    CheckABUbSize(l1Status.kal1_16, al1_m, ubStatus.k_bub, ubStatus.n_bub, params, ubStatus);
   bool condition_ml1_kl0 = (params.trans_a_flag &&
-    CheckABUbSize(ub_rest_size, l0Status.k_l0, al1_m, ubStatus.k_bub, ubStatus.n_bub, params, ubStatus));
+    CheckABUbSize(l0Status.k_l0, al1_m, ubStatus.k_bub, ubStatus.n_bub, params, ubStatus));
   bool condition_ml1_k0 = (params.trans_a_flag &&
-    CheckABUbSize(ub_rest_size, 1, al1_m, ubStatus.k_bub, ubStatus.n_bub, params, ubStatus));
+    CheckABUbSize(1, al1_m, ubStatus.k_bub, ubStatus.n_bub, params, ubStatus));
   bool condition_ml0_kl1 = (!params.trans_a_flag &&
-    CheckABUbSize(ub_rest_size, l1Status.kal1_16, l0Status.m_l0, ubStatus.k_bub, ubStatus.n_bub, params, ubStatus));
+    CheckABUbSize(l1Status.kal1_16, l0Status.m_l0, ubStatus.k_bub, ubStatus.n_bub, params, ubStatus));
   bool condition_m0_kl1 = (!params.trans_a_flag &&
-    CheckABUbSize(ub_rest_size, l1Status.kal1_16, 1, ubStatus.k_bub, ubStatus.n_bub, params, ubStatus));
+    CheckABUbSize(l1Status.kal1_16, 1, ubStatus.k_bub, ubStatus.n_bub, params, ubStatus));
   bool condition_ml0_kl0 =
-    CheckABUbSize(ub_rest_size, l0Status.k_l0, l0Status.m_l0, ubStatus.k_bub, ubStatus.n_bub, params, ubStatus);
+    CheckABUbSize(l0Status.k_l0, l0Status.m_l0, ubStatus.k_bub, ubStatus.n_bub, params, ubStatus);
   bool condition_ml0_k0 = (params.trans_a_flag &&
-    CheckABUbSize(ub_rest_size, 1, l0Status.m_l0, ubStatus.k_bub, ubStatus.n_bub, params, ubStatus));
+    CheckABUbSize(1, l0Status.m_l0, ubStatus.k_bub, ubStatus.n_bub, params, ubStatus));
   bool condition_m0_kl0 = (!params.trans_a_flag &&
-    CheckABUbSize(ub_rest_size, l0Status.k_l0, 1, ubStatus.k_bub, ubStatus.n_bub, params, ubStatus));
-  bool condition_m0_k0 = CheckABUbSize(ub_rest_size, 1, 1, ubStatus.k_bub, ubStatus.n_bub, params, ubStatus);
+    CheckABUbSize(l0Status.k_l0, 1, ubStatus.k_bub, ubStatus.n_bub, params, ubStatus));
+  bool condition_m0_k0 = CheckABUbSize(1, 1, ubStatus.k_bub, ubStatus.n_bub, params, ubStatus);
   if (condition_m2_k2) {
     ubStatus.k_aub = coreStatus.k;
     ubStatus.m_aub = coreStatus.m;
@@ -1300,7 +1301,7 @@ void GetAUbFactors(const int32_t &ub_rest_size, const CoreStatus &coreStatus, co
   } else if (condition_ml1_k0) {
     ubStatus.k_aub = 1;
     ubStatus.m_aub = al1_m;
-    GetABUbMax(ub_rest_size, 1, al1_m, ubStatus.k_bub, ubStatus.n_bub, params, ubStatus, kNumZero);
+    GetABUbMax(1, al1_m, ubStatus.k_bub, ubStatus.n_bub, params, ubStatus, kNumZero);
     GetNearestFactor(l1Status.kal1_16, ubStatus.k_aub);
   } else if (condition_ml0_kl1) {
     ubStatus.k_aub = l1Status.kal1_16;
@@ -1308,7 +1309,7 @@ void GetAUbFactors(const int32_t &ub_rest_size, const CoreStatus &coreStatus, co
   } else if (condition_m0_kl1) {
     ubStatus.k_aub = l1Status.kal1_16;
     ubStatus.m_aub = 1;
-    GetABUbMax(ub_rest_size, l1Status.kal1_16, 1, ubStatus.k_bub, ubStatus.n_bub, params, ubStatus, kNumTwo);
+    GetABUbMax(l1Status.kal1_16, 1, ubStatus.k_bub, ubStatus.n_bub, params, ubStatus, kNumTwo);
     GetNearestFactor(al1_m, ubStatus.m_aub);
   } else if (condition_ml0_kl0) {
     ubStatus.k_aub = l0Status.k_l0;
@@ -1326,29 +1327,29 @@ void GetAUbFactors(const int32_t &ub_rest_size, const CoreStatus &coreStatus, co
   ubStatus.aub_align_bound = ubStatus.k_aub * kBlockSize * ubStatus.m_aub * kBlockSize;
 }
 
-void GetBUbFactors(const int32_t &ub_rest_size, const CoreStatus &coreStatus, const L1Status &l1Status,
-                   const L0Status &l0Status, const BatchmatmulParas &params, UbStatus &ubStatus)
+void GetBUbFactors(const CoreStatus &coreStatus, const L1Status &l1Status, const L0Status &l0Status,
+                   const BatchmatmulParas &params, UbStatus &ubStatus)
 {
   int32_t bl1_n = l1Status.n_bl1 * l0Status.n_l0;
   bool condition_k2_n2 = (!params.at_l1_flag &&
-    CheckABUbSize(ub_rest_size, ubStatus.k_aub, ubStatus.m_aub, coreStatus.k, coreStatus.n, params, ubStatus));
+    CheckABUbSize(ubStatus.k_aub, ubStatus.m_aub, coreStatus.k, coreStatus.n, params, ubStatus));
   bool condition_kl1_nl1 =
-    CheckABUbSize(ub_rest_size, ubStatus.k_aub, ubStatus.m_aub, l1Status.kbl1_16, bl1_n, params, ubStatus);
+    CheckABUbSize(ubStatus.k_aub, ubStatus.m_aub, l1Status.kbl1_16, bl1_n, params, ubStatus);
   bool condition_kl0_nl1 = (!params.trans_b_flag &&
-    CheckABUbSize(ub_rest_size, ubStatus.k_aub, ubStatus.m_aub, l0Status.k_l0, bl1_n, params, ubStatus));
+    CheckABUbSize(ubStatus.k_aub, ubStatus.m_aub, l0Status.k_l0, bl1_n, params, ubStatus));
   bool condition_k0_nl1 = (!params.trans_b_flag &&
-    CheckABUbSize(ub_rest_size, ubStatus.k_aub, ubStatus.m_aub, 1, bl1_n, params, ubStatus));
+    CheckABUbSize(ubStatus.k_aub, ubStatus.m_aub, 1, bl1_n, params, ubStatus));
   bool condition_kl1_nl0 = (params.trans_b_flag &&
-    CheckABUbSize(ub_rest_size, ubStatus.k_aub, ubStatus.m_aub, l1Status.kbl1_16, l0Status.n_l0, params, ubStatus));
+    CheckABUbSize(ubStatus.k_aub, ubStatus.m_aub, l1Status.kbl1_16, l0Status.n_l0, params, ubStatus));
   bool condition_kl1_n0 = (params.trans_b_flag &&
-    CheckABUbSize(ub_rest_size, ubStatus.k_aub, ubStatus.m_aub, l1Status.kbl1_16, 1, params, ubStatus));
+    CheckABUbSize(ubStatus.k_aub, ubStatus.m_aub, l1Status.kbl1_16, 1, params, ubStatus));
   bool condition_kl0_nl0 =
-    CheckABUbSize(ub_rest_size, ubStatus.k_aub, ubStatus.m_aub, l0Status.k_l0, l0Status.n_l0, params, ubStatus);
+    CheckABUbSize(ubStatus.k_aub, ubStatus.m_aub, l0Status.k_l0, l0Status.n_l0, params, ubStatus);
   bool condition_k0_nl0 = (!params.trans_b_flag &&
-    CheckABUbSize(ub_rest_size, ubStatus.k_aub, ubStatus.m_aub, 1, l0Status.n_l0, params, ubStatus));
+    CheckABUbSize(ubStatus.k_aub, ubStatus.m_aub, 1, l0Status.n_l0, params, ubStatus));
   bool condition_kl0_n0 = (params.trans_b_flag &&
-    CheckABUbSize(ub_rest_size, ubStatus.k_aub, ubStatus.m_aub, l0Status.k_l0, 1, params, ubStatus));
-  bool condition_k0_n0 = CheckABUbSize(ub_rest_size, ubStatus.k_aub, ubStatus.m_aub, 1, 1, params, ubStatus);
+    CheckABUbSize(ubStatus.k_aub, ubStatus.m_aub, l0Status.k_l0, 1, params, ubStatus));
+  bool condition_k0_n0 = CheckABUbSize(ubStatus.k_aub, ubStatus.m_aub, 1, 1, params, ubStatus);
   if (condition_k2_n2) {
     ubStatus.k_bub = coreStatus.k;
     ubStatus.n_bub = coreStatus.n;
@@ -1361,7 +1362,7 @@ void GetBUbFactors(const int32_t &ub_rest_size, const CoreStatus &coreStatus, co
   } else if (condition_k0_nl1) {
     ubStatus.k_bub = 1;
     ubStatus.n_bub = bl1_n;
-    GetABUbMax(ub_rest_size, ubStatus.k_aub, ubStatus.m_aub, 1, bl1_n, params, ubStatus, kNumOne);
+    GetABUbMax(ubStatus.k_aub, ubStatus.m_aub, 1, bl1_n, params, ubStatus, kNumOne);
     GetNearestFactor(l1Status.kbl1_16, ubStatus.k_bub);
   } else if (condition_kl1_nl0) {
     ubStatus.k_bub = l1Status.kbl1_16;
@@ -1369,7 +1370,7 @@ void GetBUbFactors(const int32_t &ub_rest_size, const CoreStatus &coreStatus, co
   } else if (condition_kl1_n0) {
     ubStatus.k_bub = l1Status.kbl1_16;
     ubStatus.n_bub = 1;
-    GetABUbMax(ub_rest_size, ubStatus.k_aub, ubStatus.m_aub, l1Status.kbl1_16, 1, params, ubStatus, kNumThree);
+    GetABUbMax(ubStatus.k_aub, ubStatus.m_aub, l1Status.kbl1_16, 1, params, ubStatus, kNumThree);
     GetNearestFactor(bl1_n, ubStatus.n_bub);
   } else if (condition_kl0_nl0) {
     ubStatus.k_bub = l0Status.k_l0;
@@ -1413,9 +1414,9 @@ void GetABUbSize(const int32_t &k_aub, const int32_t &m_aub, const int32_t &k_bu
   }
 }
 
-void CheckBankConflict(const int32_t &ub_rest_size, const BatchmatmulParas &params, UbStatus &ubStatus) {
+void CheckBankConflict(const BatchmatmulParas &params, UbStatus &ubStatus) {
   GetABUbSize(ubStatus.k_aub, ubStatus.m_aub, ubStatus.k_bub, ubStatus.n_bub, params, ubStatus);
-  if (ubStatus.aub_bank_size + ubStatus.bub_bank_size <= ub_rest_size) {
+  if (ubStatus.aub_bank_size + ubStatus.bub_bank_size <= ubStatus.ub_rest_size) {
     ubStatus.aub_size = ubStatus.aub_bank_size;
     ubStatus.bub_size = ubStatus.bub_bank_size;
   } else {
@@ -1423,13 +1424,13 @@ void CheckBankConflict(const int32_t &ub_rest_size, const BatchmatmulParas &para
     int align_mode = kNumZero;
     if (ubStatus.a_align_value != 1 && ubStatus.b_align_value != 1) {
       if (ubStatus.aub_bank_size > ubStatus.bub_bank_size) {
-        align_mode = (ubStatus.aub_bank_size + ubStatus.bub_size <= ub_rest_size)
-                         ? kNumOne
-                         : ((ubStatus.aub_size + ubStatus.bub_bank_size <= ub_rest_size) ? kNumTwo : kNumZero);
+        align_mode = (ubStatus.aub_bank_size + ubStatus.bub_size <= ubStatus.ub_rest_size)
+            ? kNumOne
+            : ((ubStatus.aub_size + ubStatus.bub_bank_size <= ubStatus.ub_rest_size) ? kNumTwo : kNumZero);
       } else {
-        align_mode = (ubStatus.aub_size + ubStatus.bub_bank_size <= ub_rest_size)
-                         ? kNumTwo
-                         : ((ubStatus.aub_bank_size + ubStatus.bub_size <= ub_rest_size) ? kNumOne : kNumZero);
+        align_mode = (ubStatus.aub_size + ubStatus.bub_bank_size <= ubStatus.ub_rest_size)
+            ? kNumTwo
+            : ((ubStatus.aub_bank_size + ubStatus.bub_size <= ubStatus.ub_rest_size) ? kNumOne : kNumZero);
       }
     }
     if (align_mode == kNumZero) {
@@ -1449,12 +1450,12 @@ void CheckBankConflict(const int32_t &ub_rest_size, const BatchmatmulParas &para
   }
 }
 
-void GetABUbFactors(const int32_t &ub_rest_size, const CoreStatus &coreStatus, const L1Status &l1Status,
-                    const L0Status &l0Status, const BatchmatmulParas &params, UbStatus &ubStatus)
+void GetABUbFactors(const CoreStatus &coreStatus, const L1Status &l1Status, const L0Status &l0Status,
+                    const BatchmatmulParas &params, UbStatus &ubStatus)
 {
-  GetAUbFactors(ub_rest_size, coreStatus, l1Status, l0Status, params, ubStatus);
-  GetBUbFactors(ub_rest_size, coreStatus, l1Status, l0Status, params, ubStatus);
-  CheckBankConflict(ub_rest_size, params, ubStatus);
+  GetAUbFactors(coreStatus, l1Status, l0Status, params, ubStatus);
+  GetBUbFactors(coreStatus, l1Status, l0Status, params, ubStatus);
+  CheckBankConflict(params, ubStatus);
 }
 
 void GetUbFactors(const string &op_type, const BatchmatmulParas &params, const CoreStatus &coreStatus,
@@ -1475,8 +1476,8 @@ void GetUbFactors(const string &op_type, const BatchmatmulParas &params, const C
   }
   // first get AUB BUB factors
   if (params.nd_flag) {
-    int32_t ub_rest_size = UbFp16Size - ubStatus.min_dma_size;
-    GetABUbFactors(ub_rest_size, coreStatus, l1Status, l0Status, params, ubStatus);
+    ubStatus.ub_rest_size = UbFp16Size - ubStatus.min_dma_size;
+    GetABUbFactors(coreStatus, l1Status, l0Status, params, ubStatus);
     bool condition_db_bub = (params.ubdb_flag &&
       (ubStatus.bub_size * kDbOn + ubStatus.aub_size + ubStatus.min_dma_size <= UbFp16Size));
     bool condition_db_aub = (params.ubdb_flag &&

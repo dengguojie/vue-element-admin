@@ -221,6 +221,7 @@ struct UbStatus {
   int32_t bub_bank_size = 0;
   int32_t aub_align_bound = 0;
   int32_t bub_align_bound = 0;
+  int32_t ub_rest_size = 0;
 };
 
 class Tiling {
