@@ -321,6 +321,7 @@ REGISTER_CUSTOM_ONNX_OP(ai.onnx::13::Sin, Sin, SinV13);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::13::Sinh, Sinh, SinhV13);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::13::Atanh, Atanh, AtanhV13);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::13::Greater, Greater, GreaterV13);
+REGISTER_CUSTOM_ONNX_OP(ai.onnx::13::GreaterOrEqual, GreaterEqual, GreaterOrEqualV13);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::13::Or, LogicalOr, OrV13);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::13::Log, Log, LogV13);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::13::And, LogicalAnd, AndV13);
