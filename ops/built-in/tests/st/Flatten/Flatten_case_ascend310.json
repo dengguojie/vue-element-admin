@@ -471,5 +471,75 @@
       }
     ],
     "case_name": "test_Flatten_008"
+  },
+  {
+    "op": "Flatten",
+    "input_desc": [
+      {
+        "shape": [
+          255,
+          8,
+          33
+        ],
+        "format": "ND",
+        "ori_shape": [
+          255,
+          8,
+          33
+        ],
+        "ori_format": "ND",
+        "range": [
+          [
+            255,
+            255
+          ],
+          [
+            8,
+            8
+          ],
+          [
+            33,
+            33
+          ]
+        ],
+        "name": "x",
+        "type": "bool"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          255,
+          264
+        ],
+        "format": "ND",
+        "ori_shape": [
+          255,
+          8,
+          33
+        ],
+        "ori_format": "ND",
+        "range": [
+          [
+            255,
+            255
+          ],
+          [
+            264,
+            264
+          ]
+        ],
+        "name": "y",
+        "type": "bool"
+      }
+    ],
+    "attr": [
+      {
+        "name": "axis",
+        "type": "int",
+        "value": 1
+      }
+    ],
+    "case_name": "test_Flatten_009"
   }
 ]
