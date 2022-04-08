@@ -974,7 +974,7 @@ class InferShapeBatchMatMul {
     range_out = vector<std::pair<int64_t, int64_t>>(num_dim);
   };
 
-  ~InferShapeBatchMatMul(){};
+  ~InferShapeBatchMatMul() {};
   bool InferShape();
 
  protected:
@@ -1758,24 +1758,66 @@ IMPLEMT_VERIFIER(MatMul, MatMulVerify) {
   return InferShapeMatMul::VerifyInputs(op);
 }
 
+bool SetMatMulOutputDtype(const AscendString& opName, const ge::GeTensorDescPtr tensordesc_x1,
+                          ge::GeTensorDescPtr tensordesc_output) {
+  ge::DataType input_dtype = tensordesc_x1->GetDataType();
+  ge::DataType output_dtype = tensordesc_output->GetDataType();
+  if (input_dtype == DT_FLOAT) {
+    OP_LOGW(opName.GetString(), "[Plugin][WARNING]MatMul fp32 op has poor performance!");
+  }
+  // Split K scenario modifies the output dtype of MatMul as DT_FLOAT in Pytorch Adapther if input dtype is
+  // DT_FLOAT16. Also the input format is ND and the output format is Fractal_NZ.
+  bool split_k_dtype_correct = input_dtype == DT_FLOAT16 && output_dtype == DT_FLOAT;
+  bool split_k_format_correct = false;
+  Format input_format = tensordesc_x1->GetFormat();
+  Format output_format = tensordesc_output->GetFormat();
+  if (AttrUtils::HasAttr(tensordesc_x1, ge::ATTR_NAME_STORAGE_FORMAT) &&
+      AttrUtils::HasAttr(tensordesc_output, ge::ATTR_NAME_STORAGE_FORMAT)) {
+    Format input_storage_format;
+    int64_t input_storage_format_val;
+    Format output_storage_format;
+    int64_t output_storage_format_val;
+    if (!AttrUtils::GetInt(tensordesc_x1, ge::ATTR_NAME_STORAGE_FORMAT, input_storage_format_val)) {
+      OP_LOGE(opName.GetString(), "[Plugin][ERROR]%s GetOpAttr %s for input failed!", opName.GetString(),
+              "storage_format");
+      return false;
+    }
+    if (!AttrUtils::GetInt(tensordesc_output, ge::ATTR_NAME_STORAGE_FORMAT, output_storage_format_val)) {
+      OP_LOGE(opName.GetString(), "[Plugin][ERROR]%s GetOpAttr %s for output failed!", opName.GetString(),
+              "storage_format");
+      return false;
+    }
+    input_storage_format = static_cast<Format>(input_storage_format_val);
+    output_storage_format = static_cast<Format>(output_storage_format_val);
+    if (input_storage_format == FORMAT_ND && output_storage_format == FORMAT_FRACTAL_NZ) {
+      split_k_format_correct = true;
+    }
+  } else if (input_format == FORMAT_ND && output_format == FORMAT_FRACTAL_NZ) {
+    split_k_format_correct = true;
+  }
+  bool split_k = split_k_dtype_correct && split_k_format_correct;
+  if (split_k) {
+    // The following scenario is used in MatMul split K
+    OP_LOGD(opName.GetString(), "split K is needed");
+    tensordesc_output->SetDataType(output_dtype);
+  } else {
+    tensordesc_output->SetDataType(input_dtype);
+  }
+  return true;
+}
+
 // Obtains the processing function of the output tensor description.
 IMPLEMT_COMMON_INFERFUNC(MatMulInferShape) {
   AscendString opName;
   CHECK(op.GetName(opName) != GRAPH_SUCCESS, OP_LOGE("", "GetName failed."), return GRAPH_FAILED);
-
   ge::OpDescPtr op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
   CHECK_PTR_NULL(op_desc, "op desc", return GRAPH_FAILED);
   ge::GeTensorDescPtr tensordesc_output = op_desc->MutableOutputDesc(0);
   ge::GeTensorDescPtr tensordesc_x1 = op_desc->MutableInputDesc(0);
   ge::GeTensorDescPtr tensordesc_x2 = op_desc->MutableInputDesc(1);
-  ge::DataType dtype = tensordesc_x1->GetDataType();
 
   OP_LOGD(opName.GetString(), "start judge the dtype for matmul!");
-  if (dtype == DT_FLOAT) {
-    OP_LOGW(opName.GetString(), "[Plugin][WARNING]MatMul fp32 op has poor performance!");
-  }
   OP_LOGD(opName.GetString(), "%s", GetMatMulInfo(op, "transpose").c_str());
-
   GeShape shape_x1(tensordesc_x1->MutableShape());
   GeShape shape_x2(tensordesc_x2->MutableShape());
   std::vector<std::pair<int64_t, int64_t>> shape_range_x1;
@@ -1787,18 +1829,14 @@ IMPLEMT_COMMON_INFERFUNC(MatMulInferShape) {
 
   bool trans_a = false;
   if (!AttrUtils::GetBool(op_desc, "transpose_x1", trans_a)) {
-    OP_LOGE(opName.GetString(), "[Plugin][ERROR]%s GetOpAttr %s_x1 failed!",
-            opName.GetString(), "transpose_x1");
+    OP_LOGE(opName.GetString(), "[Plugin][ERROR]%s GetOpAttr %s_x1 failed!", opName.GetString(), "transpose_x1");
     return GRAPH_FAILED;
   }
-
   bool trans_b = false;
   if (!AttrUtils::GetBool(op_desc, "transpose_x2", trans_b)) {
-    OP_LOGE(opName.GetString(), "[Plugin][ERROR]%s GetOpAttr %s_x2 failed!",
-            opName.GetString(), "transpose_x2");
+    OP_LOGE(opName.GetString(), "[Plugin][ERROR]%s GetOpAttr %s_x2 failed!", opName.GetString(), "transpose_x2");
     return GRAPH_FAILED;
   }
-
   if (shape_x1.GetDimNum() == 1 && shape_x1.GetDim(0) > 0) {
     int64_t ori_dim = shape_x1.GetDim(0);
     shape_x1.SetDimNum(2);
@@ -1806,7 +1844,6 @@ IMPLEMT_COMMON_INFERFUNC(MatMulInferShape) {
     shape_x1.SetDim(1, ori_dim);
     shape_range_x1.insert(shape_range_x1.begin(), make_pair<int64_t, int64_t>(1, 1));
   }
-
   if (shape_x2.GetDimNum() == 1 && shape_x2.GetDim(0) > 0) {
     int64_t ori_dim = shape_x2.GetDim(0);
     shape_x2.SetDimNum(2);
@@ -1817,13 +1854,16 @@ IMPLEMT_COMMON_INFERFUNC(MatMulInferShape) {
 
   GeShape& shape_out = tensordesc_output->MutableShape();
   std::vector<std::pair<int64_t, int64_t>> shape_range_out;
-  InferShapeMatMul inferHelper(opName, shape_x1, shape_x2, shape_range_x1, shape_range_x2,
-                               trans_a, trans_b, shape_out, shape_range_out);
+  InferShapeMatMul inferHelper(opName, shape_x1, shape_x2, shape_range_x1, shape_range_x2, trans_a, trans_b, shape_out,
+                               shape_range_out);
   CHECK(!inferHelper.InferShape(), OP_LOGE(opName.GetString(), "Failed to infer output shape"), return GRAPH_FAILED);
-
   tensordesc_output->SetShapeRange(shape_range_out);
-  tensordesc_output->SetDataType(tensordesc_x1->GetDataType());
-
+  if (!SetMatMulOutputDtype(opName, tensordesc_x1, tensordesc_output)) {
+    OP_LOGE(opName.GetString(), "[Plugin][ERROR]%s SetMatMulOutputDtype failed!", opName.GetString());
+    return GRAPH_FAILED;
+  }
+  OP_LOGD(opName.GetString(), "the output data type is %s",
+          DataTypeToStringDesc(tensordesc_output->GetDataType()).c_str());
   return GRAPH_SUCCESS;
 }
 

@@ -31,11 +31,19 @@ class AAMatMulNzToNdFusionPass : public PatternFusionBasePass {
   Status Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes) override;
   bool CheckFormatOfTransData(const ge::NodePtr node_ptr_transdata, const string& expect_src_format,
                               const string& expect_dst_format);
+  bool CheckOutputFormatOfMatMul(const ge::NodePtr cur_node_ptr, const ge::Format& expect_dst_format) const;
   bool IsAligned();
+  bool GetNodePtr(const Mapping& mapping);
   bool IsLinkRelationshipCorrect(const Mapping& mapping);
   bool IsNumOfNodesOutCorrect();
+  bool IsDtypeCorrect() const;
   bool IsStaticShape();
   bool NeedFusion(const Mapping& mapping);
+  bool GetOriginalValue();
+  bool UpdateNodesInfo();
+  bool RelinkNodesBeforeMatMul();
+  bool RelinkNodesAfterMatMul();
+  bool RemoveRedanduntNodes(ge::ComputeGraph* graph);
   vector<FusionPattern*> DefinePatterns() override;
   void RestoreOriginalValues();
 
@@ -46,6 +54,8 @@ class AAMatMulNzToNdFusionPass : public PatternFusionBasePass {
   ge::NodePtr node_ptr_transdata_1 = nullptr;
   ge::NodePtr node_ptr_matmul = nullptr;
   ge::NodePtr node_ptr_transdata_out = nullptr;
+  // only appear in split_k and force_fp16_mode
+  ge::NodePtr node_ptr_cast = nullptr;
   ge::NodePtr node_ptr_netoutput = nullptr;
 
   ge::GeShape in_shape_matmul_0;
@@ -54,6 +64,8 @@ class AAMatMulNzToNdFusionPass : public PatternFusionBasePass {
   std::vector<std::pair<int64_t, int64_t>> in_range_matmul_0;
   std::vector<std::pair<int64_t, int64_t>> in_range_matmul_1;
   std::vector<std::pair<int64_t, int64_t>> out_range_matmul_0;
+  bool split_k_mode = false;
+  bool split_k_force_fp16_mode = false;
 };
 }  // namespace fe
 

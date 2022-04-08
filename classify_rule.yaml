@@ -282,6 +282,8 @@ cube:
       - ops/built-in/fusion_pass/graph_fusion/ai_core/batch_matmul_reduce_mean_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/batch_matmul_v2_reduce_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/batch_matmul_v2_reduce_fusion_pass.h
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/a_a_matmul_nz_to_nd_fusion_pass.cc
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/a_a_matmul_nz_to_nd_fusion_pass.h
       - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/conv2d_backprop_input/conv2d_bp_input_dequant_elemwise_quant_pass.cc
       - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/conv2d_backprop_input/conv2d_bp_input_dequant_elemwise_quant_pass.h
       - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/conv2d_backprop_input/conv2d_bp_input_elemwise_pass.cc
