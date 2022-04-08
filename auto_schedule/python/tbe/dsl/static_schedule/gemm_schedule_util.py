@@ -17,6 +17,7 @@
 """
 common function for gemm_schedule
 """
+import copy
 from functools import reduce
 import math
 
@@ -137,7 +138,6 @@ def get_all_tensors(res):
             if one_tensor.op.name not in all_tensor:
                 all_tensor[one_tensor.op.name] = one_tensor
                 get(one_tensor)
-
     get(res)
     return all_tensor, leaf_tensor
 
@@ -196,7 +196,7 @@ def set_matmul_scope(all_tensor, sch, tensor_map):
     return tensor_map
 
 
-def set_out_scope(all_tensor, leaf_tensor, sch, tensor_map):
+def set_out_scope(all_tensor, leaf_tensor, sch, tensor_map, res_list):
     """
     set scope for matmul
     :param all_tensor: all output tensor of matmul which before setscope
@@ -207,6 +207,8 @@ def set_out_scope(all_tensor, leaf_tensor, sch, tensor_map):
     """
     res = all_tensor.get("res")
     tensor_map["c_gm"] = res
+    # get out_list except virtual res in multi_out_scene
+    tensor_map = _get_out_list(res_list, tensor_map)
     if res.op.tag != "gemm":
         if res.op.tag not in ("fixpipe_reform", "dequant_NZ", "requant_NZ", "NZ_trans_ND"):
             tensor_map = set_matmul_ub_scope(res, all_tensor, leaf_tensor, sch, tensor_map)
@@ -217,6 +219,7 @@ def set_out_scope(all_tensor, leaf_tensor, sch, tensor_map):
         if tensor_c_gm.op.input_tensors[0].op.tag == "fixpipe":
             fixpipe_interim = tensor_c_gm.op.input_tensors[0]
             sch[fixpipe_interim].compute_inline()
+
     return tensor_map
 
 
@@ -289,6 +292,21 @@ def _handle_ub_input_tensor(all_tensor, leaf_tensor, sch, tensor_map):
     return tensor_map
 
 
+def _get_out_list(res_list, tensor_map):
+    """
+    get out_list in multiply outs scene except virtual res
+    """
+    if len(res_list) == 1:
+        tensor_map["out_list"] = []
+    else:
+        out_list = copy.copy(res_list)
+        for tensor in out_list:
+            if "virtual_res" in tensor.op.tag:
+                out_list.remove(tensor)
+        tensor_map["out_list"] = out_list
+    return tensor_map
+
+
 def set_matmul_ub_scope(res, all_tensor, leaf_tensor, sch, tensor_map):
     """
     set scope for matmul
@@ -299,21 +317,26 @@ def set_matmul_ub_scope(res, all_tensor, leaf_tensor, sch, tensor_map):
     :return: dict
     """
     ub_eltwise = []
+    phony_insn_list = []
     tensor_map["fixpipe_to_ub"] = all_tensor.get("tensor_c_gm")
 
     # handle the input ub tensor
     tensor_map = _handle_ub_input_tensor(all_tensor, leaf_tensor, sch, tensor_map)
 
     for tensor_mem in all_tensor.values():
+        # the tensor is used to calculation and output in multi outputs scene
         if "elewise" in tensor_mem.op.tag:
-            if tensor_mem == res:
+            if tensor_mem == res or tensor_mem in tensor_map.get("out_list"):
                 # hanle the last eltwise tensor
                 ub_write_tensor = sch.cache_write(tensor_mem, tbe_platform_info.scope_ubuf)
             else:
                 # the eltwise between fixpipe and last tensor
                 sch[tensor_mem].set_scope(tbe_platform_info.scope_ubuf)
                 ub_write_tensor = tensor_mem
+
             ub_eltwise.append(ub_write_tensor)
+        if "virtual_res" in tensor_mem.op.tag:
+            phony_insn_list.append(tensor_mem)
         if "broadcast" in tensor_mem.op.tag:
             sch[tensor_mem].compute_inline()
         if tensor_mem.op.tag in ("fixpipe_reform", "dequant_NZ", "requant_NZ", "NZ_trans_ND"):
@@ -322,6 +345,7 @@ def set_matmul_ub_scope(res, all_tensor, leaf_tensor, sch, tensor_map):
 
     sch[tensor_map["fixpipe_to_ub"]].set_scope(tbe_platform_info.scope_ubuf)
     tensor_map["ub_eltwise"] = ub_eltwise
+    tensor_map["phony_insn_list"] = phony_insn_list
 
     return tensor_map
 
@@ -723,6 +747,8 @@ def attach_of_ub(sch, tensor_map, ub_axis):
     """
     for ub_eltwise_mem in tensor_map.get("ub_eltwise", []):
         sch[ub_eltwise_mem].compute_at(sch[tensor_map["c_gm"]], ub_axis)
+    for ddr_same_attach_ub in tensor_map.get("out_list", []):
+        sch[ddr_same_attach_ub].compute_at(sch[tensor_map["c_gm"]], ub_axis)
     for ub_eltwise_input_mem in tensor_map.get("ub_eltwise_input", []):
         sch[ub_eltwise_input_mem].compute_at(sch[tensor_map["c_gm"]], ub_axis)
     if tensor_map.get("fixpipe_to_ub") is not None:
@@ -884,9 +910,17 @@ def emit_c_gm(sch, tensor_map, c_gm_emit_axis):
     fixpipe_to_ub = tensor_map.get("fixpipe_to_ub")
     if fixpipe_to_ub is not None:
         emit_fixpipe_from_l0c(sch, fixpipe_to_ub, True, fixpipe_to_ub.op.axis, tensor_map)
-        sch[c_gm].emit_insn(c_gm_emit_axis[0], "dma_copy")
+        if c_gm in tensor_map.get("phony_insn_list", []):
+            sch[c_gm].emit_insn(c_gm_emit_axis[0], "phony_insn")
+        else:
+            sch[c_gm].emit_insn(c_gm_emit_axis[0], "dma_copy")
     else:
         emit_fixpipe_from_l0c(sch, c_gm, False, c_gm_emit_axis, tensor_map)
+    # emit_insn for multi_out scene and tensor are both out and inout of virtual res
+    out_list = tensor_map.get("out_list", [])
+    for tensor in out_list:
+        emit_str = _get_fixpipe_emit_str() if tensor.op.tag == "gemm" else "dma_copy"
+        sch[tensor].emit_insn(tensor.op.axis[0], emit_str)
 
 
 def emit_insn_l1_and_l0(sch, tensor_map, k_axis):

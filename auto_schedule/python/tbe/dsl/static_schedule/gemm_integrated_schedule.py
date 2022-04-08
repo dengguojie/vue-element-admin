@@ -70,11 +70,11 @@ def _check_double_out(outs):
         if not isinstance(tensor, tvm.tensor.Tensor):
             return False
         # not support matmul multi-output
-        if tensor.op.name == "tensor_c_gm":
+        if tensor.op.tag != "gemm" and tensor.op.name == "tensor_c_gm":
             return False
 
     all_tags = GemmSchedule.get_all_tags(outs[-1])
-    if "matmul" not in all_tags:
+    if "matmul" not in all_tags and "gemm" not in all_tags:
         return False
 
     shape0 = [x.value for x in outs[0].shape]
@@ -87,20 +87,23 @@ def reget_matmul_multioutput(outs):
     """ add a virtual node to connect double outs for tvm coding rule
     """
     if _check_double_out(outs):
+
         out1, out2 = outs
+        op_tag = "gemm" if out1.op.tag == "gemm" else "matmul_elewise"
+        input_tensor = {"gemm": out1.op.input_tensors[0], "matmul_elewise": out1}
         out1_copy = tvm.compute(
             out1.shape,
-            lambda *indices: out1(*indices),
-            name="out1",
-            tag="out1"
+            lambda *indices: input_tensor.get(op_tag)(*indices).astype(out1.dtype),
+            name=op_tag + "out1",
+            tag=op_tag
         )
         # 4 means that virtual node only support four dims for now
-        if len(out1.shape) == 4 and len(out2.shape) == 4:
+        if (len(out1.shape) == 4 and len(out2.shape) == 4) or op_tag == "gemm":
             virtual_res = tvm.compute(
                 out1.shape,
-                lambda i, j, jj, ii: out1_copy(i, j, jj, ii) + out2(i, j, jj, ii),
-                name="matmul_virtual_res",
-                tag="matmul_virtual_res"
+                lambda *indices: out1_copy(*indices) + out2(*indices),
+                name=op_tag + "_virtual_res",
+                tag=op_tag + "_virtual_res"
             )
             outs = [virtual_res, out1_copy, out2]
     return outs
@@ -662,11 +665,11 @@ class GemmSchedule:
         """
         if isinstance(self.res_ori, list):
             for res_tensor in self.res_ori:
-                if res_tensor.op.tag == "matmul_virtual_res":
+                if "virtual_res" in res_tensor.op.tag:
                     self.root_tensor = res_tensor
 
     def _get_double_out_tensor(self):
-        if self.root_tensor.op.tag == "matmul_virtual_res":
+        if "virtual_res" in self.root_tensor.op.tag:
             self.container.double_out_tensor.append(self.root_tensor.op.input_tensors[0])
             self.container.double_out_tensor.append(self.root_tensor.op.input_tensors[1])
             self.status_controller.fusion_multi_output_flag = True
@@ -1917,7 +1920,7 @@ class GemmSchedule:
         tensor_c_gm = self.container.TENSOR_MAP.get("c_gm")
         if tensor_c_gm != self.res and tensor_c_gm is not None:
             for ten_in in self.container.compute_tensors:
-                if ten_in == self.res and self.root_tensor.op.tag != "matmul_virtual_res":
+                if ten_in == self.res and "virtual_res" not in self.root_tensor.op.tag:
                     continue
                 if ten_in not in matmul_tensors:
                     fusion_list.append(ten_in)

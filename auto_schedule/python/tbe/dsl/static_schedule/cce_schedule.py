@@ -68,6 +68,7 @@ from .elewise_schedule import CceOp
 from .elewise_speel_schedule import CceSpeelOp
 from .gemm_integrated_schedule import reget_matmul_multioutput
 from .gemm_schedule import gemm_schedule
+from .gemm_schedule import update_gemm_multiout_list
 from .mmad_schedule import mmad_schedule
 from .pooling2d_schedule import pooling2d_schedule
 from .pooling3d_schedule import pooling3d_schedule
@@ -329,7 +330,6 @@ def schedule_cce(outs, option=None):  # 'pylint: disable=R0912, R0914, R0915
     outs = reget_tensor_list(outs)
     outs = reget_layernorm_multioutput(outs)
     outs = reget_matmul_multioutput(outs)
-
     cce_emitinsn_params.cceEmitParamsIns.clear_param()
     if isinstance(outs, (tuple, list)):
         if len(outs) > 1:
@@ -538,6 +538,8 @@ def check_support_muti_output(outs):
                 return True
             if 'matmul' in tag:
                 return True
+            if 'gemm' in tag:
+                return True
             if "cube_layer_norm" in tag:
                 return True
             if "tail_block_pretreatment" in tag:
@@ -574,7 +576,7 @@ def decl_memory(buffer_scope):
             return tvm.make.node("MemoryInfo",
                                  unit_bits=32 * 8,
                                  max_simd_bits=32 * 8,
-                                 max_num_bits=get_soc_spec("UB_SIZE") * 8, 
+                                 max_num_bits=get_soc_spec("UB_SIZE") * 8,
                                  head_address=tvm.const(0, 'int32'))
     except tvm._ffi.base.TVMError:  # 'pylint: disable=W0212
         dict_args = {"errCode": "E90003", "detailed_cause": "declare memory failed!"}
@@ -1236,7 +1238,7 @@ def global_core_schedule(  # 'pylint: disable=R0911, R0912, R0914, R0915
     elif pattern == OpPatterns.MATMUL_PATTERN:
         mmad_schedule(outs, sch_list)  # 'pylint: disable=W0631
     elif pattern == OpPatterns.GEMM_PATTERN:
-        gemm_schedule(outs[0], sch_list)
+        gemm_schedule(outs, sch_list)
     elif pattern == OpPatterns.POOL2D_PATTERN:
         pooling2d_schedule(outs[0], sch_list)
     elif pattern == OpPatterns.POOL3D_PATTERN:
@@ -1492,6 +1494,7 @@ def cce_build_code(  # 'pylint: disable=R0912, R0914, R0915
     tensor_list = config_tensor_list_tmp + special_tensor_list
 
     tensor_list = check_quantfuse_doubleout(tensor_list, sch)
+    tensor_list = update_gemm_multiout_list(tensor_list)
     ConvParam.conv_deq_req_double_out = False
 
     l1_fusion_tensors = get_l1_tensors(tensor_list, te_util.L1CommonParam.l1_fusion_tensors_map)

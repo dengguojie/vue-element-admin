@@ -37,6 +37,18 @@ def _get_value(shape_object):
     return shape_object.value if hasattr(shape_object, "value") else shape_object
 
 
+def update_gemm_multiout_list(outs):
+    """
+    remove virtual res from out_list in multi_out scene
+    """
+    if not isinstance(outs, (list, tuple)):
+        return outs
+    for tensor in outs:
+        if tensor.op.tag == "gemm_virtual_res":
+            outs.remove(tensor)
+    return outs
+
+
 def print_ir_matmul(process, sch):
     """
     print ir for input sch
@@ -61,7 +73,8 @@ class GemmScheduleV2:
     class of gemm schedule
     """
     def __init__(self, res, sch_list, dynamic_para):
-        self.res = res
+        self.res_list = list(res) if isinstance(res, (list, tuple)) else [res]
+        self.res = res[0] if isinstance(res, (list, tuple)) else res
         self.sch = sch_list[0]
         self.dynamic_para = dynamic_para
         self.trans_a = False
@@ -77,7 +90,7 @@ class GemmScheduleV2:
         l0c_parts = util.int_ceil_div(_get_value(tensor_map.get("a_l0a").shape[-4]) // tiling.get("block_dim")[2],
                                       tiling.get("CL0_matrix")[1])
         if tiling.get("AL1_shape"):
-            # get parts from gm to L1: l0c_parts // multiple_of_L1_and_L0 
+            # get parts from gm to L1: l0c_parts // multiple_of_L1_and_L0
             al1_parts = util.int_ceil_div(l0c_parts, tiling.get("AL1_shape")[1])
             # k on Al1
             k_bound = tiling.get("AL1_shape")[0]
@@ -222,7 +235,7 @@ class GemmScheduleV2:
         # set scope for simple a*b=c
         tensor_map = util.set_matmul_scope(all_tensor, sch, tensor_map)
         # if modify output fusion, please modify this function
-        tensor_map = util.set_out_scope(all_tensor, leaf_tensor, sch, tensor_map)
+        tensor_map = util.set_out_scope(all_tensor, leaf_tensor, sch, tensor_map, self.res_list)
         print_ir_matmul("after set scope", sch)
         if in_dynamic():
             tiling = self.dynamic_para["tiling_strategy"]
