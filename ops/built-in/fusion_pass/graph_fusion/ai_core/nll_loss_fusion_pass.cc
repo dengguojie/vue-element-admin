@@ -29,12 +29,6 @@ static const char* FUSED_NODE = "NLLLoss";
 static const std::string PATTERN_FUSEDNODE = "NLLLoss";
 static constexpr int32_t INPUT_INDEX_TWO = 2;
 
-static const vector<vector<int64_t>> SUPPORT_CASES = {
-    {4210704, 21},
-    {8388608, 19},
-    {2105352, 21},
-};
-
 vector<FusionPattern*> NLLLossFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
 
@@ -148,43 +142,14 @@ ge::NodePtr NLLLossFusionPass::AddDivNode(ge::NodePtr nll_loss_node,
   return div_node;
 }
 
-bool NLLLossFusionPass::IsFusionPassEnable(ge::NodePtr nll_loss_node, string reduction, string aic_version,
-                                           bool is_unknown_shape) const {
+bool NLLLossFusionPass::IsFusionPassEnable(string reduction) const {
   // support reduction
   if (reduction != "mean") {
     OP_LOGD(FUSED_OP_TYPE.c_str(), "reduction is not mean.");
     return false;
   }
 
-  // support aic
-  if (aic_version != "AIC-C-100") {
-    OP_LOGD(FUSED_OP_TYPE.c_str(), "aic version is support.");
-    return true;
-  }
-
-  // support dynamic
-  if (is_unknown_shape) {
-    OP_LOGD(FUSED_OP_TYPE.c_str(), "dynamic shape is support.");
-    return true;
-  }
-
-  // weight optional
-  auto weight_desc = nll_loss_node->GetOpDesc()->MutableInputDesc(INPUT_INDEX_TWO);
-  if (weight_desc == nullptr) {
-    OP_LOGD(FUSED_OP_TYPE.c_str(), "optional weight is support.");
-    return true;
-  }
-
-  // static support
-  GeTensorDesc x_desc = nll_loss_node->GetOpDesc()->GetInputDesc(0);
-  vector<int64_t> x_shape = x_desc.GetShape().GetDims();
-  if (std::any_of(SUPPORT_CASES.begin(), SUPPORT_CASES.end(),
-                  [x_shape](vector<int64_t> shape) { return shape == x_shape; })) {
-    OP_LOGD(FUSED_OP_TYPE.c_str(), "static shape is support.");
-    return true;
-  }
-
-  return false;
+  return true;
 }
 
 Status NLLLossFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& new_nodes) {
@@ -205,20 +170,7 @@ Status NLLLossFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
     return FAILED;
   }
 
-  PlatformInfo platform_info;
-  OptionalInfo optional_info;
-  if (SUCCESS != PlatformInfoManager::Instance().GetPlatformInfoWithOutSocVersion(platform_info, optional_info)) {
-    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "get platform info failed.");
-    return FAILED;
-  }
-  OP_LOGD(FUSED_OP_TYPE.c_str(), "aic version is [%s].", platform_info.str_info.aic_version.c_str());
-
-  if (GRAPH_SUCCESS != ge::NodeUtils::GetNodeUnknownShapeStatus(*(nll_loss_node.get()), is_unknown_shape)) {
-    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "can't get unknown shape status.");
-    return FAILED;
-  }
-
-  if (!IsFusionPassEnable(nll_loss_node, reduction, platform_info.str_info.aic_version, is_unknown_shape)) {
+  if (!IsFusionPassEnable(reduction)) {
     OP_LOGD(FUSED_OP_TYPE.c_str(), "fusion pass not support.");
     return NOT_CHANGED;
   }

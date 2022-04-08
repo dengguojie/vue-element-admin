@@ -36,7 +36,7 @@ def test_op_check_supported(test_arg):
                     {"shape": (1,), "dtype": "float32", "format": "ND", "ori_shape": (1,), "ori_format": "ND"},
                     "sum", -100)
     assert result1[0]
-    assert not result2[0]
+    assert result2[0]
     assert result3[0]
     assert result4[0]
 

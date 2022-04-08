@@ -115,5 +115,123 @@
       }
     ],
     "case_name": "test_NLLLoss_000"
+  },
+
+  {
+    "op": "NLLLoss",
+    "input_desc": [
+      {
+        "shape": [
+          2,
+          16
+        ],
+        "ori_shape": [
+          2,
+          16
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "x",
+        "type": "float",
+        "shape_range": [
+          [
+            1,
+            200000000
+          ],
+          [
+            1,
+            200000000
+          ]
+        ],
+        "typical_shape": [
+          2,
+          16
+        ]
+      },
+      {
+        "shape": [
+          2
+        ],
+        "ori_shape": [
+          2
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "target",
+        "type": "int32",
+        "shape_range": [
+          [
+            1,
+            200000000
+          ]
+        ],
+        "typical_shape": [
+          2
+        ]
+      },
+      {
+        "shape": [
+          16
+        ],
+        "ori_shape": [
+          16
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "weight",
+        "type": "float",
+        "shape_range": [
+          [
+            1,
+            200000000
+          ]
+        ],
+        "typical_shape": [
+          16
+        ]
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          2
+        ],
+        "ori_shape": [
+          2
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "y",
+        "type": "float",
+        "typical_shape": [
+          2
+        ]
+      },
+      {
+        "shape": [
+        ],
+        "ori_shape": [
+        ],
+        "ori_format": "ND",
+        "format": "ND",
+        "name": "total_weight",
+        "type": "float",
+        "typical_shape": [
+        ]
+      }
+    ],
+    "attr": [
+      {
+        "name": "reduction",
+        "type": "string",
+        "value": "none"
+      },
+      {
+        "name": "ignore_index",
+        "type": "int",
+        "value": -100
+      }
+    ],
+    "case_name": "test_NLLLoss_001"
   }
 ]

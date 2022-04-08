@@ -338,7 +338,7 @@ TEST_F(nll_loss_fusion_test, nll_loss_fusion_test_5) {
     }
 
   EXPECT_EQ(find_nll_loss, true);
-  EXPECT_EQ(find_div, false);
+  EXPECT_EQ(find_div, true);
 }
 
 TEST_F(nll_loss_fusion_test, nll_loss_fusion_test_6) {
