@@ -354,3 +354,4 @@ ut_case.add_cust_test_func(test_func=test_conv3d_backprop_filter_fuzz_compile_bo
 
 if __name__ == '__main__':
     ut_case.run(["Ascend910A"])
+

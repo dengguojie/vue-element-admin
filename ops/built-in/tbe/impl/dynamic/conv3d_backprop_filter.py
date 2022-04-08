@@ -143,6 +143,16 @@ def _is_fuzzy_input_valid(tensor_dict):
     return is_valid
 
 
+def _is_generalized_range_valid(tensor_dict):
+    """
+    Helper function for tensor range validation.
+    """
+    for each_range in tensor_dict.get("ori_range"):
+        if each_range[0] > each_range[1]:
+            return False
+    return True
+
+
 def _check_tensor_range(tensor_dict, upper_limit_dict):
     """
     Helper function for tensor range validation.
@@ -223,15 +233,26 @@ def _get_bl1_max_load_width(dedw_dict, strides, dilations, data_format):
     return bl1_w_max
 
 
-def _correct_fmap_w_range(fmap_dict, dedw_dict, strides, dilations, data_format):
+def _correct_fmap_w_range(fmap_dict, dedw_dict, attr_param):
     """
-    Correct d/h/w range of fmap. Each dim is supposed to be within [kernel_dilated - pad, upper_limit].
+    Correct w range of fmap. Each dim is supposed to be within [kernel_dilated - pad, upper_limit].
     """
-    w_dim = data_format.find("W")
-    w_lower, w_upper = fmap_dict.get("ori_range")[w_dim]
+    strides, pads, dilations, data_format = attr_param
+    _, _, _, _, pad_left, pad_right = pads
+    kernel_w = dedw_dict.get("ori_shape")[dedw_dict.get("ori_format").find("W")]
+    w_lower, w_upper = fmap_dict.get("ori_range")[data_format.find("W")]
+
+    # correct w_lower such that dedy_w_lower >= 2
+    if -1 in (pad_left, pad_right):
+        w_lower_min = strides[data_format.find("W")] + 1
+    else:
+        w_lower_min = (strides[data_format.find("W")] - pad_left - pad_right +
+                       (kernel_w - 1) * dilations[data_format.find("W")] + 1)
+
     bl1_max_width = _get_bl1_max_load_width(dedw_dict, strides, dilations, data_format)
+    w_lower = max(w_lower_min, w_lower)
     w_upper = min(bl1_max_width, w_upper)
-    fmap_dict["ori_range"][w_dim] = [w_lower, w_upper]
+    fmap_dict["ori_range"][data_format.find("W")] = [w_lower, w_upper]
 
     return fmap_dict
 
@@ -891,7 +912,10 @@ def conv3d_backprop_filter_generalization(x, filter_size, out_backprop, y, strid
 
         # correct fmap range of w dim
         x = correct_conv2d_backprop_range_start(x, y, dilations, pads, data_format)
-        x = _correct_fmap_w_range(x, y, strides, dilations, data_format)
+        attr_param = strides, pads, dilations, data_format
+        x = _correct_fmap_w_range(x, y, attr_param)
+        if not _is_generalized_range_valid(x) or not _is_generalized_range_valid(out_backprop):
+            return UNSUPPORTED_FUZZ_RES
 
         # modify input shape
         x["ori_shape"] = _generalize_tensor_shape(x)
