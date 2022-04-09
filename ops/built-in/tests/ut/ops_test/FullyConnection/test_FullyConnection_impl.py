@@ -410,8 +410,8 @@ def test_fc_nd_transdata():
 # test mock case
 def test_mock_cases(test_args):
     with patch("tbe.common.platform.platform_info.get_soc_spec", MagicMock(side_effect=side_effects)):
-        with patch("tbe.common.platform.platform_info.intrinsic_check_support", MagicMock(side_effect=side_effects)):
-            with patch("impl.util.platform_adapter.tbe_platform.intrinsic_check_support", MagicMock(side_effect=side_effects)):
+        with patch("impl.util.platform_adapter.tbe_platform.intrinsic_check_support", MagicMock(side_effect=side_effects)):
+            with patch("tbe.common.platform.platform_info.intrinsic_check_support", MagicMock(side_effect=side_effects)):
                 test_fc_5hd25hd_fp16()
                 test_fc_5hd25hd_fp32()
                 test_fc_nz2nz_fp16()
@@ -423,6 +423,10 @@ def test_mock_cases(test_args):
                 test_split_fc_2("")
                 test_split_fc_4("")
                 test_fc_fixpipe_nhwc()
+                test_fc_nd_transdata()
+                vals.update({
+                    ("Intrinsic_fix_pipe_unit_list", "post_eltwise"): False
+                })
                 test_fc_nd_transdata()
 
 ut_case.add_cust_test_func(test_func=test_mock_cases)

@@ -34,6 +34,8 @@ BATCH_MATMUL_LEN_NZ = 5
 MATMUL_LEN_ND = 2
 MATMUL_LEN_NZ = 4
 MULTI_FACTOR_BY_DTYPE = 2
+ND2NZ_SRC_D_LIMIT = 65535
+DEFAULT_DATA_SIZE = 2
 
 DATA_SIZE = {
     "float16": 2,
@@ -923,6 +925,59 @@ def emit_c_gm(sch, tensor_map, c_gm_emit_axis):
         sch[tensor].emit_insn(tensor.op.axis[0], emit_str)
 
 
+def _check_nd2nz_tag(tensor_l1):
+    """
+    nd2nz only support src_d <= 65535
+    :param tensor_l1: nd2nz tensor on l1
+    :return: bool, True while src_d > 65535 else False
+    """
+    if tensor_l1.op.tag not in ["5HD_trans_FZ", "ND_trans_NZ"]:
+        return False
+    # wait for pass to support
+    if check_fixpipe_op_support() and tensor_l1.op.tag == "5HD_trans_FZ":
+        return False
+
+    src_d = 0
+    if tensor_l1.op.tag == "5HD_trans_FZ":
+        input_5hd_tensor = tensor_l1.op.input_tensors[0]
+        nhwc_shape = shape_to_list(input_5hd_tensor.op.attrs["ori_shape"])
+        src_d = reduce(lambda x, y: x * y, nhwc_shape[1:])
+    if tensor_l1.op.tag == "ND_trans_NZ":
+        nd_shape = shape_to_list(tensor_l1.op.attrs["ori_shape"])
+        src_d = nd_shape[-1]
+    data_size = DATA_SIZE.get(tensor_l1.dtype, DEFAULT_DATA_SIZE)
+
+    return src_d * data_size <= ND2NZ_SRC_D_LIMIT
+
+
+def _emit_insn_l1(sch, tensor_map):
+    """
+    emit insn for tensor on l1
+    :param sch: schedule
+    :param tensor_map: tensor of matmul
+    """
+    a_l1 = tensor_map["a_l1"]
+    b_l1 = tensor_map["b_l1"]
+    dma_dict = {"layout_transform": "nd2nz"}
+
+    if _check_nd2nz_tag(a_l1):
+        if a_l1.op.tag == "5HD_trans_FZ":
+            tensor_5hd = a_l1.op.input_tensors[0]
+            _, _, h_in, w_in, _ = shape_to_list(tensor_5hd.shape)
+            #c1hw should be split as c1 and hw when trans nhwc to fractal_z
+            chw_out, _ = sch[a_l1].split(a_l1.op.axis[0], h_in * w_in)
+            sch[a_l1].emit_insn(chw_out, "dma_copy", dma_dict)
+        else:
+            sch[a_l1].emit_insn(a_l1.op.axis[0], "dma_copy", dma_dict)
+    else:
+        sch[a_l1].emit_insn(a_l1.op.axis[0], "dma_copy")
+
+    if _check_nd2nz_tag(b_l1):
+        sch[b_l1].emit_insn(b_l1.op.axis[0], "dma_copy", dma_dict)
+    else:
+        sch[b_l1].emit_insn(b_l1.op.axis[0], "dma_copy")
+
+
 def emit_insn_l1_and_l0(sch, tensor_map, k_axis):
     """
     emit insn for all tensor
@@ -931,17 +986,7 @@ def emit_insn_l1_and_l0(sch, tensor_map, k_axis):
     :param k_axis: the outer axis of mmad
     :return: None
     """
-    a_l1 = tensor_map["a_l1"]
-    b_l1 = tensor_map["b_l1"]
-    dma_dict = {"layout_transform": "nd2nz"}
-    if a_l1.op.tag == "ND_trans_NZ":
-        sch[a_l1].emit_insn(a_l1.op.axis[0], "dma_copy", dma_dict)
-    else:
-        sch[a_l1].emit_insn(a_l1.op.axis[0], "dma_copy")
-    if b_l1.op.tag == "ND_trans_NZ":
-        sch[b_l1].emit_insn(b_l1.op.axis[0], "dma_copy", dma_dict)
-    else:
-        sch[b_l1].emit_insn(b_l1.op.axis[0], "dma_copy")
+    _emit_insn_l1(sch, tensor_map)
 
     a_l0a = tensor_map["a_l0a"]
     if a_l0a.dtype == "int8" and a_l0a.op.attrs["transpose_a"] == "false":

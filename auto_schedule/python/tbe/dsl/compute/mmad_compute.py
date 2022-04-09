@@ -4193,8 +4193,7 @@ class MatMulCompute:
         """
         src_n, src_c1, src_h, src_w, src_c0 = tuple(i.value for i in self.tensor_a.shape)
         dst_n1 = self._ceil_div(src_n, self.block_in)
-        nhwc_shape = self.tensor_a.op.attrs["ori_shape"]
-        self.origin_reduce_axis = _get_value(functools_reduce(lambda x, y: x * y, nhwc_shape[1:]))
+        self.origin_reduce_axis = src_c1 * src_h * src_w * src_c0
         fz_shape = (
             src_c1 * src_h * src_w,
             dst_n1,
@@ -4456,7 +4455,7 @@ class MatMulCompute:
         """
         out_shape = (self.origin_m_shape, self.origin_n_shape)
         op_dict = {
-            "post_transfrom": "NZ2ND"
+            "post_transform": "NZ2ND"
         }
         attrs = {
             "vector_params": [],

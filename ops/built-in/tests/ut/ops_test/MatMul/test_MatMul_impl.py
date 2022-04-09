@@ -593,6 +593,7 @@ def test_mock_cases(test_args):
             test_matmul_fixpipe_2()
             test_matmul_sigmoid_multi_out()
 
+
 ut_case.add_cust_test_func(test_func=test_mock_cases)
 
 
