@@ -940,11 +940,13 @@ REG_OP(SliceDV2)
 * @par Attributes:
 * @li k: A required int that is at least 0, specifying the number of top elements
 * to look for along the last dimension (along each row for matrices).
-* @li sorted: An optional bool. Defaults to true.
-* If true, the resulting "k" elements will be sorted by the values in descending
-* order.
+* @li sorted: An optional bool. Defaults to "True".
+* If "True", the returned "k" elements are themselves sorted.
+* If "False", the returned "k" elements are not sorted.
 * @li dim: An optional int. Defaults to -1. For reserved use.
-* @li largest: An optional bool. Defaults to true. For reserved use. \n
+* @li largest: An optional bool, controls whether to return largest or smallest elements. Defaults to true.
+* If "True", the "k" largest elements are returned in descending order.
+* If "False", the "k" smallest elements are returned in ascending order. \n
 
 * @par Outputs:
 * @li values: A Tensor, specifying the sorted data. Has the same type as "input".
@@ -989,11 +991,14 @@ REG_OP(TopKD)
 * int32 to float16. \n
 
 * @par Attributes:
-* @li sorted: An optional bool. Defaults to true.
-* If true, the resulting "k" elements will be sorted by the values in descending
-* order.
+* @li sorted: An optional bool. Defaults to "True".
+* If "True", the returned "k" elements are themselves sorted.
+* If "False", the returned "k" elements are not sorted.
 * @li dim: An optional int. Defaults to -1. For reserved use.
-* @li largest: An optional bool. Defaults to true. For reserved use. \n
+* @li largest: An optional bool, controls whether to return largest or smallest elements. Defaults to true.
+* If "True", the "k" largest elements are returned in descending order.
+* If "False", the "k" smallest elements are returned in ascending order. \n
+
 
 * @par Outputs:
 * @li values: A Tensor, specifying the sorted data. Has the same type as
@@ -1028,11 +1033,13 @@ REG_OP(TopKV2D)
 * for matrices) . \n
 
 * @par Attributes:
-* @li sorted: An optional bool. Defaults to true.
-* If true, the resulting "k" elements will be sorted by the values in descending
-* order.
+* @li sorted: An optional bool. Defaults to "True".
+* If "True", the returned "k" elements are themselves sorted.
+* If "False", the returned "k" elements are not sorted.
 * @li dim: An optional int. Defaults to -1. For reserved use.
-* @li largest: An optional bool. Defaults to true. For reserved use. \n
+* @li largest: An optional bool, controls whether to return largest or smallest elements. Defaults to true.
+* If "True", the "k" largest elements are returned in descending order.
+* If "False", the "k" smallest elements are returned in ascending order. \n
 
 * @par Outputs:
 * @li values: A Tensor, specifying the sorted data. Has the same type as
@@ -1066,10 +1073,12 @@ REG_OP(TopKV2)
 * for matrices) . \n
 
 * @par Attributes:
-* @li sorted: Defaults to true.
-* If true, the resulting "k" elements will be sorted by the values in descending
-* order.
-* @li largest:If true the resulting `k` elements will be sorted by the values in descending order.
+* @li sorted: An optional bool. Defaults to "True".
+* If "True", the returned "k" elements are themselves sorted.
+* If "False", the returned "k" elements are not sorted.
+* @li largest: An optional bool, controls whether to return largest or smallest elements. Defaults to true.
+* If "True", the "k" largest elements are returned in descending order.
+* If "False", the "k" smallest elements are returned in ascending order.
 * @li dim:0-D. Number of top elements to look for along the last dimension (along each row for matrices). \n
 
 * @par Outputs:
