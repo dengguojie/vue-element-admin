@@ -65,8 +65,6 @@ namespace aicpu
     int32_t batchOutputDataLen = nloc * nnei * coordinateXyzNum;
     for (int32_t ff = 0; ff < nsamples; ff++) {
       FPTYPE *rij = p_rij + ff * batchOutputDataLen;
-      int32_t len = nloc * nnei * coordinateXyzNum * sizeof(FPTYPE);
-      (void)memset_s(rij, len, 0.0, len);
       prod_env_mat_a_rij_cal(rij, ctx, ff, nnei, sec_a);
     }
     return KERNEL_STATUS_OK;
@@ -141,65 +139,6 @@ namespace aicpu
   }
 
   template <typename FPTYPE>
-  int32_t ProdEnvMatACalcRijCpuKernel::format_nlist_i_cpu(
-      SingleNatomInfo<FPTYPE> &singleNatomInfo, const int32_t &i_idx,
-      const std::vector<int32_t> &nei_idx_a, std::vector<int64_t> &sec_a,
-      const FPTYPE *coord, const int32_t *type, float rcutsquared) {
-    singleNatomInfo.fmt_nlist_a.resize(sec_a.back());
-    fill(singleNatomInfo.fmt_nlist_a.begin(), singleNatomInfo.fmt_nlist_a.end(), -1);
-    singleNatomInfo.d_distance_a.resize(sec_a.back());
-    FPTYPE defaultDistance = rcutsquared + 1.0;
-    fill(singleNatomInfo.d_distance_a.begin(), singleNatomInfo.d_distance_a.end(), defaultDistance);
-    // gether all neighbors
-    std::vector<int32_t> nei_idx(nei_idx_a);
-    // get the information for all neighbors
-    std::vector<NeighborInfo> sel_nei;
-    sel_nei.reserve(nei_idx_a.size());
-    for (uint32_t kk = 0; kk < nei_idx.size(); kk++) {
-      FPTYPE diff[coordinateXyzNum];
-      const int32_t &j_idx = nei_idx[kk];
-      for (uint32_t dd = 0; dd < coordinateXyzNum; dd++) {
-        diff[dd] = coord[j_idx * coordinateXyzNum + dd] - coord[i_idx * coordinateXyzNum + dd];
-      }
-      FPTYPE rr = dot3(diff, diff);
-      if (rr < rcutsquared) {
-        sel_nei.push_back(NeighborInfo(type[j_idx], rr, j_idx));
-      }
-    }
-    sort(sel_nei.begin(), sel_nei.end());
-    std::vector<int64_t> nei_iter = sec_a;
-    int32_t overflowed = -1;
-    for (uint32_t kk = 0; kk < sel_nei.size(); kk++) {
-      const int32_t &nei_type = sel_nei[kk].type;
-      if (nei_iter[nei_type] < sec_a[nei_type + 1]) {
-        singleNatomInfo.fmt_nlist_a[nei_iter[nei_type]] = sel_nei[kk].index;
-        singleNatomInfo.d_distance_a[nei_iter[nei_type]] = sel_nei[kk].dist;
-        nei_iter[nei_type]++;
-      } else {
-        overflowed = nei_type;
-      }
-    }
-    return overflowed;
-  }
-
-  template<typename FPTYPE>
-  void ProdEnvMatACalcRijCpuKernel::env_mat_a_cpu(FPTYPE *rij_a, const int32_t &i_idx,
-      const std::vector<int32_t> &fmt_nlist_a, std::vector<int64_t> &sec_a, const FPTYPE *coord) {
-      for (int32_t ii = 0; ii < int32_t(sec_a.size()) - 1; ii++) {
-        for (int64_t jj = sec_a[ii]; jj < sec_a[ii + 1]; jj++) {
-          if (fmt_nlist_a[jj] < 0) {
-            break;
-          }
-          const int32_t &j_idx = fmt_nlist_a[jj];
-          for (uint32_t dd = 0; dd < coordinateXyzNum; dd++) {
-            rij_a[jj * coordinateXyzNum + dd] =
-            coord[j_idx * coordinateXyzNum + dd] - coord[i_idx * coordinateXyzNum + dd];
-          }
-        }
-      }
-  }
-
-  template <typename FPTYPE>
   void ProdEnvMatACalcRijCpuKernel::prod_env_mat_a_rij_cal(
       FPTYPE *rij, CpuKernelContext &ctx, int32_t batchIndex, int32_t nnei,
       std::vector<int64_t> &sec_a) {
@@ -238,35 +177,83 @@ namespace aicpu
       meshdata.nallmaptable = &p_mesh[1 + meshDataLength * meshdata.nlocnum];
       needmap = true;
     }
-    int32_t max_nbor_size = max_numneigh(meshdata);
+    int32_t atomTypes = sec_a.size() - 1;
 
     auto ComputeRijDistance = [&](int32_t start, int32_t end) {
+      int32_t rijaxeslen = (end - start) * nnei * sizeof(FPTYPE);
+      (void)memset_s(rij + start * nnei * coordinateXyzNum, rijaxeslen * coordinateXyzNum, 0x00, rijaxeslen * coordinateXyzNum);
+      std::fill(nlist + start * nnei, nlist + end * nnei, -1);
+      std::fill(distance + start * nnei, distance + end * nnei, rcutsquared + 1.0);
+      (void)memset_s(rij_x + start * nnei, rijaxeslen, 0x00, rijaxeslen);
+      (void)memset_s(rij_y + start * nnei, rijaxeslen, 0x00, rijaxeslen);
+      (void)memset_s(rij_z + start * nnei, rijaxeslen, 0x00, rijaxeslen);
       for (int32_t ii = start; ii < end; ii++) {
         int32_t coreNatomIndex = meshdata.ilist[ii];
-        std::vector<int32_t> d_nlist_a;
-        d_nlist_a.reserve(max_nbor_size);
-        for (int32_t jj = 0; jj < meshdata.numneigh[ii]; jj++) {
-          d_nlist_a.push_back(meshdata.firstneigh[ii][jj]);
-        }
-        SingleNatomInfo<FPTYPE> singleNatomInfo;
-        format_nlist_i_cpu(singleNatomInfo, coreNatomIndex, d_nlist_a, sec_a, coord, type, rcutsquared);
+        int32_t numNeighbor = meshdata.numneigh[ii];
 
-        FPTYPE *coreNatomRij = rij + ii * nnei * coordinateXyzNum;
-        env_mat_a_cpu(coreNatomRij, coreNatomIndex, singleNatomInfo.fmt_nlist_a, sec_a, coord);
-        // record outputs
-        for (int32_t jj = 0; jj < nnei; jj++) {
-          int32_t index = ii * nnei + jj;
-          if (needmap) {
-            nlist[index] =
-                singleNatomInfo.fmt_nlist_a[jj] == -1
-                ? -1 : meshdata.nallmaptable[singleNatomInfo.fmt_nlist_a[jj]];
-          } else {
-            nlist[index] = singleNatomInfo.fmt_nlist_a[jj];
+        // output
+        FPTYPE *curRij = rij + ii * nnei * coordinateXyzNum;
+        int32_t *curNlist = nlist + ii * nnei;
+        FPTYPE *curDist = distance + ii * nnei;
+        FPTYPE *curRij_x = rij_x + ii * nnei;
+        FPTYPE *curRij_y = rij_y + ii * nnei;
+        FPTYPE *curRij_z = rij_z + ii * nnei;
+
+        if (numNeighbor == -1) {
+          continue;
+        }
+        int32_t *neighbors = static_cast<int32_t *>(meshdata.firstneigh[ii]);
+
+        FPTYPE i_x = *(coord + coreNatomIndex * coordinateXyzNum);
+        FPTYPE i_y = *(coord + coreNatomIndex * coordinateXyzNum + 1);
+        FPTYPE i_z = *(coord + coreNatomIndex * coordinateXyzNum + 2);
+
+        std::vector<std::vector<NeighborInfo>> selNeighbors(atomTypes, std::vector<NeighborInfo>());
+        for (uint32_t s_j = 0; s_j < selNeighbors.size(); s_j++) {
+          selNeighbors[s_j].reserve(numNeighbor);
+        }
+
+        for (int32_t j = 0; j < numNeighbor; j++) {
+          int32_t j_idx = *(neighbors + j);
+
+          FPTYPE j_x = *(coord + j_idx * coordinateXyzNum);
+          FPTYPE j_y = *(coord + j_idx * coordinateXyzNum + 1);
+          FPTYPE j_z = *(coord + j_idx * coordinateXyzNum + 2);
+
+          FPTYPE dx = j_x - i_x;
+          FPTYPE dy = j_y - i_y;
+          FPTYPE dz = j_z - i_z;
+
+          FPTYPE rr = dx * dx + dy * dy + dz * dz;
+          if (rr < rcutsquared) {
+            selNeighbors[*(type + j_idx)].push_back(NeighborInfo(rr, j_idx));
           }
-          distance[index] = singleNatomInfo.d_distance_a[jj];
-          rij_x[index] = rij[index * coordinateXyzNum];
-          rij_y[index] = rij[index * coordinateXyzNum + kIndexOne];
-          rij_z[index] = rij[index * coordinateXyzNum + kIndexTwo];
+        }
+
+        for (uint32_t s_j = 0; s_j < selNeighbors.size(); s_j++) {
+          std::sort(selNeighbors[s_j].begin(), selNeighbors[s_j].end());
+        }
+
+        for (uint32_t m_k = 0; m_k < selNeighbors.size(); m_k++) {
+          uint32_t sortedIdx = 0;
+          uint32_t len = selNeighbors[m_k].size();
+          uint32_t cntSize = std::min(sec_a[m_k + 1], sec_a[m_k] + len);
+          for (uint32_t res_idx = sec_a[m_k]; res_idx < cntSize; res_idx++) {
+            int32_t curAtomIdx = selNeighbors[m_k][sortedIdx].index;
+            *(curNlist + res_idx) = needmap ? meshdata.nallmaptable[curAtomIdx] : curAtomIdx;
+            *(curDist + res_idx) = selNeighbors[m_k][sortedIdx].dist;
+            FPTYPE dx = *(coord + curAtomIdx * coordinateXyzNum) - i_x;
+            FPTYPE dy = *(coord + curAtomIdx * coordinateXyzNum + 1) - i_y;
+            FPTYPE dz = *(coord + curAtomIdx * coordinateXyzNum + 2) - i_z;
+
+            *(curRij + res_idx * coordinateXyzNum) = dx;
+            *(curRij + res_idx * coordinateXyzNum + 1) = dy;
+            *(curRij + res_idx * coordinateXyzNum + 2) = dz;
+            *(curRij_x + res_idx) = dx;
+            *(curRij_y + res_idx) = dy;
+            *(curRij_z + res_idx) = dz;
+            sortedIdx++;
+          }
         }
       }
     };
@@ -280,21 +267,6 @@ namespace aicpu
     for (uint32_t ii = 1; ii < sec.size(); ii++) {
       sec[ii] = sec[ii - 1] + n_sel[ii - 1];
     }
-  }
-
-  int32_t ProdEnvMatACalcRijCpuKernel::max_numneigh(const InputNlist &nlist) {
-    int32_t max_num = 0;
-    for (int32_t ii = 0; ii < nlist.nlocnum; ii++) {
-      if (nlist.numneigh[ii] > max_num) {
-        max_num = nlist.numneigh[ii];
-      }
-    }
-    return max_num;
-  }
-
-  template<typename FPTYPE>
-  inline FPTYPE ProdEnvMatACalcRijCpuKernel::dot3(const FPTYPE *r0, const FPTYPE *r1) {
-    return r0[0] * r1[0] + r0[1] * r1[1] + r0[2] * r1[2];
   }
 
   REGISTER_CPU_KERNEL(kProdEnvMatACalcRij, ProdEnvMatACalcRijCpuKernel);

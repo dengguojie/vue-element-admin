@@ -56,16 +56,13 @@ namespace aicpu {
       };
 
       struct NeighborInfo {
-        int32_t type;
-        double dist;
+        float dist;
         int32_t index;
-        NeighborInfo() : type(0), dist(0), index(0) {}
-        NeighborInfo(int32_t tt, double dd, int32_t ii)
-                     : type(tt), dist(dd), index(ii) {}
+        NeighborInfo() : dist(0), index(0) {}
+        NeighborInfo(float dd, int32_t ii)
+                     : dist(dd), index(ii) {}
         bool operator<(const NeighborInfo &b) const {
-          return (type < b.type ||
-                  (type == b.type &&
-                  (dist < b.dist || (dist == b.dist && index < b.index))));
+          return (dist < b.dist || (dist == b.dist && index < b.index));
         }
       };
 
@@ -79,26 +76,11 @@ namespace aicpu {
       template <typename FPTYPE>
       uint32_t DoProdEnvMatACalcRijCompute(CpuKernelContext &ctx);
       uint32_t GetInputAndCheck(CpuKernelContext &ctx);
-      int32_t max_numneigh(const InputNlist &nlist);
       void cum_sum(std::vector<int64_t> &sec, const std::vector<int64_t> &n_sel);
-      template <typename FPTYPE>
-      int32_t format_nlist_i_cpu(SingleNatomInfo<FPTYPE> &singleNatomInfo,
-                                 const int32_t &i_idx,
-                                 const std::vector<int32_t> &nei_idx_a,
-                                 std::vector<int64_t> &sec_a,
-                                 const FPTYPE *coord, const int32_t *type,
-                                 float rcutsquared);
-      template <typename FPTYPE>
-      void env_mat_a_cpu(FPTYPE *rij_a, const int32_t &i_idx,
-                         const std::vector<int32_t> &fmt_nlist_a,
-                         std::vector<int64_t> &sec_a, const FPTYPE *coord);
       template <typename FPTYPE>
       void prod_env_mat_a_rij_cal(FPTYPE *rij, CpuKernelContext &ctx,
                                   int32_t batchIndex, int32_t nnei,
                                   std::vector<int64_t> &sec_a);
-      template <typename FPTYPE>
-      inline FPTYPE dot3(const FPTYPE *r0,
-                        const FPTYPE *r1);
   };
 }  // namespace aicpu
 #endif
