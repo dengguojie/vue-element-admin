@@ -40,9 +40,10 @@ class NormPatternParser(PatternParser):
 
         # norm
         # 1. support multi outs but out shape is before reduce shape or after reduce shape
-        # 2. exist reduce and broadcast at the same time
-        # 3. the axis of all reduce is same
-        # 4. before reduce shape is equal to after broadcast shape
+        # 2. exist before reduce output
+        # 3. exist reduce and broadcast at the same time
+        # 4. the axis of all reduce is same
+        # 5. before reduce shape is equal to after broadcast shape
 
         def __judge_tvm_shape_equal(_shape_a, _shape_b):
             _length_a = len(_shape_a)
@@ -56,8 +57,11 @@ class NormPatternParser(PatternParser):
             return True
 
         def __judge_legal_output_shape(output_shape):
-            return True if __judge_tvm_shape_equal(before_reduce_shape, output_shape) or \
-                           __judge_tvm_shape_equal(after_reduce_shape, output_shape) else False
+            if __judge_tvm_shape_equal(before_reduce_shape, output_shape) or \
+                    __judge_tvm_shape_equal(after_reduce_shape, output_shape):
+                return True
+
+            return False
 
         placeholder_size = self.compute_type_size_map.get(ComputeType.PLACEHOLDER, 0)
         elewise_size = self.compute_type_size_map.get(ComputeType.ELEWISE, 0)
@@ -80,13 +84,16 @@ class NormPatternParser(PatternParser):
         after_reduce_shape = reduce_tensor_list[0].shape
         after_broadcast_shape = broadcast_tensor_list[0].shape
 
-        if isinstance(self.outs, (list, tuple)):
-            for single_out in self.outs:
-                if not __judge_legal_output_shape(single_out.shape):
-                    return False
-        else:
-            if not __judge_legal_output_shape(self.outs.shape):
+        count_before_reduce = 0
+        local_outs = self.outs if isinstance(self.outs, (list, tuple)) else [self.outs]
+        for single_out in local_outs:
+            if not __judge_legal_output_shape(single_out.shape):
                 return False
+            if __judge_tvm_shape_equal(before_reduce_shape, single_out.shape):
+                count_before_reduce += 1
+        # must exist before reduce output
+        if count_before_reduce == 0:
+            return False
 
         if not __judge_tvm_shape_equal(before_reduce_shape, after_broadcast_shape):
             return False

@@ -73,6 +73,36 @@ def test_match_with_not_norm_compute_graph(_):
 
 
 # noinspection PyTypeChecker
+def test_match_with_not_norm_compute_graph_with_all_reduce_output(_):
+    shape = (4, 5, 16)
+    fp16 = "float16"
+
+    ph_1 = tvm.placeholder(shape, dtype=fp16, name="ph_1")
+    add_1 = tbe.dsl.vadds(ph_1, 5)
+    reduce_sum_1 = tbe.dsl.reduce_sum(add_1, (1,), keepdims=True)
+    broadcast_1 = tbe.dsl.broadcast(reduce_sum_1, shape)
+    reduce_sum_2 = tbe.dsl.reduce_sum(broadcast_1, (1,), keepdims=True)
+
+    compute_type_size_map = {
+        ComputeType.PLACEHOLDER: 1,
+        ComputeType.ELEWISE: 1,
+        ComputeType.REDUCE: 2,
+        ComputeType.BROADCAST: 1,
+        ComputeType.ANY: 5,
+    }
+
+    compute_type_tensor_map = {
+        ComputeType.PLACEHOLDER: [ph_1],
+        ComputeType.ELEWISE: [add_1],
+        ComputeType.REDUCE: [reduce_sum_1, reduce_sum_2],
+        ComputeType.BROADCAST: [broadcast_1],
+        ComputeType.ANY: [ph_1, add_1, reduce_sum_1, reduce_sum_2, broadcast_1],
+    }
+
+    matched = NormPatternParser([reduce_sum_2], compute_type_size_map, compute_type_tensor_map).match()
+    return matched is False
+
+# noinspection PyTypeChecker
 def test_get_pattern(_):
     pattern = NormPatternParser(None, None, None).get_pattern()
     return pattern == Pattern.NORM
@@ -81,6 +111,7 @@ def test_get_pattern(_):
 test_funcs = [
     test_match_with_norm_compute_graph,
     test_match_with_not_norm_compute_graph,
+    test_match_with_not_norm_compute_graph_with_all_reduce_output,
     test_get_pattern,
 ]
 
