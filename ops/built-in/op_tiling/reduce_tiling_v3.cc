@@ -486,12 +486,10 @@ void Reduce::ChooseAtomic() {
   // Check if output_shape is smaller than Single Tensor Size Limitation so that r, a ub_split_a schedule won't be used
   bool output_shape_limitation = total_output_count <= mib_ub_info_size;
   // Check if outermost reduce axis is larger than or equal to core_num
-  bool input_shape_limitation = input_shape[1] >= compileInfo.core_num && ubSizeA > SMALL_SHAPE_THRESHOLD * BASE_4;
-  // Check nlast_reduce again
-  bool n_last_reduce_shape_limitation = ((static_cast<uint32_t>(pattern) & 1) == 1) &&
-                                        (input_shape[input_shape.size() - 1] < mib_ub_info_size);
+  bool input_shape_limitation = input_shape[1] >= compileInfo.core_num &&
+                                mib_ub_info_size / compileInfo.coef > SMALL_SHAPE_THRESHOLD * BASE_4;
   // AND expression for all checks
-  bool shape_limitation = output_shape_limitation && input_shape_limitation && n_last_reduce_shape_limitation;
+  bool shape_limitation = output_shape_limitation && input_shape_limitation;
   // check extracted here because of 120 characters per line static check rule
   reduceTilingInfo.atomic = reduceTilingInfo.atomic || (shape_limitation && is_outermost_nlast_reduce);
   // Final
