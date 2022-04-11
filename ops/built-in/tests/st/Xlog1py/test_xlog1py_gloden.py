@@ -121,6 +121,6 @@ def calc_expect_func(x, y, z):
             y_pow2 = iter_y * iter_y
             y_pow2 = -0.5 * y_pow2 + iter_y * (y_pow2 * polevl(iter_y, LP, 6) / p1evl(iter_y, LQ, 6))
             iter_y[...] = iter_y + y_pow2
-        res = x["value"] * out_tensor
-        return [res, ]
+    res = x["value"] * out_tensor
+    return [res, ]
 
