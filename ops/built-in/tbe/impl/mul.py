@@ -893,6 +893,12 @@ def _mul_compute_with_batchmatmul(lhs_tensor, rhs_tensor):
     else:
         para_name = "mul"
 
+    if shape_util.shape_to_list(lhs_tensor.shape) == \
+            shape_util.shape_to_list(rhs_tensor.shape):
+        res = tbe.vmul(lhs_tensor, rhs_tensor)
+        res.op.attrs["para_name"] = para_name
+        return res
+
     batch_shape = shape_util.shape_to_list(lhs_tensor.op.attrs["batch_shape"])
     para_dict = {"format_elem": rhs_tensor.op.attrs["format"],
                  "batch_shape": batch_shape}

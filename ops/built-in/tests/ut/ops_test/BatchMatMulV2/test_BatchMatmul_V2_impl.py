@@ -614,6 +614,83 @@ def test_batchmatmul_dequant_mul_add_fusion_func(case):
 ut_case.add_cust_test_func(["Ascend310"],
                     test_func=test_batchmatmul_dequant_mul_add_fusion_func(case_batchmatmul_dequant_mul_add_fusion))
 
+
+case_batch_matmul_elementwise_ub_fusion = [
+    {"shape": (77, 32, 7, 16, 16), "ori_shape": (77, 100, 512),
+     "format": "FRACTAL_NZ", "ori_format": "ND", "dtype": "float16"},
+    {"shape": (32, 128, 16, 16), "ori_shape": (2048, 512),
+     "format": "FRACTAL_NZ", "ori_format": "ND", "dtype": "float16"},
+    None,
+    None,
+    {"shape": (77, 128, 7, 16, 16), "ori_shape": (77, 100, 2048),
+     "format": "FRACTAL_NZ", "ori_format": "NHWC", "dtype": "float16"},
+    False,
+    True,
+    0,
+    "batch_matmul_elementwise_ub_fusion_test",
+    {"shape": (77, 128, 7, 16, 16), "ori_shape": (77, 100, 2048),
+     "format": "FRACTAL_NZ", "ori_format": "NHWC", "dtype": "float16"},
+    {"shape": (77, 128, 7, 16, 16), "ori_shape": (77, 100, 2048),
+     "format": "FRACTAL_NZ", "ori_format": "NHWC", "dtype": "float16"},
+    "mul1",
+    {"shape": (77, 128, 7, 16, 16), "ori_shape": (77, 100, 2048),
+     "format": "FRACTAL_NZ", "ori_format": "NHWC", "dtype": "float16"},
+    "sigmoid",
+    {"shape": (77, 128, 7, 16, 16), "ori_shape": (77, 100, 2048),
+     "format": "FRACTAL_NZ", "ori_format": "NHWC", "dtype": "float16"},
+    "mul2"
+]
+
+def test_batch_matmul_elementwise_ub_fusion_func(case):
+    from impl.batch_matmul_v2 import batch_matmul_compute
+    from impl.mul import mul_compute
+    from impl.sigmoid import sigmoid_compute
+    from tbe.dsl import auto_schedule
+    from te.tvm.target import cce
+    from te.lang.cce import cce_build_code
+    from te.platform.cce_conf import te_set_version
+
+    def test_op_ub_fusion(test_args):
+        te_set_version("Ascend710")
+        with cce():
+            tensor_a = tvm.placeholder(case[0].get("shape"), name='tensor_a',
+                                       attrs={'format': case[0].get("format"),
+                                              "ori_shape": case[0].get("ori_shape"),
+                                              "ori_format": case[0].get("ori_format")},
+                                       dtype=case[0].get("dtype"))
+            tensor_b = tvm.placeholder(case[1].get("shape"), name='tensor_b',
+                                       attrs={'format': case[1].get("format"),
+                                              "ori_shape": case[1].get("ori_shape"),
+                                              "ori_format": case[1].get("ori_format")},
+                                       dtype=case[1].get("dtype"))
+            res_bmm = batch_matmul_compute(tensor_a, tensor_b, bias=case[2], offset_w=case[3],
+                                           output_z=case[4], trans_a=case[5], trans_b=case[6],
+                                           offset_x=case[7], kernel_name=case[8])
+            mul_tensor = tvm.placeholder(case[9].get("shape"), name='mul_tensor',
+                                             attrs={'format': case[9].get("format"),
+                                                    "ori_shape": case[9].get("ori_shape")},
+                                             dtype=case[9].get("dtype"))
+            res = mul_compute(res_bmm, mul_tensor, case[10], kernel_name=case[11])
+            res = sigmoid_compute(res, case[12], kernel_name=case[13])
+            out = mul_compute(res_bmm, res, case[14], kernel_name=case[15])
+
+            tensor_list = [tensor_a, tensor_b, mul_tensor, out]
+            sch = auto_schedule(out)
+            config = {
+                    "print_ir": False,
+                    "need_build": True,
+                    "name": "test_batch_matmul_elementwise_ub_fusion_func",
+                    "tensor_list": tensor_list,
+            }
+            cce_build_code(sch, config)
+        te_set_version("Ascend310")
+    return test_op_ub_fusion
+
+
+ut_case.add_cust_test_func(["Ascend310"],
+                    test_func=test_batch_matmul_elementwise_ub_fusion_func(case_batch_matmul_elementwise_ub_fusion))
+
+
 def test_op_select_format_1():
     from impl.batch_matmul_v2 import op_select_format
     # static shape

@@ -48,10 +48,6 @@ class Constant:
     cube_source_dirs = [
         "impl", "tbe.dsl.compute", "tbe.dsl.static_schedule", "tbe.dsl.unify_schedule", "tbe.common.utils"
     ]
-    init_source_dir = [
-        "impl.ascend", "impl.auto_tune", "impl.util", "impl.fixpipe_op", "tbe.dsl.compute", "tbe.dsl.static_schedule",
-        "tbe.dsl.unify_schedule", "tbe.common.utils"
-    ]
 
 
 # 'pylint: disable=too-few-public-methods,too-many-arguments,too-many-branches,too-many-statements
@@ -198,7 +194,7 @@ def _run_ut_case_file(run_arg: RunUTCaseFileArgs):
     res = True
 
     if run_arg.cov_report:
-        ut_cover = coverage.Coverage(source=[run_arg.op_module_name] + Constant.init_source_dir,
+        ut_cover = coverage.Coverage(source=Constant.cube_source_dirs,
                                      data_file=run_arg.cov_data_path)
         ut_cover.start()
 
