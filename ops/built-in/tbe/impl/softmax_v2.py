@@ -2725,8 +2725,8 @@ def softmax_v2(input_x, output_y, axis=-1, kernel_name="softmax_v2", impl_mode="
     None
     """
     # get input_x format
-    input_format = input_x.get("format")
     ori_shape = input_x.get("ori_shape")
+    input_format = input_x.get("format")
     if input_format == "NC1HWC0":
         if len(ori_shape) == 2:
             new_ori_shape = [1, ori_shape[0], ori_shape[1], 1]
@@ -2755,8 +2755,8 @@ def softmax_v2(input_x, output_y, axis=-1, kernel_name="softmax_v2", impl_mode="
                 if axis[0] >= 0:
                     axis[0] = axis[0] + 1
 
-    use_dynamic = True
     tbe_product = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
+    use_dynamic = True
     if input_format in ("NDC1HWC0",) and input_x.get("dtype").lower() == "float32":
         use_dynamic = False
     if _is_special_cases(ori_shape, 0):
@@ -2766,6 +2766,9 @@ def softmax_v2(input_x, output_y, axis=-1, kernel_name="softmax_v2", impl_mode="
     if input_format in ("FRACTAL_NZ",) and \
         ((ori_shape[-1] % 16 == 0 and ori_shape[-2] % 16 == 0) or ori_shape[-1] in (21841,)):
         use_dynamic = False
+    if input_format in ("FRACTAL_NZ",) and \
+        input_x.get("dtype").lower() == "float32" and impl_mode == "high_precision":
+        use_dynamic = True
 
     if input_format in ("NC1HWC0", "NDC1HWC0", "FRACTAL_NZ") and use_dynamic:
         context = tbe_context.op_context.get_context()
