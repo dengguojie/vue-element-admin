@@ -17,6 +17,7 @@
 /*!
  * \file ut_op_util.cpp
  */
+#include <sstream>
 #include "ut_op_util.h"
 #include "op_log.h"
 
