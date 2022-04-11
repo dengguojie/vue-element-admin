@@ -379,7 +379,6 @@ class ResizeNearest3D(object):
         """
         interpolate
         """
-        cache_h = self.tik_instance.Scalar("int32", init_value=-1)
 
         with self.tik_instance.for_range(0, nd_num) as idx:
             nd_idx.set_as(offset_idx + idx)
@@ -392,7 +391,7 @@ class ResizeNearest3D(object):
                 with self.tik_instance.if_scope(tik.any(self.tiling_mode == 0, self.tiling_mode == 1,
                                                         self.tiling_mode == 2)):
                     self.compute_012(w_idx, src_ub, dst_ub, dst_n, dst_d, dst_h, src_d, src_h, src_w, num_w,
-                                     h_loop_idx, w_loop_idx, cache_h)
+                                     h_loop_idx, w_loop_idx)
 
                 with self.tik_instance.if_scope(self.tiling_mode == 3):
                     self.compute_3(w_idx, src_ub, dst_ub, dst_n, dst_d, dst_h, src_d, src_h, src_w, num_w,
@@ -406,26 +405,19 @@ class ResizeNearest3D(object):
                                     h_loop_idx, w_loop_idx)
 
     def compute_012(self, w_idx, src_ub, dst_ub, dst_n, dst_d, dst_h, src_d, src_h, src_w, num_w,
-                    h_loop_idx, w_loop_idx, cache_h):
+                    h_loop_idx, w_loop_idx):
         """
         compute func when tiling_mode in [0, 1, 2]
         """
-        with self.tik_instance.if_scope(cache_h == src_h):
-            output_offset = self.cal_offset(dst_n, dst_d, 0, dst_h + h_loop_idx * 1024, w_loop_idx * 1024)
-            self.data_move_batch(self.output_gm, dst_ub, [output_offset, 0], self.batch_c1, self.output_h,
-                                 self.output_w, "out")
-
-        with self.tik_instance.else_scope():
-            with self.tik_instance.if_scope(self.tiling_mode == 0):
-                self.compute_0(w_idx, src_ub, dst_ub, dst_n, dst_d, dst_h, src_d, src_h, src_w, num_w,
-                               h_loop_idx, w_loop_idx)
-            with self.tik_instance.if_scope(self.tiling_mode == 1):
-                self.compute_1(w_idx, src_ub, dst_ub, dst_n, dst_d, dst_h, src_d, src_h, src_w, num_w,
-                               h_loop_idx, w_loop_idx)
-            with self.tik_instance.if_scope(self.tiling_mode == 2):
-                self.compute_2(w_idx, src_ub, dst_ub, dst_n, dst_d, dst_h, src_d, src_h, src_w, num_w,
-                               h_loop_idx, w_loop_idx)
-            cache_h.set_as(src_h)
+        with self.tik_instance.if_scope(self.tiling_mode == 0):
+            self.compute_0(w_idx, src_ub, dst_ub, dst_n, dst_d, dst_h, src_d, src_h, src_w, num_w,
+                           h_loop_idx, w_loop_idx)
+        with self.tik_instance.if_scope(self.tiling_mode == 1):
+            self.compute_1(w_idx, src_ub, dst_ub, dst_n, dst_d, dst_h, src_d, src_h, src_w, num_w,
+                           h_loop_idx, w_loop_idx)
+        with self.tik_instance.if_scope(self.tiling_mode == 2):
+            self.compute_2(w_idx, src_ub, dst_ub, dst_n, dst_d, dst_h, src_d, src_h, src_w, num_w,
+                           h_loop_idx, w_loop_idx)
 
     def compute_0(self, w_idx, src_ub, dst_ub, dst_n, dst_d, dst_h, src_d, src_h, src_w, num_w,
                   h_loop_idx, w_loop_idx):
@@ -636,10 +628,11 @@ class ResizeNearest3D(object):
         if self.nearest_mode == "round_prefer_floor":
             fp_scalar = self.tik_instance.Scalar("float32")
             int_scalar = self.tik_instance.Scalar("int32")
+            fp_scalar2 = self.tik_instance.Scalar("float32", init_value=0.5)
             with self.tik_instance.for_range(0, 1024) as idx:
                 fp_scalar.set_as(idx_ub_fp[idx])
                 int_scalar.set_as(fp_scalar)
-                with self.tik_instance.if_scope(fp_scalar == int_scalar + 0.5):
+                with self.tik_instance.if_scope(fp_scalar == int_scalar + fp_scalar2):
                     idx_ub[idx].set_as(int_scalar)
                 with self.tik_instance.else_scope():
                     self.tik_instance.scalar_conv("round", int_scalar, fp_scalar)
@@ -693,9 +686,10 @@ class ResizeNearest3D(object):
             src_idx_fp.set_as((dst_idx_fp + 0.5) * scale - 0.5)
 
         if self.nearest_mode == "round_prefer_floor":
+            fp_scalar2 = self.tik_instance.Scalar("float32", init_value=0.5)
             int_scalar = self.tik_instance.Scalar("int32")
             int_scalar.set_as(src_idx_fp)
-            with self.tik_instance.if_scope(src_idx_fp == int_scalar + 0.5):
+            with self.tik_instance.if_scope(src_idx_fp == int_scalar + fp_scalar2):
                 self.tik_instance.scalar_conv("floor", src_idx, src_idx_fp)
             with self.tik_instance.else_scope():
                 self.tik_instance.scalar_conv("round", src_idx, src_idx_fp)
