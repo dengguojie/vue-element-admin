@@ -51,6 +51,8 @@ approvers:
 - zhangzhongzt
 - wangchao285
 - lin-wei32
+- shunqi
+- wangjun-qt
 reviewers:
 - chen-kang30
 - li-xulong
@@ -112,3 +114,5 @@ reviewers:
 - jiangtao_vector
 - wangchao285
 - lin-wei32
+- shunqi
+- wangjun-qt
