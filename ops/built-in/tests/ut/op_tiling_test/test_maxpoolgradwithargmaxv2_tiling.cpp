@@ -543,7 +543,7 @@ TEST_F(MaxPoolGradWithArgmaxV2Tiling, maxpoolgrad_with_argmax_v2_tiling_8) {
     iter->second.tiling_func_(opParas, op_compile_info, runInfo);
 }
 
-// case of fix tiling
+// overlap too large to support
 TEST_F(MaxPoolGradWithArgmaxV2Tiling, maxpoolgrad_with_argmax_v2_tiling_9) {
     using namespace optiling;
     std::string op_name = "MaxPoolGradWithArgmaxV2";
@@ -596,8 +596,7 @@ TEST_F(MaxPoolGradWithArgmaxV2Tiling, maxpoolgrad_with_argmax_v2_tiling_9) {
     op_compile_info.str = compileInfo;
     op_compile_info.key = "maxpoolgrad_with_argmax_v2_tiling_9";
     OpRunInfo runInfo;
-    ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
-    EXPECT_EQ(to_string(runInfo.tiling_data), "2 12 1 1 128 1 1 7 50 3 1 0 255 4 3 321 320 320 1 12 1 12 2 2 12 12 0 0 0 0 992 11993856 ");
+    iter->second.tiling_func_(opParas, op_compile_info, runInfo);
 }
 
 // kernel size or stride too large

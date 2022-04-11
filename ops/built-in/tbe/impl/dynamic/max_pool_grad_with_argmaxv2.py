@@ -60,7 +60,7 @@ class Constant:
     # max int32
     MAX_INT32 = 2 ** 31 - 1
     # workspace size
-    WORKSPACE_SIZE = 524288000
+    WORKSPACE_ONE_CORE = 1048576
 
 
 # 'pylint: disable=too-many-arguments,too-many-statements,too-many-branches
@@ -187,7 +187,6 @@ class MaxpoolGrad:
         self.scalar_zero = self.tik_instance.Scalar(dtype='float32', name='scalar_zero')
         self.scalar_zero_fp16 = self.tik_instance.Scalar(dtype='float16', name='scalar_zero_fp16')
         self.offset_gm = self.tik_instance.Scalar(dtype='int64', name='offset_gm')
-        self.offset_overlap = self.tik_instance.Scalar(dtype='int64',  name='offset_overlap')
         self.temp_scalar_int64 = self.tik_instance.Scalar(dtype='int64', name='temp_scalar_int64')
 
         self.scalar_zero_fp16.set_as(0)
@@ -300,23 +299,27 @@ class MaxpoolGrad:
     def init_gm_tensor(self):
         """Init gm tensor
         """
-        self.tiling_gm = self.tik_instance.Tensor("int32", (Constant.TILING_ARG_NUM,), name="tiling_gm",
+        self.tiling_gm = self.tik_instance.Tensor("int32", (Constant.TILING_ARG_NUM,),
+                                                  name="tiling_gm",
                                                   scope=tik.scope_gm)
-        self.ori_input_gm = self.tik_instance.Tensor(self.dtype, (Constant.MAX_INT32,), name="ori_input_gm",
+        self.ori_input_gm = self.tik_instance.Tensor(self.dtype, (Constant.MAX_INT32,),
+                                                     name="ori_input_gm",
                                                      scope=tik.scope_gm)
-        self.argmax_gm = self.tik_instance.Tensor("uint16", (Constant.MAX_INT32,), name="argmax_gm",
+        self.argmax_gm = self.tik_instance.Tensor("uint16", (Constant.MAX_INT32,),
+                                                  name="argmax_gm",
                                                   scope=tik.scope_gm)
-        self.grad_gm = self.tik_instance.Tensor(self.dtype, (Constant.MAX_INT32,), name="grad_gm",
+        self.grad_gm = self.tik_instance.Tensor(self.dtype, (Constant.MAX_INT32,),
+                                                name="grad_gm",
                                                 scope=tik.scope_gm)
-        self.res_gm = self.tik_instance.Tensor(self.dtype, (Constant.MAX_INT32,), name="res_gm",
+        self.res_gm = self.tik_instance.Tensor(self.dtype, (Constant.MAX_INT32,),
+                                               name="res_gm",
                                                scope=tik.scope_gm)
 
     def init_workspace(self):
         """Init temporary storage of overlap in workspace
         """
-        self.overlap_gm = self.tik_instance.Tensor("float32", (self.workspace_shape,), name="overlap_gm",
-                                                   scope=tik.scope_gm, is_workspace=True,
-                                                   max_mem_size=Constant.WORKSPACE_SIZE)
+        self.overlap_gm = self.tik_instance.Tensor("float32", (Constant.CORE_NUM * Constant.WORKSPACE_ONE_CORE,), 
+                                                   name="overlap_gm", scope=tik.scope_gm, is_workspace=True)
 
     def init_ub_tensor(self):
         """Init ub tensor
@@ -1325,7 +1328,7 @@ class MaxpoolGrad:
                        mov_len_ho, mov_len_hi,
                        start_ho_index, start_hi_index,
                        start_threshold,
-                       offset_gm_block, shape, pad):
+                       offset_gm_block, shape, pad, core_idx):
         pad_left, pad_right, pad_top, pad_bottom = pad
         start_h = self.tik_instance.Scalar(dtype='int64', name='start_h')
         end_h = self.tik_instance.Scalar(dtype='int64', name='end_h')
@@ -1374,13 +1377,12 @@ class MaxpoolGrad:
         # when tile h to block, n*c1 is small and no need to calc offset for overlap
         if offset_gm_block is not None:
             self.offset_gm.set_as(offset_gm_block)
-            self.offset_overlap.set_as(offset_gm_block)
 
         overlap_shape_w = self.tik_instance.Scalar(dtype='int64', name='overlap_shape_w')
         overlap_offset = self.tik_instance.Scalar(dtype='int64', name='overlap_offset')
         with self.tik_instance.if_scope(self.stride_h < self.kh):
             overlap_shape_w.set_as((self.wi + pad_left + pad_right) * Constant.C0)
-            overlap_offset.set_as(self.offset_overlap)
+            overlap_offset.set_as(core_idx * Constant.WORKSPACE_ONE_CORE)
             # save every h overlap on gm
             overlap_buffer = self.overlap_gm
 
@@ -1946,9 +1948,6 @@ class MaxpoolGrad:
                                 shape = (self.ho, self.wo, self.hi, self.wi)
                                 self.offset_gm.set_as(
                                     (n_index * self.c1 + c1_index) * self.hi * self.wi * Constant.C0)
-                                self.offset_overlap.set_as(
-                                    (n_index * self.c1 + c1_index) * (self.kh - self.stride_h) * 
-                                    (self.wi + self.pad_left + self.pad_right) * Constant.C0)
                                 with self.tik_instance.if_scope(self.tiling_mode == 2):
                                     with self.tik_instance.new_stmt_scope():
                                         self._tilling_ho_wo(self.each_process_wo, n_index, c1_index,
@@ -1956,7 +1955,7 @@ class MaxpoolGrad:
                                                             self.ho, self.hi,
                                                             0, 0,
                                                             0,
-                                                            None, shape, self.pad)
+                                                            None, shape, self.pad, block_index)
                                 with self.tik_instance.if_scope(self.tiling_mode == 1):
                                     with self.tik_instance.new_stmt_scope():
                                         self._tilling_ho(self.each_process_ho, n_index, c1_index,
@@ -2107,7 +2106,7 @@ class MaxpoolGrad:
                                                                 mov_len_ho, mov_len_hi,
                                                                 actual_start_ho_index, actual_start_hi_index,
                                                                 start_threshold,
-                                                                offset_gm_block, shape, pad)
+                                                                offset_gm_block, shape, pad, block_index)
                                     with self.tik_instance.if_scope(self.tiling_mode == 1):
                                         with self.tik_instance.new_stmt_scope():
                                             self._tilling_ho_nc1h(self.each_process_ho, n_index, c1_index,
@@ -2129,9 +2128,6 @@ class MaxpoolGrad:
                             with self.tik_instance.for_range(0, self.nc1, thread_num=1) as nc1_index:
                                 self.offset_gm.set_as((block_index * self.nc1 + nc1_index) *
                                                     self.hi * self.wi * Constant.C0)
-                                self.offset_overlap.set_as((block_index * self.nc1 + nc1_index) * 
-                                                    (self.kh - self.stride_h) * 
-                                                    (self.wi + self.pad_left + self.pad_right) * Constant.C0)
                                 n_index = (block_index * self.nc1 + nc1_index) // self.c1
                                 c1_index = (block_index * self.nc1 + nc1_index) % self.c1
 
@@ -2144,7 +2140,7 @@ class MaxpoolGrad:
                                                             self.ho, self.hi,
                                                             0, 0,
                                                             0,
-                                                            None, shape, self.pad)
+                                                            None, shape, self.pad, block_index)
                                 with self.tik_instance.if_scope(self.tiling_mode == 1):
                                     with self.tik_instance.new_stmt_scope():
                                         self._tilling_ho(self.each_process_ho, n_index, c1_index,

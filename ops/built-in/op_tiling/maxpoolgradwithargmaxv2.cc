@@ -55,6 +55,7 @@ namespace {
   constexpr int32_t RESNET50_IN_ARGMAX_H = 9;
   constexpr int32_t RESNET50_IN_ARGMAX_W = 197;
   constexpr int32_t RESNET50_IN_X = 112;
+  constexpr int32_t WORKSPACE_ONE_CORE = 1048576;
 }
 
 namespace optiling {
@@ -659,7 +660,7 @@ bool MaxPoolGradWithArgmaxV2Tiling(const std::string& op_type, const TeOpParas& 
   // block_dim and workspace, use fot tik op
   run_info.block_dim = tiling_params.act_core_num;
   const int64_t WORKSPACE_DIM = 1;
-  const int64_t WORKSPACE_SIZE = 524288000;
+  const int64_t WORKSPACE_SIZE = compile_params.core_num * WORKSPACE_ONE_CORE;
   int64_t actual_workspace = DTYPE_SIZE_FP32;
 
   if (tiling_params.tiling_mode == TILING_MODE_2) {
@@ -671,12 +672,10 @@ bool MaxPoolGradWithArgmaxV2Tiling(const std::string& op_type, const TeOpParas& 
       int64_t hi = input_shape[SHAPE_INDEX_H];
       int64_t wi = input_shape[SHAPE_INDEX_W];
       
-      if (tiling_params.if_block == 1) {
-        actual_workspace = n * c1 * hi * wi * BLOCK_ALLIGN * DTYPE_SIZE_FP32;
-      } else {
-        wi = tiling_params.wi + tiling_params.pad_left + tiling_params.pad_right;
-        actual_workspace = n * c1 * (compile_params.kh - compile_params.stride_h) * wi * BLOCK_ALLIGN * DTYPE_SIZE_FP32;
-      }
+      wi = tiling_params.wi + tiling_params.pad_left + tiling_params.pad_right;
+      actual_workspace = compile_params.core_num * (compile_params.kh - compile_params.stride_h)
+                           * wi * BLOCK_ALLIGN * DTYPE_SIZE_FP32;
+      
       if (actual_workspace > WORKSPACE_SIZE) {
         VECTOR_INNER_ERR_REPORT_TILIING(op_type, "Overlap is too large to support, please decrease input_shape.");
         return false;
@@ -685,7 +684,7 @@ bool MaxPoolGradWithArgmaxV2Tiling(const std::string& op_type, const TeOpParas& 
   }
   tiling_params.workspace_shape = actual_workspace / DTYPE_SIZE_FP32;
 
-  vector<int64_t> workspace(WORKSPACE_DIM, actual_workspace);
+  vector<int64_t> workspace(WORKSPACE_DIM, WORKSPACE_SIZE);
   run_info.workspaces = workspace;
 
   SetTilingParam(tiling_params, run_info);
