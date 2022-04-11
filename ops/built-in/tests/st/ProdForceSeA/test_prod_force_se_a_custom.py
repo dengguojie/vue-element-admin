@@ -21,7 +21,7 @@ def test_prod_force_se_a_01():
                 "ori_shape": (4,), "ori_format": "ND", "range": ((4, 4))},
                 {"shape": (1, 3, 28328), "dtype": "float32", "format": "ND",
                 "ori_shape": (1, 3, 28328), "ori_format": "ND", "range": ((1, 1), (3, 3), (28328, 28328))},
-                138, 0, 1, 0)
+                138, 0, 1, 0, supp_mode="vector")
 
 def test_prod_force_se_a_02():
     input_list = [{"shape": (1, 1656), "dtype": "float32", "format": "ND",
@@ -42,8 +42,6 @@ def test_prod_force_se_a_02():
 if __name__ == '__main__':
     set_current_compile_soc_info("Ascend710")
     test_prod_force_se_a_01()
-    test_prod_force_se_a_02()
     set_current_compile_soc_info("Ascend910")
-    test_prod_force_se_a_01()
     test_prod_force_se_a_02()
     exit(0)

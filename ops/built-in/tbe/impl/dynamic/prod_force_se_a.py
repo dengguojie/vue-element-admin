@@ -73,15 +73,13 @@ class ProdForceSeA:
                                                   name="tiling_gm",
                                                   scope=tik.scope_gm)
         self.core_nums = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
-        self.is_support_v4dtrans = tbe_platform.api_check_support("tik.v4dtrans", "float32")
         (net_deriv_dtype, in_deriv_dtype, nlist_dtype, natoms_dtype, force_dtype) = dtypes
         (natoms_shape) = shapes
-        (n_a_sel, n_r_sel, split_count, split_index, impl_mode) = attrs
+        (n_a_sel, n_r_sel, split_count, split_index, supp_mode) = attrs
         self.n_a_sel = n_a_sel
         self.n_r_sel = n_r_sel
         self.split_count = split_count
         self.split_index = split_index
-        self.is_high_performance_mode = impl_mode == "high_performance"
         self.nnei = n_a_sel + n_r_sel
         self.net_deriv_dtype = net_deriv_dtype
         self.in_deriv_dtype = in_deriv_dtype
@@ -89,6 +87,7 @@ class ProdForceSeA:
         self.natoms_dtype = natoms_dtype
         self.force_dtype = force_dtype
         self.natoms_shape = natoms_shape
+        self.is_support_vector = supp_mode == "vector"
         self.nall = self.tik_instance.Scalar("int64", name="nall")
         self.nloc = self.tik_instance.Scalar("int64", name="nloc")
         self.nframes = self.tik_instance.Scalar("int64", name="nframes")
@@ -96,10 +95,10 @@ class ProdForceSeA:
         self.core_loop_left = self.tik_instance.Scalar("int64", name="core_loop_left")
         self.core_offset = self.tik_instance.Scalar("int64", name="core_offset")
         self.core_nums_used = self.tik_instance.Scalar("int64", name="core_nums_used")
-        if self.is_support_v4dtrans:
+        if self.is_support_vector:
             nnei_unit_max = _floor_fill(Constant.UB_MAX_SIZE // 2 // Constant.UNIT_MAX_LEN_0, Constant.BLOCK_FLOAT32)
         else:
-            nnei_unit_max = _floor_fill(Constant.UB_MAX_SIZE // 2 // Constant.UNIT_MAX_LEN_1, Constant.MASK_FLOAT32)
+            nnei_unit_max = 640
         self.nnei_unit_len = _ceil_fill(self.nnei, Constant.MASK_FLOAT32)
         if self.nnei_unit_len > nnei_unit_max:
             self.nnei_unit_len = nnei_unit_max
@@ -232,18 +231,251 @@ class ProdForceSeA:
             self.tik_instance.vnchwconv(False, False, dst_list0, src_list0, nnei_len // 64, 1, 16)
             self.tik_instance.data_move(dst_ub_buf_fp16, dst_ub_fp16, 0, 4, nnei_len // 8, nnei_len // 8, 0)
 
+    def _simple_trans_fp32_8_128x(self, dst_ub, src_ub, nnei_mask_len):
+        '''
+        simple transpose from (8, 128x) to (128x, 8)
+        '''
+        trans_ub1_fp32 = self.tik_instance.Tensor(self.force_dtype, (1024,), name="trans_ub1_fp32",
+                                                  scope=tik.scope_ubuf)
+        trans_ub2_fp32 = self.tik_instance.Tensor(self.force_dtype, (128,), name="trans_ub2_fp32",
+                                                  scope=tik.scope_ubuf)
+        self.tik_instance.vector_dup(Constant.MASK_FLOAT32, trans_ub1_fp32, 0, 16, 1, 8)
+        self.tik_instance.vector_dup(Constant.MASK_FLOAT32, trans_ub2_fp32, 0, 2, 1, 8)
+        src_ub_fp16 = src_ub.reinterpret_cast_to("float16")
+        dst_ub_fp16 = dst_ub.reinterpret_cast_to("float16")
+        trans_ub1_fp16 = trans_ub1_fp32.reinterpret_cast_to("float16")
+        trans_ub2_fp16 = trans_ub2_fp32.reinterpret_cast_to("float16")
+        trans_loop = (nnei_mask_len * Constant.NLOC_UNIT_LEN) // 128
+        with self.tik_instance.for_range(0, trans_loop) as trans_idx:
+            src_list0 = [src_ub_fp16[trans_idx * 256 + 16 * i] for i in range(16)]
+            dst_list0 = [trans_ub1_fp16[16 * i] for i in range(16)]
+            self.tik_instance.vnchwconv(False, False, dst_list0, src_list0, 3, 16, trans_loop * 16)
+            src_list1 = []
+            for i in range(3):
+                src_list1 = src_list1 + [trans_ub1_fp16[256 * i], trans_ub1_fp16[256 * i + 16]]
+            src_list1 = src_list1 + [trans_ub2_fp16] * 10
+            dst_list1 = [dst_ub_fp16[trans_idx * 2048 + 128 * i] for i in range(16)]
+            self.tik_instance.vnchwconv(False, False, dst_list1, src_list1, 8, 1, 2)
+
+    def _first_move_out(self, frame_idx, nloc_offset_vector, nloc_offset, force_add_ub_fp32):
+        force_offset1 = self.tik_instance.Scalar("int32", name="force_offset1")
+        force_offset1.set_as(frame_idx * self.nall * 3 + nloc_offset_vector * 3 + nloc_offset * 3)
+        trans_ub1_fp32 = self.tik_instance.Tensor(self.force_dtype, (152,), name="trans_ub1_fp32",
+                                                  scope=tik.scope_ubuf)
+        self.tik_instance.vector_dup(64, trans_ub1_fp32, 0, 2, 1, 8)
+        self.tik_instance.vector_dup(24, trans_ub1_fp32[128], 0, 1, 1, 3)
+        self.tik_instance.vadd(12, trans_ub1_fp32, force_add_ub_fp32, trans_ub1_fp32[16],
+                               1, 1, 1, 1, 2, 2, 2)
+        trans_ub1_fp16 = trans_ub1_fp32.reinterpret_cast_to("float16")
+        trans_ub2_fp32 = self.tik_instance.Tensor(self.force_dtype, (256,), name="trans_ub2_fp16",
+                                                  scope=tik.scope_ubuf)
+        self.tik_instance.vector_dup(4, trans_ub2_fp32, 0, 4, 1, 8)
+        trans_ub2_fp16 = trans_ub2_fp32.reinterpret_cast_to("float16")
+        src_list0 = [trans_ub1_fp16] + [trans_ub1_fp16[16]] * 15
+        dst_list0 = [trans_ub2_fp16[16 * i] for i in range(16)]
+        self.tik_instance.vnchwconv(False, False, dst_list0, src_list0, 2, 16, 1)
+        src_list1 = []
+        for i in range(3):
+            src_list1 = src_list1 + [trans_ub2_fp16[128 * i], trans_ub2_fp16[128 * i + 16]]
+        src_list1 = src_list1 + [trans_ub2_fp16[384]] * 10
+        dst_list1 = [trans_ub1_fp16[16 * i] for i in range(16)]
+        self.tik_instance.vnchwconv(False, False, dst_list1, src_list1, 4, 1, 2)
+        self.tik_instance.set_atomic_add(1)
+        self.tik_instance.data_move(self.force_gm[force_offset1],
+                                    trans_ub1_fp32, 0, 1, 1, 0, 0)
+        self.tik_instance.data_move(self.force_gm[force_offset1 + 3],
+                                    trans_ub1_fp32[8], 0, 1, 1, 0, 0)
+        self.tik_instance.data_move(self.force_gm[force_offset1 + 6],
+                                    trans_ub1_fp32[16], 0, 1, 1, 0, 0)
+        self.tik_instance.data_move(self.force_gm[force_offset1 + 9],
+                                    trans_ub1_fp32[24], 0, 1, 1, 0, 0)
+        self.tik_instance.set_atomic_add(0)
+
+    def _second_move_out_prehandle(self, nnei_tail, nnei_tail_fill, nlist_offset, nlist_ub_int32):
+        nlist_ub1_int32 = self.tik_instance.Tensor(self.nlist_dtype, (nnei_tail_fill,), name="nlist_ub1_int32",
+                                                   scope=tik.scope_ubuf)
+        self.tik_instance.data_move(nlist_ub1_int32, self.nlist_gm[nlist_offset], 0, 1,
+                                    _ceil_div(nnei_tail, Constant.BLOCK_FLOAT32), 0, 0)
+        idx_offset_ub = self.tik_instance.Tensor(self.nlist_dtype, (Constant.MASK_FLOAT32,), name="idx_offset_ub",
+                                                   scope=tik.scope_ubuf)
+        self.tik_instance.vec_dup(Constant.MASK_FLOAT32, idx_offset_ub, 3, 1, 1)
+        self.tik_instance.vmul(Constant.MASK_FLOAT32, nlist_ub_int32, nlist_ub1_int32,
+                               idx_offset_ub, nnei_tail_fill // Constant.MASK_FLOAT32, 1, 1, 0, 8, 8, 0)
+
+    def _second_move_out(self, nnei_tail, nlist_offset, force_offset_2, nu_idx, force_out_ub_fp32):
+        nnei_tail_fill = _ceil_fill(nnei_tail, Constant.MASK_FLOAT32)
+        nlist_ub_int32 = self.tik_instance.Tensor(self.nlist_dtype, (nnei_tail_fill,), name="nlist_ub_int32",
+                                                  scope=tik.scope_ubuf)
+        self._second_move_out_prehandle(nnei_tail, nlist_offset, nnei_tail_fill, nlist_ub_int32)
+        nlist_loc_0 = self.tik_instance.Scalar("int32", name="nlist_loc_0")
+        nlist_loc_1 = self.tik_instance.Scalar("int32", name="nlist_loc_1")
+        nlist_loc_2 = self.tik_instance.Scalar("int32", name="nlist_loc_2")
+        nlist_loc_3 = self.tik_instance.Scalar("int32", name="nlist_loc_3")
+        self.tik_instance.set_atomic_add(1)
+        with self.tik_instance.for_range(0, nnei_tail // Constant.NLOC_UNIT_LEN) as a_idx:
+            nlist_loc_0.set_as(nlist_ub_int32[a_idx * Constant.NLOC_UNIT_LEN])
+            nlist_loc_1.set_as(nlist_ub_int32[a_idx * Constant.NLOC_UNIT_LEN + 1])
+            nlist_loc_2.set_as(nlist_ub_int32[a_idx * Constant.NLOC_UNIT_LEN + 2])
+            nlist_loc_3.set_as(nlist_ub_int32[a_idx * Constant.NLOC_UNIT_LEN + 3])
+            with self.tik_instance.if_scope(nlist_loc_0 > -1):
+                self.tik_instance.data_move(self.force_gm[force_offset_2 + nlist_loc_0],
+                                            force_out_ub_fp32[nu_idx * nnei_tail_fill * 8 + a_idx * 32],
+                                            0, 1, 1, 0, 0)
+            with self.tik_instance.if_scope(nlist_loc_1 > -1):
+                self.tik_instance.data_move(self.force_gm[force_offset_2 + nlist_loc_1],
+                                            force_out_ub_fp32[nu_idx * nnei_tail_fill * 8 + a_idx * 32 + 8],
+                                            0, 1, 1, 0, 0)
+            with self.tik_instance.if_scope(nlist_loc_2 > -1):
+                self.tik_instance.data_move(self.force_gm[force_offset_2 + nlist_loc_2],
+                                            force_out_ub_fp32[nu_idx * nnei_tail_fill * 8 + a_idx * 32 + 16],
+                                            0, 1, 1, 0, 0)
+            with self.tik_instance.if_scope(nlist_loc_3 > -1):
+                self.tik_instance.data_move(self.force_gm[force_offset_2 + nlist_loc_3],
+                                            force_out_ub_fp32[nu_idx * nnei_tail_fill * 8 + a_idx * 32 + 24],
+                                            0, 1, 1, 0, 0)
+        with self.tik_instance.for_range(0, nnei_tail % Constant.NLOC_UNIT_LEN) as a_idx:
+            nnei_left_base = _floor_fill(nnei_tail, Constant.NLOC_UNIT_LEN)
+            nlist_loc_0.set_as(nlist_ub_int32[nnei_left_base + a_idx * Constant.NLOC_UNIT_LEN])
+            with self.tik_instance.if_scope(nlist_loc_0 > -1):
+                self.tik_instance.data_move(self.force_gm[force_offset_2 + nlist_loc_0],
+                                            force_out_ub_fp32[(nu_idx * nnei_tail_fill + nnei_left_base + a_idx) * 8],
+                                            0, 1, 1, 0, 0)
+        self.tik_instance.set_atomic_add(0)
+
+    def _second_move_out_tail(self, nnei_tail, frame_idx, nlist_offset, deriv_nnei_vcpadd_ub_fp32):
+        nnei_tail_fill = _ceil_fill(nnei_tail, Constant.MASK_FLOAT32)
+        nlist_ub_int32 = self.tik_instance.Tensor(self.nlist_dtype, (nnei_tail_fill,), name="nlist_ub_int32",
+                                                  scope=tik.scope_ubuf)
+        self._second_move_out_prehandle(nnei_tail, nlist_offset, nnei_tail_fill, nlist_ub_int32)
+        with self.tik_instance.for_range(0, 3) as local_idx:
+            force_out_ub_fp32 = self.tik_instance.Tensor(self.force_dtype, (8,), name="force_out_ub_fp32",
+                                                         scope=tik.scope_ubuf)
+            self.tik_instance.vec_dup(8, force_out_ub_fp32, 0, 1, 1)
+            nlist_loc_0 = self.tik_instance.Scalar("int32", name="nlist_loc_0")
+            nlist_loc_1 = self.tik_instance.Scalar("int32", name="nlist_loc_1")
+            nlist_loc_2 = self.tik_instance.Scalar("int32", name="nlist_loc_2")
+            nlist_loc_3 = self.tik_instance.Scalar("int32", name="nlist_loc_3")
+            offset = nnei_tail_fill * local_idx
+            force_offset_2 = frame_idx * self.nall * 3
+            self.tik_instance.set_atomic_add(1)
+            with self.tik_instance.for_range(0, nnei_tail // Constant.NLOC_UNIT_LEN) as a_idx:
+                nlist_loc_0.set_as(nlist_ub_int32[a_idx * Constant.NLOC_UNIT_LEN])
+                nlist_loc_1.set_as(nlist_ub_int32[a_idx * Constant.NLOC_UNIT_LEN + 1])
+                nlist_loc_2.set_as(nlist_ub_int32[a_idx * Constant.NLOC_UNIT_LEN + 2])
+                nlist_loc_3.set_as(nlist_ub_int32[a_idx * Constant.NLOC_UNIT_LEN + 3])
+                with self.tik_instance.if_scope(nlist_loc_0 > -1):
+                    force_out_ub_fp32[0].set_as(deriv_nnei_vcpadd_ub_fp32[offset + a_idx * Constant.NLOC_UNIT_LEN])
+                    self.tik_instance.data_move(self.force_gm[force_offset_2 + nlist_loc_0 + local_idx],
+                                                force_out_ub_fp32, 0, 1, 1, 0, 0)
+                with self.tik_instance.if_scope(nlist_loc_1 > -1):
+                    force_out_ub_fp32[0].set_as(deriv_nnei_vcpadd_ub_fp32[offset + a_idx * Constant.NLOC_UNIT_LEN + 1])
+                    self.tik_instance.data_move(self.force_gm[force_offset_2 + nlist_loc_1 + local_idx],
+                                                force_out_ub_fp32, 0, 1, 1, 0, 0)
+                with self.tik_instance.if_scope(nlist_loc_2 > -1):
+                    force_out_ub_fp32[0].set_as(deriv_nnei_vcpadd_ub_fp32[offset + a_idx * Constant.NLOC_UNIT_LEN + 2])
+                    self.tik_instance.data_move(self.force_gm[force_offset_2 + nlist_loc_2 + local_idx],
+                                                force_out_ub_fp32, 0, 1, 1, 0, 0)
+                with self.tik_instance.if_scope(nlist_loc_3 > -1):
+                    force_out_ub_fp32[0].set_as(deriv_nnei_vcpadd_ub_fp32[offset + a_idx * Constant.NLOC_UNIT_LEN + 3])
+                    self.tik_instance.data_move(self.force_gm[force_offset_2 + nlist_loc_3 + local_idx],
+                                                force_out_ub_fp32, 0, 1, 1, 0, 0)
+            with self.tik_instance.for_range(0, nnei_tail % Constant.NLOC_UNIT_LEN) as a_idx:
+                nlist_left_base = _floor_fill(nnei_tail, Constant.NLOC_UNIT_LEN) + a_idx
+                nlist_loc_0.set_as(nlist_ub_int32[nlist_left_base])
+                with self.tik_instance.if_scope(nlist_loc_0 > -1):
+                    force_out_ub_fp32[0].set_as(deriv_nnei_vcpadd_ub_fp32[offset + nlist_left_base])
+                    self.tik_instance.data_move(self.force_gm[force_offset_2 + nlist_loc_0 + local_idx],
+                                                force_out_ub_fp32, 0, 1, 1, 0, 0)
+            self.tik_instance.set_atomic_add(0)
+
+    def _first_calculate(self, nnei_tail, force_offset, deriv_nnei_vcpadd_ub_fp32):
+        with self.tik_instance.new_stmt_scope(disable_sync=False):
+            nnei_tail_fill = _ceil_fill(nnei_tail, Constant.MASK_FLOAT32)
+            force_add_ub_fp32 = self.tik_instance.Tensor(self.force_dtype,
+                (3 + Constant.MASK_FLOAT32, ), name="force_add_ub_fp32",
+                scope=tik.scope_ubuf)
+            force_assis_ub_fp32 = self.tik_instance.Tensor(self.force_dtype,
+                                                        (Constant.BLOCK_FLOAT32 * 3, ),
+                                                        name="force_assis_ub_fp32",
+                                                        scope=tik.scope_ubuf)
+            self.tik_instance.vector_dup(Constant.BLOCK_FLOAT32, force_add_ub_fp32, 0, 1, 1, 8)
+            self.tik_instance.vector_dup(Constant.BLOCK_FLOAT32 * 3, force_assis_ub_fp32, 0, 1, 1, 8)
+            force_vcadd_ub_fp32 = self.tik_instance.Tensor(self.force_dtype,
+                (3 + Constant.MASK_FLOAT32,), name="force_vcadd_ub_fp32",
+                scope=tik.scope_ubuf)
+            force_reduce_loop = nnei_tail // Constant.MASK_FLOAT32
+            force_reduce_left = nnei_tail % Constant.MASK_FLOAT32
+            for i in range(0, force_reduce_loop):
+                self.tik_instance.vcadd(Constant.MASK_FLOAT32, force_vcadd_ub_fp32,
+                    deriv_nnei_vcpadd_ub_fp32[Constant.MASK_FLOAT32 * i],
+                    3, 1, 1, nnei_tail_fill // Constant.BLOCK_FLOAT32)
+                self.tik_instance.vadd(3, force_add_ub_fp32,
+                    force_add_ub_fp32, force_vcadd_ub_fp32, 1, 1, 1, 1, 8, 8, 8)
+            if force_reduce_left > 0:
+                force_reduce_floor = _floor_fill(nnei_tail, Constant.MASK_FLOAT32)
+                self.tik_instance.vector_dup(1 * 3, force_vcadd_ub_fp32, 0, 1, 1, 8)
+                self.tik_instance.vcadd(force_reduce_left, force_vcadd_ub_fp32,
+                    deriv_nnei_vcpadd_ub_fp32[force_reduce_floor],
+                    3, 1, 1, nnei_tail_fill // Constant.BLOCK_FLOAT32)
+                self.tik_instance.vadd(1 * 3, force_add_ub_fp32,
+                    force_add_ub_fp32, force_vcadd_ub_fp32,
+                    1, 1, 1, 1, 8, 8, 8)
+            self.tik_instance.vmuls(1 * 3, force_add_ub_fp32,
+                force_add_ub_fp32, -1, 1, 1, 1, 8, 8)
+            self.tik_instance.set_atomic_add(1)
+            self.tik_instance.data_move(self.force_gm[force_offset],
+                                        force_add_ub_fp32, 0, 1, 1, 0, 0)
+            self.tik_instance.set_atomic_add(0)
+
+    def _prepare_vmul(self, ndescrpt, deriv_offset, vmul_floor, deriv_trans_ub_fp32, deriv_input_ub_fp32):
+        self.tik_instance.data_move(deriv_input_ub_fp32,
+                                    self.in_deriv_gm[deriv_offset * 3],
+                                    0, 1, 3 * ndescrpt // Constant.BLOCK_FLOAT32, 0, 0)
+        self._v4dtrans_change_3(deriv_trans_ub_fp32, deriv_input_ub_fp32, ndescrpt)
+        self.tik_instance.data_move(deriv_input_ub_fp32,
+                                    self.net_deriv_gm[deriv_offset],
+                                    0, 1, ndescrpt // Constant.BLOCK_FLOAT32, 0, 0)
+        vmul_repeat = ndescrpt // Constant.MASK_FLOAT32
+        vmul_left = ndescrpt % Constant.MASK_FLOAT32
+        if vmul_repeat > 0:
+            self.tik_instance.vmul(Constant.MASK_FLOAT32, deriv_trans_ub_fp32,
+                                    deriv_trans_ub_fp32,
+                                    deriv_input_ub_fp32,
+                                    vmul_repeat, 1, 1, 1, 8, 8, 8)
+            self.tik_instance.vmul(Constant.MASK_FLOAT32, deriv_trans_ub_fp32[ndescrpt],
+                                    deriv_trans_ub_fp32[ndescrpt],
+                                    deriv_input_ub_fp32,
+                                    vmul_repeat, 1, 1, 1, 8, 8, 8)
+            self.tik_instance.vmul(Constant.MASK_FLOAT32, deriv_trans_ub_fp32[2 * ndescrpt],
+                                    deriv_trans_ub_fp32[2 * ndescrpt],
+                                    deriv_input_ub_fp32,
+                                    vmul_repeat, 1, 1, 1, 8, 8, 8)
+        if vmul_left > 0:
+            self.tik_instance.vmul(vmul_left, deriv_trans_ub_fp32[vmul_floor],
+                                    deriv_trans_ub_fp32[vmul_floor],
+                                    deriv_input_ub_fp32[vmul_floor],
+                                    1, 1, 1, 1, 8, 8, 8)
+            self.tik_instance.vmul(vmul_left, deriv_trans_ub_fp32[ndescrpt + vmul_floor],
+                                    deriv_trans_ub_fp32[ndescrpt + vmul_floor],
+                                    deriv_input_ub_fp32[vmul_floor],
+                                    1, 1, 1, 1, 8, 8, 8)
+            self.tik_instance.vmul(vmul_left, deriv_trans_ub_fp32[2 * ndescrpt + vmul_floor],
+                                    deriv_trans_ub_fp32[2 * ndescrpt + vmul_floor],
+                                    deriv_input_ub_fp32[vmul_floor],
+                                    1, 1, 1, 1, 8, 8, 8)
+
     def _run_multi_core_loop(self):
         with self.tik_instance.for_range(0, self.core_nums, block_num=self.core_nums) as core_idx:
             with self.tik_instance.if_scope(core_idx < self.core_nums_used - 1):
-                self._run_one_core_loop(core_idx, self.core_loop_unit)
+                self._run_one_core_loop_scalar(core_idx, self.core_loop_unit)
             with self.tik_instance.if_scope(core_idx == self.core_nums_used - 1):
                 with self.tik_instance.if_scope(self.core_loop_left == 0):
-                    self._run_one_core_loop(core_idx, self.core_loop_unit)
+                    self._run_one_core_loop_scalar(core_idx, self.core_loop_unit)
                 with self.tik_instance.else_scope():
-                    self._run_one_core_loop(core_idx, self.core_loop_left)
+                    self._run_one_core_loop_scalar(core_idx, self.core_loop_left)
 
     # 'pylint:disable=too-many-locals,too-many-branches,too-many-statements
-    def _run_one_core_loop(self, core_idx, core_loop_unit):
+    def _run_one_core_loop_scalar(self, core_idx, core_loop_unit):
         with self.tik_instance.for_range(0, self.nframes) as frame_idx:
             nloc_offset_vector = self.core_offset + core_idx * self.core_loop_unit
             loop_offset = frame_idx * self.nloc + nloc_offset_vector
@@ -260,6 +492,8 @@ class ProdForceSeA:
                         scope=tik.scope_ubuf)
                     # prepare
                     with self.tik_instance.for_range(0, Constant.NLOC_UNIT_LEN) as i:
+                        deriv_offset = (loop_offset + nloc_offset + i) * self.nnei * 4 + \
+                            nnei_idx * self.nnei_unit_len * 4
                         deriv_input_ub_fp32 = self.tik_instance.Tensor(self.net_deriv_dtype,
                                                                        (1, 1, ndescrpt, 3),
                                                                        name="deriv_input_ub_fp32",
@@ -268,124 +502,37 @@ class ProdForceSeA:
                                                                        (1, 3, 1, ndescrpt),
                                                                        name="deriv_trans_ub_fp32",
                                                                        scope=tik.scope_ubuf)
-                        deriv_offset = (loop_offset + nloc_offset + i) * self.nnei * 4 + \
-                            nnei_idx * self.nnei_unit_len * 4
-                        self.tik_instance.data_move(deriv_input_ub_fp32,
-                                                    self.in_deriv_gm[deriv_offset * 3],
-                                                    0, 1, 3 * ndescrpt // Constant.BLOCK_FLOAT32, 0, 0)
-                        if self.is_support_v4dtrans:
-                            self.tik_instance.v4dtrans(False, deriv_trans_ub_fp32[0, 0, 0, 0],
-                                                       deriv_input_ub_fp32[0, 0, 0, 0], ndescrpt, 3)
-                        else:
-                            self._v4dtrans_change_3(deriv_trans_ub_fp32, deriv_input_ub_fp32, ndescrpt)
-                        self.tik_instance.data_move(deriv_input_ub_fp32,
-                                                    self.net_deriv_gm[deriv_offset],
-                                                    0, 1, ndescrpt // Constant.BLOCK_FLOAT32, 0, 0)
-                        vmul_repeat = ndescrpt // Constant.MASK_FLOAT32
-                        vmul_left = ndescrpt % Constant.MASK_FLOAT32
-                        if vmul_repeat > 0:
-                            self.tik_instance.vmul(Constant.MASK_FLOAT32, deriv_trans_ub_fp32,
-                                                   deriv_trans_ub_fp32,
-                                                   deriv_input_ub_fp32,
-                                                   vmul_repeat, 1, 1, 1, 8, 8, 8)
-                            self.tik_instance.vmul(Constant.MASK_FLOAT32, deriv_trans_ub_fp32[ndescrpt],
-                                                   deriv_trans_ub_fp32[ndescrpt],
-                                                   deriv_input_ub_fp32,
-                                                   vmul_repeat, 1, 1, 1, 8, 8, 8)
-                            self.tik_instance.vmul(Constant.MASK_FLOAT32, deriv_trans_ub_fp32[2 * ndescrpt],
-                                                   deriv_trans_ub_fp32[2 * ndescrpt],
-                                                   deriv_input_ub_fp32,
-                                                   vmul_repeat, 1, 1, 1, 8, 8, 8)
-                        if vmul_left > 0:
-                            vmul_floor = _floor_fill(ndescrpt, Constant.MASK_FLOAT32)
-                            self.tik_instance.vmul(vmul_left, deriv_trans_ub_fp32[vmul_floor],
-                                                   deriv_trans_ub_fp32[vmul_floor],
-                                                   deriv_input_ub_fp32[vmul_floor],
-                                                   1, 1, 1, 1, 8, 8, 8)
-                            self.tik_instance.vmul(vmul_left, deriv_trans_ub_fp32[ndescrpt + vmul_floor],
-                                                   deriv_trans_ub_fp32[ndescrpt + vmul_floor],
-                                                   deriv_input_ub_fp32[vmul_floor],
-                                                   1, 1, 1, 1, 8, 8, 8)
-                            self.tik_instance.vmul(vmul_left, deriv_trans_ub_fp32[2 * ndescrpt + vmul_floor],
-                                                   deriv_trans_ub_fp32[2 * ndescrpt + vmul_floor],
-                                                   deriv_input_ub_fp32[vmul_floor],
-                                                   1, 1, 1, 1, 8, 8, 8)
-                        if self.is_support_v4dtrans:
-                            vcpadd_repeat_1 = (3 * ndescrpt) // Constant.MASK_FLOAT32
-                            vcpadd_left_1 = (3 * ndescrpt) % Constant.MASK_FLOAT32
-                            if vcpadd_repeat_1 > 0:
-                                self.tik_instance.vcpadd(Constant.MASK_FLOAT32, deriv_input_ub_fp32,
-                                                         deriv_trans_ub_fp32,
-                                                         vcpadd_repeat_1, 1, 1, 8)
-                            if vcpadd_left_1 > 0:
-                                vcpadd_floor = vcpadd_repeat_1 * Constant.MASK_FLOAT32
-                                self.tik_instance.vcpadd(vcpadd_left_1, deriv_input_ub_fp32[vcpadd_floor // 2],
-                                                         deriv_trans_ub_fp32[vcpadd_floor],
-                                                         1, 1, 1, 8)
-                            vcpadd_repeat_2 = (ndescrpt // 2) // Constant.MASK_FLOAT32
-                            vcpadd_left_2 = (ndescrpt // 2) % Constant.MASK_FLOAT32
-                            vcpadd_nloc_offset = (Constant.NLOC_UNIT_LEN + i) * self.nnei_unit_len
-                            vcpadd_nloc_offset_1 = (Constant.NLOC_UNIT_LEN * 2 + i) * self.nnei_unit_len
-                            if vcpadd_repeat_2 > 0:
-                                self.tik_instance.vcpadd(Constant.MASK_FLOAT32,
-                                                         deriv_nnei_vcpadd_ub_fp32[i * self.nnei_unit_len],
-                                                         deriv_input_ub_fp32,
-                                                         vcpadd_repeat_2, 1, 1, 8)
-                                self.tik_instance.vcpadd(Constant.MASK_FLOAT32,
-                                                         deriv_nnei_vcpadd_ub_fp32[vcpadd_nloc_offset],
-                                                         deriv_input_ub_fp32[self.nnei_unit_len * 2],
-                                                         vcpadd_repeat_2, 1, 1, 8)
-                                self.tik_instance.vcpadd(Constant.MASK_FLOAT32,
-                                                         deriv_nnei_vcpadd_ub_fp32[vcpadd_nloc_offset_1],
-                                                         deriv_input_ub_fp32[self.nnei_unit_len * 4],
-                                                         vcpadd_repeat_2, 1, 1, 8)
-                            if vcpadd_left_2 > 0:
-                                vcpadd_offset = vcpadd_repeat_2 * Constant.MASK_FLOAT32
-                                self.tik_instance.vcpadd(vcpadd_left_2,
-                                    deriv_nnei_vcpadd_ub_fp32[i * self.nnei_unit_len + vcpadd_offset // 2],
-                                    deriv_input_ub_fp32[vcpadd_offset],
-                                    1, 1, 1, 8)
-                                self.tik_instance.vcpadd(vcpadd_left_2,
-                                    deriv_nnei_vcpadd_ub_fp32[vcpadd_nloc_offset + vcpadd_offset // 2],
-                                    deriv_input_ub_fp32[self.nnei_unit_len * 2 + vcpadd_offset],
-                                    1, 1, 1, 8)
-                                self.tik_instance.vcpadd(vcpadd_left_2,
-                                    deriv_nnei_vcpadd_ub_fp32[vcpadd_nloc_offset_1 + vcpadd_offset // 2],
-                                    deriv_input_ub_fp32[self.nnei_unit_len * 4 + vcpadd_offset],
-                                    1, 1, 1, 8)
-                        else:
-                            nnei_dst_len = self.nnei_unit_len * 3
-                            self._v4dtrans_change_4(deriv_input_ub_fp32, deriv_trans_ub_fp32, nnei_dst_len)
-                            for idx in range(0, 3):
-                                dev_vadd_offset = ndescrpt * idx + self.nnei_unit_len * i
-                                self.tik_instance.vadd(Constant.MASK_FLOAT32,
-                                                       deriv_nnei_vcpadd_ub_fp32[dev_vadd_offset],
-                                                       deriv_input_ub_fp32[self.nnei_unit_len * idx],
-                                                       deriv_input_ub_fp32[self.nnei_unit_len * idx + nnei_dst_len],
-                                                       self.nnei_unit_len // Constant.MASK_FLOAT32,
-                                                       1, 1, 1, 8, 8, 8)
-                                self.tik_instance.vadd(Constant.MASK_FLOAT32,
-                                                       deriv_nnei_vcpadd_ub_fp32[dev_vadd_offset],
-                                                       deriv_nnei_vcpadd_ub_fp32[dev_vadd_offset],
-                                                       deriv_input_ub_fp32[self.nnei_unit_len * idx + nnei_dst_len * 2],
-                                                       self.nnei_unit_len // Constant.MASK_FLOAT32,
-                                                       1, 1, 1, 8, 8, 8)
-                                self.tik_instance.vadd(Constant.MASK_FLOAT32,
-                                                       deriv_nnei_vcpadd_ub_fp32[dev_vadd_offset],
-                                                       deriv_nnei_vcpadd_ub_fp32[dev_vadd_offset],
-                                                       deriv_input_ub_fp32[self.nnei_unit_len * idx + nnei_dst_len * 3],
-                                                       self.nnei_unit_len // Constant.MASK_FLOAT32,
-                                                       1, 1, 1, 8, 8, 8)
+                        vmul_floor = _floor_fill(ndescrpt, Constant.MASK_FLOAT32)
+                        self._prepare_vmul(ndescrpt, deriv_offset, vmul_floor,
+                                           deriv_trans_ub_fp32, deriv_input_ub_fp32)
+                        nnei_dst_len = self.nnei_unit_len * 3
+                        self._v4dtrans_change_4(deriv_input_ub_fp32, deriv_trans_ub_fp32, nnei_dst_len)
+                        for idx in range(0, 3):
+                            dev_vadd_offset = ndescrpt * idx + self.nnei_unit_len * i
+                            self.tik_instance.vadd(Constant.MASK_FLOAT32,
+                                                    deriv_nnei_vcpadd_ub_fp32[dev_vadd_offset],
+                                                    deriv_input_ub_fp32[self.nnei_unit_len * idx],
+                                                    deriv_input_ub_fp32[self.nnei_unit_len * idx + nnei_dst_len],
+                                                    self.nnei_unit_len // Constant.MASK_FLOAT32,
+                                                    1, 1, 1, 8, 8, 8)
+                            self.tik_instance.vadd(Constant.MASK_FLOAT32,
+                                                    deriv_nnei_vcpadd_ub_fp32[dev_vadd_offset],
+                                                    deriv_nnei_vcpadd_ub_fp32[dev_vadd_offset],
+                                                    deriv_input_ub_fp32[self.nnei_unit_len * idx + nnei_dst_len * 2],
+                                                    self.nnei_unit_len // Constant.MASK_FLOAT32,
+                                                    1, 1, 1, 8, 8, 8)
+                            self.tik_instance.vadd(Constant.MASK_FLOAT32,
+                                                    deriv_nnei_vcpadd_ub_fp32[dev_vadd_offset],
+                                                    deriv_nnei_vcpadd_ub_fp32[dev_vadd_offset],
+                                                    deriv_input_ub_fp32[self.nnei_unit_len * idx + nnei_dst_len * 3],
+                                                    self.nnei_unit_len // Constant.MASK_FLOAT32,
+                                                    1, 1, 1, 8, 8, 8)
 
                     # first
                     with self.tik_instance.new_stmt_scope(disable_sync=False):
                         force_add_ub_fp32 = self.tik_instance.Tensor(self.force_dtype,
                             (Constant.NLOC_UNIT_LEN * 3 + Constant.MASK_FLOAT32, ), name="force_add_ub_fp32",
                             scope=tik.scope_ubuf)
-                        force_assis_ub_fp32 = self.tik_instance.Tensor(self.force_dtype,
-                                                                       (Constant.BLOCK_FLOAT32 * 3, ),
-                                                                       name="force_assis_ub_fp32",
-                                                                       scope=tik.scope_ubuf)
                         force_vcadd_ub_fp32 = self.tik_instance.Tensor(self.force_dtype,
                             (Constant.NLOC_UNIT_LEN * 3 + Constant.MASK_FLOAT32,), name="force_vcadd_ub_fp32",
                             scope=tik.scope_ubuf)
@@ -408,127 +555,19 @@ class ProdForceSeA:
                                 1, 1, 1, 1, 8, 8, 8)
                         self.tik_instance.vmuls(Constant.NLOC_UNIT_LEN * 3, force_add_ub_fp32,
                             force_add_ub_fp32, -1, 1, 1, 1, 8, 8)
-                        force_offset = frame_idx * self.nall * 3 + nloc_offset_vector + nloc_offset
-                        if self.is_support_v4dtrans:
-                            self.tik_instance.vadds(Constant.NLOC_UNIT_LEN, force_assis_ub_fp32,
-                                force_add_ub_fp32, 0, 3, 0, 0, 8, Constant.NLOC_UNIT_LEN, stride_unit=2)
-                        else:
-                            force_first_item_0 = self.tik_instance.Scalar("float32", name="force_first_item_0")
-                            force_first_item_1 = self.tik_instance.Scalar("float32", name="force_first_item_1")
-                            force_first_item_2 = self.tik_instance.Scalar("float32", name="force_first_item_2")
-                            for i in range(0, Constant.NLOC_UNIT_LEN):
-                                force_first_item_0.set_as(force_add_ub_fp32[i])
-                                force_first_item_1.set_as(force_add_ub_fp32[4 + i])
-                                force_first_item_2.set_as(force_add_ub_fp32[8 + i])
-                                force_assis_ub_fp32[i].set_as(force_first_item_0)
-                                force_assis_ub_fp32[8 + i].set_as(force_first_item_1)
-                                force_assis_ub_fp32[16 + i].set_as(force_first_item_2)
-                        self.tik_instance.set_atomic_add(1)
-                        self.tik_instance.data_move(self.force_gm[force_offset],
-                                                    force_assis_ub_fp32, 0, 1, 1, 0, 0)
-                        self.tik_instance.data_move(self.force_gm[force_offset + self.nall],
-                                                    force_assis_ub_fp32[Constant.BLOCK_FLOAT32], 0, 1, 1, 0, 0)
-                        self.tik_instance.data_move(self.force_gm[force_offset + self.nall * 2],
-                                                    force_assis_ub_fp32[Constant.BLOCK_FLOAT32 * 2], 0, 1, 1, 0, 0)
-                        self.tik_instance.set_atomic_add(0)
+                        self._first_move_out(frame_idx, nloc_offset_vector, nloc_offset, force_add_ub_fp32)
 
                     #second
-                    with self.tik_instance.for_range(0, 3) as local_idx:
-                        with self.tik_instance.for_range(0, Constant.NLOC_UNIT_LEN) as nu_idx:
-                            if self.is_support_v4dtrans and self.is_high_performance_mode:
-                                nlist_assis_ub_int32 = self.tik_instance.Tensor(self.nlist_dtype,
-                                                                                (self.nnei_unit_len, ),
-                                                                                name="nlist_assis_ub_int32",
-                                                                                scope=tik.scope_ubuf)
-                                with self.tik_instance.new_stmt_scope(disable_sync=False):
-                                    nlist_ub_int32 = self.tik_instance.Tensor(self.nlist_dtype,
-                                                                              (self.nnei_unit_len, ),
-                                                                              name="nlist_ub_int32",
-                                                                              scope=tik.scope_ubuf)
-                                    nlist_offset = (loop_offset + nloc_offset + nu_idx) * self.nnei \
-                                        + nnei_idx * self.nnei_unit_len
-                                    self.tik_instance.data_move(nlist_ub_int32,
-                                                                self.nlist_gm[nlist_offset],
-                                                                0, 1, self.nnei_unit_len // Constant.BLOCK_FLOAT32,
-                                                                0, 0)
-                                    if self.nnei_unit_len // Constant.MASK_FLOAT32 > 0:
-                                        self.tik_instance.vmuls(Constant.MASK_FLOAT32, nlist_assis_ub_int32,
-                                                                nlist_ub_int32, 4,
-                                                                self.nnei_unit_len // Constant.MASK_FLOAT32, 1, 1, 8, 8)
-                                    if self.nnei_unit_len % Constant.MASK_FLOAT32 > 0:
-                                        nlist_floor = _floor_fill(self.nnei_unit_len, Constant.MASK_FLOAT32)
-                                        self.tik_instance.vmuls(self.nnei_unit_len % Constant.MASK_FLOAT32,
-                                                                nlist_assis_ub_int32[nlist_floor],
-                                                                nlist_ub_int32[nlist_floor],
-                                                                4, 1, 1, 1, 8, 8)
-                            else:
-                                nlist_ub_int32 = self.tik_instance.Tensor(self.nlist_dtype,
-                                                                            (self.nnei_unit_len, ),
-                                                                            name="nlist_ub_int32",
-                                                                            scope=tik.scope_ubuf)
-                                nlist_offset = \
-                                    (loop_offset + nloc_offset + nu_idx) * self.nnei + nnei_idx * self.nnei_unit_len
-                                self.tik_instance.data_move(nlist_ub_int32,
-                                                            self.nlist_gm[nlist_offset],
-                                                            0, 1, self.nnei_unit_len // Constant.BLOCK_FLOAT32, 0, 0)
-                            force_out_ub_fp32 = self.tik_instance.Tensor(self.force_dtype,
-                                (self.nall_ub_len,), name="force_out_ub_fp32",
-                                scope=tik.scope_ubuf)
-                            full_loop = _ceil_div(self.nall_ub_len, Constant.MASK_FLOAT32) // 255
-                            full_left = _ceil_div(self.nall_ub_len, Constant.MASK_FLOAT32) % 255
-                            for i in range(0, full_loop):
-                                self.tik_instance.vector_dup(Constant.MASK_FLOAT32,
-                                                             force_out_ub_fp32[i * 255 * Constant.MASK_FLOAT32],
-                                                             0, 255, 1, 8)
-                            if full_left > 0:
-                                self.tik_instance.vector_dup(Constant.MASK_FLOAT32,
-                                    force_out_ub_fp32[full_loop * 255 * Constant.MASK_FLOAT32],
-                                    0, full_left, 1, 8)
-                            offset = \
-                                Constant.NLOC_UNIT_LEN * self.nnei_unit_len * local_idx + self.nnei_unit_len * nu_idx
-                            if self.is_support_v4dtrans and self.is_high_performance_mode:
-                                self.tik_instance.vscatter(self.nnei_unit_len, force_out_ub_fp32,
-                                                           deriv_nnei_vcpadd_ub_fp32[offset],
-                                                           nlist_assis_ub_int32,
-                                                           1, 8, 0, 0, "counter")
-                            else:
-                                nlist_loc_0 = self.tik_instance.Scalar("int32", name="nlist_loc_0")
-                                nlist_loc_1 = self.tik_instance.Scalar("int32", name="nlist_loc_1")
-                                nlist_loc_2 = self.tik_instance.Scalar("int32", name="nlist_loc_2")
-                                nlist_loc_3 = self.tik_instance.Scalar("int32", name="nlist_loc_3")
-                                force_out = self.tik_instance.Scalar("float32", name="force_out")
-                                deriv_nnei = self.tik_instance.Scalar("float32", name="deriv_nnei")
-                                with self.tik_instance.for_range(0, self.nnei_unit_len // Constant.NLOC_UNIT_LEN) as i:
-                                    nlist_loc_0.set_as(nlist_ub_int32[i * Constant.NLOC_UNIT_LEN])
-                                    nlist_loc_1.set_as(nlist_ub_int32[i * Constant.NLOC_UNIT_LEN + 1])
-                                    nlist_loc_2.set_as(nlist_ub_int32[i * Constant.NLOC_UNIT_LEN + 2])
-                                    nlist_loc_3.set_as(nlist_ub_int32[i * Constant.NLOC_UNIT_LEN + 3])
-                                    with self.tik_instance.if_scope(nlist_loc_0 != -1):
-                                        force_out.set_as(force_out_ub_fp32[nlist_loc_0])
-                                        deriv_nnei.set_as(
-                                            deriv_nnei_vcpadd_ub_fp32[offset + i * Constant.NLOC_UNIT_LEN])
-                                        force_out_ub_fp32[nlist_loc_0].set_as(force_out + deriv_nnei)
-                                    with self.tik_instance.if_scope(nlist_loc_1 != -1):
-                                        force_out.set_as(force_out_ub_fp32[nlist_loc_1])
-                                        deriv_nnei.set_as(
-                                            deriv_nnei_vcpadd_ub_fp32[offset + i * Constant.NLOC_UNIT_LEN + 1])
-                                        force_out_ub_fp32[nlist_loc_1].set_as(force_out + deriv_nnei)
-                                    with self.tik_instance.if_scope(nlist_loc_2 != -1):
-                                        force_out.set_as(force_out_ub_fp32[nlist_loc_2])
-                                        deriv_nnei.set_as(
-                                            deriv_nnei_vcpadd_ub_fp32[offset + i * Constant.NLOC_UNIT_LEN + 2])
-                                        force_out_ub_fp32[nlist_loc_2].set_as(force_out + deriv_nnei)
-                                    with self.tik_instance.if_scope(nlist_loc_3 != -1):
-                                        force_out.set_as(force_out_ub_fp32[nlist_loc_3])
-                                        deriv_nnei.set_as(
-                                            deriv_nnei_vcpadd_ub_fp32[offset + i * Constant.NLOC_UNIT_LEN + 3])
-                                        force_out_ub_fp32[nlist_loc_3].set_as(force_out + deriv_nnei)
-                            force_offset_2 = frame_idx * self.nall * 3 + self.nall * local_idx
-                            self.tik_instance.set_atomic_add(1)
-                            self.tik_instance.data_move(self.force_gm[force_offset_2],
-                                                        force_out_ub_fp32,
-                                                        0, 1, _ceil_div(self.nall, Constant.BLOCK_FLOAT32), 0, 0)
-                            self.tik_instance.set_atomic_add(0)
+                    force_out_ub_fp32 = self.tik_instance.Tensor(self.force_dtype,
+                        (self.nnei_unit_len * 32,), name="force_out_ub_fp32",
+                        scope=tik.scope_ubuf)
+                    self._simple_trans_fp32_8_128x(force_out_ub_fp32, deriv_nnei_vcpadd_ub_fp32, self.nnei_unit_len)
+                    force_offset_2 = frame_idx * self.nall * 3
+                    with self.tik_instance.for_range(0, Constant.NLOC_UNIT_LEN) as nu_idx:
+                        nlist_offset = \
+                            (loop_offset + nloc_offset + nu_idx) * self.nnei + nnei_idx * self.nnei_unit_len
+                        self._second_move_out(self.nnei_unit_len, nlist_offset, force_offset_2, nu_idx,
+                                              force_out_ub_fp32)
 
                 # nnei tail
                 if self.nnei % self.nnei_unit_len > 0:
@@ -541,6 +580,8 @@ class ProdForceSeA:
                         scope=tik.scope_ubuf)
                     # prepare
                     with self.tik_instance.for_range(0, Constant.NLOC_UNIT_LEN) as i:
+                        deriv_offset = (loop_offset + nloc_offset + i) * self.nnei * 4 + \
+                            nnei_loop * self.nnei_unit_len * 4
                         deriv_input_ub_fp32 = self.tik_instance.Tensor(self.net_deriv_dtype,
                                                                        (1, 1, ndescrpt_tail, 3),
                                                                        name="deriv_input_ub_fp32",
@@ -549,136 +590,53 @@ class ProdForceSeA:
                                                                        (1, 3, 1, ndescrpt_tail),
                                                                        name="deriv_trans_ub_fp32",
                                                                        scope=tik.scope_ubuf)
-                        deriv_offset = (loop_offset + nloc_offset + i) * self.nnei * 4 + \
-                            nnei_loop * self.nnei_unit_len * 4
-                        self.tik_instance.data_move(deriv_input_ub_fp32,
-                                                    self.in_deriv_gm[deriv_offset * 3],
-                                                    0, 1, 3 * ndescrpt_tail // Constant.BLOCK_FLOAT32, 0, 0)
-                        if self.is_support_v4dtrans:
-                            self.tik_instance.v4dtrans(False, deriv_trans_ub_fp32[0, 0, 0, 0],
-                                                       deriv_input_ub_fp32[0, 0, 0, 0], ndescrpt_tail, 3)
-                        else:
-                            self._v4dtrans_change_3(deriv_trans_ub_fp32, deriv_input_ub_fp32, ndescrpt_tail)
-                        self.tik_instance.data_move(deriv_input_ub_fp32,
-                                                    self.net_deriv_gm[deriv_offset],
-                                                    0, 1, ndescrpt_tail // Constant.BLOCK_FLOAT32, 0, 0)
-                        vmul_repeat = ndescrpt_tail // Constant.MASK_FLOAT32
-                        vmul_left = ndescrpt_tail % Constant.MASK_FLOAT32
-                        if vmul_repeat > 0:
-                            self.tik_instance.vmul(Constant.MASK_FLOAT32, deriv_trans_ub_fp32,
-                                                   deriv_trans_ub_fp32,
-                                                   deriv_input_ub_fp32,
-                                                   vmul_repeat, 1, 1, 1, 8, 8, 8)
-                            self.tik_instance.vmul(Constant.MASK_FLOAT32, deriv_trans_ub_fp32[ndescrpt_tail],
-                                                   deriv_trans_ub_fp32[ndescrpt_tail],
-                                                   deriv_input_ub_fp32,
-                                                   vmul_repeat, 1, 1, 1, 8, 8, 8)
-                            self.tik_instance.vmul(Constant.MASK_FLOAT32, deriv_trans_ub_fp32[2 * ndescrpt_tail],
-                                                   deriv_trans_ub_fp32[2 * ndescrpt_tail],
-                                                   deriv_input_ub_fp32,
-                                                   vmul_repeat, 1, 1, 1, 8, 8, 8)
-                        if vmul_left > 0:
-                            vmul_floor = vmul_repeat * Constant.MASK_FLOAT32
-                            self.tik_instance.vmul(vmul_left, deriv_trans_ub_fp32[vmul_floor],
-                                                   deriv_trans_ub_fp32[vmul_floor],
-                                                   deriv_input_ub_fp32[vmul_floor],
-                                                   1, 1, 1, 1, 8, 8, 8)
-                            self.tik_instance.vmul(vmul_left, deriv_trans_ub_fp32[ndescrpt_tail + vmul_floor],
-                                                   deriv_trans_ub_fp32[ndescrpt_tail + vmul_floor],
-                                                   deriv_input_ub_fp32[vmul_floor],
-                                                   1, 1, 1, 1, 8, 8, 8)
-                            self.tik_instance.vmul(vmul_left, deriv_trans_ub_fp32[2 * ndescrpt_tail + vmul_floor],
-                                                   deriv_trans_ub_fp32[2 * ndescrpt_tail + vmul_floor],
-                                                   deriv_input_ub_fp32[vmul_floor],
-                                                   1, 1, 1, 1, 8, 8, 8)
-                        if self.is_support_v4dtrans:
-                            vcpadd_repeat_1 = (3 * ndescrpt_tail) // Constant.MASK_FLOAT32
-                            vcpadd_left_1 = (3 * ndescrpt_tail) % Constant.MASK_FLOAT32
-                            if vcpadd_repeat_1 > 0:
-                                self.tik_instance.vcpadd(Constant.MASK_FLOAT32, deriv_input_ub_fp32,
-                                                        deriv_trans_ub_fp32,
-                                                        vcpadd_repeat_1, 1, 1, 8)
-                            if vcpadd_left_1 > 0:
-                                vcpadd_floor = vcpadd_repeat_1 * Constant.MASK_FLOAT32
-                                self.tik_instance.vcpadd(vcpadd_left_1, deriv_input_ub_fp32[vcpadd_floor // 2],
-                                                        deriv_trans_ub_fp32[vcpadd_floor],
-                                                        1, 1, 1, 8)
-                            vcpadd_repeat_2 = (nnei_tail * 2) // Constant.MASK_FLOAT32
-                            vcpadd_left_2 = (nnei_tail * 2) % Constant.MASK_FLOAT32
-                            vcpadd_nloc_offset = (Constant.NLOC_UNIT_LEN + i) * nnei_tail_fill
-                            vcpadd_nloc_offset_1 = (Constant.NLOC_UNIT_LEN * 2 + i) * nnei_tail_fill
-                            if vcpadd_repeat_2 > 0:
-                                self.tik_instance.vcpadd(Constant.MASK_FLOAT32,
-                                                        deriv_nnei_vcpadd_ub_fp32[i * nnei_tail_fill],
-                                                        deriv_input_ub_fp32,
-                                                        vcpadd_repeat_2, 1, 1, 8)
-                                self.tik_instance.vcpadd(Constant.MASK_FLOAT32,
-                                                        deriv_nnei_vcpadd_ub_fp32[vcpadd_nloc_offset],
-                                                        deriv_input_ub_fp32[nnei_tail_fill * 2],
-                                                        vcpadd_repeat_2, 1, 1, 8)
-                                self.tik_instance.vcpadd(Constant.MASK_FLOAT32,
-                                                        deriv_nnei_vcpadd_ub_fp32[vcpadd_nloc_offset_1],
-                                                        deriv_input_ub_fp32[nnei_tail_fill * 4],
-                                                        vcpadd_repeat_2, 1, 1, 8)
-                            if vcpadd_left_2 > 0:
-                                vcpadd_offset = vcpadd_repeat_2 * Constant.MASK_FLOAT32
-                                self.tik_instance.vcpadd(vcpadd_left_2,
-                                    deriv_nnei_vcpadd_ub_fp32[i * nnei_tail_fill + vcpadd_offset // 2],
-                                    deriv_input_ub_fp32[vcpadd_offset],
-                                    1, 1, 1, 8)
-                                self.tik_instance.vcpadd(vcpadd_left_2,
-                                    deriv_nnei_vcpadd_ub_fp32[vcpadd_nloc_offset + vcpadd_offset // 2],
-                                    deriv_input_ub_fp32[nnei_tail_fill * 2 + vcpadd_offset],
-                                    1, 1, 1, 8)
-                                self.tik_instance.vcpadd(vcpadd_left_2,
-                                    deriv_nnei_vcpadd_ub_fp32[vcpadd_nloc_offset_1 + vcpadd_offset // 2],
-                                    deriv_input_ub_fp32[nnei_tail_fill * 4 + vcpadd_offset],
-                                    1, 1, 1, 8)
-                        else:
-                            nnei_dst_len = nnei_tail_fill * 3
-                            self._v4dtrans_change_4(deriv_input_ub_fp32, deriv_trans_ub_fp32, nnei_dst_len)
-                            for idx in range(0, 3):
-                                nnei_tail_loop = nnei_tail // Constant.MASK_FLOAT32
-                                nnei_tail_left = nnei_tail % Constant.MASK_FLOAT32
-                                nnei_tail_floor = _floor_fill(nnei_tail, Constant.MASK_FLOAT32)
-                                dev_vadd_offset = ndescrpt_tail * idx
-                                dev_vadd_base = dev_vadd_offset + nnei_tail_fill * i
-                                if nnei_tail_loop > 0:
-                                    self.tik_instance.vadd(Constant.MASK_FLOAT32,
-                                                           deriv_nnei_vcpadd_ub_fp32[dev_vadd_base],
-                                                           deriv_input_ub_fp32[nnei_tail_fill * idx],
-                                                           deriv_input_ub_fp32[nnei_tail_fill * idx + nnei_dst_len],
-                                                           nnei_tail_loop,
-                                                           1, 1, 1, 8, 8, 8)
-                                    self.tik_instance.vadd(Constant.MASK_FLOAT32,
-                                        deriv_nnei_vcpadd_ub_fp32[dev_vadd_base],
-                                        deriv_nnei_vcpadd_ub_fp32[dev_vadd_base],
-                                        deriv_input_ub_fp32[nnei_tail_fill * idx + nnei_dst_len * 2],
-                                        nnei_tail_loop,
-                                        1, 1, 1, 8, 8, 8)
-                                    self.tik_instance.vadd(Constant.MASK_FLOAT32,
-                                        deriv_nnei_vcpadd_ub_fp32[dev_vadd_base],
-                                        deriv_nnei_vcpadd_ub_fp32[dev_vadd_base],
-                                        deriv_input_ub_fp32[nnei_tail_fill * idx + nnei_dst_len * 3],
-                                        nnei_tail_loop,
-                                        1, 1, 1, 8, 8, 8)
-                                if nnei_tail_left > 0:
-                                    left_base = nnei_tail_fill * idx + nnei_tail_floor
-                                    self.tik_instance.vadd(nnei_tail_left,
-                                                           deriv_nnei_vcpadd_ub_fp32[dev_vadd_base + nnei_tail_floor],
-                                                           deriv_input_ub_fp32[left_base],
-                                                           deriv_input_ub_fp32[left_base + nnei_dst_len],
-                                                           1, 1, 1, 1, 8, 8, 8)
-                                    self.tik_instance.vadd(nnei_tail_left,
-                                                           deriv_nnei_vcpadd_ub_fp32[dev_vadd_base + nnei_tail_floor],
-                                                           deriv_nnei_vcpadd_ub_fp32[dev_vadd_base + nnei_tail_floor],
-                                                           deriv_input_ub_fp32[left_base + nnei_dst_len * 2],
-                                                           1, 1, 1, 1, 8, 8, 8)
-                                    self.tik_instance.vadd(nnei_tail_left,
-                                                           deriv_nnei_vcpadd_ub_fp32[dev_vadd_base + nnei_tail_floor],
-                                                           deriv_nnei_vcpadd_ub_fp32[dev_vadd_base + nnei_tail_floor],
-                                                           deriv_input_ub_fp32[left_base + nnei_dst_len * 3],
-                                                           1, 1, 1, 1, 8, 8, 8)
+                        vmul_floor = _floor_fill(ndescrpt_tail, Constant.MASK_FLOAT32)
+                        self._prepare_vmul(ndescrpt_tail, deriv_offset, vmul_floor,
+                                           deriv_trans_ub_fp32, deriv_input_ub_fp32)
+                        nnei_dst_len = nnei_tail_fill * 3
+                        self._v4dtrans_change_4(deriv_input_ub_fp32, deriv_trans_ub_fp32, nnei_dst_len)
+                        for idx in range(0, 3):
+                            nnei_tail_loop = nnei_tail // Constant.MASK_FLOAT32
+                            nnei_tail_left = nnei_tail % Constant.MASK_FLOAT32
+                            nnei_tail_floor = _floor_fill(nnei_tail, Constant.MASK_FLOAT32)
+                            dev_vadd_offset = ndescrpt_tail * idx
+                            dev_vadd_base = dev_vadd_offset + nnei_tail_fill * i
+                            if nnei_tail_loop > 0:
+                                self.tik_instance.vadd(Constant.MASK_FLOAT32,
+                                                        deriv_nnei_vcpadd_ub_fp32[dev_vadd_base],
+                                                        deriv_input_ub_fp32[nnei_tail_fill * idx],
+                                                        deriv_input_ub_fp32[nnei_tail_fill * idx + nnei_dst_len],
+                                                        nnei_tail_loop,
+                                                        1, 1, 1, 8, 8, 8)
+                                self.tik_instance.vadd(Constant.MASK_FLOAT32,
+                                    deriv_nnei_vcpadd_ub_fp32[dev_vadd_base],
+                                    deriv_nnei_vcpadd_ub_fp32[dev_vadd_base],
+                                    deriv_input_ub_fp32[nnei_tail_fill * idx + nnei_dst_len * 2],
+                                    nnei_tail_loop,
+                                    1, 1, 1, 8, 8, 8)
+                                self.tik_instance.vadd(Constant.MASK_FLOAT32,
+                                    deriv_nnei_vcpadd_ub_fp32[dev_vadd_base],
+                                    deriv_nnei_vcpadd_ub_fp32[dev_vadd_base],
+                                    deriv_input_ub_fp32[nnei_tail_fill * idx + nnei_dst_len * 3],
+                                    nnei_tail_loop,
+                                    1, 1, 1, 8, 8, 8)
+                            if nnei_tail_left > 0:
+                                left_base = nnei_tail_fill * idx + nnei_tail_floor
+                                self.tik_instance.vadd(nnei_tail_left,
+                                                        deriv_nnei_vcpadd_ub_fp32[dev_vadd_base + nnei_tail_floor],
+                                                        deriv_input_ub_fp32[left_base],
+                                                        deriv_input_ub_fp32[left_base + nnei_dst_len],
+                                                        1, 1, 1, 1, 8, 8, 8)
+                                self.tik_instance.vadd(nnei_tail_left,
+                                                        deriv_nnei_vcpadd_ub_fp32[dev_vadd_base + nnei_tail_floor],
+                                                        deriv_nnei_vcpadd_ub_fp32[dev_vadd_base + nnei_tail_floor],
+                                                        deriv_input_ub_fp32[left_base + nnei_dst_len * 2],
+                                                        1, 1, 1, 1, 8, 8, 8)
+                                self.tik_instance.vadd(nnei_tail_left,
+                                                        deriv_nnei_vcpadd_ub_fp32[dev_vadd_base + nnei_tail_floor],
+                                                        deriv_nnei_vcpadd_ub_fp32[dev_vadd_base + nnei_tail_floor],
+                                                        deriv_input_ub_fp32[left_base + nnei_dst_len * 3],
+                                                        1, 1, 1, 1, 8, 8, 8)
 
                     # first
                     with self.tik_instance.new_stmt_scope(disable_sync=False):
@@ -689,7 +647,6 @@ class ProdForceSeA:
                                                                        (Constant.BLOCK_FLOAT32 * 3, ),
                                                                        name="force_assis_ub_fp32",
                                                                        scope=tik.scope_ubuf)
-                        self.tik_instance.vector_dup(Constant.MASK_FLOAT32, force_add_ub_fp32, 0, 1, 1, 8)
                         self.tik_instance.vector_dup(Constant.NLOC_UNIT_LEN * 3, force_add_ub_fp32, 0, 1, 1, 8)
                         self.tik_instance.vector_dup(Constant.BLOCK_FLOAT32 * 3, force_assis_ub_fp32, 0, 1, 1, 8)
                         force_vcadd_ub_fp32 = self.tik_instance.Tensor(self.force_dtype,
@@ -717,135 +674,19 @@ class ProdForceSeA:
                                                    1, 1, 1, 1, 8, 8, 8)
                         self.tik_instance.vmuls(Constant.NLOC_UNIT_LEN * 3, force_add_ub_fp32,
                                                 force_add_ub_fp32, -1, 1, 1, 1, 8, 8)
-                        force_offset = frame_idx * self.nall * 3 + nloc_offset_vector + nloc_offset
-                        if self.is_support_v4dtrans:
-                            self.tik_instance.vadds(Constant.NLOC_UNIT_LEN, force_assis_ub_fp32,
-                                                    force_add_ub_fp32, 0, 3, 0, 0, 8,
-                                                    Constant.NLOC_UNIT_LEN, stride_unit=2)
-                        else:
-                            force_first_item_0 = self.tik_instance.Scalar("float32", name="force_first_item_0")
-                            force_first_item_1 = self.tik_instance.Scalar("float32", name="force_first_item_1")
-                            force_first_item_2 = self.tik_instance.Scalar("float32", name="force_first_item_2")
-                            for i in range(0, Constant.NLOC_UNIT_LEN):
-                                force_first_item_0.set_as(force_add_ub_fp32[i])
-                                force_first_item_1.set_as(force_add_ub_fp32[4 + i])
-                                force_first_item_2.set_as(force_add_ub_fp32[8 + i])
-                                force_assis_ub_fp32[i].set_as(force_first_item_0)
-                                force_assis_ub_fp32[8 + i].set_as(force_first_item_1)
-                                force_assis_ub_fp32[16 + i].set_as(force_first_item_2)
-                        self.tik_instance.set_atomic_add(1)
-                        self.tik_instance.data_move(self.force_gm[force_offset],
-                                                    force_assis_ub_fp32, 0, 1, 1, 0, 0)
-                        self.tik_instance.data_move(self.force_gm[force_offset + self.nall],
-                                                    force_assis_ub_fp32[Constant.BLOCK_FLOAT32], 0, 1, 1, 0, 0)
-                        self.tik_instance.data_move(self.force_gm[force_offset + self.nall * 2],
-                                                    force_assis_ub_fp32[Constant.BLOCK_FLOAT32 * 2], 0, 1, 1, 0, 0)
-                        self.tik_instance.set_atomic_add(0)
+                        self._first_move_out(frame_idx, nloc_offset_vector, nloc_offset, force_add_ub_fp32)
 
                     #second
-                    with self.tik_instance.for_range(0, 3) as local_idx:
-                        nnei_mask_len = _ceil_fill(nnei_tail, Constant.MASK_FLOAT32)
-                        with self.tik_instance.for_range(0, Constant.NLOC_UNIT_LEN) as nu_idx:
-                            if self.is_support_v4dtrans and self.is_high_performance_mode:
-                                nlist_assis_ub_int32 = self.tik_instance.Tensor(self.nlist_dtype,
-                                                                                (nnei_mask_len, ),
-                                                                                name="nlist_assis_ub_int32",
-                                                                                scope=tik.scope_ubuf)
-                                with self.tik_instance.new_stmt_scope(disable_sync=False):
-                                    nlist_ub_int32 = self.tik_instance.Tensor(self.nlist_dtype,
-                                                                            (nnei_mask_len, ),
-                                                                            name="nlist_ub_int32",
-                                                                            scope=tik.scope_ubuf)
-                                    nlist_offset = (loop_offset + nloc_offset + nu_idx) * self.nnei + \
-                                        nnei_loop * self.nnei_unit_len
-                                    self.tik_instance.data_move(nlist_ub_int32,
-                                                                self.nlist_gm[nlist_offset],
-                                                                0, 1, nnei_tail_fill // Constant.BLOCK_FLOAT32, 0, 0)
-                                    if nnei_tail // Constant.MASK_FLOAT32 > 0:
-                                        self.tik_instance.vmuls(Constant.MASK_FLOAT32, nlist_assis_ub_int32,
-                                                                nlist_ub_int32, 4,
-                                                                nnei_tail // Constant.MASK_FLOAT32, 1, 1, 8, 8)
-                                    if nnei_tail % Constant.MASK_FLOAT32 > 0:
-                                        nlist_floor = _floor_fill(nnei_tail, Constant.MASK_FLOAT32)
-                                        self.tik_instance.vmuls(nnei_tail % Constant.MASK_FLOAT32,
-                                                                nlist_assis_ub_int32[nlist_floor],
-                                                                nlist_ub_int32[nlist_floor],
-                                                                4, 1, 1, 1, 8, 8)
-                            else:
-                                    nlist_ub_int32 = self.tik_instance.Tensor(self.nlist_dtype,
-                                                                            (nnei_mask_len, ),
-                                                                            name="nlist_ub_int32",
-                                                                            scope=tik.scope_ubuf)
-                                    nlist_offset = (loop_offset + nloc_offset + nu_idx) * self.nnei + \
-                                        nnei_loop * self.nnei_unit_len
-                                    self.tik_instance.data_move(nlist_ub_int32,
-                                                                self.nlist_gm[nlist_offset],
-                                                                0, 1, nnei_tail_fill // Constant.BLOCK_FLOAT32, 0, 0)
-                            force_out_ub_fp32 = self.tik_instance.Tensor(self.force_dtype,
-                                                                         (self.nall_ub_len, ),
-                                                                         name="force_out_ub_fp32",
-                                                                         scope=tik.scope_ubuf)
-                            full_loop = _ceil_div(self.nall_ub_len, Constant.MASK_FLOAT32) // 255
-                            full_left = _ceil_div(self.nall_ub_len, Constant.MASK_FLOAT32) % 255
-                            for i in range(0, full_loop):
-                                self.tik_instance.vector_dup(Constant.MASK_FLOAT32,
-                                                             force_out_ub_fp32[i * 255 * Constant.MASK_FLOAT32],
-                                                             0, 255, 1, 8)
-                            if full_left > 0:
-                                self.tik_instance.vector_dup(Constant.MASK_FLOAT32,
-                                    force_out_ub_fp32[full_loop * 255 * Constant.MASK_FLOAT32],
-                                    0, full_left, 1, 8)
-                            offset = Constant.NLOC_UNIT_LEN * nnei_tail_fill * local_idx + nnei_tail_fill * nu_idx
-                            if self.is_support_v4dtrans and self.is_high_performance_mode:
-                                self.tik_instance.vscatter(nnei_tail, force_out_ub_fp32,
-                                                        deriv_nnei_vcpadd_ub_fp32[offset],
-                                                        nlist_assis_ub_int32,
-                                                        1, 8, 0, 0, "counter")
-                            else:
-                                nlist_loc_0 = self.tik_instance.Scalar("int32", name="nlist_loc_0")
-                                nlist_loc_1 = self.tik_instance.Scalar("int32", name="nlist_loc_1")
-                                nlist_loc_2 = self.tik_instance.Scalar("int32", name="nlist_loc_2")
-                                nlist_loc_3 = self.tik_instance.Scalar("int32", name="nlist_loc_3")
-                                force_out = self.tik_instance.Scalar("float32", name="force_out")
-                                deriv_nnei = self.tik_instance.Scalar("float32", name="deriv_nnei")
-                                with self.tik_instance.for_range(0, nnei_tail // Constant.NLOC_UNIT_LEN) as i:
-                                    nlist_loc_0.set_as(nlist_ub_int32[i * Constant.NLOC_UNIT_LEN])
-                                    nlist_loc_1.set_as(nlist_ub_int32[i * Constant.NLOC_UNIT_LEN + 1])
-                                    nlist_loc_2.set_as(nlist_ub_int32[i * Constant.NLOC_UNIT_LEN + 2])
-                                    nlist_loc_3.set_as(nlist_ub_int32[i * Constant.NLOC_UNIT_LEN + 3])
-                                    with self.tik_instance.if_scope(nlist_loc_0 != -1):
-                                        force_out.set_as(force_out_ub_fp32[nlist_loc_0])
-                                        deriv_nnei.set_as(
-                                            deriv_nnei_vcpadd_ub_fp32[offset + i * Constant.NLOC_UNIT_LEN])
-                                        force_out_ub_fp32[nlist_loc_0].set_as(force_out + deriv_nnei)
-                                    with self.tik_instance.if_scope(nlist_loc_1 != -1):
-                                        force_out.set_as(force_out_ub_fp32[nlist_loc_1])
-                                        deriv_nnei.set_as(
-                                            deriv_nnei_vcpadd_ub_fp32[offset + i * Constant.NLOC_UNIT_LEN + 1])
-                                        force_out_ub_fp32[nlist_loc_1].set_as(force_out + deriv_nnei)
-                                    with self.tik_instance.if_scope(nlist_loc_2 != -1):
-                                        force_out.set_as(force_out_ub_fp32[nlist_loc_2])
-                                        deriv_nnei.set_as(
-                                            deriv_nnei_vcpadd_ub_fp32[offset + i * Constant.NLOC_UNIT_LEN + 2])
-                                        force_out_ub_fp32[nlist_loc_2].set_as(force_out + deriv_nnei)
-                                    with self.tik_instance.if_scope(nlist_loc_3 != -1):
-                                        force_out.set_as(force_out_ub_fp32[nlist_loc_3])
-                                        deriv_nnei.set_as(
-                                            deriv_nnei_vcpadd_ub_fp32[offset + i * Constant.NLOC_UNIT_LEN + 3])
-                                        force_out_ub_fp32[nlist_loc_3].set_as(force_out + deriv_nnei)
-                                with self.tik_instance.for_range(0, nnei_tail % Constant.NLOC_UNIT_LEN) as j:
-                                    nlist_left_base = _floor_fill(nnei_tail, Constant.NLOC_UNIT_LEN) + j
-                                    nlist_loc_0.set_as(nlist_ub_int32[nlist_left_base])
-                                    with self.tik_instance.if_scope(nlist_loc_0 != -1):
-                                        force_out.set_as(force_out_ub_fp32[nlist_loc_0])
-                                        deriv_nnei.set_as(deriv_nnei_vcpadd_ub_fp32[offset + nlist_left_base])
-                                        force_out_ub_fp32[nlist_loc_0].set_as(force_out + deriv_nnei)
-                            force_offset_2 = frame_idx * self.nall * 3 + self.nall * local_idx
-                            self.tik_instance.set_atomic_add(1)
-                            self.tik_instance.data_move(self.force_gm[force_offset_2],
-                                                        force_out_ub_fp32,
-                                                        0, 1, _ceil_div(self.nall, Constant.BLOCK_FLOAT32), 0, 0)
-                            self.tik_instance.set_atomic_add(0)
+                    force_out_ub_fp32 = self.tik_instance.Tensor(self.force_dtype,
+                        (nnei_tail_fill * 32,), name="force_out_ub_fp32",
+                        scope=tik.scope_ubuf)
+                    self._simple_trans_fp32_8_128x(force_out_ub_fp32, deriv_nnei_vcpadd_ub_fp32, nnei_tail_fill)
+                    force_offset_2 = frame_idx * self.nall * 3
+                    with self.tik_instance.for_range(0, Constant.NLOC_UNIT_LEN) as nu_idx:
+                        nlist_offset = \
+                            (loop_offset + nloc_offset + nu_idx) * self.nnei + nnei_loop * self.nnei_unit_len
+                        self._second_move_out(nnei_tail, nlist_offset, force_offset_2, nu_idx,
+                                              force_out_ub_fp32)
 
             # nloc left
             with self.tik_instance.if_scope(nloc_left > 0):
@@ -859,6 +700,8 @@ class ProdForceSeA:
                             scope=tik.scope_ubuf)
                         # prepare
                         with self.tik_instance.new_stmt_scope(disable_sync=False):
+                            deriv_offset = (loop_offset + nloc_offset + l_idx) * self.nnei * 4 + \
+                                nnei_idx * self.nnei_unit_len * 4
                             deriv_input_ub_fp32 = self.tik_instance.Tensor(self.net_deriv_dtype,
                                                                         (1, 1, ndescrpt, 3),
                                                                         name="deriv_input_ub_fp32",
@@ -867,261 +710,36 @@ class ProdForceSeA:
                                                                         (1, 3, 1, ndescrpt),
                                                                         name="deriv_trans_ub_fp32",
                                                                         scope=tik.scope_ubuf)
-                            deriv_offset = (loop_offset + nloc_offset + l_idx) * self.nnei * 4 + \
-                                nnei_idx * self.nnei_unit_len * 4
-                            self.tik_instance.data_move(deriv_input_ub_fp32,
-                                                        self.in_deriv_gm[deriv_offset * 3],
-                                                        0, 1, 3 * ndescrpt // Constant.BLOCK_FLOAT32, 0, 0)
-                            if self.is_support_v4dtrans:
-                                self.tik_instance.v4dtrans(False, deriv_trans_ub_fp32[0, 0, 0, 0],
-                                                        deriv_input_ub_fp32[0, 0, 0, 0], ndescrpt, 3)
-                            else:
-                                self._v4dtrans_change_3(deriv_trans_ub_fp32, deriv_input_ub_fp32, ndescrpt)
-                            self.tik_instance.data_move(deriv_input_ub_fp32,
-                                                        self.net_deriv_gm[deriv_offset],
-                                                        0, 1, ndescrpt // Constant.BLOCK_FLOAT32, 0, 0)
-                            vmul_repeat = ndescrpt // Constant.MASK_FLOAT32
-                            vmul_left = ndescrpt % Constant.MASK_FLOAT32
-                            if vmul_repeat > 0:
-                                self.tik_instance.vmul(Constant.MASK_FLOAT32, deriv_trans_ub_fp32,
-                                                    deriv_trans_ub_fp32,
-                                                    deriv_input_ub_fp32,
-                                                    vmul_repeat, 1, 1, 1, 8, 8, 8)
-                                self.tik_instance.vmul(Constant.MASK_FLOAT32, deriv_trans_ub_fp32[ndescrpt],
-                                                    deriv_trans_ub_fp32[ndescrpt],
-                                                    deriv_input_ub_fp32,
-                                                    vmul_repeat, 1, 1, 1, 8, 8, 8)
-                                self.tik_instance.vmul(Constant.MASK_FLOAT32, deriv_trans_ub_fp32[2 * ndescrpt],
-                                                    deriv_trans_ub_fp32[2 * ndescrpt],
-                                                    deriv_input_ub_fp32,
-                                                    vmul_repeat, 1, 1, 1, 8, 8, 8)
-                            if vmul_left > 0:
-                                vmul_floor = _floor_fill(ndescrpt, Constant.MASK_FLOAT32)
-                                self.tik_instance.vmul(vmul_left, deriv_trans_ub_fp32[vmul_floor],
-                                                    deriv_trans_ub_fp32[vmul_floor],
-                                                    deriv_input_ub_fp32[vmul_floor],
-                                                    1, 1, 1, 1, 8, 8, 8)
-                                self.tik_instance.vmul(vmul_left, deriv_trans_ub_fp32[ndescrpt + vmul_floor],
-                                                    deriv_trans_ub_fp32[ndescrpt + vmul_floor],
-                                                    deriv_input_ub_fp32[vmul_floor],
-                                                    1, 1, 1, 1, 8, 8, 8)
-                                self.tik_instance.vmul(vmul_left, deriv_trans_ub_fp32[2 * ndescrpt + vmul_floor],
-                                                    deriv_trans_ub_fp32[2 * ndescrpt + vmul_floor],
-                                                    deriv_input_ub_fp32[vmul_floor],
-                                                    1, 1, 1, 1, 8, 8, 8)
-                            if self.is_support_v4dtrans:
-                                vcpadd_repeat_1 = (3 * ndescrpt) // Constant.MASK_FLOAT32
-                                vcpadd_left_1 = (3 * ndescrpt) % Constant.MASK_FLOAT32
-                                if vcpadd_repeat_1 > 0:
-                                    self.tik_instance.vcpadd(Constant.MASK_FLOAT32, deriv_input_ub_fp32,
-                                                            deriv_trans_ub_fp32,
-                                                            vcpadd_repeat_1, 1, 1, 8)
-                                if vcpadd_left_1 > 0:
-                                    vcpadd_floor = vcpadd_repeat_1 * Constant.MASK_FLOAT32
-                                    self.tik_instance.vcpadd(vcpadd_left_1, deriv_input_ub_fp32[vcpadd_floor // 2],
-                                                            deriv_trans_ub_fp32[vcpadd_floor],
-                                                            1, 1, 1, 8)
-                                vcpadd_repeat_2 = (ndescrpt // 2) // Constant.MASK_FLOAT32
-                                vcpadd_left_2 = (ndescrpt // 2) % Constant.MASK_FLOAT32
-                                if vcpadd_repeat_2 > 0:
-                                    self.tik_instance.vcpadd(Constant.MASK_FLOAT32,
-                                                            deriv_nnei_vcpadd_ub_fp32,
-                                                            deriv_input_ub_fp32,
-                                                            vcpadd_repeat_2, 1, 1, 8)
-                                    self.tik_instance.vcpadd(Constant.MASK_FLOAT32,
-                                                            deriv_nnei_vcpadd_ub_fp32[self.nnei_unit_len],
-                                                            deriv_input_ub_fp32[self.nnei_unit_len * 2],
-                                                            vcpadd_repeat_2, 1, 1, 8)
-                                    self.tik_instance.vcpadd(Constant.MASK_FLOAT32,
-                                                            deriv_nnei_vcpadd_ub_fp32[self.nnei_unit_len * 2],
-                                                            deriv_input_ub_fp32[self.nnei_unit_len * 4],
-                                                            vcpadd_repeat_2, 1, 1, 8)
-                                if vcpadd_left_2 > 0:
-                                    vcpadd_offset = vcpadd_repeat_2 * Constant.MASK_FLOAT32
-                                    self.tik_instance.vcpadd(vcpadd_left_2,
-                                        deriv_nnei_vcpadd_ub_fp32[vcpadd_offset // 2],
-                                        deriv_input_ub_fp32[vcpadd_offset],
-                                        1, 1, 1, 8)
-                                    self.tik_instance.vcpadd(vcpadd_left_2,
-                                        deriv_nnei_vcpadd_ub_fp32[(self.nnei_unit_len * 2 + vcpadd_offset) // 2],
-                                        deriv_input_ub_fp32[self.nnei_unit_len * 2 + vcpadd_offset],
-                                        1, 1, 1, 8)
-                                    self.tik_instance.vcpadd(vcpadd_left_2,
-                                        deriv_nnei_vcpadd_ub_fp32[(self.nnei_unit_len * 4 + vcpadd_offset) // 2],
-                                        deriv_input_ub_fp32[self.nnei_unit_len * 4 + vcpadd_offset], 1, 1, 1, 8)
-                            else:
-                                nnei_dst_len = self.nnei_unit_len * 3
-                                self._v4dtrans_change_4(deriv_input_ub_fp32, deriv_trans_ub_fp32, nnei_dst_len)
-                                self.tik_instance.vadd(Constant.MASK_FLOAT32, deriv_nnei_vcpadd_ub_fp32,
-                                                    deriv_input_ub_fp32,
-                                                    deriv_input_ub_fp32[nnei_dst_len],
-                                                    nnei_dst_len // Constant.MASK_FLOAT32,
-                                                    1, 1, 1, 8, 8, 8)
-                                self.tik_instance.vadd(Constant.MASK_FLOAT32, deriv_nnei_vcpadd_ub_fp32,
-                                                    deriv_nnei_vcpadd_ub_fp32,
-                                                    deriv_input_ub_fp32[nnei_dst_len * 2],
-                                                    nnei_dst_len // Constant.MASK_FLOAT32,
-                                                    1, 1, 1, 8, 8, 8)
-                                self.tik_instance.vadd(Constant.MASK_FLOAT32, deriv_nnei_vcpadd_ub_fp32,
-                                                    deriv_nnei_vcpadd_ub_fp32,
-                                                    deriv_input_ub_fp32[nnei_dst_len * 3],
-                                                    nnei_dst_len // Constant.MASK_FLOAT32,
-                                                    1, 1, 1, 8, 8, 8)
+                            vmul_floor = _floor_fill(ndescrpt, Constant.MASK_FLOAT32)
+                            self._prepare_vmul(ndescrpt, deriv_offset, vmul_floor,
+                                               deriv_trans_ub_fp32, deriv_input_ub_fp32)
+                            nnei_dst_len = self.nnei_unit_len * 3
+                            self._v4dtrans_change_4(deriv_input_ub_fp32, deriv_trans_ub_fp32, nnei_dst_len)
+                            self.tik_instance.vadd(Constant.MASK_FLOAT32, deriv_nnei_vcpadd_ub_fp32,
+                                                deriv_input_ub_fp32,
+                                                deriv_input_ub_fp32[nnei_dst_len],
+                                                nnei_dst_len // Constant.MASK_FLOAT32,
+                                                1, 1, 1, 8, 8, 8)
+                            self.tik_instance.vadd(Constant.MASK_FLOAT32, deriv_nnei_vcpadd_ub_fp32,
+                                                deriv_nnei_vcpadd_ub_fp32,
+                                                deriv_input_ub_fp32[nnei_dst_len * 2],
+                                                nnei_dst_len // Constant.MASK_FLOAT32,
+                                                1, 1, 1, 8, 8, 8)
+                            self.tik_instance.vadd(Constant.MASK_FLOAT32, deriv_nnei_vcpadd_ub_fp32,
+                                                deriv_nnei_vcpadd_ub_fp32,
+                                                deriv_input_ub_fp32[nnei_dst_len * 3],
+                                                nnei_dst_len // Constant.MASK_FLOAT32,
+                                                1, 1, 1, 8, 8, 8)
 
                         # first
-                        with self.tik_instance.new_stmt_scope(disable_sync=False):
-                            force_add_ub_l_fp32 = self.tik_instance.Tensor(self.force_dtype,
-                                (3 + Constant.MASK_FLOAT32, ), name="force_add_ub_l_fp32",
-                                scope=tik.scope_ubuf)
-                            force_assis_ub_l_fp32 = self.tik_instance.Tensor(self.force_dtype,
-                                                                        (Constant.BLOCK_FLOAT32 * 3, ),
-                                                                        name="force_assis_ub_l_fp32",
-                                                                        scope=tik.scope_ubuf)
-                            self.tik_instance.vector_dup(Constant.MASK_FLOAT32, force_add_ub_l_fp32, 0, 1, 1, 8)
-                            self.tik_instance.vector_dup(3, force_add_ub_l_fp32, 0, 1, 1, 8)
-                            self.tik_instance.vector_dup(Constant.BLOCK_FLOAT32 * 3, force_assis_ub_l_fp32, 0, 1, 1, 8)
-                            force_vcadd_ub_fp32 = self.tik_instance.Tensor(self.force_dtype,
-                                (3 + Constant.MASK_FLOAT32,), name="force_vcadd_ub_fp32",
-                                scope=tik.scope_ubuf)
-                            force_reduce_loop = self.nnei_unit_len // Constant.MASK_FLOAT32
-                            force_reduce_left = self.nnei_unit_len % Constant.MASK_FLOAT32
-                            for i in range(0, force_reduce_loop):
-                                self.tik_instance.vcadd(Constant.MASK_FLOAT32, force_vcadd_ub_fp32,
-                                    deriv_nnei_vcpadd_ub_fp32[Constant.MASK_FLOAT32 * i],
-                                    3, 1, 1, self.nnei_unit_len // Constant.BLOCK_FLOAT32)
-                                self.tik_instance.vadd(3, force_add_ub_l_fp32,
-                                    force_add_ub_l_fp32, force_vcadd_ub_fp32, 1, 1, 1, 1, 8, 8, 8)
-                            if force_reduce_left > 0:
-                                force_reduce_floor = _floor_fill(self.nnei_unit_len, Constant.MASK_FLOAT32)
-                                self.tik_instance.vector_dup(1 * 3, force_vcadd_ub_fp32, 0, 1, 1, 8)
-                                self.tik_instance.vcadd(force_reduce_left, force_vcadd_ub_fp32,
-                                    deriv_nnei_vcpadd_ub_fp32[force_reduce_floor],
-                                    3, 1, 1, self.nnei_unit_len // Constant.BLOCK_FLOAT32)
-                                self.tik_instance.vadd(1 * 3, force_add_ub_l_fp32,
-                                    force_add_ub_l_fp32, force_vcadd_ub_fp32,
-                                    1, 1, 1, 1, 8, 8, 8)
-                            self.tik_instance.vmuls(1 * 3, force_add_ub_l_fp32,
-                                force_add_ub_l_fp32, -1, 1, 1, 1, 8, 8)
-                            force_offset = frame_idx * self.nall * 3 + nloc_offset_vector + nloc_offset + l_idx
-                            if self.is_support_v4dtrans:
-                                self.tik_instance.vadds(1, force_assis_ub_l_fp32,
-                                    force_add_ub_l_fp32, 0, 3, 0, 0, 8, 1, stride_unit=2)
-                            else:
-                                force_first_item_0 = self.tik_instance.Scalar("float32", name="force_first_item_0")
-                                force_first_item_1 = self.tik_instance.Scalar("float32", name="force_first_item_1")
-                                force_first_item_2 = self.tik_instance.Scalar("float32", name="force_first_item_2")
-                                force_first_item_0.set_as(force_add_ub_l_fp32[0])
-                                force_first_item_1.set_as(force_add_ub_l_fp32[1])
-                                force_first_item_2.set_as(force_add_ub_l_fp32[2])
-                                force_assis_ub_l_fp32[0].set_as(force_first_item_0)
-                                force_assis_ub_l_fp32[8].set_as(force_first_item_1)
-                                force_assis_ub_l_fp32[16].set_as(force_first_item_2)
-                            self.tik_instance.set_atomic_add(1)
-                            self.tik_instance.data_move(self.force_gm[force_offset],
-                                                        force_assis_ub_l_fp32, 0, 1, 1, 0, 0)
-                            self.tik_instance.data_move(self.force_gm[force_offset + self.nall],
-                                                        force_assis_ub_l_fp32[Constant.BLOCK_FLOAT32], 0, 1, 1, 0, 0)
-                            self.tik_instance.data_move(self.force_gm[force_offset + self.nall * 2],
-                                                        force_assis_ub_l_fp32[Constant.BLOCK_FLOAT32 * 2],
-                                                        0, 1, 1, 0, 0)
-                            self.tik_instance.set_atomic_add(0)
+                        force_offset = (frame_idx * self.nall + nloc_offset_vector + nloc_offset + l_idx) * 3
+                        self._first_calculate(self.nnei_unit_len, force_offset, deriv_nnei_vcpadd_ub_fp32)
 
                         #second
-                        with self.tik_instance.for_range(0, 3) as local_idx:
-                            if self.is_support_v4dtrans and self.is_high_performance_mode:
-                                nlist_assis_ub_int32 = self.tik_instance.Tensor(self.nlist_dtype,
-                                                                                (self.nnei_unit_len, ),
-                                                                                name="nlist_assis_ub_int32",
-                                                                                scope=tik.scope_ubuf)
-                                with self.tik_instance.new_stmt_scope(disable_sync=False):
-                                    nlist_ub_int32 = self.tik_instance.Tensor(self.nlist_dtype,
-                                                                            (self.nnei_unit_len, ),
-                                                                            name="nlist_ub_int32",
-                                                                            scope=tik.scope_ubuf)
-                                    nlist_offset = (loop_offset + nloc_offset) * self.nnei + \
-                                        nnei_idx * self.nnei_unit_len
-                                    self.tik_instance.data_move(nlist_ub_int32,
-                                                                self.nlist_gm[nlist_offset],
-                                                                0, 1,
-                                                                self.nnei_unit_len // Constant.BLOCK_FLOAT32, 0, 0)
-                                    if self.nnei_unit_len // Constant.MASK_FLOAT32 > 0:
-                                        self.tik_instance.vmuls(Constant.MASK_FLOAT32, nlist_assis_ub_int32,
-                                                                nlist_ub_int32, 4,
-                                                                self.nnei_unit_len // Constant.MASK_FLOAT32,
-                                                                1, 1, 8, 8)
-                                    if self.nnei_unit_len % Constant.MASK_FLOAT32 > 0:
-                                        nlist_floor = _floor_fill(self.nnei_unit_len, Constant.MASK_FLOAT32)
-                                        self.tik_instance.vmuls(self.nnei_unit_len % Constant.MASK_FLOAT32,
-                                                                nlist_assis_ub_int32[nlist_floor],
-                                                                nlist_ub_int32[nlist_floor],
-                                                                4, 1, 1, 1, 8, 8)
-                            else:
-                                nlist_ub_int32 = self.tik_instance.Tensor(self.nlist_dtype,
-                                                                          (self.nnei_unit_len, ),
-                                                                          name="nlist_ub_int32",
-                                                                          scope=tik.scope_ubuf)
-                                nlist_offset = (loop_offset + nloc_offset) * self.nnei + \
-                                    nnei_idx * self.nnei_unit_len
-                                self.tik_instance.data_move(nlist_ub_int32,
-                                                            self.nlist_gm[nlist_offset],
-                                                            0, 1, self.nnei_unit_len // Constant.BLOCK_FLOAT32, 0, 0)
-                            force_out_ub_fp32 = self.tik_instance.Tensor(self.force_dtype,
-                                (self.nall_ub_len,), name="force_out_ub_fp32",
-                                scope=tik.scope_ubuf)
-                            full_loop = _ceil_div(self.nall_ub_len, Constant.MASK_FLOAT32) // 255
-                            full_left = _ceil_div(self.nall_ub_len, Constant.MASK_FLOAT32) % 255
-                            for i in range(0, full_loop):
-                                self.tik_instance.vector_dup(Constant.MASK_FLOAT32,
-                                                            force_out_ub_fp32[i * 255 * Constant.MASK_FLOAT32],
-                                                            0, 255, 1, 8)
-                            if full_left > 0:
-                                self.tik_instance.vector_dup(Constant.MASK_FLOAT32,
-                                    force_out_ub_fp32[full_loop * 255 * Constant.MASK_FLOAT32],
-                                    0, full_left, 1, 8)
-                            offset = self.nnei_unit_len * local_idx
-                            if self.is_support_v4dtrans and self.is_high_performance_mode:
-                                self.tik_instance.vscatter(self.nnei_unit_len, force_out_ub_fp32,
-                                                        deriv_nnei_vcpadd_ub_fp32[offset],
-                                                        nlist_assis_ub_int32,
-                                                        1, 8, 0, 0, "counter")
-                            else:
-                                nlist_loc_0 = self.tik_instance.Scalar("int32", name="nlist_loc_0")
-                                nlist_loc_1 = self.tik_instance.Scalar("int32", name="nlist_loc_1")
-                                nlist_loc_2 = self.tik_instance.Scalar("int32", name="nlist_loc_2")
-                                nlist_loc_3 = self.tik_instance.Scalar("int32", name="nlist_loc_3")
-                                force_out = self.tik_instance.Scalar("float32", name="force_out")
-                                deriv_nnei = self.tik_instance.Scalar("float32", name="deriv_nnei")
-                                with self.tik_instance.for_range(0, self.nnei_unit_len // Constant.NLOC_UNIT_LEN) as i:
-                                    nlist_loc_0.set_as(nlist_ub_int32[i * Constant.NLOC_UNIT_LEN])
-                                    nlist_loc_1.set_as(nlist_ub_int32[i * Constant.NLOC_UNIT_LEN + 1])
-                                    nlist_loc_2.set_as(nlist_ub_int32[i * Constant.NLOC_UNIT_LEN + 2])
-                                    nlist_loc_3.set_as(nlist_ub_int32[i * Constant.NLOC_UNIT_LEN + 3])
-                                    with self.tik_instance.if_scope(nlist_loc_0 != -1):
-                                        force_out.set_as(force_out_ub_fp32[nlist_loc_0])
-                                        deriv_nnei.set_as(
-                                            deriv_nnei_vcpadd_ub_fp32[offset + i * Constant.NLOC_UNIT_LEN])
-                                        force_out_ub_fp32[nlist_loc_0].set_as(force_out + deriv_nnei)
-                                    with self.tik_instance.if_scope(nlist_loc_1 != -1):
-                                        force_out.set_as(force_out_ub_fp32[nlist_loc_1])
-                                        deriv_nnei.set_as(
-                                            deriv_nnei_vcpadd_ub_fp32[offset + i * Constant.NLOC_UNIT_LEN + 1])
-                                        force_out_ub_fp32[nlist_loc_1].set_as(force_out + deriv_nnei)
-                                    with self.tik_instance.if_scope(nlist_loc_2 != -1):
-                                        force_out.set_as(force_out_ub_fp32[nlist_loc_2])
-                                        deriv_nnei.set_as(
-                                            deriv_nnei_vcpadd_ub_fp32[offset + i * Constant.NLOC_UNIT_LEN + 2])
-                                        force_out_ub_fp32[nlist_loc_2].set_as(force_out + deriv_nnei)
-                                    with self.tik_instance.if_scope(nlist_loc_3 != -1):
-                                        force_out.set_as(force_out_ub_fp32[nlist_loc_3])
-                                        deriv_nnei.set_as(
-                                            deriv_nnei_vcpadd_ub_fp32[offset + i * Constant.NLOC_UNIT_LEN + 3])
-                                        force_out_ub_fp32[nlist_loc_3].set_as(force_out + deriv_nnei)
-                            force_offset_2 = frame_idx * self.nall * 3 + self.nall * local_idx
-                            self.tik_instance.set_atomic_add(1)
-                            self.tik_instance.data_move(self.force_gm[force_offset_2],
-                                                        force_out_ub_fp32,
-                                                        0, 1, _ceil_div(self.nall, Constant.BLOCK_FLOAT32), 0, 0)
-                            self.tik_instance.set_atomic_add(0)
+                        nlist_offset = \
+                            (loop_offset + nloc_offset + l_idx) * self.nnei + nnei_idx * self.nnei_unit_len
+                        self._second_move_out_tail(self.nnei_unit_len, frame_idx,
+                                                   nlist_offset, deriv_nnei_vcpadd_ub_fp32)
 
                 # nnei tail
                 if self.nnei % self.nnei_unit_len > 0:
@@ -1135,6 +753,8 @@ class ProdForceSeA:
                             scope=tik.scope_ubuf)
                         # prepare
                         with self.tik_instance.new_stmt_scope(disable_sync=False):
+                            deriv_offset = (loop_offset + nloc_offset + l_idx) * self.nnei * 4 + \
+                                nnei_loop * self.nnei_unit_len * 4
                             deriv_input_ub_fp32 = self.tik_instance.Tensor(self.net_deriv_dtype,
                                                                         (1, 1, ndescrpt_tail, 3),
                                                                         name="deriv_input_ub_fp32",
@@ -1143,268 +763,36 @@ class ProdForceSeA:
                                                                         (1, 3, 1, ndescrpt_tail),
                                                                         name="deriv_trans_ub_fp32",
                                                                         scope=tik.scope_ubuf)
-                            deriv_offset = (loop_offset + nloc_offset + l_idx) * self.nnei * 4 + \
-                                nnei_loop * self.nnei_unit_len * 4
-                            self.tik_instance.data_move(deriv_input_ub_fp32,
-                                                        self.in_deriv_gm[deriv_offset * 3],
-                                                        0, 1, 3 * ndescrpt_tail // Constant.BLOCK_FLOAT32, 0, 0)
-                            if self.is_support_v4dtrans:
-                                self.tik_instance.v4dtrans(False, deriv_trans_ub_fp32[0, 0, 0, 0],
-                                                        deriv_input_ub_fp32[0, 0, 0, 0], ndescrpt_tail, 3)
-                            else:
-                                self._v4dtrans_change_3(deriv_trans_ub_fp32, deriv_input_ub_fp32, ndescrpt_tail)
-                            self.tik_instance.data_move(deriv_input_ub_fp32,
-                                                        self.net_deriv_gm[deriv_offset],
-                                                        0, 1, ndescrpt_tail // Constant.BLOCK_FLOAT32, 0, 0)
-                            vmul_repeat = ndescrpt_tail // Constant.MASK_FLOAT32
-                            vmul_left = ndescrpt_tail % Constant.MASK_FLOAT32
-                            if vmul_repeat > 0:
-                                self.tik_instance.vmul(Constant.MASK_FLOAT32, deriv_trans_ub_fp32,
-                                                    deriv_trans_ub_fp32,
-                                                    deriv_input_ub_fp32,
-                                                    vmul_repeat, 1, 1, 1, 8, 8, 8)
-                                self.tik_instance.vmul(Constant.MASK_FLOAT32, deriv_trans_ub_fp32[ndescrpt_tail],
-                                                    deriv_trans_ub_fp32[ndescrpt_tail],
-                                                    deriv_input_ub_fp32,
-                                                    vmul_repeat, 1, 1, 1, 8, 8, 8)
-                                self.tik_instance.vmul(Constant.MASK_FLOAT32, deriv_trans_ub_fp32[2 * ndescrpt_tail],
-                                                    deriv_trans_ub_fp32[2 * ndescrpt_tail],
-                                                    deriv_input_ub_fp32,
-                                                    vmul_repeat, 1, 1, 1, 8, 8, 8)
-                            if vmul_left > 0:
-                                vmul_floor =  vmul_repeat * Constant.MASK_FLOAT32
-                                self.tik_instance.vmul(vmul_left, deriv_trans_ub_fp32[vmul_floor],
-                                                    deriv_trans_ub_fp32[vmul_floor],
-                                                    deriv_input_ub_fp32[vmul_floor],
-                                                    1, 1, 1, 1, 8, 8, 8)
-                                self.tik_instance.vmul(vmul_left, deriv_trans_ub_fp32[ndescrpt_tail + vmul_floor],
-                                                    deriv_trans_ub_fp32[ndescrpt_tail + vmul_floor],
-                                                    deriv_input_ub_fp32[vmul_floor],
-                                                    1, 1, 1, 1, 8, 8, 8)
-                                self.tik_instance.vmul(vmul_left, deriv_trans_ub_fp32[2 * ndescrpt_tail + vmul_floor],
-                                                    deriv_trans_ub_fp32[2 * ndescrpt_tail + vmul_floor],
-                                                    deriv_input_ub_fp32[vmul_floor],
-                                                    1, 1, 1, 1, 8, 8, 8)
-                            if self.is_support_v4dtrans:
-                                vcpadd_repeat_1 = (3 * ndescrpt_tail) // Constant.MASK_FLOAT32
-                                vcpadd_left_1 = (3 * ndescrpt_tail) % Constant.MASK_FLOAT32
-                                if vcpadd_repeat_1 > 0:
-                                    self.tik_instance.vcpadd(Constant.MASK_FLOAT32, deriv_input_ub_fp32,
-                                                            deriv_trans_ub_fp32,
-                                                            vcpadd_repeat_1, 1, 1, 8)
-                                if vcpadd_left_1 > 0:
-                                    vcpadd_floor = vcpadd_repeat_1 * Constant.MASK_FLOAT32
-                                    self.tik_instance.vcpadd(vcpadd_left_1, deriv_input_ub_fp32[vcpadd_floor // 2],
-                                                            deriv_trans_ub_fp32[vcpadd_floor],
-                                                            1, 1, 1, 8)
-                                vcpadd_repeat_2 = (nnei_tail * 2) // Constant.MASK_FLOAT32
-                                vcpadd_left_2 = (nnei_tail * 2) % Constant.MASK_FLOAT32
-                                if vcpadd_repeat_2 > 0:
-                                    self.tik_instance.vcpadd(Constant.MASK_FLOAT32,
-                                                            deriv_nnei_vcpadd_ub_fp32,
-                                                            deriv_input_ub_fp32,
-                                                            vcpadd_repeat_2, 1, 1, 8)
-                                    self.tik_instance.vcpadd(Constant.MASK_FLOAT32,
-                                                            deriv_nnei_vcpadd_ub_fp32[nnei_tail_fill],
-                                                            deriv_input_ub_fp32[nnei_tail_fill * 2],
-                                                            vcpadd_repeat_2, 1, 1, 8)
-                                    self.tik_instance.vcpadd(Constant.MASK_FLOAT32,
-                                                            deriv_nnei_vcpadd_ub_fp32[nnei_tail_fill * 2],
-                                                            deriv_input_ub_fp32[nnei_tail_fill * 4],
-                                                            vcpadd_repeat_2, 1, 1, 8)
-                                if vcpadd_left_2 > 0:
-                                    vcpadd_offset = vcpadd_repeat_2 * Constant.MASK_FLOAT32
-                                    self.tik_instance.vcpadd(vcpadd_left_2,
-                                        deriv_nnei_vcpadd_ub_fp32[vcpadd_offset // 2],
-                                        deriv_input_ub_fp32[vcpadd_offset],
-                                        1, 1, 1, 8)
-                                    self.tik_instance.vcpadd(vcpadd_left_2,
-                                        deriv_nnei_vcpadd_ub_fp32[(nnei_tail_fill * 2 + vcpadd_offset) // 2],
-                                        deriv_input_ub_fp32[nnei_tail_fill * 2 + vcpadd_offset],
-                                        1, 1, 1, 8)
-                                    self.tik_instance.vcpadd(vcpadd_left_2,
-                                        deriv_nnei_vcpadd_ub_fp32[(nnei_tail_fill * 4 + vcpadd_offset) // 2],
-                                        deriv_input_ub_fp32[nnei_tail_fill * 4 + vcpadd_offset],
-                                        1, 1, 1, 8)
-                            else:
-                                nnei_dst_len = nnei_tail_fill * 3
-                                self._v4dtrans_change_4(deriv_input_ub_fp32, deriv_trans_ub_fp32, nnei_dst_len)
-                                self.tik_instance.vadd(Constant.MASK_FLOAT32, deriv_nnei_vcpadd_ub_fp32,
-                                                    deriv_input_ub_fp32,
-                                                    deriv_input_ub_fp32[nnei_dst_len],
-                                                    nnei_dst_len // Constant.MASK_FLOAT32,
-                                                    1, 1, 1, 8, 8, 8)
-                                self.tik_instance.vadd(Constant.MASK_FLOAT32, deriv_nnei_vcpadd_ub_fp32,
-                                                    deriv_nnei_vcpadd_ub_fp32,
-                                                    deriv_input_ub_fp32[nnei_dst_len * 2],
-                                                    nnei_dst_len // Constant.MASK_FLOAT32,
-                                                    1, 1, 1, 8, 8, 8)
-                                self.tik_instance.vadd(Constant.MASK_FLOAT32, deriv_nnei_vcpadd_ub_fp32,
-                                                    deriv_nnei_vcpadd_ub_fp32,
-                                                    deriv_input_ub_fp32[nnei_dst_len * 3],
-                                                    nnei_dst_len // Constant.MASK_FLOAT32,
-                                                    1, 1, 1, 8, 8, 8)
+                            vmul_floor = _floor_fill(ndescrpt_tail, Constant.MASK_FLOAT32)
+                            self._prepare_vmul(ndescrpt_tail, deriv_offset, vmul_floor,
+                                               deriv_trans_ub_fp32, deriv_input_ub_fp32)
+                            nnei_dst_len = nnei_tail_fill * 3
+                            self._v4dtrans_change_4(deriv_input_ub_fp32, deriv_trans_ub_fp32, nnei_dst_len)
+                            self.tik_instance.vadd(Constant.MASK_FLOAT32, deriv_nnei_vcpadd_ub_fp32,
+                                                deriv_input_ub_fp32,
+                                                deriv_input_ub_fp32[nnei_dst_len],
+                                                nnei_dst_len // Constant.MASK_FLOAT32,
+                                                1, 1, 1, 8, 8, 8)
+                            self.tik_instance.vadd(Constant.MASK_FLOAT32, deriv_nnei_vcpadd_ub_fp32,
+                                                deriv_nnei_vcpadd_ub_fp32,
+                                                deriv_input_ub_fp32[nnei_dst_len * 2],
+                                                nnei_dst_len // Constant.MASK_FLOAT32,
+                                                1, 1, 1, 8, 8, 8)
+                            self.tik_instance.vadd(Constant.MASK_FLOAT32, deriv_nnei_vcpadd_ub_fp32,
+                                                deriv_nnei_vcpadd_ub_fp32,
+                                                deriv_input_ub_fp32[nnei_dst_len * 3],
+                                                nnei_dst_len // Constant.MASK_FLOAT32,
+                                                1, 1, 1, 8, 8, 8)
 
                         # first
-                        with self.tik_instance.new_stmt_scope(disable_sync=False):
-                            force_add_ub_fp32 = self.tik_instance.Tensor(self.force_dtype,
-                                (3 + Constant.MASK_FLOAT32, ), name="force_add_ub_fp32",
-                                scope=tik.scope_ubuf)
-                            force_assis_ub_fp32 = self.tik_instance.Tensor(self.force_dtype,
-                                                                        (Constant.BLOCK_FLOAT32 * 3, ),
-                                                                        name="force_assis_ub_fp32",
-                                                                        scope=tik.scope_ubuf)
-                            self.tik_instance.vector_dup(Constant.MASK_FLOAT32, force_add_ub_fp32, 0, 1, 1, 8)
-                            self.tik_instance.vector_dup(3, force_add_ub_fp32, 0, 1, 1, 8)
-                            self.tik_instance.vector_dup(Constant.BLOCK_FLOAT32 * 3, force_assis_ub_fp32, 0, 1, 1, 8)
-                            force_vcadd_ub_fp32 = self.tik_instance.Tensor(self.force_dtype,
-                                (3 + Constant.MASK_FLOAT32,), name="force_vcadd_ub_fp32",
-                                scope=tik.scope_ubuf)
-                            force_reduce_loop = nnei_tail // Constant.MASK_FLOAT32
-                            force_reduce_left = nnei_tail % Constant.MASK_FLOAT32
-                            for i in range(0, force_reduce_loop):
-                                self.tik_instance.vcadd(Constant.MASK_FLOAT32, force_vcadd_ub_fp32,
-                                    deriv_nnei_vcpadd_ub_fp32[Constant.MASK_FLOAT32 * i],
-                                    3, 1, 1, nnei_tail_fill // Constant.BLOCK_FLOAT32)
-                                self.tik_instance.vadd(3, force_add_ub_fp32,
-                                    force_add_ub_fp32, force_vcadd_ub_fp32, 1, 1, 1, 1, 8, 8, 8)
-                            if force_reduce_left > 0:
-                                force_reduce_floor = _floor_fill(nnei_tail, Constant.MASK_FLOAT32)
-                                self.tik_instance.vector_dup(1 * 3, force_vcadd_ub_fp32, 0, 1, 1, 8)
-                                self.tik_instance.vcadd(force_reduce_left, force_vcadd_ub_fp32,
-                                    deriv_nnei_vcpadd_ub_fp32[force_reduce_floor],
-                                    3, 1, 1, nnei_tail_fill // Constant.BLOCK_FLOAT32)
-                                self.tik_instance.vadd(1 * 3, force_add_ub_fp32,
-                                    force_add_ub_fp32, force_vcadd_ub_fp32,
-                                    1, 1, 1, 1, 8, 8, 8)
-                            self.tik_instance.vmuls(1 * 3, force_add_ub_fp32,
-                                force_add_ub_fp32, -1, 1, 1, 1, 8, 8)
-                            force_offset = frame_idx * self.nall * 3 + nloc_offset_vector + nloc_offset + l_idx
-                            if self.is_support_v4dtrans:
-                                self.tik_instance.vadds(1, force_assis_ub_fp32,
-                                    force_add_ub_fp32, 0, 3, 0, 0, 8, 1, stride_unit=2)
-                            else:
-                                force_first_item_0 = self.tik_instance.Scalar("float32", name="force_first_item_0")
-                                force_first_item_1 = self.tik_instance.Scalar("float32", name="force_first_item_1")
-                                force_first_item_2 = self.tik_instance.Scalar("float32", name="force_first_item_2")
-                                force_first_item_0.set_as(force_add_ub_fp32[0])
-                                force_first_item_1.set_as(force_add_ub_fp32[1])
-                                force_first_item_2.set_as(force_add_ub_fp32[2])
-                                force_assis_ub_fp32[0].set_as(force_first_item_0)
-                                force_assis_ub_fp32[8].set_as(force_first_item_1)
-                                force_assis_ub_fp32[16].set_as(force_first_item_2)
-                            self.tik_instance.set_atomic_add(1)
-                            self.tik_instance.data_move(self.force_gm[force_offset],
-                                                        force_assis_ub_fp32, 0, 1, 1, 0, 0)
-                            self.tik_instance.data_move(self.force_gm[force_offset + self.nall],
-                                                        force_assis_ub_fp32[Constant.BLOCK_FLOAT32], 0, 1, 1, 0, 0)
-                            self.tik_instance.data_move(self.force_gm[force_offset + self.nall * 2],
-                                                        force_assis_ub_fp32[Constant.BLOCK_FLOAT32 * 2],
-                                                        0, 1, 1, 0, 0)
-                            self.tik_instance.set_atomic_add(0)
+                        force_offset = (frame_idx * self.nall + nloc_offset_vector + nloc_offset + l_idx) * 3
+                        self._first_calculate(nnei_tail, force_offset, deriv_nnei_vcpadd_ub_fp32)
 
                         #second
-                        with self.tik_instance.for_range(0, 3) as local_idx:
-                            nnei_mask_len = _ceil_fill(nnei_tail, Constant.MASK_FLOAT32)
-                            if self.is_support_v4dtrans and self.is_high_performance_mode:
-                                nlist_assis_ub_int32 = self.tik_instance.Tensor(self.nlist_dtype,
-                                                                                (nnei_mask_len, ),
-                                                                                name="nlist_assis_ub_int32",
-                                                                                scope=tik.scope_ubuf)
-                                with self.tik_instance.new_stmt_scope(disable_sync=False):
-                                    nlist_ub_int32 = self.tik_instance.Tensor(self.nlist_dtype,
-                                                                            (nnei_mask_len, ),
-                                                                            name="nlist_ub_int32",
-                                                                            scope=tik.scope_ubuf)
-                                    nlist_offset = (loop_offset + nloc_offset) * self.nnei + \
-                                        nnei_loop * self.nnei_unit_len
-                                    self.tik_instance.data_move(nlist_ub_int32,
-                                                                self.nlist_gm[nlist_offset],
-                                                                0, 1, nnei_tail_fill // Constant.BLOCK_FLOAT32, 0, 0)
-                                    if nnei_tail // Constant.MASK_FLOAT32 > 0:
-                                        self.tik_instance.vmuls(Constant.MASK_FLOAT32, nlist_assis_ub_int32,
-                                                                nlist_ub_int32, 4,
-                                                                nnei_tail // Constant.MASK_FLOAT32, 1, 1, 8, 8)
-                                    if nnei_tail % Constant.MASK_FLOAT32 > 0:
-                                        nlist_floor = _floor_fill(nnei_tail, Constant.MASK_FLOAT32)
-                                        self.tik_instance.vmuls(nnei_tail % Constant.MASK_FLOAT32,
-                                                                nlist_assis_ub_int32[nlist_floor],
-                                                                nlist_ub_int32[nlist_floor],
-                                                                4, 1, 1, 1, 8, 8)
-                            else:
-                                nlist_ub_int32 = self.tik_instance.Tensor(self.nlist_dtype,
-                                                                        (nnei_mask_len, ),
-                                                                        name="nlist_ub_int32",
-                                                                        scope=tik.scope_ubuf)
-                                nlist_offset = (loop_offset + nloc_offset) * self.nnei + \
-                                    nnei_loop * self.nnei_unit_len
-                                self.tik_instance.data_move(nlist_ub_int32,
-                                                            self.nlist_gm[nlist_offset],
-                                                            0, 1, nnei_tail_fill // Constant.BLOCK_FLOAT32, 0, 0)
-                            force_out_ub_fp32 = self.tik_instance.Tensor(self.force_dtype,
-                                (self.nall_ub_len,), name="force_out_ub_fp32",
-                                scope=tik.scope_ubuf)
-                            full_loop = _ceil_div(self.nall_ub_len, Constant.MASK_FLOAT32) // 255
-                            full_left = _ceil_div(self.nall_ub_len, Constant.MASK_FLOAT32) % 255
-                            for i in range(0, full_loop):
-                                self.tik_instance.vector_dup(Constant.MASK_FLOAT32,
-                                                            force_out_ub_fp32[i * 255 * Constant.MASK_FLOAT32],
-                                                            0, 255, 1, 8)
-                            if full_left > 0:
-                                self.tik_instance.vector_dup(Constant.MASK_FLOAT32,
-                                    force_out_ub_fp32[full_loop * 255 * Constant.MASK_FLOAT32],
-                                    0, full_left, 1, 8)
-                            offset = nnei_tail_fill * local_idx
-                            if self.is_support_v4dtrans and self.is_high_performance_mode:
-                                self.tik_instance.vscatter(nnei_tail, force_out_ub_fp32,
-                                                           deriv_nnei_vcpadd_ub_fp32[offset],
-                                                           nlist_assis_ub_int32,
-                                                           1, 8, 0, 0, "counter")
-                            else:
-                                nlist_loc_0 = self.tik_instance.Scalar("int32", name="nlist_loc_0")
-                                nlist_loc_1 = self.tik_instance.Scalar("int32", name="nlist_loc_1")
-                                nlist_loc_2 = self.tik_instance.Scalar("int32", name="nlist_loc_2")
-                                nlist_loc_3 = self.tik_instance.Scalar("int32", name="nlist_loc_3")
-                                force_out = self.tik_instance.Scalar("float32", name="force_out")
-                                deriv_nnei = self.tik_instance.Scalar("float32", name="deriv_nnei")
-                                with self.tik_instance.for_range(0, nnei_tail // Constant.NLOC_UNIT_LEN) as i:
-                                    nlist_loc_0.set_as(nlist_ub_int32[i * Constant.NLOC_UNIT_LEN])
-                                    nlist_loc_1.set_as(nlist_ub_int32[i * Constant.NLOC_UNIT_LEN + 1])
-                                    nlist_loc_2.set_as(nlist_ub_int32[i * Constant.NLOC_UNIT_LEN + 2])
-                                    nlist_loc_3.set_as(nlist_ub_int32[i * Constant.NLOC_UNIT_LEN + 3])
-                                    with self.tik_instance.if_scope(nlist_loc_0 != -1):
-                                        force_out.set_as(force_out_ub_fp32[nlist_loc_0])
-                                        deriv_nnei.set_as(
-                                            deriv_nnei_vcpadd_ub_fp32[offset + i * Constant.NLOC_UNIT_LEN])
-                                        force_out_ub_fp32[nlist_loc_0].set_as(force_out + deriv_nnei)
-                                    with self.tik_instance.if_scope(nlist_loc_1 != -1):
-                                        force_out.set_as(force_out_ub_fp32[nlist_loc_1])
-                                        deriv_nnei.set_as(
-                                            deriv_nnei_vcpadd_ub_fp32[offset + i * Constant.NLOC_UNIT_LEN + 1])
-                                        force_out_ub_fp32[nlist_loc_1].set_as(force_out + deriv_nnei)
-                                    with self.tik_instance.if_scope(nlist_loc_2 != -1):
-                                        force_out.set_as(force_out_ub_fp32[nlist_loc_2])
-                                        deriv_nnei.set_as(
-                                            deriv_nnei_vcpadd_ub_fp32[offset + i * Constant.NLOC_UNIT_LEN + 2])
-                                        force_out_ub_fp32[nlist_loc_2].set_as(force_out + deriv_nnei)
-                                    with self.tik_instance.if_scope(nlist_loc_3 != -1):
-                                        force_out.set_as(force_out_ub_fp32[nlist_loc_3])
-                                        deriv_nnei.set_as(
-                                            deriv_nnei_vcpadd_ub_fp32[offset + i * Constant.NLOC_UNIT_LEN + 3])
-                                        force_out_ub_fp32[nlist_loc_3].set_as(force_out + deriv_nnei)
-                                with self.tik_instance.for_range(0, nnei_tail % Constant.NLOC_UNIT_LEN) as j:
-                                    nlist_left_base = _floor_fill(nnei_tail, Constant.NLOC_UNIT_LEN) + j
-                                    nlist_loc_0.set_as(nlist_ub_int32[nlist_left_base])
-                                    with self.tik_instance.if_scope(nlist_loc_0 != -1):
-                                        force_out.set_as(force_out_ub_fp32[nlist_loc_0])
-                                        deriv_nnei.set_as(deriv_nnei_vcpadd_ub_fp32[offset + nlist_left_base])
-                                        force_out_ub_fp32[nlist_loc_0].set_as(force_out + deriv_nnei)
-                            force_offset_2 = frame_idx * self.nall * 3 + self.nall * local_idx
-                            self.tik_instance.set_atomic_add(1)
-                            self.tik_instance.data_move(self.force_gm[force_offset_2],
-                                                        force_out_ub_fp32,
-                                                        0, 1, _ceil_div(self.nall, Constant.BLOCK_FLOAT32), 0, 0)
-                            self.tik_instance.set_atomic_add(0)
+                        nlist_offset = \
+                            (loop_offset + nloc_offset + l_idx) * self.nnei + nnei_loop * self.nnei_unit_len
+                        self._second_move_out_tail(nnei_tail, frame_idx,
+                                                   nlist_offset, deriv_nnei_vcpadd_ub_fp32)
 
 
 def _para_dtype_check(args_list):
@@ -1439,7 +827,7 @@ def _para_dtype_check(args_list):
                             para_check.KERNEL_NAME)
 def prod_force_se_a(net_deriv, in_deriv, nlist, natoms,
                     force, n_a_sel, n_r_sel, split_count, split_index,
-                    kernel_name="prod_force_se_a", impl_mode="high_precision"):
+                    kernel_name="prod_force_se_a", supp_mode="scalar"):
     """
     prod_force_se_a
     """
@@ -1454,6 +842,6 @@ def prod_force_se_a(net_deriv, in_deriv, nlist, natoms,
     dtypes = (net_deriv_dtype, in_deriv_dtype, nlist_dtype,
               natoms_dtype, force_dtype)
     shapes = (natoms_shape)
-    attrs = (n_a_sel, n_r_sel, split_count, split_index, impl_mode)
+    attrs = (n_a_sel, n_r_sel, split_count, split_index, supp_mode)
     obj = ProdForceSeA(attrs, dtypes, shapes)
     return obj.prod_force_se_a_operator(kernel_name)

@@ -44,6 +44,8 @@ static const string SUB = "Sub";
 static const string AXIS = "axes";
 static const string KEEPDIMS = "keep_dims";
 static const int64_t INPUT_NUM = 2;
+static const uint8_t INPUT_NODE_NUM = 2;
+static const uint8_t OUTPUT_NODE_NUM = 1;
 
 
 vector<FusionPattern*> SoftmaxGradExtV2FusionPass::DefinePatterns() {
@@ -222,6 +224,22 @@ Status SoftmaxGradExtV2FusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapp
   newOpdesc = std::make_shared<ge::OpDesc>(mul1Node->GetName() + "/" + SOFTMAXGRADEXT, SOFTMAXGRADEXT);
   FUSION_PASS_CHECK(newOpdesc == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "newOpdesc is null."),
                     return PARAM_INVALID);
+
+  auto subInputDataNodes = subNode->GetInDataNodes();
+  auto subOutputDataNodes = subNode->GetOutDataNodes();
+  auto mulInputDataNodes = mulNode->GetInDataNodes();
+  auto mulOutputDataNodes = mulNode->GetOutDataNodes();
+  auto mul1InputDataNodes = mul1Node->GetInDataNodes();
+  auto mul1OutputDataNodes = mul1Node->GetOutDataNodes();
+  auto sumInputDataNodes = sumNode->GetInDataNodes();
+  auto sumOutputDataNodes = sumNode->GetOutDataNodes();
+  if ((subInputDataNodes.size() != INPUT_NODE_NUM) || (mulInputDataNodes.size() != INPUT_NODE_NUM) ||
+      (mul1InputDataNodes.size() != INPUT_NODE_NUM) || (subOutputDataNodes.size() != OUTPUT_NODE_NUM) ||
+      (mulOutputDataNodes.size() != OUTPUT_NODE_NUM) || (mul1OutputDataNodes.size() != OUTPUT_NODE_NUM) ||
+      (sumInputDataNodes.size() != OUTPUT_NODE_NUM) || (sumOutputDataNodes.size() != OUTPUT_NODE_NUM)) {
+    OP_LOGD(FUSED_OP_TYPE.c_str(), "this pattern does not meet the fusion condition.");
+    return NOT_CHANGED;
+  }
 
   for (size_t i = 0; i < INPUT_NUM; i++) {
     if ((subNode->GetInDataAnchor(i) == nullptr) || (subNode->GetInDataAnchor(i)->GetPeerOutAnchor() == nullptr) ||

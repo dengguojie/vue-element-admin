@@ -394,7 +394,6 @@ set(_aicore_fusion_srcs
   graph_fusion/ai_core/reduce_mean_variance_fusion_pass.cc
   graph_fusion/ai_core/softmaxv2_onnx_fusion_pass.cc
   graph_fusion/ai_core/mul_fusion_optimizer_pass.cc
-  graph_fusion/ai_core/prod_force_se_a_fusion_pass.cc
   graph_fusion/ai_core/prod_force_se_a_vector_core_fusion_pass.cc
   graph_fusion/ai_core/lstmp_fusion_pass.cc
   graph_fusion/ai_core/batch_matmul_reduce_mean_fusion_pass.cc

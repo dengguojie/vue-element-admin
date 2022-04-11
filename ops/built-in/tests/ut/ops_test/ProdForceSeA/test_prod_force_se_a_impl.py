@@ -40,7 +40,7 @@ def test_prod_force_se_a_case001(test_args):
                 "ori_shape": (4,), "ori_format": "ND", "range": ((3, 3))},
                 {"shape": (1, 3, 28328), "dtype": "float32", "format": "ND",
                 "ori_shape": (1, 3, 28328), "ori_format": "ND", "range": ((1, 1), (84984, 84984))},
-                138, 0, 1, 0)
+                138, 0, 1, 0, supp_mode="vector")
     set_current_compile_soc_info(test_args)
 
 def test_prod_force_se_a_case002(test_args):
@@ -59,7 +59,7 @@ def test_prod_force_se_a_case002(test_args):
                 "ori_shape": (4,), "ori_format": "ND", "range": ((3, 3))},
                 {"shape": (1, 3, 28328), "dtype": "float32", "format": "ND",
                 "ori_shape": (1, 3, 28328), "ori_format": "ND", "range": ((1, 1), (84984, 84984))},
-                138, 0, 1, 0)
+                138, 0, 1, 0, supp_mode="vector")
     set_current_compile_soc_info(test_args)
 
 def test_prod_force_se_a_case003(test_args):
@@ -78,7 +78,7 @@ def test_prod_force_se_a_case003(test_args):
                 "ori_shape": (4,), "ori_format": "ND", "range": ((3, 3))},
                 {"shape": (1, 3, 28328), "dtype": "float32", "format": "ND",
                 "ori_shape": (1, 3, 28328), "ori_format": "ND", "range": ((1, 1), (84984, 84984))},
-                138, 0, 1, 0, impl_mode="high_performance")
+                138, 0, 1, 0, supp_mode="vector")
     set_current_compile_soc_info(test_args)
 
 def test_prod_force_se_a_case004(test_args):
@@ -135,7 +135,7 @@ def test_prod_force_se_a_case006(test_args):
                 "ori_shape": (4,), "ori_format": "ND", "range": ((3, 3))},
                 {"shape": (1, 3, 28328), "dtype": "float32", "format": "ND",
                 "ori_shape": (1, 3, 28328), "ori_format": "ND", "range": ((1, 1), (84984, 84984))},
-                138, 0, 1, 0, impl_mode="high_performance")
+                138, 0, 1, 0)
     set_current_compile_soc_info(test_args)
 
 ut_case.add_cust_test_func(test_func=test_prod_force_se_a_case001)
