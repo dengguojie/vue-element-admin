@@ -211,7 +211,7 @@ class CpuKernelCache : public KernelCache<CpuCacheData> {
    * @param pos: bit pos
    * @return bool: bit is 1 or 0
    */
-  bool GetBitStatus(uint64_t num, uint64_t pos);
+  bool GetBitStatus(uint64_t num, uint64_t pos) const;
 };
 }  // namespace aicpu
 #endif  // AICPU_CPU_KERNEL_CACHE_H_

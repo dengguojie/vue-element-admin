@@ -300,7 +300,7 @@ uint32_t CpuKernelCache::ParseExtSessionInfo(FWKAdapter::ExtInfo *ext_info,
 /*
  * get bit status.
  */
-bool CpuKernelCache::GetBitStatus(uint64_t num, uint64_t pos) {
+bool CpuKernelCache::GetBitStatus(uint64_t num, uint64_t pos) const {
   return ((num & (1 << pos)) != 0);
 }
 

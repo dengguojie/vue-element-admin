@@ -57,7 +57,7 @@ CpuKernelRegister &CpuKernelRegister::Instance() {
 std::shared_ptr<CpuKernel> CpuKernelRegister::GetCpuKernel(
     const std::string &opType) {
   std::unique_lock<std::mutex> lock(g_mutex);
-  auto iter = creatorMap_.find(opType);
+  std::map<std::string, KERNEL_CREATOR_FUN>::const_iterator iter = creatorMap_.find(opType);
   if (iter != creatorMap_.end()) {
     return iter->second();
   }
@@ -189,7 +189,7 @@ CpuKernelRegister::Registerar::Registerar(const std::string &type,
 void CpuKernelRegister::Register(const std::string &type,
                                  const KERNEL_CREATOR_FUN &fun) {
   std::unique_lock<std::mutex> lock(g_mutex);
-  std::map<std::string, KERNEL_CREATOR_FUN>::iterator iter =
+  std::map<std::string, KERNEL_CREATOR_FUN>::const_iterator iter =
       creatorMap_.find(type);
   if (iter != creatorMap_.end()) {
     KERNEL_LOG_WARN("Register[%s] creator already exist",
