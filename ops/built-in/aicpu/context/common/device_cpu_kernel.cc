@@ -60,6 +60,7 @@ uint32_t ParseExtSessionInfo(AicpuParamHead *param_head,
 
       session = reinterpret_cast<SessionInfo *>(ext_info->infoMsg);
       KERNEL_LOG_INFO("Parse extend session info success.");
+      return KERNEL_STATUS_OK;
     }
 
     // not overflow
