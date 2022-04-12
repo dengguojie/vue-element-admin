@@ -232,6 +232,80 @@ ut_case.add_case("Ascend310",
                       "ori_shape": (11, 1, 3, 3, 16), "ori_format": "NC1HWC0", "param_type": "output"},
                      13, 3, 0.125,
                      "psroipooling_19", "success"))
+                     
+# output_dim less than or equal 1
+ut_case.add_case("all",
+                 gen_psroipooling_case(
+                     {"shape": (1, 1*1*1, 14, 14, 16), "dtype": "float16", "format": "NC1HWC0",
+                      "ori_shape": (1, 1*1*1, 14, 14, 16), "ori_format": "NC1HWC0", "param_type": "input"},
+                     {"shape": (1, 5, 15), "dtype": "float16", "format": "ND",
+                      "ori_shape": (1, 5, 15), "ori_format": "ND", "param_type": "input"},
+                     {"shape": (15, 1, 1, 1, 16), "dtype": "float16", "format": "NC1HWC0",
+                      "ori_shape": (15, 1, 1, 1, 16), "ori_format": "NC1HWC0", "param_type": "output"},
+                     1, 1, 0.0625,
+                     "psroipooling_20", "success"))
+
+# output_dim less than or equal 1
+ut_case.add_case("Ascend910",
+                 gen_psroipooling_case(
+                     {"shape": (1, 1*1*1, 14, 14, 16), "dtype": "float32", "format": "NC1HWC0",
+                      "ori_shape": (1, 1*1*1, 14, 14, 16), "ori_format": "NC1HWC0", "param_type": "input"},
+                     {"shape": (1, 5, 15), "dtype": "float32", "format": "ND",
+                      "ori_shape": (1, 5, 15), "ori_format": "ND", "param_type": "input"},
+                     {"shape": (15, 1, 1, 1, 16), "dtype": "float32", "format": "NC1HWC0",
+                      "ori_shape": (15, 1, 1, 1, 16), "ori_format": "NC1HWC0", "param_type": "output"},
+                     1, 1, 0.0625,
+                     "psroipooling_21", "success"))
+
+
+# normal shape 1
+ut_case.add_case("all",
+                 gen_psroipooling_case(
+                     {"shape": (1, 1*1*1, 14, 14, 16), "dtype": "float32", "format": "NC1HWC0",
+                      "ori_shape": (1, 1*1*1, 14, 14, 16), "ori_format": "NC1HWC0", "param_type": "input"},
+                     {"shape": (1, 5, 15), "dtype": "float32", "format": "ND",
+                      "ori_shape": (1, 5, 15), "ori_format": "ND", "param_type": "input"},
+                     {"shape": (15, 1, 1, 1, 16), "dtype": "float32", "format": "NC1HWC0",
+                      "ori_shape": (15, 1, 1, 1, 16), "ori_format": "NC1HWC0", "param_type": "output"},
+                     11, 1, 0.0625,
+                     "psroipooling_22", "success"))
+
+# normal shape 2
+ut_case.add_case("all",
+                 gen_psroipooling_case(
+                     {"shape": (1, 2*7*7, 14, 14, 16), "dtype": "float32", "format": "NC1HWC0",
+                      "ori_shape": (1, 2*7*7, 14, 14, 16), "ori_format": "NC1HWC0", "param_type": "input"},
+                     {"shape": (1, 5, 6), "dtype": "float32", "format": "ND",
+                      "ori_shape": (1, 5, 6), "ori_format": "ND", "param_type": "input"},
+                     {"shape": (6, 2, 7, 7, 16), "dtype": "float32", "format": "NC1HWC0",
+                      "ori_shape": (6, 2, 7, 7, 16), "ori_format": "NC1HWC0", "param_type": "output"},
+                     21, 7, 0.125,
+                     "psroipooling_23", "success"))
+
+# normal shape 3
+ut_case.add_case("all",
+                 gen_psroipooling_case(
+                     {"shape": (1, 9*3*3, 14, 14, 16), "dtype": "float32", "format": "NC1HWC0",
+                      "ori_shape": (1, 9*3*3, 14, 14, 16), "ori_format": "NC1HWC0", "param_type": "input"},
+                     {"shape": (1, 5, 6), "dtype": "float32", "format": "ND",
+                      "ori_shape": (1, 5, 6), "ori_format": "ND", "param_type": "input"},
+                     {"shape": (6, 9, 3, 3, 16), "dtype": "float32", "format": "NC1HWC0",
+                      "ori_shape": (6, 9, 3, 3, 16), "ori_format": "NC1HWC0", "param_type": "output"},
+                     140, 3, 0.125,
+                     "psroipooling_24", "success"))
+
+# normal shape 4
+ut_case.add_case("all",
+                 gen_psroipooling_case(
+                     {"shape": (1, 1*3*3, 14, 14, 16), "dtype": "float32", "format": "NC1HWC0",
+                      "ori_shape": (1, 1*3*3, 14, 14, 16), "ori_format": "NC1HWC0", "param_type": "input"},
+                     {"shape": (1, 5, 8), "dtype": "float32", "format": "ND",
+                      "ori_shape": (1, 5, 8), "ori_format": "ND", "param_type": "input"},
+                     {"shape": (8, 1, 3, 3, 16), "dtype": "float32", "format": "NC1HWC0",
+                      "ori_shape": (8, 1, 3, 3, 16), "ori_format": "NC1HWC0", "param_type": "output"},
+                     11, 3, 0.0625,
+                     "psroipooling_25", "success"))
+              
 
 if __name__ == '__main__':
     ut_case.run(["Ascend310", "Ascend910"])

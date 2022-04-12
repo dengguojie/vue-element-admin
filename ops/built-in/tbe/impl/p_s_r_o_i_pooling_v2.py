@@ -613,6 +613,69 @@ class PSROIPoolingV2Class(object):
         output_val.set_as(ub_bin_output_buf[0])
         mask = params["output_dim_mask"]
         ub_output_dim[mask] = output_val
+    
+    def _process_one_bin_area_positive(self, params):
+        """
+        process one bin of roi when bin area is positive.
+
+        Parameters
+        ----------
+        params: param is a dict, contains multiple keys
+
+        Returns
+        -------
+        None
+        """
+        bin_area_fp_ub = self.tik_instance.Tensor(self.dtype,
+                                                  (self.vec_elem_num,), name="bin_area_fp_ub",
+                                                  scope=tbe_platform.scope_ubuf)
+        if self.is_hisi_cs:
+            bin_area_16_scalar = self.tik_instance.Scalar(INT16, name="bin_area_16_scalar")
+            bin_area_16_scalar.set_as(params.get("bin_area"))
+            bin_area_int16 = self.tik_instance.Tensor(
+                INT16, (DIGIT_128,), name="bin_area_int16", scope=tbe_platform.scope_ubuf)
+            self.tik_instance.vector_dup(DIGIT_128, bin_area_int16,
+                                          bin_area_16_scalar, REPEAT_1, STRIDE_ONE, REP_STRIDE_EIGHT)
+            # s162f16:vconv
+            self.tik_instance.vconv(DIGIT_128, '', bin_area_fp_ub,
+                                    bin_area_int16, REPEAT_1, STRIDE_ONE,
+                                    STRIDE_ONE, REP_STRIDE_EIGHT, REP_STRIDE_EIGHT)
+        else:
+            bin_area_int32 = self.tik_instance.Tensor(INT32,
+                                                      (DIGIT_64 * REP_TIMES.get(self.dtype),),
+                                                      name="bin_area_int32",
+                                                      scope=tbe_platform.scope_ubuf)
+            self.tik_instance.vector_dup(MASK64, bin_area_int32,
+                                          params.get("bin_area"), REP_TIMES.get(self.dtype), STRIDE_ONE,
+                                          REP_STRIDE_EIGHT)
+            # s322f16:vconv.deq, or s322f32:vconv
+            if self.dtype == FP16:
+                self.tik_instance.vconv(MASK64, '', bin_area_fp_ub,
+                                        bin_area_int32, REP_TIMES.get(self.dtype),
+                                        STRIDE_ONE, STRIDE_ONE,
+                                        REP_STRIDE.get(self.dtype),
+                                        REP_STRIDE_EIGHT, deqscale=DEQSCALE)
+            else:
+                if tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION) in \
+                        (tbe_platform.ASCEND_310, tbe_platform.ASCEND_320):
+                    bin_area_fp16_ub = \
+                        self.tik_instance.Tensor(FP16, (self.vec_elem_num,), name="bin_area_fp16_ub",
+                                                  scope=tbe_platform.scope_ubuf)
+                    self.tik_instance.vconv(MASK64, '', bin_area_fp16_ub,
+                                            bin_area_int32, REP_TIMES.get(self.dtype),
+                                            STRIDE_ONE, STRIDE_ONE, REP_STRIDE.get(FP16), REP_STRIDE_EIGHT,
+                                            deqscale=DEQSCALE)
+                    self.tik_instance.vconv(MASK64, '', bin_area_fp_ub,
+                                            bin_area_fp16_ub, REP_TIMES.get(self.dtype),
+                                            STRIDE_ONE, STRIDE_ONE, REP_STRIDE_EIGHT,
+                                            REP_STRIDE.get(FP16))
+                else:
+                    self.tik_instance.vconv(MASK64, '', bin_area_fp_ub,
+                                            bin_area_int32, REP_TIMES.get(self.dtype),
+                                            STRIDE_ONE, STRIDE_ONE,
+                                            REP_STRIDE.get(self.dtype),
+                                            REP_STRIDE_EIGHT)
+        params["bin_area_fp_ub"] = bin_area_fp_ub
 
     def _process_one_bin(self, params):
         """
@@ -627,64 +690,22 @@ class PSROIPoolingV2Class(object):
         None
         """
         output_dim_shape = (self.output_dim_align,)
-        ub_output_dim = self.tik_instance.Tensor(self.dtype, output_dim_shape, name="ub_output_dim",
+        ub_output_dim = self.tik_instance.Tensor(self.dtype, output_dim_shape,
+                                                 name="ub_output_dim",
                                                  scope=tbe_platform.scope_ubuf)
-        self.tik_instance.vmuls(self.mask, ub_output_dim, ub_output_dim, 0., self.output_dim_align // self.mask,
-                                STRIDE_ONE, STRIDE_ONE, REP_STRIDE_EIGHT, REP_STRIDE_EIGHT)
+        self.tik_instance.vmuls(self.mask, ub_output_dim, ub_output_dim, 0.,
+                                self.output_dim_align // self.mask,
+                                STRIDE_ONE, STRIDE_ONE,
+                                REP_STRIDE_EIGHT, REP_STRIDE_EIGHT)
         params["ub_output_dim"] = ub_output_dim
 
         with self.tik_instance.if_scope(params["bin_area"] > 0):
-            bin_area_fp_ub = self.tik_instance.Tensor(self.dtype,
-                                                      (self.vec_elem_num,), name="bin_area_fp_ub",
-                                                      scope=tbe_platform.scope_ubuf)
-            if self.is_hisi_cs:
-                bin_area_16_scalar = self.tik_instance.Scalar(INT16, name="bin_area_16_scalar")
-                bin_area_16_scalar.set_as(params.get("bin_area"))
-                bin_area_int16 = self.tik_instance.Tensor(
-                    INT16, (DIGIT_128,), name="bin_area_int16", scope=tbe_platform.scope_ubuf)
-                self.tik_instance.vector_dup(DIGIT_128, bin_area_int16,
-                                             bin_area_16_scalar, REPEAT_1, STRIDE_ONE, REP_STRIDE_EIGHT)
-                # s162f16:vconv
-                self.tik_instance.vconv(DIGIT_128, '', bin_area_fp_ub,
-                                        bin_area_int16, REPEAT_1, STRIDE_ONE,
-                                        STRIDE_ONE, REP_STRIDE_EIGHT, REP_STRIDE_EIGHT)
+            self._process_one_bin_area_positive(params)
+            if self.output_dim <= 1:
+                thread_num = 1
             else:
-                bin_area_int32 = self.tik_instance.Tensor(INT32,
-                                                          (DIGIT_64 * REP_TIMES.get(self.dtype),),
-                                                          name="bin_area_int32",
-                                                          scope=tbe_platform.scope_ubuf)
-                self.tik_instance.vector_dup(MASK64, bin_area_int32,
-                                             params.get("bin_area"), REP_TIMES.get(self.dtype), STRIDE_ONE,
-                                             REP_STRIDE_EIGHT)
-                # s322f16:vconv.deq, or s322f32:vconv
-                if self.dtype == FP16:
-                    self.tik_instance.vconv(MASK64, '', bin_area_fp_ub,
-                                            bin_area_int32, REP_TIMES.get(self.dtype),
-                                            STRIDE_ONE, STRIDE_ONE,
-                                            REP_STRIDE.get(self.dtype),
-                                            REP_STRIDE_EIGHT, deqscale=DEQSCALE)
-                else:
-                    if tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION) in \
-                            (tbe_platform.ASCEND_310, tbe_platform.ASCEND_320):
-                        bin_area_fp16_ub = \
-                            self.tik_instance.Tensor(FP16, (self.vec_elem_num,), name="bin_area_fp16_ub",
-                                                     scope=tbe_platform.scope_ubuf)
-                        self.tik_instance.vconv(MASK64, '', bin_area_fp16_ub,
-                                                bin_area_int32, REP_TIMES.get(self.dtype),
-                                                STRIDE_ONE, STRIDE_ONE, REP_STRIDE.get(FP16), REP_STRIDE_EIGHT,
-                                                deqscale=DEQSCALE)
-                        self.tik_instance.vconv(MASK64, '', bin_area_fp_ub,
-                                                bin_area_fp16_ub, REP_TIMES.get(self.dtype),
-                                                STRIDE_ONE, STRIDE_ONE, REP_STRIDE_EIGHT,
-                                                REP_STRIDE.get(FP16))
-                    else:
-                        self.tik_instance.vconv(MASK64, '', bin_area_fp_ub,
-                                                bin_area_int32, REP_TIMES.get(self.dtype),
-                                                STRIDE_ONE, STRIDE_ONE,
-                                                REP_STRIDE.get(self.dtype),
-                                                REP_STRIDE_EIGHT)
-            params["bin_area_fp_ub"] = bin_area_fp_ub
-            with self.tik_instance.for_range(0, self.output_dim, thread_num=2) as out_dim:
+                thread_num = 2
+            with self.tik_instance.for_range(0, self.output_dim, thread_num=thread_num) as out_dim:
                 params["output_dim_mask"] = out_dim
                 params["output_dim_bias"] = out_dim * self.k2
                 self._process_one_bin_2(params)
