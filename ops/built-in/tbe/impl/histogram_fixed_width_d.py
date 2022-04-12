@@ -484,7 +484,8 @@ def _fuction_calcu_one_segment(calc_ub_info,
     None
     """
     def _do_cmp_calcu(repeat, cal_offset, nbins_index):
-        if params.compile_plat in ("Ascend910", "Ascend610", "Ascend710"):
+        if params.compile_plat in ("Ascend910", "Ascend610", "Ascend710") \
+                or tbe_platform.api_check_support("tik.vgatherb"):
             params.ir_builder.emit(
                 tvm.call_extern(
                     params.vcadd_ub.dtype, "vadds",
@@ -594,11 +595,13 @@ def _fuction_calcu_one_segment(calc_ub_info,
                 params.ir_builder.emit(
                     tvm.call_extern("uint64", 'set_vector_mask',
                                     mask_paras[2][1], mask_paras[2][0]))
-            params.ir_builder.emit(
-                tvm.call_extern(params.vcadd_ub.dtype, "vcadd",
-                                params.vcadd_ub.access_ptr("rw", offset=0),
-                                params.vcadd_ub.access_ptr("r", offset=0), 1,
-                                1, 1, 8))
+
+            vcadd_expr = tvm.call_extern(params.vcadd_ub.dtype, "vcadd", params.vcadd_ub.access_ptr("rw", offset=0),
+                                         params.vcadd_ub.access_ptr("r", offset=0), 1, 1, 1, 8, 0) \
+                if tbe_platform.api_check_support("tik.vgatherb") \
+                else tvm.call_extern(params.vcadd_ub.dtype, "vcadd", params.vcadd_ub.access_ptr("rw", offset=0),
+                                     params.vcadd_ub.access_ptr("r", offset=0), 1, 1, 1, 8)
+            params.ir_builder.emit(vcadd_expr)
             if mask_paras[0] == Constant.SCALAR_ZERO:
                 params.ir_builder.emit(
                     tvm.call_extern("uint64", 'set_vector_mask',
@@ -614,8 +617,7 @@ def _fuction_calcu_one_segment(calc_ub_info,
         # add num of index to src_output_ub
         nbins_index_core = nbins_index - params.block.var * \
                            params.out_num_per_core
-        params.offset = \
-            (nbins_index_core // params.mid_vec_align_len) * \
+        params.offset = (nbins_index_core // params.mid_vec_align_len) * \
             params.mid_vec_align_len
         params.ir_builder.emit(
             tvm.call_extern("uint64", 'set_vector_mask', 0,
@@ -717,7 +719,8 @@ def _fuction_accu_to_output(_ib, params):
         # fp16 to s32
         kernel_api.kernel_cast_to_fuc(_ib, _addr_list, _data_info,
                                       "vconv_f162s32r")
-    elif params.compile_plat in ("Ascend910", "Ascend610", "Ascend710"):
+    elif params.compile_plat in ("Ascend910", "Ascend610", "Ascend710") \
+            or tbe_platform.api_check_support("tik.vgatherb"):
         kernel_api.kernel_cast_to_fuc(_ib, _addr_list, _data_info,
                                       "vconv_f322s32r")
 
