@@ -122,15 +122,26 @@ TEST_F(batch_norm_cast_fusion_test, batch_norm_cast_fusion_test_1) {
     graph.SetInputs(inputs).SetOutputs(outputs);
     ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
     fe::FusionPassTestUtils::InferShapeAndType(compute_graph_ptr);
+    string op_compile_strategy = "{}";
+    for (auto node : compute_graph_ptr->GetDirectNode()) {
+      if (node->GetType() == "BatchNorm") {
+        ge::AttrUtils::SetStr(node->GetOpDesc(), "_op_compile_strategy", op_compile_strategy);
+      }
+    }
     fe::FusionPassTestUtils::RunGraphFusionPass("FusedBatchnormFusionPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
 
     bool findBnreduce = false;
     bool findBnupdate = false;
     for (auto node: compute_graph_ptr->GetAllNodes()) {
+        string op_compile_strategy_tmp;
         if (node->GetType() == "BNTrainingReduce") {
+            ge::AttrUtils::GetStr(node->GetOpDesc(), "_op_compile_strategy", op_compile_strategy_tmp);
+            EXPECT_EQ(op_compile_strategy_tmp, op_compile_strategy);
             findBnreduce = true;
         }
         if (node->GetType() == "BNTrainingUpdate") {
+            ge::AttrUtils::GetStr(node->GetOpDesc(), "_op_compile_strategy", op_compile_strategy_tmp);
+            EXPECT_EQ(op_compile_strategy_tmp, op_compile_strategy);
             findBnupdate = true;
         }
     }

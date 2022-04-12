@@ -379,6 +379,8 @@ Status FusedBatchnormFusionPass::FusionGraphWithPass(ge::ComputeGraph& graph, Pa
   OP_LOGI(FUSED_OP_TYPE.c_str(),
           "Begin to fusion pass, the name of batch norm is [%s].", bnNodePtr->GetName().c_str());
   std::string fusedBatchNormName = bnNodePtr->GetOpDesc()->GetName();
+  string op_compile_strategy;
+  (void)ge::AttrUtils::GetStr(bnNodePtr->GetOpDesc(), ge::ATTR_NAME_OP_COMPILE_STRATEGY, op_compile_strategy);
   // BNTrainingReduce
   OpDescPtr bnReduceOp;
   FUSION_PASS_MAKE_SHARED(
@@ -529,6 +531,8 @@ Status FusedBatchnormFusionPass::FusionGraphWithPass(ge::ComputeGraph& graph, Pa
       return FAILED;
     }
   }
+
+  InheritAttrFromOriginNodes(bnUpdateNode->GetOpDesc(), bnReduceNode->GetOpDesc(), op_compile_strategy);
 
   Operator mulOp = ge::OpDescUtils::CreateOperatorFromNode(matchResult.mulNodeVec[0]);
   int constInputIndex = 1;
@@ -710,6 +714,15 @@ Status FusedBatchnormFusionPass::FusionGraphWithPass(ge::ComputeGraph& graph, Pa
   OP_LOGI(FUSED_OP_TYPE.c_str(), "BNUpdate : %s", updateOSS.str().c_str());
 
   return SUCCESS;
+}
+
+void FusedBatchnormFusionPass::InheritAttrFromOriginNodes(const ge::OpDescPtr &bn_update_op,
+                                                          const ge::OpDescPtr &bn_reduce_op,
+                                                          const string &op_compile_strategy) {
+  if (!op_compile_strategy.empty()) {
+    (void)ge::AttrUtils::SetStr(bn_update_op, ge::ATTR_NAME_OP_COMPILE_STRATEGY, op_compile_strategy);
+    (void)ge::AttrUtils::SetStr(bn_reduce_op, ge::ATTR_NAME_OP_COMPILE_STRATEGY, op_compile_strategy);
+  }
 }
 
 NodePtr FusedBatchnormFusionPass::FindInputNode(NodePtr nodePtr, string opType, PassMatchResult& matchResult,

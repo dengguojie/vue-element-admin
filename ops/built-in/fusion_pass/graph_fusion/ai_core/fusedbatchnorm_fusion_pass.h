@@ -82,6 +82,8 @@ class FusedBatchnormFusionPass : public PatternFusionBasePass {
     ge::NodePtr FindInputNodeByIndex(ge::NodePtr nodePtr, unsigned int index, PassMatchResult& matchResult, bool isRemoveEdge);
     Status SetOutputTensorDescAttr(uint16_t originOutputIndex, uint16_t fuseOutputIndex, ge::NodePtr originNode,
                                    ge::NodePtr fuseNode);
+    void InheritAttrFromOriginNodes(const ge::OpDescPtr &bn_update_op, const ge::OpDescPtr &bn_reduce_op,
+                                    const string &op_compile_strategy);
 
     std::string FUSED_OP_TYPE;
     std::string PASS_OP_TYPE_BATCHNORM;
