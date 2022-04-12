@@ -797,8 +797,12 @@ def sort_score_idx_by_desc(tik_instance, score_idx, score_idx_out, do_lens, leve
     compute_lens = REPEAT_NUM * SORT_LIST_NUM ** level
     data_lens = compute_lens // SORT_LIST_NUM
     whole_lens = compute_lens * SORT_LIST_NUM
+    if do_lens % compute_lens != 0:
+        raise RuntimeError("do_lens must be 32 * 4 ** n aligned.")
+
     loop_num = do_lens // whole_lens
-    offset = tik_instance.Scalar("uint32", init_value=0)
+    tail = do_lens % whole_lens
+    offset = tik_instance.Scalar("int32", init_value=0)
     if loop_num > 0:
         with tik_instance.for_range(0, loop_num) as idx:
             src_list = [score_idx[offset:offset + compute_lens],
@@ -807,18 +811,22 @@ def sort_score_idx_by_desc(tik_instance, score_idx, score_idx_out, do_lens, leve
                         score_idx[offset + compute_lens * 3:offset + compute_lens * 4]]
             count_list = [data_lens, data_lens, data_lens, data_lens]
             tik_instance.vmrgsort(score_idx_out[whole_lens * idx], src_list, count_list, False, 1)
-            offset.set_as(offset+whole_lens)
-    else:
-        compute_lens = do_lens // SORT_LIST_NUM
-        whole_lens = do_lens
-        data_lens = compute_lens // SORT_LIST_NUM
-        src_list = [score_idx[0:compute_lens],
-                    score_idx[compute_lens:compute_lens * 2],
-                    score_idx[compute_lens * 2:compute_lens * 3],
-                    score_idx[compute_lens * 3:compute_lens * 4]]
-        count_list = [data_lens, data_lens, data_lens, data_lens]
-        tik_instance.vmrgsort(score_idx_out, src_list, count_list, False, 1)
-
+            offset.set_as(offset + whole_lens)
+    if tail != 0:
+        tail_mode = tail // compute_lens
+        if tail_mode == 1:
+            ub2ub(tik_instance, score_idx_out[offset], score_idx[offset], tail)
+        elif tail_mode == 2:
+            src_list = [score_idx[offset:offset + compute_lens],
+                        score_idx[offset + compute_lens:offset + compute_lens * 2]]
+            count_list = [data_lens, data_lens]
+            tik_instance.vmrgsort(score_idx_out[offset], src_list, count_list, False, 1)
+        else:
+            src_list = [score_idx[offset:offset + compute_lens],
+                        score_idx[offset + compute_lens:offset + compute_lens * 2],
+                        score_idx[offset + compute_lens * 2:offset + compute_lens * 3]]
+            count_list = [data_lens, data_lens, data_lens]
+            tik_instance.vmrgsort(score_idx_out[offset], src_list, count_list, False, 1)
     if whole_lens >= do_lens:
         if level % 2 == 0:
             ub2ub(tik_instance, score_idx, score_idx_out, do_lens)
@@ -827,7 +835,7 @@ def sort_score_idx_by_desc(tik_instance, score_idx, score_idx_out, do_lens, leve
     return sort_score_idx_by_desc(tik_instance, score_idx_out, score_idx, do_lens, level)
 
 
-def init_index(tik_instance, src, index, offset, do_lens=PER_LOOP_NUM):
+def init_index(tik_instance, src, index, offset, do_lens):
     """
     initialize index for tik commond vsort32
 

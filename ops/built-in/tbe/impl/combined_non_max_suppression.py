@@ -56,6 +56,8 @@ class Constant:
     REPEAT_ELE = 32
     # every loop process 4096 units
     PER_LOOP_UNIT = 4096
+    # every loop process 4096 units during batch sorting scores_idx
+    BATCH_LOOP_UNIT = 1024
     # location elements, [x1, y1, x2, y2]
     FOUR_DIRECTION = 4
     # b16 elements num of every block also uesed as b16 elements num of mask
@@ -73,6 +75,10 @@ class Constant:
     # 0b0001 0001 0001 0001 is equals to type 3
     PATTERN_TYPE = 3
     FP16_MINS = -65504
+
+    # PIECES
+    FOUR_PIECE = 4
+    TWO_PIECE = 2
 
 
 # 'pylint: disable=too-many-instance-attributes,too-many-arguments,too-many-statements,too-many-locals
@@ -984,17 +990,11 @@ class CNMS:
         self.nmsed_classes_shape = [self.batch, self.max_total_size]
         self.nmsed_num_shape = [self.batch, Constant.BLOCK_ELE_B32]
 
-        # init 4 clip to windows scalar
-        if self.need_clip_window:
-            if self.change_coordinate_frame:
-                self.down_flag = False
-                self.clip_window_value_list = [self.tik_instance.Scalar(dtype="float16") for _ in range(6)]
-            else:
-                self.clip_window_value_list = [self.tik_instance.Scalar(dtype="float16") for _ in range(4)]
-        else:
-            self.clip_window_value_list = None
-        # init 1 valid num scalar
-        self.valid_num_value = self.tik_instance.Scalar(dtype="int32")
+        # optimize the compute data lens
+        if self.boxes_num < Constant.PER_LOOP_UNIT // Constant.FOUR_PIECE:
+            Constant.PER_LOOP_UNIT = Constant.PER_LOOP_UNIT // Constant.FOUR_PIECE
+        elif self.boxes_num < Constant.PER_LOOP_UNIT // Constant.TWO_PIECE:
+            Constant.PER_LOOP_UNIT = Constant.PER_LOOP_UNIT // Constant.TWO_PIECE
 
         idx_size = ceil_div(self.boxes_num, Constant.PER_LOOP_UNIT) * Constant.PER_LOOP_UNIT
         idx_init = [i for i in range(idx_size)]
@@ -1146,7 +1146,7 @@ class CNMS:
         # temp set as 4096, can be optimized later
         shape_aligned = Constant.PER_LOOP_UNIT
         eff_size = tik_instance.Scalar(dtype="uint32", name="eff_size")
-        eff_lens = tik_instance.Scalar(dtype="uint32", name="eff_lens")
+        eff_lens = tik_instance.Scalar(dtype="uint32", name="eff_lens", init_value=Constant.PER_LOOP_UNIT)
         pre_eff_lens = tik_instance.Scalar(dtype="uint32", name="pre_eff_lens", init_value=0)
 
         x1_ub = tik_instance.Tensor("float16", [shape_aligned, ], name="x1_ub", scope=tik.scope_ubuf)
@@ -1160,11 +1160,13 @@ class CNMS:
                                                  name="scores_idx_out", scope=tik.scope_ubuf)
             # first round, process top 4096 units
             self.gen_score_index(real_batch_idx, class_idx, scores, scores_idx_out)
-            self.select_threshold(scores_idx_out, eff_size, gate_value=self.score_thresh)
+            self.select_threshold(scores_idx_out, eff_size, shape_aligned, gate_value=self.score_thresh)
+            with tik_instance.if_scope(eff_size > self.boxes_num):
+                eff_size.set_as(self.boxes_num)
 
             self.get_boxes_after_score_thresh(x1_ub, x2_ub, y1_ub, y2_ub, scores_ub, real_batch_idx, class_idx, boxes,
                                               scores_idx_out, eff_size)
-            self.iou_selection(x1_ub, x2_ub, y1_ub, y2_ub, scores_ub, eff_lens, eff_size)
+            self.iou_selection(x1_ub, x2_ub, y1_ub, y2_ub, scores_ub, eff_lens)
             pre_eff_lens.set_as(eff_lens)
             with tik_instance.if_scope(eff_lens < max(self.max_total_size, self.max_size_per_class)):
                 self.set_default_to_scores(scores_ub, eff_lens)
@@ -1182,13 +1184,18 @@ class CNMS:
                 scores_idx_out = tik_instance.Tensor("float16", [Constant.PER_LOOP_UNIT * Constant.UNIT_ELE * 2, ],
                                                      name="scores_idx_out", scope=tik.scope_ubuf)
                 self.sort_second_round_data(real_batch_idx, class_idx, scores_idx_out)
-                self.select_threshold(scores_idx_out, eff_size, gate_value=self.score_thresh)
+                self.select_threshold(scores_idx_out, eff_size, shape_aligned, gate_value=self.score_thresh)
+
+                with tik_instance.if_scope(tik.all(self.boxes_num > Constant.PER_LOOP_UNIT,
+                                                   eff_size > (self.boxes_num - Constant.PER_LOOP_UNIT))):
+                    eff_size.set_as(self.boxes_num - Constant.PER_LOOP_UNIT)
+
                 eff_lens.set_as(0)
                 with tik_instance.if_scope(eff_size > 0):
                     self.get_boxes_after_score_thresh(x1_ub, x2_ub, y1_ub, y2_ub, scores_ub, real_batch_idx, class_idx,
                                                       boxes, scores_idx_out, eff_size, pre_eff_lens)
 
-                    self.iou_selection(x1_ub, x2_ub, y1_ub, y2_ub, scores_ub, eff_lens, eff_size)
+                    self.iou_selection(x1_ub, x2_ub, y1_ub, y2_ub, scores_ub, eff_lens)
                     with tik_instance.if_scope(eff_lens < max(self.max_total_size, self.max_size_per_class)):
                         self.set_default_to_scores(scores_ub, eff_lens)
             if self.classes == 1:
@@ -1310,7 +1317,7 @@ class CNMS:
                         self.workspace_score_idx[real_batch_idx, class_idx, left_size - tail_left + _idx])
                 sort_score_idx_by_desc(tik_instance, scores_idx_ub, dst, score_idx_lens)
 
-    def init_tensor(self, src, size=Constant.PER_LOOP_UNIT, init_value=0):
+    def init_tensor(self, src, size, init_value=0):
         """
         initialize the input tensor, set as init value
 
@@ -1383,7 +1390,7 @@ class CNMS:
         with tik_instance.new_stmt_scope():
             # define the tmp tensor, as 32 bytes aligned required
             index = tik_instance.Tensor("uint32", [per_loop_ele, ], name="idx_ub", scope=tik.scope_ubuf)
-            init_index(tik_instance, self.idx_gm, index, 0)
+            init_index(tik_instance, self.idx_gm, index, 0, per_loop_ele)
             scores_ub = tik_instance.Tensor("float16", [per_loop_ele, ], name="scores_ub", scope=tik.scope_ubuf)
             scores_idx_ub = tik_instance.Tensor("float16", [score_idx_lens * 2, ],
                                                 name="scores_idx_ub", scope=tik.scope_ubuf)
@@ -1396,7 +1403,7 @@ class CNMS:
 
                 with tik_instance.for_range(1, loop_num) as loop_idx:
                     # set value for index
-                    init_index(tik_instance, self.idx_gm, index, loop_idx * per_loop_ele)
+                    init_index(tik_instance, self.idx_gm, index, loop_idx * per_loop_ele, per_loop_ele)
 
                     gm2ub_for_vsort32(tik_instance, score_gm, [batch_idx, class_idx, per_loop_ele * loop_idx],
                                       scores_ub, score_idx_lens)
@@ -1411,7 +1418,7 @@ class CNMS:
                         scores_idx_out[score_idx_lens], 0, 1, burst_lens_idx, 0, 0)
 
                 with tik_instance.if_scope(tail > 0):
-                    init_index(tik_instance, self.idx_gm, index, loop_num * per_loop_ele)
+                    init_index(tik_instance, self.idx_gm, index, loop_num * per_loop_ele, per_loop_ele)
                     # init scores_ub & scores_idx_ub in order to clear the pre data
                     self.init_tensor(scores_ub, per_loop_ele, Constant.FP16_MINS)
                     self.init_tensor(scores_idx_ub, score_idx_lens * 2)
@@ -1434,11 +1441,9 @@ class CNMS:
                 self.init_tensor(scores_ub, per_loop_ele, Constant.FP16_MINS)
                 gm2ub_for_vsort32(tik_instance, score_gm, [batch_idx, class_idx, 0], scores_ub, tail)
                 tik_instance.vsort32(scores_idx_ub, scores_ub, index, repeat_times)
-                do_lens = ceil_div(self.boxes_num,
-                                   Constant.UNIT_ELE * Constant.REPEAT_ELE) * Constant.UNIT_ELE * Constant.REPEAT_ELE
-                sort_score_idx_by_desc(tik_instance, scores_idx_ub, scores_idx_out, do_lens)
+                sort_score_idx_by_desc(tik_instance, scores_idx_ub, scores_idx_out, score_idx_lens)
 
-    def select_threshold(self, scores_index, eff_size, shape_size=Constant.PER_LOOP_UNIT, gate_value=0):
+    def select_threshold(self, scores_index, eff_size, shape_size, gate_value=0):
         """
         compute of index of effective scores based on the gate_value
 
@@ -1461,26 +1466,27 @@ class CNMS:
         shape = (shape_size,)
         mask_shape = (shape_size // Constant.BLOCK_ELE,)
 
-        with tik_instance.new_stmt_scope():
-            scores_tmp = tik_instance.Tensor("float16", shape,
-                                             name="scores_tmp", scope=tik.scope_ubuf)
-            scores_thresh = tik_instance.Tensor("float16", shape,
-                                                name="scores_thresh", scope=tik.scope_ubuf)
-            # gen scores_thresh tensor
-            self.init_tensor(scores_thresh, shape_size, gate_value)
+        if gate_value == 0:
+            eff_size.set_as(shape_size)
+            return
+        else:
+            with tik_instance.new_stmt_scope():
+                scores_tmp = tik_instance.Tensor("float16", shape, name="scores_tmp", scope=tik.scope_ubuf)
+                scores_thresh = tik_instance.Tensor("float16", shape, name="scores_thresh", scope=tik.scope_ubuf)
+                # gen scores_thresh tensor
+                self.init_tensor(scores_thresh, shape_size, gate_value)
 
-            mask_uint16 = tik_instance.Tensor("uint16", mask_shape, name="mask_int8",
-                                              scope=tik.scope_ubuf)
+                mask_uint16 = tik_instance.Tensor("uint16", mask_shape, name="mask_int8", scope=tik.scope_ubuf)
 
-            # move scores data from scores_index to scores_tmp
-            mask, _ = get_mask_rep_stride(scores_thresh)
-            repeat_times = shape_size * Constant.FOUR_DIRECTION // mask
-            tik_instance.vreducev2(None, scores_tmp, scores_index, Constant.PATTERN_TYPE, repeat_times, 1, 8, 0)
+                # move scores data from scores_index to scores_tmp
+                mask, _ = get_mask_rep_stride(scores_thresh)
+                repeat_times = shape_size * Constant.FOUR_DIRECTION // mask
+                tik_instance.vreducev2(None, scores_tmp, scores_index, Constant.PATTERN_TYPE, repeat_times, 1, 8, 0)
 
-            # gen mask and then get the effective data lens
-            self.gen_mask(scores_thresh, scores_tmp, mask_uint16, shape_size)
-            tik_instance.vreducev2(shape_size, scores_thresh, scores_tmp, mask_uint16, 1, 1, 8, 1, rsvd_scalar=eff_size,
-                                   mask_mode="counter")
+                # gen mask and then get the effective data lens
+                self.gen_mask(scores_thresh, scores_tmp, mask_uint16, shape_size)
+                tik_instance.vreducev2(shape_size, scores_thresh, scores_tmp, mask_uint16, 1, 1, 8, 1,
+                                       rsvd_scalar=eff_size, mask_mode="counter")
 
     def get_boxes_after_score_thresh(self, xx1, xx2, yy1, yy2, scores_ub, batch_idx, class_idx, boxes,
                                      scores_index, size=4096, offset=0):
@@ -1538,9 +1544,12 @@ class CNMS:
             yy1[offset + idx].set_as(boxes[batch_idx, class_idx, 1, lo_index])
             xx2[offset + idx].set_as(boxes[batch_idx, class_idx, 2, lo_index])
             yy2[offset + idx].set_as(boxes[batch_idx, class_idx, 3, lo_index])
-            scores_ub[offset + idx].set_as(scores_index[scores_index_offset])
 
-    def iou_selection(self, xx1, xx2, yy1, yy2, scores, eff_lens, pre_lens):
+        mask, _ = get_mask_rep_stride(scores_ub)
+        repeat_times = idx_aligned * Constant.FOUR_DIRECTION // mask
+        tik_instance.vreducev2(None, scores_ub, scores_index, Constant.PATTERN_TYPE, repeat_times, 1, 8, 0)
+
+    def iou_selection(self, xx1, xx2, yy1, yy2, scores, eff_lens):
         """
         calculate the overlap of multi boxes, sieve out target boxes with  iou_thresh
 
@@ -1558,8 +1567,6 @@ class CNMS:
             scores data in ub
         eff_lens : Scalar
             effect data lens
-        pre_lens : Scalar
-            pre cycle effective data lens
 
         Returns
         -------
@@ -1568,8 +1575,6 @@ class CNMS:
         """
         tik_instance = self.tik_instance
         shape_aligned = Constant.PER_LOOP_UNIT
-        # effective data size after vreduce
-        eff_data_size = tik_instance.Scalar("uint32", name="eff_data_size", init_value=Constant.PER_LOOP_UNIT)
 
         with tik_instance.new_stmt_scope():
             single_area = tik_instance.Tensor("float16", [shape_aligned, ], name="single_area",
@@ -1580,32 +1585,29 @@ class CNMS:
             mask_uint16 = tik_instance.Tensor("uint16", [mask_shape_lens, ], name="mask_int8",
                                               scope=tik.scope_ubuf)
 
-            self.init_tensor(iou)
+            self.init_tensor(iou, shape_aligned)
             self.init_tensor(mask_uint16, mask_shape_lens)
 
             # get area of every window
             self.get_rectangle_area(xx1, xx2, yy1, yy2, single_area)
 
             # calculate the iou, end up when the output windows is more than max_size_per_class
-            overlap = tik_instance.Tensor("float16", [shape_aligned, ], name="overlap",
-                                          scope=tik.scope_ubuf)
+            overlap = tik_instance.Tensor("float16", [shape_aligned, ], name="overlap", scope=tik.scope_ubuf)
             # define tmp tensor for following use, to reduce the cycle of apply/release memory
-            tmp1 = tik_instance.Tensor("float16", [shape_aligned, ], name="tmp1",
-                                       scope=tik.scope_ubuf)
-            tmp2 = tik_instance.Tensor("float16", [shape_aligned, ], name="tmp2",
-                                       scope=tik.scope_ubuf)
+            tmp1 = tik_instance.Tensor("float16", [shape_aligned, ], name="tmp1", scope=tik.scope_ubuf)
+            tmp2 = tik_instance.Tensor("float16", [shape_aligned, ], name="tmp2", scope=tik.scope_ubuf)
 
             with tik_instance.for_range(0, self.max_size_per_class) as idx:
-                with tik_instance.if_scope(idx <= eff_data_size - 1):
+                with tik_instance.if_scope(idx < eff_lens):
                     # get overlap of windows_idx and the followings
                     self.get_overlap(xx1, xx2, yy1, yy2, overlap, tmp1, tmp2, idx)
                     # get overlap of windows_idx and the followings
-                    self.cal_iou(single_area, iou, tmp2, idx)
-                    self.gen_mask(overlap, iou, mask_uint16)
-                    self.update_input(xx1, xx2, yy1, yy2, scores, single_area, eff_data_size, tmp1, tmp2, mask_uint16)
-                    eff_data_size.set_as(pre_lens - (Constant.PER_LOOP_UNIT - eff_data_size))
-                    pre_lens.set_as(eff_data_size)
-                    eff_lens.set_as(idx + 1)
+                    self.cal_iou(single_area, iou, tmp2, idx, Constant.PER_LOOP_UNIT)
+                    self.gen_mask(overlap, iou, mask_uint16, Constant.PER_LOOP_UNIT)
+                    self.update_input(xx1, xx2, yy1, yy2, scores, single_area, eff_lens, tmp1, tmp2, mask_uint16)
+                with tik_instance.else_scope():
+                    eff_lens.set_as(eff_lens - 1)
+                    tik_instance.tik_break()
 
     def update_input(self, xx1, xx2, yy1, yy2, scores, single_area, size, tmp1, tmp2, cmpmask_ub):
         """
@@ -1637,31 +1639,25 @@ class CNMS:
         tik_instance = self.tik_instance
         mask = Constant.PER_LOOP_UNIT
         burst_lens = Constant.PER_LOOP_UNIT // Constant.BLOCK_ELE
-        self.init_tensor(tmp1)
-        self.init_tensor(tmp2)
+        self.init_tensor(tmp1, Constant.PER_LOOP_UNIT)
+        self.init_tensor(tmp2, Constant.PER_LOOP_UNIT)
 
         tik_instance.vreducev2(mask, tmp1, xx1, cmpmask_ub, 1, 1, 8, 1, rsvd_scalar=size, mask_mode="counter")
-        self.init_tensor(xx1)
         tik_instance.data_move(xx1, tmp1, 0, 1, burst_lens, 0, 0)
 
         tik_instance.vreducev2(mask, tmp2, xx2, cmpmask_ub, 1, 1, 8, 1, mask_mode="counter")
-        self.init_tensor(xx2)
         tik_instance.data_move(xx2, tmp2, 0, 1, burst_lens, 0, 0)
 
         tik_instance.vreducev2(mask, tmp1, yy1, cmpmask_ub, 1, 1, 8, 1, mask_mode="counter")
-        self.init_tensor(yy1)
         tik_instance.data_move(yy1, tmp1, 0, 1, burst_lens, 0, 0)
 
         tik_instance.vreducev2(mask, tmp2, yy2, cmpmask_ub, 1, 1, 8, 1, mask_mode="counter")
-        self.init_tensor(yy2)
         tik_instance.data_move(yy2, tmp2, 0, 1, burst_lens, 0, 0)
 
         tik_instance.vreducev2(mask, tmp1, scores, cmpmask_ub, 1, 1, 8, 1, mask_mode="counter")
-        self.init_tensor(scores)
         tik_instance.data_move(scores, tmp1, 0, 1, burst_lens, 0, 0)
 
         tik_instance.vreducev2(mask, tmp2, single_area, cmpmask_ub, 1, 1, 8, 1, mask_mode="counter")
-        self.init_tensor(single_area)
         tik_instance.data_move(single_area, tmp2, 0, 1, burst_lens, 0, 0)
 
     def get_rectangle_area(self, xx1, xx2, yy1, yy2, dst):
@@ -1697,12 +1693,8 @@ class CNMS:
             mask, _ = get_mask_rep_stride(xx2)
             repeat_times = shape_aligned // mask
 
-            tik_instance.vsub(mask, dst, xx2, xx1, repeat_times, 1, 1, 1, 8, 8, 8)
-            tik_instance.vsub(mask, y_diff, yy2, yy1, repeat_times, 1, 1, 1, 8, 8, 8)
-
-            # rpn_offset set as 1
-            tik_instance.vadds(mask, tmp1, dst, 1, repeat_times, 1, 1, 8, 8)
-            tik_instance.vadds(mask, tmp2, y_diff, 1, repeat_times, 1, 1, 8, 8)
+            tik_instance.vsub(mask, tmp1, xx2, xx1, repeat_times, 1, 1, 1, 8, 8, 8)
+            tik_instance.vsub(mask, tmp2, yy2, yy1, repeat_times, 1, 1, 1, 8, 8, 8)
 
             tik_instance.vmul(mask, dst, tmp1, tmp2, repeat_times, 1, 1, 1, 8, 8, 8)
 
@@ -1748,29 +1740,26 @@ class CNMS:
             # `tmp = max(xx1[i], xx1[1:]), overlap=min(xx2[i], xx2[1:])
             tik_func_vmaxs(tik_instance, tmp, xx1, x1, shape_aligned, dst_blk=1, src_blk=1, dst_rep=8, src_rep=8)
             tik_func_vmins(tik_instance, overlap, xx2, x2, shape_aligned, dst_blk=1, src_blk=1, dst_rep=8, src_rep=8)
-
             mask, _ = get_mask_rep_stride(xx1)
             repeat_times = shape_aligned // mask
-            # `w = max(0, xx2-xx1+offset), offset=1 here, sorted in tmp`
+            # `w = max(0, xx2-xx1+offset), offset=0 here, sorted in tmp1`
             tik_instance.vsub(mask, tmp, overlap, tmp, repeat_times, 1, 1, 1, 8, 8, 8)
-            tik_instance.vadds(mask, tmp1, tmp, 1, repeat_times, 1, 1, 8, 8)
+            tik_func_vmaxs(tik_instance, tmp1, tmp, 0, shape_aligned, dst_blk=1, src_blk=1, dst_rep=8, src_rep=8)
 
-            tik_func_vmaxs(tik_instance, tmp, tmp1, 0, shape_aligned, dst_blk=1, src_blk=1, dst_rep=8, src_rep=8)
             # `yyy1 = max(yy1[i], yy1[1:]), overlap = min(yy2[i], yy2[1:])`
             tik_func_vmaxs(tik_instance, yyy1, yy1, y1, shape_aligned, dst_blk=1, src_blk=1, dst_rep=8, src_rep=8)
             tik_func_vmins(tik_instance, overlap, yy2, y2, shape_aligned, dst_blk=1, src_blk=1, dst_rep=8, src_rep=8)
 
-            # `h = max(0, yy2 - yy1 + offset), offset=1 here, sorted in yyy1`
+            # `h = max(0, yy2 - yy1 + offset), offset=0 here, sorted in tmp`
             tik_instance.vsub(mask, yyy1, overlap, yyy1, repeat_times, 1, 1, 1, 8, 8, 8)
-            tik_instance.vadds(mask, tmp1, yyy1, 1, repeat_times, 1, 1, 8, 8)
+            tik_func_vmaxs(tik_instance, tmp, yyy1, 0, shape_aligned, dst_blk=1, src_blk=1, dst_rep=8, src_rep=8)
 
-            tik_func_vmaxs(tik_instance, yyy1, tmp1, 0, shape_aligned, dst_blk=1, src_blk=1, dst_rep=8, src_rep=8)
-            tik_instance.vmul(mask, overlap, tmp, yyy1, repeat_times, 1, 1, 1, 8, 8, 8)
+            tik_instance.vmul(mask, overlap, tmp1, tmp, repeat_times, 1, 1, 1, 8, 8, 8)
 
             # the overlap of the fixed boxes and itself default as 0
             overlap[offset].set_as(0)
 
-    def cal_iou(self, src0, dst, tmp, offset, size=Constant.PER_LOOP_UNIT):
+    def cal_iou(self, src0, dst, tmp, offset, size):
         """
         to calculate the related areas based on iou_thresh
 
@@ -1824,17 +1813,18 @@ class CNMS:
         vector_mask, _ = get_mask_rep_stride(overlap)
         per_loop_num = Constant.REPEAT_TIMES_MAX * vector_mask
         loops = size // per_loop_num
-        offset = 0
+        offset = tik_instance.Scalar("int32", init_value=0)
 
         # step1: max. mask * max. repeat  * loops times
         if loops > 0:
-            with tik_instance.for_range(0, loops) as _:
+            with tik_instance.for_range(0, loops) as idx:
                 # vec_cmpv_lt deal with 255 * 128 fp16 elements once
                 tik_instance.vec_cmpv_lt(mask[offset],
                                          overlap[offset],
                                          iou[offset],
                                          Constant.REPEAT_TIMES_MAX,
                                          8, 8)
+                offset.set_as(per_loop_num * (idx + 1))
 
         # step3: last num
         repeat_times = (size % per_loop_num) // vector_mask
@@ -1925,9 +1915,9 @@ class CNMS:
         """
         tik_instance = self.tik_instance
         mask, _ = get_mask_rep_stride(src)
-        size = ceil_div(self.classes * max(self.max_size_per_class, self.max_total_size), mask) * mask
+        size = Constant.BATCH_LOOP_UNIT
+        size_out = Constant.BATCH_LOOP_UNIT * Constant.UNIT_ELE
 
-        size_out = ceil_div(max(self.max_total_size, self.max_size_per_class), mask) * mask * Constant.UNIT_ELE
         score_idx_out = tik_instance.Tensor("float16", [size_out * Constant.UNIT_ELE * 2, ], name="score_idx_out",
                                             scope=tik.scope_ubuf)
 
@@ -1989,7 +1979,7 @@ class CNMS:
         mask, _ = get_mask_rep_stride(src)
         uint_lens = ceil_div(self.max_size_per_class, Constant.BLOCK_ELE) * Constant.BLOCK_ELE
         # to accelerate the process, every cycle deal with data of 4 classes
-        per_loop_ele = ceil_div(self.max_size_per_class, Constant.REPEAT_ELE) * Constant.REPEAT_ELE * Constant.UNIT_ELE
+        per_loop_ele = Constant.BATCH_LOOP_UNIT * Constant.UNIT_ELE
         score_idx_lens = per_loop_ele * Constant.UNIT_ELE
         loop_num = ceil_div(self.classes, Constant.UNIT_ELE)
 
@@ -2020,7 +2010,7 @@ class CNMS:
                         # init scores_ub & scores_idx_ub in order to clear the pre data
                         self.init_tensor(scores_ub, per_loop_ele, Constant.FP16_MINS)
 
-                    init_index(tik_instance, self.idx_gm, index, loop_idx * per_loop_ele)
+                    init_index(tik_instance, self.idx_gm, index, loop_idx * per_loop_ele, per_loop_ele)
                     with tik_instance.for_range(0, Constant.UNIT_ELE) as class_idx:
                         real_class_idx = loop_idx * Constant.UNIT_ELE + class_idx
                         with tik_instance.if_scope(real_class_idx < self.classes):
@@ -2033,15 +2023,12 @@ class CNMS:
                     do_lens = score_idx_lens * 2
                     sort_score_idx_by_desc(tik_instance, scores_idx_ub, scores_idx_out, do_lens)
 
-
             else:
                 with tik_instance.for_range(0, Constant.UNIT_ELE) as class_idx:
                     gm2ub_for_vsort32(tik_instance, src, [batch_idx, class_idx, 0], scores_ub[uint_lens * class_idx],
                                       self.max_size_per_class)
                 tik_instance.vsort32(scores_idx_ub, scores_ub, index, repeat_times)
-
-                do_lens = score_idx_lens
-                sort_score_idx_by_desc(tik_instance, scores_idx_ub, scores_idx_out, do_lens)
+                sort_score_idx_by_desc(tik_instance, scores_idx_ub, scores_idx_out, score_idx_lens)
 
     def sort_single_class_per_batch(self, batch_idx, data_lens, xx1, xx2, yy1, yy2, scores_ub):
         """
