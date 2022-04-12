@@ -4155,6 +4155,7 @@ pytorch:
       - ops/built-in/tbe/impl/giou.py
       - ops/built-in/tbe/impl/dynamic/reduce_std_with_mean.py
       - ops/built-in/tbe/impl/dynamic/embedding_dense_grad.py
+      - ops/built-in/tbe/impl/fill_v2_d.py
     unrelease:
       - ops/built-in/tests/ut/graph_fusion/ai_core/lstmp_fusion_test.cpp
       - ops/built-in/tests/ut/graph_fusion/ai_core/dynamic_rnn_v2_grad_fusion_test.cpp

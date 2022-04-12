@@ -200,5 +200,6 @@ def fill_v2_d(y, value, shape, kernel_name="fill_v2_d"):
 
     # build operater
     config = {"name": kernel_name,
-              "tensor_list": (data_x, res)}
+              "tensor_list": (data_x, res),
+              "dummy_placeholder": False}
     tbe.cce_build_code(schedule, config)
