@@ -2,6 +2,7 @@
 # -*- coding: UTF-8 -*-
 from op_test_frame.ut import OpUT
 import numpy as np
+import json
 from op_test_frame.common import precision_info
 ut_case = OpUT("FusedMulAdd", None, None)
 
@@ -115,5 +116,43 @@ def test_op_select_format(test_arg):
                      {"shape": (16, 16), "dtype": "float16", "format": "ND", "ori_shape": (16, 16), "ori_format": "ND"},
                      "test_fused_mul_add_op_select_format_1")
 
-ut_case.add_cust_test_func(test_func=test_op_select_format)
+def test_op_support_info(test_arg):
+    """
+    test_op_support_info
+    """
+    from impl.fused_mul_add import get_op_support_info
+    res = get_op_support_info({"shape": (4, 16, 24, 24, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (4, 16, 384, 384), "ori_format": "ND"},
+                     {"shape": [], "dtype": "float16", "format": "ND", "ori_shape": [], "ori_format": "ND"},
+                     {"shape": (4, 1, 1, 384), "dtype": "float16", "format": "ND", "ori_shape": (4, 1, 1, 384), "ori_format": "ND"},
+                     {"shape": (4, 16, 24, 24, 16, 16), "dtype": "float16", "format": "ND", "ori_shape": (4, 16, 384, 384), "ori_format": "ND"},
+                     "test_fused_mul_add_op_support_info_1")
+    split_maps = json.loads(res).get("_op_slice_info").get("splitMaps")
+    assert len(split_maps) == 1
+    for item in split_maps:
+        input_list = item.get("inputList")
+        assert len(input_list) == 2
+        idx = input_list[0].get("idx")
+        assert idx == 0
+        idx = input_list[1].get("idx")
+        assert idx == 2
+    
+    res_2 = get_op_support_info({"shape": (4, 1, 1, 384), "dtype": "float16", "format": "ND", "ori_shape": (4, 1, 1, 384), "ori_format": "ND"},
+                     {"shape": (4, 1, 1, 384), "dtype": "float16", "format": "ND", "ori_shape": (4, 1, 1, 384), "ori_format": "ND"},
+                     {"shape": (4, 1, 1, 384), "dtype": "float16", "format": "ND", "ori_shape": (4, 1, 1, 384), "ori_format": "ND"},
+                     {"shape": (4, 1, 1, 384), "dtype": "float16", "format": "ND", "ori_shape": (4, 1, 1, 384), "ori_format": "ND"},
+                     "test_fused_mul_add_op_support_info_2")
+
+    from impl.util.util_common import update_shape_for_other_format
+    #update_shape_for_other_format(src_shape, src_format, dst_format)
+    update_shape_for_other_format((16, 16, 16, 16, 16), "NC1HWC0", (16, 256, 16, 16), "NCHW")
+    update_shape_for_other_format((16, 16, 16, 16, 16), "ND", (16, 256, 16, 16), "FRACTAL_NZ")
+    update_shape_for_other_format((16, 16, 16, 16, 16), "NDCHW", (16, 16, 16, 16, 16), "NDC1HWC0")
+    update_shape_for_other_format((16, 16, 16, 16), "NCHW", (16, 16, 16, 16), "FRACTAL_Z")
+    update_shape_for_other_format((16, 16, 16, 16), "NCHW", (16, 16, 16, 16), "NC1HWC0")
+    update_shape_for_other_format((16, 16, 16, 16), "NCHW", (16, 16, 16, 16), "NCHW", "int8")
+    update_shape_for_other_format((16,), "ND", (16,), "FRACTAL_NZ")
+    update_shape_for_other_format((16, 16, 16, 16, 16), "NDCHW", (16, 16, 16, 16, 16), "FRACTAL_Z_3D")
+
+
+ut_case.add_cust_test_func(test_func=test_op_support_info)
 

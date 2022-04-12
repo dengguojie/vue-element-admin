@@ -27,13 +27,20 @@ from impl.util import util_select_op_base
 from impl.util.util_compute import batchmatmul_elem_nd2nz
 from impl.util.util_compute import batchmatmul_elem_reshape
 from impl.util.util_compute import check_batchmatmul_fuse
+from impl.util.util_common import update_shape_for_other_format
 from impl.util.platform_adapter import error_manager_vector
+from impl.util.util_select_op_base import SplitInput
+from impl.util.util_select_op_base import SplitOutput
+from impl.util.util_select_op_base import get_op_cal_info
 
 
 # 'pylint: disable=locally-disabled,unused-variable,unused-argument
 # 'pylint: disable=locally-disabled,too-many-locals,too-many-statements
 # 'pylint: disable=locally-disabled,too-many-branches,unused-variable
 def _division_sixteen(shape):
+    """
+    check be div by sixteen
+    """
     if len(shape) < 2:
         if shape[-1] == 0:
             error_detail = 'value of shape is illegal, shape[-1] == 0'
@@ -45,6 +52,77 @@ def _division_sixteen(shape):
         error_manager_vector.raise_err_specific_reson("fused_mul_add", error_detail)
 
     return shape[-1] % constant_util.SIZE_SIXTEEN == 0 and shape[-2] % constant_util.SIZE_SIXTEEN == 0
+
+
+def split_bind(shape0, shape1):
+    """
+    check can be split together
+    """
+    if len(shape0) == 0 or len(shape1) == 0:
+        return False
+    if shape0[0] == 1 or shape1[0] == 1:
+        return False
+    if len(shape0) != len(shape1):
+        return False
+    if shape0[0] == shape1[0]:
+        return True
+    return False
+
+
+def get_split_matrix(input0_shape, input1_shape, input2_shape):
+    """
+    get axis split matrix
+    """
+    axis_split_matrix = None
+    if split_bind(input0_shape, input1_shape):
+        input_slice_list = [[0, [0], [-1], [-1]], [1, [0], [-1], [-1]]]
+        if split_bind(input1_shape, input2_shape):
+            input_slice_list.append([2, [0], [-1], [-1]])
+        split_0 = [SplitInput(*input_slice_list), SplitOutput([0, [0]])]
+        axis_split_matrix = [split_0]
+
+    elif split_bind(input0_shape, input2_shape):
+        input_slice_list = [[0, [0], [-1], [-1]], [2, [0], [-1], [-1]]]
+        split_0 = [SplitInput(*input_slice_list), SplitOutput([0, [0]])]
+        axis_split_matrix = [split_0]
+    
+    elif split_bind(input1_shape, input2_shape):
+        input_slice_list = [[0, [0], [-1], [-1]], [1, [0], [-1], [-1]]]
+        split_0 = [SplitInput(*input_slice_list), SplitOutput([0, [0]])]
+        axis_split_matrix = [split_0]
+    
+    return axis_split_matrix
+
+
+def get_op_support_info(input0, input1, input2, output,
+                        kernel_name="fused_mul_add"):
+    """
+    get_op_support_info
+    """
+    input0_shape = list(input0.get('shape'))
+    input1_shape = list(input1.get('shape'))
+    input2_shape = list(input2.get('shape'))
+
+    input_list = [input0, input1, input2]
+    input_shape_list = [input0_shape, input1_shape, input2_shape]
+    input_len_list = [len(input0_shape), len(input1_shape), len(input2_shape)]
+    maxlen_idx = input_len_list.index(max(input_len_list))
+
+    axis_split_matrix = None
+    axis_reduce_list = None
+
+    if input_len_list[maxlen_idx] != 0:
+        for _idx, _input in enumerate(input_list):
+            if _idx != maxlen_idx and input_len_list[_idx] != 0:
+                input_shape_list[_idx] = \
+                update_shape_for_other_format(_input['shape'], 
+                                              _input['format'].upper(),
+                                              _input['ori_shape'],
+                                              input_list[maxlen_idx]['format'].upper())
+
+        axis_split_matrix = get_split_matrix(*input_shape_list)
+    op_cal_info_in_json = get_op_cal_info(axis_split_matrix, axis_reduce_list, 0, 0)
+    return op_cal_info_in_json
 
 
 def op_select_format(input0, input1, input2, output,

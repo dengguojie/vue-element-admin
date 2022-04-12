@@ -19,11 +19,15 @@ import os
 import json
 import itertools
 import math
+
+from sympy import re
+
 import te.lang.cce as tbe
 from te.utils.error_manager import error_manager_util
 from te import platform as tbe_platform
 from te import tvm
 from impl.util.platform_adapter import tbe_platform as tbe_platform_adapter
+from impl.util.util_tensor_dict import FormatConstant
 
 PAD_MIN = 0
 # the dim of most parameters in conv3d is 5
@@ -192,6 +196,114 @@ def calculate_group(fmap_c, cout, groups, cout0, cin0):
                   "cout_ori": cout}
 
     return group_dict
+
+
+def _get_axis_all(fmt, src_shape, src_format):
+    """
+    get all axis
+    """
+    if fmt in ("NCHW",):
+        idx_n = src_format.index('N')
+        idx_c = src_format.index('C')
+        idx_h = src_format.index('H')
+        idx_w = src_format.index('W')
+
+        axis_n = src_shape[idx_n]
+        axis_c = src_shape[idx_c]
+        axis_h = src_shape[idx_h]
+        axis_w = src_shape[idx_w]
+
+        return [axis_n, axis_c, axis_h, axis_w]
+
+    else:
+        idx_n = src_format.index('N')
+        idx_c = src_format.index('C')
+        idx_d = src_format.index('D')
+        idx_h = src_format.index('H')
+        idx_w = src_format.index('W')
+
+        axis_n = src_shape[idx_n]
+        axis_c = src_shape[idx_c]
+        axis_d = src_shape[idx_d]
+        axis_h = src_shape[idx_h]
+        axis_w = src_shape[idx_w]
+
+        return [axis_n, axis_c, axis_d, axis_h, axis_w]
+
+
+def _get_c0(dtype="float32"):
+    return 16 if dtype not in ("int8",) else 32
+
+
+def update_shape_for_other_format(src_shape, src_format, ori_shape, dst_format, dtype="float32"):
+    """
+    update shape for other_format
+    when format is different, update the shape
+    """
+    src_shape = list(src_shape)
+    dst_shape = src_shape.copy()
+    axis_c0 = _get_c0(dtype)
+    axis_n0 = 16
+    
+    if src_format == dst_format:
+        return src_shape
+
+    if dst_format not in FormatConstant.SPECIAL_FORMAT:
+        return ori_shape
+    
+    if dst_format == "FRACTAL_NZ":
+        if len(src_shape) == 1:
+            src_shape = [1, src_shape[0]]
+        axis_c1 = ceil(src_shape[-1], axis_c0)
+        axis_n1 = ceil(src_shape[-2], axis_n0)
+        dst_shape = src_shape[:-2] + [axis_c1, axis_n1, axis_n0, axis_c0]
+        return dst_shape
+        
+    elif src_format in get_fused_str(["N", "C", "D", "H", "W"]):
+
+        if len(src_shape) != 5:
+            dict_args = {'errCode': 'E60038',
+                         'desc': "src shape's length should be 5"}
+            raise RuntimeError(dict_args,
+                            error_manager_util.get_error_message(dict_args))
+
+        axis_n, axis_c, axis_d, axis_h, axis_w = _get_axis_all("NCDHW", src_shape, src_format)
+
+        if dst_format == "NDC1HWC0":
+            axis_c1 = ceil(axis_c, axis_c0)
+            dst_shape = [axis_n, axis_d, axis_c1, axis_h, axis_w, axis_c0]
+            return dst_shape
+            
+        if dst_format == "FRACTAL_Z_3D":
+            axis_n1 = ceil(axis_n, axis_n0)
+            axis_c1 = ceil(axis_c, axis_c0)
+            dst_shape = [axis_d * axis_c1 * axis_h * axis_w, axis_n0, axis_n1, axis_c0]
+            return dst_shape
+
+    elif src_format in get_fused_str(["N", "C", "H", "W"]):
+
+        if len(src_shape) != 4:
+            dict_args = {'errCode': 'E60038',
+                         'desc': "src shape's length should be 4"}
+            raise RuntimeError(dict_args,
+                            error_manager_util.get_error_message(dict_args))
+
+        axis_n, axis_c, axis_h, axis_w = _get_axis_all("NCHW", src_shape, src_format)
+
+        axis_n1 = ceil(axis_n, axis_n0)
+        axis_c1 = ceil(axis_c, axis_c0)
+        if dst_format == "FRACTAL_Z":
+            dst_shape = [axis_c1 * axis_h * axis_w, axis_n1, axis_n0, axis_c0]
+            return dst_shape
+
+        elif dst_format == "NC1HWC0":
+            dst_shape = [axis_n, axis_c1, axis_h, axis_w, axis_c0]
+            return dst_shape
+        
+    dict_args = {'errCode': 'E60038',
+                 'desc': "update shape by dst_format failed"}
+    raise RuntimeError(dict_args,
+                       error_manager_util.get_error_message(dict_args))
 
 
 def update_axis_for_other_format(ori_shape, axis, input_format, ori_format, reduce_mode=False):
