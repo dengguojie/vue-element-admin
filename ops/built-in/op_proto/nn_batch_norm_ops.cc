@@ -107,7 +107,6 @@ IMPLEMT_INFERFUNC(SyncBatchNormGatherStatsWithCounts,
     OP_LOGE("SyncBatchNormGatherStatsWithCounts", "op_name get failed.");
     return GRAPH_FAILED;
   }
-  const char* op_name_c = op_name.GetString();
   OP_LOGI(op.GetName().c_str(), "SyncBatchNormGatherStatsWithCounts op_name get successed.");
 
   tensordesc_output_1.SetShape(ge::Shape(input_shape));
@@ -138,7 +137,6 @@ IMPLEMT_INFERFUNC(SyncBNTrainingUpdate,
     OP_LOGE("SyncBNTrainingUpdate", "op_name get failed.");
     return GRAPH_FAILED;
   }
-  const char* op_name_c = op_name.GetString();
   OP_LOGI(op.GetName().c_str(), "SyncBNTrainingUpdate op_name get successed.");
 
   tensordesc_output.SetShape(ge::Shape(input_shape));

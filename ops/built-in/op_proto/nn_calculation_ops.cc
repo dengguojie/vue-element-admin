@@ -1038,7 +1038,6 @@ IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DBackpropInputDInferShape) {
 
   OP_LOGI(op_name.GetString(), "Enter DepthwiseConv2DBackpropInputD inferfunction!");
   std::vector<int64_t> input_size;
-  int64_t groups = 0;
   input_size = GetAttrValue(op, "input_size");
 
   DataType output_dtype = op.GetInputDescByName("out_backprop").GetDataType();
@@ -1728,7 +1727,6 @@ IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DBackpropFilterDInferShape) {
   std::vector<int64_t> filter_size;
   filter_size = GetAttrValue(op, "filter_size");
 
-  DataType output_dtype = op.GetInputDescByName("out_backprop").GetDataType();
   TensorDesc tensordesc_output = op.GetOutputDescByName("filter_grad");
   tensordesc_output.SetShape(Shape(filter_size));
   tensordesc_output.SetDataType(DT_FLOAT);

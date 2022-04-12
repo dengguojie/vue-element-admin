@@ -1496,7 +1496,6 @@ IMPLEMT_COMMON_INFERFUNC(CombinationsInferShape) {
   Shape shape = op.GetInputDescByName("x").GetShape();
   DataType input_dtype = op.GetInputDescByName("x").GetDataType();
   std::vector<int64_t> dim_vector;
-  int64_t dimsInput = shape.GetDimNum() - 1;
   int32_t r;
   if (op.GetAttr("r", r) == GRAPH_FAILED) {
     r = 2;

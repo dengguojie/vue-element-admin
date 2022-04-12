@@ -1662,7 +1662,6 @@ INFER_VALUE_RANGE_DEFAULT_REG(StridedSliceD);
 IMPLEMT_INFER_DATA_SLICE(StridedSliceD, StridedSliceDInferDataSlice) {
   // Get input shape
   ge::Shape shape = op.GetInputDesc(0).GetOriginShape();
-  DataType input_dtype = op.GetInputDesc(0).GetDataType();
 
   // Get relevant masks from const node
   struct SliceMasks slice_masks = {};
@@ -1772,8 +1771,6 @@ IMPLEMT_COMMON_INFERFUNC(StridedSliceInferShape) {
   if (input_ranges.empty()) {
     MakeUpShapeRange(shape.GetDims(), input_ranges);
   }
-
-  size_t dim_num = shape.GetDimNum();
 
   OP_LOGD(op.GetName().c_str(), "begin_list:%s", to_string(slice_params.begin_list).c_str());
   OP_LOGD(op.GetName().c_str(), "end_list:%s", to_string(slice_params.end_list).c_str());
@@ -3349,7 +3346,6 @@ IMPLEMT_VERIFIER(InplaceUpdate, InplaceUpdateVerify) {
 
 IMPLEMT_COMMON_INFERFUNC(InplaceUpdateInferShape) {
   const int64_t input_x_idx = 0;
-  const int64_t output_y_idx = 0;
   if (OneInOneOutDynamicInfer(op, input_x_idx, {input_x_idx})) {
     return GRAPH_SUCCESS;
   }

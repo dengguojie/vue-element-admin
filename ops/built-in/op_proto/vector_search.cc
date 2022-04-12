@@ -94,7 +94,6 @@ IMPLEMT_COMMON_INFERFUNC(GenADCInferShape) {
   auto opDesc = OpDescUtils::GetOpDescFromOperator(op);
   GeTensorDescPtr bucketListDesc = opDesc->MutableInputDesc("bucket_list");
   std::vector<int64_t> bucketListShape = bucketListDesc->MutableShape().GetDims();
-  DataType bucketListDtype = op.GetInputDesc("bucket_list").GetDataType();
   std::vector<std::pair<int64_t, int64_t>> bucketListShapeRange;
   opDesc->MutableInputDesc("bucket_list")->GetShapeRange(bucketListShapeRange);
   MakeUpShapeRange(bucketListShape, bucketListShapeRange);

@@ -656,7 +656,6 @@ static bool BroadCastShapeToOutShape(const GeShape& shape, GeShape& shape_output
 
 bool InferShapeAndTypeBroadcast(Operator& op, std::vector<int64_t> input_idxs, const int64_t& output_idx,
                                 bool& is_dynamic) {
-  PROFILING_PROTO_INIT(TbeGetName(op).c_str());
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
   CHECK(op_desc == nullptr,
         VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), OtherErrMsg("invalid OpDesc.")),

@@ -243,9 +243,6 @@ VERIFY_FUNC_REG(YoloPreDetection, YoloPreDetectionVerify);
 // ----------------YoloPreDetection-------------------
 
 // ----------------YoloV5DetectionOutput------------------
-IMPLEMT_VERIFIER(YoloV5DetectionOutput, YoloV5DetectionOutputVerify) {
-  return GRAPH_SUCCESS;
-}
 IMPLEMT_COMMON_INFERFUNC(YoloV5DetectionOutputInferShape) {
   OP_LOGI(op.GetName().c_str(), "infer shape begin---");
   auto coord_shape = op.GetDynamicInputDesc("x", 0).GetShape().GetDims();
@@ -293,9 +290,6 @@ COMMON_INFER_FUNC_REG(YoloV5DetectionOutput, YoloV5DetectionOutputInferShape);
 // ----------------YoloV5DetectionOutput------------------
 
 // ----------------YoloV5DetectionOutputD------------------
-IMPLEMT_VERIFIER(YoloV5DetectionOutputD, YoloV5DetectionOutputDVerify) {
-  return GRAPH_SUCCESS;
-}
 IMPLEMT_COMMON_INFERFUNC(YoloV5DetectionOutputDInferShape) {
   OP_LOGI(op.GetName().c_str(), "infer shape begin---");
   auto coord_shape = op.GetDynamicInputDesc("x", 0).GetShape().GetDims();
@@ -1664,13 +1658,13 @@ IMPLEMT_INFERFUNC(Sort, SortInferShape) {
   OP_LOGD(op_name, "Get input_data.");
   std::vector<std::pair<int64_t, int64_t>> range;
 
-  //out_indices
+  // out_indices
   auto output_indices_desc = op_desc->MutableOutputDesc(1);
   output_indices_desc->SetShape(x_desc->GetShape());
   output_indices_desc->SetDataType(DT_INT32);
   OP_LOGD(op_name, "Update output_indices.");
 
-  //out_sorted
+  // out_sorted
   auto output_sorted_desc = op_desc->MutableOutputDesc(0);
   output_sorted_desc->SetShape(x_desc->GetShape());
   output_sorted_desc->SetDataType(x_desc->GetDataType());

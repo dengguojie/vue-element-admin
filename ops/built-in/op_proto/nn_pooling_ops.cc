@@ -1314,44 +1314,11 @@ INFER_DATA_SLICE_FUNC_REG(Pooling, PoolingInferDataSlice);
 // ----------------Pooling-------------------
 
 /*!
-  * Simply get value range in grade list.
-  */
-static bool GetSingleRange(ge::Operator& op, const std::vector<int64_t>& grade,
-                          const int64_t& value, int64_t& low, int64_t& high) {
-  AscendString op_name;
-  CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return false);
-
-  size_t min_size = 2;
-  CHECK(grade.size() < min_size, OP_LOGE(op_name.GetString(), "input grade size smaller then %lu", min_size),
-        return false);
-  // grade is in ascending order
-  size_t last = grade.size() - 1;
-  CHECK(value > grade[last],
-        OP_LOGE(op_name.GetString(), "input value %ld is out the range of %ld", value, grade[last]), return false);
-  // if it is the right boundary value, use the right closed interval
-  if (value == grade[last]) {
-    low = grade[last - 1] + 1;
-    high = grade[last];
-    return true;
-  }
-  for (auto n : grade) {
-    if (value > n) {
-      low = n + 1;
-    }
-    if (value <= n) {
-      high = n;
-      break;
-    }
-  }
-  return true;
-}
-
-/*!
   * Make sure that output shape is larger than 0
   */
 bool CorrectFuzzyCompileRangeStart(ge::Operator& op, ge::GeTensorDescPtr& x_tensor,
-                                        std::vector<std::pair<int64_t, int64_t>>& input_range,
-                                        int32_t kh, int32_t kw) {
+                                   std::vector<std::pair<int64_t, int64_t>>& input_range,
+                                   int32_t kh, int32_t kw) {
   auto x_shape = x_tensor->MutableShape().GetDims();
   // only support 4D shape
   auto x_format = x_tensor->GetFormat();
@@ -2225,10 +2192,14 @@ static void calculate_pad(string padding, int64_t input_h, int64_t input_w, int6
             get_corrected_pad(&pad_right);
             pad = {pad_top, pad_bottom, pad_left, pad_right};
         } else if (padding == "CALCULATED") {
-            pad_top= pads[0];
-            pad_bottom= pads[1];
-            pad_left= pads[2];
-            pad_right= pads[3];
+            constexpr int TOP_INDEX = 0;
+            constexpr int BOTTOM_INDEX = 1;
+            constexpr int LEFT_INDEX = 2;
+            constexpr int RIGHT_INDEX = 3;
+            pad_top= pads[TOP_INDEX];
+            pad_bottom= pads[BOTTOM_INDEX];
+            pad_left= pads[LEFT_INDEX];
+            pad_right= pads[RIGHT_INDEX];
 
             if (ceilMode) {
                 ho = floor((input_h - ksize_h + pad_top + pad_bottom + stride_h - 1) / stride_h) + 1;
@@ -6719,7 +6690,8 @@ static bool GetPadMaxPool3DGrad(ge::Operator& op, int32_t id, int32_t ih, int32_
     return false;
   }
   auto pSize = padVec.size();
-  if (pSize != 6) {
+  constexpr int SIZE_RANGE_SIX = 6;
+  if (pSize != SIZE_RANGE_SIX) {
     map<string, string> err_map;
     err_map["param_name"] = "pads list";
     err_map["op_name"] = "MaxPool3DGrad";
@@ -6766,16 +6738,22 @@ static bool GetAttrsMaxPool3DGrad(ge::Operator& op, Format refer, int32_t& strd,
   }
 
   if (refer == FORMAT_NCDHW) {
-    strd = strideList[2];
-    strh = strideList[3];
-    strw = strideList[4];
+    constexpr int NCDHW_STRD_INDEX = 2;
+    constexpr int NCDHW_STRH_INDEX = 3;
+    constexpr int NCDHW_STRW_INDEX = 4;
+    strd = strideList[NCDHW_STRD_INDEX];
+    strh = strideList[NCDHW_STRH_INDEX];
+    strw = strideList[NCDHW_STRW_INDEX];
     kd = ksizeList[2];
     kh = ksizeList[3];
     kw = ksizeList[4];
   } else if (refer == FORMAT_NDHWC) {
-    strd = strideList[1];
-    strh = strideList[2];
-    strw = strideList[3];
+    constexpr int NDHWC_STRD_INDEX = 1;
+    constexpr int NDHWC_STRH_INDEX = 2;
+    constexpr int NDHWC_STRW_INDEX = 3;
+    strd = strideList[NDHWC_STRD_INDEX];
+    strh = strideList[NDHWC_STRH_INDEX];
+    strw = strideList[NDHWC_STRW_INDEX];
     kd = ksizeList[1];
     kh = ksizeList[2];
     kw = ksizeList[3];
@@ -7109,7 +7087,6 @@ IMPLEMT_INFERFUNC(AvgPool1DD, AvgPool1DDInfer) {
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
   auto input_x_desc = op_desc->GetInputDescPtr(0);
   auto output_y_desc = op_desc->MutableOutputDesc(0);
-  Format input_format = input_x_desc->GetFormat();
   const GeShape &input_shape = input_x_desc->GetShape();
   GeShape &output_shape = output_y_desc->MutableShape();
 
@@ -7209,6 +7186,10 @@ VERIFY_FUNC_REG(MaxPoolGradWithArgmaxV2, MaxPoolGradWithArgmaxV2Verify);
 
 // ---------------------MaxPoolWithArgmaxV2---------------------
 static int64_t DivRtn(int64_t x, int64_t y) {
+  if (y == 0) {
+    OP_LOGE("MaxPoolWithArgmaxV2", "y value cannot be zero.");
+    return GRAPH_FAILED;
+  }
   int64_t q = x / y;
   int64_t r = x % y;
   if ((r != 0) && ((r < 0) != (y < 0))) {
@@ -7263,12 +7244,13 @@ static void UpdateMaskW(const int64_t& out_h, const int64_t& out_w,
                         const int64_t& first_h, const int64_t& first_w,
                         const int64_t& second_h, const int64_t& second_w,
                         int64_t& dim_size, std::pair<int64_t, int64_t>& dim_range) {
+  constexpr int C0_SIZE = 16;                        
   if (dim_size != -1) {
     int64_t mask_w = out_h * out_w;
-    if (mask_w % 16 != 0) {
-      mask_w = mask_w/16 + 1;
+    if (mask_w % C0_SIZE != 0) {
+      mask_w = mask_w / C0_SIZE + 1;
     } else {
-      mask_w = mask_w/16;
+      mask_w = mask_w / C0_SIZE;
     }
     mask_w = mask_w + 1;
     dim_range = std::pair<int64_t, int64_t>{mask_w, mask_w};
@@ -7280,10 +7262,10 @@ static void UpdateMaskW(const int64_t& out_h, const int64_t& out_w,
       first_range = 1;
     } else {
       int64_t mask_w = first_h * first_w;
-      if (mask_w % 16 != 0) {
-        mask_w = mask_w/16 + 1;
+      if (mask_w % C0_SIZE != 0) {
+        mask_w = mask_w / C0_SIZE + 1;
       } else {
-        mask_w = mask_w/16;
+        mask_w = mask_w / C0_SIZE;
       }
       first_range = mask_w + 1;
     }
@@ -7291,10 +7273,10 @@ static void UpdateMaskW(const int64_t& out_h, const int64_t& out_w,
       second_range = -1;
     } else {
       int64_t mask_w = second_h * second_w;
-      if (mask_w % 16 != 0) {
-        mask_w = mask_w/16 + 1;
+      if (mask_w % C0_SIZE != 0) {
+        mask_w = mask_w / C0_SIZE + 1;
       } else {
-        mask_w = mask_w/16;
+        mask_w = mask_w / C0_SIZE;
       }
       second_range = mask_w + 1;
     }

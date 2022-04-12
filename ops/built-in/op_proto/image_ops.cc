@@ -1516,31 +1516,6 @@ IMPLEMT_INFERFUNC(DecodeAndCropJpeg, DecodeAndCropJpegInfer) {
 }
 INFER_FUNC_REG(DecodeAndCropJpeg, DecodeAndCropJpegInfer);
 
-static void GetResizeConstValue(const Operator& op, const GeTensor* const_tensor,
-                                const DataType& dtype, std::vector<int64_t>& const_data) {
-  size_t size = const_tensor->GetData().GetSize();
-  void* data_ptr = (void*)const_tensor->GetData().GetData();
-  if (data_ptr == nullptr) {
-    return;
-  }
-
-  if (dtype == ge::DT_INT32){
-    int32_t* const_data_ptr = reinterpret_cast<int32_t*>(data_ptr);
-    size = size / sizeof(int32_t);
-    for (size_t i=0; i < size; i++) {
-      const_data.push_back((int64_t)((int32_t) ((*(const_data_ptr + i)))));
-    }
-  } else if (dtype == ge::DT_INT64) {
-    int64_t* const_data_ptr = reinterpret_cast<int64_t*>(data_ptr);
-    size = size / sizeof(int64_t);
-    for (size_t i=0; i < size; i++) {
-      const_data.push_back((int64_t)((int64_t) ((*(const_data_ptr + i)))));
-    }
-  } else {
-    OP_LOGE(op.GetName().c_str(), "resize const not support the type");
-  }
-}
-
 bool ResizeConstInferShape(const Operator& op, const std::pair<uint32_t, std::string> image_info,
                            const std::pair<uint32_t, std::string> size_info,
                            const std::pair<uint32_t, std::string> output_info) {
@@ -2809,74 +2784,6 @@ static bool GetConstValueFloat(const Operator& op, const Tensor& const_tensor,
     return false;
   }
   return true;
-}
-
-static bool CalculateSizeOut(const Operator& op,
-                             const std::vector<int64_t>& image_shape,
-                             std::vector<float_t>& scale_out,
-                             const ge::Format& input_format,
-                             std::vector<int64_t>& size_out) {
-  int64_t size_out_h;
-  int64_t size_out_w;
-  if (scale_out.size() == DIM_SIZE4) {
-    if (input_format == FORMAT_NHWC) {
-      scale_out.erase(scale_out.begin() + 3);  // 3 is index
-      scale_out.erase(scale_out.begin() + 0);  // 0 is index
-    } else if (input_format == FORMAT_NCHW) {
-      scale_out.erase(scale_out.begin() + 1);  // 1 is index
-      scale_out.erase(scale_out.begin() + 0);  // 0 is index
-    } else {
-      std::string err_msg = GetInputFormatNotSupportErrMsg("input_format",
-                                                           ConcatString("FORMAT_NHWC, FORMAT_NCHW"),
-                                                           std::to_string(input_format));
-      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
-    }
-  }
-  if (scale_out.size() != DIM_SIZE2) {
-    std::string err_msg = GetAttrSizeErrMsg("scale_out", std::to_string(scale_out.size()), std::to_string(DIM_SIZE2));
-    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
-    return false;
-  }
-  if (input_format == FORMAT_NHWC && image_shape.size() > 2) {
-    size_out_h = image_shape[1] * scale_out[0];  // 0 and 1 is index
-    size_out_w = image_shape[2] * scale_out[1];  // 2 and 1 is index
-  } else if (input_format == FORMAT_NCHW && image_shape.size() > 3) {
-    size_out_h = image_shape[2] * scale_out[0];  // 0 and 2 is index
-    size_out_w = image_shape[3] * scale_out[1];  // 3 and 1 is index
-  } else {
-    std::string err_msg = OtherErrMsg(ConcatString("Not supported this format ",
-                                                   input_format,
-                                                   ", output tensor will be wrong"));
-    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName().c_str(), err_msg);
-  }
-  size_out.push_back(size_out_h);
-  size_out.push_back(size_out_w);
-  return true;
-}
-
-static graphStatus HadleSizeOut(const Operator& op,
-                                const ge::Format& input_format,
-                                std::vector<int64_t>& size_out) {
-  if (static_cast<int64_t>(size_out.size()) == DIM_SIZE4) {
-    if (input_format == FORMAT_NHWC) {
-      size_out.erase(size_out.begin() + 3);  // 3 is index
-      size_out.erase(size_out.begin() + 0);  // 0 is index
-    } else if (input_format == FORMAT_NCHW) {
-      size_out.erase(size_out.begin() + 1);  // 1 is index
-      size_out.erase(size_out.begin() + 0);  // 0 is index
-    } else {
-      std::string err_msg = GetInputFormatNotSupportErrMsg("input_format",
-                                                           ConcatString("FORMAT_NHWC, FORMAT_NCHW"),
-                                                           std::to_string(input_format));
-      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
-    }
-  }
-  if (size_out.size() != DIM_SIZE2) {
-    std::string err_msg = GetAttrSizeErrMsg("size_out", std::to_string(size_out.size()), std::to_string(DIM_SIZE2));
-    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
-    return GRAPH_FAILED;
-  }
-  return GRAPH_SUCCESS;
 }
 
 // ---------------ResizeNearest Op start-------------------

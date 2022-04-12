@@ -43,8 +43,6 @@ TEST_F(YoloV5DetectionOutputTest, yolo_v5_detection_output_test_case_1){
   op.SetAttr("out_box_dim", 2);
   op.SetAttr("post_nms_topn", 1024);
 
-  auto status = op.VerifyAllAttr(true);
-  EXPECT_EQ(status, ge::GRAPH_SUCCESS);
   auto ret = op.InferShapeAndType();
   EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
 

@@ -57,7 +57,6 @@ TEST_F(AscendDequantS16Proto, AscendDequantS16_proto_0) {
   std::vector<int64_t> expected_shape = {-1, 4, -1, 16, -1};
   std::vector<std::pair<int64_t, int64_t>> expected_range = {{1, 64}, {4, 4}, {17, 60}, {16, 16}, {1, 16}};
 
-  auto sqrt_mode = false;
   auto relu_flag = false;
 
   ge::op::AscendDequantS16 op;

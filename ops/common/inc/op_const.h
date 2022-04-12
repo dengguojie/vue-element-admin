@@ -110,7 +110,6 @@ bool GetConstInt(const ge::Operator& paras, const int64_t const_input_idx, T& va
     OP_LOGW("GetConstIntData", "constvalue [%s] is nullptr.", input_name.c_str());
     return false;
   }
-  auto size = tensor_data.GetSize();
   DataType dtype = op_desc->MutableInputDesc(const_input_idx)->GetDataType();
   switch (dtype) {
     case DT_UINT64:

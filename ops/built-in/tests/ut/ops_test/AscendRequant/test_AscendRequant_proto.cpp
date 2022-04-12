@@ -52,7 +52,6 @@ TEST_F(AscendRequantProto, AscendRequant_proto_0) {
   std::vector<int64_t> expected_shape = {-1, -1, -1, -1, 16};
   std::vector<std::pair<int64_t, int64_t>> expected_range = {{1, 64}, {2, 8}, {17, 60}, {10, 128}, {16, 16}};
 
-  auto sqrt_mode = false;
   auto relu_flag = false;
 
   ge::op::AscendRequant op;
@@ -84,7 +83,6 @@ TEST_F(AscendRequantProto, AscendRequant_proto_1) {
   std::vector<int64_t> expected_shape = {1, -1, -1, 16};
   std::vector<std::pair<int64_t, int64_t>> expected_range = {{1, 1}, {2, 8}, {10, 128}, {16, 16}};
 
-  auto sqrt_mode = false;
   auto relu_flag = false;
 
   ge::op::AscendRequant op;

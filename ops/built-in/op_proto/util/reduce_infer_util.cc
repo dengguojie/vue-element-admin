@@ -216,7 +216,6 @@ bool DoReduceInferShapeWithoutAxes(const Operator& op, GeTensorDescPtr& tensorde
   // If InputShapeRange is None, MakeUpShapeRange will set range.
   MakeUpShapeRange(input_shape_vec, input_shape_range);
   size_t input_length = input_shape_vec.size();
-  size_t axis_length = axes_shape.GetDimNum();
   if (keep_dims) {
     // case2: all output shape dim is -1, range [1, xxx] when keep_dims is true
     for (size_t item = 0; item < input_length; ++item) {
@@ -256,9 +255,9 @@ bool DoReduceInferShapeWithoutAxes(const Operator& op, GeTensorDescPtr& tensorde
         range_max_value = input_shape_range[item].second;
       }
     }
-
-    if (output_dim_num == -2) {
-      output_shape.push_back(-2);
+    constexpr int UNKNOWN_DIM_NUM = -2; 
+    if (output_dim_num == UNKNOWN_DIM_NUM) {
+      output_shape.push_back(UNKNOWN_DIM_NUM);
     } else {
       for (int64_t item = 0; item < output_dim_num; ++item) {
         output_shape.push_back(-1);

@@ -62,7 +62,6 @@ IMPLEMT_INFERFUNC(DSAGenBitMask, DSAGenBitMaskInfer) {
   // get const count value
   vector<int64_t> count_value;
   if (ops::GetConstIntData(op, 0, count_value)) {
-    auto const_dtype = input_desc_count->GetDataType();
     // verify dimension_value
     if (count_value.size() != 1) {
       string error_msg =
@@ -120,7 +119,6 @@ IMPLEMT_INFERFUNC(DSARandomUniform, DSARandomUniformInfer) {
   // get const count value
   vector<int64_t> count_value;
   if (ops::GetConstIntData(op, 0, count_value)) {
-    auto const_dtype = input_desc_count->GetDataType();
     // verify dimension_value
     if (count_value.size() != 1) {
       string error_msg =
@@ -177,7 +175,6 @@ IMPLEMT_INFERFUNC(DSARandomTruncatedNormal, DSARandomTruncatedNormalInfer) {
   // get const count value
   vector<int64_t> count_value;
   if (ops::GetConstIntData(op, 0, count_value)) {
-    auto const_dtype = input_desc_count->GetDataType();
     // verify dimension_value
     if (count_value.size() != 1) {
       string error_msg =
@@ -234,7 +231,6 @@ IMPLEMT_INFERFUNC(DSARandomNormal, DSARandomNormalInfer) {
   // get const count value
   vector<int64_t> count_value;
   if (ops::GetConstIntData(op, 0, count_value)) {
-    auto const_dtype = input_desc_count->GetDataType();
     // verify dimension_value
     if (count_value.size() != 1) {
       string error_msg =

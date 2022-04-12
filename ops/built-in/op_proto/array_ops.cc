@@ -2175,7 +2175,6 @@ IMPLEMT_INFERFUNC(UnsqueezeV2, UnsqueezeV2Infer) {
   vector<int32_t> axis_arr;
   (void)op.GetAttr("axis", axis_arr);
   auto &output_shape = output_desc->MutableShape();
-  size_t dim_size = input_shape.GetDimNum();
 
   std::vector<std::pair<int64_t, int64_t>> input_range;
   std::vector<std::pair<int64_t, int64_t>> output_range;
