@@ -184,7 +184,7 @@ def scalar_vector_func(tik_inst, vec_func, dst, src, scalar, data_len, data_type
         with tik_inst.for_range(0, loop_repeat_cnt) as repeat_lp_cnt:
             offset = repeat_lp_cnt * Constant.REPEAT_LIMIT * repeat_data_num
             vec_func(repeat_data_num, dst[offset], src[offset], scalar, Constant.REPEAT_LIMIT, 1, 1, 8, 8)
-        repeat.set_as(repeat - loop_repeat_cnt * Constant.REPEAT_LIMIT)
+        repeat = repeat - loop_repeat_cnt * Constant.REPEAT_LIMIT
     with tik_inst.if_scope(repeat > 0):
         offset = loop_repeat_cnt * Constant.REPEAT_LIMIT * repeat_data_num
         vec_func(repeat_data_num, dst[offset], src[offset], scalar, repeat, 1, 1, 8, 8)
@@ -208,7 +208,7 @@ def vector_func(tik_inst, vec_func, dst, src1, src2, data_len, data_type):
         with tik_inst.for_range(0, loop_repeat_cnt) as repeat_lp_cnt:
             offset = repeat_lp_cnt * Constant.REPEAT_LIMIT * repeat_data_num
             vec_func(repeat_data_num, dst[offset], src1[offset], src2[offset], Constant.REPEAT_LIMIT, 1, 1, 1, 8, 8, 8)
-        repeat.set_as(repeat - loop_repeat_cnt * Constant.REPEAT_LIMIT)
+        repeat = repeat - loop_repeat_cnt * Constant.REPEAT_LIMIT
     with tik_inst.if_scope(repeat > 0):
         offset = loop_repeat_cnt * Constant.REPEAT_LIMIT * repeat_data_num
         vec_func(repeat_data_num, dst[offset], src1[offset], src2[offset], repeat, 1, 1, 1, 8, 8, 8)
