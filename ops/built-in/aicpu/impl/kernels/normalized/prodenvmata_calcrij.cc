@@ -181,7 +181,8 @@ namespace aicpu
 
     auto ComputeRijDistance = [&](int32_t start, int32_t end) {
       int32_t rijaxeslen = (end - start) * nnei * sizeof(FPTYPE);
-      (void)memset_s(rij + start * nnei * coordinateXyzNum, rijaxeslen * coordinateXyzNum, 0x00, rijaxeslen * coordinateXyzNum);
+      (void)memset_s(rij + start * nnei * coordinateXyzNum,
+                     rijaxeslen * coordinateXyzNum, 0x00, rijaxeslen * coordinateXyzNum);
       std::fill(nlist + start * nnei, nlist + end * nnei, -1);
       std::fill(distance + start * nnei, distance + end * nnei, rcutsquared + 1.0);
       (void)memset_s(rij_x + start * nnei, rijaxeslen, 0x00, rijaxeslen);
