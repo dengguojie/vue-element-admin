@@ -198,6 +198,9 @@ auto_schedule:
       - ops/built-in/op_tiling/split_dsl.cc
       - ops/built-in/op_tiling/split_dsl.h
       - auto_schedule/python/tbe/dsl/unify_schedule/vector/
+      - auto_schedule/python/tbe/common/utils/varshape/__init__.py
+      - auto_schedule/python/tbe/common/utils/varshape/variable_shape.py
+      - auto_schedule/python/tbe/common/utils/varshape/vector/
     unrelease:
     llt:
       ut_check: true

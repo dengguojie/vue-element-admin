@@ -541,5 +541,38 @@
     ],
     "auto_schedule/python/tbe/dsl/unify_schedule/vector/slice/slice_pattern_parser.py":[
         "slice/test_slice_pattern_parser_impl.py"
+    ],
+    "auto_schedule/python/tbe/common/utils/varshape/variable_shape.py":[
+        "shape_util/test_variable_shape_impl.py"
+    ],
+    "auto_schedule/python/tbe/common/utils/varshape/vector/concat_variable_shape.py":[
+        "concat/test_concat_variable_shape_impl.py"
+    ],
+    "auto_schedule/python/tbe/common/utils/varshape/vector/elewise_variable_shape.py":[
+        "elewise/test_elewise_variable_shape_impl.py"
+    ],
+    "auto_schedule/python/tbe/common/utils/varshape/vector/gather_variable_shape.py":[
+        "gather/test_gather_variable_shape_impl.py"
+    ],
+    "auto_schedule/python/tbe/common/utils/varshape/vector/norm_variable_shape.py":[
+        "norm/test_norm_variable_shape_impl.py"
+    ],
+    "auto_schedule/python/tbe/common/utils/varshape/vector/reduce_variable_shape.py":[
+        "reduce/test_reduce_variable_shape_impl.py"
+    ],
+    "auto_schedule/python/tbe/common/utils/varshape/vector/slice_variable_shape.py":[
+        "slice/test_slice_variable_shape_impl.py"
+    ],
+    "auto_schedule/python/tbe/common/utils/varshape/vector/split_variable_shape.py":[
+        "split/test_split_variable_shape_impl.py"
+    ],
+    "auto_schedule/python/tbe/common/utils/varshape/vector/transdata_variable_shape.py":[
+        "transdata/test_transdata_variable_shape_impl.py"
+    ],
+    "auto_schedule/python/tbe/common/utils/varshape/vector/transpose_variable_shape.py":[
+        "transpose/test_transpose_variable_shape_impl.py"
+    ],
+    "auto_schedule/python/tbe/common/utils/varshape/vector/tuple_reduce_variable_shape.py":[
+        "tuple_reduce/test_tuple_reduce_variable_shape_impl.py"
     ]
 }
