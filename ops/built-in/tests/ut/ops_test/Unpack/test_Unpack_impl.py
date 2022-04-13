@@ -19,6 +19,13 @@ from op_test_frame.ut import OpUT
 ut_case = OpUT("Unpack")
 
 
+def test_import_lib(test_arg):
+    import sys
+    import importlib
+    modulename = sys.modules.get("impl.unpack")
+    importlib.reload(modulename)
+
+
 case_small_shape_scalar_fp16 = {
     "params":
         [
@@ -48,6 +55,38 @@ case_small_shape_scalar_fp16 = {
             3, 0
         ],
     "case_name": 'test_unpack_small_shape_scalar_fp16',
+    "expect": "success"
+}
+
+case_shape_not_aligned_fp16 = {
+    "params":
+        [
+            {
+                "shape": (128, 28, 28, 2, 24),
+                "format": "ND",
+                "dtype": "float16",
+                "ori_shape": (128, 28, 28, 2, 24),
+                "ori_format": "ND"
+            },
+            [
+                {
+                    "shape": (128, 28, 28, 24),
+                    "format": "ND",
+                    "dtype": "float16",
+                    "ori_shape": (128, 28, 28, 24),
+                    "ori_format": "ND"
+                },
+                {
+                    "shape": (128, 28, 28, 24),
+                    "format": "ND",
+                    "dtype": "float16",
+                    "ori_shape": (128, 28, 28, 24),
+                    "ori_format": "ND"
+                }
+            ],
+            2, 3
+        ],
+    "case_name": 'test_unpack_case_shape_not_aligned_fp16',
     "expect": "success"
 }
 
@@ -399,6 +438,7 @@ def test_check_supported(test_arg):
                     4000, 1)
 
 ut_case.add_case(["Ascend910", "Ascend310"], case_small_shape_scalar_fp16)
+ut_case.add_case(["Ascend910", "Ascend310"], case_shape_not_aligned_fp16)
 ut_case.add_case(["Ascend910", "Ascend310"], case_small_shape_not_aligned_fp16)
 ut_case.add_case(["Ascend910A", "Ascend710", "Ascend310"], case_axis1_int32)
 # ut_case.add_case(["Ascend910", "Ascend310"], case_last_dim_lt_one_block_fp16)
@@ -437,6 +477,7 @@ def test_op_select_format(test_arg):
             1, 0, "test_unpack_case_5hd_support_case")
 
 ut_case.add_cust_test_func(test_func=test_op_select_format)
+ut_case.add_cust_test_func(test_func=test_import_lib)
 
 
 if __name__ == '__main__':

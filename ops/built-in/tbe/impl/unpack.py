@@ -237,7 +237,7 @@ def _check_params(shape, num, axis, dformat, dtype, kernel_name):
     para_check.check_dtype(dtype, check_list, param_name="x")
 
 
-def _get_public_param(dtype):
+def _get_public_param(dtype, coexisting_quantities=1):
     """
     get public parameters
 
@@ -245,6 +245,8 @@ def _get_public_param(dtype):
     ----------
     dtype: str
         the data type.
+    coexisting_quantities: int
+        coexisting_quantities
 
     Returns
     -------
@@ -259,7 +261,7 @@ def _get_public_param(dtype):
     # Convert bits to Bytes
     dtype_size = tbe_platform.get_bit_len(dtype) // 8
     # gm->ub maximum copy data at a time
-    total_ele = ub_size_bytes // dtype_size
+    total_ele = ub_size_bytes // dtype_size // coexisting_quantities
 
     # 32 means one block size(32 Bytes), divide by 32 to get the numbers
     # of data that can be stored in one block.
@@ -327,7 +329,7 @@ def _index_offset(shape, axis, offset, *index):
     return output_index
 
 
-def _tiling_axis(shape, dtype):
+def _tiling_axis(shape, dtype, coexisting_quantities=1):
     """
     Calculate the tile parameters.
 
@@ -337,6 +339,8 @@ def _tiling_axis(shape, dtype):
         the shape of tensor.
     dtype: str
         the dtype of tensor.
+    coexisting_quantities: int
+        coexisting_quantities
 
     Returns
     -------
@@ -345,7 +349,7 @@ def _tiling_axis(shape, dtype):
     split_factor: int
         the factor used when tile the target axis.
     """
-    total_ele, ele_each_block, _ = _get_public_param(dtype)
+    total_ele, ele_each_block, _ = _get_public_param(dtype, coexisting_quantities)
 
     tiling_shape = [dim for dim in shape]
     if shape[-1] % ele_each_block != 0:
@@ -537,7 +541,7 @@ def _unpack_schedule(input_place, output_shape, y, num, axis, dtype):
     build_list: list
         the list of input and output tensors, tensor type is TVM tensor.
     """
-    _, ele_each_block, device_core_num = _get_public_param(dtype)
+    total_ele, ele_each_block, device_core_num = _get_public_param(dtype)
     befordim, afterdim = output_shape[0], output_shape[-1]
     block_idx = tvm.thread_axis('blockIdx.x')
 
@@ -626,13 +630,15 @@ def _unpack_schedule(input_place, output_shape, y, num, axis, dtype):
             sch[virtual_node].bind(fused_axis, block_idx)
 
             new_shape = ((befordim + befordim_out - 1) // befordim_out, 1, afterdim_in)
-            split_axis, split_factor = _tiling_axis(new_shape, dtype)
+            # coexisting_quantities 2
+            split_axis, split_factor = _tiling_axis(new_shape, dtype, 2)
             if split_axis == 0:
                 axis_outer, axis_inner = sch[virtual_node].split(befordim_inner, factor=split_factor)
             else:
                 axis_outer, axis_inner = sch[virtual_node].split(afterdim_inner, factor=split_factor)
         else:
-            split_axis, split_factor = _tiling_axis(output_shape, dtype)
+            # coexisting_quantities 2
+            split_axis, split_factor = _tiling_axis(output_shape, dtype, 2)
             axis_outer, axis_inner = sch[virtual_node].split(virtual_node.op.axis[split_axis], factor=split_factor)
 
         for i in range(num):
@@ -644,7 +650,15 @@ def _unpack_schedule(input_place, output_shape, y, num, axis, dtype):
             sch[ub2gm_tensor_list[i]].compute_at(sch[virtual_node], axis_outer)
 
             sch[gm2ub_tensor_list[i]].emit_insn(gm2ub_tensor_list[i].op.axis[split_axis], tbe_platform.DMA_COPY)
-            sch[ub2gm_tensor_list[i]].emit_insn(ub2gm_tensor_list[i].op.axis[split_axis], tbe_platform.DMA_COPY)
+            if split_axis == 0 and split_factor > 1:
+                # coexisting_quantities 2
+                sch[gm2ub_tensor_list[i]].set_buffer_size(total_ele // 2)
+                sch[ub2gm_tensor_list[i]].set_buffer_size(total_ele // 2)
+                sch[ub2gm_tensor_list[i]].emit_insn(ub2gm_tensor_list[i].op.axis[split_axis], tbe_platform.DMA_COPY,
+                                                    {"no_overlap": "process_unaliged_stride_with_malloc_buf",
+                                                     "no_overlap_malloc_buf_for_tail": 0})
+            else:
+                sch[ub2gm_tensor_list[i]].emit_insn(ub2gm_tensor_list[i].op.axis[split_axis], tbe_platform.DMA_COPY)
 
         sch[virtual_node].emit_insn(axis_inner, tbe_platform.PHONY_INSN)
 
