@@ -57,7 +57,7 @@ void CalcExpectWithDiffShape(const NodeDef &node_def, bool expect_out[]) {
 // read input and output data from files which generate by your python file
 template<typename T1, typename T2, typename T3>
 void RunBitwiseAndKernel(vector<string> data_files,
-                   vector<DataType> data_types,
+                   vector<DataType> &data_types,
                    vector<vector<int64_t>> &shapes) {
   // read data from file for input1
   string data_path = ktestcaseFilePath + data_files[0];
@@ -99,7 +99,7 @@ void RunBitwiseAndKernel(vector<string> data_files,
 // only generate input data by SetRandomValue,
 // and calculate output by youself function
 template<typename T1, typename T2, typename T3>
-void RunBitwiseAndKernel2(vector<DataType> data_types,
+void RunBitwiseAndKernel2(vector<DataType> &data_types,
                     vector<vector<int64_t>> &shapes) {
   // gen data use SetRandomValue for input1
   uint64_t input1_size = CalTotalElements(shapes, 0);
@@ -227,17 +227,17 @@ TEST_F(TEST_BTWISE_AND_UT, Y_ONE_ELEMENT_SUCC) {
 }
 
 TEST_F(TEST_BTWISE_AND_UT, DATASIZE_BCAST_64KB_SUCC) {
-  vector<DataType> data_types = {DT_INT8, DT_INT8, DT_INT8};
+  vector<DataType> data_types = {DT_INT64, DT_INT64, DT_INT64};
   vector<vector<int64_t>> shapes = {{4, 32, 64}, {4, 1, 64}, {4, 32, 64}};
   vector<string> files{"bitwise_and/data/bitwise_and_data_input1_11.txt",
                        "bitwise_and/data/bitwise_and_data_input2_11.txt",
                        "bitwise_and/data/bitwise_and_data_output1_11.txt"};
-  RunBitwiseAndKernel<int8_t, int8_t, int8_t>(files, data_types, shapes);
+  RunBitwiseAndKernel<int64_t, int64_t, int64_t>(files, data_types, shapes);
 }
 
-TEST_F(TEST_BTWISE_AND_UT, DATASIZE_BCAST_256KB_SUCC) {
+TEST_F(TEST_BTWISE_AND_UT, DATASIZE_BCAST_512B_SUCC) {
   vector<DataType> data_types = {DT_INT8, DT_INT8, DT_INT8};
-  vector<vector<int64_t>> shapes = {{4, 32, 256}, {4, 1, 256}, {4, 32, 256}};
+  vector<vector<int64_t>> shapes = {{4, 32, 4}, {4, 1, 4}, {4, 32, 4}};
   vector<string> files{"bitwise_and/data/bitwise_and_data_input1_12.txt",
                        "bitwise_and/data/bitwise_and_data_input2_12.txt",
                        "bitwise_and/data/bitwise_and_data_output1_12.txt"};
@@ -245,17 +245,17 @@ TEST_F(TEST_BTWISE_AND_UT, DATASIZE_BCAST_256KB_SUCC) {
 }
 
 TEST_F(TEST_BTWISE_AND_UT, DATASIZE_NO_BCAST_512KB_SUCC) {
-  vector<DataType> data_types = {DT_INT8, DT_INT8, DT_INT8};
+  vector<DataType> data_types = {DT_INT64, DT_INT64, DT_INT64};
   vector<vector<int64_t>> shapes = {{4, 32, 512}, {4, 32, 512}, {4, 32, 512}};
   vector<string> files{"bitwise_and/data/bitwise_and_data_input1_13.txt",
                        "bitwise_and/data/bitwise_and_data_input2_13.txt",
                        "bitwise_and/data/bitwise_and_data_output1_13.txt"};
-  RunBitwiseAndKernel<int8_t, int8_t, int8_t>(files, data_types, shapes);
+  RunBitwiseAndKernel<int64_t, int64_t, int64_t>(files, data_types, shapes);
 }
 
-TEST_F(TEST_BTWISE_AND_UT, DATASIZE_NO_BCAST_2M_SUCC) {
+TEST_F(TEST_BTWISE_AND_UT, DATASIZE_NO_BCAST_2k_SUCC) {
   vector<DataType> data_types = {DT_INT8, DT_INT8, DT_INT8};
-  vector<vector<int64_t>> shapes = {{4, 32, 512, 4}, {4, 32, 512, 4}, {4, 32, 512, 4}};
+  vector<vector<int64_t>> shapes = {{4, 32, 4, 4}, {4, 32, 4, 4}, {4, 32, 4, 4}};
   vector<string> files{"bitwise_and/data/bitwise_and_data_input1_14.txt",
                        "bitwise_and/data/bitwise_and_data_input2_14.txt",
                        "bitwise_and/data/bitwise_and_data_output1_14.txt"};

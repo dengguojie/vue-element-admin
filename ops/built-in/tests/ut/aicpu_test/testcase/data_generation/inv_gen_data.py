@@ -127,7 +127,7 @@ def gen_random_data_double_3d():
     data_files = ["inv/data/inv_data_input1_2.txt",
                   "inv/data/inv_data_output1_2.txt"]
     np.random.seed(3457)
-    shape_x = [256, 1024, 32]
+    shape_x = [5, 1024, 32]
     a = gen_data_file(data_files[0], shape_x, np.float64, "uniform", -100, 100)
     x = tf.compat.v1.placeholder(tf.float64, shape=shape_x)
     re = tf.math.reciprocal(x)
@@ -140,7 +140,7 @@ def gen_random_data_float16():
     data_files = ["inv/data/inv_data_input1_3.txt",
                   "inv/data/inv_data_output1_3.txt"]
     np.random.seed(3457)
-    shape_x = [12, 130]
+    shape_x = [12, 13]
     a = gen_data_file(data_files[0], shape_x, np.float16, "uniform", -10, 10)
     x = tf.compat.v1.placeholder(tf.float16, shape=shape_x)
     re = tf.math.reciprocal(x)
@@ -153,7 +153,7 @@ def gen_random_data_float():
     data_files = ["inv/data/inv_data_input1_4.txt",
                   "inv/data/inv_data_output1_4.txt"]
     np.random.seed(23457)
-    shape_x = [15, 12, 30]
+    shape_x = [15, 12, 2]
     a = gen_data_file(data_files[0], shape_x, np.float32, "uniform", 0, 100)
     x = tf.compat.v1.placeholder(tf.float32, shape=shape_x)
     re = tf.math.reciprocal(x)
@@ -166,7 +166,7 @@ def gen_random_data_double():
     data_files = ["inv/data/inv_data_input1_5.txt",
                   "inv/data/inv_data_output1_5.txt"]
     np.random.seed(3457)
-    shape_x = [7, 12, 30]
+    shape_x = [7, 12, 2]
     a = gen_data_file(data_files[0], shape_x, np.float64, "uniform", -100, 100)
     x = tf.compat.v1.placeholder(tf.float64, shape=shape_x)
     re = tf.math.reciprocal(x)

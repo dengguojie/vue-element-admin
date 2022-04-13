@@ -147,7 +147,7 @@ TEST_F(TEST_MINIMUM_UT, DATA_TYPE_INT32_SUCC) {
 
 TEST_F(TEST_MINIMUM_UT, DATA_TYPE_INT32_SUCC_11) {
   vector<DataType> data_types = {DT_INT32, DT_INT32, DT_INT32};
-  vector<vector<int64_t>> shapes = {{300, 1200}, {1200}, {300, 1200}};
+  vector<vector<int64_t>> shapes = {{30, 1200}, {1200}, {30, 1200}};
   vector<string> files{"minimum/data/minimum_data_input1_11.txt",
                        "minimum/data/minimum_data_input2_11.txt",
                        "minimum/data/minimum_data_output1_11.txt"};
@@ -174,7 +174,7 @@ TEST_F(TEST_MINIMUM_UT, DATA_TYPE_FLOAT_SUCC) {
 
 TEST_F(TEST_MINIMUM_UT, DATA_TYPE_DOUBLE_SUCC) {
   vector<DataType> data_types = {DT_DOUBLE, DT_DOUBLE, DT_DOUBLE};
-  vector<vector<int64_t>> shapes = {{7, 12, 30}, {7, 12, 30}, {7, 12, 30}};
+  vector<vector<int64_t>> shapes = {{7, 12, 3}, {7, 12, 3}, {7, 12, 3}};
   vector<string> files{"minimum/data/minimum_data_input1_4.txt",
                        "minimum/data/minimum_data_input2_4.txt",
                        "minimum/data/minimum_data_output1_4.txt"};

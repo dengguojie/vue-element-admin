@@ -127,7 +127,7 @@ bool ReadFileDouble_SqrtGrad(std::string file_name,
 }
 
 template <typename T1, typename T2, typename T3>
-void RunSqrtGradKernel(vector<string> data_files, vector<DataType> data_types,
+void RunSqrtGradKernel(vector<string> data_files, vector<DataType> &data_types,
                        vector<vector<int64_t>> &shapes) {
   // read data from file for input1
   string data_path = ktestcaseFilePath + data_files[0];
@@ -166,7 +166,7 @@ void RunSqrtGradKernel(vector<string> data_files, vector<DataType> data_types,
 
 template <typename T1, typename T2, typename T3>
 void RunSqrtGradKernelFloat16(vector<string> data_files,
-                              vector<DataType> data_types,
+                              vector<DataType> &data_types,
                               vector<vector<int64_t>> &shapes) {
   // read data from file for input1
   string data_path = ktestcaseFilePath + data_files[0];
@@ -214,7 +214,7 @@ TEST_F(TEST_SQRTGRAD_UT, DATA_TYPE_FLOAT_SUCC_1D) {
 
 TEST_F(TEST_SQRTGRAD_UT, DATA_TYPE_FLOAT_SUCC_2D) {
   vector<DataType> data_types = {DT_FLOAT, DT_FLOAT, DT_FLOAT};
-  vector<vector<int64_t>> shapes = {{15, 12}, {15, 12}, {15, 12}};
+  vector<vector<int64_t>> shapes = {{5, 4}, {5, 4}, {5, 4}};
   vector<string> files{"sqrtgrad/data/sqrtgrad_data_input1_2.txt",
                        "sqrtgrad/data/sqrtgrad_data_input2_2.txt",
                        "sqrtgrad/data/sqrtgrad_data_output1_2.txt"};
@@ -223,7 +223,7 @@ TEST_F(TEST_SQRTGRAD_UT, DATA_TYPE_FLOAT_SUCC_2D) {
 
 TEST_F(TEST_SQRTGRAD_UT, DATA_TYPE_FLOAT_SUCC_3D) {
   vector<DataType> data_types = {DT_FLOAT, DT_FLOAT, DT_FLOAT};
-  vector<vector<int64_t>> shapes = {{15, 12, 30}, {15, 12, 30}, {15, 12, 30}};
+  vector<vector<int64_t>> shapes = {{5, 4, 10}, {5, 4, 10}, {5, 4, 10}};
   vector<string> files{"sqrtgrad/data/sqrtgrad_data_input1_3.txt",
                        "sqrtgrad/data/sqrtgrad_data_input2_3.txt",
                        "sqrtgrad/data/sqrtgrad_data_output1_3.txt"};
@@ -233,7 +233,7 @@ TEST_F(TEST_SQRTGRAD_UT, DATA_TYPE_FLOAT_SUCC_3D) {
 TEST_F(TEST_SQRTGRAD_UT, DATA_TYPE_FLOAT_SUCC_4D) {
   vector<DataType> data_types = {DT_FLOAT, DT_FLOAT, DT_FLOAT};
   vector<vector<int64_t>> shapes = {
-      {15, 12, 30, 8}, {15, 12, 30, 8}, {15, 12, 30, 8}};
+      {5, 4, 10, 2}, {5, 4, 10, 2}, {5, 4, 10, 2}};
   vector<string> files{"sqrtgrad/data/sqrtgrad_data_input1_4.txt",
                        "sqrtgrad/data/sqrtgrad_data_input2_4.txt",
                        "sqrtgrad/data/sqrtgrad_data_output1_4.txt"};
@@ -243,7 +243,7 @@ TEST_F(TEST_SQRTGRAD_UT, DATA_TYPE_FLOAT_SUCC_4D) {
 TEST_F(TEST_SQRTGRAD_UT, DATA_TYPE_FLOAT_SUCC_5D) {
   vector<DataType> data_types = {DT_FLOAT, DT_FLOAT, DT_FLOAT};
   vector<vector<int64_t>> shapes = {
-      {15, 12, 30, 8, 16}, {15, 12, 30, 8, 16}, {15, 12, 30, 8, 16}};
+      {5, 4, 10, 2, 2}, {5, 4, 10, 2, 2}, {5, 4, 10, 2, 2}};
   vector<string> files{"sqrtgrad/data/sqrtgrad_data_input1_5.txt",
                        "sqrtgrad/data/sqrtgrad_data_input2_5.txt",
                        "sqrtgrad/data/sqrtgrad_data_output1_5.txt"};
@@ -273,7 +273,7 @@ TEST_F(TEST_SQRTGRAD_UT, DATA_TYPE_FLOAT16_SUCC_2D) {
 TEST_F(TEST_SQRTGRAD_UT, DATA_TYPE_FLOAT16_SUCC_3D) {
   vector<DataType> data_types = {DT_FLOAT16, DT_FLOAT16, DT_FLOAT16};
   vector<vector<int64_t>> shapes = {
-      {12, 130, 28}, {12, 130, 28}, {12, 130, 28}};
+      {4, 16, 4}, {4, 16, 4}, {4, 16, 4}};
   vector<string> files{"sqrtgrad/data/sqrtgrad_data_input1_8.txt",
                        "sqrtgrad/data/sqrtgrad_data_input2_8.txt",
                        "sqrtgrad/data/sqrtgrad_data_output1_8.txt"};
@@ -283,7 +283,7 @@ TEST_F(TEST_SQRTGRAD_UT, DATA_TYPE_FLOAT16_SUCC_3D) {
 
 TEST_F(TEST_SQRTGRAD_UT, DATA_TYPE_DOUBLE_SUCC) {
   vector<DataType> data_types = {DT_DOUBLE, DT_DOUBLE, DT_DOUBLE};
-  vector<vector<int64_t>> shapes = {{1024}, {1, 1024}, {1, 1024}};
+  vector<vector<int64_t>> shapes = {{4}, {1, 4}, {1, 4}};
   vector<string> files{"sqrtgrad/data/sqrtgrad_data_input1_9.txt",
                        "sqrtgrad/data/sqrtgrad_data_input2_9.txt",
                        "sqrtgrad/data/sqrtgrad_data_output1_9.txt"};
@@ -292,7 +292,7 @@ TEST_F(TEST_SQRTGRAD_UT, DATA_TYPE_DOUBLE_SUCC) {
 
 TEST_F(TEST_SQRTGRAD_UT, DATA_TYPE_COMPLEX64_SUCC) {
   vector<DataType> data_types = {DT_COMPLEX64, DT_COMPLEX64, DT_COMPLEX64};
-  vector<vector<int64_t>> shapes = {{10, 5, 5}, {10, 5, 5}, {10, 5, 5}};
+  vector<vector<int64_t>> shapes = {{2, 1024, 4}, {2, 1024, 4}, {2, 1024, 4}};
   vector<string> files{"sqrtgrad/data/sqrtgrad_data_input1_10.txt",
                        "sqrtgrad/data/sqrtgrad_data_input2_10.txt",
                        "sqrtgrad/data/sqrtgrad_data_output1_10.txt"};

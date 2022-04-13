@@ -472,11 +472,11 @@ def gen_random_bigdata_int32():
                   "unsorted_segment_min/data/unsorted_segment_min_data_input3_23.txt",
                   "unsorted_segment_min/data/unsorted_segment_min_data_output1_23.txt"]
     np.random.seed(23457)
-    shape_x1 = [1024, 10, 1024]
-    shape_x2 = [1024]
+    shape_x1 = [4, 9, 1024]
+    shape_x2 = [4]
     a = gen_random_data_file(data_files[0], shape_x1, np.int32, "randint", 0, 10)
-    b = gen_random_data_file(data_files[1], shape_x2, np.int32, "randint", 0, 1023)
-    c = gen_normal_data_file(data_files[2], tf.constant(1024), np.int32)
+    b = gen_random_data_file(data_files[1], shape_x2, np.int32, "randint", 0, 3)
+    c = gen_normal_data_file(data_files[2], tf.constant(4), np.int32)
 
     re = tf.unsorted_segment_min(a, b, c)
     with tf.compat.v1.Session(config=config('cpu')) as session:
@@ -491,11 +491,11 @@ def gen_random_bigdata_int32_withint64id():
                   "unsorted_segment_min/data/unsorted_segment_min_data_input3_24.txt",
                   "unsorted_segment_min/data/unsorted_segment_min_data_output1_24.txt"]
     np.random.seed(23457)
-    shape_x1 = [1500, 1500]
-    shape_x2 = [1500]
+    shape_x1 = [33, 1024]
+    shape_x2 = [33]
     a = gen_random_data_file(data_files[0], shape_x1, np.int32, "randint", 0, 10)
-    b = gen_random_data_file(data_files[1], shape_x2, np.int64, "randint", 0, 1499)
-    c = gen_normal_data_file(data_files[2], tf.constant(1500), np.int64)
+    b = gen_random_data_file(data_files[1], shape_x2, np.int64, "randint", 0, 32)
+    c = gen_normal_data_file(data_files[2], tf.constant(33), np.int64)
 
     re = tf.unsorted_segment_min(a, b, c)
     with tf.compat.v1.Session(config=config('cpu')) as session:
@@ -527,11 +527,11 @@ def gen_random_bigdata_double():
                   "unsorted_segment_min/data/unsorted_segment_min_data_input3_26.txt",
                   "unsorted_segment_min/data/unsorted_segment_min_data_output1_26.txt"]
     np.random.seed(23457)
-    shape_x1 = [500, 1500]
-    shape_x2 = [500]
+    shape_x1 = [1024, 33]
+    shape_x2 = [1024]
     a = gen_random_data_file(data_files[0], shape_x1, np.double, "randint", 0, 10)
-    b = gen_random_data_file(data_files[1], shape_x2, np.int32, "randint", 0, 499)
-    c = gen_normal_data_file(data_files[2], tf.constant(500), np.int32)
+    b = gen_random_data_file(data_files[1], shape_x2, np.int32, "randint", 0, 1023)
+    c = gen_normal_data_file(data_files[2], tf.constant(1024), np.int32)
 
     re = tf.unsorted_segment_min(a, b, c)
     with tf.compat.v1.Session(config=config('cpu')) as session:

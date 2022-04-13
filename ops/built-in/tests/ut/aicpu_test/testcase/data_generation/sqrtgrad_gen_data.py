@@ -119,8 +119,8 @@ def gen_random_data_float_2d():
                   "sqrtgrad/data/sqrtgrad_data_input2_2.txt",
                   "sqrtgrad/data/sqrtgrad_data_output1_2.txt"]
     np.random.seed(23457)
-    shape_x1 = [15, 12]
-    shape_x2 = [15, 12]
+    shape_x1 = [5, 4]
+    shape_x2 = [5, 4]
     a = gen_data_file(data_files[0], shape_x1, np.float32, "uniform", 0, 100)
     b = gen_data_file(data_files[1], shape_x2, np.float32, "uniform", 0, 100)
 
@@ -137,8 +137,8 @@ def gen_random_data_float_3d():
                   "sqrtgrad/data/sqrtgrad_data_input2_3.txt",
                   "sqrtgrad/data/sqrtgrad_data_output1_3.txt"]
     np.random.seed(23457)
-    shape_x1 = [15, 12, 30]
-    shape_x2 = [15, 12, 30]
+    shape_x1 = [5, 4, 10]
+    shape_x2 = [5, 4, 10]
     a = gen_data_file(data_files[0], shape_x1, np.float32, "uniform", 0, 100)
     b = gen_data_file(data_files[1], shape_x2, np.float32, "uniform", 0, 100)
 
@@ -155,8 +155,8 @@ def gen_random_data_float_4d():
                   "sqrtgrad/data/sqrtgrad_data_input2_4.txt",
                   "sqrtgrad/data/sqrtgrad_data_output1_4.txt"]
     np.random.seed(23457)
-    shape_x1 = [15, 12, 30, 8]
-    shape_x2 = [15, 12, 30, 8]
+    shape_x1 = [5, 4, 10, 2]
+    shape_x2 = [5, 4, 10, 2]
     a = gen_data_file(data_files[0], shape_x1, np.float32, "uniform", 0, 100)
     b = gen_data_file(data_files[1], shape_x2, np.float32, "uniform", 0, 100)
 
@@ -173,8 +173,8 @@ def gen_random_data_float_5d():
                   "sqrtgrad/data/sqrtgrad_data_input2_5.txt",
                   "sqrtgrad/data/sqrtgrad_data_output1_5.txt"]
     np.random.seed(23457)
-    shape_x1 = [15, 12, 30, 8, 16]
-    shape_x2 = [15, 12, 30, 8, 16]
+    shape_x1 = [5, 4, 10, 2, 2]
+    shape_x2 = [5, 4, 10, 2, 2]
     a = gen_data_file(data_files[0], shape_x1, np.float32, "uniform", 0, 100)
     b = gen_data_file(data_files[1], shape_x2, np.float32, "uniform", 0, 100)
 
@@ -227,8 +227,8 @@ def gen_random_data_float16_3d():
                   "sqrtgrad/data/sqrtgrad_data_input2_8.txt",
                   "sqrtgrad/data/sqrtgrad_data_output1_8.txt"]
     np.random.seed(23457)
-    shape_x1 = [12, 130, 28]
-    shape_x2 = [12, 130, 28]
+    shape_x1 = [4, 16, 4]
+    shape_x2 = [4, 16, 4]
     a = gen_data_file(data_files[0], shape_x1, np.float16, "uniform", -10, 10)
     b = gen_data_file(data_files[1], shape_x2, np.float16, "uniform", -10, 10)
 
@@ -245,8 +245,8 @@ def gen_random_data_double():
                   "sqrtgrad/data/sqrtgrad_data_input2_9.txt",
                   "sqrtgrad/data/sqrtgrad_data_output1_9.txt"]
     np.random.seed(3457)
-    shape_x1 = [1, 1024]
-    shape_x2 = [1, 1024]
+    shape_x1 = [1, 4]
+    shape_x2 = [1, 4]
     a = gen_data_file(data_files[0], shape_x1, np.float64, "uniform", -100, 100)
     b = gen_data_file(data_files[1], shape_x2, np.float64, "uniform", -100, 100)
 
@@ -263,8 +263,8 @@ def gen_random_data_complex64():
                   "sqrtgrad/data/sqrtgrad_data_input2_10.txt",
                   "sqrtgrad/data/sqrtgrad_data_output1_10.txt"]
     np.random.seed(3457)
-    shape_x1 = [10, 5, 5]
-    shape_x2 = [10, 5, 5]
+    shape_x1 = [2, 1024, 4]
+    shape_x2 = [2, 1024, 4]
     a = gen_data_file(data_files[0], shape_x1, np.complex64, "complex", 0, 1000)
     b = gen_data_file(data_files[1], shape_x2, np.complex64, "complex", 0, 1000)
     x1 = tf.compat.v1.placeholder(tf.complex64, shape=shape_x1)

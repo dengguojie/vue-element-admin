@@ -98,7 +98,7 @@ def gen_random_data_int32_11():
                 "minimum/data/minimum_data_input2_11.txt",
                 "minimum/data/minimum_data_output1_11.txt"]
     np.random.seed(23457)
-    shape_x1 = [600, 1200]
+    shape_x1 = [30, 1200]
     shape_x2 = [1200]
     a = gen_data_file(data_files[0], shape_x1, np.int32, "randint", 0, 10)
     b = gen_data_file(data_files[1], shape_x2, np.int32, "randint", 0, 10)
@@ -172,8 +172,8 @@ def gen_random_data_double():
                 "minimum/data/minimum_data_input2_4.txt",
                 "minimum/data/minimum_data_output1_4.txt"]
     np.random.seed(3457)
-    shape_x1 = [7, 12, 30]
-    shape_x2 = [7, 12, 30]
+    shape_x1 = [7, 12, 3]
+    shape_x2 = [7, 12, 3]
     a = gen_data_file(data_files[0], shape_x1, np.float64, "uniform", -100, 100)
     b = gen_data_file(data_files[1], shape_x2, np.float64, "uniform", -100, 100)
 

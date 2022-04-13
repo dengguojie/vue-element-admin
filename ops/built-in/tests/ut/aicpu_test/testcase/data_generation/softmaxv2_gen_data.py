@@ -143,13 +143,13 @@ def run():
     gen_random_data(np.float64, [5,2,3,2], 1 ,"uniform", -10, 10, 0)
     
     gen_random_data(np.float16, [120, 10], 1, "uniform", -100, 100, 1)
-    gen_random_data(np.float32, [50,5,10,20,2], -2, "uniform", -100, 100, 1)
+    gen_random_data(np.float32, [2,5,10,20,2], -2, "uniform", -100, 100, 1)
     gen_random_data(np.float64, [5,10,6,8,7], -3,"uniform", -100, 100, 1)
 
     gen_random_data_default_axes(np.float16, [12, 10], "uniform", -100, 100, 0)
     gen_random_data_default_axes(np.float32, [5,5,10,10], "uniform", -100, 100, 0)
     gen_random_data_default_axes(np.float64, [5,5,3,6,4],"uniform", -100, 100, 0)
     
-    gen_random_data_default_axes(np.float16, [120, 100], "uniform", -10, 10, 1)
-    gen_random_data_default_axes(np.float32, [50,5,10,20,2], "uniform", -10, 10, 1)
-    gen_random_data_default_axes(np.float64, [50,10,10,4,7],"uniform", -100, 100, 1)
+    gen_random_data_default_axes(np.float16, [12, 10], "uniform", -10, 10, 1)
+    gen_random_data_default_axes(np.float32, [2,5,10,20,2], "uniform", -10, 10, 1)
+    gen_random_data_default_axes(np.float64, [2,10,10,4,7],"uniform", -100, 100, 1)

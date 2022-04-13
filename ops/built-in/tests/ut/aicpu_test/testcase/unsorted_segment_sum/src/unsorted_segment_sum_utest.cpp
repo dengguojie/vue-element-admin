@@ -43,7 +43,7 @@ class TEST_UNSORTEDSEGMENTSUM_UT : public testing::Test {};
 // read input and output data from files which generate by your python file
 template <typename T1, typename T2, typename T3, typename T4>
 void RunUnsortedSegmentSumKernel(vector<string> data_files,
-                                 vector<DataType> data_types,
+                                 vector<DataType> &data_types,
                                  vector<vector<int64_t>> &shapes) {
   // read data from file for input1:"x"
   string data_path = ktestcaseFilePath + data_files[0];
@@ -356,7 +356,7 @@ TEST_F(TEST_UNSORTEDSEGMENTSUM_UT, DATA_TYPE_UINT64_SUCC_WITHINT64ID) {
 TEST_F(TEST_UNSORTEDSEGMENTSUM_UT, BIG_DATA_TYPE_INT32_SUCC) {
   vector<DataType> data_types = {DT_INT32, DT_INT32, DT_INT32, DT_INT32};
   vector<vector<int64_t>> shapes = {
-      {1024, 10, 1024}, {1024}, {1}, {1024, 10, 1024}};
+      {4, 9, 1024}, {4}, {1}, {4, 9, 1024}};
   vector<string> files{
       "unsorted_segment_sum/data/unsorted_segment_sum_data_input1_23.txt",
       "unsorted_segment_sum/data/unsorted_segment_sum_data_input2_23.txt",
@@ -368,7 +368,7 @@ TEST_F(TEST_UNSORTEDSEGMENTSUM_UT, BIG_DATA_TYPE_INT32_SUCC) {
 
 TEST_F(TEST_UNSORTEDSEGMENTSUM_UT, BIG_DATA_TYPE_INT32_SUCC_WITHINT64ID) {
   vector<DataType> data_types = {DT_INT32, DT_INT64, DT_INT64, DT_INT32};
-  vector<vector<int64_t>> shapes = {{1500, 1500}, {1500}, {1}, {1500, 1500}};
+  vector<vector<int64_t>> shapes = {{33, 1024}, {33}, {1}, {33, 1024}};
   vector<string> files{
       "unsorted_segment_sum/data/unsorted_segment_sum_data_input1_24.txt",
       "unsorted_segment_sum/data/unsorted_segment_sum_data_input2_24.txt",
@@ -392,7 +392,7 @@ TEST_F(TEST_UNSORTEDSEGMENTSUM_UT, BIG_DATA_TYPE_INT16_SUCC) {
 
 TEST_F(TEST_UNSORTEDSEGMENTSUM_UT, BIG_DATA_TYPE_FLOAT_SUCC) {
   vector<DataType> data_types = {DT_FLOAT, DT_INT32, DT_INT32, DT_FLOAT};
-  vector<vector<int64_t>> shapes = {{500, 1500}, {500}, {1}, {500, 1500}};
+  vector<vector<int64_t>> shapes = {{1024, 33}, {1024}, {1}, {1024, 33}};
   vector<string> files{
       "unsorted_segment_sum/data/unsorted_segment_sum_data_input1_26.txt",
       "unsorted_segment_sum/data/unsorted_segment_sum_data_input2_26.txt",

@@ -242,7 +242,7 @@ TEST_F(TEST_INV_UT, DATA_TYPE_FLOAT32_1D_BIG_SUCC) {
 
 TEST_F(TEST_INV_UT, DATA_TYPE_DOUBLE_SUCC_3D) {
   vector<DataType> data_types = {DT_DOUBLE, DT_DOUBLE};
-  vector<vector<int64_t>> shapes = {{256,1024,32},{256,1024,32}};
+  vector<vector<int64_t>> shapes = {{5,1024,32},{5,1024,32}};
   vector<string> files{"inv/data/inv_data_input1_2.txt",
                        "inv/data/inv_data_output1_2.txt"};
   RunInvKernel<double, double>(files, data_types, shapes);
@@ -250,7 +250,7 @@ TEST_F(TEST_INV_UT, DATA_TYPE_DOUBLE_SUCC_3D) {
 
 TEST_F(TEST_INV_UT, DATA_TYPE_FLOAT16_SUCC) {
   vector<DataType> data_types = {DT_FLOAT16, DT_FLOAT16};
-  vector<vector<int64_t>> shapes = {{12, 130},  {12, 130}};
+  vector<vector<int64_t>> shapes = {{12, 13},  {12, 13}};
   vector<string> files{"inv/data/inv_data_input1_3.txt",
                        "inv/data/inv_data_output1_3.txt"};
   RunInvKernel<Eigen::half, Eigen::half>(files, data_types, shapes);
@@ -258,7 +258,7 @@ TEST_F(TEST_INV_UT, DATA_TYPE_FLOAT16_SUCC) {
 
 TEST_F(TEST_INV_UT, DATA_TYPE_FLOAT_SUCC) {
   vector<DataType> data_types = {DT_FLOAT, DT_FLOAT};
-  vector<vector<int64_t>> shapes = {{15, 12, 30},  {15, 12, 30}};
+  vector<vector<int64_t>> shapes = {{15, 12, 2},  {15, 12, 2}};
   vector<string> files{"inv/data/inv_data_input1_4.txt",
                        "inv/data/inv_data_output1_4.txt"};
   RunInvKernel<float, float>(files, data_types, shapes);
@@ -266,7 +266,7 @@ TEST_F(TEST_INV_UT, DATA_TYPE_FLOAT_SUCC) {
 
 TEST_F(TEST_INV_UT, DATA_TYPE_DOUBLE_SUCC) {
   vector<DataType> data_types = {DT_DOUBLE, DT_DOUBLE};
-  vector<vector<int64_t>> shapes = {{7, 12, 30},{7, 12, 30}};
+  vector<vector<int64_t>> shapes = {{7, 12, 2},{7, 12, 2}};
   vector<string> files{"inv/data/inv_data_input1_5.txt",
                        "inv/data/inv_data_output1_5.txt"};
   RunInvKernel<double, double>(files, data_types, shapes);

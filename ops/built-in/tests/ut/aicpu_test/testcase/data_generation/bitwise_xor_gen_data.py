@@ -282,29 +282,29 @@ def gen_random_data_size_bcast_64KB():
     np.random.seed(3457)
     shape_x1 = [4, 32, 64]
     shape_x2 = [4, 1, 64]
-    a = gen_data_file(data_files[0], shape_x1, np.int8, "randint", -100, 100)
-    b = gen_data_file(data_files[1], shape_x2, np.int8, "randint", -100, 100)
+    a = gen_data_file(data_files[0], shape_x1, np.int64, "randint", -100, 100)
+    b = gen_data_file(data_files[1], shape_x2, np.int64, "randint", -100, 100)
 
-    x1 = tf.compat.v1.placeholder(tf.int8, shape=shape_x1)
-    x2 = tf.compat.v1.placeholder(tf.int8, shape=shape_x2)
+    x1 = tf.compat.v1.placeholder(tf.int64, shape=shape_x1)
+    x2 = tf.compat.v1.placeholder(tf.int64, shape=shape_x2)
     re = bitwise_ops.bitwise_xor(x1, x2)
     with tf.compat.v1.Session(config=config('cpu')) as session:
         data = session.run(re, feed_dict={x1: a, x2: b})
     write_file_txt(data_files[2], data, fmt="%s")
 
 
-def gen_random_data_size_bcast_256KB():
+def gen_random_data_size_bcast():
     data_files = ["bitwise_xor/data/bitwise_xor_data_input1_12.txt",
                   "bitwise_xor/data/bitwise_xor_data_input2_12.txt",
                   "bitwise_xor/data/bitwise_xor_data_output1_12.txt"]
     np.random.seed(3457)
-    shape_x1 = [4, 32, 256]
-    shape_x2 = [4, 1, 256]
-    a = gen_data_file(data_files[0], shape_x1, np.int8, "randint", -100, 100)
-    b = gen_data_file(data_files[1], shape_x2, np.int8, "randint", -100, 100)
+    shape_x1 = [4, 32, 4]
+    shape_x2 = [4, 1, 4]
+    a = gen_data_file(data_files[0], shape_x1, np.int64, "randint", -100, 100)
+    b = gen_data_file(data_files[1], shape_x2, np.int64, "randint", -100, 100)
 
-    x1 = tf.compat.v1.placeholder(tf.int8, shape=shape_x1)
-    x2 = tf.compat.v1.placeholder(tf.int8, shape=shape_x2)
+    x1 = tf.compat.v1.placeholder(tf.int64, shape=shape_x1)
+    x2 = tf.compat.v1.placeholder(tf.int64, shape=shape_x2)
     re = bitwise_ops.bitwise_xor(x1, x2)
     with tf.compat.v1.Session(config=config('cpu')) as session:
         data = session.run(re, feed_dict={x1: a, x2: b})
@@ -329,13 +329,13 @@ def gen_random_data_size_no_bcast_512KB():
     write_file_txt(data_files[2], data, fmt="%s")
 
 
-def gen_random_data_size_no_bcast_2M():
+def gen_random_data_size_no_bcast():
     data_files = ["bitwise_xor/data/bitwise_xor_data_input1_14.txt",
                   "bitwise_xor/data/bitwise_xor_data_input2_14.txt",
                   "bitwise_xor/data/bitwise_xor_data_output1_14.txt"]
     np.random.seed(3457)
-    shape_x1 = [4, 32, 512, 4]
-    shape_x2 = [4, 32, 512, 4]
+    shape_x1 = [4, 32, 4, 4]
+    shape_x2 = [4, 32, 4, 4]
     a = gen_data_file(data_files[0], shape_x1, np.int8, "randint", -100, 100)
     b = gen_data_file(data_files[1], shape_x2, np.int8, "randint", -100, 100)
 
@@ -359,6 +359,7 @@ def run():
     gen_random_data_x_one()
     gen_random_data_y_one()
     gen_random_data_size_bcast_64KB()
-    gen_random_data_size_bcast_256KB()
+    gen_random_data_size_bcast()
     gen_random_data_size_no_bcast_512KB()
-    gen_random_data_size_no_bcast_2M()
+    gen_random_data_size_no_bcast()
+
