@@ -93,11 +93,13 @@ Status DynamicGRUV2TransFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &map
   ge::GeTensorDesc weightInputDesc = fusedDesc->GetInputDesc(1);
   weightInputDesc.SetShape(ge::GeShape(weightInputDim));
   weightInputDesc.SetFormat(ge::FORMAT_FRACTAL_ZN_RNN);
+  weightInputDesc.SetOriginFormat(ge::FORMAT_ND);
   fusedDesc->UpdateInputDesc("weight_input", weightInputDesc);
 
   ge::GeTensorDesc weightHiddenDesc = fusedDesc->GetInputDesc(weightIndex);
   weightHiddenDesc.SetShape(ge::GeShape(weightHiddenDim));
   weightHiddenDesc.SetFormat(ge::FORMAT_FRACTAL_ZN_RNN);
+  weightHiddenDesc.SetOriginFormat(ge::FORMAT_ND);
   fusedDesc->UpdateInputDesc("weight_hidden", weightHiddenDesc);
 
   bool hasInputBias = fusedDesc->MutableInputDesc("bias_input") != nullptr;
@@ -105,6 +107,7 @@ Status DynamicGRUV2TransFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &map
     ge::GeTensorDesc biasInputDesc = fusedDesc->GetInputDesc(biasIndex);
     biasInputDesc.SetShape(ge::GeShape(biasDim));
     biasInputDesc.SetFormat(ge::FORMAT_ND_RNN_BIAS);
+    biasInputDesc.SetOriginFormat(ge::FORMAT_ND);
     fusedDesc->UpdateInputDesc("bias_input", biasInputDesc);
   }
 
@@ -113,8 +116,12 @@ Status DynamicGRUV2TransFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &map
     ge::GeTensorDesc biasHiddenDesc = fusedDesc->GetInputDesc(biasHiddenIndex);
     biasHiddenDesc.SetShape(ge::GeShape(biasDim));
     biasHiddenDesc.SetFormat(ge::FORMAT_ND_RNN_BIAS);
+    biasHiddenDesc.SetOriginFormat(ge::FORMAT_ND);
     fusedDesc->UpdateInputDesc("bias_hidden", biasHiddenDesc);
   }
+
+  AttrUtils::SetInt(fusedDesc, "input_size", input_x);
+  AttrUtils::SetInt(fusedDesc, "hidden_size", hidden_size);
 
   OP_LOGI(FUSED_OP_TYPE.c_str(), "dynamic_gru_v2 transdatarnn end fusion");
   return SUCCESS;
