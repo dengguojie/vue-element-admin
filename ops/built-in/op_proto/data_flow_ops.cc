@@ -2837,7 +2837,8 @@ IMPLEMT_INFERFUNC(OptionalGetValue, OptionalGetValueInferShape) {
     return GRAPH_FAILED;
   }
 
-  if (outputTypes.size() < 1) {
+  size_t typesSize = outputTypes.size();
+  if (typesSize < 1) {
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(op_name, string("get attr[output_types] less 1"));
     return GRAPH_FAILED;
   }
@@ -2848,19 +2849,20 @@ IMPLEMT_INFERFUNC(OptionalGetValue, OptionalGetValueInferShape) {
     return GRAPH_FAILED;
   }
 
-  if (outputShapes.size() < 1) {
+  size_t shapesSize = outputShapes.size();
+  if (shapesSize < 1) {
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(op_name, string("get attr[outputShapes] less 1"));
     return GRAPH_FAILED;
   }
 
-  if (outputTypes.size() != outputShapes.size()) {
+  if (typesSize != shapesSize) {
     std::string errMsg =
       "attr[output_types] and attr[output_shapes] should be the same length";
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(op_name, errMsg);
     return GRAPH_FAILED;
   }
 
-  for (size_t i = 0; i < outputShapes.size(); i++) {
+  for (size_t i = 0; i < shapesSize; i++) {
     TensorDesc outputDesc = op.GetDynamicOutputDesc("components", i);
     Shape shape(outputShapes[i]);
     outputDesc.SetShape(shape);

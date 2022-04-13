@@ -304,4 +304,42 @@ IMPLEMT_INFERFUNC(StatefulUniformInt, StatefulUniformIntInfer) {
 
 INFER_FUNC_REG(StatefulUniformInt, StatefulUniformIntInfer);
 
+IMPLEMT_INFERFUNC(RngReadAndSkipV2, RngReadAndSkipV2Infer) {
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  auto value_in_desc = op_desc->MutableInputDesc(0);
+  std::vector<std::pair<int64_t, int64_t>> range;
+  if (value_in_desc->GetShapeRange(range) != GRAPH_SUCCESS) {
+    return GRAPH_FAILED;
+  }
+
+  auto value_out_desc = op_desc->MutableOutputDesc(0);
+  value_out_desc->SetShape(value_in_desc->GetShape());
+  value_out_desc->SetShapeRange(range);
+  value_out_desc->SetDataType(DT_INT64);
+  return GRAPH_SUCCESS;
+}
+
+IMPLEMT_VERIFIER(RngReadAndSkipV2, RngReadAndSkipV2Verify) {
+  const auto op_name = op.GetName();
+  Shape alg_shape;
+  if (WithRank(op.GetInputDesc(1), 0, alg_shape, op_name.c_str()) != GRAPH_SUCCESS) {
+    std::string err_msg = GetShapeErrMsg(
+        1, DebugString(op.GetInputDesc(1).GetShape().GetDims()), "scalar");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op_name, err_msg);
+    return GRAPH_FAILED;
+  }
+
+  Shape delta_shape;
+  if (WithRank(op.GetInputDesc(2), 0, delta_shape, op_name.c_str()) != GRAPH_SUCCESS) {
+    std::string err_msg = GetShapeErrMsg(
+        2, DebugString(op.GetInputDesc(2).GetShape().GetDims()), "scalar");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op_name, err_msg);
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+INFER_FUNC_REG(RngReadAndSkipV2, RngReadAndSkipV2Infer);
+VERIFY_FUNC_REG(RngReadAndSkipV2, RngReadAndSkipV2Verify);
+
+
 }  // namespace ge

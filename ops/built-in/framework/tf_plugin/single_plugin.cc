@@ -1267,6 +1267,13 @@ REGISTER_CUSTOM_OP("RngSkip")
     .ParseParamsFn(AutoMappingFn)
     .ImplyType(ImplyType::AI_CPU);
 
+// register RngReadAndSkip op to GE
+REGISTER_CUSTOM_OP("RngReadAndSkipV2")
+    .FrameworkType(TENSORFLOW)
+    .OriginOpType("RngReadAndSkip")
+    .ParseParamsFn(AutoMappingFn)
+    .ImplyType(ImplyType::AI_CPU);
+
 // register StatefulRandomBinomial op to GE
 REGISTER_CUSTOM_OP("StatefulRandomBinomial")
     .FrameworkType(TENSORFLOW)
