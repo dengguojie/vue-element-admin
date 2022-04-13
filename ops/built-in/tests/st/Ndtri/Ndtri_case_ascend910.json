@@ -126,6 +126,12 @@
                 "shape": [
                     -1
                 ],
+                "shape_range": [
+                    [
+                        1,
+                        200
+                    ]
+                ],
                 "typical_shape": [
                     128
                 ],
@@ -139,6 +145,12 @@
                 "type": "float32",
                 "shape": [
                     -1
+                ],
+                "shape_range": [
+                    [
+                        1,
+                        200
+                    ]
                 ],
                 "typical_shape": [
                     128
@@ -159,6 +171,16 @@
                 "shape": [
                     -2
                 ],
+                "shape_range": [
+                    [
+                        1,
+                        200
+                    ],
+                    [
+                        1,
+                        200
+                    ]
+                ],
                 "typical_shape": [
                     128,
                     1
@@ -173,6 +195,16 @@
                 "type": "float32",
                 "shape": [
                     -2
+                ],
+                "shape_range": [
+                    [
+                        1,
+                        200
+                    ],
+                    [
+                        1,
+                        200
+                    ]
                 ],
                 "typical_shape": [
                     128,
@@ -194,6 +226,16 @@
                 "shape": [
                     -2
                 ],
+                "shape_range": [
+                    [
+                        1,
+                        200
+                    ],
+                    [
+                        1,
+                        200
+                    ]
+                ],
                 "typical_shape": [
                     128,
                     1
@@ -208,6 +250,16 @@
                 "type": "float16",
                 "shape": [
                     -2
+                ],
+                "shape_range": [
+                    [
+                        1,
+                        200
+                    ],
+                    [
+                        1,
+                        200
+                    ]
                 ],
                 "typical_shape": [
                     128,
@@ -229,6 +281,16 @@
                 "shape": [
                     -2
                 ],
+                "shape_range": [
+                    [
+                        1,
+                        200
+                    ],
+                    [
+                        1,
+                        200
+                    ]
+                ],
                 "typical_shape": [
                     128,
                     1
@@ -243,6 +305,16 @@
                 "type": "float32",
                 "shape": [
                     -2
+                ],
+                "shape_range": [
+                    [
+                        1,
+                        200
+                    ],
+                    [
+                        1,
+                        200
+                    ]
                 ],
                 "typical_shape": [
                     128,
