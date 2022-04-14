@@ -707,6 +707,13 @@ REGISTER_CUSTOM_OP("RightShift")
     .ParseParamsFn(AutoMappingFn)
     .ImplyType(ImplyType::AI_CPU);
 
+// register LeftShift op to GE
+REGISTER_CUSTOM_OP("LeftShift")
+    .FrameworkType(TENSORFLOW)
+    .OriginOpType("LeftShift")
+    .ParseParamsFn(AutoMappingFn)
+    .ImplyType(ImplyType::AI_CPU);
+
 // register SampleDistortedBoundingBox op to GE
 REGISTER_CUSTOM_OP("SampleDistortedBoundingBox")
     .FrameworkType(TENSORFLOW)
