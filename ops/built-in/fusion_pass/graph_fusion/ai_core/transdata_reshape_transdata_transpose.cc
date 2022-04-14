@@ -130,7 +130,7 @@ Status TransdataTransposeFusionPass::UnlinkFusedNodeEdge(ge::NodePtr transdata1_
               transdata2_node->GetName().c_str());
       for (InControlAnchorPtr& inCtrlAnchorPtr : transdata2_node->GetOutControlAnchor()->GetPeerInControlAnchors()) {
         FUSION_PASS_CHECK(
-            SUCCESS != ge::GraphUtils::AddEdge(inCtrlAnchorPtr, transpose_node->GetOutControlAnchor()),
+            SUCCESS != ge::GraphUtils::AddEdge(transpose_node->GetOutControlAnchor(), inCtrlAnchorPtr),
             VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Fail to add output control edge for fusion node:%s.",
                                            transpose_node->GetName().c_str()),
             return FAILED);
