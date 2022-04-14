@@ -23,10 +23,30 @@ from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import register_operator_compute
+from impl.apply_momentum_d import get_op_support_info as apply_momentum_d_get_op_support_info
+
+
+def get_op_support_info(var,
+                        accum,
+                        lr,
+                        grad,
+                        momentum,
+                        var_out,
+                        accum_out,
+                        use_nesterov=False,
+                        kernel_name="apply_momentum_d"):
+    """
+    get_op_support_info
+    """
+    return apply_momentum_d_get_op_support_info(var, accum, lr, grad, momentum, var_out, accum_out,
+                                                use_nesterov, kernel_name)
 
 
 # 'pylint: disable=locally-disabled,too-many-arguments,too-many-locals
 # 'pylint: disable=locally-disabled,unused-argument,invalid-name,unused-variable
+@register_operator_compute("ApplyMomentumD", op_mode="dynamic", support_fusion=True)
 def apply_momentum_compute_d(var,
                              accum,
                              lr,
@@ -108,6 +128,9 @@ def apply_momentum_compute_d(var,
 
 
 @register_operator("ApplyMomentumD")
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
 def apply_momentum_d(var,
                      accum,
                      lr,

@@ -22,6 +22,7 @@ from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import register_operator_compute
 
 
 # 'pylint: disable=invalid-name,too-many-arguments,too-many-locals
@@ -196,6 +197,7 @@ def _output_var_t_compute(var, lr_t, m_t, epsilon, v_t):
     return v_t
 
 
+@register_operator_compute("ApplyAdamD", op_mode="dynamic", support_fusion=True)
 def apply_adam_d_compute(var, m, v, beta1_power, beta2_power, lr, beta1, beta2, epsilon, grad, var_out, m_out, v_out,
                          use_locking, use_nesterov, kernel_name="apply_adam_d"):
     """
