@@ -127,6 +127,28 @@ TEST(BatchMatMulInferTest, StaticNormal5) {
   Check(op, {3, 2, 5}, {});
 }
 
+// num_dima = 1
+TEST(BatchMatMulInferTest, StaticNormal6) {
+  auto op = CreateBatchMatMulOp(OP_TUPLE{{4}, DT_FLOAT16, FORMAT_ND, {}},
+                                OP_TUPLE{{3, 4, 5}, DT_FLOAT16, FORMAT_ND, {}},
+                                false, false);
+
+  Operate(op);
+
+  Check(op, {3, 5}, {});
+}
+
+// num_dimb = 1
+TEST(BatchMatMulInferTest, StaticNormal7) {
+  auto op = CreateBatchMatMulOp(OP_TUPLE{{1, 2, 4}, DT_FLOAT16, FORMAT_ND, {}},
+                                OP_TUPLE{{4}, DT_FLOAT16, FORMAT_ND, {}},
+                                false, false);
+
+  Operate(op);
+
+  Check(op, {1, 2}, {});
+}
+
 // num_dima<num_dimb, batch_a=batch_b
 TEST(BatchMatMulInferTest, DynamicNormal1) {
   auto op = CreateBatchMatMulOp(OP_TUPLE{{3, 2, 4}, DT_FLOAT16, FORMAT_ND, {}},
@@ -214,6 +236,39 @@ TEST(BatchMatMulInferTest, DynamicNormal8) {
   Operate(op);
 
   Check(op, {-2}, {});
+}
+
+// num_dima = 1
+TEST(BatchMatMulInferTest, DynamicNormal9) {
+  auto op = CreateBatchMatMulOp(OP_TUPLE{{4}, DT_FLOAT16, FORMAT_ND, {}},
+                                OP_TUPLE{{-1, 4, 5}, DT_FLOAT16, FORMAT_ND, {{3, 5}, {4, 4}, {5, 5}}},
+                                false, false);
+
+  Operate(op);
+
+  Check(op, {-1,5}, {{3, 5}, {5, 5}});
+}
+
+// num_dima = 1
+TEST(BatchMatMulInferTest, DynamicNorma20) {
+  auto op = CreateBatchMatMulOp(OP_TUPLE{{4}, DT_FLOAT16, FORMAT_ND, {}},
+                                OP_TUPLE{{3, 4, -1}, DT_FLOAT16, FORMAT_ND, {{3, 3}, {4, 4}, {2, 5}}},
+                                false, false);
+
+  Operate(op);
+
+  Check(op, {3,-1}, {{3, 3}, {2, 5}});
+}
+
+// num_dimb = 1
+TEST(BatchMatMulInferTest, DynamicNorma21) {
+  auto op = CreateBatchMatMulOp(OP_TUPLE{{-1, 4, 5}, DT_FLOAT16, FORMAT_ND, {{3, 5}, {4, 4}, {5, 5}}},
+                                OP_TUPLE{{5}, DT_FLOAT16, FORMAT_ND, {}},
+                                false, false);
+
+  Operate(op);
+
+  Check(op, {-1,4}, {{3, 5}, {4, 4}});
 }
 
 // k_a!=k_b

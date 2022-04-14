@@ -78,6 +78,10 @@ const int64_t kInputPaddingIndex = 4;
 // MatMul FRACTAL_Z
 const int64_t BLOCK_SIZE = 16;
 
+// Matmul/BatchMatmul m_indx n_index
+const int64_t kOutputMIndex = -2;
+const int64_t kOutputNIndex = -1;
+
 template <typename T>
 static std::string VectorToString(const std::vector<T> &dims) {
   std::stringstream ss;
@@ -1806,6 +1810,46 @@ bool SetMatMulOutputDtype(const AscendString& opName, const ge::GeTensorDescPtr 
   return true;
 }
 
+// remove completed dimensions
+void ReshapeOutput(GeShape& shape_out, vector<std::pair<int64_t, int64_t>>& shape_range_out,
+                   const size_t index) {
+  size_t shape_range_dim = shape_range_out.size();
+  if (shape_range_dim > 0 && (shape_range_dim + index) >= 0) {
+    shape_range_out.erase(shape_range_out.begin() + shape_range_dim + index);
+  }
+
+  size_t shape_out_dim = shape_out.GetDimNum();
+  vector<int64_t> tmp_shape_out(shape_out_dim);
+  for (size_t i = 0; i < shape_out_dim; i++) {
+    tmp_shape_out[i] = shape_out.GetDim(i);
+  }
+  tmp_shape_out.erase(tmp_shape_out.begin() + shape_out_dim + index);
+
+  shape_out.SetDimNum(shape_out_dim - 1);
+  for (size_t j = 0; j < shape_out_dim - 1; j++) {
+    shape_out.SetDim(j, tmp_shape_out[j]);
+  }
+}
+
+// check flag to deal with complemented situation
+void InferComplementedOutput(GeShape& shape_out, vector<std::pair<int64_t, int64_t>>& shape_range_out,
+                             const bool shape_x1_reshape_flag, const bool shape_x2_reshape_flag) {
+  size_t index = 0;
+
+  // comfirm completed dimension m_index =-2,n_index = -1;
+  if (shape_x1_reshape_flag && !shape_x2_reshape_flag) {
+    index = kOutputMIndex;
+  }
+
+  if (!shape_x1_reshape_flag && shape_x2_reshape_flag) {
+    index = kOutputNIndex;
+  }
+
+  if (index != 0) {
+    ReshapeOutput(shape_out, shape_range_out, index);
+  }
+}
+
 // Obtains the processing function of the output tensor description.
 IMPLEMT_COMMON_INFERFUNC(MatMulInferShape) {
   AscendString opName;
@@ -1837,19 +1881,25 @@ IMPLEMT_COMMON_INFERFUNC(MatMulInferShape) {
     OP_LOGE(opName.GetString(), "[Plugin][ERROR]%s GetOpAttr %s_x2 failed!", opName.GetString(), "transpose_x2");
     return GRAPH_FAILED;
   }
+
+  bool shape_x1_reshape_flag = false;
   if (shape_x1.GetDimNum() == 1 && shape_x1.GetDim(0) > 0) {
     int64_t ori_dim = shape_x1.GetDim(0);
     shape_x1.SetDimNum(2);
     shape_x1.SetDim(0, 1);
     shape_x1.SetDim(1, ori_dim);
     shape_range_x1.insert(shape_range_x1.begin(), make_pair<int64_t, int64_t>(1, 1));
+    shape_x1_reshape_flag = true;
   }
+
+  bool shape_x2_reshape_flag = false;
   if (shape_x2.GetDimNum() == 1 && shape_x2.GetDim(0) > 0) {
     int64_t ori_dim = shape_x2.GetDim(0);
     shape_x2.SetDimNum(2);
     shape_x2.SetDim(0, ori_dim);
     shape_x2.SetDim(1, 1);
     shape_range_x2.push_back(make_pair<int64_t, int64_t>(1, 1));
+    shape_x2_reshape_flag = true;
   }
 
   GeShape& shape_out = tensordesc_output->MutableShape();
@@ -1857,6 +1907,9 @@ IMPLEMT_COMMON_INFERFUNC(MatMulInferShape) {
   InferShapeMatMul inferHelper(opName, shape_x1, shape_x2, shape_range_x1, shape_range_x2, trans_a, trans_b, shape_out,
                                shape_range_out);
   CHECK(!inferHelper.InferShape(), OP_LOGE(opName.GetString(), "Failed to infer output shape"), return GRAPH_FAILED);
+
+  InferComplementedOutput(shape_out, shape_range_out, shape_x1_reshape_flag, shape_x2_reshape_flag);
+
   tensordesc_output->SetShapeRange(shape_range_out);
   if (!SetMatMulOutputDtype(opName, tensordesc_x1, tensordesc_output)) {
     OP_LOGE(opName.GetString(), "[Plugin][ERROR]%s SetMatMulOutputDtype failed!", opName.GetString());
@@ -1933,20 +1986,24 @@ IMPLEMT_COMMON_INFERFUNC(MatMulV2InferShape) {
     tensordesc_x2->GetShapeRange(shape_range_x2);
   }
 
+  bool shape_x2_reshape_flag = false;
   if (shape_x2.GetDimNum() == 1 && shape_x2.GetDim(0) > 0) {
     int64_t ori_dim = shape_x2.GetDim(0);
     shape_x2.SetDimNum(2);
     shape_x2.SetDim(0, ori_dim);
     shape_x2.SetDim(1, 1);
     shape_range_x2.push_back(make_pair<int64_t, int64_t>(1, 1));
+    shape_x2_reshape_flag = true;
   }
 
+  bool shape_x1_reshape_flag = false;
   if (shape_x1.GetDimNum() == 1 && shape_x1.GetDim(0) > 0) {
     int64_t ori_dim = shape_x1.GetDim(0);
     shape_x1.SetDimNum(2);
     shape_x1.SetDim(0, 1);
     shape_x1.SetDim(1, ori_dim);
     shape_range_x1.insert(shape_range_x1.begin(), make_pair<int64_t, int64_t>(1, 1));
+    shape_x1_reshape_flag = true;
   }
 
   bool trans_b = false;
@@ -1987,6 +2044,8 @@ IMPLEMT_COMMON_INFERFUNC(MatMulV2InferShape) {
   InferShapeMatMul inferHelper(opName, shape_x1, shape_x2, shape_range_x1, shape_range_x2,
                                trans_a, trans_b, shape_out, shape_range_out, tensordesc_bias);
   CHECK(!inferHelper.InferShape(), OP_LOGE(opName.GetString(), "Failed to infer output shape"), return GRAPH_FAILED);
+
+  InferComplementedOutput(shape_out, shape_range_out, shape_x1_reshape_flag, shape_x2_reshape_flag);
 
   OP_LOGD(opName.GetString(), "[MatMulV2 Infershape] Start to set output shape.");
   tensordesc_output->SetShapeRange(shape_range_out);
@@ -2162,20 +2221,24 @@ IMPLEMT_COMMON_INFERFUNC(BatchMatMulInferShape) {
     return GRAPH_FAILED;
   }
 
+  bool shape_x1_reshape_flag = false;
   if (shape_x1.GetDimNum() == 1 && shape_x1.GetDim(0) > 0) {
     int64_t ori_dim = shape_x1.GetDim(0);
     shape_x1.SetDimNum(2);
     shape_x1.SetDim(0, 1);
     shape_x1.SetDim(1, ori_dim);
     shape_range_x1.insert(shape_range_x1.begin(), make_pair<int64_t, int64_t>(1, 1));
+    shape_x1_reshape_flag = true;
   }
 
+  bool shape_x2_reshape_flag = false;
   if (shape_x2.GetDimNum() == 1 && shape_x2.GetDim(0) > 0) {
     int64_t ori_dim = shape_x2.GetDim(0);
     shape_x2.SetDimNum(2);
     shape_x2.SetDim(0, ori_dim);
     shape_x2.SetDim(1, 1);
     shape_range_x2.push_back(make_pair<int64_t, int64_t>(1, 1));
+    shape_x2_reshape_flag = true;
   }
 
   GeShape& shape_out = tensordesc_out->MutableShape();
@@ -2184,6 +2247,8 @@ IMPLEMT_COMMON_INFERFUNC(BatchMatMulInferShape) {
                                          shape_out, shape_range_out);
   CHECK(!BatchMatMulInfer.InferShape(), OP_LOGE(opName.GetString(), "Failed to infer output shape"),
         return GRAPH_FAILED);
+
+  InferComplementedOutput(shape_out, shape_range_out, shape_x1_reshape_flag, shape_x2_reshape_flag);
 
   tensordesc_out->SetShapeRange(shape_range_out);
   if (dtype == ge::DT_INT8) {
@@ -2271,20 +2336,24 @@ IMPLEMT_COMMON_INFERFUNC(BatchMatMulV2InferShape) {
     return GRAPH_FAILED;
   }
 
+  bool shape_x1_reshape_flag = false;
   if (shape_x1.GetDimNum() == 1 && shape_x1.GetDim(0) > 0) {
     int64_t ori_dim = shape_x1.GetDim(0);
     shape_x1.SetDimNum(2);
     shape_x1.SetDim(0, 1);
     shape_x1.SetDim(1, ori_dim);
     shape_range_x1.insert(shape_range_x1.begin(), make_pair<int64_t, int64_t>(1, 1));
+    shape_x1_reshape_flag = true;
   }
 
+  bool shape_x2_reshape_flag = false;
   if (shape_x2.GetDimNum() == 1 && shape_x2.GetDim(0) > 0) {
     int64_t ori_dim = shape_x2.GetDim(0);
     shape_x2.SetDimNum(2);
     shape_x2.SetDim(0, ori_dim);
     shape_x2.SetDim(1, 1);
     shape_range_x2.push_back(make_pair<int64_t, int64_t>(1, 1));
+    shape_x2_reshape_flag = true;
   }
 
   GeShape& shape_out = tensordesc_out->MutableShape();
@@ -2293,6 +2362,8 @@ IMPLEMT_COMMON_INFERFUNC(BatchMatMulV2InferShape) {
                                            shape_out, shape_range_out, tensordesc_bias);
   CHECK(!BatchMatMulV2Infer.InferShape(), OP_LOGE(opName.GetString(), "Failed to infer output shape"),
         return GRAPH_FAILED);
+
+  InferComplementedOutput(shape_out, shape_range_out, shape_x1_reshape_flag, shape_x2_reshape_flag);
 
   tensordesc_out->SetShapeRange(shape_range_out);
   if (dtype == ge::DT_INT8) {

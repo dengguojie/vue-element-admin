@@ -175,8 +175,8 @@ void Check(ge::op::MatMul &op, vector<int64_t> expected_shape, vector<pair<int64
 
   auto shape = output_desc.GetShape().GetDims();
   vector<pair<int64_t,int64_t>> range;
-  EXPECT_EQ(output_desc.GetShapeRange(range), ge::GRAPH_SUCCESS);
 
+  EXPECT_EQ(output_desc.GetShapeRange(range), ge::GRAPH_SUCCESS);
   EXPECT_EQ(shape, expected_shape);
   EXPECT_EQ(range, expected_range);
 }
@@ -195,20 +195,18 @@ TEST_F(matmul_infer_test, static_normal_2) {
   auto op = CreateMatMulOp(OP_TUPLE{{2, 4}, ge::DT_FLOAT16, ge::FORMAT_ND, {}},
                            OP_TUPLE{{4}, ge::DT_FLOAT16, ge::FORMAT_ND, {}},
                            false, false);
-
   Operate(op);
 
-  Check(op, {2, 1}, {});
+  Check(op, {2}, {});
 }
 
 TEST_F(matmul_infer_test, static_normal_3) {
   auto op = CreateMatMulOp(OP_TUPLE{{4}, ge::DT_FLOAT16, ge::FORMAT_ND, {}},
                            OP_TUPLE{{4, 5}, ge::DT_FLOAT16, ge::FORMAT_ND, {}},
                            false, false);
-
   Operate(op);
 
-  Check(op, {1, 5}, {});
+  Check(op, {5}, {});
 }
 
 TEST_F(matmul_infer_test, dynamic_normal) {
