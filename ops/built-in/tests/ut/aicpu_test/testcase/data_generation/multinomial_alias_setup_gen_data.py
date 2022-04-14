@@ -62,14 +62,46 @@ def gen_data_file(data_file, shape, dtype, rand_type, low, high):
         write_file_txt(data_file, data, fmt="%s")
     return data
 
-def config(execute_type):
-    if execute_type == 'cpu':
-        session_config = tf.compat.v1.ConfigProto(
-            allow_soft_placement=True,
-            log_device_placement=False
-        )
-    return session_config
+def torch_multinomial_alias_setup(probs):
+    K = len(probs)
+    self_prob = [-1] * K
+    self_alias = [-1] * K
+    max = -1
+    smaller = []
+    larger = []
+    for idx, prob in enumerate(probs):
+        self_prob[idx] = K * prob
+        if self_prob[idx] < 1.0:
+            smaller.append(idx)
+        else:
+            larger.append(idx)
 
+    while len(smaller) > 0 and len(larger) > 0:
+        small = smaller.pop()
+        large = larger.pop()
+
+        self_alias[small] = large
+        self_prob[large] = (self_prob[large] - 1.0) + self_prob[small]
+
+        if self_prob[large] < 1.0:
+            smaller.append(large)
+        else:
+            larger.append(large)
+    for last_one in smaller:
+        self_prob[last_one] = 1
+
+    for last_one in larger:
+        if probs[last_one]*K>max:
+            max = probs[last_one]*K
+        self_prob[last_one] = 1
+
+    if max > 1:
+        for n in range(K):
+            if self_prob[n] < 1:
+                self_prob[n] /= max
+    self_alias = torch.tensor(self_alias)
+    self_prob = torch.tensor(self_prob)
+    return self_alias, self_prob
 
 def gen_random_data_float():
     data_files=["multinomial_alias_setup/data/multinomial_alias_setup_data_input1_1.txt",
@@ -79,7 +111,7 @@ def gen_random_data_float():
     shape_x1 = [1024]
     prot = gen_data_file(data_files[0], shape_x1, np.float32, "uniform", 0, 0.01)
     prot = torch.tensor(prot)
-    j,q = torch._multinomial_alias_setup(prot)
+    j,q = torch_multinomial_alias_setup(prot)
     write_file_txt(data_files[1], j, fmt="%s")
     write_file_txt(data_files[2], q, fmt="%s")
 
@@ -92,7 +124,7 @@ def gen_random_data_double():
     shape_x1 = [512]
     prot = gen_data_file(data_files[0], shape_x1, np.float64, "uniform", 0, 0.01)
     prot = torch.tensor(prot)
-    j,q = torch._multinomial_alias_setup(prot)
+    j,q = torch_multinomial_alias_setup(prot)
     write_file_txt(data_files[1], j, fmt="%s")
     write_file_txt(data_files[2], q, fmt="%s")
 
