@@ -667,12 +667,7 @@ bool MaxPoolGradWithArgmaxV2Tiling(const std::string& op_type, const TeOpParas& 
     // check workspace support
     if (compile_params.kh > compile_params.stride_h) {
       // calc actual used workspace
-      int64_t n = input_shape[SHAPE_INDEX_N];
-      int64_t c1 = input_shape[SHAPE_INDEX_C1];
-      int64_t hi = input_shape[SHAPE_INDEX_H];
-      int64_t wi = input_shape[SHAPE_INDEX_W];
-      
-      wi = tiling_params.wi + tiling_params.pad_left + tiling_params.pad_right;
+      int64_t wi = tiling_params.wi + tiling_params.pad_left + tiling_params.pad_right;
       actual_workspace = compile_params.core_num * (compile_params.kh - compile_params.stride_h)
                            * wi * BLOCK_ALLIGN * DTYPE_SIZE_FP32;
       
