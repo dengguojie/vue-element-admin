@@ -4148,6 +4148,7 @@ pytorch:
       - ops/built-in/tbe/impl/giou_grad.py
       - ops/built-in/tbe/impl/rotated_iou.py
       - ops/built-in/tbe/impl/rotated_overlaps.py
+      - ops/built-in/tbe/impl/group_norm_relu.py
       - ops/built-in/fusion_pass/graph_fusion/ai_core/softmaxv2_onnx_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/softmaxv2_onnx_fusion_pass.h
       - ops/built-in/tbe/impl/dynamic/resize_nearest3d.py

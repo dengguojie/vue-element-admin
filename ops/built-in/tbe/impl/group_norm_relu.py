@@ -21,6 +21,14 @@ from impl.util.platform_adapter import PlatformApi
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import error_manager_vector
 
+SUPPORT_SHAPE = (
+    (64, 56), (64, 120), (64, 128),
+    (128, 28), (128, 56), (128, 60), (128, 64), (128, 120), (128, 128),
+    (256, 14), (256, 28), (256, 30), (256, 32), (256, 56), (256, 60), (256, 64), (256, 120), (256, 128),
+    (512, 7), (512, 14), (512, 15), (512, 16), (512, 28), (512, 30), (512, 32), (512, 60), (512, 64),
+    (1024, 14), (1024, 30), (1024, 32),
+    (2048, 7), (2048, 15), (2048, 16))
+
 
 # 'pylint: disable=unused-argument,unused-variable,too-many-arguments,too-many-locals
 def check_supported(input_0, input_1, input_2, output_0, num_groups, eps=0.00001, kernel_name="group_norm_relu"):
@@ -28,7 +36,7 @@ def check_supported(input_0, input_1, input_2, output_0, num_groups, eps=0.00001
     check_supported
     """
     soc_version = PlatformApi.get_soc_spec(PlatformApi.SOC_VERSION)
-    support_version = ("Ascend710", )
+    support_version = ("Ascend710",)
     if soc_version not in support_version:
         return False, "not support SOC_VERSION"
     support_dtype = ("float16", "float32")
@@ -49,12 +57,7 @@ def check_supported(input_0, input_1, input_2, output_0, num_groups, eps=0.00001
         bias_shape = tuple(input_2.get("ori_shape"))
     else:
         return False, "not support data format"
-    support_shape = (
-        (512, 7), (512, 14), (512, 28), (512, 15), (512, 30), (512, 60),
-        (1024, 30), (1024, 14), (2048, 7), (2048, 15),
-        (64, 56), (64, 120), (128, 28), (128, 56), (128, 60), (128, 120),
-        (256, 14), (256, 28), (256, 30), (256, 56), (256, 60), (256, 120))
-    if input_shape[0] <= 0 or len(input_shape) != 4 or input_shape[1:3] not in support_shape \
+    if input_shape[0] <= 0 or len(input_shape) != 4 or input_shape[1:3] not in SUPPORT_SHAPE \
             or input_shape[2] != input_shape[3]:
         return False, "not support x shape"
     if output_shape != input_shape:
@@ -71,6 +74,15 @@ def check_supported(input_0, input_1, input_2, output_0, num_groups, eps=0.00001
     if eps < 0:
         return False, "not support eps"
     return True, ""
+
+
+def ceil_div(dividend, divisor):
+    result = (dividend + divisor - 1) // divisor
+    return result
+
+
+def get_align_num(data_num, align_num):
+    return ceil_div(data_num, align_num) * align_num
 
 
 # 'pylint: disable=too-few-public-methods,too-many-instance-attributes
@@ -117,21 +129,15 @@ class GroupNormBase:
         return data_size, block_data_num, repeat_data_num
 
     @staticmethod
-    def _ceil_div(dividend, divisor):
-        result = (dividend + divisor - 1) // divisor
-        return result
-
-    def _align_num(self, data_num, align_num):
-        return self._ceil_div(data_num, align_num) * align_num
-
-    def _get_core_loop_info(self, batch_num, core_num_all):
-        core_batch_num = self._ceil_div(batch_num, core_num_all)
-        core_num_use = self._ceil_div(batch_num, core_batch_num)
+    def _get_core_loop_info(batch_num, core_num_all):
+        core_batch_num = ceil_div(batch_num, core_num_all)
+        core_num_use = ceil_div(batch_num, core_batch_num)
         last_batch_num = batch_num - core_batch_num * (core_num_use - 1)
         return core_num_use, core_batch_num, last_batch_num
 
-    def _get_loop_info(self, data_num, loop_data_num):
-        loop_times = self._ceil_div(data_num, loop_data_num)
+    @staticmethod
+    def _get_loop_info(data_num, loop_data_num):
+        loop_times = ceil_div(data_num, loop_data_num)
         last_data_num = data_num - loop_data_num * (loop_times - 1)
         return loop_times, last_data_num
 
@@ -164,35 +170,53 @@ class GroupNormBase:
     def _count_relu(self, result_data, mask):
         self._start_tik_compute(result_data.size, mask, self._tik_maxs, (result_data, result_data, 0))
 
-    def _start_tik_compute(self, data_num, mask, func, args=None):
+    def _start_tik_compute(self, data_num, mask, func, args=None, begin_index=0):
         repeat_num = data_num // mask
         last_num = data_num - repeat_num * mask
         max_repeat = 255
         loop_times, last_repeat = self._get_loop_info(repeat_num, max_repeat)
         for loop_index in range(loop_times):
-            start_index = loop_index * max_repeat * mask
+            start_index = loop_index * max_repeat * mask + begin_index
             if loop_index != (loop_times - 1):
                 func(mask, start_index, max_repeat, args)
             else:
                 func(mask, start_index, last_repeat, args)
         if last_num != 0:
-            start_index = repeat_num * mask
+            start_index = repeat_num * mask + begin_index
             func(last_num, start_index, 1, args)
 
     def _tik_vmul(self, mask, start_index, repeat_num, args):
         dst, src0, src1 = args
         ori_size = dst.size
-        dst = dst.reshape((ori_size,))
-        src0 = src0.reshape((ori_size,))
-        src1 = src1.reshape((ori_size,))
-        self.tik_inst.vmul(mask, dst[start_index], src0[start_index], src1[start_index], repeat_num, 1, 1, 1, 8, 8, 8)
+        dst_flatten = dst.reshape((ori_size,))
+        src0_flatten = src0.reshape((ori_size,))
+        src1_flatten = src1.reshape((ori_size,))
+        self.tik_inst.vmul(mask, dst_flatten[start_index], src0_flatten[start_index], src1_flatten[start_index],
+                           repeat_num, 1, 1, 1, 8, 8, 8)
+
+    def _tik_vmul_broadcast(self, mask, start_index, repeat_num, args):
+        dst, src0, src1 = args
+        dst_flatten = dst.reshape((dst.size,))
+        src0_flatten = src0.reshape((src0.size,))
+        src1_flatten = src1.reshape((src1.size,))
+        self.tik_inst.vmul(mask, dst_flatten[start_index], src0_flatten[start_index], src1_flatten,
+                           repeat_num, 1, 1, 1, 8, 8, 0)
+
+    def _tik_vadd_broadcast(self, mask, start_index, repeat_num, args):
+        dst, src0, src1 = args
+        dst_flatten = dst.reshape((dst.size,))
+        src0_flatten = src0.reshape((src0.size,))
+        src1_flatten = src1.reshape((src1.size,))
+        self.tik_inst.vadd(mask, dst_flatten[start_index], src0_flatten[start_index], src1_flatten,
+                           repeat_num, 1, 1, 1, 8, 8, 0)
 
     def _tik_maxs(self, mask, start_index, repeat_num, args):
         dst, src0, src1 = args
         ori_size = dst.size
-        dst = dst.reshape((ori_size,))
-        src0 = src0.reshape((ori_size,))
-        self.tik_inst.vmaxs(mask, dst[start_index], src0[start_index], src1, repeat_num, 1, 1, 8, 8)
+        dst_flatten = dst.reshape((ori_size,))
+        src0_flatten = src0.reshape((ori_size,))
+        self.tik_inst.vmaxs(mask, dst_flatten[start_index], src0_flatten[start_index], src1,
+                            repeat_num, 1, 1, 8, 8)
 
     def _tik_vconv(self, mask, start_index, repeat_num, args):
         dst, src0 = args
@@ -202,6 +226,32 @@ class GroupNormBase:
             self.tik_inst.vconv(mask, "", dst[start_index], src0[start_index], repeat_num, 1, 1, 8, 4)
         if src0.dtype == self.res_type and dst.dtype == self.input_type:
             self.tik_inst.vconv(mask, "", dst[start_index], src0[start_index], repeat_num, 1, 1, 4, 8)
+
+    def _tik_dup(self, mask, start_index, repeat_num, args):
+        dst, dup_data = args
+        ori_size = dst.size
+        dst_flatten = dst.reshape((ori_size,))
+        self.tik_inst.vector_dup(mask, dst_flatten[start_index], dup_data, repeat_num, 1, 8)
+
+    def _broadcast_c(self, input_data, result_data):
+        block_num = self.c0_num // self.res_block_num
+        self.tik_inst.data_move(result_data, input_data, 0, 1, block_num, 0, 0)
+        while block_num < 8:
+            self.tik_inst.data_move(result_data[block_num * self.res_block_num, ], result_data, 0, 1, block_num, 0, 0)
+            block_num *= 2
+
+    def _count_std_and_mean(self, mask, group_variance_ub, group_mean_ub, group_mean_square_ub, repeat_num):
+        self.tik_inst.vmul(mask, group_variance_ub, group_mean_ub, group_mean_ub,
+                           repeat_num, 1, 1, 1, 8, 8, 8)
+        self.tik_inst.vsub(mask, group_variance_ub, group_mean_square_ub, group_variance_ub,
+                           repeat_num, 1, 1, 1, 8, 8, 8)
+        self.tik_inst.vabs(mask, group_variance_ub, group_variance_ub,
+                           repeat_num, 1, 1, 8, 8)
+
+        self.tik_inst.vmuls(mask, group_mean_ub, group_mean_ub, -1,
+                            repeat_num, 1, 1, 8, 8)
+        self.tik_inst.vadds(mask, group_variance_ub, group_variance_ub, self.eps,
+                            repeat_num, 1, 1, 8, 8)
 
 
 # 'pylint: disable=too-few-public-methods,too-many-instance-attributes
@@ -217,7 +267,7 @@ class GroupNormTilingC1(GroupNormBase):
         self.c1_groups = self.c_groups // self.c0_num
         self.d_groups = self.c_groups * self.d_num
         self.c0_repeat = self.res_repeat_num // self.c0_num
-        self.d_num_align = self._align_num(self.d_num, self.c0_repeat)
+        self.d_num_align = get_align_num(self.d_num, self.c0_repeat)
         self.d_groups_align = self.c_groups * self.d_num_align
         self.d_num_pad = self.d_num_align - self.d_num
 
@@ -377,17 +427,7 @@ class GroupNormTilingC1(GroupNormBase):
                             repeat_num, 1, 1, 8, 8)
         self.tik_inst.vmuls(mask, group_mean_square_ub, group_mean_square_ub, 1.0 / self.d_groups,
                             repeat_num, 1, 1, 8, 8)
-        self.tik_inst.vmul(mask, group_variance_ub, group_mean_ub, group_mean_ub,
-                           repeat_num, 1, 1, 1, 8, 8, 8)
-        self.tik_inst.vsub(mask, group_variance_ub, group_mean_square_ub, group_variance_ub,
-                           repeat_num, 1, 1, 1, 8, 8, 8)
-        self.tik_inst.vabs(mask, group_variance_ub, group_variance_ub,
-                           repeat_num, 1, 1, 8, 8)
-
-        self.tik_inst.vmuls(mask, group_mean_ub, group_mean_ub, -1,
-                            repeat_num, 1, 1, 8, 8)
-        self.tik_inst.vadds(mask, group_variance_ub, group_variance_ub, self.eps,
-                            repeat_num, 1, 1, 8, 8)
+        self._count_std_and_mean(mask, group_variance_ub, group_mean_ub, group_mean_square_ub, repeat_num)
         self.tik_inst.vsqrt(mask, group_mean_square_ub, group_variance_ub,
                             repeat_num, 1, 1, 8, 8)
         self.tik_inst.vector_dup(mask, group_variance_ub, 1, repeat_num, 1, 8)
@@ -413,31 +453,27 @@ class GroupNormTilingC1(GroupNormBase):
             self.tik_inst.vadd(mask, bias_ub[group_index, 0, 0], bias_ub[group_index, 0, 0], temp_ub, 1, 1, 1, 1, 8, 8,
                                8)
 
-    def _broadcast_c(self, input_data, result_data):
-        block_num = self.c0_num // self.res_block_num
-        self.tik_inst.data_move(result_data, input_data, 0, 1, block_num, 0, 0)
-        self.tik_inst.data_move(result_data[self.c0_num, ], result_data, 0, 1, block_num, 0, 0)
-        self.tik_inst.data_move(result_data[self.c0_num * 2, ], result_data, 0, 1, block_num * 2, 0, 0)
-
     def _stand_data(self, ub_tensor_all, group_num):
         input_data_ub = ub_tensor_all.get("input_data_ub")
         weight_ub = ub_tensor_all.get("weight_ub")
         bias_ub = ub_tensor_all.get("bias_ub")
         temp_ub = ub_tensor_all.get("temp_ub")
         mask = self.res_repeat_num
+        c_index_stride = self.d_num_align * self.c0_num
+        g_index_stride = self.c1_groups * c_index_stride
+        data_num_each_c1 = self.d_num_align * self.c0_num
         with self.tik_inst.for_range(0, group_num) as g_index:
             with self.tik_inst.for_range(0, self.c1_groups) as c_index:
                 self._broadcast_c(weight_ub[g_index, c_index:, :], temp_ub)
-                self.tik_inst.vmul(mask,
-                                   input_data_ub[g_index, c_index, 0, 0],
-                                   input_data_ub[g_index, c_index, 0, 0],
-                                   temp_ub,
-                                   self.stand_repeat, 1, 1, 1, 8, 8, 0)
+                self._start_tik_compute(data_num_each_c1, mask,
+                                        self._tik_vmul_broadcast,
+                                        (input_data_ub, input_data_ub, temp_ub),
+                                        c_index * c_index_stride + g_index * g_index_stride)
                 self._broadcast_c(bias_ub[g_index, c_index:, :], temp_ub)
-                self.tik_inst.vadd(mask, input_data_ub[g_index, c_index, 0, 0],
-                                   input_data_ub[g_index, c_index, 0, 0],
-                                   temp_ub,
-                                   self.stand_repeat, 1, 1, 1, 8, 8, 0)
+                self._start_tik_compute(data_num_each_c1, mask,
+                                        self._tik_vadd_broadcast,
+                                        (input_data_ub, input_data_ub, temp_ub),
+                                        c_index * c_index_stride + g_index * g_index_stride)
 
     def _data_move_out(self, ub_tensor_all, n_index, c1_index, group_num):
         input_data_ub = ub_tensor_all.get("input_data_ub")
@@ -471,15 +507,20 @@ class GroupNormTilingC1D(GroupNormBase):
         super(GroupNormTilingC1D, self).__init__(n_num, c_num, d_num, num_groups, eps, data_type, kernel_name)
         self.c_groups = self.c_num // self.num_groups
         self.c1_groups = self.c_groups // self.c0_num
-        self.d_groups = self.c_groups * self.d_num
+        self.d_groups = self.c1_groups * self.d_num
         self.c0_repeat = self.res_repeat_num // self.c0_num
-        self.d_num_align = self._align_num(self.d_num, self.c0_repeat)
-        self.d_groups_align = self.c_groups * self.d_num_align
-        self.d_num_pad = self.d_num_align - self.d_num
-
-        self.stand_repeat = self.d_num_align // self.c0_repeat
-        self.sum_repeat = self.d_groups_align // self.res_repeat_num
+        self.d_groups_align = get_align_num(self.d_groups, self.c0_repeat)
+        self.d_num_pad = self.d_groups_align - self.d_groups
         self.each_loop_repeat_num = 225
+
+    def _init_gm_tensor(self):
+        c1_groups = self.c1_num // self.num_groups
+        data_shape = (self.n_num, self.num_groups, c1_groups * self.d_num, self.c0_num)
+        input_shape_1 = (self.c_num,)
+        self.input_0 = self.tik_inst.Tensor(self.input_type, data_shape, tik.scope_gm, "input_0")
+        self.input_1 = self.tik_inst.Tensor(self.input_type, input_shape_1, tik.scope_gm, "input_1")
+        self.input_2 = self.tik_inst.Tensor(self.input_type, input_shape_1, tik.scope_gm, "input_2")
+        self.output_0 = self.tik_inst.Tensor(self.input_type, data_shape, tik.scope_gm, "output_0")
 
     def _compute_each_batch(self, n_index):
         sum_shape = (self.num_groups, self.res_block_num)
@@ -496,38 +537,46 @@ class GroupNormTilingC1D(GroupNormBase):
         bias_ub = self.tik_inst.Tensor(self.res_type, weight_shape, name="bias_ub", scope=tik.scope_ubuf)
         with self.tik_inst.new_stmt_scope():
             self._count_weight(weight_ub, bias_ub, sum_ub, sum_square_ub)
-        self._count_norm(weight_ub, bias_ub, n_index)
+        if self.c1_groups == 1:
+            self._count_norm(weight_ub, bias_ub, n_index)
+        else:
+            self._count_norm_multiple(weight_ub, bias_ub, n_index)
 
     # 'pylint: disable=unused-variable
     def _count_sum(self, sum_ub, sum_square_ub, n_index):
         mask = self.res_repeat_num
-        sum_repeat_num = sum_ub.size // mask
-        self.tik_inst.vector_dup(mask, sum_ub, 0, sum_repeat_num, 1, 8)
-        self.tik_inst.vector_dup(mask, sum_square_ub, 0, sum_repeat_num, 1, 8)
+        self._start_tik_compute(sum_ub.size, mask, self._tik_dup, (sum_ub, 0))
+        self._start_tik_compute(sum_square_ub.size, mask, self._tik_dup, (sum_square_ub, 0))
         each_loop_d_num = self.each_loop_repeat_num * self.c0_repeat
-        each_c1_loop_times, last_c1_d_num = self._get_loop_info(self.d_num, each_loop_d_num)
-        loop_times = each_c1_loop_times * self.c1_num
+        each_c1_loop_times, last_loop_d_num = self._get_loop_info(self.d_groups, each_loop_d_num)
+        loop_times = each_c1_loop_times * self.num_groups
 
         with self.tik_inst.for_range(0, loop_times, thread_num=2) as loop_index:
-            c1_index = loop_index // each_c1_loop_times
-            group_index = c1_index // self.c1_groups
+            group_index = loop_index // each_c1_loop_times
             d_index = loop_index % each_c1_loop_times * each_loop_d_num
-            self._compute_sum_each_loop(sum_ub, sum_square_ub, n_index, c1_index, group_index, d_index, each_loop_d_num)
+            c1_group_index = loop_index % each_c1_loop_times
+            if each_loop_d_num != last_loop_d_num:
+                with self.tik_inst.if_scope(c1_group_index != each_c1_loop_times - 1):
+                    self._compute_sum_each_loop(sum_ub, sum_square_ub, n_index, group_index, d_index, each_loop_d_num)
+                with self.tik_inst.else_scope():
+                    self._compute_sum_each_loop(sum_ub, sum_square_ub, n_index, group_index, d_index, last_loop_d_num)
+            else:
+                self._compute_sum_each_loop(sum_ub, sum_square_ub, n_index, group_index, d_index, each_loop_d_num)
 
     # 'pylint: disable=too-many-arguments,too-many-locals
-    def _compute_sum_each_loop(self, sum_ub, sum_square_ub, n_index, c1_index, group_index, d_index, d_num):
+    def _compute_sum_each_loop(self, sum_ub, sum_square_ub, n_index, group_index, d_index, d_num):
         mask = self.res_repeat_num
         data_num = d_num * self.c0_num
         block_num = data_num // self.input_block_num
         input_data_ub = self.tik_inst.Tensor(self.input_type, (data_num,), tik.scope_ubuf, "input_data_ub")
-        self.tik_inst.data_move(input_data_ub, self.input_0[n_index, c1_index, d_index, 0], 0, 1, block_num, 0, 0)
+        self.tik_inst.data_move(input_data_ub, self.input_0[n_index, group_index, d_index, 0], 0, 1, block_num, 0, 0)
         if self.input_type != self.res_type:
             data_ub = self.tik_inst.Tensor(self.res_type, (data_num,), tik.scope_ubuf, "data_ub")
             self._start_tik_compute(data_ub.size, self.res_repeat_num, self._tik_vconv, (data_ub, input_data_ub))
         else:
             data_ub = input_data_ub
         repeat_num = data_num // self.res_repeat_num
-        repeat_num_align = self._align_num(repeat_num, self.res_block_num)
+        repeat_num_align = get_align_num(repeat_num, self.res_block_num)
         temp_ub = self.tik_inst.Tensor(self.res_type, (repeat_num_align,), tik.scope_ubuf, "temp_ub")
         result_ub = self.tik_inst.Tensor(self.res_type, (self.res_block_num,), tik.scope_ubuf, "result_ub")
 
@@ -543,21 +592,12 @@ class GroupNormTilingC1D(GroupNormBase):
     # 'pylint: disable=too-many-arguments,too-many-locals
     def _count_rec_std_ne_mean_loop(self, group_mean_ub, group_mean_square_ub, group_variance_ub,
                                     mask, repeat_num):
-        self.tik_inst.vmuls(mask, group_mean_ub, group_mean_ub, 1.0 / self.d_groups,
+        data_num = self.d_groups * self.c0_num
+        self.tik_inst.vmuls(mask, group_mean_ub, group_mean_ub, 1.0 / data_num,
                             repeat_num, 1, 1, 8, 8)
-        self.tik_inst.vmuls(mask, group_mean_square_ub, group_mean_square_ub, 1.0 / self.d_groups,
+        self.tik_inst.vmuls(mask, group_mean_square_ub, group_mean_square_ub, 1.0 / data_num,
                             repeat_num, 1, 1, 8, 8)
-        self.tik_inst.vmul(mask, group_variance_ub, group_mean_ub, group_mean_ub,
-                           repeat_num, 1, 1, 1, 8, 8, 8)
-        self.tik_inst.vsub(mask, group_variance_ub, group_mean_square_ub, group_variance_ub,
-                           repeat_num, 1, 1, 1, 8, 8, 8)
-        self.tik_inst.vabs(mask, group_variance_ub, group_variance_ub,
-                           repeat_num, 1, 1, 8, 8)
-
-        self.tik_inst.vmuls(mask, group_mean_ub, group_mean_ub, -1,
-                            repeat_num, 1, 1, 8, 8)
-        self.tik_inst.vadds(mask, group_variance_ub, group_variance_ub, self.eps,
-                            repeat_num, 1, 1, 8, 8)
+        self._count_std_and_mean(mask, group_variance_ub, group_mean_ub, group_mean_square_ub, repeat_num)
         self.tik_inst.vsqrt(mask, group_mean_square_ub, group_variance_ub,
                             repeat_num, 1, 1, 8, 8)
         self.tik_inst.vector_dup(mask, group_variance_ub, 1, repeat_num, 1, 8)
@@ -595,30 +635,32 @@ class GroupNormTilingC1D(GroupNormBase):
     # 'pylint: disable=unused-variable
     def _count_norm(self, weight_ub, bias_ub, n_index):
         each_loop_d_num = self.each_loop_repeat_num * self.c0_repeat
-        each_c1_loop_times, last_c1_d_num = self._get_loop_info(self.d_num, each_loop_d_num)
-        loop_times = each_c1_loop_times * self.c1_num
-        with self.tik_inst.for_range(0, loop_times, thread_num=2) as loop_index:
-            c1_index = loop_index // each_c1_loop_times
-            d_index = loop_index % each_c1_loop_times * each_loop_d_num
-            self._count_norm_each_loop(weight_ub, bias_ub, n_index, c1_index, d_index, each_loop_d_num)
+        each_c1_loop_times, last_loop_d_num = self._get_loop_info(self.d_groups, each_loop_d_num)
+        loop_times = each_c1_loop_times * self.num_groups
 
-    def _broadcast_c(self, input_data, result_data):
-        block_num = self.c0_num // self.res_block_num
-        self.tik_inst.data_move(result_data, input_data, 0, 1, block_num, 0, 0)
-        self.tik_inst.data_move(result_data[self.c0_num, ], result_data, 0, 1, block_num, 0, 0)
-        self.tik_inst.data_move(result_data[self.c0_num * 2], result_data, 0, 1, block_num * 2, 0, 0)
+        with self.tik_inst.for_range(0, loop_times, thread_num=2) as loop_index:
+            group_index = loop_index // each_c1_loop_times
+            c1_group_index = loop_index % each_c1_loop_times
+            d_index = loop_index % each_c1_loop_times * each_loop_d_num
+            if each_loop_d_num != last_loop_d_num:
+                with self.tik_inst.if_scope(c1_group_index != each_c1_loop_times - 1):
+                    self._count_norm_each_loop(weight_ub, bias_ub, n_index, group_index, d_index, each_loop_d_num)
+                with self.tik_inst.else_scope():
+                    self._count_norm_each_loop(weight_ub, bias_ub, n_index, group_index, d_index, last_loop_d_num)
+            else:
+                self._count_norm_each_loop(weight_ub, bias_ub, n_index, group_index, d_index, each_loop_d_num)
 
     # 'pylint: disable=too-many-arguments,too-many-locals
-    def _count_norm_each_loop(self, weight_ub, bias_ub, n_index, c1_index, d_index, d_num):
+    def _count_norm_each_loop(self, weight_ub, bias_ub, n_index, group_index, d_index, d_num):
         mask = self.res_repeat_num
         data_num = d_num * self.c0_num
-
+        data_shape = (data_num, )
         block_num = data_num // self.input_block_num
-        data_move_ub = self.tik_inst.Tensor(self.input_type, (data_num,), tik.scope_ubuf, "data_move_ub")
-        self.tik_inst.data_move(data_move_ub, self.input_0[n_index, c1_index, d_index, 0], 0, 1, block_num, 0, 0)
+        data_move_ub = self.tik_inst.Tensor(self.input_type, data_shape, tik.scope_ubuf, "data_move_ub")
+        self.tik_inst.data_move(data_move_ub, self.input_0[n_index, group_index, d_index, 0], 0, 1, block_num, 0, 0)
 
         if self.input_type != self.res_type:
-            data_data_ub = self.tik_inst.Tensor(self.res_type, (data_num,), tik.scope_ubuf, "data_data_ub")
+            data_data_ub = self.tik_inst.Tensor(self.res_type, data_shape, tik.scope_ubuf, "data_data_ub")
             self._start_tik_compute(data_data_ub.size, self.res_repeat_num, self._tik_vconv,
                                     (data_data_ub, data_move_ub))
         else:
@@ -626,13 +668,13 @@ class GroupNormTilingC1D(GroupNormBase):
 
         repeat_num = data_num // self.res_repeat_num
         temp_ub = self.tik_inst.Tensor(self.res_type, (self.res_repeat_num,), tik.scope_ubuf, "temp_ub")
-        self._broadcast_c(weight_ub[c1_index:, :], temp_ub)
+        self._broadcast_c(weight_ub[group_index:, :], temp_ub)
         self.tik_inst.vmul(mask,
                            data_data_ub,
                            data_data_ub,
                            temp_ub,
                            repeat_num, 1, 1, 1, 8, 8, 0)
-        self._broadcast_c(bias_ub[c1_index:, :], temp_ub)
+        self._broadcast_c(bias_ub[group_index:, :], temp_ub)
         self.tik_inst.vadd(mask, data_data_ub,
                            data_data_ub,
                            temp_ub,
@@ -643,7 +685,48 @@ class GroupNormTilingC1D(GroupNormBase):
                                     (data_move_ub, data_data_ub))
         else:
             data_move_ub = data_data_ub
-        self.tik_inst.data_move(self.output_0[n_index, c1_index, d_index, 0], data_move_ub, 0, 1, block_num, 0, 0)
+        self.tik_inst.data_move(self.output_0[n_index, group_index, d_index, 0], data_move_ub, 0, 1, block_num, 0, 0)
+
+    def _count_norm_multiple(self, weight_ub, bias_ub, n_index):
+        each_loop_d_num = self.d_num
+        each_c1_loop_times = self.c1_groups
+        loop_times = each_c1_loop_times * self.num_groups
+        with self.tik_inst.for_range(0, loop_times, thread_num=2) as loop_index:
+            group_index = loop_index // each_c1_loop_times
+            c1_group_index = loop_index % each_c1_loop_times
+            d_index = loop_index % each_c1_loop_times * each_loop_d_num
+            self._count_norm_multiple_each_loop(weight_ub, bias_ub, n_index, group_index, c1_group_index, d_index,
+                                                each_loop_d_num)
+
+    # 'pylint: disable=too-many-arguments,too-many-locals
+    def _count_norm_multiple_each_loop(self, weight_ub, bias_ub, n_index, group_index, c1_group_index, d_index, d_num):
+        data_num = d_num * self.c0_num
+        block_num = data_num // self.input_block_num
+        data_move_ub = self.tik_inst.Tensor(self.input_type, (data_num,), tik.scope_ubuf, "data_move_ub")
+        self.tik_inst.data_move(data_move_ub, self.input_0[n_index, group_index, d_index, 0], 0, 1, block_num, 0, 0)
+
+        if self.input_type != self.res_type:
+            data_data_ub = self.tik_inst.Tensor(self.res_type, (data_num,), tik.scope_ubuf, "data_data_ub")
+            self._start_tik_compute(data_data_ub.size, self.res_repeat_num, self._tik_vconv,
+                                    (data_data_ub, data_move_ub))
+        else:
+            data_data_ub = data_move_ub
+
+        temp_ub = self.tik_inst.Tensor(self.res_type, (self.res_repeat_num,), tik.scope_ubuf, "temp_ub")
+        self._broadcast_c(weight_ub[group_index:, c1_group_index * self.c0_num:], temp_ub)
+        self._start_tik_compute(data_data_ub.size, self.res_repeat_num, self._tik_vmul_broadcast,
+                                (data_data_ub, data_data_ub, temp_ub))
+        self._broadcast_c(bias_ub[group_index:, c1_group_index * self.c0_num:], temp_ub)
+        self._start_tik_compute(data_data_ub.size, self.res_repeat_num, self._tik_vadd_broadcast,
+                                (data_data_ub, data_data_ub, temp_ub))
+        mask = self.res_repeat_num
+        self._count_relu(data_data_ub, mask)
+        if self.input_type != self.res_type:
+            self._start_tik_compute(data_move_ub.size, self.res_repeat_num, self._tik_vconv,
+                                    (data_move_ub, data_data_ub))
+        else:
+            data_move_ub = data_data_ub
+        self.tik_inst.data_move(self.output_0[n_index, group_index, d_index, 0], data_move_ub, 0, 1, block_num, 0, 0)
 
 
 # 'pylint: disable=too-few-public-methods,too-many-instance-attributes
@@ -696,7 +779,7 @@ class GroupNormTilingC0(GroupNormBase):
         data_ub_shape = (c1_num, self.d_num, self.c0_num)
         mean_ub_shape = (c1_num, self.c0_num)
         weight_ub_shape = (c1_num, self.c0_num)
-        temp_ub_size = self._align_num(self.d_num * self.c0_num, self.res_repeat_num)
+        temp_ub_size = get_align_num(self.d_num * self.c0_num, self.res_repeat_num)
         temp_ub_shape = (temp_ub_size,)
         ub_tensor_all = {
             "input_data_ub":
@@ -788,8 +871,8 @@ class GroupNormTilingC0(GroupNormBase):
         block_num = data_num // self.res_block_num
         repeat_num = data_num // self.res_repeat_num
         self.tik_inst.data_move(temp_ub_0, input_data_ub[c1_index, 0, 0], 0, 1, block_num, 0, 0)
-        self.tik_inst.vmul(self.res_repeat_num, temp_ub_1, input_data_ub[c1_index, 0, 0], input_data_ub[c1_index, 0, 0],
-                           repeat_num, 1, 1, 1, 8, 8, 8)
+        self._start_tik_compute(data_num, self.res_repeat_num, self._tik_vmul,
+                                args=(temp_ub_1, input_data_ub[c1_index, :, :], input_data_ub[c1_index, :, :]))
         sum_info_all = self._get_sum_info()
         for sum_info in sum_info_all:
             mask, start_index_1, repeat_num = sum_info
@@ -841,17 +924,7 @@ class GroupNormTilingC0(GroupNormBase):
                             repeat_num, 1, 1, 8, 8)
         self.tik_inst.vmuls(mask, group_mean_square_ub, group_mean_square_ub, 1.0 / self.d_groups,
                             repeat_num, 1, 1, 8, 8)
-        self.tik_inst.vmul(mask, group_variance_ub, group_mean_ub, group_mean_ub,
-                           repeat_num, 1, 1, 1, 8, 8, 8)
-        self.tik_inst.vsub(mask, group_variance_ub, group_mean_square_ub, group_variance_ub,
-                           repeat_num, 1, 1, 1, 8, 8, 8)
-        self.tik_inst.vabs(mask, group_variance_ub, group_variance_ub,
-                           repeat_num, 1, 1, 8, 8)
-
-        self.tik_inst.vmuls(mask, group_mean_ub, group_mean_ub, -1,
-                            repeat_num, 1, 1, 8, 8)
-        self.tik_inst.vadds(mask, group_variance_ub, group_variance_ub, self.eps,
-                            repeat_num, 1, 1, 8, 8)
+        self._count_std_and_mean(mask, group_variance_ub, group_mean_ub, group_mean_square_ub, repeat_num)
         self.tik_inst.vsqrt(mask, group_variance_ub, group_variance_ub,
                             repeat_num, 1, 1, 8, 8)
         self.tik_inst.vector_dup(mask, group_mean_square_ub, 1, repeat_num, 1, 8)
@@ -869,31 +942,26 @@ class GroupNormTilingC0(GroupNormBase):
         self.tik_inst.vmul(mask, temp_ub_0, weight_ub, group_mean_ub, 1, 1, 1, 1, 8, 8, 8)
         self.tik_inst.vadd(mask, bias_ub, bias_ub, temp_ub_0, 1, 1, 1, 1, 8, 8, 8)
 
-    def _broadcast_c(self, input_data, result_data):
-        block_num = self.c0_num // self.res_block_num
-        self.tik_inst.data_move(result_data, input_data, 0, 1, block_num, 0, 0)
-        self.tik_inst.data_move(result_data[self.c0_num, ], result_data, 0, 1, block_num, 0, 0)
-        self.tik_inst.data_move(result_data[self.c0_num * 2, ], result_data, 0, 1, block_num * 2, 0, 0)
-
     def _stand_data(self, ub_tensor_all, c1_num):
         input_data_ub = ub_tensor_all.get("input_data_ub")
         weight_ub = ub_tensor_all.get("weight_ub")
         bias_ub = ub_tensor_all.get("bias_ub")
         temp_ub = ub_tensor_all.get("temp_ub_0")
         mask = self.res_repeat_num
-        repeat_num = self.d_num * self.c0_num // self.res_repeat_num
+        data_num = self.d_num * self.c0_num
         with self.tik_inst.for_range(0, c1_num) as c1_index:
             self._broadcast_c(weight_ub[c1_index:, :], temp_ub)
-            self.tik_inst.vmul(mask,
-                               input_data_ub[c1_index, 0, 0],
-                               input_data_ub[c1_index, 0, 0],
-                               temp_ub,
-                               repeat_num, 1, 1, 1, 8, 8, 0)
+            self._start_tik_compute(data_num, mask,
+                                    self._tik_vmul_broadcast,
+                                    (input_data_ub[c1_index, :, :],
+                                     input_data_ub[c1_index, :, :],
+                                     temp_ub))
             self._broadcast_c(bias_ub[c1_index:, :], temp_ub)
-            self.tik_inst.vadd(mask, input_data_ub[c1_index, 0, 0],
-                               input_data_ub[c1_index, 0, 0],
-                               temp_ub,
-                               repeat_num, 1, 1, 1, 8, 8, 0)
+            self._start_tik_compute(data_num, mask,
+                                    self._tik_vadd_broadcast,
+                                    (input_data_ub[c1_index, :, :],
+                                     input_data_ub[c1_index, :, :],
+                                     temp_ub))
 
     def _data_move_out(self, ub_tensor_all, n_index, c1_index, c1_num):
         result_data = ub_tensor_all.get("input_data_ub")
@@ -927,6 +995,10 @@ class GroupNormTilingD(GroupNormBase):
             self.each_loop_repeat_num = 225
         elif self.d_num == 120 * 120:
             self.each_loop_repeat_num = 240
+        elif self.d_num == 128 * 128:
+            self.each_loop_repeat_num = 250
+        elif self.d_num == 64 * 64:
+            self.each_loop_repeat_num = 250
 
     def _compute_each_batch(self, n_index):
         sum_ub = self.tik_inst.Tensor(self.res_type, (self.c1_num, self.c0_num), tik.scope_ubuf, "sum_ub")
@@ -945,11 +1017,20 @@ class GroupNormTilingD(GroupNormBase):
         each_loop_d_num = self.each_loop_repeat_num * self.c0_repeat
         each_c1_loop_times, last_c1_d_num = self._get_loop_info(self.d_num, each_loop_d_num)
         loop_times = each_c1_loop_times * self.c1_num
-
-        with self.tik_inst.for_range(0, loop_times, thread_num=2) as loop_index:
-            c1_index = loop_index // each_c1_loop_times
-            d_index = loop_index % each_c1_loop_times * each_loop_d_num
-            self._compute_sum_each_loop(sum_ub, sum_square_ub, n_index, c1_index, d_index, each_loop_d_num)
+        if last_c1_d_num != each_loop_d_num:
+            with self.tik_inst.for_range(0, loop_times, thread_num=2) as loop_index:
+                c1_index = loop_index // each_c1_loop_times
+                d_loop_index = loop_index % each_c1_loop_times
+                d_index = d_loop_index * each_loop_d_num
+                with self.tik_inst.if_scope(d_loop_index != each_c1_loop_times - 1):
+                    self._compute_sum_each_loop(sum_ub, sum_square_ub, n_index, c1_index, d_index, each_loop_d_num)
+                with self.tik_inst.else_scope():
+                    self._compute_sum_each_loop(sum_ub, sum_square_ub, n_index, c1_index, d_index, last_c1_d_num)
+        else:
+            with self.tik_inst.for_range(0, loop_times, thread_num=2) as loop_index:
+                c1_index = loop_index // each_c1_loop_times
+                d_index = loop_index % each_c1_loop_times * each_loop_d_num
+                self._compute_sum_each_loop(sum_ub, sum_square_ub, n_index, c1_index, d_index, each_loop_d_num)
 
     def _get_sum_info(self, data_num):
         sum_info = []
@@ -1122,17 +1203,7 @@ class GroupNormTilingD(GroupNormBase):
                             repeat_num, 1, 1, 8, 8)
         self.tik_inst.vmuls(mask, group_mean_square_ub, group_mean_square_ub, 1.0 / self.d_groups,
                             repeat_num, 1, 1, 8, 8)
-        self.tik_inst.vmul(mask, group_variance_ub, group_mean_ub, group_mean_ub,
-                           repeat_num, 1, 1, 1, 8, 8, 8)
-        self.tik_inst.vsub(mask, group_variance_ub, group_mean_square_ub, group_variance_ub,
-                           repeat_num, 1, 1, 1, 8, 8, 8)
-        self.tik_inst.vabs(mask, group_variance_ub, group_variance_ub,
-                           repeat_num, 1, 1, 8, 8)
-
-        self.tik_inst.vmuls(mask, group_mean_ub, group_mean_ub, -1,
-                            repeat_num, 1, 1, 8, 8)
-        self.tik_inst.vadds(mask, group_variance_ub, group_variance_ub, self.eps,
-                            repeat_num, 1, 1, 8, 8)
+        self._count_std_and_mean(mask, group_variance_ub, group_mean_ub, group_mean_square_ub, repeat_num)
         self.tik_inst.vsqrt(mask, group_variance_ub, group_variance_ub,
                             repeat_num, 1, 1, 8, 8)
         self.tik_inst.vector_dup(mask, group_mean_square_ub, 1, repeat_num, 1, 8)
@@ -1150,16 +1221,20 @@ class GroupNormTilingD(GroupNormBase):
         each_loop_d_num = self.each_loop_repeat_num * self.c0_repeat
         each_c1_loop_times, last_c1_d_num = self._get_loop_info(self.d_num, each_loop_d_num)
         loop_times = each_c1_loop_times * self.c1_num
-        with self.tik_inst.for_range(0, loop_times, thread_num=2) as loop_index:
-            c1_index = loop_index // each_c1_loop_times
-            d_index = loop_index % each_c1_loop_times * each_loop_d_num
-            self._count_norm_each_loop(weight_ub, bias_ub, n_index, c1_index, d_index, each_loop_d_num)
-
-    def _broadcast_c(self, input_data, result_data):
-        block_num = self.c0_num // self.res_block_num
-        self.tik_inst.data_move(result_data, input_data, 0, 1, block_num, 0, 0)
-        self.tik_inst.data_move(result_data[self.c0_num], result_data, 0, 1, block_num, 0, 0)
-        self.tik_inst.data_move(result_data[self.c0_num * 2], result_data, 0, 1, block_num * 2, 0, 0)
+        if last_c1_d_num != each_loop_d_num:
+            with self.tik_inst.for_range(0, loop_times, thread_num=2) as loop_index:
+                c1_index = loop_index // each_c1_loop_times
+                d_loop_index = loop_index % each_c1_loop_times
+                d_index = d_loop_index * each_loop_d_num
+                with self.tik_inst.if_scope(d_loop_index != each_c1_loop_times - 1):
+                    self._count_norm_each_loop(weight_ub, bias_ub, n_index, c1_index, d_index, each_loop_d_num)
+                with self.tik_inst.else_scope():
+                    self._count_norm_each_loop(weight_ub, bias_ub, n_index, c1_index, d_index, last_c1_d_num)
+        else:
+            with self.tik_inst.for_range(0, loop_times, thread_num=2) as loop_index:
+                c1_index = loop_index // each_c1_loop_times
+                d_index = loop_index % each_c1_loop_times * each_loop_d_num
+                self._count_norm_each_loop(weight_ub, bias_ub, n_index, c1_index, d_index, each_loop_d_num)
 
     # 'pylint: disable=too-many-arguments,too-many-locals
     def _count_norm_each_loop(self, weight_ub, bias_ub, n_index, c1_index, d_index, d_num):
@@ -1209,11 +1284,7 @@ def check_input(input_0, input_1, input_2, output_0, kernel_name):
     para_check.check_format(input_0.get("format").upper(), ("NC1HWC0",), param_name="x")
     para_check.check_format(output_0.get("format").upper(), ("NC1HWC0",), param_name="y")
 
-    support_shape = (
-        (32, 7), (32, 14), (32, 28), (32, 15), (32, 30), (32, 60),
-        (64, 30), (64, 14), (128, 7), (128, 15),
-        (4, 56), (4, 120), (8, 28), (8, 56), (8, 60), (8, 120),
-        (16, 14), (16, 28), (16, 30), (16, 56), (16, 60), (16, 120))
+    support_shape = tuple((i // 16, j) for i, j in SUPPORT_SHAPE)
     input_shape = tuple(input_0.get("shape"))
     if len(input_shape) != 5 or input_shape[1:3] not in support_shape or input_shape[2] != input_shape[3]:
         error_manager_vector.raise_err_input_value_invalid(
@@ -1245,6 +1316,22 @@ def check_attr(num_groups, eps, kernel_name):
     if eps < 0:
         error_manager_vector.raise_err_input_value_invalid(
             kernel_name, "attr eps", "not support", eps)
+
+
+def judge_split_c1(input_shape, data_type, num_groups):
+    n, c1, h, w, c0 = input_shape
+    c1_groups = c1 // num_groups
+    block_size = 32
+    data_size = 4
+    data_num_repeat = 64
+    ub_size = PlatformApi.get_soc_spec(PlatformApi.UB_SIZE)
+    repeat_num = ceil_div(c1_groups * h * w * c0, data_num_repeat)
+    data_num_align = repeat_num * data_num_repeat
+    ub_size_use = (data_num_align * data_size * 2 + block_size * 3 +
+                   c1_groups * c0 * data_size * 3 + repeat_num * data_size)
+    if data_type == "float16":
+        ub_size_use += c1_groups * c0 * 2 * 2
+    return ub_size_use < ub_size
 
 
 # 'pylint: disable=unused-variable,too-many-arguments,too-many-locals
@@ -1282,10 +1369,10 @@ def group_norm_relu(input_0, input_1, input_2, output_0, num_groups, eps=0.00001
     d = h * w
     data_type = input_0.get("dtype")
     if c1 >= num_groups:
-        if h >= 56:
-            obj = GroupNormTilingC1D(n, c, d, num_groups, eps, data_type, kernel_name)
-        else:
+        if judge_split_c1(input_0.get("shape"), data_type, num_groups):
             obj = GroupNormTilingC1(n, c, d, num_groups, eps, data_type, kernel_name)
+        else:
+            obj = GroupNormTilingC1D(n, c, d, num_groups, eps, data_type, kernel_name)
     else:
         if h >= 56:
             obj = GroupNormTilingD(n, c, d, num_groups, eps, data_type, kernel_name)

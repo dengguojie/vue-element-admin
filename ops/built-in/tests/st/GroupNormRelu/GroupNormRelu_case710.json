@@ -84,5 +84,91 @@
       }
     ],
     "case_name": "test_GroupNormRelu_000"
+  },
+  {
+    "op": "GroupNormRelu",
+    "input_desc": [
+      {
+        "shape": [
+          8,
+          64,
+          32,
+          32,
+          16
+        ],
+        "format": "NC1HWC0",
+        "ori_shape": [
+          8,
+          1024,
+          32,
+          32
+        ],
+        "ori_format": "NCHW",
+        "param_type": "input",
+        "name": "x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1024
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "gamma",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1024
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1024
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "beta",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          8,
+          64,
+          32,
+          32,
+          16
+        ],
+        "format": "NC1HWC0",
+        "ori_shape": [
+          8,
+          1024,
+          32,
+          32
+        ],
+        "ori_format": "NCHW",
+        "param_type": "output",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "num_groups",
+        "value": 32,
+        "type": "int"
+      },
+      {
+        "name": "eps",
+        "value": 1e-05,
+        "type": "float"
+      }
+    ],
+    "case_name": "test_GroupNormRelu_000"
   }
 ]

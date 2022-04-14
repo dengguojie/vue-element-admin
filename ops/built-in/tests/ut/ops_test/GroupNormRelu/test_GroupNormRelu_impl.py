@@ -2,6 +2,7 @@
 from op_test_frame.ut import OpUT
 from impl.group_norm_relu import group_norm_relu, check_supported
 from te import platform as cce_conf
+
 ut_case = OpUT("GroupNormRelu")
 
 
@@ -16,12 +17,16 @@ def init_case():
     c0_num = 16
     kernel_name = "GroupNormRelu"
     input_shape_all = (
-        (32, 7), (32, 14), (32, 28), (32, 15), (32, 30), (32, 60),
-        (64, 30), (64, 14), (128, 7), (128, 15),
-        (4, 56), (4, 120), (8, 28), (8, 56), (8, 60), (8, 120),
-        (16, 14), (16, 28), (16, 30), (16, 56), (16, 60), (16, 120), )
+        (64, 56), (64, 120), (64, 128),
+        (128, 28), (128, 56), (128, 60), (128, 64), (128, 120), (128, 128),
+        (256, 14), (256, 28), (256, 30), (256, 32), (256, 56), (256, 60), (256, 64), (256, 120), (256, 128),
+        (512, 7), (512, 14), (512, 15), (512, 16), (512, 28), (512, 30), (512, 32), (512, 60), (512, 64),
+        (1024, 14), (1024, 30), (1024, 32),
+        (2048, 7), (2048, 15), (2048, 16))
+
     for data_type in dtype_all:
         for c1, h in input_shape_all:
+            c1 = c1 // 16
             input_shape = (batch_num, c1, h, h, c0_num)
             ori_shape = (batch_num, c1 * c0_num, h, h)
             weight_shape = (c1 * c0_num, 1, 1)
@@ -157,7 +162,6 @@ def add_case(_):
 
 
 ut_case.add_cust_test_func("Ascend910A", add_case)
-
 
 if __name__ == '__main__':
     ut_case.run("Ascend910A")
