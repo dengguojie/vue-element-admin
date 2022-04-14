@@ -3670,6 +3670,8 @@ unkown:
       - ops/built-in/fusion_pass/graph_fusion/ai_core/multi_head_attention_grad_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/multi_head_attention_grad_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/ascend_dequant_quant_antiquant_maxpool_fusion_pass.cc
+      - ops/built-in/fusion_pass/graph_fusion/dsa_core/randomdsa_fusion_pass.h
+      - ops/built-in/fusion_pass/graph_fusion/dsa_core/randomdsa_fusion_pass.cc
       - ops/contrib/op_proto/yolov2_post_process.h
       - ops/contrib/op_proto/fasterrcnn_cropandresize.h
       - ops/contrib/op_proto/roi_align.h
