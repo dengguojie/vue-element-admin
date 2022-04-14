@@ -2437,10 +2437,10 @@ graphStatus DynamicGetNextCommonInfer(Operator &op) {
       OP_LOGE(op.GetName().c_str(), "The _getnext_inputs_shape_range and output_shapes should be the same length.");
       return GRAPH_FAILED;
     }
-    for (int i = 0; i < shape_ranges.size(); i++) {
+    for (size_t i = 0; i < shape_ranges.size(); i++) {
       if (shape_ranges[i].size() != output_shapes[i].size()) {
         OP_LOGE(op.GetName().c_str(),
-                "The _getnext_inputs_shape_range and output_shapes at [%d] should be the same length.", i);
+                "The _getnext_inputs_shape_range and output_shapes at [%zu] should be the same length.", i);
         return GRAPH_FAILED;
       }
     }
@@ -2454,7 +2454,7 @@ graphStatus DynamicGetNextCommonInfer(Operator &op) {
   auto op_info = OpDescUtils::GetOpDescFromOperator(op);
   graphStatus output_status;
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
-  for (int i = 0; i < output_shapes.size(); i++) {
+  for (int i = 0; i < static_cast<int>(output_shapes.size()); i++) {
     GeTensorDescPtr y_desc = op_desc->MutableOutputDesc("y");
     TensorDesc output_desc = op.GetDynamicOutputDesc("y", i);
     Shape shape(output_shapes[i]);
@@ -2471,7 +2471,7 @@ graphStatus DynamicGetNextCommonInfer(Operator &op) {
       }
       if (!shape_fully_defined) {
         std::vector<std::pair<int64_t, int64_t>> shape_range;
-        for (int j = 0; j < dims.size(); j++) {
+        for (size_t j = 0; j < dims.size(); j++) {
           int64_t dim = dims[j];
           if (dynamic_graph_execute_mode == "lazy_recompile") {
             shape_range.push_back(dim == UNKNOWN_DIM ? std::pair<int64_t, int64_t>{1, -1} : \

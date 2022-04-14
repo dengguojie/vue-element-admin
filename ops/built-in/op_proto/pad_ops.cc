@@ -754,7 +754,7 @@ IMPLEMT_COMMON_INFERFUNC(DiagInferShape) {
         }
       }
       output_desc->SetShape(GeShape(assitDimInfo));
-      for (int i = 0; i < shape_range.size(); i++) {
+      for (size_t i = 0; i < shape_range.size(); i++) {
         if(shape_range[i].first > 0){
           shape_range[i].first = shape_range[i].first * shape_range[i].first;
         }

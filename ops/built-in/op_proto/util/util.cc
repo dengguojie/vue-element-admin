@@ -1653,7 +1653,7 @@ bool OneInOneOutElewiseDynamicAxisType(const Operator& op, std::vector<AxisTypeI
   }
   // set dims axis type one by one
   axis_type_info.reserve(input_shape.size());
-  for (int64_t i = 0; i < input_shape.size(); ++i) {
+  for (size_t i = 0; i < input_shape.size(); ++i) {
     AxisTypeInfo axis_type;
     axis_type.SetAxisType(AxisType::ELEMENTWISE);
     std::pair<int64_t, std::vector<int64_t>> input_cut_info(0, {i});

@@ -96,7 +96,7 @@ bool LayerNormXBackpropV2Tiling(const std::string& op_type, const ge::Operator& 
     run_info.SetTilingKey(FOUR_DIMEN_KEY);
   } else {
     int32_t fuse_dim = 1;
-    for (int32_t i = 0; i < input_shape.size() - 1; i++) {
+    for (size_t i = 0; i < input_shape.size() - 1; i++) {
       fuse_dim *= input_shape[i];
     }
     run_info.AddTilingData(fuse_dim);

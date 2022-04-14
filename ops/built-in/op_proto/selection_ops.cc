@@ -1423,7 +1423,7 @@ IMPLEMT_COMMON_INFERFUNC(UnsortedSegmentSumInferShape) {
     output_shape.SetDimNum(rank);
     output_shape.SetDim(0, input_num_segments);
 
-    for (size_t i = dim_idsize_input; i < dim_size_input; i++) {
+    for (int64_t i = dim_idsize_input; i < dim_size_input; i++) {
       int64_t x_dim = shape.GetDim(i);
       output_shape.SetDim(idx, x_dim);
       if ((size_t)i < shape_range_x.size()) {
@@ -2656,7 +2656,7 @@ static bool TopKInferCommon(Operator &op, int64_t k) {
     return true;
   }
 
-  size_t dim_size = input_shape.GetDimNum();
+  int64_t dim_size = input_shape.GetDimNum();
   if (dim_size <= 0) {
     OP_LOGE(op.GetName().c_str(), "The dims_in size should more than 0!");
     return false;
@@ -2690,7 +2690,7 @@ static bool TopKInferCommon(Operator &op, int64_t k) {
   output_i_shape.SetDimNum(dim_size);
 
   for (size_t i = 0; i < dim_size; i++) {
-    if (i == sorted_axis) {
+    if (static_cast<int64_t>(i) == sorted_axis) {
       output_v_shape.SetDim(i, k);
       output_i_shape.SetDim(i, k);
       continue;
@@ -4331,7 +4331,7 @@ IMPLEMT_COMMON_INFERFUNC(StridedSliceV2InferShape) {
         axes_list[i] = axes_index + rank_num;
       }
       // axes out of boundary
-      if(axes_index >= rank_num){
+      if(axes_index >= static_cast<int64_t>(rank_num)){
         axes_index = rank_num - 1;
         OP_LOGD(op.GetName().c_str(), "Pos Axes Value Out Of Boudary:%s", to_string(axes_list).c_str());
       }
@@ -4350,7 +4350,7 @@ IMPLEMT_COMMON_INFERFUNC(StridedSliceV2InferShape) {
     axes_mask = ~axes_mask;
     ends_mask = axes_mask;
     constexpr int64_t MAX_INT64 = ((uint64_t)(-1)) >> 1;
-    for (int i = 0; i < processed_end.size(); ++i) {
+    for (size_t i = 0; i < processed_end.size(); ++i) {
       if (processed_end[i] == MAX_INT64 || processed_end[i] == MAX_INT) {
         ends_mask = (1 << i) | ends_mask;
       }
@@ -4917,7 +4917,7 @@ IMPLEMT_COMMON_INFERFUNC(StridedSliceV3InferShape) {
         input_axes_values[i] = axes_index + rank_num;
       }
       // axes out of boundary
-      if(axes_index >= rank_num){
+      if(axes_index >= static_cast<int64_t>(rank_num)){
         axes_index = rank_num - 1;
         OP_LOGD(op.GetName().c_str(), "Pos Axes Value Out Of Boudary:%s", to_string(input_axes_values).c_str());
       }
@@ -4935,7 +4935,7 @@ IMPLEMT_COMMON_INFERFUNC(StridedSliceV3InferShape) {
     axes_mask = ~axes_mask;
     ends_mask = axes_mask;
     constexpr int64_t MAX_INT64 = ((uint64_t)(-1)) >> 1;
-    for (int i = 0; i < processed_end.size(); ++i) {
+    for (size_t i = 0; i < processed_end.size(); ++i) {
       if (processed_end[i] == MAX_INT64) {
         ends_mask = (1 << i) | ends_mask;
       }

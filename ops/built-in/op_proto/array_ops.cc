@@ -1619,7 +1619,7 @@ IMPLEMT_INFERFUNC(Squeeze, SqueezeInfer) {
         out_shape.emplace_back(exist_dim);
         // after verified, it has ensure x_range ele num is same with dims num
         if (!x_range.empty()) {
-          if (x_range.size() > i) {
+          if (static_cast<int64_t>(x_range.size()) > i) {
             y_range.emplace_back(x_range[i]);
           }
         }
@@ -1634,7 +1634,7 @@ IMPLEMT_INFERFUNC(Squeeze, SqueezeInfer) {
         out_shape.emplace_back(exist_dim);
         // after verified, it has ensure x_range ele num is same with dims num
         if (!x_range.empty()) {
-          if (x_range.size() > i) {
+          if (static_cast<int64_t>(x_range.size()) > i) {
             y_range.emplace_back(x_range[i]);
           }
         }
@@ -1701,7 +1701,7 @@ IMPLEMT_INFERFUNC(SqueezeV2, SqueezeV2Infer) {
   if (axis_arr.empty()) {
     GE_OP_LOGD(op.GetName().c_str(), "axis is empty!");
     auto input_dims = input_shape.GetDims();
-    auto output_size = std::count_if(input_dims.begin(), input_dims.end(), [](const int64_t &item) {return item != 1;});
+    size_t output_size = std::count_if(input_dims.begin(), input_dims.end(), [](const int64_t &item) {return item != 1;});
     output_shape.SetDimNum(output_size);
     size_t idx = 0UL;
     for (size_t i = 0UL; i < input_dims.size(); ++i) {
@@ -1750,7 +1750,7 @@ IMPLEMT_INFERFUNC(SqueezeV2, SqueezeV2Infer) {
         output_shape.SetDim(idx, exist_dim);
         idx++;
       }
-      if (is_unknown_shape && i < input_range.size()) {
+      if (is_unknown_shape && i < static_cast<int64_t>(input_range.size())) {
         output_range.emplace_back(input_range[i]);
       }
     }
@@ -2830,7 +2830,7 @@ IMPLEMT_INFERFUNC(Where, WhereInfer) {
     y_shape.push_back(input_dims.size());
     std::vector<std::pair<int64_t, int64_t>> input_range;
     if ((x_desc->GetShapeRange(input_range) == GRAPH_SUCCESS) &&
-        (input_range.size() == dims_num)) {
+        (static_cast<int64_t>(input_range.size()) == dims_num)) {
       int64_t out_shape_max = 1;
       for (int i = 0; i < dims_num; i++) {
         if (input_range[i].second < 0) {

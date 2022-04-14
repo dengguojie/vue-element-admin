@@ -652,7 +652,7 @@ bool ConcatInferShapeCommonStatic(Operator& op, const int64_t dynamic_input_star
     output_shape.SetDimNum(1);
     output_shape.SetDim(0, 1);
   }
-  const size_t output_dim = output_shape.GetDimNum();
+  size_t output_dim = output_shape.GetDimNum();
 
   if ((axis < -static_cast<int64_t>(output_dim)) || (axis >= static_cast<int64_t>(output_dim))) {
     // axes is valid
@@ -679,7 +679,7 @@ bool ConcatInferShapeCommonStatic(Operator& op, const int64_t dynamic_input_star
       return false;
     }
     // check whether the non concat dim is equal
-    for (int64_t check_dim = 0; check_dim < output_dim; check_dim++) {
+    for (int64_t check_dim = 0; check_dim < static_cast<int64_t>(output_dim); check_dim++) {
       if (check_dim != axis && input_i_shape.GetDim(check_dim) != output_shape.GetDim(check_dim)) {
         return false;
       }

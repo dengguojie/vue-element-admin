@@ -2343,7 +2343,7 @@ IMPLEMT_COMMON_INFERFUNC(ArgMaxInferShape) {
     for (int64_t i = 0; i < dimension; i++) {
       output_shape.SetDim(i, x_shape.GetDim(i));
     }
-    for (int64_t i = dimension + 1; i < x_shape.GetDimNum(); i++) {
+    for (int64_t i = dimension + 1; i < static_cast<int64_t>(x_shape.GetDimNum()); i++) {
       output_shape.SetDim(i - 1, x_shape.GetDim(i));
     }
 

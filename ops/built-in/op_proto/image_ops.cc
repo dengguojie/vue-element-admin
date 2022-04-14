@@ -2821,7 +2821,7 @@ IMPLEMT_INFERFUNC(Resize, ResizeNearestInferShape) {
   input_desc_x->GetShapeRange(x_range);
   // get x_shape and x_range
   MakeUpShapeRange(x_shape, x_range);
-  if (x_shape.size() != dim_num) {
+  if (static_cast<int64_t>(x_shape.size()) != dim_num) {
     OP_LOGE(op.GetName().c_str(), "Rank of x_shape not support");
     return GRAPH_FAILED;
   }
@@ -2841,7 +2841,7 @@ IMPLEMT_INFERFUNC(Resize, ResizeNearestInferShape) {
     if (op.GetInputConstData("sizes", sizes_tensor) == GRAPH_SUCCESS) {
       DataType sizes_dtype = op.GetInputDesc("sizes").GetDataType();
       GetConstValue(op, sizes_tensor, sizes_dtype, sizes_out);
-      if (sizes_out.size() != dim_num) {
+      if (static_cast<int64_t>(sizes_out.size()) != dim_num) {
         OP_LOGE(op.GetName().c_str(), "Rank of sizesnot support");
         return GRAPH_FAILED;
       }
@@ -2857,7 +2857,7 @@ IMPLEMT_INFERFUNC(Resize, ResizeNearestInferShape) {
     if (op.GetInputConstData("scales", scales_tensor) == GRAPH_SUCCESS) {
       DataType scales_dtype = op.GetInputDesc("scales").GetDataType();
       GetConstValueFloat(op, scales_tensor, scales_dtype, scales_out);
-      if (scales_out.size() != dim_num) {
+      if (static_cast<int64_t>(scales_out.size()) != dim_num) {
         OP_LOGE(op.GetName().c_str(), "Rank of scales support");
         return GRAPH_FAILED;
       }

@@ -188,7 +188,7 @@ IMPLEMT_VERIFIER(TopKPQDistance, TopKPQDistanceVerify) {
     return GRAPH_FAILED;
   }
 
-  for (int32_t i = 0; i < inputSize / INPUT_N; i++) {
+  for (int32_t i = 0; i < static_cast<int32_t>(inputSize) / INPUT_N; i++) {
     std::vector<int64_t> pqDistanceDims = op.GetDynamicInputDesc("pq_distance", i).GetShape().GetDims();
     std::vector<int64_t> pqIvfDims = op.GetDynamicInputDesc("pq_ivf", i).GetShape().GetDims();
     std::vector<int64_t> pqIndexDims = op.GetDynamicInputDesc("pq_index", i).GetShape().GetDims();

@@ -7363,8 +7363,8 @@ IMPLEMT_COMMON_INFERFUNC(MaxPoolWithArgmaxV2InferShape) {
   std::vector<int64_t> mask_dims;
   std::vector<std::pair<int64_t, int64_t>> mask_range;
 
-  auto input_h_dim = input_format == FORMAT_NHWC ? 1 : 2;
-  auto input_w_dim = input_format == FORMAT_NHWC ? 2 : 3;
+  size_t input_h_dim = input_format == FORMAT_NHWC ? 1 : 2;
+  size_t input_w_dim = input_format == FORMAT_NHWC ? 2 : 3;
   auto strides_h_dim = input_format == FORMAT_NHWC ? 1 : 2;
   auto strides_w_dim = input_format == FORMAT_NHWC ? 2 : 3;
 
@@ -7666,8 +7666,8 @@ IMPLEMT_COMMON_INFERFUNC(MaxPoolV3InferShape) {
   std::vector<int64_t> output_dims;
   std::vector<std::pair<int64_t, int64_t>> output_range;
 
-  auto input_h_dim = input_format == FORMAT_NHWC ? 1 : 2;
-  auto input_w_dim = input_format == FORMAT_NHWC ? 2 : 3;
+  size_t input_h_dim = input_format == FORMAT_NHWC ? 1 : 2;
+  size_t input_w_dim = input_format == FORMAT_NHWC ? 2 : 3;
   auto strides_h_dim = data_format == "NHWC" ? 1 : 2;
   auto strides_w_dim = data_format == "NHWC" ? 2 : 3;
 

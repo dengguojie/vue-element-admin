@@ -56,7 +56,7 @@ IMPLEMT_INFERFUNC(DecodeRaw, DecodeRawInfer) {
   auto x1_tensor = op.GetInputDesc(0);
   Shape s = x1_tensor.GetShape();
   std::vector<int64_t> dims;
-  for (int i = 0; i< s.GetDimNum(); i++) {
+  for (size_t i = 0; i< s.GetDimNum(); i++) {
     dims.push_back(s.GetDim(i));
   }
   dims.push_back(UNKNOWN_DIM);
@@ -128,7 +128,7 @@ IMPLEMT_INFERFUNC(ParseSingleExample, ParseSingleExampleInfer) {
                                        string("get attr[num_sparse] failed"));
     return GRAPH_FAILED;
   }
-  if (num_sparse != sparse_keys.size()){
+  if (num_sparse != static_cast<int32_t>(sparse_keys.size())){
     std::string err_msg = GetAttrSizeErrMsg(
         "num_sparse", std::to_string(num_sparse),
         std::to_string(sparse_keys.size()));
@@ -323,7 +323,7 @@ IMPLEMT_INFERFUNC(ParseExample, ParseExampleInfer) {
     elements_per_stride.push_back(dense_shape_size);
   }
 
-  if (num_sparse != sparse_types.size()) {
+  if (num_sparse != static_cast<int32_t>(sparse_types.size())) {
     err_msg = ConcatString("attr[Nsparse] value[", num_sparse,
                            "] is not equal to attr[sparse_types] size[",
                            sparse_types.size(), "]");
@@ -331,7 +331,7 @@ IMPLEMT_INFERFUNC(ParseExample, ParseExampleInfer) {
     return GRAPH_FAILED;
   }
 
-  if (num_dense != dense_types.size()) {
+  if (num_dense != static_cast<int32_t>(dense_types.size())) {
     err_msg = ConcatString("attr[Ndense] value[", num_dense,
                            "] is not equal to attr[dense_types] size[",
                            dense_types.size(), "]");
@@ -339,7 +339,7 @@ IMPLEMT_INFERFUNC(ParseExample, ParseExampleInfer) {
     return GRAPH_FAILED;
   }
 
-  if (num_dense != dense_shapes.size()) {
+  if (num_dense != static_cast<int32_t>(dense_shapes.size())) {
     err_msg = ConcatString("attr[Ndense] value[", num_dense,
                            "] is not equal to attr[dense_shapes] size[",
                            dense_shapes.size(), "]");
