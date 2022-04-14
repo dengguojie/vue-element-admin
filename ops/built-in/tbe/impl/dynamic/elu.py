@@ -40,9 +40,15 @@ from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
+from impl.util.util_attr_common import AttrBase
+from impl.util.util_attr_common import get_attr_by_cls
 
 
-
+class ElueAttrInfo:
+    """
+    define Elu attr info
+    """
+    ATTR_ALPHA = AttrBase(0, "alpha", "Float", 1.0)
 
 
 def _elu_computer_performance(data, scalar_one_neg):
@@ -111,7 +117,8 @@ def elu_compute(x, y, alpha, kernel_name="elu"):
             exp_res = tbe.vexp(_negative_data)
 
     exp_res = tbe.vadds(exp_res, scalar_one_neg)
-    res = tbe.vaxpy(exp_res, _positive_data, tvm.const(alpha, cvt_dtype))
+    alpha = get_attr_by_cls(alpha, ElueAttrInfo.ATTR_ALPHA, cvt_dtype)
+    res = tbe.vaxpy(exp_res, _positive_data, alpha)
 
     if dtype != cvt_dtype:
         res = tbe.cast_to(res, "float16")
