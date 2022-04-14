@@ -39,9 +39,69 @@ def _tanh_parameter_compute(placeholders):
     return result
 
 
+def high_performance_compute(input_x, output_y, kernel_name="gelu", impl_mode=None):
+    """
+    mathematical formula of gelu(x):
+    sgn(x) = (x+0.000000000001)/|(x+0.000000000001)|
+    gelu(x) = x*(sgn(x)*[(a/2)*(clip(|x|,max=-b) + b)^2 + 0.5] + 0.5)
+
+    Parameters
+    ----------
+    input_x: TVM tensor
+        the placeholder of input input_x
+    output_y: dict
+        shape and dtype of output, should be same shape and type as input
+    kernel_name: str
+        cce kernel name, default value is fast_gelu_v2
+    impl_mode: str
+        impl_mode, default value is None
+
+    Returns
+    -------
+     A TVM tensor same as input placeholders.
+    """
+    dtype = input_x.dtype
+    has_improve_precision = False
+
+    if dtype == "float16" and \
+            tbe_platform.api_check_support("tbe.dsl.vexp", "float32"):
+        if impl_mode == "high_precision" or (impl_mode is None):
+            has_improve_precision = True
+            input_x = tbe.cast_to(input_x, "float32")
+    const_b = tvm.const(-1.769, "float32")
+    const_b_ = tvm.const(1.769, "float32")
+    const_a_half = tvm.const(-0.1444, "float32")
+    const_c = tvm.const(0.7071, "float32")
+    const_offset = tvm.const(0.000000000001, "float32")
+    const_d = tvm.const(0.5, "float32")
+
+    muls_0 = tbe.vmuls(input_x, const_c)
+    abs_muls_0 = tbe.vabs(muls_0)
+    max_abs_muls_0 = tbe.vmins(abs_muls_0, const_b_)
+    vadds = tbe.vadds(max_abs_muls_0, const_b)
+    temp = tbe.vmul(vadds, vadds)
+    temp_0 = tbe.vmuls(temp, const_a_half)
+    temp_0 = tbe.vadds(temp_0, const_d)
+    x_adds = tbe.vadds(input_x, const_offset)
+    abs_x = tbe.vabs(x_adds)
+    if impl_mode == "high_performance":
+        vrec_abs = tbe.vrec(abs_x)
+        sgn = tbe.vmul(x_adds, vrec_abs)
+    else:
+        sgn = tbe.vdiv(x_adds, abs_x)
+    temp_1 = tbe.vmul(temp_0, sgn)
+    temp_1 = tbe.vadds(temp_1, const_d)
+    result = tbe.vmul(input_x, temp_1)
+
+    if has_improve_precision:
+        result = tbe.cast_to(result, "float16")
+
+    return result
+
+
 # 'pylint: disable=locally-disabled,too-many-arguments,unused-argument,no-member
 @register_operator_compute("Gelu", op_mode="dynamic", support_fusion=True)
-def gelu_compute(input_x, output_y, kernel_name="gelu"):
+def gelu_compute(input_x, output_y, kernel_name="gelu", impl_mode=None):
     """
     mathematical formula of gelu(x):
     gelu(x) = 0.5*x*(1.0+tanh(np.sqrt(2/np.pi)*(x+0.044715*tf.pow(x,3))))
@@ -57,19 +117,24 @@ def gelu_compute(input_x, output_y, kernel_name="gelu"):
         shape and dtype of output, should be same shape and type as input
     kernel_name: str
         cce kernel name, default value is gelu
+    impl_mode: str
+        impl_mode, default value is None
 
     Returns
     -------
      A TVM tensor same as input placeholders.
     """
+    if impl_mode == "high_performance":
+        return high_performance_compute(input_x, output_y, kernel_name, impl_mode)
     dtype = input_x.dtype
     has_improve_precision = False
 
     if dtype == "float16" and \
             tbe_platform.api_check_support("tbe.dsl.vexp", "float32"):
-        has_improve_precision = True
-        input_x = tbe.cast_to(input_x, "float32")
-        dtype = input_x.dtype
+        if impl_mode == "high_precision" or (impl_mode is None):
+            has_improve_precision = True
+            input_x = tbe.cast_to(input_x, "float32")
+            dtype = input_x.dtype
 
     # `formula; gelu(x) = 0.5*x*(1.0+tanh(np.sqrt(2/np.pi)*(x+0.044715*tf.pow(x,3))))`
     # `formula; tanh(y) = 2/(1+exp(-2y)) - 1`
@@ -127,7 +192,7 @@ def gelu_compute(input_x, output_y, kernel_name="gelu"):
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.KERNEL_NAME)
 @register_operator("Gelu")
-def gelu(x, y, kernel_name="gelu"):
+def gelu(x, y, kernel_name="gelu", impl_mode=None):
     """
     mathematical formula of gelu(x):
     gelu(x) = 0.5*x*(1.0+tanh(np.sqrt(2/np.pi)*(x+0.044715*tf.pow(x,3))))
@@ -143,6 +208,8 @@ def gelu(x, y, kernel_name="gelu"):
         shape and dtype of output, should be same shape and type as input
     kernel_name : str
         cce kernel name, default value is gelu
+    impl_mode:str
+        impl_mode, default value is None
 
     Returns
     -------
@@ -160,7 +227,7 @@ def gelu(x, y, kernel_name="gelu"):
 
             input_data = tvm.placeholder(shape_x[0], name="input_data",
                                          dtype=dtype_x)
-            res = gelu_compute(input_data, y, kernel_name)
+            res = gelu_compute(input_data, y, kernel_name, impl_mode=impl_mode)
 
             tensors.append([input_data, res])
         with tvm.target.cce():

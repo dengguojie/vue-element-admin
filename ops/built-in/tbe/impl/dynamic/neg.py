@@ -22,9 +22,11 @@ from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import register_operator_compute
 
 
 # 'pylint: disable=locally-disabled,unused-argument,redefined-argument-from-local
+@register_operator_compute("Neg", op_mode="dynamic", support_fusion=True)
 def neg_compute(input_x, output_y, kernel_name="neg"):
     """
     compute neg

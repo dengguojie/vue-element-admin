@@ -25,6 +25,7 @@ from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import register_operator_compute
 
 
 def _isclose(valuex, valuey, rel_tol=1e-08, abs_tol=0.0):
@@ -45,6 +46,7 @@ def _isclose(valuex, valuey, rel_tol=1e-08, abs_tol=0.0):
 
 
 # 'pylint: disable=too-many-arguments,unused-argument,too-many-locals
+@register_operator_compute("Log", op_mode="dynamic", support_fusion=True)
 def log_compute(input_x, output_y, base=-1.0, scale=1.0, shift=0.0, kernel_name="log"):
     """
     calculating data

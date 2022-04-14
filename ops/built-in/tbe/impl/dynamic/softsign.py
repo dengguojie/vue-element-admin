@@ -58,7 +58,7 @@ def softsign_compute(input_x, y, kernel_name="softsign"):
 
     data_abs = tbe.vabs(input_x)
     data_add = tbe.vadds(data_abs, 1)
-    data_rec = tbe.vrec(data_add)
+    data_rec = tbe.vrec(data_add, "high_precision")
     res = tbe.vmul(input_x, data_rec)
 
     if dtype == "float16":

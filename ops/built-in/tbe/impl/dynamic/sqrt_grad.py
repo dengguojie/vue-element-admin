@@ -26,9 +26,11 @@ from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import register_operator_compute
 
 
 # 'pylint: disable=locally-disabled,too-many-arguments,unused-argument,invalid-name,too-many-locals
+@register_operator_compute("SqrtGrad", op_mode="dynamic", support_fusion=True)
 def sqrt_grad_compute(x, dx, out, kernel_name="sqrt_grad"):
     """
     algorithm: sqrt_grad_compute

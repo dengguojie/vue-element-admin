@@ -23,6 +23,7 @@ from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import register_operator_compute
 
 NEG_SCALAR_MIN_FP16 = -(2 ** (-24))
 NEG_SCALAR_MIN_FP32 = -(2 ** (-126))
@@ -31,6 +32,7 @@ SCALAR_MIN_FP32 = 2 ** (-126)
 
 
 # 'pylint: disable=unused-argument,redefined-argument-from-local
+@register_operator_compute("Sign", op_mode="dynamic", support_fusion=True)
 def sign_compute(input_x, output_y, kernel_name="sign"):
     """
     compute for sign

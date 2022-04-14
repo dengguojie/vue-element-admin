@@ -25,6 +25,7 @@ from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import error_manager_vector
+from impl.util.platform_adapter import register_operator_compute
 
 
 # 'pylint:disable=too-few-public-methods,too-many-instance-attributes
@@ -78,6 +79,7 @@ def _sin(x):
 
 
 # 'pylint: disable=locally-disabled,unused-argument,invalid-name,too-many-locals
+@register_operator_compute("Sin", op_mode="dynamic", support_fusion=True)
 def sin_compute(x, y, kernel_name="sin"):
     """
     algorithm: sin

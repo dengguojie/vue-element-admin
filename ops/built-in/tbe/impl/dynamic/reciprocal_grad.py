@@ -23,10 +23,12 @@ from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import register_operator_compute
 
 
 # 'pylint: disable=locally-disabled,unused-argument
 # 'pylint: disable=too-many-locals
+@register_operator_compute("ReciprocalGrad", op_mode="dynamic", support_fusion=True)
 def reciprocal_grad_compute(input_y, input_dy, output_data,
                             kernel_name="reciprocal_grad"):
     """

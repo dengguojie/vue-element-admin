@@ -39,9 +39,11 @@ from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import register_operator_compute
 
 
 # 'pylint: disable=locally-disabled,too-many-arguments,unused-argument
+@register_operator_compute("Acosh", op_mode="dynamic", support_fusion=True)
 def acosh_compute(input_data, output_res, kernel_name="acosh"):
     """
     do element-wise acosh compute

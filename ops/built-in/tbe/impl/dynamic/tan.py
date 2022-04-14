@@ -25,6 +25,7 @@ from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import register_operator_compute
 
 
 # 'pylint: disable=too-few-public-methods
@@ -87,6 +88,7 @@ def _tan_2x_multi(input_x, times):
 
 
 # 'pylint: disable=locally-disabled,unused-argument,invalid-name
+@register_operator_compute("Tan", op_mode="dynamic", support_fusion=True)
 def tan_compute(x, y, kernel_name="tan"):
     """
     algorithm: tan

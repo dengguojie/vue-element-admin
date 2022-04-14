@@ -24,10 +24,12 @@ from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import OpImplMode
 
 
 # 'pylint: disable=locally-disabled,unused-argument
+@register_operator_compute("Sqrt", op_mode="dynamic", support_fusion=True)
 def sqrt_compute(input_data, output_data, kernel_name="sqrt", impl_mode=OpImplMode.HIGH_PERFORMANCE):
     """
     calculating data sqrt,y= x**0.5,mini not support vsqrt, use exp(0.5*log(x))

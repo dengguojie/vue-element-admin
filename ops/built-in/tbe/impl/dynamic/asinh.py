@@ -71,7 +71,6 @@ class Constant:
 
 
 # 'pylint: disable=locally-disabled,too-many-arguments,unused-argument,too-many-locals,invalid-name
-@register_operator_compute("Asinh", op_mode="dynamic", support_fusion=True)
 def asinh_compute_mini(input_x, output_y, kernel_name="asinh"):
     """
     algrithm: asinh(x) = log(x + sqrt(x^2 + 1))
@@ -131,6 +130,7 @@ def asinh_compute_mini(input_x, output_y, kernel_name="asinh"):
     return res
 
 
+@register_operator_compute("Asinh", op_mode="dynamic", support_fusion=True)
 def asinh_compute_cloud(input_x, output_y, kernel_name="asinh"):
     """
     algrithm: asinh(x) = log(x + sqrt(x^2 + 1))

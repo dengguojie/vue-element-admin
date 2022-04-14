@@ -23,10 +23,12 @@ from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import register_operator_compute
 
 
 # 'pylint: disable=locally-disabled,too-many-arguments,unused-argument
 # 'pylint: disable=invalid-name,too-many-locals,redefined-argument-from-local
+@register_operator_compute("SigmoidGrad", op_mode="dynamic", support_fusion=True)
 def sigmoid_grad_compute(x, y, z, kernel_name="sigmoid_grad"):
     """
     algorithm : sigmoid grad compute

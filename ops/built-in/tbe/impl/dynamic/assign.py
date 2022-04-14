@@ -144,12 +144,12 @@ class Assign:
                 self.run_one_core(_core_idx, self.block_tail_core)
 
         opt_config = {"out_of_bound_sync_check": True}
+        tbe_context.get_context().add_compile_info("vars",
+                                                   {"ub_size": self.ub_size_bytes, "core_num": self.ai_core_num})
         self.tik_instance.BuildCCE(kernel_name=self.kernel_name,
                                    inputs=(self.ref_gm, self.value_gm),
                                    outputs=(self.out_gm,),
                                    flowtable=(self.tiling_gm,), config=opt_config)
-        tbe_context.get_context().add_compile_info("vars",
-                                                   {"ub_size": self.ub_size_bytes, "core_num": self.ai_core_num})
 
 
 @register_operator("Assign")

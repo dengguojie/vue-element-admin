@@ -24,10 +24,12 @@ from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import register_operator_compute
 
 
 # 'pylint: disable=too-many-arguments,unused-argument
 # 'pylint: disable=too-many-locals,redefined-argument-from-local
+@register_operator_compute("Relu6Grad", op_mode="dynamic", support_fusion=True)
 def relu6_grad_compute(input_grad, input_x, output_y, kernel_name="relu6_grad"):
     """
     Parameters

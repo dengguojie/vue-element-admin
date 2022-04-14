@@ -23,6 +23,7 @@ from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import register_operator_compute
 
 
 # 'pylint: disable=too-few-public-methods
@@ -49,6 +50,7 @@ class Constant:
 
 
 # 'pylint: disable=locally-disabled,unused-argument,too-many-locals
+@register_operator_compute("Log1p", op_mode="dynamic", support_fusion=True)
 def log1p_compute(input_x, output_y, kernel_name="log1p"):
     """
     algorithm: log1p

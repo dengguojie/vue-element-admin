@@ -42,6 +42,7 @@ from impl.util import util_compute
 from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import register_operator_compute
 
 
 # 'pylint: disable=too-few-public-methods
@@ -190,6 +191,7 @@ def _init_atan2_mask(data_y, data_x):
 
 
 # 'pylint: disable=locally-disabled,unused-argument,invalid-name
+@register_operator_compute("Atan2", op_mode="dynamic", support_fusion=True)
 def atan2_compute(y, x, output_dict, kernel_name="atan2"):
     """
     Algorithm: atan2

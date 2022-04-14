@@ -21,9 +21,19 @@ from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import register_operator_compute
+from impl.reciprocal import op_select_format as reciprocal_op_select_format
+
+
+def op_select_format(input_x, output_y, kernel_name="reciprocal"):
+    """
+    Get support format according to input_x
+    """
+    return reciprocal_op_select_format(input_x, output_y, kernel_name)
 
 
 # 'pylint: disable=redefined-builtin,unused-argument,too-many-locals
+@register_operator_compute("Reciprocal", op_mode="dynamic", support_fusion=True)
 def reciprocal_compute(input_x, output_y, kernel_name="reciprocal"):
     """
     reciprocal_compute

@@ -23,6 +23,7 @@ from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import register_operator_compute
 
 
 # 'pylint: disable=too-many-locals,invalid-name
@@ -79,6 +80,7 @@ def calculate_one_or_zero(input_tensor, dtype):
 
 
 # 'pylint: disable=locally-disabled,unused-argument
+@register_operator_compute("ReluGrad", op_mode="dynamic", support_fusion=True)
 def relu_grad_compute(input_gradients, input_features, output_backprops, kernel_name="relu_grad"):
     """
     calculate the backpropagation of relu operation

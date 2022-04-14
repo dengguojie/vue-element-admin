@@ -8,13 +8,7 @@
             10,
             5
           ],
-          "ori_shape": [
-            2,
-            10,
-            5
-          ],
           "format": "ND",
-          "ori_format": "ND",
           "type": "float",
           "value_range": [[0, 1]],
           "data_distribute": "uniform",
@@ -26,16 +20,12 @@
           "shape": [
               -2
           ],
-          "ori_shape": [
-            -2
-          ],
           "typical_shape": [
             2,
             10,
             5
           ],
           "format": "ND",
-          "ori_format": "ND",
           "name": "y",
           "type": "float"
         }
@@ -49,10 +39,8 @@
         {
           "shape": [-1, 10, 5],
           "typical_shape": [2, 10, 5],
-          "ori_shape": [-1, 10, 5],
           "shape_range": [[1, 100]],
           "format": "ND",
-          "ori_format": "ND",
           "type": "float",
           "value_range": [[0, 1]],
           "data_distribute": "uniform",
@@ -62,10 +50,8 @@
       "output_desc": [
         {
           "shape": [2, 10, 5],
-          "ori_shape": [2, 10, 5],
           "typical_shape": [2, 10, 5],
           "format": "ND",
-          "ori_format": "ND",
           "name": "y",
           "type": "float"
         }
@@ -86,10 +72,8 @@
         {
           "shape": [-1, 10, 5],
           "typical_shape": [2, 10, 5],
-          "ori_shape": [-1, 10, 5],
           "shape_range": [[1, 100]],
           "format": "ND",
-          "ori_format": "ND",
           "type": "float",
           "value_range": [[0, 1]],
           "data_distribute": "uniform",
@@ -99,10 +83,8 @@
       "output_desc": [
         {
           "shape": [2, 10, 5],
-          "ori_shape": [2, 10, 5],
           "typical_shape": [2, 10, 5],
           "format": "ND",
-          "ori_format": "ND",
           "name": "y",
           "type": "float"
         }

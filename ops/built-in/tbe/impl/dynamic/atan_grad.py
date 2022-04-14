@@ -41,9 +41,11 @@ from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import register_operator_compute
 
 
 # 'pylint: disable=unused-argument,invalid-name,too-many-locals
+@register_operator_compute("AtanGrad", op_mode="dynamic", support_fusion=True)
 def atan_grad_compute(y, dy, z, kernel_name="atan_grad"):
     """
     Calculation for backward gradient

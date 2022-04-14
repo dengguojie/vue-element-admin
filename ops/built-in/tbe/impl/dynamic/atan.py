@@ -41,6 +41,7 @@ from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import register_operator_compute
 
 
 # 'pylint: disable=too-few-public-methods
@@ -107,6 +108,7 @@ def _do_taylor(input_data):
 
 
 # 'pylint: disable=locally-disabled,too-many-arguments,unused-argument,invalid-name
+@register_operator_compute("Atan", op_mode="dynamic", support_fusion=True)
 def atan_compute(x, y, kernel_name="atan"):
     """
     Algorithm: atan

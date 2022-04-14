@@ -463,12 +463,7 @@
           -1,
           10
         ],
-        "ori_shape": [
-          2,
-          10
-        ],
         "format": "NHWC",
-        "ori_format": "NHWC",
         "name": "x",
         "type": "float16",
         "shape_range": [
@@ -487,12 +482,7 @@
           -1,
           10
         ],
-        "ori_shape": [
-          2,
-          10
-        ],
         "format": "NHWC",
-        "ori_format": "NHWC",
         "name": "dx",
         "type": "float16",
         "shape_range": [
@@ -513,12 +503,7 @@
           -1,
           10
         ],
-        "ori_shape": [
-          2,
-          10
-        ],
         "format": "NHWC",
-        "ori_format": "NHWC",
         "name": "out",
         "type": "float16",
         "shape_range": [
