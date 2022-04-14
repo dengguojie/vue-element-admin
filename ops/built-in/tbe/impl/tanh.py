@@ -31,7 +31,7 @@ SHAPE_SIZE_LIMIT = 2147483648
 # 'pylint: disable=locally-disabled,too-many-arguments,unused-argument
 # 'pylint: disable=too-many-locals,invalid-name
 @tbe_platform.fusion_manager.fusion_manager.register("tanh")
-def tanh_compute(input_x, output_y, kernel_name="tanh"):
+def tanh_compute(input_x, output_y, kernel_name="tanh", impl_mode=None):
     """
     algorithm: tanh
     calculating data's tanh,y= (e^(2x)-1)/(e^(2x)+1)
@@ -50,6 +50,9 @@ def tanh_compute(input_x, output_y, kernel_name="tanh"):
     res : tvm.tensor
         the result of tanh
     """
+    if impl_mode == "high_performance":
+        return fast_tanh_compute(input_x, output_y, kernel_name)
+
     input_dtype = input_x.dtype
     # positive min float32 value
     MIN_FP_DATA = 2 ** (-126)
@@ -85,8 +88,72 @@ def tanh_compute(input_x, output_y, kernel_name="tanh"):
     return res
 
 
+def fast_tanh_compute(input_x, output_y, kernel_name="tanh"):
+    """
+    algorithm: tanh
+    calculating data's tanh
+        x2 = x * x;
+        a = x * (135135.0f + x2 * (17325.0f + x2 * (378.0f + x2)));
+        b = 135135.0f + x2 * (62370.0f + x2 * (3150.0f + x2 * 28.0f));
+        y = a / b;
+
+    Parameters
+    ----------
+    input_x: TVM tensor
+        the placeholder of input data
+    output_y: dict
+        shape and dtype of output, should be same shape and type as input
+    kernel_name: str
+        cce kernel name, default value is tanh
+
+    Returns
+    -------
+    res : tvm.tensor
+        the result of tanh
+    """
+    input_dtype = input_x.dtype
+    const_b1 = tvm.const(135135.0, "float32")
+    const_b2 = tvm.const(17325.0, "float32")
+    const_b3 = tvm.const(378.0, "float32")
+    const_b4 = tvm.const(62370.0, "float32")
+    const_b5 = tvm.const(3150.0, "float32")
+    const_b6 = tvm.const(28.0, "float32")
+    one_const = tvm.const(1.0, "float32")
+    negative_one_const = tvm.const(-1.0, "float32")
+
+    has_improve_precision = False
+    if input_dtype == "float16" and \
+            tbe_platform.api_check_support("te.lang.cce.vexp", "float32"):
+        input_x = tbe.cast_to(input_x, "float32")
+        has_improve_precision = True
+
+    input_mul = tbe.vmul(input_x, input_x)
+    input_add = tbe.vadds(input_mul, const_b3)
+    input_mul_1 = tbe.vmul(input_mul, input_add)
+    input_add_1 = tbe.vadds(input_mul_1, const_b2)
+    input_mul_2 = tbe.vmul(input_mul, input_add_1)
+    input_add_2 = tbe.vadds(input_mul_2, const_b1)
+    input_mul_3 = tbe.vmul(input_x, input_add_2)
+
+    input_mul2 = tbe.vmuls(input_mul, const_b6)
+    input_add2 = tbe.vadds(input_mul2, const_b5)
+    input_mul2_1 = tbe.vmul(input_mul, input_add2)
+    input_add2_1 = tbe.vadds(input_mul2_1, const_b4)
+    input_mul2_2 = tbe.vmul(input_mul, input_add2_1)
+    input_add_2 = tbe.vadds(input_mul2_2, const_b1)
+
+    input_div = tbe.vdiv(input_mul_3, input_add_2)
+    result1 = tbe.vmins(input_div, one_const)
+    res = tbe.vmaxs(result1, negative_one_const)
+
+    if has_improve_precision:
+        res = tbe.cast_to(res, "float16")
+
+    return res
+
+
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
-def tanh(input_x, output_y, kernel_name="tanh"):
+def tanh(input_x, output_y, kernel_name="tanh", impl_mode=None):
     """
     algorithm: tanh
     calculating data's tanh,y= (e^(2x)-1)/(e^(2x)+1)
@@ -99,7 +166,8 @@ def tanh(input_x, output_y, kernel_name="tanh"):
         shape and dtype of output, should be same shape and type as input
     kernel_name : str
         cce kernel name, default value is tanh
-
+    impl_mode:str
+        impl_mode, default value is None
     Returns
     -------
     None
@@ -116,7 +184,7 @@ def tanh(input_x, output_y, kernel_name="tanh"):
     fuseshape[0] = functools.reduce(lambda x, y: x * y, input_shape)
 
     data = tvm.placeholder(fuseshape, name="data", dtype=input_dtype)
-    res = tanh_compute(data, output_y, kernel_name)
+    res = tanh_compute(data, output_y, kernel_name, impl_mode=impl_mode)
 
     with tvm.target.cce():
         sch = tbe.auto_schedule(res)
