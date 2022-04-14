@@ -327,7 +327,7 @@ class SliceSchedule(Schedule):
     def _do_cache_read(self):
         if self._tiling_mode == LR_DEPAD:
             self._cache_read_tensor = self._schedule.cache_read(self._input_x_tensor,
-                                                                self._scope, [self._real_out])
+                                                                self._scope, [self._real_out, self._out_tensor])
 
     def _calc_cache_write(self):
         if self._tiling_mode == LR_DEPAD:
@@ -344,7 +344,9 @@ class SliceSchedule(Schedule):
             self._slice_ub_tensor = self._schedule.cache_write(self._cache_write_tensor, self._scope)
 
     def _do_storage_bound(self):
-        if self._tiling_mode in [DATA_MOV, ONE_DIM, BOTH_ALIGN]:
+        if self._tiling_mode == DATA_MOV:
+            self._coexisting_quantity = 1
+        if self._tiling_mode in [ONE_DIM, BOTH_ALIGN]:
             self._coexisting_quantity = 2
         if self._tiling_mode in [DEPAD, SCALAR, LR_DEPAD]:
             self._coexisting_quantity = 4

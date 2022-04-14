@@ -65,6 +65,7 @@ class SliceCompileInfo:
     CONST_SIZES = "_const_sizes"
     CONST_ENDS = "_const_ends"
     END_MODE = "_end_mode"
+    LR_DEPAD_MODE = "_lr_depad"
 
 
 class TilingStrategy(Enum):
@@ -84,6 +85,7 @@ class SliceComputation(Computation):
     def __init__(self, outs, option):
         self.outs = outs
         self.option = option
+        self.is_lr_depad = False
 
     @staticmethod
     def _calc_base_key(dim_len):
@@ -92,7 +94,7 @@ class SliceComputation(Computation):
     @staticmethod
     def _calc_mode(ub_axis, dim_len):
         if ub_axis == dim_len - 1:
-            return [DATA_MOV]
+            return [DATA_MOV, BOTH_ALIGN]
         return [DATA_MOV, DEPAD, UNALIGED_STRIDE, BOTH_ALIGN, SCALAR]
 
     @staticmethod
@@ -123,6 +125,7 @@ class SliceComputation(Computation):
         is_static = operation.get_op_mode() == "static"
         is_const = operation.get_context().get(SliceCompileInfo.IS_CONST)
         is_zero_shape = operation.get_context().get_current_compute().get(SliceCompileInfo.ZEROS_SHAPE)
+        self.is_lr_depad = operation.get_context().get_current_compute().get(SliceCompileInfo.LR_DEPAD_MODE)
 
         # zero shape
         # const/dynamic
@@ -151,21 +154,8 @@ class SliceComputation(Computation):
                 "mode": ONE_DIM
             })
 
-        # base tiling case, cover all condition
-        for i in range(dim_len):
-            for j in range(i, dim_len):
-                mode = self._calc_mode(j , dim_len)
-                for _mode in mode:
-                    cases.append({
-                        "key": base_key + MODE_VALUE_MAP.get(_mode) + i * dim_len + j,
-                        "block_tiling_axis": i,
-                        "ub_tiling_axis": j,
-                        "tiling_strategy": TilingStrategy.DYNAMIC,
-                        "mode": _mode
-                    })
-
-        # lr depad
-        if dim_len == 2:
+        if self.is_lr_depad:
+            # lr depad
             cases.append({
                 "key": base_key + MODE_VALUE_MAP.get(LR_DEPAD),
                 "block_tiling_axis": 0,
@@ -173,6 +163,19 @@ class SliceComputation(Computation):
                 "tiling_strategy": TilingStrategy.DYNAMIC,
                 "mode": LR_DEPAD
             })
+        else:
+            # base tiling case, cover all condition
+            for i in range(dim_len):
+                for j in range(i, dim_len):
+                    mode = self._calc_mode(j , dim_len)
+                    for _mode in mode:
+                        cases.append({
+                            "key": base_key + MODE_VALUE_MAP.get(_mode) + i * dim_len + j,
+                            "block_tiling_axis": i,
+                            "ub_tiling_axis": j,
+                            "tiling_strategy": TilingStrategy.DYNAMIC,
+                            "mode": _mode
+                        })
 
         return cases
 

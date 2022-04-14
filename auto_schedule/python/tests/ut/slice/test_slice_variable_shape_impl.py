@@ -49,12 +49,12 @@ def test_slice_variable_shape(_):
                 [
                     {
                         "name": "_begin_dim_0",
-                        "bound": (1, None),
+                        "bound": (0, None),
                         "category": var.Category.NORMAL,
                     },
                     {
                         "name": "_begin_dim_1",
-                        "bound": (1, None),
+                        "bound": (0, None),
                         "category": var.Category.NORMAL,
                     },
                 ],

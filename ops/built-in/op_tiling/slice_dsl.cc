@@ -89,6 +89,13 @@ constexpr int64_t BLOCK_TILING_THRESHOLD = 2048;
 constexpr int64_t ONE_DIM_TILING_THRESHOLD = 1024;
 constexpr int64_t IMPROVE_TILING_THRESHOLD = 8;
 constexpr int64_t BEFORE_LAST_DIM_THRESHOLD = 16;
+constexpr int64_t LR_DEPAD_ROWS = 256;
+constexpr int64_t SCALAR_THRESHOLD = 16;
+
+// MULTI CORES
+constexpr int64_t DMA_CORE_THRESHOLD = 1048576;
+constexpr int64_t DMA_CORE_NUMBER = 4;
+constexpr int64_t MIN_CORE_NUMBER = 1;
 }
 
 SliceDslCompileInfo::SliceDslCompileInfo(const std::string &op_type, const nlohmann::json &org_compile_info) {
@@ -263,9 +270,10 @@ void SliceDsl::SimplyShape(std::vector<int64_t> org_x_shape,
   size_list[x_shape_idx] = middle_size_list[0];
   x_shape_idx = x_shape_idx + 1;
   for (size_t i = 1; i < real_len; i++) {
-    if ((size_list[x_shape_idx - 1] == 1) && (middle_size_list[i] == 1)) {
+    if (size_list[x_shape_idx - 1] == 1) {
       x_shape[x_shape_idx - 1] = middle_x_shape[i] * x_shape[x_shape_idx - 1];
       begin_list[x_shape_idx - 1] = middle_x_shape[i] * begin_list[x_shape_idx - 1] + middle_begin_list[i];
+      size_list[x_shape_idx - 1] = middle_size_list[i];
     } else {
       x_shape[x_shape_idx] = middle_x_shape[i];
       begin_list[x_shape_idx] = middle_begin_list[i];
@@ -295,8 +303,7 @@ bool SliceDsl::DoBaseTiling() {
   } else if (IsStrideAlignTiling()) {
     mode = MODE_UNALIGN_STRIDE;
   } else {
-    ub_available = slice_compile_info.ub_size / slice_compile_info.coex_list[NORMAL_MODE_IDX] /
-        slice_compile_info.x_align * slice_compile_info.x_align;
+    ub_available = slice_compile_info.ub_size / slice_compile_info.x_align * slice_compile_info.x_align;
     mode = MODE_DATA_MOV;
   }
 
@@ -317,8 +324,7 @@ bool SliceDsl::IsBothAlignTiling() {
 }
 
 bool SliceDsl::IsLRDePadTiling() {
-  return (shape_len == TWO_DIMS && size_list[0] == x_shape[0] &&
-      begin_list[1] == 0 && IsDePadTiling(x_last_dim_align));
+  return (shape_len == TWO_DIMS && size_list[0] == x_shape[0] && IsDePadTiling(x_last_dim_align));
 }
 
 bool SliceDsl::IsDePadTiling(int64_t last_dim_align_value) {
@@ -379,12 +385,20 @@ bool SliceDsl::DoBlockUbTiling() {
 bool SliceDsl::DoBlockTiling() {
   int64_t second_total_size = std::accumulate(size_list.begin() + 1,
                                               size_list.end(), 1LL, std::multiplies<int64_t>());
+  int64_t core_number = slice_compile_info.core_num;
+  if (total_size < DMA_CORE_THRESHOLD && mode == MODE_BOTH_ALIGN) {
+    core_number = (slice_compile_info.core_num + DMA_CORE_NUMBER - 1) / DMA_CORE_NUMBER;
+  }
+  if (mode == MODE_LR_DEPAD) {
+    core_number = std::min((size_list[0] + LR_DEPAD_ROWS - 1) / LR_DEPAD_ROWS, slice_compile_info.core_num);
+  }
+  core_number = core_number == 0 ? MIN_CORE_NUMBER : core_number;
   // block tiling
   if ((second_total_size >= slice_compile_info.x_align) || (total_size >= BLOCK_TILING_THRESHOLD)) {
     for (size_t i = 0; i < shape_len; i++) {
       if (size_list[i] > 1) {
         block_axis = i;
-        block_factor = (size_list[block_axis] + slice_compile_info.core_num - 1) / slice_compile_info.core_num;
+        block_factor = (size_list[block_axis] + core_number - 1) / core_number;
         // get block
         int64_t tmp_core_num = std::accumulate(size_list.begin() + i + 1,
                                                size_list.end(), 1LL, std::multiplies<int64_t>());
@@ -464,7 +478,7 @@ bool SliceDsl::DoUbTiling() {
   }
 
   // ub last dim only support data mov mode
-  if (mode != MODE_DATA_MOV && ub_axis == shape_len - 1) {
+  if (mode != MODE_DATA_MOV && ub_axis == shape_len - 1 && mode != MODE_BOTH_ALIGN) {
     mode = MODE_DATA_MOV;
   }
 
@@ -497,7 +511,7 @@ bool SliceDsl::TryImproveTiling() {
   }
 
   // if row number to small or scalar condtion change mode
-  if (mode == MODE_DEPAD || mode == MODE_UNALIGN_STRIDE) {
+  if (mode == MODE_DEPAD || mode == MODE_UNALIGN_STRIDE || mode == MODE_DATA_MOV) {
     // cal row number
     int64_t second_last_factor = ub_factor;
     if (ub_axis < shape_len - TWO_DIMS) {
@@ -506,7 +520,8 @@ bool SliceDsl::TryImproveTiling() {
     }
 
     if (second_last_factor < BEFORE_LAST_DIM_THRESHOLD) {
-      mode = last_dim == 1 ? MODE_SCALAR : MODE_DATA_MOV;
+      mode = ((last_dim < SCALAR_THRESHOLD) && (x_shape[shape_len - 1] % slice_compile_info.x_align == 0)
+          && (second_last_factor > 1)) ? MODE_SCALAR : MODE_DATA_MOV;
     }
   }
 
@@ -524,7 +539,11 @@ bool SliceDsl::DoOneDimTiling() {
   ub_axis = 0;
   if (dim_value > ONE_DIM_TILING_THRESHOLD) {
     // block tiling
-    block_factor = std::ceil(dim_value * 1.0 / slice_compile_info.core_num);
+    int64_t core_number = slice_compile_info.core_num;
+    if (dim_value < DMA_CORE_THRESHOLD) {
+      core_number = (slice_compile_info.core_num + DMA_CORE_NUMBER - 1) / DMA_CORE_NUMBER;
+    }
+    block_factor = std::ceil(dim_value * 1.0 / core_number);
     block_factor = std::ceil(block_factor * 1.0 / slice_compile_info.x_align) * slice_compile_info.x_align;
     if (block_factor == 0) {
       VECTOR_INNER_ERR_REPORT_TILIING(op_type, "slice block_factor is 0.");

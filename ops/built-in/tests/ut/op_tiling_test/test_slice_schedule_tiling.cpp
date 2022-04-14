@@ -167,7 +167,7 @@ TENSOR_OUTPUT(opParas, tensor_output, y);
 optiling::utils::OpRunInfo runInfo;
 optiling::SliceDsl slice_dsl_schedule("slice", opParas, op_compile_info, runInfo);
 slice_dsl_schedule.DoTiling();
-EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "25600 1324 0 25600 0 512 800 61 ");
+EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "25600 1324 0 25600 0 512 800 112 ");
 }
 
 
@@ -339,7 +339,7 @@ TENSOR_OUTPUT(opParas, tensor_output, y);
 optiling::utils::OpRunInfo runInfo;
 optiling::SliceDsl slice_dsl_schedule("slice", opParas, op_compile_info, runInfo);
 slice_dsl_schedule.DoTiling();
-EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "393216 0 196608 6144 6144 ");
+EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "393216 0 196608 24576 12288 ");
 }
 
 
@@ -428,7 +428,7 @@ op_compile_info.is_const_begins = false;
 op_compile_info.coex_list = {2, 4, 3};
 
 op_compile_info.slice_vars = {
-    {"521000000", {10000, 10001, 20000, 30000, 20001, 30001, 40000, 50000}},
+    {"527000000", {10000, 10001, 20000, 30000, 20001, 30001, 40000, 50000}},
 };
 
 
@@ -476,7 +476,7 @@ TENSOR_OUTPUT(opParas, tensor_output, y);
 optiling::utils::OpRunInfo runInfo;
 optiling::SliceDsl slice_dsl_schedule("slice", opParas, op_compile_info, runInfo);
 slice_dsl_schedule.DoTiling();
-EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "168 31 0 168 5 23 6 6 ");
+EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "168 31 0 168 5 23 168 168 ");
 }
 
 
@@ -564,7 +564,7 @@ op_compile_info.end_mode = 0;
 op_compile_info.coex_list = {2, 4, 3};
 
 op_compile_info.slice_vars = {
-    {"522000000", {10000, 10001, 20000, 30000, 20001, 30001, 40000, 50000}},
+    {"527000000", {10000, 10001, 20000, 30000, 20001, 30001, 40000, 50000}},
 };
 
 
@@ -632,7 +632,7 @@ op_compile_info.end_mode = 0;
 op_compile_info.coex_list = {2, 4, 3};
 
 op_compile_info.slice_vars = {
-    {"522000000", {10000, 10001, 20000, 30000, 20001, 30001, 40000, 50000}},
+    {"527000000", {10000, 10001, 20000, 30000, 20001, 30001, 40000, 50000}},
 };
 
 
@@ -681,4 +681,71 @@ optiling::utils::OpRunInfo runInfo;
 optiling::SliceDsl slice_dsl_schedule("slice", opParas, op_compile_info, runInfo);
 slice_dsl_schedule.DoTiling();
 EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "287256400 2 0 287256400 1 1 8976763 2036 ");
+}
+
+TEST_F(SliceScheduleTiling, slice_schedule_tiling_11
+) {
+// slice fuse slice 1 dims
+using namespace optiling;
+SliceDslCompileInfo op_compile_info;
+op_compile_info.core_num = 32;
+op_compile_info.ub_size = 32640;
+op_compile_info.x_type_size = 8;
+op_compile_info.x_align = 4;
+op_compile_info.tensor_nums = 3;
+op_compile_info.is_const_sizes = false;
+op_compile_info.is_const_begins = false;
+op_compile_info.end_mode = 0;
+op_compile_info.coex_list = {2, 4, 3};
+
+op_compile_info.slice_vars = {
+    {"527000000", {10000, 10001, 20000, 30000, 20001, 30001, 40000, 50000}},
+};
+
+
+std::vector <int64_t> inputA{16, 718141, 25, 2};
+std::vector <int64_t> inputB{4};
+std::vector <int64_t> inputC{4};
+std::vector <int64_t> output{16, 718141, 1, 1};
+
+TensorDesc tensor_inputA;
+tensor_inputA.
+SetShape(ge::Shape(inputA)
+);
+tensor_inputA.
+SetDataType(ge::DT_FLOAT16);
+
+TensorDesc tensor_inputB;
+tensor_inputB.
+SetShape(ge::Shape(inputB)
+);
+tensor_inputB.
+SetDataType(ge::DT_INT32);
+vector<int32_t> begin_data{0, 0, 0, 1};
+
+TensorDesc tensor_inputC;
+tensor_inputC.
+SetShape(ge::Shape(inputC)
+);
+tensor_inputC.
+SetDataType(ge::DT_INT32);
+vector<int32_t> size_data{-1, -1, 1, -1};
+
+TensorDesc tensor_output;
+tensor_output.
+SetShape(ge::Shape(output)
+);
+tensor_output.
+SetDataType(ge::DT_INT32);
+
+auto opParas = op::Slice("Slice");
+TENSOR_INPUT(opParas, tensor_inputA, x);
+TENSOR_INPUT_CONST(opParas, tensor_inputB, offsets, (const uint8_t*)begin_data.data(), begin_data.size() * 4);
+TENSOR_INPUT_CONST(opParas, tensor_inputC, size, (const uint8_t*)size_data.data(), size_data.size() * 4);
+TENSOR_OUTPUT(opParas, tensor_output, y);
+
+optiling::utils::OpRunInfo runInfo;
+optiling::SliceDsl slice_dsl_schedule("slice", opParas, op_compile_info, runInfo);
+slice_dsl_schedule.DoTiling();
+EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "11490256 50 0 11490256 1 1 359071 152 ");
 }

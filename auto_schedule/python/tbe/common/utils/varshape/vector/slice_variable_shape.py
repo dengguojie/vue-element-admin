@@ -53,7 +53,11 @@ def variable_shape(inputs):
         if is_begin_list:
             begin_value = begin_info[_idx]
         else:
-            begin_value = operation.var_inner("_begin_dim_{}".format(_idx), (1, None))
+            if "lr_depad" in begin_info and _idx == 0:
+                current_compute.add("_lr_depad", True)
+                begin_value = operation.var_inner("_begin_dim_{}".format(_idx), (0, 0))
+            else:
+                begin_value = operation.var_inner("_begin_dim_{}".format(_idx), (0, None))
         begin_list.append(begin_value)
 
         if is_end_list:

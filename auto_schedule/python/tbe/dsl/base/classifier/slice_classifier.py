@@ -169,9 +169,10 @@ class SliceClassifier:
                 fused_begin.append(group_begin[i])
                 fused_size.append(group_size[i])
             else:
-                if fused_size[fused_idx] == 1 and group_size[i] == 1:
+                if fused_size[fused_idx] == 1:
                     fused_shape[fused_idx] = group_shape[i] * fused_shape[fused_idx]
                     fused_begin[fused_idx] = group_shape[i] * fused_begin[fused_idx] + group_begin[i]
+                    fused_size[fused_idx] = group_size[i]
                 else:
                     fused_shape.append(group_shape[i])
                     fused_begin.append(group_begin[i])
@@ -250,6 +251,8 @@ class SliceClassifier:
             ins.append([x_dict, begin_dict, end_dict])
 
         ins.append(self.zeros_condition(self.x_dtype))
+        if x_shape_len >= 2:
+            ins.append(self.lr_depad_condition())
         return ins
 
     @staticmethod
@@ -260,3 +263,25 @@ class SliceClassifier:
         x_dict["range"] = [[0, 0]]
 
         return [x_dict, [0], [0]]
+
+    def lr_depad_condition(self):
+        x_dict = {}
+        x_dict["shape"] = [-1, -1]
+        x_dict["dtype"] = self.x_dtype
+        x_dict["range"] = [[1, None], [1, None]]
+
+        # begin
+        begin_dict = {}
+        begin_dict["shape"] = [2]
+        begin_dict["dtype"] = self.begin_dtype
+        begin_dict["range"] = [[2, 2]]
+        begin_dict["lr_depad"] = True
+
+        # end
+        end_dict = {}
+        end_dict["shape"] = [2]
+        end_dict["dtype"] = self.end_dtype
+        end_dict["range"] = [[2, 2]]
+
+        return [x_dict, begin_dict, end_dict]
+
