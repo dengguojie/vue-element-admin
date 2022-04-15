@@ -22,6 +22,7 @@
 #include "graph/operator_reg.h"
 #include "util/util.h"
 #include "op_log.h"
+#include "op_const.h"
 #include "proto/insert_op.pb.h"
 #include <nlohmann/json.hpp>
 
@@ -118,8 +119,8 @@ void InitAippParams(AippParams& params) {
   params.paddingSizeRight = 0;
 }
 
-void ParseAippParams(const Tensor& data, AippParams& aippParams) {
-  const uint8_t* constData = data.GetData();
+void ParseAippParams(const GeTensor* params_tensor, AippParams& aippParams) {
+  const uint8_t* constData = params_tensor->GetData().GetData();
 
   aippParams.inputFormat = *constData;
   aippParams.batchNum = *((int8_t*)constData + kBatchNumIndex);
@@ -744,9 +745,9 @@ static void SaveImagesDesc(Operator& op, const std::string& aipp_config_path) {
     auto images_desc = op.GetInputDesc("images");
     Tensor images_tensor(images_desc);
     OP_LOGD(op.GetName().c_str(),
-            "SaveImagesDesc, images_shape is %s, images_dtype value is %ld, images_format value is %ld",
+            "SaveImagesDesc, images_shape is %s, images_dtype value is %d, images_format value is %d",
             to_string(images_desc.GetShape().GetDims()).c_str(),
-            int64_t(images_desc.GetDataType()), int64_t(images_desc.GetFormat()));
+            images_desc.GetDataType(), images_desc.GetFormat());
     op.SetAttr("aipp_images_tensor_bak", images_tensor);
   }
   OP_LOGD(op.GetName().c_str(), "aipp infershape, SaveImagesDesc end");
@@ -759,9 +760,9 @@ static void GetImagesDesc(Operator& op, TensorDesc& images_desc) {
     OP_LOGD(op.GetName().c_str(), "GetImagesDesc, get aipp_images_tensor_bak success");
     images_desc = images_tensor.GetTensorDesc();
     OP_LOGD(op.GetName().c_str(),
-            "GetImagesDesc, images_shape is %s, images_dtype value is %ld, images_format value is %ld",
+            "GetImagesDesc, images_shape is %s, images_dtype value is %d, images_format value is %d",
             to_string(images_desc.GetShape().GetDims()).c_str(),
-            int64_t(images_desc.GetDataType()), int64_t(images_desc.GetFormat()));
+            images_desc.GetDataType(), images_desc.GetFormat());
   } else {
     OP_LOGD(op.GetName().c_str(), "GetImagesDesc, first, get images_desc from images");
     images_desc = op.GetInputDesc("images");
@@ -769,7 +770,7 @@ static void GetImagesDesc(Operator& op, TensorDesc& images_desc) {
   OP_LOGD(op.GetName().c_str(), "aipp infershape, GetImagesDesc end");
 }
 
-static graphStatus DynamicShapeInfershape(Operator& op, const Tensor& params_data) {
+static graphStatus DynamicShapeInfershape(Operator& op, const GeTensor* params_data) {
   OP_LOGI(op.GetName().c_str(), "aipp infershape, aipp dynamic shape start");
   // parse params data
   AippParams aippParams;
@@ -1043,12 +1044,12 @@ IMPLEMT_COMMON_INFERFUNC(AippInfer) {
     int64_t dynamicPosition = aipp_config_path.find("dynamic");
     if (modePosition > 0 && dynamicPosition > 0) {
       // aipp_config_path: {"aipp_mode":"dynamic"}
-      OP_LOGD(op.GetName().c_str(), "AippInfer, aipp dynamic shape");
-      Tensor params_data;
-      auto is_params_const = op.GetInputConstData("params", params_data);
-      if (is_params_const == GRAPH_SUCCESS) {
+      OP_LOGD(op.GetName().c_str(), "AippInfer, aipp dynamic mode");
+      const GeTensor* params_tensor_p = OpDescUtils::GetInputConstData(op, 1);
+      if (params_tensor_p != nullptr) {
+        // running state
         OP_LOGD(op.GetName().c_str(), "AippInfer, running, do DynamicShapeInfershape");
-        return DynamicShapeInfershape(op, params_data);
+        return DynamicShapeInfershape(op, params_tensor_p);
       }
     }
 
