@@ -160,6 +160,7 @@ from .sparse_apply_proximal_adagrad_d import sparse_apply_proximal_adagrad_d
 # tbe it11
 from .sparse_apply_ftrl_d import sparse_apply_ftrl_d
 from .sparse_apply_adagrad_d import sparse_apply_adagrad_d
+from .sparse_apply_adagrad import sparse_apply_adagrad
 from .sparse_apply_ftrl_v2_d import sparse_apply_ftrl_v2_d
 
 # tbe it12

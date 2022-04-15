@@ -29,6 +29,12 @@
 #include "op_log.h"
 
 namespace optiling {
+const int32_t PARAM_NUM_ADAGRAD = 5;
+const int32_t INDEX_2 = 2;
+const int32_t INDEX_3 = 3;
+const int32_t INDEX_4 = 4;
+const int32_t INDEX_5 = 5;
+
 bool CalSparseApplyCommonTiling(const std::string& op_type, const nlohmann::json& op_info, OpRunInfo& run_info,
                                 const std::vector<int64_t>& var_shape, const std::vector<int64_t>& grad_shape,
                                 const std::vector<int64_t>& indices_shape)
@@ -148,6 +154,29 @@ bool SparseApplyAdagradV2DTiling(const std::string& op_type, const TeOpParas& op
 // register tiling interface of the SparseApplyAdagradV2D op
 REGISTER_OP_TILING_FUNC_BUFFERED(SparseApplyAdagradD, SparseApplyAdagradV2DTiling);
 REGISTER_OP_TILING_FUNC_BUFFERED(SparseApplyAdagradV2D, SparseApplyAdagradV2DTiling);
+
+bool SparseApplyAdagradTiling(const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& op_info,
+                              OpRunInfo& run_info) {
+    GELOGI("op[%s] tiling running.", op_type.c_str());
+    if (op_info == nullptr) {
+        VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op_info json error.");
+        return false;
+    }
+    if (op_paras.inputs.size() < PARAM_NUM_ADAGRAD || op_paras.inputs[0].tensor.empty() || op_paras.inputs[1].tensor.empty() ||
+    op_paras.inputs[INDEX_2].tensor.empty() || op_paras.inputs[INDEX_3].tensor.empty() || op_paras.inputs[INDEX_4].tensor.empty()) {
+        VECTOR_INNER_ERR_REPORT_TILIING(op_type, "input shape error.");
+        return false;
+    }
+
+    std::vector<int64_t> var_shape = op_paras.inputs[0].tensor[0].shape;
+    std::vector<int64_t> grad_shape = op_paras.inputs[INDEX_3].tensor[0].shape;
+    std::vector<int64_t> indices_shape = op_paras.inputs[INDEX_4].tensor[0].shape;
+
+    return CalSparseApplyCommonTiling(op_type, op_info, run_info,
+                                      var_shape, grad_shape, indices_shape);
+}
+REGISTER_OP_TILING_FUNC_BUFFERED(SparseApplyAdagrad, SparseApplyAdagradTiling);
+
 
 bool SparseApplyRMSPropDTiling(const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& op_info,
                                OpRunInfo& run_info) {

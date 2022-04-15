@@ -125,7 +125,6 @@ REGISTER_ADDOUTPUT("SparseApplyFtrlV2")
     .SetPreCheckFunc(SparseApplyFtrlV2PreCheck);
 REGISTER_ADDOUTPUT("SparseApplyAdagradV2").SetAddOutput(1, "accum").SetPreCheckFunc(SparseApplyAdagradV2PreCheck);
 REGISTER_ADDOUTPUT("SparseApplyProximalAdagrad").SetAddOutput(1, "accum");
-REGISTER_ADDOUTPUT("SparseApplyAdagrad").SetAddOutput(1, "accum");
 REGISTER_ADDOUTPUT("ApplyFtrlV2").SetAddOutput(1, "accum").SetAddOutput(2, "linear");
 REGISTER_ADDOUTPUT("ApplyMomentum").SetAddOutput(1, "accum");
 REGISTER_ADDOUTPUT("ApplyFtrl").SetAddOutput(1, "accum").SetAddOutput(2, "linear");

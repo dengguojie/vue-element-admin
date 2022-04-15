@@ -119,6 +119,7 @@ from .dynamic_atomic_addr_clean import dynamic_atomic_addr_clean
 from .sparse_apply_ftrl_d import sparse_apply_ftrl_d
 from .sparse_apply_adagrad_v2_d import sparse_apply_adagrad_v2_d
 from .sparse_apply_adadelta_d import sparse_apply_adadelta_d
+from .sparse_apply_adagrad import sparse_apply_adagrad
 from .sparse_apply_adagrad_d import sparse_apply_adagrad_d
 from .sparse_apply_ftrl_v2_d import sparse_apply_ftrl_v2_d
 from .sparse_apply_rms_prop_d import sparse_apply_rms_prop_d

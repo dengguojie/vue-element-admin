@@ -2592,6 +2592,7 @@ unkown:
       - ops/built-in/tbe/impl/swap_ci.py
       - ops/built-in/tbe/impl/common_util.py
       - ops/built-in/tbe/impl/sparse_apply_adagrad_d.py
+      - ops/built-in/tbe/impl/sparse_apply_adagrad.py
       - ops/built-in/tbe/impl/write_select.py
       - ops/built-in/tbe/impl/arg_max_grad_d.py
       - ops/built-in/tbe/impl/ascend_requant.py
@@ -2869,6 +2870,7 @@ unkown:
       - ops/built-in/tbe/impl/dynamic/apply_power_sign_d.py
       - ops/built-in/tbe/impl/dynamic/prod_virial_se_a.py
       - ops/built-in/tbe/impl/dynamic/sparse_apply_adagrad_d.py
+      - ops/built-in/tbe/impl/dynamic/sparse_apply_adagrad.py
       - ops/built-in/tbe/impl/dynamic/ascend_requant.py
       - ops/built-in/tbe/impl/dynamic/apply_ftrl_d.py
       - ops/built-in/tbe/impl/dynamic/atan_grad.py

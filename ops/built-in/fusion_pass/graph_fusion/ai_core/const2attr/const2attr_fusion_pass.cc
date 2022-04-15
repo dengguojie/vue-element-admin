@@ -340,8 +340,6 @@ REGISTER_CONST2ATTR("SliceD")
     .SetConstToAttr(1, "offsets", "SetListInt")
     .SetConstToAttr(2, "size", "SetListInt");
 
-REGISTER_CONST2ATTR("SparseApplyAdagradD").OriginOpType("SparseApplyAdagrad").SetConstToAttr(2, "lr", "SetFloat");
-
 REGISTER_CONST2ATTR("SparseApplyAdagradV2D")
     .OriginOpType("SparseApplyAdagradV2")
     .SetConstToAttr(2, "lr", "SetFloat")

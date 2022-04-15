@@ -168,6 +168,41 @@ COMMON_INFER_FUNC_REG(ApplyAdaMaxD, ApplyAdaMaxDInferShape);
 VERIFY_FUNC_REG(ApplyAdaMaxD, ApplyAdaMaxDVerify);
 // ----------------ApplyAdaMax END-------------------
 
+// ----------------SparseApplyAdagrad Op----------------
+IMPLEMT_COMMON_INFERFUNC(SparseApplyAdagradInferShape) {
+  Shape var_shape = op.GetInputDesc("var").GetShape();
+  Shape accum_shape = op.GetInputDesc("accum").GetShape();
+  DataType input_dtype = op.GetInputDesc("var").GetDataType();
+  TensorDesc out_var_desc = op.GetOutputDesc("var");
+  TensorDesc out_accum_desc = op.GetOutputDesc("accum");
+  out_var_desc.SetShape(ge::Shape(var_shape));
+  out_accum_desc.SetShape(ge::Shape(accum_shape));
+  out_var_desc.SetDataType(input_dtype);
+  out_accum_desc.SetDataType(input_dtype);
+  if (op.UpdateOutputDesc("var", out_var_desc) != GRAPH_SUCCESS ||
+      op.UpdateOutputDesc("accum", out_accum_desc) != GRAPH_SUCCESS) {
+    std::string err_msg = UpdateParamErrMsg("accum");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+
+IMPLEMT_VERIFIER(SparseApplyAdagrad, SparseApplyAdagradVerify) {
+  DataType var_dtype = op.GetInputDesc("var").GetDataType();
+  DataType accum_dtype = op.GetInputDesc("accum").GetDataType();
+  if (var_dtype != accum_dtype) {
+    std::string err_msg = OtherErrMsg("The sparse_apply_adagrad op inputs should have the same dtype!");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+
+INFER_FUNC_REG(SparseApplyAdagrad, SparseApplyAdagradInferShape);
+VERIFY_FUNC_REG(SparseApplyAdagrad, SparseApplyAdagradVerify);
+// ----------------SparseApplyAdagrad END------------
+
 // ----------------SparseApplyAdagradD Op----------------
 IMPLEMT_COMMON_INFERFUNC(SparseApplyAdagradDInferShape) {
   Shape var_shape = op.GetInputDesc("var").GetShape();
@@ -192,7 +227,7 @@ IMPLEMT_VERIFIER(SparseApplyAdagradD, SparseApplyAdagradDVerify) {
   DataType var_dtype = op.GetInputDesc("var").GetDataType();
   DataType accum_dtype = op.GetInputDesc("accum").GetDataType();
   if (var_dtype != accum_dtype) {
-    std::string err_msg = OtherErrMsg("The sparse_apply_adagrad op inputs should have the same dtype!");
+    std::string err_msg = OtherErrMsg("The sparse_apply_adagrad_d op inputs should have the same dtype!");
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
@@ -202,34 +237,6 @@ IMPLEMT_VERIFIER(SparseApplyAdagradD, SparseApplyAdagradDVerify) {
 INFER_FUNC_REG(SparseApplyAdagradD, SparseApplyAdagradDInferShape);
 VERIFY_FUNC_REG(SparseApplyAdagradD, SparseApplyAdagradDVerify);
 // ----------------SparseApplyAdagradD END------------
-
-// ----------------SparseApplyAdagrad Op----------------
-IMPLEMT_COMMON_INFERFUNC(SparseApplyAdagradInferShape) {
-  Shape var_shape = op.GetInputDesc("var").GetShape();
-  DataType input_dtype = op.GetInputDesc("var").GetDataType();
-  TensorDesc out_var_desc = op.GetOutputDesc("var");
-  out_var_desc.SetShape(Shape(var_shape));
-  out_var_desc.SetDataType(input_dtype);
-  if (op.UpdateOutputDesc("var", out_var_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc run failed. Check whether the names of outputs are matched.");
-    return GRAPH_FAILED;
-  }
-  return GRAPH_SUCCESS;
-}
-
-IMPLEMT_VERIFIER(SparseApplyAdagrad, SparseApplyAdagradVerify) {
-  DataType var_dtype = op.GetInputDesc("var").GetDataType();
-  DataType accum_dtype = op.GetInputDesc("accum").GetDataType();
-  if (var_dtype != accum_dtype) {
-    OP_LOGE(op.GetName().c_str(), "The sparse_apply_adagrad op inputs should have the same dtype!");
-    return GRAPH_FAILED;
-  }
-  return GRAPH_SUCCESS;
-}
-
-INFER_FUNC_REG(SparseApplyAdagrad, SparseApplyAdagradInferShape);
-VERIFY_FUNC_REG(SparseApplyAdagrad, SparseApplyAdagradVerify);
-// ----------------SparseApplyAdagrad END-----------------
 
 // ----------------SparseApplyAdagradV2D Op----------------
 IMPLEMT_COMMON_INFERFUNC(SparseApplyAdagradV2DInferShape) {
