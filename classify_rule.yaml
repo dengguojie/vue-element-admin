@@ -555,6 +555,7 @@ vector_A:
       - ops/built-in/framework/caffe_plugin/threshold_plugin.cc
       - ops/built-in/framework/caffe_plugin/upsample_plugin.cc
       - ops/built-in/framework/caffe_plugin/yolo_plugin.cc
+      - ops/built-in/framework/tf_plugin/dynamic_rnnv2_tf_plugin.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/concatv2d_sliced_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/concatv2d_sliced_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/concatv2_mean_mul_gatherv2_fusion_pass.cc
@@ -575,6 +576,8 @@ vector_A:
       - ops/built-in/fusion_pass/graph_fusion/ai_core/dynamic_rnn_grad_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/dynamic_rnn_insert_transpose_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/dynamic_rnn_insert_transpose_pass.h
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/dynamic_rnn_v2_seqlength_fusion_pass.cc
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/dynamic_rnn_v2_seqlength_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/dynamic_rnn_v3_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/dynamic_rnn_v3_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/gru_fusion_pass.cc

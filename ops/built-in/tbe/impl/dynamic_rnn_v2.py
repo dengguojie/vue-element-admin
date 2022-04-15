@@ -305,10 +305,17 @@ def check_param_shape(input_x, weight_input, weight_hidden, bias, seq_length, in
             error_manager_vector.raise_err_specific_reson("DynamicRNNV2", "w, b shape is wrong, please check!")
 
     # seq_length
-    if seq_length is not None and seq_length["shape"][0] != output_h["shape"][2] * 16:
-        error_manager_vector.raise_err_check_params_rules("DynamicRNNV2",
-                                                          "seq_length.shape[0] == output_h.shape[2] * 16",
-                                                          "seq_length.shape[0]", output_h["shape"][2])
+    if seq_length is not None:
+        if seq_length.get("dtype").lower() == "int32":
+            if (seq_length["shape"][0] + 15) // 16 != output_h["shape"][2]:
+                error_manager_vector.raise_err_check_params_rules("DynamicRNNV2",
+                                                                  "(seq_length.shape[0] + 15)/16 != output_h.shape[2]",
+                                                                  "output_h.shape[2]", output_h["shape"][2])
+        else:
+            if seq_length["shape"][1:] != output_h["shape"][1:]:
+                error_manager_vector.raise_err_check_params_rules("DynamicRNNV2",
+                                                                  "seq_length.shape[1:] != output_h.shape[1:]",
+                                                                  "output_h.shape", output_h["shape"])
 
     # check init
     if (init_h is None and init_c is not None) or (
@@ -478,7 +485,7 @@ def dynamic_rnn_v2(input_x, weight_input, weight_hidden, bias, seq_length, init_
                    forget_bias=0.0, gate_order="ijfo", stateful=False, merge_mode="concat",
                    is_training=True, kernel_name="dynamic_rnn_v2"):
     """
-    dynamic_rnn
+    dynamic_rnn_v2
     """
 
     check_param_dtype(input_x, weight_input, weight_hidden, bias, init_h, init_c, y, output_h,
@@ -536,9 +543,21 @@ def dynamic_rnn_v2(input_x, weight_input, weight_hidden, bias, seq_length, init_
                                    dtype=y_dtype, name='bias')
     else:
         bias = None
+
+    is_using_seq_mask = False
+    is_valid_mask = False
     if seq_length is not None:
-        seq_len = tik_instance.Tensor(shape=seq_length.get("shape"), scope=scope_gm,
-                                      dtype="int32", name='seq_length')
+        is_using_seq_mask = True
+        if seq_length.get("dtype").lower() == "int32":
+            seq_mask_gm = tik_instance.Tensor(shape=seq_length.get("shape"), scope=scope_gm,
+                                              dtype="int32", name='seq_mask_gm')
+        else:
+            is_valid_mask = True
+            seq_mask_gm = tik_instance.Tensor(shape=seq_length.get("shape"), scope=scope_gm,
+                                              dtype="float16", name='seq_mask_gm')
+    else:
+        seq_mask_gm = None
+
     if is_global_init:
         s_init_h_gm = tik_instance.Tensor(shape=shape_hc_init,
                                           dtype=input_dtype,
@@ -579,8 +598,8 @@ def dynamic_rnn_v2(input_x, weight_input, weight_hidden, bias, seq_length, init_
     build_input_list = [input_x, weight_i, weight_h]
     if has_bias_input:
         build_input_list.append(bias)
-    if seq_length is not None:
-        build_input_list.append(seq_len)
+    if is_using_seq_mask:
+        build_input_list.append(seq_mask_gm)
     if is_global_init:
         build_input_list.append(s_init_h_gm)
         build_input_list.append(s_init_c_gm)
@@ -675,9 +694,17 @@ def dynamic_rnn_v2(input_x, weight_input, weight_hidden, bias, seq_length, init_
                 j_t_tanh_gm_var = None
                 c_t_tanh_gm_var = None
 
+            if is_valid_mask:
+                seq_mask_gm_var = seq_mask_gm[loop_i * cut_t: loop_i * cut_t + cut_t,
+                                              :,
+                                              loop_j * cut_m: loop_j * cut_m + cut_m,
+                                              :, :]
+            else:
+                seq_mask_gm_var = None
+
             input_list = [input_x_var, weight_i, weight_h, bias, s_init_h_gm_var,
                           s_init_c_gm_var, state_h_last,
-                          state_c_last, sync]
+                          state_c_last, sync, seq_mask_gm_var]
 
             if is_gate_output:
                 output_list = [update_h_gm_var, update_c_gm_var,
@@ -732,6 +759,7 @@ def dynamic_rnn_tik(input_list, custom_list):
     s_state_h_gm_last = input_list[6]
     s_state_c_gm_last = input_list[7]
     sync0 = input_list[8]
+    seq_mask_gm = input_list[9]
 
     is_gate_output = custom_list[0]
     is_first_round = custom_list[1]
@@ -743,7 +771,7 @@ def dynamic_rnn_tik(input_list, custom_list):
     activation = custom_list[7]
 
     return dynamic_rnn_core(input_x, weight_i, weight_h, bias, s_init_h_gm, s_init_c_gm,
-                            s_state_h_gm_last, s_state_c_gm_last, sync0,
+                            s_state_h_gm_last, s_state_c_gm_last, sync0, seq_mask_gm,
                             is_gate_output, is_first_round, is_global_init,
                             forget_bias, recurrent_activation, gate_order, y_dtype, activation)
 
@@ -751,7 +779,7 @@ def dynamic_rnn_tik(input_list, custom_list):
 # 'pylint: disable=too-many-arguments,too-many-locals,invalid-name
 # 'pylint: disable=too-many-statements,unnecessary-lambda
 def dynamic_rnn_core(input_x, weight_i, weight_h, bias, s_init_h_gm, s_init_c_gm,
-                     s_state_h_gm_last, s_state_c_gm_last, sync0,
+                     s_state_h_gm_last, s_state_c_gm_last, sync0, seq_mask_gm,
                      is_gate_output, is_first_round, is_global_init,
                      forget_bias, recurrent_activation, gate_order, y_dtype, activation):
     """
@@ -795,6 +823,10 @@ def dynamic_rnn_core(input_x, weight_i, weight_h, bias, s_init_h_gm, s_init_c_gm
             s_state_c_ub = tvm.compute(shape_i,
                                        lambda _, a_i, b_i, c_i, d_i: s_init_c_gm[
                                            0, a_i, b_i, c_i, d_i], name="s_init_c")
+            if seq_mask_gm is not None:
+                s_state_h_ub_for_element = tvm.compute(shape_h,
+                                                       lambda _, a_i, b_i, c_i, d_i: s_init_h_gm[
+                                                       0, a_i, b_i, c_i, d_i], name="s_state_h_ub_for_element")
         else:
             s_state_h_ub = \
                 tvm.compute(shape_h,
@@ -807,13 +839,22 @@ def dynamic_rnn_core(input_x, weight_i, weight_h, bias, s_init_h_gm, s_init_c_gm
                             lambda *indices: tvm.const(0.0, dtype=bias_dtype),
                             name='s_state_c_ub',
                             tag="broadcast")
+            if seq_mask_gm is not None:
+                s_state_h_ub_for_element = tvm.compute(shape_h,
+                                                       lambda *indices: tvm.const(0.0, dtype=input_dtype),
+                                                       name='s_state_h_ub_for_element',
+                                                       tag="broadcast")
     else:
         s_state_h_ub = tvm.compute(shape_h,
                                    lambda _, a_i, b_i, c_i, d_i: s_state_h_gm_last[
-                                       0, a_i, b_i, c_i, d_i], name="s_state_h_ub")
+                                   0, a_i, b_i, c_i, d_i], name="s_state_h_ub")
         s_state_c_ub = tvm.compute(shape_i,
                                    lambda _, a_i, b_i, c_i, d_i: s_state_c_gm_last[
-                                       0, a_i, b_i, c_i, d_i], name="s_state_c_ub")
+                                   0, a_i, b_i, c_i, d_i], name="s_state_c_ub")
+        if seq_mask_gm is not None:
+            s_state_h_ub_for_element = tvm.compute(shape_h,
+                                                   lambda _, a_i, b_i, c_i, d_i: s_state_h_gm_last[
+                                                   0, a_i, b_i, c_i, d_i], name="s_state_h_ub_for_element")
 
     # input and s_start_h is Nz, need trans to zZ
     # so change axis 1 and 2
@@ -1015,25 +1056,21 @@ def dynamic_rnn_core(input_x, weight_i, weight_h, bias, s_init_h_gm, s_init_c_gm
 
         if fp16_input_output:
             f_t_sigmoid_back_fp32 = tvm.compute(shape_i,
-                                                lambda *indices: \
-                                                    f_t_sigmoid_back(*indices).astype('float32'),
+                                                lambda *indices: f_t_sigmoid_back(*indices).astype('float32'),
                                                 name="f_t_sigmoid_back_fp32_drnn_cast",
                                                 tag="elewise_single_cast")
             i_t_sigmoid_back_fp32 = tvm.compute(shape_i,
-                                                lambda *indices: \
-                                                    i_t_sigmoid_back(*indices).astype('float32'),
+                                                lambda *indices: i_t_sigmoid_back(*indices).astype('float32'),
                                                 name="i_t_sigmoid_back_fp32_drnn_cast",
                                                 tag="elewise_single_cast")
-            o_t_sigmoid_back_fp32 = tvm.compute(
-                shape_i,
-                lambda *indices: o_t_sigmoid_back(*indices).astype('float32'),
-                name="o_t_sigmoid_back_fp32_drnn_cast",
-                tag="elewise_single_cast")
-            j_t_tanh_back_fp32 = tvm.compute(
-                shape_i,
-                lambda *indices: j_t_tanh_back(*indices).astype('float32'),
-                name="j_t_tanh_back_fp32_drnn_cast",
-                tag="elewise_single_cast")
+            o_t_sigmoid_back_fp32 = tvm.compute(shape_i,
+                                                lambda *indices: o_t_sigmoid_back(*indices).astype('float32'),
+                                                name="o_t_sigmoid_back_fp32_drnn_cast",
+                                                tag="elewise_single_cast")
+            j_t_tanh_back_fp32 = tvm.compute(shape_i,
+                                             lambda *indices: j_t_tanh_back(*indices).astype('float32'),
+                                             name="j_t_tanh_back_fp32_drnn_cast",
+                                             tag="elewise_single_cast")
 
         f_t_sigmoid_ub = f_t_sigmoid_back
         i_t_sigmoid_ub = i_t_sigmoid_back
@@ -1050,6 +1087,14 @@ def dynamic_rnn_core(input_x, weight_i, weight_h, bias, s_init_h_gm, s_init_c_gm
     c_t_tmp1 = vmul(s_state_c_ub, f_t_sigmoid_ub)
     c_t_tmp2 = vmul(j_t_tanh_ub, i_t_sigmoid_ub)
     update_c = vadd(c_t_tmp1, c_t_tmp2)
+
+    if seq_mask_gm is not None:
+        seq_mask_ub = tvm.compute(shape_h, lambda _, a_i, b_i, c_i, d_i: seq_mask_gm[0, a_i, b_i, c_i, d_i],
+                                  name="seq_mask_ub")
+
+        update_c_diff = vsub(update_c, s_state_c_ub)
+        update_c_tmp = vmul(update_c_diff, seq_mask_ub)
+        update_c = vadd(update_c_tmp, s_state_c_ub)
 
     # c_gm fp32 case need flag
     if bias_dtype == 'float16':
@@ -1133,6 +1178,9 @@ def dynamic_rnn_core(input_x, weight_i, weight_h, bias, s_init_h_gm, s_init_c_gm
 
     update_h = vmul(c_t_tanh_ub, o_t_sigmoid_ub)
 
+    if seq_mask_gm is not None:
+        update_h = vmul(update_h, seq_mask_ub)
+
     if fp16_input_output:
         update_h_fp16 = tvm.compute(shape_i,
                                     lambda *indices: update_h(*indices).astype('float16'),
@@ -1146,8 +1194,23 @@ def dynamic_rnn_core(input_x, weight_i, weight_h, bias, s_init_h_gm, s_init_c_gm
                                             lambda *indices: update_h_gm_as_y(*indices),
                                             name="update_h_gm_as_y_back",
                                             tag="out_to_ub")
+    else:
+        update_h_gm_as_y = tvm.compute(shape_i,
+                                       lambda *indices: update_h(*indices),
+                                       name="update_h_gm_as_y",
+                                       tag="ub_to_out")
+        update_h_gm_as_y_back = tvm.compute(shape_i,
+                                            lambda *indices: update_h_gm_as_y(*indices),
+                                            name="update_h_gm_as_y_back",
+                                            tag="out_to_ub")
+    update_h_gm_as_y_back_mid = update_h_gm_as_y_back
+    if seq_mask_gm is not None:
+        update_h_diff = vsub(update_h_gm_as_y_back, s_state_h_ub_for_element)
+        update_h_diff_mask = vmul(update_h_diff, seq_mask_ub)
+        update_h_gm_as_y_back_mid = vadd(update_h_diff_mask, s_state_h_ub_for_element)
+    if fp16_input_output:
         last_update_h_gm = tvm.compute(shape_i,
-                                       lambda *indices: update_h_gm_as_y_back(*indices),
+                                       lambda *indices: update_h_gm_as_y_back_mid(*indices),
                                        name="last_update_h_gm",
                                        tag="ub_to_out")
         last_update_h_back = tvm.compute(shape_i,
@@ -1159,17 +1222,9 @@ def dynamic_rnn_core(input_x, weight_i, weight_h, bias, s_init_h_gm, s_init_c_gm
                                   name="update_h_gm",
                                   tag="ub_to_out")
     else:
-        update_h_gm_as_y = tvm.compute(shape_i,
-                                       lambda *indices: update_h(*indices),
-                                       name="update_h_gm_as_y",
-                                       tag="ub_to_out")
-        update_h_gm_as_y_back = tvm.compute(shape_i,
-                                            lambda *indices: update_h_gm_as_y(*indices),
-                                            name="update_h_gm_as_y_back",
-                                            tag="out_to_ub")
         update_h_fp16_cast = tvm.compute(shape_i,
                                          lambda *indices: \
-                                             update_h_gm_as_y_back(*indices).astype('float16'),
+                                             update_h_gm_as_y_back_mid(*indices).astype('float16'),
                                          name="update_h_fp16_cast_drnn_cast",
                                          tag="elewise_single_cast")
         last_update_h_gm = tvm.compute(shape_i,
@@ -1184,7 +1239,6 @@ def dynamic_rnn_core(input_x, weight_i, weight_h, bias, s_init_h_gm, s_init_c_gm
                                   lambda *indices: last_update_h_back(*indices),
                                   name="update_h_gm",
                                   tag="ub_to_out")
-
     # end compute
 
     if is_gate_output:
@@ -1220,7 +1274,7 @@ def dynamic_rnn_core(input_x, weight_i, weight_h, bias, s_init_h_gm, s_init_c_gm
                     if "elewise" in in_tensor.op.tag or in_tensor.op.tag == "broadcast":
                         if in_tensor.name.endswith("_drnn_cast"):
                             continue
-                        if in_tensor.name in ["s_state_h_ub", "s_state_c_ub"]:
+                        if in_tensor.name in ["s_state_h_ub", "s_state_c_ub", "s_state_h_ub_for_element"]:
                             continue
                         if in_tensor not in tensor_list:
                             tensor_list.append(in_tensor)
@@ -1254,6 +1308,8 @@ def dynamic_rnn_core(input_x, weight_i, weight_h, bias, s_init_h_gm, s_init_c_gm
             s[bias_ub_fp32].set_scope(scope_ubuf)
     s[s_state_h_ub].set_scope(scope_ubuf)
     s[s_state_c_ub].set_scope(scope_ubuf)
+    if seq_mask_gm is not None:
+        s[s_state_h_ub_for_element].set_scope(scope_ubuf)
 
     for tensor in elewise_tensors:
         s[tensor].set_scope(scope_ubuf)
@@ -1289,6 +1345,9 @@ def dynamic_rnn_core(input_x, weight_i, weight_h, bias, s_init_h_gm, s_init_c_gm
         s[update_h_fp16_cast].set_scope(scope_ubuf)
 
     s[update_h_gm_as_y_back].set_scope(scope_ubuf)
+
+    if seq_mask_gm is not None:
+        s[seq_mask_ub].set_scope(scope_ubuf)
 
     # compute inline
     compute_inline_tensors = [i_t, j_t, f_t, o_t]
@@ -1410,7 +1469,8 @@ def dynamic_rnn_core(input_x, weight_i, weight_h, bias, s_init_h_gm, s_init_c_gm
                            update_h_gm.op.axis[4])
 
     s[s_state_c_ub].compute_at(s[update_h_gm], vn_o_inner)
-
+    if seq_mask_gm is not None:
+        s[s_state_h_ub_for_element].compute_at(s[update_h_gm], vn_o_inner)
     s[barrier_tensor].compute_at(s[update_h_gm], vn_o_inner)
 
     for tensor in elewise_tensors:
@@ -1429,7 +1489,8 @@ def dynamic_rnn_core(input_x, weight_i, weight_h, bias, s_init_h_gm, s_init_c_gm
         s[update_c_fp32_back].compute_at(s[update_h_gm], vn_o_inner)
         s[update_c].compute_at(s[update_h_gm], vn_o_inner)
         s[update_h_fp16_cast].compute_at(s[update_h_gm], vn_o_inner)
-
+    if seq_mask_gm is not None:
+        s[seq_mask_ub].compute_at(s[update_h_gm], vn_o_inner)
     s[update_h_gm_as_y].compute_at(s[update_h_gm], vn_o_inner)
     s[update_h_gm_as_y_back].compute_at(s[update_h_gm], vn_o_inner)
 
@@ -1480,7 +1541,7 @@ def dynamic_rnn_core(input_x, weight_i, weight_h, bias, s_init_h_gm, s_init_c_gm
         s[update_c_fp16].reused_by(update_c_fp16_back)
         s[update_c_fp16_back].reused_by(reuse_data=True)
         s[last_update_c_back].reused_by(reuse_data=True)
-        s[update_h_fp16].reused_by(last_update_h_back)
+        s[update_h_gm_as_y_back_mid].reused_by(last_update_h_back)
         s[last_update_h_back].reused_by(reuse_data=True)
 
     else:
@@ -1490,7 +1551,7 @@ def dynamic_rnn_core(input_x, weight_i, weight_h, bias, s_init_h_gm, s_init_c_gm
         s[update_h_gm_as_y_back].reused_by(reuse_data=True)
         s[update_c].reused_by(last_update_c_back)
         s[last_update_c_back].reused_by(reuse_data=True)
-        s[update_h].reused_by(last_update_h_back)
+        s[update_h_fp16_cast].reused_by(last_update_h_back)
         s[last_update_h_back].reused_by(reuse_data=True)
 
     s[last_update_c_gm].compute_at(s[update_h_gm], vn_o_inner)
@@ -1541,12 +1602,18 @@ def dynamic_rnn_core(input_x, weight_i, weight_h, bias, s_init_h_gm, s_init_c_gm
         if is_global_init:
             s[s_state_h_ub].emit_insn(s_state_h_ub.op.axis[0], 'dma_copy')
             s[s_state_c_ub].emit_insn(s_state_c_ub.op.axis[0], 'dma_copy')
+            if seq_mask_gm is not None:
+                s[s_state_h_ub_for_element].emit_insn(s_state_h_ub_for_element.op.axis[0], 'dma_copy')
         else:
             s[s_state_h_ub].emit_insn(s_state_h_ub.op.axis[0], 'broadcast')
             s[s_state_c_ub].emit_insn(s_state_c_ub.op.axis[0], 'broadcast')
+            if seq_mask_gm is not None:
+                s[s_state_h_ub_for_element].emit_insn(s_state_h_ub_for_element.op.axis[0], 'broadcast')
     else:
         s[s_state_h_ub].emit_insn(s_state_h_ub.op.axis[0], 'dma_copy')
         s[s_state_c_ub].emit_insn(s_state_c_ub.op.axis[0], 'dma_copy')
+        if seq_mask_gm is not None:
+            s[s_state_h_ub_for_element].emit_insn(s_state_h_ub_for_element.op.axis[0], 'dma_copy')
 
     s[barrier_tensor].emit_insn(barrier_tensor.op.axis[1], 'vector_add')
 
@@ -1620,7 +1687,8 @@ def dynamic_rnn_core(input_x, weight_i, weight_h, bias, s_init_h_gm, s_init_c_gm
                                         'phony_insn')
         s[update_h_fp16_cast].emit_insn(update_h_fp16_cast.op.axis[0],
                                         'vector_conv')
-
+    if seq_mask_gm is not None:
+        s[seq_mask_ub].emit_insn(seq_mask_ub.op.axis[0], 'dma_copy')
     s[update_h_gm_as_y].emit_insn(update_h_gm_as_y.op.axis[0], 'dma_copy')
     s[update_h_gm_as_y_back].emit_insn(update_h_gm_as_y_back.op.axis[0],
                                        'phony_insn')
