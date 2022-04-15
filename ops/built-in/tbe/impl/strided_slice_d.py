@@ -899,8 +899,8 @@ def op_select_format(input_x,
         strides = _fill_list_with_ones(len(input_shape))
     else:
         strides = list(strides)
-    base_data_type = ["float", "float16", "int8", "int32", "uint8", "bool"]
-    other_data_type = ["float", "float16", "int32"]
+    base_data_type = ["float", "float16", "int8", "int32", "int64", "uint8", "bool"]
+    other_data_type = ["float", "float16", "int32", "int64"]
     vadd_support_fp32 = tbe_platform.api_check_support("te.lang.cce.vadd", "float32")
     if not vadd_support_fp32:
         base_data_type.remove("float")
