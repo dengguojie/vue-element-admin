@@ -135,6 +135,10 @@ class MixedReduceClassifier:
         if [self.shape_before_reduce, self.shape_after_reduce] == [None, None]:
             self.shape_before_reduce = [-1] * 8
 
+        # if reduce axis is negative, change it to positive.
+        if self.reduce_axes:
+            self.reduce_axes = [x + len(self.shape_before_reduce) if x < 0 else x for x in self.reduce_axes]
+
         self.shape_before_reduce, \
         self.shape_after_reduce, self.reduce_axes = _infer_main(self.shape_before_reduce,
                                                                 self.shape_after_reduce,

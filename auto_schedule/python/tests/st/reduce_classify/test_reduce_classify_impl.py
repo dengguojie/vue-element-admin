@@ -265,6 +265,20 @@ case14 = {
     "case_name": "test_reduce_classify_14",
 }
 
+# axis known(list), keep_dims=False, -2 shape, after_infer_before,reduce axis value is negative
+case15 = {
+    "params": [
+        [{"shape": (-2,), "dtype": "float16",
+          "range": [(1, None)],
+          "rel_pos_to_reduce": AFTER},
+         {"shape": (-2,), "dtype": "float16",
+          "range": [(1, None)],
+          "rel_pos_to_reduce": BEFORE}, ],
+        [-1, ], True, False
+    ],
+    "case_name": "test_reduce_classify_14",
+}
+
 """
 CASE: ERROR
 """
@@ -327,24 +341,25 @@ caseP2 = {
     "case_name": "test_reduce_classify_P2",
 }
 
-ut_case.add_case(["Ascend310", "Ascend910A"], case0)
-ut_case.add_case(["Ascend310", "Ascend910A"], case1)
-ut_case.add_case(["Ascend310", "Ascend910A"], case2)
-ut_case.add_case(["Ascend310", "Ascend910A"], case3)
-ut_case.add_case(["Ascend310", "Ascend910A"], case4)
-ut_case.add_case(["Ascend310", "Ascend910A"], case5)
-ut_case.add_case(["Ascend310", "Ascend910A"], case6)
-ut_case.add_case(["Ascend310", "Ascend910A"], case7)
-ut_case.add_case(["Ascend310", "Ascend910A"], case8)
-ut_case.add_case(["Ascend310", "Ascend910A"], case9)
-ut_case.add_case(["Ascend310", "Ascend910A"], case10)
-ut_case.add_case(["Ascend310", "Ascend910A"], case11)
-ut_case.add_case(["Ascend310", "Ascend910A"], case12)
-ut_case.add_case(["Ascend310", "Ascend910A"], case13)
-ut_case.add_case(["Ascend310", "Ascend910A"], case14)
+ut_case.add_case(["Ascend910A"], case0)
+ut_case.add_case(["Ascend910A"], case1)
+ut_case.add_case(["Ascend910A"], case2)
+ut_case.add_case(["Ascend910A"], case3)
+ut_case.add_case(["Ascend910A"], case4)
+ut_case.add_case(["Ascend910A"], case5)
+ut_case.add_case(["Ascend910A"], case6)
+ut_case.add_case(["Ascend910A"], case7)
+ut_case.add_case(["Ascend910A"], case8)
+ut_case.add_case(["Ascend910A"], case9)
+ut_case.add_case(["Ascend910A"], case10)
+ut_case.add_case(["Ascend910A"], case11)
+ut_case.add_case(["Ascend910A"], case12)
+ut_case.add_case(["Ascend910A"], case13)
+ut_case.add_case(["Ascend910A"], case14)
+ut_case.add_case(["Ascend910A"], case15)
 
-ut_case.add_case(["Ascend310", "Ascend910A"], caseE0)
+ut_case.add_case(["Ascend910A"], caseE0)
 
-ut_case.add_case(["Ascend310", "Ascend910A"], caseP0)
-ut_case.add_case(["Ascend310", "Ascend910A"], caseP1)
-ut_case.add_case(["Ascend310", "Ascend910A"], caseP2)
+ut_case.add_case(["Ascend910A"], caseP0)
+ut_case.add_case(["Ascend910A"], caseP1)
+ut_case.add_case(["Ascend910A"], caseP2)
