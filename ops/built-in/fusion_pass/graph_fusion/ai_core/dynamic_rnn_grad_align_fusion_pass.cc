@@ -1257,7 +1257,7 @@ ge::NodePtr DynamicRNNGradAlignFusionPass::AddConcatNodeT_1(ge::NodePtr dynamicR
 
   // output
   vector<int64_t> outputDims{t_dim, input_nz_dim + hidden_nz_dim, batch_nz_dim, 16, 16};
-  vector<int64_t> outputOriDims{t_dim, input_nz_dim + hidden_nz_dim, batch_dim};
+  vector<int64_t> outputOriDims{t_dim, batch_dim, (input_nz_dim + hidden_nz_dim) * 16};
   ge::GeTensorDesc outputTensorDesc =
       ge::GeTensorDesc(GeShape(outputDims), ge::FORMAT_FRACTAL_NZ, inputTensorDescX.GetDataType());
   outputTensorDesc.SetOriginShape(GeShape(outputOriDims));

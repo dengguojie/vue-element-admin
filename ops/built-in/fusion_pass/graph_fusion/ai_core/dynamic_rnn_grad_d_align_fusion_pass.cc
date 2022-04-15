@@ -2187,10 +2187,10 @@ Status DynamicRNNGradDAlignFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& 
     ge::GraphUtils::AddEdge(dynamicRNNGradNode->GetInDataAnchor(RNN_GRAD_NODE_INPUT_INDEX["dc"])->GetPeerOutAnchor(),
                             reshapeDc->GetInDataAnchor(X_INDEX));
   }
-  if (batch_size == -W_INDEX) {
-    batch_nz_size = -W_INDEX;
-    batch_start = W_INDEX;
-    batch_end = 32;
+  if (batch_size == -1) {
+    batch_nz_size = -1;
+    batch_start = 1;
+    batch_end = -1;
   } else {
     batch_nz_size = (batch_size + TANHCT_INDEX) / MASK_INDEX;
     batch_start = batch_nz_size;
