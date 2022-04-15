@@ -1796,7 +1796,9 @@ bool SetMatMulOutputDtype(const AscendString& opName, const ge::GeTensorDescPtr 
     if (input_storage_format == FORMAT_ND && output_storage_format == FORMAT_FRACTAL_NZ) {
       split_k_format_correct = true;
     }
-  } else if (input_format == FORMAT_ND && output_format == FORMAT_FRACTAL_NZ) {
+  }
+  if (input_format == FORMAT_ND && output_format == FORMAT_FRACTAL_NZ) {
+    // Used in dynamic tuning.
     split_k_format_correct = true;
   }
   bool split_k = split_k_dtype_correct && split_k_format_correct;
