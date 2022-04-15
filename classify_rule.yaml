@@ -2167,6 +2167,7 @@ unkown:
       - ops/built-in/tbe/impl/sigmoid_grad.py
       - ops/built-in/tbe/impl/softmax_v2.py
       - ops/built-in/tbe/impl/gru_v2_hidden_grad_cell.py
+      - ops/built-in/tbe/impl/augru_hidden_grad_cell.py
       - ops/built-in/tbe/impl/maximum.py
       - ops/built-in/tbe/impl/roi_pooling_base.py
       - ops/built-in/tbe/impl/lars_v2_update.py
@@ -2234,6 +2235,7 @@ unkown:
       - ops/built-in/tbe/impl/less.py
       - ops/built-in/tbe/impl/ndc1hwc0_2_ncdhw.py
       - ops/built-in/tbe/impl/dynamic_gru_v2.py
+      - ops/built-in/tbe/impl/dynamic_augru.py
       - ops/built-in/tbe/impl/yolo_v3_cls_prob.py
       - ops/built-in/tbe/impl/act_ulq_clamp_max_grad.py
       - ops/built-in/tbe/impl/roll.py
@@ -3172,6 +3174,8 @@ unkown:
       - ops/built-in/framework/tf_plugin/top_k_plugin.cc
       - ops/built-in/framework/tf_plugin/non_max_suppression_with_overlaps_plugin.cc
       - ops/built-in/framework/tf_plugin/reduce_prod_plugin.cc
+      - ops/built-in/framework/tf_plugin/dynamic_augru_grad_plugin.cc
+      - ops/built-in/framework/tf_plugin/dynamic_augru_plugin.cc
       - ops/built-in/framework/tf_plugin/dynamic_gruv2_plugin.cc
       - ops/built-in/framework/tf_plugin/tabulate_fusion_grad_plugin.cc
       - ops/built-in/framework/tf_plugin/real_div_plugin.cc
@@ -3507,6 +3511,7 @@ unkown:
       - ops/built-in/fusion_pass/graph_fusion/ai_core/squeeze_unsqueeze_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/avg_pool_v2_grad_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/avg_pool_grad_fusion_pass.h
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/dynamic_augru_grad_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/dynamic_gru_v2_grad_d_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/sub_sample_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/layer_norm_onnx_mul_fusion_pass.h
@@ -3618,6 +3623,7 @@ unkown:
       - ops/built-in/fusion_pass/graph_fusion/ai_core/top_k_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/prod_force_se_a_vector_core_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/dynamic_gru_v2_grad_d_fusion_pass.cc
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/dynamic_augru_grad_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/concat_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/mean_grad_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/single_instance_norm_fusion_pass.cc

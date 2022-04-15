@@ -1042,6 +1042,195 @@ REG_OP(DynamicGRUV2Hidden)
     .ATTR(is_training, Bool, true)
     .OP_END_FACTORY_REG(DynamicGRUV2Hidden)
 
+/**
+*@brief DynamicAUGRU calculation.
+*@par Inputs:
+*eight inputs:
+*@li x:Must be one of the following types: float16.
+*@li weight_input:Must be one of the following types: float16.
+*@li weight_hidden:Must be one of the following types: float16.
+*@li weight_attr:Must be one of the following types: float16.
+*@li bias_input:Must be one of the following types: float16, float32. The format must be ND.
+*@li bias_hidden:Must be one of the following types: float16, float32. The format must be ND.
+*@li seq_length:Must be one of the following types: int32 in ND.
+*@li init_h:Must be one of the following types: float16, float32.
+
+*@par Attributes:
+*@li direction:An string identifying the direction in the op. Default to "UNIDIRECTIONAL". Only UNIDIRECTIONAL is currently supported.
+*@li cell_depth:An integer identifying the cell depth in the op. Default to 1.
+*@li keep_prob:An float identifying the keep prob in the op. Default to 1.
+*@li cell_clip:An float identifying the cell clip in the op. Default to -1.
+*@li num_proj:An integer identifying the num projection in the op. Default to 0.
+*@li time_major:An bool identifying the time major in the op. Default to true.
+*@li activation:An string identifying the type of activation function in the op. Default to "tanh". Only tanh is currently supported.
+*@li gate_order:An string identifying the gate order in weight and bias. Default to "zrh". "rzh" is another option.
+*@li reset_after:An bool identifying whether to apply reset gate after matrix multiplication. Default to true.
+*@li is_training:An bool identifying is training in the op. Default to true.
+
+*@par Outputs:
+*seven outputs:
+*@li y:Must be one of the following types: float16, float32.
+*@li output_h:Must be one of the following types: float16, float32.
+*@li update:Must be one of the following types: float16, float32.
+*@li update_att:Must be one of the following types: float16, float32.
+*@li reset:Must be one of the following types: float16, float32.
+*@li new:Must be one of the following types: float16, float32.
+*@li hidden_new:Must be one of the following types: float16, float32.
+*/
+REG_OP(DynamicAUGRU)
+.INPUT(x, TensorType({DT_FLOAT16}))
+.INPUT(weight_input, TensorType({DT_FLOAT16}))
+.INPUT(weight_hidden, TensorType({DT_FLOAT16}))
+.INPUT(weight_att, TensorType({DT_FLOAT16}))
+.OPTIONAL_INPUT(bias_input, TensorType({DT_FLOAT16, DT_FLOAT}))
+.OPTIONAL_INPUT(bias_hidden, TensorType({DT_FLOAT16, DT_FLOAT}))
+.OPTIONAL_INPUT(seq_length, TensorType({DT_INT32, DT_FLOAT16}))
+.OPTIONAL_INPUT(init_h, TensorType({DT_FLOAT16, DT_FLOAT}))
+.OUTPUT(y, TensorType({DT_FLOAT16, DT_FLOAT}))
+.OUTPUT(output_h, TensorType({DT_FLOAT16, DT_FLOAT}))
+.OUTPUT(update, TensorType({DT_FLOAT16, DT_FLOAT}))
+.OUTPUT(update_att, TensorType({DT_FLOAT16, DT_FLOAT}))
+.OUTPUT(reset, TensorType({DT_FLOAT16, DT_FLOAT}))
+.OUTPUT(new, TensorType({DT_FLOAT16, DT_FLOAT}))
+.OUTPUT(hidden_new, TensorType({DT_FLOAT16, DT_FLOAT}))
+.ATTR(direction, String, "UNIDIRECTIONAL")
+.ATTR(cell_depth, Int, 1)
+.ATTR(keep_prob, Float, 1.0)
+.ATTR(cell_clip, Float, -1.0)
+.ATTR(num_proj, Int, 0)
+.ATTR(time_major, Bool, true)
+.ATTR(activation, String, "tanh")
+.ATTR(gate_order, String, "zrh")
+.ATTR(reset_after, Bool, true)
+.ATTR(is_training, Bool, true)
+.OP_END_FACTORY_REG(DynamicAUGRU)
+
+/**
+*@brief: DynamicAUGRUGrad calculation.
+*@par Inputs:
+*sixteen inputs: \n
+*@li x:A 4D Tensor. Must be one of the following types: float16, float32.
+*@li weight_input:A 4D Tensor. Must be one of the following types: float16, float32.
+*@li weight_hidden:A 4D Tensor. Must be one of the following types: float16, float32.
+*@li weight_att:A 4D Tensor. Must be one of the following types: float16, float32.
+*@li y:A 4D Tensor. Must be one of the following types: float16, float32.
+*@li init_h:A 4D Tensor. Must be one of the following types: float16, float32.
+*@li h:A 4D Tensor. Must be one of the following types: float16, float32.
+*@li dy:A 4D Tensor. Must be one of the following types: float16, float32.
+*@li dh:A 4D Tensor. Must be one of the following types: float16, float32.
+*@li update:A 4D Tensor. Must be one of the following types: float16, float32.
+*@li update_att:A 4D Tensor. Must be one of the following types: float16, float32.
+*@li reset:A 4D Tensor. Must be one of the following types: float16, float32.
+*@li new:A 4D Tensor. Must be one of the following types: float16, float32.
+*@li hidden_new:A 4D Tensor. Must be one of the following types: float16, float32.
+*@li seq_length:A 4D Tensor. Must be one of the following types: float16, float32.
+*@li mask:A 4D Tensor. Must be one of the following types: float16, float32.
+
+*@par Attributes:
+*@li direction:An string identifying the direction in the op. Default to "UNIDIRECTIONAL". Only UNIDIRECTIONAL is currently supported.
+*@li cell_depth:An integer identifying the cell depth in the op. Default to 1.
+*@li keep_prob:An float identifying the keep prob in the op. Default to 1.
+*@li cell_clip:An float identifying the cell clip in the op. Default to -1.
+*@li num_proj:An integer identifying the num projection in the op. Default to 0.
+*@li time_major:An bool identifying the time major in the op. Default to true.
+*@li gate_order:An string identifying the gate order in weight and bias. Default to "zrh". "rzh" is another option.
+*@li reset_after:An bool identifying whether to apply reset gate after matrix multiplication. Default to true.
+
+*@par Outputs:
+*seven outputs: \n
+*@li dw_input:A 4D Tensor. Must be one of the following types: float16, float32.
+*@li dw_hidden:A 4D Tensor. Must be one of the following types: float16, float32.
+*@li db_input:A 4D Tensor. Must be one of the following types: float16, float32.
+*@li db_hidden:A 4D Tensor. Must be one of the following types: float16, float32.
+*@li dx:A 4D Tensor. Must be one of the following types: float16, float32.
+*@li dh_prev:A 4D Tensor. Must be one of the following types: float16, float32.
+*@li dw_att:A 4D Tensor. Must be one of the following types: float16, float32.
+
+*@par Restrictions:
+*Warning: THIS FUNCTION IS EXPERIMENTAL. Please do not use.
+*/
+REG_OP(DynamicAUGRUGrad)
+.INPUT(x, TensorType({DT_FLOAT16, DT_FLOAT}))
+.INPUT(weight_input, TensorType({DT_FLOAT16, DT_FLOAT}))
+.INPUT(weight_hidden, TensorType({DT_FLOAT16, DT_FLOAT}))
+.INPUT(weight_att, TensorType({DT_FLOAT16, DT_FLOAT}))
+.INPUT(y, TensorType({DT_FLOAT16, DT_FLOAT}))
+.INPUT(init_h, TensorType({DT_FLOAT16, DT_FLOAT}))
+.INPUT(h, TensorType({DT_FLOAT16, DT_FLOAT}))
+.INPUT(dy, TensorType({DT_FLOAT16, DT_FLOAT}))
+.INPUT(dh, TensorType({DT_FLOAT16, DT_FLOAT}))
+.INPUT(update, TensorType({DT_FLOAT16, DT_FLOAT}))
+.INPUT(update_att, TensorType({DT_FLOAT16, DT_FLOAT}))
+.INPUT(reset, TensorType({DT_FLOAT16, DT_FLOAT}))
+.INPUT(new, TensorType({DT_FLOAT16, DT_FLOAT}))
+.INPUT(hidden_new, TensorType({DT_FLOAT16, DT_FLOAT}))
+.OPTIONAL_INPUT(seq_length, TensorType({DT_INT32}))
+.OPTIONAL_INPUT(mask, TensorType({DT_UINT8}))
+.OUTPUT(dw_input, TensorType({DT_FLOAT16, DT_FLOAT}))
+.OUTPUT(dw_hidden, TensorType({DT_FLOAT16, DT_FLOAT}))
+.OUTPUT(db_input, TensorType({DT_FLOAT16, DT_FLOAT}))
+.OUTPUT(db_hidden, TensorType({DT_FLOAT16, DT_FLOAT}))
+.OUTPUT(dx, TensorType({DT_FLOAT16, DT_FLOAT}))
+.OUTPUT(dh_prev, TensorType({DT_FLOAT16, DT_FLOAT}))
+.OUTPUT(dw_att, TensorType({DT_FLOAT16, DT_FLOAT}))
+.ATTR(direction, String, "UNIDIRECTIONAL")
+.ATTR(cell_depth, Int, 1)
+.ATTR(keep_prob, Float, -1.0)
+.ATTR(cell_clip, Float, -1.0)
+.ATTR(num_proj, Int, 0)
+.ATTR(time_major, Bool, true)
+.ATTR(gate_order, String, "zrh")
+.ATTR(reset_after, Bool, true)
+.OP_END_FACTORY_REG(DynamicAUGRUGrad)
+
+/**
+*@brief: AUGRUHiddenGrad calculation.
+*@par Inputs:
+*eleven inputs: \n
+*@li weight_att:A 4D Tensor. Must be one of the following types: float16, float32.
+*@li dh_pre_t:A 4D Tensor. Must be one of the following types: float16, float32.
+*@li init_h:A 4D Tensor. Must be one of the following types: float16, float32.
+*@li h:A 4D Tensor. Must be one of the following types: float16, float32.
+*@li dy:A 4D Tensor. Must be one of the following types: float16, float32.
+*@li dh:A 4D Tensor. Must be one of the following types: float16, float32.
+*@li update:A 4D Tensor. Must be one of the following types: float16, float32.
+*@li update_att:A 4D Tensor. Must be one of the following types: float16, float32.
+*@li reset:A 4D Tensor. Must be one of the following types: float16, float32.
+*@li new:A 4D Tensor. Must be one of the following types: float16, float32.
+*@li hidden_new:A 4D Tensor. Must be one of the following types: float16, float32.
+
+*@par Attributes:
+*@li t_state:An Int identifying the current t state. Default to [0, 4].
+*@li gate_order:An string identifying the gate order in weight and bias. Default to "zrh". "rzh" is another option.
+
+*@par Outputs:
+*four outputs: \n
+*@li dh_prev:A 4D Tensor. Must be one of the following types: float16, float32.
+*@li dgate_h:A 4D Tensor. Must be one of the following types: float16, float32.
+*@li dnt_x:A 4D Tensor. Must be one of the following types: float16, float32.
+*@li dw_att_t:A 4D Tensor. Must be one of the following types: float16, float32.
+
+*@par Restrictions:
+*Warning: THIS FUNCTION IS EXPERIMENTAL. Please do not use.
+*/
+REG_OP(AUGRUHiddenGradCell)
+.INPUT(weight_att, TensorType({DT_FLOAT16, DT_FLOAT}))
+.INPUT(dh_pre_t, TensorType({DT_FLOAT16, DT_FLOAT}))
+.INPUT(h, TensorType({DT_FLOAT16, DT_FLOAT}))
+.INPUT(dy, TensorType({DT_FLOAT16, DT_FLOAT}))
+.INPUT(dh, TensorType({DT_FLOAT16, DT_FLOAT}))
+.INPUT(update, TensorType({DT_FLOAT16, DT_FLOAT}))
+.INPUT(update_att, TensorType({DT_FLOAT16, DT_FLOAT}))
+.INPUT(reset, TensorType({DT_FLOAT16, DT_FLOAT}))
+.INPUT(new, TensorType({DT_FLOAT16, DT_FLOAT}))
+.INPUT(hidden_new, TensorType({DT_FLOAT16, DT_FLOAT}))
+.OUTPUT(dh_prev, TensorType({DT_FLOAT16, DT_FLOAT}))
+.OUTPUT(dgate_h, TensorType({DT_FLOAT16, DT_FLOAT}))
+.OUTPUT(dnt_x, TensorType({DT_FLOAT16, DT_FLOAT}))
+.OUTPUT(dw_att_t, TensorType({DT_FLOAT16, DT_FLOAT}))
+.ATTR(t_state, Int, 0)
+.ATTR(gate_order, String, "zrh")
+.OP_END_FACTORY_REG(AUGRUHiddenGradCell)
 
 /**
 *@brief: DynamicGRUV2Grad calculation.

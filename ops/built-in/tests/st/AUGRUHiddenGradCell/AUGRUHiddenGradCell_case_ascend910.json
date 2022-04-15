@@ -1,0 +1,299 @@
+[
+  {
+    "op": "AUGRUHiddenGradCell",
+    "input_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1,
+          8,
+          2,
+          16,
+          16
+        ],
+        "shape": [
+          1,
+          8,
+          2,
+          16,
+          16
+        ],
+        "param_type": "input",
+        "name": "weight_att",
+        "type": "float16"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1,
+          8,
+          2,
+          16,
+          16
+        ],
+        "shape": [
+          1,
+          8,
+          2,
+          16,
+          16
+        ],
+        "param_type": "input",
+        "name": "dh_pre_t",
+        "type": "float16"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          8,
+          2,
+          16,
+          16
+        ],
+        "shape": [
+          8,
+          2,
+          16,
+          16
+        ],
+        "param_type": "input",
+        "name": "h",
+        "type": "float16"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1,
+          8,
+          2,
+          16,
+          16
+        ],
+        "shape": [
+          1,
+          8,
+          2,
+          16,
+          16
+        ],
+        "param_type": "input",
+        "name": "dy",
+        "type": "float16"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          8,
+          2,
+          16,
+          16
+        ],
+        "shape": [
+          8,
+          2,
+          16,
+          16
+        ],
+        "param_type": "input",
+        "name": "dh",
+        "type": "float16"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1,
+          8,
+          2,
+          16,
+          16
+        ],
+        "shape": [
+          1,
+          8,
+          2,
+          16,
+          16
+        ],
+        "param_type": "input",
+        "name": "update",
+        "type": "float16"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1,
+          8,
+          2,
+          16,
+          16
+        ],
+        "shape": [
+          1,
+          8,
+          2,
+          16,
+          16
+        ],
+        "param_type": "input",
+        "name": "update_new",
+        "type": "float16"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1,
+          8,
+          2,
+          16,
+          16
+        ],
+        "shape": [
+          1,
+          8,
+          2,
+          16,
+          16
+        ],
+        "param_type": "input",
+        "name": "reset",
+        "type": "float16"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1,
+          8,
+          2,
+          16,
+          16
+        ],
+        "shape": [
+          1,
+          8,
+          2,
+          16,
+          16
+        ],
+        "param_type": "input",
+        "name": "new",
+        "type": "float16"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1,
+          8,
+          2,
+          16,
+          16
+        ],
+        "shape": [
+          1,
+          8,
+          2,
+          16,
+          16
+        ],
+        "param_type": "input",
+        "name": "hidden_new",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          8,
+          2,
+          16,
+          16
+        ],
+        "shape": [
+          8,
+          2,
+          16,
+          16
+        ],
+        "param_type": "input",
+        "name": "dh_prev",
+        "type": "float16"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1,
+          24,
+          2,
+          16,
+          16
+        ],
+        "shape": [
+          1,
+          24,
+          2,
+          16,
+          16
+        ],
+        "param_type": "input",
+        "name": "dgate_h",
+        "type": "float16"
+      },
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1,
+          8,
+          2,
+          16,
+          16
+        ],
+        "shape": [
+          1,
+          8,
+          2,
+          16,
+          16
+        ],
+        "param_type": "input",
+        "name": "dnt_x",
+        "type": "float16"
+      }
+	  ,
+      {
+        "format": "ND",
+        "ori_format": "ND",
+        "ori_shape": [
+          1,
+          8,
+          2,
+          16,
+          16
+        ],
+        "shape": [
+          1,
+          8,
+          2,
+          16,
+          16
+        ],
+        "param_type": "input",
+        "name": "dw_att_t",
+        "type": "float16"
+      }
+    ],
+    "case_name": "test_AUGRUHiddenGradCell_000"
+  }
+]

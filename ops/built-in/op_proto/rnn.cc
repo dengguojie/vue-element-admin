@@ -1057,6 +1057,211 @@ IMPLEMT_INFERFUNC(DynamicGRUV2Grad, DynamicGRUV2GradInferShape) {
 INFER_FUNC_REG(DynamicGRUV2Grad, DynamicGRUV2GradInferShape);
 VERIFY_FUNC_REG(DynamicGRUV2Grad, DynamicGRUV2GradVerify);
 
+IMPLEMT_VERIFIER(DynamicAUGRU, DynamicAUGRUVerify) {
+  return GRAPH_SUCCESS;
+}
+
+IMPLEMT_INFERFUNC(DynamicAUGRU, DynamicAUGRUInferShape) {
+  TensorDesc x_tensor_desc = op.GetInputDesc("x");
+  TensorDesc w_input_tensor_desc = op.GetInputDesc("weight_input");
+  TensorDesc w_hidden_tensor_desc = op.GetInputDesc("weight_hidden");
+  TensorDesc w_att_tensor_desc = op.GetInputDesc("weight_att");
+  Shape shape_x = x_tensor_desc.GetShape();
+  Shape shape_w_hidden = w_hidden_tensor_desc.GetShape();
+  Shape shape_w_att = w_att_tensor_desc.GetShape();
+
+  DataType bias_dtype = x_tensor_desc.GetDataType();
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  if (op_desc->MutableInputDesc("bias_input") != nullptr) {
+    bias_dtype = op.GetInputDesc("bias_input").GetDataType();
+  } else if (op_desc->MutableInputDesc("bias_hidden") != nullptr) {
+    bias_dtype = op.GetInputDesc("bias_hidden").GetDataType();
+  } else if (op_desc->MutableInputDesc("init_h") != nullptr) {
+    bias_dtype = op.GetInputDesc("init_h").GetDataType();
+  }
+
+  TensorDesc y_tensor_desc = op.GetOutputDesc("y");
+  TensorDesc h_tensor_desc = op.GetOutputDesc("output_h");
+  TensorDesc update_tensor_desc = op.GetOutputDesc("update");
+  TensorDesc update_att_tensor_desc = op.GetOutputDesc("update_att");
+  TensorDesc reset_tensor_desc = op.GetOutputDesc("reset");
+  TensorDesc new_tensor_desc = op.GetOutputDesc("new");
+  TensorDesc hn_tensor_desc = op.GetOutputDesc("hidden_new");
+
+  int64_t dim_num = shape_x.GetDimNum();
+  CHECK(dim_num != 3, OP_LOGE(op.GetName().c_str(), "The dimension count of x should be 3, please check!"),
+        return GRAPH_FAILED);
+
+  int64_t dim_att = shape_w_att.GetDimNum();
+  CHECK(dim_att != 2, OP_LOGE(op.GetName().c_str(), "The dimension count of weight_att should be 2, please check!"),
+        return GRAPH_FAILED);
+
+  int64_t num_step = shape_x.GetDims().at(0);
+  int64_t batch_size = shape_x.GetDims().at(1);
+  int64_t input_size = shape_x.GetDims().at(2);
+  int64_t hidden_size = shape_w_hidden.GetDims().at(0);
+  int64_t num_step_att = shape_w_att.GetDims().at(0);
+  int64_t batch_size_att = shape_w_att.GetDims().at(1);
+  bool flag_transdatarnn = false;
+  if ((input_size % 16 != 0) || (hidden_size % 16 != 0)) {
+    flag_transdatarnn = true;
+  }
+  CHECK(batch_size != batch_size_att, OP_LOGE(op.GetName().c_str(), "The dimension of weight_att does not match x!"),
+        return GRAPH_FAILED);
+  CHECK(num_step != num_step_att, OP_LOGE(op.GetName().c_str(), "The dimension of num_step_att does not match x!"),
+        return GRAPH_FAILED);
+
+
+  vector<int64_t> output_dims = {num_step, batch_size, hidden_size};
+
+  y_tensor_desc.SetShape(Shape(output_dims));
+  h_tensor_desc.SetShape(Shape(output_dims));
+  update_tensor_desc.SetShape(Shape(output_dims));
+  update_att_tensor_desc.SetShape(Shape(output_dims));
+  reset_tensor_desc.SetShape(Shape(output_dims));
+  new_tensor_desc.SetShape(Shape(output_dims));
+  hn_tensor_desc.SetShape(Shape(output_dims));
+
+  y_tensor_desc.SetDataType(bias_dtype);
+  h_tensor_desc.SetDataType(bias_dtype);
+  update_tensor_desc.SetDataType(bias_dtype);
+  update_att_tensor_desc.SetDataType(bias_dtype);
+  reset_tensor_desc.SetDataType(bias_dtype);
+  new_tensor_desc.SetDataType(bias_dtype);
+  hn_tensor_desc.SetDataType(bias_dtype);
+
+  CHECK(op.UpdateOutputDesc("y", y_tensor_desc) != GRAPH_SUCCESS,
+        OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc failed."), return GRAPH_FAILED);
+  CHECK(op.UpdateOutputDesc("output_h", h_tensor_desc) != GRAPH_SUCCESS,
+        OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc failed."), return GRAPH_FAILED);
+  CHECK(op.UpdateOutputDesc("update", update_tensor_desc) != GRAPH_SUCCESS,
+        OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc failed."), return GRAPH_FAILED);
+  CHECK(op.UpdateOutputDesc("update_att", update_att_tensor_desc) != GRAPH_SUCCESS,
+        OP_LOGE(op.GetName().c_str(), "Update_attOutputDesc failed."), return GRAPH_FAILED);
+  CHECK(op.UpdateOutputDesc("reset", reset_tensor_desc) != GRAPH_SUCCESS,
+        OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc failed."), return GRAPH_FAILED);
+  CHECK(op.UpdateOutputDesc("new", new_tensor_desc) != GRAPH_SUCCESS,
+        OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc failed."), return GRAPH_FAILED);
+  CHECK(op.UpdateOutputDesc("hidden_new", new_tensor_desc) != GRAPH_SUCCESS,
+        OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc failed."), return GRAPH_FAILED);
+
+  if (flag_transdatarnn) {
+    w_input_tensor_desc.SetFormat(FORMAT_ND);
+    w_hidden_tensor_desc.SetFormat(FORMAT_ND);
+    ge::AttrUtils::SetInt(op_desc, "input_size", input_size);
+    ge::AttrUtils::SetInt(op_desc, "hidden_size", hidden_size);
+  } else {
+    w_input_tensor_desc.SetFormat(FORMAT_HWCN);
+    w_hidden_tensor_desc.SetFormat(FORMAT_HWCN);
+  }
+
+  CHECK(op.UpdateInputDesc("weight_input", w_input_tensor_desc) != GRAPH_SUCCESS,
+        OP_LOGE(op.GetName().c_str(), "UpdateIntputDesc failed."), return GRAPH_FAILED);
+  CHECK(op.UpdateInputDesc("weight_hidden", w_hidden_tensor_desc) != GRAPH_SUCCESS,
+        OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc failed."), return GRAPH_FAILED);
+
+  return GRAPH_SUCCESS;
+}
+
+INFER_FUNC_REG(DynamicAUGRU, DynamicAUGRUInferShape);
+VERIFY_FUNC_REG(DynamicAUGRU, DynamicAUGRUVerify);
+
+IMPLEMT_VERIFIER(DynamicAUGRUGrad, DynamicAUGRUGradVerify) {
+  return GRAPH_SUCCESS;
+}
+
+IMPLEMT_INFERFUNC(DynamicAUGRUGrad, DynamicAUGRUGradInferShape) {
+  ge::TensorDesc inputXTensorDesc = op.GetInputDesc("x");
+  ge::TensorDesc inputHTensorDesc = op.GetInputDesc("h");
+  ge::TensorDesc inputAttTensorDesc = op.GetInputDesc("weight_att");
+  ge::Shape shapeX = inputXTensorDesc.GetShape();
+  ge::Shape shapeH = inputHTensorDesc.GetShape();
+  ge::Shape shapeAtt = inputAttTensorDesc.GetShape();
+  DataType dtype = inputXTensorDesc.GetDataType();
+
+  int64_t dim_num = shapeX.GetDimNum();
+  int64_t batch_size = 0;
+  int64_t input_size = 0;
+  int64_t hidden_size = 0;
+  int64_t num_step = 0;
+  if (dim_num == 3) {
+    batch_size = shapeX.GetDims().at(1);
+    input_size = shapeX.GetDims().at(2);
+    hidden_size = shapeH.GetDims().at(2);
+    num_step = shapeX.GetDims().at(0);
+  } else {
+    OP_LOGE(op.GetName().c_str(),
+            "The input shape of X is not right, please check!");
+    return GRAPH_FAILED;
+  }
+
+  int64_t att_dim_num = shapeAtt.GetDimNum();
+  int64_t att_batch_size = 0;
+  int64_t att_hidden_size = 0;
+  if (att_dim_num == 3) {
+    att_batch_size = shapeAtt.GetDims().at(1);
+    att_hidden_size = shapeAtt.GetDims().at(2);
+  } else {
+    OP_LOGE(op.GetName().c_str(),
+            "The input shape of weight_att is not right, please check!");
+    return GRAPH_FAILED;
+  }
+
+  TensorDesc outputDxtTensorDesc = op.GetOutputDesc("dx");
+  TensorDesc outputDht_1TensorDesc = op.GetOutputDesc("dh_prev");
+  TensorDesc outputDwxTensorDesc = op.GetOutputDesc("dw_input");
+  TensorDesc outputDwhTensorDesc = op.GetOutputDesc("dw_hidden");
+  TensorDesc outputDbxTensorDesc = op.GetOutputDesc("db_input");
+  TensorDesc outputDbhTensorDesc = op.GetOutputDesc("db_hidden");
+  TensorDesc outputDwAttTensorDesc = op.GetOutputDesc("dw_att");
+
+  outputDxtTensorDesc.SetShape(shapeX);
+  outputDxtTensorDesc.SetDataType(dtype);
+
+  vector<int64_t> outputDht_1Dims = {batch_size, hidden_size};
+  outputDht_1TensorDesc.SetShape(ge::Shape(outputDht_1Dims));
+  outputDht_1TensorDesc.SetDataType(dtype);
+
+  vector<int64_t> outputDwxDims = {input_size, 3 * hidden_size};
+  outputDwxTensorDesc.SetShape(ge::Shape(outputDwxDims));
+  outputDwxTensorDesc.SetDataType(dtype);
+
+  vector<int64_t> outputDwhDims = {hidden_size, 3 * hidden_size};
+  outputDwhTensorDesc.SetShape(ge::Shape(outputDwhDims));
+  outputDwhTensorDesc.SetDataType(dtype);
+
+  vector<int64_t> outputDbDims = {3 * hidden_size};
+  outputDbxTensorDesc.SetShape(ge::Shape(outputDbDims));
+  outputDbxTensorDesc.SetDataType(dtype);
+
+  outputDbhTensorDesc.SetShape(ge::Shape(outputDbDims));
+  outputDbhTensorDesc.SetDataType(dtype);
+
+  vector<int64_t> outputDwAttDims = {num_step, batch_size};
+  outputDwAttTensorDesc.SetShape(ge::Shape(outputDwAttDims));
+  outputDwAttTensorDesc.SetDataType(dtype);
+
+
+  CHECK(op.UpdateOutputDesc("dx", outputDxtTensorDesc) != GRAPH_SUCCESS,
+        OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc failed."), return GRAPH_FAILED);
+  CHECK(op.UpdateOutputDesc("dh_prev", outputDht_1TensorDesc) != GRAPH_SUCCESS,
+        OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc failed."), return GRAPH_FAILED);
+  CHECK(op.UpdateOutputDesc("dw_input", outputDwxTensorDesc) != GRAPH_SUCCESS,
+        OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc failed."), return GRAPH_FAILED);
+  CHECK(op.UpdateOutputDesc("dw_hidden", outputDwhTensorDesc) != GRAPH_SUCCESS,
+        OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc failed."), return GRAPH_FAILED);
+  CHECK(op.UpdateOutputDesc("db_input", outputDbxTensorDesc) != GRAPH_SUCCESS,
+        OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc failed."), return GRAPH_FAILED);
+  CHECK(op.UpdateOutputDesc("db_hidden", outputDbhTensorDesc) != GRAPH_SUCCESS,
+        OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc failed."), return GRAPH_FAILED);
+  CHECK(op.UpdateOutputDesc("dw_att", outputDwAttTensorDesc) != GRAPH_SUCCESS,
+        OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc failed."), return GRAPH_FAILED);
+  return GRAPH_SUCCESS;
+}
+
+INFER_FUNC_REG(DynamicAUGRUGrad, DynamicAUGRUGradInferShape);
+VERIFY_FUNC_REG(DynamicAUGRUGrad, DynamicAUGRUGradVerify);
+
 // ----------------EmbeddingDenseGrad Begin-------------------
 bool InferShapeAndTypeEmbeddingDenseGrad(Operator &op,
                                          const int64_t& input_idx_1, 
