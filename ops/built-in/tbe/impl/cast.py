@@ -309,6 +309,8 @@ def cast_compute(data, output_y, dst_type, kernel_name="cast"):
     src_data_type = data.dtype
     para_check.check_dtype(src_data_type, ("float16", "float32", "int8", "uint8", "int32"), param_name="input_x")
 
+    dst_type = _cast_dsttype_conversion(dst_type)
+
     if src_data_type in ("int8", "uint8"):
         return _int8_uint8_process(data, dst_type)
 
