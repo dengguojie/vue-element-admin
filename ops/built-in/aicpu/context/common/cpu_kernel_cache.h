@@ -122,7 +122,7 @@ class CpuKernelCache : public KernelCache<CpuCacheData> {
    * @return uint32_t: 0 indicates success, while the others fail
    */
   uint32_t ParseExtBitMap(const FWKAdapter::ExtInfo *ext_info,
-                          bool &unknown_shape);
+                          bool &unknown_shape) const;
 
   /*
    * parse extend tensor shape and types information.

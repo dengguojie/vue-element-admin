@@ -292,8 +292,8 @@ uint32_t CpuKernelCache::ParseExtSessionInfo(FWKAdapter::ExtInfo *ext_info,
     return KERNEL_STATUS_PARAM_INVALID;
   }
 
-  auto session = reinterpret_cast<SessionInfo *>(ext_info->infoMsg);
-  kernel_id = session->kernelId;
+  auto session_info = reinterpret_cast<SessionInfo *>(ext_info->infoMsg);
+  kernel_id = session_info->kernelId;
   return KERNEL_STATUS_OK;
 }
 
@@ -308,7 +308,7 @@ bool CpuKernelCache::GetBitStatus(uint64_t num, uint64_t pos) const {
  * parse bitmap information.
  */
 uint32_t CpuKernelCache::ParseExtBitMap(const FWKAdapter::ExtInfo *ext_info,
-                                        bool &unknown_shape) {
+                                        bool &unknown_shape) const {
   if (ext_info->infoLen != sizeof(int64_t)) {
     KERNEL_LOG_ERROR(
         "Parse extend bitmap failed, as info length must be [%zu], but got "
@@ -317,9 +317,9 @@ uint32_t CpuKernelCache::ParseExtBitMap(const FWKAdapter::ExtInfo *ext_info,
     return KERNEL_STATUS_PARAM_INVALID;
   }
 
-  uint64_t bit_map = *(reinterpret_cast<const int64_t *>(ext_info->infoMsg));
-  unknown_shape = (!GetBitStatus(bit_map, 0));
-  KERNEL_LOG_INFO("Unknown_shape_ is [%d].", unknown_shape);
+  uint64_t bit_map_info = *(reinterpret_cast<const int64_t *>(ext_info->infoMsg));
+  unknown_shape = (!GetBitStatus(bit_map_info, 0));
+  KERNEL_LOG_INFO("Unknown_shape is [%d].", unknown_shape);
   return KERNEL_STATUS_OK;
 }
 
