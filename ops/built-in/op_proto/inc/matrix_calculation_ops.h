@@ -422,6 +422,56 @@ REG_OP(MatrixSetDiagD)
     .OP_END_FACTORY_REG(MatrixSetDiagD)
 
 /**
+* @brief Function AttentionScore. \n
+
+* @par Inputs:
+* six inputs, including:
+* @li query: A matrix Tensor. The type only support float16.
+* @li key: A matrix Tensor. The type only support float16.
+* @li value: A matrix Tensor. The type only support float16.
+* @li padding_mask: A matrix Tensor. The type only support float16.
+* @li scale: A scalar. The type only support float16.
+* @li drop_mask: A matrix Tensor. The type only support uint8. \n
+
+* @par Attributes:
+* @li keep_prob: A mutable Tensor. Must met all of the following rules:
+ shape of "keep_prob" should be (1,) or [1,].
+* @li query_transpose: A bool. If True, changes the shape of "query" from [K, M] to
+ [M, K].
+* @li key_transpose: A bool. If True, changes the shape of "key" from [N, K] to
+ [K, N].
+* @li bmm_score_transpose_a: A bool. If True, changes the shape of "mid_data" from [K, M] to
+ [M, K].
+* @li bmm_score_transpose_b: A bool. If True, changes the shape of "value" from [N, K] to
+ [K, N].
+* @li axes: A list of int. The dimension softmax would be performed on. Defaults
+ to "[-1]" . \n
+
+* @par Outputs:
+* attention_score: The result matrix Tensor. The type only support float16.
+* softmax_output: The result matrix Tensor. The type only support float16.
+
+* @par Restrictions:
+* Warning: THIS FUNCTION IS EXPERIMENTAL. Please do not use.
+*/
+REG_OP(AttentionScore)
+    .INPUT(query, TensorType({DT_FLOAT16}))
+    .INPUT(key, TensorType({DT_FLOAT16}))
+    .INPUT(value, TensorType({DT_FLOAT16}))
+    .INPUT(padding_mask, TensorType({DT_FLOAT16}))
+    .INPUT(scale, TensorType({DT_FLOAT16}))
+    .OPTIONAL_INPUT(drop_mask, TensorType({DT_INT8}))
+    .OUTPUT(attention_score, TensorType({DT_FLOAT16}))
+    .OUTPUT(softmax_output, TensorType({DT_FLOAT16}))
+    .ATTR(keep_prob, Float, 1.0)
+    .ATTR(query_transpose, Bool, false)
+    .ATTR(key_transpose, Bool, false)
+    .ATTR(bmm_score_transpose_a, Bool, false)
+    .ATTR(bmm_score_transpose_b, Bool, false)
+    .ATTR(softmax_axes, ListInt, {-1})
+    .OP_END_FACTORY_REG(AttentionScore)
+
+/**
 *@brief Applies sparse "updates" to individual values or slices in a Variable . \n
 
 *@par Inputs:

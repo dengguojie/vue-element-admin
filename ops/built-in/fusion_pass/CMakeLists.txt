@@ -391,6 +391,7 @@ set(_aicore_fusion_srcs
   graph_fusion/ai_core/transdata_reshape_transdata_transpose.cc
   graph_fusion/ai_core/batch_matmul_v2_non_aligned_fusion_pass.cc
   graph_fusion/ai_core/a_split_node_remove_fusion_pass.cc
+  graph_fusion/ai_core/attention_score_fusion_pass.cc
   graph_fusion/ai_core/a_arg_max_v2_fusion_pass.cc
   graph_fusion/ai_core/softmax_grad_fusion_pass.cc
   graph_fusion/ai_core/reduce_mean_variance_fusion_pass.cc

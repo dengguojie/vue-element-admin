@@ -265,6 +265,8 @@ cube:
       - ops/built-in/fusion_pass/graph_fusion/ai_core/conv_fusion_pass_utils.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/einsum_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/einsum_fusion_pass.h
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/attention_score_fusion_pass.cc
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/attention_score_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/avg_pool3d_grad_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/avg_pool3d_grad_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/gemm_transpose_fusion_pass.cc
@@ -394,6 +396,7 @@ cube:
       - ops/built-in/tbe/impl/dynamic/avg_pool3d_grad.py
       - ops/built-in/tbe/impl/dynamic/avg_pool_grad.py
       - ops/built-in/tbe/impl/mat_mul.py
+      - ops/built-in/tbe/impl/attention_score.py
       - ops/built-in/tbe/impl/dynamic/mat_mul.py
       - ops/built-in/tbe/impl/batch_matmul.py
       - ops/built-in/tbe/impl/batch_matmul_v2.py
@@ -1204,6 +1207,7 @@ vector_B:
       - ops/built-in/tests/st/LpLoss/test_lp_loss_st.json
       - ops/built-in/tests/st/MaskedSelectV2/test_masked_select_v2_st.json
       - ops/built-in/tests/st/MseLossGrad/test_mse_loss_grad_st.json
+      - ops/built-in/tests/st/AttentionScore/test_attention_score_case_ascend910.json
       - ops/built-in/tests/st/Remap/Remap_Ascend910.json
       - ops/built-in/tests/st/SliceLastDim/test_slice_last_dim_st.json
       - ops/built-in/tests/st/SoftplusV2/test_softplus_v2_st.json
@@ -1241,6 +1245,7 @@ vector_B:
       - ops/built-in/tests/ut/graph_fusion/ai_core/splitd_fusion_test.cpp
       - ops/built-in/tests/ut/graph_fusion/ai_core/splitv_fusion_test.cpp
       - ops/built-in/tests/ut/graph_fusion/ai_core/splitvd_fusion_test.cpp
+      - ops/built-in/tests/ut/graph_fusion/ai_core/attention_score_fusion_pass_test.cpp
       - ops/built-in/tests/ut/graph_fusion/ai_core/square_sum_v2_fusion_test.cpp
       - ops/built-in/tests/ut/graph_fusion/ai_core/strided_slice_fusion_test.cpp
       - ops/built-in/tests/ut/graph_fusion/ai_core/transdata_cast_fusion_pass_test.cpp
@@ -1330,6 +1335,9 @@ vector_B:
       - ops/built-in/tests/ut/ops_test/ArgMaxD/test_ArgMax_proto.cpp
       - ops/built-in/tests/ut/ops_test/ArgMaxD/test_ArgMaxD_impl.py
       - ops/built-in/tests/ut/ops_test/ArgMaxD/test_ArgMaxD_proto.cpp
+      - ops/built-in/tests/ut/ops_test/AttentionScore/test_attention_score_proto.cpp
+      - ops/built-in/tests/ut/ops_test/AttentionScore/__init__.py
+      - ops/built-in/tests/ut/ops_test/AttentionScore/test_attention_score_impl.py
       - ops/built-in/tests/ut/ops_test/ArgMaxGradD/__init__.py
       - ops/built-in/tests/ut/ops_test/ArgMaxV2/__init__.py
       - ops/built-in/tests/ut/ops_test/ArgMaxWithValue/test_ArgMaxWithValue_proto.cpp
