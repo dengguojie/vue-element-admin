@@ -24,6 +24,57 @@
 #include "graph/operator_reg.h"
 
 namespace ge {
+/**
+* @brief
+             / (MatMul -> ConfusionTransposeD).
+   LayerNorm - (MatMul -> ConfusionTransposeD).
+             \ (MatMul -> ConfusionTransposeD). \n
+* @par Inputs:
+* Nine inputs, including:
+* @li x: A Tensor. Must be one of the following types: float16.
+* @li kernel_query: A Tensor. Must be one of the following types: float16.
+* @li kernel_key: A Tensor. Must be one of the following types: float16.
+* @li kernel_value: A Tensor. Must be one of the following types: float16.
+* @li gamma: A Tensor. Must be one of the following types: float16.
+* @li beta: A Tensor. Must be one of the following types: float16.
+* @li bias_query: A Tensor. Must be one of the following types: float16.
+* @li bias_key: A Tensor. Must be one of the following types: float16.
+* @li bias_value: A Tensor. Must be one of the following types: float16. \n
+
+* @par Attributes:
+* @li epsilon: A optional attribute, the type is float32. Defaults to 1e-7.
+* @li trans_a: A optional attribute, the type is bool. Defaults to False.
+* @li trans_b: A optional attribute, the type is bool. Defaults to False. \n
+
+* @par Outputs:
+* Six outputs, including:
+* @li norm: A Tensor. Must be one of the following types: float16.
+* @li query_output: A Tensor. Must be one of the following types: float16.
+* @li key_output: A Tensor. Must be one of the following types: float16.
+* @li value_output: A Tensor. Must be one of the following types: float16.
+* @li mean: A Tensor. Must be one of the following types: float16.
+* @li variance: A Tensor. Must be one of the following types: float16. \n
+*/
+REG_OP(AttentionLnQKV)
+    .INPUT(x, TensorType({DT_FLOAT16}))
+    .INPUT(kernel_query, TensorType({DT_FLOAT16}))
+    .INPUT(kernel_key, TensorType({DT_FLOAT16}))
+    .INPUT(kernel_value, TensorType({DT_FLOAT16}))
+    .INPUT(gamma, TensorType({DT_FLOAT16}))
+    .INPUT(beta, TensorType({DT_FLOAT16}))
+    .OPTIONAL_INPUT(bias_query, TensorType({DT_FLOAT16}))
+    .OPTIONAL_INPUT(bias_key, TensorType({DT_FLOAT16}))
+    .OPTIONAL_INPUT(bias_value, TensorType({DT_FLOAT16}))
+    .OUTPUT(norm, TensorType({DT_FLOAT16}))
+    .OUTPUT(query_output, TensorType({DT_FLOAT16}))
+    .OUTPUT(key_output, TensorType({DT_FLOAT16}))
+    .OUTPUT(value_output, TensorType({DT_FLOAT16}))
+    .OUTPUT(mean, TensorType({DT_FLOAT16}))
+    .OUTPUT(variance, TensorType({DT_FLOAT16}))
+    .ATTR(epsilon, Float, 0.0000001)
+    .ATTR(trans_a, Bool, false)
+    .ATTR(trans_b, Bool, false)
+    .OP_END_FACTORY_REG(AttentionLnQKV)
 
 /**
 *@brief Multiplies matrix "a" by matrix "b", producing "a * b" . \n

@@ -289,6 +289,8 @@ cube:
       - ops/built-in/fusion_pass/graph_fusion/ai_core/batch_matmul_v2_reduce_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/a_a_matmul_nz_to_nd_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/a_a_matmul_nz_to_nd_fusion_pass.h
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/attention_ln_qkv_fusion_pass.cc
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/attention_ln_qkv_fusion_pass.h
       - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/conv2d_backprop_input/conv2d_bp_input_dequant_elemwise_quant_pass.cc
       - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/conv2d_backprop_input/conv2d_bp_input_dequant_elemwise_quant_pass.h
       - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/conv2d_backprop_input/conv2d_bp_input_elemwise_pass.cc
@@ -411,6 +413,7 @@ cube:
       - ops/built-in/tbe/impl/k_means_centroids.py
       - ops/built-in/tbe/impl/fixpipe_op/fixpipe_matmul.py
       - ops/built-in/tbe/impl/fixpipe_op/fixpipe_conv2d_backprop_filter.py
+      - ops/built-in/tbe/impl/attention_ln_qkv.py
     unrelease:
       - ops/built-in/tests/ut/ops_test/Dilation/test_dilation_impl.py
   llt:
