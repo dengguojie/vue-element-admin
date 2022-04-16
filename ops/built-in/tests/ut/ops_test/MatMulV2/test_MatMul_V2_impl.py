@@ -15,6 +15,7 @@ from topi.generic import auto_schedule
 from tbe.common.tiling.tiling_helper import TILING_INSTANCE
 from te.platform.cce_conf import te_set_version
 
+
 ut_case = OpUT("MatMul", None, None)
 
 

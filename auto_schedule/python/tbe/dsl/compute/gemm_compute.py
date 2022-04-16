@@ -31,7 +31,8 @@ from tbe.tvm.tensor import Tensor
 from tbe.dsl.compute.gemm_integrated_compute import gemm as gemm_integrated
 
 BATCH_MATMUL_LENGTH = 5
-NOT_SUPPORT_FORMAT = "ND"
+ND_FORMAT = "ND"
+NZ_FORMAT = "FRACTAL_NZ"
 
 
 def _shape_check(  # pylint: disable=C0301, R0912, R0913, R0914, R0915
@@ -550,11 +551,11 @@ def gemm(tensor_a, tensor_b, para_dict):
     is_confusion_transpose = para_dict.get("confusion_transpose", False)
     use_old_code = support_l0c2out or is_confusion_transpose
     if not in_dynamic():
-        use_old_code = use_old_code or filter_case(tensor_a, tensor_b, kernel_name)
+        # GEMMCompute not support input NZ and output FORMAT_ND
+        is_nz_in_nd_out = (para_dict.get("format_a") == NZ_FORMAT and para_dict.get("format_b") == NZ_FORMAT and
+                           para_dict.get("format_out") == ND_FORMAT)
+        use_old_code = use_old_code or (filter_case(tensor_a, tensor_b, kernel_name) and not is_nz_in_nd_out)
 
-    # GEMMCompute not support input or output with FORMAT_ND
-    use_old_code = False if NOT_SUPPORT_FORMAT in (para_dict.get("format_a"), para_dict.get("format_b"),
-                                                   para_dict.get("format_out")) else use_old_code
     if not use_old_code:
         result = gemm_integrated(tensor_a, tensor_b, para_dict)
     else:

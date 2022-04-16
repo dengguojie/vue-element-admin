@@ -23,6 +23,7 @@ from impl.trans_data import trans_data_compute
 from op_test_frame.ut import OpUT
 ut_case = OpUT("FullyConnection", None, None)
 
+
 vals = {("CORE_NUM", ): 48,
         ("CUBE_VECTOR_SPLIT",): True,
         ("UB_SIZE", ): 196608,
