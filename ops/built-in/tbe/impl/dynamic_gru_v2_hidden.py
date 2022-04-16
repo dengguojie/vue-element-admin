@@ -311,21 +311,23 @@ def dynamic_gru_v2_hidden(x_weight_input, weight_hidden, bias_hidden, seq_length
     if is_m_full_core and is_weight_all_in_l1:
         is_sync = False
         reuse_type = ReuseType.REUSE_ALL
-        _solution(bias_hidden, seq_length, init_h, y, update, gate_order, kernel_name, is_sync, reuse_type)
+        _solution(bias_hidden, seq_length, init_h, y, update, gate_order, kernel_name, is_sync, reuse_type, direction)
     else:
         is_w_in_l1_cut_core = weight_size / hidden_size * math.ceil(hidden_size / core_num) < l1_size * 0.75
         if is_w_in_l1_cut_core:
             is_sync = True
             reuse_type = ReuseType.REUSE_AFTERCUT
-            _solution(bias_hidden, seq_length, init_h, y, update, gate_order, kernel_name, is_sync, reuse_type)
+            _solution(bias_hidden, seq_length, init_h, y, update, gate_order, kernel_name, is_sync, reuse_type,
+                      direction)
         else:
             is_sync = True
             reuse_type = ReuseType.NO_REUSE
-            _solution(bias_hidden, seq_length, init_h, y, update, gate_order, kernel_name, is_sync, reuse_type)
+            _solution(bias_hidden, seq_length, init_h, y, update, gate_order, kernel_name, is_sync, reuse_type,
+                      direction)
 
 
 # 'pylint: disable=invalid-name,too-many-statements
-def _solution(bias_hidden, seq_length, init_h, y, update, gate_order, kernel_name, is_sync, reuse_type):
+def _solution(bias_hidden, seq_length, init_h, y, update, gate_order, kernel_name, is_sync, reuse_type, direction):
     """
     solutions of op
     :return:
@@ -404,19 +406,26 @@ def _solution(bias_hidden, seq_length, init_h, y, update, gate_order, kernel_nam
     sub_t = 1
     loop_t = t_size // sub_t
     with tik_instance.for_range(0, loop_t) as i:
-        x_weight_input_var = x_weight_input[i * sub_t: i * sub_t + sub_t, :, :, :, :, :]
+        if direction == "REDIRECTIONAL":
+            valid_loop_i = loop_t - 1 - i
+        else:
+            valid_loop_i = i
+        x_weight_input_var = x_weight_input[valid_loop_i * sub_t: valid_loop_i * sub_t + sub_t, :, :, :, :, :]
         if is_global_init:
             s_init_h_gm_var = s_init_h_gm[:, :, :, :, :]
         else:
             s_init_h_gm_var = None
-        last_h = update_h_gm[i * sub_t - last: i * sub_t + sub_t - last:, :, :, :, :]
-        update_h_gm_var = update_h_gm[i * sub_t: i * sub_t + sub_t, :, :, :, :]
-        update_y_gm_var = update_y_gm[i * sub_t: i * sub_t + sub_t, :, :, :, :]
+        if direction == "REDIRECTIONAL":
+            last_h = update_h_gm[valid_loop_i * sub_t + last: valid_loop_i * sub_t + sub_t + last:, :, :, :, :]
+        else:
+            last_h = update_h_gm[valid_loop_i * sub_t - last: valid_loop_i * sub_t + sub_t - last:, :, :, :, :]
+        update_h_gm_var = update_h_gm[valid_loop_i * sub_t: valid_loop_i * sub_t + sub_t, :, :, :, :]
+        update_y_gm_var = update_y_gm[valid_loop_i * sub_t: valid_loop_i * sub_t + sub_t, :, :, :, :]
         if is_gate_output:
-            r_t_gm_var = r_t_gm[i * sub_t: i * sub_t + sub_t, :, :, :, :]
-            i_t_gm_var = i_t_gm[i * sub_t: i * sub_t + sub_t, :, :, :, :]
-            n_t_gm_var = n_t_gm[i * sub_t: i * sub_t + sub_t, :, :, :, :]
-            hn_t_gm_var = hn_t_gm[i * sub_t: i * sub_t + sub_t, :, :, :, :]
+            r_t_gm_var = r_t_gm[valid_loop_i * sub_t: valid_loop_i * sub_t + sub_t, :, :, :, :]
+            i_t_gm_var = i_t_gm[valid_loop_i * sub_t: valid_loop_i * sub_t + sub_t, :, :, :, :]
+            n_t_gm_var = n_t_gm[valid_loop_i * sub_t: valid_loop_i * sub_t + sub_t, :, :, :, :]
+            hn_t_gm_var = hn_t_gm[valid_loop_i * sub_t: valid_loop_i * sub_t + sub_t, :, :, :, :]
         else:
             r_t_gm_var = None
             i_t_gm_var = None
@@ -424,7 +433,7 @@ def _solution(bias_hidden, seq_length, init_h, y, update, gate_order, kernel_nam
             hn_t_gm_var = None
 
         if is_valid_mask:
-            seq_mask_gm_var = seq_mask_gm[i * sub_t: i * sub_t + sub_t, :, :, :, :]
+            seq_mask_gm_var = seq_mask_gm[valid_loop_i * sub_t: valid_loop_i * sub_t + sub_t, :, :, :, :]
         else:
             seq_mask_gm_var = None
 

@@ -4,18 +4,21 @@
       "input_desc": [
         {
           "shape": [
-            1,
+            -1,
             16,
             16
           ],
           "ori_shape": [
-            1,
+            -1,
             16,
             16
           ],
           "ori_format": "ND",
           "format": "ND",
           "name": "x",
+          "typical_shape": [1, 16, 16],
+          "shape_range": [[1, 1]],
+          "value_range": [[1, 1]],
           "type": "float16"
         },
         {
@@ -152,25 +155,28 @@
           "value": "UNIDIRECTIONAL"
         }
       ],
-      "case_name": "test_DynamicGRUV2_000"
+      "case_name": "test_DynamicGRUV2_dynamic_000"
     },
     {
       "op": "DynamicGRUV2",
       "input_desc": [
         {
           "shape": [
-            1,
+            -1,
             16,
             16
           ],
           "ori_shape": [
-            1,
+            -1,
             16,
             16
           ],
           "ori_format": "ND",
           "format": "ND",
           "name": "x",
+          "typical_shape": [1, 16, 16],
+          "shape_range": [[1, 1]],
+          "value_range": [[1, 1]],
           "type": "float16"
         },
         {
@@ -307,161 +313,6 @@
           "value": "REDIRECTIONAL"
         }
       ],
-      "case_name": "test_DynamicGRUV2_001"
-    },
-    {
-      "op": "DynamicGRUV2",
-      "input_desc": [
-        {
-          "shape": [
-            1,
-            1,
-            5
-          ],
-          "ori_shape": [
-            1,
-            1,
-            5
-          ],
-          "ori_format": "ND",
-          "format": "ND",
-          "name": "x",
-          "type": "float16"
-        },
-        {
-          "shape": [
-            5,
-            48
-          ],
-          "ori_shape": [
-            5,
-            48
-          ],
-          "ori_format": "ND",
-          "format": "ND",
-          "name": "weight_input",
-          "type": "float16"
-        },
-        {
-          "shape": [
-            16,
-            48
-          ],
-          "ori_shape": [
-            16,
-            48
-          ],
-          "ori_format": "ND",
-          "format": "ND",
-          "name": "weight_hidden",
-          "type": "float16"
-        }
-      ],
-      "output_desc": [
-        {
-          "shape": [
-            1,
-            1,
-            5
-          ],
-          "ori_shape": [
-            1,
-            1,
-            5
-          ],
-          "ori_format": "ND",
-          "format": "ND",
-          "name": "y",
-          "type": "float16"
-        },
-        {
-            "shape": [
-                1,
-                1,
-                5
-            ],
-            "ori_shape": [
-                1,
-                1,
-                5
-            ],
-            "ori_format": "ND",
-            "format": "ND",
-            "name": "output_h",
-            "type": "float16"
-        },
-        {
-          "shape": [
-            1,
-            1,
-            5
-          ],
-          "ori_shape": [
-            1,
-            1,
-            5
-          ],
-          "ori_format": "ND",
-          "format": "ND",
-          "name": "update",
-          "type": "float16"
-        },
-        {
-          "shape": [
-            1,
-            1,
-            5
-          ],
-          "ori_shape": [
-            1,
-            1,
-            5
-          ],
-          "ori_format": "ND",
-          "format": "ND",
-          "name": "reset",
-          "type": "float16"
-        },
-        {
-          "shape": [
-            1,
-            1,
-            5
-          ],
-          "ori_shape": [
-            1,
-            1,
-            5
-          ],
-          "ori_format": "ND",
-          "format": "ND",
-          "name": "new",
-          "type": "float16"
-        },
-        {
-          "shape": [
-            1,
-            1,
-            5
-          ],
-          "ori_shape": [
-            1,
-            1,
-            5
-          ],
-          "ori_format": "ND",
-          "format": "ND",
-          "name": "hidden_new",
-          "type": "float16"
-        }
-      ],
-      "attr": [
-        {
-          "name": "direction",
-          "type": "string",
-          "value": "REDIRECTIONAL"
-        }
-      ],
-      "case_name": "test_DynamicGRUV2_002"
+      "case_name": "test_DynamicGRUV2_dynamic_001"
     }
 ]

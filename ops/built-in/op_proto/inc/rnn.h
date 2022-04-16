@@ -935,7 +935,7 @@ REG_OP(DynamicGRU)
 *@li init_h:Must be one of the following types: float16, float32.
 
 *@par Attributes:
-*@li direction:An string identifying the direction in the op. Default to "UNIDIRECTIONAL". Only UNIDIRECTIONAL is currently supported.
+*@li direction:An string identifying the direction in the op. Default to "UNIDIRECTIONAL". Support "UNIDIRECTIONAL" and "REDIRECTIONAL".
 *@li cell_depth:An integer identifying the cell depth in the op. Default to 1.
 *@li keep_prob:An float identifying the keep prob in the op. Default to 1.
 *@li cell_clip:An float identifying the cell clip in the op. Default to -1.
@@ -993,8 +993,7 @@ REG_OP(DynamicGRUV2)
 *@li init_h:Must be one of the following types: float16, float32.
 
 *@par Attributes:
-*@li direction:An string identifying the direction in the op. Default to "UNIDIRECTIONAL". 
-Only UNIDIRECTIONAL is currently supported.
+*@li direction:An string identifying the direction in the op. Default to "UNIDIRECTIONAL". Support "UNIDIRECTIONAL" and "REDIRECTIONAL".
 *@li cell_depth:An integer identifying the cell depth in the op. Default to 1.
 *@li keep_prob:An float identifying the keep prob in the op. Default to 1.
 *@li cell_clip:An float identifying the cell clip in the op. Default to -1.

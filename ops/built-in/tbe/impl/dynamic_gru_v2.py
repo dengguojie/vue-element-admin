@@ -295,10 +295,9 @@ def check_gru_v2_attr(op_name, direction, cell_depth, keep_prob,
     check attribute
     :return:
     """
-    if direction not in ["UNIDIRECTIONAL", "BIDIRECTIONAL"]:
-        error_manager_vector.raise_err_check_params_rules(op_name,
-                                                          "direction in ['UNIDIRECTIONAL', 'BIDIRECTIONAL']",
-                                                          "direction", str(direction))
+    if direction not in ["UNIDIRECTIONAL", "BIDIRECTIONAL", "REDIRECTIONAL"]:
+        error_manager_vector.raise_err_check_params_rules(
+            op_name, "direction in ['UNIDIRECTIONAL', 'BIDIRECTIONAL', 'REDIRECTIONAL']", "direction", str(direction))
 
     if cell_depth != 1:
         error_manager_vector.raise_err_check_params_rules(op_name, "cell_depth == 1",
@@ -386,23 +385,24 @@ def dynamic_gru_v2(x, weight_input, weight_hidden, bias_input, bias_hidden, seq_
         is_sync = False
         reuse_type = ReuseType.REUSE_ALL
         _solution(x, bias_input, bias_hidden, seq_length, init_h, y, update, gate_order,
-                  kernel_name, is_sync, reuse_type)
+                  kernel_name, is_sync, reuse_type, direction)
     else:
         is_w_in_l1_cut_core = weight_size / hidden_size * math.ceil(hidden_size / core_num) < l1_size * 0.75
         if is_w_in_l1_cut_core:
             is_sync = True
             reuse_type = ReuseType.REUSE_AFTERCUT
             _solution(x, bias_input, bias_hidden, seq_length, init_h, y, update, gate_order,
-                      kernel_name, is_sync, reuse_type)
+                      kernel_name, is_sync, reuse_type, direction)
         else:
             is_sync = False
             reuse_type = ReuseType.NO_REUSE
             _solution(x, bias_input, bias_hidden, seq_length, init_h, y, update, gate_order,
-                      kernel_name, is_sync, reuse_type)
+                      kernel_name, is_sync, reuse_type, direction)
 
 
 # 'pylint: disable=invalid-name,too-many-statements
-def _solution(x, bias_input, bias_hidden, seq_length, init_h, y, update, gate_order, kernel_name, is_sync, reuse_type):
+def _solution(x, bias_input, bias_hidden, seq_length, init_h, y, update, gate_order, kernel_name, is_sync, reuse_type,
+              direction):
     """
     solutions of op
     :return:
@@ -492,19 +492,26 @@ def _solution(x, bias_input, bias_hidden, seq_length, init_h, y, update, gate_or
     sub_t = 1
     loop_t = t_size // sub_t
     with tik_instance.for_range(0, loop_t) as i:
-        input_x_var = input_x[i * sub_t: i * sub_t + sub_t, :, :, :, :]
+        if direction == "REDIRECTIONAL":
+            valid_loop_i = loop_t - 1 - i
+        else:
+            valid_loop_i = i
+        input_x_var = input_x[valid_loop_i * sub_t: valid_loop_i * sub_t + sub_t, :, :, :, :]
         if is_global_init:
             s_init_h_gm_var = s_init_h_gm[:, :, :, :, :]
         else:
             s_init_h_gm_var = None
-        last_h = update_h_gm[i * sub_t - last: i * sub_t + sub_t - last:, :, :, :, :]
-        update_h_gm_var = update_h_gm[i * sub_t: i * sub_t + sub_t, :, :, :, :]
-        update_y_gm_var = update_y_gm[i * sub_t: i * sub_t + sub_t, :, :, :, :]
+        if direction == "REDIRECTIONAL":
+            last_h = update_h_gm[valid_loop_i * sub_t + last: valid_loop_i * sub_t + sub_t + last:, :, :, :, :]
+        else:
+            last_h = update_h_gm[valid_loop_i * sub_t - last: valid_loop_i * sub_t + sub_t - last:, :, :, :, :]
+        update_h_gm_var = update_h_gm[valid_loop_i * sub_t: valid_loop_i * sub_t + sub_t, :, :, :, :]
+        update_y_gm_var = update_y_gm[valid_loop_i * sub_t: valid_loop_i * sub_t + sub_t, :, :, :, :]
         if is_gate_output:
-            r_t_gm_var = r_t_gm[i * sub_t: i * sub_t + sub_t, :, :, :, :]
-            i_t_gm_var = i_t_gm[i * sub_t: i * sub_t + sub_t, :, :, :, :]
-            n_t_gm_var = n_t_gm[i * sub_t: i * sub_t + sub_t, :, :, :, :]
-            hn_t_gm_var = hn_t_gm[i * sub_t: i * sub_t + sub_t, :, :, :, :]
+            r_t_gm_var = r_t_gm[valid_loop_i * sub_t: valid_loop_i * sub_t + sub_t, :, :, :, :]
+            i_t_gm_var = i_t_gm[valid_loop_i * sub_t: valid_loop_i * sub_t + sub_t, :, :, :, :]
+            n_t_gm_var = n_t_gm[valid_loop_i * sub_t: valid_loop_i * sub_t + sub_t, :, :, :, :]
+            hn_t_gm_var = hn_t_gm[valid_loop_i * sub_t: valid_loop_i * sub_t + sub_t, :, :, :, :]
         else:
             r_t_gm_var = None
             i_t_gm_var = None
@@ -512,7 +519,7 @@ def _solution(x, bias_input, bias_hidden, seq_length, init_h, y, update, gate_or
             hn_t_gm_var = None
 
         if is_valid_mask:
-            seq_mask_gm_var = seq_mask_gm[i * sub_t: i * sub_t + sub_t, :, :, :, :]
+            seq_mask_gm_var = seq_mask_gm[valid_loop_i * sub_t: valid_loop_i * sub_t + sub_t, :, :, :, :]
         else:
             seq_mask_gm_var = None
 

@@ -32,29 +32,22 @@
 
 namespace {
   constexpr int32_t INPUT_BASE_SIZE = 3;
+  constexpr int32_t NUM_SIXTEEN = 16;
+  constexpr int32_t INDEX_ZERO = 0;
+  constexpr int32_t INDEX_ONE = 1;
+  constexpr int32_t INDEX_TWO = 2;
 }
 
 namespace optiling {
 static const int WORKSPACE_SIZE = 4096;
 static const int BLOCK_SIZE = 4096;
+static const int DEFAULT_CHEQUE_INDEX = -2;
 
 struct DynamicGruV2Param {
   int32_t sequenceLength;
   int32_t dynamicgruBatch;
   int32_t chequeIndex;
 };
-
-bool CheckInputShape(const std::string& opType, std::vector<int64_t> xShape) {
-  int32_t xDims = xShape.size();
-  OP_LOGD(opType.c_str(), "op [DynamicGruV2Tiling] : xDims=%d", xDims);
-
-  if (xShape[0] <= 0) {
-    OP_LOGE(opType.c_str(), "op [DynamicGruV2Tiling] : CheckInputShape, x.shape is invalid.");
-    return false;
-  }
-
-  return true;
-}
 
 void InitRunningParams(DynamicGruV2Param& params) {
   params.sequenceLength = 0;
@@ -80,6 +73,42 @@ void PrintTilingParams(const std::string& op_type, const DynamicGruV2Param& para
   OP_LOGD(op_type.c_str(), "params.chequeIndex=%d", params.chequeIndex);
 }
 
+// return tiling_index
+int32_t GetGruV2LibItem(const std::string& opType, const nlohmann::json& opCompileInfoJson,
+                        std::vector<int64_t> xShape) {
+  OP_LOGD("DynamicGruV2", "op [DynamicGruV2Tiling] enter GetGruV2LibItem");
+  const nlohmann::json& allVars = opCompileInfoJson["vars"];
+  if (allVars.empty()) {
+    OP_LOGE(opType.c_str(), "op [DynamicGruV2Tiling] : GetGruV2LibItem, get vars failed.");
+    return DEFAULT_CHEQUE_INDEX;
+  }
+  std::vector<std::vector<int64_t>> tune_shape_list;
+  tune_shape_list = allVars["tune_shape_list"].get<std::vector<std::vector<int64_t>>>();
+  if (tune_shape_list.empty()) {
+    OP_LOGE(opType.c_str(), "op [DynamicGruV2Tiling] : GetGruV2LibItem, get tune_shape_list failed.");
+    return DEFAULT_CHEQUE_INDEX;
+  }
+  for (uint64_t i = 0; i < tune_shape_list.size(); i++) {
+    if (tune_shape_list[i].size() != INPUT_BASE_SIZE) {
+      OP_LOGE(opType.c_str(), "op [DynamicGruV2Tiling] : GetGruV2LibItem, No matching schedule is found.");
+      return DEFAULT_CHEQUE_INDEX;
+    }
+    if ((tune_shape_list[i][INDEX_ZERO] == -1) && (tune_shape_list[i][INDEX_ONE] == -1)) {
+      OP_LOGI(opType.c_str(), "op [DynamicGruV2Tiling] : GetGruV2LibItem, The corresponding schedule is",
+              tune_shape_list[i][INDEX_TWO]);
+      return (int32_t)tune_shape_list[i][INDEX_TWO];
+    }
+    if ((tune_shape_list[i][INDEX_ZERO] == xShape[INDEX_ZERO]) &&
+      (((tune_shape_list[i][INDEX_ONE] + NUM_SIXTEEN - 1) / NUM_SIXTEEN) == xShape[INDEX_TWO])) {
+      OP_LOGI(opType.c_str(), "op [DynamicGruV2Tiling] : GetGruV2LibItem, The corresponding schedule is",
+              tune_shape_list[i][INDEX_TWO]);
+      return (int32_t)tune_shape_list[i][INDEX_TWO];
+    }
+  }
+  OP_LOGE(opType.c_str(), "op [DynamicGruV2Tiling] : GetGruV2LibItem, No matching schedule is found.");
+  return DEFAULT_CHEQUE_INDEX;
+}
+
 /*
  * @brief: tiling function of op
  * @param [in] opType: opType of the op
@@ -103,12 +132,14 @@ bool DynamicGruV2Tiling(const std::string& opType, const TeOpParas& opParas, con
   }
 
   std::vector<int64_t> xShape = opParas.inputs[0].tensor[0].shape;
-
-   // check inputs shape
-  bool ret = CheckInputShape(opType, xShape);
-  if (!ret) {
+  if (xShape.size() < INPUT_BASE_SIZE) {
     OP_LOGE(opType.c_str(), "op DynamicGruV2Tiling: inputs shape are invalid.");
-    return ret;
+    return false;
+  }
+
+  if (!(op_info.contains("vars")) || !(op_info.at("vars").contains("tune_shape_list"))) {
+    OP_LOGE(opType.c_str(), "DynamicGruV2Tiling get tune_shape_list error.");
+    return false;
   }
 
   // init running parameters
@@ -116,10 +147,16 @@ bool DynamicGruV2Tiling(const std::string& opType, const TeOpParas& opParas, con
   InitRunningParams(runParams);
 
   // set run tiling data
-  int32_t sequenceLength = xShape[0];
-  int32_t dynamicgruBatch = xShape[2];
+  int32_t sequenceLength = xShape[INDEX_ZERO];
+  int32_t dynamicgruBatch = xShape[INDEX_TWO];
+
   // default index
-  int32_t chequeIndex = 0;
+  int32_t chequeIndex = GetGruV2LibItem(opType, op_info, xShape);
+  if (chequeIndex == DEFAULT_CHEQUE_INDEX) {
+    OP_LOGE(opType.c_str(), "DynamicGruV2Tiling has no matched schedule.");
+    return false;
+  }
+
   runInfo.tiling_key = chequeIndex;
   OP_LOGD(opType.c_str(), "sequenceLength=%d.", sequenceLength);
   OP_LOGD(opType.c_str(), "dynamicgruBatch=%d.", dynamicgruBatch);

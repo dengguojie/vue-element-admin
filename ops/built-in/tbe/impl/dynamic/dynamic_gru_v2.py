@@ -16,6 +16,7 @@ gru v2
 import operator
 import math
 import enum
+import copy
 
 from te.lang.cce import broadcast
 from te.lang.cce import cast_to
@@ -30,13 +31,16 @@ from te.lang.cce import vrec
 from te.lang.cce import vsub
 from te.platform.cce_conf import api_check_support
 from te.domain.rl_bank import bank_manager
+from te.tvm import expr
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tik
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import tbe_context
 from tbe.common.buildcfg.default_buildcfg import dynamic_build_config_dict
+from tbe.common.rl_bank import rl_bank
 
 
 def _sigmoid_compute(input_x):
@@ -293,10 +297,9 @@ def _check_gru_v2_attr(op_name, direction, cell_depth, keep_prob,
     check attribute
     :return:
     """
-    if direction not in ["UNIDIRECTIONAL", "BIDIRECTIONAL"]:
-        error_manager_vector.raise_err_check_params_rules(op_name,
-                                                          "direction in ['UNIDIRECTIONAL', 'BIDIRECTIONAL']",
-                                                          "direction", str(direction))
+    if direction not in ["UNIDIRECTIONAL", "BIDIRECTIONAL", "REDIRECTIONAL"]:
+        error_manager_vector.raise_err_check_params_rules(
+            op_name, "direction in ['UNIDIRECTIONAL', 'BIDIRECTIONAL', 'REDIRECTIONAL']", "direction", str(direction))
 
     if cell_depth != 1:
         error_manager_vector.raise_err_check_params_rules(op_name, "cell_depth == 1",
@@ -366,7 +369,9 @@ def dynamic_gru_v2(x, weight_input, weight_hidden, bias_input, bias_hidden, seq_
     # data type of int32
     int32 = "int32"
     tiling_arg_num = 3
+
     is_dynamic = True
+
     type_len_dict = {"float16": 2, "float32": 4, "int8": 1, "uint8": 1,
                  "int32": 4, "int64": 8, }
 
@@ -422,30 +427,17 @@ def dynamic_gru_v2(x, weight_input, weight_hidden, bias_input, bias_hidden, seq_
     weight2_size = hidden_size * 3 * hidden_size * 16 * 16 * 2
     weight_size = weight1_size + weight2_size
 
-    is_m_full_core = m_size >= core_num
-    is_weight_all_in_l1 = weight_size < l1_size * 0.75
-    if is_m_full_core and is_weight_all_in_l1:
-        is_sync = False
-        reuse_type = ReuseType.REUSE_ALL
-        _solution(tik_instance, tiling_gm, x, bias_input, bias_hidden, seq_length, init_h, y, update, gate_order,
-                  kernel_name, is_sync, reuse_type, is_dynamic, t_size, m_size, in_x, hidden_size, tiling_index)
-    else:
-        is_w_in_l1_cut_core = weight_size / hidden_size * math.ceil(hidden_size / core_num) < l1_size * 0.75
-        if is_w_in_l1_cut_core:
-            is_sync = True
-            reuse_type = ReuseType.REUSE_AFTERCUT
-            _solution(tik_instance, tiling_gm, x, bias_input, bias_hidden, seq_length, init_h, y, update, gate_order,
-                      kernel_name, is_sync, reuse_type, is_dynamic, t_size, m_size, in_x, hidden_size, tiling_index)
-        else:
-            is_sync = False
-            reuse_type = ReuseType.NO_REUSE
-            _solution(tik_instance, tiling_gm, x, bias_input, bias_hidden, seq_length, init_h, y, update, gate_order,
-                      kernel_name, is_sync, reuse_type, is_dynamic, t_size, m_size, in_x, hidden_size, tiling_index)
+    is_w_in_l1_cut_core = weight_size / hidden_size * math.ceil(hidden_size / core_num) < l1_size * 0.75
+    is_sync = tik.all(tik.any(m_size < core_num, weight_size >= l1_size * 0.75),
+                      is_w_in_l1_cut_core)
+    flag_list = [is_sync, tik_instance]
+    _solution(tik_instance, tiling_gm, x, bias_input, bias_hidden, seq_length, init_h, y, update, gate_order,
+              kernel_name, is_dynamic, t_size, m_size, in_x, hidden_size, tiling_index, direction, flag_list)
 
 
 # 'pylint: disable=too-many-branches,unused-variable,too-many-statements,too-many-locals,invalid-name,too-many-arguments
 def _solution(tik_instance, tiling_gm, x, bias_input, bias_hidden, seq_length, init_h, y, update, gate_order,
-kernel_name, is_sync, reuse_type, is_dynamic, t_size, m_size, in_x, hidden_size, tiling_index):
+              kernel_name, is_dynamic, t_size, m_size, in_x, hidden_size, tiling_index, direction, flag_list):
     """
     solutions of op
     :return:
@@ -530,22 +522,28 @@ kernel_name, is_sync, reuse_type, is_dynamic, t_size, m_size, in_x, hidden_size,
     loop_t = t_size // sub_t
 
     rl_idx_list_first = []
-    rl_idx_list_last = []
 
     with tik_instance.for_range(0, loop_t) as i:
-        input_x_var = input_x[i * sub_t: i * sub_t + sub_t, :, :, :, :]
+        if direction == "REDIRECTIONAL":
+            valid_loop_i = loop_t - 1 - i
+        else:
+            valid_loop_i = i
+        input_x_var = input_x[valid_loop_i * sub_t: valid_loop_i * sub_t + sub_t, :, :, :, :]
         if is_global_init:
             s_init_h_gm_var = s_init_h_gm[:, :, :, :, :]
         else:
             s_init_h_gm_var = None
-        last_h = update_h_gm[i * sub_t - last: i * sub_t + sub_t - last:, :, :, :, :]
-        update_h_gm_var = update_h_gm[i * sub_t: i * sub_t + sub_t, :, :, :, :]
-        update_y_gm_var = update_y_gm[i * sub_t: i * sub_t + sub_t, :, :, :, :]
+        if direction == "REDIRECTIONAL":
+            last_h = update_h_gm[valid_loop_i * sub_t + last: valid_loop_i * sub_t + sub_t + last:, :, :, :, :]
+        else:
+            last_h = update_h_gm[valid_loop_i * sub_t - last: valid_loop_i * sub_t + sub_t - last:, :, :, :, :]
+        update_h_gm_var = update_h_gm[valid_loop_i * sub_t: valid_loop_i * sub_t + sub_t, :, :, :, :]
+        update_y_gm_var = update_y_gm[valid_loop_i * sub_t: valid_loop_i * sub_t + sub_t, :, :, :, :]
         if is_gate_output:
-            r_t_gm_var = r_t_gm[i * sub_t: i * sub_t + sub_t, :, :, :, :]
-            i_t_gm_var = i_t_gm[i * sub_t: i * sub_t + sub_t, :, :, :, :]
-            n_t_gm_var = n_t_gm[i * sub_t: i * sub_t + sub_t, :, :, :, :]
-            hn_t_gm_var = hn_t_gm[i * sub_t: i * sub_t + sub_t, :, :, :, :]
+            r_t_gm_var = r_t_gm[valid_loop_i * sub_t: valid_loop_i * sub_t + sub_t, :, :, :, :]
+            i_t_gm_var = i_t_gm[valid_loop_i * sub_t: valid_loop_i * sub_t + sub_t, :, :, :, :]
+            n_t_gm_var = n_t_gm[valid_loop_i * sub_t: valid_loop_i * sub_t + sub_t, :, :, :, :]
+            hn_t_gm_var = hn_t_gm[valid_loop_i * sub_t: valid_loop_i * sub_t + sub_t, :, :, :, :]
         else:
             r_t_gm_var = None
             i_t_gm_var = None
@@ -553,7 +551,7 @@ kernel_name, is_sync, reuse_type, is_dynamic, t_size, m_size, in_x, hidden_size,
             hn_t_gm_var = None
 
         if is_valid_mask:
-            seq_mask_gm_var = seq_mask_gm[i * sub_t: i * sub_t + sub_t, :, :, :, :]
+            seq_mask_gm_var = seq_mask_gm[valid_loop_i * sub_t: valid_loop_i * sub_t + sub_t, :, :, :, :]
         else:
             seq_mask_gm_var = None
 
@@ -562,8 +560,6 @@ kernel_name, is_sync, reuse_type, is_dynamic, t_size, m_size, in_x, hidden_size,
             output_list = [update_y_gm_var, update_h_gm_var, i_t_gm_var, r_t_gm_var, n_t_gm_var, hn_t_gm_var]
         else:
             output_list = [update_y_gm_var, update_h_gm_var]
-
-        call_module_config = {}
 
         if is_dynamic:
             with tik_instance.if_scope(i == 0):
@@ -574,17 +570,17 @@ kernel_name, is_sync, reuse_type, is_dynamic, t_size, m_size, in_x, hidden_size,
                     output_tensors=output_list,
                     config_map={"tiling_key":tiling_index},
                     input_params=[is_gate_output, is_first_round, is_global_init, gate_order, fp16_input_output,
-                                  is_sync, reuse_type, is_dynamic])
+                                  is_dynamic, flag_list])
 
             with tik_instance.if_scope(i > 0):
                 is_first_round = False
-                rl_idx_list_last = tik_instance.call_module(
+                tik_instance.call_module(
                     function=_dynamic_gru_v2_inner,
                     input_tensors=input_list,
                     output_tensors=output_list,
                     config_map={"tiling_key":tiling_index},
                     input_params=[is_gate_output, is_first_round, is_global_init, gate_order, fp16_input_output,
-                                  is_sync, reuse_type, is_dynamic])
+                                  is_dynamic, flag_list])
         else:
             with tik_instance.if_scope(i == 0):
                 is_first_round = True
@@ -592,8 +588,8 @@ kernel_name, is_sync, reuse_type, is_dynamic, t_size, m_size, in_x, hidden_size,
                     _dynamic_gru_v2_inner,
                     input_list,
                     output_list,
-                    [is_gate_output, is_first_round, is_global_init, gate_order, fp16_input_output, is_sync,
-                     reuse_type, is_dynamic])
+                    [is_gate_output, is_first_round, is_global_init, gate_order, fp16_input_output, is_dynamic,
+                     flag_list])
 
             with tik_instance.if_scope(i > 0):
                 is_first_round = False
@@ -601,11 +597,16 @@ kernel_name, is_sync, reuse_type, is_dynamic, t_size, m_size, in_x, hidden_size,
                     _dynamic_gru_v2_inner,
                     input_list,
                     output_list,
-                    [is_gate_output, is_first_round, is_global_init, gate_order, fp16_input_output, is_sync,
-                     reuse_type, is_dynamic])
+                    [is_gate_output, is_first_round, is_global_init, gate_order, fp16_input_output, is_dynamic,
+                     flag_list])
+
+    tiling_key_value_list = []
+    if rl_idx_list_first:
+        for idx in rl_idx_list_first:
+            tiling_key_value_list.append([idx])
 
     if is_dynamic:
-        dynamic_config_a = dynamic_build_config_dict
+        dynamic_config_a = copy.deepcopy(dynamic_build_config_dict)
         dynamic_config_a["dump_cce_code"] = False
         dynamic_config_a["sync_mode"] = 2
         dynamic_config_a["debug_message"] = False
@@ -618,7 +619,7 @@ kernel_name, is_sync, reuse_type, is_dynamic, t_size, m_size, in_x, hidden_size,
                               flowtable=(tiling_gm,),
                               extend_params={"build_multi_kernels":{
                                       "tiling_key":[tiling_index],
-                                      "tiling_key_value":[[0]]
+                                      "tiling_key_value":tiling_key_value_list
                             }}
                             )
     else:
@@ -647,9 +648,8 @@ def _dynamic_gru_v2_inner(input_list, custom_list):
     is_global_init = custom_list[2]
     gate_order = custom_list[3]
     fp16_input_output = custom_list[4]
-    is_sync = custom_list[5]
-    reuse_type = custom_list[6]
-    is_dynamic = custom_list[7]
+    is_dynamic = custom_list[5]
+    flag_list = custom_list[6]
 
     shape_x_input = input_x.shape
     shape_w1_input = weight1.shape
@@ -1012,6 +1012,18 @@ def _dynamic_gru_v2_inner(input_list, custom_list):
         output_list.append(n_t_gm)
         output_list.append(hn_t_gm)
 
+    output_list, s = rl_bank.tik_dsl_bank_proc(output_list, sync_tensor=sync, dynamic=is_dynamic)
+    index_list = []
+    sch_list, tune_shape_list = s
+
+    for index, _ in enumerate(tune_shape_list):
+        index_list.append(tune_shape_list[index][2])
+    if sch_list is not None and len(sch_list) > 0:
+        if is_dynamic:
+            for index, sch_list_value in enumerate(sch_list):
+                sch_list_value.set_constraint(expr.And(input_x.shape[2] <= tune_shape_list[index][1], \
+                input_x.shape[2] > 0))
+
     bank_manager.update_bank_hit_info(True)
     # schedule
     sch = tvm.schedule.create_schedule([update_h_gm.op])
@@ -1290,9 +1302,11 @@ def _dynamic_gru_v2_inner(input_list, custom_list):
         sch[update_h_fp16].set_buffer_size(shape_out_1)
     sch[update_y_gm_back].set_buffer_size(shape_out_1)
 
-    if reuse_type in [ReuseType.NO_REUSE, ReuseType.REUSE_ALL]:
+    is_sync = flag_list[0]
+    tik_instance = flag_list[1]
+    with tik_instance.if_scope(tik.negate(is_sync)):
         sch[update_h_gm].bind(update_h_gm_m_outer, tvm.thread_axis("blockIdx.x"))
-    else:
+    with tik_instance.else_scope():
         core_num = tbe_platform.get_soc_spec("CORE_NUM")
         update_h_gm_m_outer_size = (m_size + factor_l1_m - 1) // factor_l1_m
         update_h_gm_o_outer_size = (hidden_size + factor_l1_n - 1) // factor_l1_n
@@ -1311,7 +1325,7 @@ def _dynamic_gru_v2_inner(input_list, custom_list):
         fused_axis = sch[update_h_gm].fuse(update_h_gm_m_outer, update_h_gm_o_outer)
         bind_axis, bind_axis_inner = sch[update_h_gm].split(fused_axis, nparts=core_num)
         sch[update_h_gm].bind(bind_axis, tvm.thread_axis("blockIdx.x"))
-    if is_sync:
+    with tik_instance.if_scope(is_sync):
         sch[update_h_gm].wait_block_sync(axis=update_h_gm_t_inner, tensor=sync[0], bottom=True)
         sch[update_h_gm].set_block_sync(axis=update_h_gm_t_inner, tensor=sync[0], bottom=True)
 
@@ -1404,4 +1418,11 @@ def _dynamic_gru_v2_inner(input_list, custom_list):
     sch[update_y_gm_back].reused_by(update_h_ub)
     sch[update_h_gm].emit_insn(update_h_gm_inner, "dma_copy")
 
-    return output_list, sch
+    default_index = 0
+    if index_list is not None and len(index_list) > 0:
+        default_index = index_list[-1] + 1
+    tune_shape_list.append([-1, -1, default_index])
+    tbe_context.get_context().add_compile_info("vars", {"tune_shape_list": tune_shape_list})
+    sch_list.append(sch)
+    index_list.append(default_index)
+    return output_list, sch_list, index_list

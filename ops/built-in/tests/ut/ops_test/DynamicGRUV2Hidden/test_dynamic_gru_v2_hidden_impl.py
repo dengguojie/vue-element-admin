@@ -472,6 +472,14 @@ ut_case.add_case("all", {
 ut_case.add_case("all", {
     "params": [cache, w2, b2, seq, None, output_y, output_h, None, None, None, None]
 })
+ut_case.add_case("all", {
+    "params": [cache, w2, b2, seq, s_init_h_gm, output_y, output_h, i, r, n, hn,
+               "REDIRECTIONAL", 1, 1.0, -1.0, 0, True, "tanh", "zrh", True, True]
+})
+ut_case.add_case("all", {
+    "params": [cache, w2, b2, seq, None, output_y, output_h, None, None, None, None,
+               "REDIRECTIONAL", 1, 1.0, -1.0, 0, True, "tanh", "zrh", True, True]
+})
 shape_seq = [2, 32, 32, 16, 16]
 seq_wrong = {"shape":shape_seq, "dtype":'float16', "param_type": "input", "value_range": [0.01, 0.1], "ori_format": "NC1HWC0", "format": "FRACTAL_NZ", "ori_shape": shape_seq}
 ut_case.add_case("all", {

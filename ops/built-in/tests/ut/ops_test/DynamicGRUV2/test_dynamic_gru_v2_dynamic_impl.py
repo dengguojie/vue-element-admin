@@ -106,8 +106,18 @@ ut_case.add_case("all", {
 ut_case.add_case("all", {
     "params": [x, w1, w2, b1, b2, None, s_init_h_gm, output_y, output_h, i, r, n, hn]
 })
-
-
+ut_case.add_case("all", {
+    "params": [x, w1, w2, b1, b2, None, s_init_h_gm, output_y, output_h, i, r, n, hn,
+               "REDIRECTIONAL", 1, 1.0, -1.0, 0, True, "tanh", "zrh", True, True]
+})
+ut_case.add_case("all", {
+    "params": [x, w1, w2, b1, b2, seq, s_init_h_gm, output_y, output_h, i, r, n, hn,
+               "REDIRECTIONAL", 1, 1.0, -1.0, 0, True, "tanh", "zrh", True, True]
+})
+ut_case.add_case("all", {
+    "params": [x, w1, w2, b1, b2, None, None, output_y, output_h, None, None, None, None,
+               "REDIRECTIONAL", 1, 1.0, -1.0, 0, True, "tanh", "zrh", True, True]
+})
 if __name__ == '__main__':
     ut_case.run("Ascend910A")
     exit(0)

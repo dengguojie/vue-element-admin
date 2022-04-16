@@ -36,6 +36,9 @@ Status ParseParamsCommonGRU(const Message *op_src, ge::Operator &op_dest) {
         if (attr.name() == "hidden_size" && attr.type() == ge::onnx::AttributeProto::INT) {
             hidden_size = attr.i();
         }
+        if (attr.name() == "direction" && attr.type() == ge::onnx::AttributeProto::STRING) {
+            op_dest.SetAttr("direction", attr.s());
+        }
     }
     op_dest.SetAttr("hidden_size", hidden_size);
 

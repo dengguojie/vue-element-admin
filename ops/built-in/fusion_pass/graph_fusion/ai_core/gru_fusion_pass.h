@@ -39,6 +39,32 @@ class GRUFusionPass : public PatternFusionBasePass {
   Status AddTransposNode(ge::NodePtr gruNode, int anchorIndex, ge::ComputeGraph& graph);
   Status CreateSliceNode(ge::ComputeGraph& graph, ge::NodePtr& gru_node, ge::NodePtr& new_node);
   Status AddBiasSplitNode(ge::ComputeGraph& graph, const ge::NodePtr& fusedNode, ge::NodePtr& splitNode) const;
+
+  Status CheckParams(const ge::OpDescPtr& fusedDesc);
+  void SetTensorDescription(ge::GeTensorDesc &tensorDesc, vector<int64_t> &dims, const ge::Format &format,
+                            const ge::DataType &dtype);
+  Status ProcessBidiFusion(ge::ComputeGraph& graph, ge::NodePtr& fusedNode, ge::OpDescPtr& fusedDesc,
+                           vector<ge::NodePtr>& newNodes);
+  Status SetSplitVNodeInfo(ge::GeTensorDesc& tensorDesc, ge::OpDescPtr& outOpDesc, vector<int64_t>& dimIn,
+                           vector<int32_t>& inputDims);
+  Status AddSplitVNode(const std::string& nodeName, ge::GeTensorDesc& inputDesc, ge::GeTensorDesc& outputDesc,
+                       ge::NodePtr& splitNode, ge::NodePtr& peerOutNode, vector<int32_t>& splitDimAxis,
+                       vector<int32_t>& sizeSplitAxis, int splitIndex, vector<ge::NodePtr>& newNodes,
+                       ge::ComputeGraph& graph);
+  Status AddBidiWeightSplitNode(ge::ComputeGraph& graph, const ge::NodePtr& fusedNode,
+                                int weightIndex, ge::NodePtr& splitNode, vector<ge::NodePtr>& newNodes);
+  Status AddBidiBiasSplitNode(ge::ComputeGraph& graph, const ge::NodePtr& fusedNode, int biasIndex,
+                              ge::NodePtr& forwardSplitNode, ge::NodePtr& reverseSplitNode,
+                              vector<ge::NodePtr>& newNodes);
+  Status AddBidiInitHSplitNode(ge::ComputeGraph& graph, const ge::NodePtr& fusedNode,
+                               int initHIndex, ge::NodePtr& splitNode, vector<ge::NodePtr>& newNodes);
+  Status AddExpandDimsAndConcatNode(ge::ComputeGraph& graph, ge::NodePtr& fusedNode, ge::NodePtr& forwardNode,
+                                    ge::NodePtr& reverseNode, ge::GeTensorDesc& outputDesc,
+                                    vector<ge::NodePtr>& newNodes);
+  Status AddSliceAndConcatNode(ge::ComputeGraph& graph, ge::NodePtr& fusedNode, ge::NodePtr& forwardNode,
+                               ge::NodePtr& reverseNode, ge::GeTensorDesc& outputDesc, vector<ge::NodePtr>& newNodes,
+                               int nodeIndex);
+
   const string FUSED_OP_TYPE = "SplitD_DynamicGRUV2";
 };
 }  // namespace fe
