@@ -1,0 +1,317 @@
+[
+    {
+        "op": "CIoUGrad",
+        "case_name": "test_CIoUGrad_000",
+        "input_desc": [
+            {
+                "shape": [
+                    30720
+                  ],
+                  "format": "ND",
+                  "ori_shape": [
+                    30720
+                  ],
+                  "ori_format": "ND",
+                  "name": "dy",
+                  "type": "float32"
+            },
+            {
+                "shape": [
+                    4,
+                    30720
+                  ],
+                  "format": "ND",
+                  "ori_shape": [
+                    4,
+                    30720
+                  ],
+                  "ori_format": "ND",
+                  "name": "bboxes",
+                  "type": "float32"
+            },
+            {
+                "shape": [
+                    4,
+                    30720
+                  ],
+                  "format": "ND",
+                  "ori_shape": [
+                    4,
+                    30720
+                  ],
+                  "ori_format": "ND",
+                  "name": "gtboxes",
+                  "type": "float32"
+            },
+            {
+                "shape": [
+                    30720
+                  ],
+                  "format": "ND",
+                  "ori_shape": [
+                    30720
+                  ],
+                  "ori_format": "ND",
+                  "name": "atan_sub",
+                  "type": "float32"
+            }
+        ],
+        "output_desc": [
+            {
+                "shape": [
+                    4,
+                    30720
+                  ],
+                  "format": "ND",
+                  "ori_shape": [
+                    4,
+                    30720
+                  ],
+                  "ori_format": "ND",
+                  "name": "dbboxes",
+                  "type": "float32"
+            },
+            {
+                "shape": [
+                    4,
+                    30720
+                  ],
+                  "format": "ND",
+                  "ori_shape": [
+                    4,
+                    30720
+                  ],
+                  "ori_format": "ND",
+                  "name": "dgtboxes",
+                  "type": "float32"
+            }
+        ],
+        "attr": [
+            {
+                "name": "trans",
+                "value": false,
+                "type": "bool"
+            },
+            {
+                "name": "is_cross",
+                "value": false,
+                "type": "bool"
+            },
+            {
+                "name": "mode",
+                "value": "iou",
+                "type": "string"
+            }
+        ]
+    },
+    {
+        "op": "CIoUGrad",
+        "case_name": "test_CIoUGrad_001",
+        "input_desc": [
+            {
+                "shape": [
+                    30720
+                  ],
+                  "format": "ND",
+                  "ori_shape": [
+                    30720
+                  ],
+                  "ori_format": "ND",
+                  "name": "dy",
+                  "type": "float32"
+            },
+            {
+                "shape": [
+                    4,
+                    30720
+                  ],
+                  "format": "ND",
+                  "ori_shape": [
+                    4,
+                    30720
+                  ],
+                  "ori_format": "ND",
+                  "name": "bboxes",
+                  "type": "float32"
+            },
+            {
+                "shape": [
+                    4,
+                    30720
+                  ],
+                  "format": "ND",
+                  "ori_shape": [
+                    4,
+                    30720
+                  ],
+                  "ori_format": "ND",
+                  "name": "gtboxes",
+                  "type": "float32"
+            },
+            {
+                "shape": [
+                    30720
+                  ],
+                  "format": "ND",
+                  "ori_shape": [
+                    30720
+                  ],
+                  "ori_format": "ND",
+                  "name": "atan_sub",
+                  "type": "float32"
+            }
+        ],
+        "output_desc": [
+            {
+                "shape": [
+                    4,
+                    30720
+                  ],
+                  "format": "ND",
+                  "ori_shape": [
+                    4,
+                    30720
+                  ],
+                  "ori_format": "ND",
+                  "name": "dbboxes",
+                  "type": "float32"
+            },
+            {
+                "shape": [
+                    4,
+                    30720
+                  ],
+                  "format": "ND",
+                  "ori_shape": [
+                    4,
+                    30720
+                  ],
+                  "ori_format": "ND",
+                  "name": "dgtboxes",
+                  "type": "float32"
+            }
+        ],
+        "attr": [
+            {
+                "name": "trans",
+                "value": true,
+                "type": "bool"
+            },
+            {
+                "name": "is_cross",
+                "value": false,
+                "type": "bool"
+            },
+            {
+                "name": "mode",
+                "value": "iou",
+                "type": "string"
+            }
+        ]
+    },
+    {
+        "op": "CIoUGrad",
+        "case_name": "test_CIoUGrad_002",
+        "input_desc": [
+            {
+                "shape": [
+                    40
+                  ],
+                  "format": "ND",
+                  "ori_shape": [
+                    40
+                  ],
+                  "ori_format": "ND",
+                  "name": "dy",
+                  "type": "float32"
+            },
+            {
+                "shape": [
+                    4,
+                    40
+                  ],
+                  "format": "ND",
+                  "ori_shape": [
+                    4,
+                    40
+                  ],
+                  "ori_format": "ND",
+                  "name": "bboxes",
+                  "type": "float32"
+            },
+            {
+                "shape": [
+                    4,
+                    40
+                  ],
+                  "format": "ND",
+                  "ori_shape": [
+                    4,
+                    40
+                  ],
+                  "ori_format": "ND",
+                  "name": "gtboxes",
+                  "type": "float32"
+            },
+            {
+                "shape": [
+                    40
+                  ],
+                  "format": "ND",
+                  "ori_shape": [
+                    40
+                  ],
+                  "ori_format": "ND",
+                  "name": "atan_sub",
+                  "type": "float32"
+            }
+        ],
+        "output_desc": [
+            {
+                "shape": [
+                    4,
+                    40
+                  ],
+                  "format": "ND",
+                  "ori_shape": [
+                    4,
+                    40
+                  ],
+                  "ori_format": "ND",
+                  "name": "dbboxes",
+                  "type": "float32"
+            },
+            {
+                "shape": [
+                    4,
+                    40
+                  ],
+                  "format": "ND",
+                  "ori_shape": [
+                    4,
+                    40
+                  ],
+                  "ori_format": "ND",
+                  "name": "dgtboxes",
+                  "type": "float32"
+            }
+        ],
+        "attr": [
+            {
+                "name": "trans",
+                "value": true,
+                "type": "bool"
+            },
+            {
+                "name": "is_cross",
+                "value": false,
+                "type": "bool"
+            },
+            {
+                "name": "mode",
+                "value": "iou",
+                "type": "string"
+            }
+        ]
+    }
+]

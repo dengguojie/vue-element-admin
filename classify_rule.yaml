@@ -4165,6 +4165,8 @@ pytorch:
       - ops/built-in/tbe/impl/balance_rois.py
       - ops/built-in/tbe/impl/dynamic/hard_sigmoid.py
       - ops/built-in/tbe/impl/giou_grad.py
+      - ops/built-in/tbe/impl/diou_grad.py
+      - ops/built-in/tbe/impl/ciou_grad.py
       - ops/built-in/tbe/impl/rotated_iou.py
       - ops/built-in/tbe/impl/rotated_overlaps.py
       - ops/built-in/tbe/impl/group_norm_relu.py

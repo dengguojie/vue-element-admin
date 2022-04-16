@@ -10,7 +10,7 @@
  * Apache License for more details at
  * http://www.apache.org/licenses/LICENSE-2.0
  *
- * @file test_GIoU_proto.cpp
+ * @file test_DIoUGrad_proto.cpp
  *
  * @brief
  *
@@ -22,19 +22,19 @@
 #include "op_proto_test_util.h"
 #include "nn_detect_ops.h"
 
-class GIoUGradTest : public testing::Test {
+class DIoUGradTest : public testing::Test {
 protected:
   static void SetUpTestCase() {
-    std::cout << "GIoUGradTest SetUp" << std::endl;
+    std::cout << "DIoUGradTest SetUp" << std::endl;
   }
 
   static void TearDownTestCase() {
-    std::cout << "GIoUGradTest TearDown" << std::endl;
+    std::cout << "DIoUGradTest TearDown" << std::endl;
   }
 };
 
-TEST_F(GIoUGradTest, GIoUGradTest_infershape_test_1) {
-  ge::op::GIoUGrad op;
+TEST_F(DIoUGradTest, DIoUGradTest_infershape_test_1) {
+  ge::op::DIoUGrad op;
 
   op.UpdateInputDesc("dy", create_desc({1,}, ge::DT_FLOAT));
   op.UpdateInputDesc("bboxes", create_desc({4, 1}, ge::DT_FLOAT));
@@ -53,8 +53,8 @@ TEST_F(GIoUGradTest, GIoUGradTest_infershape_test_1) {
   EXPECT_EQ(output_desc_1.GetShape().GetDims(), expected_output_shape);
 }
 
-TEST_F(GIoUGradTest, GIoUGradTest_infershape_test_2) {
-  ge::op::GIoUGrad op;
+TEST_F(DIoUGradTest, DIoUGradTest_infershape_test_2) {
+  ge::op::DIoUGrad op;
 
   op.UpdateInputDesc("dy", create_desc({15360,}, ge::DT_FLOAT));
   op.UpdateInputDesc("bboxes", create_desc({4, 15360}, ge::DT_FLOAT));
@@ -74,8 +74,8 @@ TEST_F(GIoUGradTest, GIoUGradTest_infershape_test_2) {
   EXPECT_EQ(output_desc_1.GetShape().GetDims(), expected_output_shape);
 }
 
-TEST_F(GIoUGradTest, GIoUGradTest_infershape_test_3) {
-  ge::op::GIoUGrad op;
+TEST_F(DIoUGradTest, DIoUGradTest_infershape_test_3) {
+  ge::op::DIoUGrad op;
 
   op.UpdateInputDesc("dy", create_desc({15360,}, ge::DT_FLOAT));
   op.UpdateInputDesc("bboxes", create_desc({4, 15360}, ge::DT_FLOAT));
@@ -87,8 +87,8 @@ TEST_F(GIoUGradTest, GIoUGradTest_infershape_test_3) {
   EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
 }
 
-TEST_F(GIoUGradTest, GIoUGradTest_infershape_test_4) {
-  ge::op::GIoUGrad op;
+TEST_F(DIoUGradTest, DIoUGradTest_infershape_test_4) {
+  ge::op::DIoUGrad op;
 
   op.UpdateInputDesc("dy", create_desc({15360,}, ge::DT_FLOAT));
   op.UpdateInputDesc("bboxes", create_desc({5, 15360}, ge::DT_FLOAT));
@@ -98,8 +98,8 @@ TEST_F(GIoUGradTest, GIoUGradTest_infershape_test_4) {
   EXPECT_EQ(ret, ge::GRAPH_FAILED);
 }
 
-TEST_F(GIoUGradTest, GIoUGradTest_infershape_test_5) {
-  ge::op::GIoUGrad op;
+TEST_F(DIoUGradTest, DIoUGradTest_infershape_test_5) {
+  ge::op::DIoUGrad op;
 
   op.UpdateInputDesc("dy", create_desc({15360,}, ge::DT_FLOAT));
   op.UpdateInputDesc("bboxes", create_desc({4, 15360}, ge::DT_FLOAT));
@@ -109,8 +109,8 @@ TEST_F(GIoUGradTest, GIoUGradTest_infershape_test_5) {
   EXPECT_EQ(ret, ge::GRAPH_FAILED);
 }
 
-TEST_F(GIoUGradTest, GIoUGradTest_infershape_test_6) {
-  ge::op::GIoUGrad op;
+TEST_F(DIoUGradTest, DIoUGradTest_infershape_test_6) {
+  ge::op::DIoUGrad op;
 
   op.UpdateInputDesc("dy", create_desc({15360,}, ge::DT_FLOAT));
   op.UpdateInputDesc("bboxes", create_desc({4, 15360}, ge::DT_FLOAT));
@@ -121,8 +121,8 @@ TEST_F(GIoUGradTest, GIoUGradTest_infershape_test_6) {
   EXPECT_EQ(ret, ge::GRAPH_FAILED);
 }
 
-TEST_F(GIoUGradTest, GIoUGradTest_infershape_test_7) {
-  ge::op::GIoUGrad op;
+TEST_F(DIoUGradTest, DIoUGradTest_infershape_test_7) {
+  ge::op::DIoUGrad op;
 
   op.UpdateInputDesc("dy", create_desc({15360,}, ge::DT_FLOAT));
   op.UpdateInputDesc("bboxes", create_desc({4, 15360}, ge::DT_FLOAT));
@@ -133,8 +133,8 @@ TEST_F(GIoUGradTest, GIoUGradTest_infershape_test_7) {
   EXPECT_EQ(ret, ge::GRAPH_FAILED);
 }
 
-TEST_F(GIoUGradTest, GIoUGradTest_infershape_test_8) {
-  ge::op::GIoUGrad op;
+TEST_F(DIoUGradTest, DIoUGradTest_infershape_test_8) {
+  ge::op::DIoUGrad op;
 
   op.UpdateInputDesc("dy", create_desc({15360,}, ge::DT_FLOAT));
   op.UpdateInputDesc("bboxes", create_desc({4, 15360}, ge::DT_FLOAT));

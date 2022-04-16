@@ -1985,37 +1985,110 @@ COMMON_INFER_FUNC_REG(GridAssignPositive, GridAssignPositiveInferShape);
 VERIFY_FUNC_REG(GridAssignPositive, GridAssignPositiveVerify);
 // ----------------GridAssignPositive END-------------------
 
-// ----------------GIoUGrad Started-------------------
-IMPLEMT_INFERFUNC(GIoUGrad, GIoUGradInferShape) {
-  OP_LOGD(op.GetName().c_str(), "GIoUGradInferShape begin.");
+// ----------------IoUGrad START-------------------
+IMPLEMT_COMMON_INFERFUNC(IoUGradInferShape) {
+  OP_LOGD(op.GetName().c_str(), "InferShape begin.");
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
-
   auto bboxes_desc = op_desc->GetInputDescPtr(1);
   auto gtboxes_desc = op_desc->GetInputDescPtr(2);
   auto dbboxes_desc = op_desc->MutableOutputDesc(0);
   auto dgtboxes_desc = op_desc->MutableOutputDesc(1);
 
-  auto shape_bboxes = bboxes_desc->GetShape();
-  auto shape_gtboxes = gtboxes_desc->GetShape();
-
-  if (shape_bboxes.GetDims() != shape_gtboxes.GetDims()) {
-    OP_LOGE(op.GetName().c_str(), "shape_bboxes shoule equal to shape_gtboxes.");
-    return GRAPH_FAILED;
-  }
-
-  dbboxes_desc->SetShape(shape_bboxes);
-  dgtboxes_desc->SetShape(shape_bboxes);
+  dbboxes_desc->SetShape(bboxes_desc->GetShape());
+  dgtboxes_desc->SetShape(gtboxes_desc->GetShape());
 
   auto input_dtype = bboxes_desc->GetDataType();
   dbboxes_desc->SetDataType(input_dtype);
   dgtboxes_desc->SetDataType(input_dtype);
-
-  OP_LOGD(op.GetName().c_str(), "GIoUGradInferShape end.");
+  OP_LOGD(op.GetName().c_str(), "InferShape end.");
   return GRAPH_SUCCESS;
 }
 
-INFER_FUNC_REG(GIoUGrad, GIoUGradInferShape);
+static bool IoUGradVerify(ge::Operator& op) {
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  auto dy_desc = op_desc->GetInputDescPtr(0);
+  auto bboxes_desc = op_desc->GetInputDescPtr(1);
+  auto gtboxes_desc = op_desc->GetInputDescPtr(2);
+  auto dy_dtype = dy_desc->GetDataType();
+  auto bboxes_dtype = bboxes_desc->GetDataType();
+  auto gtboxes_dtype = gtboxes_desc->GetDataType();
+
+  auto shape_bboxes = bboxes_desc->GetShape();
+  auto shape_gtboxes = gtboxes_desc->GetShape();
+  if (shape_bboxes.GetDims() != shape_gtboxes.GetDims()) {
+    OP_LOGE(op.GetName().c_str(), "shape_bboxes shoule equal to shape_gtboxes.");
+    return false;
+  }
+
+  bool is_cross = true;
+  if(!AttrUtils::GetBool(op_desc, "is_cross", is_cross)) {
+    OP_LOGD(op.GetName().c_str(), "GetBool is_cross failed, defalut true.");
+  }
+  if (is_cross) {
+    OP_LOGE(op.GetName().c_str(), "The attr_is_cross only support false now.");
+    return false;
+  }
+
+  std::string mode = "iou";
+  if(!AttrUtils::GetStr(op_desc, "mode", mode)) {
+    OP_LOGD(op.GetName().c_str(), "GetStr mode failed, defalut 'iou'.");
+  }
+  if (mode != "iou") {
+    OP_LOGE(op.GetName().c_str(), "The attr_mode only support 'iou' now.");
+    return false;
+  }  
+
+  if (bboxes_dtype != gtboxes_dtype || bboxes_dtype != dy_dtype) {
+    OP_LOGE(op.GetName().c_str(), "The dtype of bboxes, gtboxes and dy shoule be same.");
+    return false;
+  }
+  return true;
+}
+// ----------------IoUGrad END-------------------
+
+
+// ----------------GIoUGrad Started-------------------
+IMPLEMT_VERIFIER(GIoUGrad, GIoUGradVerify)
+{
+  OP_LOGD(op.GetName().c_str(), "GIoUGradVerify begin.");
+  if(IoUGradVerify(op) == false) {
+    return GRAPH_FAILED;
+  }
+  OP_LOGD(op.GetName().c_str(), "GIoUGradVerify end.");
+  return GRAPH_SUCCESS;
+}
+COMMON_INFER_FUNC_REG(GIoUGrad, IoUGradInferShape);
+VERIFY_FUNC_REG(GIoUGrad, GIoUGradVerify);
+
 // ----------------GIoUGrad Finished-------------------
+
+// ----------------DIoUGrad Started-------------------
+IMPLEMT_VERIFIER(DIoUGrad, DIoUGradVerify)
+{
+  OP_LOGD(op.GetName().c_str(), "DIoUGradVerify begin.");
+  if(IoUGradVerify(op) == false) {
+    return GRAPH_FAILED;
+  }
+  OP_LOGD(op.GetName().c_str(), "DIoUGradVerify end.");
+  return GRAPH_SUCCESS;
+}
+COMMON_INFER_FUNC_REG(DIoUGrad, IoUGradInferShape);
+VERIFY_FUNC_REG(DIoUGrad, DIoUGradVerify);
+// ----------------DIoUGrad Finished-------------------
+
+// ----------------CIoUGrad Started-------------------
+IMPLEMT_VERIFIER(CIoUGrad, CIoUGradVerify)
+{
+  OP_LOGD(op.GetName().c_str(), "CIoUGradVerify begin.");
+  if(IoUGradVerify(op) == false) {
+    return GRAPH_FAILED;
+  }
+  OP_LOGD(op.GetName().c_str(), "CIoUGradVerify end.");
+  return GRAPH_SUCCESS;
+}
+COMMON_INFER_FUNC_REG(CIoUGrad, IoUGradInferShape);
+VERIFY_FUNC_REG(CIoUGrad, CIoUGradVerify);
+// ----------------CIoUGrad Finished-------------------
 
 // ----------------RotatedOverlaps Started-------------------
 IMPLEMT_COMMON_INFERFUNC(RotatedOverlapsInferShape) {

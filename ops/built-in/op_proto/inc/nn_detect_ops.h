@@ -2031,7 +2031,7 @@ REG_OP(GridAssignPositive)
     .OP_END_FACTORY_REG(GridAssignPositive)
 
 /**
-*@brief GIoUGrad . \n
+* @brief Calculate the inverse gradient of GIoU. \n
 
 *@par Inputs:
 *@li dy : data of grad increment, a 1D Tensor of type float16 or float32 with
@@ -2065,17 +2065,88 @@ REG_OP(GIoUGrad)
     .OP_END_FACTORY_REG(GIoUGrad)
 
 /**
-*@brief RotatedOverlaps . \n
+* @brief Calculate the inverse gradient of DIoU. \n
+
+* @par Inputs:
+* @li dy : data of grad increment, a 1D Tensor of type float16 or float32 with
+* shape (N,).
+* @li bboxes: Bounding boxes, a 2D Tensor of type float16 or float32 with
+* shape (4, N). "N" indicates the number of bounding boxes, and the value
+* "4" refers to [x1, y1, x2, y2] or [x, y, w, h].
+* @li gtboxes: Ground-truth boxes, a 2D Tensor of type float16 or float32
+* with shape (4, M). "M" indicates the number of ground truth boxes, and
+* the value "4" refers to [x1, y1, x2, y2] or [x, y, w, h] . \n
+
+* @par Attributes:
+* @li trans: An optional attr, true for 'xywh', false for 'xyxy', only support true now.
+* @li is_cross: An optional attr, if false M equals N, only support false now.
+* @li mode: An optional attr, a character string with the value range of ['iou', 'iof'],
+*          only support 'iou' now. \n
+
+* @par Outputs:
+* @li dbboxes: A 2D Tensor of type float16 or float32 with shape [4, N].
+* @li dgtboxes: A 2D Tensor of type float16 or float32 with shape [4, M].
+*/
+REG_OP(DIoUGrad)
+    .INPUT(dy, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .INPUT(bboxes, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .INPUT(gtboxes, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .OUTPUT(dbboxes, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .OUTPUT(dgtboxes, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .ATTR(trans, Bool, false)
+    .ATTR(is_cross, Bool, true)
+    .ATTR(mode, String, "iou")
+    .OP_END_FACTORY_REG(DIoUGrad)
+
+/**
+* @brief Calculate the inverse gradient of CIoU. \n
+
+* @par Inputs:
+* @li dy : data of grad increment, a 1D Tensor of type float16 or float32 with
+* shape (N,).
+* @li bboxes: Bounding boxes, a 2D Tensor of type float16 or float32 with
+* shape (4, N). "N" indicates the number of bounding boxes, and the value
+* "4" refers to [x1, y1, x2, y2] or [x, y, w, h].
+* @li gtboxes: Ground-truth boxes, a 2D Tensor of type float16 or float32
+* with shape (4, M). "M" indicates the number of ground truth boxes, and
+* the value "4" refers to [x1, y1, x2, y2] or [x, y, w, h] .
+* @li atan_sub: Intermediate result of forward calculation, 
+* a 1D Tensor of type float16 or float32 with shape (N,). \n
+
+* @par Attributes:
+* @li trans: An optional attr, true for 'xywh', false for 'xyxy', only support true now.
+* @li is_cross: An optional attr, if false M equals N, only support false now.
+* @li mode: An optional attr, a character string with the value range of ['iou', 'iof'],
+*          only support 'iou' now. \n
+
+* @par Outputs:
+* @li dbboxes: A 2D Tensor of type float16 or float32 with shape [4, N].
+* @li dgtboxes: A 2D Tensor of type float16 or float32 with shape [4, M].
+*/
+REG_OP(CIoUGrad)
+    .INPUT(dy, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .INPUT(bboxes, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .INPUT(gtboxes, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .INPUT(atan_sub, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .OUTPUT(dbboxes, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .OUTPUT(dgtboxes, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .ATTR(trans, Bool, false)
+    .ATTR(is_cross, Bool, true)
+    .ATTR(mode, String, "iou")
+    .OP_END_FACTORY_REG(CIoUGrad)
+
+/**
+* @brief RotatedOverlaps . \n
 
 *@par Inputs:
 *@li boxes : data of grad increment, a 3D Tensor of type float32 with
 * shape (B, 5, N). "N" indicates the number of boxes, and the value
 * "5" refers to [x1, y1, x2, y2, theta] or [x, y, w, h, theta].
-*@li query_boxes: Bounding boxes, a 3D Tensor of type float32 with
+* @li query_boxes: Bounding boxes, a 3D Tensor of type float32 with
 * shape (B, 5, K). "K" indicates the number of boxes, and the value
 * "5" refers to [x1, y1, x2, y2, theta] or [x, y, w, h, theta].
 
-*@par Attributes:
+* @par Attributes:
 * trans: An optional attr, true for 'xyxyt', false for 'xywht'.
 
 *@par Outputs:
@@ -2094,21 +2165,21 @@ REG_OP(RotatedOverlaps)
 /**
 *@brief RotatedIou . \n
 
-*@par Inputs:
+* @par Inputs:
 *@li boxes : data of grad increment, a 3D Tensor of type float32 with
 * shape (B, 5, N). "N" indicates the number of boxes, and the value
 * "5" refers to [x1, y1, x2, y2, theta] or [x, y, w, h, theta].
-*@li query_boxes: Bounding boxes, a 3D Tensor of type float32 with
+* @li query_boxes: Bounding boxes, a 3D Tensor of type float32 with
 * shape (B, 5, K). "K" indicates the number of boxes, and the value
 * "5" refers to [x1, y1, x2, y2, theta] or [x, y, w, h, theta].
 
-*@par Attributes:
+* @par Attributes:
 *@li trans: An optional attr, true for 'xyxyt', false for 'xywht'.
-*@li mode: An optional attr, a character string with the value range of ['iou', 'iof'],
+* @li mode: An optional attr, a character string with the value range of ['iou', 'iof'],
 * only support 'iou' now.
 *@li is_cross: Cross calculation when it is True, and one-to-one calculation when it is False.
 *@li v_threshold: An optional attr, provide condition relaxation for intersection calculation.
-*@li e_threshold: An optional attr, provide condition relaxation for intersection calculation.
+* @li e_threshold: An optional attr, provide condition relaxation for intersection calculation.
 
 *@par Outputs:
 * iou: A 3D Tensor of float32 with shape [B, N, K].
@@ -2141,7 +2212,7 @@ REG_OP(RotatedIou)
 * "N" indicates the number of bounding boxes, and the value "5" refers to
 * "x0", "x1", "y0", "y1" and "angle". \n
 
-*@par Attributes:
+* @par Attributes:
 *@li weight: A float list for "x0", "x1", "y0", "y1" and "angle",
 * defaults to [1.0, 1.0, 1.0, 1.0, 1.0].
 

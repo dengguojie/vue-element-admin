@@ -73,7 +73,7 @@ static map<std::string, int> LSTMP_INPUT_INDEX = {
 static map<std::string, int> OUTPUT_INDEX = {{"y", 0}, {"output_h", 1}, {"output_c", 2}};
 
 static map<std::string, int> V3_INPUT_INDEX = {
-    {"x", 0}, {"w", 1}, {"b", 2}, {"seq_length", 3}, {"init_h", 4}, {"init_c", 5}, 
+    {"x", 0}, {"w", 1}, {"b", 2}, {"seq_length", 3}, {"init_h", 4}, {"init_c", 5},
     {"wci", 6}, {"wcf", 7}, {"wco", 8}, {"mask", 9}, {"real_mask", 10}, {"project", 11}};
 
 vector<FusionPattern*> LSTMPFusionPass::DefinePatterns() {
