@@ -81,6 +81,51 @@ TEST_F(TEST_PADD_UT, DATA_SUCCESS4) {
   RUN_KERNEL(node_def, HOST, KERNEL_STATUS_OK);
 }
 
+TEST_F(TEST_PADD_UT, DATA_SUCCESS5) {
+  vector<DataType> data_types = {DT_FLOAT, DT_FLOAT};
+  vector<vector<int64_t>> shapes = {{4, 1}, {8, 1}};
+  vector<vector<int64_t>> paddings = {{0, 4}, {0, 0}};
+  float input[4] = {1.1, 2.1, 3.1, 4.1};
+  float output[8] = {0};
+  vector<void *> datas = {(void *)input, (void *)output};
+  CREATE_NODEDEF(shapes, data_types, datas, paddings);
+  RUN_KERNEL(node_def, HOST, KERNEL_STATUS_OK);
+  float output_exp[8] = {1.1, 2.1, 3.1, 4.1, 0, 0, 0, 0};
+  bool compare = CompareResult(output, output_exp, 8);
+  EXPECT_EQ(compare, true);
+}
+
+TEST_F(TEST_PADD_UT, DATA_SUCCESS6) {
+  vector<DataType> data_types = {DT_FLOAT, DT_FLOAT};
+  vector<vector<int64_t>> shapes = {{4, 1}, {8, 1}};
+  vector<vector<int64_t>> paddings = {{4, 0}, {0, 0}};
+  float input[4] = {1.1, 2.1, 3.1, 4.1};
+  float output[8] = {0};
+  vector<void *> datas = {(void *)input, (void *)output};
+  CREATE_NODEDEF(shapes, data_types, datas, paddings);
+  RUN_KERNEL(node_def, HOST, KERNEL_STATUS_OK);
+  float output_exp[8] = {0, 0, 0, 0, 1.1, 2.1, 3.1, 4.1};
+  bool compare = CompareResult(output, output_exp, 8);
+  EXPECT_EQ(compare, true);
+}
+
+TEST_F(TEST_PADD_UT, DATA_SUCCESS7) {
+  vector<DataType> data_types = {DT_FLOAT, DT_FLOAT};
+  vector<vector<int64_t>> shapes = {{4, 1}, {4, 3}};
+  vector<vector<int64_t>> paddings = {{0, 0}, {2, 0}};
+  float input[4] = {1.1, 2.1, 3.1, 4.1};
+  float output[12] = {0};
+  vector<void *> datas = {(void *)input, (void *)output};
+  CREATE_NODEDEF(shapes, data_types, datas, paddings);
+  RUN_KERNEL(node_def, HOST, KERNEL_STATUS_OK);
+  float output_exp[12] = {0.0, 0.0, 1.1,
+                          0.0, 0.0, 2.1,
+                          0.0, 0.0, 3.1,
+                          0.0, 0.0, 4.1};
+  bool compare = CompareResult(output, output_exp, 12);
+  EXPECT_EQ(compare, true);
+}
+
 TEST_F(TEST_PADD_UT, DATA_FAILED) {
   vector<DataType> data_types = {DT_DOUBLE, DT_DOUBLE};
   vector<vector<int64_t>> shapes = {{2, 4}, {4, 6}};

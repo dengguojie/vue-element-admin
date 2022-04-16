@@ -57,7 +57,7 @@ namespace aicpu {
   template<typename T>
   void GetIntConstData(const Tensor& const_tensor, std::vector<std::vector<int64_t>> & pad_data) {
     std::vector<int64_t> vector_data;
-    const T*const_data_ptr = reinterpret_cast<const T*>(const_tensor.GetData());
+    const T *const_data_ptr = reinterpret_cast<const T*>(const_tensor.GetData());
     if (const_data_ptr == nullptr) {
       KERNEL_LOG_ERROR("const_data_ptr is null");
       pad_data.clear();
@@ -141,7 +141,7 @@ namespace aicpu {
     // push data into y_ori
     int64_t step = dims_x[rank - 1];
     y_ori.insert(y_ori.end(), sumLR(rank - 1, offsetL), (T)0);
-    for (int64_t i = step; i < x_num - 1; i = i + step) {
+    for (int64_t i = step; i < x_num; i = i + step) {
       y_ori.insert(y_ori.end(), x_data.begin() + i - step, x_data.begin() + i);
       for (int64_t j = 0; j < rank; j++) {
         if (i % multi(j, rank, dims_x) == 0) {

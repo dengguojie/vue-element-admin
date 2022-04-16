@@ -392,6 +392,66 @@ TEST_F(TEST_PAD_UT, DATA_SUCCESS22) {
   EXPECT_EQ(compare, true);
 }
 
+TEST_F(TEST_PAD_UT, DATA_SUCCESS23) {
+  vector<DataType> data_types = {DT_UINT64, DT_UINT64, DT_INT32};
+  vector<vector<int64_t>> shapes = {{3, 1}, {5, 1}, {2, 2}};
+  int32_t pad[4] = {2, 0, 0, 0};
+  uint64_t input[3] = {1, 2, 3};
+  uint64_t output[5] = {0};
+  vector<void *> datas = {(void *)input, (void *)output, (void *)pad};
+  CREATE_NODEDEF(shapes, data_types, datas);
+  RUN_KERNEL(node_def, HOST, KERNEL_STATUS_OK);
+  uint64_t output_exp[5] = {0, 0, 1, 2, 3};
+  bool compare = CompareResult(output, output_exp, 5);
+  EXPECT_EQ(compare, true);
+}
+
+TEST_F(TEST_PAD_UT, DATA_SUCCESS24) {
+  vector<DataType> data_types = {DT_UINT64, DT_UINT64, DT_INT32};
+  vector<vector<int64_t>> shapes = {{3, 1}, {5, 1}, {2, 2}};
+  int32_t pad[4] = {0, 2, 0, 0};
+  uint64_t input[3] = {1, 2, 3};
+  uint64_t output[5] = {0};
+  vector<void *> datas = {(void *)input, (void *)output, (void *)pad};
+  CREATE_NODEDEF(shapes, data_types, datas);
+  RUN_KERNEL(node_def, HOST, KERNEL_STATUS_OK);
+  uint64_t output_exp[5] = {1, 2, 3, 0, 0};
+  bool compare = CompareResult(output, output_exp, 5);
+  EXPECT_EQ(compare, true);
+}
+
+TEST_F(TEST_PAD_UT, DATA_SUCCESS25) {
+  vector<DataType> data_types = {DT_UINT64, DT_UINT64, DT_INT32};
+  vector<vector<int64_t>> shapes = {{3, 1}, {3, 3}, {2, 2}};
+  int32_t pad[4] = {0, 0, 2, 0};
+  uint64_t input[3] = {1, 2, 3};
+  uint64_t output[9] = {0};
+  vector<void *> datas = {(void *)input, (void *)output, (void *)pad};
+  CREATE_NODEDEF(shapes, data_types, datas);
+  RUN_KERNEL(node_def, HOST, KERNEL_STATUS_OK);
+  uint64_t output_exp[9] = {0, 0, 1,
+                            0, 0, 2,
+                            0, 0, 3};
+  bool compare = CompareResult(output, output_exp, 9);
+  EXPECT_EQ(compare, true);
+}
+
+TEST_F(TEST_PAD_UT, DATA_SUCCESS26) {
+  vector<DataType> data_types = {DT_UINT64, DT_UINT64, DT_INT32};
+  vector<vector<int64_t>> shapes = {{3, 1}, {3, 3}, {2, 2}};
+  int32_t pad[4] = {0, 0, 0, 2};
+  uint64_t input[3] = {1, 2, 3};
+  uint64_t output[9] = {0};
+  vector<void *> datas = {(void *)input, (void *)output, (void *)pad};
+  CREATE_NODEDEF(shapes, data_types, datas);
+  RUN_KERNEL(node_def, HOST, KERNEL_STATUS_OK);
+  uint64_t output_exp[9] = {1, 0, 0,
+                            2, 0, 0,
+                            3, 0, 0};
+  bool compare = CompareResult(output, output_exp, 9);
+  EXPECT_EQ(compare, true);
+}
+
 TEST_F(TEST_PAD_UT, DATA_FAILED1) {
   vector<DataType> data_types = {DT_COMPLEX64, DT_COMPLEX64, DT_INT64};
   vector<vector<int64_t>> shapes = {{2, 4}, {4, 6}, {2, 2}};
