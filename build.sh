@@ -45,7 +45,6 @@ create_lib(){
   echo $dotted_line
   echo "If you're in the yellow zone of Huawei, please cancel the # before config proxy code in the front of build.sh, and fill in the correct account and password"
   git submodule init &&git submodule update
-  down_third_libs
   if [ ! -d "${CMAKE_HOST_PATH}" ];then
     mkdir -p "${CMAKE_HOST_PATH}"
   fi
@@ -177,16 +176,19 @@ get_libs_name(){
 down_third_libs(){
   set +e
   get_libs_name
-  obs_addr="https://ascend-cann.obs.cn-north-4.myhuaweicloud.com/thirdlibs.zip"
-  if [ ! -d "./build/cann/download" ];then
-    mkdir -p build/cann/download
+  if [ ! -d "${CMAKE_HOST_PATH}/download" ];then
+    mkdir -p ${CMAKE_HOST_PATH}/download
   fi
   for mylib in ${libs[@]}
     do
-      if [ ! -d "./build/cann/download/$mylib" ];then
-        mkdir build/cann/download/$mylib
+      if [ ! -d "${CMAKE_HOST_PATH}/download/$mylib" ];then
+        mkdir ${CMAKE_HOST_PATH}/download/$mylib
       fi
     done
+  if [ ! -d "${CMAKE_DEVICE_PATH}" ];then
+    mkdir -p ${CMAKE_DEVICE_PATH}
+    ln -s ${CMAKE_HOST_PATH}/download ${CMAKE_DEVICE_PATH}/download 
+  fi
   echo $dotted_line
   echo "begin to test  network..."
   wget --no-check-certificate https://www.gitee.com
@@ -663,7 +665,6 @@ compile_mod(){
             done
         CMAKE_ARGS="-DBUILD_PATH=$BUILD_PATH -DBUILD_OPEN_PROJECT=TRUE -DPRODUCT_SIDE=device -DBUILD_MODE=$build_mode -DWITH_CUSTOM_OP=$WITH_CUSTOM_OP"
         logging "Start build device target. CMake Args: ${CMAKE_ARGS}"
-        mk_dir "${CMAKE_DEVICE_PATH}"
         cd "${CMAKE_DEVICE_PATH}" && cmake ${CMAKE_ARGS} ../..
         make ${VERBOSE} -j${THREAD_NUM}
       fi
@@ -716,7 +717,6 @@ build_cann() {
         CMAKE_ARGS="-DBUILD_PATH=$BUILD_PATH -DBUILD_OPEN_PROJECT=TRUE -DPRODUCT_SIDE=device -DBUILD_MODE=$build_mode -DWITH_CUSTOM_OP=$WITH_CUSTOM_OP"
 
         logging "Start build device target. CMake Args: ${CMAKE_ARGS}"
-        mk_dir "${CMAKE_DEVICE_PATH}"
         cd "${CMAKE_DEVICE_PATH}" && cmake ${CMAKE_ARGS} ../..
         make ${VERBOSE} -j${THREAD_NUM}
       fi
@@ -727,7 +727,6 @@ build_cann() {
 minirc(){
   CMAKE_ARGS="-DBUILD_PATH=$BUILD_PATH -DBUILD_OPEN_PROJECT=TRUE -DPRODUCT_SIDE=device -DMINRC=TRUE -DBUILD_MODE=$build_mode -DWITH_CUSTOM_OP=$WITH_CUSTOM_OP"
   logging "Start build device target. CMake Args: ${CMAKE_ARGS}"
-  mk_dir "${CMAKE_DEVICE_PATH}"
   cd "${CMAKE_DEVICE_PATH}" && cmake ${CMAKE_ARGS} ../..
   make ${VERBOSE} -j${THREAD_NUM}
 
@@ -745,6 +744,10 @@ release_cann() {
 
 main() {
   checkopts "$@"
+
+  down_third_libs
+  check_third_libs
+
   if [ $create_lib_tag ];then
     args=`echo -n $@`
     CMAKE_ARGS="-DBUILD_PATH=$BUILD_PATH -DBUILD_OPEN_PROJECT=TRUE\
