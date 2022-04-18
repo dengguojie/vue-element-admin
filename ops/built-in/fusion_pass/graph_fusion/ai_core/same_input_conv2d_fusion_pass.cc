@@ -141,10 +141,10 @@ Status SameInputConv2dPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, st
     auto platRet = PlatformInfoManager::Instance().GetPlatformInfoWithOutSocVersion(platformInfo, optionalInfo);
     FUSION_PASS_CHECK(platRet != SUCCESS,
         OP_LOGW(FUSED_OP_TYPE.c_str(), "get platform info failed, no fusion."),
-        return SUCCESS);
+        return NOT_CHANGED);
     FUSION_PASS_CHECK(optionalInfo.soc_version == "SD3403" || optionalInfo.soc_version == "Hi3796CV300CS",
         OP_LOGI(FUSED_OP_TYPE.c_str(), "soc version SD3403/Hi3796CV300CS, no fusion."),
-        return SUCCESS);
+        return NOT_CHANGED);
 
     fusionNodes_.clear();
     quantPattern_ = false;
@@ -342,8 +342,17 @@ Status SameInputConv2dPass::CheckConvNode(ge::NodePtr convNode, ge::NodePtr inpu
     auto convDim = convDesc.GetShape().GetDims();
     for (auto& dimValue : convDim) {
         FUSION_PASS_CHECK(dimValue < 0,
-            OP_LOGI(FUSED_OP_TYPE.c_str(), "dynamic shape, no fusion."), return NOT_CHANGED);
+            OP_LOGI(FUSED_OP_TYPE.c_str(), "conv dynamic shape, no fusion."), return NOT_CHANGED);
     }
+
+    std::string format = TypeUtils::FormatToSerialString(convDesc.GetFormat());
+    size_t axis = format.find('C');
+    FUSION_PASS_CHECK(axis >= convDim.size(),
+        OP_LOGE(FUSED_OP_TYPE.c_str(), "invalid conv axis, fusion failed."), return PARAM_INVALID);
+    auto convInputDesc = convNode->GetOpDesc()->GetInputDesc(0);
+    uint32_t align = (convInputDesc.GetDataType() == DT_INT8)? INT8_ALIGN : DATA_ALIGN;
+    FUSION_PASS_CHECK(convDim[axis] % align != 0,
+        OP_LOGI(FUSED_OP_TYPE.c_str(), "conv output shape not align, no fusion."), return NOT_CHANGED);
 
     return SUCCESS;
 }
@@ -364,15 +373,6 @@ Status SameInputConv2dPass::CheckAllConvNodes(ge::NodePtr inputNode)
         OP_LOGI(FUSED_OP_TYPE.c_str(), "no conv nodes to fuse, no fusion."), return NOT_CHANGED);
     FUSION_PASS_CHECK(updateNodes[0].convNode != fusionNodes_[0].convNode,
         OP_LOGI(FUSED_OP_TYPE.c_str(), "invalid pattern conv, no fusion."), return NOT_CHANGED);
-
-    int64_t dimValue = 0;
-    FUSION_PASS_CHECK(GetConvOutDimValue(dimValue) != SUCCESS,
-        OP_LOGE(FUSED_OP_TYPE.c_str(), "get conv out dim failed, fusion failed."), return FAILED);
-    auto convDesc = updateNodes.at(0).convNode->GetOpDesc()->GetInputDesc(0);
-    uint32_t align = (convDesc.GetDataType() == DT_INT8)? INT8_ALIGN : DATA_ALIGN;
-    OP_LOGI(FUSED_OP_TYPE.c_str(), "dim %lu, align %u, type %u.", dimValue, align, convDesc.GetDataType());
-    FUSION_PASS_CHECK(dimValue % align != 0,
-        OP_LOGI(FUSED_OP_TYPE.c_str(), "conv cout not aligned, no fusion."), return NOT_CHANGED);
 
     fusionNodes_.swap(updateNodes);
 
@@ -1728,7 +1728,9 @@ Status SameInputConv2dPass::AddStrideNode(ge::ComputeGraph& graph, std::vector<g
 
     FUSION_PASS_CHECK(LinkSplitStrideRead(strideReads, splitNode) != SUCCESS,
         OP_LOGE(FUSED_OP_TYPE.c_str(), "link split-stride failed, fusion failed."), return FAILED);
-    FUSION_PASS_CHECK(TransSplitStrideRead(strideReads) != SUCCESS,
+    FUSION_PASS_CHECK(TransSplit(splitNode) != SUCCESS,
+        OP_LOGE(FUSED_OP_TYPE.c_str(), "trans split failed, fusion failed."), return FAILED);
+    FUSION_PASS_CHECK(TransSplitStrideRead(strideReads, splitNode) != SUCCESS,
         OP_LOGE(FUSED_OP_TYPE.c_str(), "trans split-stride failed, fusion failed."), return FAILED);
 
     return SUCCESS;
@@ -1859,7 +1861,8 @@ Status SameInputConv2dPass::JudgeOp(ge::NodePtr node) const
     return SUCCESS;
 }
 
-Status SameInputConv2dPass::TransSplitStrideRead(const std::vector<ge::NodePtr>& strideReads) const
+Status SameInputConv2dPass::TransSplitStrideRead(const std::vector<ge::NodePtr>& strideReads,
+    ge::NodePtr splitNode) const
 {
     for (auto& stride : strideReads) {
         FUSION_PASS_CHECK(JudgeOp(stride) != SUCCESS,
@@ -1870,14 +1873,32 @@ Status SameInputConv2dPass::TransSplitStrideRead(const std::vector<ge::NodePtr>&
         FUSION_PASS_CHECK(GetNC1HWC0Shape(strideDesc, dataType) != SUCCESS,
             OP_LOGE(FUSED_OP_TYPE.c_str(), "get out shape of NC1HWC0 failed."), return FAILED);
 
-        auto strideInDesc = stride->GetOpDesc()->MutableInputDesc(0);
-        auto dataInType = stride->GetOpDesc()->GetInputDesc(0).GetDataType();
-        FUSION_PASS_CHECK(GetNC1HWC0Shape(strideInDesc, dataInType) != SUCCESS,
-            OP_LOGE(FUSED_OP_TYPE.c_str(), "get in shape of NC1HWC0 failed."), return FAILED);
-
-        auto strideShape = stride->GetOpDesc()->MutableInputDesc(0)->MutableShape();
-        ge::AttrUtils::SetInt(stride->GetOpDesc(), "stride", strideShape.GetDim(1));
+        auto splitShape = splitNode->GetOpDesc()->MutableInputDesc(0)->MutableShape();
+        ge::AttrUtils::SetInt(stride->GetOpDesc(), "stride", splitShape.GetDim(1));
     }
+
+    return SUCCESS;
+}
+
+Status SameInputConv2dPass::TransSplit(ge::NodePtr split) const
+{
+    auto splitInDesc = split->GetOpDesc()->MutableInputDesc(0);
+    auto dataInType = split->GetOpDesc()->GetInputDesc(0).GetDataType();
+    FUSION_PASS_CHECK(GetNC1HWC0Shape(splitInDesc, dataInType) != SUCCESS,
+        OP_LOGE(FUSED_OP_TYPE.c_str(), "get in shape of NC1HWC0 failed."), return FAILED);
+
+    for (size_t i = 0; i < split->GetAllOutDataAnchors().size(); ++i) {
+        auto splitOutDesc = split->GetOpDesc()->MutableOutputDesc(i);
+        auto dataOutType = split->GetOpDesc()->GetOutputDesc(i).GetDataType();
+        FUSION_PASS_CHECK(GetNC1HWC0Shape(splitOutDesc, dataOutType) != SUCCESS,
+            OP_LOGE(FUSED_OP_TYPE.c_str(), "get out shape of NC1HWC0 failed."), return FAILED);
+    }
+
+    auto splitOpDesc = split->GetOpDesc();
+    (void)ge::AttrUtils::SetBool(splitOpDesc, ge::ATTR_NAME_NOTASK, true);
+    (void)ge::AttrUtils::SetBool(splitOpDesc, ge::ATTR_NAME_NOPADDING_CONTINUOUS_OUTPUT, true);
+    (void)ge::AttrUtils::SetBool(splitOpDesc, ge::ATTR_NAME_OUTPUT_REUSE_INPUT, true);
+    (void)ge::AttrUtils::SetInt(splitOpDesc, ge::ATTR_NAME_REUSE_INPUT_ON_DIM_INDEX, 1);
 
     return SUCCESS;
 }

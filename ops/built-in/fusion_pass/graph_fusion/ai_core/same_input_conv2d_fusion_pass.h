@@ -144,7 +144,8 @@ private:
         ge::GeShape originShape, ge::GeShape& newShape) const;
     Status GetNC1HWC0Shape(ge::GeTensorDescPtr tensorDesc, const ge::DataType& quantDataType) const;
     Status JudgeOp(ge::NodePtr node) const;
-    Status TransSplitStrideRead(const std::vector<ge::NodePtr>& strideReads) const;
+    Status TransSplitStrideRead(const std::vector<ge::NodePtr>& strideReads, ge::NodePtr splitNode) const;
+    Status TransSplit(ge::NodePtr split) const;
 
     bool quantPattern_ {false};
     bool requantPattern_ {false};
