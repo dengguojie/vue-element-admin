@@ -1,0 +1,43 @@
+[
+    {"compile_flag": 1},
+    {
+      "op": "Dequantize",
+      "calc_expect_func_file" : "test_dequantize_golden.py:calc_expect_func",
+      "input_desc": [
+        {
+          "shape": [11, 33],
+          "format": "ND",
+          "name": "x",
+          "type": "int8"
+        },
+        {
+          "shape": [1],
+          "format": "ND",
+          "name": "min_range",
+          "type": "float"
+        },
+        {
+          "shape": [1],
+          "format": "ND",
+          "name": "max_range",
+          "type": "float"
+        }
+      ],
+      "output_desc": [
+        {
+          "shape": [11, 33],
+          "format": "ND",
+          "name": "y",
+          "type": "float"
+        }
+      ],
+      "attr": [
+        {
+          "name": "mode",
+          "type": "string",
+          "value": "MIN_COMBINED"
+        }
+      ],
+      "case_name": "test_Dequantize_000"
+    }
+]

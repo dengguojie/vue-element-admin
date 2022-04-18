@@ -18,6 +18,7 @@
 dequantize op, Dequantize the 'input' tensor into a float tensor.
 """
 from te.utils.error_manager import error_manager_vector
+from impl.util.util_common import is_unknown_rank_input
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tvm
@@ -343,8 +344,8 @@ def dequantize(x, min_range, max_range, y, mode="MIN_COMBINED", kernel_name="deq
     shape_x = x.get("shape")
     shape_input_min_range = min_range.get("shape")
     shape_input_max_range = max_range.get("shape")
-    shape_output_data = y.get("shape")
-    if len(shape_input_min_range) != len(shape_input_max_range):
+
+    if len(shape_input_min_range) != len(shape_input_max_range) and not is_unknown_rank_input(min_range, max_range):
         error_manager_vector.raise_err_specific_reson("dequantize",
                                                       "shape_input_min_range and shape_input_max_range must be equal!",
                                                       shape_x)
