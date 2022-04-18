@@ -124,6 +124,7 @@ TEST_F(conv_transpose_onnx_plugin_test, conv_transpose_onnx_plugin_test_case_6) 
   std::string modelFile = caseDir + "/test_conv_transpose_case_auto_pad.onnx";
   std::map<ge::AscendString, ge::AscendString> parser_params;
 
+
   auto status = aclgrphParseONNX(modelFile.c_str(), parser_params, graph);
 
   EXPECT_EQ(status, ge::GRAPH_SUCCESS);

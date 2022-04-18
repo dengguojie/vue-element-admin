@@ -302,7 +302,7 @@ def make_conv_transpose_auto_pad():
     """v11 group"""
     x = helper.make_tensor_value_info('x', TensorProto.FLOAT16, [1, 3, 32, 32])
     w = helper.make_tensor_value_info('w', TensorProto.FLOAT16, [3, 16, 3, 3])
-    y = helper.make_tensor_value_info('y', TensorProto.FLOAT16, [1, 16, 66, 66])
+    y = helper.make_tensor_value_info('y', TensorProto.FLOAT16, [1, 16, 64, 64])
     node_def = helper.make_node(
         'ConvTranspose',
         inputs=['x', 'w'],
@@ -324,6 +324,60 @@ def make_conv_transpose_auto_pad():
     model = helper.make_model(graph, producer_name="onnx-parser_test")
     model.opset_import[0].version = 11
     onnx.save(model, "./test_conv_transpose_case_auto_pad.onnx")
+    onnx.checker.check_model(model)
+
+def make_conv_transpose_auto_pad_no_output_shape():
+    """v11 group"""
+    x = helper.make_tensor_value_info('x', TensorProto.FLOAT16, [1, 3, 32, 32])
+    w = helper.make_tensor_value_info('w', TensorProto.FLOAT16, [3, 16, 3, 3])
+    y = helper.make_tensor_value_info('y', TensorProto.FLOAT16, [1, 16, 64, 64])
+    node_def = helper.make_node(
+        'ConvTranspose',
+        inputs=['x', 'w'],
+        outputs=['y'],
+        strides=[2, 2],
+        kernel_shape=[3, 3],
+        dilations=[1, 1],
+        auto_pad="SAME_UPPER"
+    )
+
+    graph = helper.make_graph(
+        [node_def],
+        'ConvTranspose',
+        [x, w],
+        [y],
+    )
+
+    model = helper.make_model(graph, producer_name="onnx-parser_test")
+    model.opset_import[0].version = 11
+    onnx.save(model, "./test_conv_transpose_case_auto_pad_no_output_shspe.onnx")
+    onnx.checker.check_model(model)
+
+def make_conv_transpose_auto_pad_dynamic():
+    """v11 group"""
+    x = helper.make_tensor_value_info('x', TensorProto.FLOAT16, [1, 3, -1, -1])
+    w = helper.make_tensor_value_info('w', TensorProto.FLOAT16, [3, 16, 3, 3])
+    y = helper.make_tensor_value_info('y', TensorProto.FLOAT16, [1, 16, -1, -1])
+    node_def = helper.make_node(
+        'ConvTranspose',
+        inputs=['x', 'w'],
+        outputs=['y'],
+        strides=[2, 2],
+        kernel_shape=[3, 3],
+        dilations=[1, 1],
+        auto_pad="SAME_UPPER"
+    )
+
+    graph = helper.make_graph(
+        [node_def],
+        'ConvTranspose',
+        [x, w],
+        [y],
+    )
+
+    model = helper.make_model(graph, producer_name="onnx-parser_test")
+    model.opset_import[0].version = 11
+    onnx.save(model, "./test_conv_transpose_case_auto_pad_dynamic.onnx")
     onnx.checker.check_model(model)
 
 def make_conv3d_transpose_auto_pad():
@@ -529,6 +583,8 @@ if __name__ == '__main__':
     make_conv3d_transpose_v13()
     make_conv_transpose_group()
     make_conv_transpose_auto_pad()
+    make_conv_transpose_auto_pad_no_output_shape()
+    make_conv_transpose_auto_pad_dynamic()
     make_conv3d_transpose_auto_pad()
     make_conv2d_Transpose_3_inputs()
     make_conv_transpose_output_padding()

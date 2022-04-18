@@ -48,6 +48,7 @@ struct ConvTransposeAttr {
   int dim_size = 4;
   int input_num = 2;
   bool trans_2d = false;
+  std::vector<int64_t> output_shape = {0, 0, 0, 0};
 };
 
 Status AttrUpdate(std::vector<int32_t>& dst, std::vector<int32_t>& src, int offset, int count,
@@ -264,11 +265,12 @@ Status SetFormatConvTranspose(ge::Operator& op, const int& dims) {
 
 Status GetConvTransposeAttr(const ge::Operator& op, ConvTransposeAttr& convTransposeAttr) {
   // check attr value, if value is null, then set default value here
-  std::string pad_mode = "NOTSET";
   op.GetAttr("strides", convTransposeAttr.strides);
   op.GetAttr("pads", convTransposeAttr.pads);
   op.GetAttr("dilations", convTransposeAttr.dilations);
-  op.GetAttr("auto_pad", pad_mode);
+  op.GetAttr("auto_pad", convTransposeAttr.auto_pad);
+  std::string pad_mode = convTransposeAttr.auto_pad;
+  op.GetAttr("output_shape", convTransposeAttr.output_shape);
   op.GetAttr("trans_2d", convTransposeAttr.trans_2d);
   auto ret_output_padding = op.GetAttr("output_padding", convTransposeAttr.output_padding);
   if (op.GetAttr("dim_size", convTransposeAttr.dim_size) != SUCCESS) {
@@ -422,6 +424,13 @@ static Status ParseOpToGraphConvTranspose(const ge::Operator& op, Graph& graph) 
     CUBE_INNER_ERR_REPORT_PLUGIN("ConvTranspose", "just support 4D or 5D input, transform failed.");
     return FAILED;
   }
+
+  // set conv_transpose with the auto_pad
+  OpDesc op_desc = ge::OpDescUtils::GetOpDescFromOperator(convTranspose);
+  ge::AttrUtils::SetStr(op_desc, "auto_pad", tbeAttr.auto_pad);
+
+  // set conv_transpose with the output_shape
+  ge::AttrUtils::SetListInt(op_desc, "output_shape", tbeAttr.output_shape);
 
   outputs.emplace_back(convTranspose, std::vector<std::size_t>{0});
   graph.SetInputs(inputs).SetOutputs(outputs);

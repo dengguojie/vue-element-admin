@@ -2892,9 +2892,14 @@ static void SetConv2dBpInputOutRange(const OpDescPtr &op_desc, size_t idx, const
   int64_t low = dy_range[idx].first;
   int64_t high = dy_range[idx].second;
   std::string padding;
-  if (AttrUtils::GetStr(op_desc, "padding", padding) && padding == "SAME") {
+  std::string auto_pad;
+  if ((AttrUtils::GetStr(op_desc, "padding", padding) && padding == "SAME") ||
+      (AttrUtils::GetStr(op_desc, "auto_pad", auto_pad) && auto_pad == "SAME_UPPER")) {
     dx_range[idx].first = attrParams.stride * (low - 1) + 1;
     dx_range[idx].second = attrParams.stride * high;
+  } else if (AttrUtils::GetStr(op_desc, "auto_pad", auto_pad) && (auto_pad == "SAME_LOWER" || auto_pad == "NOTSET")) {
+    OP_LOGE("", "auto_pad only support SAME_UPPER，VALID for dynamic scene");
+    return;
   } else {
     dx_range[idx].first = attrParams.stride * (low - 1) + attrParams.kernel - attrParams.pads;
     dx_range[idx].second = attrParams.stride * (high - 1) + attrParams.kernel - attrParams.pads + attrParams.stride - 1;
@@ -3105,8 +3110,8 @@ static bool ResetInputRange(const AscendString &op_name, const GeTensorDescPtr &
 
 static void SetPadsByPaddingForDynamic(const AscendString &op_name, const OpDescPtr &op_desc) {
   std::string padding;
+  std::vector<int32_t> pads(kConv2dPadSizeLimit, 0);
   if (AttrUtils::GetStr(op_desc, "padding", padding)) {
-    std::vector<int32_t> pads(kConv2dPadSizeLimit, 0);
     if (padding == "SAME") {
       pads.assign(kConv2dPadSizeLimit, -1);
       OP_LOGD(op_name.GetString(), "set pads to {-1, -1, -1, -1} when padding is SAME in dynamic_shape");
@@ -3158,6 +3163,26 @@ static bool InferConv2dBpInputOutShapeRange(const OpDetailInfo &op_info, const G
   }
 
   SetPadsByPaddingForDynamic(op_info.op_name, op_info.op_desc);
+  // handle attr auto_pad from onnx for conv2d_transpose
+  if (string (op_info.op_type.GetString()) == "Conv2DTranspose") {
+    std::string padding;
+    std::vector<int32_t> pads(kConv2dPadSizeLimit, 0);
+    if (AttrUtils::GetStr(op_info.op_desc, "auto_pad", padding)) {
+      if (padding.compare("SAME_UPPER") == 0) {
+        pads[kConv2dPadUpIdx] = -1;
+        pads[kConv2dPadDownIdx] = -1;
+        pads[kConv2dPadLeftIdx] = -1;
+        pads[kConv2dPadRightIdx] = -1;
+      } else if (padding.compare("SAME_LOWER") == 0 || padding.compare("NOTSET") == 0) {
+        OP_LOGE(op_info.op_name.GetString(),
+                "auto_pad only support SAME_UPPER,VALID for dynamic scene"
+                "actual is: %s.",
+                padding.c_str());
+        return false;
+      }
+      AttrUtils::SetListInt(op_info.op_desc, "pads", pads);
+    }
+  }
   if (input_shape.IsUnknownDimNum()) {
     OP_LOGD(op_info.op_name.GetString(), "input_shape is -2, infer out shape and range success.");
     return true;
@@ -3251,6 +3276,34 @@ static bool SetConv2dbpPadsByPadding(const OpDetailInfo &op_info, const GeShape 
       pads[kConv2dPadRightIdx] = pad_right;
     }
     AttrUtils::SetListInt(op_info.op_desc, "pads", pads);
+  }
+
+  // handle auto_pad for onnx
+  std::string auto_pad;
+
+  if (string(op_info.op_type.GetString()) == "Conv2DTranspose") {
+    if (AttrUtils::GetStr(op_info.op_desc, "auto_pad", auto_pad) && auto_pad != "NOTSET") {
+      int32_t padh = attr_paras.h_attr.kernel - attr_paras.h_attr.stride;
+      int32_t padw = attr_paras.w_attr.kernel - attr_paras.w_attr.stride;
+      if (padh < 0) {
+        padh = 0;
+      }
+      if (padw < 0) {
+        padw = 0;
+      }
+      if (auto_pad == "SAME_UPPER") {
+        pads[kConv2dPadUpIdx] = padh >> 1;
+        pads[kConv2dPadDownIdx] = padh - (padh >> 1);
+        pads[kConv2dPadLeftIdx] = padw >> 1;
+        pads[kConv2dPadRightIdx] = padw - (padw >> 1);
+      } else if (auto_pad == "SAME_LOWER") {
+        pads[kConv2dPadUpIdx] = padh - (padh >> 1);
+        pads[kConv2dPadDownIdx] = padh >> 1;
+        pads[kConv2dPadLeftIdx] = padw - (padw >> 1);
+        pads[kConv2dPadRightIdx] = padw >> 1;
+      }
+      AttrUtils::SetListInt(op_info.op_desc, "pads", pads);
+    }
   }
 
   CHECK(!VerifyConv2dbpPads(op_info.op_name, op_info.op_desc), OP_LOGE(op_info.op_name.GetString(), "pads is unvalid"),
@@ -9678,10 +9731,24 @@ static bool SetDeDxAttrForConv2DTranspose(const OpDetailInfo& op_info, const GeS
     if (!AttrUtils::GetInt(op_info.op_desc, "groups", groups)) {
       OP_LOGW(op_info.op_name.GetString(), "op get groups failed, use default 1.");
     }
-    int64_t output_h = attr_paras.h_attr.stride * (dy_h - 1) + attr_paras.h_attr.kernel - attr_paras.h_attr.pads;
-    int64_t output_w = attr_paras.w_attr.stride * (dy_w - 1) + attr_paras.w_attr.kernel - attr_paras.w_attr.pads;
-    int64_t output_n = input_shape.GetDim(y_format_pos.n_position);
-    int64_t output_c = filter_value.c_value * groups;
+    std::vector<int32_t> output_shape_list;
+    int64_t output_h = 0;
+    int64_t output_w = 0;
+    int64_t output_n = 0;
+    int64_t output_c = 0;
+
+    if (AttrUtils::GetListInt(op_info.op_desc, "output_shape", output_shape_list) &&
+        output_shape_list[0] > 0 && output_shape_list[1] > 0) {
+      output_h = output_shape_list[0];
+      output_w = output_shape_list[1];
+      output_n = input_shape.GetDim(y_format_pos.n_position);
+      output_c = filter_value.c_value * groups;
+    } else {
+      output_h = attr_paras.h_attr.stride * (dy_h - 1) + attr_paras.h_attr.kernel - attr_paras.h_attr.pads;
+      output_w = attr_paras.w_attr.stride * (dy_w - 1) + attr_paras.w_attr.kernel - attr_paras.w_attr.pads;
+      output_n = input_shape.GetDim(y_format_pos.n_position);
+      output_c = filter_value.c_value * groups;
+    }
     y_shape.SetDimNum(kConv2dInputSizeLimit);
     y_shape.SetDim(y_format_pos.h_position, output_h);
     y_shape.SetDim(y_format_pos.w_position, output_w);

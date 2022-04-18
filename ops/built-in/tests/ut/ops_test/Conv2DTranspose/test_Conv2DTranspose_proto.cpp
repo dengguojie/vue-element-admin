@@ -685,3 +685,206 @@ TEST_F(Conv2DTransposeProtoTest, conv2dTransposeSplicDataTest3) {
     EXPECT_EQ(expect_x_data_slice, x_data_slice);
     EXPECT_EQ(new_pads_expect, new_pads);
 }
+
+TEST_F(Conv2DTransposeProtoTest, conv2dTransposeOnnxAutoPadSameLower) {
+    ge::op::Conv2DTranspose op;
+    op.UpdateInputDesc("x", create_desc_with_ori({16, 32, 32, 32},
+        ge::DT_FLOAT16, ge::FORMAT_NCHW, {16, 32, 32, 32}, ge::FORMAT_NCHW));
+    op.UpdateInputDesc("filter", create_desc_with_ori({32, 16, 3, 3},
+        ge::DT_FLOAT16, ge::FORMAT_NCHW, {32, 16, 3, 3}, ge::FORMAT_NCHW));
+    op.UpdateOutputDesc("y", create_desc_with_ori({16, 16, 64, 64},
+        ge::DT_FLOAT16, ge::FORMAT_NCHW, {16, 16, 64, 64}, ge::FORMAT_NCHW));
+    op.SetAttr("strides", {2, 2, 2, 2});
+    op.SetAttr("pads", {0, 0, 0, 0});
+    op.SetAttr("dilations", {1, 1, 1, 1});
+    op.SetAttr("groups", 1);
+    op.SetAttr("data_format","NCHW");
+    op.SetAttr("output_padding", {0, 0, 0, 0});
+    op.SetAttr("offset_x", 0);
+    op.SetAttr("auto_pad", "SAME_LOWER");
+    op.SetAttr("output_shape", {64, 64});
+
+    ge::Tensor constTensor;
+    std::vector<int64_t> dims_input_size{0, 0, 0, 0};
+    ge::TensorDesc tensor_desc_input_size(ge::Shape(),
+      ge::FORMAT_NCHW, ge::DT_INT32);
+    int element_size = dims_input_size.size();
+    tensor_desc_input_size.SetSize(element_size * sizeof(int32_t));
+    constTensor.SetTensorDesc(tensor_desc_input_size);
+
+    int *conv_input_size_tensor_value = new int[element_size];
+    for (int i = 0; i < element_size; i++) {
+        *(conv_input_size_tensor_value + i) = dims_input_size[i];
+    }
+    constTensor.SetData((uint8_t *) conv_input_size_tensor_value,
+      element_size * sizeof(int32_t));
+    auto const0 = ge::op::Constant("input_size").set_attr_value(constTensor);
+    op.set_input_input_size(const0);
+    delete[] conv_input_size_tensor_value;
+    op.UpdateInputDesc("input_size", tensor_desc_input_size);
+
+    auto status = op.VerifyAllAttr(true);
+    EXPECT_EQ(status, ge::GRAPH_SUCCESS);
+    auto ret = op.InferShapeAndType();
+    EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+
+    std::vector<std::int64_t> new_pads;
+    op.GetAttr("pads", new_pads);
+    std::vector<std::int64_t> new_pads_expect = {1, 0, 1, 0};
+    EXPECT_EQ(new_pads_expect, new_pads);
+
+    std::vector<std::int64_t> new_output_padding;
+    op.GetAttr("output_padding", new_output_padding);
+    std::vector<std::int64_t> new_output_padding_expect = {0, 0, 0, 0};
+    EXPECT_EQ(new_output_padding_expect, new_output_padding);
+}
+
+TEST_F(Conv2DTransposeProtoTest, conv2dTransposeOnnxAutoPadSameUpper) {
+    ge::op::Conv2DTranspose op;
+    op.UpdateInputDesc("x", create_desc_with_ori({16, 32, 32, 32},
+        ge::DT_FLOAT16, ge::FORMAT_NCHW, {16, 32, 32, 32}, ge::FORMAT_NCHW));
+    op.UpdateInputDesc("filter", create_desc_with_ori({32, 16, 3, 3},
+        ge::DT_FLOAT16, ge::FORMAT_NCHW, {32, 16, 3, 3}, ge::FORMAT_NCHW));
+    op.UpdateOutputDesc("y", create_desc_with_ori({16, 16, 64, 64},
+        ge::DT_FLOAT16, ge::FORMAT_NCHW, {16, 16, 64, 64}, ge::FORMAT_NCHW));
+    op.SetAttr("strides", {2, 2, 2, 2});
+    op.SetAttr("pads", {0, 0, 0, 0});
+    op.SetAttr("dilations", {1, 1, 1, 1});
+    op.SetAttr("groups", 1);
+    op.SetAttr("data_format","NCHW");
+    op.SetAttr("output_padding", {0, 0, 0, 0});
+    op.SetAttr("offset_x", 0);
+    op.SetAttr("auto_pad", "SAME_UPPER");
+
+    ge::Tensor constTensor;
+    std::vector<int64_t> dims_input_size{0, 0, 0, 0};
+    ge::TensorDesc tensor_desc_input_size(ge::Shape(),
+      ge::FORMAT_NCHW, ge::DT_INT32);
+    int element_size = dims_input_size.size();
+    tensor_desc_input_size.SetSize(element_size * sizeof(int32_t));
+    constTensor.SetTensorDesc(tensor_desc_input_size);
+
+    int *conv_input_size_tensor_value = new int[element_size];
+    for (int i = 0; i < element_size; i++) {
+        *(conv_input_size_tensor_value + i) = dims_input_size[i];
+    }
+    constTensor.SetData((uint8_t *) conv_input_size_tensor_value,
+      element_size * sizeof(int32_t));
+    auto const0 = ge::op::Constant("input_size").set_attr_value(constTensor);
+    op.set_input_input_size(const0);
+    delete[] conv_input_size_tensor_value;
+    op.UpdateInputDesc("input_size", tensor_desc_input_size);
+
+    auto status = op.VerifyAllAttr(true);
+    EXPECT_EQ(status, ge::GRAPH_SUCCESS);
+    auto ret = op.InferShapeAndType();
+    EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+
+    std::vector<std::int64_t> new_pads;
+    op.GetAttr("pads", new_pads);
+    std::vector<std::int64_t> new_pads_expect = {0, 1, 0, 1};
+    EXPECT_EQ(new_pads_expect, new_pads);
+
+    std::vector<std::int64_t> new_output_padding;
+    op.GetAttr("output_padding", new_output_padding);
+    std::vector<std::int64_t> new_output_padding_expect = {0, 0, 0, 0};
+    EXPECT_EQ(new_output_padding_expect, new_output_padding);
+}
+
+TEST_F(Conv2DTransposeProtoTest, conv2dTransposeOnnxAutoPadSameUpperDynamic) {
+    ge::op::Conv2DTranspose op;
+    op.UpdateInputDesc("x", create_desc_shape_range({16, 32, -1, -1},
+        ge::DT_FLOAT16, ge::FORMAT_NCHW, {16, 32, -1, -1}, ge::FORMAT_NCHW,
+        {{16, 16}, {32, 32}, {32, 64}, {32, 64}}));
+    op.UpdateInputDesc("filter", create_desc_with_ori({32, 16, 3, 3},
+        ge::DT_FLOAT16, ge::FORMAT_NCHW, {32, 16, 3, 3}, ge::FORMAT_NCHW));
+    op.UpdateOutputDesc("y", create_desc_shape_range({16, 16, -1, -1},
+        ge::DT_FLOAT16, ge::FORMAT_NCHW, {16, 16, -1, -1}, ge::FORMAT_NCHW,
+        {{16, 16}, {16, 16}, {63, 128}, {63, 128}}));
+    op.SetAttr("strides", {2, 2, 2, 2});
+    op.SetAttr("pads", {0, 0, 0, 0});
+    op.SetAttr("dilations", {1, 1, 1, 1});
+    op.SetAttr("groups", 1);
+    op.SetAttr("data_format","NCHW");
+    op.SetAttr("output_padding", {0, 0, 0, 0});
+    op.SetAttr("offset_x", 0);
+    op.SetAttr("auto_pad", "SAME_UPPER");
+
+    ge::Tensor constTensor;
+    std::vector<int64_t> dims_input_size{0, 0, 0, 0};
+    ge::TensorDesc tensor_desc_input_size(ge::Shape(),
+      ge::FORMAT_NCHW, ge::DT_INT32);
+    int element_size = dims_input_size.size();
+    tensor_desc_input_size.SetSize(element_size * sizeof(int32_t));
+    constTensor.SetTensorDesc(tensor_desc_input_size);
+
+    int *conv_input_size_tensor_value = new int[element_size];
+    for (int i = 0; i < element_size; i++) {
+        *(conv_input_size_tensor_value + i) = dims_input_size[i];
+    }
+    constTensor.SetData((uint8_t *) conv_input_size_tensor_value,
+      element_size * sizeof(int32_t));
+    auto const0 = ge::op::Constant("input_size").set_attr_value(constTensor);
+    op.set_input_input_size(const0);
+    delete[] conv_input_size_tensor_value;
+    op.UpdateInputDesc("input_size", tensor_desc_input_size);
+
+    auto status = op.VerifyAllAttr(true);
+    EXPECT_EQ(status, ge::GRAPH_SUCCESS);
+    auto ret = op.InferShapeAndType();
+    EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+
+    std::vector<std::int64_t> new_output_padding;
+    op.GetAttr("output_padding", new_output_padding);
+    std::vector<std::int64_t> new_output_padding_expect = {0, 0, 0, 0};
+    EXPECT_EQ(new_output_padding_expect, new_output_padding);
+}
+
+TEST_F(Conv2DTransposeProtoTest, conv2dTransposeOnnxAutoPadSameLowerDynamic) {
+    ge::op::Conv2DTranspose op;
+    op.UpdateInputDesc("x", create_desc_shape_range({16, 32, -1, -1},
+        ge::DT_FLOAT16, ge::FORMAT_NCHW, {16, 32, -1, -1}, ge::FORMAT_NCHW,
+        {{16, 16}, {32, 32}, {32, 64}, {32, 64}}));
+    op.UpdateInputDesc("filter", create_desc_with_ori({32, 16, 3, 3},
+        ge::DT_FLOAT16, ge::FORMAT_NCHW, {32, 16, 3, 3}, ge::FORMAT_NCHW));
+    op.UpdateOutputDesc("y", create_desc_shape_range({16, 16, -1, -1},
+        ge::DT_FLOAT16, ge::FORMAT_NCHW, {16, 16, -1, -1}, ge::FORMAT_NCHW,
+        {{16, 16}, {16, 16}, {63, 128}, {63, 128}}));
+    op.SetAttr("strides", {2, 2, 2, 2});
+    op.SetAttr("pads", {0, 0, 0, 0});
+    op.SetAttr("dilations", {1, 1, 1, 1});
+    op.SetAttr("groups", 1);
+    op.SetAttr("data_format","NCHW");
+    op.SetAttr("output_padding", {0, 0, 0, 0});
+    op.SetAttr("offset_x", 0);
+    op.SetAttr("auto_pad", "SAME_LOWER");
+
+    ge::Tensor constTensor;
+    std::vector<int64_t> dims_input_size{0, 0, 0, 0};
+    ge::TensorDesc tensor_desc_input_size(ge::Shape(),
+      ge::FORMAT_NCHW, ge::DT_INT32);
+    int element_size = dims_input_size.size();
+    tensor_desc_input_size.SetSize(element_size * sizeof(int32_t));
+    constTensor.SetTensorDesc(tensor_desc_input_size);
+
+    int *conv_input_size_tensor_value = new int[element_size];
+    for (int i = 0; i < element_size; i++) {
+        *(conv_input_size_tensor_value + i) = dims_input_size[i];
+    }
+    constTensor.SetData((uint8_t *) conv_input_size_tensor_value,
+      element_size * sizeof(int32_t));
+    auto const0 = ge::op::Constant("input_size").set_attr_value(constTensor);
+    op.set_input_input_size(const0);
+    delete[] conv_input_size_tensor_value;
+    op.UpdateInputDesc("input_size", tensor_desc_input_size);
+
+    auto status = op.VerifyAllAttr(true);
+    EXPECT_EQ(status, ge::GRAPH_SUCCESS);
+    auto ret = op.InferShapeAndType();
+    EXPECT_EQ(ret, ge::GRAPH_FAILED);
+
+    std::vector<std::int64_t> new_output_padding;
+    op.GetAttr("output_padding", new_output_padding);
+    std::vector<std::int64_t> new_output_padding_expect = {0, 0, 0, 0};
+    EXPECT_EQ(new_output_padding_expect, new_output_padding);
+}
