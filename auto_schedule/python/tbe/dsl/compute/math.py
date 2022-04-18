@@ -325,6 +325,22 @@ def _intrinsic_check(intr):
     return ret_intr
 
 
+def _check_scalar(scalar, position="second"):
+    if isinstance(scalar, tvm.tensor.Tensor):
+        dict_args = {}
+        dict_args["errCode"] = "E90001"
+        dict_args["detailed_cause"] = f"The {position} input type must be [scalar], while type is [{type(scalar)}]"
+        raise RuntimeError(dict_args, get_error_message(dict_args))
+
+
+def _check_tensor(tensor, position="second"):
+    if not isinstance(tensor, tvm.tensor.Tensor):
+        dict_args = {}
+        dict_args["errCode"] = "E90001"
+        dict_args["detailed_cause"] = f"The {position} input type must be [tvm.tensor], while type is [{type(tensor)}]"
+        raise RuntimeError(dict_args, get_error_message(dict_args))
+
+
 @source_info_decorator()
 @dtype_check_decorator
 def vmuls(raw_tensor, scalar):
@@ -344,12 +360,7 @@ def vmuls(raw_tensor, scalar):
     """
     dtype = raw_tensor.dtype
 
-    if isinstance(scalar, tvm.tensor.Tensor):
-        dict_args = {}
-        dict_args["errCode"] = "E90001"
-        dict_args["detailed_cause"] = "The second input type must be [%s], " \
-                                      "while type is [%s]" % ('scalar', type(scalar))
-        raise RuntimeError(dict_args, get_error_message(dict_args))
+    _check_scalar(scalar)
 
     return __single_elewise_op(raw_tensor, dtype, 'elewise_single_VS_mul',
                                args=[scalar])
@@ -373,13 +384,7 @@ def vadds(raw_tensor, scalar):
     """
     dtype = raw_tensor.dtype
 
-    if isinstance(scalar, tvm.tensor.Tensor):
-        dict_args = {}
-        dict_args["errCode"] = "E90001"
-        dict_args["detailed_cause"] = "The second input type must be [%s], " \
-                                      "while type is [%s]" % (
-                                      'scalar', type(scalar))
-        raise RuntimeError(dict_args, get_error_message(dict_args))
+    _check_scalar(scalar)
 
     return __single_elewise_op(raw_tensor, dtype, 'elewise_single_VS_add',
                                args=[scalar])
@@ -405,13 +410,7 @@ def vmaxs(raw_tensor, scalar):
 
     dtype = raw_tensor.dtype
 
-    if isinstance(scalar, tvm.tensor.Tensor):
-        dict_args = {}
-        dict_args["errCode"] = "E90001"
-        dict_args["detailed_cause"] = "The second input type must be [%s], " \
-                                      "while type is [%s]" % (
-                                          'scalar', type(scalar))
-        raise RuntimeError(dict_args, get_error_message(dict_args))
+    _check_scalar(scalar)
 
     return __single_elewise_op(raw_tensor, dtype, 'elewise_single_VS_max',
                                args=[scalar])
@@ -437,13 +436,7 @@ def vmins(raw_tensor, scalar):
 
     dtype = raw_tensor.dtype
 
-    if isinstance(scalar, tvm.tensor.Tensor):
-        dict_args = {}
-        dict_args["errCode"] = "E90001"
-        dict_args["detailed_cause"] = "The second input type must be [%s], " \
-                                      "while type is [%s]" % (
-                                          'scalar', type(scalar))
-        raise RuntimeError(dict_args, get_error_message(dict_args))
+    _check_scalar(scalar)
 
     return __single_elewise_op(raw_tensor, dtype, 'elewise_single_VS_min',
                                args=[scalar])
@@ -915,7 +908,7 @@ def __single_elewise_op(input_tensor, dtype, op_name, args=None):
     """
     if not operation_context.in_dynamic():
         _check_elewise_single_shape(input_tensor)
-    shape = shape_to_list(input_tensor.shape)
+    shape = input_tensor.shape
     if op_name == "elewise_single_log":
         lambda_func = lambda *indice: tvm.log(input_tensor(*indice))
     elif op_name == "elewise_single_exp":
@@ -1058,13 +1051,7 @@ def vdiv(lhs, rhs):
     -----
     wrapped_tensor: lhs / rhs
     """
-    if not isinstance(rhs, tvm.tensor.Tensor):
-        dict_args = {}
-        dict_args["errCode"] = "E90001"
-        dict_args["detailed_cause"] = \
-            "The second input type must be [%s], while type is [%s]" % (
-                'tvm.tensor', type(rhs))
-        raise RuntimeError(dict_args, get_error_message(dict_args))
+    _check_tensor(rhs)
 
     if not intrinsic_check_support("Intrinsic_vdiv"):
         dtype = rhs.dtype
@@ -1166,20 +1153,8 @@ def vmod(lhs, rhs):
     -----
     wrapped_tensor : lhs - floor(lhs/rhs) * rhs
     """
-    if not isinstance(lhs, tvm.tensor.Tensor):
-        dict_args = {}
-        dict_args["errCode"] = "E90001"
-        dict_args["detailed_cause"] = \
-            "The first input type must be [%s], while type is [%s]" % (
-                'tvm.tensor', type(lhs))
-        raise RuntimeError(dict_args, get_error_message(dict_args))
-    if not isinstance(rhs, tvm.tensor.Tensor):
-        dict_args = {}
-        dict_args["errCode"] = "E90001"
-        dict_args["detailed_cause"] = \
-            "The second input type must be [%s], while type is [%s]" % (
-                'tvm.tensor', type(rhs))
-        raise RuntimeError(dict_args, get_error_message(dict_args))
+    _check_tensor(lhs, position="first")
+    _check_tensor(rhs, position="second")
 
     _check_elewise_binary_shape(lhs, rhs)
     if lhs.dtype != rhs.dtype:
@@ -1233,14 +1208,7 @@ def vadd(lhs, rhs):
     -------
     wrapped_tensor : lhs + rhs
     """
-
-    if not isinstance(rhs, tvm.tensor.Tensor):
-        dict_args = {}
-        dict_args["errCode"] = "E90001"
-        dict_args["detailed_cause"] = "The second input type must be [%s], " \
-                                      "while type is [%s]" \
-                                      % ('tvm.tensor', type(rhs))
-        raise RuntimeError(dict_args, get_error_message(dict_args))
+    _check_tensor(rhs, position="second")
 
     def is_conv_oper(tensor):
         if hasattr(tensor.op, "reduce_axis") and len(tensor.op.reduce_axis) == 2 and \
@@ -1276,14 +1244,7 @@ def vsub(lhs, rhs):
     -------
     wrapped_tensor : lhs - rhs
     """
-
-    if not isinstance(rhs, tvm.tensor.Tensor):
-        dict_args = {}
-        dict_args["errCode"] = "E90001"
-        dict_args["detailed_cause"] = "The second input type must be [%s], " \
-                                      "while type is [%s]" \
-                                      % ('tvm.tensor', type(rhs))
-        raise RuntimeError(dict_args, get_error_message(dict_args))
+    _check_tensor(rhs, position="second")
 
     return __binary_elewise_op(lhs, rhs, "elewise_binary_sub")
 
@@ -1303,13 +1264,7 @@ def vmin(lhs, rhs):
     -------
     wrapped_tensor : min(lhs , rhs)
     """
-    if not isinstance(rhs, tvm.tensor.Tensor):
-        dict_args = {}
-        dict_args["errCode"] = "E90001"
-        dict_args["detailed_cause"] = "The second input type must be [%s], " \
-                                      "while type is [%s]" \
-                                      % ('tvm.tensor', type(rhs))
-        raise RuntimeError(dict_args, get_error_message(dict_args))
+    _check_tensor(rhs, position="second")
 
     return __binary_elewise_op(lhs, rhs, "elewise_binary_min")
 
@@ -1329,13 +1284,7 @@ def vmax(lhs, rhs):
     -------
     wrapped_tensor : max(lhs , rhs)
     """
-    if not isinstance(rhs, tvm.tensor.Tensor):
-        dict_args = {}
-        dict_args["errCode"] = "E90001"
-        dict_args["detailed_cause"] = "The second input type must be [%s], " \
-                                      "while type is [%s]" \
-                                      % ('tvm.tensor', type(rhs))
-        raise RuntimeError(dict_args, get_error_message(dict_args))
+    _check_tensor(rhs, position="second")
 
     return __binary_elewise_op(lhs, rhs, "elewise_binary_max")
 
@@ -1355,13 +1304,7 @@ def vor(lhs, rhs):
     -------
     wrapped_tensor : or(lhs , rhs)
     """
-    if not isinstance(rhs, tvm.tensor.Tensor):
-        dict_args = {}
-        dict_args["errCode"] = "E90001"
-        dict_args["detailed_cause"] = "The second input type must be [%s], " \
-                                      "while type is [%s]" \
-                                      % ('tvm.tensor', type(rhs))
-        raise RuntimeError(dict_args, get_error_message(dict_args))
+    _check_tensor(rhs, position="second")
 
     return __binary_elewise_op(lhs, rhs, "elewise_binary_or")
 
@@ -1381,13 +1324,7 @@ def vand(lhs, rhs):
     -------
     wrapped_tensor : max(lhs , rhs)
     """
-    if not isinstance(rhs, tvm.tensor.Tensor):
-        dict_args = {}
-        dict_args["errCode"] = "E90001"
-        dict_args["detailed_cause"] = "The second input type must be [%s], " \
-                                      "while type is [%s]" \
-                                      % ('tvm.tensor', type(rhs))
-        raise RuntimeError(dict_args, get_error_message(dict_args))
+    _check_tensor(rhs, position="second")
 
     return __binary_elewise_op(lhs, rhs, "elewise_binary_and")
 
@@ -1407,20 +1344,8 @@ def vaxpy(lhs, rhs, scalar):
     -------
     wrapped_tensor : max(lhs , rhs)
     """
-    if not isinstance(rhs, tvm.tensor.Tensor):
-        dict_args = {}
-        dict_args["errCode"] = "E90001"
-        dict_args["detailed_cause"] = "The second input type must be [%s], " \
-                                      "while type is [%s]" \
-                                      % ('tvm.tensor', type(rhs))
-        raise RuntimeError(dict_args, get_error_message(dict_args))
-    if isinstance(scalar, tvm.tensor.Tensor):
-        dict_args = {}
-        dict_args["errCode"] = "E90001"
-        dict_args["detailed_cause"] = "The third input type must be [%s], " \
-                                      "while type is [%s]" \
-                                      % ('scalar', type(scalar))
-        raise RuntimeError(dict_args, get_error_message(dict_args))
+    _check_tensor(rhs, position="second")
+    _check_scalar(scalar, position="third")
 
     return __binary_elewise_op(lhs, rhs, "elewise_binary_scalar_axpy",
                                args=[scalar])
@@ -1461,14 +1386,9 @@ def vcmp(lhs, rhs, operation='lt', mode='bool'):
     wrapped_tensor
     """
     def __vcmp_input_check(lhs, operation, mode, shape):
+        shape = shape_to_list(lhs.shape)
 
-        if not isinstance(lhs, tvm.tensor.Tensor):
-            dict_args = {}
-            dict_args["errCode"] = "E90001"
-            dict_args["detailed_cause"] = "The input type must be [%s], " \
-                                          "while type is [%s]" \
-                                          % ('tvm.tensor', type(lhs))
-            raise RuntimeError(dict_args, get_error_message(dict_args))
+        _check_tensor(lhs, position="first")
 
         if operation not in ['eq', 'ne', 'lt', 'gt', 'ge', 'le']:
             dict_args = {}
@@ -1492,7 +1412,7 @@ def vcmp(lhs, rhs, operation='lt', mode='bool'):
                                           "mutiply of 8, while last dim is [%s]" % shape[-1]
             raise RuntimeError(dict_args, get_error_message(dict_args))
 
-    shape = shape_to_list(lhs.shape)
+    shape = lhs.shape
     __vcmp_input_check(lhs, operation, mode, shape)
 
     # dynamic realize
@@ -1958,18 +1878,8 @@ def vmla(tensor_0, tensor_1, tensor_2):
     -------
     wrapped_tensor : X*tensor_1 + tensor_2
     """
-    if not isinstance(tensor_1, tvm.tensor.Tensor):
-        dict_args = {}
-        dict_args["errCode"] = "E90001"
-        dict_args["detailed_cause"] = "The second input type must be [%s], " \
-                                      "while type is [%s]" % ('tvm.tensor', type(tensor_1))
-        raise RuntimeError(dict_args, get_error_message(dict_args))
-    if not isinstance(tensor_2, tvm.tensor.Tensor):
-        dict_args = {}
-        dict_args["errCode"] = "E90001"
-        dict_args["detailed_cause"] = "The third input type must be [%s], " \
-                                      "while type is [%s]" % ('tvm.tensor', type(tensor_2))
-        raise RuntimeError(dict_args, get_error_message(dict_args))
+    _check_tensor(tensor_1, position="second")
+    _check_tensor(tensor_2, position="third")
 
     return __multiple_elewise_op(tensor_0, tensor_1, tensor_2,
                                  "elewise_multiple_mla")
@@ -1989,20 +1899,8 @@ def vmadd(tensor_0, tensor_1, tensor_2):
     -------
     wrapped_tensor : tensor_0*tensor_2 + tensor_1
     """
-    if not isinstance(tensor_1, tvm.tensor.Tensor):
-        dict_args = {}
-        dict_args["errCode"] = "E90001"
-        dict_args["detailed_cause"] = "The second input type must be [%s], " \
-                                      "while type is [%s]" % (
-                                      'tvm.tensor', type(tensor_1))
-        raise RuntimeError(dict_args, get_error_message(dict_args))
-    if not isinstance(tensor_2, tvm.tensor.Tensor):
-        dict_args = {}
-        dict_args["errCode"] = "E90001"
-        dict_args["detailed_cause"] = "The third input type must be [%s], " \
-                                      "while type is [%s]" % (
-                                      'tvm.tensor', type(tensor_2))
-        raise RuntimeError(dict_args, get_error_message(dict_args))
+    _check_tensor(tensor_1, position="second")
+    _check_tensor(tensor_2, position="third")
 
     return __multiple_elewise_op(tensor_0, tensor_1, tensor_2,
                                  "elewise_multiple_madd")
@@ -2193,14 +2091,7 @@ def vsel(condition, lhs, rhs):
     """
 
     def __vsel_input_check(condition):
-
-        if not isinstance(condition, tvm.tensor.Tensor):
-            dict_args = {}
-            dict_args["errCode"] = "E90001"
-            dict_args["detailed_cause"] = \
-                "The condition type must be [%s], while type is [%s]" % (
-                'tvm.tensor', type(condition))
-            raise RuntimeError(dict_args, get_error_message(dict_args))
+        _check_tensor(condition, position="first")
     __vsel_input_check(condition)
 
     src_dtype = "float16"

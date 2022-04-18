@@ -577,5 +577,8 @@
     ],
     "auto_schedule/python/tbe/common/utils/varshape/vector/tuple_reduce_variable_shape.py":[
         "tuple_reduce/test_tuple_reduce_variable_shape_impl.py"
+    ],
+    "auto_schedule/python/tbe/dsl/base/var_api.py":[
+        "base/test_var_api_impl.py"
     ]
 }

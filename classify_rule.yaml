@@ -201,6 +201,7 @@ auto_schedule:
       - auto_schedule/python/tbe/common/utils/varshape/__init__.py
       - auto_schedule/python/tbe/common/utils/varshape/variable_shape.py
       - auto_schedule/python/tbe/common/utils/varshape/vector/
+      - auto_schedule/python/tbe/dsl/base/var_api.py
     unrelease:
     llt:
       ut_check: true

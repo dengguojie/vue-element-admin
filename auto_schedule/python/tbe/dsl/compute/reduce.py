@@ -330,7 +330,7 @@ def _single_reduce_op(input_tensor,  # 'pylint: disable=too-many-statements
     reduce_func = __get_reduce_fun(in_op)
 
     op_tensor = input_tensor
-    shape = shape_to_list(op_tensor.shape)
+    shape = op_tensor.shape
     res_axis = refine_axis(axis, shape)
 
     if keepdims:
@@ -519,7 +519,7 @@ def _tuple_reduce_op(input_tensor_list, axis, in_op, keepdims=False):
         raise RuntimeError(dict_args, get_error_message(dict_args))
 
     op_tensor = input_tensor_list[0]
-    shape = shape_to_list(op_tensor.shape)
+    shape = op_tensor.shape
     res_axis = refine_axis(axis, shape)
     for i in res_axis:
         is_last_axis = (i == (len(shape) - 1))

@@ -272,7 +272,7 @@ def _cast_op(input_tensor, output_dtype, op_type, is_auto_cast=True):
     tvm.* for proving correctness for dsl operator
     """
     tensor = input_tensor
-    shape = shape_to_list(tensor.shape)
+    shape = tensor.shape
     check_input_tensor_shape(shape)
     if is_debug_mode():
         return _cast_op_for_protogenes(tensor, op_type, shape)

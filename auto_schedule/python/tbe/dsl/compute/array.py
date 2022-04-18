@@ -307,7 +307,7 @@ def set_value(tensor, condition, value):
     -------
     wrapped_tensor: updated tensor
     """
-    shape = shape_to_list(tensor.shape)
+    shape = tensor.shape
     if isinstance(value, types.FunctionType):
         lambda_func = lambda *indice: tvm.select(condition(*indice), value(*indice), tensor(*indice))
     else:

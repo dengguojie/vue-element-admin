@@ -1185,9 +1185,9 @@ def check_input_tensor_shape(tensor_shape):
     """
     check_tensor_shape
     """
-    shape = tensor_shape
     if isinstance(tensor_shape, tvm.tensor.Tensor):
-        shape = shape_util.shape_to_list(tensor_shape.shape)
+        tensor_shape = tensor_shape.shape
+    shape = shape_util.shape_to_list(tensor_shape)
 
     in_dynamic = operation.in_dynamic()
     for val in shape:
