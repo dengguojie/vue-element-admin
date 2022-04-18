@@ -580,6 +580,7 @@ DSL_CHECK_SUPPORT_MAP = {
     "vmla": {
         "AllSoc": ("float16",),
         ASCEND_310: ("float16", "float32"),
+        ASCEND_320: ("float16", "float32"),
         ASCEND_910: ("float16", "float32"),
         ASCEND_920A: ("float16", "float32"),
         ASCEND_710: ("float16", "float32"),
@@ -590,6 +591,7 @@ DSL_CHECK_SUPPORT_MAP = {
     "vmadd": {
         "AllSoc": ("float16",),
         ASCEND_310: ("float16", "float32"),
+        ASCEND_320: ("float16", "float32"),
         ASCEND_910: ("float16", "float32"),
         ASCEND_920A: ("float16", "float32"),
         ASCEND_710: ("float16", "float32"),
@@ -600,6 +602,7 @@ DSL_CHECK_SUPPORT_MAP = {
     "vmaddrelu": {
         "AllSoc": ("float16",),
         ASCEND_310: ("float16", "float32"),
+        ASCEND_320: ("float16", "float32"),
         ASCEND_910: ("float16", "float32"),
         ASCEND_920A: ("float16", "float32"),
         ASCEND_710: ("float16", "float32"),
@@ -644,6 +647,8 @@ DSL_CHECK_SUPPORT_MAP = {
         "AllSoc": ("float16",),
         ASCEND_310: ("float16", "float32", "int8", "uint8", "int16",
                      "uint16", "int32", "uint32", "int64", "uint64", "bool"),
+        ASCEND_320: ("float16", "float32", "int8", "uint8", "int16",
+                     "uint16", "int32", "uint32", "int64", "uint64", "bool"),
         ASCEND_910: ("float16", "float32", "int8", "uint8", "int16",
                      "uint16", "int32", "uint32", "int64", "uint64", "bool"),
         ASCEND_920A: ("float16", "float32", "int8", "uint8", "int16",
@@ -658,6 +663,7 @@ DSL_CHECK_SUPPORT_MAP = {
     "gather_nd": {
         "AllSoc": ("float16",),
         ASCEND_310: ("float16", "float32", "int8", "uint8", "int32", "bool"),
+        ASCEND_320: ("float16", "float32", "int8", "uint8", "int32", "bool"),
         ASCEND_910: ("float16", "float32", "int8", "uint8", "int32", "bool"),
         ASCEND_920A: ("float16", "float32", "int8", "uint8", "int32", "bool"),
         ASCEND_710: ("float16", "float32", "int8", "uint8", "int32", "bool"),
@@ -667,6 +673,8 @@ DSL_CHECK_SUPPORT_MAP = {
     "slice": {
         "AllSoc": ("float16",),
         ASCEND_310: ("float16", "float32", "int8", "uint8", "int16",
+                     "uint16", "int32", "uint32", "int64", "uint64", "bool"),
+        ASCEND_320: ("float16", "float32", "int8", "uint8", "int16",
                      "uint16", "int32", "uint32", "int64", "uint64", "bool"),
         ASCEND_910: ("float16", "float32", "int8", "uint8", "int16",
                      "uint16", "int32", "uint32", "int64", "uint64", "bool"),
@@ -681,6 +689,7 @@ DSL_CHECK_SUPPORT_MAP = {
     },
     "set_value": {
         "AllSoc": ("float16", "float32"),
+        ASCEND_320: ("float16", "float32"),
         ASCEND_910: ("float16", "float32"),
         ASCEND_920A: ("float16", "float32"),
         ASCEND_710: ("float16", "float32"),
@@ -690,6 +699,8 @@ DSL_CHECK_SUPPORT_MAP = {
     "transpose": {
         "AllSoc": ("float16",),
         ASCEND_310: ("float16", "float32", "int8", "uint8", "int16",
+                     "uint16", "int32", "uint32", "int64", "uint64", "int64"),
+        ASCEND_320: ("float16", "float32", "int8", "uint8", "int16",
                      "uint16", "int32", "uint32", "int64", "uint64", "int64"),
         ASCEND_910: ("float16", "float32", "int8", "uint8", "int16",
                      "uint16", "int32", "uint32", "int64", "uint64", "int64"),
@@ -705,6 +716,8 @@ DSL_CHECK_SUPPORT_MAP = {
     "transdata": {
         "AllSoc": ("float16",),
         ASCEND_310: ("float16", "float32", "int8", "uint8", "int16",
+                     "uint16", "int32", "uint32", ),
+        ASCEND_320: ("float16", "float32", "int8", "uint8", "int16",
                      "uint16", "int32", "uint32", ),
         ASCEND_910: ("float16", "float32", "int8", "uint8", "int16",
                      "uint16", "int32", "uint32", ),

@@ -596,11 +596,14 @@ def _fuction_calcu_one_segment(calc_ub_info,
                     tvm.call_extern("uint64", 'set_vector_mask',
                                     mask_paras[2][1], mask_paras[2][0]))
 
-            vcadd_expr = tvm.call_extern(params.vcadd_ub.dtype, "vcadd", params.vcadd_ub.access_ptr("rw", offset=0),
-                                         params.vcadd_ub.access_ptr("r", offset=0), 1, 1, 1, 8, 0) \
-                if tbe_platform.api_check_support("tik.vgatherb") \
-                else tvm.call_extern(params.vcadd_ub.dtype, "vcadd", params.vcadd_ub.access_ptr("rw", offset=0),
-                                     params.vcadd_ub.access_ptr("r", offset=0), 1, 1, 1, 8)
+            if tbe_platform.api_check_support("tik.vgatherb"):
+                vcadd_expr = tvm.call_extern(params.vcadd_ub.dtype, "vcadd",
+                                             params.vcadd_ub.access_ptr("rw", offset=0),
+                                             params.vcadd_ub.access_ptr("r", offset=0), 1, 1, 1, 8, 0)
+            else:
+                vcadd_expr = tvm.call_extern(params.vcadd_ub.dtype, "vcadd",
+                                             params.vcadd_ub.access_ptr("rw", offset=0),
+                                             params.vcadd_ub.access_ptr("r", offset=0), 1, 1, 1, 8)
             params.ir_builder.emit(vcadd_expr)
             if mask_paras[0] == Constant.SCALAR_ZERO:
                 params.ir_builder.emit(
@@ -608,15 +611,13 @@ def _fuction_calcu_one_segment(calc_ub_info,
                                     params.uint64_all_one,
                                     params.uint64_all_one))
             # bypass problem :addr not 32B align
-            params.ir_builder.emit(
-                tvm.call_extern('int32', 'pipe_barrier', params.args_str))
+            params.ir_builder.emit(tvm.call_extern('int32', 'pipe_barrier', params.args_str))
             params.reg[4] = params.vcadd_ub.vload(0, params.mid_dtype)
             kernel_api.kernel_vector_dup_fuc(
                 params.ir_builder, [params.vcadd_ub, 0], params.reg[4],
                 [params.mid_vec_align_len, params.mid_vec_align_len])
         # add num of index to src_output_ub
-        nbins_index_core = nbins_index - params.block.var * \
-                           params.out_num_per_core
+        nbins_index_core = nbins_index - params.block.var * params.out_num_per_core
         params.offset = (nbins_index_core // params.mid_vec_align_len) * \
             params.mid_vec_align_len
         params.ir_builder.emit(
