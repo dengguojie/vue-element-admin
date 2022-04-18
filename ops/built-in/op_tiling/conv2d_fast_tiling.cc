@@ -187,7 +187,7 @@ bool FastTiling::GetBlockDimTiling(Tiling& tiling)
         estMemoryAccTime = mte1 + mte2 + mte3;
         float newEstTotalTime = estMemoryAccTime + estComputeTime;
         // iteration stop if cost function increase
-        if (newEstTotalTime > estTotalTime) {
+        if (newEstTotalTime >= estTotalTime) {
             break;
         } else {
             estTotalTime = newEstTotalTime;
@@ -512,7 +512,7 @@ void FastTiling::CalcCommFactor(const uint32_t num, const uint32_t numMax, std::
         rlist.push_back(1);
     } else {
         uint32_t i = 1; // calculate the common factor, exclude 0;
-        while (i <= numMax) {
+        while (i != 0 && i <= numMax) {
             if (num % i == 0) {
                 rlist.push_back(i);
             }
@@ -745,12 +745,17 @@ void FastTiling::AssignmentL0(Tiling &tiling)
 {
     // set tiling L0
     uint32_t reduceKAxisL0_KhKwCi0_ = getCi0() * opInfo_.kh * opInfo_.kw;
-    tiling.kA = tilingRangeL0_.kL0.at(l0Data_.kL0Index) * reduceKAxisL0_KhKwCi0_;
+    tiling.kA = tilingRangeL0_.kL0.at(l0Data_.kL0Index) * reduceKAxisL0_KhKwCi0_ / getCi0();
     tiling.mA = tilingRangeL0_.mL0.at(l0Data_.mL0Index);
     tiling.kB = tiling.nBL1 == 0 ? FULL_LOAD : tiling.kA;
     tiling.nB = tiling.nBL1 == 0 ? FULL_LOAD : tilingRangeL0_.nL0.at(l0Data_.nL0Index);
     tiling.mC = tiling.mA;
-    tiling.nC = tiling.nB;
+    if (tiling.nB != FULL_LOAD) {
+        tiling.nC = tiling.nB;
+    } else {
+        // when nB is FULL_LOAD, calculate nc
+        tiling.nC = tilingRangeL0_.nL0.at(l0Data_.nL0Index);
+    }
     // special case, set L1.
     tiling.mAL1 = tiling.mAL1Value / tiling.mA;
     // nBL1 is FULL_LOAD, pass it to schedule.

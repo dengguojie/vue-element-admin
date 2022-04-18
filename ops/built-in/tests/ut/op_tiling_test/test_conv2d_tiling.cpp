@@ -508,3 +508,295 @@ TEST_F(Conv2DTiling, Conv2d_vadd_fusion_tiling_dynamic_nhwc_invalid1) {
   EXPECT_EQ(runInfo.GetTilingKey(), 10000);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "1 16 16 16 16 ");
   }
+
+
+TEST_F(Conv2DTiling, Conv2d_tiling_binary_case0) {
+  using namespace optiling;
+  std::string op_name = "Conv2D";
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
+
+  const std::string compileInfo = R"({"_pattern": "Convolution", "push_status": 0, "tiling_type": "binary_tiling", "repo_seeds": {}, "repo_range": {}, "cost_range": {"10000": [1, 10, 10, 25, 10, 25]}, "block_dim": {"10000": 2}, "_vars": {"10000": ["batch_n", "fmap_h", "ho", "fmap_w", "wo"]}, "_custom_vars": {"10000": ["batch_n", "fmap_h", "ho", "fmap_w", "wo"]}})";
+
+  ge::Graph graph("conv2d_op_tiling_test_0");
+
+  auto x_shape = vector<int64_t>({1, 2, 16, 16, 16});
+  auto x_ori_shape = vector<int64_t>({1, 32, 16, 16});
+  ge::TensorDesc desc_x(ge::Shape(x_shape), FORMAT_NC1HWC0, DT_FLOAT16);
+  desc_x.SetOriginShape(ge::Shape(x_ori_shape));
+  desc_x.SetOriginFormat(FORMAT_NCHW);
+  auto x = op::Data("x");
+  x.update_input_desc_x(desc_x);
+  x.update_output_desc_y(desc_x);
+
+  auto filter_shape = vector<int64_t>({18, 4, 16, 16});
+  auto filter_ori_shape = vector<int64_t>({64, 32, 3, 3});
+  ge::TensorDesc desc_filter(ge::Shape(filter_shape), FORMAT_FRACTAL_Z, DT_FLOAT16);
+  desc_filter.SetOriginShape(ge::Shape(filter_ori_shape));
+  desc_filter.SetOriginFormat(FORMAT_NCHW);
+  auto filter = op::Data("filter").set_attr_index(1);
+  filter.update_input_desc_x(desc_filter);
+  filter.update_output_desc_y(desc_filter);
+
+  auto conv2d = op::Conv2D(op_name)
+      .set_input_x(x)
+      .set_input_filter(filter)
+      .set_attr_strides({1, 1, 1, 1})
+      .set_attr_pads({1, 1, 1, 1})
+      .set_attr_dilations({1, 1, 1, 1})
+      .set_attr_groups(1)
+      .set_attr_data_format("NCHW");
+
+  auto y_shape = vector<int64_t>({1, 4, 16, 16, 16});
+  ge::TensorDesc desc_output(ge::Shape(y_shape), ge::FORMAT_NC1HWC0, ge::DT_FLOAT16);
+
+  conv2d.update_input_desc_x(desc_x);
+  conv2d.update_input_desc_filter(desc_filter);
+  conv2d.update_output_desc_y(desc_output);
+
+  std::vector<Operator> inputs{x, filter};
+  std::vector<Operator> outputs{conv2d};
+
+  graph.SetInputs(inputs).SetOutputs(outputs);
+  ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
+
+  optiling::utils::OpCompileInfo op_compile_info("Conv2d_tiling_binary_case0", compileInfo);
+  optiling::utils::OpRunInfo runInfo;
+  RUN_TILING_V4(conv2d, iter->second, compileInfo, runInfo);
+  EXPECT_EQ(runInfo.GetBlockDim(), 4);
+  EXPECT_EQ(runInfo.GetTilingKey(), 32857);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "1 1 1 1 1 16 16 16 16 2 4 3 3 1 1 1 1 0 0 1 4 1 1 1 1 2 18 24 1 18 1 1 18 ");
+}
+
+TEST_F(Conv2DTiling, Conv2d_tiling_binary_case1) {
+  using namespace optiling;
+  std::string op_name = "Conv2D";
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
+
+  const std::string compileInfo = R"({"_pattern": "Convolution", "push_status": 0, "tiling_type": "binary_tiling", "repo_seeds": {}, "repo_range": {}, "cost_range": {"10000": [1, 10, 10, 25, 10, 25]}, "block_dim": {"10000": 2}, "_vars": {"10000": ["batch_n", "fmap_h", "ho", "fmap_w", "wo"]}, "_custom_vars": {"10000": ["batch_n", "fmap_h", "ho", "fmap_w", "wo"]}})";
+
+  ge::Graph graph("Conv2d_tiling_binary_case1");
+
+  auto x_shape = vector<int64_t>({1, 2, 56, 56, 16});
+  auto x_ori_shape = vector<int64_t>({1, 32, 56, 56});
+  ge::TensorDesc desc_x(ge::Shape(x_shape), FORMAT_NC1HWC0, DT_FLOAT16);
+  desc_x.SetOriginShape(ge::Shape(x_ori_shape));
+  desc_x.SetOriginFormat(FORMAT_NCHW);
+  auto x = op::Data("x");
+  x.update_input_desc_x(desc_x);
+  x.update_output_desc_y(desc_x);
+
+  auto filter_shape = vector<int64_t>({2, 4, 16, 16});
+  auto filter_ori_shape = vector<int64_t>({64, 32, 1, 1});
+  ge::TensorDesc desc_filter(ge::Shape(filter_shape), FORMAT_FRACTAL_Z, DT_FLOAT16);
+  desc_filter.SetOriginShape(ge::Shape(filter_ori_shape));
+  desc_filter.SetOriginFormat(FORMAT_NCHW);
+  auto filter = op::Data("filter").set_attr_index(1);
+  filter.update_input_desc_x(desc_filter);
+  filter.update_output_desc_y(desc_filter);
+
+  auto conv2d = op::Conv2D(op_name)
+      .set_input_x(x)
+      .set_input_filter(filter)
+      .set_attr_strides({1, 1, 1, 1})
+      .set_attr_pads({0, 0, 0, 0})
+      .set_attr_dilations({1, 1, 1, 1})
+      .set_attr_groups(1)
+      .set_attr_data_format("NCHW");
+
+  auto y_shape = vector<int64_t>({1, 4, 56, 56, 16});
+  ge::TensorDesc desc_output(ge::Shape(y_shape), ge::FORMAT_NC1HWC0, ge::DT_FLOAT16);
+
+  conv2d.update_input_desc_x(desc_x);
+  conv2d.update_input_desc_filter(desc_filter);
+  conv2d.update_output_desc_y(desc_output);
+
+  std::vector<Operator> inputs{x, filter};
+  std::vector<Operator> outputs{conv2d};
+
+  graph.SetInputs(inputs).SetOutputs(outputs);
+  ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
+
+  optiling::utils::OpCompileInfo op_compile_info("Conv2d_tiling_binary_case1", compileInfo);
+  optiling::utils::OpRunInfo runInfo;
+  RUN_TILING_V4(conv2d, iter->second, compileInfo, runInfo);
+  EXPECT_EQ(runInfo.GetBlockDim(), 32);
+  EXPECT_EQ(runInfo.GetTilingKey(), 65);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "1 1 1 1 1 56 56 56 56 2 4 1 1 0 0 0 0 0 0 1 1 32 1 4 1 4 2 1 1 2 1 1 2 ");
+}
+
+TEST_F(Conv2DTiling, Conv2d_tiling_binary_case_cin_lessthan_16) {
+  using namespace optiling;
+  std::string op_name = "Conv2D";
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
+
+  const std::string compileInfo = R"({"_pattern": "Convolution", "push_status": 0, "tiling_type": "binary_tiling", "repo_seeds": {}, "repo_range": {}, "cost_range": {"10000": [1, 10, 10, 25, 10, 25]}, "block_dim": {"10000": 2}, "_vars": {"10000": ["batch_n", "fmap_h", "ho", "fmap_w", "wo"]}, "_custom_vars": {"10000": ["batch_n", "fmap_h", "ho", "fmap_w", "wo"]}})";
+
+  ge::Graph graph("Conv2d_tiling_binary_case_cin_lessthan_16");
+
+  auto x_shape = vector<int64_t>({1, 1, 56, 56, 16});
+  auto x_ori_shape = vector<int64_t>({1, 15, 56, 56});
+  ge::TensorDesc desc_x(ge::Shape(x_shape), FORMAT_NC1HWC0, DT_FLOAT16);
+  desc_x.SetOriginShape(ge::Shape(x_ori_shape));
+  desc_x.SetOriginFormat(FORMAT_NCHW);
+  auto x = op::Data("x");
+  x.update_input_desc_x(desc_x);
+  x.update_output_desc_y(desc_x);
+
+  auto filter_shape = vector<int64_t>({1, 4, 16, 16});
+  auto filter_ori_shape = vector<int64_t>({64, 15, 1, 1});
+  ge::TensorDesc desc_filter(ge::Shape(filter_shape), FORMAT_FRACTAL_Z, DT_FLOAT16);
+  desc_filter.SetOriginShape(ge::Shape(filter_ori_shape));
+  desc_filter.SetOriginFormat(FORMAT_NCHW);
+  auto filter = op::Data("filter").set_attr_index(1);
+  filter.update_input_desc_x(desc_filter);
+  filter.update_output_desc_y(desc_filter);
+
+  auto conv2d = op::Conv2D(op_name)
+      .set_input_x(x)
+      .set_input_filter(filter)
+      .set_attr_strides({1, 1, 1, 1})
+      .set_attr_pads({0, 0, 0, 0})
+      .set_attr_dilations({1, 1, 1, 1})
+      .set_attr_groups(1)
+      .set_attr_data_format("NCHW");
+
+  auto y_shape = vector<int64_t>({1, 4, 56, 56, 16});
+  ge::TensorDesc desc_output(ge::Shape(y_shape), ge::FORMAT_NC1HWC0, ge::DT_FLOAT16);
+
+  conv2d.update_input_desc_x(desc_x);
+  conv2d.update_input_desc_filter(desc_filter);
+  conv2d.update_output_desc_y(desc_output);
+
+  std::vector<Operator> inputs{x, filter};
+  std::vector<Operator> outputs{conv2d};
+
+  graph.SetInputs(inputs).SetOutputs(outputs);
+  ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
+
+  optiling::utils::OpCompileInfo op_compile_info("Conv2d_tiling_binary_case_cin_lessthan_16", compileInfo);
+  optiling::utils::OpRunInfo runInfo;
+  RUN_TILING_V4(conv2d, iter->second, compileInfo, runInfo);
+  EXPECT_EQ(runInfo.GetBlockDim(), 32);
+  EXPECT_EQ(runInfo.GetTilingKey(), 25);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "1 1 1 1 1 56 56 56 56 1 4 1 1 0 0 0 0 0 0 1 1 32 1 4 1 4 1 1 1 1 1 1 1 ");
+}
+
+
+TEST_F(Conv2DTiling, Conv2d_tiling_binary_case_stride_2) {
+  using namespace optiling;
+  std::string op_name = "Conv2D";
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
+
+  const std::string compileInfo = R"({"_pattern": "Convolution", "push_status": 0, "tiling_type": "binary_tiling", "repo_seeds": {}, "repo_range": {}, "cost_range": {"10000": [1, 10, 10, 25, 10, 25]}, "block_dim": {"10000": 2}, "_vars": {"10000": ["batch_n", "fmap_h", "ho", "fmap_w", "wo"]}, "_custom_vars": {"10000": ["batch_n", "fmap_h", "ho", "fmap_w", "wo"]}})";
+
+  ge::Graph graph("Conv2d_tiling_binary_case_stride_2");
+
+  auto x_shape = vector<int64_t>({1, 2, 56, 56, 16});
+  auto x_ori_shape = vector<int64_t>({1, 32, 56, 56});
+  ge::TensorDesc desc_x(ge::Shape(x_shape), FORMAT_NC1HWC0, DT_FLOAT16);
+  desc_x.SetOriginShape(ge::Shape(x_ori_shape));
+  desc_x.SetOriginFormat(FORMAT_NCHW);
+  auto x = op::Data("x");
+  x.update_input_desc_x(desc_x);
+  x.update_output_desc_y(desc_x);
+
+  auto filter_shape = vector<int64_t>({2, 4, 16, 16});
+  auto filter_ori_shape = vector<int64_t>({64, 32, 1, 1});
+  ge::TensorDesc desc_filter(ge::Shape(filter_shape), FORMAT_FRACTAL_Z, DT_FLOAT16);
+  desc_filter.SetOriginShape(ge::Shape(filter_ori_shape));
+  desc_filter.SetOriginFormat(FORMAT_NCHW);
+  auto filter = op::Data("filter").set_attr_index(1);
+  filter.update_input_desc_x(desc_filter);
+  filter.update_output_desc_y(desc_filter);
+
+  auto conv2d = op::Conv2D(op_name)
+      .set_input_x(x)
+      .set_input_filter(filter)
+      .set_attr_strides({1, 1, 2, 2})
+      .set_attr_pads({0, 0, 0, 0})
+      .set_attr_dilations({1, 1, 1, 1})
+      .set_attr_groups(1)
+      .set_attr_data_format("NCHW");
+
+  auto y_shape = vector<int64_t>({1, 4, 28, 28, 16});
+  ge::TensorDesc desc_output(ge::Shape(y_shape), ge::FORMAT_NC1HWC0, ge::DT_FLOAT16);
+
+  conv2d.update_input_desc_x(desc_x);
+  conv2d.update_input_desc_filter(desc_filter);
+  conv2d.update_output_desc_y(desc_output);
+
+  std::vector<Operator> inputs{x, filter};
+  std::vector<Operator> outputs{conv2d};
+
+  graph.SetInputs(inputs).SetOutputs(outputs);
+  ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
+
+  optiling::utils::OpCompileInfo op_compile_info("Conv2d_tiling_binary_case_stride_2", compileInfo);
+  optiling::utils::OpRunInfo runInfo;
+  RUN_TILING_V4(conv2d, iter->second, compileInfo, runInfo);
+  EXPECT_EQ(runInfo.GetBlockDim(), 16);
+  EXPECT_EQ(runInfo.GetTilingKey(), 32833);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "1 1 2 2 1 56 28 56 28 2 4 1 1 0 0 0 0 0 0 1 1 16 1 4 1 4 2 1 1 2 1 1 2 ");
+}
+
+TEST_F(Conv2DTiling, Conv2d_tiling_binary_case_dilation_2) {
+  using namespace optiling;
+  std::string op_name = "Conv2D";
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
+
+  const std::string compileInfo = R"({"_pattern": "Convolution", "push_status": 0, "tiling_type": "binary_tiling", "repo_seeds": {}, "repo_range": {}, "cost_range": {"10000": [1, 10, 10, 25, 10, 25]}, "block_dim": {"10000": 2}, "_vars": {"10000": ["batch_n", "fmap_h", "ho", "fmap_w", "wo"]}, "_custom_vars": {"10000": ["batch_n", "fmap_h", "ho", "fmap_w", "wo"]}})";
+
+  ge::Graph graph("Conv2d_tiling_binary_case_dilation_2");
+
+  auto x_shape = vector<int64_t>({1, 2, 56, 56, 16});
+  auto x_ori_shape = vector<int64_t>({1, 32, 56, 56});
+  ge::TensorDesc desc_x(ge::Shape(x_shape), FORMAT_NC1HWC0, DT_FLOAT16);
+  desc_x.SetOriginShape(ge::Shape(x_ori_shape));
+  desc_x.SetOriginFormat(FORMAT_NCHW);
+  auto x = op::Data("x");
+  x.update_input_desc_x(desc_x);
+  x.update_output_desc_y(desc_x);
+
+  auto filter_shape = vector<int64_t>({18, 4, 16, 16});
+  auto filter_ori_shape = vector<int64_t>({64, 32, 3, 3});
+  ge::TensorDesc desc_filter(ge::Shape(filter_shape), FORMAT_FRACTAL_Z, DT_FLOAT16);
+  desc_filter.SetOriginShape(ge::Shape(filter_ori_shape));
+  desc_filter.SetOriginFormat(FORMAT_NCHW);
+  auto filter = op::Data("filter").set_attr_index(1);
+  filter.update_input_desc_x(desc_filter);
+  filter.update_output_desc_y(desc_filter);
+
+  auto conv2d = op::Conv2D(op_name)
+      .set_input_x(x)
+      .set_input_filter(filter)
+      .set_attr_strides({1, 1, 1, 1})
+      .set_attr_pads({0, 0, 0, 0})
+      .set_attr_dilations({1, 1, 2, 2})
+      .set_attr_groups(1)
+      .set_attr_data_format("NCHW");
+
+  auto y_shape = vector<int64_t>({1, 4, 52, 52, 16});
+  ge::TensorDesc desc_output(ge::Shape(y_shape), ge::FORMAT_NC1HWC0, ge::DT_FLOAT16);
+
+  conv2d.update_input_desc_x(desc_x);
+  conv2d.update_input_desc_filter(desc_filter);
+  conv2d.update_output_desc_y(desc_output);
+
+  std::vector<Operator> inputs{x, filter};
+  std::vector<Operator> outputs{conv2d};
+
+  graph.SetInputs(inputs).SetOutputs(outputs);
+  ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
+
+  optiling::utils::OpCompileInfo op_compile_info("Conv2d_tiling_binary_case_dilation_2", compileInfo);
+  optiling::utils::OpRunInfo runInfo;
+  RUN_TILING_V4(conv2d, iter->second, compileInfo, runInfo);
+  EXPECT_EQ(runInfo.GetBlockDim(), 16);
+  EXPECT_EQ(runInfo.GetTilingKey(), 32857);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "2 2 1 1 1 56 52 56 52 2 4 3 3 0 0 0 0 0 0 1 2 8 1 2 1 2 18 19 1 50 1 1 18 ");
+}
