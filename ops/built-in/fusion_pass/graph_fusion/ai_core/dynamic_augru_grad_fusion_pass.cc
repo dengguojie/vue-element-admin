@@ -244,6 +244,7 @@ ge::NodePtr DynamicAUGRUGradFusionPass::AddOneHiddenGradNode(const string& gateO
   vector<int64_t> singleGateNzDim{1, nzHiddenDim, nzBatch, fzDim, fzDim};
   vector<int64_t> singleGateNzDimOri{1, nzHiddenDim, nzBatch, fzDim, fzDim};
   vector<int64_t> dwAttTNzDim{1, nzHiddenDim, nzBatch, fzDim, fzDim};
+  vector<int64_t> dwAttTNzDimOri{1, batch, nzHiddenDim * fzDim};
   ge::Format dgateOriFormat = ge::FORMAT_FRACTAL_NZ;
   ge::Format dnxOriFormat = ge::FORMAT_FRACTAL_NZ;
   if (fusion_reduce) {
@@ -260,7 +261,7 @@ ge::NodePtr DynamicAUGRUGradFusionPass::AddOneHiddenGradNode(const string& gateO
                     inputHType);
   AddOutputNodeDesc(hiddenGradDesc, "dnt_x", singleGateNzDim, ge::FORMAT_FRACTAL_NZ, singleGateNzDimOri,
                     dnxOriFormat, inputHType);
-  AddOutputNodeDesc(hiddenGradDesc, "dw_att_t", dwAttTNzDim, ge::FORMAT_FRACTAL_NZ, dwAttTNzDim, FORMAT_FRACTAL_NZ,
+  AddOutputNodeDesc(hiddenGradDesc, "dw_att_t", dwAttTNzDim, ge::FORMAT_FRACTAL_NZ, dwAttTNzDimOri, ge::FORMAT_ND,
                     inputHType);
 
   // create gru_hidden_grad node
@@ -466,12 +467,14 @@ ge::NodePtr DynamicAUGRUGradFusionPass::AddTConcatNode(const string& nodeName, c
   // output concat, shape:{t,batch_size,hidden_size}
   GeTensorDesc outputDesc = srcNodes[0]->GetOpDesc()->GetOutputDesc(HIDDENGRAD_OUTPUT_INDEX[inputName]).Clone();
   vector<int64_t> outDim = outputDesc.GetShape().GetDims();
+  vector<int64_t> outDimOri = outputDesc.GetOriginShape().GetDims();
   FUSION_PASS_CHECK(outDim.empty(), VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
                                                                    "AddTConcatNode:check failed, fusion failed."),
                     return nullptr);
   outDim[0] = t_size;
+  outDimOri[0] = t_size;
   outputDesc.SetShape(GeShape(outDim));
-  outputDesc.SetOriginShape(GeShape(outDim));
+  outputDesc.SetOriginShape(GeShape(outDimOri));
   concatDesc->AddOutputDesc("concat_" + inputName, outputDesc);
 
   // attr
@@ -989,7 +992,7 @@ ge::NodePtr DynamicAUGRUGradFusionPass::AddDgateHSplitNodeBack(ge::NodePtr dynam
   // add output1 dgate_ir, shape:{t, batch, 2 * hidden_size}
   vector<int64_t> output1Dim{t_size * batch, splitSize * hidden_dim};
   vector<int64_t> output1NzDim{splitSize * nzHiddenDim, t_size * nzBatch, fzDim, fzDim};
-  AddOutputNodeDesc(splitDesc, "split_ir", output1NzDim, ge::FORMAT_FRACTAL_NZ, output1NzDim, ge::FORMAT_ND,
+  AddOutputNodeDesc(splitDesc, "split_ir", output1NzDim, ge::FORMAT_FRACTAL_NZ, output1Dim, ge::FORMAT_ND,
                     inputHType);  // split_didr
 
   // add output2 split_1, shape:{t, batch, hidden_size}
@@ -1675,27 +1678,44 @@ Status DynamicAUGRUGradFusionPass::AddDbReduceSumNode(ge::NodePtr augruGradNode,
 
 Status DynamicAUGRUGradFusionPass::AddDwAttReduceSumNode(ge::NodePtr augruGradNode, ge::NodePtr dwAttNode,
                                                          ge::ComputeGraph &graph, vector <ge::NodePtr> &newNodes) {
-  // add dw_att reduce_sum
-  int anchorOutputIndex = 0;
-  bool isFailure = false;
-  vector <int64_t> reduceDwAttAxis{1, 4};
-  if (t_size == 1) {
-    vector <int64_t> reduceDwAttAxis{2};
-    anchorOutputIndex = 3;
-    AddReduceSumNode(augruGradNode, dwAttNode, anchorOutputIndex, reduceDwAttAxis, "dw_att_t", "dw_att",
-                     graph, newNodes, isFailure);
-    FUSION_PASS_CHECK(isFailure, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                                                                "AddDwAttReduceSumNode:check failed, fusion failed."),
-    return FAILED);
-    return SUCCESS;
-  }
+  // create reduce_sum desc
+  ge::OpDescPtr reduceSumDesc = nullptr;
+  FUSION_PASS_MAKE_SHARED(
+      (reduceSumDesc = std::make_shared<ge::OpDesc>(augruGradNode->GetName() + "GRUWeightGrad/dwAtt/ReduceSumD",
+                                                    "ReduceSumD")), reduceSumDesc = nullptr; return FAILED);
 
-  // dw_att
-  AddReduceSumNode(augruGradNode, dwAttNode, anchorOutputIndex, reduceDwAttAxis, "dw_att_t", "dw_att", graph,
-                   newNodes, isFailure);
-  FUSION_PASS_CHECK(isFailure, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                                                              "AddDwAttReduceSumNode:check failed, fusion failed."),
-  return FAILED);
+  // input
+  vector<int64_t> dwAttInshape = {t_size, batch, nzHiddenDim * fzDim};
+  AddInputNodeDesc(reduceSumDesc, "x", dwAttInshape, ge::FORMAT_ND, dwAttInshape, ge::FORMAT_ND,
+                   inputHType);
+
+  // output
+  vector<int64_t> dwAttOutshape = {t_size, batch};
+  AddOutputNodeDesc(reduceSumDesc, "y", dwAttOutshape, ge::FORMAT_ND, dwAttOutshape,
+                    ge::FORMAT_ND, inputHType);
+  // attr
+  ge::AttrUtils::SetListInt(reduceSumDesc, "axes", {2,});
+  ge::AttrUtils::SetBool(reduceSumDesc, "keep_dims", false);
+
+  // create reduce_sum node
+  bool failStatus = false;
+  ge::NodePtr reduceSumNode = this->AddNewNode(graph, reduceSumDesc, newNodes, failStatus);
+  FUSION_PASS_CHECK(failStatus, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                                               "check failed, fusion failed."),
+                    return FAILED);
+
+  // Edge
+  int anchorOutputIndex = 0;
+  if (t_size == 1) {
+    anchorOutputIndex = 3;
+  }
+  ge::GraphUtils::AddEdge(dwAttNode->GetOutDataAnchor(anchorOutputIndex), reduceSumNode->GetInDataAnchor(0));
+
+  for (InDataAnchorPtr inAnchorPtr :
+      augruGradNode->GetOutDataAnchor(OUTPUT_INDEX["dw_att"])->GetPeerInDataAnchors()) {
+    inAnchorPtr->UnlinkAll();
+    ge::GraphUtils::AddEdge(reduceSumNode->GetOutDataAnchor(0), inAnchorPtr);
+  }
   return SUCCESS;
 }
 
