@@ -1,0 +1,63 @@
+[
+    {
+      "op": "BroadcastTo",
+      "calc_expect_func_file" : "test_broadcast_to_golden.py:calc_expect_func",
+      "input_desc": [
+        {
+          "shape": [-2],
+          "typical_shape": [16, 32],
+          "format": "ND",
+          "type": "float16",
+          "name": "x"
+        },
+        {
+          "shape": [-2],
+          "format": "ND",
+          "typical_shape": [2],
+          "type": "int32",
+          "value":[16, 32],
+          "name": "shape"
+        }
+      ],
+      "output_desc": [
+        {
+          "shape": [16, 32],
+          "format": "ND",
+          "type": "float16",
+          "name": "y"
+        }
+      ],
+      "case_name": "test_dynamic_BroadcastTo_001"
+    },
+    {
+      "op": "BroadcastTo",
+      "calc_expect_func_file" : "test_broadcast_to_golden.py:calc_expect_func",
+      "input_desc": [
+        {
+          "shape": [-2],
+          "typical_shape": [1, 1],
+          "format": "ND",
+          "type": "float16",
+          "name": "x"
+        },
+        {
+          "shape": [-2],
+          "typical_shape": [2],
+          "format": "ND",
+          "type": "int32",
+          "value":[16, 32],
+          "name": "shape"
+        }
+      ],
+      "output_desc": [
+        {
+          "shape": [16, 32],
+          "format": "ND",
+          "type": "float16",
+          "name": "y"
+        }
+      ],
+      "case_name": "test_dynamic_BroadcastTo_002"
+    }
+  ]
+  

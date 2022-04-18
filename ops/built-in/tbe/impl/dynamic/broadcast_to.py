@@ -15,6 +15,7 @@
 """
 dynamic broadcast_to
 """
+from impl.util.util_common import is_unknown_rank_input
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import shape_util
@@ -51,6 +52,39 @@ def broadcast_to_compute(x, shape, y, kernel_name="broadcast_to"):
     res = tbe.broadcast(x, shape)
 
     return res
+
+
+def get_shape_adapt(input_x_shape, input_shape_shape, input_x_range, kernel_name):
+    """
+    get shape adapt is shape and range
+    """
+    dims_value = input_shape_shape[0]
+
+    if dims_value < -1:
+        error_manager_vector.raise_err_input_shape_invalid(kernel_name, "shape", "shape[0] should be greater than -1")
+
+    if dims_value == -1:
+        dims_value = len(input_x_shape)
+
+    if len(input_x_shape) > dims_value:
+        error_manager_vector.raise_err_two_input_shape_invalid(kernel_name, "x", "shape", \
+            "the dimensions of x should not be greater than dims_value")
+
+    shape_shape_adapt = []
+    shape_range_adapt = []
+
+    for shape_i, range_i in zip(input_x_shape, input_x_range):
+        if shape_i == 1 or (shape_i == -1 and range_i[0] <= 1):
+            shape_shape_adapt.append(-1)
+            shape_range_adapt.append((1, None))
+        else:
+            shape_shape_adapt.append(shape_i)
+            shape_range_adapt.append(range_i)
+
+    shape_shape_adapt = [-1] + shape_shape_adapt
+    shape_range_adapt = [(1, None)] + shape_range_adapt
+
+    return [shape_shape_adapt, shape_range_adapt]
 
 
 # 'pylint: disable=too-many-locals,too-many-statements
@@ -95,35 +129,15 @@ def broadcast_to(x, shape, y, kernel_name="broadcast_to"):
     if len(input_shape_shape) > 1:
         error_manager_vector.raise_err_input_shape_invalid(kernel_name, "shape", "shape should be 1D")
 
-    input_x_range = list(x.get("range"))
-    dims_value = input_shape_shape[0]
+    if is_unknown_rank_input([x, shape]):
+        x, shape = [x, x] if is_unknown_rank_input(x) else [shape, shape]
+    else:
+        input_x_range = list(x.get("range"))
+        shape_shape_adapt, shape_range_adapt = \
+            get_shape_adapt(input_x_shape, input_shape_shape, input_x_range, kernel_name)
 
-    if dims_value < -1:
-        error_manager_vector.raise_err_input_shape_invalid(kernel_name, "shape", "shape[0] should be more than -1")
-
-    if dims_value == -1:
-        dims_value = len(input_x_shape)
-
-    if len(input_x_shape) > dims_value:
-        error_manager_vector.raise_err_two_input_shape_invalid(kernel_name, "x", "shape", \
-            "the dimensions of x should not be bigger than shape[0]")
-
-    shape_shape_adapt = []
-    shape_range_adapt = []
-
-    for shape_i, range_i in zip(input_x_shape, input_x_range):
-        if shape_i == 1 or (shape_i == -1 and range_i[0] <= 1):
-            shape_shape_adapt.append(-1)
-            shape_range_adapt.append((1, None))
-        else:
-            shape_shape_adapt.append(shape_i)
-            shape_range_adapt.append(range_i)
-
-    shape_shape_adapt = [-1] + shape_shape_adapt
-    shape_range_adapt = [(1, None)] + shape_range_adapt
-
-    shape["shape"] = shape_shape_adapt
-    shape["range"] = shape_range_adapt
+        shape["shape"] = shape_shape_adapt
+        shape["range"] = shape_range_adapt
 
     extra_params = {"disable_optimization": True}
     ins = classify([x, shape], OpPatternMode.ELEWISE_WITH_BROADCAST, extra_params)

@@ -1,0 +1,59 @@
+[
+  {"compile_flag": 1},
+  {
+    "op": "BroadcastTo",
+    "calc_expect_func_file" : "test_broadcast_to_golden.py:calc_expect_func",
+    "input_desc": [
+      {
+        "shape": [16, 32],
+        "format": "ND",
+        "type": "float16",
+        "name": "x"
+      },
+      {
+        "shape": [2],
+        "format": "ND",
+        "type": "int32",
+        "value":[16, 32],
+        "name": "shape"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [16, 32],
+        "format": "ND",
+        "type": "float16",
+        "name": "y"
+      }
+    ],
+    "case_name": "test_BroadcastTo_001"
+  },
+  {
+    "op": "BroadcastTo",
+    "calc_expect_func_file" : "test_broadcast_to_golden.py:calc_expect_func",
+    "input_desc": [
+      {
+        "shape": [1, 1],
+        "format": "ND",
+        "type": "float16",
+        "name": "x"
+      },
+      {
+        "shape": [2],
+        "format": "ND",
+        "type": "int32",
+        "value":[16, 32],
+        "name": "shape"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [16, 32],
+        "format": "ND",
+        "type": "float16",
+        "name": "y"
+      }
+    ],
+    "case_name": "test_BroadcastTo_002"
+  }
+]
