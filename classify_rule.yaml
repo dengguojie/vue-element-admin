@@ -843,7 +843,6 @@ vector_B:
       - ops/built-in/op_tiling/binary_cross_entropy.cc
       - ops/built-in/op_tiling/binary_cross_entropy_grad.cc
       - ops/built-in/op_tiling/bitwise.cc
-      - ops/built-in/op_tiling/bn_reduce.cc
       - ops/built-in/op_tiling/bn_reduce_grad.cc
       - ops/built-in/op_tiling/bninference_d.cc
       - ops/built-in/op_tiling/bounding_box_decode.cc
@@ -979,6 +978,7 @@ vector_B:
       - ops/built-in/tbe/impl/dynamic/bn_training_reduce.py
       - ops/built-in/tbe/impl/dynamic/bn_training_update_v2.py
       - ops/built-in/tbe/impl/dynamic/bn_training_update_v3.py
+      - ops/built-in/tbe/impl/dynamic/in_training_reduce_v2.py
       - ops/built-in/tbe/impl/dynamic/bninference_d.py
       - ops/built-in/tbe/impl/dynamic/broadcast_to.py
       - ops/built-in/tbe/impl/dynamic/ceil.py
@@ -1962,7 +1962,6 @@ unkown:
       - ops/built-in/op_tiling/non_zero.cc
       - ops/built-in/op_tiling/fill.cc
       - ops/built-in/op_tiling/resize_nearest_neighbor_v2_grad.cc
-      - ops/built-in/op_tiling/bn_reduce.h
       - ops/built-in/op_tiling/strided_slice_v3.cc
       - ops/built-in/op_tiling/resize_bilinear_v2.cc
       - ops/built-in/op_tiling/transdata_dsl_general.cc

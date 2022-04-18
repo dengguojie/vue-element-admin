@@ -25,8 +25,11 @@
 #include "op_tiling_util.h"
 
 namespace optiling {
-const int64_t DIM_H = 2;
-const int64_t DIM_W = 3;
+const int64_t INDEX_0 = 0;
+const int64_t INDEX_1 = 1;
+const int64_t INDEX_2 = 2;
+const int64_t INDEX_3 = 3;
+const int64_t INDEX_4 = 4;
 struct BnTrainingReduceGradCompileInfo {
   std::shared_ptr<AutoTilingHandler> tiling_handler;
   int64_t have_reduce_mean_cof_dtype;
@@ -55,7 +58,16 @@ bool BnTrainingReduceGradTiling(const std::string& op_type, const ge::Operator& 
   PROFILING_TILING_AFTER_GET_COMPILE_INFO_REG();
 
   float reduce_mean_cof = 1.0;
-  int64_t num = input_x_shapes.GetDim(0) * input_x_shapes.GetDim(DIM_H) * input_x_shapes.GetDim(DIM_W);
+  int64_t num = 1;
+  ge::Format input_x_format = input_desc->GetFormat();
+  if (input_x_format == FORMAT_NDC1HWC0) {
+    num = input_x_shapes.GetDim(INDEX_0) * input_x_shapes.GetDim(INDEX_1) *
+          input_x_shapes.GetDim(INDEX_3) * input_x_shapes.GetDim(INDEX_4);
+  } else {
+    num = input_x_shapes.GetDim(INDEX_0) * input_x_shapes.GetDim(INDEX_2) *
+          input_x_shapes.GetDim(INDEX_3);
+  }
+
   if (num == 0) {
     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "bn_training_reduce_grad invalid dim value 0. (%s)",
                                     input_x_shapes.ToString().c_str());

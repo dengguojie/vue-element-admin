@@ -118,17 +118,42 @@ TEST_F(BNReduceGradTiling, BnReduceGradTiling2) {
   ge::DataType in_dtype = ge::DT_FLOAT;
   
   auto opParas = op::BNTrainingReduceGrad("BNTrainingReduceGrad");
-  TENSOR_INPUT_WITH_SHAPE(opParas, grads, input_x, in_dtype, ge::FORMAT_ND, {});
-  TENSOR_INPUT_WITH_SHAPE(opParas, x, input_x, in_dtype, ge::FORMAT_ND, {});
-  TENSOR_INPUT_WITH_SHAPE(opParas, diff_scale, input_scaler, ge::DT_FLOAT, ge::FORMAT_ND, {});
-  TENSOR_INPUT_WITH_SHAPE(opParas, diff_offset, input_scaler, ge::DT_FLOAT, ge::FORMAT_ND, {});
-  TENSOR_INPUT_WITH_SHAPE(opParas, scale, input_scaler, ge::DT_FLOAT, ge::FORMAT_ND, {});
-  TENSOR_INPUT_WITH_SHAPE(opParas, batch_mean, input_scaler, ge::DT_FLOAT, ge::FORMAT_ND, {});
-  TENSOR_INPUT_WITH_SHAPE(opParas, batch_variance, input_scaler, ge::DT_FLOAT, ge::FORMAT_ND, {});
-  TENSOR_OUTPUT_WITH_SHAPE(opParas, y, output, in_dtype, ge::FORMAT_ND, {});
+  TENSOR_INPUT_WITH_SHAPE(opParas, grads, input_x, in_dtype, ge::FORMAT_NC1HWC0, {});
+  TENSOR_INPUT_WITH_SHAPE(opParas, x, input_x, in_dtype, ge::FORMAT_NC1HWC0, {});
+  TENSOR_INPUT_WITH_SHAPE(opParas, diff_scale, input_scaler, ge::DT_FLOAT, ge::FORMAT_NC1HWC0, {});
+  TENSOR_INPUT_WITH_SHAPE(opParas, diff_offset, input_scaler, ge::DT_FLOAT, ge::FORMAT_NC1HWC0, {});
+  TENSOR_INPUT_WITH_SHAPE(opParas, scale, input_scaler, ge::DT_FLOAT, ge::FORMAT_NC1HWC0, {});
+  TENSOR_INPUT_WITH_SHAPE(opParas, batch_mean, input_scaler, ge::DT_FLOAT, ge::FORMAT_NC1HWC0, {});
+  TENSOR_INPUT_WITH_SHAPE(opParas, batch_variance, input_scaler, ge::DT_FLOAT, ge::FORMAT_NC1HWC0, {});
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, y, output, in_dtype, ge::FORMAT_NC1HWC0, {});
 
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
   EXPECT_EQ(runInfo.GetBlockDim(), 32);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "128 128 16 16 16 16 16 16 16 20 20 20 20 1 1 64 1 933484298 -1213999350 ");
+}
+
+TEST_F(BNReduceGradTiling, BnReduceGradTiling3) {
+  std::string op_name = "BNTrainingReduceGrad";
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
+
+  std::vector<int64_t> input_x{128, 1, 16, 20, 20, 16};
+  std::vector<int64_t> input_scaler{1, 1, 16, 1, 1, 16};
+  std::vector<int64_t> output{128, 1, 16, 20, 20, 16};
+  ge::DataType in_dtype = ge::DT_FLOAT;
+  
+  auto opParas = op::BNTrainingReduceGrad("BNTrainingReduceGrad");
+  TENSOR_INPUT_WITH_SHAPE(opParas, grads, input_x, in_dtype, ge::FORMAT_NDC1HWC0, {});
+  TENSOR_INPUT_WITH_SHAPE(opParas, x, input_x, in_dtype, ge::FORMAT_NDC1HWC0, {});
+  TENSOR_INPUT_WITH_SHAPE(opParas, diff_scale, input_scaler, ge::DT_FLOAT, ge::FORMAT_NDC1HWC0, {});
+  TENSOR_INPUT_WITH_SHAPE(opParas, diff_offset, input_scaler, ge::DT_FLOAT, ge::FORMAT_NDC1HWC0, {});
+  TENSOR_INPUT_WITH_SHAPE(opParas, scale, input_scaler, ge::DT_FLOAT, ge::FORMAT_NDC1HWC0, {});
+  TENSOR_INPUT_WITH_SHAPE(opParas, batch_mean, input_scaler, ge::DT_FLOAT, ge::FORMAT_NDC1HWC0, {});
+  TENSOR_INPUT_WITH_SHAPE(opParas, batch_variance, input_scaler, ge::DT_FLOAT, ge::FORMAT_NDC1HWC0, {});
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, y, output, in_dtype, ge::FORMAT_NDC1HWC0, {});
+
+  optiling::utils::OpRunInfo runInfo;
+  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
+  EXPECT_EQ(runInfo.GetBlockDim(), 32);
 }

@@ -64,6 +64,7 @@ from .dynamic_rnn_v2 import dynamic_rnn_v2
 from .dynamic_rnn_v3 import dynamic_rnn_v3
 from .bninference_d import bninference_d
 from .bn_training_reduce import bn_training_reduce
+from .in_training_reduce_v2 import in_training_reduce_v2
 from .bounding_box_decode import bounding_box_decode
 from .scatter_nd import scatter_nd
 from .scatter_add import scatter_add

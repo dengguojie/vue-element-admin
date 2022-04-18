@@ -1,7 +1,7 @@
 [
   {
-    "case_name": "test_BNTrainingReduce_000",
-    "op": "BNTrainingReduce",
+    "case_name": "test_INTrainingReduceV2_000",
+    "op": "INTrainingReduceV2",
     "input_desc": [
       {
           "shape": [
@@ -71,9 +71,9 @@
           "shape_range": [[1, -1],[1, -1],[1, -1],[1, -1]]
       }
     ]
-  }, {
-    "case_name": "test_BNTrainingReduce_001",
-    "op": "BNTrainingReduce",
+  },{
+    "case_name": "test_INTrainingReduceV2_001",
+    "op": "INTrainingReduceV2",
     "input_desc": [
       {
           "shape": [
@@ -81,8 +81,7 @@
             -1,
             -1,
             -1,
-            -1,
-            16
+            -1
           ],
           "ori_shape": [
             -1,
@@ -91,12 +90,12 @@
             -1,
             -1
           ],
-          "format": "NDC1HWC0",
-          "ori_format": "NCDHW",
+          "format": "NDHWC",
+          "ori_format": "NDHWC",
           "name": "x",
           "param_name": "x",
           "type": "float16",
-          "typical_shape": [1, 1, 64, 128, 128, 16],
+          "typical_shape": [1, 1, 128, 128, 1024],
           "shape_range": [[1, -1],[1, -1],[1, -1],[1, -1],[1, -1]],
           "value_range": [[0, 1]],
           "data_distribute": "uniform"
@@ -109,8 +108,7 @@
             -1,
             -1,
             -1,
-            -1,
-            16
+            -1
           ],
           "ori_shape": [
             -1,
@@ -119,12 +117,12 @@
             -1,
             -1
           ],
-          "format": "NDC1HWC0",
-          "ori_format": "NCDHW",
+          "format": "NDHWC",
+          "ori_format": "NDHWC",
           "name": "sum",
           "param_name": "sum",
           "type": "float32",
-          "typical_shape": [1, 1, 64, 1, 1, 16],
+          "typical_shape": [1, 1, 1, 1, 1024],
           "shape_range": [[1, -1],[1, -1],[1, -1],[1, -1],[1, -1]]
       },
       {
@@ -133,8 +131,7 @@
             -1,
             -1,
             -1,
-            -1,
-            16
+            -1
           ],
           "ori_shape": [
             -1,
@@ -143,12 +140,12 @@
             -1,
             -1
           ],
-          "format": "NDC1HWC0",
-          "ori_format": "NCDHW",
+          "format": "NDHWC",
+          "ori_format": "NDHWC",
           "name": "square_sum",
           "param_name": "square_sum",
           "type": "float32",
-          "typical_shape": [1, 1, 64, 1, 1, 16],
+          "typical_shape": [1, 1, 1, 1, 1024],
           "shape_range": [[1, -1],[1, -1],[1, -1],[1, -1],[1, -1]]
       }
     ]

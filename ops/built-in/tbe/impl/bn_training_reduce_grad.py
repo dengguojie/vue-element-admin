@@ -82,28 +82,36 @@ def op_select_format(grads, x, diff_scale, diff_offset, scale,
             and origin_shape[0] == 1 and origin_shape[2] == 1:
         input0 = util_select_op_base.gen_param(classify="input0", name="grads",
                                                datatype="float16,float,float16,float",
-                                               format="NCHW,NCHW,NC1HWC0,NC1HWC0")
+                                               format="NCHW,NCHW,NC1HWC0,NC1HWC0",
+                                               unknownshape_format="NCHW,NCHW,NC1HWC0,NC1HWC0")
         input1 = util_select_op_base.gen_param(classify="input1", name="x",
                                                datatype="float16,float,float16,float",
-                                               format="NCHW,NCHW,NC1HWC0,NC1HWC0")
+                                               format="NCHW,NCHW,NC1HWC0,NC1HWC0",
+                                               unknownshape_format="NCHW,NCHW,NC1HWC0,NC1HWC0")
         input2 = util_select_op_base.gen_param(classify="input2", name="diff_scale",
                                                datatype="float,float,float,float",
-                                               format="NCHW,NCHW,NC1HWC0,NC1HWC0")
+                                               format="NCHW,NCHW,NC1HWC0,NC1HWC0",
+                                               unknownshape_format="NCHW,NCHW,NC1HWC0,NC1HWC0")
         input3 = util_select_op_base.gen_param(classify="input3", name="diff_offset",
                                                datatype="float,float,float,float",
-                                               format="NCHW,NCHW,NC1HWC0,NC1HWC0")
+                                               format="NCHW,NCHW,NC1HWC0,NC1HWC0",
+                                               unknownshape_format="NCHW,NCHW,NC1HWC0,NC1HWC0")
         input4 = util_select_op_base.gen_param(classify="input4", name="scale",
                                                datatype="float,float,float,float",
-                                               format="NCHW,NCHW,NC1HWC0,NC1HWC0")
+                                               format="NCHW,NCHW,NC1HWC0,NC1HWC0",
+                                               unknownshape_format="NCHW,NCHW,NC1HWC0,NC1HWC0")
         input5 = util_select_op_base.gen_param(classify="input5", name="batch_mean",
                                                datatype="float,float,float,float",
-                                               format="NCHW,NCHW,NC1HWC0,NC1HWC0")
+                                               format="NCHW,NCHW,NC1HWC0,NC1HWC0",
+                                               unknownshape_format="NCHW,NCHW,NC1HWC0,NC1HWC0")
         input6 = util_select_op_base.gen_param(classify="input6", name="batch_variance",
                                                datatype="float,float,float,float",
-                                               format="NCHW,NCHW,NC1HWC0,NC1HWC0")
+                                               format="NCHW,NCHW,NC1HWC0,NC1HWC0",
+                                               unknownshape_format="NCHW,NCHW,NC1HWC0,NC1HWC0")
         output0 = util_select_op_base.gen_param(classify="output0", name="y",
                                                 datatype="float16,float,float16,float",
-                                                format="NCHW,NCHW,NC1HWC0,NC1HWC0")
+                                                format="NCHW,NCHW,NC1HWC0,NC1HWC0",
+                                               unknownshape_format="NCHW,NCHW,NC1HWC0,NC1HWC0")
     # support 5HD + 5HD
     else:
         input0 = util_select_op_base.gen_param(classify="input0", name="grads",

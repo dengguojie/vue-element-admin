@@ -13,7 +13,7 @@
 # limitations under the License.
 # ============================================================================
 """
-bn_training_reduce_grad
+dynamic bn_training_reduce_grad
 """
 from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import tbe
@@ -30,8 +30,8 @@ from impl.bn_training_reduce_grad import get_op_support_info as bn_get_op_suppor
 from impl.bn_training_reduce_grad import op_select_format as bn_op_select_format
 
 
-# 'pylint: disable = unused-argument
-# 'pylint: disable=invalid-name,too-many-arguments,consider-using-in
+# 'pylint: disable=unused-argument,invalid-name
+# 'pylint: disable=too-many-branches,too-many-arguments,too-many-locals,too-many-statements
 def get_op_support_info(grads,
                         x,
                         diff_scale,
@@ -57,9 +57,6 @@ def get_op_support_info(grads,
                                   kernel_name="bn_training_reduce_grad")
 
 
-# 'pylint: disable=locally-disabled,invalid-name,too-many-arguments
-# 'pylint: disable=locally-disabled,too-many-statements,unused-argument
-# 'pylint: disable=locally-disabled,too-many-locals
 def op_select_format(grads,
                      x,
                      diff_scale,
@@ -126,9 +123,7 @@ def _check_format_nd(data_format, origin_foramt):
                                                           "The origin format only supports NCHW when format is NCHW")
 
 
-# 'pylint: disable=too-many-branches,too-many-arguments,too-many-locals
-# 'pylint: disable=unused-argument,invalid-name
-@register_operator_compute("BNTrainingReduceGrad", op_mode="dynamic", support_fusion=False)
+@register_operator_compute("BNTrainingReduceGrad", op_mode="dynamic", support_fusion=True)
 def bn_training_reduce_grad_compute(grads,
                                     x,
                                     diff_scale,
@@ -140,7 +135,7 @@ def bn_training_reduce_grad_compute(grads,
                                     epsilon,
                                     kernel_name="bn_training_reduce_grad"):
     """
-    Compute for batch_norm_train_reduce_grad
+    Compute for batch_norm_grad
     y:(grads*scale*np.power((batch_variance + epsilon), (-0.5)))+
       np.sum(grads*scale*(-0.5)*x_norm*np.power((batch_variance+epsilon),(-1))))
       *(2/m)+np.sum(grads*scale*(-1)*
@@ -181,15 +176,12 @@ def bn_training_reduce_grad_compute(grads,
     -------
     res: TVM tensor
     """
-    shape_grads = shape_util.shape_to_list(grads.shape)
-
-    is_cast = False
-
     if not tbe_platform.api_check_support("te.lang.cce.vdiv", "float32"):
         error_reson = "Platform does not support float32 vdiv."
         error_manager_vector.raise_err_specific_reson("bn_training_reduce_grad", error_reson)
         return []
 
+    is_cast = False
     if grads.dtype == "float16":
         is_cast = True
         grads = tbe.cast_to(grads, "float32")
@@ -198,10 +190,26 @@ def bn_training_reduce_grad_compute(grads,
         x = tbe.cast_to(x, "float32")
         is_cast = True
 
-    tbe_context.get_context().add_compile_info("reduce_mean_cof_dtype", "float32")
+    shape_grads = shape_util.shape_to_list(grads.shape)
 
-    num_rec = tbe.var("num_rec", dtype="float32")
-    neg_num_rec = tbe.var("neg_num_rec", dtype="float32")
+    data_format = y.get("format").upper()
+    if data_format in ("NC1HWC0", "NCHW"):
+        reduce_shape = [shape_grads[0], shape_grads[2], shape_grads[3]]
+    else:
+        reduce_shape = [shape_grads[0], shape_grads[1], shape_grads[3], shape_grads[4]]
+
+    num = 1
+    for dim in reduce_shape:
+        num *= dim
+
+    if isinstance(num, int):
+        num_bw = 1.0 / num
+        num_rec = tvm.const(num_bw, dtype="float32")
+        neg_num_rec = tvm.const(-num_bw, dtype="float32")
+    else:
+        tbe_context.get_context().add_compile_info("reduce_mean_cof_dtype", "float32")
+        num_rec = tbe.var("num_rec", dtype="float32")
+        neg_num_rec = tbe.var("neg_num_rec", dtype="float32")
 
     data_sqrt = tbe.vsqrt(tbe.vadds(batch_variance, epsilon))
     scale_inv = tbe.vmuls(diff_scale, num_rec)
@@ -273,7 +281,6 @@ def _check_shape(shape_grads, shape_diff_scale, data_format):
         error_manager_vector.raise_err_specific_reson("bn_training_reduce_grad", error_reson)
 
 
-# 'pylint: disable=too-many-statements
 @register_operator("BNTrainingReduceGrad")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
@@ -290,7 +297,7 @@ def bn_training_reduce_grad(grads,
                             epsilon=0.0001,
                             kernel_name="bn_training_reduce_grad"):
     """
-    algorithm: fused_batch_norm_grad_v2
+    algorithm: batch_norm_grad
     bn_training_reduce_grad.
 
     Parameters
@@ -331,7 +338,6 @@ def bn_training_reduce_grad(grads,
     """
 
     shape_grads = grads.get("shape")
-    shape_x = x.get("shape")
     shape_diff_scale = diff_scale.get("shape")
     shape_util.compare_tensor_dict_key(grads, x, "shape")
 
@@ -371,20 +377,17 @@ def bn_training_reduce_grad(grads,
 
     if data_format in ("NC1HWC0", "NDC1HWC0"):
         _check_shape(shape_grads, shape_diff_scale, data_format)
-    else:
-        shape_list = [1, 1, 1, 1]
-        shape_list[1] = shape_x[1]
 
     ins = classify([grads, x, diff_scale, diff_offset, scale, batch_mean, batch_variance],
-                   OpPatternMode.ELEWISE_WITH_BROADCAST)
+                   OpPatternMode.ELEWISE_WITH_BROADCAST,
+                   extra_params={"disable_optimization": True})
 
     schedules, tensors = [], []
 
     for (_grads, _x, _diff_scale, _diff_offset, _scale, _batch_mean, _batch_variance) in ins:
         with tbe.compute():
-            _shape_grads, _, _, _, _shape_scale, _, _ = \
-                shape_util.variable_shape(
-                    [_grads, _x, _diff_scale, _diff_offset, _scale, _batch_mean, _batch_variance])
+            _shape_grads, _, _, _, _shape_scale, _, _ = shape_util.variable_shape(
+                [_grads, _x, _diff_scale, _diff_offset, _scale, _batch_mean, _batch_variance])
 
             grads_input = tvm.placeholder(_shape_grads, name="grads_input", dtype=input_grads_dtype)
             x_input = tvm.placeholder(_shape_grads, name="x_input", dtype=x_dtype)

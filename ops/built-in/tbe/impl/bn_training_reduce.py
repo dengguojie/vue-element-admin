@@ -71,13 +71,16 @@ def op_select_format(x, sum, square_sum,
             and origin_shape[0] == 1 and origin_shape[2] == 1:
         input0 = util_select_op_base.gen_param(classify="input0", name="x",
                                                datatype="float16, float, float16, float",
-                                               format="NCHW, NCHW, NC1HWC0, NC1HWC0")
+                                               format="NCHW, NCHW, NC1HWC0, NC1HWC0",
+                                               unknownshape_format="NCHW, NCHW, NC1HWC0, NC1HWC0")
         output0 = util_select_op_base.gen_param(classify="output0", name="sum",
                                                 datatype="float, float, float, float",
-                                                format="NCHW, NCHW, NC1HWC0, NC1HWC0")
+                                                format="NCHW, NCHW, NC1HWC0, NC1HWC0",
+                                                unknownshape_format="NCHW, NCHW, NC1HWC0, NC1HWC0")
         output1 = util_select_op_base.gen_param(classify="output1", name="square_sum",
                                                 datatype="float, float, float, float",
-                                                format="NCHW, NCHW, NC1HWC0, NC1HWC0")
+                                                format="NCHW, NCHW, NC1HWC0, NC1HWC0",
+                                                unknownshape_format="NCHW, NCHW, NC1HWC0, NC1HWC0")
     # support 5HD + 5HD
     else:
         input0 = util_select_op_base.gen_param(classify="input0", name="x",

@@ -74,6 +74,7 @@ class OpPatternMode:
     REDUCE = "reduce"
     TRANSDATA = "transdata"
     NORM = NormPattern.PATTERN_NAME
+    TUPLE_REDUCE = "tuple_reduce"
 
 
 # 'pylint: disable=too-few-public-methods, too-many-instance-attributes

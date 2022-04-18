@@ -37,15 +37,18 @@ def op_select_format(x, sum, square_sum, kernel_name="in_training_reduce_v2"):
     input0 = gen_param(classify="input0",
                        name="x",
                        datatype="float16,float",
-                       format=input_format)
+                       format=input_format,
+                       unknownshape_format=input_format)
     output0 = gen_param(classify="output0",
                         name="sum",
                         datatype="float,float",
-                        format=input_format)
+                        format=input_format,
+                        unknownshape_format=input_format)
     output1 = gen_param(classify="output1",
                         name="square_sum",
                         datatype="float,float",
-                        format=input_format)
+                        format=input_format,
+                        unknownshape_format=input_format)
 
     param_list = [input0, output0, output1]
     param_dynamic_in_json = get_dynamic_param_in_json(param_list)
