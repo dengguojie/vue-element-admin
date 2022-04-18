@@ -16,12 +16,9 @@ include(ExternalProject)
 
 set(MAKESLF_PATH ${CMAKE_CURRENT_SOURCE_DIR}/op_gen/template/op_project_tmpl/cmake/util/makeself)
 
-if(CANN_PKG_SERVER)
-    set(_makeself_url "${CANN_PKG_SERVER}/libs/makeself/release-2.4.2.zip")
-endif()
 ExternalProject_Add(makeself_third
   URL               ${_makeself_url}
-                    https://github.com/megastep/makeself/archive/refs/tags/release-2.4.2.zip
+                    https://ascend-cann.obs.cn-north-4.myhuaweicloud.com/makeself/release-2.4.2.zip
   PREFIX            ${MAKESLF_PATH}
   CONFIGURE_COMMAND ""
   BUILD_COMMAND     ""
