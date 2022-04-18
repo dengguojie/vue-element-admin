@@ -49,7 +49,9 @@ static const int CoreNum = 8;
 vector<FusionPattern*> RoiExtractorFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
   FusionPattern* pattern = new (nothrow) FusionPattern("RoiExtractorFusionPass");
-  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "New a pattern object failed."), return patterns);
+  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "New a pattern object failed."),
+                    return patterns);
   // define origin graph
   pattern->AddOpDesc(PatternRoi, {"RoiExtractor"}).SetOutput(PatternRoi);
   patterns.push_back(pattern);
@@ -70,10 +72,12 @@ Status RoiExtractorFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vec
       return NOT_CHANGED);
 
   NodePtr roi_node = GetNodeFromMapping(PatternRoi, mapping);
-  FUSION_PASS_CHECK(roi_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "The roi_node is null, fusion failed."),
+  FUSION_PASS_CHECK(roi_node == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "The roi_node is null, fusion failed."),
                     return PARAM_INVALID);
   OpDescPtr roi_desc = roi_node->GetOpDesc();
-  FUSION_PASS_CHECK(roi_desc == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "The roi_desc is null, fusion failed."),
+  FUSION_PASS_CHECK(roi_desc == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "The roi_desc is null, fusion failed."),
                     return PARAM_INVALID);
 
   std::shared_ptr<ge::OpDesc> balancerois_desc = std::make_shared<ge::OpDesc>(roi_node->GetName() + "_balancerois",
@@ -106,7 +110,8 @@ Status RoiExtractorFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vec
   index_desc.SetDataType(ge::DT_INT32);
 
   FUSION_PASS_CHECK(balancerois_desc->AddOutputDesc("balance_rois", rois_data_desc) != GRAPH_SUCCESS,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "BalanceRois add balance_rois_data desc failed."),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "BalanceRois add balance_rois_data desc failed."),
                     return FAILED);
   FUSION_PASS_CHECK(balancerois_desc->AddOutputDesc("index", index_desc) != GRAPH_SUCCESS,
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "BalanceRois add index desc failed."),
@@ -115,7 +120,8 @@ Status RoiExtractorFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vec
   NodePtr BalanceRoisNode = graph.AddNode(balancerois_desc);
   FUSION_PASS_CHECK(
       BalanceRoisNode == nullptr,
-      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "The BalanceRoisNode is null, Build BalanceRois Op failed."),
+      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+      "The BalanceRoisNode is null, Build BalanceRois Op failed."),
       return PARAM_INVALID);
 
   fusion_nodes.push_back(BalanceRoisNode);
@@ -124,7 +130,8 @@ Status RoiExtractorFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vec
   fpnroiextractor_desc->SetName(roi_node->GetName() + "_fpnroiextractor");
   fpnroiextractor_desc->SetType("RoiExtractor");
   FUSION_PASS_CHECK(fpnroiextractor_desc->AddInputDesc("index", index_desc) != GRAPH_SUCCESS,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "FPNRoiExtractor add index_data desc failed."),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "FPNRoiExtractor add index_data desc failed."),
                     return FAILED);
   NodePtr FPNRoiExtractorNode = graph.AddNode(fpnroiextractor_desc);
   fusion_nodes.push_back(FPNRoiExtractorNode);
@@ -132,23 +139,27 @@ Status RoiExtractorFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vec
   FUSION_PASS_CHECK(
       GraphUtils::AddEdge(roi_node->GetInDataAnchor(4)->GetPeerOutAnchor(),
                           BalanceRoisNode->GetInDataAnchor(0)) != GRAPH_SUCCESS,
-      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add rois_data node to BalanceRoisNode node edge failed."),
+      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+      "Add rois_data node to BalanceRoisNode node edge failed."),
       return FAILED);
 
   for (unsigned int i = 0; i < FeatureNum; ++i) {
       FUSION_PASS_CHECK(
-            GraphUtils::AddEdge(roi_node->GetInDataAnchor(i)->GetPeerOutAnchor(), FPNRoiExtractorNode->GetInDataAnchor(i)) != GRAPH_SUCCESS,
+            GraphUtils::AddEdge(roi_node->GetInDataAnchor(i)->GetPeerOutAnchor(),
+            FPNRoiExtractorNode->GetInDataAnchor(i)) != GRAPH_SUCCESS,
             VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add fm_data to FPNRoiExtractorNode edge failed."),
             return FAILED);
   }
 
   FUSION_PASS_CHECK(
-        GraphUtils::AddEdge(BalanceRoisNode->GetOutDataAnchor(0), FPNRoiExtractorNode->GetInDataAnchor(4)) != GRAPH_SUCCESS,
+        GraphUtils::AddEdge(BalanceRoisNode->GetOutDataAnchor(0),
+        FPNRoiExtractorNode->GetInDataAnchor(4)) != GRAPH_SUCCESS,
         VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add balance_roi to FPNRoiExtractorNode edge failed."),
         return FAILED);
 
   FUSION_PASS_CHECK(
-        GraphUtils::AddEdge(BalanceRoisNode->GetOutDataAnchor(1), FPNRoiExtractorNode->GetInDataAnchor(5)) != GRAPH_SUCCESS,
+        GraphUtils::AddEdge(BalanceRoisNode->GetOutDataAnchor(1),
+        FPNRoiExtractorNode->GetInDataAnchor(5)) != GRAPH_SUCCESS,
         VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add index to FPNRoiExtractorNode edge failed."),
         return FAILED);
 
