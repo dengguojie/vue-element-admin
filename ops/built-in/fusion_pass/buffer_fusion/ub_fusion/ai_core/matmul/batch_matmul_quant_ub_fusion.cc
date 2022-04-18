@@ -33,17 +33,19 @@
 
 namespace fe {
 namespace {
-static const char PATTERN_BATCH_MATMUL[] = "batchmatmul";
-static const char PATTERN_OTHER_INPUT[] = "InputData";
-static const char PATTERN_DEQUANT[] = "dequant";
-static const char PATTERN_QUANT[] = "quant";
-static const vector<string> MATMUL_WHITELIST = {"MatMul", "MatMulV2", "BatchMatMul", "BatchMatMulV2"};
+static const string kBatchMatmul = "batchmatmul";
+static const string kInputData = "InputData";
+static const string kDequant = "dequant";
+static const string kQuant = "quant";
+static const vector<string> kMatmulWhiteList = {"MatMul", "MatMulV2", "BatchMatMul", "BatchMatMulV2"};
+static const string kElemWise = "elemwise";
 }  // namespace
 
 /*
  * @brief:  define Matmul and dequant quant op fusion pattern
  *
- *   Matmul + (dequant) + quant
+ *   1. Matmul + dequant + fastgeluv2 + quant
+ *   2. Matmul + (dequant) + quant
  *
  * fusion node:  Matmul, (dequant), quant
  *
@@ -52,21 +54,41 @@ static const vector<string> MATMUL_WHITELIST = {"MatMul", "MatMulV2", "BatchMatM
 vector<BufferFusionPattern *> TbeBatchMatmulQuantFusionPass::DefinePatterns() {
   vector<BufferFusionPattern *> patterns;
 
+  string fastGeluPassName = "TbeMatmulDequantFastGeluV2QuantPass";
+  BufferFusionPattern *fastGeluPattern = new (std::nothrow) BufferFusionPattern(fastGeluPassName);
+  FUSION_PASS_CHECK((fastGeluPattern == nullptr), OP_LOGE(FUSED_OP_TYPE, "new an object failed."), return patterns);
+  OP_LOGD(FUSED_OP_TYPE, "Start to define %s fastGelu pass pattern.", fastGeluPassName.c_str());
+  // define pattern rules
+  fastGeluPattern
+      ->AddOpDesc(kBatchMatmul, {OP_PATTERN_MATMUL, OP_PATTERN_BATCH_MATMUL}, TBE_PATTERN_NUM_DEFAULT,
+                  TBE_PATTERN_NUM_DEFAULT)
+      .AddOpDesc(kDequant, {OP_PATTERN_DEQUANT}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
+      .AddOpDesc(kInputData, {TBE_PATTERN_INPUT_NODE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
+      .AddOpDesc(kElemWise, {OP_PATTERN_ELEMWISE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
+      .AddOpDesc(kQuant, {OP_PATTERN_QUANT}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
+      .SetHead({kBatchMatmul})
+      .SetOutputs(kBatchMatmul, {kDequant})
+      .SetOutputs(kInputData, {kDequant})
+      .SetOutputs(kDequant, {kElemWise})
+      .SetOutputs(kElemWise, {kQuant});
+  patterns.push_back(fastGeluPattern);
+  OP_LOGD(FUSED_OP_TYPE, "End to define %s fastGelu pass pattern.", fastGeluPassName.c_str());
+
   string passName = "TbeBatchMatmulQuantPass";
   BufferFusionPattern *pattern = new (std::nothrow) BufferFusionPattern(passName);
   FUSION_PASS_CHECK((pattern == nullptr), OP_LOGE(FUSED_OP_TYPE, "new an object failed."), return patterns);
   OP_LOGD(FUSED_OP_TYPE, "Start to define %s pass pattern.", passName.c_str());
   // define pattern rules
   pattern
-      ->AddOpDesc(PATTERN_BATCH_MATMUL, {OP_PATTERN_MATMUL, OP_PATTERN_BATCH_MATMUL}, TBE_PATTERN_NUM_DEFAULT,
+      ->AddOpDesc(kBatchMatmul, {OP_PATTERN_MATMUL, OP_PATTERN_BATCH_MATMUL}, TBE_PATTERN_NUM_DEFAULT,
                   TBE_PATTERN_NUM_DEFAULT)
-      .AddOpDesc(PATTERN_DEQUANT, {OP_PATTERN_DEQUANT}, TBE_PATTERN_NUM_NONE, TBE_PATTERN_NUM_DEFAULT)
-      .AddOpDesc(PATTERN_OTHER_INPUT, {TBE_PATTERN_INPUT_NODE}, TBE_PATTERN_NUM_NONE, TBE_PATTERN_NUM_DEFAULT)
-      .AddOpDesc(PATTERN_QUANT, {OP_PATTERN_QUANT}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
-      .SetHead({PATTERN_BATCH_MATMUL})
-      .SetOutputs(PATTERN_BATCH_MATMUL, {PATTERN_DEQUANT})
-      .SetOutputs(PATTERN_OTHER_INPUT, {PATTERN_DEQUANT})
-      .SetOutputs(OP_PATTERN_DEQUANT, {PATTERN_QUANT});
+      .AddOpDesc(kDequant, {OP_PATTERN_DEQUANT}, TBE_PATTERN_NUM_NONE, TBE_PATTERN_NUM_DEFAULT)
+      .AddOpDesc(kInputData, {TBE_PATTERN_INPUT_NODE}, TBE_PATTERN_NUM_NONE, TBE_PATTERN_NUM_DEFAULT)
+      .AddOpDesc(kQuant, {OP_PATTERN_QUANT}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
+      .SetHead({kBatchMatmul})
+      .SetOutputs(kBatchMatmul, {kDequant})
+      .SetOutputs(kInputData, {kDequant})
+      .SetOutputs(kDequant, {kQuant});
   patterns.push_back(pattern);
   OP_LOGD(FUSED_OP_TYPE, "End to define %s pass pattern.", passName.c_str());
   return patterns;
@@ -74,8 +96,8 @@ vector<BufferFusionPattern *> TbeBatchMatmulQuantFusionPass::DefinePatterns() {
 
 const void TbeBatchMatmulQuantFusionPass::SetSplitInfo(const BufferFusionMapping &mapping,
                                                        std::vector<ge::NodePtr> &fusion_nodes) {
-  vector<ge::NodePtr> matmul_nodes = GetMatchedNodesByDescName(PATTERN_BATCH_MATMUL, mapping);
-  vector<ge::NodePtr> dequant_nodes = GetMatchedNodesByDescName(PATTERN_DEQUANT, mapping);
+  vector<ge::NodePtr> matmul_nodes = GetMatchedNodesByDescName(kBatchMatmul, mapping);
+  vector<ge::NodePtr> dequant_nodes = GetMatchedNodesByDescName(kDequant, mapping);
   FUSION_PASS_CHECK(matmul_nodes.empty(), OP_LOGW(FUSED_OP_TYPE, "Matmul node not matched"), return);
   FUSION_PASS_CHECK(matmul_nodes[0]->GetInDataNodes().size() <= 0,
                     OP_LOGE(FUSED_OP_TYPE, "Matmul Nodes's inputsize can not smaller or equal to zero."), return);
@@ -100,20 +122,32 @@ const void TbeBatchMatmulQuantFusionPass::SetSplitInfo(const BufferFusionMapping
   SetSplitMap(split_maps, fusion_nodes, FUSED_OP_TYPE, fusion_type, min_tbe_l1space);
 }
 
+bool CheckElemWiseNodeType(const vector<ge::NodePtr>& elemwise_nodes) {
+  for (const auto &elemwise_node : elemwise_nodes) {
+    if (elemwise_node->GetType() != "FastGeluV2") {
+      return false;
+    }
+  }
+  return true;
+}
+
 Status TbeBatchMatmulQuantFusionPass::GetFusionNodes(const BufferFusionMapping &mapping,
                                                      vector<ge::NodePtr> &fusion_nodes) {
   OP_LOGD(FUSED_OP_TYPE, "Begin to do TbeBatchMatmulQuantFusionPass!");
 
   fusion_nodes.clear();
-  vector<ge::NodePtr> matmul_nodes = GetMatchedNodesByDescName(PATTERN_BATCH_MATMUL, mapping);
-  vector<ge::NodePtr> dequant_nodes = GetMatchedNodesByDescName(PATTERN_DEQUANT, mapping);
-  vector<ge::NodePtr> quant_nodes = GetMatchedNodesByDescName(PATTERN_QUANT, mapping);
+  vector<ge::NodePtr> matmul_nodes = GetMatchedNodesByDescName(kBatchMatmul, mapping);
+  vector<ge::NodePtr> dequant_nodes = GetMatchedNodesByDescName(kDequant, mapping);
+  vector<ge::NodePtr> quant_nodes = GetMatchedNodesByDescName(kQuant, mapping);
+  vector<ge::NodePtr> elemwise_nodes = GetMatchedNodesByDescName(kElemWise, mapping);
 
   FUSION_PASS_CHECK(quant_nodes.empty(), OP_LOGW(FUSED_OP_TYPE, "Quant node not match!"), return SUCCESS);
+  FUSION_PASS_CHECK(!elemwise_nodes.empty() && !CheckElemWiseNodeType(elemwise_nodes),
+                    OP_LOGW(FUSED_OP_TYPE, "ElemWise node type is not match!"), return SUCCESS);
 
   // check whether matmul/batchmatmul op and if dynamic mode or not
   for (const auto &matmul_node : matmul_nodes) {
-    if (find(MATMUL_WHITELIST.begin(), MATMUL_WHITELIST.end(), matmul_node->GetType()) == MATMUL_WHITELIST.end()) {
+    if (find(kMatmulWhiteList.begin(), kMatmulWhiteList.end(), matmul_node->GetType()) == kMatmulWhiteList.end()) {
       OP_LOGD(FUSED_OP_TYPE, "fcNode op[%s] type[%s] is not supported for this ub fusion pass, skip fusion.",
               matmul_node->GetName().c_str(), matmul_node->GetType().c_str());
       return SUCCESS;

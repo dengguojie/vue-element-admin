@@ -309,6 +309,8 @@ cube:
       - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/matmul/batch_matmul_fusedmuladd_ub_fusion.h
       - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/matmul/matmul_confusiontranspose_ub_fusion.cc
       - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/matmul/matmul_confusiontranspose_ub_fusion.h
+      - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/matmul/batch_matmul_quant_ub_fusion.cc
+      - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/matmul/batch_matmul_quant_ub_fusion.h
       - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/matmul/matmul_dropout_do_mask_v3_d_ub_fusion.cc
       - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/matmul/matmul_dropout_do_mask_v3_d_ub_fusion.h
       - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/matmul/matmul_reduce_sum_ub_fusion.cc
@@ -3380,12 +3382,10 @@ unkown:
       - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/matmul/tbe_matmul_dequant_pass.h
       - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/matmul/tbe_matmul_dequant_pass.cc
       - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/matmul/tbe_fullyconnection_elemwise_fusion_pass.cc
-      - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/matmul/batch_matmul_quant_ub_fusion.cc
       - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/matmul/tbe_matmul_requant_pass.h
       - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/matmul/batch_matmul_v2_dequant_mul_add.h
       - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/matmul/tbe_matmul_fixpipe_fusion_pass.cc
       - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/matmul/matmul_transdata_ub_fusion.cc
-      - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/matmul/batch_matmul_quant_ub_fusion.h
       - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/matmul/matmul_gelugrad_ub_fusion.h
       - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/matmul/batch_matmul_elementwise_ub_fusion.h
       - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/matmul/tbe_matmul_fixpipe_fusion_pass.h
