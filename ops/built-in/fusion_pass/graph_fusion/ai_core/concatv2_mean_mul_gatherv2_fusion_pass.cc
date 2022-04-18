@@ -264,7 +264,7 @@ Status ConcatV2MeanMulGatherV2FusionPass::SetEngineLabel(ge::NodePtr nodePtr, bo
         return FAILED);
 
     FUSION_PASS_CHECK(
-          SetLabelInNode(gatherV2NodePtr, true) != SUCCESS,
+          SetLabelInNode(gatherV2NodePtr, isAic) != SUCCESS,
           VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Failed to set engine label, GatherV2 node"),
           return FAILED);
   }
@@ -302,7 +302,7 @@ Status ConcatV2MeanMulGatherV2FusionPass::Fusion(ge::ComputeGraph& graph, Mappin
   FUSION_PASS_CHECK(!ge::AttrUtils::GetInt(concatV2Desc, CONCATV2_N, numN),
                     OP_LOGI(FUSED_OP_TYPE.c_str(), "failed to get N of ConcatV2"),
                     return NOT_CHANGED);
-  OP_LOGI(FUSED_OP_TYPE.c_str(), "ConcatV2 input number is %ld", numN);
+  OP_LOGD(FUSED_OP_TYPE.c_str(), "ConcatV2 input number is %ld", numN);
   FUSION_PASS_CHECK((numN < MIN_N) || (numN > MAX_N),
                     OP_LOGI(FUSED_OP_TYPE.c_str(), "N is %ld, min N is %ld, max N is %ld", numN, MIN_N, MAX_N),
                     return NOT_CHANGED);
