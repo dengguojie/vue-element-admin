@@ -44,6 +44,18 @@ from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
+from impl.data_format_dim_map import get_op_support_info as data_format_dim_map_get_op_support_info
+
+
+def get_op_support_info(x,
+                        y,
+                        src_format="NHWC",
+                        dst_format="NCHW",
+                        kernel_name="data_format_dim_map"):
+    """
+    get_op_support_info
+    """
+    return data_format_dim_map_get_op_support_info(x, y, src_format, dst_format, kernel_name)
 
 
 # 'pylint: disable=too-few-public-methods

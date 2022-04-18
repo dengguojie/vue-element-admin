@@ -22,9 +22,29 @@ from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import register_operator_compute
+from impl.fused_mul_apply_momentum import get_op_support_info as fused_mul_apply_momentum_get_op_support_info
+
+
+def get_op_support_info(var,
+                        accum,
+                        lr,
+                        x1,
+                        momentum,
+                        x2,
+                        out_var,
+                        out_accum,
+                        use_nesterov,
+                        kernel_name='fused_mul_apply_momentum'):
+    """
+    get fusedMulApplyMomentum slice info
+    """
+    return fused_mul_apply_momentum_get_op_support_info(var, accum, lr, x1, momentum, x2, out_var,
+                                                        out_accum, use_nesterov, kernel_name)
 
 
 # 'pylint: disable=unused-argument,invalid-name, too-many-locals,too-many-arguments
+@register_operator_compute("FusedMulApplyMomentum", op_mode="dynamic", support_fusion=True)
 def fused_mul_apply_momentum_compute(var,
                                      accum,
                                      lr,

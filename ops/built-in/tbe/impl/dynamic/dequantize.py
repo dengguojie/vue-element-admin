@@ -377,7 +377,7 @@ def dequantize(x, min_range, max_range, y, mode="MIN_COMBINED", kernel_name="deq
                                                           'mode only support MIN_COMBINED, MIN_FIRST, SCALED', 'mode',
                                                           mode)
 
-    ins = classify([x, min_range, max_range], OpPatternMode.ELEWISE)
+    ins = classify([x, min_range, max_range], OpPatternMode.ELEWISE_WITH_BROADCAST)
     schedules, tensors = [], []
 
     for (_x, _min_range, _max_range) in ins:

@@ -23,6 +23,7 @@ from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import OpImplMode
 
 
@@ -40,6 +41,7 @@ def get_broadcast_shapes(input1, input2, input1_name, input2_name):
 
 
 # 'pylint: disable=locally-disabled,unused-argument,too-many-locals
+@register_operator_compute("SigmoidCrossEntropyWithLogits", op_mode="dynamic", support_fusion=True)
 def sigmoid_cross_entropy_with_logits_compute(predict, target, loss, kernel_name="sigmoid_cross_entropy_with_logits"):
     """
     calculating data

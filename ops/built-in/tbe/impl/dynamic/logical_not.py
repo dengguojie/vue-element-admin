@@ -22,9 +22,11 @@ from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import register_operator_compute
 
 
 # 'pylint: disable=locally-disabled,invalid-name,unused-argument
+@register_operator_compute("LogicalNot", op_mode="dynamic", support_fusion=True)
 def logical_not_compute(x, y, kernel_name="logical_not"):
     """
     calculating data
