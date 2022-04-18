@@ -89,9 +89,11 @@ class Scatter:
         self.vconv_dst_dtype = "float16"
         self.compute_type = compute_type
         self.nd_flag = nd_flag
+        self.updates_ub_number = None
+        self.vconv_ub_number = None
+        self.indices_ub_number = None
 
-        if self.indices_shape == (1,) and \
-                len(self.var_shape[axis:]) - len(self.updates_shape[axis:]) == 1:
+        if self.indices_shape == (1,) and len(self.var_shape[axis:]) - len(self.updates_shape[axis:]) == 1:
             if not nd_flag:
                 self.updates_shape = self.updates_shape[:axis] + (1,) + self.updates_shape[axis:]
 
@@ -112,9 +114,8 @@ class Scatter:
 
         # open multi-cores even if update_data_num less than 32B, cause the operation keep distances
         # if the pre_loops muls indices num ge than 32B
-        if self.update_data_num < self.var_data_each_block \
-                and functools_reduce(lambda x, y: x * y, self.var_shape[:self.axis + 1]) \
-                * self.var_dtype_bytes_size // self.block_num < Constant.ONE_BLOCK_SIZE:
+        dtype_size = functools_reduce(lambda x, y: x * y, self.var_shape[:self.axis + 1]) * self.var_dtype_bytes_size
+        if self.update_data_num < self.var_data_each_block and dtype_size // self.block_num < Constant.ONE_BLOCK_SIZE:
             self.block_num = 1
 
         # init some variable
