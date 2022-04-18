@@ -25,6 +25,22 @@ from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
+from impl.apply_proximal_adagrad_d import op_select_format as apply_proximal_adagrad_d_op_select_format
+
+
+def op_select_format(var, accum, lr, l1, l2, grad, var_out,
+                     accum_out, use_locking=False,
+                     kernel_name="apply_proximal_adagrad_d"):
+    """
+    Select format according to the following rules.
+    lr l1 l2 only support ND,and var_out accum_out is same as var
+    1.When the var, accum or grad's shape is -2, all inputs and outputs only ND format is supported
+    2.Supports var accum grad ND, 5HD, FZ when the N and C axis is divisible by 16
+    3.Supports var accum grad ND, 5HD when the N and C axis is divisible by 16
+    4.In other cases, only ND is supported
+    """
+    return apply_proximal_adagrad_d_op_select_format(var, accum, lr, l1, l2, grad, var_out, accum_out,
+                                                     use_locking, kernel_name)
 
 
 # 'pylint: disable=too-many-locals,unused-argument,invalid-name,too-many-arguments

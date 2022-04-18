@@ -23,6 +23,7 @@ from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
+from impl.adam_apply_one import op_select_format as adam_apply_one_op_select_format
 
 
 # 'pylint: disable=too-few-public-methods
@@ -33,6 +34,17 @@ class Constant:
     NUM_TEN = 10
     NUM_ZERO = 0
     DYNAMIC_NUM = -1
+
+
+def op_select_format(input0, input1, input2, input3, input4,
+                     mul0_x, mul1_x, mul2_x, mul3_x, add2_y,
+                     output0, output1, output2, kernel_name="adam_apply_one"):
+    """
+    1. When all of the inputs' shapes are the same, the Op AdamApplyOne can support format NDC1HWC0 and FRACTAL_Z_3D.
+    2. In other scenes, the Op can support format ND.
+    """
+    return adam_apply_one_op_select_format(input0, input1, input2, input3, input4, mul0_x, mul1_x, mul2_x, mul3_x,
+                                           add2_y, output0, output1, output2, kernel_name)
 
 
 def shape_broadcast(data_1, data_2):
