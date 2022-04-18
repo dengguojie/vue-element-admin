@@ -36,7 +36,7 @@ void NodeDefBuilder::BuildNodeFromInputOutputNode(const InputOutputNode& node, b
 	shape->SetDimSizes(node.dims);
 	shape->SetFormat(node.format);
 	int64_t dataSize = 1;
-	for (int i = 0; i < node.dims.size(); i++) {
+	for (size_t i = 0; i < node.dims.size(); i++) {
 		dataSize = dataSize * node.dims[i];
 	}
 	dataSize = dataSize * GetSizeByDataType(node.dType);
@@ -166,7 +166,7 @@ NodeDefBuilder& NodeDefBuilder::Attr(std::string name, const std::vector<std::ve
                                      std::string type) {
 	if (type == "shape_list") {
 		auto shapeItems = CpuKernelUtils::CreateAttrValue();
-		for (int i = 0; i < shapeLists.size(); i++) {
+		for (size_t i = 0; i < shapeLists.size(); i++) {
 			auto value = shapeItems->AddListTensorShape();
 			value->SetDimSizes(shapeLists[i]);
 		}

@@ -2218,7 +2218,7 @@ IMPLEMT_COMMON_INFERFUNC(SegmentSumInferShape) {
     output_shape_dims[0] = first_axis_dims;
     Shape output_shape(output_shape_dims);
     output_desc->SetShape(GeShape(output_shape_dims));
-    if (IsUnKnownShape) {
+    if (IsUnKnownShape(shape_x)) {
       std::vector<std::pair<int64_t, int64_t>> shape_range_x;
       std::vector<std::pair<int64_t, int64_t>> output_shape_range;
       output_shape_range.push_back(std::pair<int64_t, int64_t>(out_range_first_dims, first_axis_dims));
@@ -2689,8 +2689,8 @@ static bool TopKInferCommon(Operator &op, int64_t k) {
   output_v_shape.SetDimNum(dim_size);
   output_i_shape.SetDimNum(dim_size);
 
-  for (size_t i = 0; i < dim_size; i++) {
-    if (static_cast<int64_t>(i) == sorted_axis) {
+  for (int64_t i = 0; i < dim_size; i++) {
+    if (i == sorted_axis) {
       output_v_shape.SetDim(i, k);
       output_i_shape.SetDim(i, k);
       continue;

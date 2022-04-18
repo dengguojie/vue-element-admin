@@ -73,7 +73,7 @@ std::vector<int64_t> setValValue(const std::string& opType, std::vector<std::str
             if (var.find("dim") != std::string::npos) {
                 // dim offset 4 means first 'x' value
                 var_index = var.find("dim") + 4;
-                OP_TILING_CHECK(var_index > var.length(),
+                OP_TILING_CHECK(var_index > static_cast<int32_t>(var.length()),
                   VECTOR_INNER_ERR_REPORT_TILIING(opType, "elewise var has no valid dim, var_name:%s", var.c_str()),
                   return varValue);
                 try {

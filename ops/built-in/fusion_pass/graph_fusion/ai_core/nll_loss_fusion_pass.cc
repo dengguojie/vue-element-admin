@@ -154,7 +154,6 @@ bool NLLLossFusionPass::IsFusionPassEnable(string reduction) const {
 
 Status NLLLossFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& new_nodes) {
   bool fail_status = false;
-  bool is_unknown_shape = false;
   string reduction = "";
   string reduction_attr = "reduction";
 

@@ -484,7 +484,6 @@ void GetSplitKdim(const string &op_type, const BatchmatmulParas &params, CoreSta
   int32_t m_dim_max = min(params.core_num, params.m_32);
   int32_t k_dim_max = min(params.core_num, params.k_32);
   int32_t n_dim_max = min(params.core_num, params.n_32);
-  int32_t cur_cost = min_cost;
   int32_t block_dims[kNumThree] = {1, 1, 1};
   int32_t single_core_shape[kNumThree] = {params.m_32, params.k_32, params.n_32};
   for (int32_t k = 1; k < k_dim_max; k++) {

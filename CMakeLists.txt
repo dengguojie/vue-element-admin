@@ -65,6 +65,10 @@ if(BUILD_OPEN_PROJECT)
     set(ENABLE_TEST ST)
   endif()
 
+  if(NOT ENABLE_TEST)
+      add_compile_options(-Werror=sign-compare -Werror=address -Werror=unused-variable)
+  endif()
+
   # build external prjects
   if(DEFINED ENV{D_PKG_SERVER})
     set(CANN_PKG_SERVER $ENV{D_PKG_SERVER})
