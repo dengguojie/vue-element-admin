@@ -18,14 +18,15 @@ from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
 
 
 # 'pylint: disable=unused-argument,invalid-name
 # 'pylint: disable=redefined-argument-from-local
-def reduce_max_d_compute(x, y, axes=None, keepdims=None,
-                         kernel_name="reduce_max_d"):
+@register_operator_compute("ReduceMaxD", op_mode="dynamic", support_fusion=True)
+def reduce_max_d_compute(x, y, axes=None, keepdims=None, kernel_name="reduce_max_d"):
     """
     reduce_max_d compute
 
@@ -102,8 +103,7 @@ def reduce_max_d(x, y, axes=None, keepdims=None, kernel_name="reduce_max_d"):
 
     schedules = []
     tensors = []
-    ins = classify([x, input_axis], OpPatternMode.REDUCE,
-                                             {"keepdims": keepdims is True})
+    ins = classify([x, input_axis], OpPatternMode.REDUCE, {"keepdims": keepdims is True})
 
     for (x, axes) in ins:
         with tbe.compute():

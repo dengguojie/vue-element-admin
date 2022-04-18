@@ -2843,6 +2843,7 @@ unkown:
       - ops/built-in/tbe/impl/dynamic/unsorted_segment.py
       - ops/built-in/tbe/impl/dynamic/sparse_apply_ftrl_v2_d.py
       - ops/built-in/tbe/impl/dynamic/reduce_max_d.py
+      - ops/built-in/tbe/impl/dynamic/reduce_min_d.py
       - ops/built-in/tbe/impl/dynamic/sparse_apply_adadelta_d.py
       - ops/built-in/tbe/impl/dynamic/lru_cache_v2.py
       - ops/built-in/tbe/impl/dynamic/reduce_sum_d.py

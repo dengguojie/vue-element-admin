@@ -11,24 +11,25 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 Apache License for more details at
 http://www.apache.org/licenses/LICENSE-2.0
 
-dynamic reduce_max
+dynamic reduce_min_d
 """
 from impl.util.platform_adapter import tbe
-from impl.util.platform_adapter import tvm
-from impl.util.platform_adapter import classify
-from impl.util.platform_adapter import OpPatternMode
-from impl.util.platform_adapter import shape_util
+from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import shape_util
+from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
+from impl.util.platform_adapter import classify
+from impl.util.platform_adapter import OpPatternMode
 
 
 # 'pylint: disable=unused-argument,invalid-name
 # 'pylint: disable=redefined-argument-from-local
-@register_operator_compute("ReduceMax", op_mode="dynamic", support_fusion=True)
-def reduce_max_compute(x, axes, y, keepdims=None, kernel_name="reduce_max"):
+@register_operator_compute("ReduceMinD", op_mode="dynamic", support_fusion=True)
+def reduce_min_d_compute(x, y, axes=None, keepdims=None, kernel_name="reduce_min_d"):
     """
-    reduce_max compute
+    reduce_min_d compute
 
     Parameters:
     ----------
@@ -41,7 +42,7 @@ def reduce_max_compute(x, axes, y, keepdims=None, kernel_name="reduce_max"):
     keepdims: bool or NONETYPE
         if true, retains reduced dimensions with length 1.
     kernel_name: str
-        cce kernel name, default value is "reduce_max".
+        cce kernel name, default value is "reduce_min_d".
 
     Returns
     -------
@@ -51,17 +52,19 @@ def reduce_max_compute(x, axes, y, keepdims=None, kernel_name="reduce_max"):
     dtype = x.dtype
     if dtype in ("int8", "uint8"):
         x = tbe.cast_to(x, "float16")
-    res_max = tbe.reduce_max(x, axis=axes, keepdims=keepdims)
-    res = tbe.cast_to(res_max, dtype)
+    elif not tbe_platform.api_check_support("tbe.dsl.reduce_min", dtype):
+        x = tbe.cast_to(x, "float32")
+    res_min = tbe.reduce_min(x, axis=axes, keepdims=keepdims)
+    res = tbe.cast_to(res_min, dtype)
 
     return res
 
 
 # 'pylint: disable=too-many-locals,invalid-name
-@register_operator("ReduceMax")
-@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
+@register_operator("ReduceMinD")
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_LIST_INT,
                             para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
-def reduce_max(x, axes, y, keepdims=False, kernel_name="reduce_max"):
+def reduce_min_d(x, y, axes=None, keepdims=None, kernel_name="reduce_min_d"):
     """
     reduce a tensor on a certain axes based on max.
 
@@ -69,47 +72,49 @@ def reduce_max(x, axes, y, keepdims=False, kernel_name="reduce_max"):
     ----------
     x : dict
         shape and dtype of input
-    axes : dict
-        shape and dtype of input
     y : dict
         shape and dtype of output, should be same shape and type as input
+    axes: list
+        the first axes to reduce,may be negative to index from the end
+        (e.g., -1 for the last axes).
+        axes may be int or list(e.g. [1,2])
     keepdims: bool
         if true, retains reduced dimensions with length 1,
         default value is None
     kernel_name : str
-        kernel name, default value is "reduce_max"
+        kernel name, default value is "reduce_min_d"
 
     Returns
     -------
     None
     """
-    keepdims = False if keepdims is None else keepdims
-    dtype_x = x["dtype"]
-    dtype_lower_x = dtype_x.lower()
-    check_list_x = ("float16", "float32", "int8", "uint8", "int32")
-    para_check.check_dtype(dtype_lower_x, check_list_x)
+
+    dtype = x["dtype"]
+    dtype_lower = dtype.lower()
+    check_list = ("float16", "float32", "int8", "uint8", "int32")
+    para_check.check_dtype(dtype_lower, check_list)
     x["rel_pos_to_reduce"] = "before"
 
-    dtype_axes = axes["dtype"]
-    dtype_lower_axes = dtype_axes.lower()
-    check_list_axes = ("int32", "int64")
-    para_check.check_dtype(dtype_lower_axes, check_list_axes, param_name="axes")
-    axes["rel_pos_to_reduce"] = "axis"
+    shape = x["shape"]
+    shape_len = len(shape)
+    if not axes:
+        axes = range(shape_len)
+    if hasattr(axes, 'index'):
+        axes = list(axes)
+    axes = shape_util.axis_check(shape_len, axes)
+    input_axis = {"shape": [len(axes), ], "value": axes, "rel_pos_to_reduce": "axis"}
 
     schedules = []
     tensors = []
-    ins = classify([x, axes], OpPatternMode.REDUCE, {"keepdims": keepdims is True})
+    ins = classify([x, input_axis], OpPatternMode.REDUCE, {"keepdims": keepdims is True})
 
     for (x, axes) in ins:
         with tbe.compute():
-            shape_x, shape_axes = shape_util.variable_shape([x, axes], op_mode="reduce")
-            data_input_x = tvm.placeholder(shape_x, name="data_input_x",
-                                           dtype=dtype_lower_x)
-            data_input_axes = tvm.placeholder(shape_axes, name="data_input_axes",
-                                              dtype=dtype_lower_axes)
-            axes_d = shape_util.axis_check(len(shape_x), axes.get("value"))
-            res = reduce_max_compute(data_input_x, axes_d, y, keepdims)
-            tensors.append([data_input_x, data_input_axes, res])
+            shape_var_new = shape_util.variable_shape([x, axes], op_mode="reduce")[0]
+            data_input = tvm.placeholder(shape_var_new, name="data_input",
+                                         dtype=dtype_lower)
+            res = reduce_min_d_compute(data_input, y, axes.get("value"), keepdims)
+            tensors.append([data_input, res])
 
         with tvm.target.cce():
             sch = tbe.auto_schedule(res)

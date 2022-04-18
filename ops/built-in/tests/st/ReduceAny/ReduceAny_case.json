@@ -1,6 +1,6 @@
 [
   {
-    "op": "ReduceAll",
+    "op": "ReduceAny",
     "input_desc": [
       {
         "shape": [-2],
@@ -38,7 +38,9 @@
         "type": "bool",
         "value": true
       }
+      
+
     ],
-    "case_name": "test_ReduceAll_000"
+    "case_name": "test_ReduceAny_000"
   }
 ]

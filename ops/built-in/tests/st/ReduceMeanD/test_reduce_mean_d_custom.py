@@ -11,8 +11,8 @@ def reload_check_support():
     """
     import importlib
     import sys
-    import impl.dynamic.reduce_all
-    importlib.reload(sys.modules.get("impl.dynamic.reduce_all"))
+    import impl.dynamic.reduce_mean_d
+    importlib.reload(sys.modules.get("impl.dynamic.reduce_mean_d"))
 
 if __name__ == '__main__':
     reload_check_support()

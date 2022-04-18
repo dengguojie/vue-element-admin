@@ -21,9 +21,11 @@ from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import register_operator_compute
 
 
 # 'pylint: disable=unused-argument,invalid-name,redefined-argument-from-local
+@register_operator_compute("ReduceSum", op_mode="dynamic", support_fusion=True)
 def reduce_sum_compute(x, axes, y, keepdims=None, kernel_name="reduce_sum"):
     """
     reduce_sum compute

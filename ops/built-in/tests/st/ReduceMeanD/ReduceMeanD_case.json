@@ -1,6 +1,6 @@
 [
   {
-    "op": "ReduceAll",
+    "op": "ReduceMeanD",
     "input_desc": [
       {
         "shape": [-2],
@@ -9,16 +9,7 @@
         "ori_shape": [-1, 2, 2, 2],
         "ori_format": "ND",
         "name": "x",
-        "type": "bool"
-      },
-      {
-        "shape": [-2],
-        "typical_shape": [1],
-        "format": "ND",
-        "ori_shape": [-1],
-        "ori_format": "ND",
-        "name": "axes",
-        "type": "int32"
+        "type": "float16"
       }
     ],
     "output_desc": [
@@ -29,16 +20,21 @@
         "ori_shape": [-1, 1, 2, 2],
         "ori_format": "ND",
         "name": "y",
-        "type": "bool"
+        "type": "float16"
       }
     ],
     "attr": [
+      {
+        "type": "list_int",
+        "value": [1],
+        "name": "axes"
+      },
       {
         "name": "keep_dims",
         "type": "bool",
         "value": true
       }
     ],
-    "case_name": "test_ReduceAll_000"
+    "case_name": "test_ReduceMeanD_000"
   }
 ]

@@ -2,7 +2,7 @@
     {
         "op": "ReduceMean",
         "case_name": "test_mean_keep_dims_false",
-	"calc_expect_func_file": "test_reduce_mean_golden.py:calc_expect_func",
+	    "calc_expect_func_file": "test_reduce_mean_golden.py:calc_expect_func",
         "input_desc": [
             {
                 "format": "NHWC",

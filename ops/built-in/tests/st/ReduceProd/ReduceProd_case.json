@@ -1,6 +1,6 @@
 [
   {
-    "op": "ReduceAll",
+    "op": "ReduceProd",
     "input_desc": [
       {
         "shape": [-2],
@@ -9,7 +9,7 @@
         "ori_shape": [-1, 2, 2, 2],
         "ori_format": "ND",
         "name": "x",
-        "type": "bool"
+        "type": "float16"
       },
       {
         "shape": [-2],
@@ -29,7 +29,7 @@
         "ori_shape": [-1, 1, 2, 2],
         "ori_format": "ND",
         "name": "y",
-        "type": "bool"
+        "type": "float16"
       }
     ],
     "attr": [
@@ -39,6 +39,6 @@
         "value": true
       }
     ],
-    "case_name": "test_ReduceAll_000"
+    "case_name": "test_ReduceProd_000"
   }
 ]

@@ -23,6 +23,7 @@ from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import tbe_context
@@ -31,6 +32,7 @@ from impl.util.platform_adapter import OpImplMode
 
 # 'pylint: disable=too-many-branches,too-many-arguments,too-many-locals
 # 'pylint: disable=unused-argument,invalid-name
+@register_operator_compute("ReduceMeanD", op_mode="dynamic", support_fusion=True)
 def reduce_mean_d_compute(x,
                           y,
                           axes,

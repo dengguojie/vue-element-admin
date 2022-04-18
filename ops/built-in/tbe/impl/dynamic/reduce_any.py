@@ -22,9 +22,12 @@ from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import register_operator_compute
+from impl.util.platform_adapter import tbe_context
 
 
 # 'pylint: disable=unused-argument,invalid-name
+@register_operator_compute("ReduceAny", op_mode="dynamic", support_fusion=True)
 def reduce_any_compute(x, axes, y, keepdims=None, kernel_name="reduce_any"):
     """
     reduce_any compute
@@ -59,7 +62,7 @@ def reduce_any_compute(x, axes, y, keepdims=None, kernel_name="reduce_any"):
 # 'pylint: disable=too-many-locals,invalid-name
 @register_operator("ReduceAny")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
-                 para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
+                            para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
 def reduce_any(x, axes, y, keepdims=False, kernel_name="reduce_any"):
     """reduce a tensor on a certain axes based on any.
 
@@ -92,6 +95,10 @@ def reduce_any(x, axes, y, keepdims=False, kernel_name="reduce_any"):
     check_list_axes = ("int32", "int64")
     para_check.check_dtype(dtype_lower_axes, check_list_axes, param_name="axes")
     axes["rel_pos_to_reduce"] = "axis"
+
+    tbe_context.get_context().add_compile_info("axes_idx", 1)
+    if "const_value" in axes.keys():
+        axes["value"] = list(axes["const_value"])
 
     schedules = []
     ins = classify([x, axes], OpPatternMode.REDUCE, {"keepdims": keepdims is True})
