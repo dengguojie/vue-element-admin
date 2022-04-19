@@ -186,7 +186,7 @@ REG_OP(SingleMerge)
  * @li key_bias: Optional Tensor. KeyBias of Attention. Support float16
  * @li value_bias: Optional Tensor. ValueBias of Attention. Support float16
  * @li out_proj_bias: Optional Tensor. OutProjBias of Attention. Support float16
- * @li dropout_mask: Optional Tensor. DropOutMask of Attention. Support uint8 \n
+ * @li dropout_mask_input: Optional Tensor. DropOutMask of Attention. Support uint8 \n
 
  * @par Attributes:
  * @li attn_head_num: Attention Head numbers, Support int
@@ -223,7 +223,7 @@ REG_OP(MultiHeadAttention)
     .OPTIONAL_INPUT(key_bias, TensorType({DT_FLOAT16}))
     .OPTIONAL_INPUT(value_bias, TensorType({DT_FLOAT16}))
     .OPTIONAL_INPUT(out_proj_bias, TensorType({DT_FLOAT16}))
-    .OPTIONAL_INPUT(dropout_mask, TensorType({DT_UINT8}))
+    .OPTIONAL_INPUT(dropout_mask_input, TensorType({DT_UINT8}))
     .OUTPUT(y, TensorType({DT_FLOAT16}))
     .OUTPUT(dropout_mask, TensorType({DT_UINT8}))
     .OUTPUT(query_res, TensorType({DT_FLOAT16}))

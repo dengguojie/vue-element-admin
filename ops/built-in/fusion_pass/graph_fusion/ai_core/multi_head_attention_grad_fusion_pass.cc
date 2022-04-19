@@ -36,8 +36,44 @@
 using namespace std;
 using namespace ge;
 
+namespace {
+
+constexpr int OFFSET_FOR_ALIGNMENT = 15;
+constexpr int ALIGNMENT = 16;
+
+constexpr int INPUT_QUERY = 0;
+constexpr int INPUT_KEY = 1;
+constexpr int INPUT_VALUE = 2;
+constexpr int INPUT_QUERY_WEIGHT = 3;
+constexpr int INPUT_KEY_WEIGHT = 4;
+constexpr int INPUT_VALUE_WEIGHT = 5;
+constexpr int INPUT_OUT_PROJ_WEIGHT = 6;
+constexpr int INPUT_QUERY_RES = 7;
+constexpr int INPUT_KEY_RES = 8;
+constexpr int INPUT_VALUE_RES = 9;
+constexpr int INPUT_ATTN_SCORES = 10;
+constexpr int INPUT_ATTN_RES = 11;
+constexpr int INPUT_CONTEXT = 12;
+constexpr int INPUT_Y_GRAD = 13;
+constexpr int INPUT_DROPOUT_MASK = 14;
+
+constexpr int OUTPUT_QUERY_WEIGHT_GRAD = 0;
+constexpr int OUTPUT_KEY_WEIGHT_GRAD = 1;
+constexpr int OUTPUT_VALUE_WEIGHT_GRAD = 2;
+constexpr int OUTPUT_OUT_PROJ_WEIGHT_GRAD = 3;
+constexpr int OUTPUT_QUERY_GRAD = 4;
+constexpr int OUTPUT_KEY_GRAD = 5;
+constexpr int OUTPUT_VALUE_GRAD = 6;
+constexpr int OUTPUT_QUERY_BIAS_GRAD = 7;
+constexpr int OUTPUT_KEY_BIAS_GRAD = 8;
+constexpr int OUTPUT_VALUE_BIAS_GRAD = 9;
+constexpr int OUTPUT_OUT_PROJ_BIAS_GRAD = 10;
+
+}
+
 namespace fe {
-static void SetNDTensorDesc(ge::GeTensorDesc &tensorDesc, const vector<int64_t> &ori_dims, const ge::DataType dtype = DT_FLOAT16) {
+static void SetNDTensorDesc(ge::GeTensorDesc &tensorDesc, const vector<int64_t> &ori_dims,
+    const ge::DataType dtype = DT_FLOAT16) {
     tensorDesc.SetShape(ge::GeShape(ori_dims));
     tensorDesc.SetDataType(dtype);
     tensorDesc.SetFormat(FORMAT_ND);
@@ -46,14 +82,15 @@ static void SetNDTensorDesc(ge::GeTensorDesc &tensorDesc, const vector<int64_t> 
     tensorDesc.SetOriginFormat(FORMAT_ND);
 }
 
-static void SetNZTensorDesc(ge::GeTensorDesc &tensorDesc, const vector<int64_t> &ori_dims, const ge::DataType dtype = DT_FLOAT16) {
+static void SetNZTensorDesc(ge::GeTensorDesc &tensorDesc, const vector<int64_t> &ori_dims,
+    const ge::DataType dtype = DT_FLOAT16) {
     vector<int64_t> dims;
     int32_t dim = ori_dims.size();
     for (auto i = 0; i < dim - 2; i++) {
         dims.push_back(ori_dims[i]);
     }
-    dims.push_back((ori_dims[dim-1] + 15) / 16);
-    dims.push_back((ori_dims[dim-2] + 15) / 16);
+    dims.push_back((ori_dims[dim-1] + OFFSET_FOR_ALIGNMENT) / ALIGNMENT);
+    dims.push_back((ori_dims[dim-2] + OFFSET_FOR_ALIGNMENT) / ALIGNMENT); // dim-2: the last second element.
     dims.push_back(16);
     dims.push_back(16);
     tensorDesc.SetShape(ge::GeShape(dims));
@@ -95,7 +132,8 @@ static Status AddMatmulNode(ge::ComputeGraph& graph, const ge::GeTensorDesc& x1_
 {
     OP_LOGI("MultiHeadAttentionGrad", "Define %s begin", node_name.c_str());
     OpDescPtr matmulOpDesc;
-    FUSION_PASS_MAKE_SHARED((matmulOpDesc = std::make_shared<ge::OpDesc>(node_name, "MatMulV2")), return INTERNAL_ERROR);
+    FUSION_PASS_MAKE_SHARED((matmulOpDesc = std::make_shared<ge::OpDesc>(node_name, "MatMulV2")),
+        return INTERNAL_ERROR);
     matmulOpDesc->AddInputDesc("x1", x1_desc);
     matmulOpDesc->AddInputDesc("x2", x2_desc);
     AttrUtils::SetBool(matmulOpDesc, "transpose_x1", transpose_x1);
@@ -115,7 +153,8 @@ static Status AddReduceSumNode(ge::ComputeGraph& graph, const ge::GeTensorDesc& 
 {
     OP_LOGI("MultiHeadAttentionGrad", "Define %s begin", node_name.c_str());
     OpDescPtr reducesumOpDesc;
-    FUSION_PASS_MAKE_SHARED((reducesumOpDesc = std::make_shared<ge::OpDesc>(node_name, "ReduceSumD")), return INTERNAL_ERROR);
+    FUSION_PASS_MAKE_SHARED((reducesumOpDesc = std::make_shared<ge::OpDesc>(node_name, "ReduceSumD")),
+        return INTERNAL_ERROR);
     reducesumOpDesc->AddInputDesc("x", x_desc);
     AttrUtils::SetListInt(reducesumOpDesc, "axes", {0});
     AttrUtils::SetBool(reducesumOpDesc, "keep_dims", keep_dims);
@@ -133,7 +172,8 @@ static Status AddTransposeNode(ge::ComputeGraph& graph, const ge::GeTensorDesc& 
 {
     OP_LOGI("MultiHeadAttentionGrad", "Define %s begin", node_name.c_str());
     OpDescPtr transOpDesc;
-    FUSION_PASS_MAKE_SHARED((transOpDesc = std::make_shared<ge::OpDesc>(node_name, "ConfusionTransposeD")), return INTERNAL_ERROR);
+    FUSION_PASS_MAKE_SHARED((transOpDesc = std::make_shared<ge::OpDesc>(node_name, "ConfusionTransposeD")),
+        return INTERNAL_ERROR);
     transOpDesc->AddInputDesc("x", x_desc);
     AttrUtils::SetListInt(transOpDesc, "perm", perm);
     AttrUtils::SetListInt(transOpDesc, "shape", shape);
@@ -146,7 +186,8 @@ static Status AddTransposeNode(ge::ComputeGraph& graph, const ge::GeTensorDesc& 
 }
 
 template<typename _InAnchor1, typename _InAnchor2>
-static Status AddBatchMatmulNode(ge::ComputeGraph& graph, ge::OpDescPtr& opDesc, const ge::GeTensorDesc& x1_desc, const ge::GeTensorDesc& x2_desc,
+static Status AddBatchMatmulNode(ge::ComputeGraph& graph, ge::OpDescPtr& opDesc, const ge::GeTensorDesc& x1_desc,
+    const ge::GeTensorDesc& x2_desc,
     const ge::GeTensorDesc& y_desc, ge::NodePtr& new_node, bool adj_x1, bool adj_x2,
     const string& node_name, _InAnchor1 in_anchor1, _InAnchor2 in_anchor2)
 {
@@ -196,8 +237,8 @@ static Status AddCastNode(ge::ComputeGraph& graph, ge::OpDescPtr& opDesc, const 
 
 template<typename _InAnchor1, typename _InAnchor2>
 static Status AddSoftmaxGradNode(ge::ComputeGraph& graph, ge::OpDescPtr& opDesc, const ge::GeTensorDesc& softmax_desc,
-    const ge::GeTensorDesc& grad_softmax_desc, const ge::GeTensorDesc& y_desc, ge::NodePtr& new_node, vector<int64_t> axes,
-    const string& node_name, _InAnchor1 in_anchor1, _InAnchor2 in_anchor2)
+    const ge::GeTensorDesc& grad_softmax_desc, const ge::GeTensorDesc& y_desc, ge::NodePtr& new_node,
+    vector<int64_t> axes, const string& node_name, _InAnchor1 in_anchor1, _InAnchor2 in_anchor2)
 {
     OP_LOGI("MultiHeadAttentionGrad", "Define %s begin", node_name.c_str());
     FUSION_PASS_MAKE_SHARED((opDesc = std::make_shared<ge::OpDesc>(node_name, "SoftmaxGrad")), return INTERNAL_ERROR);
@@ -212,18 +253,22 @@ static Status AddSoftmaxGradNode(ge::ComputeGraph& graph, ge::OpDescPtr& opDesc,
     return SUCCESS;
 }
 
-Status MultiHeadAttentionGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes)
+Status MultiHeadAttentionGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
+    vector<ge::NodePtr>& fusionNodes)
 {
     OP_LOGI(FUSED_OP_TYPE.c_str(), "Define MultiHeadAttentionGradFusionPass fusion begin");
     ge::NodePtr multiHeadAttentionGradNode = GetNodeFromMapping(FUSED_OP_TYPE, mapping);
-    FUSION_PASS_CHECK(multiHeadAttentionGradNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "MultiHeadAttentionGrad node is null, fusion failed."),
+    FUSION_PASS_CHECK(multiHeadAttentionGradNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(),
+        "MultiHeadAttentionGrad node is null, fusion failed."),
                         return PARAM_INVALID);
     ge::OpDescPtr multiHeadAttentionGradDesc = multiHeadAttentionGradNode->GetOpDesc();
-    FUSION_PASS_CHECK(multiHeadAttentionGradDesc == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "MultiHeadAttentionGrad's Op_desc is null, fusion failed."),
+    FUSION_PASS_CHECK(multiHeadAttentionGradDesc == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(),
+        "MultiHeadAttentionGrad's Op_desc is null, fusion failed."),
                         return PARAM_INVALID);
     // shape
     vector<int64_t> query_shape = multiHeadAttentionGradDesc->GetInputDesc("query").GetShape().GetDims();
-    FUSION_PASS_CHECK(query_shape.size() !=2, OP_LOGE(FUSED_OP_TYPE.c_str(), "MultiHeadAttentionGrad's Query origin shape should be 2D, fusion failed."),
+    FUSION_PASS_CHECK(query_shape.size() !=2, OP_LOGE(FUSED_OP_TYPE.c_str(),
+        "MultiHeadAttentionGrad's Query origin shape should be 2D, fusion failed."),
                         return PARAM_INVALID);
     int64_t attn_head_num, attn_dim_per_head, src_len, tgt_len;
     float keep_prob;
@@ -237,10 +282,14 @@ Status MultiHeadAttentionGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping
     AttrUtils::GetBool(multiHeadAttentionGradDesc, "softmax_use_float", softmax_use_float);
     AttrUtils::GetListBool(multiHeadAttentionGradDesc, "bias_grad_mask", bias_grad_mask);
     FUSION_PASS_CHECK((attn_head_num == 0 || attn_dim_per_head ==0 || src_len == 0 || tgt_len==0),
-        OP_LOGE(FUSED_OP_TYPE.c_str(), "MultiHeadAttention's attn_head_num, attn_dim_per_head, src_len, tgt_len should not be 0, fusion failed."),
+        OP_LOGE(FUSED_OP_TYPE.c_str(),
+        "MultiHeadAttention's attn_head_num, attn_dim_per_head, src_len, tgt_len should not be 0, fusion failed."),
                     return PARAM_INVALID);
-    FUSION_PASS_CHECK(!(attn_head_num % 16 == 0 && attn_dim_per_head % 16 ==  0 && src_len % 16 ==  0 && tgt_len % 16 == 0),
-        OP_LOGE(FUSED_OP_TYPE.c_str(), "MultiHeadAttention's attn_head_num, attn_dim_per_head, src_len, tgt_len should align of 16, fusion failed."),
+    FUSION_PASS_CHECK(!(
+        attn_head_num % ALIGNMENT == 0 && attn_dim_per_head % ALIGNMENT ==  0 && 
+        src_len % ALIGNMENT ==  0 && tgt_len % ALIGNMENT == 0),
+        OP_LOGE(FUSED_OP_TYPE.c_str(),
+        "MultiHeadAttention's attn_head_num, attn_dim_per_head, src_len, tgt_len should align of 16, fusion failed."),
                     return PARAM_INVALID);
     const int64_t batch = query_shape[0] / tgt_len;
     const int64_t weight_col = attn_head_num * attn_dim_per_head;
@@ -266,49 +315,61 @@ Status MultiHeadAttentionGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping
     GeTensorDesc outProjInputMatmulOutputDesc;
     SetNZTensorDesc(outProjInputMatmulOutputDesc, out_proj_input_matmul_shape);
     NodePtr outProjInputMatmulNode;
-    AddMatmulNode(graph, multiHeadAttentionGradDesc->GetInputDesc("y_grad"), multiHeadAttentionGradDesc->GetInputDesc("out_proj_weight"),
-        outProjInputMatmulOutputDesc, outProjInputMatmulNode, false, false, "out_proj_input_matmul",
-        multiHeadAttentionGradNode->GetInDataAnchor(13)->GetPeerOutAnchor(),
-        multiHeadAttentionGradNode->GetInDataAnchor(6)->GetPeerOutAnchor()
+    AddMatmulNode(graph, multiHeadAttentionGradDesc->GetInputDesc("y_grad"),
+        multiHeadAttentionGradDesc->GetInputDesc("out_proj_weight"),
+        outProjInputMatmulOutputDesc, outProjInputMatmulNode, false, false,
+        multiHeadAttentionGradNode->GetName() + "_out_proj_input_matmul",
+        multiHeadAttentionGradNode->GetInDataAnchor(INPUT_Y_GRAD)->GetPeerOutAnchor(),
+        multiHeadAttentionGradNode->GetInDataAnchor(INPUT_OUT_PROJ_WEIGHT)->GetPeerOutAnchor()
     );
 
     // out_proj_weight_matmul
     GeTensorDesc outProjWeightMatmulOutputDesc;
     SetNZTensorDesc(outProjWeightMatmulOutputDesc, out_proj_weight_matmul_shape);
     NodePtr outProjWeightMatmulNode;
-    AddMatmulNode(graph, multiHeadAttentionGradDesc->GetInputDesc("y_grad"), multiHeadAttentionGradDesc->GetInputDesc("context"),
-        outProjWeightMatmulOutputDesc, outProjWeightMatmulNode, true, false, "out_proj_weight_matmul",
-        multiHeadAttentionGradNode->GetInDataAnchor(13)->GetPeerOutAnchor(),
-        multiHeadAttentionGradNode->GetInDataAnchor(12)->GetPeerOutAnchor()
+    AddMatmulNode(graph, multiHeadAttentionGradDesc->GetInputDesc("y_grad"),
+        multiHeadAttentionGradDesc->GetInputDesc("context"),
+        outProjWeightMatmulOutputDesc, outProjWeightMatmulNode, true, false,
+        multiHeadAttentionGradNode->GetName() + "_out_proj_weight_matmul",
+        multiHeadAttentionGradNode->GetInDataAnchor(INPUT_Y_GRAD)->GetPeerOutAnchor(),
+        multiHeadAttentionGradNode->GetInDataAnchor(INPUT_CONTEXT)->GetPeerOutAnchor()
     );
     AddNodeLinkOut(outProjWeightMatmulNode->GetOutDataAnchor(0),
-        multiHeadAttentionGradNode->GetOutDataAnchor(3), "out_proj_weight_matmul");
+        multiHeadAttentionGradNode->GetOutDataAnchor(OUTPUT_OUT_PROJ_WEIGHT_GRAD),
+        multiHeadAttentionGradNode->GetName() + "_out_proj_weight_matmul");
 
     // bias_empty
     GeTensorDesc biasEmptyTensorDesc = GeTensorDesc(GeShape(), FORMAT_ND, DT_FLOAT16);
     NodePtr biasEmptyNode;
-    AddConstNode(graph, biasEmptyTensorDesc, biasEmptyNode, nullptr, 0, "bias_empty");
+    AddConstNode(graph, biasEmptyTensorDesc, biasEmptyNode, nullptr, 0,
+        multiHeadAttentionGradNode->GetName() + "_bias_empty");
 
     // out_proj_bias
     NodePtr outProjBiasNode;
     GeTensorDesc biasReducesumTensorDesc;
     SetNDTensorDesc(biasReducesumTensorDesc, bias_reducesum_shape, DT_FLOAT16);
-    if (bias_grad_mask[3]) {
-        AddReduceSumNode(graph, multiHeadAttentionGradDesc->GetInputDesc("y_grad"), biasReducesumTensorDesc, outProjBiasNode,
-            true, "out_proj_bias", multiHeadAttentionGradNode->GetInDataAnchor(13)->GetPeerOutAnchor());
+    int theThirdElement = 3;
+    if (bias_grad_mask[theThirdElement]) {
+        AddReduceSumNode(graph,
+            multiHeadAttentionGradDesc->GetInputDesc("y_grad"), biasReducesumTensorDesc, outProjBiasNode,
+            true, multiHeadAttentionGradNode->GetName() + "_out_proj_bias",
+            multiHeadAttentionGradNode->GetInDataAnchor(INPUT_Y_GRAD)->GetPeerOutAnchor());
     } else {
         OP_LOGI(FUSED_OP_TYPE.c_str(), "Define out_proj_bias empty begin");
         outProjBiasNode = biasEmptyNode;
     }
     AddNodeLinkOut(outProjBiasNode->GetOutDataAnchor(0),
-        multiHeadAttentionGradNode->GetOutDataAnchor(10), "out_proj_bias");
+        multiHeadAttentionGradNode->GetOutDataAnchor(OUTPUT_OUT_PROJ_BIAS_GRAD),
+        multiHeadAttentionGradNode->GetName() + "_out_proj_bias");
 
     // context_trans
     GeTensorDesc contextTransOutputDesc;
     SetNZTensorDesc(contextTransOutputDesc, new_context_trans_shape);
     NodePtr contextTransNode;
-    AddTransposeNode(graph, outProjInputMatmulOutputDesc, contextTransOutputDesc, contextTransNode, perm, context_trans_shape,
-        false, "context_trans", outProjInputMatmulNode->GetOutDataAnchor(0)
+    AddTransposeNode(graph, outProjInputMatmulOutputDesc, contextTransOutputDesc,
+        contextTransNode, perm, context_trans_shape,
+        false, multiHeadAttentionGradNode->GetName() + "_context_trans",
+        outProjInputMatmulNode->GetOutDataAnchor(0)
     );
 
     // attn_res_batch
@@ -316,9 +377,12 @@ Status MultiHeadAttentionGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping
     SetNZTensorDesc(attnResBatchOutputDesc, attn_res_batch_shape);
     OpDescPtr attnResBatchOpDesc;
     NodePtr attnResBatchNode;
-    AddBatchMatmulNode(graph, attnResBatchOpDesc, contextTransOutputDesc, multiHeadAttentionGradDesc->GetInputDesc("value_res"), attnResBatchOutputDesc,
-        attnResBatchNode, false, true, "attn_res_batch", contextTransNode->GetOutDataAnchor(0),
-        multiHeadAttentionGradNode->GetInDataAnchor(9)->GetPeerOutAnchor()
+    AddBatchMatmulNode(graph, attnResBatchOpDesc, contextTransOutputDesc,
+        multiHeadAttentionGradDesc->GetInputDesc("value_res"), attnResBatchOutputDesc,
+        attnResBatchNode, false, true,
+        multiHeadAttentionGradNode->GetName() + "_attn_res_batch",
+        contextTransNode->GetOutDataAnchor(0),
+        multiHeadAttentionGradNode->GetInDataAnchor(INPUT_VALUE_RES)->GetPeerOutAnchor()
     );
 
     // value_res_batch
@@ -326,8 +390,12 @@ Status MultiHeadAttentionGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping
     SetNZTensorDesc(valueResBatchOutputDesc, kv_res_batch_shape);
     OpDescPtr valueResBatchOpDesc;
     NodePtr valueResBatchNode;
-    AddBatchMatmulNode(graph, valueResBatchOpDesc, multiHeadAttentionGradDesc->GetInputDesc("attn_res"), contextTransOutputDesc, valueResBatchOutputDesc,
-        valueResBatchNode, true, false, "value_res_batch", multiHeadAttentionGradNode->GetInDataAnchor(11)->GetPeerOutAnchor(),
+    AddBatchMatmulNode(graph, valueResBatchOpDesc,
+        multiHeadAttentionGradDesc->GetInputDesc("attn_res"),
+        contextTransOutputDesc, valueResBatchOutputDesc,
+        valueResBatchNode, true, false,
+        multiHeadAttentionGradNode->GetName() + "_value_res_batch",
+        multiHeadAttentionGradNode->GetInDataAnchor(INPUT_ATTN_RES)->GetPeerOutAnchor(),
         contextTransNode->GetOutDataAnchor(0)
     );
 
@@ -337,17 +405,20 @@ Status MultiHeadAttentionGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping
     if (keep_prob < 1.0) {
         GeTensorDesc probTensorDesc = GeTensorDesc(GeShape(), FORMAT_ND, DT_FLOAT);
         NodePtr probNode;
-        AddConstNode(graph, probTensorDesc, probNode, reinterpret_cast<uint8_t*>(&keep_prob), sizeof(float), "keep_prob");
+        AddConstNode(graph, probTensorDesc, probNode, reinterpret_cast<uint8_t*>(&keep_prob), sizeof(float),
+            "keep_prob");
         // dropout_do_mask
         OP_LOGI(FUSED_OP_TYPE.c_str(), "Define attn_res_dropout begin");
-        FUSION_PASS_MAKE_SHARED((attnResDropoutOpDesc = std::make_shared<ge::OpDesc>("dropout_do_mask", "DropOutDoMask")), return INTERNAL_ERROR);
+        FUSION_PASS_MAKE_SHARED((attnResDropoutOpDesc = std::make_shared<ge::OpDesc>(
+            multiHeadAttentionGradNode->GetName() + "_dropout_do_mask", "DropOutDoMask")), return INTERNAL_ERROR);
         attnResDropoutOpDesc->AddInputDesc("x", attnResBatchOutputDesc);
         attnResDropoutOpDesc->AddInputDesc("mask", multiHeadAttentionGradDesc->GetInputDesc("dropout_mask"));
         attnResDropoutOpDesc->AddInputDesc("keep_prob", probTensorDesc);
         attnResDropoutOpDesc->AddOutputDesc("y", attnResBatchOutputDesc);
         attnResDropoutNode = graph.AddNode(attnResDropoutOpDesc);
         GraphUtils::AddEdge(attnResBatchNode->GetOutDataAnchor(0), attnResDropoutNode->GetInDataAnchor(0));
-        GraphUtils::AddEdge(multiHeadAttentionGradNode->GetInDataAnchor(14)->GetPeerOutAnchor(), attnResDropoutNode->GetInDataAnchor(1));
+        GraphUtils::AddEdge(multiHeadAttentionGradNode->GetInDataAnchor(INPUT_DROPOUT_MASK)->GetPeerOutAnchor(),
+            attnResDropoutNode->GetInDataAnchor(1));
         GraphUtils::AddEdge(probNode->GetOutDataAnchor(0), attnResDropoutNode->GetInDataAnchor(2));
     } else {
         attnResDropoutOpDesc = attnResBatchOpDesc;
@@ -364,22 +435,31 @@ Status MultiHeadAttentionGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping
         GeTensorDesc castOutputDesc;
         SetNZTensorDesc(castOutputDesc, attn_res_batch_shape, DT_FLOAT);
         NodePtr castNode;
-        AddCastNode(graph, castOpDesc, attnResBatchOutputDesc, castOutputDesc, castNode, DT_FLOAT, "cast_before_softmax",
+        AddCastNode(graph, castOpDesc, attnResBatchOutputDesc, castOutputDesc, castNode, DT_FLOAT,
+            multiHeadAttentionGradNode->GetName() + "_cast_before_softmax",
             attnResDropoutNode->GetOutDataAnchor(0));
         // attn_weight_softmax
         NodePtr beforeCastNode;
-        AddSoftmaxGradNode(graph, beforeCastOpDesc, multiHeadAttentionGradDesc->GetInputDesc("attn_scores"), castOutputDesc,
-            castOutputDesc, beforeCastNode, {-1}, "attn_weight_softmax",
-            multiHeadAttentionGradNode->GetInDataAnchor(10)->GetPeerOutAnchor(), castNode->GetOutDataAnchor(0)
+        AddSoftmaxGradNode(graph, beforeCastOpDesc,
+            multiHeadAttentionGradDesc->GetInputDesc("attn_scores"), castOutputDesc,
+            castOutputDesc, beforeCastNode, {-1},
+            multiHeadAttentionGradNode->GetName() + "_attn_weight_softmax",
+            multiHeadAttentionGradNode->GetInDataAnchor(INPUT_ATTN_SCORES)->GetPeerOutAnchor(),
+            castNode->GetOutDataAnchor(0)
         );
         // cast_after_softmax
-        AddCastNode(graph, softmaxGradOpDesc, castOutputDesc, softmaxGradOutputDesc, softmaxGradNode, DT_FLOAT16, "cast_after_softmax",
+        AddCastNode(graph, softmaxGradOpDesc, castOutputDesc, softmaxGradOutputDesc, softmaxGradNode, DT_FLOAT16,
+            multiHeadAttentionGradNode->GetName() + "_cast_after_softmax",
             beforeCastNode->GetOutDataAnchor(0));
     } else {
         // softmax
-        AddSoftmaxGradNode(graph, softmaxGradOpDesc, multiHeadAttentionGradDesc->GetInputDesc("attn_scores"), attnResBatchOutputDesc,
-            softmaxGradOutputDesc, softmaxGradNode, {-1}, "attn_weight_softmax",
-            multiHeadAttentionGradNode->GetInDataAnchor(10)->GetPeerOutAnchor(), attnResDropoutNode->GetOutDataAnchor(0)
+        AddSoftmaxGradNode(graph, softmaxGradOpDesc,
+            multiHeadAttentionGradDesc->GetInputDesc("attn_scores"),
+            attnResBatchOutputDesc,
+            softmaxGradOutputDesc, softmaxGradNode, {-1},
+            multiHeadAttentionGradNode->GetName() + "_attn_weight_softmax",
+            multiHeadAttentionGradNode->GetInDataAnchor(INPUT_ATTN_SCORES)->GetPeerOutAnchor(),
+            attnResDropoutNode->GetOutDataAnchor(0)
         );
     }
 
@@ -388,9 +468,12 @@ Status MultiHeadAttentionGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping
     SetNZTensorDesc(queryResBatchOutputDesc, query_res_batch_shape);
     OpDescPtr queryResBatchOpDesc;
     NodePtr queryResBatchNode;
-    AddBatchMatmulNode(graph, queryResBatchOpDesc, softmaxGradOutputDesc, multiHeadAttentionGradDesc->GetInputDesc("key_res"), queryResBatchOutputDesc,
-        queryResBatchNode, false, false, "query_res_batch", softmaxGradNode->GetOutDataAnchor(0),
-        multiHeadAttentionGradNode->GetInDataAnchor(8)->GetPeerOutAnchor()
+    AddBatchMatmulNode(graph, queryResBatchOpDesc, softmaxGradOutputDesc,
+        multiHeadAttentionGradDesc->GetInputDesc("key_res"), queryResBatchOutputDesc,
+        queryResBatchNode, false, false,
+        multiHeadAttentionGradNode->GetName() + "_query_res_batch",
+        softmaxGradNode->GetOutDataAnchor(0),
+        multiHeadAttentionGradNode->GetInDataAnchor(INPUT_KEY_RES)->GetPeerOutAnchor()
     );
 
     // key_res_batch
@@ -398,23 +481,30 @@ Status MultiHeadAttentionGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping
     SetNZTensorDesc(keyResBatchOutputDesc, kv_res_batch_shape);
     OpDescPtr keyResBatchOpDesc;
     NodePtr keyResBatchNode;
-    AddBatchMatmulNode(graph, keyResBatchOpDesc, softmaxGradOutputDesc, multiHeadAttentionGradDesc->GetInputDesc("query_res"), keyResBatchOutputDesc,
-        keyResBatchNode, true, false, "key_res_batch", softmaxGradNode->GetOutDataAnchor(0),
-        multiHeadAttentionGradNode->GetInDataAnchor(7)->GetPeerOutAnchor()
+    AddBatchMatmulNode(graph, keyResBatchOpDesc, softmaxGradOutputDesc,
+        multiHeadAttentionGradDesc->GetInputDesc("query_res"), keyResBatchOutputDesc,
+        keyResBatchNode, true, false,
+        multiHeadAttentionGradNode->GetName() + "_key_res_batch",
+        softmaxGradNode->GetOutDataAnchor(0),
+        multiHeadAttentionGradNode->GetInDataAnchor(INPUT_QUERY_RES)->GetPeerOutAnchor()
     );
 
     // query_trans
     GeTensorDesc queryTransOutputDesc;
     SetNZTensorDesc(queryTransOutputDesc, query_trans_batch_shape);
     NodePtr queryTransNode;
-    AddTransposeNode(graph, queryResBatchOutputDesc, queryTransOutputDesc, queryTransNode, perm, query_trans_batch_shape,
-        true, "query_trans", queryResBatchNode->GetOutDataAnchor(0)
+    AddTransposeNode(graph, queryResBatchOutputDesc, queryTransOutputDesc, queryTransNode, perm,
+        query_trans_batch_shape, true,
+        multiHeadAttentionGradNode->GetName() + "_query_trans",
+        queryResBatchNode->GetOutDataAnchor(0)
     );
 
     // attn_scores_muls
     OP_LOGI(FUSED_OP_TYPE.c_str(), "Define attn_scores_muls begin");
     OpDescPtr attnScoresMulsOpDesc;
-    FUSION_PASS_MAKE_SHARED((attnScoresMulsOpDesc = std::make_shared<ge::OpDesc>("attn_scores_muls", "Muls")), return INTERNAL_ERROR);
+    FUSION_PASS_MAKE_SHARED((attnScoresMulsOpDesc =
+        std::make_shared<ge::OpDesc>(multiHeadAttentionGradNode->GetName() + "_attn_scores_muls", "Muls")),
+        return INTERNAL_ERROR);
     attnScoresMulsOpDesc->AddInputDesc("x", queryTransOutputDesc);
     AttrUtils::SetFloat(attnScoresMulsOpDesc, "value", scale);
     attnScoresMulsOpDesc->AddOutputDesc("y", queryTransOutputDesc);
@@ -426,7 +516,7 @@ Status MultiHeadAttentionGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping
     SetNZTensorDesc(keyTransOutputDesc, kv_trans_batch_shape);
     NodePtr keyTransNode;
     AddTransposeNode(graph, keyResBatchOutputDesc, keyTransOutputDesc, keyTransNode, perm, kv_trans_batch_shape,
-        true, "key_trans", keyResBatchNode->GetOutDataAnchor(0)
+        true, multiHeadAttentionGradNode->GetName() + "_key_trans", keyResBatchNode->GetOutDataAnchor(0)
     );
 
     // value_trans
@@ -434,7 +524,7 @@ Status MultiHeadAttentionGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping
     SetNZTensorDesc(valueTransOutputDesc, kv_trans_batch_shape);
     NodePtr valueTransNode;
     AddTransposeNode(graph, valueResBatchOutputDesc, valueTransOutputDesc, valueTransNode, perm, kv_trans_batch_shape,
-        true, "value_trans", valueResBatchNode->GetOutDataAnchor(0)
+        true, multiHeadAttentionGradNode->GetName() + "_value_trans", valueResBatchNode->GetOutDataAnchor(0)
     );
 
     // query_matmul
@@ -442,108 +532,121 @@ Status MultiHeadAttentionGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping
     SetNZTensorDesc(queryMatmulOutputDesc, query_matmul_shape);
     NodePtr queryMatmulNode;
     AddMatmulNode(graph, queryTransOutputDesc, multiHeadAttentionGradDesc->GetInputDesc("query_weight"),
-        queryMatmulOutputDesc, queryMatmulNode, false, false, "query_matmul",
+        queryMatmulOutputDesc, queryMatmulNode, false, false, multiHeadAttentionGradNode->GetName() + "_query_matmul",
         attnScoresMulsNode->GetOutDataAnchor(0),
-        multiHeadAttentionGradNode->GetInDataAnchor(3)->GetPeerOutAnchor()
+        multiHeadAttentionGradNode->GetInDataAnchor(INPUT_QUERY_WEIGHT)->GetPeerOutAnchor()
     );
     AddNodeLinkOut(queryMatmulNode->GetOutDataAnchor(0),
-        multiHeadAttentionGradNode->GetOutDataAnchor(4), "query_matmul");
+        multiHeadAttentionGradNode->GetOutDataAnchor(OUTPUT_QUERY_GRAD),
+        multiHeadAttentionGradNode->GetName() + "_query_matmul");
 
     // query_weight_matmul
     GeTensorDesc queryWeightMatmulOutputDesc;
     SetNZTensorDesc(queryWeightMatmulOutputDesc, query_weight_matmul_shape);
     NodePtr queryWeightMatmulNode;
     AddMatmulNode(graph, queryTransOutputDesc, multiHeadAttentionGradDesc->GetInputDesc("query"),
-        queryWeightMatmulOutputDesc, queryWeightMatmulNode, true, false, "query_weight_matmul",
+        queryWeightMatmulOutputDesc, queryWeightMatmulNode, true, false,
+        multiHeadAttentionGradNode->GetName() + "_query_weight_matmul",
         attnScoresMulsNode->GetOutDataAnchor(0),
-        multiHeadAttentionGradNode->GetInDataAnchor(0)->GetPeerOutAnchor()
+        multiHeadAttentionGradNode->GetInDataAnchor(INPUT_QUERY)->GetPeerOutAnchor()
     );
     AddNodeLinkOut(queryWeightMatmulNode->GetOutDataAnchor(0),
-        multiHeadAttentionGradNode->GetOutDataAnchor(0), "query_weight_matmul");
+        multiHeadAttentionGradNode->GetOutDataAnchor(OUTPUT_QUERY_WEIGHT_GRAD),
+        multiHeadAttentionGradNode->GetName() + "_query_weight_matmul");
 
     // query_bias
     NodePtr queryBiasNode;
     if (bias_grad_mask[0]) {
         AddReduceSumNode(graph, queryTransOutputDesc, biasReducesumTensorDesc, queryBiasNode,
-            true, "query_bias", attnScoresMulsNode->GetOutDataAnchor(0));
+            true, multiHeadAttentionGradNode->GetName() + "_query_bias",
+            attnScoresMulsNode->GetOutDataAnchor(0));
     } else {
         OP_LOGI(FUSED_OP_TYPE.c_str(), "Define query_bias empty begin");
         queryBiasNode = biasEmptyNode;
     }
     AddNodeLinkOut(queryBiasNode->GetOutDataAnchor(0),
-        multiHeadAttentionGradNode->GetOutDataAnchor(7), "query_bias");
+        multiHeadAttentionGradNode->GetOutDataAnchor(OUTPUT_QUERY_BIAS_GRAD),
+        multiHeadAttentionGradNode->GetName() + "_query_bias");
 
     // key_matmul
     GeTensorDesc keyMatmulOutputDesc;
     SetNZTensorDesc(keyMatmulOutputDesc, kv_matmul_shape);
     NodePtr keyMatmulNode;
     AddMatmulNode(graph, keyTransOutputDesc, multiHeadAttentionGradDesc->GetInputDesc("key_weight"),
-        keyMatmulOutputDesc, keyMatmulNode, false, false, "key_matmul",
+        keyMatmulOutputDesc, keyMatmulNode, false, false, multiHeadAttentionGradNode->GetName() + "_key_matmul",
         keyTransNode->GetOutDataAnchor(0),
-        multiHeadAttentionGradNode->GetInDataAnchor(4)->GetPeerOutAnchor()
+        multiHeadAttentionGradNode->GetInDataAnchor(INPUT_KEY_WEIGHT)->GetPeerOutAnchor()
     );
     AddNodeLinkOut(keyMatmulNode->GetOutDataAnchor(0),
-        multiHeadAttentionGradNode->GetOutDataAnchor(5), "key_matmul");
+        multiHeadAttentionGradNode->GetOutDataAnchor(OUTPUT_KEY_GRAD),
+        multiHeadAttentionGradNode->GetName() + "_key_matmul");
 
     // key_weight_matmul
     GeTensorDesc keyWeightMatmulOutputDesc;
     SetNZTensorDesc(keyWeightMatmulOutputDesc, kv_weight_matmul_shape);
     NodePtr keyWeightMatmulNode;
     AddMatmulNode(graph, keyTransOutputDesc, multiHeadAttentionGradDesc->GetInputDesc("key"),
-        keyWeightMatmulOutputDesc, keyWeightMatmulNode, true, false, "key_weight_matmul",
+        keyWeightMatmulOutputDesc, keyWeightMatmulNode, true, false,
+        multiHeadAttentionGradNode->GetName() + "_key_weight_matmul",
         keyTransNode->GetOutDataAnchor(0),
-        multiHeadAttentionGradNode->GetInDataAnchor(1)->GetPeerOutAnchor()
+        multiHeadAttentionGradNode->GetInDataAnchor(INPUT_KEY)->GetPeerOutAnchor()
     );
     AddNodeLinkOut(keyWeightMatmulNode->GetOutDataAnchor(0),
-        multiHeadAttentionGradNode->GetOutDataAnchor(1), "key_weight_matmul");
+        multiHeadAttentionGradNode->GetOutDataAnchor(OUTPUT_KEY_WEIGHT_GRAD),
+        multiHeadAttentionGradNode->GetName() + "_key_weight_matmul");
 
     // key_bias
     NodePtr keyBiasNode;
     if (bias_grad_mask[1]) {
         AddReduceSumNode(graph, keyTransOutputDesc, biasReducesumTensorDesc, keyBiasNode,
-            true, "key_bias", keyTransNode->GetOutDataAnchor(0));
+            true, multiHeadAttentionGradNode->GetName() + "_key_bias", keyTransNode->GetOutDataAnchor(0));
     } else {
         OP_LOGI(FUSED_OP_TYPE.c_str(), "Define key_bias empty begin");
         keyBiasNode = biasEmptyNode;
     }
     AddNodeLinkOut(keyBiasNode->GetOutDataAnchor(0),
-        multiHeadAttentionGradNode->GetOutDataAnchor(8), "key_bias");
+        multiHeadAttentionGradNode->GetOutDataAnchor(OUTPUT_KEY_BIAS_GRAD),
+        multiHeadAttentionGradNode->GetName() + "_key_bias");
 
     // value_matmul
     GeTensorDesc valueMatmulOutputDesc;
     SetNZTensorDesc(valueMatmulOutputDesc, kv_matmul_shape);
     NodePtr valueMatmulNode;
     AddMatmulNode(graph, valueTransOutputDesc, multiHeadAttentionGradDesc->GetInputDesc("value_weight"),
-        valueMatmulOutputDesc, valueMatmulNode, false, false, "value_matmul",
+        valueMatmulOutputDesc, valueMatmulNode, false, false, multiHeadAttentionGradNode->GetName() + "_value_matmul",
         valueTransNode->GetOutDataAnchor(0),
-        multiHeadAttentionGradNode->GetInDataAnchor(5)->GetPeerOutAnchor()
+        multiHeadAttentionGradNode->GetInDataAnchor(INPUT_VALUE_WEIGHT)->GetPeerOutAnchor()
     );
     AddNodeLinkOut(valueMatmulNode->GetOutDataAnchor(0),
-        multiHeadAttentionGradNode->GetOutDataAnchor(6), "value_matmul");
+        multiHeadAttentionGradNode->GetOutDataAnchor(OUTPUT_VALUE_GRAD),
+        multiHeadAttentionGradNode->GetName() + "_value_matmul");
 
     // value_weight_matmul
     GeTensorDesc valueWeightMatmulOutputDesc;
     SetNZTensorDesc(valueWeightMatmulOutputDesc, kv_weight_matmul_shape);
     NodePtr valueWeightMatmulNode;
     AddMatmulNode(graph, valueTransOutputDesc, multiHeadAttentionGradDesc->GetInputDesc("value"),
-        valueWeightMatmulOutputDesc, valueWeightMatmulNode, true, false, "value_weight_matmul",
+        valueWeightMatmulOutputDesc, valueWeightMatmulNode, true, false,
+        multiHeadAttentionGradNode->GetName() + "_value_weight_matmul",
         valueTransNode->GetOutDataAnchor(0),
-        multiHeadAttentionGradNode->GetInDataAnchor(2)->GetPeerOutAnchor()
+        multiHeadAttentionGradNode->GetInDataAnchor(INPUT_VALUE)->GetPeerOutAnchor()
     );
     AddNodeLinkOut(valueWeightMatmulNode->GetOutDataAnchor(0),
-        multiHeadAttentionGradNode->GetOutDataAnchor(2), "value_weight_matmul");
+        multiHeadAttentionGradNode->GetOutDataAnchor(OUTPUT_VALUE_WEIGHT_GRAD),
+        multiHeadAttentionGradNode->GetName() + "_value_weight_matmul");
 
     // value_bias
     NodePtr valueBiasNode;
     if (bias_grad_mask[2]) {
         AddReduceSumNode(graph, valueTransOutputDesc, biasReducesumTensorDesc, valueBiasNode,
-            true, "value_bias", valueTransNode->GetOutDataAnchor(0));
+            true, multiHeadAttentionGradNode->GetName() + "_value_bias", valueTransNode->GetOutDataAnchor(0));
     } else {
         OP_LOGI(FUSED_OP_TYPE.c_str(), "Define value_bias empty begin");
         valueBiasNode = biasEmptyNode;
     }
     AddNodeLinkOut(valueBiasNode->GetOutDataAnchor(0),
-        multiHeadAttentionGradNode->GetOutDataAnchor(9), "value_bias");
+        multiHeadAttentionGradNode->GetOutDataAnchor(OUTPUT_VALUE_BIAS_GRAD),
+        multiHeadAttentionGradNode->GetName() + "_value_bias");
 
     // unlink all control input
     OP_LOGI(FUSED_OP_TYPE.c_str(), "Define unlink control input begin");
@@ -569,7 +672,8 @@ Status MultiHeadAttentionGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping
         graph.RemoveNode(biasEmptyNode);
     }
     FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != graph.RemoveNode(multiHeadAttentionGradNode),
-        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove multiHeadAttentionGradNode failed"), return FAILED);
+        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove multiHeadAttentionGradNode failed"),
+        return FAILED);
 
 
     return SUCCESS;

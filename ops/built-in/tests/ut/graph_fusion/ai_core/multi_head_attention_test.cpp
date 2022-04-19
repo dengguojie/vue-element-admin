@@ -155,7 +155,7 @@ TEST_F(MultiHeadAttentionFusionTest, multi_head_attention_fusion_test_1) {
         .set_input_key_bias(key_bias_data) \
         .set_input_value_bias(value_bias_data) \
         .set_input_out_proj_bias(out_proj_bias_data) \
-        .set_input_dropout_mask(dropout_mask_data) \
+        .set_input_dropout_mask_input(dropout_mask_data) \
         .set_attr_attn_head_num(attn_head_num) \
         .set_attr_attn_dim_per_head(attn_dim_per_head) \
         .set_attr_src_len(src_len) \
@@ -863,7 +863,7 @@ TEST_F(MultiHeadAttentionFusionTest, multi_head_attention_fusion_test_7) {
         .set_input_key_bias(key_bias_data) \
         .set_input_value_bias(value_bias_data) \
         .set_input_out_proj_bias(out_proj_bias_data) \
-        .set_input_dropout_mask(dropout_mask_data) \
+        .set_input_dropout_mask_input(dropout_mask_data) \
         .set_attr_attn_head_num(attn_head_num) \
         .set_attr_attn_dim_per_head(attn_dim_per_head) \
         .set_attr_src_len(src_len) \
@@ -1001,7 +1001,7 @@ TEST_F(MultiHeadAttentionFusionTest, multi_head_attention_fusion_test_8) {
         .set_input_key_bias(key_bias_data) \
         .set_input_value_bias(value_bias_data) \
         .set_input_out_proj_bias(out_proj_bias_data) \
-        .set_input_dropout_mask(dropout_mask_data) \
+        .set_input_dropout_mask_input(dropout_mask_data) \
         .set_attr_attn_head_num(attn_head_num) \
         .set_attr_attn_dim_per_head(attn_dim_per_head) \
         .set_attr_src_len(src_len) \
@@ -1139,7 +1139,7 @@ TEST_F(MultiHeadAttentionFusionTest, multi_head_attention_fusion_test_9) {
         .set_input_key_bias(key_bias_data) \
         .set_input_value_bias(value_bias_data) \
         .set_input_out_proj_bias(out_proj_bias_data) \
-        .set_input_dropout_mask(dropout_mask_data) \
+        .set_input_dropout_mask_input(dropout_mask_data) \
         .set_attr_attn_head_num(attn_head_num) \
         .set_attr_attn_dim_per_head(attn_dim_per_head) \
         .set_attr_src_len(src_len) \
@@ -1277,7 +1277,7 @@ TEST_F(MultiHeadAttentionFusionTest, multi_head_attention_fusion_test_10) {
         .set_input_key_bias(key_bias_data) \
         .set_input_value_bias(value_bias_data) \
         .set_input_out_proj_bias(out_proj_bias_data) \
-        .set_input_dropout_mask(dropout_mask_data) \
+        .set_input_dropout_mask_input(dropout_mask_data) \
         .set_attr_attn_head_num(attn_head_num) \
         .set_attr_attn_dim_per_head(attn_dim_per_head) \
         .set_attr_src_len(src_len) \
