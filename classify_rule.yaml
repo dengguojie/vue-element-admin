@@ -3661,6 +3661,8 @@ unkown:
       - ops/built-in/fusion_pass/graph_fusion/ai_core/dynamic_rnn_seqlength_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/non_zero_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/relu_fusion_pass.cc
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/relu_cast_fusion_pass.h
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/relu_cast_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/imgwarp_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/a_reduce_prod_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/arg_max_v2_fusion_pass.cc

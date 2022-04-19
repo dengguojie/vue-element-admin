@@ -46,6 +46,20 @@ static const std::string OP_TYPE_CONCATV2D = "ConcatV2D";
 static const std::string OP_TYPE_SLICED = "SliceD";
 static const char* ATTR_SLICED_OFFSETS = "offsets";
 
+/*!
+ * @brief Define pattern.
+ * The graph struct need to adapt and target is shown as follows:
+ *
+ *        preNodes                preNodes
+ *            |                    |    |
+ *        ConcatV2D                |    |
+ *         /     \        ==>      |    |
+ *     SliceD   SliceD             |    |
+ *         \     /                 |    |
+ *        postNodes               postNodes
+*
+ * @return vector<FusionPattern*> All valid patterns.
+ */
 vector<FusionPattern*> Concatv2dSlicedFusionPass::DefinePatterns() {
   OP_LOGD(FUSED_OP_TYPE.c_str(), "Enter into define Concatv2dSlicedFusionPass pattern");
 
