@@ -18,35 +18,51 @@ giou_grad
 
 from te import tik
 from te.utils import para_check
-from impl.diou_grad import Constant
-from impl.diou_grad import DIoUGrad
+from impl.common_iou_grad import Constant
+from impl.common_iou_grad import CommonIoUGrad
 
 
 # 'pylint: disable=too-many-statements,too-many-arguments
-class GIoUGrad(DIoUGrad):
+class GIoUGrad(CommonIoUGrad):
     """GIoUGrad"""
 
     # 'pylint: disable=too-many-statements,too-many-arguments
     def __init__(self, dy, bboxes, trans, kernel_name):
         """__init__"""
         super().__init__(dy, bboxes, trans, kernel_name)
+        # func: apply only for the giougrad
+        self.enclose = None
+        self.denclose = None
+        self.cw = None
+        self.ch = None
 
     def compute_core(self, task_idx):
         """giou_grad_compute_compute_core"""
         # func: init all unit
         self.init_date()
+        self.cw = self.tik_instance.Tensor("float32", [self.data_align], name="cw", scope=tik.scope_ubuf)
+        self.ch = self.tik_instance.Tensor("float32", [self.data_align], name="ch", scope=tik.scope_ubuf)
         self.enclose = self.tik_instance.Tensor("float32", [self.data_align], name="enclose", scope=tik.scope_ubuf)
         self.denclose = self.tik_instance.Tensor("float32", [self.data_align], name="denclose", scope=tik.scope_ubuf)
         # func: get b1 and b2
         self.move_in(task_idx)
 
         # func: compute for inter/union
-        self.update_part()
+        self.update_forward_part()
+        # func: `for cw: (max(b1x2. b2x2) - min(b1x1, b2x1)) ch  (max(b1y2. b2y2) - min(b1y1, b2y1))`
+        self.tik_instance.h_max(self.tmp_a, self.b_box.x2, self.g_box.x2)
+        self.tik_instance.h_min(self.tmp_b, self.b_box.x1, self.g_box.x1)
+
+        self.tik_instance.h_max(self.tmp_c, self.b_box.y2, self.g_box.y2)
+        self.tik_instance.h_min(self.tmp_d, self.b_box.y1, self.g_box.y1)
+
+        self.tik_instance.h_sub(self.cw, self.tmp_a, self.tmp_b)
+        self.tik_instance.h_sub(self.ch, self.tmp_c, self.tmp_d)
         # func: compute for enclose
-        self.tik_instance.vec_mul(Constant.BLOCK, self.enclose, self.cw, self.ch, self.rep_time, 1, 1, 1)
+        self.tik_instance.h_mul(self.enclose, self.cw, self.ch)
 
         # func: compute for dinter/dunion/denclose
-        self.update_dpart()
+        self.update_backward_part()
 
         # func: compute for dbboxes/dgtboxes in inter
         self.inter_part()
@@ -60,109 +76,102 @@ class GIoUGrad(DIoUGrad):
         # func: resite res for attr_trans
         self.update_dboxes(task_idx)
 
-    def update_dpart(self):
-        """update_dpart"""
+    def update_backward_part(self):
+        """update_backward_part"""
         # `for dunion, dunion = (1 / enclose - inter / (union ** 2)) * dy`
-        self.tik_instance.vdiv(Constant.BLOCK, self.tmp_a, self.dy_ub, self.enclose,
-                               self.rep_time, 1, 1, 1, 1, 1, 1)
-        self.tik_instance.vdiv(Constant.BLOCK, self.tmp_b, self.inter, self.union, self.rep_time,
-                               1, 1, 1, 1, 1, 1)
-        self.tik_instance.vdiv(Constant.BLOCK, self.tmp_c, self.tmp_b, self.union, self.rep_time,
-                               1, 1, 1, 1, 1, 1)
-        self.tik_instance.vec_mul(Constant.BLOCK, self.tmp_d, self.dy_ub, self.tmp_c, self.rep_time, 1, 1, 1)
-        self.tik_instance.vec_sub(Constant.BLOCK, self.dunion, self.tmp_a, self.tmp_d, self.rep_time, 1, 1, 1)
+        self.tik_instance.h_div(self.tmp_a, self.dy_ub, self.enclose)
+        self.tik_instance.h_div(self.tmp_b, self.inter, self.union)
+        self.tik_instance.h_div(self.tmp_c, self.tmp_b, self.union)
+        self.tik_instance.h_mul(self.tmp_d, self.dy_ub, self.tmp_c)
+        self.tik_instance.h_sub(self.dunion, self.tmp_a, self.tmp_d)
 
         # `for dinter, dinter = 1 / union * dy - dunion`
-        self.tik_instance.vdiv(Constant.BLOCK, self.dinter, self.dy_ub, self.union, self.rep_time, 1, 1, 1, 1, 1, 1)
-        self.tik_instance.vec_sub(Constant.BLOCK, self.dinter, self.dinter, self.dunion, self.rep_time, 1, 1, 1)
+        self.tik_instance.h_div(self.dinter, self.dy_ub, self.union)
+        self.tik_instance.h_sub(self.dinter, self.dinter, self.dunion)
 
         # `for denclose, denclose = -(union / (enclose ** 2)) * dy`
-        self.tik_instance.vdiv(Constant.BLOCK, self.tmp_a, self.union, self.enclose,
-                               self.rep_time, 1, 1, 1, 1, 1, 1)
-        self.tik_instance.vdiv(Constant.BLOCK, self.tmp_b, self.tmp_a, self.enclose,
-                               self.rep_time, 1, 1, 1, 1, 1, 1)
-        self.tik_instance.vec_mul(Constant.BLOCK, self.tmp_c, self.dy_ub, self.tmp_b, self.rep_time, 1, 1, 1)
-        self.tik_instance.vec_sub(Constant.BLOCK, self.denclose, self.tmp_zero, self.tmp_c, self.rep_time, 1, 1, 1)
+        self.tik_instance.h_div(self.tmp_a, self.union, self.enclose)
+        self.tik_instance.h_div(self.tmp_b, self.tmp_a, self.enclose)
+        self.tik_instance.h_mul(self.tmp_c, self.dy_ub, self.tmp_b)
+        self.tik_instance.h_sub(self.denclose, self.tmp_zero, self.tmp_c)
 
     def enclose_part(self):
         """enclose_part"""
         # for enclose part
-        self.tik_instance.vec_mul(Constant.BLOCK, self.dxlen, self.denclose, self.ch, self.rep_time, 1, 1, 1)  # max_x
-        self.tik_instance.vec_mul(Constant.BLOCK, self.dylen, self.denclose, self.cw, self.rep_time, 1, 1, 1)  # max_y
+        self.tik_instance.h_mul(self.dxlen, self.denclose, self.ch)  # max_x
+        self.tik_instance.h_mul(self.dylen, self.denclose, self.cw)  # max_y
 
-        self.tik_instance.vec_sub(Constant.BLOCK, self.tmp_a, self.tmp_zero, self.dxlen, self.rep_time, 1, 1,
-                                  1)  # min_x
-        self.tik_instance.vec_sub(Constant.BLOCK, self.tmp_b, self.tmp_zero, self.dylen, self.rep_time, 1, 1,
-                                  1)  # min_y
+        self.tik_instance.h_sub(self.tmp_a, self.tmp_zero, self.dxlen)  # min_x
+        self.tik_instance.h_sub(self.tmp_b, self.tmp_zero, self.dylen)  # min_y
 
         with self.tik_instance.for_range(0, self.data_align // Constant.MASK_BLOCK) as idx:
             # `for enclose part : max(b1_x2, b2_x2)`
-            self.tik_instance.vec_cmpv_gt(self.mask, self.b1x2[Constant.MASK_BLOCK * idx],
-                                          self.b2x2[Constant.MASK_BLOCK * idx], 1,
+            self.tik_instance.vec_cmpv_gt(self.mask, self.b_box.x2[Constant.MASK_BLOCK * idx],
+                                          self.g_box.x2[Constant.MASK_BLOCK * idx], 1,
                                           Constant.REP_STRIDE, Constant.REP_STRIDE)
 
             self.tik_instance.vec_sel(Constant.MASK_BLOCK, 0, self.tmp_c, self.mask,
                                       self.dxlen[Constant.MASK_BLOCK * idx], self.tmp_zero, 1,
                                       Constant.REP_STRIDE, Constant.REP_STRIDE, Constant.REP_STRIDE)
-            self.tik_instance.vec_add(Constant.MASK_BLOCK, self.db1x2[Constant.MASK_BLOCK * idx],
-                                      self.tmp_c, self.db1x2[Constant.MASK_BLOCK * idx], 1,
+            self.tik_instance.vec_add(Constant.MASK_BLOCK, self.b_box.dx2[Constant.MASK_BLOCK * idx],
+                                      self.tmp_c, self.b_box.dx2[Constant.MASK_BLOCK * idx], 1,
                                       Constant.REP_STRIDE, Constant.REP_STRIDE, Constant.REP_STRIDE)
             self.tik_instance.vec_sel(Constant.MASK_BLOCK, 0, self.tmp_d, self.mask,
                                       self.tmp_zero, self.dxlen[Constant.MASK_BLOCK * idx], 1, Constant.REP_STRIDE,
                                       Constant.REP_STRIDE, Constant.REP_STRIDE)
-            self.tik_instance.vec_add(Constant.MASK_BLOCK, self.db2x2[Constant.MASK_BLOCK * idx],
-                                      self.tmp_d, self.db2x2[Constant.MASK_BLOCK * idx], 1, Constant.REP_STRIDE,
+            self.tik_instance.vec_add(Constant.MASK_BLOCK, self.g_box.dx2[Constant.MASK_BLOCK * idx],
+                                      self.tmp_d, self.g_box.dx2[Constant.MASK_BLOCK * idx], 1, Constant.REP_STRIDE,
                                       Constant.REP_STRIDE, Constant.REP_STRIDE)
 
             # `for enclose part : min(b1_x1, b2_x1)`
-            self.tik_instance.vec_cmpv_lt(self.mask, self.b1x1[Constant.MASK_BLOCK * idx],
-                                          self.b2x1[Constant.MASK_BLOCK * idx], 1, Constant.REP_STRIDE,
+            self.tik_instance.vec_cmpv_lt(self.mask, self.b_box.x1[Constant.MASK_BLOCK * idx],
+                                          self.g_box.x1[Constant.MASK_BLOCK * idx], 1, Constant.REP_STRIDE,
                                           Constant.REP_STRIDE)
             self.tik_instance.vec_sel(Constant.MASK_BLOCK, 0, self.tmp_c, self.mask,
                                       self.tmp_a[Constant.MASK_BLOCK * idx], self.tmp_zero, 1, Constant.REP_STRIDE,
                                       Constant.REP_STRIDE, Constant.REP_STRIDE)
-            self.tik_instance.vec_add(Constant.MASK_BLOCK, self.db1x1[Constant.MASK_BLOCK * idx],
-                                      self.tmp_c, self.db1x1[Constant.MASK_BLOCK * idx], 1, Constant.REP_STRIDE,
+            self.tik_instance.vec_add(Constant.MASK_BLOCK, self.b_box.dx1[Constant.MASK_BLOCK * idx],
+                                      self.tmp_c, self.b_box.dx1[Constant.MASK_BLOCK * idx], 1, Constant.REP_STRIDE,
                                       Constant.REP_STRIDE, Constant.REP_STRIDE)
             self.tik_instance.vec_sel(Constant.MASK_BLOCK, 0, self.tmp_d, self.mask,
                                       self.tmp_zero, self.tmp_a[Constant.MASK_BLOCK * idx], 1, Constant.REP_STRIDE,
                                       Constant.REP_STRIDE, Constant.REP_STRIDE)
-            self.tik_instance.vec_add(Constant.MASK_BLOCK, self.db2x1[Constant.MASK_BLOCK * idx],
-                                      self.tmp_d, self.db2x1[Constant.MASK_BLOCK * idx], 1,
+            self.tik_instance.vec_add(Constant.MASK_BLOCK, self.g_box.dx1[Constant.MASK_BLOCK * idx],
+                                      self.tmp_d, self.g_box.dx1[Constant.MASK_BLOCK * idx], 1,
                                       Constant.REP_STRIDE, Constant.REP_STRIDE, Constant.REP_STRIDE)
 
             # `for enclose part : max(b1_y2, b2_y2)`
-            self.tik_instance.vec_cmpv_gt(self.mask, self.b1y2[Constant.MASK_BLOCK * idx],
-                                          self.b2y2[Constant.MASK_BLOCK * idx], 1,
+            self.tik_instance.vec_cmpv_gt(self.mask, self.b_box.y2[Constant.MASK_BLOCK * idx],
+                                          self.g_box.y2[Constant.MASK_BLOCK * idx], 1,
                                           Constant.REP_STRIDE, Constant.REP_STRIDE)
             self.tik_instance.vec_sel(Constant.MASK_BLOCK, 0, self.tmp_c, self.mask,
                                       self.dylen[Constant.MASK_BLOCK * idx], self.tmp_zero, 1, Constant.REP_STRIDE,
                                       Constant.REP_STRIDE, Constant.REP_STRIDE)
-            self.tik_instance.vec_add(Constant.MASK_BLOCK, self.db1y2[Constant.MASK_BLOCK * idx],
-                                      self.tmp_c, self.db1y2[Constant.MASK_BLOCK * idx], 1, Constant.REP_STRIDE,
+            self.tik_instance.vec_add(Constant.MASK_BLOCK, self.b_box.dy2[Constant.MASK_BLOCK * idx],
+                                      self.tmp_c, self.b_box.dy2[Constant.MASK_BLOCK * idx], 1, Constant.REP_STRIDE,
                                       Constant.REP_STRIDE, Constant.REP_STRIDE)
             self.tik_instance.vec_sel(Constant.MASK_BLOCK, 0, self.tmp_d, self.mask,
                                       self.tmp_zero, self.dylen[Constant.MASK_BLOCK * idx], 1, Constant.REP_STRIDE,
                                       Constant.REP_STRIDE, Constant.REP_STRIDE)
-            self.tik_instance.vec_add(Constant.MASK_BLOCK, self.db2y2[Constant.MASK_BLOCK * idx],
-                                      self.tmp_d, self.db2y2[Constant.MASK_BLOCK * idx],
+            self.tik_instance.vec_add(Constant.MASK_BLOCK, self.g_box.dy2[Constant.MASK_BLOCK * idx],
+                                      self.tmp_d, self.g_box.dy2[Constant.MASK_BLOCK * idx],
                                       1, Constant.REP_STRIDE, Constant.REP_STRIDE, Constant.REP_STRIDE)
 
             # `for enclose part : min(b1_y1, b2_y1)`
-            self.tik_instance.vec_cmpv_lt(self.mask, self.b1y1[Constant.MASK_BLOCK * idx],
-                                          self.b2y1[Constant.MASK_BLOCK * idx], 1, Constant.REP_STRIDE,
+            self.tik_instance.vec_cmpv_lt(self.mask, self.b_box.y1[Constant.MASK_BLOCK * idx],
+                                          self.g_box.y1[Constant.MASK_BLOCK * idx], 1, Constant.REP_STRIDE,
                                           Constant.REP_STRIDE)
             self.tik_instance.vec_sel(Constant.MASK_BLOCK, 0, self.tmp_c, self.mask,
                                       self.tmp_b[Constant.MASK_BLOCK * idx], self.tmp_zero, 1, Constant.REP_STRIDE,
                                       Constant.REP_STRIDE, Constant.REP_STRIDE)
-            self.tik_instance.vec_add(Constant.MASK_BLOCK, self.db1y1[Constant.MASK_BLOCK * idx],
-                                      self.tmp_c, self.db1y1[Constant.MASK_BLOCK * idx], 1, Constant.REP_STRIDE,
+            self.tik_instance.vec_add(Constant.MASK_BLOCK, self.b_box.dy1[Constant.MASK_BLOCK * idx],
+                                      self.tmp_c, self.b_box.dy1[Constant.MASK_BLOCK * idx], 1, Constant.REP_STRIDE,
                                       Constant.REP_STRIDE, Constant.REP_STRIDE)
             self.tik_instance.vec_sel(Constant.MASK_BLOCK, 0, self.tmp_d, self.mask,
                                       self.tmp_zero, self.tmp_b[Constant.MASK_BLOCK * idx], 1, Constant.REP_STRIDE,
                                       Constant.REP_STRIDE, Constant.REP_STRIDE)
-            self.tik_instance.vec_add(Constant.MASK_BLOCK, self.db2y1[Constant.MASK_BLOCK * idx],
-                                      self.tmp_d, self.db2y1[Constant.MASK_BLOCK * idx], 1, Constant.REP_STRIDE,
+            self.tik_instance.vec_add(Constant.MASK_BLOCK, self.g_box.dy1[Constant.MASK_BLOCK * idx],
+                                      self.tmp_d, self.g_box.dy1[Constant.MASK_BLOCK * idx], 1, Constant.REP_STRIDE,
                                       Constant.REP_STRIDE, Constant.REP_STRIDE)
 
 

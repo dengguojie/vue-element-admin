@@ -18,7 +18,6 @@ ciou_grad
 
 from te import tik
 from te.utils import para_check
-from impl.diou_grad import Constant
 from impl.diou_grad import DIoUGrad
 
 
@@ -29,6 +28,15 @@ class CIoUGrad(DIoUGrad):
     def __init__(self, dy, bboxes, trans, kernel_name):
         """__init__"""
         super().__init__(dy, bboxes, trans, kernel_name)
+        # func: apply only for the ciougrad
+        self.atan_sub_ub = None
+        self.alpha_ub = None
+        self.v_ub = None
+        self.dv_ub = None
+        self.rate_b1 = None
+        self.delta_b1 = None
+        self.rate_b2 = None
+        self.delta_b2 = None
 
         # func: apply for the input/output tensors
         self.atan_sub = self.tik_instance.Tensor(self.dtype, [self.all_num], name="atan_sub", scope=tik.scope_gm)
@@ -76,6 +84,8 @@ class CIoUGrad(DIoUGrad):
     def init_ciou_date(self):
         """init_ciou_date"""
         self.init_date()
+        self.cw = self.tik_instance.Tensor("float32", [self.data_align], name="cw", scope=tik.scope_ubuf)
+        self.ch = self.tik_instance.Tensor("float32", [self.data_align], name="ch", scope=tik.scope_ubuf)
         self.rho_x = self.tik_instance.Tensor("float32", [self.data_align], name="rho_x", scope=tik.scope_ubuf)
         self.rho_y = self.tik_instance.Tensor("float32", [self.data_align], name="rho_y", scope=tik.scope_ubuf)
         self.rho2 = self.tik_instance.Tensor("float32", [self.data_align], name="rho2", scope=tik.scope_ubuf)
@@ -101,93 +111,90 @@ class CIoUGrad(DIoUGrad):
         """update_ciou_forward"""
 
         # func: compute for  (1.0 + (w1 / h1) ** 2)
-        self.tik_instance.vdiv(Constant.BLOCK, self.rate_b1, self.b1w, self.b1h, self.rep_time, 1, 1, 1, 1, 1, 1)
-        self.tik_instance.vec_mul(Constant.BLOCK, self.delta_b1, self.rate_b1, self.rate_b1, self.rep_time, 1, 1, 1)
-        self.tik_instance.vec_adds(Constant.BLOCK, self.delta_b1, self.delta_b1, 1, self.rep_time, 1, 1)
+        self.tik_instance.h_div(self.rate_b1, self.b_box.w, self.b_box.h)
+        self.tik_instance.h_mul(self.delta_b1, self.rate_b1, self.rate_b1)
+        self.tik_instance.h_add(self.delta_b1, self.delta_b1, 1.0)
 
-        self.tik_instance.vdiv(Constant.BLOCK, self.rate_b2, self.b2w, self.b2h, self.rep_time, 1, 1, 1, 1, 1, 1)
-        self.tik_instance.vec_mul(Constant.BLOCK, self.delta_b2, self.rate_b2, self.rate_b2, self.rep_time, 1, 1, 1)
-        self.tik_instance.vec_adds(Constant.BLOCK, self.delta_b2, self.delta_b2, 1, self.rep_time, 1, 1)
+        self.tik_instance.h_div(self.rate_b2, self.g_box.w, self.g_box.h)
+        self.tik_instance.h_mul(self.delta_b2, self.rate_b2, self.rate_b2)
+        self.tik_instance.h_add(self.delta_b2, self.delta_b2, 1.0)
         # func: compute for inter/union/cw/ch
-        self.update_part()
+        self.update_forward_part()
+        # func: `for cw: (max(b1x2. b2x2) - min(b1x1, b2x1)) ch  (max(b1y2. b2y2) - min(b1y1, b2y1))`
+        self.tik_instance.h_max(self.tmp_a, self.b_box.x2, self.g_box.x2)
+        self.tik_instance.h_min(self.tmp_b, self.b_box.x1, self.g_box.x1)
+
+        self.tik_instance.h_max(self.tmp_c, self.b_box.y2, self.g_box.y2)
+        self.tik_instance.h_min(self.tmp_d, self.b_box.y1, self.g_box.y1)
+
+        self.tik_instance.h_sub(self.cw, self.tmp_a, self.tmp_b)
+        self.tik_instance.h_sub(self.ch, self.tmp_c, self.tmp_d)
+
         # func: `for c2 = cw**2 + ch**2`
-        self.tik_instance.vec_mul(Constant.BLOCK, self.tmp_a, self.cw, self.cw, self.rep_time, 1, 1, 1)
-        self.tik_instance.vec_mul(Constant.BLOCK, self.tmp_b, self.ch, self.ch, self.rep_time, 1, 1, 1)
-        self.tik_instance.vec_add(Constant.BLOCK, self.c2, self.tmp_a, self.tmp_b, self.rep_time, 1, 1, 1)
+        self.tik_instance.h_mul(self.tmp_a, self.cw, self.cw)
+        self.tik_instance.h_mul(self.tmp_b, self.ch, self.ch)
+        self.tik_instance.h_add(self.c2, self.tmp_a, self.tmp_b)
 
         # func: `for rho2 = (b2x - b1x)**2 + (b2y - b1y)**2`
-        self.tik_instance.vec_sub(Constant.BLOCK, self.rho_x, self.b2x, self.b1x, self.rep_time, 1, 1, 1)
-        self.tik_instance.vec_mul(Constant.BLOCK, self.tmp_a, self.rho_x, self.rho_x, self.rep_time, 1, 1, 1)
-        self.tik_instance.vec_sub(Constant.BLOCK, self.rho_y, self.b2y, self.b1y, self.rep_time, 1, 1, 1)
-        self.tik_instance.vec_mul(Constant.BLOCK, self.tmp_b, self.rho_y, self.rho_y, self.rep_time, 1, 1, 1)
-        self.tik_instance.vec_add(Constant.BLOCK, self.rho2, self.tmp_a, self.tmp_b, self.rep_time, 1, 1, 1)
+        self.tik_instance.h_sub(self.rho_x, self.g_box.x, self.b_box.x)
+        self.tik_instance.h_mul(self.tmp_a, self.rho_x, self.rho_x)
+        self.tik_instance.h_sub(self.rho_y, self.g_box.y, self.b_box.y)
+        self.tik_instance.h_mul(self.tmp_b, self.rho_y, self.rho_y)
+        self.tik_instance.h_add(self.rho2, self.tmp_a, self.tmp_b)
 
-        # func: `for v = 4 / pi ** 2 * atan_sub**2`compilec
+        # func: `for v = 4 / pi ** 2 * atan_sub**2 & 4 / pi ** 2 = 0.405285`
         self.tik_instance.data_move(self.atan_sub_ub, self.atan_sub[task_idx * self.data_align], 0, 1,
                                     self.rep_time, 0, 0)
 
-        self.tik_instance.vec_mul(Constant.BLOCK, self.tmp_a, self.atan_sub_ub, self.atan_sub_ub, self.rep_time,
-                                  1, 1, 1)
-        self.tik_instance.vec_muls(Constant.BLOCK, self.v_ub, self.tmp_a, Constant.CIOU_COEFFICIENT, self.rep_time,
-                                   1, 1)
+        self.tik_instance.h_mul(self.tmp_a, self.atan_sub_ub, self.atan_sub_ub)
+        self.tik_instance.h_mul(self.v_ub, self.tmp_a, 0.405285)
 
         # func: `for alpha = v / (1 + v - iou)`
-        self.tik_instance.vec_adds(Constant.BLOCK, self.tmp_a, self.v_ub, 1, self.rep_time, 1, 1)
-        self.tik_instance.vdiv(Constant.BLOCK, self.tmp_b, self.inter, self.union, self.rep_time,
-                               1, 1, 1, 1, 1, 1)
-        self.tik_instance.vec_sub(Constant.BLOCK, self.tmp_c, self.tmp_a, self.tmp_b, self.rep_time, 1, 1, 1)
-        self.tik_instance.vdiv(Constant.BLOCK, self.alpha_ub, self.v_ub, self.tmp_c, self.rep_time,
-                               1, 1, 1, 1, 1, 1)
+        self.tik_instance.h_add(self.tmp_a, self.v_ub, 1.0)
+        self.tik_instance.h_div(self.tmp_b, self.inter, self.union)
+
+        self.tik_instance.h_sub(self.tmp_c, self.tmp_a, self.tmp_b)
+        self.tik_instance.h_div(self.alpha_ub, self.v_ub, self.tmp_c)
 
     def update_ciou_backward(self):
         # func: compute for dinter/dunion/drho2/dc2
-        self.update_dpart()
+        self.update_backward_part()
         # func: compute for dv * 8 * atan_sub / math.pi ** 2 /(1.0 + (w1 / h1) ** 2)
-        self.tik_instance.vec_mul(Constant.BLOCK, self.tmp_a, self.dy_ub, self.alpha_ub, self.rep_time,
-                                  1, 1, 1)
-        self.tik_instance.vec_sub(Constant.BLOCK, self.dv_ub, self.tmp_zero, self.tmp_a, self.rep_time, 1, 1, 1)
-
-        self.tik_instance.vdiv(Constant.BLOCK, self.tmp_a, self.v_ub, self.atan_sub_ub, self.rep_time,
-                               1, 1, 1, 1, 1, 1)
-        self.tik_instance.vec_muls(Constant.BLOCK, self.tmp_b, self.tmp_a, 2, self.rep_time, 1, 1)
-        self.tik_instance.vec_mul(Constant.BLOCK, self.tmp_c, self.tmp_b, self.dv_ub, self.rep_time, 1, 1, 1)
-
-        self.tik_instance.vdiv(Constant.BLOCK, self.delta_b1, self.tmp_c, self.delta_b1, self.rep_time,
-                               1, 1, 1, 1, 1, 1)
-
-        self.tik_instance.vdiv(Constant.BLOCK, self.delta_b2, self.tmp_c, self.delta_b2, self.rep_time,
-                               1, 1, 1, 1, 1, 1)
+        self.tik_instance.h_mul(self.tmp_a, self.dy_ub, self.alpha_ub)
+        self.tik_instance.h_sub(self.dv_ub, self.tmp_zero, self.tmp_a)
+        self.tik_instance.h_div(self.tmp_a, self.v_ub, self.atan_sub_ub)
+        self.tik_instance.h_mul(self.tmp_b, self.tmp_a, 2.0)
+        self.tik_instance.h_mul(self.tmp_c, self.tmp_b, self.dv_ub)
+        self.tik_instance.h_div(self.delta_b1, self.tmp_c, self.delta_b1)
+        self.tik_instance.h_div(self.delta_b2, self.tmp_c, self.delta_b2)
 
     def v_part(self, task_idx):
         """v_part"""
         # for b1
-        self.tik_instance.data_move(self.tmp_a, self.bboxes[self.all_num * 3 + task_idx * self.data_align], 0,
-                                    1, self.rep_time, 0, 0)
+        self.tik_instance.data_move(self.tmp_a, self.bboxes[self.all_num * 3 + task_idx * self.data_align], 0, 1,
+                                    self.rep_time, 0, 0)
 
-        self.tik_instance.vdiv(Constant.BLOCK, self.delta_b1, self.delta_b1, self.tmp_a, self.rep_time,
-                               1, 1, 1, 1, 1, 1)
+        self.tik_instance.h_div(self.delta_b1, self.delta_b1, self.tmp_a)
 
-        self.tik_instance.vec_add(Constant.BLOCK, self.db1x1, self.db1x1, self.delta_b1, self.rep_time, 1, 1, 1)
-        self.tik_instance.vec_sub(Constant.BLOCK, self.db1x2, self.db1x2, self.delta_b1, self.rep_time, 1, 1, 1)
+        self.tik_instance.h_add(self.b_box.dx1, self.b_box.dx1, self.delta_b1)
+        self.tik_instance.h_sub(self.b_box.dx2, self.b_box.dx2, self.delta_b1)
 
-        self.tik_instance.vec_mul(Constant.BLOCK, self.delta_b1, self.delta_b1, self.rate_b1, self.rep_time, 1, 1, 1)
+        self.tik_instance.h_mul(self.delta_b1, self.delta_b1, self.rate_b1)
+        self.tik_instance.h_sub(self.b_box.dy1, self.b_box.dy1, self.delta_b1)
 
-        self.tik_instance.vec_sub(Constant.BLOCK, self.db1y1, self.db1y1, self.delta_b1, self.rep_time, 1, 1, 1)
-        self.tik_instance.vec_add(Constant.BLOCK, self.db1y2, self.db1y2, self.delta_b1, self.rep_time, 1, 1, 1)
-
+        self.tik_instance.h_add(self.b_box.dy2, self.b_box.dy2, self.delta_b1)
         # for b2
         self.tik_instance.data_move(self.tmp_a, self.gtboxes[self.all_num * 3 + task_idx * self.data_align], 0,
                                     1, self.rep_time, 0, 0)
-        self.tik_instance.vdiv(Constant.BLOCK, self.delta_b2, self.delta_b2, self.tmp_a, self.rep_time,
-                               1, 1, 1, 1, 1, 1)
+        self.tik_instance.h_div(self.delta_b2, self.delta_b2, self.tmp_a)
 
-        self.tik_instance.vec_sub(Constant.BLOCK, self.db2x1, self.db2x1, self.delta_b2, self.rep_time, 1, 1, 1)
-        self.tik_instance.vec_add(Constant.BLOCK, self.db2x2, self.db2x2, self.delta_b2, self.rep_time, 1, 1, 1)
+        self.tik_instance.h_sub(self.g_box.dx1, self.g_box.dx1, self.delta_b2)
+        self.tik_instance.h_add(self.g_box.dx2, self.g_box.dx2, self.delta_b2)
 
-        self.tik_instance.vec_mul(Constant.BLOCK, self.delta_b2, self.delta_b2, self.rate_b2, self.rep_time, 1, 1, 1)
+        self.tik_instance.h_mul(self.delta_b2, self.delta_b2, self.rate_b2)
 
-        self.tik_instance.vec_add(Constant.BLOCK, self.db2y1, self.db2y1, self.delta_b2, self.rep_time, 1, 1, 1)
-        self.tik_instance.vec_sub(Constant.BLOCK, self.db2y2, self.db2y2, self.delta_b2, self.rep_time, 1, 1, 1)
+        self.tik_instance.h_add(self.g_box.dy1, self.g_box.dy1, self.delta_b2)
+        self.tik_instance.h_sub(self.g_box.dy2, self.g_box.dy2, self.delta_b2)
 
 
 # 'pylint: disable=invalid-name,too-many-locals,too-many-arguments,unused-argument
