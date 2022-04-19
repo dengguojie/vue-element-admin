@@ -43,6 +43,7 @@
 #include "attention_ln_qkv_fusion_pass.h"
 #include "anchor_util.h"
 #include "graph/utils/graph_utils.h"
+#include "common/util/platform_info.h"
 #include "graph_optimizer/graph_fusion/fusion_pass_manager/fusion_pass_registry.h"
 #include "op_log.h"
 #include "pattern_fusion_util.h"
@@ -61,6 +62,9 @@ static const int BIAS_INPUT_INDEX = 6;
 static const int OUT_DIM_SIZE = 6;
 static const int M_INNER_INDEX = 3;
 static const int64_t C0 = 16;
+static const int64_t MIN_M_SIZE = 8;
+static const int64_t BLOCK_NUM_8 = 8;
+static const int64_t BLOCK_NUM_32 = 32;
 static const string PATTERN_LAYER_NORM = "LayerNorm";
 static const string PATTERN_MATMUL = "MatMul";
 static const string PATTERN_TRANSDATA = "TransData";
@@ -106,6 +110,17 @@ Status AttentionLnQKVFusionPass::Fusion(ge::ComputeGraph &graph,
                     return PARAM_INVALID);
   OP_LOGD(FUSED_OP_TYPE.c_str(), "ln_node is [%s].", ln_node->GetName().c_str());
 
+  PlatformInfo platform_info;
+  OptionalInfo optional_info;
+  if (PlatformInfoManager::Instance().GetPlatformInfoWithOutSocVersion(platform_info, optional_info) != SUCCESS) {
+    OP_LOGW(FUSED_OP_TYPE, "Fail to get platform info.");
+    optional_info.soc_version == "";
+  }
+  if (optional_info.soc_version != "Ascend710") {
+    OP_LOGW(FUSED_OP_TYPE.c_str(), "platform not supported.");
+    return NOT_CHANGED;
+  }
+
   std::vector<ge::NodePtr> conf_trans_list;
   std::vector<ge::NodePtr> matmul_list;
   if (!IsMatch(ln_node, conf_trans_list, matmul_list)) {
@@ -135,9 +150,15 @@ bool AttentionLnQKVFusionPass::IsMatch(const ge::NodePtr &ln_node,
                                        std::vector<ge::NodePtr> &matmul_list) {
   // pattern check
   auto out_anchor = ln_node->GetOutDataAnchor(0);
+  auto peer_in_anchors = out_anchor->GetPeerInDataAnchors();
+  // training/inference both has 2 outputs
+  if (peer_in_anchors.size() <= 1) {
+    OP_LOGW(FUSED_OP_TYPE.c_str(), "output nodes nums of LN unmatched!");
+    return false;
+  }
   // training pattern is:
   //   layer_norm-> add(1) + transdata-> reformat-> transdata->mm_q + transdata->mm_k + transdata->mm_v
-  auto trans_node = out_anchor->GetPeerInDataAnchors().at(0)->GetOwnerNode();
+  auto trans_node = peer_in_anchors.at(0)->GetOwnerNode();
   if (TRANSDATA != trans_node->GetType()) {
     g_trainingFlag = false;
   }
@@ -159,12 +180,21 @@ bool AttentionLnQKVFusionPass::IsMatch(const ge::NodePtr &ln_node,
     OP_LOGW(FUSED_OP_TYPE.c_str(), "ln_out_shape not aligned.");
     return false;
   }
+  if (ln_out_shape[0] % (C0 * MIN_M_SIZE * BLOCK_NUM_8) != 0) {
+    OP_LOGW(FUSED_OP_TYPE.c_str(), "C0 * MIN_M_SIZE * BLOCK_NUM_8 should be factor of m_shape.");
+    return false;
+  }
+  if (g_trainingFlag and ln_out_shape[0] % (C0 * MIN_M_SIZE * BLOCK_NUM_32) != 0) {
+    OP_LOGW(FUSED_OP_TYPE.c_str(), "in training, C0 * MIN_M_SIZE * BLOCK_NUM_32 should be factor of m_shape.");
+    return false;
+  }
   vector<int64_t> out_shape = conf_trans_list[0]->GetOpDesc()->GetOutputDesc(0).GetShape().GetDims();
   if (out_shape.size() != OUT_DIM_SIZE ||ln_out_shape[0] != out_shape[0] * out_shape[M_INNER_INDEX] * C0) {
     OP_LOGW(FUSED_OP_TYPE.c_str(), "invalid out_shape!");
     return false;
   }
   OP_LOGD(FUSED_OP_TYPE.c_str(), "AttentionLnQKVFusionPass match success");
+  return true;
 }
 
 bool AttentionLnQKVFusionPass::UpgradeNodeList(const ge::OutDataAnchorPtr &out_anchor,
@@ -173,7 +203,7 @@ bool AttentionLnQKVFusionPass::UpgradeNodeList(const ge::OutDataAnchorPtr &out_a
   auto peer_in_anchors = out_anchor->GetPeerInDataAnchors();
   OP_LOGD(FUSED_OP_TYPE.c_str(), "output size of ln_node is [%d].", peer_in_anchors.size());
   if (peer_in_anchors.size() <= KERNEL_NUM) {
-    OP_LOGW(FUSED_OP_TYPE.c_str(), "output nodes nums of LN unmatched!");
+    OP_LOGW(FUSED_OP_TYPE.c_str(), "in training, output nodes nums of reformat unmatched!");
     return false;
   }
   // in inference, out index of matmul starts at 1
@@ -257,15 +287,13 @@ Status AttentionLnQKVFusionPass::CreateAttentionLnQKVNode(ge::ComputeGraph &grap
     FUSION_PASS_CHECK(attention_ln_qkv_desc->AddOutputDesc(qkv_names[i] + "_output", conf_trans_out_desc.Clone()) !=
         GRAPH_SUCCESS, OP_LOGW(FUSED_OP_TYPE.c_str(), "failed to add output desc to attention_ln_qkv."), return FAILED);
   }
-  // output mean&&variance are useful only in training
-  if (g_trainingFlag) {
-    FUSION_PASS_CHECK(attention_ln_qkv_desc->AddOutputDesc("mean", ln_op_desc->GetOutputDesc(LN_MEAN_INDEX).Clone()) !=
-        GRAPH_SUCCESS, OP_LOGW(FUSED_OP_TYPE.c_str(), "failed to add output desc mean to attention_ln_qkv."),
-        return FAILED);
-    FUSION_PASS_CHECK(attention_ln_qkv_desc->AddOutputDesc("variance",
-        ln_op_desc->GetOutputDesc(LN_VAR_INDEX).Clone()) != GRAPH_SUCCESS, OP_LOGW(FUSED_OP_TYPE.c_str(),
-        "failed to add output desc variance to attention_ln_qkv."), return FAILED);
-  }
+  // output mean&&variance are useful only in training, the outputdesc should be added though
+  FUSION_PASS_CHECK(attention_ln_qkv_desc->AddOutputDesc("mean", ln_op_desc->GetOutputDesc(LN_MEAN_INDEX).Clone()) !=
+      GRAPH_SUCCESS, OP_LOGW(FUSED_OP_TYPE.c_str(), "failed to add output desc mean to attention_ln_qkv."),
+      return FAILED);
+  FUSION_PASS_CHECK(attention_ln_qkv_desc->AddOutputDesc("variance",
+      ln_op_desc->GetOutputDesc(LN_VAR_INDEX).Clone()) != GRAPH_SUCCESS, OP_LOGW(FUSED_OP_TYPE.c_str(),
+      "failed to add output desc variance to attention_ln_qkv."), return FAILED);
   new_node = graph.AddNode(attention_ln_qkv_desc);
   FUSION_PASS_CHECK(new_node == nullptr, OP_LOGW(FUSED_OP_TYPE.c_str(),
       "failed to add attention_ln_qkv to graph."), return FAILED);
