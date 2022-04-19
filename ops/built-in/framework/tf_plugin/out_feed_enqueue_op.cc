@@ -33,4 +33,10 @@ REGISTER_CUSTOM_OP("OutfeedEnqueueOp")
     .OriginOpType("OutfeedEnqueueOp")
     .ParseParamsFn(AutoMappingFnOutfeedEnqueueOp)
     .ImplyType(ImplyType::AI_CPU);
+
+REGISTER_CUSTOM_OP("OutfeedEnqueueOpV2")
+    .FrameworkType(TENSORFLOW)
+    .OriginOpType("OutfeedEnqueueOpV2")
+    .ParseParamsFn(AutoMappingFnOutfeedEnqueueOp)
+    .ImplyType(ImplyType::AI_CPU);
 }  // namespace domi

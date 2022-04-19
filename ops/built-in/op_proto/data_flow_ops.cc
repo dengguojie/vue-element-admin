@@ -34,8 +34,8 @@ namespace {
 graphStatus SetAttrsToShapesAndTypes(Operator& op,
                                      const std::string& dtypes,
                                      const std::string& shapes) {
-  std::vector<DataType> elemTypes;
-  if (op.GetAttr(dtypes, elemTypes) != GRAPH_SUCCESS) {
+  std::vector<DataType> elem_types;
+  if (op.GetAttr(dtypes, elem_types) != GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "Get attr [%s] failed.", dtypes.c_str());
     return GRAPH_FAILED;
   }
@@ -45,29 +45,29 @@ graphStatus SetAttrsToShapesAndTypes(Operator& op,
     return GRAPH_FAILED;
   }
 
-  Operator::OpListListInt elemShapes;
-  auto ret = op.GetAttr(shapes, elemShapes);
-  OP_LOGI(op.GetName().c_str(), "elemShapes = %ld, elemTypes = %ld", elemShapes.size(), elemTypes.size());
-  if (ret == GRAPH_SUCCESS && elemShapes.size() > 0) {
-    size_t num = std::min(elemShapes.size(), elemTypes.size());
-    std::vector<ShapeAndType> handleShapesAndTypes;
-    handleShapesAndTypes.reserve(num);
+  Operator::OpListListInt elem_shapes;
+  auto ret = op.GetAttr(shapes, elem_shapes);
+  OP_LOGI(op.GetName().c_str(), "elem_shapes = %ld, elem_types = %ld", elem_shapes.size(), elem_types.size());
+  if (ret == GRAPH_SUCCESS && elem_shapes.size() > 0) {
+    size_t num = std::min(elem_shapes.size(), elem_types.size());
+    std::vector<ShapeAndType> handle_shapes_and_types;
+    handle_shapes_and_types.reserve(num);
 
     for (size_t i = 0; i < num; ++i) {
-      Shape elemShape(std::move(elemShapes[i]));
-      DataType elemType(std::move(elemTypes[i]));
-      ShapeAndType shapeAndType(elemShape, elemType);
-      handleShapesAndTypes.emplace_back(std::move(shapeAndType));
+      Shape elemShape(std::move(elem_shapes[i]));
+      DataType elemType(std::move(elem_types[i]));
+      ShapeAndType shape_and_type(elemShape, elemType);
+      handle_shapes_and_types.emplace_back(std::move(shape_and_type));
     }
 
     std::vector<std::vector<ShapeAndType>> shapeAndTypes(2);
-    shapeAndTypes[0] = handleShapesAndTypes;
+    shapeAndTypes[0] = handle_shapes_and_types;
     context->SetOutputHandleShapesAndTypes(shapeAndTypes);
   }
 
-  AscendString opName;
-  op.GetName(opName);
-  std::vector<AscendString> marks = {opName};
+  AscendString op_name;
+  op.GetName(op_name);
+  std::vector<AscendString> marks = {op_name};
   context->SetMarks(marks);
 
   return GRAPH_SUCCESS;
@@ -75,17 +75,17 @@ graphStatus SetAttrsToShapesAndTypes(Operator& op,
 
 graphStatus InferShapesFillUnknownShape(Operator& op, const std::string &name, 
                                         const std::string &dynCompName, Shape &unknownShape) {
-  std::vector<DataType> dataTypes;
-  if (op.GetAttr(name, dataTypes) == GRAPH_FAILED) {
+  std::vector<DataType> data_types;
+  if (op.GetAttr(name, data_types) == GRAPH_FAILED) {
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), name);
     return GRAPH_FAILED;
   }
-  size_t size = dataTypes.size();
+  size_t size = data_types.size();
   for (size_t i = 0; i < size; i++) {
-    TensorDesc outputDesc = op.GetDynamicOutputDesc(dynCompName, i);
-    outputDesc.SetShape(unknownShape);
-    outputDesc.SetDataType(dataTypes[i]);
-    if (op.UpdateDynamicOutputDesc(dynCompName, i, outputDesc) != GRAPH_SUCCESS) {
+    TensorDesc output_desc = op.GetDynamicOutputDesc(dynCompName, i);
+    output_desc.SetShape(unknownShape);
+    output_desc.SetDataType(data_types[i]);
+    if (op.UpdateDynamicOutputDesc(dynCompName, i, output_desc) != GRAPH_SUCCESS) {
       std::string errMsg = ConcatString("update desc of ", i, "th output of dynamic output[y] failed.");
       AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), errMsg);
       return GRAPH_FAILED;
@@ -2315,6 +2315,12 @@ IMPLEMT_INFERFUNC(OutfeedEnqueueOp, OutfeedEnqueueInfer) {
 
 INFER_FUNC_REG(OutfeedEnqueueOp, OutfeedEnqueueInfer);
 
+IMPLEMT_INFERFUNC(OutfeedEnqueueOpV2, OutfeedEnqueueOpV2Infer) {
+  return GRAPH_SUCCESS;
+}
+
+INFER_FUNC_REG(OutfeedEnqueueOpV2, OutfeedEnqueueOpV2Infer);
+
 int32_t Split(const std::string &s, std::vector<std::string> &result, const char *delchar) {
   if (s.empty()) { return 0; }
   result.clear();
@@ -2421,7 +2427,7 @@ graphStatus DynamicGetNextCommonInfer(Operator &op) {
         }
         if (range.size() == kRangeMaxNum) {
           pair_shape_ranges.push_back(
-                      std::pair<int64_t, int64_t>{ atoi(range[0].c_str()), atoi(range[1].c_str()) });
+              std::pair<int64_t, int64_t>{ atoi(range[0].c_str()), atoi(range[1].c_str()) });
         } else if (atoi(range[0].c_str()) == UNKNOWN_DIM) {
           pair_shape_ranges.push_back(
                       std::pair<int64_t, int64_t>{1, -1});
