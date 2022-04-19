@@ -38,7 +38,18 @@ ut_case.add_case("all",
 ut_case.add_case("all",
                  gen_dynamic_axpy_case((-1,), (1,), ((1, 64),), ((1, 1),),
                                        "int32",  "ND", "dynamic_axpy_int32_ND",
+
                                        "success"))
+
+
+def test_import_lib(test_arg):
+    import sys
+    import importlib
+    importlib.reload(sys.modules.get("impl.dynamic.binary_query_register"))
+
+
+ut_case.add_cust_test_func(test_func=test_import_lib)
+
 
 if __name__ == '__main__':
     ut_case.run("Ascend910A")

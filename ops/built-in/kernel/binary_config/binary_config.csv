@@ -1,6 +1,7 @@
 OpType,OpBinaryFile
 Sample,sample.json
 Add,add.json
+AxpyV2,axpy_v2.json
 ApplyAdamD,apply_adam_d.json
 ApplyMomentumD,apply_momentum_d.json
 ApplyRMSPropD,apply_rms_prop_d.json
