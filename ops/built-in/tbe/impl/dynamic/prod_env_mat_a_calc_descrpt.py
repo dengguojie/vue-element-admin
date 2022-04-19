@@ -41,7 +41,6 @@ class ProdEnvMatACalcDescrpt:
         self.type_dtype = types.get("dtype").lower()
 
         self.nsample = 1
-        self.max_nall = 31040
         self.nnei = sum(sel_a)
 
         self.max_gm_size = 2 ** 31 - 1
@@ -152,15 +151,14 @@ class ProdEnvMatACalcDescrpt:
                                      type_gm, natoms_gm, mesh_gm, davg_gm, dstd_gm,
                                      descrpt_gm, descrpt_deriv_gm)
 
-    def _data_move_to_ub_phase1(self, cur_nsample_index, type_ub):
+    def _data_move_to_ub_phase1(self, cur_nsample_index, type_ub, cur_loc_index):
         """
         copy type data in ub from gm
         """
         src_offset = self.tik_instance.Scalar(self.int32_type, "src_offset",
                                               init_value=cur_nsample_index * self.nall_d * self.coord_dim_num)
-        self.tik_instance.data_move(type_ub[0], self._gm_tensors.type_gm[src_offset // 3],
-                                    sid=0, nburst=1, burst=self.nall_d // self.block_num,
-                                    src_stride=0, dst_stride=0)
+        self.tik_instance.data_move(type_ub, self._gm_tensors.type_gm[src_offset // 3 + cur_loc_index],
+                                    sid=0, nburst=1, burst=1, src_stride=0, dst_stride=0)
 
     def _data_move_avg_to_ub(self, cur_type_idx, davg_ub, dstd_ub):
         """
@@ -716,7 +714,7 @@ class ProdEnvMatACalcDescrpt:
         """
         Apply ub buffer for all neighbours type.
         """
-        type_ub = self.tik_instance.Tensor(self.type_dtype, [self.max_nall],
+        type_ub = self.tik_instance.Tensor(self.type_dtype, [8],
                                            name="type_ub", scope=self.tik.scope_ubuf)
 
         return type_ub
@@ -793,8 +791,8 @@ class ProdEnvMatACalcDescrpt:
             with self.tik_instance.if_scope(self.cur_loc_nei_num != -1):
                 with self.tik_instance.new_stmt_scope(disable_sync=False):
                     type_ub = self._apply_ub_tensor_phase1()
-                    self._data_move_to_ub_phase1(cur_sample, type_ub)
-                    cur_loc_type_id.set_as(type_ub[cur_loc_index])
+                    self._data_move_to_ub_phase1(cur_sample, type_ub, cur_loc_index)
+                    cur_loc_type_id.set_as(type_ub[0])
 
             nn_offset = self.tik_instance.Scalar(self.int32_type, "nn_offset",
                                                  init_value=cur_sample * self.nloc_d * self.nnei + cur_loc * self.nnei)
@@ -1209,12 +1207,6 @@ def _check_params(distance, rij_x, rij_y, rij_z, types, natoms, mesh, davg, dstd
 
     dstd_shape = dstd.get("shape")
     para_check.check_shape(dstd_shape, min_rank=2, max_rank=2, param_name="dstd")
-
-    nall = type_shape[1]
-    max_nall_size = 32000
-    if nall > max_nall_size:
-        rule = "The nall value only support less than 32000."
-        error_manager_vector.raise_err_check_params_rules(kernel_name, rule, "nall", nall)
 
     if any((rcut_r < 0, rcut_r_smth < 0)):
         rule = "The attributes {rcut_a, rcut_r, rcut_r_smth} can not be minus value or all 0."
