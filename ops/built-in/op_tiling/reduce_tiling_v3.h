@@ -64,7 +64,7 @@ struct ReduceCompileInfo {
     std::pair<bool, int32_t> compile_pattern;
     std::unordered_map<std::string, uint32_t> block_dim_map;
     std::unordered_map<std::string, bool> atomic_flags_map;
-    VarAttrWrap varAttrWrap;
+    std::unordered_map<std::uint64_t, vector<VarAttr>> var_attr_map;
 
     bool parsed_success{true};
 
@@ -127,8 +127,6 @@ class Reduce {
   bool DoReduceTiling();
   bool DoReduceTiling(const OpInfo& op_info);
   bool WriteTilingData();
-  bool WriteConstTilingData();
-  bool WriteDynamicTilingData();
   void FusedReduceAxis();
   void ChooseAtomic();
   void ChooseUBInfo();

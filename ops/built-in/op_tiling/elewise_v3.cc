@@ -294,7 +294,13 @@ bool Elewise::WriteKnownData() {
   OP_LOGD(op_type.c_str(), "elewise known tiling key is:%llu and block_dims is:%lld", tiling_key, block_dims);
   run_info.SetBlockDim(static_cast<uint32_t>(block_dims));
   run_info.SetTilingKey(static_cast<uint32_t>(tiling_key));
-  return compile_info.varAttrWrap.WriteVarAttrs(tiling_key, op_type, op_paras, run_info);
+  if (compile_info.elewise_var_attr.count(tiling_key) > 0) {
+    const std::vector<VarAttr>& all_attr_vars = compile_info.elewise_var_attr.at(tiling_key);
+    if (all_attr_vars.size() > 0) {
+      return SetAttrVars(op_type, op_paras, run_info, all_attr_vars);
+    }
+  }
+  return true;
 }
 
 bool Elewise::DoConstTiling() {
@@ -405,7 +411,13 @@ bool Elewise::WriteCommonData() const {
   }
   run_info.AddTilingData(static_cast<int32_t>(block_factor));
   run_info.AddTilingData(static_cast<int32_t>(ub_factor));
-  return compile_info.varAttrWrap.WriteVarAttrs(tiling_key, op_type, op_paras, run_info);
+  if (compile_info.elewise_var_attr.count(tiling_key) > 0) {
+    const std::vector<VarAttr>& all_attr_vars = compile_info.elewise_var_attr.at(tiling_key);
+    if (all_attr_vars.size() > 0) {
+      return SetAttrVars(op_type, op_paras, run_info, all_attr_vars);
+    }
+  }
+  return true;
 }
 
 bool Elewise::DoTiling() {
@@ -537,7 +549,11 @@ void ElewiseCompileInfo::ParseElewiseVarSize(const nlohmann::json& outer_compile
 }
 
 bool ElewiseCompileInfo::ParseAttrVars(const nlohmann::json& outer_compile_info) {
-  return varAttrWrap.ParseVarAttr(outer_compile_info);
+  if (outer_compile_info.count("_attr_vars") > 0) {
+    bool ret = ParseVarAttr(outer_compile_info, elewise_var_attr);
+    return ret;
+  }
+  return true;
 }
 
 void ElewiseCompileInfo::SetBroadcastPattern(const bool& is_broadcast_pattern) {

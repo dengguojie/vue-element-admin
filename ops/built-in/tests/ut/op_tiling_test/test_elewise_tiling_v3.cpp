@@ -100,6 +100,51 @@ static bool CompareMap(const std::unordered_map<T1, T2>& map1, const std::unorde
   return true;
 }
 
+template<typename T1, typename T2>
+static bool compare_var_attr_map(const std::unordered_map<T1, T2>& map1, const std::unordered_map<T1, T2>& map2) {
+  if (map1.size() != map2.size()) {
+     std::cout << "map1.size is :" << map1.size() << endl;
+     std::cout << "map2.size is :" << map2.size() << endl;
+     std::cout << "map1.size";
+    return false;
+  }
+  for (const auto& it: map1) {
+    if (map2.count(it.first) == 0) {
+      std::cout << "map2.count";
+      return false;
+    }
+
+    std::vector<VarAttr> var_attr_1_list = map1.at(it.first);
+    std::vector<VarAttr> var_attr_2_list = map2.at(it.first);
+
+    if (var_attr_1_list.size() != var_attr_2_list.size()) {
+     std::cout << "var_attr_1_list.size()";
+      return false;
+    }
+
+    for (int i = 0; i < var_attr_1_list.size(); i ++){
+      VarAttr var_attr_1 = var_attr_1_list[i];
+      VarAttr var_attr_2 = var_attr_2_list[i];
+      if (var_attr_1.name != var_attr_2.name) {
+        std::cout << "var_attr_1.name";
+        return false;
+      }
+      if (var_attr_1.length != var_attr_2.length) {
+        std::cout << "ar_attr_1.length";
+        return false;
+      }
+      if (var_attr_1.type != var_attr_2.type) {
+       std::cout << "var_attr_1.type";
+        return false;
+      }
+      if (var_attr_1.src_type != var_attr_2.src_type) {
+      std::cout << "var_attr_1.src_type";
+        return false;
+      }
+    }
+  }
+  return true;
+}
 
 static bool CompareCompileInfo1(const ElewiseCompileInfo& expect_compile_info,
                                 const ElewiseCompileInfo& real_compile_info) {
@@ -240,6 +285,68 @@ TEST_F(ElewiseTilingV3, ConstructTest2) {
   ASSERT_TRUE(CompareElewiseCompieInfo(expect_compile_info, actual_compile_info));
 }
 
+TEST_F(ElewiseTilingV3, ElewiseAttrVarDynamicTest) {
+
+  std::string compile_info_in = R"({"_outs_uint1": false,
+                                    "_pattern": "ElemWise",
+                                    "_flag_info": [false, false, false, true, false, false],
+                                    "_base_info": {"100": [32, 4, 16384, 8192]},
+                                    "_elewise_vars": {"210000000": [ 10000, 20000, 30000 ],
+                                                      "210010000": [ 10000, 20000, 30000 ]},
+                                    "_vars": {"210000000": [ "_dim_0_0", "_block_factor_0", "_ub_factor_0" ],
+                                              "210010000": [ "_dim_0_0", "_block_factor_0", "_ub_factor_0" ]},
+                                    "_attr_vars": {"210000000": [{"length":1, "name": "alpha", "type": "float16", "src_type": "float16"}],
+                                                   "210010000": [{"length":1, "name": "alpha", "type": "float16", "src_type": "float16"}]}
+                                   })";
+  nlohmann::json op_info = nlohmann::json::parse(compile_info_in.c_str());
+  ElewiseCompileInfo actual_compile_info("Elemwise", op_info);
+  ElewiseCompileInfo expect_compile_info;
+  unordered_map<uint64_t, std::vector<VarAttr>> expect_elewise_var_attr;
+  VarAttr var1, var2;
+  std::vector<VarAttr> var_attr_list1, var_attr_list2;
+  var1.length = 1;
+  var1.name = "alpha";
+  var1.type = "float16";
+  var1.src_type = "float16";
+  var_attr_list1.push_back(var1);
+  var2.length = 1;
+  var2.name = "alpha";
+  var2.type = "float16";
+  var2.src_type = "float16";
+  var_attr_list2.push_back(var2);
+  expect_elewise_var_attr[210000000] = var_attr_list1;
+  expect_elewise_var_attr[210010000] = var_attr_list2;
+
+  ASSERT_TRUE(compare_var_attr_map(expect_elewise_var_attr, actual_compile_info.elewise_var_attr));
+}
+
+TEST_F(ElewiseTilingV3, ElewiseAttrVarConstTest) {
+  std::string compile_info_in = R"({"_outs_uint1": false,
+                                    "_flag_info": [true],
+                                    "_base_info": {"000": [32, 2, 43680, 21840]},
+                                    "_pattern": "ElemWise",
+                                    "_attr_vars": {"100000000": [{"length":1,
+                                                                  "name": "alpha",
+                                                                  "type": "float16",
+                                                                  "src_type": "float16"
+                                                                  }]}
+                                    })";
+  nlohmann::json op_info = nlohmann::json::parse(compile_info_in.c_str());
+  ElewiseCompileInfo actual_compile_info("Elemwise", op_info);
+  ElewiseCompileInfo expect_compile_info;
+  unordered_map<uint64_t, std::vector<VarAttr>> expect_elewise_var_attr;
+  VarAttr var1;
+  std::vector<VarAttr> var_attr_list1;
+  var1.length = 1;
+  var1.name = "alpha";
+  var1.type = "float16";
+  var1.src_type = "float16";
+  var_attr_list1.push_back(var1);
+  expect_elewise_var_attr[100000000] = var_attr_list1;
+
+  ASSERT_TRUE(compare_var_attr_map(expect_elewise_var_attr, actual_compile_info.elewise_var_attr));
+}
+
 TEST_F(ElewiseTilingV3, ElewiseSetAttrCase1) {
   // Construct op_paras
   std::vector<std::vector<int64_t>> in_shapes = {{1, 33, 1089}};
@@ -261,8 +368,7 @@ TEST_F(ElewiseTilingV3, ElewiseSetAttrCase1) {
                                                       "210010000": [ 10000, 20000, 30000 ]},
                                     "_vars": {"210000000": [ "_dim_0_0", "_block_factor_0", "_ub_factor_0" ],
                                               "210010000": [ "_dim_0_0", "_block_factor_0", "_ub_factor_0" ]},
-                                    "_var_attr_mode":1,
-                                    "_var_attrs": {"210000000": [{"length":1, "name": "alpha", "type": "int32", "src_type": "int32"}],
+                                    "_attr_vars": {"210000000": [{"length":1, "name": "alpha", "type": "int32", "src_type": "int32"}],
                                                    "210010000": [{"length":1, "name": "alpha", "type": "int32", "src_type": "int32"}]}
                                    })";
   std::shared_ptr<AutoTilingHandler> outer_compile_info =
