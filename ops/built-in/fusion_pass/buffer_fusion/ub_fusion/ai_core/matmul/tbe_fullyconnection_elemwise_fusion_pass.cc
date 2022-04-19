@@ -37,6 +37,7 @@ static const vector<string> elemWiseWhiteList = {
     "Sigmoid",    "Tanh",         "Selu",    "GeluGrad", "Add",   "AddN",  "FastGelu",
     "FastGeluV2", "FastGeluGrad", "Eltwise", "PRelu",    "Mul",   "Muls",   "Power",  "Relu6D", "TanhGrad"};
 static const vector<string> matmulWhiteList = {"FullyConnection", "MatMul", "MatMulV2", "BatchMatMul", "BatchMatMulV2"};
+static const vector<int64_t> scalar = {1};
 /*
  * @brief:  define fully connection elemwise fusion pattern
  *
@@ -149,6 +150,21 @@ vector<BufferFusionPattern *> TbeFullyconnectionElemwiseFusionPass::DefinePatter
   return patterns;
 }
 
+void TbeFullyconnectionElemwiseFusionPass::SetSplitInfoOfMultiOut(const std::vector<ge::NodePtr> &nodes_fc,
+                                                                  vector<AxisSplitMap> *split_maps) {
+  if (!nodes_fc.empty() && nodes_fc[0]->GetOutDataNodes().size() > 1) {
+    auto size = nodes_fc[0]->GetOutDataNodes().size();
+    for (auto &split_map : *split_maps) {
+      for (size_t i = 1; i < size; ++i) {
+        auto out_split_info = CopyOutputSplitInfo(*(split_map.GetOutputSplitInfos()[0]));
+        out_split_info.SetIndex(i);
+
+        split_map.AddOutputSplitInfo(out_split_info);
+      }
+    }
+  }
+}
+
 void TbeFullyconnectionElemwiseFusionPass::SetSplitInfo(const BufferFusionMapping &mapping,
                                                         std::vector<ge::NodePtr> &fusion_nodes) {
   vector<ge::NodePtr> fcNodes = GetMatchedNodesByDescName(PATTERN_FC_MATMUL, mapping);
@@ -196,12 +212,11 @@ void TbeFullyconnectionElemwiseFusionPass::SetSplitInfo(const BufferFusionMappin
   if (!dequantNodes.empty()) {
     pre += 1;
     auto deq_scale = GetCurrNodeMutableInputDesc(dequantNodes[0], "deq_scale");
-    vector<int64_t> scalar = {1};
     tensor_mode = deq_scale != nullptr && deq_scale->GetOriginShape().GetDims() != scalar;
-  }
-  // the dequant is scala mode, can not split c_dim
-  if (!tensor_mode) {
-    DelSplitInfoByOutputAxis(split_maps, n_axis);
+    if (!tensor_mode) {
+      // the dequant is scala mode, can not split c_dim
+      DelSplitInfoByOutputAxis(split_maps, n_axis);
+    }
   }
 
   if (elemWiseNodes.empty()) {
@@ -210,6 +225,9 @@ void TbeFullyconnectionElemwiseFusionPass::SetSplitInfo(const BufferFusionMappin
   if (!elemWiseNodes.empty()) {
     AddElemwiseSplitMap(split_maps, elemWiseNodes[0], pre);
   }
+
+  SetSplitInfoOfMultiOut(fcNodes, &split_maps);
+
   SetSplitMap(split_maps, fusion_nodes, FUSED_OP_TYPE, fusion_type, min_tbe_l1space);
 }
 

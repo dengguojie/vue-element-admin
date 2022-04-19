@@ -45,8 +45,13 @@ namespace fe
         RunGraphFusionPass(string fusion_pass_name, GraphFusionPassType passType, ge::ComputeGraph &computeGraph, bool checkSupportedResult);
         static Status
         InferShapeAndType(ge::ComputeGraphPtr computeGraphPtr);
+        static Status RunBufferFusionPass(BufferFusionPassBase *ptr_buffer_fusion_pass_func,
+                                          const vector<BufferFusionPattern *> patterns,
+                                          ge::ComputeGraphPtr &compute_graph_ptr,
+                                          const BufferFusionMapping &mapping = {}, const string &name_pattern = "");
+        static bool GetBufferFusionPattern(const vector<BufferFusionPattern *> patterns, const string &name_pattern,
+                                           BufferFusionPattern **pattern);
     };
-
 }
 
 

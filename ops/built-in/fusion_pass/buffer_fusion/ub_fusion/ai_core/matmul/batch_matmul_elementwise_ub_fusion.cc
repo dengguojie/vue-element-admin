@@ -42,7 +42,7 @@ static vector<string> elem1_typelist = {"Add", "Relu", "FusedMulAdd"};
 static const char PATTERN_OTHER_INPUT[] = "InputData";
 static const char PATTERN_OTHER_INPUT1[] = "InputData1";
 static const char PATTERN_OTHER_OUTPUT[] = "OutputData";
-} // namespace
+}  // namespace
 
 /*
  * @brief: define Matmul and element-wise op fusion pattern
@@ -56,7 +56,7 @@ static const char PATTERN_OTHER_OUTPUT[] = "OutputData";
 vector<BufferFusionPattern *> TbeBatchMatmulElementWiseFusionPass::DefinePatterns() {
   vector<BufferFusionPattern *> patterns;
 
-  string passName = "TbeBatchMatmulELEMPASS";
+  string passName = "TbeBatchMatmulElemElemPattern";
   BufferFusionPattern *pattern = new (std::nothrow) BufferFusionPattern(passName);
   FUSION_PASS_CHECK((pattern == nullptr), OP_LOGE(FUSED_OP_TYPE.c_str(), "new an object failed."), return patterns);
   OP_LOGD(FUSED_OP_TYPE.c_str(), "Start to define %s pass pattern.", passName.c_str());
@@ -71,7 +71,7 @@ vector<BufferFusionPattern *> TbeBatchMatmulElementWiseFusionPass::DefinePattern
   patterns.push_back(pattern);
   OP_LOGD(FUSED_OP_TYPE.c_str(), "End to define %s pass pattern.", passName.c_str());
 
-  string passName1 = "TbeBatchMatmulELEMPASS";
+  string passName1 = "TbeBatchMatmulElemPattern";
   BufferFusionPattern *pattern1 = new (std::nothrow) BufferFusionPattern(passName1);
   FUSION_PASS_CHECK((pattern1 == nullptr), OP_LOGE(FUSED_OP_TYPE.c_str(), "new an object failed."), return patterns);
   OP_LOGD(FUSED_OP_TYPE.c_str(), "Start to define %s pass pattern.", passName1.c_str());
@@ -88,7 +88,7 @@ vector<BufferFusionPattern *> TbeBatchMatmulElementWiseFusionPass::DefinePattern
    * BatchmatmulV2 --> Mul --> Sigmoid --> Mul --> Output
    *       \_______________________________/
    */
-  string passName2 = "TbeBatchMatmulELEMPASS2";
+  string passName2 = "TbeBatchMatmulMulSigmoidMulPattern";
   BufferFusionPattern *pattern2 = new (std::nothrow) BufferFusionPattern(passName2);
   FUSION_PASS_CHECK((pattern2 == nullptr), OP_LOGE(FUSED_OP_TYPE.c_str(), "new an object failed."), return patterns);
   OP_LOGD(FUSED_OP_TYPE.c_str(), "Start to define %s pass pattern.", passName2.c_str());
@@ -112,6 +112,139 @@ vector<BufferFusionPattern *> TbeBatchMatmulElementWiseFusionPass::DefinePattern
   return patterns;
 }
 
+size_t TbeBatchMatmulElementWiseFusionPass::GetRealIdx(size_t ori_idx, const struct OffsetIndex &offset_index) {
+  auto offset = offset_index.offset;
+  for (size_t i = 0; i < offset_index.ignore_input_indices.size(); ++i) {
+    auto ignore_idx = offset_index.ignore_input_indices[i];
+    if (ori_idx == ignore_idx) {
+      return SIZE_MAX;
+    }
+
+    if (ori_idx < ignore_idx) {
+      break;
+    }
+
+    --offset;
+  }
+
+  return ori_idx + offset;
+}
+
+void TbeBatchMatmulElementWiseFusionPass::TraverseMaps2(const AxisSplitMap &map1,
+                                                        const OutputSplitInfoPtr output_ptr_map1,
+                                                        const std::vector<AxisSplitMap> &maps2,
+                                                        const struct OffsetIndex &offset_index,
+                                                        vector<AxisSplitMap> *intersect_maps) {
+  auto index_output_map1 = output_ptr_map1->GetIndex();
+  auto axis_output_map1 = output_ptr_map1->GetAxis();
+  for (const auto &map2 : maps2) {
+    auto inputs_map2 = map2.GetInputSplitInfoVec();
+    auto outputs_ptr_map2 = map2.GetOutputSplitInfos();
+    if (inputs_map2.empty() || outputs_ptr_map2.empty()) {
+      continue;
+    }
+
+    for (const auto &output_ptr_map2 : outputs_ptr_map2) {
+      if (output_ptr_map2 == nullptr) {
+        continue;
+      }
+
+      if (output_ptr_map2->GetIndex() != index_output_map1) {
+        continue;
+      }
+      if (output_ptr_map2->GetAxis() != axis_output_map1) {
+        continue;
+      }
+
+      intersect_maps->emplace_back(GenFusionSplitMap(map1, inputs_map2, offset_index));
+    }
+  }
+}
+
+AxisSplitMap TbeBatchMatmulElementWiseFusionPass::GenFusionSplitMap(const AxisSplitMap &map1,
+                                                                    const vector<InputSplitInfo> &inputs_map2,
+                                                                    const struct OffsetIndex &offset_index) {
+  AxisSplitMap intersect_map{map1};
+  for (auto input_map2 : inputs_map2) {
+    auto real_idx = GetRealIdx(input_map2.GetIndex(), offset_index);
+    if (real_idx == SIZE_MAX) {
+      continue;
+    }
+
+    input_map2.SetIndex(real_idx);
+    intersect_map.AddInputSplitInfo(input_map2);
+  }
+  return intersect_map;
+}
+
+std::vector<AxisSplitMap> TbeBatchMatmulElementWiseFusionPass::IntersectSplitMap(
+    const std::vector<AxisSplitMap> &maps1, const std::vector<AxisSplitMap> &maps2,
+    const struct OffsetIndex &offset_index) {
+  vector<AxisSplitMap> intersect_maps;
+  for (const auto &map1 : maps1) {
+    auto outputs_ptr_map1 = map1.GetOutputSplitInfos();
+    if (outputs_ptr_map1.empty()) {
+      continue;
+    }
+
+    for (const auto &output_ptr_map1 : outputs_ptr_map1) {
+      if (output_ptr_map1 == nullptr) {
+        continue;
+      }
+
+      TraverseMaps2(map1, output_ptr_map1, maps2, offset_index, &intersect_maps);
+    }
+  }
+  return intersect_maps;
+}
+
+std::vector<uint32_t> TbeBatchMatmulElementWiseFusionPass::GetIgnoreInputIndices(
+    const ge::NodePtr &node_ptr_curr, const std::vector<ge::NodePtr> &fusion_nodes) {
+  vector<uint32_t> ignore_input_indices;
+
+  uint32_t size = node_ptr_curr->GetAllInDataAnchorsSize();
+  for (uint32_t idx = 0; idx < size; ++idx) {
+    auto in_data_anchor = node_ptr_curr->GetInDataAnchor(idx);
+    if (in_data_anchor == nullptr) {
+      continue;
+    }
+    auto out_data_anchor = in_data_anchor->GetPeerOutAnchor();
+    if (out_data_anchor == nullptr) {
+      continue;
+    }
+
+    for (auto node_ptr_prev : fusion_nodes) {
+      if (out_data_anchor->GetOwnerNode() == node_ptr_prev) {
+        ignore_input_indices.push_back(idx);
+      }
+    }
+  }
+
+  sort(ignore_input_indices.begin(), ignore_input_indices.end());
+  return ignore_input_indices;
+}
+
+bool TbeBatchMatmulElementWiseFusionPass::IntersectSplitMapWithElemwise(ge::NodePtr &node,
+                                                                        const vector<AxisSplitMap> &split_maps_prev,
+                                                                        vector<AxisSplitMap> *ptr_split_maps_intersect,
+                                                                        size_t *index_already_provide_split_info,
+                                                                        const std::vector<ge::NodePtr> &fusion_nodes) {
+  OpL1FusionType fusion_type = L1FUSION_DISABLE;
+  int64_t min_tbe_l1space = 0;
+
+  vector<AxisSplitMap> curr_split_maps;
+  if (!GetSplitMap(curr_split_maps, node, node->GetName(), fusion_type, min_tbe_l1space)) {
+    return false;
+  }
+  auto ignore_input_indices = GetIgnoreInputIndices(node, fusion_nodes);
+  struct OffsetIndex offset_index {
+    .offset = *index_already_provide_split_info, .ignore_input_indices = ignore_input_indices
+  };
+  *ptr_split_maps_intersect = IntersectSplitMap(split_maps_prev, curr_split_maps, offset_index);
+  *index_already_provide_split_info += node->GetAllInDataAnchorsSize() - ignore_input_indices.size();
+  return true;
+}
+
 void TbeBatchMatmulElementWiseFusionPass::SetSplitInfo(const BufferFusionMapping &mapping,
                                                        std::vector<ge::NodePtr> &fusion_nodes) {
   vector<ge::NodePtr> matmulNodes = GetMatchedNodesByDescName(PATTERN_BATCH_MATMUL, mapping);
@@ -128,21 +261,46 @@ void TbeBatchMatmulElementWiseFusionPass::SetSplitInfo(const BufferFusionMapping
   }
   FUSION_PASS_CHECK(matmulNodes[0]->GetInDataNodes().size() <= 0,
                     OP_LOGE(FUSED_OP_TYPE.c_str(), "matmulNodes's input can not <= 0."), return);
-  int pre = matmulNodes[0]->GetInDataNodes().size() - 1;
-  vector<AxisSplitMap> split_maps;
+  vector<AxisSplitMap> split_maps_prev;
+  vector<AxisSplitMap> split_maps_fusion_op;
+  vector<AxisSplitMap>* ptr_split_maps_prev;
+  vector<AxisSplitMap>* ptr_split_maps_fusion_op;
+
   OpL1FusionType fusion_type = L1FUSION_DISABLE;
   int64_t min_tbe_l1space = 0;
-  if (!GetSplitMap(split_maps, matmulNodes[0], FUSED_OP_TYPE, fusion_type, min_tbe_l1space)) {
+  if (!GetSplitMap(split_maps_prev, matmulNodes[0], FUSED_OP_TYPE, fusion_type, min_tbe_l1space)) {
     return;
   }
-  AddElemwiseSplitMap(split_maps, elemWiseNodes[0], pre);
+  size_t index_already_provide_split_info = matmulNodes[0]->GetInDataNodes().size();
+
+  ptr_split_maps_prev = &split_maps_prev;
+  ptr_split_maps_fusion_op = &split_maps_fusion_op;
+  FUSION_PASS_CHECK(
+      !IntersectSplitMapWithElemwise(elemWiseNodes[0], *ptr_split_maps_prev, ptr_split_maps_fusion_op,
+                                     &index_already_provide_split_info, fusion_nodes),
+      OP_LOGE(FUSED_OP_TYPE.c_str(), "failed to get split maps of %s", elemWiseNodes[0]->GetName().c_str()), return);
+
   if (!elemWiseNodes1.empty()) {
-    AddElemwiseSplitMap(split_maps, elemWiseNodes1[0], pre);
+    ptr_split_maps_prev = &split_maps_fusion_op;
+    ptr_split_maps_fusion_op = &split_maps_prev;
+    FUSION_PASS_CHECK(
+        !IntersectSplitMapWithElemwise(elemWiseNodes1[0], *ptr_split_maps_prev, ptr_split_maps_fusion_op,
+                                       &index_already_provide_split_info, fusion_nodes),
+        OP_LOGE(FUSED_OP_TYPE.c_str(), "failed to get split maps of %s", elemWiseNodes1[0]->GetName().c_str()),
+        return);
   }
+
   if (!elemWiseNodes2.empty()) {
-    AddElemwiseSplitMap(split_maps, elemWiseNodes2[0], pre);
+    ptr_split_maps_prev = &split_maps_fusion_op;
+    ptr_split_maps_fusion_op = &split_maps_prev;
+    FUSION_PASS_CHECK(
+        !IntersectSplitMapWithElemwise(elemWiseNodes2[0], *ptr_split_maps_prev, ptr_split_maps_fusion_op,
+                                       &index_already_provide_split_info, fusion_nodes),
+        OP_LOGE(FUSED_OP_TYPE.c_str(), "failed to get split maps of %s", elemWiseNodes2[0]->GetName().c_str()),
+        return);
   }
-  SetSplitMap(split_maps, fusion_nodes, FUSED_OP_TYPE, fusion_type, min_tbe_l1space);
+
+  SetSplitMap(*ptr_split_maps_fusion_op, fusion_nodes, FUSED_OP_TYPE, fusion_type, min_tbe_l1space);
 }
 
 Status TbeBatchMatmulElementWiseFusionPass::CheckPattern1(const BufferFusionMapping &mapping) const {

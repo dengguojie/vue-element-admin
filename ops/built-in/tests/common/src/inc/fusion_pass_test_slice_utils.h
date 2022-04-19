@@ -19,20 +19,34 @@
 
 #include <string>
 #include <vector>
-#include "graph/graph.h"
-#include "graph/compute_graph.h"
-#include "pattern_fusion_util.h"
-#include "graph_optimizer/fusion_common/op_slice_info.h"
-#include "graph/utils/attr_utils.h"
+
 #include "common/lxfusion_json_util.h"
+#include "graph/compute_graph.h"
+#include "graph/graph.h"
+#include "graph/utils/attr_utils.h"
+#include "graph_optimizer/fusion_common/op_slice_info.h"
+#include "pattern_fusion_util.h"
 
 namespace fe {
+void SetSplitMapMainNode(std::vector<AxisSplitMap> &split_maps, std::vector<ge::NodePtr> &Nodes, const string &op_type);
 
-    static const std::string OP_SLICE_INFO = "_op_slice_info";
+bool SetSplitMapToNodeByType(const ge::ComputeGraphPtr compute_graph_ptr, std::vector<AxisSplitMap> &vec_split_map,
+                             const std::vector<string> &type_ops);
+bool SetSplitMapToNodeByName(const ge::ComputeGraphPtr compute_graph_ptr, std::vector<AxisSplitMap> &vec_split_map,
+                             const string &namekk_op);
 
-    void SetSplitMapMainNode(std::vector<AxisSplitMap>& split_maps,
-                             std::vector<ge::NodePtr>& Nodes, const string& op_type);
+string GetFusionOpSliceInfoStrFromGraph(const ge::ComputeGraphPtr compute_graph_ptr);
 
+string CreateFusionOpSliceInfoStrFromSplitMap(const std::vector<fe::AxisSplitMap> &vec_split_map);
+
+InputSplitInfo CreateInputSplitInfo(const size_t &idx, const std::vector<int64_t> &axis,
+                                    const std::vector<int64_t> &head_over_lap = {-1},
+                                    const std::vector<int64_t> &tail_over_lap = {-1});
+
+OutputSplitInfo CreateOutputSplitInfo(const size_t &idx, const std::vector<int64_t> &axis);
+
+AxisSplitMap CreateAxisSplitMap(const std::vector<InputSplitInfo> &vec_input_split_info,
+                                const std::vector<OutputSplitInfo> &vec_output_split_info);
 }  // namespace fe
 
 #endif  // FUSION_ENGINE_STUB_FUSIONPASSSLICEUTILS_H

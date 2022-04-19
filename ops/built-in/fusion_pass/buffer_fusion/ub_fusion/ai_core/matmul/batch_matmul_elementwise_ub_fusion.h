@@ -27,6 +27,11 @@
 #include "graph_optimizer/buffer_fusion/buffer_fusion_pass_base.h"
 
 namespace fe {
+struct OffsetIndex {
+  size_t offset;
+  std::vector<uint32_t> ignore_input_indices;
+};
+
 class TbeBatchMatmulElementWiseFusionPass : public BufferFusionPassBase {
  public:
   explicit TbeBatchMatmulElementWiseFusionPass() {}
@@ -42,7 +47,25 @@ class TbeBatchMatmulElementWiseFusionPass : public BufferFusionPassBase {
   void SetSplitInfo(const BufferFusionMapping &mapping, std::vector<ge::NodePtr> &fusion_nodes);
   Status CheckPattern1(const BufferFusionMapping &mapping) const;
   Status CheckPattern2(const BufferFusionMapping &mapping) const;
+  static std::vector<uint32_t> GetIgnoreInputIndices(const ge::NodePtr &node_ptr_curr,
+                                                     const std::vector<ge::NodePtr> &fusion_nodes);
+
+  static std::vector<AxisSplitMap> IntersectSplitMap(const std::vector<AxisSplitMap> &map1,
+                                                     const std::vector<AxisSplitMap> &map2,
+                                                     const struct OffsetIndex &offset_index);
+
+  static size_t GetRealIdx(size_t ori_idx, const struct OffsetIndex &offset_index);
+
+  static bool IntersectSplitMapWithElemwise(ge::NodePtr &nodes, const vector<AxisSplitMap> &split_maps_prev,
+                                            vector<AxisSplitMap> *ptr_split_maps_intersect,
+                                            size_t *index_already_provide_split_info,
+                                            const std::vector<ge::NodePtr> &fusion_nodes);
+  static AxisSplitMap GenFusionSplitMap(const AxisSplitMap &map1, const vector<InputSplitInfo> &inputs_map2,
+                                        const struct OffsetIndex &offset_index);
+  static void TraverseMaps2(const AxisSplitMap &map1, const OutputSplitInfoPtr output_ptr_map1,
+                            const std::vector<AxisSplitMap> &maps2, const struct OffsetIndex &offset_index,
+                            vector<AxisSplitMap> *intersect_maps);
 };
-} // namespace fe
+}  // namespace fe
 
 #endif // OPS_BUILT_IN_FUSION_PASS_BUFFER_FUSION_UB_FUSION_AI_CORE_MATMUL_TBE_MATMUL_ELEMWISE_H

@@ -38,5 +38,6 @@ bool GetSplitMap(std::vector<AxisSplitMap>& split_maps, ge::NodePtr& cube_node,
 void SetSplitMap(std::vector<AxisSplitMap>& split_maps, std::vector<ge::NodePtr>& fusionNodes,
                  const string& fused_op_type, const OpL1FusionType& L1_fusion_type, const int64_t& min_tbe_L1space);
 void AddElemwiseSplitMap(std::vector<AxisSplitMap>& split_maps, ge::NodePtr& elemWiseNode, int& index);
+OutputSplitInfo CopyOutputSplitInfo(const OutputSplitInfo& src);
 }  // namespace fe
 #endif  // BUILTIN_FUSIONPASS_LX_FUISON_FUNC_H

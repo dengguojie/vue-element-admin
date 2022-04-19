@@ -34,6 +34,7 @@ set(_common_fusion_pass_inc
   ${PROTO_BINARY_DIR}/opp
   ${Protobuf_INCLUDE}
   ${FUSION_ENGINE_INCLUDE}
+  ${CANN_ROOT}/third_party/air/compiler/graphcompiler/engines/nneng/inc/common
 )
 
 set(_common_fusion_pass_dep

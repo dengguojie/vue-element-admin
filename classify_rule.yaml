@@ -244,6 +244,8 @@ cube:
       - ops/built-in/op_proto/inc/matrix_calculation_ops.h
       - ops/built-in/op_proto/inc/cluster.h
       - ops/built-in/op_proto/cluster.cc
+      - ops/built-in/fusion_pass/common/lx_fusion_func.cc
+      - ops/built-in/fusion_pass/common/lx_fusion_func.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/resnet50_dbn_dw_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/matmul_reshape_biasadd_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/resnet50_dbn_dw_fusion_pass.cc
@@ -319,6 +321,10 @@ cube:
       - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/matmul/tbe_matmul_elemwise.h
       - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/matmul/matmul_atomic_add_ub_fusion.cc
       - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/matmul/matmul_atomic_add_ub_fusion.h
+      - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/matmul/batch_matmul_elementwise_ub_fusion.cc
+      - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/matmul/batch_matmul_elementwise_ub_fusion.h
+      - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/matmul/tbe_fullyconnection_elemwise_fusion_pass.cc
+      - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/matmul/tbe_fullyconnection_elemwise_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/padv3_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/padv3_fusion_pass.cc
       - ops/built-in/framework/tf_plugin/conv2d_backprop_filter.cc
@@ -3381,16 +3387,12 @@ unkown:
       - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/matmul/batch_matmul_v2_dequant_mul_add.cc
       - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/matmul/tbe_matmul_dequant_pass.h
       - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/matmul/tbe_matmul_dequant_pass.cc
-      - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/matmul/tbe_fullyconnection_elemwise_fusion_pass.cc
       - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/matmul/tbe_matmul_requant_pass.h
       - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/matmul/batch_matmul_v2_dequant_mul_add.h
       - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/matmul/tbe_matmul_fixpipe_fusion_pass.cc
       - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/matmul/matmul_transdata_ub_fusion.cc
       - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/matmul/matmul_gelugrad_ub_fusion.h
-      - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/matmul/batch_matmul_elementwise_ub_fusion.h
       - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/matmul/tbe_matmul_fixpipe_fusion_pass.h
-      - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/matmul/batch_matmul_elementwise_ub_fusion.cc
-      - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/matmul/tbe_fullyconnection_elemwise_fusion_pass.h
       - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/matmul/matmul_fastgelugrad_ub_fusion.h
       - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/matmul/matmul_gelugrad_ub_fusion.cc
       - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/matmul/tbe_matmul_requant_pass.cc
@@ -3411,7 +3413,6 @@ unkown:
       - ops/built-in/fusion_pass/common/pattern_fusion_util.h
       - ops/built-in/fusion_pass/common/fusion_addoutput_registry.h
       - ops/built-in/fusion_pass/common/fusion_precheck_func.h
-      - ops/built-in/fusion_pass/common/aicore_util_attr_define.h
       - ops/built-in/fusion_pass/common/fp16_t.cc
       - ops/built-in/fusion_pass/common/fusion_const2attr_registry.h
       - ops/built-in/fusion_pass/common/anchor_util.h

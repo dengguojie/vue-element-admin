@@ -1,223 +1,287 @@
-#include "gtest/gtest.h"
+/**
+ * Copyright (c) Huawei Technologies Co., Ltd. 2021-2021. All rights reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 #include "array_ops.h"
-#include "nonlinear_fuc_ops.h"
+#include "common/lx_fusion_func.h"
+#include "elewise_calculation_ops.h"
 #include "graph/compute_graph.h"
 #include "graph/graph.h"
 #include "graph/utils/graph_utils.h"
 #include "graph/utils/op_desc_utils.h"
-#include "elewise_calculation_ops.h"
+#include "gtest/gtest.h"
 #include "matrix_calculation_ops.h"
-#include "common/lx_fusion_func.h"
+#include "nonlinear_fuc_ops.h"
+
 #define private public
 #define protected public
-#include "inc/common/op_slice_info.h"
-#include "common/lxfusion_json_util.h"
-#include "fusion_pass_test_utils.h"
-#include "fusion_pass_test_slice_utils.h"
 #include "common/inc/op_log.h"
+#include "common/lxfusion_json_util.h"
+#include "fusion_pass_test_slice_utils.h"
+#include "fusion_pass_test_utils.h"
+#include "inc/common/op_slice_info.h"
 
-
+using namespace fe;
 using namespace ge;
 using namespace op;
 
-class tbe_fullyconnection_elemwise_fusion_test : public testing::Test {
-protected:
-    static void SetUpTestCase() {
-        std::cout << "tbe_fullyconnection_elemwise_fusion_test SetUp" << std::endl;
+class TbeFullyconnectionElemwiseFusionPassTest : public testing::Test {
+ protected:
+  static void SetUpTestCase() {
+    std::cout << "TbeFullyconnectionElemwiseFusionPassTest SetUp" << std::endl;
+
+    std::map<string, fe::BufferFusionPassRegistry::CreateFn> createFns =
+        fe::BufferFusionPassRegistry::GetInstance().GetCreateFnByType(type_fusion_pass);
+    const auto &iter = createFns.find(name_fusion_pass);
+
+    if (iter != createFns.end()) {
+      ptr_buffer_fusion_pass_func =
+          std::unique_ptr<fe::BufferFusionPassBase>(dynamic_cast<fe::BufferFusionPassBase *>(iter->second()));
+      EXPECT_NE(ptr_buffer_fusion_pass_func, nullptr);
+
+      ptr_buffer_fusion_pass_func->SetName(name_fusion_pass);
+      patterns = ptr_buffer_fusion_pass_func->DefinePatterns();
     }
 
-    static void TearDownTestCase() {
-        std::cout << "tbe_fullyconnection_elemwise_fusion_test TearDown" << std::endl;
-    }
-};
-
-namespace fe {
-  static Status RunBufferFusionPass(string fusionPassName, BufferFusionPassType passType,
-    ge::ComputeGraphPtr& compute_graph_ptr) {
-      std::map<string, BufferFusionPassRegistry::CreateFn> createFns =
-          BufferFusionPassRegistry::GetInstance().GetCreateFnByType(passType);
-      const auto &iter = createFns.find(fusionPassName);
-      if (iter != createFns.end()) {
-          if (passType == fe::BUILT_IN_AI_CORE_BUFFER_FUSION_PASS) {
-              auto BufferFusionPassFcPtr = std::unique_ptr<BufferFusionPassBase>(
-                      dynamic_cast<BufferFusionPassBase *>(iter->second()));
-              if (BufferFusionPassFcPtr == nullptr) {
-                  return FAILED;
-              }
-
-              ge::ComputeGraph::Vistor<ge::NodePtr> NodePtrs = compute_graph_ptr->GetAllNodes();
-              std::vector<ge::NodePtr> Node_v(NodePtrs.begin(), NodePtrs.end());
-
-              BufferFusionPassFcPtr->SetName(fusionPassName);
-              vector<BufferFusionPattern*> patterns = BufferFusionPassFcPtr->DefinePatterns();
-              for (auto pattern : patterns) {
-                std::vector<BufferFusionOpDesc *> desc = pattern->GetOpDescs();
-                vector<ge::NodePtr> elemNodes1;
-                vector<ge::NodePtr> elemNodes2;
-                vector<ge::NodePtr> matmulNodes;
-                for (auto i : NodePtrs) {
-                  auto opDesc = i->GetOpDesc();
-                  if (opDesc->GetType() == "BatchMatMul" or opDesc->GetType() == "FullyConnection") {
-                    matmulNodes.push_back(i);
-                  } else if (opDesc->GetType() == "Add") {
-                    elemNodes1.push_back(i);
-                  } else if (opDesc->GetType() == "Relu6") {
-                    elemNodes2.push_back(i);
-                  } else if (opDesc->GetType() == "FastGelu") {
-                    opDesc->MutableInputDesc(0)->SetShape(ge::GeShape({16, 512, 4096}));
-                    elemNodes2.push_back(i);
-                  } else if (opDesc->GetType() == "FastGeluGrad") {
-                    opDesc->MutableInputDesc(0)->SetShape(ge::GeShape({16, 512, 4096}));
-                    elemNodes2.push_back(i);
-                  }
-                }
-
-                BufferFusionMapping mapping;
-                for (auto i : desc) {
-                  if (i->desc_name == "FullyConnection/MatMul/BatchMatmul") {
-                    mapping[i] = matmulNodes;
-                  }
-                  if (i->desc_name == "eltwise1") {
-                    mapping[i] = elemNodes1;
-                  } else if (i->desc_name == "eltwise2") {
-                    mapping[i] = elemNodes2;
-                  }
-                }
-
-                vector<ge::NodePtr> fusion_nodes;
-                BufferFusionPassFcPtr->GetFusionNodes(mapping, fusion_nodes);
-              }
-              return SUCCESS;
-          }
-      }
-      return FAILED;
+    EXPECT_NE(patterns.size(), 0);
   }
-}
-TEST_F(tbe_fullyconnection_elemwise_fusion_test, tbe_fullyconnection_elemwise_fusion_test_1) {
-    ge::Graph graph("tbe_fullyconnection_elemwise_fusion_test_1");
 
-    ge::TensorDesc a_desc(ge::Shape({16, 512, 1024}), ge::FORMAT_NHWC, ge::DT_FLOAT16);
-    auto data_a = op::Data("data_a");
-    data_a.update_input_desc_x(a_desc);
-    data_a.update_output_desc_y(a_desc);
+  static void TearDownTestCase() { std::cout << "TbeFullyconnectionElemwiseFusionPassTest TearDown" << std::endl; }
 
-    ge::TensorDesc b_desc(ge::Shape({16, 1024, 4096}), ge::FORMAT_NHWC, DT_FLOAT16);
-    auto data_b = op::Data("data_b");
-    data_b.update_input_desc_x(b_desc);
-    data_b.update_output_desc_y(b_desc);
+ private:
+  static BufferFusionMapping ConstructFusionMappingOfDoubleOut(const ComputeGraphPtr compute_graph_ptr);
+  static BufferFusionMapping ConstructFusionMappingOfAddRelu6(const ComputeGraphPtr compute_graph_ptr);
 
-    auto batch_matmul_op = op::BatchMatMul("BatchMatMul")
-        .set_input_x1(data_a)
-        .set_input_x2(data_b)
-        .set_attr_adj_x1(false)
-        .set_attr_adj_x2(false);
+  static std::unique_ptr<fe::BufferFusionPassBase> ptr_buffer_fusion_pass_func;
+  static vector<fe::BufferFusionPattern *> patterns;
+  const static string name_fusion_pass;
+  const static fe::BufferFusionPassType type_fusion_pass;
+};
+vector<fe::BufferFusionPattern *> TbeFullyconnectionElemwiseFusionPassTest::patterns;
+std::unique_ptr<fe::BufferFusionPassBase> TbeFullyconnectionElemwiseFusionPassTest::ptr_buffer_fusion_pass_func;
+const string TbeFullyconnectionElemwiseFusionPassTest::name_fusion_pass = "TbeFullyconnectionElemwiseDequantFusionPass";
+const fe::BufferFusionPassType TbeFullyconnectionElemwiseFusionPassTest::type_fusion_pass =
+    fe::BUILT_IN_AI_CORE_BUFFER_FUSION_PASS;
 
-    auto fastgelu_op = op::FastGelu("FastGelu")
-        .set_input_x(batch_matmul_op);
+fe::BufferFusionMapping TbeFullyconnectionElemwiseFusionPassTest::ConstructFusionMappingOfDoubleOut(
+    const ComputeGraphPtr compute_graph_ptr) {
+  vector<ge::NodePtr> nodes_batchmatmul;
+  vector<ge::NodePtr> nodes_elemwise;
+  vector<ge::NodePtr> nodes_output;
 
-    std::vector<Operator> inputs{data_a, data_b};
-    std::vector<Operator> outputs{fastgelu_op};
+  for (const auto &ptr_node : compute_graph_ptr->GetAllNodes()) {
+    auto desc = ptr_node->GetOpDesc();
+    if (desc->GetType() == "BatchMatMul" or desc->GetType() == "BatchMatMulV2") {
+      nodes_batchmatmul.push_back(ptr_node);
+    } else if (desc->GetType() == "Relu") {
+      nodes_elemwise.push_back(ptr_node);
+    } else if (desc->GetType() == "Add") {
+      nodes_output.push_back(ptr_node);
+    }
+  }
 
-    graph.SetInputs(inputs).SetOutputs(outputs);
+  BufferFusionPattern *pattern;
+  EXPECT_TRUE(FusionPassTestUtils::GetBufferFusionPattern(patterns, "TbeBatchMatMulElemwiseDoubleOut", &pattern));
+  OP_LOGD("test TbeFullyconnectionElemwiseFusionPassTest", "desc size(%zu) in pattern(%s)",
+          pattern->GetOpDescs().size(), pattern->GetName().c_str());
 
-    ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
-    fe::FusionPassTestUtils::InferShapeAndType(compute_graph_ptr);
-    Status res = fe::RunBufferFusionPass("TbeFullyconnectionElemwiseDequantFusionPass",
-                                           fe::BUILT_IN_AI_CORE_BUFFER_FUSION_PASS,
-                                           compute_graph_ptr);
-    EXPECT_EQ(res, SUCCESS);
-}
+  BufferFusionMapping mapping;
+  for (const auto &desc : pattern->GetOpDescs()) {
+    if (desc->desc_name == "FullyConnection/MatMul/BatchMatmul") {
+      mapping[desc] = nodes_batchmatmul;
+    } else if (desc->desc_name == "eltwise1") {
+      mapping[desc] = nodes_elemwise;
+    } else if (desc->desc_name == "output") {
+      mapping[desc] = nodes_output;
+    }
+  }
 
-TEST_F(tbe_fullyconnection_elemwise_fusion_test, tbe_fullyconnection_elemwise_fusion_test_2) {
-    ge::Graph graph("tbe_fullyconnection_elemwise_fusion_test_2");
-
-    ge::TensorDesc a_desc(ge::Shape({16, 512, 1024}), ge::FORMAT_NHWC, ge::DT_FLOAT16);
-    auto data_a = op::Data("data_a");
-    data_a.update_input_desc_x(a_desc);
-    data_a.update_output_desc_y(a_desc);
-
-    ge::TensorDesc b_desc(ge::Shape({16, 1024, 4096}), ge::FORMAT_NHWC, DT_FLOAT16);
-    auto data_b = op::Data("data_b");
-    data_b.update_input_desc_x(b_desc);
-    data_b.update_output_desc_y(b_desc);
-
-    ge::TensorDesc c_desc(ge::Shape({16, 512, 4096}), ge::FORMAT_NHWC, DT_FLOAT16);
-    auto data_c = op::Data("data_c");
-    data_c.update_input_desc_x(c_desc);
-    data_c.update_output_desc_y(c_desc);
-
-    auto batch_matmul_op = op::BatchMatMul("BatchMatMul")
-        .set_input_x1(data_a)
-        .set_input_x2(data_b)
-        .set_attr_adj_x1(false)
-        .set_attr_adj_x2(false);
-
-    auto fastgelugrad_op = op::FastGeluGrad("FastGeluGrad")
-        .set_input_dy(data_c)
-        .set_input_x(batch_matmul_op);
-
-    std::vector<Operator> inputs{data_a, data_b, data_c};
-    std::vector<Operator> outputs{fastgelugrad_op};
-
-    graph.SetInputs(inputs).SetOutputs(outputs);
-
-    ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
-    fe::FusionPassTestUtils::InferShapeAndType(compute_graph_ptr);
-    Status res = fe::RunBufferFusionPass("TbeFullyconnectionElemwiseDequantFusionPass",
-                                           fe::BUILT_IN_AI_CORE_BUFFER_FUSION_PASS,
-                                           compute_graph_ptr);
-    EXPECT_EQ(res, SUCCESS);
+  return mapping;
 }
 
-TEST_F(tbe_fullyconnection_elemwise_fusion_test, fc_add_relu6_test_1) {
-  ge::Graph graph("fc_add_relu6_test_1");
+fe::BufferFusionMapping TbeFullyconnectionElemwiseFusionPassTest::ConstructFusionMappingOfAddRelu6(
+    const ComputeGraphPtr compute_graph_ptr) {
+  vector<ge::NodePtr> nodes_fc;
+  vector<ge::NodePtr> nodes_elemwise;
+  vector<ge::NodePtr> nodes_elemwise1;
+  vector<ge::NodePtr> nodes_input;
 
-  std::vector<int64_t> dims_x{1,4,4,18};
-  std::vector<int64_t> dims_w{4,4,18,18};
-  std::vector<int64_t> dims_b{18};
-  std::vector<int64_t> dims_y{1,1,1,18};
-  std::vector<int64_t> dims_add{1};
+  for (const auto &ptr_node : compute_graph_ptr->GetAllNodes()) {
+    auto desc = ptr_node->GetOpDesc();
+    if (desc->GetType() == "FullyConnection") {
+      nodes_fc.push_back(ptr_node);
+    } else if (desc->GetType() == "Add") {
+      nodes_elemwise.push_back(ptr_node);
+    } else if (desc->GetType() == "Relu6") {
+      nodes_elemwise1.push_back(ptr_node);
+    } else if (desc->GetName() == "data_c") {
+      nodes_input.push_back(ptr_node);
+    }
+  }
 
-  ge::TensorDesc desc_x(ge::Shape(dims_x), ge::FORMAT_NHWC, ge::DT_FLOAT16);
-  ge::TensorDesc desc_w(ge::Shape(dims_w), ge::FORMAT_HWCN, DT_FLOAT16);
-  ge::TensorDesc desc_b(ge::Shape(dims_b), ge::FORMAT_ND, DT_FLOAT16);
-  ge::TensorDesc desc_fc_y(ge::Shape(dims_y), ge::FORMAT_NHWC, DT_FLOAT16);
-  ge::TensorDesc desc_add(ge::Shape(dims_add), ge::FORMAT_ND, DT_FLOAT16);
+  BufferFusionPattern *pattern;
+  EXPECT_TRUE(FusionPassTestUtils::GetBufferFusionPattern(patterns, "TbeFullyconnectionAddRelu6FusionPass", &pattern));
+  OP_LOGD("test TbeFullyconnectionElemwiseFusionPassTest", "desc size(%zu) in pattern(%s)",
+          pattern->GetOpDescs().size(), pattern->GetName().c_str());
 
-  auto data_x = op::Data("data_x");
-  auto data_w = op::Data("data_w");
+  BufferFusionMapping mapping;
+  for (const auto &desc : pattern->GetOpDescs()) {
+    if (desc->desc_name == "FullyConnection/MatMul/BatchMatmul") {
+      mapping[desc] = nodes_fc;
+    } else if (desc->desc_name == "eltwise1") {
+      mapping[desc] = nodes_elemwise;
+    } else if (desc->desc_name == "eltwise2") {
+      mapping[desc] = nodes_elemwise1;
+    } else if (desc->desc_name == "InputData") {
+      mapping[desc] = nodes_input;
+    }
+  }
+
+  return mapping;
+}
+
+TEST_F(TbeFullyconnectionElemwiseFusionPassTest, tbe_fullyconnection_elemwise_fusion_double_out) {
+  ge::Graph graph(this->test_info_->name());
+
+  ge::TensorDesc a_desc(ge::Shape({72, 32, 7, 16, 16}), ge::FORMAT_FRACTAL_NZ, ge::DT_FLOAT16);
+  auto data_a = op::Data("data_a");
+  data_a.update_input_desc_x(a_desc);
+  data_a.update_output_desc_y(a_desc);
+
+  ge::TensorDesc b_desc(ge::Shape({128, 32, 16, 16}), ge::FORMAT_FRACTAL_NZ, ge::DT_FLOAT16);
   auto data_b = op::Data("data_b");
-  auto fc_op = op::FullyConnection("fc")
-                   .set_input_x(data_x)
-                   .set_input_w(data_w)
-                   .set_input_b(data_b)
-                   .set_attr_num_output(18);
-  fc_op.update_input_desc_x(desc_x);
-  fc_op.update_input_desc_w(desc_w);
-  fc_op.update_input_desc_b(desc_b);
-  fc_op.update_output_desc_y(desc_fc_y);
+  data_b.update_input_desc_x(b_desc);
+  data_b.update_output_desc_y(b_desc);
 
-  auto data_add = op::Data("data_add");
-  auto add_op = op::Add("add")
-                    .set_input_x1(fc_op)
-                    .set_input_x2(data_add);
-  add_op.update_input_desc_x1(desc_fc_y);
-  add_op.update_input_desc_x2(desc_add);
-  add_op.update_output_desc_y(desc_fc_y);
+  auto batch_matmul_op = op::BatchMatMulV2("BatchMatMulV2")
+                             .set_input_x1(data_a)
+                             .set_input_x2(data_b)
+                             .set_attr_adj_x1(false)
+                             .set_attr_adj_x2(false);
+  batch_matmul_op.update_output_desc_y(
+      ge::TensorDesc(ge::Shape({72, 128, 7, 16, 16}), ge::FORMAT_FRACTAL_NZ, ge::DT_FLOAT16));
 
-  auto relu6_op = op::Relu6("relu6")
-                    .set_input_x(add_op);
-  relu6_op.update_input_desc_x(desc_fc_y);
-  relu6_op.update_output_desc_y(desc_fc_y);
+  auto relu_op = op::Relu("Relu").set_input_x(batch_matmul_op);
+  relu_op.update_output_desc_y(ge::TensorDesc(ge::Shape({72, 128, 7, 16, 16}), ge::FORMAT_FRACTAL_NZ, ge::DT_FLOAT16));
 
-  std::vector<Operator> inputs{data_x, data_w, data_b, data_add};
-  std::vector<Operator> outputs{relu6_op};
+  ge::TensorDesc c_desc(ge::Shape({72, 128, 7, 16, 16}), ge::FORMAT_FRACTAL_NZ, ge::DT_FLOAT16);
+  auto data_c = op::Data("data_c");
+  data_c.update_input_desc_x(c_desc);
+  data_c.update_output_desc_y(c_desc);
+
+  auto add_op = op::Add("add_op").set_input_x1(batch_matmul_op).set_input_x2(data_c);
+  add_op.update_output_desc_y(ge::TensorDesc(ge::Shape({72, 128, 7, 16, 16}), ge::FORMAT_FRACTAL_NZ, ge::DT_FLOAT16));
+
+  std::vector<Operator> inputs{data_a, data_b, data_c};
+  std::vector<Operator> outputs{add_op, relu_op};
 
   graph.SetInputs(inputs).SetOutputs(outputs);
 
   ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
-  Status res = fe::RunBufferFusionPass("TbeFullyconnectionElemwiseDequantFusionPass",
-                                       fe::BUILT_IN_AI_CORE_BUFFER_FUSION_PASS,
-                                       compute_graph_ptr);
-  EXPECT_EQ(res, SUCCESS);
+
+  vector<fe::AxisSplitMap> asm_mm{
+      CreateAxisSplitMap({CreateInputSplitInfo(0, {2})}, {CreateOutputSplitInfo(0, {2})}),  // m
+      CreateAxisSplitMap({CreateInputSplitInfo(1, {0})}, {CreateOutputSplitInfo(0, {1})}),  // n
+      CreateAxisSplitMap({CreateInputSplitInfo(0, {0})}, {CreateOutputSplitInfo(0, {0})}),  // batch
+  };
+  EXPECT_TRUE(SetSplitMapToNodeByType(compute_graph_ptr, asm_mm, {"BatchMatMulV2"}));
+  vector<fe::AxisSplitMap> asm_relu{
+      CreateAxisSplitMap({CreateInputSplitInfo(0, {2})}, {CreateOutputSplitInfo(0, {2})}),
+      CreateAxisSplitMap({CreateInputSplitInfo(0, {1})}, {CreateOutputSplitInfo(0, {1})}),
+      CreateAxisSplitMap({CreateInputSplitInfo(0, {0})}, {CreateOutputSplitInfo(0, {0})}),
+  };
+  EXPECT_TRUE(SetSplitMapToNodeByType(compute_graph_ptr, asm_relu, {"Relu"}));
+  vector<fe::AxisSplitMap> asm_add{
+      CreateAxisSplitMap({CreateInputSplitInfo(0, {0}), CreateInputSplitInfo(1, {0})}, {CreateOutputSplitInfo(0, {0})}),
+      CreateAxisSplitMap({CreateInputSplitInfo(0, {1}), CreateInputSplitInfo(1, {1})}, {CreateOutputSplitInfo(0, {1})}),
+      CreateAxisSplitMap({CreateInputSplitInfo(0, {2}), CreateInputSplitInfo(1, {2})},
+                         {CreateOutputSplitInfo(0, {2})})};
+  EXPECT_TRUE(SetSplitMapToNodeByType(compute_graph_ptr, asm_add, {"Add"}));
+
+  auto mapping = ConstructFusionMappingOfDoubleOut(compute_graph_ptr);
+  Status res = fe::FusionPassTestUtils::RunBufferFusionPass(ptr_buffer_fusion_pass_func.get(), patterns,
+                                                            compute_graph_ptr, mapping);
+  EXPECT_EQ(res, fe::SUCCESS);
+
+  auto real_split_info_str = GetFusionOpSliceInfoStrFromGraph(compute_graph_ptr);
+  auto expect_split_inf_str = CreateFusionOpSliceInfoStrFromSplitMap(
+      {CreateAxisSplitMap({CreateInputSplitInfo(0, {2})},
+                          {CreateOutputSplitInfo(0, {2}), CreateOutputSplitInfo(1, {2})}),
+       CreateAxisSplitMap({CreateInputSplitInfo(1, {0})},
+                          {CreateOutputSplitInfo(0, {1}), CreateOutputSplitInfo(1, {1})}),
+       CreateAxisSplitMap({CreateInputSplitInfo(0, {0})},
+                          {CreateOutputSplitInfo(0, {0}), CreateOutputSplitInfo(1, {0})})});
+  EXPECT_EQ(real_split_info_str, expect_split_inf_str);
+}
+
+TEST_F(TbeFullyconnectionElemwiseFusionPassTest, tbe_fullyconnection_elemwise_fusion_add_relu6) {
+  ge::Graph graph(this->test_info_->name());
+
+  ge::TensorDesc a_desc(ge::Shape({1, 1, 16, 16}), ge::FORMAT_FRACTAL_NZ, ge::DT_FLOAT16);
+  auto data_a = op::Data("data_a");
+  data_a.update_input_desc_x(a_desc);
+  data_a.update_output_desc_y(a_desc);
+
+  ge::TensorDesc b_desc(ge::Shape({1, 1, 16, 16}), ge::FORMAT_FRACTAL_NZ, ge::DT_FLOAT16);
+  auto data_b = op::Data("data_b");
+  data_b.update_input_desc_x(b_desc);
+  data_b.update_output_desc_y(b_desc);
+
+  auto batch_matmul_op = op::FullyConnection("FullyConnection").set_input_x(data_a).set_input_w(data_b);
+
+  ge::TensorDesc c_desc(ge::Shape({1, 1, 16, 16}), ge::FORMAT_FRACTAL_NZ, ge::DT_FLOAT16);
+  auto data_c = op::Data("data_c");
+  data_c.update_input_desc_x(c_desc);
+  data_c.update_output_desc_y(c_desc);
+
+  auto add_op = op::Add("add_op").set_input_x1(batch_matmul_op).set_input_x2(data_c);
+
+  auto relu_op = op::Relu6("relu6").set_input_x(add_op);
+
+  std::vector<Operator> inputs{data_a, data_b, data_c};
+  std::vector<Operator> outputs{relu_op};
+
+  graph.SetInputs(inputs).SetOutputs(outputs);
+
+  ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
+
+  vector<fe::AxisSplitMap> asm_mm{
+      CreateAxisSplitMap({CreateInputSplitInfo(0, {1})}, {CreateOutputSplitInfo(0, {1})}),
+      CreateAxisSplitMap({CreateInputSplitInfo(1, {0})}, {CreateOutputSplitInfo(0, {0})}),
+  };
+  EXPECT_TRUE(SetSplitMapToNodeByType(compute_graph_ptr, asm_mm, {"FullyConnection"}));
+  vector<fe::AxisSplitMap> asm_add{
+      CreateAxisSplitMap({CreateInputSplitInfo(0, {0}), CreateInputSplitInfo(1, {0})}, {CreateOutputSplitInfo(0, {0})}),
+      CreateAxisSplitMap({CreateInputSplitInfo(0, {1}), CreateInputSplitInfo(1, {1})}, {CreateOutputSplitInfo(0, {1})}),
+      CreateAxisSplitMap({CreateInputSplitInfo(0, {2}), CreateInputSplitInfo(1, {2})},
+                         {CreateOutputSplitInfo(0, {2})})};
+  EXPECT_TRUE(SetSplitMapToNodeByType(compute_graph_ptr, asm_add, {"Add"}));
+  vector<fe::AxisSplitMap> asm_relu6{
+      CreateAxisSplitMap({CreateInputSplitInfo(0, {2})}, {CreateOutputSplitInfo(0, {2})}),
+      CreateAxisSplitMap({CreateInputSplitInfo(0, {1})}, {CreateOutputSplitInfo(0, {1})}),
+      CreateAxisSplitMap({CreateInputSplitInfo(0, {0})}, {CreateOutputSplitInfo(0, {0})}),
+  };
+  EXPECT_TRUE(SetSplitMapToNodeByType(compute_graph_ptr, asm_relu6, {"Relu6"}));
+
+  auto mapping = ConstructFusionMappingOfAddRelu6(compute_graph_ptr);
+  Status res = fe::FusionPassTestUtils::RunBufferFusionPass(ptr_buffer_fusion_pass_func.get(), patterns,
+                                                            compute_graph_ptr, mapping);
+  EXPECT_EQ(res, fe::SUCCESS);
+
+  auto real_split_info_str = GetFusionOpSliceInfoStrFromGraph(compute_graph_ptr);
+  auto expect_split_inf_str = CreateFusionOpSliceInfoStrFromSplitMap(
+      {CreateAxisSplitMap({CreateInputSplitInfo(0, {1})}, {CreateOutputSplitInfo(0, {1})}),
+       CreateAxisSplitMap({CreateInputSplitInfo(1, {0})}, {CreateOutputSplitInfo(0, {0})})});
+  EXPECT_EQ(real_split_info_str, expect_split_inf_str);
 }

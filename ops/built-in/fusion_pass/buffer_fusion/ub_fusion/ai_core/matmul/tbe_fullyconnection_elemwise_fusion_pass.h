@@ -58,6 +58,7 @@ private:
   Status CheckElemwiseNode(const ge::NodePtr &elemwise_node, const std::vector<ge::NodePtr> &fc_nodes,
                            const std::vector<ge::NodePtr> &relu_nodes, const std::vector<ge::NodePtr> &dequant_nodes,
                            vector<ge::NodePtr> &fusion_nodes);
+  void SetSplitInfoOfMultiOut(const std::vector<ge::NodePtr> &nodes_fc, std::vector<AxisSplitMap> *split_maps);
 };
 
 }  // namespace fe

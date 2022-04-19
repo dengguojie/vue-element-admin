@@ -125,4 +125,13 @@ void AddElemwiseSplitMap(std::vector<AxisSplitMap>& split_maps, ge::NodePtr& ele
   }
 }
 
+OutputSplitInfo CopyOutputSplitInfo(const OutputSplitInfo &src) {
+  OutputSplitInfo dst;
+  dst.Initialize();
+  auto axis = src.GetAxis();
+  dst.SetAxis(axis);
+  dst.SetIndex(src.GetIndex());
+  return dst;
+}
+
 }  // namespace fe

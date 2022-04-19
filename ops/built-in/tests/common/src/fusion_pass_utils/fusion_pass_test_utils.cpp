@@ -153,4 +153,60 @@ namespace fe {
         }
         return SUCCESS;
     }
+
+    Status FusionPassTestUtils::RunBufferFusionPass(BufferFusionPassBase *ptr_buffer_fusion_pass_func,
+                                                    const vector<BufferFusionPattern *> patterns,
+                                                    ge::ComputeGraphPtr &compute_graph_ptr,
+                                                    const BufferFusionMapping &mapping, const string &name_pattern) {
+        for (const auto &pattern : patterns) {
+            if (name_pattern != "" and pattern->GetName() != name_pattern) {
+                continue;
+            }
+
+            if (mapping.empty()) {
+                std::cout << "BufferFusionMapping is empty" << std::endl;
+                continue;
+            }
+
+            if (mapping.size() != pattern->GetOpDescs().size()) {
+                std::cout << "mapping size(" << mapping.size() << ") not match desc size("
+                          << pattern->GetOpDescs().size() << ") in pattern(" << pattern->GetName() << ")" << std::endl;
+                continue;
+            } else {
+                std::cout << "match mapping size with pattern(" << pattern->GetName() << ")" << std::endl;
+            }
+            bool match_pattern = true;
+            for (const auto desc : pattern->GetOpDescs()) {
+                auto ptr_nodes_match_desc = const_cast<BufferFusionMapping &>(mapping)[desc];
+                if (ptr_nodes_match_desc.size() < desc->repeate_min or
+                    ptr_nodes_match_desc.size() > desc->repeate_max) {
+                    std::cout << desc->desc_name << " repeat num not match, real is " << ptr_nodes_match_desc.size()
+                              << std::endl;
+                    match_pattern = false;
+                    break;
+                }
+            }
+
+            if (match_pattern) {
+                vector<ge::NodePtr> fusion_nodes;
+                auto result = ptr_buffer_fusion_pass_func->GetFusionNodes(mapping, fusion_nodes);
+                if (result == fe::SUCCESS) {
+                    return fe::SUCCESS;
+                }
+            }
+        }
+        return fe::FAILED;
+    }
+
+    bool FusionPassTestUtils::GetBufferFusionPattern(const vector<BufferFusionPattern *> patterns,
+                                                     const string &name_pattern, BufferFusionPattern **pattern) {
+        for (auto curr_pattern : patterns) {
+            if (curr_pattern->GetName() == name_pattern) {
+                *pattern = curr_pattern;
+                return true;
+            }
+        }
+
+        return false;
+    }
 }
