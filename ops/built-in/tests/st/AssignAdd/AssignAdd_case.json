@@ -1,0 +1,32 @@
+[
+  {
+    "op": "AssignAdd",
+    "calc_expect_func_file":"test_assign_add_golden.py:calc_expect_func",
+    "input_desc": [
+      {
+        "shape": [-2],
+        "typical_shape": [16, 16],
+        "format": "ND",
+        "name": "ref",
+        "type": "float"
+      },
+      {
+        "shape": [-2],
+        "typical_shape": [16, 16],
+        "format": "ND",
+        "name": "value",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [16, 16],
+        "format": "ND",
+        "name": "out",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_AssignSub_000"
+  }
+]

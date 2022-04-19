@@ -25,8 +25,17 @@ case1 = {"params": [{"shape": (1, ), "dtype": "float16", "format": "ND", "ori_sh
          "expect": "success",
          "support_expect": True}
 
+case2 = {"params": [{"shape": (-2,), "dtype": "float16", "format": "ND", "ori_shape": (-2,), "ori_format": "ND"},
+                    {"shape": (-2,), "dtype": "float16", "format": "ND", "ori_shape": (-2,), "ori_format": "ND"},
+                    {"shape": (-2,), "dtype": "float16", "format": "ND", "ori_shape": (-2,), "ori_format": "ND"},
+                    {"shape": (-2,), "dtype": "float16", "format": "ND", "ori_shape": (-2,), "ori_format": "ND"}],
+         "case_name": "apply_gradient_descent_2",
+         "expect": "success",
+         "support_expect": True}
+
 
 ut_case.add_case("Ascend910A", case1)
+ut_case.add_case("Ascend910A", case2)
 
 if __name__ == "__main__":
     ut_case.run("Ascend910A")

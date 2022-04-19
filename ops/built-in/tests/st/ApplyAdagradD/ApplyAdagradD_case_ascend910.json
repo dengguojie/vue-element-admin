@@ -175,5 +175,63 @@
         "value": true
       }
     ]
+  },
+  {
+    "case_name": "ApplyAdagradD_dynamic_rank_case1_ascend910a",
+    "calc_expect_func_file" : "test_applyadagaradd_golden.py:calc_expect_func",
+    "op": "ApplyAdagradD",
+    "input_desc": [
+      {
+        "format": "ND",
+        "type": "float32",
+        "shape": [-2],
+        "typical_shape": [128, 16],
+        "name": "var"
+      },
+      {
+        "format": "ND",
+        "type": "float32",
+        "shape": [-2],
+        "typical_shape": [128, 16],
+        "name": "accum"
+      },
+      {
+        "format": "ND",
+        "type": "float32",
+        "shape": [-2],
+        "typical_shape": [1],
+        "name": "lr"
+      },
+      {
+        "format": "ND",
+        "type": "float32",
+        "shape": [-2],
+        "typical_shape": [128, 16],
+        "name": "grad"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "type": "float32",
+        "shape": [-2],
+        "typical_shape": [128, 16],
+        "name": "var_out"
+      },
+      {
+        "format": "ND",
+        "type": "float32",
+        "shape": [-2],
+        "typical_shape": [128, 16],
+        "name": "accum_out"
+      }
+    ],
+    "attr": [
+      {
+        "name": "update_slots",
+        "type": "bool",
+        "value": true
+      }
+    ]
   }
 ]

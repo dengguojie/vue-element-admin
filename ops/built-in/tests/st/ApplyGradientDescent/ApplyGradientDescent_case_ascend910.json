@@ -79,5 +79,42 @@
     ],
     "attr": [],
     "case_name": "test_ApplyGradientDescent_000"
+  },
+  {
+    "op": "ApplyGradientDescent",
+    "calc_expect_func_file" : "test_ApplyGradientDescent_golden.py:calc_expect_func",
+    "input_desc": [
+      {
+        "shape": [-2],
+        "typical_shape": [128, 16],
+        "format": "ND",
+        "name": "var",
+        "type": "float16"
+      },
+      {
+        "shape": [-2],
+        "typical_shape": [1],
+        "format": "ND",
+        "name": "alpha",
+        "type": "float16"
+      },
+      {
+        "shape": [-2],
+        "typical_shape": [128, 16],
+        "format": "ND",
+        "name": "delta",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [128, 16],
+        "format": "ND",
+        "name": "out",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_dynamic_rank_ApplyGradientDescent_001"
   }
 ]
