@@ -1,0 +1,44 @@
+[
+    {"compile_flag": 1},
+    {
+      "op": "DepthToSpace",
+      "case_name" : "test_depth_to_space_001",
+      "calc_expect_func_file": "test_depth_to_space_st.py:depth_to_space_forward",
+       "input_desc": [
+         {
+           "format": "NCHW",
+           "shape": [1, 8, 2, 3],
+           "type": "float32",
+           "value_range": [[0, 1]],
+           "data_distribute" : "uniform",
+           "name": "x"
+         }
+       ],
+       "output_desc": [
+         {
+           "format": "NCHW",
+           "shape": [1, 2, 4, 6],
+           "type": "float32",
+           "name": "y"
+         }
+       ],
+       "attr": [
+           {
+            "name": "block_size",
+            "value": 2,
+            "type": "int"
+           },
+           {
+            "name": "mode",
+            "value": "CRD",
+            "type": "string"
+           },
+           {
+            "name": "data_format",
+            "value": "NCHW",
+            "type": "string"
+           }
+       ]
+    }
+  ]
+  

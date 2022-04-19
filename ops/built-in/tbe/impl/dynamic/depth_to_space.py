@@ -108,7 +108,6 @@ def depth_to_space(x, y, block_size, mode='DCR', data_format='NHWC', kernel_name
         "ub_size": ub_size // block_size_1,
         "core_num": core_num,
         "dtype": input_dtype,
-        "block_size": block_size,
         "mode": mode,
     })
     # this "global_variable_link" flag suggest ccec.py do link without "-r" option

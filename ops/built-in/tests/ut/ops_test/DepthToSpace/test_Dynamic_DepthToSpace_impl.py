@@ -62,6 +62,30 @@ case_mode_fail = {
         "support_expect": True
     }
 
+case_dynamic_rank = {
+        "params": [
+            {
+                "shape": (-2,),
+                "dtype": "float16",
+                "ori_shape": (-2,),
+                "ori_format": "NHWC",
+                "format": "NHWC"
+            },
+            {
+                "shape": (-2,),
+                "dtype": "float16",
+                "ori_shape": (-2,),
+                "ori_format": "NHWC",
+                "format": "NHWC"
+            },
+            2,
+            "CRD"
+        ],
+        "case_name": "depth_to_space_case_3",
+        "expect": "success",
+        "format_expect": [],
+        "support_expect": True
+    }
 
 def test_get_op_support_info_dynamic_depthtospace(test_arg):
     x = {"format": "ND","ori_format": "ND", "dtype": "float16", "shape": (-1, -1, -1), "ori_shape": (-1, -1, -1),
@@ -79,7 +103,9 @@ ut_case.add_case(
                                   ((1, None), (1, None), (1, None), (1, None)),
                                   ((1, None), (1, None), (1, None), (1, None)), "NHWC", "NHWC", "float16",
                                   "depthtospace_case", 2, "success"))
+
 ut_case.add_case("all", case_mode_fail)
+ut_case.add_case("all", case_dynamic_rank)
 
 if __name__ == '__main__':
-    ut_case.run("Ascend910A")
+    ut_case.run(["Ascend910A", "Ascend310"])

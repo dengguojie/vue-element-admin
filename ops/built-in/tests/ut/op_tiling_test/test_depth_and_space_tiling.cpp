@@ -47,7 +47,7 @@ class DepthAndSpaceTiling : public testing::Test {
 
 static void run_case(std::vector<int64_t> input_shape, std::vector<int64_t> output_shape, std::string data_format,
                      std::string data_dtype, std::string compile_info, std::string expect_tiling,
-                     std::string case_name) {
+                     std::string case_name, int64_t block_size) {
   using namespace ut_util;
   // no need out the log: OP_EVENT("OP_TILING_UTEST", "case_name = %s", case_name.c_str());
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("DepthToSpace");
@@ -59,6 +59,7 @@ static void run_case(std::vector<int64_t> input_shape, std::vector<int64_t> outp
                           TypeUtils::SerialStringToFormat(data_format), {});
   TENSOR_OUTPUT_WITH_SHAPE(test_op, y, output_shape, StringToDtype(data_dtype),
                            TypeUtils::SerialStringToFormat(data_format), {});
+  test_op.SetAttr("block_size", block_size);
 
   optiling::utils::OpRunInfo runInfo;
   const int64_t profiling_test_num = 0;
@@ -85,7 +86,8 @@ TEST_F(DepthAndSpaceTiling, depthandspace_tiling_0) {
       "0 0 0 0 0 0 0 0 0 0 0 0 0 1 1 32 0 0 32 0 0 32 1 0 0 0 1 0 0 1 1 0 0 2 1 0 0 3 1 0 0 4 1 0 0 5 1 0 0 6 1 0 0 7 "
       "1 0 0 8 1 0 0 9 1 0 0 10 1 0 0 11 1 0 0 12 1 0 0 13 1 0 0 14 1 0 0 15 1 0 0 16 1 0 0 17 1 0 0 18 1 0 0 19 1 0 0 "
       "20 1 0 0 21 1 0 0 22 1 0 0 23 1 0 0 24 1 0 0 25 1 0 0 26 1 0 0 27 1 0 0 28 1 0 0 29 1 0 0 30 1 0 0 31 ";
-  run_case(input, output, input_format, input_dtype, compileInfo, expect_tiling, this->test_info_->name());
+  int64_t block_size = 2;
+  run_case(input, output, input_format, input_dtype, compileInfo, expect_tiling, this->test_info_->name(), block_size);
 }
 
 TEST_F(DepthAndSpaceTiling, depthandspace_tiling_1) {
@@ -103,7 +105,8 @@ TEST_F(DepthAndSpaceTiling, depthandspace_tiling_1) {
       "0 0 0 0 0 0 0 0 0 0 0 0 0 1 1 64 0 0 16 0 0 16 2 0 0 0 2 0 0 2 2 0 0 4 2 0 0 6 2 0 0 8 2 0 0 10 2 0 0 12 2 0 0 "
       "14 2 0 0 16 2 0 0 18 2 0 0 20 2 0 0 22 2 0 0 24 2 0 0 26 2 0 0 28 2 0 0 30 2 0 0 32 2 0 0 34 2 0 0 36 2 0 0 38 "
       "2 0 0 40 2 0 0 42 2 0 0 44 2 0 0 46 2 0 0 48 2 0 0 50 2 0 0 52 2 0 0 54 2 0 0 56 2 0 0 58 2 0 0 60 2 0 0 62 ";
-  run_case(input, output, input_format, input_dtype, compileInfo, expect_tiling, this->test_info_->name());
+  int64_t block_size = 2;
+  run_case(input, output, input_format, input_dtype, compileInfo, expect_tiling, this->test_info_->name(), block_size);
 }
 
 TEST_F(DepthAndSpaceTiling, depthandspace_tiling_2) {
@@ -127,7 +130,8 @@ TEST_F(DepthAndSpaceTiling, depthandspace_tiling_2) {
       "0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 "
       "0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 "
       "0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 ";
-  run_case(input, output, input_format, input_dtype, compileInfo, expect_tiling, this->test_info_->name());
+  int64_t block_size = 2;
+  run_case(input, output, input_format, input_dtype, compileInfo, expect_tiling, this->test_info_->name(), block_size);
 }
 
 TEST_F(DepthAndSpaceTiling, depthandspace_tiling_3) {
@@ -150,7 +154,8 @@ TEST_F(DepthAndSpaceTiling, depthandspace_tiling_3) {
       "0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 "
       "0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 "
       "0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 ";
-  run_case(input, output, input_format, input_dtype, compileInfo, expect_tiling, this->test_info_->name());
+  int64_t block_size = 2;
+  run_case(input, output, input_format, input_dtype, compileInfo, expect_tiling, this->test_info_->name(), block_size);
 }
 
 TEST_F(DepthAndSpaceTiling, depthandspace_tiling_4) {
@@ -173,5 +178,6 @@ TEST_F(DepthAndSpaceTiling, depthandspace_tiling_4) {
       "0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 "
       "0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 "
       "0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 ";
-  run_case(input, output, input_format, input_dtype, compileInfo, expect_tiling, this->test_info_->name());
+  int64_t block_size = 2;
+  run_case(input, output, input_format, input_dtype, compileInfo, expect_tiling, this->test_info_->name(), block_size);
 }

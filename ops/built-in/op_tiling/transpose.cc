@@ -77,6 +77,8 @@ static RuntimeInfo runtimeInfoList[MAX_INFO_NUM];
 static ShapeInfo shapeInfoList[MAX_INFO_NUM];
 static vector<int64_t> tilingVecList[MAX_INFO_NUM];
 static const int T_WORKSPACE_SIZE = 1024;
+// define batch_dims of DepthToSpace and SpaceToDepth block_size idx
+const struct ops::AttrBase BLOCK_SIZE_DIMS_INFO(0, "block_size");
 
 bool TransposeParseFunc(const std::string& op_type,
                         const nlohmann::json& compile_info,
@@ -91,12 +93,7 @@ bool TransposeParseFunc(const std::string& op_type,
   OP_TILING_CHECK(!GetCompileValue(all_vars, "ub_size", compile_value.ub_size),
                   VECTOR_INNER_ERR_REPORT_TILIING(op_type.c_str(), "TransposeParseFunc, get ub_size error"),
                   return false);
-  compile_value.block_size = 0;
-  if ((op_type == "DepthToSpace") || (op_type == "SpaceToDepth")) {
-    OP_TILING_CHECK(!GetCompileValue(all_vars, "block_size", compile_value.block_size),
-                    VECTOR_INNER_ERR_REPORT_TILIING(op_type.c_str(), "TransposeParseFunc, get block_size error"),
-                    return false);
-  }
+
   GetCompileValue(all_vars, "mode", compile_value.mode, "DCR");
   return true;
 }
@@ -5521,10 +5518,12 @@ bool TransposeCalcTilingData(const string& opType, const CompilerInfo& compilerI
   return res;
 }
 
-bool GetCompileParams(const string& opType, const TransposeInputCompile& opCompileInfoJson, CompilerInfo& info) {
+bool GetCompileParams(const string& opType, const ge::Operator& op_paras,
+                      const TransposeInputCompile& opCompileInfoJson, CompilerInfo& info) {
   OP_LOGD(opType.c_str(), "Entering GetCompileParams.");
 
   info.opType = opType;
+  info.blockSize = 0;
   info.coreNum = opCompileInfoJson.core_num;
   info.ubSize = opCompileInfoJson.ub_size;
   info.ubSizeCouldUse = info.ubSize - UB_RESERVED_BLOCK_SIZE;
@@ -5537,7 +5536,9 @@ bool GetCompileParams(const string& opType, const TransposeInputCompile& opCompi
 
   // for depthtospace and spacetodepth
   if ((opType == "DepthToSpace") || (opType == "SpaceToDepth")) {
-    info.blockSize = opCompileInfoJson.block_size;
+    OP_TILING_CHECK(!ops::GetAttrValue(op_paras, BLOCK_SIZE_DIMS_INFO, info.blockSize),
+                    VECTOR_INNER_ERR_REPORT_TILIING(opType.c_str(), "GetCompileParams, get block_size error"),
+                    return false);
     OP_LOGD(opType.c_str(), "GetCompileParams, blockSize[%d].", info.blockSize);
   }
   // for depthtospace
@@ -6340,7 +6341,7 @@ bool TransposeTiling(const std::string& opType, const ge::Operator& opParas, con
   shapeInfo.id = id;
   runtimeInfo.id = id;
 
-  if (GetCompileParams(opType, opInfo, compilerInfo) == false) {
+  if (GetCompileParams(opType, opParas, opInfo, compilerInfo) == false) {
     ReleaseID(id);
     return false;
   }

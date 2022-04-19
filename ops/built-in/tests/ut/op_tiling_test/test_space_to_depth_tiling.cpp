@@ -47,7 +47,7 @@ class SpaceToDepthTiling : public testing::Test {
 
 static void run_case(std::vector<int64_t> input_shape, std::vector<int64_t> output_shape, std::string data_format,
                      std::string data_dtype, std::string compile_info, std::string expect_tiling,
-                     std::string case_name) {
+                     std::string case_name, int64_t block_size) {
   using namespace ut_util;
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("SpaceToDepth");
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
@@ -58,6 +58,7 @@ static void run_case(std::vector<int64_t> input_shape, std::vector<int64_t> outp
                           TypeUtils::SerialStringToFormat(data_format), {});
   TENSOR_OUTPUT_WITH_SHAPE(test_op, y, output_shape, StringToDtype(data_dtype),
                            TypeUtils::SerialStringToFormat(data_format), {});
+  test_op.SetAttr("block_size", block_size);
 
   optiling::utils::OpRunInfo runInfo;
   const int64_t profiling_test_num = 1;
@@ -84,5 +85,6 @@ TEST_F(SpaceToDepthTiling, SpaceToDepth_tiling_0) {
       "0 0 0 0 0 0 0 0 0 0 0 0 0 1 1 32 0 0 32 0 0 32 1 0 0 0 1 0 0 1 1 0 0 2 1 0 0 3 1 0 0 4 1 0 0 5 1 0 0 6 1 0 0 7 "
       "1 0 0 8 1 0 0 9 1 0 0 10 1 0 0 11 1 0 0 12 1 0 0 13 1 0 0 14 1 0 0 15 1 0 0 16 1 0 0 17 1 0 0 18 1 0 0 19 1 0 0 "
       "20 1 0 0 21 1 0 0 22 1 0 0 23 1 0 0 24 1 0 0 25 1 0 0 26 1 0 0 27 1 0 0 28 1 0 0 29 1 0 0 30 1 0 0 31 ";
-  run_case(input, output, input_format, input_dtype, compileInfo, expect_tiling, this->test_info_->name());
+  int64_t block_size = 2;
+  run_case(input, output, input_format, input_dtype, compileInfo, expect_tiling, this->test_info_->name(), block_size);
 }
