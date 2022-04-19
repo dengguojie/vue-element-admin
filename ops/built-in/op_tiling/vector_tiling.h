@@ -67,19 +67,18 @@ private:
 };
 
 class AutoTilingHandler: public CompileInfoBase {
-  public:
+public:
   AutoTilingHandler(const std::string& o, const std::string& p) : op_type(o), pattern(p) {}
   virtual bool DoTiling(const ge::Operator& op_paras, utils::OpRunInfo& run_info) const = 0;
   virtual bool DoTiling(const ge::Operator& op_paras, utils::OpRunInfo& run_info, const OpInfo& op_info) const = 0;
   virtual ~AutoTilingHandler() = default;
 
-  protected:
+protected:
   const std::string op_type;
   const std::string pattern;
 };
 
 struct VarAttr {
-  VarAttr() = default;
   VarAttr(const std::string& _name, const std::string& _type, const std::string& _src_type, const int32_t& _length):
           name (_name), type (_type), src_type (_src_type), length (_length) {}
   std::string name;
@@ -88,11 +87,22 @@ struct VarAttr {
   int32_t length{0};
 };
 
-bool ParseVarAttr(const nlohmann::json& json_info,
-                  std::unordered_map<std::uint64_t, vector<VarAttr>>& var_attr_map);
 
-bool SetAttrVars(const std::string& op_type, const ge::Operator& op_paras,
-                 utils::OpRunInfo& run_info, const std::vector<VarAttr>& all_attr_vars);
+class VarAttrWrap {
+public:
+  bool ParseVarAttr(const nlohmann::json& json_info);
+  bool WriteVarAttrs(const uint64_t tiling_key, const std::string& op_type, const ge::Operator& op_paras,
+                     utils::OpRunInfo& run_info) const;
+
+private:
+  bool SetVarAttrs(const std::string& op_type, const ge::Operator& op_paras,
+                   utils::OpRunInfo& run_info, const vector<VarAttr>& var_attrs) const;
+
+private:
+  int32_t mode{-1};
+  std::vector<VarAttr> var_attrs;
+  std::unordered_map<std::uint64_t, vector<VarAttr>> var_attr_map;
+};
 
 std::shared_ptr<AutoTilingHandler> CreateAutoTilingHandler(const std::string& op_type, const std::string& pattern,
                                                            const nlohmann::json& parsed_compile_info);

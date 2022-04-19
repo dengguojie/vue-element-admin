@@ -55,7 +55,7 @@ struct ElewiseCompileInfo {
   uint32_t elewise_vars_size{0};
   // tiling info from broadcast
   bool broadcast_pattern{false};
-  std::unordered_map<uint64_t, std::vector<VarAttr>> elewise_var_attr;
+  VarAttrWrap varAttrWrap;
 
  private:
   void ParseOutsUintOne(const nlohmann::json& outer_compile_info);

@@ -1635,10 +1635,7 @@ bool Norm::ConstPostWriteTilingData() {
       run_info.AddWorkspace(workspace[i]);
     }
     auto tiling_key_uint = static_cast<uint64_t>(tiling_key);
-    if (compileInfo.var_attr_map.count(tiling_key_uint) > 0) {
-      const std::vector<VarAttr>& all_attr_vars = compileInfo.var_attr_map.at(tiling_key_uint);
-      return SetAttrVars(op_type, op_paras, run_info, all_attr_vars);
-    }
+    return compileInfo.varAttrWrap.WriteVarAttrs(tiling_key_uint, op_type, op_paras, run_info);
   } catch (const std::exception &e) {
     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "ConstPostWriteTilingData error. Error message: %s", e.what());
     return false;
@@ -1681,12 +1678,7 @@ bool Norm::WriteTilingData() {
   }
 
   auto tiling_key_uint = static_cast<uint64_t>(tiling_key);
-  if (compileInfo.var_attr_map.count(tiling_key_uint) > 0) {
-    const std::vector<VarAttr>& all_attr_vars = compileInfo.var_attr_map.at(tiling_key_uint);
-    return SetAttrVars(op_type, op_paras, run_info, all_attr_vars);
-  }
-
-  return true;
+  return compileInfo.varAttrWrap.WriteVarAttrs(tiling_key_uint, op_type, op_paras, run_info);
 }
 
 bool Norm::DoTiling() {
@@ -1816,9 +1808,8 @@ void NormCompileInfo::ParseOtherInfo(const nlohmann::json& parsed_json_obj) {
       norm_vars[std::stoi(single_item.first)] = single_item.second;
     }
   }
-  if (parsed_json_obj.contains("_attr_vars")) {
-    check_success = ParseVarAttr(parsed_json_obj, var_attr_map);
-  }
+
+  check_success = check_success && varAttrWrap.ParseVarAttr(parsed_json_obj);
 }
 
 NormCompileInfo::NormCompileInfo(const std::string& op_type, const nlohmann::json& parsed_json_obj) {
