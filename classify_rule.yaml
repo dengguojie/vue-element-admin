@@ -327,6 +327,7 @@ cube:
       - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/matmul/tbe_fullyconnection_elemwise_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/padv3_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/padv3_fusion_pass.cc
+      - ops/built-in/framework/tf_plugin/batch_matmul_plugin.cc
       - ops/built-in/framework/tf_plugin/conv2d_backprop_filter.cc
       - ops/built-in/framework/tf_plugin/conv2d_backprop_input_cce.cc
       - ops/built-in/framework/tf_plugin/conv3d_backprop_filter_plugin.cc

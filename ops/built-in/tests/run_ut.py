@@ -429,12 +429,10 @@ def main(argv):
     soc_version = FLAGS.soc_version
     soc_version = [soc.strip() for soc in str(soc_version).split(",")]
     pr_changed_file = FLAGS.pr_changed_file
-    if not pr_changed_file or not str(pr_changed_file).strip():
-        case_dir = FLAGS.case_dir
-        if not case_dir:
-            case_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), "ut", "ops_test")
+    if (not pr_changed_file or not str(pr_changed_file).strip()) and (not FLAGS.case_dir):
+        case_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), "ut", "ops_test")
     else:
-        case_dir = get_change_relate_ut_dir_list(pr_changed_file)
+        case_dir = [FLAGS.case_dir] if FLAGS.case_dir else get_change_relate_ut_dir_list(pr_changed_file)
         if case_dir is None:
             # get relate ut failed.
             exit(-1)
@@ -446,13 +444,13 @@ def main(argv):
             exit(0)
 
     cube_case_dir, vector_case_dir = get_cube_case_dir(case_dir)
-    if not pr_changed_file or not str(pr_changed_file).strip():
+    if (not pr_changed_file or not str(pr_changed_file).strip()) and (not FLAGS.case_dir):
         print("Enter all op.")
         all_case_dir = {'cube': cube_case_dir, 'vector': vector_case_dir}
         cov_report_path = FLAGS.cov_path + '_cube' if FLAGS.cov_path else "./cov_report/ops/python_utest_cube"
         report_path = FLAGS.report_path + '_cube'  if FLAGS.report_path else "./report/ops/python_report_cube"
         simulator_lib_path = FLAGS.simulator_lib_path if FLAGS.simulator_lib_path else "/usr/local/Ascend/toolkit/tools/simulator"
-        process_num = FLAGS.process_num
+        process_num = FLAGS.process_num if FLAGS.process_num else 1
         cube_res = cube_ut_runner.run_ut(all_case_dir,
                                          soc_version=soc_version,
                                          test_report="json",
@@ -475,7 +473,7 @@ def main(argv):
         cov_report_path = FLAGS.cov_path + '_cube' if FLAGS.cov_path else "./cov_report/ops/python_utest_cube"
         report_path = FLAGS.report_path + '_cube'  if FLAGS.report_path else "./report/ops/python_report_cube"
         simulator_lib_path = FLAGS.simulator_lib_path if FLAGS.simulator_lib_path else "/usr/local/Ascend/toolkit/tools/simulator"
-        process_num = FLAGS.process_num
+        process_num = FLAGS.process_num if FLAGS.process_num else 0
         cube_res = cube_ut_runner.run_ut(cube_case_dir,
                                          soc_version=soc_version,
                                          test_report="json",
@@ -499,7 +497,7 @@ def main(argv):
         cov_report_path = FLAGS.cov_path if FLAGS.cov_path else "./cov_report/ops/python_utest"
         report_path = FLAGS.report_path if FLAGS.report_path else "./report/ops/python_report"
         simulator_lib_path = FLAGS.simulator_lib_path if FLAGS.simulator_lib_path else "/usr/local/Ascend/toolkit/tools/simulator"
-        process_num = FLAGS.process_num
+        process_num = FLAGS.process_num if FLAGS.process_num else 0
         res = op_ut_runner.run_ut(vector_case_dir,
                                   soc_version=soc_version,
                                   test_report="json",

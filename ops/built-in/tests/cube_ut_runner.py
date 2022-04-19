@@ -410,8 +410,8 @@ def _combine_coverage(cov_report_path, cov_combine_dir):
     total_cov_data_file = os.path.join(cov_report_path, ".coverage")
     cov = coverage.Coverage(source=Constant.cube_source_dirs, data_file=total_cov_data_file)
     combine_files = [os.path.join(cov_combine_dir, cov_file) for cov_file in os.listdir(cov_combine_dir)]
-    logger.log_info("combine_files: %s" % combine_files)
-    cov.combine(combine_files, keep=True)
+    cov.combine(combine_files, keep=False)
     cov.save()
     cov.load()
     cov.html_report(directory=cov_report_path)
+    os.removedirs(cov_combine_dir)

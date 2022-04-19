@@ -46,6 +46,7 @@ target_link_libraries(ops_cpp_plugin_utest PRIVATE
         opsplugin_llt
         opsproto_llt
         -Wl,--no-whole-archive
+        parser_common
         fmk_parser
         )
 
