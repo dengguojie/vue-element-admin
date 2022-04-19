@@ -189,7 +189,8 @@ bool AttentionLnQKVFusionPass::IsMatch(const ge::NodePtr &ln_node,
     return false;
   }
   vector<int64_t> out_shape = conf_trans_list[0]->GetOpDesc()->GetOutputDesc(0).GetShape().GetDims();
-  if (out_shape.size() != OUT_DIM_SIZE ||ln_out_shape[0] != out_shape[0] * out_shape[M_INNER_INDEX] * C0) {
+  if (out_shape.size() != OUT_DIM_SIZE || ln_out_shape[0] != out_shape[0] * out_shape[M_INNER_INDEX] * C0 ||
+      out_shape[M_INNER_INDEX] % MIN_M_SIZE != 0) {
     OP_LOGW(FUSED_OP_TYPE.c_str(), "invalid out_shape!");
     return false;
   }
