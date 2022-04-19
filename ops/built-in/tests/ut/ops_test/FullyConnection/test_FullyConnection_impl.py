@@ -109,6 +109,19 @@ case5 = {"params": [{'shape': (1, 32, 4, 2, 16), 'dtype': 'float16', 'format': '
          "format_expect": [],
          "support_expect": True}
 
+m_unalign_dts_case = {"params": [{'shape': (72, 576, 1, 1, 32), 'dtype': 'int8', 'format': 'NC1HWC0',
+                                 "ori_format":"NC1HWC0", "ori_shape":(72, 576, 1, 1, 32)},
+                                {'shape': (576, 2, 16, 32), 'dtype': 'int8', 'format': 'FRACTAL_Z',
+                                 "ori_format":"FRACTAL_Z", "ori_shape":(576, 2, 16, 32)},
+                                None, None,
+                                {'shape': (1, 63, 1, 1, 16), 'dtype': 'int32', 'format': 'NC1HWC0',
+                                 "ori_format":"NC1HWC0", "ori_shape":(1, 63, 1, 1, 16)},
+                                72, False, 1, -128],
+                     "case_name": "fully_connection_m_unalign_dts_case",
+                     "expect": "success",
+                     "format_expect": [],
+                     "support_expect": True}
+
 gevm_L1_attach_equal = {"params": [{'shape': (1, 1, 1, 1, 16), 'dtype': 'float16', 'format': 'NC1HWC0',
                         "ori_format":"NHWC", "ori_shape":(1, 1, 1, 16)},
                         {'shape': (1, 1, 16, 16), 'dtype': 'float16', 'format': 'FRACTAL_Z',
@@ -130,6 +143,8 @@ ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case3)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case4)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case5)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], gevm_L1_attach_equal)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], m_unalign_dts_case)
+
 # ND -> ND
 def test_split_fc(test_arg):
     x = {'shape': (8, 1, 2, 2, 16), 'dtype': 'float16', 'format': 'NC1HWC0', "ori_format":"NC1HWC0", "ori_shape":(8, 1, 2, 2, 16)}

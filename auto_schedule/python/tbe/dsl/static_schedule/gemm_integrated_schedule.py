@@ -3861,10 +3861,16 @@ class GemmSchedule:
             else:
                 self.sch[tensor].buffer_align(*align_args)
 
+    def _align_m_for_int8_nd(self):
+        if self.status_controller.int8_not_double_m:
+            a_ub = self.container.TENSOR_MAP.get("a_ub")
+            self.sch[a_ub].compute_align(a_ub.op.axis[self.ND_M_INDEX], self.block_in)
+
     def _do_buffer_align(self):
         have_batch_b = self.status_controller.have_batch_b
         have_batch_a = self.status_controller.have_batch_a
         have_batch = self.status_controller.have_batch
+        self._align_m_for_int8_nd()
         self._do_buffer_align_l0c()
         self._set_requant_transfer_buffer_align()
         is_int82fp32_nd = self._is_int82fp32_nd()
@@ -3964,7 +3970,6 @@ class GemmSchedule:
                 self.sch[self.container.TENSOR_MAP.get("c_gm")].double_buffer()
 
     def _emit_insn_func(self, insn_tensor, insn_axis_num, insn_tag, insn_dict=None, mode=0, offset=0):
-
         normal_mode = 0
         if insn_tensor is not None:
             tensor_len = len(insn_tensor.shape) + offset
@@ -3999,14 +4004,7 @@ class GemmSchedule:
                 "k_outer": self.sch_agent[c_l0c].get_relate_scope(c_l0c.op.reduce_axis[reduce_axis_index], scope_insn)
             }
         else:
-            (
-                inner_nb,
-                inner_mb,
-                inner_mp,
-                inner_np,
-                inner_kb,
-                inner_kp
-            ) = scopes_intrins
+            (inner_nb, inner_mb, inner_mp, inner_np, inner_kb, inner_kp) = scopes_intrins
             inner_ko, inner_ki = self.sch_agent[c_l0c].split(inner_kb, nparts=1)
             self.sch_agent[c_l0c].reorder(
                 inner_ko, inner_nb, inner_mb, inner_mp, inner_np, inner_ki, inner_kp
