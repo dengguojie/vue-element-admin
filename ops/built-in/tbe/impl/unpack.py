@@ -541,33 +541,158 @@ def _unpack_schedule(input_place, output_shape, y, num, axis, dtype):
     build_list: list
         the list of input and output tensors, tensor type is TVM tensor.
     """
+    _, ele_each_block, _ = _get_public_param(dtype)
+    befordim, afterdim = output_shape[0], output_shape[-1]
+    # can open multi-core scene
+    if befordim >= ele_each_block > afterdim:
+        return _unpack_schedule_one(input_place, output_shape, y, num, axis, dtype)
+    else:
+        return _unpack_schedule_two(input_place, output_shape, y, num, axis, dtype)
+
+
+# 'pylint: disable=too-many-branches,too-many-statements,too-many-locals
+def _unpack_schedule_one(input_place, output_shape, y, num, axis, dtype):
+    """
+    Create unpack schedule:befordim >= ele_each_block > afterdim case
+    befordim: the dim axis accumulation before the axis to unpack along.
+    ele_each_bloc: the num of each block size.
+    afterdim: the dim axis accumulation after the axis to unpack along.
+
+    Parameters
+    ----------
+    input_place: TVM tensor
+        the tensor of input.
+    output_shape: tuple or list
+        the shape of output tensor.
+    y: tuple or list
+        the list of output tensor.
+    num : int.
+        the length of the dim axis.
+    axis: int.
+        the axis to unpack along.
+    dtype: str.
+        the dtype of input.
+
+    Returns
+    -------
+    sch: schedule
+        the created schedule.
+    build_list: list
+        the list of input and output tensors, tensor type is TVM tensor.
+    """
+    _, ele_each_block, device_core_num = _get_public_param(dtype)
+    befordim, afterdim = output_shape[0], output_shape[-1]
+    block_idx = tvm.thread_axis('blockIdx.x')
+
+    befordim_in = ele_each_block // afterdim + 1
+    befordim_out = (befordim + befordim_in - 1) // befordim_in
+    while (befordim + befordim_out - 1) // befordim_out * afterdim < ele_each_block:
+        befordim_out -= 1
+    if befordim_out >= device_core_num:
+        befordim_out = device_core_num
+    afterdim_in = afterdim
+
+    gm2ub_tensor, ub2ub_tensor_list, ub2gm_tensor_list, virtual_node = _unpack_compute_scalar(
+        input_place, y, num, axis)
+
+    res_op = []
+    build_list = [input_place]
+    for ub2gm_tensor in ub2gm_tensor_list:
+        res_op.append(ub2gm_tensor.op)
+        build_list.append(ub2gm_tensor)
+
+    sch = tvm.create_schedule(virtual_node.op)
+    sch[gm2ub_tensor].set_scope(tbe_platform.scope_ubuf)
+    for tensor in ub2ub_tensor_list:
+        sch[tensor].set_scope(tbe_platform.scope_ubuf)
+
+    befordim_outer, befordim_inner = sch[virtual_node].split(virtual_node.op.axis[0], nparts=befordim_out)
+    afterdim_outer, afterdim_inner = sch[virtual_node].split(virtual_node.op.axis[2], factor=afterdim_in)
+
+    sch[virtual_node].reorder(befordim_outer, afterdim_outer, befordim_inner, afterdim_inner)
+    fused_axis = sch[virtual_node].fuse(befordim_outer, afterdim_outer)
+    sch[virtual_node].bind(fused_axis, block_idx)
+
+    new_shape = ((befordim + befordim_out - 1) // befordim_out, num, afterdim_in)
+    split_axis, split_factor = _tiling_axis(new_shape, dtype)
+    if split_axis == 0:
+        axis_outer, axis_inner = sch[virtual_node].split(befordim_inner, factor=split_factor)
+    else:
+        axis_outer, axis_inner = sch[virtual_node].split(afterdim_inner, factor=split_factor)
+
+    sch[gm2ub_tensor].compute_at(sch[virtual_node], axis_outer)
+    sch[gm2ub_tensor].emit_insn(gm2ub_tensor.op.axis[split_axis], tbe_platform.DMA_COPY)
+
+    for i in range(num):
+        sch[ub2gm_tensor_list[i]].compute_at(sch[virtual_node], axis_outer)
+        sch[ub2ub_tensor_list[i]].compute_at(sch[virtual_node], axis_outer)
+
+        sch[ub2ub_tensor_list[i]].emit_insn(ub2ub_tensor_list[i].op.axis[split_axis], tbe_platform.DATA_MOV)
+        sch[ub2gm_tensor_list[i]].emit_insn(ub2gm_tensor_list[i].op.axis[split_axis], tbe_platform.DMA_COPY)
+
+    sch[virtual_node].emit_insn(axis_inner, tbe_platform.PHONY_INSN)
+    return sch, build_list
+
+
+# 'pylint: disable=too-many-branches,too-many-statements,too-many-locals
+def _unpack_schedule_two(input_place, output_shape, y, num, axis, dtype):
+    """
+    Create unpack schedule: not befordim >= ele_each_block > afterdim case
+    befordim: the dim axis accumulation before the axis to unpack along.
+    ele_each_bloc: the num of each block size.
+    afterdim: the dim axis accumulation after the axis to unpack along.
+
+    Parameters
+    ----------
+    input_place: TVM tensor
+        the tensor of input.
+    output_shape: tuple or list
+        the shape of output tensor.
+    y: tuple or list
+        the list of output tensor.
+    num : int.
+        the length of the dim axis.
+    axis: int.
+        the axis to unpack along.
+    dtype: str.
+        the dtype of input.
+
+    Returns
+    -------
+    sch: schedule
+        the created schedule.
+    build_list: list
+        the list of input and output tensors, tensor type is TVM tensor.
+    """
     total_ele, ele_each_block, device_core_num = _get_public_param(dtype)
     befordim, afterdim = output_shape[0], output_shape[-1]
     block_idx = tvm.thread_axis('blockIdx.x')
 
+    gm2ub_tensor_list, ub2gm_tensor_list, virtual_node = _unpack_compute_copy(input_place, y, num, axis)
+    res_op = []
+    build_list = [input_place]
+    for ub2gm_tensor in ub2gm_tensor_list:
+        res_op.append(ub2gm_tensor.op)
+        build_list.append(ub2gm_tensor)
+
+    sch = tvm.create_schedule(virtual_node.op)
+    for tensor in gm2ub_tensor_list:
+        sch[tensor].set_scope(tbe_platform.scope_ubuf)
+
     # can open multi-core scene
-    if befordim >= ele_each_block > afterdim:
-        befordim_in = ele_each_block // afterdim + 1
-        befordim_out = (befordim + befordim_in - 1) // befordim_in
-        while (befordim + befordim_out - 1) // befordim_out * afterdim < ele_each_block:
-            befordim_out -= 1
-        if befordim_out >= device_core_num:
+    if afterdim >= ele_each_block:
+        if befordim >= device_core_num:
             befordim_out = device_core_num
-        afterdim_in = afterdim
-
-        gm2ub_tensor, ub2ub_tensor_list, ub2gm_tensor_list, virtual_node = _unpack_compute_scalar(
-            input_place, y, num, axis)
-
-        res_op = []
-        build_list = [input_place]
-        for ub2gm_tensor in ub2gm_tensor_list:
-            res_op.append(ub2gm_tensor.op)
-            build_list.append(ub2gm_tensor)
-
-        sch = tvm.create_schedule(virtual_node.op)
-        sch[gm2ub_tensor].set_scope(tbe_platform.scope_ubuf)
-        for tensor in ub2ub_tensor_list:
-            sch[tensor].set_scope(tbe_platform.scope_ubuf)
+            afterdim_in = afterdim
+        elif befordim == 1:
+            befordim_out = befordim
+            afterdim_in = (afterdim + device_core_num - 1) // device_core_num
+        else:
+            afterdim_outer = device_core_num // befordim
+            afterdim_in = (afterdim + afterdim_outer - 1) // afterdim_outer
+            while afterdim % afterdim_in < ele_each_block:
+                afterdim_in += 1
+            befordim_out = befordim
 
         befordim_outer, befordim_inner = sch[virtual_node].split(virtual_node.op.axis[0], nparts=befordim_out)
         afterdim_outer, afterdim_inner = sch[virtual_node].split(virtual_node.op.axis[2], factor=afterdim_in)
@@ -576,91 +701,47 @@ def _unpack_schedule(input_place, output_shape, y, num, axis, dtype):
         fused_axis = sch[virtual_node].fuse(befordim_outer, afterdim_outer)
         sch[virtual_node].bind(fused_axis, block_idx)
 
-        new_shape = ((befordim + befordim_out - 1) // befordim_out, num, afterdim_in)
-        split_axis, split_factor = _tiling_axis(new_shape, dtype)
+        new_shape = ((befordim + befordim_out - 1) // befordim_out, 1, afterdim_in)
+        # coexisting_quantities 2
+        split_axis, split_factor = _tiling_axis(new_shape, dtype, 2)
+        ub_split_trail = new_shape[split_axis] - new_shape[split_axis] // split_factor * split_factor
+        is_ub_split_trail_one = (ub_split_trail != 1)
+        is_last_block_non_last_axis_split_trail_one = False
         if split_axis == 0:
+            last_block_split_trail = (befordim - (befordim_out - 1) * new_shape[0]) % split_factor
+            is_last_block_non_last_axis_split_trail_one = (last_block_split_trail != 1)
             axis_outer, axis_inner = sch[virtual_node].split(befordim_inner, factor=split_factor)
         else:
             axis_outer, axis_inner = sch[virtual_node].split(afterdim_inner, factor=split_factor)
+    else:
+        # coexisting_quantities 2
+        split_axis, split_factor = _tiling_axis(output_shape, dtype, 2)
+        ub_split_trail = output_shape[split_axis] - output_shape[split_axis] // split_factor * split_factor
+        is_ub_split_trail_one = (ub_split_trail != 1)
+        is_last_block_non_last_axis_split_trail_one = ub_split_trail
+        axis_outer, axis_inner = sch[virtual_node].split(virtual_node.op.axis[split_axis], factor=split_factor)
 
-        sch[gm2ub_tensor].compute_at(sch[virtual_node], axis_outer)
-        sch[gm2ub_tensor].emit_insn(gm2ub_tensor.op.axis[split_axis], tbe_platform.DMA_COPY)
+    for i in range(num):
+        storage_axis = split_axis - 1 if split_axis != 0 else 0
+        sch[gm2ub_tensor_list[i]].storage_align(gm2ub_tensor_list[i].op.axis[storage_axis], ele_each_block, 0)
 
-        for i in range(num):
-            sch[ub2gm_tensor_list[i]].compute_at(sch[virtual_node], axis_outer)
-            sch[ub2ub_tensor_list[i]].compute_at(sch[virtual_node], axis_outer)
+        sch[gm2ub_tensor_list[i]].double_buffer()
+        sch[gm2ub_tensor_list[i]].compute_at(sch[virtual_node], axis_outer)
+        sch[ub2gm_tensor_list[i]].compute_at(sch[virtual_node], axis_outer)
 
-            sch[ub2ub_tensor_list[i]].emit_insn(ub2ub_tensor_list[i].op.axis[split_axis], tbe_platform.DATA_MOV)
+        sch[gm2ub_tensor_list[i]].emit_insn(gm2ub_tensor_list[i].op.axis[split_axis], tbe_platform.DMA_COPY)
+        if split_axis == 0 and split_factor > 1 and is_ub_split_trail_one \
+           and is_last_block_non_last_axis_split_trail_one:
+            # coexisting_quantities 2
+            sch[gm2ub_tensor_list[i]].set_buffer_size(total_ele // 2)
+            sch[ub2gm_tensor_list[i]].set_buffer_size(total_ele // 2)
+            sch[ub2gm_tensor_list[i]].emit_insn(ub2gm_tensor_list[i].op.axis[split_axis], tbe_platform.DMA_COPY,
+                                                {"no_overlap": "process_unaliged_stride_with_malloc_buf",
+                                                 "no_overlap_malloc_buf_for_tail": 0})
+        else:
             sch[ub2gm_tensor_list[i]].emit_insn(ub2gm_tensor_list[i].op.axis[split_axis], tbe_platform.DMA_COPY)
 
-        sch[virtual_node].emit_insn(axis_inner, tbe_platform.PHONY_INSN)
-
-    else:
-        gm2ub_tensor_list, ub2gm_tensor_list, virtual_node = _unpack_compute_copy(input_place, y, num, axis)
-        res_op = []
-        build_list = [input_place]
-        for ub2gm_tensor in ub2gm_tensor_list:
-            res_op.append(ub2gm_tensor.op)
-            build_list.append(ub2gm_tensor)
-
-        sch = tvm.create_schedule(virtual_node.op)
-        for tensor in gm2ub_tensor_list:
-            sch[tensor].set_scope(tbe_platform.scope_ubuf)
-
-        # can open multi-core scene
-        if afterdim >= ele_each_block:
-            if befordim >= device_core_num:
-                befordim_out = device_core_num
-                afterdim_in = afterdim
-            elif befordim == 1:
-                befordim_out = befordim
-                afterdim_in = (afterdim + device_core_num - 1) // device_core_num
-            else:
-                afterdim_outer = device_core_num // befordim
-                afterdim_in = (afterdim + afterdim_outer - 1) // afterdim_outer
-                while afterdim % afterdim_in < ele_each_block:
-                    afterdim_in += 1
-                befordim_out = befordim
-
-            befordim_outer, befordim_inner = sch[virtual_node].split(virtual_node.op.axis[0], nparts=befordim_out)
-            afterdim_outer, afterdim_inner = sch[virtual_node].split(virtual_node.op.axis[2], factor=afterdim_in)
-
-            sch[virtual_node].reorder(befordim_outer, afterdim_outer, befordim_inner, afterdim_inner)
-            fused_axis = sch[virtual_node].fuse(befordim_outer, afterdim_outer)
-            sch[virtual_node].bind(fused_axis, block_idx)
-
-            new_shape = ((befordim + befordim_out - 1) // befordim_out, 1, afterdim_in)
-            # coexisting_quantities 2
-            split_axis, split_factor = _tiling_axis(new_shape, dtype, 2)
-            if split_axis == 0:
-                axis_outer, axis_inner = sch[virtual_node].split(befordim_inner, factor=split_factor)
-            else:
-                axis_outer, axis_inner = sch[virtual_node].split(afterdim_inner, factor=split_factor)
-        else:
-            # coexisting_quantities 2
-            split_axis, split_factor = _tiling_axis(output_shape, dtype, 2)
-            axis_outer, axis_inner = sch[virtual_node].split(virtual_node.op.axis[split_axis], factor=split_factor)
-
-        for i in range(num):
-            storage_axis = split_axis - 1 if split_axis != 0 else 0
-            sch[gm2ub_tensor_list[i]].storage_align(gm2ub_tensor_list[i].op.axis[storage_axis], ele_each_block, 0)
-
-            sch[gm2ub_tensor_list[i]].double_buffer()
-            sch[gm2ub_tensor_list[i]].compute_at(sch[virtual_node], axis_outer)
-            sch[ub2gm_tensor_list[i]].compute_at(sch[virtual_node], axis_outer)
-
-            sch[gm2ub_tensor_list[i]].emit_insn(gm2ub_tensor_list[i].op.axis[split_axis], tbe_platform.DMA_COPY)
-            if split_axis == 0 and split_factor > 1:
-                # coexisting_quantities 2
-                sch[gm2ub_tensor_list[i]].set_buffer_size(total_ele // 2)
-                sch[ub2gm_tensor_list[i]].set_buffer_size(total_ele // 2)
-                sch[ub2gm_tensor_list[i]].emit_insn(ub2gm_tensor_list[i].op.axis[split_axis], tbe_platform.DMA_COPY,
-                                                    {"no_overlap": "process_unaliged_stride_with_malloc_buf",
-                                                     "no_overlap_malloc_buf_for_tail": 0})
-            else:
-                sch[ub2gm_tensor_list[i]].emit_insn(ub2gm_tensor_list[i].op.axis[split_axis], tbe_platform.DMA_COPY)
-
-        sch[virtual_node].emit_insn(axis_inner, tbe_platform.PHONY_INSN)
+    sch[virtual_node].emit_insn(axis_inner, tbe_platform.PHONY_INSN)
 
     return sch, build_list
 

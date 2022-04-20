@@ -90,6 +90,38 @@ case_shape_not_aligned_fp16 = {
     "expect": "success"
 }
 
+case_shape_not_aligned_fp16_1 = {
+    "params":
+        [
+            {
+                "shape": (128, 28, 28, 2, 11),
+                "format": "ND",
+                "dtype": "float16",
+                "ori_shape": (128, 28, 28, 2, 11),
+                "ori_format": "ND"
+            },
+            [
+                {
+                    "shape": (128, 28, 28, 11),
+                    "format": "ND",
+                    "dtype": "float16",
+                    "ori_shape": (128, 28, 28, 11),
+                    "ori_format": "ND"
+                },
+                {
+                    "shape": (128, 28, 28, 11),
+                    "format": "ND",
+                    "dtype": "float16",
+                    "ori_shape": (128, 28, 28, 11),
+                    "ori_format": "ND"
+                }
+            ],
+            2, 3
+        ],
+    "case_name": 'test_unpack_case_shape_not_aligned_fp16_1',
+    "expect": "success"
+}
+
 case_small_shape_not_aligned_fp16 = {
     "params":
         [
@@ -439,6 +471,7 @@ def test_check_supported(test_arg):
 
 ut_case.add_case(["Ascend910", "Ascend310"], case_small_shape_scalar_fp16)
 ut_case.add_case(["Ascend910", "Ascend310"], case_shape_not_aligned_fp16)
+ut_case.add_case(["Ascend910", "Ascend310"], case_shape_not_aligned_fp16_1)
 ut_case.add_case(["Ascend910", "Ascend310"], case_small_shape_not_aligned_fp16)
 ut_case.add_case(["Ascend910A", "Ascend710", "Ascend310"], case_axis1_int32)
 # ut_case.add_case(["Ascend910", "Ascend310"], case_last_dim_lt_one_block_fp16)

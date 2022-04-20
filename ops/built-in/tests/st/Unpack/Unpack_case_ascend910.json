@@ -243,5 +243,68 @@
       }
     ],
     "case_name": "test_Unpack_002"
+  },
+  {
+    "op": "Unpack",
+    "input_desc": [
+      {
+        "shape": [
+          128, 28, 28, 2, 11
+        ],
+        "ori_shape": [
+          128, 28, 28, 2, 11
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "type": "float16",
+        "value_range": [
+          [
+            0,
+            1
+          ]
+        ],
+        "data_distribute": "uniform",
+        "name": "x"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          128, 28, 28, 11
+        ],
+        "ori_shape": [
+          128, 28, 28, 11
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float16"
+      },
+	  {
+        "shape": [
+          128, 28, 28, 11
+        ],
+        "ori_shape": [
+          128, 28, 28, 11
+        ],
+        "format": "ND",
+        "ori_format": "ND",
+        "name": "y1",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "axis",
+        "type": "int",
+        "value": 3
+      },
+      {
+        "name": "num",
+        "type": "int",
+        "value": 2
+      }
+    ],
+    "case_name": "test_Unpack_003"
   }
  ]
