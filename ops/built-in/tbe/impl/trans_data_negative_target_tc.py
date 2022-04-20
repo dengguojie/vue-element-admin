@@ -1,21 +1,18 @@
-# Copyright 2020 Huawei Technologies Co., Ltd
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-# http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-# ============================================================================
 """
+Copyright (c) Huawei Technologies Co., Ltd. 2020-2022. All rights reserved.
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the Apache License Version 2.0.
+You may not use this file except in compliance with the License.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+Apache License for more details at
+http://www.apache.org/licenses/LICENSE-2.0
+
 trans_data_negative_target_tc
 """
-
 from te import tik
 from impl import trans_data_common_func as tdc
 
@@ -398,27 +395,36 @@ def _chtn_2_hctn_transfer(trans_args):
 
     (tik_inst, dst_ub, src_ub, tiling_mode, r2nd_pl_size, c1_pl_size, left_pl_size,
      sub_c_size, all_c_in, c0_len, dtype_factor, ele_per_block) = trans_args
+    c_mod = sub_c_size % c0_len
 
     def _chtn_2_hctn_process_r2nd(left_src_offset, left_dst_offset):
+        c0_cube_size = c0_len * dtype_factor * ele_per_block
         with tik_inst.new_stmt_scope(disable_sync=True):
             with tik_inst.if_scope(all_c_in == 1):  # all c is moved in
                 with tik_inst.for_range(0, r2nd_pl_size) as r2nd_idx:
-                    r2nd_src_ub_offset = (r2nd_idx + left_src_offset) * c0_len * dtype_factor * ele_per_block
+                    r2nd_src_ub_offset = (r2nd_idx + left_src_offset) * c0_cube_size
                     r2nd_dst_ub_offset = (r2nd_idx + left_dst_offset) * sub_c_size * dtype_factor * ele_per_block
-                    tik_inst.data_move(src_ub[r2nd_dst_ub_offset], dst_ub[r2nd_src_ub_offset], 0, c1_pl_size,
-                                       c0_len * dtype_factor, (r2nd_pl_size - 1) * c0_len * dtype_factor, 0)
+                    with tik_inst.if_scope(c_mod == 0):
+                        tik_inst.data_move(src_ub[r2nd_dst_ub_offset], dst_ub[r2nd_src_ub_offset], 0, c1_pl_size,
+                                           c0_len * dtype_factor, (r2nd_pl_size - 1) * c0_len * dtype_factor, 0)
+                    with tik_inst.else_scope():
+                        new_c1_size = c1_pl_size - 1
+                        with tik_inst.if_scope(c1_pl_size > 1):
+                            tik_inst.data_move(src_ub[r2nd_dst_ub_offset], dst_ub[r2nd_src_ub_offset], 0, new_c1_size,
+                                               c0_len * dtype_factor, (r2nd_pl_size - 1) * c0_len * dtype_factor, 0)
+                        tik_inst.data_move(src_ub[r2nd_dst_ub_offset + new_c1_size * c0_cube_size],
+                                           dst_ub[r2nd_src_ub_offset + new_c1_size * c0_cube_size * r2nd_pl_size],
+                                           0, 1, c_mod * dtype_factor, 0, 0)
             with tik_inst.else_scope():
                 with tik_inst.for_range(0, r2nd_pl_size) as r2nd_idx:
-                    r2nd_src_ub_offset = (r2nd_idx + left_src_offset) * c0_len * dtype_factor * ele_per_block
-                    r2nd_dst_ub_offset = (r2nd_idx +
-                                          left_dst_offset) * c1_pl_size * c0_len * dtype_factor * ele_per_block
+                    r2nd_src_ub_offset = (r2nd_idx + left_src_offset) * c0_cube_size
+                    r2nd_dst_ub_offset = (r2nd_idx + left_dst_offset) * c1_pl_size * c0_cube_size
                     tik_inst.data_move(src_ub[r2nd_dst_ub_offset], dst_ub[r2nd_src_ub_offset], 0, c1_pl_size,
                                        c0_len * dtype_factor, (r2nd_pl_size - 1) * c0_len * dtype_factor, 0)
 
     def _chtn_2_hctn_process_c1(left_src_offset, left_dst_offset):
         with tik_inst.if_scope(all_c_in == 1):  # all c is moved in
             with tik_inst.new_stmt_scope(disable_sync=True):
-                c_mod = sub_c_size % c0_len
                 data_unit = dtype_factor * ele_per_block
                 with tik_inst.if_scope(c_mod > 0):
                     with tik_inst.for_range(0, c1_pl_size-1) as c1_idx:

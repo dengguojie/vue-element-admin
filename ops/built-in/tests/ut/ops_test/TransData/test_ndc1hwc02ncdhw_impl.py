@@ -86,6 +86,7 @@ case1 = {"params": [{"shape": (1, 2, 8, 126, 126, 16), "dtype": "float32",
                      "ori_shape": (1, 128, 2, 126, 126), "format": "NCDHW", "ori_format": "NCDHW",
                      "param_type": "output"},
                     "NDC1HWC0", "NCDHW"],
+         "case_name": "ndc1hwc0_2_ncdhw_001",
          "expect": "success",
          "calc_expect_func": calc_expect_func,
          "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)}
@@ -98,6 +99,7 @@ case2 = {"params": [{"shape": (2, 3, 2, 16, 3, 16), "dtype": "float16",
                      "ori_shape": (2, 32, 3, 16, 3), "format": "NCDHW", "ori_format": "NCDHW",
                      "param_type": "output"},
                     "NDC1HWC0", "NCDHW"],
+         "case_name": "ndc1hwc0_2_ncdhw_002",
          "expect": "success",
          "calc_expect_func": calc_expect_func,
          "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)}
@@ -208,6 +210,7 @@ case11 = {"params": [{"shape": (1, 1, 128, 1, 1, 16), "dtype": "float16",
                       "ori_shape": (1, 2048, 1, 1, 1), "format": "NCDHW", "ori_format": "NCDHW",
                       "param_type": "output"},
                      "NDC1HWC0", "NCDHW"],
+          "case_name": "ndc1hwc0_2_ncdhw_011",
           "expect": "success",
           "calc_expect_func": calc_expect_func,
           "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)}
@@ -220,39 +223,18 @@ case12 = {"params": [{"shape": (1, 1, 32, 1, 1, 16), "dtype": "float16",
                       "ori_shape": (1, 512, 1, 1, 1), "format": "NCDHW", "ori_format": "NCDHW",
                       "param_type": "output"},
                      "NDC1HWC0", "NCDHW"],
+          "case_name": "ndc1hwc0_2_ncdhw_012",
           "expect": "success",
           "calc_expect_func": calc_expect_func,
           "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)}
 
-ut_case.add_case(["Ascend910"], err1)
-ut_case.add_case(["Ascend910"], err2)
-ut_case.add_case(["Ascend910"], err3)
-ut_case.add_case(["Ascend910"], err4)
-ut_case.add_case(["Ascend910"], err5)
-# ut_case.add_precision_case(["Ascend910"], case1)
-# ut_case.add_precision_case(["Ascend910"], case2)
-# ut_case.add_precision_case(["Ascend910"], case3)
-# ut_case.add_precision_case(["Ascend910"], case4)
-# ut_case.add_precision_case(["Ascend910"], case5)
-# ut_case.add_precision_case(["Ascend910"], case6)
-# ut_case.add_precision_case(["Ascend910"], case7)
-# ut_case.add_precision_case(["Ascend910"], case8)
-# ut_case.add_precision_case(["Ascend910"], case9)
-# ut_case.add_precision_case(["Ascend910"], case10)
+
 ut_case.add_case(["Ascend310","Ascend910A"], case1)
 ut_case.add_case(["Ascend310","Ascend910A"], case2)
-ut_case.add_case(["Ascend910"], case3)
-ut_case.add_case(["Ascend910"], case4)
-ut_case.add_case(["Ascend910"], case5)
-ut_case.add_case(["Ascend910"], case6)
-ut_case.add_case(["Ascend910"], case7)
-ut_case.add_case(["Ascend910"], case8)
-ut_case.add_case(["Ascend910"], case9)
-ut_case.add_case(["Ascend910"], case10)
 ut_case.add_case(["Ascend310","Ascend910A"], case11)
 ut_case.add_case(["Ascend310","Ascend910A"], case12)
 
+
 if __name__ == '__main__':
-    # ut_case.run("Ascend910")
     ut_case.run()
     exit(0)

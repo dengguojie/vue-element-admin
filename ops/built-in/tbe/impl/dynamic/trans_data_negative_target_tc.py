@@ -1,44 +1,31 @@
-# Copyright 2020 Huawei Technologies Co., Ltd
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-# http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-# ============================================================================
 """
+Copyright (c) Huawei Technologies Co., Ltd. 2020-2022. All rights reserved.
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the Apache License Version 2.0.
+You may not use this file except in compliance with the License.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+Apache License for more details at
+http://www.apache.org/licenses/LICENSE-2.0
+
 trans_data_negative_target_tc
 """
-
 from __future__ import absolute_import
 from impl.util.platform_adapter import tik
 from impl.util.platform_adapter import tbe_context
-from .. import trans_data_common_func as tdc
+from impl import trans_data_common_func as tdc
 
 
-# frame up levels
-FRAME_LEVEL = 2
-TILING_CTRL_PARAM = ("int64", 96)
-INT8_DTYPES = ("int8", "uint8")
-NEED_CAST_DTYPES = ("float32", "int32", "uint32")
-VNC_SUPPORT_DTYPES = ("int8", "uint8", "float16")
-
-
-def _get_tiling_params(tik_inst, tiling_ub, tiling_gm, tiling_params, tiling_dtype_bytes):
+class Constant:
     """
-    get tiling parameters function
+    The class for constant
     """
-
-    ele_per_block = tdc.BLOCK_BYTE_SIZE // tiling_dtype_bytes
-    tik_inst.data_move(tiling_ub, tiling_gm, 0, 1, TILING_CTRL_PARAM[1] // ele_per_block, 0, 0)
-    for reg_idx in range(TILING_CTRL_PARAM[1]):
-        tiling_params[reg_idx].set_as(tiling_ub[reg_idx])
+    TILING_PARAMS_CNT = 46
+    INT8_DTYPES = ("int8", "uint8")
+    NEED_CAST_DTYPES = ("float32", "int32", "uint32")
 
 
 # 'pylint: disable=too-many-locals, too-many-statements
@@ -49,27 +36,36 @@ def _chtn_2_hctn_transfer(trans_args):
 
     (tik_inst, dst_ub, src_ub, tiling_mode, r2nd_pl_size, c1_pl_size, left_pl_size,
      sub_c_size, all_c_in, c0_len, dtype_factor, ele_per_block) = trans_args
+    c_mod = sub_c_size % c0_len
 
     def _chtn_2_hctn_process_r2nd(left_src_offset, left_dst_offset):
+        c0_cube_size = c0_len * dtype_factor * ele_per_block
         with tik_inst.new_stmt_scope(disable_sync=True):
             with tik_inst.if_scope(all_c_in == 1):  # all c is moved in
                 with tik_inst.for_range(0, r2nd_pl_size) as r2nd_idx:
-                    r2nd_src_ub_offset = (r2nd_idx + left_src_offset) * c0_len * dtype_factor * ele_per_block
+                    r2nd_src_ub_offset = (r2nd_idx + left_src_offset) * c0_cube_size
                     r2nd_dst_ub_offset = (r2nd_idx + left_dst_offset) * sub_c_size * dtype_factor * ele_per_block
-                    tik_inst.data_move(src_ub[r2nd_dst_ub_offset], dst_ub[r2nd_src_ub_offset], 0, c1_pl_size,
-                                       c0_len * dtype_factor, (r2nd_pl_size - 1) * c0_len * dtype_factor, 0)
+                    with tik_inst.if_scope(c_mod == 0):
+                        tik_inst.data_move(src_ub[r2nd_dst_ub_offset], dst_ub[r2nd_src_ub_offset], 0, c1_pl_size,
+                                           c0_len * dtype_factor, (r2nd_pl_size - 1) * c0_len * dtype_factor, 0)
+                    with tik_inst.else_scope():
+                        new_c1_size = c1_pl_size - 1
+                        with tik_inst.if_scope(c1_pl_size > 1):
+                            tik_inst.data_move(src_ub[r2nd_dst_ub_offset], dst_ub[r2nd_src_ub_offset], 0, new_c1_size,
+                                               c0_len * dtype_factor, (r2nd_pl_size - 1) * c0_len * dtype_factor, 0)
+                        tik_inst.data_move(src_ub[r2nd_dst_ub_offset + new_c1_size * c0_cube_size],
+                                           dst_ub[r2nd_src_ub_offset + new_c1_size * c0_cube_size * r2nd_pl_size],
+                                           0, 1, c_mod * dtype_factor, 0, 0)
             with tik_inst.else_scope():
                 with tik_inst.for_range(0, r2nd_pl_size) as r2nd_idx:
-                    r2nd_src_ub_offset = (r2nd_idx + left_src_offset) * c0_len * dtype_factor * ele_per_block
-                    r2nd_dst_ub_offset = (r2nd_idx +
-                                          left_dst_offset) * c1_pl_size * c0_len * dtype_factor * ele_per_block
+                    r2nd_src_ub_offset = (r2nd_idx + left_src_offset) * c0_cube_size
+                    r2nd_dst_ub_offset = (r2nd_idx + left_dst_offset) * c1_pl_size * c0_cube_size
                     tik_inst.data_move(src_ub[r2nd_dst_ub_offset], dst_ub[r2nd_src_ub_offset], 0, c1_pl_size,
                                        c0_len * dtype_factor, (r2nd_pl_size - 1) * c0_len * dtype_factor, 0)
 
     def _chtn_2_hctn_process_c1(left_src_offset, left_dst_offset):
         with tik_inst.if_scope(all_c_in == 1):  # all c is moved in
             with tik_inst.new_stmt_scope(disable_sync=True):
-                c_mod = sub_c_size % c0_len
                 data_unit = dtype_factor * ele_per_block
                 with tik_inst.if_scope(c_mod > 0):
                     with tik_inst.for_range(0, c1_pl_size-1) as c1_idx:
@@ -129,7 +125,7 @@ def _twice_vnchwconv_no_invert(args):
         with tik_inst.else_scope():
             vnc_col_data.set_as(left_pl_size * r2nd_pl_size * c1_pl_size * c0_len)
 
-        if in_dtype not in INT8_DTYPES:
+        if in_dtype not in Constant.INT8_DTYPES:
             src_ub_casted = src_ub.reinterpret_cast_to("float16")
             dst_ub_casted = dst_ub.reinterpret_cast_to("float16")
             # do ncht -> chtn
@@ -163,7 +159,7 @@ def _twice_vnchwconv_no_invert(args):
         _chtn_2_hctn_transfer(trans_args)
 
         # do hctn -> nhct
-        if in_dtype not in INT8_DTYPES:
+        if in_dtype not in Constant.INT8_DTYPES:
             src_ub_casted = src_ub.reinterpret_cast_to("float16")
             dst_ub_casted = dst_ub.reinterpret_cast_to("float16")
             # do ncht -> chtn
@@ -549,7 +545,7 @@ def _copy_data_in_1(args):
         # do c1hnt -> nc1ht
         with tik_inst.new_stmt_scope(disable_sync=True):
             dtype_factor = tdc.get_dtype_factor(in_dtype)
-            if in_dtype in NEED_CAST_DTYPES:
+            if in_dtype in Constant.NEED_CAST_DTYPES:
                 src_ub_int16 = src_ub.reinterpret_cast_to("int16")[ub_offset_2011 * 2]
             elif in_dtype in ("int8", "uint8"):
                 src_ub_int16 = src_ub.reinterpret_cast_to("int16")[ub_offset_2011 // 2]
@@ -971,25 +967,24 @@ def trans_data_negative_target_tc(src, dst, src_format, dst_format, kernel_name=
     None
     """
 
-    src_format = src_format.upper()
-    dst_format = dst_format.upper()
     in_dtype = src.get("dtype").lower() if src.get("dtype").lower() != "bfloat16" else "float16"
     in_dtype_bytes = tdc.get_dtype_len(in_dtype)
     tiling_dtype_bytes = tdc.get_dtype_len("int64")
-    ub_size = tdc.get_max_element_in_ub(in_dtype, 1, 256) - TILING_CTRL_PARAM[1] * tiling_dtype_bytes // in_dtype_bytes
+    ub_size = (tdc.get_max_element_in_ub(in_dtype, 1, tdc.SAVE_UB) -
+               tdc.TILING_CTRL_PARAM[1] * tiling_dtype_bytes // in_dtype_bytes)
     block_elem_cnt = tdc.BLOCK_BYTE_SIZE // tdc.get_dtype_len(in_dtype)
 
     tik_inst = tik.Tik()
     src_in_gm = tik_inst.Tensor(in_dtype, (tdc.MAX_INT64_VALUE,), tik.scope_gm, "src_in_gm")
     dst_out_gm = tik_inst.Tensor(in_dtype, (tdc.MAX_INT64_VALUE,), tik.scope_gm, "dst_out_gm")
-    tiling_gm = tik_inst.Tensor(TILING_CTRL_PARAM[0], (TILING_CTRL_PARAM[1],), tik.scope_gm, "tiling_gm")
+    tiling_gm = tik_inst.Tensor(tdc.TILING_CTRL_PARAM[0], (tdc.TILING_CTRL_PARAM[1],), tik.scope_gm, "tiling_gm")
     half_ub = ub_size // 2
     src_ub = tik_inst.Tensor(in_dtype, (half_ub,), tik.scope_ubuf, "src_ub")
     dst_ub = tik_inst.Tensor(in_dtype, (half_ub,), tik.scope_ubuf, "dst_ub")
     zero_ub = tik_inst.Tensor("int16", (tdc.MASK_128,), tik.scope_ubuf, "zero_ub")  # for vor
-    tiling_ub = tik_inst.Tensor(TILING_CTRL_PARAM[0], (TILING_CTRL_PARAM[1],), tik.scope_ubuf, "tiling_ub")
-    tiling_params = [tik_inst.Scalar(TILING_CTRL_PARAM[0]) for i in range(TILING_CTRL_PARAM[1])]
-    _get_tiling_params(tik_inst, tiling_ub, tiling_gm, tiling_params, tiling_dtype_bytes)
+    tiling_ub = tik_inst.Tensor(tdc.TILING_CTRL_PARAM[0], (tdc.TILING_CTRL_PARAM[1],), tik.scope_ubuf, "tiling_ub")
+    tiling_params = [tik_inst.Scalar(tdc.TILING_CTRL_PARAM[0]) for i in range(Constant.TILING_PARAMS_CNT)]
+    tdc.get_tiling_params(tik_inst, tiling_ub, tiling_gm, tiling_params, tiling_dtype_bytes)
     tdc.clean_ubuf(tik_inst, zero_ub, 0, tdc.MASK_128)
 
     used_core_cnt = tiling_params[3]
@@ -997,8 +992,7 @@ def trans_data_negative_target_tc(src, dst, src_format, dst_format, kernel_name=
         with tik_inst.if_scope(block_idx < used_core_cnt):
             tensor_args = [tik_inst, block_idx, src_in_gm, dst_out_gm,
                            src_ub, dst_ub, zero_ub, block_elem_cnt, in_dtype]
-            tp_args = tiling_params[0:46]
-            _func_transform_201(tensor_args, tp_args)
+            _func_transform_201(tensor_args, tiling_params)
 
     # add compile_info
     tbe_context.get_context().add_compile_info("vars", {"ub_size": ub_size,

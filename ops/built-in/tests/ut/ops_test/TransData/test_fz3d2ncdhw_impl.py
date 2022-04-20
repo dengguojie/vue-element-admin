@@ -174,6 +174,7 @@ case7 = {"params": [{"shape": (48, 3, 16, 16), "dtype": "float32",
                      "ori_shape": (1, 2, 2, 8, 126), "format": "FRACTAL_Z_3D", "ori_format": "DHWCN",
                      "param_type": "output"},
                     "FRACTAL_Z_3D", "DHWCN", 21],
+         "case_name": "fz3d_2_dhwcn_001",
          "expect": "success",
          "format_expect": ["DHWCN"],
          "support_expect": False}
@@ -246,6 +247,7 @@ case15 = {"params": [{"shape": (21600, 8, 16, 16), "dtype": "float32",
                      "ori_shape": (128, 128, 3, 3, 300), "format": "NCDHW", "ori_format": "NCDHW",
                      "param_type": "output"},
                     "FRACTAL_Z_3D", "NCDHW"],
+         "case_name": "fz3d_2_ncdhw_015",
          "expect": "success",
          "format_expect": ["NCDHW"],
          "support_expect": False}
@@ -258,6 +260,7 @@ case16 = {"params": [{"shape": (21600, 8, 16, 16), "dtype": "float32",
                      "ori_shape": (128, 128, 300, 3, 3), "format": "NCDHW", "ori_format": "NCDHW",
                      "param_type": "output"},
                     "FRACTAL_Z_3D", "NCDHW"],
+         "case_name": "fz3d_2_ncdhw_016",
          "expect": "success",
          "format_expect": ["NCDHW"],
          "support_expect": False}
@@ -270,6 +273,7 @@ case17 = {"params": [{"shape": (34300, 4, 16, 16), "dtype": "float32",
                      "ori_shape": (64, 3, 7, 700, 7), "format": "NCDHW", "ori_format": "NCDHW",
                      "param_type": "output"},
                     "FRACTAL_Z_3D", "NCDHW"],
+         "case_name": "fz3d_2_ncdhw_017",
          "expect": "success",
          "format_expect": ["NCDHW"],
          "support_expect": False}
@@ -282,35 +286,17 @@ case18 = {"params": [{"shape": (384, 32, 16, 16), "dtype": "float32",
                      "ori_shape": (512, 2048, 3, 1, 1), "format": "NCDHW", "ori_format": "NCDHW",
                      "param_type": "output"},
                     "FRACTAL_Z_3D", "NCDHW"],
+         "case_name": "fz3d_2_ncdhw_018",
          "expect": "success",
          "format_expect": ["NCDHW"],
          "support_expect": False}
 
-ut_case.add_case(["Ascend910"], err1)
-ut_case.add_case(["Ascend910"], err2)
-ut_case.add_case(["Ascend910"], err6)
-ut_case.add_precision_case(["Ascend910"], case1)
-ut_case.add_precision_case(["Ascend910"], case5)
-ut_case.add_precision_case(["Ascend910"], case6)
-# ut_case.add_precision_case(["Ascend910"], case10)
-# ut_case.add_precision_case(["Ascend910"], case11)
-
-ut_case.add_case(["Ascend910"], err3)
-ut_case.add_case(["Ascend910"], err4)
-ut_case.add_case(["Ascend910"], err5)
-ut_case.add_precision_case(["Ascend910"], case2)
-ut_case.add_precision_case(["Ascend910"], case3)
-ut_case.add_precision_case(["Ascend910"], case4)
 ut_case.add_case(["Ascend310","Ascend910A"], case7)
 ut_case.add_case(["Ascend310","Ascend910A"], case15)
 ut_case.add_case(["Ascend310","Ascend910A"], case16)
 ut_case.add_case(["Ascend310","Ascend910A"], case17)
 ut_case.add_case(["Ascend310","Ascend910A"], case18)
-#ut_case.add_precision_case(["Ascend910"], case8)
-#ut_case.add_precision_case(["Ascend910"], case9)
-#ut_case.add_precision_case(["Ascend910"], case12)
 
 if __name__ == '__main__':
-    # ut_case.run("Ascend910")
     ut_case.run()
     exit(0)

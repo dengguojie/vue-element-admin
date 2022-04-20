@@ -96,34 +96,17 @@ def gen_trans_data_precision_case(src, dst, dtype, case_name_val, expect,
 # add precision cases
 ut_case.add_precision_case(["Ascend910A"],
                            gen_trans_data_precision_case((1, 1, 12, 12), (3, 2, 16, 16),
-                                                         "float16", "hwcn_1", "success"))
+                                                         "float16", "hwcn2fzlstm_1", "success"))
 ut_case.add_precision_case(["Ascend910A"],
                            gen_trans_data_precision_case((1, 1, 32, 64), (3, 2, 16, 16),
-                                                         "float16", "hwcn_2", "success"))
-ut_case.add_precision_case(["Ascend910A"],
-                           gen_trans_data_precision_case((1, 1, 62, 124), (3, 2, 16, 16),
-                                                         "float16", "hwcn_3", "success"))
+                                                         "float16", "hwcn2fzlstm_2", "success"))
 ut_case.add_precision_case(["Ascend910A"],
                            gen_trans_data_precision_case((1, 1, 510, 1240), (3, 2, 16, 16),
-                                                         "float16", "hwcn_4", "success"))
+                                                         "float16", "hwcn2fzlstm_4", "success"))
 ut_case.add_precision_case(["Ascend910A"],
                            gen_trans_data_precision_case((1, 1, 201, 800), (3, 2, 16, 16),
-                                                         "float16", "hwcn_5", "success"))
-# ut_case.add_precision_case(["Ascend910A"],
-#                            gen_trans_data_precision_case((1, 1, 2, 4), (3, 2, 16, 16),
-#                                                          "float16", "hwcn_6", "success"))
-# ut_case.add_precision_case(["Ascend910A"],
-#                            gen_trans_data_precision_case((10, 20, 62, 124), (3, 2, 16, 16),
-#                                                          "float16", "hwcn_7", "success"))
-# ut_case.add_precision_case(["Ascend910A"],
-#                            gen_trans_data_precision_case((30, 5, 510, 1240), (3, 2, 16, 16),
-#                                                          "float16", "hwcn_8", "success"))
-# ut_case.add_precision_case(["Ascend910A"],
-#                            gen_trans_data_precision_case((100, 100, 2, 4), (3, 2, 16, 16),
-#                                                          "float16", "hwcn_9", "success"))
-# ut_case.add_precision_case(["Ascend910A"],
-#                            gen_trans_data_precision_case((200, 10, 252, 1000), (3, 2, 16, 16),
-#                                                          "float16", "hwcn_10", "success"))
+                                                         "float16", "hwcn2fzlstm_5", "success"))
+
 
 if __name__ == '__main__':
     ut_case.run()

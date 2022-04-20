@@ -1,18 +1,16 @@
-# Copyright 2020 Huawei Technologies Co., Ltd
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-# http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-# ============================================================================
 """
+Copyright (c) Huawei Technologies Co., Ltd. 2020-2022. All rights reserved.
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the Apache License Version 2.0.
+You may not use this file except in compliance with the License.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+Apache License for more details at
+http://www.apache.org/licenses/LICENSE-2.0
+
 trans_data_common_func
 """
 
@@ -52,6 +50,8 @@ REG_IDX_LIST = (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
                 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31)
 # vnchwconv line count
 VNC_LINES = 16
+TILING_CTRL_PARAM = ("int64", 96)
+SAVE_UB = 256
 
 
 def ceil_div(value_x, value_y):
@@ -298,8 +298,7 @@ def get_dtype_factor(dtype):
 
     Parameters
     ----------
-    in_dtype : str
-        data type name
+    dtype : str
 
     Returns
     -------
@@ -309,3 +308,26 @@ def get_dtype_factor(dtype):
     size_factor = 2 if dtype.lower() in ("float32", "int32", "uint32") else 1
 
     return size_factor
+
+
+def get_tiling_params(tik_inst, tiling_ub, tiling_gm, tiling_params, tiling_dtype_bytes):
+    """
+    get tiling parameters
+
+    Parameters
+    ----------
+    tik_inst : tik instance
+    tiling_ub: ub tensor
+    tiling_gm: gm tensor
+    tiling_params: list of tiling parameters
+    tiling_dtype_bytes: bytes of dtype
+
+    Returns
+    -------
+    None
+    """
+
+    ele_per_block = BLOCK_BYTE_SIZE // tiling_dtype_bytes
+    tik_inst.data_move(tiling_ub, tiling_gm, 0, 1, TILING_CTRL_PARAM[1] // ele_per_block, 0, 0)
+    for idx, reg in enumerate(tiling_params):
+        reg.set_as(tiling_ub[idx])
