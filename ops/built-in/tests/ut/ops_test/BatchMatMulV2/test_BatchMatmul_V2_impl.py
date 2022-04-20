@@ -23,7 +23,6 @@ from tbe import tvm
 from impl.batch_matmul_v2 import get_op_support_info
 from test_bmmv2_mock_case import *
 
-
 vals = {("CORE_NUM", ): 48,
         ("CUBE_VECTOR_SPLIT",): True,
         ("UB_SIZE", ): 196608,

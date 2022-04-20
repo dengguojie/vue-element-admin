@@ -645,9 +645,8 @@ class GEMMCompute(FormatCompute):
         return gemv_mode_flag
 
     def _get_not_gevm_gemv_flag(self):
-        not_use_gevm_gemv_flag = False
         is_int82int32_nd = (self.ops_data_flow_mode == "int82int32"
-            and (self.format_a == "ND" or self.format_b == "ND")) and (self.alpha is not None)
+            and (self.format_a == "ND" or self.format_b == "ND"))
         not_use_gevm_gemv_flag = (self.ops_data_flow_mode == "int82fp32" or is_int82int32_nd) \
                                  and (self.alpha is not None)
         return not_use_gevm_gemv_flag
@@ -761,49 +760,30 @@ class GEMMCompute(FormatCompute):
         c_gm_shape = self._get_out_shape(res)
         attrs_dict["shape"] = c_gm_shape
         # not_align flag is used for nd out
-        not_align = (not self.align_a) or (not self.align_b)
+        not_align = (not self.align_a or not self.align_b) and self.format_out == "ND"
         # current cachetiling scenes both m/k/n axis is mutiply of 16
-        not_align = not_align and (self.format_out == "ND") and not self.cache_tiling_flag
-        have_batch = len(c_gm_shape) in (3, 5)
+        not_align = not_align and not self.cache_tiling_flag
 
         if not_align:
             if self.need_reformat_to_nd and attrs_dict.get("shape")[-1] % self.block_in != 0:
                 self.res = res
             elif len(c_gm_shape) in (2, 3):
-                if have_batch:
-                    self.res = tvm.compute(
-                        c_gm_shape,
-                        lambda batch, i, j: tvm.select(
-                            i < c_gm_shape[1],
-                            tvm.select(j < c_gm_shape[2], res[batch, i, j])
-                        ), name="tensor_c_gm", tag=res_tag, attrs=attrs_dict
-                    )
-                else:
-                    self.res = tvm.compute(
-                        c_gm_shape,
-                        lambda i, j: tvm.select(
-                            i < c_gm_shape[0],
-                            tvm.select(j < c_gm_shape[1], res[i, j])
-                        ), name="tensor_c_gm", tag=res_tag, attrs=attrs_dict
-                    )
+                self.res = tvm.compute(
+                    c_gm_shape,
+                    lambda *indices: tvm.select(
+                        indices[-2] < c_gm_shape[-2],
+                        tvm.select(indices[-1] < c_gm_shape[-1], res(*indices))
+                    ), name="tensor_c_gm", tag=res_tag, attrs=attrs_dict
+                )
             # may needn't
             elif len(c_gm_shape) in (4, 5):
-                if have_batch:
-                    self.res = tvm.compute(
-                        c_gm_shape,
-                        lambda batch, i, j, k, l: tvm.select(
-                            i < c_gm_shape[1],
-                            tvm.select(j < c_gm_shape[2], res[batch, i, j, k, l])
-                        ), name="tensor_c_gm", tag=res_tag, attrs=attrs_dict
-                    )
-                else:
-                    self.res = tvm.compute(
-                        c_gm_shape,
-                        lambda i, j, k, l: tvm.select(
-                            i < c_gm_shape[0],
-                            tvm.select(j < c_gm_shape[1], res[i, j, k, l])
-                        ), name="tensor_c_gm", tag=res_tag, attrs=attrs_dict
-                    )
+                self.res = tvm.compute(
+                    c_gm_shape,
+                    lambda *indices: tvm.select(
+                        indices[-4] < c_gm_shape[-4],
+                        tvm.select(indices[-3] < c_gm_shape[-3], res(*indices))
+                    ), name="tensor_c_gm", tag=res_tag, attrs=attrs_dict
+                )
         else:
             self.res = tvm.compute(
                 c_gm_shape,
@@ -1163,36 +1143,21 @@ class GEMMCompute(FormatCompute):
             return tensor_normalize_ub
 
         ori_shape = [self._get_value(i) for i in tensor_need_align.shape]
-        if len(ori_shape) == 2:
-            tensor_normalize_ub = tvm.compute(
-                aligned_shape,
-                lambda i, j: tvm.select(
-                    i < ori_shape[0],
-                    tvm.select(
-                        j < ori_shape[1],
-                        tensor_need_align[i, j],
-                        tvm.convert(0).astype(in_dtype)
-                    ),
-                    tvm.convert(0).astype(in_dtype)
-                ),
-                name="tensor_{}_normalize_ub".format(tensor_name)
-            )
-        else:
-            aligned_shape.insert(0, ori_shape[0])
+        aligned_shape = ori_shape[:-2] + aligned_shape
 
-            tensor_normalize_ub = tvm.compute(
-                aligned_shape,
-                lambda batch, i, j: tvm.select(
-                    i < ori_shape[-2],
-                    tvm.select(
-                        j < ori_shape[-1],
-                        tensor_need_align[batch, i, j],
-                        tvm.convert(0).astype(in_dtype)
-                    ),
+        tensor_normalize_ub = tvm.compute(
+            aligned_shape,
+            lambda *indices: tvm.select(
+                indices[-2] < ori_shape[-2],
+                tvm.select(
+                    indices[-1] < ori_shape[-1],
+                    tensor_need_align(*indices),
                     tvm.convert(0).astype(in_dtype)
                 ),
-                name="tensor_{}_normalize_ub".format(tensor_name)
-            )
+                tvm.convert(0).astype(in_dtype)
+            ),
+            name="tensor_{}_normalize_ub".format(tensor_name)
+        )
 
         return tensor_normalize_ub
 
@@ -1212,60 +1177,33 @@ class GEMMCompute(FormatCompute):
         # Use a virtual Node [tensor_normalize_ub] which will be mapped as "phony_insn".
         # At schedule stage, either aligned or general pattern will be selected for execution,
         # and the remaining one will be mapped as "phony_insn".
-        if len(ori_shape) == 2:
-            tensor_normalize_ub_aligned = tvm.compute(
-                aligned_shape,
-                lambda i, j: tensor_need_align[i, j],
-                name="tensor_{}_normalize_ub_aligned".format(tensor_name)
-            )
-            tensor_normalize_ub_general = tvm.compute(
-                aligned_shape,
-                lambda i, j: tvm.select(
-                    i < ori_shape[0],
-                    tvm.select(
-                        j < ori_shape[1],
-                        tensor_need_align[i, j],
-                        tvm.convert(0).astype(in_dtype)
-                    ),
-                    tvm.convert(0).astype(in_dtype)
-                ),
-                name="tensor_{}_normalize_ub_general".format(tensor_name)
-            )
-            tensor_normalize_ub = tvm.compute(
-                aligned_shape,
-                lambda i, j: tensor_normalize_ub_aligned[i, j]
-                    + tensor_normalize_ub_general[i, j],
-                name="tensor_{}_normalize_ub".format(tensor_name),
-                attrs={"use_aligned_pattern": use_aligned_pattern}
-            )
-        else:
-            aligned_shape.insert(0, ori_shape[0])
+        aligned_shape = ori_shape[:-2] + aligned_shape
 
-            tensor_normalize_ub_aligned = tvm.compute(
-                aligned_shape,
-                lambda batch, i, j: tensor_need_align[batch, i, j],
-                name="tensor_{}_normalize_ub_aligned".format(tensor_name)
-            )
-            tensor_normalize_ub_general = tvm.compute(
-                aligned_shape,
-                lambda batch, i, j: tvm.select(
-                    i < ori_shape[-2],
-                    tvm.select(
-                        j < ori_shape[-1],
-                        tensor_need_align[batch, i, j],
-                        tvm.convert(0).astype(in_dtype)
-                    ),
+        tensor_normalize_ub_aligned = tvm.compute(
+            aligned_shape,
+            lambda *indices: tensor_need_align(*indices),
+            name="tensor_{}_normalize_ub_aligned".format(tensor_name)
+        )
+        tensor_normalize_ub_general = tvm.compute(
+            aligned_shape,
+            lambda *indices: tvm.select(
+                indices[-2] < ori_shape[-2],
+                tvm.select(
+                    indices[-1] < ori_shape[-1],
+                    tensor_need_align(*indices),
                     tvm.convert(0).astype(in_dtype)
                 ),
-                name="tensor_{}_normalize_ub_general".format(tensor_name)
-            )
-            tensor_normalize_ub = tvm.compute(
-                aligned_shape,
-                lambda batch, i, j: tensor_normalize_ub_aligned[batch, i, j]
-                    + tensor_normalize_ub_general[batch, i, j],
-                name="tensor_{}_normalize_ub".format(tensor_name),
-                attrs={"use_aligned_pattern": use_aligned_pattern}
-            )
+                tvm.convert(0).astype(in_dtype)
+            ),
+            name="tensor_{}_normalize_ub_general".format(tensor_name)
+        )
+        tensor_normalize_ub = tvm.compute(
+            aligned_shape,
+            lambda *indices: tensor_normalize_ub_aligned(*indices)
+                + tensor_normalize_ub_general(*indices),
+            name="tensor_{}_normalize_ub".format(tensor_name),
+            attrs={"use_aligned_pattern": use_aligned_pattern}
+        )
 
         return tensor_normalize_ub
 
@@ -1391,15 +1329,9 @@ class GEMMCompute(FormatCompute):
         return tensor_a_matrix
 
     def _compute_a_matrix_nd(self, tensor_a_normalize, use_normal_func):
-        nd_to_zz_normal_flag = False
-        nd_to_zz_normal_flag = nd_to_zz_normal_flag or self.cube_vector_split
-        nd_to_zz_normal_flag = nd_to_zz_normal_flag or (self.ops_data_flow_mode in ("int82int32", "int4int32"))
-        nd_to_zz_normal_flag = nd_to_zz_normal_flag or (self.mmad_mode == "gevm")
-        nd_to_zz_normal_flag = nd_to_zz_normal_flag or use_normal_func
-        nd_to_zz_normal_flag = nd_to_zz_normal_flag or in_dynamic()
-
-        nd2Zz_vnchwconv_flag = False
-        nd2Zz_vnchwconv_flag = nd2Zz_vnchwconv_flag or (self.ops_data_flow_mode not in ("int82int32", "int4int32"))
+        nd_to_zz_normal_flag = self.cube_vector_split or self.ops_data_flow_mode in ("int82int32", "int4int32") or \
+                               self.mmad_mode == "gevm" or use_normal_func or in_dynamic()
+        nd_to_zz_vnchwconv_flag = self.ops_data_flow_mode not in ("int82int32", "int4int32")
 
         compute_params = {
             "tensor_name": "tensor_a_matrix",
@@ -1419,7 +1351,7 @@ class GEMMCompute(FormatCompute):
                 "format_in_a_ub": "nd"
             }
             tensor_a_matrix = self.compute_nd2zz(tensor_a_normalize, compute_params)
-        elif nd2Zz_vnchwconv_flag:
+        elif nd_to_zz_vnchwconv_flag:
             compute_params["mode_info"] = "nd2Zz_vnchwconv"
             compute_params["format_info"] = {
                 "format_in_a_l1": "three_axis",
@@ -1533,13 +1465,8 @@ class GEMMCompute(FormatCompute):
         return tensor_b_matrix
 
     def _compute_b_matrix_nd(self, tensor_b_normalize):
-        nd_to_zn_normal_flag = False
-        nd_to_zn_normal_flag = nd_to_zn_normal_flag or self.cube_vector_split
-        nd_to_zn_normal_flag = nd_to_zn_normal_flag or (self.ops_data_flow_mode == "int82int32")
-        nd_to_zn_normal_flag = nd_to_zn_normal_flag or in_dynamic()
-
-        nd2Zn_vnchwconv_flag = False
-        nd2Zn_vnchwconv_flag = nd2Zn_vnchwconv_flag or (self.ops_data_flow_mode != "int82int32")
+        nd_to_zn_normal_flag = self.cube_vector_split or self.ops_data_flow_mode == "int82int32" or in_dynamic()
+        nd_to_zn_vnchwconv_flag = self.ops_data_flow_mode != "int82int32"
 
         compute_params = {
             "tensor_name": "tensor_b_matrix",
@@ -1559,7 +1486,7 @@ class GEMMCompute(FormatCompute):
                 "format_in_b_ub": "nd"
             }
             tensor_b_matrix = self.compute_nd2zn(tensor_b_normalize, compute_params)
-        elif nd2Zn_vnchwconv_flag:
+        elif nd_to_zn_vnchwconv_flag:
             compute_params["mode_info"] = "nd2Zn_vnchwconv"
             compute_params["format_info"] = {
                 "format_in_b_l1": "three_axis",
@@ -1583,9 +1510,9 @@ class GEMMCompute(FormatCompute):
         n_dim = tvm.var("block_dim_n", dtype="int32")
 
         shape_src = tensor_src.shape
-        block_n_num = (shape_src[-3] + tile_n_value - 1) // tile_n_value
-        block_k_num = (shape_src[-4] + tile_k_value - 1) // tile_k_value
-        n_dim_num = (block_n_num + n_dim - 1) // n_dim
+        block_n_num = int_ceil_div(shape_src[-3], tile_n_value)
+        block_k_num = int_ceil_div(shape_src[-4], tile_k_value)
+        n_dim_num = int_ceil_div(block_n_num, n_dim)
         n_dim_value = n_dim_num * tile_n_value
 
         # tile_mode is 1 when tile_n < dim_n, or tile_mode is 0
@@ -1656,12 +1583,7 @@ class GEMMCompute(FormatCompute):
         return tensor_beta_bias
 
     def _get_bias_l0c(self, tensor_bias, l0c_shape):
-        if self.have_bias and (not self.cube_vector_split):
-            tensor_bias_l0c = self._get_bias_l0c_compute(tensor_bias, l0c_shape)
-        else:
-            tensor_bias_l0c = tensor_bias
-
-        return tensor_bias_l0c
+        return self._get_bias_l0c_compute(tensor_bias, l0c_shape)
 
     def _get_bias_l0c_shape(self, tensor_bias):
         bias_shape = []
@@ -2134,9 +2056,7 @@ class GEMMCompute(FormatCompute):
         connect_str = "2"
         self.ops_data_flow_mode = connect_str.join([self.type_map.get(self.src_dtype),
                                                     self.type_map.get(self.dst_dtype)])
-        need_cast_to_fp16 = False
-        need_cast_to_fp16 = need_cast_to_fp16 or (self.src_dtype == "float16" and self.dst_dtype == "float16")
-        self.need_cast_to_fp16 = need_cast_to_fp16
+        self.need_cast_to_fp16 = (self.src_dtype == "float16" and self.dst_dtype == "float16")
 
         # merge data flow to:
         # 1: fp162fp32

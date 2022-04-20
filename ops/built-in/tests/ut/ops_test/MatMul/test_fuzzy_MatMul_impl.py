@@ -207,7 +207,6 @@ def test_matmul_generalization_dtype_wrong(test_arg):
 
 ut_case.add_cust_test_func(test_func=test_matmul_generalization_dtype_wrong)
 
-
 if __name__ == "__main__":
     with op_context.OpContext("dynamic"):
         context = op_context.get_context()

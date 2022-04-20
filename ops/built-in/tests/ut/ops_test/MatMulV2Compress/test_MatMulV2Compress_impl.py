@@ -183,7 +183,6 @@ def test_split_matmul(test_arg):
     get_op_support_info(x1, x2, compress_index, bias, None, output_y=y)
 ut_case.add_cust_test_func(test_func=test_split_matmul)
 
-
 if __name__ == '__main__':
     ut_case.run("Ascend310")
     exit(0)

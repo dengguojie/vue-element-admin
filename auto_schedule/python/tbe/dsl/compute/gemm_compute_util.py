@@ -38,6 +38,21 @@ class FormatCompute(object):
         """
         return shape_object.value if hasattr(shape_object, "value") else shape_object
 
+    @staticmethod
+    def _trans_pose(ori_shape, perm):
+        """
+        get the shape and lambda upon on the perm
+        """
+        dst_indice = ['batch', 'i', 'j', 'k', 'l'][-len(ori_shape):]
+        if len(perm) > len(ori_shape):
+            perm = list(perm_num - 1 for perm_num in perm[-len(ori_shape):])
+        src_indice = list(dst_indice[indice] for indice in perm)
+        shape = list(ori_shape[indice] for indice in perm)
+        dst_indice = ",".join(dst_indice)
+        src_indice = ",".join(src_indice)
+        lambda_expression_str = f'lambda {dst_indice}: ori_tensor[{src_indice}]'
+        return shape, lambda_expression_str
+
     def _lambda_nd2nz(self, ori_tensor, block_in, block_reduce):
         """
         the express of nd format trans to Nz format. support batch
@@ -50,23 +65,16 @@ class FormatCompute(object):
             lambda_expression the expression of trans nd to nz
         """
         ori_nd_shape = [self._get_value(i) for i in ori_tensor.shape]
+        fract_shape = ori_nd_shape[:-2] + [
+            int_ceil_div(ori_nd_shape[-1], block_reduce),
+            int_ceil_div(ori_nd_shape[-2], block_in),
+            block_in,
+            block_reduce
+        ]
         if len(ori_nd_shape) == 3:
-            fract_shape = (
-                ori_nd_shape[0],
-                int_ceil_div(ori_nd_shape[2], block_reduce),
-                int_ceil_div(ori_nd_shape[1], block_in),
-                block_in,
-                block_reduce
-            )
             lambda_expression = lambda batch, k1, n1, n0, k0: ori_tensor[batch, n1 * block_in + n0,
                                 k1 * block_reduce + k0]
         else:
-            fract_shape = (
-                int_ceil_div(ori_nd_shape[1], block_reduce),
-                int_ceil_div(ori_nd_shape[0], block_in),
-                block_in,
-                block_reduce
-            )
             lambda_expression = lambda k1, n1, n0, k0: ori_tensor[n1 * block_in + n0, k1 * block_reduce + k0]
         return fract_shape, lambda_expression
 
@@ -82,38 +90,19 @@ class FormatCompute(object):
             lambda_expression the expression of trans nd to nz
         """
         ori_nd_shape = [self._get_value(i) for i in ori_tensor.shape]
+        fract_shape = ori_nd_shape[:-2] + [
+            int_ceil_div(ori_nd_shape[-2], block_reduce),
+            int_ceil_div(ori_nd_shape[-1], block_in),
+            block_in,
+            block_reduce
+        ]
+        fract_l1_shape = fract_shape[:-2] + [block_reduce, block_in]
         if len(ori_nd_shape) == 3:
-            fract_shape = (
-                ori_nd_shape[0],
-                int_ceil_div(ori_nd_shape[1], block_reduce),
-                int_ceil_div(ori_nd_shape[2], block_in),
-                block_in,
-                block_reduce,
-            )
-            fract_l1_shape = (
-                ori_nd_shape[0],
-                int_ceil_div(ori_nd_shape[1], block_reduce),
-                int_ceil_div(ori_nd_shape[2], block_in),
-                block_reduce,
-                block_in,
-            )
             tensor_l1 = tvm.compute(fract_l1_shape, lambda batch, k1, n1, k0, n0:
                                     ori_tensor[batch, k1 * block_reduce + k0, n1 * block_in + n0],
                                     name="tensor_b_l1")
             lambda_expression = lambda batch, k1, n1, n0, k0: tensor_l1[batch, k1, n1, k0, n0]
         else:
-            fract_shape = (
-                int_ceil_div(ori_nd_shape[0], block_reduce),
-                int_ceil_div(ori_nd_shape[1], block_in),
-                block_in,
-                block_reduce,
-            )
-            fract_l1_shape = (
-                int_ceil_div(ori_nd_shape[0], block_reduce),
-                int_ceil_div(ori_nd_shape[1], block_in),
-                block_reduce,
-                block_in,
-            )
             tensor_l1 = tvm.compute(fract_l1_shape, lambda k1, n1, k0, n0:
                                     ori_tensor[k1 * block_reduce + k0, n1 * block_in + n0],
                                     name="tensor_b_l1")
@@ -412,25 +401,10 @@ class FormatCompute(object):
             return res
 
         ori_tensor_shape = [self._get_value(i) for i in ori_tensor.shape]
-        if len(ori_tensor_shape) == 5:
-            shapes = (
-                ori_tensor_shape[0],
-                ori_tensor_shape[2],
-                ori_tensor_shape[1],
-                ori_tensor_shape[3],
-                ori_tensor_shape[4]
-            )
-            lambda_expression = lambda batch, i, j, k, l: ori_tensor[batch, j, i, k, l]
-        else:
-            shapes = (
-                ori_tensor_shape[1],
-                ori_tensor_shape[0],
-                ori_tensor_shape[2],
-                ori_tensor_shape[3]
-            )
-            lambda_expression = lambda i, j, k, l: ori_tensor[j, i, k, l]
+        perm = (0, 2, 1, 3, 4)
+        shapes, lambda_expression_str = self._trans_pose(ori_tensor_shape, perm)
 
-        res = tvm.compute(shapes, lambda_expression, name=tensor_name,
+        res = tvm.compute(shapes, eval(lambda_expression_str, locals()), name=tensor_name,
             attrs={"mode": mode_info, "format_info": format_info})
         return res
 
@@ -452,25 +426,10 @@ class FormatCompute(object):
             res = self.fract_change_outer_axis(ori_tensor, compute_params)
             return res
         ori_tensor_shape = [self._get_value(i) for i in ori_tensor.shape]
-        if len(ori_tensor_shape) == 5:
-            shapes = (
-                ori_tensor_shape[0],
-                ori_tensor_shape[1],
-                ori_tensor_shape[2],
-                ori_tensor_shape[4],
-                ori_tensor_shape[3]
-            )
-            lambda_expression = lambda batch, i, j, k, l: ori_tensor[batch, i, j, l, k]
-        else:
-            shapes = (
-                ori_tensor_shape[0],
-                ori_tensor_shape[1],
-                ori_tensor_shape[3],
-                ori_tensor_shape[2]
-            )
-            lambda_expression = lambda i, j, k, l: ori_tensor[i, j, l, k]
+        perm = (0, 1, 2, 4, 3)
+        shapes, lambda_expression_str = self._trans_pose(ori_tensor_shape, perm)
 
-        res = tvm.compute(shapes, lambda_expression, name=tensor_name,
+        res = tvm.compute(shapes, eval(lambda_expression_str, locals()), name=tensor_name,
             attrs={"mode": mode_info, "format_info": format_info})
         return res
 
@@ -492,23 +451,9 @@ class FormatCompute(object):
             shapes = ori_tensor_shape
             lambda_expression = lambda *indices: ori_tensor[indices]
         else:
-            if len(ori_tensor_shape) == 5:
-                shapes = (
-                    ori_tensor_shape[0],
-                    ori_tensor_shape[2],
-                    ori_tensor_shape[1],
-                    ori_tensor_shape[4],
-                    ori_tensor_shape[3]
-                )
-                lambda_expression = lambda batch, i, j, k, l: ori_tensor[batch, j, i, l, k]
-            else:
-                shapes = (
-                    ori_tensor_shape[1],
-                    ori_tensor_shape[0],
-                    ori_tensor_shape[3],
-                    ori_tensor_shape[2]
-                )
-                lambda_expression = lambda i, j, k, l: ori_tensor[j, i, l, k]
+            perm = (0, 2, 1, 4, 3)
+            shapes, lambda_expression_str = self._trans_pose(ori_tensor_shape, perm)
+            lambda_expression = eval(lambda_expression_str, locals())
 
         if mode_info:
             res = tvm.compute(
@@ -536,64 +481,36 @@ class FormatCompute(object):
         format_info = compute_params.get("format_info")
         trans = compute_params.get("trans")
         ori_tensor_shape = [self._get_value(i) for i in ori_tensor.shape]
-        if len(ori_tensor_shape) == 2:
-            tensor_fract_k_shape = (
-                (ori_tensor_shape[0] + block_in - 1) // block_in,
-                ori_tensor_shape[1],
+        tensor_fract_k_shape = ori_tensor_shape[:-2] + [
+            int_ceil_div(ori_tensor_shape[-2], block_in),
+            ori_tensor_shape[-1],
+            block_in
+        ]
+        tensor_fract_k = tvm.compute(
+            tensor_fract_k_shape,
+            lambda *indices: ori_tensor(*indices[:-3], indices[-3]*block_in + indices[-1], indices[-2]),
+            name="{}_fract_k".format(tensor_name)
+        )
+        if trans:
+            tensor_matrix_shape = tensor_fract_k_shape[:-3] + [
+                int_ceil_div(tensor_fract_k_shape[-2], block_reduce),
+                tensor_fract_k_shape[-3],
+                block_reduce,
                 block_in
-            )
-            tensor_fract_k = tvm.compute(
-                tensor_fract_k_shape,
-                lambda i, j, k: ori_tensor[i * block_in + k, j],
-                name="{}_fract_k".format(tensor_name)
-            )
-            if trans:
-                tensor_matrix_shape = (
-                    (tensor_fract_k_shape[1] + block_reduce - 1) // block_reduce,
-                    tensor_fract_k_shape[0],
-                    block_reduce,
-                    block_in
-                )
-                lambda_expression = lambda i, j, k, l: tensor_fract_k[j, i * block_in + k, l]
-            else:
-                tensor_matrix_shape = (
-                    tensor_fract_k_shape[0],
-                    (tensor_fract_k_shape[1] + block_reduce - 1) // block_reduce,
-                    block_in,
-                    block_reduce
-                )
-                lambda_expression = lambda i, j, k, l: tensor_fract_k[i, j * block_reduce + l, k]
+            ]
+            lambda_expression = lambda *indices: tensor_fract_k(*indices[:-4], indices[-3],
+                                                                indices[-4]*block_in + indices[-2],
+                                                                indices[-1])
         else:
-            tensor_fract_k_shape = (
-                ori_tensor_shape[0],
-                (ori_tensor_shape[1] + block_in - 1) // block_in,
-                ori_tensor_shape[2],
-                block_in
-            )
-            tensor_fract_k = tvm.compute(
-                tensor_fract_k_shape,
-                lambda batch, i, j, k: ori_tensor[batch, i * block_in + k, j],
-                name="{}_fract_k".format(tensor_name)
-            )
-            if trans:
-                tensor_matrix_shape = (
-                    tensor_fract_k_shape[0],
-                    (tensor_fract_k_shape[2] + block_reduce - 1) // block_reduce,
-                    tensor_fract_k_shape[1],
-                    block_reduce,
-                    block_in
-                )
-                lambda_expression = lambda batch, i, j, k, l: tensor_fract_k[batch, j, i * block_in + k, l]
-            else:
-                tensor_matrix_shape = (
-                    tensor_fract_k_shape[0],
-                    tensor_fract_k_shape[1],
-                    (tensor_fract_k_shape[2] + block_reduce - 1) // block_reduce,
-                    block_in,
-                    block_reduce
-                )
-                lambda_expression = lambda batch, i, j, k, l: tensor_fract_k[batch, i, j * block_reduce + l, k]
-
+            tensor_matrix_shape = tensor_fract_k_shape[:-3] + [
+                tensor_fract_k_shape[-3],
+                int_ceil_div(tensor_fract_k_shape[-2], block_reduce),
+                block_in,
+                block_reduce
+            ]
+            lambda_expression = lambda *indices: tensor_fract_k(*indices[:-4], indices[-4],
+                                                                indices[-3]*block_reduce + indices[-1],
+                                                                indices[-2])
         res = tvm.compute(
             tensor_matrix_shape,
             lambda_expression,
@@ -616,35 +533,20 @@ class FormatCompute(object):
         mode_info = compute_params.get("mode_info")
         format_info = compute_params.get("format_info")
         ori_tensor_shape = [self._get_value(i) for i in ori_tensor.shape]
-        if len(ori_tensor_shape) == 2:
-            ori_tensor_shape[-1], ori_tensor_shape[-2] = ori_tensor_shape[-2], ori_tensor_shape[-1]
-            tensor_a_transpose = tvm.compute(
-                ori_tensor_shape,
-                lambda i, j: ori_tensor[j, i],
-                name="a_transpose")
-            tensor_matrix_shape = (
-                ori_tensor_shape[0] // block_in,
-                ori_tensor_shape[1] // block_reduce,
-                block_in,
-                block_reduce
-            )
-            lambda_expression = lambda i, j, k, l: tensor_a_transpose[i * block_in + k, j * block_reduce + l]
-        else:
-            ori_tensor_shape[-1], ori_tensor_shape[-2] = ori_tensor_shape[-2], ori_tensor_shape[-1]
-            tensor_a_transpose = tvm.compute(
-                ori_tensor_shape,
-                lambda batch, i, j: ori_tensor[batch, j, i],
-                name="a_transpose")
-            tensor_matrix_shape = (
-                ori_tensor_shape[0],
-                ori_tensor_shape[1] // block_in,
-                ori_tensor_shape[2] // block_reduce,
-                block_in,
-                block_reduce
-            )
-            lambda_expression = lambda batch, i, j, k, l: tensor_a_transpose[batch,
-                                                                             i * block_in + k, j * block_reduce + l]
-
+        ori_tensor_shape[-1], ori_tensor_shape[-2] = ori_tensor_shape[-2], ori_tensor_shape[-1]
+        tensor_matrix_shape = ori_tensor_shape[:-2] + [
+            ori_tensor_shape[-2] // block_in,
+            ori_tensor_shape[-1] // block_reduce,
+            block_in,
+            block_reduce
+        ]
+        tensor_a_transpose = tvm.compute(
+            ori_tensor_shape,
+            lambda *indices: ori_tensor(*indices[:-2], indices[-1], indices[-2]),
+            name="a_transpose")
+        lambda_expression = lambda *indices: tensor_a_transpose(*indices[:-4],
+                                                                indices[-4]*block_in + indices[-2],
+                                                                indices[-3]*block_reduce + indices[-1])
         res = tvm.compute(
             tensor_matrix_shape,
             lambda_expression,
@@ -672,63 +574,30 @@ class FormatCompute(object):
         if int82int32_trans_flag:
             return self._compute_nd2zz_int8_trans(ori_tensor, compute_params)
         ori_tensor_shape = [self._get_value(i) for i in ori_tensor.shape]
-        if len(ori_tensor_shape) == 2:
-            if trans:
-                tensor_matrix_shape = (
-                    int_ceil_div(ori_tensor_shape[1], block_in),
-                    int_ceil_div(ori_tensor_shape[0], block_reduce),
-                    block_in,
-                    block_reduce
-                )
-
-                tensor_l1_shape = (
-                    int_ceil_div(ori_tensor_shape[1], block_in),
-                    int_ceil_div(ori_tensor_shape[0], block_reduce),
-                    block_reduce,
-                    block_in
-                )
-                l1_tensor = tvm.compute(tensor_l1_shape,
-                            lambda m1, k1, k0, m0: ori_tensor[k1 * block_reduce + k0, m1 * block_in + m0],
-                            name="tensor_a_l1")
-                lambda_expression = lambda m1, k1, m0, k0: l1_tensor[m1, k1, k0, m0]
-            else:
-                tensor_matrix_shape = (
-                    int_ceil_div(ori_tensor_shape[0], block_in),
-                    int_ceil_div(ori_tensor_shape[1], block_reduce),
-                    block_in,
-                    block_reduce
-                )
-                lambda_expression = lambda m1, k1, m0, k0: ori_tensor[m1 * block_in + m0, k1 * block_reduce + k0]
+        if trans:
+            tensor_matrix_shape = ori_tensor_shape[:-2] + [
+                int_ceil_div(ori_tensor_shape[-1], block_in),
+                int_ceil_div(ori_tensor_shape[-2], block_reduce),
+                block_in,
+                block_reduce
+            ]
+            tensor_l1_shape = tensor_matrix_shape[:-2] + [block_reduce, block_in]
+            l1_tensor = tvm.compute(tensor_l1_shape,
+                                    lambda *indices: ori_tensor(*indices[:-4],
+                                                                indices[-3]*block_reduce + indices[-2],
+                                                                indices[-4]*block_in + indices[-1]),
+                                    name="tensor_a_l1")
+            lambda_expression = lambda *indices: l1_tensor(*indices[:-2], indices[-1], indices[-2])
         else:
-            if trans:
-                tensor_matrix_shape = (
-                    ori_tensor_shape[0],
-                    int_ceil_div(ori_tensor_shape[2], block_in),
-                    int_ceil_div(ori_tensor_shape[1], block_reduce),
-                    block_in,
-                    block_reduce
-                )
-                tensor_l1_shape = (
-                    ori_tensor_shape[0],
-                    int_ceil_div(ori_tensor_shape[2], block_in),
-                    int_ceil_div(ori_tensor_shape[1], block_reduce),
-                    block_reduce,
-                    block_in
-                )
-                l1_tensor = tvm.compute(tensor_l1_shape,
-                            lambda batch, m1, k1, k0, m0: ori_tensor[batch, k1 * block_reduce + k0,
-                                m1 * block_in + m0], name="tensor_a_l1")
-                lambda_expression = lambda batch, m1, k1, m0, k0:l1_tensor[batch, m1, k1, k0, m0]
-            else:
-                tensor_matrix_shape = (
-                    ori_tensor_shape[0],
-                    int_ceil_div(ori_tensor_shape[1], block_in),
-                    int_ceil_div(ori_tensor_shape[2], block_reduce),
-                    block_in,
-                    block_reduce
-                )
-                lambda_expression = lambda batch, m1, k1, m0, k0: ori_tensor[batch, m1 * block_in + m0,
-                                                                             k1 * block_reduce + k0]
+            tensor_matrix_shape = ori_tensor_shape[:-2] + [
+                int_ceil_div(ori_tensor_shape[-2], block_in),
+                int_ceil_div(ori_tensor_shape[-1], block_reduce),
+                block_in,
+                block_reduce
+            ]
+            lambda_expression = lambda *indices: ori_tensor(*indices[:-4],
+                                                            indices[-4]*block_in + indices[-2],
+                                                            indices[-3]*block_reduce + indices[-1])
         res = tvm.compute(
             tensor_matrix_shape,
             lambda_expression,
@@ -755,62 +624,36 @@ class FormatCompute(object):
         if int82int32_trans_flag:
             return self._compute_nd2zz_int8_trans(ori_tensor, compute_params)
         ori_tensor_shape = [self._get_value(i) for i in ori_tensor.shape]
-        if len(ori_tensor_shape) == 2:
-            if trans:
-                tensor_matrix_shape = (
-                    (ori_tensor_shape[1] + block_in - 1) // block_in,
-                    (ori_tensor_shape[0] + block_reduce - 1) // block_reduce,
-                    block_in,
-                    block_reduce
-                )
-                lambda_expression = lambda i, j, k, l: ori_tensor[j * block_reduce + l, i * block_in + k]
-            else:
-                tensor_matrix_shape = (
-                    (ori_tensor_shape[0] + block_in - 1) // block_in,
-                    (ori_tensor_shape[1] + block_reduce - 1) // block_reduce,
-                    block_in,
-                    block_reduce
-                )
-                lambda_expression = lambda i, j, k, l: ori_tensor[i * block_in + k, j * block_reduce + l]
+        if trans:
+            tensor_matrix_shape = ori_tensor_shape[:-2] + [
+                int_ceil_div(ori_tensor_shape[-1], block_in),
+                int_ceil_div(ori_tensor_shape[-2], block_reduce),
+                block_in,
+                block_reduce
+            ]
+            lambda_expression = lambda *indices: ori_tensor(*indices[:-4],
+                                                            indices[-3]*block_reduce + indices[-1],
+                                                            indices[-4]*block_in + indices[-2])
         else:
-            if trans:
-                tensor_matrix_shape = (
-                    ori_tensor_shape[0],
-                    (ori_tensor_shape[2] + block_in - 1) // block_in,
-                    (ori_tensor_shape[1] + block_reduce - 1) // block_reduce,
-                    block_in,
-                    block_reduce
-                )
-                lambda_expression = lambda batch, i, j, k, l: ori_tensor[batch, j * block_reduce + l, i * block_in + k]
-            else:
-                tensor_matrix_shape = (
-                    ori_tensor_shape[0],
-                    (ori_tensor_shape[1] + block_in - 1) // block_in,
-                    (ori_tensor_shape[2] + block_reduce - 1) // block_reduce,
-                    block_in,
-                    block_reduce
-                )
-                lambda_expression = lambda batch, i, j, k, l: ori_tensor[batch, i * block_in + k, j * block_reduce + l]
+            tensor_matrix_shape = ori_tensor_shape[:-2] + [
+                int_ceil_div(ori_tensor_shape[-2], block_in),
+                int_ceil_div(ori_tensor_shape[-1], block_reduce),
+                block_in, block_reduce
+            ]
+            lambda_expression = lambda *indices: ori_tensor(*indices[:-4], indices[-4]*block_in + indices[-2],
+                                                            indices[-3]*block_reduce + indices[-1])
         res_fract = tvm.compute(
             tensor_matrix_shape,
             lambda_expression,
             name=compute_params.get("tensor_name"),
             attrs={"mode": mode_info, "format_info": format_info}
         )
-        if len(ori_tensor_shape) == 2:
-            res_matrix = tvm.compute(
-                tensor_matrix_shape,
-                lambda i, j, k, l: res_fract[0, j, 0, l],
-                name="tensor_a_matrix",
-                attrs={"mode": mode_info, "format_info": format_info}
-            )
-        else:
-            res_matrix = tvm.compute(
-                tensor_matrix_shape,
-                lambda batch, i, j, k, l: res_fract[batch, 0, j, 0, l],
-                name="tensor_a_matrix",
-                attrs={"mode": mode_info, "format_info": format_info}
-            )
+        res_matrix = tvm.compute(
+            tensor_matrix_shape,
+            lambda *indices: res_fract(*indices[:-4], 0, indices[-3], 0, indices[-1]),
+            name="tensor_a_matrix",
+            attrs={"mode": mode_info, "format_info": format_info}
+        )
         return res_matrix
 
     def compute_nd2zn(self, ori_tensor, compute_params):
@@ -862,44 +705,25 @@ class FormatCompute(object):
 
         normalize_shape = [self._get_value(i) for i in ori_tensor.shape]
         normalize_shape[-1], normalize_shape[-2] = normalize_shape[-2], normalize_shape[-1]
-        if len(normalize_shape) == 2:
-            tensor_fract_shape = (
-                normalize_shape[1] // block_reduce,
-                normalize_shape[0] // block_out,
-                block_out,
-                block_reduce
-            )
-            tensor_transpose = tvm.compute(
-                normalize_shape,
-                lambda i, j: ori_tensor[j, i],
-                name="b_transpose"
-            )
-            res = tvm.compute(
-                tensor_fract_shape,
-                lambda i, j, k, l: tensor_transpose[j * block_out + k, i * block_reduce + l],
-                name="tensor_b_matrix",
-                attrs={"mode": mode_info, "format_info": format_info}
-            )
-        else:
-            tensor_fract_shape = (
-                normalize_shape[0],
-                normalize_shape[2] // block_reduce,
-                normalize_shape[1] // block_out,
-                block_out,
-                block_reduce
-            )
-            tensor_transpose = tvm.compute(
-                normalize_shape,
-                lambda batch, i, j: ori_tensor[batch, j, i],
-                name="b_transpose"
-            )
-            res = tvm.compute(
-                tensor_fract_shape,
-                lambda batch, i, j, k, l: tensor_transpose[batch, j * block_out + k, i * block_reduce + l],
-                name="tensor_b_matrix",
-                attrs={"mode": mode_info, "format_info": format_info}
-            )
-
+        tensor_fract_shape = normalize_shape[:-2] + [
+            normalize_shape[-1] // block_reduce,
+            normalize_shape[-2] // block_out,
+            block_out,
+            block_reduce
+        ]
+        tensor_transpose = tvm.compute(
+            normalize_shape,
+            lambda *indices: ori_tensor(*indices[:-2], indices[-1], indices[-2]),
+            name="b_transpose"
+        )
+        res = tvm.compute(
+            tensor_fract_shape,
+            lambda *indices: tensor_transpose(*indices[:-4],
+                                              indices[-3]*block_out + indices[-2],
+                                              indices[-4]*block_reduce + indices[-1]),
+            name="tensor_b_matrix",
+            attrs={"mode": mode_info, "format_info": format_info}
+        )
         return res
 
     def compute_nd2zn_vnchwconv(self, ori_tensor, compute_params):
@@ -918,64 +742,36 @@ class FormatCompute(object):
         format_info = compute_params.get("format_info")
         trans = compute_params.get("trans")
         ori_tensor_shape = [self._get_value(i) for i in ori_tensor.shape]
-        if len(ori_tensor_shape) == 2:
-            tensor_fract_shape = (
-                ori_tensor_shape[0] // block_reduce,
-                ori_tensor_shape[1],
-                block_reduce
-            )
-            tensor_fract = tvm.compute(
-                tensor_fract_shape,
-                lambda i, j, k: ori_tensor[i * block_reduce + k, j],
-                name="{}_fract".format(tensor_name)
-            )
-            if trans:
-                tensor_matrix_shape = (
-                    tensor_fract_shape[1] // block_out,
-                    tensor_fract_shape[0],
-                    block_reduce,
-                    block_out
-                )
-                lambda_expression = lambda i, j, k, l: tensor_fract[j, i * block_reduce + l, k]
-            else:
-                tensor_matrix_shape = (
-                    tensor_fract_shape[0],
-                    tensor_fract_shape[1] // block_out,
-                    block_out,
-                    block_reduce
-                )
-                lambda_expression = lambda i, j, k, l: tensor_fract[i, j * block_out + k, l]
+        tensor_fract_shape = ori_tensor_shape[:-2] + [
+            ori_tensor_shape[-2] // block_reduce,
+            ori_tensor_shape[-1],
+            block_reduce
+        ]
+        tensor_fract = tvm.compute(
+            tensor_fract_shape,
+            lambda *indices: ori_tensor(*indices[:-3], indices[-3]*block_reduce + indices[-1], indices[-2]),
+            name="{}_fract".format(tensor_name)
+        )
+        if trans:
+            tensor_matrix_shape = tensor_fract_shape[:-3] + [
+                tensor_fract_shape[-2] // block_out,
+                tensor_fract_shape[-3],
+                block_reduce,
+                block_out
+            ]
+            lambda_expression = lambda *indices: tensor_fract(*indices[:-4], indices[-3],
+                                                              indices[-4]*block_reduce + indices[-1],
+                                                              indices[-2])
         else:
-            tensor_fract_shape = (
-                ori_tensor_shape[0],
-                ori_tensor_shape[1] // block_reduce,
-                ori_tensor_shape[2],
+            tensor_matrix_shape = tensor_fract_shape[:-3] + [
+                tensor_fract_shape[-3],
+                tensor_fract_shape[-2] // block_out,
+                block_out,
                 block_reduce
-            )
-            tensor_fract = tvm.compute(
-                tensor_fract_shape,
-                lambda batch, i, j, k: ori_tensor[batch, i * block_reduce + k, j],
-                name="{}_fract".format(tensor_name)
-            )
-
-            if trans:
-                tensor_matrix_shape = (
-                    tensor_fract_shape[0],
-                    tensor_fract_shape[2] // block_out,
-                    tensor_fract_shape[1],
-                    block_reduce,
-                    block_out
-                )
-                lambda_expression = lambda batch, i, j, k, l: tensor_fract[batch, j, i * block_reduce + l, k]
-            else:
-                tensor_matrix_shape = (
-                    tensor_fract_shape[0],
-                    tensor_fract_shape[1],
-                    tensor_fract_shape[2] // block_out,
-                    block_out,
-                    block_reduce
-                )
-                lambda_expression = lambda batch, i, j, k, l: tensor_fract[batch, i, j * block_out + k, l]
+            ]
+            lambda_expression = lambda *indices: tensor_fract(*indices[:-4], indices[-4],
+                                                              indices[-3]*block_out + indices[-2],
+                                                              indices[-1])
         tensor_matrix = tvm.compute(
             tensor_matrix_shape,
             lambda_expression,
@@ -1028,42 +824,25 @@ class FormatCompute(object):
         format_info = compute_params.get("format_info")
         ori_shape = [self._get_value(i) for i in ori_tensor.shape]
         if not trans:
-            if len(ori_shape) == 4:
-                tensor_a_normalize_shape = [
-                    ori_shape[1],
-                    ori_shape[0] * 2,
-                    ori_shape[2],
-                    ori_shape[3] // 2
-                ]
-                lambda_expression = lambda i, j, k, l: ori_tensor[j // 2, i, k, (j * 16 + l) % 32]
-            else:
-                tensor_a_normalize_shape = [
-                    ori_shape[0],
-                    ori_shape[2],
-                    ori_shape[1] * 2,
-                    ori_shape[3],
-                    ori_shape[4] // 2
-                ]
-                lambda_expression = lambda batch, i, j, k, l: ori_tensor[batch, j // 2, i, k, (j * 16 + l) % 32]
+            tensor_a_normalize_shape = ori_shape[:-4] + [
+                ori_shape[-3],
+                ori_shape[-4] * 2,
+                ori_shape[-2],
+                ori_shape[-1] // 2
+            ]
+            lambda_expression = lambda *indices: ori_tensor(*indices[:-4], indices[-3] // 2,
+                                                            indices[-4], indices[-2],
+                                                            (indices[-3]*16 + indices[-1]) % 32)
         else:
-            if len(ori_shape) == 4:
-                tensor_a_normalize_shape = [
-                    ori_shape[0] * 2,
-                    ori_shape[1],
-                    ori_shape[2],
-                    ori_shape[3] // 2
-                ]
-                lambda_expression = lambda i, j, k, l: ori_tensor[i // 2, j, k, (i * 16 + l) % 32]
-            else:
-                tensor_a_normalize_shape = [
-                    ori_shape[0],
-                    ori_shape[1] * 2,
-                    ori_shape[2],
-                    ori_shape[3],
-                    ori_shape[4] // 2
-                ]
-                lambda_expression = lambda batch, i, j, k, l: ori_tensor[batch, i // 2, j, k, (i * 16 + l) % 32]
-
+            tensor_a_normalize_shape = ori_shape[:-4] + [
+                ori_shape[-4] * 2,
+                ori_shape[-3],
+                ori_shape[-2],
+                ori_shape[-1] // 2
+            ]
+            lambda_expression = lambda *indices: ori_tensor(*indices[:-4], indices[-4] // 2,
+                                                            indices[-3], indices[-2],
+                                                            (indices[-4]*16 + indices[-1]) % 32)
         res = tvm.compute(
             tensor_a_normalize_shape,
             lambda_expression,
@@ -1088,42 +867,25 @@ class FormatCompute(object):
         format_info = compute_params.get("format_info")
         ori_tensor_shape = [self._get_value(i) for i in ori_tensor.shape]
         if not trans:
-            if len(ori_tensor_shape) == 4:
-                tensor_normalize_shape = (
-                    ori_tensor_shape[0] * 2,
-                    ori_tensor_shape[1],
-                    ori_tensor_shape[2],
-                    ori_tensor_shape[3] // 2
-                )
-                lambda_expression = lambda i, j, k, l: ori_tensor(i // 2, j, k, (i * 16 + l) % 32)
-            else:
-                tensor_normalize_shape = (
-                    ori_tensor_shape[0],
-                    ori_tensor_shape[1] * 2,
-                    ori_tensor_shape[2],
-                    ori_tensor_shape[3],
-                    ori_tensor_shape[4] // 2
-                )
-                lambda_expression = lambda batch, i, j, k, l: ori_tensor(batch, i // 2, j, k, (i * 16 + l) % 32)
+            tensor_normalize_shape = ori_tensor_shape[:-4] + [
+                ori_tensor_shape[-4] * 2,
+                ori_tensor_shape[-3],
+                ori_tensor_shape[-2],
+                ori_tensor_shape[-1] // 2
+            ]
+            lambda_expression = lambda *indices: ori_tensor(*indices[:-4], indices[-4] // 2,
+                                                            indices[-3], indices[-2],
+                                                            (indices[-4]*16 + indices[-1]) % 32)
         else:
-            if len(ori_tensor_shape) == 4:
-                tensor_normalize_shape = (
-                    ori_tensor_shape[1],
-                    ori_tensor_shape[0] * 2,
-                    ori_tensor_shape[3] // 2,
-                    ori_tensor_shape[2]
-                )
-                lambda_expression = lambda i, j, k, l: ori_tensor(j // 2, i, l, (j * 16 + k) % 32)
-            else:
-                tensor_normalize_shape = (
-                    ori_tensor_shape[0],
-                    ori_tensor_shape[2],
-                    ori_tensor_shape[1] * 2,
-                    ori_tensor_shape[4] // 2,
-                    ori_tensor_shape[3]
-                )
-                lambda_expression = lambda batch, i, j, k, l: ori_tensor(batch, j // 2, i, l, (j * 16 + k) % 32)
-
+            tensor_normalize_shape = ori_tensor_shape[:-4] + [
+                ori_tensor_shape[-3],
+                ori_tensor_shape[-4] * 2,
+                ori_tensor_shape[-1] // 2,
+                ori_tensor_shape[-2]
+            ]
+            lambda_expression = lambda *indices: ori_tensor(*indices[:-4], indices[-3] // 2,
+                                                            indices[-4], indices[-1],
+                                                            (indices[-3]*16 + indices[-2]) % 32)
         res = tvm.compute(
             tensor_normalize_shape,
             lambda_expression,
@@ -1145,49 +907,29 @@ class FormatCompute(object):
         ori_tensor_shape = [self._get_value(i) for i in ori_tensor.shape]
         block_out = ori_tensor_shape[-1]
         block_in = ori_tensor_shape[-2]
-
-        if len(ori_tensor_shape) == 5:
-            if in_dynamic():
-                shape_trans = (ori_tensor_shape[0], ori_tensor_shape[2], block_in, ori_tensor_shape[1], block_out)
-                before_c_gm = tvm.compute(shape_trans, lambda batch, m1, m0, n1, n0:
-                    ori_tensor[batch, n1, m1, m0, n0], name="before_c_gm")
-                shapes = (ori_tensor_shape[0], ori_tensor_shape[2] * block_in, ori_tensor_shape[1] * block_out)
-                lambda_expression = lambda batch, m, n: before_c_gm[
-                    batch,
-                    m // block_in,
-                    m % block_in,
-                    n // block_out,
-                    n % block_out
-                ]
-            else:
-                shapes = (ori_tensor_shape[0], ori_tensor_shape[2] * block_in, ori_tensor_shape[1] * block_out)
-                lambda_expression = lambda batch, m, n: ori_tensor[
-                    batch,
-                    n // block_out,
-                    m // block_in,
-                    m % block_in,
-                    n % block_out
-                ]
+        shapes = ori_tensor_shape[:-4] + [
+            ori_tensor_shape[-3]*block_in, ori_tensor_shape[-4]*block_out
+        ]
+        if in_dynamic():
+            shape_trans = ori_tensor_shape[:-4] + [
+                ori_tensor_shape[-3], block_in, ori_tensor_shape[-4], block_out
+            ]
+            before_c_gm = tvm.compute(shape_trans,
+                                      lambda *indices: ori_tensor(*indices[:-4],
+                                                                  indices[-2], indices[-4],
+                                                                  indices[-3], indices[-1]),
+                                      name="before_c_gm")
+            lambda_expression = lambda *indices: before_c_gm(*indices[:-2],
+                                                            indices[-2] // block_in,
+                                                            indices[-2] % block_in,
+                                                            indices[-1] // block_out,
+                                                            indices[-1] % block_out)
         else:
-            if in_dynamic():
-                shape_trans = (ori_tensor_shape[1], block_in, ori_tensor_shape[0], block_out)
-                before_c_gm = tvm.compute(shape_trans, lambda m1, m0, n1, n0:
-                    ori_tensor[n1, m1, m0, n0], name="before_c_gm")
-                shapes = (ori_tensor_shape[1] * block_in, ori_tensor_shape[0] * block_out)
-                lambda_expression = lambda m, n: before_c_gm[
-                    m // block_in,
-                    m % block_in,
-                    n // block_out,
-                    n % block_out
-                ]
-            else:
-                shapes = (ori_tensor_shape[1] * block_in, ori_tensor_shape[0] * block_out)
-                lambda_expression = lambda m, n: ori_tensor[
-                    n // block_out,
-                    m // block_in,
-                    m % block_in,
-                    n % block_out
-                ]
+            lambda_expression = lambda *indices: ori_tensor(*indices[:-2],
+                                                             indices[-1] // block_out,
+                                                             indices[-2] // block_in,
+                                                             indices[-2] % block_in,
+                                                             indices[-1] % block_out)
         if output_shape is not None:
             shapes = output_shape
         if attrs_dict is None:

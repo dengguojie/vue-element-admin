@@ -96,7 +96,6 @@ case5 = {"params": [{"shape": (0, 10), "dtype": "float16", "format": "ND", "ori_
          "format_expect": [],
          "support_expect": True}
 
-
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case2)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case3)
@@ -240,7 +239,6 @@ ut_case.add_precision_case("Ascend920A", {"params": [{"shape": (6, 2,16,16), "dt
                                          "expect": "success",
                                          "calc_expect_func": calc_expect_func,
                                          "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)})
-
 ut_case.add_precision_case("Ascend920A", {"params": [{"shape": (6, 2,16,16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (32, 96),"ori_format": "ND", "param_type": "input"},
                                                     {"shape": (4, 6,16,16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (96, 64),"ori_format": "ND", "param_type": "input"},
                                                     {"shape": (64,), "dtype": "float32", "format": "ND", "ori_shape": (64,),"ori_format": "ND", "param_type": "input"},
@@ -729,7 +727,6 @@ def test_cast_matmul_4(test_arg):
 
 
 ut_case.add_cust_test_func(test_func=test_cast_matmul_4)
-
 
 if __name__ == '__main__':
     ut_case.run(["Ascend310", "Ascend910A"])

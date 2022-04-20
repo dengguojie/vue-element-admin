@@ -119,17 +119,6 @@ from .cosine_embedding_loss_schedule import \
 from .dilation_schedule import dilation_schedule
 
 
-def set_op_pattern(all_tags, op_info):
-    """
-    set op pattern to gemm when batchmatmul fused with fusedmuladd or reduce_sum
-    """
-    op_pattern = op_info["pattern"]
-    if ("reduce_sum" in all_tags or "dropout_broadcast" in all_tags or
-        "broadcast_reshape" in all_tags or "broadcast_mad" in all_tags):
-        op_pattern = OpPatterns.MATMUL_PATTERN
-    return op_pattern
-
-
 def get_op_info(outs):  # 'pylint: disable=R0912, R0914, R0915
     """
     dfs the compute garph to get the op info, the fomrt as follows:
@@ -249,30 +238,6 @@ def verify_compute_tensor(tensors):
     return False
 
 
-def get_all_tags(res):
-    """
-    get all tags
-    :param res: tensor
-    :return: list
-    """
-    tensor_tags = set()
-
-    def get_tag(tenosr):
-        """
-        find all tag
-        :param tensor: tensor
-        :return: all tags
-        """
-        tensor_list = tenosr.op.input_tensors
-        tensor_tags.add(tenosr.op.tag)
-        for one_tensor in tensor_list:
-            tensor_tags.add(one_tensor.op.tag)
-            get_tag(one_tensor)
-
-    get_tag(res)
-    return tensor_tags
-
-
 def is_cube_pattern(op_pattern):
     """
     check if is cube pattern
@@ -355,10 +320,6 @@ def schedule_cce(outs, option=None):  # 'pylint: disable=R0912, R0914, R0915
     op_info = get_op_info(outs)
 
     # set pattern
-    op_pattern = op_info['pattern']
-    if op_pattern == OpPatterns.MATMUL_PATTERN and len(outs) == 1:
-        all_tags = get_all_tags(outs[0])
-        op_info['pattern'] = set_op_pattern(all_tags, op_info)
     op_pattern = op_info['pattern']
 
     fusion_manager.set_current_op_pattern(op_pattern.value)

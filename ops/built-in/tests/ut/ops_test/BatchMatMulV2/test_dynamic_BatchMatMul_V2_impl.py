@@ -26,7 +26,6 @@ vals = {("CORE_NUM", ): 48,
 def side_effects(*args):
     return vals[args]
 
-
 # batch_range, m_range, k_range, n_range, src_dtype, dst_dtype, format, trans_a, trans_b, bias_flag, batchb_flag, case_name
 matmul_case = [
     #(((1, None), ), (1, None), (1, None), (1, None), "float16", "float16", "ND", False, False, False, False,"unrange_nd_dynamic_batch_matmul_v2"),
