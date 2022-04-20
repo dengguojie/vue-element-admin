@@ -3080,6 +3080,7 @@ class Conv2dDxOptiSchedule:
         if var_map:
             _handle_dynamic_shape()
 
+        sch.tbe_compile_para = self.dx_para.get_para_map("tbe_compile_para")
         if self.dx_para.get_para_map("preload_c_l0c") and TILING.get("manual_pingpong_buffer")["CL0_pbuffer"] == 2:
             sch[c_l0c].preload()
         support_preload_a_l1 = (self.dx_para.get_para_map("preload_a_l1")
