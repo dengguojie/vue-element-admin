@@ -55,6 +55,17 @@ def op_select_format(softmax, grad_softmax, grad_x, axis, kernel_name="softmax_g
     return param_dynamic_in_json
 
 
+def check_is_axes_with_last(shape, axes):
+    """
+    check_is_axes_with_last
+    """
+    if len(axes) > 1:
+        for i, _ in enumerate(axes):
+            if axes[i] == len(shape) - 1:
+                return True
+    return False
+
+
 # 'pylint: disable=locally-disabled,unused-argument
 # 'pylint: disable=unused-variable,disable=too-many-lines,disable=too-many-locals
 @register_operator("SoftmaxGrad")
@@ -132,7 +143,13 @@ def softmax_grad_compute(softmax, grad_softmax, grad_x, axis,
         data_vmul = tbe.vmul(softmax_fp32, grad_softmax_fp32)
         data_sum = tbe.reduce_sum(data_vmul, axis=axis, keepdims=True)
         data_sum = tbe.cast_to(data_sum, "float16")
-        data_sum_tmp = tbe.broadcast(data_sum, shape)
+
+        if check_is_axes_with_last(shape, axis):
+            tmp_shape = list(data_sum.shape[:-1]) + [shape[-1]]
+            data_sum_tmp = tbe.broadcast(data_sum, tmp_shape)
+            data_sum_tmp = tbe.broadcast(data_sum_tmp, shape)
+        else:
+            data_sum_tmp = tbe.broadcast(data_sum, shape)
         data_sub = tbe.vsub(grad_softmax, data_sum_tmp)
         res = tbe.vmul(softmax, data_sub)
     else:
@@ -141,9 +158,14 @@ def softmax_grad_compute(softmax, grad_softmax, grad_x, axis,
             softmax = tbe.cast_to(softmax, "float32")
             has_improve_precision = True
         data_vmul = tbe.vmul(softmax, grad_softmax)
-
         data_sum = tbe.reduce_sum(data_vmul, axis=axis, keepdims=True)
-        data_sum_tmp = tbe.broadcast(data_sum, shape)
+
+        if check_is_axes_with_last(shape, axis):
+            tmp_shape = list(data_sum.shape[:-1]) + [shape[-1]]
+            data_sum_tmp = tbe.broadcast(data_sum, tmp_shape)
+            data_sum_tmp = tbe.broadcast(data_sum_tmp, shape)
+        else:
+            data_sum_tmp = tbe.broadcast(data_sum, shape)
         data_sub = tbe.vsub(grad_softmax, data_sum_tmp)
         res = tbe.vmul(softmax, data_sub)
         if has_improve_precision:

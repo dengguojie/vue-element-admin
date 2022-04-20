@@ -73,6 +73,17 @@ def _is_special_cases(input_shape):
     return False
 
 
+def check_is_axes_with_last(shape, axes):
+    """
+    check_is_axes_with_last
+    """
+    if len(axes) > 1:
+        for i, _ in enumerate(axes):
+            if axes[i] == len(shape) - 1:
+                return True
+    return False
+
+
 # 'pylint:disable=too-many-locals,disable=too-many-statements,too-many-branches
 @register_operator("SoftmaxV2")
 def softmax_v2_compute(input_x, output_y, axis=-1, kernel_name="softmax_v2", impl_mode="high_performance"):
@@ -151,7 +162,12 @@ def softmax_v2_compute(input_x, output_y, axis=-1, kernel_name="softmax_v2", imp
     else:
         data_max = tbe.reduce_max(input_x, axis=list_axis, keepdims=True)
 
-    data_max = tbe.broadcast(data_max, shape)
+    if check_is_axes_with_last(shape, axis):
+        tmp_shape = list(data_max.shape[:-1]) + [shape[-1]]
+        data_max = tbe.broadcast(data_max, tmp_shape)
+        data_max = tbe.broadcast(data_max, shape)
+    else:
+        data_max = tbe.broadcast(data_max, shape)
     data_subtrac = tbe.vsub(input_x, data_max)
 
     has_improve_precision = False
@@ -185,10 +201,21 @@ def softmax_v2_compute(input_x, output_y, axis=-1, kernel_name="softmax_v2", imp
             data_expsum = tbe.vrec(data_expsum, "high_precision")
         else:
             data_expsum = tbe.vrec(data_expsum)
-        data_expsum = tbe.broadcast(data_expsum, shape)
+        
+        if check_is_axes_with_last(shape, axis):
+            tmp_shape = list(data_expsum.shape[:-1]) + [shape[-1]]
+            data_expsum = tbe.broadcast(data_expsum, tmp_shape)
+            data_expsum = tbe.broadcast(data_expsum, shape)
+        else:
+            data_expsum = tbe.broadcast(data_expsum, shape)
         output = tbe.vmul(data_exp, data_expsum)
     else:
-        data_expsum = tbe.broadcast(data_expsum, shape)
+        if check_is_axes_with_last(shape, axis):
+            tmp_shape = list(data_expsum.shape[:-1]) + [shape[-1]]
+            data_expsum = tbe.broadcast(data_expsum, tmp_shape)
+            data_expsum = tbe.broadcast(data_expsum, shape)
+        else:
+            data_expsum = tbe.broadcast(data_expsum, shape)
         output = tbe.vdiv(data_exp, data_expsum)
 
     if has_improve_precision and dtype == "float16":
