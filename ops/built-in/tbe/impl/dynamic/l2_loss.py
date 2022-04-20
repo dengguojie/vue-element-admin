@@ -15,7 +15,10 @@
 """
 l2_loss
 """
+from impl.util import util_common
+from impl.util import util_select_op_base
 from impl.util.platform_adapter import tbe
+from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
@@ -24,6 +27,68 @@ from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
 from impl.util.reduce_pattern_adapter import ReducePattern
 
+
+# 'pylint: disable=invalid-name,unused-argument,unused-variable,too-many-locals,too-many-statements
+def op_select_format(x, y, kernel_name="l2_loss"):
+    """
+    select format dynamically
+    op_select_format support desc:
+    1. current support all format
+        ND/C1HWNCoC0/NC1HWC0/FRACTAL_NZ/FRACTAL_Z/NDC1HWC0/FRACTAL_Z_3D -> ND
+    2. supported fp16 -> fp16 when tik.set_atomic_add support dtype of float16,
+       otherwise support fp16 -> fp32
+    """
+    input_ori_shape = x.get("ori_shape")
+    input_ori_shape = shape_util.scalar2tensor_one(input_ori_shape)
+
+    # current support all foramt
+    is_support_hd = True
+    is_support_fz = True
+    is_support_nz = True
+
+    base_data_type = ["float", "float16"]
+    if not tbe_platform.api_check_support("vadd", "float32"):
+        base_data_type.remove("float")
+
+    dtype_base_out = list(base_data_type)
+    format_base_out = ["ND"] * len(base_data_type) + ["C1HWNCoC0"] * len(base_data_type)
+    dtype_base_out = dtype_base_out + base_data_type
+    if is_support_hd:
+        other_format = "NC1HWC0" if len(input_ori_shape) != 5 else "NDC1HWC0"
+        dtype_base_out = dtype_base_out + base_data_type
+        format_base_out = format_base_out + [other_format] * len(base_data_type)
+    if is_support_nz:
+        other_format = "FRACTAL_NZ"
+        dtype_base_out = dtype_base_out + base_data_type
+        format_base_out = format_base_out + [other_format] * len(base_data_type)
+    if is_support_fz:
+        other_format = "FRACTAL_Z" if len(input_ori_shape) != 5 else "FRACTAL_Z_3D"
+        dtype_base_out = dtype_base_out + base_data_type
+        format_base_out = format_base_out + [other_format] * len(base_data_type)
+
+    dtype_base_in = list(dtype_base_out)
+    
+    is_atomic_fp16 = tbe_platform.api_check_support("tik.set_atomic_add", "float16")
+    is_atomic_fp32 = tbe_platform.api_check_support("tik.set_atomic_add", "float32")
+    
+    if is_atomic_fp32 and not is_atomic_fp16:
+        dtype_base_out = ["float"] * len(dtype_base_out)
+        
+    dtype_in_str = ','.join(dtype_base_in)
+    dtype_out_str = ','.join(dtype_base_out)
+    format_str = ','.join(format_base_out)
+    nd_format_str = ','.join(["ND"] * len(dtype_base_out))
+    input0 = util_select_op_base.gen_param(
+        classify="input0", name="x", datatype=dtype_in_str,
+        format=format_str, unknownshape_format=format_str)
+    output0 = util_select_op_base.gen_param(
+        classify="output0", name="y", datatype=dtype_out_str,
+        format=nd_format_str, unknownshape_format=nd_format_str)
+    param_list = [input0, output0]
+    param_dynamic_in_json = util_select_op_base.get_dynamic_param_in_json(param_list)
+
+    return param_dynamic_in_json
+    
 
 # 'pylint: disable=unused-argument,invalid-name
 def l2_loss_compute(x, axes, y, kernel_name="l2_loss"):
@@ -46,10 +111,17 @@ def l2_loss_compute(x, axes, y, kernel_name="l2_loss"):
     res: TVM tensor
         output tensor, has the same type as input tensor.
     """
-    dtype = x.dtype
-    coeff_sqrt = tvm.const(1.0 / (2**0.5), dtype=dtype)
+    coeff_dtype = x.dtype
+    y_dtype = y.get("dtype")
+
+    if x.dtype != y_dtype:
+        x = tbe.cast_to(x, y_dtype)
+        coeff_dtype = y_dtype
+    
+    coeff_sqrt = tvm.const(1.0 / (2**0.5), dtype=coeff_dtype)
     data_mul = tbe.vmuls(x, coeff_sqrt)
     data_sqr = tbe.vmul(data_mul, data_mul)
+    
     res = tbe.reduce_sum(data_sqr, axis=axes)
 
     return res
@@ -77,7 +149,6 @@ def l2_loss(x, y, kernel_name="l2_loss"):
     None
     """
 
-    shape = x.get("shape")
     dtype_x = x.get("dtype")
     dtype_lower_x = dtype_x.lower()
     check_list_x = ("float16", "float32")
@@ -101,6 +172,7 @@ def l2_loss(x, y, kernel_name="l2_loss"):
             shape_x = shape_util.variable_shape([_x, axes], op_mode="reduce")[0]
             data_input_x = tvm.placeholder(shape_x, name="data_input_x",
                                            dtype=dtype_lower_x)
+                                           
             res = l2_loss_compute(data_input_x, axes.get("value"), y)
             tensors.append([data_input_x, res])
         with tvm.target.cce():

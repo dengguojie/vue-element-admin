@@ -85,10 +85,39 @@ def test_import_lib(test_arg):
     importlib.reload(sys.modules.get("impl.util.reduce_pattern_adapter"))
 
 
+def test_op_select_format(test_arg):
+    """
+    test_op_select_format
+    """
+    from impl.dynamic.l2_loss import op_select_format
+    op_select_format(
+        {"shape": (1024, 1024, 256, 256), "dtype": "float", "format": "NCHW", "ori_shape": (1024, 1024, 256, 256),
+         "ori_format": "NCHW"},
+        {"shape": (1024, 1024, 256, 256), "dtype": "float", "format": "NCHW", "ori_shape": (1024, 1024, 256, 256),
+         "ori_format": "NCHW"},
+        kernel_name="test_l2_loss_op_select_format_1")
+    op_select_format(
+        {"shape": (14, 10, 16, 16), "dtype": "float32", "format": "FRACTAL_NZ", "ori_shape": (160, 224),
+         "ori_format": "NCHW"},
+        {"shape": (1), "dtype": "float32", "format": "ND", "ori_shape": (1), "ori_format": "NCHW"},
+        kernel_name="test_l2_loss_op_select_format_2")
+    op_select_format(
+        {"shape": (16, 1, 16, 16, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (16, 16, 16, 16),
+         "ori_format": "NCHW"},
+        {"shape": (1), "dtype": "float16", "format": "ND", "ori_shape": (1), "ori_format": "ND"},
+        kernel_name="test_l2_loss_op_select_format_3")
+    op_select_format(
+        {"shape": (1, 5, 16, 16), "dtype": "float32", "format": "FRACTAL_Z", "ori_shape": (1, 5, 16, 16),
+         "ori_format": "NCHW"},
+        {"shape": (1), "dtype": "float32", "format": "ND", "ori_shape": (1), "ori_format": "NCHW"},
+        kernel_name="test_l2_loss_op_select_format_4")
+
+
 ut_case.add_case("all", case1)
 ut_case.add_case("all", case2)
 ut_case.add_case("all", case3)
 ut_case.add_cust_test_func(test_func=test_import_lib)
+ut_case.add_cust_test_func(test_func=test_op_select_format)
 
 
 if __name__ == '__main__':

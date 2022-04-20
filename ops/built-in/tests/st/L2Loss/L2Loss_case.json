@@ -203,5 +203,119 @@
     ],
     "attr": [],
     "case_name": "test_L2Loss_004"
+  },
+  {
+    "op": "L2Loss",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          2,
+		  16,
+		  16
+        ],
+        "format": "FRACTAL_NZ",
+        "ori_shape": [
+          32,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_L2Loss_005"
+  },
+  {
+    "op": "L2Loss",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          2,
+		  16,
+		  16,
+		  16
+        ],
+        "format": "NC1HWC0",
+        "ori_shape": [
+          1,
+          32,
+		  16,
+		  16
+        ],
+        "ori_format": "NCHW",
+        "name": "x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_L2Loss_006"
+  },
+  {
+    "op": "L2Loss",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          2,
+		  16,
+		  16
+        ],
+        "format": "FRACTAL_Z",
+        "ori_shape": [
+          32,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_L2Loss_007"
   }
 ]
