@@ -87,6 +87,7 @@ ut_case.add_precision_case("Ascend910", precision_case2)
 ut_case.add_precision_case("Ascend910", precision_case3)
 ut_case.add_precision_case("Ascend910", precision_case4)
 
+
 def test_op_select_format(test_arg):
     """
     test_op_select_format
@@ -106,5 +107,6 @@ def test_op_select_format(test_arg):
                      None,
                      attr2=True,
                      kernel_name="test_square_sum_v1_op_select_format_2")
+
 
 ut_case.add_cust_test_func(test_func=test_op_select_format)

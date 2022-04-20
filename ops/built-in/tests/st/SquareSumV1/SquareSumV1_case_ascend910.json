@@ -1,4 +1,170 @@
 [
+    {
+    "case_name": "SquareSumV1_dynamic_shape_dynamic_square_sum_v1_004_ascend910a",
+    "op": "SquareSumV1",
+    "input_desc": [
+      {
+        "format": [
+          "FRACTAL_NZ"
+        ],
+        "ori_format": [
+          "HWCN"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          16,
+          16,
+          16,
+          16
+        ],
+        "ori_shape": [
+          16,
+          16,
+          16,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "input_x",
+        "shape_range": [
+          [
+            1,
+            16
+          ],
+          [
+            1,
+            16
+          ],
+          [
+            1,
+            65535
+          ],
+          [
+            1,
+            65535
+          ]
+        ],
+        "typical_shape": [
+          16,
+          16,
+          16,
+          16
+        ]
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          64
+        ],
+        "name": "output1"
+      }
+    ],
+    "attr": [
+      {
+        "name": "axis",
+        "type": "list_int",
+        "value": [0, 1, 2, 3]
+      },
+      {
+        "name": "keep_dims",
+        "type": "bool",
+        "value": false
+      }
+    ]
+  },
+  {
+    "case_name": "SquareSumV1_dynamic_shape_dynamic_square_sum_v1_003_ascend910a",
+    "op": "SquareSumV1",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          1,
+          1,
+          1
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "input_x",
+        "shape_range": [
+          [
+            1,
+            16
+          ],
+          [
+            1,
+            65535
+          ],
+          [
+            1,
+            65535
+          ]
+        ],
+        "typical_shape": [
+          1,
+          1,
+          1
+        ]
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          16
+        ],
+        "name": "output1"
+      }
+    ],
+    "attr": [
+      {
+        "name": "axis",
+        "type": "list_int",
+        "value": [
+          1,
+          2
+        ]
+      },
+      {
+        "name": "keep_dims",
+        "type": "bool",
+        "value": false
+      }
+    ]
+  },
   {
     "case_name": "SquareSumV1_dynamic_shape_dynamic_square_sum_v1_002_ascend910a",
     "op": "SquareSumV1",
