@@ -379,7 +379,8 @@ vector<vector<ge::NodePtr>> DynamicAUGRUGradFusionPass::AddTLoopNode(map<std::st
     matmulNodes.push_back(matmulNode);
   }
   // last hiddenGradNode
-  ge::NodePtr hiddenGradNode = AddOneHiddenGradNode(gateOrder, t_size, dynamicAUGRUGradNode, graph, newNodes, failStatus);
+  ge::NodePtr hiddenGradNode = AddOneHiddenGradNode(gateOrder, t_size, dynamicAUGRUGradNode, graph, newNodes,
+                                                    failStatus);
   FUSION_PASS_CHECK(failStatus, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
                                                                "check failed, fusion failed."), return result);
   AddHiddenGradNodeEdge(inputNodes, hiddenGradNode, nullptr, lastHiddenGradNode, lastMatmulNode, dynamicAUGRUGradNode,
@@ -747,7 +748,8 @@ ge::NodePtr DynamicAUGRUGradFusionPass::AddDwhTransData(ge::NodePtr dynamicAUGRU
       failStatus = true;
       return nullptr);
   // input
-  ge::GeTensorDesc inputTensorDescInitH = dynamicAUGRUGradNode->GetOpDesc()->GetInputDesc(INPUT_INDEX["init_h"]).Clone();
+  ge::GeTensorDesc inputTensorDescInitH = dynamicAUGRUGradNode->GetOpDesc()->GetInputDesc(
+      INPUT_INDEX["init_h"]).Clone();
   inputTensorDescInitH.SetShape(GeShape({1, batch, hidden_dim}));
   transDataDesc->AddInputDesc("trans_src", inputTensorDescInitH);
   // output
@@ -903,8 +905,10 @@ ge::NodePtr DynamicAUGRUGradFusionPass::AddDwhMatmulNode(ge::NodePtr dynamicAUGR
   return matmulNode;
 }
 
-ge::NodePtr DynamicAUGRUGradFusionPass::AddDwhMatmulNode(ge::NodePtr dynamicAUGRUGradNode, ge::NodePtr gruHiddenGradNode,
-                                                         ge::ComputeGraph& graph, vector<ge::NodePtr>& newNodes,
+ge::NodePtr DynamicAUGRUGradFusionPass::AddDwhMatmulNode(ge::NodePtr dynamicAUGRUGradNode,
+                                                         ge::NodePtr gruHiddenGradNode,
+                                                         ge::ComputeGraph& graph,
+                                                         vector<ge::NodePtr>& newNodes,
                                                          bool& failStatus) {
   // create matmul desc
   ge::OpDescPtr matmulDesc = nullptr;
@@ -1126,9 +1130,10 @@ ge::NodePtr DynamicAUGRUGradFusionPass::AddDgateXConcatNodeBack(ge::NodePtr dyna
   return concatNode;
 }
 
-ge::NodePtr DynamicAUGRUGradFusionPass::AddDgateXConcatNode(ge::NodePtr dynamicAUGRUGradNode, ge::NodePtr dgateHSplitNode,
-                                                            ge::NodePtr gruHiddenGradNode, ge::ComputeGraph& graph,
-                                                            vector<ge::NodePtr>& newNodes, bool& failStatus) {
+ge::NodePtr DynamicAUGRUGradFusionPass::AddDgateXConcatNode(ge::NodePtr dynamicAUGRUGradNode,
+                                                            ge::NodePtr dgateHSplitNode,
+                                                            ge::NodePtr gruHiddenGradNode, ge::ComputeGraph &graph,
+                                                            vector<ge::NodePtr> &newNodes, bool &failStatus) {
   // create concat desc
   ge::OpDescPtr concatDesc = nullptr;
   FUSION_PASS_MAKE_SHARED(
@@ -1217,7 +1222,8 @@ Status DynamicAUGRUGradFusionPass::AddDxtMatmulNodeBack(ge::NodePtr dynamicAUGRU
                           matmulNode->GetInDataAnchor(1));
 
   // output Edge
-  for (InDataAnchorPtr inAnchorPtr : dynamicAUGRUGradNode->GetOutDataAnchor(OUTPUT_INDEX["dx"])->GetPeerInDataAnchors()) {
+  for (InDataAnchorPtr inAnchorPtr : dynamicAUGRUGradNode->GetOutDataAnchor(
+      OUTPUT_INDEX["dx"])->GetPeerInDataAnchors()) {
     // dxt
     inAnchorPtr->UnlinkAll();
     ge::GraphUtils::AddEdge(matmulNode->GetOutDataAnchor(0), inAnchorPtr);
@@ -1271,7 +1277,8 @@ Status DynamicAUGRUGradFusionPass::AddDxtMatmulNode(ge::NodePtr dynamicAUGRUGrad
                           matmulNode->GetInDataAnchor(1));
 
   // output Edge
-  for (InDataAnchorPtr inAnchorPtr : dynamicAUGRUGradNode->GetOutDataAnchor(OUTPUT_INDEX["dx"])->GetPeerInDataAnchors()) {
+  for (InDataAnchorPtr inAnchorPtr : dynamicAUGRUGradNode->GetOutDataAnchor(
+      OUTPUT_INDEX["dx"])->GetPeerInDataAnchors()) {
     // dxt
     inAnchorPtr->UnlinkAll();
     ge::GraphUtils::AddEdge(matmulNode->GetOutDataAnchor(0), inAnchorPtr);
@@ -1694,7 +1701,7 @@ Status DynamicAUGRUGradFusionPass::AddDwAttReduceSumNode(ge::NodePtr augruGradNo
   AddOutputNodeDesc(reduceSumDesc, "y", dwAttOutshape, ge::FORMAT_ND, dwAttOutshape,
                     ge::FORMAT_ND, inputHType);
   // attr
-  ge::AttrUtils::SetListInt(reduceSumDesc, "axes", {2,});
+  ge::AttrUtils::SetListInt(reduceSumDesc, "axes", {2});
   ge::AttrUtils::SetBool(reduceSumDesc, "keep_dims", false);
 
   // create reduce_sum node

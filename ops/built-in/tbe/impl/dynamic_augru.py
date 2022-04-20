@@ -525,9 +525,11 @@ def _solution(x, bias_input, bias_hidden, seq_length, init_h, y, update, gate_or
         else:
             seq_mask_gm_var = None
 
-        input_list = [input_x_var, weight1, weight2, weight_att_var, bias1, bias2, s_init_h_gm_var, last_h, sync, seq_mask_gm_var]
+        input_list = [input_x_var, weight1, weight2, weight_att_var, bias1, bias2, s_init_h_gm_var, last_h, sync,
+                      seq_mask_gm_var]
         if is_gate_output:
-            output_list = [update_y_gm_var, update_h_gm_var, i_t_gm_var, i_t_weight_gm_var, r_t_gm_var, n_t_gm_var, hn_t_gm_var]
+            output_list = [update_y_gm_var, update_h_gm_var, i_t_gm_var, i_t_weight_gm_var, r_t_gm_var, n_t_gm_var,
+                           hn_t_gm_var]
         else:
             output_list = [update_y_gm_var, update_h_gm_var]
 
