@@ -185,9 +185,9 @@ class ProdForceSeA:
         src_list0 = [src_ub_fp16[((nnei_len * 2) // 16) * 3 * i] for i in range(16)]
         dst_list0 = [dst_ub_fp16[16 * i] for i in range(16)]
         self.tik_instance.vnchwconv(False, False, dst_list0, src_list0, 6 * (nnei_len // 256), 16, 1)
-        self.tik_instance.data_move(src_ub_fp16, dst_ub_fp16, 0, (nnei_len // 16), 2, 4, 0)
-        self.tik_instance.data_move(src_ub_fp16[nnei_len * 2], dst_ub_fp16[32], 0, (nnei_len // 16), 2, 4, 0)
-        self.tik_instance.data_move(src_ub_fp16[nnei_len * 4], dst_ub_fp16[64], 0, (nnei_len // 16), 2, 4, 0)
+        self.tik_instance.vadds(32, src_ub_fp16, dst_ub_fp16, 0, (nnei_len // 16), 1, 1, 2, 6)
+        self.tik_instance.vadds(32, src_ub_fp16[nnei_len * 2], dst_ub_fp16[32], 0, (nnei_len // 16), 1, 1, 2, 6)
+        self.tik_instance.vadds(32, src_ub_fp16[nnei_len * 4], dst_ub_fp16[64], 0, (nnei_len // 16), 1, 1, 2, 6)
         src_list0 = [src_ub_fp16[16 * i] for i in range(16)]
         dst_list0 = [dst_ub_fp16[((nnei_len * 2) // 16) * i] for i in range(16)]
         self.tik_instance.vnchwconv(False, False, dst_list0, src_list0, 2 * (nnei_len // 256), 1, 16)
@@ -206,17 +206,16 @@ class ProdForceSeA:
                                                    name="src_ub_fp16", scope=tik.scope_ubuf)
             dst_ub_fp16 = self.tik_instance.Tensor("float16", (nnei_len * 16,),
                                                    name="dst_ub_fp16", scope=tik.scope_ubuf)
-            self.tik_instance.data_move(src_ub_fp16, src_ub_buf_fp16, 0, 1, nnei_len  // 2, 0, 0)
+            self.tik_instance.vadds(128, src_ub_fp16, src_ub_buf_fp16, 0, (nnei_len // 16), 1, 1, 8, 8)
             src_list0 = [src_ub_fp16[nnei_len * i] for i in range(16)]
             dst_list0 = [dst_ub_fp16[16 * i] for i in range(16)]
             self.tik_instance.vnchwconv(False, False, dst_list0, src_list0, nnei_len // 16, 16, 1)
-            self.tik_instance.data_move(src_ub_fp16, dst_ub_fp16, 0, nnei_len // 8, 2, 6, 0)
-            self.tik_instance.data_move(src_ub_fp16[(nnei_len * 4)], dst_ub_fp16[32], 0,
-                                        nnei_len // 8, 2, 6, 0)
-            self.tik_instance.data_move(src_ub_fp16[(nnei_len * 4) * 2], dst_ub_fp16[64], 0,
-                                        nnei_len // 8, 2, 6, 0)
-            self.tik_instance.data_move(src_ub_fp16[(nnei_len * 4) * 3], dst_ub_fp16[96], 0,
-                                        nnei_len // 8, 2, 6, 0)
+            self.tik_instance.vadds(32, src_ub_fp16, dst_ub_fp16, 0, (nnei_len // 8), 1, 1, 2, 8)
+            self.tik_instance.vadds(32, src_ub_fp16[(nnei_len * 4)], dst_ub_fp16[32], 0, (nnei_len // 8), 1, 1, 2, 8)
+            self.tik_instance.vadds(32, src_ub_fp16[(nnei_len * 4) * 2], dst_ub_fp16[64], 0,
+                                    (nnei_len // 8), 1, 1, 2, 8)
+            self.tik_instance.vadds(32, src_ub_fp16[(nnei_len * 4) * 3], dst_ub_fp16[96], 0,
+                                    (nnei_len // 8), 1, 1, 2, 8)
             src_list0 = [src_ub_fp16[16 * i] for i in range(16)]
             dst_list0 = [dst_ub_fp16[(nnei_len // 4) * i] for i in range(16)]
             self.tik_instance.vnchwconv(False, False, dst_list0, src_list0, nnei_len // 64, 1, 16)
@@ -229,7 +228,13 @@ class ProdForceSeA:
             src_list0 = [src_ub_fp16[(nnei_len * 4) * 3 + 16 * i] for i in range(16)]
             dst_list0 = [dst_ub_fp16[(nnei_len * 4) * 3 + (nnei_len // 4) * i] for i in range(16)]
             self.tik_instance.vnchwconv(False, False, dst_list0, src_list0, nnei_len // 64, 1, 16)
-            self.tik_instance.data_move(dst_ub_buf_fp16, dst_ub_fp16, 0, 4, nnei_len // 8, nnei_len // 8, 0)
+            self.tik_instance.vadds(64, dst_ub_buf_fp16, dst_ub_fp16, 0, (nnei_len // 32), 1, 1, 8, 8)
+            self.tik_instance.vadds(64, dst_ub_buf_fp16[nnei_len * 2], dst_ub_fp16[nnei_len * 4], 0,
+                                    (nnei_len // 32), 1, 1, 4, 4)
+            self.tik_instance.vadds(64, dst_ub_buf_fp16[nnei_len * 4], dst_ub_fp16[nnei_len * 8], 0,
+                                    (nnei_len // 32), 1, 1, 4, 4)
+            self.tik_instance.vadds(64, dst_ub_buf_fp16[nnei_len * 6], dst_ub_fp16[nnei_len * 12], 0,
+                                    (nnei_len // 32), 1, 1, 4, 4)
 
     def _simple_trans_fp32_8_128x(self, dst_ub, src_ub, nnei_mask_len):
         '''
@@ -394,12 +399,7 @@ class ProdForceSeA:
             force_add_ub_fp32 = self.tik_instance.Tensor(self.force_dtype,
                 (3 + Constant.MASK_FLOAT32, ), name="force_add_ub_fp32",
                 scope=tik.scope_ubuf)
-            force_assis_ub_fp32 = self.tik_instance.Tensor(self.force_dtype,
-                                                        (Constant.BLOCK_FLOAT32 * 3, ),
-                                                        name="force_assis_ub_fp32",
-                                                        scope=tik.scope_ubuf)
             self.tik_instance.vector_dup(Constant.BLOCK_FLOAT32, force_add_ub_fp32, 0, 1, 1, 8)
-            self.tik_instance.vector_dup(Constant.BLOCK_FLOAT32 * 3, force_assis_ub_fp32, 0, 1, 1, 8)
             force_vcadd_ub_fp32 = self.tik_instance.Tensor(self.force_dtype,
                 (3 + Constant.MASK_FLOAT32,), name="force_vcadd_ub_fp32",
                 scope=tik.scope_ubuf)
@@ -533,6 +533,7 @@ class ProdForceSeA:
                         force_add_ub_fp32 = self.tik_instance.Tensor(self.force_dtype,
                             (Constant.NLOC_UNIT_LEN * 3 + Constant.MASK_FLOAT32, ), name="force_add_ub_fp32",
                             scope=tik.scope_ubuf)
+                        self.tik_instance.vector_dup(Constant.NLOC_UNIT_LEN * 3, force_add_ub_fp32, 0, 1, 1, 8)
                         force_vcadd_ub_fp32 = self.tik_instance.Tensor(self.force_dtype,
                             (Constant.NLOC_UNIT_LEN * 3 + Constant.MASK_FLOAT32,), name="force_vcadd_ub_fp32",
                             scope=tik.scope_ubuf)
@@ -643,12 +644,7 @@ class ProdForceSeA:
                         force_add_ub_fp32 = self.tik_instance.Tensor(self.force_dtype,
                             (Constant.NLOC_UNIT_LEN * 3 + Constant.MASK_FLOAT32,), name="force_add_ub_fp32",
                             scope=tik.scope_ubuf)
-                        force_assis_ub_fp32 = self.tik_instance.Tensor(self.force_dtype,
-                                                                       (Constant.BLOCK_FLOAT32 * 3, ),
-                                                                       name="force_assis_ub_fp32",
-                                                                       scope=tik.scope_ubuf)
                         self.tik_instance.vector_dup(Constant.NLOC_UNIT_LEN * 3, force_add_ub_fp32, 0, 1, 1, 8)
-                        self.tik_instance.vector_dup(Constant.BLOCK_FLOAT32 * 3, force_assis_ub_fp32, 0, 1, 1, 8)
                         force_vcadd_ub_fp32 = self.tik_instance.Tensor(self.force_dtype,
                             (Constant.NLOC_UNIT_LEN * 3 + Constant.MASK_FLOAT32,), name="force_vcadd_ub_fp32",
                             scope=tik.scope_ubuf)

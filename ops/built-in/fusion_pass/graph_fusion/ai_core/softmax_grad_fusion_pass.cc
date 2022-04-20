@@ -44,6 +44,12 @@ static const string MUL = "Mul";
 static const string REDUCESUMD = "ReduceSumD";
 static const string SUB = "Sub";
 static const string SoftmaxGrad = "SoftmaxGrad";
+static const string PATTERN_INPUT0 = "Input0";
+static const string PATTERN_INPUT1 = "Input1";
+static const uint8_t OUTPUT_NODE_NUM = 1;
+static const uint8_t OUTPUT_NODE_NUM_2 = 2;
+static const uint8_t PATTERN_1 = 1;
+static const uint8_t PATTERN_2 = 2;
 
 /**
  * @brief
@@ -61,6 +67,19 @@ static const string SoftmaxGrad = "SoftmaxGrad";
  *
  *
  *  grad_x = softmax*(grad_softmax - sum(grad_softmax * softmax))
+    pattern1
+    input1 input0
+       \   /
+        mul                                    input0    input1
+         |  \                                    \        /
+         |  reducesumd  input0       ----->     softmax_grad
+         |          \    /                            |
+         |           mul1                           grad
+         |------\    /
+                 sub
+                  |
+                grad
+ *  grad_x = softmax*(grad_softmax - sum(grad_softmax * softmax))
  */
 
 std::vector<FusionPattern*> SoftmaxGradFusionPass::DefinePatterns() {
@@ -68,6 +87,11 @@ std::vector<FusionPattern*> SoftmaxGradFusionPass::DefinePatterns() {
   FusionPattern* pattern = new (std::nothrow) FusionPattern("SoftmaxGradFusionPass");
   if (pattern == nullptr) {
     OP_LOGW(FUSED_OP_TYPE.c_str(), "pattern is nullptr,Create pattern failed.");
+    return patterns;
+  }
+  FusionPattern* pattern1 = new (std::nothrow) FusionPattern("SoftmaxGradFusionPass");
+  if (pattern1 == nullptr) {
+    OP_LOGW(FUSED_OP_TYPE.c_str(), "pattern1 is nullptr,Create pattern failed.");
     return patterns;
   }
   pattern->AddOpDesc(PATTERN_MUL0, {MUL})
@@ -79,19 +103,33 @@ std::vector<FusionPattern*> SoftmaxGradFusionPass::DefinePatterns() {
       .SetInputs(PATTERN_MUL1, {PATTERN_SUB})
       .SetOutput(PATTERN_MUL1);
   patterns.push_back(pattern);
+  pattern1->AddOpDesc(PATTERN_MUL0, {MUL})
+      .AddOpDesc(PATTERN_MUL1, {MUL})
+      .AddOpDesc(PATTERN_REDUCESUMD, {REDUCESUMD})
+      .AddOpDesc(PATTERN_SUB, {SUB})
+      .AddOpDesc(PATTERN_INPUT0)
+      .AddOpDesc(PATTERN_INPUT1)
+      .SetInputs(PATTERN_MUL0, {PATTERN_INPUT1, PATTERN_INPUT0})
+      .SetInputs(PATTERN_REDUCESUMD, {PATTERN_MUL0})
+      .SetInputs(PATTERN_MUL1, {PATTERN_REDUCESUMD, PATTERN_INPUT0})
+      .SetInputs(PATTERN_SUB, {PATTERN_MUL0, PATTERN_MUL1})
+      .SetOutput(PATTERN_SUB);
+  patterns.push_back(pattern1);
   return patterns;
 }
 
-// check if mul0's input 0 is same with sub's input 0, mul0's input 1 is same with mul2's input 1
 bool SoftmaxGradFusionPass::IsMatch(ge::NodePtr mul_node0, ge::NodePtr reducesumd_node, ge::NodePtr sub_node,
                                     ge::NodePtr mul_node1) const {
+  std::string mul0_name = mul_node0->GetName();
   std::string mul0_input0_name = mul_node0->GetInDataAnchor(0)->GetPeerOutAnchor()->GetOwnerNode()->GetName();
   std::string mul0_input1_name = mul_node0->GetInDataAnchor(1)->GetPeerOutAnchor()->GetOwnerNode()->GetName();
   std::string sub_input0_name = sub_node->GetInDataAnchor(0)->GetPeerOutAnchor()->GetOwnerNode()->GetName();
   std::string mul1_input0_name = mul_node1->GetInDataAnchor(0)->GetPeerOutAnchor()->GetOwnerNode()->GetName();
+  std::string sum_input0_name = reducesumd_node->GetInDataAnchor(0)->GetPeerOutAnchor()->GetOwnerNode()->GetName();
 
-  if (mul0_input1_name != sub_input0_name) {
-    OP_LOGI(FUSED_OP_TYPE.c_str(), "mul0_input0 and sub_input0 are not same, not change");
+  uint8_t pattern = (mul0_name == sub_input0_name) ? PATTERN_2 : PATTERN_1;
+  if ((pattern == PATTERN_1) && (mul0_input1_name != sub_input0_name)) {
+    OP_LOGW(FUSED_OP_TYPE.c_str(), "mul0_input0 are not same with sub_input0, not change");
     return false;
   }
 
@@ -99,6 +137,32 @@ bool SoftmaxGradFusionPass::IsMatch(ge::NodePtr mul_node0, ge::NodePtr reducesum
     OP_LOGI(FUSED_OP_TYPE.c_str(), "mul0_input1 and mul1_input1 are not same, not change");
     return false;
   }
+
+  auto subOutputDataNodes = sub_node->GetOutDataNodes();
+  auto mulOutputDataNodes = mul_node0->GetOutDataNodes();
+  auto mul1OutputDataNodes = mul_node1->GetOutDataNodes();
+  auto sumOutputDataNodes = reducesumd_node->GetOutDataNodes();
+  if(sumOutputDataNodes.size() != OUTPUT_NODE_NUM) {
+    OP_LOGW(FUSED_OP_TYPE.c_str(), "sum output is not 1, not change.");
+    return false;
+  }  
+  if (pattern == PATTERN_1) {
+    if((mulOutputDataNodes.size() != OUTPUT_NODE_NUM) || (mul1OutputDataNodes.size() != OUTPUT_NODE_NUM)) {
+      OP_LOGW(FUSED_OP_TYPE.c_str(), "this pattern does not meet the fusion condition.");
+      return false;
+    }
+  }
+  if (pattern == PATTERN_2) {
+    if((mulOutputDataNodes.size() != OUTPUT_NODE_NUM_2) || (mul1OutputDataNodes.size() != OUTPUT_NODE_NUM)) {
+      OP_LOGW(FUSED_OP_TYPE.c_str(), "this pattern does not meet the fusion condition.");
+      return false;
+    }
+    if ((mul0_name != sum_input0_name)) {
+      OP_LOGW(FUSED_OP_TYPE.c_str(), "mul0_name and sum_input0_name are not same, not change");
+      return false;
+    }
+  }
+
   return true;
 }
 
@@ -121,6 +185,7 @@ Status SoftmaxGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, 
     OP_LOGW(FUSED_OP_TYPE.c_str(), "input don't match fusion pattern.");
     return NOT_CHANGED;
   }
+
   // create softmaxgrad node
   std::string softmaxgradNodeName = mul_node0->GetName() + "_" + "softmax_grad";
   ge::OpDescPtr softmaxgradOpdesc;

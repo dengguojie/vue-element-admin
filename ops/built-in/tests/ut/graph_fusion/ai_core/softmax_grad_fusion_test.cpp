@@ -93,3 +93,301 @@ TEST_F(softmax_grad_fusion_test, softmax_grad_fusion_test_1) {
     }
     EXPECT_EQ(findsoftmaxgrad, true);
 }
+
+TEST_F(softmax_grad_fusion_test, softmax_grad_fusion_test_2) {
+    ge::Graph graph("softmax_grad_fusion_test_2");
+
+    auto mul0 = op::Mul("mul0");
+    std::vector<int64_t> dims_mul{2, 128, 128, 128, 4};
+    ge::Shape shape_mul(dims_mul);
+    ge::TensorDesc tensorDescData(shape_mul, ge::FORMAT_NDHWC, ge::DT_FLOAT16);
+    mul0.update_input_desc_x1(tensorDescData);
+    mul0.update_input_desc_x2(tensorDescData);
+    mul0.update_output_desc_y(tensorDescData);
+
+    auto strideslicegrad = op::Data("strideslicegrad");
+    auto transdata = op::Data("transdata");
+    auto biasaddgrad = op::Data("biasaddgrad");
+    strideslicegrad.update_input_desc_x(tensorDescData);
+    strideslicegrad.update_output_desc_y(tensorDescData);
+    transdata.update_input_desc_x(tensorDescData);
+    transdata.update_output_desc_y(tensorDescData);
+    biasaddgrad.update_input_desc_x(tensorDescData);
+    biasaddgrad.update_output_desc_y(tensorDescData);
+
+    std::vector<int64_t> dims_reducesumd{2, 128, 128, 128, 1};
+    ge::Shape shape_reducesumd(dims_reducesumd);
+    ge::TensorDesc tensor1DescData(shape_reducesumd, ge::FORMAT_NDHWC, ge::DT_FLOAT16);
+
+    auto reducesumd = op::ReduceSumD("reducesumd");
+    reducesumd.update_input_desc_x(tensorDescData);
+    reducesumd.update_output_desc_y(tensor1DescData);
+
+    auto sub = op::Sub("sub");
+    sub.update_input_desc_x1(tensorDescData);
+    sub.update_input_desc_x2(tensor1DescData);
+    sub.update_output_desc_y(tensorDescData);
+
+    auto mul1 = op::Mul("mul1");
+    mul1.update_input_desc_x1(tensorDescData);
+    mul1.update_input_desc_x2(tensorDescData);
+    mul1.update_output_desc_y(tensorDescData);
+    
+    mul0.set_input_x1(strideslicegrad)
+        .set_input_x2(transdata);
+    reducesumd.set_input_x(mul0)
+              .set_attr_axes({-1})
+	      .set_attr_keep_dims(true);
+    mul1.set_input_x1(strideslicegrad)
+        .set_input_x2(reducesumd);
+    sub.set_input_x1(mul0)
+       .set_input_x2(mul1);
+    biasaddgrad.set_input_x(sub);
+    
+    std::vector<Operator> inputs{transdata, strideslicegrad};
+    std::vector<Operator> outputs{biasaddgrad};
+
+    graph.SetInputs(inputs).SetOutputs(outputs);
+    ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
+    fe::FusionPassTestUtils::InferShapeAndType(compute_graph_ptr);
+    fe::FusionPassTestUtils::RunGraphFusionPass("SoftmaxGradFusionPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
+
+    bool findsoftmaxgrad = false;
+    for (auto node: compute_graph_ptr->GetAllNodes()) {
+        if (node->GetType() == "SoftmaxGrad") {
+        findsoftmaxgrad = true;
+        auto output_desc = node->GetOpDesc()->GetOutputDesc(0);
+        std::vector<int64_t> dims = output_desc.GetShape().GetDims();
+        // EXPECT_EQ(output_range, expected_range);
+        EXPECT_EQ(dims, dims_mul);
+        }
+    }
+    EXPECT_EQ(findsoftmaxgrad, true);
+}
+
+TEST_F(softmax_grad_fusion_test, softmax_grad_fusion_test_3) {
+    ge::Graph graph("softmax_grad_fusion_test_3");
+
+    auto mul0 = op::Mul("mul0");
+    std::vector<int64_t> dims_mul{2, 128, 128, 128, 4};
+    ge::Shape shape_mul(dims_mul);
+    ge::TensorDesc tensorDescData(shape_mul, ge::FORMAT_NDHWC, ge::DT_FLOAT16);
+    mul0.update_input_desc_x1(tensorDescData);
+    mul0.update_input_desc_x2(tensorDescData);
+    mul0.update_output_desc_y(tensorDescData);
+
+    auto strideslicegrad = op::Data("strideslicegrad");
+    auto transdata = op::Data("transdata");
+    auto biasaddgrad = op::Data("biasaddgrad");
+    strideslicegrad.update_input_desc_x(tensorDescData);
+    strideslicegrad.update_output_desc_y(tensorDescData);
+    transdata.update_input_desc_x(tensorDescData);
+    transdata.update_output_desc_y(tensorDescData);
+    biasaddgrad.update_input_desc_x(tensorDescData);
+    biasaddgrad.update_output_desc_y(tensorDescData);
+
+    std::vector<int64_t> dims_reducesumd{2, 128, 128, 128, 1};
+    ge::Shape shape_reducesumd(dims_reducesumd);
+    ge::TensorDesc tensor1DescData(shape_reducesumd, ge::FORMAT_NDHWC, ge::DT_FLOAT16);
+
+    auto reducesumd = op::ReduceSumD("reducesumd");
+    reducesumd.update_input_desc_x(tensorDescData);
+    reducesumd.update_output_desc_y(tensor1DescData);
+
+    auto sub = op::Sub("sub");
+    sub.update_input_desc_x1(tensorDescData);
+    sub.update_input_desc_x2(tensor1DescData);
+    sub.update_output_desc_y(tensorDescData);
+
+    auto mul1 = op::Mul("mul1");
+    mul1.update_input_desc_x1(tensorDescData);
+    mul1.update_input_desc_x2(tensorDescData);
+    mul1.update_output_desc_y(tensorDescData);
+
+    auto mul2 = op::Mul("mul2");
+    mul2.update_input_desc_x1(tensorDescData);
+    mul2.update_input_desc_x2(tensorDescData);
+    mul2.update_output_desc_y(tensorDescData);
+    
+    mul0.set_input_x1(strideslicegrad)
+        .set_input_x2(transdata);
+    reducesumd.set_input_x(mul0)
+              .set_attr_axes({-1})
+	      .set_attr_keep_dims(true);
+    mul1.set_input_x1(strideslicegrad)
+        .set_input_x2(reducesumd);
+    mul2.set_input_x1(transdata)
+        .set_input_x2(reducesumd);
+    sub.set_input_x1(mul0)
+       .set_input_x2(mul1);
+    biasaddgrad.set_input_x(sub);
+    
+    std::vector<Operator> inputs{strideslicegrad, transdata};
+    std::vector<Operator> outputs{biasaddgrad};
+
+    graph.SetInputs(inputs).SetOutputs(outputs);
+    ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
+    fe::FusionPassTestUtils::InferShapeAndType(compute_graph_ptr);
+    fe::FusionPassTestUtils::RunGraphFusionPass("SoftmaxGradFusionPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
+
+    bool findsoftmaxgrad = false;
+    for (auto node: compute_graph_ptr->GetAllNodes()) {
+        if (node->GetType() == "SoftmaxGrad") {
+        findsoftmaxgrad = true;
+        auto output_desc = node->GetOpDesc()->GetOutputDesc(0);
+        std::vector<int64_t> dims = output_desc.GetShape().GetDims();
+        // EXPECT_EQ(output_range, expected_range);
+        EXPECT_EQ(dims, dims_mul);
+        }
+    }
+    EXPECT_EQ(findsoftmaxgrad, false);
+}
+
+TEST_F(softmax_grad_fusion_test, softmax_grad_fusion_test_4) {
+    ge::Graph graph("softmax_grad_fusion_test_4");
+
+    auto mul0 = op::Mul("mul0");
+    std::vector<int64_t> dims_mul{2, 128, 128, 128, 4};
+    ge::Shape shape_mul(dims_mul);
+    ge::TensorDesc tensorDescData(shape_mul, ge::FORMAT_NDHWC, ge::DT_FLOAT16);
+    mul0.update_input_desc_x1(tensorDescData);
+    mul0.update_input_desc_x2(tensorDescData);
+    mul0.update_output_desc_y(tensorDescData);
+
+    auto strideslicegrad = op::Data("strideslicegrad");
+    auto transdata = op::Data("transdata");
+    auto biasaddgrad = op::Data("biasaddgrad");
+    strideslicegrad.update_input_desc_x(tensorDescData);
+    strideslicegrad.update_output_desc_y(tensorDescData);
+    transdata.update_input_desc_x(tensorDescData);
+    transdata.update_output_desc_y(tensorDescData);
+    biasaddgrad.update_input_desc_x(tensorDescData);
+    biasaddgrad.update_output_desc_y(tensorDescData);
+
+    std::vector<int64_t> dims_reducesumd{2, 128, 128, 128, 1};
+    ge::Shape shape_reducesumd(dims_reducesumd);
+    ge::TensorDesc tensor1DescData(shape_reducesumd, ge::FORMAT_NDHWC, ge::DT_FLOAT16);
+
+    auto reducesumd = op::ReduceSumD("reducesumd");
+    reducesumd.update_input_desc_x(tensorDescData);
+    reducesumd.update_output_desc_y(tensor1DescData);
+
+    auto sub = op::Sub("sub");
+    sub.update_input_desc_x1(tensorDescData);
+    sub.update_input_desc_x2(tensor1DescData);
+    sub.update_output_desc_y(tensorDescData);
+
+    auto mul1 = op::Mul("mul1");
+    mul1.update_input_desc_x1(tensorDescData);
+    mul1.update_input_desc_x2(tensorDescData);
+    mul1.update_output_desc_y(tensorDescData);
+
+    mul0.set_input_x1(transdata)
+        .set_input_x2(strideslicegrad);
+    reducesumd.set_input_x(mul0)
+              .set_attr_axes({-1})
+	      .set_attr_keep_dims(true);
+    mul1.set_input_x1(reducesumd)
+        .set_input_x2(strideslicegrad);
+    sub.set_input_x1(mul0)
+       .set_input_x2(mul1);
+    biasaddgrad.set_input_x(sub);
+    
+    std::vector<Operator> inputs{strideslicegrad, transdata};
+    std::vector<Operator> outputs{biasaddgrad};
+
+    graph.SetInputs(inputs).SetOutputs(outputs);
+    ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
+    fe::FusionPassTestUtils::InferShapeAndType(compute_graph_ptr);
+    fe::FusionPassTestUtils::RunGraphFusionPass("SoftmaxGradFusionPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
+
+    bool findsoftmaxgrad = false;
+    for (auto node: compute_graph_ptr->GetAllNodes()) {
+        if (node->GetType() == "SoftmaxGrad") {
+        findsoftmaxgrad = true;
+        auto output_desc = node->GetOpDesc()->GetOutputDesc(0);
+        std::vector<int64_t> dims = output_desc.GetShape().GetDims();
+        // EXPECT_EQ(output_range, expected_range);
+        EXPECT_EQ(dims, dims_mul);
+        }
+    }
+    EXPECT_EQ(findsoftmaxgrad, false);
+}
+
+TEST_F(softmax_grad_fusion_test, softmax_grad_fusion_test_5) {
+    ge::Graph graph("softmax_grad_fusion_test_5");
+
+    auto mul0 = op::Mul("mul0");
+    std::vector<int64_t> dims_mul{2, 128, 128, 128, 4};
+    ge::Shape shape_mul(dims_mul);
+    ge::TensorDesc tensorDescData(shape_mul, ge::FORMAT_NDHWC, ge::DT_FLOAT16);
+    mul0.update_input_desc_x1(tensorDescData);
+    mul0.update_input_desc_x2(tensorDescData);
+    mul0.update_output_desc_y(tensorDescData);
+
+    auto strideslicegrad = op::Data("strideslicegrad");
+    auto transdata = op::Data("transdata");
+    auto biasaddgrad = op::Data("biasaddgrad");
+    strideslicegrad.update_input_desc_x(tensorDescData);
+    strideslicegrad.update_output_desc_y(tensorDescData);
+    transdata.update_input_desc_x(tensorDescData);
+    transdata.update_output_desc_y(tensorDescData);
+    biasaddgrad.update_input_desc_x(tensorDescData);
+    biasaddgrad.update_output_desc_y(tensorDescData);
+
+    std::vector<int64_t> dims_reducesumd{2, 128, 128, 128, 1};
+    ge::Shape shape_reducesumd(dims_reducesumd);
+    ge::TensorDesc tensor1DescData(shape_reducesumd, ge::FORMAT_NDHWC, ge::DT_FLOAT16);
+
+    auto reducesumd = op::ReduceSumD("reducesumd");
+    reducesumd.update_input_desc_x(tensorDescData);
+    reducesumd.update_output_desc_y(tensor1DescData);
+
+    auto sub = op::Sub("sub");
+    sub.update_input_desc_x1(tensorDescData);
+    sub.update_input_desc_x2(tensor1DescData);
+    sub.update_output_desc_y(tensorDescData);
+
+    auto mul1 = op::Mul("mul1");
+    mul1.update_input_desc_x1(tensorDescData);
+    mul1.update_input_desc_x2(tensorDescData);
+    mul1.update_output_desc_y(tensorDescData);
+
+    auto mul2 = op::Mul("mul2");
+    mul2.update_input_desc_x1(tensorDescData);
+    mul2.update_input_desc_x2(tensorDescData);
+    mul2.update_output_desc_y(tensorDescData);
+
+    mul0.set_input_x1(transdata)
+        .set_input_x2(strideslicegrad);
+    reducesumd.set_input_x(mul0)
+              .set_attr_axes({-1})
+	      .set_attr_keep_dims(true);
+    sub.set_input_x1(strideslicegrad)
+       .set_input_x2(reducesumd);
+    mul1.set_input_x1(transdata)
+        .set_input_x2(sub);
+    mul2.set_input_x1(transdata)
+        .set_input_x2(mul0);
+    biasaddgrad.set_input_x(mul1);
+    
+    std::vector<Operator> inputs{strideslicegrad, transdata};
+    std::vector<Operator> outputs{biasaddgrad};
+
+    graph.SetInputs(inputs).SetOutputs(outputs);
+    ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
+    fe::FusionPassTestUtils::InferShapeAndType(compute_graph_ptr);
+    fe::FusionPassTestUtils::RunGraphFusionPass("SoftmaxGradFusionPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
+
+    bool findsoftmaxgrad = false;
+    for (auto node: compute_graph_ptr->GetAllNodes()) {
+        if (node->GetType() == "SoftmaxGrad") {
+        findsoftmaxgrad = true;
+        auto output_desc = node->GetOpDesc()->GetOutputDesc(0);
+        std::vector<int64_t> dims = output_desc.GetShape().GetDims();
+        // EXPECT_EQ(output_range, expected_range);
+        EXPECT_EQ(dims, dims_mul);
+        }
+    }
+    EXPECT_EQ(findsoftmaxgrad, false);
+}

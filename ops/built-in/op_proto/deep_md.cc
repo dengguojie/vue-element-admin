@@ -181,7 +181,6 @@ IMPLEMT_VERIFIER(ProdForceSeA, ProdForceSeAVerify) {
   return GRAPH_SUCCESS;
 }
 
-static const int64_t MAX_NALL = 30000;
 IMPLEMT_COMMON_INFERFUNC(ProdForceSeAInferShape) {
   AscendString opName;
   CHECK(op.GetName(opName) != GRAPH_SUCCESS, OP_LOGE("ProdForceSeA", "Failed to get op name of ProdForceSeA."),
@@ -216,8 +215,6 @@ IMPLEMT_COMMON_INFERFUNC(ProdForceSeAInferShape) {
       return GRAPH_FAILED;
     };
     int64_t nall = constVec[1];
-    CHECK(nall > MAX_NALL,
-          OP_LOGE(opName.GetString(), "nall value %ld is more than 30000.", nall), return GRAPH_FAILED);
     bool secondInfer = false;
     op.GetAttr("second_infer", secondInfer);
     if (secondInfer) {
