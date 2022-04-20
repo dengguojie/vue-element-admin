@@ -177,6 +177,10 @@ namespace fe {
             }
             bool match_pattern = true;
             for (const auto desc : pattern->GetOpDescs()) {
+                if (mapping.find(desc) == mapping.end()) {
+                    continue;
+                }
+
                 auto ptr_nodes_match_desc = const_cast<BufferFusionMapping &>(mapping)[desc];
                 if (ptr_nodes_match_desc.size() < desc->repeate_min or
                     ptr_nodes_match_desc.size() > desc->repeate_max) {

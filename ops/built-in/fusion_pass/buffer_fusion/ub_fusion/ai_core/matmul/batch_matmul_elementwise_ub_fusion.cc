@@ -30,6 +30,7 @@
 #include "lx_fusion_func.h"
 #include "op_log.h"
 #include "pattern_fusion_util.h"
+#include "fusion_pre_trans_func.h"
 
 namespace fe {
 namespace {
@@ -61,7 +62,8 @@ vector<BufferFusionPattern *> TbeBatchMatmulElementWiseFusionPass::DefinePattern
   FUSION_PASS_CHECK((pattern == nullptr), OP_LOGE(FUSED_OP_TYPE.c_str(), "new an object failed."), return patterns);
   OP_LOGD(FUSED_OP_TYPE.c_str(), "Start to define %s pass pattern.", passName.c_str());
   // define pattern rules
-  pattern->AddOpDesc(PATTERN_BATCH_MATMUL, {OP_PATTERN_BATCH_MATMUL}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
+  pattern->AddOpDesc(PATTERN_BATCH_MATMUL, {OP_PATTERN_BATCH_MATMUL, OP_PATTERN_GEMM},
+                     TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
       .AddOpDesc(PATTERN_ELEM, {OP_PATTERN_ELEMWISE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
       .AddOpDesc(PATTERN_ELEM_1, {OP_PATTERN_ELEMWISE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
       .SetHead({PATTERN_BATCH_MATMUL})
@@ -76,7 +78,8 @@ vector<BufferFusionPattern *> TbeBatchMatmulElementWiseFusionPass::DefinePattern
   FUSION_PASS_CHECK((pattern1 == nullptr), OP_LOGE(FUSED_OP_TYPE.c_str(), "new an object failed."), return patterns);
   OP_LOGD(FUSED_OP_TYPE.c_str(), "Start to define %s pass pattern.", passName1.c_str());
   // define pattern rules
-  pattern1->AddOpDesc(PATTERN_BATCH_MATMUL, {OP_PATTERN_BATCH_MATMUL}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
+  pattern1->AddOpDesc(PATTERN_BATCH_MATMUL, {OP_PATTERN_BATCH_MATMUL, OP_PATTERN_GEMM},
+                      TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
       .AddOpDesc(PATTERN_ELEM, {OP_PATTERN_ELEMWISE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
       .SetHead({PATTERN_BATCH_MATMUL})
       .SetOutputs(PATTERN_BATCH_MATMUL, {PATTERN_ELEM}, TBE_OUTPUT_BRANCH_SINGLE, true)
@@ -93,7 +96,8 @@ vector<BufferFusionPattern *> TbeBatchMatmulElementWiseFusionPass::DefinePattern
   FUSION_PASS_CHECK((pattern2 == nullptr), OP_LOGE(FUSED_OP_TYPE.c_str(), "new an object failed."), return patterns);
   OP_LOGD(FUSED_OP_TYPE.c_str(), "Start to define %s pass pattern.", passName2.c_str());
   // define pattern rules
-  pattern2->AddOpDesc(PATTERN_BATCH_MATMUL, {OP_PATTERN_BATCH_MATMUL}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
+  pattern2->AddOpDesc(PATTERN_BATCH_MATMUL, {OP_PATTERN_BATCH_MATMUL, OP_PATTERN_GEMM},
+                      TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
       .AddOpDesc(PATTERN_ELEM, {OP_PATTERN_ELEMWISE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
       .AddOpDesc(PATTERN_ELEM_1, {OP_PATTERN_ELEMWISE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
       .AddOpDesc(PATTERN_ELEM_2, {OP_PATTERN_ELEMWISE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
@@ -368,6 +372,7 @@ Status TbeBatchMatmulElementWiseFusionPass::GetFusionNodes(const BufferFusionMap
 
   // buffer fusion do not support dynamic shape now
   vector<ge::NodePtr> matmulNodes = GetMatchedNodesByDescName(PATTERN_BATCH_MATMUL, mapping);
+  FusePreTransdata(matmulNodes, fusion_nodes);
   for (const auto &matmulNode : matmulNodes) {
     auto input0desc = GetCurrNodeInputDesc(matmulNode, 0);
     auto input1desc = GetCurrNodeInputDesc(matmulNode, 1);

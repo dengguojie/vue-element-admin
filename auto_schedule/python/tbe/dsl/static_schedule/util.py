@@ -1064,3 +1064,10 @@ def generic_dispatch(key: Union[int, str] = 0) -> Callable:
         return wrapper
 
     return decorate
+
+
+def check_support_fixpipe_l0c2ub():
+    """
+    check if the soc support moving data from l0c to ub
+    """
+    return tbe_platform_info.intrinsic_check_support("Intrinsic_fix_pipe_l0c2ub")

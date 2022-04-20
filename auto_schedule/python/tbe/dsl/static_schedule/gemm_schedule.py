@@ -290,10 +290,13 @@ class GemmScheduleV2:
         # dynamic tensor
         self._mem_process(tiling, tensor_map)
 
+        # get spec_mid_list
+        spec_mid_list = tensor_map.get("spec_mid_list", [])
+
         # clear global cache
         tiling.clear()
         tensor_map.clear()
-        return True
+        return spec_mid_list
 
 
 def gemm_schedule(res, sch_list, dynamic_para=None):

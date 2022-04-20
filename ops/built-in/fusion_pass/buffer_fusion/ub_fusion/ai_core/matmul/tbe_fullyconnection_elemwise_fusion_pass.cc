@@ -21,6 +21,7 @@
 #include "lx_fusion_func.h"
 #include "anchor_util.h"
 #include "common/util/platform_info.h"
+#include "fusion_pre_trans_func.h"
 
 namespace fe {
 static const string PATTERN_FC_MATMUL = "FullyConnection/MatMul/BatchMatmul";     // desc name
@@ -56,7 +57,8 @@ vector<BufferFusionPattern *> TbeFullyconnectionElemwiseFusionPass::DefinePatter
   FUSION_PASS_CHECK(pattern0 == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new an object failed."), return patterns);
   OP_LOGD(FUSED_OP_TYPE.c_str(), "Start to define %s pass pattern.", passName0.c_str());
   // define pattern rules
-  pattern0->AddOpDesc(PATTERN_FC_MATMUL, {OP_PATTERN_BATCH_MATMUL}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
+  pattern0->AddOpDesc(PATTERN_FC_MATMUL, {OP_PATTERN_BATCH_MATMUL, OP_PATTERN_GEMM},
+                      TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
            .AddOpDesc(PATTERN_ELTWISE1, {OP_PATTERN_ELEMWISE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
            .AddOpDesc(PATTERN_OUTPUT, {TBE_PATTERN_OUTPUT_NODE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
            .SetHead({PATTERN_FC_MATMUL})
@@ -432,6 +434,7 @@ Status TbeFullyconnectionElemwiseFusionPass::GetFusionNodes(const BufferFusionMa
   }
   // buffer fusion do not support dynamic shape now
   vector<ge::NodePtr> matmulNodes = GetMatchedNodesByDescName(PATTERN_FC_MATMUL, mapping);
+  FusePreTransdata(matmulNodes, fusionNodes);
   Status ret = CheckDynamicMode(matmulNodes, fusionNodes);
   FUSION_PASS_CHECK(ret != NOT_CHANGED,
                     OP_LOGW(FUSED_OP_TYPE.c_str(), "check dynamic mode failed"),

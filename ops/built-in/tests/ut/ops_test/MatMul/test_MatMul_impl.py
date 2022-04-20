@@ -43,7 +43,7 @@ vals = {("CORE_NUM", ): 48,
         }
 
 def side_effects(*args):
-    return vals[args]
+    return vals.get(args)
 
 case1 = {"params": [{"shape": (6, 2,16,16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (32, 96),"ori_format": "ND"},
                     {"shape": (4, 6,16,16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (96, 64),"ori_format": "ND"},
@@ -590,6 +590,12 @@ def test_mock_cases(test_args):
             test_matmul_fixpipe_0()
             test_matmul_fixpipe_1()
             test_matmul_fixpipe_2()
+            test_matmul_sigmoid_multi_out()
+            vals.update({
+                ("Intrinsic_fix_pipe_l0c2ub"): True
+            })
+            test_matmul_add()
+            test_matmul_fixpipe_0()
             test_matmul_sigmoid_multi_out()
 
 

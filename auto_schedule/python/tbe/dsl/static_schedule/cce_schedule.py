@@ -1199,7 +1199,7 @@ def global_core_schedule(  # 'pylint: disable=R0911, R0912, R0914, R0915
     elif pattern == OpPatterns.MATMUL_PATTERN:
         mmad_schedule(outs, sch_list)  # 'pylint: disable=W0631
     elif pattern == OpPatterns.GEMM_PATTERN:
-        gemm_schedule(outs, sch_list)
+        spec_mid_list = gemm_schedule(outs, sch_list)
     elif pattern == OpPatterns.POOL2D_PATTERN:
         pooling2d_schedule(outs[0], sch_list)
     elif pattern == OpPatterns.POOL3D_PATTERN:
@@ -1292,24 +1292,20 @@ def cce_build_code(  # 'pylint: disable=R0912, R0914, R0915
         """
         write workspace info
         """
-        def write_code(wkspace_dict, fname):
+        def write_code(wkspace_dict, kernel_name_list):
             """
             write code
             """
-            fname = os.path.realpath(fname)
-            if os.path.exists(fname):
-                with open(fname, "r") as file_name:
-                    load_dict = json.load(file_name)
-
-                load_dict.update(wkspace_dict)
-                with open(fname, "w") as file_name:
-                    json.dump(load_dict, file_name,
-                                sort_keys=True, indent=4,
-                                separators=(',', ':'))
-            else:
-                dict_args = {"errCode": "E90001",
-                             "detailed_cause": f"The file [{fname}] does not exist, please check the path."}
-                raise RuntimeError(dict_args, get_error_message(dict_args))
+            for kernel_name in kernel_name_list:
+                fname = os.path.realpath(kernel_name)
+                if os.path.exists(fname):
+                    with open(fname, "r") as file_name:
+                        load_dict = json.load(file_name)
+                    load_dict.update(wkspace_dict)
+                    with open(fname, "w") as file_name:
+                        json.dump(load_dict, file_name,
+                                  sort_keys=True, indent=4,
+                                  separators=(',', ':'))
 
         def _shape_to_list(shape):
             """
@@ -1350,8 +1346,11 @@ def cce_build_code(  # 'pylint: disable=R0912, R0914, R0915
                                           "type": addr_type_list}}
 
             kernel_meta_dir = get_current_build_config("kernel_meta_parent_dir") + "/kernel_meta/"
-            write_code(wkspace_dict,
-                       os.path.join(kernel_meta_dir, "%s.json" % kernel_name))
+            kernel_name_ori = os.path.join(kernel_meta_dir, "{}.json".format(kernel_name))
+            kernel_name_aic = os.path.join(kernel_meta_dir, "{}_mix_aic.json".format(kernel_name))
+            kernel_name_aiv = os.path.join(kernel_meta_dir, "{}_mix_aiv.json".format(kernel_name))
+            kernel_name_list = [kernel_name_ori, kernel_name_aic, kernel_name_aiv]
+            write_code(wkspace_dict, kernel_name_list)
 
     def _gen_build_map():
         fusion_config_map = config_map.get("fusion_build_config", {})
