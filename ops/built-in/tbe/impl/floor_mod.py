@@ -21,6 +21,7 @@ from te import platform as tbe_platform
 from te.utils import para_check
 from te.utils import shape_util
 from impl.util.platform_adapter import error_manager_vector
+from impl.util.platform_adapter import tbe_context
 
 
 class Constant:
@@ -28,6 +29,40 @@ class Constant:
     Define constant in this class
     """
     FP32_MAX_VALID = 2 ** 24
+
+
+# 'pylint: disable=locally-disabled,too-many-arguments
+# 'pylint: disable=invalid-name,redefined-builtin,too-many-locals,unused-argument,no-else-raise,unnecessary-lambda
+def check_supported(x1, x2, y, kernel_name="floor_mod", impl_mode="high_performance"):
+    """
+
+    Parameters
+    ----------
+    x1: TVM tensor
+        input tensor has shape and dtype attributes
+    x2: TVM tensor
+        input tensor has shape and dtype attributes
+    y: dict
+        dict with keys(shape, dtype) of output
+    kernel_name : str
+        cce kernel name, default value is "floor_mod"
+    impl_mode : assign high_performance or high_precision
+
+    Returns
+    -------
+    True or False
+    """
+
+    dtype = x1.get("dtype").lower()
+    context = tbe_context.op_context.get_context()
+    impl_mode = context.get_addition("op_impl_mode_dict").get("FloorMod")
+
+    reason = "When the dtype is float32 and impl_mode is high_precision, " \
+             "calculation will be implemented by aicpu."
+    if dtype == "float32" and impl_mode == "high_precision":
+        return False, reason
+    else:
+        return True, ""
 
 
 # 'pylint: disable=locally-disabled,unused-argument,too-many-locals,invalid-name

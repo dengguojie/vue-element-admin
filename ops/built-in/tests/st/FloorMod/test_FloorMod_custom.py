@@ -5,6 +5,9 @@ from unittest.mock import MagicMock
 from unittest.mock import patch
 from impl.dynamic.floor_mod import floor_mod as dynamic_floor_mod
 from impl.floor_mod import floor_mod as static_floor_mod
+from impl.floor_mod import check_supported as check_supported_static
+from impl.dynamic.floor_mod import check_supported as check_supported_dynamic
+import tbe
 
 
 def side_effects(*args):
@@ -34,5 +37,48 @@ def test_floor_mod_mock():
         # test_dynamic_floor_mod()
 
 
+def test_check_supported_001(): 
+    def side_effects(*args):
+        context = tbe.common.context.op_context.OpContext()
+        context.add_addition("op_impl_mode_dict", {"FloorMod": "high_precision"})
+        return context
+
+    with patch('tbe.common.context.op_context.get_context', MagicMock(side_effect=side_effects)):
+        check_supported_static({"shape": (16,2,32), "dtype": "float32", "format": "ND", "ori_shape": (16,2,32),"ori_format": "ND"},
+                        {"shape": (16,2,32), "dtype": "float32", "format": "ND", "ori_shape": (16,2,32),"ori_format": "ND"},
+                        {"shape": (16,2,32), "dtype": "float32", "format": "ND", "ori_shape": (16,2,32),"ori_format": "ND"},
+                        "floor_mod",
+                        "high_precision")
+
+        check_supported_dynamic({"shape": (16,2,32), "dtype": "float32", "format": "ND", "ori_shape": (16,2,32),"ori_format": "ND"},
+                        {"shape": (16,2,32), "dtype": "float32", "format": "ND", "ori_shape": (16,2,32),"ori_format": "ND"},
+                        {"shape": (16,2,32), "dtype": "float32", "format": "ND", "ori_shape": (16,2,32),"ori_format": "ND"},
+                        "floor_mod",
+                        "high_precision")
+
+def test_check_supported_002(): 
+    def side_effects(*args):
+        context = tbe.common.context.op_context.OpContext()
+        context.add_addition("op_impl_mode_dict", {"FloorMod": "high_preformance"})
+        return context
+
+    with patch('tbe.common.context.op_context.get_context', MagicMock(side_effect=side_effects)):
+        check_supported_static({"shape": (16,2), "dtype": "float32", "format": "ND", "ori_shape": (16,2),"ori_format": "ND"},
+                        {"shape": (16,2), "dtype": "float32", "format": "ND", "ori_shape": (16,2),"ori_format": "ND"},
+                        {"shape": (16,2), "dtype": "float32", "format": "ND", "ori_shape": (16,2),"ori_format": "ND"},
+                        "floor_mod",
+                        "high_precision")
+
+        check_supported_dynamic({"shape": (16,2), "dtype": "float32", "format": "ND", "ori_shape": (16,2),"ori_format": "ND"},
+                        {"shape": (16,2), "dtype": "float32", "format": "ND", "ori_shape": (16,2),"ori_format": "ND"},
+                        {"shape": (16,2), "dtype": "float32", "format": "ND", "ori_shape": (16,2),"ori_format": "ND"},
+                        "floor_mod",
+                        "high_precision")
+
+def test_floor_mod_check_supported():
+    test_check_supported_001()
+    test_check_supported_002()
+
 if __name__ == '__main__':
     test_floor_mod_mock()
+    test_floor_mod_check_supported()

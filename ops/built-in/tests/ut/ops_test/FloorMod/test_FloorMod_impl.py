@@ -2,8 +2,15 @@
 # -*- coding: UTF-8 -*-
 from op_test_frame.ut import BroadcastOpUT
 from op_test_frame.common import precision_info
+from tbe.common.platform.platform_info import set_current_compile_soc_info
+from unittest.mock import MagicMock
+from unittest.mock import patch
+from impl.floor_mod import check_supported as check_supported_static
+from impl.dynamic.floor_mod import check_supported as check_supported_dynamic
 import numpy as np
 import os
+import tbe
+import te
 ut_case = BroadcastOpUT("FloorMod", None, None)
 
 
@@ -34,13 +41,75 @@ ut_case.add_case(
                    {"shape": (10, 12), "dtype": "int32", "format": "ND", "ori_shape": (10, 12),"ori_format": "ND"}
         ],
         'addition_params': {'impl_mode': 'high_precision'},
-        'case_name': 'floo_mod_case1',
+        'case_name': 'floor_mod_case1',
+        'expect': 'success',
+        'format_expect': [],
+        'support_expect': True,
+    },
+)
+
+ut_case.add_case(
+    'Ascend910',
+    {
+        'params': [{"shape": (10, 12), "dtype": "float32", "format": "ND", "ori_shape": (10, 12),"ori_format": "ND"},
+                   {"shape": (10, 12), "dtype": "float32", "format": "ND", "ori_shape": (10, 12),"ori_format": "ND"},
+                   {"shape": (10, 12), "dtype": "float32", "format": "ND", "ori_shape": (10, 12),"ori_format": "ND"}
+        ],
+        'addition_params': {'impl_mode': 'high_precision'},
+        'case_name': 'floor_mod_case2',
         'expect': 'success',
         'format_expect': [],
         'support_expect': True,
     },
 )
 # ============ auto gen ["Ascend910"] test cases end =================
+
+
+def test_check_supported_001(test_args): 
+    def side_effects(*args):
+        context = tbe.common.context.op_context.OpContext()
+        context.add_addition("op_impl_mode_dict", {"FloorMod": "high_precision"})
+        return context
+
+    with patch('tbe.common.context.op_context.get_context', MagicMock(side_effect=side_effects)):
+        check_supported_static({"shape": (16,2,32), "dtype": "float32", "format": "ND", "ori_shape": (16,2,32),"ori_format": "ND"},
+                        {"shape": (16,2,32), "dtype": "float32", "format": "ND", "ori_shape": (16,2,32),"ori_format": "ND"},
+                        {"shape": (16,2,32), "dtype": "float32", "format": "ND", "ori_shape": (16,2,32),"ori_format": "ND"},
+                        "floor_mod",
+                        "high_precision")
+
+        check_supported_dynamic({"shape": (16,2,32), "dtype": "float32", "format": "ND", "ori_shape": (16,2,32),"ori_format": "ND"},
+                        {"shape": (16,2,32), "dtype": "float32", "format": "ND", "ori_shape": (16,2,32),"ori_format": "ND"},
+                        {"shape": (16,2,32), "dtype": "float32", "format": "ND", "ori_shape": (16,2,32),"ori_format": "ND"},
+                        "floor_mod",
+                        "high_precision")
+        # ut_case.run("Ascend910", check_supported_static)
+        # ut_case.run("Ascend910", check_supported_dynamic)
+
+def test_check_supported_002(test_args): 
+    def side_effects(*args):
+        context = tbe.common.context.op_context.OpContext()
+        context.add_addition("op_impl_mode_dict", {"FloorMod": "high_preformance"})
+        return context
+
+    with patch('tbe.common.context.op_context.get_context', MagicMock(side_effect=side_effects)):
+        check_supported_static({"shape": (16,2), "dtype": "float32", "format": "ND", "ori_shape": (16,2),"ori_format": "ND"},
+                        {"shape": (16,2), "dtype": "float32", "format": "ND", "ori_shape": (16,2),"ori_format": "ND"},
+                        {"shape": (16,2), "dtype": "float32", "format": "ND", "ori_shape": (16,2),"ori_format": "ND"},
+                        "floor_mod",
+                        "high_precision")
+
+        check_supported_dynamic({"shape": (16,2), "dtype": "float32", "format": "ND", "ori_shape": (16,2),"ori_format": "ND"},
+                        {"shape": (16,2), "dtype": "float32", "format": "ND", "ori_shape": (16,2),"ori_format": "ND"},
+                        {"shape": (16,2), "dtype": "float32", "format": "ND", "ori_shape": (16,2),"ori_format": "ND"},
+                        "floor_mod",
+                        "high_precision")
+
+        # ut_case.run("Ascend910", check_supported_static)
+        # ut_case.run("Ascend910", check_supported_dynamic)
+
+ut_case.add_cust_test_func("Ascend910A", test_func=test_check_supported_001)
+ut_case.add_cust_test_func("Ascend910A", test_func=test_check_supported_002)
 
 def calc_expect_func(x, y, output):
     input_x = x['value'].astype(np.float32)
