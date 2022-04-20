@@ -3861,16 +3861,10 @@ class GemmSchedule:
             else:
                 self.sch[tensor].buffer_align(*align_args)
 
-    def _align_m_for_int8_nd(self):
-        if self.status_controller.int8_not_double_m:
-            a_ub = self.container.TENSOR_MAP.get("a_ub")
-            self.sch[a_ub].compute_align(a_ub.op.axis[self.ND_M_INDEX], self.block_in)
-
     def _do_buffer_align(self):
         have_batch_b = self.status_controller.have_batch_b
         have_batch_a = self.status_controller.have_batch_a
         have_batch = self.status_controller.have_batch
-        self._align_m_for_int8_nd()
         self._do_buffer_align_l0c()
         self._set_requant_transfer_buffer_align()
         is_int82fp32_nd = self._is_int82fp32_nd()
