@@ -271,6 +271,76 @@ TEST_F(BatchMatMulElementwiseUbFusionTest, batch_matmul_fused_mul_add) {
   EXPECT_EQ(real_split_info_str, expect_split_inf_str);
 }
 
+TEST_F(BatchMatMulElementwiseUbFusionTest, batch_matmul_fused_mul_add_without_split_info) {
+  ge::Graph graph(this->test_info_->name());
+
+  // step1: Construct Graph
+  auto data_a = CreateData("data_a", ge::Shape({1, 12, 8, 8, 16, 16}), ge::FORMAT_FRACTAL_NZ, ge::DT_FLOAT16);
+  auto data_b = CreateData("data_b", ge::Shape({1, 12, 8, 8, 16, 16}), ge::FORMAT_FRACTAL_NZ, ge::DT_FLOAT16);
+  auto data_c = CreateData("data_c", ge::Shape({1, 1, 8, 8, 16, 16}), ge::FORMAT_FRACTAL_NZ, DT_FLOAT16);
+
+  auto const_add = op::Const("const_add");
+  Tensor const_add_tensor;
+  float *const_add_tensor_value = new float[1];
+  for (int i = 0; i < 1; i++) {
+    *(const_add_tensor_value + i) = 0.1;
+  }
+  const_add_tensor.SetData((uint8_t *)const_add_tensor_value, 1 * 4);
+  std::vector<int64_t> dims_add{1};
+  ge::Shape shape_add(dims_add);
+  ge::TensorDesc tensorDescAdd(shape_add, FORMAT_NHWC, DT_FLOAT);
+  const_add_tensor.SetTensorDesc(tensorDescAdd);
+  const_add.set_attr_value(const_add_tensor);
+
+  auto cast_op = op::Cast("cast_op");
+  cast_op.set_input_x(const_add).set_attr_dst_type(1);  // dst_type 1: float16
+
+  auto batch_matmul_op = op::BatchMatMulV2("BatchMatMulV2")
+                             .set_input_x1(data_a)
+                             .set_input_x2(data_b)
+                             .set_attr_adj_x1(false)
+                             .set_attr_adj_x2(false);
+  batch_matmul_op.update_output_desc_y(
+      ge::TensorDesc(ge::Shape({1, 12, 8, 8, 16, 16}), ge::FORMAT_FRACTAL_NZ, ge::DT_FLOAT16));
+
+  // not implement infershape
+  auto fused_mul_add_op =
+      op::FusedMulAdd("FusedMulAdd").set_input_x1(cast_op).set_input_x2(batch_matmul_op).set_input_x3(data_c);
+  fused_mul_add_op.update_output_desc_y(
+      ge::TensorDesc(ge::Shape({1, 12, 8, 8, 16, 16}), ge::FORMAT_FRACTAL_NZ, ge::DT_FLOAT16));
+
+  std::vector<Operator> inputs{data_a, data_b, data_c};
+  std::vector<Operator> outputs{fused_mul_add_op};
+
+  graph.SetInputs(inputs).SetOutputs(outputs);
+
+  ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
+
+  // step2: Set op slice of single op
+  vector<AxisSplitMap> asm_fused_mul_add{};
+  EXPECT_TRUE(SetSplitMapToNodeByType(compute_graph_ptr, asm_fused_mul_add, {"FusedMulAdd"}));
+  vector<AxisSplitMap> asm_mm{
+      CreateAxisSplitMap({CreateInputSplitInfo(0, {3})}, {CreateOutputSplitInfo(0, {3})}),
+      CreateAxisSplitMap({CreateInputSplitInfo(1, {2})}, {CreateOutputSplitInfo(0, {2})}),
+      CreateAxisSplitMap({CreateInputSplitInfo(0, {0}), CreateInputSplitInfo(1, {0})}, {CreateOutputSplitInfo(0, {0})}),
+      CreateAxisSplitMap({CreateInputSplitInfo(0, {1}), CreateInputSplitInfo(1, {1})}, {CreateOutputSplitInfo(0, {1})}),
+  };
+  EXPECT_TRUE(SetSplitMapToNodeByType(compute_graph_ptr, asm_mm, {"BatchMatMulV2"}));
+
+  // step3: Construct BufferFusionMapping
+  auto mapping = ConstructFusionMappingOfElemwise(compute_graph_ptr);
+
+  // step4: Run BufferFusion
+  Status res = fe::FusionPassTestUtils::RunBufferFusionPass(ptr_buffer_fusion_pass_func.get(), patterns,
+                                                            compute_graph_ptr, mapping);
+  EXPECT_EQ(res, fe::SUCCESS);
+
+  // step5: Compare op slice info
+  auto real_split_info_str = GetFusionOpSliceInfoStrFromGraph(compute_graph_ptr);
+  auto expect_split_inf_str = "";
+  EXPECT_EQ(real_split_info_str, expect_split_inf_str);
+}
+
 TEST_F(BatchMatMulElementwiseUbFusionTest, batch_matmul_mul_sigmoid_mul) {
   ge::Graph graph(this->test_info_->name());
 

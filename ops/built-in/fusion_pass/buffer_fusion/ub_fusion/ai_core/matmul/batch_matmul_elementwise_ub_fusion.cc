@@ -282,7 +282,7 @@ void TbeBatchMatmulElementWiseFusionPass::SetSplitInfo(const BufferFusionMapping
   FUSION_PASS_CHECK(
       !IntersectSplitMapWithElemwise(elemWiseNodes[0], *ptr_split_maps_prev, ptr_split_maps_fusion_op,
                                      &index_already_provide_split_info, fusion_nodes),
-      OP_LOGE(FUSED_OP_TYPE.c_str(), "failed to get split maps of %s", elemWiseNodes[0]->GetName().c_str()), return);
+      OP_LOGW(FUSED_OP_TYPE.c_str(), "failed to get split maps of %s", elemWiseNodes[0]->GetName().c_str()), return);
 
   if (!elemWiseNodes1.empty()) {
     ptr_split_maps_prev = &split_maps_fusion_op;
@@ -290,7 +290,7 @@ void TbeBatchMatmulElementWiseFusionPass::SetSplitInfo(const BufferFusionMapping
     FUSION_PASS_CHECK(
         !IntersectSplitMapWithElemwise(elemWiseNodes1[0], *ptr_split_maps_prev, ptr_split_maps_fusion_op,
                                        &index_already_provide_split_info, fusion_nodes),
-        OP_LOGE(FUSED_OP_TYPE.c_str(), "failed to get split maps of %s", elemWiseNodes1[0]->GetName().c_str()),
+        OP_LOGW(FUSED_OP_TYPE.c_str(), "failed to get split maps of %s", elemWiseNodes1[0]->GetName().c_str()),
         return);
   }
 
@@ -300,7 +300,7 @@ void TbeBatchMatmulElementWiseFusionPass::SetSplitInfo(const BufferFusionMapping
     FUSION_PASS_CHECK(
         !IntersectSplitMapWithElemwise(elemWiseNodes2[0], *ptr_split_maps_prev, ptr_split_maps_fusion_op,
                                        &index_already_provide_split_info, fusion_nodes),
-        OP_LOGE(FUSED_OP_TYPE.c_str(), "failed to get split maps of %s", elemWiseNodes2[0]->GetName().c_str()),
+        OP_LOGW(FUSED_OP_TYPE.c_str(), "failed to get split maps of %s", elemWiseNodes2[0]->GetName().c_str()),
         return);
   }
 
