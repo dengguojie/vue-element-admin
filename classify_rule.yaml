@@ -381,6 +381,7 @@ cube:
       - auto_schedule/python/tbe/dsl/static_schedule/conv3d_backprop_input_schedule.py
       - auto_schedule/python/tbe/dsl/static_schedule/conv3d_schedule.py
       - auto_schedule/python/tbe/dsl/static_schedule/gemm_integrated_schedule.py
+      - auto_schedule/python/tbe/dsl/static_schedule/gemm_integrated_schedule_util.py
       - auto_schedule/python/tbe/dsl/static_schedule/gemm_schedule.py
       - auto_schedule/python/tbe/dsl/static_schedule/gemm_schedule_util.py
       - auto_schedule/python/tbe/dsl/static_schedule/dilation_schedule.py

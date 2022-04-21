@@ -325,3 +325,4 @@ if __name__ == "__main__":
     ut_case._case_info_map = {}
     ut_case.run(["Ascend910A"])
     exit(0)
+

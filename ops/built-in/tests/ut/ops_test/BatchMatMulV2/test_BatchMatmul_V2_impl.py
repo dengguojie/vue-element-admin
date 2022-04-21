@@ -359,6 +359,36 @@ case23 = {"params": [{"shape": (16, 16, 32), "dtype": "float16", "format": "ND",
          "expect": "success",
          "support_expect": True}
 
+case24 = {"params": [{"shape": (256, 1024, 128), "dtype": "float16", "format": "ND",
+                      "ori_shape": (256, 1024, 128),"ori_format": "ND"},
+                    {"shape": (128, 512), "dtype": "float16", "format": "ND",
+                     "ori_shape": (128, 512),"ori_format": "ND"},
+                    {"shape": (512,), "dtype": "float32", "format": "ND",
+                     "ori_shape": (512,),"ori_format": "ND"},
+                    None,
+                    {"shape": (256, 1024, 512), "dtype": "float32", "format": "ND",
+                     "ori_shape": (256, 1024, 512),"ori_format": "ND"},
+                    False,False,
+                    ],
+         "case_name": "BatchMatmul_24",
+         "expect": "success",
+         "support_expect": True}
+
+case25 = {"params": [{"shape": (1024, 256, 64), "dtype": "float16", "format": "ND",
+                      "ori_shape": (1024, 256, 64),"ori_format": "ND"},
+                    {"shape": (64, 256), "dtype": "float16", "format": "ND",
+                     "ori_shape": (64, 256),"ori_format": "ND"},
+                    {"shape": (256,), "dtype": "float32", "format": "ND",
+                     "ori_shape": (256,),"ori_format": "ND"},
+                    None,
+                    {"shape": (1024, 256, 256), "dtype": "float32", "format": "ND",
+                     "ori_shape": (1024, 256, 256),"ori_format": "ND"},
+                    False,False,
+                    ],
+         "case_name": "BatchMatmul_25",
+         "expect": "success",
+         "support_expect": True}
+
 # TODO fix me, this comment, run failed
 ut_case.add_case(["Ascend910A"], case1)
 ut_case.add_case(["Ascend910A"], case2)
@@ -374,6 +404,8 @@ ut_case.add_case(["Ascend910A"], case20)
 ut_case.add_case(["Ascend910A"], case21)
 ut_case.add_case(["Ascend910A"], case22)
 ut_case.add_case(["Ascend910A"], case23)
+ut_case.add_case(["Ascend910A"], case24)
+ut_case.add_case(["Ascend910A"], case25)
 
 def test_split_batch_matmul_v2(test_arg):
     x1 = {"format": "FRACTAL_NZ","ori_format": "ND", "dtype": "float16",

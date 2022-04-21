@@ -40,6 +40,9 @@ from tbe.dsl.boost_schedule_kit import ScheduleAgent
 from tbe.dsl.compute import cube_util
 from tbe.dsl.compute.gemm_integrated_compute import GEMMComputeParam
 from tbe.dsl.instrinsic import cce_emitinsn_params
+from tbe.dsl.static_schedule.gemm_integrated_schedule_util import GemmScheduleContainer
+from tbe.dsl.static_schedule.gemm_integrated_schedule_util import GemmScheduleStatusController
+from tbe.dsl.static_schedule.gemm_integrated_schedule_util import BufferChecker
 from tbe.dsl.static_schedule.util import L1CommonParam
 from tbe.dsl.static_schedule.util import parse_tbe_compile_para
 
@@ -252,89 +255,6 @@ class GemmSchedule:
 
     is_dynamic = False
 
-    class GemmScheduleContainer:
-        """
-        This is a container Class used to store all containers
-        """
-        def __init__(self):
-            self.ori_tensors = {}
-            self.TENSOR_MAP = {}
-            self.placeholder_name = None
-            self.buffer_reuse_dict = {}
-            self.axpy_2_parent = {}
-            self.compute_tensors = []
-            self.elemwise_tensors = []
-            self.matmul_dequant_tensor = []
-            self.ele_header_ub_tensors = []
-            self.placeholder_tensors = []
-            self.dequant_activation_tensor = []
-            self.header_ub_tensors = []
-            self.tensors_in_aub = []
-            self.tensors_in_bub = []
-            self.tensors_in_cub = []
-            self.tensors_in_l0c = []
-            self.matmul_tensors = []
-            self.fusion_list = []
-            self.fusion_ele = []
-            self.tensor_fusion_list = []
-            self.compute_inline_list = []
-            self.elewise_compute_inline_list = []
-            self.fusion_tensor_cub = []
-            self.fuse_num_group = []
-            self.vector_muls_attr = {}
-            self.custom_block_dim = []
-            self.axis_core = None
-            self.double_out_tensor = []
-
-    class GemmScheduleStatusController:
-        """
-        This is a controller used to control flags like "attach_status"
-        """
-        def __init__(self):
-            self.gm_ub = None
-            self.have_batch_a, self.have_batch_b, self.have_batch = False, False, False
-            self.have_bias, self.have_c = False, False
-            self.need_init_bias = False
-            self.a_l1_inline_flag, self.b_l1_inline_flag = False, False
-            self.dequant_flag, self.quant_fusion, self.quantify_fusion = False, False, False
-            self.requant_fusion, self.dequant_fusion = False, False
-            self.reduce_fusion = False
-            self.only_use_gevm_gemv_flow = False
-            self.round_mode = "vector_conv"
-            self.sqrt_flag = False
-            self.l1_fusion_and_l1_size_0 = False
-            self.input_l1_flag = False
-            self.aub_attach_status = "full_load"
-            self.bub_attach_status = "full_load"
-            self.al1_attach_status = "full_load"
-            self.bl1_attach_status = "full_load"
-            self.c_l0c_attach_status = "full_load"
-            self.al0_attach_status = "full_load"
-            self.c_ub_attach_status = "full_load"
-            self.ops_data_flow_mode = "fp162fp16"
-            self.mad_pattern = tbe_platform.GEMM_MODE
-            self.transpose_a, self.transpose_b = False, False
-            self.compute_inline_c_ub_fract = False
-            self.cube_vector_split = False
-            self.mmad_mode = "gemm"
-            self.align_a, self.align_b = True, True
-            self.a_use_aligned_pattern, self.b_use_aligned_pattern = False, False
-            self.matmul_multi_output_flag = False
-            self.fusion_multi_output_flag = False
-            self.storage_m_bound_change = False
-            self.storage_ka_bound_change = False
-            self.storage_kb_bound_change = False
-            self.storage_n_bound_change = False
-            self.cgm_ka_storage_change = False
-            self.cgm_kb_storage_change = False
-            self.compress_flag = False
-            self.int8_not_double_m = False
-            self.attach_at_flag = None
-            self.split_k_axis_by_tiling = False
-            self.split_k = False
-            self.over_head_flag = False
-            self.batch_broadcast_flag = False
-
     def __init__(self, res, sch_list, dynamic_para):
         self.res_ori = res
         self.res = res[-1] if isinstance(res, list) else res
@@ -401,8 +321,9 @@ class GemmSchedule:
         self.bind_core_when_full_load_bl1 = False
 
         # Call initialization function
-        self.container = self.GemmScheduleContainer()
-        self.status_controller = self.GemmScheduleStatusController()
+        self.container = GemmScheduleContainer()
+        self.status_controller = GemmScheduleStatusController()
+        self.buffer_checker = BufferChecker()
         self.tensor_b_reshape = 0
 
     @staticmethod
@@ -515,9 +436,9 @@ class GemmSchedule:
             print(tag, info)
 
     def _get_batch_info(self):
-        tensor_l0a = self.container.TENSOR_MAP.get("a_l0a")
-        tensor_l0b = self.container.TENSOR_MAP.get("b_l0b")
-        tensor_l0c = self.container.TENSOR_MAP.get("c_l0c")
+        tensor_l0a = self.container.tensor_map.get("a_l0a")
+        tensor_l0b = self.container.tensor_map.get("b_l0b")
+        tensor_l0c = self.container.tensor_map.get("c_l0c")
         self.status_controller.have_batch_a = len(tensor_l0a.shape) in (3, 5)
         self.status_controller.have_batch_b = len(tensor_l0b.shape) in (3, 5)
         self.status_controller.have_batch = len(tensor_l0c.shape) in (3, 5)
@@ -559,8 +480,8 @@ class GemmSchedule:
         return functools.reduce(lambda x, y: x * y, lst)
 
     def _calc_b_l1(self, consider_multi_core_in_full_load=True):
-        tensor_bl1 = self.container.TENSOR_MAP.get("b_l1")
-        tensor_bl0 = self.container.TENSOR_MAP.get("b_l0b")
+        tensor_bl1 = self.container.tensor_map.get("b_l1")
+        tensor_bl0 = self.container.tensor_map.get("b_l0b")
         tiling_bl1 = self.tiling.get("BL1_shape")
         tiling_pb_bl1 = self.tiling.get("manual_pingpong_buffer").get("BL1_pbuffer")
         n_dim = self.tiling.get("block_dim")[self.IDX_N_DIM]
@@ -585,8 +506,8 @@ class GemmSchedule:
         return size_shape * tiling_pb_bl1 * self._bit_width(tensor_bl1.dtype)
 
     def _calc_a_l1(self, consider_multi_core_in_full_load=True):
-        tensor_al1 = self.container.TENSOR_MAP.get("a_l1")
-        tensor_al0 = self.container.TENSOR_MAP.get("a_l0b")
+        tensor_al1 = self.container.tensor_map.get("a_l1")
+        tensor_al0 = self.container.tensor_map.get("a_l0b")
         tiling_al1 = self.tiling.get("AL1_shape")
         tiling_pb_al1 = self.tiling.get("manual_pingpong_buffer").get("AL1_pbuffer")
         m_dim = self.tiling.get("block_dim")[self.IDX_M_DIM]
@@ -648,7 +569,7 @@ class GemmSchedule:
         self._solve_bank_conflict()
         self._solve_split_k_dirty_data()
         a_run_once, b_run_once = self._allocate_axis(self.status_controller.over_head_flag)
-        self._cache_tiling_full_load(self.container.TENSOR_MAP.get("c_gm"))
+        self._cache_tiling_full_load(self.container.tensor_map.get("c_gm"))
         self._double_buffer(a_run_once, b_run_once)
         self._handle_tbe_compile_para()
         self._reorder_axis(self.status_controller.over_head_flag, a_run_once, b_run_once)
@@ -657,7 +578,7 @@ class GemmSchedule:
         self._set_var_range_for_dynamic()
         self._print_ir_matmul("finial", self.sch)
         self.tiling.clear()
-        self.container.TENSOR_MAP.clear()
+        self.container.tensor_map.clear()
         return True
 
     def _get_root_tensor(self):
@@ -689,12 +610,12 @@ class GemmSchedule:
         if self.is_dynamic:
             block_dims_without_k_dim = n_dim * m_dim
         else:
-            tensor_a_l0a = self.container.TENSOR_MAP.get("a_l0a")
+            tensor_a_l0a = self.container.tensor_map.get("a_l0a")
             m_shape = self._get_value(tensor_a_l0a.shape[self.FRACTAL_Z_M_INDEX])
             core_align_m = self._int_ceil_div(m_shape, m_dim)
             if (core_align_m * (m_dim - 1) >= m_shape) and (self.al1_tiling_m == core_align_m):
                 m_dim -= 1
-            tensor_b_l0b = self.container.TENSOR_MAP.get("b_l0b")
+            tensor_b_l0b = self.container.tensor_map.get("b_l0b")
             n_shape = self._get_value(tensor_b_l0b.shape[self.FRACTAL_Z_N_INDEX])
             core_align_n = self._int_ceil_div(n_shape, n_dim)
             if (core_align_n * (n_dim - 1) >= n_shape) and (self.bl1_tiling_n == core_align_n):
@@ -711,14 +632,14 @@ class GemmSchedule:
 
         block_dims = self.tiling.get("block_dim")
         real_multi_core_axis = self._get_real_k_multi_core_axis()
-        a_l0 = self.container.TENSOR_MAP.get("a_l0a")
+        a_l0 = self.container.tensor_map.get("a_l0a")
         a_l0_shape_k = self._get_value(a_l0.shape[-3])
         temp_block_k_dim = block_dims[3] - 1
         no_tail_core_k_len = (a_l0_shape_k + temp_block_k_dim) // block_dims[3]
         tail_core_k_len = a_l0_shape_k % no_tail_core_k_len
         lastest_core = a_l0_shape_k // no_tail_core_k_len
         lastest_core_limit = lastest_core
-        c_gm = self.container.TENSOR_MAP.get("c_gm")
+        c_gm = self.container.tensor_map.get("c_gm")
         if self.is_dynamic:
             lastest_core_limit = tvm.select(no_tail_core_k_len * lastest_core == a_l0_shape_k, lastest_core_limit - 1,
                                             lastest_core_limit)
@@ -759,7 +680,7 @@ class GemmSchedule:
             self.sch[a_l0].set_buffer_size(l0_ka * self.al0_tiling_ma * self.block_in)
 
     def _get_condition_of_multi_k_axis(self, multi_core_axis, block_dim_k, k_len, is_tail_core=False):
-        c_l0c = self.container.TENSOR_MAP.get("c_l0c")
+        c_l0c = self.container.tensor_map.get("c_l0c")
         # the axis number of l0c is 6
         total_axis_l0c = 6
         scopes_intrins = self.sch_agent[c_l0c].intrin_scopes(total_axis_l0c)
@@ -908,24 +829,24 @@ class GemmSchedule:
         return format_out
 
     def _get_b_l1_fractal(self):
-        b_l0b = self.container.TENSOR_MAP.get("b_l0b")
+        b_l0b = self.container.tensor_map.get("b_l0b")
         get_tensor_from_compress = ("tile_L1_n" in b_l0b.op.attrs)
 
         if get_tensor_from_compress:
-            self.container.TENSOR_MAP["compress_index"] = b_l0b.op.input_tensors[0]
-            self.container.TENSOR_MAP["b_l1"] = self.sch.cache_write(b_l0b, tbe_platform_info.scope_cbuf)
+            self.container.tensor_map["compress_index"] = b_l0b.op.input_tensors[0]
+            self.container.tensor_map["b_l1"] = self.sch.cache_write(b_l0b, tbe_platform_info.scope_cbuf)
         else:
-            self.container.TENSOR_MAP["b_l1"] = self.sch.cache_read(self.container.TENSOR_MAP.get("b_placehold"),
+            self.container.tensor_map["b_l1"] = self.sch.cache_read(self.container.tensor_map.get("b_placehold"),
                                                      tbe_platform_info.scope_cbuf,
-                                                     [self.container.TENSOR_MAP.get("b_l0b")])
+                                                     [self.container.tensor_map.get("b_l0b")])
 
     def _check_fusion_before(self):
-        if self.container.TENSOR_MAP["a_placehold"] is None or self.container.TENSOR_MAP["b_placehold"] is None:
+        if self.container.tensor_map["a_placehold"] is None or self.container.tensor_map["b_placehold"] is None:
             error_manager_cube.raise_err_message_cube("Don't support op + Gemm/MatMul/BatchMatMul ub_fusion")
 
     def _set_data_layout(self, res):
         self.container.compute_inline_list = []
-        self.container.TENSOR_MAP = {}
+        self.container.tensor_map = {}
         # for compute at and db
 
         self.container.compute_tensors = self._get_compute_tensor(res)
@@ -946,8 +867,8 @@ class GemmSchedule:
         """
         if self.format_out == "ND" and self.cache_tiling:
             self._add_tensor_to_list(
-                self.container.TENSOR_MAP.get("before_c_gm"), [self.container.compute_inline_list])
-            self.container.tensors_in_cub.remove(self.container.TENSOR_MAP.get("before_c_gm"))
+                self.container.tensor_map.get("before_c_gm"), [self.container.compute_inline_list])
+            self.container.tensors_in_cub.remove(self.container.tensor_map.get("before_c_gm"))
 
     def _set_fusion_flag(self):
         self.status_controller.dequant_flag = (
@@ -957,8 +878,8 @@ class GemmSchedule:
 
     def _change_l0_gemv(self):
         if self.status_controller.mmad_mode == "gemv":
-            self.container.TENSOR_MAP["a_l0a"], self.container.TENSOR_MAP["b_l0b"] = (
-                self.container.TENSOR_MAP.get("b_l0b"), self.container.TENSOR_MAP.get("a_l0a"))
+            self.container.tensor_map["a_l0a"], self.container.tensor_map["b_l0b"] = (
+                self.container.tensor_map.get("b_l0b"), self.container.tensor_map.get("a_l0a"))
 
     def _get_compute_tensor(self, tensor):
         """
@@ -990,21 +911,21 @@ class GemmSchedule:
         placeholder_name = self.container.placeholder_name
         compute_tensors = self.container.compute_tensors
         placeholder_tensors = self.container.placeholder_tensors
-        self.container.TENSOR_MAP["c_gm"] = self._match_and_get_tensor(compute_tensors, "tensor_c_gm")
-        self.container.TENSOR_MAP["a_placehold"] = self._match_and_get_tensor(
+        self.container.tensor_map["c_gm"] = self._match_and_get_tensor(compute_tensors, "tensor_c_gm")
+        self.container.tensor_map["a_placehold"] = self._match_and_get_tensor(
             placeholder_tensors, placeholder_name["a"])
         if self.tensor_b_reshape:
-            self.container.TENSOR_MAP["b_placehold"] = self._match_and_get_tensor(
+            self.container.tensor_map["b_placehold"] = self._match_and_get_tensor(
                 compute_tensors, placeholder_name["b"])
         else:
-            self.container.TENSOR_MAP["b_placehold"] = self._match_and_get_tensor(
+            self.container.tensor_map["b_placehold"] = self._match_and_get_tensor(
                 placeholder_tensors, placeholder_name["b"])
         self._check_fusion_before()
 
-        self.container.TENSOR_MAP["alpha"] = self._match_and_get_tensor(placeholder_tensors, placeholder_name["alpha"])
-        self.container.TENSOR_MAP["beta"] = self._match_and_get_tensor(placeholder_tensors, placeholder_name["beta"])
-        self.container.TENSOR_MAP["c_l0c"] = self._match_and_get_tensor(compute_tensors, "tensor_c_matrix")
-        self.sch[self.container.TENSOR_MAP.get("c_l0c")].set_scope(tbe_platform_info.scope_cc)
+        self.container.tensor_map["alpha"] = self._match_and_get_tensor(placeholder_tensors, placeholder_name["alpha"])
+        self.container.tensor_map["beta"] = self._match_and_get_tensor(placeholder_tensors, placeholder_name["beta"])
+        self.container.tensor_map["c_l0c"] = self._match_and_get_tensor(compute_tensors, "tensor_c_matrix")
+        self.sch[self.container.tensor_map.get("c_l0c")].set_scope(tbe_platform_info.scope_cc)
         load_a_matrix = self.format_a == "FRACTAL_Z" and (not self.status_controller.transpose_a)
         load_a_matrix = load_a_matrix and (
             not ((self.format_a == "FRACTAL_Z") and (self.status_controller.mmad_mode == "gemv")))
@@ -1013,18 +934,18 @@ class GemmSchedule:
         else:
             l0a_scope = tbe_platform_info.scope_ca
         if load_a_matrix:
-            self.container.TENSOR_MAP["a_l0a"] = self.sch.cache_read(
-                self.container.TENSOR_MAP.get("a_placehold"),
-                l0a_scope, [self.container.TENSOR_MAP.get("c_l0c")])
+            self.container.tensor_map["a_l0a"] = self.sch.cache_read(
+                self.container.tensor_map.get("a_placehold"),
+                l0a_scope, [self.container.tensor_map.get("c_l0c")])
         else:
-            self.container.TENSOR_MAP["a_l0a"] = self._match_and_get_tensor(compute_tensors, "tensor_a_matrix")
-            self.sch[self.container.TENSOR_MAP.get("a_l0a")].set_scope(l0a_scope)
+            self.container.tensor_map["a_l0a"] = self._match_and_get_tensor(compute_tensors, "tensor_a_matrix")
+            self.sch[self.container.tensor_map.get("a_l0a")].set_scope(l0a_scope)
 
-        if "mode" in self.container.TENSOR_MAP.get("a_l0a").op.attrs:
-            self.get_a_matrix_mode = self.container.TENSOR_MAP.get("a_l0a").op.attrs["mode"]
+        if "mode" in self.container.tensor_map.get("a_l0a").op.attrs:
+            self.get_a_matrix_mode = self.container.tensor_map.get("a_l0a").op.attrs["mode"]
 
-        if "format_info" in self.container.TENSOR_MAP.get("a_l0a").op.attrs:
-            self.format_info_a = self.container.TENSOR_MAP.get("a_l0a").op.attrs["format_info"]
+        if "format_info" in self.container.tensor_map.get("a_l0a").op.attrs:
+            self.format_info_a = self.container.tensor_map.get("a_l0a").op.attrs["format_info"]
         else:
             self.format_info_a = {
                 "format_in_a_l1": "Zz",
@@ -1041,36 +962,36 @@ class GemmSchedule:
         else:
             l0b_scope = tbe_platform_info.scope_cb
         if load_b_matrix:
-            self.container.TENSOR_MAP["b_l0b"] = self.sch.cache_read(
-                self.container.TENSOR_MAP.get("b_placehold"), l0b_scope, [self.container.TENSOR_MAP.get("c_l0c")])
+            self.container.tensor_map["b_l0b"] = self.sch.cache_read(
+                self.container.tensor_map.get("b_placehold"), l0b_scope, [self.container.tensor_map.get("c_l0c")])
         else:
-            self.container.TENSOR_MAP["b_l0b"] = self._match_and_get_tensor(compute_tensors, "tensor_b_matrix")
-            self.sch[self.container.TENSOR_MAP.get("b_l0b")].set_scope(l0b_scope)
+            self.container.tensor_map["b_l0b"] = self._match_and_get_tensor(compute_tensors, "tensor_b_matrix")
+            self.sch[self.container.tensor_map.get("b_l0b")].set_scope(l0b_scope)
 
-        if "mode" in self.container.TENSOR_MAP.get("b_l0b").op.attrs:
-            self.get_b_matrix_mode = self.container.TENSOR_MAP.get("b_l0b").op.attrs["mode"]
+        if "mode" in self.container.tensor_map.get("b_l0b").op.attrs:
+            self.get_b_matrix_mode = self.container.tensor_map.get("b_l0b").op.attrs["mode"]
 
-        if "format_info" in self.container.TENSOR_MAP.get("b_l0b").op.attrs:
-            self.format_info_b = self.container.TENSOR_MAP.get("b_l0b").op.attrs["format_info"]
+        if "format_info" in self.container.tensor_map.get("b_l0b").op.attrs:
+            self.format_info_b = self.container.tensor_map.get("b_l0b").op.attrs["format_info"]
         else:
             self.format_info_b = {
                 "format_in_b_l1": "Zn",
                 "format_in_b_ub": "none"
             }
 
-        self.optmt_a = self.container.TENSOR_MAP.get("a_l0a").dtype
-        self.optmt_b = self.container.TENSOR_MAP.get("b_l0b").dtype
-        self.optmt_c = self.container.TENSOR_MAP.get("c_gm").dtype
-        self._add_tensor_to_list(self.container.TENSOR_MAP.get("c_l0c"), [self.container.tensors_in_l0c])
+        self.optmt_a = self.container.tensor_map.get("a_l0a").dtype
+        self.optmt_b = self.container.tensor_map.get("b_l0b").dtype
+        self.optmt_c = self.container.tensor_map.get("c_gm").dtype
+        self._add_tensor_to_list(self.container.tensor_map.get("c_l0c"), [self.container.tensors_in_l0c])
 
     def _set_data_layout_cube_vector_split(self):
         tiling = self.tiling
-        self.container.TENSOR_MAP["a_l1"] = self.sch.cache_read(self.container.TENSOR_MAP.get("a_placehold"),
-            tbe_platform_info.scope_cbuf, [self.container.TENSOR_MAP.get("a_l0a")])
+        self.container.tensor_map["a_l1"] = self.sch.cache_read(self.container.tensor_map.get("a_placehold"),
+            tbe_platform_info.scope_cbuf, [self.container.tensor_map.get("a_l0a")])
         if self.src_dtype != "int8" or tiling.get("BL1_shape") is not None:
-            self.container.TENSOR_MAP["b_l1"] = self.sch.cache_read(
-                self.container.TENSOR_MAP.get("b_placehold"), tbe_platform_info.scope_cbuf,
-                [self.container.TENSOR_MAP.get("b_l0b")])
+            self.container.tensor_map["b_l1"] = self.sch.cache_read(
+                self.container.tensor_map.get("b_placehold"), tbe_platform_info.scope_cbuf,
+                [self.container.tensor_map.get("b_l0b")])
 
     @staticmethod
     def _add_tensor_to_list(tensor, tensors_list_list):
@@ -1084,16 +1005,16 @@ class GemmSchedule:
             self.sch[tensor].set_scope(buffer_local)
 
     def _set_data_layout_a_in_nd2zz(self):
-        self.container.TENSOR_MAP["a_l1"] = self._match_and_get_tensor(self.container.compute_tensors, "tensor_a_l1")
-        if self.container.TENSOR_MAP.get("a_l1") is not None:
-            self.sch[self.container.TENSOR_MAP.get("a_l1")].set_scope(tbe_platform_info.scope_cbuf)
+        self.container.tensor_map["a_l1"] = self._match_and_get_tensor(self.container.compute_tensors, "tensor_a_l1")
+        if self.container.tensor_map.get("a_l1") is not None:
+            self.sch[self.container.tensor_map.get("a_l1")].set_scope(tbe_platform_info.scope_cbuf)
         else:
-            self.container.TENSOR_MAP["a_l1"] = self.sch.cache_write(
-                self.container.TENSOR_MAP.get("a_l0a"), tbe_platform_info.scope_cbuf)
+            self.container.tensor_map["a_l1"] = self.sch.cache_write(
+                self.container.tensor_map.get("a_l0a"), tbe_platform_info.scope_cbuf)
         if self.status_controller.ops_data_flow_mode == "int82fp32":
             self._get_tensor_and_set_scope("tensor_a_int82fp16", tbe_platform_info.scope_ubuf, "a_int82fp16")
         if self.optmt_a == "float16":
-            self.container.TENSOR_MAP["a_ub_fract"] = self.sch.cache_write(self.container.TENSOR_MAP.get("a_l1"),
+            self.container.tensor_map["a_ub_fract"] = self.sch.cache_write(self.container.tensor_map.get("a_l1"),
                                                                  tbe_platform_info.scope_ubuf)
 
     def _set_data_layout_a_matrix(self):
@@ -1103,54 +1024,54 @@ class GemmSchedule:
                                            tbe_platform_info.scope_ubuf, "a_ub_aligned")
             self._get_tensor_and_set_scope("tensor_a_normalize_ub_general",
                                            tbe_platform_info.scope_ubuf, "a_ub_general")
-            self._add_tensor_to_list(self.container.TENSOR_MAP.get("a_ub_aligned"), [tensors_in_aub])
-            self._add_tensor_to_list(self.container.TENSOR_MAP.get("a_ub_general"), [tensors_in_aub])
+            self._add_tensor_to_list(self.container.tensor_map.get("a_ub_aligned"), [tensors_in_aub])
+            self._add_tensor_to_list(self.container.tensor_map.get("a_ub_general"), [tensors_in_aub])
         self._get_tensor_and_set_scope("tensor_a_normalize_ub", tbe_platform_info.scope_ubuf, "a_ub")
 
         if self.get_a_matrix_mode == "none":
-            self.container.TENSOR_MAP["a_l1"] = self.sch.cache_write(
-                self.container.TENSOR_MAP.get("a_l0a"), tbe_platform_info.scope_cbuf)
+            self.container.tensor_map["a_l1"] = self.sch.cache_write(
+                self.container.tensor_map.get("a_l0a"), tbe_platform_info.scope_cbuf)
         elif self.get_a_matrix_mode == "nd2Zz_vnchwconv":
             self._get_tensor_and_set_scope("tensor_a_matrix_fract_k", tbe_platform_info.scope_ubuf, "a_ub_fract")
-            self.container.TENSOR_MAP["a_l1"] = self.sch.cache_read(self.container.TENSOR_MAP.get("a_ub_fract"),
-                tbe_platform_info.scope_cbuf, [self.container.TENSOR_MAP.get("a_l0a")])
+            self.container.tensor_map["a_l1"] = self.sch.cache_read(self.container.tensor_map.get("a_ub_fract"),
+                tbe_platform_info.scope_cbuf, [self.container.tensor_map.get("a_l0a")])
             if self.status_controller.ops_data_flow_mode == "int82fp32":
                 # int82fp32 need cast to fp16
                 self._get_tensor_and_set_scope("tensor_a_int82fp16", tbe_platform_info.scope_ubuf, "a_int82fp16")
         elif self.get_a_matrix_mode == "nd2Zz_int8":
             if self.status_controller.transpose_a:
                 self._get_tensor_and_set_scope("a_transpose", tbe_platform_info.scope_ubuf, "a_transpose")
-            self.container.TENSOR_MAP["a_l1"] = self.sch.cache_write(
-                self.container.TENSOR_MAP.get("a_l0a"), tbe_platform_info.scope_cbuf)
+            self.container.tensor_map["a_l1"] = self.sch.cache_write(
+                self.container.tensor_map.get("a_l0a"), tbe_platform_info.scope_cbuf)
         elif self.get_a_matrix_mode == "Nz2Zz_int82fp32":
             # int82fp32 need cast to fp16
             self._get_tensor_and_set_scope("tensor_a_int82fp16", tbe_platform_info.scope_ubuf, "a_int82fp16")
-            self.container.TENSOR_MAP["a_ub"] = self.sch.cache_read(self.container.TENSOR_MAP.get("a_placehold"),
-                tbe_platform_info.scope_ubuf, [self.container.TENSOR_MAP.get("a_int82fp16")])
-            self.container.TENSOR_MAP["a_l1"] = self.sch.cache_write(
-                self.container.TENSOR_MAP.get("a_l0a"), tbe_platform_info.scope_cbuf)
-            self.container.TENSOR_MAP["a_ub_fract"] = self.sch.cache_write(self.container.TENSOR_MAP.get("a_l1"),
+            self.container.tensor_map["a_ub"] = self.sch.cache_read(self.container.tensor_map.get("a_placehold"),
+                tbe_platform_info.scope_ubuf, [self.container.tensor_map.get("a_int82fp16")])
+            self.container.tensor_map["a_l1"] = self.sch.cache_write(
+                self.container.tensor_map.get("a_l0a"), tbe_platform_info.scope_cbuf)
+            self.container.tensor_map["a_ub_fract"] = self.sch.cache_write(self.container.tensor_map.get("a_l1"),
                 tbe_platform_info.scope_ubuf)
         elif self.get_a_matrix_mode in ("Nz2Zz", "fractal_gemv", "Zz_trans"):
-            self.container.TENSOR_MAP["a_l1"] = self.sch.cache_read(self.container.TENSOR_MAP.get("a_placehold"),
-                tbe_platform_info.scope_cbuf, [self.container.TENSOR_MAP.get("a_l0a")])
+            self.container.tensor_map["a_l1"] = self.sch.cache_read(self.container.tensor_map.get("a_placehold"),
+                tbe_platform_info.scope_cbuf, [self.container.tensor_map.get("a_l0a")])
         elif self.get_a_matrix_mode == "nd_gemv":
             self._get_tensor_and_set_scope("tensor_a_fract", tbe_platform_info.scope_cbuf, "a_l1")
             if self.optmt_a == "float16":
-                self.container.TENSOR_MAP["a_ub_fract"] = self.sch.cache_write(self.container.TENSOR_MAP.get("a_l1"),
+                self.container.tensor_map["a_ub_fract"] = self.sch.cache_write(self.container.tensor_map.get("a_l1"),
                                                                      tbe_platform_info.scope_ubuf)
         elif self.get_a_matrix_mode == "nd_gevm":
-            self.container.TENSOR_MAP["a_l1"] = self.sch.cache_write(
-                self.container.TENSOR_MAP.get("a_l0a"), tbe_platform_info.scope_cbuf)
+            self.container.tensor_map["a_l1"] = self.sch.cache_write(
+                self.container.tensor_map.get("a_l0a"), tbe_platform_info.scope_cbuf)
             # check in int8
             self._get_tensor_and_set_scope("tensor_a_fract", tbe_platform_info.scope_ubuf, "a_ub_fract")
         elif self.get_a_matrix_mode == "nd2Zz":
             self._set_data_layout_a_in_nd2zz()
 
-        self._add_tensor_to_list(self.container.TENSOR_MAP.get("a_int82fp16"), [tensors_in_aub])
-        self._add_tensor_to_list(self.container.TENSOR_MAP.get("a_ub"), [tensors_in_aub])
-        self._add_tensor_to_list(self.container.TENSOR_MAP.get("a_ub_fract"), [tensors_in_aub])
-        self._add_tensor_to_list(self.container.TENSOR_MAP.get("a_transpose"), [tensors_in_aub])
+        self._add_tensor_to_list(self.container.tensor_map.get("a_int82fp16"), [tensors_in_aub])
+        self._add_tensor_to_list(self.container.tensor_map.get("a_ub"), [tensors_in_aub])
+        self._add_tensor_to_list(self.container.tensor_map.get("a_ub_fract"), [tensors_in_aub])
+        self._add_tensor_to_list(self.container.tensor_map.get("a_transpose"), [tensors_in_aub])
 
     def _set_data_layout_b_matrix(self):
         tensors_in_bub = self.container.tensors_in_bub
@@ -1160,55 +1081,55 @@ class GemmSchedule:
                                            tbe_platform_info.scope_ubuf, "b_ub_aligned")
             self._get_tensor_and_set_scope("tensor_b_normalize_ub_general",
                                            tbe_platform_info.scope_ubuf, "b_ub_general")
-            self._add_tensor_to_list(self.container.TENSOR_MAP.get("b_ub_aligned"), [tensors_in_bub])
-            self._add_tensor_to_list(self.container.TENSOR_MAP.get("b_ub_general"), [tensors_in_bub])
+            self._add_tensor_to_list(self.container.tensor_map.get("b_ub_aligned"), [tensors_in_bub])
+            self._add_tensor_to_list(self.container.tensor_map.get("b_ub_general"), [tensors_in_bub])
         self._get_tensor_and_set_scope("tensor_b_normalize_ub", tbe_platform_info.scope_ubuf, "b_ub")
 
         if self.get_b_matrix_mode == "nd_gemv":
             self._get_tensor_and_set_scope("tensor_b_fract", tbe_platform_info.scope_cbuf, "b_l1")
             if self.optmt_b == "float16":
-                self.container.TENSOR_MAP["b_ub_fract"] = self.sch.cache_write(self.container.TENSOR_MAP.get("b_l1"),
+                self.container.tensor_map["b_ub_fract"] = self.sch.cache_write(self.container.tensor_map.get("b_l1"),
                                                                      tbe_platform_info.scope_ubuf)
         elif self.get_b_matrix_mode == "nd2Zn_vnchwconv":
             self._get_tensor_and_set_scope("tensor_b_matrix_fract", tbe_platform_info.scope_ubuf, "b_ub_fract")
-            self.container.TENSOR_MAP["b_l1"] = self.sch.cache_read(self.container.TENSOR_MAP.get("b_ub_fract"),
-                tbe_platform_info.scope_cbuf, [self.container.TENSOR_MAP.get("b_l0b")])
+            self.container.tensor_map["b_l1"] = self.sch.cache_read(self.container.tensor_map.get("b_ub_fract"),
+                tbe_platform_info.scope_cbuf, [self.container.tensor_map.get("b_l0b")])
             if self.status_controller.ops_data_flow_mode == "int82fp32":
                 # if int82fp32 need cast to fp16
                 self._get_tensor_and_set_scope("tensor_b_int82fp16", tbe_platform_info.scope_ubuf, "b_int82fp16")
         elif self.get_b_matrix_mode == "nd2Zn_int8":
             if not self.status_controller.transpose_b:
                 self._get_tensor_and_set_scope("b_transpose", tbe_platform_info.scope_ubuf, "b_transpose")
-            self.container.TENSOR_MAP["b_l1"] = self.sch.cache_write(
-                self.container.TENSOR_MAP.get("b_l0b"), tbe_platform_info.scope_cbuf)
+            self.container.tensor_map["b_l1"] = self.sch.cache_write(
+                self.container.tensor_map.get("b_l0b"), tbe_platform_info.scope_cbuf)
         elif self.get_b_matrix_mode == "Zn2Zn_int82fp32":
             self._get_tensor_and_set_scope("tensor_b_int82fp16", tbe_platform_info.scope_ubuf, "b_int82fp16")
-            self.container.TENSOR_MAP["b_ub"] = self.sch.cache_read(self.container.TENSOR_MAP.get("b_placehold"),
-                tbe_platform_info.scope_ubuf, [self.container.TENSOR_MAP.get("b_int82fp16")])
-            self.container.TENSOR_MAP["b_l1"] = self.sch.cache_write(
-                self.container.TENSOR_MAP.get("b_l0b"), tbe_platform_info.scope_cbuf)
-            self.container.TENSOR_MAP["b_ub_fract"] = self.sch.cache_write(self.container.TENSOR_MAP.get("b_l1"),
+            self.container.tensor_map["b_ub"] = self.sch.cache_read(self.container.tensor_map.get("b_placehold"),
+                tbe_platform_info.scope_ubuf, [self.container.tensor_map.get("b_int82fp16")])
+            self.container.tensor_map["b_l1"] = self.sch.cache_write(
+                self.container.tensor_map.get("b_l0b"), tbe_platform_info.scope_cbuf)
+            self.container.tensor_map["b_ub_fract"] = self.sch.cache_write(self.container.tensor_map.get("b_l1"),
                 tbe_platform_info.scope_ubuf)
         elif self.get_b_matrix_mode in ("Nz2Zn", "Nz2Zz", "fractal_gemv", "Zn_trans"):
-            self.container.TENSOR_MAP["b_l1"] = self.sch.cache_read(self.container.TENSOR_MAP.get("b_placehold"),
-                tbe_platform_info.scope_cbuf, [self.container.TENSOR_MAP.get("b_l0b")])
+            self.container.tensor_map["b_l1"] = self.sch.cache_read(self.container.tensor_map.get("b_placehold"),
+                tbe_platform_info.scope_cbuf, [self.container.tensor_map.get("b_l0b")])
         elif self.get_b_matrix_mode == "nd2Zn":
-            self.container.TENSOR_MAP["b_l1"] = self._match_and_get_tensor(
+            self.container.tensor_map["b_l1"] = self._match_and_get_tensor(
                 self.container.compute_tensors, "tensor_b_l1")
-            if self.container.TENSOR_MAP.get("b_l1") is not None:
-                self.sch[self.container.TENSOR_MAP.get("b_l1")].set_scope(tbe_platform_info.scope_cbuf)
+            if self.container.tensor_map.get("b_l1") is not None:
+                self.sch[self.container.tensor_map.get("b_l1")].set_scope(tbe_platform_info.scope_cbuf)
             else:
-                self.container.TENSOR_MAP["b_l1"] = self.sch.cache_write(self.container.TENSOR_MAP.get("b_l0b"),
+                self.container.tensor_map["b_l1"] = self.sch.cache_write(self.container.tensor_map.get("b_l0b"),
                     tbe_platform_info.scope_cbuf)
-            self.container.TENSOR_MAP["b_ub_fract"] = self.sch.cache_write(self.container.TENSOR_MAP.get("b_l1"),
+            self.container.tensor_map["b_ub_fract"] = self.sch.cache_write(self.container.tensor_map.get("b_l1"),
                 tbe_platform_info.scope_ubuf)
         else:
             self._get_b_l1_fractal()
 
-        self._add_tensor_to_list(self.container.TENSOR_MAP.get("b_int82fp16"), [tensors_in_bub])
-        self._add_tensor_to_list(self.container.TENSOR_MAP.get("b_ub_fract"), [tensors_in_bub])
-        self._add_tensor_to_list(self.container.TENSOR_MAP.get("b_ub"), [tensors_in_bub])
-        self._add_tensor_to_list(self.container.TENSOR_MAP.get("b_transpose"), [tensors_in_bub])
+        self._add_tensor_to_list(self.container.tensor_map.get("b_int82fp16"), [tensors_in_bub])
+        self._add_tensor_to_list(self.container.tensor_map.get("b_ub_fract"), [tensors_in_bub])
+        self._add_tensor_to_list(self.container.tensor_map.get("b_ub"), [tensors_in_bub])
+        self._add_tensor_to_list(self.container.tensor_map.get("b_transpose"), [tensors_in_bub])
 
     def _set_scope_bias_in_l0c(self):
         self._get_tensor_and_set_scope("tensor_bias_ub", tbe_platform_info.scope_ubuf, "bias_ub")
@@ -1228,8 +1149,8 @@ class GemmSchedule:
         placeholder_name = self.container.placeholder_name
         bias = self._match_and_get_tensor(placeholder_tensors, placeholder_name["bias"])
         tensor_c = self._match_and_get_tensor(placeholder_tensors, placeholder_name["c"])
-        self.container.TENSOR_MAP["tensor_c"] = tensor_c
-        self.container.TENSOR_MAP["bias"] = bias
+        self.container.tensor_map["tensor_c"] = tensor_c
+        self.container.tensor_map["bias"] = bias
 
         alpha = self._match_and_get_tensor(placeholder_tensors, placeholder_name["alpha"])
         beta = self._match_and_get_tensor(placeholder_tensors, placeholder_name["beta"])
@@ -1257,49 +1178,49 @@ class GemmSchedule:
                 if self.status_controller.ops_data_flow_mode == "fp162fp16":
                     self._get_tensor_and_set_scope("tensor_beta_fp162fp32",
                         tbe_platform_info.scope_ubuf, "beta_fp162fp32")
-                    self.container.TENSOR_MAP["beta_ub"] = self.sch.cache_read(self.container.TENSOR_MAP.get("beta"),
-                        tbe_platform_info.scope_ubuf, [self.container.TENSOR_MAP.get("beta_fp162fp32")])
+                    self.container.tensor_map["beta_ub"] = self.sch.cache_read(self.container.tensor_map.get("beta"),
+                        tbe_platform_info.scope_ubuf, [self.container.tensor_map.get("beta_fp162fp32")])
                 else:
-                    self.container.TENSOR_MAP["beta_ub"] = self.sch.cache_read(self.container.TENSOR_MAP.get("beta"),
-                        tbe_platform_info.scope_ubuf, [self.container.TENSOR_MAP.get("beta_bias")])
+                    self.container.tensor_map["beta_ub"] = self.sch.cache_read(self.container.tensor_map.get("beta"),
+                        tbe_platform_info.scope_ubuf, [self.container.tensor_map.get("beta_bias")])
 
         if alpha is not None:
             self._get_tensor_and_set_scope("tensor_alpha_c", tbe_platform_info.scope_ubuf, "alpha_c")
             if self.status_controller.ops_data_flow_mode == "fp162fp16":
                 self._get_tensor_and_set_scope("tensor_alpha_fp162fp32",
                     tbe_platform_info.scope_ubuf, "alpha_fp162fp32")
-                self.container.TENSOR_MAP["alpha_ub"] = self.sch.cache_read(self.container.TENSOR_MAP.get("alpha"),
-                    tbe_platform_info.scope_ubuf, [self.container.TENSOR_MAP.get("alpha_fp162fp32")])
+                self.container.tensor_map["alpha_ub"] = self.sch.cache_read(self.container.tensor_map.get("alpha"),
+                    tbe_platform_info.scope_ubuf, [self.container.tensor_map.get("alpha_fp162fp32")])
             else:
-                self.container.TENSOR_MAP["alpha_ub"] = self.sch.cache_read(self.container.TENSOR_MAP.get("alpha"),
-                    tbe_platform_info.scope_ubuf, [self.container.TENSOR_MAP.get("alpha_c")])
+                self.container.tensor_map["alpha_ub"] = self.sch.cache_read(self.container.tensor_map.get("alpha"),
+                    tbe_platform_info.scope_ubuf, [self.container.tensor_map.get("alpha_c")])
 
         self._get_tensor_and_set_scope("tensor_cast_to_fp16", tbe_platform_info.scope_ubuf, "cast_to_fp16")
 
-        self.container.TENSOR_MAP["nz_to_nd"] = self._match_and_get_tensor(compute_tensors, "nz_to_nd")
-        if self.container.TENSOR_MAP["nz_to_nd"] is not None:
-            self.sch[self.container.TENSOR_MAP["nz_to_nd"]].set_scope(tbe_platform_info.scope_ubuf)
-        self.container.TENSOR_MAP["before_c_gm"] = self._match_and_get_tensor(compute_tensors, "before_c_gm")
-        if self.container.TENSOR_MAP["before_c_gm"] is not None:
-            self.sch[self.container.TENSOR_MAP["before_c_gm"]].set_scope(tbe_platform_info.scope_ubuf)
+        self.container.tensor_map["nz_to_nd"] = self._match_and_get_tensor(compute_tensors, "nz_to_nd")
+        if self.container.tensor_map["nz_to_nd"] is not None:
+            self.sch[self.container.tensor_map["nz_to_nd"]].set_scope(tbe_platform_info.scope_ubuf)
+        self.container.tensor_map["before_c_gm"] = self._match_and_get_tensor(compute_tensors, "before_c_gm")
+        if self.container.tensor_map["before_c_gm"] is not None:
+            self.sch[self.container.tensor_map["before_c_gm"]].set_scope(tbe_platform_info.scope_ubuf)
 
-        self._add_tensor_to_list(self.container.TENSOR_MAP.get("bias_l0c"), [tensors_in_l0c])
-        self._add_tensor_to_list(self.container.TENSOR_MAP.get("beta_bias"), [tensors_in_cub])
-        self._add_tensor_to_list(self.container.TENSOR_MAP.get("c_ub_fract"), [tensors_in_cub])
-        self._add_tensor_to_list(self.container.TENSOR_MAP.get("alpha_c"), [tensors_in_cub])
-        self._add_tensor_to_list(self.container.TENSOR_MAP.get("c_add_bias"), [tensors_in_l0c])
-        self._add_tensor_to_list(self.container.TENSOR_MAP.get("c_add_bias_ub"), [tensors_in_cub])
-        self._add_tensor_to_list(self.container.TENSOR_MAP.get("cast_to_fp16"), [tensors_in_cub])
-        self._add_tensor_to_list(self.container.TENSOR_MAP.get("bias_cast_to_fp32"), [tensors_in_cub])
-        self._add_tensor_to_list(self.container.TENSOR_MAP.get("bias_ub"), [bias_ub_compute_at])
+        self._add_tensor_to_list(self.container.tensor_map.get("bias_l0c"), [tensors_in_l0c])
+        self._add_tensor_to_list(self.container.tensor_map.get("beta_bias"), [tensors_in_cub])
+        self._add_tensor_to_list(self.container.tensor_map.get("c_ub_fract"), [tensors_in_cub])
+        self._add_tensor_to_list(self.container.tensor_map.get("alpha_c"), [tensors_in_cub])
+        self._add_tensor_to_list(self.container.tensor_map.get("c_add_bias"), [tensors_in_l0c])
+        self._add_tensor_to_list(self.container.tensor_map.get("c_add_bias_ub"), [tensors_in_cub])
+        self._add_tensor_to_list(self.container.tensor_map.get("cast_to_fp16"), [tensors_in_cub])
+        self._add_tensor_to_list(self.container.tensor_map.get("bias_cast_to_fp32"), [tensors_in_cub])
+        self._add_tensor_to_list(self.container.tensor_map.get("bias_ub"), [bias_ub_compute_at])
         if self.status_controller.need_init_bias:
-            self._add_tensor_to_list(self.container.TENSOR_MAP.get("init_value_of_bias_ub"), [bias_ub_compute_at])
-            self._add_tensor_to_list(self.container.TENSOR_MAP.get("virtual_add_bias"), [bias_ub_compute_at])
-        self._add_tensor_to_list(self.container.TENSOR_MAP.get("nz_to_nd"), [tensors_in_cub])
-        self._add_tensor_to_list(self.container.TENSOR_MAP.get("before_c_gm"), [tensors_in_cub])
+            self._add_tensor_to_list(self.container.tensor_map.get("init_value_of_bias_ub"), [bias_ub_compute_at])
+            self._add_tensor_to_list(self.container.tensor_map.get("virtual_add_bias"), [bias_ub_compute_at])
+        self._add_tensor_to_list(self.container.tensor_map.get("nz_to_nd"), [tensors_in_cub])
+        self._add_tensor_to_list(self.container.tensor_map.get("before_c_gm"), [tensors_in_cub])
 
-        cast_to_fp16 = self.container.TENSOR_MAP.get("cast_to_fp16")
-        c_ub_fract = self.container.TENSOR_MAP.get("c_ub_fract")
+        cast_to_fp16 = self.container.tensor_map.get("cast_to_fp16")
+        c_ub_fract = self.container.tensor_map.get("c_ub_fract")
         self.status_controller.compute_inline_c_ub_fract = ((cast_to_fp16 is not None) and
             (cast_to_fp16.op.input_tensors[0] == c_ub_fract))
         if self.status_controller.compute_inline_c_ub_fract:
@@ -1309,7 +1230,7 @@ class GemmSchedule:
         """ set tensor_c_gm to ubuf scope and not do compute_inline
         """
         if self.status_controller.fusion_multi_output_flag:
-            tensor_c_gm = self.container.TENSOR_MAP.get("c_gm")
+            tensor_c_gm = self.container.tensor_map.get("c_gm")
             self._add_tensor_to_list(tensor_c_gm, [self.container.tensors_in_cub])
             self.sch[tensor_c_gm].set_scope(tbe_platform_info.scope_ubuf)
             if tensor_c_gm in self.container.compute_inline_list:
@@ -1318,9 +1239,9 @@ class GemmSchedule:
     def _get_tensor_and_set_scope(self, tensor_name, buffer_name, save_name=None):
         if save_name is None:
             save_name = tensor_name
-        self.container.TENSOR_MAP[save_name] = self._match_and_get_tensor(self.container.compute_tensors, tensor_name)
-        if self.container.TENSOR_MAP.get(save_name) is not None:
-            self.sch[self.container.TENSOR_MAP.get(save_name)].set_scope(buffer_name)
+        self.container.tensor_map[save_name] = self._match_and_get_tensor(self.container.compute_tensors, tensor_name)
+        if self.container.tensor_map.get(save_name) is not None:
+            self.sch[self.container.tensor_map.get(save_name)].set_scope(buffer_name)
 
     def _set_and_add_tensor(self, tensor, tensors_lists, buffer_type):
         if tensor is not None:
@@ -1377,7 +1298,7 @@ class GemmSchedule:
         return {}
 
     def _emit_requant_fusion_insn(self):
-        tensor_reform = self.container.TENSOR_MAP.get("requant_data_transfer")
+        tensor_reform = self.container.tensor_map.get("requant_data_transfer")
         if tensor_reform is None:
             return
         insn = self.requant_fusion_insn_map.get(tensor_reform.op.name)
@@ -1387,9 +1308,9 @@ class GemmSchedule:
         return
 
     def _dequant_fusion_proc(self):
-        dequant_tensor = self.container.TENSOR_MAP.get("dequant_tensor")
-        tensor_sqrt = self.container.TENSOR_MAP.get("tensor_sqrt")
-        self._emit_insn_func(self.container.TENSOR_MAP.get("tensor_deq_ub"), 0, "dma_copy")
+        dequant_tensor = self.container.tensor_map.get("dequant_tensor")
+        tensor_sqrt = self.container.tensor_map.get("tensor_sqrt")
+        self._emit_insn_func(self.container.tensor_map.get("tensor_deq_ub"), 0, "dma_copy")
         self._dequant_activation_emit_insn_simple()
         dequant_emit_axis, deq_scale_mode = (1, "vector") \
             if "vector" in dequant_tensor.op.tag else (0, "scalar")
@@ -1409,8 +1330,8 @@ class GemmSchedule:
         compute inline dequant output tensor when dequant is not the last op.
         """
         compute_inline_list = self.container.compute_inline_list
-        dequant_nz = self.container.TENSOR_MAP.get("dequant_nz")
-        dequant_nd = self.container.TENSOR_MAP.get("dequant_nd")
+        dequant_nz = self.container.tensor_map.get("dequant_nz")
+        dequant_nd = self.container.tensor_map.get("dequant_nd")
         if dequant_nz is not None and self.res != dequant_nz:
             self._add_tensor_to_list(dequant_nz, [compute_inline_list])
         if dequant_nd is not None and self.res != dequant_nd:
@@ -1439,7 +1360,7 @@ class GemmSchedule:
         return emit_insn_str
 
     def _quant_fusion_proc(self):
-        input_ub = self.container.TENSOR_MAP.get("tensor_input_ub")
+        input_ub = self.container.tensor_map.get("tensor_input_ub")
         self._add_tensor_to_list(input_ub, [self.container.compute_inline_list])
         for ten_in in self.container.tensor_fusion_list:
             if ten_in.op.name == "cast_i8_ub":
@@ -1468,7 +1389,7 @@ class GemmSchedule:
                 self.sch[ten_in].emit_insn(ten_in.op.axis[0], insn)
 
     def _requant_fusion_proc(self):
-        requant_scale = self.container.TENSOR_MAP.get("requant_scale")
+        requant_scale = self.container.tensor_map.get("requant_scale")
         tensor_drq = requant_scale.op.input_tensors[1]
         tensor_drq_ub = self.sch.cache_read(tensor_drq, tbe_platform_info.scope_ubuf, [requant_scale])
         self.sch[tensor_drq_ub].emit_insn(tensor_drq_ub.op.axis[0], "dma_copy")
@@ -1491,8 +1412,8 @@ class GemmSchedule:
 
         reform_fusion = self.status_controller.quant_fusion or self.status_controller.requant_fusion
         if reform_fusion:
-            tensor_len_c = len(self.container.TENSOR_MAP.get("c_l0c").shape)
-            tensor_reform = self.container.TENSOR_MAP.get("tensor_reform")
+            tensor_len_c = len(self.container.tensor_map.get("c_l0c").shape)
+            tensor_reform = self.container.tensor_map.get("tensor_reform")
             reform_c_outer, reform_c_inner = self.sch[tensor_reform].split(
                 tensor_reform.op.axis[tensor_len_c - 1], factor=16)
             self.sch[tensor_reform].reorder(
@@ -1511,13 +1432,13 @@ class GemmSchedule:
             self._set_tensor_scope(self.res, tbe_platform_info.scope_cbuf_fusion)
 
         if self.in_addr_type == 1:
-            tensor_a = self.container.TENSOR_MAP.get("a_placehold")
+            tensor_a = self.container.tensor_map.get("a_placehold")
             self._set_tensor_scope(tensor_a, tbe_platform_info.scope_cbuf_fusion)
 
         if self.status_controller.dequant_fusion:
-            dequant_tensor_list.append(self.container.TENSOR_MAP["dequant_tensor"])
+            dequant_tensor_list.append(self.container.tensor_map["dequant_tensor"])
             if self.status_controller.sqrt_flag:
-                tensor_sqrt = self.container.TENSOR_MAP.get("tensor_sqrt")
+                tensor_sqrt = self.container.tensor_map.get("tensor_sqrt")
                 self.sch[tensor_sqrt].set_scope(tbe_platform_info.scope_ubuf)
                 dequant_tensor_list.append(tensor_sqrt)
             for tensor in self.container.dequant_activation_tensor:
@@ -1535,43 +1456,43 @@ class GemmSchedule:
     def _get_tensor_deq(self, dequant_tensor_list):
         tensor_deq = self._match_and_get_tensor(self.container.placeholder_tensors, "tensor_deq")
         if tensor_deq is None:
-            tensor_dequant = self.container.TENSOR_MAP.get("dequant_tensor")
+            tensor_dequant = self.container.tensor_map.get("dequant_tensor")
             if tensor_dequant is not None:
                 tensor_deq = tensor_dequant.op.input_tensors[1]
         if tensor_deq is not None:
-            self.container.TENSOR_MAP["tensor_deq"] = tensor_deq
-            self.container.TENSOR_MAP["tensor_deq_ub"] = self.sch.cache_read(
-                self.container.TENSOR_MAP.get("tensor_deq"), tbe_platform_info.scope_ubuf, dequant_tensor_list)
+            self.container.tensor_map["tensor_deq"] = tensor_deq
+            self.container.tensor_map["tensor_deq_ub"] = self.sch.cache_read(
+                self.container.tensor_map.get("tensor_deq"), tbe_platform_info.scope_ubuf, dequant_tensor_list)
 
     def _find_tensor_and_get_flag(self, compute_tensors):
         fusion_tensor_cub = self.container.fusion_tensor_cub
         for i in compute_tensors:
             if i.op.name == "dequant":
-                self.container.TENSOR_MAP["dequant_tensor"] = i
+                self.container.tensor_map["dequant_tensor"] = i
                 fusion_tensor_cub.append(i)
                 self.status_controller.dequant_fusion = True
             if "dequant_sqrt" in i.op.name:
                 fusion_tensor_cub.append(i)
-                self.container.TENSOR_MAP["tensor_sqrt"] = i
+                self.container.tensor_map["tensor_sqrt"] = i
                 self.status_controller.sqrt_flag = True
             if "dequant_NZ" in i.op.name:
                 fusion_tensor_cub.append(i)
-                self.container.TENSOR_MAP["dequant_nz"] = i
+                self.container.tensor_map["dequant_nz"] = i
             if "dequant_ND" in i.op.name:
                 fusion_tensor_cub.append(i)
-                self.container.TENSOR_MAP["dequant_nd"] = i
+                self.container.tensor_map["dequant_nd"] = i
             if i.op.tag == "quant":
-                self.container.TENSOR_MAP["quant"] = i
+                self.container.tensor_map["quant"] = i
                 self.status_controller.quant_fusion = True
                 self.status_controller.round_mode = i.op.attrs["round_mode"]
             if "input_ub" in i.op.name:
-                self.container.TENSOR_MAP["tensor_input_ub"] = i
+                self.container.tensor_map["tensor_input_ub"] = i
             if i.op.tag == "requant_scale" or i.op.tag == "requant_vector":
                 self.status_controller.requant_fusion = True
-                self.container.TENSOR_MAP["requant_scale"] = i
+                self.container.tensor_map["requant_scale"] = i
             if i.op.tag == "requant_data_transfer":
                 fusion_tensor_cub.append(i)
-                self.container.TENSOR_MAP["requant_data_transfer"] = i
+                self.container.tensor_map["requant_data_transfer"] = i
 
     def _set_reduce_fusion_flag(self, res):
         self.status_controller.reduce_fusion = "reduce_sum" in res.op.tag
@@ -1585,7 +1506,7 @@ class GemmSchedule:
             return
         res = self.root_tensor
         # set all batch to ddr add
-        block_dim_batch = self._get_value(self.container.TENSOR_MAP.get("c_l0c").shape)[0]
+        block_dim_batch = self._get_value(self.container.tensor_map.get("c_l0c").shape)[0]
         batch_outer, _ = self.sch[res].split(res.op.reduce_axis[0], nparts=block_dim_batch)
         res_after = res
         res_ub = self.sch.rfactor(res, batch_outer)
@@ -1593,14 +1514,14 @@ class GemmSchedule:
         # put reduce axis first
         self.sch[res_after].reorder(self.sch[res_after].op.reduce_axis[0], *self.sch[res_after].op.axis)
         self.sch[res_ub].reorder(self.sch[res_ub].op.reduce_axis[0], *self.sch[res_ub].op.axis[1:])
-        self.container.TENSOR_MAP["res_atomic_add_ub"] = res_ub
+        self.container.tensor_map["res_atomic_add_ub"] = res_ub
         self.container.tensors_in_cub.append(res_ub)
         self._print_ir_matmul("after atomic_add", self.sch)
 
     def _atomic_add_k_axis(self):
         if not self.status_controller.split_k_axis_by_tiling:
             return
-        tensor_l0c = self.container.TENSOR_MAP.get("c_l0c")
+        tensor_l0c = self.container.tensor_map.get("c_l0c")
         real_k = self.sch[tensor_l0c].op.reduce_axis[0]
 
         block_dim_k = self.tiling.get("block_dim")[3]
@@ -1617,26 +1538,26 @@ class GemmSchedule:
 
         atomic_add_ub = self.sch.cache_read(atomic_add_l0c, tbe_platform_info.scope_ubuf, [atomic_add_ddr])
         self._add_tensor_to_list(atomic_add_ub, [self.container.tensors_in_cub])
-        self.container.TENSOR_MAP["ori_c_ub_fract"] = self.container.TENSOR_MAP.get("c_ub_fract")
-        self.container.TENSOR_MAP["c_ub_fract"] = atomic_add_ub
-        self._copy_attrs(self.container.TENSOR_MAP.get("ori_c_ub_fract"), atomic_add_ub)
-        self.container.tensors_in_cub.remove(self.container.TENSOR_MAP.get("ori_c_ub_fract"))
-        self.sch[self.container.TENSOR_MAP.get("ori_c_ub_fract")].set_scope(tbe_platform_info.scope_gm)
+        self.container.tensor_map["ori_c_ub_fract"] = self.container.tensor_map.get("c_ub_fract")
+        self.container.tensor_map["c_ub_fract"] = atomic_add_ub
+        self._copy_attrs(self.container.tensor_map.get("ori_c_ub_fract"), atomic_add_ub)
+        self.container.tensors_in_cub.remove(self.container.tensor_map.get("ori_c_ub_fract"))
+        self.sch[self.container.tensor_map.get("ori_c_ub_fract")].set_scope(tbe_platform_info.scope_gm)
 
-        self.container.TENSOR_MAP["ori_c_l0c"] = self.container.TENSOR_MAP.get("c_l0c")
-        self.container.TENSOR_MAP["c_l0c"] = atomic_add_l0c
+        self.container.tensor_map["ori_c_l0c"] = self.container.tensor_map.get("c_l0c")
+        self.container.tensor_map["c_l0c"] = atomic_add_l0c
         self.container.tensors_in_l0c.remove(atomic_add_ddr)
-        self.container.TENSOR_MAP["ori_c_gm"] = self.container.TENSOR_MAP.get("c_gm")
-        self.container.TENSOR_MAP["c_gm"] = atomic_add_ddr
+        self.container.tensor_map["ori_c_gm"] = self.container.tensor_map.get("c_gm")
+        self.container.tensor_map["c_gm"] = atomic_add_ddr
         self.root_tensor = atomic_add_ddr
-        self._copy_attrs(self.container.TENSOR_MAP.get("ori_c_gm"), atomic_add_ddr)
-        self.sch[self.container.TENSOR_MAP.get("ori_c_gm")].set_scope(tbe_platform_info.scope_gm)
+        self._copy_attrs(self.container.tensor_map.get("ori_c_gm"), atomic_add_ddr)
+        self.sch[self.container.tensor_map.get("ori_c_gm")].set_scope(tbe_platform_info.scope_gm)
         self.sch_list.append(atomic_add_ddr)
 
     def _emit_insn_after_split_k(self):
         if self.status_controller.split_k_axis_by_tiling:
-            ori_c_gm = self.container.TENSOR_MAP.get("ori_c_gm")
-            ori_c_ub_fract = self.container.TENSOR_MAP.get("ori_c_ub_fract")
+            ori_c_gm = self.container.tensor_map.get("ori_c_gm")
+            ori_c_ub_fract = self.container.tensor_map.get("ori_c_ub_fract")
             self.sch[ori_c_gm].emit_insn(self.sch[ori_c_gm].op.axis[0], "phony_insn")
             self.sch[ori_c_ub_fract].emit_insn(self.sch[ori_c_ub_fract].op.axis[0], "phony_insn")
         return True
@@ -1656,12 +1577,12 @@ class GemmSchedule:
         self._print_debug(self.status_controller.requant_fusion, "requant_fusion")
         self._print_debug(self.status_controller.dequant_fusion, "dequant_fusion")
 
-        self.container.TENSOR_MAP["tensor_reform_by_vadds"] = self._match_and_get_tensor(
+        self.container.tensor_map["tensor_reform_by_vadds"] = self._match_and_get_tensor(
             compute_tensors, "reform_by_vadds")
-        self.container.TENSOR_MAP["tensor_reform_by_vmuls"] = self._match_and_get_tensor(
+        self.container.tensor_map["tensor_reform_by_vmuls"] = self._match_and_get_tensor(
             compute_tensors, "reform_by_vmuls")
 
-        matmul_end_tensor = self.container.TENSOR_MAP.get("c_gm")
+        matmul_end_tensor = self.container.tensor_map.get("c_gm")
         self.container.matmul_tensors = self._get_compute_tensor(matmul_end_tensor)
         self._print_debug(self.container.matmul_tensors, "matmul_tensors")
 
@@ -1694,8 +1615,8 @@ class GemmSchedule:
         fusion_tensor_cub += self.container.fusion_list
         self._print_debug(self.container.fusion_list, "fusion_list")
 
-        tensor_a = self.container.TENSOR_MAP.get("a_placehold")
-        tensor_b = self.container.TENSOR_MAP.get("b_placehold")
+        tensor_a = self.container.tensor_map.get("a_placehold")
+        tensor_b = self.container.tensor_map.get("b_placehold")
         is_fractal_a = len(tensor_a.shape) in (4, 5)
         is_fractal_b = len(tensor_b.shape) in (4, 5)
         self.in_addr_type = self._get_addr_type(tensor_a)
@@ -1711,11 +1632,11 @@ class GemmSchedule:
         self.tensor_a_l1_workspace = tensor_a_l1_workspace
 
         if self.status_controller.mmad_mode == "gemv":
-            tensor_a_l1 = self.container.TENSOR_MAP.get("b_l1")
-            tensor_b_l1 = self.container.TENSOR_MAP.get("a_l1")
+            tensor_a_l1 = self.container.tensor_map.get("b_l1")
+            tensor_b_l1 = self.container.tensor_map.get("a_l1")
         else:
-            tensor_a_l1 = self.container.TENSOR_MAP.get("a_l1")
-            tensor_b_l1 = self.container.TENSOR_MAP.get("b_l1")
+            tensor_a_l1 = self.container.tensor_map.get("a_l1")
+            tensor_b_l1 = self.container.tensor_map.get("b_l1")
 
         self.status_controller.a_l1_inline_flag = self._fc_tensor_a_l1_inline(
             tensor_a_l1, is_fractal_a, l1_fusion_and_l1_size_0)
@@ -1728,14 +1649,14 @@ class GemmSchedule:
             res_ub = self.sch.cache_write(self.res, tbe_platform_info.scope_ubuf)
             self.container.elemwise_tensors.append(res_ub)
 
-        if self.res != self.container.TENSOR_MAP.get("c_gm") and not self.status_controller.matmul_multi_output_flag:
-            self.container.compute_inline_list.append(self.container.TENSOR_MAP.get("c_gm"))
+        if self.res != self.container.tensor_map.get("c_gm") and not self.status_controller.matmul_multi_output_flag:
+            self.container.compute_inline_list.append(self.container.tensor_map.get("c_gm"))
         compute_inline_c_ub = self.status_controller.quantify_fusion
         if compute_inline_c_ub:
-            self.container.compute_inline_list.append(self.container.TENSOR_MAP.get("c_ub_fract"))
+            self.container.compute_inline_list.append(self.container.tensor_map.get("c_ub_fract"))
 
         if self.tensor_b_reshape:
-            self.container.compute_inline_list.append(self.container.TENSOR_MAP.get("b_placehold"))
+            self.container.compute_inline_list.append(self.container.tensor_map.get("b_placehold"))
         fusion_tensor_cub += self.container.elemwise_tensors
 
     def _tensor_a_l1_workspace_emit(self):
@@ -1759,7 +1680,7 @@ class GemmSchedule:
 
     def _set_quant_by_params(self):
         if not self.status_controller.quantify_fusion:
-            c_ub_fract = self.container.TENSOR_MAP.get("c_ub_fract")
+            c_ub_fract = self.container.tensor_map.get("c_ub_fract")
             if c_ub_fract.op.attrs["scale_drq"].value == "ENABLE":
                 # tensor_drq is second input for tensor_c_ub
                 tensor_drq = c_ub_fract.op.input_tensors[1]
@@ -1798,10 +1719,10 @@ class GemmSchedule:
 
     def _get_tensor_a_l1_workspace(self, l1_fusion_and_l1_size_0):
         tensor_a_l1_workspace = None
-        tensor_a_ub = self.container.TENSOR_MAP.get("a_ub")
-        tensor_a_l1 = self.container.TENSOR_MAP.get("a_l1")
-        tensor_a_l0a = self.container.TENSOR_MAP.get("a_l0a")
-        tensor_a = self.container.TENSOR_MAP.get("a_placehold")
+        tensor_a_ub = self.container.tensor_map.get("a_ub")
+        tensor_a_l1 = self.container.tensor_map.get("a_l1")
+        tensor_a_l0a = self.container.tensor_map.get("a_l0a")
+        tensor_a = self.container.tensor_map.get("a_placehold")
         if self.status_controller.input_l1_flag == 1:
             if tensor_a_ub is not None:
                 tensor_a_l1_workspace = self.sch.cache_read(tensor_a, tbe_platform_info.scope_cbuf_fusion, tensor_a_ub)
@@ -1917,7 +1838,7 @@ class GemmSchedule:
     def _get_fusion_tensor(self):
         matmul_tensors = self.container.matmul_tensors
         fusion_list = self.container.fusion_list
-        tensor_c_gm = self.container.TENSOR_MAP.get("c_gm")
+        tensor_c_gm = self.container.tensor_map.get("c_gm")
         if tensor_c_gm != self.res and tensor_c_gm is not None:
             for ten_in in self.container.compute_tensors:
                 if ten_in == self.res and "virtual_res" not in self.root_tensor.op.tag:
@@ -1926,15 +1847,15 @@ class GemmSchedule:
                     fusion_list.append(ten_in)
 
     def _get_reform_tensor(self):
-        tensor_reform_by_vadds = self.container.TENSOR_MAP.get("tensor_reform_by_vadds")
-        tensor_reform_by_vmuls = self.container.TENSOR_MAP.get("tensor_reform_by_vmuls")
-        requant_data_transfer = self.container.TENSOR_MAP.get("requant_data_transfer")
+        tensor_reform_by_vadds = self.container.tensor_map.get("tensor_reform_by_vadds")
+        tensor_reform_by_vmuls = self.container.tensor_map.get("tensor_reform_by_vmuls")
+        requant_data_transfer = self.container.tensor_map.get("requant_data_transfer")
         if tensor_reform_by_vadds is not None:
-            self.container.TENSOR_MAP["tensor_reform"] = tensor_reform_by_vadds
+            self.container.tensor_map["tensor_reform"] = tensor_reform_by_vadds
         if tensor_reform_by_vmuls is not None:
-            self.container.TENSOR_MAP["tensor_reform"] = tensor_reform_by_vmuls
+            self.container.tensor_map["tensor_reform"] = tensor_reform_by_vmuls
         if requant_data_transfer is not None:
-            self.container.TENSOR_MAP["tensor_reform"] = requant_data_transfer
+            self.container.tensor_map["tensor_reform"] = requant_data_transfer
 
     def _get_header_tensor_in_dequant_ew_fusion(self):
         """
@@ -1973,11 +1894,11 @@ class GemmSchedule:
         tensor_fusion_list = self.container.tensor_fusion_list
         if not self.status_controller.dequant_fusion:
             return
-        dequant_nz = self.container.TENSOR_MAP.get("dequant_nz")
-        dequant_nd = self.container.TENSOR_MAP.get("dequant_nd")
-        dequant_tensor = self.container.TENSOR_MAP.get("dequant_tensor")
-        tensor_sqrt = self.container.TENSOR_MAP.get("tensor_sqrt")
-        quant = self.container.TENSOR_MAP.get("quant")
+        dequant_nz = self.container.tensor_map.get("dequant_nz")
+        dequant_nd = self.container.tensor_map.get("dequant_nd")
+        dequant_tensor = self.container.tensor_map.get("dequant_tensor")
+        tensor_sqrt = self.container.tensor_map.get("tensor_sqrt")
+        quant = self.container.tensor_map.get("quant")
         tensor_front_dequant = self._get_compute_tensor(dequant_tensor)
         for ten_in in self.container.compute_tensors:
             if ten_in not in tensor_front_dequant:
@@ -2001,7 +1922,7 @@ class GemmSchedule:
             real_res = self.res.op.input_tensors[0]
         else:
             real_res = self.res
-        tensor_c_gm = self.container.TENSOR_MAP.get("c_gm")
+        tensor_c_gm = self.container.tensor_map.get("c_gm")
         if tensor_c_gm != real_res and tensor_c_gm is not None:
             for ten_in in self.container.compute_tensors:
                 if ten_in in (self.res, real_res):
@@ -2012,9 +1933,9 @@ class GemmSchedule:
         return False
 
     def _get_matmul_dequant_tensor(self):
-        if self.container.TENSOR_MAP.get("quant") is not None and self.container.TENSOR_MAP.get(
+        if self.container.tensor_map.get("quant") is not None and self.container.tensor_map.get(
                 "dequant_nz") is not None:
-            compute_tensors = self._get_compute_tensor(self.container.TENSOR_MAP.get("dequant_nz"))
+            compute_tensors = self._get_compute_tensor(self.container.tensor_map.get("dequant_nz"))
             return compute_tensors
         return []
 
@@ -2086,9 +2007,9 @@ class GemmSchedule:
 
         self.ceil_mode = {"factor_ceil_mode": False, "split_ceil_mode": False}
         self.res.op.attrs["cache_tiling"] = 1
-        skip_bound_check_list = [self.container.TENSOR_MAP.get("a_l1"), self.container.TENSOR_MAP.get("b_l1"),
-            self.container.TENSOR_MAP.get("a_l0a"), self.container.TENSOR_MAP.get("b_l0b"),
-            self.container.TENSOR_MAP.get("c_l0c")]
+        skip_bound_check_list = [self.container.tensor_map.get("a_l1"), self.container.tensor_map.get("b_l1"),
+            self.container.tensor_map.get("a_l0a"), self.container.tensor_map.get("b_l0b"),
+            self.container.tensor_map.get("c_l0c")]
         skip_bound_check_list += self.container.tensors_in_aub
         skip_bound_check_list += self.container.tensors_in_bub
         skip_bound_check_list += self.container.tensors_in_cub
@@ -2218,8 +2139,8 @@ class GemmSchedule:
         """
         if tiling.get("AL0_matrix") == [1, 1, 32, 16, 1, 1]:
             multi_m, multi_n = 1, 1
-            src_dtype = self.container.TENSOR_MAP.get("a_placehold").dtype
-            dst_dtype = self.container.TENSOR_MAP.get("c_gm").dtype
+            src_dtype = self.container.tensor_map.get("a_placehold").dtype
+            dst_dtype = self.container.tensor_map.get("c_gm").dtype
             if src_dtype in ("uint8", "int8") and dst_dtype == "int32":
                 multi_m, multi_n = 2, 2
             if self.status_controller.int8_not_double_m or self.format_a != "ND":
@@ -2263,7 +2184,7 @@ class GemmSchedule:
                 tiling["BL1_shape"] = [block_reduce * block_in, 1, 1, 1]
                 tiling["AL0_matrix"] = [1, block_in, 1, block_reduce, 1, 1]
                 tiling["BL0_matrix"] = [block_in, 1, block_out, block_reduce, 1, 1]
-            b_ub = self.container.TENSOR_MAP.get("b_ub")
+            b_ub = self.container.tensor_map.get("b_ub")
             if (b_ub is not None) and b_ub.dtype in ("int8", "uint8"):
                 tiling["BUB_shape"][1] = tiling.get("BUB_shape")[1] * 2
         return tiling
@@ -2317,14 +2238,14 @@ class GemmSchedule:
 
         op_type_flag = GEMMComputeParam.get_op_type_flag(
             self.format_a, self.format_b, self.status_controller.mmad_mode)
-        n_shape = self.container.TENSOR_MAP.get("b_l0b").shape[-3] * self.block_out
+        n_shape = self.container.tensor_map.get("b_l0b").shape[-3] * self.block_out
         if self.ops_format == "ND":
             tail_block = GEMMComputeParam.check_tail_block(n_shape, self.status_controller.ops_data_flow_mode,
                                                            self.format_out, self.is_dynamic)
         else:
             tail_block = 1
-        a_type = self.container.TENSOR_MAP.get("a_placehold").dtype
-        b_type = self.container.TENSOR_MAP.get("b_placehold").dtype
+        a_type = self.container.tensor_map.get("a_placehold").dtype
+        b_type = self.container.tensor_map.get("b_placehold").dtype
         a_type, b_type = (b_type, a_type) if self.status_controller.mmad_mode == "gemv" else (a_type, b_type)
 
         c_type = self.res.dtype
@@ -2339,12 +2260,12 @@ class GemmSchedule:
             for tensor_item in self.container.compute_inline_list:
                 if tensor_item not in self.container.placeholder_tensors:
                     not_count_list.append(tensor_item)
-            multi_ub = CalculateMultiUB(self.container.TENSOR_MAP.get("c_ub_fract"), self.res, not_count_list)
+            multi_ub = CalculateMultiUB(self.container.tensor_map.get("c_ub_fract"), self.res, not_count_list)
             ub_res, scalar_size = multi_ub.calculate_start()
             new_fused_num = ub_res / (self.DTYPE_WIDTH_MAP.get(c_type) * 2) - 1
         self.container.fuse_num_group = [a_ub_fuse_num, b_ub_fuse_num, new_fused_num]
         mad_type = self.MAD_TYPE.get(str(self.status_controller.ops_data_flow_mode))
-        bias_flag = self.container.TENSOR_MAP.get("c_add_bias") is not None
+        bias_flag = self.container.tensor_map.get("c_add_bias") is not None
         trans_flag = GEMMComputeParam.get_trans_flag(
             self.status_controller.transpose_a, self.status_controller.transpose_b)
         # in gemv or gevm, k need align to 256
@@ -2447,7 +2368,7 @@ class GemmSchedule:
             if is_from_repository:
                 return tiling_res
             # the op gemm not use auto tiling
-            if self.container.TENSOR_MAP.get("alpha") is None:
+            if self.container.tensor_map.get("alpha") is None:
                 if is_from_repository_new:
                     return tiling_res_new
 
@@ -2482,8 +2403,8 @@ class GemmSchedule:
         return is_int82fp32_nd
 
     def _get_tiling_param(self):
-        l0a_shape = [self._get_value(i) for i in self.container.TENSOR_MAP.get("a_l0a").shape]
-        l0b_shape = [self._get_value(i) for i in self.container.TENSOR_MAP.get("b_l0b").shape]
+        l0a_shape = [self._get_value(i) for i in self.container.tensor_map.get("a_l0a").shape]
+        l0b_shape = [self._get_value(i) for i in self.container.tensor_map.get("b_l0b").shape]
         self._print_debug(l0a_shape, "l0a_shape")
         self._print_debug(l0b_shape, "l0b_shape")
         l0a_shape, l0b_shape = (
@@ -2536,11 +2457,11 @@ class GemmSchedule:
     def _tiling_l0_process(self):
         tiling = self.tiling
         if self.status_controller.mmad_mode == "gemv":
-            a_l0a = self.container.TENSOR_MAP.get("b_l0b")
-            b_l0b = self.container.TENSOR_MAP.get("a_l0a")
+            a_l0a = self.container.tensor_map.get("b_l0b")
+            b_l0b = self.container.tensor_map.get("a_l0a")
         else:
-            a_l0a = self.container.TENSOR_MAP.get("a_l0a")
-            b_l0b = self.container.TENSOR_MAP.get("b_l0b")
+            a_l0a = self.container.tensor_map.get("a_l0a")
+            b_l0b = self.container.tensor_map.get("b_l0b")
         if tiling.get("BL0_matrix") != []:
             (
                 self.bl0_tiling_kb,
@@ -2585,7 +2506,7 @@ class GemmSchedule:
             self.cl0_tiling_batch,
             _
         ) = self.tiling.get("CL0_matrix")
-        c_l0c = self.container.TENSOR_MAP.get("c_l0c")
+        c_l0c = self.container.tensor_map.get("c_l0c")
         self._get_l0c_reduce_dims()
 
         self.al0_tiling_m0 = tbe_platform.CUBE_MKN[a_l0a.dtype]["mac"][0]
@@ -2601,7 +2522,7 @@ class GemmSchedule:
         self.cl0_tiling_batch = 1
 
     def _get_l0c_reduce_dims(self):
-        c_l0c = self.container.TENSOR_MAP.get("c_l0c")
+        c_l0c = self.container.tensor_map.get("c_l0c")
         self.c_col_k1, self.c_col_k0 = [self._get_value(ax.dom.extent) for ax in c_l0c.op.reduce_axis]
         if self.is_dynamic:
             if self.status_controller.split_k_axis_by_tiling:
@@ -2626,11 +2547,11 @@ class GemmSchedule:
                 al1_ma = self.dynamic_m
             else:
                 if self.status_controller.mmad_mode != "gemv":
-                    al0_shape = [self._get_value(i) for i in self.container.TENSOR_MAP.get("a_l0a").shape]
+                    al0_shape = [self._get_value(i) for i in self.container.tensor_map.get("a_l0a").shape]
                     al1_tiling_k = al0_shape[-3] * al0_shape[-1]
                     al1_ma = al0_shape[-4]
                 else:
-                    al0_shape = [self._get_value(i) for i in self.container.TENSOR_MAP.get("b_l0b").shape]
+                    al0_shape = [self._get_value(i) for i in self.container.tensor_map.get("b_l0b").shape]
                     al1_tiling_k = al0_shape[-4] * al0_shape[-1]
                     al1_ma = al0_shape[-3]
 
@@ -2657,11 +2578,11 @@ class GemmSchedule:
                 bl1_n = self.dynamic_n
             else:
                 if self.status_controller.mmad_mode != "gemv":
-                    bl0_shape = [self._get_value(i) for i in self.container.TENSOR_MAP.get("b_l0b").shape]
+                    bl0_shape = [self._get_value(i) for i in self.container.tensor_map.get("b_l0b").shape]
                     bl1_tiling_k = bl0_shape[-4] * bl0_shape[-1]
                     bl1_n = bl0_shape[-3]
                 else:
-                    bl0_shape = [self._get_value(i) for i in self.container.TENSOR_MAP.get("a_l0a").shape]
+                    bl0_shape = [self._get_value(i) for i in self.container.tensor_map.get("a_l0a").shape]
                     bl1_tiling_k = bl0_shape[-3] * bl0_shape[-1]
                     bl1_n = bl0_shape[-4]
 
@@ -2725,7 +2646,7 @@ class GemmSchedule:
             c_ub_tiling_shape.insert(0, cub_tiling_batch)
             affine_cub.insert(0, cub_tiling_batch)
 
-        c_ub_fract = self.container.TENSOR_MAP.get("c_ub_fract")
+        c_ub_fract = self.container.tensor_map.get("c_ub_fract")
         c_ub_shape = [self._get_value(i) for i in c_ub_fract.shape]
         c_ub_shape = self._get_dynamic_cub_shape(c_ub_shape)
         if self.status_controller.split_k_axis_by_tiling:
@@ -2817,7 +2738,7 @@ class GemmSchedule:
             affine_l0c.insert(0, self.cl0_tiling_batch)
             cl0_tiling_shape.insert(0, self.cl0_tiling_batch)
 
-        c_l0c = self.container.TENSOR_MAP.get("c_l0c")
+        c_l0c = self.container.tensor_map.get("c_l0c")
         c_l0c_shape = [self._get_value(i) for i in c_l0c.shape]
         c_l0c_shape = self._get_dynamic_l0c_shape(c_l0c_shape, self.status_controller.have_batch)
         if self.status_controller.split_k_axis_by_tiling:
@@ -2859,7 +2780,7 @@ class GemmSchedule:
             pass
         elif status == Compare.EQUAL:
             self.status_controller.c_l0c_attach_status = self.status_controller.c_ub_attach_status
-            c_ub_fract = self.container.TENSOR_MAP.get("c_ub_fract")
+            c_ub_fract = self.container.tensor_map.get("c_ub_fract")
             self.sch_agent.same_attach(c_l0c, c_ub_fract)
         elif status == Compare.GREATE_EQ:
             if self.status_controller.quant_fusion or self.status_controller.requant_fusion:
@@ -2899,13 +2820,13 @@ class GemmSchedule:
 
     def _get_affine_m_full_load_dynamic(self):
         # now only support fractal
-        tiling_m, _, _, _ = self.container.TENSOR_MAP.get("a_l0a").shape
+        tiling_m, _, _, _ = self.container.tensor_map.get("a_l0a").shape
         tiling_m = self._int_ceil_div(tiling_m, self.tiling.get("block_dim")[2])
         return tiling_m
 
     def _get_affine_n_full_load_dynamic(self):
         # now only support fractal
-        _, tiling_n, _, _ = self.container.TENSOR_MAP.get("b_l0b").shape
+        _, tiling_n, _, _ = self.container.tensor_map.get("b_l0b").shape
         tiling_n = self._int_ceil_div(tiling_n, self.tiling.get("block_dim")[1])
         return tiling_n
 
@@ -2914,7 +2835,7 @@ class GemmSchedule:
             affine_param.insert(0, 1)
 
     def _get_affine_k_full_load_dynamic(self):
-        _, tiling_k, _, _ = self.container.TENSOR_MAP.get("a_l0a").shape
+        _, tiling_k, _, _ = self.container.tensor_map.get("a_l0a").shape
         return tiling_k
 
     def _al0_process(self):
@@ -2930,11 +2851,11 @@ class GemmSchedule:
             self.al0_tiling_k0
         ]
         tiling_ori_l0a = [self.al0_tiling_ma, self.al0_tiling_ka, self.al0_tiling_m0, self.al0_tiling_k0]
-        a_l0a = self.container.TENSOR_MAP.get("a_l0a")
+        a_l0a = self.container.tensor_map.get("a_l0a")
         if self.status_controller.mmad_mode == "gemv":
-            a_l0a = self.container.TENSOR_MAP.get("b_l0b")
+            a_l0a = self.container.tensor_map.get("b_l0b")
         else:
-            a_l0a = self.container.TENSOR_MAP.get("a_l0a")
+            a_l0a = self.container.tensor_map.get("a_l0a")
         a_l0a_shape = [self._get_value(i) for i in a_l0a.shape]
         a_l0a_shape = self._get_dynamic_l0a_shape(a_l0a_shape)
         al0_tiling_shape = [self.al0_tiling_ma, self.al0_tiling_m0, self.al0_tiling_ka, self.al0_tiling_k0]
@@ -2989,11 +2910,11 @@ class GemmSchedule:
         elif status_ori == Compare.EQUAL:
             pass
         elif status == Compare.EQUAL:
-            self.sch_agent.same_attach(a_l0a, self.container.TENSOR_MAP.get("c_l0c"))
+            self.sch_agent.same_attach(a_l0a, self.container.tensor_map.get("c_l0c"))
             self.status_controller.al0_attach_status = self.status_controller.c_l0c_attach_status
         elif status == Compare.LESS_EQ:
             self.sch_agent.attach_at(
-                a_l0a, self.container.TENSOR_MAP.get("c_l0c"),
+                a_l0a, self.container.tensor_map.get("c_l0c"),
                 affine_shape=l0a2l0c_affine_shape,
                 ceil_mode_dict=self.ceil_mode
             )
@@ -3044,9 +2965,9 @@ class GemmSchedule:
 
         cl0_tiling_shape = [self.cl0_tiling_nc, self.cl0_tiling_n0, self.c_col_k1, self.c_col_k0]
         if self.status_controller.mmad_mode == "gemv":
-            b_l0b = self.container.TENSOR_MAP.get("a_l0a")
+            b_l0b = self.container.tensor_map.get("a_l0a")
         else:
-            b_l0b = self.container.TENSOR_MAP.get("b_l0b")
+            b_l0b = self.container.tensor_map.get("b_l0b")
         b_l0b_shape = [self._get_value(i) for i in b_l0b.shape]
         b_l0b_shape = self._get_dynamic_l0b_shape(b_l0b_shape)
         if self.status_controller.have_batch_b:
@@ -3092,10 +3013,10 @@ class GemmSchedule:
         if status_ori == Compare.EQUAL and (not self.bind_core_when_full_load_bl1):
             pass
         elif status == Compare.EQUAL:
-            self.sch_agent.same_attach(b_l0b, self.container.TENSOR_MAP.get("c_l0c"))
+            self.sch_agent.same_attach(b_l0b, self.container.tensor_map.get("c_l0c"))
         elif status == Compare.LESS_EQ:
             self.sch_agent.attach_at(
-                b_l0b, self.container.TENSOR_MAP.get("c_l0c"),
+                b_l0b, self.container.tensor_map.get("c_l0c"),
                 affine_shape=l0b2l0c_affine_shape, ceil_mode_dict=self.ceil_mode)
         elif status == Compare.GREATE_EQ:
             l0b2out_affine_shape = self._fix_affine_out_int8(b_l0b.dtype, l0b2out_affine_shape)
@@ -3135,13 +3056,13 @@ class GemmSchedule:
         l1_ka = self._ceil_div(al1_tiling_k, al0_tiling_k0)
 
         a_l1 = (
-            self.container.TENSOR_MAP.get("b_l1") if self.status_controller.mmad_mode == "gemv"
-            else self.container.TENSOR_MAP.get("a_l1"))
+            self.container.tensor_map.get("b_l1") if self.status_controller.mmad_mode == "gemv"
+            else self.container.tensor_map.get("a_l1"))
         tiling_ori_al1 = [l1_ma, l1_ka]
 
         a_l0a = (
-            self.container.TENSOR_MAP.get("b_l0b") if self.status_controller.mmad_mode == "gemv"
-            else self.container.TENSOR_MAP.get("a_l0a"))
+            self.container.tensor_map.get("b_l0b") if self.status_controller.mmad_mode == "gemv"
+            else self.container.tensor_map.get("a_l0a"))
         a_l0a_shape = [self._get_value(i) for i in a_l0a.shape]
         m_shape = a_l0a_shape[-4]
         k_shape = a_l0a_shape[-3]
@@ -3229,11 +3150,11 @@ class GemmSchedule:
                 self.sch_agent.attach_at(a_l1, self.root_tensor, affine_shape=l1a2out_affine_shape,
                     ceil_mode_dict=self.ceil_mode)
             else:
-                self.sch_agent.same_attach(a_l1, self.container.TENSOR_MAP.get("c_l0c"))
+                self.sch_agent.same_attach(a_l1, self.container.tensor_map.get("c_l0c"))
         elif status == Compare.LESS_EQ:
             self.status_controller.al1_attach_status = "c_l0c"
             self.sch_agent.attach_at(
-                a_l1, self.container.TENSOR_MAP.get("c_l0c"),
+                a_l1, self.container.tensor_map.get("c_l0c"),
                 affine_shape=l1a2l0c_affine_shape, ceil_mode_dict=self.ceil_mode)
         elif status == Compare.GREATE_EQ:
             self.status_controller.al1_attach_status = "c_gm"
@@ -3280,16 +3201,16 @@ class GemmSchedule:
         cl0_tiling_shape = [cl0_tiling_nc, cl0_tiling_n0, self.c_col_k1, self.c_col_k0]
 
         b_l1 = (
-            self.container.TENSOR_MAP.get("a_l1") if self.status_controller.mmad_mode == "gemv"
-            else self.container.TENSOR_MAP.get("b_l1"))
+            self.container.tensor_map.get("a_l1") if self.status_controller.mmad_mode == "gemv"
+            else self.container.tensor_map.get("b_l1"))
         tiling_ori_bl1 = [l1_kb, l1_nb]
         if self.is_dynamic:
             n_shape = self.dynamic_n
             k_shape = self.dynamic_k
         else:
             b_l0b = (
-                self.container.TENSOR_MAP.get("a_l0a") if self.status_controller.mmad_mode == "gemv"
-                else self.container.TENSOR_MAP.get("b_l0b"))
+                self.container.tensor_map.get("a_l0a") if self.status_controller.mmad_mode == "gemv"
+                else self.container.tensor_map.get("b_l0b"))
             b_l0b_shape = [self._get_value(i) for i in b_l0b.shape]
             n_shape = b_l0b_shape[-3]
             k_shape = b_l0b_shape[-4]
@@ -3377,11 +3298,11 @@ class GemmSchedule:
                     b_l1, self.root_tensor, affine_shape=l1b2out_affine_shape, ceil_mode_dict=self.ceil_mode)
             else:
                 self.status_controller.bl1_attach_status = self.status_controller.c_l0c_attach_status
-                self.sch_agent.same_attach(b_l1, self.container.TENSOR_MAP.get("c_l0c"))
+                self.sch_agent.same_attach(b_l1, self.container.tensor_map.get("c_l0c"))
         elif status == Compare.LESS_EQ:
             self.status_controller.bl1_attach_status = "c_l0c"
             self.sch_agent.attach_at(
-                b_l1, self.container.TENSOR_MAP.get("c_l0c"),
+                b_l1, self.container.tensor_map.get("c_l0c"),
                 affine_shape=l1b2l0c_affine_shape, ceil_mode_dict=self.ceil_mode)
         elif status == Compare.GREATE_EQ:
             self.status_controller.bl1_attach_status = "c_gm"
@@ -3437,7 +3358,7 @@ class GemmSchedule:
     def _aub_process(self):
 
         self._print_debug("-------debug info in aub_process-------")
-        a_ub = self.container.TENSOR_MAP.get("a_ub")
+        a_ub = self.container.tensor_map.get("a_ub")
         if a_ub in (None, []):
             return
         transpose_a = self.status_controller.transpose_a
@@ -3552,19 +3473,19 @@ class GemmSchedule:
             pass
         elif status_l1 == Compare.EQUAL:
             self.status_controller.aub_attach_status = self.status_controller.al1_attach_status
-            self.sch_agent.same_attach(a_ub, self.container.TENSOR_MAP.get("a_l1"))
+            self.sch_agent.same_attach(a_ub, self.container.tensor_map.get("a_l1"))
         elif status_l1 == Compare.LESS_EQ:
             self.status_controller.aub_attach_status = "a_l1"
             self.sch_agent.attach_at(
-                a_ub, self.container.TENSOR_MAP.get("a_l1"), aub_l1_affine_shape, ceil_mode_dict=self.ceil_mode)
+                a_ub, self.container.tensor_map.get("a_l1"), aub_l1_affine_shape, ceil_mode_dict=self.ceil_mode)
         else:
             if status_l0c == Compare.EQUAL:
                 self.status_controller.aub_attach_status = "c_gm"
-                self.sch_agent.same_attach(a_ub, self.container.TENSOR_MAP.get("c_l0c"))
+                self.sch_agent.same_attach(a_ub, self.container.tensor_map.get("c_l0c"))
             elif status_l0c == Compare.LESS_EQ:
                 self.status_controller.aub_attach_status = "c_l0c"
                 self.sch_agent.attach_at(
-                    a_ub, self.container.TENSOR_MAP.get("c_l0c"),
+                    a_ub, self.container.tensor_map.get("c_l0c"),
                     affine_shape=aub_l0c_affine_shape, ceil_mode_dict=self.ceil_mode)
             else:
                 self.status_controller.aub_attach_status = "c_gm"
@@ -3605,7 +3526,7 @@ class GemmSchedule:
 
     def _bub_process(self):
 
-        b_ub = self.container.TENSOR_MAP.get("b_ub")
+        b_ub = self.container.tensor_map.get("b_ub")
         if b_ub in (None, []):
             return
         self._print_debug("-------debug info in bub_process-------")
@@ -3718,19 +3639,19 @@ class GemmSchedule:
             pass
         elif status_l1 == Compare.EQUAL:
             self.status_controller.bub_attach_status = self.status_controller.bl1_attach_status
-            self.sch_agent.same_attach(b_ub, self.container.TENSOR_MAP.get("b_l1"))
+            self.sch_agent.same_attach(b_ub, self.container.tensor_map.get("b_l1"))
         elif status_l1 == Compare.LESS_EQ:
             self.status_controller.bub_attach_status = "b_l1"
             self.sch_agent.attach_at(
-                b_ub, self.container.TENSOR_MAP.get("b_l1"), bub_l1_affine_shape, ceil_mode_dict=self.ceil_mode)
+                b_ub, self.container.tensor_map.get("b_l1"), bub_l1_affine_shape, ceil_mode_dict=self.ceil_mode)
         else:
             if status_l0c == Compare.EQUAL:
                 self.status_controller.bub_attach_status = "c_gm"
-                self.sch_agent.same_attach(b_ub, self.container.TENSOR_MAP.get("c_l0c"))
+                self.sch_agent.same_attach(b_ub, self.container.tensor_map.get("c_l0c"))
             elif status_l0c == Compare.LESS_EQ:
                 self.status_controller.bub_attach_status = "c_l0c"
                 self.sch_agent.attach_at(
-                    b_ub, self.container.TENSOR_MAP.get("c_l0c"),
+                    b_ub, self.container.tensor_map.get("c_l0c"),
                     affine_shape=bub_l0c_affine_shape, ceil_mode_dict=self.ceil_mode)
             else:
                 self.status_controller.bub_attach_status = "c_gm"
@@ -3836,7 +3757,7 @@ class GemmSchedule:
 
         batch_dim, n_dim, m_dim, reduce_dim = self.tiling.get("block_dim")
         if self.status_controller.reduce_fusion:
-            batch_dim = self._get_value(self.container.TENSOR_MAP.get("c_l0c").shape)[0]
+            batch_dim = self._get_value(self.container.tensor_map.get("c_l0c").shape)[0]
         if self.cache_tiling:
             ax_reduce = axis_mn[0] if self.status_controller.split_k_axis_by_tiling else None
             axes_list = self._bind_core_cache_tiling(self.root_tensor, [ax_batch, ax_reduce, ax_n, ax_m])
@@ -3869,51 +3790,51 @@ class GemmSchedule:
         self._set_requant_transfer_buffer_align()
         is_int82fp32_nd = self._is_int82fp32_nd()
 
-        self._buffer_align_func(self.container.TENSOR_MAP.get("b_transpose"), have_batch_b, (1, 32), (1, 32))
-        self._buffer_align_func(self.container.TENSOR_MAP.get("a_transpose"), have_batch_a, (1, 32), (1, 32))
+        self._buffer_align_func(self.container.tensor_map.get("b_transpose"), have_batch_b, (1, 32), (1, 32))
+        self._buffer_align_func(self.container.tensor_map.get("a_transpose"), have_batch_a, (1, 32), (1, 32))
         if is_int82fp32_nd:
-            self._buffer_align_func(self.container.TENSOR_MAP.get("b_ub"), have_batch_b, (1, 32), (1, 32))
-            self._buffer_align_func(self.container.TENSOR_MAP.get("a_ub"), have_batch_a, (1, 32), (1, 32))
+            self._buffer_align_func(self.container.tensor_map.get("b_ub"), have_batch_b, (1, 32), (1, 32))
+            self._buffer_align_func(self.container.tensor_map.get("a_ub"), have_batch_a, (1, 32), (1, 32))
 
         if self.format_out == "ND":
-            self._buffer_align_func(self.container.TENSOR_MAP.get("c_add_bias_ub"), have_batch, (1, 16), (1, 16))
-            self._buffer_align_func(self.container.TENSOR_MAP.get("beta_bias"), have_batch, (1, 16), (1, 16))
+            self._buffer_align_func(self.container.tensor_map.get("c_add_bias_ub"), have_batch, (1, 16), (1, 16))
+            self._buffer_align_func(self.container.tensor_map.get("beta_bias"), have_batch, (1, 16), (1, 16))
 
-        cast_to_fp16 = self.container.TENSOR_MAP.get("cast_to_fp16")
+        cast_to_fp16 = self.container.tensor_map.get("cast_to_fp16")
         if cast_to_fp16 is not None:
             if len(cast_to_fp16.shape) in (2, 3):
-                self._buffer_align_func(self.container.TENSOR_MAP.get("cast_to_fp16"), have_batch, (1, 16), (1, 16))
+                self._buffer_align_func(self.container.tensor_map.get("cast_to_fp16"), have_batch, (1, 16), (1, 16))
             else:
-                self._buffer_align_func(self.container.TENSOR_MAP.get("cast_to_fp16"),
+                self._buffer_align_func(self.container.tensor_map.get("cast_to_fp16"),
                     have_batch, (1, 1), (1, 1), (1, 16), (1, 16))
 
         if self.status_controller.split_k_axis_by_tiling:
-            self._buffer_align_func(self.container.TENSOR_MAP.get("c_ub_fract"), have_batch, (1, 1), (1, 1), (1, 1),
+            self._buffer_align_func(self.container.tensor_map.get("c_ub_fract"), have_batch, (1, 1), (1, 1), (1, 1),
                                     (1, 16), (1, 16))
         else:
-            self._buffer_align_func(self.container.TENSOR_MAP.get("c_ub_fract"), have_batch, (1, 1), (1, 1), (1, 16),
+            self._buffer_align_func(self.container.tensor_map.get("c_ub_fract"), have_batch, (1, 1), (1, 1), (1, 16),
                                     (1, 16))
         self._buffer_align_func(
-            self.container.TENSOR_MAP.get("bias_l0c"), have_batch, (1, 1), (1, 1), (1, 16), (1, 16))
+            self.container.tensor_map.get("bias_l0c"), have_batch, (1, 1), (1, 1), (1, 16), (1, 16))
         self._buffer_align_func(
-            self.container.TENSOR_MAP.get("c_add_bias"), have_batch, (1, 1), (1, 1), (1, 16), (1, 16))
+            self.container.tensor_map.get("c_add_bias"), have_batch, (1, 1), (1, 1), (1, 16), (1, 16))
 
         if self.status_controller.mmad_mode == "gevm":
             self._buffer_align_func(
-                self.container.TENSOR_MAP.get("a_l1"), have_batch_a, (1, 1), (1, 1), (1, 16), (1, 16))
+                self.container.tensor_map.get("a_l1"), have_batch_a, (1, 1), (1, 1), (1, 16), (1, 16))
 
     def _double_buffer(self, a_run_once, b_run_once):
         tiling = self.tiling
         if (tiling.get("manual_pingpong_buffer").get("AL1_pbuffer") == 2
             and (a_run_once == self.ALLOCATE_OFF)):
-            self.sch[self.container.TENSOR_MAP.get("a_l1")].double_buffer()
+            self.sch[self.container.tensor_map.get("a_l1")].double_buffer()
         if (tiling.get("manual_pingpong_buffer").get("BL1_pbuffer") == 2
             and (b_run_once == self.ALLOCATE_OFF)):
-            self.sch[self.container.TENSOR_MAP.get("b_l1")].double_buffer()
+            self.sch[self.container.tensor_map.get("b_l1")].double_buffer()
         if tiling.get("manual_pingpong_buffer").get("AL0_pbuffer") == 2:
-            self.sch[self.container.TENSOR_MAP.get("a_l0a")].double_buffer()
+            self.sch[self.container.tensor_map.get("a_l0a")].double_buffer()
         if tiling.get("manual_pingpong_buffer").get("BL0_pbuffer") == 2:
-            self.sch[self.container.TENSOR_MAP.get("b_l0b")].double_buffer()
+            self.sch[self.container.tensor_map.get("b_l0b")].double_buffer()
         if tiling.get("manual_pingpong_buffer").get("CL0_pbuffer") == 2:
             for tensor in self.container.tensors_in_l0c:
                 self.sch[tensor].double_buffer()
@@ -3922,46 +3843,52 @@ class GemmSchedule:
 
     def _double_buffer_aub_bub(self):
         tiling = self.tiling
+        params = {"container": self.container, "status_controller": self.status_controller}
         if tiling.get("manual_pingpong_buffer").get("AUB_pbuffer") == 2:
-            if self.container.TENSOR_MAP.get("a_ub") is not None and (not self.is_dynamic or self.cache_tiling):
-                self.sch[self.container.TENSOR_MAP.get("a_ub")].preload()
-                if (self.container.TENSOR_MAP.get("a_ub_aligned") is not None and
-                    self.container.TENSOR_MAP.get("a_ub_general") is not None):
-                    self.sch[self.container.TENSOR_MAP.get("a_ub_aligned")].preload()
-                    self.sch[self.container.TENSOR_MAP.get("a_ub_general")].preload()
+            if (self.container.tensor_map.get("a_ub") is not None and
+                (not self.is_dynamic or self.cache_tiling) and
+                self.buffer_checker.check_aub_preload(tiling, params)):
+                self.sch[self.container.tensor_map.get("a_ub")].preload()
+                if (self.container.tensor_map.get("a_ub_aligned") is not None and
+                    self.container.tensor_map.get("a_ub_general") is not None):
+                    self.sch[self.container.tensor_map.get("a_ub_aligned")].preload()
+                    self.sch[self.container.tensor_map.get("a_ub_general")].preload()
             for tensor in self.container.tensors_in_aub:
                 self.sch[tensor].double_buffer()
         if tiling.get("manual_pingpong_buffer").get("BUB_pbuffer") == 2:
-            if self.container.TENSOR_MAP.get("b_ub") is not None and (not self.is_dynamic or self.cache_tiling):
-                self.sch[self.container.TENSOR_MAP.get("b_ub")].preload()
-                if (self.container.TENSOR_MAP.get("b_ub_aligned") is not None and
-                    self.container.TENSOR_MAP.get("b_ub_general") is not None):
-                    self.sch[self.container.TENSOR_MAP.get("b_ub_aligned")].preload()
-                    self.sch[self.container.TENSOR_MAP.get("b_ub_general")].preload()
+            if (self.container.tensor_map.get("b_ub") is not None and
+                (not self.is_dynamic or self.cache_tiling) and
+                self.buffer_checker.check_bub_preload(tiling, params)):
+                self.sch[self.container.tensor_map.get("b_ub")].preload()
+                if (self.container.tensor_map.get("b_ub_aligned") is not None and
+                    self.container.tensor_map.get("b_ub_general") is not None):
+                    self.sch[self.container.tensor_map.get("b_ub_aligned")].preload()
+                    self.sch[self.container.tensor_map.get("b_ub_general")].preload()
             for tensor in self.container.tensors_in_bub:
                 self.sch[tensor].double_buffer()
 
     def _double_buffer_cub(self):
         tiling = self.tiling
+        params = {"container": self.container, "status_controller": self.status_controller}
         if tiling.get("manual_pingpong_buffer").get("CUB_pbuffer") == 2:
-            bias_ub = self.container.TENSOR_MAP.get("bias_ub")
+            bias_ub = self.container.tensor_map.get("bias_ub")
             if bias_ub is not None:
-                if not self.is_dynamic:
+                if not self.is_dynamic and self.buffer_checker.check_bias_preload(tiling, params):
                     self.sch[bias_ub].preload()
                 self.sch[bias_ub].double_buffer()
 
                 if self.status_controller.need_init_bias:
-                    if not self.is_dynamic:
-                        self.sch[self.container.TENSOR_MAP.get('init_value_of_bias_ub')].preload()
-                        self.sch[self.container.TENSOR_MAP.get('virtual_add_bias')].preload()
-                    self.sch[self.container.TENSOR_MAP.get('init_value_of_bias_ub')].double_buffer()
-                    self.sch[self.container.TENSOR_MAP.get('virtual_add_bias')].double_buffer()
+                    if not self.is_dynamic and self.buffer_checker.check_bias_preload(tiling, params):
+                        self.sch[self.container.tensor_map.get('init_value_of_bias_ub')].preload()
+                        self.sch[self.container.tensor_map.get('virtual_add_bias')].preload()
+                    self.sch[self.container.tensor_map.get('init_value_of_bias_ub')].double_buffer()
+                    self.sch[self.container.tensor_map.get('virtual_add_bias')].double_buffer()
             for tensor in self.container.tensors_in_cub:
-                if tensor in (self.res, self.container.TENSOR_MAP.get("c_gm")):
+                if tensor in (self.res, self.container.tensor_map.get("c_gm")):
                     continue
                 self.sch[tensor].double_buffer()
             if self.status_controller.fusion_multi_output_flag:
-                self.sch[self.container.TENSOR_MAP.get("c_gm")].double_buffer()
+                self.sch[self.container.tensor_map.get("c_gm")].double_buffer()
 
     def _emit_insn_func(self, insn_tensor, insn_axis_num, insn_tag, insn_dict=None, mode=0, offset=0):
         normal_mode = 0
@@ -3984,7 +3911,7 @@ class GemmSchedule:
 
     def _do_emit_insn_l0c(self):
         # emit insn for l0c
-        c_l0c = self.container.TENSOR_MAP.get("c_l0c")
+        c_l0c = self.container.tensor_map.get("c_l0c")
         scopes_intrins = self.sch_agent[c_l0c].intrin_scopes(6)
         scope_insn = scopes_intrins[0]
         if self.status_controller.split_k_axis_by_tiling:
@@ -4005,7 +3932,7 @@ class GemmSchedule:
             )
             mad_dict = {"mad_pattern": self.status_controller.mad_pattern, "k_outer": [inner_ko]}
 
-        if self.container.TENSOR_MAP.get("c_add_bias") is not None:
+        if self.container.tensor_map.get("c_add_bias") is not None:
             self.sch_agent[c_l0c].pragma(scope_insn, "replace_output", 0)
             mad_dict["init_bias"] = 1
 
@@ -4017,42 +3944,42 @@ class GemmSchedule:
         self._emit_insn_nz_to_nd()
 
         # only in |gemm|ND Nz| all data type|
-        self._emit_insn_func(self.container.TENSOR_MAP.get("alpha_ub"), 0, "dma_copy")
-        self._emit_insn_func(self.container.TENSOR_MAP.get("beta_ub"), 0, "dma_copy")
-        self._emit_insn_func(self.container.TENSOR_MAP.get("alpha_c"), 0, "vector_muls", mode=1)
-        self._emit_insn_func(self.container.TENSOR_MAP.get("beta_bias"), 0, "vector_muls")
-        self._emit_insn_func(self.container.TENSOR_MAP.get("bias_ub"), 0, "dma_copy")
+        self._emit_insn_func(self.container.tensor_map.get("alpha_ub"), 0, "dma_copy")
+        self._emit_insn_func(self.container.tensor_map.get("beta_ub"), 0, "dma_copy")
+        self._emit_insn_func(self.container.tensor_map.get("alpha_c"), 0, "vector_muls", mode=1)
+        self._emit_insn_func(self.container.tensor_map.get("beta_bias"), 0, "vector_muls")
+        self._emit_insn_func(self.container.tensor_map.get("bias_ub"), 0, "dma_copy")
         # only in matmul ND out solve nonline problem
-        self._emit_insn_func(self.container.TENSOR_MAP.get("before_c_gm"), 0, "vector_muls")
+        self._emit_insn_func(self.container.tensor_map.get("before_c_gm"), 0, "vector_muls")
 
         if self.status_controller.need_init_bias:
-            self._emit_insn_func(self.container.TENSOR_MAP.get("init_value_of_bias_ub"), 0, "dma_copy")
-            self._emit_insn_func(self.container.TENSOR_MAP.get("virtual_add_bias"), 0, "phony_insn")
+            self._emit_insn_func(self.container.tensor_map.get("init_value_of_bias_ub"), 0, "dma_copy")
+            self._emit_insn_func(self.container.tensor_map.get("virtual_add_bias"), 0, "phony_insn")
 
         # only in |matmul|ND Nz|all data type|
-        self._emit_insn_func(self.container.TENSOR_MAP.get("bias_l0c"), 0, "dma_copy")
-        self._emit_insn_func(self.container.TENSOR_MAP.get("c_add_bias"), 0, "phony_insn")
-        self._pragma_func(self.container.TENSOR_MAP.get("bias_l0c"), 0, "reuse_output")
-        self._pragma_func(self.container.TENSOR_MAP.get("c_add_bias"), 0, "replace_output")
+        self._emit_insn_func(self.container.tensor_map.get("bias_l0c"), 0, "dma_copy")
+        self._emit_insn_func(self.container.tensor_map.get("c_add_bias"), 0, "phony_insn")
+        self._pragma_func(self.container.tensor_map.get("bias_l0c"), 0, "reuse_output")
+        self._pragma_func(self.container.tensor_map.get("c_add_bias"), 0, "replace_output")
 
         #only in |gemm|ND Nz|fp162fp16|
-        self._emit_insn_func(self.container.TENSOR_MAP.get("alpha_fp162fp32"), 0, "vector_conv")
-        self._emit_insn_func(self.container.TENSOR_MAP.get("beta_fp162fp32"), 0, "vector_conv")
-        self._emit_insn_func(self.container.TENSOR_MAP.get("bias_cast_to_fp32"), 0, "vector_conv", mode=1)
+        self._emit_insn_func(self.container.tensor_map.get("alpha_fp162fp32"), 0, "vector_conv")
+        self._emit_insn_func(self.container.tensor_map.get("beta_fp162fp32"), 0, "vector_conv")
+        self._emit_insn_func(self.container.tensor_map.get("bias_cast_to_fp32"), 0, "vector_conv", mode=1)
 
-        c_ub_fract = self.container.TENSOR_MAP.get("c_ub_fract")
+        c_ub_fract = self.container.tensor_map.get("c_ub_fract")
         cast_to_fp16_cmd = "dma_copy" if self.status_controller.compute_inline_c_ub_fract else "vector_conv"
         # only in |gemm matmul|ND Nz|to fp16|
-        self._emit_insn_func(self.container.TENSOR_MAP.get("cast_to_fp16"), 0, cast_to_fp16_cmd, mode=1)
+        self._emit_insn_func(self.container.tensor_map.get("cast_to_fp16"), 0, cast_to_fp16_cmd, mode=1)
 
         # only in gemm int82fp16
-        self._emit_insn_func(self.container.TENSOR_MAP.get("a_int82fp16"), 0, "vector_conv", mode=1)
-        self._emit_insn_func(self.container.TENSOR_MAP.get("b_int82fp16"), 0, "vector_conv", mode=1)
+        self._emit_insn_func(self.container.tensor_map.get("a_int82fp16"), 0, "vector_conv", mode=1)
+        self._emit_insn_func(self.container.tensor_map.get("b_int82fp16"), 0, "vector_conv", mode=1)
 
         # common
-        self._emit_insn_func(self.container.TENSOR_MAP.get("a_l0a"), 0, "dma_copy", mode=1)
-        self._emit_insn_func(self.container.TENSOR_MAP.get("a_l1"), 0, "dma_copy", mode=1)
-        a_l0a = self.container.TENSOR_MAP.get("a_l0a")
+        self._emit_insn_func(self.container.tensor_map.get("a_l0a"), 0, "dma_copy", mode=1)
+        self._emit_insn_func(self.container.tensor_map.get("a_l1"), 0, "dma_copy", mode=1)
+        a_l0a = self.container.tensor_map.get("a_l0a")
         # add pragma for pass to check whether or not the address is continus and combine cce orders
         if self.cache_tiling:
             axis_list = [self.sch[a_l0a].leaf_iter_vars[-3], self.sch[a_l0a].leaf_iter_vars[-4]]
@@ -4060,9 +3987,9 @@ class GemmSchedule:
         self._tensor_b_emit_insn()
 
         # fusion
-        c_ub_fract = self.container.TENSOR_MAP.get("c_ub_fract")
+        c_ub_fract = self.container.tensor_map.get("c_ub_fract")
         if c_ub_fract.op.attrs["scale_drq"].value != "ENABLE":
-            self._emit_insn_func(self.container.TENSOR_MAP.get("c_ub_fract"), 0, "dma_copy", mode=1)
+            self._emit_insn_func(self.container.tensor_map.get("c_ub_fract"), 0, "dma_copy", mode=1)
         else:
             self._set_quant_by_params()
 
@@ -4076,14 +4003,14 @@ class GemmSchedule:
         self._do_emit_insn_multi_output()
 
         if self.status_controller.reduce_fusion:
-            self._emit_insn_func(self.container.TENSOR_MAP.get("res_atomic_add_ub"), 0, "dma_copy", mode=1)
+            self._emit_insn_func(self.container.tensor_map.get("res_atomic_add_ub"), 0, "dma_copy", mode=1)
 
         self._emit_insn_after_split_k()
 
     def _do_emit_insn_multi_output(self):
         if self.status_controller.gm_ub is not None:
             if not self.status_controller.matmul_multi_output_flag:
-                self._emit_insn_func(self.container.TENSOR_MAP.get("c_gm"), 0, "dma_copy", mode=1)
+                self._emit_insn_func(self.container.tensor_map.get("c_gm"), 0, "dma_copy", mode=1)
             else:
                 self._emit_insn_for_multi_output()
             self._emit_insn_func(self.status_controller.gm_ub, 0, "phony_insn", mode=1)
@@ -4093,39 +4020,39 @@ class GemmSchedule:
             self._emit_insn_func(self.root_tensor, 0, "phony_insn", mode=1)
 
     def _emit_insn_for_multi_output(self):
-        if len(self.container.TENSOR_MAP.get("c_gm").shape) in (4, 5):
-            gm_n_outer, gm_n_inner = self.sch_agent[self.container.TENSOR_MAP.get("c_gm")].split(
-                self.container.TENSOR_MAP.get("c_gm").op.axis[-4], nparts=1)
-            gm_m_outer, gm_m_inner = self.sch_agent[self.container.TENSOR_MAP.get("c_gm")].split(
-                self.container.TENSOR_MAP.get("c_gm").op.axis[-3], nparts=1)
-            self.sch_agent[self.container.TENSOR_MAP.get("c_gm")].reorder(
+        if len(self.container.tensor_map.get("c_gm").shape) in (4, 5):
+            gm_n_outer, gm_n_inner = self.sch_agent[self.container.tensor_map.get("c_gm")].split(
+                self.container.tensor_map.get("c_gm").op.axis[-4], nparts=1)
+            gm_m_outer, gm_m_inner = self.sch_agent[self.container.tensor_map.get("c_gm")].split(
+                self.container.tensor_map.get("c_gm").op.axis[-3], nparts=1)
+            self.sch_agent[self.container.tensor_map.get("c_gm")].reorder(
                 gm_n_outer, gm_m_outer, gm_n_inner, gm_m_inner)
             if self.status_controller.fusion_multi_output_flag:
-                self.sch_agent[self.container.TENSOR_MAP.get("c_gm")].emit_insn(gm_n_inner, "phony_insn")
+                self.sch_agent[self.container.tensor_map.get("c_gm")].emit_insn(gm_n_inner, "phony_insn")
             else:
-                self.sch_agent[self.container.TENSOR_MAP.get("c_gm")].emit_insn(gm_n_inner, "dma_copy")
+                self.sch_agent[self.container.tensor_map.get("c_gm")].emit_insn(gm_n_inner, "dma_copy")
         else:
-            gm_n_outer, gm_n_inner = self.sch_agent[self.container.TENSOR_MAP.get("c_gm")].split(
-                self.container.TENSOR_MAP.get("c_gm").op.axis[-1], nparts=1)
-            gm_m_outer, gm_m_inner = self.sch_agent[self.container.TENSOR_MAP.get("c_gm")].split(
-                self.container.TENSOR_MAP.get("c_gm").op.axis[-2], nparts=1)
-            self.sch_agent[self.container.TENSOR_MAP.get("c_gm")].reorder(
+            gm_n_outer, gm_n_inner = self.sch_agent[self.container.tensor_map.get("c_gm")].split(
+                self.container.tensor_map.get("c_gm").op.axis[-1], nparts=1)
+            gm_m_outer, gm_m_inner = self.sch_agent[self.container.tensor_map.get("c_gm")].split(
+                self.container.tensor_map.get("c_gm").op.axis[-2], nparts=1)
+            self.sch_agent[self.container.tensor_map.get("c_gm")].reorder(
                 gm_m_outer, gm_n_outer, gm_m_inner, gm_n_inner)
-            self.sch_agent[self.container.TENSOR_MAP.get("c_gm")].emit_insn(gm_m_inner, "dma_copy")
+            self.sch_agent[self.container.tensor_map.get("c_gm")].emit_insn(gm_m_inner, "dma_copy")
 
     def _do_emit_insn_for_tensor_aub(self):
         if self.is_dynamic:
             # only in |batch_matmul/ matmul|nd|
             if self.status_controller.a_use_aligned_pattern:
-                self._emit_insn_func(self.container.TENSOR_MAP.get("a_ub_aligned"), 0, "dma_copy", mode=1)
-                self._emit_insn_func(self.container.TENSOR_MAP.get("a_ub_general"), 0, "phony_insn", mode=1)
+                self._emit_insn_func(self.container.tensor_map.get("a_ub_aligned"), 0, "dma_copy", mode=1)
+                self._emit_insn_func(self.container.tensor_map.get("a_ub_general"), 0, "phony_insn", mode=1)
             else:
-                self._emit_insn_func(self.container.TENSOR_MAP.get("a_ub_aligned"), 0, "phony_insn", mode=1)
-                self._emit_insn_func(self.container.TENSOR_MAP.get("a_ub_general"), 0, "dma_copy", mode=1)
-            self._emit_insn_func(self.container.TENSOR_MAP.get("a_ub"), 0, "phony_insn", mode=1)
+                self._emit_insn_func(self.container.tensor_map.get("a_ub_aligned"), 0, "phony_insn", mode=1)
+                self._emit_insn_func(self.container.tensor_map.get("a_ub_general"), 0, "dma_copy", mode=1)
+            self._emit_insn_func(self.container.tensor_map.get("a_ub"), 0, "phony_insn", mode=1)
         else:
             # only in |gemm matmul|nd|all| or |matmul|nz|int82fp32| etc
-            self._emit_insn_func(self.container.TENSOR_MAP.get("a_ub"), 0, "dma_copy", mode=1)
+            self._emit_insn_func(self.container.tensor_map.get("a_ub"), 0, "dma_copy", mode=1)
 
     def _emit_insn_elemwise_tensor(self):
         for ten_in in self.container.elemwise_tensors:
@@ -4151,7 +4078,7 @@ class GemmSchedule:
         a_only_reshape = a_only_reshape or (self.get_a_matrix_mode == "nd2Zz" and self.is_dynamic)
         if a_cast_and_reshape:
             # only in |gemm matmul|nz|int82fp32|
-            a_ub_fract = self.container.TENSOR_MAP.get("a_ub_fract")
+            a_ub_fract = self.container.tensor_map.get("a_ub_fract")
             if self.status_controller.have_batch_a:
                 _, a_ub_scope_outer, a_ub_scope_inner, _, _ = self.sch_agent[a_ub_fract].get_active_scopes()
             else:
@@ -4163,13 +4090,13 @@ class GemmSchedule:
             # so this restriction is added
             reshape_cmd = "vector_muls" if (self.format_a == "ND" and self.format_b == "ND") else "dma_copy"
             self._emit_insn_func(
-                self.container.TENSOR_MAP.get("a_ub_fract"), 0, reshape_cmd, insn_dict=self.container.vector_muls_attr)
+                self.container.tensor_map.get("a_ub_fract"), 0, reshape_cmd, insn_dict=self.container.vector_muls_attr)
         else:
             # only in |gemm matmul|ND|fp162fp16 fp162fp32 int82fp32|
-            self._emit_insn_func(self.container.TENSOR_MAP.get("a_ub_fract"), 1 + offset_a, "vnchwconv", mode=1)
+            self._emit_insn_func(self.container.tensor_map.get("a_ub_fract"), 1 + offset_a, "vnchwconv", mode=1)
 
         # only in |gemm|ND|int82int32|
-        a_transpose = self.container.TENSOR_MAP.get("a_transpose")
+        a_transpose = self.container.tensor_map.get("a_transpose")
         if a_transpose is not None:
             m_outer, m_inner = self.sch_agent[a_transpose].split(a_transpose.op.axis[1 + offset_a], factor=32)
             self.sch_agent[a_transpose].reorder(m_outer, a_transpose.op.axis[offset_a], m_inner)
@@ -4179,15 +4106,15 @@ class GemmSchedule:
         if self.is_dynamic:
             # only in |batch_matmul/matmul|nd|
             if self.status_controller.b_use_aligned_pattern:
-                self._emit_insn_func(self.container.TENSOR_MAP.get("b_ub_aligned"), 0, "dma_copy", mode=1)
-                self._emit_insn_func(self.container.TENSOR_MAP.get("b_ub_general"), 0, "phony_insn", mode=1)
+                self._emit_insn_func(self.container.tensor_map.get("b_ub_aligned"), 0, "dma_copy", mode=1)
+                self._emit_insn_func(self.container.tensor_map.get("b_ub_general"), 0, "phony_insn", mode=1)
             else:
-                self._emit_insn_func(self.container.TENSOR_MAP.get("b_ub_aligned"), 0, "phony_insn", mode=1)
-                self._emit_insn_func(self.container.TENSOR_MAP.get("b_ub_general"), 0, "dma_copy", mode=1)
-            self._emit_insn_func(self.container.TENSOR_MAP.get("b_ub"), 0, "phony_insn", mode=1)
+                self._emit_insn_func(self.container.tensor_map.get("b_ub_aligned"), 0, "phony_insn", mode=1)
+                self._emit_insn_func(self.container.tensor_map.get("b_ub_general"), 0, "dma_copy", mode=1)
+            self._emit_insn_func(self.container.tensor_map.get("b_ub"), 0, "phony_insn", mode=1)
         else:
             # only in |gemm matmul|nd|all| or |matmul|nz|int82fp32| etc
-            self._emit_insn_func(self.container.TENSOR_MAP.get("b_ub"), 0, "dma_copy", mode=1)
+            self._emit_insn_func(self.container.tensor_map.get("b_ub"), 0, "dma_copy", mode=1)
 
     def _do_emit_insn_bub(self):
         offset_b = 1 if self.status_controller.have_batch_b else 0
@@ -4199,7 +4126,7 @@ class GemmSchedule:
         b_only_reshape = b_only_reshape or (self.get_b_matrix_mode == "nd2Zn" and self.is_dynamic)
         if b_cast_and_reshape:
             # only in |gemm matmul|nz|int82fp32|
-            b_ub_fract = self.container.TENSOR_MAP.get("b_ub_fract")
+            b_ub_fract = self.container.tensor_map.get("b_ub_fract")
             if self.status_controller.have_batch_b:
                 _, b_ub_scope_outer, _, _, _ = self.sch_agent[b_ub_fract].get_active_scopes()
             else:
@@ -4211,21 +4138,21 @@ class GemmSchedule:
             # so this restriction is added
             reshape_cmd = "vector_muls" if (self.format_a == "ND" and self.format_b == "ND") else "dma_copy"
             self._emit_insn_func(
-                self.container.TENSOR_MAP.get("b_ub_fract"), 0, reshape_cmd, insn_dict=self.container.vector_muls_attr)
+                self.container.tensor_map.get("b_ub_fract"), 0, reshape_cmd, insn_dict=self.container.vector_muls_attr)
         else:
             # only in |gemm matmul|ND|fp162fp16 fp162fp32 int82fp32|
-            self._emit_insn_func(self.container.TENSOR_MAP.get("b_ub_fract"), 1 + offset_b, "vnchwconv", mode=1)
+            self._emit_insn_func(self.container.tensor_map.get("b_ub_fract"), 1 + offset_b, "vnchwconv", mode=1)
 
         # only in |gemm|ND|int82int32|
-        b_transpose = self.container.TENSOR_MAP.get("b_transpose")
+        b_transpose = self.container.tensor_map.get("b_transpose")
         if b_transpose is not None:
             k_outer, k_inner = self.sch_agent[b_transpose].split(b_transpose.op.axis[1 + offset_b], factor=32)
             self.sch_agent[b_transpose].reorder(k_outer, b_transpose.op.axis[offset_b], k_inner)
             self.sch_agent[b_transpose].emit_insn(self.sch_agent[b_transpose].op.axis[offset_b], "vnchwconv")
 
     def _emit_insn_nz_to_nd(self):
-        c_add_bias_ub = self.container.TENSOR_MAP.get("c_add_bias_ub")
-        nz_to_nd = self.container.TENSOR_MAP.get("nz_to_nd")
+        c_add_bias_ub = self.container.tensor_map.get("c_add_bias_ub")
+        nz_to_nd = self.container.tensor_map.get("nz_to_nd")
         fract_add_nd_to_nd = (self.format_out == "ND") and (c_add_bias_ub is not None)
 
         if fract_add_nd_to_nd:
@@ -4264,11 +4191,11 @@ class GemmSchedule:
         """
         tensor_b_l1 emit insn operation for compress or not
         """
-        b_l0b = self.container.TENSOR_MAP.get("b_l0b")
-        b_l1 = self.container.TENSOR_MAP.get("b_l1")
+        b_l0b = self.container.tensor_map.get("b_l0b")
+        b_l1 = self.container.tensor_map.get("b_l1")
         if self.status_controller.compress_flag:
             host_axis = self._get_index_at_axis()
-            compress_index = self.container.TENSOR_MAP.get("compress_index")
+            compress_index = self.container.tensor_map.get("compress_index")
             if not self.status_controller.b_l1_inline_flag:
                 b_l1.op.attrs["tile_L1_k"] = b_l0b.op.attrs["tile_L1_k"]
                 b_l1.op.attrs["tile_L1_n"] = b_l0b.op.attrs["tile_L1_n"]
@@ -4295,42 +4222,42 @@ class GemmSchedule:
             buffer_reuse_dict[key] = value
 
     def _set_buffer_reuse_dict(self):
-        self._add_key_value(self.container.TENSOR_MAP.get("c_ub_fract"), self.container.TENSOR_MAP.get("alpha_c"))
+        self._add_key_value(self.container.tensor_map.get("c_ub_fract"), self.container.tensor_map.get("alpha_c"))
         if self.format_out == "FRACTAL_NZ":
             self._add_key_value(
-                self.container.TENSOR_MAP.get("c_add_bias_ub"), self.container.TENSOR_MAP.get("alpha_c"))
+                self.container.tensor_map.get("c_add_bias_ub"), self.container.tensor_map.get("alpha_c"))
         else:
             self._add_key_value(
-                self.container.TENSOR_MAP.get("c_add_bias_ub"), self.container.TENSOR_MAP.get("beta_bias"))
+                self.container.tensor_map.get("c_add_bias_ub"), self.container.tensor_map.get("beta_bias"))
 
         if self.status_controller.ops_data_flow_mode == "fp162fp16":
             self._add_key_value(
-                self.container.TENSOR_MAP.get("beta_fp162fp32"), self.container.TENSOR_MAP.get("beta_ub"))
+                self.container.tensor_map.get("beta_fp162fp32"), self.container.tensor_map.get("beta_ub"))
             self._add_key_value(
-                self.container.TENSOR_MAP.get("alpha_fp162fp32"), self.container.TENSOR_MAP.get("alpha_ub"))
+                self.container.tensor_map.get("alpha_fp162fp32"), self.container.tensor_map.get("alpha_ub"))
             self._add_key_value(
-                self.container.TENSOR_MAP.get("beta_bias"), self.container.TENSOR_MAP.get("bias_cast_to_fp32"))
+                self.container.tensor_map.get("beta_bias"), self.container.tensor_map.get("bias_cast_to_fp32"))
         else:
-            self._add_key_value(self.container.TENSOR_MAP.get("beta_bias"), self.container.TENSOR_MAP.get("bias_ub"))
+            self._add_key_value(self.container.tensor_map.get("beta_bias"), self.container.tensor_map.get("bias_ub"))
 
         for axpy, parent in self.container.axpy_2_parent.items():
             self.container.buffer_reuse_dict[parent] = axpy
 
         if self.status_controller.need_init_bias:
-            self._add_key_value(self.container.TENSOR_MAP.get("virtual_add_bias"),
-                [self.container.TENSOR_MAP.get("bias_ub"), self.container.TENSOR_MAP.get("init_value_of_bias_ub")])
+            self._add_key_value(self.container.tensor_map.get("virtual_add_bias"),
+                [self.container.tensor_map.get("bias_ub"), self.container.tensor_map.get("init_value_of_bias_ub")])
 
         if self.status_controller.fusion_multi_output_flag:
-            self._add_key_value(self.container.TENSOR_MAP.get("cast_to_fp16"), self.container.TENSOR_MAP.get("c_gm"))
+            self._add_key_value(self.container.tensor_map.get("cast_to_fp16"), self.container.tensor_map.get("c_gm"))
         # Enable aub/bub to select schedule pattern
-        a_ub = self.container.TENSOR_MAP.get("a_ub")
-        b_ub = self.container.TENSOR_MAP.get("b_ub")
+        a_ub = self.container.tensor_map.get("a_ub")
+        b_ub = self.container.tensor_map.get("b_ub")
         if a_ub is not None and self.is_dynamic:
             self._add_key_value(
-                self.container.TENSOR_MAP.get("a_ub_aligned"), [a_ub, self.container.TENSOR_MAP.get("a_ub_general")])
+                self.container.tensor_map.get("a_ub_aligned"), [a_ub, self.container.tensor_map.get("a_ub_general")])
         if b_ub is not None and self.is_dynamic:
             self._add_key_value(
-                self.container.TENSOR_MAP.get("b_ub_aligned"), [b_ub, self.container.TENSOR_MAP.get("b_ub_general")])
+                self.container.tensor_map.get("b_ub_aligned"), [b_ub, self.container.tensor_map.get("b_ub_general")])
 
     def _do_buffer_reuse(self):
         for bereused_tensor, tensor in self.container.buffer_reuse_dict.items():
@@ -4343,17 +4270,17 @@ class GemmSchedule:
     def _init_run_once_flag(self):
         a_run_once, b_run_once = self.ALLOCATE_OFF, self.ALLOCATE_OFF
 
-        dtype_byte = self.DTYPE_WIDTH_MAP.get(self.container.TENSOR_MAP.get("a_l1").dtype) * 2
+        dtype_byte = self.DTYPE_WIDTH_MAP.get(self.container.tensor_map.get("a_l1").dtype) * 2
         size = tbe_platform_info.get_soc_spec("L1_SIZE") // dtype_byte // 2
         block_dim = self.tiling.get("block_dim")
 
         core_inner_m = self._int_ceil_div(
-            self.container.TENSOR_MAP.get("a_l0a").shape[self.FRACTAL_Z_M_INDEX].value * self.block_in,
+            self.container.tensor_map.get("a_l0a").shape[self.FRACTAL_Z_M_INDEX].value * self.block_in,
             block_dim[self.BLOCK_M_DIM_INDEX])
         core_inner_n = self._int_ceil_div(
-            self.container.TENSOR_MAP.get("b_l0b").shape[self.FRACTAL_Z_N_INDEX].value * self.block_out,
+            self.container.tensor_map.get("b_l0b").shape[self.FRACTAL_Z_N_INDEX].value * self.block_out,
             block_dim[self.BLOCK_N_DIM_INDEX])
-        k_shape = self.container.TENSOR_MAP.get("a_l0a").shape[self.FRACTAL_Z_KA_INDEX].value * self.block_reduce
+        k_shape = self.container.tensor_map.get("a_l0a").shape[self.FRACTAL_Z_KA_INDEX].value * self.block_reduce
 
         m_l1_shape, n_l1_shape = self.al1_tiling_m * self.block_in, self.bl1_tiling_n * self.block_out
         m_max_num = self._int_ceil_div(core_inner_m, m_l1_shape) * m_l1_shape
@@ -4381,7 +4308,7 @@ class GemmSchedule:
 
         batch = 0
         if self.status_controller.have_batch:
-            batch = self.container.TENSOR_MAP.get("c_l0c").shape[0].value
+            batch = self.container.tensor_map.get("c_l0c").shape[0].value
         batch_double = False
         if batch > 1:
             if tensor_a_num <= size and tensor_b_num <= size:
@@ -4427,7 +4354,7 @@ class GemmSchedule:
         al1_ddr_to_l1_flag = (self.in_addr_type == 0 and (not self.status_controller.l1_fusion_and_l1_size_0)
                               and self.status_controller.input_l1_flag != 1)
         if a_run_once != self.ALLOCATE_OFF and al1_ddr_to_l1_flag:
-            tensor_a_l1 = self.container.TENSOR_MAP.get("a_l1")
+            tensor_a_l1 = self.container.tensor_map.get("a_l1")
             self.sch[tensor_a_l1].allocate_at(self.sch[self.root_tensor], n_outer, run_once_axes=[n_outer])
             self.sch[tensor_a_l1].mem_unique()
         else:
@@ -4435,7 +4362,7 @@ class GemmSchedule:
         # unzip donot support allocate_at
         if (b_run_once != self.ALLOCATE_OFF and (not self.status_controller.l1_fusion_and_l1_size_0)
             and (not self.status_controller.compress_flag)):
-            tensor_b_l1 = self.container.TENSOR_MAP.get("b_l1")
+            tensor_b_l1 = self.container.tensor_map.get("b_l1")
             self.sch[tensor_b_l1].allocate_at(self.sch[self.root_tensor], m_outer, run_once_axes=[m_outer])
             self.sch[tensor_b_l1].mem_unique()
         else:
@@ -4487,7 +4414,7 @@ class GemmSchedule:
                     tensor_at_res_stage.append(i)
             tensor_at_res = []
             for tensor_stage in tensor_at_res_stage:
-                for tensor in self.container.TENSOR_MAP.values():
+                for tensor in self.container.tensor_map.values():
                     if tensor is None:
                         continue
                     if tensor_stage.op.name == tensor.op.name:
@@ -4501,7 +4428,7 @@ class GemmSchedule:
         This function is used to get the maximum k bound, which will be used in the
         following calculation to solve bank conflict and to set storage bound.
         """
-        a_matrix_dim = [self._get_value(i) for i in self.container.TENSOR_MAP.get("a_l0a").shape]
+        a_matrix_dim = [self._get_value(i) for i in self.container.tensor_map.get("a_l0a").shape]
         k_bound_tiling = (self._int_ceil_div(a_matrix_dim[-3], self.tiling.get("AL0_matrix")[1])
             * self.tiling.get("AL0_matrix")[1] * self.block_reduce)
         return k_bound_tiling
@@ -4511,7 +4438,7 @@ class GemmSchedule:
         This function is used to get the maximum k bound, which will be used in the
         following calculation to solve bank conflict and to set storage bound.
         """
-        b_matrix_dim = [self._get_value(i) for i in self.container.TENSOR_MAP.get("b_l0b").shape]
+        b_matrix_dim = [self._get_value(i) for i in self.container.tensor_map.get("b_l0b").shape]
         k_bound_tiling = (self._int_ceil_div(b_matrix_dim[-4], self.tiling.get("BL0_matrix")[0])
                 * self.tiling.get("BL0_matrix")[0] * self.block_reduce)
         return k_bound_tiling
@@ -4532,8 +4459,8 @@ class GemmSchedule:
             self.status_controller.storage_m_bound_change = True
         else:
             self.status_controller.storage_ka_bound_change = True
-        a_int82fp16 = self.container.TENSOR_MAP.get("a_int82fp16")
-        a_normalize_ub = self.container.TENSOR_MAP.get("a_ub")
+        a_int82fp16 = self.container.tensor_map.get("a_int82fp16")
+        a_normalize_ub = self.container.tensor_map.get("a_ub")
         # when the Inner axis is K and attach to C_gm, k_aligned value
         # may be larger than the tiling value.
         if self.status_controller.aub_attach_status == "c_gm" and not self.status_controller.transpose_a:
@@ -4546,11 +4473,11 @@ class GemmSchedule:
 
         if a_int82fp16 is not None:
             self.sch[a_int82fp16].storage_align(a_int82fp16.op.axis[-2], a_align_value, 0)
-        elif (a_normalize_ub.dtype == "float16") or (self.container.TENSOR_MAP.get("a_transpose") is not None):
+        elif (a_normalize_ub.dtype == "float16") or (self.container.tensor_map.get("a_transpose") is not None):
             self.sch[a_normalize_ub].storage_align(a_normalize_ub.op.axis[-2], a_align_value, 0)
             if self.is_dynamic:
-                a_ub_aligned = self.container.TENSOR_MAP.get("a_ub_aligned")
-                a_ub_general = self.container.TENSOR_MAP.get("a_ub_general")
+                a_ub_aligned = self.container.tensor_map.get("a_ub_aligned")
+                a_ub_general = self.container.tensor_map.get("a_ub_general")
                 self.sch[a_ub_aligned].storage_align(a_ub_aligned.op.axis[-2], a_align_value, 0)
                 self.sch[a_ub_general].storage_align(a_ub_general.op.axis[-2], a_align_value, 0)
 
@@ -4570,8 +4497,8 @@ class GemmSchedule:
             self.status_controller.storage_kb_bound_change = True
         else:
             self.status_controller.storage_n_bound_change = True
-        b_int82fp16 = self.container.TENSOR_MAP.get("b_int82fp16")
-        b_normalize_ub = self.container.TENSOR_MAP.get("b_ub")
+        b_int82fp16 = self.container.tensor_map.get("b_int82fp16")
+        b_normalize_ub = self.container.tensor_map.get("b_ub")
         # when the Inner axis is K and attach to C_gm, k_aligned value
         # may be larger than the tiling value.
         if self.status_controller.bub_attach_status == "c_gm" and self.status_controller.transpose_b:
@@ -4580,14 +4507,14 @@ class GemmSchedule:
                                        max_k_bound + gap_value, 1)
         if self.cache_tiling:
             b_align_value = self.cache_tiling.get("b_align_value")
-        b_transpose = self.container.TENSOR_MAP.get("b_transpose")
+        b_transpose = self.container.tensor_map.get("b_transpose")
         if b_int82fp16 is not None:
             self.sch[b_int82fp16].storage_align(b_int82fp16.op.axis[-2], b_align_value, 0)
         elif (b_normalize_ub.dtype == "float16") or (b_transpose is not None):
             self.sch[b_normalize_ub].storage_align(b_normalize_ub.op.axis[-2], b_align_value, 0)
             if self.is_dynamic:
-                b_ub_aligned = self.container.TENSOR_MAP.get("b_ub_aligned")
-                b_ub_general = self.container.TENSOR_MAP.get("b_ub_general")
+                b_ub_aligned = self.container.tensor_map.get("b_ub_aligned")
+                b_ub_general = self.container.tensor_map.get("b_ub_general")
                 self.sch[b_ub_aligned].storage_align(b_ub_aligned.op.axis[-2], b_align_value, 0)
                 self.sch[b_ub_general].storage_align(b_ub_general.op.axis[-2], b_align_value, 0)
 
@@ -4602,8 +4529,11 @@ class GemmSchedule:
         ---------------------------------
         Return: None
         """
-        a_ub_storage_align, b_ub_storage_align, c_ub_storage_align = self._check_exceed_ub(
-            self.status_controller.transpose_a, self.status_controller.transpose_b)
+        tiling = self.tiling
+        params = {"container": self.container, "status_controller": self.status_controller,
+                  "format_out": self.format_out, "format_a": self.format_a, "format_b": self.format_b,
+                  "cache_tiling": self.cache_tiling}
+        a_ub_storage_align, b_ub_storage_align, c_ub_storage_align = self.buffer_checker.check_exceed_ub(tiling, params)
         # three point not consider now:
         # 1. Although tiling does not lead to bank conflict, may lead to bank conflict after align in dynamic
         # 2. same to 1.,tiling lead to bank conflict, may not lead to bank conflict after align in dynamic
@@ -4619,8 +4549,8 @@ class GemmSchedule:
 
     def _solve_bank_conflict_cub(self, c_ub_storage_align):
         if c_ub_storage_align:
-            before_c_gm = self.container.TENSOR_MAP.get("before_c_gm")
-            cast_to_fp16 = self.container.TENSOR_MAP.get("cast_to_fp16")
+            before_c_gm = self.container.tensor_map.get("before_c_gm")
+            cast_to_fp16 = self.container.tensor_map.get("cast_to_fp16")
             if (before_c_gm is not None) and (cast_to_fp16 is not None):
                 c_gap_value = self.block_out * self.block_in * self.tiling.get("CUB_matrix")[1] + self.block_out
                 self.sch[cast_to_fp16].storage_align(cast_to_fp16.op.axis[-4], c_gap_value, 0)
@@ -4629,8 +4559,8 @@ class GemmSchedule:
                     self.sch[cast_to_fp16].set_buffer_size(cur_bound_bound)
             else:
                 c_gap_value = (self.block_out + 1) * self.block_in
-                c_ub_fract = self.container.TENSOR_MAP.get("c_ub_fract")
-                alpha_c_ub = self.container.TENSOR_MAP.get("alpha_c")
+                c_ub_fract = self.container.tensor_map.get("c_ub_fract")
+                alpha_c_ub = self.container.tensor_map.get("alpha_c")
                 if c_ub_fract not in self.container.compute_inline_list:
                     self.sch[c_ub_fract].storage_align(c_ub_fract.op.axis[-3], c_gap_value, 0)
                     if alpha_c_ub is not None:
@@ -4646,131 +4576,12 @@ class GemmSchedule:
 
         return a_ub_storage_align, b_ub_storage_align
 
-    def _check_exceed_ub(self, a_trans, b_trans):
-        """
-        if storage_align is used, more UB space is used.
-        Therefore, check the UB space usage after storage_align is used.
-        Input:
-            a_trans: bool, Indicates whether matrix A is transposed.
-            b_trans: bool, Indicates whether matrix B is transposed.
-        -----------------------
-        Return:
-            a_ub_storage_align: bool, Matrix A uses storage_align.
-            b_ub_storage_align: bool, Matrix B uses storage_align.
-            c_ub_storage_align: bool, Matrix C uses storage_align.
-        """
-        tiling = self.tiling
-        need_aub_storage_align = (self.container.TENSOR_MAP.get("a_ub") is not None) and (self.format_a == "ND")
-        need_bub_storage_align = (self.container.TENSOR_MAP.get("b_ub") is not None) and (self.format_b == "ND")
-        need_cub_storage_align = (((self.container.TENSOR_MAP.get("c_add_bias_ub") is not None) or
-                                  (self.container.TENSOR_MAP.get("before_c_gm") is not None)) and
-                                  (not self.cache_tiling and self.format_out == "ND"))
-
-        gap_value = self.block_reduce
-        ub_buffer = tbe_platform_info.get_soc_spec("UB_SIZE")
-
-        a_ub_storage_align = False
-        b_ub_storage_align = False
-        c_ub_storage_align = False
-
-        # get fused num for compute use UB size
-        a_fused_num, b_fused_num, c_fused_num = self.container.fuse_num_group
-        a_fused_num = a_fused_num / self.PRE_UB_MULTIPLIER + 1
-        b_fused_num = b_fused_num / self.PRE_UB_MULTIPLIER + 1
-        c_fused_num += 1
-        # compute before storage_align used UB size
-        base_buffer_size = 0
-        base_buffer_size, a_add_size = self._get_a_ub_storage_align_buffer_size(base_buffer_size,
-            need_aub_storage_align, gap_value, a_fused_num, a_trans)
-        base_buffer_size, b_add_size = self._get_b_ub_storage_align_buffer_size(base_buffer_size,
-            need_bub_storage_align, gap_value, b_fused_num, b_trans)
-        base_buffer_size, c_add_size = self._get_c_ub_storage_align_buffer_size(base_buffer_size,
-            need_cub_storage_align, c_fused_num)
-
-        c_ub_storage_align = need_cub_storage_align and (base_buffer_size + c_add_size <= ub_buffer)
-        base_buffer_size += c_add_size if c_ub_storage_align else 0
-        if need_aub_storage_align:
-            aub_k, aub_m = tiling.get("AUB_shape")[0:2]
-            aub_m *= self.block_in
-            judge_value = aub_m if a_trans else aub_k
-            a_ub_storage_align = (need_aub_storage_align
-                and (judge_value % self.THRESHOLD_DATA_NUM == 0)
-                and ((base_buffer_size + a_add_size) <= ub_buffer))
-            base_buffer_size += a_add_size if a_ub_storage_align else 0
-
-        if need_bub_storage_align:
-            bub_k, bub_n = tiling.get("BUB_shape")[0:2]
-            bub_n *= self.block_out
-            judge_value = bub_k if b_trans else bub_n
-            b_ub_storage_align = (need_bub_storage_align
-                and (judge_value % self.THRESHOLD_DATA_NUM == 0)
-                and ((base_buffer_size + b_add_size) <= ub_buffer))
-            base_buffer_size += b_add_size if b_ub_storage_align else 0
-
-        return a_ub_storage_align, b_ub_storage_align, c_ub_storage_align
-
-    def _get_a_ub_storage_align_buffer_size(self, base_buffer_size,
-        need_aub_storage_align, gap_value, a_fused_num, a_trans):
-        tiling = self.tiling
-        a_add_size = 0
-        if self.container.TENSOR_MAP.get("a_ub") is not None:
-            aub_k, aub_m = tiling.get("AUB_shape")[0:2]
-            aub_m *= self.block_in
-            a_db = tiling.get("manual_pingpong_buffer").get("AUB_pbuffer")
-            base_buffer_size += (aub_m * aub_k * a_fused_num *
-                                 self.INPUT_SIZE.get(self.status_controller.ops_data_flow_mode) * a_db)
-
-        if need_aub_storage_align:
-            # if use storage_align, need UB size
-            a_add_size = (gap_value * (aub_k if a_trans else aub_m) *
-                            self.INPUT_SIZE.get(self.status_controller.ops_data_flow_mode) * a_db)
-        return base_buffer_size, a_add_size
-
-    def _get_b_ub_storage_align_buffer_size(self, base_buffer_size,
-        need_bub_storage_align, gap_value, b_fused_num, b_trans):
-        tiling = self.tiling
-        b_add_size = 0
-        if self.container.TENSOR_MAP.get("b_ub") is not None:
-            bub_k, bub_n = tiling.get("BUB_shape")[0:2]
-            bub_n *= self.block_out
-            b_db = tiling.get("manual_pingpong_buffer").get("BUB_pbuffer")
-            base_buffer_size += (bub_k * bub_n * b_fused_num *
-                                 self.INPUT_SIZE.get(self.status_controller.ops_data_flow_mode) * b_db)
-
-        if need_bub_storage_align:
-            # if use storage_align, need UB size
-            b_add_size = (gap_value * (bub_n if b_trans else bub_k) *
-                            self.INPUT_SIZE.get(self.status_controller.ops_data_flow_mode) * b_db)
-        return base_buffer_size, b_add_size
-
-    def _get_c_ub_storage_align_buffer_size(self, base_buffer_size, need_cub_storage_align, c_fused_num):
-        tiling = self.tiling
-        c_add_size = 0
-        cub_n, cub_m = tiling.get("CUB_matrix")[0:2]
-        c_db = tiling.get("manual_pingpong_buffer").get("CUB_pbuffer")
-        base_buffer_size += (cub_n * cub_m * self.block_in * self.block_out * c_fused_num *
-                             self.OUTPUT_SIZE.get(self.status_controller.ops_data_flow_mode) * c_db)
-        if need_cub_storage_align:
-            # if use storage_align, need UB size
-            if self.container.TENSOR_MAP.get("before_c_gm") is not None:
-                before_c_gm = self.container.TENSOR_MAP.get("before_c_gm")
-                data_size = self.DTYPE_WIDTH_MAP.get(before_c_gm.dtype) * 2
-                c_add_size = self.tiling.get("CUB_matrix")[0] * self.block_out * data_size * c_db
-            else:
-                data_size = 4
-                c_ub_cast_to_fp16 = self.container.TENSOR_MAP.get("cast_to_fp16")
-                tensor_alpha = self.container.TENSOR_MAP.get("alpha")
-                if (c_ub_cast_to_fp16 is not None) and (tensor_alpha is None):
-                    data_size = 2
-                c_add_size = self.block_out * cub_n * cub_m * data_size * c_db
-        return base_buffer_size, c_add_size
-
     def _renew_block_dim(self):
         """
         if tail data small then 16(output=fp16) or 32(output=int32)
         close multi core
         """
-        c_gm = self.container.TENSOR_MAP.get("c_gm")
+        c_gm = self.container.tensor_map.get("c_gm")
         if self.status_controller.ops_data_flow_mode == "int82int32":
             multi_core_min_slice = 32
         else:
@@ -4789,7 +4600,7 @@ class GemmSchedule:
 
     def _set_requant_transfer_buffer_align(self):
         requant_fusion = self.status_controller.requant_fusion
-        requant_data_transfer = self.container.TENSOR_MAP.get("requant_data_transfer")
+        requant_data_transfer = self.container.tensor_map.get("requant_data_transfer")
         if not requant_fusion:
             return
 
@@ -4808,7 +4619,7 @@ class GemmSchedule:
         return
 
     def _do_buffer_align_l0c(self):
-        c_l0c = self.container.TENSOR_MAP.get("c_l0c")
+        c_l0c = self.container.tensor_map.get("c_l0c")
         block_reduce = self.block_reduce
         block_out = self.block_out
         unchanged = 1
@@ -4919,11 +4730,11 @@ class GemmSchedule:
             axis_n, axis_m = axis_m, axis_n
 
         block_dim_m = self.tiling.get("block_dim")[2]
-        m_shape = self.container.TENSOR_MAP.get("a_l0a").shape[-4].value
+        m_shape = self.container.tensor_map.get("a_l0a").shape[-4].value
         m_factor = (m_shape + block_dim_m - 1) // block_dim_m
         index_at_axis = axis_m if self.al1_tiling_m * 2 < m_factor else -1
         if index_at_axis != -1 and self.status_controller.bl1_attach_status == 'full_load':
-            index_at_axis = self.sch_agent[self.container.TENSOR_MAP.get('b_l1')].get_active_scopes()[0]
+            index_at_axis = self.sch_agent[self.container.tensor_map.get('b_l1')].get_active_scopes()[0]
         return index_at_axis
 
     def _choose_dma_copy_for_res(self):
@@ -4932,12 +4743,12 @@ class GemmSchedule:
         # this flag set from confusion_transpose_d
         real_res = self.res
         if self.status_controller.split_k_axis_by_tiling:
-            real_res = self.container.TENSOR_MAP.get("c_gm")
+            real_res = self.container.tensor_map.get("c_gm")
         with_transpose = hasattr(real_res, "matmul_with_transpose")
         if with_transpose:
             # get matrix axis shapes
-            tensor_a_l0a = self.container.TENSOR_MAP.get("a_l0a")
-            tensor_b_l0b = self.container.TENSOR_MAP.get("b_l0b")
+            tensor_a_l0a = self.container.tensor_map.get("a_l0a")
+            tensor_b_l0b = self.container.tensor_map.get("b_l0b")
             if not self.is_dynamic:
                 m_shape = self._get_value(tensor_a_l0a.shape[-4]) * self.block_in
                 n_shape = self._get_value(tensor_b_l0b.shape[-3]) * self.block_out
@@ -4993,7 +4804,7 @@ class GemmSchedule:
 
         in_out_tensor_map = {}
         self._gen_in_out_tensor_map(self.root_tensor, in_out_tensor_map)
-        tensor_c_gm = self.container.TENSOR_MAP.get("c_gm")
+        tensor_c_gm = self.container.tensor_map.get("c_gm")
         # multi output fusion with elementwise
         matmul_multi_output_flag = (isinstance(self.res_ori, list) and self.container.fusion_ele and
                                     tensor_c_gm in self.res_ori)
@@ -5084,32 +4895,32 @@ class GemmSchedule:
             fused_num = fused_num / self.DTYPE_WIDTH_MAP.get(fix_dtype) - 1
             return fused_num
 
-        if self.container.TENSOR_MAP.get("a_ub") is not None:
+        if self.container.tensor_map.get("a_ub") is not None:
             a_not_count_list = (
-                [self.container.TENSOR_MAP.get("a_ub_aligned"),
-                 self.container.TENSOR_MAP.get("a_ub_general")] if self.is_dynamic else None)
-            a_fused_num = int(enter(self.container.tensors_in_aub, self.container.TENSOR_MAP.get("a_ub").dtype,
+                [self.container.tensor_map.get("a_ub_aligned"),
+                 self.container.tensor_map.get("a_ub_general")] if self.is_dynamic else None)
+            a_fused_num = int(enter(self.container.tensors_in_aub, self.container.tensor_map.get("a_ub").dtype,
                                     a_not_count_list) * self.PRE_UB_MULTIPLIER)
         else:
             a_fused_num = 0
-        if self.container.TENSOR_MAP.get("b_ub") is not None:
+        if self.container.tensor_map.get("b_ub") is not None:
             b_not_count_list = (
-                [self.container.TENSOR_MAP.get("b_ub_aligned"),
-                self.container.TENSOR_MAP.get("b_ub_general")] if self.is_dynamic else None)
-            b_fused_num = int(enter(self.container.tensors_in_bub, self.container.TENSOR_MAP.get("b_ub").dtype,
+                [self.container.tensor_map.get("b_ub_aligned"),
+                self.container.tensor_map.get("b_ub_general")] if self.is_dynamic else None)
+            b_fused_num = int(enter(self.container.tensors_in_bub, self.container.tensor_map.get("b_ub").dtype,
                                     b_not_count_list) * self.PRE_UB_MULTIPLIER)
         else:
             b_fused_num = 0
 
         # if not fusion
-        if self.container.TENSOR_MAP.get("c_gm") == self.res:
+        if self.container.tensor_map.get("c_gm") == self.res:
             c_fused_num = int(enter(self.container.tensors_in_cub, self.res.dtype))
         else:
             # elewise fusion not support alpha and beta and C now
-            c_ub_fract = self.container.TENSOR_MAP.get("c_ub_fract")
-            c_ub_cast_to_fp16 = self.container.TENSOR_MAP.get("cast_to_fp16")
+            c_ub_fract = self.container.tensor_map.get("c_ub_fract")
+            c_ub_cast_to_fp16 = self.container.tensor_map.get("cast_to_fp16")
             c_ub = c_ub_cast_to_fp16 if c_ub_cast_to_fp16 is not None else c_ub_fract
-            nz_to_nd = self.container.TENSOR_MAP.get("nz_to_nd")
+            nz_to_nd = self.container.tensor_map.get("nz_to_nd")
             ub_res_byte = self._get_scope_byte_size(c_ub, nz_to_nd)
             ub_res_byte = self._get_ub_res_byte(self._get_out_tensors_width,
                                                 self.container.dequant_activation_tensor,
@@ -5162,7 +4973,7 @@ class GemmSchedule:
         width = len(stack)
         visited_list = []
         tmp_stack = stack
-        tensor_c_gm = self.container.TENSOR_MAP.get("c_gm")
+        tensor_c_gm = self.container.tensor_map.get("c_gm")
         matmul_end_tensor = tensor_c_gm.op.input_tensors[0]
         while tmp_stack:
             for tens in tmp_stack:
@@ -5244,40 +5055,40 @@ class GemmSchedule:
             if self.format_a == "ND":
                 aub_storage_bound, aub_fract_storage_bound = self._get_aub_bound()
                 # a_ub is normalized so the storage used for (M,K) is the same as (M1, K1 , M0, K0)
-                self.sch[self.container.TENSOR_MAP.get("a_ub")].set_buffer_size(aub_storage_bound)
-                self.sch[self.container.TENSOR_MAP.get("a_ub_aligned")].set_buffer_size(aub_storage_bound)
-                self.sch[self.container.TENSOR_MAP.get("a_ub_general")].set_buffer_size(aub_storage_bound)
-                self.sch[self.container.TENSOR_MAP.get("a_ub_fract")].set_buffer_size(aub_fract_storage_bound)
+                self.sch[self.container.tensor_map.get("a_ub")].set_buffer_size(aub_storage_bound)
+                self.sch[self.container.tensor_map.get("a_ub_aligned")].set_buffer_size(aub_storage_bound)
+                self.sch[self.container.tensor_map.get("a_ub_general")].set_buffer_size(aub_storage_bound)
+                self.sch[self.container.tensor_map.get("a_ub_fract")].set_buffer_size(aub_fract_storage_bound)
             if self.format_b == "ND":
                 bub_storage_bound, bub_fract_storage_bound = self._get_bub_bound()
-                self.sch[self.container.TENSOR_MAP.get("b_ub")].set_buffer_size(bub_storage_bound)
-                self.sch[self.container.TENSOR_MAP.get("b_ub_aligned")].set_buffer_size(bub_storage_bound)
-                self.sch[self.container.TENSOR_MAP.get("b_ub_general")].set_buffer_size(bub_storage_bound)
-                self.sch[self.container.TENSOR_MAP.get("b_ub_fract")].set_buffer_size(bub_fract_storage_bound)
-            self.sch[self.container.TENSOR_MAP.get("a_l1")].set_buffer_size(self._get_al1_bound())
-            self.sch[self.container.TENSOR_MAP.get("b_l1")].set_buffer_size(self._get_bl1_bound())
+                self.sch[self.container.tensor_map.get("b_ub")].set_buffer_size(bub_storage_bound)
+                self.sch[self.container.tensor_map.get("b_ub_aligned")].set_buffer_size(bub_storage_bound)
+                self.sch[self.container.tensor_map.get("b_ub_general")].set_buffer_size(bub_storage_bound)
+                self.sch[self.container.tensor_map.get("b_ub_fract")].set_buffer_size(bub_fract_storage_bound)
+            self.sch[self.container.tensor_map.get("a_l1")].set_buffer_size(self._get_al1_bound())
+            self.sch[self.container.tensor_map.get("b_l1")].set_buffer_size(self._get_bl1_bound())
 
             # mem_unique
-            self.sch[self.container.TENSOR_MAP.get("a_l1")].mem_unique()
-            self.sch[self.container.TENSOR_MAP.get("b_l1")].mem_unique()
-            self.sch[self.container.TENSOR_MAP.get("a_l0a")].mem_unique()
-            self.sch[self.container.TENSOR_MAP.get("b_l0b")].mem_unique()
+            self.sch[self.container.tensor_map.get("a_l1")].mem_unique()
+            self.sch[self.container.tensor_map.get("b_l1")].mem_unique()
+            self.sch[self.container.tensor_map.get("a_l0a")].mem_unique()
+            self.sch[self.container.tensor_map.get("b_l0b")].mem_unique()
             # tensor is used_by can't mem_unique；tensor is not reused_by must be unique
             c_ub = self.res.op.input_tensors[0]
             if not self.format_out == "ND":
                 self.sch[c_ub].mem_unique()
-            bias_ub = self.container.TENSOR_MAP.get("bias_ub")
+            bias_ub = self.container.tensor_map.get("bias_ub")
             if bias_ub is not None and not self.status_controller.need_init_bias:
                 self.sch[bias_ub].mem_unique()
             else:
-                self.sch[self.container.TENSOR_MAP.get("c_l0c")].mem_unique()
+                self.sch[self.container.tensor_map.get("c_l0c")].mem_unique()
 
     def _get_max_k_bound(self):
         """
         This function is used to get the maximum k bound, which will be used in the
         following calculation to solve bank conflict and to set storage bound.
         """
-        a_matrix_dim = [self._get_value(i) for i in self.container.TENSOR_MAP.get("a_l0a").shape]
+        a_matrix_dim = [self._get_value(i) for i in self.container.tensor_map.get("a_l0a").shape]
         k_bound_tiling = (self._int_ceil_div(a_matrix_dim[-3], self.tiling.get("AL0_matrix")[1])
             * self.tiling.get("AL0_matrix")[1] * self.block_reduce)
         if self.cache_tiling and self.status_controller.split_k_axis_by_tiling:
@@ -5289,7 +5100,7 @@ class GemmSchedule:
         This function is used to get the maximum m bound, which will be used in the
         following calculation to set storage bound.
         """
-        a_matrix_dim = [self._get_value(i) for i in self.container.TENSOR_MAP.get("a_l0a").shape]
+        a_matrix_dim = [self._get_value(i) for i in self.container.tensor_map.get("a_l0a").shape]
         if self.tiling.get("block_dim")[2] == 1:
             m_bound = a_matrix_dim[-4] * self.block_in
         else:
@@ -5303,7 +5114,7 @@ class GemmSchedule:
         This function is used to get the maximum n bound, which will be used in the
         following calculation to set storage bound.
         """
-        b_matrix_dim = [self._get_value(i) for i in self.container.TENSOR_MAP.get("b_l0b").shape]
+        b_matrix_dim = [self._get_value(i) for i in self.container.tensor_map.get("b_l0b").shape]
         if self.tiling.get("block_dim")[1] == 1:
             n_bound = b_matrix_dim[-3] * self.block_out
         else:
@@ -5391,14 +5202,14 @@ class GemmSchedule:
         if self.cache_tiling:
             if self.tiling.get("attach_at_flag").get("bl1_attach_flag") == 0:
                 self.sch.set_var_value(self.cache_tiling.get("n_single_core"), 1)
-                bl1 = self.container.TENSOR_MAP.get("b_l1")
+                bl1 = self.container.tensor_map.get("b_l1")
                 iter_axis = 1 if len(bl1.shape) == 4 else 3
                 if self.status_controller.split_k_axis_by_tiling:
                     iter_axis += 1
                 self.sch[bl1].compute_at(self.sch[c_gm], self.sch[c_gm].leaf_iter_vars[iter_axis])
             if self.tiling.get("attach_at_flag").get("al1_attach_flag") == 0:
                 self.sch.set_var_value(self.cache_tiling.get("m_single_core"), 1)
-                al1 = self.container.TENSOR_MAP.get("a_l1")
+                al1 = self.container.tensor_map.get("a_l1")
                 iter_axis = 1 if len(al1.shape) == 4 else 3
                 if self.status_controller.split_k_axis_by_tiling:
                     iter_axis += 1
@@ -5484,8 +5295,8 @@ class GemmSchedule:
                 al1_buffer_tile_list.insert(0, (None, None))
             if self.status_controller.have_batch_b:
                 bl1_buffer_tile_list.insert(0, (None, None))
-            self.sch_agent[self.container.TENSOR_MAP.get("b_l1")].buffer_tile(*bl1_buffer_tile_list)
-            self.sch_agent[self.container.TENSOR_MAP.get("a_l1")].buffer_tile(*al1_buffer_tile_list)
+            self.sch_agent[self.container.tensor_map.get("b_l1")].buffer_tile(*bl1_buffer_tile_list)
+            self.sch_agent[self.container.tensor_map.get("a_l1")].buffer_tile(*al1_buffer_tile_list)
             self._emit_insn_simplyfy_c_gm()
             self._emit_insn_simplify_al1()
             self._emit_insn_simplify_bl1()
@@ -5523,7 +5334,7 @@ class GemmSchedule:
         """
         add pragma for ND_in_ND_out cachetiling
         """
-        c_gm = self.container.TENSOR_MAP.get("c_gm")
+        c_gm = self.container.tensor_map.get("c_gm")
         n_ori = get_te_var(GEMMComputeParam.n_var_name).get_tvm_var()
         m_l0 = self.cache_tiling.get("m_l0")
         cub_n1 = self.cache_tiling.get("cub_n1")
@@ -5539,8 +5350,8 @@ class GemmSchedule:
         """
         add pragma for ND_in_ND_out cachetiling
         """
-        a_l1 = self.container.TENSOR_MAP.get("a_l1")
-        c_gm = self.container.TENSOR_MAP.get("c_gm")
+        a_l1 = self.container.tensor_map.get("a_l1")
+        c_gm = self.container.tensor_map.get("c_gm")
         m_ori = get_te_var(GEMMComputeParam.m_var_name).get_tvm_var()
         k_ori = get_te_var(GEMMComputeParam.k_var_name).get_tvm_var()
         n_ori = get_te_var(GEMMComputeParam.n_var_name).get_tvm_var()
@@ -5581,7 +5392,7 @@ class GemmSchedule:
         """
         add pragma for ND_in_ND_out cachetiling
         """
-        b_l1 = self.container.TENSOR_MAP.get("b_l1")
+        b_l1 = self.container.tensor_map.get("b_l1")
         k_ori = get_te_var(GEMMComputeParam.k_var_name).get_tvm_var()
         n_ori = get_te_var(GEMMComputeParam.n_var_name).get_tvm_var()
         b_align_value = self.cache_tiling.get("b_align_value")
@@ -5613,10 +5424,10 @@ class GemmSchedule:
     def _auto_tiling(self, aub_num, bub_num, cub_num):
         # a_ub_byte b_ub_byte ub_res_byte l1a_byte l1b_byte l0a_byte l0b_byte l0c_byte
         bytes_info = self._get_bytes_info(aub_num, bub_num, cub_num)
-        m_shape = self.container.TENSOR_MAP.get("a_l0a").shape[self.FRACTAL_Z_M_INDEX].value * self.block_in
+        m_shape = self.container.tensor_map.get("a_l0a").shape[self.FRACTAL_Z_M_INDEX].value * self.block_in
         mkn_shape = (m_shape,
-                     self.container.TENSOR_MAP.get("a_l0a").shape[self.FRACTAL_Z_KA_INDEX].value * self.block_reduce,
-                     self.container.TENSOR_MAP.get("b_l0b").shape[self.FRACTAL_Z_N_INDEX].value * self.block_out)
+                     self.container.tensor_map.get("a_l0a").shape[self.FRACTAL_Z_KA_INDEX].value * self.block_reduce,
+                     self.container.tensor_map.get("b_l0b").shape[self.FRACTAL_Z_N_INDEX].value * self.block_out)
         schedule_info_dict = {}
         schedule_info_dict["l1_fusion_type"] = self.l1_fusion_type
         schedule_info_dict["dequant_fusion"] = self.status_controller.dequant_fusion
@@ -5631,7 +5442,7 @@ class GemmSchedule:
         if self.container.custom_block_dim != []:
             schedule_info_dict["custom_block_dim"] = self.container.custom_block_dim
 
-        l0c_shape = self.container.TENSOR_MAP.get("c_l0c").shape
+        l0c_shape = self.container.tensor_map.get("c_l0c").shape
         batch_shape = 0
         if len(l0c_shape) == self.FRACTAL_LEN_WITH_BATCH:
             batch_shape = self._get_value(l0c_shape[0])
@@ -5643,19 +5454,19 @@ class GemmSchedule:
         ub_fused_num_multi = 10
         double_multi = 2
         a_ub_byte = 0
-        if self.container.TENSOR_MAP.get("a_ub") is not None:
+        if self.container.tensor_map.get("a_ub") is not None:
             a_ub_byte = ((aub_num // ub_fused_num_multi + 1)
-                * int(self.DTYPE_WIDTH_MAP.get(self.container.TENSOR_MAP.get("a_placehold").dtype) * double_multi))
+                * int(self.DTYPE_WIDTH_MAP.get(self.container.tensor_map.get("a_placehold").dtype) * double_multi))
         b_ub_byte = 0
-        if self.container.TENSOR_MAP.get("b_ub") is not None:
+        if self.container.tensor_map.get("b_ub") is not None:
             b_ub_byte = ((bub_num // ub_fused_num_multi + 1)
-                * int(self.DTYPE_WIDTH_MAP.get(self.container.TENSOR_MAP.get("b_placehold").dtype) * double_multi))
+                * int(self.DTYPE_WIDTH_MAP.get(self.container.tensor_map.get("b_placehold").dtype) * double_multi))
         ub_res_byte = (cub_num + 1) * int(self.DTYPE_WIDTH_MAP.get(self.root_tensor.dtype) * double_multi)
-        l1a_byte = int(self.DTYPE_WIDTH_MAP.get(self.container.TENSOR_MAP.get("a_l1").dtype) * double_multi)
-        l1b_byte = int(self.DTYPE_WIDTH_MAP.get(self.container.TENSOR_MAP.get("b_l1").dtype) * double_multi)
-        l0a_byte = int(self.DTYPE_WIDTH_MAP.get(self.container.TENSOR_MAP.get("a_l0a").dtype) * double_multi)
-        l0b_byte = int(self.DTYPE_WIDTH_MAP.get(self.container.TENSOR_MAP.get("b_l0b").dtype) * double_multi)
-        l0c_byte = int(self.DTYPE_WIDTH_MAP.get(self.container.TENSOR_MAP.get("c_l0c").dtype) * double_multi)
+        l1a_byte = int(self.DTYPE_WIDTH_MAP.get(self.container.tensor_map.get("a_l1").dtype) * double_multi)
+        l1b_byte = int(self.DTYPE_WIDTH_MAP.get(self.container.tensor_map.get("b_l1").dtype) * double_multi)
+        l0a_byte = int(self.DTYPE_WIDTH_MAP.get(self.container.tensor_map.get("a_l0a").dtype) * double_multi)
+        l0b_byte = int(self.DTYPE_WIDTH_MAP.get(self.container.tensor_map.get("b_l0b").dtype) * double_multi)
+        l0c_byte = int(self.DTYPE_WIDTH_MAP.get(self.container.tensor_map.get("c_l0c").dtype) * double_multi)
         return [a_ub_byte, b_ub_byte, ub_res_byte, l1a_byte, l1b_byte,
                 l0a_byte, l0b_byte, l0c_byte]
 
