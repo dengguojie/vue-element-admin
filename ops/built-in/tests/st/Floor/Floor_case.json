@@ -1,0 +1,25 @@
+[
+    {
+        "op": "Floor",
+        "calc_expect_func_file" : "test_floor_golden.py:calc_expect_func",
+        "input_desc": [
+          {
+            "shape": [-2],
+            "typical_shape": [16, 16, 16, 16],
+            "format": "ND",
+            "value_range": [[0, 100]],
+            "type": "float16",
+            "name": "x"
+          }
+        ],
+        "output_desc": [
+          {
+            "shape": [16, 16, 16, 16],
+            "format": "ND",
+            "name": "y",
+            "type": "float16"
+          }
+        ],
+        "case_name": "test_Floor_dynamic_rank_000"
+      }
+]

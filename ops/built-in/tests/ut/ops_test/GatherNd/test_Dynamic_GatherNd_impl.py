@@ -91,5 +91,12 @@ ut_case.add_case("all",
                      "dynamic_gather_nd_06", "success"))
 
 
+ut_case.add_case("all",
+                 gen_dynamic_gather_nd_case(
+                     {"shape": (-2,), "dtype": "int32", "ori_shape": (-2,), "format": "ND", "ori_format": "ND"},
+                     {"shape": (-2,), "dtype": "int32", "ori_shape": (-2,), "format": "ND", "ori_format": "ND"},
+                     {"shape": (-2,), "dtype": "int32", "ori_shape": (-2,), "format": "ND", "ori_format": "ND"},
+                     "dynamic_gather_nd_03", "success"))
+
 if __name__ == '__main__':
     ut_case.run("Ascend910A")

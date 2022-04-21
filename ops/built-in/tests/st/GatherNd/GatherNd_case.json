@@ -1162,5 +1162,34 @@
     ],
     "attr": [],
     "case_name": "test_GatherNd_024"
+  },
+  {
+    "op": "GatherNd",
+    "calc_expect_func_file" : "test_GatherNd_golden.py:calc_expect_func",
+    "input_desc": [
+      {
+        "shape": [-2],
+        "typical_shape": [16, 3, 3],
+        "format": "ND",
+        "name": "dict_data",
+        "type": "int32"
+      },
+      {
+        "shape": [-2],
+        "typical_shape": [33, 3],
+        "format": "ND",
+        "name": "dict_indices",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [33],
+        "format": "ND",
+        "name": "dict_out",
+        "type": "int32"
+      }
+    ],
+    "case_name": "test_GatherNd_dynamic_rank_000"
   }
 ]

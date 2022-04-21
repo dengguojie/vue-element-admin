@@ -1,0 +1,32 @@
+[
+    {
+        "op": "EluGrad",
+        "calc_expect_func_file" : "test_elu_grad_golden.py:calc_expect_func",
+        "input_desc": [
+          {
+            "shape": [-2],
+            "typical_shape": [32, 112, 15, 112],
+            "format": "ND",
+            "type": "float32",
+            "name": "grads"
+          },
+          {
+            "shape": [-2],
+            "typical_shape": [32, 112, 15, 112],
+            "format": "ND",
+            "type": "float32",
+            "name": "activations"
+          }
+        ],
+        "output_desc": [
+          {
+            "shape": [32, 112, 15, 112],
+            "format": "ND",
+            "name": "y",
+            "type": "float32"
+          }
+        ],
+        "attr": [],
+        "case_name": "test_EluGrad_dynamic_rank_000"
+      }
+]

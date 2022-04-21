@@ -1,0 +1,25 @@
+[
+    {
+        "op": "Erf",
+        "calc_expect_func_file" : "test_erf_golden.py:calc_expect_func",
+        "input_desc": [
+          {
+            "shape": [-2],
+            "typical_shape": [32, 112, 15, 112],
+            "format": "ND",
+            "type": "float32",
+            "name": "x"
+          }
+        ],
+        "output_desc": [
+          {
+            "shape": [32, 112, 15, 112],
+            "format": "ND",
+            "name": "y",
+            "type": "float32"
+          }
+        ],
+        "attr": [],
+        "case_name": "test_Erf_dynamic_rank_000"
+      }
+]
