@@ -24,6 +24,35 @@ from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
 from impl.common_util import get_attr
+from impl.axpy import op_select_format as static_op_select_format
+
+
+# 'pylint: disable=unused-argument,too-many-nested-blocks,too-many-arguments
+# 'pylint: disable=invalid-name,too-many-locals,too-many-branches
+# 'pylint: disable=too-many-statements,too-many-boolean-expressions
+def op_select_format(input_x, input_y, output_z, alpha, kernel_name="axpy"):
+    """
+    select format dynamically, supporting dynamic shape format selecting
+
+    Parameters
+    ----------
+    input_x: dict
+    dict of input_x, include keys(shape and dtype).
+    input_y: dict
+    dict of input_y, include keys(shape and dtype).
+    output_z: dict
+    dict of output_z, include keys(shape and dtype).
+    alpha: float
+    alpha value
+    kernel_name: str
+    kernel name, default value is axpy
+
+    Returns:
+    -------
+    param_dynamic_in_json: dict
+    dict of param_dynamic.
+    """
+    return static_op_select_format(input_x, input_y, output_z, alpha, kernel_name="axpy")
 
 
 # 'pylint: disable=invalid-name,too-many-locals, unused-argument

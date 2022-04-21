@@ -22,6 +22,7 @@ from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import register_operator_compute
 
 
 # 'pylint: disable=too-few-public-methods,too-many-instance-attributes
@@ -88,6 +89,7 @@ def _greater_compare(data, shape, dtype, data_min):
     return tbe.cast_to(res, "uint8", True)
 
 
+@register_operator_compute("Greater", op_mode="dynamic", support_fusion=False)
 def greater_compute(x, y, z, kernel_name="greater"):
     """
     if x is greater than y, then return 1, else return 0.

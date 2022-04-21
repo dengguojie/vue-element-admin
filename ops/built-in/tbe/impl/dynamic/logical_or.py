@@ -22,10 +22,12 @@ from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import register_operator_compute
 
 
 # 'pylint: disable=unused-argument,invalid-name,redefined-argument-from-local
 # 'pylint: disable=locally-disabled,too-many-arguments,too-many-locals
+@register_operator_compute("LogicalOr", op_mode="dynamic", support_fusion=False)
 def logical_or_compute(x1, x2, y, kernel_name="logical_or"):
     """
     algorithm : logical_or_compute

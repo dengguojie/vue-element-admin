@@ -25,6 +25,7 @@ from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import tbe_context
+from impl.util.platform_adapter import register_operator_compute
 
 
 class Constant:
@@ -70,6 +71,7 @@ def check_supported(x1, x2, y, kernel_name="floor_mod", impl_mode="high_performa
 
 # 'pylint: disable=locally-disabled,unused-argument,invalid-name
 # 'pylint: disable=too-many-locals,redefined-argument-from-local
+@register_operator_compute("FloorMod", op_mode="dynamic", support_fusion=False)
 def floor_mod_compute(x1, x2, y, kernel_name="floor_mod", impl_mode="high_performance"):
     """
     Compute remainder of division

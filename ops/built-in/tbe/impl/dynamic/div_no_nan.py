@@ -24,9 +24,11 @@ from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import register_operator_compute
 
 
 # 'pylint: disable=too-many-locals
+@register_operator_compute("DivNoNan", op_mode="dynamic", support_fusion=False)
 def div_no_nan_compute(input_x, input_y, ):
     """
      div_no_nan_compute

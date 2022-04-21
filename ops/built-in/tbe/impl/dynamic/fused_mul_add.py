@@ -23,6 +23,17 @@ from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
+from impl.fused_mul_add import op_select_format as static_op_select_format
+
+
+def op_select_format(input0, input1, input2, output,
+                     kernel_name="fused_mul_add"):
+    """
+    _division_sixteen : judge whether the last two dimensions are divided by 16
+    scalar2tensor_one : convert scalar to tensor
+    """
+    return static_op_select_format(input0, input1, input2, output,
+                                   kernel_name="fused_mul_add")
 
 
 def _shape_broadcast(data_1, data_2):

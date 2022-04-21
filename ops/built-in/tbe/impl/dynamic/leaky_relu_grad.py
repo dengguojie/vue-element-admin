@@ -22,11 +22,13 @@ from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import register_operator_compute
 from impl.common_util import get_attr
 
 
 # 'pylint: disable=unused-argument,invalid-name,too-many-locals
 # 'pylint: disable=redefined-argument-from-local
+@register_operator_compute("LeakyReluGrad", op_mode="dynamic", support_fusion=False)
 def leaky_relu_grad_compute(g, x, y, negative_slope=0,
                             kernel_name="leaky_relu_grad"):
     """

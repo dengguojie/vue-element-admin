@@ -26,6 +26,37 @@ from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import OpImplMode
 from impl.util.platform_adapter import error_manager_vector
+from impl.sigmoid_cross_entropy_with_logits_v2 import op_select_format as static_op_select_format
+
+
+# 'pylint: disable=redefined-builtin,too-many-arguments,too-many-locals,unused-argument
+def op_select_format(predict, target, weight, pos_weight, loss, reduction="mean",
+                     kernel_name="sigmoid_cross_entropy_with_logits_v2"):
+    """op_select_format.
+
+    Parameters
+    ----------
+    predict : dict
+        shape and dtype of predict
+    target : dict
+        shape and dtype of target
+    weight : dict
+        shape and dtype of weight
+    pos_weight : dict
+        shape and dtype of pos_weight
+    loss : dict
+        shape and dtype of output, should be same shape and type as input
+    reduction: str
+        default value is "mean"
+    kernel_name : str
+        kernel name, default value is "sigmoid_cross_entropy_with_logits_v2"
+
+    Returns
+    -------
+    None
+    """
+    return static_op_select_format(predict, target, weight, pos_weight, loss, reduction="mean",
+                                   kernel_name="sigmoid_cross_entropy_with_logits_v2")
 
 
 # 'pylint: disable=locally-disabled,unused-argument,too-many-locals,too-many-arguments,line-too-long

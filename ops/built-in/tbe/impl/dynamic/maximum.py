@@ -23,11 +23,13 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import error_manager_vector
+from impl.util.platform_adapter import register_operator_compute
 
 
 # 'pylint: disable=locally-disabled,too-many-arguments,unused-argument
 # 'pylint: disable=invalid-name,unused-variable,too-many-locals
 # 'pylint: disable=redefined-argument-from-local
+@register_operator_compute("Maximum", op_mode="dynamic", support_fusion=False)
 def maximum_compute(x1, x2, y, kernel_name="maximum"):
     """dynamic maximum compute
 

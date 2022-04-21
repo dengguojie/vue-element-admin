@@ -22,10 +22,12 @@ from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import register_operator_compute
 
 
 # 'pylint: disable=locally-disabled,too-many-arguments,unused-argument
 # 'pylint: disable=too-many-locals,invalid-name
+@register_operator_compute("LogicalAnd", op_mode="dynamic", support_fusion=False)
 def logical_and_compute(x1, x2, y, kernel_name="logical_and"):
     """
     calculating data
