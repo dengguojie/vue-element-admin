@@ -37,7 +37,7 @@ class Boxes(object):
     """Boxes"""
 
     # 'pylint: disable=too-many-statements,too-many-arguments
-    def __init__(self, tik_instance, data_align, rep_time):
+    def __init__(self, tik_instance, data_align, dup_rep_time):
         """__init__"""
         self.x = None
         self.y = None
@@ -56,7 +56,7 @@ class Boxes(object):
 
         self.data_align = data_align
         self.tik_instance = tik_instance
-        self.rep_time = rep_time
+        self.dup_rep_time = dup_rep_time
 
     def init_data(self):
         # func: create for the calculation cache
@@ -70,16 +70,15 @@ class Boxes(object):
         self.y1 = self.tik_instance.Tensor("float32", [self.data_align], name="y1", scope=tik.scope_ubuf)
         self.y2 = self.tik_instance.Tensor("float32", [self.data_align], name="y2", scope=tik.scope_ubuf)
 
-        # func: init for the calculation cache of db1x1/db1x2/db1y1/db1y2/db2x1/db2x2/db2y1/db2y2
         self.dx1 = self.tik_instance.Tensor("float32", [self.data_align], name="dx1", scope=tik.scope_ubuf)
         self.dx2 = self.tik_instance.Tensor("float32", [self.data_align], name="dx2", scope=tik.scope_ubuf)
         self.dy1 = self.tik_instance.Tensor("float32", [self.data_align], name="dy1", scope=tik.scope_ubuf)
         self.dy2 = self.tik_instance.Tensor("float32", [self.data_align], name="dy2", scope=tik.scope_ubuf)
 
-        self.tik_instance.vector_dup(Constant.BLOCK, self.dx1, 0, self.rep_time, 1, 1)
-        self.tik_instance.vector_dup(Constant.BLOCK, self.dx2, 0, self.rep_time, 1, 1)
-        self.tik_instance.vector_dup(Constant.BLOCK, self.dy1, 0, self.rep_time, 1, 1)
-        self.tik_instance.vector_dup(Constant.BLOCK, self.dy2, 0, self.rep_time, 1, 1)
+        self.tik_instance.vector_dup(Constant.MASK_BLOCK, self.dx1, 0, self.dup_rep_time, 1, Constant.REP_STRIDE)
+        self.tik_instance.vector_dup(Constant.MASK_BLOCK, self.dx2, 0, self.dup_rep_time, 1, Constant.REP_STRIDE)
+        self.tik_instance.vector_dup(Constant.MASK_BLOCK, self.dy1, 0, self.dup_rep_time, 1, Constant.REP_STRIDE)
+        self.tik_instance.vector_dup(Constant.MASK_BLOCK, self.dy2, 0, self.dup_rep_time, 1, Constant.REP_STRIDE)
 
 
 class CommonIoUGrad(object):
@@ -94,28 +93,26 @@ class CommonIoUGrad(object):
         self.all_num, self.dtype = self.paras_check(dy, bboxes)
 
         # func: for task allocation
-        self.available_aicore_num = tik.Dprofile().get_aicore_num()
+        self.avail_aicore_num = tik.Dprofile().get_aicore_num()
 
-        self.data_align = 128 if self.all_num > 64 * self.available_aicore_num else 64
-        self.data_align = 256 if self.all_num > 128 * self.available_aicore_num else 128
-        self.data_align = 512 if self.all_num > 256 * self.available_aicore_num else 256
-        self.data_align = 1024 if self.all_num > 512 * self.available_aicore_num else 512
+        self.data_align = 128 if self.all_num > 64 * self.avail_aicore_num else 64
+        self.data_align = 256 if self.all_num > 128 * self.avail_aicore_num else 128
+        self.data_align = 512 if self.all_num > 256 * self.avail_aicore_num else 256
+        self.data_align = 1024 if self.all_num > 512 * self.avail_aicore_num else 512
 
-        self.rep_time = self.data_align // Constant.BLOCK
+        self.mov_rep_time = self.data_align // Constant.BLOCK
+        self.dup_rep_time = self.data_align // Constant.MASK_BLOCK
 
         self.task_num = (self.all_num + self.data_align - 1) // self.data_align
-
         self.all_num_align = self.task_num * self.data_align
-
         self.move_flag = False if self.all_num_align == self.all_num else True
 
-        self.used_aicore_num = \
-            self.available_aicore_num if self.task_num > self.available_aicore_num else self.task_num
+        self.used_aicore_num = self.avail_aicore_num if self.task_num > self.avail_aicore_num else self.task_num
         self.batch_num_per_aicore = self.task_num // self.used_aicore_num
         self.batch_tail = self.task_num % self.used_aicore_num
 
-        self.b_box = Boxes(self.tik_instance, self.data_align, self.rep_time)
-        self.g_box = Boxes(self.tik_instance, self.data_align, self.rep_time)
+        self.b_box = Boxes(self.tik_instance, self.data_align, self.dup_rep_time)
+        self.g_box = Boxes(self.tik_instance, self.data_align, self.dup_rep_time)
 
         # func: apply for the input/output tensors
         self.dy = self.tik_instance.Tensor(self.dtype, [self.all_num], name="dy", scope=tik.scope_gm)
@@ -138,7 +135,8 @@ class CommonIoUGrad(object):
         self.union = None
 
         # func: apply for the calculation cache of mask: record the result of compare api
-        self.mask = None
+        self.mask_1 = None
+        self.mask_2 = None
 
         # func: apply for the calculation cache of dy_ub
         self.dy_ub = None
@@ -233,7 +231,8 @@ class CommonIoUGrad(object):
         self.union = self.tik_instance.Tensor("float32", [self.data_align], name="union", scope=tik.scope_ubuf)
 
         # func: create for the calculation cache of mask: record the result of compare api
-        self.mask = self.tik_instance.Tensor("uint16", [Constant.BLOCK], name="mask", scope=tik.scope_ubuf)
+        self.mask_1 = self.tik_instance.Tensor("uint16", [self.data_align // 16], name="mask_1", scope=tik.scope_ubuf)
+        self.mask_2 = self.tik_instance.Tensor("uint16", [self.data_align // 16], name="mask_2", scope=tik.scope_ubuf)
 
         # func: ainitpply for the calculation cache of dy_ub
         self.dy_ub = self.tik_instance.Tensor("float32", [self.data_align], name="targets_ub", scope=tik.scope_ubuf)
@@ -252,7 +251,7 @@ class CommonIoUGrad(object):
 
         # func: init for the calculation cache of zero
         self.tmp_zero = self.tik_instance.Tensor("float32", [self.data_align], name="tmp_zero", scope=tik.scope_ubuf)
-        self.tik_instance.vector_dup(Constant.BLOCK, self.tmp_zero, 0.0, self.rep_time, 1, 1)
+        self.tik_instance.vector_dup(Constant.MASK_BLOCK, self.tmp_zero, 0.0, self.dup_rep_time, 1, Constant.REP_STRIDE)
 
         # func: init for the calculation cache of dinter/dunion/denclose
         self.dinter = self.tik_instance.Tensor("float32", [self.data_align], name="dinter", scope=tik.scope_ubuf)
@@ -267,8 +266,7 @@ class CommonIoUGrad(object):
     def move_in(self, task_idx):
         """move_in"""
         # func: for dy
-        self.tik_instance.data_move(self.dy_ub, self.dy[task_idx * self.data_align],
-                                    0, 1, self.rep_time, 0, 0)
+        self.tik_instance.data_move(self.dy_ub, self.dy[task_idx * self.data_align], 0, 1, self.mov_rep_time, 0, 0)
 
         # func: xyhw trans to xyxy
         if self.trans:
@@ -278,21 +276,23 @@ class CommonIoUGrad(object):
 
     def trans_true(self, task_idx):
         # func: for bboxes
-        self.tik_instance.data_move(self.b_box.x, self.bboxes[task_idx * self.data_align], 0, 1, self.rep_time, 0, 0)
+        self.tik_instance.data_move(self.b_box.x, self.bboxes[task_idx * self.data_align], 0, 1,
+                                    self.mov_rep_time, 0, 0)
         self.tik_instance.data_move(self.b_box.y, self.bboxes[self.all_num + task_idx * self.data_align], 0, 1,
-                                    self.rep_time, 0, 0)
+                                    self.mov_rep_time, 0, 0)
         self.tik_instance.data_move(self.b_box.w, self.bboxes[self.all_num * 2 + task_idx * self.data_align], 0, 1,
-                                    self.rep_time, 0, 0)
+                                    self.mov_rep_time, 0, 0)
         self.tik_instance.data_move(self.b_box.h, self.bboxes[self.all_num * 3 + task_idx * self.data_align], 0, 1,
-                                    self.rep_time, 0, 0)
+                                    self.mov_rep_time, 0, 0)
         # func: for gtboxes
-        self.tik_instance.data_move(self.g_box.x, self.gtboxes[task_idx * self.data_align], 0, 1, self.rep_time, 0, 0)
+        self.tik_instance.data_move(self.g_box.x, self.gtboxes[task_idx * self.data_align], 0, 1,
+                                    self.mov_rep_time, 0, 0)
         self.tik_instance.data_move(self.g_box.y, self.gtboxes[self.all_num + task_idx * self.data_align], 0, 1,
-                                    self.rep_time, 0, 0)
+                                    self.mov_rep_time, 0, 0)
         self.tik_instance.data_move(self.g_box.w, self.gtboxes[self.all_num * 2 + task_idx * self.data_align], 0, 1,
-                                    self.rep_time, 0, 0)
+                                    self.mov_rep_time, 0, 0)
         self.tik_instance.data_move(self.g_box.h, self.gtboxes[self.all_num * 3 + task_idx * self.data_align], 0, 1,
-                                    self.rep_time, 0, 0)
+                                    self.mov_rep_time, 0, 0)
 
         b1w_half = self.tik_instance.Tensor("float32", [self.data_align], name="b1w_half", scope=tik.scope_ubuf)
         b1h_half = self.tik_instance.Tensor("float32", [self.data_align], name="b1h_half", scope=tik.scope_ubuf)
@@ -319,25 +319,26 @@ class CommonIoUGrad(object):
     def trans_false(self, task_idx):
         # func: for bboxes
         self.tik_instance.data_move(self.b_box.x1, self.bboxes[task_idx * self.data_align], 0, 1,
-                                    self.rep_time, 0, 0)
+                                    self.mov_rep_time, 0, 0)
         self.tik_instance.data_move(self.b_box.y1, self.bboxes[self.all_num + task_idx * self.data_align], 0, 1,
-                                    self.rep_time, 0, 0)
+                                    self.mov_rep_time, 0, 0)
         self.tik_instance.data_move(self.b_box.x2, self.bboxes[self.all_num * 2 + task_idx * self.data_align],
-                                    0, 1, self.rep_time, 0, 0)
+                                    0, 1, self.mov_rep_time, 0, 0)
         self.tik_instance.data_move(self.b_box.y2, self.bboxes[self.all_num * 3 + task_idx * self.data_align],
-                                    0, 1, self.rep_time, 0, 0)
+                                    0, 1, self.mov_rep_time, 0, 0)
 
         self.tik_instance.h_sub(self.b_box.w, self.b_box.x2, self.b_box.x1)
         self.tik_instance.h_sub(self.b_box.h, self.b_box.y2, self.b_box.y1)
+
         # func: for gtboxes
         self.tik_instance.data_move(self.g_box.x1, self.gtboxes[task_idx * self.data_align], 0, 1,
-                                    self.rep_time, 0, 0)
+                                    self.mov_rep_time, 0, 0)
         self.tik_instance.data_move(self.g_box.y1, self.gtboxes[self.all_num + task_idx * self.data_align], 0,
-                                    1, self.rep_time, 0, 0)
+                                    1, self.mov_rep_time, 0, 0)
         self.tik_instance.data_move(self.g_box.x2, self.gtboxes[self.all_num * 2 + task_idx * self.data_align],
-                                    0, 1, self.rep_time, 0, 0)
+                                    0, 1, self.mov_rep_time, 0, 0)
         self.tik_instance.data_move(self.g_box.y2, self.gtboxes[self.all_num * 3 + task_idx * self.data_align],
-                                    0, 1, self.rep_time, 0, 0)
+                                    0, 1, self.mov_rep_time, 0, 0)
 
         self.tik_instance.h_sub(self.g_box.w, self.g_box.x2, self.g_box.x1)
         self.tik_instance.h_sub(self.g_box.h, self.g_box.y2, self.g_box.y1)
@@ -359,18 +360,18 @@ class CommonIoUGrad(object):
 
         # func: choose the positive one
         with self.tik_instance.for_range(0, self.data_align // Constant.MASK_BLOCK) as idx:
-            self.tik_instance.vec_cmpv_gt(self.mask, self.xlen[Constant.MASK_BLOCK * idx], self.tmp_zero, 1,
+            self.tik_instance.vec_cmpv_gt(self.mask_1, self.xlen[Constant.MASK_BLOCK * idx], self.tmp_zero, 1,
                                           Constant.REP_STRIDE, Constant.REP_STRIDE)
             self.tik_instance.vec_sel(Constant.MASK_BLOCK, 0,
                                       self.inter_x[Constant.MASK_BLOCK * idx],
-                                      self.mask, self.xlen[Constant.MASK_BLOCK * idx], self.tmp_zero, 1,
+                                      self.mask_1, self.xlen[Constant.MASK_BLOCK * idx], self.tmp_zero, 1,
                                       Constant.REP_STRIDE, Constant.REP_STRIDE, Constant.REP_STRIDE)
 
-            self.tik_instance.vec_cmpv_gt(self.mask, self.ylen[Constant.MASK_BLOCK * idx], self.tmp_zero, 1,
+            self.tik_instance.vec_cmpv_gt(self.mask_2, self.ylen[Constant.MASK_BLOCK * idx], self.tmp_zero, 1,
                                           Constant.REP_STRIDE, Constant.REP_STRIDE)
             self.tik_instance.vec_sel(Constant.MASK_BLOCK, 0,
                                       self.inter_y[Constant.MASK_BLOCK * idx],
-                                      self.mask, self.ylen[Constant.MASK_BLOCK * idx], self.tmp_zero, 1,
+                                      self.mask_2, self.ylen[Constant.MASK_BLOCK * idx], self.tmp_zero, 1,
                                       Constant.REP_STRIDE, Constant.REP_STRIDE, Constant.REP_STRIDE)
 
         self.tik_instance.h_mul(self.inter, self.inter_x, self.inter_y)
@@ -396,135 +397,113 @@ class CommonIoUGrad(object):
 
     def inter_part(self):
         """inter_part"""
-        # for inter part
-        self.tik_instance.h_mul(self.dxlen, self.dinter, self.inter_y)  # min_x
-        self.tik_instance.h_mul(self.dylen, self.dinter, self.inter_x)  # min_y
-
-        self.tik_instance.h_sub(self.tmp_a, self.tmp_zero, self.dxlen)  # max_x
-        self.tik_instance.h_sub(self.tmp_b, self.tmp_zero, self.dylen)  # max_y
-
-        tmp_mask = self.tik_instance.Tensor("uint16", [Constant.BLOCK], name="tmp_mask", scope=tik.scope_ubuf)
+        self.tik_instance.h_mul(self.dxlen, self.dinter, self.inter_y)
+        self.tik_instance.h_mul(self.dylen, self.dinter, self.inter_x)
 
         with self.tik_instance.for_range(0, self.data_align // Constant.MASK_BLOCK) as idx:
-            self.tik_instance.vec_cmpv_ge(tmp_mask, self.xlen[Constant.MASK_BLOCK * idx], self.tmp_zero, 1,
-                                          Constant.REP_STRIDE, Constant.REP_STRIDE)
-
-            self.tik_instance.vec_cmpv_lt(self.mask, self.b_box.x2[Constant.MASK_BLOCK * idx],
+            self.tik_instance.vec_cmpv_lt(self.mask_1, self.b_box.x2[Constant.MASK_BLOCK * idx],
                                           self.g_box.x2[Constant.MASK_BLOCK * idx], 1,
                                           Constant.REP_STRIDE, Constant.REP_STRIDE)
+            self.tik_instance.vec_cmpv_ge(self.mask_2, self.xlen[Constant.MASK_BLOCK * idx], self.tmp_zero, 1,
+                                          Constant.REP_STRIDE, Constant.REP_STRIDE)
 
-            self.tik_instance.vec_sel(Constant.MASK_BLOCK, 0, self.tmp_c[Constant.MASK_BLOCK * idx], self.mask,
+            self.tik_instance.vec_sel(Constant.MASK_BLOCK, 0, self.tmp_a[Constant.MASK_BLOCK * idx], self.mask_1,
                                       self.dxlen[Constant.MASK_BLOCK * idx], self.tmp_zero,
                                       1, Constant.REP_STRIDE, Constant.REP_STRIDE, Constant.REP_STRIDE)
 
-            self.tik_instance.vec_sel(Constant.MASK_BLOCK, 0, self.tmp_c[Constant.MASK_BLOCK * idx], tmp_mask,
-                                      self.tmp_c[Constant.MASK_BLOCK * idx], self.tmp_zero,
+            self.tik_instance.vec_sel(Constant.MASK_BLOCK, 0, self.tmp_a[Constant.MASK_BLOCK * idx], self.mask_2,
+                                      self.tmp_a[Constant.MASK_BLOCK * idx], self.tmp_zero,
                                       1, Constant.REP_STRIDE, Constant.REP_STRIDE, Constant.REP_STRIDE)
-            self.tik_instance.vec_add(Constant.MASK_BLOCK, self.b_box.dx2[Constant.MASK_BLOCK * idx],
-                                      self.tmp_c[Constant.MASK_BLOCK * idx],
-                                      self.b_box.dx2[Constant.MASK_BLOCK * idx], 1, Constant.REP_STRIDE,
-                                      Constant.REP_STRIDE, Constant.REP_STRIDE)
 
-            self.tik_instance.vec_sel(Constant.MASK_BLOCK, 0, self.tmp_d[Constant.MASK_BLOCK * idx], self.mask,
+            self.tik_instance.vec_sel(Constant.MASK_BLOCK, 0, self.tmp_b[Constant.MASK_BLOCK * idx], self.mask_1,
                                       self.tmp_zero, self.dxlen[Constant.MASK_BLOCK * idx],
                                       1, Constant.REP_STRIDE, Constant.REP_STRIDE, Constant.REP_STRIDE)
 
-            self.tik_instance.vec_sel(Constant.MASK_BLOCK, 0, self.tmp_d[Constant.MASK_BLOCK * idx], tmp_mask,
-                                      self.tmp_d[Constant.MASK_BLOCK * idx], self.tmp_zero,
+            self.tik_instance.vec_sel(Constant.MASK_BLOCK, 0, self.tmp_b[Constant.MASK_BLOCK * idx], self.mask_2,
+                                      self.tmp_b[Constant.MASK_BLOCK * idx], self.tmp_zero,
                                       1, Constant.REP_STRIDE, Constant.REP_STRIDE, Constant.REP_STRIDE)
-            self.tik_instance.vec_add(Constant.MASK_BLOCK, self.g_box.dx2[Constant.MASK_BLOCK * idx],
-                                      self.tmp_d[Constant.MASK_BLOCK * idx],
-                                      self.g_box.dx2[Constant.MASK_BLOCK * idx], 1, Constant.REP_STRIDE,
-                                      Constant.REP_STRIDE, Constant.REP_STRIDE)
 
-            self.tik_instance.vec_cmpv_gt(self.mask, self.b_box.x1[Constant.MASK_BLOCK * idx],
-                                          self.g_box.x1[Constant.MASK_BLOCK * idx], 1,
-                                          Constant.REP_STRIDE, Constant.REP_STRIDE)
-
-            self.tik_instance.vec_sel(Constant.MASK_BLOCK, 0, self.tmp_c[Constant.MASK_BLOCK * idx], self.mask,
-                                      self.tmp_a[Constant.MASK_BLOCK * idx], self.tmp_zero, 1,
-                                      Constant.REP_STRIDE, Constant.REP_STRIDE, Constant.REP_STRIDE)
-
-            self.tik_instance.vec_sel(Constant.MASK_BLOCK, 0, self.tmp_c[Constant.MASK_BLOCK * idx], tmp_mask,
-                                      self.tmp_c[Constant.MASK_BLOCK * idx], self.tmp_zero, 1, Constant.REP_STRIDE,
-                                      Constant.REP_STRIDE, Constant.REP_STRIDE)
-            self.tik_instance.vec_add(Constant.MASK_BLOCK, self.b_box.dx1[Constant.MASK_BLOCK * idx],
-                                      self.tmp_c[Constant.MASK_BLOCK * idx],
-                                      self.b_box.dx1[Constant.MASK_BLOCK * idx], 1, Constant.REP_STRIDE,
-                                      Constant.REP_STRIDE, Constant.REP_STRIDE)
-
-            self.tik_instance.vec_sel(Constant.MASK_BLOCK, 0, self.tmp_d[Constant.MASK_BLOCK * idx], self.mask,
-                                      self.tmp_zero, self.tmp_a[Constant.MASK_BLOCK * idx],
-                                      Constant.MASK_BLOCK // Constant.MASK_BLOCK,
-                                      Constant.REP_STRIDE, Constant.REP_STRIDE, Constant.REP_STRIDE)
-
-            self.tik_instance.vec_sel(Constant.MASK_BLOCK, 0, self.tmp_d[Constant.MASK_BLOCK * idx], tmp_mask,
-                                      self.tmp_d[Constant.MASK_BLOCK * idx], self.tmp_zero,
-                                      Constant.MASK_BLOCK // Constant.MASK_BLOCK, Constant.REP_STRIDE,
-                                      Constant.REP_STRIDE, Constant.REP_STRIDE)
-            self.tik_instance.vec_add(Constant.MASK_BLOCK, self.g_box.dx1[Constant.MASK_BLOCK * idx],
-                                      self.tmp_d[Constant.MASK_BLOCK * idx],
-                                      self.g_box.dx1[Constant.MASK_BLOCK * idx], 1, Constant.REP_STRIDE,
-                                      Constant.REP_STRIDE, Constant.REP_STRIDE)
-
-            self.tik_instance.vec_cmpv_ge(tmp_mask, self.ylen[Constant.MASK_BLOCK * idx], self.tmp_zero, 1,
-                                          Constant.REP_STRIDE, Constant.REP_STRIDE)
-
-            self.tik_instance.vec_cmpv_lt(self.mask, self.b_box.y2[Constant.MASK_BLOCK * idx],
+            self.tik_instance.vec_cmpv_lt(self.mask_1, self.b_box.y2[Constant.MASK_BLOCK * idx],
                                           self.g_box.y2[Constant.MASK_BLOCK * idx], 1,
                                           Constant.REP_STRIDE, Constant.REP_STRIDE)
+            self.tik_instance.vec_cmpv_ge(self.mask_2, self.ylen[Constant.MASK_BLOCK * idx], self.tmp_zero, 1,
+                                          Constant.REP_STRIDE, Constant.REP_STRIDE)
 
-            self.tik_instance.vec_sel(Constant.MASK_BLOCK, 0, self.tmp_c[Constant.MASK_BLOCK * idx], self.mask,
+            self.tik_instance.vec_sel(Constant.MASK_BLOCK, 0, self.tmp_c[Constant.MASK_BLOCK * idx], self.mask_1,
                                       self.dylen[Constant.MASK_BLOCK * idx], self.tmp_zero,
                                       1, Constant.REP_STRIDE, Constant.REP_STRIDE, Constant.REP_STRIDE)
 
-            self.tik_instance.vec_sel(Constant.MASK_BLOCK, 0, self.tmp_c[Constant.MASK_BLOCK * idx], tmp_mask,
+            self.tik_instance.vec_sel(Constant.MASK_BLOCK, 0, self.tmp_c[Constant.MASK_BLOCK * idx], self.mask_2,
                                       self.tmp_c[Constant.MASK_BLOCK * idx], self.tmp_zero,
                                       1, Constant.REP_STRIDE, Constant.REP_STRIDE, Constant.REP_STRIDE)
-            self.tik_instance.vec_add(Constant.MASK_BLOCK, self.b_box.dy2[Constant.MASK_BLOCK * idx],
-                                      self.tmp_c[Constant.MASK_BLOCK * idx],
-                                      self.b_box.dy2[Constant.MASK_BLOCK * idx], 1, Constant.REP_STRIDE,
-                                      Constant.REP_STRIDE, Constant.REP_STRIDE)
 
-            self.tik_instance.vec_sel(Constant.MASK_BLOCK, 0, self.tmp_d[Constant.MASK_BLOCK * idx], self.mask,
+            self.tik_instance.vec_sel(Constant.MASK_BLOCK, 0, self.tmp_d[Constant.MASK_BLOCK * idx], self.mask_1,
                                       self.tmp_zero, self.dylen[Constant.MASK_BLOCK * idx],
                                       1, Constant.REP_STRIDE, Constant.REP_STRIDE, Constant.REP_STRIDE)
 
-            self.tik_instance.vec_sel(Constant.MASK_BLOCK, 0, self.tmp_d[Constant.MASK_BLOCK * idx], tmp_mask,
+            self.tik_instance.vec_sel(Constant.MASK_BLOCK, 0, self.tmp_d[Constant.MASK_BLOCK * idx], self.mask_2,
                                       self.tmp_d[Constant.MASK_BLOCK * idx], self.tmp_zero,
                                       1, Constant.REP_STRIDE, Constant.REP_STRIDE, Constant.REP_STRIDE)
-            self.tik_instance.vec_add(Constant.MASK_BLOCK, self.g_box.dy2[Constant.MASK_BLOCK * idx],
-                                      self.tmp_d[Constant.MASK_BLOCK * idx],
-                                      self.g_box.dy2[Constant.MASK_BLOCK * idx], 1, Constant.REP_STRIDE,
-                                      Constant.REP_STRIDE, Constant.REP_STRIDE)
 
-            self.tik_instance.vec_cmpv_gt(self.mask, self.b_box.y1[Constant.MASK_BLOCK * idx],
-                                          self.g_box.y1[Constant.MASK_BLOCK * idx], 1,
+        self.tik_instance.h_add(self.b_box.dx2, self.tmp_a, self.b_box.dx2)
+        self.tik_instance.h_add(self.g_box.dx2, self.tmp_b, self.g_box.dx2)
+        self.tik_instance.h_add(self.b_box.dy2, self.tmp_c, self.b_box.dy2)
+        self.tik_instance.h_add(self.g_box.dy2, self.tmp_d, self.g_box.dy2)
+
+        self.tik_instance.h_sub(self.dxlen, self.tmp_zero, self.dxlen)
+        self.tik_instance.h_sub(self.dylen, self.tmp_zero, self.dylen)
+
+        with self.tik_instance.for_range(0, self.data_align // Constant.MASK_BLOCK) as idx:
+            self.tik_instance.vec_cmpv_gt(self.mask_1, self.b_box.x1[Constant.MASK_BLOCK * idx],
+                                          self.g_box.x1[Constant.MASK_BLOCK * idx], 1,
+                                          Constant.REP_STRIDE, Constant.REP_STRIDE)
+            self.tik_instance.vec_cmpv_ge(self.mask_2, self.xlen[Constant.MASK_BLOCK * idx], self.tmp_zero, 1,
                                           Constant.REP_STRIDE, Constant.REP_STRIDE)
 
-            self.tik_instance.vec_sel(Constant.MASK_BLOCK, 0, self.tmp_c[Constant.MASK_BLOCK * idx], self.mask,
-                                      self.tmp_b[Constant.MASK_BLOCK * idx], self.tmp_zero, 1,
+            self.tik_instance.vec_sel(Constant.MASK_BLOCK, 0, self.tmp_a[Constant.MASK_BLOCK * idx], self.mask_1,
+                                      self.dxlen[Constant.MASK_BLOCK * idx], self.tmp_zero, 1,
                                       Constant.REP_STRIDE, Constant.REP_STRIDE, Constant.REP_STRIDE)
 
-            self.tik_instance.vec_sel(Constant.MASK_BLOCK, 0, self.tmp_c[Constant.MASK_BLOCK * idx], tmp_mask,
+            self.tik_instance.vec_sel(Constant.MASK_BLOCK, 0, self.tmp_a[Constant.MASK_BLOCK * idx], self.mask_2,
+                                      self.tmp_a[Constant.MASK_BLOCK * idx], self.tmp_zero, 1, Constant.REP_STRIDE,
+                                      Constant.REP_STRIDE, Constant.REP_STRIDE)
+
+            self.tik_instance.vec_sel(Constant.MASK_BLOCK, 0, self.tmp_b[Constant.MASK_BLOCK * idx], self.mask_1,
+                                      self.tmp_zero, self.dxlen[Constant.MASK_BLOCK * idx],
+                                      Constant.MASK_BLOCK // Constant.MASK_BLOCK,
+                                      Constant.REP_STRIDE, Constant.REP_STRIDE, Constant.REP_STRIDE)
+
+            self.tik_instance.vec_sel(Constant.MASK_BLOCK, 0, self.tmp_b[Constant.MASK_BLOCK * idx], self.mask_2,
+                                      self.tmp_b[Constant.MASK_BLOCK * idx], self.tmp_zero,
+                                      Constant.MASK_BLOCK // Constant.MASK_BLOCK, Constant.REP_STRIDE,
+                                      Constant.REP_STRIDE, Constant.REP_STRIDE)
+
+            self.tik_instance.vec_cmpv_gt(self.mask_1, self.b_box.y1[Constant.MASK_BLOCK * idx],
+                                          self.g_box.y1[Constant.MASK_BLOCK * idx], 1,
+                                          Constant.REP_STRIDE, Constant.REP_STRIDE)
+            self.tik_instance.vec_cmpv_ge(self.mask_2, self.ylen[Constant.MASK_BLOCK * idx], self.tmp_zero, 1,
+                                          Constant.REP_STRIDE, Constant.REP_STRIDE)
+
+            self.tik_instance.vec_sel(Constant.MASK_BLOCK, 0, self.tmp_c[Constant.MASK_BLOCK * idx], self.mask_1,
+                                      self.dylen[Constant.MASK_BLOCK * idx], self.tmp_zero, 1,
+                                      Constant.REP_STRIDE, Constant.REP_STRIDE, Constant.REP_STRIDE)
+
+            self.tik_instance.vec_sel(Constant.MASK_BLOCK, 0, self.tmp_c[Constant.MASK_BLOCK * idx], self.mask_2,
                                       self.tmp_c[Constant.MASK_BLOCK * idx], self.tmp_zero, 1,
                                       Constant.REP_STRIDE, Constant.REP_STRIDE, Constant.REP_STRIDE)
-            self.tik_instance.vec_add(Constant.MASK_BLOCK, self.b_box.dy1[Constant.MASK_BLOCK * idx],
-                                      self.tmp_c[Constant.MASK_BLOCK * idx],
-                                      self.b_box.dy1[Constant.MASK_BLOCK * idx], 1, Constant.REP_STRIDE,
+
+            self.tik_instance.vec_sel(Constant.MASK_BLOCK, 0, self.tmp_d[Constant.MASK_BLOCK * idx], self.mask_1,
+                                      self.tmp_zero, self.dylen[Constant.MASK_BLOCK * idx], 1, Constant.REP_STRIDE,
                                       Constant.REP_STRIDE, Constant.REP_STRIDE)
 
-            self.tik_instance.vec_sel(Constant.MASK_BLOCK, 0, self.tmp_d[Constant.MASK_BLOCK * idx], self.mask,
-                                      self.tmp_zero, self.tmp_b[Constant.MASK_BLOCK * idx], 1, Constant.REP_STRIDE,
-                                      Constant.REP_STRIDE, Constant.REP_STRIDE)
-
-            self.tik_instance.vec_sel(Constant.MASK_BLOCK, 0, self.tmp_d[Constant.MASK_BLOCK * idx], tmp_mask,
+            self.tik_instance.vec_sel(Constant.MASK_BLOCK, 0, self.tmp_d[Constant.MASK_BLOCK * idx], self.mask_2,
                                       self.tmp_d[Constant.MASK_BLOCK * idx], self.tmp_zero, 1,
                                       Constant.REP_STRIDE, Constant.REP_STRIDE, Constant.REP_STRIDE)
-            self.tik_instance.vec_add(Constant.MASK_BLOCK, self.g_box.dy1[Constant.MASK_BLOCK * idx],
-                                      self.tmp_d[Constant.MASK_BLOCK * idx],
-                                      self.g_box.dy1[Constant.MASK_BLOCK * idx], 1, Constant.REP_STRIDE,
-                                      Constant.REP_STRIDE, Constant.REP_STRIDE)
+
+        self.tik_instance.h_add(self.b_box.dx1, self.tmp_a, self.b_box.dx1)
+        self.tik_instance.h_add(self.g_box.dx1, self.tmp_b, self.g_box.dx1)
+        self.tik_instance.h_add(self.b_box.dy1, self.tmp_c, self.b_box.dy1)
+        self.tik_instance.h_add(self.g_box.dy1, self.tmp_d, self.g_box.dy1)
 
     def union_part(self):
         """union_part"""
@@ -572,23 +551,23 @@ class CommonIoUGrad(object):
 
         if self.move_flag:
             self.tik_instance.data_move(self.dbboxes_[task_idx * self.data_align], self.tmp_a, 0, 1,
-                                        self.rep_time, 0, 0)
+                                        self.mov_rep_time, 0, 0)
             self.tik_instance.data_move(self.dbboxes_[self.all_num_align + task_idx * self.data_align],
-                                        self.tmp_b, 0, 1, self.rep_time, 0, 0)
+                                        self.tmp_b, 0, 1, self.mov_rep_time, 0, 0)
             self.tik_instance.data_move(self.dgtboxes_[task_idx * self.data_align], self.tmp_c, 0, 1,
-                                        self.rep_time, 0, 0)
+                                        self.mov_rep_time, 0, 0)
             self.tik_instance.data_move(self.dgtboxes_[self.all_num_align + task_idx * self.data_align],
-                                        self.tmp_d, 0, 1, self.rep_time, 0, 0)
+                                        self.tmp_d, 0, 1, self.mov_rep_time, 0, 0)
 
         else:
             self.tik_instance.data_move(self.dbboxes[task_idx * self.data_align], self.tmp_a, 0, 1,
-                                        self.rep_time, 0, 0)
+                                        self.mov_rep_time, 0, 0)
             self.tik_instance.data_move(self.dbboxes[self.all_num + task_idx * self.data_align], self.tmp_b, 0,
-                                        1, self.rep_time, 0, 0)
+                                        1, self.mov_rep_time, 0, 0)
             self.tik_instance.data_move(self.dgtboxes[task_idx * self.data_align], self.tmp_c, 0, 1,
-                                        self.rep_time, 0, 0)
+                                        self.mov_rep_time, 0, 0)
             self.tik_instance.data_move(self.dgtboxes[self.all_num + task_idx * self.data_align],
-                                        self.tmp_d, 0, 1, self.rep_time, 0, 0)
+                                        self.tmp_d, 0, 1, self.mov_rep_time, 0, 0)
 
         # for b1w b1h b2w b2h
         self.tik_instance.h_sub(self.tmp_a, self.b_box.dx2, self.b_box.dx1)
@@ -605,61 +584,61 @@ class CommonIoUGrad(object):
 
         if self.move_flag:
             self.tik_instance.data_move(self.dbboxes_[self.all_num_align * 2 + task_idx * self.data_align],
-                                        self.tmp_a, 0, 1, self.rep_time, 0, 0)
+                                        self.tmp_a, 0, 1, self.mov_rep_time, 0, 0)
             self.tik_instance.data_move(self.dbboxes_[self.all_num_align * 3 + task_idx * self.data_align],
-                                        self.tmp_b, 0, 1, self.rep_time, 0, 0)
+                                        self.tmp_b, 0, 1, self.mov_rep_time, 0, 0)
             self.tik_instance.data_move(self.dgtboxes_[self.all_num_align * 2 + task_idx * self.data_align],
-                                        self.tmp_c, 0, 1, self.rep_time, 0, 0)
+                                        self.tmp_c, 0, 1, self.mov_rep_time, 0, 0)
             self.tik_instance.data_move(self.dgtboxes_[self.all_num_align * 3 + task_idx * self.data_align],
-                                        self.tmp_d, 0, 1, self.rep_time, 0, 0)
+                                        self.tmp_d, 0, 1, self.mov_rep_time, 0, 0)
         else:
             self.tik_instance.data_move(self.dbboxes[self.all_num * 2 + task_idx * self.data_align],
-                                        self.tmp_a, 0, 1, self.rep_time, 0, 0)
+                                        self.tmp_a, 0, 1, self.mov_rep_time, 0, 0)
             self.tik_instance.data_move(self.dbboxes[self.all_num * 3 + task_idx * self.data_align],
-                                        self.tmp_b, 0, 1, self.rep_time, 0, 0)
+                                        self.tmp_b, 0, 1, self.mov_rep_time, 0, 0)
             self.tik_instance.data_move(self.dgtboxes[self.all_num * 2 + task_idx * self.data_align],
-                                        self.tmp_c, 0, 1, self.rep_time, 0, 0)
+                                        self.tmp_c, 0, 1, self.mov_rep_time, 0, 0)
             self.tik_instance.data_move(self.dgtboxes[self.all_num * 3 + task_idx * self.data_align],
-                                        self.tmp_d, 0, 1, self.rep_time, 0, 0)
+                                        self.tmp_d, 0, 1, self.mov_rep_time, 0, 0)
 
     def update_dboxes_trans_false(self, task_idx):
         """update_dboxes_trans_true"""
         if self.move_flag:
             self.tik_instance.data_move(self.dbboxes_[task_idx * self.data_align], self.b_box.dx1, 0, 1,
-                                        self.rep_time, 0, 0)
+                                        self.mov_rep_time, 0, 0)
             self.tik_instance.data_move(self.dbboxes_[self.all_num_align + task_idx * self.data_align],
-                                        self.b_box.dy1, 0, 1, self.rep_time, 0, 0)
+                                        self.b_box.dy1, 0, 1, self.mov_rep_time, 0, 0)
             self.tik_instance.data_move(self.dbboxes_[self.all_num_align * 2 + task_idx * self.data_align],
-                                        self.b_box.dx2, 0, 1, self.rep_time, 0, 0)
+                                        self.b_box.dx2, 0, 1, self.mov_rep_time, 0, 0)
             self.tik_instance.data_move(self.dbboxes_[self.all_num_align * 3 + task_idx * self.data_align],
-                                        self.b_box.dy2, 0, 1, self.rep_time, 0, 0)
+                                        self.b_box.dy2, 0, 1, self.mov_rep_time, 0, 0)
 
             self.tik_instance.data_move(self.dgtboxes_[task_idx * self.data_align], self.g_box.dx1, 0, 1,
-                                        self.rep_time, 0, 0)
+                                        self.mov_rep_time, 0, 0)
             self.tik_instance.data_move(self.dgtboxes_[self.all_num_align + task_idx * self.data_align],
-                                        self.g_box.dy1, 0, 1, self.rep_time, 0, 0)
+                                        self.g_box.dy1, 0, 1, self.mov_rep_time, 0, 0)
             self.tik_instance.data_move(self.dgtboxes_[self.all_num_align * 2 + task_idx * self.data_align],
-                                        self.g_box.dx2, 0, 1, self.rep_time, 0, 0)
+                                        self.g_box.dx2, 0, 1, self.mov_rep_time, 0, 0)
             self.tik_instance.data_move(self.dgtboxes_[self.all_num_align * 3 + task_idx * self.data_align],
-                                        self.g_box.dy2, 0, 1, self.rep_time, 0, 0)
+                                        self.g_box.dy2, 0, 1, self.mov_rep_time, 0, 0)
         else:
             self.tik_instance.data_move(self.dbboxes[task_idx * self.data_align], self.b_box.dx1, 0, 1,
-                                        self.rep_time, 0, 0)
+                                        self.mov_rep_time, 0, 0)
             self.tik_instance.data_move(self.dbboxes[self.all_num + task_idx * self.data_align],
-                                        self.b_box.dy1, 0, 1, self.rep_time, 0, 0)
+                                        self.b_box.dy1, 0, 1, self.mov_rep_time, 0, 0)
             self.tik_instance.data_move(self.dbboxes[self.all_num * 2 + task_idx * self.data_align],
-                                        self.b_box.dx2, 0, 1, self.rep_time, 0, 0)
+                                        self.b_box.dx2, 0, 1, self.mov_rep_time, 0, 0)
             self.tik_instance.data_move(self.dbboxes[self.all_num * 3 + task_idx * self.data_align],
-                                        self.b_box.dy2, 0, 1, self.rep_time, 0, 0)
+                                        self.b_box.dy2, 0, 1, self.mov_rep_time, 0, 0)
 
             self.tik_instance.data_move(self.dgtboxes[task_idx * self.data_align], self.g_box.dx1, 0, 1,
-                                        self.rep_time, 0, 0)
+                                        self.mov_rep_time, 0, 0)
             self.tik_instance.data_move(self.dgtboxes[self.all_num + task_idx * self.data_align],
-                                        self.g_box.dy1, 0, 1, self.rep_time, 0, 0)
+                                        self.g_box.dy1, 0, 1, self.mov_rep_time, 0, 0)
             self.tik_instance.data_move(self.dgtboxes[self.all_num * 2 + task_idx * self.data_align],
-                                        self.g_box.dx2, 0, 1, self.rep_time, 0, 0)
+                                        self.g_box.dx2, 0, 1, self.mov_rep_time, 0, 0)
             self.tik_instance.data_move(self.dgtboxes[self.all_num * 3 + task_idx * self.data_align],
-                                        self.g_box.dy2, 0, 1, self.rep_time, 0, 0)
+                                        self.g_box.dy2, 0, 1, self.mov_rep_time, 0, 0)
 
     def move_out(self):
         """move_out"""

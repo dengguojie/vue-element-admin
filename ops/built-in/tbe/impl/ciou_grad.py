@@ -109,7 +109,6 @@ class CIoUGrad(DIoUGrad):
 
     def update_ciou_forward(self, task_idx):
         """update_ciou_forward"""
-
         # func: compute for  (1.0 + (w1 / h1) ** 2)
         self.tik_instance.h_div(self.rate_b1, self.b_box.w, self.b_box.h)
         self.tik_instance.h_mul(self.delta_b1, self.rate_b1, self.rate_b1)
@@ -144,7 +143,7 @@ class CIoUGrad(DIoUGrad):
 
         # func: `for v = 4 / pi ** 2 * atan_sub**2 & 4 / pi ** 2 = 0.405285`
         self.tik_instance.data_move(self.atan_sub_ub, self.atan_sub[task_idx * self.data_align], 0, 1,
-                                    self.rep_time, 0, 0)
+                                    self.mov_rep_time, 0, 0)
 
         self.tik_instance.h_mul(self.tmp_a, self.atan_sub_ub, self.atan_sub_ub)
         self.tik_instance.h_mul(self.v_ub, self.tmp_a, 0.405285)
@@ -171,10 +170,7 @@ class CIoUGrad(DIoUGrad):
     def v_part(self, task_idx):
         """v_part"""
         # for b1
-        self.tik_instance.data_move(self.tmp_a, self.bboxes[self.all_num * 3 + task_idx * self.data_align], 0, 1,
-                                    self.rep_time, 0, 0)
-
-        self.tik_instance.h_div(self.delta_b1, self.delta_b1, self.tmp_a)
+        self.tik_instance.h_div(self.delta_b1, self.delta_b1, self.b_box.h)
 
         self.tik_instance.h_add(self.b_box.dx1, self.b_box.dx1, self.delta_b1)
         self.tik_instance.h_sub(self.b_box.dx2, self.b_box.dx2, self.delta_b1)
@@ -184,9 +180,7 @@ class CIoUGrad(DIoUGrad):
 
         self.tik_instance.h_add(self.b_box.dy2, self.b_box.dy2, self.delta_b1)
         # for b2
-        self.tik_instance.data_move(self.tmp_a, self.gtboxes[self.all_num * 3 + task_idx * self.data_align], 0,
-                                    1, self.rep_time, 0, 0)
-        self.tik_instance.h_div(self.delta_b2, self.delta_b2, self.tmp_a)
+        self.tik_instance.h_div(self.delta_b2, self.delta_b2, self.g_box.h)
 
         self.tik_instance.h_sub(self.g_box.dx1, self.g_box.dx1, self.delta_b2)
         self.tik_instance.h_add(self.g_box.dx2, self.g_box.dx2, self.delta_b2)

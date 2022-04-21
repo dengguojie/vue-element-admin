@@ -97,82 +97,65 @@ class GIoUGrad(CommonIoUGrad):
 
     def enclose_part(self):
         """enclose_part"""
-        # for enclose part
-        self.tik_instance.h_mul(self.dxlen, self.denclose, self.ch)  # max_x
-        self.tik_instance.h_mul(self.dylen, self.denclose, self.cw)  # max_y
-
-        self.tik_instance.h_sub(self.tmp_a, self.tmp_zero, self.dxlen)  # min_x
-        self.tik_instance.h_sub(self.tmp_b, self.tmp_zero, self.dylen)  # min_y
+        self.tik_instance.h_mul(self.dxlen, self.denclose, self.ch)
+        self.tik_instance.h_mul(self.dylen, self.denclose, self.cw)
 
         with self.tik_instance.for_range(0, self.data_align // Constant.MASK_BLOCK) as idx:
             # `for enclose part : max(b1_x2, b2_x2)`
-            self.tik_instance.vec_cmpv_gt(self.mask, self.b_box.x2[Constant.MASK_BLOCK * idx],
+            self.tik_instance.vec_cmpv_gt(self.mask_1, self.b_box.x2[Constant.MASK_BLOCK * idx],
                                           self.g_box.x2[Constant.MASK_BLOCK * idx], 1,
                                           Constant.REP_STRIDE, Constant.REP_STRIDE)
-
-            self.tik_instance.vec_sel(Constant.MASK_BLOCK, 0, self.tmp_c, self.mask,
+            self.tik_instance.vec_sel(Constant.MASK_BLOCK, 0, self.tmp_a[Constant.MASK_BLOCK * idx], self.mask_1,
                                       self.dxlen[Constant.MASK_BLOCK * idx], self.tmp_zero, 1,
                                       Constant.REP_STRIDE, Constant.REP_STRIDE, Constant.REP_STRIDE)
-            self.tik_instance.vec_add(Constant.MASK_BLOCK, self.b_box.dx2[Constant.MASK_BLOCK * idx],
-                                      self.tmp_c, self.b_box.dx2[Constant.MASK_BLOCK * idx], 1,
-                                      Constant.REP_STRIDE, Constant.REP_STRIDE, Constant.REP_STRIDE)
-            self.tik_instance.vec_sel(Constant.MASK_BLOCK, 0, self.tmp_d, self.mask,
+            self.tik_instance.vec_sel(Constant.MASK_BLOCK, 0, self.tmp_b[Constant.MASK_BLOCK * idx], self.mask_1,
                                       self.tmp_zero, self.dxlen[Constant.MASK_BLOCK * idx], 1, Constant.REP_STRIDE,
                                       Constant.REP_STRIDE, Constant.REP_STRIDE)
-            self.tik_instance.vec_add(Constant.MASK_BLOCK, self.g_box.dx2[Constant.MASK_BLOCK * idx],
-                                      self.tmp_d, self.g_box.dx2[Constant.MASK_BLOCK * idx], 1, Constant.REP_STRIDE,
-                                      Constant.REP_STRIDE, Constant.REP_STRIDE)
-
-            # `for enclose part : min(b1_x1, b2_x1)`
-            self.tik_instance.vec_cmpv_lt(self.mask, self.b_box.x1[Constant.MASK_BLOCK * idx],
-                                          self.g_box.x1[Constant.MASK_BLOCK * idx], 1, Constant.REP_STRIDE,
-                                          Constant.REP_STRIDE)
-            self.tik_instance.vec_sel(Constant.MASK_BLOCK, 0, self.tmp_c, self.mask,
-                                      self.tmp_a[Constant.MASK_BLOCK * idx], self.tmp_zero, 1, Constant.REP_STRIDE,
-                                      Constant.REP_STRIDE, Constant.REP_STRIDE)
-            self.tik_instance.vec_add(Constant.MASK_BLOCK, self.b_box.dx1[Constant.MASK_BLOCK * idx],
-                                      self.tmp_c, self.b_box.dx1[Constant.MASK_BLOCK * idx], 1, Constant.REP_STRIDE,
-                                      Constant.REP_STRIDE, Constant.REP_STRIDE)
-            self.tik_instance.vec_sel(Constant.MASK_BLOCK, 0, self.tmp_d, self.mask,
-                                      self.tmp_zero, self.tmp_a[Constant.MASK_BLOCK * idx], 1, Constant.REP_STRIDE,
-                                      Constant.REP_STRIDE, Constant.REP_STRIDE)
-            self.tik_instance.vec_add(Constant.MASK_BLOCK, self.g_box.dx1[Constant.MASK_BLOCK * idx],
-                                      self.tmp_d, self.g_box.dx1[Constant.MASK_BLOCK * idx], 1,
-                                      Constant.REP_STRIDE, Constant.REP_STRIDE, Constant.REP_STRIDE)
-
             # `for enclose part : max(b1_y2, b2_y2)`
-            self.tik_instance.vec_cmpv_gt(self.mask, self.b_box.y2[Constant.MASK_BLOCK * idx],
+            self.tik_instance.vec_cmpv_gt(self.mask_2, self.b_box.y2[Constant.MASK_BLOCK * idx],
                                           self.g_box.y2[Constant.MASK_BLOCK * idx], 1,
                                           Constant.REP_STRIDE, Constant.REP_STRIDE)
-            self.tik_instance.vec_sel(Constant.MASK_BLOCK, 0, self.tmp_c, self.mask,
+            self.tik_instance.vec_sel(Constant.MASK_BLOCK, 0, self.tmp_c[Constant.MASK_BLOCK * idx], self.mask_2,
                                       self.dylen[Constant.MASK_BLOCK * idx], self.tmp_zero, 1, Constant.REP_STRIDE,
                                       Constant.REP_STRIDE, Constant.REP_STRIDE)
-            self.tik_instance.vec_add(Constant.MASK_BLOCK, self.b_box.dy2[Constant.MASK_BLOCK * idx],
-                                      self.tmp_c, self.b_box.dy2[Constant.MASK_BLOCK * idx], 1, Constant.REP_STRIDE,
-                                      Constant.REP_STRIDE, Constant.REP_STRIDE)
-            self.tik_instance.vec_sel(Constant.MASK_BLOCK, 0, self.tmp_d, self.mask,
+            self.tik_instance.vec_sel(Constant.MASK_BLOCK, 0, self.tmp_d[Constant.MASK_BLOCK * idx], self.mask_2,
                                       self.tmp_zero, self.dylen[Constant.MASK_BLOCK * idx], 1, Constant.REP_STRIDE,
                                       Constant.REP_STRIDE, Constant.REP_STRIDE)
-            self.tik_instance.vec_add(Constant.MASK_BLOCK, self.g_box.dy2[Constant.MASK_BLOCK * idx],
-                                      self.tmp_d, self.g_box.dy2[Constant.MASK_BLOCK * idx],
-                                      1, Constant.REP_STRIDE, Constant.REP_STRIDE, Constant.REP_STRIDE)
 
+        self.tik_instance.h_add(self.b_box.dx2, self.tmp_a, self.b_box.dx2)
+        self.tik_instance.h_add(self.g_box.dx2, self.tmp_b, self.g_box.dx2)
+        self.tik_instance.h_add(self.b_box.dy2, self.tmp_c, self.b_box.dy2)
+        self.tik_instance.h_add(self.g_box.dy2, self.tmp_d, self.g_box.dy2)
+
+        self.tik_instance.h_sub(self.dxlen, self.tmp_zero, self.dxlen)
+        self.tik_instance.h_sub(self.dylen, self.tmp_zero, self.dylen)
+
+        with self.tik_instance.for_range(0, self.data_align // Constant.MASK_BLOCK) as idx:
+            # `for enclose part : min(b1_x1, b2_x1)`
+            self.tik_instance.vec_cmpv_lt(self.mask_1, self.b_box.x1[Constant.MASK_BLOCK * idx],
+                                          self.g_box.x1[Constant.MASK_BLOCK * idx], 1, Constant.REP_STRIDE,
+                                          Constant.REP_STRIDE)
+            self.tik_instance.vec_sel(Constant.MASK_BLOCK, 0, self.tmp_a[Constant.MASK_BLOCK * idx], self.mask_1,
+                                      self.dxlen[Constant.MASK_BLOCK * idx], self.tmp_zero, 1, Constant.REP_STRIDE,
+                                      Constant.REP_STRIDE, Constant.REP_STRIDE)
+            self.tik_instance.vec_sel(Constant.MASK_BLOCK, 0, self.tmp_b[Constant.MASK_BLOCK * idx], self.mask_1,
+                                      self.tmp_zero, self.dxlen[Constant.MASK_BLOCK * idx], 1, Constant.REP_STRIDE,
+                                      Constant.REP_STRIDE, Constant.REP_STRIDE)
             # `for enclose part : min(b1_y1, b2_y1)`
-            self.tik_instance.vec_cmpv_lt(self.mask, self.b_box.y1[Constant.MASK_BLOCK * idx],
+            self.tik_instance.vec_cmpv_lt(self.mask_2, self.b_box.y1[Constant.MASK_BLOCK * idx],
                                           self.g_box.y1[Constant.MASK_BLOCK * idx], 1, Constant.REP_STRIDE,
                                           Constant.REP_STRIDE)
-            self.tik_instance.vec_sel(Constant.MASK_BLOCK, 0, self.tmp_c, self.mask,
-                                      self.tmp_b[Constant.MASK_BLOCK * idx], self.tmp_zero, 1, Constant.REP_STRIDE,
+            self.tik_instance.vec_sel(Constant.MASK_BLOCK, 0, self.tmp_c[Constant.MASK_BLOCK * idx], self.mask_2,
+                                      self.dylen[Constant.MASK_BLOCK * idx], self.tmp_zero, 1, Constant.REP_STRIDE,
                                       Constant.REP_STRIDE, Constant.REP_STRIDE)
-            self.tik_instance.vec_add(Constant.MASK_BLOCK, self.b_box.dy1[Constant.MASK_BLOCK * idx],
-                                      self.tmp_c, self.b_box.dy1[Constant.MASK_BLOCK * idx], 1, Constant.REP_STRIDE,
+            self.tik_instance.vec_sel(Constant.MASK_BLOCK, 0, self.tmp_d[Constant.MASK_BLOCK * idx], self.mask_2,
+                                      self.tmp_zero, self.dylen[Constant.MASK_BLOCK * idx], 1, Constant.REP_STRIDE,
                                       Constant.REP_STRIDE, Constant.REP_STRIDE)
-            self.tik_instance.vec_sel(Constant.MASK_BLOCK, 0, self.tmp_d, self.mask,
-                                      self.tmp_zero, self.tmp_b[Constant.MASK_BLOCK * idx], 1, Constant.REP_STRIDE,
-                                      Constant.REP_STRIDE, Constant.REP_STRIDE)
-            self.tik_instance.vec_add(Constant.MASK_BLOCK, self.g_box.dy1[Constant.MASK_BLOCK * idx],
-                                      self.tmp_d, self.g_box.dy1[Constant.MASK_BLOCK * idx], 1, Constant.REP_STRIDE,
-                                      Constant.REP_STRIDE, Constant.REP_STRIDE)
+
+        self.tik_instance.h_add(self.b_box.dx1, self.tmp_a, self.b_box.dx1)
+        self.tik_instance.h_add(self.g_box.dx1, self.tmp_b, self.g_box.dx1)
+        self.tik_instance.h_add(self.b_box.dy1, self.tmp_c, self.b_box.dy1)
+        self.tik_instance.h_add(self.g_box.dy1, self.tmp_d, self.g_box.dy1)
 
 
 # 'pylint: disable=invalid-name,too-many-locals,too-many-arguments,unused-argument

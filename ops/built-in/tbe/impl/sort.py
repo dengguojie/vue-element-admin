@@ -602,6 +602,14 @@ def sort(x, y1, y2, axis=-1, descending=False, kernel_name="sort"):
     num_2048 = (num + NUM_BLOCK - 1) // NUM_BLOCK * NUM_BLOCK
     num_gm = num_2048 // NUM_BLOCK
 
+    cce_product = tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION)
+    available_aicore_num = tik.Dprofile().get_aicore_num()
+    used_aicore_num = available_aicore_num if rounds > available_aicore_num else rounds
+    batch_num_per_aicore = rounds // used_aicore_num
+    batch_tail = rounds % used_aicore_num
+
+    temp = None
+
     if num <= NUM_BLOCK:
         input_gm = tik_instance.Tensor(dtype, shape, name="x", scope=tik.scope_gm)
         data_out = tik_instance.Tensor(dtype, [rounds * num_16], name="data_out", scope=tik.scope_gm, is_workspace=True)
@@ -609,7 +617,6 @@ def sort(x, y1, y2, axis=-1, descending=False, kernel_name="sort"):
                                            is_workspace=True)
         data_out_ = tik_instance.Tensor(dtype, shape, name="data_out_", scope=tik.scope_gm)
         data_indices_ = tik_instance.Tensor("int32", shape, name="data_indices_", scope=tik.scope_gm)
-
     else:
         input_gm = tik_instance.Tensor(dtype, shape, name="input_gm", scope=tik.scope_gm)
         data_out = tik_instance.Tensor(dtype, [rounds * num_2048], name="data_out", scope=tik.scope_gm,
@@ -619,15 +626,8 @@ def sort(x, y1, y2, axis=-1, descending=False, kernel_name="sort"):
 
         data_out_ = tik_instance.Tensor(dtype, shape, name="data_out_", scope=tik.scope_gm)
         data_indices_ = tik_instance.Tensor("int32", shape, name="data_indices_", scope=tik.scope_gm)
-
-    cce_product = tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION)
-    available_aicore_num = tik.Dprofile().get_aicore_num()
-    used_aicore_num = available_aicore_num if rounds > available_aicore_num else rounds
-    batch_num_per_aicore = rounds // used_aicore_num
-    batch_tail = rounds % used_aicore_num
-
-    temp = tik_instance.Tensor(dtype, [used_aicore_num * num_2048 * PROPOSAL_NUM], name="temp",
-                               scope=tik.scope_gm, is_workspace=True)
+        temp = tik_instance.Tensor(dtype, [used_aicore_num * num_2048 * PROPOSAL_NUM], name="temp",
+                                   scope=tik.scope_gm, is_workspace=True)
 
     with tik_instance.for_range(0, used_aicore_num, block_num=used_aicore_num) as i:
         with tik_instance.for_range(0, batch_num_per_aicore) as j:
