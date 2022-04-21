@@ -26,6 +26,18 @@ aicpu:
     ut_check: true
     st_check: false
 
+dvpp:
+  commiter:
+    "xxx"
+  team: "dvpp" ##组件名称
+  src:
+    release:
+      - ops/built-in/dvpp/
+    unrelease:
+  llt:
+    ut_check: true
+    st_check: false
+
 onnx:
   commiter:
     "xxx"

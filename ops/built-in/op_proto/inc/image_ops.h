@@ -671,6 +671,7 @@ size for the images . \n
 output tensors are aligned, preserving the values at the corner pixels.
 Defaults to false .
 * @li half_pixel_centers: An optional bool. Defaults to False . \n
+* @li dtype: An Type attr, support type list [DT_FP32, DT_U8]. Defaults to DT_FP32 . \n
 *@par Outputs:
 *y: 4-D with shape [batch, new_height, new_width, channels] . \n
 
@@ -682,12 +683,13 @@ Defaults to false .
 */
 
 REG_OP(ResizeBilinearV2)
-    .INPUT(x, TensorType({DT_INT8, DT_UINT8, DT_INT16, DT_UINT16,
-                               DT_INT32, DT_INT64, DT_FLOAT16, DT_FLOAT, DT_DOUBLE}))
+    .INPUT(x, TensorType({DT_INT8, DT_UINT8, DT_INT16, DT_UINT16, DT_INT32,
+                          DT_INT64, DT_FLOAT16, DT_FLOAT, DT_DOUBLE}))
     .INPUT(size, TensorType({DT_INT32}))
-    .OUTPUT(y, TensorType({DT_FLOAT}))
+    .OUTPUT(y, TensorType({DT_UINT8, DT_FLOAT}))
     .ATTR(align_corners, Bool, false)
     .ATTR(half_pixel_centers, Bool, false)
+    .ATTR(dtype, Type, DT_FLOAT)
     .OP_END_FACTORY_REG(ResizeBilinearV2)
 
 /**

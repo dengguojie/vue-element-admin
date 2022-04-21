@@ -33,6 +33,7 @@ add_subdirectory(op_tiling)
 if(NOT ENABLE_TEST)
   add_subdirectory(tbe)
   add_subdirectory(aicpu)
+  add_subdirectory(dvpp)
 endif()
 
 endif()

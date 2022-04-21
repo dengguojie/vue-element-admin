@@ -7,6 +7,7 @@ ops/built-in/op_proto/
 ops/built-in/op_tiling/
 ops/built-in/tbe/
 ops/built-in/utils/
+ops/built-in/dvpp/
 
 [canndev_3RD]
 third_party/
