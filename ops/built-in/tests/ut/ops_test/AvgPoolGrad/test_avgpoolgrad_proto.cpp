@@ -466,7 +466,6 @@ TEST_F(AvgPoolGradProtoTest, avg_pool_grad_fuzzy_compile)
   op.SetAttr("strides", {1, 1, 3, 4});
   op.SetAttr("padding", "SAME");
   op.SetAttr("data_format", "NCHW");
-
   auto ret = op.InferShapeAndType();
   EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
 

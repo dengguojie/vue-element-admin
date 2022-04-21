@@ -282,6 +282,18 @@ filter_ori_format_ND = {"params": [{"shape": (1,), "dtype": "float16", "format":
                             "expect": RuntimeError,
                             "support_expect": True}
 
+# dynamic n test default tiling
+dynamic_n_test_default_tiling = {"params": [{"shape": (4,), "dtype": "int32", "format": "ND", "ori_shape": (4,), "ori_format": "ND"},
+                                    {"shape": (-1, 64, 1, 1, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (-1, 1, 1, 1024),"ori_format": "NHWC",
+                                    "range":[(1, 4), (64, 64), (1, 1), (1, 1),(16, 16)]},
+                                    {"shape": (1048576, 1, 16, 16), "dtype": "float16", "format": "FRACTAL_Z", "ori_shape": (128, 128, 1, 1024),"ori_format": "HWCN",
+                                    "range":[(1048576, 1048576), (1, 1), (16, 16), (16, 16)]},
+                                    {"shape": (-1,64,128,128,16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (-1,128,128,1024), "ori_format": "NHWC",
+                                    "range":[(1, 4), (64, 64), (128, 128), (128, 128),(16,16)]},
+                                    [1,128,128,1], [1,128,128,1], "SAME", "NHWC"],
+                        "expect": "success",
+                        "support_expect": True}
+
 def test_avg_pool_grad_fuzzy_compile_generaliation(test_arg):
     from impl.dynamic.avg_pool_grad import avg_pool_grad_generalization
     print("test_avg_pool_grad_fuzzy_compile_generaliation")
@@ -729,6 +741,9 @@ ut_case.add_case(["Ascend910A"], dx_h_range_lower_bound_less_than_1)
 ut_case.add_case(["Ascend910A"], dx_h_range_lower_bound_grest_than_upper_bound)
 ut_case.add_case(["Ascend910A"], data_format_ND)
 ut_case.add_case(["Ascend910A"], filter_ori_format_ND)
+ut_case.add_case(["Ascend910A"], dynamic_n_test_default_tiling)
+
+
 # ut_case.add_cust_test_func(test_func=test_avg_pool_grad_fuzzy_compile_generaliation)
 ut_case.add_cust_test_func(test_func=test_avg_pool_grad_fuzzy_compile_dedy_w_too_large)
 ut_case.add_cust_test_func(test_func=test_avg_pool_grad_fuzzy_compile_strideHW_1_dedy_w_too_large)

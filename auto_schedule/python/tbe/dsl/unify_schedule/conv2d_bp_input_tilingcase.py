@@ -954,6 +954,25 @@ class Conv2dBpInputTiling(CubeTilingOp):
 
         return {"key": cnt, "tiling_strategy": tiling, "var_range": var_range, "correct_range_flag": correct_range_flag}
 
+    def calculate_default_group_dim(self):
+        """
+        get default group dim for default tiling
+
+        Returns
+        -------
+        int: default group dim for conv2d_bp_input tiling
+        """
+        group = self.tiling_info.get('group', 1)
+        core_num = tbe_platform_info.get_soc_spec("CORE_NUM")
+        group_dim = 1
+        if group <= core_num:
+            return group
+        for candiate in range(core_num, 0, -1):
+            if group % candiate == 0:
+                group_dim = candiate
+                break
+        return group_dim
+
     def get_default_tiling(self, w_lower_bound=1):
         """
         get default tiling for unlimited range or special case
@@ -1010,6 +1029,7 @@ class Conv2dBpInputTiling(CubeTilingOp):
                 k_aub = k_w * k_h * 16
         n_min = 1
         group_cl0 = 1
+        group_dim = self.calculate_default_group_dim()
 
         tiling["AUB_shape"] = [k_aub, 1, 1, 1] if k_aub != 1 else None
         tiling["BUB_shape"] = None
@@ -1019,7 +1039,7 @@ class Conv2dBpInputTiling(CubeTilingOp):
         tiling["BL0_matrix"] = [1, n_min, 16, k_bl0, 1, 1]
         tiling["CL0_matrix"] = [n_min, m_cl0, 16, 16, 1, group_cl0]
         tiling["CUB_matrix"] = [n_min, m_cl0, 16, 16, 1, group_cl0]
-        tiling["block_dim"] = [1, 1, 1, 1]
+        tiling["block_dim"] = [1, 1, 1, group_dim]
         tiling["n_bef_batch_flag"] = 0
         tiling["n_bef_group_flag"] = 0
         tiling["batch_bef_group_fla"] = 0
