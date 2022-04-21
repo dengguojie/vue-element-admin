@@ -2,10 +2,11 @@
 # -*- coding: UTF-8 -*-
 from unittest.mock import MagicMock
 from unittest.mock import patch
+from impl.add import add_compute
 from impl.fully_connection import fully_connection_compute
 from impl.fully_connection import op_select_format
-from impl.add import add_compute
 from impl.relu6 import relu6_compute
+from impl.trans_data import trans_data_compute
 from tbe.common.context import op_context
 from tbe.dsl import auto_schedule
 from te import tvm
@@ -209,30 +210,49 @@ def test_op_select_format_4():
     op_select_format(x, w, None, None, y, 32, False, 1, 0)
 
 
+
 def test_op_select_format_5():
-    with patch("tbe.common.platform.platform_info.get_soc_spec", MagicMock(side_effect=side_effects)):
-        with patch("tbe.common.platform.platform_info.intrinsic_check_support", MagicMock(side_effect=side_effects)):
-            with patch("impl.util.platform_adapter.tbe_platform.intrinsic_check_support", MagicMock(side_effect=side_effects)):
-                x = {'shape': (1, 2, 16, 16), 'dtype': 'float16', 'format': 'FRACTAL_NZ', "ori_format":"FRACTAL_NZ", "ori_shape":(1, 2, 16, 16)}
-                w = {'shape': (1, 2, 16, 16), 'dtype': 'float16', 'format': 'FRACTAL_Z', "ori_format":"FRACTAL_Z", "ori_shape":(1, 2, 16, 16)}
-                y = {'shape': (2, 2, 16, 16), 'dtype': 'float16', 'format': 'FRACTAL_NZ', "ori_format":"FRACTAL_NZ", "ori_shape":(2, 2, 16, 16)}
-                op_select_format(x, w, None, None, y, 32, False, 1, 0)
+    x = {'shape': (1, 2, 16, 16), 'dtype': 'float16', 'format': 'FRACTAL_NZ', "ori_format":"FRACTAL_NZ", "ori_shape":(1, 2, 16, 16)}
+    w = {'shape': (1, 2, 16, 16), 'dtype': 'float16', 'format': 'FRACTAL_Z', "ori_format":"FRACTAL_Z", "ori_shape":(1, 2, 16, 16)}
+    y = {'shape': (2, 2, 16, 16), 'dtype': 'float16', 'format': 'FRACTAL_NZ', "ori_format":"FRACTAL_NZ", "ori_shape":(2, 2, 16, 16)}
+    op_select_format(x, w, None, None, y, 32, False, 1, 0)
 
 
 def test_fc_fixpipe_nhwc():
     with cce():
-        with patch("tbe.common.platform.platform_info.get_soc_spec", MagicMock(side_effect=side_effects)):
-            with patch("tbe.common.platform.platform_info.intrinsic_check_support", MagicMock(side_effect=side_effects)):
-                with patch("impl.util.platform_adapter.tbe_platform.intrinsic_check_support", MagicMock(side_effect=side_effects)):
-                    tensor_a = tvm.placeholder((6, 4, 16, 16), name="tensor_a", dtype="float16", attrs={
-                        "format": "FRACTAL_NZ", "ori_shape": (64, 96)})
-                    tensor_b = tvm.placeholder((6, 8, 16, 16), name="tensor_b", dtype="float16", attrs={
-                        "format": "FRACTAL_Z", "ori_shape":(128, 24, 2, 2), "ori_format": "NCHW"})
-                    output = {"shape": (8, 4, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_format": "ND"}
-                    fc_res = fully_connection_compute(tensor_a, tensor_b, None, None, output, 1, False, 1)
-                    output_dict = {"shape": (64, 1, 1, 128), "format": "NHWC", "dtype": "float16"}
-                    res = fixpipe_compute(fc_res, None, None, None, None, None, None, None, None, None, output_dict, [], [], "")
-                    sch = auto_schedule(res)
+        tensor_a = tvm.placeholder((6, 4, 16, 16), name="tensor_a", dtype="float16", attrs={
+            "format": "FRACTAL_NZ", "ori_shape": (64, 96)})
+        tensor_b = tvm.placeholder((6, 8, 16, 16), name="tensor_b", dtype="float16", attrs={
+            "format": "FRACTAL_Z", "ori_shape":(128, 24, 2, 2), "ori_format": "NCHW"})
+        output = {"shape": (8, 4, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_format": "ND"}
+        fc_res = fully_connection_compute(tensor_a, tensor_b, None, None, output, 1, False, 1)
+        output_dict = {"shape": (64, 1, 1, 128), "format": "NHWC", "dtype": "float16"}
+        res = fixpipe_compute(fc_res, None, None, None, None, None, None, None, None, None, output_dict, [], [], "")
+        sch = auto_schedule(res)
+
+
+def test_fc_nd_transdata():
+    with cce():
+        tensor_a_ori = tvm.placeholder((1, 1, 1, 8), name="tensor_a", dtype="float16")
+        tensor_a = trans_data_compute(tensor_a_ori, None, "NHWC", "NC1HWC0")
+        tensor_b = tvm.placeholder((1, 2, 16, 16), name="tensor_b", dtype="float16", attrs={
+            "format": "FRACTAL_Z", "ori_shape":(1, 1, 8, 32), "ori_format": "NHWC"})
+        output = {"shape": (1, 2, 1, 1, 16), "dtype": "float16", "format": "NC1HWC0", "ori_format": "NHWC"}
+        fc_res = fully_connection_compute(tensor_a, tensor_b, None, None, output, 1, False, 1)
+        x2 = tvm.placeholder((1, 2, 1, 1, 16), name="add_01",
+                             attrs={"format": "NC1HWC0", "ori_format": "NHWC",
+                                    "shape":(1, 2, 1, 1, 16), "ori_shape":(1, 1, 1, 32)})
+        res = fixpipe_compute(fc_res, x2, None, None, None, None, None, None, None, None, output, [], [], "")
+        sch = auto_schedule(res)
+
+
+def test_fc_mock_case():
+    with patch("tbe.common.platform.platform_info.get_soc_spec", MagicMock(side_effect=side_effects)):
+        with patch("tbe.common.platform.platform_info.intrinsic_check_support", MagicMock(side_effect=side_effects)):
+            with patch("impl.util.platform_adapter.tbe_platform.intrinsic_check_support", MagicMock(side_effect=side_effects)):
+                test_op_select_format_5()
+                test_fc_fixpipe_nhwc()
+                test_fc_nd_transdata()
 
 
 if __name__ == '__main__':
@@ -245,5 +265,4 @@ if __name__ == '__main__':
         test_op_select_format_2()
         test_op_select_format_3()
         test_op_select_format_4()
-        test_fc_fixpipe_nhwc()
-        test_op_select_format_5()
+        test_fc_mock_case()

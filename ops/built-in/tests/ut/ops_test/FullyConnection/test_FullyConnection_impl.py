@@ -423,6 +423,7 @@ def test_fc_nd_transdata():
         res = fixpipe_compute(fc_res, x2, None, None, None, None, None, None, None, None, output, [], [], "")
         sch = auto_schedule(res)
 
+
 # test mock case
 def test_mock_cases(test_args):
     with patch("tbe.common.platform.platform_info.get_soc_spec", MagicMock(side_effect=side_effects)):

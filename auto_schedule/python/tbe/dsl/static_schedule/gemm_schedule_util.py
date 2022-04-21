@@ -236,13 +236,22 @@ def _handle_fixpipe_tensor(sch, fixpipe_tensor, tensor_map, fixpipe_fb_dict, fix
     vector_tensors = fixpipe_tensor.op.attrs["vector_tensors"]
     for idx, params_mem in enumerate(vector_params):
         fixpipe_input = vector_tensors[idx]
-        fixpipe_input_l1 = sch.cache_read(fixpipe_input, tbe_platform_info.scope_cbuf, [fixpipe_tensor])
         fixpipe_scope_name = FIXPIPE_SCOPE_MAP.get(params_mem.value)
         if fixpipe_scope_name:
+            fixpipe_input_l1 = sch.cache_read(fixpipe_input, tbe_platform_info.scope_cbuf, [fixpipe_tensor])
             fixpipe_fb_dict[fixpipe_scope_name] = sch.cache_read(
                 fixpipe_input_l1, fixpipe_scope_name, [fixpipe_tensor])
             fixpipe_l1_list.append(fixpipe_input_l1)
         else:
+            # elewise input
+            # if elewise input is 5HD, trans to Nz on L1, else cache_read directly
+            if "format" in fixpipe_input.op.attrs and fixpipe_input.op.attrs["format"] == "NC1HWC0":
+                for input_tensor in fixpipe_tensor.op.input_tensors:
+                    if input_tensor.op.name == "elewise_l1":
+                        fixpipe_input_l1 = input_tensor
+                        sch[fixpipe_input_l1].set_scope(tbe_platform_info.scope_cbuf)
+            else:
+                fixpipe_input_l1 = sch.cache_read(fixpipe_input, tbe_platform_info.scope_cbuf, [fixpipe_tensor])
             tensor_map["fixpipe_l1_eltwise"] = fixpipe_input_l1
 
     return tensor_map, fixpipe_fb_dict, fixpipe_l1_list
@@ -956,9 +965,6 @@ def _check_nd2nz_tag(tensor_l1):
     :return: bool, True while src_d > 65535 else False
     """
     if tensor_l1.op.tag not in ["5HD_trans_FZ", "ND_trans_NZ"]:
-        return False
-    # wait for pass to support
-    if check_fixpipe_op_support() and tensor_l1.op.tag == "5HD_trans_FZ":
         return False
 
     src_d = 0

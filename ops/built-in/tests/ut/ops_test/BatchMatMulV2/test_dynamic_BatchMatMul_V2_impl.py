@@ -158,6 +158,7 @@ def test_dynamic_batchmamtul_920_mock(test_args):
             with tvm.target.cce():
                 tbe1.auto_schedule(res.get("op_res"))
 
+
 with patch("tbe.common.platform.platform_info.get_soc_spec", MagicMock(side_effect=side_effects)):
     with patch("tbe.common.platform.platform_info.intrinsic_check_support", MagicMock(side_effect=side_effects)):
         ut_case.add_cust_test_func(test_func=test_dynamic_batchmamtul_920_mock)

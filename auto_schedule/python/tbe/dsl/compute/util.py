@@ -1293,3 +1293,10 @@ def in_dynamic_and_static_unify():
     """
     context = operation.get_context()
     return context is not None and context.get_mode() in ("dynamic", "static")
+
+
+def get_value(shape_object):
+    """
+    get the value of shape_object when having attr "value"
+    """
+    return shape_object.value if hasattr(shape_object, "value") else shape_object

@@ -37,6 +37,18 @@ def test_matmul_ND2ND_int8():
         tensor_list = [tensor_a_ori, tensor_b_ori, out]
         sch = auto_schedule(out)
 
+def test_matmul_ND2ND_int8_trans_b():
+    with cce():
+        tensor_a_ori = tvm.placeholder((64, 96), name="tensor_a_ori", dtype="int8")
+        tensor_b_ori = tvm.placeholder((128, 64), name="tensor_b_ori", dtype="int8")
+        tensor_a = trans_data_compute(tensor_a_ori, None, src_format="ND", dst_format="FRACTAL_NZ")
+        tensor_b = trans_data_compute(tensor_b_ori, None, src_format="ND", dst_format="FRACTAL_NZ")
+        output_y = {"shape": (8, 6, 16, 16), "dtype": "int32", "ori_shape": (96, 128), "format": "FRACTAL_NZ", "ori_format": "ND"}
+        matmul_out = mat_mul_compute(tensor_a, tensor_b, None, None, output_y, True, True, 0)
+        out = trans_data_compute(matmul_out, None, src_format="FRACTAL_NZ", dst_format="ND")
+        tensor_list = [tensor_a_ori, tensor_b_ori, out]
+        sch = auto_schedule(out)
+
 def test_matmul_ND2ND_fp32():
     with cce():
         tensor_a_ori = tvm.placeholder((64, 96), name="tensor_a_ori", dtype="float32")
@@ -115,6 +127,19 @@ def test_matmul_ND2ND_fp16_batch():
         x2_trans = trans_data_compute(x2, None, "ND", "FRACTAL_NZ")
         y = {"shape": (5, 1, 1, 16, 16), "ori_shape": (16, 16), "format": "FRACTAL_NZ", "ori_format": "ND", "dtype": "float16"}
         dx_res = mat_mul_compute(x1_trans, x2_trans, None, None, y, True, False, 0)
+        trans_out = {"shape": (5, 16, 16), "ori_shape": (5, 16, 16), "format": "ND", "ori_format": "ND", "dtype": "float16"}
+        out = trans_data_compute(dx_res, trans_out, "FRACTAL_NZ", "ND")
+        sch = auto_schedule(out)
+
+
+def test_matmul_ND2ND_fp16_batch_2():
+    with cce():
+        x1 = tvm.placeholder((5, 32, 16), name="x1", dtype="float16", attrs={"ori_shape": (5, 32, 16), "format": "ND", "ori_format": "ND"})
+        x2 = tvm.placeholder((5, 16, 32), name="x2", dtype="float16", attrs={"ori_shape": (5, 16, 32), "format": "ND", "ori_format": "ND"})
+        x1_trans = trans_data_compute(x1, None, "ND", "FRACTAL_NZ")
+        x2_trans = trans_data_compute(x2, None, "ND", "FRACTAL_NZ")
+        y = {"shape": (5, 1, 1, 16, 16), "ori_shape": (16, 16), "format": "FRACTAL_NZ", "ori_format": "ND", "dtype": "float16"}
+        dx_res = mat_mul_compute(x1_trans, x2_trans, None, None, y, True, True, 0)
         trans_out = {"shape": (5, 16, 16), "ori_shape": (5, 16, 16), "format": "ND", "ori_format": "ND", "dtype": "float16"}
         out = trans_data_compute(dx_res, trans_out, "FRACTAL_NZ", "ND")
         sch = auto_schedule(out)

@@ -22,6 +22,7 @@ from functools import reduce
 from impl.fixpipe_op.fixpipe_base import FixpipeBase
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import tbe_platform
+from impl.util.util_common import ceil
 from tbe import tvm
 
 
@@ -141,16 +142,22 @@ class FixpipeMatmul(FixpipeBase):
         if not self._check_fc_nd_out():
             return self._x2_reform_generate_func_default(x2, input_shape)
         # (N,C1,H,W,C0) -> (C1HW,N1,N0,C0)
-        _, _, x2_h, x2_w, _ = shape_util.shape_to_list(x2.shape)
-
-        def lambda_func(*indice):
-            new_indice = [
-                indice[-3] * tbe_platform.BLOCK_IN + indice[-2],
-                indice[-4] // (x2_h * x2_w),
-                indice[-4] // x2_w % x2_h,
-                indice[-4] % x2_w,
-                indice[-1]
-            ]
-            return x2(*new_indice)
-
-        return lambda_func
+        x2_n, x2_c1, x2_h, x2_w, x2_c0 = shape_util.shape_to_list(x2.shape)
+        x2_l1_shape = (x2_c1 * x2_h * x2_w,
+                       ceil(x2_n, tbe_platform.BLOCK_IN),
+                       tbe_platform.BLOCK_IN,
+                       x2_c0)
+        x2_l1 = tvm.compute(
+            x2_l1_shape,
+            lambda * indice: tvm.select(
+                tvm.all(indice[-3] * tbe_platform.BLOCK_IN + indice[-2] < x2_n),
+                x2(indice[-3] * tbe_platform.BLOCK_IN + indice[-2],
+                   indice[-4] // (x2_h * x2_w),
+                   indice[-4] // x2_w % x2_h,
+                   indice[-4] % x2_w,
+                   indice[-1])
+                ),
+            name="elewise_l1",
+            tag="elewise_l1"
+        )
+        return self._x2_reform_generate_func_default(x2_l1, input_shape)

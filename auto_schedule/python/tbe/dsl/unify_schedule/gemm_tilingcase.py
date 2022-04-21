@@ -32,7 +32,7 @@ from tbe.common.context import op_context
 from tbe.common import platform as tbe_platform
 from tbe.common.utils.errormgr import error_manager_cube
 
-from tbe.dsl.compute.mmad_compute import MatMulComputeParam as GEMMComputeParam1
+from tbe.dsl.compute.matmul_compute import MatMulComputeParam as GEMMComputeParam1
 from tbe.dsl.compute.gemm_integrated_compute import GEMMComputeParam as GEMMComputeParam2
 from tbe.dsl.compute.util import int_ceil_div
 from tbe.dsl.base.operation import add_compile_info
