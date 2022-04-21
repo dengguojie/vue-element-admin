@@ -14,10 +14,11 @@ http://www.apache.org/licenses/LICENSE-2.0
 prod_env_mat_a
 """
 
-from te.utils import para_check
-from impl.util.platform_adapter import tik
-from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import error_manager_vector
+from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import tbe_platform
+from impl.util.platform_adapter import tik
+from te.utils import para_check
 
 
 # 'pylint: disable=too-many-arguments,too-many-locals
@@ -128,14 +129,7 @@ class ProdEnvMatA:
         self.max_value = self.tik_instance.Scalar("float32", "max_value",
                                                   init_value=Constant.MININUM_NUM_FLOAT)
 
-        self.aicore_num = 8
-        self.vcore_num = 7
-
-        self.cur_op_core_num = self.aicore_num
-        dif_enginer_core_num = [self.aicore_num, self.vcore_num]
-        if self.split_count > 1:
-            self.cur_op_core_num = dif_enginer_core_num[self.split_index]
-
+        self.cur_op_core_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
         self.cur_op_core_num_scalar = self.tik_instance.Scalar(self.int32_type, "cur_op_core_num_scalar",
                                                                init_value=self.cur_op_core_num)
 
