@@ -15,17 +15,18 @@
 """
 dynamic bn_training_reduce_grad
 """
-from impl.util.platform_adapter import error_manager_vector
+from impl.util import util_common
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tvm
-from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import shape_util
-from impl.util.platform_adapter import register_operator
-from impl.util.platform_adapter import OpPatternMode
+from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import tbe_context
 from impl.util.platform_adapter import tbe_platform
+from impl.util.platform_adapter import OpPatternMode
+from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
+from impl.util.platform_adapter import error_manager_vector
 from impl.bn_training_reduce_grad import get_op_support_info as bn_get_op_support_info
 from impl.bn_training_reduce_grad import op_select_format as bn_op_select_format
 
@@ -99,7 +100,7 @@ def op_select_format(grads,
                                kernel_name="bn_training_reduce_grad")
 
 
-def _check_format_nd(data_format, origin_foramt):
+def _check_format(data_format, origin_foramt):
     """
     Function to check if the shape is in line with norms.
 
@@ -133,7 +134,9 @@ def bn_training_reduce_grad_compute(grads,
                                     batch_variance,
                                     y,
                                     epsilon,
-                                    kernel_name="bn_training_reduce_grad"):
+                                    kernel_name="bn_training_reduce_grad",
+                                    reduce_shape=None,
+                                    dyn_flag=True):
     """
     Compute for batch_norm_grad
     y:(grads*scale*np.power((batch_variance + epsilon), (-0.5)))+
@@ -168,9 +171,12 @@ def bn_training_reduce_grad_compute(grads,
         dict of y, include keys(shape and dtype).
     epsilon: float
         A small float number added to the variance of x.
-
     kernel_name: str
         kernel name, default value is "bn_training_reduce_grad"
+    reduce_shape: list
+        reduce shape of input shape
+    dyn_flag: bool
+        flag of dynamic or static shape
 
     Returns
     -------
@@ -187,22 +193,24 @@ def bn_training_reduce_grad_compute(grads,
         grads = tbe.cast_to(grads, "float32")
 
     if x.dtype == "float16":
-        x = tbe.cast_to(x, "float32")
         is_cast = True
+        x = tbe.cast_to(x, "float32")
 
     shape_grads = shape_util.shape_to_list(grads.shape)
 
-    data_format = y.get("format").upper()
-    if data_format in ("NC1HWC0", "NCHW"):
-        reduce_shape = [shape_grads[0], shape_grads[2], shape_grads[3]]
-    else:
-        reduce_shape = [shape_grads[0], shape_grads[1], shape_grads[3], shape_grads[4]]
+    if not dyn_flag:
+        data_format = y.get("format").upper()
+        if not reduce_shape and data_format in ("NC1HWC0", "NCHW"):
+            reduce_dims = [shape_grads[0], shape_grads[2], shape_grads[3]]
+        elif not reduce_shape and  data_format in ("NDC1HWC0",):
+            reduce_dims = [shape_grads[0], shape_grads[1], shape_grads[3], shape_grads[4]]
+        else:
+            reduce_dims = reduce_shape
 
-    num = 1
-    for dim in reduce_shape:
-        num *= dim
+        num = 1
+        for dim in reduce_dims:
+            num *= dim
 
-    if isinstance(num, int):
         num_bw = 1.0 / num
         num_rec = tvm.const(num_bw, dtype="float32")
         neg_num_rec = tvm.const(-num_bw, dtype="float32")
@@ -341,46 +349,53 @@ def bn_training_reduce_grad(grads,
     shape_diff_scale = diff_scale.get("shape")
     shape_util.compare_tensor_dict_key(grads, x, "shape")
 
-    dtype_grads = grads.get("dtype")
     dtype_x = x.get("dtype")
+    dtype_grads = grads.get("dtype")
+    dtype_scale = scale.get("dtype")
     dtype_diff_scale = diff_scale.get("dtype")
     dtype_diff_offset = diff_offset.get("dtype")
-    dtype_scale = scale.get("dtype")
     dtype_batch_mean = batch_mean.get("dtype")
     dtype_batch_variance = batch_variance.get("dtype")
 
-    input_grads_dtype = dtype_grads.lower()
     x_dtype = dtype_x.lower()
+    input_grads_dtype = dtype_grads.lower()
+    scale_dtype = dtype_scale.lower()
     diff_scale_dtype = dtype_diff_scale.lower()
     diff_offset_dtype = dtype_diff_offset.lower()
-    scale_dtype = dtype_scale.lower()
     batch_mean_dtype = dtype_batch_mean.lower()
     batch_variance_dtype = dtype_batch_variance.lower()
 
-    para_check.check_dtype(input_grads_dtype, ("float32", "float16"), param_name="grads")
     para_check.check_dtype(x_dtype, ("float32", "float16"), param_name="x")
+    para_check.check_dtype(input_grads_dtype, ("float32", "float16"), param_name="grads")
+    para_check.check_dtype(scale_dtype, ("float32",), param_name="scale")
     para_check.check_dtype(diff_scale_dtype, ("float32",), param_name="diff_scale")
     para_check.check_dtype(diff_offset_dtype, ("float32",), param_name="diff_offset")
-    para_check.check_dtype(scale_dtype, ("float32",), param_name="scale")
     para_check.check_dtype(batch_mean_dtype, ("float32",), param_name="batch_mean")
     para_check.check_dtype(batch_variance_dtype, ("float32",), param_name="batch_variance")
 
-    shape_util.compare_tensor_dict_key(diff_scale, diff_offset, "shape")
+    shape_util.compare_tensor_dict_key(grads, x, "shape")
     shape_util.compare_tensor_dict_key(diff_scale, scale, "shape")
+    shape_util.compare_tensor_dict_key(diff_scale, diff_offset, "shape")
     shape_util.compare_tensor_dict_key(diff_scale, batch_mean, "shape")
     shape_util.compare_tensor_dict_key(diff_scale, batch_variance, "shape")
-    shape_util.compare_tensor_dict_key(grads, x, "shape")
 
-    data_format = grads.get("format").upper()
     ori_format = grads.get("ori_format").upper()
-    _check_format_nd(data_format, ori_format)
+    data_format = grads.get("format").upper()
+    _check_format(data_format, ori_format)
 
     if data_format in ("NC1HWC0", "NDC1HWC0"):
         _check_shape(shape_grads, shape_diff_scale, data_format)
 
+    dyn_flag = util_common.is_unknown([grads, x])
+
+    reduce_shape = None
+    if not dyn_flag and data_format in ("NC1HWC0", "NCHW"):
+        reduce_shape = [shape_grads[0], shape_grads[2], shape_grads[3]]
+    elif not dyn_flag and data_format in ("NDC1HWC0",):
+        reduce_shape = [shape_grads[0], shape_grads[1], shape_grads[3], shape_grads[4]]
+
     ins = classify([grads, x, diff_scale, diff_offset, scale, batch_mean, batch_variance],
-                   OpPatternMode.ELEWISE_WITH_BROADCAST,
-                   extra_params={"disable_optimization": True})
+                   OpPatternMode.ELEWISE_WITH_BROADCAST)
 
     schedules, tensors = [], []
 
@@ -389,11 +404,11 @@ def bn_training_reduce_grad(grads,
             _shape_grads, _, _, _, _shape_scale, _, _ = shape_util.variable_shape(
                 [_grads, _x, _diff_scale, _diff_offset, _scale, _batch_mean, _batch_variance])
 
-            grads_input = tvm.placeholder(_shape_grads, name="grads_input", dtype=input_grads_dtype)
             x_input = tvm.placeholder(_shape_grads, name="x_input", dtype=x_dtype)
+            scale_input = tvm.placeholder(_shape_scale, name="scale_input", dtype=scale_dtype)
+            grads_input = tvm.placeholder(_shape_grads, name="grads_input", dtype=input_grads_dtype)
             diff_scale_input = tvm.placeholder(_shape_scale, name="diff_scale_input", dtype=diff_scale_dtype)
             diff_offset_input = tvm.placeholder(_shape_scale, name="diff_offset_input", dtype=diff_offset_dtype)
-            scale_input = tvm.placeholder(_shape_scale, name="scale_input", dtype=scale_dtype)
             batch_mean_input = tvm.placeholder(_shape_scale, name="batch_mean_input", dtype=batch_mean_dtype)
             batch_variance_input = tvm.placeholder(_shape_scale,
                                                    name="batch_variance_input",
@@ -408,7 +423,9 @@ def bn_training_reduce_grad(grads,
                                                   batch_variance_input,
                                                   y,
                                                   epsilon,
-                                                  kernel_name=kernel_name)
+                                                  kernel_name=kernel_name,
+                                                  reduce_shape=reduce_shape,
+                                                  dyn_flag=dyn_flag)
 
             tensor_list = [
                 grads_input, x_input, diff_scale_input, diff_offset_input, scale_input, batch_mean_input,

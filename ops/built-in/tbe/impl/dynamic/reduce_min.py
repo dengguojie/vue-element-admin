@@ -14,12 +14,13 @@ http://www.apache.org/licenses/LICENSE-2.0
 dynamic reduce_min
 """
 from impl.util.platform_adapter import tbe
-from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import classify
-from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import tbe_platform
+from impl.util.platform_adapter import tbe_context
+from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 
@@ -98,6 +99,10 @@ def reduce_min(x, axes, y, keepdims=False, kernel_name="reduce_min"):
     check_list_axes = ("int32", "int64")
     para_check.check_dtype(dtype_lower_axes, check_list_axes, param_name="axes")
     axes["rel_pos_to_reduce"] = "axis"
+
+    tbe_context.get_context().add_compile_info("axes_idx", 1)
+    if "const_value" in axes.keys():
+        axes["value"] = list(axes["const_value"])
 
     schedules = []
     tensors = []
