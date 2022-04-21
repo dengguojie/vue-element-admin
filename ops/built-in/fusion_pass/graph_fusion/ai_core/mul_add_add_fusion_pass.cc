@@ -240,19 +240,19 @@ Status MulAddAddFusionPass::AddPadDNode(ge::ComputeGraph& graph, ge::NodePtr& ad
   ge::OpDescPtr padDDesc = nullptr;
   FUSION_PASS_MAKE_SHARED((padDDesc = std::make_shared<ge::OpDesc>(addNode->GetName() + '_' + "PadD", "PadD")),
                           return INTERNAL_ERROR);
-  vector<int64_t> paddingsValue = {0, 0};
+  vector<vector<int64_t>> paddingsValue = {{0, 0}};
   vector<int64_t> constDimInfo = addNode->GetOpDesc()->GetInputDesc(1).GetShape().GetDims();
-  paddingsValue[1] = ALIGN_UNIT_16 - (constDimInfo[0] % ALIGN_UNIT_16);
+  paddingsValue[0][1] = ALIGN_UNIT_16 - (constDimInfo[0] % ALIGN_UNIT_16);
   ge::GeTensorDesc padDInputputDesc = addNode->GetOpDesc()->GetInputDesc(1);
   FUSION_PASS_CHECK(padDDesc->AddInputDesc("x", padDInputputDesc) != SUCCESS,
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add padDNode input failed."), return FAILED);
-  FUSION_PASS_CHECK(!ge::AttrUtils::SetListInt(padDDesc, "paddings", paddingsValue),
+  FUSION_PASS_CHECK(!ge::AttrUtils::SetListListInt(padDDesc, "paddings", paddingsValue),
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "set padDNode attr paddings failed."),
                     return FAILED);
 
   ge::GeTensorDesc padDOutputDesc = addNode->GetOpDesc()->GetInputDesc(1);
   vector<int64_t> padDOutputShape = padDInputputDesc.GetShape().GetDims();
-  padDOutputShape[0] = padDOutputShape[0] + paddingsValue[1];
+  padDOutputShape[0] = padDOutputShape[0] + paddingsValue[0][1];
 
   ge::GeShape padDShape(padDOutputShape);
   padDOutputDesc.SetShape(padDShape);

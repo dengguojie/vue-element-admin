@@ -404,6 +404,8 @@ set(_aicore_fusion_srcs
   graph_fusion/ai_core/prod_force_se_a_vector_core_fusion_pass.cc
   graph_fusion/ai_core/lstmp_fusion_pass.cc
   graph_fusion/ai_core/batch_matmul_reduce_mean_fusion_pass.cc
+  graph_fusion/ai_core/concatv2d_aligned_fusion_pass.cc
+  graph_fusion/ai_core/padd_remove_fusion_pass.cc
   graph_fusion/ai_core/spacetobatch_conv2d_batchtospace_fusion_pass.cc
   graph_fusion/ai_core/same_input_conv2d_fusion_pass.cc
   graph_fusion/ai_core/multi_head_attention_fusion_pass.cc
