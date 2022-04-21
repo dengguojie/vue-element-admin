@@ -30,7 +30,7 @@ Status AutoMappingFnNonZeroWithValue(const google::protobuf::Message* op_src, ge
   }
   ge::DataType outputDataType;
   op.GetAttr("output_type", outputDataType);
-  op.SetAttr("dtype", outputDataType);
+  (void)op.SetAttr("dtype", outputDataType);
   return ret;
 }
 
