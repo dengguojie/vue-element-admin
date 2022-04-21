@@ -79,5 +79,28 @@
          "name": "y"
        }
      ]
+  },
+  {
+    "op": "DiagPart",
+    "case_name" : "test_diag_part_dynamic_rank",
+    "calc_expect_func_file": "test_diag_part_golden.py:calc_expect_func",
+     "input_desc": [
+       {
+         "format": "ND",
+         "shape": [-2],
+         "typical_shape": [256, 256],
+         "type": "float32",
+         "data_distribute" : "uniform",
+         "name": "x"
+       }
+     ],
+     "output_desc": [
+       {
+         "format": "ND",
+         "shape": [256],
+         "type": "float32",
+         "name": "y"
+       }
+     ]
   }
 ]

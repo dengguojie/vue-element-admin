@@ -1,0 +1,33 @@
+[
+    {
+      "case_name": "DivNoNan_dynamic_rank_000",
+      "calc_expect_func_file":"test_div_NoNan_golden.py:calc_expect_func",
+      "op": "DivNoNan",
+      "input_desc": [
+        {
+            "format": "ND",
+            "type": "float32",
+            "shape": [-2],
+            "typical_shape": [16, 2, 32],
+            "data_distribute": "uniform",
+            "name": "x1"
+        },
+        {
+            "format": "ND",
+            "type": "float32",
+            "shape": [-2],
+            "typical_shape": [16, 2, 32],
+            "data_distribute": "uniform",
+            "name": "x2"
+        }
+      ],
+      "output_desc": [
+        {
+          "format": "ND",
+          "type": "float32",
+          "shape": [16, 2, 32],
+          "name": "y"
+        }
+      ]
+    }
+]

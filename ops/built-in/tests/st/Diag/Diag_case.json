@@ -322,5 +322,28 @@
          "name": "y"
        }
      ]
+  },
+  {
+    "op": "Diag",
+    "case_name" : "test_diag_dynamic_rank_000",
+    "calc_expect_func_file": "test_diag_golden.py:calc_expect_func",
+     "input_desc": [
+       {
+         "format": "ND",
+         "shape": [-2],
+         "typical_shape": [300],
+         "type": "float32",
+         "data_distribute" : "uniform",
+         "name": "x"
+       }
+     ],
+     "output_desc": [
+       {
+         "format": "ND",
+         "shape": [300, 300],
+         "type": "float32",
+         "name": "y"
+       }
+     ]
   }
 ]
