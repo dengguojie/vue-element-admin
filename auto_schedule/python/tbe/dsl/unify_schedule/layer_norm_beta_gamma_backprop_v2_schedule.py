@@ -41,6 +41,7 @@ class LayerNormBetaGammaSchedule:
     LayerNormBetaGammaBackpropSchedule
     """
 
+    # 'pylint: disable = unused-argument
     def __init__(self, outs, tiling_case):
         self._insn_map = {"elewise_single_cast": "vector_conv",
                           "elewise_single_VS_max": "vector_maxs",
@@ -78,6 +79,14 @@ class LayerNormBetaGammaSchedule:
                           "broadcast_for_tensor": "unified_broadcast"}
         self._dy_type = None
         self._max_reduce_factor = 1
+        self._max_last_factor = None
+        self.reduce_factor = None
+        self.block_factor = None
+        self.reduce_factor = None
+        self.reduce_i_factor = None
+        self.ub_factor = None
+        self.fused_axis = None
+        self.block = None
 
     def gen_reversed_subgraph_list(self, out_tensor, tensor_list):
         if out_tensor is None:
@@ -158,8 +167,13 @@ class LayerNormBetaGammaSchedule:
             rf_reduce_o, _, rf_normal = rf_ub.op.axis
             sch[rf_ub].reorder(rf_reduce_o, rf_reduce_i_o, rf_reduce_i_i, _, rf_normal)
             sch[res_gm].reorder(res_gm_reduce_o, res_, res_gm_normal)
-            axis_compute_at, axis_rf_compute_at = rf_reduce_i_o, res_gm_reduce_o
-            axis_emit_insn, axis_res_emit_insn = rf_reduce_i_i, res_
+            if unknown_normal is False and normal_dim % 16 != 0:
+                axis_compute_at, axis_rf_compute_at = rf_reduce_i_i, res_
+                axis_emit_insn, axis_res_emit_insn = _, res_gm_normal
+            else:
+                axis_compute_at, axis_rf_compute_at = rf_reduce_i_o, res_gm_reduce_o
+                axis_emit_insn, axis_res_emit_insn = rf_reduce_i_i, res_
+
             if unknown_normal:
                 sch.set_var_range(normal_dim, 1, self._max_last_factor)
                 bound = self.calc_storage_bound()
@@ -170,6 +184,8 @@ class LayerNormBetaGammaSchedule:
             rf_reduce_i = rf_ub.op.reduce_axis[0]
             rf_reduce_o, _, rf_normal = rf_ub.op.axis
             if unknown_normal == False:
+                # 16fp16 is 32 byte algined
+                aligned_size = 16
                 if normal_dim > self._max_last_factor:
                     rf_normal_o, rf_normal_i = sch[rf_ub].split(rf_normal, factor=self._max_last_factor)
                     sch[rf_ub].reorder(rf_reduce_o, rf_reduce_i, _, rf_normal_o, rf_normal_i)
@@ -177,6 +193,11 @@ class LayerNormBetaGammaSchedule:
                     sch[res_gm].reorder(res_gm_reduce_o, res_, res_gm_normal_o, res_gm_normal_i)
                     axis_compute_at, axis_rf_compute_at = rf_normal_o, res_gm_normal_o
                     axis_emit_insn, axis_res_emit_insn = rf_normal_i, res_gm_normal_i
+                elif normal_dim % aligned_size != 0:
+                    sch[rf_ub].reorder(rf_reduce_o, rf_reduce_i, _, rf_normal)
+                    sch[res_gm].reorder(res_gm_reduce_o, res_, res_gm_normal)
+                    axis_compute_at, axis_rf_compute_at = rf_reduce_i, res_
+                    axis_emit_insn, axis_res_emit_insn = rf_normal, res_gm_normal
                 else:
                     sch[rf_ub].reorder(rf_reduce_o, rf_reduce_i, _, rf_normal)
                     sch[res_gm].reorder(res_gm_reduce_o, res_, res_gm_normal)
@@ -367,8 +388,12 @@ class LayerNormBetaGammaSchedule:
                 self.reduce_factor = (self.fused_axis + core_num - 1) // core_num
             [res_gm_0, res_gm_1] = self.schedule_split_reduce(sch, outs, is_split_i=False)
             if key_name == "dynamic_reduce_split_reduce":
-                sch.set_var_range(self.fused_axis, core_num + 1, core_num * self._max_reduce_factor)
-                sch.set_var_range(self.reduce_factor, 1, self._max_reduce_factor)
+                if self._max_reduce_factor <= 1:
+                    sch.set_var_range(self.fused_axis, core_num + 1, None)
+                    sch.set_var_range(self.reduce_factor, 1, None)
+                else:
+                    sch.set_var_range(self.fused_axis, core_num + 1, core_num * self._max_reduce_factor)
+                    sch.set_var_range(self.reduce_factor, 1, self._max_reduce_factor)
             outs.pop()
             outs.pop()
             outs.append(res_gm_0)

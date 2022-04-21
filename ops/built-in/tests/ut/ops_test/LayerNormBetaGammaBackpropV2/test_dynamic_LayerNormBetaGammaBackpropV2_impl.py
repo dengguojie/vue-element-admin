@@ -92,6 +92,16 @@ case8 = {"params": [{"shape": (-1,3,512), "dtype": "float16", "format": "ND", "o
          "format_expect": [],
          "support_expect": True}
 
+case9 = {"params": [{"shape": (-1,-1,33), "dtype": "float16", "format": "ND", "ori_shape": (2,3,33),"ori_format": "ND","range":[(1,10),(1,10),(1,1024)]},
+                    {"shape": (-1,-1,33), "dtype": "float32", "format": "ND", "ori_shape": (2,3,33),"ori_format": "ND","range":[(1,10),(1,10),(1,1024)]},
+                    {"shape": (1,1,33), "dtype": "float32", "format": "ND", "ori_shape": (1,1,33),"ori_format": "ND","range":[(1,10),(1,10),(1,1024)]},
+                    {"shape": (1,1,33), "dtype": "float32", "format": "ND", "ori_shape": (1,1,33),"ori_format": "ND","range":[(1,10),(1,10),(1,1024)]},
+                    [33]
+                    ],
+         "case_name": "layer_norm_beta_gamma_backprop_v2_9",
+         "expect": "success",
+         "format_expect": [],
+         "support_expect": True}
 
 def test_generalization(args):
     from impl.dynamic.layer_norm_beta_gamma_backprop_v2 import layer_norm_beta_gamma_backprop_v2_generalization

@@ -277,6 +277,8 @@ class LayerNormXBackpropScheduleV2:
             block_outer, block_inner = self._schedule[res].split(res.op.axis[0], nparts=core_num)
             self._compute_at_axis = ub_outer
         else:
+            if util.is_v220():
+                ub_factor = 1
             ub_outer, ub_inner = self._schedule[res].split(res.op.axis[0], factor=ub_factor)
             block_outer, block_inner = self._schedule[res].split(ub_outer, nparts=core_num)
             self._compute_at_axis = block_inner

@@ -86,6 +86,25 @@ case8 = {"params": [{"shape": (-1,3,512), "dtype": "float16", "format": "ND", "o
          "expect": "success",
          "support_expect": True}
 
+case9 = {"params": [{"shape": (-1,3,5122), "dtype": "float16", "format": "ND", "ori_shape": (2,3,5122),"ori_format": "ND","range":[(1,10),(1,10),(1,10240)]},
+                    {"shape": (-1,3,5122), "dtype": "float32", "format": "ND", "ori_shape": (2,3,5122),"ori_format": "ND","range":[(1,10),(1,10),(1,10240)]},
+                    {"shape": (1,1,5122), "dtype": "float32", "format": "ND", "ori_shape": (1,1,5122),"ori_format": "ND","range":[(1,10),(1,10),(1,10240)]},
+                    {"shape": (1,1,5122), "dtype": "float32", "format": "ND", "ori_shape": (1,1,5122),"ori_format": "ND","range":[(1,10),(1,10),(1,10240)]},
+                    [5122]
+                    ],
+         "case_name": "layer_norm_beta_gamma_backprop_v2_9",
+         "expect": "success",
+         "support_expect": True}
+
+case10 = {"params": [{"shape": (-1,3,17), "dtype": "float16", "format": "ND", "ori_shape": (2,3,17),"ori_format": "ND","range":[(1,10),(1,10),(1,10240)]},
+                    {"shape": (-1,3,17), "dtype": "float32", "format": "ND", "ori_shape": (2,3,17),"ori_format": "ND","range":[(1,10),(1,10),(1,10240)]},
+                    {"shape": (1,1,17), "dtype": "float32", "format": "ND", "ori_shape": (1,1,17),"ori_format": "ND","range":[(1,10),(1,10),(1,10240)]},
+                    {"shape": (1,1,17), "dtype": "float32", "format": "ND", "ori_shape": (1,1,17),"ori_format": "ND","range":[(1,10),(1,10),(1,10240)]},
+                    [17]
+                    ],
+         "case_name": "layer_norm_beta_gamma_backprop_v2_10",
+         "expect": "success",
+         "support_expect": True}
 
 def test_generalization(args):
     from impl.dynamic.layer_norm_beta_gamma_backprop_v2 import layer_norm_beta_gamma_backprop_v2_generalization
@@ -105,6 +124,8 @@ compile_case_list = [
     case6,
     case7,
     case8,
+    case9,
+    case10,
 ]
 
 for item in compile_case_list:
