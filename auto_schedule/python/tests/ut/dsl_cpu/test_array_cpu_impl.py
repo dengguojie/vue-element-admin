@@ -296,7 +296,7 @@ test_func_list = [
     test_slice_cpu_stride_value_error
 ]
 for item in test_func_list:
-    ut_case.add_cust_test_func(test_func=item)
+    ut_case.add_cust_test_func(["Ascend910A", "Ascend710"], test_func=item)
 
 
 if __name__ == '__main__':
