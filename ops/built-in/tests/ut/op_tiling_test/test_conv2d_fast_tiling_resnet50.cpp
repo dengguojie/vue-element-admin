@@ -208,7 +208,7 @@ class CheckTiling {
 };
 
 
-class Conv2DFastTilingResNetTest : public testing::Test {
+class Conv2DFastTilingResNetTest920A : public testing::Test {
 protected:
     static void SetUpTestCase() {
         std::cout << "Conv2DFastTilingTest SetUp" << std::endl;
@@ -218,7 +218,7 @@ protected:
         std::cout << "Conv2DFastTilingTest TearDown" << std::endl;
     }
 
-    virtual void SetUp() {
+    void setHardwareInfoAscend920A() {
         hardwareInfo.aicoreNum = 48;
         hardwareInfo.l2Size = 33554432;
         hardwareInfo.l1Size = 524288;
@@ -239,6 +239,11 @@ protected:
         hardwareInfo.ubToL2Rate = 64;
         hardwareInfo.ubToDdrRate = 64;
         hardwareInfo.ubToL1Rate = 128;
+        hardwareInfo.socVersion = "Ascend920A";
+    }
+
+    virtual void SetUp() {
+        setHardwareInfoAscend920A();
         std::cout << "SetUp" << std::endl;
     }
 
@@ -252,7 +257,7 @@ protected:
     int64_t targetTime = std::chrono::microseconds(10).count();
 };
 
-TEST_F(Conv2DFastTilingResNetTest, test_get_tiling_case_00) {
+void get_resnet_tiling_case_00(Conv2dParams& inputParams) {
     // feature map
     inputParams.batch = 1;
     inputParams.fmci = 64;
@@ -266,7 +271,6 @@ TEST_F(Conv2DFastTilingResNetTest, test_get_tiling_case_00) {
     // out
     inputParams.ho = 56;
     inputParams.wo = 56;
-
     inputParams.padu = 0;
     inputParams.padd = 0;
     inputParams.padl = 0;
@@ -277,24 +281,11 @@ TEST_F(Conv2DFastTilingResNetTest, test_get_tiling_case_00) {
     inputParams.stride_w = 1;
     inputParams.groups = 1;
     inputParams.biasFlag = true;
-
     inputParams.preFusionUbUtilize = 1;
     inputParams.postFusionUbUtilize = 1;
-
-    auto begin = std::chrono::high_resolution_clock::now();
-    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
-    auto end = std::chrono::high_resolution_clock::now();
-    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
-    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
-    //ASSERT_LE(runTime, targetTime);
-    ASSERT_TRUE(ret);
-    CheckTiling checker(tiling, inputParams);
-    checker.ShowTiling();
-    uint32_t check_ret = checker.IsValidTiling();
-    ASSERT_EQ(check_ret, VALID);
 }
 
-TEST_F(Conv2DFastTilingResNetTest, test_get_tiling_case_01) {
+void get_resnet_tiling_case_01(Conv2dParams& inputParams) {
     // feature map
     inputParams.batch = 1;
     inputParams.fmci = 256;
@@ -308,7 +299,6 @@ TEST_F(Conv2DFastTilingResNetTest, test_get_tiling_case_01) {
     // out
     inputParams.ho = 14;
     inputParams.wo = 14;
-
     inputParams.padu = 0;
     inputParams.padd = 0;
     inputParams.padl = 0;
@@ -319,24 +309,11 @@ TEST_F(Conv2DFastTilingResNetTest, test_get_tiling_case_01) {
     inputParams.stride_w = 1;
     inputParams.groups = 1;
     inputParams.biasFlag = true;
-
     inputParams.preFusionUbUtilize = 1;
     inputParams.postFusionUbUtilize = 1;
-
-    auto begin = std::chrono::high_resolution_clock::now();
-    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
-    auto end = std::chrono::high_resolution_clock::now();
-    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
-    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
-    //ASSERT_LE(runTime, targetTime);
-    ASSERT_TRUE(ret);
-    CheckTiling checker(tiling, inputParams);
-    // checker.ShowTiling();
-    uint32_t check_ret = checker.IsValidTiling();
-    ASSERT_EQ(check_ret, VALID);
 }
 
-TEST_F(Conv2DFastTilingResNetTest, test_get_tiling_case_02) {
+void get_resnet_tiling_case_02(Conv2dParams& inputParams) {
     // feature map
     inputParams.batch = 1;
     inputParams.fmci = 128;
@@ -364,21 +341,9 @@ TEST_F(Conv2DFastTilingResNetTest, test_get_tiling_case_02) {
 
     inputParams.preFusionUbUtilize = 1;
     inputParams.postFusionUbUtilize = 1;
-
-    auto begin = std::chrono::high_resolution_clock::now();
-    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
-    auto end = std::chrono::high_resolution_clock::now();
-    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
-    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
-    //ASSERT_LE(runTime, targetTime);
-    ASSERT_TRUE(ret);
-    CheckTiling checker(tiling, inputParams);
-    // checker.ShowTiling();
-    uint32_t check_ret = checker.IsValidTiling();
-    ASSERT_EQ(check_ret, VALID);
 }
 
-TEST_F(Conv2DFastTilingResNetTest, test_get_tiling_case_03) {
+void get_resnet_tiling_case_03(Conv2dParams& inputParams) {
     // feature map
     inputParams.batch = 1;
     inputParams.fmci = 256;
@@ -406,21 +371,9 @@ TEST_F(Conv2DFastTilingResNetTest, test_get_tiling_case_03) {
 
     inputParams.preFusionUbUtilize = 1;
     inputParams.postFusionUbUtilize = 4;
-
-    auto begin = std::chrono::high_resolution_clock::now();
-    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
-    auto end = std::chrono::high_resolution_clock::now();
-    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
-    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
-    //ASSERT_LE(runTime, targetTime);
-    ASSERT_TRUE(ret);
-    CheckTiling checker(tiling, inputParams);
-    // checker.ShowTiling();
-    uint32_t check_ret = checker.IsValidTiling();
-    ASSERT_EQ(check_ret, VALID);
 }
 
-TEST_F(Conv2DFastTilingResNetTest, test_get_tiling_case_04) {
+void get_resnet_tiling_case_04(Conv2dParams& inputParams) {
     // feature map
     inputParams.batch = 1;
     inputParams.fmci = 4;
@@ -448,21 +401,9 @@ TEST_F(Conv2DFastTilingResNetTest, test_get_tiling_case_04) {
 
     inputParams.preFusionUbUtilize = 1;
     inputParams.postFusionUbUtilize = 3;
-
-    auto begin = std::chrono::high_resolution_clock::now();
-    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
-    auto end = std::chrono::high_resolution_clock::now();
-    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
-    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
-    //ASSERT_LE(runTime, targetTime);
-    ASSERT_TRUE(ret);
-    CheckTiling checker(tiling, inputParams);
-    // checker.ShowTiling();
-    uint32_t check_ret = checker.IsValidTiling();
-    ASSERT_EQ(check_ret, VALID);
 }
 
-TEST_F(Conv2DFastTilingResNetTest, test_get_tiling_case_05) {
+void get_resnet_tiling_case_05(Conv2dParams& inputParams) {
     // feature map
     inputParams.batch = 1;
     inputParams.fmci = 512;
@@ -490,21 +431,9 @@ TEST_F(Conv2DFastTilingResNetTest, test_get_tiling_case_05) {
 
     inputParams.preFusionUbUtilize = 1;
     inputParams.postFusionUbUtilize = 1;
-
-    auto begin = std::chrono::high_resolution_clock::now();
-    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
-    auto end = std::chrono::high_resolution_clock::now();
-    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
-    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
-    //ASSERT_LE(runTime, targetTime);
-    ASSERT_TRUE(ret);
-    CheckTiling checker(tiling, inputParams);
-    // checker.ShowTiling();
-    uint32_t check_ret = checker.IsValidTiling();
-    ASSERT_EQ(check_ret, VALID);
 }
 
-TEST_F(Conv2DFastTilingResNetTest, test_get_tiling_case_06) {
+void get_resnet_tiling_case_06(Conv2dParams& inputParams) {
     // feature map
     inputParams.batch = 1;
     inputParams.fmci = 512;
@@ -532,21 +461,9 @@ TEST_F(Conv2DFastTilingResNetTest, test_get_tiling_case_06) {
 
     inputParams.preFusionUbUtilize = 1;
     inputParams.postFusionUbUtilize = 4;
-
-    auto begin = std::chrono::high_resolution_clock::now();
-    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
-    auto end = std::chrono::high_resolution_clock::now();
-    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
-    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
-    //ASSERT_LE(runTime, targetTime);
-    ASSERT_TRUE(ret);
-    CheckTiling checker(tiling, inputParams);
-    // checker.ShowTiling();
-    uint32_t check_ret = checker.IsValidTiling();
-    ASSERT_EQ(check_ret, VALID);
 }
 
-TEST_F(Conv2DFastTilingResNetTest, test_get_tiling_case_07) {
+void get_resnet_tiling_case_07(Conv2dParams& inputParams) {
     // feature map
     inputParams.batch = 1;
     inputParams.fmci = 1024;
@@ -574,21 +491,9 @@ TEST_F(Conv2DFastTilingResNetTest, test_get_tiling_case_07) {
 
     inputParams.preFusionUbUtilize = 1;
     inputParams.postFusionUbUtilize = 4;
-
-    auto begin = std::chrono::high_resolution_clock::now();
-    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
-    auto end = std::chrono::high_resolution_clock::now();
-    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
-    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
-    //ASSERT_LE(runTime, targetTime);
-    ASSERT_TRUE(ret);
-    CheckTiling checker(tiling, inputParams);
-    // checker.ShowTiling();
-    uint32_t check_ret = checker.IsValidTiling();
-    ASSERT_EQ(check_ret, VALID);
 }
 
-TEST_F(Conv2DFastTilingResNetTest, test_get_tiling_case_08) {
+void get_resnet_tiling_case_08(Conv2dParams& inputParams) {
     // feature map
     inputParams.batch = 1;
     inputParams.fmci = 64;
@@ -616,21 +521,9 @@ TEST_F(Conv2DFastTilingResNetTest, test_get_tiling_case_08) {
 
     inputParams.preFusionUbUtilize = 1;
     inputParams.postFusionUbUtilize = 4;
-
-    auto begin = std::chrono::high_resolution_clock::now();
-    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
-    auto end = std::chrono::high_resolution_clock::now();
-    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
-    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
-    //ASSERT_LE(runTime, targetTime);
-    ASSERT_TRUE(ret);
-    CheckTiling checker(tiling, inputParams);
-    // checker.ShowTiling();
-    uint32_t check_ret = checker.IsValidTiling();
-    ASSERT_EQ(check_ret, VALID);
 }
 
-TEST_F(Conv2DFastTilingResNetTest, test_get_tiling_case_09) {
+void get_resnet_tiling_case_09(Conv2dParams& inputParams) {
     // feature map
     inputParams.batch = 1;
     inputParams.fmci = 64;
@@ -658,21 +551,9 @@ TEST_F(Conv2DFastTilingResNetTest, test_get_tiling_case_09) {
 
     inputParams.preFusionUbUtilize = 1;
     inputParams.postFusionUbUtilize = 4;
-
-    auto begin = std::chrono::high_resolution_clock::now();
-    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
-    auto end = std::chrono::high_resolution_clock::now();
-    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
-    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
-    //ASSERT_LE(runTime, targetTime);
-    ASSERT_TRUE(ret);
-    CheckTiling checker(tiling, inputParams);
-    // checker.ShowTiling();
-    uint32_t check_ret = checker.IsValidTiling();
-    ASSERT_EQ(check_ret, VALID);
 }
 
-TEST_F(Conv2DFastTilingResNetTest, test_get_tiling_case_10) {
+void get_resnet_tiling_case_10(Conv2dParams& inputParams) {
     // feature map
     inputParams.batch = 1;
     inputParams.fmci = 64;
@@ -700,21 +581,9 @@ TEST_F(Conv2DFastTilingResNetTest, test_get_tiling_case_10) {
 
     inputParams.preFusionUbUtilize = 1;
     inputParams.postFusionUbUtilize = 4;
-
-    auto begin = std::chrono::high_resolution_clock::now();
-    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
-    auto end = std::chrono::high_resolution_clock::now();
-    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
-    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
-    //ASSERT_LE(runTime, targetTime);
-    ASSERT_TRUE(ret);
-    CheckTiling checker(tiling, inputParams);
-    // checker.ShowTiling();
-    uint32_t check_ret = checker.IsValidTiling();
-    ASSERT_EQ(check_ret, VALID);
 }
 
-TEST_F(Conv2DFastTilingResNetTest, test_get_tiling_case_11) {
+void get_resnet_tiling_case_11(Conv2dParams& inputParams) {
     // feature map
     inputParams.batch = 1;
     inputParams.fmci = 256;
@@ -742,21 +611,9 @@ TEST_F(Conv2DFastTilingResNetTest, test_get_tiling_case_11) {
 
     inputParams.preFusionUbUtilize = 1;
     inputParams.postFusionUbUtilize = 4;
-
-    auto begin = std::chrono::high_resolution_clock::now();
-    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
-    auto end = std::chrono::high_resolution_clock::now();
-    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
-    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
-    //ASSERT_LE(runTime, targetTime);
-    ASSERT_TRUE(ret);
-    CheckTiling checker(tiling, inputParams);
-    // checker.ShowTiling();
-    uint32_t check_ret = checker.IsValidTiling();
-    ASSERT_EQ(check_ret, VALID);
 }
 
-TEST_F(Conv2DFastTilingResNetTest, test_get_tiling_case_12) {
+void get_resnet_tiling_case_12(Conv2dParams& inputParams) {
     // feature map
     inputParams.batch = 1;
     inputParams.fmci = 64;
@@ -784,21 +641,9 @@ TEST_F(Conv2DFastTilingResNetTest, test_get_tiling_case_12) {
 
     inputParams.preFusionUbUtilize = 1;
     inputParams.postFusionUbUtilize = 4;
-
-    auto begin = std::chrono::high_resolution_clock::now();
-    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
-    auto end = std::chrono::high_resolution_clock::now();
-    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
-    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
-    //ASSERT_LE(runTime, targetTime);
-    ASSERT_TRUE(ret);
-    CheckTiling checker(tiling, inputParams);
-    // checker.ShowTiling();
-    uint32_t check_ret = checker.IsValidTiling();
-    ASSERT_EQ(check_ret, VALID);
 }
 
-TEST_F(Conv2DFastTilingResNetTest, test_get_tiling_case_13) {
+void get_resnet_tiling_case_13(Conv2dParams& inputParams) {
     // feature map
     inputParams.batch = 1;
     inputParams.fmci = 256;
@@ -826,21 +671,9 @@ TEST_F(Conv2DFastTilingResNetTest, test_get_tiling_case_13) {
 
     inputParams.preFusionUbUtilize = 1;
     inputParams.postFusionUbUtilize = 4;
-
-    auto begin = std::chrono::high_resolution_clock::now();
-    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
-    auto end = std::chrono::high_resolution_clock::now();
-    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
-    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
-    //ASSERT_LE(runTime, targetTime);
-    ASSERT_TRUE(ret);
-    CheckTiling checker(tiling, inputParams);
-    // checker.ShowTiling();
-    uint32_t check_ret = checker.IsValidTiling();
-    ASSERT_EQ(check_ret, VALID);
 }
 
-TEST_F(Conv2DFastTilingResNetTest, test_get_tiling_case_14) {
+void get_resnet_tiling_case_14(Conv2dParams& inputParams) {
     // feature map
     inputParams.batch = 1;
     inputParams.fmci = 128;
@@ -868,21 +701,9 @@ TEST_F(Conv2DFastTilingResNetTest, test_get_tiling_case_14) {
 
     inputParams.preFusionUbUtilize = 1;
     inputParams.postFusionUbUtilize = 4;
-
-    auto begin = std::chrono::high_resolution_clock::now();
-    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
-    auto end = std::chrono::high_resolution_clock::now();
-    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
-    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
-    //ASSERT_LE(runTime, targetTime);
-    ASSERT_TRUE(ret);
-    CheckTiling checker(tiling, inputParams);
-    // checker.ShowTiling();
-    uint32_t check_ret = checker.IsValidTiling();
-    ASSERT_EQ(check_ret, VALID);
 }
 
-TEST_F(Conv2DFastTilingResNetTest, test_get_tiling_case_15) {
+void get_resnet_tiling_case_15(Conv2dParams& inputParams) {
     // feature map
     inputParams.batch = 1;
     inputParams.fmci = 512;
@@ -910,21 +731,9 @@ TEST_F(Conv2DFastTilingResNetTest, test_get_tiling_case_15) {
 
     inputParams.preFusionUbUtilize = 1;
     inputParams.postFusionUbUtilize = 4;
-
-    auto begin = std::chrono::high_resolution_clock::now();
-    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
-    auto end = std::chrono::high_resolution_clock::now();
-    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
-    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
-    //ASSERT_LE(runTime, targetTime);
-    ASSERT_TRUE(ret);
-    CheckTiling checker(tiling, inputParams);
-    // checker.ShowTiling();
-    uint32_t check_ret = checker.IsValidTiling();
-    ASSERT_EQ(check_ret, VALID);
 }
 
-TEST_F(Conv2DFastTilingResNetTest, test_get_tiling_case_16) {
+void get_resnet_tiling_case_16(Conv2dParams& inputParams) {
     // feature map
     inputParams.batch = 1;
     inputParams.fmci = 128;
@@ -952,21 +761,9 @@ TEST_F(Conv2DFastTilingResNetTest, test_get_tiling_case_16) {
 
     inputParams.preFusionUbUtilize = 1;
     inputParams.postFusionUbUtilize = 4;
-
-    auto begin = std::chrono::high_resolution_clock::now();
-    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
-    auto end = std::chrono::high_resolution_clock::now();
-    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
-    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
-    //ASSERT_LE(runTime, targetTime);
-    ASSERT_TRUE(ret);
-    CheckTiling checker(tiling, inputParams);
-    // checker.ShowTiling();
-    uint32_t check_ret = checker.IsValidTiling();
-    ASSERT_EQ(check_ret, VALID);
 }
 
-TEST_F(Conv2DFastTilingResNetTest, test_get_tiling_case_17) {
+void get_resnet_tiling_case_17(Conv2dParams& inputParams) {
     // feature map
     inputParams.batch = 1;
     inputParams.fmci = 512;
@@ -994,21 +791,9 @@ TEST_F(Conv2DFastTilingResNetTest, test_get_tiling_case_17) {
 
     inputParams.preFusionUbUtilize = 1;
     inputParams.postFusionUbUtilize = 4;
-
-    auto begin = std::chrono::high_resolution_clock::now();
-    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
-    auto end = std::chrono::high_resolution_clock::now();
-    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
-    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
-    //ASSERT_LE(runTime, targetTime);
-    ASSERT_TRUE(ret);
-    CheckTiling checker(tiling, inputParams);
-    // checker.ShowTiling();
-    uint32_t check_ret = checker.IsValidTiling();
-    ASSERT_EQ(check_ret, VALID);
 }
 
-TEST_F(Conv2DFastTilingResNetTest, test_get_tiling_case_18) {
+void get_resnet_tiling_case_18(Conv2dParams& inputParams) {
     // feature map
     inputParams.batch = 1;
     inputParams.fmci = 128;
@@ -1036,21 +821,9 @@ TEST_F(Conv2DFastTilingResNetTest, test_get_tiling_case_18) {
 
     inputParams.preFusionUbUtilize = 1;
     inputParams.postFusionUbUtilize = 4;
-
-    auto begin = std::chrono::high_resolution_clock::now();
-    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
-    auto end = std::chrono::high_resolution_clock::now();
-    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
-    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
-    //ASSERT_LE(runTime, targetTime);
-    ASSERT_TRUE(ret);
-    CheckTiling checker(tiling, inputParams);
-    // checker.ShowTiling();
-    uint32_t check_ret = checker.IsValidTiling();
-    ASSERT_EQ(check_ret, VALID);
 }
 
-TEST_F(Conv2DFastTilingResNetTest, test_get_tiling_case_19) {
+void get_resnet_tiling_case_19(Conv2dParams& inputParams) {
     // feature map
     inputParams.batch = 1;
     inputParams.fmci = 256;
@@ -1078,21 +851,9 @@ TEST_F(Conv2DFastTilingResNetTest, test_get_tiling_case_19) {
 
     inputParams.preFusionUbUtilize = 1;
     inputParams.postFusionUbUtilize = 4;
-
-    auto begin = std::chrono::high_resolution_clock::now();
-    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
-    auto end = std::chrono::high_resolution_clock::now();
-    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
-    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
-    //ASSERT_LE(runTime, targetTime);
-    ASSERT_TRUE(ret);
-    CheckTiling checker(tiling, inputParams);
-    // checker.ShowTiling();
-    uint32_t check_ret = checker.IsValidTiling();
-    ASSERT_EQ(check_ret, VALID);
 }
 
-TEST_F(Conv2DFastTilingResNetTest, test_get_tiling_case_20) {
+void get_resnet_tiling_case_20(Conv2dParams& inputParams) {
     // feature map
     inputParams.batch = 1;
     inputParams.fmci = 256;
@@ -1120,21 +881,9 @@ TEST_F(Conv2DFastTilingResNetTest, test_get_tiling_case_20) {
 
     inputParams.preFusionUbUtilize = 1;
     inputParams.postFusionUbUtilize = 4;
-
-    auto begin = std::chrono::high_resolution_clock::now();
-    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
-    auto end = std::chrono::high_resolution_clock::now();
-    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
-    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
-    //ASSERT_LE(runTime, targetTime);
-    ASSERT_TRUE(ret);
-    CheckTiling checker(tiling, inputParams);
-    // checker.ShowTiling();
-    uint32_t check_ret = checker.IsValidTiling();
-    ASSERT_EQ(check_ret, VALID);
 }
 
-TEST_F(Conv2DFastTilingResNetTest, test_get_tiling_case_21) {
+void get_resnet_tiling_case_21(Conv2dParams& inputParams) {
     // feature map
     inputParams.batch = 1;
     inputParams.fmci = 1024;
@@ -1162,21 +911,9 @@ TEST_F(Conv2DFastTilingResNetTest, test_get_tiling_case_21) {
 
     inputParams.preFusionUbUtilize = 1;
     inputParams.postFusionUbUtilize = 4;
-
-    auto begin = std::chrono::high_resolution_clock::now();
-    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
-    auto end = std::chrono::high_resolution_clock::now();
-    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
-    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
-    //ASSERT_LE(runTime, targetTime);
-    ASSERT_TRUE(ret);
-    CheckTiling checker(tiling, inputParams);
-    // checker.ShowTiling();
-    uint32_t check_ret = checker.IsValidTiling();
-    ASSERT_EQ(check_ret, VALID);
 }
 
-TEST_F(Conv2DFastTilingResNetTest, test_get_tiling_case_22) {
+void get_resnet_tiling_case_22(Conv2dParams& inputParams) {
     // feature map
     inputParams.batch = 1;
     inputParams.fmci = 256;
@@ -1204,21 +941,9 @@ TEST_F(Conv2DFastTilingResNetTest, test_get_tiling_case_22) {
 
     inputParams.preFusionUbUtilize = 1;
     inputParams.postFusionUbUtilize = 4;
-
-    auto begin = std::chrono::high_resolution_clock::now();
-    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
-    auto end = std::chrono::high_resolution_clock::now();
-    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
-    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
-    //ASSERT_LE(runTime, targetTime);
-    ASSERT_TRUE(ret);
-    CheckTiling checker(tiling, inputParams);
-    // checker.ShowTiling();
-    uint32_t check_ret = checker.IsValidTiling();
-    ASSERT_EQ(check_ret, VALID);
 }
 
-TEST_F(Conv2DFastTilingResNetTest, test_get_tiling_case_23) {
+void get_resnet_tiling_case_23(Conv2dParams& inputParams) {
     // feature map
     inputParams.batch = 1;
     inputParams.fmci = 512;
@@ -1246,21 +971,9 @@ TEST_F(Conv2DFastTilingResNetTest, test_get_tiling_case_23) {
 
     inputParams.preFusionUbUtilize = 1;
     inputParams.postFusionUbUtilize = 4;
-
-    auto begin = std::chrono::high_resolution_clock::now();
-    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
-    auto end = std::chrono::high_resolution_clock::now();
-    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
-    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
-    //ASSERT_LE(runTime, targetTime);
-    ASSERT_TRUE(ret);
-    CheckTiling checker(tiling, inputParams);
-    // checker.ShowTiling();
-    uint32_t check_ret = checker.IsValidTiling();
-    ASSERT_EQ(check_ret, VALID);
 }
 
-TEST_F(Conv2DFastTilingResNetTest, test_get_tiling_case_24) {
+void get_resnet_tiling_case_24(Conv2dParams& inputParams) {
     // feature map
     inputParams.batch = 1;
     inputParams.fmci = 1024;
@@ -1288,21 +1001,9 @@ TEST_F(Conv2DFastTilingResNetTest, test_get_tiling_case_24) {
 
     inputParams.preFusionUbUtilize = 1;
     inputParams.postFusionUbUtilize = 4;
-
-    auto begin = std::chrono::high_resolution_clock::now();
-    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
-    auto end = std::chrono::high_resolution_clock::now();
-    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
-    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
-    //ASSERT_LE(runTime, targetTime);
-    ASSERT_TRUE(ret);
-    CheckTiling checker(tiling, inputParams);
-    // checker.ShowTiling();
-    uint32_t check_ret = checker.IsValidTiling();
-    ASSERT_EQ(check_ret, VALID);
 }
 
-TEST_F(Conv2DFastTilingResNetTest, test_get_tiling_case_25) {
+void get_resnet_tiling_case_25(Conv2dParams& inputParams) {
     // feature map
     inputParams.batch = 1;
     inputParams.fmci = 2048;
@@ -1330,21 +1031,9 @@ TEST_F(Conv2DFastTilingResNetTest, test_get_tiling_case_25) {
 
     inputParams.preFusionUbUtilize = 1;
     inputParams.postFusionUbUtilize = 4;
-
-    auto begin = std::chrono::high_resolution_clock::now();
-    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
-    auto end = std::chrono::high_resolution_clock::now();
-    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
-    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
-    //ASSERT_LE(runTime, targetTime);
-    ASSERT_TRUE(ret);
-    CheckTiling checker(tiling, inputParams);
-    // checker.ShowTiling();
-    uint32_t check_ret = checker.IsValidTiling();
-    ASSERT_EQ(check_ret, VALID);
 }
 
-TEST_F(Conv2DFastTilingResNetTest, test_get_tiling_case_26) {
+void get_resnet_tiling_case_26(Conv2dParams& inputParams) {
     // feature map
     inputParams.batch = 1;
     inputParams.fmci = 512;
@@ -1372,63 +1061,9 @@ TEST_F(Conv2DFastTilingResNetTest, test_get_tiling_case_26) {
 
     inputParams.preFusionUbUtilize = 1;
     inputParams.postFusionUbUtilize = 4;
-
-    auto begin = std::chrono::high_resolution_clock::now();
-    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
-    auto end = std::chrono::high_resolution_clock::now();
-    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
-    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
-    //ASSERT_LE(runTime, targetTime);
-    ASSERT_TRUE(ret);
-    CheckTiling checker(tiling, inputParams);
-    // checker.ShowTiling();
-    uint32_t check_ret = checker.IsValidTiling();
-    ASSERT_EQ(check_ret, VALID);
 }
 
-TEST_F(Conv2DFastTilingResNetTest, test_get_tiling_case_27) {
-    // feature map
-    inputParams.batch = 1;
-    inputParams.fmci = 512;
-    inputParams.hi = 7;
-    inputParams.wi = 7;
-    // weight
-    inputParams.n = 2048;
-    inputParams.wci = 512;
-    inputParams.kh = 1;
-    inputParams.kw = 1;
-    // out
-    inputParams.ho = 7;
-    inputParams.wo = 7;
-
-    inputParams.padu = 0;
-    inputParams.padd = 0;
-    inputParams.padl = 0;
-    inputParams.padr = 0;
-    inputParams.dilations_h = 1;
-    inputParams.dilations_w = 1;
-    inputParams.stride_h = 1;
-    inputParams.stride_w = 1;
-    inputParams.groups = 1;
-    inputParams.biasFlag = true;
-
-    inputParams.preFusionUbUtilize = 1;
-    inputParams.postFusionUbUtilize = 4;
-
-    auto begin = std::chrono::high_resolution_clock::now();
-    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
-    auto end = std::chrono::high_resolution_clock::now();
-    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
-    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
-    //ASSERT_LE(runTime, targetTime);
-    ASSERT_TRUE(ret);
-    CheckTiling checker(tiling, inputParams);
-    // checker.ShowTiling();
-    uint32_t check_ret = checker.IsValidTiling();
-    ASSERT_EQ(check_ret, VALID);
-}
-
-TEST_F(Conv2DFastTilingResNetTest, test_get_tiling_case_28) {
+void get_resnet_tiling_case_27(Conv2dParams& inputParams) {
     // feature map
     inputParams.batch = 1;
     inputParams.fmci = 64 * 16;
@@ -1456,21 +1091,39 @@ TEST_F(Conv2DFastTilingResNetTest, test_get_tiling_case_28) {
 
     inputParams.preFusionUbUtilize = 1;
     inputParams.postFusionUbUtilize = 1;
-
-    auto begin = std::chrono::high_resolution_clock::now();
-    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
-    auto end = std::chrono::high_resolution_clock::now();
-    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
-    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
-    //ASSERT_LE(runTime, targetTime);
-    ASSERT_TRUE(ret);
-    CheckTiling checker(tiling, inputParams);
-    // checker.ShowTiling();
-    uint32_t check_ret = checker.IsValidTiling();
-    ASSERT_EQ(check_ret, VALID);
 }
 
-TEST_F(Conv2DFastTilingResNetTest, test_get_tiling_case_29) {
+void get_resnet_tiling_case_28(Conv2dParams& inputParams) {
+    // feature map
+    inputParams.batch = 1;
+    inputParams.fmci = 256;
+    inputParams.hi = 56;
+    inputParams.wi = 56;
+    // weight
+    inputParams.n = 512;
+    inputParams.wci = 256;
+    inputParams.kh = 1;
+    inputParams.kw = 1;
+    // out
+    inputParams.ho = 28;
+    inputParams.wo = 28;
+
+    inputParams.padu = 0;
+    inputParams.padd = 0;
+    inputParams.padl = 0;
+    inputParams.padr = 0;
+    inputParams.dilations_h = 1;
+    inputParams.dilations_w = 1;
+    inputParams.stride_h = 2;
+    inputParams.stride_w = 2;
+    inputParams.groups = 1;
+    inputParams.biasFlag = true;
+
+    inputParams.preFusionUbUtilize = 1;
+    inputParams.postFusionUbUtilize = 4;
+}
+
+void get_resnet_tiling_case_29(Conv2dParams& inputParams) {
     // feature map
     inputParams.batch = 1;
     inputParams.fmci = 128 * 16;
@@ -1498,21 +1151,9 @@ TEST_F(Conv2DFastTilingResNetTest, test_get_tiling_case_29) {
 
     inputParams.preFusionUbUtilize = 1;
     inputParams.postFusionUbUtilize = 1;
-
-    auto begin = std::chrono::high_resolution_clock::now();
-    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
-    auto end = std::chrono::high_resolution_clock::now();
-    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
-    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
-    //ASSERT_LE(runTime, targetTime);
-    ASSERT_TRUE(ret);
-    CheckTiling checker(tiling, inputParams);
-    // checker.ShowTiling();
-    uint32_t check_ret = checker.IsValidTiling();
-    ASSERT_EQ(check_ret, VALID);
 }
 
-TEST_F(Conv2DFastTilingResNetTest, test_get_tiling_case_30) {
+void get_resnet_tiling_case_30(Conv2dParams& inputParams) {
     // feature map
     inputParams.batch = 1;
     inputParams.fmci = 32 * 16;
@@ -1540,21 +1181,9 @@ TEST_F(Conv2DFastTilingResNetTest, test_get_tiling_case_30) {
 
     inputParams.preFusionUbUtilize = 1;
     inputParams.postFusionUbUtilize = 1;
-
-    auto begin = std::chrono::high_resolution_clock::now();
-    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
-    auto end = std::chrono::high_resolution_clock::now();
-    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
-    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
-    //ASSERT_LE(runTime, targetTime);
-    ASSERT_TRUE(ret);
-    CheckTiling checker(tiling, inputParams);
-    // checker.ShowTiling();
-    uint32_t check_ret = checker.IsValidTiling();
-    ASSERT_EQ(check_ret, VALID);
 }
 
-TEST_F(Conv2DFastTilingResNetTest, test_get_tiling_case_31) {
+void get_resnet_tiling_case_31(Conv2dParams& inputParams) {
     // feature map
     inputParams.batch = 1;
     inputParams.fmci = 8 * 16;
@@ -1582,21 +1211,9 @@ TEST_F(Conv2DFastTilingResNetTest, test_get_tiling_case_31) {
 
     inputParams.preFusionUbUtilize = 1;
     inputParams.postFusionUbUtilize = 1;
-
-    auto begin = std::chrono::high_resolution_clock::now();
-    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
-    auto end = std::chrono::high_resolution_clock::now();
-    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
-    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
-    //ASSERT_LE(runTime, targetTime);
-    ASSERT_TRUE(ret);
-    CheckTiling checker(tiling, inputParams);
-    // checker.ShowTiling();
-    uint32_t check_ret = checker.IsValidTiling();
-    ASSERT_EQ(check_ret, VALID);
 }
 
-TEST_F(Conv2DFastTilingResNetTest, test_get_tiling_case_32) {
+void get_resnet_tiling_case_32(Conv2dParams& inputParams) {
     // feature map
     inputParams.batch = 1;
     inputParams.fmci = 8 * 16;
@@ -1624,21 +1241,9 @@ TEST_F(Conv2DFastTilingResNetTest, test_get_tiling_case_32) {
 
     inputParams.preFusionUbUtilize = 1;
     inputParams.postFusionUbUtilize = 1;
-
-    auto begin = std::chrono::high_resolution_clock::now();
-    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
-    auto end = std::chrono::high_resolution_clock::now();
-    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
-    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
-    //ASSERT_LE(runTime, targetTime);
-    ASSERT_TRUE(ret);
-    CheckTiling checker(tiling, inputParams);
-    // checker.ShowTiling();
-    uint32_t check_ret = checker.IsValidTiling();
-    ASSERT_EQ(check_ret, VALID);
 }
 
-TEST_F(Conv2DFastTilingResNetTest, test_get_tiling_case_33) {
+void get_resnet_tiling_case_33(Conv2dParams& inputParams) {
     // feature map
     inputParams.batch = 1;
     inputParams.fmci = 64;
@@ -1666,21 +1271,9 @@ TEST_F(Conv2DFastTilingResNetTest, test_get_tiling_case_33) {
 
     inputParams.preFusionUbUtilize = 1;
     inputParams.postFusionUbUtilize = 1;
-
-    auto begin = std::chrono::high_resolution_clock::now();
-    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
-    auto end = std::chrono::high_resolution_clock::now();
-    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
-    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
-    //ASSERT_LE(runTime, targetTime);
-    ASSERT_TRUE(ret);
-    CheckTiling checker(tiling, inputParams);
-    // checker.ShowTiling();
-    uint32_t check_ret = checker.IsValidTiling();
-    ASSERT_EQ(check_ret, VALID);
 }
 
-TEST_F(Conv2DFastTilingResNetTest, test_get_tiling_case_34) {
+void get_resnet_tiling_case_34(Conv2dParams& inputParams) {
     // feature map
     inputParams.batch = 1;
     inputParams.fmci = 16;
@@ -1708,21 +1301,8 @@ TEST_F(Conv2DFastTilingResNetTest, test_get_tiling_case_34) {
 
     inputParams.preFusionUbUtilize = 1;
     inputParams.postFusionUbUtilize = 1;
-
-    auto begin = std::chrono::high_resolution_clock::now();
-    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
-    auto end = std::chrono::high_resolution_clock::now();
-    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
-    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
-    //ASSERT_LE(runTime, targetTime);
-    ASSERT_TRUE(ret);
-    CheckTiling checker(tiling, inputParams);
-    // checker.ShowTiling();
-    uint32_t check_ret = checker.IsValidTiling();
-    ASSERT_EQ(check_ret, VALID);
 }
-
-TEST_F(Conv2DFastTilingResNetTest, test_get_tiling_case_35) {
+void get_resnet_tiling_case_35(Conv2dParams& inputParams) {
     // feature map
     inputParams.batch = 1;
     inputParams.fmci = 64;
@@ -1750,21 +1330,8 @@ TEST_F(Conv2DFastTilingResNetTest, test_get_tiling_case_35) {
 
     inputParams.preFusionUbUtilize = 1;
     inputParams.postFusionUbUtilize = 1;
-
-    auto begin = std::chrono::high_resolution_clock::now();
-    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
-    auto end = std::chrono::high_resolution_clock::now();
-    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
-    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
-    //ASSERT_LE(runTime, targetTime);
-    ASSERT_TRUE(ret);
-    CheckTiling checker(tiling, inputParams);
-    // checker.ShowTiling();
-    uint32_t check_ret = checker.IsValidTiling();
-    ASSERT_EQ(check_ret, VALID);
 }
-
-TEST_F(Conv2DFastTilingResNetTest, test_get_tiling_case_36) {
+void get_resnet_tiling_case_36(Conv2dParams& inputParams) {
     // feature map
     inputParams.batch = 1;
     inputParams.fmci = 16 * 16;
@@ -1792,21 +1359,9 @@ TEST_F(Conv2DFastTilingResNetTest, test_get_tiling_case_36) {
 
     inputParams.preFusionUbUtilize = 1;
     inputParams.postFusionUbUtilize = 1;
-
-    auto begin = std::chrono::high_resolution_clock::now();
-    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
-    auto end = std::chrono::high_resolution_clock::now();
-    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
-    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
-    //ASSERT_LE(runTime, targetTime);
-    ASSERT_TRUE(ret);
-    CheckTiling checker(tiling, inputParams);
-    // checker.ShowTiling();
-    uint32_t check_ret = checker.IsValidTiling();
-    ASSERT_EQ(check_ret, VALID);
 }
 
-TEST_F(Conv2DFastTilingResNetTest, test_get_tiling_case_37) {
+void get_resnet_tiling_case_37(Conv2dParams& inputParams) {
     // feature map
     inputParams.batch = 1;
     inputParams.fmci = 16 * 16;
@@ -1834,21 +1389,8 @@ TEST_F(Conv2DFastTilingResNetTest, test_get_tiling_case_37) {
 
     inputParams.preFusionUbUtilize = 1;
     inputParams.postFusionUbUtilize = 1;
-
-    auto begin = std::chrono::high_resolution_clock::now();
-    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
-    auto end = std::chrono::high_resolution_clock::now();
-    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
-    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
-    //ASSERT_LE(runTime, targetTime);
-    ASSERT_TRUE(ret);
-    CheckTiling checker(tiling, inputParams);
-    // checker.ShowTiling();
-    uint32_t check_ret = checker.IsValidTiling();
-    ASSERT_EQ(check_ret, VALID);
 }
-
-TEST_F(Conv2DFastTilingResNetTest, test_get_tiling_case_38) {
+void get_resnet_tiling_case_38(Conv2dParams& inputParams) {
     // feature map
     inputParams.batch = 1;
     inputParams.fmci = 32 * 16;
@@ -1876,21 +1418,8 @@ TEST_F(Conv2DFastTilingResNetTest, test_get_tiling_case_38) {
 
     inputParams.preFusionUbUtilize = 1;
     inputParams.postFusionUbUtilize = 1;
-
-    auto begin = std::chrono::high_resolution_clock::now();
-    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
-    auto end = std::chrono::high_resolution_clock::now();
-    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
-    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
-    //ASSERT_LE(runTime, targetTime);
-    ASSERT_TRUE(ret);
-    CheckTiling checker(tiling, inputParams);
-    // checker.ShowTiling();
-    uint32_t check_ret = checker.IsValidTiling();
-    ASSERT_EQ(check_ret, VALID);
 }
-
-TEST_F(Conv2DFastTilingResNetTest, test_get_tiling_case_39) {
+void get_resnet_tiling_case_39(Conv2dParams& inputParams) {
     // feature map
     inputParams.batch = 1;
     inputParams.fmci = 64 * 16;
@@ -1918,21 +1447,9 @@ TEST_F(Conv2DFastTilingResNetTest, test_get_tiling_case_39) {
 
     inputParams.preFusionUbUtilize = 1;
     inputParams.postFusionUbUtilize = 1;
-
-    auto begin = std::chrono::high_resolution_clock::now();
-    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
-    auto end = std::chrono::high_resolution_clock::now();
-    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
-    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
-    //ASSERT_LE(runTime, targetTime);
-    ASSERT_TRUE(ret);
-    CheckTiling checker(tiling, inputParams);
-    // checker.ShowTiling();
-    uint32_t check_ret = checker.IsValidTiling();
-    ASSERT_EQ(check_ret, VALID);
 }
 
-TEST_F(Conv2DFastTilingResNetTest, test_get_tiling_case_40) {
+void get_resnet_tiling_case_40(Conv2dParams& inputParams) {
     // feature map
     inputParams.batch = 1;
     inputParams.fmci = 64 * 16;
@@ -1960,21 +1477,9 @@ TEST_F(Conv2DFastTilingResNetTest, test_get_tiling_case_40) {
 
     inputParams.preFusionUbUtilize = 1;
     inputParams.postFusionUbUtilize = 1;
-
-    auto begin = std::chrono::high_resolution_clock::now();
-    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
-    auto end = std::chrono::high_resolution_clock::now();
-    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
-    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
-    //ASSERT_LE(runTime, targetTime);
-    ASSERT_TRUE(ret);
-    CheckTiling checker(tiling, inputParams);
-    // checker.ShowTiling();
-    uint32_t check_ret = checker.IsValidTiling();
-    ASSERT_EQ(check_ret, VALID);
 }
 
-TEST_F(Conv2DFastTilingResNetTest, test_get_tiling_case_41) {
+void get_resnet_tiling_case_41(Conv2dParams& inputParams) {
     // feature map
     inputParams.batch = 1;
     inputParams.fmci = 64;
@@ -2002,21 +1507,9 @@ TEST_F(Conv2DFastTilingResNetTest, test_get_tiling_case_41) {
 
     inputParams.preFusionUbUtilize = 1;
     inputParams.postFusionUbUtilize = 1;
-
-    auto begin = std::chrono::high_resolution_clock::now();
-    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
-    auto end = std::chrono::high_resolution_clock::now();
-    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
-    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
-    //ASSERT_LE(runTime, targetTime);
-    ASSERT_TRUE(ret);
-    CheckTiling checker(tiling, inputParams);
-    // checker.ShowTiling();
-    uint32_t check_ret = checker.IsValidTiling();
-    ASSERT_EQ(check_ret, VALID);
 }
 
-TEST_F(Conv2DFastTilingResNetTest, test_get_tiling_case_42) {
+void get_resnet_tiling_case_42(Conv2dParams& inputParams) {
     // feature map
     inputParams.batch = 1;
     inputParams.fmci = 16 * 16;
@@ -2044,21 +1537,9 @@ TEST_F(Conv2DFastTilingResNetTest, test_get_tiling_case_42) {
 
     inputParams.preFusionUbUtilize = 1;
     inputParams.postFusionUbUtilize = 1;
-
-    auto begin = std::chrono::high_resolution_clock::now();
-    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
-    auto end = std::chrono::high_resolution_clock::now();
-    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
-    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
-    //ASSERT_LE(runTime, targetTime);
-    ASSERT_TRUE(ret);
-    CheckTiling checker(tiling, inputParams);
-    // checker.ShowTiling();
-    uint32_t check_ret = checker.IsValidTiling();
-    ASSERT_EQ(check_ret, VALID);
 }
 
-TEST_F(Conv2DFastTilingResNetTest, test_get_tiling_case_43) {
+void get_resnet_tiling_case_43(Conv2dParams& inputParams) {
     // feature map
     inputParams.batch = 1;
     inputParams.fmci = 16 * 16;
@@ -2086,21 +1567,9 @@ TEST_F(Conv2DFastTilingResNetTest, test_get_tiling_case_43) {
 
     inputParams.preFusionUbUtilize = 1;
     inputParams.postFusionUbUtilize = 1;
-
-    auto begin = std::chrono::high_resolution_clock::now();
-    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
-    auto end = std::chrono::high_resolution_clock::now();
-    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
-    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
-    //ASSERT_LE(runTime, targetTime);
-    ASSERT_TRUE(ret);
-    CheckTiling checker(tiling, inputParams);
-    // checker.ShowTiling();
-    uint32_t check_ret = checker.IsValidTiling();
-    ASSERT_EQ(check_ret, VALID);
 }
 
-TEST_F(Conv2DFastTilingResNetTest, test_get_tiling_case_44) {
+void get_resnet_tiling_case_44(Conv2dParams& inputParams) {
     // feature map
     inputParams.batch = 1;
     inputParams.fmci = 32 * 16;
@@ -2128,21 +1597,8 @@ TEST_F(Conv2DFastTilingResNetTest, test_get_tiling_case_44) {
 
     inputParams.preFusionUbUtilize = 1;
     inputParams.postFusionUbUtilize = 1;
-
-    auto begin = std::chrono::high_resolution_clock::now();
-    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
-    auto end = std::chrono::high_resolution_clock::now();
-    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
-    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
-    //ASSERT_LE(runTime, targetTime);
-    ASSERT_TRUE(ret);
-    CheckTiling checker(tiling, inputParams);
-    // checker.ShowTiling();
-    uint32_t check_ret = checker.IsValidTiling();
-    ASSERT_EQ(check_ret, VALID);
 }
-
-TEST_F(Conv2DFastTilingResNetTest, test_get_tiling_case_45) {
+void get_resnet_tiling_case_45(Conv2dParams& inputParams) {
     // feature map
     inputParams.batch = 1;
     inputParams.fmci = 64;
@@ -2170,21 +1626,8 @@ TEST_F(Conv2DFastTilingResNetTest, test_get_tiling_case_45) {
 
     inputParams.preFusionUbUtilize = 1;
     inputParams.postFusionUbUtilize = 1;
-
-    auto begin = std::chrono::high_resolution_clock::now();
-    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
-    auto end = std::chrono::high_resolution_clock::now();
-    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
-    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
-    //ASSERT_LE(runTime, targetTime);
-    ASSERT_TRUE(ret);
-    CheckTiling checker(tiling, inputParams);
-    // checker.ShowTiling();
-    uint32_t check_ret = checker.IsValidTiling();
-    ASSERT_EQ(check_ret, VALID);
 }
-
-TEST_F(Conv2DFastTilingResNetTest, test_get_tiling_case_46) {
+void get_resnet_tiling_case_46(Conv2dParams& inputParams) {
     // feature map
     inputParams.batch = 1;
     inputParams.fmci = 32 * 16;
@@ -2212,21 +1655,9 @@ TEST_F(Conv2DFastTilingResNetTest, test_get_tiling_case_46) {
 
     inputParams.preFusionUbUtilize = 1;
     inputParams.postFusionUbUtilize = 1;
-
-    auto begin = std::chrono::high_resolution_clock::now();
-    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
-    auto end = std::chrono::high_resolution_clock::now();
-    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
-    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
-    //ASSERT_LE(runTime, targetTime);
-    ASSERT_TRUE(ret);
-    CheckTiling checker(tiling, inputParams);
-    // checker.ShowTiling();
-    uint32_t check_ret = checker.IsValidTiling();
-    ASSERT_EQ(check_ret, VALID);
 }
 
-TEST_F(Conv2DFastTilingResNetTest, test_get_tiling_case_47) {
+void get_resnet_tiling_case_47(Conv2dParams& inputParams) {
     // feature map
     inputParams.batch = 1;
     inputParams.fmci = 16 * 16;
@@ -2254,21 +1685,8 @@ TEST_F(Conv2DFastTilingResNetTest, test_get_tiling_case_47) {
 
     inputParams.preFusionUbUtilize = 1;
     inputParams.postFusionUbUtilize = 1;
-
-    auto begin = std::chrono::high_resolution_clock::now();
-    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
-    auto end = std::chrono::high_resolution_clock::now();
-    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
-    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
-    //ASSERT_LE(runTime, targetTime);
-    ASSERT_TRUE(ret);
-    CheckTiling checker(tiling, inputParams);
-    // checker.ShowTiling();
-    uint32_t check_ret = checker.IsValidTiling();
-    ASSERT_EQ(check_ret, VALID);
 }
-
-TEST_F(Conv2DFastTilingResNetTest, test_get_tiling_case_48) {
+void get_resnet_tiling_case_48(Conv2dParams& inputParams) {
     // feature map
     inputParams.batch = 1;
     inputParams.fmci = 16 * 16;
@@ -2296,21 +1714,9 @@ TEST_F(Conv2DFastTilingResNetTest, test_get_tiling_case_48) {
 
     inputParams.preFusionUbUtilize = 1;
     inputParams.postFusionUbUtilize = 1;
-
-    auto begin = std::chrono::high_resolution_clock::now();
-    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
-    auto end = std::chrono::high_resolution_clock::now();
-    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
-    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
-    //ASSERT_LE(runTime, targetTime);
-    ASSERT_TRUE(ret);
-    CheckTiling checker(tiling, inputParams);
-    // checker.ShowTiling();
-    uint32_t check_ret = checker.IsValidTiling();
-    ASSERT_EQ(check_ret, VALID);
 }
 
-TEST_F(Conv2DFastTilingResNetTest, test_get_tiling_case_49) {
+void get_resnet_tiling_case_49(Conv2dParams& inputParams) {
     // feature map
     inputParams.batch = 1;
     inputParams.fmci = 8 * 16;
@@ -2338,7 +1744,2344 @@ TEST_F(Conv2DFastTilingResNetTest, test_get_tiling_case_49) {
 
     inputParams.preFusionUbUtilize = 1;
     inputParams.postFusionUbUtilize = 1;
+}
 
+TEST_F(Conv2DFastTilingResNetTest920A, test_get_tiling_case_00) {
+    get_resnet_tiling_case_00(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest920A, test_get_tiling_case_01) {
+    get_resnet_tiling_case_01(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest920A, test_get_tiling_case_02) {
+    get_resnet_tiling_case_02(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest920A, test_get_tiling_case_03) {
+    get_resnet_tiling_case_03(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest920A, test_get_tiling_case_04) {
+    get_resnet_tiling_case_04(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest920A, test_get_tiling_case_05) {
+    get_resnet_tiling_case_05(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest920A, test_get_tiling_case_06) {
+    get_resnet_tiling_case_06(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest920A, test_get_tiling_case_07) {
+    get_resnet_tiling_case_07(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest920A, test_get_tiling_case_08) {
+    get_resnet_tiling_case_08(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest920A, test_get_tiling_case_09) {
+    get_resnet_tiling_case_09(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest920A, test_get_tiling_case_10) {
+    get_resnet_tiling_case_10(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest920A, test_get_tiling_case_11) {
+    get_resnet_tiling_case_11(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest920A, test_get_tiling_case_12) {
+    get_resnet_tiling_case_12(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest920A, test_get_tiling_case_13) {
+    get_resnet_tiling_case_13(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest920A, test_get_tiling_case_14) {
+    get_resnet_tiling_case_14(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest920A, test_get_tiling_case_15) {
+    get_resnet_tiling_case_15(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest920A, test_get_tiling_case_16) {
+    get_resnet_tiling_case_16(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest920A, test_get_tiling_case_17) {
+    get_resnet_tiling_case_17(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest920A, test_get_tiling_case_18) {
+    get_resnet_tiling_case_18(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest920A, test_get_tiling_case_19) {
+    get_resnet_tiling_case_19(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest920A, test_get_tiling_case_20) {
+    get_resnet_tiling_case_20(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest920A, test_get_tiling_case_21) {
+    get_resnet_tiling_case_21(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest920A, test_get_tiling_case_22) {
+    get_resnet_tiling_case_22(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest920A, test_get_tiling_case_23) {
+    get_resnet_tiling_case_23(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest920A, test_get_tiling_case_24) {
+    get_resnet_tiling_case_24(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest920A, test_get_tiling_case_25) {
+    get_resnet_tiling_case_25(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest920A, test_get_tiling_case_26) {
+    get_resnet_tiling_case_26(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest920A, test_get_tiling_case_27) {
+    get_resnet_tiling_case_27(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest920A, test_get_tiling_case_28) {
+    get_resnet_tiling_case_28(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest920A, test_get_tiling_case_29) {
+    get_resnet_tiling_case_29(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest920A, test_get_tiling_case_30) {
+    get_resnet_tiling_case_30(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest920A, test_get_tiling_case_31) {
+    get_resnet_tiling_case_31(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest920A, test_get_tiling_case_32) {
+    get_resnet_tiling_case_32(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest920A, test_get_tiling_case_33) {
+    get_resnet_tiling_case_33(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest920A, test_get_tiling_case_34) {
+    get_resnet_tiling_case_34(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest920A, test_get_tiling_case_35) {
+    get_resnet_tiling_case_35(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest920A, test_get_tiling_case_36) {
+    get_resnet_tiling_case_36(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest920A, test_get_tiling_case_37) {
+    get_resnet_tiling_case_37(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest920A, test_get_tiling_case_38) {
+    get_resnet_tiling_case_38(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest920A, test_get_tiling_case_39) {
+    get_resnet_tiling_case_39(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest920A, test_get_tiling_case_40) {
+    get_resnet_tiling_case_40(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest920A, test_get_tiling_case_41) {
+    get_resnet_tiling_case_41(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest920A, test_get_tiling_case_42) {
+    get_resnet_tiling_case_42(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest920A, test_get_tiling_case_43) {
+    get_resnet_tiling_case_43(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest920A, test_get_tiling_case_44) {
+    get_resnet_tiling_case_44(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest920A, test_get_tiling_case_45) {
+    get_resnet_tiling_case_45(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest920A, test_get_tiling_case_46) {
+    get_resnet_tiling_case_46(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest920A, test_get_tiling_case_47) {
+    get_resnet_tiling_case_47(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest920A, test_get_tiling_case_48) {
+    get_resnet_tiling_case_48(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest920A, test_get_tiling_case_49) {
+    get_resnet_tiling_case_49(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+class Conv2DFastTilingResNetTest310 : public testing::Test {
+protected:
+    static void SetUpTestCase() {
+        std::cout << "Conv2DFastTilingTest SetUp" << std::endl;
+    }
+
+    static void TearDownTestCase() {
+        std::cout << "Conv2DFastTilingTest TearDown" << std::endl;
+    }
+
+    void setHardwareInfoAscend310() {
+        hardwareInfo.aicoreNum = 2;
+        hardwareInfo.l2Size = 8388608;
+        hardwareInfo.l1Size = 1048576;
+        hardwareInfo.l0aSize = 65536;
+        hardwareInfo.l0bSize = 65536;
+        hardwareInfo.l0cSize = 262144;
+        hardwareInfo.ubSize = 253952;
+        hardwareInfo.btSize = 0;
+        hardwareInfo.ddrReadRate = 67;
+        hardwareInfo.ddrWriteRate = 64;
+        hardwareInfo.l2Rate = 128;
+        hardwareInfo.l2ReadRate = 128;
+        hardwareInfo.l2WriteRate = 64;
+        hardwareInfo.l1ToL0aRate = 512;
+        hardwareInfo.l1ToL0bRate = 256;
+        hardwareInfo.l1ToUbRate = 128;
+        hardwareInfo.l0cToUbRate = 256;
+        hardwareInfo.ubToL2Rate = 64;
+        hardwareInfo.ubToDdrRate = 64;
+        hardwareInfo.ubToL1Rate = 128;
+        hardwareInfo.socVersion = "Ascend310";
+    }
+
+    virtual void SetUp() {
+        setHardwareInfoAscend310();
+        std::cout << "SetUp" << std::endl;
+    }
+
+    virtual void TearDown() {
+         std::cout << "TearDown" << std::endl;
+
+    }
+    Conv2dParams inputParams;
+    HardwareInfo hardwareInfo;
+    Conv2dTiling tiling;
+    int64_t targetTime = std::chrono::microseconds(10).count();
+};
+
+
+TEST_F(Conv2DFastTilingResNetTest310, test_get_tiling_case_00) {
+    get_resnet_tiling_case_00(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest310, test_get_tiling_case_01) {
+    get_resnet_tiling_case_01(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest310, test_get_tiling_case_02) {
+    get_resnet_tiling_case_02(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest310, test_get_tiling_case_03) {
+    get_resnet_tiling_case_03(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest310, test_get_tiling_case_04) {
+    get_resnet_tiling_case_04(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest310, test_get_tiling_case_05) {
+    get_resnet_tiling_case_05(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest310, test_get_tiling_case_06) {
+    get_resnet_tiling_case_06(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest310, test_get_tiling_case_07) {
+    get_resnet_tiling_case_07(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest310, test_get_tiling_case_08) {
+    get_resnet_tiling_case_08(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest310, test_get_tiling_case_09) {
+    get_resnet_tiling_case_09(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest310, test_get_tiling_case_10) {
+    get_resnet_tiling_case_10(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest310, test_get_tiling_case_11) {
+    get_resnet_tiling_case_11(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest310, test_get_tiling_case_12) {
+    get_resnet_tiling_case_12(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest310, test_get_tiling_case_13) {
+    get_resnet_tiling_case_13(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest310, test_get_tiling_case_14) {
+    get_resnet_tiling_case_14(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest310, test_get_tiling_case_15) {
+    get_resnet_tiling_case_15(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest310, test_get_tiling_case_16) {
+    get_resnet_tiling_case_16(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest310, test_get_tiling_case_17) {
+    get_resnet_tiling_case_17(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest310, test_get_tiling_case_18) {
+    get_resnet_tiling_case_18(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest310, test_get_tiling_case_19) {
+    get_resnet_tiling_case_19(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest310, test_get_tiling_case_20) {
+    get_resnet_tiling_case_20(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest310, test_get_tiling_case_21) {
+    get_resnet_tiling_case_21(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest310, test_get_tiling_case_22) {
+    get_resnet_tiling_case_22(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest310, test_get_tiling_case_23) {
+    get_resnet_tiling_case_23(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest310, test_get_tiling_case_24) {
+    get_resnet_tiling_case_24(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest310, test_get_tiling_case_25) {
+    get_resnet_tiling_case_25(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest310, test_get_tiling_case_26) {
+    get_resnet_tiling_case_26(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest310, test_get_tiling_case_27) {
+    get_resnet_tiling_case_27(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest310, test_get_tiling_case_28) {
+    get_resnet_tiling_case_28(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest310, test_get_tiling_case_29) {
+    get_resnet_tiling_case_29(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest310, test_get_tiling_case_30) {
+    get_resnet_tiling_case_30(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest310, test_get_tiling_case_31) {
+    get_resnet_tiling_case_31(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest310, test_get_tiling_case_32) {
+    get_resnet_tiling_case_32(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest310, test_get_tiling_case_33) {
+    get_resnet_tiling_case_33(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest310, test_get_tiling_case_34) {
+    get_resnet_tiling_case_34(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest310, test_get_tiling_case_35) {
+    get_resnet_tiling_case_35(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest310, test_get_tiling_case_36) {
+    get_resnet_tiling_case_36(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest310, test_get_tiling_case_37) {
+    get_resnet_tiling_case_37(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest310, test_get_tiling_case_38) {
+    get_resnet_tiling_case_38(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest310, test_get_tiling_case_39) {
+    get_resnet_tiling_case_39(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest310, test_get_tiling_case_40) {
+    get_resnet_tiling_case_40(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest310, test_get_tiling_case_41) {
+    get_resnet_tiling_case_41(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest310, test_get_tiling_case_42) {
+    get_resnet_tiling_case_42(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest310, test_get_tiling_case_43) {
+    get_resnet_tiling_case_43(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest310, test_get_tiling_case_44) {
+    get_resnet_tiling_case_44(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest310, test_get_tiling_case_45) {
+    get_resnet_tiling_case_45(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest310, test_get_tiling_case_46) {
+    get_resnet_tiling_case_46(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest310, test_get_tiling_case_47) {
+    get_resnet_tiling_case_47(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest310, test_get_tiling_case_48) {
+    get_resnet_tiling_case_48(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest310, test_get_tiling_case_49) {
+    get_resnet_tiling_case_49(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+class Conv2DFastTilingResNetTest710 : public testing::Test {
+protected:
+    static void SetUpTestCase() {
+        std::cout << "Conv2DFastTilingTest SetUp" << std::endl;
+    }
+
+    static void TearDownTestCase() {
+        std::cout << "Conv2DFastTilingTest TearDown" << std::endl;
+    }
+
+    void setHardwareInfoAscend710() {
+        hardwareInfo.aicoreNum = 8;
+        hardwareInfo.l2Size = 16777216;
+        hardwareInfo.l1Size = 1048576;
+        hardwareInfo.l0aSize = 65536;
+        hardwareInfo.l0bSize = 65536;
+        hardwareInfo.l0cSize = 262144;
+        hardwareInfo.ubSize = 262144;
+        hardwareInfo.btSize = 0;
+        hardwareInfo.ddrReadRate = 17;
+        hardwareInfo.ddrWriteRate = 17;
+        hardwareInfo.l2Rate = 114;
+        hardwareInfo.l2ReadRate = 114;
+        hardwareInfo.l2WriteRate = 114;
+        hardwareInfo.l1ToL0aRate = 512;
+        hardwareInfo.l1ToL0bRate = 256;
+        hardwareInfo.l1ToUbRate = 128;
+        hardwareInfo.l0cToUbRate = 512;
+        hardwareInfo.ubToL2Rate = 114;
+        hardwareInfo.ubToDdrRate = 17;
+        hardwareInfo.ubToL1Rate = 256;
+        hardwareInfo.socVersion = "Ascend710";
+    }
+
+    virtual void SetUp() {
+        setHardwareInfoAscend710();
+        std::cout << "SetUp" << std::endl;
+    }
+
+    virtual void TearDown() {
+         std::cout << "TearDown" << std::endl;
+
+    }
+    Conv2dParams inputParams;
+    HardwareInfo hardwareInfo;
+    Conv2dTiling tiling;
+    int64_t targetTime = std::chrono::microseconds(10).count();
+};
+
+TEST_F(Conv2DFastTilingResNetTest710, test_get_tiling_case_00) {
+    get_resnet_tiling_case_00(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest710, test_get_tiling_case_01) {
+    get_resnet_tiling_case_01(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest710, test_get_tiling_case_02) {
+    get_resnet_tiling_case_02(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest710, test_get_tiling_case_03) {
+    get_resnet_tiling_case_03(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest710, test_get_tiling_case_04) {
+    get_resnet_tiling_case_04(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest710, test_get_tiling_case_05) {
+    get_resnet_tiling_case_05(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest710, test_get_tiling_case_06) {
+    get_resnet_tiling_case_06(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest710, test_get_tiling_case_07) {
+    get_resnet_tiling_case_07(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest710, test_get_tiling_case_08) {
+    get_resnet_tiling_case_08(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest710, test_get_tiling_case_09) {
+    get_resnet_tiling_case_09(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest710, test_get_tiling_case_10) {
+    get_resnet_tiling_case_10(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest710, test_get_tiling_case_11) {
+    get_resnet_tiling_case_11(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest710, test_get_tiling_case_12) {
+    get_resnet_tiling_case_12(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest710, test_get_tiling_case_13) {
+    get_resnet_tiling_case_13(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest710, test_get_tiling_case_14) {
+    get_resnet_tiling_case_14(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest710, test_get_tiling_case_15) {
+    get_resnet_tiling_case_15(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest710, test_get_tiling_case_16) {
+    get_resnet_tiling_case_16(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest710, test_get_tiling_case_17) {
+    get_resnet_tiling_case_17(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest710, test_get_tiling_case_18) {
+    get_resnet_tiling_case_18(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest710, test_get_tiling_case_19) {
+    get_resnet_tiling_case_19(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest710, test_get_tiling_case_20) {
+    get_resnet_tiling_case_20(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest710, test_get_tiling_case_21) {
+    get_resnet_tiling_case_21(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest710, test_get_tiling_case_22) {
+    get_resnet_tiling_case_22(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest710, test_get_tiling_case_23) {
+    get_resnet_tiling_case_23(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest710, test_get_tiling_case_24) {
+    get_resnet_tiling_case_24(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest710, test_get_tiling_case_25) {
+    get_resnet_tiling_case_25(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest710, test_get_tiling_case_26) {
+    get_resnet_tiling_case_26(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest710, test_get_tiling_case_27) {
+    get_resnet_tiling_case_27(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest710, test_get_tiling_case_28) {
+    get_resnet_tiling_case_28(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest710, test_get_tiling_case_29) {
+    get_resnet_tiling_case_29(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest710, test_get_tiling_case_30) {
+    get_resnet_tiling_case_30(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest710, test_get_tiling_case_31) {
+    get_resnet_tiling_case_31(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest710, test_get_tiling_case_32) {
+    get_resnet_tiling_case_32(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest710, test_get_tiling_case_33) {
+    get_resnet_tiling_case_33(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest710, test_get_tiling_case_34) {
+    get_resnet_tiling_case_34(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest710, test_get_tiling_case_35) {
+    get_resnet_tiling_case_35(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest710, test_get_tiling_case_36) {
+    get_resnet_tiling_case_36(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest710, test_get_tiling_case_37) {
+    get_resnet_tiling_case_37(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest710, test_get_tiling_case_38) {
+    get_resnet_tiling_case_38(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest710, test_get_tiling_case_39) {
+    get_resnet_tiling_case_39(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest710, test_get_tiling_case_40) {
+    get_resnet_tiling_case_40(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest710, test_get_tiling_case_41) {
+    get_resnet_tiling_case_41(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest710, test_get_tiling_case_42) {
+    get_resnet_tiling_case_42(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest710, test_get_tiling_case_43) {
+    get_resnet_tiling_case_43(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest710, test_get_tiling_case_44) {
+    get_resnet_tiling_case_44(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest710, test_get_tiling_case_45) {
+    get_resnet_tiling_case_45(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest710, test_get_tiling_case_46) {
+    get_resnet_tiling_case_46(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest710, test_get_tiling_case_47) {
+    get_resnet_tiling_case_47(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest710, test_get_tiling_case_48) {
+    get_resnet_tiling_case_48(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+TEST_F(Conv2DFastTilingResNetTest710, test_get_tiling_case_49) {
+    get_resnet_tiling_case_49(inputParams);
     auto begin = std::chrono::high_resolution_clock::now();
     bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
     auto end = std::chrono::high_resolution_clock::now();

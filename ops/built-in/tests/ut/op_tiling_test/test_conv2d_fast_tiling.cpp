@@ -51,6 +51,7 @@ protected:
         hardwareInfo.ubToL2Rate = 64;
         hardwareInfo.ubToDdrRate = 64;
         hardwareInfo.ubToL1Rate = 128;
+        hardwareInfo.socVersion = "Ascend920A";
         std::cout << "SetUp" << std::endl;
     }
 
@@ -430,4 +431,116 @@ TEST_F(Conv2DFastTilingTest, test_get_ub_tiling_01)
     fastTilingPtr->opInfo_.postFusionUbUtilize = hardwareInfo.ubSize / 2 / 256;
     bool ret = fastTilingPtr->GetUBTiling(fake_tiling);
     ASSERT_EQ(ret, true);
+}
+
+TEST_F(Conv2DFastTilingTest, test_set_param_failed0)
+{
+    unique_ptr<FastTiling> fastTilingPtr(new FastTiling());
+    inputParams.batch = 0;
+    bool ret = fastTilingPtr->SetInputParams(inputParams, hardwareInfo);
+    ASSERT_EQ(ret, false);
+}
+
+TEST_F(Conv2DFastTilingTest, test_set_param_failed1)
+{
+    unique_ptr<FastTiling> fastTilingPtr(new FastTiling());
+    inputParams.fmci = 0;
+    bool ret = fastTilingPtr->SetInputParams(inputParams, hardwareInfo);
+    ASSERT_EQ(ret, false);
+}
+
+TEST_F(Conv2DFastTilingTest, test_set_param_failed2)
+{
+    unique_ptr<FastTiling> fastTilingPtr(new FastTiling());
+    inputParams.hi = 100007;
+    bool ret = fastTilingPtr->SetInputParams(inputParams, hardwareInfo);
+    ASSERT_EQ(ret, false);
+}
+
+TEST_F(Conv2DFastTilingTest, test_set_param_failed3)
+{
+    unique_ptr<FastTiling> fastTilingPtr(new FastTiling());
+    inputParams.wi = 4097;
+    bool ret = fastTilingPtr->SetInputParams(inputParams, hardwareInfo);
+    ASSERT_EQ(ret, false);
+}
+
+TEST_F(Conv2DFastTilingTest, test_set_param_failed4)
+{
+    unique_ptr<FastTiling> fastTilingPtr(new FastTiling());
+    inputParams.n = 0;
+    bool ret = fastTilingPtr->SetInputParams(inputParams, hardwareInfo);
+    ASSERT_EQ(ret, false);
+}
+
+TEST_F(Conv2DFastTilingTest, test_set_param_failed5)
+{
+    unique_ptr<FastTiling> fastTilingPtr(new FastTiling());
+    inputParams.padu = 515;
+    bool ret = fastTilingPtr->SetInputParams(inputParams, hardwareInfo);
+    ASSERT_EQ(ret, false);
+}
+
+TEST_F(Conv2DFastTilingTest, test_set_param_failed6)
+{
+    unique_ptr<FastTiling> fastTilingPtr(new FastTiling());
+    inputParams.dilations_h = 515;
+    bool ret = fastTilingPtr->SetInputParams(inputParams, hardwareInfo);
+    ASSERT_EQ(ret, false);
+}
+
+TEST_F(Conv2DFastTilingTest, test_set_param_failed7)
+{
+    unique_ptr<FastTiling> fastTilingPtr(new FastTiling());
+    inputParams.groups = 0;
+    bool ret = fastTilingPtr->SetInputParams(inputParams, hardwareInfo);
+    ASSERT_EQ(ret, false);
+}
+
+TEST_F(Conv2DFastTilingTest, test_set_param_failed8)
+{
+    unique_ptr<FastTiling> fastTilingPtr(new FastTiling());
+    inputParams.preFusionVectorUtilize = -1;
+    bool ret = fastTilingPtr->SetInputParams(inputParams, hardwareInfo);
+    ASSERT_EQ(ret, false);
+}
+
+TEST_F(Conv2DFastTilingTest, test_set_param_failed9)
+{
+    unique_ptr<FastTiling> fastTilingPtr(new FastTiling());
+    inputParams.postFusionVectorUtilize = -1;
+    bool ret = fastTilingPtr->SetInputParams(inputParams, hardwareInfo);
+    ASSERT_EQ(ret, false);
+}
+
+TEST_F(Conv2DFastTilingTest, test_set_param_failed10)
+{
+    unique_ptr<FastTiling> fastTilingPtr(new FastTiling());
+    inputParams.preFusionUbUtilize = -1.5;
+    bool ret = fastTilingPtr->SetInputParams(inputParams, hardwareInfo);
+    ASSERT_EQ(ret, false);
+}
+
+TEST_F(Conv2DFastTilingTest, test_set_param_failed11)
+{
+    unique_ptr<FastTiling> fastTilingPtr(new FastTiling());
+    inputParams.postFusionVectorUtilize = -1.5;
+    bool ret = fastTilingPtr->SetInputParams(inputParams, hardwareInfo);
+    ASSERT_EQ(ret, false);
+}
+
+TEST_F(Conv2DFastTilingTest, test_set_param_failed12)
+{
+    unique_ptr<FastTiling> fastTilingPtr(new FastTiling());
+    hardwareInfo.socVersion = "";
+    bool ret = fastTilingPtr->SetInputParams(inputParams, hardwareInfo);
+    ASSERT_EQ(ret, false);
+}
+
+TEST_F(Conv2DFastTilingTest, test_set_param_failed13)
+{
+    unique_ptr<FastTiling> fastTilingPtr(new FastTiling());
+    hardwareInfo.ddrReadRate = 0;
+    bool ret = fastTilingPtr->SetInputParams(inputParams, hardwareInfo);
+    ASSERT_EQ(ret, false);
 }

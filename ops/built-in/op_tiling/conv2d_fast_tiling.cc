@@ -37,24 +37,65 @@ void FastTiling::Convert4DTo5D()
     const int64_t hi = opInfo_.hi;
     const int64_t wi = opInfo_.wi;
     const int64_t ci0 = getCi0();
-    opInfo_.iShape5D = {batch, ci1, hi, wi, ci0};
+    shapeInfo_.iShape5D = {batch, ci1, hi, wi, ci0};
 
     const int64_t cout = opInfo_.n;
     const int64_t kernnelCi1 = (opInfo_.wci + getCi0() - 1) / getCi0();
     const int64_t kernnelHi = opInfo_.kh;
     const int64_t kernnelWi = opInfo_.kw;
     const int64_t kernnelCi0 = getCi0();
-    opInfo_.wShape5D = {cout, kernnelCi1, kernnelHi, kernnelWi, kernnelCi0};
+    shapeInfo_.wShape5D = {cout, kernnelCi1, kernnelHi, kernnelWi, kernnelCi0};
 
     const int64_t co1 = (cout + getCi0() - 1) / getCi0();
     const int64_t ho = opInfo_.ho;
     const int64_t wo = opInfo_.wo;
     const int64_t co0 = getCi0();
-    opInfo_.oShape5D = {batch, co1, ho, wo, co0};
+    shapeInfo_.oShape5D = {batch, co1, ho, wo, co0};
 }
 
-void FastTiling::SetInputParams(const Conv2dParams& inputParams, const HardwareInfo& hardwareInfo)
+bool FastTiling::CheckConv2dParams(const Conv2dParams& conv2dInfo)
 {
+    CHECK_FAST_TILING_DATA_RANGE(conv2dInfo.batch, 1, INT64_MAX, "Conv2dParams.batch");
+    CHECK_FAST_TILING_DATA_RANGE(conv2dInfo.fmci, 1, INT64_MAX, "Conv2dParams.fmci");
+    CHECK_FAST_TILING_DATA_RANGE(conv2dInfo.hi, MIN_HEIGHT_SIZE, MAX_HEIGHT_SIZE, "Conv2dParams.hi");
+    CHECK_FAST_TILING_DATA_RANGE(conv2dInfo.wi, MIN_WIDTH_SIZE, MAX_WIDTH_SIZE, "Conv2dParams.wi");
+    CHECK_FAST_TILING_DATA_RANGE(conv2dInfo.ho, MIN_HEIGHT_SIZE, MAX_HEIGHT_SIZE, "Conv2dParams.ho");
+    CHECK_FAST_TILING_DATA_RANGE(conv2dInfo.wo, MIN_WIDTH_SIZE, MAX_WIDTH_SIZE, "Conv2dParams.wo");
+    CHECK_FAST_TILING_DATA_RANGE(conv2dInfo.n, 1, INT64_MAX, "Conv2dParams.n");
+    CHECK_FAST_TILING_DATA_RANGE(conv2dInfo.padu, 0, MAX_PADDING_SIZE, "Conv2dParams.padu");
+    CHECK_FAST_TILING_DATA_RANGE(conv2dInfo.padd, 0, MAX_PADDING_SIZE, "Conv2dParams.padd");
+    CHECK_FAST_TILING_DATA_RANGE(conv2dInfo.padl, 0, MAX_PADDING_SIZE, "Conv2dParams.padl");
+    CHECK_FAST_TILING_DATA_RANGE(conv2dInfo.padr, 0, MAX_PADDING_SIZE, "Conv2dParams.padr");
+    CHECK_FAST_TILING_DATA_RANGE(conv2dInfo.dilations_h, 1, MAX_DILATION_SIZE, "Conv2dParams.dilations_h");
+    CHECK_FAST_TILING_DATA_RANGE(conv2dInfo.dilations_w, 1, MAX_DILATION_SIZE, "Conv2dParams.dilations_w");
+    CHECK_FAST_TILING_DATA_RANGE(conv2dInfo.stride_h, 1, MAX_STRIDE_SIZE, "Conv2dParams.stride_h");
+    CHECK_FAST_TILING_DATA_RANGE(conv2dInfo.stride_w, 1, MAX_STRIDE_SIZE, "Conv2dParams.stride_w");
+    CHECK_FAST_TILING_DATA_RANGE(conv2dInfo.groups, 1, INT64_MAX, "Conv2dParams.groups");
+    int64_t preFusionUbUtilize = static_cast<int64_t>(ceil(conv2dInfo.preFusionUbUtilize));
+    CHECK_FAST_TILING_DATA_RANGE(preFusionUbUtilize, 0, INT64_MAX, "Conv2dParams.preFusionUbUtilize");
+    CHECK_FAST_TILING_DATA_RANGE(conv2dInfo.preFusionVectorUtilize, 0, INT64_MAX, "Conv2dParams.preFusionVectorUtilize");
+    int64_t postFusionUbUtilize = static_cast<int64_t>(ceil(conv2dInfo.postFusionUbUtilize));
+    CHECK_FAST_TILING_DATA_RANGE(postFusionUbUtilize, 0, INT64_MAX, "Conv2dParams.postFusionUbUtilize");
+    CHECK_FAST_TILING_DATA_RANGE(conv2dInfo.postFusionVectorUtilize, 0, INT64_MAX, "Conv2dParams.postFusionVectorUtilize");
+    return true;
+}
+
+bool FastTiling::CheckHardwareInfo(const HardwareInfo& hardwareInfo)
+{
+    CHECK_OP_FUNC(hardwareInfo.ddrReadRate == 0, return false, "HardwareInfo.ddrReadRate cannot be zero!");
+    CHECK_OP_FUNC(hardwareInfo.ddrWriteRate == 0, return false, "HardwareInfo.ddrWriteRate cannot be zero!");
+    CHECK_OP_FUNC(hardwareInfo.l1ToL0aRate == 0, return false, "HardwareInfo.l1ToL0aRate cannot be zero!");
+    CHECK_OP_FUNC(hardwareInfo.l1ToL0bRate == 0, return false, "HardwareInfo.l1ToL0bRate cannot be zero!");
+    CHECK_OP_FUNC(hardwareInfo.ubToDdrRate == 0, return false, "HardwareInfo.ubToDdrRate cannot be zero!");
+    CHECK_OP_FUNC(hardwareInfo.socVersion.empty(), return false, "HardwareInfo.socVersion cannot be empty!");
+    return true;
+}
+
+bool FastTiling::SetInputParams(const Conv2dParams& inputParams, const HardwareInfo& hardwareInfo)
+{
+    CHECK_OP_FUNC(!CheckConv2dParams(inputParams), return false, "CheckConv2dParams failed!");
+    CHECK_OP_FUNC(!CheckHardwareInfo(hardwareInfo), return false, "CheckHardwareInfo failed!");
+
     this->opInfo_ = inputParams;
     GetConv2dCaseStatus();
     this->Convert4DTo5D(); // set 5d shape
@@ -63,6 +104,7 @@ void FastTiling::SetInputParams(const Conv2dParams& inputParams, const HardwareI
                                     byteForDtype_.at(ge::DataType::DT_FLOAT16);
     uint32_t vectorProcessNum = static_cast<uint32_t>(FastTilingValue::FAST_TILING_VALUE_128);
     this->hardware_.vectorBandwidth = vectorProcessNum * byteForDtype_.at(ge::DataType::DT_FLOAT16);
+    return true;
 }
 
 bool FastTiling::GetConv2dTiling(Tiling& tiling) {
@@ -123,7 +165,7 @@ void FastTiling::DataInOneCore(const BlockDimSize& dataSize,
      */
     // the proportion of feature map which needs to be loaded twice due to cut on m axis.
     // Up to now, only considered stride = 1 and each row overlaping only for ones, which may cause performace problem!
-    float iOverlap = static_cast<float>((opInfo_.wShape5D.at(2) - 1) * (blockDim.mDim - 1)) / opInfo_.iShape5D.at(2);
+    float iOverlap = static_cast<float>((shapeInfo_.wShape5D.at(2) - 1) * (blockDim.mDim - 1)) / shapeInfo_.iShape5D.at(2);
     // feature map size per core
     dataPerCore.iSize = static_cast<float>(dataSize.iSize) * (1 + iOverlap) / blockDim.batchDim / blockDim.mDim;
     // weight size per core
@@ -141,9 +183,9 @@ bool FastTiling::GetBlockDimTiling(Tiling& tiling)
 {
     BlockDimRange tilingRange;
     GetBlockDimRange(tilingRange);
-    uint32_t iSize = byteForDtype_.at(opInfo_.aType) * static_cast<uint32_t>(GetEleNum(opInfo_.iShape5D));
-    uint32_t wSize = byteForDtype_.at(opInfo_.bType) * static_cast<uint32_t>(GetEleNum(opInfo_.wShape5D));
-    uint32_t oSize = byteForDtype_.at(opInfo_.cType) * static_cast<uint32_t>(GetEleNum(opInfo_.oShape5D));
+    uint32_t iSize = byteForDtype_.at(opInfo_.aType) * static_cast<uint32_t>(GetEleNum(shapeInfo_.iShape5D));
+    uint32_t wSize = byteForDtype_.at(opInfo_.bType) * static_cast<uint32_t>(GetEleNum(shapeInfo_.wShape5D));
+    uint32_t oSize = byteForDtype_.at(opInfo_.cType) * static_cast<uint32_t>(GetEleNum(shapeInfo_.oShape5D));
     BlockDimSize blockDimSize = {iSize, wSize, oSize};
     uint32_t batchIndex = 0;
     uint32_t nIndex = 0;
@@ -170,11 +212,11 @@ bool FastTiling::GetBlockDimTiling(Tiling& tiling)
         // compute amount(computing can parallel among cores) =
         // wSize(nk) * oSize(mn) /  wShape5D.at(0)(n) / blockDim = mnk / blockDim
         // compute time per core = datasize / cube_bandwidth + Featuremap prefusion cost + Featuremap postfusion cost
-        auto cout = static_cast<uint32_t>(opInfo_.wShape5D.at(0));
+        auto cout = static_cast<uint32_t>(shapeInfo_.wShape5D.at(0));
         auto currentCoreNum = tiling.batchDim * tiling.nDim * tiling.mDim;
         estComputeTime = wSize * oSize / cout / currentCoreNum / hardware_.cubeBandwidth +
-            dataPerCore.iSize / hardware_.vectorBandwidth * PREFUSION_TRANSPOSE_NUM +
-            dataPerCore.wSize / hardware_.vectorBandwidth * POSTFUSION_TRANSPOSE_NUM;
+            dataPerCore.iSize / hardware_.vectorBandwidth * opInfo_.preFusionVectorUtilize +
+            dataPerCore.wSize / hardware_.vectorBandwidth * opInfo_.postFusionVectorUtilize;
         // meomry access time(cannot parallel as all memory access among cores share a common bus)
         // the summation of mte1, mte2, mte 3 time
         float mte2Inputs = dataPerCore.iSize * tiling.nDim / hardware_.l2Rate;
@@ -187,38 +229,42 @@ bool FastTiling::GetBlockDimTiling(Tiling& tiling)
         estMemoryAccTime = mte1 + mte2 + mte3;
         float newEstTotalTime = estMemoryAccTime + estComputeTime;
         // iteration stop if cost function increase
-        if (newEstTotalTime >= estTotalTime) {
+        if (newEstTotalTime > estTotalTime) {
             break;
         } else {
             estTotalTime = newEstTotalTime;
         }
-        // tiling decisions
+
+        // cut group dim in the heightest priority
         if (gIndex < tilingRange.gRange.size() - 1) {
             // lift group dim to max as it will not affect total time cost
             gIndex++;
             rewindIndicator = (1 << FOUR);
-        } else {
-            if (dataPerCore.iSize > dataPerCore.wSize) {
-                // cut the larger one between feature map and weight;
-                // when cutting feature map, batch axis should be cut before m,
-                // access as cutting m can bring redundant memory
-                if (batchIndex < tilingRange.batchRange.size() - 1) {
-                    // cut batch dim
-                    batchIndex++;
-                    rewindIndicator = (1 << 1);
-                    continue;
-                } else if (mIndex < tilingRange.mRange.size() - 1) {
-                    mIndex++;
-                    rewindIndicator = (1 << THREE);
-                    continue;
-                }
+            continue;
+        }
+        // cut the larger one between feature map and weight;
+        if (dataPerCore.iSize > dataPerCore.wSize) {
+            // when cutting feature map, batch axis should be cut before m,
+            // access as cutting m can bring redundant memory
+            if (batchIndex < tilingRange.batchRange.size() - 1) {
+                // cut batch dim
+                batchIndex++;
+                rewindIndicator = (1 << 1);
+                continue;
             }
-            if (nIndex < tilingRange.nRange.size() - 1) {
-                // cut n dim(cout dim)
-                nIndex++;
-                rewindIndicator = (1 << TWO);
+            if (mIndex < tilingRange.mRange.size() - 1) {
+                mIndex++;
+                rewindIndicator = (1 << THREE);
+                continue;
             }
         }
+        // cut n dim(cout dim)
+        if (nIndex < tilingRange.nRange.size() - 1) {
+            nIndex++;
+            rewindIndicator = (1 << TWO);
+            continue;
+        }
+        break; // stop iteration if all idx of tilingRange hit max value
     }
     // rewind tiling dims
     tiling.batchDim = tilingRange.batchRange.at(batchIndex - ((rewindIndicator >> 1) & 1));
@@ -233,11 +279,11 @@ bool FastTiling::GetBlockDimTiling(Tiling& tiling)
 void FastTiling::GetBlockDimRange(BlockDimRange& tilingRange)
 {
     // obtain batch dim candidates
-    CalcCommFactor(hardware_.aicoreNum, opInfo_.iShape5D.at(0), tilingRange.batchRange);
+    CalcCommFactor(hardware_.aicoreNum, shapeInfo_.iShape5D.at(0), tilingRange.batchRange);
     // obtain n dim candidates
-    CalcCommFactor(hardware_.aicoreNum, opInfo_.oShape5D.at(1), tilingRange.nRange);
+    CalcCommFactor(hardware_.aicoreNum, shapeInfo_.oShape5D.at(1), tilingRange.nRange);
     // obtain m dim candidates
-    uint32_t alignedM = (opInfo_.oShape5D.at(2) * opInfo_.oShape5D.at(3) + getCi0() - 1) / getCi0();
+    uint32_t alignedM = (shapeInfo_.oShape5D.at(2) * shapeInfo_.oShape5D.at(3) + getCi0() - 1) / getCi0();
     CalcCommFactor(hardware_.aicoreNum, std::ceil(alignedM), tilingRange.mRange);
     // obtain g dim candidates
     CalcCommFactor(hardware_.aicoreNum, opInfo_.groups, tilingRange.gRange);
@@ -284,20 +330,20 @@ void FastTiling::GetL1TilingRange(Tiling &tiling)
 
     // nBL1 range
     vector<uint32_t> nBL1Vector;
-    uint32_t nSizePerCore = (opInfo_.oShape5D[1] + tiling.nDim - 1) / tiling.nDim;
+    uint32_t nSizePerCore = (shapeInfo_.oShape5D[1] + tiling.nDim - 1) / tiling.nDim;
     CalcCommFactor(nSizePerCore, nSizePerCore, nBL1Vector);
     tilingRangeL1_.nBL1.assign(nBL1Vector.begin(), nBL1Vector.end());
 
     // mAL1 range
     vector<uint32_t> mAL1Vector;
-    uint32_t mSize  =  (opInfo_.oShape5D[2] * opInfo_.oShape5D[3] + CUBE_UNIT_16 - 1) / CUBE_UNIT_16;
+    uint32_t mSize  =  (shapeInfo_.oShape5D[2] * shapeInfo_.oShape5D[3] + CUBE_UNIT_16 - 1) / CUBE_UNIT_16;
     uint32_t mSizePerCore = (mSize + tiling.mDim -1) / tiling.mDim;
     CalcCommFactor(MSIZE_PER_CORE, mSizePerCore, mAL1Vector);
     tilingRangeL1_.mAL1.assign(mAL1Vector.begin(), mAL1Vector.end());
 
     // kAL1 range
     vector<uint32_t> kAL1Vector;
-    uint32_t kAL1Size = opInfo_.iShape5D.at(1); // 5hd[N,ci,Hi,Wi,c0]
+    uint32_t kAL1Size = shapeInfo_.iShape5D.at(1); // 5hd[N,ci,Hi,Wi,c0]
     CalcCommFactor(kAL1Size, kAL1Size, kAL1Vector);
     // for reusing fmap, KAL1 * ReduceA > KBL1 * ReduceB
     vector<uint32_t>::iterator beginIter = kAL1Vector.end() - 1;
@@ -312,7 +358,7 @@ void FastTiling::GetL1TilingRange(Tiling &tiling)
 
     // kBL1 range
     vector<uint32_t> kBL1Vector;
-    uint32_t kBL1Size = opInfo_.iShape5D.at(1); // 5hd[N,ci,Hi,Wi,c0]
+    uint32_t kBL1Size = shapeInfo_.iShape5D.at(1); // 5hd[N,ci,Hi,Wi,c0]
     CalcCommFactor(kBL1Size, kBL1Size, kBL1Vector);
     tilingRangeL1_.kBL1.assign(kBL1Vector.end() - 1, kBL1Vector.end()); // fix kBL1 as Ci
 
@@ -331,11 +377,11 @@ void FastTiling::UpdateL1Data()
     uint32_t mAL1 = tilingRangeL1_.mAL1.at(l1Data_.mAL1_index);
     uint32_t nBL1 = tilingRangeL1_.nBL1.at(l1Data_.nBL1_index);
     if (isSplitWAxis_) {
-        uint32_t aL1Wo = (mAL1 * CUBE_UNIT_16 + opInfo_.oShape5D.at(3) -1) / opInfo_.oShape5D.at(3);
+        uint32_t aL1Wo = (mAL1 * CUBE_UNIT_16 + shapeInfo_.oShape5D.at(3) -1) / shapeInfo_.oShape5D.at(3);
         uint32_t aL1Wi = aL1Wo * opInfo_.stride_w + kwDilated_;
         al1HixWi =  opInfo_.hi * aL1Wi;
     } else {
-        uint32_t aL1Ho = (mAL1 * CUBE_UNIT_16 + opInfo_.oShape5D.at(3) -1) / opInfo_.oShape5D.at(3);
+        uint32_t aL1Ho = (mAL1 * CUBE_UNIT_16 + shapeInfo_.oShape5D.at(3) -1) / shapeInfo_.oShape5D.at(3);
         uint32_t aL1Hi = aL1Ho * opInfo_.stride_h +  khDilated_;
         if (aL1Hi > opInfo_.hi) {
             aL1Hi = opInfo_.hi;
@@ -406,11 +452,11 @@ void FastTiling::AddNbl1()
     }
 }
 
-bool JudgeL1(const pair<string, float> numberA, const pair<string, float> numberB) {
+bool JudgeL1(const pair<string, float>& numberA, const pair<string, float>& numberB) {
     return numberA.second < numberB.second;
 }
 
-void FastTiling::AddL1Data(const pair<string, float> data) {
+void FastTiling::AddL1Data(const pair<string, float>& data) {
     if (data.first == "nBL1") {
         AddNbl1();
     } else if (data.first == "mAL1") {
@@ -477,9 +523,9 @@ bool FastTiling::GetL1Tiling(Tiling &tiling)
 }
 
 void FastTiling::AssignmentL1(Tiling& tiling) {
-    if (tilingRangeL1_.kBL1.at(l1Data_.kBL1_index) == opInfo_.iShape5D.at(1) &&
-        tilingRangeL1_.nBL1.at(l1Data_.nBL1_index) == opInfo_.oShape5D.at(1)) {
-        if (l1Data_.filter_current <= hardware_.l0bSize / TWO && tiling.kAL1 == opInfo_.iShape5D.at(1)) {
+    if (tilingRangeL1_.kBL1.at(l1Data_.kBL1_index) == shapeInfo_.iShape5D.at(1) &&
+        tilingRangeL1_.nBL1.at(l1Data_.nBL1_index) == shapeInfo_.oShape5D.at(1)) {
+        if (l1Data_.filter_current <= hardware_.l0bSize / TWO && tiling.kAL1 == shapeInfo_.iShape5D.at(1)) {
         // filter full load to l0B
             tiling.nBL1 = 0;
             tiling.kBL1 = 0;
@@ -575,8 +621,8 @@ void FastTiling::GetL0TilingRange(const Tiling& tiling)
     vector<uint32_t> nVectorL0;
     vector<uint32_t> kAVectorL0;
     vector<uint32_t> kBVectorL0;
-    uint32_t nMaxAvail = (opInfo_.oShape5D[1] + tiling.nDim -1) / tiling.nDim;
-    uint32_t kBMaxAvail = opInfo_.iShape5D[1];
+    uint32_t nMaxAvail = (shapeInfo_.oShape5D[1] + tiling.nDim -1) / tiling.nDim;
+    uint32_t kBMaxAvail = shapeInfo_.iShape5D[1];
     if (tiling.nBL1 == FULL_LOAD) {
         // weight can load from ddr to l1 once, but can not load from l1 to l0.
         // when weight is FULL_LOAD L1, get n,k range from ori shape per core
@@ -610,7 +656,7 @@ void FastTiling::GetL0TilingRange(const Tiling& tiling)
         tilingRangeL0_.kL0.assign(tilingRangeL0_.kAL0.begin(), tilingRangeL0_.kAL0.end());
     } else {
         for (vector<uint32_t>::const_iterator kIterator = tilingRangeL0_.kAL0.begin();
-             kIterator != tilingRangeL0_.kAL0.end(); kIterator++) {
+             kIterator != tilingRangeL0_.kAL0.end(); ++kIterator) {
             if (find(tilingRangeL0_.kBL0.begin(), tilingRangeL0_.kBL0.end(), *kIterator) != tilingRangeL0_.kBL0.end()) {
                 tilingRangeL0_.kL0.push_back(*kIterator);
             }
@@ -820,8 +866,8 @@ void FastTiling::UpdateUBData()
                                * CUBE_UNIT_16 * byteForDtype_.at(opInfo_.aType);
     uint32_t tmpPostUbCurrent = ncFactor * mcFactor * 256;
 
-    ubData_.preUbCurrent = opInfo_.preFusionUbUtilize * tmpPreUbCurrent;
-    ubData_.postUbCurrent = opInfo_.postFusionUbUtilize * tmpPostUbCurrent;
+    ubData_.preUbCurrent = static_cast<uint32_t>(ceil(opInfo_.preFusionUbUtilize)) * tmpPreUbCurrent;
+    ubData_.postUbCurrent = static_cast<uint32_t>(ceil(opInfo_.postFusionUbUtilize)) * tmpPostUbCurrent;
 }
 
 // get every dim range in UB tiling

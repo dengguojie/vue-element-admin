@@ -31,6 +31,15 @@
     }                                                                                                            \
   }
 
+
+#define CHECK_FAST_TILING_DATA_RANGE(data, min, max, name, ...)                                                  \
+{                                                                                                                \
+    bool isValueInRange = (data >= min && data <= max);                                                          \
+    CHECK_OP_FUNC(                                                                                               \
+        !isValueInRange, return false, "Invalid %s, except value in [%ld, %ld], but got %ld",                    \
+        name, static_cast<long>(min), static_cast<long>(max), static_cast<long>(data));                          \
+}                                                                                                                \
+
 namespace optiling
 {
 enum class PBuffer {
@@ -50,12 +59,18 @@ enum class FastTilingValue : uint32_t {
 const uint32_t CUBE_UNIT_32 = 32;
 const uint32_t CUBE_UNIT_16 = 16;
 const uint32_t FULL_LOAD = UINT32_MAX;
-const uint32_t PREFUSION_TRANSPOSE_NUM = 6; // 6 times for NCHW trans data
-const uint32_t POSTFUSION_TRANSPOSE_NUM = 2; // 2 times for NCHW trans data
 const uint32_t FOUR = 4;
 const uint32_t THREE = 3;
 const uint32_t TWO = 2;
+const float HALF = 0.5;
 const uint32_t MSIZE_PER_CORE = 4096;
+const int64_t MAX_WIDTH_SIZE = 4096;
+const int64_t MIN_WIDTH_SIZE = 1;
+const int64_t MAX_HEIGHT_SIZE = 100000;
+const int64_t MIN_HEIGHT_SIZE = 1;
+const int64_t MAX_PADDING_SIZE = 255;
+const int64_t MAX_DILATION_SIZE = 255;
+const int64_t MAX_STRIDE_SIZE = 63;
 
 struct TilingRangeL1
 {
@@ -90,13 +105,13 @@ struct HardwareInfo
     uint64_t btSize = 0;
     uint32_t ddrReadRate = 0;
     uint32_t ddrWriteRate = 0;
-    uint32_t l2Rate = 1;
+    uint32_t l2Rate = 0;
     uint32_t l2ReadRate = 0;
     uint32_t l2WriteRate = 0;
     uint32_t l1ToL0aRate = 0;
     uint32_t l1ToL0bRate = 0;
     uint32_t l1ToUbRate = 0;
-    uint32_t l0cToUbRate = 1;
+    uint32_t l0cToUbRate = 0;
     uint32_t ubToL2Rate = 0;
     uint32_t ubToDdrRate = 0;
     uint32_t ubToL1Rate = 0;
@@ -104,6 +119,13 @@ struct HardwareInfo
     uint32_t vectorBandwidth = 0;
     bool cubeVectorSplit = false;
     std::string socVersion = "";
+};
+
+struct Shape5D
+{
+    std::vector<int64_t> iShape5D; // 5d input feature-map dims
+    std::vector<int64_t> wShape5D; // 5d input weights dims
+    std::vector<int64_t> oShape5D; // 5d output dims
 };
 
 struct Conv2dParams
@@ -127,13 +149,10 @@ struct Conv2dParams
     int64_t stride_h = 1;
     int64_t stride_w = 1;
     int64_t groups = 1;
-    int64_t preFusionUbUtilize = 1;
-    int64_t preFusionVectorUtilize = 4;
-    int64_t postFusionUbUtilize = 1;
-    int64_t postFusionVectorUtilize = 2;
-    std::vector<int64_t> iShape5D; // 5d input feature-map dims
-    std::vector<int64_t> wShape5D; // 5d input weights dims
-    std::vector<int64_t> oShape5D; // 5d output dims
+    float preFusionUbUtilize = 0;
+    int64_t preFusionVectorUtilize = 0;
+    float postFusionUbUtilize = 0;
+    int64_t postFusionVectorUtilize = 0;
 
     bool biasFlag = false;
     ge::DataType aType = ge::DataType::DT_FLOAT16;
@@ -295,10 +314,12 @@ public:
     explicit FastTiling() {};
     virtual ~FastTiling() {};
 
-    void SetInputParams(const Conv2dParams& inputParams, const HardwareInfo& hardwareInfo);
+    bool SetInputParams(const Conv2dParams& inputParams, const HardwareInfo& hardwareInfo);
     bool GetConv2dTiling(Tiling& tiling);
     bool InfoTranslate(const Tiling& tiling, Conv2dTiling& conv2dTiling);
 private:
+    bool CheckConv2dParams(const Conv2dParams& conv2dInfo);
+    bool CheckHardwareInfo(const HardwareInfo& hardwareInfo);
     void GetConv2dCaseStatus();
     void Convert4DTo5D();
     // infer block dim tiling at runtime
@@ -331,7 +352,7 @@ private:
     void AddmAub();
     void AddkAub();
 
-    void AddL1Data(const pair<string, float> data);
+    void AddL1Data(const pair<string, float>& data);
     void AddNbl1();
     void AddMal1();
     void AddKal1();
@@ -347,6 +368,7 @@ private:
     HardwareInfo hardware_;
     // op infos
     Conv2dParams opInfo_;
+    Shape5D shapeInfo_;
     TilingRangeL1 tilingRangeL1_; // every dim range in L1
     TilingRangeL0 tilingRangeL0_; // every dim range in L0
     TilingRangeUB tilingRangeUB_; // every dim range in L0
