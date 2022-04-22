@@ -1656,9 +1656,9 @@ bool OneInOneOutElewiseDynamicAxisType(const Operator& op, std::vector<AxisTypeI
   for (size_t i = 0; i < input_shape.size(); ++i) {
     AxisTypeInfo axis_type;
     axis_type.SetAxisType(AxisType::ELEMENTWISE);
-    std::pair<int64_t, std::vector<int64_t>> input_cut_info(0, {i});
+    std::pair<int64_t, std::vector<int64_t>> input_cut_info(0, {static_cast<int64_t>(i)});
     axis_type.AddInputCutInfo(input_cut_info);
-    std::pair<int64_t, std::vector<int64_t>> output_cut_info(0, {i});
+    std::pair<int64_t, std::vector<int64_t>> output_cut_info(0, {static_cast<int64_t>(i)});
     axis_type.AddOutputCutInfo(output_cut_info);
     axis_type_info.push_back(axis_type);
   }

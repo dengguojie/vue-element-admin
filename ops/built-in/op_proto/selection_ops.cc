@@ -929,7 +929,7 @@ IMPLEMT_COMMON_INFERFUNC(GatherV2InferShape) {
       batch_dims = 0;
       OP_LOGW(op.GetName().c_str(), "GetAttr(batch_dims) failed, set default value to 0.");
     }
-    if (batch_dims < -rank_indices || batch_dims >= rank_indices && rank_indices != 0) {
+    if (batch_dims < -rank_indices || (batch_dims >= rank_indices && rank_indices != 0)) {
       std::string err_msg = OtherErrMsg(ConcatString("Expected batch_dims in the range [", -rank_indices, ",",
                                                      rank_indices, "), but got", batch_dims));
       VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);

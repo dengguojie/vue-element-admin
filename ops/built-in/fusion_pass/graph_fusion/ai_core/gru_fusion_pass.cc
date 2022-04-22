@@ -842,7 +842,8 @@ Status GRUFusionPass::AddBidiBiasSplitNode(ge::ComputeGraph& graph, const ge::No
   // add split_v node
   ge::NodePtr biasSplitNode;
   std::vector<int32_t> biasSplitDimAxis = {1};
-  std::vector<int32_t> biasSizeSplitAxis = {dims[1] / SPLIT_GROUP, dims[1] / SPLIT_GROUP};
+  std::vector<int32_t> biasSizeSplitAxis = {static_cast<int32_t>(dims[1]) / SPLIT_GROUP,
+                                            static_cast<int32_t>(dims[1]) / SPLIT_GROUP};
   FUSION_PASS_CHECK(SUCCESS != AddSplitVNode(biasNode->GetName() + "_b", inputDesc, midDesc, biasSplitNode, biasNode,
                                              biasSplitDimAxis, biasSizeSplitAxis, 0, newNodes, graph),
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "b add split node failed."),

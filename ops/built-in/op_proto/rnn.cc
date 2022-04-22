@@ -1196,12 +1196,7 @@ IMPLEMT_INFERFUNC(DynamicAUGRUGrad, DynamicAUGRUGradInferShape) {
   }
 
   int64_t att_dim_num = shapeAtt.GetDimNum();
-  int64_t att_batch_size = 0;
-  int64_t att_hidden_size = 0;
-  if (att_dim_num == 3) {
-    att_batch_size = shapeAtt.GetDims().at(1);
-    att_hidden_size = shapeAtt.GetDims().at(2);
-  } else {
+  if (att_dim_num != 3) {
     OP_LOGE(op.GetName().c_str(),
             "The input shape of weight_att is not right, please check!");
     return GRAPH_FAILED;

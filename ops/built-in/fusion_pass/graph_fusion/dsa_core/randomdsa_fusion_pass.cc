@@ -387,6 +387,7 @@ Status RandomDsaFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, ve
     fusionNodes.push_back(dsauniform_node);
     return SUCCESS;
   }
+  return NOT_CHANGED;
 }
 REGISTER_PASS("RandomDsaFusionPass", BUILT_IN_GRAPH_PASS, RandomDsaFusionPass);
 }  // namespace fe

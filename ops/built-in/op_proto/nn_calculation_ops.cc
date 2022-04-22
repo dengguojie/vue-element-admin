@@ -1952,7 +1952,6 @@ IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DBackpropFilterInferShape) {
   int64_t filter_h = 0;
   int64_t filter_w = 0;
   int64_t filter_c = 0;
-  int64_t filter_n = 0;
   int64_t dilation_h = 0;
   int64_t dilation_w = 0;
   int64_t stride_h = 0;
@@ -1972,7 +1971,6 @@ IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DBackpropFilterInferShape) {
   filter_h = filter_size[fh_position];
   filter_w = filter_size[fw_position];
   filter_c = filter_size[fc_position];
-  filter_n = filter_size[fn_position];
   int64_t groups = filter_c;
   op.SetAttr("groups", groups);
 

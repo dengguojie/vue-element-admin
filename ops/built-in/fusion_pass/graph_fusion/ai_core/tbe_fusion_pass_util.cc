@@ -118,7 +118,7 @@ Status Vec2ConstNode(vector<int64_t>& vals, ge::NodePtr& constNode,
 }
 
 void SetInputDesc(vector<int64_t>& val, ge::GeTensorDesc& desc) {
-  std::vector<int64_t> dims = {val.size()};
+  std::vector<int64_t> dims = {static_cast<int64_t>(val.size())};
   ge::GeShape input_shape(dims);
   desc.SetShape(input_shape);
   desc.SetDataType(DataType::DT_INT64);
