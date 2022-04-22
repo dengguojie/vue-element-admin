@@ -1,0 +1,40 @@
+[
+  {"compile_flag" : 1},
+  {
+    "op": "MaskedFill",
+    "calc_expect_func_file": "test_mask_fill_golden.py:calc_expect_func",
+    "input_desc": [
+      {
+        "shape": [512,4,48,48],
+        "format": "ND",
+        "type": "float32",
+        "value_range": [[0, 10]],
+        "data_distribute": "uniform",
+        "name": "x"
+      },
+      {
+        "format": "ND",
+        "shape": [512,1,1,48],
+        "type": "bool",
+        "name": "mask"
+      },
+      {
+        "format": "ND",
+        "shape": [1],
+        "type": "float32",
+        "value_range": [[0, 10]],
+        "data_distribute": "uniform",
+        "name": "value"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [512,4,48,48],
+        "format": "ND",
+        "name": "y",
+        "type": "float32"
+      }
+    ],
+    "case_name": "test_MaskedFill_fp32"
+  }
+]

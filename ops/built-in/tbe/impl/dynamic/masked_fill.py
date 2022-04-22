@@ -30,6 +30,13 @@ from impl.util.platform_adapter import register_operator_compute
 def masked_fill_compute(x, mask, value, y, kernel_name="masked_fill"):
     """
     calculating masked_fill
+    for MaskedFill, the mask is byte type, the vsel can not support byte mode.
+    and it donot have high performance with vcmpsel, will use vector formula to calculate
+    formula as follows:   mask is [0, 1, 0, 1]
+        value_output = value * mask
+        x_output = x * (1 - mask)
+        output = value_output + x_output
+
     :param x: TVM tensor
                    the output of previous layer
     :param mask: TVM tensor
@@ -61,16 +68,14 @@ def masked_fill_compute(x, mask, value, y, kernel_name="masked_fill"):
     x = tbe.broadcast(x, target_shape)
     value = tbe.broadcast(value, target_shape)
 
+    # gen mask: 1-mask
     tensor_ones = tbe.broadcast(tvm.const(1, target_dtype), target_shape)
+    tensor_mask_sub = tbe.vsub(tensor_ones, mask)
 
-    if x.dtype == 'int32':
-        tensor_mask_value = tbe.vmul(mask, value)
-        tensor_mask_sub = tbe.vsub(tensor_ones, mask)
-        tensor_x_mul = tbe.vmul(x, tensor_mask_sub)
-        y = tbe.vadd(tensor_x_mul, tensor_mask_value)
-        return y
-
-    y = tbe.vcmpsel(mask, tensor_ones, 'ne', x, value)
+    # do calculate
+    tensor_mask_value = tbe.vmul(value, mask)
+    tensor_x_mul = tbe.vmul(x, tensor_mask_sub)
+    y = tbe.vadd(tensor_x_mul, tensor_mask_value)
 
     if y.dtype != ori_dtype:
         y = tbe.cast_to(y, ori_dtype)
