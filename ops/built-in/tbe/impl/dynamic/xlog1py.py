@@ -49,13 +49,23 @@ def xlog1py_compute(x, y, z, kernel_name="xlog1py"):
     res: TVM tensor
         the result of compute
     """
+    shape_list = shape_util.broadcast_shapes(
+        shape_util.shape_to_list(x.shape),
+        shape_util.shape_to_list(y.shape),
+        param_name_input1="input_x",
+        param_name_input2="input_y"
+    )
+
+    shape = shape_list[2]
     x_dtype = x.dtype.lower()
     if x_dtype in ("float16",):
-        data_x = tbe.cast_to(x, "float32")
-        data_y = tbe.cast_to(y, "float32")
+        x = tbe.cast_to(x, "float32")
+        y = tbe.cast_to(y, "float32")
 
     data_log1p = log1p_compute(y, z)
-    res = tbe.vmul(x, data_log1p)
+    data_log1p = tbe.broadcast(data_log1p, shape)
+    data_x_broad = tbe.broadcast(x, shape)
+    res = tbe.vmul(data_x_broad, data_log1p)
 
     if x_dtype != res.dtype:
         res = tbe.cast_to(res, "float16")
@@ -94,6 +104,7 @@ def xlog1py(x, y, z, kernel_name="xlog1py"):
     check_list = ("float16", "float32")
     para_check.check_dtype(x_dtype, check_list, param_name="x")
     para_check.check_dtype(y_dtype, check_list, param_name="y")
+    
     para_check.check_elewise_shape_range([x, y], support_broadcast=True)
     if x_dtype != y_dtype:
         error_manager_vector.raise_err_inputs_dtype_not_equal("xlog1py", "x", "y",
