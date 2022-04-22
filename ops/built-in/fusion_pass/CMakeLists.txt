@@ -428,6 +428,18 @@ set(_aic_srcs
 set(_llt_aic_srcs
   ${_aic_srcs}
 )
+
+if(BUILD_OPEN_PROJECT AND NOT ENABLE_TEST)
+  set(FUSION_PASS_CONFIG_INSTALL_PATH "${INSTALL_PATH}/opp/fusion_pass/built_in")
+  add_custom_target(copy_fusion_config_json_info ALL)
+  set(TBE_OP_PATH "${INSTALL_PATH}/opp/op_impl/built-in/ai_core/tbe")
+  cann_install(
+          TARGET       copy_fusion_config_json_info
+          DIRECTORIES  "${CMAKE_CURRENT_SOURCE_DIR}/common/config"
+          DESTINATION  "${FUSION_PASS_CONFIG_INSTALL_PATH}"
+  )
+endif()
+
 if(ENABLE_TEST STREQUAL "")
   add_library(ops_fusion_pass_aicore SHARED ${_aic_srcs})
 

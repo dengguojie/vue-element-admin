@@ -32,7 +32,7 @@ fi
 
 get_target_lib(){
 RELEASE_VERSION="ops_all_caffe_plugin,ops_all_onnx_plugin,ops_all_plugin,ops_fusion_pass_vectorcore,ops_fusion_pass_aicore,\
-           copy_veccore_fusion_rules,copy_aicore_fusion_rules,copy_op_proto_inc,opsproto,optiling,tbe_aicore_ops_impl,\
+           copy_veccore_fusion_rules,copy_aicore_fusion_rules,copy_fusion_config_json_info,copy_op_proto_inc,opsproto,optiling,tbe_aicore_ops_impl,\
            tbe_ops_json_info,aicpu_ops_json_info,cpu_kernels_static,cpu_kernels_context_static,constant_folding_ops,\
            repack_tbe,copy_tbe,unzip_tbe,OpTestFrameFiles,MsopgenFiles,aicpu_nodedef_builder"
 UT_VERSION="protoc,secure_c,c_sec,eigen,protobuf_static_build,external_protobuf,nlohmann_json,\
@@ -396,6 +396,7 @@ usage() {
   echo "    --ops_all_plugin build ops_all_plugin"
   echo "    --ops_fusion_pass_vectorcore build ops_fusion_pass_vectorcore"
   echo "    --ops_fusion_pass_aicore build ops_fusion_pass_aicore"
+  echo "    --copy_fusion_config_json_info build copy_fusion_config_json_info"
   echo "    --copy_veccore_fusion_rules build copy_veccore_fusion_rules"
   echo "    --copy_aicore_fusion_rules build copy_aicore_fusion_rules"
   echo "    --copy_op_proto_inc build copy_op_proto_inc"
@@ -633,7 +634,7 @@ compile_mod(){
       rely_TILING=(optiling)
       rely_PROTO=(opsproto ops_all_plugin ops_all_onnx_plugin optiling ops_fusion_pass_aicore ops_fusion_pass_vectorcore copy_op_proto_inc)
       rely_TBE=(tbe_aicore_ops_impl tbe_ops_json_info)
-      rely_FUSION_RULES=(copy_aicore_fusion_rules copy_veccore_fusion_rules)
+      rely_FUSION_RULES=(copy_aicore_fusion_rules copy_veccore_fusion_rules copy_fusion_config_json_info)
       rely_TOOLS=(OpTestFrameFiles MsopgenFiles)
       mods=(TF CAFFE ONNX PASS TILING PROTO TBE FUSION_RULES TOOLS)
       for mod in "${mods[@]}"
