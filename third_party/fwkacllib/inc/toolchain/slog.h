@@ -202,6 +202,7 @@ enum {
   FV,
   MDCMAP,
   TUNE,
+  OP,
   INVLID_MOUDLE_ID
 };
 
