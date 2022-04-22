@@ -78,7 +78,6 @@ constexpr float DELTA = 0.001;
   *                            |       |
   *                        dequant   dequant
   *
-  * 
   * pattern requant:
   *          x                     x
   *       /     \                  |
@@ -1784,7 +1783,7 @@ Status SameInputConv2dPass::TransferShapeToNC1HWC0(ge::Format oldFormat, ge::Dat
         OP_LOGE(FUSED_OP_TYPE.c_str(), "invalid shape."), return FAILED);
 
     uint32_t c0 = (dataType == DT_INT8) ? INT8_ALIGN : DATA_ALIGN;
-    uint32_t c1 = (oldDims[fondC] % c0 == 0)? (oldDims[fondC] / c0) : (oldDims[fondC] / c0 + 1);
+    uint32_t c1 = (oldDims[fondC] % c0 == 0) ? (oldDims[fondC] / c0) : (oldDims[fondC] / c0 + 1);
     OP_LOGI(FUSED_OP_TYPE.c_str(), "type %u, c0 %u, c1 %u", dataType, c0, c1);
 
     std::vector<int64_t> newDims {oldDims[fondN], c1, oldDims[fondH], oldDims[fondW], c0};

@@ -74,7 +74,8 @@ vector<BufferFusionPattern*> TbeConv2dWrtselStridewrtPass::DefinePatterns() {
   return patterns;
 }
 
-void TbeConv2dWrtselStridewrtPass::SetSplitInfo(const BufferFusionMapping &mapping, std::vector<ge::NodePtr> &fusion_nodes){
+void TbeConv2dWrtselStridewrtPass::SetSplitInfo(const BufferFusionMapping &mapping,
+                                                std::vector<ge::NodePtr> &fusion_nodes) {
   vector<ge::NodePtr> conv_nodes = GetMatchedNodesByDescName(kPatternConv, mapping);
   if (conv_nodes.empty()) {
     OP_LOGD(fused_op_type_.c_str(), "conv node not matched");

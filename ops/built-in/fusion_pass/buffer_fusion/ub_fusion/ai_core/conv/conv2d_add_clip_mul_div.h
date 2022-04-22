@@ -26,7 +26,6 @@
 #include "graph_optimizer/buffer_fusion/buffer_fusion_pass_base.h"
 
 namespace fe {
-
 class Conv2dAddClipMulDivFusionPass : public BufferFusionPassBase {
 public:
   Conv2dAddClipMulDivFusionPass() {}
@@ -40,7 +39,6 @@ protected:
 private:
   const string fused_op_type_ = "Conv2dAddClipMulDiv";
 };
-
 }  // namespace fe
 
 #endif // OPS_BUILT_IN_FUSION_PASS_BUFFER_FUSION_UB_FUSION_AI_CORE_CONV_CONV2D_ADD_CLIP_MUL_DIV_PASS_H_

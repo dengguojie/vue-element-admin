@@ -95,7 +95,7 @@ vector<FusionPattern*> DeformableConv2dPass::DefinePatterns() {
   * @param with_bias Whether DeformableConv2D has bias.
   * @return bool Whether the DeforableOffsets desc is created successfully.
   */
-bool DeformableConv2dPass::AddOffsetDesc(ge::NodePtr& dfm_conv_node, ge::OpDescPtr& offset_desc, bool with_bias){
+bool DeformableConv2dPass::AddOffsetDesc(ge::NodePtr& dfm_conv_node, ge::OpDescPtr& offset_desc, bool with_bias) {
   OpDescPtr dfm_conv_desc = dfm_conv_node->GetOpDesc();
   auto x_tensor = dfm_conv_desc->GetInputDesc(0);
   auto filter_tensor = dfm_conv_desc->GetInputDesc(1);
@@ -200,7 +200,7 @@ bool DeformableConv2dPass::AddOffsetDesc(ge::NodePtr& dfm_conv_node, ge::OpDescP
   * @param with_bias Whether DeformableConv2D has bias.
   * @return bool Whether the DeforableOffsets desc is created successfully.
   */
-bool DeformableConv2dPass::AddConvDesc(ge::NodePtr& dfm_conv_node, ge::OpDescPtr& conv_desc, bool with_bias){
+bool DeformableConv2dPass::AddConvDesc(ge::NodePtr& dfm_conv_node, ge::OpDescPtr& conv_desc, bool with_bias) {
   OpDescPtr dfm_conv_desc = dfm_conv_node->GetOpDesc();
   auto x_tensor = dfm_conv_desc->GetInputDesc(0);
   auto filter_tensor = dfm_conv_desc->GetInputDesc(1);

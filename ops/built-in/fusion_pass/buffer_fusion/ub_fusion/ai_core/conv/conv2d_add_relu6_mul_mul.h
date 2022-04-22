@@ -30,7 +30,7 @@ namespace fe {
 class Conv2dAddRelu6MulMulFusionPass : public BufferFusionPassBase {
 public:
   Conv2dAddRelu6MulMulFusionPass() {}
-  ~Conv2dAddRelu6MulMulFusionPass() {}
+  ~Conv2dAddRelu6MulMulFusionPass() override {}
   Status CalcFusionOpSliceInfo(vector<ge::NodePtr> &fusion_nodes, OpCalcInfo &op_slice_info) override;
 
 protected:

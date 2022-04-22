@@ -293,7 +293,7 @@ int64_t TbeAippFusionRule::CalcMinAIPPTbeL1Space(const ge::NodePtr& conv_node)
     // get filter shape
     std::vector<int64_t> second_dims = conv_node->GetOpDesc()->GetInputDesc(1).GetOriginShape().GetDims();
     FUSION_PASS_CHECK(second_dims.size() != 4,
-        OP_LOGD("aipp fusion_rule", "node[%s]'s second input shape size is [%zu] not 4, can not fusion.", 
+        OP_LOGD("aipp fusion_rule", "node[%s]'s second input shape size is [%zu] not 4, can not fusion.",
                 conv_node->GetName().c_str(), second_dims.size()), return 0);
 
     if (first_format == ge::FORMAT_NCHW) {

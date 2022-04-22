@@ -149,7 +149,7 @@ bool getParseInfo(const std::string& opType, const nlohmann::json& opCompileInfo
 bool getFuzzyBuildParseInfo(const std::string& opType, const nlohmann::json& opCompileInfo,
     optiling::Conv2DTilingParseInfo& opInfo)
 {
-    auto& firstOpCompileInfo = opCompileInfo[0];
+    const auto& firstOpCompileInfo = opCompileInfo[0];
     OP_TILING_CHECK(!getParseInfo(opType, firstOpCompileInfo, opInfo),
         CUBE_INNER_ERR_REPORT(opType.c_str(),
             "Conv2DTilingParseFunc, getFuzzyBuildParseInfo, get firstOpCompileInfo error."),

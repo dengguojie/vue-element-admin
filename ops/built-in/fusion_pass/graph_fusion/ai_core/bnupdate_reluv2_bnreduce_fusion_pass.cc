@@ -53,6 +53,7 @@ static const char kCommInput[] = "x";
 static const char kCommoutput[] = "y";
 static const uint32_t kSupportAicoreNum = 32;
 static const int kBiasIndex = 2;
+static const size_t kInputAndWeightTensor = 2;
 
 /*!
   * @brief Define bnupdate+reluv2+conv2d+bnreduce pattern.
@@ -227,7 +228,7 @@ bool BNupdateReluV2Conv2DBNreducePass::AnalyzeLayers(const std::vector<ge::NodeP
     // gather tensor info
     auto conv_desc = node_list[2]->GetOpDesc();
     std::vector<int64_t> params;
-    for (size_t i = 0; i < 2; ++i) {
+    for (size_t i = 0; i < kInputAndWeightTensor; ++i) {
         auto in_tensor = conv_desc->MutableInputDesc(i);
         if (in_tensor == nullptr) {
             continue;
@@ -423,7 +424,7 @@ bool BNupdateReluV2Conv2DBNreducePass::AddFusedDesc(const std::vector<ge::NodePt
 bool BNupdateReluV2Conv2DBNreducePass::LinkValidInputDataAnchor(
     ge::Node::Vistor<ge::InDataAnchorPtr>& input_anchors,
     const std::map<std::string, size_t>& node_name,
-    ge::NodePtr& fused_node,
+    const ge::NodePtr& fused_node,
     uint32_t& inputIdx)
 {
     ge::graphStatus ret;
@@ -466,7 +467,7 @@ bool BNupdateReluV2Conv2DBNreducePass::LinkValidInputDataAnchor(
 bool BNupdateReluV2Conv2DBNreducePass::LinkValidOutputDataAnchor(
     ge::Node::Vistor<ge::OutDataAnchorPtr>& output_anchors,
     const std::map<std::string, size_t>& node_name,
-    ge::NodePtr& fused_node,
+    const ge::NodePtr& fused_node,
     uint32_t& outputIdx)
 {
     ge::graphStatus ret;

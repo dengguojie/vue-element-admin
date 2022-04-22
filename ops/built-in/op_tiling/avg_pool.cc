@@ -283,7 +283,7 @@ bool AvgPoolTilingVector(const std::string& op_type, const ge::Operator& op_para
   PrintTilingParam(param);
   run_info.SetBlockDim(param.act_core_num);
   vector<int64_t> workspace;
-  for (auto i : workspace){
+  for (auto i : workspace) {
     run_info.AddWorkspace(i);
   }
 
@@ -308,7 +308,7 @@ bool AvgPoolTilingCube(const std::string& opType, const ge::Operator& opParas, c
   int32_t nDim = 0;
   int32_t hDim = 2;
   int32_t wDim = 3;
-  if (input_shape.GetDimNum() == 0 || output_shape.GetDimNum() == 0){
+  if (input_shape.GetDimNum() == 0 || output_shape.GetDimNum() == 0) {
     return false;
   }
   std::vector<std::string> varMap;

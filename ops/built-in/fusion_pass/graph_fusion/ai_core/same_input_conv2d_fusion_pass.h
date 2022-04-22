@@ -1,5 +1,5 @@
 /**
- * Copyright 2021 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2019-2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,7 +26,6 @@
 #include "graph/node.h"
 
 namespace fe {
-
 struct ConvFusionAttr {
     std::vector<int64_t> pads;
     std::vector<int64_t> strides;
@@ -179,7 +178,6 @@ private:
     const std::string DEQUANT_CONCAT = "/same_input_dequant_concat";
     const std::string REQUANT_CONCAT = "/same_input_requant_concat";
 };
-
 }
 
 #endif

@@ -24,7 +24,7 @@
 #include "graph_optimizer/fusion_common/pattern_fusion_base_pass.h"
 
 namespace fe {
-class BNupdateReluV2Conv2DBNreducePass : public PatternFusionBasePass {
+class BNupdateReluV2Conv2DBNreducePass: public PatternFusionBasePass {
 protected:
     vector<FusionPattern*> DefinePatterns() override;
     Status Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& new_nodes) override;
@@ -44,11 +44,11 @@ private:
     bool AddFusedDesc(const std::vector<ge::NodePtr> &node_list, ge::OpDescPtr fused_desc);
     bool LinkValidInputDataAnchor(ge::Node::Vistor<ge::InDataAnchorPtr>& input_anchors,
                                   const std::map<std::string, size_t>& node_name,
-                                  ge::NodePtr& fused_node,
+                                  const ge::NodePtr& fused_node,
                                   uint32_t& inputIdx);
     bool LinkValidOutputDataAnchor(ge::Node::Vistor<ge::OutDataAnchorPtr>& output_anchors,
                                    const std::map<std::string, size_t>& node_name,
-                                   ge::NodePtr& fused_node,
+                                   const ge::NodePtr& fused_node,
                                    uint32_t& outputIdx);
     bool LinkNewNode(const std::vector<ge::NodePtr> &node_list, ge::NodePtr fused_node);
     const std::string fused_op_type_ = "BNupdate_ReluV2_Conv2D_BNreduce";

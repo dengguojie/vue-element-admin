@@ -107,8 +107,8 @@ Status Conv2DSqueezeBiasaddFusionPass::Fusion(ge::ComputeGraph& graph,
     auto nodeInfrontOfAdd = biasadd_node->GetInDataAnchor(1)->GetPeerOutAnchor()->GetOwnerNode();
     bool case_training = (nodeInfrontOfAdd->GetType() == VARIABLE);
     if (case_training) {
-       OP_LOGI(FUSED_OP_TYPE.c_str(), "We do not support Conv2DSqueezeBiasaddFusionPass in training mode.");
-       return NOT_CHANGED;
+        OP_LOGI(FUSED_OP_TYPE.c_str(), "We do not support Conv2DSqueezeBiasaddFusionPass in training mode.");
+        return NOT_CHANGED;
     }
 
     // update biasadd shape and format

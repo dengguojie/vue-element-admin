@@ -155,7 +155,7 @@ namespace fe {
                     vector<int64_t> quant_pre_shape;
                     vector<int64_t> quant_new_shape;
                     ge::GeTensorDesc filter_ori_out_des = quant_filter_ori_node->GetOpDesc()->GetOutputDesc(
-                                                          iter_out->GetIdx());
+                        iter_out->GetIdx());
                     ge::Format filter_ori_node_format = filter_ori_out_des.GetOriginFormat();
                     if (filter_ori_node_format == FORMAT_HWCN) {
                         tmp_n = tmp_quant_shape[INDEX_3];
@@ -304,7 +304,7 @@ namespace fe {
                 h = filter_shape[INDEX_2];
                 w = filter_shape[INDEX_3];
                 c = filter_shape[INDEX_1];
-                if (c == ALREADY_CHANGED_C){
+                if (c == ALREADY_CHANGED_C) {
                     OP_LOGD(FUSED_OP_TYPE.c_str(), "The input1 of depthwiseConv2d has satisfied that c == 1");
                     return NOT_CHANGED;
                 }
