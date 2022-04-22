@@ -135,7 +135,6 @@ class BufferChecker:
         self.a_fused_num = 0
         self.b_fused_num = 0
         self.c_fused_num = 0
-        self.cache_tiling = None
 
     def check_aub_preload(self, tiling, params):
         """ check whether total_ub_size exceed ub_buffer_size when aub preload
@@ -143,6 +142,8 @@ class BufferChecker:
         self.tiling = tiling
         self.container = params.get("container")
         self.status_controller = params.get("status_controller")
+        if params.get("cache_tiling"):
+            return True
 
         total_ub_size = 0
         total_ub_size += self._aub_size_preload()
@@ -155,6 +156,8 @@ class BufferChecker:
         self.tiling = tiling
         self.container = params.get("container")
         self.status_controller = params.get("status_controller")
+        if params.get("cache_tiling"):
+            return True
 
         total_ub_size = 0
         total_ub_size += self._bub_size_preload()
@@ -167,6 +170,8 @@ class BufferChecker:
         self.tiling = tiling
         self.container = params.get("container")
         self.status_controller = params.get("status_controller")
+        if params.get("cache_tiling"):
+            return True
         if self.container.fuse_num_group:
             _, _, self.c_fused_num = self.container.fuse_num_group
         self.c_fused_num += 1
@@ -187,7 +192,6 @@ class BufferChecker:
         self.format_out = params.get("format_out")
         self.format_a = params.get("format_a")
         self.format_b = params.get("format_b")
-        self.cache_tiling = params.get("cache_tiling")
 
         if self.container.fuse_num_group:
             self.a_fused_num, self.b_fused_num, self.c_fused_num = self.container.fuse_num_group
@@ -199,7 +203,7 @@ class BufferChecker:
         need_bub_storage_align = (self.container.tensor_map.get("b_ub") is not None) and (self.format_b == "ND")
         need_cub_storage_align = (((self.container.tensor_map.get("c_add_bias_ub") is not None) or
                                   (self.container.tensor_map.get("before_c_gm") is not None)) and
-                                  (not self.cache_tiling and self.format_out == "ND"))
+                                  (not params.get("cache_tiling") and self.format_out == "ND"))
 
         # compute before storage_align used UB size
         base_buffer_size = 0

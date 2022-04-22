@@ -3843,7 +3843,8 @@ class GemmSchedule:
 
     def _double_buffer_aub_bub(self):
         tiling = self.tiling
-        params = {"container": self.container, "status_controller": self.status_controller}
+        params = {"container": self.container, "status_controller": self.status_controller,
+                  "cache_tiling": self.cache_tiling}
         if tiling.get("manual_pingpong_buffer").get("AUB_pbuffer") == 2:
             if (self.container.tensor_map.get("a_ub") is not None and
                 (not self.is_dynamic or self.cache_tiling) and
@@ -3869,7 +3870,8 @@ class GemmSchedule:
 
     def _double_buffer_cub(self):
         tiling = self.tiling
-        params = {"container": self.container, "status_controller": self.status_controller}
+        params = {"container": self.container, "status_controller": self.status_controller,
+                  "cache_tiling": self.cache_tiling}
         if tiling.get("manual_pingpong_buffer").get("CUB_pbuffer") == 2:
             bias_ub = self.container.tensor_map.get("bias_ub")
             if bias_ub is not None:
