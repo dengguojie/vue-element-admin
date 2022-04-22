@@ -29,8 +29,9 @@ const int POS_0 = 0;
 const int POS_1 = 1;
 
 Status ParseResizeNearestNeighborV2Grad(const Message* op_src, ge::Operator& op) {
-  AutoMappingFn(op_src, op);
-
+  if (AutoMappingFn(op_src, op) != SUCCESS) {
+    return FAILED;
+  }
   auto op_dsc = ge::OpDescUtils::GetOpDescFromOperator(op);
   ge::GeTensorDesc input_tensor = op_dsc->GetInputDesc(POS_0);
   input_tensor.SetOriginFormat(ge::FORMAT_NHWC);
