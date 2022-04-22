@@ -152,10 +152,10 @@ def depthwise_conv2d_generalization(x, filter, bias, offset_w, y, strides, dilat
                 # only change shape NHW dim to -1, range is already set at infershape
                 valid = isinstance(tensor.get("ori_shape"), (list, tuple)) and len(tensor["ori_shape"]) == ORI_SHAPE_LEN
                 if not valid:
-                    err_man.raise_err_specific_user("depthwise_conv2d", "invalid {} ori_shape {}, only support {}d".format(
-                        name, str(tensor.get("ori_shape")), str(ORI_SHAPE_LEN)))
-                tensor["ori_shape"] = [-1, tensor["ori_shape"][1], -1, -1] \
-                if tensor.get("ori_format") == "NCHW" else [-1, -1, -1, tensor["ori_shape"][3]]
+                    err_man.raise_err_specific_user("depthwise_conv2d", "invalid {} ori_shape {}, only support {}d"
+                        .format(name, str(tensor.get("ori_shape")), str(ORI_SHAPE_LEN)))
+                tensor["ori_shape"] = [-1, tensor["ori_shape"][1], -1, -1] if tensor.get("ori_format") == "NCHW" \
+                    else [-1, -1, -1, tensor["ori_shape"][3]]
         else:
             check_result = check_conv2d_range(x, filter, strides, pads, dilations)
             if check_result:

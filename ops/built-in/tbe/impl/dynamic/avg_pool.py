@@ -1030,10 +1030,10 @@ def avg_pool_generalization(x: dict, filter: dict, bias: dict, y: dict, ksize: U
             # only change shape NHW dim to -1, range is already set at infershape
             valid = isinstance(tensor.get("ori_shape"), (list, tuple)) and len(tensor["ori_shape"]) == ORI_SHAPE_LEN
             if not valid:
-                error_manager_cube.raise_err_specific_user("avg_pool", "invalid {} ori_shape {}, only support {}d".format(
-                    name, str(tensor.get("ori_shape")), str(ORI_SHAPE_LEN)))
-            tensor["ori_shape"] = [-1, tensor["ori_shape"][1], -1, -1] \
-                if tensor.get("ori_format") == "NCHW" else [-1, -1, -1, tensor["ori_shape"][3]]
+                error_manager_cube.raise_err_specific_user("avg_pool", "invalid {} ori_shape {}, only support {}d"
+                    .format(name, str(tensor.get("ori_shape")), str(ORI_SHAPE_LEN)))
+            tensor["ori_shape"] = [-1, tensor["ori_shape"][1], -1, -1] if tensor.get("ori_format") == "NCHW" \
+                else [-1, -1, -1, tensor["ori_shape"][3]]
         result.append([x, filter, bias, y, ksize, strides, padding, data_format, offset_x, kernel_name])
         log.debug("avgpool generalization result: %s", result)
     else:

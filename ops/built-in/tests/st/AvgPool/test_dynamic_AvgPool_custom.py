@@ -584,6 +584,36 @@ def test_avg_pool_fuzz_build_correct_range(test_arg):
 print("adding conv2d test_conv2d_fuzz_build_correct_range testcase")
 ut_case.add_cust_test_func(test_func=test_avg_pool_fuzz_build_correct_range)
 
+def test_avg_pool_fuzz_build_err_range(test_arg):
+    from impl.dynamic.avg_pool import avg_pool_generalization
+    input_list = [
+        {
+            'shape': (1, 4, 1080, 1080, 16),
+            'ori_shape': (1, 64, 1080, 1080, 1080, 1080),
+            'ori_format': 'NCHW',
+            'format': 'NC1HWC0',
+            'dtype': 'float16',
+            'range': ((1, 2), (1, 1), (1024, 4096), (1024, 4096), (16, 16)),
+            'ori_range': ((1, 2), (3, 3), (1024, 4096), (1024, 4096))
+            }, {
+                'ori_shape': (64, 64, 7, 7),
+                'ori_format': 'NCHW',
+                'format': 'FRACTAL_Z',
+                'dtype': 'float16'
+            }, None, {
+            'shape': (-1, 4, -1, -1, 16),
+            'ori_shape': (-1, 64, -1, -1),
+            'ori_format': 'NCHW',
+            'format': 'NC1HWC0',
+            'dtype': 'float16'
+        }, (1, 1, 7, 7), (1, 1, 2, 2), "SAME", 'NCHW', 0, 'test_avg_pool_fuzz_build_err_range']
+    try:
+        avg_pool_generalization(*input_list)
+    except RuntimeError:
+        pass
+print("adding conv2d test_avg_pool_fuzz_build_err_range testcase")
+ut_case.add_cust_test_func(test_func=test_avg_pool_fuzz_build_err_range)
+
 from impl.dynamic.avg_pool import check_supported, get_op_support_info
 
 def test_check_support(test_arg):

@@ -221,13 +221,9 @@ def calc_para_from_tensor(inputs,
                     "slice_offset", (0, 0, 0, 0, 0))
                 break
     else:
-        fmap_l1_addr_flag = inputs.op.attrs[
-            "L1_addr_flag"].value if "L1_addr_flag" in inputs.op.attrs else "nothing"
-        fmap_l1_valid_size = inputs.op.attrs[
-            "L1_valid_size"].value if "L1_valid_size" in inputs.op.attrs else -1
-        slice_offset = inputs.op.attrs[
-            "slice_offset"] if "slice_offset" in inputs.op.attrs else (0, 0, 0,
-                                                                       0, 0)
+        fmap_l1_addr_flag = inputs.op.attrs["L1_addr_flag"].value if "L1_addr_flag" in inputs.op.attrs else "nothing"
+        fmap_l1_valid_size = inputs.op.attrs["L1_valid_size"].value if "L1_valid_size" in inputs.op.attrs else -1
+        slice_offset = inputs.op.attrs["slice_offset"] if "slice_offset" in inputs.op.attrs else (0, 0, 0, 0, 0)
     fusion_para = {
         "fmap_l1_addr_flag": fmap_l1_addr_flag,
         "fmap_l1_valid_size": fmap_l1_valid_size,
@@ -259,8 +255,7 @@ def calc_para_from_tensor(inputs,
         "multi_conv2d_fusion_flag": multi_conv2d_fusion_flag
     }
 
-    is_first_layer = bool(inputs.op.attrs["is_first_layer"].value
-                          ) if "is_first_layer" in inputs.op.attrs else False
+    is_first_layer = bool(inputs.op.attrs["is_first_layer"].value) if "is_first_layer" in inputs.op.attrs else False
     is_input4channel = inputs.shape[-1].value == 4
 
     c0_optim_flg = False
@@ -579,8 +574,7 @@ def _trans_stride(input_size, kernel, stride, pad, dlt):
     -------
     new stride
     """
-    return 1 if input_size + pad[0] + pad[1] == (kernel -
-                                                 1) * dlt + 1 else stride
+    return 1 if input_size + pad[0] + pad[1] == (kernel - 1) * dlt + 1 else stride
 
 
 def _conv2d_fusion_para(inputs, outputs):
@@ -857,6 +851,7 @@ def is_force_fp32(input_type, weight_type, output_type):
         return True
     return False
 
+
 def get_op_precision_mode(op_type):
     """
     Get op precision mode from op_info base on op_type
@@ -873,6 +868,7 @@ def get_op_precision_mode(op_type):
         if op_info.op_type == op_type and op_info.precision_mode in ("high_performance", ""):
             return op_info.precision_mode
     return ""
+
 
 def set_dummy_placeholder():
     """

@@ -19,6 +19,7 @@ depthwise_conv2d_dynamic_ut_testcase = [
     ["all", {"ori_shape": (1, 16, -1, -1), "dtype": "float16", "ori_format": "NCHW11", "range": [(1, 1), (16, 16), (3, 40), (3, 40)]}, {"ori_shape": (32, 16, 3, 3), "dtype": "float16", "ori_format": "NCHW", "range": [(32, 32), (16, 16), (3, 3), (3, 3)]}, None, None, {'ori_shape': (1, 16, -1, -1), 'ori_format': 'NCHW', 'dtype': 'float16'}, (1, 1, 2, 2), (0, 0, 0, 0), (1, 1, 1, 1), "NCHW", 0, RuntimeError],
     # ============ test_conv2d_invalid_weight_format_shape ===============
     ["all", {"ori_shape": (1, 16, -1, -1), "dtype": "float16", "ori_format": "NCHW", "range": [(1, 1), (16, 16), (3, 40), (3, 40)]}, {"ori_shape": (32, 16, 3, 3), "dtype": "float16", "ori_format": "NCHW1111", "range": [(32, 32), (16, 16), (3, 3), (3, 3)]}, None, None, {'ori_shape': (1, 16, -1, -1), 'ori_format': 'NCHW', 'dtype': 'float16'}, (1, 1, 2, 2), (0, 0, 0, 0), (1, 1, 1, 1), "NCHW", 0, RuntimeError],
+
 ]
 
 # def gen_trans_data_case(inputs, weights, bias, offset_w, outputs, strides, pads, dilations, data_format, offset_x, expect):
@@ -115,6 +116,31 @@ def test_depthwise_fuzz_build_case_03(test_arg):
 print("add depthwise fuzzbuild ut case test_depthwise_fuzz_build_case_03")
 ut_case.add_cust_test_func(test_func=test_depthwise_fuzz_build_case_03)
 
+def test_depthwise_fuzz_build_case_err(test_arg):
+    from impl.dynamic.depthwise_conv2d import depthwise_conv2d_generalization
+    input_list = [
+        {"ori_shape": (2, 32, 56, 56, 56, 56),
+         "ori_format": "NCHW",
+         "dtype": "float16"
+         },
+        {"ori_shape": (2, 2, 32, 1),
+         "ori_format": "HWCN",
+         "dtype": "float16"
+         },
+        None,
+        None,
+        {"ori_shape": (2, 32, 28, 28),
+         "ori_format": "NCHW",
+         "dtype": "float16"
+         },
+        (1, 1, 1, 1), (1, 1, 1, 1), (0, 0, 0, 0), "NCHW", 0, "depthwise_fuzz_generalization_err"
+    ]
+    try:
+        depthwise_conv2d_generalization(*input_list)
+    except RuntimeError:
+        pass
+print("add depthwise fuzzbuild ut case test_depthwise_fuzz_build_case_err")
+ut_case.add_cust_test_func(test_func=test_depthwise_fuzz_build_case_err)
 
 # def test_depthwise_fuzz_build_case_correct_range(test_arg):
 #     from impl.dynamic.depthwise_conv2d import depthwise_conv2d

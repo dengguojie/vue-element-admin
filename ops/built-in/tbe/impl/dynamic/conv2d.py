@@ -86,11 +86,11 @@ def gen_conv2d_range(inputs, weights, strides, pads, dilations):
     # x_range instance when empty
     if not x_range:
         x_range = []
-        for idx in range(len(x_shape)):
-            if x_shape[idx] == DYNAMIC_VALUE:
+        for idx_x_shape in x_shape:
+            if idx_x_shape == DYNAMIC_VALUE:
                 x_range.append([1, -1])
             else:
-                x_range.append([x_shape[idx], x_shape[idx]])
+                x_range.append([idx_x_shape, idx_x_shape])
 
     kh, kw = get_format_attr(w_shape, w_format)
 
@@ -155,12 +155,12 @@ def conv2d_generalization(inputs, weights, bias, offset_w, outputs, strides, pad
         err_man.raise_err_specific_user("conv2d", "invalid generalize mode {}, only support {}".format(
             str(generalize_config.get("mode")), str(support_mode)))
     result = []
-    if generalize_config["mode"] == "keep_rank": # fuzz build situation
+    if generalize_config.get("mode") == "keep_rank": # fuzz build situation
         # unknow_rank inputs ori_shape is [-2], others' shape length is 4
         unknow_rank = len(inputs["ori_shape"]) == 1 and inputs["ori_shape"][0] == -2
         if unknow_rank:
             err_man.raise_err_specific_user("conv2d", "not support unknow_rank under mode {}".format(
-                generalize_config["mode"]))
+                generalize_config.get("mode")))
         log.debug("conv2d generalization inputs: %s", inputs)
         graph_flag = check_graph_mode(inputs)
         if not graph_flag:
@@ -220,6 +220,7 @@ def conv2d_fusion_compute(inputs, weights, bias, offset_w, outputs, strides, pad
     return _conv2d_compute(
         inputs, weights, bias, offset_w, outputs, strides, pads, dilations,
         groups, data_format, offset_x, kernel_name, dsl_flag)
+
 
 def _collect_org_tensors(ori_paras):
     """
@@ -321,7 +322,7 @@ def _conv2d_compute(inputs, weights, bias, offset_w, outputs, strides, pads, dil
                   optim_dict=default_para.get("optim_dict"),
                   dsl_flag=dsl_flag)
 
-    if conv_para.is_tensor == True:
+    if conv_para.is_tensor:
         return op_res
     if conv_para.bias is not None:
         return {"op_placeholder": [paras.get("input_tensor"), paras.get("weight_tensor"), paras.get("bias_tensor")],

@@ -5,6 +5,9 @@ custom st testcase
 '''
 
 from impl.dynamic.conv2d import conv2d_generalization
+from te import tvm
+from impl.conv2d import conv2d_compute
+
 
 def test_conv2d_fuzzbuild_generalization():
     input_list = [
@@ -53,8 +56,8 @@ def test_conv2d_fuzzbuild_generalization_01():
 
 
 def dsl_cpu_test_int8():
-    fmap = tvm.placeholder((1, 1, 8, 8, 32), name="fmap", dtype="int8", attrs={"ori_shape":(1, 32, 8, 8), "format":"NCHW", "ori_fomat":"NCHW"})
-    weight = tvm.placeholder((4, 2, 16, 32), name="weight", dtype="int8", attrs={"ori_shape":(32, 32, 2, 2), "format":"FRACTAL_Z", "ori_fomat":"NCHW"})
+    fmap = tvm.placeholder((1, 1, 8, 8, 32), name="fmap", dtype="int8", attrs={"ori_shape":(1, 32, 8, 8), "format":"NCHW", "ori_format":"NCHW"})
+    weight = tvm.placeholder((4, 2, 16, 32), name="weight", dtype="int8", attrs={"ori_shape":(32, 32, 2, 2), "format":"FRACTAL_Z", "ori_format":"NCHW"})
     bias_tensor = None
     strides = [1, 1, 1, 1]
     pads = [0, 0, 0, 0]
@@ -67,8 +70,8 @@ def dsl_cpu_test_int8():
 
 
 def dsl_cpu_test_fp16():
-    fmap = tvm.placeholder((1, 2, 8, 8, 16), name="fmap", dtype="float16", attrs={"ori_shape":(1, 32, 8, 8), "format":"NCHW", "ori_fomat":"NCHW"})
-    weight = tvm.placeholder((8, 2, 16, 16), name="weight", dtype="float16", attrs={"ori_shape":(32, 32, 2, 2), "format":"FRACTAL_Z", "ori_fomat":"NCHW"})
+    fmap = tvm.placeholder((1, 2, 8, 8, 16), name="fmap", dtype="float16", attrs={"ori_shape":(1, 32, 8, 8), "format":"NCHW", "ori_format":"NCHW"})
+    weight = tvm.placeholder((8, 2, 16, 16), name="weight", dtype="float16", attrs={"ori_shape":(32, 32, 2, 2), "format":"FRACTAL_Z", "ori_format":"NCHW"})
     bias_tensor = None
     strides = [1, 1, 1, 1]
     pads = [0, 0, 0, 0]

@@ -17,7 +17,7 @@ fixpipe process for conv2d fusion
 """
 from tbe import tvm
 from impl.fixpipe_op.fixpipe_base import FixpipeBase
-from impl.fixpipe_op.fixpipe_util import *
+from impl.fixpipe_op import fixpipe_util
 
 NC1MC0_C1_IDX = 1
 NC1MC0_C0_IDX = -1
@@ -76,7 +76,7 @@ class FixpipeConv2d(FixpipeBase):
                                      lambda n, hw, c: res(n, c // self.input_shape[-1],
                                                           hw, c % self.input_shape[-1]),
                                      name="fixpipe_nz2nd",
-                                     tag=FIXPIPE_REFORM_TAG,
+                                     tag=fixpipe_util.FIXPIPE_REFORM_TAG,
                                      attrs=self.attrs)
             return res_reform
 
@@ -90,14 +90,14 @@ class FixpipeConv2d(FixpipeBase):
                                          hw,
                                          (c1 * self.output_shape[-1] + c0) % self.input_shape[-1]),
                                      name=name,
-                                     tag=FIXPIPE_REFORM_TAG,
+                                     tag=fixpipe_util.FIXPIPE_REFORM_TAG,
                                      attrs=self.attrs)
             return res_reform
 
         res_reform = tvm.compute(self.output_shape,
                                  lambda *indice: res(*indice),
                                  name="fixpipe_reform_default",
-                                 tag=FIXPIPE_REFORM_TAG,
+                                 tag=fixpipe_util.FIXPIPE_REFORM_TAG,
                                  attrs=self.attrs)
         return res_reform
 
@@ -109,7 +109,7 @@ class FixpipeConv2d(FixpipeBase):
         c1_index = NC1MC0_C1_IDX
         c0_index = NC1MC0_C0_IDX_REAL
 
-        x2_shape = shape_to_list(x2.shape)
+        x2_shape = fixpipe_util.shape_to_list(x2.shape)
         x2_c0 = x2_shape[-1]
 
         if x2_c0 not in [C0_32, C0_64]:

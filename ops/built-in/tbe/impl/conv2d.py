@@ -74,8 +74,8 @@ def check_supported(inputs, weights, bias, offset_w, outputs, strides,
     Note: the W dimension of the input image supports cases exceeding 4096, but it may cause
     compilation errors.
     """
+    check_list = [inputs, weights, strides, pads, dilations, outputs, data_format]
     try:
-        check_list = [inputs, weights, strides, pads, dilations, outputs, data_format]
         return_list = util_conv2d.calc_para_from_dict(*check_list)
         offset_w_dtype = "int32"
         valid = isinstance(offset_w, dict) and isinstance(offset_w.get("dtype"), str)
@@ -601,7 +601,7 @@ def _conv_layer_cce(shape_in, shape_w, in_dtype, w_dtype, res_dtype,
                                    "a_shape": fmap_shape_nc1hwc0,
                                    "weight_fracz_shape": filter_shape_frac_z,
                                    "weight_ori_shape_nchw": weight_ori_shape_nchw,
-                                   "impl_mode": impl_mode,},
+                                   "impl_mode": impl_mode, },
                         optim_dict=optim_dict,
                         dsl_flag=False)
         tensor_list.append(conv_res)
