@@ -47,7 +47,7 @@ class Constant:
 # 'pylint: disable=invalid-name,unused-argument,too-many-locals,too-many-arguments,redefined-builtin,protected-access
 @register_operator("SpaceToDepth")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.OPTION_INPUT, para_check.REQUIRED_OUTPUT,
-                            para_check.REQUIRED_ATTR_INT, para_check.OPTION_ATTR_STR, para_check.KERNEL_NAME)
+                            para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_STR, para_check.KERNEL_NAME)
 def space_to_depth(x, filter, y, block_size, data_format="NHWC", kernel_name="space_to_depth"):
     """
     the main function of space_to_depth
@@ -89,7 +89,6 @@ def space_to_depth(x, filter, y, block_size, data_format="NHWC", kernel_name="sp
         "ub_size": Constant.UB_SIZE // Constant.BLOCK_SIZE,
         "core_num": Constant.CORE_NUM,
         "dtype": input_dtype,
-        "block_size": block_size,
     })
     # this "global_variable_link" flag suggest ccec.py do link without "-r" option
     # which will result in global variable in cce file with wrong address

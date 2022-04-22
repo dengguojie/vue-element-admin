@@ -35,6 +35,31 @@ def gen_dynamic_spacetodepth_case(shape_x, shape_y, ori_shape_x, ori_shape_y, ra
         "support_expect": True
     }
 
+case_dynamic_rank = {
+    "params": [
+            {
+                "shape": (-2,),
+                "dtype": "float16",
+                "ori_shape": (-2,),
+                "ori_format": "NHWC",
+                "format": "NHWC"
+            },
+            None,
+            {
+                "shape": (-2,),
+                "dtype": "float16",
+                "ori_shape": (-2,),
+                "ori_format": "NHWC",
+                "format": "NHWC"
+            },
+            None,
+        ],
+        "case_name": "space_to_depth_case_3",
+        "expect": "success",
+        "format_expect": [],
+        "support_expect": True
+    }
+
 
 ut_case.add_case(
     "all",
@@ -42,6 +67,9 @@ ut_case.add_case(
                                   ((1, None), (1, None), (1, None), (1, None)),
                                   ((1, None), (1, None), (1, None), (1, None)), "NHWC", "NHWC", "float16",
                                   "spacetodepth_case", 2, "success"))
+
+ut_case.add_case(
+    "all", case_dynamic_rank)
 
 if __name__ == '__main__':
     ut_case.run("Ascend910A")

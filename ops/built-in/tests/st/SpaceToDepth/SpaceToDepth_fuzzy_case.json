@@ -1,0 +1,42 @@
+[
+  {"compile_flag":1},
+  {
+    "op": "SpaceToDepth",
+    "case_name" : "test_space_to_depth_001",
+    "calc_expect_func_file": "test_space_to_depth_st.py:space_to_depth_forward",
+     "input_desc": [
+       {
+         "format": "NHWC",
+         "shape": [1, 20, 20, 1],
+         "typical_shape": [1, 20, 20, 1],
+         "shape_range": [[1, 6]],
+         "type": "float16",
+         "value_range": [[0, 1]],
+         "data_distribute" : "uniform",
+         "name": "x"
+       }
+     ],
+     "output_desc": [
+       {
+         "format": "NHWC",
+         "shape": [1, 10, 10, 4],
+         "typical_shape": [1, 10, 10, 4],
+         "shape_range": [[1, 6]],
+         "type": "float16",
+         "name": "y"
+       }
+     ],
+     "attr": [
+         {
+          "name": "block_size",
+          "value": 2,
+          "type": "int"
+         },
+         {
+          "name": "data_format",
+          "value": "NHWC",
+          "type": "string"
+         }
+     ]
+  }
+]

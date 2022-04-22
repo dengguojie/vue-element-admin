@@ -56,7 +56,7 @@ def get_op_support_info(x, y, block_size, data_format='NHWC', kernel_name="depth
 
 # 'pylint: disable=invalid-name,unused-argument,too-many-locals,protected-access
 @register_operator("DepthToSpace")
-@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_INT,
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_INT,
                             para_check.OPTION_ATTR_STR, para_check.OPTION_ATTR_STR, para_check.KERNEL_NAME)
 def depth_to_space(x, y, block_size, mode='DCR', data_format='NHWC', kernel_name="depth_to_space"):
     """
