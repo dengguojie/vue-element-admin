@@ -1004,13 +1004,8 @@ TEST_F(NormTilingTest, TilingTest20) {
   op_compile_info.norm_vars = {{1300400500, {20000, 20001, 30000, 40000}}};
   op_compile_info.is_fuse_axis = true;
   std::vector<VarAttr> var_attr_list;
-  VarAttr var_attr;
-  var_attr.name = "alpha";
-  var_attr.length = 1;
-  var_attr.type = "int32";
-  var_attr.src_type = "int32";
-  var_attr_list.push_back(var_attr);
-  op_compile_info.var_attr_map = {{1300400500, var_attr_list}};
+  std::string var_attr_list_compileInfo = R"({"_var_attr_mode":0,"_var_attrs": [{"length":1,"name":"alpha","type":"int32","src_type":"int32"}]})";
+  op_compile_info.varAttrWrap.ParseVarAttr(nlohmann::json::parse(var_attr_list_compileInfo));
 
   optiling::Norm norm("norm", op_paras, op_compile_info, runInfo);
   ASSERT_TRUE(norm.DoTiling());

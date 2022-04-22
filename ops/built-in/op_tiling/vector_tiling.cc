@@ -22,6 +22,11 @@
 #include "tiling_handler.h"
 
 namespace optiling {
+namespace {
+  constexpr int32_t VAR_ATTR_MODE_NOT_EXIST = -1;
+  constexpr int32_t VAR_ATTR_MODE_CONSISTENT = 0;
+  constexpr int32_t VAR_ATTR_MODE_INDEPENDENT = 1;
+}
 const std::vector<vector<int32_t>> OpInfo::dummy_variable;
 
 std::shared_ptr<AutoTilingHandler> CreateAutoTilingHandler(const std::string& op_type, const std::string& pattern,
@@ -60,44 +65,76 @@ std::shared_ptr<AutoTilingHandler> CreateAutoTilingHandler(const std::string& op
   }
 }
 
-bool ParseVarAttr(const nlohmann::json& json_info,
-                  std::unordered_map<std::uint64_t, vector<VarAttr>>& var_attr_map) {
-  const auto& tiling_key_map = json_info.at("_attr_vars");
-  for (const auto& item : tiling_key_map.items()) {
-    const std::uint64_t& tiling_key = std::stoull(item.key());
-    const auto& all_attr_vars = item.value();
+bool VarAttrWrap::ParseVarAttr(const nlohmann::json& json_info) {
+  if (json_info.count("_var_attr_mode") <= 0) {
+    return true;
+  }
 
-    const auto& ret = var_attr_map.emplace(std::piecewise_construct, forward_as_tuple(tiling_key), forward_as_tuple());
-    auto& var_attr_list = ret.first->second;
-    var_attr_list.reserve(all_attr_vars.size());
-    for (const auto& var : all_attr_vars) {
-      var_attr_list.emplace_back(var.at("name"), var.at("type"), var.at("src_type"), var.at("length"));
+  mode = json_info.at("_var_attr_mode").get<std::int32_t>();
+  if (mode == VAR_ATTR_MODE_CONSISTENT) {
+    const auto& json_var_attrs = json_info.at("_var_attrs");
+    var_attrs.reserve(json_var_attrs.size());
+    for (const auto& var : json_var_attrs) {
+      var_attrs.emplace_back(var.at("name"), var.at("type"), var.at("src_type"), var.at("length"));
+    }
+  } else {
+    const auto& json_var_attr_map = json_info.at("_var_attrs");
+    for (const auto& item : json_var_attr_map.items()) {
+      const std::uint64_t& tiling_key = std::stoull(item.key());
+      const auto& json_var_attrs = item.value();
+
+      const auto& ret = var_attr_map.emplace(std::piecewise_construct,
+                                             forward_as_tuple(tiling_key),
+                                             forward_as_tuple());
+      auto& var_attrs_of_map = ret.first->second;
+      var_attrs_of_map.reserve(json_var_attrs.size());
+      for (const auto& var : json_var_attrs) {
+        var_attrs_of_map.emplace_back(var.at("name"), var.at("type"), var.at("src_type"), var.at("length"));
+      }
     }
   }
 
   return true;
 }
 
-bool SetAttrVars(const std::string& op_type, const ge::Operator& op_paras,
-                 utils::OpRunInfo& run_info, const std::vector<VarAttr>& all_attr_vars) {
+bool VarAttrWrap::WriteVarAttrs(const uint64_t tiling_key, const std::string& op_type, const ge::Operator& op_paras,
+                                utils::OpRunInfo& run_info) const {
+  if (mode == VAR_ATTR_MODE_CONSISTENT) {
+    return SetVarAttrs(op_type, op_paras, run_info, var_attrs);
+  }
+
+  if (mode == VAR_ATTR_MODE_INDEPENDENT) {
+    if (var_attr_map.count(tiling_key) < 0) {
+      OP_LOGD(op_type.c_str(), "TilingKey of %d do not has var attrs.", tiling_key);
+      return true;
+    } else {
+      return SetVarAttrs(op_type, op_paras, run_info, var_attr_map.at(tiling_key));
+    }
+  }
+
+  return true;
+}
+
+bool VarAttrWrap::SetVarAttrs(const std::string& op_type, const ge::Operator& op_paras,
+                              utils::OpRunInfo& run_info, const vector<VarAttr>& var_attrs) const {
   try {
-      for (VarAttr varAttr : all_attr_vars) {
-        const char* var_name = varAttr.name.c_str();
-        const char* var_type = varAttr.type.c_str();
-        const char* var_src_type = varAttr.src_type.c_str();
+    for (VarAttr varAttr : var_attrs) {
+      const char* var_name = varAttr.name.c_str();
+      const char* var_type = varAttr.type.c_str();
+      const char* var_src_type = varAttr.src_type.c_str();
 
-        AttrDataPtr data;
-        ge::graphStatus graphStatus = GetOperatorAttrValue(op_paras, var_name, var_src_type, data, var_type);
-        if (graphStatus != ge::GRAPH_SUCCESS) {
-          VECTOR_INNER_ERR_REPORT_TILIING(op_type,
-                                          "getAttrVars from FE error. Error message: var name is %s , var type is %s, "
-                                          "var_src_type is %s",
-                                          var_name, var_type, var_src_type);
-          return false;
-        }
-
-        run_info.AddTilingData(reinterpret_cast<const char*>(data->GetData()), data->GetSize());
+      AttrDataPtr data;
+      ge::graphStatus graphStatus = GetOperatorAttrValue(op_paras, var_name, var_src_type, data, var_type);
+      if (graphStatus != ge::GRAPH_SUCCESS) {
+        VECTOR_INNER_ERR_REPORT_TILIING(op_type,
+                                        "getAttrVars from FE error. Error message: var name is %s , var type is %s, "
+                                        "var_src_type is %s",
+                                        var_name, var_type, var_src_type);
+        return false;
       }
+
+      run_info.AddTilingData(reinterpret_cast<const char*>(data->GetData()), data->GetSize());
+    }
   } catch (const std::exception &e) {
     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "SetAttrVars error. Error message: %s", e.what());
     return false;

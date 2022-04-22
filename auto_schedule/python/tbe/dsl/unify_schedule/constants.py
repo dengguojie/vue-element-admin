@@ -194,7 +194,8 @@ class CompileInfo:
     CONST_BLOCK_DIMS = "_const_block_dims"
     VARS = "_vars"
     NORMAL_VARS = "_normal_vars"
-    ATTR_VARS = "_attr_vars"
+    VAR_ATTRS = "_var_attrs"
+    VAR_ATTR_MODE = "_var_attr_mode"
     CUSTOM_VARS = "_custom_vars"
     ELEWISE_VARS = "_elewise_vars"
     BLOCK_DIMS = "_block_dims"
@@ -203,6 +204,16 @@ class CompileInfo:
     OUTS_UINT1 = "_outs_uint1"
     SOC_VERSION = "_soc_version"
     CONTAINS_ELEWISE_SCH = "_contains_elewise_sch"
+
+
+class VarAttrMode:
+    """
+    VarAttrMode
+    CONSISTENT: means all var attrs the same in a compilation
+    INDEPENDENT: means not all var attrs the same in a compilation
+    """
+    CONSISTENT = 0
+    INDEPENDENT = 1
 
 
 FAKE_NODE_TAG = "elewise_empty_intrin"

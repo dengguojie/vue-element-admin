@@ -46,6 +46,7 @@ from . import CompileInfo
 from . import Pattern
 from . import pattern_parser
 from . import util
+from .constants import VarAttrMode
 
 CONST = "const"
 
@@ -200,6 +201,7 @@ class Builder:
     """
     class for build
     """
+
     def __init__(self, schedules_list, config_map):
         self.schedules_list = schedules_list
         self.config_map = config_map
@@ -207,12 +209,17 @@ class Builder:
         self.schedules = self._normalize_schedules()
         self.tensors = self._normalize_tensors()
 
+        self.te_vars_list = None
+        self.ebv_list = None
+        self.attr_vars_desc_list = None
+        self.sch_tensors_list = None
+
     def build(self):
         self._traverse_context()
         self._traverse_schedules()
         self._call_tvm_build()
         op_context = operation.get_context()
-        if op_context.get("_use_cache_tiling") is None or not op_context.get("_use_cache_tiling"): 
+        if op_context.get("_use_cache_tiling") is None or not op_context.get("_use_cache_tiling"):
             self._handle_compile_info()
         self._handle_addition()
 
@@ -236,11 +243,11 @@ class Builder:
 
         is_true(len(cpt_contexts) == len(tensors),
                 {"errCode": "E90001",
-                "detailed_cause": "The size of compute, build " \
+                 "detailed_cause": "The size of compute, build " \
                                    "tensors does not match, they " \
                                    "are [%s] vs [%s]." \
                                    % (len(cpt_contexts), len(tensors))
-                })
+                 })
 
         return tensors
 
@@ -270,10 +277,10 @@ class Builder:
         lens = [len(self.schedules), len(te_vars_list), len(ebv_list)]
         is_true(len(set(lens)) == 1,
                 {"errCode": "E90001",
-                "detailed_cause": "The size of schedule, var, and " \
-                                  "var_bound does not match, " \
-                                  "they are [%s]." % lens
-                })
+                 "detailed_cause": "The size of schedule, var, and " \
+                                   "var_bound does not match, " \
+                                   "they are [%s]." % lens
+                 })
 
         self.te_vars_list = te_vars_list
         self.ebv_list = ebv_list
@@ -401,6 +408,22 @@ class Builder:
             operation.add_compile_info_inner(CompileInfo.NORMAL_VARS, value)
 
         def add_attr_vars():
+            def is_all_attr_vars_the_same():
+                first_item_flag = True
+                first_attr_vars = []
+                for k, v in self.compile_attr_vars.items():
+                    if first_item_flag:
+                        first_attr_vars = v
+                        first_item_flag = False
+                        continue
+                    if len(v) != len(first_attr_vars):
+                        return False, []
+                    for i, j in enumerate(first_attr_vars):
+                        if v[i].dtype != first_attr_vars[i].dtype or v[i].src_dtype != first_attr_vars[i].src_dtype \
+                                or v[i].length != first_attr_vars[i].length or v[i].name != first_attr_vars[i].name:
+                            return False, []
+                return True, first_attr_vars
+
             def convert(attr_var):
                 # type: (AttrVarDesc) -> Dict[str, Any]
 
@@ -416,9 +439,20 @@ class Builder:
                     "length": length or 1
                 }
 
-            # key: tiling_key, value: [@see convert_attr_var()]
-            value = {k: [convert(x) for x in v] for k, v in self.compile_attr_vars.items()}
-            operation.add_compile_info_inner(CompileInfo.ATTR_VARS, value)
+            all_the_same, single_var_attrs = is_all_attr_vars_the_same()
+            if all_the_same:
+                if len(single_var_attrs) == 0:
+                    return
+                else:
+                    var_attr_mode = VarAttrMode.CONSISTENT
+                    var_attr_value = [convert(x) for x in single_var_attrs]
+            else:
+                # key: tiling_key, value: [@see convert_attr_var()]
+                var_attr_mode = VarAttrMode.INDEPENDENT
+                var_attr_value = {k: [convert(x) for x in v] for k, v in self.compile_attr_vars.items()}
+
+            operation.add_compile_info_inner(CompileInfo.VAR_ATTR_MODE, var_attr_mode)
+            operation.add_compile_info_inner(CompileInfo.VAR_ATTRS, var_attr_value)
 
         def add_custom_vars():
             # key: tiling_key, value: [var_name]

@@ -159,11 +159,7 @@ bool ReduceCompileInfo::GetCompileInfoForCalculate(const std::string op_type, co
   return true;
 }
 bool ReduceCompileInfo::GetCompileInfoForRunInfo(const nlohmann::json& json_info) {
-  if (json_info.count("_attr_vars") > 0) {
-    bool ret = ParseVarAttr(json_info, var_attr_map);
-    return ret;
-  }
-  return true;
+  return varAttrWrap.ParseVarAttr(json_info);
 }
 
 bool Reduce::IsInVector(std::vector<int32_t>& input, int32_t value) {
@@ -498,7 +494,7 @@ void Reduce::ChooseAtomic() {
 
 bool Reduce::IsReduceTransposeCase() {
   // no pad_max_entire_size given , avoid old ut error
-  bool pad_max_entire_size_not_exist = -1 == compileInfo.pad_max_entire_size;
+  bool pad_max_entire_size_not_exist = compileInfo.pad_max_entire_size == -1;
 
   // not support pad in tilingcase
   bool ub_info_transpose_not_exist = compileInfo.ub_info_transpose.size() == 0 ||
@@ -1146,13 +1142,7 @@ bool Reduce::WriteTilingData() {
     uint32_t zero_tiling_key_uint = static_cast<uint32_t>(zero_tiling_key);
     run_info.SetTilingKey(zero_tiling_key_uint);
 
-    if (compileInfo.var_attr_map.count(zero_tiling_key_uint) > 0) {
-      const std::vector<VarAttr>& all_attr_vars = compileInfo.var_attr_map.at(zero_tiling_key_uint);
-      if (all_attr_vars.size() != 0) {
-        return SetAttrVars(op_type, op_paras, run_info, all_attr_vars);
-      }
-    }
-    return true;
+    return compileInfo.varAttrWrap.WriteVarAttrs(zero_tiling_key_uint, op_type, op_paras, run_info);
   }
 
   if (compileInfo.is_const_post) {
@@ -1162,16 +1152,18 @@ bool Reduce::WriteTilingData() {
     uint32_t pattern_uint = static_cast<uint32_t>(pattern);
     run_info.SetTilingKey(pattern_uint);
 
-    if (compileInfo.var_attr_map.count(pattern_uint) > 0) {
-      const std::vector<VarAttr>& all_attr_vars = compileInfo.var_attr_map.at(pattern_uint);
-      if (all_attr_vars.size() != 0) {
-        return SetAttrVars(op_type, op_paras, run_info, all_attr_vars);
-      }
-    }
-    return true;
+    return compileInfo.varAttrWrap.WriteVarAttrs(pattern_uint, op_type, op_paras, run_info);
   }
 
   if (compileInfo.is_const) {
+    // compile
+    return WriteConstTilingData();
+  }
+
+  return WriteDynamicTilingData();
+}
+
+bool Reduce::WriteConstTilingData() {
     // compile
     run_info.AddTilingData((int32_t)reduceTilingInfo.block_tiling_axis);
     run_info.AddTilingData((int32_t)reduceTilingInfo.block_tiling_factor);
@@ -1182,8 +1174,9 @@ bool Reduce::WriteTilingData() {
     run_info.AddTilingData(reduceTilingInfo.sch_type);
     run_info.SetBlockDim(static_cast<uint32_t>(reduceTilingInfo.block_dim));
     return true;
-  }
+}
 
+bool Reduce::WriteDynamicTilingData() {
   // tiling_key
   run_info.SetBlockDim(static_cast<uint32_t>(reduceTilingInfo.block_dim));
   int32_t tiling_key = CalcTilingKey();
@@ -1207,13 +1200,7 @@ bool Reduce::WriteTilingData() {
   OP_LOGD(op_type.c_str(), "ub/input_ub tilling axis:%d", reduceTilingInfo.ub_tiling_axis);
   OP_LOGD(op_type.c_str(), "ub/input_ub tilling factor:%d", reduceTilingInfo.ub_tiling_factor);
 
-  if (compileInfo.var_attr_map.count(tiling_key_uint) > 0) {
-    const std::vector<VarAttr>& all_attr_vars = compileInfo.var_attr_map.at(tiling_key_uint);
-    if (all_attr_vars.size() != 0) {
-      return SetAttrVars(op_type, op_paras, run_info, all_attr_vars);
-    }
-  }
-  return true;
+  return compileInfo.varAttrWrap.WriteVarAttrs(tiling_key_uint, op_type, op_paras, run_info);
 }
 
 bool Reduce::CheckCompileInfoForCalculate() {
