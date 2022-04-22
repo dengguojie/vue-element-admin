@@ -7909,7 +7909,7 @@ IMPLEMT_INFERFUNC(Conv3DBackpropInput, Conv3DBackpropInputInfer) {
   Format input_format = y_desc->GetFormat();
   // if only batch is -1, no need to set SAME padding as -1
   // dy_sizes maybe contains -1 in runtime compile, but can't set pads as -1
-  if ((!is_input_size_const) && (IsUnknownRankShape(dy_sizes) ||
+  if ((!is_input_size_const || is_dynamic) && (IsUnknownRankShape(dy_sizes) ||
       IsDHWUnknown(string(op_name.GetString()), "y", y_desc->MutableShape().GetDims(), y_desc->GetFormat()))) {
     std::string pad_str;
     if (op.GetAttr("padding", pad_str) == GRAPH_SUCCESS) {

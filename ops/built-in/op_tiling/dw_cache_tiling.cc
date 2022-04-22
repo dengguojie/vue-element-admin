@@ -472,19 +472,21 @@ void Conv2dDwCacheTiling::GetL0FactorsCand(L0Factors &res_factors, int32_t *para
       if (n_dim_factor == 0) {
         continue;
       }
-      int32_t ci1_factor = (n_dim_factor + params.kh * params.kw - 1) / (params.kh * params.kw);
-      int32_t k0_max_l1 = (kL1Fp16Size - (params.stride_h + params.kh) * params.wi * ci1_factor * kBlockSize) /
-                          (m_dim_factor * kBlockSize * kBlockSize);
-      int32_t k0_max = min(min(l0Status.max_mk / m_dim_factor, l0Status.max_nk / n_dim_factor), k0_max_l1);
-      int32_t k0_factors[kL0FactorCandLen] = {0};
-      int32_t kl0_other_factors[kGetFactorParamsLen] = {k0_max, 1, 1, 0};
-      GetTwoFactors(k0_factors, k0_max, singlecoreStatus.k2, kl0_other_factors);
-      for (auto &k0: k0_factors) {
-        l0Status.m_l0 = m_dim_factor;
-        l0Status.n_l0 = n_dim_factor;
-        l0Status.k_l0 = k0;
-        GetFinalMkn();
+      int32_t k0_max = min(l0Status.max_mk / m_dim_factor, l0Status.max_nk / n_dim_factor);
+      GetNearestFactor(singlecoreStatus.k2, k0_max);
+      l0Status.m_l0 = m_dim_factor;
+      l0Status.n_l0 = n_dim_factor;
+      l0Status.k_l0 = k0_max;
+      l1Status.kal1_16 = k0_max;
+      l1Status.kbl1_16 = k0_max;
+      while (GetL1Size() > kL1Fp16Size) {
+        k0_max--;
+        GetNearestFactor(singlecoreStatus.k2, k0_max);
+        l0Status.k_l0 = k0_max;
+        l1Status.kal1_16 = k0_max;
+        l1Status.kbl1_16 = k0_max;
       }
+      GetFinalMkn();
     }
   }
   SetResFactors(res_factors);

@@ -586,7 +586,7 @@ string GEMMTilingSelect(const string &op_type, const ge::Operator &op_paras, sha
   string tiling_id("-1");
   Tiling tiling;
   const auto& dynamic_mode = compile_value->dynamic_mode;
-  bool isBatchMatmulMode = (dynamic_mode == "dynamic_mknb");
+  bool isBatchMatmulMode = (dynamic_mode == "dynamic_mknb" || op_type == "BatchMatMulV2" || op_type == "BatchMatMul");
   OP_TILING_CHECK((dynamic_mode != "dynamic_mkn" && !isBatchMatmulMode),
         CUBE_INNER_ERR_REPORT(op_type.c_str(), "Only support dynamic_mode: dynamic_mkn, dynamic_mknb"),
   return tiling_id);

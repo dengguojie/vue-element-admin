@@ -511,10 +511,16 @@ void GetBlockDimKHelper(CoreStatus &coreStatus, BlockDimCalculator &blockDimCalc
 {
   int32_t kFactor = blockDimCalculator.k_dim_array[blockDimCalculator.k_idx];
   int32_t nFactor = blockDimCalculator.n_dim_array[blockDimCalculator.n_idx];
+  if (kFactor * nFactor == 0) {
+    return;
+  }
   blockDimCalculator.k_num = params.k_32 / kFactor * kBlockSize * kBlockSize;
   blockDimCalculator.k_bytes = blockDimCalculator.k_num * kFp16Bytes;
   for (int32_t mIdx = 0; mIdx < blockDimCalculator.m_dim_cnt; mIdx++) {
     int32_t mFactor = blockDimCalculator.m_dim_array[mIdx];
+    if (mFactor == 0) {
+      continue;
+    }
     blockDimCalculator.tmp_core_use = kFactor * nFactor * mFactor;
     if (blockDimCalculator.tmp_core_use > params.core_num) {
       break;
