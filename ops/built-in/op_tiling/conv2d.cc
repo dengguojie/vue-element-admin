@@ -455,11 +455,13 @@ bool Conv2dBinaryTiling::CheckConv2DParas()
     OP_LOGE_IF(!CheckRange(convParas.dilations_h, DILATION_MIN, DILATION_MAX) || \
         !CheckRange(convParas.dilations_w, DILATION_MIN, DILATION_MAX),
         false, opType, "dilations only support range [%d, %d]", DILATION_MIN, DILATION_MAX);
-    OP_LOGE_IF(!CheckRange(convParas.stride_h, STRIDE_MIN, STRIDE_MAX) || !CheckRange(convParas.stride_w, STRIDE_MIN, STRIDE_MAX),
+    OP_LOGE_IF(!CheckRange(convParas.stride_h, STRIDE_MIN, STRIDE_MAX) || \
+        !CheckRange(convParas.stride_w, STRIDE_MIN, STRIDE_MAX),
         false, opType, "strides only support range [%d, %d]", STRIDE_MIN, STRIDE_MAX);
 
     // check in_shape and out_shape
-    OP_LOGE_IF(convParas.ho < 1 || convParas.wo < 1, false, opType, "output shape should greater than 0, please check output shape");
+    OP_LOGE_IF(convParas.ho < 1 || convParas.wo < 1, false, opType, \
+        "output shape should greater than 0, please check output shape");
     // ho = (fmap_h + padu + padd - (kh - 1) * dilation_h - 1)//stride_h + 1
     int32_t expectHo = (convParas.hi + convParas.padu + convParas.padd - convParas.dilations_h * \
                          (convParas.kh - 1) - 1) / convParas.stride_h + 1;
@@ -530,10 +532,10 @@ bool Conv2dBinaryTiling::GenConv2DTiling()
 {
     OP_LOGE_IF(!InitHardwareInfo(), false, opType, "Get hardwareinfo failed!");
     OP_LOGE_IF(!Conv2dFastTiling(convParas, hardwareInfo, fastTiling), false, opType, "get fasttiling failed!");
-    GELOGD("[%s] Conv2dFastTiling success, fastTiling info is: AL0_matrix: [%d, %d, 16, %d], CL0_matrix: [%d, %d, 16, 16, 1, 1], \
-        CUB_matrix: [%d, %d, 16, 16], BL0_matrix: [%d, %d, 16, %d, 1, 1], AL1_shape: [%d, %d, 1, 1], \
-        AUB_shape: [%d, %d, 1, 1], BL1_shape: [%d, %d, 1, 1], block_dim: [%d, %d, %d, %d]", nodeName.c_str(), \
-        fastTiling.ma, fastTiling.ka, \
+    GELOGD("[%s] Conv2dFastTiling success, fastTiling info is: AL0_matrix: [%d, %d, 16, %d], \
+        CL0_matrix: [%d, %d, 16, 16, 1, 1], CUB_matrix: [%d, %d, 16, 16], BL0_matrix: [%d, %d, 16, %d, 1, 1], \
+        AL1_shape: [%d, %d, 1, 1], AUB_shape: [%d, %d, 1, 1], BL1_shape: [%d, %d, 1, 1], \
+        block_dim: [%d, %d, %d, %d]", nodeName.c_str(), fastTiling.ma, fastTiling.ka, \
         GetMKN(convParas.aType, 1), fastTiling.nc, fastTiling.mc, fastTiling.ncFactor, fastTiling.mcFactor, \
         fastTiling.kb, fastTiling.nb, GetMKN(convParas.bType, 1), \
         fastTiling.kAl1, fastTiling.mAl1, fastTiling.kAub, fastTiling.mAub, fastTiling.kBl1, fastTiling.nBl1, \
@@ -586,9 +588,9 @@ bool Conv2dBinaryTiling::GenConv2DTiling()
     convTiling.kAub = fastTiling.kAub;
     convTiling.mAub = fastTiling.mAub;
     GELOGD("[%s] Get convTiling from fastTiling success, batchSingleCore = %d, nSingleCore = %d, batchDim = %d, \
-        nDim = %d, mDim = %d, groupDim = %d, cubN = %d, nUbL0cFactor = %d, mL0 = %d, kL0 = %d, \
-        mAl1Factor = %d, nBl1Factor = %d, kAl116 = %d, kBl116 = %d, kAl1Factor = %d, kBl1Factor = %d, \
-        kAub = %d, mAub = %d", nodeName.c_str(), convTiling.batchSingleCore, convTiling.nSingleCore, convTiling.batchDim, \
+        nDim = %d, mDim = %d, groupDim = %d, cubN = %d, nUbL0cFactor = %d, mL0 = %d, kL0 = %d, mAl1Factor = %d, \
+        nBl1Factor = %d, kAl116 = %d, kBl116 = %d, kAl1Factor = %d, kBl1Factor = %d, kAub = %d, mAub = %d", \
+        nodeName.c_str(), convTiling.batchSingleCore, convTiling.nSingleCore, convTiling.batchDim, \
         convTiling.nDim, convTiling.mDim, convTiling.groupDim, convTiling.cubN, convTiling.nUbL0cFactor, \
         convTiling.mL0, convTiling.kL0, convTiling.mAl1Factor, convTiling.nBl1Factor, convTiling.kAl116, \
         convTiling.kBl116, convTiling.kAl1Factor, convTiling.kBl1Factor, convTiling.kAub, convTiling.mAub);
