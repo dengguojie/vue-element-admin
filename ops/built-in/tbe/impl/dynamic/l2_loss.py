@@ -47,7 +47,7 @@ def op_select_format(x, y, kernel_name="l2_loss"):
     is_support_nz = True
 
     base_data_type = ["float", "float16"]
-    if not tbe_platform.api_check_support("vadd", "float32"):
+    if not tbe_platform.api_check_support("tik.vadd", "float32"):
         base_data_type.remove("float")
 
     dtype_base_out = list(base_data_type)
