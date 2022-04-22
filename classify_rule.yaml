@@ -509,6 +509,8 @@ cube-tiling:
       - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/aipp_conv/tbe_aipp_conv_relu_maxpooling_fusion_pass.h
       - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/aipp_conv/tbe_aipp_conv2d_add_relu6_mul_mul_fusion_pass.h
       - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/aipp_conv/tbe_aipp_fusion_rule.h
+      - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/conv/tbe_conv2d_fixpipe_fusion_pass.cc
+      - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/conv/tbe_conv2d_fixpipe_fusion_pass.h
       - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/conv/conv2d_add_clip_mul_div.cc
       - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/conv/conv2d_add_clip_mul_div.h
       - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/conv/tbe_conv_transdata_pass.cc

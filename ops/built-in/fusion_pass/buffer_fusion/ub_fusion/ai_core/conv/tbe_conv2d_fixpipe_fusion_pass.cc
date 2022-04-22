@@ -81,6 +81,9 @@ vector<BufferFusionPattern *> TbeConv2DFixpipeFusionPass::DefinePatterns() {
 bool TbeConv2DFixpipeFusionPass::IsInWhiteListOfElemwiseOp(const vector<ge::NodePtr> &elemwise_nodes) {
   for (auto &elemwise_node : elemwise_nodes) {
     string op_type = elemwise_node->GetType();
+    if (op_type == "Cast") {
+      continue;
+    }
     auto count = kWhiteListOfElemwiseNode.count(op_type);
     if (count == 0) {
       OP_LOGD(kFusedOpType.c_str(), "node:%s[type:%s] not in elemwise white_list.",
@@ -180,6 +183,14 @@ Status TbeConv2DFixpipeFusionPass::GetFusionNodes(const BufferFusionMapping &map
   vector<ge::NodePtr> cube_nodes = GetMatchedNodesByDescName(kPatternCube, mapping);
   vector<ge::NodePtr> elemwise_nodes = GetMatchedNodesByDescName(kPatternElemwise, mapping);
   vector<ge::NodePtr> transdata2_nodes = GetMatchedNodesByDescName(kTypeTransData2, mapping);
+  for (auto &node : elemwise_nodes) {
+    if (node->GetType() == "Cast") {
+      auto iter = std::find(fusion_nodes.begin(), fusion_nodes.end(), node);
+      if (iter != fusion_nodes.end()) {
+        fusion_nodes.erase(iter);
+      }
+    }
+  }
   if (!elemwise_nodes.empty()) {
     if (!IsInWhiteListOfElemwiseOp(elemwise_nodes)) {
       fusion_nodes.clear();
