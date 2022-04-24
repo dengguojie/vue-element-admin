@@ -228,7 +228,7 @@ class ProdForceSeA:
             src_list0 = [src_ub_fp16[(nnei_len * 4) * 3 + 16 * i] for i in range(16)]
             dst_list0 = [dst_ub_fp16[(nnei_len * 4) * 3 + (nnei_len // 4) * i] for i in range(16)]
             self.tik_instance.vnchwconv(False, False, dst_list0, src_list0, nnei_len // 64, 1, 16)
-            self.tik_instance.vadds(64, dst_ub_buf_fp16, dst_ub_fp16, 0, (nnei_len // 32), 1, 1, 8, 8)
+            self.tik_instance.vadds(64, dst_ub_buf_fp16, dst_ub_fp16, 0, (nnei_len // 32), 1, 1, 4, 4)
             self.tik_instance.vadds(64, dst_ub_buf_fp16[nnei_len * 2], dst_ub_fp16[nnei_len * 4], 0,
                                     (nnei_len // 32), 1, 1, 4, 4)
             self.tik_instance.vadds(64, dst_ub_buf_fp16[nnei_len * 4], dst_ub_fp16[nnei_len * 8], 0,
@@ -311,7 +311,7 @@ class ProdForceSeA:
         nnei_tail_fill = _ceil_fill(nnei_tail, Constant.MASK_FLOAT32)
         nlist_ub_int32 = self.tik_instance.Tensor(self.nlist_dtype, (nnei_tail_fill,), name="nlist_ub_int32",
                                                   scope=tik.scope_ubuf)
-        self._second_move_out_prehandle(nnei_tail, nlist_offset, nnei_tail_fill, nlist_ub_int32)
+        self._second_move_out_prehandle(nnei_tail, nnei_tail_fill, nlist_offset, nlist_ub_int32)
         nlist_loc_0 = self.tik_instance.Scalar("int32", name="nlist_loc_0")
         nlist_loc_1 = self.tik_instance.Scalar("int32", name="nlist_loc_1")
         nlist_loc_2 = self.tik_instance.Scalar("int32", name="nlist_loc_2")
@@ -349,10 +349,10 @@ class ProdForceSeA:
 
     def _second_move_out_tail(self, nnei_tail, frame_idx, nlist_offset, deriv_nnei_vcpadd_ub_fp32):
         nnei_tail_fill = _ceil_fill(nnei_tail, Constant.MASK_FLOAT32)
-        nlist_ub_int32 = self.tik_instance.Tensor(self.nlist_dtype, (nnei_tail_fill,), name="nlist_ub_int32",
-                                                  scope=tik.scope_ubuf)
-        self._second_move_out_prehandle(nnei_tail, nlist_offset, nnei_tail_fill, nlist_ub_int32)
         with self.tik_instance.for_range(0, 3) as local_idx:
+            nlist_ub_int32 = self.tik_instance.Tensor(self.nlist_dtype, (nnei_tail_fill,), name="nlist_ub_int32",
+                                                      scope=tik.scope_ubuf)
+            self._second_move_out_prehandle(nnei_tail, nnei_tail_fill, nlist_offset, nlist_ub_int32)
             force_out_ub_fp32 = self.tik_instance.Tensor(self.force_dtype, (8,), name="force_out_ub_fp32",
                                                          scope=tik.scope_ubuf)
             self.tik_instance.vec_dup(8, force_out_ub_fp32, 0, 1, 1)
@@ -533,12 +533,12 @@ class ProdForceSeA:
                         force_add_ub_fp32 = self.tik_instance.Tensor(self.force_dtype,
                             (Constant.NLOC_UNIT_LEN * 3 + Constant.MASK_FLOAT32, ), name="force_add_ub_fp32",
                             scope=tik.scope_ubuf)
-                        self.tik_instance.vector_dup(Constant.NLOC_UNIT_LEN * 3, force_add_ub_fp32, 0, 1, 1, 8)
                         force_vcadd_ub_fp32 = self.tik_instance.Tensor(self.force_dtype,
                             (Constant.NLOC_UNIT_LEN * 3 + Constant.MASK_FLOAT32,), name="force_vcadd_ub_fp32",
                             scope=tik.scope_ubuf)
                         force_reduce_loop = self.nnei_unit_len // Constant.MASK_FLOAT32
                         force_reduce_left = self.nnei_unit_len % Constant.MASK_FLOAT32
+                        self.tik_instance.vector_dup(Constant.NLOC_UNIT_LEN * 3, force_add_ub_fp32, 0, 1, 1, 8)
                         for i in range(0, force_reduce_loop):
                             self.tik_instance.vcadd(Constant.MASK_FLOAT32, force_vcadd_ub_fp32,
                                 deriv_nnei_vcpadd_ub_fp32[Constant.MASK_FLOAT32 * i],
