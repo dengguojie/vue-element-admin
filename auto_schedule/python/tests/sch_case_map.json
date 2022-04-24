@@ -90,6 +90,7 @@
         "reduce_sum",
         "reduce_min",
         "reduce_prod",
+        "tuple_sum",
         "dsl_cpu/test_reduce_cpu_impl.py"
     ],
     "auto_schedule/python/lang/cce/te_compute/dim_conv.py":[

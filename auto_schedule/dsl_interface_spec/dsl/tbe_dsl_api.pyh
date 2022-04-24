@@ -78,7 +78,7 @@ def vlrelu(raw_tensor, alpha=0):
 
 def clip(data, max_value, min_value):
 
-def broadcast(var, shape, output_dtype=None):
+def broadcast(var_, shape, output_dtype=None):
 
 def set_value(tensor, condition, value):
 
@@ -91,6 +91,8 @@ def reduce_min(raw_tensor, axis, keepdims=False, impl_mode="high_performance"):
 def reduce_max(raw_tensor, axis, keepdims=False, impl_mode="high_performance"):
 
 def reduce_prod(raw_tensor, axis, keepdims=False):
+
+def tuple_sum(input_tensors, axis, keepdims=False):
 
 def split(data, split_dim, size_splits):
 

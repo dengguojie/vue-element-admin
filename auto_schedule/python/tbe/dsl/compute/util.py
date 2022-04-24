@@ -289,6 +289,17 @@ DSL_CHECK_SUPPORT_MAP = {
         ASCEND_615: ("float16", "float32", "int32"),
         ASCEND_SHISI: ("float16",),
     },
+    "tuple_sum": {
+        "AllSoc": ("float16",),
+        ASCEND_310: ("float16", "float32", "int32"),
+        ASCEND_320: ("float16", "float32", "int32"),
+        ASCEND_910: ("float16", "float32", "int32"),
+        ASCEND_920A: ("float16", "float32", "int32"),
+        ASCEND_710: ("float16", "float32", "int32"),  # int32: nlst support, last not
+        ASCEND_610: ("float16", "float32", "int32"),
+        ASCEND_615: ("float16", "float32", "int32"),
+        ASCEND_SHISI: ("float16",),
+    },
 
     # elewise
     "vadd": {

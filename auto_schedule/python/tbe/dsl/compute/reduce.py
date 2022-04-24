@@ -437,8 +437,6 @@ def tuple_sum(input_tensor_list, axis, keepdims=False):
     -------
     res : wrapped_tensor
     """
-    warnings.warn("tuple_sum is expired, please replace it with the func sum",
-                  DeprecationWarning)
     return _tuple_reduce_op(input_tensor_list, axis, "tuple_reduce_sum",
                             keepdims)
 

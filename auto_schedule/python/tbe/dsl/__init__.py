@@ -67,6 +67,7 @@ from .api import reduce_sum
 from .api import reduce_min
 from .api import reduce_max
 from .api import reduce_prod
+from .api import tuple_sum
 
 from .api import split
 from .api import concat

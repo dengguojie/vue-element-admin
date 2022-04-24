@@ -727,13 +727,13 @@ def clip(data, max_value, min_value):
     return nn.clip(data, max_value, min_value)
 
 
-def broadcast(var, shape, output_dtype=None):
+def broadcast(var_, shape, output_dtype=None):
     """
     broadcast scalar to tensor, only support float16
 
     Parameters
     ----------
-    var : can be python instance of int and float, or tvm.const
+    var_ : can be python instance of int and float, or tvm.const
 
     shape : tensor shape
 
@@ -743,7 +743,7 @@ def broadcast(var, shape, output_dtype=None):
     -------
     wrapped_tensor : broadcast tensor
     """
-    return nn.broadcast(var, shape, output_dtype)
+    return nn.broadcast(var_, shape, output_dtype)
 
 
 def set_value(tensor, condition, value):
@@ -862,6 +862,22 @@ def reduce_prod(raw_tensor, axis, keepdims=False):
     res : wrapped_tensor
     """
     return reduce.reduce_prod(raw_tensor, axis, keepdims)
+
+
+def tuple_sum(input_tensors, axis, keepdims=False):
+    """
+    calculate sum of raw_tensor, only support float16
+    Parameters
+    ----------
+    input_tensors : wrapped_tensor or tvm.tensor list that each tensor has same reduce operation
+    axis : int or list
+        reduce axis (range : [-len(raw_tensor.shape), len(raw_tensor.shape) - 1])
+    keepdims : if true, retains reduced dimensions with length 1, default value is None
+    Returns
+    -------
+    res : wrapped_tensor
+    """
+    return reduce.tuple_sum(input_tensors, axis, keepdims)
 
 
 def split(data, split_dim, size_splits):
