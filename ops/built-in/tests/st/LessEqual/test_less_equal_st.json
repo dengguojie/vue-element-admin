@@ -43,5 +43,34 @@
       }
     ],
     "case_name": "test_LessEqual_000"
+  },
+  {
+    "op": "LessEqual",
+    "calc_expect_func_file" : "test_less_equal_golden.py:calc_expect_func",
+    "input_desc": [
+      {
+        "shape": [-2],
+        "typical_shape": [16],
+        "format": "ND",
+        "name": "x1",
+        "type": "float16"
+      },
+      {
+        "shape": [-2],
+        "typical_shape": [16],
+        "format": "ND",
+        "name": "x2",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [16],
+        "format": "ND",
+        "name": "y",
+        "type": "bool"
+      }
+    ],
+    "case_name": "test_LessEqual_dynamic_rank_000"
   }
 ]

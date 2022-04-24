@@ -318,5 +318,30 @@
     ],
     "attr": [],
     "case_name": "test_Log1p_007"
+  },
+  {
+    "op": "Log1p",
+    "calc_expect_func_file" : "test_log1p_golden.py:calc_expect_func",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [-2],
+        "typical_shape": [2, 1024],
+        "param_type": "input",
+        "name": "input_x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [2, 1024],
+        "param_type": "output",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Log1p_dynamic_rank_000"
   }
 ]

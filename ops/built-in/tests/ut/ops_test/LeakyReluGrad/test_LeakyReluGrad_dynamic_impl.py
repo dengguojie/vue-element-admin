@@ -31,9 +31,22 @@ case2 = {
     "support_expect": True
     }
 
+case3 = {
+    "params": [
+        {"shape": (-2,), "dtype": "float32", "format": "ND", "ori_shape": (-2,),"ori_format": "ND"},
+        {"shape": (-2,), "dtype": "float32", "format": "ND", "ori_shape": (-2,),"ori_format": "ND"},
+        {"shape": (-2,), "dtype": "float32", "format": "ND", "ori_shape": (-2,),"ori_format": "ND"},
+        None
+    ],
+    "case_name": "dynamic_leaky_relu_grad_case3",
+    "expect": "success",
+    "format_expect": [],
+    "support_expect": True
+    }
 
 ut_case.add_case(["Ascend910A", "Ascend710", "Ascend310"], case1)
 ut_case.add_case(["Ascend910A", "Ascend710", "Ascend310"], case2)
+ut_case.add_case(["Ascend910A", "Ascend710", "Ascend310"], case3)
 
 if __name__ == '__main__':
     ut_case.run("Ascend910A")

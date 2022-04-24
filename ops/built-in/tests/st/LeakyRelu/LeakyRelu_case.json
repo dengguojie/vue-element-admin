@@ -1,0 +1,33 @@
+[
+    {
+        "case_name": "LeakyRelu_dynamic_rank_case_000",
+        "calc_expect_func_file" : "test_leakyrelu_golden.py:calc_expect_func",
+        "op": "LeakyRelu",
+        "input_desc": [
+          {
+            "format": "ND",
+            "type": "float32",
+            "shape": [-2],
+            "typical_shape": [1, 24, 1, 256],
+            "data_distribute": "uniform",
+            "value_range": [[0, 100]],
+            "name": "x"
+          }
+        ],
+        "output_desc": [
+          {
+            "format": "ND",
+            "type": "float32",
+            "shape": [1, 24, 1, 256],
+            "name": "y"
+          }
+        ],
+        "attr": [
+          {
+            "name": "negative_slope",
+            "type": "float",
+            "value": 0.2
+          }
+        ]
+      }
+]

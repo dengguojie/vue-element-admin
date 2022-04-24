@@ -1,0 +1,42 @@
+[
+    {
+        "case_name": "LeakyReluGrad_dynamic_rank_case_000",
+        "calc_expect_func_file" : "test_leakyrelugrad_golden.py:calc_expect_func",
+        "op": "LeakyReluGrad",
+        "input_desc": [
+          {
+            "format": "ND",
+            "type": "float32",
+            "shape": [-2],
+            "typical_shape": [24, 256],
+            "data_distribute": "uniform",
+            "value_range": [[0, 100]],
+            "name": "gradients"
+          },
+          {
+            "format": "ND",
+            "type": "float32",
+            "shape": [-2],
+            "typical_shape": [24, 256],
+            "data_distribute": "uniform",
+            "value_range": [[0, 100]],
+            "name": "features"
+          }
+        ],
+        "output_desc": [
+          {
+            "format": "ND",
+            "type": "float32",
+            "shape": [24, 256],
+            "name": "backprops"
+          }
+        ],
+        "attr": [
+          {
+            "name": "negative_slope",
+            "type": "float",
+            "value": 0.2
+          }
+        ]
+      }
+]
