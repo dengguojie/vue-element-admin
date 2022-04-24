@@ -106,7 +106,7 @@ def _get_new_extra_params(extra_params):
     return new_extra_params
 
 
-def get_op_compile_unique_key(op_type, inputs, outputs, attrs, extra_params):
+def get_op_compile_unique_key(op_type, inputs, outputs, attrs, extra_params, is_sha=True):
     """
     get_op_compile_unique_key
     """
@@ -128,8 +128,10 @@ def get_op_compile_unique_key(op_type, inputs, outputs, attrs, extra_params):
     if extra_params and isinstance(extra_params, dict):
         op_compile_params["extra_params"] = _get_new_extra_params(extra_params)
 
-    op_compile_params = str(op_compile_params)
-    log.debug("kb_query_key_params_str: %s:%s", op_type, op_compile_params)
-    op_compile_params_sha = hashlib.sha256(op_compile_params.encode("utf-8")).hexdigest()
+    log.debug("kb_query_key_params_str: %s:%s", op_type, str(op_compile_params))
+    if is_sha:
+        op_compile_params_sha = hashlib.sha256(str(op_compile_params).encode("utf-8")).hexdigest()
+        return "%s_%s" % (op_type, op_compile_params_sha)
 
-    return "%s_%s" % (op_type, op_compile_params_sha)
+    op_compile_params["op_type"] = op_type
+    return str(op_compile_params)

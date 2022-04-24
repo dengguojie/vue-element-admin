@@ -1,0 +1,3 @@
+# source file:python/tbe/common/utils/create_kb_query_key.py
+
+def get_op_compile_unique_key(op_type, inputs, outputs, attrs, extra_params, is_sha=True):
