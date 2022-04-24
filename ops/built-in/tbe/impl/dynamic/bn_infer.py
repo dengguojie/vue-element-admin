@@ -124,19 +124,10 @@ def bn_infer_compute(x, scale, offset, mean, variance,
     """
     shape_x = shape_util.shape_to_list(x.shape)
     shape_scale = shape_util.shape_to_list(scale.shape)
-    shape_offset = shape_util.shape_to_list(offset.shape)
-    shape_mean = shape_util.shape_to_list(mean.shape)
-    shape_variance = shape_util.shape_to_list(variance.shape)
-
-    shape_x, shape_scale, shape_offset, shape_mean, shape_variance, shape_max = shape_util.unify_broadcast_shapes(
-        [shape_x, shape_scale, shape_offset, shape_mean, shape_variance])
+    shape_x, shape_scale, shape_max = shape_util.unify_broadcast_shapes([shape_x, shape_scale])
 
     # compute the oefficient of y
     x = tbe.broadcast(x, shape_max)
-    scale = tbe.broadcast(scale, shape_max)
-    offset = tbe.broadcast(offset, shape_max)
-    mean = tbe.broadcast(mean, shape_max)
-    variance = tbe.broadcast(variance, shape_max)
 
     multiplier_add = tbe.vadds(variance, epsilon)
     multiplier_sqrt = tbe.vsqrt(multiplier_add)
@@ -154,7 +145,9 @@ def bn_infer_compute(x, scale, offset, mean, variance,
         multiplier_div = tbe.cast_to(multiplier_div, "float32")
         addend_sub = tbe.cast_to(addend_sub, "float32")
 
-    res = tbe.vadd(tbe.vmul(multiplier_div, x), addend_sub)
+    multiplier = tbe.broadcast(multiplier_div, shape_x)
+    addend = tbe.broadcast(addend_sub, shape_x)
+    res = tbe.vadd(tbe.vmul(multiplier, x), addend)
     if is_cast:
         res = tbe.cast_to(res, "float16")
 
@@ -214,16 +207,16 @@ def bn_infer(x, scale, offset, mean, variance, y,
         error_manager_vector.raise_err_check_params_rules("bn_infer", format_rule, "x", data_format)
     _check_dtype(dtype_x, dtype_scale, dtype_offset, dtype_mean, dtype_variance)
 
-    ins = classify([x, scale, offset, mean, variance], OpPatternMode.ELEWISE_WITH_BROADCAST)
+    ins = classify([x, scale], OpPatternMode.ELEWISE_WITH_BROADCAST)
     schedules, tensors = [], []
-    for (_x, _scale, _offset, _mean, _variance) in ins:
+    for (_x, _scale) in ins:
         with tbe.compute():
-            shape_list = shape_util.variable_shape([_x, _scale, _offset, _mean, _variance])
+            shape_list = shape_util.variable_shape([_x, _scale])
             x_input = tvm.placeholder(shape_list[0], name="x_input", dtype=dtype_x.lower())
             scale_input = tvm.placeholder(shape_list[1], name="scale_input", dtype=dtype_scale.lower())
-            offset_input = tvm.placeholder(shape_list[2], name="offset_input", dtype=dtype_offset.lower())
-            mean_input = tvm.placeholder(shape_list[3], name="mean_input", dtype=dtype_mean.lower())
-            variance_input = tvm.placeholder(shape_list[4], name="variance_input", dtype=dtype_variance.lower())
+            offset_input = tvm.placeholder(shape_list[1], name="offset_input", dtype=dtype_offset.lower())
+            mean_input = tvm.placeholder(shape_list[1], name="mean_input", dtype=dtype_mean.lower())
+            variance_input = tvm.placeholder(shape_list[1], name="variance_input", dtype=dtype_variance.lower())
             res = bn_infer_compute(x_input, scale_input, offset_input, mean_input, variance_input,
                                    y, epsilon, kernel_name=kernel_name)
             tensors.append([x_input, scale_input, offset_input, mean_input, variance_input, res])
