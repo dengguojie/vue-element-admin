@@ -413,118 +413,10 @@ def adam_apply_one_with_decay(input0,
                                     const_mul_x, const_mul1_x, const_mul2_x,
                                     const_mul3_x, const_mul4_x, add2_y)
 
-    # num 0
-    idx = Constant.NUM_ZERO
-    dynamic_inputs = []
-    if Constant.DYNAMIC_NUM not in shape0:
-        data_inputs[idx] = tvm.placeholder(shape0,
-                                           name=data_names[idx],
-                                           dtype=data_dtype[idx])
-    else:
-        dynamic_inputs.append(input0)
-        dynamic_inputs[-1]["shape"] = shape0
-
-    # num 1
-    idx += 1
-    if Constant.DYNAMIC_NUM not in shape1:
-        data_inputs[idx] = tvm.placeholder(shape1,
-                                           name=data_names[idx],
-                                           dtype=data_dtype[idx])
-    else:
-        dynamic_inputs.append(input1)
-        dynamic_inputs[-1]["shape"] = shape1
-
-    # num 2
-    idx += 1
-    if Constant.DYNAMIC_NUM not in shape2:
-        data_inputs[idx] = tvm.placeholder(shape2,
-                                           name=data_names[idx],
-                                           dtype=data_dtype[idx])
-    else:
-        dynamic_inputs.append(input2)
-        dynamic_inputs[-1]["shape"] = shape2
-
-    # num 3
-    idx += 1
-    if Constant.DYNAMIC_NUM not in shape3:
-        data_inputs[idx] = tvm.placeholder(shape3,
-                                           name=data_names[idx],
-                                           dtype=data_dtype[idx])
-    else:
-        dynamic_inputs.append(input3)
-        dynamic_inputs[-1]["shape"] = shape3
-
-    # num 4
-    idx += 1
-    if Constant.DYNAMIC_NUM not in shape4:
-        data_inputs[idx] = tvm.placeholder(shape4,
-                                           name=data_names[idx],
-                                           dtype=data_dtype[idx])
-    else:
-        dynamic_inputs.append(input4)
-        dynamic_inputs[-1]["shape"] = shape4
-
-    # num 5
-    idx += 1
-    if Constant.DYNAMIC_NUM not in shapecm0:
-        data_inputs[idx] = tvm.placeholder(shapecm0,
-                                           name=data_names[idx],
-                                           dtype=data_dtype[idx])
-    else:
-        dynamic_inputs.append(const_mul_x)
-        dynamic_inputs[-1]["shape"] = shapecm0
-
-    # num 6
-    idx += 1
-    if Constant.DYNAMIC_NUM not in shapecm1:
-        data_inputs[idx] = tvm.placeholder(shapecm1,
-                                           name=data_names[idx],
-                                           dtype=data_dtype[idx])
-    else:
-        dynamic_inputs.append(const_mul1_x)
-        dynamic_inputs[-1]["shape"] = shapecm1
-
-    # num 7
-    idx += 1
-    if Constant.DYNAMIC_NUM not in shapecm2:
-        data_inputs[idx] = tvm.placeholder(shapecm2,
-                                           name=data_names[idx],
-                                           dtype=data_dtype[idx])
-    else:
-        dynamic_inputs.append(const_mul2_x)
-        dynamic_inputs[-1]["shape"] = shapecm2
-
-    # num 8
-    idx += 1
-    if Constant.DYNAMIC_NUM not in shapecm3:
-        data_inputs[idx] = tvm.placeholder(shapecm3,
-                                           name=data_names[idx],
-                                           dtype=data_dtype[idx])
-    else:
-        dynamic_inputs.append(const_mul3_x)
-        dynamic_inputs[-1]["shape"] = shapecm3
-
-    # num 9
-    idx += 1
-    if Constant.DYNAMIC_NUM not in shapecm4:
-        data_inputs[idx] = tvm.placeholder(shapecm4,
-                                           name=data_names[idx],
-                                           dtype=data_dtype[idx])
-    else:
-        dynamic_inputs.append(const_mul4_x)
-        dynamic_inputs[-1]["shape"] = shapecm4
-
-    # num 10
-    idx += 1
-    if Constant.DYNAMIC_NUM not in shapey:
-        data_inputs[idx] = tvm.placeholder(shapey,
-                                           name=data_names[idx],
-                                           dtype=data_dtype[idx])
-    else:
-        dynamic_inputs.append(add2_y)
-        dynamic_inputs[-1]["shape"] = shapey
-
-    ins = classify(dynamic_inputs, OpPatternMode.ELEWISE)
+    dynamic_inputs = [input0, input1, input2, input3, input4,
+                   const_mul_x, const_mul1_x, const_mul2_x,
+                   const_mul3_x, const_mul4_x, add2_y]
+    ins = classify(dynamic_inputs, OpPatternMode.ELEWISE_WITH_BROADCAST)
     schedules, tensors = [], []
 
     for _dinputs in ins:
@@ -532,8 +424,6 @@ def adam_apply_one_with_decay(input0,
             shape_dinputs = shape_util.variable_shape(_dinputs)
             idx = Constant.NUM_ZERO
             for shape_dinput in shape_dinputs:
-                while idx < Constant.NUM_ELEVEN and (data_inputs[idx] is not None):
-                    idx += 1
                 data_inputs[idx] = tvm.placeholder(shape_dinput,
                                                    name=data_names[idx],
                                                    dtype=data_dtype[idx])

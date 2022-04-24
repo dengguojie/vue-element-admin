@@ -248,109 +248,21 @@ def adam_apply_one(input0, input1, input2, input3, input4,
     data_names = ["data_grad", "data_v", "data_m", "data_var", "data_input4",
                   "data_input_mul", "data_input_mul1", "data_input_mul2",
                   "data_input_mul3", "data_input_add2"]
-    #num 0
-    idx = Constant.NUM_ZERO
-    dynamic_inputs = []
-    shape_input0 = shape_util.scalar2tensor_one(input0.get("shape"))
-    if Constant.DYNAMIC_NUM not in shape_input0:
-        data_inputs[idx] = tvm.placeholder(shape_input0,
-                                           name=data_names[idx],
-                                           dtype=data_dtype[idx])
-    else:
-        dynamic_inputs.append(input0)
-        dynamic_inputs[-1]["shape"] = shape_input0
-    #num 1
-    idx += 1
-    shape_input1 = shape_util.scalar2tensor_one(input1.get("shape"))
-    if Constant.DYNAMIC_NUM not in shape_input1:
-        data_inputs[idx] = tvm.placeholder(shape_input1,
-                                           name=data_names[idx],
-                                           dtype=data_dtype[idx])
-    else:
-        dynamic_inputs.append(input1)
-        dynamic_inputs[-1]["shape"] = shape_input1
-    #num 2
-    idx += 1
-    shape_input2 = shape_util.scalar2tensor_one(input2.get("shape"))
-    if Constant.DYNAMIC_NUM not in shape_input2:
-        data_inputs[idx] = tvm.placeholder(shape_input2,
-                                           name=data_names[idx],
-                                           dtype=data_dtype[idx])
-    else:
-        dynamic_inputs.append(input2)
-        dynamic_inputs[-1]["shape"] = shape_input2
-    #num 3
-    idx += 1
-    shape_input3 = shape_util.scalar2tensor_one(input3.get("shape"))
-    if Constant.DYNAMIC_NUM not in shape_input3:
-        data_inputs[idx] = tvm.placeholder(shape_input3,
-                                           name=data_names[idx],
-                                           dtype=data_dtype[idx])
-    else:
-        dynamic_inputs.append(input3)
-        dynamic_inputs[-1]["shape"] = shape_input3
-    #num 4
-    idx += 1
-    shape_input4 = shape_util.scalar2tensor_one(input4.get("shape"))
-    if Constant.DYNAMIC_NUM not in shape_input4:
-        data_inputs[idx] = tvm.placeholder(shape_input4,
-                                           name=data_names[idx],
-                                           dtype=data_dtype[idx])
-    else:
-        dynamic_inputs.append(input4)
-        dynamic_inputs[-1]["shape"] = shape_input4
-    #num 5
-    idx += 1
-    shape_mul0_x = shape_util.scalar2tensor_one(mul0_x.get("shape"))
-    if Constant.DYNAMIC_NUM not in shape_mul0_x:
-        data_inputs[idx] = tvm.placeholder(shape_mul0_x,
-                                           name=data_names[idx],
-                                           dtype=data_dtype[idx])
-    else:
-        dynamic_inputs.append(mul0_x)
-        dynamic_inputs[-1]["shape"] = shape_mul0_x
-    #num 6
-    idx += 1
-    shape_mul1_x = shape_util.scalar2tensor_one(mul1_x.get("shape"))
-    if Constant.DYNAMIC_NUM not in shape_mul1_x:
-        data_inputs[idx] = tvm.placeholder(shape_mul1_x,
-                                           name=data_names[idx],
-                                           dtype=data_dtype[idx])
-    else:
-        dynamic_inputs.append(mul1_x)
-        dynamic_inputs[-1]["shape"] = shape_mul1_x
-    #num 7
-    idx += 1
-    shape_mul2_x = shape_util.scalar2tensor_one(mul2_x.get("shape"))
-    if Constant.DYNAMIC_NUM not in shape_mul2_x:
-        data_inputs[idx] = tvm.placeholder(shape_mul2_x,
-                                           name=data_names[idx],
-                                           dtype=data_dtype[idx])
-    else:
-        dynamic_inputs.append(mul2_x)
-        dynamic_inputs[-1]["shape"] = shape_mul2_x
-    #num 8
-    idx += 1
-    shape_mul3_x = shape_util.scalar2tensor_one(mul3_x.get("shape"))
-    if Constant.DYNAMIC_NUM not in shape_mul3_x:
-        data_inputs[idx] = tvm.placeholder(shape_mul3_x,
-                                           name=data_names[idx],
-                                           dtype=data_dtype[idx])
-    else:
-        dynamic_inputs.append(mul3_x)
-        dynamic_inputs[-1]["shape"] = shape_mul3_x
-    #num 9
-    idx += 1
-    shape_add2_y = shape_util.scalar2tensor_one(add2_y.get("shape"))
-    if Constant.DYNAMIC_NUM not in shape_add2_y:
-        data_inputs[idx] = tvm.placeholder(shape_add2_y,
-                                           name=data_names[idx],
-                                           dtype=data_dtype[idx])
-    else:
-        dynamic_inputs.append(add2_y)
-        dynamic_inputs[-1]["shape"] = shape_add2_y
 
-    ins = classify(dynamic_inputs, OpPatternMode.ELEWISE)
+    shape_input0 = shape_util.scalar2tensor_one(input0.get("shape"))
+    shape_input1 = shape_util.scalar2tensor_one(input1.get("shape"))
+    shape_input2 = shape_util.scalar2tensor_one(input2.get("shape"))
+    shape_input3 = shape_util.scalar2tensor_one(input3.get("shape"))
+    shape_input4 = shape_util.scalar2tensor_one(input4.get("shape"))
+    shape_mul0_x = shape_util.scalar2tensor_one(mul0_x.get("shape"))
+    shape_mul1_x = shape_util.scalar2tensor_one(mul1_x.get("shape"))
+    shape_mul2_x = shape_util.scalar2tensor_one(mul2_x.get("shape"))
+    shape_mul3_x = shape_util.scalar2tensor_one(mul3_x.get("shape"))
+    shape_add2_y = shape_util.scalar2tensor_one(add2_y.get("shape"))
+    
+    dynamic_inputs = [input0, input1, input2, input3, input4,
+                   mul0_x, mul1_x, mul2_x, mul3_x, add2_y]
+    ins = classify(dynamic_inputs, OpPatternMode.ELEWISE_WITH_BROADCAST)
     schedules, tensors = [], []
 
     for _dinputs in ins:
@@ -358,8 +270,6 @@ def adam_apply_one(input0, input1, input2, input3, input4,
             shape_dinputs = shape_util.variable_shape(_dinputs)
             idx = Constant.NUM_ZERO
             for shape_dinput in shape_dinputs:
-                while idx < Constant.NUM_TEN and (data_inputs[idx] is not None):
-                    idx += 1
                 data_inputs[idx] = tvm.placeholder(shape_dinput,
                                                    name=data_names[idx],
                                                    dtype=data_dtype[idx])
