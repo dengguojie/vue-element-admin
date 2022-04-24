@@ -37,7 +37,7 @@
 
 #define CUBE_INNER_ERR_REPORT(op_name, err_msg, ...) \
   do { \
-      OP_LOGE(op_name, err_msg, ##__VA_ARGS__); \
+      OP_LOGE_WITHOUT_REPORT(op_name, err_msg, ##__VA_ARGS__); \
       REPORT_INNER_ERROR("E69999", "op[%s], " err_msg, op_name, ##__VA_ARGS__); \
   } while(0)
 

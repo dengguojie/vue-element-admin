@@ -7625,7 +7625,7 @@ IMPLEMT_COMMON_INFERFUNC(MaxPoolV3InferShape) {
     return GRAPH_FAILED;
   }
   if (pads.size() != 4) {
-    GE_OP_LOGE(op.GetName().c_str(), "Length of pads must be 4!");
+    OP_LOGE(TbeGetName(op), "Length of pads must be 4!");
     return GRAPH_FAILED;
   }
   int32_t pad_top = pads[0];
@@ -7649,7 +7649,7 @@ IMPLEMT_COMMON_INFERFUNC(MaxPoolV3InferShape) {
 
   if ((input_format == FORMAT_NCHW && data_format != "NCHW") ||
       (input_format == FORMAT_NHWC && data_format != "NHWC") ) {
-    GE_OP_LOGE(op.GetName().c_str(), "input_format and data_format should be same.");
+    OP_LOGE(TbeGetName(op), "input_format and data_format should be same.");
     return GRAPH_FAILED;
   }
 

@@ -32,28 +32,28 @@
 
 #define AICPU_INFER_SHAPE_CALL_ERR_REPORT(op_name, err_msg) \
   do { \
-    OP_LOGE(op_name, "%s", err_msg.c_str()); \
+    OP_LOGE_WITHOUT_REPORT(op_name, "%s", get_cstr(err_msg)); \
     REPORT_CALL_ERROR(GetViewErrorCodeStr(ViewErrorCode::AICPU_INFER_SHAPE_ERROR), \
       "%s", ConcatString("op[", op_name, "], ", err_msg).c_str()); \
   } while (0)
 
 #define AICPU_INFER_SHAPE_INNER_ERR_REPORT(op_name, err_msg) \
   do { \
-    OP_LOGE(op_name, "%s", err_msg.c_str()); \
+    OP_LOGE_WITHOUT_REPORT(op_name, "%s", get_cstr(err_msg)); \
     REPORT_INNER_ERROR(GetViewErrorCodeStr(ViewErrorCode::AICPU_INFER_SHAPE_ERROR), \
       "%s", ConcatString("op[", op_name, "], ", err_msg).c_str()); \
   } while (0)
 
 #define VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op_name, err_msg)\
   do { \
-    OP_LOGE(op_name, "%s", err_msg.c_str()); \
+    OP_LOGE_WITHOUT_REPORT(op_name, "%s", get_cstr(err_msg)); \
     REPORT_INNER_ERROR(GetViewErrorCodeStr(ViewErrorCode::VECTOR_INNER_ERROR), \
       "%s", ConcatString("op[", op_name, "], ", err_msg).c_str()); \
   } while (0)
 
 #define VECTOR_FUSION_INNER_ERR_REPORT(op_name, err_msg, ...)\
   do { \
-    OP_LOGE(op_name, err_msg, ##__VA_ARGS__); \
+    OP_LOGE_WITHOUT_REPORT(op_name, err_msg, ##__VA_ARGS__); \
     REPORT_INNER_ERROR(GetViewErrorCodeStr(ViewErrorCode::VECTOR_INNER_ERROR), \
     "op[%s], " err_msg, get_op_name(op_name), ##__VA_ARGS__); \
   } while (0)
@@ -68,25 +68,25 @@
 
 #define CUBE_INNER_ERR_REPORT(op_name, err_msg, ...) \
   do { \
-      OP_LOGE(op_name, err_msg, ##__VA_ARGS__); \
+      OP_LOGE_WITHOUT_REPORT(op_name, err_msg, ##__VA_ARGS__); \
       REPORT_INNER_ERROR("E69999", "op[%s], " err_msg, op_name, ##__VA_ARGS__); \
   } while(0)
 
 #define CUBE_CALL_ERR_REPORT(op_name, err_msg, ...) \
   do { \
-      OP_LOGE(op_name, err_msg, ##__VA_ARGS__); \
+      OP_LOGE_WITHOUT_REPORT(op_name, err_msg, ##__VA_ARGS__); \
       REPORT_CALL_ERROR("E69999", "op[%s], " err_msg, op_name, ##__VA_ARGS__); \
   } while(0)
 
 #define CUBE_INNER_ERR_REPORT_PLUGIN(op_name, err_msg, ...) \
   do { \
-      OP_LOGE(op_name, err_msg, ##__VA_ARGS__); \
+      OP_LOGE_WITHOUT_REPORT(op_name, err_msg, ##__VA_ARGS__); \
       REPORT_INNER_ERROR("E59999", "op[%s], " err_msg, op_name, ##__VA_ARGS__); \
   } while(0)
 
 #define CUBE_CALL_ERR_REPORT_PLUGIN(op_name, err_msg, ...) \
   do { \
-      OP_LOGE(op_name, err_msg, ##__VA_ARGS__); \
+      OP_LOGE_WITHOUT_REPORT(op_name, err_msg, ##__VA_ARGS__); \
       REPORT_CALL_ERROR("E59999", "op[%s], " err_msg, op_name, ##__VA_ARGS__); \
   } while(0)
 
