@@ -37,6 +37,7 @@ from impl.util import util_common
 from impl.util.util_select_op_base import get_op_cal_info
 from impl.strided_slice_d import make_perf_params
 from impl.strided_slice_d import strided_slice_d
+from impl.dynamic.slice import update_params_for_other_format
 
 
 # 'pylint: disable=too-few-public-methods,too-many-instance-attributes
@@ -7230,84 +7231,6 @@ def _check_last_two_diff_fp16(shape, size, dtype):
     return True
 
 
-def _update_params_for_other_format(shape, begin, size, input_format, ori_format):
-    """
-    update begin, size base on  ori_format
-    """
-    # modify size base size value if value = -1 size = shape - begin
-    size_new = []
-    for i, item in enumerate(size):
-        if item != -1:
-            size_new.append(item)
-        else:
-            size_new.append(shape[i] - begin[i])
-    size = size_new
-    align_c0 = 16
-    begin = list(begin)
-    size = list(size)
-    if input_format in ["NDC1HWC0", "NC1HWC0", "FRACTAL_Z", "FRACTAL_Z_3D"]:
-        # when NDC1HWC0 or NC1HWC0 will update the C1 and C0 for begin and size
-        # ex: begin [N, D, C, H, W] -> [N, D, C // 16, H, W, 0]
-        #     size  [N, D, C, H, W] -> [N, D, (C + 15) // 16, H, W, -1]
-        # when FRACTAL_Z or FRACTAL_Z_3D will update the C1 and C0 and N1 and N0
-        # ex: begin [N, D, C, H, W] -> [D, C // 16, H, W, N // 16, 0, 0]
-        #     size  [N, D, C, H, W] -> [D, (C + 15) // 16, H, W, (N + 15) // 16, 0, 0]
-        begin_nchw = [begin[ori_format.index("N")], begin[ori_format.index("C")],
-                      begin[ori_format.index("H")], begin[ori_format.index("W")]]
-        size_nchw = [size[ori_format.index("N")], size[ori_format.index("C")],
-                     size[ori_format.index("H")], size[ori_format.index("W")]]
-        begin_c1 = begin_nchw[1] // align_c0
-        begin_c0 = 0
-        begin_n1 = begin_nchw[0] // align_c0
-        begin_n0 = 0
-        size_c1 = _ceil_div(size_nchw[1], align_c0)
-        size_c0 = -1
-        size_n1 = _ceil_div(size_nchw[0], align_c0)
-        size_n0 = -1
-
-        if input_format == "NDC1HWC0":
-            begin_new = [begin_nchw[0], begin[ori_format.index("D")],
-                         begin_c1, begin_nchw[2], begin_nchw[3], begin_c0]
-            size_new = [size_nchw[0], size[ori_format.index("D")],
-                        size_c1, size_nchw[2], size_nchw[3], size_c0]
-        elif input_format == "NC1HWC0":
-            begin_new = [begin_nchw[0], begin_c1, begin_nchw[2], begin_nchw[3], begin_c0]
-            size_new = [size_nchw[0], size_c1, size_nchw[2], size_nchw[3], size_c0]
-        elif input_format == "FRACTAL_Z_3D":
-            begin_new = [begin[ori_format.index("D")],
-                         begin_c1, begin_nchw[2], begin_nchw[3], begin_n1, begin_n0, begin_c0]
-            size_new = [size[ori_format.index("D")],
-                        size_c1, size_nchw[2], size_nchw[3], size_n1, size_n0, size_c0]
-        else:
-            begin_new = [begin_c1, begin_nchw[2], begin_nchw[3], begin_n1, begin_n0, begin_c0]
-            size_new = [size_c1, size_nchw[2], size_nchw[3], size_n1, size_n0, size_c0]
-
-        return begin_new, size_new
-
-    if input_format in ["FRACTAL_NZ"]:
-        # when FRACTAL_NZ will update last two dim
-        # ex: begin [A, B, C, D] -> [A, B, D // 16,  C // 16, 0 , 0]
-        #     size  [A, B, C, D] -> [A, B, (D + 15) // 16,  (C + 15) // 16, -1 , -1]
-        begin_fisrt_last_dim_one = begin[-1] // align_c0
-        begin_fisrt_last_dim_two = 0
-
-        begin_second_last_dim_one = begin[-2] // align_c0
-        begin_second_last_dim_two = 0
-
-        size_fisrt_last_dim_one = _ceil_div(size[-1], align_c0)
-        size_fisrt_last_dim_two = -1
-
-        size_second_last_dim_one = _ceil_div(size[-2], align_c0)
-        size_second_last_dim_two = -1
-
-        begin_new = begin[0:-2] + [begin_fisrt_last_dim_one, begin_second_last_dim_one,
-                                   begin_second_last_dim_two, begin_fisrt_last_dim_two]
-        size_new = size[0:-2] + [size_fisrt_last_dim_one, size_second_last_dim_one,
-                                 size_second_last_dim_two, size_fisrt_last_dim_two]
-
-        return begin_new, size_new
-
-
 # 'pylint: disable=unused-variable
 def get_fused_str(format_char_list):
     """get_fused_str for format
@@ -7495,7 +7418,7 @@ def slice_d(x, y, begin, size, kernel_name="slice_d"):
     if input_format in ("NDC1HWC0", "NC1HWC0", "FRACTAL_NZ", "FRACTAL_Z", "FRACTAL_Z_3D"):
         x = util_common.update_shape_base_other_format(x)
         shape = x.get("shape")
-        begin, size = _update_params_for_other_format(ori_shape, begin, size, input_format, ori_format)
+        begin, size = update_params_for_other_format(ori_shape, begin, size, input_format, ori_format)
         _check_parameters(shape, dtype, begin, size, kernel_name)
         shape_new, begin_new, size_new = _update_params(shape, begin, size)
         shape_new_len = len(shape_new)

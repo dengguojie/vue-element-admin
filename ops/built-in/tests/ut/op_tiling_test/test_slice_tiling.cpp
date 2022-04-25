@@ -65,7 +65,7 @@ TEST_F(slice_tiling, slice_tiling_no_mask) {
   TENSOR_INPUT_CONST(opParas, tensorInput2, size, (const uint8_t*)size.data(), size.size() * sizeof(int32_t));
   TENSOR_OUTPUT(opParas, tensorOutput, y);
 
-  std::string compileInfo = R"({"vars": {"block_dim": 32}})";
+  std::string compileInfo = R"({"vars": {"block_dim": 32, "ub_size": 26512}, "is_tik": true})";
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "1 4 4 4 4 4 2 2 2 2 1 1 1 1 3 3 3 3 1 1 1 1 ");
@@ -103,7 +103,7 @@ TEST_F(slice_tiling, slice_tiling_with_mask1) {
   TENSOR_INPUT_CONST(opParas, tensorInput2, size, (const uint8_t*)size.data(), size.size() * sizeof(int32_t));
   TENSOR_OUTPUT(opParas, tensorOutput, y);
 
-  std::string compileInfo = R"({"vars": {"block_dim": 32}})";
+  std::string compileInfo = R"({"vars": {"block_dim": 32, "ub_size": 26512}, "is_tik": true})";
 
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
@@ -138,7 +138,7 @@ TEST_F(slice_tiling, slice_tiling_no_const_value) {
   TENSOR_INPUT(opParas, tensorInput2, size);
   TENSOR_OUTPUT(opParas, tensorOutput, y);
 
-  std::string compileInfo = R"({"vars": {"block_dim": 32}})";
+  std::string compileInfo = R"({"vars": {"block_dim": 32, "ub_size": 26512}, "is_tik": true})";
 
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V3_FALSE(opParas, iter->second, compileInfo, runInfo);
@@ -172,7 +172,7 @@ TEST_F(slice_tiling, slice_tiling_invalid_begin_length) {
   TENSOR_INPUT_CONST(opParas, tensorInput2, size, (const uint8_t*)size.data(), size.size() * sizeof(int32_t));
   TENSOR_OUTPUT(opParas, tensorOutput, y);
 
-  std::string compileInfo = R"({"vars": {"block_dim": 32}})";
+  std::string compileInfo = R"({"vars": {"block_dim": 32, "ub_size": 26512}, "is_tik": true})";
 
   optiling::utils::OpRunInfo runInfo;
 
@@ -207,7 +207,7 @@ TEST_F(slice_tiling, slice_tiling_invalid_begin_value) {
   TENSOR_INPUT_CONST(opParas, tensorInput2, size, (const uint8_t*)size.data(), size.size() * sizeof(int32_t));
   TENSOR_OUTPUT(opParas, tensorOutput, y);
 
-  std::string compileInfo = R"({"vars": {"block_dim": 32}})";
+  std::string compileInfo = R"({"vars": {"block_dim": 32, "ub_size": 26512}, "is_tik": true})";
 
   optiling::utils::OpRunInfo runInfo;
 
@@ -241,7 +241,7 @@ TEST_F(slice_tiling, slice_tiling_end_value_negative_one) {
   TENSOR_INPUT_CONST(opParas, tensorInput1, offsets, (const uint8_t*)offset.data(), offset.size() * sizeof(int32_t));
   TENSOR_INPUT_CONST(opParas, tensorInput2, size, (const uint8_t*)size.data(), size.size() * sizeof(int32_t));
   TENSOR_OUTPUT(opParas, tensorOutput, y);
-  std::string compileInfo = R"({"vars": {"block_dim": 32}})";
+  std::string compileInfo = R"({"vars": {"block_dim": 32, "ub_size": 26512}, "is_tik": true})";
 
   optiling::utils::OpRunInfo runInfo;
 
@@ -268,9 +268,48 @@ TEST_F(slice_tiling, slice_tiling_empty_input) {
   vector<int32_t> strides = {1, 1};
 
   TENSOR_OUTPUT(opParas, tensorOutput, y);
-  std::string compileInfo = R"({"vars": {"block_dim": 32}})";
+  std::string compileInfo = R"({"vars": {"block_dim": 32, "ub_size": 26512}, "is_tik": true})";
 
   optiling::utils::OpRunInfo runInfo;
 
   RUN_TILING_V3_FALSE(opParas, iter->second, compileInfo, runInfo);
+}
+
+TEST_F(slice_tiling, slice_tiling_dsl) {
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("Slice");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
+
+  auto opParas = op::Slice("Slice");
+  vector<vector<int64_t>> input_shapes = {
+      {3, 20},
+      {2},
+      {2},
+  };
+
+  vector<ge::DataType> dtypes = {ge::DT_FLOAT, ge::DT_INT32, ge::DT_INT32};
+  TensorDesc tensorInput0(ge::Shape(input_shapes[0]), ge::FORMAT_ND, dtypes[0]);
+  TensorDesc tensorInput1(ge::Shape(input_shapes[1]), ge::FORMAT_ND, dtypes[1]);
+  TensorDesc tensorInput2(ge::Shape(input_shapes[2]), ge::FORMAT_ND, dtypes[2]);
+
+  TensorDesc tensorOutput;
+  tensorOutput.SetShape(ge::Shape(input_shapes[0]));
+  tensorOutput.SetDataType(ge::DT_FLOAT);
+
+  vector<int32_t> offset = {0, 0};
+  vector<int32_t> size = {1, 20};
+
+  TENSOR_INPUT(opParas, tensorInput0, x);
+  TENSOR_INPUT_CONST(opParas, tensorInput1, offsets, (const uint8_t*)offset.data(), offset.size() * sizeof(int32_t));
+  TENSOR_INPUT_CONST(opParas, tensorInput2, size, (const uint8_t*)size.data(), size.size() * sizeof(int32_t));
+  TENSOR_OUTPUT(opParas, tensorOutput, y);
+
+  std::string compileInfo = R"({"_base_info":[32, 261120, 4],
+                                "_coex_list": [2, 4, 3],
+                                "_slice_vars": {"515000000": [10000, 20000, 30000, 40000, 50000]},
+                                "_is_static": false,
+                                "_end_mode": 0})";
+
+  optiling::utils::OpRunInfo runInfo;
+  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "60 85899345940 20 ");
 }

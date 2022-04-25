@@ -24,7 +24,7 @@ def slice_by_tf(x, offsets, size):
     slice_by_tf
     """
     x_holder = tf.placeholder(x.dtype, shape=x.shape)
-    re = tf.strided_slice(x_holder, offsets, size)
+    re = tf.slice(x_holder, offsets, size)
     with tf.Session() as sess:
         result = sess.run(re, feed_dict={x_holder: x})
     return result

@@ -1,0 +1,401 @@
+[
+    {
+        "op": "Slice",
+        "case_name": "test_slice_001",
+        "calc_expect_func_file": "slice_golden.py:calc_expect_func",
+        "input_desc": [
+            {
+                "format": "ND",
+                "shape": [38, -1],
+                "typical_shape": [38, 38],
+                "shape_range": [[38, 38]],
+                "type": "float16",
+                "param_type": "input",
+                "value_range": [[0, 1]],
+                "data_distribute": "uniform",
+                "name": "x"
+            },
+            {
+                "format": "ND",
+                "shape": [2],
+                "type": "int32",
+                "param_type": "input",
+                "value_range": [[1, 20]],
+                "value": [0, 0],
+                "data_distribute": "uniform",
+                "name": "offsets"
+            },
+            {
+                "format": "ND",
+                "shape": [2],
+                "value": [19, 19],
+                "type": "int32",
+                "param_type": "input",
+                "value_range": [[1, 20]],
+                "data_distribute": "uniform",
+                "name": "size"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": "ND",
+                "shape": [-1, -1],
+                "shape_range": [[0, -1], [0, -1]],
+                "typical_shape": [19, 19],
+                "type": "float16",
+                "name": "y",
+                "param_type": "output"
+            }
+        ]
+    },
+    {
+        "op": "Slice",
+        "case_name": "test_slice_002",
+        "calc_expect_func_file": "slice_golden.py:calc_expect_func",
+        "input_desc": [
+            {
+                "format": "ND",
+                "shape": [5, 13, 4],
+                "type": "int32",
+                "param_type": "input",
+                "value_range": [[0, 5]],
+                "data_distribute": "uniform",
+                "name": "x"
+            },
+            {
+                "format": "ND",
+                "shape": [3],
+                "type": "int32",
+                "param_type": "input",
+                "is_const":true,
+                "value": [0, 1, 1],
+                "data_distribute": "uniform",
+                "name": "offsets"
+            },
+            {
+                "format": "ND",
+                "shape": [3],
+                "value": [2, 12, 3],
+                "is_const":true,
+                "type": "int32",
+                "param_type": "input",
+                "data_distribute": "uniform",
+                "name": "size"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": "ND",
+                "shape": [2, 12, 3],
+                "type": "int32",
+                "name": "y",
+                "param_type": "output"
+            }
+        ]
+    },
+    {
+        "op": "Slice",
+        "case_name": "test_slice_003",
+        "calc_expect_func_file": "slice_golden.py:calc_expect_func",
+        "input_desc": [
+            {
+                "format": "ND",
+                "shape": [13, 7, 5, 5],
+                "type": "int8",
+                "param_type": "input",
+                "value_range": [[0, 5]],
+                "data_distribute": "uniform",
+                "name": "x"
+            },
+            {
+                "format": "ND",
+                "shape": [4],
+                "type": "int32",
+                "param_type": "input",
+                "is_const":true,
+                "value": [0, 0, 0, 0],
+                "data_distribute": "uniform",
+                "name": "offsets"
+            },
+            {
+                "format": "ND",
+                "shape": [4],
+                "is_const":true,
+                "value": [1, 1, 1, 1],
+                "type": "int32",
+                "param_type": "input",
+                "data_distribute": "uniform",
+                "name": "size"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": "ND",
+                "shape": [1, 1, 1, 1],
+                "type": "int8",
+                "name": "y",
+                "param_type": "output"
+            }
+        ]
+    },
+    {
+        "op": "Slice",
+        "case_name": "test_slice_fz",
+        "input_desc": [
+            {
+                "format": "FRACTAL_Z",
+                "ori_format": "NCHW",
+                "shape": [256, 1, 16, 16],
+                "ori_shape": [16, 16, 16, 16],
+                "type": "float16",
+                "param_type": "input",
+                "value_range": [[0, 1]],
+                "data_distribute": "uniform",
+                "name": "x"
+            },
+            {
+                "format": "ND",
+                "ori_format": "ND",
+                "shape": [4],
+                "ori_shape": [4],
+                "type": "int32",
+                "param_type": "input",
+                "is_const":true,
+                "value": [0, 0, 0, 0],
+                "data_distribute": "uniform",
+                "name": "offsets"
+            },
+            {
+                "format": "ND",
+                "ori_format": "ND",
+                "shape": [4],
+                "ori_shape": [4],
+                "is_const":true,
+                "value": [16, 16, 16, 16],
+                "type": "int32",
+                "param_type": "input",
+                "data_distribute": "uniform",
+                "name": "size"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": "FRACTAL_Z",
+                "ori_format": "NCHW",
+                "shape": [256, 1, 16, 16],
+                "ori_shape": [16, 16, 16, 16],
+                "type": "float16",
+                "name": "y",
+                "param_type": "output"
+            }
+        ]
+    },
+    {
+        "op": "Slice",
+        "case_name": "test_slice_5hd",
+        "input_desc": [
+            {
+                "format": "NC1HWC0",
+                "ori_format": "NHWC",
+                "shape": [34, 5, 23, 45, 16],
+                "ori_shape": [34, 23, 45, 65],
+                "type": "float16",
+                "param_type": "input",
+                "value_range": [[0, 1]],
+                "data_distribute": "uniform",
+                "name": "x"
+            },
+            {
+                "format": "ND",
+                "ori_format": "ND",
+                "shape": [4],
+                "ori_shape": [4],
+                "type": "int32",
+                "param_type": "input",
+                "is_const":true,
+                "value": [3, 1, 2, 16],
+                "data_distribute": "uniform",
+                "name": "offsets"
+            },
+            {
+                "format": "ND",
+                "ori_format": "ND",
+                "shape": [4],
+                "ori_shape": [4],
+				"is_const":true,
+                "value": [17, 3, 5, -1],
+                "type": "int32",
+                "param_type": "input",
+                "data_distribute": "uniform",
+                "name": "size"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": "NC1HWC0",
+                "ori_format": "NHWC",
+                "shape": [17, 4, 3, 5, 16],
+                "ori_shape": [17, 3, 5, 49],
+                "type": "float16",
+                "name": "y",
+                "param_type": "output"
+            }
+        ]
+    },
+    {
+        "op": "Slice",
+        "case_name": "test_slice_6hd",
+        "input_desc": [
+            {
+                "format": "NDC1HWC0",
+                "ori_format": "NDHWC",
+                "shape": [34, 23, 5, 45, 65, 16],
+                "ori_shape": [34, 23, 45, 65, 79],
+                "type": "float16",
+                "param_type": "input",
+                "value_range": [[0, 1]],
+                "data_distribute": "uniform",
+                "name": "x"
+            },
+            {
+                "format": "ND",
+                "ori_format": "ND",
+                "shape": [5],
+                "ori_shape": [5],
+                "type": "int32",
+                "param_type": "input",
+                "is_const":true,
+                "value": [3, 1, 2, 0, 16],
+                "data_distribute": "uniform",
+                "name": "offsets"
+            },
+            {
+                "format": "ND",
+                "ori_format": "ND",
+                "shape": [5],
+                "ori_shape": [5],
+                "is_const":true,
+                "value": [17, 6, 5, 7, -1],
+                "type": "int32",
+                "param_type": "input",
+                "data_distribute": "uniform",
+                "name": "size"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": "NDC1HWC0",
+                "ori_format": "NDHWC",
+                "shape": [17, 6, 4, 5, 7, 16],
+                "ori_shape": [17, 6, 5, 7, 63],
+                "type": "float16",
+                "name": "y",
+                "param_type": "output"
+            }
+        ]
+    },
+    {
+        "op": "Slice",
+        "case_name": "test_slice_nz",
+        "input_desc": [
+            {
+                "format": "FRACTAL_NZ",
+                "ori_format": "NHWC",
+                "shape": [23, 5, 3, 16, 16],
+                "ori_shape": [23, 45, 65],
+                "type": "float16",
+                "param_type": "input",
+                "value_range": [[0, 1]],
+                "data_distribute": "uniform",
+                "name": "x"
+            },
+            {
+                "format": "ND",
+                "ori_format": "ND",
+                "shape": [3],
+                "ori_shape": [3],
+                "type": "int32",
+                "param_type": "input",
+                "is_const":true,
+                "value": [3, 0, 16],
+                "data_distribute": "uniform",
+                "name": "offsets"
+            },
+            {
+                "format": "ND",
+                "ori_format": "ND",
+                "shape": [3],
+                "ori_shape": [3],
+                "is_const":true,
+                "value": [14, -1, 32],
+                "type": "int32",
+                "param_type": "input",
+                "data_distribute": "uniform",
+                "name": "size"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": "FRACTAL_NZ",
+                "ori_format": "NHWC",
+                "shape": [14, 2, 3, 16, 16],
+                "ori_shape": [14, 45, 32],
+                "type": "float16",
+                "name": "y",
+                "param_type": "output"
+            }
+        ]
+    },
+    {
+        "op": "Slice",
+        "case_name": "test_slice_fz_3d",
+        "input_desc": [
+            {
+                "format": "FRACTAL_Z_3D",
+                "ori_format": "NDHWC",
+                "shape": [1792, 1, 16, 16],
+                "ori_shape": [16, 7, 16, 16, 16],
+                "type": "float16",
+                "param_type": "input",
+                "value_range": [[0, 1]],
+                "data_distribute": "uniform",
+                "name": "x"
+            },
+            {
+                "format": "ND",
+                "ori_format": "ND",
+                "shape": [5],
+                "ori_shape": [5],
+                "type": "int32",
+                "param_type": "input",
+                "is_const":true,
+                "value": [0, 0, 0, 0, 0],
+                "data_distribute": "uniform",
+                "name": "offsets"
+            },
+            {
+                "format": "ND",
+                "ori_format": "ND",
+                "shape": [5],
+                "ori_shape": [5],
+                "is_const":true,
+                "value": [16, 3, 16, 16, 16],
+                "type": "int32",
+                "param_type": "input",
+                "data_distribute": "uniform",
+                "name": "size"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": "FRACTAL_Z_3D",
+                "ori_format": "NCHW",
+                "shape": [768, 1, 16, 16],
+                "ori_shape": [16, 3, 16, 16, 16],
+                "type": "float16",
+                "name": "y",
+                "param_type": "output"
+            }
+        ]
+    }
+]

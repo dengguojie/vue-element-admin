@@ -18,6 +18,7 @@
 """
 the op ut test main class: OpUT, BroadcaseOpUT, ElementwiseOpUT, ReduceOpUT
 """
+import copy
 import os
 import sys
 import ast
@@ -974,13 +975,14 @@ class OpUT:  # 'pylint: disable=too-many-instance-attributes
     def _run_one_case(self, run_soc_version, case_info: op_ut_case_info.OpUTCase,
                       run_cfg: Dict[str, Any] = None) -> ut_report.OpUTCaseReport:
         case_rpt = None
+        case_info_ = copy.deepcopy(case_info)
         try:
             if case_info.case_usage == op_ut_case_info.CaseUsage.IMPL:
-                case_rpt = self._run_compile_case(run_soc_version, case_info)
+                case_rpt = self._run_compile_case(run_soc_version, case_info_)
             elif case_info.case_usage == op_ut_case_info.CaseUsage.PRECISION:
-                case_rpt = self._run_precision_case(run_soc_version, case_info, run_cfg)
+                case_rpt = self._run_precision_case(run_soc_version, case_info_, run_cfg)
             elif case_info.case_usage == op_ut_case_info.CaseUsage.CUSTOM:
-                case_rpt = self._run_custom_case(run_soc_version, case_info)
+                case_rpt = self._run_custom_case(run_soc_version, case_info_)
         except BaseException as _:  # 'pylint: disable=broad-except
             err_trace = get_trace_info()
             stage_status = op_ut_case_info.OpUTStageResult(
@@ -988,7 +990,7 @@ class OpUT:  # 'pylint: disable=too-many-instance-attributes
                 stage_name=op_ut_case_info.Constant.STAGE_CUST_FUNC,
                 err_msg="Error",
                 err_trace=err_trace)
-            case_trace = op_ut_case_info.OpUTCaseTrace(run_soc_version, case_info)
+            case_trace = op_ut_case_info.OpUTCaseTrace(run_soc_version, case_info_)
             case_trace.add_stage_result(stage_status)
             case_rpt = ut_report.OpUTCaseReport(case_trace)
         return case_rpt

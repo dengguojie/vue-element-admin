@@ -24,6 +24,7 @@
 
 #include "op_tiling_util.h"
 #include "graph/debug/ge_log.h"
+#include "op_tiling/tiling_handler.h"
 
 #include "../op_proto/util/error_util.h"
 #include "../op_proto/util/op_common_util.h"
@@ -36,12 +37,16 @@ namespace optiling {
 using namespace ge;
 
 // define the compile key of json.vars
-static const std::vector<std::string> COMPILE_INFO_KEY = {"block_dim", "ub_size"};
-static const std::map<std::string, std::int64_t> OPTIONAL_VALUE = {{"ub_size", 0}};
+struct SliceCompileInfo {
+  std::shared_ptr<AutoTilingHandler> outer_compile_info;
+  int64_t block_dim{1};
+  int64_t ub_size{0};
+  bool is_tik{false};
+};
 
-bool SliceTiling(const std::string& opType, const ge::Operator& opParas, const std::vector<int64_t>& opCompileInfo,
-                 utils::OpRunInfo& runInfo) {
-  OP_LOGD(opType.c_str(), "SliceTiling running.");
+bool SliceTIKTiling(const std::string& opType, const ge::Operator& opParas, const SliceCompileInfo& opCompileInfo,
+                    utils::OpRunInfo& runInfo) {
+  OP_LOGD(opType.c_str(), "SliceTIKTiling running.");
 
   PROFILING_TILING_INIT(opType.c_str());
   auto operator_info = ge::OpDescUtils::GetOpDescFromOperator(opParas);
@@ -80,16 +85,9 @@ bool SliceTiling(const std::string& opType, const ge::Operator& opParas, const s
 
   PROFILING_TILING_AFTER_GET_SHAPE_REG();
 
-  // get compile info for vector
-  OP_TILING_CHECK(
-      opCompileInfo.size() != COMPILE_INFO_KEY.size(),
-      VECTOR_INNER_ERR_REPORT_TILIING(opType, "the compile info num is not equal expect compile_info(%zu), is %zu",
-                                      COMPILE_INFO_KEY.size(), opCompileInfo.size()),
-      return false);
-
-  int32_t core_num = static_cast<int32_t>(opCompileInfo[0]);
+  int32_t core_num = static_cast<int32_t>(opCompileInfo.block_dim);
   OP_TILING_CHECK(core_num == 0, VECTOR_INNER_ERR_REPORT_TILIING(opType, "core_num cannot be zero."), return false);
-  int32_t ub_size = static_cast<int32_t>(opCompileInfo[1]);
+  int32_t ub_size = static_cast<int32_t>(opCompileInfo.ub_size);
   PROFILING_TILING_AFTER_GET_COMPILE_INFO_REG();
 
   for (size_t index = 0; index < slice_params_output.end_list.size(); index++) {
@@ -128,12 +126,55 @@ bool SliceTiling(const std::string& opType, const ge::Operator& opParas, const s
   PROFILING_TILING_AFTER_CALCU_TILING_REG();
 
   runInfo.SetBlockDim(core_num);
-  OP_LOGD(opType.c_str(), "tiling run success.");
+  OP_LOGD(opType.c_str(), "SliceTIKTiling run success.");
 
   PROFILING_TILING_END();
 
   return true;
 }
 
-REGISTER_OP_TILING_V3_WITH_VECTOR(Slice, SliceTiling, COMPILE_INFO_KEY, OPTIONAL_VALUE);
+bool SliceDSLTiling(const std::string &op_type, const ge::Operator &op_paras, const SliceCompileInfo &op_info,
+                    utils::OpRunInfo &run_info) {
+  OP_LOGD(op_type.c_str(), "SliceDSLTiling running.");
+  OP_TILING_CHECK(!op_info.outer_compile_info->DoTiling(op_paras, run_info),
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "call DoTiling failed"), return false);
+  OP_LOGD(op_type.c_str(), "SliceDSLTiling end.");
+  return true;
+}
+
+bool SliceTiling(const std::string &op_type, const ge::Operator &op_paras, const SliceCompileInfo &op_info,
+                 utils::OpRunInfo &run_info) {
+  if (op_info.is_tik) {
+    OP_TILING_CHECK(!SliceTIKTiling(op_type, op_paras, op_info, run_info),
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "call TIKTiling failed"), return false);
+  } else {
+    OP_TILING_CHECK(!SliceDSLTiling(op_type, op_paras, op_info, run_info),
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "call DSLTiling failed"), return false);
+  }
+
+  return true;
+}
+
+bool SliceParseFunc(const std::string &op_type, const nlohmann::json &compile_info, SliceCompileInfo &op_info) {
+  if (GetCompileValue(compile_info, "is_tik", op_info.is_tik)) {
+    const nlohmann::json &all_vars = compile_info["vars"];
+    OP_TILING_CHECK(!GetCompileValue(all_vars, "block_dim", op_info.block_dim),
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "SliceParseFunc, get block_dim error"),
+                    return false);
+    OP_TILING_CHECK(!GetCompileValue(all_vars, "ub_size", op_info.ub_size),
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "SliceParseFunc, get ub_size error"),
+                    return false);
+  } else {
+    op_info.outer_compile_info = CreateSliceTilingHandler(op_type, "Slice", compile_info);
+    if (op_info.outer_compile_info == nullptr) {
+      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "CreateSliceTilingHandler failed");
+      return false;
+    }
+    op_info.is_tik = false;
+  }
+
+  return true;
+}
+
+REGISTER_OP_TILING_V3_CUSTOM(Slice, SliceTiling, SliceParseFunc, SliceCompileInfo);
 }  // namespace optiling
