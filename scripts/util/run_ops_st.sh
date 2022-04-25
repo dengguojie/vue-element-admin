@@ -95,7 +95,7 @@ run_st() {
     exit $STATUS_FAILED
   fi
 
-  json_cases=$(find "${op_dir}" -name *.json 2>/dev/null)
+  json_cases=$(find "${op_dir}" -name "*.json" 2>/dev/null)
   for op_case in $(echo $json_cases); do
     echo "[INFO] run case file: $op_case"
     custom_ini=${op_case/.json/.ini}
@@ -111,7 +111,7 @@ run_st() {
     fi
   done
 
-  custom_cases=$(find "${op_dir}" -name *custom.py 2>/dev/null)
+  custom_cases=$(find "${op_dir}" -name "*custom.py" 2>/dev/null)
 
   if [[ ! -d "cov_result" ]]; then
     mkdir cov_result
@@ -133,16 +133,16 @@ run_st() {
 delete_unmatch_cases() {
   supported_soc="$1"
   if [[ $supported_soc == "Ascend310" ]]; then
-      find "${CANN_ST_SOURCE}" -name *910*.json|xargs rm -rf
-      find "${CANN_ST_SOURCE}" -name *710*.json|xargs rm -rf
-      find "${CANN_ST_SOURCE}" -name "*custom.py"|xargs rm -rf
+      find "${CANN_ST_SOURCE}" -name "*910*.json" | xargs rm -rf
+      find "${CANN_ST_SOURCE}" -name "*710*.json" | xargs rm -rf
+      find "${CANN_ST_SOURCE}" -name "*custom.py" | xargs rm -rf
   elif [[ $supported_soc == "Ascend910" ]]; then
-      find "${CANN_ST_SOURCE}" -name *310*.json|xargs rm -rf
-      find "${CANN_ST_SOURCE}" -name *710*.json|xargs rm -rf
+      find "${CANN_ST_SOURCE}" -name "*310*.json" | xargs rm -rf
+      find "${CANN_ST_SOURCE}" -name "*710*.json" | xargs rm -rf
   elif [[ $supported_soc == "Ascend710" ]]; then
-      find "${CANN_ST_SOURCE}" -name *310*.json|xargs rm -rf
-      find "${CANN_ST_SOURCE}" -name *910*.json|xargs rm -rf
-      find "${CANN_ST_SOURCE}" -name "*custom.py"|xargs rm -rf
+      find "${CANN_ST_SOURCE}" -name "*310*.json" | xargs rm -rf
+      find "${CANN_ST_SOURCE}" -name "*910*.json" | xargs rm -rf
+      find "${CANN_ST_SOURCE}" -name "*custom.py" | xargs rm -rf
   fi
 }
 
@@ -155,7 +155,7 @@ get_results() {
         st_failed="true"
       fi
   done
-  
+
   if [[ `ls cov_result/.coverage*|wc -l` -gt 0 ]]; then
     echo "[INFO] find coverage files,tar them."
     cd cov_result && coverage combine && cd -

@@ -25,8 +25,10 @@ SCH_TESTCASE_DIR="ops_testcase_schedule"
 TEST_BIN_PATH="${BUILD_PATH}/${OPS_TESTCASE_DIR}"
 ST_INSTALL_PATH="${TEST_BIN_PATH}/st"
 UT_INSTALL_PATH="${TEST_BIN_PATH}/ut"
+ST_PLUS_INSTALL_PATH="${TEST_BIN_PATH}/st_plus"
 ST_CHANGE_LOG="${ST_INSTALL_PATH}/get_change.log"
 UT_CHANGE_LOG="${UT_INSTALL_PATH}/get_change.log"
+ST_PLUS_CHANGE_LOG="${ST_PLUS_INSTALL_PATH}/get_change.log"
 
 CANN_OUTPUT="${CANN_ROOT}/output"
 TEST_TARGET="${CANN_OUTPUT}/${OPS_TESTCASE_DIR}.tar"
@@ -38,11 +40,10 @@ TEST_INSTALL_PATH=""
 OPS_SOURCE_DIR=""
 
 install_stest() {
-  local task_type="$1"
-  local pr_file="$2"
-  get_related_ops "${task_type}" "${pr_file}"
+  local pr_file="$1"
+  get_related_ops "${pr_file}" "${CHANGE_LOG}"
   all_cases=""
-  install_related_ops "${pr_file}"
+  install_related_ops "${CHANGE_LOG}" "${OPS_SOURCE_DIR}" "*.json"
   case_not_found=""
   for op_case in $(echo "${all_cases}" | tr ',' ' '); do
     echo "[INFO] install testcase: ${op_case}"
@@ -51,6 +52,7 @@ install_stest() {
       case_not_found="${case_not_found} ${op_case##*/}"
       continue
     else
+      mkdir -p "${TEST_INSTALL_PATH}"
       cp -rf "${op_case}" "${TEST_INSTALL_PATH}"
     fi
   done
@@ -69,6 +71,35 @@ install_stest() {
   if [ ! -z "${case_not_found}" ];then
     echo "[ERROR] st case not found:[${case_not_found}]"
     echo "exit $STATUS_FAILED"
+  fi
+}
+
+install_st_plus_test() {
+  local pr_file="$1"
+  get_related_ops "${pr_file}" "${CHANGE_LOG}"
+  all_cases=""
+  install_related_ops "${CHANGE_LOG}" "${OPS_SOURCE_DIR}" "*.csv"
+  case_not_found=""
+  for op_case in $(echo "${all_cases}" | tr ',' ' '); do
+    echo "[INFO] install testcase: ${op_case}"
+    if [[ ! -d "${op_case}" ]]; then
+      echo "[ERROR] cannot find testcase ${op_case}"
+      case_not_found="${case_not_found} ${op_case##*/}"
+      continue
+    else
+      cases=$(find "${op_case}" -name "*.csv")
+      if [[ -z $cases ]]; then
+        echo "[WARNING] no testcase file ending with .csv in ${op_case}"
+        case_not_found="${case_not_found} ${op_case##*/}"
+        continue
+      fi
+      mkdir -p "${TEST_INSTALL_PATH}"
+      cp -rf "${op_case}" "${TEST_INSTALL_PATH}"
+    fi
+  done
+
+  if [ ! -z "${case_not_found}" ];then
+    echo "[ERROR] st case not found: [${case_not_found}]"
   fi
 }
 
@@ -108,6 +139,12 @@ install_script() {
   cp -f "${CUR_PATH}/util/run_ops_st.sh" "${TEST_BIN_PATH}"
 }
 
+install_st_plus_script() {
+  echo "[INFO] install tbe_toolkits"
+  cp -f "${CUR_PATH}/util/run_ops_st_plus.sh" "${TEST_BIN_PATH}"
+  cp -rf "${CANN_ROOT}/tools/tbe_toolkits" "${TEST_BIN_PATH}"
+}
+
 install_sch_script() {
   echo "[INFO] install run_ops_test.sh"
   cp -f "${CUR_PATH}/util/run_sch_st.sh" "${TEST_BIN_PATH}/run_ops_st.sh"
@@ -139,8 +176,13 @@ main() {
   else
     ops_str=`cat ${pr_file} | awk -F\/ '{print $1}' | grep -v "auto_schedule"`
     if [[ -n "${ops_str}" ]]; then
-      install_stest "${task_type}" "${pr_file}"
-      install_script
+      if [[ "${task_type}" == "st" ]]; then
+        install_stest "${pr_file}"
+        install_script
+      elif [[ "${task_type}" == "st_plus" ]]; then
+        install_st_plus_test "${pr_file}"
+        install_st_plus_script
+      fi
     else
       install_sch_stest "${task_type}" "${pr_file}"
       install_sch_script
@@ -158,6 +200,10 @@ if [[ "${task_type}" == "ut" ]]; then
 elif [[ "${task_type}" == "st" ]]; then
   CHANGE_LOG="${ST_CHANGE_LOG}"
   TEST_INSTALL_PATH="${ST_INSTALL_PATH}"
+  OPS_SOURCE_DIR="${OPS_ST_SOURCE_DIR}"
+elif [[ "${task_type}" == "st_plus" ]]; then
+  CHANGE_LOG="${ST_PLUS_CHANGE_LOG}"
+  TEST_INSTALL_PATH="${ST_PLUS_INSTALL_PATH}"
   OPS_SOURCE_DIR="${OPS_ST_SOURCE_DIR}"
 else
   echo "[ERROR] unsuported task type ${task_type}"

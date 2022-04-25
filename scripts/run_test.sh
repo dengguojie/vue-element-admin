@@ -115,7 +115,7 @@ run_st() {
     rm -rf "$CANN_ST_OUT" >/dev/null 2>&1
   fi
   mkdir -p "$CANN_ST_OUT"
-  for file in $(find "${OPS_ST_DIR}" -name *.json); do
+  for file in $(find "${OPS_ST_DIR}" -name "*.json"); do
     python3.7 "$msopst" run -i "$file" -soc "$supported_soc" -out "$CANN_ST_OUT"
     if [[ $? -ne 0 ]]; then
       echo "run ops python stest failed."

@@ -50,6 +50,7 @@ set_env() {
     export PYTHONPATH=$PYTHONPATH:${ASCEND_ROOT}/opp/op_impl/built-in/ai_core/tbe
 
     # Remove logs and session dependant artifacts
+    rm -rf kernel_meta
     rm -rf tbetoolkits-*.log
     rm -rf ~/ascend/log/plog
 }
