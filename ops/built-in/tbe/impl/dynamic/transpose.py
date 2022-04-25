@@ -3547,13 +3547,14 @@ class Transpose:
         with self.tik_inst.if_scope(tp.src_axis_num_no_dup == 2):
 
             with tik_inst.if_scope(tik.any(tp.src_axis_perm == 0x10,
-                                           tp.src_axis_perm == 0x01,
                                            tp.src_axis_perm == 0x102,
                                            tp.src_axis_perm == 0x201)):
                 tp.rt_src_tuple_out[0].set_as(tp.rt_logic_tuple[0] * tp.src_jump_major_step)
                 tp.rt_src_tuple_out[1].set_as(0)
 
-            with tik_inst.if_scope(tik.any(tp.src_axis_perm == 0x021, tp.src_axis_perm == 0x012)):
+            with tik_inst.if_scope(tik.any(tp.src_axis_perm == 0x01,
+                                           tp.src_axis_perm == 0x021,
+                                           tp.src_axis_perm == 0x012)):
                 tp.rt_src_tuple_out[0].set_as(0)
                 tp.rt_src_tuple_out[1].set_as(tp.rt_logic_tuple[0] * tp.src_jump_major_step)
 
@@ -3868,8 +3869,8 @@ class Transpose:
     def _reorder_s5_data_move(self, tp, ub_input, idx):
         tik_inst = self.tik_inst
         ub_input_b16 = ub_input.reinterpret_cast_to("int16")
-        with tik_inst.for_range(0, tp.n_1[idx]) as i:
-            with tik_inst.new_stmt_scope(disable_sync=True):
+        with tik_inst.new_stmt_scope(disable_sync=True):
+            with tik_inst.for_range(0, tp.n_1[idx]) as i:
                 with tik_inst.for_range(0, tp.loop_1[idx]) as j:
                     tik_inst.data_move(ub_input_b16[(tp.offset_b + \
                                                      i * tp.vol_1[idx] + j * tp.dst_offset_1[idx]) * self.fp16_times],
@@ -3883,8 +3884,8 @@ class Transpose:
         with tik_inst.if_scope(tik.all(tp.n_1[idx] > 0, tp.loop_1[idx] > 0)):
             self._swap(tp)
 
-        with tik_inst.for_range(0, tp.n_2[idx]) as i:
-            with tik_inst.new_stmt_scope(disable_sync=True):
+        with tik_inst.new_stmt_scope(disable_sync=True):
+            with tik_inst.for_range(0, tp.n_2[idx]) as i:
                 with tik_inst.for_range(0, tp.loop_2[idx]) as j:
                     tik_inst.data_move(ub_input_b16[(tp.offset_b + \
                                                      i * tp.vol_2[idx] + j * tp.dst_offset_2[idx]) * self.fp16_times],
@@ -3898,8 +3899,8 @@ class Transpose:
         with tik_inst.if_scope(tik.all(tp.n_2[idx] > 0, tp.loop_2[idx] > 0)):
             self._swap(tp)
 
-        with tik_inst.for_range(0, tp.n_3[idx]) as i:
-            with tik_inst.new_stmt_scope(disable_sync=True):
+        with tik_inst.new_stmt_scope(disable_sync=True):
+            with tik_inst.for_range(0, tp.n_3[idx]) as i:
                 with tik_inst.for_range(0, tp.loop_3[idx]) as j:
                     tik_inst.data_move(ub_input_b16[(tp.offset_b + \
                                                      i * tp.vol_3[idx] + j * tp.dst_offset_3[idx]) * self.fp16_times],
@@ -3951,10 +3952,7 @@ class Transpose:
             src_ele_num_in_b16 = self._get_src_size()  # avoid bank conflict
             src_list = [ub_input_b16[tp.offset_a * self.fp16_times + src_ele_num_in_b16 * i] for i in range(EPB16)]
             dst_list = [ub_input_b16[tp.offset_b * self.fp16_times + EPB16 * i] for i in range(EPB16)]
-            with tik_inst.if_scope(tp.ub_offset != 1):
-                tik_inst.vnchwconv(False, False, dst_list, src_list, tp.ub_offset, EPB16, 1)
-            with tik_inst.else_scope():
-                tik_inst.vnchwconv(False, False, dst_list, src_list, 1, 0, 0)
+            tik_inst.vnchwconv(False, False, dst_list, src_list, tp.ub_offset, EPB16, 1)
             self._swap(tp)
 
             #eliminate dirty data between two in_blocks
@@ -4002,7 +4000,7 @@ class Transpose:
         with tik_inst.if_scope(tik.any(tp.is_last_axis_transpose == 1, tp.align_ele != 0)):
             ub_input_b16 = ub_input.reinterpret_cast_to("int16")
             # insert data between two in_blocks to make each out_blocks be started with block align
-            with tik_inst.if_scope(x_out_tail_ele != 0):
+            with tik_inst.if_scope(tik.all(x_out_tail_ele != 0, x_src_loop_out > 1)):
                 tik_inst.data_move(ub_input_b16[tp.offset_b * self.fp16_times],
                                    ub_input_b16[tp.offset_a * self.fp16_times],
                                    0,
@@ -4016,10 +4014,7 @@ class Transpose:
             src_list = [ub_input_b16[tp.offset_a * self.fp16_times + EPB16 * i] for i in range(EPB16)]
             dst_list = [ub_input_b16[tp.offset_b * self.fp16_times + self._get_dst_size() * EPB16 * i] \
                         for i in range(EPB16)]
-            with tik_inst.if_scope(x_src_loop_out * burst_len_out != 1):
-                tik_inst.vnchwconv(False, False, dst_list, src_list, x_src_loop_out * burst_len_out, 1, EPB16)
-            with tik_inst.else_scope():
-                tik_inst.vnchwconv(False, False, dst_list, src_list, 1, 0, 0)
+            tik_inst.vnchwconv(False, False, dst_list, src_list, x_src_loop_out * burst_len_out, 1, EPB16)
             self._swap(tp)
 
     def _reorder_s5(self, tp, ub_input, is_src_tail_in, is_dst_tail_in,
