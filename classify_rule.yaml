@@ -3028,6 +3028,8 @@ unkown:
       - ops/built-in/framework/tf_scope_fusion_passes/scope_dynamic_lstm_pass.h
       - ops/built-in/framework/tf_scope_fusion_passes/scope_newbatchmulticlass_nms_pass.h
       - ops/built-in/framework/tf_scope_fusion_passes/scope_batchmulticlass_nms_pass.h
+      - ops/built-in/framework/tf_scope_fusion_passes/scope_instancenorm_grad_pass.cc
+      - ops/built-in/framework/tf_scope_fusion_passes/scope_instancenorm_pass.cc
       - ops/built-in/framework/tf_plugin/greater_equal_plugin.cc
       - ops/built-in/framework/tf_plugin/apply_rms_prop_plugin.cc
       - ops/built-in/framework/tf_plugin/extract_volume_patches_plugin.cc

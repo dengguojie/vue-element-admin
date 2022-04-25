@@ -53,8 +53,8 @@ void ScopeInstanceNormGradPass::GenScopePatterns(ScopeFusionPatterns& patterns) 
     OP_LOGE(kOpType, "Alloc an object failed.");
     return;
   }
-  moments_grad->SetSubType("moments_grad");
-  moments_grad->AddScopeFeature(ScopeFeature("", -1, "moments", "SquaredDifference_grad"));  // moments grad
+  (void)moments_grad->SetSubType("moments_grad");
+  (void)moments_grad->AddScopeFeature(ScopeFeature("", -1, "moments", "SquaredDifference_grad"));  // moments grad
   batch1.push_back(moments_grad);
 
   // recognize instancenorm
@@ -65,8 +65,8 @@ void ScopeInstanceNormGradPass::GenScopePatterns(ScopeFusionPatterns& patterns) 
     OP_LOGE(kOpType, "Alloc an object failed.");
     return;
   }
-  instancenorm_grad->SetSubType("instancenorm_grad");
-  instancenorm_grad->AddScopeFeature(ScopeFeature("", -1, "instancenorm", "Rsqrt_grad"));  // instancenorm grad
+  (void)instancenorm_grad->SetSubType("instancenorm_grad");
+  (void)instancenorm_grad->AddScopeFeature(ScopeFeature("", -1, "instancenorm", "Rsqrt_grad"));  // instancenorm grad
   batch1.push_back(instancenorm_grad);
   patterns.push_back(batch1);
 
@@ -81,9 +81,9 @@ void ScopeInstanceNormGradPass::GenScopePatterns(ScopeFusionPatterns& patterns) 
     OP_LOGE(kOpType, "Alloc an object failed.");
     return;
   }
-  instance_norm_grad->SetSubType(kScopeType);
-  instance_norm_grad->AddScopeFeature(ScopeFeature("moments_grad", 1, "InstanceNorm"));
-  instance_norm_grad->AddScopeFeature(ScopeFeature("instancenorm_grad", 1, "InstanceNorm"));
+  (void)instance_norm_grad->SetSubType(kScopeType);
+  (void)instance_norm_grad->AddScopeFeature(ScopeFeature("moments_grad", 1, "InstanceNorm"));
+  (void)instance_norm_grad->AddScopeFeature(ScopeFeature("instancenorm_grad", 1, "InstanceNorm"));
   batch2.push_back(instance_norm_grad);
   patterns.push_back(batch2);
 }
@@ -93,12 +93,12 @@ void FindInputsShouldInScopeING(const std::unordered_map<std::string, ge::Operat
                                 std::vector<ge::OperatorPtr>& result_nodes) {
   std::set<std::string> inputs_name;
   for (auto& it : nodes_map) {
-    for (size_t i = 0; i < it.second->GetInputsSize(); i++) {
+    for (uint32_t i = 0; i < it.second->GetInputsSize(); i++) {
       // some input name contain "^", should be removed
       auto input_desc = it.second->GetInputDesc(i);
       std::string input_name = ScopeUtil::StringReplaceAll(input_desc.GetName(), "^", "");
       if (nodes_map.count(input_name) == 0) {
-        inputs_name.insert(input_name);
+        (void)inputs_name.insert(input_name);
       }
     }
   }
@@ -108,7 +108,7 @@ void FindInputsShouldInScopeING(const std::unordered_map<std::string, ge::Operat
     if (iter != all_nodes_map.end()) {
       size_t count = 0;
       auto node_op = iter->second;
-      for (size_t i = 0; i < node_op->GetInputsSize(); i++) {
+      for (uint32_t i = 0; i < node_op->GetInputsSize(); i++) {
         auto input_desc = node_op->GetInputDesc(i);
         std::string input_name = ScopeUtil::StringReplaceAll(input_desc.GetName(), "^", "");
         if (nodes_map.count(input_name) != 0) {
@@ -140,7 +140,7 @@ std::vector<ge::OperatorPtr> ScopeInstanceNormGradPass::FindOutNodesShouldInScop
     bool all_in = true;
     OP_LOGD(kOpType, "Addn node name is %s", it.second->GetName().c_str());
     size_t input_nums = it.second->GetInputsSize();
-    for (size_t i = 0; i < input_nums; i++) {
+    for (uint32_t i = 0; i < input_nums; i++) {
       // some input name contain "^", should be removed
       auto input_desc = it.second->GetInputDesc(i);
       std::string input_name = ScopeUtil::StringReplaceAll(input_desc.GetName(), "^", "");
@@ -211,7 +211,7 @@ void ScopeInstanceNormGradPass::FindInputIndex(const Scope* scope, int& index, c
                                ? node_def->GetName().substr(node_def->GetName().length() - name.length())
                                : node_def->GetName();
     if (sub_name == name) {
-      for (size_t i = 0; i < node_def->GetInputsSize(); i++) {
+      for (uint32_t i = 0; i < node_def->GetInputsSize(); i++) {
         auto input_desc = node_def->GetInputDesc(i);
         std::string input_name = ScopeUtil::StringReplaceAll(input_desc.GetName(), "^", "");
         mul_input_names.push_back(input_name);
@@ -221,8 +221,8 @@ void ScopeInstanceNormGradPass::FindInputIndex(const Scope* scope, int& index, c
   for (unsigned int i = 0; i < mul_input_names.size(); i++) {
     std::string mul_input_name = mul_input_names[i];
     OP_LOGI(kOpType, "The %s of inputname is %s", name.c_str(), mul_input_name.c_str());
-    if (mul_input_name.find(base_name) == mul_input_name.npos) {
-      index = i;
+    if (mul_input_name.find(base_name) == std::string::npos) {
+      index = static_cast<int>(i);
       OP_LOGI(kOpType, "The %s is not found, the index is %d", base_name.c_str(), i);
       return;
     }
@@ -244,7 +244,7 @@ void ScopeInstanceNormGradPass::FindInputXIndex(const Scope* scope, int& index) 
                                ? node_def->GetName().substr(node_def->GetName().length() - names.length())
                                : node_def->GetName();
     if (sub_name == names) {
-      for (size_t i = 0; i < node_def->GetInputsSize(); i++) {
+      for (uint32_t i = 0; i < node_def->GetInputsSize(); i++) {
         // some input name contain "^", should be removed
         auto input_desc = node_def->GetInputDesc(i);
         std::string input_name = ScopeUtil::StringReplaceAll(input_desc.GetName(), "^", "");
@@ -257,7 +257,7 @@ void ScopeInstanceNormGradPass::FindInputXIndex(const Scope* scope, int& index) 
                                 ? node_def->GetName().substr(node_def->GetName().length() - names1.length())
                                 : node_def->GetName();
     if (sub_name1 == names1) {
-      for (size_t i = 0; i < node_def->GetInputsSize(); i++) {
+      for (uint32_t i = 0; i < node_def->GetInputsSize(); i++) {
         // some input name contain "^", should be removed
         auto input_desc = node_def->GetInputDesc(i);
         std::string input_name = ScopeUtil::StringReplaceAll(input_desc.GetName(), "^", "");
@@ -275,7 +275,7 @@ void ScopeInstanceNormGradPass::FindInputXIndex(const Scope* scope, int& index) 
       }
     }
     if (!find) {
-      index = i;
+      index = static_cast<int>(i);
       return;
     }
   }
@@ -291,7 +291,7 @@ void ScopeInstanceNormGradPass::FindOutputdXNode(const std::vector<ge::OperatorP
       bool find_mul = false;
       bool find_scope_external_input = false;
       size_t input_size = node_def->GetInputsSize();
-      for (size_t i = 0; i < input_size; i++) {
+      for (uint32_t i = 0; i < input_size; i++) {
         // some input name contain "^", should be removed
         auto input_desc = node_def->GetInputDesc(i);
         std::string input_name = ScopeUtil::StringReplaceAll(input_desc.GetName(), "^", "");

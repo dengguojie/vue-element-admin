@@ -94,14 +94,15 @@ Status ScopeInstanceNormPass::LastMatchScopesAndOPs(std::shared_ptr<ScopeGraph>&
         auto scope_m = fusion_scopes_m[j];
         std::string scope_bn_name = scope_bn->Name();
         std::string scope_m_name = scope_m->Name();
-        int pos_bn = scope_bn_name.find("instancenorm");
-        int pos_m = scope_m_name.find("moments");
-        int is_biggan_bn = scope_bn_name.find("resblock");
-        int is_biggan_m = scope_m_name.find("resblock");
-        if (is_biggan_bn != -1 || is_biggan_m != -1) {
+        auto pos_bn = scope_bn_name.find("instancenorm");
+        auto pos_m = scope_m_name.find("moments");
+        auto is_biggan_bn = scope_bn_name.find("resblock");
+        auto is_biggan_m = scope_m_name.find("resblock");
+        if (is_biggan_bn != std::string::npos || is_biggan_m != std::string::npos) {
           return FAILED;
         }
-        if (pos_bn != -1 && pos_m != -1 && scope_bn_name.substr(0, pos_bn) == scope_m_name.substr(0, pos_m)) {
+        if (pos_bn != std::string::npos && pos_m != std::string::npos &&
+            scope_bn_name.substr(0, pos_bn) == scope_m_name.substr(0, pos_m)) {
           // scope result
           ScopesResult result;
           std::vector<Scope*> result_scopes;
@@ -159,8 +160,8 @@ void ScopeInstanceNormPass::GenerateFusionResult(const std::vector<Scope*>& scop
     // The upper call guarantees that the scope is not empty.
     if (scope->SubType() == kScopeTypeInstancenorm) {
       std::string scope_bn_name = scope->Name();
-      int pos_bn = scope_bn_name.find("instancenorm");
-      if (pos_bn != -1) {
+      auto pos_bn = scope_bn_name.find("instancenorm");
+      if (pos_bn != std::string::npos) {
         fusion_rlt->SetName(scope_bn_name.substr(0, pos_bn));
         break;
       }
@@ -182,13 +183,13 @@ void ScopeInstanceNormPass::GenInstancenormScopePatterns(ScopeFusionPatterns& pa
     OP_LOGE(kOpType, "Alloc an object failed.");
     return;
   }
-  instance_norm_cell->SetSubType(kScopeTypeInstancenorm);
+  (void)instance_norm_cell->SetSubType(kScopeTypeInstancenorm);
 
-  instance_norm_cell->AddNodeOpTypeFeature(NodeOpTypeFeature("Sub", 1));        // Sub num is 1
-  instance_norm_cell->AddNodeOpTypeFeature(NodeOpTypeFeature("Rsqrt", 1));      // Rsqrt num is 1
-  instance_norm_cell->AddNodeOpTypeFeature(NodeOpTypeFeature("Mul", 3));        // Mul num is 3
-  instance_norm_cell->AddNodeOpTypeFeature(NodeOpTypeFeature("Identity", -1));  // Identity num is -1
-  instance_norm_cell->AddScopeFeature(ScopeFeature("", -1, "instancenorm"));
+  (void)instance_norm_cell->AddNodeOpTypeFeature(NodeOpTypeFeature("Sub", 1));        // Sub num is 1
+  (void)instance_norm_cell->AddNodeOpTypeFeature(NodeOpTypeFeature("Rsqrt", 1));      // Rsqrt num is 1
+  (void)instance_norm_cell->AddNodeOpTypeFeature(NodeOpTypeFeature("Mul", 3));        // Mul num is 3
+  (void)instance_norm_cell->AddNodeOpTypeFeature(NodeOpTypeFeature("Identity", -1));  // Identity num is -1
+  (void)instance_norm_cell->AddScopeFeature(ScopeFeature("", -1, "instancenorm"));
 
   instance.push_back(instance_norm_cell);
   patterns.push_back(instance);
@@ -203,11 +204,11 @@ void ScopeInstanceNormPass::GenMomentsScopePatterns(ScopeFusionPatterns& pattern
     return;
   }
 
-  moments_cell->SetSubType(kScopeTypeMoments);
-  moments_cell->AddNodeOpTypeFeature(NodeOpTypeFeature("Mean", 2));               // Mean num is 2
-  moments_cell->AddNodeOpTypeFeature(NodeOpTypeFeature("SquaredDifference", 1));  // SquaredDifference num is 1
-  moments_cell->AddNodeOpTypeFeature(NodeOpTypeFeature("Squeeze", -1));           // Squeeze num is 0
-  moments_cell->AddScopeFeature(ScopeFeature("", -1, "moments"));
+  (void)moments_cell->SetSubType(kScopeTypeMoments);
+  (void)moments_cell->AddNodeOpTypeFeature(NodeOpTypeFeature("Mean", 2));               // Mean num is 2
+  (void)moments_cell->AddNodeOpTypeFeature(NodeOpTypeFeature("SquaredDifference", 1));  // SquaredDifference num is 1
+  (void)moments_cell->AddNodeOpTypeFeature(NodeOpTypeFeature("Squeeze", -1));           // Squeeze num is 0
+  (void)moments_cell->AddScopeFeature(ScopeFeature("", -1, "moments"));
 
   instance.push_back(moments_cell);
   patterns.push_back(instance);
@@ -223,7 +224,7 @@ void ScopeInstanceNormPass::FindInputIndex(const Scope* scope, int& index, const
                                ? node_def->GetName().substr(node_def->GetName().length() - name.length())
                                : node_def->GetName();
     if (sub_name == name) {
-      for (size_t i = 0; i < node_def->GetInputsSize(); i++) {
+      for (uint32_t i = 0; i < node_def->GetInputsSize(); i++) {
         auto input_desc = node_def->GetInputDesc(i);
         std::string input_name = ScopeUtil::StringReplaceAll(input_desc.GetName(), "^", "");
         mul_input_names.push_back(input_name);
@@ -233,18 +234,18 @@ void ScopeInstanceNormPass::FindInputIndex(const Scope* scope, int& index, const
   for (unsigned int i = 0; i < mul_input_names.size(); i++) {
     std::string mul_input_name = mul_input_names[i];
     OP_LOGI(kOpType, "The %s of inputname is %s", name.c_str(), mul_input_name.c_str());
-    if (mul_input_name.find(base_name) == mul_input_name.npos) {
-      index = i;
+    if (mul_input_name.find(base_name) == std::string::npos) {
+      index = static_cast<int>(i);
       OP_LOGI(kOpType, "The %s is not found, the index is %d", base_name.c_str(), i);
       return;
     }
     if (mul_input_name.find("instancenorm/mul/Enter") != string::npos) {
-      index = i;
+      index = static_cast<int>(i);
       OP_LOGI(kOpType, "found instancenorm/mul/Enter, the index is %d", i);
       return;
     }
     if (mul_input_name.find("instancenorm/add_1") != string::npos) {
-      index = i;
+      index = static_cast<int>(i);
       OP_LOGI(kOpType, "found instancenorm/add_1, the index is %d", i);
       return;
     }
