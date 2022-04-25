@@ -56,13 +56,16 @@ const int64_t INDEX_5 = 5;
 const int64_t INDEX_6 = 6;
 const int64_t INDEX_7 = 7;
 const int64_t INDEX_8 = 8;
+const int64_t INDEX_9 = 9;
 const int64_t MODE_TWO = 2;
 const int64_t TILING_FACTOR_TWO = 2;
 const int64_t VCMP_NUM_EACH_REPEAT = 128;
 const int64_t LOAD3D_NUM_EACH_REPEAT = 16;
+const int64_t WO_ALIGN_FACTOR = 8;
+const int64_t RESERVE_UB_SIZE = 288;
 
-static const std::vector<std::string> COMPILE_INFO_KEY = {"core_num", "ub_size", "kh",      "kw",
-                                                          "sh",       "sw",      "padding", "l1_size"};
+static const std::vector<std::string> COMPILE_INFO_KEY = {
+    "core_num", "ub_size", "kh", "kw", "sh", "sw", "padding", "l1_size"};
 
 struct TilingParams {
   // tiling params
@@ -800,7 +803,7 @@ void DivisionNDearest(int64_t number, int64_t base_num, int64_t core_num, int64_
   }
 }
 
-vector<int64_t> SplitPore(int64_t& n, int64_t& c1, int64_t& core_num, vector<int64_t>& ksize, vector<int64_t>& strides,
+vector<int64_t> SplitCore(int64_t& n, int64_t& c1, int64_t& core_num, vector<int64_t>& ksize, vector<int64_t>& strides,
                           int64_t& ho_ys, int64_t& wo_ys, int64_t& h_ys, int64_t& w_ys) {
   int64_t base_num = 0;
   int64_t total_num = 0;
@@ -877,9 +880,20 @@ void CheckProcessSpace(int64_t ho, int64_t wo, vector<int64_t>& params_ub, vecto
   bool true_false = true;
   int64_t infer_hi = 0;
   int64_t infer_wi = 0;
-  InferDimReturn(ho, wo, true_false, ksize, strides, ho_ys, wo_ys, h_ys, w_ys, infer_hi, infer_wi);
+  int64_t l1_in_size = 0;
+  int64_t ori_in_size = 0;
 
-  int64_t l1_in_size = infer_hi * infer_wi * C0;
+  if (l1_size == 0) {
+    l1_in_size = 0;
+    InferDimReturn(ho, UssCeilDiv(wo, WO_ALIGN_FACTOR) * WO_ALIGN_FACTOR, true_false, ksize, strides, 
+                   ho_ys, wo_ys, h_ys, w_ys, infer_hi, infer_wi);
+    ori_in_size = infer_hi * infer_wi * C0;
+  } else {
+    ori_in_size = 0;
+    InferDimReturn(ho, wo, true_false, ksize, strides, ho_ys, wo_ys, h_ys, w_ys, infer_hi, infer_wi);
+    l1_in_size = infer_hi * infer_wi * C0;
+  }
+  InferDimReturn(ho, wo, true_false, ksize, strides, ho_ys, wo_ys, h_ys, w_ys, infer_hi, infer_wi);
 
   int64_t col_in_shape = ho * wo * C0;
   int64_t min_col_in_size = 256;
@@ -906,7 +920,8 @@ void CheckProcessSpace(int64_t ho, int64_t wo, vector<int64_t>& params_ub, vecto
   }
 
   int64_t used_ub_byte =
-      (col_in_size + forward_ou_size + mask_size * 3 + grad_size + zero_size + grad_sel_fp16_size) * BYTE16 +
+      (col_in_size + ori_in_size + forward_ou_size + mask_size * 3 + grad_size + zero_size + grad_sel_fp16_size) *
+          BYTE16 +
       (grad_sel_fp32_size + f_map_fp32_size) * BYTE32;
   bool l1_split = l1_in_size > (l1_size / TILING_FACTOR_TWO);
   int64_t col_in_size_ub = ((ub_size - min_col_in_size) / (198 + 64 * strides[INDEX_1] * strides[INDEX_2])) * C0;
@@ -926,16 +941,24 @@ void CheckProcessSpace(int64_t ho, int64_t wo, vector<int64_t>& params_ub, vecto
       (col_in_size_ub + forward_ou_size_ub + mask_size_ub * 3 + grad_size_ub + zero_size_ub + grad_sel_fp16_size_ub) *
       BYTE16;
 
-  int64_t f_map_fp32_size_ub = (ub_size - 288 - used_ub_byte_ub) / 4 - grad_sel_fp32_size_ub;
+  int64_t ori_in_size_ub = 0;
+  int64_t f_map_fp32_size_ub = 0;
+  if (l1_size == 0) {
+    f_map_fp32_size_ub = ((ub_size - RESERVE_UB_SIZE - used_ub_byte_ub) / BYTE32 - grad_sel_fp32_size_ub) / BYTE16;
+    ori_in_size_ub = f_map_fp32_size_ub * BYTE16;
+  } else {
+    f_map_fp32_size_ub = (ub_size - RESERVE_UB_SIZE - used_ub_byte_ub) / BYTE32 - grad_sel_fp32_size_ub;
+  }
 
   bool col_in_size_split = col_in_size > col_in_size_ub;
   bool mask_size_split = mask_size > mask_size_ub;
   bool f_map_fp32_size_split = f_map_fp32_size > f_map_fp32_size_ub;
   bool split = used_ub_byte > ub_size;
-  ub_split = split || col_in_size_split || mask_size_split || f_map_fp32_size_split || l1_split;
+  bool ori_in_size_split = ori_in_size > ori_in_size_ub;
+  ub_split = split || col_in_size_split || mask_size_split || f_map_fp32_size_split || l1_split || ori_in_size_split;
 
-  params_ub = {l1_in_size, col_in_size,        forward_ou_size,    mask_size,      grad_size,
-               zero_size,  grad_sel_fp16_size, grad_sel_fp32_size, f_map_fp32_size};
+  params_ub = {l1_in_size, col_in_size,        forward_ou_size,    mask_size,       grad_size,
+               zero_size,  grad_sel_fp16_size, grad_sel_fp32_size, f_map_fp32_size, ori_in_size};
 }
 
 int64_t CheckCutModel(bool split_do, bool split_ho, bool split_wo, vector<int64_t>& split_model, int64_t core_branch) {
@@ -1058,7 +1081,8 @@ bool MaxPoolGradTiling(const std::string& op_type, const ge::Operator& op_paras,
   int64_t sw;
   int64_t padding_int = 0;
   string padding;
-  flag = GetUssCompileParams(op_type, op_info, core_num_ys, ub_size, kh, kw, sh, sw, padding_int, l1_size);
+  flag =
+      GetUssCompileParams(op_type, op_info, core_num_ys, ub_size, kh, kw, sh, sw, padding_int, l1_size);
   OP_LOGD(op_type.c_str(),
           "GetCompileParams, core_num is %d, ub_size is %d. l1_size is %d,"
           "padding_int is %d",
@@ -1107,7 +1131,7 @@ bool MaxPoolGradTiling(const std::string& op_type, const ge::Operator& op_paras,
   int64_t core_branch = 0;
   std::vector<int64_t> list_data;
 
-  list_data = SplitPore(params.n, params.c1, core_num_ys, ksize, strides, params.ho, params.wo, params.h, params.w);
+  list_data = SplitCore(params.n, params.c1, core_num_ys, ksize, strides, params.ho, params.wo, params.h, params.w);
   params.total_num = list_data[INDEX_0];
   params.core_num = list_data[INDEX_1];
   params.core_ou_shape_h = list_data[INDEX_2];
@@ -1119,8 +1143,7 @@ bool MaxPoolGradTiling(const std::string& op_type, const ge::Operator& op_paras,
   OP_LOGD(op_type.c_str(), "GetCompileParams, core_branch is %d ,padding is %s", core_branch, padding.c_str());
   std::vector<int64_t> params_ub = {};
   Pattern(params.core_ou_shape_h, params.core_ou_shape_w, core_branch, ksize, strides, params.ho, params.wo, params.h,
-          params.w, padding, pad, ub_size, l1_size, params.select_key, params.new_ho, params.new_wo, params_ub,
-          support);
+          params.w, padding, pad, ub_size, l1_size, params.select_key, params.new_ho, params.new_wo, params_ub, support);
   if (!support) {
     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "kernel is too larger !!!");
     return false;
@@ -1129,9 +1152,9 @@ bool MaxPoolGradTiling(const std::string& op_type, const ge::Operator& op_paras,
   OP_LOGD(op_type.c_str(),
           "GetCompileParams, l1_in_size is %d, col_in_size is %d, forward_ou_size is %d,"
           "mask_size is %d, grad_size is %d, zero_size is %d, grad_sel_fp16_size is %d, grad_sel_fp32_size is %d,"
-          "f_map_fp32_size is %d",
+          "f_map_fp32_size is %d, ori_in_size is %d",
           params_ub[INDEX_0], params_ub[INDEX_1], params_ub[INDEX_2], params_ub[INDEX_3], params_ub[INDEX_4],
-          params_ub[INDEX_5], params_ub[INDEX_6], params_ub[INDEX_7], params_ub[INDEX_8]);
+          params_ub[INDEX_5], params_ub[INDEX_6], params_ub[INDEX_7], params_ub[INDEX_8], params_ub[INDEX_9]);
 
   if (padding == "VALID") {
     if (core_branch == 0) {
@@ -1166,8 +1189,7 @@ bool MaxPoolGradTiling(const std::string& op_type, const ge::Operator& op_paras,
     params.core_loop_params1 = (params.total_num + params.core_num - 1) / params.core_num;
 
     VectorDup(params_ub[INDEX_8], DTYPE_FP32, params.dup_repeat_merchant_f_map_fp32,
-              params.dup_repeat_remainder_f_map_fp32,
-              params.dup_remainder_f_map_fp32, params.repeats_f_map_fp32);
+              params.dup_repeat_remainder_f_map_fp32, params.dup_remainder_f_map_fp32, params.repeats_f_map_fp32);
 
     params.loop_ho = params.ho / params.new_ho;
     params.loop_wo = params.wo / params.new_wo;

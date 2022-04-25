@@ -2,6 +2,8 @@
 # -*- coding: UTF-8 -*-
 from unittest.mock import MagicMock
 from unittest.mock import patch
+from tbe.common.context import op_context
+from tbe.common.context.op_context import OpContext
 from te import platform as cce_conf
 from impl.util.platform_adapter import tbe_context
 from impl.max_pool_grad import max_pool_grad as max_pool_grad_static
@@ -108,6 +110,46 @@ def test_max_pool_grad_static():
     max_pool_grad_static(*input_list_09)
 
 
+def test_max_pool_grad_dynamic():
+    from impl.dynamic.max_pool_grad import max_pool_grad as max_pool_grad_dynamic
+
+    input_list_01 = [{"shape": (-1, 4, -1, 147, 16), "dtype": "float16", "format": "NC1HWC0",
+                      "ori_shape": (-1, -1, 147, 64), "ori_format": "NHWC", "range":[(1,200),(4,4),(1,200),(147,147),(16,16)]},
+                     {"shape": (-1, 4, -1, 73, 16), "dtype": "float16", "format": "NC1HWC0",
+                      "ori_shape": (-1, -1, 73, 64), "ori_format": "NHWC", "range":[(1, 200),(4,4),(1, 200),(73,73),(16,16)]},
+                     {"shape": (-1, 4, -1, 73, 16), "dtype": "float16", "format": "NC1HWC0",
+                      "ori_shape": (-1, -1, 73, 64), "ori_format": "NHWC", "range":[(1, 200),(4,4),(1, 200),(73,73),(16,16)]},
+                     {"shape": (-1, 4, -1, 147, 16), "dtype": "float16", "format": "NC1HWC0",
+                      "ori_shape": (-1, -1, 147, 64), "ori_format": "NHWC", "range":[(1, 200),(4,4),(1, 200),(147,147),(16,16)]},
+                     [1, 3, 3, 1], [1, 2, 2, 1], "VALID"]
+    with op_context.OpContext("dynamic"):
+        max_pool_grad_dynamic(*input_list_01)
+
+    input_list_02 = [{"shape": (2, 16, -1, -1, 16), "dtype": "float16", "format": "NC1HWC0",
+                      "ori_shape": (2, -1, -1, 256), "ori_format": "NHWC", "range":[(2,2),(16,16),(1,200),(1,200),(16,16)]},
+                     {"shape": (2, 16, -1, -1, 16), "dtype": "float16", "format": "NC1HWC0",
+                      "ori_shape": (2, -1, -1, 256), "ori_format": "NHWC", "range":[(2,2),(16,16),(1, 200), (1, 200),(16,16)]},
+                     {"shape": (2, 16, -1, -1, 16), "dtype": "float16", "format": "NC1HWC0",
+                      "ori_shape": (2, -1, -1, 256), "ori_format": "NHWC", "range":[(2,2),(16,16),(1, 200), (1, 200),(16,16)]},
+                     {"shape": (2, 16, -1, -1, 16), "dtype": "float16", "format": "NC1HWC0",
+                      "ori_shape": (2, -1, -1, 256), "ori_format": "NHWC", "range":[(2,2),(16,16),(1, 200), (1, 200),(16,16)]},
+                     [1, 1, 1, 1], [1, 2, 2, 1], "VALID"]
+    with op_context.OpContext("dynamic"):
+        max_pool_grad_dynamic(*input_list_02)
+
+    input_list_03 = [{"shape": (256, -1, -1, 112, 16), "dtype": "float16", "format": "NC1HWC0",
+                      "ori_shape": (256, -1, 112, -1), "ori_format": "NHWC", "range":[(256,256),(1,200),(1,200),(112,112),(16,16)]},
+                     {"shape": (256, -1, -1, 56, 16), "dtype": "float16", "format": "NC1HWC0",
+                      "ori_shape": (256, -1, 56, -1), "ori_format": "NHWC", "range":[(256,256),(1, 200), (1, 200),(56,56),(16,16)]},
+                     {"shape": (256, -1, -1, 56, 16), "dtype": "float16", "format": "NC1HWC0",
+                      "ori_shape": (256, -1, 56, -1), "ori_format": "NHWC", "range":[(256,256),(1, 200), (1, 200),(56,56),(16,16)]},
+                     {"shape": (256, -1, -1, 112, 16), "dtype": "float16", "format": "NC1HWC0",
+                      "ori_shape": (256, -1, 112, -1), "ori_format": "NHWC", "range":[(256,256),(1, 200), (1, 200),(112,112),(16,16)]},
+                     [1, 1, 3, 1], [1, 1, 2, 1], "SAME"]
+    with op_context.OpContext("dynamic"):
+        max_pool_grad_dynamic(*input_list_03)
+
+
 if __name__ == '__main__':
     soc_version = cce_conf.get_soc_spec("SOC_VERSION")
     cce_conf.te_set_version("Ascend910A")
@@ -116,5 +158,6 @@ if __name__ == '__main__':
         return vals[args]
     with patch("te.platform.cce_conf.api_check_support", MagicMock(side_effect=side_effects)):
         test_max_pool_grad_static()
+        test_max_pool_grad_dynamic()
 
     cce_conf.te_set_version(soc_version)
