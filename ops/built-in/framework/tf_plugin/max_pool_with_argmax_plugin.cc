@@ -20,10 +20,15 @@
  */
 #include "graph/utils/op_desc_utils.h"
 #include "register/register.h"
+#include "op_log.h"
 
 namespace domi {
 Status MaxPoolWithArgMappingFn(const Message* op_src, ge::Operator& op) {
-  AutoMappingFn(op_src, op);
+  if (AutoMappingFn(op_src, op) != SUCCESS) {
+    OP_LOGE("max_pool_with_argmax",
+            "tensorflow plugin parser failed. auto mapping failed.");
+    return FAILED;
+  }
   auto op_dsc = ge::OpDescUtils::GetOpDescFromOperator(op);
   ge::GeTensorDesc tensor_descw = op_dsc->GetInputDesc(0);
   ge::GeTensorDesc tensor_descw1 = op_dsc->GetOutputDesc(0);

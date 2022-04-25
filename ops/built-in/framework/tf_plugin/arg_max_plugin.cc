@@ -34,7 +34,7 @@ Status AutoMappingFnArgMax(const google::protobuf::Message* op_src, ge::Operator
     OP_LOGI("ArgMax", "GetAttr DstT failed");
     return FAILED;
   }
-  op.SetAttr("dtype", dataType);
+  (void)op.SetAttr("dtype", dataType);
   OP_LOGI("ArgMax", "op[ArgMax] tensorflow plugin parser[AutoMapping] success.");
   return SUCCESS;
 }

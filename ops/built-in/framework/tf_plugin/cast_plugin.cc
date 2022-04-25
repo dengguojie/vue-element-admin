@@ -34,7 +34,7 @@ Status AutoMappingFnCast(const google::protobuf::Message* op_src, ge::Operator& 
     OP_LOGE("Cast", "GetAttr DstT failed");
     return FAILED;
   }
-  op.SetAttr("dst_type", static_cast<int>(dataType));
+  (void)op.SetAttr("dst_type", static_cast<int>(dataType));
   OP_LOGI("Cast", "op[Cast] tensorflow plugin parser[AutoMapping] success.");
   return SUCCESS;
 }

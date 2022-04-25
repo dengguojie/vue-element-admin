@@ -137,11 +137,11 @@ std::string TbeGetOpType(const T& op) {
 #endif
 
 #if !defined( __ANDROID__) && !defined(ANDROID)
-#define D_OP_LOGI(opname, fmt, ...) DlogSub(OP, OPPROTO_SUBMOD_NAME, DLOG_INFO, " %s:%d OpName:[%s] "#fmt, __FUNCTION__, __LINE__, opname, ##__VA_ARGS__)
-#define D_OP_LOGW(opname, fmt, ...) DlogSub(OP, OPPROTO_SUBMOD_NAME, DLOG_WARN,  " %s:%d OpName:[%s] "#fmt, __FUNCTION__, __LINE__, opname, ##__VA_ARGS__)
-#define D_OP_LOGE(opname, fmt, ...) DlogSub(OP, OPPROTO_SUBMOD_NAME, DLOG_ERROR, " %s:%d OpName:[%s] "#fmt, __FUNCTION__, __LINE__, opname, ##__VA_ARGS__)
-#define D_OP_LOGD(opname, fmt, ...) DlogSub(OP, OPPROTO_SUBMOD_NAME, DLOG_DEBUG, " %s:%d OpName:[%s] "#fmt, __FUNCTION__, __LINE__, opname, ##__VA_ARGS__)
-#define D_OP_EVENT(opname, fmt, ...) DlogSub(OP, OPPROTO_SUBMOD_NAME, DLOG_EVENT, " %s:%d OpName:[%s] "#fmt, __FUNCTION__, __LINE__, opname, ##__VA_ARGS__)
+#define D_OP_LOGI(opname, fmt, ...) DlogSub(static_cast<int>(OP), OPPROTO_SUBMOD_NAME, DLOG_INFO, " %s:%d OpName:[%s] "#fmt, __FUNCTION__, __LINE__, opname, ##__VA_ARGS__)
+#define D_OP_LOGW(opname, fmt, ...) DlogSub(static_cast<int>(OP), OPPROTO_SUBMOD_NAME, DLOG_WARN,  " %s:%d OpName:[%s] "#fmt, __FUNCTION__, __LINE__, opname, ##__VA_ARGS__)
+#define D_OP_LOGE(opname, fmt, ...) DlogSub(static_cast<int>(OP), OPPROTO_SUBMOD_NAME, DLOG_ERROR, " %s:%d OpName:[%s] "#fmt, __FUNCTION__, __LINE__, opname, ##__VA_ARGS__)
+#define D_OP_LOGD(opname, fmt, ...) DlogSub(static_cast<int>(OP), OPPROTO_SUBMOD_NAME, DLOG_DEBUG, " %s:%d OpName:[%s] "#fmt, __FUNCTION__, __LINE__, opname, ##__VA_ARGS__)
+#define D_OP_EVENT(opname, fmt, ...) DlogSub(static_cast<int>(OP), OPPROTO_SUBMOD_NAME, DLOG_EVENT, " %s:%d OpName:[%s] "#fmt, __FUNCTION__, __LINE__, opname, ##__VA_ARGS__)
 #define GE_D_OP_LOGI(opname, fmt, ...) DlogSub(GE, OPPROTO_SUBMOD_NAME, DLOG_INFO, " %s:%d OpName:[%s] "#fmt, __FUNCTION__, __LINE__, opname, ##__VA_ARGS__)
 #define GE_D_OP_LOGW(opname, fmt, ...) DlogSub(GE, OPPROTO_SUBMOD_NAME, DLOG_WARN,  " %s:%d OpName:[%s] "#fmt, __FUNCTION__, __LINE__, opname, ##__VA_ARGS__)
 #define GE_D_OP_LOGE(opname, fmt, ...) DlogSub(GE, OPPROTO_SUBMOD_NAME, DLOG_ERROR, " %s:%d OpName:[%s] "#fmt, __FUNCTION__, __LINE__, opname, ##__VA_ARGS__)
