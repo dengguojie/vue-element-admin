@@ -710,6 +710,15 @@ def _unpack_schedule_two(input_place, output_shape, y, num, axis, dtype):
         if split_axis == 0:
             last_block_split_trail = (befordim - (befordim_out - 1) * new_shape[0]) % split_factor
             is_last_block_non_last_axis_split_trail_one = (last_block_split_trail != 1)
+        # verify use dma_copy new attr
+        if split_axis == 0 and split_factor > 1 and is_ub_split_trail_one \
+           and is_last_block_non_last_axis_split_trail_one:
+            is_use_dma_copy_new_attr = True
+        else:
+            is_use_dma_copy_new_attr = False
+            # coexisting_quantities 1
+            split_axis, split_factor = _tiling_axis(new_shape, dtype)
+        if split_axis == 0:
             axis_outer, axis_inner = sch[virtual_node].split(befordim_inner, factor=split_factor)
         else:
             axis_outer, axis_inner = sch[virtual_node].split(afterdim_inner, factor=split_factor)
@@ -718,7 +727,12 @@ def _unpack_schedule_two(input_place, output_shape, y, num, axis, dtype):
         split_axis, split_factor = _tiling_axis(output_shape, dtype, 2)
         ub_split_trail = output_shape[split_axis] - output_shape[split_axis] // split_factor * split_factor
         is_ub_split_trail_one = (ub_split_trail != 1)
-        is_last_block_non_last_axis_split_trail_one = ub_split_trail
+        if split_axis == 0 and split_factor > 1 and is_ub_split_trail_one:
+            is_use_dma_copy_new_attr = True
+        else:
+            is_use_dma_copy_new_attr = False
+            # coexisting_quantities 1
+            split_axis, split_factor = _tiling_axis(new_shape, dtype)
         axis_outer, axis_inner = sch[virtual_node].split(virtual_node.op.axis[split_axis], factor=split_factor)
 
     for i in range(num):
@@ -730,8 +744,7 @@ def _unpack_schedule_two(input_place, output_shape, y, num, axis, dtype):
         sch[ub2gm_tensor_list[i]].compute_at(sch[virtual_node], axis_outer)
 
         sch[gm2ub_tensor_list[i]].emit_insn(gm2ub_tensor_list[i].op.axis[split_axis], tbe_platform.DMA_COPY)
-        if split_axis == 0 and split_factor > 1 and is_ub_split_trail_one \
-           and is_last_block_non_last_axis_split_trail_one:
+        if is_use_dma_copy_new_attr:
             # coexisting_quantities 2
             sch[gm2ub_tensor_list[i]].set_buffer_size(total_ele // 2)
             sch[ub2gm_tensor_list[i]].set_buffer_size(total_ele // 2)
