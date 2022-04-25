@@ -1,0 +1,45 @@
+[
+  {
+    "op": "ReduceMax",
+    "calc_expect_func_file":"test_reducemax_golden.py:calc_expect_func",
+    "input_desc": [
+      {
+        "shape": [-2],
+        "typical_shape": [2, 2, 2, 2],
+        "format": "ND",
+        "ori_shape": [-1, 2, 2, 2],
+        "ori_format": "ND",
+        "name": "x",
+        "type": "float16"
+      },
+      {
+        "shape": [-2],
+        "typical_shape": [1],
+        "format": "ND",
+        "ori_shape": [-1],
+        "ori_format": "ND",
+        "name": "axes",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [-2],
+        "typical_shape": [2, 1, 2, 2],
+        "format": "ND",
+        "ori_shape": [-1, 1, 2, 2],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "keep_dims",
+        "type": "bool",
+        "value": true
+      }
+    ],
+    "case_name": "test_ReduceMax_000"
+  }
+]

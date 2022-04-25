@@ -825,5 +825,41 @@
     ],
     "attr": [],
     "case_name": "test_dynamic_Reciprocal_003"
+  },
+  {
+    "op": "Reciprocal",
+    "calc_expect_func_file":"test_reciprocal_golden.py:calc_expect_func",
+    "input_desc": [
+      {
+        "shape": [
+          -2
+        ],
+        "format": "NHWC",
+        "name": "input_x",
+        "type": "float16",
+        "value_range": [
+          [
+            1,
+            100
+          ]
+        ],
+        "typical_shape": [
+          2,
+          5
+        ]
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          2,5
+        ],
+        "format": "NHWC",
+        "name": "output_y",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_dynamic_Reciprocal_004"
   }
 ]
