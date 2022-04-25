@@ -22,6 +22,7 @@ from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import tbe_context
 from impl.util.platform_adapter import error_manager_vector
 from impl.util.util_common import is_unknown_rank_input
@@ -70,6 +71,7 @@ def check_equal(a, b):
     return True
 
 
+@register_operator_compute("BiasAdd", op_mode="dynamic", support_fusion=True)
 def bias_add_compute(x, bias, y, data_format, kernel_name="bias_add"):
     """
     calculating data's bias add
