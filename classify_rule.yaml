@@ -1223,6 +1223,7 @@ vector_B:
       - tools/op_test_frame/python/op_test_frame/ut/ut_report.py
       - tools/op_test_frame/python/op_test_frame/utils/file_util.py
       - tools/op_test_frame/python/op_test_frame/utils/precision_compare_util.py
+      - tools/tbe_toolkits/
       - classify_rule.txt
       - scripts/check_clang_format.sh
       - scripts/custom_check.sh
@@ -1230,6 +1231,7 @@ vector_B:
       - scripts/run_test.sh
       - scripts/run_ut.py
       - scripts/util/run_ops_st.sh
+      - scripts/util/run_ops_st_plus.sh
       - ops/built-in/tests/common/CMakeLists.txt
       - ops/built-in/tests/get_change_relate_ops.py
       - ops/built-in/tests/st/AdaptiveAvgpool2dGrad/test_adaptive_avgpool2d_grad_st.json
