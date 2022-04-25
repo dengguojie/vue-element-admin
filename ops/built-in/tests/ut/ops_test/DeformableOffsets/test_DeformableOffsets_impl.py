@@ -86,6 +86,19 @@ case6 = {"params": [{"shape": (16, 80, 80, 128), "dtype": "float32", "format": "
          "expect": "success",
          "support_expect": True}
 
+case7 = {"params": [{"shape": (1, 152, 152, 256), "dtype": "float32", "format": "NHWC", "ori_shape": (1, 152, 152, 256),
+                     "ori_format": "NHWC"},
+                    {"shape": (1, 152, 152, 27), "dtype": "float32", "format": "NHWC", "ori_shape": (1, 152, 152, 27),
+                     "ori_format": "NHWC"},
+                    {"shape": (1, 152, 152, 27), "dtype": "float32", "format": "NHWC", "ori_shape": (1, 152, 152, 27),
+                     "ori_format": "NHWC"},
+                    {"shape": (1, 456, 456, 256), "dtype": "float32", "format": "NHWC", "ori_shape": (1, 456, 456, 256),
+                     "ori_format": "NHWC"},
+                    [1, 1, 1, 1], [1, 1, 1, 1], [3, 3], [1, 1, 1, 1], "NHWC", 1, True],
+         "case_name": "DeformableOffsets_7",
+         "expect": "success",
+         "support_expect": True}
+
 from impl.deformable_offsets import check_supported
 
 
@@ -142,6 +155,15 @@ def test_check_support(test_arg):
                      "ori_format": "NNWC"},
                     [1, 1, 1, 1], [1, 1, 1, 1], [3, 3], [1, 1, 1, 1], "NNWC", 100, True)
 
+    check_supported({"shape": (1, 152, 152, 256), "dtype": "float32", "format": "NHWC", "ori_shape": (1, 152, 152, 256),
+                     "ori_format": "NHWC"},
+                    {"shape": (1, 152, 152, 27), "dtype": "float32", "format": "NHWC", "ori_shape": (1, 152, 152, 27),
+                     "ori_format": "NHWC"},
+                    {"shape": (1, 152, 152, 27), "dtype": "float32", "format": "NHWC", "ori_shape": (1, 152, 152, 27),
+                     "ori_format": "NHWC"},
+                    {"shape": (1, 456, 456, 256), "dtype": "float32", "format": "NHWC", "ori_shape": (1, 456, 456, 256),
+                     "ori_format": "NHWC"},
+                    [1, 1, 1, 1], [1, 1, 1, 1], [3, 3], [1, 1, 1, 1], "NHWC", 1, True)
 
 ut_case.add_cust_test_func(test_func=test_check_support)
 ut_case.add_case(["Ascend910A"], case1)
@@ -150,3 +172,4 @@ ut_case.add_case(["Ascend910A"], case2)
 # ut_case.add_case(["Ascend710"], case4)
 # ut_case.add_case(["Ascend710"], case5)
 # ut_case.add_case(["Ascend910"], case6)
+ut_case.add_case(["Ascend910A"], case7)

@@ -84,6 +84,35 @@ def get_params(dtype):
     return size, mask, ratio
 
 
+def get_global_ub_size(dim_group_c, elem_num_aligned, d_size, thread_num):
+    """
+    get global ub size
+    """
+    vmax_support = tbe_platform.api_check_support("tik.vmax", dtype="float32")
+    vsel_support = tbe_platform.api_check_support("tik.vsel", dtype="float32")
+
+    ub_x_local = 0
+    if not vsel_support:
+        ub_x_local = 4 * dim_group_c * Constant.FP16_SIZE
+    ub_limit = 3 * Constant.VECTOR_BYTES_SIZE
+    ub_limit_ceil = 0
+    if not vmax_support or not vsel_support:
+        ub_limit_ceil = 2 * Constant.VECTOR_BYTES_SIZE
+    sel_mask = 6 * Constant.VECTOR_BYTES_SIZE
+
+    ub_offsets = 6 * elem_num_aligned * d_size
+    ub_offsets_int32 = 2 * elem_num_aligned * Constant.FP32_SIZE
+    ub_offsets_x_ceil_int32 = 4 * dim_group_c * Constant.FP32_SIZE
+    ub_weight_lt = 4 * dim_group_c * d_size
+    ceil_sub_x = 5 * dim_group_c * d_size
+    ub_offset_x_ceil_f32 = 4 * Constant.VECTOR_BYTES_SIZE
+    ub_lt_x = 4 * dim_group_c * d_size
+    all_size = ub_x_local + ub_limit + ub_limit_ceil + sel_mask + \
+               thread_num * (ub_offsets + ub_offsets_int32 + ub_offsets_x_ceil_int32 + ub_weight_lt +
+                             ceil_sub_x + ub_offset_x_ceil_f32 + ub_lt_x)
+    return all_size
+
+
 # 'pylint: disable=unused-argument,unused-variable
 # 'pylint: disable=too-many-arguments,too-many-locals,too-many-return-statements
 def check_supported(x,
@@ -125,6 +154,19 @@ def check_supported(x,
     if group_c % 8 != 0 or deformable_groups != 1:
         reason = "group_c[%s] is not multiple of 8, or deformable_groups is not 1" % (str(group_c),)
         return False, reason
+    d_size = common_util.get_data_size(x_dtype)
+    dim_kh = ksize[0]
+    dim_kw = ksize[1]
+    thread_num = 2
+    total_ub = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
+    elem_num_offsets_filter = deformable_groups * dim_kh * dim_kw * 3
+    elem_num_aligned = _ceil_align(elem_num_offsets_filter, Constant.BLOCK_BYTES_SIZE // d_size)
+    global_ub_size = get_global_ub_size(group_c, elem_num_aligned, d_size, thread_num)
+    max_ub_elem = (total_ub - global_ub_size) // d_size
+    ub_seg_size = max_ub_elem // (x_shape[3] * dim_kw) // thread_num
+    if max_ub_elem <= 0 or ub_seg_size <= 0:
+        reason = "size needed exceed ub_size"
+        return False, reason
     return True, ""
 
 
@@ -158,7 +200,6 @@ class DeformableOffsets:
         self.dtype_bytes_size = common_util.get_data_size(self.x_dtype)
         self.data_in_one_block = Constant.BLOCK_BYTES_SIZE // self.dtype_bytes_size
         self.data_in_one_vector = Constant.VECTOR_BYTES_SIZE // self.dtype_bytes_size
-        max_ub_elem = (self.total_ub - 21480) // self.dtype_bytes_size
         self.dim_offsets_n = self.offsets_shape[0]
         self.dim_offsets_h = self.offsets_shape[1]
         self.dim_offsets_w = self.offsets_shape[2]
@@ -186,6 +227,9 @@ class DeformableOffsets:
             self.y_dtype, [self.y_len], name="y_gm", scope=tbe_platform.scope_gm)
         self.scalar_const_pos1 = self.tik_instance.Scalar(
             dtype=self.x_dtype, name="const_pos1", init_value=1.0)
+        global_ub_size = get_global_ub_size(self.dim_group_c, self.elem_num_aligned,
+                                            self.dtype_bytes_size, self.thread_num)
+        max_ub_elem = (self.total_ub - global_ub_size) // self.dtype_bytes_size
         self.ub_seg_size = max_ub_elem // (self.dim_c * self.dim_kw) // self.thread_num
         self.loop_seg = self.dim_offsets_w // self.ub_seg_size
         self.ub_seg_res = self.dim_offsets_w % self.ub_seg_size
