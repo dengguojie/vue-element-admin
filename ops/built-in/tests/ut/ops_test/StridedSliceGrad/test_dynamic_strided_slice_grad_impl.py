@@ -44,6 +44,19 @@ def gen_ssg_case(shape, begin, end, strides, dy_shape, dtype, case_name_val, exp
             "support_expect": True}
 
 
+dynamicrank = {"params": [
+    {"shape": (-2,), "ori_shape": (-2,), "format": "ND", "ori_format": "ND", "dtype": "float16"},
+    {"shape": (-2,), "ori_shape": (-2,), "format": "ND", "ori_format": "ND", "dtype": "float16"},
+    {"shape": (-2,), "ori_shape": (-2,), "format": "ND", "ori_format": "ND", "dtype": "float16"},
+    {"shape": (-2,), "ori_shape": (-2,), "format": "ND", "ori_format": "ND", "dtype": "float16"},
+    {"shape": (-2,), "ori_shape": (-2,), "format": "ND", "ori_format": "ND", "dtype": "float16"},
+    {"shape": (-2,), "ori_shape": (-2,), "format": "ND", "ori_format": "ND", "dtype": "float16"},
+    None, None, None, None, None],
+    "case_name": "strided_slice_grad_dynamic_rank_1",
+    "expect": "success",
+    "format_expect": [],
+    "support_expect": True}
+
 def test_op_check_supported_1(test_arg):
     from impl.dynamic.strided_slice_grad import check_supported
     shape = {'ori_shape': (), 'shape': (), 'ori_format': 'NCDHW', 'format': 'NCDHW', 'dtype': 'float16'}
@@ -137,6 +150,8 @@ ut_case.add_cust_test_func(test_func=test_op_check_supported_6)
 ut_case.add_case(["Ascend910A"],
                  gen_ssg_case((1, 300, 25), (2, 1), (5, 3), (1, 1), (1, 300, 2), "float16", "case_1",
                               "success"))
+
+ut_case.add_case(["Ascend910A"], dynamicrank)
 
 if __name__ == '__main__':
     ut_case.run("Ascend910A")
