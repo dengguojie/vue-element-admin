@@ -85,5 +85,35 @@
         "value": "float16"
       }
     ]
+  },
+  {
+    "case_name": "ArgMaxV2_dynamic_rank",
+    "calc_expect_func_file" : "test_argmax_v2_golden.py:calc_expect_func",
+    "op": "ArgMaxV2",
+    "input_desc": [
+      {
+        "format": "ND",
+        "type": "float32",
+        "shape": [-2],
+        "typical_shape": [16, 16],
+        "name": "x"
+      },
+      {
+        "format": "ND",
+        "type": "int32",
+        "shape": [-2],
+        "typical_shape": [1],
+        "value": [1],
+        "name": "dimension"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "type": "int32",
+        "shape": [16],
+        "name": "y"
+      }
+    ]
   }
 ]
