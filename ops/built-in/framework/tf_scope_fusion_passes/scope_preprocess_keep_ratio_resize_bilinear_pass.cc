@@ -146,21 +146,30 @@ void ScopeKeepRatioResizeBilinearPass::GenerateFusionResult(const std::vector<Sc
           (nodeName.find(maxDivNodeName) == std::string::npos)) {
         minConstNode = nodeName;
         Tensor data;
-        nodeDef->GetAttr("value", data);
+        if (nodeDef->GetAttr("value", data) != SUCCESS) {
+          OP_LOGE(kOpType.c_str(), "get attr value failed.");
+          return;
+        }
         float minDimsFloat = *reinterpret_cast<float*>(data.GetData());
-        minDims = round(minDimsFloat);
+        minDims = static_cast<int>(round(minDimsFloat));
         OP_LOGI(kOpType.c_str(), "ScopeKeepRatioResizeBilinearPass get min_dimension = %d", minDims);
       }
       if ((maxConstNode == "") && (nodeName.find(maxDivNodeName) != std::string::npos)) {
         maxConstNode = nodeName;
         Tensor data;
-        nodeDef->GetAttr("value", data);
+        if (nodeDef->GetAttr("value", data) != SUCCESS) {
+          OP_LOGE(kOpType.c_str(), "get attr value failed.");
+          return;
+        }
         float maxDimsFloat = *reinterpret_cast<float*>(data.GetData());
-        maxDims = round(maxDimsFloat);
+        maxDims = static_cast<int>(round(maxDimsFloat));
         OP_LOGI(kOpType.c_str(), "ScopeKeepRatioResizeBilinearPass get max_dimension = %d", maxDims);
       }
       if (nodeDef->GetOpType() == resizeType) {
-        nodeDef->GetAttr("align_corners", alignCorners);
+        if (nodeDef->GetAttr("align_corners", alignCorners) != SUCCESS) {
+          OP_LOGE(kOpType.c_str(), "get attr align_corners failed.");
+          return;
+        }
       }
     }
 
@@ -181,10 +190,10 @@ void ScopeKeepRatioResizeBilinearPass::GenerateFusionResult(const std::vector<Sc
     CHECK_INNER_NODE_CONDITION(resizeNode->MutableOperator() != nullptr, fusion_rlt);
     resizeNode->SetInputFormat("images", "NHWC");
     resizeNode->SetOutputFormat("y", "NHWC");
-    resizeNode->MutableOperator()->SetAttr("align_corners", alignCorners);
-    resizeNode->MutableOperator()->SetAttr("half_pixel_centers", halfPixelCenters);
-    resizeNode->MutableOperator()->SetAttr("min_dimension", minDims);
-    resizeNode->MutableOperator()->SetAttr("max_dimension", maxDims);
+    (void)resizeNode->MutableOperator()->SetAttr("align_corners", alignCorners);
+    (void)resizeNode->MutableOperator()->SetAttr("half_pixel_centers", halfPixelCenters);
+    (void)resizeNode->MutableOperator()->SetAttr("min_dimension", minDims);
+    (void)resizeNode->MutableOperator()->SetAttr("max_dimension", maxDims);
 
     OP_LOGI(kOpType.c_str(), "ScopeKeepRatioResizeBilinearPass add KeepRatioResizeBilinear end");
 
@@ -223,7 +232,7 @@ void ScopeKeepRatioResizeBilinearPass::GenerateFusionResult(const std::vector<Sc
     *(beginData) = 1;
     TensorDesc beginDesc(ge::Shape({1}), FORMAT_ND, DT_INT32);
     Tensor beginTensor(beginDesc, (uint8_t*)beginData, sizeof(int32_t));
-    constBeginNode->MutableOperator()->SetAttr("value", beginTensor);
+    (void)constBeginNode->MutableOperator()->SetAttr("value", beginTensor);
     delete[] beginData;
     beginData = nullptr;
 
@@ -241,7 +250,7 @@ void ScopeKeepRatioResizeBilinearPass::GenerateFusionResult(const std::vector<Sc
     *(sizeData) = 3;
     TensorDesc sizeDesc(ge::Shape({1}), FORMAT_ND, DT_INT32);
     Tensor sizeTensor(sizeDesc, (uint8_t*)sizeData, sizeof(int32_t));
-    constSizeNode->MutableOperator()->SetAttr("value", sizeTensor);
+    (void)constSizeNode->MutableOperator()->SetAttr("value", sizeTensor);
     delete[] sizeData;
     sizeData = nullptr;
 
@@ -272,7 +281,7 @@ void ScopeKeepRatioResizeBilinearPass::GenerateFusionResult(const std::vector<Sc
     Tensor batchTensor(batchDesc, (uint8_t*)beginBatchData, sizeof(int32_t));
     auto constBatchNodeOp = constBatchNode->MutableOperator();
     if (constBatchNodeOp != nullptr) {
-        constBatchNodeOp->SetAttr("value", batchTensor);
+        (void)constBatchNodeOp->SetAttr("value", batchTensor);
     }
     delete[] beginBatchData;
     beginBatchData = nullptr;
@@ -304,7 +313,7 @@ void ScopeKeepRatioResizeBilinearPass::GenerateFusionResult(const std::vector<Sc
     dynamic_name_attr_value.emplace_back(dyn_info);
     Operator op_src(concatNode->GetName(), concatNode->GetType());
     int dyn_num = 2;
-    op_src.SetAttr("N", dyn_num);
+    (void)op_src.SetAttr("N", dyn_num);
     CHECK_INNER_NODE_CONDITION(concatNode->MutableOperator() != nullptr, fusion_rlt);
     AutoMappingByOpFnDynamic(op_src, *(concatNode->MutableOperator()), dynamic_name_attr_value);
     op_src.BreakConnect();

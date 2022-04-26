@@ -3026,6 +3026,7 @@ unkown:
       - ops/built-in/framework/tf_scope_fusion_passes/scope_dynamic_gru_pass.h
       - ops/built-in/framework/tf_scope_fusion_passes/scope_dynamic_gru_pass.cc
       - ops/built-in/framework/tf_scope_fusion_passes/scope_preprocess_keep_ratio_resize_bilinear_pass.h
+      - ops/built-in/framework/tf_scope_fusion_passes/scope_preprocess_keep_ratio_resize_bilinear_pass.cc
       - ops/built-in/framework/tf_scope_fusion_passes/scope_rpn_proposals_pass.h
       - ops/built-in/framework/tf_scope_fusion_passes/scope_dynamic_lstm_pass.h
       - ops/built-in/framework/tf_scope_fusion_passes/scope_newbatchmulticlass_nms_pass.h
