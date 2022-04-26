@@ -15,6 +15,7 @@
 """
 dynamic kl_div
 """
+from impl.util import util_select_op_base
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import tbe
@@ -28,6 +29,82 @@ from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import tbe_context
 from impl.util.platform_adapter import OpImplMode
 
+
+# 'pylint: disable=too-many-arguments,unused-argument,too-many-locals
+def op_select_format(input_x, input_target, output_y, reduction, kernel_name="kl_div"):
+    """
+    select format dynamically
+    op_select_format support desc:
+
+    1.When reduction is "none".
+
+    The output format is the same as the input.
+
+        for example:
+        inputs:
+            input_x         shape = [16, 16, 16, 16, 16] format = "NC1HWC0"
+            input_target      shape = [16, 16, 16, 16, 16] format = "NC1HWC0"
+        outputs:
+            output_y         shape = [16, 16, 16, 16, 16] format = "NC1HWC0"
+
+    2.In other scenes, all output_y only support ND.
+
+        for example:
+        inputs:
+            input_x         shape = [16, 16, 16, 16, 16] format = "NC1HWC0"
+            input_target      shape = [16, 16, 16, 16, 16] format = "NC1HWC0"
+        outputs:
+            output_y         shape = [1,] format = "ND"
+
+    Parameters
+    ----------
+    input_x : dict
+        shape and dtype of input_x, dtype only support fp16 and fp32.
+    input_target : dict
+        shape and dtype of input_target.Shape and dtype must be same as input_x
+    output_y : dict
+        shape and dtype of output.Dtype must be same as input_x
+    reduction: str
+        reduction="batchmean" or "sum" or "none".
+        "batchmean": the sum of the output will be divided by the batchsize
+        "sum": the output will be summed
+        "none": no reduction will be applied
+    kernel_name : str
+        cce kernel name, default value is "kl_div"
+
+    Returns
+    ------
+    param_dynamic_in_json : dict
+    supported format and dtype
+    """
+    input_format_list = ["ND", "NC1HWC0", "FRACTAL_Z", "HWCN", "FRACTAL_NZ", "C1HWNCoC0", "ND", "NC1HWC0", "FRACTAL_Z",
+                         "HWCN", "FRACTAL_NZ", "C1HWNCoC0"]
+    input_format = ",".join(input_format_list)
+    if reduction == "none":
+        output_format = input_format
+    else:
+        output_format = ','.join(["ND"] * len(input_format_list))
+
+    dtype_list = ["float", "float", "float", "float", "float", "float", "float16", "float16", "float16", "float16",
+                  "float16", "float16"]
+    dtype = ','.join(dtype_list)
+    input0 = util_select_op_base.gen_param(classify="input0", name="x",
+                                           datatype=dtype,
+                                           format=input_format,
+                                           unknownshape_format=input_format)
+    input1 = util_select_op_base.gen_param(classify="input1", name="target",
+                                           datatype=dtype,
+                                           format=input_format,
+                                           unknownshape_format=input_format)
+    output0 = util_select_op_base.gen_param(classify="output0", name="y",
+                                            datatype=dtype,
+                                            format=output_format,
+                                            unknownshape_format=output_format)
+    param_list = [input0, input1, output0]
+    param_dynamic_in_json = util_select_op_base.get_dynamic_param_in_json(param_list)
+    
+    return param_dynamic_in_json
+    
 
 # 'pylint: disable=too-many-arguments,unused-argument,too-many-locals
 @register_operator_compute("KLDiv", op_mode="dynamic", support_fusion=True)
@@ -106,8 +183,11 @@ def kl_div_compute(input_x, input_target, output_y, axis, reduction, batch_size,
         final_res = tbe.reduce_sum(output_res, axis=axis["value"])
     elif reduction == "sum":
         final_res = tbe.reduce_sum(output_res, axis=axis["value"])
+    elif reduction == "none":
+        final_res = output_res
     else:
-        error_manager_vector.raise_err_input_value_invalid(kernel_name, 'reduction', ("batchmean", "sum"), reduction)
+        error_manager_vector.raise_err_input_value_invalid(kernel_name, 'reduction',
+                                                           ("batchmean", "sum", "none"), reduction)
 
     return final_res
 
@@ -168,9 +248,10 @@ def kl_div(input_x, input_target, output_y, reduction, kernel_name="kl_div"):
         shape and dtype of output.Dtype must be same as input_x
     reduction: str
         Specifies the reduction to apply to the output:
-        reduction="batchmean" or reduction="sum".
+        reduction="batchmean/sum/none".
         "batchmean": the sum of the output will be divided by the batchsize
         "sum": the output will be summed
+        "none": no reduction will be applied 
     kernel_name : str
         cce kernel name, default value is "kl_div"
 
