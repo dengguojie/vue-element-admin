@@ -23,6 +23,9 @@ from te import platform as tbe_platform
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
 from impl.util.util_select_op_base import gen_param
+from impl.util.util_select_op_base import SplitInput
+from impl.util.util_select_op_base import SplitOutput
+from impl.util.util_select_op_base import get_op_cal_info
 from impl.util.util_select_op_base import get_dynamic_param_in_json
 
 NONETYPE = type(None)
@@ -135,6 +138,33 @@ def op_select_format(x, scale, bias, y, axis=1, num_axes=1, scale_from_blob=True
     param_list = [input0, input1, input2, output0]
     param_dynamic_in_json = get_dynamic_param_in_json(param_list)
     return param_dynamic_in_json
+
+
+def get_op_support_info(x, scale, bias, y, axis=1, num_axes=1, scale_from_blob=True, kernel_name="scale"):
+    """
+    get split info
+    """
+    ori_shape = x.get("ori_shape")
+    if axis < 0:
+        axis = axis + len(ori_shape)
+    dim_x = len(x.get("shape"))
+    format_x = x.get("format").upper()
+    not_cut_dim = []
+    if format_x == "NC1HWC0":
+        not_cut_dim = [1, 4]
+
+    if format_x in ("ND", "NC1HWC0"):
+        axis_split_list = []
+        for i in range(dim_x):
+            if i < axis and i not in not_cut_dim:
+                split = [SplitInput([0, [i], [-1], [-1]]),
+                         SplitOutput([0, [i]])]
+                axis_split_list.append(split)
+    else:
+        axis_split_list = None
+    axis_reduce_list = None
+    op_cal_info_in_json = get_op_cal_info(axis_split_list, axis_reduce_list)
+    return op_cal_info_in_json
 
 
 def param_scale_check(shape_x, shape_scale):

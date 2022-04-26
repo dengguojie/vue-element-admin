@@ -99,7 +99,7 @@ case9 = scale_cce((1, 1, 448, 448, 16), (1, 1, 448, 448, 16), (1, 1, 448, 448, 1
 ut_case.add_case("Ascend910", case1)
 ut_case.add_case("Ascend910", case2)
 ut_case.add_case("Hi3796CV300ES", case3)
-ut_case.add_case("Ascend910A", case4)
+#ut_case.add_case("Ascend910A", case4)
 ut_case.add_case("Ascend910A", case5)
 ut_case.add_case("Ascend910A", case6)
 ut_case.add_case("Ascend910A", case7)
@@ -302,5 +302,18 @@ def test_op_select_format_001(test_arg):
         "ori_format": "ND"
     }, None, None)
 
+
+def test_get_op_support_info(test_arg):
+    from impl.scale import get_op_support_info
+    get_op_support_info({"shape": (1, 4, 8, 8, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1, 8, 8, 64),
+                         "ori_format": "NHWC"},
+                        {"shape": (1, 4, 8, 8, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1, 8, 8, 64),
+                         "ori_format": "NHWC"},
+                        {"shape": (1, 4, 8, 8, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1, 8, 8, 64),
+                         "ori_format": "NHWC"},
+                        None, -3)
+
+
 ut_case.add_cust_test_func(test_func=test_op_select_format_001)
 ut_case.add_cust_test_func(support_soc="all", test_func=test_op_select_format)
+ut_case.add_cust_test_func(test_func=test_get_op_support_info)
