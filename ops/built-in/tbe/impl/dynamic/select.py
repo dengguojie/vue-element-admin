@@ -25,9 +25,46 @@ from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import register_operator_compute
+from impl.select import op_select_format as static_op_select_format
+
+
+# 'pylint: disable=locally-disabled,unused-argument,too-many-locals,invalid-name
+# 'pylint: disable=locally-disabled,too-many-statements,too-many-branches
+# 'pylint: disable=get-dict-value-exception
+def op_select_format(condition, x1, x2, y, kernel_name="select"):
+    """1.when all input(condition, x1, x2) have the same ori_shape, ori_format,
+       and the format is in ["NCHW", "NHWC", "HWCN"] or ["NDHWC", "DHWCN", "NCDHW"],
+       the Op Select can support ND, FRACTAL_NZ, NC1HWC0 and FRACTAL_Z.
+
+        for example:
+        conditon : Tensor (shape=(16, 16, 16, 16), "NCHW")
+        x1 : Tensor of (shape=(16, 16, 16, 16), "NCHW")
+        x2 : Tensor of (shape=(16, 16, 16, 16), "NCHW")
+        the Op Select can process with NC1HWC0:
+        conditon : Tensor of (shape=(16, 1, 16, 16, 16), "NC1HWC0")
+        x1 : Tensor of (shape=(16, 1, 16, 16, 16), "NC1HWC0")
+        x2 : Tensor of (shape=(16, 1, 16, 16, 16), "NC1HWC0")
+
+    2.when all input(x1, x2) have the same ori_shape, ori_format, and the
+       format is in ["NCHW", "NHWC", "HWCN"] or ["NDHWC", "DHWCN", "NCDHW"],
+       and conditon is a scaler. The Op Select can support ND, FRACTAL_NZ,
+       NC1HWC0 and FRACTAL_Z.
+
+        for example:
+        conditon : Tensor of (shape=(2), "NCHW")
+        x1 : Tensor of (shape=(16, 16, 16, 16), "NCHW")
+        x2 : Tensor of (shape=(16, 16, 16, 16), "NCHW")
+        the Op Select can process with NC1HWC0:
+        conditon : Tensor of (shape=(2), "NCHW")
+        x1 : Tensor of (shape=(16, 1, 16, 16, 16), "NC1HWC0")
+        x2 : Tensor of (shape=(16, 1, 16, 16, 16), "NC1HWC0")
+    """
+    return static_op_select_format(condition, x1, x2, y, kernel_name="select")
 
 
 # 'pylint: disable=too-many-locals,invalid-name,unused-argument,too-many-statements
+@register_operator_compute("Select", op_mode="dynamic", support_fusion=True)
 def select_compute(condition, x1, x2, y, kernel_name="select"):
     """
     compute for select

@@ -27,11 +27,47 @@ from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import OpImplMode
 from impl.util.platform_adapter import tbe_platform
+from impl.util.platform_adapter import register_operator_compute
+from impl.real_div import op_select_format as static_op_select_format
+from impl.real_div import _check_format
+from impl.real_div import _infer_shape
+from impl.util import util_common
+
+
+# 'pylint: disable=too-many-locals,too-many-statements,too-many-boolean-expressions
+def op_select_format(input_x, input_y, output_z, kernel_name="real_div"):
+    """
+    select format dynamically\n
+    op_select_format support desc:
+
+    1.when input x's ori_shape is 4, and bias's shape is not 1.\n
+    The Op Bias can support
+    ND/ND = ND,
+    NC1HWC0/NC1HWC0 = NC1HWC0.
+
+        for example:
+        inputs:
+            x        ori shape = [16, 16, 16, 16, 16] ori_format = "NC1HWC0"
+            bias     ori shape = [16, 16, 16, 16, 16] ori_format = "NC1HWC0"
+        outputs:
+            y        ori shape = [16, 16, 16, 16, 16] ori_format = "NC1HWC0"
+
+    2.In other scenes, all input(x, bias) only support ND.
+
+        for example:
+        inputs:
+            x        ori shape = [2] ori_format = "ND"
+            bias     ori shape = [2] ori_format = "ND"
+        outputs:
+            y        ori shape = [2] ori_format = "ND"
+    """
+    return static_op_select_format(input_x, input_y, output_z, kernel_name="real_div")
 
 
 # 'pylint: disable=locally-disabled,too-many-arguments
 # 'pylint: disable=unused-argument,invalid-name
 # 'pylint: disable=too-many-locals,redefined-argument-from-local
+@register_operator_compute("RealDiv", op_mode="dynamic", support_fusion=True)
 def real_div_compute(x1, x2, y, kernel_name="real_div", impl_mode=OpImplMode.HIGH_PERFORMANCE):
     """
     calculating data's realdiv, c = a / b
@@ -95,7 +131,17 @@ def real_div(x1, x2, y, kernel_name="real_div", impl_mode=OpImplMode.HIGH_PERFOR
     -------
     None
     """
-
+    
+    if not util_common.is_unknown([x1, x2]):
+        format_pattern = _check_format(x1, x2)
+        shape_x, shape_y = _infer_shape(format_pattern, x1, x2)
+        range_x = util_common.gen_range(shape_x)
+        range_y = util_common.gen_range(shape_y)
+        x1["shape"] = shape_x
+        x1["range"] = range_x
+        x2["shape"] = shape_y
+        x2["range"] = range_y
+    
     x_dtype = x1.get("dtype").lower()
     y_dtype = x2.get("dtype").lower()
     check_list = ("float16", "float32")

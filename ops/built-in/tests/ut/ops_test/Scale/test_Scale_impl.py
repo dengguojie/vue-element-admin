@@ -59,7 +59,7 @@ case4 = scale_cce((2, 3, 2, 3), (2), (1, 3, 1, 1), (2, 3, 2, 3),
                   "float32", "float32", "float32", "float32",
                   "ND", "ND", "ND", "ND",
                   "ND", "ND", "ND", "ND",
-                  1, 1, True, RuntimeError, "scale_4")
+                  1, 1, True, TypeError, "scale_4")
 
 case5 = scale_cce((2, 3, 2, 3), (2, 3, 2, 5), (1, 3, 1, 1), (2, 3, 2, 3),
                   (2, 3, 2, 3), (1, 3, 1, 1), (1, 3, 1, 1), (2, 3, 2, 3),

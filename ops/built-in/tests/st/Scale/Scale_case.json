@@ -1,0 +1,81 @@
+[
+    {
+        "case_name": "Test_Scale_001",
+        "op": "Scale",
+        "input_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["float"],
+                "shape": [-1, 2, 3],
+                "typical_shape": [2, 2, 3],
+                "shape_range": [[1, 100]],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.1,
+                        1.0
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],            
+                "type": ["float"],
+                "shape": [-1, 2, 3],
+                "typical_shape": [2, 2, 3],
+                "shape_range": [[1, 100]],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.1,
+                        1.0                
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],            
+                "type": ["float"],
+                "shape": [-1, 2, 3],
+                "typical_shape": [2, 2, 3],
+                "shape_range": [[1, 100]],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.0,
+                        1.0
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["float"],
+                "shape": [2, 2, 3],
+                "value_range":[0.1, 1.0]
+            }
+        ],
+        "attr": [                           
+            {
+                "name": "axis",          
+                "type": "int",         
+                "value": 0       
+            },
+            {
+                "name": "num_axes",          
+                "type": "int",         
+                "value": 3  
+            },
+            {
+                "name": "scale_from_blob",          
+                "type": "bool",         
+                "value": true
+            }
+        ]
+    }
+]

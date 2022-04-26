@@ -15,6 +15,7 @@
 """
 bias
 """
+import imp
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import tbe_platform
@@ -26,6 +27,28 @@ from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
 from impl.util.platform_adapter import register_operator_compute
+from impl.bias import op_select_format as static_op_select_format
+
+
+# 'pylint: disable=too-few-public-methods
+# 'pylint: disable=too-many-arguments,unused-argument,invalid-name,redefined-outer-name
+# 'pylint: disable=too-many-boolean-expressions,too-many-locals,unused-variable
+def op_select_format(x, bias, y, axis=1, num_axes=1, bias_from_blob=True,
+                     kernel_name="bias"):
+    """
+    1. when input x's ori_shape is 4, and bias's shape is not 1. The
+       Op Bias can support ND and NC1HWC0.
+    > for example:
+    > x : Tensor of (shape=(16, 16, 16, 16, 16), "NC1HWC0")
+    > bias : Tensor of (shape=(16, 16, 16, 16, 16), "NC1HWC0")
+
+    2. In other scenes, all input(x, bias) only support ND.
+    > for example:
+    > x : Tensor of (shape=(2), "ND")
+    > bias : Tensor of (shape=(2), "ND")
+    """
+    return static_op_select_format(x, bias, y, axis=1, num_axes=1, bias_from_blob=True,
+                                   kernel_name="bias")
 
 
 # 'pylint: disable=too-few-public-methods
@@ -245,7 +268,7 @@ def _check_dtype(dtype_x, dtype_bias):
 
 
 # 'pylint: disable=too-many-arguments,unused-argument,invalid-name,redefined-outer-name
-@register_operator_compute("bias", op_mode="dynamic", support_fusion=False)
+@register_operator_compute("Bias", op_mode="dynamic", support_fusion=True)
 def bias_compute(x, bias, y, axis, num_axes, bias_from_blob, kernel_name="bias"):
     """
     calculating data
@@ -272,6 +295,18 @@ def bias_compute(x, bias, y, axis, num_axes, bias_from_blob, kernel_name="bias")
     -------
     output tensor
     """
+    dtype_x = x.dtype
+    dtype_bias = bias.dtype
+
+    is_cast = False
+    if tbe_platform.api_check_support("te.lang.cce.vadd", "float32"):
+        if dtype_x == "float16":
+            is_cast = True
+            x = tbe.cast_to(x, 'float32')
+
+        if dtype_bias == "float16":
+            bias = tbe.cast_to(bias, 'float32')
+    
     _, _, shape_max = shape_util.broadcast_shapes(shape_util.shape_to_list(x.shape),
                                                   shape_util.shape_to_list(bias.shape),
                                                   param_name_input1="x",
@@ -281,6 +316,9 @@ def bias_compute(x, bias, y, axis, num_axes, bias_from_blob, kernel_name="bias")
     data_bias = tbe.broadcast(bias, shape_max)
 
     res = tbe.vadd(data_x, data_bias)
+
+    if is_cast:
+        res = tbe.cast_to(res, dtype_x)
 
     return res
 

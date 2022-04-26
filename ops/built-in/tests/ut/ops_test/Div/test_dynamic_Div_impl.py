@@ -30,5 +30,19 @@ ut_case.add_case("all",
                                       "float32", "ND", (-1,), (-1,),
                                       "dynamic_div_fp32_ND", "success"))
 
+def test_op_select_format(test_arg):
+    """
+    test_op_select_format
+    """
+    from impl.dynamic.div import op_select_format
+    op_select_format({"shape": (20, 28, 16, 16), "dtype": "float16", "format": "NCHW",
+                      "ori_shape": (20, 28, 16, 16), "ori_format": "NCHW"},
+                     {"shape": (1, 1), "dtype": "float16", "format": "ND",
+                      "ori_shape": (1, 1), "ori_format": "ND"},
+                     {"shape": (20, 28, 16, 16), "dtype": "float16", "format": "NCHW",
+                      "ori_shape": (20, 28, 16, 16), "ori_format": "NCHW"})
+
+ut_case.add_cust_test_func(test_func=test_op_select_format)
+
 if __name__ == '__main__':
     ut_case.run("Ascend910A")

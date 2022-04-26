@@ -1,0 +1,126 @@
+[
+  {
+      "case_name": "Test_Bias_001",
+      "op": "Bias",
+      "input_desc": [
+          {
+              "format": ["NHWC"],
+              "type": ["float16"],
+              "shape": [1,1],
+              "data_distribute": [
+                  "uniform"
+              ],
+              "value_range": [
+                  [
+                      0.1,
+                      1.0
+                  ]
+              ],
+              "name": "x"
+          },
+          {
+              "format": ["NHWC"],
+              "type": ["float16"],
+              "shape": [1],
+              "data_distribute": [
+                  "uniform"
+              ],
+              "value_range": [
+                  [
+                      0.1,
+                      1.0
+                  ]
+              ],
+              "name": "bias"
+          }
+      ],
+      "output_desc": [
+          {
+              "format": ["NHWC"],
+              "type": ["float16"],
+              "shape": [1, 1],
+              "name": "y"
+          }
+      ],
+      "attr": [
+          {
+              "name": "axis",
+              "type": "int",
+              "value": 1
+          },
+          {
+            "name": "num_axes",
+            "type": "int",
+            "value": 1
+          },
+          {
+            "name": "bias_from_blob",
+            "type": "bool",
+            "value": true
+          }
+      ]
+  },
+  {
+    "case_name": "Test_Bias_002",
+    "op": "Bias",
+    "input_desc": [
+        {
+            "format": ["ND"],
+            "type": ["float16"],
+            "shape": [-1,1],
+            "typical_shape":[1, 1],
+            "shape_range":[[1, 10]],
+            "data_distribute": [
+                "uniform"
+            ],
+            "value_range": [
+                [
+                    0.1,
+                    1.0
+                ]
+            ],
+            "name": "x"
+        },
+        {
+            "format": ["ND"],
+            "type": ["float16"],
+            "shape": [1],
+            "data_distribute": [
+                "uniform"
+            ],
+            "value_range": [
+                [
+                    0.1,
+                    1.0
+                ]
+            ],
+            "name": "bias"
+        }
+    ],
+    "output_desc": [
+        {
+            "format": ["ND"],
+            "type": ["float16"],
+            "shape": [1, 1],
+            "name": "y"
+        }
+    ],
+    "attr": [
+        {
+            "name": "axis",
+            "type": "int",
+            "value": 1
+        },
+        {
+          "name": "num_axes",
+          "type": "int",
+          "value": 1
+        },
+        {
+          "name": "bias_from_blob",
+          "type": "bool",
+          "value": true
+        }
+    ]
+}
+]

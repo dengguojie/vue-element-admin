@@ -27,6 +27,30 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import tbe_context
 from impl.util.platform_adapter import get_current_build_config
+from impl.scale import op_select_format as static_op_select_format
+
+
+# 'pylint: disable=too-many-arguments,unused-argument,invalid-name,redefined-outer-name
+# 'pylint: disable=too-many-boolean-expressions,too-many-locals,unused-variable
+def op_select_format(x, scale, bias, y, axis=1, num_axes=1, scale_from_blob=True,
+                     kernel_name="scale"):
+    """
+    1. when length of input x's ori_shape is 4. The Op
+    Scale can support NC1HWC0.
+    > for example:
+    > x : Tensor of (shape=(16, 16, 16, 16), "NCHW")
+    > scale : Tensor of (shape=(16, 16, 16, 16), "NCHW")
+    > the Op Scale can process with NC1HWC0:
+    > x : Tensor of (shape=(16, 1, 16, 16, 16) ,"NC1HWC0")
+    > scale : Tensor of (shape=(16, 1, 16, 16, 16) ,"NC1HWC0")
+
+    2. In other scenes, the Op Select can support ND.
+    > for example:
+    > x : Tensor of (shape=(2), "ND")
+    > scale : Tensor of (shape=(2), "ND")
+    """
+    return static_op_select_format(x, scale, bias, y, axis=1, num_axes=1, scale_from_blob=True,
+                                   kernel_name="scale")
 
 
 def param_scale_check(shape_x, shape_scale, kernel_name="scale"):
