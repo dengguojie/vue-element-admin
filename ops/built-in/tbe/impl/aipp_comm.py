@@ -140,6 +140,8 @@ class Const:
 
     V300_SOC_VERSION_LIST = ("Ascend320",)
 
+    ODD_CROP_SUPPORT_SOC_VERSION_LIST = ("Ascend920", "Ascend320")
+
 
 def get_fp16(value):
     """
@@ -2059,8 +2061,9 @@ def check_aipp_static_config(input_data, input_format, output_data, aipp_config,
             raise_runtime_error(cause_desc)
 
         if aipp_config.get('input_format') == "YUV420SP_U8" and \
-                (aipp_config.get('src_image_size_h') % 2 != 0 or
-                 aipp_config.get('src_image_size_w') % 2 != 0):
+                (aipp_config.get('src_image_size_w') % 2 != 0 or
+                (cur_cce_product not in Const.ODD_CROP_SUPPORT_SOC_VERSION_LIST and
+                 aipp_config.get('src_image_size_h') % 2 != 0)):
             cause_desc = "src_image_size_w[%d] and src_image_size_h[%d] " \
                          "should be even for YUV420SP_U8" % \
                          (aipp_config.get('src_image_size_w'),
@@ -2163,9 +2166,10 @@ def check_aipp_static_config(input_data, input_format, output_data, aipp_config,
                               aipp_config.get("src_image_size_w"))
                 raise_runtime_error(cause_desc)
 
-            if cur_cce_product not in ("Ascend320") and aipp_config.get('input_format') in ["YUV420SP_U8"]:
-                if aipp_config.get("load_start_pos_h") % 2 != 0 or \
-                        aipp_config.get("load_start_pos_w") % 2 != 0:
+            if aipp_config.get('input_format') in ["YUV420SP_U8"]:
+                if cur_cce_product not in Const.ODD_CROP_SUPPORT_SOC_VERSION_LIST and \
+                   (aipp_config.get("load_start_pos_h") % 2 != 0 or
+                    aipp_config.get("load_start_pos_w") % 2 != 0):
                     cause_desc = "when input_format is YUV420SP_U8, " \
                                  "load_start_pos_h[%d], load_start_pos_w[%d] " \
                                  "must be even" % \
@@ -2533,7 +2537,7 @@ def check_aipp_static_config(input_data, input_format, output_data, aipp_config,
                     raise_runtime_error(cause_desc)
 
         if aipp_config.get('input_format') == "YUV420SP_U8" and \
-                (h % 2 != 0 or w % 2 != 0):
+            (w % 2 != 0 or (cur_cce_product not in Const.ODD_CROP_SUPPORT_SOC_VERSION_LIST and h % 2 != 0)):
             cause_desc = "src_image_size_h[%d] and src_image_size_w[%d] should " \
                          "be even for YUV420SP_U8" % (h, w)
             raise_runtime_error(cause_desc)
