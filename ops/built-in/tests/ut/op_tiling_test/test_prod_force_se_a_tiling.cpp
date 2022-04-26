@@ -114,14 +114,14 @@ void ForceRunSimpleTest(const int64_t& runIndex, const int64_t& nframes, const i
                 {nframes, nloc * nnei * 4 * 3}, "float32",
                 {nframes, nloc * nnei}, "int32",
                 {4,}, "int32",
-                {nframes, 3, nall}, "float32",
+                {nframes, nall, 3}, "float32",
                 compileInfo.str(), compileInfoKey.str(), expectTiling);
 }
 
 TEST_F(ProdForceSeATiling, prod_force_se_a_tiling_001) {
   ForceRunSimpleTest(0, 1, 12288, 138, 28328, 1, 0, 8, "12288 28328 1536 0 0 1 8 ");
-  ForceRunSimpleTest(1, 1, 12288, 138, 28328, 2, 0, 8, "12288 28328 820 0 0 1 8 ");
-  ForceRunSimpleTest(2, 1, 12288, 138, 28328, 2, 1, 7, "12288 28328 820 808 6560 1 7 ");
+  ForceRunSimpleTest(1, 1, 12288, 138, 28328, 2, 0, 8, "12288 28328 820 813 0 1 8 ");
+  ForceRunSimpleTest(2, 1, 12288, 138, 28328, 2, 1, 7, "12288 28328 820 815 6553 1 7 ");
   ForceRunSimpleTest(3, 1, 65, 8, 10000, 1, 0, 8, "65 10000 9 2 0 1 8 ");
-  ForceRunSimpleTest(4, 1, 17, 8, 10000, 2, 1, 8, "17 10000 2 1 16 1 1 ");
+  ForceRunSimpleTest(4, 1, 17, 8, 10000, 2, 1, 8, "17 10000 1 0 9 1 8 ");
 }

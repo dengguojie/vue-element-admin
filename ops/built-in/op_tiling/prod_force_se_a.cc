@@ -68,6 +68,7 @@ static const int64_t AI_CORE_NUM = 8;
 static const int64_t VECTOR_CORE_NUM = 7;
 static const int64_t NLIST_SHAPE = 2;
 static const int64_t FORCE_SHAPE = 3;
+static const int64_t SPLITE_NUMBER = 2;
 bool ProdForceSeATiling(const std::string& opType, const TeOpParas& op_paras,
                         const nlohmann::json& op_compile_info_json,
                         OpRunInfo& run_info) {
@@ -123,24 +124,25 @@ bool ProdForceSeATiling(const std::string& opType, const TeOpParas& op_paras,
   int64_t nnei = nASel + nRSel;
   int64_t nloc = nlistShape[1] / nnei;
   int64_t nframes = nlistShape[0];
-  int64_t nall = forceShape[2];
+  int64_t nall = forceShape[1];
   int64_t coreLoopLeft = 0;
   int64_t coreNumsUsed = 0;
-  coreNums = (splitCount == SPLIT_NUM_2) ? AI_CORE_NUM + VECTOR_CORE_NUM : coreNums;
-  int64_t coreLoopUnit = ProdForceSeACeilDiv(nloc, coreNums);
-  if (splitCount == 1) {
-    coreNumsUsed = ProdForceSeACeilDiv(nloc, coreLoopUnit);
-    coreLoopLeft = nloc % coreLoopUnit;
-  } else {
-    if (ProdForceSeACeilDiv(nloc, coreLoopUnit) > AI_CORE_NUM) {
-      coreNumsUsed = (splitIndex == 0) ? AI_CORE_NUM : ProdForceSeACeilDiv(nloc, coreLoopUnit) - AI_CORE_NUM;
-      coreLoopLeft = (splitIndex == 0) ? 0 : nloc % coreLoopUnit;
-    } else {
-      coreNumsUsed = (splitIndex == 0) ? ProdForceSeACeilDiv(nloc, coreLoopUnit) : 0;
-      coreLoopLeft = (splitIndex == 0) ? nloc % coreLoopUnit : 0;
-    }
+  int64_t coreLoopUnit = 0;
+  int64_t totalCoreNum = AI_CORE_NUM + VECTOR_CORE_NUM;
+  int64_t aicNums = (nloc * AI_CORE_NUM) / totalCoreNum;
+  int64_t vecNums = nloc - aicNums;
+  int64_t nlocPartNums = nloc;
+  if (splitCount == SPLITE_NUMBER) {
+    nlocPartNums = (splitIndex == 0) ? aicNums : vecNums;
   }
-  int64_t coreOffset = (splitIndex == 0) ? 0 : coreLoopUnit * AI_CORE_NUM;
+  coreLoopUnit = ProdForceSeACeilDiv(nlocPartNums, coreNums);
+  if (coreLoopUnit == 0) {
+    VECTOR_INNER_ERR_REPORT_TILIING(opType, "coreLoopUnit is 0.");
+    return false;
+  }
+  coreNumsUsed = ProdForceSeACeilDiv(nlocPartNums, coreLoopUnit);
+  coreLoopLeft = nlocPartNums % coreLoopUnit;
+  int64_t coreOffset = (splitIndex == 0) ? 0 : aicNums;
   ProdForceSeATilingParams params{nloc, nall, coreLoopUnit, coreLoopLeft, coreOffset, nframes, coreNumsUsed};
   run_info.block_dim = coreNums;
   ProdForceSeAWriteTilingParams(params, run_info);

@@ -110,7 +110,6 @@ bool ScanPQCodesTiling(const std::string& opType, const TeOpParas& op_paras, con
     bucketNumTotal = bucketShape[0];
     bucketStartBase = 0;
   }
-  coreNums = (splitIndex == 0) ? AI_CORE_NUM : VECTOR_CORE_NUM;
   bucketNumLow = bucketNumTotal / coreNums;
   bucketNumHigh = ScanPQCodesCeilDiv(bucketNumTotal, coreNums);
   highCoreNum = bucketNumTotal % coreNums;
