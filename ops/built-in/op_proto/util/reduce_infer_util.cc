@@ -156,7 +156,7 @@ bool GetConstData(const Operator& op, const int64_t const_input_idx, std::vector
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
   auto input_name = op_desc->GetInputNameByIndex(const_input_idx);
   if (op.GetInputConstData(input_name, const_tensor) != ge::GRAPH_SUCCESS) {
-    OP_LOGW(op.GetName().c_str(), "constvalue [%s] not exists.", input_name.c_str());
+    OP_LOGW(TbeGetName(op).c_str(), "constvalue [%s] not exists.", input_name.c_str());
     return false;
   }
 
@@ -180,29 +180,29 @@ bool GetConstData(const Operator& op, const int64_t const_input_idx, std::vector
       }
     } break;
     default: {
-      OP_LOGW(op.GetName().c_str(), "GetConstData of dtype[%s] has not implement.", to_string(const_dtype).c_str());
+      OP_LOGW(TbeGetName(op).c_str(), "GetConstData of dtype[%s] has not implement.", to_string(const_dtype).c_str());
       return false;
     } break;
   }
 
-  OP_LOGD(op.GetName().c_str(), "get const value = %s", to_string(const_values).c_str());
+  OP_LOGD(TbeGetName(op).c_str(), "get const value = %s", to_string(const_values).c_str());
   return true;
 }
 
 bool DoReduceInferShapeWithoutAxes(const Operator& op, GeTensorDescPtr& tensordesc_input_x,
                                    GeTensorDescPtr& tensordesc_output, const GeShape& axes_shape, bool keep_dims) {
-  OP_LOGD(op.GetName().c_str(), "the axes is not const, the output will be dynamic shape");
+  OP_LOGD(TbeGetName(op).c_str(), "the axes is not const, the output will be dynamic shape");
   const GeShape& input_shape = tensordesc_input_x->MutableShape();
   // case0: input is {}， set the output {}
   if (input_shape.IsScalar()) {
-    OP_LOGD(op.GetName().c_str(), "input is scalar, so output is scalar");
+    OP_LOGD(TbeGetName(op).c_str(), "input is scalar, so output is scalar");
     std::vector<int64_t> output_shape;
     tensordesc_output->SetShape(GeShape(output_shape));
     return true;
   }
   // case1: input is {-2}， set the output {-2}
   if (input_shape.IsUnknownDimNum()) {
-    OP_LOGD(op.GetName().c_str(), "input is {-2}, so output {-2}");
+    OP_LOGD(TbeGetName(op).c_str(), "input is {-2}, so output {-2}");
     std::vector<int64_t> output_shape(1, -2);
     tensordesc_output->SetShape(GeShape(output_shape));
     return true;
@@ -235,12 +235,12 @@ bool DoReduceInferShapeWithoutAxes(const Operator& op, GeTensorDescPtr& tensorde
     // case4: all output shape dim is -2
     int64_t output_dim_num = -2;
     if (!axes_shape.IsUnknownDimNum() && axes_shape.GetDimNum() == 0) {
-      OP_LOGD(op.GetName().c_str(), "the axes is scalar, will reduce one dim for input shape");
+      OP_LOGD(TbeGetName(op).c_str(), "the axes is scalar, will reduce one dim for input shape");
       output_dim_num = input_length - 1;
     }
     if (axes_shape.GetDimNum() == 1 && axes_shape.GetDim(0) == 1) {
       output_dim_num = input_length - 1;
-      OP_LOGD(op.GetName().c_str(), "the shape of axes is [1], will reduce one dim for input shape");
+      OP_LOGD(TbeGetName(op).c_str(), "the shape of axes is [1], will reduce one dim for input shape");
     }
     int64_t range_min_value = input_shape_range[0].first;
     int64_t range_max_value = input_shape_range[0].second;
@@ -272,24 +272,24 @@ bool DoReduceInferShapeWithoutAxes(const Operator& op, GeTensorDescPtr& tensorde
 
 bool CommonReduceInferWithInputAxes(const Operator& op, const int64_t input_x_idx, const int64_t output_idx,
                                     const int64_t input_axes_idx, bool keep_dims) {
-  PROFILING_PROTO_INIT(op.GetName().c_str());
+  PROFILING_PROTO_INIT(TbeGetName(op).c_str());
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
   auto axes_name = op_desc->GetInputNameByIndex(input_axes_idx);
   op_desc->SetOpInferDepends({axes_name});
-  CHECK(op_desc == nullptr, VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), OtherErrMsg("invalid OpDesc.")),
+  CHECK(op_desc == nullptr, VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), OtherErrMsg("invalid OpDesc.")),
         return false);
   auto tensordesc_input_x = op_desc->MutableInputDesc(input_x_idx);
   auto tensordesc_input_axes = op_desc->MutableInputDesc(input_axes_idx);
   auto tensordesc_output = op_desc->MutableOutputDesc(output_idx);
   CHECK(tensordesc_input_x == nullptr || tensordesc_output == nullptr || tensordesc_input_axes == nullptr,
-        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), OtherErrMsg("get mutable desc failed.")), return false);
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), OtherErrMsg("get mutable desc failed.")), return false);
   auto input_type = tensordesc_input_x->GetDataType();
   const GeShape& input_shape = tensordesc_input_x->MutableShape();
   const GeShape& axes_shape = tensordesc_input_axes->MutableShape();
   tensordesc_output->SetDataType(input_type);
 
   if (axes_shape.GetDimNum() == 1 && axes_shape.GetDim(0) == 0) {
-    OP_LOGD(op.GetName().c_str(), "axes_shape is [0], set output shape = input shape");
+    OP_LOGD(TbeGetName(op).c_str(), "axes_shape is [0], set output shape = input shape");
     tensordesc_output->SetShape(input_shape);
     std::vector<std::pair<int64_t, int64_t>> input_shape_range;
     tensordesc_input_x->GetShapeRange(input_shape_range);
@@ -304,26 +304,26 @@ bool CommonReduceInferWithInputAxes(const Operator& op, const int64_t input_x_id
     // do infershape with const axes for static op
     GeShape& output_shape = tensordesc_output->MutableShape();
     CHECK(!DoReduceInfershapeWithAxes(input_shape, keep_dims, reduce_axes, output_shape),
-          VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), OtherErrMsg("do reduce infershape failed.")), return false);
+          VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), OtherErrMsg("do reduce infershape failed.")), return false);
 
     // when output is dynamic shape, will infer range
     if (output_shape.IsUnknownShape()) {
       if (!output_shape.IsUnknownDimNum()) {
         CHECK(!DoReduceInferRangeWithAxes(tensordesc_input_x, tensordesc_output, reduce_axes, keep_dims),
-              VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), OtherErrMsg("do reduce infer range failed.")),
+              VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), OtherErrMsg("do reduce infer range failed.")),
               return false);
       }
-      OP_LOGD(op.GetName().c_str(), "infer output range end for dynamic output");
+      OP_LOGD(TbeGetName(op).c_str(), "infer output range end for dynamic output");
       return true;
     }
-    OP_LOGD(op.GetName().c_str(), "the output is not dynamic");
+    OP_LOGD(TbeGetName(op).c_str(), "the output is not dynamic");
     PROFILING_PROTO_AFTER_INFER_SHAPE_REG();
     PROFILING_PROTO_END();
     return true;
   }
 
   CHECK(!DoReduceInferShapeWithoutAxes(op, tensordesc_input_x, tensordesc_output, axes_shape, keep_dims),
-        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), OtherErrMsg("do reduce infer range failed.")), return false);
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), OtherErrMsg("do reduce infer range failed.")), return false);
   return true;
 }
 

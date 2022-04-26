@@ -2593,7 +2593,7 @@ IMPLEMT_COMMON_INFERFUNC(AttentionScoreInferShape) {
   vector<int64_t> query_dims = op.GetInputDescByName("query").GetShape().GetDims();
   vector<int64_t> padding_mask_dims = op.GetInputDescByName("padding_mask").GetShape().GetDims();
   if (query_dims.size() != 4 || padding_mask_dims.size() != 4) {
-    OP_LOGE(op.GetName().c_str(),
+    OP_LOGE(TbeGetName(op).c_str(),
             "The input query and padding_mask only support 4D.");
     return GRAPH_FAILED;
   }

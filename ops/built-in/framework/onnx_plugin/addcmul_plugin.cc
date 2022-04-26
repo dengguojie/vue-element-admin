@@ -54,7 +54,7 @@ static Status ParseOpToGraph(const ge::Operator &op, ge::Graph &graph) {
   auto data_2 = ge::op::Data().set_attr_index(2);
   float value = 0.0;
   if (op.GetAttr("value", value) != ge::GRAPH_SUCCESS) {
-    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "get attr value failed.");
+    ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "get attr value failed.");
     return FAILED;
   }
   auto mul = ge::op::Mul("Mul");

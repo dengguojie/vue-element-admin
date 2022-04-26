@@ -42,18 +42,18 @@ IMPLEMT_INFERFUNC(WarpPerspective, WarpPerspectiveInfer) {
   int out_height;
   int out_widht;
   if (GRAPH_SUCCESS != op.GetAttr("out_height", out_height)) {
-    OP_LOGE(op.GetName().c_str(), "Get out_height failed!\n");
+    OP_LOGE(TbeGetName(op).c_str(), "Get out_height failed!\n");
     return GRAPH_FAILED;
   }
 
   if (GRAPH_SUCCESS != op.GetAttr("out_width", out_widht)) {
-    OP_LOGE(op.GetName().c_str(), "Get out_width failed!\n");
+    OP_LOGE(TbeGetName(op).c_str(), "Get out_width failed!\n");
     return GRAPH_FAILED;
   }
 
   Shape input_shape = op.GetInputDesc("x").GetShape();
   if (input_shape.GetDimNum() != 4) {
-    OP_LOGE(op.GetName().c_str(), "Input Shape dim is not 4!\n");
+    OP_LOGE(TbeGetName(op).c_str(), "Input Shape dim is not 4!\n");
     return GRAPH_FAILED;
   }
 
@@ -62,7 +62,7 @@ IMPLEMT_INFERFUNC(WarpPerspective, WarpPerspectiveInfer) {
   output_desc.SetShape(Shape({N, channel, out_height, out_widht}));
 
   if (op.UpdateOutputDesc("y", output_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "output desc update failed!\n");
+    OP_LOGE(TbeGetName(op).c_str(), "output desc update failed!\n");
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;

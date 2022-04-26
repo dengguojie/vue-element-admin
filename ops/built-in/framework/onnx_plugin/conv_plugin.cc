@@ -104,7 +104,7 @@ Status SetAttrToOp(const ge::onnx::NodeProto* node, ge::Operator& op) {
 
   if (!is_have_kernel_shape) {
     if (strides_list.size() == 2 && dilations_list.size() == 2 && pad_list.empty()) {
-      ONNX_PLUGIN_LOGE(op.GetName().c_str(), "node must have attr (kernel_shape,pads,strides,dilations) at least one");
+      ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "node must have attr (kernel_shape,pads,strides,dilations) at least one");
       return FAILED;
     }
     dim_size = (strides_list.size() == 5 || pad_list.size() == 6 || dilations_list.size() == 5) ? 5 : 4;

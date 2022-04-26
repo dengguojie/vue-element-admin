@@ -36,24 +36,6 @@
 
 template <class T>
 typename std::enable_if<std::is_same<std::string, typename std::decay<T>::type>::value, const char*>::type
-get_op_name(const T& name) {
-  return name.c_str();
-}
-
-template <class T>
-typename std::enable_if<std::is_same<const char*, typename std::decay<T>::type>::value, const char*>::type
-get_op_name(T name) {
-  return name;
-}
-
-template <class T>
-typename std::enable_if<std::is_same<char*, typename std::decay<T>::type>::value, const char*>::type
-get_op_name(T name) {
-  return name;
-}
-
-template <class T>
-typename std::enable_if<std::is_same<std::string, typename std::decay<T>::type>::value, const char*>::type
 get_cstr(const T& name) {
   return name.c_str();
 }
@@ -103,18 +85,18 @@ std::string TbeGetOpType(const T& op) {
   }
 
 #if !defined( __ANDROID__) && !defined(ANDROID)
-#define OP_LOGI(opname, ...) D_OP_LOGI(get_op_name(opname), __VA_ARGS__)
-#define OP_LOGW(opname, ...) D_OP_LOGW(get_op_name(opname), __VA_ARGS__)
+#define OP_LOGI(opname, ...) D_OP_LOGI(get_cstr(opname), __VA_ARGS__)
+#define OP_LOGW(opname, ...) D_OP_LOGW(get_cstr(opname), __VA_ARGS__)
 
-#define OP_LOGE_WITHOUT_REPORT(opname, ...) D_OP_LOGE(get_op_name(opname), __VA_ARGS__)
+#define OP_LOGE_WITHOUT_REPORT(opname, ...) D_OP_LOGE(get_cstr(opname), __VA_ARGS__)
 #define OP_LOGE(op_name, ...)                       \
   do {                                              \
     OP_LOGE_WITHOUT_REPORT(op_name, ##__VA_ARGS__); \
     REPORT_INNER_ERROR("EZ9999", ##__VA_ARGS__);    \
   } while (0)
 
-#define OP_LOGD(opname, ...) D_OP_LOGD(get_op_name(opname), __VA_ARGS__)
-#define OP_EVENT(opname, ...) D_OP_EVENT(get_op_name(opname), __VA_ARGS__)
+#define OP_LOGD(opname, ...) D_OP_LOGD(get_cstr(opname), __VA_ARGS__)
+#define OP_EVENT(opname, ...) D_OP_EVENT(get_cstr(opname), __VA_ARGS__)
 #define GE_OP_LOGI(opname, ...) GE_D_OP_LOGI(opname, __VA_ARGS__)
 #define GE_OP_LOGW(opname, ...) GE_D_OP_LOGW(opname, __VA_ARGS__)
 #define GE_OP_LOGE(opname, ...) GE_D_OP_LOGE(opname, __VA_ARGS__)
@@ -166,7 +148,7 @@ std::string TbeGetOpType(const T& op) {
   static_assert(std::is_same<bool, std::decay<decltype(condition)>::type>::value, "condition should be bool"); \
   do {                                                                                                         \
     if (condition) {                                                                                           \
-      OP_LOGE(get_op_name(op_name), fmt, ##__VA_ARGS__);                                                       \
+      OP_LOGE(get_cstr(op_name), fmt, ##__VA_ARGS__);                                                       \
       return return_value;                                                                                     \
     }                                                                                                          \
   } while (0)
@@ -175,7 +157,7 @@ std::string TbeGetOpType(const T& op) {
   static_assert(std::is_same<bool, std::decay<decltype(condition)>::type>::value, "condition should be bool"); \
   do {                                                                                                         \
     if (condition) {                                                                                           \
-      OP_LOGE(get_op_name(op_name), fmt, ##__VA_ARGS__);                                                       \
+      OP_LOGE(get_cstr(op_name), fmt, ##__VA_ARGS__);                                                       \
     }                                                                                                          \
   } while (0)
 

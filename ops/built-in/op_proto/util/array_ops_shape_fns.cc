@@ -37,20 +37,20 @@ static graphStatus PadKnown(Operator& op, const Tensor& paddings_tensor, const i
   if (data_type == DT_INT32) {
     const int32_t* paddings_data = reinterpret_cast<const int32_t*>(paddings_tensor.GetData());
     CHECK(static_cast<int64_t>(paddings_tensor.GetSize() / sizeof(int32_t)) < element_num,
-          OP_LOGE(op.GetName().c_str(), "invalid padding data."), return GRAPH_FAILED);
+          OP_LOGE(TbeGetName(op).c_str(), "invalid padding data."), return GRAPH_FAILED);
     for (int64_t i = 0; i < element_num; ++i) {
       data.push_back(static_cast<int64_t>(paddings_data[i]));
     }
   } else if (data_type == DT_INT64) {
     const int64_t* paddings_data = reinterpret_cast<const int64_t*>(paddings_tensor.GetData());
     CHECK(static_cast<int64_t>(paddings_tensor.GetSize() / sizeof(int64_t)) < element_num,
-          OP_LOGE(op.GetName().c_str(), "invalid padding data."), return GRAPH_FAILED);
+          OP_LOGE(TbeGetName(op).c_str(), "invalid padding data."), return GRAPH_FAILED);
     for (int64_t i = 0; i < element_num; ++i) {
       data.push_back(paddings_data[i]);
     }
   } else {
     string err_msg = ConcatString("paddings data type invalid, ", "should be DT_INT32 or DT_INT64");
-    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
   auto dims = op.GetInputDesc(0).GetShape().GetDims();
@@ -61,14 +61,14 @@ static graphStatus PadKnown(Operator& op, const Tensor& paddings_tensor, const i
   for (size_t i = 0; i < data.size(); i += 2) {
     if ((data[i] < 0) || (data[i + 1] < 0)) {
       std::string err_msg = ConcatString("paddings", DebugString(data), " must be non-negative");
-      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
       return GRAPH_FAILED;
     }
     graphStatus status = Add(output_dims[i / 2], data[i] + data[i + 1], output_dims[i / 2]);
     if (status != GRAPH_SUCCESS) {
       std::string err_msg = ConcatString("the sum input[0] shape", DebugString(dims), " and input[1] value",
                                          DebugString(data), " must be non-negative");
-      OP_LOGE(op.GetName().c_str(), "%s", err_msg.c_str());
+      OP_LOGE(TbeGetName(op).c_str(), "%s", err_msg.c_str());
       return GRAPH_FAILED;
     }
   }
@@ -81,16 +81,16 @@ static graphStatus PadKnown(Operator& op, const Tensor& paddings_tensor, const i
 graphStatus PadShapeFn(Operator& op) {
   Shape paddings;
   int64_t input_dim_num;
-  graphStatus status = WithRank(op.GetInputDesc(1), 2, paddings, op.GetName().c_str());
+  graphStatus status = WithRank(op.GetInputDesc(1), 2, paddings, TbeGetName(op).c_str());
   if (status != GRAPH_SUCCESS) {
-    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(),
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op),
         ConcatString("call WithRank failed, ", GetShapeErrMsg(1,
             DebugString(op.GetInputDesc(1).GetShape().GetDims()), "2D")));
     return GRAPH_FAILED;
   }
-  status = WithValue(paddings.GetDim(1), 2, input_dim_num, op.GetName().c_str());
+  status = WithValue(paddings.GetDim(1), 2, input_dim_num, TbeGetName(op).c_str());
   if (status != GRAPH_SUCCESS) {
-    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(),
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op),
         ConcatString("call WithValue failed, ", GetShapeErrMsg(1,
             DebugString(op.GetInputDesc(1).GetShape().GetDims()), ConcatString(2, " of dim[1]"))));
     return GRAPH_FAILED;
@@ -98,17 +98,17 @@ graphStatus PadShapeFn(Operator& op) {
   Shape input;
   int64_t dim0 = paddings.GetDim(0);
   if (dim0 != UNKNOWN_DIM) {
-    status = WithRank(op.GetInputDesc(0), dim0, input, op.GetName().c_str());
+    status = WithRank(op.GetInputDesc(0), dim0, input, TbeGetName(op).c_str());
     if (status != GRAPH_SUCCESS) {
-      AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(),
+      AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op),
         ConcatString("call WithRank failed, ", GetShapeErrMsg(0,
             DebugString(op.GetInputDesc(0).GetShape().GetDims()), ConcatString(dim0, "D"))));
       return GRAPH_FAILED;
     }
   } else if (op.GetInputDesc(0).GetShape().GetDim(0) != 0) {
-    status = WithValue(dim0, op.GetInputDesc(0).GetShape().GetDimNum(), input_dim_num, op.GetName().c_str());
+    status = WithValue(dim0, op.GetInputDesc(0).GetShape().GetDimNum(), input_dim_num, TbeGetName(op).c_str());
     if (status != GRAPH_SUCCESS) {
-      AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(),
+      AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op),
         ConcatString("call WithRank failed, ", GetShapeErrMsg(0,
             DebugString(op.GetInputDesc(0).GetShape().GetDims()), ConcatString(dim0, "D"))));
       return GRAPH_FAILED;
@@ -130,14 +130,14 @@ graphStatus PadShapeFn(Operator& op) {
     return op.UpdateOutputDesc("y", output_desc);
   }
   input_dim_num = paddings_tensor.GetTensorDesc().GetShape().GetDim(0);
-  status = WithRank(op.GetInputDesc(0), input_dim_num, input, op.GetName().c_str());
+  status = WithRank(op.GetInputDesc(0), input_dim_num, input, TbeGetName(op).c_str());
   if (status == GRAPH_FAILED) {
-    OP_LOGE(op.GetName().c_str(), "WithRank fail");
+    OP_LOGE(TbeGetName(op).c_str(), "WithRank fail");
     return GRAPH_FAILED;
   }
-  status = WithValue(dim0, input_dim_num, dim0, op.GetName().c_str());
+  status = WithValue(dim0, input_dim_num, dim0, TbeGetName(op).c_str());
   if (status == GRAPH_FAILED) {
-    OP_LOGE(op.GetName().c_str(), "WithValue fail");
+    OP_LOGE(TbeGetName(op).c_str(), "WithValue fail");
     return GRAPH_FAILED;
   }
   return PadKnown(op, paddings_tensor, input_dim_num);
@@ -192,9 +192,9 @@ static graphStatus CalcPadGradOutDims(const Shape& input_shape, const Tensor& pa
 
 graphStatus PadGradShapeFn(Operator& op) {
   Shape paddings;
-  graphStatus status = WithRank(op.GetInputDesc(1), 2, paddings, op.GetName().c_str());
+  graphStatus status = WithRank(op.GetInputDesc(1), 2, paddings, TbeGetName(op).c_str());
   if (status != GRAPH_SUCCESS) {
-    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(),
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op),
         ConcatString("call WithRank failed, ", GetShapeErrMsg(1,
             DebugString(op.GetInputDesc(1).GetShape().GetDims()), "2D")));
     return GRAPH_FAILED;
@@ -203,40 +203,40 @@ graphStatus PadGradShapeFn(Operator& op) {
   TensorDesc output_desc = op.GetOutputDesc("y");
   output_desc.SetDataType(op.GetInputDesc(0).GetDataType());
   if (input_rank == UNKNOWN_DIM) {
-    OP_LOGE(op.GetName().c_str(), "paddings inputShape of 0 dims is unknown, set out shape unknown.");
+    OP_LOGE(TbeGetName(op).c_str(), "paddings inputShape of 0 dims is unknown, set out shape unknown.");
     output_desc.SetShape(Shape(UNKNOWN_SHAPE));
     return op.UpdateOutputDesc("y", output_desc);
   }
 
   Shape input_shape;
-  if (WithRank(op.GetInputDesc(0), input_rank, input_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(),
+  if (WithRank(op.GetInputDesc(0), input_rank, input_shape, TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op),
         ConcatString("call WithRank failed, ", GetShapeErrMsg(0,
             DebugString(op.GetInputDesc(0).GetShape().GetDims()), ConcatString(input_rank))));
     return GRAPH_FAILED;
   }
 
   Shape check_shape({input_rank, 2});
-  if (Merge(paddings, check_shape, paddings, op.GetName().c_str())) {
+  if (Merge(paddings, check_shape, paddings, TbeGetName(op).c_str())) {
     string err_msg = ConcatString("merge 1th input shape", DebugString(paddings.GetDims()), " and shape",
                                   DebugString(check_shape.GetDims()), " failed");
-    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
 
   Tensor paddings_tensor;
   if (op.GetInputConstData("paddings", paddings_tensor) != GRAPH_SUCCESS) {
     std::vector<int64_t> unknow_dim_vec(input_rank, UNKNOWN_DIM);
-    OP_LOGE(op.GetName().c_str(), "Get paddings input tensor fail, set outPut shape unknown.");
+    OP_LOGE(TbeGetName(op).c_str(), "Get paddings input tensor fail, set outPut shape unknown.");
     output_desc.SetShape(Shape(unknow_dim_vec));
     return op.UpdateOutputDesc("y", output_desc);
   }
 
   std::vector<int64_t> output_dims(input_rank);
-  auto result = CalcPadGradOutDims(input_shape, paddings_tensor, output_dims, op.GetName().c_str());
+  auto result = CalcPadGradOutDims(input_shape, paddings_tensor, output_dims, TbeGetName(op).c_str());
   if (result != GRAPH_SUCCESS) {
     string err_msg = ConcatString("calculate out dims failed,", "please check the validity of input and attribute");
-    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
   output_desc.SetShape(Shape(output_dims));

@@ -25,12 +25,12 @@
 namespace domi {
 Status ExtractVolumePatchesMappingFn(const Message* op_src, ge::Operator& op) {
   if (AutoMappingFn(op_src, op) != SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "AutoMappingFn failed.");
+    OP_LOGE(TbeGetName(op).c_str(), "AutoMappingFn failed.");
     return FAILED;
   }
   auto op_dsc = ge::OpDescUtils::GetOpDescFromOperator(op);
   if (op_dsc == nullptr) {
-    OP_LOGE(op.GetName().c_str(), "GetOpDescFromOperator got nullptr failed.");
+    OP_LOGE(TbeGetName(op).c_str(), "GetOpDescFromOperator got nullptr failed.");
     return FAILED;
   }
   ge::GeTensorDesc tensor_descw = op_dsc->GetInputDesc(0);

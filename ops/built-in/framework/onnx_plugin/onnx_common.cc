@@ -52,7 +52,7 @@ ge::DataType GetOmDtypeFromOnnxDtype(int onnx_type) {
 Status ChangeFormatFromOnnx(ge::Operator& op, const int idx, ge::Format format, bool is_input) {
   auto op_dsc = ge::OpDescUtils::GetOpDescFromOperator(op);
   if (op_dsc == nullptr) {
-    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "Get op_desc from operator failed.");
+    ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "Get op_desc from operator failed.");
     return FAILED;
   }
 

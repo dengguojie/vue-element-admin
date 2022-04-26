@@ -63,25 +63,25 @@ IMPLEMT_INFERFUNC(MaxPool, MaxPoolInferShape) {
     // get input ksize
     std::vector<int32_t> ksize;
     if (GRAPH_SUCCESS != op.GetAttr("ksize", ksize)) {
-        OP_LOGE(op.GetName().c_str(), "GetOpAttr ksize failed!");
+        OP_LOGE(TbeGetName(op).c_str(), "GetOpAttr ksize failed!");
         return GRAPH_FAILED;
     }
     // get input strides
     std::vector<int32_t> strides;
     if (GRAPH_SUCCESS != op.GetAttr("strides", strides)) {
-        OP_LOGE(op.GetName().c_str(), "GetOpAttr strides failed!");
+        OP_LOGE(TbeGetName(op).c_str(), "GetOpAttr strides failed!");
         return GRAPH_FAILED;
     }
     // get input data_format
     std::string data_format;
     if (GRAPH_SUCCESS != op.GetAttr("data_format", data_format)) {
-        OP_LOGE(op.GetName().c_str(), "GetOpAttr data_format failed!");
+        OP_LOGE(TbeGetName(op).c_str(), "GetOpAttr data_format failed!");
         return GRAPH_FAILED;
     }
     // get input padding
     std::string padding;
     if (GRAPH_SUCCESS != op.GetAttr("padding", padding)) {
-        OP_LOGE(op.GetName().c_str(), "GetOpAttr padding failed!");
+        OP_LOGE(TbeGetName(op).c_str(), "GetOpAttr padding failed!");
         return GRAPH_FAILED;
     }
 
@@ -90,7 +90,7 @@ IMPLEMT_INFERFUNC(MaxPool, MaxPoolInferShape) {
 
     // dynamic case, input shape is -2, output is [-1, -1, -1, -1], only support NHWC or NCHW
     if (IsUnknownRankShape(input_dims)) {
-        OP_LOGW(op.GetName().c_str(), "the input os unkown rank, will set the input [-1, -1, -1, -1].");
+        OP_LOGW(TbeGetName(op).c_str(), "the input os unkown rank, will set the input [-1, -1, -1, -1].");
         input_dims = {-1, -1, -1, -1};
     } else {
         input_desc->GetShapeRange(input_range);
@@ -132,55 +132,55 @@ IMPLEMT_VERIFIER(MaxPool, MaxPoolVerify) {
     // check ksize
     std::vector<int32_t> ksize;
     if (GRAPH_SUCCESS != op.GetAttr("ksize", ksize)) {
-        OP_LOGE(op.GetName().c_str(), "GetOpAttr ksize failed!");
+        OP_LOGE(TbeGetName(op).c_str(), "GetOpAttr ksize failed!");
         return GRAPH_FAILED;
     }
     if (ksize.size() != 4) {
-        OP_LOGE(op.GetName().c_str(), "The length of ksize must be equal to the length of shape!");
+        OP_LOGE(TbeGetName(op).c_str(), "The length of ksize must be equal to the length of shape!");
         return GRAPH_FAILED;
     }
     // check strides
     std::vector<int32_t> strides;
     if (GRAPH_SUCCESS != op.GetAttr("strides", strides)) {
-        OP_LOGE(op.GetName().c_str(), "GetOpAttr strides failed!");
+        OP_LOGE(TbeGetName(op).c_str(), "GetOpAttr strides failed!");
         return GRAPH_FAILED;
     }
     if (strides.size() != 4) {
-        OP_LOGE(op.GetName().c_str(), "The length of strides must be equal to the length of shape!");
+        OP_LOGE(TbeGetName(op).c_str(), "The length of strides must be equal to the length of shape!");
         return GRAPH_FAILED;
     }
     // check data_format
     std::string data_format;
     if (GRAPH_SUCCESS != op.GetAttr("data_format", data_format)) {
-        OP_LOGE(op.GetName().c_str(), "GetOpAttr data_format failed!");
+        OP_LOGE(TbeGetName(op).c_str(), "GetOpAttr data_format failed!");
         return GRAPH_FAILED;
     }
     if (data_format != "NHWC" && data_format != "NCHW" && data_format != "NC1HWC0") {
         string expected_format_list = ConcatString("NHWC,NCHW,NC1HWC0");
-        OP_LOGE(op.GetName().c_str(), "data_format only support 'NHWC','NCHW' and 'NC1HWC0'.");
+        OP_LOGE(TbeGetName(op).c_str(), "data_format only support 'NHWC','NCHW' and 'NC1HWC0'.");
         return GRAPH_FAILED;
     }
     if (data_format == "NHWC") {
         if ((ksize[0] != 1) || (ksize[3] != 1) || (strides[0] != 1) || (strides[3] != 1)) {
-            OP_LOGE(op.GetName().c_str(), "Pooling across width/height and other ksize dimension should be one");
+            OP_LOGE(TbeGetName(op).c_str(), "Pooling across width/height and other ksize dimension should be one");
             return GRAPH_FAILED;
         }
     }
     if ((data_format == "NCHW") || (data_format == "NC1HWC0")) {
         if ((ksize[0] != 1) || (ksize[1] != 1) || (strides[0] != 1) || (strides[1] != 1)) {
-            OP_LOGE(op.GetName().c_str(), "Pooling across width/height and other ksize dimension should be one");
+            OP_LOGE(TbeGetName(op).c_str(), "Pooling across width/height and other ksize dimension should be one");
             return GRAPH_FAILED;
         }
     }
     // check padding
     std::string padding;
     if (GRAPH_SUCCESS != op.GetAttr("padding", padding)) {
-        OP_LOGE(op.GetName().c_str(), "GetOpAttr padding failed!");
+        OP_LOGE(TbeGetName(op).c_str(), "GetOpAttr padding failed!");
         return GRAPH_FAILED;
     }
     if (padding != "SAME" && padding != "VALID") {
         string expected_format_list = ConcatString("SAME,VALID");
-        OP_LOGE(op.GetName().c_str(), "padding only support SAME or VALID padding mode!");
+        OP_LOGE(TbeGetName(op).c_str(), "padding only support SAME or VALID padding mode!");
         return GRAPH_FAILED;
     }
 
@@ -252,7 +252,7 @@ IMPLEMT_INFER_DATA_SLICE(MaxPool, MaxPoolInferDataSlice) {
     GeTensorDescPtr tensor_desc_out = op_desc->MutableOutputDesc("y");
     GeTensorDescPtr tensor_desc_in = op_desc->MutableInputDesc("x");
     if (!ge::AttrUtils::GetListListInt(tensor_desc_out, ge::ATTR_NAME_DATA_SLICE, y_data_slice)) {
-        OP_LOGI(op.GetName().c_str(), "no data slice, use default as {{}, {}, {}, {}, {}}");
+        OP_LOGI(TbeGetName(op).c_str(), "no data slice, use default as {{}, {}, {}, {}, {}}");
         return GRAPH_FAILED;
     }
 

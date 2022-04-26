@@ -26,26 +26,26 @@
 namespace ge {
 IMPLEMT_INFERFUNC(Mfcc, MfccInfer) {
   Shape unused;
-  if (WithRank(op.GetInputDesc(0), 3, unused, op.GetName().c_str())
+  if (WithRank(op.GetInputDesc(0), 3, unused, TbeGetName(op).c_str())
       != GRAPH_SUCCESS) {
     std::string err_msg = GetShapeErrMsg(0,
         DebugString(op.GetInputDesc(0).GetShape().GetDims()), "3D");
     err_msg = string("failed to call WithRank, ") + err_msg;
-    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
-  if (WithRank(op.GetInputDesc(1), 0, unused, op.GetName().c_str())
+  if (WithRank(op.GetInputDesc(1), 0, unused, TbeGetName(op).c_str())
       != GRAPH_SUCCESS) {
     std::string err_msg = GetShapeErrMsg(1,
         DebugString(op.GetInputDesc(1).GetShape().GetDims()), "scalar");
     err_msg = string("failed to call WithRank, ") + err_msg;
-    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
   DataType sample_rate_dtype = op.GetInputDesc(1).GetDataType();
   if (sample_rate_dtype != DT_INT32) {
     std::string err_msg = ConcatString("invalid data type", "[" , DTypeStr(sample_rate_dtype) ,"]", " of 1st input[sample_rate], it must be equal to int32");
-    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -55,12 +55,12 @@ IMPLEMT_INFERFUNC(Mfcc, MfccInfer) {
   op.GetAttr("dct_coefficient_count", output_channels);
   if (output_channels <= 0) {
     std::string err_msg = ConcatString("invalid value", "[" , output_channels ,"]", " of attr[dct_coefficient_count], it should be greater than 0");
-    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
   if (channel_count < output_channels) {
     std::string err_msg = ConcatString("attr[dct_coefficient_count] must be greater than attr[filterbank_channel_count] , ", "[" , channel_count ,"] and ", "[" , output_channels ,"]");
-    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -116,29 +116,29 @@ static uint32_t CalcNextPowerOfTwo(uint32_t value) {
 IMPLEMT_INFERFUNC(AudioSpectrogram, AudioSpectrogramInfer) {
   Shape input;
   auto tensor = op.GetInputDesc(0);
-  if (WithRank(tensor, 2, input, op.GetName().c_str()) != GRAPH_SUCCESS) {
+  if (WithRank(tensor, 2, input, TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
     std::string err_msg = GetShapeErrMsg(0,
         DebugString(tensor.GetShape().GetDims()), "2D");
     err_msg = string("failed to call WithRank, ") + err_msg;
-    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
 
   int64_t window_size = 0;
   if (op.GetAttr("window_size", window_size) != GRAPH_SUCCESS) {
-    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(),
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op),
                                       string("get attr[window_size] failed"));
     return GRAPH_FAILED;
   }
   int64_t stride = 0;
   if (op.GetAttr("stride", stride) != GRAPH_SUCCESS) {
-    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(),
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op),
                                       string("get attr[stride] failed"));
     return GRAPH_FAILED;
   }
   if (stride == 0) {
     std::string err_msg = ConcatString("invalid value", "[" , stride ,"]", " of attr[stride], it should be not equal to 0");
-    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -170,18 +170,18 @@ INFER_FUNC_REG(AudioSpectrogram, AudioSpectrogramInfer);
 
 IMPLEMT_INFERFUNC(DecodeWav, DecodeWavInfer) {
   Shape unused_shape;
-  if (WithRank(op.GetInputDesc(0), 0, unused_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
+  if (WithRank(op.GetInputDesc(0), 0, unused_shape, TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
     std::string err_msg = GetShapeErrMsg(0,
         DebugString(op.GetInputDesc(0).GetShape().GetDims()), "scalar");
     err_msg = string("failed to call WithRank, ") + err_msg;
-    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
 
   int64_t channels_dim = 0;
   int32_t desired_channels = 0;
   if (op.GetAttr("desired_channels", desired_channels) != GRAPH_SUCCESS) {
-    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), string("get attr[desired_channels] failed."));
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), string("get attr[desired_channels] failed."));
     return GRAPH_FAILED;
   }
   if (desired_channels == -1) {
@@ -190,7 +190,7 @@ IMPLEMT_INFERFUNC(DecodeWav, DecodeWavInfer) {
     if (desired_channels < 0) {
       std::string err_msg = ConcatString(
           "attr[desired_channels] must be non-negative, current desired_channels is [", desired_channels, "]");
-      AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+      AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
       return GRAPH_FAILED;
     }
 
@@ -199,7 +199,7 @@ IMPLEMT_INFERFUNC(DecodeWav, DecodeWavInfer) {
   int64_t samples_dim;
   int32_t desired_samples;
   if (op.GetAttr("desired_samples", desired_samples) != GRAPH_SUCCESS) {
-    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(),
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op),
                                       string("get attr[desired_samples] failed."));
     return GRAPH_FAILED;
   }
@@ -209,7 +209,7 @@ IMPLEMT_INFERFUNC(DecodeWav, DecodeWavInfer) {
     if (desired_samples < 0) {
       std::string err_msg = ConcatString(
           "attr[desired_samples] must be non-negative, current desired_samples is [", desired_channels, "]");
-      AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+      AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
       return GRAPH_FAILED;
     }
     samples_dim = static_cast<int64_t>(desired_samples);
@@ -232,20 +232,20 @@ INFER_FUNC_REG(DecodeWav, DecodeWavInfer);
 
 IMPLEMT_INFERFUNC(EncodeWav, EncodeWavInfer) {
   Shape unused_shape;
-  if (WithRank(op.GetInputDesc(0), 2, unused_shape, op.GetName().c_str())
+  if (WithRank(op.GetInputDesc(0), 2, unused_shape, TbeGetName(op).c_str())
       != GRAPH_SUCCESS) {
     std::string err_msg = GetShapeErrMsg(0,
         DebugString(op.GetInputDesc(0).GetShape().GetDims()), "2D");
     err_msg = string("failed to call WithRank, ") + err_msg;
-    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
-  if (WithRank(op.GetInputDesc(1), 0, unused_shape, op.GetName().c_str())
+  if (WithRank(op.GetInputDesc(1), 0, unused_shape, TbeGetName(op).c_str())
       != GRAPH_SUCCESS) {
     std::string err_msg = GetShapeErrMsg(1,
         DebugString(op.GetInputDesc(1).GetShape().GetDims()), "scalar");
     err_msg = string("failed to call WithRank, ") + err_msg;
-    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
 

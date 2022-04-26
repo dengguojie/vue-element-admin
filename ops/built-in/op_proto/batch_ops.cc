@@ -28,12 +28,12 @@ namespace ge {
 IMPLEMT_INFERFUNC(Batch, BatchInfer) {
   for (size_t i = 0; i < op.GetInputsSize(); ++i) {
     Shape out_shapes;
-    if (ReplaceDim(op.GetInputDesc(i).GetShape(), 0, ge::UNKNOWN_DIM, out_shapes, op.GetName().c_str()) ==
+    if (ReplaceDim(op.GetInputDesc(i).GetShape(), 0, ge::UNKNOWN_DIM, out_shapes, TbeGetName(op).c_str()) ==
         GRAPH_FAILED) {
       std::string err_msg = ConcatString(
           "failed to call ReplaceDim function,"
           " the input x_tensors[", i, "] is a real number without 0 dimension ");
-      AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+      AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
       return GRAPH_FAILED;
     }
     auto y_tensor_type = op.GetDynamicInputDesc("x_tensors", i).GetDataType();
@@ -63,8 +63,8 @@ INFER_FUNC_REG(Batch, BatchInfer);
 IMPLEMT_INFERFUNC(Unbatch, UnbatchInfer) {
   Shape out_shape;
   auto x_tensor = op.GetInputDesc(0);
-  if (ReplaceDim(x_tensor.GetShape(), 0, ge::UNKNOWN_DIM, out_shape, op.GetName().c_str()) == GRAPH_FAILED) {
-     AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(),
+  if (ReplaceDim(x_tensor.GetShape(), 0, ge::UNKNOWN_DIM, out_shape, TbeGetName(op).c_str()) == GRAPH_FAILED) {
+     AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op),
         string("failed to call ReplaceDim function, create output[y_tensor] shape failed"));
     return GRAPH_FAILED;
   }
@@ -72,7 +72,7 @@ IMPLEMT_INFERFUNC(Unbatch, UnbatchInfer) {
   output_desc.SetShape(out_shape);
   output_desc.SetDataType(x_tensor.GetDataType());
   if (op.UpdateOutputDesc("y_tensor", output_desc) != GRAPH_SUCCESS) {
-    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), string("update output[y_tensor] desc failed"));
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), string("update output[y_tensor] desc failed"));
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -88,7 +88,7 @@ IMPLEMT_INFERFUNC(UnbatchGrad, UnbatchGradInfer) {
     string err_msg = ConcatString("data type of input[x_input] is not equal to input[grad], data type of input[x_input] is ",
                                   DTypeStr(x_input_tensor.GetDataType()), ", data type of input[grad] is ",
                                   DTypeStr(grad_tensor.GetDataType()));
-    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
   auto out_shape = UnknownShapeOfRank(grad_rank);
@@ -96,7 +96,7 @@ IMPLEMT_INFERFUNC(UnbatchGrad, UnbatchGradInfer) {
   output_desc.SetShape(out_shape);
   output_desc.SetDataType(x_input_tensor.GetDataType());
   if (op.UpdateOutputDesc("y_grad", output_desc) != GRAPH_SUCCESS) {
-    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), string("update output[y_grad] desc failed"));
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), string("update output[y_grad] desc failed"));
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;

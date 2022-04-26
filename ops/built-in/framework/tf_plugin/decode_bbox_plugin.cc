@@ -52,7 +52,7 @@ Status ParseValueFromConst(const vector<const NodeDef*>& v_input_const, const st
 Status DecodeBboxParams(const std::vector<const google::protobuf::Message*> insideNodes, ge::Operator& op) {
   auto opDesc = ge::OpDescUtils::GetOpDescFromOperator(op);
   if (opDesc == nullptr) {
-    OP_LOGE(op.GetName().c_str(), "Get op desc failed.");
+    OP_LOGE(TbeGetName(op).c_str(), "Get op desc failed.");
     return FAILED;
   }
 
@@ -61,7 +61,7 @@ Status DecodeBboxParams(const std::vector<const google::protobuf::Message*> insi
   for (auto node : insideNodes) {
     const NodeDef* node_def = reinterpret_cast<const NodeDef*>(node);
     if (node_def == nullptr) {
-      OP_LOGE(op.GetName().c_str(), "Node_def is nullptr.");
+      OP_LOGE(TbeGetName(op).c_str(), "Node_def is nullptr.");
       return FAILED;
     }
 
@@ -71,19 +71,19 @@ Status DecodeBboxParams(const std::vector<const google::protobuf::Message*> insi
     }
   }
   if (inputy_node_name.empty()) {
-    OP_LOGE(op.GetName().c_str(), "cann't find Minimum op node in decode_bbox");
+    OP_LOGE(TbeGetName(op).c_str(), "cann't find Minimum op node in decode_bbox");
     return FAILED;
   }
   float param = 0.0;
   if (ParseValueFromConst(v_input_const, inputy_node_name, param) != SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Convert begin_norm_axis data failed");
+    OP_LOGE(TbeGetName(op).c_str(), "Convert begin_norm_axis data failed");
     return PARAM_INVALID;
   }
   if (!ge::AttrUtils::SetFloat(opDesc, kDecodeClip, param)) {
-    OP_LOGE(op.GetName().c_str(), "Set spatial_scale failed.");
+    OP_LOGE(TbeGetName(op).c_str(), "Set spatial_scale failed.");
     return FAILED;
   }
-  OP_LOGI(op.GetName().c_str(), "kDecodeClip%.1f", param);
+  OP_LOGI(TbeGetName(op).c_str(), "kDecodeClip%.1f", param);
   return SUCCESS;
 }
 

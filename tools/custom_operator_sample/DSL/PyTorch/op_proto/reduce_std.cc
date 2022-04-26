@@ -44,7 +44,7 @@ IMPLEMT_INFERFUNC(ReduceStd, ReduceStdInferShape) {
   // check parameter dim and keepdim
   std::vector<int64_t> axis;
   if (GRAPH_SUCCESS != op.GetAttr("dim", axis)) {
-    OP_LOGE(op.GetName().c_str(), "GE get dim failed");
+    OP_LOGE(TbeGetName(op).c_str(), "GE get dim failed");
     return GRAPH_FAILED;
   }
 

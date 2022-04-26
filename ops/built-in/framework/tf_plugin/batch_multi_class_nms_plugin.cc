@@ -81,7 +81,7 @@ Status BatchMultiClassNonMaxSuppressionParams(const std::vector<const google::pr
                                               ge::Operator& op) {
   auto opDesc = ge::OpDescUtils::GetOpDescFromOperator(op);
   if (opDesc == nullptr) {
-    OP_LOGE(op.GetName().c_str(), "Get op desc failed.");
+    OP_LOGE(TbeGetName(op).c_str(), "Get op desc failed.");
     return FAILED;
   }
 
@@ -100,14 +100,14 @@ Status BatchMultiClassNonMaxSuppressionParams(const std::vector<const google::pr
     const NodeDef* nodeDef = reinterpret_cast<const NodeDef*>(node);
     std::string nodeName = nodeDef->name().c_str();
     if (nodeDef == nullptr) {
-      OP_LOGE(op.GetName().c_str(), "Node_def is nullptr.");
+      OP_LOGE(TbeGetName(op).c_str(), "Node_def is nullptr.");
       return FAILED;
     }
     inputConstNodes.push_back(nodeDef);
     // get iou const node name
     if ((iouConstNodeName == "") && ((nodeDef->op() == nms_v2) || (nodeDef->op() == nms_v3))) {
       iouConstNodeName = nodeDef->input(3);
-      OP_LOGI(op.GetName().c_str(), "get NMS node name %s .", iouConstNodeName.c_str());
+      OP_LOGI(TbeGetName(op).c_str(), "get NMS node name %s .", iouConstNodeName.c_str());
     }
     // get score const node name
     if ((scoreConstNodeName == "") && (nodeDef->op() == "Greater") &&
@@ -115,21 +115,21 @@ Status BatchMultiClassNonMaxSuppressionParams(const std::vector<const google::pr
          (nodeName.find(scoreConstKey) != std::string::npos) ||
          (nodeName.find(scoreFaceboxConstKey) != std::string::npos))) {
       scoreConstNodeName = nodeDef->input(1);
-      OP_LOGI(op.GetName().c_str(), "get score Greater node name %s .", scoreConstNodeName.c_str());
+      OP_LOGI(TbeGetName(op).c_str(), "get score Greater node name %s .", scoreConstNodeName.c_str());
     }
     // get facebox_net score const node name
     if ((scoreConstNodeName == "") && (nodeDef->op() == "GreaterEqual") &&
         ((nodeName.find(scoreFaceboxConstKey) != std::string::npos) ||
          (nodeName.find(SfscoreConstKey) != std::string::npos))) {
       scoreConstNodeName = nodeDef->input(1);
-      OP_LOGI(op.GetName().c_str(), "get facebox_net score GreaterEqual node name %s .", scoreConstNodeName.c_str());
+      OP_LOGI(TbeGetName(op).c_str(), "get facebox_net score GreaterEqual node name %s .", scoreConstNodeName.c_str());
     }
 
     // get max_size_per_class const node name
     if (((nodeName.find(sizeConstKey) != std::string::npos) ||
          (nodeName.find(sizeRetinanetConstKey) != std::string::npos)) &&
         (nodeDef->op() == "Minimum")) {
-      OP_LOGI(op.GetName().c_str(), "get Minimum node name %s .", nodeName.c_str());
+      OP_LOGI(TbeGetName(op).c_str(), "get Minimum node name %s .", nodeName.c_str());
       if (nodeName.find(sizeConstKeySec) == std::string::npos) {
         sizeClassConstNodeName = nodeDef->input(0);
       }
@@ -142,7 +142,7 @@ Status BatchMultiClassNonMaxSuppressionParams(const std::vector<const google::pr
     if ((sizeClassConstNodeName == "") && (nodeDef->op() == nms_v3) &&
         ((nodeName.find(sizeFaceboxConstKey) != std::string::npos))) {
       sizeClassConstNodeName = nodeDef->input(2);
-      OP_LOGI(op.GetName().c_str(), "get facebox max_size_per_class node name %s .", sizeClassConstNodeName.c_str());
+      OP_LOGI(TbeGetName(op).c_str(), "get facebox max_size_per_class node name %s .", sizeClassConstNodeName.c_str());
     }
 
     // get retinanet max_total_size const node name
@@ -150,82 +150,82 @@ Status BatchMultiClassNonMaxSuppressionParams(const std::vector<const google::pr
         ((nodeName.find(retinanet_out_num) != std::string::npos) ||
          (nodeName.find(Facebox_out_num) != std::string::npos))) {
       sizeOutputConstNodeName = nodeDef->input(2);
-      OP_LOGI(op.GetName().c_str(), "get retinanet Output Const node name %s .", sizeOutputConstNodeName.c_str());
+      OP_LOGI(TbeGetName(op).c_str(), "get retinanet Output Const node name %s .", sizeOutputConstNodeName.c_str());
     }
 
     // get isNormalization info
     if (!isNormalization && (nodeName.find("ChangeCoordinateFrame") != std::string::npos)) {
-      OP_LOGI(op.GetName().c_str(), "get ChangeCoordinateFrame node name %s .", nodeName.c_str());
+      OP_LOGI(TbeGetName(op).c_str(), "get ChangeCoordinateFrame node name %s .", nodeName.c_str());
       isNormalization = true;
     }
   }
   // check whether success to get the required attr info
   if (iouConstNodeName.empty()) {
-    OP_LOGE(op.GetName().c_str(), "can not find iou const node for BatchMultiClassNonMaxSuppression");
+    OP_LOGE(TbeGetName(op).c_str(), "can not find iou const node for BatchMultiClassNonMaxSuppression");
     return FAILED;
   }
   if (scoreConstNodeName.empty()) {
-    OP_LOGE(op.GetName().c_str(), "can not find score const node for BatchMultiClassNonMaxSuppression");
+    OP_LOGE(TbeGetName(op).c_str(), "can not find score const node for BatchMultiClassNonMaxSuppression");
     return FAILED;
   }
   if (ParseFloatValueFromConstNms(inputConstNodes, iouConstNodeName, attr_iou_threshold) != SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Convert attr_iou_threshold data failed");
+    OP_LOGE(TbeGetName(op).c_str(), "Convert attr_iou_threshold data failed");
     return PARAM_INVALID;
   }
   if (ParseFloatValueFromConstNms(inputConstNodes, scoreConstNodeName, attr_score_threshold) != SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Convert attr_score_threshold data failed");
+    OP_LOGE(TbeGetName(op).c_str(), "Convert attr_score_threshold data failed");
     return PARAM_INVALID;
   }
 
   if (sizeClassConstNodeName.empty()) {
-    OP_LOGE(op.GetName().c_str(), "can not find max_size_per_class for BatchMultiClassNonMaxSuppression");
+    OP_LOGE(TbeGetName(op).c_str(), "can not find max_size_per_class for BatchMultiClassNonMaxSuppression");
     return FAILED;
   }
 
   if (ParseIntValueFromConstNms(inputConstNodes, sizeClassConstNodeName, attr_max_size_per_class) != SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Convert attr_max_size_per_class data failed");
+    OP_LOGE(TbeGetName(op).c_str(), "Convert attr_max_size_per_class data failed");
     return PARAM_INVALID;
   }
   if (sizeOutputConstNodeName.empty()) {
-    OP_LOGE(op.GetName().c_str(), "can not find max_total_size for BatchMultiClassNonMaxSuppression");
+    OP_LOGE(TbeGetName(op).c_str(), "can not find max_total_size for BatchMultiClassNonMaxSuppression");
     return FAILED;
   }
 
   if (ParseIntValueFromConstNms(inputConstNodes, sizeOutputConstNodeName, attr_max_total_size) != SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Convert attr_max_total_size data failed");
+    OP_LOGE(TbeGetName(op).c_str(), "Convert attr_max_total_size data failed");
     return PARAM_INVALID;
   }
 
   // set attr for Op BatchMultiClassNonMaxSuppression
   if (!ge::AttrUtils::SetFloat(opDesc, "iou_threshold", attr_iou_threshold)) {
-    OP_LOGE(op.GetName().c_str(), "Set attr iou_threshold failed.");
+    OP_LOGE(TbeGetName(op).c_str(), "Set attr iou_threshold failed.");
     return FAILED;
   }
-  OP_LOGI(op.GetName().c_str(), "Set attr iou_threshold %1.2f.", attr_iou_threshold);
+  OP_LOGI(TbeGetName(op).c_str(), "Set attr iou_threshold %1.2f.", attr_iou_threshold);
 
   if (!ge::AttrUtils::SetFloat(opDesc, "score_threshold", attr_score_threshold)) {
-    OP_LOGE(op.GetName().c_str(), "Set attr score_threshold failed.");
+    OP_LOGE(TbeGetName(op).c_str(), "Set attr score_threshold failed.");
     return FAILED;
   }
-  OP_LOGI(op.GetName().c_str(), "Set attr score_threshold %1.2f.", attr_score_threshold);
+  OP_LOGI(TbeGetName(op).c_str(), "Set attr score_threshold %1.2f.", attr_score_threshold);
 
   if (!ge::AttrUtils::SetInt(opDesc, "max_size_per_class", attr_max_size_per_class)) {
-    OP_LOGE(op.GetName().c_str(), "Set attr max_size_per_class failed.");
+    OP_LOGE(TbeGetName(op).c_str(), "Set attr max_size_per_class failed.");
     return FAILED;
   }
-  OP_LOGI(op.GetName().c_str(), "Set attr max_size_per_class %d.", attr_max_size_per_class);
+  OP_LOGI(TbeGetName(op).c_str(), "Set attr max_size_per_class %d.", attr_max_size_per_class);
 
   if (!ge::AttrUtils::SetInt(opDesc, "max_total_size", attr_max_total_size)) {
-    OP_LOGE(op.GetName().c_str(), "Set attr max_total_size failed.");
+    OP_LOGE(TbeGetName(op).c_str(), "Set attr max_total_size failed.");
     return FAILED;
   }
-  OP_LOGI(op.GetName().c_str(), "Set attr max_total_size %d.", attr_max_total_size);
+  OP_LOGI(TbeGetName(op).c_str(), "Set attr max_total_size %d.", attr_max_total_size);
 
   if (!ge::AttrUtils::SetBool(opDesc, "change_coordinate_frame", isNormalization)) {
-    OP_LOGE(op.GetName().c_str(), "Set attr change_coordinate_frame failed.");
+    OP_LOGE(TbeGetName(op).c_str(), "Set attr change_coordinate_frame failed.");
     return FAILED;
   }
-  OP_LOGI(op.GetName().c_str(), "Set attr change_coordinate_frame %d.", isNormalization);
+  OP_LOGI(TbeGetName(op).c_str(), "Set attr change_coordinate_frame %d.", isNormalization);
   return SUCCESS;
 }
 

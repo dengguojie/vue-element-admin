@@ -55,7 +55,7 @@
   do { \
     OP_LOGE_WITHOUT_REPORT(op_name, err_msg, ##__VA_ARGS__); \
     REPORT_INNER_ERROR(GetViewErrorCodeStr(ViewErrorCode::VECTOR_INNER_ERROR), \
-    "op[%s], " err_msg, get_op_name(op_name), ##__VA_ARGS__); \
+    "op[%s], " err_msg, get_cstr(op_name), ##__VA_ARGS__); \
   } while (0)
 
 #define VECTOR_CHECK_NULLPTR_RETURN_WITH_REPORT(op_name, ptr, ret, err_msg, ...)\

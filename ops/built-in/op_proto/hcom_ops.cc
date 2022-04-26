@@ -83,14 +83,14 @@ IMPLEMT_VERIFIER(HcomAllGather, HcomAllGatherVerify) {
   std::vector<int64_t> inDims = op.get_input_desc_x().GetShape().GetDims();
   int64_t rankSize = op.get_attr_rank_size();
   if (rankSize <= 0) {
-    OP_LOGE(op.GetName().c_str(), "attr rank_size is illegal, expected: > 0, actual: %ld.", rankSize);
+    OP_LOGE(TbeGetName(op).c_str(), "attr rank_size is illegal, expected: > 0, actual: %ld.", rankSize);
     return GRAPH_FAILED;
   }
   if (inDims.size() == 0) {
-    OP_LOGE(op.GetName().c_str(), "input tensor's first dim is illegal, expected: > 0, actual: %zu.", inDims.size());
+    OP_LOGE(TbeGetName(op).c_str(), "input tensor's first dim is illegal, expected: > 0, actual: %zu.", inDims.size());
     return GRAPH_FAILED;
   }
-  OP_LOGI(op.GetName().c_str(), "the op verify end");
+  OP_LOGI(TbeGetName(op).c_str(), "the op verify end");
   return GRAPH_SUCCESS;
 }
 
@@ -107,14 +107,14 @@ IMPLEMT_VERIFIER(HcomReduce, HcomReduceVerify) {
   const std::vector<std::string> SUPPORTED_REDUCTION = {"min", "max", "prod", "sum"};
   auto it = std::find(SUPPORTED_REDUCTION.begin(), SUPPORTED_REDUCTION.end(), reduction);
   if (it == SUPPORTED_REDUCTION.end()) {
-    OP_LOGE(op.GetName().c_str(), "Attr reduction [%s] is not supported. expecttd: min, max, prod, sum",
+    OP_LOGE(TbeGetName(op).c_str(), "Attr reduction [%s] is not supported. expecttd: min, max, prod, sum",
             reduction.c_str());
     return GRAPH_FAILED;
   }
   int64_t fusionAttr;
   if (op.GetAttr("fusion", fusionAttr) == GRAPH_SUCCESS) {
     if ((fusionAttr != fusionAttrNoFuse) && (fusionAttr != fusionAttrFuseById)) {
-      OP_LOGE(op.GetName().c_str(), "Attr fusion [%ld] is not supported. expecttd: [%ld or %ld]", fusionAttr,
+      OP_LOGE(TbeGetName(op).c_str(), "Attr fusion [%ld] is not supported. expecttd: [%ld or %ld]", fusionAttr,
               fusionAttrNoFuse, fusionAttrFuseById);
       return GRAPH_FAILED;
     }
@@ -122,12 +122,12 @@ IMPLEMT_VERIFIER(HcomReduce, HcomReduceVerify) {
   int64_t fusionIdAttr;
   if (op.GetAttr("fusion_id", fusionIdAttr) == GRAPH_SUCCESS) {
     if ((fusionIdAttr < fusionIdMinVal) || (fusionIdAttr > fusionIdMaxVal)) {
-      OP_LOGE(op.GetName().c_str(), "Attr fusion_id [%ld] is not supported. expecttd: [%ld ~ %ld]", fusionIdAttr,
+      OP_LOGE(TbeGetName(op).c_str(), "Attr fusion_id [%ld] is not supported. expecttd: [%ld ~ %ld]", fusionIdAttr,
               fusionIdMinVal, fusionIdMaxVal);
       return GRAPH_FAILED;
     }
   }
-  OP_LOGI(op.GetName().c_str(), "the op verify end");
+  OP_LOGI(TbeGetName(op).c_str(), "the op verify end");
   return GRAPH_SUCCESS;
 }
 
@@ -144,7 +144,7 @@ IMPLEMT_VERIFIER(HcomAllReduce, HcomAllReduceVerify) {
   const std::vector<std::string> SUPPORTED_REDUCTION = {"min", "max", "prod", "sum"};
   auto it = std::find(SUPPORTED_REDUCTION.begin(), SUPPORTED_REDUCTION.end(), reduction);
   if (it == SUPPORTED_REDUCTION.end()) {
-    OP_LOGE(op.GetName().c_str(), "Attr reduction [%s] is not supported. expecttd: min, max, prod, sum",
+    OP_LOGE(TbeGetName(op).c_str(), "Attr reduction [%s] is not supported. expecttd: min, max, prod, sum",
             reduction.c_str());
     return GRAPH_FAILED;
   }
@@ -154,7 +154,7 @@ IMPLEMT_VERIFIER(HcomAllReduce, HcomAllReduceVerify) {
         string fusionValue = std::to_string(fusionAttr);
         REPORT_INPUT_ERROR("EI0003", std::vector<std::string>({"ccl_op", "parameter", "value", "tips"}),\
 	        std::vector<std::string>({"HcomAllReduce", "fusion", fusionValue, "please check fusion setting"}));
-      OP_LOGE(op.GetName().c_str(), "Attr fusion [%ld] is not supported. expecttd: [%ld ~ %ld]", fusionAttr,
+      OP_LOGE(TbeGetName(op).c_str(), "Attr fusion [%ld] is not supported. expecttd: [%ld ~ %ld]", fusionAttr,
               fusionAttrMinVal, fusionAttrMaxVal);
       return GRAPH_FAILED;
     }
@@ -162,12 +162,12 @@ IMPLEMT_VERIFIER(HcomAllReduce, HcomAllReduceVerify) {
   int64_t fusionIdAttr;
   if (op.GetAttr("fusion_id", fusionIdAttr) == GRAPH_SUCCESS) {
     if ((fusionIdAttr < fusionIdMinVal) || (fusionIdAttr > fusionIdMaxVal)) {
-      OP_LOGE(op.GetName().c_str(), "Attr fusion_id [%ld] is not supported. expecttd: [%ld ~ %ld]", fusionIdAttr,
+      OP_LOGE(TbeGetName(op).c_str(), "Attr fusion_id [%ld] is not supported. expecttd: [%ld ~ %ld]", fusionIdAttr,
               fusionIdMinVal, fusionIdMaxVal);
       return GRAPH_FAILED;
     }
   }
-  OP_LOGI(op.GetName().c_str(), "the op verify end");
+  OP_LOGI(TbeGetName(op).c_str(), "the op verify end");
   return GRAPH_SUCCESS;
 }
 
@@ -179,7 +179,7 @@ IMPLEMT_INFERFUNC(HcomBroadcast, HcomBroadcastInferShape) {
   const unsigned int UINT_MAX_VALUE = 0xFFFFFFFF;
   auto inputsSize = op.GetInputsSize();
   if (inputsSize >= UINT_MAX_VALUE) {
-    OP_LOGE(op.GetName().c_str(), "GetInputsSize [%zu] is more than %u", inputsSize, UINT_MAX_VALUE);
+    OP_LOGE(TbeGetName(op).c_str(), "GetInputsSize [%zu] is more than %u", inputsSize, UINT_MAX_VALUE);
     return GRAPH_FAILED;
   }
   for (size_t i = 0; i < inputsSize; i++) {
@@ -189,12 +189,12 @@ IMPLEMT_INFERFUNC(HcomBroadcast, HcomBroadcastInferShape) {
     outputDesc->SetShape(GeShape(inputDesc.GetShape().GetDims()));
     outputDesc->SetDataType(inputDesc.GetDataType());
   }
-  OP_LOGI(op.GetName().c_str(), "the op infershape end");
+  OP_LOGI(TbeGetName(op).c_str(), "the op infershape end");
   return GRAPH_SUCCESS;
 }
 
 IMPLEMT_VERIFIER(HcomBroadcast, HcomBroadcastVerify) {
-  OP_LOGI(op.GetName().c_str(), "the op verify end");
+  OP_LOGI(TbeGetName(op).c_str(), "the op verify end");
   return GRAPH_SUCCESS;
 }
 
@@ -312,7 +312,7 @@ IMPLEMT_INFERFUNC(HcomReceive, HcomReceiveInferShape) {
   uint32_t dataType = op.get_attr_dtype();
   outTensorDesc.SetDataType((DataType)dataType);
   op.update_output_desc_y(outTensorDesc);
-  OP_LOGI(op.GetName().c_str(), "the op infershape end");
+  OP_LOGI(TbeGetName(op).c_str(), "the op infershape end");
   return GRAPH_SUCCESS;
 }
 
@@ -321,7 +321,7 @@ IMPLEMT_VERIFIER(HcomReceive, HcomReceiveVerify) {
   std::vector<int64_t> shapeSize{};
   op.GetAttr("shape", shapeSize);
   if (shapeSize.size() == 0) {
-    OP_LOGE(op.GetName().c_str(), "Attr shape is illegal, mast be > 0");
+    OP_LOGE(TbeGetName(op).c_str(), "Attr shape is illegal, mast be > 0");
   }
   return GRAPH_SUCCESS;
 }
@@ -390,14 +390,14 @@ IMPLEMT_INFERFUNC(HcomRemoteRead, HcomRemoteReadInferShape) {
             outTensorDesc.SetShape(ge::Shape(ge::UNKNOWN_RANK));
             outTensorDesc.SetOriginShape(ge::Shape(ge::UNKNOWN_RANK));
         } else {
-            OP_LOGE(op.GetName().c_str(), "the op infershape failed");
+            OP_LOGE(TbeGetName(op).c_str(), "the op infershape failed");
             return GRAPH_FAILED;
         }
     }
     outTensorDesc.SetDataType(dataType);
 
     op.update_output_desc_local(outTensorDesc);
-    OP_LOGI(op.GetName().c_str(), "the op infershape end");
+    OP_LOGI(TbeGetName(op).c_str(), "the op infershape end");
     return GRAPH_SUCCESS;
 }
 IMPLEMT_VERIFIER(HcomRemoteRead, HcomRemoteReadVerify) {
@@ -416,7 +416,7 @@ IMPLEMT_INFERFUNC(HcomRemoteRefRead, HcomRemoteRefReadInferShape) {
     outTensorDesc.SetShape(inShape);
     outTensorDesc.SetOriginShape(inShape);
     op.update_output_desc_cache_var(outTensorDesc);
-    OP_LOGI(op.GetName().c_str(), "the op infershape end");
+    OP_LOGI(TbeGetName(op).c_str(), "the op infershape end");
     return GRAPH_SUCCESS;
 }
 
@@ -477,7 +477,7 @@ IMPLEMT_INFERFUNC(HcomAllToAllV, HcomAllToAllVInferShape) {
     GetConstValue(op, recvCountsTensor, recvCountsDtype, recvCounts);
 
     if (recvDisp.size() != recvCounts.size()) {
-        OP_LOGE(op.GetName().c_str(), "recvDisp size[%zu] and recvCounts size[%zu] are different.",
+        OP_LOGE(TbeGetName(op).c_str(), "recvDisp size[%zu] and recvCounts size[%zu] are different.",
             recvDisp.size(), recvCounts.size());
         return GRAPH_FAILED;
     }
@@ -550,7 +550,7 @@ IMPLEMT_INFERFUNC(HcomGatherAllToAllV, HcomGatherAllToAllVInferShape) {
         const int32_t dataLenPerAddrinfo = 2;
 
         if (addrLenAttr < attrAddrLengthMin) {
-            OP_LOGE(op.GetName().c_str(), "Attr attr_length [%ld] is not supported. expecttd: [%ld ~ ]",
+            OP_LOGE(TbeGetName(op).c_str(), "Attr attr_length [%ld] is not supported. expecttd: [%ld ~ ]",
                 addrLenAttr, attrAddrLengthMin);
             return GRAPH_FAILED;
         } else if (addrLenAttr < 0) {
@@ -558,7 +558,7 @@ IMPLEMT_INFERFUNC(HcomGatherAllToAllV, HcomGatherAllToAllVInferShape) {
             vector<uint64_t> addrinfo;
             GetConstValue(op, addrinfoTensor, addrInfoDtype, addrinfo);
             if ((addrinfo.size() % dataLenPerAddrinfo) || (addrinfo.size() == 0)) {
-                OP_LOGE(op.GetName().c_str(), "Input addrinfo is invalid, size is %zu.", addrinfo.size());
+                OP_LOGE(TbeGetName(op).c_str(), "Input addrinfo is invalid, size is %zu.", addrinfo.size());
                 return GRAPH_FAILED;
             }
 
@@ -573,19 +573,19 @@ IMPLEMT_INFERFUNC(HcomGatherAllToAllV, HcomGatherAllToAllVInferShape) {
             auto inShape = op.GetInputDesc("addrinfo").GetShape();
             std::vector<int64_t> inDims = inShape.GetDims();
             if (inDims.size() == 0) {
-                OP_LOGE(op.GetName().c_str(), "Input addrinfo tensor's dims is invalid, expected: >0, actual:%zu.",
+                OP_LOGE(TbeGetName(op).c_str(), "Input addrinfo tensor's dims is invalid, expected: >0, actual:%zu.",
                     inDims.size());
                 return GRAPH_FAILED;
             }
             if (inDims[0] <= 0) {
-                OP_LOGE(op.GetName().c_str(), "Input addrinfo tensor's dim[0] is invalid, expected: >0, actual:%ld.",
+                OP_LOGE(TbeGetName(op).c_str(), "Input addrinfo tensor's dim[0] is invalid, expected: >0, actual:%ld.",
                     inDims[0]);
                 return GRAPH_FAILED;
             }
             addrLen = inDims[0] / dataLenPerAddrinfo * addrLenAttr;
         }
     } else {
-        OP_LOGE(op.GetName().c_str(), "Get attr addr_length failed.");
+        OP_LOGE(TbeGetName(op).c_str(), "Get attr addr_length failed.");
         return GRAPH_FAILED;
     }
 

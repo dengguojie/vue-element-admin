@@ -101,26 +101,26 @@ Status ParseOpToGraphMaxUnpool(const ge::Operator& op, Graph& graph) {
   auto identity_op1 = op::Identity("identity1").set_input_x(data0);
   std::vector<int> kernel_shape_value;
   if (op.GetAttr("kernel_shape", kernel_shape_value) != SUCCESS) {
-    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "get kernel_shape from op failed");
+    ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "get kernel_shape from op failed");
     return FAILED;
   }
 
   size_t k_size = kernel_shape_value.size();
   std::vector<int> pads_value;
   if (op.GetAttr("pads", pads_value) != SUCCESS && pads_value.size() != (k_size * 2)) {
-    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "get pads from op failed");
+    ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "get pads from op failed");
     return FAILED;
   }
 
   std::vector<int> strides_value;
   if (op.GetAttr("strides", strides_value) != SUCCESS && strides_value.size() != k_size) {
-    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "get strides from op failed");
+    ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "get strides from op failed");
     return FAILED;
   }
 
   int64_t num1;
   if (op.GetAttr("num", num1) != SUCCESS) {
-    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "get numbers of inputs from op failed");
+    ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "get numbers of inputs from op failed");
     return FAILED;
   }
   

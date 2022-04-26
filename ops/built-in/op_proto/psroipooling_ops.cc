@@ -34,7 +34,7 @@ IMPLEMT_INFERFUNC(PSROIPooling, PSROIPoolingInferShape) {
     // The value of group_size must be less than 128
     if (group_size <= 0 || group_size >= 128) {
         std::string err_msg = GetAttrValueErrMsg("group_size", std::to_string(group_size), ConcatString("less than 128 and greater than 0"));
-        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
         return GRAPH_FAILED;
     }
 
@@ -47,7 +47,7 @@ IMPLEMT_INFERFUNC(PSROIPooling, PSROIPoolingInferShape) {
     if (c_output_dim != output_dim) {
         string err_msg1 = ConcatString("c_output_dim shoule be equal to output_dim, c_output_dim:",c_output_dim, ", output_dim:",output_dim);
         std::string err_msg = OtherErrMsg(err_msg1);
-        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
         return GRAPH_FAILED;
     }
 
@@ -69,14 +69,14 @@ IMPLEMT_VERIFIER(PSROIPooling, PSROIPoolingVerify) {
     auto x_shape = op.get_input_desc_x().GetShape();
     if (x_shape.GetDims().size() != 4) {
         std::string err_msg = GetShapeSizeErrMsg(0, ConcatString(x_shape.GetDims().size()), ConcatString(4));
-        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
         return GRAPH_FAILED;
     }
 
     Format x_format = op.get_input_desc_x().GetFormat();
     if (x_format != FORMAT_NCHW) {
         std::string err_msg = GetInputFormatErrMsg ("x_format", ConcatString("NCHW"), ConcatString("x_format"));
-        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
         return GRAPH_FAILED;
     }
 
@@ -84,7 +84,7 @@ IMPLEMT_VERIFIER(PSROIPooling, PSROIPoolingVerify) {
     auto rois_shape = op.get_input_desc_rois().GetShape();
     if (rois_shape.GetDims().size() < 3) {
         std::string err_msg = GetShapeSizeErrMsg(1, ConcatString(rois_shape.GetDims().size()), ConcatString("more than or equal to 3"));
-        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
         return GRAPH_FAILED;
     }
 
@@ -101,7 +101,7 @@ IMPLEMT_INFERFUNC(PSROIPoolingV2, PSROIPoolingV2InferShape) {
     if (group_size <= 0 || group_size >= 128) {
         string correct_size = ConcatString("less than 128 and greater than 0");
         std::string err_msg = GetAttrValueErrMsg("group_size", std::to_string(group_size), correct_size);
-        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
         return GRAPH_FAILED;
     }
 
@@ -113,7 +113,7 @@ IMPLEMT_INFERFUNC(PSROIPoolingV2, PSROIPoolingV2InferShape) {
     if (c_output_dim != output_dim) {
         string err_msg1 = ConcatString("c_output_dim shoule be equal to output_dim, c_output_dim:",c_output_dim, ", output_dim:",output_dim);
         std::string err_msg = OtherErrMsg(err_msg1);
-        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
         return GRAPH_FAILED;
     }
 
@@ -134,14 +134,14 @@ IMPLEMT_VERIFIER(PSROIPoolingV2, PSROIPoolingV2Verify) {
     auto x_shape = op.get_input_desc_x().GetShape();
     if (x_shape.GetDims().size() != 4) {
         std::string err_msg = GetShapeSizeErrMsg(0, std::to_string(x_shape.GetDims().size()), ConcatString("4"));
-        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
         return GRAPH_FAILED;
     }
 
     Format x_format = op.get_input_desc_x().GetFormat();
     if (x_format != FORMAT_NCHW) {
         std::string err_msg = GetInputFormatErrMsg("x_format", ConcatString("NCHW"), ConcatString(x_format));
-        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
         return GRAPH_FAILED;
     }
 
@@ -150,7 +150,7 @@ IMPLEMT_VERIFIER(PSROIPoolingV2, PSROIPoolingV2Verify) {
     if (rois_shape.GetDims().size() < 3) {
         string correct_size = ConcatString("more than or equal to 3");
         std::string err_msg = GetShapeSizeErrMsg(1, std::to_string(rois_shape.GetDims().size()), correct_size);
-        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
         return GRAPH_FAILED;
     }
     return GRAPH_SUCCESS;
@@ -168,13 +168,13 @@ IMPLEMT_INFERFUNC(PSROIPoolingGradV2D, PSROIPoolingGradV2DInferShape) {
     if (group_size <= 0 || group_size >= 128) {
         string correct_size = ConcatString("less than 128 and greater than 0");
         std::string err_msg = GetAttrValueErrMsg("group_size", std::to_string(group_size), correct_size);
-        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
         return GRAPH_FAILED;
     }
 
     if (input_size.size() != 2) {
         std::string err_msg = GetAttrSizeErrMsg("input_size", std::to_string(input_size.size()), ConcatString("2"));
-        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
         return GRAPH_FAILED;
     }
 
@@ -185,7 +185,7 @@ IMPLEMT_INFERFUNC(PSROIPoolingGradV2D, PSROIPoolingGradV2DInferShape) {
     if (c_output_dim != output_dim) {
         string err_msg1 = ConcatString("c_output_dim shoule be equal to output_dim, c_output_dim:",c_output_dim, ", output_dim:",output_dim);
         std::string err_msg = OtherErrMsg(err_msg1);
-        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
         return GRAPH_FAILED;
     }
 
@@ -209,14 +209,14 @@ IMPLEMT_VERIFIER(PSROIPoolingGradV2D, PSROIPoolingGradV2DVerify) {
     auto x_shape = op.get_input_desc_x().GetShape();
     if (x_shape.GetDims().size() != 4) {
         std::string err_msg = GetShapeSizeErrMsg(0, std::to_string(x_shape.GetDims().size()), ConcatString("4"));
-        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
         return GRAPH_FAILED;
     }
 
     Format x_format = op.get_input_desc_x().GetFormat();
     if (x_format != FORMAT_NCHW) {
         std::string err_msg = GetInputFormatErrMsg("x_format", ConcatString("NCHW"), ConcatString(x_format));
-        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
         return GRAPH_FAILED;
     }
 
@@ -225,7 +225,7 @@ IMPLEMT_VERIFIER(PSROIPoolingGradV2D, PSROIPoolingGradV2DVerify) {
     if (rois_shape.GetDims().size() < 3) {
         string correct_size = ConcatString("more than or equal to 3");
         std::string err_msg = GetShapeSizeErrMsg(1, std::to_string(rois_shape.GetDims().size()), correct_size);
-        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
         return GRAPH_FAILED;
     }
 

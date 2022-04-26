@@ -34,7 +34,7 @@ using std::vector;
 namespace domi {
 static const int kMeanInputSize = 2;
 Status ToAbsoluteBBoxParserParams(const std::vector<const google::protobuf::Message*>& inside_nodes, ge::Operator& op) {
-  OP_LOGI(op.GetName().c_str(), "Enter ToAbsoluteBBox fusion parser.");
+  OP_LOGI(TbeGetName(op).c_str(), "Enter ToAbsoluteBBox fusion parser.");
 
   return SUCCESS;
 }

@@ -34,12 +34,12 @@ IMPLEMT_INFERFUNC(LookupTableFind, LookupTableFindInfer) {
 
   auto handle_desc = op_desc->MutableInputDesc(0);
   GeShape handle_shape;
-  if (WithRank(handle_desc, 0, handle_shape, op.GetName().c_str()) !=
+  if (WithRank(handle_desc, 0, handle_shape, TbeGetName(op).c_str()) !=
       GRAPH_SUCCESS) {
     std::string err_msg = GetShapeErrMsg(
         0, DebugString(op.GetInputDesc(0).GetShape().GetDims()), "scalar");
     err_msg = std::string("failed to call WithRank, ") + err_msg;
-    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -47,11 +47,11 @@ IMPLEMT_INFERFUNC(LookupTableFind, LookupTableFindInfer) {
   GeShape default_value_shape;
   // Default value must be scalar or vector.
   if (WithRankAtMost(default_value_desc, 1, default_value_shape,
-                     op.GetName().c_str()) != GRAPH_SUCCESS) {
+                     TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
     std::string err_msg = GetShapeErrMsg(
         2, DebugString(default_value_desc->GetShape().GetDims()), "scalar or 1D");
     err_msg = std::string("failed to call WithRankAtMost, ") + err_msg;
-    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -59,7 +59,7 @@ IMPLEMT_INFERFUNC(LookupTableFind, LookupTableFindInfer) {
   DataType Tin = keys_desc->GetDataType();
   DataType Tout = DT_FLOAT;
   if (op.GetAttr("Tout", Tout) != GRAPH_SUCCESS) {
-    OP_LOGW(op.GetName().c_str(),
+    OP_LOGW(TbeGetName(op).c_str(),
             "get attr[Tout] failed, use default type DT_FLOAT");
   }
 
@@ -68,9 +68,9 @@ IMPLEMT_INFERFUNC(LookupTableFind, LookupTableFindInfer) {
   Shape keys_shape = op.GetInputDesc(1).GetShape();
   if (ValidateTableResourceHandle(op, keys_shape, Tin, Tout, true,
                                   output_shape_and_type,
-                                  op.GetName().c_str()) == GRAPH_FAILED) {
+                                  TbeGetName(op).c_str()) == GRAPH_FAILED) {
     AICPU_INFER_SHAPE_CALL_ERR_REPORT(
-        op.GetName(),
+        TbeGetName(op),
         std::string("failed to call ValidateTableResourceHandle"));
     return GRAPH_FAILED;
   }
@@ -84,12 +84,12 @@ INFER_FUNC_REG(LookupTableFind, LookupTableFindInfer);
 
 IMPLEMT_INFERFUNC(LookupTableExport, LookupTableExportInfer) {
   Shape shape;
-  if (WithRank(op.GetInputDesc(0), 0, shape, op.GetName().c_str()) !=
+  if (WithRank(op.GetInputDesc(0), 0, shape, TbeGetName(op).c_str()) !=
       GRAPH_SUCCESS) {
     std::string err_msg = GetShapeErrMsg(
         0, DebugString(op.GetInputDesc(0).GetShape().GetDims()), "scalar");
     err_msg = std::string("failed to call WithRank, ") + err_msg;
-    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
   Shape keys = UnknownShapeOfRank(1);
@@ -102,7 +102,7 @@ IMPLEMT_INFERFUNC(LookupTableExport, LookupTableExportInfer) {
       std::string err_msg = ConcatString(
           "invalid size of value and type context for op, should be 2, got ",
           value_shape_and_types[0].size());
-      AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+      AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
       return GRAPH_FAILED;
     }
 
@@ -113,9 +113,9 @@ IMPLEMT_INFERFUNC(LookupTableExport, LookupTableExportInfer) {
     ShapeAndType output_shape_and_type;
     if (ValidateTableResourceHandle(shape, handle_data, output_shape_and_type,
                                     false,
-                                    op.GetName().c_str()) == GRAPH_FAILED) {
+                                    TbeGetName(op).c_str()) == GRAPH_FAILED) {
       AICPU_INFER_SHAPE_CALL_ERR_REPORT(
-          op.GetName(),
+          TbeGetName(op),
           std::string("failed to call ValidateTableResourceHandle"));
       return GRAPH_FAILED;
     }
@@ -124,13 +124,13 @@ IMPLEMT_INFERFUNC(LookupTableExport, LookupTableExportInfer) {
 
   ge::DataType Tkeys;
   if (op.GetAttr("Tkeys", Tkeys) != GRAPH_SUCCESS) {
-    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op),
                                        std::string("get attr[Tkeys] failed"));
     return GRAPH_PARAM_INVALID;
   }
   ge::DataType Tvalues;
   if (op.GetAttr("Tvalues", Tvalues) != GRAPH_SUCCESS) {
-    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op),
                                        std::string("get attr[Tvalues] failed"));
     return GRAPH_PARAM_INVALID;
   }
@@ -150,32 +150,32 @@ INFER_FUNC_REG(LookupTableExport, LookupTableExportInfer);
 
 IMPLEMT_INFERFUNC(LookupTableImport, LookupTableImportInfer) {
   Shape shape;
-  if (WithRank(op.GetInputDesc(0), 0, shape, op.GetName().c_str()) !=
+  if (WithRank(op.GetInputDesc(0), 0, shape, TbeGetName(op).c_str()) !=
       GRAPH_SUCCESS) {
     std::string err_msg = GetShapeErrMsg(
         0, DebugString(op.GetInputDesc(0).GetShape().GetDims()), "scalar");
     err_msg = std::string("failed to call WithRank, ") + err_msg;
-    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
 
   Shape keys;
-  if (WithRank(op.GetInputDesc(1), 1, keys, op.GetName().c_str()) !=
+  if (WithRank(op.GetInputDesc(1), 1, keys, TbeGetName(op).c_str()) !=
       GRAPH_SUCCESS) {
     std::string err_msg = GetShapeErrMsg(
         1, DebugString(op.GetInputDesc(1).GetShape().GetDims()), "1D");
     err_msg = std::string("failed to call WithRank, ") + err_msg;
-    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
 
   Shape values_shape = op.GetInputDesc(2).GetShape();
-  if (Merge(keys, values_shape, keys, op.GetName().c_str()) != GRAPH_SUCCESS) {
+  if (Merge(keys, values_shape, keys, TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
     std::string err_msg =
         ConcatString("failed to call Merge, can not merge input[1] shape",
                      DebugString(keys.GetDims()), " and input[2] shape",
                      DebugString(values_shape.GetDims()));
-    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_PARAM_INVALID;
   }
 
@@ -185,12 +185,12 @@ INFER_FUNC_REG(LookupTableImport, LookupTableImportInfer);
 
 IMPLEMT_INFERFUNC(LookupTableInsert, LookupTableInsertInfer) {
   Shape shape;
-  if (WithRank(op.GetInputDesc(0), 0, shape, op.GetName().c_str()) !=
+  if (WithRank(op.GetInputDesc(0), 0, shape, TbeGetName(op).c_str()) !=
       GRAPH_SUCCESS) {
     std::string err_msg = GetShapeErrMsg(
         0, DebugString(op.GetInputDesc(0).GetShape().GetDims()), "scalar");
     err_msg = std::string("failed to call WithRank, ") + err_msg;
-    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -213,12 +213,12 @@ IMPLEMT_INFERFUNC(HashTable, HashTableInfer) {
   DataType value_type;
   if (op.GetAttr("key_dtype", key_type) != GRAPH_SUCCESS) {
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(
-        op.GetName(), std::string("get attr[key_dtype] failed"));
+        TbeGetName(op), std::string("get attr[key_dtype] failed"));
     return GRAPH_PARAM_INVALID;
   }
   if (op.GetAttr("value_dtype", value_type) != GRAPH_SUCCESS) {
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(
-        op.GetName(), std::string("get attr[value_dtype] failed"));
+        TbeGetName(op), std::string("get attr[value_dtype] failed"));
     return GRAPH_PARAM_INVALID;
   }
   if (key_type == DT_INT64) {
@@ -229,7 +229,7 @@ IMPLEMT_INFERFUNC(HashTable, HashTableInfer) {
           "when attr[key_type] is DT_INT64, attr[value_type] should in ["
           "DT_INT32, DT_INT64, DT_FLOAT, DT_DOUBLE, DT_STRING], but got [",
           TypeUtils::DataTypeToSerialString(value_type), "]");
-      AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+      AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
       return GRAPH_PARAM_INVALID;
     }
   }
@@ -240,7 +240,7 @@ IMPLEMT_INFERFUNC(HashTable, HashTableInfer) {
           "when attr[key_type] is DT_INT32, attr[value_type] should in "
           "[DT_INT32, DT_FLOAT, DT_DOUBLE, DT_STRING], but got [",
           TypeUtils::DataTypeToSerialString(value_type), "]");
-      AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+      AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
       return GRAPH_PARAM_INVALID;
     }
   }
@@ -252,7 +252,7 @@ IMPLEMT_INFERFUNC(HashTable, HashTableInfer) {
           "when attr[key_type] is DT_STRING, attr[value_type] should in "
           "[DT_BOOL, DT_INT32, DT_INT64, DT_FLOAT, DT_DOUBLE], but got [",
           TypeUtils::DataTypeToSerialString(value_type), "]");
-      AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+      AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
       return GRAPH_PARAM_INVALID;
     }
   }
@@ -263,7 +263,7 @@ IMPLEMT_INFERFUNC(HashTable, HashTableInfer) {
   handle_desc.SetDataType(DT_RESOURCE);
   if (op.UpdateOutputDesc("handle", handle_desc) != GRAPH_SUCCESS) {
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(
-        op.GetName(),
+        TbeGetName(op),
         std::string("update description for output[handle] failed"));
     return GRAPH_FAILED;
   }
@@ -274,31 +274,31 @@ INFER_FUNC_REG(HashTable, HashTableInfer);
 
 IMPLEMT_INFERFUNC(InitializeTable, InitializeTableInfer) {
   Shape unused_shape;
-  if (WithRank(op.GetInputDesc(0), 0, unused_shape, op.GetName().c_str()) !=
+  if (WithRank(op.GetInputDesc(0), 0, unused_shape, TbeGetName(op).c_str()) !=
       GRAPH_SUCCESS) {
     std::string err_msg = GetShapeErrMsg(
         0, DebugString(op.GetInputDesc(0).GetShape().GetDims()), "scalar");
     err_msg = std::string("failed to call WithRank, ") + err_msg;
-    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
   Shape key_shape;
-  if (WithRank(op.GetInputDesc(1), 1, key_shape, op.GetName().c_str()) !=
+  if (WithRank(op.GetInputDesc(1), 1, key_shape, TbeGetName(op).c_str()) !=
       GRAPH_SUCCESS) {
     std::string err_msg = GetShapeErrMsg(
         1, DebugString(op.GetInputDesc(1).GetShape().GetDims()), "1D");
     err_msg = std::string("failed to call WithRank, ") + err_msg;
-    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
   Shape value_shape = op.GetInputDesc(2).GetShape();
-  if ((Merge(key_shape, value_shape, unused_shape, op.GetName().c_str())) !=
+  if ((Merge(key_shape, value_shape, unused_shape, TbeGetName(op).c_str())) !=
       GRAPH_SUCCESS) {
     std::string err_msg = ConcatString(
         "failed to call Merge, the shape", DebugString(key_shape.GetDims()),
         " of input[1] must same with shape", DebugString(value_shape.GetDims()),
         " of input[2]");
-    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -324,7 +324,7 @@ IMPLEMT_INFERFUNC(MutableDenseHashTable, MutableDenseHashTableInfer) {
 
   if (op.GetAttr("value_dtype", value_t) != GRAPH_SUCCESS) {
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(
-      op.GetName(), string("failed to get attr[value_dtype]"));
+      TbeGetName(op), string("failed to get attr[value_dtype]"));
     return GRAPH_FAILED;
   }
 
@@ -335,7 +335,7 @@ IMPLEMT_INFERFUNC(MutableDenseHashTable, MutableDenseHashTableInfer) {
         "when attr[key_type] is DT_INT64, attr[value_type] should in ["
         "DT_INT64, DT_INT32, DT_FLOAT, DT_BOOL], but got [",
       TypeUtils::DataTypeToSerialString(value_t), "]");
-      AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+      AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
       return GRAPH_FAILED;
     }
   } else if (key_t == DT_INT32) {
@@ -344,7 +344,7 @@ IMPLEMT_INFERFUNC(MutableDenseHashTable, MutableDenseHashTableInfer) {
         "when attr[key_type] is DT_INT64, attr[value_type] should in ["
         "DT_INT64, DT_INT32, DT_FLOAT], but got [",
       TypeUtils::DataTypeToSerialString(value_t), "]");
-      AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+      AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
       return GRAPH_FAILED;
     }
   }
@@ -363,7 +363,7 @@ IMPLEMT_INFERFUNC(MutableDenseHashTable, MutableDenseHashTableInfer) {
   pcontext->SetOutputHandleShapesAndTypes(std::move(key_value_vec));
   if (op.UpdateOutputDesc("handle", desc_handle) != GRAPH_SUCCESS) {
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(
-      op.GetName(), string("fail to update output[handle] desc."));
+      TbeGetName(op), string("fail to update output[handle] desc."));
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -388,7 +388,7 @@ IMPLEMT_INFERFUNC(MutableHashTableOfTensors, MutableHashTableOfTensorsInfer) {
 
   if (op.GetAttr("key_dtype", key_t) != GRAPH_SUCCESS) {
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(
-      op.GetName(), string("failed to get attr[key_dtype]"));
+      TbeGetName(op), string("failed to get attr[key_dtype]"));
     return GRAPH_FAILED;
   }
   if (op.GetAttr("value_dtype", value_t) != GRAPH_SUCCESS) {
@@ -400,7 +400,7 @@ IMPLEMT_INFERFUNC(MutableHashTableOfTensors, MutableHashTableOfTensorsInfer) {
         "when attr[key_type] is DT_INT64, attr[value_type] should in ["
         "DT_INT32, DT_INT64, DT_FLOAT, DT_DOUBLE], but got [",
         TypeUtils::DataTypeToSerialString(value_t), "]");
-      AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+      AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
       return GRAPH_FAILED;
     }
   } else if (key_t == DT_INT32) {
@@ -409,7 +409,7 @@ IMPLEMT_INFERFUNC(MutableHashTableOfTensors, MutableHashTableOfTensorsInfer) {
         "when attr[key_type] is DT_INT64, attr[value_type] should in ["
         "DT_INT32, DT_FLOAT, DT_DOUBLE], but got [",
         TypeUtils::DataTypeToSerialString(value_t), "]");
-      AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+      AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
       return GRAPH_FAILED;
     }
   }
@@ -425,7 +425,7 @@ IMPLEMT_INFERFUNC(MutableHashTableOfTensors, MutableHashTableOfTensorsInfer) {
 
   if (op.UpdateOutputDesc("handle", desc_handle) != GRAPH_SUCCESS) {
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(
-      op.GetName(), string("fail to update output[handle] desc."));
+      TbeGetName(op), string("fail to update output[handle] desc."));
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -443,7 +443,7 @@ IMPLEMT_INFERFUNC(MutableHashTable, MutableHashTableInfer) {
 
   if (op.GetAttr("key_dtype", key_t) != GRAPH_SUCCESS) {
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(
-      op.GetName(), string("failed to get attr[key_dtype]"));
+      TbeGetName(op), string("failed to get attr[key_dtype]"));
     return GRAPH_FAILED;
   }
   if (op.GetAttr("value_dtype", value_t) != GRAPH_SUCCESS) {
@@ -455,7 +455,7 @@ IMPLEMT_INFERFUNC(MutableHashTable, MutableHashTableInfer) {
         "when attr[key_type] is DT_INT64, attr[value_type] should in ["
         "DT_INT64, DT_INT32, DT_FLOAT, DT_DOUBLE], but got [",
       TypeUtils::DataTypeToSerialString(value_t), "]");
-      AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+      AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
       return GRAPH_FAILED;
     }
   } else if (key_t == DT_INT32) {
@@ -464,7 +464,7 @@ IMPLEMT_INFERFUNC(MutableHashTable, MutableHashTableInfer) {
         "when attr[key_type] is DT_INT64, attr[value_type] should in ["
         "DT_INT32, DT_FLOAT, DT_DOUBLE], but got [",
       TypeUtils::DataTypeToSerialString(value_t), "]");
-      AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+      AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
       return GRAPH_FAILED;
     }
   }

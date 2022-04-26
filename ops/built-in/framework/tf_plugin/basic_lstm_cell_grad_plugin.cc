@@ -36,7 +36,7 @@ Status ParseParamsBasicLSTMCellInputGrad(const Message* op_src, ge::Operator& op
   orgTensorW.SetFormat(ge::FORMAT_HWCN);
   auto ret = op_dsc->UpdateInputDesc(POS_1, orgTensorW);
   if (ret != ge::GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "update filter format failed.");
+    OP_LOGE(TbeGetName(op).c_str(), "update filter format failed.");
     return FAILED;
   }
   return SUCCESS;
@@ -50,7 +50,7 @@ Status ParseParamsBasicLSTMCellWeightGrad(const Message* op_src, ge::Operator& o
   orgTensorW.SetFormat(ge::FORMAT_HWCN);
   auto ret = op_dsc->UpdateOutputDesc(POS_0, orgTensorW);
   if (ret != ge::GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "update filter format failed.");
+    OP_LOGE(TbeGetName(op).c_str(), "update filter format failed.");
     return FAILED;
   }
   return SUCCESS;

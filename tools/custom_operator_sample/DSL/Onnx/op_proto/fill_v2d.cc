@@ -23,14 +23,14 @@ IMPLEMT_INFERFUNC(FillV2D, FillV2DInferShape) {
   const int DIM_SIZE8 = 8;
   std::vector<int64_t> vec_dim;
   if (ge::GRAPH_SUCCESS != op.GetAttr("dims", vec_dim)) {
-    OP_LOGE(op.GetName().c_str(), "GetOpAttr failed of FillD!");
+    OP_LOGE(TbeGetName(op).c_str(), "GetOpAttr failed of FillD!");
     return GRAPH_FAILED;
   }
 
-  OP_LOGI(op.GetName().c_str(), "start infershape");
+  OP_LOGI(TbeGetName(op).c_str(), "start infershape");
 
   if (vec_dim.size() < DIM_SIZE1 || vec_dim.size() > DIM_SIZE8) {
-    OP_LOGE(op.GetName().c_str(), "dims must between 1 and 8.");
+    OP_LOGE(TbeGetName(op).c_str(), "dims must between 1 and 8.");
     return GRAPH_FAILED;
   }
 
@@ -39,7 +39,7 @@ IMPLEMT_INFERFUNC(FillV2D, FillV2DInferShape) {
   td.SetDataType(DT_FLOAT);
 
   op.UpdateOutputDesc("y", td);
-  OP_LOGI(op.GetName().c_str(), "infershape success!");
+  OP_LOGI(TbeGetName(op).c_str(), "infershape success!");
   return GRAPH_SUCCESS;
 }
 

@@ -34,12 +34,12 @@ IMPLEMT_COMMON_INFERFUNC(WtsARQInferShape) {
     Shape w_max_shape = op.GetInputDesc("w_max").GetShape();
 
     if (w_shape.GetDimNum() != w_min_shape.GetDimNum()) {
-        OP_LOGE(op.GetName().c_str(), "The dimension of w_min must be the same as w!");
+        OP_LOGE(TbeGetName(op).c_str(), "The dimension of w_min must be the same as w!");
         return GRAPH_FAILED;
     }
 
     if (w_shape.GetDimNum() != w_max_shape.GetDimNum()) {
-        OP_LOGE(op.GetName().c_str(), "The dimension of w_max must be the same as w!");
+        OP_LOGE(TbeGetName(op).c_str(), "The dimension of w_max must be the same as w!");
         return GRAPH_FAILED;
     }
 
@@ -48,13 +48,13 @@ IMPLEMT_COMMON_INFERFUNC(WtsARQInferShape) {
     std::vector<int64_t> w_max_dims = w_max_shape.GetDims();
 
     if (w_min_dims != w_max_dims) {
-        OP_LOGE(op.GetName().c_str(), "The shape of w_min must be the same as w_max!");
+        OP_LOGE(TbeGetName(op).c_str(), "The shape of w_min must be the same as w_max!");
         return GRAPH_FAILED;
     }
 
     for (size_t i = 0; i < w_dims.size(); i++) {
         if ((w_min_dims[i] != w_dims[i]) && (w_min_dims[i] != 1)) {
-            OP_LOGE(op.GetName().c_str(), "The shape of w_min&w_max must be the same as w or equal to 1!");
+            OP_LOGE(TbeGetName(op).c_str(), "The shape of w_min&w_max must be the same as w or equal to 1!");
             return GRAPH_FAILED;
         }
     }
@@ -63,7 +63,7 @@ IMPLEMT_COMMON_INFERFUNC(WtsARQInferShape) {
     y.SetShape(w_shape);
     y.SetDataType(op.GetInputDesc("w").GetDataType());
     if (op.UpdateOutputDesc("y", y) != GRAPH_SUCCESS) {
-        OP_LOGE(op.GetName().c_str(), "Update output[y] failed!");
+        OP_LOGE(TbeGetName(op).c_str(), "Update output[y] failed!");
         return GRAPH_FAILED;
     }
 
@@ -76,12 +76,12 @@ IMPLEMT_VERIFIER(WtsARQ, WtsARQVerify) {
     DataType w_max_type = op.GetInputDesc("w_max").GetDataType();
 
     if (w_type != w_min_type) {
-        OP_LOGE(op.GetName().c_str(), "The type of w_min must be the same as w!");
+        OP_LOGE(TbeGetName(op).c_str(), "The type of w_min must be the same as w!");
         return GRAPH_FAILED;
     }
 
     if (w_type != w_max_type) {
-        OP_LOGE(op.GetName().c_str(), "The type of w_max must be the same as w!");
+        OP_LOGE(TbeGetName(op).c_str(), "The type of w_max must be the same as w!");
         return GRAPH_FAILED;
     }
 

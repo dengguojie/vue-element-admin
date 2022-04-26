@@ -30,7 +30,7 @@ Status ParseParamsAvgPool3D(const ge::Operator& op_src, ge::Operator& op) {
 
   // Convert original tf graph avg_pool3d attrs to GE graph attrs
   if (AutoMappingByOpFn(op_src, op) != SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "AutoMappingFn failed.");
+    OP_LOGE(TbeGetName(op).c_str(), "AutoMappingFn failed.");
     return FAILED;
   }
 

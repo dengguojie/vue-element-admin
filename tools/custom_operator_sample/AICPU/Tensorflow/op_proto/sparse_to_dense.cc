@@ -28,11 +28,11 @@ namespace ge {
 IMPLEMT_INFERFUNC(SparseToDense, SparseToDenseInfer) {
   GeShape shape;
   if (MakeShapeFromShapeTensor(op, "output_shape", shape,
-                               op.GetName().c_str()) != GRAPH_SUCCESS) {
+                               TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
     std::string err_msg = ConcatString(
         "failed to call MakeShapeFromShapeTensor function to make shape from "
         "input[output_shape]");
-    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
 

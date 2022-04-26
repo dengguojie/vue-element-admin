@@ -37,12 +37,12 @@ IMPLEMT_INFERFUNC(Copy, CopyInferShape) {
 
   int64_t top_size;
   if (GRAPH_SUCCESS != op.GetAttr("N", top_size)) {
-    OP_LOGE(op.GetName().c_str(), "GetAttr of N failed.");
+    OP_LOGE(TbeGetName(op).c_str(), "GetAttr of N failed.");
     return GRAPH_FAILED;
   }
 
   if (top_size < 1) {
-    OP_LOGE(op.GetName().c_str(), "the number of top need greater than or equals to 1.");
+    OP_LOGE(TbeGetName(op).c_str(), "the number of top need greater than or equals to 1.");
     return GRAPH_FAILED;
   }
 

@@ -42,14 +42,14 @@ IMPLEMT_COMMON_INFERFUNC(TargetCropAndResizeInferShape) {
   int64_t channel = 3;
   int64_t xDimNum = op.GetInputDesc("x").GetShape().GetDimNum();
   if (x_shape.empty() || xDimNum < 4) {
-    OP_LOGE(op.GetName().c_str(), "get x shape failed, or x shape is smaller than 4.");
+    OP_LOGE(TbeGetName(op).c_str(), "get x shape failed, or x shape is smaller than 4.");
     return GRAPH_FAILED;
   }
 
   auto boxes_shape = op.GetInputDesc("boxes").GetShape().GetDims();
   int64_t boxesDimNum = op.GetInputDesc("boxes").GetShape().GetDimNum();
   if (boxes_shape.empty() || boxesDimNum < 2) {
-    OP_LOGE(op.GetName().c_str(), "get boxes shape failed, or boxes shape is smaller than 2.");
+    OP_LOGE(TbeGetName(op).c_str(), "get boxes shape failed, or boxes shape is smaller than 2.");
     return GRAPH_FAILED;
   }
   int64_t batch = boxes_shape[0];
@@ -61,13 +61,13 @@ IMPLEMT_COMMON_INFERFUNC(TargetCropAndResizeInferShape) {
 
   int64_t output_h = 0;
   if (ge::GRAPH_SUCCESS != op.GetAttr("output_h", output_h)) {
-    OP_LOGE(op.GetName().c_str(), "get attr failed");
+    OP_LOGE(TbeGetName(op).c_str(), "get attr failed");
     return GRAPH_FAILED;
   }
 
   int64_t output_w = 0;
   if (ge::GRAPH_SUCCESS != op.GetAttr("output_w", output_w)) {
-    OP_LOGE(op.GetName().c_str(), "get attr failed");
+    OP_LOGE(TbeGetName(op).c_str(), "get attr failed");
     return GRAPH_FAILED;
   }
 

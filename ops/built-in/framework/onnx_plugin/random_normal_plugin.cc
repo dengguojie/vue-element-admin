@@ -84,14 +84,14 @@ Status ParseOpToGraphRandomNormal(const ge::Operator& op, ge::Graph& graph) {
   op.GetAttr("shape", shape);
 
   if (shape.empty()) {
-    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "Attr of shape must be not null.");
+    ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "Attr of shape must be not null.");
     return FAILED;
   }
 
   // cast from onnx dtype to tbe dtype
   std::map<int, ge::DataType> kvlist = {{1, ge::DT_FLOAT}, {10, ge::DT_FLOAT16}, {11, ge::DT_DOUBLE}};
   if (kvlist.find(dtype) == kvlist.end()) {
-    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "only support float32/half/double, but got %d", dtype);
+    ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "only support float32/half/double, but got %d", dtype);
     return FAILED;
   }
 

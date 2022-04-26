@@ -98,7 +98,7 @@ IMPLEMT_VERIFIER(EluGradV2, EluGradV2Verify){
     DataType input_type_grads = op.GetInputDesc("grads").GetDataType();
     DataType input_type_activations = op.GetInputDesc("activations").GetDataType();
     if(input_type_activations != input_type_grads) {
-        OP_LOGE(op.GetName().c_str(), "Input dtypes are not the same.");
+        OP_LOGE(TbeGetName(op).c_str(), "Input dtypes are not the same.");
         return GRAPH_FAILED;
     }
     return GRAPH_SUCCESS;
@@ -251,7 +251,7 @@ COMMON_INFER_FUNC_REG(Relu, OneInOneOutCommonInferShape);
 
 // ----------------ReluV2-------------------
 IMPLEMT_COMMON_INFERFUNC(ReluV2InferShape) {
-  OP_LOGI(op.GetName().c_str(), "enter relu_v2 op_proto inferfunction!!!");
+  OP_LOGI(TbeGetName(op).c_str(), "enter relu_v2 op_proto inferfunction!!!");
   if (!OneInOneOutDynamicInfer(op, "x", {"y"})) {
     return GRAPH_FAILED;
   }
@@ -271,7 +271,7 @@ IMPLEMT_COMMON_INFERFUNC(ReluV2InferShape) {
     return GRAPH_FAILED;
   }
   if (origin_format == FORMAT_NHWC) {
-    OP_LOGI(op.GetName().c_str(), "The format is NHWC");
+    OP_LOGI(TbeGetName(op).c_str(), "The format is NHWC");
     for (unsigned int i = 0; i < dims.size() - 1; i++) {
       if (1 == i) {
         if (xDesc->GetDataType() == DT_UINT8 || xDesc->GetDataType() == DT_INT8) {
@@ -283,7 +283,7 @@ IMPLEMT_COMMON_INFERFUNC(ReluV2InferShape) {
       dims_mask.push_back(origin_shape.GetDim(i));
     }
   } else if (origin_format == FORMAT_NCHW) {
-    OP_LOGI(op.GetName().c_str(), "The format is NCHW");
+    OP_LOGI(TbeGetName(op).c_str(), "The format is NCHW");
     for (unsigned int i = 0; i < dims.size(); i++) {
       if (1 == i) {
         if (xDesc->GetDataType() == DT_UINT8 || xDesc->GetDataType() == DT_INT8) {
@@ -296,7 +296,7 @@ IMPLEMT_COMMON_INFERFUNC(ReluV2InferShape) {
       }
     }
   } else {
-    OP_LOGE(op.GetName().c_str(), "The format only support NHWC and NCHW.");
+    OP_LOGE(TbeGetName(op).c_str(), "The format only support NHWC and NCHW.");
     return GRAPH_FAILED;
   }
   if (xDesc->GetDataType() == DT_UINT8 || xDesc->GetDataType() == DT_INT8) {
@@ -325,7 +325,7 @@ COMMON_INFER_FUNC_REG(BNLL, ELMTWISE_INFER_SHAPEANDTYPE("x", "y"));
 
 // ----------------Elu-------------------
 IMPLEMT_COMMON_INFERFUNC(EluInferShape) {
-  OP_LOGI(op.GetName().c_str(), "Enter EluInferShape");
+  OP_LOGI(TbeGetName(op).c_str(), "Enter EluInferShape");
   if (OneInOneOutDynamicInfer(op, "x", {"y"})) {
     return GRAPH_SUCCESS;
   }
@@ -336,7 +336,7 @@ COMMON_INFER_FUNC_REG(Elu, EluInferShape);
 
 // ----------------Celu-------------------
 IMPLEMT_COMMON_INFERFUNC(CeluInferShape) {
-  OP_LOGI(op.GetName().c_str(), "Enter CeluInferShape");
+  OP_LOGI(TbeGetName(op).c_str(), "Enter CeluInferShape");
   if (OneInOneOutDynamicInfer(op, "x", {"y"})) {
     return GRAPH_SUCCESS;
   }
@@ -347,7 +347,7 @@ COMMON_INFER_FUNC_REG(Celu, CeluInferShape);
 
 // ----------------CeluV2-------------------
 IMPLEMT_COMMON_INFERFUNC(CeluV2InferShape) {
-  OP_LOGI(op.GetName().c_str(), "Enter CeluV2InferShape");
+  OP_LOGI(TbeGetName(op).c_str(), "Enter CeluV2InferShape");
   if (OneInOneOutDynamicInfer(op, "x", {"y"})) {
     return GRAPH_SUCCESS;
   }
@@ -414,13 +414,13 @@ IMPLEMT_COMMON_INFERFUNC(Relu6DInferShape) {
 }
 
 IMPLEMT_VERIFIER(Relu6D, Relu6DVerify) {
-  OP_LOGI(op.GetName().c_str(), "Enter Relu6D verifyFunction!");
+  OP_LOGI(TbeGetName(op).c_str(), "Enter Relu6D verifyFunction!");
 
   // check input const attr for scale
   std::vector<float> const_attr;
   if (!GetConstAttr(op, {"scale"}, const_attr)) {
     std::string err_msg = GetInputInvalidErrMsg("scale");
-    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -452,7 +452,7 @@ IMPLEMT_COMMON_INFERFUNC(SigmoidGradInferShape) {
   tensordesc_output.SetShapeRange(shape_range_y);
   if (op.UpdateOutputDesc("z", tensordesc_output) != GRAPH_SUCCESS) {
     std::string err_msg = UpdateParamErrMsg("z");
-    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -599,7 +599,7 @@ COMMON_INFER_FUNC_REG(ReluGradV2, ReluGradV2InferShape);
 
 // ----------------LeakyReluGrad-------------------
 IMPLEMT_VERIFIER(LeakyReluGrad, LeakyReluGradVerify) {
-  OP_LOGI(op.GetName().c_str(), "enter LeakyReluGrad verify");
+  OP_LOGI(TbeGetName(op).c_str(), "enter LeakyReluGrad verify");
   if (!CheckTwoInputDtypeSame(op, "gradients", "features")) {
     return GRAPH_FAILED;
   }
@@ -788,7 +788,7 @@ IMPLEMT_INFERFUNC(SoftplusV2Grad, SoftplusV2GradInferShape) {
   std::vector<int64_t> dims_input2 = input_shape2.GetDims();
 
   if (dims_input1.size() != dims_input2.size()) {
-    OP_LOGE(op.GetName().c_str(), "Input shapes are not the same.");
+    OP_LOGE(TbeGetName(op).c_str(), "Input shapes are not the same.");
     return GRAPH_FAILED;
   }
 
@@ -797,7 +797,7 @@ IMPLEMT_INFERFUNC(SoftplusV2Grad, SoftplusV2GradInferShape) {
   for (size_t i = 0; i < dims_input1.size(); i++) {
     if ((dims_input1[i] != dims_input2[i]) && (dims_input1[i] != 1) &&
         (dims_input2[i] != 1)) {
-      OP_LOGE(op.GetName().c_str(), "Input shapes are not compatible.");
+      OP_LOGE(TbeGetName(op).c_str(), "Input shapes are not compatible.");
       return GRAPH_FAILED;
     }
 
@@ -817,7 +817,7 @@ IMPLEMT_VERIFIER(SoftplusV2Grad, SoftplusV2GradVerify) {
   // check input tensors' dtype which needed to be same
   if (op.GetInputDesc("input_gradients").GetDataType() !=
       op.GetInputDesc("input_features").GetDataType()) {
-    OP_LOGE(op.GetName().c_str(), "Input dtypes are not the same.");
+    OP_LOGE(TbeGetName(op).c_str(), "Input dtypes are not the same.");
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -921,7 +921,7 @@ IMPLEMT_COMMON_INFERFUNC(HardShrinkGradInferShape)
 IMPLEMT_VERIFIER(HardShrinkGrad, HardShrinkGradVerify)
 {
     if (op.GetInputDesc("features").GetDataType() != op.GetInputDesc("gradients").GetDataType()) {
-        OP_LOGE(op.GetName().c_str(), "Input two tensor's dtype must be same.");
+        OP_LOGE(TbeGetName(op).c_str(), "Input two tensor's dtype must be same.");
         return GRAPH_FAILED;
     }
     return GRAPH_SUCCESS;
@@ -932,7 +932,7 @@ VERIFY_FUNC_REG(HardShrinkGrad, HardShrinkGradVerify);
 
 // ----------------HardSigmoid Begin-------------------
 IMPLEMT_COMMON_INFERFUNC(HardSigmoidInferShape) {
-  OP_LOGI(op.GetName().c_str(), "Enter HardSigmoidInferShape");
+  OP_LOGI(TbeGetName(op).c_str(), "Enter HardSigmoidInferShape");
   if (OneInOneOutDynamicInfer(op, "input_x", {"output_y"})) {
     return GRAPH_SUCCESS;
   }
@@ -986,7 +986,7 @@ IMPLEMT_COMMON_INFERFUNC(SoftShrinkGradInferShape) {
   std::vector<int64_t> dim_vec;
   for (size_t i = 0; i < dims_x.size(); i++) {
     if ((dims_x[i] != dims_grad[i]) && (dims_x[i] != 1) && (dims_grad[i] != 1)) {
-      OP_LOGE(op.GetName().c_str(), "Input shapes are not compatible.");
+      OP_LOGE(TbeGetName(op).c_str(), "Input shapes are not compatible.");
       return GRAPH_FAILED;
     }
     int64_t dims = dims_x[i] > dims_grad[i] ? dims_x[i] : dims_grad[i];
@@ -1002,7 +1002,7 @@ IMPLEMT_COMMON_INFERFUNC(SoftShrinkGradInferShape) {
 
 IMPLEMT_VERIFIER(SoftShrinkGrad, SoftShrinkGradVerify) {
   if (op.GetInputDesc("input_x").GetDataType() != op.GetInputDesc("input_grad").GetDataType()) {
-    OP_LOGE(op.GetName().c_str(), "Input dtypes are not the same.");
+    OP_LOGE(TbeGetName(op).c_str(), "Input dtypes are not the same.");
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -1014,7 +1014,7 @@ VERIFY_FUNC_REG(SoftShrinkGrad, SoftShrinkGradVerify);
 
 // ----------------Sigmoid----------------------
 IMPLEMT_COMMON_INFERFUNC(SigmoidInferShape) {
-  OP_LOGI(op.GetName().c_str(), "Enter SigmoidInferShape");
+  OP_LOGI(TbeGetName(op).c_str(), "Enter SigmoidInferShape");
   const int64_t input_x_idx = 0;
   const int64_t output_y_idx = 0;
   if (OneInOneOutDynamicInfer(op, input_x_idx, {output_y_idx})) {
@@ -1027,7 +1027,7 @@ COMMON_INFER_FUNC_REG(Sigmoid, SigmoidInferShape);
 
 // ----------------LeakyRelu--------------------
 IMPLEMT_COMMON_INFERFUNC(LeakyReluInferShape) {
-  OP_LOGI(op.GetName().c_str(), "Enter LeakyReluInferShape");
+  OP_LOGI(TbeGetName(op).c_str(), "Enter LeakyReluInferShape");
   if (OneInOneOutDynamicInfer(op, "x", {"y"})) {
     return GRAPH_SUCCESS;
   }
@@ -1039,7 +1039,7 @@ COMMON_INFER_FUNC_REG(LeakyRelu, LeakyReluInferShape);
 // ----------------LogSigmoidGrad begin--------------------
 IMPLEMT_VERIFIER(LogSigmoidGrad, LogSigmoidGradVerify) {
   if (op.GetInputDesc("grads").GetDataType() != op.GetInputDesc("features").GetDataType()) {
-    OP_LOGI(op.GetName().c_str(), "Input and output's dtype mast be same.");
+    OP_LOGI(TbeGetName(op).c_str(), "Input and output's dtype mast be same.");
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -1064,7 +1064,7 @@ IMPLEMT_COMMON_INFERFUNC(LogSigmoidGradInferShape) {
   std::vector<int64_t> dim_vec;
   for (size_t i = 0; i < dims_grads.size(); i++) {
     if ((dims_grads[i] != dims_features[i]) && (dims_grads[i] != 1) && (dims_features[i] != 1)) {
-      OP_LOGI(op.GetName().c_str(), "Input and output's dimvalue mast be different,mast not be 1.");
+      OP_LOGI(TbeGetName(op).c_str(), "Input and output's dimvalue mast be different,mast not be 1.");
       return GRAPH_FAILED;
     }
     int64_t dims = dims_grads[i] > dims_features[i] ? dims_grads[i] : dims_features[i];
@@ -1108,7 +1108,7 @@ IMPLEMT_COMMON_INFERFUNC(HardSigmoidGradInferShape) {
     std::vector<int64_t> dims_x = shape_x.GetDims();
     std::vector<int64_t> dims_grad = shape_grad.GetDims();
     if (dims_x.size() != dims_grad.size()) {
-        OP_LOGE(op.GetName().c_str(), "the two inputs size not equal!\n");
+        OP_LOGE(TbeGetName(op).c_str(), "the two inputs size not equal!\n");
         return GRAPH_FAILED;
     }
     output_desc.SetDataType(dtype_grad);

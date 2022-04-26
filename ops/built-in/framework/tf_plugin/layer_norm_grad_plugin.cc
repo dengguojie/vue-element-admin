@@ -25,10 +25,10 @@
 
 namespace domi {
 Status LayerNormGradParserParams(const std::vector<const google::protobuf::Message*> inside_nodes, ge::Operator& op) {
-  OP_LOGI(op.GetName().c_str(), "Enter layer grad norm fusion parser.");
+  OP_LOGI(TbeGetName(op).c_str(), "Enter layer grad norm fusion parser.");
   auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
   if (op_desc == nullptr) {
-    OP_LOGE(op.GetName().c_str(), "Get op desc failed.");
+    OP_LOGE(TbeGetName(op).c_str(), "Get op desc failed.");
     return FAILED;
   }
 

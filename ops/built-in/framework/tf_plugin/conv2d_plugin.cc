@@ -40,14 +40,14 @@ const size_t kPaddingSize = 8;
 Status ParseParamsConv2D(const Message* op_src, ge::Operator& op) {
   // Convert original tf graph conv2d attrs to GE graph attrs
   if (AutoMappingFn(op_src, op) != SUCCESS) {
-    CUBE_INNER_ERR_REPORT_PLUGIN(op.GetName().c_str(), "auto mapping failed.");
+    CUBE_INNER_ERR_REPORT_PLUGIN(TbeGetName(op).c_str(), "auto mapping failed.");
     return FAILED;
   }
 
   // The filter format shuold be HWCN, not NHWC or NCHW, so set here to fix this problem
   auto op_dsc = ge::OpDescUtils::GetOpDescFromOperator(op);
   if (op_dsc == nullptr) {
-    CUBE_INNER_ERR_REPORT_PLUGIN(op.GetName().c_str(), "get op desc failed.");
+    CUBE_INNER_ERR_REPORT_PLUGIN(TbeGetName(op).c_str(), "get op desc failed.");
     return FAILED;
   }
   ge::GeTensorDesc org_tensor_w = op_dsc->GetInputDesc(kInputFilter);
@@ -55,7 +55,7 @@ Status ParseParamsConv2D(const Message* op_src, ge::Operator& op) {
   org_tensor_w.SetFormat(ge::FORMAT_HWCN);
   auto ret = op_dsc->UpdateInputDesc(kInputFilter, org_tensor_w);
   if (ret != ge::GRAPH_SUCCESS) {
-    CUBE_INNER_ERR_REPORT_PLUGIN(op.GetName().c_str(), "update filter format failed.");
+    CUBE_INNER_ERR_REPORT_PLUGIN(TbeGetName(op).c_str(), "update filter format failed.");
     return FAILED;
   }
 
@@ -84,7 +84,7 @@ Status ParseParamsConv2D(const Message* op_src, ge::Operator& op) {
   // Escape GE require attr [pads] check here
   std::vector<int32_t> pad_list = {pad_top, pad_bottom, pad_left, pad_right};
   op.SetAttr("pads", pad_list);
-  OP_LOGD(op.GetName().c_str(), "set pads [%d,%d,%d,%d] here.", pad_list[0], pad_list[1], pad_list[2], pad_list[3]);
+  OP_LOGD(TbeGetName(op).c_str(), "set pads [%d,%d,%d,%d] here.", pad_list[0], pad_list[1], pad_list[2], pad_list[3]);
 
   return SUCCESS;
 }

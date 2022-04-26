@@ -46,7 +46,7 @@ static bool TopKInferCommon(Operator &op, int64_t k) {
   std::vector<int64_t> dims_in = input_desc->MutableShape().GetDims();
   int32_t dim_size = dims_in.size();
   if (dim_size <= 0) {
-    OP_LOGE(op.GetName().c_str(), "The dims_in size should more than 0!");
+    OP_LOGE(TbeGetName(op).c_str(), "The dims_in size should more than 0!");
     return false;
   }
 
@@ -58,7 +58,7 @@ static bool TopKInferCommon(Operator &op, int64_t k) {
       sorted_axis += dim_size;
     }
     if (sorted_axis >= dim_size) {
-      OP_LOGE(op.GetName().c_str(), "Dim is out of shape size.");
+      OP_LOGE(TbeGetName(op).c_str(), "Dim is out of shape size.");
       return false;
     }
   }
@@ -106,7 +106,7 @@ IMPLEMT_COMMON_INFERFUNC(TopKInferShape) {
   Tensor k_tensor;
   bool unkonwn_dim_flag{false};
   if (op.GetInputConstData("k", k_tensor) != GRAPH_SUCCESS) {
-    OP_LOGI(op.GetName().c_str(), "Get constdata failed, unknown dim.");
+    OP_LOGI(TbeGetName(op).c_str(), "Get constdata failed, unknown dim.");
     unkonwn_dim_flag = true;
   }
 
@@ -120,13 +120,13 @@ IMPLEMT_COMMON_INFERFUNC(TopKInferShape) {
     } else if (dtype == DT_INT64) {
       k = *(reinterpret_cast<int64_t*>(k_tensor.GetData()));
     } else {
-      OP_LOGE(op.GetName().c_str(), "The type of k Error!");
+      OP_LOGE(TbeGetName(op).c_str(), "The type of k Error!");
       return GRAPH_FAILED;
     }
   }
 
   if (TopKInferCommon(op, k) == false) {
-    OP_LOGE(op.GetName().c_str(), "TopKInferCommon Failed.");
+    OP_LOGE(TbeGetName(op).c_str(), "TopKInferCommon Failed.");
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;

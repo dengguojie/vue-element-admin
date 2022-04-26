@@ -30,7 +30,7 @@
 namespace ge {
 namespace {
 graphStatus SetShapeAndType(Operator& op, Shape element_shape, DataType element_dtype) {
-  const char *op_name = op.GetName().c_str();
+  const char *op_name = TbeGetName(op).c_str();
   std::vector<std::pair<int64_t, int64_t>> value_shape_range;
   op.GetInputDesc(0).GetShapeRange(value_shape_range);
   ShapeAndRange feed_shape_and_range = {element_shape, value_shape_range, element_dtype};
@@ -42,7 +42,7 @@ graphStatus SetShapeAndType(Operator& op, Shape element_shape, DataType element_
 }
 
 graphStatus GetShapeAndType(Operator& op, ShapeAndType& out, bool& is_shape_and_type_empty, InferenceContextPtr infer_context) {
-  const char *op_name = op.GetName().c_str();
+  const char *op_name = TbeGetName(op).c_str();
   ShapeAndRange shape_and_range_out;
   std::vector<AscendString> marks;
   is_shape_and_type_empty = false;
@@ -215,7 +215,7 @@ graphStatus MakeShapeFromShapeTensorTreatScalarAsUnknownShape(
 } // namespace
 
 IMPLEMT_INFERFUNC(EmptyTensorList, EmptyTensorListInfer) {
-  const char *op_name = op.GetName().c_str();
+  const char *op_name = TbeGetName(op).c_str();
   Shape shape;
   if (Scalar(shape) != GRAPH_SUCCESS) {
     OP_LOGE(op_name, "Create Scalar failed.");
@@ -274,7 +274,7 @@ IMPLEMT_INFERFUNC(EmptyTensorList, EmptyTensorListInfer) {
 INFER_FUNC_REG(EmptyTensorList, EmptyTensorListInfer);
 
 IMPLEMT_INFERFUNC(TensorListPushBack, TensorListPushBackInfer) {
-  const char *op_name = op.GetName().c_str();
+  const char *op_name = TbeGetName(op).c_str();
   Shape shape;
   if (Scalar(shape) != GRAPH_SUCCESS) {
     OP_LOGE(op_name, "Create Scalar failed.");
@@ -339,7 +339,7 @@ IMPLEMT_INFERFUNC(TensorListPushBack, TensorListPushBackInfer) {
 INFER_FUNC_REG(TensorListPushBack, TensorListPushBackInfer);
 
 IMPLEMT_INFERFUNC(TensorListPopBack, TensorListPopBackInfer) {
-  const char *op_name = op.GetName().c_str();
+  const char *op_name = TbeGetName(op).c_str();
   Shape shape;
   if (Scalar(shape) != GRAPH_SUCCESS) {
     OP_LOGE(op_name, "Create Scalar failed.");
@@ -412,7 +412,7 @@ IMPLEMT_INFERFUNC(TensorListLength, TensorListLengthInfer) {
   output_desc.SetShape(scalar_shape);
   output_desc.SetDataType(DT_INT32);
   if (op.UpdateOutputDesc("length", output_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Update length desc failed.");
+    OP_LOGE(TbeGetName(op).c_str(), "Update length desc failed.");
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -420,7 +420,7 @@ IMPLEMT_INFERFUNC(TensorListLength, TensorListLengthInfer) {
 INFER_FUNC_REG(TensorListLength, TensorListLengthInfer);
 
 IMPLEMT_INFERFUNC(TensorListElementShape, TensorListElementShapeInfer) {
-  const char *op_name = op.GetName().c_str();
+  const char *op_name = TbeGetName(op).c_str();
   TensorDesc output_desc = op.GetOutputDesc(0);
   DataType type;
   if (op.GetAttr("shape_type", type) != GRAPH_SUCCESS) {
@@ -463,7 +463,7 @@ IMPLEMT_INFERFUNC(TensorListElementShape, TensorListElementShapeInfer) {
 INFER_FUNC_REG(TensorListElementShape, TensorListElementShapeInfer);
 
 IMPLEMT_INFERFUNC(TensorListReserve, TensorListReserveInfer) {
-  const char *op_name = op.GetName().c_str();
+  const char *op_name = TbeGetName(op).c_str();
   Shape shape;
   if (Scalar(shape) != GRAPH_SUCCESS) {
     OP_LOGE(op_name, "Create Scalar failed.");
@@ -528,7 +528,7 @@ IMPLEMT_INFERFUNC(TensorListReserve, TensorListReserveInfer) {
 INFER_FUNC_REG(TensorListReserve, TensorListReserveInfer);
 
 IMPLEMT_INFERFUNC(TensorListGetItem, TensorListGetItemInfer) {
-  const char *op_name = op.GetName().c_str();
+  const char *op_name = TbeGetName(op).c_str();
   DataType element_dtype;
   if (op.GetAttr("element_dtype", element_dtype) != GRAPH_SUCCESS) {
     OP_LOGE(op_name, "Get attr element_dtype failed.");
@@ -600,7 +600,7 @@ IMPLEMT_INFERFUNC(TensorListGetItem, TensorListGetItemInfer) {
 INFER_FUNC_REG(TensorListGetItem, TensorListGetItemInfer);
 
 IMPLEMT_INFERFUNC(TensorListSetItem, TensorListSetItemInfer) {
-  const char *op_name = op.GetName().c_str();
+  const char *op_name = TbeGetName(op).c_str();
   Shape shape;
   if (Scalar(shape) != GRAPH_SUCCESS) {
     OP_LOGE(op_name, "Create Scalar failed.");
@@ -680,7 +680,7 @@ IMPLEMT_INFERFUNC(TensorListSetItem, TensorListSetItemInfer) {
 INFER_FUNC_REG(TensorListSetItem, TensorListSetItemInfer);
 
 IMPLEMT_INFERFUNC(TensorListPushBackBatch, TensorListPushBackBatchInfer) {
-  const char *op_name = op.GetName().c_str();
+  const char *op_name = TbeGetName(op).c_str();
   Shape input_handles;
   if (WithRank(op.GetInputDesc(0), 1, input_handles, op_name) != GRAPH_SUCCESS) {
     OP_LOGE(op_name, "Input input_handles must be 1-D.");
@@ -767,7 +767,7 @@ IMPLEMT_INFERFUNC(TensorListPushBackBatch, TensorListPushBackBatchInfer) {
 INFER_FUNC_REG(TensorListPushBackBatch, TensorListPushBackBatchInfer);
 
 IMPLEMT_INFERFUNC(TensorListStack, TensorListStackInfer) {
-  const char *op_name = op.GetName().c_str();
+  const char *op_name = TbeGetName(op).c_str();
   DataType element_dtype;
   if (op.GetAttr("element_dtype", element_dtype) != GRAPH_SUCCESS) {
     OP_LOGE(op_name, "Get attr element_dtype failed.");
@@ -863,7 +863,7 @@ IMPLEMT_INFERFUNC(TensorListStack, TensorListStackInfer) {
 INFER_FUNC_REG(TensorListStack, TensorListStackInfer);
 
 IMPLEMT_INFERFUNC(TensorListConcatV2, TensorListConcatV2Infer) {
-  const char *op_name = op.GetName().c_str();
+  const char *op_name = TbeGetName(op).c_str();
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
   // unknown shape support
   op_desc->SetOpInferDepends({"element_shape"});
@@ -889,7 +889,7 @@ IMPLEMT_INFERFUNC(TensorListConcatV2, TensorListConcatV2Infer) {
 INFER_FUNC_REG(TensorListConcatV2, TensorListConcatV2Infer);
 
 IMPLEMT_INFERFUNC(TensorListSplit, TensorListSplitInfer) {
-  const char *op_name = op.GetName().c_str();
+  const char *op_name = TbeGetName(op).c_str();
   Shape shape;
   if (Scalar(shape) != GRAPH_SUCCESS) {
     OP_LOGE(op_name, "Create Scalar failed.");
@@ -972,7 +972,7 @@ IMPLEMT_INFERFUNC(TensorListSplit, TensorListSplitInfer) {
 INFER_FUNC_REG(TensorListSplit, TensorListSplitInfer);
 
 IMPLEMT_INFERFUNC(TensorListFromTensor, TensorListFromTensorInfer) {
-  const char *op_name = op.GetName().c_str();
+  const char *op_name = TbeGetName(op).c_str();
   Shape shape;
   if (Scalar(shape) != GRAPH_SUCCESS) {
     OP_LOGE(op_name, "Create Scalar failed.");
@@ -1052,7 +1052,7 @@ IMPLEMT_INFERFUNC(TensorListFromTensor, TensorListFromTensorInfer) {
 INFER_FUNC_REG(TensorListFromTensor, TensorListFromTensorInfer);
 
 IMPLEMT_INFERFUNC(TensorListResize, TensorListResizeInfer) {
-  const char *op_name = op.GetName().c_str();
+  const char *op_name = TbeGetName(op).c_str();
   Shape unused;
   if (WithRank(op.GetInputDesc(1), 0, unused, op_name) != GRAPH_SUCCESS) {
     OP_LOGE(op_name, "Input size shape must be 0D.");
@@ -1091,7 +1091,7 @@ IMPLEMT_INFERFUNC(TensorListResize, TensorListResizeInfer) {
 INFER_FUNC_REG(TensorListResize, TensorListResizeInfer);
 
 IMPLEMT_INFERFUNC(TensorListGather, TensorListGatherInfer) {
-  const char *op_name = op.GetName().c_str();
+  const char *op_name = TbeGetName(op).c_str();
   DataType element_dtype;
   if (op.GetAttr("element_dtype", element_dtype) != GRAPH_SUCCESS) {
     OP_LOGE(op_name, "Get attr element_dtype failed.");
@@ -1157,7 +1157,7 @@ IMPLEMT_INFERFUNC(TensorListGather, TensorListGatherInfer) {
 INFER_FUNC_REG(TensorListGather, TensorListGatherInfer);
 
 IMPLEMT_INFERFUNC(TensorListScatterV2, TensorListScatterV2Infer) {
-  const char *op_name = op.GetName().c_str();
+  const char *op_name = TbeGetName(op).c_str();
   Shape shape;
   if (Scalar(shape) != GRAPH_SUCCESS) {
     OP_LOGE(op_name, "Create Scalar failed.");
@@ -1209,7 +1209,7 @@ IMPLEMT_INFERFUNC(TensorListScatterV2, TensorListScatterV2Infer) {
 INFER_FUNC_REG(TensorListScatterV2, TensorListScatterV2Infer);
 
 IMPLEMT_INFERFUNC(TensorListScatterIntoExistingList, TensorListScatterIntoExistingListInfer) {
-  const char *op_name = op.GetName().c_str();
+  const char *op_name = TbeGetName(op).c_str();
   Shape ignored;
   if (WithRankAtLeast(op.GetInputDesc(1), 1, ignored, op_name) != GRAPH_SUCCESS) {
     OP_LOGE(op_name, "Input tensor must be at least 1-D.");
@@ -1281,7 +1281,7 @@ INFER_FUNC_REG(TensorListScatterIntoExistingList, TensorListScatterIntoExistingL
 
 
 IMPLEMT_INFERFUNC(TensorListConcatLists, TensorListConcatListsInfer) {
-  const char *op_name = op.GetName().c_str();
+  const char *op_name = TbeGetName(op).c_str();
   auto input_a = op.GetInputDesc(0).GetShape();
   auto input_b = op.GetInputDesc(1).GetShape();
 

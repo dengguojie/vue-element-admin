@@ -46,16 +46,16 @@ IMPLEMT_INFERFUNC(HorovodAllgather, HorovodAllgatherInferShape) {
   int64_t rankSize = op.get_attr_rank_size();
   std::vector<int64_t> outDims;
   if (rankSize <= 0) {
-    OP_LOGE(op.GetName().c_str(), "attr rank_size is illegal, expected: > 0, actual: %ld.", rankSize);
+    OP_LOGE(TbeGetName(op).c_str(), "attr rank_size is illegal, expected: > 0, actual: %ld.", rankSize);
     return GRAPH_FAILED;
   }
   if (!(inDims.size() > 0)) {
-    OP_LOGE(op.GetName().c_str(), "input tensor's first dim is illegal, expected: > 0, actual: %zu.", inDims.size());
+    OP_LOGE(TbeGetName(op).c_str(), "input tensor's first dim is illegal, expected: > 0, actual: %zu.", inDims.size());
     return GRAPH_FAILED;
   }
   outDims = inDims;
   if (!(outDims.size() > 0)) {
-    OP_LOGE(op.GetName().c_str(), "out tensor is empty, expected: > 0, actual: %zu.", outDims.size());
+    OP_LOGE(TbeGetName(op).c_str(), "out tensor is empty, expected: > 0, actual: %zu.", outDims.size());
     return GRAPH_FAILED;
   }
   outDims[0] = inDims[0] * rankSize;
@@ -64,7 +64,7 @@ IMPLEMT_INFERFUNC(HorovodAllgather, HorovodAllgatherInferShape) {
   outTensorDesc.SetShape(outputShape);
   outTensorDesc.SetDataType(outputDtype);
   op.update_output_desc_y(outTensorDesc);
-  OP_LOGI(op.GetName().c_str(), "the op infershape end");
+  OP_LOGI(TbeGetName(op).c_str(), "the op infershape end");
   return GRAPH_SUCCESS;
 }
 
@@ -72,19 +72,19 @@ IMPLEMT_VERIFIER(HorovodAllgather, HorovodAllgatherVerify) {
   std::vector<int64_t> inDims = op.get_input_desc_x().GetShape().GetDims();
   int64_t rankSize = op.get_attr_rank_size();
   if (rankSize <= 0) {
-    OP_LOGE(op.GetName().c_str(), "attr rank_size is illegal, expected: > 0, actual: %ld.", rankSize);
+    OP_LOGE(TbeGetName(op).c_str(), "attr rank_size is illegal, expected: > 0, actual: %ld.", rankSize);
     return GRAPH_FAILED;
   }
   if (inDims.size() == 0) {
-    OP_LOGE(op.GetName().c_str(), "input tensor's first dim is illegal, expected: > 0, actual: %zu.", inDims.size());
+    OP_LOGE(TbeGetName(op).c_str(), "input tensor's first dim is illegal, expected: > 0, actual: %zu.", inDims.size());
     return GRAPH_FAILED;
   }
   // check supported data type in HCCL
   ge::DataType inputDtype = op.get_input_desc_x().GetDataType();
   if (!CheckSupportDateTpye(inputDtype)) {
-    OP_LOGE(op.GetName().c_str(), "dataType [%d] is not supported in HCCL.", inputDtype);
+    OP_LOGE(TbeGetName(op).c_str(), "dataType [%d] is not supported in HCCL.", inputDtype);
   }
-  OP_LOGI(op.GetName().c_str(), "the op verify end");
+  OP_LOGI(TbeGetName(op).c_str(), "the op verify end");
   return GRAPH_SUCCESS;
 }
 
@@ -95,21 +95,21 @@ VERIFY_FUNC_REG(HorovodAllgather, HorovodAllgatherVerify);
 IMPLEMT_VERIFIER(HorovodAllreduce, HorovodAllreduceVerify) {
   // check supported reduce op in HCCL
   int reduction = op.get_attr_reduce_op();
-  OP_LOGI(op.GetName().c_str(), "reduce type is [%d]", reduction);
+  OP_LOGI(TbeGetName(op).c_str(), "reduce type is [%d]", reduction);
   const std::vector<int> SUPPORTED_REDUCTION = {
       1, 3, 4, 5  // corresponding sum, min, max, prod
   };
   auto it = std::find(SUPPORTED_REDUCTION.begin(), SUPPORTED_REDUCTION.end(), reduction);
   if (it == SUPPORTED_REDUCTION.end()) {
-    OP_LOGE(op.GetName().c_str(), "Attr reduction [%d] is not supported. expecttd: min, max, prod, sum", reduction);
+    OP_LOGE(TbeGetName(op).c_str(), "Attr reduction [%d] is not supported. expecttd: min, max, prod, sum", reduction);
     return GRAPH_FAILED;
   }
   // check supported data type in HCCL
   ge::DataType inputDtype = op.get_input_desc_x().GetDataType();
   if (!CheckSupportDateTpye(inputDtype)) {
-    OP_LOGE(op.GetName().c_str(), "dataType [%d] is not supported in HCCL.", inputDtype);
+    OP_LOGE(TbeGetName(op).c_str(), "dataType [%d] is not supported in HCCL.", inputDtype);
   }
-  OP_LOGI(op.GetName().c_str(), "the op verify end");
+  OP_LOGI(TbeGetName(op).c_str(), "the op verify end");
   return GRAPH_SUCCESS;
 }
 
@@ -117,7 +117,7 @@ COMMON_INFER_FUNC_REG(HorovodAllreduce, ELMTWISE_INFER_SHAPEANDTYPE("x", "y"));
 VERIFY_FUNC_REG(HorovodAllreduce, HorovodAllreduceVerify);
 
 IMPLEMT_VERIFIER(HorovodBroadcast, HorovodBroadcastVerify) {
-  OP_LOGI(op.GetName().c_str(), "the op verify end");
+  OP_LOGI(TbeGetName(op).c_str(), "the op verify end");
   return GRAPH_SUCCESS;
 }
 

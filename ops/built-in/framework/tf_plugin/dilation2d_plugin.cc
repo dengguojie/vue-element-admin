@@ -32,7 +32,7 @@ Status ParseDilation2D(const Message* op_src, ge::Operator& op) {
   input_tensor.SetFormat(ge::FORMAT_NHWC);
   auto ret = op.UpdateInputDesc("x", input_tensor);
   if (ret != ge::GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Update input format failed.");
+    OP_LOGE(TbeGetName(op).c_str(), "Update input format failed.");
     return FAILED;
   }
   ge::TensorDesc output_tensor = op.GetOutputDesc("y");
@@ -40,7 +40,7 @@ Status ParseDilation2D(const Message* op_src, ge::Operator& op) {
   output_tensor.SetFormat(ge::FORMAT_NHWC);
   auto ret_output = op.UpdateOutputDesc("y", output_tensor);
   if (ret_output != ge::GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Update output format failed.");
+    OP_LOGE(TbeGetName(op).c_str(), "Update output format failed.");
     return FAILED;
   }
   ge::TensorDesc filter_tensor = op.GetInputDesc("filter");
@@ -48,7 +48,7 @@ Status ParseDilation2D(const Message* op_src, ge::Operator& op) {
   filter_tensor.SetFormat(ge::FORMAT_NHWC);
   auto filter_ret = op.UpdateInputDesc("filter", filter_tensor);
   if (filter_ret != ge::GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Update filter format failed.");
+    OP_LOGE(TbeGetName(op).c_str(), "Update filter format failed.");
     return FAILED;
   }
   std::string padding;

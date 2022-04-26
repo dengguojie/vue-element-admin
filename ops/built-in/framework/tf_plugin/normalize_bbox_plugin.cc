@@ -34,7 +34,7 @@ using std::vector;
 namespace domi {
 Status NormalizeBBoxParserParams(const std::vector<const google::protobuf::Message*>& inside_nodes,
                                  const ge::Operator& op) {
-  OP_LOGI(op.GetName().c_str(), "EnterNormalizeBBox fusion parser.");
+  OP_LOGI(TbeGetName(op).c_str(), "EnterNormalizeBBox fusion parser.");
   return SUCCESS;
 }
 

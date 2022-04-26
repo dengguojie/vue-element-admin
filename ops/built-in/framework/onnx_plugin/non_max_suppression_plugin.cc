@@ -78,12 +78,12 @@ Status ParseOpToGraphNonMaxSuppression(const ge::Operator& op, Graph& graph)
 
   int input_size = 0;
   if (op.GetAttr("input_size", input_size) != SUCCESS) {
-    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "get input_size from op failed.");
+    ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "get input_size from op failed.");
     return FAILED;
   }
   int center_point_box = 0;
   if (op.GetAttr("center_point_box", center_point_box) != SUCCESS) {
-    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "get center_point_box from op failed.");
+    ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "get center_point_box from op failed.");
     return FAILED;
   }
 
@@ -119,7 +119,7 @@ Status ParseOpToGraphNonMaxSuppression(const ge::Operator& op, Graph& graph)
                        .set_input_score_threshold(score_threshold)
                        .set_attr_center_point_box(center_point_box);
   } else {
-    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "The input_size is error.");
+    ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "The input_size is error.");
     return FAILED;
   }
 

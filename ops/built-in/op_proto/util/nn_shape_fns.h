@@ -33,7 +33,7 @@ namespace ge {
   outputDesc.SetFormat(FORMAT_NCHW);                           \
   if (op.UpdateOutputDesc("y", outputDesc) != GRAPH_SUCCESS) { \
     std::string err_msg = UpdateParamErrMsg("output y"); \
-    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName().c_str(), err_msg); \
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op).c_str(), err_msg); \
     return GRAPH_FAILED;                                       \
   }                                                            \
   return GRAPH_SUCCESS;

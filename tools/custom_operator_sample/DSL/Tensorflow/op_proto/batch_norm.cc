@@ -41,7 +41,7 @@ IMPLEMT_INFERFUNC(BatchNorm, BatchNormInferShape) {
     if (data_format != "NHWC" && data_format != "NCHW") {
       string expected_format_list = ConcatString("NHWC, NCHW");
       std::string err_msg = GetInputFormatNotSupportErrMsg("data_format", expected_format_list, data_format);
-      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
       return GRAPH_FAILED;
     }
   }

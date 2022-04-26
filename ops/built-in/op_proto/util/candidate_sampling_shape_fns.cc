@@ -30,7 +30,7 @@ graphStatus CandidateSamplerShape(Operator& op) {
   if (num_true < 1) {
     string err_msg = ConcatString("attr[num_true] must >= 1, real value is ",
                      num_true);
-    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -39,7 +39,7 @@ graphStatus CandidateSamplerShape(Operator& op) {
   if (num_sampled < 1) {
     string err_msg = ConcatString("attr[num_sampled] must >= 1, real value is ",
                      num_sampled);
-    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -48,15 +48,15 @@ graphStatus CandidateSamplerShape(Operator& op) {
   if (range_max < 1) {
     string err_msg = ConcatString("attr[range_max] must >= 1, real value is ",
                      range_max);
-    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
 
   Shape true_classes;
-  if (WithRank(op.GetInputDesc(0), 2, true_classes, op.GetName().c_str()) != GRAPH_SUCCESS) {
+  if (WithRank(op.GetInputDesc(0), 2, true_classes, TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
     string err_msg = ConcatString("input[true_classes] must be 2-D, real rank is ",
                      true_classes.GetDimNum());
-    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -84,19 +84,19 @@ graphStatus CandidateSamplerShape(Operator& op) {
   sampled_desc.SetDataType(DT_FLOAT);
 
   if (op.UpdateOutputDesc("sampled_candidates", candidate_desc) != GRAPH_SUCCESS) {
-    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op),
                                        string("fail to update output[sampled_candidates] desc"));
     return GRAPH_FAILED;
   }
 
   if (op.UpdateOutputDesc("true_expected_count", true_desc) != GRAPH_SUCCESS) {
-    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op),
                                        string("fail to update output[true_expected_count] desc"));
     return GRAPH_FAILED;
   }
 
   if (op.UpdateOutputDesc("sampled_expected_count", sampled_desc) != GRAPH_SUCCESS) {
-    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op),
                                        string("fail to update output[sampled_expected_count] desc"));
     return GRAPH_FAILED;
   }

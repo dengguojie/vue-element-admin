@@ -35,7 +35,7 @@ IMPLEMT_COMMON_INFERFUNC(YoloV2PostProcessInferShape)
     tensordesc_output.SetFormat(op.GetInputDesc("scores_gm").GetFormat());
 
     printf("[Plugin][INFO] Set %s op output shape (%lu %lu).\n",
-            op.GetName().c_str(), dim_vec[0], dim_vec[1]);
+            TbeGetName(op).c_str(), dim_vec[0], dim_vec[1]);
     (void)op.UpdateOutputDesc("boxout_gm", tensordesc_output);
     return GRAPH_SUCCESS;
 }

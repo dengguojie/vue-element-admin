@@ -33,15 +33,15 @@ graphStatus VerifyInt32Scalar(Operator& op, const std::vector<std::string>& inpu
     auto dims = op.GetInputDesc(name).GetShape().GetDims();
     if (dims.size() != 0) {
       string reason = "input " + name + " should be a scalar, actually rank=" + std::to_string(dims.size());
-      REPORT_INNER_ERROR("E19999", "[Node:%s] Check shape rank failed, as %s", op.GetName().c_str(), reason.c_str());
-      GE_OP_LOGE(op.GetName().c_str(), "[Verify][Check] Check shape rank failed, as %s", reason.c_str());
+      REPORT_INNER_ERROR("E19999", "[Node:%s] Check shape rank failed, as %s", TbeGetName(op).c_str(), reason.c_str());
+      GE_OP_LOGE(TbeGetName(op).c_str(), "[Verify][Check] Check shape rank failed, as %s", reason.c_str());
       return GRAPH_FAILED;
     }
     DataType type = op.GetInputDesc(name).GetDataType();
     if (type != DT_INT32) {
       string reason = "input " + name + " should be DT_INT32, actually is " + DataTypeToStringDesc(type);
-      REPORT_INNER_ERROR("E19999", "[Node:%s] Check dtype failed, as %s", op.GetName().c_str(), reason.c_str());
-      GE_OP_LOGE(op.GetName().c_str(), "[InferShape][Check] Check dtype failed, as %s", reason.c_str());
+      REPORT_INNER_ERROR("E19999", "[Node:%s] Check dtype failed, as %s", TbeGetName(op).c_str(), reason.c_str());
+      GE_OP_LOGE(TbeGetName(op).c_str(), "[InferShape][Check] Check dtype failed, as %s", reason.c_str());
       return GRAPH_FAILED;
     }
   }
@@ -50,14 +50,14 @@ graphStatus VerifyInt32Scalar(Operator& op, const std::vector<std::string>& inpu
 graphStatus WhileInferImpl(Operator &op) {
   size_t in_num = op.GetInputsSize();
   size_t out_num = op.GetOutputsSize();
-  GE_OP_LOGD(op.GetName().c_str(), "Begin to infer while node shape, input size %zu, output size %zu", in_num, out_num);
+  GE_OP_LOGD(TbeGetName(op).c_str(), "Begin to infer while node shape, input size %zu, output size %zu", in_num, out_num);
   if (in_num != out_num) {
     string reason = "input num not equal with out num.";
     REPORT_INNER_ERROR("E19999",
                        "[Node:%s] Check input num and output num failed, as %s",
-                       op.GetName().c_str(),
+                       TbeGetName(op).c_str(),
                        reason.c_str());
-    GE_OP_LOGE(op.GetName().c_str(), "[InferShape][Check] Check input num failed, as %s", reason.c_str());
+    GE_OP_LOGE(TbeGetName(op).c_str(), "[InferShape][Check] Check input num failed, as %s", reason.c_str());
     return GRAPH_FAILED;
   }
   bool need_infer_again = false;
@@ -67,7 +67,7 @@ graphStatus WhileInferImpl(Operator &op) {
     auto data_shape = in_desc.GetShape();
     auto out_shape = out_desc.GetShape();
     if(out_shape.GetDims() == DUMMY_SHAPE){
-      GE_OP_LOGI(op.GetName().c_str(), "First time to infer while node shape, no need update from output to input.");
+      GE_OP_LOGI(TbeGetName(op).c_str(), "First time to infer while node shape, no need update from output to input.");
       return GRAPH_SUCCESS;
     }
     // check datatype between output and input
@@ -75,15 +75,15 @@ graphStatus WhileInferImpl(Operator &op) {
       REPORT_INNER_ERROR("E19999",
                          "node[%s] does not support diff dtype or format among all ref output. src datatype :%d, "
                          "dst datatype: %d",
-                         op.GetName().c_str(), in_desc.GetDataType(), out_desc.GetDataType());
-      GE_OP_LOGE(op.GetName().c_str(),
+                         TbeGetName(op).c_str(), in_desc.GetDataType(), out_desc.GetDataType());
+      GE_OP_LOGE(TbeGetName(op).c_str(),
                  "[Check][Param] node does not support diff dtype or format output. src datatype :%d,"
                  "dst datatype: %d", in_desc.GetDataType(), out_desc.GetDataType());
       return GRAPH_FAILED;
     }
 
     if (data_shape.GetDims() != out_shape.GetDims()) {
-      GE_OP_LOGI(op.GetName().c_str(), "While %zu output shape is not match with input shape.Need infer again.", i);
+      GE_OP_LOGI(TbeGetName(op).c_str(), "While %zu output shape is not match with input shape.Need infer again.", i);
       if (data_shape.GetDimNum() != out_shape.GetDimNum()) {
         in_desc.SetUnknownDimNumShape();
       } else {

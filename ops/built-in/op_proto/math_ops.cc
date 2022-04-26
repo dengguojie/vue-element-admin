@@ -30,36 +30,36 @@ graphStatus SparseSegmentReductionShapeFn(Operator& op) {
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
   GeShape x_shape;
   auto x_desc = op_desc->MutableInputDesc(0);
-  if (WithRankAtLeast(x_desc, 1, x_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Input x should be at least 1-D.");
+  if (WithRankAtLeast(x_desc, 1, x_shape, TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
+    OP_LOGE(TbeGetName(op).c_str(), "Input x should be at least 1-D.");
     return GRAPH_FAILED;
   }
 
   GeShape indices_shape;
   auto indices_desc = op_desc->MutableInputDesc(1);
-  if (WithRank(indices_desc, 1, indices_shape, op.GetName().c_str())
+  if (WithRank(indices_desc, 1, indices_shape, TbeGetName(op).c_str())
       != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Input indices must be 1-D.");
+    OP_LOGE(TbeGetName(op).c_str(), "Input indices must be 1-D.");
     return GRAPH_FAILED;
   }
 
   GeShape segment_ids_shape;
   auto segment_ids_desc = op_desc->MutableInputDesc(2);
-  if (WithRank(segment_ids_desc, 1, segment_ids_shape, op.GetName().c_str())
+  if (WithRank(segment_ids_desc, 1, segment_ids_shape, TbeGetName(op).c_str())
       != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Input segment_ids must be 1-D.");
+    OP_LOGE(TbeGetName(op).c_str(), "Input segment_ids must be 1-D.");
     return GRAPH_FAILED;
   }
 
   GeShape unused;
-  if (Merge(indices_shape, segment_ids_shape, unused, op.GetName().c_str()) !=
+  if (Merge(indices_shape, segment_ids_shape, unused, TbeGetName(op).c_str()) !=
       GRAPH_SUCCESS) {
     return GRAPH_FAILED;
   }
 
   GeShape subshape;
   if (SubShape(x_shape, 1, x_shape.GetDimNum(), 1, subshape,
-               op.GetName().c_str()) != GRAPH_SUCCESS) {
+               TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
     return GRAPH_FAILED;
   }
 
@@ -78,13 +78,13 @@ graphStatus SparseSegmentReductionShapeFn(Operator& op) {
 
 // ---------Power-------------------
 IMPLEMT_VERIFIER(Power, PowerVerify) {
-    OP_LOGI(op.GetName().c_str(), "Enter PowerVerify.");
+    OP_LOGI(TbeGetName(op).c_str(), "Enter PowerVerify.");
     return GRAPH_SUCCESS;
 }
 VERIFY_FUNC_REG(Power, PowerVerify);
 
 IMPLEMT_COMMON_INFERFUNC(PowerInferShape) {
-  OP_LOGI(op.GetName().c_str(), "Enter PowerInferShape");
+  OP_LOGI(TbeGetName(op).c_str(), "Enter PowerInferShape");
   if (OneInOneOutDynamicInfer(op, "x", {"y"})) {
     return GRAPH_SUCCESS;
   }
@@ -98,7 +98,7 @@ IMPLEMT_INFERFUNC(Igamma, IgammaInfer) {
   TensorDesc z_desc = op.GetOutputDesc("z");
   z_desc.SetDataType(a_type);
   if (op.UpdateOutputDesc("z", z_desc) != GRAPH_SUCCESS) {
-    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op),
         std::string("update output[z] desc failed"));
     return GRAPH_FAILED;
   }
@@ -113,7 +113,7 @@ IMPLEMT_INFERFUNC(Igammac, IgammacInfer) {
   TensorDesc z_desc = op.GetOutputDesc("z");
   z_desc.SetDataType(a_type);
   if (op.UpdateOutputDesc("z", z_desc) != GRAPH_SUCCESS) {
-    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op),
         std::string("update output[z] desc failed"));
     return GRAPH_FAILED;
   }
@@ -125,16 +125,16 @@ INFER_FUNC_REG(Igammac, IgammacInfer);
 
 IMPLEMT_INFERFUNC(CompareAndBitpack, CompareAndBitpackInfer) {
   Shape input;
-  if (WithRankAtLeast(op.GetInputDesc(0), 1, input, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), ConcatString("call WithRankAtLeast failed, ",
+  if (WithRankAtLeast(op.GetInputDesc(0), 1, input, TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), ConcatString("call WithRankAtLeast failed, ",
         GetShapeErrMsg(0, DebugString(op.GetInputDesc(0).GetShape().GetDims()),
             "at least 1D")));
     return GRAPH_FAILED;
   }
 
   Shape unused;
-  if (WithRank(op.GetInputDesc(1), 0, unused, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), ConcatString("call WithRankAtLeast failed, ",
+  if (WithRank(op.GetInputDesc(1), 0, unused, TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), ConcatString("call WithRankAtLeast failed, ",
         GetShapeErrMsg(1, DebugString(op.GetInputDesc(1).GetShape().GetDims()),
             "scalar")));
     return GRAPH_FAILED;
@@ -146,8 +146,8 @@ IMPLEMT_INFERFUNC(CompareAndBitpack, CompareAndBitpackInfer) {
     size_t len = output.GetDimNum();
     int64_t last_dim = output.GetDim(len - 1);
     int64_t inferred_dim = 0;
-    if (Divide(last_dim, int64_t(8), true, inferred_dim, op.GetName().c_str()) != GRAPH_SUCCESS) {
-      AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), ConcatString("call Divide function failed, ",
+    if (Divide(last_dim, int64_t(8), true, inferred_dim, TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
+      AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), ConcatString("call Divide function failed, ",
           "the last dim[", last_dim, "] of 0th input must be the multiple of 8"));
       return GRAPH_FAILED;
     }
@@ -168,11 +168,11 @@ IMPLEMT_INFERFUNC(Bincount, BincountInfer) {
 
   GeShape unused;
   auto size_desc = op_desc->MutableInputDesc(1);
-  if (WithRank(size_desc, 0, unused, op.GetName().c_str()) != GRAPH_SUCCESS) {
+  if (WithRank(size_desc, 0, unused, TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
     std::string err_msg = GetShapeErrMsg(
         1, DebugString(size_desc->GetShape().GetDims()), "scalar");
     err_msg = string("failed to call WithRank function, ") + err_msg;
-    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -183,10 +183,10 @@ IMPLEMT_INFERFUNC(Bincount, BincountInfer) {
   }
 
   if (bins != UNKNOWN_DIM) {
-    if (MakeDimForScalarInput(tensor, bins, op.GetName().c_str()) !=
+    if (MakeDimForScalarInput(tensor, bins, TbeGetName(op).c_str()) !=
         GRAPH_SUCCESS) {
       AICPU_INFER_SHAPE_INNER_ERR_REPORT(
-          op.GetName(), string("fail to get dim from tensor of input[size]."));
+          TbeGetName(op), string("fail to get dim from tensor of input[size]."));
       return GRAPH_FAILED;
     }
   }
@@ -194,7 +194,7 @@ IMPLEMT_INFERFUNC(Bincount, BincountInfer) {
   Shape bins_shape;
   if (Vector(bins, bins_shape) != GRAPH_SUCCESS) {
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(
-        op.GetName(), string("fail to gen vector shape according dim bins."));
+        TbeGetName(op), string("fail to gen vector shape according dim bins."));
     return GRAPH_FAILED;
   }
 
@@ -220,13 +220,13 @@ IMPLEMT_INFERFUNC(Betainc, BetaincInfer) {
     } else if (input_shape.GetDimNum() == 0) {
       ++num_scalars;
     } else {
-      if (Merge(output, input_shape, output, op.GetName().c_str()) !=
+      if (Merge(output, input_shape, output, TbeGetName(op).c_str()) !=
           GRAPH_SUCCESS) {
         std::string err_msg =
             ConcatString("failed to call Merge function to merge", i,
                          "th input shape", DebugString(input_shape.GetDims()),
                          " and output[z] shape", DebugString(output.GetDims()));
-        AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+        AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
         return GRAPH_FAILED;
       }
       some_non_scalar = output;
@@ -245,7 +245,7 @@ IMPLEMT_INFERFUNC(Betainc, BetaincInfer) {
   z_desc.SetDataType(a_type);
   if (op.UpdateOutputDesc("z", z_desc) != GRAPH_SUCCESS) {
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(
-        op.GetName(), string("fail to update output[z] desc."));
+        TbeGetName(op), string("fail to update output[z] desc."));
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -258,7 +258,7 @@ IMPLEMT_INFERFUNC(Zeta, ZetaInfer) {
   DataType x_type = op.GetInputDesc("x").GetDataType();
   out_desc.SetDataType(x_type);
   if (GRAPH_SUCCESS != op.UpdateOutputDesc("z", out_desc)) {
-    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op),
         std::string("failed to update output[z] desc."));
     return GRAPH_FAILED;
   }
@@ -272,7 +272,7 @@ IMPLEMT_INFERFUNC(Bucketize, BetaincInfer) {
   TensorDesc out_desc = op.GetOutputDesc("y");
   out_desc.SetDataType(DT_INT32);
   if (op.UpdateOutputDesc("y", out_desc) != GRAPH_SUCCESS) {
-    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), string("update output[y] desc failed"));
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), string("update output[y] desc failed"));
     return GRAPH_FAILED;
   }
   return UnchangedShape(op, "x", "y");
@@ -298,7 +298,7 @@ IMPLEMT_INFERFUNC(SparseSegmentMeanGrad, SparseSegmentMeanGradInfer) {
   if (INPUT_NUM != op.GetInputsSize()) {
     err_msg =
         ConcatString("input size should be 4, got[", op.GetInputsSize(), "]");
-    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -306,7 +306,7 @@ IMPLEMT_INFERFUNC(SparseSegmentMeanGrad, SparseSegmentMeanGradInfer) {
   if (OUTPUT_NUM != op.GetOutputsSize()) {
     err_msg =
         ConcatString("output size should be 4, got[", op.GetOutputsSize(), "]");
-    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -317,43 +317,43 @@ IMPLEMT_INFERFUNC(SparseSegmentMeanGrad, SparseSegmentMeanGradInfer) {
 
   auto x_desc = op_desc->MutableInputDesc(0);
   GeShape x_ge_shape;
-  if (WithRankAtLeast(x_desc, 1, x_ge_shape, op.GetName().c_str()) !=
+  if (WithRankAtLeast(x_desc, 1, x_ge_shape, TbeGetName(op).c_str()) !=
       GRAPH_SUCCESS) {
     err_msg = GetShapeErrMsg(0, DebugString(x_desc->GetShape().GetDims()),
                              "at least 1D");
     err_msg = string("failed to call WithRankAtLeast function, ") + err_msg;
-    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
 
   auto indices_desc = op_desc->MutableInputDesc(1);
   GeShape indices_shape;
-  if (WithRank(indices_desc, 1, indices_shape, op.GetName().c_str()) !=
+  if (WithRank(indices_desc, 1, indices_shape, TbeGetName(op).c_str()) !=
       GRAPH_SUCCESS) {
     err_msg = GetShapeErrMsg(1, DebugString(indices_desc->GetShape().GetDims()),
                              "1D");
     err_msg = string("failed to call WithRank function, ") + err_msg;
-    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
 
   GeShape unused;
   GeShape segment_ids_shape(op_desc->MutableInputDesc(2)->GetShape());
-  if (Merge(segment_ids_shape, indices_shape, unused, op.GetName().c_str()) !=
+  if (Merge(segment_ids_shape, indices_shape, unused, TbeGetName(op).c_str()) !=
       GRAPH_SUCCESS) {
     err_msg = ConcatString(
         "failed to call Merge function to merge input[segment_ids]'s shape",
         DebugString(op_desc->MutableInputDesc(2)->GetShape().GetDims()),
         " and input[indices]'s shape", DebugString(indices_shape.GetDims()));
-    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
   auto unused_desc = op_desc->MutableInputDesc(3);
-  if (WithRank(unused_desc, 0, unused, op.GetName().c_str()) != GRAPH_SUCCESS) {
+  if (WithRank(unused_desc, 0, unused, TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
     err_msg = GetShapeErrMsg(3, DebugString(unused_desc->GetShape().GetDims()),
                              "scalar");
     err_msg = string("failed to call WithRank function, ") + err_msg;
-    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -361,12 +361,12 @@ IMPLEMT_INFERFUNC(SparseSegmentMeanGrad, SparseSegmentMeanGradInfer) {
   Shape x_shape(x_shape_dims);
   Shape subshape;
   if (SubShape(x_shape, 1, x_shape.GetDimNum(), 1, subshape,
-               op.GetName().c_str()) != GRAPH_SUCCESS) {
+               TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
     err_msg =
         ConcatString("failed to call SubShape function to get subshape from ",
                      x_shape.GetDimNum(), " to 1 in input[x] shape",
                      DebugString(x_shape.GetDims()));
-    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
   Tensor dims0_tensor;
@@ -401,7 +401,7 @@ IMPLEMT_INFERFUNC(IgammaGradA, IgammaGradAInfer) {
   TensorDesc out_desc = op.GetOutputDesc("z");
   out_desc.SetDataType(a_type);
   if (op.UpdateOutputDesc("z", out_desc) != GRAPH_SUCCESS) {
-    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op),
         std::string("update output[z] desc failed"));
     return GRAPH_FAILED;
   }
@@ -420,20 +420,20 @@ INFER_FUNC_REG(InitData, InitDataInfer);
 IMPLEMT_INFERFUNC(GetNext, GetNextInfer) {
   std::vector<ge::DataType> output_types;
   if (op.GetAttr("output_types", output_types) != GRAPH_SUCCESS) {
-    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), string("get attr[output_types] failed"));
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), string("get attr[output_types] failed"));
     return GRAPH_FAILED;
   }
 
   std::vector<std::vector<int64_t>> output_shapes;
   if (op.GetAttr("output_shapes", output_shapes) != GRAPH_SUCCESS) {
-    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), string("get attr[output_shapes] failed"));
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), string("get attr[output_shapes] failed"));
     return GRAPH_FAILED;
   }
 
   if (output_types.size() != output_shapes.size()) {
     std::string err_msg =
       "attr[output_types] and attr[output_shapes] should be the same length";
-    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -449,7 +449,7 @@ IMPLEMT_INFERFUNC(GetNext, GetNextInfer) {
       ss << i;
       ss << "] desc failed";
       std::string err_msg = ss.str();
-      AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+      AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
       return GRAPH_FAILED;
     }
   }
@@ -463,12 +463,12 @@ IMPLEMT_INFERFUNC(GetDynamicDims, GetDynamicDimsInfer) {
   // Check inputs size
   Operator::OpInt n_attr;
   if (op.GetAttr("N", n_attr) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Get attr N failed");
+    OP_LOGE(TbeGetName(op).c_str(), "Get attr N failed");
     return GRAPH_FAILED;
   }
   size_t inputs_size = op.GetInputsSize();
   if (static_cast<int64_t>(inputs_size) != n_attr) {
-    OP_LOGE(op.GetName().c_str(), "Inputs size [%zu] must equal attr N [%ld]",
+    OP_LOGE(TbeGetName(op).c_str(), "Inputs size [%zu] must equal attr N [%ld]",
             inputs_size, n_attr);
     return GRAPH_FAILED;
   }
@@ -476,27 +476,27 @@ IMPLEMT_INFERFUNC(GetDynamicDims, GetDynamicDimsInfer) {
   // Set Output as Vector(unknow_dims_num) of { DT_INT32, DT_INT64 }
   Operator::OpListInt shape_info;
   if (op.GetAttr("shape_info", shape_info) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Get attr shape_info failed");
+    OP_LOGE(TbeGetName(op).c_str(), "Get attr shape_info failed");
     return GRAPH_FAILED;
   }
   int64_t unknow_dims_num = std::count(shape_info.begin(),
                                        shape_info.end(), -1);
   if (unknow_dims_num == 0) {
-    OP_LOGE(op.GetName().c_str(),
+    OP_LOGE(TbeGetName(op).c_str(),
             "No need to perform GetDynamicDims in a known shape");
     return GRAPH_FAILED;
   }
 
   Shape vector_shape;
   if (Vector(unknow_dims_num, vector_shape) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Create output shape failed");
+    OP_LOGE(TbeGetName(op).c_str(), "Create output shape failed");
     return GRAPH_FAILED;
   }
   auto dims_desc = op.GetOutputDesc("dims");
   dims_desc.SetShape(vector_shape);
   dims_desc.SetDataType(op.GetInputDesc(0).GetDataType());
   if (op.UpdateOutputDesc("dims", dims_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Update dims desc failed");
+    OP_LOGE(TbeGetName(op).c_str(), "Update dims desc failed");
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -506,7 +506,7 @@ INFER_FUNC_REG(GetDynamicDims, GetDynamicDimsInfer);
 
 // ----------------Erf-------------------
 IMPLEMT_COMMON_INFERFUNC(ErfInferShape) {
-  OP_LOGI(op.GetName().c_str(), "Enter ErfInferShape");
+  OP_LOGI(TbeGetName(op).c_str(), "Enter ErfInferShape");
   if (OneInOneOutDynamicInfer(op, "x", {"y"})) {
     return GRAPH_SUCCESS;
   }
@@ -518,7 +518,7 @@ COMMON_INFER_FUNC_REG(Erf, ErfInferShape);
 
 // ----------------Erfc-------------------
 IMPLEMT_COMMON_INFERFUNC(ErfcInferShape) {
-  OP_LOGI(op.GetName().c_str(), "Enter ErfcInferShape");
+  OP_LOGI(TbeGetName(op).c_str(), "Enter ErfcInferShape");
   if (OneInOneOutDynamicInfer(op, "x", {"y"})) {
     return GRAPH_SUCCESS;
   }
@@ -544,14 +544,14 @@ IMPLEMT_COMMON_INFERFUNC(HistogramFixedWidthInferShape) {
   int dtype_attr;
   if (op.GetAttr("dtype", dtype_attr) == GRAPH_SUCCESS) {
     if (dtype_attr != 3) {
-      AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+      AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op),
           ConcatString("invalid value[", dtype_attr, "], only support int32"));
       return GRAPH_FAILED;
     }
   }
   Tensor nbins_tensor;
   if (ge::GRAPH_SUCCESS != op.GetInputConstData("nbins", nbins_tensor)) {
-    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op),
         std::string("get const data from input[nbins] failed"));
     return GRAPH_FAILED;
   }
@@ -560,7 +560,7 @@ IMPLEMT_COMMON_INFERFUNC(HistogramFixedWidthInferShape) {
   GetConstValue(nbins_tensor, dtype, nbins);
   std::vector<int64_t> dim_vector;
   if (nbins.empty()) {
-    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op),
         std::string("nbins is empty"));
     return GRAPH_FAILED;
   }
@@ -577,7 +577,7 @@ IMPLEMT_VERIFIER(HistogramFixedWidth, HistogramFixedWidthVerify) {
   DataType x_dtype = op.GetInputDesc(0).GetDataType();
   DataType range_dtype = op.GetInputDesc(1).GetDataType();
   if (x_dtype != range_dtype) {
-    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op),
         ConcatString("data type of input[x] and input[range] should be same. ",
             DTypeStr(x_dtype), " and ", DTypeStr(range_dtype)));
     return GRAPH_FAILED;
@@ -600,19 +600,19 @@ IMPLEMT_COMMON_INFERFUNC(HistogramFixedWidthDInferShape) {
   int dtype_attr;
   if (op.GetAttr("dtype", dtype_attr) == GRAPH_SUCCESS) {
     if (dtype_attr != 3) {
-      OP_LOGE(op.GetName().c_str(), "attr dtype only support int32, but is %d", dtype_attr);
+      OP_LOGE(TbeGetName(op).c_str(), "attr dtype only support int32, but is %d", dtype_attr);
       return GRAPH_FAILED;
     }
   }
   int64_t nbins;
   if (ge::GRAPH_SUCCESS != op.GetAttr("nbins", nbins)) {
     std::string err_msg = GetInputInvalidErrMsg("nbins");
-    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
   if (nbins <= 0) {
     std::string err_msg = GetAttrValueErrMsg("dims_x", std::to_string(nbins), ConcatString(nbins,">",0));
-    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
   std::vector<int64_t> temp_nbins;
@@ -636,7 +636,7 @@ IMPLEMT_INFERFUNC(NextAfter, NextAfterInfer) {
   DataType x_type = op.GetInputDesc("x1").GetDataType();
   DataType y_type = op.GetInputDesc("x2").GetDataType();
   if (x_type != y_type) {
-    OP_LOGE(op.GetName().c_str(), "the type of x1 is different from that of x2!");
+    OP_LOGE(TbeGetName(op).c_str(), "the type of x1 is different from that of x2!");
     return GRAPH_FAILED;
   }
 
@@ -645,7 +645,7 @@ IMPLEMT_INFERFUNC(NextAfter, NextAfterInfer) {
     Shape out_shape(UNKNOWN_SHAPE);
     out_desc.SetShape(out_shape);
     if (op.UpdateOutputDesc("output", out_desc) != GRAPH_SUCCESS) {
-      OP_LOGE(op.GetName().c_str(), "update output failed");
+      OP_LOGE(TbeGetName(op).c_str(), "update output failed");
       return GRAPH_FAILED;
     }
     return GRAPH_SUCCESS;
@@ -660,7 +660,7 @@ IMPLEMT_INFERFUNC(NextAfter, NextAfterInfer) {
   std::vector<int64_t> dims;
   int64_t dim_one = 1;
   if (rank_x != rank_y) {
-    OP_LOGI(op.GetName().c_str(), "x1 shape is not equal to x2 shape!");
+    OP_LOGI(TbeGetName(op).c_str(), "x1 shape is not equal to x2 shape!");
     dim_one = 1;
   }
   for (size_t i = 0; i < rank_out; ++i) {
@@ -745,7 +745,7 @@ IMPLEMT_INFERFUNC(NextAfter, NextAfterInfer) {
   Shape out_shape(dims);
   out_desc.SetShape(out_shape);
   if (op.UpdateOutputDesc("output", out_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "update output failed");
+    OP_LOGE(TbeGetName(op).c_str(), "update output failed");
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -757,7 +757,7 @@ IMPLEMT_INFERFUNC(IsFinite, IsFiniteInfer) {
   TensorDesc out_desc = op.GetOutputDesc("y");
   out_desc.SetDataType(DT_BOOL);
   if (op.UpdateOutputDesc("y", out_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "update y failed");
+    OP_LOGE(TbeGetName(op).c_str(), "update y failed");
     return GRAPH_FAILED;
   }
   return UnchangedShape(op, "x", "y");
@@ -770,7 +770,7 @@ IMPLEMT_INFERFUNC(IsInf, IsInfInfer)
     TensorDesc out_desc = op.GetOutputDesc("y");
     out_desc.SetDataType(DT_BOOL);
     if (op.UpdateOutputDesc("y", out_desc) != GRAPH_SUCCESS) {
-        AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+        AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op),
                                            string("update output[y] failed."));
         return GRAPH_FAILED;
     }
@@ -784,7 +784,7 @@ IMPLEMT_INFERFUNC(ComplexAbs, ComplexAbsInfer)
     TensorDesc out_desc = op.GetOutputDesc("y");
     DataType Tout;
     if (op.GetAttr("Tout", Tout) != GRAPH_SUCCESS) {
-      AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+      AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op),
                                          string("get attr[Tout] failed"));
     }
     out_desc.SetDataType(Tout);
@@ -798,7 +798,7 @@ IMPLEMT_INFERFUNC(IsNan, IsNanInfer) {
   TensorDesc out_desc = op.GetOutputDesc("y");
   out_desc.SetDataType(DT_BOOL);
   if (op.UpdateOutputDesc("y", out_desc) != GRAPH_SUCCESS) {
-    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op),
                                        string("update output[y] failed."));
     return GRAPH_FAILED;
   }
@@ -812,13 +812,13 @@ IMPLEMT_INFERFUNC(Real, RealInfer) {
   DataType Tout;
   if (op.GetAttr("Tout", Tout) != GRAPH_SUCCESS) {
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(
-      op.GetName(), std::string("fail to get attr[Tout]"));
+      TbeGetName(op), std::string("fail to get attr[Tout]"));
     return GRAPH_FAILED;
   }
   out_desc.SetDataType(Tout);
   if (op.UpdateOutputDesc("output", out_desc) != GRAPH_SUCCESS) {
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(
-        op.GetName(), std::string("update output[output] desc failed"));
+        TbeGetName(op), std::string("update output[output] desc failed"));
     return GRAPH_FAILED;
   }
   return UnchangedShape(op, "input", "output");
@@ -837,7 +837,7 @@ INFER_FUNC_REG(Conj, ConjInfer);
 IMPLEMT_COMMON_INFERFUNC(NLLLossInferShape) {
   std::string reduction;
   if (op.GetAttr("reduction", reduction) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Get attr reduction failed.");
+    OP_LOGE(TbeGetName(op).c_str(), "Get attr reduction failed.");
     return GRAPH_FAILED;
   }
 
@@ -891,7 +891,7 @@ COMMON_INFER_FUNC_REG(NLLLoss, NLLLossInferShape);
 
 // ----------------------NLLLossGrad------------------------
 IMPLEMT_COMMON_INFERFUNC(NLLLossGradInferShape) {
-  OP_LOGI(op.GetName().c_str(), "Enter NLLLossGradInferShape");
+  OP_LOGI(TbeGetName(op).c_str(), "Enter NLLLossGradInferShape");
   const int64_t input_x_idx = 0;
   const int64_t output_x_grad_idx = 0;
   if (OneInOneOutDynamicInfer(op, input_x_idx, {output_x_grad_idx})) {
@@ -909,7 +909,7 @@ IMPLEMT_COMMON_INFERFUNC(PdistInferShape) {
     Format predict_format = op.GetInputDesc("x").GetFormat();
     ge::Shape inputshape = op.GetInputDesc("x").GetShape();
     if (inputshape.GetDims().size() != 2) {
-        OP_LOGE(op.GetName().c_str(), "The shape of input must be 2.");
+        OP_LOGE(TbeGetName(op).c_str(), "The shape of input must be 2.");
         return GRAPH_FAILED;
     }
     int64_t dim_shape = inputshape.GetDim(0);
@@ -946,7 +946,7 @@ IMPLEMT_COMMON_INFERFUNC(LpNormInfer) {
   int32_t indice;
   (void)op.GetAttr("keepdim", keep_dim);
   if (op.GetAttr("axes", x_axes) != GRAPH_SUCCESS) {
-    OP_LOGI(op.GetName().c_str(), "axes will use default value");
+    OP_LOGI(TbeGetName(op).c_str(), "axes will use default value");
   }
   if (x_axes.empty()) {
     for (size_t i = 0; i < dim_num; i++) {
@@ -998,7 +998,7 @@ IMPLEMT_COMMON_INFERFUNC(LpNormReduceInfer) {
   int32_t indice;
   (void)op.GetAttr("keepdim", keep_dim);
   if (op.GetAttr("axes", x_axes) != GRAPH_SUCCESS) {
-    OP_LOGI(op.GetName().c_str(), "axes will use default value");
+    OP_LOGI(TbeGetName(op).c_str(), "axes will use default value");
   }
   if (x_axes.empty()) {
     for (size_t i = 0; i < dim_num; i++) {
@@ -1080,18 +1080,18 @@ IMPLEMT_INFERFUNC(Complex, ComplexInfer)
   DataType x_type = op.GetInputDesc("real").GetDataType();
   DataType y_type = op.GetInputDesc("imag").GetDataType();
   if (x_type != y_type) {
-    OP_LOGE(op.GetName().c_str(), "The type of x1 [%d] is different from that of x2 [%d]!", x_type, y_type);
+    OP_LOGE(TbeGetName(op).c_str(), "The type of x1 [%d] is different from that of x2 [%d]!", x_type, y_type);
     return GRAPH_FAILED;
   }
   DataType Tout;
   if (op.GetAttr("Tout", Tout) != GRAPH_SUCCESS) {
-      OP_LOGE(op.GetName().c_str(), "Get attr Tout error.");
+      OP_LOGE(TbeGetName(op).c_str(), "Get attr Tout error.");
       return GRAPH_FAILED;
     }
 
   out_desc.SetDataType(Tout);
   if (op.UpdateOutputDesc("out", out_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Update out failed");
+    OP_LOGE(TbeGetName(op).c_str(), "Update out failed");
     return GRAPH_FAILED;
   }
 
@@ -1099,7 +1099,7 @@ IMPLEMT_INFERFUNC(Complex, ComplexInfer)
     Shape out_shape(UNKNOWN_RANK);
     out_desc.SetShape(out_shape);
     if (op.UpdateOutputDesc("out", out_desc) != GRAPH_SUCCESS) {
-      OP_LOGE(op.GetName().c_str(), "Update output failed");
+      OP_LOGE(TbeGetName(op).c_str(), "Update output failed");
       return GRAPH_FAILED;
     }
     return GRAPH_SUCCESS;
@@ -1114,7 +1114,7 @@ IMPLEMT_INFERFUNC(Complex, ComplexInfer)
   std::vector<int64_t> dims;
   int64_t dim_one = 0;
   if (rank_x != rank_y) {
-    OP_LOGI(op.GetName().c_str(), "X1 shape dims [%lld] is not equal to x2 shape dims [%lld]!", rank_x, rank_y);
+    OP_LOGI(TbeGetName(op).c_str(), "X1 shape dims [%lld] is not equal to x2 shape dims [%lld]!", rank_x, rank_y);
     dim_one = 1;
   }
   for (size_t i = 0; i < rank_out; ++i) {
@@ -1199,7 +1199,7 @@ IMPLEMT_INFERFUNC(Complex, ComplexInfer)
   Shape out_shape(dims);
   out_desc.SetShape(out_shape);
   if (op.UpdateOutputDesc("out", out_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Update output failed");
+    OP_LOGE(TbeGetName(op).c_str(), "Update output failed");
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -1213,12 +1213,12 @@ IMPLEMT_INFERFUNC(Imag, ImagInfer)
     TensorDesc out_desc = op.GetOutputDesc("output");
     DataType Tout;
     if (op.GetAttr("Tout", Tout) != GRAPH_SUCCESS) {
-        OP_LOGE(op.GetName().c_str(), "Get attr Tout error.");
+        OP_LOGE(TbeGetName(op).c_str(), "Get attr Tout error.");
         return GRAPH_FAILED;
     }
     out_desc.SetDataType(Tout);
     if (op.UpdateOutputDesc("output", out_desc) != GRAPH_SUCCESS) {
-        OP_LOGE(op.GetName().c_str(), "Update output failed");
+        OP_LOGE(TbeGetName(op).c_str(), "Update output failed");
         return GRAPH_FAILED;
     }
     return UnchangedShape(op, "input", "output");
@@ -1232,12 +1232,12 @@ IMPLEMT_INFERFUNC(Angle, AngleInfer)
     TensorDesc out_desc = op.GetOutputDesc("output");
     DataType Tout;
     if (op.GetAttr("Tout", Tout) != GRAPH_SUCCESS) {
-        OP_LOGE(op.GetName().c_str(), "Get attr Tout error.");
+        OP_LOGE(TbeGetName(op).c_str(), "Get attr Tout error.");
         return  GRAPH_FAILED;
     }
     out_desc.SetDataType(Tout);
     if (op.UpdateOutputDesc("output", out_desc) != GRAPH_SUCCESS) {
-        OP_LOGE(op.GetName().c_str(), "Update output failed");
+        OP_LOGE(TbeGetName(op).c_str(), "Update output failed");
         return GRAPH_FAILED;
     }
     return UnchangedShape(op, "input", "output");
@@ -1289,7 +1289,7 @@ bool infer_shape_and_type_soft_margin_loss_grad(Operator& op,
     for (size_t i = 0; i < dims_x.size(); i++) {
         if ((dims_x[i] != dims_y[i]) && (dims_x[i] != dims_z[i])
         && (dims_x[i] != 1) && (dims_y[i] != 1) && (dims_z[i] != 1)) {
-            OP_LOGE(op.GetName().c_str(), "three input can broatcast \n");
+            OP_LOGE(TbeGetName(op).c_str(), "three input can broatcast \n");
             return false;
         }
         int64_t dims = dims_x[i];
@@ -1316,7 +1316,7 @@ IMPLEMT_VERIFIER(SoftMarginLossGrad, SoftMarginLossGradVerify)
 {
     if (op.GetInputDesc("predict").GetDataType() != op.GetInputDesc("label").GetDataType() ||
         op.GetInputDesc("predict").GetDataType() != op.GetInputDesc("dout").GetDataType()) {
-        OP_LOGE(op.GetName().c_str(), "three input datatype must equal!\n");
+        OP_LOGE(TbeGetName(op).c_str(), "three input datatype must equal!\n");
         return GRAPH_FAILED;
     }
     return GRAPH_SUCCESS;
@@ -1351,7 +1351,7 @@ bool InferShapeAndTypeCross(Operator& op, const string& input_name1,
   std::vector<int64_t> dim_vec;
   for (size_t i = 0; i < dims_x.size(); i++) {
     if ((dims_x[i] != dims_y[i]) && (dims_x[i] != 1) && (dims_y[i] != 1)) {
-        OP_LOGE(op.GetName().c_str(), "Operators need to be broadcast");
+        OP_LOGE(TbeGetName(op).c_str(), "Operators need to be broadcast");
         return false;
       }
 
@@ -1379,7 +1379,7 @@ IMPLEMT_COMMON_INFERFUNC(CrossInferShape)
 IMPLEMT_VERIFIER(Cross, CrossVerify)
 {
   if (op.GetInputDesc("x1").GetDataType() != op.GetInputDesc("x2").GetDataType()) {
-    OP_LOGE(op.GetName().c_str(), "the two inputs datatype not equal!\n");
+    OP_LOGE(TbeGetName(op).c_str(), "the two inputs datatype not equal!\n");
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -1406,17 +1406,17 @@ bool infer_shape_cdist(Operator& op,
     std::vector<int64_t> dims_y = shape_y.GetDims();
 
     if (dims_x.size() != dims_y.size()) {
-        OP_LOGE(op.GetName().c_str(), "the two inputs shape not equal!\n");
+        OP_LOGE(TbeGetName(op).c_str(), "the two inputs shape not equal!\n");
         return false;
     }
     if ((dims_x.size() < 2) || (dims_y.size() < 2)) {
-        OP_LOGE(op.GetName().c_str(), "the two inputs shape size all less than 2!\n");
+        OP_LOGE(TbeGetName(op).c_str(), "the two inputs shape size all less than 2!\n");
         return false;
     }
 
     for(size_t index = 0; index < dims_x.size(); index++) {
         if (dims_x[index] != dims_y[index]) {
-            OP_LOGE(op.GetName().c_str(), "the two inputs value not equal!\n");
+            OP_LOGE(TbeGetName(op).c_str(), "the two inputs value not equal!\n");
             return false;
         }
     }
@@ -1434,7 +1434,7 @@ bool infer_shape_cdist(Operator& op,
 IMPLEMT_VERIFIER(Cdist, CdistVerify)
 {
     if (op.GetInputDesc("x1").GetDataType() != op.GetInputDesc("x2").GetDataType()) {
-        OP_LOGE(op.GetName().c_str(), "the two inputs datatype not equal!\n");
+        OP_LOGE(TbeGetName(op).c_str(), "the two inputs datatype not equal!\n");
         return GRAPH_FAILED;
     }
     return GRAPH_SUCCESS;
@@ -1471,18 +1471,18 @@ IMPLEMT_COMMON_INFERFUNC(CdistGradInferShape) {
 
     auto dim_size = input1_dim.size();
     if ((dim_size != 3) && (dim_size != 4)) {
-        OP_LOGE(op.GetName().c_str(), "the first inputs datasize not equal 3 and 4!\n");
+        OP_LOGE(TbeGetName(op).c_str(), "the first inputs datasize not equal 3 and 4!\n");
         return GRAPH_FAILED;
     }
     if ((input2_dim.size() != dim_size) || (grad_dim.size() != dim_size) || (cdist_dim.size() != dim_size)) {
-        OP_LOGE(op.GetName().c_str(), "the one of other three inputs datasize not equal the first one \n");
+        OP_LOGE(TbeGetName(op).c_str(), "the one of other three inputs datasize not equal the first one \n");
         return GRAPH_FAILED;
     }
 
     for (size_t i = 0; i < dim_size; i++) {
         auto dim = input1_dim[i];
         if ((input2_dim[i] != dim) || (grad_dim[i] != dim) || (cdist_dim[i] != dim)) {
-            OP_LOGE(op.GetName().c_str(), "the one of other three inputs not equal the first one \n");
+            OP_LOGE(TbeGetName(op).c_str(), "the one of other three inputs not equal the first one \n");
             return GRAPH_FAILED;
         }
     }
@@ -1504,7 +1504,7 @@ IMPLEMT_VERIFIER(CdistGrad, CdistGradVerify) {
     DataType cdist_dtype = op.GetInputDesc("cdist").GetDataType();
 
     if ((x2_dtype != x1_dtype) || (grad_dtype != x1_dtype) || (cdist_dtype != x1_dtype)) {
-        OP_LOGE(op.GetName().c_str(), "the four input datatype must not be the same \n");
+        OP_LOGE(TbeGetName(op).c_str(), "the four input datatype must not be the same \n");
         return GRAPH_FAILED;
     }
     return GRAPH_SUCCESS;

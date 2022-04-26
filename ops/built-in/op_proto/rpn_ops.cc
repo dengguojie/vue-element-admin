@@ -29,7 +29,7 @@
 namespace ge {
 // ---------------- NMSWithMask Op-------------------
 IMPLEMT_COMMON_INFERFUNC(NMSWithMaskShapeAndType) {
-  OP_LOGI(op.GetName().c_str(), "Enter op_proto inferfunction!");
+  OP_LOGI(TbeGetName(op).c_str(), "Enter op_proto inferfunction!");
   ge::OpDescPtr op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
   ge::ConstGeTensorDescPtr in_desc = op_desc->GetInputDescPtr(0);
 
@@ -39,7 +39,7 @@ IMPLEMT_COMMON_INFERFUNC(NMSWithMaskShapeAndType) {
 
   if (in_desc == nullptr ||
       out_box_desc_ptr == nullptr || out_idx_desc_ptr == nullptr || out_mask_desc_ptr == nullptr) {
-    OP_LOGE(op.GetName().c_str(), "[TBE Compiler] Get null node ptr");
+    OP_LOGE(TbeGetName(op).c_str(), "[TBE Compiler] Get null node ptr");
     return GRAPH_FAILED;
   }
 
@@ -50,12 +50,12 @@ IMPLEMT_COMMON_INFERFUNC(NMSWithMaskShapeAndType) {
 
   float iou_threshold;
   if (!AttrUtils::GetFloat(op_desc, "iou_threshold", iou_threshold)) {
-    OP_LOGE(op.GetName().c_str(), "[TBE Compiler] Get attr iou_threshold failed!");
+    OP_LOGE(TbeGetName(op).c_str(), "[TBE Compiler] Get attr iou_threshold failed!");
     return GRAPH_FAILED;
   }
   if (iou_threshold <= 0) {
     std::string err_msg = GetAttrValueErrMsg("iou_threshold", ConcatString(iou_threshold), ConcatString("more than 0"));
-    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
   out_idx_shape.SetDimNum(1);

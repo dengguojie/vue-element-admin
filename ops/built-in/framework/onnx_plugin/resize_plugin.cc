@@ -94,37 +94,37 @@ static Status ParseOpToGraphResize(const Operator& op, Graph& graph) {
 
   std::string coordinate_transformation_mode = "half_pixel";
   if (op.GetAttr("coordinate_transformation_mode", coordinate_transformation_mode) != SUCCESS) {
-    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "get coordinate_transformation_mode from op failed.");
+    ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "get coordinate_transformation_mode from op failed.");
     return FAILED;
   }
   float cubic_coeff_a = -0.75;
   if (op.GetAttr("cubic_coeff_a", cubic_coeff_a) != SUCCESS) {
-    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "get cubic_coeff_a from op failed.");
+    ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "get cubic_coeff_a from op failed.");
     return FAILED;
   }
   int exclude_outside = 0;
   if (op.GetAttr("exclude_outside", exclude_outside) != SUCCESS) {
-    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "get exclude_outside from op failed.");
+    ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "get exclude_outside from op failed.");
     return FAILED;
   }
   float extrapolation_value = 0;
   if (op.GetAttr("extrapolation_value", extrapolation_value) != SUCCESS) {
-    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "get extrapolation_value from op failed.");
+    ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "get extrapolation_value from op failed.");
     return FAILED;
   }
   std::string mode_value = "nearest";
   if (op.GetAttr("mode", mode_value) != SUCCESS) {
-    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "get mode_value from op failed.");
+    ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "get mode_value from op failed.");
     return FAILED;
   }
   std::string nearest_mode = "round_prefer_floor";
   if (op.GetAttr("nearest_mode", nearest_mode) != SUCCESS) {
-    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "get nearest_mode from op failed.");
+    ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "get nearest_mode from op failed.");
     return FAILED;
   }
   int input_size = 0;
   if (op.GetAttr("input_size", input_size) != SUCCESS) {
-    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "get input_size from op failed.");
+    ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "get input_size from op failed.");
     return FAILED;
   }
 
@@ -166,7 +166,7 @@ static Status ParseOpToGraphResize(const Operator& op, Graph& graph) {
     resizeout3.AddControlInput(resize_roi);
     output_indexs.emplace_back(resizeout3, vector<std::size_t> {0});
   } else {
-    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "The input_size is error.");
+    ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "The input_size is error.");
     return FAILED;
   }
   graph.SetInputs(inputs).SetOutputs(output_indexs);
@@ -248,32 +248,32 @@ static Status ParseOpToGraphResizeV10(const Operator& op, Graph& graph) {
 
   std::string coordinate_transformation_mode = "asymmetric";
   if (op.GetAttr("coordinate_transformation_mode", coordinate_transformation_mode) != SUCCESS) {
-    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "get coordinate_transformation_mode from op failed.");
+    ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "get coordinate_transformation_mode from op failed.");
     return FAILED;
   }
   float cubic_coeff_a = -0.75;
   if (op.GetAttr("cubic_coeff_a", cubic_coeff_a) != SUCCESS) {
-    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "get cubic_coeff_a from op failed.");
+    ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "get cubic_coeff_a from op failed.");
     return FAILED;
   }
   int exclude_outside = 0;
   if (op.GetAttr("exclude_outside", exclude_outside) != SUCCESS) {
-    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "get exclude_outside from op failed.");
+    ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "get exclude_outside from op failed.");
     return FAILED;
   }
   float extrapolation_value = 0;
   if (op.GetAttr("extrapolation_value", extrapolation_value) != SUCCESS) {
-    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "get extrapolation_value from op failed.");
+    ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "get extrapolation_value from op failed.");
     return FAILED;
   }
   std::string mode_value = "nearest";
   if (op.GetAttr("mode", mode_value) != SUCCESS) {
-    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "get mode_value from op failed.");
+    ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "get mode_value from op failed.");
     return FAILED;
   }
   std::string nearest_mode = "round_prefer_floor";
   if (op.GetAttr("nearest_mode", nearest_mode) != SUCCESS) {
-    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "get nearest_mode from op failed.");
+    ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "get nearest_mode from op failed.");
     return FAILED;
   }
 

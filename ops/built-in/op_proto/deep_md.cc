@@ -72,7 +72,7 @@ IMPLEMT_VERIFIER(TabulateFusion, TabulateFusionVerify) {
   int64_t lastLayerSize = 0;
   if (ge::GRAPH_SUCCESS != op.GetAttr("last_layer_size", lastLayerSize)) {
     std::string errMsg = GetInputInvalidErrMsg("last_layer_size");
-    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), errMsg);
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), errMsg);
     return GRAPH_FAILED;
   }
 
@@ -80,7 +80,7 @@ IMPLEMT_VERIFIER(TabulateFusion, TabulateFusionVerify) {
 }
 
 IMPLEMT_COMMON_INFERFUNC(TabulateFusionInferShape) {
-  OP_LOGI(op.GetName(), "TabulateFusionInferShape begin");
+  OP_LOGI(TbeGetName(op), "TabulateFusionInferShape begin");
   auto opDesc = OpDescUtils::GetOpDescFromOperator(op);
   GeTensorDescPtr emDesc = opDesc->MutableInputDesc("em");
   std::vector<int64_t> emShapeVec = emDesc->MutableShape().GetDims();
@@ -108,7 +108,7 @@ IMPLEMT_COMMON_INFERFUNC(TabulateFusionInferShape) {
   int32_t splitIndex = 0;
   op.GetAttr("split_count", splitCount);
   op.GetAttr("split_index", splitIndex);
-  OP_LOGI(op.GetName(), "TabulateFusionInferShape, splitCount=%d, splitIndex=%d", splitCount, splitIndex);
+  OP_LOGI(TbeGetName(op), "TabulateFusionInferShape, splitCount=%d, splitIndex=%d", splitCount, splitIndex);
   if (splitCount == 1) {
     outputDesc->SetShape(ge::GeShape(outputShape));
   } else if (splitCount == 2) {
@@ -119,21 +119,21 @@ IMPLEMT_COMMON_INFERFUNC(TabulateFusionInferShape) {
     }
 
     if (splitIndex == 0) {
-      OP_LOGI(op.GetName(), "TabulateFusionInferShape, splitIndex is 0, dim0=%ld", ceilValue);
+      OP_LOGI(TbeGetName(op), "TabulateFusionInferShape, splitIndex is 0, dim0=%ld", ceilValue);
       outputShape = {ceilValue, 4, lastLayerSize};
     } else {
-      OP_LOGI(op.GetName(), "TabulateFusionInferShape, splitIndex is 1, dim0=%ld", nlocValue - ceilValue);
+      OP_LOGI(TbeGetName(op), "TabulateFusionInferShape, splitIndex is 1, dim0=%ld", nlocValue - ceilValue);
       outputShape = {nlocValue - ceilValue, 4, lastLayerSize};
     }
     outputDesc->SetShape(ge::GeShape(outputShape));
   } else {
     std::string errMsg = GetInputInvalidErrMsg("not support splitCount > 2");
-    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), errMsg);
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), errMsg);
     return GRAPH_FAILED;
   }
   outputDesc->SetDataType(emDesc->GetDataType());
 
-  OP_LOGI(op.GetName(), "TabulateFusionInferShape run success");
+  OP_LOGI(TbeGetName(op), "TabulateFusionInferShape run success");
   return GRAPH_SUCCESS;
 }
 

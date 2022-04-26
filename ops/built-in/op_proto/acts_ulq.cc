@@ -34,12 +34,12 @@ IMPLEMT_COMMON_INFERFUNC(ActsULQInferShape) {
     Shape clamp_max_shape = op.GetInputDesc("clamp_max").GetShape();
 
     if (clamp_min_shape.GetShapeSize() != 1) {
-        OP_LOGE(op.GetName().c_str(), "The size of clamp_min must be 1!");
+        OP_LOGE(TbeGetName(op).c_str(), "The size of clamp_min must be 1!");
         return GRAPH_FAILED;
     }
 
     if (clamp_max_shape.GetShapeSize() != 1) {
-        OP_LOGE(op.GetName().c_str(), "The size of clamp_max must be 1!");
+        OP_LOGE(TbeGetName(op).c_str(), "The size of clamp_max must be 1!");
         return GRAPH_FAILED;
     }
 
@@ -47,21 +47,21 @@ IMPLEMT_COMMON_INFERFUNC(ActsULQInferShape) {
     y.SetShape(x_shape);
     y.SetDataType(op.GetInputDesc("x").GetDataType());
     if (op.UpdateOutputDesc("y", y) != GRAPH_SUCCESS) {
-        OP_LOGE(op.GetName().c_str(), "Update output[y] failed!");
+        OP_LOGE(TbeGetName(op).c_str(), "Update output[y] failed!");
         return GRAPH_FAILED;
     }
 
     TensorDesc clamp_min_mask = op.GetOutputDesc("clamp_min_mask");
     clamp_min_mask.SetShape(x_shape);
     if (op.UpdateOutputDesc("clamp_min_mask", clamp_min_mask) != GRAPH_SUCCESS) {
-        OP_LOGE(op.GetName().c_str(), "Update output[clamp_min_mask] failed!");
+        OP_LOGE(TbeGetName(op).c_str(), "Update output[clamp_min_mask] failed!");
         return GRAPH_FAILED;
     }
 
     TensorDesc clamp_max_mask = op.GetOutputDesc("clamp_max_mask");
     clamp_max_mask.SetShape(x_shape);
     if (op.UpdateOutputDesc("clamp_max_mask", clamp_max_mask) != GRAPH_SUCCESS) {
-        OP_LOGE(op.GetName().c_str(), "Update output[clamp_max_mask] failed!");
+        OP_LOGE(TbeGetName(op).c_str(), "Update output[clamp_max_mask] failed!");
         return GRAPH_FAILED;
     }
 
@@ -69,7 +69,7 @@ IMPLEMT_COMMON_INFERFUNC(ActsULQInferShape) {
     x_clamped_loss.SetShape(x_shape);
     x_clamped_loss.SetDataType(op.GetInputDesc("x").GetDataType());
     if (op.UpdateOutputDesc("x_clamped_loss", x_clamped_loss) != GRAPH_SUCCESS) {
-        OP_LOGE(op.GetName().c_str(), "Update output[x_clamped_loss] failed!");
+        OP_LOGE(TbeGetName(op).c_str(), "Update output[x_clamped_loss] failed!");
         return GRAPH_FAILED;
     }
 
@@ -82,12 +82,12 @@ IMPLEMT_VERIFIER(ActsULQ, ActsULQVerify) {
     DataType clamp_max_type = op.GetInputDesc("clamp_max").GetDataType();
 
     if (x_type != clamp_min_type) {
-        OP_LOGE(op.GetName().c_str(), "The type of clamp_min must be the same as x!");
+        OP_LOGE(TbeGetName(op).c_str(), "The type of clamp_min must be the same as x!");
         return GRAPH_FAILED;
     }
 
     if (x_type != clamp_max_type) {
-        OP_LOGE(op.GetName().c_str(), "The type of clamp_max must be the same as x!");
+        OP_LOGE(TbeGetName(op).c_str(), "The type of clamp_max must be the same as x!");
         return GRAPH_FAILED;
     }
 

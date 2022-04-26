@@ -31,7 +31,7 @@ Status ParseDilation2DBackpropFilter(const Message* op_src, ge::Operator& op) {
   input_tensor.SetFormat(ge::FORMAT_NHWC);
   auto ret = op.UpdateInputDesc("x", input_tensor);
   if (ret != ge::GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Update input format failed.");
+    OP_LOGE(TbeGetName(op).c_str(), "Update input format failed.");
     return FAILED;
   }
 
@@ -40,7 +40,7 @@ Status ParseDilation2DBackpropFilter(const Message* op_src, ge::Operator& op) {
   filter_tensor.SetFormat(ge::FORMAT_NHWC);
   auto ret_filter = op.UpdateInputDesc("filter", filter_tensor);
   if (ret_filter != ge::GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Update filter format failed.");
+    OP_LOGE(TbeGetName(op).c_str(), "Update filter format failed.");
     return FAILED;
   }
 
@@ -49,7 +49,7 @@ Status ParseDilation2DBackpropFilter(const Message* op_src, ge::Operator& op) {
   out_backprop_tensor.SetFormat(ge::FORMAT_NHWC);
   auto ret_out_backprop = op.UpdateInputDesc("out_backprop", out_backprop_tensor);
   if (ret_out_backprop != ge::GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Update out_backprop format failed.");
+    OP_LOGE(TbeGetName(op).c_str(), "Update out_backprop format failed.");
     return FAILED;
   }
 
@@ -58,7 +58,7 @@ Status ParseDilation2DBackpropFilter(const Message* op_src, ge::Operator& op) {
   output_tensor.SetFormat(ge::FORMAT_NHWC);
   auto ret_output = op.UpdateOutputDesc("y", output_tensor);
   if (ret_output != ge::GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Update output format failed.");
+    OP_LOGE(TbeGetName(op).c_str(), "Update output format failed.");
     return FAILED;
   }
 

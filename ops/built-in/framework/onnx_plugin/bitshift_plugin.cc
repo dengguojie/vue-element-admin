@@ -56,7 +56,7 @@ static Status ParseOpToGraphBitShift(const Operator& op, Graph& graph) {
   auto data1 = op::Data("data1").set_attr_index(1);
   std::string direction = "RIGHT";
   if (op.GetAttr("direction", direction) != SUCCESS) {
-      ONNX_PLUGIN_LOGE(op.GetName().c_str(), "get value from op failed");
+      ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "get value from op failed");
       return FAILED;
   }
 
@@ -69,7 +69,7 @@ static Status ParseOpToGraphBitShift(const Operator& op, Graph& graph) {
     auto bitshift_l = op::LeftShift().set_input_x(data0).set_input_y(data1);
     output_indexs.emplace_back(bitshift_l, vector<std::size_t>{0});
   } else {
-    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "attr direction is error");
+    ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "attr direction is error");
     return FAILED;
   }
 

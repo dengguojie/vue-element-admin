@@ -73,11 +73,11 @@ Status ParseValueFromConstInt(const vector<const NodeDef*>& v_input_const, const
 }
 
 Status RpnProposalsParams(const std::vector<const google::protobuf::Message*> insideNodes, ge::Operator& op) {
-  OP_LOGI(op.GetName().c_str(), "Enter RpnProposals fusion parser.");
+  OP_LOGI(TbeGetName(op).c_str(), "Enter RpnProposals fusion parser.");
 
   auto opDesc = ge::OpDescUtils::GetOpDescFromOperator(op);
   if (opDesc == nullptr) {
-    OP_LOGE(op.GetName().c_str(), "Get op desc failed.");
+    OP_LOGE(TbeGetName(op).c_str(), "Get op desc failed.");
     return FAILED;
   }
 
@@ -88,7 +88,7 @@ Status RpnProposalsParams(const std::vector<const google::protobuf::Message*> in
   for (auto node : insideNodes) {
     const NodeDef* node_def = reinterpret_cast<const NodeDef*>(node);
     if (node_def == nullptr) {
-      OP_LOGE(op.GetName().c_str(), "Node_def is nullptr.");
+      OP_LOGE(TbeGetName(op).c_str(), "Node_def is nullptr.");
       return FAILED;
     }
 
@@ -109,16 +109,16 @@ Status RpnProposalsParams(const std::vector<const google::protobuf::Message*> in
           node_def->name() == "task_8/generate_rpn_proposals/filtered_boxes") {
         float param = 0.0;
         if (ParseValueFromConstFloat(v_input_const, inputy_node_name, param) != SUCCESS) {
-          OP_LOGE(op.GetName().c_str(), "Convert score_threshold data failed");
+          OP_LOGE(TbeGetName(op).c_str(), "Convert score_threshold data failed");
           return PARAM_INVALID;
         }
 
         if (!ge::AttrUtils::SetFloat(opDesc, kScoreTthreshold, param)) {
-          OP_LOGE(op.GetName().c_str(), "Set score_threshold failed.");
+          OP_LOGE(TbeGetName(op).c_str(), "Set score_threshold failed.");
           return FAILED;
         }
         attr_num = attr_num + 1;
-        OP_LOGI(op.GetName().c_str(), "Set score_threshold SUCCESS!!!!");
+        OP_LOGI(TbeGetName(op).c_str(), "Set score_threshold SUCCESS!!!!");
       }
     }
 
@@ -137,16 +137,16 @@ Status RpnProposalsParams(const std::vector<const google::protobuf::Message*> in
           node_def->name() == "task_8/generate_rpn_proposals/Minimum") {
         int param = 0;
         if (ParseValueFromConstInt(v_input_const, inputy_node_name, param) != SUCCESS) {
-          OP_LOGE(op.GetName().c_str(), "Convert topk k data failed");
+          OP_LOGE(TbeGetName(op).c_str(), "Convert topk k data failed");
           return PARAM_INVALID;
         }
 
         if (!ge::AttrUtils::SetInt(opDesc, kK, param)) {
-          OP_LOGE(op.GetName().c_str(), "Set topk k failed.");
+          OP_LOGE(TbeGetName(op).c_str(), "Set topk k failed.");
           return FAILED;
         }
         attr_num = attr_num + 1;
-        OP_LOGI(op.GetName().c_str(), "Set topk k SUCCESS!!!!");
+        OP_LOGI(TbeGetName(op).c_str(), "Set topk k SUCCESS!!!!");
       }
     }
 
@@ -165,16 +165,16 @@ Status RpnProposalsParams(const std::vector<const google::protobuf::Message*> in
           node_def->name() == "task_8/generate_rpn_proposals/Greater") {
         float param = 0.0;
         if (ParseValueFromConstFloat(v_input_const, inputy_node_name, param) != SUCCESS) {
-          OP_LOGE(op.GetName().c_str(), "Convert min_size data failed");
+          OP_LOGE(TbeGetName(op).c_str(), "Convert min_size data failed");
           return PARAM_INVALID;
         }
 
         if (!ge::AttrUtils::SetFloat(opDesc, kMinSize, param)) {
-          OP_LOGE(op.GetName().c_str(), "Set min_size failed.");
+          OP_LOGE(TbeGetName(op).c_str(), "Set min_size failed.");
           return FAILED;
         }
         attr_num = attr_num + 1;
-        OP_LOGI(op.GetName().c_str(), "Set min_size SUCCESS!!!!");
+        OP_LOGI(TbeGetName(op).c_str(), "Set min_size SUCCESS!!!!");
       }
     }
 
@@ -185,16 +185,16 @@ Status RpnProposalsParams(const std::vector<const google::protobuf::Message*> in
 
       float param = 0.0;
       if (ParseValueFromConstFloat(v_input_const, inputy_node_name, param) != SUCCESS) {
-        OP_LOGE(op.GetName().c_str(), "Convert nms_threshold data failed");
+        OP_LOGE(TbeGetName(op).c_str(), "Convert nms_threshold data failed");
         return PARAM_INVALID;
       }
 
       if (!ge::AttrUtils::SetFloat(opDesc, kNmsTthreshold, param)) {
-        OP_LOGE(op.GetName().c_str(), "Set nms_threshold failed.");
+        OP_LOGE(TbeGetName(op).c_str(), "Set nms_threshold failed.");
         return FAILED;
       }
       attr_num = attr_num + 1;
-      OP_LOGI(op.GetName().c_str(), "Set nms_threshold SUCCESS!!!");
+      OP_LOGI(TbeGetName(op).c_str(), "Set nms_threshold SUCCESS!!!");
     }
 
     //  post_nms_num
@@ -204,30 +204,30 @@ Status RpnProposalsParams(const std::vector<const google::protobuf::Message*> in
 
       int param = 0;
       if (ParseValueFromConstInt(v_input_const, inputy_node_name, param) != SUCCESS) {
-        OP_LOGE(op.GetName().c_str(), "Convert post_nms_num data failed");
+        OP_LOGE(TbeGetName(op).c_str(), "Convert post_nms_num data failed");
         return PARAM_INVALID;
       }
 
       if (!ge::AttrUtils::SetInt(opDesc, kPostNmsNum, param)) {
-        OP_LOGE(op.GetName().c_str(), "Set post_nms_num failed.");
+        OP_LOGE(TbeGetName(op).c_str(), "Set post_nms_num failed.");
         return FAILED;
       }
       attr_num = attr_num + 1;
-      OP_LOGI(op.GetName().c_str(), "Set post_nms_num SUCCESS!!!");
+      OP_LOGI(TbeGetName(op).c_str(), "Set post_nms_num SUCCESS!!!");
     }
   }
 
   if (inputy_node_name.empty()) {
-    OP_LOGE(op.GetName().c_str(), "cann't find specific op node in rpn_proposals");
+    OP_LOGE(TbeGetName(op).c_str(), "cann't find specific op node in rpn_proposals");
     return FAILED;
   }
   static const size_t right_attr_num = 5;
   if (attr_num != right_attr_num) {
-    OP_LOGE(op.GetName().c_str(), "cann't find right num of attr node in rpn_proposals!");
+    OP_LOGE(TbeGetName(op).c_str(), "cann't find right num of attr node in rpn_proposals!");
     return FAILED;
   }
 
-  OP_LOGI(op.GetName().c_str(), "Obtain attributes for rpn_proposals SUCCESS!");
+  OP_LOGI(TbeGetName(op).c_str(), "Obtain attributes for rpn_proposals SUCCESS!");
   return SUCCESS;
 }
 

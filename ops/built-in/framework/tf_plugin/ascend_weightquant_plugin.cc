@@ -38,7 +38,7 @@ Status ParseParamsAscendWeightQuant(const google::protobuf::Message* op_src, ge:
 
   const NodeDef* node_def = reinterpret_cast<const NodeDef*>(op_src);
   if (node_def == nullptr) {
-      OP_LOGE(op.GetName().c_str(), "Node_def is nullptr.");
+      OP_LOGE(TbeGetName(op).c_str(), "Node_def is nullptr.");
       return FAILED;
   }
 

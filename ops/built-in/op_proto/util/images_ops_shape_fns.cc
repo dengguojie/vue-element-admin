@@ -26,7 +26,7 @@
 namespace ge {
 graphStatus ColorspaceShapeFn(Operator& op, const std::string output_name) {
   Shape shape;
-  graphStatus status = WithRankAtLeast(op.GetInputDesc(0), 1, shape, op.GetName().c_str());
+  graphStatus status = WithRankAtLeast(op.GetInputDesc(0), 1, shape, TbeGetName(op).c_str());
   if (status != GRAPH_SUCCESS) {
     AscendString op_name;
     op.GetName(op_name);
@@ -48,7 +48,7 @@ graphStatus ColorspaceShapeFn(Operator& op, const std::string output_name) {
 graphStatus ResizeShapeFn(Operator& op, const std::string input_name, const std::string size_input_name,
                           const std::string output_name) {
   Shape shape;
-  graphStatus status = WithRank(op.GetInputDesc(0), 4, shape, op.GetName().c_str());
+  graphStatus status = WithRank(op.GetInputDesc(0), 4, shape, TbeGetName(op).c_str());
   if (status != GRAPH_SUCCESS) {
     AscendString op_name;
     op.GetName(op_name);
@@ -67,7 +67,7 @@ graphStatus ResizeShapeFn(Operator& op, const std::string input_name, const std:
 graphStatus SetOutputToSizedImage(Operator& op, const int64_t batch_dim, const std::string size_input_name,
                                   const int64_t channel_dim, const std::string output_name) {
   Shape size_shape;
-  graphStatus status = WithRank(op.GetInputDesc(size_input_name), 1, size_shape, op.GetName().c_str());
+  graphStatus status = WithRank(op.GetInputDesc(size_input_name), 1, size_shape, TbeGetName(op).c_str());
   if (status != GRAPH_SUCCESS) {
     AscendString op_name;
     op.GetName(op_name);
@@ -105,7 +105,7 @@ graphStatus SetOutputToSizedImage(Operator& op, const int64_t batch_dim, const s
       out_shape.push_back(channel_dim);
     } else {
       std::string error_msg = "Not supported this format";
-      AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), error_msg);
+      AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), error_msg);
     }
     td.SetShape(Shape(out_shape));
     op.UpdateOutputDesc(output_name, td);
@@ -130,7 +130,7 @@ graphStatus SetOutputToSizedImage(Operator& op, const int64_t batch_dim, const s
     output_shape.push_back(size_width);
     output_shape.push_back(channel_dim);
   } else {
-    OP_LOGE(op.GetName().c_str(), "Not supported this format");
+    OP_LOGE(TbeGetName(op).c_str(), "Not supported this format");
   }
   td.SetShape(Shape(output_shape));
   return op.UpdateOutputDesc(output_name, td);
@@ -138,7 +138,7 @@ graphStatus SetOutputToSizedImage(Operator& op, const int64_t batch_dim, const s
 
 graphStatus EncodeImageShapeFn(Operator& op) {
   Shape unused_shape;
-  if (WithRank(op.GetInputDesc(0), 3, unused_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
+  if (WithRank(op.GetInputDesc(0), 3, unused_shape, TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
     AscendString op_name;
     op.GetName(op_name);
     OP_LOGE(op_name.GetString(), "input rank must be 3 .");
@@ -156,17 +156,17 @@ graphStatus EncodeImageShapeFn(Operator& op) {
 graphStatus DecodeImageShapeFn(Operator& op) {
   int channels;
   if (op.GetAttr("channels", channels) != GRAPH_SUCCESS) {
-    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), string("Get attr[chanels] failed"));
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), string("Get attr[chanels] failed"));
     return GRAPH_FAILED;
   }
   if (channels != 0 && channels != 1 && channels != 3 && channels != 4) {
-    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), string("attr[Channels] must be 0,1,3,or 4"));
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), string("attr[Channels] must be 0,1,3,or 4"));
     return GRAPH_FAILED;
   }
 
   DataType dtype;
   if (op.GetAttr("dtype", dtype) != GRAPH_SUCCESS) {
-    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), string("Get attr[dtype] failed"));
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), string("Get attr[dtype] failed"));
     return GRAPH_FAILED;
   }
   std::vector<int64_t> dims;
@@ -181,7 +181,7 @@ graphStatus DecodeImageShapeFn(Operator& op) {
   output_tensor.SetDataType(dtype);
   output_tensor.SetShape(output_shape);
   if (op.UpdateOutputDesc("image", output_tensor) != GRAPH_SUCCESS) {
-    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), string("Update OutputDesc[image] failed"));
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), string("Update OutputDesc[image] failed"));
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;

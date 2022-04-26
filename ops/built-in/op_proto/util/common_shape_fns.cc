@@ -788,7 +788,7 @@ static graphStatus GetShapeDataFromShapeTensor(Operator& op,
         data.push_back(static_cast<int64_t>(shape_data[i]));
       }
     } else {
-      OP_LOGI(op.GetName().c_str(), "Input [%s] is not a const tensor.",
+      OP_LOGI(TbeGetName(op).c_str(), "Input [%s] is not a const tensor.",
               dst_name.c_str());
       for (int64_t i = 0; i < dim_value; i++) {
         data.push_back(UNKNOWN_DIM);
@@ -802,7 +802,7 @@ static graphStatus GetShapeDataFromShapeTensor(Operator& op,
         data.push_back(static_cast<int64_t>(shape_data[i]));
       }
     } else {
-      OP_LOGI(op.GetName().c_str(), "Input [%s] is not a const tensor.",
+      OP_LOGI(TbeGetName(op).c_str(), "Input [%s] is not a const tensor.",
               dst_name.c_str());
       for (int64_t i = 0; i < dim_value; i++) {
         data.push_back(UNKNOWN_DIM);
@@ -1148,7 +1148,7 @@ graphStatus SetShapeAndRange(Operator& op, const ShapeAndRange& feed_shape_and_r
   context->GetMarks(marks);
 
   if (!marks.empty()) {
-    OP_LOGI(op.GetName().c_str(), "Set marks[0] = %s", marks[0].GetString());
+    OP_LOGI(TbeGetName(op).c_str(), "Set marks[0] = %s", marks[0].GetString());
     bool shape_changed = false;
     auto aicpu_resource_context = reinterpret_cast<AicpuResourceContext*>(
       context->GetResourceContext(marks[0]));
@@ -1194,7 +1194,7 @@ graphStatus GetShapeAndRange(Operator& op, ShapeAndRange& out, bool& geted, Infe
   std::vector<AscendString> marks;
   infer_context->GetMarks(marks);
   if (!marks.empty()) {
-    OP_LOGI(op.GetName().c_str(), "Get marks[0] = %s", marks[0].GetString());
+    OP_LOGI(TbeGetName(op).c_str(), "Get marks[0] = %s", marks[0].GetString());
     if (infer_context->RegisterReliedOnResourceKey(marks[0]) != GRAPH_SUCCESS) {
       AICPU_INFER_SHAPE_INNER_ERR_REPORT(std::string(op_name.GetString()), 
                                          std::string("register relied on resource key failed."));

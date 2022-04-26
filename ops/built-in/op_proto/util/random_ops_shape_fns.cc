@@ -35,8 +35,8 @@ graphStatus RandomShape(Operator& op, const std::string& shape_name, const std::
     return op.UpdateOutputDesc(out_name, output_desc);
   }
   Shape shape;
-  if (MakeShapeFromShapeTensor(tensor, shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), string("call "
+  if (MakeShapeFromShapeTensor(tensor, shape, TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), string("call "
         "MakeShapeFromShapeTensor function failed to get data of shape tensor"));
     return GRAPH_FAILED;
   }
@@ -55,7 +55,7 @@ graphStatus RandomShapeWithDataType(Operator& op, const std::string& shape_name,
   DataType type;
   if (op.GetAttr(date_type_attr_name.c_str(), type) != GRAPH_SUCCESS) {
     std::string info = ": Get dtype attr failed.";
-    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op),
         ConcatString("get attr[", date_type_attr_name, "] failed"));
     return GRAPH_FAILED;
   }
@@ -78,7 +78,7 @@ graphStatus RandomShapeWithDataType(Operator& op, const std::string& shape_name,
   }
   Shape shape;
   if (MakeShapeFromShapeTensor(tensor, shape, op_desc->GetName().c_str()) != GRAPH_SUCCESS) {
-      AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), string("call "
+      AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), string("call "
           "MakeShapeFromShapeTensor function failed to get data of shape tensor"));
     return GRAPH_FAILED;
   }

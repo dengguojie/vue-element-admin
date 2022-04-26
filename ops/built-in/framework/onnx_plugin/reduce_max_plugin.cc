@@ -61,7 +61,7 @@ static Status ParseOpToGraphReduceMax(const ge::Operator& op, Graph& graph) {
 
   ge::Tensor axes;
   if (op.GetAttr("axes", axes) != SUCCESS) {
-    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "get axes from op failed");
+    ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "get axes from op failed");
     return FAILED;
   }
   auto data1 = op::Const("data1").set_attr_value(axes);
@@ -69,7 +69,7 @@ static Status ParseOpToGraphReduceMax(const ge::Operator& op, Graph& graph) {
 
   bool keep_dims = false;
   if (op.GetAttr("keep_dims", keep_dims) != SUCCESS) {
-    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "get keep_dims from op failed");
+    ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "get keep_dims from op failed");
     return FAILED;
   }
   reducemax.set_attr_keep_dims(keep_dims);

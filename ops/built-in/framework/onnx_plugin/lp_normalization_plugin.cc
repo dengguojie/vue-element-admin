@@ -65,11 +65,11 @@ Status parse_op_to_graph_lp_normalization(const Operator& op, Graph& graph) {
   int p_num = 2;
   int axis = -1;
   if (op.GetAttr("p", p_num) != SUCCESS) {
-    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "get attr p from op failed");
+    ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "get attr p from op failed");
     return FAILED;
   }
   if (op.GetAttr("axis", axis) != SUCCESS) {
-    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "get attr axis from op failed");
+    ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "get attr axis from op failed");
     return FAILED;
   }
   lp_norm_op.set_attr_p(p_num);

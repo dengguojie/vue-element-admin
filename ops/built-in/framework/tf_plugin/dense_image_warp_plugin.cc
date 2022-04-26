@@ -28,7 +28,7 @@ Status DenseImageWarpMappingFn(const Message* op_src, ge::Operator& op) {
   AutoMappingFn(op_src, op);
   auto op_dsc = ge::OpDescUtils::GetOpDescFromOperator(op);
   if (op_dsc == nullptr) {
-    OP_LOGE(op.GetName().c_str(), "Get op_dsc failed");
+    OP_LOGE(TbeGetName(op).c_str(), "Get op_dsc failed");
     return FAILED;
   }
   ge::GeTensorDesc tensor_desc_image = op_dsc->GetInputDesc(0);
@@ -45,7 +45,7 @@ Status DenseImageWarpMappingFn(const Message* op_src, ge::Operator& op) {
   auto ret1 = op_dsc->UpdateInputDesc(1, tensor_desc_flow);
   auto ret2 = op_dsc->UpdateOutputDesc(0, tensor_desc_y);
   if (ret != ge::GRAPH_SUCCESS || ret1 != ge::GRAPH_SUCCESS || ret2 != ge::GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Update input_desc or output_desc failed");
+    OP_LOGE(TbeGetName(op).c_str(), "Update input_desc or output_desc failed");
     return FAILED;
   }
   return SUCCESS;

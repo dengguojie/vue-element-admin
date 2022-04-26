@@ -28,10 +28,10 @@ namespace domi {
 uint32_t kPosition = 3;
 
 Status BasicLSTMCellParserParams(const std::vector<const google::protobuf::Message*> inside_nodes, ge::Operator& op) {
-  OP_LOGI(op.GetName().c_str(), "Enter BasicLSTMCell fusion parser.");
+  OP_LOGI(TbeGetName(op).c_str(), "Enter BasicLSTMCell fusion parser.");
   auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
   if (op_desc == nullptr) {
-    OP_LOGE(op.GetName().c_str(), "Get op desc failed.");
+    OP_LOGE(TbeGetName(op).c_str(), "Get op desc failed.");
     return FAILED;
   }
 
@@ -40,7 +40,7 @@ Status BasicLSTMCellParserParams(const std::vector<const google::protobuf::Messa
   input_desc.SetFormat(ge::FORMAT_HWCN);
 
   if (op_desc->UpdateInputDesc(kPosition, input_desc) != ge::GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Update input desc fail, index:%u.", kPosition);
+    OP_LOGE(TbeGetName(op).c_str(), "Update input desc fail, index:%u.", kPosition);
     return FAILED;
   }
 
@@ -55,7 +55,7 @@ Status ParseParamsBasicLSTMCell(const Message* op_src, ge::Operator& op) {
   orgTensorW.SetFormat(ge::FORMAT_HWCN);
   auto ret = op_dsc->UpdateInputDesc(kPosition, orgTensorW);
   if (ret != ge::GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "update filter format failed.");
+    OP_LOGE(TbeGetName(op).c_str(), "update filter format failed.");
     return FAILED;
   }
   return SUCCESS;

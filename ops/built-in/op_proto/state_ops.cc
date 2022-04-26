@@ -81,11 +81,11 @@ IMPLEMT_INFERFUNC(CountUpTo, CountUpToInfer) {
   auto ref_desc = op_desc->MutableInputDesc(0);
 
   GeShape out;
-  if (WithRank(ref_desc, 0, out, op.GetName().c_str()) != GRAPH_SUCCESS) {
+  if (WithRank(ref_desc, 0, out, TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
     std::string err_msg = GetShapeErrMsg(
         0, DebugString(ref_desc->GetShape().GetDims()), "scalar");
     err_msg = string("failed to call WithRank function, ") + err_msg;
-    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
 

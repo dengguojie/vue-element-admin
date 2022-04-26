@@ -69,7 +69,7 @@ IMPLEMT_INFERFUNC(BatchNorm3D, BatchNorm3DInferShape) {
   if (op.GetAttr("data_format", data_format) == GRAPH_SUCCESS) {
     if (data_format != "NDHWC" && data_format != "NCDHW") {
       string expected_format_list = ConcatString("NDHWC, NCDHW");
-      OP_LOGE(op.GetName().c_str(),
+      OP_LOGE(TbeGetName(op).c_str(),
               "data_format only "
               "support 'NDHWC' and 'NCDHW'.");
       return GRAPH_FAILED;
@@ -91,7 +91,7 @@ VERIFY_FUNC_REG(BatchNorm3D, BatchNorm3DVerify);
 // ----------------SyncBatchNormGatherStatsWithCounts Begin-------------------
 IMPLEMT_INFERFUNC(SyncBatchNormGatherStatsWithCounts,
                   SyncBatchNormGatherStatsWithCountsInferShape) {
-  OP_LOGI(op.GetName().c_str(), "Enter SyncBatchNormGatherStatsWithCounts proto inferfunction!");
+  OP_LOGI(TbeGetName(op).c_str(), "Enter SyncBatchNormGatherStatsWithCounts proto inferfunction!");
   TensorDesc tensordesc_input = op.GetInputDesc("running_var");
   auto input_shape = tensordesc_input.GetShape().GetDims();
   DataType input_dtype = tensordesc_input.GetDataType();
@@ -107,7 +107,7 @@ IMPLEMT_INFERFUNC(SyncBatchNormGatherStatsWithCounts,
     OP_LOGE("SyncBatchNormGatherStatsWithCounts", "op_name get failed.");
     return GRAPH_FAILED;
   }
-  OP_LOGI(op.GetName().c_str(), "SyncBatchNormGatherStatsWithCounts op_name get successed.");
+  OP_LOGI(TbeGetName(op).c_str(), "SyncBatchNormGatherStatsWithCounts op_name get successed.");
 
   tensordesc_output_1.SetShape(ge::Shape(input_shape));
   tensordesc_output_2.SetShape(ge::Shape(input_shape));
@@ -124,7 +124,7 @@ INFER_FUNC_REG(SyncBatchNormGatherStatsWithCounts,
 // ----------------SyncBNTrainingUpdate Begin-------------------
 IMPLEMT_INFERFUNC(SyncBNTrainingUpdate,
                   SyncBNTrainingUpdateInferShape) {
-  OP_LOGI(op.GetName().c_str(), "Enter SyncBNTrainingUpdate proto inferfunction!");
+  OP_LOGI(TbeGetName(op).c_str(), "Enter SyncBNTrainingUpdate proto inferfunction!");
   TensorDesc tensordesc_input = op.GetInputDesc("running_mean");
   auto input_shape = tensordesc_input.GetShape().GetDims();
   DataType input_dtype = tensordesc_input.GetDataType();
@@ -137,7 +137,7 @@ IMPLEMT_INFERFUNC(SyncBNTrainingUpdate,
     OP_LOGE("SyncBNTrainingUpdate", "op_name get failed.");
     return GRAPH_FAILED;
   }
-  OP_LOGI(op.GetName().c_str(), "SyncBNTrainingUpdate op_name get successed.");
+  OP_LOGI(TbeGetName(op).c_str(), "SyncBNTrainingUpdate op_name get successed.");
 
   tensordesc_output.SetShape(ge::Shape(input_shape));
   (void)op.UpdateOutputDesc("running_mean_update", tensordesc_output);
@@ -205,7 +205,7 @@ IMPLEMT_INFERFUNC(BatchNormExt2, BatchNormExt2InferShape) {
     if (data_format != "NHWC" && data_format != "NCHW") {
       string expected_format_list = ConcatString("NHWC, NCHW");
       std::string err_msg = GetInputFormatNotSupportErrMsg("data_format", expected_format_list, data_format);
-      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
       return GRAPH_FAILED;
     }
   }
@@ -265,7 +265,7 @@ IMPLEMT_INFERFUNC(BatchNormGrad, BatchNormGradInferShape) {
     if (data_format != "NHWC" && data_format != "NCHW") {
       string expected_format_list = ConcatString("NHWC, NCHW");
       std::string err_msg = GetInputFormatNotSupportErrMsg("data_format", expected_format_list, data_format);
-      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
       return GRAPH_FAILED;
     }
   }
@@ -313,7 +313,7 @@ IMPLEMT_INFERFUNC(BatchNorm3DGrad, BatchNorm3DGradInferShape) {
   if (op.GetAttr("data_format", data_format) == GRAPH_SUCCESS) {
     if (data_format != "NDHWC" && data_format != "NCDHW") {
       string expected_format_list = ConcatString("NDHWC, NCDHW");
-      OP_LOGE(op.GetName().c_str(),
+      OP_LOGE(TbeGetName(op).c_str(),
               "data_format only "
               "support 'NDHWC' and 'NCDHW'.");
       return GRAPH_FAILED;
@@ -364,7 +364,7 @@ IMPLEMT_INFERFUNC(BatchNormGradExt2, BatchNormGradExt2InferShape) {
     if (data_format != "NHWC" && data_format != "NCHW") {
       string expected_format_list = ConcatString("NHWC, NCHW");
       std::string err_msg = GetInputFormatNotSupportErrMsg("data_format", expected_format_list, data_format);
-      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
       return GRAPH_FAILED;
     }
   }
@@ -466,7 +466,7 @@ IMPLEMT_VERIFIER(BNInferenceD, BNInferenceDVerify) {
     if (data_format != "NHWC" && data_format != "NCHW") {
       string expected_format_list = ConcatString("NHWC, NCHW");
       std::string err_msg = GetInputFormatNotSupportErrMsg("data_format", expected_format_list, data_format);
-      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
       return GRAPH_FAILED;
     }
   }

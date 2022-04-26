@@ -67,7 +67,7 @@ namespace ge {
       auto dim_idx = static_cast<uint32_t>(op_desc->GetInputIndexByName("dims"));
       const GeTensor *data = OpDescUtils::GetInputConstData(op, dim_idx);
       if (data == nullptr) {
-        GE_OP_LOGW(op.GetName().c_str(), "Get constValue failed of [dims]");
+        GE_OP_LOGW(TbeGetName(op).c_str(), "Get constValue failed of [dims]");
         auto shape = op.GetInputDesc("dims").GetShape();
         int64_t dim_value;
         dim_value = shape.GetDim(0);
@@ -80,9 +80,9 @@ namespace ge {
           vec_dim.push_back(-2);
         }
         for (uint64_t i = 0; i < vec_dim.size(); i++) {
-          OP_LOGD(op.GetName().c_str(), "fill no const infershape dims value [%d] is [%d]", i, vec_dim[i]);
+          OP_LOGD(TbeGetName(op).c_str(), "fill no const infershape dims value [%d] is [%d]", i, vec_dim[i]);
         }
-        OP_LOGD(op.GetName().c_str(), "fill no const infershape dims value done");
+        OP_LOGD(TbeGetName(op).c_str(), "fill no const infershape dims value done");
         td.SetShape(Shape(vec_dim));
         td.SetDataType(op.GetInputDesc("value").GetDataType());
         td.SetShapeRange(range_output);
@@ -98,12 +98,12 @@ namespace ge {
           CaclDims<int64_t>(data, vec_dim);
         } else {
           std::string err_msg = GetInputInvalidErrMsg("constValue");
-          VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+          VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
           return GRAPH_PARAM_INVALID;
         }
 
         int64_t fused_output = std::accumulate(vec_dim.begin(), vec_dim.end(), 1, std::multiplies<int64_t>());
-        OP_LOGD(op.GetName().c_str(), "fused_output dims value done [%d]", fused_output);
+        OP_LOGD(TbeGetName(op).c_str(), "fused_output dims value done [%d]", fused_output);
         std::vector<std::pair<int64_t, int64_t>> range_output;
 
         td.SetShape(Shape(vec_dim));

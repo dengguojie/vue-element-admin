@@ -35,17 +35,17 @@ IMPLEMT_INFERFUNC(StringToNumber, StringToNumberInfer) {
   TensorDesc out_desc = op.GetOutputDesc("y");
   DataType out_type;
   if (op.GetAttr("out_type", out_type) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "get attribute failed");
+    OP_LOGE(TbeGetName(op).c_str(), "get attribute failed");
     return GRAPH_FAILED;
   }
   if ((out_type != DT_FLOAT) || (out_type != DT_DOUBLE) || (out_type != DT_INT32) || (out_type != DT_INT64)) {
-    OP_LOGE(op.GetName().c_str(), "out_type type not supported");
+    OP_LOGE(TbeGetName(op).c_str(), "out_type type not supported");
     return GRAPH_FAILED;
   }
 
   out_desc.SetDataType(out_type);
   if (op.UpdateOutputDesc("y", out_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "update y failed");
+    OP_LOGE(TbeGetName(op).c_str(), "update y failed");
     return GRAPH_FAILED;
   }
   return UnchangedShape(op, "x", "y");
@@ -63,14 +63,14 @@ IMPLEMT_INFERFUNC(DecodeRaw, DecodeRawInfer) {
   Shape output_shape(dims);
   DataType dtype;
   if (op.GetAttr("out_type", dtype) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Get attr dtype failed");
+    OP_LOGE(TbeGetName(op).c_str(), "Get attr dtype failed");
     return GRAPH_FAILED;
   }
   TensorDesc y_tensor = op.GetOutputDesc("output");
   y_tensor.SetDataType(dtype);
   y_tensor.SetShape(output_shape);
   if (op.UpdateOutputDesc("output", y_tensor) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Update output failed");
+    OP_LOGE(TbeGetName(op).c_str(), "Update output failed");
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -81,7 +81,7 @@ IMPLEMT_INFERFUNC(ParseTensor, ParseTensorInfer) {
   Shape output_shape(ge::UNKNOWN_RANK);
   DataType out_type;
   if (op.GetAttr("out_type", out_type) != GRAPH_SUCCESS) {
-    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op),
                                        string("get attr[out_type] failed"));
     return GRAPH_FAILED;
   }
@@ -91,7 +91,7 @@ IMPLEMT_INFERFUNC(ParseTensor, ParseTensorInfer) {
   output_desc.SetDataType(out_type);
   if (op.UpdateOutputDesc("output", output_desc) != GRAPH_SUCCESS) {
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(
-        op.GetName(), string("update output[output] desc failed"));
+        TbeGetName(op), string("update output[output] desc failed"));
     return GRAPH_FAILED;
   }
 
@@ -102,29 +102,29 @@ INFER_FUNC_REG(ParseTensor, ParseTensorInfer);
 IMPLEMT_INFERFUNC(ParseSingleExample, ParseSingleExampleInfer) {
   auto x1_tensor = op.GetInputDesc("serialized");
   Shape x1_shape;
-  if (WithRank(x1_tensor, 0, x1_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
+  if (WithRank(x1_tensor, 0, x1_shape, TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
     std::string err_msg = ConcatString(
         "failed to call WithRank function, input[serialized] rank must be 0, "
         "got rank[",
         x1_shape.GetDimNum(), "]");
-    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
   std::vector<ge::DataType> sparse_types;
   if (op.GetAttr("sparse_types", sparse_types) != GRAPH_SUCCESS) {
-    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op),
                                        string("get attr[sparse_types] failed"));
     return GRAPH_FAILED;
   }
   std::vector<std::string> sparse_keys;
   if (op.GetAttr("sparse_keys", sparse_keys) != GRAPH_SUCCESS) {
-    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op),
                                        string("get attr[sparse_keys] failed"));
     return GRAPH_FAILED;
   }
   int32_t num_sparse = 0;
   if (op.GetAttr("num_sparse", num_sparse) != GRAPH_SUCCESS) {
-    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op),
                                        string("get attr[num_sparse] failed"));
     return GRAPH_FAILED;
   }
@@ -132,7 +132,7 @@ IMPLEMT_INFERFUNC(ParseSingleExample, ParseSingleExampleInfer) {
     std::string err_msg = GetAttrSizeErrMsg(
         "num_sparse", std::to_string(num_sparse),
         std::to_string(sparse_keys.size()));
-    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
   
@@ -155,21 +155,21 @@ IMPLEMT_INFERFUNC(ParseSingleExample, ParseSingleExampleInfer) {
 
   std::vector<std::string> dense_keys;
   if (op.GetAttr("dense_keys", dense_keys) != GRAPH_SUCCESS) {
-    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op),
                                        string("get attr[dense_keys] failed"));
     return GRAPH_FAILED;
   }
   int size = dense_keys.size();
   std::vector<std::vector<int64_t>> dense_shapes;
   if (op.GetAttr("dense_shapes", dense_shapes) != GRAPH_SUCCESS) {
-    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op),
                                        string("get attr[dense_shapes] failed"));
     return GRAPH_FAILED;
   }
   
   std::vector<ge::DataType> tdense_type;
   if (op.GetAttr("Tdense", tdense_type) != GRAPH_SUCCESS) {
-    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op),
                                        string("get attr[Tdense] failed"));
     return GRAPH_FAILED;
   }
@@ -188,7 +188,7 @@ IMPLEMT_INFERFUNC(DecodeCSV, DecodeCSVInfer) {
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
   if (op_desc == nullptr) {
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(
-        op.GetName(), string("get op desc failed, op desc is nullptr"));
+        TbeGetName(op), string("get op desc failed, op desc is nullptr"));
     return GRAPH_FAILED;
   }
 
@@ -200,14 +200,14 @@ IMPLEMT_INFERFUNC(DecodeCSV, DecodeCSVInfer) {
         op_desc->MutableInputDesc("record_defaults" + std::to_string(i));
     if (temp_record_default_desc == nullptr) {
       AICPU_INFER_SHAPE_INNER_ERR_REPORT(
-          op.GetName(), string("get input[record_default] desc failed, "
+          TbeGetName(op), string("get input[record_default] desc failed, "
                                "input[record_default] desc is nullptr"));
       return GRAPH_FAILED;
     }
 
     std::string err_msg;
     if (WithRankAtMost(temp_record_default_desc, 1, record_default_shape,
-        op.GetName().c_str()) != GRAPH_SUCCESS) {
+        TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
       err_msg = GetShapeErrMsg(
           i, DebugString(temp_record_default_desc->GetShape().GetDims()),
           "at most 1D");
@@ -215,7 +215,7 @@ IMPLEMT_INFERFUNC(DecodeCSV, DecodeCSVInfer) {
                     "failed to call WithRankAtMost function, dynamic input "
                     "record_defaults") +
                 err_msg;
-      AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+      AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
       return GRAPH_FAILED;
     }
     if (record_default_shape.GetDimNum() == 1 &&
@@ -225,7 +225,7 @@ IMPLEMT_INFERFUNC(DecodeCSV, DecodeCSVInfer) {
                        "] must be at length-0 or length-1 vector or a "
                        "scalar, got record_defaults[",
                        i, "][0] dim[", record_default_shape.GetDim(0), "]");
-      AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+      AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
       return GRAPH_PARAM_INVALID;
     }
   }
@@ -250,7 +250,7 @@ IMPLEMT_INFERFUNC(ParseExample, ParseExampleInfer) {
   std::vector<size_t> elements_per_stride;
   int32_t num_sparse;
   if (op.GetAttr("Nsparse", num_sparse) != GRAPH_SUCCESS) {
-    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op),
                                        string("failed to get attr[Nsparse]."));
     return GRAPH_FAILED;
   }
@@ -258,33 +258,33 @@ IMPLEMT_INFERFUNC(ParseExample, ParseExampleInfer) {
   if (num_sparse < 0) {
     err_msg = ConcatString("attr[Nsparse] must be non-negative, got[",
                            num_sparse, "]");
-    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
 
   int32_t num_dense;
   if (op.GetAttr("Ndense", num_dense) != GRAPH_SUCCESS) {
-    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op),
                                        string("failed to get attr[Ndense]."));
     return GRAPH_FAILED;
   }
   if (num_dense < 0) {
     err_msg =
         ConcatString("attr[Ndense] must be non-negative, got[", num_dense, "]");
-    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
 
   Operator::OpListType sparse_types;
   if (op.GetAttr("sparse_types", sparse_types) != GRAPH_SUCCESS) {
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(
-        op.GetName(), string("failed to get attr[sparse_types]."));
+        TbeGetName(op), string("failed to get attr[sparse_types]."));
     return GRAPH_FAILED;
   }
 
   Operator::OpListType dense_types;
   if (op.GetAttr("Tdense", dense_types) != GRAPH_SUCCESS) {
-    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op),
                                        string("failed to get attr[Tdense]."));
     return GRAPH_FAILED;
   }
@@ -292,14 +292,14 @@ IMPLEMT_INFERFUNC(ParseExample, ParseExampleInfer) {
   Operator::OpListListInt dense_shapes;
   if (op.GetAttr("dense_shapes", dense_shapes) != GRAPH_SUCCESS) {
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(
-        op.GetName(), string("failed to get attr[dense_shapes]."));
+        TbeGetName(op), string("failed to get attr[dense_shapes]."));
     return GRAPH_FAILED;
   }
 
   for (size_t i = 0; i < dense_shapes.size(); ++i) {
     GeShape temp_dense_shape(dense_shapes[i]);
     if (!ShapeFullyDefined(temp_dense_shape)) {
-      OP_LOGW(op.GetName().c_str(), "dense_shapes[%ld] is not fully defined.",
+      OP_LOGW(TbeGetName(op).c_str(), "dense_shapes[%ld] is not fully defined.",
               i);
     }
     std::vector<int64_t> dense_shape;
@@ -327,7 +327,7 @@ IMPLEMT_INFERFUNC(ParseExample, ParseExampleInfer) {
     err_msg = ConcatString("attr[Nsparse] value[", num_sparse,
                            "] is not equal to attr[sparse_types] size[",
                            sparse_types.size(), "]");
-    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -335,7 +335,7 @@ IMPLEMT_INFERFUNC(ParseExample, ParseExampleInfer) {
     err_msg = ConcatString("attr[Ndense] value[", num_dense,
                            "] is not equal to attr[dense_types] size[",
                            dense_types.size(), "]");
-    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -343,14 +343,14 @@ IMPLEMT_INFERFUNC(ParseExample, ParseExampleInfer) {
     err_msg = ConcatString("attr[Ndense] value[", num_dense,
                            "] is not equal to attr[dense_shapes] size[",
                            dense_shapes.size(), "]");
-    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
 
   if (num_dense > std::numeric_limits<int32_t>::max()) {
     err_msg = ConcatString("attr[Ndense] value[", num_dense,
                            "] is bigger than in32 max");
-    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -360,7 +360,7 @@ IMPLEMT_INFERFUNC(ParseExample, ParseExampleInfer) {
       err_msg = ConcatString(
           "invalid data type[", sparse_dt,
           "] of attr[sparse_types], should be DT_INT64, DT_FLOAT or DT_STRING");
-      AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+      AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
       return GRAPH_FAILED;
     }
   }
@@ -371,7 +371,7 @@ IMPLEMT_INFERFUNC(ParseExample, ParseExampleInfer) {
       err_msg = ConcatString(
           "invalid data type[", dense_dt,
           "] of attr[Tdense], should be DT_INT64, DT_FLOAT or DT_STRING");
-      AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+      AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
       return GRAPH_FAILED;
     }
   }
@@ -380,21 +380,21 @@ IMPLEMT_INFERFUNC(ParseExample, ParseExampleInfer) {
 
   GeShape serialized_shape;
   auto serialized_desc = op_desc->MutableInputDesc(0);
-  if (WithRank(serialized_desc, 1, serialized_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
+  if (WithRank(serialized_desc, 1, serialized_shape, TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
     err_msg = GetShapeErrMsg(
         0, DebugString(serialized_desc->GetShape().GetDims()), "1D");
     err_msg = string("failed to call WithRank function, ") + err_msg;
-    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
 
   GeShape unused_shape;
   auto unused_desc = op_desc->MutableInputDesc(1);
-  if (WithRank(unused_desc, 1, unused_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
+  if (WithRank(unused_desc, 1, unused_shape, TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
     err_msg =
         GetShapeErrMsg(1, DebugString(unused_desc->GetShape().GetDims()), "1D");
     err_msg = string("failed to call WithRank function, ") + err_msg;
-    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -437,14 +437,14 @@ IMPLEMT_INFERFUNC(ParseSingleSequenceExample, ParseSingleSequenceExampleInfer) {
   int32_t num_context_sparse;
   if (op.GetAttr("Ncontext_sparse", num_context_sparse) != GRAPH_SUCCESS) {
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(
-        op.GetName(), string("failed to get attr[Ncontext_sparse]."));
+        TbeGetName(op), string("failed to get attr[Ncontext_sparse]."));
     return GRAPH_FAILED;
   }
 
   int32_t num_context_dense;
   if (op.GetAttr("Ncontext_dense", num_context_dense) != GRAPH_SUCCESS) {
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(
-        op.GetName(), string("failed to get attr[Ncontext_dense]."));
+        TbeGetName(op), string("failed to get attr[Ncontext_dense]."));
     return GRAPH_FAILED;
   }
 
@@ -452,7 +452,7 @@ IMPLEMT_INFERFUNC(ParseSingleSequenceExample, ParseSingleSequenceExampleInfer) {
   if (op.GetAttr("feature_list_dense_shapes", feature_list_dense_shapes) !=
       GRAPH_SUCCESS) {
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(
-        op.GetName(), string("failed to get attr[feature_list_dense_shapes]."));
+        TbeGetName(op), string("failed to get attr[feature_list_dense_shapes]."));
     return GRAPH_FAILED;
   }
 
@@ -460,7 +460,7 @@ IMPLEMT_INFERFUNC(ParseSingleSequenceExample, ParseSingleSequenceExampleInfer) {
   if (op.GetAttr("Nfeature_list_sparse", num_feature_list_sparse) !=
       GRAPH_SUCCESS) {
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(
-        op.GetName(), string("failed to get attr[Nfeature_list_sparse]."));
+        TbeGetName(op), string("failed to get attr[Nfeature_list_sparse]."));
     return GRAPH_FAILED;
   }
 
@@ -468,14 +468,14 @@ IMPLEMT_INFERFUNC(ParseSingleSequenceExample, ParseSingleSequenceExampleInfer) {
   if (op.GetAttr("Nfeature_list_dense", num_feature_list_dense) !=
       GRAPH_SUCCESS) {
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(
-        op.GetName(), string("failed to get attr[Nfeature_list_dense]."));
+        TbeGetName(op), string("failed to get attr[Nfeature_list_dense]."));
     return GRAPH_FAILED;
   }
 
   std::vector<ge::DataType> context_dense_types;
   if (op.GetAttr("Tcontext_dense", context_dense_types) != GRAPH_SUCCESS) {
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(
-        op.GetName(), string("failed to get attr[Tcontext_dense]."));
+        TbeGetName(op), string("failed to get attr[Tcontext_dense]."));
     return GRAPH_FAILED;
   }
 
@@ -483,7 +483,7 @@ IMPLEMT_INFERFUNC(ParseSingleSequenceExample, ParseSingleSequenceExampleInfer) {
   if (op.GetAttr("feature_list_sparse_types", feature_list_sparse_types) !=
       GRAPH_SUCCESS) {
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(
-        op.GetName(), string("failed to get attr[context_sparse_types]."));
+        TbeGetName(op), string("failed to get attr[context_sparse_types]."));
     return GRAPH_FAILED;
   }
 
@@ -491,7 +491,7 @@ IMPLEMT_INFERFUNC(ParseSingleSequenceExample, ParseSingleSequenceExampleInfer) {
   if (op.GetAttr("feature_list_dense_types", feature_list_dense_types) !=
       GRAPH_SUCCESS) {
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(
-        op.GetName(), string("failed to get attr[feature_list_dense_types]."));
+        TbeGetName(op), string("failed to get attr[feature_list_dense_types]."));
     return GRAPH_FAILED;
   }
 
@@ -499,7 +499,7 @@ IMPLEMT_INFERFUNC(ParseSingleSequenceExample, ParseSingleSequenceExampleInfer) {
   if (op.GetAttr("context_dense_shapes", context_dense_shapes) !=
       GRAPH_SUCCESS) {
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(
-        op.GetName(), string("failed to get attr[context_dense_shapes]."));
+        TbeGetName(op), string("failed to get attr[context_dense_shapes]."));
     return GRAPH_FAILED;
   }
 
@@ -510,7 +510,7 @@ IMPLEMT_INFERFUNC(ParseSingleSequenceExample, ParseSingleSequenceExampleInfer) {
       err_msg = ConcatString("invalid data type[", context_dense_dt,
                              "] of attr[Tcontext_dense], should be "
                              "DT_INT64, DT_FLOAT or DT_STRING");
-      AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+      AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
       return GRAPH_FAILED;
     }
   }
@@ -521,7 +521,7 @@ IMPLEMT_INFERFUNC(ParseSingleSequenceExample, ParseSingleSequenceExampleInfer) {
       err_msg = ConcatString("invalid data type[", feature_list_sparse_dt,
                              "] of attr[feature_list_sparse_types], should be "
                              "DT_INT64, DT_FLOAT or DT_STRING");
-      AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+      AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
       return GRAPH_FAILED;
     }
   }
@@ -530,24 +530,24 @@ IMPLEMT_INFERFUNC(ParseSingleSequenceExample, ParseSingleSequenceExampleInfer) {
 
   GeShape serialized_shape;
   auto serialized_desc = op_desc->MutableInputDesc(0);
-  if (WithRank(serialized_desc, 0, serialized_shape, op.GetName().c_str())
+  if (WithRank(serialized_desc, 0, serialized_shape, TbeGetName(op).c_str())
       != GRAPH_SUCCESS) {
     err_msg = GetShapeErrMsg(
         0, DebugString(serialized_desc->GetShape().GetDims()), "scalar ");
     err_msg = string("failed to call WithRank function, ") + err_msg;
-    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
   int64_t num_examples = serialized_shape.GetDim(0);
 
   GeShape unused_shape;
   auto unused_desc = op_desc->MutableInputDesc(1);
-  if (WithRank(unused_desc, 1, unused_shape, op.GetName().c_str())
+  if (WithRank(unused_desc, 1, unused_shape, TbeGetName(op).c_str())
       != GRAPH_SUCCESS) {
     err_msg =
         GetShapeErrMsg(1, DebugString(unused_desc->GetShape().GetDims()), "1D");
     err_msg = string("failed to call WithRank function, ") + err_msg;
-    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -634,7 +634,7 @@ IMPLEMT_INFERFUNC(ParseSingleSequenceExample, ParseSingleSequenceExampleInfer) {
           num_examples, "] and ", i, "th shape[",
           DebugString(feature_list_dense_shapes[i]),
           "] of attr[feature_list_dense_shapes]");
-      AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+      AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
       return GRAPH_FAILED;
     }
     auto temp_feature_list_dense_values_desc =

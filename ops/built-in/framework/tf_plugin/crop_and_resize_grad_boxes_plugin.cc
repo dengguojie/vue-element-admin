@@ -36,7 +36,7 @@ Status ParseCropAndResizeGradBoxes(const Message* op_src, ge::Operator& op) {
   input_tensor1.SetFormat(ge::FORMAT_NHWC);
   auto ret1 = op.UpdateInputDesc("images", input_tensor1);
   if ((ret0 != ge::GRAPH_SUCCESS) || (ret1 != ge::GRAPH_SUCCESS)) {
-    OP_LOGE(op.GetName().c_str(), "update input format failed.");
+    OP_LOGE(TbeGetName(op).c_str(), "update input format failed.");
     return FAILED;
   }
   return SUCCESS;

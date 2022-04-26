@@ -25,7 +25,7 @@ Status AutoMappingFnUnpack(const google::protobuf::Message* op_src, ge::Operator
   map<string, pair<string, string>> value;
   value["out"] = pair<string, string>("y", "num");
   if (AutoMappingFnDynamic(op_src, op, value) != SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "AutoMappingFn failed.");
+    OP_LOGE(TbeGetName(op).c_str(), "AutoMappingFn failed.");
     return FAILED;
   }
   return SUCCESS;

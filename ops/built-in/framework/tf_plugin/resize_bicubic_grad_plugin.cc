@@ -36,7 +36,7 @@ Status ParseResizeBicubicGrad(const Message* op_src, ge::Operator& op) {
   auto ret0 = op.UpdateInputDesc("grads", input_tensor);
   auto ret1 = op.UpdateInputDesc("original_image", input_tensor1);
   if ((ret0 != ge::GRAPH_SUCCESS) || (ret1 != ge::GRAPH_SUCCESS)) {
-    OP_LOGE(op.GetName().c_str(), "update input format failed.");
+    OP_LOGE(TbeGetName(op).c_str(), "update input format failed.");
     return FAILED;
   }
   ge::TensorDesc output_tensor = op.GetOutputDesc("y");
@@ -44,7 +44,7 @@ Status ParseResizeBicubicGrad(const Message* op_src, ge::Operator& op) {
   output_tensor.SetFormat(ge::FORMAT_NHWC);
   auto ret_output = op.UpdateOutputDesc("y", output_tensor);
   if (ret_output != ge::GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "update output format failed.");
+    OP_LOGE(TbeGetName(op).c_str(), "update output format failed.");
     return FAILED;
   }
   return SUCCESS;

@@ -89,7 +89,7 @@ FMK_FUNC_HOST_VISIBILITY FMK_FUNC_DEV_VISIBILITY domi::Status ConvertToOpDesc(co
                                                                               ge::OpDescPtr op_def) {
   GE_RETURN_WITH_LOG_IF_TRUE(op_def == nullptr, "parameter is null.");
   GE_CHK_BOOL_RET_STATUS(op.GetSchema(), domi::PARAM_INVALID, "Op schema is null, op type: %s", op.GetType().c_str());
-  op_def->SetName(op.GetName());
+  op_def->SetName(TbeGetName(op));
   op_def->SetType(op.GetType());
   GE_IF_BOOL_EXEC(op.GetType() == ge::YOLO, op_def->SetType(ge::REGION));
 
@@ -125,7 +125,7 @@ FMK_FUNC_HOST_VISIBILITY FMK_FUNC_DEV_VISIBILITY domi::Status ConvertToOpDesc(co
     }
   }
   GE_CHK_BOOL_RET_STATUS(op.GetSchema()->Verify(op_def), domi::PARAM_INVALID, "Op schema verify failed, op name: %s",
-                         op.GetName().c_str());
+                         TbeGetName(op).c_str());
 
   return domi::SUCCESS;
 }

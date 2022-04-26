@@ -60,7 +60,7 @@ static Status ParseOpToGraphGather(const ge::Operator& op, Graph& graph) {
 
   ge::Tensor const_value;
   if (op.GetAttr("constant_values", const_value) != SUCCESS) {
-    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "get const_value from op failed");
+    ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "get const_value from op failed");
     return FAILED;
   }
 

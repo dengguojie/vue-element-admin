@@ -55,7 +55,7 @@ static Status ParseOpToGraphReduceMean(const ge::Operator& op, Graph& graph) {
 
   std::vector<int> axes = {};
   if (op.GetAttr("axes", axes) != SUCCESS) {
-    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "get axes from op failed");
+    ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "get axes from op failed");
     return FAILED;
   }
 
@@ -73,7 +73,7 @@ static Status ParseOpToGraphReduceMean(const ge::Operator& op, Graph& graph) {
 
   bool keep_dims = false;
   if (op.GetAttr("keep_dims", keep_dims) != SUCCESS) {
-    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "get keep_dims from op failed");
+    ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "get keep_dims from op failed");
     return FAILED;
   }
   Reducemean.set_attr_keep_dims(keep_dims);

@@ -53,12 +53,12 @@ Status ParseParamsTranspose(const Message *op_src, ge::Operator &op_dest) {
 Status ParseOpToGraphTranspose(const ge::Operator& op, Graph & graph){
   std::vector<int32_t> perm;
   if (op.GetAttr("perm", perm) != SUCCESS){
-    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "Failed to get perm from operator");
+    ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "Failed to get perm from operator");
     return FAILED;
   }
   // TODO: there is default action in onnx
   if (perm.empty()){
-    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "must input the attr of perm");
+    ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "must input the attr of perm");
     return FAILED;
   }
 

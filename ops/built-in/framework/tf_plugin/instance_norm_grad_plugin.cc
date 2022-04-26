@@ -29,10 +29,10 @@
 namespace domi {
 Status InstanceNormGradParserParams(const std::vector<const google::protobuf::Message*> inside_nodes,
                                     ge::Operator& op) {
-  OP_LOGI(op.GetName().c_str(), "Enter instance norm grad fusion parser.");
+  OP_LOGI(TbeGetName(op).c_str(), "Enter instance norm grad fusion parser.");
   auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
   if (op_desc == nullptr) {
-    OP_LOGE(op.GetName().c_str(), "Get op desc failed.");
+    OP_LOGE(TbeGetName(op).c_str(), "Get op desc failed.");
     return FAILED;
   }
 

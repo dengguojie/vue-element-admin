@@ -33,10 +33,10 @@ static const char* const kForgetBias = "lstm_cell/add/y";
 static const char* const kTransposeNode = "Transpose";
 
 Status DynamicRNNParserParams(const std::vector<const google::protobuf::Message*> inside_nodes, ge::Operator& op) {
-  OP_LOGI(op.GetName().c_str(), "Enter DynamicRNN fusion parser.");
+  OP_LOGI(TbeGetName(op).c_str(), "Enter DynamicRNN fusion parser.");
   auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
   if (op_desc == nullptr) {
-    OP_LOGE(op.GetName().c_str(), "Get op desc failed.");
+    OP_LOGE(TbeGetName(op).c_str(), "Get op desc failed.");
     return FAILED;
   }
 
@@ -45,16 +45,16 @@ Status DynamicRNNParserParams(const std::vector<const google::protobuf::Message*
   for (auto node : inside_nodes) {
     const NodeDef* node_def = reinterpret_cast<const NodeDef*>(node);
     if (node_def == nullptr) {
-      OP_LOGE(op.GetName().c_str(), "Node_def is nullptr.");
+      OP_LOGE(TbeGetName(op).c_str(), "Node_def is nullptr.");
       return FAILED;
     }
-    OP_LOGD(op.GetName().c_str(), "DynamicRNN NodeDef is %s ", node_def->name().c_str());
+    OP_LOGD(TbeGetName(op).c_str(), "DynamicRNN NodeDef is %s ", node_def->name().c_str());
     if (node_def->op() == kTransposeNode) {
       time_major = false;
     }
     if (node_def->name().find(kForgetBias) != string::npos) {
       if (ParseParamFromConst(node_def, forget_bias) != SUCCESS) {
-        OP_LOGE(op.GetName().c_str(), "ParseParamFromConst data from const NodeDef %s failed",
+        OP_LOGE(TbeGetName(op).c_str(), "ParseParamFromConst data from const NodeDef %s failed",
                 node_def->name().c_str());
         return PARAM_INVALID;
       }
@@ -62,7 +62,7 @@ Status DynamicRNNParserParams(const std::vector<const google::protobuf::Message*
   }
   op.SetAttr("time_major", time_major);
   op.SetAttr("forget_bias", forget_bias);
-  OP_LOGD(op.GetName().c_str(), "parser stage set DynamicRNN's attr time_major is %s forget_bias is %.1f",
+  OP_LOGD(TbeGetName(op).c_str(), "parser stage set DynamicRNN's attr time_major is %s forget_bias is %.1f",
           time_major ? "true" : "false", forget_bias);
 
   ge::GeTensorDesc input_desc = op_desc->GetInputDesc(wRnnInputPosition);
@@ -70,7 +70,7 @@ Status DynamicRNNParserParams(const std::vector<const google::protobuf::Message*
   input_desc.SetFormat(ge::FORMAT_HWCN);
 
   if (op_desc->UpdateInputDesc(wRnnInputPosition, input_desc) != ge::GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Update input desc fail, index:%u.", wRnnInputPosition);
+    OP_LOGE(TbeGetName(op).c_str(), "Update input desc fail, index:%u.", wRnnInputPosition);
     return FAILED;
   }
 

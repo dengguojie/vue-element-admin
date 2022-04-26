@@ -76,7 +76,7 @@ static Status ParseOpToGraphReduceSum(const Operator& op, Graph& graph)
   auto data0 = op::Data("data0").set_attr_index(0);
   ge::Tensor value;
   if (op.GetAttr("axes", value) != SUCCESS) {
-      ONNX_PLUGIN_LOGE(op.GetName().c_str(), "get value from op failed");
+      ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "get value from op failed");
       return FAILED;
   }
 
@@ -85,7 +85,7 @@ static Status ParseOpToGraphReduceSum(const Operator& op, Graph& graph)
 
   bool flag = false;
   if (op.GetAttr("keep_dims", flag) != SUCCESS) {
-      ONNX_PLUGIN_LOGE(op.GetName().c_str(), "get keep_dims from op failed");
+      ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "get keep_dims from op failed");
       return FAILED;
   }
   reducesum.set_attr_keep_dims(flag);
@@ -134,17 +134,17 @@ static Status ParseOpToGraphReduceSum13(const Operator& op, Graph& graph)
   }
   bool flag = false;
   if (op.GetAttr("keep_dims", flag) != SUCCESS) {
-    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "get keep_dims from op failed");
+    ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "get keep_dims from op failed");
     return FAILED;
   }
   int input_num = 1;
   if (op.GetAttr("input_size", input_num) != SUCCESS) {
-    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "get input_num from op failed");
+    ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "get input_num from op failed");
     return FAILED;
   }
   int empty_axes = 0;
   if (op.GetAttr("noop_with_empty_axes", empty_axes) != SUCCESS) {
-    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "get attribute noop_with_empty_axes failed");
+    ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "get attribute noop_with_empty_axes failed");
     return FAILED;
   }
   if (input_num == 1 && empty_axes == 0) {
@@ -175,7 +175,7 @@ static Status ParseOpToGraphReduceSum13(const Operator& op, Graph& graph)
     output_indexs.emplace_back(reducesum13, vector<std::size_t>{0});
     graph.SetInputs(inputs).SetOutputs(output_indexs);
   } else {
-    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "Input num or set attr is error");
+    ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "Input num or set attr is error");
     return FAILED;
   }
   return SUCCESS;

@@ -43,7 +43,7 @@ int64_t MultiplyWithoutOverflow(const int64_t x, const int64_t y) {
 graphStatus GetRowPartitionTypes(Operator& op, std::vector<RowPartitionType>& row_partition_types) {
   std::vector<std::string> partition_types;
   if (op.GetAttr("row_partition_types", partition_types) != GRAPH_SUCCESS) {
-    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), GetInputInvalidErrMsg("row_partition_types"));
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), GetInputInvalidErrMsg("row_partition_types"));
     return GRAPH_FAILED;
   }
 
@@ -59,7 +59,7 @@ graphStatus GetRowPartitionTypes(Operator& op, std::vector<RowPartitionType>& ro
     const auto iter = string_to_type->find(type_str);
     if (iter == string_to_type->end()) {
       delete string_to_type;
-      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), OtherErrMsg("Unknown string for partition info type."));
+      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), OtherErrMsg("Unknown string for partition info type."));
       return GRAPH_FAILED;
     }
     row_partition_types.push_back(iter->second);
@@ -258,9 +258,9 @@ graphStatus RaggedTensorToTensorShapeFn(Operator& op) {
     op.UpdateOutputDesc("result", out_desc);
     return GRAPH_SUCCESS;
   }
-  if (MakeShapeFromShapeTensorTreatScalarAsUnknownShape(tensor, shape_handle, op.GetName().c_str()) !=
+  if (MakeShapeFromShapeTensorTreatScalarAsUnknownShape(tensor, shape_handle, TbeGetName(op).c_str()) !=
       GRAPH_SUCCESS) {
-    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), OtherErrMsg("MakeShapeFromShapeTensorTreatScalarAsUnknownShape failed"));
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), OtherErrMsg("MakeShapeFromShapeTensorTreatScalarAsUnknownShape failed"));
     return GRAPH_FAILED;
   }
 
@@ -268,7 +268,7 @@ graphStatus RaggedTensorToTensorShapeFn(Operator& op) {
 
   std::vector<RowPartitionType> row_partition_types;
   if (GetRowPartitionTypes(op, row_partition_types) != GRAPH_SUCCESS) {
-    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), OtherErrMsg("GetRowPartitionTypes failed"));
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), OtherErrMsg("GetRowPartitionTypes failed"));
     return GRAPH_FAILED;
   }
 
@@ -280,27 +280,27 @@ graphStatus RaggedTensorToTensorShapeFn(Operator& op) {
   TensorShape default_value_shape;
   ShapeHandleToTensorShape(op.GetInputDesc("default_value").GetShape(), default_value_shape);
 
-  if (ValidateDefaultValueShape(default_value_shape, value_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), OtherErrMsg(ConcatString("Validate default value shape failed")));
+  if (ValidateDefaultValueShape(default_value_shape, value_shape, TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), OtherErrMsg(ConcatString("Validate default value shape failed")));
     return GRAPH_FAILED;
   }
 
   TensorShape output_shape;
-  if (CombineRaggedTensorToTensorShapes(ragged_rank, shape, value_shape, output_shape, op.GetName().c_str()) !=
+  if (CombineRaggedTensorToTensorShapes(ragged_rank, shape, value_shape, output_shape, TbeGetName(op).c_str()) !=
       GRAPH_SUCCESS) {
-    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), OtherErrMsg("CombineRaggedTensorToTensorShapes failed"));
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), OtherErrMsg("CombineRaggedTensorToTensorShapes failed"));
     return GRAPH_FAILED;
   }
 
   Shape output_shape_handle;
-  if (MakeShapeFromTensorShape(output_shape, output_shape_handle, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), OtherErrMsg("MakeShapeFromShapeProto failed"));
+  if (MakeShapeFromTensorShape(output_shape, output_shape_handle, TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), OtherErrMsg("MakeShapeFromShapeProto failed"));
     return GRAPH_FAILED;
   }
 
   out_desc.SetShape(output_shape_handle);
   if (op.UpdateOutputDesc("result", out_desc) != GRAPH_SUCCESS) {
-    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), OtherErrMsg("update result desc failed."));
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), OtherErrMsg("update result desc failed."));
     return GRAPH_FAILED;
   }
 

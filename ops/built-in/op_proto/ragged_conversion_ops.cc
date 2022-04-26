@@ -34,37 +34,37 @@ IMPLEMT_INFERFUNC(RaggedTensorToSparse, RaggedTensorToSparseInfer) {
   int64_t num_splits;
   std::string err_msg;
   if (op.GetAttr("RAGGED_RANK", num_splits) != GRAPH_SUCCESS) {
-    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), string("get attr[RAGGED_RANK] failed"));
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), string("get attr[RAGGED_RANK] failed"));
     return GRAPH_FAILED;
   }
   if (num_splits < 1) {
     err_msg = ConcatString("check attr[RAGGED_RANK] failed, must >= 1, got ",
                            num_splits);
-    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
   TensorDesc rt_dense_values_desc = op.GetInputDesc(num_splits);
   Shape rt_dense_values_shape;
   if (WithRankAtLeast(rt_dense_values_desc, 1, rt_dense_values_shape,
-                      op.GetName().c_str()) != GRAPH_SUCCESS) {
+                      TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
     err_msg = ConcatString(
         "failed to call WithRankAtLeast function, input[rt_dense_values] rank "
         "must >= 1, got rank[",
         rt_dense_values_desc.GetShape().GetDimNum(), "]");
-    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
 
   for (int64_t i = 0; i < num_splits; ++i) {
     TensorDesc splits_desc = op.GetDynamicInputDesc("rt_nested_splits", i);
     Shape splits_shape;
-    if (WithRank(splits_desc, 1, splits_shape, op.GetName().c_str()) !=
+    if (WithRank(splits_desc, 1, splits_shape, TbeGetName(op).c_str()) !=
         GRAPH_SUCCESS) {
       err_msg =
           ConcatString("failed to call WithRank function, input[",
                        splits_desc.GetName(), "] rank must be 1, got rank[",
                        splits_desc.GetShape().GetDimNum(), "]");
-      AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+      AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
       return GRAPH_FAILED;
     }
   }
@@ -99,7 +99,7 @@ IMPLEMT_INFERFUNC(RaggedTensorToSparse, RaggedTensorToSparseInfer) {
   Shape sparse_indices_output;
   if (Matrix(num_values, dense_dims, sparse_indices_output) != GRAPH_SUCCESS) {
     AICPU_INFER_SHAPE_CALL_ERR_REPORT(
-        op.GetName(),
+        TbeGetName(op),
         string("failed to call Matrix for num_values and dense_dims"));
     return GRAPH_FAILED;
   }
@@ -109,7 +109,7 @@ IMPLEMT_INFERFUNC(RaggedTensorToSparse, RaggedTensorToSparseInfer) {
   if (op.UpdateOutputDesc("sparse_indices", sparse_indices_desc) !=
       GRAPH_SUCCESS) {
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(
-        op.GetName(), string("update output[sparse_indices] desc failed"));
+        TbeGetName(op), string("update output[sparse_indices] desc failed"));
     return GRAPH_FAILED;
   }
 
@@ -119,7 +119,7 @@ IMPLEMT_INFERFUNC(RaggedTensorToSparse, RaggedTensorToSparseInfer) {
   if (op.UpdateOutputDesc("sparse_values", sparse_values_desc) !=
       GRAPH_SUCCESS) {
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(
-        op.GetName(), string("update output[sparse_values] desc failed"));
+        TbeGetName(op), string("update output[sparse_values] desc failed"));
     return GRAPH_FAILED;
   }
 
@@ -129,7 +129,7 @@ IMPLEMT_INFERFUNC(RaggedTensorToSparse, RaggedTensorToSparseInfer) {
   if (op.UpdateOutputDesc("sparse_dense_shape", sparse_dense_shape_desc) !=
       GRAPH_SUCCESS) {
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(
-        op.GetName(), string("update output[sparse_dense_shape] desc failed"));
+        TbeGetName(op), string("update output[sparse_dense_shape] desc failed"));
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -138,7 +138,7 @@ INFER_FUNC_REG(RaggedTensorToSparse, RaggedTensorToSparseInfer);
 
 IMPLEMT_INFERFUNC(RaggedTensorToTensor, RaggedTensorToTensorInfer) {
   if (RaggedTensorToTensorShapeFn(op) != GRAPH_SUCCESS) {
-    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(),
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op),
       std::string("failed to call RaggedTensorToTensorShapeFn function"));
     return GRAPH_FAILED;
   }

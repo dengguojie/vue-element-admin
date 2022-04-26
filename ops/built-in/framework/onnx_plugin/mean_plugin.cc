@@ -43,7 +43,7 @@ Status ParseParamsMean(const Message* op_src, ge::Operator& op_dest) {
 Status ParseOpToGraphMean(const ge::Operator& op, Graph& graph) {
   int n_num = 0;
   if (op.GetAttr("N", n_num) != SUCCESS) {
-    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "get attribute N failed");
+    ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "get attribute N failed");
     return FAILED;
   }
   std::vector<ge::Operator> inputs;

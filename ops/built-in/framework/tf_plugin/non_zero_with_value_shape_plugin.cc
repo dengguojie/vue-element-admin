@@ -30,19 +30,19 @@
 namespace domi {
 Status ParseParamsNonZeroWithValueShape(const Message* op_src, ge::Operator& op) {
   if (AutoMappingFn(op_src, op) != SUCCESS) {
-      CUBE_INNER_ERR_REPORT_PLUGIN(op.GetName().c_str(), "AutoMappingFn failed.");
+      CUBE_INNER_ERR_REPORT_PLUGIN(TbeGetName(op).c_str(), "AutoMappingFn failed.");
       return FAILED;
   }
 
   auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
   if (op_desc == nullptr) {
-      CUBE_INNER_ERR_REPORT_PLUGIN(op.GetName().c_str(), "GetOpDescFromOperator got nullptr failed.");
+      CUBE_INNER_ERR_REPORT_PLUGIN(TbeGetName(op).c_str(), "GetOpDescFromOperator got nullptr failed.");
       return FAILED;
   }
 
   const auto output_desc = op_desc->MutableOutputDesc("out_value");
   if (output_desc == nullptr) {
-    OP_LOGE(op.GetName().c_str(), "get output value failed.");
+    OP_LOGE(TbeGetName(op).c_str(), "get output value failed.");
     return FAILED;
   }
   ge::TensorUtils::SetReuseInput(*output_desc, true);
@@ -50,7 +50,7 @@ Status ParseParamsNonZeroWithValueShape(const Message* op_src, ge::Operator& op)
 
   const auto output_desc1 = op_desc->MutableOutputDesc("out_index");
   if (output_desc1 == nullptr) {
-    OP_LOGE(op.GetName().c_str(), "get output index failed.");
+    OP_LOGE(TbeGetName(op).c_str(), "get output index failed.");
     return FAILED;
   }
   ge::TensorUtils::SetReuseInput(*output_desc1, true);

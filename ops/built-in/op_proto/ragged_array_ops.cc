@@ -38,41 +38,41 @@ IMPLEMT_INFERFUNC(RaggedGather, RaggedGatherInfer) {
   }
 
   Shape indices;
-  if (WithRank(op.get_input_desc_indices(), num_splits - PARAMS_RAGGED_RANK + 1, indices, op.GetName().c_str()) !=
+  if (WithRank(op.get_input_desc_indices(), num_splits - PARAMS_RAGGED_RANK + 1, indices, TbeGetName(op).c_str()) !=
       GRAPH_SUCCESS) {
     std::string err_msg = GetShapeErrMsg(0,
       DebugString(op.get_input_desc_indices().GetShape().GetDims()), "scalar");
     err_msg = string("failed to call WithRank, ") + err_msg;
-    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
 
   for (int64_t i = 0; i < PARAMS_RAGGED_RANK; ++i) {
     Shape indices;
-    if (WithRank(op.GetDynamicInputDesc("params_nested_splits", i), 1, indices, op.GetName().c_str()) !=
+    if (WithRank(op.GetDynamicInputDesc("params_nested_splits", i), 1, indices, TbeGetName(op).c_str()) !=
         GRAPH_SUCCESS) {
       std::string err_msg = GetShapeErrMsg(0,
         DebugString(op.GetDynamicInputDesc("params_nested_splits", i).GetShape().GetDims()), "1D");
       err_msg = string("failed to call WithRank, ") + err_msg;
-      AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+      AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
       return GRAPH_FAILED;
     }
   }
  
   Shape params_dense_values;
-  if (WithRankAtLeast(op.get_input_desc_params_dense_values(), 1, params_dense_values, op.GetName().c_str()) !=
+  if (WithRankAtLeast(op.get_input_desc_params_dense_values(), 1, params_dense_values, TbeGetName(op).c_str()) !=
       GRAPH_SUCCESS) {
     std::string err_msg = GetShapeErrMsg(
         0, DebugString(op.get_input_desc_params_dense_values().GetShape().GetDims()), "at least 1D");
     err_msg = string("failed to call WithRankAtLeast function, ") + err_msg;
-    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
 
   DataType Tsplits_type;
   if (op.GetAttr("Tsplits", Tsplits_type) != GRAPH_SUCCESS) {
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(
-      op.GetName(), string("failed to get attr[Tsplits]"));
+      TbeGetName(op), string("failed to get attr[Tsplits]"));
   }
   DataType Tvalues_type = op.GetInputDesc("params_dense_values").GetDataType();
   std::vector<int64_t> unknow_dim_vec(1, UNKNOWN_DIM);
@@ -82,24 +82,24 @@ IMPLEMT_INFERFUNC(RaggedGather, RaggedGatherInfer) {
     y_tensor.SetShape(Shape(unknow_dim_vec));
     if (op.UpdateDynamicOutputDesc("output_nested_splits", i, y_tensor) != GRAPH_SUCCESS) {
       AICPU_INFER_SHAPE_INNER_ERR_REPORT(
-        op.GetName(), string("fail to update output[output_nested_splits] desc."));
+        TbeGetName(op), string("fail to update output[output_nested_splits] desc."));
       return GRAPH_FAILED;
     }
   }
 
   Shape value(ge::UNKNOWN_SHAPE);
   Shape values(ge::UNKNOWN_SHAPE);
-  if (SubShape(params_dense_values, 1, params_dense_values.GetDimNum(), 1, value, op.GetName().c_str()) !=
+  if (SubShape(params_dense_values, 1, params_dense_values.GetDimNum(), 1, value, TbeGetName(op).c_str()) !=
       GRAPH_SUCCESS) {
     std::string err_msg = ConcatString("failed to call SubShape function to subshape from 1 to",
       params_dense_values.GetDimNum(), " of input[params_dense_values] shape", DebugString(params_dense_values.GetDims()));
-    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
   if (Concatenate(Shape(unknow_dim_vec), value, values) != GRAPH_SUCCESS) {
     std:: string err_msg = ConcatString("failed to call Concatenate function, output shape",
       DebugString(Shape(unknow_dim_vec).GetDims())," and another shape", DebugString(value.GetDims()));
-    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -127,7 +127,7 @@ IMPLEMT_INFERFUNC(RaggedGather, RaggedGatherInfer) {
   }
 
   if (op.UpdateOutputDesc("output_dense_values", outputDesc) != GRAPH_SUCCESS) {
-    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), string("fail to update output[output_dense_values] desc."));
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), string("fail to update output[output_dense_values] desc."));
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;

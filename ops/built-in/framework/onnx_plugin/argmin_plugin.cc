@@ -61,12 +61,12 @@ Status ParseParamsArgMin(const Message *op_src, ge::Operator &op_dest) {
 static Status ParseOpToGraphArgMin(const Operator& op, Graph& graph) {
   int keep_dims = 1;
   if (op.GetAttr("keep_dims", keep_dims) != SUCCESS) {
-    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "get keep_dims from op failed");
+    ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "get keep_dims from op failed");
     return FAILED;
   }
   ge::Tensor axis;
   if (op.GetAttr("dimension", axis) != SUCCESS) {
-    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "get dimension from op failed");
+    ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "get dimension from op failed");
     return FAILED;
   }
 

@@ -73,7 +73,7 @@ Status ParseOpToGraphMin(const ge::Operator& op, Graph& graph) {
   std::vector<ge::Operator> inputs;
   std::vector<std::pair<ge::Operator, std::vector<size_t>>> output_indexs;
   if (input_size == 0) {
-    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "input_size must ge 1");
+    ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "input_size must ge 1");
     return FAILED;
   } else if (input_size == 1) {
     auto data_op = op::Data("data").set_attr_index(0);

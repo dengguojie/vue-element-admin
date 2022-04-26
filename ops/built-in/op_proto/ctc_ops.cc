@@ -30,24 +30,24 @@ IMPLEMT_INFERFUNC(CTCLoss, CTCLossInfer) {
   Shape labels_indices;
   Shape labels_values;
   Shape sequence_length;
-  if (WithRank(op.GetInputDesc(0), 3, inputs, op.GetName().c_str()) != GRAPH_SUCCESS) {
+  if (WithRank(op.GetInputDesc(0), 3, inputs, TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
     std::string err_msg = GetShapeErrMsg(0, DebugString(op.GetInputDesc(0).GetShape().GetDims()), "3D");
-    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
-  if (WithRank(op.GetInputDesc(1), 2, labels_indices, op.GetName().c_str()) != GRAPH_SUCCESS) {
+  if (WithRank(op.GetInputDesc(1), 2, labels_indices, TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
     std::string err_msg = GetShapeErrMsg(1, DebugString(op.GetInputDesc(1).GetShape().GetDims()), "2D");
-    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
-  if (WithRank(op.GetInputDesc(2), 1, labels_values, op.GetName().c_str()) != GRAPH_SUCCESS) {
+  if (WithRank(op.GetInputDesc(2), 1, labels_values, TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
     std::string err_msg = GetShapeErrMsg(2, DebugString(op.GetInputDesc(2).GetShape().GetDims()), "1D");
-    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
-  if (WithRank(op.GetInputDesc(3), 1, sequence_length, op.GetName().c_str()) != GRAPH_SUCCESS) {
+  if (WithRank(op.GetInputDesc(3), 1, sequence_length, TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
     std::string err_msg = GetShapeErrMsg(3, DebugString(op.GetInputDesc(3).GetShape().GetDims()), "1D");
-    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -58,7 +58,7 @@ IMPLEMT_INFERFUNC(CTCLoss, CTCLossInfer) {
     std::string err_msg = ConcatString("failed to call Merge function, 0th dim[",
                                        dim1, "] of input[labels_indices] not equal 0th dim[",
                                        dim2, "] of input[labels_values]");
-    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
   int64_t dim3 = inputs.GetDim(1);
@@ -68,7 +68,7 @@ IMPLEMT_INFERFUNC(CTCLoss, CTCLossInfer) {
     std::string err_msg = ConcatString("failed to call Merge function, 1th dim[",
                                        dim3, "] of input[inputs] not equal 0th dim[",
                                        dim4, "] of input[sequence_length]");
-    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
   inputs.SetDim(1, batch_size);
@@ -78,14 +78,14 @@ IMPLEMT_INFERFUNC(CTCLoss, CTCLossInfer) {
   loss_desc.SetShape(Shape({batch_size}));
   loss_desc.SetDataType(type);
   if (op.UpdateOutputDesc("loss", loss_desc) != GRAPH_SUCCESS) {
-    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), std::string("update output[loss] desc failed."));
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), std::string("update output[loss] desc failed."));
     return GRAPH_FAILED;
   }
   TensorDesc gradient_desc = op.GetOutputDesc("gradient");
   gradient_desc.SetShape(Shape(inputs));
   gradient_desc.SetDataType(type);
   if (op.UpdateOutputDesc("gradient", gradient_desc) != GRAPH_SUCCESS) {
-    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), std::string("update output[gradient] desc failed."));
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), std::string("update output[gradient] desc failed."));
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -98,17 +98,17 @@ IMPLEMT_INFERFUNC(CTCGreedyDecoder, CTCGreedyDecoderInfer) {
 
   auto inputs_desc = op_desc->MutableInputDesc(0);
   GeShape inputs_shape;
-  if (WithRank(inputs_desc, 3, inputs_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
+  if (WithRank(inputs_desc, 3, inputs_shape, TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
     std::string err_msg = GetShapeErrMsg(0, DebugString(op.GetInputDesc(0).GetShape().GetDims()), "3D");
-    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
 
   auto sequence_length_desc = op_desc->MutableInputDesc(1);
   GeShape sequence_length_shape;
-  if (WithRank(sequence_length_desc, 1, sequence_length_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
+  if (WithRank(sequence_length_desc, 1, sequence_length_shape, TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
     std::string err_msg = GetShapeErrMsg(1, DebugString(op.GetInputDesc(1).GetShape().GetDims()), "1D");
-    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -117,7 +117,7 @@ IMPLEMT_INFERFUNC(CTCGreedyDecoder, CTCGreedyDecoderInfer) {
     std::string err_msg = ConcatString("failed to call Merge function, 1th dim[",
                                        inputs_shape.GetDim(1), "] of input[inputs] not equal 0th dim[",
                                        sequence_length_shape.GetDim(0), "] of input[sequence_length]");
-    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -144,19 +144,19 @@ INFER_FUNC_REG(CTCGreedyDecoder, CTCGreedyDecoderInfer);
 IMPLEMT_INFERFUNC(CTCBeamSearchDecoder, CTCBeamSearchDecoderInfer) {
   Shape inputs_shape;
   auto inputs_desc = op.GetInputDesc(0);
-  if (WithRank(inputs_desc, 3, inputs_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
+  if (WithRank(inputs_desc, 3, inputs_shape, TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
     std::string err_msg = GetShapeErrMsg(0, DebugString(inputs_desc.GetShape().GetDims()), "3D");
     err_msg = string("failed to call WithRank, ") + err_msg;
-    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
 
   Shape sequence_length_shape;
   auto sequence_length_desc = op.GetInputDesc(1);
-  if (WithRank(sequence_length_desc, 1, sequence_length_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
+  if (WithRank(sequence_length_desc, 1, sequence_length_shape, TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
     std::string err_msg = GetShapeErrMsg(1, DebugString(sequence_length_desc.GetShape().GetDims()), "1D");
     err_msg = string("failed to call WithRank, ") + err_msg;
-    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -165,13 +165,13 @@ IMPLEMT_INFERFUNC(CTCBeamSearchDecoder, CTCBeamSearchDecoderInfer) {
     std::string err_msg = ConcatString("failed to call Merge function, 1th dim[", inputs_shape.GetDim(1),
                                        "] of input[inputs] not equal 0th dim[", sequence_length_shape.GetDim(0),
                                        "] of input[sequence_length]");
-    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
 
   int32_t top_paths;
   if (op.GetAttr("top_paths", top_paths) != GRAPH_SUCCESS) {
-    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op),
                                        string("get attr[top_paths] failed"));
     return GRAPH_FAILED;
   }
@@ -182,7 +182,7 @@ IMPLEMT_INFERFUNC(CTCBeamSearchDecoder, CTCBeamSearchDecoderInfer) {
     temp_desc.SetDataType(DT_INT64);
     if (op.UpdateDynamicOutputDesc("decoded_indices", i, temp_desc) != GRAPH_SUCCESS) {
       std::string err_msg = ConcatString("update description for output decoded_indices[", i,"] failed");
-      AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+      AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
       return GRAPH_FAILED;
     }
   }
@@ -193,7 +193,7 @@ IMPLEMT_INFERFUNC(CTCBeamSearchDecoder, CTCBeamSearchDecoderInfer) {
     temp_desc.SetDataType(DT_INT64);
     if (op.UpdateDynamicOutputDesc("decoded_values", i, temp_desc) != GRAPH_SUCCESS) {
       std::string err_msg = ConcatString("update description for dynimic output decoded_values[", i,"] failed");
-      AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+      AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
       return GRAPH_FAILED;
     }
   }
@@ -204,7 +204,7 @@ IMPLEMT_INFERFUNC(CTCBeamSearchDecoder, CTCBeamSearchDecoderInfer) {
     temp_desc.SetDataType(DT_INT64);
     if (op.UpdateDynamicOutputDesc("decoded_shape", i, temp_desc) != GRAPH_SUCCESS) {
       std::string err_msg = ConcatString("update description for dynimic output decoded_shape[", i,"] failed");
-      AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+      AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
       return GRAPH_FAILED;
     }
   }
@@ -213,7 +213,7 @@ IMPLEMT_INFERFUNC(CTCBeamSearchDecoder, CTCBeamSearchDecoderInfer) {
   log_probability_desc.SetShape(Shape({batch_size, top_paths}));
   log_probability_desc.SetDataType(inputs_desc.GetDataType());
   if (op.UpdateOutputDesc("log_probability", log_probability_desc) != GRAPH_SUCCESS) {
-    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), string("update description for output[log_probability] failed"));
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), string("update description for output[log_probability] failed"));
     return GRAPH_FAILED;
   }
 

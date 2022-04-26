@@ -44,47 +44,47 @@ IMPLEMT_VERIFIER(GenADC, GenADCVerify) {
   GeTensorDescPtr queryDesc = opDesc->MutableInputDesc("query");
   std::vector<int64_t> queryShape = queryDesc->MutableShape().GetDims();
   if (1 != queryShape.size()) {
-    OP_LOGE(op.GetName().c_str(), "Shape of query should be 1 dimensions.");
+    OP_LOGE(TbeGetName(op).c_str(), "Shape of query should be 1 dimensions.");
     return GRAPH_FAILED;
   }
   int64_t dimD = queryShape[0];
   if (0 != dimD % 16) {
-    OP_LOGE(op.GetName().c_str(), "Dimesion d should be multiple of 16.");
+    OP_LOGE(TbeGetName(op).c_str(), "Dimesion d should be multiple of 16.");
     return GRAPH_FAILED;
   }
 
   GeTensorDescPtr codeBookDesc = opDesc->MutableInputDesc("code_book");
   std::vector<int64_t> codeBookShape = codeBookDesc->MutableShape().GetDims();
   if (3 != codeBookShape.size()) {
-    OP_LOGE(op.GetName().c_str(), "Shape of code book should be 3 dimensions.");
+    OP_LOGE(TbeGetName(op).c_str(), "Shape of code book should be 3 dimensions.");
     return GRAPH_FAILED;
   }
   if (dimD != codeBookShape[0] * codeBookShape[2]) {
-    OP_LOGE(op.GetName().c_str(), "Failed to check dimensions: d = M * dsub.");
+    OP_LOGE(TbeGetName(op).c_str(), "Failed to check dimensions: d = M * dsub.");
     return GRAPH_FAILED;
   }
 
   GeTensorDescPtr centroidsDesc = opDesc->MutableInputDesc("centroids");
   std::vector<int64_t> centroidsShape = centroidsDesc->MutableShape().GetDims();
   if (2 != centroidsShape.size()) {
-    OP_LOGE(op.GetName().c_str(), "Shape of centroids should be 2 dimensions.");
+    OP_LOGE(TbeGetName(op).c_str(), "Shape of centroids should be 2 dimensions.");
     return GRAPH_FAILED;
   }
   if (dimD != centroidsShape[1]) {
-    OP_LOGE(op.GetName().c_str(), "The 2nd dimension of centroids should be equal to the 1st dimension of query.");
+    OP_LOGE(TbeGetName(op).c_str(), "The 2nd dimension of centroids should be equal to the 1st dimension of query.");
     return GRAPH_FAILED;
   }
 
   GeTensorDescPtr bucketListDesc = opDesc->MutableInputDesc("bucket_list");
   std::vector<int64_t> bucketListShape = bucketListDesc->MutableShape().GetDims();
   if (1 != bucketListShape.size()) {
-    OP_LOGE(op.GetName().c_str(), "Shape of bucket list should be 1 dimensions.");
+    OP_LOGE(TbeGetName(op).c_str(), "Shape of bucket list should be 1 dimensions.");
     return GRAPH_FAILED;
   }
 
   std::vector<std::string> inputs{"code_book", "centroids"};
   if (!CheckInputDtypeSame(op, inputs)) {
-    OP_LOGE(op.GetName().c_str(), "Input dtypes are not the same.");
+    OP_LOGE(TbeGetName(op).c_str(), "Input dtypes are not the same.");
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -129,7 +129,7 @@ VERIFY_FUNC_REG(GenADC, GenADCVerify);
 IMPLEMT_COMMON_INFERFUNC(TopKPQDistanceInferShape) {
   int32_t topK = 0;
   if (op.GetAttr("k", topK) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "get attr k from op failed");
+    OP_LOGE(TbeGetName(op).c_str(), "get attr k from op failed");
     return GRAPH_FAILED;
   }
   vector<int64_t> outputDims = {topK};
@@ -152,39 +152,39 @@ IMPLEMT_COMMON_INFERFUNC(TopKPQDistanceInferShape) {
   outputIndexDesc.SetDataType(pqindexDtype);
 
   CHECK(op.UpdateOutputDesc("topk_distance", outputDistanceDesc) != GRAPH_SUCCESS,
-        OP_LOGE(op.GetName().c_str(), "Update topk_distance outputDesc failed."), return GRAPH_FAILED);
+        OP_LOGE(TbeGetName(op).c_str(), "Update topk_distance outputDesc failed."), return GRAPH_FAILED);
   CHECK(op.UpdateOutputDesc("topk_ivf", outputIvfDesc) != GRAPH_SUCCESS,
-        OP_LOGE(op.GetName().c_str(), "Update topk_ivf outputDesc failed."), return GRAPH_FAILED);
+        OP_LOGE(TbeGetName(op).c_str(), "Update topk_ivf outputDesc failed."), return GRAPH_FAILED);
   CHECK(op.UpdateOutputDesc("topk_index", outputIndexDesc) != GRAPH_SUCCESS,
-        OP_LOGE(op.GetName().c_str(), "Update topk_index outputDesc failed."), return GRAPH_FAILED);
+        OP_LOGE(TbeGetName(op).c_str(), "Update topk_index outputDesc failed."), return GRAPH_FAILED);
   return GRAPH_SUCCESS;
 }
 
 IMPLEMT_VERIFIER(TopKPQDistance, TopKPQDistanceVerify) {
-  OP_LOGI(op.GetName().c_str(), "TopKPQDistanceVerify begin");
+  OP_LOGI(TbeGetName(op).c_str(), "TopKPQDistanceVerify begin");
   int32_t groupSize = 0;
   if (op.GetAttr("group_size", groupSize) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "get attr group_size from op failed");
+    OP_LOGE(TbeGetName(op).c_str(), "get attr group_size from op failed");
     return GRAPH_FAILED;
   }
   if(groupSize <= 0){
-    OP_LOGE(op.GetName().c_str(), "groupSize[%d] must greater than 0", groupSize);
+    OP_LOGE(TbeGetName(op).c_str(), "groupSize[%d] must greater than 0", groupSize);
     return GRAPH_FAILED;
   }
 
   int32_t k = 0;
   if (op.GetAttr("k", k) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "get attr k from op failed");
+    OP_LOGE(TbeGetName(op).c_str(), "get attr k from op failed");
     return GRAPH_FAILED;
   }
   size_t inputSize = op.GetInputsSize();
-  OP_LOGI(op.GetName().c_str(), "inputSize is [%d], groupSize is [%d], k is [%d]", inputSize, groupSize, k);
+  OP_LOGI(TbeGetName(op).c_str(), "inputSize is [%d], groupSize is [%d], k is [%d]", inputSize, groupSize, k);
 
   constexpr int32_t INPUT_N = 5;
   if (inputSize / INPUT_N == 0) {
     string msg = ConcatString("op inputSize error, inputSize is", inputSize);
     std::string err_msg = OtherErrMsg(msg);
-    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -195,24 +195,24 @@ IMPLEMT_VERIFIER(TopKPQDistance, TopKPQDistanceVerify) {
     string msg = ConcatString("The shape of pq_distance is:", DebugString(pqDistanceDims),
                               "The shape of pq_ivf is:", DebugString(pqIvfDims),
                               "The shape of pq_index is:", DebugString(pqIndexDims), ".They must be the same");
-    OP_LOGI(op.GetName().c_str(), "input shape:[%d]", OtherErrMsg(msg).c_str());
+    OP_LOGI(TbeGetName(op).c_str(), "input shape:[%d]", OtherErrMsg(msg).c_str());
     if (!(pqDistanceDims == pqIvfDims && pqIvfDims == pqIndexDims)) {
       std::string err_msg = OtherErrMsg(msg);
-      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
       return GRAPH_FAILED;
     }
     std::vector<int64_t> extremeDistanceDims =
         op.GetDynamicInputDesc("grouped_extreme_distance", i).GetShape().GetDims();
-    OP_LOGI(op.GetName().c_str(), "extremeDistanceDims shape:[%s]", DebugString(extremeDistanceDims).c_str());
+    OP_LOGI(TbeGetName(op).c_str(), "extremeDistanceDims shape:[%s]", DebugString(extremeDistanceDims).c_str());
 
     if (extremeDistanceDims.size() <= 0) {
       std::string err_msg = OtherErrMsg("extremeDistanceDims is empty");
-      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
       return GRAPH_FAILED;
     }
   }
 
-  OP_LOGI(op.GetName().c_str(), "TopKPQDistanceVerify end");
+  OP_LOGI(TbeGetName(op).c_str(), "TopKPQDistanceVerify end");
   return GRAPH_SUCCESS;
 }
 // Registered inferfunction
@@ -232,35 +232,35 @@ const int64_t EXTREME_MODE_NUM = 2;
 graphStatus ScanPQCodesVerifyAttrs(op::ScanPQCodes op){
   int32_t totalLimit = 0;
   CHECK(ge::GRAPH_SUCCESS != op.GetAttr("total_limit", totalLimit),
-        OP_LOGE(op.GetName().c_str(), "ScanPQCodes GetOpAttr total_limit failed."),
+        OP_LOGE(TbeGetName(op).c_str(), "ScanPQCodes GetOpAttr total_limit failed."),
         return GRAPH_FAILED);
   int32_t groupSize = 0;
   CHECK(ge::GRAPH_SUCCESS != op.GetAttr("group_size", groupSize),
-        OP_LOGE(op.GetName().c_str(), "ScanPQCodes GetOpAttr group_size failed."),
+        OP_LOGE(TbeGetName(op).c_str(), "ScanPQCodes GetOpAttr group_size failed."),
         return GRAPH_FAILED);
   CHECK(groupSize % GROUP_SIZE_BASE != 0 || groupSize > totalLimit,
-        OP_LOGE(op.GetName().c_str(), "ScanPQCodes GetOpAttr group_size is unavalible."),
+        OP_LOGE(TbeGetName(op).c_str(), "ScanPQCodes GetOpAttr group_size is unavalible."),
         return GRAPH_FAILED);
   int32_t extremeMode = 0;
   CHECK(ge::GRAPH_SUCCESS != op.GetAttr("extreme_mode", extremeMode),
-        OP_LOGE(op.GetName().c_str(), "ScanPQCodes GetOpAttr extreme_mode failed."),
+        OP_LOGE(TbeGetName(op).c_str(), "ScanPQCodes GetOpAttr extreme_mode failed."),
         return GRAPH_FAILED);
   CHECK(extremeMode >= EXTREME_MODE_NUM,
-        OP_LOGE(op.GetName().c_str(), "ScanPQCodes GetOpAttr extreme_mode more than 2."),
+        OP_LOGE(TbeGetName(op).c_str(), "ScanPQCodes GetOpAttr extreme_mode more than 2."),
         return GRAPH_FAILED);
   int32_t splitCount = 0;
   CHECK(ge::GRAPH_SUCCESS != op.GetAttr("split_count", splitCount),
-        OP_LOGE(op.GetName().c_str(), "ScanPQCodes GetOpAttr split_count failed."),
+        OP_LOGE(TbeGetName(op).c_str(), "ScanPQCodes GetOpAttr split_count failed."),
         return GRAPH_FAILED);
   CHECK(splitCount <= 0,
-        OP_LOGE(op.GetName().c_str(), "ScanPQCodes GetOpAttr split_count is unavaliable."),
+        OP_LOGE(TbeGetName(op).c_str(), "ScanPQCodes GetOpAttr split_count is unavaliable."),
         return GRAPH_FAILED);
   int32_t splitIndex = 0;
   CHECK(ge::GRAPH_SUCCESS != op.GetAttr("split_index", splitIndex),
-        OP_LOGE(op.GetName().c_str(), "ScanPQCodes GetOpAttr split_index failed."),
+        OP_LOGE(TbeGetName(op).c_str(), "ScanPQCodes GetOpAttr split_index failed."),
         return GRAPH_FAILED);
   CHECK(splitIndex > splitCount - 1,
-        OP_LOGE(op.GetName().c_str(), "ScanPQCodes GetOpAttr split_index is more than splitCount."),
+        OP_LOGE(TbeGetName(op).c_str(), "ScanPQCodes GetOpAttr split_index is more than splitCount."),
         return GRAPH_FAILED);
   return GRAPH_SUCCESS;
 }
@@ -271,37 +271,37 @@ IMPLEMT_VERIFIER(ScanPQCodes, ScanPQCodesVerify) {
   int64_t dimLast = ivfShape[ivfShape.size() - 1];
   std::vector<int64_t> ivfLastDims {IVF_LAST_DIM_1, IVF_LAST_DIM_2, IVF_LAST_DIM_3};
   CHECK((find(ivfLastDims.begin(), ivfLastDims.end(), dimLast) == ivfLastDims.end()),
-        OP_LOGE(op.GetName().c_str(), "Last dimesion %ld of ivf should be equl to 16, 32, 64.", dimLast),
+        OP_LOGE(TbeGetName(op).c_str(), "Last dimesion %ld of ivf should be equl to 16, 32, 64.", dimLast),
         return GRAPH_FAILED);
   GeTensorDescPtr bucketListDesc = opDesc->MutableInputDesc("bucket_list");
   std::vector<int64_t> bucketListShape = bucketListDesc->MutableShape().GetDims();
   CHECK(BUCKET_SHAPE != bucketListShape.size(),
-        OP_LOGE(op.GetName().c_str(), "Shape of code bucket_list should be 1 dimension."),
+        OP_LOGE(TbeGetName(op).c_str(), "Shape of code bucket_list should be 1 dimension."),
         return GRAPH_FAILED);
   GeTensorDescPtr bucketBaseDistanceDesc = opDesc->MutableInputDesc("bucket_base_distance");
   std::vector<int64_t> bucketBaseDistanceShape = bucketBaseDistanceDesc->MutableShape().GetDims();
   CHECK(BUCKET_SHAPE != bucketBaseDistanceShape.size(),
-        OP_LOGE(op.GetName().c_str(), "Shape of code bucketBaseDistanceShape should be 1 dimension."),
+        OP_LOGE(TbeGetName(op).c_str(), "Shape of code bucketBaseDistanceShape should be 1 dimension."),
         return GRAPH_FAILED);
   GeTensorDescPtr bucketLimitsDesc = opDesc->MutableInputDesc("bucket_limits");
   std::vector<int64_t> bucketLimitsShape = bucketLimitsDesc->MutableShape().GetDims();
   CHECK(BUCKET_SHAPE != bucketLimitsShape.size(),
-        OP_LOGE(op.GetName().c_str(), "Shape of code bucketLimitsShape should be 1 dimension."),
+        OP_LOGE(TbeGetName(op).c_str(), "Shape of code bucketLimitsShape should be 1 dimension."),
         return GRAPH_FAILED);
   GeTensorDescPtr bucketOffsetsDesc = opDesc->MutableInputDesc("bucket_offsets");
   std::vector<int64_t> bucketOffsetsShape = bucketOffsetsDesc->MutableShape().GetDims();
   CHECK(BUCKET_SHAPE != bucketOffsetsShape.size(),
-        OP_LOGE(op.GetName().c_str(), "Shape of code bucketOffsetsShape should be 1 dimension."),
+        OP_LOGE(TbeGetName(op).c_str(), "Shape of code bucketOffsetsShape should be 1 dimension."),
         return GRAPH_FAILED);
   GeTensorDescPtr adcTablesDesc = opDesc->MutableInputDesc("adc_tables");
   std::vector<int64_t> adcTablesShape = adcTablesDesc->MutableShape().GetDims();
   int64_t dimM = adcTablesShape[1];
   int64_t dimKsub = adcTablesShape[2];
   CHECK((find(ivfLastDims.begin(), ivfLastDims.end(), dimM) == ivfLastDims.end()),
-        OP_LOGE(op.GetName().c_str(), "M dimesion of adc_tables should be equl to 16, 32, 64."),
+        OP_LOGE(TbeGetName(op).c_str(), "M dimesion of adc_tables should be equl to 16, 32, 64."),
         return GRAPH_FAILED);
   CHECK(ADC_TABLE_SHAPE != dimKsub,
-        OP_LOGE(op.GetName().c_str(), "ksub dimesion of adc_tables should be equl to 256."),
+        OP_LOGE(TbeGetName(op).c_str(), "ksub dimesion of adc_tables should be equl to 256."),
         return GRAPH_FAILED);
   return ScanPQCodesVerifyAttrs(op);
 }
@@ -329,7 +329,7 @@ IMPLEMT_COMMON_INFERFUNC(ScanPQCodesShape) {
   std::vector<int64_t> outShapeIndex;
   outShape.push_back(totalLimit);
   if (groupSize == 0) {
-    OP_LOGE(op.GetName().c_str(), "group_size can not be 0");
+    OP_LOGE(TbeGetName(op).c_str(), "group_size can not be 0");
     return GRAPH_FAILED;
   }
   outShapeExtremeDistance.push_back(totalLimit / groupSize);

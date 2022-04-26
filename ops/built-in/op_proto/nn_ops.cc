@@ -34,16 +34,16 @@ bool InTopKV2CheckInput(const Operator& op) {
   Shape shape_target = op.GetInputDesc("targets").GetShape();
   int prediction_dim = shape_prediction.GetDimNum();
   if (prediction_dim != DIM_SIZE2) {
-    OP_LOGE(op.GetName().c_str(), "Predictions must be 2-dimensional, but get [%d]", prediction_dim);
+    OP_LOGE(TbeGetName(op).c_str(), "Predictions must be 2-dimensional, but get [%d]", prediction_dim);
     return false;
   }
   size_t target_dim = shape_target.GetDimNum();
   if (target_dim != DIM_SIZE1) {
-    OP_LOGE(op.GetName().c_str(), "Targets must be 1-dimensional but get [%lu]", target_dim);
+    OP_LOGE(TbeGetName(op).c_str(), "Targets must be 1-dimensional but get [%lu]", target_dim);
     return false;
   }
   if (shape_prediction.GetDim(0) != shape_target.GetDim(0)) {
-    OP_LOGE(op.GetName().c_str(),
+    OP_LOGE(TbeGetName(op).c_str(),
             "First dimension of predictions must match length of targets, but first dimension of predictions get [%ld] "
             "and targets get [%lu]", shape_prediction.GetDim(0), shape_target.GetDim(0));
     return false;
@@ -65,7 +65,7 @@ IMPLEMT_COMMON_INFERFUNC(InTopKV2InferShape) {
   tensordesc_output.SetShape(shape_target);
   tensordesc_output.SetDataType(output_dtype);
   if (op.UpdateOutputDesc("precision", tensordesc_output) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc run failed. Check whether the names of outputs are matched.");
+    OP_LOGE(TbeGetName(op).c_str(), "UpdateOutputDesc run failed. Check whether the names of outputs are matched.");
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -76,23 +76,23 @@ VERIFY_FUNC_REG(InTopKV2, InTopKV2Verify);
 
 IMPLEMT_INFERFUNC(FusedBatchNormV2, FusedBatchNormV2Infer) {
   Shape xshape;
-  if (WithRank(op.GetInputDesc("x"), 4, xshape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Input x rank must be 4");
+  if (WithRank(op.GetInputDesc("x"), 4, xshape, TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
+    OP_LOGE(TbeGetName(op).c_str(), "Input x rank must be 4");
     return GRAPH_FAILED;
   }
   bool is_training;
   if (op.GetAttr("is_training", is_training) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Get attr is_training failed");
+    OP_LOGE(TbeGetName(op).c_str(), "Get attr is_training failed");
     return GRAPH_FAILED;
   }
   int number_inputs = (is_training) ? 3 : 5;
   string data_format;
   if (op.GetAttr("data_format", data_format) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Get attr data_format failed");
+    OP_LOGE(TbeGetName(op).c_str(), "Get attr data_format failed");
     return GRAPH_FAILED;
   } else {
     if (data_format != "NCHW" && data_format != "NHWC") {
-      OP_LOGE(op.GetName().c_str(), "Attr data_format [%s] only support NCHW and NHWC", data_format.c_str());
+      OP_LOGE(TbeGetName(op).c_str(), "Attr data_format [%s] only support NCHW and NHWC", data_format.c_str());
       return GRAPH_FAILED;
     }
   }
@@ -109,23 +109,23 @@ IMPLEMT_INFERFUNC(FusedBatchNormV2, FusedBatchNormV2Infer) {
   for (int i = 1; i < number_inputs; ++i) {
     Shape vec;
     if (op.GetInputDesc(i).GetDataType() != DT_FLOAT) {
-      OP_LOGE(op.GetName().c_str(), "Input[%d] type must be DT_FLOAT", i);
+      OP_LOGE(TbeGetName(op).c_str(), "Input[%d] type must be DT_FLOAT", i);
       return GRAPH_FAILED;
     }
-    if (WithRank(op.GetInputDesc(i), 1, vec, op.GetName().c_str()) != GRAPH_SUCCESS) {
-      OP_LOGE(op.GetName().c_str(), "Input[%d] rank must be 1", i);
+    if (WithRank(op.GetInputDesc(i), 1, vec, TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
+      OP_LOGE(TbeGetName(op).c_str(), "Input[%d] rank must be 1", i);
       return GRAPH_FAILED;
     }
     int64_t dim0 = vec.GetDim(0);
     if (Merge(channel_dim, dim0, channel_dim) != GRAPH_SUCCESS) {
-      OP_LOGE(op.GetName().c_str(), "Channel_dim [%ld] and input[%d]'s dim0 [%ld] should same length", channel_dim, i,
+      OP_LOGE(TbeGetName(op).c_str(), "Channel_dim [%ld] and input[%d]'s dim0 [%ld] should same length", channel_dim, i,
               dim0);
       return GRAPH_FAILED;
     }
   }
   Shape yshape;
-  if (ReplaceDim(xshape, channel_dim_index, channel_dim, yshape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Failed to replacedim from xshape");
+  if (ReplaceDim(xshape, channel_dim_index, channel_dim, yshape, TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
+    OP_LOGE(TbeGetName(op).c_str(), "Failed to replacedim from xshape");
     return GRAPH_FAILED;
   }
   DataType xtype = op.GetInputDesc("x").GetDataType();
@@ -133,7 +133,7 @@ IMPLEMT_INFERFUNC(FusedBatchNormV2, FusedBatchNormV2Infer) {
   tensordesc_output.SetDataType(xtype);
   tensordesc_output.SetShape(yshape);
   if (op.UpdateOutputDesc("y", tensordesc_output) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Failed to update y desc");
+    OP_LOGE(TbeGetName(op).c_str(), "Failed to update y desc");
     return GRAPH_FAILED;
   }
   Shape vector_shape = Shape({channel_dim});
@@ -141,28 +141,28 @@ IMPLEMT_INFERFUNC(FusedBatchNormV2, FusedBatchNormV2Infer) {
   tensordesc_output.SetDataType(DT_FLOAT);
   tensordesc_output.SetShape(vector_shape);
   if (op.UpdateOutputDesc("batch_mean", tensordesc_output) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Failed to update batch_mean desc");
+    OP_LOGE(TbeGetName(op).c_str(), "Failed to update batch_mean desc");
     return GRAPH_FAILED;
   }
   tensordesc_output = op.GetOutputDesc(2);
   tensordesc_output.SetDataType(DT_FLOAT);
   tensordesc_output.SetShape(vector_shape);
   if (op.UpdateOutputDesc("batch_variance", tensordesc_output) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Failed to update batch_variance desc");
+    OP_LOGE(TbeGetName(op).c_str(), "Failed to update batch_variance desc");
     return GRAPH_FAILED;
   }
   tensordesc_output = op.GetOutputDesc(3);
   tensordesc_output.SetDataType(DT_FLOAT);
   tensordesc_output.SetShape(vector_shape);
   if (op.UpdateOutputDesc("reserve_space_1", tensordesc_output) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Failed to update reserve_space_1 desc");
+    OP_LOGE(TbeGetName(op).c_str(), "Failed to update reserve_space_1 desc");
     return GRAPH_FAILED;
   }
   tensordesc_output = op.GetOutputDesc(4);
   tensordesc_output.SetDataType(DT_FLOAT);
   tensordesc_output.SetShape(vector_shape);
   if (op.UpdateOutputDesc("reserve_space_2", tensordesc_output) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Failed to update reserve_space_1 desc");
+    OP_LOGE(TbeGetName(op).c_str(), "Failed to update reserve_space_1 desc");
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -177,7 +177,7 @@ IMPLEMT_COMMON_INFERFUNC(SegmentSortInferShape) {
     int64_t data_num = tensordesc_input.GetShape().GetDim(0);
     int64_t k_num = 0;
     if (GRAPH_SUCCESS != op.GetAttr("k_num", k_num)) {
-        OP_LOGE(op.GetName().c_str(), "Get attr k_num failed");
+        OP_LOGE(TbeGetName(op).c_str(), "Get attr k_num failed");
         return GRAPH_FAILED;
     }
 
@@ -218,7 +218,7 @@ COMMON_INFER_FUNC_REG(SegmentSort, SegmentSortInferShape);
 IMPLEMT_COMMON_INFERFUNC(MultiMergeInferShape) {
     int64_t k_num = 0;
     if (GRAPH_SUCCESS != op.GetAttr("k_num", k_num)) {
-        OP_LOGE(op.GetName().c_str(), "Get attr k_num failed");
+        OP_LOGE(TbeGetName(op).c_str(), "Get attr k_num failed");
         return GRAPH_FAILED;
     }
     bool include_index = false;
@@ -291,7 +291,7 @@ IMPLEMT_COMMON_INFERFUNC(SingleMergeInferShape) {
     TensorDesc tensordesc_input = op.GetInputDesc("input_proposal");
     int64_t k_num = 0;
     if (GRAPH_SUCCESS != op.GetAttr("k_num", k_num)) {
-        OP_LOGE(op.GetName().c_str(), "Get attr k_num failed");
+        OP_LOGE(TbeGetName(op).c_str(), "Get attr k_num failed");
         return GRAPH_FAILED;
     }
     vector<int64_t> output_shape;

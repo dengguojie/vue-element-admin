@@ -37,7 +37,7 @@ IMPLEMT_COMMON_INFERFUNC(DequantizeInferShape) {
   if (op.GetAttr("mode", mode) == GRAPH_SUCCESS) {
     if (mode != "MIN_COMBINED" && mode != "MIN_FIRST" && mode != "SCALED") {
       string excepted_value = ConcatString("MIN_COMBINED,MIN_FIRST,SCALED");
-      OP_LOGE(op.GetName().c_str(), "Attr mode(%s) can only support MIN_COMBINED or MIN_FIRST or SCALED.",
+      OP_LOGE(TbeGetName(op).c_str(), "Attr mode(%s) can only support MIN_COMBINED or MIN_FIRST or SCALED.",
               mode.c_str());
       return GRAPH_FAILED;
     }
@@ -81,7 +81,7 @@ IMPLEMT_COMMON_INFERFUNC(QuantizeInferShape) {
   } else if(dtype == "torch.qint32") {
       predict_dtype = DT_INT32;
   } else {
-      OP_LOGI(op.GetName().c_str(), "The dtype is not supported.");
+      OP_LOGI(TbeGetName(op).c_str(), "The dtype is not supported.");
       return GRAPH_FAILED;
   }
   output_desc_y.SetDataType(predict_dtype);
@@ -206,7 +206,7 @@ IMPLEMT_INFERFUNC(AscendWeightQuant, AscendWeightQuantInferShape) {
 
   auto dst_type = op.get_attr_dst_type();
   if (dst_type != DT_INT8 && dst_type != DT_INT4) {
-    OP_LOGE(op.GetName().c_str(), "dst_type can only support DT_INT8 or DT_INT4.");
+    OP_LOGE(TbeGetName(op).c_str(), "dst_type can only support DT_INT8 or DT_INT4.");
     return GRAPH_FAILED;
   }
   y_desc.SetDataType((ge::DataType)dst_type);

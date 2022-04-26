@@ -25,12 +25,12 @@
 namespace domi {
 Status ExtractImagePatchesMappingFn(const Message* op_src, ge::Operator& op) {
   if (AutoMappingFn(op_src, op) != SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "AutoMappingFn failed.");
+    OP_LOGE(TbeGetName(op).c_str(), "AutoMappingFn failed.");
     return FAILED;
   }
   auto op_dsc = ge::OpDescUtils::GetOpDescFromOperator(op);
   if (op_dsc == nullptr) {
-    OP_LOGE(op.GetName().c_str(), "GetOpDescFromOperator got nullptr failed.");
+    OP_LOGE(TbeGetName(op).c_str(), "GetOpDescFromOperator got nullptr failed.");
     return FAILED;
   }
   ge::GeTensorDesc tensor_descw = op_dsc->GetInputDesc(0);
@@ -42,7 +42,7 @@ Status ExtractImagePatchesMappingFn(const Message* op_src, ge::Operator& op) {
   auto ret = op_dsc->UpdateInputDesc(0, tensor_descw);
   auto ret1 = op_dsc->UpdateOutputDesc(0, tensor_descw1);
   if (ret != ge::GRAPH_SUCCESS || ret1 != ge::GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "UpdateInputDesc or UpdateOutputDesc failed.");
+    OP_LOGE(TbeGetName(op).c_str(), "UpdateInputDesc or UpdateOutputDesc failed.");
     return FAILED;
   }
 

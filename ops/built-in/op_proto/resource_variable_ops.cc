@@ -32,21 +32,21 @@ IMPLEMT_INFERFUNC(VarHandleOp, VarHandleOpInfer) {
   outputDesc.SetDataType(DT_RESOURCE);
   outputDesc.SetShape(Shape());
   if (GRAPH_SUCCESS != op.UpdateOutputDesc("y", outputDesc)) {
-    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op),
         std::string("update output[y] desc failed."));
     return GRAPH_FAILED;
   }
 
   Operator::OpType type;
   if (GRAPH_SUCCESS != op.GetAttr("dtype", type)) {
-    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op),
         std::string("get attr[dtype] failed."));
     return GRAPH_FAILED;
   }
 
   Operator::OpListInt dims;
   if (GRAPH_SUCCESS != op.GetAttr("shape", dims)) {
-    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op),
         std::string("get attr[shape] failed."));
     return GRAPH_FAILED;
   }

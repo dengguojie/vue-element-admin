@@ -24,7 +24,7 @@
 namespace domi {
 Status TopKMappingFn(const Message* op_src, ge::Operator& op) {
   if (AutoMappingFn(op_src, op) != SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "AutoMappingFn failed.");
+    OP_LOGE(TbeGetName(op).c_str(), "AutoMappingFn failed.");
     return FAILED;
   }
   int32_t dim = -1;

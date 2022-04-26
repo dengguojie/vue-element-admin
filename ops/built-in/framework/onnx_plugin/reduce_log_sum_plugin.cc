@@ -73,12 +73,12 @@ static Status ParseOpToGraphReduceLogSum(const Operator& op, Graph& graph) {
 
   bool flag = false;
   if (op.GetAttr("keep_dims", flag) != SUCCESS) {
-    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "get value of keep_dims from op failed.");
+    ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "get value of keep_dims from op failed.");
     return FAILED;
   }
   ge::Tensor const_value;
   if (op.GetAttr("axes", const_value) != SUCCESS) {
-    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "get axes from op failed");
+    ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "get axes from op failed");
     return FAILED;
   }
   

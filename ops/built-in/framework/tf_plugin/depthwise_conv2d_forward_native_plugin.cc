@@ -27,12 +27,12 @@
 namespace domi {
 Status DepthwiseConv2DMappingFn(const Message* op_src, ge::Operator& op) {
   if (AutoMappingFn(op_src, op) != SUCCESS) {
-    CUBE_INNER_ERR_REPORT_PLUGIN(op.GetName().c_str(), "AutoMappingFn failed.");
+    CUBE_INNER_ERR_REPORT_PLUGIN(TbeGetName(op).c_str(), "AutoMappingFn failed.");
     return FAILED;
   }
   auto op_dsc = ge::OpDescUtils::GetOpDescFromOperator(op);
   if (op_dsc == nullptr) {
-    CUBE_INNER_ERR_REPORT_PLUGIN(op.GetName().c_str(), "GetOpDescFromOperator got nullptr failed.");
+    CUBE_INNER_ERR_REPORT_PLUGIN(TbeGetName(op).c_str(), "GetOpDescFromOperator got nullptr failed.");
     return FAILED;
   }
   ge::GeTensorDesc tensorDescW = op_dsc->GetInputDesc(1);
@@ -40,7 +40,7 @@ Status DepthwiseConv2DMappingFn(const Message* op_src, ge::Operator& op) {
   tensorDescW.SetFormat(ge::FORMAT_HWCN);
   auto ret = op_dsc->UpdateInputDesc(1, tensorDescW);
   if (ret != ge::GRAPH_SUCCESS) {
-    CUBE_INNER_ERR_REPORT_PLUGIN(op.GetName().c_str(), "updating filter's format failed.");
+    CUBE_INNER_ERR_REPORT_PLUGIN(TbeGetName(op).c_str(), "updating filter's format failed.");
     return FAILED;
   }
   std::vector<int32_t> padList = {0, 0, 0, 0};

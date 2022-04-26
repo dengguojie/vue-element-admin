@@ -145,25 +145,25 @@ void ParseAippParams(const GeTensor* params_tensor, AippParams& aippParams) {
 }
 
 void PrintAippParams(Operator& op, AippParams& aippParams) {
-  OP_LOGD(op.GetName().c_str(), "aippParams  inputFormat=%d", aippParams.inputFormat);
-  OP_LOGD(op.GetName().c_str(), "aippParams  batchNum=%d", aippParams.batchNum);
-  OP_LOGD(op.GetName().c_str(), "aippParams  srcImageSizeW=%d", aippParams.srcImageSizeW);
-  OP_LOGD(op.GetName().c_str(), "aippParams  srcImageSizeH=%d", aippParams.srcImageSizeH);
-  OP_LOGD(op.GetName().c_str(), "aippParams  cropSwitch=%d", aippParams.cropSwitch);
-  OP_LOGD(op.GetName().c_str(), "aippParams  scfSwitch=%d", aippParams.scfSwitch);
-  OP_LOGD(op.GetName().c_str(), "aippParams  paddingSwitch=%d", aippParams.paddingSwitch);
-  OP_LOGD(op.GetName().c_str(), "aippParams  cropStartPosW=%d", aippParams.cropStartPosW);
-  OP_LOGD(op.GetName().c_str(), "aippParams  cropStartPosH=%d", aippParams.cropStartPosH);
-  OP_LOGD(op.GetName().c_str(), "aippParams  cropSizeW=%d", aippParams.cropSizeW);
-  OP_LOGD(op.GetName().c_str(), "aippParams  cropSizeH=%d", aippParams.cropSizeH);
-  OP_LOGD(op.GetName().c_str(), "aippParams  scfInputSizeW=%d", aippParams.scfInputSizeW);
-  OP_LOGD(op.GetName().c_str(), "aippParams  scfInputSizeH=%d", aippParams.scfInputSizeH);
-  OP_LOGD(op.GetName().c_str(), "aippParams  scfOutputSizeW=%d", aippParams.scfOutputSizeW);
-  OP_LOGD(op.GetName().c_str(), "aippParams  scfOutputSizeH=%d", aippParams.scfOutputSizeH);
-  OP_LOGD(op.GetName().c_str(), "aippParams  paddingSizeTop=%d", aippParams.paddingSizeTop);
-  OP_LOGD(op.GetName().c_str(), "aippParams  paddingSizeBottom=%d", aippParams.paddingSizeBottom);
-  OP_LOGD(op.GetName().c_str(), "aippParams  paddingSizeLeft=%d", aippParams.paddingSizeLeft);
-  OP_LOGD(op.GetName().c_str(), "aippParams  paddingSizeRight=%d", aippParams.paddingSizeRight);
+  OP_LOGD(TbeGetName(op).c_str(), "aippParams  inputFormat=%d", aippParams.inputFormat);
+  OP_LOGD(TbeGetName(op).c_str(), "aippParams  batchNum=%d", aippParams.batchNum);
+  OP_LOGD(TbeGetName(op).c_str(), "aippParams  srcImageSizeW=%d", aippParams.srcImageSizeW);
+  OP_LOGD(TbeGetName(op).c_str(), "aippParams  srcImageSizeH=%d", aippParams.srcImageSizeH);
+  OP_LOGD(TbeGetName(op).c_str(), "aippParams  cropSwitch=%d", aippParams.cropSwitch);
+  OP_LOGD(TbeGetName(op).c_str(), "aippParams  scfSwitch=%d", aippParams.scfSwitch);
+  OP_LOGD(TbeGetName(op).c_str(), "aippParams  paddingSwitch=%d", aippParams.paddingSwitch);
+  OP_LOGD(TbeGetName(op).c_str(), "aippParams  cropStartPosW=%d", aippParams.cropStartPosW);
+  OP_LOGD(TbeGetName(op).c_str(), "aippParams  cropStartPosH=%d", aippParams.cropStartPosH);
+  OP_LOGD(TbeGetName(op).c_str(), "aippParams  cropSizeW=%d", aippParams.cropSizeW);
+  OP_LOGD(TbeGetName(op).c_str(), "aippParams  cropSizeH=%d", aippParams.cropSizeH);
+  OP_LOGD(TbeGetName(op).c_str(), "aippParams  scfInputSizeW=%d", aippParams.scfInputSizeW);
+  OP_LOGD(TbeGetName(op).c_str(), "aippParams  scfInputSizeH=%d", aippParams.scfInputSizeH);
+  OP_LOGD(TbeGetName(op).c_str(), "aippParams  scfOutputSizeW=%d", aippParams.scfOutputSizeW);
+  OP_LOGD(TbeGetName(op).c_str(), "aippParams  scfOutputSizeH=%d", aippParams.scfOutputSizeH);
+  OP_LOGD(TbeGetName(op).c_str(), "aippParams  paddingSizeTop=%d", aippParams.paddingSizeTop);
+  OP_LOGD(TbeGetName(op).c_str(), "aippParams  paddingSizeBottom=%d", aippParams.paddingSizeBottom);
+  OP_LOGD(TbeGetName(op).c_str(), "aippParams  paddingSizeLeft=%d", aippParams.paddingSizeLeft);
+  OP_LOGD(TbeGetName(op).c_str(), "aippParams  paddingSizeRight=%d", aippParams.paddingSizeRight);
 }
 
 int64_t GetDynamicShapeChannel(uint8_t inputFormat) {
@@ -736,42 +736,42 @@ void SetPadding(nlohmann::json& root, ::domi::AippOpParams* aipp_op_params) {
 }
 
 static void SaveImagesDesc(Operator& op, const std::string& aipp_config_path) {
-  OP_LOGD(op.GetName().c_str(), "aipp infershape, SaveImagesDesc start");
+  OP_LOGD(TbeGetName(op).c_str(), "aipp infershape, SaveImagesDesc start");
   int64_t has_infered_verified = 0;
   if (op.GetAttr("has_infered_verified", has_infered_verified) != GRAPH_SUCCESS) {
-    OP_LOGD(op.GetName().c_str(), "SaveImagesDesc, aipp_config_path is %s", aipp_config_path.c_str());
+    OP_LOGD(TbeGetName(op).c_str(), "SaveImagesDesc, aipp_config_path is %s", aipp_config_path.c_str());
     op.SetAttr("aipp_config_file_path", aipp_config_path);
 
     auto images_desc = op.GetInputDesc("images");
     Tensor images_tensor(images_desc);
-    OP_LOGD(op.GetName().c_str(),
+    OP_LOGD(TbeGetName(op).c_str(),
             "SaveImagesDesc, images_shape is %s, images_dtype value is %d, images_format value is %d",
             to_string(images_desc.GetShape().GetDims()).c_str(),
             images_desc.GetDataType(), images_desc.GetFormat());
     op.SetAttr("aipp_images_tensor_bak", images_tensor);
   }
-  OP_LOGD(op.GetName().c_str(), "aipp infershape, SaveImagesDesc end");
+  OP_LOGD(TbeGetName(op).c_str(), "aipp infershape, SaveImagesDesc end");
 }
 
 static void GetImagesDesc(Operator& op, TensorDesc& images_desc) {
-  OP_LOGD(op.GetName().c_str(), "aipp infershape, GetImagesDesc start");
+  OP_LOGD(TbeGetName(op).c_str(), "aipp infershape, GetImagesDesc start");
   Tensor images_tensor;
   if (op.GetAttr("aipp_images_tensor_bak", images_tensor) == GRAPH_SUCCESS) {
-    OP_LOGD(op.GetName().c_str(), "GetImagesDesc, get aipp_images_tensor_bak success");
+    OP_LOGD(TbeGetName(op).c_str(), "GetImagesDesc, get aipp_images_tensor_bak success");
     images_desc = images_tensor.GetTensorDesc();
-    OP_LOGD(op.GetName().c_str(),
+    OP_LOGD(TbeGetName(op).c_str(),
             "GetImagesDesc, images_shape is %s, images_dtype value is %d, images_format value is %d",
             to_string(images_desc.GetShape().GetDims()).c_str(),
             images_desc.GetDataType(), images_desc.GetFormat());
   } else {
-    OP_LOGD(op.GetName().c_str(), "GetImagesDesc, first, get images_desc from images");
+    OP_LOGD(TbeGetName(op).c_str(), "GetImagesDesc, first, get images_desc from images");
     images_desc = op.GetInputDesc("images");
   }
-  OP_LOGD(op.GetName().c_str(), "aipp infershape, GetImagesDesc end");
+  OP_LOGD(TbeGetName(op).c_str(), "aipp infershape, GetImagesDesc end");
 }
 
 static graphStatus DynamicShapeInfershape(Operator& op, const GeTensor* params_data) {
-  OP_LOGI(op.GetName().c_str(), "aipp infershape, aipp dynamic shape start");
+  OP_LOGI(TbeGetName(op).c_str(), "aipp infershape, aipp dynamic shape start");
   // parse params data
   AippParams aippParams;
   InitAippParams(aippParams);
@@ -779,7 +779,7 @@ static graphStatus DynamicShapeInfershape(Operator& op, const GeTensor* params_d
   PrintAippParams(op, aippParams);
   if (!CheckImageInputFormat(aippParams)) {
     std::string err_msg = OtherErrMsg("aipp dynamic shape, image input format is not support");
-    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -787,24 +787,24 @@ static graphStatus DynamicShapeInfershape(Operator& op, const GeTensor* params_d
   auto features_desc = op.GetOutputDesc("features");
   auto features_format = features_desc.GetFormat();
   if (features_format != FORMAT_NCHW && features_format != FORMAT_NHWC) {
-    OP_LOGE(op.GetName().c_str(), "aipp dynamic shape, input format only support NCHW, NHWC.");
+    OP_LOGE(TbeGetName(op).c_str(), "aipp dynamic shape, input format only support NCHW, NHWC.");
     return GRAPH_FAILED;
   }
 
   std::vector<std::pair<int64_t, int64_t>> features_shape_range;
   features_desc.GetShapeRange(features_shape_range);
   if (features_shape_range.size() != 5) {
-    OP_LOGE(op.GetName().c_str(), "aipp dynamic shape, the size of features shape range is invalid.");
+    OP_LOGE(TbeGetName(op).c_str(), "aipp dynamic shape, the size of features shape range is invalid.");
     return GRAPH_FAILED;
   }
-  OP_LOGD(op.GetName().c_str(), "features shape range is %s", to_string(features_shape_range).c_str());
+  OP_LOGD(TbeGetName(op).c_str(), "features shape range is %s", to_string(features_shape_range).c_str());
   int64_t n_start = features_shape_range[0].first;
   int64_t n_end = features_shape_range[0].second;
   int64_t h_start = features_shape_range[2].first;
   int64_t h_end = features_shape_range[2].second;
   int64_t w_start = features_shape_range[3].first;
   int64_t w_end = features_shape_range[3].second;
-  OP_LOGD(op.GetName().c_str(), "features shape range is n: [%ld,%ld], height: [%ld,%ld], width: [%ld,%ld]",
+  OP_LOGD(TbeGetName(op).c_str(), "features shape range is n: [%ld,%ld], height: [%ld,%ld], width: [%ld,%ld]",
           n_start, n_end, h_start, h_end, w_start, w_end);
 
   int64_t batch = aippParams.batchNum;
@@ -815,16 +815,16 @@ static graphStatus DynamicShapeInfershape(Operator& op, const GeTensor* params_d
   int64_t outputW = inputW;
   if (!GetDynamicShapeOutputHW(aippParams, &outputH, &outputW)) {
     std::string err_msg = OtherErrMsg("aipp dynamic shape, GetDynamicShapeOutputHW error");
-    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
-  OP_LOGD(op.GetName().c_str(), "aipp dynamic shape, batch=%ld, real_channel=%ld", batch, real_channel);
-  OP_LOGI(op.GetName().c_str(), "aipp dynamic shape, srcImageSizeH=%ld, srcImageSizeW=%ld, outputH=%ld, outputW=%ld",
+  OP_LOGD(TbeGetName(op).c_str(), "aipp dynamic shape, batch=%ld, real_channel=%ld", batch, real_channel);
+  OP_LOGI(TbeGetName(op).c_str(), "aipp dynamic shape, srcImageSizeH=%ld, srcImageSizeW=%ld, outputH=%ld, outputW=%ld",
           inputH, inputW, outputH, outputW);
   if ((n_start < 1 || (n_end != -1 && (batch < n_start || batch > n_end)))
       || (h_start < 1 || (h_end != -1 && (outputH < h_start || outputH > h_end)))
       || (w_start < 1 || (w_end != -1 && (outputW < w_start || outputW > w_end)))) {
-    OP_LOGE(op.GetName().c_str(), "The output shape is invalid, out of range. batch is %ld, batch range is [%ld,%ld],"
+    OP_LOGE(TbeGetName(op).c_str(), "The output shape is invalid, out of range. batch is %ld, batch range is [%ld,%ld],"
             "height is %ld, height range is [%ld,%ld], width is %ld, width range is [%ld,%ld]",
             batch, n_start, n_end, outputH, h_start, h_end, outputW, w_start, w_end);
     return GRAPH_FAILED;
@@ -832,19 +832,19 @@ static graphStatus DynamicShapeInfershape(Operator& op, const GeTensor* params_d
 
   vector<int64_t> shape;
   if (features_desc.GetFormat() == FORMAT_NCHW) {
-    OP_LOGD(op.GetName().c_str(), "features Format is NCHW");
+    OP_LOGD(TbeGetName(op).c_str(), "features Format is NCHW");
     shape.push_back(batch);
     shape.push_back(real_channel);
     shape.push_back(outputH);
     shape.push_back(outputW);
   } else if (features_desc.GetFormat() == FORMAT_NHWC) {
-    OP_LOGD(op.GetName().c_str(), "features Format is NHWC");
+    OP_LOGD(TbeGetName(op).c_str(), "features Format is NHWC");
     shape.push_back(batch);
     shape.push_back(outputH);
     shape.push_back(outputW);
     shape.push_back(real_channel);
   } else {
-    OP_LOGE(op.GetName().c_str(), "aipp dynamic shape, features format is not support.");
+    OP_LOGE(TbeGetName(op).c_str(), "aipp dynamic shape, features format is not support.");
     return GRAPH_FAILED;
   }
   features_desc.SetShape(Shape(shape));
@@ -852,7 +852,7 @@ static graphStatus DynamicShapeInfershape(Operator& op, const GeTensor* params_d
 
   ge::DataType src_image_dtype = DT_UINT8;
   int64_t src_img_size = GetDynamicShapeSrcSize(aippParams, batch, &src_image_dtype);
-  OP_LOGD(op.GetName().c_str(), "aipp dynamic shape, src_img_size is %ld", src_img_size);
+  OP_LOGD(TbeGetName(op).c_str(), "aipp dynamic shape, src_img_size is %ld", src_img_size);
   images_desc.SetSize(src_img_size);
   images_desc.SetDataType(src_image_dtype);
   images_desc.SetShape(Shape({batch, inputH, inputW, real_channel}));
@@ -861,29 +861,29 @@ static graphStatus DynamicShapeInfershape(Operator& op, const GeTensor* params_d
   images_desc.SetOriginFormat(FORMAT_NHWC);
   (void)op.UpdateInputDesc("images", images_desc);
 
-  OP_LOGI(op.GetName().c_str(), "aipp infer, dynamic shape, success");
+  OP_LOGI(TbeGetName(op).c_str(), "aipp infer, dynamic shape, success");
   return GRAPH_SUCCESS;
 }
 
 static graphStatus DynamicModeInfershape(Operator& op, ::domi::AippOpParams* aipp_op_params) {
-  OP_LOGI(op.GetName().c_str(), "aipp infershape, aipp dynamic mode, start");
+  OP_LOGI(TbeGetName(op).c_str(), "aipp infershape, aipp dynamic mode, start");
   int64_t src_image_size = aipp_op_params->max_src_image_size() ? aipp_op_params->max_src_image_size() : 0;
-  OP_LOGD(op.GetName().c_str(), "dynamic aipp_real_size is %ld", src_image_size);
+  OP_LOGD(TbeGetName(op).c_str(), "dynamic aipp_real_size is %ld", src_image_size);
   if (src_image_size <= 0) {
-    OP_LOGE(op.GetName().c_str(), "the max_src_image_size must be set to a value greater than 0 in cfg");
+    OP_LOGE(TbeGetName(op).c_str(), "the max_src_image_size must be set to a value greater than 0 in cfg");
     return GRAPH_FAILED;
   }
 
   TensorDesc images_desc;
   GetImagesDesc(op, images_desc);
-  OP_LOGD(op.GetName().c_str(), "images_desc size is %u", images_desc.GetSize());
+  OP_LOGD(TbeGetName(op).c_str(), "images_desc size is %u", images_desc.GetSize());
   auto images_shape = images_desc.GetShape().GetDims();
   if (IsUnknownRankShape(images_shape)) {
-    OP_LOGE(op.GetName().c_str(), "The shape is unknown rank, not support!");
+    OP_LOGE(TbeGetName(op).c_str(), "The shape is unknown rank, not support!");
     return GRAPH_FAILED;
   }
   if (IsUnKnownShape(images_shape)) {
-    OP_LOGD(op.GetName().c_str(), "aipp dynamic shape, set depend");
+    OP_LOGD(TbeGetName(op).c_str(), "aipp dynamic shape, set depend");
     const vector<string> depend_name = {"params"};
     PREPARE_DYNAMIC_SHAPE(depend_name);
   }
@@ -895,12 +895,12 @@ static graphStatus DynamicModeInfershape(Operator& op, ::domi::AippOpParams* aip
   std::vector<std::pair<int64_t, int64_t>> images_shape_range;
   images_desc.GetShapeRange(images_shape_range);
   if (!images_shape_range.empty() && images_shape_range.size() == 4) {
-    OP_LOGI(op.GetName().c_str(), "images shape range is %s", to_string(images_shape_range).c_str());
+    OP_LOGI(TbeGetName(op).c_str(), "images shape range is %s", to_string(images_shape_range).c_str());
     std::vector<std::pair<int64_t, int64_t>> images_shape_range_new;
     images_shape_range_new.push_back(std::pair<int64_t, int64_t>(1, 1));
     images_shape_range_new.push_back(std::pair<int64_t, int64_t>(1, src_image_size));
     images_desc.SetShapeRange(images_shape_range_new);
-    OP_LOGI(op.GetName().c_str(), "after, images shape range is %s", to_string(images_shape_range_new).c_str());
+    OP_LOGI(TbeGetName(op).c_str(), "after, images shape range is %s", to_string(images_shape_range_new).c_str());
   }
 
   vector<int64_t> shape_dync;
@@ -915,13 +915,13 @@ static graphStatus DynamicModeInfershape(Operator& op, ::domi::AippOpParams* aip
 
   (void)op.UpdateInputDesc("images", images_desc);
   op.SetAttr("has_infered_verified", 1);
-  OP_LOGI(op.GetName().c_str(), "aipp infer, dynamic mode, success");
+  OP_LOGI(TbeGetName(op).c_str(), "aipp infer, dynamic mode, success");
 
   return GRAPH_SUCCESS;
 }
 
 static graphStatus StaticInferShape(Operator& op, ::domi::AippOpParams* aipp_op_params) {
-  OP_LOGI(op.GetName().c_str(), "aipp infershape, aipp static mode, start");
+  OP_LOGI(TbeGetName(op).c_str(), "aipp infershape, aipp static mode, start");
   TensorDesc images_desc;
   GetImagesDesc(op, images_desc);
   auto images_shape = images_desc.GetShape().GetDims();
@@ -935,7 +935,7 @@ static graphStatus StaticInferShape(Operator& op, ::domi::AippOpParams* aipp_op_
   auto imagesDimNum = images_desc.GetShape().GetDimNum();
   if (((images_desc.GetFormat() == FORMAT_NCHW || images_desc.GetFormat() == FORMAT_NHWC) && imagesDimNum < 4)
       || (images_desc.GetFormat() == FORMAT_NC1HWC0_C04 && imagesDimNum < 5)) {
-    OP_LOGE(op.GetName().c_str(), "The input shape of images is invalid");
+    OP_LOGE(TbeGetName(op).c_str(), "The input shape of images is invalid");
     return GRAPH_FAILED;
   }
   if (images_desc.GetFormat() == FORMAT_NCHW) {
@@ -953,26 +953,26 @@ static graphStatus StaticInferShape(Operator& op, ::domi::AippOpParams* aipp_op_
     width = images_shape[3];
     c0 = images_shape[4];
   } else {
-    OP_LOGE(op.GetName().c_str(), "aipp input format only support NCHW, NHWC, NC1HWC0_C04.");
+    OP_LOGE(TbeGetName(op).c_str(), "aipp input format only support NCHW, NHWC, NC1HWC0_C04.");
     return GRAPH_FAILED;
   }
-  OP_LOGI(op.GetName().c_str(), "batch=%ld, height=%ld, width=%ld", batch, height, width);
+  OP_LOGI(TbeGetName(op).c_str(), "batch=%ld, height=%ld, width=%ld", batch, height, width);
 
   int64_t real_channel = 1;
   if (images_desc.GetFormat() != FORMAT_NC1HWC0_C04) {
     real_channel = GetChannel(aipp_op_params);
-    OP_LOGI(op.GetName().c_str(), "real_channel:%d", (int)real_channel);
+    OP_LOGI(TbeGetName(op).c_str(), "real_channel:%d", (int)real_channel);
   }
 
   int64_t output_height = height;
   int64_t output_width = width;
   (void)GetOutputHeightWidth(aipp_op_params, &output_height, &output_width);
 
-  OP_LOGI(op.GetName().c_str(), "aipp output_height:%d, aipp output_width:%d, data's height:%d, data's width:%d",
+  OP_LOGI(TbeGetName(op).c_str(), "aipp output_height:%d, aipp output_width:%d, data's height:%d, data's width:%d",
           (int)output_height, (int)output_width, (int)height, (int)width);
 
   if (output_height != height || output_width != width) {
-    OP_LOGE(op.GetName().c_str(), "the data output H and W is not equal with aipp output H and W."
+    OP_LOGE(TbeGetName(op).c_str(), "the data output H and W is not equal with aipp output H and W."
             "aipp output_height:%d, aipp output_width:%d, data's height:%d, data's width:%d",
             (int)output_height, (int)output_width, (int)height, (int)width);
 
@@ -983,13 +983,13 @@ static graphStatus StaticInferShape(Operator& op, ::domi::AippOpParams* aipp_op_
   int64_t src_image_size = GetSrcImageSizeDtype(aipp_op_params, batch, c1, height, width, &src_image_dtype);
   // set size to tensordesc
   images_desc.SetSize(src_image_size);
-  OP_LOGI(op.GetName().c_str(), "aipp_real_size is %ld", src_image_size);
+  OP_LOGI(TbeGetName(op).c_str(), "aipp_real_size is %ld", src_image_size);
 
   (void)op.UpdateOutputDesc("features", images_desc);
 
   int64_t src_image_size_h = aipp_op_params->src_image_size_h() ? aipp_op_params->src_image_size_h() : height;
   int64_t src_image_size_w = aipp_op_params->src_image_size_w() ? aipp_op_params->src_image_size_w() : width;
-  OP_LOGD(op.GetName().c_str(), "src_image_size_h=%ld, src_image_size_w=%ld", src_image_size_h, src_image_size_w);
+  OP_LOGD(TbeGetName(op).c_str(), "src_image_size_h=%ld, src_image_size_w=%ld", src_image_size_h, src_image_size_w);
   vector<int64_t> shape;
   if (images_desc.GetFormat() == FORMAT_NCHW || images_desc.GetFormat() == FORMAT_NHWC) {
     shape.push_back(batch);
@@ -1014,13 +1014,13 @@ static graphStatus StaticInferShape(Operator& op, ::domi::AippOpParams* aipp_op_
 
   std::vector<int32_t> aclInputDims;
   aclInputDims = GetAclInputDims(aipp_op_params, batch, src_image_size_h, src_image_size_w);
-  OP_LOGI(op.GetName().c_str(), "aclInputDims size: %d", aclInputDims.size());
+  OP_LOGI(TbeGetName(op).c_str(), "aclInputDims size: %d", aclInputDims.size());
   if (aclInputDims.size() >= 4) {
-    OP_LOGI(op.GetName().c_str(), "aclInputDims: %d, %d, %d, %d", aclInputDims[0], aclInputDims[1], aclInputDims[2],
+    OP_LOGI(TbeGetName(op).c_str(), "aclInputDims: %d, %d, %d, %d", aclInputDims[0], aclInputDims[1], aclInputDims[2],
             aclInputDims[3]);
     op.SetAttr("input_dims", aclInputDims);
   }
-  OP_LOGI(op.GetName().c_str(), "aipp infer, static mode, success");
+  OP_LOGI(TbeGetName(op).c_str(), "aipp infer, static mode, success");
 
   return GRAPH_SUCCESS;
 }
@@ -1030,67 +1030,67 @@ IMPLEMT_VERIFIER(Aipp, AippVerify) {
 }
 
 IMPLEMT_COMMON_INFERFUNC(AippInfer) {
-  OP_LOGI(op.GetName().c_str(), "AippInfer start");
+  OP_LOGI(TbeGetName(op).c_str(), "AippInfer start");
   std::string aipp_config_path;
   if (op.GetAttr("aipp_config_path", aipp_config_path) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "AippInfer, failed to get attr aipp_config_path");
+    OP_LOGE(TbeGetName(op).c_str(), "AippInfer, failed to get attr aipp_config_path");
     return GRAPH_FAILED;
   }
   SaveImagesDesc(op, aipp_config_path);
 
   if (nlohmann::json::accept(aipp_config_path)) {
-    OP_LOGD(op.GetName().c_str(), "AippInfer, aipp_config_path is json");
+    OP_LOGD(TbeGetName(op).c_str(), "AippInfer, aipp_config_path is json");
     int64_t modePosition = aipp_config_path.find("aipp_mode");
     int64_t dynamicPosition = aipp_config_path.find("dynamic");
     if (modePosition > 0 && dynamicPosition > 0) {
       // aipp_config_path: {"aipp_mode":"dynamic"}
-      OP_LOGD(op.GetName().c_str(), "AippInfer, aipp dynamic mode");
+      OP_LOGD(TbeGetName(op).c_str(), "AippInfer, aipp dynamic mode");
       const GeTensor* params_tensor_p = OpDescUtils::GetInputConstData(op, 1);
       if (params_tensor_p != nullptr) {
         // running state
-        OP_LOGD(op.GetName().c_str(), "AippInfer, running, do DynamicShapeInfershape");
+        OP_LOGD(TbeGetName(op).c_str(), "AippInfer, running, do DynamicShapeInfershape");
         return DynamicShapeInfershape(op, params_tensor_p);
       }
     }
 
     // compiling state
     if (op.GetAttr("aipp_config_file_path", aipp_config_path) != GRAPH_SUCCESS) {
-      OP_LOGE(op.GetName().c_str(), "AippInfer, failed to get attr aipp_config_file_path");
+      OP_LOGE(TbeGetName(op).c_str(), "AippInfer, failed to get attr aipp_config_file_path");
       return GRAPH_FAILED;
     }
   }
-  OP_LOGD(op.GetName().c_str(), "AippInfer, aipp_config_path is %s", aipp_config_path.c_str());
+  OP_LOGD(TbeGetName(op).c_str(), "AippInfer, aipp_config_path is %s", aipp_config_path.c_str());
 
   char resolved_file_path[PATH_MAX] = {0x00};
   if (realpath(aipp_config_path.c_str(), resolved_file_path) == nullptr) {
-    OP_LOGE(op.GetName().c_str(), "invalid insert op conf file path:%s.", aipp_config_path.c_str());
+    OP_LOGE(TbeGetName(op).c_str(), "invalid insert op conf file path:%s.", aipp_config_path.c_str());
     return GRAPH_FAILED;
   }
 
   // protobuff message to json
   std::shared_ptr<domi::InsertNewOps> insert_op_conf_(new (std::nothrow) domi::InsertNewOps());
   if (insert_op_conf_ == nullptr) {
-    OP_LOGE(op.GetName().c_str(), "insert_op_conf_ is null!");
+    OP_LOGE(TbeGetName(op).c_str(), "insert_op_conf_ is null!");
     return GRAPH_FAILED;
   }
 
   bool ret = GraphUtils::ReadProtoFromTextFile(aipp_config_path.c_str(), insert_op_conf_.get());
   if (!ret) {
-    OP_LOGE(op.GetName().c_str(), "Read AIPP conf file error!");
+    OP_LOGE(TbeGetName(op).c_str(), "Read AIPP conf file error!");
     return GRAPH_FAILED;
   }
   int64_t index = 0;
   op.GetAttr("current_aipp_index", index);
-  OP_LOGD(op.GetName().c_str(), "AippInfer, current_aipp_index is %ld", index);
+  OP_LOGD(TbeGetName(op).c_str(), "AippInfer, current_aipp_index is %ld", index);
 
   if (index >= insert_op_conf_->aipp_op_size()) {
-    OP_LOGE(op.GetName().c_str(), "current_aipp_index %ld is invalid", index);
+    OP_LOGE(TbeGetName(op).c_str(), "current_aipp_index %ld is invalid", index);
     return GRAPH_FAILED;
   }
   ::domi::AippOpParams* aipp_op_params = insert_op_conf_->mutable_aipp_op(index);
   if (aipp_op_params == nullptr) {
     std::string err_msg = GetInputInvalidErrMsg("aipp_op_params");
-    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -1155,13 +1155,13 @@ IMPLEMT_COMMON_INFERFUNC(AippInfer) {
 }
 
 IMPLEMT_INFER_DATA_SLICE(Aipp, AippInferDataSlice) {
-  OP_LOGI(op.GetName().c_str(), "AippInferDataSlice start.");
+  OP_LOGI(TbeGetName(op).c_str(), "AippInferDataSlice start.");
 
   auto images_desc = op.GetInputDesc("images");
   auto input_format = images_desc.GetFormat();
 
   if (input_format != FORMAT_NHWC && input_format != FORMAT_NCHW && input_format != FORMAT_NC1HWC0_C04) {
-    OP_LOGE(op.GetName().c_str(), "aipp input format only support NCHW, NHWC, NC1HWC0_C04.");
+    OP_LOGE(TbeGetName(op).c_str(), "aipp input format only support NCHW, NHWC, NC1HWC0_C04.");
     return GRAPH_FAILED;
   }
 
@@ -1172,14 +1172,14 @@ IMPLEMT_INFER_DATA_SLICE(Aipp, AippInferDataSlice) {
   GeTensorDescPtr tensor_desc_out = op_desc->MutableOutputDesc("features");
 
   if (!ge::AttrUtils::GetListListInt(tensor_desc_out, ge::ATTR_NAME_DATA_SLICE, output_data_slice)) {
-    OP_LOGI(op.GetName().c_str(), "no data slice, use default as {{}, {}, {}, {}, {}}");
+    OP_LOGI(TbeGetName(op).c_str(), "no data slice, use default as {{}, {}, {}, {}, {}}");
     return GRAPH_FAILED;
   }
 
   for (unsigned i = 0; i < output_data_slice.size(); i++) {
     if (output_data_slice[i].size() > 0) {
       if (output_data_slice[i].size() != 2) {
-        OP_LOGE(op.GetName().c_str(), "data slice format input size should be 2.");
+        OP_LOGE(TbeGetName(op).c_str(), "data slice format input size should be 2.");
         return GRAPH_FAILED;
       }
 
@@ -1192,17 +1192,17 @@ IMPLEMT_INFER_DATA_SLICE(Aipp, AippInferDataSlice) {
           images_data_slice.push_back({});
         }
         if (!AttrUtils::SetListListInt(tensor_desc_in, ge::ATTR_NAME_DATA_SLICE, images_data_slice)) {
-          OP_LOGE(op.GetName().c_str(), "images data_slice set failed.");
+          OP_LOGE(TbeGetName(op).c_str(), "images data_slice set failed.");
           return GRAPH_FAILED;
         }
       } else {
-        OP_LOGI(op.GetName().c_str(), "only support cut in n");
+        OP_LOGI(TbeGetName(op).c_str(), "only support cut in n");
         return NOT_SUPPORT_SLICE;
       }
     }
   }
 
-  OP_LOGI(op.GetName().c_str(), "AippInferDataSlice success.");
+  OP_LOGI(TbeGetName(op).c_str(), "AippInferDataSlice success.");
   return GRAPH_SUCCESS;
 }
 

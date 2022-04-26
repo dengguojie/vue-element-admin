@@ -146,32 +146,32 @@ Status ParseParamsLpPool(const Message* op_src, ge::Operator& op_dest) {
 
 Status AvgUpdateTbeAttrFromOp(const Operator& op, AvgLpPoolTbeAttr& tbe_attr) {
   if (op.GetAttr("padding_mode", tbe_attr.padding_mode) != SUCCESS) {
-    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "get padding_mode from op failed");
+    ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "get padding_mode from op failed");
     return FAILED;
   };
 
   if (op.GetAttr("ksize", tbe_attr.ksize) != SUCCESS) {
-    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "get ksize from op failed");
+    ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "get ksize from op failed");
     return FAILED;
   };
 
   if (op.GetAttr("strides", tbe_attr.strides) != SUCCESS) {
-    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "get strides from op failed");
+    ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "get strides from op failed");
     return FAILED;
   };
 
   if (op.GetAttr("pads", tbe_attr.pads) != SUCCESS) {
-    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "get pads from op failed");
+    ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "get pads from op failed");
     return FAILED;
   };
 
   if (op.GetAttr("trans_2d", tbe_attr.trans_2d) != SUCCESS) {
-    OP_LOGW(op.GetName().c_str(), "get trans_2d from op failed, use default.");
+    OP_LOGW(TbeGetName(op).c_str(), "get trans_2d from op failed, use default.");
     return FAILED;
   };
 
   if (op.GetAttr("p", tbe_attr.p) != SUCCESS) {
-    OP_LOGW(op.GetName().c_str(), "get p from op failed, use default.");
+    OP_LOGW(TbeGetName(op).c_str(), "get p from op failed, use default.");
     return FAILED;
   }
   return SUCCESS;
@@ -233,10 +233,10 @@ Status AvgLpPoolUpdateFormat(Operator& op, Format format) {
   orgTensorX.SetFormat(format);
   auto ret = op_desc->UpdateInputDesc("x", orgTensorX);
   if (ret != ge::GRAPH_SUCCESS) {
-    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "update input x format failed.");
+    ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "update input x format failed.");
     return FAILED;
   }
-  OP_LOGD(op.GetName().c_str(), "update input x format success, now is %d", op_desc->GetInputDesc("x").GetFormat());
+  OP_LOGD(TbeGetName(op).c_str(), "update input x format success, now is %d", op_desc->GetInputDesc("x").GetFormat());
 
   // update output format
   ge::GeTensorDesc orgTensorY = op_desc->GetOutputDesc("y");
@@ -244,17 +244,17 @@ Status AvgLpPoolUpdateFormat(Operator& op, Format format) {
   orgTensorY.SetFormat(format);
   ret = op_desc->UpdateOutputDesc("y", orgTensorY);
   if (ret != ge::GRAPH_SUCCESS) {
-    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "update output y format failed.");
+    ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "update output y format failed.");
     return FAILED;
   }
-  OP_LOGD(op.GetName().c_str(), "update output y format success, now is %d", op_desc->GetOutputDesc("y").GetFormat());
+  OP_LOGD(TbeGetName(op).c_str(), "update output y format success, now is %d", op_desc->GetOutputDesc("y").GetFormat());
   return SUCCESS;
 }
 
 Status ParseOpToGraphLpPool(const Operator& op, Graph& graph) {
   int dims = 0;
   if (op.GetAttr("dims", dims) != SUCCESS) {
-    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "get dims from op failed");
+    ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "get dims from op failed");
     return FAILED;
   }
 

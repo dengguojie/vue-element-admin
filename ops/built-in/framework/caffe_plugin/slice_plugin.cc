@@ -29,14 +29,14 @@ Status ParseParamsSlice(const Message* op_src, ge::Operator& op)
 {
   auto layer = static_cast<const caffe::LayerParameter*>(op_src);
   if (layer == nullptr) {
-    OP_LOGE(op.GetName().c_str(), "convert src op failed.");
+    OP_LOGE(TbeGetName(op).c_str(), "convert src op failed.");
     return FAILED;
   }
 
   const caffe::SliceParameter& slice_param = layer->slice_param();
 
   if (slice_param.has_axis() && slice_param.has_slice_dim()) {
-    OP_LOGE(op.GetName().c_str(), "Either axis or slice_dim should be specified; not both.");
+    OP_LOGE(TbeGetName(op).c_str(), "Either axis or slice_dim should be specified; not both.");
     return FAILED;
   }
   int32_t split_dim;
@@ -50,13 +50,13 @@ Status ParseParamsSlice(const Message* op_src, ge::Operator& op)
     split_dim = static_cast<int32_t>(1);
     op.SetAttr("split_dim", split_dim);
   }
-  OP_LOGI(op.GetName().c_str(), "[PLUGIN_Slice]--------------split_dim=%d---------------", split_dim);
+  OP_LOGI(TbeGetName(op).c_str(), "[PLUGIN_Slice]--------------split_dim=%d---------------", split_dim);
   int n = layer->top_size();
   op.SetAttr("num_split", n);
-  OP_LOGI(op.GetName().c_str(), "[PLUGIN_Slice]--------------num_split=%d---------------", n);
+  OP_LOGI(TbeGetName(op).c_str(), "[PLUGIN_Slice]--------------num_split=%d---------------", n);
   std::vector<int64_t> vec;
   int sliceSize = slice_param.slice_point_size();
-  OP_LOGI(op.GetName().c_str(), "[PLUGIN_Slice]--------------sliceSize=%d---------------", sliceSize);
+  OP_LOGI(TbeGetName(op).c_str(), "[PLUGIN_Slice]--------------sliceSize=%d---------------", sliceSize);
   if (0 == sliceSize) {
     op.SetAttr("size_splits", vec);
   } else {

@@ -26,14 +26,14 @@ Status ParseImageProjectiveTransform(const Message* op_src, ge::Operator& op) {
   input_tensor.SetOriginFormat(ge::FORMAT_NHWC);
   input_tensor.SetFormat(ge::FORMAT_NHWC);
   if (op.UpdateInputDesc("images", input_tensor) != ge::GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "update input format failed.");
+    OP_LOGE(TbeGetName(op).c_str(), "update input format failed.");
     return FAILED;
   }
   ge::TensorDesc output_tensor = op.GetOutputDesc("transformed_images");
   output_tensor.SetOriginFormat(ge::FORMAT_NHWC);
   output_tensor.SetFormat(ge::FORMAT_NHWC);
   if (op.UpdateOutputDesc("transformed_images", output_tensor) != ge::GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "update output format failed.");
+    OP_LOGE(TbeGetName(op).c_str(), "update output format failed.");
     return FAILED;
   }
   return SUCCESS;

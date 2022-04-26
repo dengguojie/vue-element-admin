@@ -54,7 +54,7 @@ IMPLEMT_INFERFUNC(ROIAlignGrad, ROIAlignGradInfer) {
   std::vector<int64_t> xdiff_shape;
   if (GRAPH_SUCCESS != op.GetAttr("xdiff_shape", xdiff_shape)) {
     std::string err_msg = GetInputInvalidErrMsg("xdiff_shape");
-    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
   auto inputType = op.GetInputDesc("ydiff").GetDataType();
@@ -78,11 +78,11 @@ IMPLEMT_INFERFUNC(ROIAlign, ROIAlignInfer) {
   int64_t pool_h_shape;
   int64_t pool_w_shape;
   if (op.GetAttr("pooled_height", pool_h_shape) == ge::GRAPH_FAILED) {
-    OP_LOGI(op.GetName().c_str(), "GetOpAttr ConstValue pooled_height failed. Use unknown shape.");
+    OP_LOGI(TbeGetName(op).c_str(), "GetOpAttr ConstValue pooled_height failed. Use unknown shape.");
     pool_h_shape = UNKNOWN_DIM;
   }
   if (op.GetAttr("pooled_width", pool_w_shape) == ge::GRAPH_FAILED) {
-    OP_LOGI(op.GetName().c_str(), "GetOpAttr ConstValue pooled_width failed. Use unknown shape.");
+    OP_LOGI(TbeGetName(op).c_str(), "GetOpAttr ConstValue pooled_width failed. Use unknown shape.");
     pool_w_shape = UNKNOWN_DIM;
   }
 
@@ -122,7 +122,7 @@ IMPLEMT_COMMON_INFERFUNC(IouInferShape) {
   MakeUpShapeRange(gtboxes_shape, gtboxes_shape_range);
   
   if (IsUnknownRankShape(bboxes_shape) || IsUnknownRankShape(gtboxes_shape)){
-    OP_LOGE(op.GetName().c_str(), "op [Iou] InferShape Failed, UnknownRankShape of bboxes or gtboxes.");
+    OP_LOGE(TbeGetName(op).c_str(), "op [Iou] InferShape Failed, UnknownRankShape of bboxes or gtboxes.");
     return GRAPH_FAILED;
   }
   vector<int64_t> overlap_shape;
@@ -179,7 +179,7 @@ IMPLEMT_COMMON_INFERFUNC(BoundingBoxDecodeInferShape) {
         return GRAPH_SUCCESS;
     }
 
-    OP_LOGE(op.GetName().c_str(), "the BoundingBoxDecode InferShape Failed.");
+    OP_LOGE(TbeGetName(op).c_str(), "the BoundingBoxDecode InferShape Failed.");
     return GRAPH_FAILED;
 }
 
@@ -192,7 +192,7 @@ IMPLEMT_VERIFIER(BoundingBoxDecode, BoundingBoxDecodeVerify) {
 
     // inputs size must be equal
     if ((rois_size < 1) || (rois_size != deltas_size)) {
-        OP_LOGE(op.GetName().c_str(),
+        OP_LOGE(TbeGetName(op).c_str(),
         "the  BoundingBoxDecode verify Failed.inputs size(rois:%ld, deltas:%ld) not equal", rois_size, deltas_size);
         return GRAPH_FAILED;
     }
@@ -200,7 +200,7 @@ IMPLEMT_VERIFIER(BoundingBoxDecode, BoundingBoxDecodeVerify) {
     // inputs last dim value must be 4(x1,y1,x2,y2)
     if (((rois_shape[rois_size - 1] > 0) && (rois_shape[rois_size - 1] != 4)) || 
         ((deltas_shape[deltas_size - 1] > 0) && (deltas_shape[deltas_size - 1] != 4))) {
-        OP_LOGE(op.GetName().c_str(), "the BoundingBoxDecode verify Failed.last dim(rois:%ld, deltas:%ld) != 4", 
+        OP_LOGE(TbeGetName(op).c_str(), "the BoundingBoxDecode verify Failed.last dim(rois:%ld, deltas:%ld) != 4", 
         rois_shape[rois_size - 1], deltas_shape[deltas_size - 1]);
         return GRAPH_FAILED;
     }
@@ -247,7 +247,7 @@ IMPLEMT_INFERFUNC(PriorBox, PriorBoxInfer) {
 
   auto xShape = featureDesc.GetShape().GetDims();
   if (xShape.size() < 4) {
-    OP_LOGE(op.GetName().c_str(), "input x dim is illegal, expected: > 3, actual: %zu.", xShape.size());
+    OP_LOGE(TbeGetName(op).c_str(), "input x dim is illegal, expected: > 3, actual: %zu.", xShape.size());
     return GRAPH_FAILED;
   }
   int64_t inputH, inputW;
@@ -272,7 +272,7 @@ IMPLEMT_INFERFUNC(PriorBox, PriorBoxInfer) {
       aspectratios_new.push_back(ar);
       if (flip) {
         if (ar <= 0) {
-          OP_LOGE(op.GetName().c_str(), "aspect_ratio need greater than 0");
+          OP_LOGE(TbeGetName(op).c_str(), "aspect_ratio need greater than 0");
           return GRAPH_FAILED;
         }
         aspectratios_new.push_back(1.0 / ar);
@@ -315,7 +315,7 @@ IMPLEMT_INFERFUNC(PriorBoxD, PriorBoxDInfer) {
   auto xShape = featureDesc.GetShape().GetDims();
   if (xShape.size() < 4) {
     std::string err_msg = GetAttrSizeErrMsg("xShape", std::to_string(xShape.size()), ConcatString("more than or equal to 4"));
-    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
   int64_t inputH, inputW;
@@ -324,7 +324,7 @@ IMPLEMT_INFERFUNC(PriorBoxD, PriorBoxDInfer) {
   auto boxLen = boxDesc.GetShape().GetDims();
   if (boxLen.size() == 0) {
     std::string err_msg = GetAttrSizeErrMsg("boxLen", std::to_string(boxLen.size()), ConcatString("not equal to 1"));
-    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
   int64_t priorNum;
@@ -356,7 +356,7 @@ IMPLEMT_INFERFUNC(PriorBoxDV2, PriorBoxDV2Infer) {
   auto xShape = featureDesc.GetShape().GetDims();
   if (xShape.size() < 4) {
     std::string err_msg = GetAttrSizeErrMsg("xShape", std::to_string(xShape.size()), ConcatString("more than or equal to 4"));
-    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
   int64_t inputH, inputW;
@@ -365,7 +365,7 @@ IMPLEMT_INFERFUNC(PriorBoxDV2, PriorBoxDV2Infer) {
   auto boxLen = boxDesc.GetShape().GetDims();
   if (boxLen.size() == 0) {
     std::string err_msg = GetAttrSizeErrMsg("boxLen", std::to_string(boxLen.size()), ConcatString("not equal to 1"));
-    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
   int64_t priorNum;

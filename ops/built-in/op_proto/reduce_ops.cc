@@ -65,7 +65,7 @@ static bool InferReduceShape(const ge::Operator& op, const string& input_name, c
   int64_t dim_num = shape.GetDimNum();
 
   if (shapeVector.size() == 0) {
-    OP_LOGI(op.GetName().c_str(), "input shape vector size is 0, is scalar.");
+    OP_LOGI(TbeGetName(op).c_str(), "input shape vector size is 0, is scalar.");
     result_desc.SetShape({});
     result_desc.SetShapeRange({});
     return true;
@@ -85,14 +85,14 @@ static bool InferReduceShape(const ge::Operator& op, const string& input_name, c
   std::vector<std::pair<int64_t, int64_t>> output_shape_range;
   MakeUpShapeRange(shapeVector, input_shape_range);
   if (input_shape_range.size() != (uint32_t)dim_num) {
-    OP_LOGI(op.GetName().c_str(), "reset input shape range.");
+    OP_LOGI(TbeGetName(op).c_str(), "reset input shape range.");
     input_shape_range.clear();
     MakeUpShapeRange(shapeVector, input_shape_range);
   }
 
   bool keep_dims;
   if (GRAPH_SUCCESS != op.GetAttr(keep_dims_name, keep_dims)) {
-    OP_LOGE(op.GetName().c_str(), "GetAttr of %s failed.", keep_dims_name.c_str());
+    OP_LOGE(TbeGetName(op).c_str(), "GetAttr of %s failed.", keep_dims_name.c_str());
     return false;
   }
 
@@ -104,26 +104,26 @@ static bool InferReduceShape(const ge::Operator& op, const string& input_name, c
   int64_t axis_dimNum = axis_shape.GetDimNum();
 
   if (!axis_shapeVector.empty() && axis_shapeVector[0] > dim_num) {
-    OP_LOGE(op.GetName().c_str(), "The size of axisnode must be less than inputx dim_num.");
+    OP_LOGE(TbeGetName(op).c_str(), "The size of axisnode must be less than inputx dim_num.");
     return false;
   }
 
   if (axis_dimNum == 1 && axis_shapeVector[0] == 0) {
     result_desc.SetShape(shape);
     result_desc.SetShapeRange(input_shape_range);
-    OP_LOGI(op.GetName().c_str(), "axis dim num is 1 and axis shape vector[0] is 0.");
+    OP_LOGI(TbeGetName(op).c_str(), "axis dim num is 1 and axis shape vector[0] is 0.");
     return true;
   }
 
   Tensor data;
   // axis unknown
   if (GRAPH_SUCCESS != op.GetInputConstData(axis_name, data)) {
-    OP_LOGI(op.GetName().c_str(), "GetInputConstData of %s failed, enter axis unknown scenario.", axis_name.c_str());
+    OP_LOGI(TbeGetName(op).c_str(), "GetInputConstData of %s failed, enter axis unknown scenario.", axis_name.c_str());
 
     std::vector<int64_t> oShapeVector;
 
     if (axis_dimNum > 1) {
-      OP_LOGE(op.GetName().c_str(), "The dim number of axis must be one or zero, but actual is %ld.", axis_dimNum);
+      OP_LOGE(TbeGetName(op).c_str(), "The dim number of axis must be one or zero, but actual is %ld.", axis_dimNum);
       return false;
     }
 
@@ -145,7 +145,7 @@ static bool InferReduceShape(const ge::Operator& op, const string& input_name, c
       result_desc.SetShapeRange(output_shape_range);
     } else {
       if (!axis_shapeVector.empty() && (axis_shapeVector[0] == -1 || axis_shapeVector[0] == -2)) {
-        OP_LOGI(op.GetName().c_str(), "Can't get reduce axis number.");
+        OP_LOGI(TbeGetName(op).c_str(), "Can't get reduce axis number.");
 
         oShapeVector.push_back(-2);
         Shape oShape(oShapeVector);
@@ -158,7 +158,7 @@ static bool InferReduceShape(const ge::Operator& op, const string& input_name, c
         } else {
           output_dimNum = dim_num - axis_shapeVector[0];
         }
-        OP_LOGI(op.GetName().c_str(), "Get output dim num %d.", output_dimNum);
+        OP_LOGI(TbeGetName(op).c_str(), "Get output dim num %d.", output_dimNum);
 
         int64_t range_min_value = input_shape_range[0].first;
         int64_t range_max_value = input_shape_range[0].second;
@@ -204,7 +204,7 @@ static bool InferReduceShape(const ge::Operator& op, const string& input_name, c
     // convert reduce axis
     for (size_t i = 0; i < axis.size(); ++i) {
       if (axis[i] < -dim_num || axis[i] > (dim_num - 1)) {
-        OP_LOGE(op.GetName().c_str(), "reduce verify failed, axis: %ld, dim_num:%ld.", axis[i], dim_num);
+        OP_LOGE(TbeGetName(op).c_str(), "reduce verify failed, axis: %ld, dim_num:%ld.", axis[i], dim_num);
         return false;
       }
       if (axis[i] < 0) {
@@ -253,7 +253,7 @@ static bool InferReduceShape(const ge::Operator& op, const string& input_name, c
 static bool CheckReduceInfo(const ge::Operator& op, const size_t& input_size, const size_t& axis_size,
                             const string& keep_dims_name, bool& keep_dims) {
   if (GRAPH_SUCCESS != op.GetAttr(keep_dims_name, keep_dims)) {
-    OP_LOGE(op.GetName().c_str(), "GetAttr of %s failed.", keep_dims_name.c_str());
+    OP_LOGE(TbeGetName(op).c_str(), "GetAttr of %s failed.", keep_dims_name.c_str());
     return false;
   }
   return true;
@@ -262,16 +262,16 @@ static bool CheckReduceInfo(const ge::Operator& op, const size_t& input_size, co
 static bool CheckReduceDInfo(const ge::Operator& op, const size_t& input_size, const string& keep_dims_name,
                              const string& axis_name, bool& keep_dims, std::vector<int64_t>& axis) {
   if (GRAPH_SUCCESS != op.GetAttr(keep_dims_name, keep_dims)) {
-    OP_LOGE(op.GetName().c_str(), "GetAttr of %s failed.", keep_dims_name.c_str());
+    OP_LOGE(TbeGetName(op).c_str(), "GetAttr of %s failed.", keep_dims_name.c_str());
     return false;
   }
   if (GRAPH_SUCCESS != op.GetAttr(axis_name, axis)) {
-    OP_LOGE(op.GetName().c_str(), "GetAttr of %s failed.", axis_name.c_str());
+    OP_LOGE(TbeGetName(op).c_str(), "GetAttr of %s failed.", axis_name.c_str());
     return false;
   }
 
   if (axis.size() > input_size) {
-    OP_LOGE(op.GetName().c_str(), "size of axis is illegal.");
+    OP_LOGE(TbeGetName(op).c_str(), "size of axis is illegal.");
     return false;
   }
 
@@ -446,7 +446,7 @@ static bool InferReduceShapeProcess(const ge::Operator& op, const string& input_
     return true;
   }
   if (!axis_shape.empty() && axis_shape[0] == 0) {
-    OP_LOGD(op.GetName().c_str(), "axis_shape[0] is 0");
+    OP_LOGD(TbeGetName(op).c_str(), "axis_shape[0] is 0");
     output_desc->SetShape(GeShape(input_shape));
     output_desc->SetDataType(input_type);
     return true;
@@ -461,22 +461,22 @@ static bool InferReduceShapeProcess(const ge::Operator& op, const string& input_
     } else if (axis_type == DT_INT64) {
       GetTensorValue<int64_t>(axis_tensor, axis);
     } else {
-      OP_LOGE(op.GetName().c_str(), "axis_type is illegal");
+      OP_LOGE(TbeGetName(op).c_str(), "axis_type is illegal");
       return false;
     }
     // Convert "-1" -> "length-1";
     if (!ConvertAxis(axis, (int64_t)input_length)) {
-      OP_LOGE(op.GetName().c_str(), "axis_value is illegal");
+      OP_LOGE(TbeGetName(op).c_str(), "axis_value is illegal");
       return false;
     }
   } else {
-    OP_LOGD(op.GetName().c_str(), "GetInputConstData Failed");
+    OP_LOGD(TbeGetName(op).c_str(), "GetInputConstData Failed");
   }
 
   // Get attr
   bool keep_dims = false;
   if (!CheckReduceInfo(op, input_length, axis_length, keep_dims_name, keep_dims)) {
-    OP_LOGE(op.GetName().c_str(), "Inputs and attrs are illegal");
+    OP_LOGE(TbeGetName(op).c_str(), "Inputs and attrs are illegal");
     return false;
   }
 
@@ -487,7 +487,7 @@ static bool InferReduceShapeProcess(const ge::Operator& op, const string& input_
    * */
   // Special Branch
   if (!axis_shape.empty() && (axis_shape[0] == -1 || axis_shape[0] == -2) && (!keep_dims)) {
-    OP_LOGD(op.GetName().c_str(), "[Special Branch]: axis_shape[0] is -1 or -2.");
+    OP_LOGD(TbeGetName(op).c_str(), "[Special Branch]: axis_shape[0] is -1 or -2.");
     std::vector<int64_t> output_shape;
     output_shape.push_back(-2);
     output_desc->SetShape(GeShape(output_shape));
@@ -497,7 +497,7 @@ static bool InferReduceShapeProcess(const ge::Operator& op, const string& input_
 
   // Special Branch for if axis has redundant axis value
   if (!axis_shape.empty() && axis_shape[0] > static_cast<int64_t>(input_length) && (!keep_dims)) {
-    OP_LOGD(op.GetName().c_str(), "[Special Branch]: axis_shape[0] is more than input_length,"
+    OP_LOGD(TbeGetName(op).c_str(), "[Special Branch]: axis_shape[0] is more than input_length,"
             "if axis has redundant axis value");
     std::vector<int64_t> output_shape;
     output_shape.push_back(-2);
@@ -507,10 +507,10 @@ static bool InferReduceShapeProcess(const ge::Operator& op, const string& input_
   }
   // DoKnown Branch && UnKnown Branch
   if ((!IsUnknown(input_shape)) && (!IsUnknown(axis_shape)) && (axis_tensor != nullptr)) {
-    OP_LOGD(op.GetName().c_str(), "[DoKnown Branch]: shape and axis are known.");
+    OP_LOGD(TbeGetName(op).c_str(), "[DoKnown Branch]: shape and axis are known.");
     DoKnownBranch(keep_dims, input_type, input_shape, axis, output_desc);
   } else {
-    OP_LOGD(op.GetName().c_str(), "[UnKnown Branch]: one of inputs is unknown at least.");
+    OP_LOGD(TbeGetName(op).c_str(), "[UnKnown Branch]: one of inputs is unknown at least.");
     std::vector<int64_t> output_shape;
     std::vector<std::pair<int64_t, int64_t>> output_shape_range;
     std::vector<std::pair<int64_t, int64_t>> input_shape_range;
@@ -520,10 +520,10 @@ static bool InferReduceShapeProcess(const ge::Operator& op, const string& input_
 
     // Split as axis known and axis unknown
     if (axis_tensor != nullptr) {
-      OP_LOGD(op.GetName().c_str(), "[UnKnown Branch]: axis is known.");
+      OP_LOGD(TbeGetName(op).c_str(), "[UnKnown Branch]: axis is known.");
       DoAxisKnown(keep_dims, axis, input_shape, input_shape_range, output_shape, output_shape_range);
     } else {
-      OP_LOGD(op.GetName().c_str(), "[UnKnown Branch]: axis is unknown.");
+      OP_LOGD(TbeGetName(op).c_str(), "[UnKnown Branch]: axis is unknown.");
       DoAxisUnKnown(keep_dims, axis_shape, input_shape, input_shape_range, output_shape, output_shape_range);
     }
 
@@ -554,13 +554,13 @@ static bool InferReduceDShapeProcess(const ge::Operator& op, const string& input
    * */
   // Special Branch
   if (input_length == 0) {
-    OP_LOGD(op.GetName().c_str(), "[Special Branch]: input_shape size is 0.");
+    OP_LOGD(TbeGetName(op).c_str(), "[Special Branch]: input_shape size is 0.");
     output_desc->SetShape({});
     output_desc->SetDataType(input_type);
     return true;
   }
   if (input_shape[0] == -2) {
-    OP_LOGD(op.GetName().c_str(), "[Special Branch]: input_shape is -2.");
+    OP_LOGD(TbeGetName(op).c_str(), "[Special Branch]: input_shape is -2.");
     std::vector<int64_t> output_shape(1, -2);
     output_desc->SetShape(GeShape(output_shape));
     output_desc->SetDataType(input_type);
@@ -571,7 +571,7 @@ static bool InferReduceDShapeProcess(const ge::Operator& op, const string& input
   bool keep_dims = false;
   std::vector<int64_t> axis;
   if (!CheckReduceDInfo(op, input_length, keep_dims_name, axis_name, keep_dims, axis)) {
-    OP_LOGE(op.GetName().c_str(), "KeepDims or Axis is illegal");
+    OP_LOGE(TbeGetName(op).c_str(), "KeepDims or Axis is illegal");
     return false;
   }
 
@@ -579,16 +579,16 @@ static bool InferReduceDShapeProcess(const ge::Operator& op, const string& input
   op.GetAttr("noop_with_empty_axes", noop_with_empty_axes);
   // Convert "-1" -> "length-1";
   if (!ConvertAxis(axis, (int64_t)input_length, noop_with_empty_axes)) {
-    OP_LOGE(op.GetName().c_str(), "axis_value is illegal");
+    OP_LOGE(TbeGetName(op).c_str(), "axis_value is illegal");
     return false;
   }
 
   // DoKnown Branch and UnKnown Branch
   if (!IsUnknown(input_shape)) {
-    OP_LOGD(op.GetName().c_str(), "[DoKnown Branch]: input_shape is known.");
+    OP_LOGD(TbeGetName(op).c_str(), "[DoKnown Branch]: input_shape is known.");
     DoKnownBranch(keep_dims, input_type, input_shape, axis, output_desc);
   } else {
-    OP_LOGD(op.GetName().c_str(), "[UnKnown Branch]: input_shape is unknown.");
+    OP_LOGD(TbeGetName(op).c_str(), "[UnKnown Branch]: input_shape is unknown.");
     std::vector<int64_t> output_shape(input_length);
     std::vector<std::pair<int64_t, int64_t>> output_shape_range(input_length);
     std::vector<std::pair<int64_t, int64_t>> input_shape_range;
@@ -645,13 +645,13 @@ static bool InferReduceDShape(const ge::Operator& op, const string& input_name, 
 
   std::vector<int64_t> axis;
   if (GRAPH_SUCCESS != op.GetAttr(axis_name, axis)) {
-    OP_LOGE(op.GetName().c_str(), "GetAttr of %s failed.", axis_name.c_str());
+    OP_LOGE(TbeGetName(op).c_str(), "GetAttr of %s failed.", axis_name.c_str());
     return false;
   }
 
   bool keep_dims;
   if (GRAPH_SUCCESS != op.GetAttr(keep_dims_name, keep_dims)) {
-    OP_LOGE(op.GetName().c_str(), "GetAttr of %s failed.", keep_dims_name.c_str());
+    OP_LOGE(TbeGetName(op).c_str(), "GetAttr of %s failed.", keep_dims_name.c_str());
     return false;
   }
 
@@ -663,7 +663,7 @@ static bool InferReduceDShape(const ge::Operator& op, const string& input_name, 
 
   for (size_t i = 0; i < axis.size(); ++i) {
     if (axis[i] < -dimNum || axis[i] > (dimNum - 1)) {
-      OP_LOGE(op.GetName().c_str(), "the axis of reduce verify failed.");
+      OP_LOGE(TbeGetName(op).c_str(), "the axis of reduce verify failed.");
       return false;
     }
     if (axis[i] < 0) {
@@ -678,7 +678,7 @@ static bool InferReduceDShape(const ge::Operator& op, const string& input_name, 
   std::vector<std::pair<int64_t, int64_t>> output_shape_range;
   MakeUpShapeRange(shapeVector, input_shape_range);
   if (input_shape_range.size() != (uint32_t)dimNum) {
-    OP_LOGI(op.GetName().c_str(), "reset input shape range.");
+    OP_LOGI(TbeGetName(op).c_str(), "reset input shape range.");
     input_shape_range.clear();
     MakeUpShapeRange(shapeVector, input_shape_range);
   }
@@ -724,7 +724,7 @@ static bool InferReduceDShape(const ge::Operator& op, const string& input_name, 
 IMPLEMT_COMMON_INFERFUNC(ReduceAllInferShape) {
   const vector<string> depend_names = {"axes"};
   PREPARE_DYNAMIC_SHAPE(depend_names);
-  OP_LOGI(op.GetName().c_str(), "Enter ReduceAll proto inferfunction!");
+  OP_LOGI(TbeGetName(op).c_str(), "Enter ReduceAll proto inferfunction!");
   ge::TensorDesc result_desc;
   if (!InferReduceShape(op, "x", "axes", "keep_dims", result_desc)) {
     return GRAPH_FAILED;
@@ -752,7 +752,7 @@ COMMON_INFER_FUNC_REG(ReduceAll, ReduceAllInferShape);
 // ----------------ReduceAllD Op-------------------
 // Obtains the processing function of the output tensor description.
 IMPLEMT_COMMON_INFERFUNC(ReduceAllDInferShape) {
-  OP_LOGI(op.GetName().c_str(), "Enter ReduceAllD proto inferfunction!");
+  OP_LOGI(TbeGetName(op).c_str(), "Enter ReduceAllD proto inferfunction!");
   ge::TensorDesc result_desc;
   if (!InferReduceDShape(op, "x", "axes", "keep_dims", result_desc)) {
     return GRAPH_FAILED;
@@ -776,7 +776,7 @@ COMMON_INFER_FUNC_REG(ReduceAllD, ReduceAllDInferShape);
 IMPLEMT_COMMON_INFERFUNC(ReduceProdInferShape) {
   const vector<string> depend_names = {"axes"};
   PREPARE_DYNAMIC_SHAPE(depend_names);
-  OP_LOGI(op.GetName().c_str(), "Enter ReduceProd proto inferfunction!");
+  OP_LOGI(TbeGetName(op).c_str(), "Enter ReduceProd proto inferfunction!");
   ge::TensorDesc result_desc;
   if (!InferReduceShape(op, "x", "axes", "keep_dims", result_desc)) {
     return GRAPH_FAILED;
@@ -803,7 +803,7 @@ INFER_VALUE_RANGE_DEFAULT_REG(ReduceProd);
 
 // ----------------ReduceProdD Op-------------------
 IMPLEMT_COMMON_INFERFUNC(ReduceProdDInferShape) {
-  OP_LOGI(op.GetName().c_str(), "Enter ReduceProdD proto inferfunction!");
+  OP_LOGI(TbeGetName(op).c_str(), "Enter ReduceProdD proto inferfunction!");
   ge::TensorDesc result_desc;
   if (!InferReduceDShape(op, "x", "axes", "keep_dims", result_desc)) {
     return GRAPH_FAILED;
@@ -849,12 +849,12 @@ IMPLEMT_COMMON_INFERFUNC(ReduceMeanDInferShape) {
   if (prof_switch) {
     before_infer = std::chrono::steady_clock::now();
   }
-  OP_LOGD(op.GetName().c_str(), "Enter ReduceMeanDInferShape");
+  OP_LOGD(TbeGetName(op).c_str(), "Enter ReduceMeanDInferShape");
   if (InferReduceDShapeProcess(op, "x", "axes", "keep_dims")) {
     if (prof_switch) {
       after_infer = std::chrono::steady_clock::now();
       auto t0 = std::chrono::duration_cast<std::chrono::microseconds>(after_infer - before_infer).count();
-      GEEVENT("[REDUCE_INFER_PROF] op[%s]: total: %d(us)", op.GetName().c_str(), static_cast<int>(t0));
+      GEEVENT("[REDUCE_INFER_PROF] op[%s]: total: %d(us)", TbeGetName(op).c_str(), static_cast<int>(t0));
     }
     return GRAPH_SUCCESS;
   }
@@ -878,7 +878,7 @@ IMPLEMT_COMMON_INFERFUNC(BNTrainingReduceInferShape) {
       oShapeVector.push_back(shapeVector[3]);
     } else {
       std::string err_msg = OtherErrMsg(ConcatString("Input x rank[",shapeVector.size(),"] can only support 4 when NHWC."));
-      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
       return GRAPH_FAILED;
     }
   } else if (format == FORMAT_NCHW) {
@@ -887,7 +887,7 @@ IMPLEMT_COMMON_INFERFUNC(BNTrainingReduceInferShape) {
     } else {
       string err_msg1 = ConcatString("Input x rank[", shapeVector.size(),"] can only support 2-4 when NCHW.");
       std::string err_msg = OtherErrMsg(err_msg1);
-      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
       return GRAPH_FAILED;
     }
   } else if (format == FORMAT_NDHWC) {
@@ -895,7 +895,7 @@ IMPLEMT_COMMON_INFERFUNC(BNTrainingReduceInferShape) {
       oShapeVector.push_back(shapeVector[4]);
     } else {
       std::string err_msg = OtherErrMsg(ConcatString("Input x rank[",shapeVector.size(),"] can only support 5 when NDHWC."));
-      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
       return GRAPH_FAILED;
     }
   } else if (format == FORMAT_NDC1HWC0) {
@@ -908,7 +908,7 @@ IMPLEMT_COMMON_INFERFUNC(BNTrainingReduceInferShape) {
       oShapeVector.push_back(shapeVector[5]);
     } else {
       std::string err_msg = OtherErrMsg(ConcatString("Input x rank[",shapeVector.size(),"] can only support 5 when NDC1HWC0."));
-      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
       return GRAPH_FAILED;
     }
   } else if (format == FORMAT_NCDHW) {
@@ -916,13 +916,13 @@ IMPLEMT_COMMON_INFERFUNC(BNTrainingReduceInferShape) {
       oShapeVector.push_back(shapeVector[1]);
     } else {
       std::string err_msg = OtherErrMsg(ConcatString("Input x rank[",shapeVector.size(),"] can only support 5 when NCDHW."));
-      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
       return GRAPH_FAILED;
     }
   } else {
     string expected_format_list = ConcatString("NCHW, NHWC, NDHWC, NCDHW, NDC1HWC0");
     std::string err_msg = GetInputFormatNotSupportErrMsg("format", expected_format_list, ConcatString(format));
-    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -978,7 +978,7 @@ IMPLEMT_COMMON_INFERFUNC(BNTrainingUpdateInferShape) {
   if (input_x_desc == nullptr || output_y_desc == nullptr || input_scale_desc == nullptr || 
       output_mean_desc == nullptr || output_variance_desc == nullptr || output_batch_mean_desc == nullptr ||output_batch_variance_desc == nullptr) {
     std::string err_msg = OtherErrMsg("[TBE Compiler] Get null node ptr");
-    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -1026,7 +1026,7 @@ IMPLEMT_INFERFUNC(BNTrainingUpdateV2, BNTrainingUpdateV2InferShape) {
   if (input_x_desc == nullptr || output_y_desc == nullptr || input_scale_desc == nullptr || 
       output_batch_mean_desc == nullptr || output_batch_variance_desc == nullptr) {
     std::string err_msg = OtherErrMsg("[TBE Compiler] Get null node ptr");
-    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -1074,7 +1074,7 @@ IMPLEMT_INFERFUNC(BNTrainingUpdateV3, BNTrainingUpdateV3InferShape) {
       output_batch_mean_desc == nullptr || output_batch_variance_desc == nullptr || 
       output_reserve_1_desc == nullptr || output_reserve_2_desc == nullptr) {
     std::string err_msg = OtherErrMsg("[TBE Compiler] Get null node ptr");
-    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -1118,14 +1118,14 @@ IMPLEMT_COMMON_INFERFUNC(BN3DTrainingReduceInferShape) {
     if (dimNum == 5) {
       oShapeVector.push_back(shapeVector[4]);
     } else {
-      OP_LOGE(op.GetName().c_str(), "Input x rank[%ld] can only support 4 when NDHWC.", shapeVector.size());
+      OP_LOGE(TbeGetName(op).c_str(), "Input x rank[%ld] can only support 4 when NDHWC.", shapeVector.size());
       return GRAPH_FAILED;
     }
   } else if (format == FORMAT_NCDHW) {
     if (dimNum >= 2 && dimNum <= 5) {
       oShapeVector.push_back(shapeVector[1]);
     } else {
-      OP_LOGE(op.GetName().c_str(), "Input x rank[%ld] can only support 2-4 when NCDHW.", shapeVector.size());
+      OP_LOGE(TbeGetName(op).c_str(), "Input x rank[%ld] can only support 2-4 when NCDHW.", shapeVector.size());
       return GRAPH_FAILED;
     }
   } else if (format == FORMAT_NDC1HWC0) {
@@ -1137,11 +1137,11 @@ IMPLEMT_COMMON_INFERFUNC(BN3DTrainingReduceInferShape) {
       oShapeVector.push_back(1);
       oShapeVector.push_back(shapeVector[5]);
     } else {
-      OP_LOGE(op.GetName().c_str(), "Input x rank[%ld] can only support 5 when NDC1HWC0.", shapeVector.size());
+      OP_LOGE(TbeGetName(op).c_str(), "Input x rank[%ld] can only support 5 when NDC1HWC0.", shapeVector.size());
       return GRAPH_FAILED;
     }
   } else {
-    OP_LOGE(op.GetName().c_str(), "This op can only support NCHW , NHWC, NDHWC, NCDHW, NDC1HWC0");
+    OP_LOGE(TbeGetName(op).c_str(), "This op can only support NCHW , NHWC, NDHWC, NCDHW, NDC1HWC0");
     return GRAPH_FAILED;
   }
 
@@ -1225,7 +1225,7 @@ COMMON_INFER_FUNC_REG(BNInfer, BNInferInferShape);
 // ------------------BNTrainingUpdateGrad---------------------
 IMPLEMT_VERIFIER(BNTrainingUpdateGrad, BNTrainingUpdateGradVerify) {
   if (!CheckTwoInputDtypeSame(op, "grads", "x")) {
-    OP_LOGE(op.GetName().c_str(), "[TBE Compiler] the dtype of grads and x should be the same");
+    OP_LOGE(TbeGetName(op).c_str(), "[TBE Compiler] the dtype of grads and x should be the same");
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -1240,7 +1240,7 @@ IMPLEMT_COMMON_INFERFUNC(BNTrainingUpdateGradInferShape) {
 
   if (input_x_desc == nullptr || input_mean_desc == nullptr ||
       output_scale_desc == nullptr || output_offset_desc == nullptr) {
-    OP_LOGE(op.GetName().c_str(), "[TBE Compiler] Get null node ptr");
+    OP_LOGE(TbeGetName(op).c_str(), "[TBE Compiler] Get null node ptr");
     return GRAPH_FAILED;
   }
 
@@ -1313,7 +1313,7 @@ IMPLEMT_COMMON_INFERFUNC(ReduceSumInferShape) {
   if (prof_switch) {
     before_infer = std::chrono::steady_clock::now();
   }
-  OP_LOGD(op.GetName().c_str(), "Enter ReduceSumInferShape");
+  OP_LOGD(TbeGetName(op).c_str(), "Enter ReduceSumInferShape");
   const int64_t input_x_idx = 0;
   const int64_t output_y_idx = 0;
   const int64_t input_axes_idx = 1;
@@ -1321,7 +1321,7 @@ IMPLEMT_COMMON_INFERFUNC(ReduceSumInferShape) {
     if (prof_switch) {
       after_infer = std::chrono::steady_clock::now();
       auto t0 = std::chrono::duration_cast<std::chrono::microseconds>(after_infer - before_infer).count();
-      GEEVENT("[REDUCE_INFER_PROF] op[%s]: total: %d(us)", op.GetName().c_str(), static_cast<int>(t0));
+      GEEVENT("[REDUCE_INFER_PROF] op[%s]: total: %d(us)", TbeGetName(op).c_str(), static_cast<int>(t0));
     }
     return GRAPH_SUCCESS;
   }
@@ -1354,7 +1354,7 @@ COMMON_INFER_FUNC_REG(ReduceSumD, ReduceSumDInferShape);
 
 // ----------------ReduceMeanWithCount Op-------------------
 IMPLEMT_COMMON_INFERFUNC(ReduceMeanWithCountInferShape) {
-  OP_LOGI(op.GetName().c_str(), "Enter ReduceMeanWithCount proto inferfunction!");
+  OP_LOGI(TbeGetName(op).c_str(), "Enter ReduceMeanWithCount proto inferfunction!");
   ge::TensorDesc result_desc;
   if (!InferReduceDShape(op, "x", "axes", "keep_dims", result_desc)) {
     return GRAPH_FAILED;
@@ -1377,7 +1377,7 @@ COMMON_INFER_FUNC_REG(ReduceMeanWithCount, ReduceMeanWithCountInferShape);
 IMPLEMT_COMMON_INFERFUNC(ReduceAnyInferShape) {
   const vector<string> depend_names = {"axes"};
   PREPARE_DYNAMIC_SHAPE(depend_names);
-  OP_LOGI(op.GetName().c_str(), "Enter ReduceAny proto inferfunction!");
+  OP_LOGI(TbeGetName(op).c_str(), "Enter ReduceAny proto inferfunction!");
   ge::TensorDesc result_desc;
   if (!InferReduceShape(op, "x", "axes", "keep_dims", result_desc)) {
     return GRAPH_FAILED;
@@ -1403,7 +1403,7 @@ COMMON_INFER_FUNC_REG(ReduceAny, ReduceAnyInferShape);
 
 // ----------------ReduceAnyD Op-------------------
 IMPLEMT_COMMON_INFERFUNC(ReduceAnyDInferShape) {
-  OP_LOGI(op.GetName().c_str(), "Enter ReduceAnyD proto inferfunction!");
+  OP_LOGI(TbeGetName(op).c_str(), "Enter ReduceAnyD proto inferfunction!");
   ge::TensorDesc result_desc;
   if (!InferReduceDShape(op, "x", "axes", "keep_dims", result_desc)) {
     return GRAPH_FAILED;
@@ -1411,14 +1411,14 @@ IMPLEMT_COMMON_INFERFUNC(ReduceAnyDInferShape) {
   std::vector<int64_t> axes_dim;
   if (ge::GRAPH_SUCCESS != op.GetAttr("axes", axes_dim)) {
     std::string err_msg = GetInputInvalidErrMsg("axes");
-    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
 
   if (axes_dim.size() < DIM_SIZE1 || axes_dim.size() > DIM_SIZE8) {
     string correct_size = ConcatString("must be between 1 and 8");
     std::string err_msg = GetAttrSizeErrMsg("axes_dim", ConcatString(axes_dim.size()), correct_size);
-    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
   auto shape = result_desc.GetShape();
@@ -1441,12 +1441,12 @@ IMPLEMT_COMMON_INFERFUNC(ReduceMaxInferShape) {
   if (prof_switch) {
     before_infer = std::chrono::steady_clock::now();
   }
-  OP_LOGD(op.GetName().c_str(), "Enter Start ReduceMaxInferShape");
+  OP_LOGD(TbeGetName(op).c_str(), "Enter Start ReduceMaxInferShape");
   if (InferReduceShapeProcess(op, "x", "axes", "keep_dims")) {
     if (prof_switch) {
       after_infer = std::chrono::steady_clock::now();
       auto t0 = std::chrono::duration_cast<std::chrono::microseconds>(after_infer - before_infer).count();
-      GEEVENT("[REDUCE_INFER_PROF] opname[%s]: total: %d(us)", op.GetName().c_str(), static_cast<int>(t0));
+      GEEVENT("[REDUCE_INFER_PROF] opname[%s]: total: %d(us)", TbeGetName(op).c_str(), static_cast<int>(t0));
     }
     return GRAPH_SUCCESS;
   }
@@ -1462,12 +1462,12 @@ IMPLEMT_COMMON_INFERFUNC(ReduceMaxDInferShape) {
   if (prof_switch) {
     before_infer = std::chrono::steady_clock::now();
   }
-  OP_LOGD(op.GetName().c_str(), "Enter ReduceMaxDInferShape");
+  OP_LOGD(TbeGetName(op).c_str(), "Enter ReduceMaxDInferShape");
   if (InferReduceDShapeProcess(op, "x", "axes", "keep_dims")) {
     if (prof_switch) {
       after_infer = std::chrono::steady_clock::now();
       auto t0 = std::chrono::duration_cast<std::chrono::microseconds>(after_infer - before_infer).count();
-      GEEVENT("[REDUCE_INFER_PROF] op[%s]: total: %d(us)", op.GetName().c_str(), static_cast<int>(t0));
+      GEEVENT("[REDUCE_INFER_PROF] op[%s]: total: %d(us)", TbeGetName(op).c_str(), static_cast<int>(t0));
     }
     return GRAPH_SUCCESS;
   }
@@ -1483,12 +1483,12 @@ IMPLEMT_COMMON_INFERFUNC(ReduceMinInferShape) {
     if (prof_switch) {
         before_infer = std::chrono::steady_clock::now();
     }
-    OP_LOGD(op.GetName().c_str(), "Enter ReduceMinInferShape");
+    OP_LOGD(TbeGetName(op).c_str(), "Enter ReduceMinInferShape");
     if (InferReduceShapeProcess(op, "x", "axes", "keep_dims")) {
         if (prof_switch) {
             after_infer = std::chrono::steady_clock::now();
             auto t0 = std::chrono::duration_cast<std::chrono::microseconds>(after_infer - before_infer).count();
-            GEEVENT("[REDUCE_INFER_PROF] op[%s]: total: %d(us)", op.GetName().c_str(), static_cast<int>(t0));
+            GEEVENT("[REDUCE_INFER_PROF] op[%s]: total: %d(us)", TbeGetName(op).c_str(), static_cast<int>(t0));
         }
         return GRAPH_SUCCESS;
     }
@@ -1504,12 +1504,12 @@ IMPLEMT_COMMON_INFERFUNC(ReduceMinDInferShape) {
     if (prof_switch) {
         before_infer = std::chrono::steady_clock::now();
     }
-    OP_LOGD(op.GetName().c_str(), "Enter ReduceMinDInferShape");
+    OP_LOGD(TbeGetName(op).c_str(), "Enter ReduceMinDInferShape");
     if (InferReduceDShapeProcess(op, "x", "axes", "keep_dims")) {
         if (prof_switch) {
             after_infer = std::chrono::steady_clock::now();
             auto t0 = std::chrono::duration_cast<std::chrono::microseconds>(after_infer - before_infer).count();
-            GEEVENT("[REDUCE_INFER_PROF] op[%s]: total: %d(us)", op.GetName().c_str(), static_cast<int>(t0));
+            GEEVENT("[REDUCE_INFER_PROF] op[%s]: total: %d(us)", TbeGetName(op).c_str(), static_cast<int>(t0));
         }
         return GRAPH_SUCCESS;
     }
@@ -1521,7 +1521,7 @@ COMMON_INFER_FUNC_REG(ReduceMinD, ReduceMinDInferShape);
 
 // ----------------EuclideanNorm Op-------------------
 IMPLEMT_COMMON_INFERFUNC(EuclideanNormInferShape) {
-  OP_LOGI(op.GetName().c_str(), "Enter EuclideanNorm proto inferfunction!");
+  OP_LOGI(TbeGetName(op).c_str(), "Enter EuclideanNorm proto inferfunction!");
   ge::TensorDesc result_desc;
   if (!InferReduceShape(op, "x", "axes", "keep_dims", result_desc)) {
     return GRAPH_FAILED;
@@ -1542,7 +1542,7 @@ COMMON_INFER_FUNC_REG(EuclideanNorm, EuclideanNormInferShape);
 
 // ----------------EuclideanNormD Op-------------------
 IMPLEMT_COMMON_INFERFUNC(EuclideanNormDInferShape) {
-  OP_LOGI(op.GetName().c_str(), "Enter EuclideanNormD proto inferfunction!");
+  OP_LOGI(TbeGetName(op).c_str(), "Enter EuclideanNormD proto inferfunction!");
   ge::TensorDesc result_desc;
   if (!InferReduceDShape(op, "x", "axes", "keep_dims", result_desc)) {
     return GRAPH_FAILED;
@@ -1715,14 +1715,14 @@ IMPLEMT_COMMON_INFERFUNC(GNTrainingReduceInferShape) {
   if (input_format != FORMAT_NHWC && input_format != FORMAT_NCHW) {
     string expected_format_list = ConcatString("NHWC, NCHW");
     std::string err_msg = GetInputFormatNotSupportErrMsg("input_format", expected_format_list, ConcatString(input_format));
-    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
 
   int64_t num = 2;
   if (GRAPH_SUCCESS != op.GetAttr("num_groups", num)) {
     std::string err_msg = GetInputInvalidErrMsg("num_groups");
-    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
   }
 
   std::vector<int64_t> dims_input;
@@ -1780,14 +1780,14 @@ IMPLEMT_COMMON_INFERFUNC(GNTrainingUpdateInferShape) {
   if (input_format != FORMAT_NHWC && input_format != FORMAT_NCHW) {
     string expected_format_list = ConcatString("NHWC, NCHW");
     std::string err_msg = GetInputFormatNotSupportErrMsg("input_format", expected_format_list, ConcatString(input_format));
-    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
 
   int64_t num = 2;
   if (GRAPH_SUCCESS != op.GetAttr("num_groups", num)) {
     std::string err_msg = GetInputInvalidErrMsg("num_groups");
-    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
   }
   TensorDesc td = op.GetOutputDesc("y");
   td.SetShape(shape);
@@ -1813,12 +1813,12 @@ COMMON_INFER_FUNC_REG(GNTrainingUpdate, GNTrainingUpdateInferShape);
 // ------------------GNTrainingUpdate END---------------------
 
 IMPLEMT_INFERFUNC(ReduceJoin, ReduceJoinInfer) {
-  OP_LOGI(op.GetName().c_str(), "Enter ReduceJoin proto inferfunction!");
+  OP_LOGI(TbeGetName(op).c_str(), "Enter ReduceJoin proto inferfunction!");
   ge::TensorDesc result_desc;
   if (!InferReduceShape(op, "input", "reduction_indices", "keep_dims", result_desc)) {
     std::string err_msg = ConcatString("failed to call InferReduceShape function,", 
                                         "input[input], input[reduction_indices], attr[keep_dims]");
-    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -1980,7 +1980,7 @@ INFER_FUNC_REG(ReduceStdWithMean, ReduceStdWithMeanInferShape);
 
 // ----------------ReduceMeanVariance Begin-------------------
 IMPLEMT_COMMON_INFERFUNC(ReduceMeanVarianceInferShape) {
-    OP_LOGI(op.GetName().c_str(), "Enter ReduceMeanVariance infer function!");
+    OP_LOGI(TbeGetName(op).c_str(), "Enter ReduceMeanVariance infer function!");
     ge::TensorDesc result_desc;
     ge::OpDescPtr op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
     if (!InferReduceDShape(op, "x", "axes", "keep_dims", result_desc)) {
@@ -1990,7 +1990,7 @@ IMPLEMT_COMMON_INFERFUNC(ReduceMeanVarianceInferShape) {
     ge::GeTensorDescPtr output_mean_desc = op_desc->MutableOutputDesc(0);
     ge::GeTensorDescPtr output_var_desc = op_desc->MutableOutputDesc(1);
     if (output_mean_desc == nullptr || output_var_desc == nullptr) {
-      OP_LOGE(op.GetName().c_str(), "get output desc failed");
+      OP_LOGE(TbeGetName(op).c_str(), "get output desc failed");
       return GRAPH_FAILED;
     }
     std::vector<int64_t> input_shape = result_desc.GetShape().GetDims();
@@ -2072,12 +2072,12 @@ IMPLEMT_COMMON_INFERFUNC(ReduceLogSumExpInferShape) {
     if (prof_switch) {
         before_infer = std::chrono::steady_clock::now();
     }
-    OP_LOGD(op.GetName().c_str(), "Enter Start ReduceLogSumExpInferShape");
+    OP_LOGD(TbeGetName(op).c_str(), "Enter Start ReduceLogSumExpInferShape");
     if (InferReduceShapeProcess(op, "x", "axes", "keep_dims")) {
         if (prof_switch) {
             after_infer = std::chrono::steady_clock::now();
             auto t0 = std::chrono::duration_cast<std::chrono::microseconds>(after_infer - before_infer).count();
-            GEEVENT("[REDUCE_INFER_PROF] opname[%s]: total: %d(us)", op.GetName().c_str(), static_cast<int>(t0));
+            GEEVENT("[REDUCE_INFER_PROF] opname[%s]: total: %d(us)", TbeGetName(op).c_str(), static_cast<int>(t0));
         }
         return GRAPH_SUCCESS;
     }
@@ -2094,12 +2094,12 @@ IMPLEMT_COMMON_INFERFUNC(ReduceLogSumInferShape) {
     if (prof_switch) {
         before_infer = std::chrono::steady_clock::now();
     }
-    OP_LOGD(op.GetName().c_str(), "Enter Start ReduceLogSumInferShape");
+    OP_LOGD(TbeGetName(op).c_str(), "Enter Start ReduceLogSumInferShape");
     if (InferReduceShapeProcess(op, "x", "axes", "keep_dims")) {
         if (prof_switch) {
             after_infer = std::chrono::steady_clock::now();
             auto t0 = std::chrono::duration_cast<std::chrono::microseconds>(after_infer - before_infer).count();
-            GEEVENT("[REDUCE_INFER_PROF] opname[%s]: total: %d(us)", op.GetName().c_str(), static_cast<int>(t0));
+            GEEVENT("[REDUCE_INFER_PROF] opname[%s]: total: %d(us)", TbeGetName(op).c_str(), static_cast<int>(t0));
         }
         return GRAPH_SUCCESS;
     }

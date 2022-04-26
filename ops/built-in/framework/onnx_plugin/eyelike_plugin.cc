@@ -57,7 +57,7 @@ Status ParseOpToGraphEyeLike(const ge::Operator& op, Graph& graph) {
   op.GetAttr("dtype", dtype);
   auto om_type = GetOmDtypeFromOnnxDtype(dtype);
   if (om_type == ge::DT_UNDEFINED) {
-    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "cur attr dype[%d] not support",dtype);
+    ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "cur attr dype[%d] not support",dtype);
     return FAILED;
   }
   

@@ -42,12 +42,12 @@ graphStatus ValidateVariableResourceHandle(Operator& op, std::vector<ShapeAndTyp
     shape_and_type = input_handle[0];
     DataType value_type;
     if (op.GetAttr("dtype", value_type) != GRAPH_SUCCESS) {
-      AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+      AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op),
           string("get attr[dtype] failed."));
       return GRAPH_FAILED;
     }
     if (shape_and_type[0].GetDataType() != value_type) {
-      AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+      AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op),
           ConcatString("data type from shape and type context and that from "
               "attr[dtype] do not match, ",
               DTypeStr(shape_and_type[0].GetDataType()), " and ",
@@ -66,8 +66,8 @@ graphStatus CreateAssignShapeFn(Operator& op) {
 
   Shape shape = op.GetInputDesc(1).GetShape();
   Shape unused;
-  if (Merge(shape_and_type[0].GetShape(), shape, unused, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(),
+  if (Merge(shape_and_type[0].GetShape(), shape, unused, TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op),
         ConcatString("failed to call Merge function to merge 1th input shape",
             DebugString(shape.GetDims()), " and shape",
             DebugString(shape_and_type[0].GetShape().GetDims()),

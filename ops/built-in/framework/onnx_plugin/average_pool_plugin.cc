@@ -234,10 +234,10 @@ Status AvgUpdateFormat(Operator& op, Format format) {
   orgTensorX.SetFormat(format);
   auto ret = op_desc->UpdateInputDesc("x", orgTensorX);
   if (ret != ge::GRAPH_SUCCESS) {
-    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "update input x format failed.");
+    ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "update input x format failed.");
     return FAILED;
   }
-  OP_LOGD(op.GetName().c_str(), "update input x format success, now is %d", op_desc->GetInputDesc("x").GetFormat());
+  OP_LOGD(TbeGetName(op).c_str(), "update input x format success, now is %d", op_desc->GetInputDesc("x").GetFormat());
 
   // update output format
   ge::GeTensorDesc orgTensorY = op_desc->GetOutputDesc("y");
@@ -245,10 +245,10 @@ Status AvgUpdateFormat(Operator& op, Format format) {
   orgTensorY.SetFormat(format);
   ret = op_desc->UpdateOutputDesc("y", orgTensorY);
   if (ret != ge::GRAPH_SUCCESS) {
-    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "update output y format failed.");
+    ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "update output y format failed.");
     return FAILED;
   }
-  OP_LOGD(op.GetName().c_str(), "update output y format success, now is %d", op_desc->GetOutputDesc("y").GetFormat());
+  OP_LOGD(TbeGetName(op).c_str(), "update output y format success, now is %d", op_desc->GetOutputDesc("y").GetFormat());
   return SUCCESS;
 }
 

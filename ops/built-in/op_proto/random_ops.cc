@@ -32,10 +32,10 @@ IMPLEMT_INFERFUNC(Multinomial, MultinomialInfer) {
   Shape shape;
   Shape logits_shape;
   Shape unused;
-  if (WithRank(op.GetInputDesc(0), 2, logits_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
+  if (WithRank(op.GetInputDesc(0), 2, logits_shape, TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
     return GRAPH_FAILED;
   }
-  if (WithRank(op.GetInputDesc(1), 0, unused, op.GetName().c_str()) != GRAPH_SUCCESS) {
+  if (WithRank(op.GetInputDesc(1), 0, unused, TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
     return GRAPH_FAILED;
   }
   Tensor num_samples_tensor;
@@ -43,7 +43,7 @@ IMPLEMT_INFERFUNC(Multinomial, MultinomialInfer) {
     return GRAPH_FAILED;
   }
   int64_t num_samples;
-  if (MakeDimForScalarInput(num_samples_tensor, num_samples, op.GetName().c_str()) != GRAPH_SUCCESS) {
+  if (MakeDimForScalarInput(num_samples_tensor, num_samples, TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
     return GRAPH_FAILED;
   }
 
@@ -51,7 +51,7 @@ IMPLEMT_INFERFUNC(Multinomial, MultinomialInfer) {
 
   Operator::OpType type;
   if (op.GetAttr("dtype", type) != GRAPH_SUCCESS) {
-    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op),
       std::string("get attr[dtype] failed"));
     return GRAPH_FAILED;
   }
@@ -66,14 +66,14 @@ INFER_FUNC_REG(Multinomial, MultinomialInfer);
 IMPLEMT_INFERFUNC(MultinomialAliasDraw, MultinomialAliasDrawInfer) {
   Shape q_shape;
   Shape j_shape;
-  if (WithRank(op.GetInputDesc(0), 1, q_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
+  if (WithRank(op.GetInputDesc(0), 1, q_shape, TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
     return GRAPH_FAILED;
   }
-  if (WithRank(op.GetInputDesc(1), 1, j_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
+  if (WithRank(op.GetInputDesc(1), 1, j_shape, TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
     return GRAPH_FAILED;
   }
   if (q_shape.GetDim(0) != j_shape.GetDim(0)) {
-    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),std::string("q_shape should be equal to j_shape"));
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op),std::string("q_shape should be equal to j_shape"));
     return GRAPH_FAILED;
   }
 
@@ -113,32 +113,32 @@ INFER_FUNC_REG(MultinomialAliasSetup, MultinomialAliasSetupInfer);
 IMPLEMT_INFERFUNC(ParameterizedTruncatedNormal, ParameterizedTruncatedNormalInfer) {
   Shape unused;
   std::string err_msg;
-  if (WithRankAtMost(op.GetInputDesc(1), 1, unused, op.GetName().c_str()) != GRAPH_SUCCESS) {
+  if (WithRankAtMost(op.GetInputDesc(1), 1, unused, TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
     err_msg = GetShapeErrMsg(
         1, DebugString(op.GetInputDesc(1).GetShape().GetDims()), "at most 1D");
     err_msg = std::string("failed to call WithRankAtMost, ") + err_msg;
-    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
-  if (WithRankAtMost(op.GetInputDesc(2), 1, unused, op.GetName().c_str()) != GRAPH_SUCCESS) {
+  if (WithRankAtMost(op.GetInputDesc(2), 1, unused, TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
     err_msg = GetShapeErrMsg(
         2, DebugString(op.GetInputDesc(2).GetShape().GetDims()), "at most 1D");
     err_msg = std::string("failed to call WithRankAtMost, ") + err_msg;
-    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
-  if (WithRankAtMost(op.GetInputDesc(3), 1, unused, op.GetName().c_str()) != GRAPH_SUCCESS) {
+  if (WithRankAtMost(op.GetInputDesc(3), 1, unused, TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
     err_msg = GetShapeErrMsg(
         3, DebugString(op.GetInputDesc(3).GetShape().GetDims()), "at most 1D");
     err_msg = std::string("failed to call WithRankAtMost, ") + err_msg;
-    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
-  if (WithRankAtMost(op.GetInputDesc(4), 1, unused, op.GetName().c_str()) != GRAPH_SUCCESS) {
+  if (WithRankAtMost(op.GetInputDesc(4), 1, unused, TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
     err_msg = GetShapeErrMsg(
         4, DebugString(op.GetInputDesc(4).GetShape().GetDims()), "at most 1D");
     err_msg = std::string("failed to call WithRankAtMost, ") + err_msg;
-    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -185,7 +185,7 @@ IMPLEMT_INFERFUNC(RandomGamma, RandomGammaInfer) {
     }
     return GRAPH_SUCCESS;
   }
-  if (MakeShapeFromShapeTensor(shape_tensor, shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
+  if (MakeShapeFromShapeTensor(shape_tensor, shape, TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
     return GRAPH_FAILED;
   }
   alpha_shape = op.GetInputDesc(1).GetShape();
@@ -218,7 +218,7 @@ IMPLEMT_INFERFUNC(RandomPoisson, RandomPoissonInfer) {
     return GRAPH_FAILED;
   }
 
-  if (MakeShapeFromShapeTensor(shape_tensor, shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
+  if (MakeShapeFromShapeTensor(shape_tensor, shape, TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
     return GRAPH_FAILED;
   }
 
@@ -229,7 +229,7 @@ IMPLEMT_INFERFUNC(RandomPoisson, RandomPoissonInfer) {
 
   Operator::OpType type;
   if (op.GetAttr("dtype", type) != GRAPH_SUCCESS) {
-    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op),
       std::string("get attr[dtype] failed"));
     return GRAPH_FAILED;
   }
@@ -297,10 +297,10 @@ INFER_FUNC_REG(Normal, NormalInferShape);
 
 IMPLEMT_INFERFUNC(RandomUniformInt, RandomUniformIntInfer) {
   Shape unused;
-  if (WithRank(op.GetInputDesc(1), 0, unused, op.GetName().c_str()) != GRAPH_SUCCESS) {
+  if (WithRank(op.GetInputDesc(1), 0, unused, TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
     return GRAPH_FAILED;
   }
-  if (WithRank(op.GetInputDesc(2), 0, unused, op.GetName().c_str()) != GRAPH_SUCCESS) {
+  if (WithRank(op.GetInputDesc(2), 0, unused, TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
     return GRAPH_FAILED;
   }
 
@@ -309,7 +309,7 @@ IMPLEMT_INFERFUNC(RandomUniformInt, RandomUniformIntInfer) {
     return GRAPH_FAILED;
   }
   Shape shape;
-  if (MakeShapeFromShapeTensor(tensor, shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
+  if (MakeShapeFromShapeTensor(tensor, shape, TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
     return GRAPH_FAILED;
   }
 
@@ -361,17 +361,17 @@ graphStatus GetDropOutGenMaskShapeAndRange(Operator &op, ShapeAndRange &out) {
   auto opDesc = OpDescUtils::GetOpDescFromOperator(op);
   auto input_shape_desc = opDesc->MutableInputDesc("shape");
   (void)input_shape_desc->GetValueRange(valueRange);
-  OP_LOGI(op.GetName().c_str(), "DropOutGenMask::valueRange.size() = %d", valueRange.size());
+  OP_LOGI(TbeGetName(op).c_str(), "DropOutGenMask::valueRange.size() = %d", valueRange.size());
   if (valueRange.size() == 0) {
-    OP_LOGW(op.GetName().c_str(), "valueRange.size() == 0");
+    OP_LOGW(TbeGetName(op).c_str(), "valueRange.size() == 0");
     return GRAPH_SUCCESS;
   }
 
   for (size_t i = 0; i < valueRange.size(); i++) {
-    OP_LOGI(op.GetName().c_str(), "i = %d, first = %lld, second = %lld",
+    OP_LOGI(TbeGetName(op).c_str(), "i = %d, first = %lld, second = %lld",
             i, valueRange[i].first, valueRange[i].second);
     if (valueRange[i].first < UNKNOWN_DIM || valueRange[i].second < UNKNOWN_DIM) {
-      OP_LOGW(op.GetName().c_str(), "value < UNKNOWN_DIM");
+      OP_LOGW(TbeGetName(op).c_str(), "value < UNKNOWN_DIM");
       return GRAPH_SUCCESS;
     }
 
@@ -392,7 +392,7 @@ graphStatus GetDropOutGenMaskShapeAndRange(Operator &op, ShapeAndRange &out) {
     } else {
       up = up * valueRange[i].second; 
     }
-    OP_LOGI(op.GetName().c_str(), "down = %lld, up = %lld", down, up);
+    OP_LOGI(TbeGetName(op).c_str(), "down = %lld, up = %lld", down, up);
   }
 
   Shape unknownShape(UNKNOWN_SHAPE);
@@ -404,7 +404,7 @@ graphStatus GetDropOutGenMaskShapeAndRange(Operator &op, ShapeAndRange &out) {
   out.shape_ = shapeAndRange.shape_;
   out.shape_range_ = shapeAndRange.shape_range_;
 
-  OP_LOGI(op.GetName().c_str(), "down = %lld, up = %lld, first = %lld, second = %lld \n",
+  OP_LOGI(TbeGetName(op).c_str(), "down = %lld, up = %lld, first = %lld, second = %lld \n",
           down, up, shapeRange[0].first, shapeRange[0].second);
 
   return GRAPH_SUCCESS;
@@ -413,11 +413,11 @@ graphStatus GetDropOutGenMaskShapeAndRange(Operator &op, ShapeAndRange &out) {
 IMPLEMT_COMMON_INFERFUNC(DropOutGenMaskInfer) {
   Shape unused;
 
-  if (WithRank(op.GetInputDesc(1), 0, unused, op.GetName().c_str()) != GRAPH_SUCCESS) {
+  if (WithRank(op.GetInputDesc(1), 0, unused, TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
     std::string err_msg = ConcatString("call WithRank function failed, ",
         GetShapeErrMsg(1, DebugString(op.GetInputDesc(1).GetShape().GetDims()),
             "scalar"));
-    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
   std::vector<std::string> input_infer_depends = {"shape"};
@@ -425,11 +425,11 @@ IMPLEMT_COMMON_INFERFUNC(DropOutGenMaskInfer) {
   op_desc->SetOpInferDepends(input_infer_depends);
   Tensor shape_tensor;
   auto ret = op.GetInputConstData("shape", shape_tensor);
-  OP_LOGI(op.GetName().c_str(), "GetInputConstData ret = %d \n", ret);
+  OP_LOGI(TbeGetName(op).c_str(), "GetInputConstData ret = %d \n", ret);
   if (ret != GRAPH_SUCCESS) {
     ShapeAndRange shapeAndRange;
     if (GetDropOutGenMaskShapeAndRange(op, shapeAndRange) != GRAPH_SUCCESS) {
-        AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(),
+        AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op),
         ConcatString("call GetDropOutGenMaskShapeAndRange function failed "));
       return GRAPH_FAILED;
     }
@@ -441,15 +441,15 @@ IMPLEMT_COMMON_INFERFUNC(DropOutGenMaskInfer) {
   }
 
   Shape shape;
-  if (MakeShapeFromShapeTensor(shape_tensor, shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(),
+  if (MakeShapeFromShapeTensor(shape_tensor, shape, TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op),
         ConcatString("call MakeShapeFromShapeTensor function failed to make "
             "shape by input[shape] data"));
     return GRAPH_FAILED;
   }
 
   int64_t n8s = InferShapeGetShapeSizeBytes(shape.GetShapeSize());
-  OP_LOGI(op.GetName().c_str(), "n8s = %lld, shape.GetShapeSize() = %lld", n8s, shape.GetShapeSize());
+  OP_LOGI(TbeGetName(op).c_str(), "n8s = %lld, shape.GetShapeSize() = %lld", n8s, shape.GetShapeSize());
   std::vector<int64_t> out_dims = {n8s};
   Shape outShape(out_dims);
 
@@ -495,11 +495,11 @@ VERIFY_FUNC_REG(StatelessDropOutGenMask, StatelessDropOutGenMasktVerify);
 
 IMPLEMT_INFERFUNC(DropOutGenMaskV3, DropOutGenMaskV3Infer) {
   Shape unused;
-  if (WithRank(op.GetInputDesc(1), 0, unused, op.GetName().c_str()) != GRAPH_SUCCESS) {
+  if (WithRank(op.GetInputDesc(1), 0, unused, TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
     std::string err_msg = ConcatString("call WithRank function failed, ",
         GetShapeErrMsg(1, DebugString(op.GetInputDesc(1).GetShape().GetDims()),
             "scalar"));
-    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
   std::vector<std::string> input_infer_depends = {"shape"};
@@ -513,8 +513,8 @@ IMPLEMT_INFERFUNC(DropOutGenMaskV3, DropOutGenMaskV3Infer) {
   }
 
   Shape shape;
-  if (MakeShapeFromShapeTensor(shape_tensor, shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(),
+  if (MakeShapeFromShapeTensor(shape_tensor, shape, TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op),
         ConcatString("call MakeShapeFromShapeTensor function failed to make "
             "shape by input[shape] data"));
     return GRAPH_FAILED;
@@ -524,7 +524,7 @@ IMPLEMT_INFERFUNC(DropOutGenMaskV3, DropOutGenMaskV3Infer) {
   if (ShapeFullDefined(shape)) {
     for (const auto& dim : shape.GetDims()) {
       if (dim < 0) {
-        AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+        AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op),
             ConcatString("invalid value[", dim, "] of 0th input",
             DebugString(shape.GetDims())));
         return GRAPH_FAILED;
@@ -550,7 +550,7 @@ IMPLEMT_INFERFUNC(DropOutGenMaskV3, DropOutGenMaskV3Infer) {
       uint64_t random_count = static_cast<uint64_t>(shape.GetShapeSize());
       // due to align to 16
       if (random_count > (INT64_MAX - 15)) {
-        AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+        AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op),
             ConcatString("required random count[", random_count,
             "] exceed INT64_MAX - 15"));
         return GRAPH_FAILED;
@@ -576,7 +576,7 @@ IMPLEMT_VERIFIER(Dropout, DropoutVerify) {
   auto dropout_ratio = op.get_attr_dropout_ratio();
   bool flagDropoutRatio = (dropout_ratio < 1 && dropout_ratio > 0);
   if (!flagDropoutRatio) {
-    OP_LOGE(op.GetName().c_str(), "dropout_ratio must be in (0,1)");
+    OP_LOGE(TbeGetName(op).c_str(), "dropout_ratio must be in (0,1)");
     return GRAPH_FAILED;
   }
 
@@ -685,7 +685,7 @@ IMPLEMT_INFERFUNC(RandomChoiceWithMask, RandomChoiceWithMaskInfer) {
   int64_t rank = static_cast<int64_t>(input_shape.GetDimNum());
   std::vector<int64_t> input_dims = op.GetInputDesc("x").GetShape().GetDims();
   if (input_dims.empty()) {
-    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op),
       std::string("input x should not be empty."));
     return GRAPH_FAILED;
   } else if (input_dims == UNKNOWN_RANK) {
@@ -694,7 +694,7 @@ IMPLEMT_INFERFUNC(RandomChoiceWithMask, RandomChoiceWithMaskInfer) {
   } else {
     int64_t count;
     if (ge::GRAPH_SUCCESS != op.GetAttr("count", count)) {
-      AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+      AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op),
         std::string("get attr[count] failed."));
     }
     if (count > 0) {
@@ -728,7 +728,7 @@ IMPLEMT_INFERFUNC(RandomChoiceWithMask, RandomChoiceWithMaskInfer) {
       std::string err_msg = ConcatString(
         "check attr[count] value[", count, "] failed, ",
         "must greater or equal to 0");
-      AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+      AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
       return GRAPH_FAILED;
     }
   }
@@ -835,14 +835,14 @@ IMPLEMT_VERIFIER(DropoutV2, DropoutV2Verify)
     TensorDesc x_desc = op.GetInputDesc(0);
     DataType x_dtype = x_desc.GetDataType();
     if (x_dtype != DT_FLOAT16 && x_dtype != DT_FLOAT) {
-        OP_LOGE(op.GetName().c_str(), "DropoutV2 x input should be float16 or float32");
+        OP_LOGE(TbeGetName(op).c_str(), "DropoutV2 x input should be float16 or float32");
         return GRAPH_FAILED;
     }
 
     TensorDesc seed_desc = op.GetInputDesc(1);
     DataType seed_dtype = seed_desc.GetDataType();
     if (seed_dtype != DT_FLOAT) {
-        OP_LOGE(op.GetName().c_str(), "DropoutV2 seed input should be float32");
+        OP_LOGE(TbeGetName(op).c_str(), "DropoutV2 seed input should be float32");
         return GRAPH_FAILED;
     }
 

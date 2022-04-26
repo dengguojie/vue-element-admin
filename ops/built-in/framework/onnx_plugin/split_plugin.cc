@@ -67,12 +67,12 @@ Status ParseOpToGraphSplitNew(const ge::Operator &op, Graph &graph) {
   auto input_x_0 = op::Data("x").set_attr_index(0);
   int32_t split_dim = 0;
   if (op.GetAttr("split_dim", split_dim) != SUCCESS) {
-    ONNX_PLUGIN_LOGE(op.GetName().c_str(),  "get attr split_dim from op failed!.");
+    ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(),  "get attr split_dim from op failed!.");
     return FAILED;
   }
   int num_split = 0;
   if (op.GetAttr("num_split", num_split) != SUCCESS) {
-    ONNX_PLUGIN_LOGE(op.GetName().c_str(),  "get attr num_split from op failed!.");
+    ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(),  "get attr num_split from op failed!.");
     return FAILED;
   }
   std::vector<std::size_t> idx;
@@ -81,7 +81,7 @@ Status ParseOpToGraphSplitNew(const ge::Operator &op, Graph &graph) {
   }
   int input_size = 1;
   if (op.GetAttr("input_size", input_size) != SUCCESS) {
-    ONNX_PLUGIN_LOGE(op.GetName().c_str(),  "get attr num_split from op failed!.");
+    ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(),  "get attr num_split from op failed!.");
     return FAILED;
   }
 
@@ -92,7 +92,7 @@ Status ParseOpToGraphSplitNew(const ge::Operator &op, Graph &graph) {
   if (input_size == 1) {
     std::vector<int64_t> size_splits;
     if (op.GetAttr("size_splits", size_splits) != SUCCESS) {
-      ONNX_PLUGIN_LOGE(op.GetName().c_str(),  "get attr size_splits from op failed!.");
+      ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(),  "get attr size_splits from op failed!.");
       return FAILED;
     }
     ge::Operator split_op;

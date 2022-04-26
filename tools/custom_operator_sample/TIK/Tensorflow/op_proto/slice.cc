@@ -67,7 +67,7 @@ namespace ge {
 
       bool has_offsets = true;
       if (op.GetInputConstData("offsets", input_begin_tensor) != GRAPH_SUCCESS) {
-        OP_LOGI(op.GetName().c_str(), "Get offsets failed.");
+        OP_LOGI(TbeGetName(op).c_str(), "Get offsets failed.");
         has_offsets = false;
       } else {
         DataType input_begin_dtype = op.GetInputDesc("offsets").GetDataType();
@@ -76,7 +76,7 @@ namespace ge {
 
       bool has_size = true;
       if (op.GetInputConstData("size", input_size_tensor) != GRAPH_SUCCESS) {
-        OP_LOGI(op.GetName().c_str(), "Get size failed.");
+        OP_LOGI(TbeGetName(op).c_str(), "Get size failed.");
         has_size = false;
       } else {
         DataType input_size_dtype = op.GetInputDesc("size").GetDataType();
@@ -89,7 +89,7 @@ namespace ge {
         output_desc.SetDataType(input_dtype);
         Shape outputShape(UNKNOWN_RANK);
         output_desc.SetShape(outputShape);
-        OP_LOGD(op.GetName().c_str(), "output_shape:%s", to_string(output_desc.GetShape()).c_str());
+        OP_LOGD(TbeGetName(op).c_str(), "output_shape:%s", to_string(output_desc.GetShape()).c_str());
         (void) op.UpdateOutputDesc("y", output_desc);
         return GRAPH_SUCCESS;
       }
@@ -157,15 +157,15 @@ namespace ge {
       tensordesc_output.SetDataType(input_dtype);
       if (IsUnKnownShape(outputList)) {
         tensordesc_output.SetShapeRange(ranges);
-        OP_LOGD(op.GetName().c_str(), "output_ranges:%s", to_string(ranges).c_str());
+        OP_LOGD(TbeGetName(op).c_str(), "output_ranges:%s", to_string(ranges).c_str());
       }
 
       Shape outputShape(outputList);
       tensordesc_output.SetShape(outputShape);
-      OP_LOGD(op.GetName().c_str(), "output_ranges:%s", to_string(ranges).c_str());
-      OP_LOGD(op.GetName().c_str(), "offset:%s", to_string(input_begin).c_str());
-      OP_LOGD(op.GetName().c_str(), "size:%s", to_string(input_size).c_str());
-      OP_LOGD(op.GetName().c_str(), "output_shape:%s", to_string(tensordesc_output.GetShape()).c_str());
+      OP_LOGD(TbeGetName(op).c_str(), "output_ranges:%s", to_string(ranges).c_str());
+      OP_LOGD(TbeGetName(op).c_str(), "offset:%s", to_string(input_begin).c_str());
+      OP_LOGD(TbeGetName(op).c_str(), "size:%s", to_string(input_size).c_str());
+      OP_LOGD(TbeGetName(op).c_str(), "output_shape:%s", to_string(tensordesc_output.GetShape()).c_str());
       (void) op.UpdateOutputDesc("y", tensordesc_output);
       return GRAPH_SUCCESS;
     }

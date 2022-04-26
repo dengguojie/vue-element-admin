@@ -81,20 +81,20 @@ IMPLEMT_INFERFUNC(AllCandidateSampler, AllCandidateSamplerInfer) {
   int64_t num_true = 0;
   op.GetAttr("num_true", num_true);
   if (num_true < 1) {
-    OP_LOGE(op.GetName().c_str(), "Attr num_true must >= 1.");
+    OP_LOGE(TbeGetName(op).c_str(), "Attr num_true must >= 1.");
     return GRAPH_FAILED;
   }
 
   int64_t num_sampled = 0;
   op.GetAttr("num_sampled", num_sampled);
   if (num_sampled < 1) {
-    OP_LOGE(op.GetName().c_str(), "Attr num_sampled must >=1.");
+    OP_LOGE(TbeGetName(op).c_str(), "Attr num_sampled must >=1.");
     return GRAPH_FAILED;
   }
 
   Shape true_classes;
-  if (WithRank(op.GetInputDesc(0), 2, true_classes, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "input true_classes must be 2-D.");
+  if (WithRank(op.GetInputDesc(0), 2, true_classes, TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
+    OP_LOGE(TbeGetName(op).c_str(), "input true_classes must be 2-D.");
     return GRAPH_FAILED;
   }
 
@@ -114,7 +114,7 @@ IMPLEMT_INFERFUNC(AllCandidateSampler, AllCandidateSamplerInfer) {
   candidate_desc.SetDataType(DT_INT64);
   judge = (op.UpdateOutputDesc("sampled_candidates", candidate_desc) != GRAPH_SUCCESS);
   if (judge) {
-    OP_LOGE(op.GetName().c_str(), "fail to update output sampled_candidates.");
+    OP_LOGE(TbeGetName(op).c_str(), "fail to update output sampled_candidates.");
     return GRAPH_FAILED;
   }
 
@@ -122,7 +122,7 @@ IMPLEMT_INFERFUNC(AllCandidateSampler, AllCandidateSamplerInfer) {
   true_desc.SetShape(Shape(true_dims));
   true_desc.SetDataType(DT_FLOAT);
   if (op.UpdateOutputDesc("true_expected_count", true_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "fail to update output true_expected_count.");
+    OP_LOGE(TbeGetName(op).c_str(), "fail to update output true_expected_count.");
     return GRAPH_FAILED;
   }
 
@@ -131,7 +131,7 @@ IMPLEMT_INFERFUNC(AllCandidateSampler, AllCandidateSamplerInfer) {
   sampled_desc.SetDataType(DT_FLOAT);
   judge = (op.UpdateOutputDesc("sampled_expected_count", sampled_desc) != GRAPH_SUCCESS);
   if (judge) {
-    OP_LOGE(op.GetName().c_str(), "fail to update output sampled_expected_count.");
+    OP_LOGE(TbeGetName(op).c_str(), "fail to update output sampled_expected_count.");
     return GRAPH_FAILED;
   }
 
@@ -143,7 +143,7 @@ INFER_FUNC_REG(AllCandidateSampler, AllCandidateSamplerInfer);
 IMPLEMT_INFERFUNC(ComputeAccidentalHits, ComputeAccidentalHitsInfer) {
   int64_t num_true = 0;
   if (op.GetAttr("num_true", num_true) != GRAPH_SUCCESS) {
-    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op),
                                        string("get attr[num_true] failed"));
   }
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
@@ -151,27 +151,27 @@ IMPLEMT_INFERFUNC(ComputeAccidentalHits, ComputeAccidentalHitsInfer) {
   op_desc->SetOpInferDepends({"true_classes", "sampled_candidates"});
 
   GeShape true_classes;
-  if (WithRank(true_classes_desc, 2, true_classes, op.GetName().c_str()) != GRAPH_SUCCESS) {
+  if (WithRank(true_classes_desc, 2, true_classes, TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
     std::string err_msg = GetShapeErrMsg(0, DebugString(true_classes_desc->GetShape().GetDims()), "2D");
     err_msg = string("failed to call WithRank, ") + err_msg;
-    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
   int64_t unused_dim = 0;
-  if (WithValue(true_classes.GetDim(1), num_true, unused_dim, op.GetName().c_str()) != GRAPH_SUCCESS) {
+  if (WithValue(true_classes.GetDim(1), num_true, unused_dim, TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
     std::string err_msg = ConcatString("failed to call WithValue function, dim[1] of input[true_classes] is [",
                                        true_classes.GetDim(1), "], it is not equal to attr[", num_true, "]");
-    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
 
   auto sampled_candidates_desc = op_desc->MutableInputDesc(1);
   GeShape sampled_candidates;
-  if (WithRank(sampled_candidates_desc, 1, sampled_candidates, op.GetName().c_str()) !=
+  if (WithRank(sampled_candidates_desc, 1, sampled_candidates, TbeGetName(op).c_str()) !=
       GRAPH_SUCCESS) {
     std::string err_msg = GetShapeErrMsg(1, DebugString(sampled_candidates_desc->GetShape().GetDims()), "1D");
     err_msg = string("failed to call WithRank, ") + err_msg;
-    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
 

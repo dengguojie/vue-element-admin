@@ -55,12 +55,12 @@ Status ParseOpToGraphUpsample(const ge::Operator& op, Graph& graph) {
   auto const_op = op::Const("const_data").set_attr_value(const_value);
   auto ret_x = ChangeFormatFromOnnx(data0, 0, ge::FORMAT_NCHW, false);
   if (ret_x != ge::GRAPH_SUCCESS) {
-    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "update upsample_x format failed.");
+    ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "update upsample_x format failed.");
     return FAILED;
   }
   std::string mode_value1;
   if (op.GetAttr("mode", mode_value1) != SUCCESS) {
-    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "get value of mode from op failed.");
+    ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "get value of mode from op failed.");
     return FAILED;
   }
   auto resize_op = op::Resize("resize").set_input_x(data0)

@@ -34,12 +34,12 @@ IMPLEMT_COMMON_INFERFUNC(ActULQClampMinGradInferShape) {
     Shape x_clamped_loss_shape = op.GetInputDesc("x_clamped_loss").GetShape();
 
     if (y_grad_shape.GetDims() != clamp_min_mask_shape.GetDims()) {
-        OP_LOGE(op.GetName().c_str(), "The shape of clamp_min_mask must be the same as y_grad!");
+        OP_LOGE(TbeGetName(op).c_str(), "The shape of clamp_min_mask must be the same as y_grad!");
         return GRAPH_FAILED;
     }
 
     if (y_grad_shape.GetDims() != x_clamped_loss_shape.GetDims()) {
-        OP_LOGE(op.GetName().c_str(), "The shape of x_clamped_loss must be the same as y_grad!");
+        OP_LOGE(TbeGetName(op).c_str(), "The shape of x_clamped_loss must be the same as y_grad!");
         return GRAPH_FAILED;
     }
 
@@ -47,7 +47,7 @@ IMPLEMT_COMMON_INFERFUNC(ActULQClampMinGradInferShape) {
     clamp_min_grad.SetShape({});
     clamp_min_grad.SetDataType(op.GetInputDesc("y_grad").GetDataType());
     if (op.UpdateOutputDesc("clamp_min_grad", clamp_min_grad) != GRAPH_SUCCESS) {
-        OP_LOGE(op.GetName().c_str(), "Update output[clamp_min_grad] failed.");
+        OP_LOGE(TbeGetName(op).c_str(), "Update output[clamp_min_grad] failed.");
         return GRAPH_FAILED;
     }
 

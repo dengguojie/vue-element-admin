@@ -37,20 +37,20 @@ Status ParseParamsMaxPool3D(const Message* op_src, ge::Operator& op) {
   orgTensorX.SetFormat(ge::FORMAT_NDHWC);
   auto ret = op_dsc->UpdateInputDesc(POS_0, orgTensorX);
   if (ret != ge::GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "update input x format failed.");
+    OP_LOGE(TbeGetName(op).c_str(), "update input x format failed.");
     return FAILED;
   }
-  OP_LOGI(op.GetName().c_str(), "update input x format success, now is %d", op.GetInputDesc(POS_0).GetFormat());
+  OP_LOGI(TbeGetName(op).c_str(), "update input x format success, now is %d", op.GetInputDesc(POS_0).GetFormat());
 
   ge::GeTensorDesc orgTensorY = op_dsc->GetOutputDesc(POS_0);
   orgTensorY.SetOriginFormat(ge::FORMAT_NDHWC);
   orgTensorY.SetFormat(ge::FORMAT_NDHWC);
   ret = op_dsc->UpdateOutputDesc(POS_0, orgTensorY);
   if (ret != ge::GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "update output y format failed.");
+    OP_LOGE(TbeGetName(op).c_str(), "update output y format failed.");
     return FAILED;
   }
-  OP_LOGI(op.GetName().c_str(), "update output y format success, now is %d", op.GetOutputDesc(POS_0).GetFormat());
+  OP_LOGI(TbeGetName(op).c_str(), "update output y format success, now is %d", op.GetOutputDesc(POS_0).GetFormat());
 
   std::vector<int32_t> padList = {0, 0, 0, 0, 0, 0};
   op.SetAttr("pads", padList);

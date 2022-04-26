@@ -31,25 +31,25 @@ IMPLEMT_INFERFUNC(RaggedRange, RaggedRangeInfer) {
   Shape starts;
   Shape limits;
   Shape deltas;
-  if (WithRankAtMost(op.GetInputDesc(0), 1, starts, op.GetName().c_str()) != GRAPH_SUCCESS) {
+  if (WithRankAtMost(op.GetInputDesc(0), 1, starts, TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
     std::string err_msg = ConcatString("failed to call WithRankAtMost function, ",
                                        "input[starts] rank must be at most 1D, got rank[",
                                        op.GetInputDesc(0).GetShape().GetDimNum(), "]");
-    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
-  if (WithRankAtMost(op.GetInputDesc(1), 1, limits, op.GetName().c_str()) != GRAPH_SUCCESS) {
+  if (WithRankAtMost(op.GetInputDesc(1), 1, limits, TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
     std::string err_msg = ConcatString("failed to call WithRankAtMost function, ",
                                        "input[limits] rank must be at most 1D, got rank[",
                                        op.GetInputDesc(1).GetShape().GetDimNum(), "]");
-    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
-  if (WithRankAtMost(op.GetInputDesc(2), 1, deltas, op.GetName().c_str()) != GRAPH_SUCCESS) {
+  if (WithRankAtMost(op.GetInputDesc(2), 1, deltas, TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
     std::string err_msg = ConcatString("failed to call WithRankAtMost function, input[deltas] ", 
                                        "rank must be at most 1D, got rank[", 
                                        op.GetInputDesc(2).GetShape().GetDimNum(), "]");
-    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -61,7 +61,7 @@ IMPLEMT_INFERFUNC(RaggedRange, RaggedRangeInfer) {
     if (Merge(starts_dim, dim, dim) != GRAPH_SUCCESS) {
       std::string err_msg = ConcatString("failed to call Merge function, the 0th dim[",
                                          starts_dim, "] of input[starts] not equal UNKNOWN_DIM");
-      AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+      AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
       return GRAPH_FAILED;
     }
   }
@@ -69,7 +69,7 @@ IMPLEMT_INFERFUNC(RaggedRange, RaggedRangeInfer) {
     if (Merge(limits_dim, dim, dim) != GRAPH_SUCCESS) {
       std::string err_msg = ConcatString("failed to call Merge function, the 0th dim[",
                                          limits_dim, "] of input[limits] not equal UNKNOWN_DIM");
-      AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+      AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
       return GRAPH_FAILED;
     }
   }
@@ -77,7 +77,7 @@ IMPLEMT_INFERFUNC(RaggedRange, RaggedRangeInfer) {
     if (Merge(deltas_dim, dim, dim) != GRAPH_SUCCESS) {
       std::string err_msg = ConcatString("failed to call Merge function, the 0th dim[",
                                          deltas_dim, "] of input[deltas] not equal UNKNOWN_DIM");
-      AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+      AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
       return GRAPH_FAILED;
     }
   }
@@ -92,7 +92,7 @@ IMPLEMT_INFERFUNC(RaggedRange, RaggedRangeInfer) {
 
   DataType Tsplits_type;
   if (op.GetAttr("Tsplits", Tsplits_type) != GRAPH_SUCCESS) {
-    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), string("get attr[Tsplits] failed"));
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), string("get attr[Tsplits] failed"));
     return GRAPH_FAILED;
   }
   TensorDesc rt_nested_desc = op.GetOutputDesc("rt_nested_splits");

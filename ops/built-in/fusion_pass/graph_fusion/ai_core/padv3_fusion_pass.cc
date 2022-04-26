@@ -198,7 +198,7 @@ Status PadV3FusionPass::Infer(const ge::Operator& op, std::vector<int64_t>& padd
       pads.push_back(paddings[i + rank]);
     }
     paddings = pads;
-    OP_LOGI(op.GetName().c_str(), "Get attr paddings_contiguous = false");
+    OP_LOGI(TbeGetName(op).c_str(), "Get attr paddings_contiguous = false");
   }
 
   if (inputShape.size() * LEN != paddingsShape) {

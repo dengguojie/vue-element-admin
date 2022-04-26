@@ -50,19 +50,19 @@ static Status ParseOpToGraphRNN(const ge::Operator &op, ge::Graph &graph) {
 
   float forget_bias = 0.0;
   if (op.GetAttr("forget_bias", forget_bias) != ge::GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "get attr forget_bias failed.");
+    OP_LOGE(TbeGetName(op).c_str(), "get attr forget_bias failed.");
     return FAILED;
   }
 
   float cell_clip = 3.0;
   if (op.GetAttr("cell_clip", cell_clip) != ge::GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "get attr cell_clip failed.");
+    OP_LOGE(TbeGetName(op).c_str(), "get attr cell_clip failed.");
     return FAILED;
   }
 
   bool use_peephole = false;
   if (op.GetAttr("use_peephole", use_peephole) != ge::GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "get attr use_peephole failed.");
+    OP_LOGE(TbeGetName(op).c_str(), "get attr use_peephole failed.");
     return FAILED;
   }
 

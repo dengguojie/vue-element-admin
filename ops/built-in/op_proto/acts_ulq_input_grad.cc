@@ -34,12 +34,12 @@ IMPLEMT_COMMON_INFERFUNC(ActsULQInputGradInferShape) {
     Shape clamp_max_mask_shape = op.GetInputDesc("clamp_max_mask").GetShape();
 
     if (y_grad_shape.GetDims() != clamp_min_mask_shape.GetDims()) {
-        OP_LOGE(op.GetName().c_str(), "The shape of clamp_min_mask must be the same as y_grad!");
+        OP_LOGE(TbeGetName(op).c_str(), "The shape of clamp_min_mask must be the same as y_grad!");
         return GRAPH_FAILED;
     }
 
     if (y_grad_shape.GetDims() != clamp_max_mask_shape.GetDims()) {
-        OP_LOGE(op.GetName().c_str(), "The shape of clamp_max_mask must be the same as y_grad!");
+        OP_LOGE(TbeGetName(op).c_str(), "The shape of clamp_max_mask must be the same as y_grad!");
         return GRAPH_FAILED;
     }
 
@@ -47,7 +47,7 @@ IMPLEMT_COMMON_INFERFUNC(ActsULQInputGradInferShape) {
     x_grad.SetShape(y_grad_shape);
     x_grad.SetDataType(op.GetInputDesc("y_grad").GetDataType());
     if (op.UpdateOutputDesc("x_grad", x_grad) != GRAPH_SUCCESS) {
-        OP_LOGE(op.GetName().c_str(), "Update output[x_grad] failed!");
+        OP_LOGE(TbeGetName(op).c_str(), "Update output[x_grad] failed!");
         return GRAPH_FAILED;
     }
 
@@ -59,7 +59,7 @@ IMPLEMT_VERIFIER(ActsULQInputGrad, ActsULQInputGradVerify) {
     DataType clamp_max_mask_type = op.GetInputDesc("clamp_max_mask").GetDataType();
 
     if (clamp_min_mask_type != clamp_max_mask_type) {
-        OP_LOGE(op.GetName().c_str(), "The type of clamp_min_mask must be the same as clamp_max_mask!");
+        OP_LOGE(TbeGetName(op).c_str(), "The type of clamp_min_mask must be the same as clamp_max_mask!");
         return GRAPH_FAILED;
     }
 

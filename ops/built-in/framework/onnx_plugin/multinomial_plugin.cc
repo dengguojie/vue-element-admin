@@ -56,7 +56,7 @@ Status ParseParamsMultinomialCall(const Message* op_src, ge::Operator& op_dest) 
 Status ParseOpToGraphMultinomial(const ge::Operator &op, Graph &graph) {
   std::shared_ptr<ge::OpDesc> op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
   if (op_desc == nullptr) {
-    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "op_desc is null");
+    ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "op_desc is null");
     return FAILED;
   }
   int sample_size = 1;
@@ -67,7 +67,7 @@ Status ParseOpToGraphMultinomial(const ge::Operator &op, Graph &graph) {
   ge::AttrUtils::GetFloat(op_desc, "seed", seed);
   ge::DataType dtype_om = GetOmDtypeFromOnnxDtype(data_type);
   if (dtype_om == ge::DT_UNDEFINED) {
-    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "dtype[%d] is wrong,please select right dtype", data_type);
+    ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "dtype[%d] is wrong,please select right dtype", data_type);
     return FAILED;
   }
   int int_seed = static_cast<int>(seed);

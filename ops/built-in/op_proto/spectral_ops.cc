@@ -26,7 +26,7 @@
 
 namespace ge {
 IMPLEMT_INFERFUNC(IFFT, IFFTInfer) {
-  const char *op_name = op.GetName().c_str();
+  const char *op_name = TbeGetName(op).c_str();
   Shape out;
   if (WithRankAtLeast(op.GetInputDesc(0), 1, out, op_name) != GRAPH_SUCCESS) {
     OP_LOGE(op_name, "Input out rank must be at least 1.");
@@ -47,20 +47,20 @@ INFER_FUNC_REG(IFFT, IFFTInfer);
 
 IMPLEMT_INFERFUNC(RFFT, RFFTInfer) {
   Shape out;
-  if (WithRankAtLeast(op.GetInputDesc(0), 1, out, op.GetName().c_str()) != GRAPH_SUCCESS) {
+  if (WithRankAtLeast(op.GetInputDesc(0), 1, out, TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
     std::string err_msg = GetShapeErrMsg(
         0, DebugString(op.GetInputDesc(0).GetShape().GetDims()),
         "at least 1D");
-    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
 
   Shape fft_length_input;
-  if (WithRank(op.GetInputDesc(1), 1, fft_length_input, op.GetName().c_str()) != GRAPH_SUCCESS) {
+  if (WithRank(op.GetInputDesc(1), 1, fft_length_input, TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
     std::string err_msg = GetShapeErrMsg(
         1, DebugString(op.GetInputDesc(1).GetShape().GetDims()),
         "1D");
-    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -69,7 +69,7 @@ IMPLEMT_INFERFUNC(RFFT, RFFTInfer) {
       std::string err_msg = ConcatString(
           "0th dim of input[fft_length] must be 1, real value is ",
 		  fft_length_input.GetDim(0));
-      AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+      AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
       return GRAPH_FAILED;
     }
   }
@@ -96,7 +96,7 @@ IMPLEMT_INFERFUNC(RFFT, RFFTInfer) {
   y_desc.SetDataType(DT_COMPLEX64);
   if (op.UpdateOutputDesc("y", y_desc) != GRAPH_SUCCESS) {
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(
-        op.GetName(), std::string("update output[y] desc failed"));
+        TbeGetName(op), std::string("update output[y] desc failed"));
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -107,20 +107,20 @@ INFER_FUNC_REG(RFFT, RFFTInfer);
 IMPLEMT_INFERFUNC(IRFFT, IRFFTInfer) {
   Shape out;
 
-  if (WithRankAtLeast(op.GetInputDesc(0), 1, out, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Input out rank must be at least 1.");
+  if (WithRankAtLeast(op.GetInputDesc(0), 1, out, TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
+    OP_LOGE(TbeGetName(op).c_str(), "Input out rank must be at least 1.");
     return GRAPH_FAILED;
   }
 
   Shape fft_length_input;
-  if (WithRank(op.GetInputDesc(1), 1, fft_length_input, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Input fft_length_input rank must be 1.");
+  if (WithRank(op.GetInputDesc(1), 1, fft_length_input, TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
+    OP_LOGE(TbeGetName(op).c_str(), "Input fft_length_input rank must be 1.");
     return GRAPH_FAILED;
   }
 
   if (fft_length_input.GetDim(0) != 1) {
     if (fft_length_input.GetDim(0) != UNKNOWN_DIM) {
-      OP_LOGE(op.GetName().c_str(), "The fft_length_input dim-0 must be 1, real value is [%ld].",
+      OP_LOGE(TbeGetName(op).c_str(), "The fft_length_input dim-0 must be 1, real value is [%ld].",
         fft_length_input.GetDim(0));
       return GRAPH_FAILED;
     }
@@ -147,7 +147,7 @@ IMPLEMT_INFERFUNC(IRFFT, IRFFTInfer) {
   y_desc.SetShape(Shape(out));
   y_desc.SetDataType(DT_FLOAT);
   if (op.UpdateOutputDesc("y", y_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Fail to update output y.");
+    OP_LOGE(TbeGetName(op).c_str(), "Fail to update output y.");
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -158,8 +158,8 @@ INFER_FUNC_REG(IRFFT, IRFFTInfer);
 IMPLEMT_INFERFUNC(FFT2D, FFT2DInfer) {
   const static int rank = 2;
   Shape out;
-  if (WithRankAtLeast(op.GetInputDesc(0), rank, out, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Input out rank must be at least [%d].", rank);
+  if (WithRankAtLeast(op.GetInputDesc(0), rank, out, TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
+    OP_LOGE(TbeGetName(op).c_str(), "Input out rank must be at least [%d].", rank);
     return GRAPH_FAILED;
   }
 
@@ -169,7 +169,7 @@ IMPLEMT_INFERFUNC(FFT2D, FFT2DInfer) {
   y_desc.SetDataType(y_type);
 
   if (op.UpdateOutputDesc("y", y_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Fail to update output y.");
+    OP_LOGE(TbeGetName(op).c_str(), "Fail to update output y.");
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -178,7 +178,7 @@ IMPLEMT_INFERFUNC(FFT2D, FFT2DInfer) {
 INFER_FUNC_REG(FFT2D, FFT2DInfer);
 
 IMPLEMT_INFERFUNC(FFT, FFTInfer) {
-  const char *op_name = op.GetName().c_str();
+  const char *op_name = TbeGetName(op).c_str();
   Shape out;
   if (WithRankAtLeast(op.GetInputDesc(0), 1, out, op_name) != GRAPH_SUCCESS) {
     OP_LOGE(op_name, "Input out rank must be at least 1.");
@@ -203,8 +203,8 @@ IMPLEMT_INFERFUNC(IFFT2D, IFFT2DInfer) {
   auto x_desc = op_desc->MutableInputDesc(0);
 
   GeShape out;
-  if (WithRankAtLeast(x_desc, 2, out, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Input rank must be at least 2.");
+  if (WithRankAtLeast(x_desc, 2, out, TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
+    OP_LOGE(TbeGetName(op).c_str(), "Input rank must be at least 2.");
     return GRAPH_FAILED;
   }
   DataType type = x_desc->GetDataType();

@@ -69,8 +69,8 @@ IMPLEMT_COMMON_INFERFUNC(OCRRecognitionPreHandleInferShape) {
       std::string reason = "max shape range of imgs_data must be != 0";
       REPORT_INNER_ERROR("E19999",
                          "[Node:%s] Check imgs_data shape range failed, as %s",
-                         op.GetName().c_str(), reason.c_str());
-      GE_OP_LOGE(op.GetName().c_str(),
+                         TbeGetName(op).c_str(), reason.c_str());
+      GE_OP_LOGE(TbeGetName(op).c_str(),
                  "[InferShape] Check imgs_data shape range failed, as %s",
                  reason.c_str());
       return GRAPH_PARAM_INVALID;
@@ -81,14 +81,14 @@ IMPLEMT_COMMON_INFERFUNC(OCRRecognitionPreHandleInferShape) {
     if (batch_size == 0) {
       std::string reason = "attr[batch_size] must be != 0";
       REPORT_INNER_ERROR("E19999", "[Node:%s] Check attr failed, as %s",
-                         op.GetName().c_str(), reason.c_str());
-      GE_OP_LOGE(op.GetName().c_str(), "[InferShape] Check attr failed, as %s",
+                         TbeGetName(op).c_str(), reason.c_str());
+      GE_OP_LOGE(TbeGetName(op).c_str(), "[InferShape] Check attr failed, as %s",
                  reason.c_str());
       return GRAPH_PARAM_INVALID;
     }
 
     GE_OP_LOGD(
-        op.GetName().c_str(),
+        TbeGetName(op).c_str(),
         "[InferShape] Set output shape range, range_max[%ld], batch_size[%ld]",
         range_max, batch_size);
     int64_t max_pic_num = range_max / kChannelNum + 7 * (batch_size - 1);
@@ -174,7 +174,7 @@ IMPLEMT_COMMON_INFERFUNC(OCRDetectionPreHandleInferShape) {
   (void)op.GetAttr("data_format", dt_format);
   const std::set<std::string> kVaildFormat = {"NHWC", "NCHW"};
   if (kVaildFormat.find(dt_format) == kVaildFormat.end()) {
-    GE_OP_LOGE(op.GetName().c_str(), "Format is invalid, is ", dt_format);
+    GE_OP_LOGE(TbeGetName(op).c_str(), "Format is invalid, is ", dt_format);
     return GRAPH_FAILED;
   }
   
@@ -182,7 +182,7 @@ IMPLEMT_COMMON_INFERFUNC(OCRDetectionPreHandleInferShape) {
   size_t pos_h = dt_format.find("H") - 1;
   size_t pos_w = dt_format.find("W") - 1;
   if (image_shape[pos_c] != kChannelNum) {
-    GE_OP_LOGE(op.GetName().c_str(), "Img channel must be 3, but got ",
+    GE_OP_LOGE(TbeGetName(op).c_str(), "Img channel must be 3, but got ",
 	    image_shape[pos_c]);
     return GRAPH_FAILED;
   }
@@ -231,32 +231,32 @@ IMPLEMT_COMMON_INFERFUNC(OCRIdentifyPreHandleInferShape) {
   std::vector<int64_t> list_out_size;
   (void)op.GetAttr("size", list_out_size);
   if (list_out_size.size() != 2) {
-    GE_OP_LOGE(op.GetName().c_str(), "The size of size attr must be 2, but got ",
+    GE_OP_LOGE(TbeGetName(op).c_str(), "The size of size attr must be 2, but got ",
 	    list_out_size.size());
     return GRAPH_FAILED;
   }
 
   if (imgs_data_desc.GetShape().GetDimNum() != 1) {
-    GE_OP_LOGE(op.GetName().c_str(), "Imgs data shape dims size must be 1, but got ",
+    GE_OP_LOGE(TbeGetName(op).c_str(), "Imgs data shape dims size must be 1, but got ",
       imgs_data_desc.GetShape().GetDimNum());
     return GRAPH_FAILED;
   }
 
   if (imgs_offset_desc.GetShape().GetDimNum() != 1) {
-    GE_OP_LOGE(op.GetName().c_str(), "Imgs offset shape dims size must be 1, but got ",
+    GE_OP_LOGE(TbeGetName(op).c_str(), "Imgs offset shape dims size must be 1, but got ",
       imgs_offset_desc.GetShape().GetDimNum());
     return GRAPH_FAILED;
   }
 
   if (imgs_size_desc.GetShape().GetDimNum() != 2) {
-    GE_OP_LOGE(op.GetName().c_str(), "Imgs size shape dims size must be 2, but got ",
+    GE_OP_LOGE(TbeGetName(op).c_str(), "Imgs size shape dims size must be 2, but got ",
       imgs_size_desc.GetShape().GetDimNum());
     return GRAPH_FAILED;
   }
 
   /* dim 1 is the shape of image, must be 3 */
   if (imgs_size_desc.GetShape().GetDim(1) != 3) {
-    GE_OP_LOGE(op.GetName().c_str(), "Imgs size shape dim[1] must be 3, but got ",
+    GE_OP_LOGE(TbeGetName(op).c_str(), "Imgs size shape dim[1] must be 3, but got ",
       imgs_size_desc.GetShape().GetDim(1));
     return GRAPH_FAILED;
   }
@@ -272,7 +272,7 @@ IMPLEMT_COMMON_INFERFUNC(OCRIdentifyPreHandleInferShape) {
       imgs_size_desc.GetShape().GetShapeSize() == UNKNOWN_DIM) {
     imgs_size_desc.GetShapeRange(imgs_size_range);
     if (imgs_size_range.size() != 2) {
-      GE_OP_LOGE(op.GetName().c_str(), "Img size shape range size must be 2");
+      GE_OP_LOGE(TbeGetName(op).c_str(), "Img size shape range size must be 2");
       return GRAPH_FAILED;
     }
     if (data_format == "NCHW") {
@@ -309,7 +309,7 @@ IMPLEMT_COMMON_INFERFUNC(OCRIdentifyPreHandleInferShape) {
     auto offset_dims = imgs_offset_desc.GetShape().GetDims();
     auto size_dims = imgs_size_desc.GetShape().GetDims();
     if (size_dims.size() != 2) {
-      GE_OP_LOGE(op.GetName().c_str(), "Img size shape size must be 2");
+      GE_OP_LOGE(TbeGetName(op).c_str(), "Img size shape size must be 2");
       return GRAPH_FAILED;
     }
     std::vector<int64_t> out_shape;
@@ -508,8 +508,8 @@ IMPLEMT_COMMON_INFERFUNC(OCRDetectionPostHandleInfer){
             std::string reason = "max shape range of img must be != 0";
             REPORT_INNER_ERROR("E19999",
                                "[Node:%s] Check img shape range failed, as %s",
-                               op.GetName().c_str(), reason.c_str());
-            GE_OP_LOGE(op.GetName().c_str(),
+                               TbeGetName(op).c_str(), reason.c_str());
+            GE_OP_LOGE(TbeGetName(op).c_str(),
                        "[InferShape] Check img shape range failed, as %s",
                        reason.c_str());
             return GRAPH_PARAM_INVALID;
@@ -604,8 +604,8 @@ IMPLEMT_COMMON_INFERFUNC(ResizeAndClipPolysInfer){
             std::string reason = "max shape range of polys_data must be != 0";
             REPORT_INNER_ERROR("E19999",
                                "[Node:%s] Check polys_data shape range failed, as %s",
-                               op.GetName().c_str(), reason.c_str());
-            GE_OP_LOGE(op.GetName().c_str(),
+                               TbeGetName(op).c_str(), reason.c_str());
+            GE_OP_LOGE(TbeGetName(op).c_str(),
                        "[InferShape] Check polys_data shape range failed, as %s",
                        reason.c_str());
             return GRAPH_PARAM_INVALID;

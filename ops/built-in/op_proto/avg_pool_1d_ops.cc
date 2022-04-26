@@ -52,7 +52,7 @@ IMPLEMT_INFERFUNC(AvgPool1DAvgMatrix, AvgPool1DAvgMatrixInfer) {
   } else if (input_format == FORMAT_NCHW) {
     input_w_size = input_shape.GetDim(3);
   } else {
-      OP_LOGE(op.GetName().c_str(), "Input format only support NCHW or NHWC");
+      OP_LOGE(TbeGetName(op).c_str(), "Input format only support NCHW or NHWC");
       return GRAPH_FAILED;
   }
   //dim_w  not equal to  ge::UNKNOWN_DIM
@@ -61,29 +61,29 @@ IMPLEMT_INFERFUNC(AvgPool1DAvgMatrix, AvgPool1DAvgMatrixInfer) {
     int32_t strides = 1;
     bool ceil_mode = false;
     if (op.GetAttr("ksize", ksize) != GRAPH_SUCCESS) {
-      OP_LOGE(op.GetName().c_str(), "GetOpAttr ksize failed");
+      OP_LOGE(TbeGetName(op).c_str(), "GetOpAttr ksize failed");
       return GRAPH_FAILED;
     }
     if (op.GetAttr("strides", strides) != GRAPH_SUCCESS) {
-      OP_LOGE(op.GetName().c_str(), "GetOpAttr strides failed");
+      OP_LOGE(TbeGetName(op).c_str(), "GetOpAttr strides failed");
       return GRAPH_FAILED;
     }
     if (strides == 0) {
-      OP_LOGE(op.GetName().c_str(), "Value of strides should not be 0");
+      OP_LOGE(TbeGetName(op).c_str(), "Value of strides should not be 0");
       return GRAPH_FAILED;
     }
     // get input ksize
     std::vector<int32_t> pads_list;
     if (op.GetAttr("pads", pads_list) != GRAPH_SUCCESS) {
-      OP_LOGE(op.GetName().c_str(), "GetOpAttr pads_list failed!");
+      OP_LOGE(TbeGetName(op).c_str(), "GetOpAttr pads_list failed!");
       return GRAPH_FAILED;
     }
     if (op.GetAttr("ceil_mode", ceil_mode) != GRAPH_SUCCESS) {
-      OP_LOGE(op.GetName().c_str(), "GetOpAttr ceil_mode failed");
+      OP_LOGE(TbeGetName(op).c_str(), "GetOpAttr ceil_mode failed");
       return GRAPH_FAILED;
     }
     if (pads_list.size() < 2) {
-      OP_LOGE(op.GetName().c_str(), "Size of pads_list must greater than 1!");
+      OP_LOGE(TbeGetName(op).c_str(), "Size of pads_list must greater than 1!");
       return GRAPH_FAILED;
     }
     int32_t padl = pads_list[0];
@@ -105,7 +105,7 @@ IMPLEMT_INFERFUNC(AvgPool1DAvgMatrix, AvgPool1DAvgMatrixInfer) {
     padr = (output_w_size - 1) * strides + ksize - input_w_size - padl;
 
     if (input_format != FORMAT_NHWC && input_format != FORMAT_NCHW) {
-      OP_LOGE(op.GetName().c_str(), "Input format only support NCHW or NHWC "
+      OP_LOGE(TbeGetName(op).c_str(), "Input format only support NCHW or NHWC "
       ", input format is [%d]", input_format);
       return GRAPH_FAILED;
     }
@@ -148,7 +148,7 @@ IMPLEMT_INFERFUNC(AvgPool1DAvgMatrix, AvgPool1DAvgMatrixInfer) {
   output_tensor_desc.SetShape(output_shape);
   output_tensor_desc.SetDataType(output_dtype);
   if (op.UpdateOutputDesc("y", output_tensor_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(),
+    OP_LOGE(TbeGetName(op).c_str(),
             "UpdateOutputDesc failed. Need check whether the names of outputs "
             "are matched.");
     return GRAPH_FAILED;

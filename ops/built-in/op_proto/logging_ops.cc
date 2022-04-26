@@ -49,11 +49,11 @@ INFER_FUNC_REG(Print, PrintInfer);
 
 IMPLEMT_INFERFUNC(PrintV2, PrintV2Infer) {
   Shape unused;
-  if (WithRank(op.GetInputDesc(0), 0, unused, op.GetName().c_str()) != GRAPH_SUCCESS) {
+  if (WithRank(op.GetInputDesc(0), 0, unused, TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
     std::string err_msg = GetShapeErrMsg(0,
         DebugString(op.GetInputDesc(0).GetShape().GetDims()), "scalar");
     err_msg = string("failed to call WithRank, ") + err_msg;
-    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
 

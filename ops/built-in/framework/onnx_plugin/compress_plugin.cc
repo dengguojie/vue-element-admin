@@ -61,13 +61,13 @@ static Status ParseOpToGraphCompress(const ge::Operator& op, Graph& graph) {
 
   int need_flatten = 0;
   if (op.GetAttr("need_flatten", need_flatten) != SUCCESS) {
-    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "get the switch of whether inserting flatten from op failed");
+    ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "get the switch of whether inserting flatten from op failed");
     return FAILED;
   }
 
   ge::Tensor const_value;
   if (op.GetAttr("axis_value", const_value) != SUCCESS) {
-    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "get const_value from op failed");
+    ONNX_PLUGIN_LOGE(TbeGetName(op).c_str(), "get const_value from op failed");
     return FAILED;
   }
 

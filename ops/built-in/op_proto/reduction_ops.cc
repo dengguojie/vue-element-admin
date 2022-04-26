@@ -73,7 +73,7 @@ static bool InferReductionShape(const ge::Operator& operation, const string& inp
 }
 
 IMPLEMT_COMMON_INFERFUNC(ReductionInferShape) {
-  OP_LOGI(op.GetName().c_str(), "Enter Reduction proto inferfunction!");
+  OP_LOGI(TbeGetName(op).c_str(), "Enter Reduction proto inferfunction!");
   ge::TensorDesc result_desc;
   if (!InferReductionShape(op, "x", result_desc)) {
     return GRAPH_FAILED;

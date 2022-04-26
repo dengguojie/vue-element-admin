@@ -46,7 +46,7 @@ graphStatus FunctionTopkV2(Operator& op) {
       output_dims.emplace_back(2 * last_dim);
     }
   } else {
-    OP_LOGE(op.GetName().c_str(), "Op input dim size = %zu is illegal.", input_dims.size());
+    OP_LOGE(TbeGetName(op).c_str(), "Op input dim size = %zu is illegal.", input_dims.size());
     return GRAPH_FAILED;
   }
   output_desc.SetShape(Shape(output_dims));
@@ -58,7 +58,7 @@ IMPLEMT_INFERFUNC(AssistHelp, AssistHelpInfer) {
   const std::map<std::string, uint32_t> func_name_map = {{"topkv2", 1}};
   std::string func_name;
   if (op.GetAttr("func_name", func_name) != GRAPH_SUCCESS) {
-    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), std::string("get attr[func_name] failed."));
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), std::string("get attr[func_name] failed."));
     return GRAPH_FAILED;
   }
   uint32_t func_id = 0;
@@ -71,7 +71,7 @@ IMPLEMT_INFERFUNC(AssistHelp, AssistHelpInfer) {
       return FunctionTopkV2(op);
     default:
       std::string err_msg = GetAttrValueErrMsg("func_name", func_name, "topkv2");
-      AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+      AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
       return GRAPH_FAILED;
   }
 }
@@ -82,7 +82,7 @@ IMPLEMT_COMMON_INFERFUNC(CacheUpdateInferShape) {
   TensorDesc out_desc = op.GetOutputDesc("x");
   out_desc.SetDataType(op.GetInputDesc("x").GetDataType());
   if (op.UpdateOutputDesc("x", out_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "update output x failed.");
+    OP_LOGE(TbeGetName(op).c_str(), "update output x failed.");
     return GRAPH_FAILED;
   }
   return UnchangedShape(op, "x", "x");
