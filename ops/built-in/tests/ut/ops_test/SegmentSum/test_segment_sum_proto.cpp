@@ -44,3 +44,87 @@ TEST_F(segment_sum, segment_sum_infer_shape_test_1) {
   };
   EXPECT_EQ(output_shape_range, expected_shape_range);
 }
+
+TEST_F(segment_sum, segment_sum_infer_shape_test_2) {
+  ge::op::SegmentSum op;
+  
+  ge::TensorDesc tensor_x_desc;
+  ge::Shape x_shape({810, 128});
+  tensor_x_desc.SetDataType(ge::DT_FLOAT);
+  tensor_x_desc.SetShape(x_shape);
+  tensor_x_desc.SetOriginShape(x_shape);
+  tensor_x_desc.SetFormat(ge::FORMAT_ND);
+
+  ge::TensorDesc tensor_segment_ids_desc;
+  ge::Shape segment_ids_shape({810, });
+  tensor_segment_ids_desc.SetDataType(ge::DT_INT32);
+  tensor_segment_ids_desc.SetShape(segment_ids_shape);
+  tensor_segment_ids_desc.SetOriginShape(segment_ids_shape);
+  tensor_segment_ids_desc.SetFormat(ge::FORMAT_ND);
+
+  // update input
+  op.UpdateInputDesc("x", tensor_x_desc);
+  op.UpdateInputDesc("segment_ids", tensor_segment_ids_desc);
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_SUCCESS);
+  // infer
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+  // compare shape
+  auto output_desc = op.GetOutputDesc("y");
+  EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT);
+  std::vector<int64_t> expected_output_shape = {-1, 128};
+  EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
+  // compare origin shape
+  EXPECT_EQ(output_desc.GetOriginShape().GetDims(), expected_output_shape);
+  // compare shape range
+  std::vector<std::pair<int64_t, int64_t>> output_shape_range;
+  EXPECT_EQ(output_desc.GetShapeRange(output_shape_range), ge::GRAPH_SUCCESS);
+  std::vector<std::pair<int64_t, int64_t>> expected_shape_range = {
+      {0, -1}, {128, 128},
+  };
+  EXPECT_EQ(output_shape_range, expected_shape_range);
+}
+
+TEST_F(segment_sum, segment_sum_infer_shape_test_3) {
+  ge::op::SegmentSum op;
+  
+  ge::TensorDesc tensor_x_desc;
+  ge::Shape x_shape({810, 128, 16, 20});
+  tensor_x_desc.SetDataType(ge::DT_FLOAT);
+  tensor_x_desc.SetShape(x_shape);
+  tensor_x_desc.SetOriginShape(x_shape);
+  tensor_x_desc.SetFormat(ge::FORMAT_ND);
+
+  ge::TensorDesc tensor_segment_ids_desc;
+  ge::Shape segment_ids_shape({810, });
+  tensor_segment_ids_desc.SetDataType(ge::DT_INT32);
+  tensor_segment_ids_desc.SetShape(segment_ids_shape);
+  tensor_segment_ids_desc.SetOriginShape(segment_ids_shape);
+  tensor_segment_ids_desc.SetFormat(ge::FORMAT_ND);
+
+  // update input
+  op.UpdateInputDesc("x", tensor_x_desc);
+  op.UpdateInputDesc("segment_ids", tensor_segment_ids_desc);
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_SUCCESS);
+  // infer
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+  // compare shape
+  auto output_desc = op.GetOutputDesc("y");
+  EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT);
+  std::vector<int64_t> expected_output_shape = {-1, 128, 16, 20};
+  EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
+  // compare origin shape
+  EXPECT_EQ(output_desc.GetOriginShape().GetDims(), expected_output_shape);
+  // compare shape range
+  std::vector<std::pair<int64_t, int64_t>> output_shape_range;
+  EXPECT_EQ(output_desc.GetShapeRange(output_shape_range), ge::GRAPH_SUCCESS);
+  std::vector<std::pair<int64_t, int64_t>> expected_shape_range = {
+      {0, -1}, {128, 128}, {16, 16}, {20, 20}
+  };
+  EXPECT_EQ(output_shape_range, expected_shape_range);
+}

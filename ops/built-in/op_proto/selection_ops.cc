@@ -2216,17 +2216,15 @@ IMPLEMT_COMMON_INFERFUNC(SegmentSumInferShape) {
     output_desc->SetShape(GeShape(shape_x));
   } else {
     output_shape_dims[0] = first_axis_dims;
-    Shape output_shape(output_shape_dims);
+    GeShape output_shape(output_shape_dims);
     output_desc->SetShape(GeShape(output_shape_dims));
-    if (IsUnKnownShape(shape_x)) {
+    if (output_shape.IsUnknownShape()) {
       std::vector<std::pair<int64_t, int64_t>> shape_range_x;
       std::vector<std::pair<int64_t, int64_t>> output_shape_range;
       output_shape_range.push_back(std::pair<int64_t, int64_t>(out_range_first_dims, first_axis_dims));
       input_x_desc->GetShapeRange(shape_range_x);
       for (size_t i = 1; i < output_shape_dims.size(); i++) {
-        if (i < shape_range_x.size()) {
-          output_shape_range.push_back(shape_range_x[i]);
-        }
+        output_shape_range.push_back(std::pair<int64_t, int64_t>(shape_x[i], shape_x[i]));
       }
       MakeUpShapeRange(output_shape_dims, output_shape_range);
       output_desc->SetShapeRange(output_shape_range);
