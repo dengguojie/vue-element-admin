@@ -447,6 +447,7 @@ def _conv2d_backprop_filter(context: "tbetoolkits.UniversalTestcaseStructure"):
         cin_g = group_dict["cin_g"]
         cin1_g = group_dict["cin1_g"]
         cout_g = group_dict["cout_g"]
+        cout1_g = group_dict["cout1_g"]
         print(group_dict)
         # dedy  (N,Co1,Ho,Wo,C0)--->(real_g, n, cout_g, ho, wo)
         # dedy_target = out_backprop.transpose(1,0,5,2,3)
@@ -485,8 +486,8 @@ def _conv2d_backprop_filter(context: "tbetoolkits.UniversalTestcaseStructure"):
                                           dedx_target[i, :, j, :, :])
         print('--------tmp golden:', out.shape)
         # (real_g, cin_g * kh * kw, cout_g) to C1HWNC0
-        output = out.reshape((real_g, cin1_g, C0, kh * kw, cout_g)).transpose((1, 3, 0, 4, 2)).reshape(
-            cin1_g * kh * kw, real_g, cout_g, C0)
+        output = out.reshape((real_g, cin1_g, C0, kh, kw, cout1_g, C0)).transpose((0, 1, 3, 4, 5, 6, 2)).reshape(
+            real_g * cin1_g * kh * kw, cout1_g, C0, C0)
         return output
     else:
         group_dict = _calculate_group(cin_ori, Co, groups)

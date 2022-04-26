@@ -64,17 +64,26 @@ get_results() {
     exit $STATUS_FAILED
   fi
 
-  lines=$(wc -l "${result_file}" 2>/dev/null| awk '{print $1}')
+  local lines=$(wc -l "${result_file}" 2>/dev/null| awk '{print $1}')
   if [[ $lines -le 1 ]]; then
     echo "[ERROR] st_plus_result.csv is empty or only titiles in it."
     exit $STATUS_FAILED
   fi
+  local total_count=$(expr $lines - 1)
 
   # parse result.csv
-  fail_case=`grep -E "FAIL|CRASH" "${result_file}" | awk -F',' '{print $1}'`
-  arr=($fail_case)
+  local fail_case=`grep -E "FAIL|CRASH" "${result_file}" | awk -F',' '{print $1}'`
+  local arr=($fail_case)
+  local fail_count=${#arr[@]}
+  local succ_count=$(expr $total_count - $fail_count)
+
+  local result_summary="${CUR_DIR}/result.txt"
+  echo "SUCCESS: $succ_count" > "${result_summary}"
+  echo "FAIL: $fail_count" >> "${result_summary}"
+  echo "FAIL_CASE: ${arr[@]}" >> "${result_summary}"
+
   if [[ ${#arr[@]} -gt 0 ]]; then
-    echo "[ERROR]Some TestCase(s) failed: ${fail_case}"
+    echo "[ERROR]Some TestCase(s) failed: ${arr[@]}"
     exit $STATUS_FAILED
   fi
 
