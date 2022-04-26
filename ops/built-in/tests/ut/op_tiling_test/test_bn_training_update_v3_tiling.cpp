@@ -85,7 +85,7 @@ TEST_F(BNTrainingUpdateV3Tiling, BNTrainingUpdateV3Tiling1) {
                         "bn_update_num_rec_dtype": "float32", 
                         "bn_update_batch_var_scaler_dtype": "float32", 
                         "_pattern": "Broadcast", 
-                        "_outs_uint1": false, 
+                        "_ub_factor_align": 128, 
                         "_soc_version": "Ascend910",
                         "_flag_info": [false, false, true, false, false, false, false],
                         "_base_info": {"000": [32, 4, 9360, 4680]},

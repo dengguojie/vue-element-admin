@@ -76,7 +76,7 @@ TEST_F(BNTrainingUpdateTiling, BNTrainingUpdateTiling1)
   std::string compileInfo = R"({
                         "_fusion_index": [[0], [1], [2], [3], [4]],
                         "_pattern": "Broadcast", 
-                        "_outs_uint1": false, 
+                        "_ub_factor_align": 128, 
                         "_soc_version": "Ascend910",
                         "_flag_info": [false, false, true, false, false, false, false],
                         "_base_info": {"000": [32, 4, 10920, 5456]},

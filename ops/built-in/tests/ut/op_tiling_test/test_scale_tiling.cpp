@@ -54,7 +54,7 @@ TEST_F(ScaleTiling, Scale_tiling_test_1) {
   TENSOR_INPUT_WITH_SHAPE(opParas, bias, input_shapes[2], dtypes[2], ge::FORMAT_ND, {});
   TENSOR_OUTPUT_WITH_SHAPE(opParas, y, input_shapes[0], dtypes[0], ge::FORMAT_ND, {});
 
-  std::string compileInfo = R"({"_boardcast_scale_shape": [-1, 1, -1], "_fusion_index": [[0, 1, 2]], "push_status": 0, "_pattern": "ElemWise", "_flag_info": [false, false, true, true, true, false, false], "_outs_uint1": false, "_base_info": {"100": [2, 2, 42320, 21152], "230": [2, 2, 39584, 19792]}, "_elewise_vars": {"210000000": [20000, 30000], "210010000": [20000, 30000], "223000000": [10000, 20000, 30000]}, "_vars": {"210000000": ["_block_factor_0", "_ub_factor_0"], "210010000": ["_block_factor_0", "_ub_factor_0"], "223000000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0"]}})";
+  std::string compileInfo = R"({"_boardcast_scale_shape": [-1, 1, -1], "_fusion_index": [[0, 1, 2]], "push_status": 0, "_pattern": "ElemWise", "_flag_info": [false, false, true, true, true, false, false], "_ub_factor_align": 128, "_base_info": {"100": [2, 2, 42320, 21152], "230": [2, 2, 39584, 19792]}, "_elewise_vars": {"210000000": [20000, 30000], "210010000": [20000, 30000], "223000000": [10000, 20000, 30000]}, "_vars": {"210000000": ["_block_factor_0", "_ub_factor_0"], "210010000": ["_block_factor_0", "_ub_factor_0"], "223000000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0"]}})";
 
   // do tilling, get runInfo
   optiling::utils::OpRunInfo runInfo;
@@ -80,7 +80,7 @@ TEST_F(ScaleTiling, Scale_tiling_test_2) {
   TENSOR_INPUT_WITH_SHAPE(opParas, bias, input_shapes[2], dtypes[2], ge::FORMAT_ND, {});
   TENSOR_OUTPUT_WITH_SHAPE(opParas, y, input_shapes[0], dtypes[0], ge::FORMAT_ND, {});
 
-  std::string compileInfo = R"({"_boardcast_scale_shape": [-1, 1, -1], "_fusion_index": [[0, 1, 2]], "push_status": 0, "_pattern": "ElemWise", "_flag_info": [false, false, true, true, true, false, false], "_outs_uint1": false, "_base_info": {"100": [2, 2, 42320, 21152], "230": [2, 2, 39584, 19792]}, "_elewise_vars": {"210000000": [20000, 30000], "210010000": [20000, 30000], "223000000": [10000, 20000, 30000]}, "_vars": {"210000000": ["_block_factor_0", "_ub_factor_0"], "210010000": ["_block_factor_0", "_ub_factor_0"], "223000000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0"]}})";
+  std::string compileInfo = R"({"_boardcast_scale_shape": [-1, 1, -1], "_fusion_index": [[0, 1, 2]], "push_status": 0, "_pattern": "ElemWise", "_flag_info": [false, false, true, true, true, false, false], "_ub_factor_align": 128, "_base_info": {"100": [2, 2, 42320, 21152], "230": [2, 2, 39584, 19792]}, "_elewise_vars": {"210000000": [20000, 30000], "210010000": [20000, 30000], "223000000": [10000, 20000, 30000]}, "_vars": {"210000000": ["_block_factor_0", "_ub_factor_0"], "210010000": ["_block_factor_0", "_ub_factor_0"], "223000000": ["_dim_0_0", "_block_factor_0", "_ub_factor_0"]}})";
 
   // do tilling, get runInfo
   optiling::utils::OpRunInfo runInfo;

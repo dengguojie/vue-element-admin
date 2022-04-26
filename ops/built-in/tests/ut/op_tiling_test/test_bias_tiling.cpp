@@ -52,7 +52,7 @@ TEST_F(BiasTiling, Bias_tiling_test_1) {
   TENSOR_INPUT_WITH_SHAPE(opParas, x, input_shapes[0], dtypes[0], ge::FORMAT_ND, {});
   TENSOR_INPUT_WITH_SHAPE(opParas, bias, input_shapes[1], dtypes[1], ge::FORMAT_ND, {});
   TENSOR_OUTPUT_WITH_SHAPE(opParas, y, input_shapes[0], ge::DT_FLOAT16, ge::FORMAT_ND, {});
-  std::string compileInfo = R"( {"boardcast_bias_shape": [1, -1, -1], "push_status": 0, "_pattern": "Broadcast", "_flag_info": [false, false, true, true, false, false, false], "_outs_uint1":false, "_base_info": {"210": [32, 4, 21840, 10920]}, "_elewise_vars": {"221000000": [10000, 10100], "221000001": [10000, 10100, 20000, 30000], "221000002": [10000, 10100, 20000, 30001], "221000004": [10000, 10100, 20001, 30001]}, "_vars": {"221000000": ["_dim_0_0", "_dim_1_0"], "221000001": ["_dim_0_0", "_dim_1_0", "_block_factor_0", "_ub_factor_0"], "221000002": ["_dim_0_0", "_dim_1_0", "_block_factor_0", "_ub_factor_1"], "221000004": ["_dim_0_0", "_dim_1_0", "_block_factor_1", "_ub_factor_1"]}})";
+  std::string compileInfo = R"( {"boardcast_bias_shape": [1, -1, -1], "push_status": 0, "_pattern": "Broadcast", "_flag_info": [false, false, true, true, false, false, false], "_ub_factor_align":128, "_base_info": {"210": [32, 4, 21840, 10920]}, "_elewise_vars": {"221000000": [10000, 10100], "221000001": [10000, 10100, 20000, 30000], "221000002": [10000, 10100, 20000, 30001], "221000004": [10000, 10100, 20001, 30001]}, "_vars": {"221000000": ["_dim_0_0", "_dim_1_0"], "221000001": ["_dim_0_0", "_dim_1_0", "_block_factor_0", "_ub_factor_0"], "221000002": ["_dim_0_0", "_dim_1_0", "_block_factor_0", "_ub_factor_1"], "221000004": ["_dim_0_0", "_dim_1_0", "_block_factor_1", "_ub_factor_1"]}})";
 
   // do tilling, get runInfo
   optiling::utils::OpRunInfo runInfo;
@@ -76,7 +76,7 @@ TEST_F(BiasTiling, Bias_tiling_test_2) {
   TENSOR_INPUT_WITH_SHAPE(opParas, x, input_shapes[0], dtypes[0], ge::FORMAT_ND, {});
   TENSOR_INPUT_WITH_SHAPE(opParas, bias, input_shapes[1], dtypes[1], ge::FORMAT_ND, {});
   TENSOR_OUTPUT_WITH_SHAPE(opParas, y, input_shapes[0], ge::DT_FLOAT, ge::FORMAT_ND, {});
-  std::string compileInfo = R"( {"boardcast_bias_shape": [1, -1, -1], "push_status": 0, "_pattern": "Broadcast", "_flag_info": [false, false, true, true, false, false, false], "_outs_uint1":false, "_base_info": {"210": [32, 4, 21840, 10920]}, "_elewise_vars": {"221000000": [10000, 10100], "221000001": [10000, 10100, 20000, 30000], "221000002": [10000, 10100, 20000, 30001], "221000004": [10000, 10100, 20001, 30001]}, "_vars": {"221000000": ["_dim_0_0", "_dim_1_0"], "221000001": ["_dim_0_0", "_dim_1_0", "_block_factor_0", "_ub_factor_0"], "221000002": ["_dim_0_0", "_dim_1_0", "_block_factor_0", "_ub_factor_1"], "221000004": ["_dim_0_0", "_dim_1_0", "_block_factor_1", "_ub_factor_1"]}})";
+  std::string compileInfo = R"( {"boardcast_bias_shape": [1, -1, -1], "push_status": 0, "_pattern": "Broadcast", "_flag_info": [false, false, true, true, false, false, false], "_ub_factor_align":128, "_base_info": {"210": [32, 4, 21840, 10920]}, "_elewise_vars": {"221000000": [10000, 10100], "221000001": [10000, 10100, 20000, 30000], "221000002": [10000, 10100, 20000, 30001], "221000004": [10000, 10100, 20001, 30001]}, "_vars": {"221000000": ["_dim_0_0", "_dim_1_0"], "221000001": ["_dim_0_0", "_dim_1_0", "_block_factor_0", "_ub_factor_0"], "221000002": ["_dim_0_0", "_dim_1_0", "_block_factor_0", "_ub_factor_1"], "221000004": ["_dim_0_0", "_dim_1_0", "_block_factor_1", "_ub_factor_1"]}})";
 
   // do tilling, get runInfo
   optiling::utils::OpRunInfo runInfo;

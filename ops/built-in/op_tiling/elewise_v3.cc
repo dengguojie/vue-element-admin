@@ -35,8 +35,6 @@ const std::unordered_map<int64_t, int64_t> SPLIT_FACTORS {
   {4, 16383},
   {8, 8191},
 };
-constexpr int64_t ELEWISE_REPEAT_NUMS = 128;
-constexpr int64_t ELEWISE_UINT1_REPEAT_NUMS = 256;
 constexpr int64_t DOUBLE_BUFFER_SIZE = 2;
 constexpr int64_t ELEWISE_MAX_INPUT_NUMS = 70;
 constexpr int64_t KNOWN_PATTERN_KEY = 0;
@@ -73,14 +71,11 @@ const int64_t Elewise::GetElementByType(const ge::DataType& dtype) const {
 
 bool Elewise::CheckCompileInfo() {
   // required compile_info check
-  V_CHECK_EQ(compile_info.has_outs_uint1, true,
-             VECTOR_INNER_ERR_REPORT_TILIING(op_type, "elewise compile_info must include _outs_uint1."),
+  V_CHECK_GT(compile_info.flag_info_size, 0,
+             VECTOR_INNER_ERR_REPORT_TILIING(op_type, "elewise flag_info_size must be greater than zero!"),
              return false);
-  V_CHECK_EQ(compile_info.has_flag_info, true,
-             VECTOR_INNER_ERR_REPORT_TILIING(op_type, "elewise compile_info must include flag_info"),
-             return false);
-  V_CHECK_GT(compile_info.flag_size, 0,
-             VECTOR_INNER_ERR_REPORT_TILIING(op_type, "elewise flag_info can not be empty."),
+  V_CHECK_GT(compile_info.ub_factor_align, 0,
+             VECTOR_INNER_ERR_REPORT_TILIING(op_type, "elewise ub_factor_align must be greater than zero!"),
              return false);
   if (compile_info.pattern_key == KNOWN_PATTERN_KEY || compile_info.pattern_key == COMMON_PATTERN_KEY) {
     V_CHECK_GT(compile_info.core_num, 0,
@@ -320,9 +315,9 @@ void Elewise::CalcMultiCore() {
 
 void Elewise::DoBlockTiling() {
   int64_t cur_core = compile_info.core_num;
-  int64_t elewise_align_size = compile_info.outs_uint1 ? ELEWISE_UINT1_REPEAT_NUMS : ELEWISE_REPEAT_NUMS;
+  int64_t block_factor_align_size = compile_info.ub_factor_align;
   block_factor = std::ceil(out_shape * 1.0 / cur_core);
-  block_factor = std::ceil(block_factor * 1.0 / elewise_align_size) * elewise_align_size;
+  block_factor = std::ceil(block_factor * 1.0 / block_factor_align_size) * block_factor_align_size;
   block_dims = std::ceil(out_shape * 1.0 / block_factor);
 }
 
@@ -333,16 +328,16 @@ bool Elewise::DoUbTiling() {
     limit = std::min(compile_info.max_available_ub_db, SPLIT_FACTORS.at(compile_info.max_dtype));
   }
   if (limit < ub_factor) {
-    int64_t elewise_align_size = compile_info.outs_uint1 ? ELEWISE_UINT1_REPEAT_NUMS : ELEWISE_REPEAT_NUMS;
+    int64_t ub_factor_align_size = compile_info.ub_factor_align;
     V_CHECK_GT(limit, 0,
                VECTOR_INNER_ERR_REPORT_TILIING(op_type, "ub limit must be greater than zero, but it is [%ld]", limit),
                return false);
     int64_t ub_for_num = std::ceil(ub_factor * 1.0 / limit);
     int64_t adjust_factor = std::ceil(ub_factor * 1.0 / ub_for_num);
-    int64_t align_factor = std::ceil(adjust_factor * 1.0 / elewise_align_size);
-    ub_factor = align_factor * elewise_align_size;
+    int64_t align_factor = std::ceil(adjust_factor * 1.0 / ub_factor_align_size);
+    ub_factor = align_factor * ub_factor_align_size;
     if (ub_factor > limit) {
-      ub_factor = std::floor(adjust_factor * 1.0 / elewise_align_size) * elewise_align_size;
+      ub_factor = std::floor(adjust_factor * 1.0 / ub_factor_align_size) * ub_factor_align_size;
     }
   }
   return true;
@@ -380,10 +375,8 @@ bool Elewise::DoCommonTiling() {
 }
 
 bool Elewise::WriteCommonData() const {
-  OP_LOGD(op_type.c_str(), "elewise tiling key is:%lld", tiling_key);
-  OP_LOGD(op_type.c_str(), "elewise tiling block_dims is:%lld", block_dims);
-  OP_LOGD(op_type.c_str(), "elewise tiling block_factor is:%lld", block_factor);
-  OP_LOGD(op_type.c_str(), "elewise tiling ub_factor is:%lld", ub_factor);
+  OP_LOGD(op_type.c_str(), "elewise tiling key is:%lld, block_dims is:%lld, block_factor is:%lld, ub_factor is:%lld",
+          tiling_key, block_dims, block_factor, ub_factor);
 
   run_info.SetBlockDim(static_cast<uint32_t>(block_dims));
   if (compile_info.only_const_tiling) {
@@ -446,27 +439,17 @@ bool Elewise::DoTiling(const OpInfo& op_info) {
   return ret;
 }
 
-void ElewiseCompileInfo::ParseOutsUintOne(const nlohmann::json& outer_compile_info) {
-  if (!outer_compile_info.contains("_outs_uint1")) {
-    has_outs_uint1 = false;
-  } else {
-    outs_uint1 = outer_compile_info.at("_outs_uint1").get<bool>();
-  }
-}
-
-void ElewiseCompileInfo::ParseFlagInfo(const nlohmann::json& outer_compile_info) {
-  if (!outer_compile_info.contains("_flag_info")) {
-    has_flag_info = false;
-  } else {
+void ElewiseCompileInfo::ParseFlagInfoSize(const nlohmann::json& outer_compile_info) {
+  if (outer_compile_info.contains("_flag_info")) {
     const std::vector<bool>& input_flag_info = outer_compile_info.at("_flag_info").get<std::vector<bool>>();
-    flag_size = input_flag_info.size();
+    flag_info_size = input_flag_info.size();
     if (input_flag_info.size() > 0) {
       only_const_tiling = input_flag_info[0];
-      constexpr uint32_t common_flag_size = 6;
+      constexpr uint32_t elewise_flag_size = 6;
       constexpr uint32_t const_shapes_index = 1;
       constexpr uint32_t special_pattern_index = 3;
       // broadcast scene flag info size is seven
-      if (input_flag_info.size() >= common_flag_size) {
+      if (flag_info_size >= elewise_flag_size) {
         is_const_shapes = input_flag_info[const_shapes_index];
         use_special_pattern = input_flag_info[special_pattern_index];
       }
@@ -486,14 +469,14 @@ void ElewiseCompileInfo::ParseBaseInfo(const nlohmann::json& outer_compile_info)
     const std::unordered_map<std::string, std::vector<int64_t>>& input_base_info =
       outer_compile_info.at("_base_info").get<std::unordered_map<std::string, std::vector<int64_t>>>();
     if (input_base_info.size() == 1) {
-      if (flag_size >= ELEWISE_FLAG_SIZE && input_base_info.count(common_str_key) &&
-          input_base_info.at(common_str_key).size() == base_info_size) {
+      if (flag_info_size >= ELEWISE_FLAG_SIZE && input_base_info.count(common_str_key) &&
+          input_base_info.at(common_str_key).size() >= base_info_size) {
         pattern_key = elewise_common_key;
         core_num = input_base_info.at(common_str_key)[0];
         max_dtype = input_base_info.at(common_str_key)[1];
         max_available_ub = input_base_info.at(common_str_key)[max_ub_index];
         max_available_ub_db = input_base_info.at(common_str_key)[max_ub_db_index];
-      } else if (input_base_info.count(known_str_key) && input_base_info.at(known_str_key).size() == base_info_size) {
+      } else if (input_base_info.count(known_str_key) && input_base_info.at(known_str_key).size() >= base_info_size) {
         pattern_key = elewise_known_key;
         core_num = input_base_info.at(known_str_key)[0];
         max_dtype = input_base_info.at(known_str_key)[1];
@@ -501,7 +484,7 @@ void ElewiseCompileInfo::ParseBaseInfo(const nlohmann::json& outer_compile_info)
         max_available_ub_db = input_base_info.at(known_str_key)[max_ub_db_index];
       }
     } else {
-      if (input_base_info.count(common_str_key) && input_base_info.at(common_str_key).size() == base_info_size) {
+      if (input_base_info.count(common_str_key) && input_base_info.at(common_str_key).size() >= base_info_size) {
         pattern_key = elewise_common_key;
         core_num = input_base_info.at(common_str_key)[0];
         max_dtype = input_base_info.at(common_str_key)[1];
@@ -540,18 +523,24 @@ bool ElewiseCompileInfo::ParseAttrVars(const nlohmann::json& outer_compile_info)
   return varAttrWrap.ParseVarAttr(outer_compile_info);
 }
 
+void ElewiseCompileInfo::ParseUbFactorAlign(const nlohmann::json& outer_compile_info) {
+  if (outer_compile_info.contains("_ub_factor_align")) {
+    ub_factor_align = outer_compile_info.at("_ub_factor_align").get<int64_t>();
+  }
+}
+
 void ElewiseCompileInfo::SetBroadcastPattern(const bool& is_broadcast_pattern) {
   broadcast_pattern = is_broadcast_pattern;
 }
 
 ElewiseCompileInfo::ElewiseCompileInfo(const std::string& op_type, const nlohmann::json& outer_compile_info) {
   OP_LOGD(op_type.c_str(), "elewise compile info parse running");
-  ParseOutsUintOne(outer_compile_info);
-  ParseFlagInfo(outer_compile_info);
+  ParseFlagInfoSize(outer_compile_info);
   ParseBaseInfo(outer_compile_info);
   ParseConstDims(outer_compile_info);
   ParseElewiseVarSize(outer_compile_info);
   ParseAttrVars(outer_compile_info);
+  ParseUbFactorAlign(outer_compile_info);
 }
 }  // namespace v3
 

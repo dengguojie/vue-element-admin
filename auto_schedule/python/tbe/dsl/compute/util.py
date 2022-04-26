@@ -38,6 +38,7 @@ from tbe.common.utils.errormgr import get_error_message
 from tbe.dsl.base import operation
 
 ASCEND_SHISI = "smallhisi"
+COMPLEX_INSTRUCTIONS = ["s322s64", "s642s32"]
 # Save op's output dtype, when first call the template api,we will save the dtype.
 # Before auto scheduling,get the dtype and convert the res tensor to this dtype,
 # and set the dtype to None.
@@ -753,41 +754,45 @@ DSL_CHECK_SUPPORT_MAP = {
         ASCEND_SHISI: ("float16",),  # int32: schedule not support
     },
     "cast_to": {
-        "AllSoc": ("f162f32", "f162s8", "f162u8", "f162s32",
-                   "s82f16", "s82u8", "u82f16", "u82s8",
+        "AllSoc": ("s82f16", "s82u8", "u82f16", "u82s8",
+                   "f162f32", "f162s8", "f162u8", "f162s32",
                    "s322f16", "s322s8", "s322u8", "s322f32"),
-        ASCEND_310: ("f322f16", "f322s8", "f322u8", "f322s32",
+        ASCEND_310: ("s82f16","s82u8", "u82f16", "u82s8",
                      "f162f32", "f162s8", "f162u8", "f162s32",
-                     "s82f16", "s82u8", "u82f16", "u82s8",
+                     "f322f16", "f322s8", "f322u8", "f322s32",
                      "s322f16", "s322s8", "s322u8", "s322f32"),
-        ASCEND_320: ("f322f16", "f322s8", "f322u8", "f322s32",
+        ASCEND_320: ("s82f16", "s82u8", "u82f16", "u82s8",
+                     "f162f32", "f162s8", "f162u8", "f162s32", "bf162f32",
+                     "f322f16", "f322s8", "f322u8", "f322s32",
+                     "s322f16", "s322s8", "s322u8", "s322f32", "s322s64",
+                     "s642s32"),
+        ASCEND_910: ("s82f16", "s82u8", "u82f16", "u82s8",
                      "f162f32", "f162s8", "f162u8", "f162s32",
-                     "s82f16", "s82u8", "u82f16", "u82s8",
-                     "s322f16", "s322s8", "s322u8", "s322f32",
-                     "s642s32", "s322s64", "bf162f32"),
-        ASCEND_910: ("f322f16", "f322s8", "f322u8", "f322s32",
+                     "f322f16", "f322s8", "f322u8", "f322s32",
+                     "s322f16", "s322s8", "s322u8", "s322f32", "s322s64",
+                     "s642s32"),
+        ASCEND_920A: ("s82f16", "s82u8", "u82f16", "u82s8",
+                      "f162f32", "f162s8", "f162u8", "f162s32", "bf162f32",
+                      "f322f16", "f322s8", "f322u8", "f322s32",
+                      "s322f16", "s322s8", "s322u8", "s322f32", "s322s64",
+                      "s642s32"),
+        ASCEND_710: ("s82f16", "s82u8", "u82f16", "u82s8",
                      "f162f32", "f162s8", "f162u8", "f162s32",
-                     "s82f16", "s82u8", "u82f16", "u82s8",
-                     "s322f16", "s322s8", "s322u8", "s322f32"),
-        ASCEND_920A: ("f322f16", "f322s8", "f322u8", "f322s32",
-                      "f162f32", "f162s8", "f162u8", "f162s32",
-                      "s82f16", "s82u8", "u82f16", "u82s8",
-                      "s322f16", "s322s8", "s322u8", "s322f32",
-                      "s642s32", "s322s64", "bf162f32"),
-        ASCEND_710: ("f322f16", "f322s8", "f322u8", "f322s32",
+                     "f322f16", "f322s8", "f322u8", "f322s32",
+                     "s322f16", "s322s8", "s322u8", "s322f32", "s322s64",
+                     "s642s32"),
+        ASCEND_610: ("s82f16", "s82u8", "u82f16", "u82s8",
                      "f162f32", "f162s8", "f162u8", "f162s32",
-                     "s82f16", "s82u8", "u82f16", "u82s8",
-                     "s322f16", "s322s8", "s322u8", "s322f32"),
-        ASCEND_610: ("f322f16", "f322s8", "f322u8", "f322s32",
+                     "f322f16", "f322s8", "f322u8", "f322s32",
+                     "s322f16", "s322s8", "s322u8", "s322f32", "s322s64",
+                     "s642s32"),
+        ASCEND_615: ("s82f16", "s82u8", "u82f16", "u82s8",
                      "f162f32", "f162s8", "f162u8", "f162s32",
-                     "s82f16", "s82u8", "u82f16", "u82s8",
-                     "s322f16", "s322s8", "s322u8", "s322f32"),
-        ASCEND_615: ("f322f16", "f322s8", "f322u8", "f322s32",
-                     "f162f32", "f162s8", "f162u8", "f162s32",
-                     "s82f16", "s82u8", "u82f16", "u82s8",
-                     "s322f16", "s322s8", "s322u8", "s322f32"),
-        ASCEND_SHISI: ("f162f32", "f162s8", "f162u8", "f162s32",
-                       "s82f16", "s82u8", "u82f16", "u82s8",
+                     "f322f16", "f322s8", "f322u8", "f322s32",
+                     "s322f16", "s322s8", "s322u8", "s322f32", "s322s64",
+                     "s642s32"),
+        ASCEND_SHISI: ("s82f16", "s82u8", "u82f16", "u82s8",
+                       "f162f32", "f162s8", "f162u8", "f162s32",
                        "s322f16", "s322s8", "s322u8", "s322f32"),
     },
 
@@ -1031,8 +1036,11 @@ def is_cast_support(src_type, dst_type):
 
     if intrinsic_check_support("Intrinsic_vconv", cast_type):
         return True
-    # Default round mode set as 'z'
-    return intrinsic_check_support("Intrinsic_vconv", cast_type + "z")
+    elif cast_type in COMPLEX_INSTRUCTIONS:
+        # support multi-intrinsic cast between int32 and int64
+        return True
+    else:
+        return intrinsic_check_support("Intrinsic_vconv", cast_type + "z")
 
 
 def get_cast_type(src_type, dst_type):

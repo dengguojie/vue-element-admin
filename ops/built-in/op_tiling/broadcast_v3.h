@@ -41,7 +41,7 @@ struct BroadcastCompileInfo {
 
   std::pair<bool, std::unordered_map<std::string, std::vector<int64_t>>> base_info_compile;
   std::vector<bool> flag_info_compile;
-  bool outs_uint1_compile {false};
+  int64_t ub_factor_align {-1};
   bool contains_elewise_sch {false};
   std::pair<bool, std::unordered_map<std::string, std::vector<int64_t>>> elewise_vars_compile;
   VarAttrWrap varAttrWrap;

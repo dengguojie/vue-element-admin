@@ -41,6 +41,7 @@ from .broadcast_tilingcase import BroadcastTilingCase
 # block size in D architecture
 BLOCK_SIZE_BYTE = 32
 ONE_DIM_ALIGN = 128
+SPECIAL_FACTOR_ALIGN = 256
 
 # temp space for last axis broadcast use vtranspose
 VTRANSPOSE_TEMP_SPACE = 8192
@@ -136,6 +137,7 @@ class BaseBroadcastSchedule:
         self._ub_factor = 1
         self._block_tiling_vars = {}
         self._ub_tiling_vars = {}
+        self._ub_factor_align = ONE_DIM_ALIGN
 
     def _init_schedule(self):
         self._schedule = None
@@ -272,6 +274,9 @@ class BaseBroadcastSchedule:
             self._outs_dtypes.add(out.dtype)
         byte_len = [DTYPE_BYTE_MAPPING.get(dtype) for dtype in self._dtypes]
         self._max_dtype_bytes = max(byte_len)
+        # out uint1 dtype needs ub_factor align to 256
+        if "uint1" in self._outs_dtypes:
+            self._ub_factor_align = max(self._ub_factor_align, SPECIAL_FACTOR_ALIGN)
 
         self._pure_middle_tensors = self._middle_tensors - self._out_tensors
         self._middle_out_tensors = self._middle_tensors.intersection(
@@ -490,7 +495,7 @@ class BaseBroadcastSchedule:
                 CompileInfo.BASE_INFO: base_info,
                 CompileInfo.SOC_VERSION: get_soc_spec(SOC_VERSION),
                 CompileInfo.BROADCAST_AXIS: broadcast_axis,
-                CompileInfo.OUTS_UINT1: "uint1" in self._outs_dtypes,
+                CompileInfo.UB_FACTOR_ALIGN: self._ub_factor_align
             }
             const_compile_info.update(get_compile_info())
 
@@ -1031,9 +1036,7 @@ class BaseBroadcastSchedule:
             cpt_schedule.add(CompileInfo.CORE_NUM, util.get_core_num())
             cpt_schedule.add("_tiling_key", self._schedule.tiling_key)
 
-        outs_contains_uint1 = "uint1" in self._outs_dtypes or \
-                              operation.get_compile_info().get(CompileInfo.OUTS_UINT1, False)
-        operation.add_compile_info_inner(CompileInfo.OUTS_UINT1, outs_contains_uint1)
+        operation.add_compile_info_inner(CompileInfo.UB_FACTOR_ALIGN, self._ub_factor_align)
 
     def _check_tiling_case(self):
         lower_bound = 1

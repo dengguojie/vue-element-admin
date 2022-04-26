@@ -36,7 +36,7 @@ static string to_string(const std::stringstream &tiling_data) {
 
 static std::string compileInfo = R"({"_fusion_index": [[0], [1], [2], [3], [4]], "push_status": 0, "_pattern": "Broadcast",
                           "_flag_info": [false, false, true, true, false, false, false],
-                          "_outs_uint1": false,
+                          "_ub_factor_align": 128,
                           "reduce_mean_cof_dtype": "float32",
                           "_base_info": {
                           "100": [32, 4, 10920, 5456],

@@ -91,8 +91,6 @@ constexpr int64_t LAST_AND_N_LAST_FACTOR = 7;
 constexpr int64_t MAX_PATTERN_DIM = 3;
 constexpr int64_t SPECIAL_BROADCAST_INPUT_NUMS = 2;
 constexpr int64_t BROADCAST_BASE_KEY = 2;
-constexpr int64_t ELEWISE_REPEATE_NUMS = 128;
-constexpr int64_t ELEWISE_UINT1_REPEATE_NUMS = 256;
 constexpr int64_t NONE_BRC_AXIS_OPTIMIZE_BLOCK_NUMS = 3;
 constexpr float MIDDLE_AXIS_OPTIMIZE_BLOCK_NUMS = 1.5;
 }
@@ -734,8 +732,7 @@ bool Broadcast::DoBlockTiling() {
     }
   }
   if (output_shape.size() == 1) {
-    bool outs_uint1 = broadcast_compile_info.outs_uint1_compile;
-    int64_t ele_in_block = outs_uint1 ? ELEWISE_UINT1_REPEATE_NUMS : ELEWISE_REPEATE_NUMS;
+    int64_t ele_in_block = broadcast_compile_info.ub_factor_align;
     block_factor = std::ceil(block_factor * 1.0 / ele_in_block) * ele_in_block;
     output_shape[0] = block_factor;
     block_dims = std::ceil(multi_core_output * 1.0 / block_factor);
@@ -922,8 +919,7 @@ void Broadcast::AdjustUbTiling(const int64_t under_ub_shape, const int64_t limit
     if (ub_axis == shape_len && ub_factor != output_shape[shape_len]) {
       int64_t ele_in_block = BGetElementByType(out_type);
       if (output_shape.size() == 1) {
-        bool outs_uint1 = broadcast_compile_info.outs_uint1_compile;
-        ele_in_block = outs_uint1 ? ELEWISE_UINT1_REPEATE_NUMS : ELEWISE_REPEATE_NUMS;
+        ele_in_block = broadcast_compile_info.ub_factor_align;
       }
       int64_t last_factor = ub_factor;
       int64_t align_factor = std::ceil(ub_factor * 1.0 / ele_in_block);
@@ -1337,8 +1333,9 @@ BroadcastCompileInfo::BroadcastCompileInfo(const std::string& op_type, const nlo
     return ;
   }
   flag_info_compile = outer_compile_info.at("_flag_info").get<std::vector<bool>>();
-  if (!outer_compile_info.contains("_outs_uint1")) {
-    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "broadcast get _outs_uint1 of compile_info error");
+
+  if (!outer_compile_info.contains("_ub_factor_align")) {
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "broadcast get _ub_factor_align of compile_info error");
     return ;
   }
   // pure_elewise cases: only_const_tiling && pure_elewise shape, or base_info contains key 100 && pure_elewise shape
@@ -1346,7 +1343,7 @@ BroadcastCompileInfo::BroadcastCompileInfo(const std::string& op_type, const nlo
     pure_elewise_compile_info = ElewiseCompileInfo(op_type, outer_compile_info);
     pure_elewise_compile_info.SetBroadcastPattern(true);
   }
-  outs_uint1_compile = outer_compile_info.at("_outs_uint1").get<bool>();
+  ub_factor_align = outer_compile_info.at("_ub_factor_align").get<int64_t>();
   if (outer_compile_info.contains("_elewise_vars")) {
     elewise_vars_compile.first = true;
     elewise_vars_compile.second = outer_compile_info.at(

@@ -34,15 +34,12 @@ struct ElewiseCompileInfo {
   ElewiseCompileInfo(const std::string& op_type, const nlohmann::json& outer_compile_info);
   void SetBroadcastPattern(const bool& is_broadcast_pattern);
 
-  // required outs_uint1
-  bool has_outs_uint1{true};
-  bool outs_uint1{false};
-  // required flag_info
-  bool has_flag_info{true};
-  uint32_t flag_size{0};
+  // required compile_info
+  uint32_t flag_info_size{0};
   bool only_const_tiling{false};
   bool is_const_shapes{false};
   bool use_special_pattern{true};
+  int64_t ub_factor_align{-1};
   // optional base_info
   int64_t pattern_key{-1};
   int64_t core_num{-1};
@@ -58,12 +55,12 @@ struct ElewiseCompileInfo {
   VarAttrWrap varAttrWrap;
 
  private:
-  void ParseOutsUintOne(const nlohmann::json& outer_compile_info);
-  void ParseFlagInfo(const nlohmann::json& outer_compile_info);
+  void ParseFlagInfoSize(const nlohmann::json& outer_compile_info);
   void ParseBaseInfo(const nlohmann::json& outer_compile_info);
   void ParseConstDims(const nlohmann::json& outer_compile_info);
   void ParseElewiseVarSize(const nlohmann::json& outer_compile_info);
   bool ParseAttrVars(const nlohmann::json& outer_compile_info);
+  void ParseUbFactorAlign(const nlohmann::json& outer_compile_info);
 };
 
 class Elewise {

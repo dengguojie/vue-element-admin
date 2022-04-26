@@ -320,6 +320,44 @@ case15 = {
         True
 }
 
+case16 = {
+    "params": [{
+        "shape": (-1, -1),
+        "dtype": "int64",
+        "range": [(1, None), (1, None)]
+    }, {
+        "shape": (-1, -1),
+        "dtype": "int32",
+        "range": [(1, None), (1, None)]
+    },
+        "int32"],
+    "case_name":
+        "test_dync_cast_int64_to_int32",
+    "expect":
+        "success",
+    "support_expect":
+        True
+}
+
+case17 = {
+    "params": [{
+        "shape": (-1, -1),
+        "dtype": "int32",
+        "range": [(1, None), (1, None)]
+    }, {
+        "shape": (-1, -1),
+        "dtype": "int64",
+        "range": [(1, None), (1, None)]
+    },
+        "int64"],
+    "case_name":
+        "test_dync_cast_int32_to_int64",
+    "expect":
+        "success",
+    "support_expect":
+        True
+}
+
 ut_case.add_case(["Ascend910A", "Ascend710"], case1)
 ut_case.add_case(["Ascend910A", "Ascend710"], case2)
 ut_case.add_case(["Ascend910A", "Ascend710"], case3)
@@ -339,6 +377,8 @@ ut_case.add_case(["Ascend910A", "Ascend710"], case12)
 # ut_case.add_case(case=case14, support_soc="Ascend920A")
 # ut_case.add_case(case=case15, support_soc="Ascend920A")
 
+ut_case.add_case(["Ascend910A", "Ascend710"], case16)
+ut_case.add_case(["Ascend910A", "Ascend710"], case17)
 
 def calc_expect_func(x, y, dst_dtype):
     x_value = x.get("value")

@@ -103,22 +103,14 @@ static bool CompareMap(const std::unordered_map<T1, T2>& map1, const std::unorde
 
 static bool CompareCompileInfo1(const ElewiseCompileInfo& expect_compile_info,
                                 const ElewiseCompileInfo& real_compile_info) {
-  // outs_uint1
-  if (expect_compile_info.has_outs_uint1 != real_compile_info.has_outs_uint1) {
-    std::cout << "The has_outs_uint1 is wrong" << std::endl;
+  // flag_info_size parser
+  if (expect_compile_info.flag_info_size != real_compile_info.flag_info_size) {
+    std::cout << "The flag_info_size is wrong" << std::endl;
     return false;
   }
-  if (expect_compile_info.outs_uint1 != real_compile_info.outs_uint1) {
-    std::cout << "The outs_uint1 is wrong" << std::endl;
-    return false;
-  }
-  // flag_info
-  if (expect_compile_info.has_flag_info != real_compile_info.has_flag_info) {
-    std::cout << "The has_flag_info is wrong" << std::endl;
-    return false;
-  }
-  if (expect_compile_info.flag_size != real_compile_info.flag_size) {
-    std::cout << "The flag_size is wrong" << std::endl;
+  // ub_factor_align parser
+  if (expect_compile_info.ub_factor_align != real_compile_info.ub_factor_align) {
+    std::cout << "The ub_factor_align is wrong" << std::endl;
     return false;
   }
   if (expect_compile_info.only_const_tiling != real_compile_info.only_const_tiling) {
@@ -187,7 +179,15 @@ static bool CompareElewiseCompieInfo(const ElewiseCompileInfo& expect_compile_in
 
 // Test CreateElewiseTilingHandler
 TEST_F(ElewiseTilingV3, elewise_handler1) {
-  std::string compile_info_in = R"({ "_outs_uint1": false, "_pattern": "ElemWise", "push_status": 0, "_flag_info": [false, false, false, true, false, false], "_base_info": {"100": [32, 4, 16384, 8192]}, "_elewise_vars": { "210000000": [ 10000, 20000, 30000 ], "210010000": [ 10000, 20000, 30000 ] }, "_vars": { "210000000": [ "_dim_0_0", "_block_factor_0", "_ub_factor_0" ], "210000000": [ "_dim_0_0", "_block_factor_0", "_ub_factor_0" ] } })";
+  std::string compile_info_in = R"({ "_ub_factor_align": 128,
+                                     "_pattern": "ElemWise",
+                                     "push_status": 0,
+                                     "_flag_info": [false, false, false, true, false, false],
+                                     "_base_info": {"100": [32, 4, 16384, 8192]},
+                                     "_elewise_vars": { "210000000": [ 10000, 20000, 30000 ],
+                                                        "210010000": [ 10000, 20000, 30000 ] },
+                                     "_vars": { "210000000": [ "_dim_0_0", "_block_factor_0", "_ub_factor_0" ],
+                                                "210000000": [ "_dim_0_0", "_block_factor_0", "_ub_factor_0" ] } })";
   nlohmann::json op_info = nlohmann::json::parse(compile_info_in.c_str());
   auto parsed_ptr =
     std::static_pointer_cast<ElewiseTilingHandler>(CreateElewiseTilingHandler("elewise_handler1", "ElemWise", op_info));
@@ -195,14 +195,18 @@ TEST_F(ElewiseTilingV3, elewise_handler1) {
 }
 
 TEST_F(ElewiseTilingV3, ConstructTest1) {
-  std::string compile_info_in = R"({ "_outs_uint1": false, "_pattern": "ElemWise", "_flag_info": [false, false, false, true, false, false], "_base_info": {"100": [32, 4, 16384, 8192]}, "_elewise_vars": { "210000000": [ 10000, 20000, 30000 ], "210010000": [ 10000, 20000, 30000 ] }, "_vars": { "210000000": [ "_dim_0_0", "_block_factor_0", "_ub_factor_0" ], "210010000": [ "_dim_0_0", "_block_factor_0", "_ub_factor_0" ] } })";
+  std::string compile_info_in = R"({ "_ub_factor_align": 128,
+                                     "_pattern": "ElemWise",
+                                     "_flag_info": [false, false, false, true, false, false],
+                                     "_base_info": {"100": [32, 4, 16384, 8192]},
+                                     "_elewise_vars": { "210000000": [ 10000, 20000, 30000 ],
+                                                        "210010000": [ 10000, 20000, 30000 ] },
+                                     "_vars": { "210000000": [ "_dim_0_0", "_block_factor_0", "_ub_factor_0" ],
+                                                "210010000": [ "_dim_0_0", "_block_factor_0", "_ub_factor_0" ] } })";
   nlohmann::json op_info = nlohmann::json::parse(compile_info_in.c_str());
   ElewiseCompileInfo actual_compile_info("ElemWise", op_info);
   ElewiseCompileInfo expect_compile_info;
-  expect_compile_info.has_outs_uint1 = true;
-  expect_compile_info.outs_uint1 = false;
-  expect_compile_info.has_flag_info = true;
-  expect_compile_info.flag_size = 6;
+  expect_compile_info.flag_info_size = 6;
   expect_compile_info.only_const_tiling = false;
   expect_compile_info.is_const_shapes = false;
   expect_compile_info.use_special_pattern = true;
@@ -213,19 +217,20 @@ TEST_F(ElewiseTilingV3, ConstructTest1) {
   expect_compile_info.max_available_ub_db = 8192;
   expect_compile_info.const_block_dims = -1;
   expect_compile_info.elewise_vars_size = 3;
+  expect_compile_info.ub_factor_align = 128;
   expect_compile_info.broadcast_pattern = false;
   ASSERT_TRUE(CompareElewiseCompieInfo(expect_compile_info, actual_compile_info));
 }
 
 TEST_F(ElewiseTilingV3, ConstructTest2) {
-  std::string compile_info_in = R"({ "_outs_uint1": false, "_flag_info": [true],"_base_info": {"000": [32, 2, 43680, 21840]}, "_pattern": "ElemWise"})";
+  std::string compile_info_in = R"({ "_ub_factor_align": 128,
+                                     "_flag_info": [true],
+                                     "_base_info": {"000": [32, 2, 43680, 21840]},
+                                     "_pattern": "ElemWise"})";
   nlohmann::json op_info = nlohmann::json::parse(compile_info_in.c_str());
   ElewiseCompileInfo actual_compile_info("ElemWise", op_info);
   ElewiseCompileInfo expect_compile_info;
-  expect_compile_info.has_outs_uint1 = true;
-  expect_compile_info.outs_uint1 = false;
-  expect_compile_info.has_flag_info = true;
-  expect_compile_info.flag_size = 1;
+  expect_compile_info.flag_info_size = 1;
   expect_compile_info.only_const_tiling = true;
   expect_compile_info.is_const_shapes = false;
   expect_compile_info.use_special_pattern = true;
@@ -236,6 +241,7 @@ TEST_F(ElewiseTilingV3, ConstructTest2) {
   expect_compile_info.max_available_ub_db = 21840;
   expect_compile_info.const_block_dims = -1;
   expect_compile_info.elewise_vars_size = 0;
+  expect_compile_info.ub_factor_align = 128;
   expect_compile_info.broadcast_pattern = false;
   ASSERT_TRUE(CompareElewiseCompieInfo(expect_compile_info, actual_compile_info));
 }
@@ -252,8 +258,8 @@ TEST_F(ElewiseTilingV3, ElewiseSetAttrCase1) {
                                            out_dtypes, in_formats, out_formats);
   op_paras.SetAttr("alpha", 123);
   optiling::utils::OpRunInfo run_info;
-  
-  std::string compile_info_in = R"({"_outs_uint1": false,
+
+  std::string compile_info_in = R"({"_ub_factor_align": 128,
                                     "_pattern": "ElemWise",
                                     "_flag_info": [false, false, false, true, false, false],
                                     "_base_info": {"100": [32, 4, 16384, 8192]},
@@ -262,8 +268,10 @@ TEST_F(ElewiseTilingV3, ElewiseSetAttrCase1) {
                                     "_vars": {"210000000": [ "_dim_0_0", "_block_factor_0", "_ub_factor_0" ],
                                               "210010000": [ "_dim_0_0", "_block_factor_0", "_ub_factor_0" ]},
                                     "_var_attr_mode":1,
-                                    "_var_attrs": {"210000000": [{"length":1, "name": "alpha", "type": "int32", "src_type": "int32"}],
-                                                   "210010000": [{"length":1, "name": "alpha", "type": "int32", "src_type": "int32"}]}
+                                    "_var_attrs": {"210000000": [{"length":1, "name": "alpha",
+                                                                  "type": "int32", "src_type": "int32"}],
+                                                   "210010000": [{"length":1, "name": "alpha",
+                                                                  "type": "int32", "src_type": "int32"}]}
                                    })";
   std::shared_ptr<AutoTilingHandler> outer_compile_info =
       CreateElewiseTilingHandler(this->test_info_->name(),
@@ -283,10 +291,7 @@ TEST_F(ElewiseTilingV3, TilingTest1) {
   const ge::Operator op_paras = ConstructOpParas(in_shapes, out_shapes, in_dtypes,
                                                  out_dtypes, in_formats, out_formats);
   ElewiseCompileInfo compile_info;
-  compile_info.has_outs_uint1 = true;
-  compile_info.outs_uint1 = false;
-  compile_info.has_flag_info = true;
-  compile_info.flag_size = 6;
+  compile_info.flag_info_size = 6;
   compile_info.only_const_tiling = false;
   compile_info.is_const_shapes = false;
   compile_info.use_special_pattern = true;
@@ -297,6 +302,7 @@ TEST_F(ElewiseTilingV3, TilingTest1) {
   compile_info.max_available_ub_db = 8192;
   compile_info.const_block_dims = -1;
   compile_info.elewise_vars_size = 0;
+  compile_info.ub_factor_align = 128;
   compile_info.broadcast_pattern = false;
   optiling::utils::OpRunInfo run_info;
   Elewise elewise("ElemWise", op_paras, compile_info, run_info);
@@ -316,10 +322,7 @@ TEST_F(ElewiseTilingV3, TilingTest2) {
   const ge::Operator op_paras = ConstructOpParas(in_shapes, out_shapes, in_dtypes,
                                                  out_dtypes, in_formats, out_formats);
   ElewiseCompileInfo compile_info;
-  compile_info.has_outs_uint1 = true;
-  compile_info.outs_uint1 = false;
-  compile_info.has_flag_info = true;
-  compile_info.flag_size = 6;
+  compile_info.flag_info_size = 6;
   compile_info.only_const_tiling = false;
   compile_info.is_const_shapes = false;
   compile_info.use_special_pattern = true;
@@ -330,6 +333,7 @@ TEST_F(ElewiseTilingV3, TilingTest2) {
   compile_info.max_available_ub_db = 8192;
   compile_info.const_block_dims = 0;
   compile_info.elewise_vars_size = 3;
+  compile_info.ub_factor_align = 128;
   compile_info.broadcast_pattern = false;
   optiling::utils::OpRunInfo run_info;
   optiling::OpInfo op_info(in_shapes, in_dtypes[0]);
@@ -350,10 +354,7 @@ TEST_F(ElewiseTilingV3, TilingTest3) {
   const ge::Operator op_paras = ConstructOpParas(in_shapes, out_shapes, in_dtypes,
                                                  out_dtypes, in_formats, out_formats);
   ElewiseCompileInfo compile_info;
-  compile_info.has_outs_uint1 = true;
-  compile_info.outs_uint1 = false;
-  compile_info.has_flag_info = true;
-  compile_info.flag_size = 6;
+  compile_info.flag_info_size = 6;
   compile_info.only_const_tiling = false;
   compile_info.is_const_shapes = false;
   compile_info.use_special_pattern = true;
@@ -365,6 +366,7 @@ TEST_F(ElewiseTilingV3, TilingTest3) {
   compile_info.const_block_dims = -1;
   compile_info.elewise_vars_size = 3;
   compile_info.broadcast_pattern = false;
+  compile_info.ub_factor_align = 128;
   optiling::utils::OpRunInfo run_info;
   Elewise elewise("ElemWise", op_paras, compile_info, run_info);
   ASSERT_TRUE(elewise.DoTiling());
@@ -383,10 +385,7 @@ TEST_F(ElewiseTilingV3, TilingTest4) {
   const ge::Operator op_paras = ConstructOpParas(in_shapes, out_shapes, in_dtypes,
                                                  out_dtypes, in_formats, out_formats);
   ElewiseCompileInfo compile_info;
-  compile_info.has_outs_uint1 = true;
-  compile_info.outs_uint1 = false;
-  compile_info.has_flag_info = true;
-  compile_info.flag_size = 6;
+  compile_info.flag_info_size = 6;
   compile_info.only_const_tiling = false;
   compile_info.is_const_shapes = false;
   compile_info.use_special_pattern = true;
@@ -398,6 +397,7 @@ TEST_F(ElewiseTilingV3, TilingTest4) {
   compile_info.const_block_dims = -1;
   compile_info.elewise_vars_size = 3;
   compile_info.broadcast_pattern = false;
+  compile_info.ub_factor_align = 128;
   optiling::utils::OpRunInfo run_info;
   optiling::OpInfo op_info(in_shapes, in_dtypes[0]);
   Elewise elewise("ElemWise", op_paras, compile_info, run_info);
@@ -417,10 +417,7 @@ TEST_F(ElewiseTilingV3, TilingTest5) {
   const ge::Operator op_paras = ConstructOpParas(in_shapes, out_shapes, in_dtypes,
                                                  out_dtypes, in_formats, out_formats);
   ElewiseCompileInfo compile_info;
-  compile_info.has_outs_uint1 = true;
-  compile_info.outs_uint1 = false;
-  compile_info.has_flag_info = true;
-  compile_info.flag_size = 6;
+  compile_info.flag_info_size = 6;
   compile_info.only_const_tiling = false;
   compile_info.is_const_shapes = false;
   compile_info.use_special_pattern = true;
@@ -432,6 +429,7 @@ TEST_F(ElewiseTilingV3, TilingTest5) {
   compile_info.const_block_dims = -1;
   compile_info.elewise_vars_size = 3;
   compile_info.broadcast_pattern = false;
+  compile_info.ub_factor_align = 128;
   optiling::utils::OpRunInfo run_info;
   Elewise elewise("ElemWise", op_paras, compile_info, run_info);
   ASSERT_TRUE(elewise.DoTiling());
@@ -450,10 +448,7 @@ TEST_F(ElewiseTilingV3, TilingTest6) {
   const ge::Operator op_paras = ConstructOpParas(in_shapes, out_shapes, in_dtypes,
                                                  out_dtypes, in_formats, out_formats);
   ElewiseCompileInfo compile_info;
-  compile_info.has_outs_uint1 = true;
-  compile_info.outs_uint1 = false;
-  compile_info.has_flag_info = true;
-  compile_info.flag_size = 6;
+  compile_info.flag_info_size = 6;
   compile_info.only_const_tiling = false;
   compile_info.is_const_shapes = false;
   compile_info.use_special_pattern = true;
@@ -465,6 +460,7 @@ TEST_F(ElewiseTilingV3, TilingTest6) {
   compile_info.const_block_dims = -1;
   compile_info.elewise_vars_size = 3;
   compile_info.broadcast_pattern = false;
+  compile_info.ub_factor_align = 128;
   optiling::utils::OpRunInfo run_info;
   optiling::OpInfo op_info(in_shapes, in_dtypes[0]);
   Elewise elewise("ElemWise", op_paras, compile_info, run_info);
@@ -484,10 +480,7 @@ TEST_F(ElewiseTilingV3, TilingTest7) {
   const ge::Operator op_paras = ConstructOpParas(in_shapes, out_shapes, in_dtypes,
                                                  out_dtypes, in_formats, out_formats);
   ElewiseCompileInfo compile_info;
-  compile_info.has_outs_uint1 = true;
-  compile_info.outs_uint1 = false;
-  compile_info.has_flag_info = true;
-  compile_info.flag_size = 6;
+  compile_info.flag_info_size = 6;
   compile_info.only_const_tiling = false;
   compile_info.is_const_shapes = false;
   compile_info.use_special_pattern = true;
@@ -499,6 +492,7 @@ TEST_F(ElewiseTilingV3, TilingTest7) {
   compile_info.const_block_dims = -1;
   compile_info.elewise_vars_size = 3;
   compile_info.broadcast_pattern = false;
+  compile_info.ub_factor_align = 128;
   optiling::utils::OpRunInfo run_info;
   Elewise elewise("ElemWise", op_paras, compile_info, run_info);
   ASSERT_TRUE(elewise.DoTiling());
@@ -517,10 +511,7 @@ TEST_F(ElewiseTilingV3, TilingTest8) {
   const ge::Operator op_paras = ConstructOpParas(in_shapes, out_shapes, in_dtypes,
                                                  out_dtypes, in_formats, out_formats);
   ElewiseCompileInfo compile_info;
-  compile_info.has_outs_uint1 = true;
-  compile_info.outs_uint1 = false;
-  compile_info.has_flag_info = true;
-  compile_info.flag_size = 6;
+  compile_info.flag_info_size = 6;
   compile_info.only_const_tiling = false;
   compile_info.is_const_shapes = false;
   compile_info.use_special_pattern = true;
@@ -532,6 +523,7 @@ TEST_F(ElewiseTilingV3, TilingTest8) {
   compile_info.const_block_dims = -1;
   compile_info.elewise_vars_size = 3;
   compile_info.broadcast_pattern = false;
+  compile_info.ub_factor_align = 128;
   optiling::utils::OpRunInfo run_info;
   optiling::OpInfo op_info(in_shapes, in_dtypes[0]);
   Elewise elewise("ElemWise", op_paras, compile_info, run_info);
@@ -551,10 +543,7 @@ TEST_F(ElewiseTilingV3, CheckCompileInfoTest1) {
   const ge::Operator op_paras = ConstructOpParas(in_shapes, out_shapes, in_dtypes,
                                                  out_dtypes, in_formats, out_formats);
   ElewiseCompileInfo compile_info;
-  compile_info.has_outs_uint1 = false;
-  compile_info.outs_uint1 = false;
-  compile_info.has_flag_info = true;
-  compile_info.flag_size = 6;
+  compile_info.flag_info_size = 6;
   compile_info.only_const_tiling = false;
   compile_info.is_const_shapes = false;
   compile_info.use_special_pattern = true;
@@ -566,6 +555,7 @@ TEST_F(ElewiseTilingV3, CheckCompileInfoTest1) {
   compile_info.const_block_dims = -1;
   compile_info.elewise_vars_size = 3;
   compile_info.broadcast_pattern = false;
+  compile_info.ub_factor_align = -1;
   optiling::utils::OpRunInfo run_info;
   Elewise elewise("ElemWise", op_paras, compile_info, run_info);
   ASSERT_FALSE(elewise.DoTiling());
@@ -582,10 +572,7 @@ TEST_F(ElewiseTilingV3, CheckCompileInfoTest2) {
   const ge::Operator op_paras = ConstructOpParas(in_shapes, out_shapes, in_dtypes,
                                                  out_dtypes, in_formats, out_formats);
   ElewiseCompileInfo compile_info;
-  compile_info.has_outs_uint1 = true;
-  compile_info.outs_uint1 = false;
-  compile_info.has_flag_info = false;
-  compile_info.flag_size = 6;
+  compile_info.flag_info_size = 0;
   compile_info.only_const_tiling = false;
   compile_info.is_const_shapes = false;
   compile_info.use_special_pattern = true;
@@ -597,6 +584,7 @@ TEST_F(ElewiseTilingV3, CheckCompileInfoTest2) {
   compile_info.const_block_dims = -1;
   compile_info.elewise_vars_size = 3;
   compile_info.broadcast_pattern = false;
+  compile_info.ub_factor_align = 128;
   optiling::utils::OpRunInfo run_info;
   Elewise elewise("ElemWise", op_paras, compile_info, run_info);
   ASSERT_FALSE(elewise.DoTiling());
@@ -613,10 +601,7 @@ TEST_F(ElewiseTilingV3, CheckCompileInfoTest3) {
   const ge::Operator op_paras = ConstructOpParas(in_shapes, out_shapes, in_dtypes,
                                                  out_dtypes, in_formats, out_formats);
   ElewiseCompileInfo compile_info;
-  compile_info.has_outs_uint1 = true;
-  compile_info.outs_uint1 = false;
-  compile_info.has_flag_info = true;
-  compile_info.flag_size = 0;
+  compile_info.flag_info_size = 0;
   compile_info.only_const_tiling = false;
   compile_info.is_const_shapes = false;
   compile_info.use_special_pattern = true;
@@ -628,6 +613,7 @@ TEST_F(ElewiseTilingV3, CheckCompileInfoTest3) {
   compile_info.const_block_dims = -1;
   compile_info.elewise_vars_size = 3;
   compile_info.broadcast_pattern = false;
+  compile_info.ub_factor_align = 128;
   optiling::utils::OpRunInfo run_info;
   Elewise elewise("ElemWise", op_paras, compile_info, run_info);
   ASSERT_FALSE(elewise.DoTiling());
@@ -644,10 +630,7 @@ TEST_F(ElewiseTilingV3, CheckCompileInfoTest4) {
   const ge::Operator op_paras = ConstructOpParas(in_shapes, out_shapes, in_dtypes,
                                                  out_dtypes, in_formats, out_formats);
   ElewiseCompileInfo compile_info;
-  compile_info.has_outs_uint1 = true;
-  compile_info.outs_uint1 = false;
-  compile_info.has_flag_info = true;
-  compile_info.flag_size = 6;
+  compile_info.flag_info_size = 6;
   compile_info.only_const_tiling = false;
   compile_info.is_const_shapes = false;
   compile_info.use_special_pattern = true;
@@ -659,6 +642,7 @@ TEST_F(ElewiseTilingV3, CheckCompileInfoTest4) {
   compile_info.const_block_dims = -1;
   compile_info.elewise_vars_size = 3;
   compile_info.broadcast_pattern = false;
+  compile_info.ub_factor_align = 128;
   optiling::utils::OpRunInfo run_info;
   Elewise elewise("ElemWise", op_paras, compile_info, run_info);
   ASSERT_FALSE(elewise.DoTiling());
@@ -675,10 +659,7 @@ TEST_F(ElewiseTilingV3, CheckCompileInfoTest5) {
   const ge::Operator op_paras = ConstructOpParas(in_shapes, out_shapes, in_dtypes,
                                                  out_dtypes, in_formats, out_formats);
   ElewiseCompileInfo compile_info;
-  compile_info.has_outs_uint1 = true;
-  compile_info.outs_uint1 = false;
-  compile_info.has_flag_info = true;
-  compile_info.flag_size = 6;
+  compile_info.flag_info_size = 6;
   compile_info.only_const_tiling = false;
   compile_info.is_const_shapes = false;
   compile_info.use_special_pattern = true;
@@ -690,6 +671,7 @@ TEST_F(ElewiseTilingV3, CheckCompileInfoTest5) {
   compile_info.const_block_dims = -1;
   compile_info.elewise_vars_size = 3;
   compile_info.broadcast_pattern = false;
+  compile_info.ub_factor_align = 128;
   optiling::utils::OpRunInfo run_info;
   Elewise elewise("ElemWise", op_paras, compile_info, run_info);
   ASSERT_FALSE(elewise.DoTiling());
@@ -706,10 +688,7 @@ TEST_F(ElewiseTilingV3, CheckCompileInfoTest6) {
   const ge::Operator op_paras = ConstructOpParas(in_shapes, out_shapes, in_dtypes,
                                                  out_dtypes, in_formats, out_formats);
   ElewiseCompileInfo compile_info;
-  compile_info.has_outs_uint1 = true;
-  compile_info.outs_uint1 = false;
-  compile_info.has_flag_info = true;
-  compile_info.flag_size = 6;
+  compile_info.flag_info_size = 6;
   compile_info.only_const_tiling = false;
   compile_info.is_const_shapes = false;
   compile_info.use_special_pattern = true;
@@ -721,6 +700,7 @@ TEST_F(ElewiseTilingV3, CheckCompileInfoTest6) {
   compile_info.const_block_dims = -1;
   compile_info.elewise_vars_size = 3;
   compile_info.broadcast_pattern = false;
+  compile_info.ub_factor_align = 128;
   optiling::utils::OpRunInfo run_info;
   Elewise elewise("ElemWise", op_paras, compile_info, run_info);
   ASSERT_FALSE(elewise.DoTiling());
@@ -737,10 +717,7 @@ TEST_F(ElewiseTilingV3, CheckCompileInfoTest7) {
   const ge::Operator op_paras = ConstructOpParas(in_shapes, out_shapes, in_dtypes,
                                                  out_dtypes, in_formats, out_formats);
   ElewiseCompileInfo compile_info;
-  compile_info.has_outs_uint1 = true;
-  compile_info.outs_uint1 = false;
-  compile_info.has_flag_info = true;
-  compile_info.flag_size = 6;
+  compile_info.flag_info_size = 6;
   compile_info.only_const_tiling = false;
   compile_info.is_const_shapes = false;
   compile_info.use_special_pattern = true;
@@ -752,6 +729,7 @@ TEST_F(ElewiseTilingV3, CheckCompileInfoTest7) {
   compile_info.const_block_dims = -1;
   compile_info.elewise_vars_size = 3;
   compile_info.broadcast_pattern = false;
+  compile_info.ub_factor_align = 128;
   optiling::utils::OpRunInfo run_info;
   Elewise elewise("ElemWise", op_paras, compile_info, run_info);
   ASSERT_FALSE(elewise.DoTiling());
@@ -768,10 +746,7 @@ TEST_F(ElewiseTilingV3, CheckOpParasTest1) {
   const ge::Operator op_paras = ConstructOpParas(in_shapes, out_shapes, in_dtypes,
                                                  out_dtypes, in_formats, out_formats);
   ElewiseCompileInfo compile_info;
-  compile_info.has_outs_uint1 = true;
-  compile_info.outs_uint1 = false;
-  compile_info.has_flag_info = true;
-  compile_info.flag_size = 6;
+  compile_info.flag_info_size = 6;
   compile_info.only_const_tiling = false;
   compile_info.is_const_shapes = false;
   compile_info.use_special_pattern = true;
@@ -783,6 +758,7 @@ TEST_F(ElewiseTilingV3, CheckOpParasTest1) {
   compile_info.const_block_dims = -1;
   compile_info.elewise_vars_size = 3;
   compile_info.broadcast_pattern = false;
+  compile_info.ub_factor_align = 128;
   optiling::utils::OpRunInfo run_info;
   Elewise elewise("ElemWise", op_paras, compile_info, run_info);
   ASSERT_FALSE(elewise.DoTiling());
@@ -802,10 +778,7 @@ TEST_F(ElewiseTilingV3, CheckOpParasTest2) {
   const ge::Operator op_paras = ConstructOpParas(in_shapes, out_shapes, in_dtypes,
                                                  out_dtypes, in_formats, out_formats);
   ElewiseCompileInfo compile_info;
-  compile_info.has_outs_uint1 = true;
-  compile_info.outs_uint1 = false;
-  compile_info.has_flag_info = true;
-  compile_info.flag_size = 6;
+  compile_info.flag_info_size = 6;
   compile_info.only_const_tiling = false;
   compile_info.is_const_shapes = false;
   compile_info.use_special_pattern = true;
@@ -817,6 +790,7 @@ TEST_F(ElewiseTilingV3, CheckOpParasTest2) {
   compile_info.const_block_dims = -1;
   compile_info.elewise_vars_size = 3;
   compile_info.broadcast_pattern = false;
+  compile_info.ub_factor_align = 128;
   optiling::utils::OpRunInfo run_info;
   Elewise elewise("ElemWise", op_paras, compile_info, run_info);
   ASSERT_FALSE(elewise.DoTiling());
@@ -833,10 +807,7 @@ TEST_F(ElewiseTilingV3, CheckOpParasTest3) {
   const ge::Operator op_paras = ConstructOpParas(in_shapes, out_shapes, in_dtypes,
                                                  out_dtypes, in_formats, out_formats);
   ElewiseCompileInfo compile_info;
-  compile_info.has_outs_uint1 = true;
-  compile_info.outs_uint1 = false;
-  compile_info.has_flag_info = true;
-  compile_info.flag_size = 6;
+  compile_info.flag_info_size = 6;
   compile_info.only_const_tiling = false;
   compile_info.is_const_shapes = false;
   compile_info.use_special_pattern = true;
@@ -848,6 +819,7 @@ TEST_F(ElewiseTilingV3, CheckOpParasTest3) {
   compile_info.const_block_dims = -1;
   compile_info.elewise_vars_size = 3;
   compile_info.broadcast_pattern = false;
+  compile_info.ub_factor_align = 128;
   optiling::utils::OpRunInfo run_info;
   Elewise elewise("ElemWise", op_paras, compile_info, run_info);
   ASSERT_FALSE(elewise.DoTiling());
@@ -864,10 +836,7 @@ TEST_F(ElewiseTilingV3, CheckOpParasTest4) {
   const ge::Operator op_paras = ConstructOpParas(in_shapes, out_shapes, in_dtypes,
                                                  out_dtypes, in_formats, out_formats);
   ElewiseCompileInfo compile_info;
-  compile_info.has_outs_uint1 = true;
-  compile_info.outs_uint1 = false;
-  compile_info.has_flag_info = true;
-  compile_info.flag_size = 6;
+  compile_info.flag_info_size = 6;
   compile_info.only_const_tiling = false;
   compile_info.is_const_shapes = false;
   compile_info.use_special_pattern = true;
@@ -879,6 +848,7 @@ TEST_F(ElewiseTilingV3, CheckOpParasTest4) {
   compile_info.const_block_dims = -1;
   compile_info.elewise_vars_size = 3;
   compile_info.broadcast_pattern = false;
+  compile_info.ub_factor_align = 128;
   optiling::utils::OpRunInfo run_info;
   Elewise elewise("ElemWise", op_paras, compile_info, run_info);
   ASSERT_TRUE(elewise.DoTiling());
@@ -895,10 +865,7 @@ TEST_F(ElewiseTilingV3, CheckOpParasTest5) {
   const ge::Operator op_paras = ConstructOpParas(in_shapes, out_shapes, in_dtypes,
                                                  out_dtypes, in_formats, out_formats);
   ElewiseCompileInfo compile_info;
-  compile_info.has_outs_uint1 = true;
-  compile_info.outs_uint1 = false;
-  compile_info.has_flag_info = true;
-  compile_info.flag_size = 6;
+  compile_info.flag_info_size = 6;
   compile_info.only_const_tiling = false;
   compile_info.is_const_shapes = false;
   compile_info.use_special_pattern = true;
@@ -910,6 +877,7 @@ TEST_F(ElewiseTilingV3, CheckOpParasTest5) {
   compile_info.const_block_dims = -1;
   compile_info.elewise_vars_size = 3;
   compile_info.broadcast_pattern = false;
+  compile_info.ub_factor_align = 128;
   optiling::utils::OpRunInfo run_info;
   Elewise elewise("ElemWise", op_paras, compile_info, run_info);
   ASSERT_FALSE(elewise.DoTiling());
@@ -926,10 +894,7 @@ TEST_F(ElewiseTilingV3, CheckOpParasTest6) {
   const ge::Operator op_paras = ConstructOpParas(in_shapes, out_shapes, in_dtypes,
                                                  out_dtypes, in_formats, out_formats);
   ElewiseCompileInfo compile_info;
-  compile_info.has_outs_uint1 = true;
-  compile_info.outs_uint1 = false;
-  compile_info.has_flag_info = true;
-  compile_info.flag_size = 6;
+  compile_info.flag_info_size = 6;
   compile_info.only_const_tiling = false;
   compile_info.is_const_shapes = false;
   compile_info.use_special_pattern = true;
@@ -941,6 +906,7 @@ TEST_F(ElewiseTilingV3, CheckOpParasTest6) {
   compile_info.const_block_dims = -1;
   compile_info.elewise_vars_size = 3;
   compile_info.broadcast_pattern = false;
+  compile_info.ub_factor_align = 128;
   optiling::utils::OpRunInfo run_info;
   Elewise elewise("ElemWise", op_paras, compile_info, run_info);
   ASSERT_FALSE(elewise.DoTiling());
@@ -957,10 +923,7 @@ TEST_F(ElewiseTilingV3, mask_rccn_fused_mul_add_n_fail_case) {
   const ge::Operator op_paras = ConstructOpParas(in_shapes, out_shapes, in_dtypes,
                                                  out_dtypes, in_formats, out_formats);
   ElewiseCompileInfo compile_info;
-  compile_info.has_outs_uint1 = true;
-  compile_info.outs_uint1 = false;
-  compile_info.has_flag_info = true;
-  compile_info.flag_size = 1;
+  compile_info.flag_info_size = 1;
   compile_info.only_const_tiling = true;
   compile_info.is_const_shapes = false;
   compile_info.use_special_pattern = true;
@@ -972,6 +935,7 @@ TEST_F(ElewiseTilingV3, mask_rccn_fused_mul_add_n_fail_case) {
   compile_info.const_block_dims = -1;
   compile_info.elewise_vars_size = 0;
   compile_info.broadcast_pattern = false;
+  compile_info.ub_factor_align = 128;
   optiling::utils::OpRunInfo run_info;
   Elewise elewise("ElemWise", op_paras, compile_info, run_info);
   ASSERT_TRUE(elewise.DoTiling());
@@ -988,10 +952,7 @@ TEST_F(ElewiseTilingV3, apply_rms_prop_d_st_case) {
   const ge::Operator op_paras = ConstructOpParas(in_shapes, out_shapes, in_dtypes,
                                                  out_dtypes, in_formats, out_formats);
   ElewiseCompileInfo compile_info;
-  compile_info.has_outs_uint1 = true;
-  compile_info.outs_uint1 = false;
-  compile_info.has_flag_info = true;
-  compile_info.flag_size = 7;
+  compile_info.flag_info_size = 7;
   compile_info.only_const_tiling = false;
   compile_info.is_const_shapes = false;
   compile_info.use_special_pattern = true;
@@ -1003,6 +964,7 @@ TEST_F(ElewiseTilingV3, apply_rms_prop_d_st_case) {
   compile_info.const_block_dims = -1;
   compile_info.elewise_vars_size = 3;
   compile_info.broadcast_pattern = true;
+  compile_info.ub_factor_align = 128;
   optiling::utils::OpRunInfo run_info;
   optiling::OpInfo op_info(in_shapes, in_dtypes[0]);
   Elewise elewise("ElemWise", op_paras, compile_info, run_info);
@@ -1022,10 +984,7 @@ TEST_F(ElewiseTilingV3, dynamic_add_const_elewise_tiling) {
   const ge::Operator op_paras = ConstructOpParas(in_shapes, out_shapes, in_dtypes,
                                                  out_dtypes, in_formats, out_formats);
   ElewiseCompileInfo compile_info;
-  compile_info.has_outs_uint1 = true;
-  compile_info.outs_uint1 = false;
-  compile_info.has_flag_info = true;
-  compile_info.flag_size = 6;
+  compile_info.flag_info_size = 6;
   compile_info.only_const_tiling = false;
   compile_info.is_const_shapes = false;
   compile_info.use_special_pattern = true;
@@ -1037,6 +996,7 @@ TEST_F(ElewiseTilingV3, dynamic_add_const_elewise_tiling) {
   compile_info.const_block_dims = -1;
   compile_info.elewise_vars_size = 3;
   compile_info.broadcast_pattern = false;
+  compile_info.ub_factor_align = 128;
   optiling::utils::OpRunInfo run_info;
   Elewise elewise("ElemWise", op_paras, compile_info, run_info);
   ASSERT_TRUE(elewise.DoTiling());
@@ -1055,10 +1015,7 @@ TEST_F(ElewiseTilingV3, dynamic_add_const_elewise_custom_tiling) {
   const ge::Operator op_paras = ConstructOpParas(in_shapes, out_shapes, in_dtypes,
                                                  out_dtypes, in_formats, out_formats);
   ElewiseCompileInfo compile_info;
-  compile_info.has_outs_uint1 = true;
-  compile_info.outs_uint1 = false;
-  compile_info.has_flag_info = true;
-  compile_info.flag_size = 6;
+  compile_info.flag_info_size = 6;
   compile_info.only_const_tiling = false;
   compile_info.is_const_shapes = false;
   compile_info.use_special_pattern = true;
@@ -1070,10 +1027,75 @@ TEST_F(ElewiseTilingV3, dynamic_add_const_elewise_custom_tiling) {
   compile_info.const_block_dims = -1;
   compile_info.elewise_vars_size = 3;
   compile_info.broadcast_pattern = false;
+  compile_info.ub_factor_align = 128;
   optiling::utils::OpRunInfo run_info;
   optiling::OpInfo op_info(in_shapes, in_dtypes[0]);
   Elewise elewise("ElemWise", op_paras, compile_info, run_info);
   ASSERT_TRUE(elewise.DoTiling(op_info));
   EXPECT_EQ(run_info.GetBlockDim(), 8);
   EXPECT_EQ(to_string(run_info.GetAllTilingData()), "1024 128 128 ");
+}
+
+TEST_F(ElewiseTilingV3, dynamic_cast_s32_to_s64_tiling) {
+  // Construct op_paras
+  std::vector<std::vector<int64_t>> in_shapes = {{1, 1024}};
+  std::vector<std::vector<int64_t>> out_shapes = {{1, 1024}};
+  std::vector<ge::DataType> in_dtypes = {ge::DT_INT32};
+  std::vector<ge::DataType> out_dtypes = {ge::DT_INT64};
+  std::vector<ge::Format> in_formats = {ge::FORMAT_ND};
+  std::vector<ge::Format> out_formats = {ge::FORMAT_ND};
+  const ge::Operator op_paras = ConstructOpParas(in_shapes, out_shapes, in_dtypes,
+                                                 out_dtypes, in_formats, out_formats);
+  ElewiseCompileInfo compile_info;
+  compile_info.flag_info_size = 6;
+  compile_info.only_const_tiling = false;
+  compile_info.is_const_shapes = false;
+  compile_info.use_special_pattern = true;
+  compile_info.pattern_key = 1;
+  compile_info.core_num = 4;
+  compile_info.max_dtype = 8;
+  compile_info.max_available_ub = 8188;
+  compile_info.max_available_ub_db = 4092;
+  compile_info.const_block_dims = -1;
+  compile_info.elewise_vars_size = 3;
+  compile_info.broadcast_pattern = false;
+  compile_info.ub_factor_align = 256;
+  optiling::utils::OpRunInfo run_info;
+  optiling::OpInfo op_info(in_shapes, in_dtypes[0]);
+  Elewise elewise("ElemWise", op_paras, compile_info, run_info);
+  ASSERT_TRUE(elewise.DoTiling(op_info));
+  EXPECT_EQ(run_info.GetBlockDim(), 4);
+  EXPECT_EQ(to_string(run_info.GetAllTilingData()), "1024 256 256 ");
+}
+
+TEST_F(ElewiseTilingV3, dynamic_cast_s64_to_s32_tiling) {
+  // Construct op_paras
+  std::vector<std::vector<int64_t>> in_shapes = {{1, 1024}};
+  std::vector<std::vector<int64_t>> out_shapes = {{1, 1024}};
+  std::vector<ge::DataType> in_dtypes = {ge::DT_INT64};
+  std::vector<ge::DataType> out_dtypes = {ge::DT_INT32};
+  std::vector<ge::Format> in_formats = {ge::FORMAT_ND};
+  std::vector<ge::Format> out_formats = {ge::FORMAT_ND};
+  const ge::Operator op_paras = ConstructOpParas(in_shapes, out_shapes, in_dtypes,
+                                                 out_dtypes, in_formats, out_formats);
+  ElewiseCompileInfo compile_info;
+  compile_info.flag_info_size = 6;
+  compile_info.only_const_tiling = false;
+  compile_info.is_const_shapes = false;
+  compile_info.use_special_pattern = true;
+  compile_info.pattern_key = 1;
+  compile_info.core_num = 4;
+  compile_info.max_dtype = 8;
+  compile_info.max_available_ub = 8188;
+  compile_info.max_available_ub_db = 4092;
+  compile_info.const_block_dims = -1;
+  compile_info.elewise_vars_size = 3;
+  compile_info.broadcast_pattern = false;
+  compile_info.ub_factor_align = 256;
+  optiling::utils::OpRunInfo run_info;
+  optiling::OpInfo op_info(in_shapes, in_dtypes[0]);
+  Elewise elewise("ElemWise", op_paras, compile_info, run_info);
+  ASSERT_TRUE(elewise.DoTiling(op_info));
+  EXPECT_EQ(run_info.GetBlockDim(), 4);
+  EXPECT_EQ(to_string(run_info.GetAllTilingData()), "1024 256 256 ");
 }
