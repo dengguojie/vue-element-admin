@@ -95,14 +95,14 @@ void ScopeDecodeBboxV2Pass::GenScopePatterns(ScopeFusionPatterns& patterns) {
   }
   decodeBboxV2Pattern->SetSubType(kScopeTypeDecodeBboxV2);
   decodeBboxV2Pattern->AddScopeFeature(ScopeFeature("", 1, "Decode"));
-  decodeBboxV2Pattern->AddNodeOpTypeFeature(NodeOpTypeFeature("Exp", 2, 0));        // Exp num is 2
-  decodeBboxV2Pattern->AddNodeOpTypeFeature(NodeOpTypeFeature("Mul", 4, 0));        // Mul num is 4
-  decodeBboxV2Pattern->AddNodeOpTypeFeature(NodeOpTypeFeature("Sub", 4, 0));        // Sub num is 4
-  decodeBboxV2Pattern->AddNodeOpTypeFeature(NodeOpTypeFeature("RealDiv", 0, 2));    // RealDiv num is 2*n
-  decodeBboxV2Pattern->AddNodeOpTypeFeature(NodeOpTypeFeature("Unpack", 2, 0));     // Unpack num is 2
-  decodeBboxV2Pattern->AddNodeOpTypeFeature(NodeOpTypeFeature("Pack", 1, 0));       // Pack num is 1
-  decodeBboxV2Pattern->AddNodeOpTypeFeature(NodeOpTypeFeature("Transpose", 3, 0));  // Transpose num is 3
-  decodeBboxV2Pattern->AddNodeOpTypeFeature(NodeOpTypeFeature("Softmax", -1, 0));   // don't have Softmax
+  (void)decodeBboxV2Pattern->AddNodeOpTypeFeature(NodeOpTypeFeature("Exp", 2, 0));        // Exp num is 2
+  (void)decodeBboxV2Pattern->AddNodeOpTypeFeature(NodeOpTypeFeature("Mul", 4, 0));        // Mul num is 4
+  (void)decodeBboxV2Pattern->AddNodeOpTypeFeature(NodeOpTypeFeature("Sub", 4, 0));        // Sub num is 4
+  (void)decodeBboxV2Pattern->AddNodeOpTypeFeature(NodeOpTypeFeature("RealDiv", 0, 2));    // RealDiv num is 2*n
+  (void)decodeBboxV2Pattern->AddNodeOpTypeFeature(NodeOpTypeFeature("Unpack", 2, 0));     // Unpack num is 2
+  (void)decodeBboxV2Pattern->AddNodeOpTypeFeature(NodeOpTypeFeature("Pack", 1, 0));       // Pack num is 1
+  (void)decodeBboxV2Pattern->AddNodeOpTypeFeature(NodeOpTypeFeature("Transpose", 3, 0));  // Transpose num is 3
+  (void)decodeBboxV2Pattern->AddNodeOpTypeFeature(NodeOpTypeFeature("Softmax", -1, 0));   // don't have Softmax
 
   OP_LOGI(kOpType, "Add GenScopePatterns DecodeBboxV2.");
   batch.push_back(decodeBboxV2Pattern);
@@ -116,16 +116,16 @@ void ScopeDecodeBboxV2Pass::GenScopePatterns(ScopeFusionPatterns& patterns) {
   }
   decodeBboxV2SSDPattern->SetSubType(kScopeTypeDecodeBboxV2SSD);
   decodeBboxV2SSDPattern->AddScopeFeature(ScopeFeature("", 1, "Decode"));
-  decodeBboxV2SSDPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("Exp", 2, 0));        // Exp num is 2
-  decodeBboxV2SSDPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("Mul", 4, 0));        // Mul num is 4
-  decodeBboxV2SSDPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("Sub", 10, 0));       // Sub num is 10
-  decodeBboxV2SSDPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("RealDiv", 0, 2));    // RealDiv num 2*n
-  decodeBboxV2SSDPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("Unpack", 2, 0));     // Unpack num is 2
-  decodeBboxV2SSDPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("Pack", 1, 0));       // Pack num is 1
-  decodeBboxV2SSDPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("Transpose", 3, 0));  // Transpose num is 3
-  decodeBboxV2SSDPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("Rank", 3, 0));       // Transpose num is 3
-  decodeBboxV2SSDPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("Range", 3, 0));      // Transpose num is 3
-  decodeBboxV2SSDPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("Sigmoid", -1, 0));   // don't have Sigmoid
+  (void)decodeBboxV2SSDPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("Exp", 2, 0));        // Exp num is 2
+  (void)decodeBboxV2SSDPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("Mul", 4, 0));        // Mul num is 4
+  (void)decodeBboxV2SSDPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("Sub", 10, 0));       // Sub num is 10
+  (void)decodeBboxV2SSDPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("RealDiv", 0, 2));    // RealDiv num 2*n
+  (void)decodeBboxV2SSDPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("Unpack", 2, 0));     // Unpack num is 2
+  (void)decodeBboxV2SSDPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("Pack", 1, 0));       // Pack num is 1
+  (void)decodeBboxV2SSDPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("Transpose", 3, 0));  // Transpose num is 3
+  (void)decodeBboxV2SSDPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("Rank", 3, 0));       // Transpose num is 3
+  (void)decodeBboxV2SSDPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("Range", 3, 0));      // Transpose num is 3
+  (void)decodeBboxV2SSDPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("Sigmoid", -1, 0));   // don't have Sigmoid
 
   OP_LOGI(kOpType, "Add GenScopePatterns DecodeBboxV2.");
   batch.push_back(decodeBboxV2SSDPattern);

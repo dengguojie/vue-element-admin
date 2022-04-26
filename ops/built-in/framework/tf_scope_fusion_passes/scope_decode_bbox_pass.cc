@@ -85,18 +85,18 @@ void ScopeDecodeBboxPass::GenScopePatterns(ScopeFusionPatterns& patterns) {
   }
   decodeBboxPattern->SetSubType(kScopeTypeDecodeBbox);
 
-  decodeBboxPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("Reshape", 0, 3));   // Reshape num is 3
-  decodeBboxPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("Split", 0, 2));     // Split num is 2
-  decodeBboxPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("Minimum", 1, 0));   // Minimum num is 1
-  decodeBboxPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("Add", 0, 3));       // Add num is 3
-  decodeBboxPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("ConcatV2", 1, 0));  // ConcatV2 num is 1
-  decodeBboxPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("Sub", 0, 2));       // Sub num is 2
+  (void)decodeBboxPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("Reshape", 0, 3));   // Reshape num is 3
+  (void)decodeBboxPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("Split", 0, 2));     // Split num is 2
+  (void)decodeBboxPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("Minimum", 1, 0));   // Minimum num is 1
+  (void)decodeBboxPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("Add", 0, 3));       // Add num is 3
+  (void)decodeBboxPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("ConcatV2", 1, 0));  // ConcatV2 num is 1
+  (void)decodeBboxPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("Sub", 0, 2));       // Sub num is 2
 
-  decodeBboxPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("Greater", -1, 0));       // Squeeze num is -1
-  decodeBboxPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("Squeeze", -1, 0));       // Squeeze num is -1
-  decodeBboxPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("Gather_2", -1, 0));      // Gather_2 num is -1
-  decodeBboxPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("TopKV2", -1, 0));        // TopKV2 num is -1
-  decodeBboxPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("boolean_mask", -1, 0));  // boolean_mask num is -1
+  (void)decodeBboxPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("Greater", -1, 0));       // Squeeze num is -1
+  (void)decodeBboxPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("Squeeze", -1, 0));       // Squeeze num is -1
+  (void)decodeBboxPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("Gather_2", -1, 0));      // Gather_2 num is -1
+  (void)decodeBboxPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("TopKV2", -1, 0));        // TopKV2 num is -1
+  (void)decodeBboxPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("boolean_mask", -1, 0));  // boolean_mask num is -1
 
   OP_LOGI(kOpType, "Add GenScopePatterns DecodeBbox.");
   batch.push_back(decodeBboxPattern);

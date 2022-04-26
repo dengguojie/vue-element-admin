@@ -84,21 +84,21 @@ void ScopeClipBoxesPass::GenScopePatterns(ScopeFusionPatterns& patterns) {
     OP_LOGE(kOpType, "Alloc an object failed.");
     return;
   }
-  clipBoxesPattern->SetSubType(kScopeTypeClipBoxes);
+  (void)clipBoxesPattern->SetSubType(kScopeTypeClipBoxes);
 
-  clipBoxesPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("Minimum", 1, 0));        // Minimum num is 1
-  clipBoxesPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("Maximum", 1, 0));        // Maximum num is 1
-  clipBoxesPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("Tile", 1, 0));           // Tile num is 1
-  clipBoxesPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("ReverseV2", 1, 0));      // ReverseV2 num is 1
-  clipBoxesPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("Gather_2", -1, 0));      // Gather_2 num is -1
-  clipBoxesPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("TopKV2", -1, 0));        // TopKV2 num is -1
-  clipBoxesPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("Reshape_2", -1, 0));     // Reshape_2 num is -1
-  clipBoxesPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("Split", -1, 0));         // Split num is -1
-  clipBoxesPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("Greater", -1, 0));       // Greater num is -1
-  clipBoxesPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("Squeeze", -1, 0));       // Squeeze num is -1
-  clipBoxesPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("Gather", -1, 0));        // Gather num is -1
-  clipBoxesPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("boolean_mask", -1, 0));  // boolean_mask num is -1
-  clipBoxesPattern->AddNodeOpTypeFeature(
+  (void)clipBoxesPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("Minimum", 1, 0));        // Minimum num is 1
+  (void)clipBoxesPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("Maximum", 1, 0));        // Maximum num is 1
+  (void)clipBoxesPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("Tile", 1, 0));           // Tile num is 1
+  (void)clipBoxesPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("ReverseV2", 1, 0));      // ReverseV2 num is 1
+  (void)clipBoxesPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("Gather_2", -1, 0));      // Gather_2 num is -1
+  (void)clipBoxesPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("TopKV2", -1, 0));        // TopKV2 num is -1
+  (void)clipBoxesPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("Reshape_2", -1, 0));     // Reshape_2 num is -1
+  (void)clipBoxesPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("Split", -1, 0));         // Split num is -1
+  (void)clipBoxesPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("Greater", -1, 0));       // Greater num is -1
+  (void)clipBoxesPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("Squeeze", -1, 0));       // Squeeze num is -1
+  (void)clipBoxesPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("Gather", -1, 0));        // Gather num is -1
+  (void)clipBoxesPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("boolean_mask", -1, 0));  // boolean_mask num is -1
+  (void)clipBoxesPattern->AddNodeOpTypeFeature(
       NodeOpTypeFeature("decode_bbox_target", -1, 0));  // decode_bbox_target num is -1
 
   OP_LOGI(kOpType, "Add GenScopePatterns ClipBoxes.");

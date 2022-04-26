@@ -109,9 +109,9 @@ void ScopeBatchMultiClassNonMaxSuppressionPass::GenScopePatterns(ScopeFusionPatt
     return;
   }
   ScopeBatchMultiClassNMSPattern->SetSubType(kScopeTypeBatchMultiClassNonMaxSuppression);
-  ScopeBatchMultiClassNMSPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("NonMaxSuppressionV2", 1, 0));
+  (void)ScopeBatchMultiClassNMSPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("NonMaxSuppressionV2", 1, 0));
   static const size_t maximum_num = 4;
-  ScopeBatchMultiClassNMSPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("Maximum", maximum_num, 0));
+  (void)ScopeBatchMultiClassNMSPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("Maximum", maximum_num, 0));
   OP_LOGI(kOpType, "Add GenScopePatterns ScopeBatchMultiClassNMSPattern.");
   batch1.push_back(ScopeBatchMultiClassNMSPattern);
 
@@ -121,10 +121,10 @@ void ScopeBatchMultiClassNonMaxSuppressionPass::GenScopePatterns(ScopeFusionPatt
     return;
   }
   ScopeSecondBatchMultiClassNMSPattern->SetSubType(kScopeTypeSecondBatchMultiClassNonMaxSuppression);
-  ScopeSecondBatchMultiClassNMSPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("NonMaxSuppressionV2", 0, 1));
+  (void)ScopeSecondBatchMultiClassNMSPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("NonMaxSuppressionV2", 0, 1));
   static const size_t merge_num = 11;
-  ScopeSecondBatchMultiClassNMSPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("Merge", merge_num, 0));
-  ScopeSecondBatchMultiClassNMSPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("Transpose", -1, 0));
+  (void)ScopeSecondBatchMultiClassNMSPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("Merge", merge_num, 0));
+  (void)ScopeSecondBatchMultiClassNMSPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("Transpose", -1, 0));
   OP_LOGI(kOpType, "Add GenScopePatterns ScopeSecondBatchMultiClassNMSPattern.");
   batch1.push_back(ScopeSecondBatchMultiClassNMSPattern);
 
@@ -133,9 +133,9 @@ void ScopeBatchMultiClassNonMaxSuppressionPass::GenScopePatterns(ScopeFusionPatt
     OP_LOGE(kOpType, "Alloc an object failed.");
     return;
   }
-  ScopeFaceBoxesBatchMultiClassNMSPattern->SetSubType(kScopeTypeFaceBoxesBatchMultiClassNonMaxSuppression);
-  ScopeFaceBoxesBatchMultiClassNMSPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("NonMaxSuppressionV3", 0, 1));
-  ScopeFaceBoxesBatchMultiClassNMSPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("Transpose", -1, 0));
+  (void)ScopeFaceBoxesBatchMultiClassNMSPattern->SetSubType(kScopeTypeFaceBoxesBatchMultiClassNonMaxSuppression);
+  (void)ScopeFaceBoxesBatchMultiClassNMSPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("NonMaxSuppressionV3", 0, 1));
+  (void)ScopeFaceBoxesBatchMultiClassNMSPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("Transpose", -1, 0));
   OP_LOGI(kOpType, "Add GenScopePatterns ScopeFaceBoxesBatchMultiClassNMSPattern.");
   batch1.push_back(ScopeFaceBoxesBatchMultiClassNMSPattern);
 
@@ -145,12 +145,12 @@ void ScopeBatchMultiClassNonMaxSuppressionPass::GenScopePatterns(ScopeFusionPatt
     return;
   }
   ScopeFilteredBatchMultiClassNMSPattern->SetSubType(kScopeTypeFiltereBatchMultiClassNonMaxSuppression);
-  ScopeFilteredBatchMultiClassNMSPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("NonMaxSuppressionV3", 0, 1));
+  (void)ScopeFilteredBatchMultiClassNMSPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("NonMaxSuppressionV3", 0, 1));
   static const size_t range_step = 5;
-  ScopeFilteredBatchMultiClassNMSPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("Range", 0, range_step));
-  ScopeFilteredBatchMultiClassNMSPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("ConcatV2", 0, 1));
+  (void)ScopeFilteredBatchMultiClassNMSPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("Range", 0, range_step));
+  (void)ScopeFilteredBatchMultiClassNMSPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("ConcatV2", 0, 1));
   static const size_t fill_step = 80;
-  ScopeFilteredBatchMultiClassNMSPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("Fill", 0, fill_step));
+  (void)ScopeFilteredBatchMultiClassNMSPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("Fill", 0, fill_step));
 
   OP_LOGI(kOpType, "Add GenScopePatterns ScopeFilteredBatchMultiClassNMSPattern.");
   batch1.push_back(ScopeFilteredBatchMultiClassNMSPattern);

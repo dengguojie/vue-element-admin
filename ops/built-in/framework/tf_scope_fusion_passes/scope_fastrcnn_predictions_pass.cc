@@ -25,9 +25,9 @@
 
 namespace ge {
 namespace {
-const char* kScopeType = "FastrcnnPredictions";
-const char* kScopeTypeFastrcnnPredictions = "FastrcnnPredictions";
-const char* kOpType = "FastrcnnPredictions";
+const char* const kScopeType = "FastrcnnPredictions";
+const char* const kScopeTypeFastrcnnPredictions = "FastrcnnPredictions";
+const char* const kOpType = "FastrcnnPredictions";
 }  // namespace
 
 std::vector<ScopeFusionPatterns> ScopeFastrcnnPredictionsPass::DefinePatterns() {
@@ -82,17 +82,17 @@ void ScopeFastrcnnPredictionsPass::GenScopePatterns(ScopeFusionPatterns& pattern
     return;
   }
 
-  fastPredictionPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("TopKV2", 0, 2));  // ReverseV2 num is 1
+  (void)fastPredictionPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("TopKV2", 0, 2));  // ReverseV2 num is 1
   static const size_t where_step = 3;
-  fastPredictionPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("Where", 0, where_step));   // ReverseV2 num is 1
-  fastPredictionPattern->AddNodeOpTypeFeature(
+  (void)fastPredictionPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("Where", 0, where_step));   // ReverseV2 num is 1
+  (void)fastPredictionPattern->AddNodeOpTypeFeature(
       NodeOpTypeFeature("NonMaxSuppressionV2", 1));                               // NonMaxSuppressionV2 num is 1
-  fastPredictionPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("Less", 1));      // Less num is 1
-  fastPredictionPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("LoopCond", 1));  // LoopCond num is 1
+  (void)fastPredictionPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("Less", 1));      // Less num is 1
+  (void)fastPredictionPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("LoopCond", 1));  // LoopCond num is 1
 
-  fastPredictionPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("ExpandDims", -1, 0));          // Gather_2 num is -1
-  fastPredictionPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("clip_boxes", -1, 0));          // Gather_2 num is -1
-  fastPredictionPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("decode_bbox_target", -1, 0));  // Gather_2 num is -1
+  (void)fastPredictionPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("ExpandDims", -1, 0));          // Gather_2 num is -1
+  (void)fastPredictionPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("clip_boxes", -1, 0));          // Gather_2 num is -1
+  (void)fastPredictionPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("decode_bbox_target", -1, 0));  // Gather_2 num is -1
 
   fastPredictionPattern->SetSubType(kScopeTypeFastrcnnPredictions);
   OP_LOGI(kOpType, "Add GenScopePatterns fastPredictionPattern.");
