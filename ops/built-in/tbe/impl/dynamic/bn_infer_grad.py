@@ -70,15 +70,13 @@ def bn_infer_grad_compute(grads, scale, batch_variance, x_backprop,
         is_cast = True
         grads = tbe.cast_to(grads, "float32")
 
-    scale_broadcast = tbe.broadcast(scale, shape_x)
-    batch_variance_broadcast = tbe.broadcast(batch_variance, shape_x)
-
-    data_adds = tbe.vadds(batch_variance_broadcast, epsilon)
+    data_adds = tbe.vadds(batch_variance, epsilon)
     data_rsqrt = tbe.vsqrt(data_adds)
     data_rsqrts = tbe.vrec(data_rsqrt)
 
-    scale_mul = tbe.vmul(scale_broadcast, data_rsqrts)
-    res = tbe.vmul(scale_mul, grads)
+    scale_mul = tbe.vmul(scale, data_rsqrts)
+    scale_mul_broadcast = tbe.broadcast(scale_mul, shape_x)
+    res = tbe.vmul(scale_mul_broadcast, grads)
     if is_cast:
         res = tbe.cast_to(res, "float16")
 
@@ -146,6 +144,7 @@ def bn_infer_grad(grads, scale, batch_variance,
         dict of scale, A 5D Tensor for input scale.
     batch_variance: dict
         dict of batch_variance, A 5D Tensor for input batch_variance.
+        have the same shape with scale
     x_backprop: dict
         dict of x_backprop, A 5D Tensor for output x_backprop.
     epsilon: float

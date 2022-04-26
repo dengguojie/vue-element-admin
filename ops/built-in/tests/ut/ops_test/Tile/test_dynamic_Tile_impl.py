@@ -29,6 +29,18 @@ def gen_dynamic_tile_case(shape_x, range_x, multiples, dtype_val,
         "case_name": kernel_name_val, "expect": expect, "format_expect": [],
         "support_expect": True}
 
+case_const_value = {"params": [
+        {"ori_shape": [-1, 1, 1, 1], "shape": [-1, 1, 1, 1], "ori_format": "ND",
+         "format": "ND", "dtype": "int32", "range":[[1, 10], [1, 1], [1, 1], [1, 1]]},
+        {"ori_shape": (4,), "shape": (4,), "ori_format": "ND",
+         "format": "ND", "dtype": "int32", "range": [[4, 4]], "const_value":[16, 16, 16, 16]},
+        {"ori_shape": [16, 16, 16, 16], "shape": [16, 16, 16, 16], "ori_format": "ND",
+         "format": "ND", "dtype": "int32", "range":[[16, 16], [16, 16], [16, 16], [16, 16]]}],
+        "case_name": "dynamic_tile_const_value", "expect": "success", "format_expect": [],
+        "support_expect": True}
+
+ut_case.add_case("all", case_const_value)
+
 ut_case.add_case("all", gen_dynamic_tile_d_case((-1,), ((1, None),), [2],
                                                 "float16",
                                                 "dynamic_tile_d_fp16_ND",

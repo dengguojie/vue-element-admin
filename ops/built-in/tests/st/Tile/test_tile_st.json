@@ -240,5 +240,39 @@
 			]
 		  }
 		]
-	  }
+	  },
+	  {
+		"case_name":"Test_Tile_007",
+		"op":"Tile",
+		"calc_expect_func_file" : "test_tile_golden.py:calc_expect_func",
+		"input_desc":[
+			{
+				"format": "ND",
+				"type": "int32",
+				"shape": [-1, 1, 1, 1],
+				"typical_shape": [1, 1, 1, 1],
+				"value_range": [[0, 10]],
+				"shape_range": [[1, 2240]],
+				"data_distribute": "uniform",
+				"name": "x"
+			},
+			{
+				"format": "ND",
+				"type": "int32",
+				"shape": [4],
+				"typical_shape": [4],
+				"value": [16, 16, 16, 16],
+				"name": "multiples",
+				"is_const": true
+			}
+		],
+		"output_desc":[
+			{
+				"format": "ND",
+				"type": "int32",
+				"shape":[16, 16, 16, 16],
+				"name": "y"
+			}
+		]
+	}
 ]

@@ -27,6 +27,28 @@ from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import tbe_context
 
 
+def get_cof_by_shape(predict_shape, precision_dtype):
+    """
+    get cof by shape
+    """
+    reduce_elts = 1.0
+    for i in predict_shape:
+        if isinstance(i, tvm.expr.IntImm):
+            reduce_elts *= i.value
+        else:
+            reduce_elts *= i
+    
+    if isinstance(reduce_elts, float):
+        cof = reduce_elts ** (-1)
+        cof = tvm.const(cof, dtype=precision_dtype)
+
+    else:
+        cof = tbe.var("cof", dtype=precision_dtype)
+        tbe_context.get_context().add_compile_info("reduce_mean_cof_dtype", precision_dtype)
+    
+    return cof
+
+
 # 'pylint: disable=too-many-arguments
 @register_operator_compute("SigmoidCrossEntropyWithLogitsGradV2", op_mode="dynamic", support_fusion=True)
 def sigmoid_cross_entropy_with_logits_grad_v2_compute(predict, target,
@@ -116,8 +138,7 @@ def sigmoid_cross_entropy_with_logits_grad_v2_compute(predict, target,
 
     # calculate the result of gradient = gradient / num
     if reduction == "mean":
-        cof = tbe.var("cof", dtype=precision_dtype)
-        tbe_context.get_context().add_compile_info("reduce_mean_cof_dtype", precision_dtype)
+        cof = get_cof_by_shape(max_shape, precision_dtype)
         grad_output = tbe.vmuls(grad_output, cof)
 
     if predict_dtype == "float16":

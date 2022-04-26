@@ -397,8 +397,8 @@ class StridedSliceStridesLargerThanOne:
                 src_addr = rows_idx * self.input_inner_dim * self.element_each_block + \
                            self.begin_value * self.element_each_block
                 dst_addr = self.output_inner_dim * rows_idx * self.element_each_block
-                inst.data_move(input_ub[dst_addr], vnchw_conv_ub[src_addr], 0, self.output_shape[-1], self.multi_times,
-                               self.strides_value - self.multi_times, 0)
+                inst.data_move(input_ub[dst_addr:], vnchw_conv_ub[src_addr:], 0, self.output_shape[-1], 
+                               self.multi_times, self.strides_value - self.multi_times, 0)
             vnchw_conv_repeat_times = ceil_div(rows_each_repeat * self.output_inner_dim, self.vnchwconv_column)
             self._do_with_vnchwconv2output(vnchw_conv_ub, input_ub, vnchw_conv_repeat_times)
             ub2gm(inst, self.output_gm[output_addr], vnchw_conv_ub,
@@ -678,13 +678,13 @@ class StridedSliceStridesLargerThanOne:
         if nburst_tail == 0:
             nburst_tail = N_BURST
         with inst.for_range(0, nburst_loop - 1) as loop_idx:
-            inst.data_move(input_ub[N_BURST * self.multi_times * self.element_each_block * loop_idx],
+            inst.data_move(input_ub[N_BURST * self.multi_times * self.element_each_block * loop_idx:],
                            vnchw_conv_ub[N_BURST * loop_idx * self.strides[-1] * self.multi_times * \
-                                         self.element_each_block],
+                                         self.element_each_block:],
                            0, N_BURST, self.multi_times, (self.strides[-1] - 1) * self.multi_times, 0)
-        inst.data_move(input_ub[N_BURST * self.multi_times * self.element_each_block * (nburst_loop - 1)],
+        inst.data_move(input_ub[N_BURST * self.multi_times * self.element_each_block * (nburst_loop - 1):],
                        vnchw_conv_ub[N_BURST * (nburst_loop - 1) * self.strides[-1] * self.multi_times \
-                                     * self.element_each_block],
+                                     * self.element_each_block:],
                        0, nburst_tail, self.multi_times, (self.strides[-1] - 1) * self.multi_times, 0)
         vnchw_conv_repeat_times = ceil_div(rows_each_repeat * self.output_inner_dim, self.vnchwconv_column)
         self._do_with_vnchwconv2output(vnchw_conv_ub, input_ub, vnchw_conv_repeat_times)

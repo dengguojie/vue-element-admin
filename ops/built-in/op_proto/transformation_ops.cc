@@ -379,15 +379,7 @@ IMPLEMT_COMMON_INFERFUNC(SpaceToBatchNDInferShape) {
   return GRAPH_SUCCESS;
 }
 
-IMPLEMT_VERIFIER(SpaceToBatchND, SpaceToBatchNDVerify) {
-  if (!CheckTwoInputDtypeSame(op, "block_shape", "paddings")) {
-    return GRAPH_FAILED;
-  }
-  return GRAPH_SUCCESS;
-}
-
 COMMON_INFER_FUNC_REG(SpaceToBatchND, SpaceToBatchNDInferShape);
-VERIFY_FUNC_REG(SpaceToBatchND, SpaceToBatchNDVerify);
 // ----------------SpaceToBatchND Op End-------------------
 // ----------------TransData InferFormat-------------------
 IMPLEMT_INFERFORMAT_FUNC(TransData, TransDataInferFormat) {
@@ -673,15 +665,7 @@ IMPLEMT_COMMON_INFERFUNC(BatchToSpaceNDInferShape) {
   return GRAPH_SUCCESS;
 }
 
-IMPLEMT_VERIFIER(BatchToSpaceND, BatchToSpaceNDVerify) {
-  if (!CheckTwoInputDtypeSame(op, "block_shape", "crops")) {
-    return GRAPH_FAILED;
-  }
-  return GRAPH_SUCCESS;
-}
-
 COMMON_INFER_FUNC_REG(BatchToSpaceND, BatchToSpaceNDInferShape);
-VERIFY_FUNC_REG(BatchToSpaceND, BatchToSpaceNDVerify);
 // ----------------BatchToSpaceND Op End-------------------
 
 // ----------------BatchToSpaceNDD Op Start-------------------
@@ -830,14 +814,14 @@ IMPLEMT_COMMON_INFERFUNC(FlattenInferShape) {
   auto y_desc = op_info->MutableOutputDesc("y");
   y_desc->SetDataType(input_dtype);
 
-  //--------------dynamic case: unknown rank, input shape is -2, output is -2--------------
+  // --------------dynamic case: unknown rank, input shape is -2, output is -2--------------
   if (IsUnknownRankShape(x_vector)) {
     y_desc->SetShape(GeShape(x_vector));
     OP_LOGW(op.GetName().c_str(), "input shape is UnknownRank, set output is UnknownRank.");
     return GRAPH_SUCCESS;
   }
 
-  //------------not dynamic case, only set shape-------------------------------------------
+  // ------------not dynamic case, only set shape-------------------------------------------
   const int x_dim = x_vector.size();
   int64_t axis = 1;
   if (op.GetAttr("axis", axis) != GRAPH_SUCCESS) {
@@ -858,7 +842,7 @@ IMPLEMT_COMMON_INFERFUNC(FlattenInferShape) {
     return GRAPH_SUCCESS;
   }
 
-  //---------------dynamic case, input shape is -1, output is -1--------------------
+  // ---------------dynamic case, input shape is -1, output is -1--------------------
   if (!IsUnknownRankShape(x_vector) && x_vector.size() == 1) {
     std::vector<std::pair<int64_t, int64_t>> x_range;
     x_desc->GetShapeRange(x_range);
@@ -867,14 +851,14 @@ IMPLEMT_COMMON_INFERFUNC(FlattenInferShape) {
     return GRAPH_SUCCESS;
   }
 
-  //---------------dynamic case, shape range > 1---------------------
-  //----------------------shape-----------------------
+  // ---------------dynamic case, shape range > 1---------------------
+  // ----------------------shape-----------------------
   std::vector<int64_t> y_vector;
   FlattenSetDynamicShape(0, axis, x_vector, y_vector);
   FlattenSetDynamicShape(axis, x_dim, x_vector, y_vector);
   y_desc->SetShape(GeShape(y_vector));
 
-  //----------------------range-----------------------
+  // ----------------------range-----------------------
   std::vector<std::pair<int64_t, int64_t>> x_range;
   x_desc->GetShapeRange(x_range);
   if (x_range.empty()) {

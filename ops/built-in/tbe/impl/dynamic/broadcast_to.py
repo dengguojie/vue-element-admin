@@ -25,6 +25,7 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
+from impl.util.util_common import gen_range
 
 
 # 'pylint: disable=locally-disabled,too-many-arguments,unused-argument
@@ -54,7 +55,7 @@ def broadcast_to_compute(x, shape, y, kernel_name="broadcast_to"):
     return res
 
 
-def get_shape_adapt(input_x_shape, input_shape_shape, input_x_range, kernel_name):
+def get_shape_adapt(input_x_shape, input_shape_shape, input_x_range, shape, kernel_name):
     """
     get shape adapt is shape and range
     """
@@ -68,23 +69,53 @@ def get_shape_adapt(input_x_shape, input_shape_shape, input_x_range, kernel_name
 
     if len(input_x_shape) > dims_value:
         error_manager_vector.raise_err_two_input_shape_invalid(kernel_name, "x", "shape", \
-            "the dimensions of x should not be greater than dims_value")
+            "the dimensions of x should not be greater than shape[0]")
 
     shape_shape_adapt = []
     shape_range_adapt = []
 
-    for shape_i, range_i in zip(input_x_shape, input_x_range):
-        if shape_i == 1 or (shape_i == -1 and range_i[0] <= 1):
-            shape_shape_adapt.append(-1)
-            shape_range_adapt.append((1, None))
-        else:
-            shape_shape_adapt.append(shape_i)
-            shape_range_adapt.append(range_i)
+    const_value = shape.get('const_value')
+    if const_value:
+        const_value = list(const_value)
+        shape_shape_adapt = _pre_tiling(input_x_shape, const_value)
+        shape_range_adapt = gen_range(shape_shape_adapt)
 
-    shape_shape_adapt = [-1] + shape_shape_adapt
-    shape_range_adapt = [(1, None)] + shape_range_adapt
+    else:
+        for shape_i, range_i in zip(input_x_shape, input_x_range):
+            if shape_i == 1 or (shape_i == -1 and range_i[0] <= 1):
+                shape_shape_adapt.append(-1)
+                shape_range_adapt.append((1, None))
+            else:
+                shape_shape_adapt.append(shape_i)
+                shape_range_adapt.append(range_i)
+
+        shape_shape_adapt = [-1] + shape_shape_adapt
+        shape_range_adapt = [(1, None)] + shape_range_adapt
 
     return [shape_shape_adapt, shape_range_adapt]
+
+
+def _accum_mul(vec):
+    """
+    accumlate vec by mul
+    """
+    res_mul = 1
+    for i in vec:
+        res_mul *= i
+
+    return res_mul
+
+
+def _pre_tiling(x, shape):
+    """
+    get broadcast shape just like tiling
+    x [2, 1, 5]
+    shape [6, 5, 2, 5, 5]
+    return [30, 2, 5, 5]
+    """
+    len_diff = len(shape) - len(x)
+
+    return [_accum_mul(shape[:len_diff])] + shape[len_diff:]
 
 
 # 'pylint: disable=too-many-locals,too-many-statements
@@ -134,7 +165,7 @@ def broadcast_to(x, shape, y, kernel_name="broadcast_to"):
     else:
         input_x_range = list(x.get("range"))
         shape_shape_adapt, shape_range_adapt = \
-            get_shape_adapt(input_x_shape, input_shape_shape, input_x_range, kernel_name)
+            get_shape_adapt(input_x_shape, input_shape_shape, input_x_range, shape, kernel_name)
 
         shape["shape"] = shape_shape_adapt
         shape["range"] = shape_range_adapt

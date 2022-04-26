@@ -1,0 +1,83 @@
+[
+  {
+    "op": "BroadcastTo",
+    "calc_expect_func_file": "test_broadcast_to.py:broadcast_to",
+    "input_desc": [
+      {
+        "shape": [
+          -1
+        ],
+        "format": "ND",
+        "typical_shape": [1],
+        "shape_range":[[1, 1]],
+        "name": "x",
+        "type": "float16",
+        "value": [1]
+      },
+      {
+        "shape": [
+          4
+        ],
+        "format": "ND",
+        "name": "shape",
+        "type": "int32",
+        "value": [1, 1, 4, 4],
+        "is_const": true
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          1,
+          4,
+          4
+        ],
+        "format": "ND",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "case_name": "test_BroadcastTo_000"
+  },
+  {
+    "op": "BroadcastTo",
+    "calc_expect_func_file": "test_broadcast_to.py:broadcast_to",
+    "input_desc": [
+      {
+        "shape": [
+          -1
+        ],
+        "format": "ND",
+        "typical_shape": [1],
+        "shape_range":[[1, 1]],
+        "name": "x",
+        "type": "float16",
+        "value": [1]
+      },
+      {
+        "shape": [
+          4
+        ],
+        "format": "ND",
+        "name": "shape",
+        "type": "int32",
+        "value": [1, 1, 4, 4]
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          1,
+          4,
+          4
+        ],
+        "format": "ND",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "case_name": "test_BroadcastTo_001"
+  }
+]

@@ -47,6 +47,7 @@ def mul_no_nan_compute(input_x1, input_x2, output_y, kernel_name="mul_no_nan"):
     -------
     output tensor
     """
+    src_dtype = input_x1.dtype.lower()
     shape_x1 = shape_util.shape_to_list(input_x1.shape)
     shape_x2 = shape_util.shape_to_list(input_x2.shape)
 
@@ -57,7 +58,12 @@ def mul_no_nan_compute(input_x1, input_x2, output_y, kernel_name="mul_no_nan"):
     input_x1 = tbe.broadcast(input_x1, shape_max)
     input_x2 = tbe.broadcast(input_x2, shape_max)
 
-    res = tbe.vmul(input_x1, input_x2)
+    mul_res = tbe.vmul(input_x1, input_x2)
+
+    zero = tvm.const(0, dtype=src_dtype)
+    zeros = tbe.broadcast(zero, shape_max)
+    res = tbe.vcmpsel(input_x2, zeros, operation='eq', slhs=zeros, srhs=mul_res)
+
     return res
 
 

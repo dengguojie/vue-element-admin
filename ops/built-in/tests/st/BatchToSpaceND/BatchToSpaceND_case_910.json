@@ -1,7 +1,107 @@
 [
   {
-    "case_name": "test_spacetobatchnd_001",
-    "op": "SpaceToBatchND",
+    "case_name": "test_batchtospacend_001",
+    "op": "BatchToSpaceND",
+    "input_desc": [
+      {
+        "format": [
+          "NC1HWC0"
+        ],
+        "ori_format": [
+          "NHWC"
+        ],
+        "shape": [
+          1, 64, 1, 1, 16
+        ],
+        "ori_shape": [
+          1, 1, 1, 1024
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "name":  "x",
+        "type": [
+          "float16"
+        ],
+        "value_range": [
+          [0.1, 1.0]
+        ]
+      },
+      {
+        "format": [
+          "NHWC"
+        ],
+        "ori_format": [
+          "NHWC"
+        ],
+        "ori_shape": [
+          2
+        ],
+        "type": [
+          "int32"
+        ],
+        "shape": [
+          2
+        ], 
+        "data_distribute": [
+          "uniform"
+        ],
+        "is_const": true,
+        "value": [
+          1, 1
+        ],
+        "name": "block_shape"
+      },
+      {
+        "format": [
+          "NHWC"
+        ],
+        "ori_format": [
+          "NHWC"
+        ],
+        "ori_shape": [
+          2, 2
+        ],
+        "type": [
+          "int32"
+        ],
+        "shape": [
+          2, 2
+        ], 
+        "data_distribute": [
+          "uniform"
+        ],
+        "is_const": true,
+        "value": [
+          [0, 0], [0, 0]
+        ],
+        "name": "paddings"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1, 64, 1, 1, 16
+        ],
+        "format": [
+          "NC1HWC0"
+        ],
+        "ori_shape": [
+          1, 1, 1, 1024
+        ],
+        "ori_format": [
+          "NHWC"
+        ],
+        "name": "y",
+        "type": [
+          "float16"
+        ]
+      }
+    ]
+  },
+  {
+    "case_name": "test_batchtospacend_002",
+    "op": "BatchToSpaceND",
     "input_desc": [
       {
         "format": [
@@ -87,110 +187,10 @@
           "NDC1HWC0"
         ],
         "ori_shape": [
-          1, 1, 1, 1024
+          1, 1, 1, 1, 1024
         ],
         "ori_format": [
           "NDHWC"
-        ],
-        "name": "y",
-        "type": [
-          "float16"
-        ]
-      }
-    ]
-  },
-  {
-    "case_name": "test_spacetobatchnd_002",
-    "op": "SpaceToBatchND",
-    "input_desc": [
-      {
-        "format": [
-          "NC1HWC0"
-        ],
-        "ori_format": [
-          "NHWC"
-        ],
-        "shape": [
-          1, 64, 1, 1, 16
-        ],
-        "ori_shape": [
-          1, 1, 1, 1024
-        ],
-        "data_distribute": [
-          "uniform"
-        ],
-        "name":  "x",
-        "type": [
-          "float16"
-        ],
-        "value_range": [
-          [0.1, 1.0]
-        ]
-      },
-      {
-        "format": [
-          "NHWC"
-        ],
-        "ori_format": [
-          "NHWC"
-        ],
-        "ori_shape": [
-          2
-        ],
-        "type": [
-          "int32"
-        ],
-        "shape": [
-          2
-        ], 
-        "data_distribute": [
-          "uniform"
-        ],
-        "is_const": true,
-        "value": [
-          1, 1
-        ],
-        "name": "block_shape"
-      },
-      {
-        "format": [
-          "NHWC"
-        ],
-        "ori_format": [
-          "NHWC"
-        ],
-        "ori_shape": [
-          2, 2
-        ],
-        "type": [
-          "int32"
-        ],
-        "shape": [
-          2, 2
-        ], 
-        "data_distribute": [
-          "uniform"
-        ],
-        "is_const": true,
-        "value": [
-          [0, 0], [0, 0]
-        ],
-        "name": "paddings"
-      }
-    ],
-    "output_desc": [
-      {
-        "shape": [
-          1, 64, 1, 1, 16
-        ],
-        "format": [
-          "NC1HWC0"
-        ],
-        "ori_shape": [
-          1, 1, 1, 1024
-        ],
-        "ori_format": [
-          "NHWC"
         ],
         "name": "y",
         "type": [

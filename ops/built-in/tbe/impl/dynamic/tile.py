@@ -16,6 +16,7 @@
 dynamic tile
 """
 from impl.util.util_common import is_unknown_rank_input
+from impl.util.util_common import gen_range
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import shape_util
@@ -57,7 +58,70 @@ def tile_compute(data, multiples, output_x, kernel_name="tile"):
     return res
 
 
-def adapt_shape_compute(input_x_shape, input_x_range, input_m_shape):
+def _do_adapt_shape(input_x_shape, input_x_range, input_m_const_value):
+    """
+    do adapt shape
+    """
+    shape_adapt = []
+    multiples_adapt = []
+    range_adapt = []
+    multiples_range_adapt = []
+
+    if input_m_const_value:
+        input_m_const_value = list(input_m_const_value)
+        input_m_const_value_range = gen_range(input_m_const_value)
+        for shape_i, range_i, shape_m, range_m in \
+            zip(input_x_shape, input_x_range, 
+                input_m_const_value, input_m_const_value_range):
+
+            if shape_i == 1:
+                shape_adapt.append(1)
+                range_adapt.append((1, 1))
+                multiples_adapt.append(shape_m)
+                multiples_range_adapt.append(range_m)
+
+            else:
+                shape_adapt.append(1)
+                range_adapt.append((1, 1))
+                shape_adapt.append(shape_i)
+                range_adapt.append(range_i)
+                multiples_adapt.append(shape_m)
+                multiples_range_adapt.append(range_m)
+                if shape_i == -1:
+                    multiples_adapt.append(-1)
+                    multiples_range_adapt.append((1, None))
+
+                else:
+                    multiples_adapt.append(shape_i)
+                    multiples_range_adapt.append(range_i)
+
+    else:
+        for shape_i, range_i in zip(input_x_shape, input_x_range):
+            if shape_i == 1:
+                shape_adapt.append(1)
+                range_adapt.append((1, 1))
+                multiples_adapt.append(-1)
+                multiples_range_adapt.append((1, None))
+
+            else:
+                shape_adapt.append(1)
+                range_adapt.append((1, 1))
+                shape_adapt.append(shape_i)
+                range_adapt.append(range_i)
+                multiples_adapt.append(-1)
+                multiples_range_adapt.append((1, None))
+                if shape_i == -1:
+                    multiples_adapt.append(-1)
+                    multiples_range_adapt.append((1, None))
+                    
+                else:
+                    multiples_adapt.append(shape_i)
+                    multiples_range_adapt.append(range_i)
+
+    return [shape_adapt, range_adapt, multiples_adapt, multiples_range_adapt]
+
+
+def adapt_shape_compute(input_x_shape, input_x_range, input_m_shape, input_m_const_value=None):
     """
     adapt_shape_compute
     """
@@ -80,30 +144,7 @@ def adapt_shape_compute(input_x_shape, input_x_range, input_m_shape):
         input_x_shape = [1] * len_diff + input_x_shape
         input_x_range = [(1, 1)] * len_diff + input_x_range
 
-    shape_adapt = []
-    multiples_adapt = []
-    range_adapt = []
-    multiples_range_adapt = []
-    for shape_i, range_i in zip(input_x_shape, input_x_range):
-        if shape_i == 1:
-            shape_adapt.append(1)
-            range_adapt.append((1, 1))
-            multiples_adapt.append(-1)
-            multiples_range_adapt.append((1, None))
-        else:
-            shape_adapt.append(1)
-            range_adapt.append((1, 1))
-            shape_adapt.append(shape_i)
-            range_adapt.append(range_i)
-            multiples_adapt.append(-1)
-            multiples_range_adapt.append((1, None))
-            if shape_i == -1:
-                multiples_adapt.append(-1)
-                multiples_range_adapt.append((1, None))
-            else:
-                multiples_adapt.append(shape_i)
-                multiples_range_adapt.append(range_i)
-    return [shape_adapt, range_adapt, multiples_adapt, multiples_range_adapt]
+    return _do_adapt_shape(input_x_shape, input_x_range, input_m_const_value)
 
 
 # 'pylint: disable=too-many-locals,too-many-statements
@@ -159,9 +200,10 @@ def tile(input_x, input_m, output_x, kernel_name="tile"):
         input_x, input_m = [input_x, input_x] if is_unknown_rank_input(input_x) else [input_m, input_m]
         is_unknown = True
     else:
+        input_m_const_value = input_m.get("const_value")
         input_x_range = list(input_x.get("range"))
         input_x["shape"], input_x["range"], input_m["shape"], input_m["range"] = \
-            adapt_shape_compute(input_x_shape, input_x_range, input_m_shape)
+            adapt_shape_compute(input_x_shape, input_x_range, input_m_shape, input_m_const_value)
 
     extra_params = {"disable_optimization": True}
     ins = classify([input_m, input_x], OpPatternMode.ELEWISE_WITH_BROADCAST, extra_params)

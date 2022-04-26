@@ -1,0 +1,44 @@
+[
+  {
+    "op": "Fill",
+    "calc_expect_func_file": "test_fill_st.py:fill",
+    "input_desc": [
+      {
+        "shape": [
+          2
+        ],
+        "format": "ND",
+        "param_type": "input",
+        "name": "dims",
+        "type": "int32",
+        "value": [4, 4],
+        "shape_range": [[1, 4]],
+        "is_const": true
+      },
+      {
+        "shape": [
+          -1
+        ],
+        "format": "ND",
+        "typical_shape": [1],
+        "param_type": "input",
+        "name": "value",
+        "type": "float",
+        "value": [3],
+        "shape_range": [[1, 4]]
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          4, 4
+        ],
+        "format": "ND",
+        "param_type": "output",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "case_name": "test_Fill_000"
+  }
+]

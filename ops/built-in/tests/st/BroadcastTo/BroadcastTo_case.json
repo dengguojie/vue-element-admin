@@ -43,7 +43,8 @@
         "format": "ND",
         "type": "int32",
         "value":[16, 32],
-        "name": "shape"
+        "name": "shape",
+        "is_const": true
       }
     ],
     "output_desc": [

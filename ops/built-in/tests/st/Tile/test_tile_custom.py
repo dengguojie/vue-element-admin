@@ -28,5 +28,14 @@ case2 = {"params": [
 ut_case.add_case(["Ascend910A"], case1)
 ut_case.add_case(["Ascend910A"], case2)
 
+from impl.dynamic.tile import adapt_shape_compute
+
+def reload_check_support():
+	"""
+	reload_check_support to improve cov
+	"""
+	adapt_shape_compute([1, 1, 1, 1], [(1, 1), (1, 1), (1, 1), (1, 1)], (4,), [16, 16, 16, 16])
+
 if __name__ == '__main__':
+    reload_check_support()
     ut_case.run("Ascend910A")

@@ -63,6 +63,11 @@ def test_op_select_format(test_arg):
                     {"shape": (2, 2), "dtype": "float16", "format": "ND", "ori_shape": (2, 2),"ori_format": "ND", "param_type": "input"},
                     {"shape": (16, 16, 16, 16), "dtype": "float16", "format": "NHWC", "ori_shape": (16, 16, 16, 16),"ori_format": "NHWC", "param_type": "input"},
                     )
+    op_select_format({"shape": (16, 16, 16, 16, 16), "dtype": "float16", "format": "NDHWC", "ori_shape": (16, 16, 16, 16, 16),"ori_format": "NDHWC", "param_type": "input"},
+                    {"shape": (2,), "dtype": "float16", "format": "ND", "ori_shape": (2,),"ori_format": "ND", "param_type": "input"},
+                    {"shape": (2, 2), "dtype": "float16", "format": "ND", "ori_shape": (2, 2),"ori_format": "ND", "param_type": "input"},
+                    {"shape": (16, 16, 16, 16, 16), "dtype": "float16", "format": "NDHWC", "ori_shape": (16, 16, 16, 16, 16),"ori_format": "NDHWC", "param_type": "input"},
+                    )
 
 def test_get_op_support_info_1(test_arg):
     from impl.dynamic.batch_to_space_nd import get_op_support_info

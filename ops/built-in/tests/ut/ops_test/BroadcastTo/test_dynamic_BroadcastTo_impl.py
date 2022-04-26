@@ -59,6 +59,17 @@ dynamic_rank_case_3 = {
 ut_case.add_case(["Ascend910A", "Ascend310"], dynamic_rank_case_1)
 ut_case.add_case(["Ascend910A", "Ascend310"], dynamic_rank_case_2)
 ut_case.add_case(["Ascend910A", "Ascend310"], dynamic_rank_case_3)
+case_const_value ={"params": [
+        {"ori_shape": (-1,), "shape": (-1,), "ori_format": "ND",
+         "format": "ND", "dtype": "float16", "range": [[1,5]]},
+        {"ori_shape": (4,), "shape": (4,), "ori_format": "ND",
+         "format": "ND", "dtype": "int32", "range": ((4, 4),),
+         "const_value":[1, 1, 4, 4]},
+        {"ori_shape": [1, 1, 4, 4], "shape": [1, 1, 4, 4], "ori_format": "ND",
+         "format": "ND", "dtype": "float16", "range": [[1, 1], [1, 1], [4, 4], [4, 4]]}],
+        "case_name": "dynamic_broadcastto_const_value_1", "expect": "success", "format_expect": [],
+        "support_expect": True}
 
+ut_case.add_case("Ascend910A", case_const_value)
 if __name__ == "__main__":
     ut_case.run(["Ascend910A", "Ascend310"])

@@ -129,15 +129,17 @@ def op_select_format(x, block_shape, crops, y, kernel_name="batch_to_space_nd"):
                 `crops          shape = [3,2]                         format = 'ND'`
                 `y              shape = [None,None,1,None,None,16]    format = 'NDC1HWC0'`
     """
-    input_dtype = "float16, float, float16, float"
-    input_format = "NC1HWC0, NC1HWC0, NC1HWC0, NC1HWC0"
+    input_dtype = "float16, float, float16, float, float16, float16, float, float"
+    input_format = "NC1HWC0, NC1HWC0, NC1HWC0, NC1HWC0, NC1HWC0, NC1HWC0, NC1HWC0, NC1HWC0"
     ori_format = x.get("ori_format")
     if ori_format in ("NDHWC", "NCDHW"):
-        input_dtype = "float16, float, float16, float"
-        input_format = "NDC1HWC0, NDC1HWC0, NDC1HWC0, NDC1HWC0"
+        input_dtype = "float16, float, float16, float, float16, float16, float, float"
+        input_format = "NDC1HWC0, NDC1HWC0, NDC1HWC0, NDC1HWC0, NDC1HWC0, NDC1HWC0, NDC1HWC0, NDC1HWC0"
 
-    attr_dtype = "int32, int32, int64, int64"
-    attr_format = "ND, ND, ND, ND"
+    attr_dtype_1 = "int32, int32, int64, int64, int32, int64, int32, int64"
+    attr_format = "ND, ND, ND, ND, ND, ND, ND, ND"
+    attr_dtype_2 = "int32, int32, int64, int64, int64, int32, int64, int32"
+
     input0 = gen_param(classify="input0",
                        name="x",
                        datatype=input_dtype,
@@ -145,12 +147,12 @@ def op_select_format(x, block_shape, crops, y, kernel_name="batch_to_space_nd"):
                        unknownshape_format=input_format)
     input1 = gen_param(classify="input1",
                        name="block_shape",
-                       datatype=attr_dtype,
+                       datatype=attr_dtype_1,
                        format=attr_format,
                        unknownshape_format=attr_format)
     input2 = gen_param(classify="input2",
                        name="crops",
-                       datatype=attr_dtype,
+                       datatype=attr_dtype_2,
                        format=attr_format,
                        unknownshape_format=attr_format)
     output0 = gen_param(classify="output0",
