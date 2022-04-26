@@ -4,25 +4,59 @@
 the Conv2DBackpropInputD test
 """
 import sys
-
-import conv2d_bp_input_ut_testcase
-import te.lang.cce as tbe
-import util_for_conv2d_bp_input as util
+from unittest.mock import MagicMock
+from unittest.mock import patch
 from op_test_frame.ut import OpUT
-from te import tvm
+import tbe
+from tbe import tvm
 from tbe.dsl import auto_schedule
-from te.tvm.target import cce
+from tbe.tvm.target import cce
 from te.platform.cce_conf import te_set_version
-from impl.conv2d_backprop_input_d import get_op_support_info as dx_get_op_support_info
-from impl.conv2d_backprop_input_d import conv2d_backprop_input_d_compute
 from impl.add_n import add_n_compute_for_fusion
+from impl.conv2d_backprop_input_d import conv2d_backprop_input_d_compute
+from impl.conv2d_backprop_input_d import get_op_support_info as dx_get_op_support_info
+from impl.fix_pipe import fixpipe_compute
 from impl.relu_grad_v2 import relu_grad_v2_compute
 
+import conv2d_bp_input_ut_testcase
+import util_for_conv2d_bp_input as util
 
 ut_case = OpUT(
     "Conv2DBackpropInputD", "impl.conv2d_backprop_input_d", "conv2d_backprop_input_d"
 )
 
+
+vals = {("CORE_NUM", ): 48,
+    ("CUBE_VECTOR_SPLIT",): True,
+    ("UB_SIZE", ): 196608,
+    ("L0A_SIZE", ): 65536,
+    ("L0B_SIZE", ): 65536,
+    ("L1_SIZE", ): 524288,
+    ("L0C_SIZE", ): 131072,
+    ("SOC_VERSION",): "Ascend910A"
+}
+
+support_intrinsic_cube_vector_split = {
+    ("Intrinsic_fix_pipe_l0c2ub",) : False,
+    ("Intrinsic_fix_pipe_l0c2out",) : True,
+    ("Intrinsic_fix_pipe_unit_list",): True,
+    ("Intrinsic_fix_pipe_unit_list", "post_eltwise"): True,
+    ("Intrinsic_data_move_l0c2ub",) : False,
+    ("Intrinsic_data_move_l12bt",) : True,
+    ("Intrinsic_data_move_ub2l1",) : False,
+    ("Intrinsic_mmad", "f162f32",) : True,
+    ("Intrinsic_vadd", "float16",) : True,
+    ("Intrinsic_vadd", "float32",) : True,
+    ("Intrinsic_vadd",) : True,
+    ("CUBE_VECTOR_SPLIT",) : True,
+}
+
+
+def side_effects(*args):
+    return vals[args]
+
+def check_intrinsic_cube_vector_split(*args, **kwargs):
+    return support_intrinsic_cube_vector_split[args]
 
 def _gen_kernel_name(dedy_shape, w_shape, dx_shape, strides, data_flow):
     dedy_shape_info = "_".join([str(i) for i in dedy_shape])
@@ -442,12 +476,146 @@ def _gen_conv2d_bp_input_check_support_case():
     ut_case.add_cust_test_func("Ascend910A", test_func=test_op_check_supported_dynamic)
     ut_case.add_cust_test_func("Ascend910A", test_func=test_op_check_supported_error)
 
+
+def test_conv2d_bp_input_addn_relugradv2_fusion_milan(test_arg):
+    with patch("tbe.common.platform.intrinsic_check_support", MagicMock(side_effect=check_intrinsic_cube_vector_split)):
+        with patch("tbe.common.platform.platform_info.get_soc_spec", MagicMock(side_effect=side_effects)):
+            with cce():
+                out_backprop = tvm.placeholder((28, 4, 32, 95, 16),
+                                               name="out_backprop",
+                                               attrs={
+                                                   "format": "NC1HWC0",
+                                                   "ori_format": "NHWC",
+                                                   "ori_shape": (28, 32, 95, 62),
+                                               },
+                                               dtype="float16")
+                filters = tvm.placeholder((4, 4, 16, 16),
+                                          name="filters",
+                                          attrs={
+                                              "format": "Fractal_Z",
+                                              "ori_format": "NHWC",
+                                              "ori_shape": (62, 2, 2, 2)
+                                          },
+                                          dtype="float16")
+                y = {"shape": (28, 1, 96, 96, 16), "ori_shape": (28, 96, 96, 2), "format": "NC1HWC0", "ori_format": "NHWC", "dtype": "float16"}
+                input_size_tuple = (28, 96, 96, 2)
+                filter_size_tuple = (2, 2, 2, 62)
+                strides_tuple = (1, 3, 1, 1)
+                # dilation_tuple = (1, 1, 1, 1)
+                pads_tuple = (0, 0, 0, 0)
+                dx_out = conv2d_backprop_input_d_compute(filters, out_backprop, y, input_size_tuple, strides_tuple, pads_tuple)
+                addn_1 = tvm.placeholder(dx_out.shape,
+                                         name="addn_1",
+                                         attrs={
+                                             "format": "NC1HWC0",
+                                             "ori_format":"NHWC",
+                                             "ori_shape": (28, 96, 96, 2)
+                                         },
+                                         dtype="float16")
+                addn_2 = tvm.placeholder(dx_out.shape,
+                                         name="addn_2",
+                                         attrs={
+                                             "format": "NC1HWC0",
+                                             "ori_shape": (28, 96, 96, 2)
+                                         },
+                                         dtype="float16")
+                addn_output = {"shape": dx_out.shape, "ori_shape": (28, 96, 96, 2), "format": "NHWC", "ori_format": "NHWC", "dtype": "float16"}
+                addn_result = add_n_compute_for_fusion([dx_out, addn_1, addn_2], addn_output, 3)
+                relu_mask = tvm.placeholder((28, 1, 9216, 16),
+                                            name="relu_mask",
+                                            attrs={
+                                                'format': "NC1HWC0",
+                                                "ori_shape": (28, 1, 9216, 16)
+                                            },
+                                            dtype="bool")
+                backprops = {"shape": (28, 1, 96, 96, 16), "ori_shape": (28, 96, 96, 2), "format": "NC1HWC0", "ori_format": "NHWC", "dtype": "float16"}
+                out = relu_grad_v2_compute(addn_result, relu_mask, backprops)
+                tensor_list = [out_backprop, filters, dx_out, addn_1, addn_2, addn_result, relu_mask, out]
+                sch = auto_schedule(out)
+
+
+def test_conv2d_bp_input_add_milan(test_arg):
+    with patch("tbe.common.platform.intrinsic_check_support", MagicMock(side_effect=check_intrinsic_cube_vector_split)):
+        with patch("tbe.common.platform.platform_info.get_soc_spec", MagicMock(side_effect=side_effects)):
+            with cce():
+                out_backprop = tvm.placeholder((28, 4, 32, 95, 16),
+                                               name="out_backprop",
+                                               attrs={
+                                                   "format": "NC1HWC0",
+                                                   "ori_format": "NHWC",
+                                                   "ori_shape": (28, 32, 95, 62),
+                                               },
+                                               dtype="float16")
+                filters = tvm.placeholder((4, 4, 16, 16),
+                                          name="filters",
+                                          attrs={
+                                              "format": "Fractal_Z",
+                                              "ori_format": "NHWC",
+                                              "ori_shape": (62, 2, 2, 2)
+                                          },
+                                          dtype="float16")
+                y = {"shape": (28, 1, 96, 96, 16), "ori_shape": (28, 96, 96, 2), "format": "NC1HWC0", "ori_format": "NHWC", "dtype": "float16"}
+                input_size_tuple = (28, 96, 96, 2)
+                filter_size_tuple = (2, 2, 2, 62)
+                strides_tuple = (1, 3, 1, 1)
+                # dilation_tuple = (1, 1, 1, 1)
+                pads_tuple = (0, 0, 0, 0)
+                dx_out = conv2d_backprop_input_d_compute(filters, out_backprop, y, input_size_tuple, strides_tuple, pads_tuple)
+                addn_1 = tvm.placeholder(dx_out.shape,
+                                         name="addn_1",
+                                         attrs={
+                                             "format": "NC1HWC0",
+                                             "ori_format":"NHWC",
+                                             "ori_shape": (28, 96, 96, 2)
+                                         },
+                                         dtype="float16")
+                addn_output = {"shape": dx_out.shape, "ori_shape": (28, 96, 96, 2), "format": "NHWC", "ori_format": "NHWC", "dtype": "float16"}
+                out = add_n_compute_for_fusion([dx_out, addn_1], addn_output, 3)
+                tensor_list = [out_backprop, filters, dx_out, addn_1, out]
+                sch = auto_schedule(out)
+
+
+def test_conv2d_bp_input_fixpipe_milan(test_arg):
+    with patch("tbe.common.platform.platform_info.intrinsic_check_support", MagicMock(side_effect=check_intrinsic_cube_vector_split)):
+        with patch("tbe.common.platform.intrinsic_check_support", MagicMock(side_effect=check_intrinsic_cube_vector_split)):
+            with patch("tbe.common.platform.platform_info.get_soc_spec", MagicMock(side_effect=side_effects)):
+                with cce():
+                    out_backprop = tvm.placeholder((28, 4, 32, 95, 16),
+                                                   name="out_backprop",
+                                                   attrs={
+                                                       "format": "NC1HWC0",
+                                                       "ori_format": "NHWC",
+                                                       "ori_shape": (28, 32, 95, 62),
+                                                   },
+                                                   dtype="float16")
+                    filters = tvm.placeholder((4, 4, 16, 16),
+                                              name="filters",
+                                              attrs={
+                                                  "format": "Fractal_Z",
+                                                  "ori_format": "NHWC",
+                                                  "ori_shape": (62, 2, 2, 2)
+                                              },
+                                              dtype="float16")
+                    y = {"shape": (28, 1, 96, 96, 16), "ori_shape": (28, 96, 96, 2), "format": "NC1HWC0", "ori_format": "NHWC", "dtype": "float16"}
+                    input_size_tuple = (28, 96, 96, 2)
+                    filter_size_tuple = (2, 2, 2, 62)
+                    strides_tuple = (1, 3, 1, 1)
+                    # dilation_tuple = (1, 1, 1, 1)
+                    pads_tuple = (0, 0, 0, 0)
+                    dx_out = conv2d_backprop_input_d_compute(filters, out_backprop, y, input_size_tuple, strides_tuple, pads_tuple)
+                    out = fixpipe_compute(dx_out, None, None, None, None, None, None, None, None, None, y, [], [], "")
+                    tensor_list = [out_backprop, filters, dx_out, out]
+                    sch = auto_schedule(out)
+
 # _gen_conv2d_bp_input_op_fusion_case()
 # _gen_conv2d_bp_input_op_slice_case()
 # _gen_conv2d_bp_input_check_support_case()
 ut_case.add_cust_test_func(test_func=test_conv2d_bp_input_addn_relugradv2_fusion)
 ut_case.add_cust_test_func(test_func=test_conv2d_bp_input_addn_relugradv2_fusion_opti_schedule)
 ut_case.add_cust_test_func(test_func=test_conv2d_bp_input_addn_relugradv2_fusion_empty_dilate_ub)
+ut_case.add_cust_test_func(test_func=test_conv2d_bp_input_addn_relugradv2_fusion_milan)
+ut_case.add_cust_test_func(test_func=test_conv2d_bp_input_add_milan)
+ut_case.add_cust_test_func(test_func=test_conv2d_bp_input_fixpipe_milan)
 
 if __name__ == "__main__":
     ut_case.run(["Ascend910A", "Ascend710", "Ascend310"])

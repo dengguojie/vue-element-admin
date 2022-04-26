@@ -36,6 +36,13 @@ from tbe.tvm.schedule import InferBound
 from tbe.tvm.schedule import ScheduleOps
 from tbe.dsl.boost_schedule_kit import Compare
 from tbe.dsl.boost_schedule_kit import ScheduleAgent
+from tbe.dsl.static_schedule.conv2d_backprop_util import fetch_elewise_fusion_ub_info
+from tbe.dsl.static_schedule.conv2d_backprop_util import fetch_fixpipe_tensor
+from tbe.dsl.static_schedule.conv2d_backprop_util import fetch_requant_fusion_ub_info
+from tbe.dsl.static_schedule.conv2d_backprop_util import get_all_tensors
+from tbe.dsl.static_schedule.conv2d_backprop_util import get_c_add_bias_tensor
+from tbe.dsl.static_schedule.conv2d_backprop_util import set_intrinsic_support
+from tbe.dsl.static_schedule.conv2d_backprop_util import check_need_5hd_trans_nhwc
 
 
 # default false
@@ -61,37 +68,7 @@ FIXPIPE_SCOPE_MAP = {
     "quant_scale_1": "local.FB3"
 }
 CONTEXT_OP_TYPE_LIST = ["Deconvolution", "Conv2DBackpropInputD", "Conv2DTransposeD"]
-
-
-def _get_all_tensors(res):
-    """
-    get all tensor
-    :param res: tensor
-    :return: list
-    """
-
-    all_tensor = {}
-    leaf_tensor = {}
-
-    def get(tensor):
-        """
-        find all tensor
-        :param tensor: c_gm
-        :return: all tensor
-        """
-        tensor_list = tensor.op.input_tensors
-        for one_tensor in tensor_list:
-            if not one_tensor.op.input_tensors:
-                leaf_tensor[one_tensor.op.name] = tensor
-            # check which tensor has not been checked
-            if one_tensor.op.name not in all_tensor:
-                all_tensor[one_tensor.op.name] = one_tensor
-                if one_tensor.op.tag == "conv2d_backprop_input":
-                    continue
-                get(one_tensor)
-
-    get(res)
-    return all_tensor, leaf_tensor
+FUSION_SUPPORT_LIST = ["dx + requant", "dx + (dequant) + elemwise + (quant)"]
 
 
 def _get_precision_mode():
@@ -221,11 +198,6 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):
     -------
     True for sucess, False for no schedule
     """
-    c_ddr = tensor
-    sch = sch_list[0]
-    tiling = None
-    out_of_order = False
-    double_out_tensor = []
 
     def _set_output_mem():
         if out_mem == "fuse_flag":
@@ -255,24 +227,10 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):
 
         return output_memory_type
 
-    fusion_para = DeConvPattern.fusion_para_map
-    l1_fusion_type = int(fusion_para.get("l1_fusion_type"))
-    input_mem = [fusion_para.get("input_memory_type")]
-    out_mem = fusion_para.get("output_memory_type")
-    out_mem = _set_output_mem()
-    fmap_l1_addr_flag = fusion_para.get("fmap_l1_addr_flag")
-    fmap_l1_valid_size = fusion_para.get("fmap_l1_valid_size")
-
-    def _fetch_tensor_info(dyn_util):
-        def _set_intrinsic_support(tensor_attr):
-            tensor_attr["support_l0c_to_out"] = tbe_platform.intrinsic_check_support("Intrinsic_fix_pipe_l0c2out")
-            tensor_attr["support_l1_to_bt"] = tbe_platform.intrinsic_check_support("Intrinsic_data_move_l12bt")
-            tensor_attr["support_ub_to_l1"] = tbe_platform.intrinsic_check_support("Intrinsic_data_move_ub2l1")
-            tensor_attr["support_fixpipe"] = (tbe_platform.intrinsic_check_support("Intrinsic_fix_pipe_l0c2out") or
-                                                tbe_platform.intrinsic_check_support("Intrinsic_fix_pipe_l0c2ub"))
+    def _fetch_tensor_info(sch, dyn_util):
 
         def _get_vadd_tensors_three_inputs(vadd_res_tensor):
-            all_tensors, _ = _get_all_tensors(vadd_res_tensor)
+            all_tensors, _ = get_all_tensors(vadd_res_tensor)
             c_ub_cut, vadd_tensor, vadd_tensor_1, inter_add_compute_tensor = None, None, None, None
             if len(all_tensors) == 2:
                 c_ub_cut, vadd_tensor = _get_vadd_tensors(vadd_res_tensor)
@@ -318,42 +276,21 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):
                         tensor_attr["deq_vector"] = False
                 elif key == "dequant_remove_pad" and deconv_res.op.tag != value.op.tag:
                     sch[value].compute_inline()
+                elif key == "fixpipe_reform":
+                    tensor_map["c_ub"] = value
+                    tensor_attr["fixpipe_quant_fuse"] = True
 
-        def _fetch_elewise_fusion():
+        def _fetch_fixpipe_quant_info():
             ub_list = []
-            input_tensor_list = []
-            c_ub_res = sch.cache_write(deconv_res, tbe_platform_info.scope_ubuf)
             for key, value in all_tensor.items():
-                if value.op.tag == "conv2d_backprop_input":
-                    c_ub_cut = value
-                elif value.op.input_tensors:
-                    ub_list.append(value)
-                else:
-                    if leaf_tensor.get(key).op.tag == deconv_res.op.tag:
-                        input_tensor_list.append([value, c_ub_res])
+                if key == "input_ub":
+                    if value.op.attrs["c_out"].value % 2:
+                        ub_list.append(value)
                     else:
-                        input_tensor_list.append([value, leaf_tensor.get(key)])
-            ub_list.append(c_ub_res)
-            tensor_attr["elewise_fuse"] = True
+                        sch[value].compute_inline()
+                elif value.op.input_tensors and key in ("cast_i8_ub", "offset_ub", "reform_by_vmuls"):
+                    ub_list.append(value)
             tensor_map["ub_list"] = ub_list
-            tensor_map["input_tensor_list"] = input_tensor_list
-            return c_ub_cut
-
-        def _fetch_fixpipe_tensor():
-            fixpipe_tensor = None
-            deconv_res = None
-            for tensor in all_tensor.values():
-                if tensor.op.tag == "fixpipe":
-                    fixpipe_tensor = tensor
-                elif tensor.name == "c_ddr":
-                    deconv_res = tensor
-            fixpipe_inputs = []
-            if fixpipe_tensor is not None:
-                for fixpipe_input_tensor in fixpipe_tensor.op.input_tensors:
-                    if len(fixpipe_input_tensor.op.input_tensors) == 0:
-                        fixpipe_inputs.append(fixpipe_input_tensor)
-                sch[fixpipe_tensor].compute_inline()
-            return deconv_res, fixpipe_tensor, fixpipe_inputs
 
         def _fetch_quant_info():
             ub_list = []
@@ -654,7 +591,7 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):
             sch[a_col].set_scope(tbe_platform_info.scope_ca)
             sch[c_col].set_scope(tbe_platform_info.scope_cc)
             if not tensor_attr.get("support_l0c_to_out"):
-                sch[c_ub].set_scope(tbe_platform_info.scope_ubuf)
+                sch[tensor_map.get("c_ub")].set_scope(tbe_platform_info.scope_ubuf)
 
             return tensor_map
 
@@ -688,8 +625,8 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):
                 sch[bias_l1].emit_insn(bias_l1.op.axis[0], "dma_copy", {'mem_align': 1})
 
         def _bias_tensor():
-            if c_ub is not None and c_ub.op.input_tensors[0].name == "c_add_bias":
-                c_add_bias = c_ub.op.input_tensors[0]
+            c_add_bias = get_c_add_bias_tensor(tensor_map)
+            if c_add_bias is not None:
                 bias_l0c = c_add_bias.op.input_tensors[0]
                 c_col = c_add_bias.op.input_tensors[1]
                 bias_ub_brc = bias_l0c.op.input_tensors[0]
@@ -709,7 +646,9 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):
                         c_col_temp = c_ddr.op.input_tensors[0]
                         c_col = c_col_temp.op.input_tensors[0]
                     elif fixpipe_tensor is not None:
-                        c_col = tensor_dx_gm.op.input_tensors[0]
+                        c_col = tensor_map.get("tensor_dx_gm").op.input_tensors[0]
+                    elif c_ub is not None:
+                        c_col = c_ub.op.input_tensors[0]
                     else:
                         c_col = c_ddr.op.input_tensors[0]
                 else:
@@ -757,8 +696,8 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):
                                                           [inter_add_compute_tensor])
                         fusion_param += 1
                         tensor_map["vadd_tensor_1_ub"] = vadd_tensor_1_ub
-                sch[c_ub_cut].set_scope(tbe_platform_info.scope_ubuf)
-                mask_ub = sch.cache_read(mask, tbe_platform_info.scope_ubuf, [deconv_res])
+                sch[tensor_map.get("c_ub_cut")].set_scope(tbe_platform_info.scope_ubuf)
+                mask_ub = sch.cache_read(tensor_map.get("mask"), tbe_platform_info.scope_ubuf, [deconv_res])
                 c_ub_drelu = sch.cache_write(deconv_res, tbe_platform_info.scope_ubuf)
                 tensor_map["mask_ub"] = mask_ub
                 tensor_map["c_ub_drelu"] = c_ub_drelu
@@ -784,6 +723,11 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):
                 deq = tensor_map.get("deq")
                 tensor_map["deq"] = sch.cache_read(deq, tbe_platform_info.scope_ubuf, deq_list)
                 fusion_param += 0.125
+            elif tensor_attr.get("fixpipe_quant_fuse"):
+                sch[tensor_map.get("c_ub")].set_scope(tbe_platform_info.scope_ubuf)
+                for ub_tensor in tensor_map.get("ub_list"):
+                    sch[ub_tensor].set_scope(tbe_platform_info.scope_ubuf)
+                fusion_param = 4
             elif "elewise" in deconv_res.op.tag:
                 sch[tensor_map.get("c_ub")].set_scope(tbe_platform_info.scope_ubuf)
                 for ub_tensor in tensor_map.get("ub_list"):
@@ -803,120 +747,101 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):
                 sch[tensor_map.get("c_ub_cut")].compute_inline()
             return fusion_param
 
-        tensor_map = {}
-        tensor_attr = {}
-        all_tensor, leaf_tensor = _get_all_tensors(deconv_res)
-        _set_intrinsic_support(tensor_attr)
-
-        if deconv_res.op.tag == "requant_remove_pad":
-            tensor_attr["n0_32_flag"] = True
-            tensor_attr["quant_fuse"] = True
-            tensor_map["data_transfer"] = deconv_res.op.input_tensors[0]
-            tensor_map["c_ub"] = tensor_map.get("data_transfer").op.input_tensors[0]
-            tensor_map["deq"] = tensor_map.get("c_ub").op.input_tensors[1]
-            c_ub_ddr = tensor_map.get("c_ub").op.input_tensors[0]
-            c_ub = c_ub_ddr.op.input_tensors[0]
-            output_shape = list(i.value for i in c_ub_ddr.op.attrs["output_shape"])
-            group_dict = c_ub_ddr.op.attrs["group_dict"]
-            tensor_attr["group_dict"] = group_dict
-            tensor_attr["output_shape"] = output_shape
-            tensor_map["c_ub_cut"] = c_ub_ddr
-            sch[c_ub_ddr].compute_inline()
-            sch[c_ub].compute_inline()
-            sch[c_ub_ddr].buffer_align((1, 1), (1, 1), (1, 16), (1, 16))
-        elif "quant" in deconv_res.op.tag or "elewise" in deconv_res.op.tag:
-            _checkout_quant_fusion()
-            if tensor_attr.get("quant_fuse"):
-                _fetch_quant_info()
-                c_ub_ddr = tensor_map.get("c_ub").op.input_tensors[0]
-                c_ub = c_ub_ddr.op.input_tensors[0]
-                output_shape = list(i.value for i in c_ub_ddr.op.attrs["output_shape"])
-                group_dict = c_ub_ddr.op.attrs["group_dict"]
-                tensor_attr["group_dict"] = group_dict
-                tensor_attr["output_shape"] = output_shape
-                tensor_map["c_ub_cut"] = c_ub_ddr
-                sch[c_ub_ddr].compute_inline()
-                sch[c_ub].compute_inline()
-                sch[c_ub_ddr].buffer_align((1, 1), (1, 1), (1, 16), (1, 16))
-        if tensor_attr.get("quant_fuse"):
-            pass
-        elif (deconv_res.op.tag == "emit_insn_elewise_multiple_sel|bool" or
+        def _fetch_ub_info(sch, tensor_map, tensor_attr):
+            if deconv_res.op.tag == "requant_remove_pad":
+                sch, tensor_map, tensor_attr = fetch_requant_fusion_ub_info(sch, tensor_map, tensor_attr)
+            elif "quant" in deconv_res.op.tag or "elewise" in deconv_res.op.tag:
+                # dx -> elemwise -> (quant)
+                _checkout_quant_fusion()
+                if tensor_attr.get("quant_fuse"):
+                    # dx -> dequant -> elemwise -> (quant)
+                    _fetch_quant_info()
+                    c_ub_ddr = tensor_map.get("c_ub").op.input_tensors[0]
+                    c_ub = c_ub_ddr.op.input_tensors[0]
+                    tensor_map["c_ub_cut"] = c_ub_ddr
+                    sch[c_ub_ddr].compute_inline()
+                    sch[c_ub].compute_inline()
+                    sch[c_ub_ddr].buffer_align((1, 1), (1, 1), (1, 16), (1, 16))
+                elif tensor_attr.get("fixpipe_quant_fuse"):
+                    # dx -> fixpipe -> quant
+                    _fetch_fixpipe_quant_info()
+                    c_ub = tensor_map.get("c_ub")
+                    tensor_map["c_ub_cut"] = c_ub
+            if tensor_attr.get("quant_fuse") or tensor_attr.get("fixpipe_quant_fuse"):
+                pass
+            elif (deconv_res.op.tag == "emit_insn_elewise_multiple_sel|bool" or
               (dyn_util.dynamic_mode and deconv_res.op.tag == "elewise_multiple_sel")):
-            mask = deconv_res.op.input_tensors[0]
-            c_ub_cut = deconv_res.op.input_tensors[1]
-            if "elewise_binary_add" in deconv_res.op.input_tensors[1].op.tag:
-                vadd_res = deconv_res.op.input_tensors[1]
-                c_ub_cut = _get_vadd_tensors_three_inputs(vadd_res)
-                tensor_map["vadd_res"] = vadd_res
-            c_ub = c_ub_cut.op.input_tensors[0]
-            output_shape = cube_util.shape_to_list(c_ub_cut.op.attrs["output_shape"])
-            group_dict = c_ub_cut.op.attrs["group_dict"]
-            tensor_attr["group_dict"] = group_dict
-            tensor_map["c_ub_cut"] = c_ub_cut
-            tensor_map["c_ub"] = c_ub
-            tensor_attr["output_shape"] = output_shape
-        elif "elewise" in deconv_res.op.tag:
-            c_ub_cut = _fetch_elewise_fusion()
-            c_ub = c_ub_cut.op.input_tensors[0]
-            if c_ub.op.name == "bias_add_vector":
-                tensor_map["bias_add_vector"] = c_ub
-                c_ub = c_ub.op.input_tensors[0]
-            output_shape = cube_util.shape_to_list(c_ub_cut.op.attrs["output_shape"])
-            group_dict = c_ub_cut.op.attrs["group_dict"]
-            tensor_attr["group_dict"] = group_dict
-            tensor_map["c_ub_cut"] = c_ub_cut
-            tensor_map["c_ub"] = c_ub
-            tensor_attr["output_shape"] = output_shape
-        elif deconv_res.op.tag == "conv2d_backprop_input":
-            c_ub = deconv_res.op.input_tensors[0]
-            output_shape = cube_util.shape_to_list(deconv_res.op.attrs["output_shape"])
-            group_dict = deconv_res.op.attrs["group_dict"]
-            tensor_attr["group_dict"] = group_dict
-            if c_ub.op.name == "bias_add_vector":
-                tensor_map["bias_add_vector"] = c_ub
-                c_ub = c_ub.op.input_tensors[0]
-            tensor_map["c_ub"] = c_ub
-            tensor_attr["output_shape"] = output_shape
-        elif "5HD_trans_NHWC" in deconv_res.op.tag:
-            c_ub = None
-            tensor_map["c_ub"] = c_ub
-            tensor_dx_gm = deconv_res.op.input_tensors[0]
-            group_dict = tensor_dx_gm.op.attrs["group_dict"]
-            output_shape = cube_util.shape_to_list(tensor_dx_gm.op.attrs["output_shape"])
-            tensor_attr["group_dict"] = group_dict
-            tensor_attr["output_shape"] = output_shape
-            tensor_map["tensor_dx_gm"] = tensor_dx_gm
-            tensor_attr["5HD_TRANS_NHWC"] = True
-            sch[tensor_dx_gm].compute_inline()
-        elif "fixpipe_reform" in deconv_res.op.tag:
-            c_ub = None
-            tensor_map["c_ub"] = None
-            tensor_dx_gm, fixpipe_tensor, fixpipe_inputs = _fetch_fixpipe_tensor()
-            output_shape = cube_util.shape_to_list(tensor_dx_gm.op.attrs["output_shape"])
-            tensor_map["fixpipe_inputs"] = fixpipe_inputs
-            tensor_attr["group_dict"] = tensor_dx_gm.op.attrs["group_dict"]
-            tensor_attr["output_shape"] = output_shape
-            tensor_map["tensor_dx_gm"] = tensor_dx_gm
-            tensor_map["fixpipe_tensor"] = fixpipe_tensor
-            tensor_attr["5HD_TRANS_NHWC"] = (deconv_res.op.attrs["5HD_TRANS_NHWC"] == "True")
-            sch[tensor_dx_gm].compute_inline()
-        elif "5HD_TRANS_NCHW" in deconv_res.op.tag:
-            c_ub_transpose = deconv_res.op.input_tensors[0]
-            tensor_dx_gm = c_ub_transpose.op.input_tensors[0]
-            c_ub = tensor_dx_gm.op.input_tensors[0]
-            sch[c_ub_transpose].set_scope(tbe_platform_info.scope_ubuf)
-            sch[tensor_dx_gm].compute_inline()
-            tensor_map['c_ub'] = c_ub
-            tensor_map['c_ub_transpose'] = c_ub_transpose
-            tensor_map['tensor_dx_gm'] = tensor_dx_gm
-            tensor_attr["group_dict"] = tensor_dx_gm.op.attrs["group_dict"]
-            tensor_attr["output_shape"] = cube_util.shape_to_list(tensor_dx_gm.op.attrs["output_shape"])
-            tensor_attr["5HD_TRANS_NCHW"] = True
+                # dx -> (add/addn) -> relugrad
+                mask = deconv_res.op.input_tensors[0]
+                c_ub_cut = deconv_res.op.input_tensors[1]
+                if "elewise_binary_add" in deconv_res.op.input_tensors[1].op.tag:
+                    vadd_res = deconv_res.op.input_tensors[1]
+                    c_ub_cut = _get_vadd_tensors_three_inputs(vadd_res)
+                    tensor_map["vadd_res"] = vadd_res
+                if tensor_attr.get("support_l0c_to_out"):
+                    c_ub = c_ub_cut
+                else:
+                    c_ub = c_ub_cut.op.input_tensors[0]
+                tensor_map["c_ub_cut"] = c_ub_cut
+                tensor_map["c_ub"] = c_ub
+                tensor_map["mask"] = mask
+            elif "elewise" in deconv_res.op.tag:
+                # dx -> elewise
+                sch, tensor_map, tensor_attr = fetch_elewise_fusion_ub_info(sch, tensor_map, tensor_attr)
+            elif "5HD_TRANS_NCHW" in deconv_res.op.tag:
+                c_ub_transpose = deconv_res.op.input_tensors[0]
+                tensor_dx_gm = c_ub_transpose.op.input_tensors[0]
+                c_ub = tensor_dx_gm.op.input_tensors[0]
+                sch[c_ub_transpose].set_scope(tbe_platform_info.scope_ubuf)
+                sch[tensor_dx_gm].compute_inline()
+                tensor_map['c_ub'] = c_ub
+                tensor_map['c_ub_transpose'] = c_ub_transpose
+                tensor_map['tensor_dx_gm'] = tensor_dx_gm
+                tensor_attr["5HD_TRANS_NCHW"] = True
+            else:
+                _raise_dx_general_err(DX_SUPPORT_TAG_LOG_PREFIX + str(FUSION_SUPPORT_LIST))
+            return sch, tensor_map, tensor_attr
+
+        tensor_map = {}
+        tensor_map["deconv_res"] = deconv_res
+        tensor_attr = {}
+        tensor_attr = set_intrinsic_support(tensor_attr)
+        all_tensor, leaf_tensor = get_all_tensors(deconv_res)
+        if deconv_res.op.tag != "conv2d_backprop_input":
+            # op has ub/fixpipe fusion
+            sch, tensor_map = fetch_fixpipe_tensor(sch, all_tensor, tensor_map)
+            if deconv_res.op.tag == "fixpipe_reform":
+                # fusion_type: dx -> fixpipe
+                c_ub = None
+                tensor_attr["5HD_TRANS_NHWC"] = check_need_5hd_trans_nhwc(deconv_res)
+            elif "5HD_trans_NHWC" in deconv_res.op.tag:
+                # fusion_type: dx -> transdata(NHWC)
+                c_ub = None
+                tensor_attr["5HD_TRANS_NHWC"] = True
+            else:
+                # fusion_type: dx -> (fixpipe) -> ub
+                sch, tensor_map, tensor_attr = _fetch_ub_info(sch, tensor_map, tensor_attr)
+                c_ub = tensor_map["c_ub"]
+
+            tensor_attr["group_dict"] = tensor_map.get("tensor_dx_gm").op.attrs["group_dict"]
+            tensor_attr["output_shape"] = cube_util.shape_to_list(
+                tensor_map.get("tensor_dx_gm").op.attrs["output_shape"])
         else:
-            _raise_dx_general_err(
-                DX_SUPPORT_TAG_LOG_PREFIX
-                + " dx or dx+drelu or dx+elewise or dx+vadd+drelu"
-            )
+            # dx singal op
+            if not tensor_attr.get("support_l0c_to_out"):
+                # l0c -> ub -> ddr
+                c_ub = deconv_res.op.input_tensors[0]
+                if c_ub.op.name == "bias_add_vector":
+                    tensor_map["bias_add_vector"] = c_ub
+                    c_ub = c_ub.op.input_tensors[0]
+            else:
+                # l0c -> ddr
+                c_ub = None
+                tensor_map["fixpipe_output"] = c_ddr
+            tensor_map["c_ub"] = c_ub
+            tensor_map["tensor_dx_gm"] = deconv_res
+            tensor_attr["group_dict"] = deconv_res.op.attrs["group_dict"]
+            tensor_attr["output_shape"] = cube_util.shape_to_list(deconv_res.op.attrs["output_shape"])
 
         c_col = _bias_tensor()
         tensor_map = _fill_tensor_map(c_col, dyn_util, tensor_map)
@@ -945,7 +870,7 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):
         elif deconv_res.op.tag == "requant_remove_pad":
             fusion_type = 7
         # deconv+dequant is 5 and quant is 6
-        elif tensor_attr.get("quant_fuse"):
+        elif tensor_attr.get("quant_fuse") or tensor_attr.get("fixpipe_quant_fuse"):
             if deconv_res.op.tag == "quant":
                 fusion_type = 6
             else:
@@ -1070,12 +995,25 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):
             }
         return tiling
 
+    c_ddr = tensor
+    sch = sch_list[0]
+    tiling = None
+    out_of_order = False
+    double_out_tensor = []
+    fusion_para = DeConvPattern.fusion_para_map
+    l1_fusion_type = int(fusion_para.get("l1_fusion_type"))
+    input_mem = [fusion_para.get("input_memory_type")]
+    out_mem = fusion_para.get("output_memory_type")
+    out_mem = _set_output_mem()
+    fmap_l1_addr_flag = fusion_para.get("fmap_l1_addr_flag")
+    fmap_l1_valid_size = fusion_para.get("fmap_l1_valid_size")
+
     deconv_res = _get_deconv_out()
     dyn_util = DxDynamicUtil(tiling_case, var_range)
     dyn_util.set_dynamic_scene()
     dyn_util.get_buffer_status()
 
-    tensor_map, tensor_attr = _fetch_tensor_info(dyn_util)
+    tensor_map, tensor_attr = _fetch_tensor_info(sch, dyn_util)
     vadd_res = tensor_map.get("vadd_res")
     c_ub_cut = tensor_map.get("c_ub_cut")
     c_ub = tensor_map.get("c_ub")
@@ -1251,16 +1189,16 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):
     bias_flag = _set_bias_flag(c_add_bias, bias_add_vector)
 
     def _get_kernel_name():
-        if (
+        if (tensor_attr.get("5HD_TRANS_NHWC") or tensor_map.get("fixpipe_tensor") is not None or
+            tensor_attr.get("5HD_TRANS_NCHW")):
+            tensor_dx_gm = tensor_map.get("tensor_dx_gm")
+            _kernel_name = tensor_dx_gm.op.attrs["kernel_name"]
+        elif (
             fusion_param > 0
             or tensor_attr.get("quant_fuse")
             or tensor_attr.get("elewise_fuse")
         ):
             _kernel_name = c_ub_cut.op.attrs["kernel_name"]
-        elif (tensor_attr.get("5HD_TRANS_NHWC") or tensor_map.get("fixpipe_tensor") is not None or
-              tensor_attr.get("5HD_TRANS_NCHW")):
-            tensor_dx_gm = tensor_map.get("tensor_dx_gm")
-            _kernel_name = tensor_dx_gm.op.attrs["kernel_name"]
         else:
             _kernel_name = deconv_res.op.attrs["kernel_name"]
         return _kernel_name
@@ -1598,7 +1536,7 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):
             sch[fixpipe_input_l1].emit_insn(fixpipe_input_l1.op.axis[0], "dma_copy")
 
     def _cub_process():
-        if tensor_attr.get("support_l0c_to_out"):
+        if tensor_map.get("c_ub") is None:
             return None
 
         def _attach_cub():
@@ -1620,9 +1558,12 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):
                 _raise_dx_general_err("c_ub attach error.")
             return status
 
-        def _handle_dx_drelu_fusion_cub_process():
+        def _handle_dx_drelu_fusion_cub_process(c_ub):
             if "elewise_binary_add" in deconv_res.op.input_tensors[1].op.tag:
-                sch_agent[c_ub].reused_by(c_ub_cut, vadd_res, c_ub_drelu)
+                if tensor_attr.get("support_l0c_to_out"):
+                    sch_agent[c_ub].reused_by(vadd_res, c_ub_drelu)
+                else:
+                    sch_agent[c_ub].reused_by(c_ub_cut, vadd_res, c_ub_drelu)
                 sch_agent.same_attach(vadd_res, c_ub)
                 sch_agent.same_attach(vadd_tensor_ub, c_ub)
                 sch_agent.same_attach(mask_ub, c_ub)
@@ -1630,29 +1571,37 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):
                     sch_agent.same_attach(vadd_tensor_1_ub, c_ub)
                     sch_agent.same_attach(inter_add_compute_tensor, c_ub)
             else:
-                sch_agent[c_ub].reused_by(c_ub_cut, c_ub_drelu)
+                if tensor_attr.get("support_l0c_to_out"):
+                    sch_agent[c_ub].reused_by(c_ub_drelu)
+                else:
+                    sch_agent[c_ub].reused_by(c_ub_cut, c_ub_drelu)
                 if not out_of_order:
                     sch_agent.same_attach(mask_ub, c_ub)
-            sch_agent.same_attach(c_ub_cut, c_ub)
+            if not tensor_attr.get("support_l0c_to_out"):
+                sch_agent.same_attach(c_ub_cut, c_ub)
             sch_agent.same_attach(c_ub_drelu, c_ub)
+
+        def _handle_dx_quant_fusion_cub_process(c_ub):
+            if tensor_attr.get("quant_fuse"):
+                sch_agent.same_attach(tensor_map.get("deq"), c_ub)
+                for input_tensor_mem in tensor_map.get("input_tensor"):
+                    sch_agent.same_attach(input_tensor_mem, c_ub)
+            for ub_tensor in tensor_map.get("ub_list"):
+                if "broadcast" in ub_tensor.op.tag:
+                    sch[ub_tensor].compute_inline()
+                else:
+                    sch_agent.same_attach(ub_tensor, c_ub)
+            for double_out_tensor_mem in double_out_tensor:
+                sch_agent.same_attach(double_out_tensor_mem, c_ub)
 
         def _fusion_cub_process():
             if (deconv_res.op.tag == "emit_insn_elewise_multiple_sel|bool" or
                 (dyn_util.dynamic_mode and deconv_res.op.tag == "elewise_multiple_sel")):
-                _handle_dx_drelu_fusion_cub_process()
+                _handle_dx_drelu_fusion_cub_process(c_ub)
             elif deconv_res.op.tag == "requant_remove_pad":
                 sch_agent.same_attach(tensor_map.get("deq"), c_ub)
-            elif tensor_attr.get("quant_fuse"):
-                sch_agent.same_attach(tensor_map.get("deq"), c_ub)
-                for ub_tensor in tensor_map.get("ub_list"):
-                    if "broadcast" in ub_tensor.op.tag:
-                        sch[ub_tensor].compute_inline()
-                    else:
-                        sch_agent.same_attach(ub_tensor, c_ub)
-                for input_tensor_mem in tensor_map.get("input_tensor"):
-                    sch_agent.same_attach(input_tensor_mem, c_ub)
-                for double_out_tensor_mem in double_out_tensor:
-                    sch_agent.same_attach(double_out_tensor_mem, c_ub)
+            elif tensor_attr.get("quant_fuse") or tensor_attr.get("fixpipe_quant_fuse"):
+                _handle_dx_quant_fusion_cub_process(c_ub)
             elif "elewise" in deconv_res.op.tag:
                 scope, unit = sch_agent[c_ddr].get_active_scope_and_unit()
                 _, _, _, ax_hw, _ = scope
@@ -1764,10 +1713,7 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):
 
     def _cl0_process(affine_cub):
         affine_l0c = _get_affine_l0c()
-
-        if tensor_attr.get("support_l0c_to_out"):
-            sch_agent.attach_at(c_col, c_ddr, affine_shape=affine_l0c)
-        else:
+        if tensor_map.get("c_ub") is not None:
             c_col_shape = cube_util.shape_to_list(c_col.shape)
 
             # c_col will attach on c_ub or c_ddr in dynamic shape by default
@@ -1793,6 +1739,8 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):
                                         affine_l0c, dyn_util.g_dim, dyn_util.gnm_dim))
             else:
                 _raise_dx_general_err("c_col attach error.")
+        else:
+            sch_agent.attach_at(c_col, c_ddr, affine_shape=affine_l0c)
         if (deconv_res.op.tag == "emit_insn_elewise_multiple_sel|bool" or
             (dyn_util.dynamic_mode and deconv_res.op.tag == "elewise_multiple_sel")) \
                 and "conv2d_backprop_input" in deconv_res.op.input_tensors[1].op.tag \
@@ -2284,7 +2232,8 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):
                 sch[c_ub_drelu].double_buffer()
                 if "elewise_binary_add" in deconv_res.op.input_tensors[1].op.tag:
                     sch[vadd_res].double_buffer()
-            elif "elewise" in deconv_res.op.tag and not tensor_attr.get("quant_fuse"):
+            elif "elewise" in deconv_res.op.tag and not (tensor_attr.get("quant_fuse") or
+                                                         tensor_attr.get("fixpipe_quant_fuse")):
                 for ub_tensor in tensor_map.get("ub_list"):
                     sch[ub_tensor].double_buffer()
                 for input_tensor_mem in tensor_map.get("input_tensor_list"):
@@ -2336,7 +2285,7 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):
                 sch[bias_ub_brc].preload()
 
         if tiling.get("manual_pingpong_buffer").get("CUB_pbuffer") == 2 and "a_avg" not in tensor_map:
-            if not tensor_attr.get("support_l0c_to_out"):
+            if tensor_map.get("c_ub") is not None:
                 sch[c_ub].double_buffer()
             if bias_add_vector is not None:
                 sch[bias_add_vector].double_buffer()
@@ -2363,19 +2312,20 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):
             sch[c_ub_reform].emit_insn(c_ub_reform.op.axis[2], "dma_copy")
 
         def _emit_quant_fusion_insn():
-            sch_agent[tensor_map.get("deq")].emit_insn(
-                tensor_map.get("deq").op.axis[0], "dma_copy"
-            )
-            deq_axis = deq_axis_mode.get(tensor_attr.get("deq_vector"))[0]
-            if cube_util.is_v200_version_new():
-                sch[tensor_map.get("c_ub")].emit_insn(
-                    tensor_map.get("c_ub").op.axis[deq_axis], "dma_copy"
+            if tensor_attr.get("quant_fuse"):
+                sch_agent[tensor_map.get("deq")].emit_insn(
+                    tensor_map.get("deq").op.axis[0], "dma_copy"
                 )
-            else:
-                deq_mode = deq_axis_mode.get(tensor_attr.get("deq_vector"))[1]
-                sch_agent[c_ub].pragma(
-                    sch_agent[c_ub].op.axis[deq_axis], "deq_scale", deq_mode
-                )
+                deq_axis = deq_axis_mode.get(tensor_attr.get("deq_vector"))[0]
+                if cube_util.is_v200_version_new():
+                    sch[tensor_map.get("c_ub")].emit_insn(
+                        tensor_map.get("c_ub").op.axis[deq_axis], "dma_copy"
+                    )
+                else:
+                    deq_mode = deq_axis_mode.get(tensor_attr.get("deq_vector"))[1]
+                    sch_agent[tensor_map.get("c_ub")].pragma(
+                        sch_agent[tensor_map.get("c_ub")].op.axis[deq_axis], "deq_scale", deq_mode
+                    )
             for ub_tensor in tensor_map.get("ub_list"):
                 if ub_tensor.op.name == "input_ub":
                     sch_agent[ub_tensor].emit_insn(
@@ -2403,16 +2353,16 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):
                     sch_agent[ub_tensor].emit_insn(
                         sch_agent[ub_tensor].op.axis[0], "vector_auto"
                     )
-            for input_tensor_mem in tensor_map.get("input_tensor"):
+            for input_tensor_mem in tensor_map.get("input_tensor", []):
                 sch_agent[input_tensor_mem].emit_insn(
                     sch_agent[input_tensor_mem].op.axis[0], "dma_copy"
                 )
 
         if deconv_res.op.tag == "requant_remove_pad":
             _emit_requant_fusion_insn()
-        elif tensor_attr.get("quant_fuse"):
+        elif tensor_attr.get("quant_fuse") or tensor_attr.get("fixpipe_quant_fuse"):
             _emit_quant_fusion_insn()
-        elif not tensor_attr.get("support_l0c_to_out"):
+        elif tensor_map.get("c_ub") is not None:
             sch_agent[c_ub].emit_insn(sch_agent[c_ub].op.axis[0], "dma_copy")
 
         if (deconv_res.op.tag == "emit_insn_elewise_multiple_sel|bool" or
@@ -2426,8 +2376,10 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):
                     sch[inter_add_compute_tensor].emit_insn(inter_add_compute_tensor.op.axis[0], "vector_add")
                 sch[vadd_res].emit_insn(vadd_res.op.axis[0], "vector_add")
             sch[c_ub_drelu].emit_insn(c_ub_drelu.op.axis[0], "vector_selects_bool")
-            sch[c_ub_cut].emit_insn(c_ub_cut.op.axis[0], "phony_insn")
-        elif "elewise" in deconv_res.op.tag and not tensor_attr.get("quant_fuse"):
+            if not tensor_attr.get("support_l0c_to_out"):
+                sch[c_ub_cut].emit_insn(c_ub_cut.op.axis[0], "phony_insn")
+        elif "elewise" in deconv_res.op.tag and not (tensor_attr.get("quant_fuse") or
+                                                     tensor_attr.get("fixpipe_quant_fuse")):
             for ub_tensor in tensor_map.get("ub_list"):
                 sch_agent[ub_tensor].emit_insn(
                     sch_agent[ub_tensor].op.axis[0], "vector_auto"
@@ -2638,25 +2590,35 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):
         else:
             sch_agent[b_col].emit_insn(sch_agent[b_col].op.axis[2], "dma_copy")
 
-    def _emit_single_output_insn():
+    def _emit_ub_to_output_insn(sch, output_tensor):
+        """
+        emit insn for ub to out
+        """
+        if tensor_attr.get("5HD_TRANS_NCHW"):
+            sch[output_tensor].emit_insn(sch_agent[output_tensor].nlast_scopes(2)[0], 'dma_copy',
+                                    {'no_overlap': "default"})
+        else:
+            sch[output_tensor].emit_insn(sch_agent[output_tensor].nlast_scopes(2)[0], 'dma_copy')
+
+    def _emit_l0c_to_out_insn(sch, output_tensor):
+        """
+        emit insn for fixpipe to out
+        """
         emit_str = get_fixpipe_emit_str()
         if tensor_attr.get("5HD_TRANS_NHWC"):
-            hw_dim, c_dim = sch_agent[c_ddr].nlast_scopes(2)
-            sch_agent[c_ddr].split(c_dim, 16)
-            sch[c_ddr].emit_insn(hw_dim, emit_str, {"layout_transform": "nz2nd"})
-        elif c_ddr.dtype == "float32" and b_col.dtype == "float32":
-            channel_axis = sch_agent[c_ddr].nlast_scopes(3)[0]
-            _, channel_axis_inner = sch[c_ddr].split(channel_axis, factor=2)
-            sch[c_ddr].emit_insn(channel_axis_inner, emit_str, {"layout_transform": "channel_split"})
-        elif tensor_attr.get("5HD_TRANS_NCHW"):
-            sch[c_ddr].emit_insn(sch_agent[c_ddr].nlast_scopes(2)[0], 'dma_copy',
-                                    {'no_overlap': "default"})
-        elif c_ddr.dtype == "int8" and tensor_attr.get("support_l0c_to_out"):
-            hw_dim, c_dim = sch_agent[c_ddr].nlast_scopes(2)
-            sch_agent[c_ddr].split(c_dim, 16)
-            sch[c_ddr].emit_insn(hw_dim, emit_str)
+            hw_dim, c_dim = sch_agent[output_tensor].nlast_scopes(2)
+            sch_agent[output_tensor].split(c_dim, 16)
+            sch[output_tensor].emit_insn(hw_dim, emit_str, {"layout_transform": "nz2nd"})
+        elif output_tensor.dtype == "float32" and b_col.dtype == "float32":
+            channel_axis = sch_agent[output_tensor].nlast_scopes(3)[0]
+            _, channel_axis_inner = sch[output_tensor].split(channel_axis, factor=2)
+            sch[output_tensor].emit_insn(channel_axis_inner, emit_str, {"layout_transform": "channel_split"})
+        elif output_tensor.dtype == "int8":
+            hw_dim, c_dim = sch_agent[output_tensor].nlast_scopes(2)
+            sch_agent[output_tensor].split(c_dim, 16)
+            sch[output_tensor].emit_insn(hw_dim, emit_str)
         else:
-            sch[c_ddr].emit_insn(sch_agent[c_ddr].nlast_scopes(2)[0], emit_str)
+            sch[output_tensor].emit_insn(sch_agent[output_tensor].nlast_scopes(2)[0], emit_str)
 
     def _emit_insn():
         _b_tensor_emit_insn()
@@ -2713,12 +2675,21 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):
                 'handle', 'tvm_tuple', (0, 0, 0), tvm.expr.Call.PureIntrinsic, None, 0)
         sch_agent[c_col].emit_insn(scope_insn, "mad", mad_dict)
 
-        if not double_out_tensor:
-            _emit_single_output_insn()
-        else:
-            sch[c_ddr].emit_insn(sch_agent[c_ddr].nlast_scopes(2)[0], "phony_insn")
-            sch[double_out_tensor[0]].emit_insn(sch_agent[double_out_tensor[0]].nlast_scopes(2)[0], "dma_copy")
-            sch[double_out_tensor[1]].emit_insn(sch_agent[double_out_tensor[1]].nlast_scopes(2)[0], "dma_copy")
+        if tensor_attr.get("support_l0c_to_out"):
+            if tensor_map.get("fixpipe_output") is not None:
+                # dx->fixpipe
+                _emit_l0c_to_out_insn(sch, tensor_map.get("fixpipe_output"))
+            else:
+                # dx singal op
+                _emit_l0c_to_out_insn(sch, c_ddr)
+
+        if tensor_map.get("c_ub") is not None:
+            if not double_out_tensor:
+                _emit_ub_to_output_insn(sch, c_ddr)
+            else:
+                sch[c_ddr].emit_insn(sch_agent[c_ddr].nlast_scopes(2)[0], "phony_insn")
+                sch[double_out_tensor[0]].emit_insn(sch_agent[double_out_tensor[0]].nlast_scopes(2)[0], "dma_copy")
+                sch[double_out_tensor[1]].emit_insn(sch_agent[double_out_tensor[1]].nlast_scopes(2)[0], "dma_copy")
 
         overload_flag = _check_overload_dy()
         _set_overload_flag(

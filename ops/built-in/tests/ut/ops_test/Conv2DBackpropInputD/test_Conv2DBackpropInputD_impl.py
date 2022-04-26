@@ -34,7 +34,7 @@ vals = {("CORE_NUM", ): 48,
     ("L0B_SIZE", ): 65536,
     ("L1_SIZE", ): 524288,
     ("L0C_SIZE", ): 131072,
-    ("SOC_VERSION",): "Ascend920A"
+    ("SOC_VERSION",): "Ascend910A"
 }
 
 support_intrinsic_cube_vector_split = {
@@ -230,7 +230,8 @@ def _test_nhwc_in_nhwc_out_case_1(test_arg):
                 y = {"ori_shape" : input_size, "dtype" : data_type, "ori_format" : "NHWC", "format" : "NC1HWC0"}
                 conv_res = conv2d_backprop_input_d_compute(weight, fmap, y, input_size, strides, pads)
                 src_n, src_c1, src_hw, src_c0 =  tuple(i.value for i in conv_res.shape)
-                out = trans_data_compute(conv_res, {"shape" : (src_n, src_hw, src_c1*src_c0)}, src_format="NC1HWC0",
+                _, src_h, src_h, _ = input_size
+                out = trans_data_compute(conv_res, {"shape" : (src_n, src_h, src_h, src_c1*src_c0)}, src_format="NC1HWC0",
                                         dst_format="NHWC")
                 tensor_list = [weight_ori, fmap_ori, out]
                 sch = auto_schedule(out)
@@ -240,7 +241,6 @@ def _test_nhwc_in_nhwc_out_case_1(test_arg):
                     "name" : "conv2d_bp_input_ut_testcase_1",
                     "tensor_list" : tensor_list
                 }
-                cce_build_code(sch, config)
 
 def _test_nhwc_in_nhwc_out_case_2(test_arg):
     with patch("tbe.common.platform.intrinsic_check_support", MagicMock(side_effect=check_intrinsic_cube_vector_split)):
@@ -263,7 +263,8 @@ def _test_nhwc_in_nhwc_out_case_2(test_arg):
                 y = {"ori_shape" : input_size, "dtype" : data_type, "ori_format" : "NHWC", "format" : "NC1HWC0"}
                 conv_res = conv2d_backprop_input_d_compute(weight, fmap, y, input_size, strides_after_dialtion, pads_after_dilation)
                 src_n, src_c1, src_hw, src_c0 =  tuple(i.value for i in conv_res.shape)
-                out = trans_data_compute(conv_res, {"shape" : (src_n, src_hw, src_c1*src_c0)}, src_format="NC1HWC0",
+                _, src_h, src_h, _ = input_size
+                out = trans_data_compute(conv_res, {"shape" : (src_n, src_h, src_h, src_c1*src_c0)}, src_format="NC1HWC0",
                                         dst_format="NHWC")
                 tensor_list = [weight_ori, fmap_ori, out]
                 sch = auto_schedule(out)
@@ -273,7 +274,6 @@ def _test_nhwc_in_nhwc_out_case_2(test_arg):
                     "name" : "conv2d_bp_input_ut_testcase_2",
                     "tensor_list" : tensor_list
                 }
-                cce_build_code(sch, config)
 
 def _test_set2d_case_1(test_arg):
     with patch("tbe.common.platform.intrinsic_check_support", MagicMock(side_effect=check_intrinsic_cube_vector_split)):
@@ -298,7 +298,6 @@ def _test_set2d_case_1(test_arg):
                     "name" : "conv2d_bp_input_ut_set2d_case_1",
                     "tensor_list" : tensor_list
                 }
-                cce_build_code(sch, config)
 
 def _gen_conv2d_bp_input_920A_case():
     ut_case.add_cust_test_func(test_func=_test_nhwc_in_nhwc_out_case_1)
@@ -387,6 +386,28 @@ def _test_conv2d_bp_input_fp32_case_2(test_arg):
                     trans_out = {"shape": (2, 7, 7, 512), "ori_shape": (2, 7, 7, 512), "format": "NHWC", "ori_format": "NHWC", "dtype": "float32"}
                     out = trans_data_compute(dx, trans_out, "NC1HWC0", "NHWC")
                     sch = auto_schedule(out)
+
+def _test_conv2d_bp_input_fp32_case_3(test_arg):
+   with patch("tbe.common.platform.intrinsic_check_support", MagicMock(side_effect=check_intrinsic_cube_vector_split)):
+        with patch("impl.util.platform_adapter.tbe_platform.get_soc_spec", MagicMock(side_effect=side_effects)):
+            with patch("tbe.common.platform.platform_info.get_soc_spec", MagicMock(side_effect=side_effects)):
+                with cce():
+                    x = tvm.placeholder((16, 2, 2, 32), name="x", dtype="float32",
+                                        attrs={
+                                            "ori_shape": (16, 2, 2, 32), "format": "NHWC", 
+                                            "ori_format": "NHWC"
+                                        })
+                    x_5hd = trans_data_compute(x, None, "NHWC", "NC1HWC0")
+                    weight = tvm.placeholder((36, 2, 16, 8), name="filter", dtype="float32",
+                                                attrs={
+                                                    "ori_shape": (3, 3, 32, 32),
+                                                    "format": "FRACTAL_Z",
+                                                    "ori_format": "HWCN"
+                                                })
+                    y = {"shape": (16, 4, 4, 4, 8), "ori_shape": (16, 4, 4, 32), "format": "NC1HWC0", "ori_format": "NHWC", "dtype": "float32"}
+                    dx = conv2d_backprop_input_d_compute(weight, x_5hd, y, (16, 4, 4, 32), (1, 1), "VALID", (1, 1, 1, 1))
+                    sch = auto_schedule(dx)
+
 
 def _test_conv2d_bp_input_hf32_case_1(test_arg):
     with patch("tbe.common.platform.intrinsic_check_support", MagicMock(side_effect=check_intrinsic_cube_vector_split)):
@@ -491,13 +512,12 @@ ut_case.add_cust_test_func(test_func=_gen_conv2d_bp_input_cube_vector_split_case
 ut_case.add_cust_test_func(test_func=_test_conv2d_bp_input_bf16_case_1)
 ut_case.add_cust_test_func(test_func=_test_conv2d_bp_input_fp32_case_1)
 ut_case.add_cust_test_func(test_func=_test_conv2d_bp_input_fp32_case_2)
+ut_case.add_cust_test_func(test_func=_test_conv2d_bp_input_fp32_case_3)
 ut_case.add_cust_test_func(test_func=_test_conv2d_bp_input_hf32_case_1)
 ut_case.add_cust_test_func(test_func=_test_conv2d_bp_input_hf32_case_2)
 ut_case.add_cust_test_func(test_func=_test_conv2d_bp_input_allocate_at1)
 ut_case.add_cust_test_func(test_func=_test_conv2d_bp_input_allocate_at2)
 ut_case.add_cust_test_func(test_func=_test_conv2d_bp_input_preload_cl0c_al1)
-
-
 
 if __name__ == "__main__":
     ut_case.run("Ascend910A")

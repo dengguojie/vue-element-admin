@@ -264,7 +264,6 @@ def conv2dbp_input_fusion_compute(input_size,  # pylint: disable=W0622,C0103,R09
     # set fusion build config
     build_cfg = {"constant_realize_extent_in_infer_bound": False}
     tbe_register.set_fusion_buildcfg("Conv2DBackpropInput", build_cfg)
-
     res = _conv2d_backprop_input_compute(input_size, filters, out_backprop, y, strides,
                                           pads, dilations, groups, data_format, kernel_name)
     if isinstance(out_backprop, tvm.tensor.Tensor):

@@ -551,6 +551,7 @@ def test_fixpipe_eltwise(test_arg):
                 res = fixpie_op.fixpipe_compute()
                 sch = auto_schedule(res)
 
+
 def test_fixpipe_dequant(test_arg):
     with patch("tbe.common.platform.intrinsic_check_support", MagicMock(side_effect=check_intrinsic_mock_mix)):
         with patch("tbe.common.platform.platform_info.intrinsic_check_support", MagicMock(side_effect=check_intrinsic_mock_mix)):

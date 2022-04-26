@@ -373,6 +373,7 @@ cube:
       - auto_schedule/python/tbe/dsl/static_schedule/conv2d_backprop_filter_schedule.py
       - auto_schedule/python/tbe/dsl/static_schedule/conv2d_backprop_input_general_schedule.py
       - auto_schedule/python/tbe/dsl/static_schedule/conv2d_backprop_input_opti_schedule.py
+      - auto_schedule/python/tbe/dsl/static_schedule/conv2d_backprop_util.py
       - auto_schedule/python/tbe/dsl/static_schedule/conv2d_backprop_input_schedule.py
       - auto_schedule/python/tbe/dsl/static_schedule/conv3d_backprop_filter_schedule.py
       - auto_schedule/python/tbe/dsl/static_schedule/conv3d_backprop_input_general_schedule.py
