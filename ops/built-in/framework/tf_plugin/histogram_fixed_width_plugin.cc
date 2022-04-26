@@ -33,7 +33,7 @@ Status AutoMappingFnHistogramFixedWidth(const google::protobuf::Message* op_src,
     OP_LOGE("HistogramFixedWidth", "GetAttr dtype failed");
     return FAILED;
   }
-  op.SetAttr("dtype", static_cast<int>(dataType));
+  (void)op.SetAttr("dtype", static_cast<int>(dataType));
   OP_LOGI("HistogramFixedWidth", "op[HistogramFixedWidth] tensorflow plugin parser[AutoMapping] success.");
   return SUCCESS;
 }

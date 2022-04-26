@@ -25,7 +25,7 @@
 
 namespace domi {
 Status ParseCropAndResize(const Message* op_src, ge::Operator& op) {
-  AutoMappingFn(op_src, op);
+  (void)AutoMappingFn(op_src, op);
 
   ge::TensorDesc input_tensor = op.GetInputDesc("x");
   input_tensor.SetOriginFormat(ge::FORMAT_NHWC);
