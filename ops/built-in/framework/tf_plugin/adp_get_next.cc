@@ -19,12 +19,18 @@
  * \brief
  */
 #include "register/register.h"
+#include "tensor.h"
 
+#include "op_log.h"
 namespace domi {
 Status AutoMappingFnAdpGetNext(const Message* op_src, ge::Operator& op) {
   map<string, pair<string, string>> value;
   value["out"] = pair<string, string>("y", "output_types");
-  AutoMappingFnDynamic(op_src, op, value);
+  if (AutoMappingFnDynamic(op_src, op, value) != SUCCESS) {
+    OP_LOGE("AdpGetNext", "tensorflow plugin parser failed. auto mapping failed.");
+    return FAILED;
+  }
+
   return SUCCESS;
 }
 

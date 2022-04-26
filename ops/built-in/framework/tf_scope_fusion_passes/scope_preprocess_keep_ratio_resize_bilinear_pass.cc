@@ -188,8 +188,8 @@ void ScopeKeepRatioResizeBilinearPass::GenerateFusionResult(const std::vector<Sc
                    .BuildInnerNode();
     CHECK_INNER_NODE_CONDITION(ret == ge::GRAPH_SUCCESS, fusion_rlt);
     CHECK_INNER_NODE_CONDITION(resizeNode->MutableOperator() != nullptr, fusion_rlt);
-    resizeNode->SetInputFormat("images", "NHWC");
-    resizeNode->SetOutputFormat("y", "NHWC");
+    (void)resizeNode->SetInputFormat("images", "NHWC");
+    (void)resizeNode->SetOutputFormat("y", "NHWC");
     (void)resizeNode->MutableOperator()->SetAttr("align_corners", alignCorners);
     (void)resizeNode->MutableOperator()->SetAttr("half_pixel_centers", halfPixelCenters);
     (void)resizeNode->MutableOperator()->SetAttr("min_dimension", minDims);
@@ -315,7 +315,11 @@ void ScopeKeepRatioResizeBilinearPass::GenerateFusionResult(const std::vector<Sc
     int dyn_num = 2;
     (void)op_src.SetAttr("N", dyn_num);
     CHECK_INNER_NODE_CONDITION(concatNode->MutableOperator() != nullptr, fusion_rlt);
-    AutoMappingByOpFnDynamic(op_src, *(concatNode->MutableOperator()), dynamic_name_attr_value);
+    Status res = AutoMappingByOpFnDynamic(op_src, *(concatNode->MutableOperator()), dynamic_name_attr_value);
+    if (res != SUCCESS) {
+      OP_LOGE(kOpType.c_str(), "Scope apply AutoMappingByOpFnDynamic is failed.");
+      return;
+    }
     op_src.BreakConnect();
 
     // tile to (batch,3)
@@ -341,10 +345,10 @@ ScopeFusionPatterns ScopeKeepRatioResizeBilinearPass::GenWhileScopePatterns() {
     return ScopeFusionPatterns();
   }
 
-  while_cell->SetSubType(kScopeResultType);
-  while_cell->AddScopeFeature(ScopeFeature("", 1, "", "map"));
-  while_cell->AddScopeFeature(ScopeFeature("", 1, "", "while"));
-  while_cell->AddScopeFeature(ScopeFeature("", 1, "", "ResizeToRange"));
+  (void)while_cell->SetSubType(kScopeResultType);
+  (void)while_cell->AddScopeFeature(ScopeFeature("", 1, "", "map"));
+  (void)while_cell->AddScopeFeature(ScopeFeature("", 1, "", "while"));
+  (void)while_cell->AddScopeFeature(ScopeFeature("", 1, "", "ResizeToRange"));
 
   ScopeFusionPatterns while_scope_pattern = {{while_cell}};
   return while_scope_pattern;

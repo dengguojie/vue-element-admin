@@ -126,10 +126,10 @@ ScopeFusionPatterns ScopeBatchMultiClassNMSPass::GenWhileScopePatterns() {
     return ScopeFusionPatterns();
   }
 
-  while_cell->SetSubType(kScopeResultType);
-  while_cell->AddScopeFeature(ScopeFeature("", 1, "", "map"));
-  while_cell->AddScopeFeature(ScopeFeature("", 1, "", "while"));
-  while_cell->AddScopeFeature(ScopeFeature("", 1, "", "MultiClassNonMaxSuppression"));
+  (void)while_cell->SetSubType(kScopeResultType);
+  (void)while_cell->AddScopeFeature(ScopeFeature("", 1, "", "map"));
+  (void)while_cell->AddScopeFeature(ScopeFeature("", 1, "", "while"));
+  (void)while_cell->AddScopeFeature(ScopeFeature("", 1, "", "MultiClassNonMaxSuppression"));
 
   ScopeFusionPatterns while_scope_pattern = {{while_cell}};
   return while_scope_pattern;

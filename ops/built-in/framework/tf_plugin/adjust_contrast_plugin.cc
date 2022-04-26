@@ -25,7 +25,10 @@
 
 namespace domi {
 Status ParseAdjustContrast(const Message* op_src, ge::Operator& op) {
-  AutoMappingFn(op_src, op);
+  if (AutoMappingFn(op_src, op) != SUCCESS) {
+    OP_LOGE("AdjustContrast", "tensorflow plugin parser failed. auto mapping failed.");
+    return FAILED;
+  }
 
   ge::TensorDesc input_tensor = op.GetInputDesc("images");
   input_tensor.SetOriginFormat(ge::FORMAT_NHWC);

@@ -84,7 +84,7 @@ void ScopeToAbsoluteBBoxPass::GenerateFusionResult(const std::vector<Scope*>& sc
   for (auto& scope : scopes) {
     // The upper call guarantees that the scope is not empty.
     auto fusion_node_name = scope->Name();
-    fusion_node_name.erase(fusion_node_name.length() - 1, 1);
+    (void)fusion_node_name.erase(fusion_node_name.length() - 1, 1);
     fusion_rlt->SetName(fusion_node_name);
     OP_LOGI(kOpType.c_str(), "scope name:%s", fusion_node_name.c_str());
     break;
@@ -104,10 +104,10 @@ ScopeFusionPatterns ScopeToAbsoluteBBoxPass::GenWhileScopePatterns() {
     return ScopeFusionPatterns();
   }
 
-  while_cell->SetSubType("while");
-  while_cell->AddScopeFeature(ScopeFeature("", -1, "while"));
+  (void)while_cell->SetSubType("while");
+  (void)while_cell->AddScopeFeature(ScopeFeature("", -1, "while"));
   static const size_t mul_num = 4;
-  while_cell->AddNodeOpTypeFeature(NodeOpTypeFeature("Mul", mul_num));
+  (void)while_cell->AddNodeOpTypeFeature(NodeOpTypeFeature("Mul", mul_num));
 
   ScopeFusionPatterns while_scope_pattern = {{while_cell}};
   return while_scope_pattern;

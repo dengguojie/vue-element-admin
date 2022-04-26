@@ -68,10 +68,10 @@ void ScopeROIAlignPass::GenScopePatterns(ScopeFusionPatterns& patterns) {
     OP_LOGE(kOpType, "Alloc an object failed.");
     return;
   }
-  roiAlignPattern->SetSubType(kROIAlignType);
-  roiAlignPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("AvgPool", 1, 0));
-  roiAlignPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("Merge", -1, 0));
-  roiAlignPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("CropAndResize", 1, 0));
+  (void)roiAlignPattern->SetSubType(kROIAlignType);
+  (void)roiAlignPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("AvgPool", 1, 0));
+  (void)roiAlignPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("Merge", -1, 0));
+  (void)roiAlignPattern->AddNodeOpTypeFeature(NodeOpTypeFeature("CropAndResize", 1, 0));
   batch.push_back(roiAlignPattern);
   patterns.push_back(batch);
 }
