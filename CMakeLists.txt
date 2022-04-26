@@ -67,7 +67,8 @@ if(BUILD_OPEN_PROJECT)
 
   if(NOT ENABLE_TEST)
       add_compile_options(-Werror=sign-compare -Werror=address -Werror=unused-variable
-                          -Werror=narrowing -Werror=parentheses -Werror=unused-but-set-variable)
+                          -Werror=narrowing -Werror=parentheses -Werror=unused-but-set-variable
+                          -Werror=return-type)
   endif()
 
   # build external prjects
