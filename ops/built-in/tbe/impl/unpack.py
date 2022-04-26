@@ -732,7 +732,7 @@ def _unpack_schedule_two(input_place, output_shape, y, num, axis, dtype):
         else:
             is_use_dma_copy_new_attr = False
             # coexisting_quantities 1
-            split_axis, split_factor = _tiling_axis(new_shape, dtype)
+            split_axis, split_factor = _tiling_axis(output_shape, dtype)
         axis_outer, axis_inner = sch[virtual_node].split(virtual_node.op.axis[split_axis], factor=split_factor)
 
     for i in range(num):

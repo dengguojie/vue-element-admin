@@ -489,6 +489,38 @@ case_axis1_fp16_small = {
     "expect": "success"
 }
 
+case_axis1_fp16_small_2 = {
+    "params":
+        [
+            {
+                "shape": (1, 2, 15),
+                "format": "ND",
+                "dtype": "float16",
+                "ori_shape": (1, 2, 15),
+                "ori_format": "ND"
+            },
+            [
+                {
+                    "shape": (1, 15),
+                    "format": "ND",
+                    "dtype": "float16",
+                    "ori_shape": (1, 15),
+                    "ori_format": "ND"
+                },
+                {
+                    "shape": (1, 15),
+                    "format": "ND",
+                    "dtype": "float16",
+                    "ori_shape": (1, 15),
+                    "ori_format": "ND"
+                }
+            ],
+            2, 1
+        ],
+    "case_name": 'case_axis1_fp16_small_2',
+    "expect": "success"
+}
+
 def test_get_op_support_info(test_arg):
     from impl.unpack import get_op_support_info
     get_op_support_info({"shape": (20, 2, 16, 16), "dtype": "float32", "format": "NCHW", "ori_shape": (20, 2, 16, 16),"ori_format": "NCHW"},
@@ -507,6 +539,7 @@ ut_case.add_case(["Ascend910", "Ascend310"], case_shape_not_aligned_fp16_1)
 ut_case.add_case(["Ascend910", "Ascend310"], case_small_shape_not_aligned_fp16)
 ut_case.add_case(["Ascend910A", "Ascend710", "Ascend310"], case_axis1_int32)
 ut_case.add_case(["Ascend910", "Ascend310"], case_axis1_fp16_small)
+ut_case.add_case(["Ascend910", "Ascend310"], case_axis1_fp16_small_2)
 # ut_case.add_case(["Ascend910", "Ascend310"], case_last_dim_lt_one_block_fp16)
 # ut_case.add_case(["Ascend910", "Ascend310"], case_last_dim_lt_one_block_2_fp16)
 # ut_case.add_case(["Ascend910", "Ascend310"], case_direct_moved_by_ub_fp16)
