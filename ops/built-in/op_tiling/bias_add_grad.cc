@@ -49,28 +49,22 @@ struct format_dimnum_axis {
   size_t dim_num;
   std::vector<int32_t> reduce_axis;
 };
+static const format_dimnum_axis fda[] = {
+  // C1HWNiNoC0
+  {ge::FORMAT_FRACTAL_Z, SHAPE_DIM_NUM_FRACTAL_Z, {1, 2, 3, 4}},
+  // DC1HWNiNoC0
+  {ge::FORMAT_FRACTAL_Z_3D, SHAPE_DIM_NUM_FRACTAL_Z_3D, {0, 2, 3, 4, 5}},
+  // NC1HWC0
+  {ge::FORMAT_NC1HWC0, SHAPE_DIM_NUM_NC1HWC0, {0, 2, 3}},
+  // NDC1HWC0
+  {ge::FORMAT_NDC1HWC0, SHAPE_DIM_NUM_NDC1HWC0, {0, 1, 3, 4}}
+};
 
-bool CalcShapeAndAxes(const ge::Format format, const bool data_nchw, std::vector<int64_t>& shape,
-                      std::vector<int32_t>& axes) {
-  size_t dim_num = shape.size();
-  if (dim_num < SHAPE_DIM_NUM_MIN) {
-    OP_LOGW("BiasAddGrad", "dim_num < %ud", SHAPE_DIM_NUM_MIN);
-    return false;
-  }
-
-  static const format_dimnum_axis fda[] = {
-    // C1HWNiNoC0
-    {ge::FORMAT_FRACTAL_Z, SHAPE_DIM_NUM_FRACTAL_Z, {1, 2, 3, 4}},
-    // DC1HWNiNoC0
-    {ge::FORMAT_FRACTAL_Z_3D, SHAPE_DIM_NUM_FRACTAL_Z_3D, {0, 2, 3, 4, 5}},
-    // NC1HWC0
-    {ge::FORMAT_NC1HWC0, SHAPE_DIM_NUM_NC1HWC0, {0, 2, 3}},
-    // NDC1HWC0
-    {ge::FORMAT_NDC1HWC0, SHAPE_DIM_NUM_NDC1HWC0, {0, 1, 3, 4}}
-  };
-
+static bool CalcSpecialAxes(const ge::Format format, const size_t dim_num,
+                            std::vector<int32_t>& axes, bool& is_special) {
   for (uint32_t i = 0; i < sizeof(fda) / sizeof(fda[0]); i++) {
     if (format == fda[i].format) {
+      is_special = true;
       if (dim_num != fda[i].dim_num) {
         OP_LOGW("BiasAddGrad", "dim_num != %ud", fda[i].dim_num);
         return false;
@@ -79,42 +73,84 @@ bool CalcShapeAndAxes(const ge::Format format, const bool data_nchw, std::vector
       return true;
     }
   }
-  std::vector<int32_t> c_axes;
-  if (format == ge::FORMAT_FRACTAL_NZ) {
-    if (data_nchw) {
-      if (dim_num == SHAPE_DIM_NUM_FRACTAL_NZ1) {
-        axes = {1, 2};
-      } else if (dim_num == SHAPE_DIM_NUM_FRACTAL_NZ2) {
-        axes = {0, 1, 4};
-      } else {
-        c_axes.push_back(1);
-      }
-    } else {
-      if (dim_num < SHAPE_DIM_NUM_FRACTAL_NZ1) {
-        OP_LOGW("BiasAddGrad", "dim_num < %ud", SHAPE_DIM_NUM_FRACTAL_NZ1);
-        return false;
-      }
-      c_axes.push_back(dim_num + FORMAT_NZ_C0_INDEX);
-      c_axes.push_back(dim_num + FORMAT_NZ_C1_INDEX);
-    }
-  } else {
-    // ND
-    if (data_nchw) {
-      c_axes.push_back(1);
-    } else {
-      c_axes.push_back(dim_num + FORMAT_ND_C_INDEX);
+  return false;
+}
+
+static void CalcReduceAxes(const size_t dim_num, int32_t c, std::vector<int32_t>& axes) {
+  c = (c < 0) ? (c + dim_num) : c;
+  axes.clear();
+  for (int32_t i = 0; i < static_cast<int32_t>(dim_num); i++) {
+    if (i != c) {
+      axes.push_back(i);
     }
   }
-  if (c_axes.size() > 0) {
-    std::vector<int32_t>::iterator it;
-    for (int32_t i = 0; i < static_cast<int32_t>(dim_num); i++) {
-      it = find(c_axes.begin(), c_axes.end(), i);
-      if (it == c_axes.end()) {
-        axes.push_back(i);
-      }
+}
+
+static void CalcReduceAxes(const size_t dim_num, int32_t c0, int32_t c1, std::vector<int32_t>& axes) {
+  c0 = (c0 < 0) ? (c0 + dim_num) : c0;
+  c1 = (c1 < 0) ? (c1 + dim_num) : c1;
+  axes.clear();
+  for (int32_t i = 0; i < static_cast<int32_t>(dim_num); i++) {
+    if (i != c0 && i != c1) {
+      axes.push_back(i);
     }
+  }
+}
+
+static bool CalcNzAxes(const ge::Format data_format, const size_t dim_num, std::vector<int32_t>& axes) {
+  switch (data_format) {
+  case ge::FORMAT_NCHW:
+    if (dim_num == SHAPE_DIM_NUM_FRACTAL_NZ1) {
+      axes = {1, 2};
+    } else if (dim_num == SHAPE_DIM_NUM_FRACTAL_NZ2) {
+      axes = {0, 1, 4};
+    } else {
+      CalcReduceAxes(dim_num, 1, axes);
+    }
+    break;
+  case ge::FORMAT_NDHWC:
+  case ge::FORMAT_NHWC:
+    if (dim_num < SHAPE_DIM_NUM_FRACTAL_NZ1) {
+      OP_LOGW("BiasAddGrad", "dim_num < %ud", SHAPE_DIM_NUM_FRACTAL_NZ1);
+      return false;
+    }
+    CalcReduceAxes(dim_num, FORMAT_NZ_C0_INDEX, FORMAT_NZ_C1_INDEX, axes);
+    break;
+  case ge::FORMAT_NCDHW:
+    CalcReduceAxes(dim_num, 1, axes);
+    break;
   }
   return true;
+}
+
+static bool CalcNdAxes(const ge::Format data_format, const size_t dim_num, std::vector<int32_t>& axes) {
+  if (data_format == ge::FORMAT_NCHW || data_format == ge::FORMAT_NCDHW) {
+    CalcReduceAxes(dim_num, 1, axes);
+  } else {
+    CalcReduceAxes(dim_num, FORMAT_ND_C_INDEX, axes);
+  }
+  return true;
+}
+
+static bool CalcShapeAndAxes(const ge::Format format, const ge::Format data_format, const size_t dim_num,
+                             std::vector<int32_t>& axes) {
+  if (dim_num < SHAPE_DIM_NUM_MIN) {
+    OP_LOGW("BiasAddGrad", "dim_num < %ud", SHAPE_DIM_NUM_MIN);
+    return false;
+  }
+  bool is_special = false;
+  bool res = CalcSpecialAxes(format, dim_num, axes, is_special);
+  if (is_special) {
+    return res;
+  }
+
+  if (format == ge::FORMAT_FRACTAL_NZ) {
+    res = CalcNzAxes(data_format, dim_num, axes);
+  } else {
+    // ND
+    res = CalcNdAxes(data_format, dim_num, axes);
+  }
+  return res;
 }
 
 bool BiasAddGradTiling(const std::string& op_type, const ge::Operator& op_paras,
@@ -182,7 +218,7 @@ bool BiasAddGradTiling(const std::string& op_type, const ge::Operator& op_paras,
   OP_LOGI("BiasAddGrad", "is_unknown_rank : [%d]", parsed_info.is_unknown_rank);
   if (parsed_info.is_unknown_rank) {
     std::vector<int32_t> reduce_axis;
-    OP_TILING_CHECK(!CalcShapeAndAxes(format, (ori_format == ge::FORMAT_NCHW), new_shape, reduce_axis),
+    OP_TILING_CHECK(!CalcShapeAndAxes(format, ori_format, new_shape.size(), reduce_axis),
                     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "is_unknown_rank CalcShapeAndAxes failed."),
                     return false);
     PROFILING_TILING_AFTER_GET_COMPILE_INFO_REG();

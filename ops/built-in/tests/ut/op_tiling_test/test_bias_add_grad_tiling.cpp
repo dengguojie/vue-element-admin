@@ -427,3 +427,51 @@ TEST_F(BiasAddGradTiling, BiasAdd_tiling12) {
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
 }
+
+TEST_F(BiasAddGradTiling, BiasAdd_tiling13) {
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("BiasAddGrad");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
+  auto opParas = op::BiasAddGrad("BiasAddGrad");
+
+  vector<vector<int64_t>> input_shapes = {
+      {3, 17, 1, 101, 61},//{NCDHW}
+  };
+  vector<int64_t> origin_shape = {3, 17, 1, 101, 61};
+
+  vector<ge::DataType> dtypes = {ge::DT_FLOAT16};
+  TensorDesc tensorInput(ge::Shape(input_shapes[0]), ge::FORMAT_FRACTAL_NZ, dtypes[0]);
+  tensorInput.SetOriginFormat(ge::FORMAT_NCDHW);
+  tensorInput.SetOriginShape(ge::Shape(origin_shape));
+  TENSOR_INPUT(opParas, tensorInput, x);
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, y, input_shapes[0], ge::DT_FLOAT16, ge::FORMAT_NCDHW, {});
+  std::string compileInfo =
+      R"({ "_ori_axis": [1], "_pattern": "CommReduce", "push_status": 0, "_common_info": [32, 1, 8, 1, 1], "_pattern_info": [5, 4, 9, 41, 20], "_ub_info": [16256, 16000, 16256, 16256, 16256], "_ub_info_rf": [16256, 16000, 16256, 16256, 16256], "reduce_mean_cof_dtype": "float32", "is_unknown_rank": true})";
+
+  // do tilling, get runInfo
+  optiling::utils::OpRunInfo runInfo;
+  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
+}
+
+TEST_F(BiasAddGradTiling, BiasAdd_tiling14) {
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("BiasAddGrad");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
+  auto opParas = op::BiasAddGrad("BiasAddGrad");
+
+  vector<vector<int64_t>> input_shapes = {
+      {3, 1, 17, 101, 61},//{FORMAT_NDHWC}
+  };
+  vector<int64_t> origin_shape = {3, 1, 17, 101, 61};
+
+  vector<ge::DataType> dtypes = {ge::DT_FLOAT16};
+  TensorDesc tensorInput(ge::Shape(input_shapes[0]), ge::FORMAT_FRACTAL_NZ, dtypes[0]);
+  tensorInput.SetOriginFormat(ge::FORMAT_NDHWC);
+  tensorInput.SetOriginShape(ge::Shape(origin_shape));
+  TENSOR_INPUT(opParas, tensorInput, x);
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, y, input_shapes[0], ge::DT_FLOAT16, ge::FORMAT_NDHWC, {});
+  std::string compileInfo =
+      R"({ "_ori_axis": [1], "_pattern": "CommReduce", "push_status": 0, "_common_info": [32, 1, 8, 1, 1], "_pattern_info": [5, 4, 9, 41, 20], "_ub_info": [16256, 16000, 16256, 16256, 16256], "_ub_info_rf": [16256, 16000, 16256, 16256, 16256], "reduce_mean_cof_dtype": "float32", "is_unknown_rank": true})";
+
+  // do tilling, get runInfo
+  optiling::utils::OpRunInfo runInfo;
+  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
+}
