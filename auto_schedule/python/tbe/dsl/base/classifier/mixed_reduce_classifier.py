@@ -205,8 +205,4 @@ class MixedReduceClassifier:
         """
         do classify
         """
-        from tbe.common.buildcfg import get_current_build_config
-        if get_current_build_config("enable_op_prebuild"):
-            return [helper.ins_of_prebuild(self.ins, self.reduce_axes)]
-
         return self._classify_var()
