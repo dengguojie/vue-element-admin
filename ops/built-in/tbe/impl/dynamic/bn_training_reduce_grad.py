@@ -349,33 +349,33 @@ def bn_training_reduce_grad(grads,
     shape_diff_scale = diff_scale.get("shape")
     shape_util.compare_tensor_dict_key(grads, x, "shape")
 
-    dtype_x = x.get("dtype")
     dtype_grads = grads.get("dtype")
-    dtype_scale = scale.get("dtype")
+    dtype_x = x.get("dtype")
     dtype_diff_scale = diff_scale.get("dtype")
     dtype_diff_offset = diff_offset.get("dtype")
+    dtype_scale = scale.get("dtype")
     dtype_batch_mean = batch_mean.get("dtype")
     dtype_batch_variance = batch_variance.get("dtype")
 
+    grads_dtype = dtype_grads.lower()
     x_dtype = dtype_x.lower()
-    input_grads_dtype = dtype_grads.lower()
-    scale_dtype = dtype_scale.lower()
     diff_scale_dtype = dtype_diff_scale.lower()
     diff_offset_dtype = dtype_diff_offset.lower()
+    scale_dtype = dtype_scale.lower()
     batch_mean_dtype = dtype_batch_mean.lower()
     batch_variance_dtype = dtype_batch_variance.lower()
 
+    para_check.check_dtype(grads_dtype, ("float32", "float16"), param_name="grads")
     para_check.check_dtype(x_dtype, ("float32", "float16"), param_name="x")
-    para_check.check_dtype(input_grads_dtype, ("float32", "float16"), param_name="grads")
-    para_check.check_dtype(scale_dtype, ("float32",), param_name="scale")
     para_check.check_dtype(diff_scale_dtype, ("float32",), param_name="diff_scale")
     para_check.check_dtype(diff_offset_dtype, ("float32",), param_name="diff_offset")
+    para_check.check_dtype(scale_dtype, ("float32",), param_name="scale")
     para_check.check_dtype(batch_mean_dtype, ("float32",), param_name="batch_mean")
     para_check.check_dtype(batch_variance_dtype, ("float32",), param_name="batch_variance")
 
     shape_util.compare_tensor_dict_key(grads, x, "shape")
-    shape_util.compare_tensor_dict_key(diff_scale, scale, "shape")
     shape_util.compare_tensor_dict_key(diff_scale, diff_offset, "shape")
+    shape_util.compare_tensor_dict_key(diff_scale, scale, "shape")
     shape_util.compare_tensor_dict_key(diff_scale, batch_mean, "shape")
     shape_util.compare_tensor_dict_key(diff_scale, batch_variance, "shape")
 
@@ -385,6 +385,20 @@ def bn_training_reduce_grad(grads,
 
     if data_format in ("NC1HWC0", "NDC1HWC0"):
         _check_shape(shape_grads, shape_diff_scale, data_format)
+    else:
+        shape_list = [1, 1, 1, 1]
+        shape_list[1] = shape_grads[1]
+        range_list = util_common.gen_range(shape_list)
+        diff_scale["shape"] = shape_list
+        diff_scale["range"] = range_list
+        diff_offset["shape"] = shape_list
+        diff_offset["range"] = range_list
+        scale["shape"] = shape_list
+        scale["range"] = range_list
+        batch_mean["shape"] = shape_list
+        batch_mean["range"] = range_list
+        batch_variance["shape"] = shape_list
+        batch_variance["range"] = range_list
 
     dyn_flag = util_common.is_unknown([grads, x])
 
@@ -404,11 +418,11 @@ def bn_training_reduce_grad(grads,
             _shape_grads, _, _, _, _shape_scale, _, _ = shape_util.variable_shape(
                 [_grads, _x, _diff_scale, _diff_offset, _scale, _batch_mean, _batch_variance])
 
+            grads_input = tvm.placeholder(_shape_grads, name="grads_input", dtype=grads_dtype)
             x_input = tvm.placeholder(_shape_grads, name="x_input", dtype=x_dtype)
-            scale_input = tvm.placeholder(_shape_scale, name="scale_input", dtype=scale_dtype)
-            grads_input = tvm.placeholder(_shape_grads, name="grads_input", dtype=input_grads_dtype)
             diff_scale_input = tvm.placeholder(_shape_scale, name="diff_scale_input", dtype=diff_scale_dtype)
             diff_offset_input = tvm.placeholder(_shape_scale, name="diff_offset_input", dtype=diff_offset_dtype)
+            scale_input = tvm.placeholder(_shape_scale, name="scale_input", dtype=scale_dtype)
             batch_mean_input = tvm.placeholder(_shape_scale, name="batch_mean_input", dtype=batch_mean_dtype)
             batch_variance_input = tvm.placeholder(_shape_scale,
                                                    name="batch_variance_input",

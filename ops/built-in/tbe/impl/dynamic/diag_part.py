@@ -224,16 +224,15 @@ class DiagPart():
 
         opt_config = {"out_of_bound_sync_check": True, "enable_const_fold": True}
         tbe_context.get_context().add_compile_info("global_variable_link", True)
+        tbe_context.get_context().add_compile_info(
+            "vars", {"core_num": self.ai_core_num}
+        )
         self.tik_instance.BuildCCE(
             kernel_name=self.kernel_name,
             inputs=[self.input_x_gm],
             outputs=[self.output_gm],
             flowtable=[self.tiling_gm],
             config=opt_config)
-
-        tbe_context.get_context().add_compile_info(
-            "vars", {"core_num": self.ai_core_num}
-        )
 
         return self.tik_instance
 
