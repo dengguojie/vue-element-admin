@@ -28,7 +28,7 @@ from tbe.common.utils import shape_util
 
 class Constant:
     '''
-    tbe class of Constant
+    Constant of attention_ln_qkv big kernels
     '''
     DTYPE_SIZE = {
         'float16': 2,
@@ -38,6 +38,9 @@ class Constant:
     M0 = 16
     N0 = 16
     BLOCK_NUM_32 = 32
+    CANDIDATE_TILING_M1 = 12
+    CANDIDATE_TILING_M2 = 8
+    CANDIDATE_TILING_N = 16
     M_INNER_INDEX = 3
     SQUARE_ROOT = -0.5
     DOUBLE_BUFFER = 2
@@ -114,8 +117,7 @@ class AttentionLnQKV:
                     self._ln_compute(tik_instance, ln_m_idx, mal1_times_idx)
                 matmul_m_idx = (blk_m_idx * self.m_single_core + m_single_core_idx) * self.matmul_m_al1
                 l0c = tik_instance.Tensor(Constant.FP32_DTYPE, (self.matmul_n_l0, self.matmul_m_l0, Constant.M0,
-                    Constant.N0), name="l0c",
-                    scope=tik.scope_cbuf_out)
+                    Constant.N0), name="l0c", scope=tik.scope_cbuf_out)
                 for i in range(Constant.KERNEL_NUM):
                     self._matmul_compute(tik_instance, blk_n_idx, matmul_m_idx, [l0c, self.inputs[1 + i],
                                          self.outputs[1 + i], self.inputs[len(self.inputs) + i - Constant.KERNEL_NUM]])
@@ -135,13 +137,16 @@ class AttentionLnQKV:
         self.block_m = self.core_num
         self.block_n = 1
 
-        # matmul_m_l0 should be factor of self.m1_shape // BLOCK_NUM_32 and self.out_shape[M_INNER_INDEX]
-        self.matmul_m_l0 = math.gcd(self.m1_shape // Constant.BLOCK_NUM_32, self.out_shape[Constant.M_INNER_INDEX])
+        # matmul_m_l0 can only be 12 or 8
+        m_inner = self.out_shape[Constant.M_INNER_INDEX]
+        if not (m_inner % Constant.CANDIDATE_TILING_M1 == 0 or Constant.CANDIDATE_TILING_M1 % m_inner == 0):
+            self.matmul_m_l0 = Constant.CANDIDATE_TILING_M1
+        elif (self.m1_shape // self.block_m) % Constant.CANDIDATE_TILING_M2 == 0:
+            self.matmul_m_l0 = Constant.CANDIDATE_TILING_M2
+        else:
+            self.matmul_m_l0 = math.gcd(Constant.CANDIDATE_TILING_M1, Constant.CANDIDATE_TILING_M2)
         self.matmul_m_al1 = self.matmul_m_l0
-        # restrict matmul_n_l0 by L0C_SIZE
-        self.matmul_n_l0 = min(self.n1_shape,
-            tbe_platform.get_soc_spec("L0C_SIZE") // self.matmul_m_l0 // Constant.FRAC_SIZE // \
-                Constant.DTYPE_SIZE.get(Constant.FP32_DTYPE) // Constant.DOUBLE_BUFFER)
+        self.matmul_n_l0 = Constant.CANDIDATE_TILING_N
         self.matmul_n_l1 = self.matmul_n_l0
         # restrict matmul_k_l0 by L0A_SIZE && matmul_m_l0 / L0B_SIZE && matmul_n_l0
         self.matmul_k_l0 = min(
@@ -395,11 +400,17 @@ class AttentionLnQKV:
             c_ub = tik_instance.Tensor(self.dtype, (self.matmul_n_l0, self.matmul_m_l0, Constant.M0, Constant.N0),
                 name="c_ub", scope=tik.scope_ubuf)
             tik_instance.tensor_mov(c_ub, l0c, 'm', 1, self.matmul_n_l0 * self.matmul_m_l0, 0, 0)
-            _, _, _, m_inner, _, _ = self.out_shape
+            m_inner = self.out_shape[Constant.M_INNER_INDEX]
             out_offset = (matmul_m_idx % m_inner) * Constant.FRAC_SIZE + matmul_n_idx * m_inner * Constant.FRAC_SIZE + \
                 matmul_m_idx // m_inner * self.n1_shape * m_inner * Constant.FRAC_SIZE
-            tik_instance.data_move(out_gm[out_offset:], c_ub, 0, self.matmul_n_l0, self.matmul_m_l0 * Constant.M0, 0,
-                (m_inner - self.matmul_m_l0) * Constant.M0)
+            if m_inner >= self.matmul_m_l0:
+                tik_instance.data_move(out_gm[out_offset:], c_ub, 0, self.matmul_n_l0, self.matmul_m_l0 * Constant.M0,
+                    0, (m_inner - self.matmul_m_l0) * Constant.M0)
+            else:
+                with tik_instance.for_range(0, self.matmul_m_l0 // m_inner) as m_inner_idx:
+                    out_offset += m_inner_idx * self.n1_shape * m_inner * Constant.FRAC_SIZE
+                    tik_instance.data_move(out_gm[out_offset:], c_ub[m_inner_idx * m_inner * Constant.FRAC_SIZE], 0,
+                        self.matmul_n_l0, m_inner * Constant.M0, (self.matmul_m_l0 - m_inner) * Constant.M0, 0)
 
 
     def _matmul_l0c_compute(self, tik_instance, kernel_gm, l0c, ping_pong_params):
@@ -435,6 +446,9 @@ class AttentionLnQKV:
 
 
     def _matmul_l0c_process(self, tik_instance, ping_pong, kl1_factor_idx, mad_tensors):
+        '''
+        matmul l0c_process
+        '''
         al0, bl0, l0c = mad_tensors
         if ping_pong == 0:
             if self.bias_flag:
@@ -490,6 +504,9 @@ class AttentionLnQKV:
 
 
 def _check_shape_and_dtype(x, kernels, outputs):
+    '''
+    shape and dtype check of attention_ln_qkv
+    '''
     kernel_query, kernel_key, kernel_value = kernels
     query_output, key_output, value_output, mean, variance = outputs
     input_x_shape = shape_util.shape_to_list(x.get("shape"))

@@ -18,6 +18,18 @@ attention_ln_qkv_testcases = [
     ((64, 384, 16, 16), (64, 64, 16, 16), (64, 64, 16, 16), (64, 64, 16, 16), (1024,), (1024,), (16, 64), (16, 64),
      (16, 64), (24, 16, 4, 16, 16, 16), "float16", "FRACTAL_NZ", "FRACTAL_NZ", "success",
      "bert_large_attention_ln_qkv_24_256_1024_16_float16_NZ_NZ"),
+    # batch=32, seq_len=384, hidden_size=1024, n=16, dtype="float16", x_format="FRACTAL_NZ", kernel_format="FRACTAL_NZ"
+    ((64, 768, 16, 16), (64, 64, 16, 16), (64, 64, 16, 16), (64, 64, 16, 16), (1024,), (1024,), (16, 64), (16, 64),
+     (16, 64), (32, 16, 4, 24, 16, 16), "float16", "FRACTAL_NZ", "FRACTAL_NZ", "success",
+     "bert_large_attention_ln_qkv_32_384_1024_16_float16_NZ_NZ"),
+    # batch=48, seq_len=32, hidden_size=1024, n=16, dtype="float16", x_format="FRACTAL_NZ", kernel_format="FRACTAL_NZ"
+    ((64, 96, 16, 16), (64, 64, 16, 16), (64, 64, 16, 16), (64, 64, 16, 16), (1024,), (1024,), (16, 64), (16, 64),
+     (16, 64), (48, 16, 4, 2, 16, 16), "float16", "FRACTAL_NZ", "FRACTAL_NZ", "success",
+     "bert_large_attention_ln_qkv_48_32_1024_16_float16_NZ_NZ"),
+    # batch=6, seq_len=256, hidden_size=1024, n=16, dtype="float16", x_format="FRACTAL_NZ", kernel_format="FRACTAL_NZ"
+    ((64, 96, 16, 16), (64, 64, 16, 16), (64, 64, 16, 16), (64, 64, 16, 16), (1024,), (1024,), (16, 64), (16, 64),
+     (16, 64), (6, 16, 4, 16, 16, 16), "float16", "FRACTAL_NZ", "FRACTAL_NZ", "success",
+     "bert_large_attention_ln_qkv_6_256_1024_16_float16_NZ_NZ"),
     # batch=24, seq_len=512, hidden_size=1024, n=16, dtype="float16", x_format="ND", kernel_format="FRACTAL_NZ"
     ((64, 768, 16, 16), (64, 64, 16, 16), (64, 64, 16, 16), (64, 64, 16, 16), (1024,), (1024,), (16, 64), (16, 64),
      (16, 64), (24, 16, 4, 32, 16, 16), "float16", "ND", "FRACTAL_NZ", RuntimeError,
