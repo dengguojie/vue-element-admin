@@ -59,6 +59,7 @@ set(_op_proto_srcs
   ctc_ops.cc
   data_flow_ops.cc
   elewise_calculation_ops.cc
+  encoding_ops.cc
   fsrdetectionoutput_ops.cc
   functional_ops.cc
   hcom_ops.cc
