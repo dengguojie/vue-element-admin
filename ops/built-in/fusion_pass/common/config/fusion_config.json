@@ -54,7 +54,8 @@
                 "ConstToAttrReduceSumFusion": "4220",
                 "LayerNormGradFusionRule": "4225",
                 "LayerNormGradFusionRule1":"4226",
-                "LayerNormGradFusionRule2":"4227"
+                "LayerNormGradFusionRule2":"4227",
+                "ASliceConcatV2FusionPass": "4003"
             },
             "Down":{
                 "ZConcatDFusionPass":"5000",
