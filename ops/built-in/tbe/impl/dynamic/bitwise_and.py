@@ -138,8 +138,7 @@ def bitwise_and(x1, x2, y, kernel_name="bitwise_and"):
     """
     input_x, input_y, dtype = _pre_broadcast(x1, x2, y, kernel_name)
     schedules, tensors = [], []
-    extra_params = {"disable_optimization": True}
-    ins = classify([input_x, input_y], OpPatternMode.ELEWISE_WITH_BROADCAST, extra_params)
+    ins = classify([input_x, input_y], OpPatternMode.ELEWISE_WITH_BROADCAST)
     for (_x, _y) in ins:
         with tbe.compute():
             x_shape, y_shape = shape_util.variable_shape([_x, _y])

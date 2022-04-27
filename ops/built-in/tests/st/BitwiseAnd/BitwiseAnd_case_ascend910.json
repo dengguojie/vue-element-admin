@@ -582,5 +582,106 @@
         ]
       }
     ]
+  },
+  {
+    "case_name": "BitwiseAnd_dynamic_shape_BitwiseAnd_01_ascend910a",
+    "op": "BitwiseAnd",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int16"
+        ],
+        "shape": [
+          -1,
+          8,
+          375
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x1",
+        "shape_range": [
+          [
+            15,
+            16
+          ]
+        ],
+        "typical_shape": [
+          15,
+          8,
+          375
+        ]
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int16"
+        ],
+        "shape": [
+          -1,
+          8,
+          375
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x2",
+        "shape_range": [
+          [
+            15,
+            16
+          ]
+        ],
+        "typical_shape": [
+          15,
+          8,
+          375
+        ]
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int16"
+        ],
+        "shape": [
+          15,
+          8,
+          375
+        ],
+        "name": "y",
+        "shape_range": [
+          [
+            15,
+            16
+          ]
+        ],
+        "typical_shape": [
+          15,
+          8,
+          375
+        ]
+      }
+    ]
   }
 ]

@@ -72,7 +72,7 @@ def bn_infer_grad_compute(grads, scale, batch_variance, x_backprop,
 
     data_adds = tbe.vadds(batch_variance, epsilon)
     data_rsqrt = tbe.vsqrt(data_adds)
-    data_rsqrts = tbe.vrec(data_rsqrt)
+    data_rsqrts = tbe.vrec(data_rsqrt, "high_precision")
 
     scale_mul = tbe.vmul(scale, data_rsqrts)
     scale_mul_broadcast = tbe.broadcast(scale_mul, shape_x)
