@@ -38,6 +38,7 @@ ReluGrad,relu_grad.json
 Rsqrt,rsqrt.json
 RsqrtGrad,rsqrt_grad.json
 Select,select.json
+SelectV2,select_v2.json
 Sigmoid,sigmoid.json
 SigmoidGrad,sigmoid_grad.json
 Slice,slice.json

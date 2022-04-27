@@ -135,6 +135,8 @@ def select_v2(condition, x1, x2, y, kernel_name="select_v2"):
     bool_check_list = ("bool", "int8", "uint8")
     para_check.check_dtype_rule(bool_dtype, bool_check_list)
 
+    bool_dtype = "int8" if bool_dtype == "bool" else bool_dtype
+
     ins = classify([condition, x1, x2], OpPatternMode.ELEWISE_WITH_BROADCAST)
     schedules, tensors = [], []
     for (_condition, _x1, _x2) in ins:
