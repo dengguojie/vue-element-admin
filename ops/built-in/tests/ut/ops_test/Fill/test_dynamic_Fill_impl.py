@@ -45,6 +45,16 @@ case4 = {"params": [{"shape": (-1,), "ori_shape": (3,), "range": ((1, None),), "
          "expect": "success",
          "format_expect": [],
          "support_expect": True}
+case5 = {"params": [{"shape": (-1,), "ori_shape": (3,), "range": ((1, None),), "format": "NHWC", "ori_format": "NHWC",
+                     'dtype': "int32"},
+                    {"shape": (1,), "ori_shape": (1,), "range": ((1, 1),), "format": "NHWC", "ori_format": "NHWC",
+                     'dtype': "int8"},
+                    {"shape": (-1,), "ori_shape": (3,), "range": ((1, None),), "format": "NHWC", "ori_format": "NHWC",
+                     'dtype': "int8"}],
+         "case_name": "fill_dynamic_5",
+         "expect": "success",
+         "format_expect": [],
+         "support_expect": True}
 
 case5 = {"params": [{"shape": (2,), "ori_shape": (2,), "range": ((2, 2)), "format": "ND", "ori_format": "ND",
                      'dtype': "int32", "const_value": [4, 4]},

@@ -1,18 +1,16 @@
-# Copyright 2019 Huawei Technologies Co., Ltd
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-# http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-# ============================================================================
 """
+Copyright (c) Huawei Technologies Co., Ltd. 2019-2022. All rights reserved.
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the Apache License Version 2.0.
+You may not use this file except in compliance with the License.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+Apache License for more details at
+http://www.apache.org/licenses/LICENSE-2.0
+
 fill
 """
 from functools import reduce
@@ -27,8 +25,16 @@ from impl.util.platform_adapter import register_operator
 from impl.util.util_common import gen_range
 
 
+# 'pylint: disable=unused-argument,invalid-name
+def check_supported(dims, value, y, kernel_name="fill"):
+    """
+    verify the types of fill supported by tbe
+    """
+    return True, ""
+
+
 # 'pylint: disable=unused-argument,invalid-name,too-many-locals
-def fill_compute(dims, value, dtype, kernel_name="fill"):
+def fill_compute(dims, value, y, kernel_name="fill"):
     """
     calculating data
 
@@ -72,7 +78,8 @@ def fill(dims, value, y, kernel_name="fill"):
     None
     """
     # get the shape and dtype
-    dtype = value.get("dtype").lower()
+    tmp_dtype = value.get("dtype").lower()
+    dtype = tmp_dtype if tmp_dtype != "bool" else "int8"
     dtype_dims = dims.get("dtype").lower()
     dims["shape"] = [-1]
     dims['range'] = [[1, None]]
@@ -82,16 +89,15 @@ def fill(dims, value, y, kernel_name="fill"):
         const_value = list(const_value)
         shape_shape_adapt = [reduce(mul, const_value)]
         shape_range_adapt = gen_range(const_value)
-    
     else:
         shape_shape_adapt = [-1]
         shape_range_adapt = [[1, None]]
-    
+
     dims["shape"] = shape_shape_adapt
     dims['range'] = shape_range_adapt
 
     # check whether dtypes are right
-    check_list = ("int32", "float16", "float32")
+    check_list = ("int8", "int32", "float16", "float32")
     para_check.check_dtype(dtype, check_list)
 
     extra_params = {"disable_optimization": True}
