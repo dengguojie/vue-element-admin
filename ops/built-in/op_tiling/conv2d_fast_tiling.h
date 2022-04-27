@@ -239,6 +239,14 @@ struct Tiling
     uint32_t aubPBuffer = 1;
 };
 
+struct BlockDimData
+{
+   uint32_t batchIndex;
+   uint32_t nIndex;
+   uint32_t mIndex;
+   uint32_t gIndex;
+};
+
 struct BlockDimSize
 {
    uint32_t iSize;
@@ -323,6 +331,9 @@ private:
     void GetConv2dCaseStatus();
     void Convert4DTo5D();
     // infer block dim tiling at runtime
+    float GetBlockDimCompTime(const Tiling& tiling,
+                              const BlockDimSize& dataPerCore,
+                              const BlockDimSize& blockDimSize);
     void GetBlockDimRange(BlockDimRange& tilingRange);
     bool GetBlockDimTiling(Tiling& tiling);
     void DataInOneCore(const BlockDimSize& dataSize,
