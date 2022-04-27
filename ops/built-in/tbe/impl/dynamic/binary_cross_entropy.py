@@ -15,6 +15,8 @@
 """
 binary_cross_entropy
 """
+from impl.util import util_select_op_base
+from impl.util import util_common
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tvm
@@ -35,11 +37,129 @@ class Constant:
     """
     # eps value
     SCALAR_EPS = 1e-12
+    SHAPE_ALIGNED = 16
+    THREE_DIMS_SHAPE_LENS = 5
+
+
+# 'pylint: disable=invalid-name,too-many-arguments
+# 'pylint: disable=unused-argument,too-many-locals
+def op_select_format(x, y, weight, output,
+                     reduction="mean",
+                     kernel_name="binary_cross_entropy"):
+    """
+    select format dynamically
+    op_select_format support desc:
+
+    1.when the reduction mode is mean/sum
+    1.1 when the dim C of x's ori_shape can be divisible by 16
+    The Op can support
+    ND + ND + ND = ND,
+    NC1HWC0 + NC1HWC0 + NC1HWC0 = ND,
+    NDC1HWC0 + NDC1HWC0 + NDC1HWC0 = ND.
+
+        for example:
+        inputs:
+            x          shape = [2, 16] format = "ND"
+            y          shape = [2, 16] format = "ND"
+            weight     shape = [2, 16] format = "ND"
+        outputs:
+            output     shape = [1] format = "ND"
+
+        inputs:
+            x          shape = [16, 1, 1, 16, 16, 16] format = "NDC1HWC0"
+            y          shape = [16, 1, 1, 16, 16, 16] format = "NDC1HWC0"
+            weight     shape = [16, 1, 1, 16, 16, 16] format = "NDC1HWC0"
+        outputs:
+            output     shape = [1] format = "ND"
+
+    1.2  when the dim C and the dim N of x's ori_shape can be divisible by 16
+    The Op can support
+    ND + ND + ND = ND,
+    NC1HWC0 + NC1HWC0 + NC1HWC0 = ND,
+    NDC1HWC0 + NDC1HWC0 + NDC1HWC0 = ND,
+    FRACTAL_Z + FRACTAL_Z + FRACTAL_Z = ND,
+    FRACTAL_Z_3D + FRACTAL_Z_3D + FRACTAL_Z_3D = ND.
+
+        for example:
+        inputs:
+            x          shape = [16, 16, 16, 16] format = "FRACTAL_Z"
+            y          shape = [16, 16, 16, 16] format = "FRACTAL_Z"
+            weight     shape = [16, 16, 16, 16] format = "FRACTAL_Z"
+        outputs:
+            output     shape = [1] format = "ND"
+
+    2.when the reduction mode is none
+    The Op can support
+    ND + ND + ND = ND,
+    NC1HWC0 + NC1HWC0 + NC1HWC0 = NC1HWC0,
+    NDC1HWC0 + NDC1HWC0 + NDC1HWC0 = NDC1HWC0,
+    FRACTAL_Z + FRACTAL_Z + FRACTAL_Z = FRACTAL_Z,
+    FRACTAL_Z_3D + FRACTAL_Z_3D + FRACTAL_Z_3D = FRACTAL_Z_3D.
+    """
+    is_support_hd = False
+    is_support_fz = False
+    support_ori_format = \
+        util_common.get_fused_format_str(["N", "D", "H", "W", "C"]) \
+        + util_common.get_fused_format_str(["N", "H", "W", "C"])
+    input_ori_shape = x.get("ori_shape")
+    input_ori_format = x.get("ori_format")
+    shape_hd_c0 = Constant.SHAPE_ALIGNED
+    shape_fz_c0 = Constant.SHAPE_ALIGNED
+    shape_fz_n = Constant.SHAPE_ALIGNED
+
+    if input_ori_format in support_ori_format and len(input_ori_shape) == len(input_ori_format):
+        if input_ori_shape[input_ori_format.index("C")] % shape_fz_c0 == 0 \
+                and input_ori_shape[input_ori_format.index("N")] % shape_fz_n == 0:
+            is_support_fz = True
+        elif input_ori_shape[input_ori_format.index("C")] % shape_hd_c0 == 0:
+            is_support_hd = True
+
+    if reduction in ("none",):
+        is_support_hd = True
+        is_support_fz = True
+
+    if not tbe_platform.api_check_support("tik.vadd", "float32"):
+        dtype_base = ["float16"]
+    else:
+        dtype_base = ["float16", "float"]
+
+    dtype_base_out = dtype_base[:]
+    format_base_out = ["ND"] * len(dtype_base)
+
+    if is_support_hd:
+        dtype_base_out = dtype_base_out + dtype_base
+        other_format = "NDC1HWC0" if len(input_ori_shape) == Constant.THREE_DIMS_SHAPE_LENS else "NC1HWC0"
+        format_base_out = format_base_out + [other_format] * len(dtype_base)
+    if is_support_fz:
+        dtype_base_out = dtype_base_out + dtype_base
+        other_format = "FRACTAL_Z_3D" if len(input_ori_shape) == Constant.THREE_DIMS_SHAPE_LENS else "FRACTAL_Z"
+        format_base_out = format_base_out + [other_format] * len(dtype_base)
+
+    dtype_str = ','.join(dtype_base_out)
+    format_str = ','.join(format_base_out)
+
+    input0 = util_select_op_base.gen_param(
+        classify="input0", name="x", datatype=dtype_str,
+        format=format_str)
+    input1 = util_select_op_base.gen_param(
+        classify="input1", name="y", datatype=dtype_str,
+        format=format_str)
+    input2 = util_select_op_base.gen_param(
+        classify="input2", name="weight", datatype=dtype_str,
+        format=format_str)
+    output0 = util_select_op_base.gen_param(
+        classify="output0", name="output", datatype=dtype_str,
+        format=format_str)
+    param_list = [input0, input1, input2, output0]
+
+    param_dynamic_in_json = util_select_op_base.get_dynamic_param_in_json(param_list)
+
+    return param_dynamic_in_json
 
 
 # 'pylint: disable=invalid-name,too-many-arguments,too-many-branches
 # 'pylint: disable=unused-argument,too-many-locals,too-many-statements
-@register_operator_compute("BinaryCrossEntropy", op_mode="dynamic", support_fusion=False)
+@register_operator_compute("BinaryCrossEntropy", op_mode="dynamic", support_fusion=True)
 def binary_cross_entropy_compute(x, y, weight, output, axis,
                                  reduction, kernel_name):
     """
@@ -120,8 +240,6 @@ def binary_cross_entropy_compute(x, y, weight, output, axis,
             if calc_dtype == "float16":
                 tbe.var("cof_empty", dtype=calc_dtype)
             tbe_context.get_context().add_compile_info("reduce_mean_cof_dtype", calc_dtype)
-
-    if reduction == "mean":
         result = tbe.vmuls(result, cof)
         result = tbe.reduce_sum(result, axis=axis["value"], keepdims=False)
     elif reduction == "sum":

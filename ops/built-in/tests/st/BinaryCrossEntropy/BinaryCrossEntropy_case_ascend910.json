@@ -1,0 +1,200 @@
+[
+    {
+        "case_name": "Test_BinaryCrossEntropy_001",
+        "op": "BinaryCrossEntropy",
+        "input_desc": [
+            {
+                "format": "ND",
+                "type": "float16",
+                "shape": [16, 16],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.1,
+                        1.0
+                    ]
+                ],
+                "name": "x"
+            },
+            {
+                "format": "ND",
+                "type": "float16",
+                "shape": [16, 16],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.1,
+                        1.0
+                    ]
+                ],
+                "name": "y"
+            },
+            {
+                "format": "ND",
+                "type": "float16",
+                "shape": [16, 16],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.1,
+                        1.0
+                    ]
+                ],
+                "name": "weight"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": "ND",
+                "type": "float16",
+                "shape": [1],
+                "name": "output"
+            }
+        ],
+        "attr": [
+            {
+                "name": "reduction",
+                "type": "string",
+                "value": "mean"
+            }
+        ]
+    },
+    {
+        "case_name": "Test_BinaryCrossEntropy_002",
+        "op": "BinaryCrossEntropy",
+        "input_desc": [
+            {
+                "format": "ND",
+                "type": "float16",
+                "shape": [1, 16],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.1,
+                        1.0
+                    ]
+                ],
+                "name": "x"
+            },
+            {
+                "format": "ND",
+                "type": "float16",
+                "shape": [1, 16],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.1,
+                        1.0
+                    ]
+                ],
+                "name": "y"
+            },
+            {
+                "format": "ND",
+                "type": "float16",
+                "shape": [1, 16],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.1,
+                        1.0
+                    ]
+                ],
+                "name": "weight"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": "ND",
+                "type": "float16",
+                "shape": [1],
+                "name": "output"
+            }
+        ],
+        "attr": [
+            {
+                "name": "reduction",
+                "type": "string",
+                "value": "sum"
+            }
+        ]
+    },
+    {
+        "case_name": "Test_BinaryCrossEntropy_003",
+        "op": "BinaryCrossEntropy",
+        "input_desc": [
+            {
+                "format": "NCHW",
+                "type": "float32",
+                "shape": [16, 16, 16, 16],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.1,
+                        1.0
+                    ]
+                ],
+                "name": "x"
+            },
+            {
+                "format": "NCHW",
+                "type": "float32",
+                "shape": [16, 16, 16, 16],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.1,
+                        1.0
+                    ]
+                ],
+                "name": "y"
+            },
+            {
+                "format": "NCHW",
+                "type": "float32",
+                "shape": [16, 16, 16, 16],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.1,
+                        1.0
+                    ]
+                ],
+                "name": "weight"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": "NCHW",
+                "type": "float32",
+                "shape": [16, 16, 16, 16],
+                "name": "output"
+            }
+        ],
+        "attr": [
+            {
+                "name": "reduction",
+                "type": "string",
+                "value": "none"
+            }
+        ]
+    }
+]
