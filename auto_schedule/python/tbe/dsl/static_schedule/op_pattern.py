@@ -882,7 +882,7 @@ softmax_cross_entropy_with_logits_pattern_list = [
         "elewise_binary_sub",
         "elewise_binary_div",
     ],
-    # [N,H,W,C] fp32 large
+    # [N,H,W,C] fp32 large high_performance
     [
         "elewise_single_VS_mul",
         "last_axis_reduce_sum_reuse",
@@ -896,6 +896,23 @@ softmax_cross_entropy_with_logits_pattern_list = [
         "elewise_binary_sub_scalar_L1",
         "placeholder",
         "last_axis_reduce_max",
+        "elewise_binary_sub",
+        "elewise_binary_div",
+    ],
+    # [N,H,W,C] fp32 large high_precision
+    [
+        "elewise_single_VS_mul",
+        "last_axis_reduce_sum_reuse",
+        "elewise_binary_mul",
+        "placeholder",
+        "elewise_binary_sub",
+        "elewise_get_L1_workspace",
+        "elewise_single_log",
+        "reduce_sum",
+        "elewise_single_exp",
+        "elewise_binary_sub_scalar_L1",
+        "placeholder",
+        "reduce_max",
         "elewise_binary_sub",
         "elewise_binary_div",
     ]

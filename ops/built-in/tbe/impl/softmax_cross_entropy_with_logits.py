@@ -24,6 +24,7 @@ from te.utils.error_manager import error_manager_vector
 from impl.util.util_select_op_base import SplitInput
 from impl.util.util_select_op_base import SplitOutput
 from impl.util.util_select_op_base import get_op_cal_info
+from tbe.common.platform import intrinsic_check_support
 
 # compute needed,scalar -1
 SCALAR_MINUS_ONE = -1
@@ -91,6 +92,7 @@ def softmax_cross_entropy_with_logits_nchw_compute(
         input_labels,
         output_loss,
         output_backprop,
+        impl_mode="high_performance",
         kernel_name="softmax_cross_entropy_with_logits"):
     """Computes softmax cross entropy cost.
     softmax = e^(x-max) / ∑(e^(x-max))
@@ -111,6 +113,9 @@ def softmax_cross_entropy_with_logits_nchw_compute(
     output_backprop: dict
         data of output.
         Must have the same type as 'input_features'.
+    impl_mode: str
+        specifying whether cast fp32 to fp16 before compute max.
+        "high_precision" or "high_performance", defaults to "high_performance".
     kernel_name: str
         kernel name, default value is "softmax_cross_entropy_with_logits"
 
@@ -152,12 +157,13 @@ def softmax_cross_entropy_with_logits_nchw_compute(
 
 
 @tbe_platform.fusion_manager.fusion_manager.register("softmax_cross_entropy_with_logits")
-# 'pylint: disable=unused-argument
+# 'pylint: disable=unused-argument,too-many-lines
 def softmax_cross_entropy_with_logits_compute(
         input_features,
         input_labels,
         output_loss,
         output_backprop,
+        impl_mode="high_performance",
         kernel_name="softmax_cross_entropy_with_logits"):
     """Computes softmax cross entropy cost.
     softmax = e^(x-max) / ∑(e^(x-max))
@@ -178,6 +184,9 @@ def softmax_cross_entropy_with_logits_compute(
     output_backprop: dict
         data of output.
         Must have the same type as 'input_features'.
+    impl_mode: str
+        specifying whether cast fp32 to fp16 before compute max.
+        "high_precision" or "high_performance", defaults to "high_performance".
     kernel_name: str
         kernel name, default value is "softmax_cross_entropy_with_logits"
 
@@ -212,7 +221,8 @@ def softmax_cross_entropy_with_logits_compute(
             tbe_platform.api_check_support("te.lang.cce.vexp",
                                            "float32"):
         return softmax_cross_entropy_with_logits_compute_ex(input_features,
-                                                            input_labels)
+                                                            input_labels,
+                                                            impl_mode)
     has_improve_precision = False
     if dtype == "float16" and \
             tbe_platform.api_check_support("te.lang.cce.vexp",
@@ -221,7 +231,18 @@ def softmax_cross_entropy_with_logits_compute(
         input_labels = tbe.cast_to(input_labels, "float32")
         has_improve_precision = True
 
-    data_max = tbe.reduce_max(input_features, axis=-1, keepdims=True)
+    if intrinsic_check_support("Intrinsic_vmax", "float32") and \
+            dtype in ("float", "float32") and impl_mode == "high_precision":
+        input_features_reduce_max_axis = tvm.reduce_axis((0, shape_features[-1]), "input_features_reduce_max_axis")
+        data_max = tvm.compute((shape_features[0], 1),
+                               lambda i0, i1:
+                                   tvm.max(input_features[i0, input_features_reduce_max_axis],
+                                           axis=[input_features_reduce_max_axis]),
+                               name="data_max",
+                               tag="reduce_max",
+                               attrs={"impl_mode": "high_precision"})
+    else:
+        data_max = tbe.reduce_max(input_features, axis=-1, keepdims=True)
     data_max_broadcast = tbe.broadcast(data_max, shape_broadcast)
     data_sub = tbe.vsub(input_features, data_max_broadcast)
     data_exp = tbe.vexp(data_sub)
@@ -258,7 +279,8 @@ def softmax_cross_entropy_with_logits_compute_no_reduce(input_features, input_la
 
 
 def softmax_cross_entropy_with_logits_compute_ex(input_features,
-                                                 input_labels):
+                                                 input_labels,
+                                                 impl_mode):
     """Computes softmax cross entropy cost.
     softmax = e^(x-max) / ∑(e^(x-max))
     log(softmax) = (x-max) - log(∑e^(x-max))
@@ -278,6 +300,9 @@ def softmax_cross_entropy_with_logits_compute_ex(input_features,
     output_backprop: dict
         data of output.
         Must have the same type as 'input_features'.
+    impl_mode: str
+        specifying whether cast fp32 to fp16 before compute max.
+        "high_precision" or "high_performance", defaults to "high_performance".
     kernel_name: str
         kernel name, default value is "softmax_cross_entropy_with_logits"
 
@@ -304,13 +329,15 @@ def softmax_cross_entropy_with_logits_compute_ex(input_features,
         input_features = tbe.cast_to(input_features, "float32")
         input_labels = tbe.cast_to(input_labels, "float32")
 
-    with tvm.tag_scope("last_axis_reduce_max"):
+    impl_mode = impl_mode if intrinsic_check_support("Intrinsic_vmax", "float32") else "high_performance"
+    compute_max_tag = "reduce_max" if impl_mode == "high_precision" else "last_axis_reduce_max"
+    with tvm.tag_scope(compute_max_tag):
         reduce_axis = tvm.reduce_axis((0, shape_broadcast[1]), name="rax0")
         data_max = tvm.compute((shape_broadcast[0], 1),
                                lambda upper, lower:
                                tvm.max(input_features[upper, reduce_axis],
                                        axis=reduce_axis),
-                               name="last_axis_reduce_max")
+                               name=compute_max_tag)
     with tvm.tag_scope("elewise_binary_sub_scalar_L1"):
         data_sub = tvm.compute(input_features.shape,
                                lambda higher, lower:
@@ -354,15 +381,16 @@ def softmax_cross_entropy_with_logits_compute_ex(input_features,
     return res
 
 
-# 'pylint: disable=unused-variable
+# 'pylint: disable=unused-variable,too-many-lines
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
-                            para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
+                            para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME, para_check.OPTION_ATTR_STR)
 def softmax_cross_entropy_with_logits(
         input_features,
         input_labels,
         output_loss,
         output_backprop,
-        kernel_name="softmax_cross_entropy_with_logits"):
+        kernel_name="softmax_cross_entropy_with_logits",
+        impl_mode="high_performance"):
     """Computes softmax cross entropy cost.
 
     Parameters
@@ -380,7 +408,10 @@ def softmax_cross_entropy_with_logits(
         data of output.
         Must have the same type as 'input_features'.
     kernel_name: str
-        kernel name, default value is "softmax_cross_entropy_with_logits"
+        kernel name, default value is "softmax_cross_entropy_with_logits".
+    impl_mode: str
+        specifying whether cast fp32 to fp16 before compute max.
+        "high_precision" or "high_performance", defaults to "high_performance".
 
     Returns:
     None
@@ -409,7 +440,8 @@ def softmax_cross_entropy_with_logits(
         res = softmax_cross_entropy_with_logits_nchw_compute(data_features,
                                                              data_labels,
                                                              output_loss,
-                                                             output_backprop)
+                                                             output_backprop,
+                                                             impl_mode)
     else:
         if len(shape_features) == 1 and len(shape_labels) == 1:
             error_manager_vector.raise_err_specific_reson("softmax_cross_entropy_with_logits",
@@ -430,7 +462,8 @@ def softmax_cross_entropy_with_logits(
         res = softmax_cross_entropy_with_logits_compute(data_features,
                                                         data_labels,
                                                         output_loss,
-                                                        output_backprop)
+                                                        output_backprop,
+                                                        impl_mode)
 
     with tvm.target.cce():
         sch = tbe.auto_schedule(res)

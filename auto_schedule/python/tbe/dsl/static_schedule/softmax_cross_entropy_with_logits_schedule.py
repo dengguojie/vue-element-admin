@@ -75,7 +75,7 @@ def reset_mask_insn(ib_expr, type_, bits=128, mask_func=None):
         tvm.const(mask2, dtype="uint64")))
 
 
-# pylint: disable=too-many-locals
+# 'pylint: disable=too-many-locals
 @tvm.register_func("tvm.intrin.cce.reg_mov_single")
 def reg_mov_single(stmt_op):
     """
@@ -108,7 +108,7 @@ def reduce_last_axis_reduce_max_2(tensor_op):
     return reduce_last_axis_max_and_sum(tensor_op, "vcmax")
 
 
-# pylint: disable=too-many-locals, too-many-branches, too-many-statements
+# 'pylint: disable=too-many-locals, too-many-branches, too-many-statements
 def reduce_last_axis_max_and_sum(tensor_op, intrin_cmd):
     """
     reduce last axis reduce sum and max
@@ -494,7 +494,8 @@ def is_vector_reduce(c_size, split_factor):
     return False
 
 
-def logits_2d_schedule(res, input_tensors):  # pylint: disable=unused-argument
+# 'pylint: disable=too-many-lines,unused-argument,too-many-locals,too-many-branches,too-many-statements
+def logits_2d_schedule(res, input_tensors):
     '''
     softmax_cross_entropy_with_logits schedule for nchw format data
     :param data_features: input tensor 1
@@ -502,7 +503,6 @@ def logits_2d_schedule(res, input_tensors):  # pylint: disable=unused-argument
     :param res: res tensor, include two tensor
     :return: sch
     '''
-    # pylint: too-many-locals,too-many-branches,too-many-statements
     output_loss = res[0]
     output_backprop = res[1]
     shape = [var.value for var in output_backprop.shape]
@@ -680,7 +680,19 @@ def logits_2d_schedule(res, input_tensors):  # pylint: disable=unused-argument
                 else:
                     insn = "reduce_last_axis_reduce_sum_2"
             elif i.op.tag == "reduce_max":
+                impl_mode = i.op.attrs["impl_mode"] if i.op.attrs else "high_performance"
                 if is_vector_reduce(c_size, split_factor):
+                    insn = "vector_reduce_max"
+                elif impl_mode == "high_precision":
+                    for k, v in input_tensor_buffer_tensor_map.items():
+                        if len(k.shape) == 2 and k.shape[-1] != 1:
+                            sch[v].storage_align(v.op.axis[0], 8, 0)
+                    for k, v in mid_tensor_buffer_tensor_map.items():
+                        if len(k.shape) == 2 and k.shape[-1] != 1:
+                            sch[v].storage_align(v.op.axis[0], 8, 0)
+                    for k, v in mid_out_buffer_tensor_list.items():
+                        if len(k.shape) == 2 and k.shape[-1] != 1:
+                            sch[v].storage_align(v.op.axis[0], 8, 0)
                     insn = "vector_reduce_max"
                 else:
                     insn = "reduce_last_axis_reduce_max_2"
@@ -706,7 +718,7 @@ def logits_2d_schedule(res, input_tensors):  # pylint: disable=unused-argument
     return sch, []
 
 
-# pylint: disable=too-many-locals, too-many-branches, too-many-statements, unused-argument, unnecessary-lambda, invalid-name
+# 'pylint: disable=too-many-locals, too-many-branches, too-many-statements, unused-argument, unnecessary-lambda, invalid-name
 def logits_2d_schedule_large_axis(res, input_tensors):
     """For large reduce axis such as (64, 17191)"""
     output_loss = res[0]
@@ -882,7 +894,7 @@ def get_max_ub_count(dtype, dim):
     return max_ub_count
 
 
-# pylint: disable=too-many-branches
+# 'pylint: disable=too-many-branches
 def get_ub_tiling(shape, block_tiling_axis, block_tiling_inner_loop, max_ub_count, dtype):
     """
     get ub tiling
@@ -1003,7 +1015,7 @@ def get_ub_tiling_large_2d(shape, dtype, not_aligned, block_split_factor, block_
     return ub_factor, large_batch_flag
 
 
-# pylint: disable=too-many-locals, too-many-branches, too-many-statements, unused-argument
+# 'pylint: disable=too-many-locals, too-many-branches, too-many-statements, unused-argument
 def logits_nchw_schedule(res, input_tensors):
     '''
     softmax_cross_entropy_with_logits schedule for nchw format data
@@ -1143,17 +1155,17 @@ def logits_nchw_schedule(res, input_tensors):
     compute_at_axis = res_outer
 
     for tensor in input_tensor_dst_tensor_map:
-        tensor_ub = input_tensor_buffer_tensor_map[tensor]
+        tensor_ub = input_tensor_buffer_tensor_map.get(tensor)
         sch[tensor_ub].compute_at(sch[out], compute_at_axis)
 
     for tensor in mid_out_tensor_list:
-        tensor_ub = mid_out_buffer_tensor_list[tensor]
+        tensor_ub = mid_out_buffer_tensor_list.get(tensor)
         sch[tensor].compute_at(sch[out], compute_at_axis)
         sch[tensor_ub].compute_at(sch[out], compute_at_axis)
 
     for tensor in mid_tensor_dst_tensor_map:
         if tensor not in broadcast_not_last_axis_tensors:
-            tensor_ub = mid_tensor_buffer_tensor_map[tensor]
+            tensor_ub = mid_tensor_buffer_tensor_map.get(tensor)
             sch[tensor_ub].compute_at(sch[out], compute_at_axis)
 
     sch[out_ub].compute_at(sch[out], compute_at_axis)
@@ -1322,15 +1334,16 @@ def logits_2d_schedule_large_axis_workspace(res, input_tensors):
 
     log_3 = sub_4.op.input_tensors[1]
 
-    vcmax_intr_support_fp32 = intrinsic_check_support("Intrinsic_vcmax",
-                                                      "float32")
-    if vcmax_intr_support_fp32:
-        broadcast_tensor_0 = sub_0.op.input_tensors[1]
+    tmp_tensor = sub_0.op.input_tensors[1]
+    if "broadcast" in tmp_tensor.op.name:
+        conv_fp32_to_fp16 = False
+        broadcast_tensor_0 = tmp_tensor
         reduce_0 = broadcast_tensor_0.op.input_tensors[0]
         data_features_ub_000 = s.cache_read(data_features,
                                             'local.UB', [reduce_0])
     else:
-        cast_1 = sub_0.op.input_tensors[1]
+        conv_fp32_to_fp16 = True
+        cast_1 = tmp_tensor
         broadcast_tensor_0 = cast_1.op.input_tensors[0]
         reduce_0 = broadcast_tensor_0.op.input_tensors[0]
         cast_0 = reduce_0.op.input_tensors[0]
@@ -1450,7 +1463,7 @@ def logits_2d_schedule_large_axis_workspace(res, input_tensors):
     s[data_features_ub_001].compute_at(s[sub_0], sub_0_axis_1_o)
     s[data_features_ub_000].compute_at(s[reduce_0_ub], reduce_0_ub_reduce_axis_0_o)
 
-    if not vcmax_intr_support_fp32:
+    if conv_fp32_to_fp16:
         s[cast_0_ub].compute_at(s[reduce_0_ub], reduce_0_ub_reduce_axis_0_o)
         s[cast_1_ub].compute_at(s[sub_0], sub_0_axis_1_o)
         s[cast_0_ub].emit_insn(s[cast_0_ub].op.axis[0], 'vector_conv')
@@ -1537,7 +1550,7 @@ def logits_2d_schedule_large_axis_workspace(res, input_tensors):
     s[data_features_ub_001].storage_align(s[data_features_ub_001].op.axis[0], 8, 0)
     s[data_features_ub_000].storage_align(s[data_features_ub_000].op.axis[0], 8, 0)
 
-    if not vcmax_intr_support_fp32:
+    if conv_fp32_to_fp16:
         s[cast_0_ub].storage_align(s[cast_0_ub].op.axis[0], 16, 0)
         s[cast_1_ub].storage_align(s[cast_1_ub].op.axis[0], 8, 0)
 
@@ -1603,13 +1616,14 @@ def _schedule_workspace_fp32_broad(sch_list, add_0, shape, dtype):
 
     log_3 = sub_4.op.input_tensors[1]
 
-    vcmax_intr_support_fp32 = intrinsic_check_support("Intrinsic_vcmax",
-                                                      "float32")
-    if vcmax_intr_support_fp32:
-        broadcast_tensor_0 = sub_0.op.input_tensors[1]
+    tmp_tensor = sub_0.op.input_tensors[1]
+    if "broadcast" in tmp_tensor.op.name:
+        conv_fp32_to_fp16 = False
+        broadcast_tensor_0 = tmp_tensor
         reduce_0 = broadcast_tensor_0.op.input_tensors[0]
     else:
-        cast_1 = sub_0.op.input_tensors[1]
+        conv_fp32_to_fp16 = True
+        cast_1 = tmp_tensor
         broadcast_tensor_0 = cast_1.op.input_tensors[0]
         reduce_0 = broadcast_tensor_0.op.input_tensors[0]
         cast_0 = reduce_0.op.input_tensors[0]
@@ -1620,7 +1634,7 @@ def _schedule_workspace_fp32_broad(sch_list, add_0, shape, dtype):
     data_labels_broad_ub_000 = s.cache_read(data_labels_broad, 'local.UB', [mul_5])
     data_labels_broad_ub_001 = s.cache_read(data_labels_broad, 'local.UB', [sub_7])
 
-    if vcmax_intr_support_fp32:
+    if not conv_fp32_to_fp16:
         data_features_ub_000 = s.cache_read(data_features,
                                             'local.UB', [reduce_0])
     else:
@@ -1629,7 +1643,7 @@ def _schedule_workspace_fp32_broad(sch_list, add_0, shape, dtype):
 
     data_features_ub_001 = s.cache_read(data_features, 'local.UB', [sub_0])
 
-    if not vcmax_intr_support_fp32:
+    if conv_fp32_to_fp16:
         cast_0_ub = s.cache_write(cast_0, 'local.UB')
         cast_1_ub = s.cache_write(cast_1, 'local.UB')
 
@@ -1654,7 +1668,7 @@ def _schedule_workspace_fp32_broad(sch_list, add_0, shape, dtype):
     sub_7_ub = s.cache_write(sub_7, 'local.UB')
 
     # compute_inline code
-    if not vcmax_intr_support_fp32:
+    if conv_fp32_to_fp16:
         s[cast_0].compute_inline()
         s[cast_1].compute_inline()
 
@@ -1735,7 +1749,7 @@ def _schedule_workspace_fp32_broad(sch_list, add_0, shape, dtype):
     s[data_features_ub_001].compute_at(s[sub_0], sub_0_axis_1_o)
     s[data_features_ub_000].compute_at(s[reduce_0_ub], reduce_0_ub_reduce_axis_0_o)
 
-    if not vcmax_intr_support_fp32:
+    if conv_fp32_to_fp16:
         s[cast_0_ub].compute_at(s[reduce_0_ub], reduce_0_ub_reduce_axis_0_o)
         s[cast_1_ub].compute_at(s[sub_0], sub_0_axis_1_o)
 
@@ -1782,7 +1796,7 @@ def _schedule_workspace_fp32_broad(sch_list, add_0, shape, dtype):
     s[data_features_ub_001].emit_insn(s[data_features_ub_001].op.axis[0], 'dma_copy')
     s[data_features_ub_000].emit_insn(s[data_features_ub_000].op.axis[0], 'dma_copy')
 
-    if not vcmax_intr_support_fp32:
+    if conv_fp32_to_fp16:
         s[cast_0_ub].emit_insn(s[cast_0_ub].op.axis[0], 'vector_conv')
         s[cast_1_ub].emit_insn(s[cast_1_ub].op.axis[0], 'vector_conv')
 
@@ -1833,7 +1847,7 @@ def _schedule_workspace_fp32_broad(sch_list, add_0, shape, dtype):
     s[data_features_ub_001].storage_align(s[data_features_ub_001].op.axis[0], 8, 0)
     s[data_features_ub_000].storage_align(s[data_features_ub_000].op.axis[0], 8, 0)
 
-    if not vcmax_intr_support_fp32:
+    if conv_fp32_to_fp16:
         s[cast_0_ub].storage_align(s[cast_0_ub].op.axis[0], 16, 0)
         s[cast_1_ub].storage_align(s[cast_1_ub].op.axis[0], 8, 0)
 
@@ -1906,19 +1920,19 @@ def _schedule_workspace_fp16(sch_list, add_0, shape,
 
     log_3 = sub_4.op.input_tensors[1]
 
-    vcmax_intr_support_fp32 = intrinsic_check_support("Intrinsic_vcmax",
-                                                      "float32")
-
     data_features_ub = s.cache_read(data_features,
                                     'local.UB', [data_features_cast])
 
-    if vcmax_intr_support_fp32:
-        broadcast_tensor_0 = sub_0.op.input_tensors[1]
+    tmp_tensor = sub_0.op.input_tensors[1]
+    if "broadcast" in tmp_tensor.op.name:
+        conv_fp32_to_fp16 = False
+        broadcast_tensor_0 = tmp_tensor
         reduce_0 = broadcast_tensor_0.op.input_tensors[0]
         data_features_ub_000 = s.cache_read(data_features_cast,
                                             'local.UB', [reduce_0])
     else:
-        cast_1 = sub_0.op.input_tensors[1]
+        conv_fp32_to_fp16 = True
+        cast_1 = tmp_tensor
         broadcast_tensor_0 = cast_1.op.input_tensors[0]
         reduce_0 = broadcast_tensor_0.op.input_tensors[0]
         cast_0 = reduce_0.op.input_tensors[0]
@@ -2064,7 +2078,7 @@ def _schedule_workspace_fp16(sch_list, add_0, shape,
     s[data_features_ub_001].compute_at(s[sub_0], sub_0_axis_1_o)
     s[data_features_ub_000].compute_at(s[reduce_0_ub], reduce_0_ub_reduce_axis_0_o)
 
-    if not vcmax_intr_support_fp32:
+    if conv_fp32_to_fp16:
         s[cast_0_ub].compute_at(s[reduce_0_ub], reduce_0_ub_reduce_axis_0_o)
         s[cast_1_ub].compute_at(s[sub_0], sub_0_axis_1_o)
 
