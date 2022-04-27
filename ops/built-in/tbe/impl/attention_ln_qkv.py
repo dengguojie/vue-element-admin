@@ -139,9 +139,11 @@ class AttentionLnQKV:
 
         # matmul_m_l0 can only be 12 or 8
         m_inner = self.out_shape[Constant.M_INNER_INDEX]
-        if not (m_inner % Constant.CANDIDATE_TILING_M1 == 0 or Constant.CANDIDATE_TILING_M1 % m_inner == 0):
+        # when m_inner is factor of 12 or the opposite, choose 12 to be matmul_m_l0
+        if m_inner % Constant.CANDIDATE_TILING_M1 == 0 or Constant.CANDIDATE_TILING_M1 % m_inner == 0:
             self.matmul_m_l0 = Constant.CANDIDATE_TILING_M1
         elif (self.m1_shape // self.block_m) % Constant.CANDIDATE_TILING_M2 == 0:
+            # 8 is the left choice, make sure matmul_m_l0 should be factor of single core m data
             self.matmul_m_l0 = Constant.CANDIDATE_TILING_M2
         else:
             self.matmul_m_l0 = math.gcd(Constant.CANDIDATE_TILING_M1, Constant.CANDIDATE_TILING_M2)
