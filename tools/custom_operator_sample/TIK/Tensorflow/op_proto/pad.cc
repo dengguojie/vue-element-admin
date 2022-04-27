@@ -141,7 +141,7 @@ IMPLEMT_COMMON_INFERFUNC(PadInferShape) {
   auto const_dtype = const_desc->GetDataType();
   std::vector<int64_t> paddings;
   if (!GetConstValue(op, paddings_tensor, const_dtype, paddings)) {
-    OP_LOGE(TbeGetName(op).c_str(), "Get Const paddings value failed, infershape failed");
+    OP_LOGE(op.GetName().c_str(), "Get Const paddings value failed, infershape failed");
     return GRAPH_FAILED;
   }
 

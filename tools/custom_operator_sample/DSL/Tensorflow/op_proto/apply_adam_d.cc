@@ -30,21 +30,21 @@ bool ApplyVerifyFunc(const ge::Operator& op, const std::vector<std::string>& inp
   // check shape of Tensor
   auto var_dims = op.GetInputDesc(inputTensorList[0]).GetShape().GetDims();
   if (var_dims.size() > 8 || var_dims.size() < 0) {
-    OP_LOGE(TbeGetName(op).c_str(), "var only support 0 ~ 8 dims!");
+    OP_LOGE(op.GetName().c_str(), "var only support 0 ~ 8 dims!");
     return GRAPH_FAILED;
   }
   if (IsUnknown(var_dims)) {
-    OP_LOGW(TbeGetName(op).c_str(), "this is dynamic shape, will exit ApplyVerifyFunc");
+    OP_LOGW(op.GetName().c_str(), "this is dynamic shape, will exit ApplyVerifyFunc");
     return true;
   }
   for (std::size_t i = 1; i < inputTensorList.size(); i++) {
     auto tmp_dims = op.GetInputDesc(inputTensorList[i]).GetShape().GetDims();
     if (IsUnknown(tmp_dims)) {
-      OP_LOGW(TbeGetName(op).c_str(), "this is dynamic shape, will continue ApplyVerifyFunc");
+      OP_LOGW(op.GetName().c_str(), "this is dynamic shape, will continue ApplyVerifyFunc");
       continue;
     }
     if (tmp_dims != var_dims) {
-      OP_LOGE(TbeGetName(op).c_str(), "the shape of %s must equal with %s", inputTensorList[i].c_str(),
+      OP_LOGE(op.GetName().c_str(), "the shape of %s must equal with %s", inputTensorList[i].c_str(),
               inputTensorList[0].c_str());
       return false;
     }
@@ -54,7 +54,7 @@ bool ApplyVerifyFunc(const ge::Operator& op, const std::vector<std::string>& inp
   for (std::size_t j = 0; j < inputScalarList.size(); j++) {
     auto scalar_dims = op.GetInputDesc(inputScalarList[j]).GetShape().GetDims();
     if (scalar_dims.size() > 1) {
-      OP_LOGE(TbeGetName(op).c_str(), "The input %s must be scalar!", inputScalarList[j].c_str());
+      OP_LOGE(op.GetName().c_str(), "The input %s must be scalar!", inputScalarList[j].c_str());
       return false;
     }
   }
@@ -63,7 +63,7 @@ bool ApplyVerifyFunc(const ge::Operator& op, const std::vector<std::string>& inp
 
 // ----------------ApplyAdamD Op-------------------
 IMPLEMT_VERIFIER(ApplyAdamD, ApplyAdamDVerify) {
-  OP_LOGI(TbeGetName(op).c_str(), "Enter ApplyAdamD proto verifyFunction!");
+  OP_LOGI(op.GetName().c_str(), "Enter ApplyAdamD proto verifyFunction!");
   std::vector<std::string> inputTensorList;
   inputTensorList.push_back("var");
   inputTensorList.push_back("m");

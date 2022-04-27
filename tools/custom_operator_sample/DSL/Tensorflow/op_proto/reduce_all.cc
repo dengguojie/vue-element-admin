@@ -62,7 +62,7 @@ static bool InferReduceShape(const ge::Operator& op, const string& input_name, c
   int64_t dim_num = shape.GetDimNum();
 
   if (shapeVector.size() == 0) {
-    OP_LOGI(TbeGetName(op).c_str(), "input shape vector size is 0, is scalar.");
+    OP_LOGI(op.GetName().c_str(), "input shape vector size is 0, is scalar.");
     result_desc.SetShape({});
     result_desc.SetShapeRange({});
     return true;
@@ -82,14 +82,14 @@ static bool InferReduceShape(const ge::Operator& op, const string& input_name, c
   std::vector<std::pair<int64_t, int64_t>> output_shape_range;
   MakeUpShapeRange(shapeVector, input_shape_range);
   if (input_shape_range.size() != (uint32_t)dim_num) {
-    OP_LOGI(TbeGetName(op).c_str(), "reset input shape range.");
+    OP_LOGI(op.GetName().c_str(), "reset input shape range.");
     input_shape_range.clear();
     MakeUpShapeRange(shapeVector, input_shape_range);
   }
 
   bool keep_dims;
   if (GRAPH_SUCCESS != op.GetAttr(keep_dims_name, keep_dims)) {
-    OP_LOGE(TbeGetName(op).c_str(), "GetAttr of %s failed.", keep_dims_name.c_str());
+    OP_LOGE(op.GetName().c_str(), "GetAttr of %s failed.", keep_dims_name.c_str());
     return false;
   }
 
@@ -101,26 +101,26 @@ static bool InferReduceShape(const ge::Operator& op, const string& input_name, c
   int64_t axis_dimNum = axis_shape.GetDimNum();
 
   if (!axis_shapeVector.empty() && axis_shapeVector[0] > dim_num) {
-    OP_LOGE(TbeGetName(op).c_str(), "The size of axisnode must be less than inputx dim_num.");
+    OP_LOGE(op.GetName().c_str(), "The size of axisnode must be less than inputx dim_num.");
     return false;
   }
 
   if (axis_dimNum == 1 && axis_shapeVector[0] == 0) {
     result_desc.SetShape(shape);
     result_desc.SetShapeRange(input_shape_range);
-    OP_LOGI(TbeGetName(op).c_str(), "axis dim num is 1 and axis shape vector[0] is 0.");
+    OP_LOGI(op.GetName().c_str(), "axis dim num is 1 and axis shape vector[0] is 0.");
     return true;
   }
 
   Tensor data;
   // axis unknown
   if (GRAPH_SUCCESS != op.GetInputConstData(axis_name, data)) {
-    OP_LOGI(TbeGetName(op).c_str(), "GetInputConstData of %s failed, enter axis unknown scenario.", axis_name.c_str());
+    OP_LOGI(op.GetName().c_str(), "GetInputConstData of %s failed, enter axis unknown scenario.", axis_name.c_str());
 
     std::vector<int64_t> oShapeVector;
 
     if (axis_dimNum > 1) {
-      OP_LOGE(TbeGetName(op).c_str(), "The dim number of axis must be one or zero, but actual is %d.", axis_dimNum);
+      OP_LOGE(op.GetName().c_str(), "The dim number of axis must be one or zero, but actual is %d.", axis_dimNum);
       return false;
     }
 
@@ -142,7 +142,7 @@ static bool InferReduceShape(const ge::Operator& op, const string& input_name, c
       result_desc.SetShapeRange(output_shape_range);
     } else {
       if (!axis_shapeVector.empty() && (axis_shapeVector[0] == -1 || axis_shapeVector[0] == -2)) {
-        OP_LOGI(TbeGetName(op).c_str(), "Can't get reduce axis number.");
+        OP_LOGI(op.GetName().c_str(), "Can't get reduce axis number.");
 
         oShapeVector.push_back(-2);
         Shape oShape(oShapeVector);
@@ -155,7 +155,7 @@ static bool InferReduceShape(const ge::Operator& op, const string& input_name, c
         } else {
           output_dimNum = dim_num - axis_shapeVector[0];
         }
-        OP_LOGI(TbeGetName(op).c_str(), "Get output dim num %d.", output_dimNum);
+        OP_LOGI(op.GetName().c_str(), "Get output dim num %d.", output_dimNum);
 
         int64_t range_min_value = input_shape_range[0].first;
         int64_t range_max_value = input_shape_range[0].second;
@@ -201,7 +201,7 @@ static bool InferReduceShape(const ge::Operator& op, const string& input_name, c
     // convert reduce axis
     for (size_t i = 0; i < axis.size(); ++i) {
       if (axis[i] < -dim_num || axis[i] > (dim_num - 1)) {
-        OP_LOGE(TbeGetName(op).c_str(), "reduce verify failed, axis: %d, dim_num:%d.", axis[i], dim_num);
+        OP_LOGE(op.GetName().c_str(), "reduce verify failed, axis: %d, dim_num:%d.", axis[i], dim_num);
         return false;
       }
       if (axis[i] < 0) {
@@ -250,7 +250,7 @@ static bool InferReduceShape(const ge::Operator& op, const string& input_name, c
 static bool CheckReduceInfo(const ge::Operator& op, const size_t& input_size, const size_t& axis_size,
                             const string& keep_dims_name, bool& keep_dims) {
   if (GRAPH_SUCCESS != op.GetAttr(keep_dims_name, keep_dims)) {
-    OP_LOGE(TbeGetName(op).c_str(), "GetAttr of %s failed.", keep_dims_name.c_str());
+    OP_LOGE(op.GetName().c_str(), "GetAttr of %s failed.", keep_dims_name.c_str());
     return false;
   }
   return true;
@@ -259,15 +259,15 @@ static bool CheckReduceInfo(const ge::Operator& op, const size_t& input_size, co
 static bool CheckReduceDInfo(const ge::Operator& op, const size_t& input_size, const string& keep_dims_name,
                              const string& axis_name, bool& keep_dims, std::vector<int64_t>& axis) {
   if (GRAPH_SUCCESS != op.GetAttr(keep_dims_name, keep_dims)) {
-    OP_LOGE(TbeGetName(op).c_str(), "GetAttr of %s failed.", keep_dims_name.c_str());
+    OP_LOGE(op.GetName().c_str(), "GetAttr of %s failed.", keep_dims_name.c_str());
     return false;
   }
   if (GRAPH_SUCCESS != op.GetAttr(axis_name, axis)) {
-    OP_LOGE(TbeGetName(op).c_str(), "GetAttr of %s failed.", axis_name.c_str());
+    OP_LOGE(op.GetName().c_str(), "GetAttr of %s failed.", axis_name.c_str());
     return false;
   }
   if (axis.size() > input_size) {
-    OP_LOGE(TbeGetName(op).c_str(), "size of axis is illegal.");
+    OP_LOGE(op.GetName().c_str(), "size of axis is illegal.");
     return false;
   }
 
@@ -442,7 +442,7 @@ static bool InferReduceShapeProcess(const ge::Operator& op, const string& input_
     return true;
   }
   if (!axis_shape.empty() && axis_shape[0] == 0) {
-    OP_LOGD(TbeGetName(op).c_str(), "axis_shape[0] is 0");
+    OP_LOGD(op.GetName().c_str(), "axis_shape[0] is 0");
     output_desc->SetShape(GeShape(input_shape));
     output_desc->SetDataType(input_type);
     return true;
@@ -457,22 +457,22 @@ static bool InferReduceShapeProcess(const ge::Operator& op, const string& input_
     } else if (axis_type == DT_INT64) {
       GetTensorValue<int64_t>(axis_tensor, axis);
     } else {
-      OP_LOGE(TbeGetName(op).c_str(), "axis_type is illegal");
+      OP_LOGE(op.GetName().c_str(), "axis_type is illegal");
       return false;
     }
     // Convert "-1" -> "length-1";
     if (!ConvertAxis(axis, (int64_t)input_length)) {
-      OP_LOGE(TbeGetName(op).c_str(), "axis_value is illegal");
+      OP_LOGE(op.GetName().c_str(), "axis_value is illegal");
       return false;
     }
   } else {
-    OP_LOGD(TbeGetName(op).c_str(), "GetInputConstData Failed");
+    OP_LOGD(op.GetName().c_str(), "GetInputConstData Failed");
   }
 
   // Get attr
   bool keep_dims = false;
   if (!CheckReduceInfo(op, input_length, axis_length, keep_dims_name, keep_dims)) {
-    OP_LOGE(TbeGetName(op).c_str(), "Inputs and attrs are illegal");
+    OP_LOGE(op.GetName().c_str(), "Inputs and attrs are illegal");
     return false;
   }
 
@@ -483,7 +483,7 @@ static bool InferReduceShapeProcess(const ge::Operator& op, const string& input_
    * */
   // Special Branch
   if (!axis_shape.empty() && (axis_shape[0] == -1 || axis_shape[0] == -2) && (!keep_dims)) {
-    OP_LOGD(TbeGetName(op).c_str(), "[Special Branch]: axis_shape[0] is -1 or -2.");
+    OP_LOGD(op.GetName().c_str(), "[Special Branch]: axis_shape[0] is -1 or -2.");
     std::vector<int64_t> output_shape;
     output_shape.push_back(-2);
     output_desc->SetShape(GeShape(output_shape));
@@ -493,7 +493,7 @@ static bool InferReduceShapeProcess(const ge::Operator& op, const string& input_
 
   // Special Branch for if axis has redundant axis value
   if (!axis_shape.empty() && axis_shape[0] > static_cast<int64_t>(input_length) && (!keep_dims)) {
-    OP_LOGD(TbeGetName(op).c_str(), "[Special Branch]: axis_shape[0] is more than input_length,"
+    OP_LOGD(op.GetName().c_str(), "[Special Branch]: axis_shape[0] is more than input_length,"
             "if axis has redundant axis value");
     std::vector<int64_t> output_shape;
     output_shape.push_back(-2);
@@ -503,10 +503,10 @@ static bool InferReduceShapeProcess(const ge::Operator& op, const string& input_
   }
   // DoKnown Branch && UnKnown Branch
   if ((!IsUnknown(input_shape)) && (!IsUnknown(axis_shape)) && (axis_tensor != nullptr)) {
-    OP_LOGD(TbeGetName(op).c_str(), "[DoKnown Branch]: shape and axis are known.");
+    OP_LOGD(op.GetName().c_str(), "[DoKnown Branch]: shape and axis are known.");
     DoKnownBranch(keep_dims, input_type, input_shape, axis, output_desc);
   } else {
-    OP_LOGD(TbeGetName(op).c_str(), "[UnKnown Branch]: one of inputs is unknown at least.");
+    OP_LOGD(op.GetName().c_str(), "[UnKnown Branch]: one of inputs is unknown at least.");
     std::vector<int64_t> output_shape;
     std::vector<std::pair<int64_t, int64_t>> output_shape_range;
     std::vector<std::pair<int64_t, int64_t>> input_shape_range;
@@ -516,10 +516,10 @@ static bool InferReduceShapeProcess(const ge::Operator& op, const string& input_
 
     // Split as axis known and axis unknown
     if (axis_tensor != nullptr) {
-      OP_LOGD(TbeGetName(op).c_str(), "[UnKnown Branch]: axis is known.");
+      OP_LOGD(op.GetName().c_str(), "[UnKnown Branch]: axis is known.");
       DoAxisKnown(keep_dims, axis, input_shape, input_shape_range, output_shape, output_shape_range);
     } else {
-      OP_LOGD(TbeGetName(op).c_str(), "[UnKnown Branch]: axis is unknown.");
+      OP_LOGD(op.GetName().c_str(), "[UnKnown Branch]: axis is unknown.");
       DoAxisUnKnown(keep_dims, axis_shape, input_shape, input_shape_range, output_shape, output_shape_range);
     }
 
@@ -550,13 +550,13 @@ static bool InferReduceDShapeProcess(const ge::Operator& op, const string& input
    * */
   // Special Branch
   if (input_length == 0) {
-    OP_LOGD(TbeGetName(op).c_str(), "[Special Branch]: input_shape size is 0.");
+    OP_LOGD(op.GetName().c_str(), "[Special Branch]: input_shape size is 0.");
     output_desc->SetShape({});
     output_desc->SetDataType(input_type);
     return true;
   }
   if (input_shape[0] == -2) {
-    OP_LOGD(TbeGetName(op).c_str(), "[Special Branch]: input_shape is -2.");
+    OP_LOGD(op.GetName().c_str(), "[Special Branch]: input_shape is -2.");
     std::vector<int64_t> output_shape(1, -2);
     output_desc->SetShape(GeShape(output_shape));
     output_desc->SetDataType(input_type);
@@ -567,22 +567,22 @@ static bool InferReduceDShapeProcess(const ge::Operator& op, const string& input
   bool keep_dims = false;
   std::vector<int64_t> axis;
   if (!CheckReduceDInfo(op, input_length, keep_dims_name, axis_name, keep_dims, axis)) {
-    OP_LOGE(TbeGetName(op).c_str(), "KeepDims or Axis is illegal");
+    OP_LOGE(op.GetName().c_str(), "KeepDims or Axis is illegal");
     return false;
   }
 
   // Convert "-1" -> "length-1";
   if (!ConvertAxis(axis, (int64_t)input_length)) {
-    OP_LOGE(TbeGetName(op).c_str(), "axis_value is illegal");
+    OP_LOGE(op.GetName().c_str(), "axis_value is illegal");
     return false;
   }
 
   // DoKnown Branch and UnKnown Branch
   if (!IsUnknown(input_shape)) {
-    OP_LOGD(TbeGetName(op).c_str(), "[DoKnown Branch]: input_shape is known.");
+    OP_LOGD(op.GetName().c_str(), "[DoKnown Branch]: input_shape is known.");
     DoKnownBranch(keep_dims, input_type, input_shape, axis, output_desc);
   } else {
-    OP_LOGD(TbeGetName(op).c_str(), "[UnKnown Branch]: input_shape is unknown.");
+    OP_LOGD(op.GetName().c_str(), "[UnKnown Branch]: input_shape is unknown.");
     std::vector<int64_t> output_shape(input_length);
     std::vector<std::pair<int64_t, int64_t>> output_shape_range(input_length);
     std::vector<std::pair<int64_t, int64_t>> input_shape_range;
@@ -639,13 +639,13 @@ static bool InferReduceDShape(const ge::Operator& op, const string& input_name, 
 
   std::vector<int64_t> axis;
   if (GRAPH_SUCCESS != op.GetAttr(axis_name, axis)) {
-    OP_LOGE(TbeGetName(op).c_str(), "GetAttr of %s failed.", axis_name.c_str());
+    OP_LOGE(op.GetName().c_str(), "GetAttr of %s failed.", axis_name.c_str());
     return false;
   }
 
   bool keep_dims;
   if (GRAPH_SUCCESS != op.GetAttr(keep_dims_name, keep_dims)) {
-    OP_LOGE(TbeGetName(op).c_str(), "GetAttr of %s failed.", keep_dims_name.c_str());
+    OP_LOGE(op.GetName().c_str(), "GetAttr of %s failed.", keep_dims_name.c_str());
     return false;
   }
 
@@ -657,7 +657,7 @@ static bool InferReduceDShape(const ge::Operator& op, const string& input_name, 
 
   for (size_t i = 0; i < axis.size(); ++i) {
     if (axis[i] < -dimNum || axis[i] > (dimNum - 1)) {
-      OP_LOGE(TbeGetName(op).c_str(), "the axis of reduce verify failed.");
+      OP_LOGE(op.GetName().c_str(), "the axis of reduce verify failed.");
       return false;
     }
     if (axis[i] < 0) {
@@ -672,7 +672,7 @@ static bool InferReduceDShape(const ge::Operator& op, const string& input_name, 
   std::vector<std::pair<int64_t, int64_t>> output_shape_range;
   MakeUpShapeRange(shapeVector, input_shape_range);
   if (input_shape_range.size() != (uint32_t)dimNum) {
-    OP_LOGI(TbeGetName(op).c_str(), "reset input shape range.");
+    OP_LOGI(op.GetName().c_str(), "reset input shape range.");
     input_shape_range.clear();
     MakeUpShapeRange(shapeVector, input_shape_range);
   }
@@ -718,7 +718,7 @@ static bool InferReduceDShape(const ge::Operator& op, const string& input_name, 
 IMPLEMT_COMMON_INFERFUNC(ReduceAllInferShape) {
   const vector<string> depend_names = {"axes"};
   PREPARE_DYNAMIC_SHAPE(depend_names);
-  OP_LOGI(TbeGetName(op).c_str(), "Enter ReduceAll proto inferfunction!");
+  OP_LOGI(op.GetName().c_str(), "Enter ReduceAll proto inferfunction!");
   ge::TensorDesc result_desc;
   if (!InferReduceShape(op, "x", "axes", "keep_dims", result_desc)) {
     return GRAPH_FAILED;

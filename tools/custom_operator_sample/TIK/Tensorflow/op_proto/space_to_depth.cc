@@ -25,7 +25,7 @@
 #define CHECK_FORMAT(format)                                                     \
   {                                                                              \
     if (ge::FORMAT_RESERVED == format) {                                         \
-      OP_LOGE(TbeGetName(op).c_str(), "get format failed:%s:%d", #format, format); \
+      OP_LOGE(op.GetName().c_str(), "get format failed:%s:%d", #format, format); \
       return GRAPH_FAILED;                                                       \
     }                                                                            \
   }
@@ -54,33 +54,33 @@ IMPLEMT_VERIFIER(SpaceToDepth, SpaceToDepthVerify) {
   if (!IsUnknownRankShape(input_dims) && (input_dims.size() < 4)) {
     string excepted_value = ConcatString("greater than or equal to 4.");
     std::string err_msg = GetAttrSizeErrMsg("Input shape", ConcatString(input_dims.size()), excepted_value);
-    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   // verify block size
   int64_t block_size;
   if (op.GetAttr("block_size", block_size) != GRAPH_SUCCESS) {
     std::string err_msg = GetInputInvalidErrMsg("block_size");
-    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   if (block_size < 2) {
     string excepted_value = ConcatString("greater than or equal to 2");
     std::string err_msg = GetAttrValueErrMsg("block_size", ConcatString(block_size), excepted_value);
-    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   // verify data_format
   std::string data_format;
   if (op.GetAttr("data_format", data_format) != GRAPH_SUCCESS) {
     std::string err_msg = GetInputInvalidErrMsg("data_format");
-    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   if (data_format != "NHWC" && data_format != "NCHW" && data_format != "NC1HWC0") {
     string expected_format_list = ConcatString("NHWC, NCHW, NC1HWC0");
     std::string err_msg = GetInputFormatNotSupportErrMsg("data_format", expected_format_list, data_format);
-    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -101,7 +101,7 @@ IMPLEMT_COMMON_INFERFUNC(SpaceToDepthInferShape) {
   int64_t block_size;
   if (GRAPH_SUCCESS != op.GetAttr("block_size", block_size)) {
     std::string err_msg = GetInputInvalidErrMsg("block_size");
-    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -125,7 +125,7 @@ IMPLEMT_COMMON_INFERFUNC(SpaceToDepthInferShape) {
   // dynamic case, input shape is -2, output is -2
   if (IsUnknownRankShape(input_dims)) {
     output_desc->SetShape(GeShape(input_dims));
-    OP_LOGW(TbeGetName(op).c_str(), "input shape is UnknownRank, set output is UnknownRank.");
+    OP_LOGW(op.GetName().c_str(), "input shape is UnknownRank, set output is UnknownRank.");
     return GRAPH_SUCCESS;
   }
 

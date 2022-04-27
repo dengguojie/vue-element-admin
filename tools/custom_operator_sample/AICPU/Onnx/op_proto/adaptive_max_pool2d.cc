@@ -25,19 +25,19 @@
 namespace ge {
 // ------------AdaptiveMaxPool2d Op Begin----------------
 IMPLEMT_INFERFUNC(AdaptiveMaxPool2d, AdaptiveMaxPool2dInferShape) {
-  OP_LOGI(TbeGetName(op).c_str(), " AdaptiveMaxPool2d inferShape begin!");
+  OP_LOGI(op.GetName().c_str(), " AdaptiveMaxPool2d inferShape begin!");
   const size_t DIM_SIZE2 = 2;
   auto input_tensor_desc = op.GetInputDesc("x");
   auto shape = input_tensor_desc.GetShape();
   // get output_size
   std::vector<int64_t> ouput_size_list;
   if (GRAPH_SUCCESS != op.GetAttr("output_size", ouput_size_list)) {
-    OP_LOGE(TbeGetName(op).c_str(), "GetOpAttr ouput_size_list failed!");
+    OP_LOGE(op.GetName().c_str(), "GetOpAttr ouput_size_list failed!");
     return GRAPH_FAILED;
   }
   // check output size
   if (ouput_size_list.size() != DIM_SIZE2) {
-    OP_LOGE(TbeGetName(op).c_str(), "length of output_size must be 2");
+    OP_LOGE(op.GetName().c_str(), "length of output_size must be 2");
     return GRAPH_FAILED;
   }
   std::vector<int64_t> dims_input = shape.GetDims();
@@ -47,13 +47,13 @@ IMPLEMT_INFERFUNC(AdaptiveMaxPool2d, AdaptiveMaxPool2dInferShape) {
     int64_t dims = dims_input[i];
     dim_vector.push_back(dims);
   }
-  OP_LOGI(TbeGetName(op).c_str(),
+  OP_LOGI(op.GetName().c_str(),
           " AdaptiveMaxPool2d inferShape dims: [%u] ", dims_input.size());
 
   size_t index0 = dims_input.size() - 2;
   size_t index1 = dims_input.size() - 1;
   Format input_format = input_tensor_desc.GetFormat();
-  OP_LOGI(TbeGetName(op).c_str(), " AdaptiveMaxPool2d inferShape format: [%u] ", input_format);
+  OP_LOGI(op.GetName().c_str(), " AdaptiveMaxPool2d inferShape format: [%u] ", input_format);
   if ((input_format == FORMAT_NC1HWC0) || (input_format == FORMAT_NHWC)) {
     index0 = dims_input.size() - 3;
     index1 = dims_input.size() - 2;
@@ -70,10 +70,10 @@ IMPLEMT_INFERFUNC(AdaptiveMaxPool2d, AdaptiveMaxPool2dInferShape) {
 
   TensorDesc out1_td = op.GetOutputDesc("argmax");
   DataType out1_dtype = out1_td.GetDataType();
-  OP_LOGI(TbeGetName(op).c_str(),  " AdaptiveMaxPool2d inferShape argmax dtype: [%u] ", out1_dtype);
+  OP_LOGI(op.GetName().c_str(),  " AdaptiveMaxPool2d inferShape argmax dtype: [%u] ", out1_dtype);
   if (out1_dtype == DT_UNDEFINED) {
       out1_td.SetDataType(DT_INT32);
-      OP_LOGI(TbeGetName(op).c_str(), " AdaptiveMaxPool2d inferShape set argmax dtype: [%u] ", DT_INT32);
+      OP_LOGI(op.GetName().c_str(), " AdaptiveMaxPool2d inferShape set argmax dtype: [%u] ", DT_INT32);
   }
   out1_td.SetShape(output_shape);
   (void)op.UpdateOutputDesc("argmax", out1_td);

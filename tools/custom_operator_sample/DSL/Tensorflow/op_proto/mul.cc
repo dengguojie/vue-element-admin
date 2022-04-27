@@ -51,8 +51,8 @@ bool BroadCastTwoShape(const Operator& op, const ge::Shape& shape_x, const ge::S
     // set out dims
     for (size_t i = 0; i < dim_x.size(); i++) {
         if ((dim_x[i] != dim_y[i]) && (dim_x[i] != 1) && (dim_y[i] != 1)) {
-            OP_LOGE(TbeGetName(op).c_str(), "The %s's dimensions does not match the broadcast rule(%lu %lu).",
-                    TbeGetName(op).c_str(), dim_x[i], dim_y[i]);
+            OP_LOGE(op.GetName().c_str(), "The %s's dimensions does not match the broadcast rule(%lu %lu).",
+                    op.GetName().c_str(), dim_x[i], dim_y[i]);
             return false;
         }
 
@@ -66,13 +66,13 @@ bool InferShapeForMaximumAndMinimum(Operator& op) {
     auto attr_grad_x = false;
     auto attr_grad_y = false;
     if (op.GetAttr("grad_x", attr_grad_x) == GRAPH_FAILED) {
-        OP_LOGE(TbeGetName(op).c_str(), "get attr grad_x failed");
+        OP_LOGE(op.GetName().c_str(), "get attr grad_x failed");
     }
     if (op.GetAttr("grad_y", attr_grad_y) == GRAPH_FAILED) {
-        OP_LOGE(TbeGetName(op).c_str(), "get attr grad_y failed");
+        OP_LOGE(op.GetName().c_str(), "get attr grad_y failed");
     }
     if (attr_grad_x == false && attr_grad_y == false) {
-        OP_LOGE(TbeGetName(op).c_str(), "the grad_x and grad_y is not support all false");
+        OP_LOGE(op.GetName().c_str(), "the grad_x and grad_y is not support all false");
       return false;
     }
     if (attr_grad_x) {
@@ -144,13 +144,13 @@ static void InferElewiseTwoInputdif(vector<vector<int64_t>>& in_data_slice, cons
 IMPLEMT_COMMON_INFER_DATA_SLICE(ElewiseTwoInputInferDataSlice) {
     auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
     if (!op_desc) {
-        OP_LOGW(TbeGetName(op).c_str(), "GetOpDescFromOperator failed.");
+        OP_LOGW(op.GetName().c_str(), "GetOpDescFromOperator failed.");
         return GRAPH_FAILED;
     }
 
     auto tensor_desc_in_x1 = op_desc->MutableInputDesc("x1");
     if (!tensor_desc_in_x1) {
-        OP_LOGW(TbeGetName(op).c_str(), "Get input desc x1 failed.");
+        OP_LOGW(op.GetName().c_str(), "Get input desc x1 failed.");
         return GRAPH_FAILED;
     }
     auto x1_shape = tensor_desc_in_x1->MutableShape();
@@ -159,7 +159,7 @@ IMPLEMT_COMMON_INFER_DATA_SLICE(ElewiseTwoInputInferDataSlice) {
 
     auto tensor_desc_in_x2 = op_desc->MutableInputDesc("x2");
     if (!tensor_desc_in_x2) {
-        OP_LOGW(TbeGetName(op).c_str(), "Get input desc x2 failed.");
+        OP_LOGW(op.GetName().c_str(), "Get input desc x2 failed.");
         return GRAPH_FAILED;
     }
     auto x2_shape = tensor_desc_in_x2->MutableShape();
@@ -168,7 +168,7 @@ IMPLEMT_COMMON_INFER_DATA_SLICE(ElewiseTwoInputInferDataSlice) {
 
     auto tensor_desc_out_y = op_desc->MutableOutputDesc("y");
     if (!tensor_desc_out_y) {
-        OP_LOGW(TbeGetName(op).c_str(), "Get input desc y failed.");
+        OP_LOGW(op.GetName().c_str(), "Get input desc y failed.");
         return GRAPH_FAILED;
     }
     auto y_shape = tensor_desc_out_y->MutableShape();
@@ -179,7 +179,7 @@ IMPLEMT_COMMON_INFER_DATA_SLICE(ElewiseTwoInputInferDataSlice) {
     vector<vector<int64_t>> x1_data_slice = {};
     vector<vector<int64_t>> x2_data_slice = {};
     if (!ge::AttrUtils::GetListListInt(tensor_desc_out_y, ge::ATTR_NAME_DATA_SLICE, y_data_slice)) {
-        OP_LOGW(TbeGetName(op).c_str(), "no data slice, use default as {}");
+        OP_LOGW(op.GetName().c_str(), "no data slice, use default as {}");
         return GRAPH_FAILED;
     }
 
@@ -213,11 +213,11 @@ IMPLEMT_COMMON_INFER_DATA_SLICE(ElewiseTwoInputInferDataSlice) {
     }
 
     if (!ge::AttrUtils::SetListListInt(tensor_desc_in_x1, ge::ATTR_NAME_DATA_SLICE, x1_data_slice)) {
-        OP_LOGW(TbeGetName(op).c_str(), "data slice set failed");
+        OP_LOGW(op.GetName().c_str(), "data slice set failed");
         return GRAPH_FAILED;
     }
     if (!ge::AttrUtils::SetListListInt(tensor_desc_in_x2, ge::ATTR_NAME_DATA_SLICE, x2_data_slice)) {
-        OP_LOGW(TbeGetName(op).c_str(), "data slice set failed");
+        OP_LOGW(op.GetName().c_str(), "data slice set failed");
         return GRAPH_FAILED;
     }
     return GRAPH_SUCCESS;

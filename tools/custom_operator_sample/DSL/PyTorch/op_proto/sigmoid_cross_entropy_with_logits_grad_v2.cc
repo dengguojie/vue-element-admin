@@ -26,7 +26,7 @@ IMPLEMT_VERIFIER(SigmoidCrossEntropyWithLogitsGradV2,
         op.GetInputDesc("target").GetShape().GetDims();
     for (size_t i = 0; i < predict_shape_dim.size(); i++) {
         if ((predict_shape_dim[i] != target_shape_dim[i])) {
-            printf(TbeGetName(op).c_str(),
+            printf(op.GetName().c_str(),
                 "the input shape of predict and target should be same");
             return GRAPH_FAILED;
         }

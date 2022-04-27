@@ -31,13 +31,13 @@ IMPLEMT_INFERFUNC(Where, WhereInfer) {
   GeTensorDescPtr x_desc = op_desc->MutableInputDesc(0);
 
   GeShape x_shape;
-  if (WithRankAtLeast(x_desc, 1, x_shape, TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(TbeGetName(op).c_str(), "input x must be at least 1D.");
+  if (WithRankAtLeast(x_desc, 1, x_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "input x must be at least 1D.");
     return GRAPH_FAILED;
   }
 
-  if (WithRankAtMost(x_desc, 5, x_shape, TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(TbeGetName(op).c_str(), "input x must be at most 5D.");
+  if (WithRankAtMost(x_desc, 5, x_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "input x must be at most 5D.");
     return GRAPH_FAILED;
   }
 

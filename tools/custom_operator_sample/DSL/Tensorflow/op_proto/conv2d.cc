@@ -22,7 +22,7 @@
  #define CHECK_FORMAT(format)                                                     \
   {                                                                              \
     if (ge::FORMAT_RESERVED == format) {                                      \
-      CUBE_INNER_ERR_REPORT(TbeGetName(op).c_str(), "get format failed:%s:%d", #format, format); \
+      CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "get format failed:%s:%d", #format, format); \
       return false;                                                              \
     }                                                                            \
   }
@@ -30,7 +30,7 @@
 #define CHECK_FORMAT_V2(format)                                                  \
   {                                                                              \
     if (ge::FORMAT_RESERVED == format) {                                      \
-      CUBE_INNER_ERR_REPORT(TbeGetName(op).c_str(), "get format failed:%s:%d", #format, format); \
+      CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "get format failed:%s:%d", #format, format); \
       return GRAPH_FAILED;                                                       \
     }                                                                            \
   }
@@ -108,19 +108,19 @@ static bool GetPadConv2D(ge::Operator& op, int32_t ih, int32_t iw, int32_t kh, i
       pad_list.push_back(0);
       pad_list.push_back(0);
     } else {
-      OP_LOGE(TbeGetName(op).c_str(),
+      OP_LOGE(op.GetName().c_str(),
               "padding should be SAME or VALID."
               " actual is: %s.",
               pad_str.c_str());
       map<string, string> err_map;
-      err_map["op_name"] = TbeGetName(op).c_str();
+      err_map["op_name"] = op.GetName().c_str();
       err_map["expected_pad_mode"] = "SAME or VALID";
       err_map["actual_pad_mode"] = pad_str;
       std::string report_error_code = "E50050";
       ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
       return false;
     }
-    OP_LOGD(TbeGetName(op).c_str(),
+    OP_LOGD(op.GetName().c_str(),
             "pads info is [%d,%d,%d,%d].",
             pad_list[0], pad_list[1], pad_list[2], pad_list[3]);
     op.SetAttr("pads", pad_list);
@@ -160,12 +160,12 @@ static bool GetPadConv2D(ge::Operator& op, int32_t ih, int32_t iw, int32_t kh, i
       pad_list.push_back(0);
       op.SetAttr("pads", pad_list);
     } else {
-      OP_LOGE(TbeGetName(op).c_str(),
+      OP_LOGE(op.GetName().c_str(),
               "padding should be SAME or VALID."
               " actual is: %s.",
               pad_str.c_str());
       map<string, string> err_map;
-      err_map["op_name"] = TbeGetName(op).c_str();
+      err_map["op_name"] = op.GetName().c_str();
       err_map["expected_pad_mode"] = "NOTSET, SAME_UPPER, SAME_LOWER or VALID";
       err_map["actual_pad_mode"] = pad_str;
       std::string report_error_code = "E50050";
@@ -179,10 +179,10 @@ static bool GetPadConv2D(ge::Operator& op, int32_t ih, int32_t iw, int32_t kh, i
   op.GetAttr("pads", pads_list);
   auto p_size = pads_list.size();
   if (pads_list.empty() || p_size != 4) {
-    OP_LOGE(TbeGetName(op).c_str(), "pads list should be 4D. actual is: %u.", p_size);
+    OP_LOGE(op.GetName().c_str(), "pads list should be 4D. actual is: %u.", p_size);
     map<string, string> err_map;
     err_map["param_name"] = "pads";
-    err_map["op_name"] = TbeGetName(op).c_str();
+    err_map["op_name"] = op.GetName().c_str();
     err_map["expected_value"] = "4D";
     err_map["input_value"] = std::to_string(p_size) + "D.";
     std::string report_error_code = "E50029";
@@ -216,13 +216,13 @@ static bool GetPadConv2D(ge::Operator& op, int32_t ih, int32_t iw, int32_t kh, i
   bool unknown_shape = IsUnKnownShape(x_shape);
 
   if ((!unknown_shape) && (!unknown_rank) && negative_pad) {
-    OP_LOGE(TbeGetName(op).c_str(),
+    OP_LOGE(op.GetName().c_str(),
             "pads should be positive, "
             " actual is [%d,%d,%d,%d].",
             padt, padb, padl, padr);
     map<string, string> err_map;
     err_map["param_name"] = "pads";
-    err_map["op_name"] = TbeGetName(op).c_str();
+    err_map["op_name"] = op.GetName().c_str();
     err_map["expected_value"] = "positive";
     err_map["input_value"] =
         std::to_string(padt) + ", " + std::to_string(padb) + ", " + std::to_string(padl) + ", " + std::to_string(padr);
@@ -251,10 +251,10 @@ static bool GetAttrsConv2D(ge::Operator& op, Format refer, int32_t& strh, int32_
   op.GetAttr("strides", stride_list);
   auto s_size = stride_list.size();
   if (stride_list.empty() || s_size != 4) {
-    OP_LOGE(TbeGetName(op).c_str(), "strides list should be 4D. actual is: %u.", s_size);
+    OP_LOGE(op.GetName().c_str(), "strides list should be 4D. actual is: %u.", s_size);
     map<string, string> err_map;
     err_map["param_name"] = "strides";
-    err_map["op_name"] = TbeGetName(op).c_str();
+    err_map["op_name"] = op.GetName().c_str();
     err_map["expected_value"] = "4D";
     err_map["input_value"] = std::to_string(s_size) + "D.";
     std::string report_error_code = "E50029";
@@ -265,10 +265,10 @@ static bool GetAttrsConv2D(ge::Operator& op, Format refer, int32_t& strh, int32_
   op.GetAttr("dilations", dilation_list);
   auto d_size = dilation_list.size();
   if (dilation_list.empty() || d_size != 4) {
-    OP_LOGE(TbeGetName(op).c_str(), "dilations list should be 4D. actual is: %u.", d_size);
+    OP_LOGE(op.GetName().c_str(), "dilations list should be 4D. actual is: %u.", d_size);
     map<string, string> err_map;
     err_map["param_name"] = "dilations";
-    err_map["op_name"] = TbeGetName(op).c_str();
+    err_map["op_name"] = op.GetName().c_str();
     err_map["expected_value"] = "4D";
     err_map["input_value"] = std::to_string(d_size) + "D.";
     std::string report_error_code = "E50029";
@@ -288,13 +288,13 @@ static bool GetAttrsConv2D(ge::Operator& op, Format refer, int32_t& strh, int32_
     dilw = dilation_list[2];
   }
   if (strh <= 0 || strw <= 0) {
-    OP_LOGE(TbeGetName(op).c_str(),
+    OP_LOGE(op.GetName().c_str(),
             "strides should be positive,"
             " actual is [%d,%d].",
             strh, strw);
     map<string, string> err_map;
     err_map["param_name"] = "strides";
-    err_map["op_name"] = TbeGetName(op).c_str();
+    err_map["op_name"] = op.GetName().c_str();
     err_map["expected_value"] = "positive";
     err_map["input_value"] = std::to_string(strh) + ", " + std::to_string(strw);
     std::string report_error_code = "E50029";
@@ -302,13 +302,13 @@ static bool GetAttrsConv2D(ge::Operator& op, Format refer, int32_t& strh, int32_
     return false;
   }
   if (dilh <= 0 || dilw <= 0) {
-    OP_LOGE(TbeGetName(op).c_str(),
+    OP_LOGE(op.GetName().c_str(),
             "dilations should be positive,"
             " actual is [%d,%d].",
             dilh, dilw);
     map<string, string> err_map;
     err_map["param_name"] = "dilations";
-    err_map["op_name"] = TbeGetName(op).c_str();
+    err_map["op_name"] = op.GetName().c_str();
     err_map["expected_value"] = "positive";
     err_map["input_value"] = std::to_string(dilh) + ", " + std::to_string(dilw);
     std::string report_error_code = "E50029";
@@ -385,10 +385,10 @@ static bool SetConv2dOutShapeRange(op::Conv2D& op,
   if (!x_shape.empty() && GRAPH_SUCCESS == op.GetAttr("padding", pad_str) && pad_str == "SAME" &&
       (x_shape[idx_h] == -1 or x_shape[idx_w] == -1)) {
     op.SetAttr("pads", {-1, -1, -1, -1});
-    OP_LOGD(TbeGetName(op).c_str(), "set pads to {-1, -1, -1, -1} when padding is SAME in dynamic_shape");
+    OP_LOGD(op.GetName().c_str(), "set pads to {-1, -1, -1, -1} when padding is SAME in dynamic_shape");
   }
 
-  OP_LOGD(TbeGetName(op).c_str(), "dynamic shape set range");
+  OP_LOGD(op.GetName().c_str(), "dynamic shape set range");
   std::vector<std::pair<int64_t, int64_t>> fm_range;
   x_tensor->GetShapeRange(fm_range);
   if (x_shape[idx_h] == -1) {
@@ -399,7 +399,7 @@ static bool SetConv2dOutShapeRange(op::Conv2D& op,
   }
   if (!fm_range.empty()) {
     for (size_t i = 0; i < fm_range.size(); i++) {
-      OP_LOGD(TbeGetName(op).c_str(), "fmap Range[%u] is (%lld, %lld)", i, fm_range[i].first, fm_range[i].second);
+      OP_LOGD(op.GetName().c_str(), "fmap Range[%u] is (%lld, %lld)", i, fm_range[i].first, fm_range[i].second);
     }
 
     std::vector<std::pair<int64_t, int64_t>> out_range(fm_range);
@@ -416,7 +416,7 @@ static bool SetConv2dOutShapeRange(op::Conv2D& op,
     }
     y_tensor->SetShapeRange(out_range);
     for (size_t i = 0; i < out_range.size(); i++) {
-      OP_LOGD(TbeGetName(op).c_str(), "output Range[%u] is (%lld, %lld)", i, out_range[i].first, out_range[i].second);
+      OP_LOGD(op.GetName().c_str(), "output Range[%u] is (%lld, %lld)", i, out_range[i].first, out_range[i].second);
     }
   }
   y_tensor->SetShape(GeShape(y_shape));
@@ -430,13 +430,13 @@ static bool GetSingleRange(ge::Operator& op, const std::vector<int64_t>& grade,
                           const int64_t& value, int64_t& low, int64_t& high) {
   size_t min_size = 2;
   if (grade.size() < min_size) {
-    OP_LOGE(TbeGetName(op).c_str(), "input grade size smaller then %u", min_size);
+    OP_LOGE(op.GetName().c_str(), "input grade size smaller then %u", min_size);
     return false;
   }
   // grade is in ascending order
   size_t last = grade.size() - 1;
   if (value > grade[last]) {
-    OP_LOGE(TbeGetName(op).c_str(), "input value %lld is out the range of %lld", value, grade[last]);
+    OP_LOGE(op.GetName().c_str(), "input value %lld is out the range of %lld", value, grade[last]);
     return false;
   }
   // if it is the right boundary value, use the right closed interval
@@ -496,14 +496,14 @@ static bool GenConv2dShapeRange(ge::Operator& op, ge::GeTensorDescPtr& x_tensor,
       if (range_set.size() > item.first) {
         input_range[item.first] = range_set[item.first];
       } else {
-        OP_LOGE(TbeGetName(op).c_str(), "cant't get input index %zu range", item.first);
+        OP_LOGE(op.GetName().c_str(), "cant't get input index %zu range", item.first);
         return false;
       }
     } else {
       int64_t low = 1;
       int64_t high = 1;
       if (!GetSingleRange(op, item.second, x_shape[item.first], low, high)) {
-        OP_LOGE(TbeGetName(op).c_str(), "failed to get the %zu range", item.first);
+        OP_LOGE(op.GetName().c_str(), "failed to get the %zu range", item.first);
         return false;
       }
       input_range[item.first] = std::make_pair(low, high);
@@ -520,7 +520,7 @@ static bool GenConv2dShapeRange(ge::Operator& op, ge::GeTensorDescPtr& x_tensor,
   * @return Status The processing flow result.
   */
 IMPLEMT_INFERFUNC(Conv2D, Conv2DInfer) {
-  OP_LOGD(TbeGetName(op).c_str(), "Enter Conv2DInfer.");
+  OP_LOGD(op.GetName().c_str(), "Enter Conv2DInfer.");
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
   auto x_tensor = op_desc->MutableInputDesc("x");
   auto w_tensor = op_desc->MutableInputDesc("filter");
@@ -559,13 +559,13 @@ IMPLEMT_INFERFUNC(Conv2D, Conv2DInfer) {
       iw = x_shape[2];
     }
   } else {
-    OP_LOGE(TbeGetName(op).c_str(),
+    OP_LOGE(op.GetName().c_str(),
             "input x format should be NCHW or NHWC."
             " actual is: %s",
             TypeUtils::FormatToSerialString(x_format).c_str());
     map<string, string> err_map;
     err_map["param"] = "x";
-    err_map["op_name"] = TbeGetName(op).c_str();
+    err_map["op_name"] = op.GetName().c_str();
     err_map["expected_format_list"] = "NCHW or NHWC";
     err_map["format"] = TypeUtils::FormatToSerialString(x_format);
     std::string report_error_code = "E50002";
@@ -589,13 +589,13 @@ IMPLEMT_INFERFUNC(Conv2D, Conv2DInfer) {
     kh = w_shape[0];
     kw = w_shape[1];
   } else {
-    OP_LOGE(TbeGetName(op).c_str(),
+    OP_LOGE(op.GetName().c_str(),
             "input filter format should be NCHW, NHWC or HWCN."
             " actual is: %s",
             TypeUtils::FormatToSerialString(w_format).c_str());
     map<string, string> err_map;
     err_map["param"] = "filter";
-    err_map["op_name"] = TbeGetName(op).c_str();
+    err_map["op_name"] = op.GetName().c_str();
     err_map["expected_format_list"] = "NCHW, NHWC or HWCN";
     err_map["format"] = TypeUtils::FormatToSerialString(w_format);
     std::string report_error_code = "E50002";
@@ -606,17 +606,17 @@ IMPLEMT_INFERFUNC(Conv2D, Conv2DInfer) {
   if(bias_tensor != nullptr) {
     auto bias_shape = bias_tensor->MutableShape().GetDims();
     if (bias_shape.size() == 1 && bias_shape[0] != kn) {
-      OP_LOGE(TbeGetName(op).c_str(), "input bias size should be equal to out_channels.");
+      OP_LOGE(op.GetName().c_str(), "input bias size should be equal to out_channels.");
       map<string, string> err_map;
-      err_map["op_name"] = TbeGetName(op).c_str();
+      err_map["op_name"] = op.GetName().c_str();
       err_map["description"] = "input bias size should be equal to out_channels.";
       std::string report_error_code = "E50060";
       ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
       return GRAPH_FAILED;
     } else if (bias_shape.size() > 1) {
-      OP_LOGE(TbeGetName(op).c_str(), "input bias shape should be 1D.");
+      OP_LOGE(op.GetName().c_str(), "input bias shape should be 1D.");
       map<string, string> err_map;
-      err_map["op_name"] = TbeGetName(op).c_str();
+      err_map["op_name"] = op.GetName().c_str();
       err_map["description"] = "input bias shape should be 1D.";
       std::string report_error_code = "E50060";
       ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
@@ -654,7 +654,7 @@ IMPLEMT_INFERFUNC(Conv2D, Conv2DInfer) {
   }
   if (is_dynamic && (ic == -1)) {
     ic = kc*groups;
-    OP_LOGW(TbeGetName(op).c_str(),
+    OP_LOGW(op.GetName().c_str(),
             "input x channel is unknow, fixed channel = %d, "
             "in_channels should be kc*grous[%d * %d]", (int)ic, (int)kc, (int)groups);
   }
@@ -662,11 +662,11 @@ IMPLEMT_INFERFUNC(Conv2D, Conv2DInfer) {
     if ((ic > 0) && (ic % kc == 0)) {
       groups = ic / kc;
       op.SetAttr("groups", groups);
-      OP_LOGD(TbeGetName(op).c_str(), "parameter groups is implicitly changed.");
+      OP_LOGD(op.GetName().c_str(), "parameter groups is implicitly changed.");
     } else {
-      OP_LOGE(TbeGetName(op).c_str(), "in_channels(>0) should be divisible by kernel_channels when groups = 1.");
+      OP_LOGE(op.GetName().c_str(), "in_channels(>0) should be divisible by kernel_channels when groups = 1.");
       map<string, string> err_map;
-      err_map["op_name"] = TbeGetName(op).c_str();
+      err_map["op_name"] = op.GetName().c_str();
       err_map["description"] = "in_channels(>0) should be divisible by kernel_channels when groups = 1.";
       std::string report_error_code = "E50060";
       ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
@@ -674,7 +674,7 @@ IMPLEMT_INFERFUNC(Conv2D, Conv2DInfer) {
     }
   }
   if ((!unknown_rank) && (ic != kc * groups)) {
-    OP_LOGE(TbeGetName(op).c_str(),
+    OP_LOGE(op.GetName().c_str(),
             "x channel should be equal to filter channel*groups. "
             "x format is: %s, filter format is: %s, "
             "x shape is: [%d,%d,%d,%d], filter shape is: [%d,%d,%d,%d], "
@@ -683,7 +683,7 @@ IMPLEMT_INFERFUNC(Conv2D, Conv2DInfer) {
             (int)x_shape[0], (int)x_shape[1], (int)x_shape[2], (int)x_shape[3], (int)w_shape[0], (int)w_shape[1],
             (int)w_shape[2], (int)w_shape[3], (int)groups);
     map<string, string> err_map;
-    err_map["op_name"] = TbeGetName(op).c_str();
+    err_map["op_name"] = op.GetName().c_str();
     err_map["x_shape"] = std::to_string(x_shape[0]) + ", " + std::to_string(x_shape[1]) + ", " +
                          std::to_string(x_shape[2]) + ", " + std::to_string(x_shape[3]);
     err_map["filter_shape"] = std::to_string(w_shape[0]) + ", " + std::to_string(w_shape[1]) + ", " +
@@ -695,9 +695,9 @@ IMPLEMT_INFERFUNC(Conv2D, Conv2DInfer) {
     return GRAPH_FAILED;
   }
   if (kn % groups != 0) {
-    OP_LOGE(TbeGetName(op).c_str(), "out_channels should be divisible by groups.");
+    OP_LOGE(op.GetName().c_str(), "out_channels should be divisible by groups.");
     map<string, string> err_map;
-    err_map["op_name"] = TbeGetName(op).c_str();
+    err_map["op_name"] = op.GetName().c_str();
     err_map["description"] = "out_channels should be divisible by groups.";
     std::string report_error_code = "E50060";
     ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
@@ -727,9 +727,9 @@ IMPLEMT_INFERFUNC(Conv2D, Conv2DInfer) {
   }
   if ((ih > 0) && (kh > 0) && (iw > 0) && (kw > 0)) {
     if ((ihPad < 0) || (iwPad < 0)) {
-      OP_LOGE(TbeGetName(op).c_str(), "image size after padding should be greater than or equal to filter size.");
+      OP_LOGE(op.GetName().c_str(), "image size after padding should be greater than or equal to filter size.");
       map<string, string> err_map;
-      err_map["op_name"] = TbeGetName(op).c_str();
+      err_map["op_name"] = op.GetName().c_str();
       err_map["description"] = "image size after padding should be greater than or equal to filter size.";
       std::string report_error_code = "E50060";
       ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
@@ -751,13 +751,13 @@ IMPLEMT_INFERFUNC(Conv2D, Conv2DInfer) {
     y_shape.push_back(ow);
     y_shape.push_back(kn);
   } else {
-    OP_LOGE(TbeGetName(op).c_str(),
+    OP_LOGE(op.GetName().c_str(),
             "output y format should be NCHW or NHWC."
             " actual is: %s",
             TypeUtils::FormatToSerialString(y_format).c_str());
     map<string, string> err_map;
     err_map["param"] = "y";
-    err_map["op_name"] = TbeGetName(op).c_str();
+    err_map["op_name"] = op.GetName().c_str();
     err_map["expected_format_list"] = "NCHW or NHWC";
     err_map["format"] = TypeUtils::FormatToSerialString(y_format);
     std::string report_error_code = "E50002";
@@ -778,7 +778,7 @@ IMPLEMT_INFERFUNC(Conv2D, Conv2DInfer) {
 
   // set Range
   if (is_dynamic) {
-    OP_LOGD(TbeGetName(op).c_str(), "start accurate build.");
+    OP_LOGD(op.GetName().c_str(), "start accurate build.");
     vector<int32_t> attr_params = {strh, strw,dilh, dilw,
                                    padt, padb, padl, padr,
                                    kn, kh, kw};
@@ -788,7 +788,7 @@ IMPLEMT_INFERFUNC(Conv2D, Conv2DInfer) {
   }
   // fuzz build allow shape dim -1 with range
   if ((!unknown_rank) && fuzz_build) {
-    OP_LOGD(TbeGetName(op).c_str(), "start fuzz build.");
+    OP_LOGD(op.GetName().c_str(), "start fuzz build.");
     // generate range
     std::vector<std::pair<int64_t, int64_t>> input_range;
     if (!GenConv2dShapeRange(op, x_tensor, input_range)){
@@ -799,19 +799,19 @@ IMPLEMT_INFERFUNC(Conv2D, Conv2DInfer) {
     op.GetAttr("padding", pad_str);
     if (pad_str == "SAME") {
       op.SetAttr("pads", {-1, -1, -1, -1});
-      OP_LOGD(TbeGetName(op).c_str(), "set pads to {-1, -1, -1, -1} when padding is SAME in fuzzy build");
+      OP_LOGD(op.GetName().c_str(), "set pads to {-1, -1, -1, -1} when padding is SAME in fuzzy build");
     }
     // only need to set input fuzz build range
     graphStatus ret = x_tensor->SetShapeRange(input_range);
     if (ret != GRAPH_SUCCESS) {
-      OP_LOGE(TbeGetName(op).c_str(), "set input range failed");
+      OP_LOGE(op.GetName().c_str(), "set input range failed");
       return GRAPH_FAILED;
     }
     for (size_t i = 0; i < input_range.size(); i++) {
-      OP_LOGD(TbeGetName(op).c_str(), "input Range[%u] is (%lld, %lld)", i, input_range[i].first, input_range[i].second);
+      OP_LOGD(op.GetName().c_str(), "input Range[%u] is (%lld, %lld)", i, input_range[i].first, input_range[i].second);
     }
   }
-  OP_LOGD(TbeGetName(op).c_str(), "Leave Conv2DInfer.");
+  OP_LOGD(op.GetName().c_str(), "Leave Conv2DInfer.");
   return GRAPH_SUCCESS;
 }
 
@@ -823,7 +823,7 @@ IMPLEMT_INFERFUNC(Conv2D, Conv2DInfer) {
   * @return Status The processing flow result.
   */
 IMPLEMT_VERIFIER(Conv2D, Conv2DVerify) {
-  OP_LOGD(TbeGetName(op).c_str(), "Enter Conv2DVerify.");
+  OP_LOGD(op.GetName().c_str(), "Enter Conv2DVerify.");
   auto x_tensor = op.GetInputDesc("x");
   auto w_tensor = op.GetInputDesc("filter");
   auto x_shape = x_tensor.GetOriginShape().GetDims();
@@ -831,9 +831,9 @@ IMPLEMT_VERIFIER(Conv2D, Conv2DVerify) {
   auto offset_w_tensor = op.GetInputDesc("offset_w");
 
   if (offset_w_tensor.GetOriginShape().GetDims().size() != 0) {
-    OP_LOGE(TbeGetName(op).c_str(), "input offset_w is not supported.");
+    OP_LOGE(op.GetName().c_str(), "input offset_w is not supported.");
     map<string, string> err_map;
-    err_map["op_name"] = TbeGetName(op).c_str();
+    err_map["op_name"] = op.GetName().c_str();
     err_map["description"] = "input offset_w is not supported.";
     std::string report_error_code = "E50060";
     ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
@@ -842,16 +842,16 @@ IMPLEMT_VERIFIER(Conv2D, Conv2DVerify) {
   bool unknown_rank = IsUnknownRankShape(x_shape);
   if ((!unknown_rank) && (x_shape.size() != 4)) {
     if (x_shape.size() == 0) {
-      OP_LOGE(TbeGetName(op).c_str(), "input x shape is empty.");
+      OP_LOGE(op.GetName().c_str(), "input x shape is empty.");
       map<string, string> err_map;
-      err_map["op_name"] = TbeGetName(op).c_str();
+      err_map["op_name"] = op.GetName().c_str();
       err_map["description"] = "input x shape is empty.";
       std::string report_error_code = "E50060";
       ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
     } else {
-      OP_LOGE(TbeGetName(op).c_str(), "input x shape should be 4D.");
+      OP_LOGE(op.GetName().c_str(), "input x shape should be 4D.");
       map<string, string> err_map;
-      err_map["op_name"] = TbeGetName(op).c_str();
+      err_map["op_name"] = op.GetName().c_str();
       err_map["description"] = "input x shape should be 4D.";
       std::string report_error_code = "E50060";
       ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
@@ -860,16 +860,16 @@ IMPLEMT_VERIFIER(Conv2D, Conv2DVerify) {
   }
   if (w_shape.size() != 4) {
     if (w_shape.size() == 0) {
-      OP_LOGE(TbeGetName(op).c_str(), "input filter shape is empty.");
+      OP_LOGE(op.GetName().c_str(), "input filter shape is empty.");
       map<string, string> err_map;
-      err_map["op_name"] = TbeGetName(op).c_str();
+      err_map["op_name"] = op.GetName().c_str();
       err_map["description"] = "input filter shape is empty.";
       std::string report_error_code = "E50060";
       ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
     } else {
-      OP_LOGE(TbeGetName(op).c_str(), "input filter shape should be 4D.");
+      OP_LOGE(op.GetName().c_str(), "input filter shape should be 4D.");
       map<string, string> err_map;
-      err_map["op_name"] = TbeGetName(op).c_str();
+      err_map["op_name"] = op.GetName().c_str();
       err_map["description"] = "input filter shape should be 4D.";
       std::string report_error_code = "E50060";
       ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
@@ -881,13 +881,13 @@ IMPLEMT_VERIFIER(Conv2D, Conv2DVerify) {
   auto w_dtype = w_tensor.GetDataType();
 
   if (x_dtype != w_dtype) {
-    OP_LOGE(TbeGetName(op).c_str(),
+    OP_LOGE(op.GetName().c_str(),
             "input x dtype is differ from filter dtype."
             " actual x dtype is: %s filter dtype is: %s",
             TypeUtils::DataTypeToSerialString(x_dtype).c_str(),
             TypeUtils::DataTypeToSerialString(w_dtype).c_str());
     map<string, string> err_map;
-    err_map["op_name"] = TbeGetName(op).c_str();
+    err_map["op_name"] = op.GetName().c_str();
     err_map["param1"] = "x";
     err_map["param1_data_type"] = TypeUtils::DataTypeToSerialString(x_dtype);
     err_map["param2"] = "filter";
@@ -900,9 +900,9 @@ IMPLEMT_VERIFIER(Conv2D, Conv2DVerify) {
 
   std::vector<int32_t> stride_list;
   if (GRAPH_SUCCESS != op.GetAttr("strides", stride_list)) {
-    OP_LOGE(TbeGetName(op).c_str(), "get strides list failed.");
+    OP_LOGE(op.GetName().c_str(), "get strides list failed.");
     map<string, string> err_map;
-    err_map["op_name"] = TbeGetName(op).c_str();
+    err_map["op_name"] = op.GetName().c_str();
     err_map["description"] = "get strides list failed.";
     std::string report_error_code = "E50060";
     ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
@@ -910,16 +910,16 @@ IMPLEMT_VERIFIER(Conv2D, Conv2DVerify) {
   }
   std::vector<int32_t> dilation_list;
   if (GRAPH_SUCCESS != op.GetAttr("dilations", dilation_list)) {
-    OP_LOGE(TbeGetName(op).c_str(), "get dilations list failed.");
+    OP_LOGE(op.GetName().c_str(), "get dilations list failed.");
     map<string, string> err_map;
-    err_map["op_name"] = TbeGetName(op).c_str();
+    err_map["op_name"] = op.GetName().c_str();
     err_map["description"] = "get dilations list failed.";
     std::string report_error_code = "E50060";
     ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
     return GRAPH_FAILED;
   }
 
-  OP_LOGD(TbeGetName(op).c_str(), "Leave Conv2DVerify.");
+  OP_LOGD(op.GetName().c_str(), "Leave Conv2DVerify.");
   return GRAPH_SUCCESS;
 }
 
@@ -949,7 +949,7 @@ static void InferHWConv2D(int32_t input, int32_t kernel, int32_t pad, int32_t st
   * @return Status The processing flow result.
   */
 IMPLEMT_INFER_DATA_SLICE(Conv2D, Conv2DInferDataSlice) {
-  OP_LOGD(TbeGetName(op).c_str(), "Enter Conv2D InferDataSlice");
+  OP_LOGD(op.GetName().c_str(), "Enter Conv2D InferDataSlice");
   // get input h/w, filter h/w, pad_h,pad_w, stride_h, stride_w, dilation_h,dilation_w
   auto x_tensor = op.GetInputDesc("x");
   auto w_tensor = op.GetInputDesc("filter");
@@ -967,7 +967,7 @@ IMPLEMT_INFER_DATA_SLICE(Conv2D, Conv2DInferDataSlice) {
       || GRAPH_SUCCESS != op.GetAttr("pads", pad_list)){
     return GRAPH_FAILED;
   }
-  CHECK(pad_list.size() < 4, CUBE_INNER_ERR_REPORT(TbeGetName(op).c_str(), "pads size less then 4."),
+  CHECK(pad_list.size() < 4, CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "pads size less then 4."),
     return GRAPH_FAILED);
 
   int32_t ih = 0;
@@ -998,7 +998,7 @@ IMPLEMT_INFER_DATA_SLICE(Conv2D, Conv2DInferDataSlice) {
     dilh = dilation_list[1];
     dilw = dilation_list[2];
   } else {
-    CUBE_INNER_ERR_REPORT(TbeGetName(op).c_str(), "x format is valid, the error x format is: %d", x_format);
+    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "x format is valid, the error x format is: %d", x_format);
     return GRAPH_FAILED;
   }
 
@@ -1012,7 +1012,7 @@ IMPLEMT_INFER_DATA_SLICE(Conv2D, Conv2DInferDataSlice) {
     kh = w_shape[0];
     kw = w_shape[1];
   } else {
-    CUBE_INNER_ERR_REPORT(TbeGetName(op).c_str(), "weight format is valid, the error w format is: %d", w_format);
+    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "weight format is valid, the error w format is: %d", w_format);
     return GRAPH_FAILED;
   }
 
@@ -1022,7 +1022,7 @@ IMPLEMT_INFER_DATA_SLICE(Conv2D, Conv2DInferDataSlice) {
   vector<vector<int64_t>> y_data_slice;
   vector<vector<int64_t>> x_data_slice = {{}, {}, {}, {}, {}};
   if (!AttrUtils::GetListListInt(tensor_desc_y, ge::ATTR_NAME_DATA_SLICE, y_data_slice)) {
-    OP_LOGI(TbeGetName(op).c_str(), "no data slice, not need infer input");
+    OP_LOGI(op.GetName().c_str(), "no data slice, not need infer input");
     return GRAPH_FAILED;
   }
   bool have_slice = false;
@@ -1038,7 +1038,7 @@ IMPLEMT_INFER_DATA_SLICE(Conv2D, Conv2DInferDataSlice) {
         bool top_add_pad = false;
         bool bom_add_pad = false;
         InferHWConv2D(ih, kh, padt, strh, dilh, y_data_slice[i], ih_slice, top_add_pad, bom_add_pad);
-        OP_LOGD(TbeGetName(op).c_str(), "conv2d h axis slice ori_scope is [%d,%d], output scope is [%d,%d]",
+        OP_LOGD(op.GetName().c_str(), "conv2d h axis slice ori_scope is [%d,%d], output scope is [%d,%d]",
                 ih_slice[0], ih_slice[1], y_data_slice[i][0], y_data_slice[i][1]);
         if (!top_add_pad) {
           new_pad_lists[0] = 0;
@@ -1052,7 +1052,7 @@ IMPLEMT_INFER_DATA_SLICE(Conv2D, Conv2DInferDataSlice) {
         bool left_add_pad = false;
         bool right_add_pad = false;
         InferHWConv2D(iw, kw, padl, strw, dilw, y_data_slice[i], iw_slice, left_add_pad, right_add_pad);
-        OP_LOGD(TbeGetName(op).c_str(), "conv2d w axis slice ori_scope is [%d,%d], output scope is [%d,%d]",
+        OP_LOGD(op.GetName().c_str(), "conv2d w axis slice ori_scope is [%d,%d], output scope is [%d,%d]",
                 iw_slice[0], iw_slice[1], y_data_slice[i][0], y_data_slice[i][1]);
         if (!left_add_pad) {
           new_pad_lists[2] = 0;
@@ -1067,7 +1067,7 @@ IMPLEMT_INFER_DATA_SLICE(Conv2D, Conv2DInferDataSlice) {
     }
   }
   op.SetAttr("pads", new_pad_lists);
-  OP_LOGD(TbeGetName(op).c_str(), "conv2d new pad lists is [%d,%d,%d,%d]", new_pad_lists[0],
+  OP_LOGD(op.GetName().c_str(), "conv2d new pad lists is [%d,%d,%d,%d]", new_pad_lists[0],
           new_pad_lists[1], new_pad_lists[2], new_pad_lists[3]);
 
   if (have_slice == false) {
@@ -1076,7 +1076,7 @@ IMPLEMT_INFER_DATA_SLICE(Conv2D, Conv2DInferDataSlice) {
   if (!AttrUtils::SetListListInt(tensor_desc_x, ge::ATTR_NAME_DATA_SLICE, x_data_slice)) {
     return GRAPH_FAILED;
   }
-  OP_LOGD(TbeGetName(op).c_str(), "Calc Conv2D InferDataSlice end!");
+  OP_LOGD(op.GetName().c_str(), "Calc Conv2D InferDataSlice end!");
   return GRAPH_SUCCESS;
 
 }

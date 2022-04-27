@@ -56,7 +56,7 @@ static bool CheckListEmpty(const std::string& op_name, const std::vector<int64_t
 static std::vector<int64_t> GetAttrValue(const ge::Operator& op, const std::string& key_name) {
   std::vector<int64_t> list;
   if (op.GetAttr(key_name, list) != GRAPH_SUCCESS) {
-    OP_LOGE(TbeGetName(op).c_str(), "GetOpAttr ConstValue failed!");
+    OP_LOGE(op.GetName().c_str(), "GetOpAttr ConstValue failed!");
   }
   return list;
 }
