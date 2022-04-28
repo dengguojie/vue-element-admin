@@ -233,3 +233,21 @@ def get_vlrelu(x, attr_value, attr_name, attr_dtype):
     else:
         res_vlrelu = tbe.vlrelu(x, attr_value)
     return res_vlrelu, attr_value
+
+
+def get_dtype(tensor_dict):
+    """
+    get tensor_dict dtype
+
+    Parameters
+    ----------
+    tensor_dict: input or output
+
+    Return
+    -------
+    dtype of tensor
+    """
+    get_dict_dtype = tensor_dict.get("dtype").lower()
+    tensor_dtype = "int8" if get_dict_dtype == "bool" else get_dict_dtype
+
+    return tensor_dtype

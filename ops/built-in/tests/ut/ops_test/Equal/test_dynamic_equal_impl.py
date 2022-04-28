@@ -5,6 +5,11 @@ from op_test_frame.ut import OpUT
 ut_case = OpUT("Equal", "impl.dynamic.equal", "equal")
 
 
+def test_ln_import_lib(test_arg):
+    import sys
+    import importlib
+    importlib.reload(sys.modules.get("impl.dynamic.binary_query_register"))
+
 def gen_dynamic_equal_case(shape_x, shape_y, range_x, range_y, dtype_val,
                            kernel_name_val, expect):
     return {"params": [
@@ -33,7 +38,20 @@ ut_case.add_case("all",
                                         "float16", "dynamic_equal_fp16_ND",
                                         "success"))
 
+dynamicrankbool= {
+    "params": [
+        {"shape": (-2,), "dtype": "bool", "format": "ND", "ori_shape": (-2,), "ori_format": "ND"},
+        {"shape": (-2,), "dtype": "bool", "format": "ND", "ori_shape": (-2,), "ori_format": "ND"},
+        {"shape": (-2,), "dtype": "bool", "format": "ND", "ori_shape": (-2,), "ori_format": "ND"}
+    ],
+    "case_name": "equal_dynamic_1",
+    "expect": "success",
+    "support_expect": True
+}
+
 ut_case.add_case("all", dynamicrank)
+ut_case.add_case("all", dynamicrankbool)
+ut_case.add_cust_test_func(test_func=test_ln_import_lib)
 
 if __name__ == '__main__':
     ut_case.run(["Ascend910A", "Ascend310"])

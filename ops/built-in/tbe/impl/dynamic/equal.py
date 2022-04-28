@@ -25,6 +25,7 @@ from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import register_operator_compute
+from impl.common_util import get_dtype
 
 
 # 'pylint: disable=unused-argument,invalid-name
@@ -138,8 +139,8 @@ def equal(input_x, input_y, output_z, kernel_name="equal"):
     """
 
     # check input tensor data_type
-    x_dtype = input_x.get("dtype").lower()
-    y_dtype = input_y.get("dtype").lower()
+    x_dtype = get_dtype(input_x)
+    y_dtype = get_dtype(input_y)
     check_list = ("float16", "float32", "int32", "uint8", "int8")
     para_check.check_dtype(x_dtype, check_list, param_name="input_x")
     para_check.check_dtype(y_dtype, check_list, param_name="input_y")

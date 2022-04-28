@@ -5,6 +5,11 @@ from op_test_frame.ut import OpUT
 
 ut_case = OpUT("DivNoNan", "impl.dynamic.div_no_nan", "div_no_nan")
 
+def test_ln_import_lib(test_arg):
+    import sys
+    import importlib
+    importlib.reload(sys.modules.get("impl.dynamic.binary_query_register"))
+
 case1 = {"params": [{"shape": (-1,), "ori_shape": (2,), "range": ((1, None),), "format": "NHWC", "ori_format": "NHWC",
                      'dtype': "float32"},
                     {"shape": (1,), "ori_shape": (1,), "range": ((1, 1),), "format": "NHWC", "ori_format": "NHWC",
@@ -80,6 +85,15 @@ case7 = {"params": [
     "format_expect": [],
     "support_expect": True}
 
+case8 = {"params": [
+    {"shape": (-2,), "ori_shape": (-2,), "format": "ND", "ori_format": "ND", 'dtype': "int8"},
+    {"shape": (-2,), "ori_shape": (-2,), "format": "ND", "ori_format": "ND", 'dtype': "int8"},
+    {"shape": (-2,), "ori_shape": (-2,), "format": "ND", "ori_format": "ND", 'dtype': "int8"}],
+    "case_name": "div_no_nan_dynamic_7",
+    "expect": "success",
+    "format_expect": [],
+    "support_expect": True}
+
 ut_case.add_case(["Ascend910A"], case1)
 ut_case.add_case(["Ascend910A"], case2)
 ut_case.add_case(["Ascend910A"], case3)
@@ -87,6 +101,8 @@ ut_case.add_case(["Ascend910A"], case4)
 ut_case.add_case(["Ascend910A"], case5)
 ut_case.add_case(["Ascend910A"], case6)
 ut_case.add_case(["Ascend910A"], case7)
+ut_case.add_case(["Ascend910A"], case8)
+ut_case.add_cust_test_func(test_func=test_ln_import_lib)
 
 if __name__ == "__main__":
     ut_case.run("Ascend910A")

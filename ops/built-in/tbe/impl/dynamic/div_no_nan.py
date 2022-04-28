@@ -123,7 +123,7 @@ def div_no_nan(input_x, input_y, output_z, kernel_name="div_no_nan"):
     -------
     None
     """
-    check_list = ["float16", "float32", "int32"]
+    check_list = ("float16", "float32", "int32", "int8", "uint8")
     x_dtype = input_x.get("dtype").lower()
     y_dtype = input_y.get("dtype").lower()
 

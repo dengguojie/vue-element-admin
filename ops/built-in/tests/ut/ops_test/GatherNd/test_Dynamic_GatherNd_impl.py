@@ -21,6 +21,11 @@ from op_test_frame.ut import OpUT
 ut_case = OpUT("GatherNd", "impl.dynamic.gather_nd", "gather_nd")
 
 
+def test_ln_import_lib(test_arg):
+    import sys
+    import importlib
+    importlib.reload(sys.modules.get("impl.dynamic.binary_query_register"))
+
 def gen_dynamic_gather_nd_case(dict_params, dict_indices, dict_y, kernel_name_val, expect):
     return {"params": [dict_params, dict_indices, dict_y],
             "case_name": kernel_name_val,
@@ -97,6 +102,15 @@ ut_case.add_case("all",
                      {"shape": (-2,), "dtype": "int32", "ori_shape": (-2,), "format": "ND", "ori_format": "ND"},
                      {"shape": (-2,), "dtype": "int32", "ori_shape": (-2,), "format": "ND", "ori_format": "ND"},
                      "dynamic_gather_nd_03", "success"))
+
+ut_case.add_case("all",
+                 gen_dynamic_gather_nd_case(
+                     {"shape": (-2,), "dtype": "bool", "ori_shape": (-2,), "format": "ND", "ori_format": "ND"},
+                     {"shape": (-2,), "dtype": "int32", "ori_shape": (-2,), "format": "ND", "ori_format": "ND"},
+                     {"shape": (-2,), "dtype": "bool", "ori_shape": (-2,), "format": "ND", "ori_format": "ND"},
+                     "dynamic_gather_nd_03", "success"))
+
+ut_case.add_cust_test_func(test_func=test_ln_import_lib)
 
 if __name__ == '__main__':
     ut_case.run("Ascend910A")

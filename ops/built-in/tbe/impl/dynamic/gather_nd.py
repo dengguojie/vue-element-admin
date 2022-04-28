@@ -23,6 +23,7 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
 from impl.util.platform_adapter import tbe_platform as tbe_platform_adapter
 from impl import constant_util as constant
+from impl.common_util import get_dtype
 
 
 # 'pylint: disable=too-few-public-methods,too-many-instance-attributes
@@ -151,9 +152,9 @@ class GatherNd():
         -------
         None
         """
-        self.params_dtype = params_dict.get("dtype").lower()
+        self.params_dtype = get_dtype(params_dict)
         self.indices_dtype = indices_dict.get("dtype").lower()
-        self.y_dtype = y_dict.get("dtype").lower()
+        self.y_dtype = get_dtype(y_dict)
         self.tiling_dtype = constant.DATA_TYPE_INT32
         params_support_dtype_list = ("float16", "float32", "int32", "int8", "uint8", "int64")
         indices_support_dtype_list = ("int32", "int64")
