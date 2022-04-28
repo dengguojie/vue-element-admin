@@ -585,20 +585,22 @@ class BinaryBase:
             bin_filename = self.op_type + "_" + str(k)
             self.add_bin_file_name(bin_filename)
             for i, tensor in enumerate(tensor_list):
-                tensor_format_mode, tensor_dtype_mode = format_type[i], dtype_type[i]
-                # add special key to json for match
-                tensor[BinaryBase.FORMAT_MODE_KEY] = tensor_format_mode
-                tensor[BinaryBase.DTYPE_MODE_KEY] = tensor_dtype_mode
-                if tensor_dtype_mode != BinaryBase.DTYPE_MODE_DEFAULT:
+                if tensor is not None:
+                    tensor_format_mode, tensor_dtype_mode = format_type[i], dtype_type[i]
+                    # add special key to json for match
+                    tensor[BinaryBase.FORMAT_MODE_KEY] = tensor_format_mode
                     tensor[BinaryBase.DTYPE_MODE_KEY] = tensor_dtype_mode
-                # if the format is ND, change the FORMAT_MODE_KEY to BinaryBase.FORMAT_MODE_DEFAULT
-                if tensor["format"] == "ND" and tensor[BinaryBase.FORMAT_MODE_KEY] != BinaryBase.FORMAT_MODE_AGNOSTIC:
-                    tensor[BinaryBase.FORMAT_MODE_KEY] = BinaryBase.FORMAT_MODE_DEFAULT
-                if tensor_format_mode == BinaryBase.FORMAT_MODE_DEFAULT:
+                    if tensor_dtype_mode != BinaryBase.DTYPE_MODE_DEFAULT:
+                        tensor[BinaryBase.DTYPE_MODE_KEY] = tensor_dtype_mode
+                    # if the format is ND, change the FORMAT_MODE_KEY to BinaryBase.FORMAT_MODE_DEFAULT
+                    support_mod = (tensor[BinaryBase.FORMAT_MODE_KEY] != BinaryBase.FORMAT_MODE_AGNOSTIC)
+                    if tensor["format"] == "ND" and support_mod:
+                        tensor[BinaryBase.FORMAT_MODE_KEY] = BinaryBase.FORMAT_MODE_DEFAULT
+                    if tensor_format_mode == BinaryBase.FORMAT_MODE_DEFAULT:
+                        tensor.pop(BinaryBase.FORMAT_MODE_KEY)
+                    if tensor_dtype_mode == BinaryBase.DTYPE_MODE_DEFAULT:
+                        tensor.pop(BinaryBase.DTYPE_MODE_KEY)
 
-                    tensor.pop(BinaryBase.FORMAT_MODE_KEY)
-                if tensor_dtype_mode == BinaryBase.DTYPE_MODE_DEFAULT:
-                    tensor.pop(BinaryBase.DTYPE_MODE_KEY)
                 if i < self.input_num:
                     self.add_input_tensor(tensor)
                 else:
