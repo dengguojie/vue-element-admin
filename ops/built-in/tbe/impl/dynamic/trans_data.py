@@ -162,12 +162,12 @@ def _nchw_to_5hd(input_x):
     if len(input_shape) == NCHW_LENTH:
         input_ub = tvm.compute(input_align_shape,
                                lambda n, c, hw: tvm.select(c < shape_c, input_x(n, c, hw // shape_w, hw % shape_w)),
-                               name="input_ub"
+                               name="input_ub_td"
                               )
     else:
         input_ub = tvm.compute(input_align_shape,
                                lambda n, c, hw: tvm.select(c < shape_c, input_x(n, c, hw)),
-                               name="input_ub"
+                               name="input_ub_td"
                               )
     input_ub_pad = tvm.compute(input_align_shape,
                                lambda n, c, hw: tvm.select(c >= shape_c, tvm.const(0, input_dtype)),

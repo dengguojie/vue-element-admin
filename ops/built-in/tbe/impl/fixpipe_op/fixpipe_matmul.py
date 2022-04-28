@@ -96,6 +96,10 @@ class FixpipeMatmul(FixpipeBase):
         out_shape = shape
         if self._check_fc_nd_out():
             out_shape = (shape[0], reduce(lambda x, y: x * y, shape[1:]))
+        if len(shape) > 5 and self.output.get("format") == "FRACTAL_NZ":
+            out_shape = [reduce(lambda x, y: x * y, shape[:-4])] + list(shape[-4:])
+        if len(shape) > 3 and self.output.get("format") == "ND":
+            out_shape = [reduce(lambda x, y: x * y, shape[:-2])] + list(shape[-2:])
         return out_shape
 
     def _get_c0_c1_index(self):

@@ -1221,4 +1221,3 @@ ut_case.add_cust_test_func(["Ascend910A"],test_func=test_conv2d_backprop_filter_
 
 if __name__ == '__main__':
     ut_case.run("Ascend910A")
-

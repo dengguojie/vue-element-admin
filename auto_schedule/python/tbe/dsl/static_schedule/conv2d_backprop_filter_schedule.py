@@ -1096,7 +1096,7 @@ class CceConv2dBackpropFilterOp:
             sch[grads].compute_inline()
             sch[self._grads_in_ub.get("reshape_c")].compute_inline()
             input_ub_vn = self._grads_in_ub.get("input_ub_vn")
-            input_ub = self._grads_in_ub.get("input_ub")
+            input_ub = self._grads_in_ub.get("input_ub_td")
             input_ub_pad = self._grads_in_ub.get("input_ub_pad")
             sch[input_ub_vn].reused_by(input_ub, input_ub_pad)
 
@@ -1143,7 +1143,7 @@ class CceConv2dBackpropFilterOp:
             sch[fmap].compute_inline()
             sch[self._fmap_in_ub.get("reshape_c")].compute_inline()
             input_ub_vn = self._fmap_in_ub.get("input_ub_vn")
-            input_ub = self._fmap_in_ub.get("input_ub")
+            input_ub = self._fmap_in_ub.get("input_ub_td")
             input_ub_pad = self._fmap_in_ub.get("input_ub_pad")
             sch[input_ub_vn].reused_by(input_ub, input_ub_pad)
             hw_offset, once_dma_data = _tensor_b_buffer_tile_in_binary(h_outer)
@@ -2328,10 +2328,10 @@ class BinaryDynamic:
         self.block_reduce = 16
         self.is_binary_flag = is_binary_flag
         self.k_full_load_list = (self.TilingUtils.get("attach_full_load"), self.TilingUtils.get("attach_equal"))
-        self.ub_tensor_list = ["input_ub", "input_ub_pad", "input_ub_vn", "transpose_hw_c0"]
+        self.ub_tensor_list = ["input_ub_td", "input_ub_pad", "input_ub_vn", "transpose_hw_c0"]
         self.k_expr = None
         self.emit_insn_dict = {
-            "input_ub": "dma_copy",
+            "input_ub_td": "dma_copy",
             "input_ub_pad": "vector_dup",
             "input_ub_vn": "phony_insn",
             "transpose_hw_c0": "vnchwconv"

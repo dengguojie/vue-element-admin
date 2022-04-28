@@ -12,6 +12,7 @@ from te.tvm.target import cce
 from impl.fixpipe_op.fixpipe_conv2d_backprop_input import FixpipeConv2dBackpropInput
 from impl.conv2d_backprop_filter_d import conv2d_backprop_filter_compute
 from impl.mat_mul import mat_mul_compute
+from impl.batch_matmul_v2 import batch_matmul_compute
 from te.tvm.target import cce
 
 vals = {
@@ -194,6 +195,20 @@ def test_matmul_fixpipe_op_name():
         sch = auto_schedule(res)
         assert res.op.name != res.op.input_tensors[0].op.name
 
+def test_bmm_fixpipe_op_name():
+    with cce():
+        x1 = tvm.placeholder((4, 4, 2, 16, 16), name="tensor_a", dtype="float16", attrs={"ori_shape": (2, 2, 32, 64), "format": "FRACTAL_NZ", "ori_format": "ND"})
+        x2 = tvm.placeholder((4, 2, 4, 16, 16), name="tensor_b", dtype="float16", attrs={"ori_shape": (2, 2, 64, 32), "format": "FRACTAL_NZ", "ori_format": "ND"})
+        bias = tvm.placeholder((32,), name="tensor_bias", dtype="float32", attrs={"format": "ND", "ori_format": "ND", "ori_shape": (32,)})
+        output_y = {"shape": (2, 2, 2, 2, 16, 16), "dtype": "float16", "ori_shape": (2, 2, 32, 32), "format": "FRACTAL_NZ", "ori_format": "ND"}
+        matmul_out = batch_matmul_compute(x1, x2, bias, None, output_y, False, False, 0)
+        y = {"shape": (2, 2, 2, 2, 16, 16), "dtype": "float16", "ori_shape": (2, 2, 32, 32), "format": "FRACTAL_NZ", "ori_format": "ND"}
+        res = fixpipe_compute(matmul_out, None, None, None, None, None, None, None, None, None, y, [], [], "")
+        tensor_list = [x1, x2, bias, res]
+        sch = auto_schedule(res)
+        assert res.op.name != res.op.input_tensors[0].op.name
+
+
 def test_conv2d_bp_filter_op_name():
     with cce():
         fmap_tensor = tvm.placeholder((1, 2, 28, 28, 16), name="fmap", dtype="float16", attrs={"ori_shape": (1, 32, 28, 28), "format": "NC1HWC0", "ori_format": "NCHW"})
@@ -223,6 +238,7 @@ def test_fixpipe_cases():
                 test_conv2d_dx_fixpie_deconv_dequant()
                 test_conv2d_dx_fixpie_deconv_nz2nd()
                 test_matmul_fixpipe_op_name()
+                test_bmm_fixpipe_op_name()
                 test_conv2d_bp_filter_op_name()
 
 

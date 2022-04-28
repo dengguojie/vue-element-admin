@@ -778,6 +778,8 @@ def test_mock_cases(test_args):
                 test_matmul_fixpipe_0()
                 test_matmul_fixpipe_1()
                 test_matmul_fixpipe_2()
+                test_matmul_fixpipe_3()
+                test_matmul_fixpipe_4()
                 test_op_select_format_1()
 
 ut_case.add_cust_test_func(test_func=test_mock_cases)
