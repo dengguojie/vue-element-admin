@@ -23,6 +23,8 @@
 #include "third_party/transformer/inc/transfer_shape_according_to_format.h"
 #include "third_party/transformer/inc/transfer_range_according_to_format.h"
 
+using namespace ge;
+
 #define TENSOR_INPUT_WITH_SHAPE(paras, key, shape, dtype, foramt, range)                        \
   auto tensor_desc_##key = create_desc_shape_range(shape, dtype, foramt, shape, foramt, range); \
   auto data##key = op::Data(#key);                                                              \
