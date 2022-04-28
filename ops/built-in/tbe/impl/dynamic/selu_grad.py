@@ -32,7 +32,7 @@ SCALE = 1.0507009873554804934193349852946
 SCALE_ALPHA_PRODUCT = 1.7580993408473768599402175208123
 
 
-@register_operator_compute("SeluGrad", op_mode="dynamic")
+@register_operator_compute("SeluGrad", op_mode="dynamic", support_fusion=True)
 def selu_grad_compute(input_gradients, input_outputs, y, kernel_name="selu_grad"):
     """
     Computes SeluGrad backprops: `gradients * (outputs + scale * alpha)` 

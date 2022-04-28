@@ -79,7 +79,7 @@ def shape_broadcast(data_1, data_2):
 # 'pylint: disable=too-many-arguments,unused-argument
 # 'pylint: disable=too-many-locals
 # 'pylint: disable=too-many-statements,too-many-branches
-@register_operator_compute("adam_apply_one", op_mode="dynamic", support_fusion=True)
+@register_operator_compute("AdamApplyOne", op_mode="dynamic", support_fusion=True)
 def adam_apply_one_compute(data_input0, data_input1, data_input2, data_input3,
                            data_input4, data_input_mul, data_input_mul1,
                            data_input_mul2, data_input_mul3, data_input_add2,

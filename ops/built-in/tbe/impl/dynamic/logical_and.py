@@ -27,7 +27,7 @@ from impl.util.platform_adapter import register_operator_compute
 
 # 'pylint: disable=locally-disabled,too-many-arguments,unused-argument
 # 'pylint: disable=too-many-locals,invalid-name
-@register_operator_compute("LogicalAnd", op_mode="dynamic", support_fusion=False)
+@register_operator_compute("LogicalAnd", op_mode="dynamic", support_fusion=True)
 def logical_and_compute(x1, x2, y, kernel_name="logical_and"):
     """
     calculating data

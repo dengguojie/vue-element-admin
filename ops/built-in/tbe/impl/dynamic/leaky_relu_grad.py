@@ -28,7 +28,7 @@ from impl.common_util import get_attr
 
 # 'pylint: disable=unused-argument,invalid-name,too-many-locals
 # 'pylint: disable=redefined-argument-from-local
-@register_operator_compute("LeakyReluGrad", op_mode="dynamic", support_fusion=False)
+@register_operator_compute("LeakyReluGrad", op_mode="dynamic", support_fusion=True)
 def leaky_relu_grad_compute(g, x, y, negative_slope=0,
                             kernel_name="leaky_relu_grad"):
     """

@@ -258,7 +258,7 @@ def _check_broadcast_shape(input0, input1, input2, input3, input4,
     return [shape0, shape1, shape2, shape3, shape4, shapecm0, shapecm1, shapecm2, shapecm3, shapecm4, shapey]
 
 
-@register_operator_compute("adam_apply_one_with_decay_assign", op_mode="dynamic", support_fusion=True)
+@register_operator_compute("AdamApplyOneWithDecayAssign", op_mode="dynamic", support_fusion=True)
 def adam_apply_one_with_decay_assign_compute(input0, input1, input2, input3, input4,
                                              const_mul_x, const_mul1_x, const_mul2_x,
                                              const_mul3_x, const_mul4_x, add2_y):

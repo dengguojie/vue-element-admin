@@ -29,7 +29,7 @@ from impl.util.platform_adapter import OpPatternMode
 
 
 @register_operator_compute("SigmoidCrossEntropyWithLogitsGrad",
-                           op_mode="dynamic", support_fusion=False)
+                           op_mode="dynamic", support_fusion=True)
 def sigmoid_cross_entropy_with_logits_grad_compute(
         predict,
         target,

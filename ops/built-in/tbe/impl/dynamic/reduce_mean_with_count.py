@@ -26,10 +26,12 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import OpImplMode
+from impl.util.platform_adapter import register_operator_compute
 
 
 # 'pylint: disable=too-many-branches,too-many-arguments,too-many-locals
 # 'pylint: disable=unused-argument,invalid-name
+@register_operator_compute("ReduceMeanWithCount", op_mode="dynamic", support_fusion=True)
 def reduce_mean_with_count_compute(x,
                                    count,
                                    count_sum,

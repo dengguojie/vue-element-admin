@@ -172,7 +172,7 @@ def _fused_compute(x, mean, variance):
 
 # 'pylint: disable=locally-disabled,unused-argument,too-many-locals,invalid-name,protected-access
 # 'pylint: disable=too-many-arguments
-@register_operator_compute("BNInferenceD", op_mode="dynamic", support_fusion=False)
+@register_operator_compute("BNInferenceD", op_mode="dynamic", support_fusion=True)
 def bninference_d_compute(x, mean, variance, scale, bias, y,
                           momentum, epsilon, use_global_stats, mode):
     """

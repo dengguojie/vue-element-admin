@@ -24,10 +24,12 @@ from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import error_manager_vector
+from impl.util.platform_adapter import register_operator_compute
 
 
 # 'pylint: disable=unused-argument,invalid-name
 # 'pylint: disable=too-many-locals,redefined-argument-from-local
+@register_operator_compute("Equal", op_mode="dynamic", support_fusion=True)
 def equal_compute(input_x, input_y, output_z, kernel_name="equal"):
     """
     compute for equal

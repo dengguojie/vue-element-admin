@@ -29,7 +29,7 @@ from impl.util.platform_adapter import register_operator_compute
 # 'pylint: disable=locally-disabled,too-many-arguments,unused-argument
 # 'pylint: disable=invalid-name,unused-variable,too-many-locals
 # 'pylint: disable=redefined-argument-from-local
-@register_operator_compute("Maximum", op_mode="dynamic", support_fusion=False)
+@register_operator_compute("Maximum", op_mode="dynamic", support_fusion=True)
 def maximum_compute(x1, x2, y, kernel_name="maximum"):
     """dynamic maximum compute
 

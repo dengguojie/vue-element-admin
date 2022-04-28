@@ -27,7 +27,7 @@ from impl.util.platform_adapter import register_operator_compute
 
 # 'pylint: disable=unused-argument,invalid-name,redefined-argument-from-local
 # 'pylint: disable=locally-disabled,too-many-arguments,too-many-locals
-@register_operator_compute("LogicalOr", op_mode="dynamic", support_fusion=False)
+@register_operator_compute("LogicalOr", op_mode="dynamic", support_fusion=True)
 def logical_or_compute(x1, x2, y, kernel_name="logical_or"):
     """
     algorithm : logical_or_compute

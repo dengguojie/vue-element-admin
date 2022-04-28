@@ -41,7 +41,7 @@ class Constant:
 
 # 'pylint: disable=locally-disabled,unused-argument,too-many-locals
 # 'pylint: disable=redefined-argument-from-local
-@register_operator_compute("LessEqual", op_mode="dynamic", support_fusion=False)
+@register_operator_compute("LessEqual", op_mode="dynamic", support_fusion=True)
 def less_equal_compute(input_x, input_y, output_z, kernel_name="less_equal"):
     """
     compute for less_equal

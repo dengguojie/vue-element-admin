@@ -2806,6 +2806,7 @@ unkown:
       - ops/built-in/tbe/impl/dynamic/ascend_anti_quant.py
       - ops/built-in/tbe/impl/dynamic/smooth_l1_loss_grad.py
       - ops/built-in/tbe/impl/dynamic/reduce_mean_d.py
+      - ops/built-in/tbe/impl/dynamic/reduce_mean_with_count.py
       - ops/built-in/tbe/impl/dynamic/tabulate_fusion.py
       - ops/built-in/tbe/impl/dynamic/greater.py
       - ops/built-in/tbe/impl/dynamic/dynamic_gru_v2.py

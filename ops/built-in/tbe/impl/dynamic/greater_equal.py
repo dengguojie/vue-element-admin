@@ -93,7 +93,7 @@ def _greater_equal_compare(data, shape, dtype, data_min):
     return tbe.cast_to(res, "uint8", True)
 
 
-@register_operator_compute("GreaterEqual", op_mode="dynamic", support_fusion=False)
+@register_operator_compute("GreaterEqual", op_mode="dynamic", support_fusion=True)
 def greater_equal_compute(input_x, input_y, output_z, kernel_name="greater_equal"):
     """
     if x is greater than y or equals y, then return 1, else return 0.

@@ -26,6 +26,7 @@ from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
 from impl.util.reduce_pattern_adapter import ReducePattern
+from impl.util.platform_adapter import register_operator_compute
 
 
 # 'pylint: disable=invalid-name,unused-argument,unused-variable,too-many-locals,too-many-statements
@@ -91,6 +92,7 @@ def op_select_format(x, y, kernel_name="l2_loss"):
     
 
 # 'pylint: disable=unused-argument,invalid-name
+@register_operator_compute("L2Loss", op_mode="dynamic", support_fusion=True)
 def l2_loss_compute(x, axes, y, kernel_name="l2_loss"):
     """
     l2_loss compute

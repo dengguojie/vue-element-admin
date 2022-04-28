@@ -260,7 +260,7 @@ def _check_broadcast_shape(input0, input1, input2, input3, input4,
 # 'pylint: disable=too-many-arguments,unused-argument
 # 'pylint: disable=too-many-locals
 # 'pylint: disable=too-many-statements,too-many-branches
-@register_operator_compute("adam_apply_one_with_decay", op_mode="dynamic", support_fusion=True)
+@register_operator_compute("AdamApplyOneWithDecay", op_mode="dynamic", support_fusion=True)
 def adam_apply_one_with_decay_compute(input0, input1, input2, input3, input4,
                                       const_mul_x, const_mul1_x, const_mul2_x,
                                       const_mul3_x, const_mul4_x, add2_y):
