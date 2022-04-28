@@ -1852,6 +1852,14 @@ vector_B:
       - ops/built-in/tests/ut/plugin_test/tensorflow/test_parallel_concat_plugin.cpp
       - ops/built-in/tests/ut/plugin_test/tensorflow/test_resizebilineargrad_pb_gen.py
       - ops/built-in/tests/ut/plugin_test/tensorflow/test_resizebilineargrad_plugin.cpp
+      - ops/built-in/tests/ut/plugin_test/tensorflow/test_concat_pb_gen.py
+      - ops/built-in/tests/ut/plugin_test/tensorflow/test_concat_plugin.cpp
+      - ops/built-in/tests/ut/plugin_test/tensorflow/test_concatv2_pb_gen.py
+      - ops/built-in/tests/ut/plugin_test/tensorflow/test_concatv2_plugin.cpp
+      - ops/built-in/tests/ut/plugin_test/tensorflow/test_concat_offset_pb_gen.py
+      - ops/built-in/tests/ut/plugin_test/tensorflow/test_concat_offset_plugin.cpp
+      - ops/built-in/tests/ut/plugin_test/tensorflow/test_pack_pb_gen.py
+      - ops/built-in/tests/ut/plugin_test/tensorflow/test_pack_plugin.cpp
   llt:
     ut_check: true
     st_check: true

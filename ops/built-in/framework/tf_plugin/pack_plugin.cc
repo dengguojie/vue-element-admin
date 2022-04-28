@@ -1,5 +1,5 @@
 /**
- * Copyright (c) Huawei Technologies Co., Ltd. 2019. All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2019-2022. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,12 +19,14 @@
  * \brief
  */
 #include "register/register.h"
+#include "op_log.h"
 
 namespace domi {
 Status AutoMappingFnPack(const google::protobuf::Message* op_src, ge::Operator& op) {
   map<string, pair<string, string>> value;
   value["in"] = pair<string, string>("x", "N");
-  AutoMappingFnDynamic(op_src, op, value, 0);
+  OP_CHECK(AutoMappingFnDynamic(op_src, op, value, 0) != SUCCESS,
+           OP_LOGE(TbeGetName(op), "AutoMappingFn failed."), return FAILED);
   return SUCCESS;
 }
 

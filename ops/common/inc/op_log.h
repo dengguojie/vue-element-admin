@@ -84,6 +84,12 @@ std::string TbeGetOpType(const T& op) {
     return ret;\
   }
 
+#define OP_CHECK(cond, log_func, return_expr) \
+  if (cond) {                                 \
+    log_func;                                 \
+    return_expr;                              \
+  }
+
 #if !defined( __ANDROID__) && !defined(ANDROID)
 #define OP_LOGI(opname, ...) D_OP_LOGI(get_cstr(opname), __VA_ARGS__)
 #define OP_LOGW(opname, ...) D_OP_LOGW(get_cstr(opname), __VA_ARGS__)
