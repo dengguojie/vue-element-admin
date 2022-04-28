@@ -5158,5 +5158,58 @@ IMPLEMT_COMMON_INFERFUNC(MaskedSelectInferShape) {
 
 COMMON_INFER_FUNC_REG(MaskedSelect, MaskedSelectInferShape);
 // ----------------MaskedSelect END---------------------
+
+// ----------------NonMaxSuppressionBucketize Op Begin----------------
+IMPLEMT_COMMON_INFERFUNC(NonMaxSuppressionBucketizeInferShape) {
+  std::vector<int64_t> boxes_shape = op.GetInputDesc("input_nmsed_boxes").GetShape().GetDims();
+  std::vector<int64_t> score_class_shape = op.GetInputDesc("input_nmsed_score").GetShape().GetDims();
+  // get output shape range
+  std::vector<std::pair<int64_t, int64_t>> boxes_range;
+  for (unsigned int i = 0; i < boxes_shape.size(); ++i) {
+    boxes_range.push_back(std::make_pair(boxes_shape[i], boxes_shape[i]));
+  }
+  std::vector<std::pair<int64_t, int64_t>> score_class_range;
+  for (unsigned int i = 0; i < score_class_shape.size(); ++i) {
+    score_class_range.push_back(std::make_pair(score_class_shape[i], score_class_shape[i]));
+  }
+  // update output dynamic shape
+  if (boxes_shape.size() > 1) {
+    boxes_shape[1] = -1;
+  }
+  if (score_class_shape.size() > 1) {
+    score_class_shape[1] = -1;
+  }
+  // update output desc
+  TensorDesc tensor_desc_boxes = op.GetOutputDesc("output_nmsed_boxes");
+  TensorDesc tensor_desc_score = op.GetOutputDesc("output_nmsed_score");
+  TensorDesc tensor_desc_class = op.GetOutputDesc("output_nmsed_class");
+  tensor_desc_boxes.SetShape(Shape(boxes_shape));
+  tensor_desc_boxes.SetDataType(DT_FLOAT);
+  tensor_desc_boxes.SetShapeRange(boxes_range);
+  tensor_desc_score.SetShape(Shape(score_class_shape));
+  tensor_desc_score.SetDataType(DT_FLOAT);
+  tensor_desc_score.SetShapeRange(score_class_range);
+  tensor_desc_class.SetShape(Shape(score_class_shape));
+  tensor_desc_class.SetDataType(DT_FLOAT);
+  tensor_desc_class.SetShapeRange(score_class_range);
+  if (op.UpdateOutputDesc("output_nmsed_boxes", tensor_desc_boxes) != GRAPH_SUCCESS ||
+      op.UpdateOutputDesc("output_nmsed_score", tensor_desc_score) != GRAPH_SUCCESS ||
+      op.UpdateOutputDesc("output_nmsed_class", tensor_desc_class) != GRAPH_SUCCESS) {
+    std::string err_msg = UpdateParamErrMsg("output_nmsed_boxes or output_nmsed_score or output_nmsed_class");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    return GRAPH_FAILED;
+  }
+  // set _op_no_tiling attr
+  std::vector<std::string> tilingInlineEngine;
+  tilingInlineEngine.push_back("AIcoreEngine");
+  std::vector<std::string> exportShapeEngine;
+  exportShapeEngine.push_back("AIcoreEngine");
+  op.SetAttr("_op_tiling_inline_engine", tilingInlineEngine);
+  op.SetAttr("_op_export_shape_engine", exportShapeEngine);
+  return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(NonMaxSuppressionBucketize, NonMaxSuppressionBucketizeInferShape);
+// ----------------NonMaxSuppressionBucketize Op End----------------
 }  // namespace ge
 
