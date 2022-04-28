@@ -337,6 +337,12 @@ SUPPORT_SCALAR_INSNS = [
     "elewise_single_trunc",
     "elewise_single_round",
     "elewise_single_round_d",
+    "elewise_binary_vcmpv_gt",
+    "elewise_binary_vcmpv_ge",
+    "elewise_binary_vcmpv_lt",
+    "elewise_binary_vcmpv_le",
+    "elewise_binary_vcmpv_eq",
+    "elewise_binary_vcmpv_ne"
 ]
 
 # need a block save scalar

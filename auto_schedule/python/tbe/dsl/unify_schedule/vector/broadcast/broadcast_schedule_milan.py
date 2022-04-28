@@ -18,6 +18,7 @@
 broadcast schedule for milan
 """
 from tbe import tvm
+from tbe.common.platform import intrinsic_check_support
 
 from ... import util
 from ...constants import BroadcastPattern
@@ -40,6 +41,7 @@ VECTOR_REDUCE = "vector_reduce"
 VCMP_INPUT_NUMBER = 2
 VSEL_INPUT_NUMBER = 3
 VCMPSEL_INPUT_NUMBER = 4
+SPECIAL_VCMP_NODE = 3
 
 
 # 'pylint: disable=R0902, R0903
@@ -83,6 +85,18 @@ class BroadcastScheduleMl(BaseBroadcastSchedule, Schedule):
             if util.is_vcmpsel_insn(_tensor):
                 self._tmp_ub_size += BLOCK_SIZE_BYTE * (VCMPSEL_INPUT_NUMBER - len(_tensor.op.input_tensors))
 
+        def _vcmp_complex_instructions(_tensor):
+            """
+            check if vcmp impl by complex instructions
+            """
+            if not intrinsic_check_support("Intrinsic_vcmpv_eq", "int64") and \
+                    util.get_dsl_insn(_tensor).startswith("elewise_binary_vcmpv_") and \
+                    _tensor.op.input_tensors:
+                src_dtype = _tensor.op.input_tensors[0].dtype
+                dst_dtype = _tensor.dtype
+                return src_dtype in ("uint64", "int64") and dst_dtype == "int8"
+            return False
+
         def _calc_current_space(_tensor):
             # one of the input of the ternary instruction must be reused with the output
             if util.get_dsl_insn(_tensor) in TERNARY_INSNS or _tensor in dependent_map:
@@ -98,6 +112,8 @@ class BroadcastScheduleMl(BaseBroadcastSchedule, Schedule):
                 current_space += 1
             if util.is_unified_broadcast(_tensor) and self._broadcast_axis_num.get(_tensor, 0) > 1:
                 current_space += 1
+            if _vcmp_complex_instructions(_tensor):
+                current_space += SPECIAL_VCMP_NODE
             if _need_external_space(_tensor):
                 self._tmp_ub_size += BLOCK_SIZE_BYTE
             return current_space

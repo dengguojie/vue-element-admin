@@ -18,7 +18,7 @@
 elewise schedule
 """
 import copy
-from copy import deepcopy
+from copy import deepcopy as deep_copy
 from typing import Optional
 
 from tbe import tvm
@@ -59,6 +59,7 @@ VECTOR = "vector"
 VCMP_INPUT_NUMBER = 2
 VSEL_INPUT_NUMBER = 3
 VCMPSEL_INPUT_NUMBER = 4
+SPECIAL_VCMP_NODE = 3
 
 # TYPE DOUNDS
 TYPE_DOUNDS = {
@@ -303,15 +304,13 @@ class ElewiseSchedule(Schedule):
             self._need_do_block = False
             return
 
-        max_dim_length = len(output_shape)
         inputs = []
         for _input in self._input_tensors:
             input_shape = util.shape_to_list(_input.shape)
             inputs.append({"shape": input_shape, "dtype": _input.dtype})
         outputs = [{"shape": output_shape, "dtype": res.dtype}]
         if len(inputs) == 0:
-            max_dim_length = 0
-            inputs = copy.deepcopy(outputs)
+            inputs = deep_copy(outputs)
 
         # pure eletwise delete double tmp size
         if len(output_shape) == 1:
@@ -601,6 +600,18 @@ class ElewiseSchedule(Schedule):
                     (src_dtype == "int32" and cur_dtype == "int64")
             return False
 
+        def _vcmp_complex_instructions(_tensor):
+            """
+            check if vcmp impl by complex instructions
+            """
+            if not intrinsic_check_support("Intrinsic_vcmpv_eq", "int64") and \
+                    util.get_dsl_insn(_tensor).startswith("elewise_binary_vcmpv_") and \
+                    _tensor.op.input_tensors:
+                src_dtype = _tensor.op.input_tensors[0].dtype
+                dst_dtype = _tensor.dtype
+                return src_dtype in ("uint64", "int64") and dst_dtype == "int8"
+            return False
+
         def _calc_current_coexist_node(_tensor):
             # one of the input of the ternary instruction must be reused with the output
             _current_coexist_node = len(dependent_map)
@@ -612,6 +623,10 @@ class ElewiseSchedule(Schedule):
                 _current_coexist_node += SPECIAL_CAST_DEPENDENT
                 if _tensor.dtype == "int64":
                     self._ub_factor_align = max(SPECIAL_FACTOR_ALIGN, self._ub_factor_align)
+
+            # check if vcmp tensor impl by complex instructions
+            if _vcmp_complex_instructions(_tensor):
+                _current_coexist_node += SPECIAL_VCMP_NODE
 
             # check if all src be used later
             if _dst_can_not_reuse_src(_tensor):

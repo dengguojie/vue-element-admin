@@ -1351,158 +1351,17 @@ def vaxpy(lhs, rhs, scalar):
                                args=[scalar])
 
 
-def _vcmp_supported_types(mode):
-    supported_types = None
-    # the get_cmpmask need 16b aligned, so if is float32, should cast to float16
-    # bit model using vcmpv. v200 support float32. v100 only support float16
-    if mode == 'bit':
-        supported_types = ['float16']
-
-    return supported_types
+def _get_rhs_index(rhs, indice):
+    # get the _rhs indices
+    if isinstance(rhs, tvm.tensor.Tensor):
+        return rhs(*indice)
+    return rhs
 
 
-# 'pylint: disable=too-many-branches, too-many-statements
-@source_info_decorator()
-@dtype_check_decorator
-def vcmp(lhs, rhs, operation='lt', mode='bool'):
-    """
-    calculate elewise compare
+def _vcmp_input_check(lhs, rhs, operation, mode):
+    # check vcmp input validity
+    _check_tensor(lhs, position="first")
 
-    Parameters
-    ----------
-    lhs : wrapped_tensor or tvm.tensor
-        left hand tensor
-
-    rhs : wrapped_tensor or tvm.tensor
-        right hand tensor
-
-    operation : operator type, eq, ne, lt, gt, ge, le
-
-    mode : bool, the dtype of return value is bool
-           bit, the dtype of return value is uint8(dynamic is uint1)
-
-    Returns
-    -------
-    wrapped_tensor
-    """
-    def __vcmp_input_check(lhs, operation, mode, shape):
-        shape = shape_to_list(lhs.shape)
-
-        _check_tensor(lhs, position="first")
-
-        if operation not in ['eq', 'ne', 'lt', 'gt', 'ge', 'le']:
-            dict_args = {}
-            dict_args["errCode"] = "E90002"
-            dict_args["detailed_cause"] = "vcmp does not support the " \
-                                          "operation: %s, The operation's " \
-                                          "value must be eq, ne, lt, gt, ge, le!" % operation
-            raise RuntimeError(dict_args, get_error_message(dict_args))
-
-        if mode not in ['bool', 'bit']:
-            dict_args = {}
-            dict_args["errCode"] = "E90001"
-            dict_args["detailed_cause"] = "The op's mode must be bit and bool," \
-                                          " while mode is [%s]" % mode
-            raise RuntimeError(dict_args, get_error_message(dict_args))
-
-        if mode == 'bit' and isinstance(shape[-1], int) and shape[-1] % 8 != 0:
-            dict_args = {}
-            dict_args["errCode"] = "E90001"
-            dict_args["detailed_cause"] = "in bit mode the last dim must be " \
-                                          "mutiply of 8, while last dim is [%s]" % shape[-1]
-            raise RuntimeError(dict_args, get_error_message(dict_args))
-
-    shape = lhs.shape
-    __vcmp_input_check(lhs, operation, mode, shape)
-
-    # dynamic realize
-    if in_dynamic_and_static_unify():
-
-        # check rhs dtype and if rhs not tensor, change to lhs type
-        def __check_and_change_rhs_dtype(lhs, rhs):
-            if isinstance(rhs, tvm.tensor.Tensor):
-                if lhs.dtype != rhs.dtype:
-                    dict_args = {}
-                    dict_args["errCode"] = "E90001"
-                    dict_args["detailed_cause"] = "dtype must be the same, " \
-                                                  "while lhs is %s, rhs is %s" % (lhs.dtype, rhs.dtype)
-                    raise RuntimeError(dict_args, get_error_message(dict_args))
-            else:
-                rhs = get_tvm_scalar(rhs, lhs.dtype)
-
-            return rhs
-
-        rhs = __check_and_change_rhs_dtype(lhs, rhs)
-
-        # generate lambada function
-        def __generate_dynamic_lambda_func(lhs, rhs, operation):
-            if isinstance(rhs, tvm.tensor.Tensor):
-                if operation == 'lt':
-                    lambda_func = lambda *indice: (lhs(*indice) < rhs(*indice)).astype("uint1")
-                elif operation == 'gt':
-                    lambda_func = lambda *indice: (lhs(*indice) > rhs(*indice)).astype("uint1")
-                elif operation == 'le':
-                    lambda_func = lambda *indice: (lhs(*indice) <= rhs(*indice)).astype("uint1")
-                elif operation == 'ge':
-                    lambda_func = lambda *indice: (lhs(*indice) >= rhs(*indice)).astype("uint1")
-                elif operation == 'eq':
-                    lambda_func = lambda *indice: \
-                        (tvm.expr.EQ(lhs(*indice), rhs(*indice))).astype("uint1")
-                else:
-                    lambda_func = lambda *indice: \
-                        (tvm.expr.NE(lhs(*indice), rhs(*indice))).astype("uint1")
-            else:
-                if operation == 'lt':
-                    lambda_func = lambda *indice: (lhs(*indice) < rhs).astype("uint1")
-                elif operation == 'gt':
-                    lambda_func = lambda *indice: (lhs(*indice) > rhs).astype("uint1")
-                elif operation == 'le':
-                    lambda_func = lambda *indice: (lhs(*indice) <= rhs).astype("uint1")
-                elif operation == 'ge':
-                    lambda_func = lambda *indice: (lhs(*indice) >= rhs).astype("uint1")
-                elif operation == 'eq':
-                    lambda_func = lambda *indice: (tvm.expr.EQ(lhs(*indice), rhs)).astype("uint1")
-                else:
-                    lambda_func = lambda *indice: (tvm.expr.NE(lhs(*indice), rhs)).astype("uint1")
-
-            return lambda_func
-
-        dynamic_lambda_func = __generate_dynamic_lambda_func(lhs, rhs, operation)
-
-        # mode bit compute
-        cmp_op = "elewise_binary_vcmpv_" + operation
-        cmp_name = "vcmp_bit_result_" + str(NAME_INDEX[0])
-        NAME_INDEX[0] += 1
-        with tvm.tag_scope(cmp_op):
-            vcmp_bit_result = tvm.compute(shape, dynamic_lambda_func, name=cmp_name)
-
-        if mode == "bit":
-            return vcmp_bit_result
-
-        sel_op = "elewise_multiple_sel"
-        const_one_float16 = tvm.const(1, "float16")
-        const_zero_float16 = tvm.const(0, "float16")
-        sel_lambda_func = lambda *indice: \
-            tvm.select(vcmp_bit_result(*indice), const_one_float16, const_zero_float16)
-        sel_name = "vcmp_bool_sel_" + str(NAME_INDEX[0])
-        NAME_INDEX[0] += 1
-        with tvm.tag_scope(sel_op):
-            vcmp_bool_float16_result = tvm.compute(shape, sel_lambda_func, name=sel_name)
-
-        # float16 convert to bool
-        convert_lambda_func = lambda *indice: vcmp_bool_float16_result(*indice).astype("bool")
-        convert_op = "elewise_single_cast"
-        convert_name = "vcmp_bool_cast_" + str(NAME_INDEX[0])
-        NAME_INDEX[0] += 1
-        with tvm.tag_scope(convert_op):
-            vcmp_bool_result = tvm.compute(shape, convert_lambda_func, name=convert_name)
-
-        return vcmp_bool_result
-
-    supported_types = _vcmp_supported_types(mode)
-
-    # the output is bool or uint8, is not the same as input,
-    # no need to cast to back in auto schedule
     if isinstance(rhs, tvm.tensor.Tensor):
         if lhs.dtype != rhs.dtype:
             dict_args = {}
@@ -1510,61 +1369,182 @@ def vcmp(lhs, rhs, operation='lt', mode='bool'):
             dict_args["detailed_cause"] = "dtype must be the same, " \
                                           "while lhs is %s, rhs is %s" % (lhs.dtype, rhs.dtype)
             raise RuntimeError(dict_args, get_error_message(dict_args))
-        lhs = auto_cast_tensor(lhs, 'vcmp', supported_types, is_auto_cast=False)
-        rhs = auto_cast_tensor(rhs, 'vcmp', supported_types, is_auto_cast=False)
-    else:
-        lhs = auto_cast_tensor(lhs, 'vcmp', supported_types, is_auto_cast=False)
-        rhs = get_tvm_scalar(rhs, lhs.dtype)
 
-    cmp_op = "emit_insn_elewise_binary_cmp"
+    if operation not in ['eq', 'ne', 'lt', 'gt', 'ge', 'le']:
+        dict_args = {}
+        dict_args["errCode"] = "E90002"
+        dict_args["detailed_cause"] = "vcmp does not support the " \
+                                      "operation: %s, The operation's " \
+                                      "value must be eq, ne, lt, gt, ge, le!" % operation
+        raise RuntimeError(dict_args, get_error_message(dict_args))
 
-    # generate lambda function
-    def __generate_lambda_func(lhs, rhs, operation):
-        if isinstance(rhs, tvm.tensor.Tensor):
-            if operation == 'lt':
-                lambda_func = lambda *indice: lhs(*indice) < rhs(*indice)
-            elif operation == 'gt':
-                lambda_func = lambda *indice: lhs(*indice) > rhs(*indice)
-            elif operation == 'le':
-                lambda_func = lambda *indice: lhs(*indice) <= rhs(*indice)
-            elif operation == 'ge':
-                lambda_func = lambda *indice: lhs(*indice) >= rhs(*indice)
-            elif operation == 'eq':
-                lambda_func = lambda *indice: \
-                    tvm.expr.EQ(lhs(*indice), rhs(*indice))
-            else:
-                lambda_func = lambda *indice: \
-                    tvm.expr.NE(lhs(*indice), rhs(*indice))
+    if mode not in ['bool', 'bit']:
+        dict_args = {}
+        dict_args["errCode"] = "E90001"
+        dict_args["detailed_cause"] = "The op's mode must be bit and bool, " \
+                                      "while mode is [%s]" % mode
+        raise RuntimeError(dict_args, get_error_message(dict_args))
+
+    shape = shape_to_list(lhs.shape)
+    if mode == 'bit' and isinstance(shape[-1], int) and shape[-1] % 8 != 0:
+        dict_args = {}
+        dict_args["errCode"] = "E90001"
+        dict_args["detailed_cause"] = "in bit mode the last dim must be " \
+                                      "mutiply of 8, while last dim is [%s]" % shape[-1]
+        raise RuntimeError(dict_args, get_error_message(dict_args))
+
+
+def _vcmp_in_unify(lhs, rhs, operation, mode):
+    def _generate_dynamic_lambda_func(_lhs, _rhs, _operation, _dtype):
+        """
+        get dynamic lambda func under different dtypes
+        """
+        if _operation == 'lt':
+            lambda_func = lambda *indice: (_lhs(*indice) < _get_rhs_index(_rhs, indice)).astype(_dtype)
+        elif _operation == 'gt':
+            lambda_func = lambda *indice: (_lhs(*indice) > _get_rhs_index(_rhs, indice)).astype(_dtype)
+        elif _operation == 'le':
+            lambda_func = lambda *indice: (_lhs(*indice) <= _get_rhs_index(_rhs, indice)).astype(_dtype)
+        elif _operation == 'ge':
+            lambda_func = lambda *indice: (_lhs(*indice) >= _get_rhs_index(_rhs, indice)).astype(_dtype)
+        elif _operation == 'eq':
+            lambda_func = lambda *indice: (tvm.expr.EQ(_lhs(*indice), _get_rhs_index(_rhs, indice))).astype(_dtype)
         else:
-            if operation == 'lt':
-                lambda_func = lambda *indice: lhs(*indice) < rhs
-            elif operation == 'gt':
-                lambda_func = lambda *indice: lhs(*indice) > rhs
-            elif operation == 'le':
-                lambda_func = lambda *indice: lhs(*indice) <= rhs
-            elif operation == 'ge':
-                lambda_func = lambda *indice: lhs(*indice) >= rhs
-            elif operation == 'eq':
-                lambda_func = lambda *indice: tvm.expr.EQ(lhs(*indice), rhs)
-            else:
-                lambda_func = lambda *indice: tvm.expr.NE(lhs(*indice), rhs)
+            lambda_func = lambda *indice: (tvm.expr.NE(_lhs(*indice), _get_rhs_index(_rhs, indice))).astype(_dtype)
 
         return lambda_func
 
-    lambda_func = __generate_lambda_func(lhs, rhs, operation)
-    name = cmp_op.split("_")[-1] + "_" + str(NAME_INDEX[0])
-    NAME_INDEX[0] += 1
+    def _dynamic_bit_vcmp(_lhs, _rhs, _operation):
+        """
+        dynamic vcmp bit mode use dtype uint1
+        """
+        dyn_bit_lambda_func = _generate_dynamic_lambda_func(_lhs, _rhs, _operation, "uint1")
 
-    if mode == 'bit':
-        shape = shape_to_list(lhs.shape)
-        if shape[-1] % 8 != 0:
-            dict_args = {}
-            dict_args["errCode"] = "E90001"
-            dict_args["detailed_cause"] = "in bit mode the last dim must be " \
-                                          "mutiply of 8, while last dim is [%s]" % \
-                                          shape[-1]
-            raise RuntimeError(dict_args, get_error_message(dict_args))
+        op_tag = "elewise_binary_vcmpv_" + _operation
 
+        dyn_bit_op_name = "vcmp_bit_res_" + str(NAME_INDEX[0])
+        NAME_INDEX[0] += 1
+
+        with tvm.tag_scope(op_tag):
+            dyn_vcmp_bit_res = tvm.compute(shape, dyn_bit_lambda_func, name=dyn_bit_op_name)
+
+        return dyn_vcmp_bit_res
+
+    def _dynamic_b64_bool_vcmp(_lhs, _rhs, _operation):
+        """
+        dynamic vcmp b64 bool mode use dtype int8
+        """
+        dync_bool_lambda_func = _generate_dynamic_lambda_func(_lhs, _rhs, _operation, "int8")
+
+        op_tag = "elewise_binary_vcmpv_" + _operation
+
+        dyn_bool_op_name = "vcmp_{}_res_{}".format(_lhs.dtype, str(NAME_INDEX[0]))
+        NAME_INDEX[0] += 1
+
+        with tvm.tag_scope(op_tag):
+            dyn_vcmp_bool_res = tvm.compute(shape, dync_bool_lambda_func, name=dyn_bool_op_name)
+
+        return dyn_vcmp_bool_res
+
+    def _dynamic_common_bool_vcmp(_lhs, _rhs, _operation):
+        """
+        dynamic vcmp common bool mode impl
+        """
+        # dynamic vcmp common impl consist three steps:
+        # 1. bit mode with uint1
+        # 2. vsel with bit mode res
+        # 3. cast vsel res
+        bool_bit_tag = "elewise_binary_vcmpv_" + _operation
+
+        dyn_bit_lambda_func = _generate_dynamic_lambda_func(_lhs, _rhs, _operation, "uint1")
+
+        dyn_bool_bit_name = "vcmp_bool_bit_res_" + str(NAME_INDEX[0])
+        NAME_INDEX[0] += 1
+
+        with tvm.tag_scope(bool_bit_tag):
+            dyn_bool_bit_res = tvm.compute(shape, dyn_bit_lambda_func, name=dyn_bool_bit_name)
+
+        # vsel calculation with bit mode res
+        bool_vsel_tag = "elewise_multiple_sel"
+
+        vsel_left_const = tvm.const(1, "float16")
+        vsel_right_const = tvm.const(0, "float16")
+
+        dyn_vsel_lambda_func = \
+            lambda *indice: tvm.select(dyn_bool_bit_res(*indice), vsel_left_const, vsel_right_const)
+
+        dyn_bool_vsel_name = "vcmp_bool_vsel_res_" + str(NAME_INDEX[0])
+        NAME_INDEX[0] += 1
+        with tvm.tag_scope(bool_vsel_tag):
+            dyn_bool_vsel_res = tvm.compute(shape, dyn_vsel_lambda_func, name=dyn_bool_vsel_name)
+
+        # cast vsel res from float16 to bool
+        bool_cast_tag = "elewise_single_cast"
+
+        dyn_cast_lambda_func = lambda *indice: dyn_bool_vsel_res(*indice).astype("bool")
+
+        dyn_bool_cast_name = "vcmp_bool_cast_res_" + str(NAME_INDEX[0])
+        NAME_INDEX[0] += 1
+        with tvm.tag_scope(bool_cast_tag):
+            dyn_bool_cast_res = tvm.compute(shape, dyn_cast_lambda_func, name=dyn_bool_cast_name)
+
+        return dyn_bool_cast_res
+
+    if not isinstance(rhs, tvm.tensor.Tensor):
+        rhs = get_tvm_scalar(rhs, lhs.dtype)
+    shape = shape_to_list(lhs.shape)
+    if mode == "bit":
+        return _dynamic_bit_vcmp(lhs, rhs, operation)
+    else:
+        if lhs.dtype in ("uint64", "int64"):
+            # vcmp impl by combined_instructions
+            return _dynamic_b64_bool_vcmp(lhs, rhs, operation)
+        else:
+            return _dynamic_common_bool_vcmp(lhs, rhs, operation)
+
+
+def _vcmp_in_pre_static(lhs, rhs, operation, mode):
+    def _pre_static_auto_cast(_lhs, _rhs, _mode):
+        """
+        pre static input dtype cast
+        """
+        # the get_cmpmask need 16b aligned, so if is float32, should cast to float16
+        # bit model using vcmpv. v200 support float32. v100 only support float16
+        supported_types = None
+        if _mode == "bit":
+            supported_types = ['float16']
+        # the output is bool or uint8, is not the same as input, no need to cast to back in auto schedule
+        _lhs = auto_cast_tensor(_lhs, 'vcmp', supported_types, is_auto_cast=False)
+        if isinstance(_rhs, tvm.tensor.Tensor):
+            _rhs = auto_cast_tensor(_rhs, 'vcmp', supported_types, is_auto_cast=False)
+        else:
+            _rhs = get_tvm_scalar(_rhs, _lhs.dtype)
+
+        return _lhs, _rhs
+
+    def _generate_pre_static_lambda_func(_lhs, _rhs, _operation):
+        """
+        get pre-static lambda func under different dtypes
+        """
+        if _operation == 'lt':
+            lambda_func = lambda *indice: _lhs(*indice) < _get_rhs_index(_rhs, indice)
+        elif _operation == 'gt':
+            lambda_func = lambda *indice: _lhs(*indice) > _get_rhs_index(_rhs, indice)
+        elif _operation == 'le':
+            lambda_func = lambda *indice: _lhs(*indice) <= _get_rhs_index(_rhs, indice)
+        elif _operation == 'ge':
+            lambda_func = lambda *indice: _lhs(*indice) >= _get_rhs_index(_rhs, indice)
+        elif _operation == 'eq':
+            lambda_func = lambda *indice: tvm.expr.EQ(_lhs(*indice), _get_rhs_index(_rhs, indice))
+        else:
+            lambda_func = lambda *indice: tvm.expr.NE(_lhs(*indice), _get_rhs_index(_rhs, indice))
+
+        return lambda_func
+
+    def _pre_static_bit_vcmp(_operation):
+        """
+        pre-static vcmp bit mode impl
+        """
         k = tvm.reduce_axis((0, 8), name='k')
         res_shape = shape
         res_shape[-1] = res_shape[-1] // 8
@@ -1579,18 +1559,67 @@ def vcmp(lhs, rhs, operation='lt', mode='bool'):
             tensor = tvm.bit(lambda_func(*res_index).astype('uint8'), axis=k)
             return tensor
 
-        cmp_op = cmp_op + "|" + operation + "|" + mode
+        pre_static_bit_tag = "{}|{}|{}".format(cmp_op, _operation, "bit")
 
-        with tvm.tag_scope(cmp_op):
-            output = tvm.compute(res_shape, _compute, name='output')
-        return output
+        with tvm.tag_scope(pre_static_bit_tag):
+            pre_static_bit_res = tvm.compute(res_shape, _compute, name='output')
 
-    cmp_op = cmp_op + "|" + operation + "|" + mode
+        return pre_static_bit_res
 
-    with tvm.tag_scope(cmp_op):
-        tmp = tvm.compute(shape, lambda_func, name=name)
+    def _pre_static_bool_vcmp(_operation):
+        """
+        pre-static vcmp bool mode impl
+        """
+        pre_static_bool_tag = "{}|{}|{}".format(cmp_op, _operation, "bool")
 
-    return tmp
+        with tvm.tag_scope(pre_static_bool_tag):
+            pre_static_bool_res = tvm.compute(shape, lambda_func, name=name)
+
+        return pre_static_bool_res
+
+    shape = shape_to_list(lhs.shape)
+    lhs, rhs = _pre_static_auto_cast(lhs, rhs, mode)
+
+    lambda_func = _generate_pre_static_lambda_func(lhs, rhs, operation)
+
+    cmp_op = "emit_insn_elewise_binary_cmp"
+
+    name = "{}_{}".format(cmp_op.split("_")[-1], str(NAME_INDEX[0]))
+    NAME_INDEX[0] += 1
+
+    if mode == "bit":
+        return _pre_static_bit_vcmp(operation)
+    else:
+        return _pre_static_bool_vcmp(operation)
+
+
+# 'pylint: disable=too-many-branches, too-many-statements
+@source_info_decorator()
+@dtype_check_decorator
+def vcmp(lhs, rhs, operation='lt', mode='bool'):
+    """
+    calculate elewise compare
+
+    Parameters
+    ----------
+    lhs : left input, only support tensor
+
+    rhs : right input, support tensor and scalar
+
+    operation : operator type, eq, ne, lt, gt, ge, le
+
+    mode : bool, the dtype of return value is bool
+           bit, the dtype of return value is uint8(dynamic is uint1)
+
+    Returns
+    -------
+    wrapped_tensor
+    """
+    _vcmp_input_check(lhs, rhs, operation, mode)
+    if in_dynamic_and_static_unify():
+        return _vcmp_in_unify(lhs, rhs, operation, mode)
+    else:
+        return _vcmp_in_pre_static(lhs, rhs, operation, mode)
 
 
 @source_info_decorator()
