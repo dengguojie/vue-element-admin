@@ -19,6 +19,7 @@
  */
 #include <graph/utils/type_utils.h>
 #include "graph/tensor.h"
+#include "graph/utils/op_desc_utils.h"
 #include "op_proto_test_util.h"
 #include "third_party/transformer/inc/transfer_shape_according_to_format.h"
 #include "third_party/transformer/inc/transfer_range_according_to_format.h"
