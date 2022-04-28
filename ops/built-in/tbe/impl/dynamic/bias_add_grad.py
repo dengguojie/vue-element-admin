@@ -28,6 +28,8 @@ from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import register_operator_compute
+from impl.bias_add_grad import get_op_support_info as bias_add_grad_get_op_support_info
 
 
 # 'pylint: disable=too-few-public-methods,too-many-instance-attributes
@@ -36,6 +38,13 @@ class SortParam:
     The class for SortParam
     """
     REDUCE_LIST = None
+
+
+def get_op_support_info(x, y, data_format, kernel_name="bias_add_grad"):
+    """
+    get_op_support_info
+    """
+    return bias_add_grad_get_op_support_info(x, y, data_format, kernel_name)
 
 
 # 'pylint: disable=locally-disabled,too-many-arguments,unused-argument,too-many-branches
@@ -107,6 +116,7 @@ def _infer_axes(input_data_format, data_format, shape):
     return g_shape_list
 
 
+@register_operator_compute("BiasAddGrad", op_mode="dynamic", support_fusion=True)
 def bias_add_grad_compute(x, y, data_format, kernel_name="bias_add_grad"):
     """
     Reduce a tensor on last dimension in axis based on sum.
