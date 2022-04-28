@@ -33,6 +33,24 @@
 
 template <class T>
 typename std::enable_if<std::is_same<std::string, typename std::decay<T>::type>::value, const char*>::type
+get_cstr(const T& name) {
+  return name.c_str();
+}
+
+template <class T>
+typename std::enable_if<std::is_same<const char*, typename std::decay<T>::type>::value, const char*>::type
+get_cstr(T name) {
+  return name;
+}
+
+template <class T>
+typename std::enable_if<std::is_same<char*, typename std::decay<T>::type>::value, const char*>::type
+get_cstr(T name) {
+  return name;
+}
+
+template <class T>
+typename std::enable_if<std::is_same<std::string, typename std::decay<T>::type>::value, const char*>::type
 get_op_name(const T& name) {
   return name.c_str();
 }
@@ -54,6 +72,7 @@ get_op_name(T name) {
 #define OP_LOGW(opname, ...)
 #define OP_LOGE(opname, ...)
 #define OP_LOGD(opname, ...)
+#define OP_LOGE_WITHOUT_REPORT(opname, ...)
 #define GE_OP_LOGI(opname, ...)
 #define GE_OP_LOGW(opname, ...)
 #define GE_OP_LOGE(opname, ...)
@@ -67,6 +86,7 @@ get_op_name(T name) {
 #define OP_LOGW(opname, ...)
 #define OP_LOGE(opname, ...)
 #define OP_LOGD(opname, ...)
+#define OP_LOGE_WITHOUT_REPORT(opname, ...)
 #define FUSION_PASS_LOGI(...)
 #define FUSION_PASS_LOGW(...)
 #define FUSION_PASS_LOGE(...)
