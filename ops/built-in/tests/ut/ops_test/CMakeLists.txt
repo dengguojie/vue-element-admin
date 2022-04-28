@@ -27,6 +27,7 @@ target_include_directories(ops_cpp_proto_utest PRIVATE
         )
 target_compile_definitions(ops_cpp_proto_utest PRIVATE
         _GLIBCXX_USE_CXX11_ABI=0
+        $<$<STREQUAL:${BUILD_OPEN_PROJECT},TRUE>:ONLY_COMPILE_OPEN_SRC>
         )
 if(NOT ${CMAKE_BUILD_MODE} STREQUAL "FALSE")
    set(compile_opt_mode ${CMAKE_BUILD_MODE})

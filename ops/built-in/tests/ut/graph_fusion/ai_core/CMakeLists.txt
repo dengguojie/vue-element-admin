@@ -58,7 +58,7 @@ target_link_libraries(ops_cpp_fusion_pass_aicore_utest PRIVATE
 if(NOT UT_NO_EXEC)
         add_custom_command(
                 TARGET ops_cpp_fusion_pass_aicore_utest POST_BUILD
-                COMMAND ops_cpp_fusion_pass_aicore_utest
+                COMMAND export LD_LIBRARY_PATH=$ENV{LD_LIBRARY_PATH}:${ASCEND_RUNTIME_DIR} && ./ops_cpp_fusion_pass_aicore_utest
                 COMMENT "Run ops fusion_pass utest"
         )
 endif()
