@@ -1740,12 +1740,12 @@ IMPLEMT_COMMON_INFERFUNC(ResizeBilinearV2InferShape) {
 
   auto op_desc_info = OpDescUtils::GetOpDescFromOperator(op);
   auto output_desc_y = op_desc_info->MutableOutputDesc(output_y.first);
-
+  output_desc_y->SetDataType(DT_FLOAT);
   DataType attr_dtype;
-  CHECK(op.GetAttr("dtype", attr_dtype) != GRAPH_SUCCESS,
-        AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op).c_str(), string("Get attr[dtype] failed.")),
-        return GRAPH_FAILED);
-  output_desc_y->SetDataType(attr_dtype);
+  if (op.GetAttr("dtype", attr_dtype) == GRAPH_SUCCESS) {
+    output_desc_y->SetDataType(attr_dtype);
+  }
+
   return GRAPH_SUCCESS;
 }
 
