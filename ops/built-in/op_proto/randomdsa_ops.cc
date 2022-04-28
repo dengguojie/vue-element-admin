@@ -54,10 +54,7 @@ IMPLEMT_INFERFUNC(DSAGenBitMask, DSAGenBitMaskInfer) {
 
   // get count shape
   const auto& count_shape = input_desc_count->GetShape();
-  if (count_shape.IsUnknownShape()) {
-    out_desc->SetShape(count_shape);
-    return GRAPH_SUCCESS;
-  }
+  out_desc->SetShape(count_shape);
 
   // get const count value
   vector<int64_t> count_value;
@@ -72,22 +69,17 @@ IMPLEMT_INFERFUNC(DSAGenBitMask, DSAGenBitMaskInfer) {
     vector<int64_t> output_shape;
     output_shape = count_value;
     out_desc->SetShape(GeShape(output_shape));
-
-    // decide if dynamic and change range
-    if (IsUnknown(output_shape)) {
-      std::vector<std::pair<int64_t, int64_t>> input_range;
-      input_desc_count->GetShapeRange(input_range);
-      out_desc->SetShapeRange(input_range);
-      return GRAPH_SUCCESS;
-    }
   }
 
   // get and set output dtype
   out_desc->SetDataType(DT_UINT8);
   // set shape range
-  std::vector<std::pair<int64_t, int64_t>> input_range;
-  input_desc_count->GetShapeRange(input_range);
-  out_desc->SetShapeRange(input_range);
+  if(count_shape.IsUnknownShape()){
+    std::vector<std::pair<int64_t, int64_t>> input_range;
+    input_desc_count->GetShapeRange(input_range);
+    MakeUpShapeRange(count_shape, input_range);
+    out_desc->SetShapeRange(input_range);
+  }
   return GRAPH_SUCCESS;
 }
 INFER_FUNC_REG(DSAGenBitMask, DSAGenBitMaskInfer);
@@ -111,10 +103,7 @@ IMPLEMT_INFERFUNC(DSARandomUniform, DSARandomUniformInfer) {
   }
   // get count shape
   const auto& count_shape = input_desc_count->GetShape();
-  if (count_shape.IsUnknownShape()) {
-    out_desc->SetShape(count_shape);
-    return GRAPH_SUCCESS;
-  }
+  out_desc->SetShape(count_shape);
 
   // get const count value
   vector<int64_t> count_value;
@@ -129,20 +118,15 @@ IMPLEMT_INFERFUNC(DSARandomUniform, DSARandomUniformInfer) {
     vector<int64_t> output_shape;
     output_shape = count_value;
     out_desc->SetShape(GeShape(output_shape));
-
-    // decide if dynamic and change range
-    if (IsUnknown(output_shape)) {
-      std::vector<std::pair<int64_t, int64_t>> input_range;
-      input_desc_count->GetShapeRange(input_range);
-      out_desc->SetShapeRange(input_range);
-      return GRAPH_SUCCESS;
-    }
   }
 
   // set shape range
-  std::vector<std::pair<int64_t, int64_t>> input_range;
-  input_desc_count->GetShapeRange(input_range);
-  out_desc->SetShapeRange(input_range);
+  if(count_shape.IsUnknownShape()){
+    std::vector<std::pair<int64_t, int64_t>> input_range;
+    input_desc_count->GetShapeRange(input_range);
+    MakeUpShapeRange(count_shape, input_range);
+    out_desc->SetShapeRange(input_range);
+  }
   return GRAPH_SUCCESS;
 }
 
@@ -167,10 +151,7 @@ IMPLEMT_INFERFUNC(DSARandomTruncatedNormal, DSARandomTruncatedNormalInfer) {
   }
   // get count shape
   const auto& count_shape = input_desc_count->GetShape();
-  if (count_shape.IsUnknownShape()) {
-    out_desc->SetShape(count_shape);
-    return GRAPH_SUCCESS;
-  }
+  out_desc->SetShape(count_shape);
 
   // get const count value
   vector<int64_t> count_value;
@@ -186,20 +167,15 @@ IMPLEMT_INFERFUNC(DSARandomTruncatedNormal, DSARandomTruncatedNormalInfer) {
     vector<int64_t> output_shape;
     output_shape = count_value;
     out_desc->SetShape(GeShape(output_shape));
-
-    // decide if dynamic and change range
-    if (IsUnknown(output_shape)) {
-      std::vector<std::pair<int64_t, int64_t>> input_range;
-      input_desc_count->GetShapeRange(input_range);
-      out_desc->SetShapeRange(input_range);
-      return GRAPH_SUCCESS;
-    }
   }
 
   // set shape range
-  std::vector<std::pair<int64_t, int64_t>> input_range;
-  input_desc_count->GetShapeRange(input_range);
-  out_desc->SetShapeRange(input_range);
+  if(count_shape.IsUnknownShape()){
+    std::vector<std::pair<int64_t, int64_t>> input_range;
+    input_desc_count->GetShapeRange(input_range);
+    MakeUpShapeRange(count_shape, input_range);
+    out_desc->SetShapeRange(input_range);
+  }
   return GRAPH_SUCCESS;
 }
 INFER_FUNC_REG(DSARandomTruncatedNormal, DSARandomTruncatedNormalInfer);
@@ -223,10 +199,7 @@ IMPLEMT_INFERFUNC(DSARandomNormal, DSARandomNormalInfer) {
   }
   // get count shape
   const auto& count_shape = input_desc_count->GetShape();
-  if (count_shape.IsUnknownShape()) {
-    out_desc->SetShape(count_shape);
-    return GRAPH_SUCCESS;
-  }
+  out_desc->SetShape(count_shape);
 
   // get const count value
   vector<int64_t> count_value;
@@ -242,20 +215,15 @@ IMPLEMT_INFERFUNC(DSARandomNormal, DSARandomNormalInfer) {
     vector<int64_t> output_shape;
     output_shape = count_value;
     out_desc->SetShape(GeShape(output_shape));
-
-    // decide if dynamic and change range
-    if (IsUnknown(output_shape)) {
-      std::vector<std::pair<int64_t, int64_t>> input_range;
-      input_desc_count->GetShapeRange(input_range);
-      out_desc->SetShapeRange(input_range);
-      return GRAPH_SUCCESS;
-    }
   }
 
   // set shape range
-  std::vector<std::pair<int64_t, int64_t>> input_range;
-  input_desc_count->GetShapeRange(input_range);
-  out_desc->SetShapeRange(input_range);
+  if(count_shape.IsUnknownShape()){
+    std::vector<std::pair<int64_t, int64_t>> input_range;
+    input_desc_count->GetShapeRange(input_range);
+    MakeUpShapeRange(count_shape, input_range);
+    out_desc->SetShapeRange(input_range);
+  }
   return GRAPH_SUCCESS;
 }
 
