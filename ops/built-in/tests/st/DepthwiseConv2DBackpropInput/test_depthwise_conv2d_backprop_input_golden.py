@@ -8,80 +8,233 @@ import numpy as np
 import tensorflow as tf
 
 
-def calc_expect_func(input_size, weight, out_backprop, input_grad, strides,
-                     pads=None, dilations=None, data_format='NCHW',
-                     padding=None):
+def calc_expect_func_dx(filter, y, strides, out_backprop=None, input_size=None, x=None,
+                     pads=None, dilations=None, groups=1, data_format='NCHW', output_padding=None,
+                     offset_x=0, padding=None, bias=None):
+    weight = filter
     filter_data = weight.get('value')
     filter_shape = filter_data.shape
     # filter_shape = weight.get('shape')
     filter_dtype = weight.get('dtype')
+    filter_format = weight.get("format")
+    if not out_backprop:
+        out_backprop = x
     dy_data = out_backprop.get('value')
     dy_shape = dy_data.shape
     # dy_shape = dy.get('shape')
     dy_dtype = out_backprop.get('dtype')
-    input_size_shape = input_grad.get('shape')
-    y_dtype = input_grad.get('dtype')
-    y_format = input_grad.get('format')
+    input_size_shape = y.get('shape')
+    y_dtype = y.get('dtype')
+    y_format = y.get('format')
     print('------------params:', filter_shape,
-          dy_shape, input_grad, strides, pads, data_format)
-
-    h_index = data_format.index('H')
-    w_index = data_format.index('W')
-    strideh, stridew = strides[h_index], strides[w_index]
-    if dilations is None:
-        dilations = (1, 1, 1, 1)
-    dilationh, dilationw = dilations[h_index], dilations[w_index]
+          dy_shape, y, strides, pads, groups, data_format)
 
     if filter_dtype == 'float16':
         filter_dtype = 'float32'
     if dy_dtype == 'float16':
         dy_dtype = 'float32'
     if data_format == 'NHWC':
-        w = filter_data.astype(filter_dtype)
         dy = dy_data.astype(dy_dtype)
     else:
-        w = filter_data.transpose(2, 3, 0, 1).astype(
-            filter_dtype)  # NCHW->HWCN
         dy = dy_data.transpose(0, 2, 3, 1).astype(dy_dtype)
+
+    if filter_format == "HWCN":
+        w = filter_data.astype(filter_dtype)
+    elif filter_format == "NCHW":
+        w = filter_data.transpose(2, 3, 1, 0).astype(filter_dtype)
+    else:
+        w = filter_data.transpose(1, 2, 3, 0).astype(filter_dtype)
 
     if y_format == 'NCHW':
         Ni, Ci, Hi, Wi = input_size_shape
     else:
         Ni, Hi, Wi, Ci = input_size_shape
 
-    if strideh == stridew:
-        if padding is None:
-            padding = _getPadding(pads, [Ni, Hi, Wi, Ci], w.shape, dy.shape,
-                                  (strideh, stridew), [dilationh, dilationw])
-        tensor_filter = tf.compat.v1.placeholder(w.dtype, shape=w.shape)
-        tensor_dy = tf.compat.v1.placeholder(dy.dtype, shape=dy.shape)
-        dx = tf.nn.depthwise_conv2d_backprop_input([Ni, Hi, Wi, Ci],
-                                                   tensor_filter,
-                                                   tensor_dy,
-                                                   strides=[
-                                                       1, strideh, stridew, 1],
-                                                   padding=padding,
-                                                   data_format='NHWC',
-                                                   dilations=[1, dilationh, dilationw, 1])
-        feed_dict = {tensor_filter: w, tensor_dy: dy}
-        init_op = tf.compat.v1.global_variables_initializer()
-        with tf.compat.v1.Session() as sess:
-            sess.run(init_op)
-            out = sess.run(dx, feed_dict=feed_dict)
+    h_index = data_format.index('H')
+    w_index = data_format.index('W')
+    if len(strides) == 2:
+        strideh, stridew = strides
     else:
-        if pads is None:
-            pads = _getPads(padding, [Ni, Hi, Wi, Ci], w.shape, dy.shape,
-                        (strideh, stridew), (dilationh, dilationw))
-        # pad_top, pad_bottom, pad_left, pad_right = pads
-        out = _depthwise_conv2d_native_backprop_input([Ni, Hi, Wi, Ci], w, dy,
-                                                      [1, strideh, stridew, 1], pads)
+        strideh, stridew = strides[h_index], strides[w_index]
+    if dilations is None:
+        dilations = (1, 1, 1, 1)
+    dilationh, dilationw = dilations[h_index], dilations[w_index]
 
-    if y_format == 'NCHW':
-        out = out.transpose(0, 3, 1, 2).copy()
-    print('------golden:', out.shape)
-    res = out.astype(y_dtype)
+    if pads is None:
+        pads = _getPads(padding, [Ni, Hi, Wi, Ci], w.shape, dy.shape,
+                        (strideh, stridew), (dilationh, dilationw))
+    pad_top, pad_bottom, pad_left, pad_right = pads
+
+    if (dilationh, dilationw) == (1, 1):
+        if groups == 1:
+            tensor_filter = tf.compat.v1.placeholder(w.dtype, shape=w.shape)
+            tensor_dy = tf.compat.v1.placeholder(dy.dtype, shape=dy.shape)
+            tf_dx = tf.nn.conv2d_backprop_input(
+                [Ni, Hi, Wi, Ci],
+                tensor_filter,
+                tensor_dy,
+                strides=[1, strideh, stridew, 1],
+                padding=((0, 0), (pad_top, pad_bottom), (pad_left, pad_right), (0, 0)),
+                data_format='NHWC',
+                use_cudnn_on_gpu=False,
+                dilations=[1, dilationh, dilationw, 1])
+
+            feed_dict = {tensor_filter: w, tensor_dy: dy}
+            if bias is not None:
+                bias_data = bias.get("value").astype(dy_dtype)
+                tensor_bias = tf.compat.v1.placeholder(bias_data.dtype,
+                                                        shape=bias_data.shape)
+                tf_dx = tf.nn.bias_add(tf_dx, tensor_bias)
+                feed_dict[tensor_bias] = bias_data
+            init_op = tf.compat.v1.global_variables_initializer()
+            with tf.compat.v1.Session() as sess:
+                sess.run(init_op)
+                out = sess.run(tf_dx, feed_dict=feed_dict)
+        else:
+            dy_split_shape, w_split_shape = list(dy.shape), list(w.shape)
+            w_split_shape[3] = w_split_shape[3] // groups
+            dy_split_shape[3] = dy_split_shape[3] // groups
+            tensor_filter = tf.compat.v1.placeholder(w.dtype, shape=w_split_shape)
+            tensor_dy = tf.compat.v1.placeholder(dy.dtype, shape=dy_split_shape)
+            ci_split = Ci // groups
+            tf_dx = tf.nn.conv2d_backprop_input(
+                [Ni, Hi, Wi, ci_split],
+                tensor_filter,
+                tensor_dy,
+                strides=[1, strideh, stridew, 1],
+                padding=((0, 0), (pad_top, pad_bottom), (pad_left, pad_right), (0, 0)),
+                data_format='NHWC',
+                use_cudnn_on_gpu=False,
+                dilations=[1, dilationh, dilationw, 1])
+            bias_data = None
+            tensor_bias = None
+            bias_split_shape = None
+            if bias is not None:
+                bias_data = bias.get("value").astype(dy_dtype)
+                bias_split_shape = list(bias_data.shape)
+                bias_split_shape[0] = bias_split_shape[0] // groups
+                tensor_bias = tf.compat.v1.placeholder(bias_data.dtype,
+                                                        shape=bias_split_shape)
+                tf_dx = tf.nn.bias_add(tf_dx, tensor_bias)
+            init_op = tf.compat.v1.global_variables_initializer()
+            for i in range(groups):
+                feed_dict = {
+                    tensor_filter:
+                    w[:, :, :, (w_split_shape[3] * i): (w_split_shape[3] * i +
+                                                    w_split_shape[3])],
+                    tensor_dy:
+                    dy[:, :, :, (dy_split_shape[3] * i): (dy_split_shape[3] * i +
+                                                    dy_split_shape[3])]
+                }
+                if bias is not None:
+                    feed_dict[tensor_bias] = bias_data[bias_split_shape[0] *
+                                                    i: bias_split_shape[0] *
+                                                    (i + 1)]
+                with tf.compat.v1.Session() as sess:
+                    sess.run(init_op)
+                    if i == 0:
+                        out = sess.run(tf_dx, feed_dict=feed_dict)
+                    else:
+                        out = np.concatenate((out, sess.run(tf_dx, feed_dict=feed_dict)), axis=3)
+        if y_format == "NCHW":
+            out = out.transpose(0, 3, 1, 2).copy()
+        print('------golden:', out.shape)
+        res = out.astype(y_dtype)
+
+    else:
+        import torch
+        if data_format == "NHWC":
+            dy_data = np.transpose(dy_data, (0, 3, 1, 2))
+        dilation_torch = [dilationh, dilationw]
+        strides_torch = [strideh, stridew]
+        input_size_torch = [Ni, Ci, Hi, Wi]
+
+        if filter_format == "HWCN":
+            filter_data = np.transpose(filter_data, (3, 2, 0, 1))
+        elif filter_format == "NHWC":
+            filter_data = np.transpose(filter_data, (0, 3, 1, 2))
+
+        padding_torch = [min(pads[0], pads[1]), min(pads[2], pads[3])]
+        dy_data_nchw = dy_data.astype(np.float32)
+        filter_data_nchw = filter_data.astype(np.float32)
+
+        out_backprop_hw = dy_data_nchw.shape[2:]
+        input_size_hw = input_size_torch[2:]
+        w_h, w_w = filter_data_nchw.shape[2:]
+        filter_h_dilation = (w_h - 1) * dilation_torch[0] + 1
+        filter_w_dilation = (w_w - 1) * dilation_torch[1] + 1
+        filter_hw = [filter_h_dilation, filter_w_dilation]
+        output_padding = list(o - (i - 1) * s + 2 * p - k for o, i, s, p, k in
+                            zip(input_size_hw,
+                                out_backprop_hw,
+                                strides_torch,
+                                padding_torch,
+                                filter_hw))
+        f = lambda x: [max(x[0], 0), max(x[1], 0)]
+        output_padding = f(output_padding)
+        print("output_padding:", output_padding)
+
+        out = torch.nn.functional.conv_transpose2d(torch.from_numpy(dy_data_nchw), torch.from_numpy(filter_data_nchw), bias=None, stride=strides_torch, padding=padding_torch,
+                                                output_padding=output_padding, dilation=dilation_torch, groups=groups).numpy()
+
+        res = np.zeros(input_size_torch, dtype=np.float32)
+        res[:,:,:,:] = out[:, :, :input_size_torch[2], :input_size_torch[3]]
+
+        if y_dtype == "float16":
+            res = np.maximum(res, -65504)
+            res = np.minimum(res, 65504)
+            res = res.astype(np.float16)
+        if data_format == "NHWC":
+            res = np.transpose(res, (0, 2, 3 , 1))
+
+        if bias is not None:
+            bias_data = bias.get("value")
+            sess = tf.compat.v1.Session(config=tf.compat.v1.ConfigProto(log_device_placement=False, allow_soft_placement=True))
+            run_options = tf.compat.v1.RunOptions(trace_level=tf.compat.v1.RunOptions.FULL_TRACE)
+            run_metadata = tf.compat.v1.RunMetadata()
+            bias_res = tf.compat.v1.nn.bias_add(res, bias_data, data_format)
+            res = sess.run(bias_res)
+            sess.close()
+            if y_dtype == "float16":
+                res = np.maximum(res, -65504)
+                res = np.minimum(res, 65504)
+                res = res.astype(np.float16)
+
     return [res]
 
+def calc_expect_func(input_size,
+                    weight,
+                    out_backprop,
+                    input_grad,
+                    strides,
+                    pads=None,
+                    dilations=None,
+                    data_format='NCHW',
+                    padding=None):
+    filter = weight
+    filter_data = weight.get("value")
+    filter_format = weight.get("format")
+    filter_shape = filter_data.shape
+    if filter_format == 'HWCN':
+        kh, kw, kc, kn = filter_shape
+        filter_data = filter_data.reshape(kh, kw, 1, kc*kn)
+        filter["value"] = filter_data
+    elif filter_format == 'NCHW':
+        kn, kc, kh, kw = filter_shape
+        filter_data = filter_data.transpose(1, 0, 2, 3).reshape(kc*kn, 1, kh, kw)
+        filter["value"] = filter_data
+    c_index = input_grad.get("format").index("C")
+    groups = input_grad.get("shape")[c_index]
+    return calc_expect_func_dx(filter,
+                            input_grad,
+                            strides,
+                            out_backprop=out_backprop,
+                            input_size=input_size,
+                            pads=pads,
+                            dilations=dilations,
+                            groups=groups,
+                            data_format=data_format,
+                            padding=padding)
 
 def _getPads(padding, x_shape, w_shape, dy_shape, strides, dilations):
     _, H, W, _ = x_shape
@@ -105,112 +258,3 @@ def _getPads(padding, x_shape, w_shape, dy_shape, strides, dilations):
         raise RuntimeError('not support this padding yet')
 
     return pads
-
-
-def _getPadding(pads, x_shape, w_shape, dy_shape, strides, dilations):
-    padt, padb, padl, padr = pads
-    _, H, W, _ = x_shape
-    kh, kw, _, _ = w_shape
-    strideh, stridew = strides
-    dilationh, dilationw = dilations
-    He = (kh - 1) * dilationh + 1
-    We = (kw - 1) * dilationw + 1
-
-    if dy_shape is None:
-        if padt != 0 or padb != 0 or padl != 0 or padr != 0:
-            Ho = (H + strideh - 1) // strideh
-            Wo = (W + stridew - 1) // stridew
-            if padt + padb == max(0, (Ho - 1) * strideh + He - H) and \
-                    padl + padr == max(0, (Wo - 1) * stridew + We - W):
-                padding = 'SAME'
-            else:
-                padding = 'CALCULATED'
-                raise RuntimeError('not support this padding yet')
-        else:
-            Ho = (H - He) // strideh + 1
-            Wo = (W - We) // stridew + 1
-            padding = 'VALID'
-    else:
-        _, Ho, Wo, _ = dy_shape
-        if Ho == (H + strideh - 1) // strideh and \
-                Wo == (W + stridew - 1) // stridew and \
-                padt + padb == max(0, (Ho - 1) * strideh + He - H) and \
-                padl + padr == max(0, (Wo - 1) * stridew + We - W):
-            padding = 'SAME'
-        elif Ho == (H - He) // strideh + 1 and \
-                Wo == (W - We) // stridew + 1 and \
-                padt == 0 and padb == 0 and padl == 0 and padr == 0:
-            padding = 'VALID'
-        else:
-            padding = 'CALCULATED'
-            raise RuntimeError('not support this padding yet')
-
-    return padding
-
-
-def _conv2d(input_, filter_, strides=None):
-    if strides is None:
-        strides = [1, 1]
-    ish = input_.shape
-    fsh = filter_.shape
-    strideh, stridew = strides
-    Ho = (ish[1] - fsh[0]) // strideh + 1
-    Wo = (ish[2] - fsh[1]) // stridew + 1
-    osh = [ish[0], Ho, Wo, fsh[3]]
-    output = np.zeros(osh)
-    for p in range(osh[0]):
-        for i in range(osh[1]):
-            for j in range(osh[2]):
-                for di in range(fsh[0]):
-                    for dj in range(fsh[1]):
-                        t = np.dot(
-                            input_[p, strideh * i + di, stridew * j + dj, :],
-                            filter_[di, dj, :, :])
-                        output[p, i, j] = np.sum([t, output[p, i, j]], axis=0)
-    return output
-
-
-def _depthwise_conv2d_native_backprop_input(input_size, w, dy, strides, pads):
-    Ni, Hi, Wi, Ci = input_size
-    kh, kw, filtesr_c, filter_n = w.shape
-    No, Ho, Wo, Co = dy.shape
-    _, strideh, stridew, _ = strides
-    pad_top, pad_bottom, pad_left, pad_right = pads
-
-    full_height = Hi + kh - 1
-    full_width = Wi + kw - 1
-    dilated_height = Ho * strideh - (strideh - 1)
-    dilated_width = Wo * stridew - (stridew - 1)
-    pad_out_top = kh - 1 - pad_top
-    pad_out_bottom = full_height - dilated_height - pad_out_top
-    pad_out_left = kw - 1 - pad_left
-    pad_out_right = full_width - dilated_width - pad_out_left
-    padded_dilated_height = dilated_height + pad_out_top + pad_out_bottom
-    padded_dilated_width = dilated_width + pad_out_left + pad_out_right
-
-    padded_dilated_grad = np.zeros(
-        [Ni, padded_dilated_height, padded_dilated_width, Co])
-    for i in range(Ho):
-        index_h = pad_out_top + i * strideh
-        for j in range(Wo):
-            index_w = pad_out_left + j * stridew
-            padded_dilated_grad[:, index_h, index_w, :] = dy[:, i, j, :]
-
-    filter_rotated = np.zeros([kh, kw, Ci, 1])
-    for i in range(kh):
-        for j in range(kw):
-            filter_rotated[kh - 1 - i, kw - 1 - j, :, :] = w[i, j, :, :]
-
-    input_grad = np.zeros([Ni, Hi, Wi, Ci])
-    # used as fmap
-    padded_dilated_grad_piece = np.zeros(
-        [Ni, padded_dilated_height, padded_dilated_width, 1])
-    # used as filter
-    filter_rotated_piece = np.zeros([kh, kw, 1, 1])
-    for i in range(Ci):
-        padded_dilated_grad_piece[:, :, :, 0] = padded_dilated_grad[:, :, :, i]
-        filter_rotated_piece[:, :, 0, 0] = filter_rotated[:, :, i, 0]
-        input_grad[:, :, :, i] = _conv2d(
-            padded_dilated_grad_piece, filter_rotated_piece).reshape([Ni, Hi, Wi])
-
-    return input_grad

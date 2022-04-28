@@ -319,8 +319,8 @@
       {
         "format": "NCHW",
         "ori_format": "NCHW",
-        "shape": [7,1,5,5],
-        "ori_shape": [7,1,5,5],
+        "shape": [1,7,5,5],
+        "ori_shape": [1,7,5,5],
         "type": "float16",
         "value_range": [[0, 0.001]],
         "data_distribute" : "uniform",

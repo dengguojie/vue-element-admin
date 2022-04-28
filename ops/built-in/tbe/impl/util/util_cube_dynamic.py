@@ -2066,12 +2066,12 @@ class DepthwiseConv2dBackpropParaProcess(Conv2dBackpropParaProcess):
         self.get_attr_nchw(self.data_format)
 
         filter_shape_kchw = self.get_input_nchw(filter_shape, self.filters.get("ori_format"))
-        groups = filter_shape_kchw[N_DIM]
 
         if filter_shape_kchw[C_DIM] != 1:
             err_man.raise_err_specific_user(self.op_type, "not supported K != 1 in dynamic now!")
         filter_shape_nchw =  [filter_shape_kchw[N_DIM] * filter_shape_kchw[C_DIM], 1] + filter_shape_kchw[2:]
         dx_shape_nchw = self.get_input_nchw(dx_shape, self.data_format)
+        groups = dx_shape_nchw[C_DIM]
 
         if self.check_unknown_scene(dy_shape, dx_shape_nchw, filter_shape_kchw[N_DIM]):
             dy_shape_nchw = [DYNAMIC_FLAG, filter_shape_nchw[N_DIM], DYNAMIC_FLAG, DYNAMIC_FLAG]

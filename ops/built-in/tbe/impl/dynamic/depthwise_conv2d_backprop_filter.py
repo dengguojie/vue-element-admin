@@ -209,8 +209,8 @@ def _get_dynamic_shape(fmap, dedy, dedw, fmap_range, dedy_range, strides, pads, 
         fmap_c = dedw_n
         dedy_c = fmap_c * dedw_c
 
-    if (all(i != 1 for i in (fmap_n, fmap_c, fmap_h, fmap_w)) and
-        all(i != 1 for i in (dedy_n, dedy_c, dedy_h, dedy_w))):
+    if (all(i != -1 for i in (fmap_n, fmap_c, fmap_h, fmap_w)) and
+        all(i != -1 for i in (dedy_n, dedy_c, dedy_h, dedy_w))):
         fmap_n = DYNAMIC_FLAG
 
     if fmap_n == DYNAMIC_FLAG:
