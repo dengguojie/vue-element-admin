@@ -86,7 +86,68 @@ std::vector<int64_t> setValValue(const std::string& opType, std::vector<std::str
     return varValue;
 }
 
-// Parse function
+// Parse functions
+bool GetHardwareInfo(const std::string& opType, const nlohmann::json& compileInfo, const std::string& name,
+    optiling::Conv2DTilingParseInfo& opInfo)
+{
+    const nlohmann::json& hardwareInfo = compileInfo[name];
+    OP_LOGE_IF(!GetCompileValue(hardwareInfo, "aicore_num", opInfo.aicoreNum), false, opType, "Get aicoreNum failed!");
+    OP_LOGE_IF(!GetCompileValue(hardwareInfo, "l2_size", opInfo.l2Size), false, opType, "Get l2Size failed!");
+    OP_LOGE_IF(!GetCompileValue(hardwareInfo, "l1_size", opInfo.l1Size), false, opType, "Get l1Size failed!");
+    OP_LOGE_IF(!GetCompileValue(hardwareInfo, "l0_a_size", opInfo.l0aSize), false, opType, "Get l0aSize failed!");
+    OP_LOGE_IF(!GetCompileValue(hardwareInfo, "l0_b_size", opInfo.l0bSize), false, opType, "Get l0bSize failed!");
+    OP_LOGE_IF(!GetCompileValue(hardwareInfo, "l0_c_size", opInfo.l0cSize), false, opType, "Get l0cSize failed!");
+    OP_LOGE_IF(!GetCompileValue(hardwareInfo, "ub_size", opInfo.ubSize), false, opType, "Get ubSize failed!");
+    OP_LOGE_IF(!GetCompileValue(hardwareInfo, "bt_size", opInfo.btSize), false, opType, "Get btSize failed!");
+    OP_LOGE_IF(!GetCompileValue(hardwareInfo, "ddr_read_rate", opInfo.ddrReadRate),
+        false, opType, "Get ddrReadRate failed!");
+    OP_LOGE_IF(!GetCompileValue(hardwareInfo, "ddr_write_rate", opInfo.ddrWriteRate),
+        false, opType, "Get ddrWriteRate failed!");
+    OP_LOGE_IF(!GetCompileValue(hardwareInfo, "l2_rate", opInfo.l2Rate), false, opType, "Get l2Rate failed!");
+    OP_LOGE_IF(!GetCompileValue(hardwareInfo, "l2_read_rate", opInfo.l2ReadRate),
+        false, opType, "Get l2ReadRate failed!");
+    OP_LOGE_IF(!GetCompileValue(hardwareInfo, "l2_write_rate", opInfo.l2WriteRate),
+        false, opType, "Get l2WriteRate failed!");
+    OP_LOGE_IF(!GetCompileValue(hardwareInfo, "l1_to_l0_a_rate", opInfo.l1ToL0aRate),
+        false, opType, "Get l1ToL0aRate failed!");
+    OP_LOGE_IF(!GetCompileValue(hardwareInfo, "l1_to_l0_b_rate", opInfo.l1ToL0bRate),
+        false, opType, "Get l1ToL0bRate failed!");
+    OP_LOGE_IF(!GetCompileValue(hardwareInfo, "l1_to_ub_rate", opInfo.l1ToUbRate),
+        false, opType, "Get l1ToUbRate failed!");
+    OP_LOGE_IF(!GetCompileValue(hardwareInfo, "l0_c_to_ub_rate", opInfo.l0cToUbRate),
+        false, opType, "Get l0cToUbRate failed!");
+    OP_LOGE_IF(!GetCompileValue(hardwareInfo, "ub_to_l2_rate", opInfo.ubToL2Rate),
+        false, opType, "Get ubToL2Rate failed!");
+    OP_LOGE_IF(!GetCompileValue(hardwareInfo, "ub_to_ddr_rate", opInfo.ubToDdrRate),
+        false, opType, "Get ubToDdrRate failed!");
+    OP_LOGE_IF(!GetCompileValue(hardwareInfo, "ub_to_l1_rate", opInfo.ubToL1Rate),
+        false, opType, "Get ubToL1Rate failed!");
+    OP_LOGE_IF(!GetCompileValue(hardwareInfo, "cube_bandwidth", opInfo.cubeBandwidth),
+        false, opType, "Get cubeBandwidth failed!");
+    OP_LOGE_IF(!GetCompileValue(hardwareInfo, "vector_bandwidth", opInfo.vectorBandwidth),
+        false, opType, "Get vectorBandwidth failed!");
+    OP_LOGE_IF(!GetCompileValue(hardwareInfo, "cube_vector_split_bool", opInfo.cubeVectorSplit),
+        false, opType, "Get cubeVectorSplit failed!");
+    OP_LOGE_IF(!GetCompileValue(hardwareInfo, "soc_version", opInfo.socVersion),
+        false, opType, "Get socVersion failed!");
+    return true;
+}
+
+bool GetFusionUtilize(const std::string& opType, const nlohmann::json& compileInfo, const std::string& name,
+    optiling::Conv2DTilingParseInfo& opInfo)
+{
+    const nlohmann::json& fusionUtilize = compileInfo[name];
+    OP_LOGE_IF(!GetCompileValue(fusionUtilize, "pre_fusion_ub_utilize", opInfo.preFusionUbUtilize),
+        false, opType, "Get preFusionUbUtilize failed!");
+    OP_LOGE_IF(!GetCompileValue(fusionUtilize, "post_fusion_ub_utilize", opInfo.postFusionUbUtilize),
+        false, opType, "Get postFusionUbUtilize failed!");
+    OP_LOGE_IF(!GetCompileValue(fusionUtilize, "pre_fusion_vector_utilize", opInfo.preFusionVectorUtilize),
+        false, opType, "Get preFusionVectorUtilize failed!");
+    OP_LOGE_IF(!GetCompileValue(fusionUtilize, "post_fusion_vector_utilize", opInfo.postFusionVectorUtilize),
+        false, opType, "Get postFusionVectorUtilize failed!");
+    return true;
+}
+
 template <typename T>
 void getCompileInfoList(const nlohmann::json& compileInfo, const std::string& name, std::vector<T>& list)
 {
@@ -107,6 +168,9 @@ bool getParseInfo(const std::string& opType, const nlohmann::json& opCompileInfo
     GetCompileValue(opCompileInfo, "correct_range_flag", opInfo.correctRangeFlag, false);
     // get tilingType
     GetCompileValue(opCompileInfo, "tiling_type", opInfo.tilingType, "");
+    // get hardware info and ub/vector fusion utilize
+    OP_LOGE_IF(!GetHardwareInfo(opType, opCompileInfo, "hardware_info", opInfo), false, opType, "Get hardware failed!");
+    OP_LOGE_IF(!GetFusionUtilize(opType, opCompileInfo, "fusion_utilize", opInfo), false, opType, "Get fusion failed!");
     // get varMap
     if (opCompileInfo.count("_vars") == 0) {
         GELOGD("Op compile info json doesn't contain _vars info.");
@@ -243,43 +307,61 @@ inline bool Conv2dBinaryTiling::CheckRange(int32_t value, int32_t lowerLimit, in
     return value >= lowerLimit and value <= upperLimit;
 }
 
-bool Conv2dBinaryTiling::InitConvUbUtilize()
+bool Conv2dBinaryTiling::InitConvUbUtilize(const optiling::Conv2DTilingParseInfo& opInfo)
 {
     // init ub utilize and vector utilize for fusion
-    convParas.preFusionUbUtilize = 0;
-    convParas.preFusionVectorUtilize = 0;
-    convParas.postFusionUbUtilize = 0;
-    convParas.postFusionVectorUtilize = 0;
+    convParas.preFusionUbUtilize = opInfo.preFusionUbUtilize;
+    convParas.preFusionVectorUtilize = opInfo.preFusionVectorUtilize;
+    convParas.postFusionUbUtilize = opInfo.postFusionUbUtilize;
+    convParas.postFusionVectorUtilize = opInfo.preFusionVectorUtilize;
+    GELOGD("Conv2dBinaryTiling fusion utilize info: "
+        "preFusionUbUtilize=%.3f, preFusionVectorUtilize=%d, postFusionUbUtilize=%.3f, postFusionVectorUtilize=%d",
+        convParas.preFusionUbUtilize, convParas.preFusionVectorUtilize,
+        convParas.postFusionUbUtilize, convParas.postFusionVectorUtilize);
 
     return true;
 }
 
-bool Conv2dBinaryTiling::InitHardwareInfo()
+bool Conv2dBinaryTiling::InitHardwareInfo(const optiling::Conv2DTilingParseInfo& opInfo)
 {
-    hardwareInfo.aicoreNum = 32;
-    hardwareInfo.l2Size = 33554432;
-    hardwareInfo.l1Size = 1048576;
-    hardwareInfo.l0aSize = 65536;
-    hardwareInfo.l0bSize = 65536;
-    hardwareInfo.l0cSize = 262144;
-    hardwareInfo.ubSize = 262144;
-    hardwareInfo.btSize = 0;
-    hardwareInfo.ddrReadRate = 32;
-    hardwareInfo.ddrWriteRate = 32;
-    hardwareInfo.l2Rate = 110;
-    hardwareInfo.l2ReadRate = 110;
-    hardwareInfo.l2WriteRate = 86;
-    hardwareInfo.l1ToL0aRate = 512;
-    hardwareInfo.l1ToL0bRate = 256;
-    hardwareInfo.l1ToUbRate = 128;
-    hardwareInfo.l0cToUbRate = 256;
-    hardwareInfo.ubToL2Rate = 64;
-    hardwareInfo.ubToDdrRate = 64;
-    hardwareInfo.ubToL1Rate = 128;
-    hardwareInfo.cubeBandwidth = 0;
-    hardwareInfo.vectorBandwidth = 0;
-    hardwareInfo.cubeVectorSplit = false;
-    hardwareInfo.socVersion = "Ascend910A";
+    hardwareInfo.aicoreNum = opInfo.aicoreNum;
+    hardwareInfo.l2Size = opInfo.l2Size;
+    hardwareInfo.l1Size = opInfo.l1Size;
+    hardwareInfo.l0aSize = opInfo.l0aSize;
+    hardwareInfo.l0bSize = opInfo.l0bSize;
+    hardwareInfo.l0cSize = opInfo.l0cSize;
+    hardwareInfo.ubSize = opInfo.ubSize;
+    hardwareInfo.btSize = opInfo.btSize;
+    hardwareInfo.ddrReadRate = opInfo.ddrReadRate;
+    hardwareInfo.ddrWriteRate = opInfo.ddrWriteRate;
+    hardwareInfo.l2Rate = opInfo.l2Rate;
+    hardwareInfo.l2ReadRate = opInfo.l2ReadRate;
+    hardwareInfo.l2WriteRate = opInfo.l2WriteRate;
+    hardwareInfo.l1ToL0aRate = opInfo.l1ToL0aRate;
+    hardwareInfo.l1ToL0bRate = opInfo.l1ToL0aRate;
+    hardwareInfo.l1ToUbRate = opInfo.l1ToUbRate;
+    hardwareInfo.l0cToUbRate = opInfo.l0cToUbRate;
+    hardwareInfo.ubToL2Rate = opInfo.ubToL2Rate;
+    hardwareInfo.ubToDdrRate = opInfo.ubToDdrRate;
+    hardwareInfo.ubToL1Rate = opInfo.ubToL1Rate;
+    hardwareInfo.cubeBandwidth = opInfo.cubeBandwidth;
+    hardwareInfo.vectorBandwidth = opInfo.vectorBandwidth;
+    hardwareInfo.cubeVectorSplit = opInfo.cubeVectorSplit;
+    hardwareInfo.socVersion = opInfo.socVersion;
+
+    GELOGD("Conv2dBinaryTiling hardware info: "
+        "aicoreNum=%d, l2Size=%d, l1Size=%d, l0aSize=%d, l0bSize=%d, "
+        "l0cSize=%d, ubSize=%d, btSize=%d, ddrReadRate=%d, "
+        "ddrWriteRate=%d, l2Rate=%d, l2ReadRate=%d, l2WriteRate=%d, "
+        "l1ToL0aRate=%d, l1ToL0bRate=%d, l1ToUbRate=%d, l0cToUbRate=%d, "
+        "ubToL2Rate=%d, ubToDdrRate=%d, ubToL1Rate=%d, cubeBandwidth=%d, "
+        "vectorBandwidth=%d, cubeVectorSplit=%d, socVersion=%s",
+        hardwareInfo.aicoreNum, hardwareInfo.l2Size, hardwareInfo.l1Size, hardwareInfo.l0aSize, hardwareInfo.l0bSize,
+        hardwareInfo.l0cSize, hardwareInfo.ubSize, hardwareInfo.btSize, hardwareInfo.ddrReadRate,
+        hardwareInfo.ddrWriteRate, hardwareInfo.l2Rate, hardwareInfo.l2ReadRate, hardwareInfo.l2WriteRate,
+        hardwareInfo.l1ToL0aRate, hardwareInfo.l1ToL0bRate, hardwareInfo.l1ToUbRate, hardwareInfo.l0cToUbRate,
+        hardwareInfo.ubToL2Rate, hardwareInfo.ubToDdrRate, hardwareInfo.ubToL1Rate, hardwareInfo.cubeBandwidth,
+        hardwareInfo.vectorBandwidth, hardwareInfo.cubeVectorSplit, hardwareInfo.socVersion.c_str());
 
     return true;
 }
@@ -384,7 +466,7 @@ bool Conv2dBinaryTiling::ParserConv2DParas(const ge::OpDescPtr& opDesc, const op
         convParas.stride_w = stridesList[kStriWDimNHWCIdx];
     }
 
-    InitConvUbUtilize();
+    InitConvUbUtilize(opInfo);
 
     if (biasDesc != nullptr){
         convParas.biasFlag = true;
@@ -403,9 +485,9 @@ bool Conv2dBinaryTiling::ParserConv2DParas(const ge::OpDescPtr& opDesc, const op
 
     GELOGD("[%s] ParserConv2DParas success, input shape is [%d, %d, %d, %d], filter shape is [%d, %d, %d, %d], \
         output shape is [%d, %d, %d, %d], pads is [%d, %d, %d, %d], strides is [%d, %d], dilations is [%d, %d], \
-        groups = %d, preFusionUbUtilize = %d, preFusionVectorUtilize = %d, postFusionUbUtilize = %d, \
-        postFusionVectorUtilize = %d, bias_flag = %d, fmap dtype: %s, filter dtype: %s, output dtype: %s, \
-        mad type: %s, bias type: %s", nodeName.c_str(), convParas.batch, convParas.fmci, convParas.hi, convParas.wi, \
+        groups = %d, preFusionUbUtilize = %.3f, preFusionVectorUtilize = %d, postFusionUbUtilize = %.3f, \
+        postFusionVectorUtilize = %d, bias_flag = %d, fmap dtype: %d, filter dtype: %d, output dtype: %d, \
+        mad type: %d, bias type: %d", nodeName.c_str(), convParas.batch, convParas.fmci, convParas.hi, convParas.wi, \
         convParas.n, convParas.wci, convParas.kh, convParas.kw, convParas.batch, convParas.n, \
         convParas.ho, convParas.wo, convParas.padu, convParas.padd, convParas.padl, convParas.padr, \
         convParas.stride_h, convParas.stride_w, convParas.dilations_h, convParas.dilations_w, convParas.groups, \
@@ -528,9 +610,9 @@ bool Conv2dBinaryTiling::GenAttachMap()
 /*
  * @brief: get tiling and produce attach_mao
  */
-bool Conv2dBinaryTiling::GenConv2DTiling()
+bool Conv2dBinaryTiling::GenConv2DTiling(const optiling::Conv2DTilingParseInfo& opInfo)
 {
-    OP_LOGE_IF(!InitHardwareInfo(), false, opType, "Get hardwareinfo failed!");
+    OP_LOGE_IF(!InitHardwareInfo(opInfo), false, opType, "Get hardwareinfo failed!");
     OP_LOGE_IF(!Conv2dFastTiling(convParas, hardwareInfo, fastTiling), false, opType, "get fasttiling failed!");
     GELOGD("[%s] Conv2dFastTiling success, fastTiling info is: AL0_matrix: [%d, %d, 16, %d], \
         CL0_matrix: [%d, %d, 16, 16, 1, 1], CUB_matrix: [%d, %d, 16, 16], BL0_matrix: [%d, %d, 16, %d, 1, 1], \
@@ -704,7 +786,7 @@ bool ProduceBinaryTiling(const ge::OpDescPtr opDesc, optiling::Conv2DTilingParse
     unique_ptr <Conv2dBinaryTiling> binaryTilingPtr(new Conv2dBinaryTiling());
     OP_LOGE_IF(!binaryTilingPtr->ParserConv2DParas(opDesc, opInfo), false, opType, "parser conv2d params failed!");
     OP_LOGE_IF(!binaryTilingPtr->CheckConv2DParas(), false, opType, "check conv2d params failed!");
-    OP_LOGE_IF(!binaryTilingPtr->GenConv2DTiling(), false, opType, "GenConv2DTiling failed!");
+    OP_LOGE_IF(!binaryTilingPtr->GenConv2DTiling(opInfo), false, opType, "GenConv2DTiling failed!");
 
     return binaryTilingPtr->UpdateRunInfo(runInfo);
 }

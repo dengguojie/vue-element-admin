@@ -50,6 +50,8 @@ CUBE_INFO = {'type_size':{'int8': 1, 'float16': 2, 'float32': 4, 'int32': 4},
 
 TILING_REPO_MODE = 0
 TILING_COST_MODE = 1
+AUB_COEFFICIENT_INDEX = 0
+CUB_COEFFICIENT_INDEX = 2
 
 
 def parse_fuzz_build_range(info_list):
@@ -114,6 +116,303 @@ def parse_fuzz_build_range(info_list):
             range_list.append(input_range)
             # <<< end: parse range from index [0] input
     return range_list
+
+
+def get_hardware_info():
+    """
+    get hardware info of platform and save in a dict
+
+    Notice
+    ----------
+    NA
+
+    Parameters
+    ----------
+    NA
+
+    Returns
+    -------
+    hardware_info_dict: dict of hardware information
+    """
+    # hardware_info_name: (key in return dict, key used by get_soc_spec)
+    hardware_info_name_list = [("aicore_num", "CORE_NUM"),
+                               ("l2_size", "L2_SIZE"),
+                               ("l1_size", "L1_SIZE"),
+                               ("l0_a_size", "L0A_SIZE"),
+                               ("l0_b_size", "L0B_SIZE"),
+                               ("l0_c_size", "L0C_SIZE"),
+                               ("ub_size", "UB_SIZE"),
+                               ("bt_size", "BT_SIZE"),
+                               ("cube_vector_split", "CUBE_VECTOR_SPLIT"),
+                               ("soc_version", "FULL_SOC_VERSION")]
+    hardware_info_dict = {}
+    for dict_key, spec_key in hardware_info_name_list:
+        hardware_info_dict[dict_key] = get_soc_spec(spec_key)
+    cube_vector_split = (hardware_info_dict.get("cube_vector_split") != 0)
+    hardware_info_dict["cube_vector_split_bool"] = cube_vector_split
+    # >>> start: stub
+    platform_info_dict = {}
+    platform_info_dict["Ascend310"] = {
+        "ddr_read_rate": 67, "ddr_write_rate": 64,
+        "l2_rate": 128, "l2_read_rate": 128,
+        "l2_write_rate": 64, "l1_to_l0_a_rate": 512,
+        "l1_to_l0_b_rate": 256, "l1_to_ub_rate": 128,
+        "l0_c_to_ub_rate": 256, "ub_to_l2_rate": 64,
+        "ub_to_ddr_rate": 64, "ub_to_l1_rate": 128,
+        "cube_bandwidth": 0, "vector_bandwidth": 0}
+    platform_info_dict["Ascend320"] = {
+        "ddr_read_rate": 17, "ddr_write_rate": 17,
+        "l2_rate": 256, "l2_read_rate": 256,
+        "l2_write_rate": 128, "l1_to_l0_a_rate": 512,
+        "l1_to_l0_b_rate": 256, "l1_to_ub_rate": 128,
+        "l0_c_to_ub_rate": 128, "ub_to_l2_rate": 128,
+        "ub_to_ddr_rate": 128, "ub_to_l1_rate": 128,
+        "cube_bandwidth": 0, "vector_bandwidth": 0}
+    platform_info_dict["Ascend610"] = {
+        "ddr_read_rate": 17, "ddr_write_rate": 17,
+        "l2_rate": 114, "l2_read_rate": 114,
+        "l2_write_rate": 114, "l1_to_l0_a_rate": 512,
+        "l1_to_l0_b_rate": 256, "l1_to_ub_rate": 128,
+        "l0_c_to_ub_rate": 512, "ub_to_l2_rate": 114,
+        "ub_to_ddr_rate": 17, "ub_to_l1_rate": 256,
+        "cube_bandwidth": 0, "vector_bandwidth": 0}
+    platform_info_dict["Ascend615"] = {
+        "ddr_read_rate": 17, "ddr_write_rate": 17,
+        "l2_rate": 114, "l2_read_rate": 114,
+        "l2_write_rate": 114, "l1_to_l0_a_rate": 512,
+        "l1_to_l0_b_rate": 256, "l1_to_ub_rate": 128,
+        "l0_c_to_ub_rate": 512, "ub_to_l2_rate": 114,
+        "ub_to_ddr_rate": 17, "ub_to_l1_rate": 256,
+        "cube_bandwidth": 0, "vector_bandwidth": 0}
+    platform_info_dict["Ascend710"] = {
+        "ddr_read_rate": 17, "ddr_write_rate": 17,
+        "l2_rate": 114, "l2_read_rate": 114,
+        "l2_write_rate": 114, "l1_to_l0_a_rate": 512,
+        "l1_to_l0_b_rate": 256, "l1_to_ub_rate": 128,
+        "l0_c_to_ub_rate": 512, "ub_to_l2_rate": 114,
+        "ub_to_ddr_rate": 17, "ub_to_l1_rate": 256,
+        "cube_bandwidth": 0, "vector_bandwidth": 0}
+    platform_info_dict["Ascend710Pro"] = {
+        "ddr_read_rate": 17, "ddr_write_rate": 17,
+        "l2_rate": 114, "l2_read_rate": 114,
+        "l2_write_rate": 114, "l1_to_l0_a_rate": 512,
+        "l1_to_l0_b_rate": 256, "l1_to_ub_rate": 128,
+        "l0_c_to_ub_rate": 512, "ub_to_l2_rate": 114,
+        "ub_to_ddr_rate": 17, "ub_to_l1_rate": 256,
+        "cube_bandwidth": 0, "vector_bandwidth": 0}
+    platform_info_dict["Ascend910A"] = {
+        "ddr_read_rate": 32, "ddr_write_rate": 32,
+        "l2_rate": 110, "l2_read_rate": 110,
+        "l2_write_rate": 86, "l1_to_l0_a_rate": 512,
+        "l1_to_l0_b_rate": 256, "l1_to_ub_rate": 128,
+        "l0_c_to_ub_rate": 256, "ub_to_l2_rate": 64,
+        "ub_to_ddr_rate": 64, "ub_to_l1_rate": 128,
+        "cube_bandwidth": 0, "vector_bandwidth": 0}
+    platform_info_dict["Ascend910B"] = {
+        "ddr_read_rate": 32, "ddr_write_rate": 32,
+        "l2_rate": 110, "l2_read_rate": 110,
+        "l2_write_rate": 86, "l1_to_l0_a_rate": 512,
+        "l1_to_l0_b_rate": 256, "l1_to_ub_rate": 128,
+        "l0_c_to_ub_rate": 256, "ub_to_l2_rate": 64,
+        "ub_to_ddr_rate": 64, "ub_to_l1_rate": 128,
+        "cube_bandwidth": 0, "vector_bandwidth": 0}
+    platform_info_dict["Ascend910PremiumA"] = {
+        "ddr_read_rate": 32, "ddr_write_rate": 32,
+        "l2_rate": 110, "l2_read_rate": 110,
+        "l2_write_rate": 86, "l1_to_l0_a_rate": 512,
+        "l1_to_l0_b_rate": 256, "l1_to_ub_rate": 128,
+        "l0_c_to_ub_rate": 256, "ub_to_l2_rate": 64,
+        "ub_to_ddr_rate": 64, "ub_to_l1_rate": 128,
+        "cube_bandwidth": 0, "vector_bandwidth": 0}
+    platform_info_dict["Ascend910ProA"] = {
+        "ddr_read_rate": 32, "ddr_write_rate": 32,
+        "l2_rate": 110, "l2_read_rate": 110,
+        "l2_write_rate": 86, "l1_to_l0_a_rate": 512,
+        "l1_to_l0_b_rate": 256, "l1_to_ub_rate": 128,
+        "l0_c_to_ub_rate": 256, "ub_to_l2_rate": 64,
+        "ub_to_ddr_rate": 64, "ub_to_l1_rate": 128,
+        "cube_bandwidth": 0, "vector_bandwidth": 0}
+    platform_info_dict["Ascend910ProB"] = {
+        "ddr_read_rate": 32, "ddr_write_rate": 32,
+        "l2_rate": 110, "l2_read_rate": 110,
+        "l2_write_rate": 86, "l1_to_l0_a_rate": 512,
+        "l1_to_l0_b_rate": 256, "l1_to_ub_rate": 128,
+        "l0_c_to_ub_rate": 256, "ub_to_l2_rate": 64,
+        "ub_to_ddr_rate": 64, "ub_to_l1_rate": 128,
+        "cube_bandwidth": 0, "vector_bandwidth": 0}
+    platform_info_dict["Ascend920A"] = {
+        "ddr_read_rate": 32, "ddr_write_rate": 32,
+        "l2_rate": 110, "l2_read_rate": 110,
+        "l2_write_rate": 86, "l1_to_l0_a_rate": 512,
+        "l1_to_l0_b_rate": 256, "l1_to_ub_rate": 128,
+        "l0_c_to_ub_rate": 256, "ub_to_l2_rate": 64,
+        "ub_to_ddr_rate": 64, "ub_to_l1_rate": 128,
+        "cube_bandwidth": 0, "vector_bandwidth": 0}
+    platform_info_dict["Hi3796CV300CS"] = {
+        "ddr_read_rate": 18, "ddr_write_rate": 18,
+        "l2_rate": 0, "l2_read_rate": 0,
+        "l2_write_rate": 0, "l1_to_l0_a_rate": 512,
+        "l1_to_l0_b_rate": 256, "l1_to_ub_rate": 128,
+        "l0_c_to_ub_rate": 512, "ub_to_l2_rate": 0,
+        "ub_to_ddr_rate": 18, "ub_to_l1_rate": 256,
+        "cube_bandwidth": 0, "vector_bandwidth": 0}
+    platform_info_dict["Hi3796CV300ES"] = {
+        "ddr_read_rate": 40, "ddr_write_rate": 40,
+        "l2_rate": 0, "l2_read_rate": 0,
+        "l2_write_rate": 0, "l1_to_l0_a_rate": 512,
+        "l1_to_l0_b_rate": 256, "l1_to_ub_rate": 128,
+        "l0_c_to_ub_rate": 512, "ub_to_l2_rate": 0,
+        "ub_to_ddr_rate": 33, "ub_to_l1_rate": 256,
+        "cube_bandwidth": 0, "vector_bandwidth": 0}
+    platform_info_dict["OPTG"] = {
+        "ddr_read_rate": 21, "ddr_write_rate": 21,
+        "l2_rate": 0, "l2_read_rate": 0,
+        "l2_write_rate": 0, "l1_to_l0_a_rate": 512,
+        "l1_to_l0_b_rate": 256, "l1_to_ub_rate": 128,
+        "l0_c_to_ub_rate": 512, "ub_to_l2_rate": 0,
+        "ub_to_ddr_rate": 18, "ub_to_l1_rate": 256,
+        "cube_bandwidth": 0, "vector_bandwidth": 0}
+    platform_info_dict["SD3403"] = {
+        "ddr_read_rate": 21, "ddr_write_rate": 21,
+        "l2_rate": 0, "l2_read_rate": 0,
+        "l2_write_rate": 0, "l1_to_l0_a_rate": 512,
+        "l1_to_l0_b_rate": 256, "l1_to_ub_rate": 128,
+        "l0_c_to_ub_rate": 512, "ub_to_l2_rate": 0,
+        "ub_to_ddr_rate": 18, "ub_to_l1_rate": 256,
+        "cube_bandwidth": 0, "vector_bandwidth": 0}
+    platform_info_dict["TsnsC"] = {
+        "ddr_read_rate": 18, "ddr_write_rate": 18,
+        "l2_rate": 0, "l2_read_rate": 0,
+        "l2_write_rate": 0, "l1_to_l0_a_rate": 512,
+        "l1_to_l0_b_rate": 256, "l1_to_ub_rate": 128,
+        "l0_c_to_ub_rate": 512, "ub_to_l2_rate": 0,
+        "ub_to_ddr_rate": 18, "ub_to_l1_rate": 256,
+        "cube_bandwidth": 0, "vector_bandwidth": 0}
+    platform_info_dict["TsnsE"] = {
+        "ddr_read_rate": 40, "ddr_write_rate": 40,
+        "l2_rate": 0, "l2_read_rate": 0,
+        "l2_write_rate": 0, "l1_to_l0_a_rate": 512,
+        "l1_to_l0_b_rate": 256, "l1_to_ub_rate": 128,
+        "l0_c_to_ub_rate": 512, "ub_to_l2_rate": 0,
+        "ub_to_ddr_rate": 33, "ub_to_l1_rate": 256,
+        "cube_bandwidth": 0, "vector_bandwidth": 0}
+    soc_version = get_soc_spec("FULL_SOC_VERSION")
+    if soc_version not in platform_info_dict:
+        raise RuntimeError("Get platform info failed according to the given soc version.")
+    hardware_info_dict.update(platform_info_dict.get(soc_version))
+    # <<< end: stub
+    return hardware_info_dict
+
+
+def get_ub_fusion_utilize(fused_coefficient_list):
+    """
+    get the number of pre/post fusion ub utilize and save in a dict
+
+    Notice
+    ----------
+    NA
+
+    Parameters
+    ----------
+    fused_coefficient_list: list
+        fused coefficients from tiling dict
+
+    Returns
+    -------
+    ub_utilize_dict: dict of pre/post fusion utilize
+    """
+    # (key in return dict, index of fused_coefficient_list)
+    utilize_list = [("pre_fusion_ub_utilize", AUB_COEFFICIENT_INDEX), ("post_fusion_ub_utilize", CUB_COEFFICIENT_INDEX)]
+    ub_utilize_dict = {}
+    for dict_key, index in utilize_list:
+        if index >= len(fused_coefficient_list):
+            raise RuntimeError("Get utilize info failed. The index should not be larger than fused_coefficient_list.")
+        ub_utilize_dict[dict_key] = fused_coefficient_list[index]
+    return ub_utilize_dict
+
+
+def get_vec_fusion_utilize(op_type_list):
+    """
+    get the number of pre/post fusion vector utilize and save in a dict
+
+    Notice
+    ----------
+    NA
+
+    Parameters
+    ----------
+    op_type_list: list
+        op types of ops
+
+    Returns
+    -------
+    vec_utilize_dict: dict of pre/post fusion utilize
+    """
+    # Currently only support TransData + Conv2D + TransData.
+    def is_supported_fusion(op_type_list):
+        supported_fused_op_type_num = 3
+        supported_fused_op_type = ['TransData', 'Conv2D', 'TransData']
+        if len(op_type_list) != supported_fused_op_type_num:
+            return False
+        for index, value in enumerate(supported_fused_op_type):
+            if op_type_list[index] != value:
+                return False
+        return True
+
+    pre_fusion = "pre_fusion_vector_utilize"
+    post_fusion = "post_fusion_vector_utilize"
+    vec_utilize_dict = {pre_fusion: 0, post_fusion: 0}
+    # >>> start: Currently only support TransData + Conv2D + TransData.
+    if is_supported_fusion(op_type_list):
+        vec_utilize_dict[pre_fusion] = 0 # temp
+        vec_utilize_dict[post_fusion] = 0 # temp
+    # <<< end: Currently only support TransData + Conv2D + TransData.
+    return vec_utilize_dict
+
+
+def add_tiling_compile_info(tiling_dict):
+    """
+    Get and add info that optiling required into optiling compile info.
+
+    Notice
+    ----------
+    NA
+
+    Parameters
+    ----------
+    tiling_dict: info_dict from schedule
+
+    Returns
+    -------
+    NA
+    """
+    if not tiling_dict.get("cache_tiling_flag"):
+        add_compile_info("fmap_c1", ConvParam.dim_map.get("fmap_5hd_shape")[1])
+    # get op type info
+    op_info_list = get_context().get_op_info()
+    op_type_list = []
+    conv_op_type_list = []
+    for info in op_info_list:
+        op_type_list.append(info.op_type)
+        if info.pattern != "Convolution":
+            continue
+        conv_op_type_list.append(info.op_type)
+    # >>> start: add op_type in compile_info
+    # For distinguishing the compile info of ops whose pattern is "Convolution"
+    if len(conv_op_type_list) > 0:
+        add_compile_info("conv_op_type_list", conv_op_type_list)
+    else:
+        add_compile_info("op_type_list", op_type_list)
+    # <<< end: add op_type in compile_info
+    # >>> start: add vector/ub fusion utilize info in compile_info
+    utilize_dict = {}
+    utilize_dict.update(get_ub_fusion_utilize(tiling_dict.get("fused_coefficient")))
+    utilize_dict.update(get_vec_fusion_utilize(op_type_list))
+    add_compile_info("fusion_utilize", utilize_dict)
+    # <<< end: add vector/ub fusion utilize info in compile_info
+    # >>> start: add hardware info in compile_info
+    hardware_info_dict = get_hardware_info()
+    add_compile_info("hardware_info", hardware_info_dict) # <<< end: add hardware info in compile_info
 
 
 def gen_support_info(range_x, para_dict):
@@ -347,22 +646,7 @@ def calc_conv2d(outs, option=None):
                                        tilingdict_flag=True)
     tiling_dict["dynamic_shape_flag"] = True
     tiling_dict["cache_tiling_flag"] = ConvParam.cache_tiling_flag
-    if not tiling_dict["cache_tiling_flag"]:
-        add_compile_info("fmap_c1", ConvParam.dim_map["fmap_5hd_shape"][1])
-    # >>> start: add op_type in compile_info
-    op_info_list = get_context().get_op_info()
-    op_type_list = []
-    conv_op_type_list = []
-    for info in op_info_list:
-        op_type_list.append(info.op_type)
-        if info.pattern != "Convolution":
-            continue
-        conv_op_type_list.append(info.op_type)
-    if len(conv_op_type_list) > 0:
-        add_compile_info("conv_op_type_list", conv_op_type_list)
-    else:
-        add_compile_info("op_type_list", op_type_list)
-    # <<< end: add op_type in compile_info
+    add_tiling_compile_info(tiling_dict)
 
     tiling_cases = []
     total_info = {}

@@ -16,7 +16,9 @@ def test_h_out_1_case(test_arg):
     try:
         with tbe.common.context.op_context.OpContext("dynamic"):
             with tbe.dsl.base.operation.compute():
-                tbe.dsl.base.operation.get_op_context().add_op_info(OpInfo("conv2d_fusion_dequant", "Conv2D"))
+                tbe.dsl.base.operation.get_op_context().add_op_info(OpInfo("pseudo_trans_data_1", "TransData"))
+                tbe.dsl.base.operation.get_op_context().add_op_info(OpInfo("conv2d_fusion_quant", "Conv2D"))
+                tbe.dsl.base.operation.get_op_context().add_op_info(OpInfo("pseudo_trans_data_2", "TransData"))
                 shape_x = [-1, 96, -1, -1, 16]
                 range_x = [[1, 101], [1536, 1536], [3, 3], [1, 110]]
                 var_list = ["batch_n", "fmap_h", "fmap_w"]

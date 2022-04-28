@@ -47,6 +47,36 @@ struct Conv2DTilingParseInfo {
     std::vector<std::vector<int32_t>> repoSeedsList;
     std::vector<std::vector<int64_t>> repoRangeList;
     std::vector<std::vector<int64_t>> costRangeList;
+    // hardware info
+    uint32_t aicoreNum = 0;
+    uint64_t l2Size = 0;
+    uint64_t l1Size = 0;
+    uint64_t l0aSize = 0;
+    uint64_t l0bSize = 0;
+    uint64_t l0cSize = 0;
+    uint64_t ubSize = 0;
+    uint64_t btSize = 0;
+    uint32_t ddrReadRate = 0;
+    uint32_t ddrWriteRate = 0;
+    uint32_t l2Rate = 0;
+    uint32_t l2ReadRate = 0;
+    uint32_t l2WriteRate = 0;
+    uint32_t l1ToL0aRate = 0;
+    uint32_t l1ToL0bRate = 0;
+    uint32_t l1ToUbRate = 0;
+    uint32_t l0cToUbRate = 0;
+    uint32_t ubToL2Rate = 0;
+    uint32_t ubToDdrRate = 0;
+    uint32_t ubToL1Rate = 0;
+    uint32_t cubeBandwidth = 0;
+    uint32_t vectorBandwidth = 0;
+    bool cubeVectorSplit = false;
+    std::string socVersion = "";
+    // fusion utilize info
+    float preFusionUbUtilize = 0;
+    int64_t preFusionVectorUtilize = 0;
+    float postFusionUbUtilize = 0;
+    int64_t postFusionVectorUtilize = 0;
 };
 
 /*

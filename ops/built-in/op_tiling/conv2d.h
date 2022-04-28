@@ -239,14 +239,14 @@ public:
 
     bool ParserConv2DParas(const ge::OpDescPtr& op_desc, const optiling::Conv2DTilingParseInfo& opInfo);
     bool CheckConv2DParas();
-    bool GenConv2DTiling();
+    bool GenConv2DTiling(const optiling::Conv2DTilingParseInfo& opInfo);
     bool UpdateRunInfo(utils::OpRunInfo& runInfo);
 
 private:
     uint32_t GetMKN(ge::DataType dType, uint32_t idx);
     inline bool CheckRange(int32_t value, int32_t lowerLimit, int32_t upperLimit);
-    bool InitConvUbUtilize();
-    bool InitHardwareInfo();
+    bool InitConvUbUtilize(const optiling::Conv2DTilingParseInfo& opInfo);
+    bool InitHardwareInfo(const optiling::Conv2DTilingParseInfo& opInfo);
     bool CheckL1SizeBound();
     uint32_t AlignMN(const uint32_t valueT);
     bool GenAttachMap();
