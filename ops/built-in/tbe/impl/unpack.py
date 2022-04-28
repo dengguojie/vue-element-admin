@@ -702,13 +702,14 @@ def _unpack_schedule_two(input_place, output_shape, y, num, axis, dtype):
         sch[virtual_node].bind(fused_axis, block_idx)
 
         new_shape = ((befordim + befordim_out - 1) // befordim_out, 1, afterdim_in)
+        real_core_num = (befordim + new_shape[0] - 1) // new_shape[0]
         # coexisting_quantities 2
         split_axis, split_factor = _tiling_axis(new_shape, dtype, 2)
         ub_split_trail = new_shape[split_axis] - new_shape[split_axis] // split_factor * split_factor
         is_ub_split_trail_one = (ub_split_trail != 1)
         is_last_block_non_last_axis_split_trail_one = False
         if split_axis == 0:
-            last_block_split_trail = (befordim - (befordim_out - 1) * new_shape[0]) % split_factor
+            last_block_split_trail = (befordim - (real_core_num - 1) * new_shape[0]) % split_factor
             is_last_block_non_last_axis_split_trail_one = (last_block_split_trail != 1)
         # verify use dma_copy new attr
         if split_axis == 0 and split_factor > 1 and is_ub_split_trail_one \
