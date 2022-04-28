@@ -73,7 +73,7 @@ def fix_pipe(x1: dict, x2: (dict, None), quant_scale_0: (dict, None), relu_weigh
     _ = kernel_name
 
     fixpipe_util.check_fixpipe_support()
-    input_x = fixpipe_util.create_placeholder(x1, "x1")
+    input_x = tvm.placeholder(x1.get("shape"), x1.get("dtype"), name="x1")
 
     # fake compute for pre_build
     res = tvm.compute(x1.get("shape"),
