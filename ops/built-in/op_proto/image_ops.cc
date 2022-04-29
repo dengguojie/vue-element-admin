@@ -1743,6 +1743,9 @@ IMPLEMT_COMMON_INFERFUNC(ResizeBilinearV2InferShape) {
   output_desc_y->SetDataType(DT_FLOAT);
   DataType attr_dtype;
   if (op.GetAttr("dtype", attr_dtype) == GRAPH_SUCCESS) {
+    CHECK(((attr_dtype != DT_FLOAT) && (attr_dtype != DT_UINT8)),
+          OP_LOGE(TbeGetName(op).c_str(), "attr type only should be DT_FLOAT and DT_UINT8."),
+          return GRAPH_FAILED);
     output_desc_y->SetDataType(attr_dtype);
   }
 
