@@ -23,11 +23,20 @@ uint32_t LinSpaceParaCheck(CpuKernelContext &ctx, int64_t &num_value) {
   Tensor *tensor_num = ctx.Input(kThirdInputIndex);
   Tensor *tensor_output = ctx.Output(kFirstOutputIndex);
 
-  KERNEL_CHECK_FALSE((IsScalar(tensor_start->GetTensorShape()->GetDimSizes())), KERNEL_STATUS_PARAM_INVALID,
+  auto start_shape = tensor_start->GetTensorShape();
+  KERNEL_CHECK_FALSE((IsScalar(start_shape->GetDimSizes()) ||
+                     ((start_shape->GetDimSizes().size() == 1) &&
+                     (start_shape->GetDimSize(0) == 1))), KERNEL_STATUS_PARAM_INVALID,
                      "Input[start] must be a scalar")
-  KERNEL_CHECK_FALSE((IsScalar(tensor_stop->GetTensorShape()->GetDimSizes())), KERNEL_STATUS_PARAM_INVALID,
+  auto stop_shape = tensor_stop->GetTensorShape();
+  KERNEL_CHECK_FALSE((IsScalar(stop_shape->GetDimSizes()) ||
+                     ((stop_shape->GetDimSizes().size() == 1) &&
+                     (stop_shape->GetDimSize(0) == 1))), KERNEL_STATUS_PARAM_INVALID,
                      "Input[stop] must be a scalar")
-  KERNEL_CHECK_FALSE((IsScalar(tensor_num->GetTensorShape()->GetDimSizes())), KERNEL_STATUS_PARAM_INVALID,
+  auto num_shape = tensor_num->GetTensorShape();
+  KERNEL_CHECK_FALSE((IsScalar(num_shape->GetDimSizes()) ||
+                     ((num_shape->GetDimSizes().size() == 1) &&
+                     (num_shape->GetDimSize(0) == 1))), KERNEL_STATUS_PARAM_INVALID,
                      "Input[num] must be a scalar")
   KERNEL_CHECK_FALSE((tensor_start->GetDataType() == tensor_stop->GetDataType()), KERNEL_STATUS_PARAM_INVALID,
                      "start datatype != stop datatype fail.")
