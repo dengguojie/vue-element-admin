@@ -628,3 +628,225 @@ TEST_F(MaxPool3DTest, InfershapeMaxPool3D_dynamic) {
   auto ret = op.InferShapeAndType();
   EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
 }
+
+TEST_F(MaxPool3DTest, InfershapeMaxPool3D_dynamic_shaperange) {
+  ge::op::MaxPool3D op;
+  std::vector<std::pair<int64_t,int64_t>> range_x1 = {{2, 2}, {2, 3}, {1, 1}, {19, 19}, {19, 19}};
+  op.UpdateInputDesc("x", create_desc_shape_range({2, -1, 1, 19, 19}, ge::DT_FLOAT16, ge::FORMAT_NCDHW,
+                                                  {2, -1, 1, 19, 19}, ge::FORMAT_NCDHW, range_x1));
+  std::vector<int32_t> ksizeList = {5, 5, 5};
+  std::vector<int32_t> stridesList = {3, 3, 3};
+  std::vector<int32_t> padsList = {1, 1, 1, 1, 1, 1};
+  std::vector<int64_t> dilation = {1, 1, 1, 1, 1, 1};
+  op.SetAttr("ksize", ksizeList);
+  op.SetAttr("strides", stridesList);
+  op.SetAttr("data_format", "NCDHW");
+  op.SetAttr("pads", padsList);
+  op.SetAttr("padding", "CALCULATED");
+  op.SetAttr("ceil_mode", 0);
+  op.SetAttr("dilation", dilation);
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_SUCCESS);
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+  auto output_desc = op.GetOutputDesc("y");
+  std::vector<int64_t> expected = {2, -1, 1, 6, 6};
+  std::vector<int64_t> actual = output_desc.GetShape().GetDims();
+  //EXPECT_EQ(expected, actual);
+  std::vector<std::pair<int64_t,int64_t>> output_range;
+  std::vector<std::pair<int64_t,int64_t>> expected_range = {{2, 2}, {2, 3}, {1, 1}, {6, 6}, {6, 6}};
+  EXPECT_EQ(output_desc.GetShapeRange(output_range), ge::GRAPH_SUCCESS);
+  EXPECT_EQ(output_range, expected_range);
+}
+
+TEST_F(MaxPool3DTest, InfershapeMaxPool3D_dynamic_shaperange1) {
+  ge::op::MaxPool3D op;
+  std::vector<std::pair<int64_t,int64_t>> range_x1 = {{30, 30}, {133, 133}, {5, 23}, {13, 25}, {0, 0}};
+  op.UpdateInputDesc("x", create_desc_shape_range({-1, -1, -1, -1, -1}, ge::DT_FLOAT16, ge::FORMAT_NCDHW,
+                                                  {-1, -1, -1, -1, -1}, ge::FORMAT_NCDHW, range_x1));
+  std::vector<int32_t> ksizeList = {1, 1, 1, 1, 1};
+  std::vector<int32_t> stridesList = {1, 2, 2, 2, 1};
+  std::vector<int32_t> padsList = {1, 1, 1, 1, 1, 1};
+  std::vector<int64_t> dilation = {1, 1, 1, 1, 1, 1};
+  op.SetAttr("ksize", ksizeList);
+  op.SetAttr("strides", stridesList);
+  op.SetAttr("data_format", "NCDHW");
+  op.SetAttr("pads", padsList);
+  op.SetAttr("padding", "VALID");
+  op.SetAttr("ceil_mode", 0);
+  op.SetAttr("dilation", dilation);
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_SUCCESS);
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+  auto output_desc = op.GetOutputDesc("y");
+  std::vector<int64_t> expected = {-1, -1, 0, 0, -1};
+  std::vector<int64_t> actual = output_desc.GetShape().GetDims();
+  EXPECT_EQ(expected, actual);
+  std::vector<std::pair<int64_t,int64_t>> output_range;
+  std::vector<std::pair<int64_t,int64_t>> expected_range = {{30, 30}, {67, 67}, {0, 0}, {0, 0}, {0, 0}};
+  EXPECT_EQ(output_desc.GetShapeRange(output_range), ge::GRAPH_SUCCESS);
+  EXPECT_EQ(output_range, expected_range);
+}
+
+
+TEST_F(MaxPool3DTest, InfershapeMaxPool3D_dynamic_shaperange2) {
+  ge::op::MaxPool3D op;
+  std::vector<std::pair<int64_t,int64_t>> range_x1 = {{30, 30}, {133, 133}, {5, 23}, {13, 25}, {0, 0}};
+  op.UpdateInputDesc("x", create_desc_shape_range({-1, -1, -1, -1, -1}, ge::DT_FLOAT16, ge::FORMAT_NCDHW,
+                                                  {-1, -1, -1, -1, -1}, ge::FORMAT_NCDHW, range_x1));
+  std::vector<int32_t> ksizeList = {4, 4, 4};
+  std::vector<int32_t> stridesList = {1, 1, 1, 1, 1};
+  std::vector<int32_t> padsList = {1, 1, 1, 1, 1, 1};
+  std::vector<int64_t> dilation = {1, 1, 1, 1, 1, 1};
+  op.SetAttr("ksize", ksizeList);
+  op.SetAttr("strides", stridesList);
+  op.SetAttr("data_format", "NCDHW");
+  op.SetAttr("pads", padsList);
+  op.SetAttr("padding", "VALID");
+  op.SetAttr("ceil_mode", 0);
+  op.SetAttr("dilation", dilation);
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_SUCCESS);
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+  auto output_desc = op.GetOutputDesc("y");
+  std::vector<int64_t> expected = {-1, -1, -4, -4, -4};
+  std::vector<int64_t> actual = output_desc.GetShape().GetDims();
+  EXPECT_EQ(expected, actual);
+  std::vector<std::pair<int64_t,int64_t>> output_range;
+  std::vector<std::pair<int64_t,int64_t>> expected_range = {{30, 30}, {133, 133}, {-4, -4}, {-4, -4}, {-4, -4}};
+  EXPECT_EQ(output_desc.GetShapeRange(output_range), ge::GRAPH_SUCCESS);
+  EXPECT_EQ(output_range, expected_range);
+}
+
+TEST_F(MaxPool3DTest, InfershapeMaxPool3D_dynamic_shaperange3) {
+  ge::op::MaxPool3D op;
+  std::vector<std::pair<int64_t,int64_t>> range_x1 = {{30, 30}, {133, 133}, {5, 23}, {13, 25}, {0, 0}};
+  op.UpdateInputDesc("x", create_desc_shape_range({-1, -1, -1, -1, -1}, ge::DT_FLOAT16, ge::FORMAT_NCDHW,
+                                                  {-1, -1, -1, -1, -1}, ge::FORMAT_NCDHW, range_x1));
+  std::vector<int32_t> ksizeList = {4};
+  std::vector<int32_t> stridesList = {1, 1, 1, 1, 1};
+  std::vector<int32_t> padsList = {1, 1, 1, 1, 1, 1};
+  std::vector<int64_t> dilation = {1, 1, 1, 1, 1, 1};
+  op.SetAttr("ksize", ksizeList);
+  op.SetAttr("strides", stridesList);
+  op.SetAttr("data_format", "NCDHW");
+  op.SetAttr("pads", padsList);
+  op.SetAttr("padding", "VALID");
+  op.SetAttr("ceil_mode", 0);
+  op.SetAttr("dilation", dilation);
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_SUCCESS);
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+  auto output_desc = op.GetOutputDesc("y");
+  std::vector<int64_t> expected = {-1, -1, -4, -4, -4};
+  std::vector<int64_t> actual = output_desc.GetShape().GetDims();
+  for (int i=0;i<actual.size();i++){
+      std::cout<<actual[i]<<std::endl;
+  }
+
+  EXPECT_EQ(expected, actual);
+  std::vector<std::pair<int64_t,int64_t>> output_range;
+  std::vector<std::pair<int64_t,int64_t>> expected_range = {{30, 30}, {133, 133}, {-4, -4}, {-4, -4}, {-4, -4}};
+  EXPECT_EQ(output_desc.GetShapeRange(output_range), ge::GRAPH_SUCCESS);
+  EXPECT_EQ(output_range, expected_range);
+}
+
+TEST_F(MaxPool3DTest, InfershapeMaxPool3D_dynamic_shaperange4) {
+  ge::op::MaxPool3D op;
+  std::vector<std::pair<int64_t,int64_t>> range_x1 = {{30, 30}, {133, 133}, {5, 23}, {13, 25}, {0, 0}};
+  op.UpdateInputDesc("x", create_desc_shape_range({1, -1, 150, 16, 1}, ge::DT_FLOAT16, ge::FORMAT_NCDHW,
+                                                  {1, -1, 150, 16, 1}, ge::FORMAT_NCDHW, range_x1));
+  std::vector<int32_t> ksizeList = {4};
+  std::vector<int32_t> stridesList = {1, 1, 1, 1, 1};
+  std::vector<int32_t> padsList = {1, 1, 1, 1, 1, 1};
+  std::vector<int64_t> dilation = {1, 1, 1, 1, 1, 1};
+  op.SetAttr("ksize", ksizeList);
+  op.SetAttr("strides", stridesList);
+  op.SetAttr("data_format", "NCDHW");
+  op.SetAttr("pads", padsList);
+  op.SetAttr("padding", "VALID");
+  op.SetAttr("ceil_mode", 0);
+  op.SetAttr("dilation", dilation);
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_SUCCESS);
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+  auto output_desc = op.GetOutputDesc("y");
+  std::vector<int64_t> expected = {-2};
+  std::vector<int64_t> actual = output_desc.GetShape().GetDims();
+  EXPECT_EQ(expected, actual);
+  std::vector<std::pair<int64_t,int64_t>> output_range;
+  std::vector<std::pair<int64_t,int64_t>> expected_range = {{1, 1}, {133, 133}, {147, 147}, {13, 13}, {-2, -2}};
+  EXPECT_EQ(output_desc.GetShapeRange(output_range), ge::GRAPH_SUCCESS);
+  EXPECT_EQ(output_range, expected_range);
+}
+
+TEST_F(MaxPool3DTest, InfershapeMaxPool3D_dynamic_shaperange5) {
+  ge::op::MaxPool3D op;
+  std::vector<std::pair<int64_t,int64_t>> range_x1 = {{30, 30}, {133, 133}, {5, 23}, {13, 25}, {0, 0}};
+  op.UpdateInputDesc("x", create_desc_shape_range({1, -1, 150, 16, 3}, ge::DT_FLOAT16, ge::FORMAT_NCDHW,
+                                                  {1, -1, 150, 16, 3}, ge::FORMAT_NCDHW, range_x1));
+  std::vector<int32_t> ksizeList = {4};
+  std::vector<int32_t> stridesList = {1, 2, 2, 2, 1};
+  std::vector<int32_t> padsList = {1, 1, 1, 1, 1, 1};
+  std::vector<int64_t> dilation = {1, 1, 1, 1, 1, 1};
+  op.SetAttr("ksize", ksizeList);
+  op.SetAttr("strides", stridesList);
+  op.SetAttr("data_format", "NCDHW");
+  op.SetAttr("pads", padsList);
+  op.SetAttr("padding", "VALID");
+  op.SetAttr("ceil_mode", 0);
+  op.SetAttr("dilation", dilation);
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_SUCCESS);
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+  auto output_desc = op.GetOutputDesc("y");
+  std::vector<int64_t> expected = {1, -1, 74, 7, 0};
+  std::vector<int64_t> actual = output_desc.GetShape().GetDims();
+  EXPECT_EQ(expected, actual);
+  std::vector<std::pair<int64_t,int64_t>> output_range;
+  std::vector<std::pair<int64_t,int64_t>> expected_range = {{1, 1}, {67, 67}, {74, 74}, {7, 7}, {0, 0}};
+  EXPECT_EQ(output_desc.GetShapeRange(output_range), ge::GRAPH_SUCCESS);
+  EXPECT_EQ(output_range, expected_range);
+}
+
+TEST_F(MaxPool3DTest, InfershapeMaxPool3D_dynamic_shaperange6) {
+  ge::op::MaxPool3D op;
+  std::vector<std::pair<int64_t,int64_t>> range_x1 = {{30, 30}, {133, 133}, {5, 23}, {13, 25}, {0, 0}};
+  op.UpdateInputDesc("x", create_desc_shape_range({-1, -1, 150, 16, 3}, ge::DT_FLOAT16, ge::FORMAT_NCDHW,
+                                                  {-1, -1, 150, 16, 3}, ge::FORMAT_NCDHW, range_x1));
+  std::vector<int32_t> ksizeList = {4};
+  std::vector<int32_t> stridesList = {1, 2, 2, 2, 1};
+  std::vector<int32_t> padsList = {1, 1, 1, 1, 1, 1};
+  std::vector<int64_t> dilation = {1, 1, 1, 1, 1, 1};
+  op.SetAttr("ksize", ksizeList);
+  op.SetAttr("strides", stridesList);
+  op.SetAttr("data_format", "NDHWC");
+  op.SetAttr("pads", padsList);
+  op.SetAttr("padding", "VALID");
+  op.SetAttr("ceil_mode", 0);
+  op.SetAttr("dilation", dilation);
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_SUCCESS);
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+  auto output_desc = op.GetOutputDesc("y");
+  std::vector<int64_t> expected = {-1, -1, 74, 7, 3};
+  std::vector<int64_t> actual = output_desc.GetShape().GetDims();
+  EXPECT_EQ(expected, actual);
+  std::vector<std::pair<int64_t,int64_t>> output_range;
+  std::vector<std::pair<int64_t,int64_t>> expected_range = {{30, 30}, {65, 65}, {74, 74}, {7, 7}, {3, 3}};
+  EXPECT_EQ(output_desc.GetShapeRange(output_range), ge::GRAPH_SUCCESS);
+  EXPECT_EQ(output_range, expected_range);
+}

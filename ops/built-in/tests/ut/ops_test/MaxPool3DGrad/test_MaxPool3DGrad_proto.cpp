@@ -374,3 +374,40 @@ TEST_F(max_pool3d_grad, InfershapeMaxPool3DGrad_009) {
   auto ret = op.InferShapeAndType();
   EXPECT_EQ(ret, ge::GRAPH_FAILED);
 }
+
+TEST_F(max_pool3d_grad, max_pool3d_grad_infershape_test_001) {
+    ge::op::MaxPool3DGrad op;
+    std::vector<std::pair<int64_t,int64_t>> range_x1 = {{30, 30}, {133, 133}, {5, 23}, {13, 25}, {0, 0}};
+    op.UpdateInputDesc("orig_x", create_desc_shape_range({-1, -1, 150, 16, 3}, ge::DT_FLOAT16, ge::FORMAT_NDHWC,
+                                                         {-1, -1, 150, 16, 3}, ge::FORMAT_NDHWC, range_x1));
+    op.UpdateInputDesc("orig_y", create_desc_shape_range({-1, -1, 150, 16, 3}, ge::DT_FLOAT16, ge::FORMAT_NDHWC,
+                                                         {-1, -1, 150, 16, 3}, ge::FORMAT_NDHWC, range_x1));
+    op.UpdateInputDesc("grads", create_desc_shape_range({-1, -1, 150, 16, 3}, ge::DT_FLOAT16, ge::FORMAT_NDHWC,
+                                                         {-1, -1, 150, 16, 3}, ge::FORMAT_NDHWC, range_x1));
+    vector<int64_t> ksize = {1, 2, 2, 2, 1};
+    vector<int64_t> strides = {1, 1, 1, 1, 1};
+    vector<int64_t> pads = {0, 0, 0, 0, 0, 0};
+
+    string model = "VALID";
+    string format = "NDHWC";
+    vector<int64_t> in_shape = {17, 63, 7, 2, 16};
+    GetPads(model, format, in_shape, ksize, strides, pads);
+
+    op.SetAttr("ksize", ksize);
+    op.SetAttr("strides", strides);
+    op.SetAttr("pads", pads);
+
+    auto status = op.VerifyAllAttr(true);
+    EXPECT_EQ(status, ge::GRAPH_SUCCESS);
+    auto ret = op.InferShapeAndType();
+    EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+    auto output_desc = op.GetOutputDesc("y");
+    EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT);
+    std::vector<int64_t> expected_output_shape = {-1, -1, 150, 16, 3};
+    EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
+    std::vector<std::pair<int64_t,int64_t>> output_range;
+    std::vector<std::pair<int64_t,int64_t>> expected_range = {{30, 30}, {133, 133}, {5, 23}, {13, 25}, {0, 0}};
+    EXPECT_EQ(output_desc.GetShapeRange(output_range), ge::GRAPH_SUCCESS);
+    EXPECT_EQ(output_range, expected_range);
+
+}

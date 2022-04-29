@@ -286,3 +286,61 @@ TEST_F(MaxPoolGradGradWithArgmax_UT, InfershapeMaxPoolGradGradWithArgmax_015) {
   std::vector<int64_t> expected_output_shape_y = {6, 6, 1, 4};
   EXPECT_EQ(output_y_desc.GetShape().GetDims(), expected_output_shape_y);
 }
+
+TEST_F(MaxPoolGradGradWithArgmax_UT, InfershapeMaxPoolGradGradWithArgmax_017) {
+  ge::op::MaxPoolGradGradWithArgmax op;
+  std::vector<std::pair<int64_t,int64_t>> range_x1 = {{30, 30}, {133, 133}, {5, 23}, {13, 25}};
+  op.UpdateInputDesc(
+      "x", create_desc_shape_range({-1, 2, 5, 16}, ge::DT_FLOAT16, ge::FORMAT_NCDHW,
+                                   {-1, 2, 5, 16}, ge::FORMAT_NCDHW, range_x1));
+  op.UpdateInputDesc(
+      "grad", create_desc_shape_range({2, 2, 2, 16}, ge::DT_FLOAT16, ge::FORMAT_NCDHW,
+                                   {2, 2, 2, 16}, ge::FORMAT_NCDHW, range_x1));
+  std::vector<int32_t> ksizeList = {1, 5, 5, 1};
+  std::vector<int32_t> stridesList = {1, 3, 3, 1};
+  op.SetAttr("ksize", ksizeList);
+  op.SetAttr("strides", stridesList);
+  op.SetAttr("padding", "VALID");
+  op.SetAttr("data_format", "NCHW");
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+  auto output_y_desc = op.GetOutputDesc("y");
+  EXPECT_EQ(output_y_desc.GetDataType(), ge::DT_FLOAT16);
+  std::vector<int64_t> expected_output_shape_y = {-1, 2, 1, 4};
+  EXPECT_EQ(output_y_desc.GetShape().GetDims(), expected_output_shape_y);
+
+  std::vector<std::pair<int64_t,int64_t>> output_range;
+  std::vector<std::pair<int64_t,int64_t>> expected_range = {{30, 30}, {2, 2}, {1, 1}, {4, 4}};
+  EXPECT_EQ(output_y_desc.GetShapeRange(output_range), ge::GRAPH_SUCCESS);
+  EXPECT_EQ(output_range, expected_range);
+}
+
+TEST_F(MaxPoolGradGradWithArgmax_UT, InfershapeMaxPoolGradGradWithArgmax_018) {
+  ge::op::MaxPoolGradGradWithArgmax op;
+  std::vector<std::pair<int64_t,int64_t>> range_x1 = {{30, 30}, {133, 133}, {5, 23}, {13, 25}};
+  op.UpdateInputDesc(
+      "x", create_desc_shape_range({2, 2, 5, 16}, ge::DT_FLOAT16, ge::FORMAT_NCDHW,
+                                   {2, 2, 5, 16}, ge::FORMAT_NCDHW, range_x1));
+  op.UpdateInputDesc(
+      "grad", create_desc_shape_range({2, 2, 2, 16}, ge::DT_FLOAT16, ge::FORMAT_NCDHW,
+                                   {2, 2, 2, 16}, ge::FORMAT_NCDHW, range_x1));
+  std::vector<int32_t> ksizeList = {1, 5, 5, 1};
+  std::vector<int32_t> stridesList = {1, 3, 3, 1};
+  op.SetAttr("ksize", ksizeList);
+  op.SetAttr("strides", stridesList);
+  op.SetAttr("padding", "VALID");
+  op.SetAttr("data_format", "NCHW");
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+  auto output_y_desc = op.GetOutputDesc("y");
+  EXPECT_EQ(output_y_desc.GetDataType(), ge::DT_FLOAT16);
+  std::vector<int64_t> expected_output_shape_y = {2, 2, 1, 4};
+  EXPECT_EQ(output_y_desc.GetShape().GetDims(), expected_output_shape_y);
+
+  std::vector<std::pair<int64_t,int64_t>> output_range;
+  std::vector<std::pair<int64_t,int64_t>> expected_range = {};
+  EXPECT_EQ(output_y_desc.GetShapeRange(output_range), ge::GRAPH_SUCCESS);
+  EXPECT_EQ(output_range, expected_range);
+}

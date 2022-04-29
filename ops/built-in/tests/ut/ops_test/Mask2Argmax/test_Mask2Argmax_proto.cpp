@@ -205,3 +205,100 @@ TEST_F(Mask2Argmax_UT, InfershapeMask2Argmax_012) {
   std::vector<int64_t> expected_output_shape_argmax = {5, 5, 2, 2};
   EXPECT_EQ(output_argmax_desc.GetShape().GetDims(), expected_output_shape_argmax);
 }
+
+TEST_F(Mask2Argmax_UT, InfershapeMask2Argmax_013) {
+  ge::op::Mask2Argmax op;
+  std::vector<std::pair<int64_t,int64_t>> range_x1 = {{30, 30}, {133, 133}, {5, 23}, {13, 25}};
+  auto tensor_desc = create_desc_shape_range({-1, -1, 150, 16}, ge::DT_FLOAT16, ge::FORMAT_NCHW,
+                                             {-1, -1, 150, 16}, ge::FORMAT_NCHW, range_x1);
+  op.UpdateInputDesc("x", tensor_desc);
+  std::vector<int32_t> ksizeList = {1, 2, 2, 1};
+  std::vector<int32_t> stridesList = {1, 2, 2, 1};
+  op.SetAttr("ksize", ksizeList);
+  op.SetAttr("strides", stridesList);
+  op.SetAttr("padding", "VALID");
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+
+  auto output_argmax_desc = op.GetOutputDesc("argmax");
+  EXPECT_EQ(output_argmax_desc.GetDataType(), ge::DT_FLOAT);
+  std::vector<int64_t> expected_output_shape_argmax = {-1, -1, 75, 8};
+  EXPECT_EQ(output_argmax_desc.GetShape().GetDims(), expected_output_shape_argmax);
+}
+
+TEST_F(Mask2Argmax_UT, InfershapeMask2Argmax_014) {
+  ge::op::Mask2Argmax op;
+  std::vector<std::pair<int64_t,int64_t>> range_x1 = {{30, 30}, {133, 133}, {5, 23}, {13, 25}};
+  auto tensor_desc = create_desc_shape_range({-1, -1, 150, 16}, ge::DT_FLOAT16, ge::FORMAT_NCHW,
+                                             {-1, -1, 150, 16}, ge::FORMAT_NCHW, range_x1);
+  op.UpdateInputDesc("x", tensor_desc);
+  std::vector<int32_t> ksizeList = {1, 2, 2, 1};
+  std::vector<int32_t> stridesList = {1, 2, 2, 1};
+  op.SetAttr("ksize", ksizeList);
+  op.SetAttr("strides", stridesList);
+  op.SetAttr("padding", "SAME");
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+
+  auto output_argmax_desc = op.GetOutputDesc("argmax");
+  EXPECT_EQ(output_argmax_desc.GetDataType(), ge::DT_FLOAT);
+  std::vector<int64_t> expected_output_shape_argmax = {-1, -1, 75, 8};
+  EXPECT_EQ(output_argmax_desc.GetShape().GetDims(), expected_output_shape_argmax);
+  std::vector<std::pair<int64_t,int64_t>> output_range;
+  std::vector<std::pair<int64_t,int64_t>> expected_range = {{30, 30}, {133, 133}, {75, 75}, {8, 8}};
+  EXPECT_EQ(output_argmax_desc.GetShapeRange(output_range), ge::GRAPH_SUCCESS);
+  EXPECT_EQ(output_range, expected_range);
+
+}
+
+TEST_F(Mask2Argmax_UT, InfershapeMask2Argmax_015) {
+  ge::op::Mask2Argmax op;
+  std::vector<std::pair<int64_t,int64_t>> range_x1 = {{30, 30}, {133, 133}, {5, 23}, {13, 25}};
+  auto tensor_desc = create_desc_shape_range({-1, -1, 150, 16}, ge::DT_FLOAT16, ge::FORMAT_NCHW,
+                                             {-1, -1, 150, 16}, ge::FORMAT_NCHW, range_x1);
+  op.UpdateInputDesc("x", tensor_desc);
+  std::vector<int32_t> ksizeList = {1, 2, 2, 1};
+  std::vector<int32_t> stridesList = {1, 2, 2, 1};
+  op.SetAttr("ksize", ksizeList);
+  op.SetAttr("strides", stridesList);
+  op.SetAttr("padding", "SAME");
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+
+  auto output_argmax_desc = op.GetOutputDesc("argmax");
+  EXPECT_EQ(output_argmax_desc.GetDataType(), ge::DT_FLOAT);
+  std::vector<int64_t> expected_output_shape_argmax = {-1, -1, 75, 8};
+  EXPECT_EQ(output_argmax_desc.GetShape().GetDims(), expected_output_shape_argmax);
+  std::vector<std::pair<int64_t,int64_t>> output_range;
+  std::vector<std::pair<int64_t,int64_t>> expected_range = {{30, 30}, {133, 133}, {75, 75}, {8, 8}};
+  EXPECT_EQ(output_argmax_desc.GetShapeRange(output_range), ge::GRAPH_SUCCESS);
+  EXPECT_EQ(output_range, expected_range);
+}
+
+TEST_F(Mask2Argmax_UT, InfershapeMask2Argmax_016) {
+  ge::op::Mask2Argmax op;
+  std::vector<std::pair<int64_t,int64_t>> range_x1 = {{30, 30}, {133, 133}, {5, 23}, {13, 25}};
+  auto tensor_desc = create_desc_shape_range({1, 1, 150, 16}, ge::DT_FLOAT16, ge::FORMAT_NCHW,
+                                             {1, 1, 150, 16}, ge::FORMAT_NCHW, range_x1);
+  op.UpdateInputDesc("x", tensor_desc);
+  std::vector<int32_t> ksizeList = {1, 2, 2, 1};
+  std::vector<int32_t> stridesList = {1, 2, 2, 1};
+  op.SetAttr("ksize", ksizeList);
+  op.SetAttr("strides", stridesList);
+  op.SetAttr("padding", "SAME");
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+
+  auto output_argmax_desc = op.GetOutputDesc("argmax");
+  EXPECT_EQ(output_argmax_desc.GetDataType(), ge::DT_FLOAT);
+  std::vector<int64_t> expected_output_shape_argmax = {1, 1, 75, 8};
+  EXPECT_EQ(output_argmax_desc.GetShape().GetDims(), expected_output_shape_argmax);
+  std::vector<std::pair<int64_t,int64_t>> output_range;
+  std::vector<std::pair<int64_t,int64_t>> expected_range = {};
+  EXPECT_EQ(output_argmax_desc.GetShapeRange(output_range), ge::GRAPH_SUCCESS);
+  EXPECT_EQ(output_range, expected_range);
+}

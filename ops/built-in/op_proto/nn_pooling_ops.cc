@@ -368,6 +368,95 @@ static bool reset_range(ge::Operator& op, const std::string& tensor_name) {
   return reset_flag;
 }
 
+static void UpdateSameRange(ge::Operator& op, const int64_t& strides, const int64_t& dim_size,
+                            std::pair<int64_t, int64_t>& dim_range){
+  if (dim_size != -1){
+    dim_range = std::pair<int64_t, int64_t>{dim_size, dim_size};
+  } else {
+    if (strides == 0) {
+      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), string("stride equals zero cannot be divided"));
+      return;
+    } 
+    int64_t first_range = dim_range.first == 0 ? 0 : (dim_range.first+strides - 1) / strides;
+    int64_t second_range = dim_range.second == -1 ? -1 : (dim_range.second + strides - 1) / strides;
+    dim_range = std::pair<int64_t, int64_t>{first_range, second_range};
+  }
+}
+
+static void UpdateValidRange(ge::Operator& op, const int64_t& strides, const int64_t& dim_size, const int64_t& ksize,
+                             std::pair<int64_t, int64_t>& dim_range){
+  if (dim_size != -1){
+    dim_range = std::pair<int64_t, int64_t>{dim_size, dim_size};
+  } else {
+    if (strides == 0) {
+      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), string("stride equals zero cannot be divided"));
+      return;
+    }
+    int64_t first_range = dim_range.first == 0 ? 0 : (dim_range.first - ksize + 1 + (strides - 1)) / strides;
+    int64_t second_range = dim_range.second == -1 ? -1 : (dim_range.second - ksize + 1 + (strides - 1)) / strides;
+    dim_range = std::pair<int64_t, int64_t>{first_range, second_range};
+  }
+}
+
+static void UpdateCalcCeil0Range(ge::Operator& op, const int64_t& strides, const int64_t& dim_size, const int64_t& ksize,
+                                 const int64_t& pad, std::pair<int64_t, int64_t>& dim_range){
+  if (dim_size != -1){
+    dim_range = std::pair<int64_t, int64_t>{dim_size, dim_size};
+  } else {
+    if (strides == 0) {
+      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), string("stride equals zero cannot be divided"));
+      return;
+    }
+    int64_t first_range = dim_range.first == 0 ? 0 : ((dim_range.first + 2 * pad - (ksize - 1) - 1) / strides) + 1;
+    int64_t second_range = dim_range.second == -1 ? -1 : ((dim_range.second + 2 * pad - (ksize - 1) - 1) / strides) + 1;
+    dim_range = std::pair<int64_t, int64_t>{first_range, second_range};
+  }
+}
+
+static void UpdateCalcCeilRange(ge::Operator& op, const int64_t& strides, const int64_t& dim_size, const int64_t& ksize,
+                                const int64_t& pad, std::pair<int64_t, int64_t>& dim_range){
+  if (dim_size != -1){
+    dim_range = std::pair<int64_t, int64_t>{dim_size, dim_size};
+  } else {
+    if (strides == 0) {
+      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), string("stride equals zero cannot be divided"));
+      return;
+    }
+    int64_t first_range = dim_range.first == 0 ? 0 : ((dim_range.first + 2 * pad - (ksize - 1) - 1 + strides - 1) / strides) + 1;
+    int64_t second_range = dim_range.second == -1 ? -1 : ((dim_range.second + 2 * pad - (ksize - 1) - 1 + strides - 1) / strides) + 1;
+    dim_range = std::pair<int64_t, int64_t>{first_range, second_range};
+  }
+}
+
+static void Update3DSameRange(ge::Operator& op, const int64_t& strides, const int64_t& dim_size,
+                              std::pair<int64_t, int64_t>& dim_range){
+  if (dim_size != -1){
+    dim_range = std::pair<int64_t, int64_t>{dim_size, dim_size};
+  } else {
+    if (strides == 0) {
+      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), string("stride equals zero cannot be divided"));
+      return;
+    }
+    int64_t first_range = dim_range.first == 0 ? 0 : (dim_range.first + strides - 1) / strides;
+    int64_t second_range = dim_range.second == -1 ? -1 : (dim_range.second + strides - 1) / strides;
+    dim_range = std::pair<int64_t, int64_t>{first_range, second_range};
+  }
+}
+
+static void Update3DNotSameRange(ge::Operator& op, const int64_t& strides, const int64_t& dim_size, const int64_t& ksize,
+                                 std::pair<int64_t, int64_t>& dim_range){
+  if (dim_size != -1){
+    dim_range = std::pair<int64_t, int64_t>{dim_size, dim_size};
+  } else {
+    if (strides == 0) {
+      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), string("stride equals zero cannot be divided"));
+      return;
+    }
+    int64_t first_range = dim_range.first == 0 ? 0 : (dim_range.first - ksize + 1 + (strides - 1)) / strides;
+    int64_t second_range = dim_range.second == -1 ? -1 : (dim_range.second - ksize + 1 + (strides - 1)) / strides;
+    dim_range = std::pair<int64_t, int64_t>{first_range, second_range};
+  }
+}
 //--------- Dilation2D ---------------
 IMPLEMT_VERIFIER(Dilation2D, Dilation2DVerify) {
   auto x_shape = op.GetInputDesc("x").GetShape();
@@ -3976,6 +4065,8 @@ IMPLEMT_INFERFUNC(MaxPool3D, MaxPool3DInferShape) {
   const size_t DIM_SIZE1 = 1;
   const size_t DIM_SIZE3 = 3;
   const size_t DIM_SIZE5 = 5;
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  auto inputDesc = op_desc->MutableInputDesc(0);
   auto inputTensorDesc = op.GetInputDesc("x");
   auto shape = inputTensorDesc.GetShape();
   Format input_format = inputTensorDesc.GetFormat();
@@ -4175,6 +4266,10 @@ IMPLEMT_INFERFUNC(MaxPool3D, MaxPool3DInferShape) {
   }
 
   std::vector<int64_t> dims_input = shape.GetDims();
+  std::vector<std::pair<int64_t, int64_t>> shape_range;
+  inputDesc->GetShapeRange(shape_range);
+  MakeUpShapeRange(inputDesc->GetShape(), shape_range);
+  std::vector<std::pair<int64_t, int64_t>> out_range;
   std::vector<int64_t> dimVector;
   int64_t dims = 1;
   int pad = 0;
@@ -4197,7 +4292,10 @@ IMPLEMT_INFERFUNC(MaxPool3D, MaxPool3DInferShape) {
             }
             dims = ((dims_input[i] + 2 * pad - (ksizeTempList[i] - 1) - 1) / stridesTempList[i]) + 1;
           }
+	  auto dim_range = shape_range[i];
+	  UpdateCalcCeil0Range(op, stridesTempList[i], dims, ksizeTempList[i], pad, dim_range);
           dimVector.push_back(dims);
+	  out_range.push_back(dim_range);
         }
       }else if (input_format == FORMAT_NDHWC) {
         for (size_t i = 0; i < dims_input.size(); i++) {
@@ -4215,7 +4313,10 @@ IMPLEMT_INFERFUNC(MaxPool3D, MaxPool3DInferShape) {
             }
             dims = ((dims_input[i] + 2 * pad - (ksizeTempList[i] - 1) - 1) / stridesTempList[i]) + 1;
           }
+	  auto dim_range = shape_range[i];
+	  UpdateCalcCeil0Range(op, stridesTempList[i], dims, ksizeTempList[i], pad, dim_range);
           dimVector.push_back(dims);
+	  out_range.push_back(dim_range);
         }
       }
     } else {
@@ -4236,7 +4337,10 @@ IMPLEMT_INFERFUNC(MaxPool3D, MaxPool3DInferShape) {
             dims = ((dims_input[i] + 2 * pad - (ksizeTempList[i] - 1) - 1 + stridesTempList[i] - 1) /\
                      stridesTempList[i]) + 1;
           }
+	  auto dim_range = shape_range[i];
+	  UpdateCalcCeilRange(op, stridesTempList[i], dims, ksizeTempList[i], pad, dim_range);
           dimVector.push_back(dims);
+	  out_range.push_back(dim_range);
         }
       }else if (input_format == FORMAT_NDHWC) {
         for (size_t i = 0; i < dims_input.size(); i++) {
@@ -4255,7 +4359,10 @@ IMPLEMT_INFERFUNC(MaxPool3D, MaxPool3DInferShape) {
             dims = ((dims_input[i] + 2 * pad - (ksizeTempList[i] - 1) - 1 + stridesTempList[i] - 1) /\
                      stridesTempList[i]) + 1;
           }
+	  auto dim_range = shape_range[i];
+	  UpdateCalcCeilRange(op, stridesTempList[i], dims, ksizeTempList[i], pad, dim_range);
           dimVector.push_back(dims);
+	  out_range.push_back(dim_range);
         }
       }
     }
@@ -4269,7 +4376,10 @@ IMPLEMT_INFERFUNC(MaxPool3D, MaxPool3DInferShape) {
           } else {
             dims = (dims_input[i] + stridesTempList[i] - 1) / stridesTempList[i];
           }
+	  auto dim_range = shape_range[i];
+	  Update3DSameRange(op, stridesTempList[i], dims, dim_range);
           dimVector.push_back(dims);
+	  out_range.push_back(dim_range);
         }
       } else {
         for (size_t i = 0; i < dims_input.size(); i++) {
@@ -4279,7 +4389,11 @@ IMPLEMT_INFERFUNC(MaxPool3D, MaxPool3DInferShape) {
           } else {
             dims = (dims_input[i] - ksizeTempList[i] + 1 + (stridesTempList[i] - 1)) / stridesTempList[i];
           }
+	  // calc shape range
+	  auto dim_range = shape_range[i];
+	  Update3DNotSameRange(op, stridesTempList[i], dims, ksizeTempList[i], dim_range);
           dimVector.push_back(dims);
+	  out_range.push_back(dim_range);
         }
       }
     } else if (input_format == FORMAT_NCDHW) {
@@ -4291,7 +4405,11 @@ IMPLEMT_INFERFUNC(MaxPool3D, MaxPool3DInferShape) {
           } else {
             dims = (dims_input[i] + stridesTempList[i] - 1) / stridesTempList[i];
           }
+	  auto dim_range = shape_range[i];
+	  // calc shape range
+	  Update3DSameRange(op, stridesTempList[i], dims, dim_range);
           dimVector.push_back(dims);
+	  out_range.push_back(dim_range);
         }
       } else {
         for (size_t i = 0; i < dims_input.size(); i++) {
@@ -4301,7 +4419,10 @@ IMPLEMT_INFERFUNC(MaxPool3D, MaxPool3DInferShape) {
           } else {
             dims = (dims_input[i] - ksizeTempList[i] + 1 + (stridesTempList[i] - 1)) / stridesTempList[i];
           }
+	  auto dim_range = shape_range[i];
+	  Update3DNotSameRange(op, stridesTempList[i], dims, ksizeTempList[i], dim_range);
           dimVector.push_back(dims);
+	  out_range.push_back(dim_range);
         }
       }
     }
@@ -4312,6 +4433,9 @@ IMPLEMT_INFERFUNC(MaxPool3D, MaxPool3DInferShape) {
   Shape outputShape(dimVector);
   td.SetShape(outputShape);
   td.SetDataType(inputDtype);
+  if (inputDesc->GetShape().IsUnknownShape()){
+    td.SetShapeRange(out_range);
+  }
   (void)op.UpdateOutputDesc("y", td);
   return GRAPH_SUCCESS;
 }
@@ -5187,6 +5311,8 @@ IMPLEMT_INFERFUNC(MaxPoolWithArgmax, MaxPoolWithArgmaxInferShape) {
   const size_t DIM_SIZE2 = 2;
   const size_t DIM_SIZE3 = 3;
   const size_t DIM_SIZE4 = 4;
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  auto inputDesc = op_desc->MutableInputDesc(0);
   ge::TensorDesc inputTensorDesc = op.GetInputDesc(0);
   Format input_format = inputTensorDesc.GetFormat();
   ge::Shape shape = inputTensorDesc.GetShape();
@@ -5261,50 +5387,67 @@ IMPLEMT_INFERFUNC(MaxPoolWithArgmax, MaxPoolWithArgmaxInferShape) {
     return GRAPH_FAILED;
   }
   std::vector<int64_t> dims_input = shape.GetDims();
+  std::vector<std::pair<int64_t, int64_t>> shape_range;
+  inputDesc->GetShapeRange(shape_range);
+  MakeUpShapeRange(inputDesc->GetShape(), shape_range);
+  std::vector<std::pair<int64_t, int64_t>> out_range;
+  int64_t dims = 1;
   // set output max shape
   std::vector<int64_t> dimVector;
   if (input_format == FORMAT_NHWC) {
     if (paddingMode == "SAME") {
       for (size_t i = 0; i < dims_input.size(); i++) {
         if ((i == DIM_SIZE1) || (i == DIM_SIZE2)) {
-          int64_t dims = (dims_input[i] + stridesList[i] - 1) / stridesList[i];
+          dims = (dims_input[i] + stridesList[i] - 1) / stridesList[i];
           dimVector.push_back(dims);
         } else {
-          int64_t dims = dims_input[i];
+          dims = dims_input[i];
           dimVector.push_back(dims);
         }
+        auto dim_range = shape_range[i];
+        UpdateSameRange(op, stridesList[i], dims, dim_range);
+        out_range.push_back(dim_range);
       }
     } else {
       for (size_t i = 0; i < dims_input.size(); i++) {
         if ((i == DIM_SIZE1) || (i == DIM_SIZE2)) {
-          int64_t dims = (dims_input[i] - ksizeList[i] + 1 + (stridesList[i] - 1)) / stridesList[i];
+          dims = (dims_input[i] - ksizeList[i] + 1 + (stridesList[i] - 1)) / stridesList[i];
           dimVector.push_back(dims);
         } else {
-          int64_t dims = dims_input[i];
+          dims = dims_input[i];
           dimVector.push_back(dims);
         }
+        auto dim_range = shape_range[i];
+        UpdateValidRange(op, stridesList[i], dims, ksizeList[i], dim_range);
+        out_range.push_back(dim_range);
       }
     }
   } else {
     if (paddingMode == "SAME") {
       for (size_t i = 0; i < dims_input.size(); i++) {
         if ((i == DIM_SIZE2) || (i == DIM_SIZE3)) {
-          int64_t dims = (dims_input[i] + stridesList[i - 1] - 1) / stridesList[i - 1];
+          dims = (dims_input[i] + stridesList[i - 1] - 1) / stridesList[i - 1];
           dimVector.push_back(dims);
         } else {
-          int64_t dims = dims_input[i];
+          dims = dims_input[i];
           dimVector.push_back(dims);
         }
+        auto dim_range = shape_range[i];
+        UpdateSameRange(op, stridesList[i - 1], dims, dim_range);
+        out_range.push_back(dim_range);
       }
     } else {
       for (size_t i = 0; i < dims_input.size(); i++) {
         if ((i == DIM_SIZE2) || (i == DIM_SIZE3)) {
-          int64_t dims = (dims_input[i] - ksizeList[i - 1] + 1 + (stridesList[i - 1] - 1)) / stridesList[i - 1];
+          dims = (dims_input[i] - ksizeList[i - 1] + 1 + (stridesList[i - 1] - 1)) / stridesList[i - 1];
           dimVector.push_back(dims);
         } else {
-          int64_t dims = dims_input[i];
+          dims = dims_input[i];
           dimVector.push_back(dims);
         }
+        auto dim_range = shape_range[i];
+        UpdateValidRange(op, stridesList[i], dims, ksizeList[i], dim_range);
+        out_range.push_back(dim_range);
       }
     }
   }
@@ -5316,6 +5459,10 @@ IMPLEMT_INFERFUNC(MaxPoolWithArgmax, MaxPoolWithArgmaxInferShape) {
   outputMaxTensorDesc.SetDataType(inputDtype);
   outputMaskTensorDesc.SetShape(outputMaxShape);
   outputMaskTensorDesc.SetDataType(DT_INT64);
+  if (inputDesc->GetShape().IsUnknownShape()){
+    outputMaxTensorDesc.SetShapeRange(out_range);
+    outputMaskTensorDesc.SetShapeRange(out_range);
+  }
   (void)op.UpdateOutputDesc("y", outputMaxTensorDesc);
   (void)op.UpdateOutputDesc("argmax", outputMaskTensorDesc);
 
@@ -5331,6 +5478,8 @@ IMPLEMT_INFERFUNC(Mask2Argmax, Mask2ArgmaxInferShape) {
   const size_t DIM_SIZE2 = 2;
   const size_t DIM_SIZE3 = 3;
   const size_t DIM_SIZE4 = 4;
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  auto inputDesc = op_desc->MutableInputDesc(0);
   ge::TensorDesc inputTensorDesc = op.GetInputDesc(0);
   Format input_format = inputTensorDesc.GetFormat();
   ge::Shape shape = inputTensorDesc.GetShape();
@@ -5390,50 +5539,67 @@ IMPLEMT_INFERFUNC(Mask2Argmax, Mask2ArgmaxInferShape) {
     return GRAPH_FAILED;
   }
   std::vector<int64_t> dims_input = shape.GetDims();
+  std::vector<std::pair<int64_t, int64_t>> shape_range;
+  inputDesc->GetShapeRange(shape_range);
+  MakeUpShapeRange(inputDesc->GetShape(), shape_range);
+  std::vector<std::pair<int64_t, int64_t>> out_range;
+  int64_t dims = 1;
   // set output max shape
   std::vector<int64_t> dimVector;
   if (input_format == FORMAT_NHWC) {
     if (paddingMode == "SAME") {
       for (size_t i = 0; i < dims_input.size(); i++) {
         if ((i == DIM_SIZE1) || (i == DIM_SIZE2)) {
-          int64_t dims = (dims_input[i] + stridesList[i] - 1) / stridesList[i];
+          dims = (dims_input[i] + stridesList[i] - 1) / stridesList[i];
           dimVector.push_back(dims);
         } else {
-          int64_t dims = dims_input[i];
+          dims = dims_input[i];
           dimVector.push_back(dims);
         }
+        auto dim_range = shape_range[i];
+        UpdateSameRange(op, stridesList[i], dims, dim_range);
+        out_range.push_back(dim_range);
       }
     } else {
       for (size_t i = 0; i < dims_input.size(); i++) {
         if ((i == DIM_SIZE1) || (i == DIM_SIZE2)) {
-          int64_t dims = (dims_input[i] - ksizeList[i] + 1 + (stridesList[i] - 1)) / stridesList[i];
+          dims = (dims_input[i] - ksizeList[i] + 1 + (stridesList[i] - 1)) / stridesList[i];
           dimVector.push_back(dims);
         } else {
-          int64_t dims = dims_input[i];
+          dims = dims_input[i];
           dimVector.push_back(dims);
         }
+        auto dim_range = shape_range[i];
+        UpdateValidRange(op, stridesList[i], dims, ksizeList[i], dim_range);
+        out_range.push_back(dim_range);
       }
     }
   } else {
     if (paddingMode == "SAME") {
       for (size_t i = 0; i < dims_input.size(); i++) {
         if ((i == DIM_SIZE2) || (i == DIM_SIZE3)) {
-          int64_t dims = (dims_input[i] + stridesList[i - 1] - 1) / stridesList[i - 1];
+          dims = (dims_input[i] + stridesList[i - 1] - 1) / stridesList[i - 1];
           dimVector.push_back(dims);
         } else {
-          int64_t dims = dims_input[i];
+          dims = dims_input[i];
           dimVector.push_back(dims);
         }
+        auto dim_range = shape_range[i];
+        UpdateSameRange(op, stridesList[i - 1], dims, dim_range);
+        out_range.push_back(dim_range);
       }
     } else {
       for (size_t i = 0; i < dims_input.size(); i++) {
         if ((i == DIM_SIZE2) || (i == DIM_SIZE3)) {
-          int64_t dims = (dims_input[i] - ksizeList[i - 1] + 1 + (stridesList[i - 1] - 1)) / stridesList[i - 1];
+          dims = (dims_input[i] - ksizeList[i - 1] + 1 + (stridesList[i - 1] - 1)) / stridesList[i - 1];
           dimVector.push_back(dims);
         } else {
-          int64_t dims = dims_input[i];
+          dims = dims_input[i];
           dimVector.push_back(dims);
         }
+        auto dim_range = shape_range[i];
+        UpdateValidRange(op, stridesList[i - 1], dims, ksizeList[i - 1], dim_range);
+        out_range.push_back(dim_range);
       }
     }
   }
@@ -5443,7 +5609,9 @@ IMPLEMT_INFERFUNC(Mask2Argmax, Mask2ArgmaxInferShape) {
   DataType outputArgmaxDtype = DT_FLOAT;
   outputArgmaxTensorDesc.SetShape(outputArgmaxShape);
   outputArgmaxTensorDesc.SetDataType(outputArgmaxDtype);
-
+  if (inputDesc->GetShape().IsUnknownShape()){
+    outputArgmaxTensorDesc.SetShapeRange(out_range);
+  }
   (void)op.UpdateOutputDesc("argmax", outputArgmaxTensorDesc);
 
   return GRAPH_SUCCESS;
@@ -5465,6 +5633,8 @@ IMPLEMT_VERIFIER(MaxPoolGradGradWithArgmax, MaxPoolGradGradWithArgmaxVerify) {
 }
 
 IMPLEMT_INFERFUNC(MaxPoolGradGradWithArgmax, MaxPoolGradGradWithArgmaxInferShape) {
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  auto inputDesc = op_desc->MutableInputDesc(0);
   auto input_tensor_desc = op.GetInputDesc("x");
   auto shape = input_tensor_desc.GetShape();
   Format input_format = input_tensor_desc.GetFormat();
@@ -5516,52 +5686,68 @@ IMPLEMT_INFERFUNC(MaxPoolGradGradWithArgmax, MaxPoolGradGradWithArgmaxInferShape
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
-
   std::vector<int64_t> dims_input = shape.GetDims();
+  std::vector<std::pair<int64_t, int64_t>> shape_range;
+  inputDesc->GetShapeRange(shape_range);
+  MakeUpShapeRange(inputDesc->GetShape(), shape_range);
+  std::vector<std::pair<int64_t, int64_t>> out_range;
+  int64_t dims = 1;
   // set output shape
   std::vector<int64_t> dim_vector;
   if (input_format == FORMAT_NHWC) {
     if (padding_mode == "SAME") {
       for (size_t i = 0; i < dims_input.size(); i++) {
         if ((i == 1) || (i == 2)) {
-          int64_t dims = (dims_input[i] + strides_list[i] - 1) / strides_list[i];
+          dims = (dims_input[i] + strides_list[i] - 1) / strides_list[i];
           dim_vector.push_back(dims);
         } else {
-          int64_t dims = dims_input[i];
+          dims = dims_input[i];
           dim_vector.push_back(dims);
         }
+	auto dim_range = shape_range[i];
+        UpdateSameRange(op, strides_list[i], dims, dim_range);
+	out_range.push_back(dim_range);
       }
     } else {
       for (size_t i = 0; i < dims_input.size(); i++) {
         if ((i == 1) || (i == 2)) {
-          int64_t dims = (dims_input[i] - ksize_list[i] + 1 + (strides_list[i] - 1)) / strides_list[i];
+          dims = (dims_input[i] - ksize_list[i] + 1 + (strides_list[i] - 1)) / strides_list[i];
           dim_vector.push_back(dims);
         } else {
-          int64_t dims = dims_input[i];
+          dims = dims_input[i];
           dim_vector.push_back(dims);
         }
+        auto dim_range = shape_range[i];
+        UpdateValidRange(op, strides_list[i], dims, ksize_list[i], dim_range);
+        out_range.push_back(dim_range);
       }
     }
   } else {
     if (padding_mode == "SAME") {
       for (size_t i = 0; i < dims_input.size(); i++) {
         if ((i == 2) || (i == 3)) {
-          int64_t dims = (dims_input[i] + strides_list[i - 1] - 1) / strides_list[i - 1];
+          dims = (dims_input[i] + strides_list[i - 1] - 1) / strides_list[i - 1];
           dim_vector.push_back(dims);
         } else {
-          int64_t dims = dims_input[i];
+          dims = dims_input[i];
           dim_vector.push_back(dims);
         }
+        auto dim_range = shape_range[i];
+        UpdateSameRange(op, strides_list[i-1], dims, dim_range);
+        out_range.push_back(dim_range);
       }
     } else {
       for (size_t i = 0; i < dims_input.size(); i++) {
         if ((i == 2) || (i == 3)) {
-          int64_t dims = (dims_input[i] - ksize_list[i - 1] + 1 + (strides_list[i - 1] - 1)) / strides_list[i - 1];
+          dims = (dims_input[i] - ksize_list[i - 1] + 1 + (strides_list[i - 1] - 1)) / strides_list[i - 1];
           dim_vector.push_back(dims);
         } else {
-          int64_t dims = dims_input[i];
+          dims = dims_input[i];
           dim_vector.push_back(dims);
         }
+        auto dim_range = shape_range[i];
+        UpdateValidRange(op, strides_list[i - 1], dims, ksize_list[i - 1], dim_range);
+        out_range.push_back(dim_range);
       }
     }
   }
@@ -5570,6 +5756,9 @@ IMPLEMT_INFERFUNC(MaxPoolGradGradWithArgmax, MaxPoolGradGradWithArgmaxInferShape
   Shape output_shape(dim_vector);
   out_tensor_desc.SetShape(output_shape);
   out_tensor_desc.SetDataType(input_dtype);
+  if (inputDesc->GetShape().IsUnknownShape()){
+    out_tensor_desc.SetShapeRange(out_range);
+  }
   if (op.UpdateOutputDesc("y", out_tensor_desc) != GRAPH_SUCCESS) {
     std::string err_msg = UpdateParamErrMsg("OutputDesc run");
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
@@ -6811,10 +7000,18 @@ IMPLEMT_VERIFIER(MaxPool3DGrad, MaxPool3DGradVerify) {
 }
 
 IMPLEMT_INFERFUNC(MaxPool3DGrad, MaxPool3DGradInferShape) {
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  auto inputDesc = op_desc->MutableInputDesc(0);
   auto shapeX1 = op.GetInputDesc("orig_x").GetShape();
+  std::vector<std::pair<int64_t, int64_t>> shape_range;
+  inputDesc->GetShapeRange(shape_range);
+  MakeUpShapeRange(inputDesc->GetShape(), shape_range);
   TensorDesc td = op.GetOutputDesc("y");
   td.SetShape(shapeX1);
   td.SetDataType(DT_FLOAT);
+  if (inputDesc->GetShape().IsUnknownShape()){
+    td.SetShapeRange(shape_range);
+  }
   (void)op.UpdateOutputDesc("y", td);
 
   // get input DHW
@@ -7860,13 +8057,21 @@ IMPLEMT_VERIFIER(MaxPoolV3Grad, MaxPoolV3GradVerify) {
 IMPLEMT_INFERFUNC(MaxPoolV3Grad, MaxPoolV3GradInferShape) {
   auto shapeX1 = op.GetInputDesc("orig_input").GetShape();
   auto inputType = op.GetInputDesc("orig_input").GetDataType();
-
   TensorDesc td = op.GetOutputDesc("out_grad");
   td.SetShape(shapeX1);
   td.SetDataType(inputType);
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  auto inputDesc = op_desc->MutableInputDesc(0);
+  if (inputDesc->GetShape().IsUnknownShape()){
+    std::vector<std::pair<int64_t, int64_t>> shape_range;
+    inputDesc->GetShapeRange(shape_range);
+    MakeUpShapeRange(inputDesc->GetShape(), shape_range);
+    td.SetShapeRange(shape_range);
+  }
   (void)op.UpdateOutputDesc("out_grad", td);
   return GRAPH_SUCCESS;
 }
+
 INFER_FUNC_REG(MaxPoolV3Grad, MaxPoolV3GradInferShape);
 VERIFY_FUNC_REG(MaxPoolV3Grad, MaxPoolV3GradVerify);
 // ----------------------MaxPoolV3Grad--------------------------
