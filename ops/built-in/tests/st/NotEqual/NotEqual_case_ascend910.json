@@ -202,5 +202,76 @@
         "name": "y"
       }
     ]
+  },
+  {
+    "case_name": "NotEqual_static_shape_test_NotEqual_auto_case_name_79_ascend910a",
+    "op": "NotEqual",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int64"
+        ],
+        "shape": [
+          1,
+          24,
+          1,
+          128
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            -1000,
+            1000
+          ]
+        ],
+        "name": "x1"
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int64"
+        ],
+        "shape": [
+          1,
+          24,
+          1,
+          128
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            -1000,
+            1000
+          ]
+        ],
+        "name": "x2"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int8"
+        ],
+        "shape": [
+          1,
+          24,
+          1,
+          128
+        ],
+        "name": "y"
+      }
+    ]
   }
 ]

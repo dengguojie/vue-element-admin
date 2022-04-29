@@ -47,6 +47,18 @@ class Constant:
     SCALAR_MUL_FP16 = 2**(12)
 
 
+def not_equal_compute_b64(input_x, input_y, shape_broadcast):
+    """
+    b64 compute for not_equal: input data type is int64 or uint64
+    """
+    input_x = tbe.broadcast(input_x, shape_broadcast)
+    input_y = tbe.broadcast(input_y, shape_broadcast)
+
+    res = tbe.vcmp(input_x, input_y, "ne", "bool")
+
+    return res
+
+
 # 'pylint: disable=locally-disabled,unused-argument,too-many-locals
 @register_operator_compute("NotEqual", op_mode="dynamic", support_fusion=True)
 def not_equal_compute(input_x, input_y, output_z, kernel_name="not_equal"):
@@ -77,7 +89,10 @@ def not_equal_compute(input_x, input_y, output_z, kernel_name="not_equal"):
                                                                     param_name_input1="input_x",
                                                                     param_name_input2="input_y")
 
-    if dtype_x in ("float32", "int32"):
+    if dtype_x in ("int64", "uint64"):
+        return not_equal_compute_b64(input_x, input_y, shape_broadcast)
+
+    elif dtype_x in ("float32", "int32"):
         tensor_min = tbe.broadcast(tvm.const(Constant.SCALAR_MIN_FP32, dtype="float32"), shape_broadcast)
         tensor_mul = tbe.broadcast(tvm.const(Constant.SCALAR_MUL_FP32, dtype="float32"), shape_broadcast)
         tensor_mul1 = tbe.broadcast(tvm.const(Constant.SCALAR_MUL2_FP32, dtype="float32"), shape_broadcast)
@@ -136,7 +151,7 @@ def not_equal(input_x, input_y, output_z, kernel_name="not_equal"):
     """
     x_dtype = input_x.get("dtype").lower()
     y_dtype = input_y.get("dtype").lower()
-    check_list = ("float16", "float32", "int32", "uint8", "int8")
+    check_list = ("float16", "float32", "int32", "int64", "uint64", "uint8", "int8")
     para_check.check_dtype(x_dtype, check_list, param_name="input_x")
     para_check.check_dtype(y_dtype, check_list, param_name="input_y")
     if x_dtype != y_dtype:
