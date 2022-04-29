@@ -74,6 +74,18 @@ def test_matmul_ND2ND_fp32_1():
         tensor_list = [tensor_a_ori, tensor_b_ori, out]
         sch = auto_schedule(out)
 
+def test_matmul_ND2ND_fp32_2():
+    with cce():
+        tensor_a_ori = tvm.placeholder((64, 32), name="tensor_a_ori", dtype="float32")
+        tensor_b_ori = tvm.placeholder((96, 32), name="tensor_b_ori", dtype="float32")
+        tensor_a = trans_data_compute(tensor_a_ori, None, src_format="ND", dst_format="FRACTAL_NZ")
+        tensor_b = trans_data_compute(tensor_b_ori, None, src_format="ND", dst_format="FRACTAL_NZ")
+        output_y = {"shape": (12, 4, 16, 8), "dtype": "float32", "ori_shape": (64, 96),
+                    "format": "ND", "ori_format": "ND"}
+        matmul_out = mat_mul_compute(tensor_a, tensor_b, None, None, output_y, False, True, 0)
+        tensor_list = [tensor_a_ori, tensor_b_ori, matmul_out]
+        sch = auto_schedule(matmul_out)
+
 def test_matmul_NZ2ND_fp16():
     with cce():
         x1 = tvm.placeholder((1, 2, 16, 16), name="x1", dtype="float16", attrs={"ori_shape": (32, 16), "format": "FRACTAL_NZ", "ori_format": "ND"})

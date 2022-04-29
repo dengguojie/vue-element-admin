@@ -29,7 +29,6 @@ from tbe.common.platform import platform_info as tbe_platform_info
 from tbe.common.platform import set_current_compile_soc_info
 from tbe.common.utils.errormgr import error_manager_util
 from tbe.dsl.base.operation import in_dynamic
-from tbe.dsl.static_schedule.util import check_fixpipe_op_support
 from tbe.dsl.static_schedule.util import check_support_fixpipe_l0c2ub
 
 BATCH_MATMUL_LEN_ND = 3
@@ -891,14 +890,6 @@ def emit_insn_func(sch, tensor_map, k_axis, c_gm_emit_axis):
     emit_insn_ub(sch, tensor_map)
 
 
-def _get_fixpipe_emit_str():
-    """
-    get emit tag for fixpipe data flow
-    :return: str
-    """
-    return "fixpipe_op" if check_fixpipe_op_support() else "dma_copy"
-
-
 def emit_fixpipe_from_l0c(sch, fixpipe_tensor, need_align, emit_axises, tensor_map):
     """
     emit insn for fixpipe tensor
@@ -909,7 +900,6 @@ def emit_fixpipe_from_l0c(sch, fixpipe_tensor, need_align, emit_axises, tensor_m
     :param tensor_map: all tensor of matmul
     :return: None
     """
-    fixpipe_emit_str = _get_fixpipe_emit_str()
     if len(fixpipe_tensor.shape) in (MATMUL_LEN_ND, BATCH_MATMUL_LEN_ND):
         n_axis_index = 1
         if need_align:
@@ -918,15 +908,15 @@ def emit_fixpipe_from_l0c(sch, fixpipe_tensor, need_align, emit_axises, tensor_m
             sch[fixpipe_tensor].storage_align(fixpipe_tensor.op.axis[-2], align_factor, 0)
             n_axis_index = -1
         sch[fixpipe_tensor].split(emit_axises[n_axis_index], 16)
-        sch[fixpipe_tensor].emit_insn(emit_axises[0], fixpipe_emit_str, TRANS_NZ2ND)
+        sch[fixpipe_tensor].emit_insn(emit_axises[0], "fixpipe_op", TRANS_NZ2ND)
     else:
         if fixpipe_tensor.dtype == "int8":
             sch[fixpipe_tensor].split(fixpipe_tensor.op.axis[-1], 16)
         if tensor_map.get("a_l1").dtype == "float32" and fixpipe_tensor.dtype == "float32":
             _, channel_split_in = sch[fixpipe_tensor].split(emit_axises[0], factor=2)
-            sch[fixpipe_tensor].emit_insn(channel_split_in, fixpipe_emit_str, TRANS_SPLIT)
+            sch[fixpipe_tensor].emit_insn(channel_split_in, "fixpipe_op", TRANS_SPLIT)
         else:
-            sch[fixpipe_tensor].emit_insn(emit_axises[0], fixpipe_emit_str)
+            sch[fixpipe_tensor].emit_insn(emit_axises[0], "fixpipe_op")
 
 
 def emit_c_gm(sch, tensor_map, c_gm_emit_axis):
@@ -954,7 +944,7 @@ def emit_c_gm(sch, tensor_map, c_gm_emit_axis):
     # emit_insn for multi_out scene and tensor are both out and inout of virtual res
     out_list = tensor_map.get("out_list", [])
     for tensor in out_list:
-        emit_str = _get_fixpipe_emit_str() if tensor.op.tag == "gemm" else "dma_copy"
+        emit_str = "fixpipe_op" if tensor.op.tag == "gemm" else "dma_copy"
         sch[tensor].emit_insn(tensor.op.axis[0], emit_str)
 
 

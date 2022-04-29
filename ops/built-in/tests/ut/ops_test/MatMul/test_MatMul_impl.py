@@ -575,6 +575,7 @@ def test_mock_cases(test_args):
             test_matmul_ND2ND_int8()
             test_matmul_ND2ND_fp32()
             test_matmul_ND2ND_fp32_1()
+            test_matmul_ND2ND_fp32_2()
             test_matmul_NZ2ND_fp16()
             test_matmul_ND2NZ_fp16()
             test_matmul_dequant()
@@ -735,6 +736,7 @@ def test_cast_matmul_4(test_arg):
 
 
 ut_case.add_cust_test_func(test_func=test_cast_matmul_4)
+
 
 if __name__ == '__main__':
     ut_case.run(["Ascend310", "Ascend910A"])
