@@ -139,6 +139,13 @@ Status MulGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
       OP_LOGI(FUSED_OP_TYPE.c_str(), "input2_node node[%s] don't have mul out node.", input2_node->GetName().c_str()),
       return NOT_CHANGED);
 
+  // add cycle detection to check if there is a cycle after fusion
+  const std::vector<std::vector<NodePtr>> fusion_nodes = {{mul1_node, mul_node, sum_node}};
+  FUSION_PASS_CHECK(CycleDetection(graph, fusion_nodes),
+                    OP_LOGI(FUSED_OP_TYPE.c_str(),
+                    "This fusion may result in a loop, Therefore the fusion is not performed."),
+                    return NOT_CHANGED);
+
   // define attrs of input edge based on orignal info
   ge::GeTensorDesc input_desc1 = mul_node->GetOpDesc()->GetInputDesc(0);
   ge::GeTensorDesc input_desc2 = mul_node->GetOpDesc()->GetInputDesc(1);
