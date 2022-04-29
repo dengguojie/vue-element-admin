@@ -28,6 +28,8 @@ from impl.util.util_select_op_base import SplitOutput
 from impl.util.util_select_op_base import get_op_cal_info
 from impl.load3d_common_func import img2col
 
+# size of fp16 is 2 byte
+SIZE_FP16 = 2
 # min value of fp16
 MIN_VALUE_FP16 = -65504.0
 MAX_VALUE_FP16 = 65535
@@ -245,7 +247,8 @@ def max_pool_with_argmax(input_x, output_y, output_argmax, ksize, strides,
     max_pool_reslut: reslut of maxpool
     """
     _check_param(input_x, ksize, strides, padding, kernel_name)
-    if resnet50.is_max_pool_with_argmax_param(input_x, ksize, strides, padding):
+    if resnet50.is_max_pool_with_argmax_param(input_x, ksize, strides, padding) and \
+                        tbe_platform.cce_conf.api_check_support("tik.load3dv1"):
         return resnet50.max_pool_with_argmax(input_x, ksize, strides, padding, kernel_name)
     max_pool_reslut = MaxPoolWithargmax(input_x, ksize, strides, padding)
 
@@ -325,7 +328,7 @@ class MaxPoolWithargmax():
         self.output_mask_gm = self.tik_instance.Tensor("uint16", output_mask_gm_shape, name="output_mask_gm",
                                                        scope=tik.scope_gm, is_atomic_add=True)
 
-        self.check_load3d_support = tbe_platform.cce_conf.api_check_support("tik.load3dv1")
+        self.is_support_load3d = tbe_platform.cce_conf.api_check_support("tik.load3dv1")
 
     # 'pylint: disable=too-many-locals,too-many-function-args,too-many-branches,too-many-statements
     def tik_instance_function(self, kernel_name):
@@ -434,25 +437,46 @@ class MaxPoolWithargmax():
         need_cut_h = False
         need_cut_h_w = False
         need_cut = False
-        ub_size_used_max = self.out_size_h * self.out_size_w * SCALAR_C0 * self.window_h * self.window_w * 2
-        ub_size_cut_h_max = self.out_size_w * SCALAR_C0 * self.window_h * self.window_w * 2
+        if self.is_support_load3d:
+            ub_size_used_max = self.out_size_h * self.out_size_w * SCALAR_C0 * self.window_h * self.window_w * SIZE_FP16
+            ub_size_cut_h_max = self.out_size_w * SCALAR_C0 * self.window_h * self.window_w * SIZE_FP16
 
-        if ub_size_used_max > (UB_SIZE / 2):
-            need_cut_h = True
+            if ub_size_used_max > (UB_SIZE / 2):
+                need_cut_h = True
 
-        if ub_size_cut_h_max > (UB_SIZE / 2):
-            need_cut_h_w = True
+            if ub_size_cut_h_max > (UB_SIZE / 2):
+                need_cut_h_w = True
 
-        if self.window_h * self.in_size_w * self.c_block_size * 2 > L1_SIZE:
-            expected_value = "smaller than supported value"
-            real_value = "greater than supported value"
-            error_manager_vector.raise_err_input_value_invalid("max_pool_with_argmax",
-                                                               "ksize or input shape",
-                                                               expected_value, real_value)
+            if self.window_h * self.in_size_w * self.c_block_size * SIZE_FP16 > L1_SIZE:
+                expected_value = "smaller than supported value"
+                real_value = "greater than supported value"
+                error_manager_vector.raise_err_input_value_invalid("max_pool_with_argmax",
+                                                                   "ksize or input shape",
+                                                                   expected_value, real_value)
 
-        if not need_cut_h:
-            if self.in_size_h * self.in_size_w * self.c_block_size * 2 > L1_SIZE:
-                need_cut = True
+            if not need_cut_h:
+                if self.in_size_h * self.in_size_w * self.c_block_size * SIZE_FP16 > L1_SIZE:
+                    need_cut = True
+        else:
+            ub_input_size = (self.in_size_w + self.pad[0] + self.pad[1]) * \
+                            (self.in_size_h + self.pad[2] + self.pad[3]) * SCALAR_C0 * SIZE_FP16
+            fmap_size = self.out_size_h * self.out_size_w * SCALAR_C0 * self.window_h * self.window_w * SIZE_FP16
+            ub_size_cut_h = (self.in_size_w + self.pad[0] + self.pad[1]) * self.window_h * SCALAR_C0 * SIZE_FP16
+            fmap_w_size = self.out_size_w * SCALAR_C0 * self.window_h * self.window_w * SIZE_FP16
+            
+            if ub_input_size + fmap_size * 2 > UB_SIZE:
+                need_cut_h = True
+            
+            if ub_size_cut_h + fmap_w_size * 2 > UB_SIZE:
+                need_cut_h_w = True
+            
+            if self.window_h * self.in_size_w * self.c_block_size * SIZE_FP16 * 3 > UB_SIZE:
+                expected_value = "smaller than supported value"
+                real_value = "greater than supported value"
+                error_manager_vector.raise_err_input_value_invalid("max_pool_with_argmax",
+                                                                   "ksize or input shape",
+                                                                   expected_value, real_value)
+
 
         return need_cut_h, need_cut_h_w, need_cut
 
@@ -497,9 +521,6 @@ class MaxPoolWithargmax():
         none
         """
 
-        fmap_l1_shape = (self.in_size_h, self.in_size_w, self.c_block_size)
-        input_fmap_l1 = self.tik_instance.Tensor(self.input_dtype, fmap_l1_shape, name="input_fmap_l1",
-                                                 scope=tik.scope_cbuf)
         fmap_img2col_shape_ub = (self.fmap_img2col_h_num * SCALAR_C0, self.window_h, self.window_w, self.c_block_size)
         fmap_img2col_ub = self.tik_instance.Tensor(self.input_dtype, fmap_img2col_shape_ub, name="fmap_img2col_ub",
                                                    scope=tik.scope_ubuf)
@@ -507,36 +528,73 @@ class MaxPoolWithargmax():
         mask_ub = self.tik_instance.Tensor("uint16", mask_shape_ub, name="mask_ub", scope=tik.scope_ubuf)
         data_x_max = self.tik_instance.Tensor("float16", (self.fmap_img2col_h_num, SCALAR_C0, SCALAR_C0),
                                               name="data_x_max", scope=tik.scope_ubuf)
-        # copy input fmap from gm to l1
-        gm_l1_burst_len = int(self.in_size_h * self.in_size_w * self.c_block_size // SCALAR_C0)
-        self.tik_instance.data_move(input_fmap_l1, self.input_fmap_gm[(block_index * nc1_size + nc1_index) *
-                                                                      self.in_size_h * self.in_size_w *
-                                                                      self.c_block_size],
-                                    0, 1, gm_l1_burst_len, 0, 0)
+        if self.is_support_load3d:
+            # copy input fmap from gm to l1
+            fmap_l1_shape = (self.in_size_h, self.in_size_w, self.c_block_size)
+            input_fmap_l1 = self.tik_instance.Tensor(self.input_dtype, fmap_l1_shape, name="input_fmap_l1",
+                                                     scope=tik.scope_cbuf)
+            gm_l1_burst_len = int(self.in_size_h * self.in_size_w * self.c_block_size // SCALAR_C0)
+            self.tik_instance.data_move(input_fmap_l1, self.input_fmap_gm[(block_index * nc1_size + nc1_index) *
+                                                                          self.in_size_h * self.in_size_w *
+                                                                          self.c_block_size],
+                                        0, 1, gm_l1_burst_len, 0, 0)
+        else:
+            padding_w_size = self.in_size_w + self.pad[0] + self.pad[1]
+            padding_h_size = self.in_size_h + self.pad[2] + self.pad[3]
+            ori_ub_shape = (padding_h_size, padding_w_size, self.c_block_size)
+            ori_ub_input = self.tik_instance.Tensor(self.input_dtype, ori_ub_shape, name="ori_ub_input",
+                                                    scope=tik.scope_ubuf)
+            ori_ub_scalar = self.tik_instance.Scalar(dtype="int32")
+            ori_ub_scalar.set_as(padding_w_size * padding_h_size * SCALAR_C0)
+            self._vector_dup(ori_ub_input, 0, ori_ub_shape, self.pad_value)
 
-        if not self.check_load3d_support:
-            self._vector_dup(fmap_img2col_ub, 0, fmap_img2col_ub.shape, self.pad_value)
+            if sum(self.pad) == 0:
+                gm_ub_burst_len = int(self.in_size_h * self.in_size_w * self.c_block_size // SCALAR_C0)
+                self.tik_instance.data_move(ori_ub_input, self.input_fmap_gm[(block_index * nc1_size + nc1_index) *
+                                                                              self.in_size_h * self.in_size_w *
+                                                                              self.c_block_size],
+                                        0, 1, gm_ub_burst_len, 0, 0)
+            else:
+                with self.tik_instance.for_range(0, self.in_size_h) as pad_index:
+                    self.tik_instance.data_move(ori_ub_input[(padding_w_size *
+                                                              self.pad[2] + self.pad[0] + pad_index *
+                                                              padding_w_size) * SCALAR_C0],
+                                                self.input_fmap_gm[(block_index * nc1_size + nc1_index) *
+                                                                    self.in_size_h * self.in_size_w *
+                                                                    self.c_block_size + pad_index * self.in_size_w *
+                                                                    self.c_block_size],
+                                                0, 1, self.in_size_w, 0, 0)
+                self._vector_dup(fmap_img2col_ub, 0, fmap_img2col_ub.shape, self.pad_value)
+
         with self.tik_instance.for_range(0, self.fmap_img2col_h_num) as h_index:
-            source_h = (((h_index * SCALAR_C0 * SCALAR_C0 * self.fmap_img2col_w) /
-                         (SCALAR_C0 * self.fmap_img2col_w)) / self.out_size_w) * \
-                       self.stride_h - self.pad[2]
-            source_w = (((h_index * SCALAR_C0 * SCALAR_C0 * self.fmap_img2col_w) /
-                         (SCALAR_C0 * self.fmap_img2col_w)) % self.out_size_w) * \
-                       self.stride_w - self.pad[0]
-            self.scalar_source_h.set_as(source_h)
-            self.scalar_source_w.set_as(source_w)
-
-            if self.check_load3d_support:
+            if self.is_support_load3d:
+                source_h = (((h_index * SCALAR_C0 * SCALAR_C0 * self.fmap_img2col_w) /
+                            (SCALAR_C0 * self.fmap_img2col_w)) / self.out_size_w) * \
+                            self.stride_h - self.pad[2]
+                source_w = (((h_index * SCALAR_C0 * SCALAR_C0 * self.fmap_img2col_w) /
+                            (SCALAR_C0 * self.fmap_img2col_w)) % self.out_size_w) * \
+                            self.stride_w - self.pad[0]
+                
+                self.scalar_source_h.set_as(source_h)
+                self.scalar_source_w.set_as(source_w)
                 self.tik_instance.load3dv1(fmap_img2col_ub[h_index * SCALAR_C0 * SCALAR_C0 * self.fmap_img2col_w],
                                            input_fmap_l1[0], self.pad, self.in_size_h, self.in_size_w, 0, 0, 0,
                                            self.scalar_source_w, self.scalar_source_h, self.stride_w, self.stride_h,
                                            self.window_w, self.window_h, 1, 1, 1, 0, self.fmap_img2col_w,
                                            0, self.pad_value)
             else:
-                img2col(self.tik_instance, input_fmap_l1, fmap_img2col_ub, 0,
-                        h_index * SCALAR_C0 * SCALAR_C0 * self.fmap_img2col_w,
-                        0, 0, self.scalar_source_h, self.scalar_source_w, self.in_size_h, self.in_size_w,
-                        self.window_h, self.window_w, self.stride_h, self.stride_w, self.fmap_img2col_w, 0, self.pad)
+                source_h = (((h_index * SCALAR_C0 * SCALAR_C0 * self.fmap_img2col_w) /
+                            (SCALAR_C0 * self.fmap_img2col_w)) / self.out_size_w) * \
+                            self.stride_h
+                source_w = (((h_index * SCALAR_C0 * SCALAR_C0 * self.fmap_img2col_w) /
+                            (SCALAR_C0 * self.fmap_img2col_w)) % self.out_size_w) * \
+                            self.stride_w
+                self.scalar_source_h.set_as(source_h)
+                self.scalar_source_w.set_as(source_w)
+
+                ori_ub_scalar = self.tik_instance.Scalar(dtype="int32")
+                ori_ub_scalar.set_as(padding_h_size * padding_w_size * SCALAR_C0)
+                self._img2col(h_index, fmap_img2col_ub, ori_ub_input, padding_w_size, ori_ub_scalar)
 
         if self.fmap_img2col_w != 1:
             self._calc_max_and_mask(self.fmap_img2col_h_num, fmap_img2col_ub, data_x_max, mask_ub)
@@ -621,24 +679,39 @@ class MaxPoolWithargmax():
                 gm_tem.set_as(0)
                 with self.tik_instance.if_scope(cut_h_index * cut_stride - self.pad[2] > 0):
                     gm_tem.set_as(cut_h_index * cut_stride - self.pad[2])
-                self.tik_instance.data_move(input_fmap_l1,
-                                            self.input_fmap_gm[nc1_num * self.in_size_h * self.in_size_w *
-                                                               self.c_block_size + gm_tem * self.in_size_w *
-                                                               self.c_block_size],
-                                            0, 1, gm_l1_burst_len_1, 0, 0)
 
-                if not self.check_load3d_support:
+                if not self.is_support_load3d:
+                    padding_w_size = self.in_size_w + self.pad[0] + self.pad[1]
+                    ori_ub_shape = (cut_h_size, padding_w_size, self.c_block_size)
+                    ori_ub_input = self.tik_instance.Tensor(self.input_dtype, ori_ub_shape, name="ori_ub_input",
+                                                            scope=tik.scope_ubuf)
+                    self._vector_dup(ori_ub_input, 0, ori_ub_shape, self.pad_value)
+
+                    with self.tik_instance.for_range(0, len_tmp1) as pad_index:
+                        self.tik_instance.data_move(ori_ub_input[(pad_top * padding_w_size + self.pad[0] + pad_index *
+                                                                  padding_w_size) * SCALAR_C0],
+                                                    self.input_fmap_gm[nc1_num * self.in_size_h * self.in_size_w *
+                                                                       self.c_block_size + gm_tem * self.in_size_w *
+                                                                       self.c_block_size + pad_index * self.in_size_w *
+                                                                       self.c_block_size],
+                                                    0, 1, self.in_size_w, 0, 0)
                     self._vector_dup(fmap_img2col_ub, 0, fmap_img2col_ub.shape, self.pad_value)
-                with self.tik_instance.for_range(0, fmap_img2col_cut_h_num) as h_index:
-                    source_h = (((h_index * SCALAR_C0 * SCALAR_C0 * self.fmap_img2col_w)
-                                 // (SCALAR_C0 * self.fmap_img2col_w)) //
-                                self.out_size_w) * self.stride_h - pad_top
-                    source_w = (((h_index * SCALAR_C0 * SCALAR_C0 * self.fmap_img2col_w) //
-                                 (SCALAR_C0 * self.fmap_img2col_w)) % self.out_size_w) * self.stride_w - self.pad[0]
-                    self.scalar_source_h.set_as(source_h)
-                    self.scalar_source_w.set_as(source_w)
+                else:
+                    self.tik_instance.data_move(input_fmap_l1,
+                            self.input_fmap_gm[nc1_num * self.in_size_h * self.in_size_w *
+                                               self.c_block_size + gm_tem * self.in_size_w *
+                                               self.c_block_size],
+                            0, 1, gm_l1_burst_len_1, 0, 0)
 
-                    if self.check_load3d_support:
+                with self.tik_instance.for_range(0, fmap_img2col_cut_h_num) as h_index:
+                    if self.is_support_load3d:
+                        source_h = (((h_index * SCALAR_C0 * SCALAR_C0 * self.fmap_img2col_w) //
+                                    (SCALAR_C0 * self.fmap_img2col_w)) //
+                                    self.out_size_w) * self.stride_h - pad_top
+                        source_w = (((h_index * SCALAR_C0 * SCALAR_C0 * self.fmap_img2col_w) //
+                                    (SCALAR_C0 * self.fmap_img2col_w)) % self.out_size_w) * self.stride_w - self.pad[0]
+                        self.scalar_source_h.set_as(source_h)
+                        self.scalar_source_w.set_as(source_w)
                         self.tik_instance.load3dv1(
                             fmap_img2col_ub[h_index * SCALAR_C0 * SCALAR_C0 * self.fmap_img2col_w], input_fmap_l1[0],
                             (self.pad[0], self.pad[1], pad_top, pad_bottom), cut_h_size - pad_top - pad_bottom,
@@ -646,12 +719,16 @@ class MaxPoolWithargmax():
                             self.stride_h, self.window_w, self.window_h, 1, 1, 1, 0, self.fmap_img2col_w, 0,
                             self.pad_value)
                     else:
-                        img2col(self.tik_instance, input_fmap_l1, fmap_img2col_ub, 0,
-                                h_index * SCALAR_C0 * SCALAR_C0 * self.fmap_img2col_w,
-                                0, 0, self.scalar_source_h, self.scalar_source_w,
-                                cut_h_size - pad_top - pad_bottom, self.in_size_w,
-                                self.window_h, self.window_w, self.stride_h, self.stride_w,
-                                self.fmap_img2col_w, 0, (self.pad[0], self.pad[1], pad_top, pad_bottom))
+                        source_h = (((h_index * SCALAR_C0 * SCALAR_C0 * self.fmap_img2col_w) //
+                                    (SCALAR_C0 * self.fmap_img2col_w)) //
+                                    self.out_size_w) * self.stride_h
+                        source_w = (((h_index * SCALAR_C0 * SCALAR_C0 * self.fmap_img2col_w) //
+                                    (SCALAR_C0 * self.fmap_img2col_w)) % self.out_size_w) * self.stride_w
+                        self.scalar_source_h.set_as(source_h)
+                        self.scalar_source_w.set_as(source_w)
+                        ori_ub_scalar = self.tik_instance.Scalar(dtype="int32")
+                        ori_ub_scalar.set_as(cut_h_size * padding_w_size * SCALAR_C0)
+                        self._img2col(h_index, fmap_img2col_ub, ori_ub_input, padding_w_size, ori_ub_scalar)
 
                 if self.fmap_img2col_w != 1:
                     self._calc_max_and_mask(fmap_img2col_cut_h_num, fmap_img2col_ub, data_x_max, mask_ub)
@@ -685,39 +762,71 @@ class MaxPoolWithargmax():
                     cut_h_tail = cut_h_size
                 out_size_h_tail = (cut_h_tail - self.window_h + self.stride_h + self.pad[3]) // self.stride_h
                 fmap_img2col_h_tail = self.out_size_w * out_size_h_tail
-                fmap_img2col_h_tail_num = _ceil_div(fmap_img2col_h_tail, SCALAR_C0)
-                # copy input fmap from gm to l1
-                gm_l1_burst_len = int(cut_h_tail * self.in_size_w)
-                self.tik_instance.data_move(input_fmap_l1,
-                                            self.input_fmap_gm[nc1_num * self.in_size_h * self.in_size_w *
-                                                               self.c_block_size + (cut_h_index * cut_stride -
-                                                                                    self.pad[2]) *
-                                                               self.in_size_w * self.c_block_size],
-                                            0, 1, gm_l1_burst_len, 0, 0)
+                fmap_img2col_h_tail_num = _ceil_div(fmap_img2col_h_tail, SCALAR_C0)                
 
-                if not self.check_load3d_support:
+                if not self.is_support_load3d:
+                    padding_w_size = self.in_size_w + self.pad[0] + self.pad[1]
+                    ori_ub_shape = (cut_h_tail+self.pad[3], padding_w_size, self.c_block_size)
+                    ori_ub_input = self.tik_instance.Tensor(self.input_dtype, ori_ub_shape, name="ori_ub_input",
+                                                            scope=tik.scope_ubuf)
+                    self._vector_dup(ori_ub_input, 0, ori_ub_shape, self.pad_value)
+
+                    if self.pad[0] == 0 and self.pad[1] == 0:
+                        gm_ub_burst_len = int(cut_h_tail * self.in_size_w)
+                        self.tik_instance.data_move(ori_ub_input,
+                                                    self.input_fmap_gm[nc1_num * self.in_size_h * self.in_size_w *
+                                                                       self.c_block_size + (cut_h_index * cut_stride -
+                                                                                            self.pad[2]) *
+                                                                       self.in_size_w * self.c_block_size],
+                                                    0, 1, gm_ub_burst_len, 0, 0)
+                    else:
+                        with self.tik_instance.for_range(0, cut_h_tail) as pad_index:
+                            self.tik_instance.data_move(ori_ub_input[(self.pad[0] + pad_index *
+                                                                      padding_w_size) * SCALAR_C0],
+                                                        self.input_fmap_gm[nc1_num * self.in_size_h * self.in_size_w *
+                                                                           self.c_block_size + (cut_h_index *
+                                                                           cut_stride - self.pad[2]) * self.in_size_w *
+                                                                           self.c_block_size + pad_index *
+                                                                           self.in_size_w * self.c_block_size],
+                                                        0, 1, self.in_size_w, 0, 0)
                     self._vector_dup(fmap_img2col_ub, 0, fmap_img2col_ub.shape, self.pad_value)
-                with self.tik_instance.for_range(0, fmap_img2col_h_tail_num) as h_index:
-                    source_h = (((h_index * SCALAR_C0 * SCALAR_C0 * self.fmap_img2col_w)
-                                 / (SCALAR_C0 * self.fmap_img2col_w)) /
-                                self.out_size_w) * self.stride_h
-                    source_w = (((h_index * SCALAR_C0 * SCALAR_C0 * self.fmap_img2col_w) /
-                                 (SCALAR_C0 * self.fmap_img2col_w)) % self.out_size_w) * self.stride_w - self.pad[0]
-                    self.scalar_source_h.set_as(source_h)
-                    self.scalar_source_w.set_as(source_w)
+                else:
+                    # copy input fmap from gm to l1
+                    gm_l1_burst_len = int(cut_h_tail * self.in_size_w)
+                    self.tik_instance.data_move(input_fmap_l1,
+                                                self.input_fmap_gm[nc1_num * self.in_size_h * self.in_size_w *
+                                                                   self.c_block_size + (cut_h_index * cut_stride -
+                                                                                        self.pad[2]) *
+                                                                   self.in_size_w * self.c_block_size],
+                                                0, 1, gm_l1_burst_len, 0, 0)
 
-                    if self.check_load3d_support:
+                with self.tik_instance.for_range(0, fmap_img2col_h_tail_num) as h_index:
+                    if self.is_support_load3d:
+                        source_h = (((h_index * SCALAR_C0 * SCALAR_C0 * self.fmap_img2col_w) /
+                                    (SCALAR_C0 * self.fmap_img2col_w)) /
+                                    self.out_size_w) * self.stride_h
+                        source_w = (((h_index * SCALAR_C0 * SCALAR_C0 * self.fmap_img2col_w) /
+                                    (SCALAR_C0 * self.fmap_img2col_w)) % self.out_size_w) * self.stride_w - self.pad[0]
+                        self.scalar_source_h.set_as(source_h)
+                        self.scalar_source_w.set_as(source_w)
+
                         self.tik_instance.load3dv1(
                             fmap_img2col_ub[h_index * SCALAR_C0 * SCALAR_C0 * self.fmap_img2col_w], input_fmap_l1[0],
                             (self.pad[0], self.pad[1], 0, self.pad[3]), cut_h_tail, self.in_size_w, 0, 0, 0,
                             self.scalar_source_w, self.scalar_source_h, self.stride_w, self.stride_h, self.window_w,
                             self.window_h, 1, 1, 1, 0, self.fmap_img2col_w, 0, self.pad_value)
                     else:
-                        img2col(self.tik_instance, input_fmap_l1, fmap_img2col_ub, 0,
-                                h_index * SCALAR_C0 * SCALAR_C0 * self.fmap_img2col_w,
-                                0, 0, self.scalar_source_h, self.scalar_source_w, cut_h_tail, self.in_size_w,
-                                self.window_h, self.window_w, self.stride_h, self.stride_w,
-                                self.fmap_img2col_w, 0, (self.pad[0], self.pad[1], 0, self.pad[3]))
+                        source_h = (((h_index * SCALAR_C0 * SCALAR_C0 * self.fmap_img2col_w) /
+                                    (SCALAR_C0 * self.fmap_img2col_w)) /
+                                    self.out_size_w) * self.stride_h
+                        source_w = (((h_index * SCALAR_C0 * SCALAR_C0 * self.fmap_img2col_w) /
+                                    (SCALAR_C0 * self.fmap_img2col_w)) % self.out_size_w) * self.stride_w
+                        self.scalar_source_h.set_as(source_h)
+                        self.scalar_source_w.set_as(source_w)
+
+                        ori_ub_scalar = self.tik_instance.Scalar(dtype="int32")
+                        ori_ub_scalar.set_as(ori_ub_shape[0] * padding_w_size * SCALAR_C0)
+                        self._img2col(h_index, fmap_img2col_ub, ori_ub_input, padding_w_size, ori_ub_scalar)
 
                 if self.fmap_img2col_w != 1:
                     self._calc_max_and_mask(fmap_img2col_h_tail_num, fmap_img2col_ub, data_x_max, mask_ub,
@@ -763,34 +872,61 @@ class MaxPoolWithargmax():
                                                 mask_ub[w_index * fmap_img2col_cut_h_num * self.c_block_size],
                                                 0, 1, fmap_img2col_h_tail_num, 0, 0)
         with self.tik_instance.else_scope():
-            # copy input fmap from gm to l1
-            gm_l1_burst_len = int((cut_h_size - self.pad[2]) * self.in_size_w)
-            self.tik_instance.data_move(input_fmap_l1, self.input_fmap_gm[nc1_num * self.in_size_h * self.in_size_w *
-                                                                          self.c_block_size],
-                                        0, 1, gm_l1_burst_len, 0, 0)
+            if not self.is_support_load3d:
+                padding_w_size = self.in_size_w + self.pad[0] + self.pad[1]
+                ori_ub_shape = (cut_h_size, padding_w_size, self.c_block_size)
+                ori_ub_input = self.tik_instance.Tensor(self.input_dtype, ori_ub_shape, name="ori_ub_input",
+                                                        scope=tik.scope_ubuf)
+                self._vector_dup(ori_ub_input, 0, ori_ub_shape, self.pad_value)
 
-            if not self.check_load3d_support:
+                if sum(self.pad) == 0:
+                    gm_ub_burst_len = int((cut_h_size - self.pad[2]) * self.in_size_w)
+                    self.tik_instance.data_move(ori_ub_input,
+                                                self.input_fmap_gm[nc1_num * self.in_size_h * self.in_size_w *
+                                                                   self.c_block_size],
+                                                0, 1, gm_ub_burst_len, 0, 0)
+                else:
+                    with self.tik_instance.for_range(0, (cut_h_size-self.pad[2])) as pad_index:
+                        self.tik_instance.data_move(ori_ub_input[(padding_w_size * self.pad[2] +
+                                                                  self.pad[0] + pad_index *
+                                                                  padding_w_size) * SCALAR_C0],
+                                                    self.input_fmap_gm[nc1_num * self.in_size_h * self.in_size_w *
+                                                                       self.c_block_size + pad_index * self.in_size_w *
+                                                                       self.c_block_size],
+                                                    0, 1, self.in_size_w, 0, 0)
                 self._vector_dup(fmap_img2col_ub, 0, fmap_img2col_ub.shape, self.pad_value)
-            with self.tik_instance.for_range(0, fmap_img2col_cut_h_num) as h_index:
-                source_h = (((h_index * SCALAR_C0 * SCALAR_C0 * self.fmap_img2col_w) /
-                             (SCALAR_C0 * self.fmap_img2col_w)) / self.out_size_w) * self.stride_h - self.pad[2]
-                source_w = (((h_index * SCALAR_C0 * SCALAR_C0 * self.fmap_img2col_w) /
-                             (SCALAR_C0 * self.fmap_img2col_w)) % self.out_size_w) * self.stride_w - self.pad[0]
-                self.scalar_source_h.set_as(source_h)
-                self.scalar_source_w.set_as(source_w)
+            else:
+                # copy input fmap from gm to l1
+                gm_l1_burst_len = int((cut_h_size - self.pad[2]) * self.in_size_w)
+                self.tik_instance.data_move(input_fmap_l1, self.input_fmap_gm[nc1_num * self.in_size_h *
+                                                                              self.in_size_w *
+                                                                              self.c_block_size],
+                                            0, 1, gm_l1_burst_len, 0, 0)
 
-                if self.check_load3d_support:
+            with self.tik_instance.for_range(0, fmap_img2col_cut_h_num) as h_index:
+                if self.is_support_load3d:
+                    source_h = (((h_index * SCALAR_C0 * SCALAR_C0 * self.fmap_img2col_w) /
+                               (SCALAR_C0 * self.fmap_img2col_w)) / self.out_size_w) * self.stride_h - self.pad[2]
+                    source_w = (((h_index * SCALAR_C0 * SCALAR_C0 * self.fmap_img2col_w) /
+                               (SCALAR_C0 * self.fmap_img2col_w)) % self.out_size_w) * self.stride_w - self.pad[0]
+                    self.scalar_source_h.set_as(source_h)
+                    self.scalar_source_w.set_as(source_w)
                     self.tik_instance.load3dv1(
                         fmap_img2col_ub[h_index * SCALAR_C0 * SCALAR_C0 * self.fmap_img2col_w], input_fmap_l1[0],
                         (self.pad[0], self.pad[1], self.pad[2], 0), (cut_h_size - self.pad[2]), self.in_size_w,
                         0, 0, 0, self.scalar_source_w, self.scalar_source_h, self.stride_w, self.stride_h,
                         self.window_w, self.window_h, 1, 1, 1, 0, self.fmap_img2col_w, 0, self.pad_value)
                 else:
-                    img2col(self.tik_instance, input_fmap_l1, fmap_img2col_ub, 0,
-                            h_index * SCALAR_C0 * SCALAR_C0 * self.fmap_img2col_w, 0, 0,
-                            self.scalar_source_h, self.scalar_source_w, (cut_h_size - self.pad[2]), self.in_size_w,
-                            self.window_h, self.window_w, self.stride_h, self.stride_w,
-                            self.fmap_img2col_w, 0, (self.pad[0], self.pad[1], self.pad[2], 0))
+                    source_h = (((h_index * SCALAR_C0 * SCALAR_C0 * self.fmap_img2col_w) /
+                               (SCALAR_C0 * self.fmap_img2col_w)) / self.out_size_w) * self.stride_h
+                    source_w = (((h_index * SCALAR_C0 * SCALAR_C0 * self.fmap_img2col_w) /
+                               (SCALAR_C0 * self.fmap_img2col_w)) % self.out_size_w) * self.stride_w
+                    self.scalar_source_h.set_as(source_h)
+                    self.scalar_source_w.set_as(source_w)
+
+                    ori_ub_scalar = self.tik_instance.Scalar(dtype="int32")
+                    ori_ub_scalar.set_as(cut_h_size * padding_w_size * SCALAR_C0)
+                    self._img2col(h_index, fmap_img2col_ub, ori_ub_input, padding_w_size, ori_ub_scalar)
 
             if self.fmap_img2col_w != 1:
                 self._calc_max_and_mask(fmap_img2col_cut_h_num, fmap_img2col_ub, data_x_max, mask_ub)
@@ -919,27 +1055,45 @@ class MaxPoolWithargmax():
                     gm_tem.set_as(0)
                     with self.tik_instance.if_scope(cut_h_index * cut_stride - self.pad[2] > 0):
                         gm_tem.set_as(cut_h_index * cut_stride - self.pad[2])
-                    self.tik_instance.data_move(input_fmap_l1,
-                                                self.input_fmap_gm[nc1_num * self.in_size_h *
-                                                                   self.in_size_w * self.c_block_size +
-                                                                   gm_tem * self.in_size_w * self.c_block_size],
-                                                0, 1, gm_l1_burst_len_1, 0, 0)
+                    if self.is_support_load3d:
+                        self.tik_instance.data_move(input_fmap_l1,
+                                                    self.input_fmap_gm[nc1_num * self.in_size_h *
+                                                                       self.in_size_w * self.c_block_size +
+                                                                       gm_tem * self.in_size_w * self.c_block_size],
+                                                    0, 1, gm_l1_burst_len_1, 0, 0)
+                    else:
+                        pad_w = self.in_size_w + self.pad[0] + self.pad[1]
+                        ori_ub_shape = (cut_h_size, pad_w, self.c_block_size)
+                        ori_ub_input = self.tik_instance.Tensor(self.input_dtype, ori_ub_shape,
+                                                                name="ori_ub_input",
+                                                                scope=tik.scope_ubuf)
+                        self._vector_dup(ori_ub_input, 0, ori_ub_shape, self.pad_value)
+
+                        with self.tik_instance.for_range(0, len_tmp1) as row_index:
+                            self.tik_instance.data_move(ori_ub_input[(pad_top * pad_w + self.pad[0] + row_index *
+                                                                      pad_w) * self.c_block_size],
+                                                        self.input_fmap_gm[nc1_num * self.in_size_h *
+                                                                           self.in_size_w * self.c_block_size +
+                                                                           gm_tem * self.in_size_w * self.c_block_size +
+                                                                           row_index * self.in_size_w *
+                                                                           self.c_block_size],
+                                                        0, 1, self.in_size_w, 0, 0)
 
                     with self.tik_instance.if_scope(cut_w_index != 0):
                         with self.tik_instance.if_scope(cut_w_index != (cut_w_num - 1)):
-                            if not self.check_load3d_support:
+                            if not self.is_support_load3d:
                                 self._vector_dup(fmap_img2col_ub, 0, fmap_img2col_ub.shape, self.pad_value)
                             with self.tik_instance. for_range(0, fmap_img2col_cut_w_num) as h_index:
-                                source_h = (((h_index * SCALAR_C0 * SCALAR_C0 * self.fmap_img2col_w)
-                                             // (SCALAR_C0 * self.fmap_img2col_w)) //
-                                            self.out_size_w) * self.stride_h - pad_top
-                                source_w = (((h_index * SCALAR_C0 * SCALAR_C0 * self.fmap_img2col_w) /
-                                             (SCALAR_C0 * self.fmap_img2col_w)) % out_size_cut_w) * self.stride_w + \
-                                           cut_w_stride * cut_w_index - self.pad[0]
-                                self.scalar_source_h.set_as(source_h)
-                                self.scalar_source_w.set_as(source_w)
+                                if self.is_support_load3d:
+                                    source_h = (((h_index * SCALAR_C0 * SCALAR_C0 * self.fmap_img2col_w) //
+                                                (SCALAR_C0 * self.fmap_img2col_w)) //
+                                                self.out_size_w) * self.stride_h - pad_top
+                                    source_w = (((h_index * SCALAR_C0 * SCALAR_C0 * self.fmap_img2col_w) /
+                                                (SCALAR_C0 * self.fmap_img2col_w)) % out_size_cut_w) * self.stride_w + \
+                                                cut_w_stride * cut_w_index - self.pad[0]
+                                    self.scalar_source_h.set_as(source_h)
+                                    self.scalar_source_w.set_as(source_w)
 
-                                if self.check_load3d_support:
                                     self.tik_instance.load3dv1(fmap_img2col_ub[h_index * SCALAR_C0 * SCALAR_C0 *
                                                                                self.fmap_img2col_w],
                                                                input_fmap_l1[0],
@@ -950,12 +1104,18 @@ class MaxPoolWithargmax():
                                                                self.window_w, self.window_h, 1, 1, 1, 0,
                                                                self.fmap_img2col_w, 0, self.pad_value)
                                 else:
-                                    img2col(self.tik_instance, input_fmap_l1, fmap_img2col_ub, 0,
-                                            h_index * SCALAR_C0 * SCALAR_C0 * self.fmap_img2col_w,
-                                            0, 0, self.scalar_source_h, self.scalar_source_w,
-                                            cut_h_size - pad_top - pad_bottom, self.in_size_w,
-                                            self.window_h, self.window_w, self.stride_h, self.stride_w,
-                                            self.fmap_img2col_w, 0, (self.pad[0], self.pad[1], pad_top, pad_bottom))
+                                    source_h = (((h_index * SCALAR_C0 * SCALAR_C0 * self.fmap_img2col_w) //
+                                                (SCALAR_C0 * self.fmap_img2col_w)) //
+                                                self.out_size_w) * self.stride_h
+                                    source_w = (((h_index * SCALAR_C0 * SCALAR_C0 * self.fmap_img2col_w) /
+                                                (SCALAR_C0 * self.fmap_img2col_w)) % out_size_cut_w) * self.stride_w + \
+                                                cut_w_stride * cut_w_index
+                                    self.scalar_source_h.set_as(source_h)
+                                    self.scalar_source_w.set_as(source_w)
+
+                                    ori_ub_scalar = self.tik_instance.Scalar(dtype="int32")
+                                    ori_ub_scalar.set_as(cut_h_size * pad_w * SCALAR_C0)
+                                    self._img2col(h_index, fmap_img2col_ub, ori_ub_input, pad_w, ori_ub_scalar)
 
                             if self.fmap_img2col_w != 1:
                                 self._calc_max_and_mask(fmap_img2col_cut_w_num, fmap_img2col_ub, data_x_max, mask_ub)
@@ -997,19 +1157,19 @@ class MaxPoolWithargmax():
                             fmap_img2col_tail_w = out_size_tail_w
                             fmap_img2col_tail_w_num = _ceil_div(fmap_img2col_tail_w, SCALAR_C0)
 
-                            if not self.check_load3d_support:
+                            if not self.is_support_load3d:
                                 self._vector_dup(fmap_img2col_ub, 0, fmap_img2col_ub.shape, self.pad_value)
-                            with self.tik_instance.for_range(0, fmap_img2col_tail_w_num) as h_index:
-                                source_h = (((h_index * SCALAR_C0 * SCALAR_C0 * self.fmap_img2col_w)
-                                             // (SCALAR_C0 * self.fmap_img2col_w)) //
-                                            self.out_size_w) * self.stride_h - pad_top
-                                source_w = (((h_index * SCALAR_C0 * SCALAR_C0 * self.fmap_img2col_w) /
-                                             (SCALAR_C0 * self.fmap_img2col_w)) % out_size_tail_w) * \
-                                           self.stride_w + cut_w_stride * cut_w_index - self.pad[0]
-                                self.scalar_source_h.set_as(source_h)
-                                self.scalar_source_w.set_as(source_w)
+                            with self.tik_instance.for_range(0, fmap_img2col_tail_w_num) as h_index:                                
+                                if self.is_support_load3d:
+                                    source_h = (((h_index * SCALAR_C0 * SCALAR_C0 * self.fmap_img2col_w) //
+                                               (SCALAR_C0 * self.fmap_img2col_w)) //
+                                               self.out_size_w) * self.stride_h - pad_top
+                                    source_w = (((h_index * SCALAR_C0 * SCALAR_C0 * self.fmap_img2col_w) /
+                                               (SCALAR_C0 * self.fmap_img2col_w)) % out_size_tail_w) * \
+                                               self.stride_w + cut_w_stride * cut_w_index - self.pad[0]
+                                    self.scalar_source_h.set_as(source_h)
+                                    self.scalar_source_w.set_as(source_w)
 
-                                if self.check_load3d_support:
                                     self.tik_instance.load3dv1(fmap_img2col_ub[h_index * SCALAR_C0 * SCALAR_C0 *
                                                                                self.fmap_img2col_w],
                                                                input_fmap_l1[0],
@@ -1020,12 +1180,18 @@ class MaxPoolWithargmax():
                                                                self.window_w, self.window_h, 1, 1, 1, 0,
                                                                self.fmap_img2col_w, 0, self.pad_value)
                                 else:
-                                    img2col(self.tik_instance, input_fmap_l1, fmap_img2col_ub, 0,
-                                            h_index * SCALAR_C0 * SCALAR_C0 * self.fmap_img2col_w,
-                                            0, 0, self.scalar_source_h, self.scalar_source_w,
-                                            cut_h_size - pad_top - pad_bottom, self.in_size_w,
-                                            self.window_h, self.window_w, self.stride_h, self.stride_w,
-                                            self.fmap_img2col_w, 0, (self.pad[0], self.pad[1], pad_top, pad_bottom))
+                                    source_h = (((h_index * SCALAR_C0 * SCALAR_C0 * self.fmap_img2col_w) //
+                                               (SCALAR_C0 * self.fmap_img2col_w)) //
+                                               self.out_size_w) * self.stride_h
+                                    source_w = (((h_index * SCALAR_C0 * SCALAR_C0 * self.fmap_img2col_w) /
+                                               (SCALAR_C0 * self.fmap_img2col_w)) % out_size_tail_w) * \
+                                               self.stride_w + cut_w_stride * cut_w_index
+                                    self.scalar_source_h.set_as(source_h)
+                                    self.scalar_source_w.set_as(source_w)
+
+                                    ori_ub_scalar = self.tik_instance.Scalar(dtype="int32")
+                                    ori_ub_scalar.set_as(cut_h_size * pad_w * SCALAR_C0)
+                                    self._img2col(h_index, fmap_img2col_ub, ori_ub_input, pad_w, ori_ub_scalar)
 
                             if self.fmap_img2col_w != 1:
                                 self._calc_max_and_mask(fmap_img2col_tail_w_num, fmap_img2col_ub,
@@ -1059,19 +1225,19 @@ class MaxPoolWithargmax():
                                                                     self.c_block_size],
                                                             0, 1, fmap_img2col_tail_w_num, 0, 0)
                     with self.tik_instance.else_scope():
-                        if not self.check_load3d_support:
+                        if not self.is_support_load3d:
                             self._vector_dup(fmap_img2col_ub, 0, fmap_img2col_ub.shape, self.pad_value)
-                        with self.tik_instance.for_range(0, fmap_img2col_cut_w_num) as h_index:
-                            source_h = (((h_index * SCALAR_C0 * SCALAR_C0 * self.fmap_img2col_w)
-                                         // (SCALAR_C0 * self.fmap_img2col_w)) //
-                                        self.out_size_w) * self.stride_h - pad_top
-                            source_w = (((h_index * SCALAR_C0 * SCALAR_C0 * self.fmap_img2col_w) /
-                                         (SCALAR_C0 * self.fmap_img2col_w)) % out_size_cut_w) * \
-                                       self.stride_w - self.pad[0]
-                            self.scalar_source_h.set_as(source_h)
-                            self.scalar_source_w.set_as(source_w)
+                        with self.tik_instance.for_range(0, fmap_img2col_cut_w_num) as h_index:                           
+                            if self.is_support_load3d:
+                                source_h = (((h_index * SCALAR_C0 * SCALAR_C0 * self.fmap_img2col_w)
+                                            // (SCALAR_C0 * self.fmap_img2col_w)) //
+                                            self.out_size_w) * self.stride_h - pad_top
+                                source_w = (((h_index * SCALAR_C0 * SCALAR_C0 * self.fmap_img2col_w) /
+                                            (SCALAR_C0 * self.fmap_img2col_w)) % out_size_cut_w) * \
+                                        self.stride_w - self.pad[0]
+                                self.scalar_source_h.set_as(source_h)
+                                self.scalar_source_w.set_as(source_w)
 
-                            if self.check_load3d_support:
                                 self.tik_instance.load3dv1(
                                     fmap_img2col_ub[h_index * SCALAR_C0 * SCALAR_C0 * self.fmap_img2col_w],
                                     input_fmap_l1[0], (self.pad[0], self.pad[1], pad_top, pad_bottom),
@@ -1079,12 +1245,18 @@ class MaxPoolWithargmax():
                                     self.scalar_source_w, self.scalar_source_h, self.stride_w, self.stride_h,
                                     self.window_w, self.window_h, 1, 1, 1, 0, self.fmap_img2col_w, 0, self.pad_value)
                             else:
-                                img2col(self.tik_instance, input_fmap_l1, fmap_img2col_ub, 0,
-                                        h_index * SCALAR_C0 * SCALAR_C0 * self.fmap_img2col_w,
-                                        0, 0, self.scalar_source_h, self.scalar_source_w,
-                                        cut_h_size - pad_top - pad_bottom, self.in_size_w,
-                                        self.window_h, self.window_w, self.stride_h, self.stride_w,
-                                        self.fmap_img2col_w, 0, (self.pad[0], self.pad[1], pad_top, pad_bottom))
+                                source_h = (((h_index * SCALAR_C0 * SCALAR_C0 * self.fmap_img2col_w)
+                                            // (SCALAR_C0 * self.fmap_img2col_w)) //
+                                            self.out_size_w) * self.stride_h
+                                source_w = (((h_index * SCALAR_C0 * SCALAR_C0 * self.fmap_img2col_w) /
+                                            (SCALAR_C0 * self.fmap_img2col_w)) % out_size_cut_w) * \
+                                        self.stride_w
+                                self.scalar_source_h.set_as(source_h)
+                                self.scalar_source_w.set_as(source_w)
+
+                                ori_ub_scalar = self.tik_instance.Scalar(dtype="int32")
+                                ori_ub_scalar.set_as(cut_h_size * pad_w * SCALAR_C0)
+                                self._img2col(h_index, fmap_img2col_ub, ori_ub_input, pad_w, ori_ub_scalar)
 
                         if self.fmap_img2col_w != 1:
                             self._calc_max_and_mask(fmap_img2col_cut_w_num, fmap_img2col_ub, data_x_max, mask_ub)
@@ -1118,27 +1290,51 @@ class MaxPoolWithargmax():
                     if self.in_size_h - cut_stride * (cut_h_num - 1) + self.pad[2] <= cut_h_size:
                         gm_l1_burst_len = int((self.in_size_h - cut_stride * (cut_h_num - 1) + self.pad[2]) *
                                               self.in_size_w * self.c_block_size // SCALAR_C0)
+                        bottom = cut_h_size - (self.in_size_h - cut_stride * (cut_h_num - 1) + self.pad[2])
                     else:
                         gm_l1_burst_len = int(cut_h_size * self.in_size_w * self.c_block_size // SCALAR_C0)
-                    self.tik_instance.data_move(input_fmap_l1, self.input_fmap_gm[nc1_num * self.in_size_h *
-                                                                                  self.in_size_w * self.c_block_size +
-                                                                                  (cut_h_index * cut_stride -
-                                                                                   self.pad[2]) * self.in_size_w *
-                                                                                  self.c_block_size],
-                                                0, 1, gm_l1_burst_len, 0, 0)
+                        bottom = 0
+                    
+                    if self.is_support_load3d:
+                        self.tik_instance.data_move(input_fmap_l1, self.input_fmap_gm[nc1_num * self.in_size_h *
+                                                                                      self.in_size_w *
+                                                                                      self.c_block_size +
+                                                                                      (cut_h_index * cut_stride -
+                                                                                      self.pad[2]) * self.in_size_w *
+                                                                                      self.c_block_size],
+                                                    0, 1, gm_l1_burst_len, 0, 0)
+                    else:
+                        pad_w = self.in_size_w + self.pad[0] + self.pad[1]
+                        ori_ub_shape = (cut_h_size, pad_w, self.c_block_size)
+                        ori_ub_input = self.tik_instance.Tensor(self.input_dtype, ori_ub_shape,
+                                                                name="ori_ub_input",
+                                                                scope=tik.scope_ubuf)
+                        self._vector_dup(ori_ub_input, 0, ori_ub_shape, self.pad_value)
+
+                        with self.tik_instance.for_range(0, (cut_h_size-bottom)) as row_index:
+                            self.tik_instance.data_move(ori_ub_input[(self.pad[0] + row_index *
+                                                                      pad_w) * self.c_block_size],
+                                                        self.input_fmap_gm[nc1_num * self.in_size_h *
+                                                                           self.in_size_w * self.c_block_size +
+                                                                           (cut_h_index * cut_stride -
+                                                                           self.pad[2]) * self.in_size_w *
+                                                                           self.c_block_size + row_index *
+                                                                           self.in_size_w * self.c_block_size],
+                                                        0, 1, self.in_size_w, 0, 0)
+
                     with self.tik_instance.if_scope(cut_w_index != 0):
                         with self.tik_instance.if_scope(cut_w_index != (cut_w_num - 1)):
-                            if not self.check_load3d_support:
+                            if not self.is_support_load3d:
                                 self._vector_dup(fmap_img2col_ub, 0, fmap_img2col_ub.shape, self.pad_value)
                             with self.tik_instance.for_range(0, fmap_img2col_cut_w_num) as h_index:
-                                source_h = 0
-                                source_w = (((h_index * SCALAR_C0 * SCALAR_C0 * self.fmap_img2col_w) /
-                                             (SCALAR_C0 * self.fmap_img2col_w)) % out_size_cut_w) * self.stride_w + \
-                                           cut_w_stride * cut_w_index - self.pad[0]
-                                self.scalar_source_h.set_as(source_h)
-                                self.scalar_source_w.set_as(source_w)
+                                if self.is_support_load3d:
+                                    source_h = 0
+                                    source_w = (((h_index * SCALAR_C0 * SCALAR_C0 * self.fmap_img2col_w) /
+                                                (SCALAR_C0 * self.fmap_img2col_w)) % out_size_cut_w) * self.stride_w + \
+                                            cut_w_stride * cut_w_index - self.pad[0]
+                                    self.scalar_source_h.set_as(source_h)
+                                    self.scalar_source_w.set_as(source_w)
 
-                                if self.check_load3d_support:
                                     self.tik_instance.load3dv1(fmap_img2col_ub[h_index * SCALAR_C0 * SCALAR_C0 *
                                                                                self.fmap_img2col_w],
                                                                input_fmap_l1[0],
@@ -1149,12 +1345,18 @@ class MaxPoolWithargmax():
                                                                self.window_h, 1, 1, 1, 0, self.fmap_img2col_w,
                                                                0, self.pad_value)
                                 else:
-                                    img2col(self.tik_instance, input_fmap_l1, fmap_img2col_ub, 0,
-                                            h_index * SCALAR_C0 * SCALAR_C0 * self.fmap_img2col_w,
-                                            0, 0, self.scalar_source_h, self.scalar_source_w,
-                                            (cut_h_size - self.pad[3]), self.in_size_w,
-                                            self.window_h, self.window_w, self.stride_h, self.stride_w,
-                                            self.fmap_img2col_w, 0, (self.pad[0], self.pad[1], 0, self.pad[3]))
+                                    source_h = (((h_index * SCALAR_C0 * SCALAR_C0 * self.fmap_img2col_w)
+                                                // (SCALAR_C0 * self.fmap_img2col_w)) //
+                                                self.out_size_w) * self.stride_h
+                                    source_w = (((h_index * SCALAR_C0 * SCALAR_C0 * self.fmap_img2col_w) /
+                                               (SCALAR_C0 * self.fmap_img2col_w)) % out_size_cut_w) * self.stride_w + \
+                                               cut_w_stride * cut_w_index 
+                                    self.scalar_source_h.set_as(source_h)
+                                    self.scalar_source_w.set_as(source_w)
+
+                                    ori_ub_scalar = self.tik_instance.Scalar(dtype="int32")
+                                    ori_ub_scalar.set_as(cut_h_size * pad_w * SCALAR_C0)
+                                    self._img2col(h_index, fmap_img2col_ub, ori_ub_input, pad_w, ori_ub_scalar)
 
                             if self.fmap_img2col_w != 1:
                                 self._calc_max_and_mask(fmap_img2col_cut_w_num, fmap_img2col_ub, data_x_max, mask_ub)
@@ -1198,17 +1400,17 @@ class MaxPoolWithargmax():
                             fmap_img2col_tail_w = out_size_tail_w
                             fmap_img2col_tail_w_num = _ceil_div(fmap_img2col_tail_w, SCALAR_C0)
 
-                            if not self.check_load3d_support:
+                            if not self.is_support_load3d:
                                 self._vector_dup(fmap_img2col_ub, 0, fmap_img2col_ub.shape, self.pad_value)
-                            with self.tik_instance.for_range(0, fmap_img2col_tail_w_num) as h_index:
-                                source_h = 0
-                                source_w = (((h_index * SCALAR_C0 * SCALAR_C0 * self.fmap_img2col_w) /
-                                             (SCALAR_C0 * self.fmap_img2col_w)) % out_size_tail_w) * \
-                                           self.stride_w + cut_w_stride * cut_w_index - self.pad[0]
-                                self.scalar_source_h.set_as(source_h)
-                                self.scalar_source_w.set_as(source_w)
+                            with self.tik_instance.for_range(0, fmap_img2col_tail_w_num) as h_index:                               
+                                if self.is_support_load3d:
+                                    source_h = 0
+                                    source_w = (((h_index * SCALAR_C0 * SCALAR_C0 * self.fmap_img2col_w) /
+                                                (SCALAR_C0 * self.fmap_img2col_w)) % out_size_tail_w) * \
+                                                self.stride_w + cut_w_stride * cut_w_index - self.pad[0]
+                                    self.scalar_source_h.set_as(source_h)
+                                    self.scalar_source_w.set_as(source_w)
 
-                                if self.check_load3d_support:
                                     self.tik_instance.load3dv1(
                                         fmap_img2col_ub[h_index * SCALAR_C0 * SCALAR_C0 * self.fmap_img2col_w],
                                         input_fmap_l1[0], (self.pad[0], self.pad[1], 0, self.pad[3]),
@@ -1217,12 +1419,18 @@ class MaxPoolWithargmax():
                                         self.stride_w, self.stride_h, self.window_w, self.window_h,
                                         1, 1, 1, 0, self.fmap_img2col_w, 0, self.pad_value)
                                 else:
-                                    img2col(self.tik_instance, input_fmap_l1, fmap_img2col_ub, 0,
-                                            h_index * SCALAR_C0 * SCALAR_C0 * self.fmap_img2col_w,
-                                            0, 0, self.scalar_source_h, self.scalar_source_w,
-                                            (cut_h_size - self.pad[3]), self.in_size_w,
-                                            self.window_h, self.window_w, self.stride_h, self.stride_w,
-                                            self.fmap_img2col_w, 0, (self.pad[0], self.pad[1], 0, self.pad[3]))
+                                    source_h = (((h_index * SCALAR_C0 * SCALAR_C0 * self.fmap_img2col_w)
+                                                // (SCALAR_C0 * self.fmap_img2col_w)) //
+                                                self.out_size_w) * self.stride_h
+                                    source_w = (((h_index * SCALAR_C0 * SCALAR_C0 * self.fmap_img2col_w) /
+                                                (SCALAR_C0 * self.fmap_img2col_w)) % out_size_tail_w) * \
+                                                self.stride_w + cut_w_stride * cut_w_index
+                                    self.scalar_source_h.set_as(source_h)
+                                    self.scalar_source_w.set_as(source_w)
+
+                                    ori_ub_scalar = self.tik_instance.Scalar(dtype="int32")
+                                    ori_ub_scalar.set_as(cut_h_size * pad_w * SCALAR_C0)
+                                    self._img2col(h_index, fmap_img2col_ub, ori_ub_input, pad_w, ori_ub_scalar)
 
                             if self.fmap_img2col_w != 1:
                                 self._calc_max_and_mask(fmap_img2col_tail_w_num, fmap_img2col_ub, data_x_max, mask_ub,
@@ -1269,17 +1477,17 @@ class MaxPoolWithargmax():
                                                                     self.c_block_size],
                                                             0, 1, fmap_img2col_tail_w_num, 0, 0)
                     with self.tik_instance.else_scope():
-                        if not self.check_load3d_support:
+                        if not self.is_support_load3d:
                             self._vector_dup(fmap_img2col_ub, 0, fmap_img2col_ub.shape, self.pad_value)
-                        with self.tik_instance.for_range(0, fmap_img2col_cut_w_num) as h_index:
-                            source_h = 0
-                            source_w = (((h_index * SCALAR_C0 * SCALAR_C0 * self.fmap_img2col_w) /
-                                         (SCALAR_C0 * self.fmap_img2col_w)) % out_size_cut_w) * \
-                                       self.stride_w - self.pad[0]
-                            self.scalar_source_h.set_as(source_h)
-                            self.scalar_source_w.set_as(source_w)
+                        with self.tik_instance.for_range(0, fmap_img2col_cut_w_num) as h_index:                           
+                            if self.is_support_load3d:
+                                source_h = 0
+                                source_w = (((h_index * SCALAR_C0 * SCALAR_C0 * self.fmap_img2col_w) /
+                                            (SCALAR_C0 * self.fmap_img2col_w)) % out_size_cut_w) * \
+                                            self.stride_w - self.pad[0]
+                                self.scalar_source_h.set_as(source_h)
+                                self.scalar_source_w.set_as(source_w)
 
-                            if self.check_load3d_support:
                                 self.tik_instance.load3dv1(fmap_img2col_ub[h_index * SCALAR_C0 * SCALAR_C0 *
                                                                            self.fmap_img2col_w],
                                                            input_fmap_l1[0], (self.pad[0], self.pad[1], 0, self.pad[3]),
@@ -1288,12 +1496,18 @@ class MaxPoolWithargmax():
                                                            self.stride_w, self.stride_h, self.window_w, self.window_h,
                                                            1, 1, 1, 0, self.fmap_img2col_w, 0, self.pad_value)
                             else:
-                                img2col(self.tik_instance, input_fmap_l1, fmap_img2col_ub, 0,
-                                        h_index * SCALAR_C0 * SCALAR_C0 * self.fmap_img2col_w,
-                                        0, 0, self.scalar_source_h, self.scalar_source_w,
-                                        (cut_h_size - self.pad[3]), self.in_size_w,
-                                        self.window_h, self.window_w, self.stride_h, self.stride_w,
-                                        self.fmap_img2col_w, 0, (self.pad[0], self.pad[1], 0, self.pad[3]))
+                                source_h = (((h_index * SCALAR_C0 * SCALAR_C0 * self.fmap_img2col_w)
+                                                // (SCALAR_C0 * self.fmap_img2col_w)) //
+                                                self.out_size_w) * self.stride_h
+                                source_w = (((h_index * SCALAR_C0 * SCALAR_C0 * self.fmap_img2col_w) /
+                                            (SCALAR_C0 * self.fmap_img2col_w)) % out_size_cut_w) * \
+                                            self.stride_w
+                                self.scalar_source_h.set_as(source_h)
+                                self.scalar_source_w.set_as(source_w)
+
+                                ori_ub_scalar = self.tik_instance.Scalar(dtype="int32")
+                                ori_ub_scalar.set_as(cut_h_size * pad_w * SCALAR_C0)
+                                self._img2col(h_index, fmap_img2col_ub, ori_ub_input, pad_w, ori_ub_scalar)
 
                         if self.fmap_img2col_w != 1:
                             self._calc_max_and_mask(fmap_img2col_cut_w_num, fmap_img2col_ub, data_x_max, mask_ub)
@@ -1323,26 +1537,43 @@ class MaxPoolWithargmax():
                                                         mask_ub[w_index * fmap_img2col_cut_w_num * self.c_block_size],
                                                         0, 1, fmap_img2col_cut_w_num, 0, 0)
             with self.tik_instance.else_scope():
-                # copy input fmap from gm to l1
-                gm_l1_burst_len = int((cut_h_size - self.pad[2]) *
-                                      self.in_size_w * self.c_block_size // SCALAR_C0)
-                self.tik_instance.data_move(input_fmap_l1,
-                                            self.input_fmap_gm[nc1_num * self.in_size_h * self.in_size_w *
-                                                               self.c_block_size],
-                                            0, 1, gm_l1_burst_len, 0, 0)
+                if self.is_support_load3d:
+                    # copy input fmap from gm to l1
+                    gm_l1_burst_len = int((cut_h_size - self.pad[2]) *
+                                           self.in_size_w * self.c_block_size // SCALAR_C0)
+                    self.tik_instance.data_move(input_fmap_l1,
+                                                self.input_fmap_gm[nc1_num * self.in_size_h * self.in_size_w *
+                                                                   self.c_block_size],
+                                                0, 1, gm_l1_burst_len, 0, 0)
+                else:
+                    pad_w = self.in_size_w + self.pad[0] + self.pad[1]
+                    ori_ub_shape = (cut_h_size, pad_w, self.c_block_size)
+                    ori_ub_input = self.tik_instance.Tensor(self.input_dtype, ori_ub_shape,
+                                                            name="ori_ub_input",
+                                                            scope=tik.scope_ubuf)
+                    self._vector_dup(ori_ub_input, 0, ori_ub_shape, self.pad_value)
+
+                    with self.tik_instance.for_range(0, (cut_h_size-self.pad[2])) as row_index:
+                        self.tik_instance.data_move(ori_ub_input[(self.pad[2] * pad_w + self.pad[0] + row_index *
+                                                                  pad_w) * self.c_block_size],
+                                                    self.input_fmap_gm[nc1_num * self.in_size_h * self.in_size_w *
+                                                                       self.c_block_size + row_index * self.in_size_w *
+                                                                       self.c_block_size],
+                                                    0, 1, self.in_size_w, 0, 0)
+
                 with self.tik_instance.if_scope(cut_w_index != 0):
                     with self.tik_instance.if_scope(cut_w_index != (cut_w_num - 1)):
-                        if not self.check_load3d_support:
+                        if not self.is_support_load3d:
                             self._vector_dup(fmap_img2col_ub, 0, fmap_img2col_ub.shape, self.pad_value)
                         with self.tik_instance.for_range(0, fmap_img2col_cut_w_num) as h_index:
-                            source_h = -self.pad[2]
-                            source_w = (((h_index * SCALAR_C0 * SCALAR_C0 * self.fmap_img2col_w) /
-                                         (SCALAR_C0 * self.fmap_img2col_w)) % out_size_cut_w) * \
-                                       self.stride_w + cut_w_stride * cut_w_index - self.pad[0]
-                            self.scalar_source_h.set_as(source_h)
-                            self.scalar_source_w.set_as(source_w)
+                            if self.is_support_load3d:
+                                source_h = -self.pad[2]
+                                source_w = (((h_index * SCALAR_C0 * SCALAR_C0 * self.fmap_img2col_w) /
+                                            (SCALAR_C0 * self.fmap_img2col_w)) % out_size_cut_w) * \
+                                        self.stride_w + cut_w_stride * cut_w_index - self.pad[0]
+                                self.scalar_source_h.set_as(source_h)
+                                self.scalar_source_w.set_as(source_w)
 
-                            if self.check_load3d_support:
                                 self.tik_instance.load3dv1(
                                     fmap_img2col_ub[h_index * SCALAR_C0 * SCALAR_C0 * self.fmap_img2col_w],
                                     input_fmap_l1[0], (self.pad[0], self.pad[1], self.pad[2], 0),
@@ -1350,12 +1581,16 @@ class MaxPoolWithargmax():
                                     self.scalar_source_w, self.scalar_source_h, self.stride_w, self.stride_h,
                                     self.window_w, self.window_h, 1, 1, 1, 0, self.fmap_img2col_w, 0, self.pad_value)
                             else:
-                                img2col(self.tik_instance, input_fmap_l1, fmap_img2col_ub, 0,
-                                        h_index * SCALAR_C0 * SCALAR_C0 * self.fmap_img2col_w,
-                                        0, 0, self.scalar_source_h, self.scalar_source_w,
-                                        (cut_h_size - self.pad[2]), self.in_size_w,
-                                        self.window_h, self.window_w, self.stride_h, self.stride_w,
-                                        self.fmap_img2col_w, 0, (self.pad[0], self.pad[1], self.pad[2], 0))
+                                source_h = 0
+                                source_w = (((h_index * SCALAR_C0 * SCALAR_C0 * self.fmap_img2col_w) /
+                                            (SCALAR_C0 * self.fmap_img2col_w)) % out_size_cut_w) * \
+                                        self.stride_w + cut_w_stride * cut_w_index
+                                self.scalar_source_h.set_as(source_h)
+                                self.scalar_source_w.set_as(source_w)
+
+                                ori_ub_scalar = self.tik_instance.Scalar(dtype="int32")
+                                ori_ub_scalar.set_as(cut_h_size * pad_w * SCALAR_C0)
+                                self._img2col(h_index, fmap_img2col_ub, ori_ub_input, pad_w, ori_ub_scalar)
 
                         if self.fmap_img2col_w != 1:
                             self._calc_max_and_mask(fmap_img2col_cut_w_num, fmap_img2col_ub, data_x_max, mask_ub)
@@ -1392,17 +1627,17 @@ class MaxPoolWithargmax():
                         fmap_img2col_tail_w = out_size_tail_w
                         fmap_img2col_tail_w_num = _ceil_div(fmap_img2col_tail_w, SCALAR_C0)
 
-                        if not self.check_load3d_support:
+                        if not self.is_support_load3d:
                             self._vector_dup(fmap_img2col_ub, 0, fmap_img2col_ub.shape, self.pad_value)
                         with self.tik_instance.for_range(0, fmap_img2col_tail_w_num) as h_index:
-                            source_h = -self.pad[2]
-                            source_w = (((h_index * SCALAR_C0 * SCALAR_C0 * self.fmap_img2col_w) /
-                                         (SCALAR_C0 * self.fmap_img2col_w)) % out_size_tail_w) * \
-                                       self.stride_w + cut_w_stride * cut_w_index - self.pad[0]
-                            self.scalar_source_h.set_as(source_h)
-                            self.scalar_source_w.set_as(source_w)
+                            if self.is_support_load3d:
+                                source_h = -self.pad[2]
+                                source_w = (((h_index * SCALAR_C0 * SCALAR_C0 * self.fmap_img2col_w) /
+                                            (SCALAR_C0 * self.fmap_img2col_w)) % out_size_tail_w) * \
+                                            self.stride_w + cut_w_stride * cut_w_index - self.pad[0]
+                                self.scalar_source_h.set_as(source_h)
+                                self.scalar_source_w.set_as(source_w)
 
-                            if self.check_load3d_support:
                                 self.tik_instance.load3dv1(fmap_img2col_ub[h_index * SCALAR_C0 * SCALAR_C0 *
                                                                            self.fmap_img2col_w],
                                                            input_fmap_l1[0], (self.pad[0], self.pad[1], self.pad[2], 0),
@@ -1411,12 +1646,16 @@ class MaxPoolWithargmax():
                                                            self.stride_w, self.stride_h, self.window_w, self.window_h,
                                                            1, 1, 1, 0, self.fmap_img2col_w, 0, self.pad_value)
                             else:
-                                img2col(self.tik_instance, input_fmap_l1, fmap_img2col_ub, 0,
-                                        h_index * SCALAR_C0 * SCALAR_C0 * self.fmap_img2col_w,
-                                        0, 0, self.scalar_source_h, self.scalar_source_w,
-                                        (cut_h_size - self.pad[2]), self.in_size_w,
-                                        self.window_h, self.window_w, self.stride_h, self.stride_w,
-                                        self.fmap_img2col_w, 0, (self.pad[0], self.pad[1], self.pad[2], 0))
+                                source_h = 0
+                                source_w = (((h_index * SCALAR_C0 * SCALAR_C0 * self.fmap_img2col_w) /
+                                            (SCALAR_C0 * self.fmap_img2col_w)) % out_size_tail_w) * \
+                                            self.stride_w + cut_w_stride * cut_w_index
+                                self.scalar_source_h.set_as(source_h)
+                                self.scalar_source_w.set_as(source_w)
+
+                                ori_ub_scalar = self.tik_instance.Scalar(dtype="int32")
+                                ori_ub_scalar.set_as(cut_h_size * pad_w * SCALAR_C0)
+                                self._img2col(h_index, fmap_img2col_ub, ori_ub_input, pad_w, ori_ub_scalar)
 
                         if self.fmap_img2col_w != 1:
                             self._calc_max_and_mask(fmap_img2col_tail_w_num, fmap_img2col_ub, data_x_max,
@@ -1457,16 +1696,17 @@ class MaxPoolWithargmax():
                                                         mask_ub[w_index * fmap_img2col_cut_w_num * self.c_block_size],
                                                         0, 1, fmap_img2col_tail_w_num, 0, 0)
                 with self.tik_instance.else_scope():
-                    if not self.check_load3d_support:
+                    if not self.is_support_load3d:
                         self._vector_dup(fmap_img2col_ub, 0, fmap_img2col_ub.shape, self.pad_value)
                     with self.tik_instance.for_range(0, fmap_img2col_cut_w_num) as h_index:
-                        source_h = -self.pad[2]
-                        source_w = (((h_index * SCALAR_C0 * SCALAR_C0 * self.fmap_img2col_w) /
-                                     (SCALAR_C0 * self.fmap_img2col_w)) % out_size_cut_w) * self.stride_w - self.pad[0]
-                        self.scalar_source_h.set_as(source_h)
-                        self.scalar_source_w.set_as(source_w)
+                        if self.is_support_load3d:
+                            source_h = -self.pad[2]
+                            source_w = (((h_index * SCALAR_C0 * SCALAR_C0 * self.fmap_img2col_w) /
+                                        (SCALAR_C0 * self.fmap_img2col_w)) % out_size_cut_w) * \
+                                        self.stride_w - self.pad[0]
+                            self.scalar_source_h.set_as(source_h)
+                            self.scalar_source_w.set_as(source_w)
 
-                        if self.check_load3d_support:
                             self.tik_instance.load3dv1(fmap_img2col_ub[h_index * SCALAR_C0 * SCALAR_C0 *
                                                                        self.fmap_img2col_w],
                                                        input_fmap_l1[0], (self.pad[0], self.pad[1], self.pad[2], 0),
@@ -1475,12 +1715,15 @@ class MaxPoolWithargmax():
                                                        self.stride_w, self.stride_h, self.window_w, self.window_h,
                                                        1, 1, 1, 0, self.fmap_img2col_w, 0, self.pad_value)
                         else:
-                            img2col(self.tik_instance, input_fmap_l1, fmap_img2col_ub, 0,
-                                    h_index * SCALAR_C0 * SCALAR_C0 * self.fmap_img2col_w,
-                                    0, 0, self.scalar_source_h, self.scalar_source_w,
-                                    (cut_h_size - self.pad[2]), self.in_size_w,
-                                    self.window_h, self.window_w, self.stride_h, self.stride_w,
-                                    self.fmap_img2col_w, 0, (self.pad[0], self.pad[1], self.pad[2], 0))
+                            source_h = 0
+                            source_w = (((h_index * SCALAR_C0 * SCALAR_C0 * self.fmap_img2col_w) /
+                                        (SCALAR_C0 * self.fmap_img2col_w)) % out_size_cut_w) * self.stride_w
+                            self.scalar_source_h.set_as(source_h)
+                            self.scalar_source_w.set_as(source_w)
+
+                            ori_ub_scalar = self.tik_instance.Scalar(dtype="int32")
+                            ori_ub_scalar.set_as(cut_h_size * pad_w * SCALAR_C0)
+                            self._img2col(h_index, fmap_img2col_ub, ori_ub_input, pad_w, ori_ub_scalar)
 
                     if self.fmap_img2col_w != 1:
                         self._calc_max_and_mask(fmap_img2col_cut_w_num, fmap_img2col_ub, data_x_max, mask_ub)
@@ -1613,7 +1856,10 @@ class MaxPoolWithargmax():
         fh_loop: loop number
         """
         img2col_w = self.window_h * self.window_w * SCALAR_C0
-        img2col_h = UB_SIZE / 2 / (img2col_w * 2 + (32 * 5))
+        if self.is_support_load3d:
+            img2col_h = UB_SIZE / 2 / (img2col_w * 2 + (32 * 5))
+        else:
+            img2col_h = UB_SIZE / 2 / 2 / (img2col_w * 2 + (32 * 5))
         if self.window_h >= self.stride_h:
             cut_h_size = ((img2col_h // (((self.in_size_w + self.pad[0] + self.pad[1])) // self.stride_w + 1)) - 1) * \
                          self.stride_h + self.window_h - self.stride_h
@@ -1684,7 +1930,10 @@ class MaxPoolWithargmax():
         fw_loop: loop number
         """
         img2col_w = self.window_h * self.window_w * SCALAR_C0
-        img2col_h = UB_SIZE / 2 / (img2col_w * 2 + (32 * 5))
+        if self.is_support_load3d:
+            img2col_h = UB_SIZE / 2 / (img2col_w * 2 + (32 * 5))
+        else:
+            img2col_h = UB_SIZE / 2 / 2 / (img2col_w * 2 + (32 * 5))
         if self.window_w >= self.stride_w:
             cut_w_size = (img2col_h // 1 - 1) * self.stride_w + self.window_w - self.stride_w
             cut_w_stride = cut_w_size - (self.window_w - self.stride_w)
@@ -1925,3 +2174,81 @@ class MaxPoolWithargmax():
         else:
             self.tik_instance.vector_dup(SCALAR_C0, mask_ub, MAX_VALUE_FP16, scalar_repeat_times,
                                          DSTSTRIDEM0, DSTSTRIDEM0)
+
+    def _img2col(self, h_index, fmap_img2col_ub,
+                 ori_ub_input, w_size, ori_ub_scalar):
+        out_size_h = (ori_ub_input.shape[0] - self.window_h + self.stride_h) // self.stride_h
+
+        repeat = self.window_w * SCALAR_C0 // MASK
+        remain = self.window_w * SCALAR_C0 % MASK
+
+        with self.tik_instance.for_range(0, self.window_h) as h_rep:
+            with self.tik_instance.for_range(0, SCALAR_C0) as b_rep:
+                cur_block = h_index * SCALAR_C0 + b_rep
+                with self.tik_instance.if_scope(cur_block < self.out_size_w * out_size_h):
+                    if repeat > 0:
+                        with self.tik_instance.for_range(0, repeat) as idx:
+                            with self.tik_instance.if_scope(
+                                (self.scalar_source_w + self.stride_w * b_rep) // self.stride_w >= self.out_size_w):
+                                source_h_new = self.scalar_source_h + self.stride_h + h_rep
+                                source_w_new = ((self.scalar_source_w + self.stride_w * b_rep) // self.stride_w) % \
+                                                 self.out_size_w * self.stride_w + idx * MASK // SCALAR_C0
+                                
+                                with self.tik_instance.if_scope((source_h_new * w_size + source_w_new) * SCALAR_C0 <
+                                                                 ori_ub_scalar):
+                                    self.tik_instance.vadds(MASK, fmap_img2col_ub[h_index * SCALAR_C0 * SCALAR_C0 *
+                                                                                  self.fmap_img2col_w +
+                                                                                  h_rep * self.window_w *
+                                                                                  SCALAR_C0 * SCALAR_C0 + b_rep *
+                                                                                  SCALAR_C0 + idx * MASK * SCALAR_C0],
+                                                            ori_ub_input[(source_h_new * w_size +
+                                                                          source_w_new) * SCALAR_C0],
+                                                            self.tik_instance.Scalar(dtype="float16", init_value=0.0),
+                                                            1, 16, 1, 0, 0)
+
+                            with self.tik_instance.else_scope():
+                                self.tik_instance.vadds(MASK, fmap_img2col_ub[h_index * SCALAR_C0 * SCALAR_C0 *
+                                                                              self.fmap_img2col_w +
+                                                                              h_rep * self.window_w *
+                                                                              SCALAR_C0 * SCALAR_C0 + b_rep *
+                                                                              SCALAR_C0 + idx * MASK * SCALAR_C0],
+                                                            ori_ub_input[(self.scalar_source_h * w_size +
+                                                                          self.scalar_source_w + w_size * h_rep +
+                                                                          self.stride_w * b_rep) *
+                                                                          SCALAR_C0 + idx * MASK],
+                                                            self.tik_instance.Scalar(dtype="float16", init_value=0.0),
+                                                            1, 16, 1, 0, 0)
+
+                    if remain > 0:
+                        with self.tik_instance.if_scope(
+                            (self.scalar_source_w + self.stride_w * b_rep) // self.stride_w >= self.out_size_w):
+                            source_h_new = self.scalar_source_h + self.stride_h + h_rep
+                            source_w_new = ((self.scalar_source_w + self.stride_w * b_rep) // self.stride_w) % \
+                                            self.out_size_w * self.stride_w + repeat * MASK // SCALAR_C0
+                            
+                            with self.tik_instance.if_scope((source_h_new * w_size + source_w_new) * SCALAR_C0 <
+                                                             ori_ub_scalar):
+                                    self.tik_instance.vadds(remain, fmap_img2col_ub[h_index * SCALAR_C0 * SCALAR_C0 *
+                                                                                    self.fmap_img2col_w +
+                                                                                    h_rep * self.window_w *
+                                                                                    SCALAR_C0 * SCALAR_C0 + b_rep *
+                                                                                    SCALAR_C0 + repeat *
+                                                                                    MASK * SCALAR_C0],
+                                                            ori_ub_input[(source_h_new * w_size +
+                                                                          source_w_new) * SCALAR_C0],
+                                                            self.tik_instance.Scalar(dtype="float16", init_value=0.0),
+                                                            1, 16, 1, 0, 0)
+
+                        with self.tik_instance.else_scope():
+                            self.tik_instance.vadds(remain, fmap_img2col_ub[h_index * SCALAR_C0 * SCALAR_C0 *
+                                                                            self.fmap_img2col_w +
+                                                                            h_rep * self.window_w *
+                                                                            SCALAR_C0 * SCALAR_C0 + b_rep *
+                                                                            SCALAR_C0 + repeat *
+                                                                            MASK * SCALAR_C0],
+                                                        ori_ub_input[(self.scalar_source_h * w_size +
+                                                                      self.scalar_source_w + w_size * h_rep +
+                                                                      self.stride_w * b_rep) *
+                                                                      SCALAR_C0 + repeat * MASK],
+                                                        self.tik_instance.Scalar(dtype="float16", init_value=0.0),
+                                                        1, 16, 1, 0, 0)

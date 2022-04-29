@@ -2,6 +2,9 @@
 # -*- coding: UTF-8 -*-
 
 from op_test_frame.ut import OpUT
+from unittest.mock import MagicMock
+from unittest.mock import patch
+
 ut_case = OpUT("MaxPoolWithArgmax", "impl.max_pool_with_argmax", "max_pool_with_argmax")
 
 case1 = {"params": [{"shape": (2,2,96,144,16), "dtype": "float16", "format": "NHWC", "ori_shape": (2,2,96,144,16),"ori_format": "NHWC"},
@@ -141,5 +144,14 @@ def test_check_support(test_arg):
 
 ut_case.add_cust_test_func(test_func=test_check_support)
 
-if __name__ == '__main__':
+vals = {("tik.load3dv1",): False}
+
+def side_effects(*args):
+    return vals[args]
+with patch("te.platform.cce_conf.api_check_support", MagicMock(side_effect=side_effects)):
     ut_case.run("Ascend910A")
+
+# if __name__ == '__main__':
+#     ut_case.run("Ascend910A")
+
+#     test_1981()
