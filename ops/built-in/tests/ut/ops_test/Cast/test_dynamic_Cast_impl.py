@@ -2,9 +2,6 @@
 # -*- coding: UTF-8 -*-
 
 from op_test_frame.ut import OpUT
-from impl.dynamic.cast import cast
-from te import platform as cce_conf
-import tbe
 
 ut_case = OpUT("Cast", "impl.dynamic.cast", "cast")
 
@@ -140,6 +137,65 @@ ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case9)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case10)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case11)
 
+case12 = {"params": [
+    {"shape": (200, 5), "ori_shape": (200, 5), "range": ((1, None), (1, 5)), "format": "ND", "ori_format": "ND",
+     'dtype': "int32"},
+    {"shape": (200, 5), "ori_shape": (200, 5), "range": ((1, 100), (1, 5)), "format": "ND", "ori_format": "ND",
+     'dtype': "int64"},
+    9],
+         "case_name": "cast_dynamic_12",
+         "expect": "success",
+         "format_expect": [],
+         "support_expect": True}
+
+case13 = {"params": [
+    {"shape": (-1, 5), "ori_shape": (200, 5), "range": ((1, None), (1, 5)), "format": "ND", "ori_format": "ND",
+     'dtype': "int32"},
+    {"shape": (-1, 5), "ori_shape": (200, 5), "range": ((1, 100), (1, 5)), "format": "ND", "ori_format": "ND",
+     'dtype': "int64"},
+    9],
+         "case_name": "cast_dynamic_13",
+         "expect": "success",
+         "format_expect": [],
+         "support_expect": True}
+
+case14 = {"params": [
+    {"shape": (200, 5), "ori_shape": (200, 5), "range": ((1, None), (1, 5)), "format": "ND", "ori_format": "ND",
+     'dtype': "int64"},
+    {"shape": (200, 5), "ori_shape": (200, 5), "range": ((1, 100), (1, 5)), "format": "ND", "ori_format": "ND",
+     'dtype': "int32"},
+    3],
+         "case_name": "cast_dynamic_14",
+         "expect": "success",
+         "format_expect": [],
+         "support_expect": True}
+
+case15 = {"params": [
+    {"shape": (-1, 5), "ori_shape": (200, 5), "range": ((1, None), (1, 5)), "format": "ND", "ori_format": "ND",
+     'dtype': "int64"},
+    {"shape": (-1, 5), "ori_shape": (200, 5), "range": ((1, 100), (1, 5)), "format": "ND", "ori_format": "ND",
+     'dtype': "int32"},
+    3],
+         "case_name": "cast_dynamic_15",
+         "expect": "success",
+         "format_expect": [],
+         "support_expect": True}
+
+ut_case.add_case(["Ascend710", "Ascend910A"], case12)
+ut_case.add_case(["Ascend710", "Ascend910A"], case13)
+ut_case.add_case(["Ascend710", "Ascend910A"], case14)
+ut_case.add_case(["Ascend710", "Ascend910A"], case15)
+
+def test_check_supported(test_arg):
+    from impl.dynamic.cast import check_supported
+    check_supported({"shape": (200, 5), "ori_shape": (200, 5), "range": ((1, None), (1, 5)), "format": "ND", "ori_format": "ND", 'dtype': "int32"},
+                    {"shape": (200, 5), "ori_shape": (200, 5), "range": ((1, 100), (1, 5)), "format": "ND", "ori_format": "ND", 'dtype': "int64"}, 9)
+
+    check_supported({"shape": (-1, 5), "ori_shape": (200, 5), "range": ((1, None), (1, 5)), "format": "ND", "ori_format": "ND", 'dtype': "float32"},
+                    {"shape": (-1, 5), "ori_shape": (200, 5), "range": ((1, None), (1, 5)), "format": "ND", "ori_format": "ND", 'dtype': "float16"}, 1)
+
+ut_case.add_cust_test_func(test_func=test_check_supported)
+
 
 if __name__ == '__main__':
-    ut_case.run("Ascend910")
+    ut_case.run("Ascend910A")

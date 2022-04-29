@@ -14,6 +14,7 @@ http://www.apache.org/licenses/LICENSE-2.0
 cast_cce
 """
 # 'pylint: disable=too-many-locals,invalid-name
+from impl.util import util_common
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tvm
@@ -208,6 +209,14 @@ def check_supported(input_x, output_y, dst_type, kernel_name="cast"):
     verify the types of cast supported by tbe
     """
     src_type = input_x.get("dtype").lower()
+    out_type = output_y.get("dtype").lower()
+    check_type = src_type != "int64" and out_type != "int64"
+    suppot_s322s64 = not tbe_platform.intrinsic_check_support("Intrinsic_vconv", "s322s64")
+    suppot_s642s32 = not tbe_platform.intrinsic_check_support("Intrinsic_vconv", "s642s32")
+    suppot_is_unknown = not util_common.is_unknown([input_x, output_y])
+    if check_type and suppot_is_unknown and suppot_s322s64 and suppot_s642s32:
+        return False, "Dynamic shapes are not currently supported."
+
     if src_type == "bool":
         src_type = "int8"
 
