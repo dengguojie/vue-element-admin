@@ -147,7 +147,7 @@ bool SoftmaxGradFusionPass::IsMatch(ge::NodePtr mul_node0, ge::NodePtr reducesum
     return false;
   }  
   if (pattern == PATTERN_1) {
-    if((mulOutputDataNodes.size() != OUTPUT_NODE_NUM) || (mul1OutputDataNodes.size() != OUTPUT_NODE_NUM)) {
+    if((mulOutputDataNodes.size() != OUTPUT_NODE_NUM) || (subOutputDataNodes.size() != OUTPUT_NODE_NUM)) {
       OP_LOGW(FUSED_OP_TYPE.c_str(), "this pattern does not meet the fusion condition.");
       return false;
     }
