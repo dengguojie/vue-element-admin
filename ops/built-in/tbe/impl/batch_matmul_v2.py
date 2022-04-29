@@ -625,9 +625,9 @@ def batch_matmul_v2(input_x, input_y, bias=None, offset_w=None, output_z=None, t
 
     if batch_shape is not None and batch_shape >= 1:
         if batch_shape_a is not None:
-            shape_a_dup = (batch_shape_a,) + shape_a_dup
+            shape_a_dup = (batch_shape_a,) + tuple(shape_a_dup)
         if batch_shape_b is not None:
-            shape_b_dup = (batch_shape_b,) + shape_b_dup
+            shape_b_dup = (batch_shape_b,) + tuple(shape_b_dup)
 
     tensor_bias = None
     shape_bias_length = len(shape_bias)

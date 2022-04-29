@@ -1099,8 +1099,9 @@ def do_buffer_align(sch, tensor_map, trans_a, trans_b):
     a_l0a, b_l0b, c_l0c = tensor_map.get("a_l0a"), tensor_map.get("b_l0b"), tensor_map.get("c_l0c")
     m_align = (1, 2) if not trans_a and a_l0a.dtype == "int8" else (1, 1)
     n_align = (1, 2) if trans_b and b_l0b.dtype == "int8" else (1, 1)
+    batch_length = len(c_l0c.shape) - MATMUL_LEN_NZ
     sch[c_l0c].buffer_align(
-        *([(1, 1)] * (len(c_l0c.shape) - MATMUL_LEN_NZ)),
+        *([(1, 1)] * batch_length),
         n_align,
         m_align,
         (1, tbe_platform.CUBE_MKN[c_l0c.dtype]["mac"][0]),
@@ -1108,3 +1109,12 @@ def do_buffer_align(sch, tensor_map, trans_a, trans_b):
         (1, 1),
         (1, tbe_platform.CUBE_MKN[a_l0a.dtype]["mac"][1])
     )
+    fixpipe_l1_eltwise = tensor_map.get("fixpipe_l1_eltwise")
+    if fixpipe_l1_eltwise is not None:
+        sch[fixpipe_l1_eltwise].buffer_align(
+            *([(1, 1)] * batch_length),
+            (1, 1),
+            (1, 1),
+            (1, tbe_platform.CUBE_MKN[c_l0c.dtype]["mac"][0]),
+            (1, tbe_platform.CUBE_MKN[c_l0c.dtype]["mac"][2]),
+        )

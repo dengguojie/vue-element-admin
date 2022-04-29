@@ -47,6 +47,7 @@ case2 = {"params": [{"shape": (4, 4, 2, 16, 16), "dtype": "float16", "format": "
          "expect": "success",
          "support_expect": True}
 
+
 # test mock case
 def test_mock_cases():
     with patch("tbe.common.platform.platform_info.get_soc_spec", MagicMock(side_effect=side_effects)):

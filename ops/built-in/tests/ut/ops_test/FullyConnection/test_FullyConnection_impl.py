@@ -400,6 +400,7 @@ def test_fc_fixpipe_nhwc():
         res = fixpipe_compute(fc_res, None, None, None, None, None, None, None, None, None, output_dict, [], [], "")
         sch = auto_schedule(res)
 
+
 def test_split_fc_4(test_arg):
     x = {'shape': (8, 1, 2, 2, 16), 'dtype': 'float16', 'format': 'NC1HWC0', "ori_format":"NC1HWC0", "ori_shape":(8, 64)}
     w = {'shape': (4, 2, 16, 16), 'dtype': 'float16', 'format': 'FRACTAL_Z', "ori_format":"FRACTAL_Z", "ori_shape":(4, 2, 16, 16)}
