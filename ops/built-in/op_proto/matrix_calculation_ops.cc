@@ -737,7 +737,8 @@ bool InferShapeMatMul::InferBias() const {
   // |       x        |       x        |             x check                |  x==y check |
   // --------------------------------------------------------------------------------------
   int64_t bias_dim = shape_bias.GetDimNum();
-  CHECK(shape_bias.GetDimNum() == 0 || shape_bias.IsUnknownDimNum(), NULL, return true);
+  CHECK(shape_bias.GetDimNum() == 0 || shape_bias.IsUnknownDimNum(),
+        OP_LOGD(op_name.GetString(), "[InferShape] Unknwon shape for bias, skip infershape."), return true);
 
   if (shape_out.IsUnknownDimNum()) {
     if (shape_bias.GetDim(bias_dim - 1) > 0) {
@@ -747,7 +748,8 @@ bool InferShapeMatMul::InferBias() const {
       range_out = {FULL_RANGE, {shape_bias.GetDim(bias_dim - 1), shape_bias.GetDim(bias_dim - 1)}};
       return true;
     }
-    CHECK(shape_bias.GetDim(bias_dim - 1) == UNKNOWN_DIM && range_bias.empty(), NULL, return true);
+    CHECK(shape_bias.GetDim(bias_dim - 1) == UNKNOWN_DIM && range_bias.empty(),
+          OP_LOGD(op_name.GetString(), "[InferShape] Empty range for bias, skip infershape."), return true);
     shape_out.SetDimNum(BASE_LEN);
     shape_out.SetDim(0, UNKNOWN_DIM);
     shape_out.SetDim(1, shape_bias.GetDim(bias_dim - 1));
@@ -757,7 +759,8 @@ bool InferShapeMatMul::InferBias() const {
 
   if (shape_bias.GetDim(bias_dim - 1) == UNKNOWN_DIM && shape_out.GetDim(1) == UNKNOWN_DIM) {
     // Compatible with old version
-    CHECK((range_bias.empty() || range_bias.back() == FULL_RANGE), NULL, return true);
+    CHECK((range_bias.empty() || range_bias.back() == FULL_RANGE),
+          OP_LOGD(op_name.GetString(), "[InferShape] Empty or unlimit range for bias, skip infershape."), return true);
     auto range_out_upper = range_out.back().second == INFINITE_RANGE ?
       NORMALIZE_INFINITE_RANGE : range_out.back().second;
     auto range_bias_upper = range_bias.back().second == INFINITE_RANGE ?
@@ -775,11 +778,13 @@ bool InferShapeMatMul::InferBias() const {
   }
 
   if (shape_bias.GetDim(bias_dim - 1) == UNKNOWN_DIM) {
-    CHECK(range_bias.empty(), NULL, return true);
+    CHECK(range_bias.empty(), OP_LOGD(op_name.GetString(), "[InferShape] Empty range for bias, skip infershape."),
+          return true);
     auto range_bias_lower = range_bias.back().first;
     auto range_bias_upper = range_bias.back().second == INFINITE_RANGE ?
       NORMALIZE_INFINITE_RANGE : range_bias.back().second;
-    CHECK(range_bias_lower <= shape_out.GetDim(1) && shape_out.GetDim(1) <= range_bias_upper, NULL, return true);
+    CHECK(range_bias_lower <= shape_out.GetDim(1) && shape_out.GetDim(1) <= range_bias_upper,
+          OP_LOGD(op_name.GetString(), "[InferShape] Validate bias range."), return true);
     CUBE_INNER_ERR_REPORT(op_name.GetString(), "[InferShape] dimension n [%ld] must be in range [%ld, %ld]",
                           shape_out.GetDim(1), range_bias_lower, range_bias_upper);
     return false;
@@ -1236,7 +1241,7 @@ bool InferShapeBatchMatMul::InferBatch() const {
       CHECK((!BroadcastBatchDimAndRange(op_name, shape_a.GetDim(i - valid_offset), shape_b.GetDim(i),
                                         infer_range_a[i - valid_offset], infer_range_b[i], shape_value_out,
                                         range_out[i])),
-            NULL, return false);
+            OP_LOGD(op_name.GetString(), "[InferShape] Failed to broadcast batch dims."), return false);
 
       shape_out.SetDim(i, shape_value_out);
     }
@@ -1248,7 +1253,7 @@ bool InferShapeBatchMatMul::InferBatch() const {
   for (auto i = valid_offset; i < num_dim - 2; ++i) {
     CHECK((!BroadcastBatchDimAndRange(op_name, shape_a.GetDim(i), shape_b.GetDim(i - valid_offset), infer_range_a[i],
                                       infer_range_b[i - valid_offset], shape_value_out, range_out[i])),
-          NULL, return false);
+          OP_LOGD(op_name.GetString(), "[InferShape] Failed to broadcast batch dims."), return false);
 
     shape_out.SetDim(i, shape_value_out);
   }
@@ -1315,7 +1320,8 @@ bool InferNDimWithBias(const AscendString& op_name, const int64_t dim_a, const i
 bool InferShapeBatchMatMul::InferBias() {
   int64_t shape_value_out = shape_out.GetDim(num_dim - 1);
   // 1) shape_bias = {}
-  CHECK(num_dim_bias == 0, NULL, return true);
+  CHECK(num_dim_bias == 0, OP_LOGD(op_name.GetString(), "[InferShape] Empty shape for bias, skip infershape."),
+        return true);
 
   CHECK(!InitializeShapeAndRange(shape_bias, range_bias, infer_range_bias),
         OP_LOGE(op_name.GetString(), "Initialize infer_shape & infer_range failed."), return false);
@@ -1324,7 +1330,7 @@ bool InferShapeBatchMatMul::InferBias() {
   CHECK(!InferNDimWithBias(op_name, shape_bias.GetDim(num_dim_bias - 1), shape_out.GetDim(num_dim - 1),
                            infer_range_bias[num_dim_bias - 1], range_out[num_dim - 1], shape_value_out,
                            range_out[num_dim - 1]),
-        NULL, return false);
+        OP_LOGD(op_name.GetString(), "[InferShape] Failed to infer N dim."), return false);
 
   shape_out.SetDim(num_dim - 1, shape_value_out);
 
@@ -1335,7 +1341,7 @@ bool InferShapeBatchMatMul::InferBias() {
     for (auto i = valid_offset; i < num_dim - 2; ++i) {
       CHECK(!BroadcastBatchDimAndRange(op_name, shape_bias.GetDim(i - valid_offset), shape_out.GetDim(i),
                                        infer_range_bias[i - valid_offset], range_out[i], shape_value_out, range_out[i]),
-            NULL, return false);
+            OP_LOGD(op_name.GetString(), "[InferShape] Failed to broadcast batch dims."), return false);
 
       shape_out.SetDim(i, shape_value_out);
     }
@@ -1347,7 +1353,7 @@ bool InferShapeBatchMatMul::InferBias() {
   for (auto i = valid_offset; i < num_dim - 2; ++i) {
     CHECK(!BroadcastBatchDimAndRange(op_name, shape_bias.GetDim(i), shape_out.GetDim(i - valid_offset),
                                      infer_range_bias[i], range_out[i - valid_offset], shape_value_out, range_out[i]),
-          NULL, return false);
+          OP_LOGD(op_name.GetString(), "[InferShape] Failed to broadcast batch dims."), return false);
 
     shape_out.SetDim(i, shape_value_out);
   }
