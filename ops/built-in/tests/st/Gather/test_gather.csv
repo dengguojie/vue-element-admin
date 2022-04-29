@@ -1,0 +1,30 @@
+testcase_name,network_name,op_name,dyn_inputs,stc_inputs,dyn_input_dtypes,stc_input_dtypes,output_dtypes,dyn_outputs,stc_outputs,other_compilation_params
+gather_net_ID0588_00000000,maskrcnn_mobilenet_v2,gather,"((-1, -1), (-1,))","((4, 4), (8,))","('float32', 'int32')","('float32', 'int32')","('float32',)","((-1, -1),)","((8, 4),)",{'validate_indices': True}
+gather_net_ID0588_00000001,maskrcnn_mobilenet_v2,gather,"((-1, -1, -1), (-1,))","((512, 2, 2), (16,))","('float32', 'int32')","('float32', 'int32')","('float32',)","((-1, -1, -1),)","((16, 2, 2),)",{'validate_indices': True}
+gather_net_ID0588_00000002,maskrcnn_mobilenet_v2,gather,"((-1,), (-1,))","((128,), (128,))","('float32', 'int32')","('float32', 'int32')","('float32',)","((-1,),)","((128,),)",{'validate_indices': True}
+gather_net_ID0588_00000003,maskrcnn_mobilenet_v2,gather,"((-1,), (-1,))","((256,), (256,))","('int64', 'int32')","('int64', 'int32')","('int64',)","((-1,),)","((256,),)",{'validate_indices': True}
+gather_net_ID0588_00000004,maskrcnn_mobilenet_v2,gather,"((-1, -1), (-1,))","((32, 702), (64,))","('int64', 'int32')","('int64', 'int32')","('int64',)","((-1, -1),)","((64, 702),)",{'validate_indices': True}
+gather_net_ID0576_00000005,fasterrcnn,gather,"((-1, -1), (-1,))","((64, 4), (4,))","('float32', 'int32')","('float32', 'int32')","('float32',)","((-1, -1),)","((4, 4),)",{'validate_indices': True}
+gather_net_ID0576_00000006,fasterrcnn,gather,"((-1,), (-1,))","((512,), (32,))","('float32', 'int32')","('float32', 'int32')","('float32',)","((-1,),)","((32,),)",{'validate_indices': True}
+gather_net_ID1731_00000007,SSD-MobileNetV1,gather,"((-1,), (-1,))","((8,), (100,))","('float32', 'int32')","('float32', 'int32')","('float32',)","((-1,),)","((100,),)",{'validate_indices': True}
+gather_net_ID1729_00000008,ssd-inceptionv2,gather,"((-1,), (-1,))","((2,), (100,))","('float32', 'int32')","('float32', 'int32')","('float32',)","((-1,),)","((100,),)",{'validate_indices': True}
+gather_net_ID1735_00000009,ssd-mobilenetv2,gather,"((-1,), (-1,))","((64,), (100,))","('float32', 'int32')","('float32', 'int32')","('float32',)","((-1,),)","((100,),)",{'validate_indices': True}
+gather_net_ID0576_00000010,fasterrcnn,gather,"((-1,), (-1,))","((512,), (100,))","('float32', 'int32')","('float32', 'int32')","('float32',)","((-1,),)","((100,),)",{'validate_indices': True}
+gather_net_ID1735_00000011,ssd-mobilenetv2,gather,"((-1,), (-1,))","((256,), (256,))","('float32', 'int32')","('float32', 'int32')","('float32',)","((-1,),)","((256,),)",{'validate_indices': True}
+gather_net_ID1735_00000012,ssd-mobilenetv2,gather,"((-1, -1), (-1,))","((64, 4), (64,))","('float32', 'int32')","('float32', 'int32')","('float32',)","((-1, -1),)","((64, 4),)",{'validate_indices': True}
+gather_net_ID1729_00000013,ssd-inceptionv2,gather,"((-1, -1), (-1,))","((2, 4), (512,))","('float32', 'int32')","('float32', 'int32')","('float32',)","((-1, -1),)","((512, 4),)",{'validate_indices': True}
+gather_net_ID1729_00000014,ssd-inceptionv2,gather,"((-1,), (-1,))","((32,), (8,))","('float32', 'int32')","('float32', 'int32')","('float32',)","((-1,),)","((8,),)",{'validate_indices': True}
+gather_net_ID0271_00000015,SPMC_VideoSR,gather,"((-1, -1), (-1,))","((19200, 1), (19200,))","('float32', 'int32')","('float32', 'int32')","('float32',)","((-1, -1),)","((19200, 1),)",{'validate_indices': True}
+gather_net_ID0296_00000016,DANSER,gather,"((-1, -1), (-1,))","((49290, 10), (256,))","('float32', 'int32')","('float32', 'int32')","('float32',)","((-1, -1),)","((256, 10),)",{'validate_indices': True}
+gather_net_ID0296_00000017,DANSER,gather,"((-1, -1), (-1,))","((139739, 10), (128,))","('float32', 'int32')","('float32', 'int32')","('float32',)","((-1, -1),)","((128, 10),)",{'validate_indices': True}
+gather_net_ID0296_00000018,DANSER,gather,"((-1,), (-1,))","((139739,), (8,))","('float32', 'int32')","('float32', 'int32')","('float32',)","((-1,),)","((8,),)",{'validate_indices': True}
+gather_net_ID0296_00000019,DANSER,gather,"((-1, -1), (-1, -1))","((139739, 10), (32, 866))","('float32', 'int32')","('float32', 'int32')","('float32',)","((-1, -1, -1),)","((32, 866, 10),)",{'validate_indices': True}
+gather_net_ID0296_00000020,DANSER,gather,"((-1, -1), (-1, -1))","((49290, 10), (256, 1981))","('float32', 'int32')","('float32', 'int32')","('float32',)","((-1, -1, -1),)","((256, 1981, 10),)",{'validate_indices': True}
+gather_net_ID0296_00000021,DANSER,gather,"((-1, -1), (-1, -1, -1))","((139739, 10), (16, 1155, 1926))","('float32', 'int32')","('float32', 'int32')","('float32',)","((-1, -1, -1, -1),)","((16, 1155, 1926, 10),)",{'validate_indices': True}
+gather_net_ID0296_00000022,DANSER,gather,"((-1, -1), (-1, -1, -1))","((49290, 10), (4, 588, 513))","('float32', 'int32')","('float32', 'int32')","('float32',)","((-1, -1, -1, -1),)","((4, 588, 513, 10),)",{'validate_indices': True}
+gather_net_ID0296_00000023,DANSER,gather,"((-1,), (-1,))","((3,), (256,))","('int32',)","('int32',)","('int32',)","((-1,),)","((256,),)",{'validate_indices': True}
+gather_net_ID0296_00000024,DANSER,gather,"((-1,), (-1,))","((3,), (1,))","('int32',)","('int32',)","('int32',)","((-1,),)","((1,),)",{'validate_indices': True}
+gather_net_ID0296_00000025,DANSER,gather,"((-1,), (-1,))","((8,), (16,))","('int32',)","('int32',)","('int32',)","((-1,),)","((16,),)",{'validate_indices': True}
+gather_net_ID0296_00000026,DANSER,gather,"((-1,), (-1,))","((32,), (1,))","('int32',)","('int32',)","('int32',)","((-1,),)","((1,),)",{'validate_indices': True}
+gather_net_ID1731_00000027,SSD-MobileNetV1,gather,"((-1, -1), (-1,))","((32, 4), (32,))","('float32', 'int32')","('float32', 'int32')","('float32',)","((-1, -1),)","((32, 4),)",{'validate_indices': True}
+gather_net_ID1731_00000028,SSD-MobileNetV1,gather,"((-1,), (-1,))","((8,), (64,))","('float32', 'int32')","('float32', 'int32')","('float32',)","((-1,),)","((64,),)",{'validate_indices': True}
