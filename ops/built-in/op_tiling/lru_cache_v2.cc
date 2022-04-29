@@ -35,6 +35,7 @@ namespace optiling {
 const int64_t TILING_MODE_0 = 0;
 // use 8 cores all time
 const int64_t BLOCKDIM = 8;
+const int64_t TAG_INDEX = 3;
 constexpr int32_t INPUT_DESC_SIZE = 5;
 constexpr int32_t OUTPUT_DESC_SIZE = 6;
 
@@ -49,11 +50,13 @@ struct LRUCacheV2TilingParams {
   int64_t tiling_key;
   // input dim num
   int64_t tiling_index_list_len;
+  int64_t tag_lens;
 };
 
 void InitRunningParams(LRUCacheV2TilingParams& params) {
   params.tiling_key = TILING_MODE_0;
   params.tiling_index_list_len = 1;
+  params.tag_lens = 1;
 }
 
 static bool GetLRUCacheV2CompileParams(const nlohmann::json& compile_info, LRUCacheV2CompileParams& compile_params) {
@@ -80,27 +83,31 @@ static bool GetLRUCacheV2CompileParams(const nlohmann::json& compile_info, LRUCa
 void SetRuningParams(const LRUCacheV2TilingParams& params, utils::OpRunInfo& run_info) {
   run_info.AddTilingData(params.tiling_key);
   run_info.AddTilingData(params.tiling_index_list_len);
+  run_info.AddTilingData(params.tag_lens);
 }
 
 void PrintTilingParams(const LRUCacheV2TilingParams& params, const std::string& op_type) {
   OP_LOGD(op_type, "tiling_key=%ld. ", params.tiling_key);
   OP_LOGD(op_type, "tiling_index_list_len=%ld.", params.tiling_index_list_len);
+  OP_LOGD(op_type, "tag_lens=%ld.", params.tag_lens);
 }
 
-void _printTensorValue(const LRUCacheV2CompileParams& compile_params, const std::vector<int64_t>& in,
-                       const std::string& name) {
+static void PrintTensorValue(const LRUCacheV2CompileParams& compile_params, const std::vector<int64_t>& in,
+                             const std::string& name) {
   using namespace std;
   string vec_str;
   for (auto item : in) {
     vec_str += to_string(item);
     vec_str += ",";
   }
-  OP_LOGD(compile_params.op_type, "Func[_printTensorValue] [%s]: [%s].", name.c_str(), vec_str.c_str());
+  OP_LOGD(compile_params.op_type, "Func[PrintTensorValue] [%s]: [%s].", name.c_str(), vec_str.c_str());
 }
 
-static bool GetTilingParam(const std::vector<int64_t>& input_shape, LRUCacheV2TilingParams& tiling_params) {
+static bool GetTilingParam(const std::vector<int64_t>& input_shape,
+                           const std::vector<int64_t>& tag_shape, LRUCacheV2TilingParams& tiling_params) {
   tiling_params.tiling_key = TILING_MODE_0;
   tiling_params.tiling_index_list_len = input_shape[0];
+  tiling_params.tag_lens = tag_shape[0];
   return true;
 }
 
@@ -144,12 +151,17 @@ bool LRUCacheV2Tiling(const std::string& op_type, const ge::Operator& op_paras, 
   auto opdesc = operator_info->MutableInputDesc(0);
   const std::vector<int64_t>& input_shape_const = opdesc->GetShape().GetDims();
   std::vector<int64_t> input_shape = input_shape_const;
-  _printTensorValue(compile_params, input_shape, "index_list shape");
+  PrintTensorValue(compile_params, input_shape, "index_list shape");
+  PROFILING_TILING_AFTER_CALCU_TILING_REG();
+  auto opdesc_tag = operator_info->MutableInputDesc(TAG_INDEX);
+  const std::vector<int64_t>& tag_shape_const = opdesc_tag->GetShape().GetDims();
+  std::vector<int64_t> tag_shape = tag_shape_const;
+  PrintTensorValue(compile_params, tag_shape, "tag shape");
   PROFILING_TILING_AFTER_CALCU_TILING_REG();
   // end to get compile data
   LRUCacheV2TilingParams run_params;
   InitRunningParams(run_params);
-  GetTilingParam(input_shape, run_params);
+  GetTilingParam(input_shape, tag_shape, run_params);
   SetRuningParams(run_params, run_info);
   PrintTilingParams(run_params, op_type);
   run_info.SetBlockDim(BLOCKDIM);

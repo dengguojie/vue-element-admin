@@ -73,6 +73,7 @@ class Lru(OpBase):
         self.data_dtype = data.get("dtype").lower()
         self.tag_shape = tag.get("shape")
         self.tag_dtype = tag.get("dtype").lower()
+        self.is_last_call_dtype = is_last_call.get("dtype").lower()
         self.time_stamp_dtype = "float32"
         self.kernel_name = kernel_name
         # way_number can choose 32,64,96,128,256
@@ -176,6 +177,7 @@ class Lru(OpBase):
         # tiling scaler init
         self.tiling_key = self.tik_instance.Scalar(self.tiling_dtype, "tiling_key", init_value=0)
         self.index_list_len = self.tik_instance.Scalar(self.tiling_dtype, "index_list_len", init_value=0)
+        self.tag_lens = self.tik_instance.Scalar(self.tiling_dtype, "tag_lens", init_value=0)
         self.index_loops_times = self.tik_instance.Scalar(self.tiling_dtype, "index_loops_times", init_value=0)
         self.index_num_tail_loop = self.tik_instance.Scalar(self.tiling_dtype, "index_num_tail_loop", init_value=0)
         tiling_ub = self.tik_instance.Tensor("int64", (Constant.TILING_NUMS,), name="tiling_ub", scope=tik.scope_ubuf)
@@ -183,6 +185,7 @@ class Lru(OpBase):
                                     Constant.TILING_NUMS // Constant.ONE_BLK_INT64_NUMS, 0, 0)
         self.tiling_key.set_as(tiling_ub[0])
         self.index_list_len.set_as(tiling_ub[1])
+        self.tag_lens.set_as(tiling_ub[2])
         # cal index_list loop
         self.index_loops_times.set_as((self.index_list_len + self.index_num_per_loop - 1) // self.index_num_per_loop)
         self.index_num_tail_loop.set_as(self.index_list_len - (self.index_loops_times - 1) * self.index_num_per_loop)
@@ -254,6 +257,7 @@ class Lru(OpBase):
         self.index_scalar = self.tik_instance.Scalar(dtype=self.index_list_dtype, name="index_scalar", init_value=0)
         self.index_core = self.tik_instance.Scalar(dtype=self.index_list_dtype, name="index_core", init_value=0)
         self.index_set = self.tik_instance.Scalar(dtype=self.index_list_dtype, name="index_set", init_value=0)
+        self.is_last_call = self.tik_instance.Scalar(dtype=self.is_last_call_dtype, name="is_last_call", init_value=0)
         self.exchane_out_index = self.tik_instance.Scalar(dtype=self.index_list_dtype,
                                                           name="exchane_out_index",
                                                           init_value=0)
@@ -319,16 +323,20 @@ class Lru(OpBase):
             self.tiling_args()
             self.gm_scalar_init()
             self.iterate_timestamp_refresh()
+            self.is_last_call.set_as(self.is_last_call_gm[0])
             with self.tik_instance.if_scope(self.tiling_key == Constant.MODE0):
-                with self.tik_instance.new_stmt_scope():
-                    with self.tik_instance.for_range(0, self.index_loops_times) as index_loops:
-                        self.index_list_offset.set_as(index_loops * self.index_num_per_loop)
-                        with self.tik_instance.if_scope(index_loops < self.index_loops_times - 1):
-                            index_list_len = self.index_num_per_loop
-                        with self.tik_instance.else_scope():
-                            index_list_len = self.index_num_tail_loop
-                        self.index_list_process_each_loop(self.index_list_offset, index_list_len, core_id)
-                    self.after_process(core_id)
+                with self.tik_instance.if_scope(self.is_last_call_gm == 1):
+                    self.move_data_back(core_id)
+                with self.tik_instance.else_scope():
+                    with self.tik_instance.new_stmt_scope():
+                        with self.tik_instance.for_range(0, self.index_loops_times) as index_loops:
+                            self.index_list_offset.set_as(index_loops * self.index_num_per_loop)
+                            with self.tik_instance.if_scope(index_loops < self.index_loops_times - 1):
+                                index_list_len = self.index_num_per_loop
+                            with self.tik_instance.else_scope():
+                                index_list_len = self.index_num_tail_loop
+                            self.index_list_process_each_loop(self.index_list_offset, index_list_len, core_id)
+                        self.after_process(core_id)
         wr_compile_info = {}
         wr_compile_info["set_num"] = self.set_number
         wr_compile_info["time_stamp_wsp_size"] = self.time_stamp_bytes * (self.set_number * self.way_number + 1)
@@ -457,6 +465,31 @@ class Lru(OpBase):
                         self.exchane_out_index.set_as(move_out_ub[0])
                         self.cache_exchange(self.exchane_out_index, self.exchane_in_index, self.tag_index,
                                             move_out_ub, data_exchange_ub)
+
+    def move_data_back(self, core_id):
+        """
+        move data from cache back to gm when last call
+        """
+        with self.tik_instance.for_range(0, self.tag_lens) as tag_idx:
+            data_exchange_ub = self.tik_instance.Tensor(self.data_dtype,
+                                                        [self.embedding_size * Constant.THREAD_NUM],
+                                                        name="data_exchange_ub",
+                                                        scope=tik.scope_ubuf)
+            move_out_ub = self.tik_instance.Tensor(self.index_list_dtype,
+                                                   [Constant.BLOCK_BYTES // Constant.INT32_BYTES *
+                                                    Constant.THREAD_NUM],
+                                                   name="move_out_ub",
+                                                   scope=tik.scope_ubuf)
+            self.tik_instance.data_move_pad(move_out_ub.reinterpret_cast_to("int32"),
+                                            self.tag_gm[tag_idx].reinterpret_cast_to("int32"), 1,
+                                            self.index_list_bytes, 0, 0)
+            self.exchane_out_index.set_as(move_out_ub[0])
+            with self.tik_instance.if_scope(tag_idx % self.aicore_num == core_id):
+                self.tik_instance.data_move_pad(data_exchange_ub, self.cache_gm[tag_idx * self.embedding_size], 1,
+                                                self.embedding_bytes, 0, 0)
+                self.tik_instance.data_move_pad(self.out_data_gm[self.exchane_out_index * self.embedding_size],
+                                                data_exchange_ub, 1,
+                                                self.embedding_bytes, 0, 0)
 
     def cache_exchange(self, out_index, in_index, tag_index, move_out_ub, data_exchange_ub):
         """

@@ -100,7 +100,7 @@ TEST_F(LRUCacheV2Tiling, lru_cache_v2_tiling_0) {
   TENSOR_OUTPUT(opParas, index_list_desc, not_in_cache_index_list);
   TENSOR_OUTPUT(opParas, index_list_desc, index_offset_list);
   TENSOR_OUTPUT(opParas, is_last_call_desc, not_in_cache_number);
-  string expectTilingData = "0 32 ";
+  string expectTilingData = "0 32 512 ";
   optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
   ASSERT_TRUE(iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo));
@@ -152,7 +152,7 @@ TEST_F(LRUCacheV2Tiling, lru_cache_v2_tiling_1) {
   TENSOR_OUTPUT(opParas, index_list_desc, not_in_cache_index_list);
   TENSOR_OUTPUT(opParas, index_list_desc, index_offset_list);
   TENSOR_OUTPUT(opParas, is_last_call_desc, not_in_cache_number);
-  string expectTilingData = "0 32 ";
+  string expectTilingData = "0 32 512 ";
   optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
   int64_t profiling_test_num = 100;
@@ -202,7 +202,7 @@ TEST_F(LRUCacheV2Tiling, lru_cache_v2_tiling_2) {
   TENSOR_OUTPUT(opParas, index_list_desc, not_in_cache_index_list);
   TENSOR_OUTPUT(opParas, index_list_desc, index_offset_list);
   TENSOR_OUTPUT(opParas, is_last_call_desc, not_in_cache_number);
-  string expectTilingData = "0 32 ";
+  string expectTilingData = "0 32 512 ";
   optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
   int64_t profiling_test_num = 100;
@@ -250,7 +250,7 @@ TEST_F(LRUCacheV2Tiling, lru_cache_v2_tiling_3) {
   TENSOR_OUTPUT(opParas, index_list_desc, not_in_cache_index_list);
   TENSOR_OUTPUT(opParas, index_list_desc, index_offset_list);
   TENSOR_OUTPUT(opParas, is_last_call_desc, not_in_cache_number);
-  string expectTilingData = "0 32 ";
+  string expectTilingData = "0 32 512 ";
   optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
   int64_t profiling_test_num = 100;
