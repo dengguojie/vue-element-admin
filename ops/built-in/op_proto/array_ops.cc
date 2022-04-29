@@ -3182,35 +3182,6 @@ IMPLEMT_INFERFUNC(ViewCopy, ViewCopyInferShape) {
 }
 
 IMPLEMT_VERIFIER(ViewCopy, ViewCopyVerify) {
-  const char *op_name = "ViewCopy";
-  Shape src_size_shape = op.GetInputDescByName("src_size").GetShape();
-  Shape dst_size_shape = op.GetInputDescByName("dst_size").GetShape();
-  if (src_size_shape.GetShapeSize() == dst_size_shape.GetShapeSize()) {
-      OP_LOGI(op_name, "the ShapeSize of src_size and dst_size is equal.");
-      return GRAPH_SUCCESS;
-  } else if (src_size_shape.GetShapeSize() > dst_size_shape.GetShapeSize()) {
-      OP_LOGE(op_name, "the ShapeSize of src_size cannot bigger than dst_size.");
-      return GRAPH_FAILED;
-  }
-  std::vector<int64_t> src_size_dims = src_size_shape.GetDims();
-  std::vector<int64_t> dst_size_dims = dst_size_shape.GetDims();
-  int64_t src_size_dim_num = src_size_shape.GetDimNum();
-  int64_t dst_size_dim_num = dst_size_shape.GetDimNum();
-  reverse(src_size_dims.begin(), src_size_dims.end());
-  reverse(dst_size_dims.begin(), dst_size_dims.end());
-  int64_t min_dim_num = std::min(src_size_dim_num, dst_size_dim_num);
-  int64_t i = 0;
-  for (i = 0; i < min_dim_num; ++i) {
-    if ((src_size_dims[i] == dst_size_dims[i]) || (src_size_dims[i] == 1) || (dst_size_dims[i] == 1)) {
-      continue;
-    } else {
-      break;
-    }
-  }
-  if (i < min_dim_num) {
-    OP_LOGE(op_name, "do not match the broadcast requirements.");
-    return GRAPH_FAILED;
-  }
   return GRAPH_SUCCESS; 
 }
 INFER_FUNC_REG(ViewCopy, ViewCopyInferShape);
