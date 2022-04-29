@@ -3,7 +3,10 @@
         "GraphFusion":{
             "GroupConv2DFusionPass":"off",
             "MulFusionOptimizeFusionPass":"off",
-            "SplitConvFusionPass":"off"
+            "SplitConvFusionPass":"off",
+            "BatchMultiClassNonMaxSuppressionEnableSubgraphFusionPass": "off",
+            "BatchMultiClassNonMaxSuppressionInsertNMSBucketizeFusionPass": "off",
+            "BatchMultiClassNonMaxSuppressionRefreshSubgraphConstNodeFusionPass": "off"
         },
         "UBFusion":{
         }

@@ -857,6 +857,12 @@ vector_B:
       - ops/built-in/fusion_pass/graph_fusion/ai_core/unsortedsegmentsumd_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/z_unsortedsegmentsum_update_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/z_unsortedsegmentsum_update_fusion_pass.h
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/batch_multi_class_nms_enable_subgraph_fusion_pass.cc
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/batch_multi_class_nms_enable_subgraph_fusion_pass.h
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/batch_multi_class_nms_insert_nms_bucketize_fusion_pass.cc
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/batch_multi_class_nms_insert_nms_bucketize_fusion_pass.h
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/batch_multi_class_nms_refresh_subgraph_const_node_fusion_pass.cc
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/batch_multi_class_nms_refresh_subgraph_const_node_fusion_pass.h
       - ops/built-in/fusion_rules/ai_core/built_in_graph_rules.json
       - ops/built-in/fusion_rules/CMakeLists.txt
       - ops/built-in/op_proto/data_flow_ops.cc

@@ -152,6 +152,9 @@ set(_aicore_fusion_srcs
   graph_fusion/ai_core/batch_matmul_fusion_pass.cc
   graph_fusion/ai_core/batch_multi_class_nms_fusion_pass.cc
   graph_fusion/ai_core/batch_multi_class_nms_enable_vector_core_fusion_pass.cc
+  graph_fusion/ai_core/batch_multi_class_nms_enable_subgraph_fusion_pass.cc
+  graph_fusion/ai_core/batch_multi_class_nms_insert_nms_bucketize_fusion_pass.cc
+  graph_fusion/ai_core/batch_multi_class_nms_refresh_subgraph_const_node_fusion_pass.cc
   graph_fusion/ai_core/batchnorm_bninfer_fusion_pass.cc
   graph_fusion/ai_core/batchnorm_fusion_pass.cc
   graph_fusion/ai_core/batchnormgrad_bninfergrad_fusion_pass.cc
