@@ -56,6 +56,46 @@ def test_operation_var_attr_dtype_list(_):
     return False
 
 
+def test_attr_var_index(_):
+    with tbe.common.context.op_context.OpContext("dynamic"):
+        var_0 = operation.var_attr("var_0", None, "int32", addition={"index": 0})
+        index = operation.get_context().get_attr_vars_desc()[-1].index
+
+    return index == 0
+
+
+def test_attr_var_index_default(_):
+    with tbe.common.context.op_context.OpContext("dynamic"):
+        var_0 = operation.var_attr("var_0", None, "int32")
+        index = operation.get_context().get_attr_vars_desc()[-1].index
+
+    return index == -1
+
+
+def test_attr_var_index_non_int(_):
+    try:
+        with tbe.common.context.op_context.OpContext("dynamic"):
+            var_0 = operation.var_attr("var_0", None, "int32", addition={"index": "a"})
+            index = operation.get_context().get_attr_vars_desc()[-1].index
+    except RuntimeError as e:
+        error_msg = e.args[0].get("detailed_cause")
+        return "Index in attr var must greater than or equal to 0" in error_msg
+
+    return False
+
+
+def test_attr_var_index_lt_0(_):
+    try:
+        with tbe.common.context.op_context.OpContext("dynamic"):
+            var_0 = operation.var_attr("var_0", None, "int32", addition={"index": -1})
+            index = operation.get_context().get_attr_vars_desc()[-1].index
+    except RuntimeError as e:
+        error_msg = e.args[0].get("detailed_cause")
+        return "Index in attr var must greater than or equal to 0" in error_msg
+
+    return False
+
+
 def test_operation_var_inner_exception(_):
     try:
         operation.var_inner("varName", None, "int32", None)
@@ -113,6 +153,10 @@ test_func_list = [
     test_operation_var_attr_simple_dtype,
     test_operation_var_attr_dtype_exception,
     test_operation_var_attr_dtype_list,
+    test_attr_var_index,
+    test_attr_var_index_default,
+    test_attr_var_index_non_int,
+    test_attr_var_index_lt_0,
     test_operation_var_inner_exception,
     test_operation_add_compile_info_with_exception,
     test_operation_add_compile_info_inner_with_exception,

@@ -100,6 +100,8 @@ class AttrVarDesc:
     """
     # the name of var, whether it's primitive type or list type
     name: str
+    # the index of var, whether it's primitive type or list type
+    index: int
     # such as int32, float16, etc. If list type, take primitive part
     dtype: str
     # source type, such as int32, float16, etc. If list type, take primitive part

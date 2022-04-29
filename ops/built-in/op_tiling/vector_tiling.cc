@@ -75,7 +75,7 @@ bool VarAttrWrap::ParseVarAttr(const nlohmann::json& json_info) {
     const auto& json_var_attrs = json_info.at("_var_attrs");
     var_attrs.reserve(json_var_attrs.size());
     for (const auto& var : json_var_attrs) {
-      var_attrs.emplace_back(var.at("name"), var.at("type"), var.at("src_type"), var.at("length"));
+      var_attrs.emplace_back(var.at("name"), var.at("index"), var.at("type"), var.at("src_type"), var.at("length"));
     }
   } else {
     const auto& json_var_attr_map = json_info.at("_var_attrs");
@@ -89,7 +89,8 @@ bool VarAttrWrap::ParseVarAttr(const nlohmann::json& json_info) {
       auto& var_attrs_of_map = ret.first->second;
       var_attrs_of_map.reserve(json_var_attrs.size());
       for (const auto& var : json_var_attrs) {
-        var_attrs_of_map.emplace_back(var.at("name"), var.at("type"), var.at("src_type"), var.at("length"));
+        var_attrs_of_map.emplace_back(var.at("name"), var.at("index"), var.at("type"), var.at("src_type"),
+                                      var.at("length"));
       }
     }
   }

@@ -79,9 +79,11 @@ protected:
 };
 
 struct VarAttr {
-  VarAttr(const std::string& _name, const std::string& _type, const std::string& _src_type, const int32_t& _length):
-          name (_name), type (_type), src_type (_src_type), length (_length) {}
+  VarAttr(const std::string& _name, int32_t _index,
+          const std::string& _type, const std::string& _src_type, const int32_t& _length):
+          name (_name), index(_index), type (_type), src_type (_src_type), length (_length) {}
   std::string name;
+  int32_t index;
   std::string type;
   std::string src_type;
   int32_t length{0};

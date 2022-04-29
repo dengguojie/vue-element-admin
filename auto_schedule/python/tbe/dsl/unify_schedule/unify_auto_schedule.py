@@ -434,6 +434,7 @@ class Builder:
 
                 return {
                     "name": attr_var.name,
+                    "index": attr_var.index,
                     "type": dtype,
                     "src_type": src_dtype,
                     "length": length or 1

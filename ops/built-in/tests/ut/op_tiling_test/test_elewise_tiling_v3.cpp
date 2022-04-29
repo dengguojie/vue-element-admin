@@ -268,9 +268,9 @@ TEST_F(ElewiseTilingV3, ElewiseSetAttrCase1) {
                                     "_vars": {"210000000": [ "_dim_0_0", "_block_factor_0", "_ub_factor_0" ],
                                               "210010000": [ "_dim_0_0", "_block_factor_0", "_ub_factor_0" ]},
                                     "_var_attr_mode":1,
-                                    "_var_attrs": {"210000000": [{"length":1, "name": "alpha",
+                                    "_var_attrs": {"210000000": [{"length":1, "name": "alpha", "index": 0,
                                                                   "type": "int32", "src_type": "int32"}],
-                                                   "210010000": [{"length":1, "name": "alpha",
+                                                   "210010000": [{"length":1, "name": "alpha", "index": 0,
                                                                   "type": "int32", "src_type": "int32"}]}
                                    })";
   std::shared_ptr<AutoTilingHandler> outer_compile_info =

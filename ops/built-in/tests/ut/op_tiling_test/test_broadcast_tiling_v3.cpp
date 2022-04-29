@@ -871,7 +871,20 @@ TEST_F(BroadcastTilingV3, TilingTest23) {
   actual_ptr.const_block_dims_compile.first = true;
   actual_ptr.const_block_dims_compile.second = {40};
 
-  std::string var_attr_list_compileInfo = R"({"_var_attr_mode":0,"_var_attrs": [{"length":1,"name":"alpha","type":"int32","src_type":"int32"}]})";
+  std::string var_attr_list_compileInfo = R"(
+    {
+      "_var_attr_mode":0,
+      "_var_attrs": [
+        {
+          "length":1,
+          "name":"alpha",
+          "index":-1,
+          "type":"int32",
+          "src_type":"int32"
+        }
+      ]
+    }
+  )";
   actual_ptr.varAttrWrap.ParseVarAttr(nlohmann::json::parse(var_attr_list_compileInfo));
 
   actual_ptr.const_shapes_compile.first = true;

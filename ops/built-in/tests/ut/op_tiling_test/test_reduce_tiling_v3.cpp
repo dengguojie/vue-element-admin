@@ -1106,9 +1106,14 @@ TEST_F(ReduceTilingV3, ReduceTiling_var_attr) {
   ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
 
   std::string compileInfo = R"({ "_ori_axis": [0],"_var_attr_mode":1,
-                                 "_var_attrs": {"4293966796":[{"length":1,"name":"alpha","type":"int32",
+                                 "_var_attrs": {"4293966796":[{"length":1,"name":"alpha","type":"int32", "index": -1,
                                                "src_type":"int32"}]},
-                                 "_pattern": "CommReduce","push_status": 0,"_common_info": [32, 1, 8, 1, 1], "_pattern_info": [5], "_ub_info": [16256], "_ub_info_rf": [16256], "_vars": {"-1000500": ["_dim_1_0", "_block_factor", "_ub_factor"]}})";
+                                 "_pattern": "CommReduce",
+                                 "push_status": 0,
+                                 "_common_info": [32, 1, 8, 1, 1],
+                                 "_pattern_info": [5],
+                                 "_ub_info": [16256], "_ub_info_rf": [16256],
+                                 "_vars": {"-1000500": ["_dim_1_0", "_block_factor", "_ub_factor"]}})";
 
   optiling::utils::OpRunInfo runInfo;
   const nlohmann::json& parsed_compile_info = nlohmann::json::parse(compileInfo);
@@ -1147,7 +1152,7 @@ TEST_F(ReduceTilingV3, ReduceTiling_var_attr_2) {
   graph.SetInputs(inputs).SetOutputs(outputs);
   ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
 
-  std::string compileInfo = R"({"_ori_axis": [0],"_var_attr_mode":0,"_var_attrs": [{"length":1,"name":"alpha","type":"int32","src_type":"int32"}],
+  std::string compileInfo = R"({"_ori_axis": [0],"_var_attr_mode":0,"_var_attrs": [{"length":1,"name":"alpha","index": 0,"type":"int32","src_type":"int32"}],
                             "_pattern": "CommReduce", "push_status": 0, "_zero_ub_factor": 32512, "_common_info": [32,1,8,1,1], "_pattern_info": [1], "_ub_info":[32512], "_ub_info_rf": [32512], "_reduce_shape_known": true, "_const_shape_post": true, "_compile_pattern": 1, "_block_dims":{"1":32},
                             "_atomic_flags":{"1": true}, "_vars": {"1": []}})";
 

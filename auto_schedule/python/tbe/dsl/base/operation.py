@@ -189,11 +189,21 @@ def var_attr(name, bound=None, dtype="int32", addition=None):
     :param addition:
     :return:
     """
+    def get_index():
+        if addition and "index" in addition:
+            _index = addition.get("index")
+            if not isinstance(_index, int) or _index < 0:
+                _raise_error(f"Index in attr var must greater than or equal to 0, now is {_index}.")
+            return _index
+        return -1
+
+    index = get_index()
+
     # simple dtype, like int32, float16
     simple_dtype_pattern = r"^\w+$"
     if re.match(simple_dtype_pattern, dtype):
         src_dtype = addition.get("src_dtype", dtype) if addition else dtype
-        get_context().add_attr_var_desc(AttrVarDesc(name, dtype, src_dtype))
+        get_context().add_attr_var_desc(AttrVarDesc(name, index, dtype, src_dtype))
 
         return _var(name, bound, dtype, Category.ATTR, addition)
 
@@ -216,7 +226,7 @@ def var_attr(name, bound=None, dtype="int32", addition=None):
         for i in range(length):
             attr_vars.append(_var("{}_{}".format(name, i), bound[i], s_dtype, Category.ATTR, addition))
         src_dtype = addition.get("src_dtype", s_dtype) if addition else s_dtype
-        get_context().add_attr_var_desc(AttrVarDesc(name, s_dtype, src_dtype, length))
+        get_context().add_attr_var_desc(AttrVarDesc(name, index, s_dtype, src_dtype, length))
 
         return attr_vars
 
