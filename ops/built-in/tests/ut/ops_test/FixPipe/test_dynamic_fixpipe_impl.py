@@ -31,9 +31,6 @@ def test_dynamic_fixpipe(test_arg):
 
     # case name: ((fm_range), (weight_shape), (paddings), (strides), (dilations), group, bias_flag, dtype)
     testcase = {
-        # "conv2d_dynamic_fixpipe_test_fp16_1": ([(1, 4), (256, 256), (56, 100), (56, 100)], (512, 256, 1, 1), [0, 0, 0, 0], [1, 1, 2, 2], [1, 1, 1, 1], 1, False, "float16"),
-        # "conv2d_dynamic_fixpipe_test_fp16_2": ([(1, 1), (128, 128), (1, 30), (1, 30)], (512, 128, 1, 1), [0, 0, 0, 0], [1, 1, 1, 1], [1, 1, 1, 1], 1, False, "float16"),
-        # "conv2d_dynamic_fixpipe_test_fp16_3": ([(1, 4096), (64, 64), (1, 56), (1, 56)], (64, 64, 3, 3), [1, 1, 1, 1], [1, 1, 1, 1], [1, 1, 1, 1], 1, False, "float16"),
         "conv2d_dynamic_fixpipe_test_fp16_4": ([(1, 4), (3, 3), (200, 224), (224, 300)], (64, 3, 7, 7), [2, 3, 2, 3], [1, 1, 2, 2], [1, 1, 1, 1], 1, False, "float16")}
 
     def compile_dynamic_fixpipe(fm_range, weight_shape, pads, strides, dilations, groups, bias_flag, input_dtype, kernel_name):
@@ -103,7 +100,6 @@ def test_dynamic_fixpipe_single(test_arg):
         "conv2d_dynamic_fixpipe_test_fp16_4": ([(1, 4), (3, 3), (200, 224), (224, 300)], (64, 3, 7, 7), [2, 3, 2, 3], [1, 1, 2, 2], [1, 1, 1, 1], 1, False, "float16")}
 
     def compile_dynamic_fixpipe_single(fm_range, weight_shape, pads, strides, dilations, groups, bias_flag, input_dtype, kernel_name):
-
         def get_input_shape(input_ranges):
             dyn_input_shape = []
             for in_range in input_ranges:

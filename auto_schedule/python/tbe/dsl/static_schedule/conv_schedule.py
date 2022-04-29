@@ -6811,6 +6811,9 @@ class AutoScheduleOp:
             dequant_s16_op_flag = 0
             post_transdata_nchw_op_flag = 0
             temp_flag = None
+            if is_support_v220():
+                op_to_fusion_type_map.update(op_to_fusion_type_map_v220_v300)
+                fusion_type_dict.update(fusion_type_dict_v220_v300)
             for lop in self.body_ops:
                 op_to_fusion_type = op_to_fusion_type_map.setdefault(
                     lop["op"], OpFusionype.DEFAULT)
@@ -7073,7 +7076,23 @@ class AutoScheduleOp:
             # post transdata nc1hwc0 to nchw
             "5HD_trans_NCHW": OpFusionype.POST_TRANSDATA_NCHW,
             "5HD_trans_NCHW_add_pad": OpFusionype.POST_TRANSDATA_NCHW,
-            "5HD_trans_NCHW_rm_pad": OpFusionype.POST_TRANSDATA_NCHW
+            "5HD_trans_NCHW_rm_pad": OpFusionype.POST_TRANSDATA_NCHW,
+            }
+
+        op_to_fusion_type_map_v220_v300 = {
+            #v220 + v300
+            "convolution_al1_load2d": OpFusionype.CONV,
+            "convolution_al0_load2d": OpFusionype.CONV,
+            "convolution_fmap_l1": OpFusionype.CONV,
+            "convolution_fmap_l1_c04": OpFusionype.CONV,
+            "convolution_im2col_fractal": OpFusionype.CONV,
+            "convolution_res_conv2d": OpFusionype.CONV,
+            "convolution_res_fp32_conv2d": OpFusionype.CONV,
+            "bl0": OpFusionype.CONV,
+            "convolution_bias_bt": OpFusionype.BIAS,
+            "convolution_bias_l1": OpFusionype.BIAS,
+            "fixpipe_reform": OpFusionype.FIXPIPE_OP
+
             }
 
         fusion_type_dict = {
@@ -7261,7 +7280,34 @@ class AutoScheduleOp:
             # conv2d + transdata(nc1hwc0 to nchw)
             "fusion_type_17_1": 74,
             # conv2d + eltwise + transdata(nc1hwc0 to nchw)
-            "fusion_type_17_4_1": 75
+            "fusion_type_17_4_1": 75,
+        }
+
+        fusion_type_dict_v220_v300 = {
+            # =======v220/v300=========
+            # conv + fixpipe
+            "fusion_type_80_0_1": 200,
+            # conv + fixpipe with bias
+            "fusion_type_80_0_1_9_2_2": 201,
+            # v300 conv2d with bias
+            "fusion_type_1_9_2_2": 202,
+            # conv with bias, strideh_opmization
+            "fusion_type_1_9_0_2_2": 203,
+            # al1 load2d + fixpipe
+            "fusion_type_80_0_1_9_0_2_2": 204,
+            # conv2d_sigmoid_mul
+            "fusion_type_4_1_9_2_2_4_3_3_4_3_3_3_4_3_3_4_3": 205,
+            # conv2d_sigmoid_mul_ascend_quant
+            "fusion_type_7_4_1_9_2_2_4_3_3_4_3_3_3_4_3_3_4_3": 206,
+            # conv2d_fixpipe_sigmoid_mul
+            "fusion_type_4_4_3_3_4_3_3_3_80_0_1_9_2_2_4_3_3_4_3": 207,
+            # conv2d_fixpipe_sigmoid_mul_ascend_quant
+            "fusion_type_7_4_80_0_1_9_2_2_4_3_3_4_3_3_3_4_3_3_4_3": 208,
+            # dynamic conv2d_fixpipe
+            "fusion_type_80_0_1_0": 209,
+            # conv2d_fixpipe_max_pool
+            "fusion_type_12_80_0_1_9_2_2": 210
+
         }
 
         fusion_type_list = __fusion_type_list_get()
@@ -7322,6 +7368,7 @@ class OpFusionype(Enum):
     AHEAD_ELTWISE_ONE_OP = 15
     QUANT_S4 = 16
     POST_TRANSDATA_NCHW = 17
+    FIXPIPE_OP = 80
     OP_EMPTY = 100
 
 

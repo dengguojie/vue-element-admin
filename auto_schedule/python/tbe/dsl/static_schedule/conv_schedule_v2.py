@@ -792,6 +792,11 @@ class Conv2dSchedule:
 
         c_dtype = get_info_dict_cdtype(self._res_dtype)
         fusion_type = get_info_dict_fusion_type(self._fusion_type)
+
+        # ============fusion_type============
+        if self._fusion_type == 0:
+            err_man.raise_err_specific("conv2d", "Conv2d fusion_type is 0!")
+
         # group conv, send one group_opt a, b, c shape to tiling
         info_dict = {"op_type": 'conv2d',
                      "a_shape": fmap_shape_nc1hwc0,
