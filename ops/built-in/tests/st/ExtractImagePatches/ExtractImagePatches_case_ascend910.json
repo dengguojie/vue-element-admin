@@ -1,13 +1,13 @@
 [
     {
-        "op": "ExtactImagePatches",
+        "op": "ExtractImagePatches",
         "input_desc": [
           {
-            "shape": [-1, 1, 6, 6, 16],
+            "shape": [-1, 1, 8, 8, 16],
             "format": "NC1HWC0",
-            "typical_shape": [2, 6, 6, 2],
-            "ori_shape": [-1, 6, 6, 2],
-            "ori_format": "ND",
+            "typical_shape": [2, 1, 8, 8, 16],
+            "ori_shape": [-1, 8, 8, 2],
+            "ori_format": "NHWC",
             "shape_range": [[1, 2]],
             "value_range": [[0, 1]],
             "name": "images",
@@ -16,7 +16,7 @@
         ],
         "output_desc": [
           {
-            "shape": [2, 3, 3, 12],
+            "shape": [2, 4, 4, 8],
             "format": "NHWC",
             "name": "y",
             "type": "float"
@@ -34,7 +34,7 @@
              "type": "list_int"
             },
             {
-                "name": "dilates",
+                "name": "rates",
                 "value": [1, 1, 1, 1],
                 "type": "list_int"
             },
@@ -44,6 +44,98 @@
              "type": "string"
             }
         ],
-        "case_name": "test_ExtactImagePatches_001"
+        "case_name": "test_ExtractImagePatches_001"
+      },
+      {
+        "op": "ExtractImagePatches",
+        "input_desc": [
+          {
+            "shape": [-1, 1, 32, 32, 16],
+            "format": "NC1HWC0",
+            "typical_shape": [10000, 1, 32, 32, 16],
+            "ori_shape": [-1, 32, 32, 3],
+            "ori_format": "NHWC",
+            "shape_range": [[1, 10000]],
+            "value_range": [[0, 1]],
+            "name": "images",
+            "type": "float"
+          }
+        ],
+        "output_desc": [
+          {
+            "shape": [10000, 16, 16, 12],
+            "format": "NHWC",
+            "name": "y",
+            "type": "float"
+          }
+        ],
+        "attr": [
+            {
+             "name": "ksizes",
+             "value": [1, 2, 2, 1],
+             "type": "list_int"
+            },
+            {
+             "name": "strides",
+             "value": [1, 2, 2, 1],
+             "type": "list_int"
+            },
+            {
+                "name": "rates",
+                "value": [1, 1, 1, 1],
+                "type": "list_int"
+            },
+            {
+             "name": "padding",
+             "value": "VALID",
+             "type": "string"
+            }
+        ],
+        "case_name": "test_ExtractImagePatches_002"
+      },
+      {
+        "op": "ExtractImagePatches",
+        "input_desc": [
+          {
+            "shape": [10000, 1, 32, 32, 16],
+            "format": "NC1HWC0",
+            "ori_shape": [10000, 32, 32, 3],
+            "ori_format": "NHWC",
+            "value_range": [[0, 1]],
+            "name": "images",
+            "type": "float"
+          }
+        ],
+        "output_desc": [
+          {
+            "shape": [10000, 16, 16, 12],
+            "format": "NHWC",
+            "name": "y",
+            "type": "float"
+          }
+        ],
+        "attr": [
+            {
+             "name": "ksizes",
+             "value": [1, 2, 2, 1],
+             "type": "list_int"
+            },
+            {
+             "name": "strides",
+             "value": [1, 2, 2, 1],
+             "type": "list_int"
+            },
+            {
+                "name": "rates",
+                "value": [1, 1, 1, 1],
+                "type": "list_int"
+            },
+            {
+             "name": "padding",
+             "value": "VALID",
+             "type": "string"
+            }
+        ],
+        "case_name": "test_ExtractImagePatches_003"
       }
 ]

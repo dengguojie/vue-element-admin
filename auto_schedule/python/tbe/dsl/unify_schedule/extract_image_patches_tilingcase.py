@@ -27,8 +27,8 @@ class TilingStrategy(Enum):
     """
     TilingStrategy
     """
-    FOUR_DIMEN = auto()
-    SPECIAL_DIMEN_KEY = auto()
+    AXIS_ALIGN = auto()
+    AXIS_NOT_ALIGN = auto()
 
 
 @register_tiling_case(pattern=Pattern.EXTRACT_IMAGE_PATCHES)
@@ -45,22 +45,24 @@ def calc_extract_image_patches(outs, option=None):
     list of dict, each dict for a tiling case
     """
     cases = []
-    four_dimen_key = 10000
-    special_dimen_key = 20000
-    mode = operation.get_context().get("mode")
-    if mode == "special":
+    axis_align_key = 10000
+    axis_not_align_key = 20000
+    block_size = 16
+
+    origin_c_in = operation.get_context().get("origin_c_in")
+    if origin_c_in % block_size == 0:
         cases.append({
-            "key": special_dimen_key,
+            "key": axis_align_key,
             "block_tiling_axis": 0,
             "ub_tiling_axis": 1,
-            "tiling_strategy": TilingStrategy.SPECIAL_DIMEN_KEY
+            "tiling_strategy": TilingStrategy.AXIS_ALIGN
         })
     else:
         cases.append({
-            "key": four_dimen_key,
+            "key": axis_not_align_key,
             "block_tiling_axis": 0,
             "ub_tiling_axis": 1,
-            "tiling_strategy": TilingStrategy.FOUR_DIMEN
+            "tiling_strategy": TilingStrategy.AXIS_NOT_ALIGN
         })
 
     return cases

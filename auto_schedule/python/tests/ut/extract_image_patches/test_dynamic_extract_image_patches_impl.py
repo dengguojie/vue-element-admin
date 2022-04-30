@@ -19,8 +19,8 @@ from sch_test_frame.ut import OpUT
 
 ut_case = OpUT("ExtractImagePatches", "impl.dynamic.extract_image_patches", "extract_image_patches")
 
-case1 = {"params": [{"shape": (-1, 1, 6, 6, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (2, 6, 6, 2),"ori_format": "NHWC", "range": ((1, 2), (1, 1), (6, 6), (6, 6), (16, 16))},
-                    {"shape": (-1, 1, 3, 3, 16), "dtype": "float16", "format": "NHWC", "ori_shape": (2, 3, 3, 12),"ori_format": "NHWC","range": ((1, 2), (1, 1), (3, 3), (3, 3), (16, 16))},
+case1 = {"params": [{"shape": (-1, 1, 8, 8, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (2, 8, 8, 2),"ori_format": "NHWC", "range": ((1, 8), (1, 1), (8, 8), (8, 8), (16, 16))},
+                    {"shape": (-1, 1, 4, 4, 16), "dtype": "float16", "format": "NHWC", "ori_shape": (2, 4, 4, 12),"ori_format": "NHWC","range": ((1, 8), (1, 1), (4, 4), (4, 4), (16, 16))},
                     (1, 2, 2, 1),     # ksizes
                     (1, 2, 2, 1),     # strides
                     (1, 1, 1, 1),     # dilates
@@ -28,8 +28,8 @@ case1 = {"params": [{"shape": (-1, 1, 6, 6, 16), "dtype": "float16", "format": "
                     ],
          "expect": "success",
          "support_expect": True}
-case2 = {"params": [{"shape": (-1, 1, 6, 6, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (2, 6, 6, 16),"ori_format": "NHWC", "range": ((1, 2), (1, 1), (6, 6), (6, 6), (16, 16))},
-                    {"shape": (-1, 1, 3, 3, 64), "dtype": "float16", "format": "NHWC", "ori_shape": (2, 3, 3, 64),"ori_format": "NHWC","range": ((1, 2), (1, 1), (6, 6), (6, 6), (64, 64))},
+case2 = {"params": [{"shape": (-1, 1, 32, 32, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (10000, 32, 32, 16),"ori_format": "NHWC", "range": ((1, 10000), (1, 1), (32, 32), (32, 32), (16, 16))},
+                    {"shape": (-1, 1, 16, 16, 64), "dtype": "float16", "format": "NHWC", "ori_shape": (10000, 16, 16, 64),"ori_format": "NHWC","range": ((1, 10000), (1, 1), (16, 16), (16, 16), (64, 64))},
                     (1, 2, 2, 1),     # ksizes
                     (1, 2, 2, 1),     # strides
                     (1, 1, 1, 1),     # dilates

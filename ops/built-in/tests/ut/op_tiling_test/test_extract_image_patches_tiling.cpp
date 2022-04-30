@@ -57,13 +57,13 @@ TEST_F(ExtractImagePatchesTiling, ExtractImagePatches_tiling_test_1) {
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   std::string compileInfo =
-      "{\"_pattern\": \"ExtractImagePatches\", \"coreNum\":32, \"inSpecialDevice\": false,"
-      "\"workspaceDimen\": [9, 4, 16], \"realC\": 2, \"ksizeHW\": [2, 2], \"strideHW\": [2, 2], \"dilateHW\": [1, 1],"
-      "\"_vars\": {\"10000\": [\"dim_0\", \"multi_core_factor_0\"]}, \"_normal_vars\": {\"10000\":[]}, "
-      "\"_attr_vars\": {\"10000\":[]}, \"_custom_vars\": {\"10000\": [\"dim_0\", \"multi_core_factor_0\"]}}";
+      "{\"_pattern\": \"ExtractImagePatches\", \"coreNum\":32, "
+      "\"workspaceDimen\": [16, 4, 16], \"originCIn\": 2, "
+      "\"_vars\": {\"20000\": [\"dim_0\", \"multi_core_factor_0\"]}, \"_normal_vars\": {\"20000\":[]}, "
+      "\"_attr_vars\": {\"20000\":[]}, \"_custom_vars\": {\"20000\": [\"dim_0\", \"multi_core_factor_0\"]}}";
 
-  std::vector<int64_t> input{2, 6, 6, 2};
-  std::vector<int64_t> output{2, 3, 3, 8};
+  std::vector<int64_t> input{1001, 8, 8, 2};
+  std::vector<int64_t> output{1001, 4, 4, 8};
 
   auto opParas = op::ExtractImagePatches(op_name);
   TENSOR_INPUT_WITH_SHAPE(opParas, x, input, DT_FLOAT16, FORMAT_NHWC, {});
@@ -73,6 +73,6 @@ TEST_F(ExtractImagePatchesTiling, ExtractImagePatches_tiling_test_1) {
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
   EXPECT_EQ(runInfo.GetBlockDim(), 32);
-  EXPECT_EQ(runInfo.GetTilingKey(), 10000);
-  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "2 1 ");
+  EXPECT_EQ(runInfo.GetTilingKey(), 20000);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "1001 32 ");
 }

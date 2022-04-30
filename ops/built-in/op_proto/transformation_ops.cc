@@ -1,5 +1,5 @@
 /**
- * Copyright 2019 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2022-2022. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -383,7 +383,7 @@ COMMON_INFER_FUNC_REG(SpaceToBatchND, SpaceToBatchNDInferShape);
 // ----------------SpaceToBatchND Op End-------------------
 // ----------------TransData InferFormat-------------------
 IMPLEMT_INFERFORMAT_FUNC(TransData, TransDataInferFormat) {
-  // pytorch network requirements,need to register an empty inferformat function 
+  // pytorch network requirements,need to register an empty inferformat function
   return GRAPH_SUCCESS;
 }
 
@@ -2288,6 +2288,19 @@ IMPLEMT_VERIFIER(ExtractImagePatches, ExtractImagePatchesVerify) {
   return GRAPH_SUCCESS;
 }
 
+static void InferHWDynamic(const int64_t &in_hw, const string &padding, const int64_t &effective_filter,
+                           const int64_t &stride, int64_t &out_hw) {
+  if (in_hw == -1) {
+    out_hw = -1;
+  } else {
+    if (padding == "VALID") {
+      out_hw = (in_hw - effective_filter + stride) / stride;
+    } else if (padding == "SAME") {
+      out_hw = (in_hw + stride - 1) / stride;
+    }
+  }
+}
+
 IMPLEMT_COMMON_INFERFUNC(ExtractImagePatchesInferShape) {
   DYNAMIC_SHAPE_NOT_SUPPORTED(op);
   OP_LOGI(TbeGetName(op).c_str(), "Enter op_proto inferfunction!");
@@ -2341,14 +2354,14 @@ IMPLEMT_COMMON_INFERFUNC(ExtractImagePatchesInferShape) {
   int64_t out_h{0};
   int64_t out_w{0};
   int64_t out_c{0};
-  if (padding == "VALID") {
-    out_h = (in_h - effective_filter_h + stride_h) / stride_h;
-    out_w = (in_w - effective_filter_w + stride_w) / stride_w;
-  } else if (padding == "SAME") {
-    out_h = (in_h + stride_h - 1) / stride_h;
-    out_w = (in_w + stride_w - 1) / stride_w;
+
+  InferHWDynamic(in_h, padding, effective_filter_h, stride_h, out_h);
+  InferHWDynamic(in_w, padding, effective_filter_w, stride_w, out_w);
+  if (in_c == -1) {
+    out_c = -1;
+  } else {
+    out_c = in_c * filter_h * filter_w;
   }
-  out_c = in_c * filter_h * filter_w;
   std::vector<int64_t> out_dim{in_n, out_h, out_w, out_c};
   if (x_format == FORMAT_NCHW) {
     out_dim = {in_n, out_c, out_h, out_w};
@@ -3427,11 +3440,11 @@ static bool CheckAttrNgramCounts(int64_t input_pool_size, std::vector<int64_t> &
         OP_LOGE("TfIdfVectorizer","ngram_counts and inputPool do not match.");
         return false;
       }
-      
+
     }
-    ++ngram_size;  
+    ++ngram_size;
   }
-  return true; 
+  return true;
 }
 
 IMPLEMT_VERIFIER(TfIdfVectorizer, TfIdfVectorizerVerify) {
@@ -3460,7 +3473,7 @@ IMPLEMT_VERIFIER(TfIdfVectorizer, TfIdfVectorizerVerify) {
     return GRAPH_FAILED;
   }
   // verify attr
-  int64_t max_gram_length = -1; 
+  int64_t max_gram_length = -1;
   if (GRAPH_SUCCESS != op.GetAttr("max_gram_length", max_gram_length)) {
     OP_LOGE(op_name, "get attr::max_gram_length faild!");
     return GRAPH_FAILED;
@@ -3501,18 +3514,18 @@ IMPLEMT_VERIFIER(TfIdfVectorizer, TfIdfVectorizerVerify) {
     return GRAPH_FAILED;
   }
   if ((mode != "TF") && (mode != "IDF") && (mode != "TFIDF")) {
-    OP_LOGE(op_name, 
+    OP_LOGE(op_name,
             "attr::min_gram_length is unrecognized, acceptable values are TF,IDF,TFIDF.");
     return GRAPH_FAILED;
   }
 
-  std::vector<int64_t> ngram_counts; 
+  std::vector<int64_t> ngram_counts;
   if (GRAPH_SUCCESS != op.GetAttr("ngram_counts", ngram_counts)) {
     OP_LOGE(op_name, "get attr::ngram_counts faild!");
     return GRAPH_FAILED;
   }
 
-  std::vector<int64_t> ngram_indexes; 
+  std::vector<int64_t> ngram_indexes;
   if (GRAPH_SUCCESS != op.GetAttr("ngram_indexes", ngram_indexes)) {
     OP_LOGE(op_name, "get attr::ngram_indexes faild!");
     return GRAPH_FAILED;
@@ -3526,11 +3539,11 @@ IMPLEMT_VERIFIER(TfIdfVectorizer, TfIdfVectorizerVerify) {
   if (!pool_strings.empty()) {
     input_pool_size = pool_strings.size();
   } else {
-    OP_LOGW(op_name, 
+    OP_LOGW(op_name,
             "get attr::pool_strings is not provided or get empty, need pool_int64s");
     op.GetAttr("pool_int64s", pool_int64s);
     if (pool_int64s.empty()) {
-      OP_LOGE(op_name, 
+      OP_LOGE(op_name,
               "non-nullptr attr::pool_int64s is required, if attr::pool_strings not provided.");
       return GRAPH_FAILED;
     }
@@ -3548,8 +3561,8 @@ IMPLEMT_VERIFIER(TfIdfVectorizer, TfIdfVectorizerVerify) {
     OP_LOGW(op_name, "get attr::weights is not provided, default is empty.");
   } else {
     if (static_cast<int64_t>(weights.size()) != col_size) {
-      OP_LOGE(op_name, 
-              "attr::weights size should be %ld,equal Max(ngram_indexes)+1,but get %lu.", 
+      OP_LOGE(op_name,
+              "attr::weights size should be %ld,equal Max(ngram_indexes)+1,but get %lu.",
               col_size, weights.size());
       return GRAPH_FAILED;
     }
@@ -3566,13 +3579,13 @@ IMPLEMT_COMMON_INFERFUNC(TfIdfVectorizerInferShape) {
   auto input_shape = input_desc.GetShape();
   auto input_shape_dim = input_shape.GetDims();
 
-  std::vector<int64_t> ngram_indexes; 
+  std::vector<int64_t> ngram_indexes;
   if (GRAPH_SUCCESS != op.GetAttr("ngram_indexes", ngram_indexes)) {
     OP_LOGE(op_name, "get attr::ngram_indexes faild!");
     return GRAPH_FAILED;
   }
   int64_t col_size = *(std::max_element(std::begin(ngram_indexes), std::end(ngram_indexes))) + 1;
-  
+
   std::vector<int64_t> output_shape_dim;
   if (input_shape_dim.size() == 1)
   {
@@ -3580,7 +3593,7 @@ IMPLEMT_COMMON_INFERFUNC(TfIdfVectorizerInferShape) {
   } else {
     output_shape_dim = {input_shape_dim[0], col_size};
   }
-  
+
   Shape outputShape(output_shape_dim);
   TensorDesc output_desc = op.GetOutputDescByName("output");
   output_desc.SetShape(outputShape);

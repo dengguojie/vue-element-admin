@@ -17,7 +17,6 @@ extract_image_patches
 """
 # 'pylint: disable=unused-import,too-many-lines
 import math
-import os
 
 import te.platform as tbe_platform
 from te import tvm
@@ -251,9 +250,35 @@ def _im2col_fractal_v2(im2col_shape, feature_map, config, compute_dtype):
                        tag='im2col_fractal')
 
 
+def _im2col_fractal_v3(shape, fmap, kernel_h, kernel_w, padding, stride, wo):
+    block_size = 16
+    def __im2col_idx(idx, fmap, kernel_h, kernel_w, padding, stride):
+        _, _, fmap_h, fmap_w, _ = fmap.shape
+        n, col_h, col_w, block_size_h, block_size_w = idx
+        padding_top, _, padding_left, _ = padding
+        stride_h, stride_w = stride
+        virtual_h = col_h * block_size + block_size_h
+        virtual_w = col_w * block_size + block_size_w
+
+        back_n = n
+        back_c1 = virtual_w // block_size // kernel_w // kernel_h
+        back_h = (virtual_h // wo) * stride_h + (col_w // kernel_w % kernel_h)
+        back_w = (virtual_h % wo) * stride_w + (col_w % kernel_w)
+        back_c0 = block_size_w
+
+        return tvm.select(tvm.any(back_h < padding_top, back_h > fmap_h + padding_top - 1,
+                                  back_w < padding_left, back_w > fmap_w + padding_left - 1),
+                          tvm.const(0, fmap.dtype),
+                          fmap(back_n, back_c1, back_h-padding_top, back_w - padding_left, back_c0))
+    return tvm.compute(shape,
+                       lambda *idx: __im2col_idx(idx, fmap, kernel_h, kernel_w, padding, stride),
+                       name = "im2col_fractal",
+                       tag = "im2col_fractal")
+
+
 # 'pylint: disable=unused-argument,too-many-locals,too-many-arguments,too-many-statements,too-many-lines
 @tbe_platform.fusion_manager.fusion_manager.register("extract_image_patches")
-def im2col_compute(fmap, c_in_real, ksizes, strides, dilates, pad, out_h, out_w):
+def im2col_compute(fmap, origin_c_in, ksizes, strides, dilates, pad, out_h, out_w, is_dynamic=False):
     """
     ops compute
 
@@ -261,7 +286,7 @@ def im2col_compute(fmap, c_in_real, ksizes, strides, dilates, pad, out_h, out_w)
     ----------
     fmap : TVM tensor
         the placeholder of input_x
-    c_in_real : real c size of input
+    origin_c_in : real c size of input
     ksizes: input attr
     strides: input attr
     dilates: input attr
@@ -280,14 +305,26 @@ def im2col_compute(fmap, c_in_real, ksizes, strides, dilates, pad, out_h, out_w)
     else:
         align_block_size = Constant.BLOCK_SIZE
 
-    if isinstance(fmap_shape[0], tvm.expr.IntImm):
+    def _get_dynamic_or_static_value(fmap):
+        if isinstance(fmap, tvm.expr.IntImm):
+            fmap_value = fmap.value
+        elif isinstance(fmap, tvm.expr.Var):
+            fmap_value = fmap
+        return fmap_value
+
+    if is_dynamic:
+        fmap_n = _get_dynamic_or_static_value(fmap_shape[0])
+        fmap_c1 = _get_dynamic_or_static_value(fmap_shape[1])
+        fmap_h = _get_dynamic_or_static_value(fmap_shape[2])
+        fmap_w = _get_dynamic_or_static_value(fmap_shape[3])
+        fmap_c0 = _get_dynamic_or_static_value(fmap_shape[4])
+    else:
         fmap_n = fmap_shape[0].value
-    elif isinstance(fmap_shape[0], tvm.expr.Var):
-        fmap_n = fmap_shape[0]
-    fmap_c1 = fmap_shape[1].value
-    fmap_h = fmap_shape[2].value
-    fmap_w = fmap_shape[3].value
-    fmap_c0 = fmap_shape[4].value
+        fmap_c1 = fmap_shape[1].value
+        fmap_h = fmap_shape[2].value
+        fmap_w = fmap_shape[3].value
+        fmap_c0 = fmap_shape[4].value
+
     # out to L1
     fmap_in_l1 = tvm.compute(fmap_shape, lambda *i: fmap[i], name="fmap_in_l1")
 
@@ -308,23 +345,28 @@ def im2col_compute(fmap, c_in_real, ksizes, strides, dilates, pad, out_h, out_w)
     stride = (stride_h, stride_w)
     dilate = (dilate_h, dilate_w)
 
-    fmap_vm_shape = (fmap_n, out_h * out_w, fmap_c1, kernel_h, kernel_w, fmap_c0)
+    if is_dynamic:
+        howo = ((out_h * out_w + Constant.BLOCK_SIZE - 1) // Constant.BLOCK_SIZE) * Constant.BLOCK_SIZE
+        fractal_shape = (fmap_n, howo // Constant.BLOCK_SIZE, fmap_c1 * kernel_h * kernel_w,
+                         Constant.BLOCK_SIZE, align_block_size)
+        config = {"mac": [16, align_block_size, 16]}
+        fmap_fractal = _im2col_fractal_v3(fractal_shape, fmap_in_l1, kernel_h, kernel_w, pad, stride, out_w)
+    else:
+        fmap_vm_shape = (fmap_n, out_h * out_w, fmap_c1, kernel_h, kernel_w, fmap_c0)
+        fmap_im2col = _im2col_row_major_v2(fmap_in_l1, fmap_vm_shape, kernel_h, kernel_w, pad, stride, dilate,
+                                           dtype_input)
 
-    fmap_im2col = _im2col_row_major_v2(fmap_in_l1, fmap_vm_shape, kernel_h, kernel_w, pad, stride, dilate, dtype_input)
-
-    howo = ((out_h * out_w + Constant.BLOCK_SIZE - 1) // Constant.BLOCK_SIZE) * Constant.BLOCK_SIZE
-    fractal_shape = (fmap_n, howo // Constant.BLOCK_SIZE, fmap_c1 * kernel_h * kernel_w,
-                     Constant.BLOCK_SIZE, align_block_size)
-
-    config = {"mac": [16, align_block_size, 16]}
-
-    fmap_fractal = _im2col_fractal_v2(fractal_shape, fmap_im2col, config, dtype_input)
+        howo = ((out_h * out_w + Constant.BLOCK_SIZE - 1) // Constant.BLOCK_SIZE) * Constant.BLOCK_SIZE
+        fractal_shape = (fmap_n, howo // Constant.BLOCK_SIZE, fmap_c1 * kernel_h * kernel_w,
+                         Constant.BLOCK_SIZE, align_block_size)
+        config = {"mac": [16, align_block_size, 16]}
+        fmap_fractal = _im2col_fractal_v2(fractal_shape, fmap_im2col, config, dtype_input)
 
     extract_params = {
         "out_h": out_h,
         "out_w": out_w,
         "fmap_shape": fmap_shape,
-        "c_in_real": c_in_real,
+        "origin_c_in": origin_c_in,
     }
     setfmatrix_dict = {
         "conv_kernel_h": kernel_h,
@@ -359,7 +401,7 @@ def im2col_compute(fmap, c_in_real, ksizes, strides, dilates, pad, out_h, out_w)
     ub_res_shape = (fmap_n, out_h * out_w, kernel_h * kernel_w, fmap_c1 * align_block_size)
     ub_res = tvm.compute(ub_res_shape, lambda *i: workspace_res[i], name="ub_res")
 
-    if c_in_real == 1 and dtype_input not in ('int8', 'uint8'):
+    if origin_c_in == 1 and dtype_input not in ('int8', 'uint8'):
         out_shape = (fmap_n, out_h * out_w, kernel_h * kernel_w)
         c = tvm.reduce_axis((0, workspace_shape[-1]), "c")
         output_res = tvm.compute(out_shape,
@@ -370,7 +412,7 @@ def im2col_compute(fmap, c_in_real, ksizes, strides, dilates, pad, out_h, out_w)
                                      'setfmatrix_dict': setfmatrix_dict
                                  })
     else:
-        out_shape = (fmap_n, out_h * out_w, kernel_h * kernel_w, c_in_real)
+        out_shape = (fmap_n, out_h * out_w, kernel_h * kernel_w, origin_c_in)
         output_res = tvm.compute(out_shape,
                                  lambda *i: ub_res[i],
                                  name="res",
@@ -383,7 +425,7 @@ def im2col_compute(fmap, c_in_real, ksizes, strides, dilates, pad, out_h, out_w)
 
 
 # 'pylint: disable=too-many-arguments
-def _get_tiling_param_cut_howo_col(used_ub_size, lcm_out_w, khkw, cut_h_col, fmap_w, fmap_c0, type_size, c_in_real,
+def _get_tiling_param_cut_howo_col(used_ub_size, lcm_out_w, khkw, cut_h_col, fmap_w, fmap_c0, type_size, origin_c_in,
                                    align_block_size):
     """
     get params for tiling
@@ -396,7 +438,7 @@ def _get_tiling_param_cut_howo_col(used_ub_size, lcm_out_w, khkw, cut_h_col, fma
     if max_v_ub > max_v_l1:
         max_v_ub = max_v_l1
     if max_v_ub > 1:
-        while c_in_real % max_v_ub != 0:
+        while origin_c_in % max_v_ub != 0:
             max_v_ub = max_v_ub - 1
     # cut howo col, move_rate
     # move_rate limit according to mte2 bound
@@ -406,7 +448,7 @@ def _get_tiling_param_cut_howo_col(used_ub_size, lcm_out_w, khkw, cut_h_col, fma
 
 # 'pylint: disable=too-many-locals,too-many-arguments
 def _get_tiling_param_cut_howo_row(khkw, fmap_w, fmap_c0, dilated_kernel_h, dilated_kernel_w, stride_h, type_size,
-                                   avg_split_ub_size, cut_w_row, cut_h_row, c_in_real, align_block_size):
+                                   avg_split_ub_size, cut_w_row, cut_h_row, origin_c_in, align_block_size):
     # cut howo row
     max_v_ub = avg_split_ub_size // align_block_size // Constant.BLOCK_SIZE // khkw
     max_v_load3d_limit = Constant.LOAD3D_REPEAT_TIME_LIMIT // khkw
@@ -416,7 +458,7 @@ def _get_tiling_param_cut_howo_row(khkw, fmap_w, fmap_c0, dilated_kernel_h, dila
     if max_v_ub > max_v_l1:
         max_v_ub = max_v_l1
     if max_v_ub > 1:
-        while c_in_real % max_v_ub != 0:
+        while origin_c_in % max_v_ub != 0:
             max_v_ub = max_v_ub - 1
 
     # cut howo row, move_rate
@@ -433,12 +475,12 @@ def _get_tiling_param_cut_howo_row(khkw, fmap_w, fmap_c0, dilated_kernel_h, dila
 
 # 'pylint: disable=too-many-arguments
 def _get_tiling_param_cut_howo_partial_col(out_w, khkw, fmap_w, stride_h, type_size, avg_split_ub_size, cut_h_row,
-                                           c_in_real, align_block_size, dilated_kernel_h):
+                                           origin_c_in, align_block_size, dilated_kernel_h):
     """"
     The function is get tiling param cut howo partial col.
     """
     # cut howo col partially
-    c_in_align = _ceil_div(c_in_real, align_block_size) * align_block_size
+    c_in_align = _ceil_div(origin_c_in, align_block_size) * align_block_size
     max_v_ub = avg_split_ub_size // (khkw * c_in_align * align_block_size)
     max_v_load3d_limit = Constant.LOAD3D_REPEAT_TIME_LIMIT // khkw
     if max_v_ub > max_v_load3d_limit:
@@ -476,7 +518,7 @@ def _get_tiling_param_cut_howo_min(fmap_w, fmap_c0, type_size, avg_split_ub_size
 def _get_tiling_param(setfmatrix_dict, extract_params, used_ub_size, type_size, avg_split_ub_size, align_block_size):
     out_w = extract_params['out_w']
     fmap_shape = extract_params['fmap_shape']
-    c_in_real = extract_params["c_in_real"]
+    origin_c_in = extract_params["origin_c_in"]
     lcm_out_w = extract_params['lcm_out_w']
     cut_h_col = extract_params['cut_h_col']
     cut_w_row = extract_params['cut_w_row']
@@ -491,15 +533,15 @@ def _get_tiling_param(setfmatrix_dict, extract_params, used_ub_size, type_size, 
     khkw = kernel_h * kernel_w
 
     max_v_cut_col, move_rate_cut_col = _get_tiling_param_cut_howo_col(used_ub_size, lcm_out_w, khkw, cut_h_col, fmap_w,
-                                                                      fmap_c0, type_size, c_in_real, align_block_size)
+                                                                      fmap_c0, type_size, origin_c_in, align_block_size)
 
     max_v_cut_row, move_rate_cut_row = \
         _get_tiling_param_cut_howo_row(khkw, fmap_w, fmap_c0, dilated_kernel_h, dilated_kernel_w, stride_h, type_size,
-                                       avg_split_ub_size, cut_w_row, cut_h_row, c_in_real, align_block_size)
+                                       avg_split_ub_size, cut_w_row, cut_h_row, origin_c_in, align_block_size)
 
     max_v_cut_col_p, move_rate_cut_col_p = \
         _get_tiling_param_cut_howo_partial_col(out_w, khkw, fmap_w, stride_h, type_size, avg_split_ub_size, cut_h_row,
-                                               c_in_real, align_block_size, dilated_kernel_h)
+                                               origin_c_in, align_block_size, dilated_kernel_h)
 
     max_v_cut_min = _get_tiling_param_cut_howo_min(fmap_w, fmap_c0, type_size, avg_split_ub_size, cut_h_row,
                                                    align_block_size)
@@ -533,7 +575,7 @@ def im2col_schedule(res, sch_list):
     out_h = extract_params.get('out_h')
     out_w = extract_params.get('out_w')
     fmap_shape = extract_params.get('fmap_shape')
-    c_in_real = extract_params.get("c_in_real")
+    origin_c_in = extract_params.get("origin_c_in")
     fmap_n = fmap_shape[0].value
     fmap_c1 = fmap_shape[1].value
     fmap_h = fmap_shape[2].value
@@ -606,7 +648,7 @@ def im2col_schedule(res, sch_list):
     khkw = kernel_h * kernel_w
     c_out = khkw * fmap_c1 * fmap_c0
 
-    out_shape = [fmap_n, howo, khkw, c_in_real]
+    out_shape = [fmap_n, howo, khkw, origin_c_in]
     device_core_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
 
     def _split_multi_core_32b_not_aligned(multi_core_factor, dma_split_axis_id, dma_split_factor):
@@ -801,7 +843,7 @@ def im2col_schedule(res, sch_list):
         n_factor = 1
         howo_factor = howo
         khkw_factor = khkw
-        c_factor = c_in_real
+        c_factor = origin_c_in
         tiling_param = _get_tiling_param(setfmatrix_dict, extract_params, used_ub_size,
                                          type_size, avg_split_ub_size, align_block_size)
 
@@ -835,7 +877,7 @@ def im2col_schedule(res, sch_list):
         elif move_rate == move_rate_cut_col_p and max_v_cut_col_p > 0:
             # cut howo col partially
             howo_factor = Constant.BLOCK_SIZE * max_v_cut_col_p
-            c_factor = c_in_real
+            c_factor = origin_c_in
             khkw_factor = khkw
         else:
             # cut howo khkw c
@@ -933,17 +975,17 @@ def im2col_schedule(res, sch_list):
         sch[workspace_res].emit_insn(workspace_axis_inner_list[0], tbe_platform.DMA_COPY)
         sch[ub_res].emit_insn(ub_res.op.axis[0], tbe_platform.DMA_COPY)
         if reg_mov:
-            if c_in_real == 1 and dtype_input not in ('int8', 'uint8'):
+            if origin_c_in == 1 and dtype_input not in ('int8', 'uint8'):
                 sch[reg_mov_ub].emit_insn(reg_mov_ub.op.axis[0], tbe_platform.REDUCE_SUM)
             else:
                 sch[reg_mov_ub].emit_insn(reg_mov_ub.op.axis[0], tbe_platform.DATA_MOV)
         sch[res].emit_insn(dma_copy_axis, tbe_platform.DMA_PADDING)
 
-    if c_in_real % align_block_size == 0:
+    if origin_c_in % align_block_size == 0:
         n_factor = 1
         howo_factor = howo
         khkw_factor = khkw
-        c_factor = c_in_real
+        c_factor = origin_c_in
         max_v = fmap_c1
         tiling_param = _get_tiling_param(setfmatrix_dict, extract_params, used_ub_size,
                                          type_size, avg_split_ub_size, align_block_size)
@@ -981,7 +1023,7 @@ def im2col_schedule(res, sch_list):
         elif move_rate == move_rate_cut_col_p and max_v_cut_col_p > 0:
             # cut howo col partially
             howo_factor = Constant.BLOCK_SIZE * max_v_cut_col_p
-            c_factor = c_in_real
+            c_factor = origin_c_in
             khkw_factor = khkw
             max_v = fmap_c1
         else:
@@ -1070,7 +1112,7 @@ def im2col_schedule(res, sch_list):
                 dma_split_i = i
                 break
 
-        res_ub_num = _ceil_div(_ceil_div(c_in_real, align_block_size) * align_block_size, c_in_real) + 1
+        res_ub_num = _ceil_div(_ceil_div(origin_c_in, align_block_size) * align_block_size, origin_c_in) + 1
         max_ub_limit_32b = min(_ceil_div(_prod(out_shape), device_core_num), avg_split_ub_size // res_ub_num)
         max_ub_limit_32b = max(align_block_size, max_ub_limit_32b)
 

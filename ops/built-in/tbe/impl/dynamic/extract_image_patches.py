@@ -41,6 +41,8 @@ class Constant:
     FP16_SIZE = 2
     INT8_SIZE = 1
     MAX_INT32_VALUE = 2**31 - 1
+    # shape size to allow workspace use mulit-core and split in howo axis
+    DMA_SPLIT_THRESHOLD = 3072
     SIZE_L1 = tbe_platform.get_soc_spec(tbe_platform.L1_SIZE)
 
 
@@ -54,9 +56,7 @@ def param_check(ksizes, strides, dilates, padding, fmap_h, fmap_w, fmap_c0, type
             fmap_h, kernel_h, dilate_h, stride_h, padding)
     out_w, padding_w_before, padding_w_after = common.tf_get_windowed_output_size_verbose_v2(
         fmap_w, kernel_w, dilate_w, stride_w, padding)
-    if out_h <= 0 or out_w <= 0:
-        error_manager_vector.raise_err_input_value_invalid(kernel_name, "out_h and out_w", ">0",
-                                                           str([out_h, out_w]))
+
     if padding_h_top >= 256 or padding_h_bottom >= 256:
         error_manager_vector.raise_err_input_value_invalid(kernel_name,
                                                            "padding_h_top and padding_h_bottom", "<256",
@@ -77,7 +77,7 @@ def param_check(ksizes, strides, dilates, padding, fmap_h, fmap_w, fmap_c0, type
     # min cut_h
     dilated_kernel_h = (kernel_h - 1) * dilate_h + 1
     cut_h_col = (Constant.BLOCK_SIZE // math.gcd(out_w, Constant.BLOCK_SIZE) - 1) * \
-                stride_h + 1 + dilated_kernel_h // 2
+                 stride_h + 1 + dilated_kernel_h // 2
     if cut_h_col > fmap_h:
         cut_h_col = fmap_h
 
@@ -88,12 +88,12 @@ def param_check(ksizes, strides, dilates, padding, fmap_h, fmap_w, fmap_c0, type
     if min_cut_h * fmap_w * fmap_c0 * type_size * Constant.DOUBLE_BUFFER > Constant.SIZE_L1:
         error_manager_vector.raise_err_specific_reson(
             kernel_name, "Input size is too large load to L1, while cut h, need size: %d" %
-                         (min_cut_h * fmap_w * fmap_c0 * type_size * Constant.DOUBLE_BUFFER))
+            (min_cut_h * fmap_w * fmap_c0 * type_size * Constant.DOUBLE_BUFFER))
 
 
 # 'pylint:disable=unused-argument,too-many-arguments,too-many-locals
 @mytbe.common.register.register_param_generalization("ExtractImagePatches")
-def extract_image_patch_generalization(fmap, c_in_real, ksizes, strides, dilates,
+def extract_image_patch_generalization(fmap, origin_c_in, ksizes, strides, dilates,
                                        padding, output_res, generalize_config=None):
     """
     extract image patch generalization
@@ -101,7 +101,7 @@ def extract_image_patch_generalization(fmap, c_in_real, ksizes, strides, dilates
     ----------
     fmap : TVM tensor
         the placeholder of fmap
-    c_in_real: real c size of input
+    origin_c_in: real c size of input
     ksizes: input attr
     strides: input attr
     dilates: input attr
@@ -130,14 +130,11 @@ def extract_image_patch_generalization(fmap, c_in_real, ksizes, strides, dilates
     elif data_format == "NC1HWC0":
         h_dim_index = 2
         w_dim_index = 3
-        c_dim = c_in_real
+        c_dim = origin_c_in
 
     result = []
     h_dim = fmap["shape"][h_dim_index]
     w_dim = fmap["shape"][w_dim_index]
-    _, kernel_h, kernel_w, _ = ksizes
-    _, stride_h, stride_w, _ = strides
-    _, dilate_h, dilate_w, _ = dilates
 
     shape_x = (-1, h_dim, w_dim, c_dim)
     range_x = [(1, -1), (h_dim, h_dim), (w_dim, w_dim), (c_dim, c_dim)]
@@ -174,7 +171,7 @@ def extract_image_patch_generalization(fmap, c_in_real, ksizes, strides, dilates
 
 
 # 'pylint: disable=unused-argument,too-many-locals,too-many-arguments
-def extract_image_patches_compute(fmap, c_in_real, ksizes, strides, dilates, padding,
+def extract_image_patches_compute(fmap, origin_c_in, ksizes, strides, dilates, padding,
                                   kernel_name="extract_image_patches"):
     """
     ops compute
@@ -183,7 +180,7 @@ def extract_image_patches_compute(fmap, c_in_real, ksizes, strides, dilates, pad
     ----------
     fmap : TVM tensor
         the placeholder of fmap
-    c_in_real : real c size of input
+    origin_c_in : real c size of input
     ksizes: input attr
     strides: input attr
     dilates: input attr
@@ -198,7 +195,6 @@ def extract_image_patches_compute(fmap, c_in_real, ksizes, strides, dilates, pad
     """
     # fmap's format is NC1HWC0
     fmap_shape = fmap.shape
-
     fmap_h = fmap_shape[2].value
     fmap_w = fmap_shape[3].value
 
@@ -207,33 +203,19 @@ def extract_image_patches_compute(fmap, c_in_real, ksizes, strides, dilates, pad
     _, dilate_h, dilate_w, _ = dilates
 
     out_h, padding_h_before, padding_h_after = common.tf_get_windowed_output_size_verbose_v2(
-        fmap_h, kernel_h, dilate_h, stride_h, padding)
+            fmap_h, kernel_h, dilate_h, stride_h, padding)
     out_w, padding_w_before, padding_w_after = common.tf_get_windowed_output_size_verbose_v2(
-        fmap_w, kernel_w, dilate_w, stride_w, padding)
+            fmap_w, kernel_w, dilate_w, stride_w, padding)
 
     pads = (padding_h_before, padding_h_after, padding_w_before, padding_w_after)
     ksize = (kernel_h, kernel_w)
     stride = (stride_h, stride_w)
     dilate = (dilate_h, dilate_w)
 
-    output_res, workspace_res, workspace_shape = im2col_compute(fmap, c_in_real, ksize, stride, dilate, pads, out_h,
-                                                                out_w)
+    output_res, workspace_res, workspace_shape = im2col_compute(fmap, origin_c_in, ksize, stride, dilate, pads, out_h,
+                                                                out_w, is_dynamic=True)
 
     return output_res, workspace_res, workspace_shape
-
-
-def _classify(images, ksizes, strides, padding):
-    ins = ["common"]
-    images_range_0 = images.get("range")[0]
-    images_range_0_l = 0 if images_range_0[0] is None else int(images_range_0[0])
-    if isinstance(images_range_0[1], int):
-        images_range_0_r = Constant.MAX_INT32_VALUE if images_range_0[1] is None else int(images_range_0[1]) + 1
-    else:
-        images_range_0_r = Constant.MAX_INT32_VALUE
-    if 128 in range(images_range_0_l, images_range_0_r) and list(ksizes) == [1, 2, 2, 1] and \
-            list(strides) == [1, 2, 2, 1] and padding == "VALID":
-        ins.append("special")
-    return ins
 
 
 # 'pylint: disable=too-many-arguments,unused-argument,invalid-name,too-many-locals,too-many-branches
@@ -287,37 +269,34 @@ def extract_image_patches(images, y, ksizes, strides, dilates, padding, kernel_n
         dilates = (dilates[0], dilates[2], dilates[3], dilates[1])
 
     dim_0 = tbe.var("dim_0")
-    multi_core_factor_0 = tbe.var("multi_core_factor_0")
 
-    ins = _classify(images, ksizes, strides, padding)
     schedules, tensors = [], []
-    for i in ins:
-        if i == "special":
-            dim_0 = 128
-            multi_core_factor_0 = 16
-        operation.get_context().add("mode", i)
 
-        _, fmap_h, fmap_w, fmap_c = shape_input_4d
-        fmap_c1 = (fmap_c + align_block_size - 1) // align_block_size
-        fmap_c0 = align_block_size
-        shape_input = (dim_0, fmap_c1, fmap_h, fmap_w, fmap_c0)
-        param_check(ksizes, strides, dilates, padding, fmap_h, fmap_w, fmap_c0, type_size, kernel_name)
+    _, fmap_h, fmap_w, fmap_c = shape_input_4d
+    if fmap_h * fmap_w * fmap_c == -1:
+        fmap_h = Constant.BLOCK_SIZE_INT8
+        fmap_w = Constant.BLOCK_SIZE_INT8
+        fmap_c = Constant.DMA_SPLIT_THRESHOLD // Constant.BLOCK_SIZE_INT8 // Constant.BLOCK_SIZE_INT8
+    fmap_c1 = (fmap_c + align_block_size - 1) // align_block_size
+    fmap_c0 = align_block_size
+    shape_input = (dim_0, fmap_c1, fmap_h, fmap_w, fmap_c0)
+    param_check(ksizes, strides, dilates, padding, fmap_h, fmap_w, fmap_c0, type_size, kernel_name)
 
-        data_input = tvm.placeholder(shape_input, name="data", dtype=dtype_input)
-        with tbe.compute():
-            output_res, workspace_res, _ = extract_image_patches_compute(data_input, fmap_c, ksizes, strides, dilates,
-                                                                         padding, kernel_name)
+    data_input = tvm.placeholder(shape_input, name="data", dtype=dtype_input)
+    with tbe.compute():
+        output_res, workspace_res, _ = extract_image_patches_compute(data_input, fmap_c, ksizes, strides, dilates,
+                                                                     padding, kernel_name)
 
-            if fmap_c % align_block_size == 0:
-                tensor_list = [data_input, output_res]
-            else:
-                tensor_list = [data_input, output_res, workspace_res]
-            tensors.append(tensor_list)
+        if fmap_c % align_block_size == 0:
+            tensor_list = [data_input, output_res]
+        else:
+            tensor_list = [data_input, output_res, workspace_res]
+        tensors.append(tensor_list)
 
-        operation.get_context().add("multi_core_factor_0", multi_core_factor_0)
-        with tvm.target.cce():
-            sch = tbe.auto_schedule(output_res)
-            schedules.append(sch)
+    operation.get_context().add("origin_c_in", fmap_c)
+    with tvm.target.cce():
+        sch = tbe.auto_schedule(output_res)
+        schedules.append(sch)
 
     config = {"print_ir": False,
               "name": kernel_name,
