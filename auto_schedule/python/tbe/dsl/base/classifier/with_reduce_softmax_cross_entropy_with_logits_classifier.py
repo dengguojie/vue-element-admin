@@ -20,6 +20,7 @@ classifier of shape in broadcast elewise
 import re
 from enum import Enum, auto
 from tbe.common.utils.errormgr import get_error_message
+from tbe.dsl.base import operation
 
 from . import util
 
@@ -31,8 +32,13 @@ BROADCAST_REDUCE = "broadcast_reduce"
 SPECIAL = "special"
 CONST = "const"
 ORIGINAL = "original"
+ORIGINAL_AND_CUT = "original_and_cut"
 COPY = "copy"
+COPY_AND_CUT = "copy_and_cut"
 MAX_INT32_VALUE = 2147483647
+MAX_COEXIST_NUM = 10
+BLOCK_SIZE_BYTE = 32
+
 
 
 class WithReduceSoftmaxCrossEntropyWithLogitsClassifier:
@@ -54,6 +60,8 @@ class WithReduceSoftmaxCrossEntropyWithLogitsClassifier:
 
         self.ins = ins
         self.format = self.ins[0]["format"]
+        self.dtype = self.ins[0]["dtype"]
+        self.dtype_size = 2 if self.dtype == "float16" else 4
         shapes = [x["shape"] for x in self.ins]
         self.dim_length = max([len(s) for s in shapes])
 
@@ -73,17 +81,10 @@ class WithReduceSoftmaxCrossEntropyWithLogitsClassifier:
         classify
         :return:
         """
-        [[(r00_l, r00_r), (r01_l, r01_r)], [(r10_l, r10_r), (r11_l, r11_r)]] = self.f_ranges
-        tail_not_broadcast = (r01_l > 1 and r11_l > 1) or (r01_l == r01_r == 1 and r11_l == r11_r == 1)
-        tail_may_broadcast = not tail_not_broadcast
-        batch_not_broadcast = (r00_l > 1 and r10_l > 1) or (r00_l == r00_r == 1 and r10_l == r10_r == 1)
-        batch_may_broadcast = not batch_not_broadcast
-
-        def gen_template(shape, range, mode, key):
+        def gen_template(shape, range, mode):
             return {"shape": shape,
                     "range": range,
-                    "mode": mode,
-                    "key": key
+                    "mode": mode
                     }
 
         def is_legal_range(dim_range):
@@ -126,138 +127,407 @@ class WithReduceSoftmaxCrossEntropyWithLogitsClassifier:
             range1 = [dim10_range, dim11_range]
             return range0, range1
 
-        if tail_not_broadcast and batch_not_broadcast:
-            res = []
-            res.append([gen_template(self.f_shapes[0], self.f_ranges[0], COPY, 10),
-                        gen_template(self.f_shapes[1], self.f_ranges[1], COPY, 10)])
-            return res
+        [[(r00_l, r00_r), (r01_l, r01_r)], [(r10_l, r10_r), (r11_l, r11_r)]] = self.f_ranges
+        tail_not_broadcast = (r01_l > 1 and r11_l > 1) or (r01_l == r01_r == 1 and r11_l == r11_r == 1)
+        tail_may_broadcast = not tail_not_broadcast
+        batch_not_broadcast = (r00_l > 1 and r10_l > 1) or (r00_l == r00_r == 1 and r10_l == r10_r == 1)
+        batch_may_broadcast = not batch_not_broadcast
+        ub_size = operation.get_context().get("ub_size")
+        num_per_block = BLOCK_SIZE_BYTE // self.dtype_size
+        bound_size = (ub_size // 4 // MAX_COEXIST_NUM) // 16 * 16
+        range0, range1 = _process_range(self.f_ranges[0], self.f_ranges[1])
+        r01_r = range0[0][1]
+        r11_r = range0[1][1]
+        may_cut_reduce = (r01_r >= bound_size or r11_r >= bound_size)
+        not_cut_reduce = not may_cut_reduce
 
-        if tail_not_broadcast and batch_may_broadcast:
-            res = []
-            res.append([gen_template(self.f_shapes[0], self.f_ranges[0], ORIGINAL, 0),
-                        gen_template(self.f_shapes[1], self.f_ranges[1], ORIGINAL, 0)])
+        if not_cut_reduce:
+            if tail_not_broadcast and batch_not_broadcast:
+                res = []
+                res.append([gen_template(self.f_shapes[0], self.f_ranges[0], COPY),
+                            gen_template(self.f_shapes[1], self.f_ranges[1], COPY)])
+                return res
 
-            special_shape0 = [1, self.f_shapes[0][1]]
-            special_range0 = [(1, 1), _process_range_vs_2(self.f_ranges[0][1])]
-            special_shape1 = self.f_shapes[1]
-            special_range1 = [_process_range_vs_2(self.f_ranges[1][0]), _process_range_vs_2(self.f_ranges[1][1])]
-            special_range0, special_range1 = _process_range(special_range0, special_range1)
-            if is_legal_range(special_range0[0]) and is_legal_range(special_range0[1]) \
-                    and is_legal_range(special_range1[0]) and is_legal_range(special_range1[1]):
-                res.append([gen_template(special_shape0, special_range0, "vec1", 1),
-                            gen_template(special_shape1, special_range1, "vec1", 1)])
+            if tail_not_broadcast and batch_may_broadcast:
+                res = []
+                res.append([gen_template(self.f_shapes[0], self.f_ranges[0], ORIGINAL),
+                            gen_template(self.f_shapes[1], self.f_ranges[1], ORIGINAL)])
 
-            special_shape0 = self.f_shapes[0]
-            special_range0 = [_process_range_vs_2(self.f_ranges[0][0]), _process_range_vs_2(self.f_ranges[0][1])]
-            special_shape1 = [1, self.f_shapes[1][1]]
-            special_range1 = [(1, 1), _process_range_vs_2(self.f_ranges[1][1])]
-            special_range0, special_range1 = _process_range(special_range0, special_range1)
-            if is_legal_range(special_range0[0]) and is_legal_range(special_range0[1]) \
-                    and is_legal_range(special_range1[0]) and is_legal_range(special_range1[1]):
-                res.append([gen_template(special_shape0, special_range0, "vec4", 4),
-                            gen_template(special_shape1, special_range1, "vec4", 4)])
+                special_shape0 = [1, self.f_shapes[0][1]]
+                special_range0 = [(1, 1), _process_range_vs_2(self.f_ranges[0][1])]
+                special_shape1 = self.f_shapes[1]
+                special_range1 = [_process_range_vs_2(self.f_ranges[1][0]), _process_range_vs_2(self.f_ranges[1][1])]
+                special_range0, special_range1 = _process_range(special_range0, special_range1)
+                if is_legal_range(special_range0[0]) and is_legal_range(special_range0[1]) \
+                        and is_legal_range(special_range1[0]) and is_legal_range(special_range1[1]):
+                    res.append([gen_template(special_shape0, special_range0, "vec1"),
+                                gen_template(special_shape1, special_range1, "vec1")])
 
-            res.append([gen_template(self.f_shapes[0], self.f_ranges[0], COPY, 10),
-                        gen_template(self.f_shapes[1], self.f_ranges[1], COPY, 10)])
-            return res
+                special_shape0 = self.f_shapes[0]
+                special_range0 = [_process_range_vs_2(self.f_ranges[0][0]), _process_range_vs_2(self.f_ranges[0][1])]
+                special_shape1 = [1, self.f_shapes[1][1]]
+                special_range1 = [(1, 1), _process_range_vs_2(self.f_ranges[1][1])]
+                special_range0, special_range1 = _process_range(special_range0, special_range1)
+                if is_legal_range(special_range0[0]) and is_legal_range(special_range0[1]) \
+                        and is_legal_range(special_range1[0]) and is_legal_range(special_range1[1]):
+                    res.append([gen_template(special_shape0, special_range0, "vec4"),
+                                gen_template(special_shape1, special_range1, "vec4")])
 
-        if tail_may_broadcast and batch_not_broadcast:
-            res = []
-            res.append([gen_template(self.f_shapes[0], self.f_ranges[0], ORIGINAL, 0),
-                        gen_template(self.f_shapes[1], self.f_ranges[1], ORIGINAL, 0)])
+                res.append([gen_template(self.f_shapes[0], self.f_ranges[0], COPY),
+                            gen_template(self.f_shapes[1], self.f_ranges[1], COPY)])
+                return res
 
-            res.append([gen_template(self.f_shapes[0], self.f_ranges[0], COPY, 10),
-                        gen_template(self.f_shapes[1], self.f_ranges[1], COPY, 10)])
+            if tail_may_broadcast and batch_not_broadcast:
+                res = []
+                res.append([gen_template(self.f_shapes[0], self.f_ranges[0], ORIGINAL),
+                            gen_template(self.f_shapes[1], self.f_ranges[1], ORIGINAL)])
 
-            special_shape0 = [self.f_shapes[0][0], 1]
-            special_range0 = [_process_range_vs_2(self.f_ranges[0][0]), (1, 1)]
-            special_shape1 = self.f_shapes[1]
-            special_range1 = [_process_range_vs_2(self.f_ranges[1][0]), _process_range_vs_2(self.f_ranges[1][1])]
-            special_range0, special_range1 = _process_range(special_range0, special_range1)
-            if is_legal_range(special_range0[0]) and is_legal_range(special_range0[1]) \
-                    and is_legal_range(special_range1[0]) and is_legal_range(special_range1[1]):
-                res.append([gen_template(special_shape0, special_range0, "vec2", 2),
-                            gen_template(special_shape1, special_range1, "vec2", 2)])
+                res.append([gen_template(self.f_shapes[0], self.f_ranges[0], COPY),
+                            gen_template(self.f_shapes[1], self.f_ranges[1], COPY)])
 
-            special_shape0 = self.f_shapes[0]
-            special_range0 = [_process_range_vs_2(self.f_ranges[0][0]), _process_range_vs_2(self.f_ranges[0][1])]
-            special_shape1 = [self.f_shapes[1][0], 1]
-            special_range1 = [_process_range_vs_2(self.f_ranges[1][0]), (1, 1)]
-            special_range0, special_range1 = _process_range(special_range0, special_range1)
-            if is_legal_range(special_range0[0]) and is_legal_range(special_range0[1]) \
-                    and is_legal_range(special_range1[0]) and is_legal_range(special_range1[1]):
-                res.append([gen_template(special_shape0, special_range0, "vec8", 8),
-                            gen_template(special_shape1, special_range1, "vec8", 8)])
-            return res
+                special_shape0 = [self.f_shapes[0][0], 1]
+                special_range0 = [_process_range_vs_2(self.f_ranges[0][0]), (1, 1)]
+                special_shape1 = self.f_shapes[1]
+                special_range1 = [_process_range_vs_2(self.f_ranges[1][0]), _process_range_vs_2(self.f_ranges[1][1])]
+                special_range0, special_range1 = _process_range(special_range0, special_range1)
+                if is_legal_range(special_range0[0]) and is_legal_range(special_range0[1]) \
+                        and is_legal_range(special_range1[0]) and is_legal_range(special_range1[1]):
+                    res.append([gen_template(special_shape0, special_range0, "vec2"),
+                                gen_template(special_shape1, special_range1, "vec2")])
 
-        if tail_may_broadcast and batch_may_broadcast:
-            res = []
-            res.append([gen_template(self.f_shapes[0], self.f_ranges[0], ORIGINAL, 0),
-                        gen_template(self.f_shapes[1], self.f_ranges[1], ORIGINAL, 0)])
+                special_shape0 = self.f_shapes[0]
+                special_range0 = [_process_range_vs_2(self.f_ranges[0][0]), _process_range_vs_2(self.f_ranges[0][1])]
+                special_shape1 = [self.f_shapes[1][0], 1]
+                special_range1 = [_process_range_vs_2(self.f_ranges[1][0]), (1, 1)]
+                special_range0, special_range1 = _process_range(special_range0, special_range1)
+                if is_legal_range(special_range0[0]) and is_legal_range(special_range0[1]) \
+                        and is_legal_range(special_range1[0]) and is_legal_range(special_range1[1]):
+                    res.append([gen_template(special_shape0, special_range0, "vec8"),
+                                gen_template(special_shape1, special_range1, "vec8")])
+                return res
 
-            res.append([gen_template(self.f_shapes[0], self.f_ranges[0], COPY, 10),
-                        gen_template(self.f_shapes[1], self.f_ranges[1], COPY, 10)])
+            if tail_may_broadcast and batch_may_broadcast:
+                res = []
+                res.append([gen_template(self.f_shapes[0], self.f_ranges[0], ORIGINAL),
+                            gen_template(self.f_shapes[1], self.f_ranges[1], ORIGINAL)])
 
-            special_shape0 = [1, self.f_shapes[0][1]]
-            special_range0 = [(1, 1), _process_range_vs_2(self.f_ranges[0][1])]
-            special_shape1 = self.f_shapes[1]
-            special_range1 = [_process_range_vs_2(self.f_ranges[1][0]), _process_range_vs_2(self.f_ranges[1][1])]
-            special_range0, special_range1 = _process_range(special_range0, special_range1)
-            if is_legal_range(special_range0[0]) and is_legal_range(special_range0[1]) \
-                    and is_legal_range(special_range1[0]) and is_legal_range(special_range1[1]):
-                res.append([gen_template(special_shape0, special_range0, "vec1", 1),
-                            gen_template(special_shape1, special_range1, "vec1", 1)])
+                res.append([gen_template(self.f_shapes[0], self.f_ranges[0], COPY),
+                            gen_template(self.f_shapes[1], self.f_ranges[1], COPY)])
 
-            special_shape0 = self.f_shapes[0]
-            special_range0 = [_process_range_vs_2(self.f_ranges[0][0]), _process_range_vs_2(self.f_ranges[0][1])]
-            special_shape1 = [1, self.f_shapes[1][1]]
-            special_range1 = [(1, 1), _process_range_vs_2(self.f_ranges[1][1])]
-            special_range0, special_range1 = _process_range(special_range0, special_range1)
-            if is_legal_range(special_range0[0]) and is_legal_range(special_range0[1]) \
-                    and is_legal_range(special_range1[0]) and is_legal_range(special_range1[1]):
-                res.append([gen_template(special_shape0, special_range0, "vec4", 4),
-                            gen_template(special_shape1, special_range1, "vec4", 4)])
+                special_shape0 = [1, self.f_shapes[0][1]]
+                special_range0 = [(1, 1), _process_range_vs_2(self.f_ranges[0][1])]
+                special_shape1 = self.f_shapes[1]
+                special_range1 = [_process_range_vs_2(self.f_ranges[1][0]), _process_range_vs_2(self.f_ranges[1][1])]
+                special_range0, special_range1 = _process_range(special_range0, special_range1)
+                if is_legal_range(special_range0[0]) and is_legal_range(special_range0[1]) \
+                        and is_legal_range(special_range1[0]) and is_legal_range(special_range1[1]):
+                    res.append([gen_template(special_shape0, special_range0, "vec1"),
+                                gen_template(special_shape1, special_range1, "vec1")])
 
-            special_shape0 = [self.f_shapes[0][0], 1]
-            special_range0 = [_process_range_vs_2(self.f_ranges[0][0]), (1, 1)]
-            special_shape1 = self.f_shapes[1]
-            special_range1 = [_process_range_vs_2(self.f_ranges[1][0]), _process_range_vs_2(self.f_ranges[1][1])]
-            special_range0, special_range1 = _process_range(special_range0, special_range1)
-            if is_legal_range(special_range0[0]) and is_legal_range(special_range0[1]) \
-                    and is_legal_range(special_range1[0]) and is_legal_range(special_range1[1]):
-                res.append([gen_template(special_shape0, special_range0, "vec2", 2),
-                            gen_template(special_shape1, special_range1, "vec2", 2)])
+                special_shape0 = self.f_shapes[0]
+                special_range0 = [_process_range_vs_2(self.f_ranges[0][0]), _process_range_vs_2(self.f_ranges[0][1])]
+                special_shape1 = [1, self.f_shapes[1][1]]
+                special_range1 = [(1, 1), _process_range_vs_2(self.f_ranges[1][1])]
+                special_range0, special_range1 = _process_range(special_range0, special_range1)
+                if is_legal_range(special_range0[0]) and is_legal_range(special_range0[1]) \
+                        and is_legal_range(special_range1[0]) and is_legal_range(special_range1[1]):
+                    res.append([gen_template(special_shape0, special_range0, "vec4"),
+                                gen_template(special_shape1, special_range1, "vec4")])
 
-            special_shape0 = self.f_shapes[0]
-            special_range0 = [_process_range_vs_2(self.f_ranges[0][0]), _process_range_vs_2(self.f_ranges[0][1])]
-            special_shape1 = [self.f_shapes[1][0], 1]
-            special_range1 = [_process_range_vs_2(self.f_ranges[1][0]), (1, 1)]
-            special_range0, special_range1 = _process_range(special_range0, special_range1)
-            if is_legal_range(special_range0[0]) and is_legal_range(special_range0[1]) \
-                    and is_legal_range(special_range1[0]) and is_legal_range(special_range1[1]):
-                res.append([gen_template(special_shape0, special_range0, "vec8", 8),
-                            gen_template(special_shape1, special_range1, "vec8", 8)])
+                special_shape0 = [self.f_shapes[0][0], 1]
+                special_range0 = [_process_range_vs_2(self.f_ranges[0][0]), (1, 1)]
+                special_shape1 = self.f_shapes[1]
+                special_range1 = [_process_range_vs_2(self.f_ranges[1][0]), _process_range_vs_2(self.f_ranges[1][1])]
+                special_range0, special_range1 = _process_range(special_range0, special_range1)
+                if is_legal_range(special_range0[0]) and is_legal_range(special_range0[1]) \
+                        and is_legal_range(special_range1[0]) and is_legal_range(special_range1[1]):
+                    res.append([gen_template(special_shape0, special_range0, "vec2"),
+                                gen_template(special_shape1, special_range1, "vec2")])
 
-            special_shape0 = [1, self.f_shapes[0][1]]
-            special_range0 = [(1, 1), _process_range_vs_2(self.f_ranges[0][1])]
-            special_shape1 = [self.f_shapes[1][0], 1]
-            special_range1 = [_process_range_vs_2(self.f_ranges[1][0]), (1, 1)]
-            special_range0, special_range1 = _process_range(special_range0, special_range1)
-            if is_legal_range(special_range0[0]) and is_legal_range(special_range0[1]) \
-                    and is_legal_range(special_range1[0]) and is_legal_range(special_range1[1]):
-                res.append([gen_template(special_shape0, special_range0, "vec9", 9),
-                            gen_template(special_shape1, special_range1, "vec9", 9)])
+                special_shape0 = self.f_shapes[0]
+                special_range0 = [_process_range_vs_2(self.f_ranges[0][0]), _process_range_vs_2(self.f_ranges[0][1])]
+                special_shape1 = [self.f_shapes[1][0], 1]
+                special_range1 = [_process_range_vs_2(self.f_ranges[1][0]), (1, 1)]
+                special_range0, special_range1 = _process_range(special_range0, special_range1)
+                if is_legal_range(special_range0[0]) and is_legal_range(special_range0[1]) \
+                        and is_legal_range(special_range1[0]) and is_legal_range(special_range1[1]):
+                    res.append([gen_template(special_shape0, special_range0, "vec8"),
+                                gen_template(special_shape1, special_range1, "vec8")])
 
-            special_shape0 = [self.f_shapes[0][0], 1]
-            special_range0 = [_process_range_vs_2(self.f_ranges[0][0]), (1, 1)]
-            special_shape1 = [1, self.f_shapes[1][1]]
-            special_range1 = [(1, 1), _process_range_vs_2(self.f_ranges[1][1])]
-            special_range0, special_range1 = _process_range(special_range0, special_range1)
-            if is_legal_range(special_range0[0]) and is_legal_range(special_range0[1]) \
-                    and is_legal_range(special_range1[0]) and is_legal_range(special_range1[1]):
-                res.append([gen_template(special_shape0, special_range0, "vec6", 6),
-                            gen_template(special_shape1, special_range1, "vec6", 6)])
-            return res
+                special_shape0 = [1, self.f_shapes[0][1]]
+                special_range0 = [(1, 1), _process_range_vs_2(self.f_ranges[0][1])]
+                special_shape1 = [self.f_shapes[1][0], 1]
+                special_range1 = [_process_range_vs_2(self.f_ranges[1][0]), (1, 1)]
+                special_range0, special_range1 = _process_range(special_range0, special_range1)
+                if is_legal_range(special_range0[0]) and is_legal_range(special_range0[1]) \
+                        and is_legal_range(special_range1[0]) and is_legal_range(special_range1[1]):
+                    res.append([gen_template(special_shape0, special_range0, "vec9"),
+                                gen_template(special_shape1, special_range1, "vec9")])
+
+                special_shape0 = [self.f_shapes[0][0], 1]
+                special_range0 = [_process_range_vs_2(self.f_ranges[0][0]), (1, 1)]
+                special_shape1 = [1, self.f_shapes[1][1]]
+                special_range1 = [(1, 1), _process_range_vs_2(self.f_ranges[1][1])]
+                special_range0, special_range1 = _process_range(special_range0, special_range1)
+                if is_legal_range(special_range0[0]) and is_legal_range(special_range0[1]) \
+                        and is_legal_range(special_range1[0]) and is_legal_range(special_range1[1]):
+                    res.append([gen_template(special_shape0, special_range0, "vec6"),
+                                gen_template(special_shape1, special_range1, "vec6")])
+                return res
+
+        if may_cut_reduce:
+            if tail_not_broadcast and batch_not_broadcast:
+                res = []
+                res.append([gen_template(self.f_shapes[0], self.f_ranges[0], COPY_AND_CUT),
+                            gen_template(self.f_shapes[1], self.f_ranges[1], COPY_AND_CUT)])
+                res.append([gen_template(self.f_shapes[0], self.f_ranges[0], COPY),
+                            gen_template(self.f_shapes[1], self.f_ranges[1], COPY)])
+                return res
+
+            if tail_not_broadcast and batch_may_broadcast:
+                res = []
+                res.append([gen_template(self.f_shapes[0], self.f_ranges[0], ORIGINAL_AND_CUT),
+                            gen_template(self.f_shapes[1], self.f_ranges[1], ORIGINAL_AND_CUT)])
+                res.append([gen_template(self.f_shapes[0], self.f_ranges[0], ORIGINAL),
+                            gen_template(self.f_shapes[1], self.f_ranges[1], ORIGINAL)])
+
+                special_shape0 = [1, self.f_shapes[0][1]]
+                special_range0 = [(1, 1), _process_range_vs_2(self.f_ranges[0][1])]
+                special_shape1 = self.f_shapes[1]
+                special_range1 = [_process_range_vs_2(self.f_ranges[1][0]), _process_range_vs_2(self.f_ranges[1][1])]
+                special_range0, special_range1 = _process_range(special_range0, special_range1)
+                if is_legal_range(special_range0[0]) and is_legal_range(special_range0[1]) \
+                        and is_legal_range(special_range1[0]) and is_legal_range(special_range1[1]):
+                    res.append([gen_template(special_shape0, special_range0, "vec1_and_cut"),
+                                gen_template(special_shape1, special_range1, "vec1_and_cut")])
+
+                special_shape0 = [1, self.f_shapes[0][1]]
+                special_range0 = [(1, 1), _process_range_vs_2(self.f_ranges[0][1])]
+                special_shape1 = self.f_shapes[1]
+                special_range1 = [_process_range_vs_2(self.f_ranges[1][0]), _process_range_vs_2(self.f_ranges[1][1])]
+                special_range0, special_range1 = _process_range(special_range0, special_range1)
+                if is_legal_range(special_range0[0]) and is_legal_range(special_range0[1]) \
+                        and is_legal_range(special_range1[0]) and is_legal_range(special_range1[1]):
+                    res.append([gen_template(special_shape0, special_range0, "vec1"),
+                                gen_template(special_shape1, special_range1, "vec1")])
+
+                special_shape0 = self.f_shapes[0]
+                special_range0 = [_process_range_vs_2(self.f_ranges[0][0]), _process_range_vs_2(self.f_ranges[0][1])]
+                special_shape1 = [1, self.f_shapes[1][1]]
+                special_range1 = [(1, 1), _process_range_vs_2(self.f_ranges[1][1])]
+                special_range0, special_range1 = _process_range(special_range0, special_range1)
+                if is_legal_range(special_range0[0]) and is_legal_range(special_range0[1]) \
+                        and is_legal_range(special_range1[0]) and is_legal_range(special_range1[1]):
+                    res.append([gen_template(special_shape0, special_range0, "vec4_and_cut"),
+                                gen_template(special_shape1, special_range1, "vec4_and_cut")])
+
+                special_shape0 = self.f_shapes[0]
+                special_range0 = [_process_range_vs_2(self.f_ranges[0][0]), _process_range_vs_2(self.f_ranges[0][1])]
+                special_shape1 = [1, self.f_shapes[1][1]]
+                special_range1 = [(1, 1), _process_range_vs_2(self.f_ranges[1][1])]
+                special_range0, special_range1 = _process_range(special_range0, special_range1)
+                if is_legal_range(special_range0[0]) and is_legal_range(special_range0[1]) \
+                        and is_legal_range(special_range1[0]) and is_legal_range(special_range1[1]):
+                    res.append([gen_template(special_shape0, special_range0, "vec4"),
+                                gen_template(special_shape1, special_range1, "vec4")])
+
+                res.append([gen_template(self.f_shapes[0], self.f_ranges[0], COPY_AND_CUT),
+                            gen_template(self.f_shapes[1], self.f_ranges[1], COPY_AND_CUT)])
+
+                res.append([gen_template(self.f_shapes[0], self.f_ranges[0], COPY),
+                            gen_template(self.f_shapes[1], self.f_ranges[1], COPY)])
+                return res
+
+            if tail_may_broadcast and batch_not_broadcast:
+                res = []
+                res.append([gen_template(self.f_shapes[0], self.f_ranges[0], ORIGINAL_AND_CUT),
+                            gen_template(self.f_shapes[1], self.f_ranges[1], ORIGINAL_AND_CUT)])
+
+                res.append([gen_template(self.f_shapes[0], self.f_ranges[0], ORIGINAL),
+                            gen_template(self.f_shapes[1], self.f_ranges[1], ORIGINAL)])
+
+                res.append([gen_template(self.f_shapes[0], self.f_ranges[0], COPY_AND_CUT),
+                            gen_template(self.f_shapes[1], self.f_ranges[1], COPY_AND_CUT)])
+
+                res.append([gen_template(self.f_shapes[0], self.f_ranges[0], COPY),
+                            gen_template(self.f_shapes[1], self.f_ranges[1], COPY)])
+
+                special_shape0 = [self.f_shapes[0][0], 1]
+                special_range0 = [_process_range_vs_2(self.f_ranges[0][0]), (1, 1)]
+                special_shape1 = self.f_shapes[1]
+                special_range1 = [_process_range_vs_2(self.f_ranges[1][0]), _process_range_vs_2(self.f_ranges[1][1])]
+                special_range0, special_range1 = _process_range(special_range0, special_range1)
+                if is_legal_range(special_range0[0]) and is_legal_range(special_range0[1]) \
+                        and is_legal_range(special_range1[0]) and is_legal_range(special_range1[1]):
+                    res.append([gen_template(special_shape0, special_range0, "vec2_and_cut"),
+                                gen_template(special_shape1, special_range1, "vec2_and_cut")])
+
+                special_shape0 = [self.f_shapes[0][0], 1]
+                special_range0 = [_process_range_vs_2(self.f_ranges[0][0]), (1, 1)]
+                special_shape1 = self.f_shapes[1]
+                special_range1 = [_process_range_vs_2(self.f_ranges[1][0]), _process_range_vs_2(self.f_ranges[1][1])]
+                special_range0, special_range1 = _process_range(special_range0, special_range1)
+                if is_legal_range(special_range0[0]) and is_legal_range(special_range0[1]) \
+                        and is_legal_range(special_range1[0]) and is_legal_range(special_range1[1]):
+                    res.append([gen_template(special_shape0, special_range0, "vec2"),
+                                gen_template(special_shape1, special_range1, "vec2")])
+
+                special_shape0 = self.f_shapes[0]
+                special_range0 = [_process_range_vs_2(self.f_ranges[0][0]), _process_range_vs_2(self.f_ranges[0][1])]
+                special_shape1 = [self.f_shapes[1][0], 1]
+                special_range1 = [_process_range_vs_2(self.f_ranges[1][0]), (1, 1)]
+                special_range0, special_range1 = _process_range(special_range0, special_range1)
+                if is_legal_range(special_range0[0]) and is_legal_range(special_range0[1]) \
+                        and is_legal_range(special_range1[0]) and is_legal_range(special_range1[1]):
+                    res.append([gen_template(special_shape0, special_range0, "vec8_and_cut"),
+                                gen_template(special_shape1, special_range1, "vec8_and_cut")])
+
+                special_shape0 = self.f_shapes[0]
+                special_range0 = [_process_range_vs_2(self.f_ranges[0][0]), _process_range_vs_2(self.f_ranges[0][1])]
+                special_shape1 = [self.f_shapes[1][0], 1]
+                special_range1 = [_process_range_vs_2(self.f_ranges[1][0]), (1, 1)]
+                special_range0, special_range1 = _process_range(special_range0, special_range1)
+                if is_legal_range(special_range0[0]) and is_legal_range(special_range0[1]) \
+                        and is_legal_range(special_range1[0]) and is_legal_range(special_range1[1]):
+                    res.append([gen_template(special_shape0, special_range0, "vec8"),
+                                gen_template(special_shape1, special_range1, "vec8")])
+                return res
+
+            if tail_may_broadcast and batch_may_broadcast:
+                res = []
+                res.append([gen_template(self.f_shapes[0], self.f_ranges[0], ORIGINAL_AND_CUT),
+                            gen_template(self.f_shapes[1], self.f_ranges[1], ORIGINAL_AND_CUT)])
+
+                res.append([gen_template(self.f_shapes[0], self.f_ranges[0], ORIGINAL),
+                            gen_template(self.f_shapes[1], self.f_ranges[1], ORIGINAL)])
+
+                res.append([gen_template(self.f_shapes[0], self.f_ranges[0], COPY_AND_CUT),
+                            gen_template(self.f_shapes[1], self.f_ranges[1], COPY_AND_CUT)])
+
+                res.append([gen_template(self.f_shapes[0], self.f_ranges[0], COPY),
+                            gen_template(self.f_shapes[1], self.f_ranges[1], COPY)])
+
+                special_shape0 = [1, self.f_shapes[0][1]]
+                special_range0 = [(1, 1), _process_range_vs_2(self.f_ranges[0][1])]
+                special_shape1 = self.f_shapes[1]
+                special_range1 = [_process_range_vs_2(self.f_ranges[1][0]), _process_range_vs_2(self.f_ranges[1][1])]
+                special_range0, special_range1 = _process_range(special_range0, special_range1)
+                if is_legal_range(special_range0[0]) and is_legal_range(special_range0[1]) \
+                        and is_legal_range(special_range1[0]) and is_legal_range(special_range1[1]):
+                    res.append([gen_template(special_shape0, special_range0, "vec1_and_cut"),
+                                gen_template(special_shape1, special_range1, "vec1_and_cut")])
+
+                special_shape0 = [1, self.f_shapes[0][1]]
+                special_range0 = [(1, 1), _process_range_vs_2(self.f_ranges[0][1])]
+                special_shape1 = self.f_shapes[1]
+                special_range1 = [_process_range_vs_2(self.f_ranges[1][0]), _process_range_vs_2(self.f_ranges[1][1])]
+                special_range0, special_range1 = _process_range(special_range0, special_range1)
+                if is_legal_range(special_range0[0]) and is_legal_range(special_range0[1]) \
+                        and is_legal_range(special_range1[0]) and is_legal_range(special_range1[1]):
+                    res.append([gen_template(special_shape0, special_range0, "vec1"),
+                                gen_template(special_shape1, special_range1, "vec1")])
+
+                special_shape0 = self.f_shapes[0]
+                special_range0 = [_process_range_vs_2(self.f_ranges[0][0]), _process_range_vs_2(self.f_ranges[0][1])]
+                special_shape1 = [1, self.f_shapes[1][1]]
+                special_range1 = [(1, 1), _process_range_vs_2(self.f_ranges[1][1])]
+                special_range0, special_range1 = _process_range(special_range0, special_range1)
+                if is_legal_range(special_range0[0]) and is_legal_range(special_range0[1]) \
+                        and is_legal_range(special_range1[0]) and is_legal_range(special_range1[1]):
+                    res.append([gen_template(special_shape0, special_range0, "vec4_and_cut"),
+                                gen_template(special_shape1, special_range1, "vec4_and_cut")])
+
+                special_shape0 = self.f_shapes[0]
+                special_range0 = [_process_range_vs_2(self.f_ranges[0][0]), _process_range_vs_2(self.f_ranges[0][1])]
+                special_shape1 = [1, self.f_shapes[1][1]]
+                special_range1 = [(1, 1), _process_range_vs_2(self.f_ranges[1][1])]
+                special_range0, special_range1 = _process_range(special_range0, special_range1)
+                if is_legal_range(special_range0[0]) and is_legal_range(special_range0[1]) \
+                        and is_legal_range(special_range1[0]) and is_legal_range(special_range1[1]):
+                    res.append([gen_template(special_shape0, special_range0, "vec4"),
+                                gen_template(special_shape1, special_range1, "vec4")])
+
+                special_shape0 = [self.f_shapes[0][0], 1]
+                special_range0 = [_process_range_vs_2(self.f_ranges[0][0]), (1, 1)]
+                special_shape1 = self.f_shapes[1]
+                special_range1 = [_process_range_vs_2(self.f_ranges[1][0]), _process_range_vs_2(self.f_ranges[1][1])]
+                special_range0, special_range1 = _process_range(special_range0, special_range1)
+                if is_legal_range(special_range0[0]) and is_legal_range(special_range0[1]) \
+                        and is_legal_range(special_range1[0]) and is_legal_range(special_range1[1]):
+                    res.append([gen_template(special_shape0, special_range0, "vec2_and_cut"),
+                                gen_template(special_shape1, special_range1, "vec2_and_cut")])
+
+                special_shape0 = [self.f_shapes[0][0], 1]
+                special_range0 = [_process_range_vs_2(self.f_ranges[0][0]), (1, 1)]
+                special_shape1 = self.f_shapes[1]
+                special_range1 = [_process_range_vs_2(self.f_ranges[1][0]), _process_range_vs_2(self.f_ranges[1][1])]
+                special_range0, special_range1 = _process_range(special_range0, special_range1)
+                if is_legal_range(special_range0[0]) and is_legal_range(special_range0[1]) \
+                        and is_legal_range(special_range1[0]) and is_legal_range(special_range1[1]):
+                    res.append([gen_template(special_shape0, special_range0, "vec2"),
+                                gen_template(special_shape1, special_range1, "vec2")])
+
+                special_shape0 = self.f_shapes[0]
+                special_range0 = [_process_range_vs_2(self.f_ranges[0][0]), _process_range_vs_2(self.f_ranges[0][1])]
+                special_shape1 = [self.f_shapes[1][0], 1]
+                special_range1 = [_process_range_vs_2(self.f_ranges[1][0]), (1, 1)]
+                special_range0, special_range1 = _process_range(special_range0, special_range1)
+                if is_legal_range(special_range0[0]) and is_legal_range(special_range0[1]) \
+                        and is_legal_range(special_range1[0]) and is_legal_range(special_range1[1]):
+                    res.append([gen_template(special_shape0, special_range0, "vec8_and_cut"),
+                                gen_template(special_shape1, special_range1, "vec8_and_cut")])
+
+                special_shape0 = self.f_shapes[0]
+                special_range0 = [_process_range_vs_2(self.f_ranges[0][0]), _process_range_vs_2(self.f_ranges[0][1])]
+                special_shape1 = [self.f_shapes[1][0], 1]
+                special_range1 = [_process_range_vs_2(self.f_ranges[1][0]), (1, 1)]
+                special_range0, special_range1 = _process_range(special_range0, special_range1)
+                if is_legal_range(special_range0[0]) and is_legal_range(special_range0[1]) \
+                        and is_legal_range(special_range1[0]) and is_legal_range(special_range1[1]):
+                    res.append([gen_template(special_shape0, special_range0, "vec8"),
+                                gen_template(special_shape1, special_range1, "vec8")])
+
+                special_shape0 = [1, self.f_shapes[0][1]]
+                special_range0 = [(1, 1), _process_range_vs_2(self.f_ranges[0][1])]
+                special_shape1 = [self.f_shapes[1][0], 1]
+                special_range1 = [_process_range_vs_2(self.f_ranges[1][0]), (1, 1)]
+                special_range0, special_range1 = _process_range(special_range0, special_range1)
+                if is_legal_range(special_range0[0]) and is_legal_range(special_range0[1]) \
+                        and is_legal_range(special_range1[0]) and is_legal_range(special_range1[1]):
+                    res.append([gen_template(special_shape0, special_range0, "vec9_and_cut"),
+                                gen_template(special_shape1, special_range1, "vec9_and_cut")])
+
+                special_shape0 = [1, self.f_shapes[0][1]]
+                special_range0 = [(1, 1), _process_range_vs_2(self.f_ranges[0][1])]
+                special_shape1 = [self.f_shapes[1][0], 1]
+                special_range1 = [_process_range_vs_2(self.f_ranges[1][0]), (1, 1)]
+                special_range0, special_range1 = _process_range(special_range0, special_range1)
+                if is_legal_range(special_range0[0]) and is_legal_range(special_range0[1]) \
+                        and is_legal_range(special_range1[0]) and is_legal_range(special_range1[1]):
+                    res.append([gen_template(special_shape0, special_range0, "vec9"),
+                                gen_template(special_shape1, special_range1, "vec9")])
+
+                special_shape0 = [self.f_shapes[0][0], 1]
+                special_range0 = [_process_range_vs_2(self.f_ranges[0][0]), (1, 1)]
+                special_shape1 = [1, self.f_shapes[1][1]]
+                special_range1 = [(1, 1), _process_range_vs_2(self.f_ranges[1][1])]
+                special_range0, special_range1 = _process_range(special_range0, special_range1)
+                if is_legal_range(special_range0[0]) and is_legal_range(special_range0[1]) \
+                        and is_legal_range(special_range1[0]) and is_legal_range(special_range1[1]):
+                    res.append([gen_template(special_shape0, special_range0, "vec6_and_cut"),
+                                gen_template(special_shape1, special_range1, "vec6_and_cut")])
+
+                special_shape0 = [self.f_shapes[0][0], 1]
+                special_range0 = [_process_range_vs_2(self.f_ranges[0][0]), (1, 1)]
+                special_shape1 = [1, self.f_shapes[1][1]]
+                special_range1 = [(1, 1), _process_range_vs_2(self.f_ranges[1][1])]
+                special_range0, special_range1 = _process_range(special_range0, special_range1)
+                if is_legal_range(special_range0[0]) and is_legal_range(special_range0[1]) \
+                        and is_legal_range(special_range1[0]) and is_legal_range(special_range1[1]):
+                    res.append([gen_template(special_shape0, special_range0, "vec6"),
+                                gen_template(special_shape1, special_range1, "vec6")])
+                return res
+
 
     def _normalize(self):
         def clone_complete(_in):

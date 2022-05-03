@@ -445,6 +445,9 @@ IMPLEMT_COMMON_INFERFUNC(SoftmaxCrossEntropyWithLogitsInferShape) {
   int64_t input_labels_dim_0;
   int64_t input_labels_dim_1;
 
+  OP_LOGD(op.GetName().c_str(),
+          "input_features_dim_num is %d, input_labels_dim_num is %d", input_features_dim_num, input_labels_dim_num);
+
   // to fill the shorter shape with 1
   if (input_features_dim_num == 2 && input_labels_dim_num == 2) {
     input_features_dim_0 = input_features_shape.GetDim(0);
@@ -472,6 +475,12 @@ IMPLEMT_COMMON_INFERFUNC(SoftmaxCrossEntropyWithLogitsInferShape) {
     return GRAPH_FAILED;
   }
 
+  OP_LOGD(op.GetName().c_str(),
+          "after complete, input_features_dim is [%d, %d]", input_features_dim_0, input_features_dim_1);
+  OP_LOGD(op.GetName().c_str(),
+          "after complete, input_labels_dim is [%d, %d]", input_labels_dim_0, input_labels_dim_1);
+
+
   // static shape, set the output shape and datatype
   if (input_features_dim_0 > 0 && input_labels_dim_0 > 0) {
     if (input_features_dim_0 != input_labels_dim_0 && input_features_dim_0 != 1 && input_labels_dim_0 != 1) {
@@ -496,6 +505,10 @@ IMPLEMT_COMMON_INFERFUNC(SoftmaxCrossEntropyWithLogitsInferShape) {
   } else {
     output_backprop_shape.SetDim(1, -1);
   }
+  OP_LOGD(op.GetName().c_str(),
+          "output_loss_desc dtype value is %d, DT_FLOAT16 dtype value is %ld, DT_FLOAT dtype value is %ld",
+           input_features_desc_ptr->GetDataType(), DT_FLOAT16, DT_FLOAT);
+
   output_loss_desc->SetDataType(input_features_desc_ptr->GetDataType());
   output_backprop_desc->SetDataType(input_features_desc_ptr->GetDataType());
 

@@ -206,6 +206,7 @@ def softmax_cross_entropy_with_logits_compute(
         input_labels,
         output_loss,
         output_backprop,
+        mode,
         kernel_name="softmax_cross_entropy_with_logits"):
     """
     Computes softmax cross entropy cost.
@@ -242,10 +243,10 @@ def softmax_cross_entropy_with_logits_compute(
         shape_features, shape_labels, shape_broadcast = \
             shape_util.broadcast_shapes(shape_features, shape_labels, param_name_input1="input_features",
                                         param_name_input2="input_labels")
-        input_features = tbe.broadcast(input_features, shape_broadcast,
-                                       dtype)
-        input_labels = tbe.broadcast(input_labels, shape_broadcast,
-                                     dtype)
+        input_features_broad = tbe.broadcast(input_features, shape_broadcast, dtype)
+        input_features = input_features_broad
+        input_labels_broad = tbe.broadcast(input_labels, shape_broadcast, dtype)
+        input_labels = input_labels_broad
     else:
         shape_broadcast = shape_features
 
@@ -253,13 +254,16 @@ def softmax_cross_entropy_with_logits_compute(
     if dtype == "float16" and \
             tbe_platform.api_check_support("te.lang.cce.vexp",
                                            "float32"):
-        input_features = tbe.cast_to(input_features, "float32")
-        input_labels = tbe.cast_to(input_labels, "float32")
+        input_features_cast_fp32 = tbe.cast_to(input_features, "float32")
+        input_features = input_features_cast_fp32
+        input_labels_cast_fp32 = tbe.cast_to(input_labels, "float32")
+        input_labels = input_labels_cast_fp32
         has_improve_precision = True
 
     fp32_use_fp16_reduce_max = False
     if input_features.dtype == "float32" and not tbe_platform.api_check_support("te.lang.cce.reduce_max", "float32"):
-        input_features = tbe.cast_to(input_features, "float16")
+        input_features_cast_fp16 = tbe.cast_to(input_features, "float16")
+        input_features = input_features_cast_fp16
         fp32_use_fp16_reduce_max = True
 
     data_max = tbe.reduce_max(input_features, axis=-1, keepdims=True)
@@ -284,8 +288,21 @@ def softmax_cross_entropy_with_logits_compute(
         loss = tbe.cast_to(loss, "float16")
         backprop = tbe.cast_to(backprop, "float16")
 
+    is_data_features_broadcast = \
+        mode in ("original_and_cut", "vec6_and_cut", "vec9_and_cut", "copy_and_cut", "vec1_and_cut", "vec2_and_cut")
+    is_data_labels_broadcast = \
+        mode in ("original_and_cut", "vec6_and_cut", "vec9_and_cut", "copy_and_cut", "vec4_and_cut", "vec8_and_cut")
+    is_workspace = "cut" in mode
     res = [loss, backprop]
-
+    if is_workspace:
+        res += [data_sub, data_exp, data_sum_broadcast]
+    if is_data_features_broadcast and dtype == "float32":
+        res.append(input_features_broad)
+    if is_data_labels_broadcast and dtype == "float32":
+        res.append(input_labels_broad)
+    if dtype == "float16":
+        res.append(input_features_cast_fp32)
+        res.append(input_labels_cast_fp32)
     return res
 
 
@@ -340,6 +357,8 @@ def softmax_cross_entropy_with_logits(
     input_features["shape"] = shape_features
     input_labels["shape"] = shape_labels
 
+    operation.get_context().add("ub_size", tbe_platform.get_soc_spec("UB_SIZE"))
+
     ins = classify([input_features, input_labels], "softmax_cross_entropy_with_logits_with_reduce")
 
     if len(shape_features) == 1 and len(shape_labels) == 1:
@@ -356,11 +375,18 @@ def softmax_cross_entropy_with_logits(
             shape_features, shape_labels = variable_shape([x1, x2], support_broadcast=True)
             data_features = tvm.placeholder(shape_features, dtype=input_dtype, name="data_features")
             data_labels = tvm.placeholder(shape_labels, dtype=input_dtype, name="data_labels")
-            res = softmax_cross_entropy_with_logits_compute(data_features, data_labels, output_loss, output_backprop)
+            res = softmax_cross_entropy_with_logits_compute(data_features, data_labels, output_loss, output_backprop,
+                                                            x1["mode"])
             tensor_list = [data_features, data_labels] + list(res)
+            if len(tensor_list) < 9:
+                dummpy_placeholder_num = 9 - len(tensor_list)
+                for i in range(dummpy_placeholder_num):
+                    dummpy_placeholder = tvm.placeholder(output_backprop.get("shape"), dtype=input_dtype,
+                                                         name="dummy_placeholder" + str(i))
+                    tensor_list.append(dummpy_placeholder)
             tensors.append(tensor_list)
         with tvm.target.cce():
-            schedule = tbe.auto_schedule(res)
+            schedule = tbe.auto_schedule(res[:2])
         schedules.append(schedule)
     tbe_context.get_context().add_compile_info("ori_shape",
                                                {"features_shape0": input_features['shape'][0],
@@ -382,5 +408,6 @@ def softmax_cross_entropy_with_logits(
                                                {"ub_size": tbe_platform.get_soc_spec("UB_SIZE"),
                                                 "core_num": tbe_platform.get_soc_spec("CORE_NUM")})
     config = {"name": kernel_name,
-              "tensor_list": tensors}
+              "tensor_list": tensors,
+              "dummy_placeholder": True}
     tbe.build(schedules, config)

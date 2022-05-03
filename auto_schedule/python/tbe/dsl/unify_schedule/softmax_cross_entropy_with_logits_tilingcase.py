@@ -69,22 +69,25 @@ def calc(outs, option=None):
     def calc_base_key():
         # first 1 is used to fill int32 length,
         # second 1 means the case is reduce mode.
-        if mode == "copy":
+        if "copy" in mode:
             _base_key = 10
-        elif mode == "vec1":
+        elif "vec1" in mode:
             _base_key = 1
-        elif mode == "vec4":
+        elif "vec4" in mode:
             _base_key = 4
-        elif mode == "vec2":
+        elif "vec2" in mode:
             _base_key = 2
-        elif mode == "vec8":
+        elif "vec8" in mode:
             _base_key = 8
-        elif mode == "vec9":
+        elif "vec9" in mode:
             _base_key = 9
-        elif mode == "vec6":
+        elif "vec6" in mode:
             _base_key = 6
         else:
             _base_key = 0
+        if "cut" in mode:
+            _base_key += 100
+
         return _base_key
 
     base_key = calc_base_key()

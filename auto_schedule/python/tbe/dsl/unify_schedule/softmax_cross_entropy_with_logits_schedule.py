@@ -111,6 +111,7 @@ class SoftmaxCrossEntropyWithLogitsSchedule:
         self._outs = outs
         self._out = None  # type: Optional[tvm.tensor.Tensor]
         self._reduce_ext = None
+        self._reduce_broadcast = None
         self._out_ub = None
 
         self._schedule = None
@@ -130,6 +131,7 @@ class SoftmaxCrossEntropyWithLogitsSchedule:
 
         self._broadcast_tensors = set()
         self._reduce_tensors = set()
+
         self._absorbable_broadcast_tensors = set()
         self._compute_inline_broadcast = set()
 
@@ -181,6 +183,10 @@ class SoftmaxCrossEntropyWithLogitsSchedule:
 
         self._block_tiling_vars = {}
         self._ub_tiling_vars = {}
+
+        self._reduce_block_tiling_factor = None
+        self._reduce_ub_tiling_factor = None
+
         self._block_bind_axis = None
         self._compute_at_axis = None
         self._compute_at_axis_idx = None
@@ -200,37 +206,40 @@ class SoftmaxCrossEntropyWithLogitsSchedule:
         """
         :return:
         """
-        self._get_reduce_axis_info()
-        self._construct_compute_graph()
+        if "cut" not in self._mode:
+            self._get_reduce_axis_info()
+            self._construct_compute_graph()
 
-        self._schedule = tvm.create_schedule(self._out.op)
-        self._schedule.tiling_key = self._tiling_case["key"]
+            self._schedule = tvm.create_schedule(self._out.op)
+            self._schedule.tiling_key = self._tiling_case["key"]
 
-        self._do_cache_read()
-        self._do_cache_write()
+            self._do_cache_read()
+            self._do_cache_write()
 
-        self._calc_storage_bound()
-        self._do_storage_bound()
+            self._calc_storage_bound()
+            self._do_storage_bound()
 
-        self._do_compute_inline()
+            self._do_compute_inline()
 
-        self._storage_align()
+            self._storage_align()
 
-        self._calc_tiling()
-        self._do_tiling()
+            self._calc_tiling()
+            self._do_tiling()
 
-        self._calc_multi_core()
-        self._do_multi_core()
+            self._calc_multi_core()
+            self._do_multi_core()
 
-        self._calc_compute_at()
-        self._do_compute_at()
+            self._calc_compute_at()
+            self._do_compute_at()
 
-        self._calc_constraints()
-        self._do_constraints()
+            self._calc_constraints()
+            self._do_constraints()
 
-        self._calc_emit_insn()
-        self._do_emit_insn()
-        self._add_compile_info()
+            self._calc_emit_insn()
+            self._do_emit_insn()
+            self._add_compile_info()
+        else:
+            self._reduce_cut_schedule()
 
         return self._schedule if self._check_tiling_case() else None
 
@@ -385,11 +394,11 @@ class SoftmaxCrossEntropyWithLogitsSchedule:
                 break
 
         # UB on 910 needs to align
-        soc_need_aligned = cce.cce_conf.api_check_support("te.lang.cce.vexp", "float32") and\
+        soc_need_aligned = cce.cce_conf.api_check_support("te.lang.cce.vexp", "float32") and \
                            not cce.cce_conf.api_check_support("tik.vmrgsort4", "float32")
 
         # UB on 710 doesn't need to align
-        soc_not_need_aligned = cce.cce_conf.api_check_support("te.lang.cce.vexp", "float32") and\
+        soc_not_need_aligned = cce.cce_conf.api_check_support("te.lang.cce.vexp", "float32") and \
                                cce.cce_conf.api_check_support("tik.vmrgsort4", "float32")
 
         cond1 = isinstance(tensor_tmp.shape[1], tvm.expr.IntImm) and (int(tensor_tmp.shape[1]) != 1)
@@ -448,7 +457,7 @@ class SoftmaxCrossEntropyWithLogitsSchedule:
         if not self._compute_at_map:
             return
         for tensor in self._input_tensor_dst_tensor_map:
-            tensor_ub = self._input_tensor_buffer_tensor_map[tensor]
+            tensor_ub = self._input_tensor_buffer_tensor_map.get(tensor)
             sch[tensor_ub].compute_at(sch[self._out], self._compute_at_axis)
 
         for tensor in self._mid_out_tensor_list:
@@ -684,3 +693,491 @@ class SoftmaxCrossEntropyWithLogitsSchedule:
         self._reduce_ext = tbe.dsl.reduce_sum(output_backprop_sub_out, axis=reduce_axis_index, keepdims=True)
         res = tbe.dsl.vadd(self._reduce_ext, output_loss_reduce_out)
         return res
+
+    def _fake_node_cut_reduce(self, tensors, reduce_axis_index):
+        if len(self._outs) != 2:
+            raise RuntimeError("real out tensors only have two")
+        output_loss_reduce_out, output_backprop_sub_out = tensors
+        self._reduce_broadcast = tbe.dsl.broadcast(output_loss_reduce_out, output_backprop_sub_out.shape)
+        res = tbe.dsl.vadd(output_backprop_sub_out, self._reduce_broadcast)
+        return res
+
+    def _reduce_cut_schedule(self):
+        self._out_tensors = set(self._outs)
+        self._out = self._fake_node_cut_reduce(self._out_tensors, self._reduce_axis_index)
+        add_0 = self._out
+        if self._out.dtype == "float32":
+            sub_7 = self._out.op.input_tensors[0]
+        else:
+            cast_3 = self._out.op.input_tensors[0]
+            sub_7 = cast_3.op.input_tensors[0]
+
+        broadcast_ext = self._out.op.input_tensors[1]
+
+        if self._out.dtype == "float32":
+            reduce_2 = broadcast_ext.op.input_tensors[0]
+        else:
+            cast_2 = broadcast_ext.op.input_tensors[0]
+            reduce_2 = cast_2.op.input_tensors[0]
+
+        is_data_labels_broadcast = self._mode in (
+            "original_and_cut", "vec6_and_cut", "vec9_and_cut", "copy_and_cut", "vec4_and_cut", "vec8_and_cut")
+
+        is_data_features_broadcast = self._mode in (
+            "original_and_cut", "vec6_and_cut", "vec9_and_cut", "copy_and_cut", "vec1_and_cut", "vec2_and_cut")
+
+        if self._out.dtype == "float32":
+            if is_data_labels_broadcast:
+                broadcast_tensor_1 = sub_7.op.input_tensors[1]
+                data_labels = broadcast_tensor_1.op.input_tensors[0]
+            else:
+                data_labels = sub_7.op.input_tensors[1]
+        else:
+            cast_1 = sub_7.op.input_tensors[1]
+            if is_data_labels_broadcast:
+                broadcast_tensor_1 = cast_1.op.input_tensors[0]
+                data_labels = broadcast_tensor_1.op.input_tensors[0]
+            else:
+                data_labels = cast_1.op.input_tensors[0]
+
+        div_2 = sub_7.op.input_tensors[0]
+        mul_6 = reduce_2.op.input_tensors[0]
+        exp_1 = div_2.op.input_tensors[0]
+        broadcast_tensor_3 = div_2.op.input_tensors[1]
+        mul_5 = mul_6.op.input_tensors[0]
+        sub_0 = exp_1.op.input_tensors[0]
+        reduce_1 = broadcast_tensor_3.op.input_tensors[0]
+        sub_4 = mul_5.op.input_tensors[1]
+
+        if self._out.dtype == "float32":
+            if is_data_features_broadcast:
+                broadcast_tensor_0 = sub_0.op.input_tensors[0]
+                data_features = broadcast_tensor_0.op.input_tensors[0]
+            else:
+                data_features = sub_0.op.input_tensors[0]
+        else:
+            cast_0 = sub_0.op.input_tensors[0]
+            if is_data_features_broadcast:
+                broadcast_tensor_0 = cast_0.op.input_tensors[0]
+                data_features = broadcast_tensor_0.op.input_tensors[0]
+            else:
+                data_features = cast_0.op.input_tensors[0]
+
+        log_3 = sub_4.op.input_tensors[1]
+        broadcast_tensor_2 = sub_0.op.input_tensors[1]
+        reduce_0 = broadcast_tensor_2.op.input_tensors[0]
+
+        schedule_build_list = [self._out.op, sub_0.op, exp_1.op, broadcast_tensor_3.op]
+
+        if self._out.dtype == "float32":
+            if is_data_features_broadcast:
+                schedule_build_list.append(broadcast_tensor_0.op)
+            if is_data_labels_broadcast:
+                schedule_build_list.append(broadcast_tensor_1.op)
+        else:
+            schedule_build_list.append(cast_0.op)
+            schedule_build_list.append(cast_1.op)
+
+        self._schedule = tvm.create_schedule(schedule_build_list)
+        self._schedule.tiling_key = self._tiling_case["key"]
+        s = self._schedule
+
+        if self._out.dtype == "float32":
+            if is_data_features_broadcast:
+                data_features_ub = s.cache_read(data_features, "local.UB", [broadcast_tensor_0])
+                broadcast_tensor_0_ub = s.cache_write(broadcast_tensor_0, "local.UB")
+                broadcast_tensor_0_ub_000 = s.cache_read(broadcast_tensor_0, "local.UB", [sub_0])
+                broadcast_tensor_0_ub_001 = s.cache_read(broadcast_tensor_0, "local.UB", [reduce_0])
+            else:
+                data_features_ub_000 = s.cache_read(data_features, "local.UB", [sub_0])
+                data_features_ub_001 = s.cache_read(data_features, "local.UB", [reduce_0])
+
+            if is_data_labels_broadcast:
+                data_labels_ub = s.cache_read(data_labels, "local.UB", [broadcast_tensor_1])
+                broadcast_tensor_1_ub = s.cache_write(broadcast_tensor_1, "local.UB")
+                broadcast_tensor_1_ub_000 = s.cache_read(broadcast_tensor_1, "local.UB", [mul_5])
+                broadcast_tensor_1_ub_001 = s.cache_read(broadcast_tensor_1, "local.UB", [sub_7])
+            else:
+                data_labels_ub_000 = s.cache_read(data_labels, "local.UB", [mul_5])
+                data_labels_ub_001 = s.cache_read(data_labels, "local.UB", [sub_7])
+        else:
+            if is_data_features_broadcast:
+                data_features_ub = s.cache_read(data_features, "local.UB", [broadcast_tensor_0])
+                broadcast_tensor_0_ub = s.cache_write(broadcast_tensor_0, "local.UB")
+            else:
+                data_features_ub = s.cache_read(data_features, "local.UB", [cast_0])
+            cast_0_ub = s.cache_write(cast_0, "local.UB")
+            cast_0_ub_000 = s.cache_read(cast_0, "local.UB", [sub_0])
+            cast_0_ub_001 = s.cache_read(cast_0, "local.UB", [reduce_0])
+
+            if is_data_labels_broadcast:
+                data_labels_ub = s.cache_read(data_labels, "local.UB", [broadcast_tensor_1])
+                broadcast_tensor_1_ub = s.cache_write(broadcast_tensor_1, "local.UB")
+            else:
+                data_labels_ub = s.cache_read(data_labels, "local.UB", [cast_1])
+            cast_1_ub = s.cache_write(cast_1, "local.UB")
+            cast_1_ub_000 = s.cache_read(cast_1, "local.UB", [mul_5])
+            cast_1_ub_001 = s.cache_read(cast_1, "local.UB", [sub_7])
+
+        reduce_0_ub = s.cache_write(reduce_0, "local.UB")
+        broadcast_tensor_2_ub = s.cache_write(broadcast_tensor_2, "local.UB")
+
+        sub_0_ub_000 = s.cache_read(sub_0, "local.UB", [exp_1])
+        sub_0_ub_001 = s.cache_read(sub_0, "local.UB", [sub_4])
+        sub_0_ub = s.cache_write(sub_0, "local.UB")
+
+        exp_1_ub_000 = s.cache_read(exp_1, "local.UB", [reduce_1])
+        exp_1_ub_001 = s.cache_read(exp_1, "local.UB", [div_2])
+        exp_1_ub = s.cache_write(exp_1, "local.UB")
+
+        reduce_1_ub = s.cache_write(reduce_1, "local.UB")
+
+        broadcast_tensor_3_ub_000 = s.cache_read(broadcast_tensor_3, "local.UB", [log_3])
+        broadcast_tensor_3_ub_001 = s.cache_read(broadcast_tensor_3, "local.UB", [div_2])
+        broadcast_tensor_3_ub = s.cache_write(broadcast_tensor_3, "local.UB")
+
+        log_3_ub = s.cache_write(log_3, "local.UB")
+        sub_4_ub = s.cache_write(sub_4, "local.UB")
+        mul_5_ub = s.cache_write(mul_5, "local.UB")
+        mul_6_ub = s.cache_write(mul_6, "local.UB")
+        reduce_2_ub = s.cache_write(reduce_2, "local.UB")
+        div_2_ub = s.cache_write(div_2, "local.UB")
+        sub_7_ub = s.cache_write(sub_7, "local.UB")
+        if self._out.dtype != "float32":
+            cast_3_ub = s.cache_write(cast_3, "local.UB")
+            cast_2_ub = s.cache_write(cast_2, "local.UB")
+    
+        # compute_inline
+        s[reduce_0].compute_inline()
+        s[broadcast_tensor_2].compute_inline()
+        s[reduce_1].compute_inline()
+        s[log_3].compute_inline()
+        s[sub_4].compute_inline()
+        s[mul_5].compute_inline()
+        s[mul_6].compute_inline()
+        s[broadcast_ext].compute_inline()
+        s[div_2].compute_inline()
+        if self._out.dtype != "float32":
+            if is_data_features_broadcast:
+                s[broadcast_tensor_0].compute_inline()
+            if is_data_labels_broadcast:
+                s[broadcast_tensor_1].compute_inline()
+            s[reduce_2].compute_inline()
+            s[sub_7].compute_inline()
+
+        res = self._out
+        shape = util.shape_to_list(res.shape)
+        b_i = 0
+        u_i = 1
+        b_bound = (1, util.get_bound(shape[b_i])[1])
+        u_bound = self._tiling_case.get("ub_factor_bound")
+        if u_bound is None:
+            u_bound = (1, util.get_bound(shape[u_i])[1])
+        self._reduce_block_tiling_factor = operation.var("block_nparts_" + str(b_i), b_bound)
+        self._reduce_ub_tiling_factor = operation.var("ub_factor_" + str(b_i), u_bound)
+
+        reduce_0_ub_axis_0 = s[reduce_0_ub].op.axis[0]
+        reduce_0_ub_axis_1 = s[reduce_0_ub].op.axis[1]
+        reduce_0_ub_reduce_axis_0_u, reduce_0_ub_reduce_axis_0_i = \
+            s[reduce_0_ub].split(s[reduce_0_ub].op.reduce_axis[0], factor=self._reduce_ub_tiling_factor)
+
+        sub_0_axis_0_b, sub_0_axis_0_i = s[sub_0].split(s[sub_0].op.axis[0], nparts=self._reduce_block_tiling_factor)
+        sub_0_axis_1_u, sub_0_axis_1_i = s[sub_0].split(s[sub_0].op.axis[1], factor=self._reduce_ub_tiling_factor)
+        s[sub_0].reorder(sub_0_axis_0_b, sub_0_axis_0_i, sub_0_axis_1_u, sub_0_axis_1_i)
+
+        exp_1_axis_0_b, exp_1_axis_0_i = s[exp_1].split(s[exp_1].op.axis[0], nparts=self._reduce_block_tiling_factor)
+        exp_1_axis_1_u, exp_1_axis_1_i = s[exp_1].split(s[exp_1].op.axis[1], factor=self._reduce_ub_tiling_factor)
+        s[exp_1].reorder(exp_1_axis_0_b, exp_1_axis_0_i, exp_1_axis_1_u, exp_1_axis_1_i)
+
+        reduce_1_ub_axis_0 = s[reduce_1_ub].op.axis[0]
+        reduce_1_ub_axis_1 = s[reduce_1_ub].op.axis[1]
+        reduce_1_ub_reduce_axis_0_u, reduce_1_ub_reduce_axis_0_i = \
+            s[reduce_1_ub].split(s[reduce_1_ub].op.reduce_axis[0], factor=self._reduce_ub_tiling_factor)
+
+        broadcast_tensor_3_axis_0_b, broadcast_tensor_3_axis_0_i = \
+            s[broadcast_tensor_3].split(s[broadcast_tensor_3].op.axis[0], nparts=self._reduce_block_tiling_factor)
+        broadcast_tensor_3_axis_1_u, broadcast_tensor_3_axis_1_i = \
+            s[broadcast_tensor_3].split(s[broadcast_tensor_3].op.axis[1], factor=self._reduce_ub_tiling_factor)
+        s[broadcast_tensor_3].reorder(broadcast_tensor_3_axis_0_b, broadcast_tensor_3_axis_0_i,
+                                      broadcast_tensor_3_axis_1_u, broadcast_tensor_3_axis_1_i)
+
+        reduce_2_ub_axis_0 = s[reduce_2_ub].op.axis[0]
+        reduce_2_ub_axis_1 = s[reduce_2_ub].op.axis[1]
+        reduce_2_ub_reduce_axis_0_u, reduce_2_ub_reduce_axis_0_i = \
+            s[reduce_2_ub].split(s[reduce_2_ub].op.reduce_axis[0], factor=self._reduce_ub_tiling_factor)
+
+        add_0_axis_0_b, add_0_axis_0_i = s[add_0].split(s[add_0].op.axis[0], nparts=self._reduce_block_tiling_factor)
+        add_0_axis_1_u, add_0_axis_1_i = s[add_0].split(s[add_0].op.axis[1], factor=self._reduce_ub_tiling_factor)
+        s[add_0].reorder(add_0_axis_0_b, add_0_axis_0_i, add_0_axis_1_u, add_0_axis_1_i)
+
+        if self._out.dtype == "float32":
+            if is_data_features_broadcast:
+                broadcast_tensor_0_axis_0_b, broadcast_tensor_0_axis_0_i = \
+                    s[broadcast_tensor_0].split(s[broadcast_tensor_0].op.axis[0],
+                                                nparts=self._reduce_block_tiling_factor)
+                broadcast_tensor_0_axis_1_u, broadcast_tensor_0_axis_1_i = \
+                    s[broadcast_tensor_0].split(s[broadcast_tensor_0].op.axis[1], factor=self._reduce_ub_tiling_factor)
+                s[broadcast_tensor_0].reorder(broadcast_tensor_0_axis_0_b, broadcast_tensor_0_axis_0_i,
+                                              broadcast_tensor_0_axis_1_u, broadcast_tensor_0_axis_1_i)
+            
+            if is_data_labels_broadcast:
+                broadcast_tensor_1_axis_0_b, broadcast_tensor_1_axis_0_i = \
+                    s[broadcast_tensor_1].split(s[broadcast_tensor_1].op.axis[0],
+                                                nparts=self._reduce_block_tiling_factor)
+                broadcast_tensor_1_axis_1_u, broadcast_tensor_1_axis_1_i = \
+                    s[broadcast_tensor_1].split(s[broadcast_tensor_1].op.axis[1], factor=self._reduce_ub_tiling_factor)
+                s[broadcast_tensor_1].reorder(broadcast_tensor_1_axis_0_b, broadcast_tensor_1_axis_0_i,
+                                              broadcast_tensor_1_axis_1_u, broadcast_tensor_1_axis_1_i)
+        else:
+            cast_0_axis_0_b, cast_0_axis_0_i = \
+                s[cast_0].split(s[cast_0].op.axis[0], nparts=self._reduce_block_tiling_factor)
+            cast_0_axis_1_u, cast_0_axis_1_i = \
+                s[cast_0].split(s[cast_0].op.axis[1], factor=self._reduce_ub_tiling_factor)
+            s[cast_0].reorder(cast_0_axis_0_b, cast_0_axis_0_i, cast_0_axis_1_u, cast_0_axis_1_i)
+
+            cast_1_axis_0_b, cast_1_axis_0_i = \
+                s[cast_1].split(s[cast_1].op.axis[0], nparts=self._reduce_block_tiling_factor)
+            cast_1_axis_1_u, cast_1_axis_1_i = \
+                s[cast_1].split(s[cast_1].op.axis[1], factor=self._reduce_ub_tiling_factor)
+            s[cast_1].reorder(cast_1_axis_0_b, cast_1_axis_0_i, cast_1_axis_1_u, cast_1_axis_1_i)
+
+        # for compute_at
+        if self._out.dtype == "float32":
+            if is_data_features_broadcast:
+                s[data_features_ub].compute_at(s[broadcast_tensor_0], broadcast_tensor_0_axis_1_u)
+                s[broadcast_tensor_0_ub].compute_at(s[broadcast_tensor_0], broadcast_tensor_0_axis_1_u)
+                s[broadcast_tensor_0_ub_000].compute_at(s[sub_0], sub_0_axis_1_u)
+                s[broadcast_tensor_0_ub_001].compute_at(s[reduce_0_ub], reduce_0_ub_reduce_axis_0_u)
+            else:
+                s[data_features_ub_000].compute_at(s[sub_0], sub_0_axis_1_u)
+                s[data_features_ub_001].compute_at(s[reduce_0_ub], reduce_0_ub_reduce_axis_0_u)
+
+            if is_data_labels_broadcast:
+                s[data_labels_ub].compute_at(s[broadcast_tensor_1], broadcast_tensor_1_axis_1_u)
+                s[broadcast_tensor_1_ub].compute_at(s[broadcast_tensor_1], broadcast_tensor_1_axis_1_u)
+                s[broadcast_tensor_1_ub_000].compute_at(s[reduce_2_ub], reduce_2_ub_reduce_axis_0_u)
+                s[broadcast_tensor_1_ub_001].compute_at(s[add_0], add_0_axis_1_u)
+            else:
+                s[data_labels_ub_000].compute_at(s[reduce_2_ub], reduce_2_ub_reduce_axis_0_u)
+                s[data_labels_ub_001].compute_at(s[add_0], add_0_axis_1_u)
+        else:
+            s[data_features_ub].compute_at(s[cast_0], cast_0_axis_1_u)
+            if is_data_features_broadcast:
+                s[broadcast_tensor_0_ub].compute_at(s[cast_0], cast_0_axis_1_u)
+            s[cast_0_ub].compute_at(s[cast_0], cast_0_axis_1_u)
+            s[cast_0_ub_000].compute_at(s[sub_0], sub_0_axis_1_u)
+            s[cast_0_ub_001].compute_at(s[reduce_0_ub], reduce_0_ub_reduce_axis_0_u)
+
+            s[data_labels_ub].compute_at(s[cast_1], cast_1_axis_1_u)
+            if is_data_labels_broadcast:
+                s[broadcast_tensor_1_ub].compute_at(s[cast_1], cast_1_axis_1_u)
+            s[cast_1_ub].compute_at(s[cast_1], cast_1_axis_1_u)
+            s[cast_1_ub_000].compute_at(s[reduce_2_ub], reduce_2_ub_reduce_axis_0_u)
+            s[cast_1_ub_001].compute_at(s[add_0], add_0_axis_1_u)
+
+        s[reduce_0_ub].compute_at(s[sub_0], sub_0_axis_0_i)
+        s[broadcast_tensor_2_ub].compute_at(s[sub_0], sub_0_axis_1_u)
+        s[sub_0_ub].compute_at(s[sub_0], sub_0_axis_1_u)
+        s[sub_0_ub_001].compute_at(s[reduce_2_ub], reduce_2_ub_reduce_axis_0_u)
+        s[sub_0_ub_000].compute_at(s[exp_1], exp_1_axis_1_u)
+        s[exp_1_ub].compute_at(s[exp_1], exp_1_axis_1_u)
+        s[exp_1_ub_001].compute_at(s[add_0], add_0_axis_1_u)
+        s[exp_1_ub_000].compute_at(s[reduce_1_ub], reduce_1_ub_reduce_axis_0_u)
+        s[reduce_1_ub].compute_at(s[broadcast_tensor_3], broadcast_tensor_3_axis_0_b)
+        s[broadcast_tensor_3_ub].compute_at(s[broadcast_tensor_3], broadcast_tensor_3_axis_1_u)
+        s[broadcast_tensor_3_ub_001].compute_at(s[add_0], add_0_axis_1_u)
+        s[broadcast_tensor_3_ub_000].compute_at(s[reduce_2_ub], reduce_2_ub_reduce_axis_0_u)
+        s[log_3_ub].compute_at(s[reduce_2_ub], reduce_2_ub_reduce_axis_0_u)
+        s[sub_4_ub].compute_at(s[reduce_2_ub], reduce_2_ub_reduce_axis_0_u)
+        s[mul_5_ub].compute_at(s[reduce_2_ub], reduce_2_ub_reduce_axis_0_u)
+        s[mul_6_ub].compute_at(s[reduce_2_ub], reduce_2_ub_reduce_axis_0_u)
+        s[reduce_2_ub].compute_at(s[add_0], add_0_axis_0_b)
+        s[div_2_ub].compute_at(s[add_0], add_0_axis_1_u)
+        s[sub_7_ub].compute_at(s[add_0], add_0_axis_1_u)
+
+        if self._out.dtype == "float32":
+            s[reduce_2].compute_at(s[add_0], add_0_axis_0_b)
+            s[sub_7].compute_at(s[add_0], add_0_axis_1_u)
+        else:
+            s[cast_3_ub].compute_at(s[add_0], add_0_axis_1_u)
+            s[cast_2_ub].compute_at(s[add_0], add_0_axis_0_b)
+            s[cast_3].compute_at(s[add_0], add_0_axis_1_u)
+            s[cast_2].compute_at(s[add_0], add_0_axis_0_b)
+
+        if self._out.dtype == "float32":
+            if is_data_labels_broadcast:
+                s[data_labels_ub].emit_insn(s[data_labels_ub].op.axis[0], "dma_copy")
+                s[broadcast_tensor_1_ub].emit_insn(s[broadcast_tensor_1_ub].op.axis[1], "vector_broadcast")
+                s[broadcast_tensor_1].emit_insn(broadcast_tensor_1_axis_1_i, "dma_copy")
+                s[broadcast_tensor_1_ub_000].emit_insn(s[broadcast_tensor_1_ub_000].op.axis[0], "dma_copy")
+                s[broadcast_tensor_1_ub_001].emit_insn(s[broadcast_tensor_1_ub_001].op.axis[0], "dma_copy")
+            else:
+                s[data_labels_ub_000].emit_insn(s[data_labels_ub_000].op.axis[0], "dma_copy")
+                s[data_labels_ub_001].emit_insn(s[data_labels_ub_001].op.axis[0], "dma_copy")
+
+            if is_data_features_broadcast:
+                s[data_features_ub].emit_insn(s[data_features_ub].op.axis[0], "dma_copy")
+                s[broadcast_tensor_0_ub].emit_insn(s[broadcast_tensor_0_ub].op.axis[1], "vector_broadcast")
+                s[broadcast_tensor_0].emit_insn(broadcast_tensor_0_axis_1_i, "dma_copy")
+                s[broadcast_tensor_0_ub_000].emit_insn(s[broadcast_tensor_0_ub_000].op.axis[0], "dma_copy")
+                s[broadcast_tensor_0_ub_001].emit_insn(s[broadcast_tensor_0_ub_001].op.axis[0], "dma_copy")
+            else:
+                s[data_features_ub_000].emit_insn(s[data_features_ub_000].op.axis[0], "dma_copy")
+                s[data_features_ub_001].emit_insn(s[data_features_ub_001].op.axis[0], "dma_copy")
+        else:
+            s[data_labels_ub].emit_insn(s[data_labels_ub].op.axis[0], "dma_copy")
+            if is_data_labels_broadcast:
+                s[broadcast_tensor_1_ub].emit_insn(s[broadcast_tensor_1_ub].op.axis[1], "vector_broadcast")
+            s[cast_1_ub].emit_insn(s[cast_1_ub].op.axis[0], "vector_conv")
+            s[cast_1].emit_insn(cast_1_axis_1_i, "dma_copy")
+            s[cast_1_ub_000].emit_insn(s[cast_1_ub_000].op.axis[0], "dma_copy")
+            s[cast_1_ub_001].emit_insn(s[cast_1_ub_001].op.axis[0], "dma_copy")
+
+            s[data_features_ub].emit_insn(s[data_features_ub].op.axis[0], "dma_copy")
+            if is_data_features_broadcast:
+                s[broadcast_tensor_0_ub].emit_insn(s[broadcast_tensor_0_ub].op.axis[1], "vector_broadcast")
+            s[cast_0_ub].emit_insn(s[cast_0_ub].op.axis[0], "vector_conv")
+            s[cast_0].emit_insn(cast_0_axis_1_i, "dma_copy")
+            s[cast_0_ub_000].emit_insn(s[cast_0_ub_000].op.axis[0], "dma_copy")
+            s[cast_0_ub_001].emit_insn(s[cast_0_ub_001].op.axis[0], "dma_copy")
+
+        s[reduce_0_ub].emit_insn(reduce_0_ub_reduce_axis_0_i, "vector_reduce_max")
+        s[broadcast_tensor_2_ub].emit_insn(s[broadcast_tensor_2_ub].op.axis[1], "vector_broadcast")
+        s[sub_0_ub].emit_insn(s[sub_0_ub].op.axis[0], "vector_sub")
+        s[sub_0].emit_insn(sub_0_axis_1_i, "dma_copy")
+        s[sub_0_ub_000].emit_insn(s[sub_0_ub_000].op.axis[0], "dma_copy")
+        s[sub_0_ub_001].emit_insn(s[sub_0_ub_001].op.axis[0], "dma_copy")
+
+        s[exp_1_ub].emit_insn(s[exp_1_ub].op.axis[0], "vector_exp")
+        s[exp_1].emit_insn(exp_1_axis_1_i, "dma_copy")
+        s[exp_1_ub_000].emit_insn(s[exp_1_ub_000].op.axis[0], "dma_copy")
+        s[exp_1_ub_001].emit_insn(s[exp_1_ub_001].op.axis[0], "dma_copy")
+
+        s[reduce_1_ub].emit_insn(reduce_1_ub_reduce_axis_0_i, "vector_reduce_sum")
+
+        s[broadcast_tensor_3_ub].emit_insn(s[broadcast_tensor_3_ub].op.axis[1], "vector_broadcast")
+        s[broadcast_tensor_3].emit_insn(broadcast_tensor_3_axis_1_i, "dma_copy")
+        s[broadcast_tensor_3_ub_000].emit_insn(s[broadcast_tensor_3_ub_000].op.axis[0], "dma_copy")
+        s[broadcast_tensor_3_ub_001].emit_insn(s[broadcast_tensor_3_ub_001].op.axis[0], "dma_copy")
+
+        s[log_3_ub].emit_insn(s[log_3_ub].op.axis[0], "vector_ln")
+        s[sub_4_ub].emit_insn(s[sub_4_ub].op.axis[0], "vector_sub")
+        s[mul_5_ub].emit_insn(s[mul_5_ub].op.axis[0], "vector_mul")
+        s[mul_6_ub].emit_insn(s[mul_6_ub].op.axis[0], "vector_muls")
+        s[reduce_2_ub].emit_insn(reduce_2_ub_reduce_axis_0_i, "vector_reduce_sum")
+        s[div_2_ub].emit_insn(s[div_2_ub].op.axis[0], "vector_div")
+        s[sub_7_ub].emit_insn(s[sub_7_ub].op.axis[0], "vector_sub")
+        s[add_0].emit_insn(add_0_axis_1_i, "phony_insn")
+
+        if self._out.dtype == "float32":
+            s[sub_7].emit_insn(s[sub_7].op.axis[0], "dma_copy", attrs={"no_overlap": 1})
+            s[reduce_2].emit_insn(s[reduce_2].op.axis[0], "dma_copy", attrs={"no_overlap": 1})
+        else:
+            s[cast_3_ub].emit_insn(s[cast_3_ub].op.axis[0], "vector_conv")
+            s[cast_2_ub].emit_insn(s[cast_2_ub].op.axis[0], "vector_conv")
+
+            s[cast_3].emit_insn(s[cast_3].op.axis[0], "dma_copy", attrs={"no_overlap": 1})
+            s[cast_2].emit_insn(s[cast_2].op.axis[0], "dma_copy", attrs={"no_overlap": 1})
+
+        # storage_align
+        if self._out.dtype == "float32":
+            if is_data_labels_broadcast:
+                s[data_labels_ub].storage_align(s[data_labels_ub].op.axis[0], 8, 0)
+                s[broadcast_tensor_1_ub].storage_align(s[broadcast_tensor_1_ub].op.axis[0], 8, 0)
+                s[broadcast_tensor_1_ub_000].storage_align(s[broadcast_tensor_1_ub_000].op.axis[0], 8, 0)
+                s[broadcast_tensor_1_ub_001].storage_align(s[broadcast_tensor_1_ub_001].op.axis[0], 8, 0)
+            else:
+                s[data_labels_ub_000].storage_align(s[data_labels_ub_000].op.axis[0], 8, 0)
+                s[data_labels_ub_001].storage_align(s[data_labels_ub_001].op.axis[0], 8, 0)
+
+            if is_data_features_broadcast:
+                s[data_features_ub].storage_align(s[data_features_ub].op.axis[0], 8, 0)
+                s[broadcast_tensor_0_ub].storage_align(s[broadcast_tensor_0_ub].op.axis[0], 8, 0)
+                s[broadcast_tensor_0_ub_000].storage_align(s[broadcast_tensor_0_ub_000].op.axis[0], 8, 0)
+                s[broadcast_tensor_0_ub_001].storage_align(s[broadcast_tensor_0_ub_001].op.axis[0], 8, 0)
+            else:
+                s[data_features_ub_000].storage_align(s[data_features_ub_000].op.axis[0], 8, 0)
+                s[data_features_ub_001].storage_align(s[data_features_ub_001].op.axis[0], 8, 0)
+        else:
+            s[data_labels_ub].storage_align(s[data_labels_ub].op.axis[0], 16, 0)
+            if is_data_labels_broadcast:
+                s[broadcast_tensor_1_ub].storage_align(s[broadcast_tensor_1_ub].op.axis[0], 16, 0)
+            s[cast_1_ub].storage_align(s[cast_1_ub].op.axis[0], 8, 0)
+            s[cast_1_ub_000].storage_align(s[cast_1_ub_000].op.axis[0], 8, 0)
+            s[cast_1_ub_001].storage_align(s[cast_1_ub_001].op.axis[0], 8, 0)
+
+            s[data_features_ub].storage_align(s[data_features_ub].op.axis[0], 16, 0)
+            if is_data_features_broadcast:
+                s[broadcast_tensor_0_ub].storage_align(s[broadcast_tensor_0_ub].op.axis[0], 16, 0)
+            s[cast_0_ub].storage_align(s[cast_0_ub].op.axis[0], 8, 0)
+            s[cast_0_ub_000].storage_align(s[cast_0_ub_000].op.axis[0], 8, 0)
+            s[cast_0_ub_001].storage_align(s[cast_0_ub_001].op.axis[0], 8, 0)
+
+        s[broadcast_tensor_2_ub].storage_align(s[broadcast_tensor_2_ub].op.axis[0], 8, 0)
+
+        s[sub_0_ub].storage_align(s[sub_0_ub].op.axis[0], 8, 0)
+        s[sub_0_ub_000].storage_align(s[sub_0_ub_000].op.axis[0], 8, 0)
+        s[sub_0_ub_001].storage_align(s[sub_0_ub_001].op.axis[0], 8, 0)
+
+        s[exp_1_ub].storage_align(s[exp_1_ub].op.axis[0], 8, 0)
+        s[exp_1_ub_000].storage_align(s[exp_1_ub_000].op.axis[0], 8, 0)
+        s[exp_1_ub_001].storage_align(s[exp_1_ub_001].op.axis[0], 8, 0)
+
+        s[broadcast_tensor_3_ub].storage_align(s[broadcast_tensor_3_ub].op.axis[0], 8, 0)
+        s[broadcast_tensor_3_ub_000].storage_align(s[broadcast_tensor_3_ub_000].op.axis[0], 8, 0)
+        s[broadcast_tensor_3_ub_001].storage_align(s[broadcast_tensor_3_ub_001].op.axis[0], 8, 0)
+
+        s[log_3_ub].storage_align(s[log_3_ub].op.axis[0], 8, 0)
+        s[sub_4_ub].storage_align(s[sub_4_ub].op.axis[0], 8, 0)
+        s[mul_5_ub].storage_align(s[mul_5_ub].op.axis[0], 8, 0)
+        s[mul_6_ub].storage_align(s[mul_6_ub].op.axis[0], 8, 0)
+        s[div_2_ub].storage_align(s[div_2_ub].op.axis[0], 8, 0)
+        s[sub_7_ub].storage_align(s[sub_7_ub].op.axis[0], 8, 0)
+
+        block = tvm.thread_axis("blockIdx.x")
+        s[broadcast_tensor_3].bind(broadcast_tensor_3_axis_0_b, block)
+        s[exp_1].bind(exp_1_axis_0_b, block)
+        s[sub_0].bind(sub_0_axis_0_b, block)
+
+        if self._out.dtype == "float32":
+            if is_data_labels_broadcast:
+                s[broadcast_tensor_1].bind(broadcast_tensor_1_axis_0_b, block)
+            if is_data_features_broadcast:
+                s[broadcast_tensor_0].bind(broadcast_tensor_0_axis_0_b, block)
+        else:
+            s[cast_0].bind(cast_0_axis_0_b, block)
+            s[cast_1].bind(cast_1_axis_0_b, block)
+
+        s[add_0].bind(add_0_axis_0_b, block)
+
+        self._coexisting_quantity = 10
+        tensor_space = self._ub_size // self._coexisting_quantity
+        self._tensor_space = tensor_space // BLOCK_SIZE_BYTE * BLOCK_SIZE_BYTE
+        tensors = [reduce_0_ub, broadcast_tensor_2_ub, sub_0_ub, sub_0_ub_001, sub_0_ub_000,
+                   exp_1_ub, exp_1_ub_001, exp_1_ub_000,
+                   reduce_1_ub, broadcast_tensor_3_ub, broadcast_tensor_3_ub_001, broadcast_tensor_3_ub_000,
+                   log_3_ub, sub_4_ub, mul_5_ub, mul_6_ub, reduce_2_ub, div_2_ub, sub_7_ub]
+        if self._out.dtype == "float32":
+            if is_data_features_broadcast:
+                tensors += [data_features_ub,
+                            broadcast_tensor_0_ub, broadcast_tensor_0_ub_001, broadcast_tensor_0_ub_000]
+            else:
+                tensors += [data_features_ub_000, data_features_ub_001]
+
+            if is_data_labels_broadcast:
+                tensors += [data_labels_ub,
+                            broadcast_tensor_1_ub, broadcast_tensor_1_ub_001, broadcast_tensor_1_ub_000]
+            else:
+                tensors += [data_labels_ub_000, data_labels_ub_001]
+        else:
+            tensors += [data_features_ub, data_labels_ub, cast_0_ub_000, cast_0_ub_001,
+                        cast_1_ub_000, cast_1_ub_001, cast_0_ub, cast_1_ub, cast_2_ub, cast_3_ub]
+            if is_data_features_broadcast:
+                tensors += [broadcast_tensor_0_ub]
+            if is_data_labels_broadcast:
+                tensors += [broadcast_tensor_1_ub]
+
+        for tensor_i in tensors:
+            storage_bound = int(self._tensor_space // DTYPE_BYTE_MAPPING[tensor_i.dtype])
+            s[tensor_i].set_buffer_size(storage_bound)
+        self._max_dtype_bytes = 4

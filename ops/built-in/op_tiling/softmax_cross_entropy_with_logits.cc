@@ -36,6 +36,8 @@ static const size_t INPUT_NUM = 2;
 static const size_t BTYPE_PER_BLOCK = 32;
 static const size_t MAX_COEXIST_NUM = 10;
 static const size_t ND_SHAPE_LEN = 2;
+static const size_t MAX_DTYPE_SIZE = 4;
+static const size_t FP16_BLOCK_SIZE = 16;
 
 // compile info
 struct CompileInfo {
@@ -88,26 +90,42 @@ int64_t GetDtypeSize(const ge::DataType& dtype) {
 }
 
 bool WriteTilingData(const std::string& op_type, const CompileInfo& compile_info,
-                     TilingInfo& tiling_info, utils::OpRunInfo& run_info, std::vector<int64_t> input_features_shape,
-                     std::vector<int64_t> input_labels_shape) {
+                     TilingInfo& tiling_info, utils::OpRunInfo& run_info,
+                     ge::DataType& out_type, std::array<std::array<int64_t, MAX_DIM_LEN>, INPUT_NUM>& input_shapes,
+                     const std::array<int64_t, MAX_DIM_LEN>& output_shape) {
   GELOGD("op [%s] tiling ub_size:%lld", op_type.c_str(), compile_info.ub_size);
   GELOGD("op [%s] tiling core_num:%lld", op_type.c_str(), compile_info.core_num);
 
   GELOGD("op [%s] tiling key:%lld", op_type.c_str(), tiling_info.key);
-  GELOGD("op [%s] tiling ub_factor:%lld", op_type.c_str(), tiling_info.ub_factor);
-  GELOGD("op [%s] tiling ub_axis:%lld", op_type.c_str(), tiling_info.ub_axis);
+
+  GELOGD("op [%s] tiling input_shapes:[%lld, %lld], [%lld, %lld]", op_type.c_str(),
+         input_shapes[0][0], input_shapes[0][1], input_shapes[1][0], input_shapes[1][1]);
+
   GELOGD("op [%s] tiling block_nparts:%lld", op_type.c_str(), tiling_info.block_nparts);
+  GELOGD("op [%s] tiling ub_factor:%lld", op_type.c_str(), tiling_info.ub_factor);
+
   GELOGD("op [%s] tiling block_axis:%lld", op_type.c_str(), tiling_info.block_axis);
+  GELOGD("op [%s] tiling ub_axis:%lld", op_type.c_str(), tiling_info.ub_axis);
+  std::vector<int32_t> workspaces;
+  int32_t dtype_size = GetDtypeSize(out_type);
+  int32_t bound_size = compile_info.ub_size / MAX_DTYPE_SIZE / MAX_COEXIST_NUM / FP16_BLOCK_SIZE * FP16_BLOCK_SIZE;
+  if (output_shape[1] > bound_size) {
+    int32_t workspace_size = output_shape[0] * output_shape[1] * dtype_size;
+    workspaces = {workspace_size, workspace_size, workspace_size, workspace_size, workspace_size};
+  }
+  for (int32_t ws : workspaces) {
+    run_info.AddWorkspace(ws);
+  }
 
   run_info.SetBlockDim(tiling_info.block_nparts);
 
   int32_t tiling_key = static_cast<int32_t>(tiling_info.key);
   run_info.SetTilingKey(tiling_key);
 
-  run_info.AddTilingData(static_cast<int32_t>(input_features_shape[0]));
-  run_info.AddTilingData(static_cast<int32_t>(input_labels_shape[0]));
-  run_info.AddTilingData(static_cast<int32_t>(input_features_shape[1]));
-  run_info.AddTilingData(static_cast<int32_t>(input_labels_shape[1]));
+  run_info.AddTilingData(static_cast<int32_t>(input_shapes[0][0]));
+  run_info.AddTilingData(static_cast<int32_t>(input_shapes[1][0]));
+  run_info.AddTilingData(static_cast<int32_t>(input_shapes[0][1]));
+  run_info.AddTilingData(static_cast<int32_t>(input_shapes[1][1]));
 
   run_info.AddTilingData(static_cast<int32_t>(tiling_info.block_nparts));
   run_info.AddTilingData(static_cast<int32_t>(tiling_info.ub_factor));
@@ -150,10 +168,13 @@ bool CompletedShapes(std::array<std::array<int64_t, MAX_DIM_LEN>, INPUT_NUM>& in
                       return false);
     }
   }
+  GELOGD("op [%s] after complete shape, input_shapes = [%lld, %lld], [%lld, %lld]", op_type.c_str(),
+         input_shapes[0][0], input_shapes[0][1], input_shapes[1][0], input_shapes[1][1]);
   return true;
 }
 
-void CalNdKey(TilingInfo& tiling_info, const std::array<std::array<int64_t, MAX_DIM_LEN>, INPUT_NUM>& input_shapes) {
+void CalNdKey(const std::string& op_type, TilingInfo& tiling_info,
+              const std::array<std::array<int64_t, MAX_DIM_LEN>, INPUT_NUM>& input_shapes, int32_t bound_size) {
   constexpr int key_10 = 10;
   constexpr int key_1 = 1;
   constexpr int key_4 = 4;
@@ -161,6 +182,7 @@ void CalNdKey(TilingInfo& tiling_info, const std::array<std::array<int64_t, MAX_
   constexpr int key_8 = 8;
   constexpr int key_9 = 9;
   constexpr int key_6 = 6;
+  int64_t reduce_mode = 100;
   int64_t key = 0;
   std::array<int64_t, MAX_DIM_LEN> features_shape = input_shapes[0];
   std::array<int64_t, MAX_DIM_LEN> labels_shape = input_shapes[1];
@@ -194,13 +216,17 @@ void CalNdKey(TilingInfo& tiling_info, const std::array<std::array<int64_t, MAX_
     // large 1, 1, large
     key = key_6;
   }
+  if (max(dim11, dim01) > bound_size) {
+    key += reduce_mode;
+  }
   tiling_info.key = key;
+  GELOGD("op [%s] key[%d].", op_type.c_str(), key);
 }
 
 bool DoNdTiling(const std::string& op_type, CompileInfo& compile_info, TilingInfo& tiling_info,
-                std::array<std::array<int64_t, MAX_DIM_LEN>, INPUT_NUM>& input_shapes, ge::DataType& out_type,
+                ge::DataType& out_type, std::array<std::array<int64_t, MAX_DIM_LEN>, INPUT_NUM>& input_shapes,
                 const std::array<int64_t, MAX_DIM_LEN>& output_shape) {
-  GELOGI("op [%s]: DoTiling func running", op_type.c_str());
+  GELOGI("op [%s]: DoNdTiling func running", op_type.c_str());
   int32_t n_h_w = max(input_shapes[0][0], input_shapes[1][0]);
   int32_t c_size = max(input_shapes[0][1], input_shapes[1][1]);
   int32_t ub_axis = 0;
@@ -208,13 +234,17 @@ bool DoNdTiling(const std::string& op_type, CompileInfo& compile_info, TilingInf
   int32_t block_axis = 0;
   int32_t block_nparts = 1;
   int32_t dtype_size = GetDtypeSize(out_type);
+  GELOGD("op [%s] dtype_size = %d.", op_type.c_str(), dtype_size);
   OP_TILING_CHECK(dtype_size == 0, VECTOR_INNER_ERR_REPORT_TILIING(op_type, "dtype_size cannot be zero"), return false);
-  int32_t bound_size = compile_info.ub_size / dtype_size / MAX_COEXIST_NUM;
+  int32_t bound_size = compile_info.ub_size / MAX_DTYPE_SIZE / MAX_COEXIST_NUM / FP16_BLOCK_SIZE * FP16_BLOCK_SIZE;
   int32_t num_per_block = BTYPE_PER_BLOCK / dtype_size;
-  int32_t c_size_align = (c_size + num_per_block - 1) / num_per_block * num_per_block;
+  int32_t c_size_align = (c_size + FP16_BLOCK_SIZE - 1) / FP16_BLOCK_SIZE * FP16_BLOCK_SIZE;
+  GELOGD("op [%s] bound_size = %d.", op_type.c_str(), bound_size);
   if (c_size_align > bound_size) {
-    VECTOR_INNER_ERR_REPORT_TILIING("SoftmaxCrossEntropyWithLogitsTiling", "not supported shape");
-    return false;
+    block_nparts = (n_h_w * dtype_size) >= (compile_info.core_num * static_cast<int32_t>(BTYPE_PER_BLOCK))
+                    ? compile_info.core_num
+                    : max(n_h_w * dtype_size / static_cast<int32_t>(BTYPE_PER_BLOCK), 1);
+    ub_factor = (c_size - bound_size) >= num_per_block ? bound_size : bound_size - num_per_block;
   } else if ((c_size_align * num_per_block < bound_size) && (n_h_w >= num_per_block)) {
     // for open multi-core
     block_nparts = (n_h_w * dtype_size) >= (compile_info.core_num * static_cast<int32_t>(BTYPE_PER_BLOCK))
@@ -227,13 +257,16 @@ bool DoNdTiling(const std::string& op_type, CompileInfo& compile_info, TilingInf
     block_nparts = 1;
     ub_factor = min(bound_size / c_size_align, n_h_w);
   }
+  block_nparts = max(block_nparts, 1);
+  GELOGD("op [%s] block_nparts = %d.", op_type.c_str(), block_nparts);
+  GELOGD("op [%s] ub_factor = %d.", op_type.c_str(), ub_factor);
 
   tiling_info.block_nparts = block_nparts;
   tiling_info.block_axis = block_axis;
   tiling_info.ub_factor = ub_factor;
   tiling_info.ub_axis = ub_axis;
 
-  CalNdKey(tiling_info, input_shapes);
+  CalNdKey(op_type, tiling_info, input_shapes, bound_size);
 
   return true;
 }
@@ -264,6 +297,8 @@ bool SoftmaxCrossEntropyWithLogitsTiling(const std::string& op_type, const ge::O
       input_features_shape.size() > input_labels_shape.size() ? input_features_shape.size() : input_labels_shape.size();
   std::array<std::array<int64_t, MAX_DIM_LEN>, INPUT_NUM> input_shapes{};
 
+  GELOGD("op [%s] dim_len[%d].", op_type.c_str(), dim_len);
+
   if (kDtypeSizeMap.count(input0_type) == 0) {
     VECTOR_INNER_ERR_REPORT_TILIING("SoftmaxCrossEntropyWithLogitsTiling", "Invalid input dtype");
     return false;
@@ -280,10 +315,9 @@ bool SoftmaxCrossEntropyWithLogitsTiling(const std::string& op_type, const ge::O
   tiling_info.key = key;
 
   if (dim_len == ND_SHAPE_LEN) {
-    ret = ret && DoNdTiling(op_type, compile_info, tiling_info, input_shapes, out_type, output_shape);
+    ret = ret && DoNdTiling(op_type, compile_info, tiling_info, out_type, input_shapes, output_shape);
   }
-  ret = ret && WriteTilingData(op_type, compile_info, tiling_info, run_info, input_features_shape,
-                               input_labels_shape);
+  ret = ret && WriteTilingData(op_type, compile_info, tiling_info, run_info, out_type, input_shapes, output_shape);
   return ret;
 }
 REGISTER_OP_TILING_V3_CUSTOM(SoftmaxCrossEntropyWithLogits, SoftmaxCrossEntropyWithLogitsTiling,

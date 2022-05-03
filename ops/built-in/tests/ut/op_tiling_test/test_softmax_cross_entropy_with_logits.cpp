@@ -1972,10 +1972,7 @@ TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling
 
   std::vector<std::vector<int64_t>> inputs{{98, 8000}, {98, 8000}};
 
-  std::vector<std::vector<int64_t>> outputs{{
-                                                98,
-                                            },
-                                            {98, 8000}};
+  std::vector<std::vector<int64_t>> outputs{{98,}, {98, 8000}};
 
   std::vector<ge::DataType> input_types{ge::DT_FLOAT, ge::DT_FLOAT};
   std::vector<ge::DataType> output_types{ge::DT_FLOAT, ge::DT_FLOAT};
@@ -2005,7 +2002,10 @@ TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling
   TENSOR_OUTPUT(opParas, tensor_outputB, backprop);
 
   optiling::utils::OpRunInfo runInfo;
-  RUN_TILING_V3_FALSE(opParas, iter->second, compileInfo, runInfo);
+  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
+  EXPECT_EQ(runInfo.GetBlockDim(), 12);
+  EXPECT_EQ(runInfo.GetTilingKey(), 110);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "98 98 8000 8000 12 6544 ");
 }
 
 // no known no multi-core case
