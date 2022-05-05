@@ -187,7 +187,7 @@ down_third_libs(){
     done
   if [ ! -d "${CMAKE_DEVICE_PATH}" ];then
     mkdir -p ${CMAKE_DEVICE_PATH}
-    ln -s ${CMAKE_HOST_PATH}/download ${CMAKE_DEVICE_PATH}/download 
+    ln -s ${CMAKE_HOST_PATH}/download ${CMAKE_DEVICE_PATH}/download
   fi
   echo $dotted_line
   echo "begin to test  network..."
@@ -489,24 +489,18 @@ checkopts() {
            install_daily) if [[ "`echo $#`" -ge 2 ]];then
                             day=$2
                           fi
-                          chmod 744 ./scripts/install_daily.sh
-                          ./scripts/install_daily.sh $day
+                          chmod 744 ./scripts/install_cann.sh
+                          ./scripts/install_cann.sh "install_daily" $day
                           exit $?;;
-           install_etrans) chmod 744 ./scripts/install_etrans.sh
-                           ./scripts/install_etrans.sh
+           install_etrans) if [[ "`echo $#`" -ge 2 ]];then
+                             day=$2
+                           fi
+                           chmod 744 ./scripts/install_cann.sh
+                           ./scripts/install_cann.sh "install_etrans" $day
                            exit $?;;
-           install_local) rm -rf ./ascend_download/out
-                          if [[ -f "./ascend_download/ai_cann_x86.tar.gz" ]];then
-                            chmod 744 ./scripts/install_etrans.sh
-                            ./scripts/install_etrans.sh "install_local"
-                          elif [[ -f "./ascend_download/ai_cann_arm.tar.gz" ]];then
-                            chmod 744 ./scripts/install_etrans.sh
-                            ./scripts/install_etrans.sh "install_local"
-                          else
-                            chmod 744 ./scripts/install_daily.sh
-                            ./scripts/install_daily.sh  "install_local"
-                          fi
-                          exit 0;;
+           install_local) chmod 744 ./scripts/install_cann.sh
+                          ./scripts/install_cann.sh "install_local"
+                           exit $?;;
            *) for m in [ O0 O1 O2 O3 g ]
                 do
                   if [[ "build_mode_$m" =~ "$OPTARG" ]];then
