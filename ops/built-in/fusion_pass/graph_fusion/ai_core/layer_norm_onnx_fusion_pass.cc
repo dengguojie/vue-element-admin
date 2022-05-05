@@ -37,8 +37,11 @@ static const char* REDUCEMEANDY = "ReduceMean";
 static const char* SUB = "Sub";
 static const char* CAST = "Cast";
 static const char* POW = "Pow";
+static const char* SQUARE = "Square";
 static const char* ADD = "Add";
 static const char* SQRT = "Sqrt";
+static const char* MAXIMUM = "Maximum";
+static const char* MINIMUM = "Minimum";
 static const char* REALDIV = "RealDiv";
 static const char* DIV = "Div";
 static const char* MUL = "Mul";
@@ -48,6 +51,8 @@ static const std::string PATTERN_SUB0 = "FusedNodeSub0";
 static const std::string PATTERN_CAST0 = "FusedNodeCast0";
 static const std::string PATTERN_POW0 = "FusedNodePow0";
 static const std::string PATTERN_REDUCEMEAN1 = "FusedNodeReduceMean1";
+static const std::string PATTERN_MAX = "FusedNodeMax";
+static const std::string PATTERN_MIN = "FusedNodeMin";
 static const std::string PATTERN_ADD0 = "FusedNodeAdd0";
 static const std::string PATTERN_SQRT0 = "FusedNodeSqrt0";
 static const std::string PATTERN_DIV0 = "FusedNodeDiv0";
@@ -100,7 +105,7 @@ vector<FusionPattern*> LayerNormONNXFusionPass::DefinePatterns() {
   case1->AddOpDesc(PATTERN_INPUT)
       .AddOpDesc(PATTERN_REDUCEMEAN0, {REDUCEMEAN, REDUCEMEANDY})
       .AddOpDesc(PATTERN_SUB0, {SUB})
-      .AddOpDesc(PATTERN_POW0, {POW})
+      .AddOpDesc(PATTERN_POW0, {POW, SQUARE})
       .AddOpDesc(PATTERN_REDUCEMEAN1, {REDUCEMEAN, REDUCEMEANDY})
       .AddOpDesc(PATTERN_ADD0, {ADD})
       .AddOpDesc(PATTERN_SQRT0, {SQRT})
@@ -123,7 +128,7 @@ vector<FusionPattern*> LayerNormONNXFusionPass::DefinePatterns() {
   case2->AddOpDesc(PATTERN_INPUT)
       .AddOpDesc(PATTERN_REDUCEMEAN0, {REDUCEMEAN, REDUCEMEANDY})
       .AddOpDesc(PATTERN_SUB0, {SUB})
-      .AddOpDesc(PATTERN_POW0, {POW})
+      .AddOpDesc(PATTERN_POW0, {POW, SQUARE})
       .AddOpDesc(PATTERN_REDUCEMEAN1, {REDUCEMEAN, REDUCEMEANDY})
       .AddOpDesc(PATTERN_ADD0, {ADD})
       .AddOpDesc(PATTERN_SQRT0, {SQRT})
@@ -143,7 +148,7 @@ vector<FusionPattern*> LayerNormONNXFusionPass::DefinePatterns() {
       .AddOpDesc(PATTERN_REDUCEMEAN0, {REDUCEMEAN, REDUCEMEANDY})
       .AddOpDesc(PATTERN_SUB0, {SUB})
       .AddOpDesc(PATTERN_CAST0, {CAST})
-      .AddOpDesc(PATTERN_POW0, {POW})
+      .AddOpDesc(PATTERN_POW0, {POW, SQUARE})
       .AddOpDesc(PATTERN_REDUCEMEAN1, {REDUCEMEAN, REDUCEMEANDY})
       .AddOpDesc(PATTERN_ADD0, {ADD})
       .AddOpDesc(PATTERN_SQRT0, {SQRT})
@@ -168,7 +173,7 @@ vector<FusionPattern*> LayerNormONNXFusionPass::DefinePatterns() {
       .AddOpDesc(PATTERN_REDUCEMEAN0, {REDUCEMEAN, REDUCEMEANDY})
       .AddOpDesc(PATTERN_SUB0, {SUB})
       .AddOpDesc(PATTERN_CAST0, {CAST})
-      .AddOpDesc(PATTERN_POW0, {POW})
+      .AddOpDesc(PATTERN_POW0, {POW, SQUARE})
       .AddOpDesc(PATTERN_REDUCEMEAN1, {REDUCEMEAN, REDUCEMEANDY})
       .AddOpDesc(PATTERN_ADD0, {ADD})
       .AddOpDesc(PATTERN_SQRT0, {SQRT})
@@ -183,7 +188,52 @@ vector<FusionPattern*> LayerNormONNXFusionPass::DefinePatterns() {
       .SetInputs(PATTERN_DIV0, {PATTERN_SUB0, PATTERN_SQRT0})
       .SetOutput(PATTERN_DIV0);
   patterns.push_back(case4);
-
+  FusionPattern* case5 = new (std::nothrow) FusionPattern("LayerNormOnnxFusionPass");
+  FUSION_PASS_CHECK(case5 == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new a pattern object failed."), return patterns);
+  case5->AddOpDesc(PATTERN_INPUT)
+      .AddOpDesc(PATTERN_REDUCEMEAN0, {REDUCEMEAN, REDUCEMEANDY})
+      .AddOpDesc(PATTERN_SUB0, {SUB})
+      .AddOpDesc(PATTERN_POW0, {POW, SQUARE})
+      .AddOpDesc(PATTERN_REDUCEMEAN1, {REDUCEMEAN, REDUCEMEANDY})
+      .AddOpDesc(PATTERN_ADD0, {ADD})
+      .AddOpDesc(PATTERN_MAX, {MAXIMUM})
+      .AddOpDesc(PATTERN_MIN, {MINIMUM})
+      .AddOpDesc(PATTERN_SQRT0, {SQRT})
+      .AddOpDesc(PATTERN_DIV0, {REALDIV, DIV})
+      .SetInputs(PATTERN_REDUCEMEAN0, {PATTERN_INPUT})
+      .SetInputs(PATTERN_SUB0, {PATTERN_INPUT, PATTERN_REDUCEMEAN0})
+      .SetInputs(PATTERN_POW0, {PATTERN_SUB0})
+      .SetInputs(PATTERN_REDUCEMEAN1, {PATTERN_POW0})
+      .SetInputs(PATTERN_ADD0, {PATTERN_REDUCEMEAN1})
+      .SetInputs(PATTERN_MAX, {PATTERN_ADD0})
+      .SetInputs(PATTERN_MIN, {PATTERN_MAX})
+      .SetInputs(PATTERN_SQRT0, {PATTERN_MIN})
+      .SetInputs(PATTERN_DIV0, {PATTERN_SUB0, PATTERN_SQRT0})
+      .SetOutput(PATTERN_DIV0);
+  patterns.push_back(case5);
+  FusionPattern* case6 = new (std::nothrow) FusionPattern("LayerNormOnnxFusionPass");
+  FUSION_PASS_CHECK(case6 == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new a pattern object failed."), return patterns);
+  case6->AddOpDesc(PATTERN_INPUT)
+      .AddOpDesc(PATTERN_REDUCEMEAN0, {REDUCEMEAN, REDUCEMEANDY})
+      .AddOpDesc(PATTERN_SUB0, {SUB})
+      .AddOpDesc(PATTERN_POW0, {POW, SQUARE})
+      .AddOpDesc(PATTERN_REDUCEMEAN1, {REDUCEMEAN, REDUCEMEANDY})
+      .AddOpDesc(PATTERN_ADD0, {ADD})
+      .AddOpDesc(PATTERN_MAX, {MAXIMUM})
+      .AddOpDesc(PATTERN_MIN, {MINIMUM})
+      .AddOpDesc(PATTERN_SQRT0, {SQRT})
+      .AddOpDesc(PATTERN_DIV0, {REALDIV, DIV})
+      .SetInputs(PATTERN_REDUCEMEAN0, {PATTERN_INPUT})
+      .SetInputs(PATTERN_SUB0, {PATTERN_INPUT, PATTERN_REDUCEMEAN0})
+      .SetInputs(PATTERN_POW0, {PATTERN_SUB0})
+      .SetInputs(PATTERN_REDUCEMEAN1, {PATTERN_POW0})
+      .SetInputs(PATTERN_ADD0, {PATTERN_REDUCEMEAN1})
+      .SetInputs(PATTERN_MIN, {PATTERN_ADD0})
+      .SetInputs(PATTERN_MAX, {PATTERN_MIN})
+      .SetInputs(PATTERN_SQRT0, {PATTERN_MAX})
+      .SetInputs(PATTERN_DIV0, {PATTERN_SUB0, PATTERN_SQRT0})
+      .SetOutput(PATTERN_DIV0);
+  patterns.push_back(case6);
   OP_LOGD(FUSED_OP_TYPE.c_str(), "Define LayerNormOnnxFusionPass pattern end");
   return patterns;
 }
@@ -477,12 +527,34 @@ Status LayerNormONNXFusionPass::CheckValue(std::map<std::string, ge::NodePtr>& n
 
   // check const input
   float exp = 0.;
-  FUSION_PASS_CHECK(SUCCESS != GetScalarFromOp(nodes_map[PATTERN_POW0], exp),
+  ge::Operator op_pow = ge::OpDescUtils::CreateOperatorFromNode(nodes_map[PATTERN_POW0]);
+
+  ge::AscendString test_ascend_string;
+  op_pow.GetOpType(test_ascend_string);
+  std::string pow_type = test_ascend_string.GetString();
+  if (pow_type == "Pow") {
+    FUSION_PASS_CHECK(SUCCESS != GetScalarFromOp(nodes_map[PATTERN_POW0], exp),
                     OP_LOGW(FUSED_OP_TYPE.c_str(), "Fail to get value from const node of %s.", PATTERN_POW0.c_str()),
                     return NOT_CHANGED);
-  if (std::fabs(exp - NUMBER_2) > std::numeric_limits<float>::epsilon()) {
-    OP_LOGW("LayerNorm", "the exp of pow is %f, which should be equal to 2, not change", exp);
-    return NOT_CHANGED;
+    if (std::fabs(exp - NUMBER_2) > std::numeric_limits<float>::epsilon()) {
+      OP_LOGW("LayerNorm", "the exp of pow is %f, which should be equal to 2, not change", exp);
+      return NOT_CHANGED;
+    }
+  }
+
+  if (nodes_map[PATTERN_MAX] and nodes_map[PATTERN_MIN]) {
+    float max_val = 0, min_val = 0;
+    FUSION_PASS_CHECK(SUCCESS != GetScalarFromOp(nodes_map[PATTERN_MAX], max_val),
+                    OP_LOGW(FUSED_OP_TYPE.c_str(), "Fail to get clip max from const node of %s.", PATTERN_MAX.c_str()),
+                    return NOT_CHANGED);
+    FUSION_PASS_CHECK(SUCCESS != GetScalarFromOp(nodes_map[PATTERN_MIN], min_val),
+                    OP_LOGW(FUSED_OP_TYPE.c_str(), "Fail to get clip max from const node of %s.", PATTERN_MIN.c_str()),
+                    return NOT_CHANGED);
+
+    if (min_val != INFINITY or max_val != 0) {
+      OP_LOGD("LayerNorm", "clip val min is [%f], clip max is [%f]", min_val, max_val);
+      return NOT_CHANGED;
+    }
   }
 
   ge::GeTensorDesc input_desc = nodes_map[PATTERN_REDUCEMEAN0]->GetOpDesc()->GetInputDesc(0);
@@ -548,8 +620,8 @@ Status LayerNormONNXFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
   std::map<std::string, ge::NodePtr> nodes_map = {
       {PATTERN_REDUCEMEAN0, nullptr}, {PATTERN_SUB0, nullptr}, {PATTERN_CAST0, nullptr}, {PATTERN_POW0, nullptr},
       {PATTERN_REDUCEMEAN1, nullptr}, {PATTERN_ADD0, nullptr}, {PATTERN_SQRT0, nullptr}, {PATTERN_DIV0, nullptr},
-      {PATTERN_MUL0, nullptr},        {PATTERN_ADD1, nullptr}};
-  std::vector<std::string> exclude = {PATTERN_CAST0, PATTERN_MUL0, PATTERN_ADD1};
+      {PATTERN_MUL0, nullptr}, {PATTERN_ADD1, nullptr}, {PATTERN_MAX, nullptr}, {PATTERN_MIN, nullptr}};
+  std::vector<std::string> exclude = {PATTERN_CAST0, PATTERN_MUL0, PATTERN_ADD1, PATTERN_MAX, PATTERN_MIN};
   for (auto& it : nodes_map) {
     ge::NodePtr node = GetNodeFromMapping(it.first, mapping);
     if (std::find(exclude.begin(), exclude.end(), it.first) == exclude.end()) {
