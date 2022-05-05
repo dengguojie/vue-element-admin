@@ -419,62 +419,6 @@ def test_vcmpsel_dsl_tttt_op(_):
     return True
 
 
-def test_auto_cast_of_elewise_first_input_not_tensor_exception(_):
-    @math._auto_cast_of_elewise
-    def test_vadd(args):
-        return None
-
-    lhs_shape = (16, 64)
-    rhs_shape = (16, 64)
-    rhs = tvm.placeholder(rhs_shape, name="rhs", dtype="float16")
-    try:
-        test_vadd([lhs_shape, rhs])
-    except RuntimeError as e:
-        errorCode = e.args[0].get("errCode")
-        if errorCode == "E90001":
-            return True
-    return False
-
-
-def test_auto_cast_of_elewise_second_input_not_tensor_exception(_):
-    @math._auto_cast_of_elewise
-    def test_vmadd(args):
-        return None
-
-    lhs_shape = (16, 64)
-    lhs = tvm.placeholder(lhs_shape, name="lhs", dtype="float16")
-    mid_shape = (16, 64)
-    rhs_shape = (16, 64)
-    rhs = tvm.placeholder(rhs_shape, name="rhs", dtype="float16")
-    try:
-        test_vmadd([lhs, mid_shape, rhs])
-    except RuntimeError as e:
-        errorCode = e.args[0].get("errCode")
-        if errorCode == "E90001":
-            return True
-    return False
-
-
-def test_auto_cast_of_elewise_three_input_not_same_exception(_):
-    @math._auto_cast_of_elewise
-    def test_vmadd(args):
-        return None
-
-    lhs_shape = (16, 64)
-    lhs = tvm.placeholder(lhs_shape, name="lhs", dtype="float16")
-    mid_shape = (16, 64)
-    mid = tvm.placeholder(mid_shape, name="mid", dtype="int8")
-    rhs_shape = (16, 64)
-    rhs = tvm.placeholder(rhs_shape, name="rhs", dtype="float16")
-    try:
-        test_vmadd([lhs, mid, rhs])
-    except RuntimeError as e:
-        errorCode = e.args[0].get("errCode")
-        if errorCode == "E90001":
-            return True
-    return False
-
-
 def test_check_multi_compute_pattern_exception(_):
     lhs_shape = (1, 2, 3)
     lhs = tvm.placeholder(lhs_shape, name="lhs", dtype="float16")
@@ -978,9 +922,6 @@ test_func_list = [
     test_vcmpsel_dsl_ttst_op,
     test_vcmpsel_dsl_tstt_op,
     test_vcmpsel_dsl_tttt_op,
-    test_auto_cast_of_elewise_first_input_not_tensor_exception,
-    test_auto_cast_of_elewise_second_input_not_tensor_exception,
-    test_auto_cast_of_elewise_three_input_not_same_exception,
     test_check_multi_compute_pattern_exception,
     test_vmod_first_input_not_tensor_exception,
     test_vaxpy_second_input_not_tensor_exception,

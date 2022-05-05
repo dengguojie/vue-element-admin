@@ -581,5 +581,8 @@
     ],
     "auto_schedule/python/tbe/dsl/base/var_api.py":[
         "base/test_var_api_impl.py"
+    ],
+    "auto_schedule/python/tbe/dsl/base/var.py":[
+        "context/test_dynamic_context_impl.py"
     ]
 }
