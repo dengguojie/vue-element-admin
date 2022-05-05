@@ -247,8 +247,7 @@ def max_pool_with_argmax(input_x, output_y, output_argmax, ksize, strides,
     max_pool_reslut: reslut of maxpool
     """
     _check_param(input_x, ksize, strides, padding, kernel_name)
-    if resnet50.is_max_pool_with_argmax_param(input_x, ksize, strides, padding) and \
-                        tbe_platform.cce_conf.api_check_support("tik.load3dv1"):
+    if resnet50.is_max_pool_with_argmax_param(input_x, ksize, strides, padding):
         return resnet50.max_pool_with_argmax(input_x, ksize, strides, padding, kernel_name)
     max_pool_reslut = MaxPoolWithargmax(input_x, ksize, strides, padding)
 
