@@ -102,7 +102,6 @@ Status PadV3FusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector
   
   auto padInputDims = padDesc->GetInputDesc(0).GetShape().GetDims();
   if (CheckDynamic(padInputDims)) {
-    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "input shape is dynamic not changed.");
     return NOT_CHANGED;
   }
 
