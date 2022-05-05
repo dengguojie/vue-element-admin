@@ -22,10 +22,13 @@
 
 namespace domi {
 Status ParserParamElu(const Message* op_src, ge::Operator& op) {
-  AutoMappingFn(op_src, op);
+  Status res = AutoMappingFn(op_src, op);
+  if (res != SUCCESS) {
+	  return FAILED;
+  }
   const std::string elu_attr_alpha = "alpha";
   const float default_alpha_value = 1.0;
-  op.SetAttr(elu_attr_alpha, static_cast<float>(default_alpha_value));
+  (void)op.SetAttr(elu_attr_alpha, static_cast<float>(default_alpha_value));
   return SUCCESS;
 }
 REGISTER_CUSTOM_OP("Elu")
