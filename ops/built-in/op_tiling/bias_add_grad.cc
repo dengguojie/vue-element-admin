@@ -108,16 +108,17 @@ static bool CalcNzAxes(const ge::Format data_format, const size_t dim_num, std::
       CalcReduceAxes(dim_num, 1, axes);
     }
     break;
+  case ge::FORMAT_NCDHW:
+    CalcReduceAxes(dim_num, 1, axes);
+    break;
   case ge::FORMAT_NDHWC:
   case ge::FORMAT_NHWC:
+  default:
     if (dim_num < SHAPE_DIM_NUM_FRACTAL_NZ1) {
       OP_LOGW("BiasAddGrad", "dim_num < %ud", SHAPE_DIM_NUM_FRACTAL_NZ1);
       return false;
     }
     CalcReduceAxes(dim_num, FORMAT_NZ_C0_INDEX, FORMAT_NZ_C1_INDEX, axes);
-    break;
-  case ge::FORMAT_NCDHW:
-    CalcReduceAxes(dim_num, 1, axes);
     break;
   }
   return true;
