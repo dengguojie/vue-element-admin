@@ -87,8 +87,29 @@ def test_conv2d_caculate_shape():
             conv_para = Conv2dParaProcess(ori_paras)
             conv_para.config_paras()
 
+print("adding Conv2D dyanmic pad ")
+def test_conv2d_pad_dy():
+    from tbe.common.context import op_context
+    inputs = {"ori_shape": (-1, -1, -1, -1), "shape": (-1, -1, -1, -1, 16), "format": "NC1HWC0", "ori_format": "NHWC", "dtype": "float16", "range": ((0, None), (0, None), (0, None), (0, None), (16, 16)), 
+             "ori_range": ((0, None), (0, None), (0, None), (0, None))}
+    weight = {"shape": (8, 2, 16, 16), "ori_shape": (32, 32, 2, 2), "format": "FRACTAL_Z", "ori_format": "HWCN", "dtype": "float16"}
+    bias_tensor = None
+    offset_w_tensor = None
+    strides = [1, 1, 1, 1]   
+    dilations = [1, 1, 1, 1] 
+    outputs = {'shape':(-1, 512, -1, -1, 16), 'ori_shape':(-1, 512, -1, -1), "format": "NC1HWC0",  'ori_format': 'NCHW', 'dtype': 'float16'}
+    with op_context.OpContext("dynamic"):
+        pads = [0, 0, 0, 0]
+        conv2d(inputs, weight, bias_tensor, None, outputs, strides, pads, dilations, 1, data_format="NHWC", kernel_name="conv2d")
+    with op_context.OpContext("dynamic"):
+        pads = [-1, -1, -1, -1]
+        conv2d(inputs, weight, bias_tensor, None, outputs, strides, pads, dilations, 1, data_format="NHWC", kernel_name="conv2d")
+     
+print("adding Conv2D dyanmic pad -1 end")
+
 if __name__ == '__main__':
     test_conv2d_param_process_dynamic_cdim()
     test_conv2d_param_process()
     test_cachetiling_conv2d()
     test_conv2d_caculate_shape()
+    test_conv2d_pad_dy()

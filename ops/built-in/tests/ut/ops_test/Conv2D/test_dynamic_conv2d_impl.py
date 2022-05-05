@@ -121,6 +121,22 @@ def test_conv2d_param_process_dynamic_cdim(test_arg):
 print("adding Conv2D cdim dyanmic op param process")
 ut_case.add_cust_test_func(test_func=test_conv2d_param_process_dynamic_cdim)
 
+def conv2d_pad_dy(test_arg):
+    from tbe.common.context import op_context
+    inputs = {"ori_shape": (-1, -1, -1, -1), "shape": (-1, -1, -1, -1, 16), "format": "NC1HWC0", "ori_format": "NHWC", "dtype": "float16", "range": ((0, None), (0, None), (0, None), (0, None), (16, 16)), 
+             "ori_range": ((0, None), (0, None), (0, None), (0, None))}
+    weight = {"shape": (62, 8, 16, 16), "ori_shape": (1, 1, 992, 128), "format": "FRACTAL_Z", "ori_format": "HWCN", "dtype": "float16"}
+    bias_tensor = None
+    offset_w_tensor = None
+    strides = [1, 1, 1, 1]   
+    dilations = [1, 1, 1, 1] 
+    outputs = {'shape':(-1, 512, -1, -1, 16), 'ori_shape':(-1, 512, -1, -1), "format": "NC1HWC0",  'ori_format': 'NCHW', 'dtype': 'float16'}
+    with op_context.OpContext("dynamic"):
+        pads = [-1, -1, -1, -1]
+        conv2d(inputs, weight, bias_tensor, None, outputs, strides, pads, dilations, 1, data_format="NHWC", kernel_name="conv2d")
+     
+ut_case.add_cust_test_func(test_func=conv2d_pad_dy)
+print("adding Conv2D dyanmic pad -1 end")
 
 def pre_and_post_ubfusion_binary(test_arg):
     from tbe.common.context.op_context import OpContext

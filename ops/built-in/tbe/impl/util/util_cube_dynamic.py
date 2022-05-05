@@ -927,7 +927,10 @@ class CubeParaProcess:
         def _get_lower_input(y_in, k_size, pads, stride, dilation):
             if not y_in:
                 return y_in
-            return stride * (y_in - 1) + dilation * (k_size - 1) + 1 - pads[0] - pads[1]
+            if DYNAMIC_FLAG in pads:
+                return stride * (y_in - 1) + dilation * (k_size - 1) + 1
+            else:
+                return stride * (y_in - 1) + dilation * (k_size - 1) + 1 - pads[0] - pads[1]
 
         def _get_higher_input(y_in, k_size, pads, stride, dilation):
             return stride * (y_in - 1) + dilation * (k_size - 1) + 1 - pads[0] - pads[1] + stride - 1
