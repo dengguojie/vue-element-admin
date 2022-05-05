@@ -344,7 +344,6 @@ def conv_v300_fusion_case(casename,
         anti_quant_scale = create_anti_quant_scale(casename, dataflow, shape_param)
         anti_quant_offset = create_anti_quant_offset(casename, dataflow, shape_param)
 
-
         shape_out = conv_res.shape
         shape_out_5hd = [shape_out[0], shape_out[1], ho, wo, shape_out[3]]
         output = get_output_dict(dataflow, shape_out_5hd, conv_type)
