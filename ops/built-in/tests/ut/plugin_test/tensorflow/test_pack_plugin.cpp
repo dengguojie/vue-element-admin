@@ -4,6 +4,7 @@
 #include "gtest/gtest.h"
 
 #include "tensorflow_parser.h"
+#include "plugin_test_utils.h"
 
 using namespace ge;
 
@@ -11,6 +12,7 @@ class pack_test : public testing::Test {
  protected:
   static void SetUpTestCase() {
     std::cout << "xxxxxxpack_plugin_test SetUp" << std::endl;
+    CleanGlobal();
   }
 
   static void TearDownTestCase() {

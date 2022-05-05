@@ -569,10 +569,10 @@ parse_changed_files() {
   logging '-----------------------------------------------'
 
   if [[ "$UT_MODE" == "TRUE" ]]; then
-    related_ut=`python3.7 scripts/parse_changed_files.py $1`
+    related_ut=`python3 scripts/parse_changed_files.py $1`
     logging "related ut "$related_ut
   else
-    related=`python3.7 scripts/parse_compile_changed_files.py $1`
+    related=`python3 scripts/parse_compile_changed_files.py $1`
   fi
 
   if [[ "$UT_MODE" == "TRUE" ]]; then
