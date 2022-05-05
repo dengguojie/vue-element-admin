@@ -26,7 +26,6 @@
 
 
 namespace ge {
-
 // Obtains the processing function of the output tensor description.
 IMPLEMT_COMMON_INFERFUNC(ActsULQInferShape) {
     Shape x_shape = op.GetInputDesc("x").GetShape();

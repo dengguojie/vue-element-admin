@@ -26,7 +26,6 @@
 
 
 namespace ge {
-
 // Obtains the processing function of the output tensor description.
 IMPLEMT_COMMON_INFERFUNC(ActULQClampMinGradInferShape) {
     Shape y_grad_shape = op.GetInputDesc("y_grad").GetShape();

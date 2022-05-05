@@ -24,14 +24,6 @@
 #include <string>
 
 namespace ge {
-
-bool InferShapeAndTypeIFMR(Operator& op, const string& data, const string& data_min, const string& data_max,
-                           const string& cumsum, const string& scale, const string& offset,
-                           const string& min_percentile, const string& max_percentile, const string& search_range,
-                           const string& search_step, const string& with_offset) {
-  return true;
-}
-
 IMPLEMT_VERIFIER(IFMR, IFMRVerify) {
   // verify the inputs of data type
   if (op.GetInputDesc("data").GetDataType() != op.GetInputDesc("data_min").GetDataType()) {
@@ -51,7 +43,7 @@ IMPLEMT_VERIFIER(IFMR, IFMRVerify) {
 
 // Obtains the processing function of the output tensor description.
 IMPLEMT_COMMON_INFERFUNC(IFMRInferShape) {
-  Shape ret_shape({1,});
+  Shape ret_shape({1, });
 
   TensorDesc scale = op.GetOutputDesc("scale");
   scale.SetShape(ret_shape);

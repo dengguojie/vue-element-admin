@@ -27,7 +27,6 @@
 
 
 namespace ge {
-
 // Obtains the processing function of the output tensor description.
 IMPLEMT_COMMON_INFERFUNC(ActULQClampMaxGradInferShape) {
     Shape y_grad_shape = op.GetInputDesc("y_grad").GetShape();
@@ -38,7 +37,6 @@ IMPLEMT_COMMON_INFERFUNC(ActULQClampMaxGradInferShape) {
         OP_LOGE(TbeGetName(op).c_str(), "The shape of clamp_max_mask must be the same as y_grad!");
         return GRAPH_FAILED;
     }
-
     if (y_grad_shape.GetDims() != x_clamped_loss_shape.GetDims()) {
         OP_LOGE(TbeGetName(op).c_str(), "The shape of x_clamped_loss must be the same as y_grad!");
         return GRAPH_FAILED;
