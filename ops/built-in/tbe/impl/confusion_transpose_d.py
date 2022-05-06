@@ -461,6 +461,40 @@ def _division_sixteen(shape):
         return False
 
 
+def check_shape_4_3(shape_a, shape_b):
+    flag_check = (shape_a[1] * shape_a[2] == shape_b[1] and shape_a[3] == shape_b[2]) or \
+                 (shape_a[2] * shape_a[3] == shape_b[2] and shape_a[1] == shape_b[1])
+
+    return flag_check
+
+
+def check_shape_2_4(shape_a, shape_b):
+    flag_check = (shape_b[0] * shape_b[1] == shape_a[0] and shape_b[2] * shape_b[3] == shape_a[1])
+
+    return flag_check
+
+
+def check_reshape(in_shape, out_shape):
+    if len(in_shape) == 2 and len(out_shape) == 4 and check_shape_2_4(in_shape, out_shape):
+        return True
+    if len(in_shape) == 4 and len(out_shape) == 2 and check_shape_2_4(out_shape, in_shape):
+        return True
+    if (len(in_shape) == 4 and len(out_shape) == 3 and in_shape[0] == out_shape[0] and
+        check_shape_4_3(in_shape, out_shape)):
+        return True
+    if (len(in_shape) == 3 and len(out_shape) == 4 and out_shape[0] == in_shape[0] and
+        check_shape_4_3(out_shape, in_shape)):
+        return True
+
+    return False
+
+
+def check_perm(perm_in):
+    true_perm = [i for i in range(len(perm_in))]
+
+    return list(perm_in) == true_perm
+
+
 def _condition(x, perm, shape, transpose_first):
     shape_x = shape_util.scalar2tensor_one(x.get("ori_shape"))
 
@@ -468,29 +502,14 @@ def _condition(x, perm, shape, transpose_first):
         shape_reshapein = _shape_after_transpose(shape_x, perm)
     else:
         shape_reshapein = shape_x
-        if not _division_sixteen(
-                _shape_after_transpose(shape, perm)):
+        if not _division_sixteen(_shape_after_transpose(shape, perm)):
             return False
 
+    if _division_sixteen(shape_x) and shape_x == tuple(shape_reshapein) and check_perm(perm):
+        return True
+
     if (len(perm) == 4 and _division_sixteen(shape_x) and perm[3] == 3):
-        if len(shape_reshapein) == 2 and len(shape) == 4:
-            if (shape[0] * shape[1] == shape_reshapein[0] and
-                    shape[2] * shape[3] == shape_reshapein[1]):
-                return True
-        if len(shape_reshapein) == 4 and len(shape) == 2:
-            if (shape_reshapein[0] * shape_reshapein[1] == shape[0] and
-                    shape_reshapein[2] * shape_reshapein[3] == shape[1]):
-                return True
-        if len(shape_reshapein) == 3 and len(shape) == 4:
-            if (shape[1] * shape[2] == shape_reshapein[1] and
-                    shape[0] == shape_reshapein[0] and
-                    shape[3] == shape_reshapein[2]):
-                return True
-        if len(shape_reshapein) == 4 and len(shape) == 3:
-            if (shape_reshapein[1] * shape_reshapein[2] == shape[1] and
-                    shape_reshapein[0] == shape[0] and
-                    shape_reshapein[3] == shape[2]):
-                return True
+        return check_reshape(shape_reshapein, shape)
 
     return False
 

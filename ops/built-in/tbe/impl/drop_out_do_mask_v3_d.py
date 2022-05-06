@@ -26,6 +26,7 @@ from te.platform.fusion_manager import fusion_manager
 from te.utils import shape_util
 from te.utils.error_manager import error_manager_vector
 from impl.util.platform_adapter import para_check
+from impl.util import util_select_op_base
 
 
 # 'pylint: disable=too-few-public-methods,not-use-list-comprehension
@@ -39,6 +40,74 @@ class Constant:
     BATCH_MATMUL_BATCH_SIZE3 = 3
     BATCH_MATMUL_BATCH_SIZE4 = 4
     SHAPE_SIZE_LIMIT = 1 << 30
+    SIZE_SIXTEEN = 16
+
+
+def _division_sixteen(shape):
+    """
+    judge whether the last two dimensions are divided by 16
+    Parameters
+    ----------
+    shape : input shape
+    Returns : true or false
+    """
+    if len(shape) < 2:
+
+        return False
+
+    if shape[-1] == 0 or shape[-2] == 0:
+
+        return False
+
+    return shape[-1] % Constant.SIZE_SIXTEEN == 0 and shape[-2] % Constant.SIZE_SIXTEEN == 0
+
+
+def op_select_format(input_tensor, input_mask, output, input_keep_prob, kernel_name="dropout_do_mask_v3_d"):
+    """
+    1.when the lengths of input_tensor's shape dim -1 and dim -2 % 16 == 0
+    support NZ, ND format.\n
+
+        example:\n
+        original:\n
+        input_tensor's Tensor(shape=(16, 16), "ND")\n
+        input_mask's Tensor(shape=(16, 16), "ND")\n
+        support conversion to NZ operation:\n
+        input_tensor's Tensor(shape=(1, 1, 16, 16), "FRACTAL_NZ")\n
+        input_mask's Tensor(shape=(16, 16), "ND")\n
+    """
+    shape_input_tensor = input_tensor.get("ori_shape")
+    if _division_sixteen(shape_input_tensor):
+        # Nz+ND
+        input0 = util_select_op_base.gen_param(classify="input0",
+                                               name="x",
+                                               datatype="float16,float16,float",
+                                               format="FRACTAL_NZ,ND,ND")
+        input1 = util_select_op_base.gen_param(classify="input1",
+                                               name="mask",
+                                               datatype="uint8,uint8,uint8",
+                                               format="ND,ND,ND")
+        output0 = util_select_op_base.gen_param(classify="output0",
+                                                name="y",
+                                                datatype="float16,float16,float",
+                                                format="FRACTAL_NZ,ND,ND")
+    else:
+        # ND+ND
+        input0 = util_select_op_base.gen_param(classify="input0",
+                                               name="x",
+                                               datatype="float16,float",
+                                               format="ND,ND")
+        input1 = util_select_op_base.gen_param(classify="input1",
+                                               name="mask",
+                                               datatype="uint8,uint8",
+                                               format="ND,ND")
+        output0 = util_select_op_base.gen_param(classify="output0",
+                                                name="y",
+                                                datatype="float16,float",
+                                                format="ND,ND")
+
+    param_list = [input0, input1, output0]
+    param_dynamic_in_json = util_select_op_base.get_dynamic_param_in_json(param_list)
+    return param_dynamic_in_json
 
 
 def reshape_input_mask(input_tensor, input_mask, kernel_name):

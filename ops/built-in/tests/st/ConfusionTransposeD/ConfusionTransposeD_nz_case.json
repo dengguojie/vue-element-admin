@@ -1,0 +1,254 @@
+[
+  {
+    "op": "ConfusionTransposeD",
+    "calc_expect_func_file": "test_confusion_transpose_d_golden.py:calc_expect_func",
+    "input_desc": [
+      {
+        "shape": [64, 1024, 384],
+        "format": "ND",
+        "ori_shape": [64, 1024, 384],
+        "ori_format": "ND",
+        "name": "x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [65536,384],
+        "format": "ND",
+        "ori_shape": [65536,384],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "perm",
+        "type": "list_int",
+        "value": [0, 1, 2]
+      },
+      {
+        "name": "shape",
+        "type": "list_int",
+        "value": [65536, 384]
+      },
+      {
+        "name": "transpose_first",
+        "type": "bool",
+        "value": true
+      }
+    ],
+    "case_name": "test_ConfusionTransposeD_nz_001"
+  },
+  {
+    "op": "ConfusionTransposeD",
+    "calc_expect_func_file": "test_confusion_transpose_d_golden.py:calc_expect_func",
+    "input_desc": [
+      {
+        "shape": [65536, 1536],
+        "format": "ND",
+        "ori_shape": [65536, 1536],
+        "ori_format": "ND",
+        "name": "x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [64,1024,1536],
+        "format": "ND",
+        "ori_shape": [64,1024,1536],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "perm",
+        "type": "list_int",
+        "value": [0, 1, 2]
+      },
+      {
+        "name": "shape",
+        "type": "list_int",
+        "value": [64, 1024, 1536]
+      },
+      {
+        "name": "transpose_first",
+        "type": "bool",
+        "value": false
+      }
+    ],
+    "case_name": "test_ConfusionTransposeD_nz_002"
+  },
+  {
+    "op": "ConfusionTransposeD",
+    "calc_expect_func_file": "test_confusion_transpose_d_golden.py:calc_expect_func",
+    "input_desc": [
+      {
+        "shape": [64, 1024, 384],
+        "format": "ND",
+        "ori_shape": [64, 1024, 384],
+        "ori_format": "ND",
+        "name": "x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [64,6,1024,64],
+        "format": "ND",
+        "ori_shape": [64,6,1024,64],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "perm",
+        "type": "list_int",
+        "value": [0, 2, 1, 3]
+      },
+      {
+        "name": "shape",
+        "type": "list_int",
+        "value": [64, 1024, 6, 64]
+      },
+      {
+        "name": "transpose_first",
+        "type": "bool",
+        "value": false
+      }
+    ],
+    "case_name": "test_ConfusionTransposeD_nz_003"
+  },
+  {
+    "op": "ConfusionTransposeD",
+    "calc_expect_func_file": "test_confusion_transpose_d_golden.py:calc_expect_func",
+    "input_desc": [
+      {
+        "shape": [64, 6, 1024, 64],
+        "format": "ND",
+        "ori_shape": [64, 6, 1024, 64],
+        "ori_format": "ND",
+        "name": "x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [64, 1024, 384],
+        "format": "ND",
+        "ori_shape": [64, 1024, 384],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "perm",
+        "type": "list_int",
+        "value": [0, 2, 1, 3]
+      },
+      {
+        "name": "shape",
+        "type": "list_int",
+        "value": [64, 1024, 384]
+      },
+      {
+        "name": "transpose_first",
+        "type": "bool",
+        "value": true
+      }
+    ],
+    "case_name": "test_ConfusionTransposeD_nz_004"
+  },
+  {
+    "op": "ConfusionTransposeD",
+    "calc_expect_func_file": "test_confusion_transpose_d_golden.py:calc_expect_func",
+    "input_desc": [
+      {
+        "shape": [64, 6, 1024, 64],
+        "format": "ND",
+        "ori_shape": [64, 6, 1024, 64],
+        "ori_format": "ND",
+        "name": "x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [65536, 384],
+        "format": "ND",
+        "ori_shape": [65536, 384],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "perm",
+        "type": "list_int",
+        "value": [0, 2, 1, 3]
+      },
+      {
+        "name": "shape",
+        "type": "list_int",
+        "value": [65536, 384]
+      },
+      {
+        "name": "transpose_first",
+        "type": "bool",
+        "value": true
+      }
+    ],
+    "case_name": "test_ConfusionTransposeD_nz_005"
+  },
+  {
+    "op": "ConfusionTransposeD",
+    "calc_expect_func_file": "test_confusion_transpose_d_golden.py:calc_expect_func",
+    "input_desc": [
+      {
+        "shape": [65536, 384],
+        "format": "ND",
+        "ori_shape": [65536, 384],
+        "ori_format": "ND",
+        "name": "x",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [64,6,1024,64],
+        "format": "ND",
+        "ori_shape": [64,6,1024,64],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "perm",
+        "type": "list_int",
+        "value": [0, 2, 1, 3]
+      },
+      {
+        "name": "shape",
+        "type": "list_int",
+        "value": [64, 1024, 6, 64]
+      },
+      {
+        "name": "transpose_first",
+        "type": "bool",
+        "value": false
+      }
+    ],
+    "case_name": "test_ConfusionTransposeD_nz_006"
+  }
+]

@@ -82,6 +82,54 @@ def test_matmul_dropout_ub_fusion_pass(test_arg):
             print(e)
             pass
 
+def test_op_select_format(test_arg):
+    """
+    test_op_select_format
+    """
+    from impl.drop_out_do_mask_v3_d import op_select_format
+    def check_format(support_dtype, support_format, format_json):
+        import json
+        obj = json.loads(format_json)
+
+        def check_param_format(param_name):
+            result_dtype = set(obj.get(param_name).get("dtype").split(","))
+            if result_dtype != support_dtype:
+                raise RuntimeError("dtype of {} expected:{} actual:{}".format(param_name, support_dtype, result_dtype))
+
+            result_format = set(obj.get(param_name).get("format").split(","))
+            if result_format != support_format:
+                raise RuntimeError(
+                    "format of {} expected:{} actual:{}".format(param_name, support_format, result_format))
+
+        check_param_format("input0")
+        check_param_format("output0")
+
+    result = op_select_format({"shape": (11, 768), "dtype": "float16", "format": "ND", "ori_shape": (11, 768), "ori_format": "ND"},
+                     {"shape": (11, 768), "dtype": "float16", "format": "ND", "ori_shape": (11, 768), "ori_format": "ND"},
+                     {"shape": (11, 768), "dtype": "float16", "format": "ND", "ori_shape": (11, 768), "ori_format": "ND"},
+                     0.1, "test_dropout_do_mask_v3_d_op_select_format_1")
+    check_format({"float","float16"},{"ND"},result)
+
+    result = op_select_format({"shape": (16, 768), "dtype": "float16", "format": "ND", "ori_shape": (16, 768), "ori_format": "ND"},
+                     {"shape": (16, 768), "dtype": "float16", "format": "ND", "ori_shape": (16, 768), "ori_format": "ND"},
+                     {"shape": (16, 768), "dtype": "float16", "format": "ND", "ori_shape": (16, 768), "ori_format": "ND"},
+                     0.1, "test_dropout_do_mask_v3_d_op_select_format_2")
+    check_format({"float","float16"},{"FRACTAL_NZ","ND"},result)
+
+    result = op_select_format({"shape": (0,), "dtype": "float16", "format": "ND", "ori_shape": (0,), "ori_format": "ND"},
+                     {"shape": (16, 768), "dtype": "float16", "format": "ND", "ori_shape": (16, 768), "ori_format": "ND"},
+                     {"shape": (16, 768), "dtype": "float16", "format": "ND", "ori_shape": (16, 768), "ori_format": "ND"},
+                     0.1, "test_dropout_do_mask_v3_d_op_select_format_3")
+    check_format({"float","float16"},{"ND"},result)
+
+    result = op_select_format({"shape": (0,1), "dtype": "float16", "format": "ND", "ori_shape": (0,1), "ori_format": "ND"},
+                     {"shape": (16, 768), "dtype": "float16", "format": "ND", "ori_shape": (16, 768), "ori_format": "ND"},
+                     {"shape": (16, 768), "dtype": "float16", "format": "ND", "ori_shape": (16, 768), "ori_format": "ND"},
+                     0.1, "test_dropout_do_mask_v3_d_op_select_format_4")
+    check_format({"float","float16"},{"ND"},result)
+
+
+ut_case.add_cust_test_func(test_func=test_op_select_format)
 ut_case.add_cust_test_func(test_func=test_matmul_dropout_ub_fusion_pass)
 
 

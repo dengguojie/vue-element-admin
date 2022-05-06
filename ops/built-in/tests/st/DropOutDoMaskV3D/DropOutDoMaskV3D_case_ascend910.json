@@ -1,0 +1,80 @@
+[
+  {
+    "op": "DropOutDoMaskV3D",
+    "input_desc": [
+      {
+        "shape": [48,1,16,16],
+        "format": "FRACTAL_NZ",
+        "ori_shape": [11, 768],
+        "ori_format": "ND",
+        "name": "x",
+        "type": "float16"
+      },
+      {
+        "shape": [11, 768],
+        "format": "ND",
+        "ori_shape": [11, 768],
+        "ori_format": "ND",
+        "name": "mask",
+        "type": "uint8"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [48,1,16,16],
+        "format": "FRACTAL_NZ",
+        "ori_shape": [11, 768],
+        "ori_format": "ND",
+        "name": "output",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "keep_prob",
+        "value": 0.1,
+        "type": "float"
+       }
+    ],
+    "case_name": "test_DropOutDoMask_000"
+  },
+  {
+    "op": "DropOutDoMaskV3D",
+    "input_desc": [
+      {
+        "shape": [48,1,16,16],
+        "format": "FRACTAL_NZ",
+        "ori_shape": [16, 768],
+        "ori_format": "ND",
+        "name": "x",
+        "type": "float16"
+      },
+      {
+        "shape": [16, 768],
+        "format": "ND",
+        "ori_shape": [16, 768],
+        "ori_format": "ND",
+        "name": "mask",
+        "type": "uint8"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [48,1,16,16],
+        "format": "FRACTAL_NZ",
+        "ori_shape": [16, 768],
+        "ori_format": "ND",
+        "name": "output",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "keep_prob",
+        "value": 0.1,
+        "type": "float"
+       }
+    ],
+    "case_name": "test_DropOutDoMask_001"
+  }
+]
