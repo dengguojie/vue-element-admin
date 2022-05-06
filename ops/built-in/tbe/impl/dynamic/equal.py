@@ -71,6 +71,10 @@ def equal_compute(input_x, input_y, output_z, kernel_name="equal"):
                                                                 param_name_input1="input_x",
                                                                 param_name_input2="input_y")
 
+    if dtype_x in ("int64", "uint64"):
+        res = compute_int64_uint64(input_x, input_y, shape_broad)
+        return res
+
     if dtype_x == "float32":
         scalar_min = tvm.const(scalar_min_fp32, dtype="float32")
         scalar_mul = tvm.const(scalar_mul_fp32, dtype="float32")
@@ -111,6 +115,16 @@ def equal_compute(input_x, input_y, output_z, kernel_name="equal"):
     return res
 
 
+def compute_int64_uint64(input_x, input_y, shape_broad):
+    """
+    b64 compute for equal: input data type is int64 or uint64
+    """
+    input_x = tbe.broadcast(input_x, shape_broad)
+    input_y = tbe.broadcast(input_y, shape_broad)
+    res = tbe.vcmp(input_x, input_y, "eq", mode="bool")
+    return res
+
+
 @register_operator("Equal")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.KERNEL_NAME)
@@ -141,7 +155,7 @@ def equal(input_x, input_y, output_z, kernel_name="equal"):
     # check input tensor data_type
     x_dtype = get_dtype(input_x)
     y_dtype = get_dtype(input_y)
-    check_list = ("float16", "float32", "int32", "uint8", "int8")
+    check_list = ("float16", "float32", "int64", "uint64", "int32", "uint8", "int8")
     para_check.check_dtype(x_dtype, check_list, param_name="input_x")
     para_check.check_dtype(y_dtype, check_list, param_name="input_y")
     if x_dtype != y_dtype:
@@ -160,5 +174,5 @@ def equal(input_x, input_y, output_z, kernel_name="equal"):
             sch = tbe.auto_schedule(res)
         schedules.append(sch)
 
-    config = {"name": kernel_name, "tensor_list": tensors}
+    config = {"name": kernel_name, "tensor_list": tensors, "bool_storage_as_1bit": False}
     tbe.build(schedules, config)

@@ -318,5 +318,70 @@
       }
     ],
     "case_name": "test_Equal_dynamic_rank_000"
+  },
+  {
+    "case_name": "Equal_static_shape_case_name_79_ascend910a",
+    "op": "Equal",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int64"
+        ],
+        "shape": [
+          1,
+          24,
+          1,
+          128
+        ],
+        "value_range": [
+          [
+            -1000,
+            1000
+          ]
+        ],
+        "name": "input_x"
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int64"
+        ],
+        "shape": [
+          1,
+          24,
+          1,
+          128
+        ],
+        "value_range": [
+          [
+            -1000,
+            1000
+          ]
+        ],
+        "name": "input_y"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int8"
+        ],
+        "shape": [
+          1,
+          24,
+          1,
+          128
+        ],
+        "name": "output_z"
+      }
+    ]
   }
 ]

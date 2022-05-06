@@ -37,6 +37,10 @@ ut_case.add_case("all",
                  gen_dynamic_equal_case((-1,), (1,), ((2, 16),), ((1, 1),),
                                         "float16", "dynamic_equal_fp16_ND",
                                         "success"))
+ut_case.add_case(["Ascend910A"],
+                 gen_dynamic_equal_case((-1,), (1,), ((2, 16),), ((1, 1),),
+                                        "int64", "dynamic_equal_b64_ND",
+                                        "success"))
 
 dynamicrankbool= {
     "params": [
@@ -54,4 +58,4 @@ ut_case.add_case("all", dynamicrankbool)
 ut_case.add_cust_test_func(test_func=test_ln_import_lib)
 
 if __name__ == '__main__':
-    ut_case.run(["Ascend910A", "Ascend310"])
+    ut_case.run(["Ascend910A"])
