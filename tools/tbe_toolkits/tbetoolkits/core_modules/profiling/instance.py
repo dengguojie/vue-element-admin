@@ -180,7 +180,7 @@ class ProfilingInstance:
         # Write csv title
         logging.info("Initialize output csv file...")
         self.init_flush(self.result_path)
-        self.flush((*self.titles, "<-INPUT-|-RESULT->", *self.result_titles))
+        self.flush((*self.titles, *self.result_titles))
         logging.info("Preparing compilation tasks")
         self._prepare_tasks()
         logging.info("Received compilation tasks: %d" % len(self.waiting_tasks))
@@ -267,7 +267,7 @@ class ProfilingInstance:
         if len(usable_devices) <= 0:
             raise RuntimeError("Available device count is zero, aborting.")
         if self.switches.process_per_device is None:
-            self.switches.process_per_device = int(get_cpu_count() * 0.8) // len(usable_devices)
+            self.switches.process_per_device = max(int(get_cpu_count() * 0.8) // len(usable_devices), 1)
             self.switches.process_per_device = min(max(len(self.flatten_testcases) * 4 // len(usable_devices), 1),
                                                    self.switches.process_per_device,
                                                    32)
@@ -416,10 +416,10 @@ class ProfilingInstance:
                 for dev_proc in self.device_to_processes[dev_id]:
                     if dev_proc not in self.process_to_subtask and self.waiting_tasks:
                         task = self.waiting_tasks.pop()
-                        self.device_subtasks.setdefault(dev_id, []).append(SubTask(task, SubTaskType.COMPILE,
-                                                                                   compilation_process,
-                                                                                   (task.testcase_struct, task.group_id,
-                                                                                    "dynamic")))
+                        self.device_subtasks.setdefault(dev_id, [])
+                        self.device_subtasks[dev_id].append(SubTask(task, SubTaskType.COMPILE,
+                                                                    compilation_process,
+                                                                    (task.testcase_struct, task.group_id, "dynamic")))
                         self.device_subtasks[dev_id].append(SubTask(task, SubTaskType.COMPILE,
                                                                     compilation_process,
                                                                     (task.testcase_struct, task.group_id, "static")))
@@ -565,11 +565,9 @@ class ProfilingInstance:
                       *tuple("PROFILE_CRASH" for _ in range(len(self.result_titles) - 1)))
         if self.switches.preserve_original_csv:
             self.flush((*testcase.original_line,
-                        "<-INPUT-|-RESULT->",
                         *basic_info))
         else:
             self.flush((*[getattr(testcase, title) for title in self.titles],
-                        "<-INPUT-|-RESULT->",
                         *basic_info))
         subtask.process.resurrect()
 
@@ -584,11 +582,9 @@ class ProfilingInstance:
                       *tuple("FAILURE" for _ in range(len(self.result_titles) - 1)))
         if self.switches.preserve_original_csv:
             self.flush((*testcase.original_line,
-                        "<-INPUT-|-RESULT->",
                         *basic_info))
         else:
             self.flush((*[getattr(testcase, title) for title in self.titles],
-                        "<-INPUT-|-RESULT->",
                         *basic_info))
         subtask.process.resurrect()
 
@@ -599,9 +595,7 @@ class ProfilingInstance:
         prof_result: ProfilingReturnStructure = compile_actual_result
         if self.switches.preserve_original_csv:
             self.flush((*testcase.original_line,
-                        "<-INPUT-|-RESULT->",
                         *prof_result.get()))
         else:
             self.flush((*[getattr(testcase, title) for title in self.titles],
-                        "<-INPUT-|-RESULT->",
                         *prof_result.get()))

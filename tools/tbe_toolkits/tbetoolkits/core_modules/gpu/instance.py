@@ -112,7 +112,7 @@ class GPUProfilingInstance(ProfilingInstance):
         # Write csv title
         logging.info("Initialize output csv file...")
         self.init_flush(self.result_path)
-        self.flush((*self.titles, "<-INPUT-|-RESULT->", *self.result_titles))
+        self.flush((*self.titles, *self.result_titles))
         logging.info("Preparing compilation tasks")
         self._prepare_tasks()
         logging.info("Received compilation tasks: %d" % len(self.waiting_tasks))
@@ -254,7 +254,6 @@ class GPUProfilingInstance(ProfilingInstance):
         basic_info = (f"Crashed at profiling stage {crashed_stage}",
                       *tuple("PROFILE_CRASH" for _ in range(len(self.result_titles) - 1)))
         self.flush((*[getattr(testcase, title) for title in self.titles],
-                    "<-INPUT-|-RESULT->",
                     *basic_info))
         task.process.resurrect()
 
@@ -267,7 +266,6 @@ class GPUProfilingInstance(ProfilingInstance):
                       % (testcase.testcase_name, exception_print))
         basic_info = tuple("FAILURE" for _ in range(len(self.result_titles)))
         self.flush((*[getattr(testcase, title) for title in self.titles],
-                    "<-INPUT-|-RESULT->",
                     *basic_info))
 
     def __profile_on_completion(self,
@@ -275,5 +273,4 @@ class GPUProfilingInstance(ProfilingInstance):
                                 compile_actual_result: tuple):
         testcase: UniversalTestcaseStructure = task.testcase_struct
         self.flush((*[getattr(testcase, title) for title in self.titles],
-                    "<-INPUT-|-RESULT->",
                     *compile_actual_result))

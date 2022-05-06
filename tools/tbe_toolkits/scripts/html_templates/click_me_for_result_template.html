@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="zh">
+
+<head>
+    <meta charset="utf-8">
+    <title>result</title>
+    <style>
+        body {
+            font-size: 14px;
+            font-weight: normal;
+        }
+
+        div {
+            overflow: auto;
+            width: 99%;
+            height: 900px;
+            border: 1px solid gray;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+        }
+
+        table th, td {
+            border: 1px solid #AAA;
+            padding: .5em 1em;
+        }
+
+        table th {
+            font-weight: bold;
+            background: #C2C2C2;
+            position: sticky;
+            top: 0;
+        }
+
+        table tbody tr:nth-of-type(odd) {
+            background: #EEE;
+        }
+
+        table tbody tr:nth-of-type(even) {
+            background: #FFF;
+        }
+
+        table .npu_perf,.block_dim {
+            text-align: right;
+        }
+    </style>
+</head>
+
+<body>
+报告生成时间：%time
+<div>
+    <table>
+        <thead>
+            <tr>
+                <th>用例名</th>
+                <th>网络</th>
+                <th>精度</th>
+                <th>NPU性能</th>
+                <th>输入Shape</th>
+                <th>输出Shape</th>
+                <th>数据类型</th>
+                <th>数据格式</th>
+            </tr>
+        </thead>
+        <tbody>
+            %op_tds
+        </tbody>
+    </table>
+</div>
+</body>
+</html>

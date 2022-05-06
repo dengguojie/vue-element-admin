@@ -19,6 +19,7 @@ STATUS_SUCCESS=0
 STATUS_FAILED=1
 
 CASE_SOURCE="${CUR_DIR}/st_plus"
+RESULT_SUMMARY="${CUR_DIR}/result.txt"
 
 run() {
   local op_dir="${CASE_SOURCE}"
@@ -34,6 +35,7 @@ run() {
       echo "[ERROR] run ops stest plus failed, case file is: $cases."
       exit $STATUS_FAILED
     fi
+    echo "[INFO]===============end of running st_plus ==================="
   else
     echo "[INFO]===============no testcase to run ==================="
     exit $STATUS_SUCCESS
@@ -45,11 +47,19 @@ tar_results () {
   local files=""
   if [[ -f st_plus_result.csv ]]; then
     files=${files}" st_plus_result.csv"
+    if [[ -f "tbe_toolkits/scripts/gen_result_html.py" ]]; then
+      python3 tbe_toolkits/scripts/gen_result_html.py "st_plus_result.csv"
+      [[ -f "click_me_for_result.html" ]] && files=${files}" click_me_for_result.html"
+    fi
   fi
 
   local log_count=`ls ${CUR_DIR}/tbetoolkits-*.log 2>/dev/null | wc -l`
   if [[ $log_count -gt 0 ]]; then
     files=${files}" tbetoolkits-*.log"
+  fi
+
+  if [[ -d ~/ascend/log/plog ]]; then
+    files=${files}" ~/ascend/log/plog"
   fi
 
   if [[ -n "$files" ]]; then
@@ -77,10 +87,9 @@ get_results() {
   local fail_count=${#arr[@]}
   local succ_count=$(expr $total_count - $fail_count)
 
-  local result_summary="${CUR_DIR}/result.txt"
-  echo "SUCCESS: $succ_count" > "${result_summary}"
-  echo "FAIL: $fail_count" >> "${result_summary}"
-  echo "FAIL_CASE: ${arr[@]}" >> "${result_summary}"
+  echo "SUCCESS: $succ_count" > "${RESULT_SUMMARY}"
+  echo "FAIL: $fail_count" >> "${RESULT_SUMMARY}"
+  echo "FAIL_CASE: ${arr[@]}" >> "${RESULT_SUMMARY}"
 
   if [[ ${#arr[@]} -gt 0 ]]; then
     echo "[ERROR]Some TestCase(s) failed: ${arr[@]}"
