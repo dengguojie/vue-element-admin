@@ -136,7 +136,9 @@ def fetch_elewise_fusion_ub_info(sch, tensor_map, tensor_attr):
     input_tensor_list = []
     c_ub_res = sch.cache_write(deconv_res, tbe_platform_info.scope_ubuf)
     for key, value in all_tensor.items():
-        if value.op.input_tensors:
+        if value.op.tag == "conv2d_backprop_input":
+            continue
+        elif value.op.input_tensors:
             ub_list.append(value)
         else:
             if leaf_tensor.get(key).op.tag == deconv_res.op.tag:

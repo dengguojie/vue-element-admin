@@ -51,9 +51,9 @@ support_intrinsic_cube_vector_split = {
     ("CUBE_VECTOR_SPLIT",) : True,
 }
 
-
 def side_effects(*args):
     return vals[args]
+
 
 def check_intrinsic_cube_vector_split(*args, **kwargs):
     return support_intrinsic_cube_vector_split[args]
