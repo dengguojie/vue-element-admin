@@ -581,7 +581,7 @@ TEST_F(Conv2DTiling, Conv2d_tiling_binary_case0) {
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
-  std::string compileInfo = R"({"_pattern": "Convolution", "push_status": 0, "tiling_type": "binary_tiling", "repo_seeds": {}, "repo_range": {}, "cost_range": {"10000": [1, 10, 10, 25, 10, 25]}, "block_dim": {"10000": 2}, "_vars": {"10000": ["batch_n", "fmap_h", "ho", "fmap_w", "wo"]}, "_custom_vars": {"10000": ["batch_n", "fmap_h", "ho", "fmap_w", "wo"]}, )";
+  std::string compileInfo = R"({"_pattern": "Convolution", "push_status": 0, "tiling_type": "binary", "repo_seeds": {}, "repo_range": {}, "cost_range": {"10000": [1, 10, 10, 25, 10, 25]}, "block_dim": {"10000": 2}, "_vars": {"10000": ["batch_n", "fmap_h", "ho", "fmap_w", "wo"]}, "_custom_vars": {"10000": ["batch_n", "fmap_h", "ho", "fmap_w", "wo"]}, )";
   compileInfo += R"("fusion_utilize": {"pre_fusion_ub_utilize": 0, "post_fusion_ub_utilize": 3, "pre_fusion_vector_utilize": 0, "post_fusion_vector_utilize": 0}, )";
   compileInfo += R"("hardware_info": {"aicore_num": 2, "l2_size": 8388608, "l1_size": 1048576, "l0_a_size": 65536, "l0_b_size": 65536, )";
   compileInfo += R"("l0_c_size": 262144, "ub_size": 253952, "bt_size": 0, "cube_vector_split_bool": false, "soc_version": "Ascend310", )";
@@ -645,7 +645,7 @@ TEST_F(Conv2DTiling, Conv2d_tiling_binary_case1) {
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
-  std::string compileInfo = R"({"_pattern": "Convolution", "push_status": 0, "tiling_type": "binary_tiling", "repo_seeds": {}, "repo_range": {}, "cost_range": {"10000": [1, 10, 10, 25, 10, 25]}, "block_dim": {"10000": 2}, "_vars": {"10000": ["batch_n", "fmap_h", "ho", "fmap_w", "wo"]}, "_custom_vars": {"10000": ["batch_n", "fmap_h", "ho", "fmap_w", "wo"]}, )";
+  std::string compileInfo = R"({"_pattern": "Convolution", "push_status": 0, "tiling_type": "binary", "repo_seeds": {}, "repo_range": {}, "cost_range": {"10000": [1, 10, 10, 25, 10, 25]}, "block_dim": {"10000": 2}, "_vars": {"10000": ["batch_n", "fmap_h", "ho", "fmap_w", "wo"]}, "_custom_vars": {"10000": ["batch_n", "fmap_h", "ho", "fmap_w", "wo"]}, )";
       compileInfo += R"("fusion_utilize": {"pre_fusion_ub_utilize": 0, "post_fusion_ub_utilize": 4.5, "pre_fusion_vector_utilize": 0, "post_fusion_vector_utilize": 0}, )";
       compileInfo += R"("hardware_info": {"aicore_num": 2, "l2_size": 8388608, "l1_size": 1048576, "l0_a_size": 65536, "l0_b_size": 65536, )";
       compileInfo += R"("l0_c_size": 262144, "ub_size": 253952, "bt_size": 0, "cube_vector_split_bool": false, "soc_version": "Ascend310", )";
@@ -709,7 +709,7 @@ TEST_F(Conv2DTiling, Conv2d_tiling_binary_case_cin_lessthan_16) {
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
-  std::string compileInfo = R"({"_pattern": "Convolution", "push_status": 0, "tiling_type": "binary_tiling", "repo_seeds": {}, "repo_range": {}, "cost_range": {"10000": [1, 10, 10, 25, 10, 25]}, "block_dim": {"10000": 2}, "_vars": {"10000": ["batch_n", "fmap_h", "ho", "fmap_w", "wo"]}, "_custom_vars": {"10000": ["batch_n", "fmap_h", "ho", "fmap_w", "wo"]}, )";
+  std::string compileInfo = R"({"_pattern": "Convolution", "push_status": 0, "tiling_type": "binary", "repo_seeds": {}, "repo_range": {}, "cost_range": {"10000": [1, 10, 10, 25, 10, 25]}, "block_dim": {"10000": 2}, "_vars": {"10000": ["batch_n", "fmap_h", "ho", "fmap_w", "wo"]}, "_custom_vars": {"10000": ["batch_n", "fmap_h", "ho", "fmap_w", "wo"]}, )";
       compileInfo += R"("fusion_utilize": {"pre_fusion_ub_utilize": 0, "post_fusion_ub_utilize": 3, "pre_fusion_vector_utilize": 0, "post_fusion_vector_utilize": 0}, )";
       compileInfo += R"("hardware_info": {"aicore_num": 2, "l2_size": 8388608, "l1_size": 1048576, "l0_a_size": 65536, "l0_b_size": 65536, )";
       compileInfo += R"("l0_c_size": 262144, "ub_size": 253952, "bt_size": 0, "cube_vector_split_bool": false, "soc_version": "Ascend310", )";
@@ -774,7 +774,7 @@ TEST_F(Conv2DTiling, Conv2d_tiling_binary_case_stride_2) {
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
-  std::string compileInfo = R"({"_pattern": "Convolution", "push_status": 0, "tiling_type": "binary_tiling", "repo_seeds": {}, "repo_range": {}, "cost_range": {"10000": [1, 10, 10, 25, 10, 25]}, "block_dim": {"10000": 2}, "_vars": {"10000": ["batch_n", "fmap_h", "ho", "fmap_w", "wo"]}, "_custom_vars": {"10000": ["batch_n", "fmap_h", "ho", "fmap_w", "wo"]}, )";
+  std::string compileInfo = R"({"_pattern": "Convolution", "push_status": 0, "tiling_type": "binary", "repo_seeds": {}, "repo_range": {}, "cost_range": {"10000": [1, 10, 10, 25, 10, 25]}, "block_dim": {"10000": 2}, "_vars": {"10000": ["batch_n", "fmap_h", "ho", "fmap_w", "wo"]}, "_custom_vars": {"10000": ["batch_n", "fmap_h", "ho", "fmap_w", "wo"]}, )";
   compileInfo += R"("fusion_utilize": {"pre_fusion_ub_utilize": 0, "post_fusion_ub_utilize": 3, "pre_fusion_vector_utilize": 0, "post_fusion_vector_utilize": 0}, )";
   compileInfo += R"("hardware_info": {"aicore_num": 2, "l2_size": 8388608, "l1_size": 1048576, "l0_a_size": 65536, "l0_b_size": 65536, )";
   compileInfo += R"("l0_c_size": 262144, "ub_size": 253952, "bt_size": 0, "cube_vector_split_bool": false, "soc_version": "Ascend310", )";
@@ -838,7 +838,7 @@ TEST_F(Conv2DTiling, Conv2d_tiling_binary_case_dilation_2) {
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
-  std::string compileInfo = R"({"_pattern": "Convolution", "push_status": 0, "tiling_type": "binary_tiling", "repo_seeds": {}, "repo_range": {}, "cost_range": {"10000": [1, 10, 10, 25, 10, 25]}, "block_dim": {"10000": 2}, "_vars": {"10000": ["batch_n", "fmap_h", "ho", "fmap_w", "wo"]}, "_custom_vars": {"10000": ["batch_n", "fmap_h", "ho", "fmap_w", "wo"]}, )";
+  std::string compileInfo = R"({"_pattern": "Convolution", "push_status": 0, "tiling_type": "binary", "repo_seeds": {}, "repo_range": {}, "cost_range": {"10000": [1, 10, 10, 25, 10, 25]}, "block_dim": {"10000": 2}, "_vars": {"10000": ["batch_n", "fmap_h", "ho", "fmap_w", "wo"]}, "_custom_vars": {"10000": ["batch_n", "fmap_h", "ho", "fmap_w", "wo"]}, )";
   compileInfo += R"("fusion_utilize": {"pre_fusion_ub_utilize": 0, "post_fusion_ub_utilize": 3, "pre_fusion_vector_utilize": 0, "post_fusion_vector_utilize": 0}, )";
   compileInfo += R"("hardware_info": {"aicore_num": 2, "l2_size": 8388608, "l1_size": 1048576, "l0_a_size": 65536, "l0_b_size": 65536, )";
   compileInfo += R"("l0_c_size": 262144, "ub_size": 253952, "bt_size": 0, "cube_vector_split_bool": false, "soc_version": "Ascend310", )";

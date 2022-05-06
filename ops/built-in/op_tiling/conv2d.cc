@@ -817,7 +817,7 @@ bool Conv2DTiling(const std::string& opType, const ge::Operator& opParas,
         OP_LOGE(opType.c_str(), "only support NC1HWC0 or NHWC format.");
     }
 
-    if (opInfo.tilingType == "binary_tiling") {
+    if (opInfo.tilingType == "binary") {
         GELOGD("[%s] optiling type is binary_tiling", opDesc->GetName().c_str());
         return ProduceBinaryTiling(opDesc, opInfo, runInfo);
     }
