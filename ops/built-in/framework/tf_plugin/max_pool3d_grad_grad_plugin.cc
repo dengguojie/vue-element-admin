@@ -28,10 +28,12 @@ namespace domi {
 // Replace ge ParseParams fuction to process graph maxpool3dgradgrad node attrs
 Status ParseParamsMaxPool3DGradGrad(const Message* op_src, ge::Operator& op) {
   // Convert original tf graph maxpool3dgradgrad attrs to GE graph attrs
-  AutoMappingFn(op_src, op);
+  if (AutoMappingFn(op_src, op) != SUCCESS) {
+    return FAILED;
+  }
   // Escape GE require attr [pads] check here
   std::vector<int32_t> padList = {0, 0, 0, 0, 0, 0};
-  op.SetAttr("pads", padList);
+  (void)op.SetAttr("pads", padList);
   return SUCCESS;
 }
 

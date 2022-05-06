@@ -25,7 +25,9 @@ namespace domi {
 Status AutoMappingFnOptionalGetValue(const google::protobuf::Message* op_src, ge::Operator& op) {
   map<string, pair<string, string>> value;
   value["out"] = pair<string, string>("components", "output_types");
-  (void)AutoMappingFnDynamic(op_src, op, value);
+  if (AutoMappingFnDynamic(op_src, op, value) != SUCCESS) {
+    return FAILED;
+  }
   return SUCCESS;
 }
 

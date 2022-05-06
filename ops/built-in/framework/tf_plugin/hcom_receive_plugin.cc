@@ -38,7 +38,7 @@ Status AutoMappingFnHcomReceive(const google::protobuf::Message* op_src, ge::Ope
     OP_LOGI("HcomReceive", "GetAttr T failed");
     return FAILED;
   }
-  op.SetAttr("dtype", dataType);
+  (void)op.SetAttr("dtype", dataType);
   OP_LOGI("HcomReceive", "op[HcomReceive] tensorflow plugin parser[AutoMapping] success.");
   return SUCCESS;
 }

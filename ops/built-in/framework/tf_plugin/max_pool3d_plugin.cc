@@ -28,7 +28,9 @@ namespace domi {
 const int POS_0 = 0;
 
 Status ParseParamsMaxPool3D(const Message* op_src, ge::Operator& op) {
-  AutoMappingFn(op_src, op);
+  if (AutoMappingFn(op_src, op) != SUCCESS) {
+    return FAILED;
+  }
 
   auto op_dsc = ge::OpDescUtils::GetOpDescFromOperator(op);
 
@@ -53,7 +55,7 @@ Status ParseParamsMaxPool3D(const Message* op_src, ge::Operator& op) {
   OP_LOGI(TbeGetName(op).c_str(), "update output y format success, now is %d", op.GetOutputDesc(POS_0).GetFormat());
 
   std::vector<int32_t> padList = {0, 0, 0, 0, 0, 0};
-  op.SetAttr("pads", padList);
+  (void)op.SetAttr("pads", padList);
 
   return SUCCESS;
 }

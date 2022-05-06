@@ -2,7 +2,7 @@
 #include <vector>
 
 #include "gtest/gtest.h"
-
+#include "plugin_test_utils.h"
 #include "tensorflow_parser.h"
 
 using namespace ge;
@@ -11,6 +11,7 @@ class parallel_concat_plugin_test : public testing::Test {
  protected:
   static void SetUpTestCase() {
     std::cout << "parallel_concat_plugin_test SetUp" << std::endl;
+    CleanGlobal();
   }
 
   static void TearDownTestCase() {

@@ -2,6 +2,7 @@
 #include <vector>
 #include "gtest/gtest.h"
 #include "tensorflow_parser.h"
+#include "plugin_test_utils.h"
 
 using namespace ge;
 
@@ -9,6 +10,7 @@ class max_pool3d_grad_plugin_test : public testing::Test {
  protected:
   static void SetUpTestCase() {
     std::cout << "max_pool3d_grad_plugin_test SetUp" << std::endl;
+    CleanGlobal();
   }
 
   static void TearDownTestCase() {

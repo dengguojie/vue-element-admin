@@ -35,7 +35,7 @@ Status AutoMappingFnLeakyRelu(const google::protobuf::Message* op_src, ge::Opera
     OP_LOGI("LeakyRelu", "GetAttr alpha failed");
     return FAILED;
   }
-  op.SetAttr("negative_slope", alpha);
+  (void)op.SetAttr("negative_slope", alpha);
   OP_LOGI("LeakyRelu", "op[LeakyRelu] tensorflow plugin parser success.");
   return SUCCESS;
 }
