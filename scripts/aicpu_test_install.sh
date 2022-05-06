@@ -76,7 +76,7 @@ do
 done
 
 if [[ "x$ASCEND_OPP_INSTALL_PATH" = "x" ]]; then
-  ASCEND_OPP_INSTALL_PATH="/usr/local/Ascend"
+  ASCEND_OPP_INSTALL_PATH="/usr/local/Ascend/latest"
 fi
 
 if [[ ! -d "$ASCEND_OPP_INSTALL_PATH/opp/" ]]; then

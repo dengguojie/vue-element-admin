@@ -31,12 +31,12 @@ build_binary.sh soc_version opp_run_path output_path
 
 执行方法：
   bash build_binary_single_op.sh {op_type} {soc_version} {opp_run_path} {output_path} {opcinfo文件}(可选, 不传内部自动生成)
-    ex: bash build_binary_single_op.sh Add Ascend910 /usr/local/Ascend/opp/ ./add
+    ex: bash build_binary_single_op.sh Add Ascend910 /usr/local/Ascend/latest/opp/ ./add
 
 入参说明
     {op_type}      算子名字, ex：Add
     {soc_version}  编译平台, ex: Ascend910
-    {opp_run_path} opp包路径, 预留没使用, ex：/usr/local/Ascend/opp/
+    {opp_run_path} opp包路径, 预留没使用, ex：/usr/local/Ascend/latest/opp/
     {output_path}  二进制kernel输出路径
                      二进制文件路径路径规划 {output_path}/op_impl/built-in/ai_core/tbe/kernel/{soc_version}/{op_type}/
                      二进制config文件      {output_path}/op_impl/built-in/ai_core/tbe/kernel/config/{soc_version}/{op_type}.json

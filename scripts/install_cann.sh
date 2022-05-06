@@ -243,12 +243,12 @@ install_Ascend(){
   fi
   if [[ $UID -eq 0 ]];then
     if [  -d "/usr/local/Ascend" ];then
-      ln -s  /usr/local/Ascend/${arch}-linux/lib64/libruntime.so  /usr/local/Ascend/compiler/lib64/libruntime.so
+      ln -s  /usr/local/Ascend/latest/${arch}-linux/lib64/libruntime.so  /usr/local/Ascend/latest/compiler/lib64/libruntime.so
     fi
   else
-    chmod +w ~/Ascend/compiler/lib64
-    ln -s  ~/Ascend/${arch}-linux/lib64/libruntime.so  ~/Ascend/compiler/lib64/libruntime.so
-    chmod -w ~/Ascend/compiler/lib64
+    chmod +w ~/Ascend/latest/compiler/lib64
+    ln -s  ~/Ascend/latest/${arch}-linux/lib64/libruntime.so  ~/Ascend/latest/compiler/lib64/libruntime.so
+    chmod -w ~/Ascend/latest/compiler/lib64
   fi
 }
 

@@ -107,10 +107,10 @@ set_env(){
   echo unset PYTHONPATH >> ~/.bashrc
   echo  export ASCEND_CODE_HOME=$(cd "$(dirname $0)"; pwd) >> ~/.bashrc
   if [ $UID -ne 0 ];then
-    echo  export ASCEND_HOME=~/Ascend >> ~/.bashrc
-    echo  export ASCEND_CUSTOM_PATH=~/Ascend >> ~/.bashrc
+    echo  export ASCEND_HOME=~/Ascend/latest >> ~/.bashrc
+    echo  export ASCEND_CUSTOM_PATH=~/Ascend/latest >> ~/.bashrc
   else
-    echo  export ASCEND_HOME="/usr/local/Ascend" >> ~/.bashrc
+    echo  export ASCEND_HOME="/usr/local/Ascend/latest" >> ~/.bashrc
     echo  unset ASCEND_CUSTOM_PATH >> ~/.bashrc
   fi
 

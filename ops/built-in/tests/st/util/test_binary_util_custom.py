@@ -411,6 +411,11 @@ def test_match_format(test_arg):
     assert match_format(input_tensor, target_tensor)
 
 
+def test_const_value_match(test_arg):
+    from impl.util.util_binary import _ASCEND_OPP_PATH_DEFAULT
+    assert _ASCEND_OPP_PATH_DEFAULT == "/usr/local/Ascend/latest/opp"
+
+
 ut_case.add_cust_test_func("all", test_func=test_util_binary_api)
 ut_case.add_cust_test_func("all", test_func=test_match_tenser)
 ut_case.add_cust_test_func("all", test_func=test_match_attr)
@@ -418,6 +423,7 @@ ut_case.add_cust_test_func("all", test_func=test_update_args)
 ut_case.add_cust_test_func("all", test_func=test_import_lib)
 ut_case.add_cust_test_func("all", test_func=test_match)
 ut_case.add_cust_test_func("all", test_func=test_match_format)
+ut_case.add_cust_test_func("all", test_func=test_const_value_match)
 
 
 if __name__ == "__main__":

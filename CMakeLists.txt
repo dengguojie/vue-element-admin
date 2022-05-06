@@ -120,7 +120,7 @@ if(BUILD_OPEN_PROJECT)
   if(DEFINED ENV{ASCEND_CUSTOM_PATH})
     set(AICPU_OPP_ENV $ENV{ASCEND_CUSTOM_PATH}/opp/op_impl/built-in/aicpu/aicpu_kernel)
   else()
-    set(AICPU_OPP_ENV /usr/local/Ascend/opp/op_impl/built-in/aicpu/aicpu_kernel)
+    set(AICPU_OPP_ENV /usr/local/Ascend/latest/opp/op_impl/built-in/aicpu/aicpu_kernel)
   endif()
 
   # find necessary packages

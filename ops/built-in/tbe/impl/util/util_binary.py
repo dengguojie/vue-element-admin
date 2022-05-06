@@ -22,7 +22,7 @@ from impl.util.platform_adapter import tbe_platform
 from impl.util.util_tensor_dict import FormatConstant
 
 _ASCEND_OPP_PATH_ENV = "ASCEND_OPP_PATH"
-_ASCEND_OPP_PATH_DEFAULT = "/usr/local/Ascend/opp"
+_ASCEND_OPP_PATH_DEFAULT = "/usr/local/Ascend/latest/opp"
 _BUILTIN_KERNEL_CONFIG_PATH = "op_impl/built-in/ai_core/tbe/kernel/config"
 _BUILTIN_OPP_CONFIG_PATH = "op_impl/built-in/ai_core/tbe/config"
 

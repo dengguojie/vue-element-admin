@@ -17,7 +17,7 @@
 if(DEFINED ENV{ASCEND_CUSTOM_PATH})
   set(ASCEND_DIR $ENV{ASCEND_CUSTOM_PATH})
 else()
-  set(ASCEND_DIR /usr/local/Ascend)
+  set(ASCEND_DIR /usr/local/Ascend/latest)
 endif()
 message("Search libs under install path ${ASCEND_DIR}")
 

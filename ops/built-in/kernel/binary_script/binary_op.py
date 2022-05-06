@@ -229,7 +229,7 @@ class PATH:
     """
     path
     """
-    OPP_PATH = os.environ.get("ASCEND_OPP_PATH", "/usr/local/Ascend/opp")
+    OPP_PATH = os.environ.get("ASCEND_OPP_PATH", "/usr/local/Ascend/latest/opp")
     CONFIG_PATH = OPP_PATH + "/op_impl/built-in/ai_core/tbe/config/"
     IMPL_PATH = OPP_PATH + "/op_impl/built-in/ai_core/tbe/"
     BINARY_CONFIG_PATH = "../binary_config/"
