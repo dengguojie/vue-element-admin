@@ -1520,18 +1520,6 @@ def __binary_elewise_op(tensor_l, tensor_r, op_name, args=None):
         lambda_func = lambda *indice: tensor_l(*indice) & tensor_r(*indice)
     elif op_name == "elewise_binary_or":
         lambda_func = lambda *indice: tensor_l(*indice) | tensor_r(*indice)
-    elif op_name == "elewise_binary_vcmpv_le":
-        lambda_func = lambda *indice: tensor_l(*indice) <= tensor_r(*indice)
-    elif op_name == "elewise_binary_vcmpv_lt":
-        lambda_func = lambda *indice: tensor_l(*indice) < tensor_r(*indice)
-    elif op_name == "elewise_binary_vcmpv_ge":
-        lambda_func = lambda *indice: tensor_l(*indice) >= tensor_r(*indice)
-    elif op_name == "elewise_binary_vcmpv_gt":
-        lambda_func = lambda *indice: tensor_l(*indice) > tensor_r(*indice)
-    elif op_name == "elewise_binary_vcmpv_ne":
-        lambda_func = lambda *indice: tensor_l(*indice) != tensor_r(*indice)
-    elif op_name == "elewise_binary_vcmpv_eq":
-        lambda_func = lambda *indice: tensor_l(*indice) == tensor_r(*indice)
     elif op_name == "elewise_binary_scalar_axpy":
         intr = "v" + op_name.split("_")[-1]
         is_support_dtype = intrinsic_check_support("Intrinsic_"+intr,
@@ -1559,28 +1547,6 @@ def __binary_elewise_op(tensor_l, tensor_r, op_name, args=None):
         lambda_func = lambda *indice: \
             tvm.expr.Cast(rtype, tensor_l(*indice))*util_astype(args[0], rtype) + tensor_r(*indice)
         op_name = op_name + ("|1,1" if tensor_l == tensor_r else "|0,0")
-    elif op_name == "emit_insn_elewise_binary_cmp":
-        operation = args[0]
-        if operation == 'lt':
-            lambda_func = lambda *indice: tensor_l(*indice) < tensor_r(*indice)
-        elif operation == 'gt':
-            lambda_func = lambda *indice: tensor_l(*indice) > tensor_r(*indice)
-        elif operation == 'le':
-            lambda_func = lambda *indice: tensor_l(*indice) <= tensor_r(*indice)
-        elif operation == 'ge':
-            lambda_func = lambda *indice: tensor_l(*indice) >= tensor_r(*indice)
-        elif operation == 'eq':
-            lambda_func = lambda *indice: \
-                tvm.expr.EQ(tensor_l(*indice), tensor_r(*indice))
-        elif operation == 'ne':
-            lambda_func = lambda *indice: \
-                tvm.expr.NE(tensor_l(*indice), tensor_r(*indice))
-        else:
-            dict_args = {}
-            dict_args["errCode"] = "E90002"
-            dict_args["detailed_cause"] = "vcmp do not support the " \
-                                          "input op_name: %s" % operation
-            raise RuntimeError(dict_args, get_error_message(dict_args))
     elif op_name == "elewise_binary_logic":
         operation = args[0]
         if operation == 'and':
@@ -1602,41 +1568,7 @@ def __binary_elewise_op(tensor_l, tensor_r, op_name, args=None):
         dict_args["detailed_cause"] = "operation %s not support yet" % op_name
         raise RuntimeError(dict_args, get_error_message(dict_args))
 
-    if op_name == "emit_insn_elewise_binary_cmp" and args[1] == 'bit':
-        shape = shape_to_list(shape)
-        if shape[-1] % 8 != 0:
-            dict_args = {}
-            dict_args["errCode"] = "E90001"
-            dict_args["detailed_cause"] = "The input shape's last axis must be " \
-                                          "mutiply of 8, while last dim is [%s]" % \
-                                          shape[-1]
-            raise RuntimeError(dict_args, get_error_message(dict_args))
-
-        k = tvm.reduce_axis((0, 8), name='k')
-        res_shape = shape
-        res_shape[-1] = res_shape[-1] // 8
-
-        def _compute(*index):
-            """
-            elewise compare for bit
-            """
-            res_index = []
-            for i, value in enumerate(index):
-                if i == len(index) - 1:
-                    res_index.append(value*8 + k)
-                else:
-                    res_index.append(value)
-            tensor = tvm.bit(lambda_func(*res_index).astype('uint8'), axis=k)
-            return tensor
-
-        op_name = op_name + "|" + args[0] + "|" + args[1]
-
-        with tvm.tag_scope(op_name):
-            output = tvm.compute(res_shape, _compute, name='output')
-        return output
-
-    if op_name in ("emit_insn_elewise_binary_cmp",
-                   "elewise_binary_logic"):
+    if op_name in ("elewise_binary_logic",):
         for arg in args:
             op_name = op_name + "|" + arg
 

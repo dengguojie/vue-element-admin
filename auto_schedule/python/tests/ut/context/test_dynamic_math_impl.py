@@ -605,23 +605,6 @@ def test_binary_elewise_op_axpy_not_support_dtype_exception(_):
     return False
 
 
-def test_binary_elewise_op_cmp_mode_support_exception(_):
-    lhs_shape = (1, 32, 32, 16)
-    rhs_shape = (1, 32, 32, 16)
-    lhs = tvm.placeholder(lhs_shape, name="lhs", dtype="int8")
-    rhs = tvm.placeholder(rhs_shape, name="rhs", dtype="int8")
-    op_name = "emit_insn_elewise_binary_cmp"
-    operation = "gl"
-    mode = "bool"
-    try:
-        math.__binary_elewise_op(lhs, rhs, op_name, args=[operation, mode])
-    except RuntimeError as e:
-        errorCode = e.args[0].get("errCode")
-        if errorCode == "E90002":
-            return True
-    return False
-
-
 def test_binary_elewise_op_logic_mode_exception(_):
     lhs_shape = (1, 32, 32, 16)
     rhs_shape = (1, 32, 32, 16)
@@ -649,23 +632,6 @@ def test_binary_elewise_op_name_exception(_):
     except RuntimeError as e:
         errorCode = e.args[0].get("errCode")
         if errorCode == "E90003":
-            return True
-    return False
-
-
-def test_binary_elewise_op_cmp_bit_exception(_):
-    lhs_shape = (16, 64, 1, 7)
-    lhs = tvm.placeholder(lhs_shape, name="lhs", dtype="float16")
-    rhs_shape = (16, 64, 1, 7)
-    rhs = tvm.placeholder(rhs_shape, name="rhs", dtype="float16")
-    op_name = "emit_insn_elewise_binary_cmp"
-    operation = "lt"
-    mode = "bit"
-    try:
-        math.__binary_elewise_op(lhs, rhs, op_name, [operation, mode])
-    except RuntimeError as e:
-        errorCode = e.args[0].get("errCode")
-        if errorCode == "E90001":
             return True
     return False
 
@@ -935,10 +901,8 @@ test_func_list = [
     test_binary_elewise_op_dtype_not_same_exception,
     test_binary_elewise_op_axpy_dtype_not_same_exception,
     test_binary_elewise_op_axpy_not_support_dtype_exception,
-    test_binary_elewise_op_cmp_mode_support_exception,
     test_binary_elewise_op_logic_mode_exception,
     test_binary_elewise_op_name_exception,
-    test_binary_elewise_op_cmp_bit_exception,
     test_vmla_input_type_exception,
     test_vmadd_input_type_exception,
     test_multiple_elewise_op_dtype_exception,
