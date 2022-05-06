@@ -420,6 +420,7 @@ set(_aicore_fusion_srcs
   graph_fusion/ai_core/double_ascend_antiquant_add_relu_ascend_quant_fusion_pass.cc
   graph_fusion/dsa_core/randomdsa_fusion_pass.cc
   graph_fusion/ai_core/attention_ln_qkv_fusion_pass.cc
+  graph_fusion/ai_core/attention_qkv_gradx_fusion_pass.cc
 )
 
 set(ops_fusion_pass_path "${INSTALL_PATH}/opp/fusion_pass/built_in")

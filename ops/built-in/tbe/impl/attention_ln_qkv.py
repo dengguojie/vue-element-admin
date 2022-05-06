@@ -18,48 +18,18 @@ attention_ln_qkv
 from __future__ import absolute_import
 import math
 from functools import reduce
+from impl.util.attention_qkv_util import Constant
+from impl.util.attention_qkv_util import vconv
+from impl.util.attention_qkv_util import matmul_l0c_process
+from impl.util.attention_qkv_util import check_equal_shape
+from impl.util.attention_qkv_util import check_dtype
+from impl.util.attention_qkv_util import check_format
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tik
 from impl.util.platform_adapter import error_manager_cube
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
 from tbe.common.utils import shape_util
-
-
-class Constant:
-    '''
-    Constant of attention_ln_qkv big kernels
-    '''
-    DTYPE_SIZE = {
-        'float16': 2,
-        'float32': 4
-    }
-    C0 = 16
-    M0 = 16
-    N0 = 16
-    BLOCK_NUM_32 = 32
-    CANDIDATE_TILING_M1 = 12
-    CANDIDATE_TILING_M2 = 8
-    CANDIDATE_TILING_N = 16
-    M_INNER_INDEX = 3
-    SQUARE_ROOT = -0.5
-    DOUBLE_BUFFER = 2
-    FRAC_SIZE = M0 * N0
-    MASK_FP16 = 128
-    MASK_FP32 = 64
-    KERNEL_NUM = 3
-    BLOCK_PER_REPEAT = 8
-    BLOCK_BYTES = 32
-    REPEAT_SIZE_MAX = 255
-    FP32_DTYPE = "float32"
-    FP16_DTYPE = "float16"
-    NUM_FP32_PER_BLOCK = BLOCK_BYTES // DTYPE_SIZE.get(FP32_DTYPE)
-    NUM_FP16_PER_BLOCK = BLOCK_BYTES // DTYPE_SIZE.get(FP16_DTYPE)
-    FP32_REPEAT_SIZE = BLOCK_PER_REPEAT * NUM_FP32_PER_BLOCK
-    FP16_REPEAT_SIZE = BLOCK_PER_REPEAT * NUM_FP16_PER_BLOCK
-    FP32_REPEAT_STRIDE = FRAC_SIZE // NUM_FP32_PER_BLOCK
-    FP32_BLOCK_STRIDE = C0 // NUM_FP32_PER_BLOCK
-    FRAC_REPEAT_NUM = FRAC_SIZE // FP32_REPEAT_SIZE
 
 
 class AttentionLnQKV:
@@ -107,9 +77,11 @@ class AttentionLnQKV:
             gamma_ub = tik_instance.Tensor(self.dtype, self.gamma_shape, name="gamma_ub", scope=tik.scope_ubuf)
             beta_ub = tik_instance.Tensor(self.dtype, self.beta_shape, name="beta_ub", scope=tik.scope_ubuf)
             tik_instance.data_move(gamma_ub, self.gamma_gm, 0, 1, self.k1_shape, 0, 0)
-            self._vconv(gamma_ub, self.gamma_cast, self.k1_shape * Constant.C0 // Constant.FP32_REPEAT_SIZE, True)
+            vconv(tik_instance, gamma_ub, self.gamma_cast, self.k1_shape * Constant.C0 // Constant.FP32_REPEAT_SIZE,
+                True)
             tik_instance.data_move(beta_ub, self.beta_gm, 0, 1, self.k1_shape, 0, 0)
-            self._vconv(beta_ub, self.beta_cast, self.k1_shape * Constant.C0 // Constant.FP32_REPEAT_SIZE, True)
+            vconv(tik_instance, beta_ub, self.beta_cast, self.k1_shape * Constant.C0 // Constant.FP32_REPEAT_SIZE,
+                True)
             with tik_instance.for_range(0, self.m_single_core) as m_single_core_idx:
                 with tik_instance.for_range(0, self.ln_mal1_times) as mal1_times_idx:
                     ln_m_idx = (blk_m_idx * self.m_single_core + m_single_core_idx) * self.ln_mal1_times + \
@@ -238,7 +210,8 @@ class AttentionLnQKV:
         x_ub = tik_instance.Tensor(self.dtype, self.x_l1_shape, name="x_ub", scope=tik.scope_ubuf)
         cast_x_ub = tik_instance.Tensor(Constant.FP32_DTYPE, self.x_l1_shape, name="cast_x_ub", scope=tik.scope_ubuf)
         tik_instance.data_move(x_ub, self.x_l1, 0, 1, self.ln_k_al1 * Constant.M0, 0, 0)
-        self._vconv(x_ub, cast_x_ub, self.ln_k_al1 * Constant.C0 * Constant.M0 // Constant.FP32_REPEAT_SIZE, True)
+        vconv(tik_instance, x_ub, cast_x_ub, self.ln_k_al1 * Constant.C0 * Constant.M0 // Constant.FP32_REPEAT_SIZE,
+            True)
         # process mean
         x_sum_ub = self._mad_compute(tik_instance, 1, is_mean_mad=True)
         # process variance
@@ -304,8 +277,8 @@ class AttentionLnQKV:
                     self.ln_k_al1, Constant.FP32_BLOCK_STRIDE, Constant.FP32_BLOCK_STRIDE, 0,
                     Constant.FP32_REPEAT_STRIDE, Constant.FP32_REPEAT_STRIDE, Constant.FP32_BLOCK_STRIDE)
         cast_ln_res = tik_instance.Tensor(self.dtype, self.x_l1_shape, name="cast_ln_res", scope=tik.scope_ubuf)
-        self._vconv(cast_x_ub, cast_ln_res, self.ln_k_al1 * Constant.C0 * Constant.M0 // Constant.FP32_REPEAT_SIZE,
-            False)
+        vconv(tik_instance, cast_x_ub, cast_ln_res, self.ln_k_al1 * Constant.C0 * Constant.M0 // \
+            Constant.FP32_REPEAT_SIZE, False)
         # use cast_ln_res as x_input of matmul_qkv
         tik_instance.data_move(self.ln_res_l1[mal1_times_idx * Constant.M0 * Constant.C0:], cast_ln_res, 0,
             self.ln_k_al1, Constant.M0, 0, (self.matmul_m_al1 - self.ln_m_al1) * Constant.M0)
@@ -366,7 +339,7 @@ class AttentionLnQKV:
         '''
         if self.core_num == Constant.BLOCK_NUM_32:
             src_ub, cast_ub, trans_ub = ub_tensor_list
-            self._vconv(src_ub, cast_ub, Constant.FRAC_REPEAT_NUM, False)
+            vconv(tik_instance, src_ub, cast_ub, Constant.FRAC_REPEAT_NUM, False)
             tik_instance.vtranspose(trans_ub, cast_ub)
             # after transpose, output is the first row
             tik_instance.data_move(out_tensor[idx * Constant.M0:], trans_ub, 0, self.ln_m_al0, 1, 0, 0)
@@ -385,7 +358,8 @@ class AttentionLnQKV:
                 cast_bias_ub = tik_instance.Tensor(Constant.FP32_DTYPE, self.bias_shape, name="cast_bias_ub",
                     scope=tik.scope_ubuf)
                 tik_instance.data_move(bias_ub, bias_gm[matmul_n_idx * Constant.N0:], 0, 1, self.matmul_n_l0, 0, 0)
-                self._vconv(bias_ub, cast_bias_ub, self.matmul_n_l0 * Constant.N0 // Constant.FP32_REPEAT_SIZE, True)
+                vconv(tik_instance, bias_ub, cast_bias_ub, self.matmul_n_l0 * Constant.N0 // Constant.FP32_REPEAT_SIZE,
+                    True)
                 with tik_instance.for_range(0, self.matmul_m_l0) as brc_idx:
                     tik_instance.broadcast_ub_to_l0c(l0c[brc_idx * Constant.FRAC_SIZE:], cast_bias_ub,
                         self.matmul_n_l0, 1, 0, self.matmul_m_l0 - 1)
@@ -443,29 +417,10 @@ class AttentionLnQKV:
                     self._load_2d(bl0[kl0_idx * self.matmul_n_l0 * Constant.N0 * Constant.C0:], bl1[kl0_idx * \
                         Constant.C0 * Constant.N0:], [0, self.matmul_n_l0, self.matmul_k_l0, 0, True])
                 # l0c process
+                cond_params = [ping_pong, kl1_factor_idx, self.bias_flag]
                 mad_tensors = [al0, bl0, l0c]
-                self._matmul_l0c_process(tik_instance, ping_pong, kl1_factor_idx, mad_tensors)
-
-
-    def _matmul_l0c_process(self, tik_instance, ping_pong, kl1_factor_idx, mad_tensors):
-        '''
-        matmul l0c_process
-        '''
-        al0, bl0, l0c = mad_tensors
-        if ping_pong == 0:
-            if self.bias_flag:
-                tik_instance.mmad(l0c, al0, bl0, self.matmul_m_l0 * Constant.M0, self.matmul_k_l0 * Constant.C0,
-                    self.matmul_n_l0 * Constant.N0, 1)
-            else:
-                with tik_instance.if_scope(kl1_factor_idx == 0):
-                    tik_instance.mmad(l0c, al0, bl0, self.matmul_m_l0 * Constant.M0, self.matmul_k_l0 * Constant.C0,
-                        self.matmul_n_l0 * Constant.N0, 0)
-                with tik_instance.else_scope():
-                    tik_instance.mmad(l0c, al0, bl0, self.matmul_m_l0 * Constant.M0, self.matmul_k_l0 * Constant.C0,
-                        self.matmul_n_l0 * Constant.N0, 1)
-        else:
-            tik_instance.mmad(l0c, al0, bl0, self.matmul_m_l0 * Constant.M0, self.matmul_k_l0 * Constant.C0,
-                self.matmul_n_l0 * Constant.N0, 1)
+                mad_size = [self.matmul_m_l0, self.matmul_k_l0, self.matmul_n_l0]
+                matmul_l0c_process(tik_instance, cond_params, mad_tensors, mad_size)
 
 
     def _load_2d(self, src, dst, instr_params):
@@ -481,28 +436,6 @@ class AttentionLnQKV:
         else:
             error_manager_cube.raise_err_specific_user("attention_ln_qkv",
                                                        "load2d instr unsupported.")
-
-
-    def _vconv(self, src_tensor, dst_tensor, vconv_repeat_size, fp16_to_fp32):
-        '''
-        vconv repeat size may exceeds 255, multi vconv instrs may needed
-        '''
-        tik_instance = self.tik_instance
-        stride_params = [1, 1, 8, 4]
-        if not fp16_to_fp32:
-            stride_params = [1, 1, 4, 8]
-        if vconv_repeat_size <= Constant.REPEAT_SIZE_MAX:
-            tik_instance.vconv(Constant.MASK_FP32, "", dst_tensor, src_tensor, vconv_repeat_size, *stride_params)
-        else:
-            num_loops = vconv_repeat_size // Constant.REPEAT_SIZE_MAX
-            for i in range(num_loops):
-                offset = i * Constant.FP32_REPEAT_SIZE * Constant.REPEAT_SIZE_MAX
-                tik_instance.vconv(Constant.MASK_FP32, "", dst_tensor[offset:], src_tensor[offset:],
-                    Constant.REPEAT_SIZE_MAX, *stride_params)
-            offset = num_loops * Constant.FP32_REPEAT_SIZE * Constant.REPEAT_SIZE_MAX
-            repeat_size = vconv_repeat_size - num_loops * Constant.REPEAT_SIZE_MAX
-            tik_instance.vconv(Constant.MASK_FP32, "", dst_tensor[offset:], src_tensor[offset:], repeat_size,
-                *stride_params)
 
 
 def _check_shape_and_dtype(x, kernels, outputs):
@@ -523,32 +456,25 @@ def _check_shape_and_dtype(x, kernels, outputs):
     var_shape = shape_util.shape_to_list(variance.get("shape"))
     k1_shape = input_x_shape[0]
     data_type = x.get("dtype")
-    if data_type != Constant.FP16_DTYPE:
-        error_manager_cube.raise_err_specific_user("attention_ln_qkv",
-                                                   "the only supported dtype is fp16.")
+    check_dtype("attention_ln_qkv", data_type)
+    check_equal_shape("attention_ln_qkv", [kernel_query_shape, kernel_key_shape, kernel_value_shape],
+                      "kernel_shape is inconsistant for matmul_qkv.")
+    check_equal_shape("attention_ln_qkv", [query_out_shape, key_out_shape, value_out_shape],
+                      "output_shape is inconsistant for matmul_qkv.")
     # restrict k_shape with L0A_SIZE since layer_norm cube only support load k once
     if k1_shape > tbe_platform.get_soc_spec("L0A_SIZE") // (Constant.C0 * Constant.M0 *
         Constant.DTYPE_SIZE.get(data_type)):
         error_manager_cube.raise_err_specific_user("attention_ln_qkv",
                                                    "k1_shape is too large to load once in layer_norm calculation.")
-    if not (kernel_query_shape == kernel_key_shape and kernel_key_shape == kernel_value_shape):
-        error_manager_cube.raise_err_specific_user("attention_ln_qkv",
-                                                   "kernel_shape is inconsistant for matmul_qkv.")
-    if not (query_out_shape == key_out_shape and key_out_shape == value_out_shape):
-        error_manager_cube.raise_err_specific_user("attention_ln_qkv",
-                                                   "output_shape is inconsistant for matmul_qkv.")
     if tbe_platform.get_soc_spec(tbe_platform.CORE_NUM) == Constant.BLOCK_NUM_32:
-        if mean_shape[0] != input_x_ori_shape[0] or var_shape[0] != input_x_ori_shape[0]:
-            error_manager_cube.raise_err_specific_user("attention_ln_qkv",
-                                                       "invalid mean_out_shape/variance_out_shape.")
+        check_equal_shape("attention_ln_qkv", [mean_shape[0], input_x_ori_shape[0], var_shape[0]],
+                          "invalid mean_out_shape/variance_out_shape.")
     input_x_format = x.get("format").upper()
     kernel_format = kernel_query.get("format").upper()
-    if input_x_format != "FRACTAL_NZ" or kernel_format != "FRACTAL_NZ":
-        error_manager_cube.raise_err_specific_user("attention_ln_qkv",
-                                                   "only support FRACTAL_NZ format for input_x and kernel.")
+    check_format("attention_ln_qkv", input_x_format, kernel_format)
 
 
-@register_operator("attention_ln_qkv")
+@register_operator("AttentionLnQKV")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.OPTION_INPUT, para_check.OPTION_INPUT, para_check.OPTION_INPUT,
