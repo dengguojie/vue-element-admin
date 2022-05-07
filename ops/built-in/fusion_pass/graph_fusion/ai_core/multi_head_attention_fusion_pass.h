@@ -18,8 +18,8 @@
  * \file multi_head_attention_fusion_pass.h
  * \brief multi_head_attention fusion pass
  */
-#ifndef OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_MULTI_HEAD_ATTENTION_FUSION_PASS_H_
-#define OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_MULTI_HEAD_ATTENTION_FUSION_PASS_H_
+#ifndef OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_MULTI_HEAD_ATTENTION_FUSION_PASS_H
+#define OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_MULTI_HEAD_ATTENTION_FUSION_PASS_H
 
 #include <vector>
 #include "graph_optimizer/fusion_common/pattern_fusion_base_pass.h"
@@ -34,5 +34,5 @@ private:
     const string FUSED_OP_TYPE = "MultiHeadAttention";
 };
 }  // namespace fe
-#endif  // OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_MULTI_HEAD_ATTENTION_FUSION_PASS_H_
+#endif  // OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_MULTI_HEAD_ATTENTION_FUSION_PASS_H
 
