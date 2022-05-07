@@ -115,4 +115,5 @@ def strided_slice_grad(shape, begin, end, strides, dy, output, begin_mask=0,
     obj.init_src_dst_gm((shape, begin, end, strides, dy), (output,), pad_input_idx=4, pad_outnput_idx=0)
 
     outer_compile = {}
+    outer_compile["op_type"] = "StridedSliceGrad"
     return obj.pad_compute(outer_compile)
