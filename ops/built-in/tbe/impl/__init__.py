@@ -178,6 +178,8 @@ from .select_v2 import select_v2
 from .leaky_relu import leaky_relu
 from .leaky_relu_grad import leaky_relu_grad
 from .max_pool3d_with_argmax import max_pool3d_with_argmax
+from .max_pool_with_argmax import max_pool_with_argmax
+from .max_pool_grad_with_argmax import max_pool_grad_with_argmax
 
 # resnet50
 from .pooling import pooling

@@ -4,8 +4,16 @@
 from op_test_frame.ut import OpUT
 from unittest.mock import MagicMock
 from unittest.mock import patch
+import impl
 
 ut_case = OpUT("MaxPoolWithArgmax", "impl.max_pool_with_argmax", "max_pool_with_argmax")
+
+def test_import_lib(test_arg):
+    import sys
+    import importlib
+    modulename = sys.modules.get("impl")
+    importlib.reload(modulename)
+
 
 case1 = {"params": [{"shape": (2,2,96,144,16), "dtype": "float16", "format": "NHWC", "ori_shape": (2,2,96,144,16),"ori_format": "NHWC"},
                     {"shape": (2,2,48,72,16), "dtype": "float16", "format": "NHWC", "ori_shape": (2,2,48,72,16),"ori_format": "NHWC"},
@@ -143,6 +151,7 @@ def test_check_support(test_arg):
     assert res[0]
 
 ut_case.add_cust_test_func(test_func=test_check_support)
+ut_case.add_cust_test_func(test_func=test_import_lib)
 
 vals = {("tik.load3dv1",): False}
 
