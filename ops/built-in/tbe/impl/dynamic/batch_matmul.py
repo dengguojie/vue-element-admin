@@ -21,6 +21,7 @@ from impl.dynamic.batch_matmul_v2 import check_fp32_case_scenario
 from impl.dynamic.batch_matmul_v2 import gen_op_select_format_params
 from impl.dynamic.batch_matmul_v2 import get_op_support_info as get_op_support_info_v2
 from impl.dynamic.batch_matmul_v2 import batch_matmul_v2_generalization
+from impl.util import util_gemm
 from impl.util import util_select_op_base
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
@@ -70,7 +71,7 @@ def base_op_select_format(input_x, input_y, src_dtype, trans_b, src_fp16_flag: b
     if not check_fp32_case_scenario(shape_a, shape_b, trans_b, src_dtype):
         fp32_dtype_scenario = []
         int32_dtype_scenario = []
-    
+
     # ND input and output scenario
     nd_case_scenario = [(("float16", "ND"), ("float16", "ND"), ("float16", "ND"), ("float16", "ND")),
                         (("float16", "ND"), ("float16", "FRACTAL_NZ"), ("float16", "ND"), ("float16", "ND"))]
@@ -163,13 +164,33 @@ def batch_matmul_fuse_compute(input_x1, input_x2, bias, output_z,
 def batch_matmul_generalization(input_x1, input_x2, bias=None, output_z=None,
                                 trans_a=False, trans_b=False, kernel_name="batchmatmul",
                                 generalize_config=None):
-    result = batch_matmul_v2_generalization(input_x1, input_x2, bias=bias, output_z=output_z,
-                                            trans_a=trans_a, trans_b=trans_b, kernel_name=kernel_name,
-                                            generalize_config=generalize_config)
-    # If pass fuzzy compile check, delete redundancy info, e.g offset_w, offset_x
-    if isinstance(result, list) and len(result) == FUZZY_SUCC_LEN:
-        input_x1, input_x2, bias, _, output_z, trans_a, trans_b, _ = result
-        result = [input_x1, input_x2, bias, output_z, trans_a, trans_b]
+    result = None
+    if generalize_config.get("mode") == "keep_rank":
+        result = batch_matmul_v2_generalization(input_x1, input_x2, bias=bias, output_z=output_z,
+                                                trans_a=trans_a, trans_b=trans_b, kernel_name=kernel_name,
+                                                generalize_config=generalize_config)
+        # If pass fuzzy compile check, delete redundancy info, e.g offset_w, offset_x
+        if isinstance(result, list) and len(result[0]) == FUZZY_SUCC_LEN:
+            input_x1, input_x2, bias, _, output_z, trans_a, trans_b, _ = result[0]
+            single_op_flag = True if generalize_config.get("single_op") == 'true' else False
+            set_range_none = single_op_flag and not bias
+            if set_range_none:
+                ori_range_1 = util_gemm.cal_gemm_shape_range(input_x1["ori_shape"],
+                    input_x1["ori_format"], set_range_none)
+                ori_range_2 = util_gemm.cal_gemm_shape_range(input_x2["ori_shape"],
+                    input_x2["ori_format"], set_range_none)
+                input_x1["ori_range"], input_x2["ori_range"] = ori_range_1, ori_range_2
+            result = [[input_x1, input_x2, bias, output_z, trans_a, trans_b]]
+    # binary generalization mode
+    elif generalize_config.get("mode") == "all_shape":
+        result = []
+        shape_x1 = util_gemm.cal_gemm_shape_binary(input_x1)
+        shape_x2 = util_gemm.cal_gemm_shape_binary(input_x2)
+        shape_z = util_gemm.cal_gemm_shape_binary(output_z)
+        input_x1["shape"] = shape_x1
+        input_x2["shape"] = shape_x2
+        output_z["shape"] = shape_z
+        result.append([input_x1, input_x2, bias, output_z, trans_a, trans_b])
     return result
 
 

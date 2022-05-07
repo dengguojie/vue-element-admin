@@ -1297,8 +1297,7 @@ class TilingUtils:
     ATTACH_EQUAL = 1
     ATTACH_LESS = 2
     ATTACH_LARGE = 3
-    ABUB_FULL_LOAD = 2
-    ABUB_INNER_FULL_LOAD = 1
+    ABUB_FULL_LOAD = 1
     ABUB_NOT_FULL_LOAD = 0
     NHW_MAX = 4096
 

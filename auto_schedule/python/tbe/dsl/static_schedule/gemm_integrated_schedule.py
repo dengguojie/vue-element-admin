@@ -2022,13 +2022,11 @@ class GemmSchedule:
         self.container.vector_muls_attr = {"axis_dynamic_shift": 1}
         aub_multi_flag = tiling.get("attach_at_flag").get("aub_multi_flag")
         bub_multi_flag = tiling.get("attach_at_flag").get("bub_multi_flag")
-        if aub_multi_flag in (1, 2):
+        if aub_multi_flag == 1:
             self.sch.set_var_value(self.cache_tiling.get("multi_k_aub_l1"), 1)
-        if aub_multi_flag == 2:
             self.sch.set_var_value(self.cache_tiling.get("multi_m_ub_l1"), 1)
-        if bub_multi_flag in (1, 2):
+        if bub_multi_flag == 1:
             self.sch.set_var_value(self.cache_tiling.get("multi_n_ub_l1"), 1)
-        if bub_multi_flag == 2:
             self.sch.set_var_value(self.cache_tiling.get("multi_k_bub_l1"), 1)
         abkl1_attach_flag = tiling.get("attach_at_flag").get("abkl1_attach_flag")
         if abkl1_attach_flag == 0:
@@ -5217,53 +5215,56 @@ class GemmSchedule:
                     iter_axis += 1
                 self.sch[al1].compute_at(self.sch[c_gm], self.sch[c_gm].leaf_iter_vars[iter_axis])
 
-    def _set_var_range_for_cache_tiling(self):
+    def _init_var_range_dict(self):
+        """
+        init var range dict
+        """
         range_1024 = self.TILING_RANGE.get("range_1024")
         range_64 = self.TILING_RANGE.get("range_64")
         range_ub = self.TILING_RANGE.get("range_ub")
         range_block_dim = self.TILING_RANGE.get("range_block_dim")
-        var_range_dict = {
-            "n_dim": range_block_dim,
-            "m_dim": range_block_dim,
-            "m_single_core": range_1024,
-            "n_single_core": range_1024,
-            "m_al1": range_1024,
-            "n_bl1": range_1024,
-            "cub_n1": range_64,
-            "m_l0": range_64,
-            "k_l0": range_64,
-            "n_ub_l0_time": range_64,
-            "kal0_factor": range_64,
-            "kbl0_factor": range_64,
-            "kal1_factor": range_64,
-            "kbl1_factor": range_64,
-            "kl1_times": range_64,
-        }
+        var_range_dict = {"n_dim": range_block_dim, "m_dim": range_block_dim, "m_single_core": range_1024,
+                          "n_single_core": range_1024, "m_al1": range_1024, "n_bl1": range_1024,
+                          "cub_n1": range_64, "m_l0": range_64, "k_l0": range_64, "n_ub_l0_time": range_64,
+                          "kal0_factor": range_64, "kbl0_factor": range_64, "kal1_factor": range_64,
+                          "kbl1_factor": range_64, "kl1_times": range_64}
         if self.format_a == "ND":
-            value_range_append = {
-                "m_aub": range_64,
-                "k_aub": range_64,
-                "k_bub": range_64,
-                "n_bub": range_64,
-                "multi_n_ub_l1": range_64,
-                "multi_m_ub_l1": range_64,
-                "multi_k_aub_l1": range_64,
-                "multi_k_bub_l1": range_64,
-                "a_align_value":range_1024,
-                "b_align_value":range_1024,
-                "aub_align_bound": range_ub,
-                "bub_align_bound":range_ub
-            }
+            value_range_append = {"m_aub": range_64, "k_aub": range_64, "k_bub": range_64, "n_bub": range_64,
+                                  "multi_n_ub_l1": range_64, "multi_m_ub_l1": range_64, "multi_k_aub_l1": range_64,
+                                  "multi_k_bub_l1": range_64, "a_align_value":range_1024, "b_align_value":range_1024,
+                                  "aub_align_bound": range_ub, "bub_align_bound":range_ub}
             var_range_dict.update(value_range_append)
         if self.status_controller.split_k_axis_by_tiling:
-            value_range_append_dim = {
-                "k_dim": range_block_dim
-            }
+            value_range_append_dim = {"k_dim": range_block_dim}
         else:
-            value_range_append_dim = {
-                "batch_dim": range_block_dim
-            }
+            value_range_append_dim = {"batch_dim": range_block_dim}
         var_range_dict.update(value_range_append_dim)
+        return var_range_dict
+
+    def _fuse_l1_axis(self):
+        """
+        fuse l1 axis
+        """
+        if self.status_controller.have_batch:
+            self.sch[self.container.tensor_map.get("a_l1")].fuse(
+                self.sch[self.container.tensor_map.get("a_l1")].leaf_iter_vars[1],
+                self.sch[self.container.tensor_map.get("a_l1")].leaf_iter_vars[2])
+            self.sch[self.container.tensor_map.get("b_l1")].fuse(
+                self.sch[self.container.tensor_map.get("b_l1")].leaf_iter_vars[1],
+                self.sch[self.container.tensor_map.get("b_l1")].leaf_iter_vars[2])
+        else:
+            self.sch[self.container.tensor_map.get("a_l1")].fuse(
+                self.sch[self.container.tensor_map.get("a_l1")].leaf_iter_vars[0],
+                self.sch[self.container.tensor_map.get("a_l1")].leaf_iter_vars[1])
+            self.sch[self.container.tensor_map.get("b_l1")].fuse(
+                self.sch[self.container.tensor_map.get("b_l1")].leaf_iter_vars[0],
+                self.sch[self.container.tensor_map.get("b_l1")].leaf_iter_vars[1])
+
+    def _set_var_range_for_cache_tiling(self):
+        """
+        set var range for cache tiling
+        """
+        var_range_dict = self._init_var_range_dict()
         for var, var_range in var_range_dict.items():
             self.sch.set_var_range(self.cache_tiling.get(var), *var_range)
         self.sch.set_var_value(self.dyn_shape_in.get(self.m1_name),
@@ -5300,6 +5301,7 @@ class GemmSchedule:
             self.sch_agent[self.container.tensor_map.get("b_l1")].buffer_tile(*bl1_buffer_tile_list)
             self.sch_agent[self.container.tensor_map.get("a_l1")].buffer_tile(*al1_buffer_tile_list)
             self._emit_insn_simplyfy_c_gm()
+            self._fuse_l1_axis()
             self._emit_insn_simplify_al1()
             self._emit_insn_simplify_bl1()
 

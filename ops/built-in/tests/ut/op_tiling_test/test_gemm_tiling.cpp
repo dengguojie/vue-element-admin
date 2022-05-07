@@ -638,7 +638,7 @@ TEST_F(GEMMTiling, GEMM_op_tiling_nd_nonrange_pattern) {
   RUN_TILING_V4(matmul, iter->second, compileInfo, runInfo);
   EXPECT_EQ(runInfo.GetBlockDim(), 32);
   // In Aligned Mode. The key is changed
-  EXPECT_EQ(runInfo.GetTilingKey(), 222000022);
+  EXPECT_EQ(runInfo.GetTilingKey(), 222000011);
 }
 
 TEST_F(GEMMTiling, GEMM_op_tiling_nd_nonrange_pattern_02) {
@@ -686,7 +686,7 @@ TEST_F(GEMMTiling, GEMM_op_tiling_nd_nonrange_pattern_02) {
   RUN_TILING_V4(matmul, iter->second, compileInfo, runInfo);
   EXPECT_EQ(runInfo.GetBlockDim(), 32);
   // In Aligned Mode. The key is changed
-  EXPECT_EQ(runInfo.GetTilingKey(), 222000022);
+  EXPECT_EQ(runInfo.GetTilingKey(), 222000011);
 }
 
 TEST_F(GEMMTiling, GEMM_op_tiling_nd_nonrange_pattern_03) {
@@ -734,7 +734,7 @@ TEST_F(GEMMTiling, GEMM_op_tiling_nd_nonrange_pattern_03) {
   RUN_TILING_V4(matmul, iter->second, compileInfo, runInfo);
   EXPECT_EQ(runInfo.GetBlockDim(), 32);
   // In Aligned Mode. The key is changed
-  EXPECT_EQ(runInfo.GetTilingKey(), 212220110);
+  EXPECT_EQ(runInfo.GetTilingKey(), 212220100);
 }
 
 TEST_F(GEMMTiling, GEMM_op_tiling_nd_nonrange_pattern_04) {
@@ -782,7 +782,7 @@ TEST_F(GEMMTiling, GEMM_op_tiling_nd_nonrange_pattern_04) {
   RUN_TILING_V4(matmul, iter->second, compileInfo, runInfo);
   EXPECT_EQ(runInfo.GetBlockDim(), 32);
   // In Aligned Mode. The key is changed
-  EXPECT_EQ(runInfo.GetTilingKey(), 222022101);
+  EXPECT_EQ(runInfo.GetTilingKey(), 222022100);
 }
 
 TEST_F(GEMMTiling, GEMM_op_tiling_nd_nonrange_pattern_05) {
@@ -830,7 +830,7 @@ TEST_F(GEMMTiling, GEMM_op_tiling_nd_nonrange_pattern_05) {
   RUN_TILING_V4(matmul, iter->second, compileInfo, runInfo);
   EXPECT_EQ(runInfo.GetBlockDim(), 32);
   // In Aligned Mode. The key is changed
-  EXPECT_EQ(runInfo.GetTilingKey(), 211220121);
+  EXPECT_EQ(runInfo.GetTilingKey(), 211220110);
 }
 
 TEST_F(GEMMTiling, GEMM_op_tiling_nd_nonrange_pattern_split_k) {
@@ -878,7 +878,7 @@ TEST_F(GEMMTiling, GEMM_op_tiling_nd_nonrange_pattern_split_k) {
   RUN_TILING_V4(matmul, iter->second, compileInfo, runInfo);
   EXPECT_EQ(runInfo.GetBlockDim(), 32);
   // In Aligned Mode. The key is changed
-  EXPECT_EQ(runInfo.GetTilingKey(), 1222022121);
+  EXPECT_EQ(runInfo.GetTilingKey(), 1222022110);
 }
 
 TEST_F(GEMMTiling, GEMM_op_tiling_fractal_z) {

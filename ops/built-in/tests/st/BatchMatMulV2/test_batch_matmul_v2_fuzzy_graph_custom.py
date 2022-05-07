@@ -33,6 +33,27 @@ def test_batch_matmul_generalization_not_valid():
                                 trans_a=False, trans_b=False, kernel_name="batchmatmul_generalization",
                                 generalize_config={"mode": "keep_rank"})
 
+
+def test_batch_matmul_fuzzy_single_op_generalization():
+    input_x1_dynamic = {"ori_shape": (5, 2, 3), "shape": (5, 2, 3), "range": ((4,7), (1,3), (1,3)), "dtype": 'float16', "format": "ND", "ori_format" : "ND"}
+    input_x2_dynamic = {"ori_shape": (5, 3, 5), "shape": (5, 3, 5), "range": ((1,3), (1,3), (1,3)), "dtype": 'float16', "format": "ND", "ori_format" : "ND"}
+    output_dynamic = {"ori_shape": (5, 2, 5), "shape": (5, 2, 5), "range": ((4,7), (1,3), (1,3)), "dtype": 'float16', "format": "ND", "ori_format" : "ND"}
+    bias_dynamic = None
+    batch_matmul_generalization(input_x1_dynamic, input_x2_dynamic, bias_dynamic, output_z=output_dynamic,
+                                   trans_a=False, trans_b=False, kernel_name="batchmatmul_generalization",
+                                   generalize_config={"mode": "keep_rank", "single_op": "true"})
+
+
+def test_batch_matmul_fuzzy_binary_generalization():
+    input_x1_dynamic = {"ori_shape": (-1, -1, -1), "shape": (-1, -1, -1, 16, 16), "range": ((1,None), (1,None), (1,None)), "dtype": 'float16', "format": "FRACTAL_NZ", "ori_format" : "ND"}
+    input_x2_dynamic = {"ori_shape": (-1, -1, -1), "shape": (-1, -1, -1, 16, 16), "range": ((1,None), (1,None), (1,None)), "dtype": 'float16', "format": "FRACTAL_NZ", "ori_format" : "ND"}
+    output_dynamic = {"ori_shape": (-1, -1, -1), "shape": (-1, -1, -1, 16, 16), "range": ((1,None), (1,None), (1,None)), "dtype": 'float16', "format": "FRACTAL_NZ", "ori_format" : "ND"}
+    bias_dynamic = None
+    batch_matmul_generalization(input_x1_dynamic, input_x2_dynamic, bias_dynamic, output_z=output_dynamic,
+                                   trans_a=False, trans_b=False, kernel_name="batchmatmul_generalization",
+                                   generalize_config={"mode": "all_shape", "single_op": "true"})
+
+
 def test_batchmatmul_confusion_transpose_910():
     te_set_version("Ascend910")
     with cce():
@@ -205,6 +226,8 @@ def test_batch_matmul_elementwise_ub_fusion_710():
 if __name__ == '__main__':
     test_batch_matmul_generalization_range_check()
     test_batch_matmul_generalization_not_valid()
+    test_batch_matmul_fuzzy_single_op_generalization()
+    test_batch_matmul_fuzzy_binary_generalization()
     test_batchmatmul_confusion_transpose_910()
     test_batchmatmul_confusion_transpose_710()
     test_batchmatmul_dequant_mul_add_710()

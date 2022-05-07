@@ -24,6 +24,7 @@ SHAPE_GEAR_MATMUL_ND = [0, 16*3, 16*7, 16*15, 16*31, 16*63, 16*127, 16*191, 16*2
                         16*511, 16*767, 16*1023, RANGE_MAX] # for fp16
 DYNAMIC_DIM_VAL = -1
 DYNAMIC_UNKNOWN_RANK = [-2]
+NO_RANGE = (1, None)
 
 
 def _get_shape_gear(dim, shape_gear):
@@ -33,13 +34,13 @@ def _get_shape_gear(dim, shape_gear):
     return (shape_gear[pos - 1] + 1, shape_gear[pos])
 
 
-def cal_gemm_shape_range(shape, ori_format):
+def cal_gemm_shape_range(shape, ori_format, set_range_none=False):
     """
     cal gemm shape range
     """
     shape_range = []
     shape_len = len(shape)
-    if ori_format == "ND":
+    if ori_format == "ND" and not set_range_none:
         # shape like (batch1, ..., batchn, m, k)
         # process batch dim
         for i in range(0, shape_len - 2):
@@ -52,9 +53,22 @@ def cal_gemm_shape_range(shape, ori_format):
             if shape[i] > RANGE_MAX:
                 return "LOWER_LIMIT"
             shape_range.append(_get_shape_gear(shape[i], SHAPE_GEAR_MATMUL_ND))
+    elif ori_format == "ND" and set_range_none:
+        for i in range(shape_len):
+            shape_range.append((1, -1))
     else:
         return "LOWER_LIMIT"
     return tuple(shape_range)
+
+
+def cal_gemm_shape_binary(input_desc):
+    """
+    cal gemm shape when binary mode
+    """
+    shape_range = input_desc.get("range")
+    if NO_RANGE in shape_range:
+        return DYNAMIC_UNKNOWN_RANK
+    return input_desc.get("shape")
 
 
 def _generate_unknown_shape_gemm(shape):

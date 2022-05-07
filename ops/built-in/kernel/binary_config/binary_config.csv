@@ -7,6 +7,7 @@ ApplyMomentumD,apply_momentum_d.json
 ApplyRMSPropD,apply_rms_prop_d.json
 Assign,assign.json
 AssignSub,assign_sub.json
+BatchMatMul,batch_matmul.json
 BiasAdd,bias_add.json
 BiasAddGrad,bias_add_grad.json
 Cast,cast.json
@@ -21,6 +22,7 @@ GreaterEqual,greater_equal.json
 LayerNorm,layer_norm.json
 L2Loss,l2_loss.json
 Less,less.json
+MatMul,mat_mul.json
 Maximum,maximum.json
 Minimum,minimum.json
 Mul,mul.json

@@ -22,17 +22,17 @@ generalize_case = [
 #shape_a, shape_b, shape_c, bias, m_range, k_range, n_range, src_dtype, dst_dtype,
 # format, trans_a, trans_b, case_name
 generalize_origin_case = [
-    ((2147483647, 3), (3, 4), (2147483647, 4), None, None, None, None, "float16", "float16", "ND", False, False, 
+    ((2147483647, 3), (3, 4), (2147483647, 4), None, None, None, None, "float16", "float16", "ND", False, False,
      "test_matmul_generalization_max_gear"),
-    ((-1, -1), (-1, -1), (-1, -1), None, (16369, None), (1, 48), (1, 48), "float16", "float16", "ND", False, False, 
+    ((-1, -1), (-1, -1), (-1, -1), None, (16369, None), (1, 48), (1, 48), "float16", "float16", "ND", False, False,
      "test_matmul_generalization_upper_bound_input1"),
-    ((-1, -1), [-2], (-1, -1), None, (16369, 2147483647), (1, 48), (1, 48), "float16", "float16", "ND", False, False, 
+    ((-1, -1), [-2], (-1, -1), None, (16369, 2147483647), (1, 48), (1, 48), "float16", "float16", "ND", False, False,
      "test_matmul_generalization_unknown_rank"),
-    ((-1, -1), (-1, -1), (-1, -1), None, (1, 48), (16369, 2147483677), (1, 48), "float16", "float16", "ND", False, False, 
+    ((-1, -1), (-1, -1), (-1, -1), None, (1, 48), (16369, 2147483677), (1, 48), "float16", "float16", "ND", False, False,
      "test_matmul_generalization_upper_bound_input2"),
-    ((-1, -1), (-1, -1), (-1, -1), (-1), (1, 48), (1, 48), (2147483677, 2147483677), "float16", "float16", "ND", False, False, 
+    ((-1, -1), (-1, -1), (-1, -1), (-1), (1, 48), (1, 48), (2147483677, 2147483677), "float16", "float16", "ND", False, False,
      "test_matmul_generalization_lower_bound_input2"),
-    ((-1, -1), (-1, -1), (-1, -1), None,  (1, 48), (1, 48), (1, 48), "float16", "float32", "ND", False, False, 
+    ((-1, -1), (-1, -1), (-1, -1), None,  (1, 48), (1, 48), (1, 48), "float16", "float32", "ND", False, False,
      "test_matmul_generalization_dtype_wrong"),
 ]
 
@@ -206,6 +206,26 @@ def test_matmul_generalization_dtype_wrong(test_arg):
     matmul_generalization(*params, **args_dict)
 
 ut_case.add_cust_test_func(test_func=test_matmul_generalization_dtype_wrong)
+
+def test_matmul_fuzzy_single_op_generalization(test_arg):
+    input_x1_dynamic = {"ori_shape": (5, 2, 3), "shape": (5, 2, 3), "range": ((4,7), (1,3), (1,3)), "dtype": 'float16', "format": "ND", "ori_format" : "ND"}
+    input_x2_dynamic = {"ori_shape": (5, 3, 5), "shape": (5, 3, 5), "range": ((1,3), (1,3), (1,3)), "dtype": 'float16', "format": "ND", "ori_format" : "ND"}
+    output_dynamic = {"ori_shape": (5, 2, 5), "shape": (5, 2, 5), "range": ((4,7), (1,3), (1,3)), "dtype": 'float16', "format": "ND", "ori_format" : "ND"}
+    bias_dynamic = None
+    matmul_generalization(input_x1_dynamic, input_x2_dynamic, bias_dynamic, offset_w=None, output_y=output_dynamic,
+                                   trans_a=False, trans_b=False, offset_x=0, kernel_name="batchmatmul_generalization",
+                                   generalize_config={"mode": "keep_rank", "single_op": "true"})
+ut_case.add_cust_test_func(test_func=test_matmul_fuzzy_single_op_generalization)
+
+def test_matmul_fuzzy_single_op_generalization(test_arg):
+    input_x1_dynamic = {"ori_shape": (-1, -1, -1), "shape": (-1, -1, -1, 16, 16), "range": ((1,None), (1,None), (1,None)), "dtype": 'float16', "format": "FRACTAL_NZ", "ori_format" : "ND"}
+    input_x2_dynamic = {"ori_shape": (-1, -1, -1), "shape": (-1, -1, -1, 16, 16), "range": ((1,None), (1,None), (1,None)), "dtype": 'float16', "format": "FRACTAL_NZ", "ori_format" : "ND"}
+    output_dynamic = {"ori_shape": (-1, -1, -1), "shape": (-1, -1, -1, 16, 16), "range": ((1,None), (1,None), (1,None)), "dtype": 'float16', "format": "FRACTAL_NZ", "ori_format" : "ND"}
+    bias_dynamic = None
+    matmul_generalization(input_x1_dynamic, input_x2_dynamic, bias_dynamic, offset_w=None, output_y=output_dynamic,
+                                   trans_a=False, trans_b=False, offset_x=0, kernel_name="batchmatmul_generalization",
+                                   generalize_config={"mode": "all_shape", "single_op": "true"})
+ut_case.add_cust_test_func(test_func=test_matmul_fuzzy_single_op_generalization)
 
 if __name__ == "__main__":
     with op_context.OpContext("dynamic"):

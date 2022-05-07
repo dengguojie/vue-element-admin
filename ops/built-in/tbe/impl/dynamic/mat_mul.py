@@ -21,6 +21,7 @@ from impl.dynamic.batch_matmul_v2 import gen_op_select_format_params
 from impl.dynamic.batch_matmul_v2 import batch_matmul_v2_generalization
 from impl.dynamic.batch_matmul_v2 import get_none_range_flag
 from impl.util import util_common
+from impl.util import util_gemm
 from impl.util import util_select_op_base
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
@@ -46,6 +47,7 @@ NZ_LENGTH = 4
 ND_LENGTH = 2
 L1FUSION_INPUT_CTR = 2
 EXPECT_FORMAT = ["FRACTAL_NZ", "ND"]
+FUZZY_SUCC_LEN = 8
 
 
 def get_op_support_info(input_x1, input_x2, bias, offset_w=None, output_y=None,
@@ -226,9 +228,32 @@ def mat_mul_fuse_compute(input_x1, input_x2, bias, offset_w, output_y,
 def  matmul_generalization(input_x1, input_x2, bias, offset_w=None, output_y=None,
                            trans_a=False, trans_b=False, offset_x=0, kernel_name="matmul",
                            generalize_config=None):
-    result = batch_matmul_v2_generalization(input_x1, input_x2, bias=bias, offset_w=offset_w, output_z=output_y,
-                                            trans_a=trans_a, trans_b=trans_b, offset_x=offset_x,
-                                            kernel_name=kernel_name, generalize_config=generalize_config)
+    result = None
+    if generalize_config.get("mode") == "keep_rank":
+        result = batch_matmul_v2_generalization(input_x1, input_x2, bias=bias, offset_w=offset_w, output_z=output_y,
+                                                trans_a=trans_a, trans_b=trans_b, offset_x=offset_x,
+                                                kernel_name=kernel_name, generalize_config=generalize_config)
+        if isinstance(result, list) and len(result[0]) == FUZZY_SUCC_LEN:
+            single_op_flag = True if generalize_config.get("single_op") == 'true' else False
+            set_range_none = single_op_flag and not bias
+            if set_range_none:
+                input_x1, input_x2 = result[0][0], result[0][1]
+                ori_range_1 = util_gemm.cal_gemm_shape_range(input_x1["ori_shape"],
+                    input_x1["ori_format"], set_range_none)
+                ori_range_2 = util_gemm.cal_gemm_shape_range(input_x2["ori_shape"],
+                    input_x2["ori_format"], set_range_none)
+                input_x1["ori_range"], input_x2["ori_range"] = ori_range_1, ori_range_2
+                result[0][0], result[0][1] = input_x1, input_x2
+    # binary generalization mode
+    elif generalize_config.get("mode") == "all_shape":
+        result = []
+        shape_x1 = util_gemm.cal_gemm_shape_binary(input_x1)
+        shape_x2 = util_gemm.cal_gemm_shape_binary(input_x2)
+        shape_z = util_gemm.cal_gemm_shape_binary(output_y)
+        input_x1["shape"] = shape_x1
+        input_x2["shape"] = shape_x2
+        output_y["shape"] = shape_z
+        result.append([input_x1, input_x2, bias, offset_w, output_y, trans_a, trans_b, offset_x])
     return result
 
 

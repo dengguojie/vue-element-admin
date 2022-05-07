@@ -1498,17 +1498,11 @@ void GetUbFactors(const string &op_type, const BatchmatmulParas &params, const C
     ubStatus.min_load_size = (params.cub_reused_flag ?
       (ubStatus.aub_size / (1 + params.aub_double_num) + ubStatus.bub_size / (1 + params.bub_double_num)) :
       (ubStatus.aub_size + ubStatus.bub_size));
-    if (l1Status.kal1_16 == ubStatus.k_aub) {
+    if (l1Status.kal1_16 == ubStatus.k_aub && l1Status.m_al1 * l0Status.m_l0 == ubStatus.m_aub) {
       ubStatus.aub_multi_flag = kAttachFlagOne;
-      if (l1Status.m_al1 * l0Status.m_l0 == ubStatus.m_aub) {
-        ubStatus.aub_multi_flag = kAttachFlagTwo;
-      }
     }
-    if (l1Status.n_bl1 * l0Status.n_l0 == ubStatus.n_bub) {
+    if (l1Status.n_bl1 * l0Status.n_l0 == ubStatus.n_bub && l1Status.kbl1_16 == ubStatus.k_bub) {
       ubStatus.bub_multi_flag = kAttachFlagOne;
-      if (l1Status.kbl1_16 == ubStatus.k_bub) {
-        ubStatus.bub_multi_flag = kAttachFlagTwo;
-      }
     }
   }
   // second get CUB factors
