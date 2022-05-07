@@ -37,6 +37,7 @@ def reduce_mean_d_compute(x,
                           y,
                           axes,
                           keepdims=None,
+                          noop_with_empty_axes=False,
                           kernel_name="reduce_mean_d",
                           impl_mode=OpImplMode.HIGH_PERFORMANCE,
                           is_5hdc=False):
@@ -181,7 +182,8 @@ def reduce_mean_d(input_x, output_y, axes,
             data_input = tvm.placeholder(shape_var_new, name="data_input",
                                          dtype=dtype_lower)
             res = reduce_mean_d_compute(data_input, output_y, _axes.get("value"),
-                                        keepdims, impl_mode=impl_mode,
+                                        keepdims, noop_with_empty_axes=noop_with_empty_axes,
+                                        impl_mode=impl_mode,
                                         is_5hdc=is_5hdc)
             tensors.append([data_input, res])
 

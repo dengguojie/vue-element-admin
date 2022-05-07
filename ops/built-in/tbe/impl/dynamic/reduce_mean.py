@@ -37,6 +37,7 @@ def reduce_mean_compute(x,
                         axes,
                         y,
                         keepdims=None,
+                        noop_with_empty_axes=True,
                         kernel_name="reduce_mean",
                         impl_mode=OpImplMode.HIGH_PERFORMANCE,
                         is_5hdc=False):
@@ -179,7 +180,8 @@ def reduce_mean(x, axes, y,
             data_input_axes = tvm.placeholder(shape_axes, name="data_input_axes",
                                               dtype=dtype_lower_axes)
             axes_d = shape_util.axis_check(len(shape_x), _axes.get("value"))
-            res = reduce_mean_compute(data_input_x, axes_d, y, keepdims)
+            res = reduce_mean_compute(data_input_x, axes_d, y,
+                                      keepdims, noop_with_empty_axes)
             tensors.append([data_input_x, data_input_axes, res])
 
         with tvm.target.cce():

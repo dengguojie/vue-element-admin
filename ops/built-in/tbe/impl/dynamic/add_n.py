@@ -31,7 +31,6 @@ from impl.util import fusion_util
 
 
 # 'pylint: disable=unused-argument
-@register_operator_compute("AddN", op_mode="dynamic", support_fusion=True)
 def add_n_fusion_compute(datas, output, tensor_num, kernel_name="add_n"):
     """
     calculating data's adds, z = a + b + c...
@@ -64,6 +63,7 @@ def add_n_fusion_compute(datas, output, tensor_num, kernel_name="add_n"):
 
 
 # 'pylint: disable=unused-argument,too-many-locals,redefined-argument-from-local,unused-variable,too-many-statements
+@register_operator_compute("AddN", op_mode="dynamic", support_fusion=True)
 def add_n_compute(datas, output, tensor_num, kernel_name="add_n"):
     """
     calculating data's adds, z = a + b + c...
