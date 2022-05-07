@@ -17,6 +17,7 @@ multi_merge
 """
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
+from tbe.common import platform
 
 from impl.ascend import AContainer
 from impl.merge_sort import CommonMethod
@@ -35,7 +36,7 @@ def op_select_format(input_proposal, output_proposal, output_index, k_num,
     select format dynamically
     """
     soc_version = PlatformApi.get_soc_spec(PlatformApi.SOC_VERSION)
-    if check_soc_version_support(soc_version, ("Ascend920",)):
+    if check_soc_version_support(soc_version, (platform.ASCEND_920A,)):
         input0 = util_select_op_base.gen_param(classify="input0", name="input_proposal",
                                                datatype="float16,float",
                                                format="ND,ND")
@@ -165,7 +166,7 @@ def multi_merge(input_proposal, output_proposal, output_index, k_num, include_in
     None
     """
     soc_version = PlatformApi.get_soc_spec(PlatformApi.SOC_VERSION)
-    if check_soc_version_support(soc_version, ("Ascend920",)):
+    if check_soc_version_support(soc_version, (platform.ASCEND_920A,)):
         multi_merge_v2(input_proposal, output_proposal, output_index, k_num, include_index, kernel_name)
     elif include_index:
         single_merge(input_proposal, output_proposal, output_index, k_num, kernel_name)

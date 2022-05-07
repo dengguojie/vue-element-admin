@@ -2488,10 +2488,7 @@ unkown:
       - ops/built-in/tbe/impl/top_k_d.py
       - ops/built-in/tbe/impl/non_max_suppression_v7.py
       - ops/built-in/tbe/impl/merge_sort.py
-      - ops/built-in/tbe/impl/multi_merge.py
-      - ops/built-in/tbe/impl/segment_sort.py
       - ops/built-in/tbe/impl/single_merge.py
-      - ops/built-in/tbe/impl/merge_sort_v2.py
       - ops/built-in/tbe/impl/multi_merge_v2.py
       - ops/built-in/tbe/impl/segment_sort_v2.py
       - ops/built-in/tbe/impl/single_merge_v2.py
@@ -2985,7 +2982,6 @@ unkown:
       - ops/built-in/tbe/impl/dynamic/mirror_pad.py
       - ops/built-in/tbe/impl/dynamic/sigmoid_cross_entropy_with_logits_v2.py
       - ops/built-in/tbe/impl/dynamic/resize_bilinear_v2.py
-      - ops/built-in/tbe/impl/dynamic/resize.py
       - ops/built-in/tbe/impl/dynamic/logical_and.py
       - ops/built-in/tbe/impl/auto_tune/__init__.py
       - ops/built-in/tbe/impl/auto_tune/resize_bilinear_v2.py
@@ -4259,6 +4255,10 @@ pytorch:
       - ops/built-in/tbe/impl/ldpc.py
       - ops/built-in/fusion_pass/graph_fusion/ai_core/resize_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/resize_fusion_pass.h
+      - ops/built-in/tbe/impl/dynamic/resize.py
+      - ops/built-in/tbe/impl/merge_sort_v2.py
+      - ops/built-in/tbe/impl/multi_merge.py
+      - ops/built-in/tbe/impl/segment_sort.py
     unrelease:
       - ops/built-in/tests/ut/graph_fusion/ai_core/lstmp_fusion_test.cpp
       - ops/built-in/tests/ut/graph_fusion/ai_core/dynamic_rnn_v2_grad_fusion_test.cpp

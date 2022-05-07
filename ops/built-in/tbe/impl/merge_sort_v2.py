@@ -21,7 +21,7 @@ from impl.util.platform_adapter import error_manager_vector
 
 def check_soc_version_support(soc_version, soc_version_all):
     for version_support in soc_version_all:
-        if soc_version.find(version_support) != -1:
+        if soc_version == version_support:
             return True
     return False
 

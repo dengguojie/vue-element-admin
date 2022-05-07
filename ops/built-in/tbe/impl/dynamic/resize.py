@@ -14,6 +14,7 @@ from impl.util.util_tik_comm_func import OpBase
 from impl.util.platform_adapter import tik
 from impl.util import util_select_op_base
 from impl.util.platform_adapter import PlatformApi
+from tbe.common import platform
 
 
 class ResizeModeNearestNeighbor(ResizeNearestNeighbor):
@@ -319,9 +320,9 @@ def check_soc_version_support(soc_version):
     soc_support_fp32 = ("Ascend310", "Ascend320",
                         "Ascend610", "Ascend615",
                         "Ascend710", "Ascend910",
-                        "Ascend920")
+                        platform.ASCEND_920A)
     for version_support in soc_support_fp32:
-        if soc_version.find(version_support) != -1:
+        if soc_version == version_support:
             return True
     return False
 
