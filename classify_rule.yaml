@@ -3044,7 +3044,10 @@ unkown:
       - ops/built-in/framework/tf_scope_fusion_passes/scope_decode_bbox_pass.h
       - ops/built-in/framework/tf_scope_fusion_passes/scope_decode_bbox_v2_pass.h
       - ops/built-in/framework/tf_scope_fusion_passes/scope_clip_boxes_pass.h
+      - ops/built-in/framework/tf_scope_fusion_passes/scope_layernorm_pass.cc
       - ops/built-in/framework/tf_scope_fusion_passes/scope_layernorm_pass.h
+      - ops/built-in/framework/tf_scope_fusion_passes/scope_layernorm_grad_pass.cc
+      - ops/built-in/framework/tf_scope_fusion_passes/scope_layernorm_grad_pass.h
       - ops/built-in/framework/tf_scope_fusion_passes/scope_normalize_bbox_pass.h
       - ops/built-in/framework/tf_scope_fusion_passes/scope_basic_lstm_cell_pass.h
       - ops/built-in/framework/tf_scope_fusion_passes/scope_rpn_proposals_pass.cc

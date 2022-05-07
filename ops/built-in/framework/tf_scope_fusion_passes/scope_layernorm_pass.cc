@@ -25,10 +25,10 @@
 
 namespace ge {
 namespace {
-const char* kScopeTypeBatchnorm = "batchnorm";
-const char* kScopeTypeMoments = "moments";
-const char* kScopeRltType = "LayerNorm";
-const char* kOpType = "LayerNorm";
+static const char* kScopeTypeBatchnorm = "batchnorm";
+static const char* kScopeTypeMoments = "moments";
+static const char* kScopeRltType = "LayerNorm";
+static const char* kOpType = "LayerNorm";
 constexpr int32_t DST_OUTSIZE = 6;
 constexpr int32_t ADDV2_VAL = 2;
 constexpr int32_t ADD_VAL = 2;
@@ -78,11 +78,12 @@ Status ScopeLayerNormPass::LastMatchScopesAndOPs(std::shared_ptr<ScopeGraph>& sc
         if (mode_def->GetName().find("discriminator_2/d_ln3/LayerNorm/batchnorm/mul") != std::string::npos) {
             OP_LOGI(kOpType, "discriminator_2/d_ln3/LayerNorm/batchnorm/mul name is found");
             std::vector<std::string> outputs;
-            mode_def->GetAttr("_origin_graph_node_outputs", outputs);
-            OP_LOGI(kOpType, "layernorm data_out_num is %zu", outputs.size());
-            if (outputs.size() >= DST_OUTSIZE) {
-                OP_LOGI(kOpType, "output size is 6, not scope");
-                return FAILED;
+            if (GRAPH_SUCCESS == mode_def->GetAttr("_origin_graph_node_outputs", outputs)) {
+              OP_LOGI(kOpType, "layernorm data_out_num is %zu", outputs.size());
+              if (outputs.size() >= DST_OUTSIZE) {
+                  OP_LOGI(kOpType, "output size is 6, not scope");
+                  return FAILED;
+              }
             }
         }
         if (mode_def->GetName().find("moments/variance") != std::string::npos) {
@@ -99,23 +100,24 @@ Status ScopeLayerNormPass::LastMatchScopesAndOPs(std::shared_ptr<ScopeGraph>& sc
         mode_def->GetOpType() == "Rsqrt") {
           OP_LOGI(kOpType, "LayerNorm/batchnorm/Rsqrt is found, name is %s", mode_def->GetName().c_str());
           std::vector<std::string> outputs_sqrt;
-          mode_def->GetAttr("_origin_graph_node_outputs", outputs_sqrt);
-          OP_LOGI(kOpType, "outputs_sqrt is %d", outputs_sqrt.size());
-          // if output size of sqrt is greater than 1, training, must have anchor to layernormgrad
-          if (outputs_sqrt.size() > 1) {
-            bool found_grad_mul = false;
-            for (size_t i = 0; i < outputs_sqrt.size(); i++) {
-              std::string output_name = outputs_sqrt.at(i);
-              std::string split_name = output_name.substr(1);
-              OP_LOGI(kOpType, "split name is %s", split_name.c_str());
-              if (split_name.find("mul_grad/Mul_1") != std::string::npos) {
-                found_grad_mul = true;
-                break;
+          if (GRAPH_SUCCESS == mode_def->GetAttr("_origin_graph_node_outputs", outputs_sqrt)) {
+            OP_LOGI(kOpType, "outputs_sqrt is %d", outputs_sqrt.size());
+            // if output size of sqrt is greater than 1, training, must have anchor to layernormgrad
+            if (outputs_sqrt.size() > 1) {
+              bool found_grad_mul = false;
+              for (size_t i = 0; i < outputs_sqrt.size(); i++) {
+                std::string output_name = outputs_sqrt.at(i);
+                std::string split_name = output_name.substr(1);
+                OP_LOGI(kOpType, "split name is %s", split_name.c_str());
+                if (split_name.find("mul_grad/Mul_1") != std::string::npos) {
+                  found_grad_mul = true;
+                  break;
+                }
               }
-            }
-            if (not found_grad_mul) {
-              OP_LOGI(kOpType, " not find mul_grad/Mul_1");
-              return FAILED;
+              if (not found_grad_mul) {
+                OP_LOGI(kOpType, " not find mul_grad/Mul_1");
+                return FAILED;
+              }
             }
           }
         }
@@ -143,19 +145,19 @@ Status ScopeLayerNormPass::LastMatchScopesAndOPs(std::shared_ptr<ScopeGraph>& sc
     for (size_t i = 0; i < fusion_scopes_bn.size(); i++) {
       auto scope_bn = fusion_scopes_bn[i];
       std::string scope_bn_name = scope_bn->Name();
-      int is_while = scope_bn_name.find("while");
-      if (is_while != -1) {
+      auto is_while = scope_bn_name.find("while");
+      if (is_while != std::string::npos) {
         OP_LOGI(kOpType, "break scope_bn_name is %s.", scope_bn_name.c_str());
         continue;
       }
       for (size_t j = 0; j < fusion_scopes_m.size(); j++) {
         auto scope_m = fusion_scopes_m[j];
         std::string scope_m_name = scope_m->Name();
-        int pos_bn = scope_bn_name.find("batchnorm");
-        int pos_m = scope_m_name.find("moments");
-        int is_biggan_bn = scope_bn_name.find("resblock");
-        int is_biggan_m = scope_m_name.find("resblock");
-        if (is_biggan_bn != -1 || is_biggan_m != -1) {
+        auto pos_bn = scope_bn_name.find("batchnorm");
+        auto pos_m = scope_m_name.find("moments");
+        auto is_biggan_bn = scope_bn_name.find("resblock");
+        auto is_biggan_m = scope_m_name.find("resblock");
+        if (is_biggan_bn != std::string::npos || is_biggan_m != std::string::npos) {
           return FAILED;
         }
         // bn and moments scope must in any scope: such as LayerNorm/batchnorm
@@ -218,8 +220,8 @@ void ScopeLayerNormPass::GenerateFusionResult(const std::vector<Scope*>& scopes,
     // The upper call guarantees that the scope is not empty.
     if (scope->SubType() == kScopeTypeBatchnorm) {
       std::string scope_bn_name = scope->Name();
-      int pos_bn = scope_bn_name.find("batchnorm");
-      if (pos_bn != -1) {
+      auto pos_bn = scope_bn_name.find("batchnorm");
+      if (pos_bn != std::string::npos) {
         fusion_rlt->SetName(scope_bn_name.substr(0, pos_bn));
         break;
       }
@@ -241,13 +243,13 @@ void ScopeLayerNormPass::GenBatchnormScopePatterns(ScopeFusionPatterns& patterns
     OP_LOGE(kOpType, "Alloc an object failed.");
     return;
   }
-  batch_norm_cell_add->SetSubType(kScopeTypeBatchnorm);
-  batch_norm_cell_add->AddNodeOpTypeFeature(NodeOpTypeFeature("Sub", 1));        // Sub num is 1
-  batch_norm_cell_add->AddNodeOpTypeFeature(NodeOpTypeFeature("Add", ADD_VAL));        // Add num is 1
-  batch_norm_cell_add->AddNodeOpTypeFeature(NodeOpTypeFeature("Rsqrt", 1));      // Rsqrt num is 1
-  batch_norm_cell_add->AddNodeOpTypeFeature(NodeOpTypeFeature("Mul", 3));        // Mul num is 3
-  batch_norm_cell_add->AddNodeOpTypeFeature(NodeOpTypeFeature("Identity", -1));  // Identity num is -1
-  batch_norm_cell_add->AddScopeFeature(ScopeFeature("", -1, "batchnorm"));
+  (void)batch_norm_cell_add->SetSubType(kScopeTypeBatchnorm);
+  (void)batch_norm_cell_add->AddNodeOpTypeFeature(NodeOpTypeFeature("Sub", 1));        // Sub num is 1
+  (void)batch_norm_cell_add->AddNodeOpTypeFeature(NodeOpTypeFeature("Add", ADD_VAL));        // Add num is 1
+  (void)batch_norm_cell_add->AddNodeOpTypeFeature(NodeOpTypeFeature("Rsqrt", 1));      // Rsqrt num is 1
+  (void)batch_norm_cell_add->AddNodeOpTypeFeature(NodeOpTypeFeature("Mul", 3));        // Mul num is 3
+  (void)batch_norm_cell_add->AddNodeOpTypeFeature(NodeOpTypeFeature("Identity", -1));  // Identity num is -1
+  (void)batch_norm_cell_add->AddScopeFeature(ScopeFeature("", -1, "batchnorm"));
   batch.push_back(batch_norm_cell_add);
 
   ScopePattern* batch_norm_cell_addv2 = new (std::nothrow) ScopePattern();
@@ -255,13 +257,13 @@ void ScopeLayerNormPass::GenBatchnormScopePatterns(ScopeFusionPatterns& patterns
     OP_LOGE(kOpType, "Alloc an object failed.");
     return;
   }
-  batch_norm_cell_addv2->SetSubType(kScopeTypeBatchnorm);
-  batch_norm_cell_addv2->AddNodeOpTypeFeature(NodeOpTypeFeature("Sub", 1));
-  batch_norm_cell_addv2->AddNodeOpTypeFeature(NodeOpTypeFeature("AddV2", ADDV2_VAL));
-  batch_norm_cell_addv2->AddNodeOpTypeFeature(NodeOpTypeFeature("Rsqrt", 1));
-  batch_norm_cell_addv2->AddNodeOpTypeFeature(NodeOpTypeFeature("Mul", MUL_VAL));
-  batch_norm_cell_addv2->AddNodeOpTypeFeature(NodeOpTypeFeature("Identity", -1));
-  batch_norm_cell_addv2->AddScopeFeature(ScopeFeature("", -1, "batchnorm"));
+  (void)batch_norm_cell_addv2->SetSubType(kScopeTypeBatchnorm);
+  (void)batch_norm_cell_addv2->AddNodeOpTypeFeature(NodeOpTypeFeature("Sub", 1));
+  (void)batch_norm_cell_addv2->AddNodeOpTypeFeature(NodeOpTypeFeature("AddV2", ADDV2_VAL));
+  (void)batch_norm_cell_addv2->AddNodeOpTypeFeature(NodeOpTypeFeature("Rsqrt", 1));
+  (void)batch_norm_cell_addv2->AddNodeOpTypeFeature(NodeOpTypeFeature("Mul", MUL_VAL));
+  (void)batch_norm_cell_addv2->AddNodeOpTypeFeature(NodeOpTypeFeature("Identity", -1));
+  (void)batch_norm_cell_addv2->AddScopeFeature(ScopeFeature("", -1, "batchnorm"));
   batch.push_back(batch_norm_cell_addv2);
 
   patterns.push_back(batch);
@@ -276,11 +278,11 @@ void ScopeLayerNormPass::GenMomentsScopePatterns(ScopeFusionPatterns& patterns) 
     return;
   }
 
-  moments_cell->SetSubType(kScopeTypeMoments);
-  moments_cell->AddNodeOpTypeFeature(NodeOpTypeFeature("Mean", 2));               // Mean num is 2
-  moments_cell->AddNodeOpTypeFeature(NodeOpTypeFeature("SquaredDifference", 1));  // SquaredDifference num is 1
-  moments_cell->AddNodeOpTypeFeature(NodeOpTypeFeature("Squeeze", -1));           // Squeeze num is 0
-  moments_cell->AddScopeFeature(ScopeFeature("", -1, "moments"));
+  (void)moments_cell->SetSubType(kScopeTypeMoments);
+  (void)moments_cell->AddNodeOpTypeFeature(NodeOpTypeFeature("Mean", 2));               // Mean num is 2
+  (void)moments_cell->AddNodeOpTypeFeature(NodeOpTypeFeature("SquaredDifference", 1));  // SquaredDifference num is 1
+  (void)moments_cell->AddNodeOpTypeFeature(NodeOpTypeFeature("Squeeze", -1));           // Squeeze num is 0
+  (void)moments_cell->AddScopeFeature(ScopeFeature("", -1, "moments"));
 
   batch.push_back(moments_cell);
   patterns.push_back(batch);
@@ -296,7 +298,7 @@ void ScopeLayerNormPass::FindInputIndex(const Scope* scope, int& index, const st
                                ? node_def->GetName().substr(node_def->GetName().length() - name.length())
                                : node_def->GetName();
     if (sub_name == name) {
-      for (size_t i = 0; i < node_def->GetInputsSize(); i++) {
+      for (uint32_t i = 0; i < node_def->GetInputsSize(); i++) {
         auto input_desc = node_def->GetInputDesc(i);
         std::string input_name = ScopeUtil::StringReplaceAll(input_desc.GetName(), "^", "");
         mul_input_names.push_back(input_name);
@@ -306,18 +308,18 @@ void ScopeLayerNormPass::FindInputIndex(const Scope* scope, int& index, const st
   for (unsigned int i = 0; i < mul_input_names.size(); i++) {
     std::string mul_input_name = mul_input_names[i];
     OP_LOGI(kOpType, "The %s of inputname is %s", name.c_str(), mul_input_name.c_str());
-    if (mul_input_name.find(base_name) == mul_input_name.npos) {
-      index = i;
+    if (mul_input_name.find(base_name) == std::string::npos) {
+      index = static_cast<int>(i);
       OP_LOGI(kOpType, "The %s is not found, the index is %d", base_name.c_str(), i);
       return;
     }
     if (mul_input_name.find("batchnorm/mul/Enter") != string::npos) {
-      index = i;
+      index = static_cast<int>(i);
       OP_LOGI(kOpType, "found batchnorm/mul/Enter, the index is %d", i);
       return;
     }
     if (mul_input_name.find("batchnorm/add_1") != string::npos) {
-      index = i;
+      index = static_cast<int>(i);
       OP_LOGI(kOpType, "found batchnorm/add_1, the index is %d", i);
       return;
     }
