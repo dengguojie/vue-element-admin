@@ -1985,10 +1985,7 @@ class GemmSchedule:
         }
         self.cache_tiling["kal1_16"] = self.cache_tiling.get("kal0_factor") * self.cache_tiling.get("k_l0")
         self.cache_tiling["kbl1_16"] = self.cache_tiling.get("kbl0_factor") * self.cache_tiling.get("k_l0")
-        if GEMMComputeParam.split_k_flag:
-            self.cache_tiling["batch_dim"] = 1
-            self.cache_tiling["batch_single_core"] = 1
-        else:
+        if not GEMMComputeParam.split_k_flag:
             self.cache_tiling["k_dim"] = 1
 
     def _config_cache_tiling(self, tiling):
@@ -5204,15 +5201,17 @@ class GemmSchedule:
                 self.sch.set_var_value(self.cache_tiling.get("n_single_core"), 1)
                 bl1 = self.container.tensor_map.get("b_l1")
                 iter_axis = 1 if len(bl1.shape) == 4 else 3
+                # split k_axis by k_dim will create one axis to bind multi core and one axis equal to 1
                 if self.status_controller.split_k_axis_by_tiling:
-                    iter_axis += 1
+                    iter_axis += 2
                 self.sch[bl1].compute_at(self.sch[c_gm], self.sch[c_gm].leaf_iter_vars[iter_axis])
             if self.tiling.get("attach_at_flag").get("al1_attach_flag") == 0:
                 self.sch.set_var_value(self.cache_tiling.get("m_single_core"), 1)
                 al1 = self.container.tensor_map.get("a_l1")
                 iter_axis = 1 if len(al1.shape) == 4 else 3
+                # split k_axis by k_dim will create one axis to bind multi core and one axis equal to 1
                 if self.status_controller.split_k_axis_by_tiling:
-                    iter_axis += 1
+                    iter_axis += 2
                 self.sch[al1].compute_at(self.sch[c_gm], self.sch[c_gm].leaf_iter_vars[iter_axis])
 
     def _init_var_range_dict(self):
@@ -5223,11 +5222,11 @@ class GemmSchedule:
         range_64 = self.TILING_RANGE.get("range_64")
         range_ub = self.TILING_RANGE.get("range_ub")
         range_block_dim = self.TILING_RANGE.get("range_block_dim")
-        var_range_dict = {"n_dim": range_block_dim, "m_dim": range_block_dim, "m_single_core": range_1024,
-                          "n_single_core": range_1024, "m_al1": range_1024, "n_bl1": range_1024,
-                          "cub_n1": range_64, "m_l0": range_64, "k_l0": range_64, "n_ub_l0_time": range_64,
-                          "kal0_factor": range_64, "kbl0_factor": range_64, "kal1_factor": range_64,
-                          "kbl1_factor": range_64, "kl1_times": range_64}
+        var_range_dict = {"batch_dim": range_block_dim, "n_dim": range_block_dim, "m_dim": range_block_dim,
+                          "m_single_core": range_1024, "n_single_core": range_1024, "m_al1": range_1024,
+                          "n_bl1": range_1024, "cub_n1": range_64, "m_l0": range_64, "k_l0": range_64,
+                          "n_ub_l0_time": range_64, "kal0_factor": range_64, "kbl0_factor": range_64,
+                          "kal1_factor": range_64, "kbl1_factor": range_64, "kl1_times": range_64}
         if self.format_a == "ND":
             value_range_append = {"m_aub": range_64, "k_aub": range_64, "k_bub": range_64, "n_bub": range_64,
                                   "multi_n_ub_l1": range_64, "multi_m_ub_l1": range_64, "multi_k_aub_l1": range_64,
@@ -5236,9 +5235,7 @@ class GemmSchedule:
             var_range_dict.update(value_range_append)
         if self.status_controller.split_k_axis_by_tiling:
             value_range_append_dim = {"k_dim": range_block_dim}
-        else:
-            value_range_append_dim = {"batch_dim": range_block_dim}
-        var_range_dict.update(value_range_append_dim)
+            var_range_dict.update(value_range_append_dim)
         return var_range_dict
 
     def _fuse_l1_axis(self):

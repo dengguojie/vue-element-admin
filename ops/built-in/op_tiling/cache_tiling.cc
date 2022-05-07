@@ -66,6 +66,7 @@ static const int32_t kNumZero = 0;
 static const int32_t kNumOne = 1;
 static const int32_t kNumTwo = 2;
 static const int32_t kNumThree = 3;
+static const int32_t kNumFour = 4;
 static const int32_t kBankConflictFactor = 4;
 static const int32_t kL1FactorsLen = 6;
 static const int32_t kCandidateLen = 2;
@@ -333,90 +334,97 @@ void GetBlockDimHelper(CoreStatus &coreStatus, BlockDimCalculator &blockDimCalcu
                        const int32_t m0s[][kCandidateLen], const int32_t n0s[][kCandidateLen],
                        const BatchmatmulParas &params)
 {
-  int32_t iIdx = blockDimCalculator.i_idx;
-  int32_t jIdx = blockDimCalculator.j_idx;
-  int32_t bFactor = blockDimCalculator.batch_dim_array[iIdx];
-  int32_t nFactor = blockDimCalculator.n_dim_array[jIdx];
+  int32_t bFactor = blockDimCalculator.batch_dim_array[blockDimCalculator.batch_idx];
+  int32_t nFactor = blockDimCalculator.n_dim_array[blockDimCalculator.n_idx];
+  blockDimCalculator.tmp_core_use = bFactor * nFactor;
+  if (blockDimCalculator.tmp_core_use > params.core_num || blockDimCalculator.tmp_core_use == 0) {
+    return;
+  }
   for (int32_t mIdx = 0; mIdx < blockDimCalculator.m_dim_cnt; mIdx++) {
     int32_t mFactor = blockDimCalculator.m_dim_array[mIdx];
-    if (bFactor * nFactor * mFactor > params.core_num) {
-      break;
+    blockDimCalculator.tmp_core_use = bFactor * nFactor * mFactor;
+    if (mFactor == 0 || blockDimCalculator.tmp_core_use > params.core_num) {
+      continue;
     }
-    coreStatus.batch = blockDimCalculator.batch / bFactor;
-    coreStatus.m = blockDimCalculator.m / mFactor;
-    coreStatus.n = blockDimCalculator.n / nFactor;
-    // load size of A matrix is batch * m
-    // load size of B matrix is n
-    blockDimCalculator.ori_amat_size = coreStatus.batch * coreStatus.m;
-    blockDimCalculator.ori_bmat_size = params.b_have_batch ? coreStatus.batch * coreStatus.n : coreStatus.n;
-    blockDimCalculator.amat_size = blockDimCalculator.ori_amat_size;
-    blockDimCalculator.bmat_size = blockDimCalculator.ori_bmat_size;
-    blockDimCalculator.total_load_size = blockDimCalculator.amat_size + blockDimCalculator.bmat_size;
-    blockDimCalculator.tmp_value = 0;
-    if (blockDimCalculator.total_load_size * blockDimCalculator.k_bytes > kL1Size) {
-      blockDimCalculator.total_load_size = INT_MAX;
-      // BL1 full load
-      int32_t n0 =
-        min(min((kL1Size / kFp16Bytes - kMinFractalSize) / blockDimCalculator.k_num, coreStatus.n), kMaxFactor);
-      BL1FullLoadBlock(coreStatus, blockDimCalculator, n0, params.b_have_batch);
-      // AL1 full load
-      int32_t m0 = min(min((kL1Size / kFp16Bytes - kMinFractalSize) /
-                             (kMinFractalSize * blockDimCalculator.k * blockDimCalculator.ori_amat_size),
-                           blockDimCalculator.ori_amat_size),
-                       kMaxFactor);
-      AL1FullLoadBlock(coreStatus, blockDimCalculator, m0);
-      // neither full load max_m max_n
-      // closest m and n
-      NeitherFullLoadBlock(coreStatus, blockDimCalculator, n0s[nFactor], m0s[mFactor]);
-    }
-    int32_t loadSizeKb = blockDimCalculator.total_load_size * blockDimCalculator.k_bytes / kKbytes;
-    int32_t minLoadSizeKb = blockDimCalculator.min_load_size * blockDimCalculator.k_bytes / kKbytes;
-    double tmpBlockingPct;
-    if (nFactor > mFactor) {
-      tmpBlockingPct = double(blockDimCalculator.amat_size) / blockDimCalculator.total_load_size;
-    } else if (nFactor < mFactor) {
-      tmpBlockingPct = double(blockDimCalculator.bmat_size) / blockDimCalculator.total_load_size;
-    } else {
-      tmpBlockingPct =
-        double(max(blockDimCalculator.amat_size, blockDimCalculator.bmat_size)) / blockDimCalculator.total_load_size;
-    }
-    bool tmpBlockingFlag = (loadSizeKb < kLoadSizeRangeLow && max(nFactor, mFactor) > kMLowRange);
-
-    // updateSolution: bool whether update to a new block factor solution
-    // use more coreNums or use same core num but has smaller loadsize
-    // or same core num same loadsize but has bigger batch_dim * n_dim
-    // when loadsize in a predetermined range, do not block factor solution
-    // these predetermined range parameters is only suitable for cloud 60 platform
-
-    auto updateSolution =
-      (blockDimCalculator.total_load_size < blockDimCalculator.min_load_size) ||
-        ((blockDimCalculator.total_load_size == blockDimCalculator.min_load_size) &&
-          ((blockDimCalculator.n_dim_factor * blockDimCalculator.batch_dim_factor < bFactor * nFactor) ||
-            (blockDimCalculator.n_dim_factor * blockDimCalculator.batch_dim_factor == bFactor * nFactor &&
-              blockDimCalculator.batch_dim_factor < bFactor))) ||
+    for (int32_t kIdx = 0; kIdx < blockDimCalculator.k_dim_cnt; kIdx++) {
+      int32_t kFactor = blockDimCalculator.k_dim_array[kIdx];
+      blockDimCalculator.tmp_core_use = bFactor * nFactor * mFactor * kFactor;
+      if (kFactor == 0 || blockDimCalculator.tmp_core_use > params.core_num) {
+        continue;
+      }
+      blockDimCalculator.k_num = params.k_32 / kFactor * kBlockSize * kBlockSize;
+      blockDimCalculator.k_bytes = blockDimCalculator.k_num * kFp16Bytes;
+      coreStatus.batch = params.batch_32 / bFactor;
+      coreStatus.m = params.m_32 / mFactor;
+      coreStatus.n = params.n_32 / nFactor;
+      coreStatus.k = params.k_32 / kFactor;
+      // load size of A matrix is batch * m
+      // load size of B matrix is n
+      blockDimCalculator.ori_amat_size = coreStatus.batch * coreStatus.m;
+      blockDimCalculator.ori_bmat_size = params.b_have_batch ? coreStatus.batch * coreStatus.n : coreStatus.n;
+      blockDimCalculator.amat_size = blockDimCalculator.ori_amat_size;
+      blockDimCalculator.bmat_size = blockDimCalculator.ori_bmat_size;
+      blockDimCalculator.total_load_size = blockDimCalculator.amat_size + blockDimCalculator.bmat_size;
+      blockDimCalculator.tmp_value = 0;
+      if (blockDimCalculator.total_load_size * blockDimCalculator.k_bytes > kL1Size) {
+        blockDimCalculator.total_load_size = INT_MAX;
+        // BL1 full load
+        int32_t n0 =
+          min(min((kL1Size / kFp16Bytes - kMinFractalSize) / blockDimCalculator.k_num, coreStatus.n), kMaxFactor);
+        BL1FullLoadBlock(coreStatus, blockDimCalculator, n0, params.b_have_batch);
+        // AL1 full load
+        int32_t m0 = min(min((kL1Size / kFp16Bytes - kMinFractalSize) /
+                             (kMinFractalSize * coreStatus.k * blockDimCalculator.ori_amat_size),
+                             blockDimCalculator.ori_amat_size),
+                         kMaxFactor);
+        AL1FullLoadBlock(coreStatus, blockDimCalculator, m0);
+        // neither full load max_m max_n
+        // closest m and n
+        NeitherFullLoadBlock(coreStatus, blockDimCalculator, n0s[nFactor], m0s[mFactor]);
+      }
+      int32_t loadSizeKb = blockDimCalculator.total_load_size * blockDimCalculator.k_bytes / kKbytes;
+      int32_t minLoadSizeKb = blockDimCalculator.min_load_size * blockDimCalculator.k_bytes / kKbytes;
+      double tmpBlockingPct;
+      if (nFactor > mFactor) {
+        tmpBlockingPct = double(blockDimCalculator.amat_size) / blockDimCalculator.total_load_size;
+      } else if (nFactor < mFactor) {
+        tmpBlockingPct = double(blockDimCalculator.bmat_size) / blockDimCalculator.total_load_size;
+      } else {
+        tmpBlockingPct =
+          double(max(blockDimCalculator.amat_size, blockDimCalculator.bmat_size)) / blockDimCalculator.total_load_size;
+      }
+      bool tmp_blocking_flag = (loadSizeKb < kLoadSizeRangeLow && max(nFactor, mFactor) > kMLowRange);
+      // updateSolution: bool whether update to a new block factor solution
+      // has smaller LoadSize or the same LoadSize but batch
+      bool update_condition_loadsize = blockDimCalculator.total_load_size < blockDimCalculator.min_load_size;
+      bool update_condition_batch_n_dim = (blockDimCalculator.total_load_size == blockDimCalculator.min_load_size) &&
+        ((blockDimCalculator.n_dim_factor * blockDimCalculator.batch_dim_factor < bFactor * nFactor) ||
+        (blockDimCalculator.n_dim_factor * blockDimCalculator.batch_dim_factor == bFactor * nFactor &&
+        blockDimCalculator.batch_dim_factor < bFactor));
+      auto update_solution = update_condition_loadsize || update_condition_batch_n_dim ||
         (blockDimCalculator.final_blocking_flag && (loadSizeKb - minLoadSizeKb) < kLoadSizeDiffRange &&
-          max(nFactor, mFactor) < max(blockDimCalculator.n_dim_factor, blockDimCalculator.m_dim_factor));
-    auto noUpdateSolution =
-      (((loadSizeKb >= kLoadSizeRangeLow && loadSizeKb < kLoadSizeRangeHigh &&
+        max(nFactor, mFactor) < max(blockDimCalculator.n_dim_factor, blockDimCalculator.m_dim_factor));
+      auto no_update_solution =
+        (((loadSizeKb >= kLoadSizeRangeLow && loadSizeKb < kLoadSizeRangeHigh &&
         max(nFactor, mFactor) > kMHighRange && tmpBlockingPct > kBlockingPctGate) &&
         max(nFactor, mFactor) > max(blockDimCalculator.n_dim_factor, blockDimCalculator.m_dim_factor) &&
         double(blockDimCalculator.min_load_size - blockDimCalculator.total_load_size) /
-          blockDimCalculator.min_load_size <
-          kLoadSizeGate &&
+        blockDimCalculator.min_load_size < kLoadSizeGate &&
         blockDimCalculator.core_use >= kCoreUseHighRange) ||
         ((loadSizeKb < kLoadSizeRangeLow && max(nFactor, mFactor) > kMLowRange) &&
-          (max(nFactor, mFactor) > max(blockDimCalculator.n_dim_factor, blockDimCalculator.m_dim_factor)) &&
-          ((minLoadSizeKb - loadSizeKb) < kLoadSizeDiffRange && blockDimCalculator.core_use > kCoreUseLowRange)));
-    auto updateCondition = updateSolution && !noUpdateSolution;
-    if (updateCondition) {
-      blockDimCalculator.min_load_size = blockDimCalculator.total_load_size;
-      blockDimCalculator.n_dim_factor = nFactor;
-      blockDimCalculator.batch_dim_factor = bFactor;
-      blockDimCalculator.m_dim_factor = mFactor;
-      blockDimCalculator.final_blocking_flag = tmpBlockingFlag;
-      blockDimCalculator.core_use =
-        blockDimCalculator.n_dim_factor * blockDimCalculator.batch_dim_factor * blockDimCalculator.m_dim_factor;
-      blockDimCalculator.final_value = blockDimCalculator.tmp_value;
+        (max(nFactor, mFactor) > max(blockDimCalculator.n_dim_factor, blockDimCalculator.m_dim_factor)) &&
+        ((minLoadSizeKb - loadSizeKb) < kLoadSizeDiffRange && blockDimCalculator.core_use > kCoreUseLowRange)));
+      auto update_condition = update_solution && !no_update_solution;
+      if (update_condition) {
+        blockDimCalculator.min_load_size = blockDimCalculator.total_load_size;
+        blockDimCalculator.n_dim_factor = nFactor;
+        blockDimCalculator.batch_dim_factor = bFactor;
+        blockDimCalculator.m_dim_factor = mFactor;
+        blockDimCalculator.k_dim_factor = kFactor;
+        blockDimCalculator.final_blocking_flag = tmp_blocking_flag;
+        blockDimCalculator.core_use = blockDimCalculator.tmp_core_use;
+        blockDimCalculator.final_value = blockDimCalculator.tmp_value;
+      }
     }
   }
 }
@@ -442,22 +450,29 @@ void ComputePerfSplitK(const int32_t block_dims[], const int32_t single_core_sha
   int32_t m_dim = block_dims[0];
   int32_t k_dim = block_dims[1];
   int32_t n_dim = block_dims[kIdxTwo];
+  int32_t batch_dim_max = block_dims[kIdxThree];
   if (k_dim * n_dim * m_dim > params.core_num) {
     return;
   }
-  int32_t single_core_m = single_core_shape[0];
-  int32_t single_core_k = single_core_shape[1];
-  int32_t single_core_n = single_core_shape[kIdxTwo];
-  int32_t atomic_add_bw_lose = k_dim == 1 ? 1 : kNumTwo;
-  int32_t mte3_cost = k_dim * (single_core_m * single_core_n * kFp32Bytes) * atomic_add_bw_lose;
-  int32_t base_load_cost =
-      (single_core_m * single_core_k + single_core_k * single_core_n) * kFp16Bytes;
-  int32_t b_repeat_load_cost = (m_dim - 1) * single_core_k * single_core_n * kFp16Bytes;
-  int32_t a_repeat_load_cost = (n_dim - 1) * single_core_k * single_core_m * kFp16Bytes;
-  int32_t cur_cost = base_load_cost + mte3_cost + a_repeat_load_cost + b_repeat_load_cost;
-  if (cur_cost < min_cost) {
-    min_cost = cur_cost;
-    coreStatus.k_dim = k_dim;
+  for (int32_t batch_dim = 1; batch_dim <= batch_dim_max; batch_dim++) {
+    if (k_dim * n_dim * m_dim * batch_dim > params.core_num) {
+      return;
+    }
+    int32_t single_core_m = single_core_shape[0];
+    int32_t single_core_k = single_core_shape[1];
+    int32_t single_core_n = single_core_shape[kIdxTwo];
+    int32_t single_core_batch = params.batch_32 / batch_dim;
+    int32_t atomic_add_bw_lose = k_dim == 1 ? 1 : kNumTwo;
+    int32_t mte3_cost = k_dim * (single_core_batch * single_core_m * single_core_n * kFp32Bytes) * atomic_add_bw_lose;
+    int32_t base_load_cost =
+      single_core_batch * (single_core_m * single_core_k + single_core_k * single_core_n) * kFp16Bytes;
+    int32_t b_repeat_load_cost = (batch_dim * m_dim - 1) * single_core_k * single_core_n * kFp16Bytes;
+    int32_t a_repeat_load_cost = (batch_dim * n_dim - 1) * single_core_k * single_core_m * kFp16Bytes;
+    int32_t cur_cost = base_load_cost + mte3_cost + a_repeat_load_cost + b_repeat_load_cost;
+    if (cur_cost < min_cost) {
+      min_cost = cur_cost;
+      coreStatus.k_dim = k_dim;
+    }
   }
 }
 
@@ -475,23 +490,25 @@ void GetSplitKdim(const string &op_type, const BatchmatmulParas &params, CoreSta
     return;
   }
   int32_t use_out_buffer_size =
-      (params.m_32 * params.k_32 + params.k_32 * params.n_32 + params.m_32 * params.n_32) * kFp16Bytes;
+    params.batch_32 * (params.m_32 * params.k_32 + params.k_32 * params.n_32 + params.m_32 * params.n_32) * kFp16Bytes;
   int32_t cur_bandwidth = 0;
   int32_t hbm_bandwidth = 0;
   int32_t l2_bandwidth = 0;
   GetBandwidth(params, use_out_buffer_size, hbm_bandwidth, l2_bandwidth, cur_bandwidth);
   int32_t min_cost = params.core_num * use_out_buffer_size / hbm_bandwidth * cur_bandwidth;
+  int32_t batch_dim_max = min(params.core_num, params.batch_32);
   int32_t m_dim_max = min(params.core_num, params.m_32);
   int32_t k_dim_max = min(params.core_num, params.k_32);
   int32_t n_dim_max = min(params.core_num, params.n_32);
-  int32_t block_dims[kNumThree] = {1, 1, 1};
-  int32_t single_core_shape[kNumThree] = {params.m_32, params.k_32, params.n_32};
-  for (int32_t k = 1; k < k_dim_max; k++) {
-    for (int32_t n = 1; n < n_dim_max; n++) {
+  int32_t block_dims[kNumFour] = {1, 1, 1, 1};
+  int32_t single_core_shape[kNumFour] = {params.m_32, params.k_32, params.n_32, params.batch_32};
+  block_dims[kIdxThree] = batch_dim_max;
+  for (int32_t k = 1; k <= k_dim_max; k++) {
+    for (int32_t n = 1; n <= n_dim_max; n++) {
       if (k * n > params.core_num) {
-        continue;
+        break;
       }
-      for (int32_t m = 1; m < m_dim_max; m++) {
+      for (int32_t m = 1; m <= m_dim_max; m++) {
         block_dims[0] = m;
         block_dims[1] = k;
         block_dims[kIdxTwo] = n;
@@ -505,157 +522,36 @@ void GetSplitKdim(const string &op_type, const BatchmatmulParas &params, CoreSta
   OP_LOGD(op_type.c_str(), "multi-core slicing factor k_dim:%d", coreStatus.k_dim);
 }
 
-void GetBlockDimKHelper(CoreStatus &coreStatus, BlockDimCalculator &blockDimCalculator,
-                        const int32_t m0s[][kCandidateLen], const int32_t n0s[][kCandidateLen],
-                        const BatchmatmulParas &params)
-{
-  int32_t kFactor = blockDimCalculator.k_dim_array[blockDimCalculator.k_idx];
-  int32_t nFactor = blockDimCalculator.n_dim_array[blockDimCalculator.n_idx];
-  if (kFactor * nFactor == 0) {
-    return;
-  }
-  blockDimCalculator.k_num = params.k_32 / kFactor * kBlockSize * kBlockSize;
-  blockDimCalculator.k_bytes = blockDimCalculator.k_num * kFp16Bytes;
-  for (int32_t mIdx = 0; mIdx < blockDimCalculator.m_dim_cnt; mIdx++) {
-    int32_t mFactor = blockDimCalculator.m_dim_array[mIdx];
-    if (mFactor == 0) {
-      continue;
-    }
-    blockDimCalculator.tmp_core_use = kFactor * nFactor * mFactor;
-    if (blockDimCalculator.tmp_core_use > params.core_num) {
-      break;
-    }
-    coreStatus.k = params.k_32 / kFactor;
-    coreStatus.m = params.m_32 / mFactor;
-    coreStatus.n = params.n_32 / nFactor;
-    // min load size of A matrix is m
-    // min load size of B matrix is n
-    blockDimCalculator.ori_amat_size = coreStatus.m;
-    blockDimCalculator.ori_bmat_size = coreStatus.n;
-    blockDimCalculator.total_load_size = blockDimCalculator.ori_amat_size + blockDimCalculator.ori_bmat_size;
-    blockDimCalculator.tmp_value = 0;
-    if (blockDimCalculator.total_load_size * blockDimCalculator.k_bytes > kL1Size) {
-      blockDimCalculator.total_load_size = INT_MAX;
-      // BL1 k full load
-      int32_t n0 =
-        min(min((kL1Size / kFp16Bytes - kMinFractalSize) / blockDimCalculator.k_num, coreStatus.n), kMaxFactor);
-      BL1FullLoadBlock(coreStatus, blockDimCalculator, n0, params.b_have_batch);
-      // AL1 full load
-      int32_t m0 = min(min((kL1Size / kFp16Bytes - kMinFractalSize) / (kMinFractalSize * coreStatus.k * coreStatus.m),
-          coreStatus.m), kMaxFactor);
-      AL1FullLoadBlock(coreStatus, blockDimCalculator, m0);
-      // neither
-      NeitherFullLoadBlock(coreStatus, blockDimCalculator, n0s[nFactor], m0s[mFactor]);
-    }
-    // updateSolution: bool whether update to a new block factor solution
-    // has smaller LoadSize or the same LoadSize but use more CoreNums
-    bool update_condition_loadsize = blockDimCalculator.total_load_size < blockDimCalculator.min_load_size;
-    bool update_condition_corenums = blockDimCalculator.total_load_size == blockDimCalculator.min_load_size &&
-                                     blockDimCalculator.tmp_core_use > blockDimCalculator.core_use;
-    if (update_condition_loadsize || update_condition_corenums) {
-      blockDimCalculator.min_load_size = blockDimCalculator.total_load_size;
-      blockDimCalculator.n_dim_factor = nFactor;
-      blockDimCalculator.k_dim_factor = kFactor;
-      blockDimCalculator.m_dim_factor = mFactor;
-      blockDimCalculator.core_use = blockDimCalculator.tmp_core_use;
-      blockDimCalculator.final_value = blockDimCalculator.tmp_value;
-    }
-  }
-}
-
-int32_t GetBlockDimK(const string &op_type, const BatchmatmulParas &params, CoreStatus &coreStatus)
-{
-  // support multi cores slicing along k dim
-  // get batch_dim, m_dim, n_dim and k_dim
-  // batch_dim, m_dim, n_dim, k_dim is a factor of input batch, m, n, k
-  // now batch = 1, so batch_dim = 1
-
-  OP_LOGD(op_type.c_str(), "GetBlockDimK input shape batch:%d, m:%d, k:%d, n:%d", params.batch_32, params.m_32,
-          params.k_32, params.n_32);
-  if (params.k_32 * params.m_32 * params.n_32 <= params.core_num) {
-    coreStatus.k_dim = params.k_32;
-    coreStatus.n_dim = params.n_32;
-    coreStatus.m_dim = params.m_32;
-    coreStatus.batch = params.batch_32;
-    coreStatus.m = 1;
-    coreStatus.k = 1;
-    coreStatus.n = 1;
-    OP_LOGD(op_type.c_str(), "multi-core slicing factor k_dim:%d, n_dim:%d, m_dim:%d, m_block_pnt_point:0",
-            coreStatus.k_dim, coreStatus.n_dim, coreStatus.m_dim);
-    return 0;
-  }
-  BlockDimCalculator blockDimCalculator;
-  int32_t kDimArray[params.core_num] = {0};
-  int32_t nDimArray[params.core_num] = {0};
-  int32_t mDimArray[params.core_num] = {0};
-  GetTwoFactors(kDimArray, coreStatus.k_dim, params.k_32, params.core_num);
-  blockDimCalculator.k_dim_cnt = kCandidateLen;
-  GetFactors(&blockDimCalculator.n_dim_cnt, nDimArray, params.n_32, params.core_num);
-  int32_t n0s[params.core_num + 1][kCandidateLen] = {0};
-  for (int32_t idx = 0; idx < blockDimCalculator.n_dim_cnt; idx++) {
-    int32_t tmpNDim = nDimArray[idx];
-    int32_t tmpNSingleCore = params.n_32 / tmpNDim;
-    GetTwoFactors(n0s[tmpNDim], kMNPntMax, tmpNSingleCore, kMaxFactor);
-  }
-  GetFactors(&blockDimCalculator.m_dim_cnt, mDimArray, params.m_32, params.core_num);
-  int32_t m0s[params.core_num + 1][kCandidateLen] = {0};
-  for (int32_t idx = 0; idx < blockDimCalculator.m_dim_cnt; idx++) {
-    int32_t tmpMDim = mDimArray[idx];
-    int32_t tmpMSingleCore = params.m_32 / tmpMDim;
-    GetTwoFactors(m0s[tmpMDim], kMNPntMax, tmpMSingleCore, kMaxFactor);
-  }
-  blockDimCalculator.k_dim_factor = 1;
-  blockDimCalculator.n_dim_factor = 1;
-  blockDimCalculator.m_dim_factor = 1;
-  blockDimCalculator.k_dim_array = kDimArray;
-  blockDimCalculator.m_dim_array = mDimArray;
-  blockDimCalculator.n_dim_array = nDimArray;
-  blockDimCalculator.min_load_size = INT_MAX;
-  for (int32_t kIdx = 0; kIdx < blockDimCalculator.k_dim_cnt; kIdx++) {
-    for (int32_t nIdx = 0; nIdx < blockDimCalculator.n_dim_cnt; nIdx++) {
-      blockDimCalculator.k_idx = kIdx;
-      blockDimCalculator.n_idx = nIdx;
-      GetBlockDimKHelper(coreStatus, blockDimCalculator, m0s, n0s, params);
-    }
-  }
-  coreStatus.k_dim = blockDimCalculator.k_dim_factor;
-  coreStatus.n_dim = blockDimCalculator.n_dim_factor;
-  coreStatus.m_dim = blockDimCalculator.m_dim_factor;
-  coreStatus.m = params.m_32 / blockDimCalculator.m_dim_factor;
-  coreStatus.n = params.n_32 / blockDimCalculator.n_dim_factor;
-  coreStatus.k = params.k_32 / blockDimCalculator.k_dim_factor;
-  coreStatus.batch = params.batch_32;
-  OP_LOGD(op_type.c_str(),
-          "multi-core slicing factor k_dim:%d, n_dim:%d, m_dim:%d, m_block_pnt_point:%d",
-          coreStatus.k_dim, coreStatus.n_dim, coreStatus.m_dim, blockDimCalculator.final_value);
-  return blockDimCalculator.final_value;
-}
-
 int32_t GetBlockDim(const string &op_type, const BatchmatmulParas &params, CoreStatus &coreStatus)
 {
-  // get batch_dim, m_dim and n_dim for single core
-  // not support multi cores slicing along k dim
-  // single core batch_dim, m_dim, n_dim is a factor of input batch, m, n
-
-  OP_LOGD(op_type.c_str(), "GetBlockDim input shape batch:%d, m:%d, k:%d, n:%d", params.batch_32, params.m_32,
-          params.k_32, params.n_32);
-  if (params.batch_32 * params.m_32 * params.n_32 < params.core_num) {
+  // get batch_dim, k_dim, m_dim and n_dim for single core
+  // support multi cores slicing along k_dim
+  // single core batch_dim, m_dim, n_dim, k_dim is a factor of input batch, m, n, k
+  OP_LOGD(op_type.c_str(), "GetBlockDim input batch:%d, m:%d, k:%d, n:%d, k_dim:%d", params.batch_32, params.m_32,
+          params.k_32, params.n_32, coreStatus.k_dim);
+  // first get k_dim candidate
+  BlockDimCalculator blockDimCalculator;
+  int32_t kDimArray[params.core_num] = {0};
+  if (coreStatus.k_dim == 1) {
+    kDimArray[0] = 1;
+    blockDimCalculator.k_dim_cnt = 1;
+  } else {
+    GetTwoFactors(kDimArray, coreStatus.k_dim, params.k_32, params.core_num);
+    blockDimCalculator.k_dim_cnt = kCandidateLen;
+  }
+  if (params.batch_32 * params.m_32 * params.n_32 * kDimArray[0] <= params.core_num) {
     coreStatus.batch_dim = params.batch_32;
     coreStatus.n_dim = params.n_32;
     coreStatus.m_dim = params.m_32;
+    coreStatus.k_dim = kDimArray[0];
     coreStatus.batch = 1;
     coreStatus.m = 1;
-    coreStatus.k = params.k_32;
+    coreStatus.k = params.k_32 / kDimArray[0];
     coreStatus.n = 1;
-    OP_LOGD(op_type.c_str(), "multi-core slicing factor batch_dim:%d, n_dim:%d, m_dim:%d, m_block_pnt_point:0",
-            coreStatus.batch_dim, coreStatus.n_dim, coreStatus.m_dim);
+    OP_LOGD(op_type.c_str(), "multi-core slicing factor batch_dim:%d, n_dim:%d, m_dim:%d, k_dim:%d",
+            coreStatus.batch_dim, coreStatus.n_dim, coreStatus.m_dim, coreStatus.k_dim);
     return 0;
   }
-  BlockDimCalculator blockDimCalculator;
-  blockDimCalculator.batch = params.batch_32;
-  blockDimCalculator.m = params.m_32;
-  blockDimCalculator.k = params.k_32;
-  blockDimCalculator.n = params.n_32;
   int32_t batchDimArray[params.core_num] = {0};
   int32_t nDimArray[params.core_num] = {0};
   int32_t mDimArray[params.core_num] = {0};
@@ -674,32 +570,33 @@ int32_t GetBlockDim(const string &op_type, const BatchmatmulParas &params, CoreS
     int32_t tmpMSingleCore = params.m_32 / tmpMDim;
     GetTwoFactors(m0s[tmpMDim], kMNPntMax, tmpMSingleCore, kMaxFactor);
   }
-  blockDimCalculator.k_num = params.k_32 * kBlockSize * kBlockSize;
-  blockDimCalculator.k_bytes = blockDimCalculator.k_num * kFp16Bytes;
   blockDimCalculator.n_dim_factor = 1;
   blockDimCalculator.batch_dim_factor = 1;
   blockDimCalculator.m_dim_factor = 1;
-  blockDimCalculator.min_load_size = kL1Size / kFp16Bytes;
+  blockDimCalculator.k_dim_factor = 1;
+  blockDimCalculator.min_load_size = INT_MAX;
   blockDimCalculator.batch_dim_array = batchDimArray;
   blockDimCalculator.m_dim_array = mDimArray;
   blockDimCalculator.n_dim_array = nDimArray;
-  for (int32_t iIdx = 0; iIdx < blockDimCalculator.batch_dim_cnt; iIdx++) {
-    for (int32_t jIdx = 0; jIdx < blockDimCalculator.n_dim_cnt; jIdx++) {
-      blockDimCalculator.i_idx = iIdx;
-      blockDimCalculator.j_idx = jIdx;
+  blockDimCalculator.k_dim_array = kDimArray;
+  for (int32_t batch_idx = 0; batch_idx < blockDimCalculator.batch_dim_cnt; batch_idx++) {
+    for (int32_t n_idx = 0; n_idx < blockDimCalculator.n_dim_cnt; n_idx++) {
+      blockDimCalculator.batch_idx = batch_idx;
+      blockDimCalculator.n_idx = n_idx;
       GetBlockDimHelper(coreStatus, blockDimCalculator, m0s, n0s, params);
     }
   }
   coreStatus.batch_dim = blockDimCalculator.batch_dim_factor;
   coreStatus.n_dim = blockDimCalculator.n_dim_factor;
   coreStatus.m_dim = blockDimCalculator.m_dim_factor;
+  coreStatus.k_dim = blockDimCalculator.k_dim_factor;
   coreStatus.m = params.m_32 / blockDimCalculator.m_dim_factor;
   coreStatus.n = params.n_32 / blockDimCalculator.n_dim_factor;
-  coreStatus.k = params.k_32;
+  coreStatus.k = params.k_32 / blockDimCalculator.k_dim_factor;
   coreStatus.batch = params.batch_32 / blockDimCalculator.batch_dim_factor;
   OP_LOGD(op_type.c_str(),
-          "multi-core slicing factor batch_dim:%d, n_dim:%d, m_dim:%d, m_block_pnt_point:%d",
-          coreStatus.batch_dim, coreStatus.n_dim, coreStatus.m_dim, blockDimCalculator.final_value);
+          "multi-core slicing factor batch_dim:%d, n_dim:%d, m_dim:%d, k_dim:%d, m_block_pnt_point:%d",
+          coreStatus.batch_dim, coreStatus.n_dim, coreStatus.m_dim, coreStatus.k_dim, blockDimCalculator.final_value);
   return blockDimCalculator.final_value;
 }
 
@@ -1556,12 +1453,7 @@ void GenTiling(const string &op_type, const BatchmatmulParas &params, Tiling &ti
   if (params.split_k_flag) {
     GetSplitKdim(op_type, params, coreStatus);
   }
-  int32_t blockValue = 0;
-  if (coreStatus.k_dim == 1) {
-    blockValue = GetBlockDim(op_type, params, coreStatus);
-  } else {
-    blockValue = GetBlockDimK(op_type, params, coreStatus);
-  }
+  int32_t blockValue = GetBlockDim(op_type, params, coreStatus);
   GetL0Factors(op_type, coreStatus, blockValue, l0Status);
   GetL1Factors(op_type, params, coreStatus, l0Status, l1Status);
   GetUbFactors(op_type, params, coreStatus, l1Status, l0Status, ubStatus);

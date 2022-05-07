@@ -38,7 +38,7 @@
  *     \              /          /                                   \                /             /
  *   TransData   TransData      /                                     \              /             /
  *       \          /          /                                       \            /             /
- *      MatMul/MatMulV2/(FRACTAL_NZ)               ->                MatMul/MatMulV2/(FRACTAL_NZ)
+ *  MatMul/MatMulV2/BatchMatMul/BatchMatMulV2(FRACTAL_NZ)  ->  BatchMatMul/BatchMatMulV2/MatMul/MatMulV2/(FRACTAL_NZ)
  *             |                                                             |
  *          cast[Optional + FP16 --> FP32]                                   |
  *             |                                                             |
@@ -117,7 +117,7 @@ vector<FusionPattern*> AAMatMulNzToNdFusionPass::DefinePatterns() {
 
   OP_LOGD(kSplitKdimNameFusionPass, "Start to define pattern.");
 
-  split_k_pattern->AddOpDesc(kDescMatMul, {kOpTypeMatMul, kOpTypeMatMulV2})
+  split_k_pattern->AddOpDesc(kDescMatMul, {kOpTypeMatMul, kOpTypeMatMulV2, kOpTypeBatchMatMul, kOpTypeBatchMatMulV2})
       .AddOpDesc(kDescTransdata0, {kOpTypeTransData})
       .AddOpDesc(kDescTransdata1, {kOpTypeTransData})
       .SetInputs(kDescMatMul, {kDescTransdata0, kDescTransdata1})
@@ -130,7 +130,8 @@ vector<FusionPattern*> AAMatMulNzToNdFusionPass::DefinePatterns() {
                     return patterns);
   // The following Case is another split kdim pattern.
   OP_LOGD(kSplitKdimNameFP16FusionPass, "Start to define pattern.");
-  force_fp16_split_k_pattern->AddOpDesc(kDescMatMul, {kOpTypeMatMul, kOpTypeMatMulV2})
+  force_fp16_split_k_pattern
+      ->AddOpDesc(kDescMatMul, {kOpTypeMatMul, kOpTypeMatMulV2, kOpTypeBatchMatMul, kOpTypeBatchMatMulV2})
       .AddOpDesc(kDescTransdata0, {kOpTypeTransData})
       .AddOpDesc(kDescTransdata1, {kOpTypeTransData})
       .AddOpDesc(kOpTypeCast, {kOpTypeCast})
@@ -260,7 +261,10 @@ bool AAMatMulNzToNdFusionPass::IsLinkRelationshipCorrect(const Mapping& mapping)
                       OP_LOGW(kNameFusionPass, "TransData after Matmul node does not match."), return false);
   } else {
     FUSION_PASS_CHECK(!CheckOutputFormatOfMatMul(node_ptr_matmul, FORMAT_FRACTAL_NZ),
-                      OP_LOGW(kSplitKdimNameFusionPass, "Matmul/MatMulV2 node's format does not match."), return false);
+                      OP_LOGW(kSplitKdimNameFusionPass,
+                              "Matmul/MatMulV2/BatchMatMul node[%s]'s format does not match.",
+                              node_ptr_matmul->GetName().c_str()),
+                      return false);
     split_k_mode = true;
     split_k_force_fp16_mode = node_ptr_cast != nullptr;
     if (split_k_force_fp16_mode) {

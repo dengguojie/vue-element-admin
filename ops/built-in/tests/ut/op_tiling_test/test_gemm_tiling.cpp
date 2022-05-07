@@ -451,7 +451,7 @@ TEST_F(GEMMTiling, GEMM_op_tiling_obj_batchmatmul_formula06) {
 
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V4(matmul, iter->second, compileInfo, runInfo);
-  EXPECT_EQ(runInfo.GetBlockDim(), 16);
+  EXPECT_EQ(runInfo.GetBlockDim(), 32);
   EXPECT_EQ(runInfo.GetTilingKey(), 1120000);
 }
 
@@ -878,7 +878,7 @@ TEST_F(GEMMTiling, GEMM_op_tiling_nd_nonrange_pattern_split_k) {
   RUN_TILING_V4(matmul, iter->second, compileInfo, runInfo);
   EXPECT_EQ(runInfo.GetBlockDim(), 32);
   // In Aligned Mode. The key is changed
-  EXPECT_EQ(runInfo.GetTilingKey(), 1222022110);
+  EXPECT_EQ(runInfo.GetTilingKey(), 1212220010);
 }
 
 TEST_F(GEMMTiling, GEMM_op_tiling_fractal_z) {

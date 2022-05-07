@@ -37,7 +37,6 @@
 #include "op_log.h"
 
 namespace optiling {
-
 struct BatchmatmulParas {
   int32_t m_32 = 1;
   int32_t k_32 = 1;
@@ -95,9 +94,7 @@ struct BlockDimCalculator {
   int32_t min_load_size = 1;
   int32_t core_use = 1;
   int32_t tmp_core_use = 1;
-  int32_t i_idx = 0;
-  int32_t j_idx = 0;
-  int32_t k_idx = 0;
+  int32_t batch_idx = 0;
   int32_t n_idx = 0;
   int32_t batch_dim_cnt = 0;
   int32_t m_dim_cnt = 0;
@@ -191,10 +188,10 @@ struct L1Status {
   {
     this->kal1_16 = tmp_l1_factors[0];
     this->kbl1_16 = tmp_l1_factors[1];
-    this->m_al1 = tmp_l1_factors[2];
-    this->n_bl1 = tmp_l1_factors[3];
-    this->db_al1 = tmp_l1_factors[4];
-    this->db_bl1 = tmp_l1_factors[5];
+    this->m_al1 = tmp_l1_factors[2]; // 2 means m_al1 factor index
+    this->n_bl1 = tmp_l1_factors[3]; // 3 means n_bl1 factor index
+    this->db_al1 = tmp_l1_factors[4]; // 4 means db_al1 factor index
+    this->db_bl1 = tmp_l1_factors[5]; // 5 means db_bl1 factor index
   }
 };
 

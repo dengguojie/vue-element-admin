@@ -765,7 +765,7 @@ class MatmulTiling(CubeTilingOp):
                 cache_tiling.get('attach_at_flag')['bub_multi_flag'] = choice[8]
                 cache_tiling["schedule_pattern"] = "Aligned"
             if split_k_flag:
-                cache_tiling["block_dim"] = [1, UNKNOWN_DIM, UNKNOWN_DIM, UNKNOWN_DIM]
+                cache_tiling["block_dim"] = [UNKNOWN_DIM, UNKNOWN_DIM, UNKNOWN_DIM, UNKNOWN_DIM]
             # in split k mode, tiling_id starts with 1
             name = int(('1' if split_k_flag else '') + ''.join((str(i) for i in choice)))
             cache_tiling_all[name] = [[], cache_tiling, []]

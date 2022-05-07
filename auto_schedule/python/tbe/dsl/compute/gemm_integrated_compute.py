@@ -926,10 +926,11 @@ class GEMMCompute(FormatCompute):
             have_batch = True
         compress_flag = self.compress_index is not None
         not_split_k = (not_fp16_in_fp32_out or not_fractal_nz_out or is_gemm or have_bias or self.is_fusion
-                       or have_batch or self.fc_flag or compress_flag)
+                       or self.fc_flag or compress_flag)
         if self.cache_tiling_flag:
             self.split_k = not not_split_k
             return
+        not_split_k = not_split_k or have_batch
         if not_split_k:
             return
 

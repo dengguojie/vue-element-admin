@@ -2057,10 +2057,12 @@ IMPLEMT_COMMON_INFERFUNC(MatMulV2InferShape) {
 
   OP_LOGD(opName.GetString(), "[MatMulV2 Infershape] Start to set output shape.");
   tensordesc_output->SetShapeRange(shape_range_out);
+  if (!SetMatMulOutputDtype(opName, tensordesc_x1, tensordesc_output)) {
+    OP_LOGE(opName.GetString(), "[Plugin][ERROR]%s SetMatMulOutputDtype failed!", opName.GetString());
+    return GRAPH_FAILED;
+  }
   if (tensordesc_x1->GetDataType() == ge::DT_INT8 || tensordesc_x1->GetDataType() == ge::DT_INT4) {
     tensordesc_output->SetDataType(ge::DT_INT32);
-  } else {
-    tensordesc_output->SetDataType(tensordesc_x1->GetDataType());
   }
   OP_LOGD(opName.GetString(), "[MatMulV2 Infershape] End MatMulV2 infershape.");
 
@@ -2259,10 +2261,12 @@ IMPLEMT_COMMON_INFERFUNC(BatchMatMulInferShape) {
   InferComplementedOutput(shape_out, shape_range_out, shape_x1_reshape_flag, shape_x2_reshape_flag);
 
   tensordesc_out->SetShapeRange(shape_range_out);
+  if (!SetMatMulOutputDtype(opName, tensordesc_x1, tensordesc_out)) {
+    OP_LOGE(opName.GetString(), "[Plugin][ERROR]%s SetMatMulOutputDtype failed!", opName.GetString());
+    return GRAPH_FAILED;
+  }
   if (dtype == ge::DT_INT8) {
     tensordesc_out->SetDataType(ge::DT_INT32);
-  } else {
-    tensordesc_out->SetDataType(dtype);
   }
   return GRAPH_SUCCESS;
 }
@@ -2374,10 +2378,12 @@ IMPLEMT_COMMON_INFERFUNC(BatchMatMulV2InferShape) {
   InferComplementedOutput(shape_out, shape_range_out, shape_x1_reshape_flag, shape_x2_reshape_flag);
 
   tensordesc_out->SetShapeRange(shape_range_out);
+  if (!SetMatMulOutputDtype(opName, tensordesc_x1, tensordesc_out)) {
+    OP_LOGE(opName.GetString(), "[Plugin][ERROR]%s SetMatMulOutputDtype failed!", opName.GetString());
+    return GRAPH_FAILED;
+  }
   if (dtype == ge::DT_INT8) {
     tensordesc_out->SetDataType(ge::DT_INT32);
-  } else {
-    tensordesc_out->SetDataType(dtype);
   }
   return GRAPH_SUCCESS;
 }
