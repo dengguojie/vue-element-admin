@@ -10,7 +10,7 @@ import random
 import logging
 from enum import auto
 from enum import Enum
-from typing import TextIO
+from typing import List, TextIO
 from typing import Callable
 from typing import Optional
 from typing import Dict
@@ -155,7 +155,6 @@ class UniversalTestcaseStructure:
                  "cst_compile_time",
                  "cst_op_pattern",
                  "cst_rl_status",
-                 "output_as_list_distribution",
                  "op_name",
                  "shape_check",
                  "stc_inputs",
@@ -270,7 +269,6 @@ class UniversalTestcaseStructure:
     special_property_headers: Dict[str, tuple] = {
         "dyn_input_as_list_distribution": (FIELD_TYPES.INT_CONTAINER, None, ()),
         "stc_input_as_list_distribution": (FIELD_TYPES.INT_CONTAINER, None, ()),
-        "output_as_list_distribution": (FIELD_TYPES.INT_CONTAINER, None, ()),
         "input_as_variable": (FIELD_TYPES.INT_CONTAINER, None, ()),
         "stc_op_name": (FIELD_TYPES.STRING, ("op_name",)),
         "const_input_indexes": (FIELD_TYPES.INT_CONTAINER, None, ()),
@@ -378,7 +376,6 @@ class UniversalTestcaseStructure:
         self.cst_op_pattern = None
         self.cst_rl_status = None
         # Others
-        self.output_as_list_distribution = None
         self.op_name: Optional[str] = None
         self.shape_check: Optional[bool] = None
         self.stc_inputs: Optional[tuple] = None
@@ -481,7 +478,6 @@ class UniversalTestcaseStructure:
             self.dyn_ori_inputs if not is_binary else "BINARY",
             self.dyn_ori_outputs if not is_binary else "BINARY",
             self.dyn_input_as_list_distribution,
-            self.output_as_list_distribution,
             self.const_input_indexes,
             self.const_input_modes,
             self.manual_dyn_build_config,
@@ -770,8 +766,8 @@ class UniversalTestcaseFactory:
 
     # noinspection PyBroadException
     def _parse(self, testcases: list) -> Dict[int, set]:
-        parsed_testcases = []
-        testcase_names = set()
+        parsed_testcases: List[UniversalTestcaseStructure] = []
+        testcase_names: str = set()
         # For testcase_count selector
         if 0 < get_global_storage().selected_testcase_count < len(testcases):
             logging.info("Selecting %d cases from all testcases" % get_global_storage().selected_testcase_count)

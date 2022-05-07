@@ -80,9 +80,7 @@ class OperatorInterface:
         :return: operator function
         """
         # Try to get operator module and operator function in it
-        search_list = (f"{module}.{op_name}",
-                       f"tbetoolkits.user_defined_modules.fusion_op.{module}.{op_name}",
-                       f"tbetoolkits.user_defined_modules.dsl_op.{module}.{op_name}")
+        search_list = (f"{module}.{op_name}",)
         as_module = None
         for s in search_list:
             try:
