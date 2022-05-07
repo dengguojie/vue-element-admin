@@ -199,14 +199,6 @@ Status PadConv2dFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, ve
   conv_pads_all.push_back(conv_pads_b);
   conv_pads_all.push_back(conv_pads_l);
   conv_pads_all.push_back(conv_pads_r);
-  ge::OutControlAnchorPtr outCtrlAnchorPtr = padd_node->GetOutControlAnchor();
-  FUSION_PASS_CHECK(outCtrlAnchorPtr == nullptr,
-                    ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "node is null."),
-                    return PARAM_INVALID);
-  if (!padd_node->GetOutControlAnchor()->GetPeerInControlAnchors().empty()) {
-    OP_LOGI(FUSED_OP_TYPE.c_str(), "padd_node has control edge, can not fusion.");
-    return NOT_CHANGED;
-  }
 
   // Get conv2d_backprop_filter_d_node and check the graph
   ge::NodePtr conv2d_backprop_filter_d_node = nullptr;
@@ -224,6 +216,20 @@ Status PadConv2dFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, ve
             in_data_anchor->GetOwnerNode()->GetType() != CONV2DBACKPROPFILTERD,
         OP_LOGI(FUSED_OP_TYPE.c_str(), "Output node is not Conv2D or Conv2DBackpropFilterD, can not fusion."),
         return NOT_CHANGED);
+  }
+
+  ge::OutControlAnchorPtr outCtrlAnchorPtr = padd_node->GetOutControlAnchor();
+  FUSION_PASS_CHECK(outCtrlAnchorPtr == nullptr,
+                    ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "node is null."),
+                    return PARAM_INVALID);
+  if (!outCtrlAnchorPtr->GetPeerInControlAnchors().empty()) {
+    for (auto out_ctrl_anchor : outCtrlAnchorPtr->GetPeerInControlAnchors()) {
+      ge::NodePtr out_ctrl_node = out_ctrl_anchor->GetOwnerNode();
+      FUSION_PASS_CHECK(
+        out_ctrl_node != conv2d_backprop_filter_d_node && out_ctrl_node != conv2d_node,
+        OP_LOGI(FUSED_OP_TYPE.c_str(), "padd_node has control edge not link to cube node, can not fusion."),
+        return NOT_CHANGED);
+    }
   }
 
   // Get batch_norm_grad_node and check the graph

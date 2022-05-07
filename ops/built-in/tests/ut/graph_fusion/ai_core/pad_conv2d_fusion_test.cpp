@@ -93,6 +93,19 @@ TEST_F(pad_conv2d_fusion_test, one_pad_one_conv2d) {
 
   ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
 
+  ge::NodePtr pad_node = nullptr;
+  ge::NodePtr conv_node = nullptr;
+  for (auto node : compute_graph_ptr->GetAllNodes()) {
+    if (node->GetType() == "Pad") {
+       pad_node = node;
+    }
+    if (node->GetType() == "Conv2D") {
+      conv_node = node;
+    }
+  }
+  ge::GraphUtils::AddEdge(pad_node->GetOutControlAnchor(), conv_node->GetInControlAnchor());
+
+
   // check before fusion
   EXPECT_EQ(compute_graph_ptr->GetAllNodesSize(), 5);
 
