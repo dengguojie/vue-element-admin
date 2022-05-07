@@ -9,6 +9,7 @@
             "BatchMultiClassNonMaxSuppressionRefreshSubgraphConstNodeFusionPass": "off"
         },
         "UBFusion":{
+            "TbeMatmulFixpipeFusionPass": "off"
         }
     },
     "Priority":{

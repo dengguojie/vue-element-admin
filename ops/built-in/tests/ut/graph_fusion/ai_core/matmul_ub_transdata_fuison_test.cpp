@@ -11,6 +11,7 @@
 #include "buffer_fusion/ub_fusion/ai_core/matmul/matmul_transdata_ub_fusion.h"
 #include "inc/common/op_slice_info.h"
 #include "common/lxfusion_json_util.h"
+#include "common/util/platform_info.h"
 #include "fusion_pass_test_utils.h"
 #include "fusion_pass_test_slice_utils.h"
 
@@ -56,7 +57,7 @@ namespace fe {
                 vector<ge::NodePtr> matmulNodes;
                 for (auto i : node_ptrs) {
                   auto opDesc = i->GetOpDesc();
-                  if (opDesc->GetType() == "Matmul") {
+                  if (opDesc->GetType() == "MatMul") {
                     matmulNodes.push_back(i);
                   }
                 }
@@ -87,7 +88,7 @@ namespace fe {
                 split_map.AddInputSplitInfo(input_split_info);
                 split_map.AddOutputSplitInfo(output_split_info);
                 vector<AxisSplitMap> split_map_vec = {split_map};
-                SetSplitMapMainNode(split_map_vec, matmulNodes, "Matmul");
+                SetSplitMapMainNode(split_map_vec, matmulNodes, "MatMul");
                 buffer_fusion_pass_base_ptr->GetFusionNodes(mapping, fusion_nodes);
                 buffer_fusion_pass_base_ptr->SetSplitInfo(mapping, fusion_nodes);
               }
@@ -99,6 +100,7 @@ namespace fe {
 
   }
 }
+
 
 TEST_F(matmul_transdata_ub_fusion_test, matmul_transdata_ub_fusion_test_1) {
     ge::Graph graph("matmul_transdata_ub_fusion_test_1");
@@ -114,7 +116,7 @@ TEST_F(matmul_transdata_ub_fusion_test, matmul_transdata_ub_fusion_test_1) {
     ge::OpDescPtr data_a = std::make_shared<ge::OpDesc>("data_a", "Data");
     ge::OpDescPtr data_b = std::make_shared<ge::OpDesc>("data_b", "Data");
     ge::OpDescPtr trans_b = std::make_shared<ge::OpDesc>("trans_b", "TransData");
-    ge::OpDescPtr matmul = std::make_shared<ge::OpDesc>("matmul", "Matmul");
+    ge::OpDescPtr matmul = std::make_shared<ge::OpDesc>("matmul", "MatMul");
     ge::OpDescPtr trans_c = std::make_shared<ge::OpDesc>("trans_c", "TransData");
     ge::OpDescPtr netoutput = std::make_shared<ge::OpDesc>("output", "NetOutput");
 
@@ -155,5 +157,77 @@ TEST_F(matmul_transdata_ub_fusion_test, matmul_transdata_ub_fusion_test_1) {
     Status res = fe::RunBufferFusionPass("MatmulTransdataFusionPass",
                                          fe::BUILT_IN_AI_CORE_BUFFER_FUSION_PASS,
                                          compute_graph_ptr);
+    EXPECT_EQ(res, SUCCESS);
+}
+
+
+TEST_F(matmul_transdata_ub_fusion_test, matmul_transdata_ub_fusion_test_2) {
+    ge::Graph graph("matmul_transdata_ub_fusion_test_2");
+    // set soc_version
+    fe::PlatformInfo platform_info;
+    fe::OptionalInfo opti_compilation_info;
+    vector<string> dtype_list;
+    dtype_list.push_back("f32");
+    dtype_list.push_back("s32");
+    dtype_list.push_back("f16");
+    std::map<string, vector<string>> intrinsic_map = {{"Intrinsic_data_move_out2l1_nd2nz", dtype_list}};
+    platform_info.ai_core_intrinsic_dtype_map = intrinsic_map;
+    opti_compilation_info.soc_version = "soc_version";
+    fe::PlatformInfoManager::Instance().platform_info_map_["soc_version"] = platform_info;
+    fe::PlatformInfoManager::Instance().SetOptionalCompilationInfo(opti_compilation_info);
+
+    DESC_DATA(data_b, ge::GeShape({1024, 4096}), FORMAT_ND, ge::GeShape({512, 1024}), FORMAT_ND, DT_FLOAT16);
+    DESC_DATA(data_a, ge::GeShape({64, 32, 16, 16}), FORMAT_FRACTAL_NZ, ge::GeShape({64, 32, 16, 16}), FORMAT_FRACTAL_NZ, DT_FLOAT16);
+
+    DESC_DATA(trans_b, ge::GeShape({1024, 4096}), FORMAT_ND, ge::GeShape({256, 64, 16, 16}), FORMAT_FRACTAL_NZ, DT_FLOAT16);
+
+    DESC_DATA(matmul_y, ge::GeShape({512, 4096}), FORMAT_ND, ge::GeShape({256, 32, 16, 16}), FORMAT_FRACTAL_NZ, DT_FLOAT16);
+    DESC_DATA(trans_c, ge::GeShape({512, 1024}), FORMAT_ND, ge::GeShape({512, 1024}), FORMAT_ND, DT_FLOAT16);
+
+    ge::OpDescPtr data_a = std::make_shared<ge::OpDesc>("data_a", "Data");
+    ge::OpDescPtr data_b = std::make_shared<ge::OpDesc>("data_b", "Data");
+    ge::OpDescPtr trans_b = std::make_shared<ge::OpDesc>("trans_b", "TransData");
+    ge::OpDescPtr matmul = std::make_shared<ge::OpDesc>("matmul", "MatMul");
+    ge::OpDescPtr trans_c = std::make_shared<ge::OpDesc>("trans_c", "TransData");
+    ge::OpDescPtr netoutput = std::make_shared<ge::OpDesc>("output", "NetOutput");
+
+    data_a->AddOutputDesc(desc_data_a);
+    data_b->AddOutputDesc(desc_data_b);
+    trans_b->AddInputDesc(desc_data_b);
+    trans_b->AddOutputDesc(desc_trans_b);
+    matmul->AddInputDesc("x1", desc_data_a);
+    matmul->AddInputDesc("x2", desc_trans_b);
+    matmul->AddOutputDesc(desc_matmul_y);
+    trans_c->AddInputDesc(desc_matmul_y);
+    trans_c->AddOutputDesc(desc_trans_c);
+    netoutput->AddInputDesc(desc_trans_c);
+
+
+    ge::AttrUtils::SetStr(trans_b, "src_format", "ND");
+    ge::AttrUtils::SetStr(trans_b, "dst_format", "FRACTAL_NZ");
+    ge::AttrUtils::SetStr(trans_c, "src_format", "FRACTAL_NZ");
+    ge::AttrUtils::SetStr(trans_c, "dst_format", "ND");
+    ge::AttrUtils::SetBool(matmul, "adj_x1", false);
+    ge::AttrUtils::SetBool(matmul, "adj_x2", false);
+
+    ge::ComputeGraphPtr compute_graph_ptr = std::make_shared<ge::ComputeGraph>("subgraph");
+    ge::NodePtr data_a_node = compute_graph_ptr->AddNode(data_a);
+    ge::NodePtr data_b_node = compute_graph_ptr->AddNode(data_b);
+    ge::NodePtr trans_b_node = compute_graph_ptr->AddNode(trans_b);
+    ge::NodePtr matmul_node = compute_graph_ptr->AddNode(matmul);
+    ge::NodePtr trans_c_node = compute_graph_ptr->AddNode(trans_c);
+    ge::NodePtr netoutput_node = compute_graph_ptr->AddNode(netoutput);
+
+    ge::GraphUtils::AddEdge(data_b_node->GetOutDataAnchor(0), trans_b_node->GetInDataAnchor(0));
+    ge::GraphUtils::AddEdge(data_a_node->GetOutDataAnchor(0), matmul_node->GetInDataAnchor(0));
+    ge::GraphUtils::AddEdge(trans_b_node->GetOutDataAnchor(0), matmul_node->GetInDataAnchor(1));
+    ge::GraphUtils::AddEdge(matmul_node->GetOutDataAnchor(0), trans_c_node->GetInDataAnchor(0));
+    ge::GraphUtils::AddEdge(trans_c_node->GetOutDataAnchor(0), netoutput_node->GetInDataAnchor(0));
+
+    fe::FusionPassTestUtils::InferShapeAndType(compute_graph_ptr);
+    Status res = fe::RunBufferFusionPass("MatmulTransdataFusionPass",
+                                         fe::BUILT_IN_AI_CORE_BUFFER_FUSION_PASS,
+                                         compute_graph_ptr);
+    fe::PlatformInfoManager::Instance().platform_info_map_.clear();
     EXPECT_EQ(res, SUCCESS);
 }

@@ -220,6 +220,20 @@ bool MatmulTransdataFusionPass::IsAligned() const {
   return false;
 }
 
+bool MatmulTransdataFusionPass::SupportOut2L1Nd2nz() {
+  PlatformInfo platformInfo;
+  OptionalInfo optionalInfo;
+  FUSION_PASS_CHECK(
+    PlatformInfoManager::Instance().GetPlatformInfoWithOutSocVersion(platformInfo, optionalInfo) != SUCCESS,
+    OP_LOGW(kFusedOpType, "Get platform info failed, not fusion."),
+    return false);
+  map<string, vector<string>> intrinsic_map = platformInfo.ai_core_intrinsic_dtype_map;
+  bool support_out2l1_nd2nz = (intrinsic_map.find("Intrinsic_data_move_out2l1_nd2nz") != intrinsic_map.end());
+  FUSION_PASS_CHECK(!support_out2l1_nd2nz,
+                    OP_LOGD(kFusedOpType, "Current version not support out2l1 nd2nz"), return false);
+  return true;
+}
+
 bool MatmulTransdataFusionPass::NeedFusion() {
   FUSION_PASS_CHECK(!IsLinkRelationshipCorrect(),
                     OP_LOGW(kFusedOpType, "The connection relationship does not meet expectations."),
@@ -237,6 +251,11 @@ bool MatmulTransdataFusionPass::NeedFusion() {
 
   FUSION_PASS_CHECK(!IsStaticShape() || !IsAligned(),
                     OP_LOGW(kFusedOpType, "Static shape and unaligned scenes are not supported."),
+                    return false);
+
+  FUSION_PASS_CHECK(SupportOut2L1Nd2nz(),
+                    OP_LOGW(kFusedOpType,
+                            "Transdata can be implemented during data load from Out to L1, not supported."),
                     return false);
   return true;
 }

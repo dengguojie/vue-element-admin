@@ -50,6 +50,7 @@ class MatmulTransdataFusionPass : public BufferFusionPassBase {
   bool ModifyTransdataInControlEdge(const ge::NodePtr& node_ptr_transdata) const;
   bool ModifyTransdataOutControlEdge(const ge::NodePtr& node_ptr_transdata) const;
   bool NeedFusion();
+  bool SupportOut2L1Nd2nz();
 
  private:
   ge::NodePtr in_ptr_0 = nullptr;
