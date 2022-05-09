@@ -74,7 +74,8 @@ TEST_F(common_gru_fusion_test, common_gru_fusion_test_1) {
            .set_input_w(data_w)
            .set_input_r(data_r)
            .set_input_b(data_b)
-           .set_attr_hidden_size(16);
+           .set_attr_hidden_size(16)
+           .set_attr_direction("forward");;
   std::vector<Operator> inputs{data_x, data_w, data_r, data_b};
   std::vector<Operator> outputs{common_gru_op};
 
@@ -166,6 +167,7 @@ TEST_F(common_gru_fusion_test, common_gru_fusion_test_2) {
   for (auto node: computeGraphPtr->GetAllNodes()) {
     if (node->GetType() == "DynamicGRUV2" || node->GetType() == "DynamicGRUV2Hidden") {
        findDynamicGRUV2 = true;
+       break;
      }
   }
   EXPECT_EQ(findDynamicGRUV2, true);

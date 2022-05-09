@@ -600,6 +600,7 @@ vector_A:
       - ops/built-in/framework/caffe_plugin/threshold_plugin.cc
       - ops/built-in/framework/caffe_plugin/upsample_plugin.cc
       - ops/built-in/framework/caffe_plugin/yolo_plugin.cc
+      - ops/built-in/framework/tf_plugin/dilation2d_plugin.cc
       - ops/built-in/framework/tf_plugin/dynamic_rnnv2_tf_plugin.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/concatv2_slice_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/concatv2_slice_fusion_pass.h
@@ -690,6 +691,7 @@ vector_A:
       - ops/built-in/op_tiling/ascend_quant.cc
       - ops/built-in/op_tiling/dynamic_lstm_grad_cell.cc
       - ops/built-in/op_tiling/dynamic_rnn.cc
+      - ops/built-in/op_tiling/dynamic_gru_v2.cc
       - ops/built-in/op_tiling/softmax_tiling.cc
       - ops/built-in/tbe/impl/ascend_quant.py
       - ops/built-in/tbe/impl/ascend_quant_util.py
@@ -1849,6 +1851,8 @@ vector_B:
       - ops/built-in/tests/ut/plugin_test/tensorflow/test_dilation2d_backprop_filter_plugin.cpp
       - ops/built-in/tests/ut/plugin_test/tensorflow/test_dilation2d_backprop_input_pb_gen.py
       - ops/built-in/tests/ut/plugin_test/tensorflow/test_dilation2d_backprop_input_plugin.cpp
+      - ops/built-in/tests/ut/plugin_test/tensorflow/test_dilation2d_pb_gen.py
+      - ops/built-in/tests/ut/plugin_test/tensorflow/test_dilation2d_plugin.cpp
       - ops/built-in/tests/ut/plugin_test/tensorflow/test_dynamic_instance_norm_grad_scope_pass_plugin.cpp
       - ops/built-in/tests/ut/plugin_test/tensorflow/test_dynamic_instance_norm_scope_pass_plugin.cpp
       - ops/built-in/tests/ut/plugin_test/tensorflow/test_dynamic_rnn_scope_pass_test.cpp
@@ -2034,7 +2038,6 @@ unkown:
       - ops/built-in/op_tiling/gather_elements.cc
       - ops/built-in/op_tiling/pad_common.h
       - ops/built-in/op_tiling/kl_div.cc
-      - ops/built-in/op_tiling/dynamic_gru_v2.cc
       - ops/built-in/op_tiling/softmax_cross_entropy_with_logits.cc
       - ops/built-in/op_tiling/lru_cache_v2.cc
       - ops/built-in/op_tiling/dynamic_rnn_v3.cc
@@ -3127,7 +3130,6 @@ unkown:
       - ops/built-in/framework/tf_plugin/tensor_scatter_add_plugin.cc
       - ops/built-in/framework/tf_plugin/tensorflow_fusion_op_parser_util.h
       - ops/built-in/framework/tf_plugin/apply_adagradv2_plugin.cc
-      - ops/built-in/framework/tf_plugin/dilation2d_plugin.cc
       - ops/built-in/framework/tf_plugin/assign_add_plugin.cc
       - ops/built-in/framework/tf_plugin/assert_plugin.cc
       - ops/built-in/framework/tf_plugin/batch_to_space_plugin.cc

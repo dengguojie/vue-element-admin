@@ -42,7 +42,7 @@ TEST_F(DynamicGRUV2Tiling, dynamic_gru_v2_tiling_0) {
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("DynamicGRUV2");
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   
-  std::string compileInfo = "{\"vars\": {\"tune_shape_list\": [[32,8,0]]}}";
+  std::string compileInfo = "{\"vars\": {\"tune_shape_list\": [[1,16,2]]}}";
 
   TeOpTensorArg tensorInputs, tensorOutputsArg;
   TeOpParas opParas;
@@ -83,6 +83,129 @@ TEST_F(DynamicGRUV2Tiling, dynamic_gru_v2_tiling_0) {
   }
 
   opParas.op_type = op_name;
+  OpCompileInfo op_compile_info;
+  op_compile_info.str = compileInfo;
+  op_compile_info.key = "123456";
+  OpRunInfo runInfo;
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
+}
+
+TEST_F(DynamicGRUV2Tiling, dynamic_gru_v2_tiling_1) {
+  using namespace optiling;
+  std::string op_name = "DynamicGRUV2";
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("DynamicGRUV2");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
+
+  std::string compileInfo = "{\"vars\": {\"tune_shape_list\": [[32,8,0]]}}";
+
+  TeOpTensorArg tensorInputs, tensorOutputsArg;
+  TeOpParas opParas;
+
+  vector<vector<int64_t>> input_shapes = {
+      {1,1,1,16,16},
+      {1,48,16,16}
+  };
+
+  vector<std::string> dtypes = {"float16", "float16", "float16", "float16", "float16"};
+  for (size_t i = 0; i < input_shapes.size(); i++) {
+    tensorInputs.tensor.clear();
+    TeOpTensor tensorInput;
+    tensorInput.shape = input_shapes[i];
+    tensorInput.dtype = dtypes[i];
+    tensorInputs.tensor.push_back(tensorInput);
+    tensorInputs.arg_type = TensorArgType::TA_SINGLE;
+    opParas.inputs.push_back(tensorInputs);
+  }
+
+  vector<vector<int64_t>> output_shapes = {
+      {1,16,1,16,16},
+      {1,16,1,16,16}
+  };
+
+  vector<std::string> out_dtypes = {"float16", "float16"};
+  for (size_t i = 0; i < output_shapes.size(); i++) {
+    tensorOutputsArg.tensor.clear();
+    TeOpTensor tensorOutput;
+    tensorOutput.shape = output_shapes[i];
+    tensorOutput.dtype = out_dtypes[i];
+    tensorOutputsArg.tensor.push_back(tensorOutput);
+    tensorOutputsArg.arg_type = TensorArgType::TA_SINGLE;
+    opParas.outputs.push_back(tensorOutputsArg);
+  }
+
+  opParas.op_type = op_name;
+  OpCompileInfo op_compile_info;
+  op_compile_info.str = compileInfo;
+  op_compile_info.key = "123456";
+  OpRunInfo runInfo;
+  ASSERT_FALSE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
+}
+
+TEST_F(DynamicGRUV2Tiling, dynamic_gru_v2_tiling_2) {
+  using namespace optiling;
+  std::string op_name = "DynamicGRUV2";
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("DynamicGRUV2");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
+
+  std::string compileInfo = "{\"vars\": {\"tune_shape_list\": [[1,16,0]]}}";
+
+  TeOpTensorArg tensorInputs, tensorOutputsArg;
+  TeOpParas opParas;
+
+  vector<vector<int64_t>> input_shapes = {
+      {1,16},
+      {1,48,16,16},
+      {16,48,16,16},
+      {768},
+      {768}
+  };
+
+  vector<std::string> dtypes = {"float16", "float16", "float16", "float16", "float16"};
+  for (size_t i = 0; i < input_shapes.size(); i++) {
+    tensorInputs.tensor.clear();
+    TeOpTensor tensorInput;
+    tensorInput.shape = input_shapes[i];
+    tensorInput.dtype = dtypes[i];
+    tensorInputs.tensor.push_back(tensorInput);
+    tensorInputs.arg_type = TensorArgType::TA_SINGLE;
+    opParas.inputs.push_back(tensorInputs);
+  }
+
+  vector<vector<int64_t>> output_shapes = {
+      {1,16,1,16,16},
+      {1,16,1,16,16}
+  };
+
+  vector<std::string> out_dtypes = {"float16", "float16"};
+  for (size_t i = 0; i < output_shapes.size(); i++) {
+    tensorOutputsArg.tensor.clear();
+    TeOpTensor tensorOutput;
+    tensorOutput.shape = output_shapes[i];
+    tensorOutput.dtype = out_dtypes[i];
+    tensorOutputsArg.tensor.push_back(tensorOutput);
+    tensorOutputsArg.arg_type = TensorArgType::TA_SINGLE;
+    opParas.outputs.push_back(tensorOutputsArg);
+  }
+
+  opParas.op_type = op_name;
+  OpCompileInfo op_compile_info;
+  op_compile_info.str = compileInfo;
+  op_compile_info.key = "123456";
+  OpRunInfo runInfo;
+  ASSERT_FALSE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
+}
+
+TEST_F(DynamicGRUV2Tiling, dynamic_gru_v2_tiling_3) {
+  using namespace optiling;
+  std::string op_name = "DynamicGRUV2";
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("DynamicGRUV2");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
+
+  std::string compileInfo = "{\"vars\": {\"tune_shape_list\": [[-1,-1]]}}";
+
+  TeOpTensorArg tensorInputs, tensorOutputsArg;
+  TeOpParas opParas;
+
   OpCompileInfo op_compile_info;
   op_compile_info.str = compileInfo;
   op_compile_info.key = "123456";

@@ -40,9 +40,9 @@ class GRUFusionPass : public PatternFusionBasePass {
   Status CreateSliceNode(ge::ComputeGraph& graph, ge::NodePtr& gru_node, ge::NodePtr& new_node);
   Status AddBiasSplitNode(ge::ComputeGraph& graph, const ge::NodePtr& fusedNode, ge::NodePtr& splitNode) const;
 
-  Status CheckParams(const ge::OpDescPtr& fusedDesc);
-  void SetTensorDescription(ge::GeTensorDesc &tensorDesc, vector<int64_t> &dims, const ge::Format &format,
-                            const ge::DataType &dtype);
+  Status CheckParams(const ge::OpDescPtr fusedDesc);
+  void SetTensorDescription(ge::GeTensorDesc& tensorDesc, vector<int64_t>& dims, const ge::Format& format,
+                            const ge::DataType& dtype);
   Status ProcessBidiFusion(ge::ComputeGraph& graph, ge::NodePtr& fusedNode, ge::OpDescPtr& fusedDesc,
                            vector<ge::NodePtr>& newNodes);
   Status SetSplitVNodeInfo(ge::GeTensorDesc& tensorDesc, ge::OpDescPtr& outOpDesc, vector<int64_t>& dimIn,

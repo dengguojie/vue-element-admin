@@ -116,13 +116,13 @@ Status GRUFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<g
   std::string direction;
   ge::AttrUtils::GetStr(fusedDesc, "direction", direction);
   if (direction == "bidirectional") {
-    OP_LOGI(FUSED_OP_TYPE.c_str(), "CommonGRU enter bidirectional process!");
+    OP_LOGD(FUSED_OP_TYPE.c_str(), "CommonGRU enter bidirectional process!");
     FUSION_PASS_CHECK(SUCCESS != ProcessBidiFusion(graph, fusedNode, fusedDesc, newNodes),
                       VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "ProcessBidiFusion fail"),
                       return FAILED);
     return SUCCESS;
   }
-  OP_LOGI(FUSED_OP_TYPE.c_str(), "CommonGRU enter UNIDIRECTIONAL process!");
+  OP_LOGD(FUSED_OP_TYPE.c_str(), "CommonGRU enter UNIDIRECTIONAL process!");
   auto gruOp = ge::OperatorFactory::CreateOperator((fusedDesc->GetName() + "_splitD_layer").c_str(), "DynamicGRUV2");
   FUSION_PASS_CHECK(gruOp.IsEmpty(),
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "create DynamicGRUV2 operator error"),
@@ -334,49 +334,6 @@ Status GRUFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<g
   return SUCCESS;
 }
 
-Status GRUFusionPass::CheckParams(const ge::OpDescPtr& fusedDesc) {
-  GeTensorDesc wDesc = fusedDesc->GetInputDesc(W_INDEX).Clone();
-  std::vector<int64_t> wInputDims = wDesc.GetShape().GetDims();
-  std::string direction;
-
-  FUSION_PASS_CHECK(wInputDims.size() != W_INPUT_SIZE,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "weight dim size is not 3."),
-                    return FAILED);
-  FUSION_PASS_CHECK(!ge::AttrUtils::GetStr(fusedDesc, "direction", direction),
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "get attr direction fail."),
-                    return PARAM_INVALID);
-
-  OP_LOGD(FUSED_OP_TYPE.c_str(), "direction is %s.", direction.c_str());
-  bool directionFlag = (direction == "bidirectional") || (direction == "forward") || (direction == "reverse");
-  FUSION_PASS_CHECK(!directionFlag,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "direction attr invalid."),
-                    return FAILED);
-
-  OP_LOGD(FUSED_OP_TYPE.c_str(), "num_directions is %d.", wInputDims[NUM_DIRECTIONS_INDEX]);
-  if (direction == "bidirectional") {
-    FUSION_PASS_CHECK(wInputDims[NUM_DIRECTIONS_INDEX] != BIDI_NUM_DIRECTIONS,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "num_directions attr invalid."),
-                      return FAILED);
-  } else {
-    FUSION_PASS_CHECK(wInputDims[NUM_DIRECTIONS_INDEX] != DEFAULT_NUM_DIRECTIONS,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "num_directions attr invalid."),
-                      return FAILED);
-  }
-
-  return SUCCESS;
-}
-
-void GRUFusionPass::SetTensorDescription(ge::GeTensorDesc& tensorDesc, vector<int64_t>& dims,
-                                         const ge::Format& format, const ge::DataType& dtype) {
-  ge::GeShape shape(dims);
-  tensorDesc.SetShape(shape);
-  tensorDesc.SetDataType(dtype);
-  tensorDesc.SetFormat(format);
-  tensorDesc.SetOriginShape(shape);
-  tensorDesc.SetOriginDataType(dtype);
-  tensorDesc.SetOriginFormat(format);
-}
-
 Status GRUFusionPass::ProcessBidiFusion(ge::ComputeGraph& graph, ge::NodePtr& fusedNode, ge::OpDescPtr& fusedDesc,
                                         vector<ge::NodePtr>& newNodes) {
   std::string dynamicGruV2OpForwardName = fusedDesc->GetName() + "/DynamicGRUV2" + "Forward";
@@ -435,7 +392,7 @@ Status GRUFusionPass::ProcessBidiFusion(ge::ComputeGraph& graph, ge::NodePtr& fu
 
   // process bias
   bool hasBias = fusedDesc->MutableInputDesc("b") != nullptr;
-  OP_LOGI(FUSED_OP_TYPE.c_str(), "CommonGRU hasBias is %d", hasBias);
+  OP_LOGD(FUSED_OP_TYPE.c_str(), "CommonGRU hasBias is %d", hasBias);
   ge::NodePtr inputBiasSplitNode = nullptr;
   ge::NodePtr hiddenBiasSplitNode = nullptr;
   if (hasBias) {
@@ -466,7 +423,7 @@ Status GRUFusionPass::ProcessBidiFusion(ge::ComputeGraph& graph, ge::NodePtr& fu
 
   // process seq_length
   bool hasSeqLength = fusedDesc->MutableInputDesc("sequence_lens") != nullptr;
-  OP_LOGI(FUSED_OP_TYPE.c_str(), "CommonGRU hasSeqLength is %d", hasSeqLength);
+  OP_LOGD(FUSED_OP_TYPE.c_str(), "CommonGRU hasSeqLength is %d", hasSeqLength);
   if (hasSeqLength) {
     ge::GeTensorDesc seqLengthDesc = *fusedDesc->MutableInputDesc("sequence_lens");
     dynamicGruV2DescForward->UpdateInputDesc("seq_length", seqLengthDesc);
@@ -475,7 +432,7 @@ Status GRUFusionPass::ProcessBidiFusion(ge::ComputeGraph& graph, ge::NodePtr& fu
 
   // process init_h
   bool hasInitH = fusedDesc->MutableInputDesc("initial_h") != nullptr;
-  OP_LOGI(FUSED_OP_TYPE.c_str(), "CommonGRU hasInitH is %d", hasInitH);
+  OP_LOGD(FUSED_OP_TYPE.c_str(), "CommonGRU hasInitH is %d", hasInitH);
   ge::NodePtr initHSplitNode = nullptr;
   if (hasInitH) {
     FUSION_PASS_CHECK(SUCCESS != AddBidiInitHSplitNode(graph, fusedNode, INITIAL_H_INDEX, initHSplitNode, newNodes),
@@ -649,6 +606,49 @@ Status GRUFusionPass::ProcessBidiFusion(ge::ComputeGraph& graph, ge::NodePtr& fu
   return SUCCESS;
 }
 
+Status GRUFusionPass::CheckParams(const ge::OpDescPtr fusedDesc) {
+  GeTensorDesc wDesc = fusedDesc->GetInputDesc(W_INDEX).Clone();
+  std::vector<int64_t> wInputDims = wDesc.GetShape().GetDims();
+  std::string direction;
+
+  FUSION_PASS_CHECK(wInputDims.size() != W_INPUT_SIZE,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "weight dim size is not 3."),
+                    return FAILED);
+  FUSION_PASS_CHECK(!ge::AttrUtils::GetStr(fusedDesc, "direction", direction),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "get attr direction fail."),
+                    return PARAM_INVALID);
+
+  OP_LOGD(FUSED_OP_TYPE.c_str(), "direction is %s.", direction.c_str());
+  bool directionFlag = (direction == "bidirectional") || (direction == "forward") || (direction == "reverse");
+  FUSION_PASS_CHECK(!directionFlag,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "direction attr invalid."),
+                    return FAILED);
+
+  OP_LOGD(FUSED_OP_TYPE.c_str(), "num_directions is %d.", wInputDims[NUM_DIRECTIONS_INDEX]);
+  if (direction == "bidirectional") {
+    FUSION_PASS_CHECK(wInputDims[NUM_DIRECTIONS_INDEX] != BIDI_NUM_DIRECTIONS,
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "num_directions attr invalid."),
+                      return FAILED);
+  } else {
+    FUSION_PASS_CHECK(wInputDims[NUM_DIRECTIONS_INDEX] != DEFAULT_NUM_DIRECTIONS,
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "num_directions attr invalid."),
+                      return FAILED);
+  }
+
+  return SUCCESS;
+}
+
+void GRUFusionPass::SetTensorDescription(ge::GeTensorDesc& tensorDesc, vector<int64_t>& dims,
+                                         const ge::Format& format, const ge::DataType& dtype) {
+  ge::GeShape shape(dims);
+  tensorDesc.SetShape(shape);
+  tensorDesc.SetDataType(dtype);
+  tensorDesc.SetFormat(format);
+  tensorDesc.SetOriginShape(shape);
+  tensorDesc.SetOriginDataType(dtype);
+  tensorDesc.SetOriginFormat(format);
+}
+
 Status GRUFusionPass::SetSplitVNodeInfo(ge::GeTensorDesc& tensorDesc, ge::OpDescPtr& outOpDesc, vector<int64_t>& dimIn,
                                         vector<int32_t>& inputDims) {
   SetTensorDescription(tensorDesc, dimIn, ge::FORMAT_ND, ge::DT_INT32);
@@ -819,56 +819,6 @@ Status GRUFusionPass::AddBidiWeightSplitNode(ge::ComputeGraph& graph, const ge::
   return SUCCESS;
 }
 
-Status GRUFusionPass::AddBidiBiasSplitNode(ge::ComputeGraph& graph, const ge::NodePtr& fusedNode, int biasIndex,
-                                           ge::NodePtr& inputSplitNode, ge::NodePtr& hiddenSplitNode,
-                                           vector<ge::NodePtr>& newNodes) {
-  ge::NodePtr biasNode = fusedNode->GetInDataAnchor(biasIndex)->GetPeerOutAnchor()->GetOwnerNode();
-
-  ge::GeTensorDesc inputDesc = biasNode->GetOpDesc()->GetOutputDesc(0).Clone();
-  std::vector<int64_t> dims = inputDesc.GetShape().GetDims();
-  FUSION_PASS_CHECK(dims.size() != 2,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "bias dim size is not 2."), return FAILED);
-
-  ge::GeTensorDesc midDesc = biasNode->GetOpDesc()->GetOutputDesc(0).Clone();
-  std::vector<int64_t> midDim = {dims[0], dims[1] / SPLIT_GROUP};
-  midDesc.SetOriginShape(GeShape(midDim));
-  midDesc.SetShape(GeShape(midDim));
-
-  ge::GeTensorDesc outputDesc = fusedNode->GetOpDesc()->GetInputDesc(biasIndex).Clone();
-  std::vector<int64_t> outDim = {dims[1] / SPLIT_GROUP};
-  outputDesc.SetOriginShape(GeShape(outDim));
-  outputDesc.SetShape(GeShape(outDim));
-
-  // add split_v node
-  ge::NodePtr biasSplitNode;
-  std::vector<int32_t> biasSplitDimAxis = {1};
-  std::vector<int32_t> biasSizeSplitAxis = {static_cast<int32_t>(dims[1]) / SPLIT_GROUP,
-                                            static_cast<int32_t>(dims[1]) / SPLIT_GROUP};
-  FUSION_PASS_CHECK(SUCCESS != AddSplitVNode(biasNode->GetName() + "_b", inputDesc, midDesc, biasSplitNode, biasNode,
-                                             biasSplitDimAxis, biasSizeSplitAxis, 0, newNodes, graph),
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "b add split node failed."),
-                    return FAILED);
-
-  std::vector<int32_t> numSplitDimAxis = {0};
-  std::vector<int32_t> numSizeSplitAxis = {1, 1};
-  FUSION_PASS_CHECK(SUCCESS != AddSplitVNode(biasNode->GetName() + "_i", midDesc, outputDesc, inputSplitNode,
-                                             biasSplitNode, numSplitDimAxis, numSizeSplitAxis, 0, newNodes, graph),
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "b_i add split node failed."),
-                    return FAILED);
-  FUSION_PASS_CHECK(SUCCESS != AddSplitVNode(biasNode->GetName() + "_h", midDesc, outputDesc, hiddenSplitNode,
-                                             biasSplitNode, numSplitDimAxis, numSizeSplitAxis, 1, newNodes,graph),
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "b_h add split node failed."),
-                    return FAILED);
-
-  FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::RemoveEdge(biasNode->GetOutDataAnchor(SINGLE_OUTPUT_INDEX),
-                                                          fusedNode->GetInDataAnchor(biasIndex)),
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                                                   "remove %s input edge error", fusedNode->GetName().c_str()),
-                    return FAILED);
-
-  return SUCCESS;
-}
-
 Status GRUFusionPass::AddBidiInitHSplitNode(ge::ComputeGraph& graph, const ge::NodePtr& fusedNode,
                                             int initHIndex, ge::NodePtr& splitNode, vector<ge::NodePtr>& newNodes) {
   ge::NodePtr initHNode = fusedNode->GetInDataAnchor(initHIndex)->GetPeerOutAnchor()->GetOwnerNode();
@@ -941,6 +891,56 @@ Status GRUFusionPass::AddBidiInitHSplitNode(ge::ComputeGraph& graph, const ge::N
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
                                                    "remove %s input edge error", fusedNode->GetName().c_str()),
                     return FAILED);
+  return SUCCESS;
+}
+
+Status GRUFusionPass::AddBidiBiasSplitNode(ge::ComputeGraph& graph, const ge::NodePtr& fusedNode, int biasIndex,
+                                           ge::NodePtr& inputSplitNode, ge::NodePtr& hiddenSplitNode,
+                                           vector<ge::NodePtr>& newNodes) {
+  ge::NodePtr biasNode = fusedNode->GetInDataAnchor(biasIndex)->GetPeerOutAnchor()->GetOwnerNode();
+
+  ge::GeTensorDesc inputDesc = biasNode->GetOpDesc()->GetOutputDesc(0).Clone();
+  std::vector<int64_t> dims = inputDesc.GetShape().GetDims();
+  FUSION_PASS_CHECK(dims.size() != 2,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "bias dim size is not 2."), return FAILED);
+
+  ge::GeTensorDesc midDesc = biasNode->GetOpDesc()->GetOutputDesc(0).Clone();
+  std::vector<int64_t> midDim = {dims[0], dims[1] / SPLIT_GROUP};
+  midDesc.SetOriginShape(GeShape(midDim));
+  midDesc.SetShape(GeShape(midDim));
+
+  ge::GeTensorDesc outputDesc = fusedNode->GetOpDesc()->GetInputDesc(biasIndex).Clone();
+  std::vector<int64_t> outDim = {dims[1] / SPLIT_GROUP};
+  outputDesc.SetOriginShape(GeShape(outDim));
+  outputDesc.SetShape(GeShape(outDim));
+
+  // add split_v node
+  ge::NodePtr biasSplitNode;
+  std::vector<int32_t> biasSplitDimAxis = {1};
+  std::vector<int32_t> biasSizeSplitAxis = {static_cast<int32_t>(dims[1]) / SPLIT_GROUP,
+                                            static_cast<int32_t>(dims[1]) / SPLIT_GROUP};
+  FUSION_PASS_CHECK(SUCCESS != AddSplitVNode(biasNode->GetName() + "_b", inputDesc, midDesc, biasSplitNode, biasNode,
+                                             biasSplitDimAxis, biasSizeSplitAxis, 0, newNodes, graph),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "b add split node failed."),
+                    return FAILED);
+
+  std::vector<int32_t> numSplitDimAxis = {0};
+  std::vector<int32_t> numSizeSplitAxis = {1, 1};
+  FUSION_PASS_CHECK(SUCCESS != AddSplitVNode(biasNode->GetName() + "_i", midDesc, outputDesc, inputSplitNode,
+                                             biasSplitNode, numSplitDimAxis, numSizeSplitAxis, 0, newNodes, graph),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "b_i add split node failed."),
+                    return FAILED);
+  FUSION_PASS_CHECK(SUCCESS != AddSplitVNode(biasNode->GetName() + "_h", midDesc, outputDesc, hiddenSplitNode,
+                                             biasSplitNode, numSplitDimAxis, numSizeSplitAxis, 1, newNodes, graph),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "b_h add split node failed."),
+                    return FAILED);
+
+  FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::RemoveEdge(biasNode->GetOutDataAnchor(SINGLE_OUTPUT_INDEX),
+                                                          fusedNode->GetInDataAnchor(biasIndex)),
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                                   "remove %s input edge error", fusedNode->GetName().c_str()),
+                    return FAILED);
+
   return SUCCESS;
 }
 

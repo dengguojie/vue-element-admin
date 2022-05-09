@@ -25,7 +25,10 @@
 
 namespace domi {
 Status ParseDilation2D(const Message* op_src, ge::Operator& op) {
-  AutoMappingFn(op_src, op);
+  if (AutoMappingFn(op_src, op) != SUCCESS) {
+    OP_LOGE(TbeGetName(op).c_str(), "auto mapping failed.");
+    return FAILED;
+  }
 
   ge::TensorDesc input_tensor = op.GetInputDesc("x");
   input_tensor.SetOriginFormat(ge::FORMAT_NHWC);
@@ -53,7 +56,7 @@ Status ParseDilation2D(const Message* op_src, ge::Operator& op) {
   }
   std::string padding;
   if (op.GetAttr("padding", padding) == ge::GRAPH_SUCCESS) {
-    op.SetAttr("padding_mode", padding);
+    (void)op.SetAttr("padding_mode", padding);
   }
   return SUCCESS;
 }

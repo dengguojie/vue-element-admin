@@ -94,13 +94,13 @@ int32_t GetGruV2LibItem(const std::string& opType, const nlohmann::json& opCompi
       return DEFAULT_CHEQUE_INDEX;
     }
     if ((tune_shape_list[i][INDEX_ZERO] == -1) && (tune_shape_list[i][INDEX_ONE] == -1)) {
-      OP_LOGI(opType.c_str(), "op [DynamicGruV2Tiling] : GetGruV2LibItem, The corresponding schedule is",
+      OP_LOGD(opType.c_str(), "op [DynamicGruV2Tiling] : GetGruV2LibItem, The corresponding schedule is",
               tune_shape_list[i][INDEX_TWO]);
       return (int32_t)tune_shape_list[i][INDEX_TWO];
     }
     if ((tune_shape_list[i][INDEX_ZERO] == xShape[INDEX_ZERO]) &&
       (((tune_shape_list[i][INDEX_ONE] + NUM_SIXTEEN - 1) / NUM_SIXTEEN) == xShape[INDEX_TWO])) {
-      OP_LOGI(opType.c_str(), "op [DynamicGruV2Tiling] : GetGruV2LibItem, The corresponding schedule is",
+      OP_LOGD(opType.c_str(), "op [DynamicGruV2Tiling] : GetGruV2LibItem, The corresponding schedule is",
               tune_shape_list[i][INDEX_TWO]);
       return (int32_t)tune_shape_list[i][INDEX_TWO];
     }
@@ -119,26 +119,26 @@ int32_t GetGruV2LibItem(const std::string& opType, const nlohmann::json& opCompi
  */
 bool DynamicGruV2Tiling(const std::string& opType, const TeOpParas& opParas, const nlohmann::json& op_info,
                         OpRunInfo& runInfo) {
-  OP_LOGI(opType.c_str(), "op tiling running.");
+  OP_LOGD(opType.c_str(), "op [DynamicGruV2Tiling] : tiling running.");
   if (op_info == nullptr) {
-    OP_LOGE(opType.c_str(), "op DynamicGruV2Tiling: op_info json error.");
+    OP_LOGE(opType.c_str(), "op [DynamicGruV2Tiling] : op_info json error.");
     return false;
   }
 
   if (opParas.inputs.size() < INPUT_BASE_SIZE || opParas.inputs[0].tensor.empty() ||
       opParas.inputs[1].tensor.empty()) {
-    OP_LOGE(opType.c_str(), "op DynamicGruV2Tiling: input shape error.");
+    OP_LOGE(opType.c_str(), "op [DynamicGruV2Tiling] : input shape error.");
     return false;
   }
 
   std::vector<int64_t> xShape = opParas.inputs[0].tensor[0].shape;
   if (xShape.size() < INPUT_BASE_SIZE) {
-    OP_LOGE(opType.c_str(), "op DynamicGruV2Tiling: inputs shape are invalid.");
+    OP_LOGE(opType.c_str(), "op [DynamicGruV2Tiling] : inputs shape are invalid.");
     return false;
   }
 
   if (!(op_info.contains("vars")) || !(op_info.at("vars").contains("tune_shape_list"))) {
-    OP_LOGE(opType.c_str(), "DynamicGruV2Tiling get tune_shape_list error.");
+    OP_LOGE(opType.c_str(), "op [DynamicGruV2Tiling] : get tune_shape_list error.");
     return false;
   }
 
@@ -153,7 +153,7 @@ bool DynamicGruV2Tiling(const std::string& opType, const TeOpParas& opParas, con
   // default index
   int32_t chequeIndex = GetGruV2LibItem(opType, op_info, xShape);
   if (chequeIndex == DEFAULT_CHEQUE_INDEX) {
-    OP_LOGE(opType.c_str(), "DynamicGruV2Tiling has no matched schedule.");
+    OP_LOGE(opType.c_str(), "op [DynamicGruV2Tiling] : has no matched schedule.");
     return false;
   }
 
@@ -176,7 +176,7 @@ bool DynamicGruV2Tiling(const std::string& opType, const TeOpParas& opParas, con
   std::vector<int64_t> workspace={WORKSPACE_SIZE};
   runInfo.workspaces = workspace;
 
-  OP_LOGI(opType.c_str(), "tiling run success.");
+  OP_LOGD(opType.c_str(), "op [DynamicGruV2Tiling] :tiling run success.");
 
   return true;
 }
