@@ -42,7 +42,12 @@ class Entrance:
         """
         Standard main entrance function
         """
-
+        logging.info("Loading tensorflow...")
+        # noinspection PyBroadException
+        try:
+            __import__("tensorflow")
+        except Exception:
+            logging.warning("Tensorflow load failed")
         # Parse Input Parameters
         switches = _initialize_switches(sys.argv[1:])
         tbetoolkits.utilities.set_global_storage(switches)

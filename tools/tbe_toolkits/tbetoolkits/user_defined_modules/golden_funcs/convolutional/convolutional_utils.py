@@ -188,7 +188,7 @@ def _native_fun(input_shape, input_f):
         for d5 in range(C0):
             if d4 == d5:
                 filter_6d[:, :, :, 0, d4, d5] = _filter[:, :, :, 0, d5]
-    out = filter_6d.transpose(3, 1, 2, 0, 4, 5).reshape(Hf * Wf, C1, 16, 16)
+    out = filter_6d.reshape((C1 * Hf * Wf, 1, 16, 16))
     return out.astype(np.float32)
 
 

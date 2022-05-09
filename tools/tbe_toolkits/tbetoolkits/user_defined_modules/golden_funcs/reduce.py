@@ -46,7 +46,13 @@ def _reduce_sum_d(context: "tbetoolkits.UniversalTestcaseStructure"):
     if axis is None:
         axis = context.other_runtime_params.get("axis")
     axis = __eliminate_duplicate_axes(axis, context.input_arrays[0])
-    return numpy.sum(context.input_arrays[0], axis=axis)
+    x = context.input_arrays[0]
+    if x.dtype == "float16":
+        x = x.astype(numpy.float32)
+        y = numpy.sum(x, axis=axis)
+        return y.astype(numpy.float16)
+    else:
+        return numpy.sum(x, axis=axis)
 
 
 @register_golden(["reduce_max", "reduce_max_d"])

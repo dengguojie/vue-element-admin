@@ -4,7 +4,6 @@
 Parser for each csv field
 """
 # Standard Packages
-import time
 import logging
 from typing import Union
 

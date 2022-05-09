@@ -4,10 +4,12 @@
 RTS Profiling Sequence for Universal testcases
 """
 # Standard Packages
+import os
 import json
 import ctypes
 import logging
 import pathlib
+import time
 from typing import Optional, Tuple, Union
 
 # Third-party Packages
@@ -196,6 +198,14 @@ def __rts_kernel_sequence(device, stubfunc_p,
                     elif "AICORE_TIMEOUT" in e.args[0]:
                         status = "TIMEOUT"
                         logging.error("AIC Task TIMEOUT")
+                    elif "HEARTBEAT" in e.args[0]:
+                        logging.critical("Detected critical device heartbeat lost exception, process will halt.")
+                        os.system(
+                            f"mkdir -p errors/{os.getpid()} && cd errors/{os.getpid()} && msnpureport && cd -"
+                        )
+                        while True:
+                            time.sleep(10)
+                            logging.critical("This testcase is killing device!!!! AND DEVICE WAS ALREADY DEAD")
                     else:
                         status = "UNKNOWN_RTS_ERROR"
                         logging.exception("RTSProfilingCall encountered an unknown rts error during finish stage:")

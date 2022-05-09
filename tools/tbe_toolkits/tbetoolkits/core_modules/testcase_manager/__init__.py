@@ -4,4 +4,4 @@
 Testcase manager Module
 """
 from .testcase_manager import UniversalTestcaseFactory
-from .testcase_manager import UniversalTestcaseStructure
+from .testcase_structure import UniversalTestcaseStructure

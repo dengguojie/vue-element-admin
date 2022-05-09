@@ -368,14 +368,25 @@ class OperatorInterface:
         op_pattern = ["Unknown"]
         g_op_pattern = op_pattern_monkey_patch(self.tbe.dsl.static_schedule.cce_schedule, op_pattern)
         next(g_op_pattern)
-        # Special logic for operators like add_n
-        tensor_list_list = apply_as_list(op_params, as_list)
         # Static shape func parameter fixes
         static_shape_func_parameters = tuple(inspect.signature(stc_operator_func).parameters)
+        # Special logic for static const input
+        if testcase.stc_const_input_indexes:
+            for stc_input_index in testcase.stc_const_input_indexes:
+                # noinspection PyBroadException
+                try:
+                    op_params[stc_input_index]["const_value"] = op_kwargs[static_shape_func_parameters[stc_input_index]]
+                    del op_kwargs[static_shape_func_parameters[stc_input_index]]
+                except Exception:
+                    logging.error(f"Could not find const input {stc_input_index} "
+                                  f"'{static_shape_func_parameters[stc_input_index]}'"
+                                  f", const_value injection failed, compilation may fail in this situation!")
+        # Special logic for operators like add_n
+        tensor_list_list = apply_as_list(op_params, as_list)
         op_kwargs = param_transformation(op_kwargs, static_shape_func_parameters)
         for param in tuple(op_kwargs.keys()):
             param_index = static_shape_func_parameters.index(param)
-            if (as_list and param_index < len(tensor_list_list)) or (not as_list and param_index < len(op_params)):
+            if as_list and param_index < len(tensor_list_list):
                 del op_kwargs[param]
         try:
             before_compile = time.time()
@@ -391,18 +402,11 @@ class OperatorInterface:
                     op_type = testcase.manual_tiling_op_type
                     op_info = self.tbe.common.context.op_info.OpInfo(op_type, op_type)
                     cxt.add_op_info(op_info)
-                if as_list:
-                    stc_operator_func(*copy.deepcopy(tensor_list_list),
-                                      **copy.deepcopy(op_kwargs))
-                else:
-                    stc_operator_func(*copy.deepcopy(op_params),
-                                      **copy.deepcopy(op_kwargs))
+                stc_operator_func(*copy.deepcopy(tensor_list_list),
+                                    **copy.deepcopy(op_kwargs))
             after_compile = time.time()
         except:
-            if as_list:
-                param_print = self.print_func_params(static_shape_func_parameters, op_kwargs, tensor_list_list)
-            else:
-                param_print = self.print_func_params(static_shape_func_parameters, op_kwargs, op_params)
+            param_print = self.print_func_params(static_shape_func_parameters, op_kwargs, tensor_list_list)
             logging.error(
                 ("%s shape operator func call failure\n" % "Static") +
                 ("Operator: %s\n" % testcase.stc_op_name) +
@@ -613,15 +617,15 @@ class OperatorInterface:
             if isinstance(attr_dictionary[key], Sequence) and not isinstance(attr_dictionary[key], str):
                 attr_type = detect_type_of_sequence(attr_dictionary[key])
                 if attr_type is None:
-                    logging.warning(f"DType detection for attr {key} "
+                    logging.warning(f"optiling dtype detection for attr {key} "
                                     f"value {attr_dictionary[key]} "
-                                    f"type {type(attr_dictionary[key])}, ignored")
+                                    f"type {type(attr_dictionary[key])} failed, ignored")
                     continue
                 result.append({"name": key, "dtype": "list_" + attr_type, "value": attr_dictionary[key]})
             else:
                 attr_type = detect_type_of_sequence((attr_dictionary[key],))
                 if attr_type is None:
-                    logging.warning(f"DType detection for attr {key} "
+                    logging.warning(f"optiling dtype detection for attr {key} "
                                     f"value {attr_dictionary[key]} "
                                     f"type {type(attr_dictionary[key])}, ignored")
                     continue

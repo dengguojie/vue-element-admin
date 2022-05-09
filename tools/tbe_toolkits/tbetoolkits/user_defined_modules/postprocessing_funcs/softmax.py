@@ -22,7 +22,7 @@ def nc1hwc0_set_pad(out, shape, ori_shape, ori_dformat):
 
 def nz_set_pad(out, ori_shape):
     m, n = ori_shape[-2:]
-    out[..., n:, m] = 0
+    out[..., n:, m:] = 0
     return out
 
 

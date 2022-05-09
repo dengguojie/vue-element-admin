@@ -248,10 +248,17 @@ class ProfilingInstance:
                 testcases = testcase_manager.get()
         self.testcases = testcases
         self.flatten_testcases: Tuple[UniversalTestcaseStructure] = tuple_flatten(tuple(self.testcases.values()))
+        logging.info("Checking testcase name...")
+        testcase_names = set()
+        for t in self.flatten_testcases:
+            if t.testcase_name in testcase_names:
+                logging.error(f"Testcase duplicate: {t.testcase_name}")
+            else:
+                testcase_names.add(t.testcase_name)
         if self.switches.preserve_original_csv:
             self.titles = testcase_manager.header
         else:
-            self.titles = UniversalTestcaseFactory.get_all_visible_headers()
+            self.titles = UniversalTestcaseStructure.get_all_visible_headers()
         if self.debug_mode and len(self.flatten_testcases) != 1:
             logging.error("Single testcase debugging mode cannot launch with more than one testcase!!!")
             raise RuntimeError("Single testcase debugging mode cannot launch with more than one testcase!!!")
@@ -267,9 +274,9 @@ class ProfilingInstance:
         if len(usable_devices) <= 0:
             raise RuntimeError("Available device count is zero, aborting.")
         if self.switches.process_per_device is None:
-            self.switches.process_per_device = max(int(get_cpu_count() * 0.8) // len(usable_devices), 1)
-            self.switches.process_per_device = min(max(len(self.flatten_testcases) * 4 // len(usable_devices), 1),
-                                                   self.switches.process_per_device,
+            self.switches.process_per_device = int(get_cpu_count() * 0.8) // len(usable_devices)
+            self.switches.process_per_device = min(max(len(self.flatten_testcases) * 4 // len(usable_devices),
+                                                       1, self.switches.process_per_device),
                                                    32)
         logging.info(f"Process per device: {self.switches.process_per_device}")
         if self.switches.parallel_fatbin is None:
@@ -306,8 +313,13 @@ class ProfilingInstance:
         task_pairs = list(enumerate(self.testcases.values()))
         random.shuffle(task_pairs)
         for group_id, testcases in task_pairs:
+            is_first = True
             for testcase in testcases:
-                self.waiting_tasks.append(Task(group_id, testcase))
+                if is_first:
+                    self.waiting_tasks.append(Task(group_id, testcase))
+                    is_first = False
+                else:
+                    self.waiting_tasks.insert(0, Task(group_id, testcase))
         self.total_tasks_count = len(self.waiting_tasks)
 
     def _update_processes(self):
@@ -342,6 +354,8 @@ class ProfilingInstance:
                         dev_id in self.device_subtasks and self.device_subtasks[dev_id]:
                     subtask = self.device_subtasks[dev_id].pop()
                     self.process_to_subtask[dev_proc] = subtask
+                    logging.info(f"Sending {subtask.type.name} task {subtask.params[-1]} of testcase "
+                                 f"{subtask.task.testcase_struct.testcase_name} to process pid {dev_proc.get_pid()}")
                     subtask.send_to_proc(dev_proc)
 
     def __update_all_processes(self):
@@ -505,7 +519,7 @@ class ProfilingInstance:
         mode = subtask.params[2]
         dev_id = self.process_to_device[subtask.process]
         logging.fatal(f"Compilation process crashed at stage {self.__get_process_stage_info(subtask.process)} "
-                      f"for testcase {related_testcase.testcase_name} with pid {subtask.process.get_pid()}")
+                      f"for testcase {related_testcase.testcase_name}")
         crash_info = "Crashed at stage %s" % self.__get_process_stage_info(subtask.process)
         result = self.apply_errorinfo_to_testcase(crash_info, mode)
         result.apply(related_testcase)
@@ -560,7 +574,7 @@ class ProfilingInstance:
                            _):
         testcase: UniversalTestcaseStructure = subtask.task.testcase_struct
         logging.fatal(f"Profile process crashed at stage {self.__get_process_stage_info(subtask.process)} "
-                      f"for testcase {testcase.testcase_name}")
+                      f"for testcase {testcase.testcase_name} with pid {subtask.process.get_pid()}")
         basic_info = ("Crashed at profiling stage %s" % self.__get_process_stage_info(subtask.process),
                       *tuple("PROFILE_CRASH" for _ in range(len(self.result_titles) - 1)))
         if self.switches.preserve_original_csv:

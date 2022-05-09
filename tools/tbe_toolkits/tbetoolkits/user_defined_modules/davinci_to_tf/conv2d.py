@@ -71,6 +71,7 @@ def param_change(context: "tbetoolkits.UniversalTestcaseStructure", name, new_na
     params[new_name] = params[name]
     del params[name]
 
+
 @register_func(["depthwise_conv2d_backprop_filter", ])
 def _dp_conv2d_backprop_filter_dav2tf(context: "tbetoolkits.UniversalTestcaseStructure"):
     is_gpu = get_global_storage().mode.is_gpu()
@@ -92,6 +93,7 @@ def _dp_conv2d_backprop_filter_dav2tf(context: "tbetoolkits.UniversalTestcaseStr
         params['filter_sizes'] = [params['filter_sizes'][0],params['filter_sizes'][1],params['filter_sizes'][3],params['filter_sizes'][2]]
     return context
 
+
 @register_func(["conv2d_backprop_filter", ])
 def _conv2d_backprop_filter_dav2tf(context: "tbetoolkits.UniversalTestcaseStructure"):
     is_gpu = get_global_storage().mode.is_gpu()
@@ -111,6 +113,7 @@ def _conv2d_backprop_filter_dav2tf(context: "tbetoolkits.UniversalTestcaseStruct
         params['filter_sizes'] = [params['filter_sizes'][1],params['filter_sizes'][2],params['filter_sizes'][3],params['filter_sizes'][0]]
     return context
 
+
 @register_func(["conv2d_backprop_input", "depthwise_conv2d_backprop_input"])
 def _conv2d_backprop_input_dav2tf(context: "tbetoolkits.UniversalTestcaseStructure"):
     is_gpu = get_global_storage().mode.is_gpu()
@@ -125,6 +128,7 @@ def _conv2d_backprop_input_dav2tf(context: "tbetoolkits.UniversalTestcaseStructu
         params['padding'] = "SAME"
     return context
 
+
 @register_func(["conv3d_backprop_filter", ])
 def _conv3d_backprop_filter_dav2tf(context: "tbetoolkits.UniversalTestcaseStructure"):
     is_gpu = get_global_storage().mode.is_gpu()
@@ -133,13 +137,14 @@ def _conv3d_backprop_filter_dav2tf(context: "tbetoolkits.UniversalTestcaseStruct
     param_change(context, "filter_size", "filter_sizes")
     param_change(context, "pads", "padding")
     params = context.other_runtime_params
-    
+
     if params['padding'][0] == 0 and params['padding'][1] == 0 and params['padding'][2] == 0 and params['padding'][3] and params['padding'][4] == 0:
         params['padding'] = "VALID"
     else:
         params['padding'] = "SAME"
     context.op_name = "conv3d_backprop_filter_v2"
     return context
+
 
 @register_func(["conv3d_backprop_input", ])
 def _conv3d_backprop_input_dav2tf(context: "tbetoolkits.UniversalTestcaseStructure"):
@@ -156,6 +161,7 @@ def _conv3d_backprop_input_dav2tf(context: "tbetoolkits.UniversalTestcaseStructu
     context.op_name = "conv3d_backprop_input_v2"
     return context
 
+
 @register_func(["avg_pool3d", ])
 def _avg_pool3d_dav2tf(context: "tbetoolkits.UniversalTestcaseStructure"):
     is_gpu = get_global_storage().mode.is_gpu()
@@ -168,6 +174,7 @@ def _avg_pool3d_dav2tf(context: "tbetoolkits.UniversalTestcaseStructure"):
     else:
         params['padding'] = "SAME"
     return context
+
 
 @register_func(["conv3d", ])
 def _conv3d_dav2tf(context: "tbetoolkits.UniversalTestcaseStructure"):
@@ -183,6 +190,7 @@ def _conv3d_dav2tf(context: "tbetoolkits.UniversalTestcaseStructure"):
     # for gpu, need to delete two None for stc_ori_inputs
     context.stc_ori_inputs = context.stc_ori_inputs[:2]
     return context
+
 
 @register_func(["mat_mul", "batch_matmul_v2", "batch_matmul"])
 def _mat_mul_dav2tf(context: "tbetoolkits.UniversalTestcaseStructure"):

@@ -398,22 +398,24 @@ def profile_process(context: UniversalTestcaseStructure,
     # Following actions need to acquire global lock
     __notify_status("OnAcquireLock")
     device_id = [dev_id]
-    with subprocess_device_locks[dev_id] if not context.model else nullcontext():
-        context.device_id = device_id[0]
+    try:
+        with subprocess_device_locks[dev_id] if not context.model else nullcontext():
+            context.device_id = device_id[0]
+            if not context.model:
+                get_process_context().get_lock(subprocess_device_locks[dev_id])
+            __notify_status("OnProfilingPrint")
+            __profiling_print(context)
+            __notify_status("OnDynProfiling")
+            context.dyn_prof_result = do_profiling(context, "dynamic")
+            __notify_status("OnStcProfiling")
+            context.stc_prof_result = do_profiling(context, "static")
+            __notify_status("OnCstProfiling")
+            context.cst_prof_result = do_profiling(context, "const")
+            __notify_status("OnBinProfiling")
+            context.bin_prof_result = do_profiling(context, "binary")
+    finally:
         if not context.model:
-            get_process_context().get_lock(subprocess_device_locks[dev_id])
-        __notify_status("OnProfilingPrint")
-        __profiling_print(context)
-        __notify_status("OnDynProfiling")
-        context.dyn_prof_result = do_profiling(context, "dynamic")
-        __notify_status("OnStcProfiling")
-        context.stc_prof_result = do_profiling(context, "static")
-        __notify_status("OnCstProfiling")
-        context.cst_prof_result = do_profiling(context, "const")
-        __notify_status("OnBinProfiling")
-        context.bin_prof_result = do_profiling(context, "binary")
-    if not context.model:
-        get_process_context().release_lock(subprocess_device_locks[dev_id])
+            get_process_context().release_lock(subprocess_device_locks[dev_id])
     __notify_status("PostProfiling")
     passed, cst_passed = handle_profiling_result(context)
     __notify_status("OnDataTransformation")

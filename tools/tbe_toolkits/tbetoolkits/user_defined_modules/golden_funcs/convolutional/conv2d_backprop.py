@@ -726,7 +726,8 @@ def _depthwise_conv2d_backprop_filter(context: "tbetoolkits.UniversalTestcaseStr
         x = x.transpose(0, 2, 3, 1, 4).reshape(IN, IH, IW, IC * C0).astype(np.float32)
         out_backprop = out_backprop.transpose(0, 2, 3, 1, 4).reshape(YN, YH, YW, YC * C0).astype(np.float32)
         # Co1 = (Co + C0 - 1) // C0
-        w_shape = (kh, kw, IC * C0, 1)  # HWCN
+        filter_n = YC // IC
+        w_shape = (kh, kw, IC * C0, filter_n)  # HWCN
 
         if list(pads) == [0, 0, 0, 0]:
             padding = "VALID"
@@ -744,6 +745,7 @@ def _depthwise_conv2d_backprop_filter(context: "tbetoolkits.UniversalTestcaseStr
             sess.run(init_op)
             # Generate output tf data
             out = sess.run(tf_dw_result, feed_dict=feed_dict)
+            out = out.reshape(kh, kw, IC * C0 * filter_n, 1)
         output = _native_fun(out.shape, out)
     else:
         filter_size = (kh, kw, k_c, multi)

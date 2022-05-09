@@ -36,3 +36,9 @@ def _relu_grad_v2(testcase: "tbetoolkits.UniversalTestcaseStructure", mode: str)
         testcase.stc_inputs[1] = testcase.stc_inputs[0]
         testcase.stc_input_dtypes = list(testcase.stc_input_dtypes)
         testcase.stc_input_dtypes[1] = "uint1"
+
+
+@register_special_operator(["combined_non_max_suppression"])
+def _combined_non_max_suppression(testcase: "tbetoolkits.UniversalTestcaseStructure", mode: str):
+    if mode == "static":
+        testcase.stc_const_input_indexes = (2, 3, 4, 5)

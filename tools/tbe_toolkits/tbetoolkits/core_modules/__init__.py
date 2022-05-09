@@ -3,11 +3,6 @@
 """
 Core Modules root
 """
-# noinspection PyBroadException
-try:
-    __import__("tensorflow")
-except:
-    print("Tensorflow load failed")
 from . import tbe_logging
 from . import testcase_manager
 from . import nvidia
@@ -21,5 +16,3 @@ from . import infershape
 from . import profiling
 from . import model2trace
 from . import downloader
-
-

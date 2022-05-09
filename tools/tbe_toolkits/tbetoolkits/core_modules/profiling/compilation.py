@@ -160,7 +160,7 @@ def compilation_process(testcase: UniversalTestcaseStructure,
                                             dyn_op_pattern)
                     else:
                         logging.error("Please run realtime compilation once before using non-realtime mode!")
-                        result.all_set("ORIGINAL_INFO_NOT_FOUND")
+                        result.all_set("MANUAL_COMPILE_FAILURE")
                 logging.debug("Dynamic kernel compilation id %s complete" % dynamic_characteristic_code)
                 __set_locked_var_value(dynamic_characteristic_code, result.standard_get())
             else:
@@ -259,7 +259,7 @@ def compilation_process(testcase: UniversalTestcaseStructure,
                                             bin_obj_size)
                     else:
                         logging.error("Please run realtime compilation once before using non-realtime mode!")
-                        result.all_set("ORIGINAL_INFO_NOT_FOUND")
+                        result.all_set("MANUAL_COMPILE_FAILURE")
                 logging.debug("Binary kernel compilation id %s complete" % binary_release_characteristic_code)
                 __set_locked_var_value(binary_release_characteristic_code, result.standard_get())
             else:
@@ -307,6 +307,8 @@ def compilation_process(testcase: UniversalTestcaseStructure,
         testcase.stc_kernel_name = stc_kernel_name
         __notify_status("EstablishInterface")
         interface = OperatorInterface()
+        if testcase.op_name in interface.special_operator_registry:
+            interface.special_operator_registry[testcase.op_name](testcase, "static")
         ################################
         # Static Shape Compilation
         ################################
@@ -392,7 +394,7 @@ def compilation_process(testcase: UniversalTestcaseStructure,
                         cst_func_params = (cst_compile_result,)
                 else:
                     logging.error("Please run realtime compilation once before using non-realtime mode!")
-                    cst_compile_result = "ORIGINAL_INFO_NOT_FOUND"
+                    cst_compile_result = "MANUAL_COMPILE_FAILURE"
                     cst_block_dim, cst_workspaces = 0, ()
                     stc_compile_time = cst_compile_result
                     cst_func_params = (cst_compile_result,)

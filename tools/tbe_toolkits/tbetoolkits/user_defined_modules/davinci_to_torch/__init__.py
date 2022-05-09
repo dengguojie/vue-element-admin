@@ -7,7 +7,6 @@ Davinci operator parameter transformation map for pytorch
 
 # Third-party Packages
 import tbetoolkits
-import tbetoolkits.core_modules.testcase_manager.testcase_manager
 from . import dav2torch_registry
 
 
@@ -27,7 +26,7 @@ def extract_params(testcase_struct, param_name: str, target_name: str = None):
                                    "reduce_any", "reduce_any_d",
                                    "reduce_max", "reduce_max_d",
                                    "reduce_prod", "reduce_prod_d"])
-def reduce_torch_transformation(testcase_struct: tbetoolkits.core_modules.testcase_manager.testcase_manager.UniversalTestcaseStructure):
+def reduce_torch_transformation(testcase_struct: "tbetoolkits.UniversalTestcaseStructure"):
     testcase_struct.op_name = testcase_struct.op_name.replace("reduce_", "").replace("_d", "")
     axis = None
     if "axis" in testcase_struct.other_compilation_params:
@@ -44,7 +43,7 @@ def reduce_torch_transformation(testcase_struct: tbetoolkits.core_modules.testca
 
 
 @dav2torch_registry.register_func(["fill"])
-def fill_torch_transformation(testcase_struct: tbetoolkits.core_modules.testcase_manager.testcase_manager.UniversalTestcaseStructure):
+def fill_torch_transformation(testcase_struct: "tbetoolkits.UniversalTestcaseStructure"):
     import numpy
     shape = None
     testcase_struct.op_name = "full"
@@ -61,7 +60,7 @@ def fill_torch_transformation(testcase_struct: tbetoolkits.core_modules.testcase
 
 
 @dav2torch_registry.register_func(["tile_d", "tile"])
-def tile_torch_transformation(testcase_struct: tbetoolkits.core_modules.testcase_manager.testcase_manager.UniversalTestcaseStructure):
+def tile_torch_transformation(testcase_struct: "tbetoolkits.UniversalTestcaseStructure"):
     testcase_struct.op_name = "tile"
     extract_params(testcase_struct, "multiples", "dims")
     testcase_struct.torch_func = get_torch_func(testcase_struct.op_name)
@@ -69,21 +68,21 @@ def tile_torch_transformation(testcase_struct: tbetoolkits.core_modules.testcase
 
 
 @dav2torch_registry.register_func(["floor_mod"])
-def floor_mod_torch_transformation(testcase_struct: tbetoolkits.core_modules.testcase_manager.testcase_manager.UniversalTestcaseStructure):
+def floor_mod_torch_transformation(testcase_struct: "tbetoolkits.UniversalTestcaseStructure"):
     testcase_struct.op_name = "fmod"
     testcase_struct.torch_func = get_torch_func(testcase_struct.op_name)
     return testcase_struct
 
 
 @dav2torch_registry.register_func(["equal"])
-def equal_torch_transformation(testcase_struct: tbetoolkits.core_modules.testcase_manager.testcase_manager.UniversalTestcaseStructure):
+def equal_torch_transformation(testcase_struct: "tbetoolkits.UniversalTestcaseStructure"):
     testcase_struct.op_name = "eq"
     testcase_struct.torch_func = get_torch_func(testcase_struct.op_name)
     return testcase_struct
 
 
 @dav2torch_registry.register_func(["as_strided"])
-def as_strided_torch_transformation(testcase_struct: tbetoolkits.core_modules.testcase_manager.testcase_manager.UniversalTestcaseStructure):
+def as_strided_torch_transformation(testcase_struct: "tbetoolkits.UniversalTestcaseStructure"):
     if "storage_offset" in testcase_struct.other_compilation_params:
         if not isinstance(testcase_struct.other_compilation_params["storage_offset"], int):
             testcase_struct.other_compilation_params["storage_offset"] = \
@@ -101,7 +100,7 @@ def as_strided_torch_transformation(testcase_struct: tbetoolkits.core_modules.te
 
 
 @dav2torch_registry.register_func(["transpose"])
-def transpose_torch_transformation(testcase_struct: tbetoolkits.core_modules.testcase_manager.testcase_manager.UniversalTestcaseStructure):
+def transpose_torch_transformation(testcase_struct: "tbetoolkits.UniversalTestcaseStructure"):
     testcase_struct.op_name = "permute"
     extract_params(testcase_struct, "perm", "dims")
 

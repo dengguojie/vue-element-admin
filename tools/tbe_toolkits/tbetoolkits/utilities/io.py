@@ -359,9 +359,9 @@ def __enable_ascend910a_model(switches: SWITCHES, secondary_param: str):
 
 @register_param(["--single-log"])
 def __single_log_mode(switches: SWITCHES, secondary_param: str):
-    if secondary_param is None or secondary_param.lower() in ("true", "1"):
+    if secondary_param is None or secondary_param.lower() == "true":
         switches.single_testcase_log_mode = True
-    elif secondary_param.lower() in ("false", "0"):
+    elif secondary_param.lower() == "false":
         switches.single_testcase_log_mode = False
     else:
         raise RuntimeError("Invalid single testcase log mode switch: %s" % secondary_param)
@@ -399,9 +399,9 @@ def __set_perf_absolute_tolerance(switches: SWITCHES, secondary_param: str):
 
 @register_param(["--perf-compare"])
 def __set_perf_compare_flag(switches: SWITCHES, secondary_param: str):
-    if not secondary_param or secondary_param.lower() in ("true", "1"):
+    if not secondary_param or secondary_param.lower() == "true":
         switches.perf_compare_flag = True
-    elif secondary_param.lower() in ("false", "0"):
+    elif secondary_param.lower() == "false":
         switches.perf_compare_flag = False
     else:
         raise RuntimeError("Invalid perf compare switch: %s" % secondary_param)

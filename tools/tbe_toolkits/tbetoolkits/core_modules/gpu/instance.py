@@ -267,6 +267,7 @@ class GPUProfilingInstance(ProfilingInstance):
         basic_info = tuple("FAILURE" for _ in range(len(self.result_titles)))
         self.flush((*[getattr(testcase, title) for title in self.titles],
                     *basic_info))
+        task.process.resurrect()
 
     def __profile_on_completion(self,
                                 task: Task,
