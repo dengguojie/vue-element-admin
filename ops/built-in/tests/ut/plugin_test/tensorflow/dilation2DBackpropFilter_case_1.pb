@@ -1,38 +1,34 @@
 
 D
-PlaceholderPlaceholder*
+PlaceholderPlaceholder*
+dtype0*
 shape:
 
-*
-dtype0
-B
 
-Placeholder_1Placeholder*
+B
+Placeholder_1Placeholder*
+dtype0*
 shape:
 
 
-*
-dtype0
-F
 
-Placeholder_2Placeholder*
+F
+Placeholder_2Placeholder*
+dtype0*
 shape:
 
 
 
-*
-dtype0
-ï¿½
-Dilation2DBackpropFilterDilation2DBackpropFilterPlaceholder
-Placeholder_1
-Placeholder_2*
-paddingSAME*
-T0*
-strides
-
 
-*
+£
+Dilation2DBackpropFilterDilation2DBackpropFilterPlaceholderPlaceholder_1Placeholder_2*
+T0*
+paddingSAME*
 rates
 
 
-"ï¿½
+*
+strides
+
+
+"¨

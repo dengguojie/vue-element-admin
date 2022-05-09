@@ -1,19 +1,19 @@
 
 H
-PlaceholderPlaceholder*
+PlaceholderPlaceholder*
+dtype0*
 shape:
 
 
-*
-dtype0
-ÔøΩ
-	MaxPool3D	MaxPool3DPlaceholder*
+
+Å
+	MaxPool3D	MaxPool3DPlaceholder*
+T0*
+data_formatNDHWC*
 ksize	
 
 *
-paddingSAME*
-T0*
+paddingSAME*
 strides	
 
-*
-data_formatNDHWC"ÔøΩ
+"®

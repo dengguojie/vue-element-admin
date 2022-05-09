@@ -1,32 +1,28 @@
 
 H
-PlaceholderPlaceholder*
+PlaceholderPlaceholder*
+dtype0*
 shape:
 
-*
-dtype0
-J
 
-Placeholder_1Placeholder*
+J
+Placeholder_1Placeholder*
+dtype0*
 shape:
 
-*
-dtype0
-J
 
-Placeholder_2Placeholder*
+J
+Placeholder_2Placeholder*
+dtype0*
 shape:
 
-*
-dtype0
-ï¿½
-MaxPool3DGradGradMaxPool3DGradGradPlaceholder
-Placeholder_1
-Placeholder_2*
+
+¯
+MaxPool3DGradGradMaxPool3DGradGradPlaceholderPlaceholder_1Placeholder_2*
+T0*
+data_formatNDHWC*
 ksize	
 *
-paddingSAME*
-T0*
+paddingSAME*
 strides	
-*
-data_formatNDHWC"ï¿½
+"¨

@@ -1,12 +1,12 @@
 
 <
-PlaceholderPlaceholder*
+PlaceholderPlaceholder*
+dtype0*
 shape
-:*
-dtype0
+:
 T
-ParallelConcatParallelConcatPlaceholder*
+ParallelConcatParallelConcatPlaceholder*
+N*
+T0*
 shape
-:*
-T0*
-N"ï¿½
+:"¨

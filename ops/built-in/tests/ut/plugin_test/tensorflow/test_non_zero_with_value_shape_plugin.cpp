@@ -1,9 +1,8 @@
 #include <string>
 #include <vector>
-
 #include "gtest/gtest.h"
-
 #include "tensorflow_parser.h"
+#include "plugin_test_utils.h"
 
 using namespace ge;
 
@@ -11,6 +10,7 @@ class non_zero_with_value_shape_test : public testing::Test {
  protected:
   static void SetUpTestCase() {
     std::cout << "non_zero_with_value_shape_plugin_test SetUp" << std::endl;
+    CleanGlobal();
   }
 
   static void TearDownTestCase() {
