@@ -751,8 +751,8 @@ class MatmulTiling(CubeTilingOp):
             [utils.ATTACH_FULL_LOAD, utils.ATTACH_EQUAL, utils.ATTACH_LESS],
             [utils.ATTACH_FULL_LOAD, utils.ATTACH_EQUAL, utils.ATTACH_LESS],
             [utils.ATTACH_FULL_LOAD, utils.ATTACH_EQUAL, utils.ATTACH_LESS],
-            [0, 1], [utils.ABUB_NOT_FULL_LOAD, utils.ABUB_FULL_LOAD],
-            [utils.ABUB_NOT_FULL_LOAD, utils.ABUB_FULL_LOAD])
+            [0, 1], [utils.ABUB_NOT_FULL_LOAD_MM, utils.ABUB_FULL_LOAD_MM],
+            [utils.ABUB_NOT_FULL_LOAD_MM, utils.ABUB_FULL_LOAD_MM])
         if nd_flag:
             l1_choice = list(
                 product(al1_pb, bl1_pb, l0c_pb, abkl1_attach, al1_attach_flag,
