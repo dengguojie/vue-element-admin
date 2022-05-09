@@ -52,11 +52,21 @@ case4 = {"params": [{"shape": (4, 153600), "dtype": "float32", "format": "ND", "
          "expect": "success",
          "format_expect": [],
          "support_expect": True}
+case5 = {"params": [{"shape": (4, 153600), "dtype": "float32", "format": "ND", "ori_shape": (4, 153600), "ori_format": "ND"},
+                    {"shape": (4, 153600), "dtype": "float32", "format": "ND", "ori_shape": (4, 153600), "ori_format": "ND"},
+                    {"shape": (1, 153600), "dtype": "float32", "format": "ND", "ori_shape": (1, 153600), "ori_format": "ND"},
+                    {"shape": (1, 153600), "dtype": "float32", "format": "ND", "ori_shape": (1, 153600), "ori_format": "ND"},
+                    True, False, "iou", True],
+         "case_name": "ciou_5",
+         "expect": "success",
+         "format_expect": [],
+         "support_expect": True}
 
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case2)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case3)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case4)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case5)
 
 if __name__ == '__main__':
     ut_case.run("Ascend910")

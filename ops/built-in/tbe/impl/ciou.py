@@ -135,7 +135,7 @@ class CIoU():
         self.in_square = self.out_square = self.bboxes_w_h = self.gtboxes_w_h = None
         self.x_sub_one = self.x_add_one = self.square_x = self.div_rec_1 = self.div_rec_2 = None
         self.atan_w_h_quarter_pi = self.gtboxes_atan_w_h_quarter_pi = self.denominator_data = None
-        self.atan_w_h = self.gtboxes_atan_w_h = self.atan_temp_w_h = self.max_w_h_ub = self.alpha_ub = None
+        self.atan_w_h = self.gtboxes_atan_w_h = self.atan_temp_w_h = self.max_w_h_ub = self.v = self.alpha_ub = None
         self.area_y1_y0 = self.sum_y1_y0 = self.gtboxes_area_ub = self.out_ub = None
         self.other_ub = self.bboxes_area_ub = self.inter_area_ub = self.zero_ub = None
         block_parm_dict = {"float16": Constant.FP16_ELIMENTS_BLOCK, "float32": Constant.FP32_ELIMENTS_BLOCK}
@@ -216,31 +216,31 @@ class CIoU():
         return self.tik_instance
 
     def data_move_in_and_trans(self, mask, repeat_time, one_loop_shape, gm_offset, nbust):
-        bboxes_xy = _apply_mem(self.tik_instance, self.dtype, [one_loop_shape], "bboxes_xy")
-        bboxes_wh = _apply_mem(self.tik_instance, self.dtype, [one_loop_shape], "bboxes_wh")
-        self.tik_instance.data_move(bboxes_xy, self.bboxes_gm[gm_offset], 0, 1, nbust, 0, 0)
-        self.tik_instance.data_move(bboxes_wh, self.bboxes_gm[gm_offset + self.bboxes_shape[1] * 2], 0, 1, nbust, 0, 0)
-        self.tik_instance.vmuls(mask, bboxes_wh, bboxes_wh, 0.5, repeat_time, 1, 1, 8, 8)
-        self.tik_instance.vsub(mask, self.bboxes_x0, bboxes_xy, bboxes_wh, repeat_time, 1, 1, 1, 8, 8, 8)
-        self.tik_instance.vadd(mask, self.bboxes_x1, bboxes_xy, bboxes_wh, repeat_time, 1, 1, 1, 8, 8, 8)
+        boxes_xy = _apply_mem(self.tik_instance, self.dtype, [one_loop_shape], "boxes_xy")
+        boxes_wh = _apply_mem(self.tik_instance, self.dtype, [one_loop_shape], "boxes_wh")
+        self.tik_instance.data_move(boxes_xy, self.bboxes_gm[gm_offset], 0, 1, nbust, 0, 0)
+        self.tik_instance.data_move(boxes_wh, self.bboxes_gm[gm_offset + self.bboxes_shape[1] * 2], 0, 1, nbust, 0, 0)
+        self.tik_instance.vmuls(mask, boxes_wh, boxes_wh, 0.5, repeat_time, 1, 1, 8, 8)
+        self.tik_instance.vsub(mask, self.bboxes_x0, boxes_xy, boxes_wh, repeat_time, 1, 1, 1, 8, 8, 8)
+        self.tik_instance.vadd(mask, self.bboxes_x1, boxes_xy, boxes_wh, repeat_time, 1, 1, 1, 8, 8, 8)
         
-        self.tik_instance.data_move(bboxes_xy, self.bboxes_gm[gm_offset + self.bboxes_shape[1]], 0, 1, nbust, 0, 0)
-        self.tik_instance.data_move(bboxes_wh, self.bboxes_gm[gm_offset + self.bboxes_shape[1] * 3], 0, 1, nbust, 0, 0)
-        self.tik_instance.vmuls(mask, bboxes_wh, bboxes_wh, 0.5, repeat_time, 1, 1, 8, 8)
-        self.tik_instance.vsub(mask, self.bboxes_y0, bboxes_xy, bboxes_wh, repeat_time, 1, 1, 1, 8, 8, 8)
-        self.tik_instance.vadd(mask, self.bboxes_y1, bboxes_xy, bboxes_wh, repeat_time, 1, 1, 1, 8, 8, 8)
+        self.tik_instance.data_move(boxes_xy, self.bboxes_gm[gm_offset + self.bboxes_shape[1]], 0, 1, nbust, 0, 0)
+        self.tik_instance.data_move(boxes_wh, self.bboxes_gm[gm_offset + self.bboxes_shape[1] * 3], 0, 1, nbust, 0, 0)
+        self.tik_instance.vmuls(mask, boxes_wh, boxes_wh, 0.5, repeat_time, 1, 1, 8, 8)
+        self.tik_instance.vsub(mask, self.bboxes_y0, boxes_xy, boxes_wh, repeat_time, 1, 1, 1, 8, 8, 8)
+        self.tik_instance.vadd(mask, self.bboxes_y1, boxes_xy, boxes_wh, repeat_time, 1, 1, 1, 8, 8, 8)
 
-        self.tik_instance.data_move(bboxes_xy, self.bboxes_gm[gm_offset], 0, 1, nbust, 0, 0)
-        self.tik_instance.data_move(bboxes_wh, self.bboxes_gm[gm_offset + self.bboxes_shape[1] * 2], 0, 1, nbust, 0, 0)
-        self.tik_instance.vmuls(mask, bboxes_wh, bboxes_wh, 0.5, repeat_time, 1, 1, 8, 8)
-        self.tik_instance.vsub(mask, self.gtboxes_x0, bboxes_xy, bboxes_wh, repeat_time, 1, 1, 1, 8, 8, 8)
-        self.tik_instance.vadd(mask, self.gtboxes_x1, bboxes_xy, bboxes_wh, repeat_time, 1, 1, 1, 8, 8, 8)
+        self.tik_instance.data_move(boxes_xy, self.gtboxes_gm[gm_offset], 0, 1, nbust, 0, 0)
+        self.tik_instance.data_move(boxes_wh, self.gtboxes_gm[gm_offset + self.bboxes_shape[1] * 2], 0, 1, nbust, 0, 0)
+        self.tik_instance.vmuls(mask, boxes_wh, boxes_wh, 0.5, repeat_time, 1, 1, 8, 8)
+        self.tik_instance.vsub(mask, self.gtboxes_x0, boxes_xy, boxes_wh, repeat_time, 1, 1, 1, 8, 8, 8)
+        self.tik_instance.vadd(mask, self.gtboxes_x1, boxes_xy, boxes_wh, repeat_time, 1, 1, 1, 8, 8, 8)
         
-        self.tik_instance.data_move(bboxes_xy, self.bboxes_gm[gm_offset + self.bboxes_shape[1]], 0, 1, nbust, 0, 0)
-        self.tik_instance.data_move(bboxes_wh, self.bboxes_gm[gm_offset + self.bboxes_shape[1] * 3], 0, 1, nbust, 0, 0)
-        self.tik_instance.vmuls(mask, bboxes_wh, bboxes_wh, 0.5, repeat_time, 1, 1, 8, 8)
-        self.tik_instance.vsub(mask, self.gtboxes_y0, bboxes_xy, bboxes_wh, repeat_time, 1, 1, 1, 8, 8, 8)
-        self.tik_instance.vadd(mask, self.gtboxes_y1, bboxes_xy, bboxes_wh, repeat_time, 1, 1, 1, 8, 8, 8)
+        self.tik_instance.data_move(boxes_xy, self.gtboxes_gm[gm_offset + self.bboxes_shape[1]], 0, 1, nbust, 0, 0)
+        self.tik_instance.data_move(boxes_wh, self.gtboxes_gm[gm_offset + self.bboxes_shape[1] * 3], 0, 1, nbust, 0, 0)
+        self.tik_instance.vmuls(mask, boxes_wh, boxes_wh, 0.5, repeat_time, 1, 1, 8, 8)
+        self.tik_instance.vsub(mask, self.gtboxes_y0, boxes_xy, boxes_wh, repeat_time, 1, 1, 1, 8, 8, 8)
+        self.tik_instance.vadd(mask, self.gtboxes_y1, boxes_xy, boxes_wh, repeat_time, 1, 1, 1, 8, 8, 8)
 
     def data_move_in(self, gm_offset, nbust):
         self.tik_instance.data_move(self.bboxes_x0, self.bboxes_gm[gm_offset], 0, 1, nbust, 0, 0)
@@ -425,6 +425,7 @@ class CIoU():
                                                       "gtboxes_atan_w_h_quarter_pi")
         self.denominator_data = _apply_mem(self.tik_instance, self.dtype, [one_loop_shape], "denominator_data")
         self.atan_temp_w_h = _apply_mem(self.tik_instance, self.dtype, [one_loop_shape], "atan_temp_w_h")
+        self.v = _apply_mem(self.tik_instance, self.dtype, [one_loop_shape], "v")
         self.alpha_ub = _apply_mem(self.tik_instance, self.dtype, [one_loop_shape], "alpha_ub")
         self.div_rec_1 = _apply_mem(self.tik_instance, self.dtype, [one_loop_shape], "div_rec_1")
         self.div_rec_2 = _apply_mem(self.tik_instance, self.dtype, [one_loop_shape], "div_rec_2")
@@ -474,10 +475,10 @@ class CIoU():
         self.calcu_atan(mask, one_loop_shape, self.bboxes_w_h, self.atan_w_h, self.atan_w_h_quarter_pi)
         self.calcu_atan(mask, one_loop_shape, self.gtboxes_w_h, self.gtboxes_atan_w_h,
                         self.gtboxes_atan_w_h_quarter_pi)
-        self.tik_instance.vsub(mask, self.atan_w_h, self.atan_w_h, self.gtboxes_atan_w_h,
+        self.tik_instance.vsub(mask, self.atan_w_h, self.gtboxes_atan_w_h, self.atan_w_h,
                                repeat_time, 1, 1, 1, 8, 8, 8)
-        self.tik_instance.vmul(mask, self.atan_w_h, self.atan_w_h, self.atan_w_h, repeat_time, 1, 1, 1, 8, 8, 8)
-        self.tik_instance.vmuls(mask, self.atan_w_h, self.atan_w_h, 4 / math.pi ** 2, repeat_time, 1, 1, 8, 8)
+        self.tik_instance.vmul(mask, self.v, self.atan_w_h, self.atan_w_h, repeat_time, 1, 1, 1, 8, 8, 8)
+        self.tik_instance.vmuls(mask, self.v, self.v, 4 / math.pi ** 2, repeat_time, 1, 1, 8, 8)
 
         if self.mode == "iou":
             self.tik_instance.vadd(mask, self.out_ub, self.bboxes_area_ub,
@@ -497,13 +498,13 @@ class CIoU():
             self._rev_div(mask, repeat_time, self.out_ub, self.inter_area_ub, self.out_ub)
             self._rev_div(mask, repeat_time, self.out_square, self.in_square, self.out_square)
         
-        self.tik_instance.vsub(mask, self.alpha_ub, self.atan_w_h, self.out_ub, repeat_time, 1, 1, 1, 8, 8, 8)
+        self.tik_instance.vsub(mask, self.alpha_ub, self.v, self.out_ub, repeat_time, 1, 1, 1, 8, 8, 8)
         self.tik_instance.vadds(mask, self.alpha_ub, self.alpha_ub, 1 + 1e-16, repeat_time, 1, 1, 8, 8)
         if self.product is True:
-            self.tik_instance.vdiv(mask, self.alpha_ub, self.atan_w_h, self.alpha_ub, repeat_time, 1, 1, 1, 8, 8, 8)
+            self.tik_instance.vdiv(mask, self.alpha_ub, self.v, self.alpha_ub, repeat_time, 1, 1, 1, 8, 8, 8)
         else:
-            self._rev_div(mask, repeat_time, self.alpha_ub, self.atan_w_h, self.alpha_ub)
-        self.tik_instance.vmul(mask, self.alpha_ub, self.atan_w_h, self.alpha_ub, repeat_time, 1, 1, 1, 8, 8, 8)
+            self._rev_div(mask, repeat_time, self.alpha_ub, self.v, self.alpha_ub)
+        self.tik_instance.vmul(mask, self.alpha_ub, self.v, self.alpha_ub, repeat_time, 1, 1, 1, 8, 8, 8)
         self.tik_instance.vsub(mask, self.out_ub, self.out_ub, self.out_square, repeat_time, 1, 1, 1, 8, 8, 8)
         self.tik_instance.vsub(mask, self.out_ub, self.out_ub, self.alpha_ub, repeat_time, 1, 1, 1, 8, 8, 8)
 
