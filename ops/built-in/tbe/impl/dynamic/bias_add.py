@@ -71,7 +71,7 @@ def check_equal(a, b):
     return True
 
 
-@register_operator_compute("BiasAdd", op_mode="dynamic", support_fusion=True)
+@register_operator_compute("BiasAdd", op_mode="dynamic", support_fusion=False)
 def bias_add_compute(x, bias, y, data_format, kernel_name="bias_add"):
     """
     calculating data's bias add
