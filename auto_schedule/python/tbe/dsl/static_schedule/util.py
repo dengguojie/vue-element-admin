@@ -548,7 +548,7 @@ def ceil(value_a, value_b):
     """
     get up multi value_b
     """
-    return int((value_a + value_b - 1) // value_b)
+    return (value_a + value_b - 1) // value_b
 
 
 def align(value_a, value_b):
@@ -1071,3 +1071,10 @@ def check_support_fixpipe_l0c2ub():
     check if the soc support moving data from l0c to ub
     """
     return tbe_platform_info.intrinsic_check_support("Intrinsic_fix_pipe_l0c2ub")
+
+
+def get_value(shape_object):
+    """
+    get the value of shape_object when having attr "value"
+    """
+    return shape_object.value if hasattr(shape_object, "value") else shape_object

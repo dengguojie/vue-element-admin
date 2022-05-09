@@ -448,3 +448,73 @@ def is_keepdims(reduce_tensor: Tensor) -> bool:
     Check if reduce tensor is keepdims
     """
     return len(reduce_tensor.shape) == len(get_reduce_all_axes(reduce_tensor))
+
+
+def get_single_matmul_tensor(tensor_map, all_tensor):
+    """
+    get the tensor in cube calculation
+    """
+    tensor_map["a_l0a"] = all_tensor.get("tensor_a_matrix")
+    tensor_map["b_l0b"] = all_tensor.get("tensor_b_matrix")
+    tensor_map["c_l0c"] = all_tensor.get("tensor_c_matrix")
+    if len(tensor_map["c_l0c"].op.input_tensors) == 3:
+        tensor_map["input_bias"] = tensor_map["c_l0c"].op.input_tensors[2]
+    # fixpipe matmul is nd2nd for fc single node whose output format is NC1HWC0
+    tensor_map["fixpipe_matmul"] = all_tensor.get("fixpipe_matmul")
+
+
+def get_fusion_matmul_tensor(tensor_map, all_tensor, leaf_tensor):
+    """
+    get the tensor after cube
+    """
+    tensor_map["c_gm"] = all_tensor.get("res")
+    # fixpipe_trans_eletwise is trans from 5hd to NZ for fixpipe eltwise add/sub
+    tensor_map["fixpipe_trans_eltwise"] = all_tensor.get("fixpipe_trans_eltwise")
+    # get out_list except virtual res in multi_out_scene
+    # the last input of virtual is the real result of matmul calculation
+    res = tensor_map["c_gm"]
+    if "virtual_res" in res.op.tag:
+        multi_output_list = [output_tensor for output_tensor in res.op.input_tensors]
+        tensor_map["multi_output_list"] = multi_output_list
+        res = multi_output_list[-1]
+    if res.op.tag != "gemm":
+        if res.op.tag not in ("fixpipe_reform", "dequant_NZ", "requant_NZ", "NZ_trans_ND"):
+            get_ub_tensor(all_tensor, leaf_tensor, tensor_map)
+        else:
+            get_fixpipe_tensor(res, tensor_map)
+
+
+def get_fixpipe_tensor(res, tensor_map):
+    """
+    get fixpipe tensor of cube
+    """
+    fixpipe_input_tensor = res.op.input_tensors[0]
+    while fixpipe_input_tensor.op.name != "tensor_c_matrix":
+        if fixpipe_input_tensor.op.tag == "fixpipe":
+            tensor_map["fixpipe_input_name"] = fixpipe_input_tensor.op.attrs["vector_params"]
+            tensor_map["fixpipe_input_tensor"] = fixpipe_input_tensor.op.attrs["vector_tensors"]
+        if fixpipe_input_tensor.op.tag in ("dequant_vector", "requant_vector"):
+            tensor_map["fixpipe_input_name"] = ["quant_scale_0"]
+            tensor_map["fixpipe_input_tensor"] = [fixpipe_input_tensor.op.input_tensors[1]]
+        fixpipe_input_tensor = fixpipe_input_tensor.op.input_tensors[0]
+
+
+def get_ub_tensor(all_tensor, leaf_tensor, tensor_map):
+    """
+    get ub fusion tensor of cube
+    """
+    eltwise_input_tensor = []
+    eltwise_tensor = []
+    for tensor_mem_input, next_tensor_list in leaf_tensor.items():
+        input_tensor = all_tensor[tensor_mem_input]
+        for next_tensor in next_tensor_list:
+            if "elewise" in next_tensor.op.tag or "broadcast" in next_tensor.op.tag:
+                eltwise_input_tensor.append(input_tensor)
+                break
+    tensor_map["eltwise_input_tensor"] = eltwise_input_tensor
+    for tensor_mem in all_tensor.values():
+        if "elewise" in tensor_mem.op.tag:
+            eltwise_tensor.append(tensor_mem)
+        if tensor_mem.op.tag in ("fixpipe_reform", "dequant_NZ", "requant_NZ", "NZ_trans_ND"):
+            get_fixpipe_tensor(tensor_mem, tensor_map)
+    tensor_map["eltwise_tensor"] = eltwise_tensor

@@ -39,27 +39,6 @@ DTYPE_TRANS_MAP = {
 }
 
 
-class MatMulComputeParam:
-    """
-    be used by gemm_tilingcase
-    """
-    tiling_info_dict = {}
-    dynamic_mode = None
-    batch_a = False
-    batch_b = False
-    format_a = "Fractal_NZ"
-    format_b = "Fractal_NZ"
-    m_var_name = None
-    k_var_name = None
-    n_var_name = None
-    block_in = tbe_platform.BLOCK_IN
-    block_out = tbe_platform.BLOCK_OUT
-    block_reduce = tbe_platform.BLOCK_REDUCE
-
-    def __init__(self) -> None:
-        pass
-
-
 class MatMulCompute:
     """
     algorithm: mmad
@@ -131,52 +110,6 @@ class MatMulCompute:
         self.batch_shape_b = None
         self.kn_shape = None
 
-    @staticmethod
-    def get_trans_flag(transpose_a, transpose_b):
-        """
-        get trans flag inorder to get tiling
-        """
-        trans_flag = 1
-        if transpose_a:
-            if transpose_b:
-                trans_flag = 4
-            else:
-                trans_flag = 2
-        elif transpose_b:
-            trans_flag = 3
-        return trans_flag
-
-    @staticmethod
-    def get_a_shape_in_nc1hwc0(tensor_a_l0a):
-        """
-        get a shape's format nc1hwc0 inorder to get tiling
-        """
-        if MatMulComputeParam.batch_a:
-            a_5hd_shape = [tensor_a_l0a.shape[0], tensor_a_l0a.shape[2], tensor_a_l0a.shape[1], 16, 16]
-        else:
-            a_5hd_shape = [1, tensor_a_l0a.shape[1], tensor_a_l0a.shape[0], 16, 16]
-        return a_5hd_shape
-
-    @staticmethod
-    def get_b_shape_in_nc1hwc0(tensor_b_l0b):
-        """
-        get b shape's format nc1hwc0 inorder to get tiling
-        """
-        return  [tensor_b_l0b.shape[-4] * 16, tensor_b_l0b.shape[-3], 1, 1, 16]
-
-    @staticmethod
-    def _get_mad_b_indices(indices, reduce_axis):
-        """
-        get b_matrix indices depend on batch
-        """
-        reduce_kb = reduce_axis[0]
-        reduce_kp = reduce_axis[1]
-        if MatMulComputeParam.batch_b:
-            b_indices = [*indices[:-4], reduce_kb, indices[-4], indices[-1], reduce_kp]
-        else:
-            b_indices = [reduce_kb, indices[-4], indices[-1], reduce_kp]
-        return b_indices
-
     def compute_matmul(self):
         """
         MatMul enter
@@ -191,14 +124,21 @@ class MatMulCompute:
             self._check_attrs()
         self._get_l1_shape()
 
-        tensor_b_length = len(self.tensor_b.shape)
-        MatMulComputeParam.batch_a = self._check_batch_a()
-        MatMulComputeParam.batch_b = (tensor_b_length == BATCH_MATMUL_LENGTH)
-
         a_matrix = self._get_a_matrix()
         b_matrix = self._get_b_matrix()
         self.c_matrix = self._compute_c_matrix(a_matrix, b_matrix)
-        self._set_dynamic_param(a_matrix, b_matrix)
+
+    def _get_mad_b_indices(self, indices, reduce_axis):
+        """
+        get b_matrix indices depend on batch
+        """
+        reduce_kb = reduce_axis[0]
+        reduce_kp = reduce_axis[1]
+        if self.batch_shape_b is not None:
+            b_indices = [*indices[:-4], reduce_kb, indices[-4], indices[-1], reduce_kp]
+        else:
+            b_indices = [reduce_kb, indices[-4], indices[-1], reduce_kp]
+        return b_indices
 
     def _handle_front_trans_fusion(self):
         """
@@ -292,7 +232,7 @@ class MatMulCompute:
                                   (indices[-3] * self.block_reduce + indices[-1]) % self.block_in,
                                   indices[-2] % self.block_reduce),
                 name="tensor_a_matrix",
-                attrs={"transpose_a": "false"}
+                attrs={"transpose_a": "true"}
                 )
         else:
             a_matrix = tvm.compute(
@@ -300,7 +240,7 @@ class MatMulCompute:
                 lambda *indices: temp_tensor_a(*indices[:-4], indices[-3],
                                                indices[-4], *indices[-2:]),
                 name="tensor_a_matrix",
-                attrs={"transpose_a": "true"}
+                attrs={"transpose_a": "false"}
                 )
         return a_matrix
 
@@ -324,7 +264,7 @@ class MatMulCompute:
                               int_ceil_div(self.km_shape, block_reduce_multiple_in),
                               self.block_in,
                               self.block_reduce]
-            if MatMulComputeParam.batch_a:
+            if self.batch_shape_a is not None:
                 a_matrix_shape.insert(0, self.batch_shape_a)
             a_matrix = tvm.compute(
                 a_matrix_shape, lambda *indices:
@@ -334,25 +274,25 @@ class MatMulCompute:
                               indices[-1] % self.block_in,
                               indices[-2] + indices[-4] % block_reduce_multiple_in * self.block_in),
                 name="tensor_a_matrix",
-                attrs={"transpose_a": "false"})
+                attrs={"transpose_a": "true"})
         elif self.src_dtype == "float32":
             a_matrix = self._get_a_matrix_fp32(self.tensor_a)
         else:
             a_matrix_shape = [self.m_shape, self.km_shape, self.block_in, self.block_reduce]
-            if MatMulComputeParam.batch_a:
+            if self.batch_shape_a is not None:
                 a_matrix_shape.insert(0, self.batch_shape_a)
             if self.trans_a:
                 a_matrix = tvm.compute(
                     a_matrix_shape,
                     lambda *indices: self.tensor_a(*indices[:-4], indices[-3], indices[-4], *indices[-2:]),
                     name="tensor_a_matrix",
-                    attrs={"transpose_a": "true"})
+                    attrs={"transpose_a": "false"})
             else:
                 a_matrix = tvm.compute(
                     a_matrix_shape,
                     lambda *indices: self.tensor_a(*indices[:-2], indices[-1], indices[-2]),
                     name="tensor_a_matrix",
-                    attrs={"transpose_a": "false"})
+                    attrs={"transpose_a": "true"})
 
         return a_matrix
 
@@ -387,7 +327,7 @@ class MatMulCompute:
                 b_matrix_shape,
                 lambda *indices: temp_tensor_b(*indices),
                 name="tensor_b_matrix",
-                attrs={"transpose_b": "false"}
+                attrs={"transpose_b": "true"}
             )
         else:
             b_matrix = tvm.compute(
@@ -399,7 +339,7 @@ class MatMulCompute:
                                   (indices[-4] * 8 + indices[-1]) % 16,
                                   indices[-2] % 8),
                 name="tensor_b_matrix",
-                attrs={"transpose_b": "true"}
+                attrs={"transpose_b": "false"}
             )
         return b_matrix
 
@@ -424,7 +364,7 @@ class MatMulCompute:
                                       self.n_shape * block_reduce_multiple_out,
                                       self.block_out,
                                       self.block_reduce]
-                    if MatMulComputeParam.batch_b:
+                    if self.batch_shape_b is not None:
                         b_matrix_shape.insert(0, self.batch_shape_b)
                     b_matrix = tvm.compute(
                         b_matrix_shape,
@@ -435,23 +375,23 @@ class MatMulCompute:
                                       indices[-1] % self.block_out,
                                       indices[-2] + indices[-3] % block_reduce_multiple_out * self.block_out),
                                       name="tensor_b_matrix",
-                                      attrs={"transpose_b":"true"})
+                                      attrs={"transpose_b":"false"})
                 else:
                     b_matrix_shape = [self.kn_shape, self.n_shape, self.block_out, self.block_reduce]
-                    if MatMulComputeParam.batch_b:
+                    if self.batch_shape_b is not None:
                         b_matrix_shape.insert(0, self.batch_shape_b)
                     b_matrix = tvm.compute(
                         b_matrix_shape,
                         lambda *indices: self.tensor_b(*indices[:-4], indices[-3],
                                                        indices[-4], indices[-1], indices[-2]),
                         name="tensor_b_matrix",
-                        attrs={"transpose_b": "true"})
+                        attrs={"transpose_b": "false"})
             else:
                 b_matrix = tvm.compute(
                     self.tensor_b.shape,
                     lambda *indices: self.tensor_b(*indices),
                     name="tensor_b_matrix",
-                    attrs={"transpose_b": "false"}
+                    attrs={"transpose_b": "true"}
                 )
 
         return b_matrix
@@ -493,8 +433,7 @@ class MatMulCompute:
                 tensor_c_matrix(*indices),
                 self.dst_dtype,
                 op_dict=op_dict),
-            name="fixpipe",
-            tag="fixpipe",
+            name="fixpipe_matmul",
             attrs=attrs)
         tensor_c_gm = tvm.compute(
             out_shape,
@@ -514,7 +453,7 @@ class MatMulCompute:
         """
         l0c_shape = shape_to_list(tensor_c_matrix.shape)
         ori_shape = [self.origin_m_shape, self.origin_n_shape]
-        if MatMulComputeParam.batch_a:
+        if self.batch_shape_a is not None:
             ori_shape.insert(0, self.batch_shape_a)
         if self.format_out == "NC1HWC0":
             # ND output
@@ -543,7 +482,6 @@ class MatMulCompute:
                                            "shape": output_shape})
         return tensor_c_gm
 
-
     def _compute_c_matrix(self, a_matrix_in, b_matrix_in):
         """ MatMul calculation
         Input:
@@ -561,7 +499,7 @@ class MatMulCompute:
         output_shape = [int_ceil_div(self.origin_n_shape, self.block_out),
                         int_ceil_div(self.origin_m_shape, self.block_in),
                         self.block_in, self.block_out]
-        if MatMulComputeParam.batch_a:
+        if self.batch_shape_a is not None:
             l0c_shape.insert(0, self.batch_shape_a)
             output_shape.insert(0, self.batch_shape_a)
         if self.tensor_bias is None:
@@ -679,46 +617,4 @@ class MatMulCompute:
         for 5hd input, have no batch(op_type is fc, nhwc--transdata_compute-->5hd)
         """
         tensor_a_length = len(self.tensor_a.shape)
-        return (tensor_a_length == BATCH_MATMUL_LENGTH) and ("NHWC_trans_5HD" not in self.tensor_a.op.tag)
-
-    def _set_dynamic_param(self, a_matrix, b_matrix):
-        """
-        set MatmulComputeParam to support for tilingcase
-        """
-        if in_dynamic():
-            if MatMulComputeParam.batch_a:
-                MatMulComputeParam.dynamic_mode = "dynamic_mknb"
-            else:
-                MatMulComputeParam.dynamic_mode = "dynamic_mkn"
-
-        MatMulComputeParam.m_var_name = "m"
-        MatMulComputeParam.n_var_name = "n"
-        MatMulComputeParam.k_var_name = "k"
-        MatMulComputeParam.tiling_info_dict = {
-            "A_shape": self.get_a_shape_in_nc1hwc0(a_matrix),
-            "B_shape": self.get_b_shape_in_nc1hwc0(b_matrix),
-            "C_shape": None,
-            "A_dtype": self.tensor_a.dtype,
-            "B_dtype": self.tensor_b.dtype,
-            "C_dtype": self.c_matrix.dtype,
-            "mad_dtype": self.matrix_type,
-            "padl": 0,
-            "padr": 0,
-            "padu": 0,
-            "padd": 0,
-            "strideH": 1,
-            "strideW": 1,
-            "strideH_expand": 1,
-            "strideW_expand": 1,
-            "dilationH": self.get_trans_flag(not self.trans_a, not self.trans_b),
-            "dilationW": 1,
-            "group": 1,
-            "fused_double_operand_num": 0,
-            "bias_flag": (self.tensor_bias is not None),
-            "op_tag": "matmul",
-            "op_type": "matmul",
-            "kernel_name": self.kernel_name,
-            "dynamic_shape_flag": True,
-            "trans_a": not self.trans_a,
-            "trans_b": not self.trans_b
-        }
+        return tensor_a_length == BATCH_MATMUL_LENGTH and self.format_a == "FRACTAL_NZ"

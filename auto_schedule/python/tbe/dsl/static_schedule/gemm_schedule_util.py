@@ -17,19 +17,21 @@
 """
 common function for gemm_schedule
 """
-import copy
 from functools import reduce
 import math
 
 from tbe import tvm
 from tbe.common import platform as tbe_platform
 from tbe.common.context import op_context
-from tbe.common.platform import get_soc_spec
 from tbe.common.platform import platform_info as tbe_platform_info
-from tbe.common.platform import set_current_compile_soc_info
 from tbe.common.utils.errormgr import error_manager_util
 from tbe.dsl.base.operation import in_dynamic
 from tbe.dsl.static_schedule.util import check_support_fixpipe_l0c2ub
+from tbe.dsl.static_schedule.util import align as int_ceil_align
+from tbe.dsl.static_schedule.util import ceil as int_ceil_div
+from tbe.dsl.static_schedule.util import get_value
+from tbe.dsl.static_schedule.util import shape_to_list
+
 
 BATCH_MATMUL_LEN_ND = 3
 BATCH_MATMUL_LEN_NZ = 5
@@ -38,6 +40,14 @@ MATMUL_LEN_NZ = 4
 MULTI_FACTOR_BY_DTYPE = 2
 ND2NZ_SRC_D_LIMIT = 65535
 DEFAULT_DATA_SIZE = 2
+K_AXIS_ALIGN_FACTOR = 2
+# attach flag
+KAL1_LARGE = 1
+KBL1_LARGE = 2
+ATTACH_FULLY_LOAD = 0
+ATTACH_EQUAL = 1
+ATTACH_LESS = 2
+ATTACH_LARGE = 3
 
 DATA_SIZE = {
     "float16": 2,
@@ -56,34 +66,6 @@ TRANS_NZ2ND = {"layout_transform": "nz2nd"}
 TRANS_SPLIT = {"layout_transform": "channnel_split"}
 
 
-# common math funtion
-def int_ceil_div(divisor_a, divisor_b):
-    """
-    round up function
-    :param divisor_a: int.
-    :param divisor_b: int.
-    :return: int
-    """
-    if divisor_b == 0:
-        args_dict = {
-            "errCode": "E60114",
-            "reason": "division by zero",
-            "value": "divisor_b = {}".format(divisor_b)
-        }
-        raise RuntimeError(args_dict, error_manager_util.get_error_message(args_dict))
-    return (divisor_a + divisor_b - 1) // divisor_b
-
-
-def int_ceil_align(value, align_factor):
-    """
-    ceil align
-    :param value: int
-    :param align_factor: int
-    :return: int
-    """
-    return int_ceil_div(value, align_factor) * align_factor
-
-
 def _get_precision_mode():
     """
     get calculation mode, high_performance or high_precision
@@ -100,19 +82,6 @@ def _get_precision_mode():
     return ""
 
 
-def shape_to_list(shape):
-    """
-    translate tvm.shape to list type in python
-    """
-    tmp = []
-    for i in shape:
-        if isinstance(i, tvm.expr.Var):
-            tmp.append(i)
-        else:
-            tmp.append(i.value)
-    return tmp
-
-
 # get all tensor for compute map
 def get_all_tensors(res):
     """
@@ -123,7 +92,6 @@ def get_all_tensors(res):
     all_tensor = {}
     leaf_tensor = {}
     all_tensor["res"] = res
-    all_tensor[res.op.name] = res
 
     def get(tensor):
         """
@@ -147,7 +115,7 @@ def get_all_tensors(res):
 
 
 # set scope for matmul tensor
-def set_matmul_scope(all_tensor, sch, tensor_map):
+def set_matmul_scope(sch, tensor_map):
     """
     set scope for matmul
     :param all_tensor: all tensor of matmul which before setscope
@@ -155,26 +123,22 @@ def set_matmul_scope(all_tensor, sch, tensor_map):
     :param tensor_map: tensor of matmul which after setscope
     :return: dict
     """
-    # set scopr for l0 scope and bias
-    tensor_map["a_l0a"] = all_tensor.get("tensor_a_matrix")
-    tensor_map["b_l0b"] = all_tensor.get("tensor_b_matrix")
-    tensor_map["c_l0c"] = all_tensor.get("tensor_c_matrix")
+    # set scope for matmul
     sch[tensor_map["a_l0a"]].set_scope(tbe_platform_info.scope_ca)
     sch[tensor_map["b_l0b"]].set_scope(tbe_platform_info.scope_cb)
     sch[tensor_map["c_l0c"]].set_scope(tbe_platform_info.scope_cc)
-    if len(all_tensor["tensor_c_matrix"].op.input_tensors) == 3:
-        input_bias = all_tensor["tensor_c_matrix"].op.input_tensors[2]
-        tensor_map["bias_l1"] = sch.cache_read(input_bias,
+    if tensor_map.get("input_bias") is not None:
+        tensor_map["bias_l1"] = sch.cache_read(tensor_map["input_bias"],
                                                tbe_platform_info.scope_cbuf,
-                                               [all_tensor["tensor_c_matrix"]])
+                                               [tensor_map["c_l0c"]])
         tensor_map["bias_bt"] = sch.cache_read(tensor_map["bias_l1"],
                                                "local.BT",
-                                               [all_tensor["tensor_c_matrix"]])
+                                               [tensor_map["c_l0c"]])
 
-    al1 = all_tensor.get("tensor_a_matrix").op.input_tensors[0]
-    bl1 = all_tensor.get("tensor_b_matrix").op.input_tensors[0]
+    al1 = tensor_map["a_l0a"].op.input_tensors[0]
+    bl1 = tensor_map["b_l0b"].op.input_tensors[0]
     if not al1.op.input_tensors:
-        tensor_map["a_l1"] = sch.cache_read(al1, tbe_platform_info.scope_cbuf, [all_tensor.get("tensor_a_matrix")])
+        tensor_map["a_l1"] = sch.cache_read(al1, tbe_platform_info.scope_cbuf, [tensor_map["a_l0a"]])
         tensor_map["a_placehold"] = al1
     elif al1.op.tag == "ND_trans_NZ":
         sch[al1].set_scope(tbe_platform_info.scope_cbuf)
@@ -190,17 +154,18 @@ def set_matmul_scope(all_tensor, sch, tensor_map):
         sch[al1_5hd].compute_inline()
 
     if not bl1.op.input_tensors:
-        tensor_map["b_l1"] = sch.cache_read(bl1, tbe_platform_info.scope_cbuf, [all_tensor.get("tensor_b_matrix")])
+        tensor_map["b_l1"] = sch.cache_read(bl1, tbe_platform_info.scope_cbuf, [tensor_map["b_l0b"]])
         tensor_map["b_placehold"] = bl1
     elif bl1.op.tag == "ND_trans_NZ":
         sch[bl1].set_scope(tbe_platform_info.scope_cbuf)
         tensor_map["b_l1"] = bl1
         tensor_map["b_placehold"] = bl1.op.input_tensors[0]
 
-    return tensor_map
+    if tensor_map["fixpipe_matmul"] is not None:
+        sch[tensor_map["fixpipe_matmul"]].compute_inline()
 
 
-def set_out_scope(all_tensor, leaf_tensor, sch, tensor_map, res_list):
+def set_out_scope(all_tensor, leaf_tensor, sch, tensor_map):
     """
     set scope for matmul
     :param all_tensor: all output tensor of matmul which before setscope
@@ -209,51 +174,39 @@ def set_out_scope(all_tensor, leaf_tensor, sch, tensor_map, res_list):
     :param tensor_map: output tensor of matmul which after setscope
     :return: dict
     """
-    res = all_tensor.get("res")
-    tensor_map["c_gm"] = res
-    # get out_list except virtual res in multi_out_scene
-    tensor_map = _get_out_list(res_list, tensor_map)
+    res =  tensor_map["c_gm"]
+    if tensor_map.get("multi_output_list") is not None:
+        res = tensor_map["multi_output_list"][-1]
     if res.op.tag != "gemm":
         if res.op.tag not in ("fixpipe_reform", "dequant_NZ", "requant_NZ", "NZ_trans_ND"):
-            tensor_map = set_matmul_ub_scope(res, all_tensor, leaf_tensor, sch, tensor_map)
+            set_matmul_ub_scope(res, all_tensor, leaf_tensor, sch, tensor_map)
         else:
-            tensor_map = set_matmul_fixpipe_scope(res, sch, tensor_map)
-    tensor_c_gm = all_tensor.get("tensor_c_gm")
-    if tensor_c_gm is not None:
-        if tensor_c_gm.op.input_tensors[0].op.tag == "fixpipe":
-            fixpipe_interim = tensor_c_gm.op.input_tensors[0]
-            sch[fixpipe_interim].compute_inline()
-
-    return tensor_map
+            set_matmul_fixpipe_scope(res, sch, tensor_map)
 
 
-def _handle_fixpipe_tensor(sch, fixpipe_tensor, tensor_map, fixpipe_fb_dict, fixpipe_l1_list):
+def _handle_fixpipe_tensor(sch, fixpipe_tensor, tensor_map):
     """
     handle l1 and fb scope in fixpipe tensor
     """
-    vector_params = fixpipe_tensor.op.attrs["vector_params"]
-    vector_tensors = fixpipe_tensor.op.attrs["vector_tensors"]
-    for idx, params_mem in enumerate(vector_params):
-        fixpipe_input = vector_tensors[idx]
-        fixpipe_scope_name = FIXPIPE_SCOPE_MAP.get(params_mem.value)
+    fixpipe_fb_list = []
+    fixpipe_l1_list = []
+    for idx, params_mem in enumerate(tensor_map["fixpipe_input_name"]):
+        fixpipe_input = tensor_map["fixpipe_input_tensor"][idx]
+        fixpipe_scope_name = FIXPIPE_SCOPE_MAP.get(get_value(params_mem))
         if fixpipe_scope_name:
             fixpipe_input_l1 = sch.cache_read(fixpipe_input, tbe_platform_info.scope_cbuf, [fixpipe_tensor])
-            fixpipe_fb_dict[fixpipe_scope_name] = sch.cache_read(
-                fixpipe_input_l1, fixpipe_scope_name, [fixpipe_tensor])
+            fixpipe_fb_list.append(sch.cache_read(fixpipe_input_l1, fixpipe_scope_name, [fixpipe_tensor]))
             fixpipe_l1_list.append(fixpipe_input_l1)
         else:
-            # elewise input
             # if elewise input is 5HD, trans to Nz on L1, else cache_read directly
-            if "format" in fixpipe_input.op.attrs and fixpipe_input.op.attrs["format"] == "NC1HWC0":
-                for input_tensor in fixpipe_tensor.op.input_tensors:
-                    if input_tensor.op.name == "elewise_l1":
-                        fixpipe_input_l1 = input_tensor
-                        sch[fixpipe_input_l1].set_scope(tbe_platform_info.scope_cbuf)
+            if tensor_map.get("fixpipe_trans_eltwise") is not None:
+                fixpipe_input_l1 = tensor_map["fixpipe_trans_eltwise"]
+                sch[fixpipe_input_l1].set_scope(tbe_platform_info.scope_cbuf)
             else:
                 fixpipe_input_l1 = sch.cache_read(fixpipe_input, tbe_platform_info.scope_cbuf, [fixpipe_tensor])
             tensor_map["fixpipe_l1_eltwise"] = fixpipe_input_l1
-
-    return tensor_map, fixpipe_fb_dict, fixpipe_l1_list
+    tensor_map["fixpipe_fb"] = fixpipe_fb_list
+    tensor_map["fixpipe_l1"] = fixpipe_l1_list
 
 
 def set_matmul_fixpipe_scope(res, sch, tensor_map):
@@ -265,23 +218,11 @@ def set_matmul_fixpipe_scope(res, sch, tensor_map):
     :return: dict
     """
     fixpipe_input_tensor = res.op.input_tensors[0]
-    fixpipe_fb_dict = {}
-    fixpipe_l1_list = []
     while fixpipe_input_tensor.op.name != "tensor_c_matrix":
-        if fixpipe_input_tensor.op.tag in ("dequant_vector", "requant_vector"):
-            deq_input = fixpipe_input_tensor.op.input_tensors[1]
-            deq_l1 = sch.cache_read(deq_input, tbe_platform_info.scope_cbuf, [fixpipe_input_tensor])
-            fixpipe_fb_dict["local.FB0"] = sch.cache_read(deq_l1, "local.FB0", [fixpipe_input_tensor])
-            fixpipe_l1_list.append(deq_l1)
-        if fixpipe_input_tensor.op.tag == "fixpipe":
-            tensor_map, fixpipe_fb_dict, fixpipe_l1_list = _handle_fixpipe_tensor(
-                sch, fixpipe_input_tensor, tensor_map, fixpipe_fb_dict, fixpipe_l1_list)
+        if fixpipe_input_tensor.op.tag in ("dequant_vector", "requant_vector", "fixpipe"):
+            _handle_fixpipe_tensor(sch, fixpipe_input_tensor, tensor_map)
         sch[fixpipe_input_tensor].compute_inline()
         fixpipe_input_tensor = fixpipe_input_tensor.op.input_tensors[0]
-    tensor_map["fixpipe_fb"] = fixpipe_fb_dict
-    tensor_map["fixpipe_l1"] = fixpipe_l1_list
-
-    return tensor_map
 
 
 def _handle_ub_input_tensor(all_tensor, leaf_tensor, sch, tensor_map):
@@ -290,34 +231,13 @@ def _handle_ub_input_tensor(all_tensor, leaf_tensor, sch, tensor_map):
     """
     ub_eltwise_input = []
     for tensor_mem_input, next_tensor_list in leaf_tensor.items():
-        eltwise_input_flag = False
         input_tensor = all_tensor[tensor_mem_input]
         if "broadcast" in input_tensor.op.tag:
             sch[input_tensor].compute_inline()
             continue
-        for next_tensor in next_tensor_list:
-            if "elewise" in next_tensor.op.tag or "broadcast" in next_tensor.op.tag:
-                eltwise_input_flag = True
-                break
-        if eltwise_input_flag:
+        if input_tensor in tensor_map.get("eltwise_input_tensor", []):
             ub_eltwise_input.append(sch.cache_read(input_tensor, tbe_platform_info.scope_ubuf, next_tensor_list))
     tensor_map["ub_eltwise_input"] = ub_eltwise_input
-    return tensor_map
-
-
-def _get_out_list(res_list, tensor_map):
-    """
-    get out_list in multiply outs scene except virtual res
-    """
-    if len(res_list) == 1:
-        tensor_map["out_list"] = []
-    else:
-        out_list = copy.copy(res_list)
-        for tensor in out_list:
-            if "virtual_res" in tensor.op.tag:
-                out_list.remove(tensor)
-        tensor_map["out_list"] = out_list
-    return tensor_map
 
 
 def set_matmul_ub_scope(res, all_tensor, leaf_tensor, sch, tensor_map):
@@ -331,17 +251,16 @@ def set_matmul_ub_scope(res, all_tensor, leaf_tensor, sch, tensor_map):
     """
     ub_eltwise = []
     fixpipe_out_tensor = all_tensor.get("tensor_c_gm")
-    phony_insn_list = []
     cache_read_list = []
 
     # handle the input ub tensor
-    tensor_map = _handle_ub_input_tensor(all_tensor, leaf_tensor, sch, tensor_map)
+    _handle_ub_input_tensor(all_tensor, leaf_tensor, sch, tensor_map)
 
-    for tensor_mem in set(all_tensor.values()):
+    for tensor_mem in all_tensor.values():
         # the tensor is used to calculation and output in multi outputs scene
         if "elewise" in tensor_mem.op.tag:
-            if tensor_mem == res or tensor_mem in tensor_map.get("out_list"):
-                # hanle the last eltwise tensor
+            if tensor_mem == res:
+                # handle the last eltwise tensor
                 ub_write_tensor = sch.cache_write(tensor_mem, tbe_platform_info.scope_ubuf)
             else:
                 # the eltwise between fixpipe and last tensor
@@ -350,10 +269,8 @@ def set_matmul_ub_scope(res, all_tensor, leaf_tensor, sch, tensor_map):
             if tensor_mem.op.input_tensors[0].op.tag in ("fixpipe_reform", "dequant_NZ",
                                                          "requant_NZ", "NZ_trans_ND", "gemm"):
                 cache_read_list.append(ub_write_tensor)
-
             ub_eltwise.append(ub_write_tensor)
-        if "virtual_res" in tensor_mem.op.tag:
-            phony_insn_list.append(tensor_mem)
+
         if "broadcast" in tensor_mem.op.tag:
             sch[tensor_mem].compute_inline()
         if tensor_mem.op.tag in ("fixpipe_reform", "dequant_NZ", "requant_NZ", "NZ_trans_ND"):
@@ -367,15 +284,193 @@ def set_matmul_ub_scope(res, all_tensor, leaf_tensor, sch, tensor_map):
         tensor_map["spec_mid_list"] = [fixpipe_out_tensor]
         tensor_map["workspace_to_ub"] = sch.cache_read(fixpipe_out_tensor,
                                                        tbe_platform_info.scope_ubuf, cache_read_list)
-
     tensor_map["fixpipe_out"] = fixpipe_out_tensor
     tensor_map["ub_eltwise"] = ub_eltwise
-    tensor_map["phony_insn_list"] = phony_insn_list
-
-    return tensor_map
 
 
-# hannle tiling
+def _init_tiling_input(tensor_map):
+    """
+    get the a_shape and b_shape, trans_flag
+    """
+    a_l0a, b_l0b = tensor_map["a_l0a"], tensor_map["b_l0b"]
+    l0a_shape = shape_to_list(a_l0a.shape)
+    l0b_shape = shape_to_list(b_l0b.shape)
+    trans_a = a_l0a.op.attrs["transpose_a"] == "true"
+    trans_b = b_l0b.op.attrs["transpose_b"] == "true"
+    if (trans_a == trans_b) and (a_l0a.dtype == "float32" and b_l0b.dtype == "float32"):
+        # for some unaligned cases, shape_a=(2,4), shape_b=(4,16) for example, shape_a_l1 will be aligned as
+        # (1,1,16,8) while shape_b_l1 is (2,1,16,8), the shapes on L0 are (1,1,16,8) and (2, 1, 16, 8), ka != kb
+        l0a_shape[-3] = int_ceil_align(l0a_shape[-3], K_AXIS_ALIGN_FACTOR)
+        l0b_shape[-4] = int_ceil_align(l0b_shape[-4], K_AXIS_ALIGN_FACTOR)
+    # a_shape dim: batch_a, k1, m1, m0, k0
+    a_shape = [1, l0a_shape[-3], l0a_shape[-4], l0a_shape[-2], l0a_shape[-1]]
+    a_shape[0] = l0a_shape[0] if len(l0a_shape) == 5 else 1
+    # b_shape dim: K1*k0, n1, 1, 1, n0
+    b_shape = [l0b_shape[-4] * l0b_shape[-1], l0b_shape[-3], 1, 1, l0b_shape[-2]]
+    return [a_shape, b_shape, trans_a, trans_b]
+
+
+def cal_tiling_info_dict(tensor_map):
+    """
+    cal the info dict for tiling input
+    :param tensor_map: output fixpipe tensor of matmul which after setscope
+    :return: dict
+    """
+    kernel_name = tensor_map.get("c_l0c").op.attrs["kernel_name"]
+    a_shape, b_shape, trans_a, trans_b = _init_tiling_input(tensor_map)
+    trans_flag = 1
+    if trans_a:
+        trans_flag += 1
+    if trans_b:
+        trans_flag += 2
+
+    info_dict = {
+        "op_type": "matmul",
+        "A_shape": a_shape,
+        "B_shape": b_shape,
+        "C_shape": None,
+        "A_dtype": tensor_map["a_l0a"].dtype,
+        "B_dtype": tensor_map["b_l0b"].dtype,
+        "C_dtype": tensor_map["c_gm"].dtype,
+        "mad_dtype": "int32" if tensor_map["a_l0a"].dtype == "int8" else "float32",
+        "padl": 0,
+        "padr": 0,
+        "padu": 0,
+        "padd": 0,
+        "strideH": 1,
+        "strideW": 1,
+        "strideH_expand": get_fixpipe_flag(tensor_map),
+        "strideW_expand": 1,
+        "dilationH": trans_flag,
+        "dilationW": 1,
+        "group": 1,
+        "bias_flag": tensor_map.get("input_bias") is not None,
+        "fused_double_operand_num": get_fused_num(tensor_map),
+        "kernel_name": kernel_name.value
+    }
+    if in_dynamic():
+        info_dict_dynamic = {
+            "op_tag": "matmul",
+            "dynamic_shape_flag": True,
+            "trans_a": trans_a,
+            "trans_b": trans_b
+        }
+        info_dict.update(info_dict_dynamic)
+    return info_dict
+
+
+# handle tiling
+def process_tiling(tiling_cases, tensor_list):
+    """
+    set scope for matmul
+    :param tiling_cases: the tiling of matmul, which is list
+    :param tensor_map: output fixpipe tensor of matmul which after setscope
+    :return: dict
+    """
+    if not tbe_platform_info.intrinsic_check_support("Intrinsic_fix_pipe_l0c2out"):
+        return tiling_cases
+    for tiling_case in tiling_cases:
+        if tensor_list:
+            tiling_case["tensor_list"] = tensor_list
+        tiling = tiling_case["tiling_strategy"]
+        # is binary
+        if "attach_at_flag" in tiling.keys():
+            continue
+        tiling["attach_at_flag"] = dict()
+        al1_attach_flag, bl1_attach_flag, abkl1_attach_flag, abl1_reorder_flag =  _process_l1(tiling, tensor_list[0])
+        tiling["attach_at_flag"]["al1_attach_flag"] = al1_attach_flag
+        tiling["attach_at_flag"]["bl1_attach_flag"] = bl1_attach_flag
+        tiling["attach_at_flag"]["abkl1_attach_flag"] = abkl1_attach_flag
+        tiling["attach_at_flag"]["abl1_reorder_flag"] = abl1_reorder_flag
+
+    return tiling_cases
+
+
+def _process_l1_shape(tiling, tensor_map, para_name="AL1_shape"):
+    """
+    process the l1 shape attach flag
+    """
+    # the n,m shape of input
+    m_dim = shape_to_list(tensor_map["a_l0a"].shape)[-4]
+    n_dim = shape_to_list(tensor_map["b_l0b"].shape)[-3]
+    k_dim = shape_to_list(tensor_map["a_l0a"].shape)[-3]
+
+    if not tiling[para_name]:
+        l1_attach_flag = ATTACH_FULLY_LOAD
+        kl1_fully_load = True
+        l1_parts = 1
+    else:
+        kl1_fully_load = (k_dim == tiling[para_name][0] or tiling[para_name][1] > 1)
+        if para_name == "AL1_shape":
+            l1_parts = int_ceil_div(int_ceil_div(m_dim // tiling["block_dim"][2], tiling["CL0_matrix"][1]),
+                                    tiling[para_name][1])
+        else:
+            l1_parts = int_ceil_div(int_ceil_div(n_dim // tiling["block_dim"][1], tiling["CL0_matrix"][0]),
+                                    tiling[para_name][1])
+        if kl1_fully_load:
+            if l1_parts == 1:
+                l1_attach_flag = ATTACH_FULLY_LOAD
+            elif tiling[para_name][1] == 1:
+                l1_attach_flag = ATTACH_EQUAL
+            else:
+                l1_attach_flag = ATTACH_LARGE
+        else:
+            l1_attach_flag = ATTACH_LESS
+    return l1_attach_flag, kl1_fully_load, l1_parts
+
+
+def _process_l1k_shape(tiling, akl1_fully_load, bkl1_fully_load):
+    """
+    process the l1 shape attach flag
+    """
+    kbl1_large = (not akl1_fully_load and bkl1_fully_load) or \
+                 (not akl1_fully_load and not bkl1_fully_load and tiling["AL1_shape"][0] < tiling["BL1_shape"][0])
+    if akl1_fully_load and bkl1_fully_load:
+        abkl1_attach_flag =  ATTACH_FULLY_LOAD
+    elif kbl1_large:
+        abkl1_attach_flag = KBL1_LARGE
+    else:
+        abkl1_attach_flag = KAL1_LARGE
+    return abkl1_attach_flag
+
+
+def _process_l1(tiling, tensor_map):
+    """
+    process the l1 shape with tiling
+    """
+    al1_attach_flag, akl1_fully_load, al1_parts = _process_l1_shape(tiling, tensor_map, "AL1_shape")
+    bl1_attach_flag, bkl1_fully_load, bl1_parts = _process_l1_shape(tiling, tensor_map, "BL1_shape")
+    abkl1_attach_flag = _process_l1k_shape(tiling, akl1_fully_load, bkl1_fully_load)
+    abl1_reorder_flag = _reorder_l1_mn_axis(tiling, al1_parts, bl1_parts)
+
+    return [al1_attach_flag, bl1_attach_flag, abkl1_attach_flag, abl1_reorder_flag]
+
+
+def _reorder_l1_mn_axis(tiling, al1_m_parts, bl1_n_parts):
+    """
+    decide the m and n aixs order
+    """
+    if in_dynamic():
+        if tiling["AL1_shape"] == []:
+            return True
+        if tiling["BL1_shape"] != [] and tiling["AL1_shape"][1] > tiling["BL1_shape"][1]:
+            return True
+        return False
+
+    if al1_m_parts != 1 and bl1_n_parts != 1:
+        l0a_size = reduce(lambda x, y: x * y, tiling["AL0_matrix"])
+        l0b_size = reduce(lambda x, y: x * y, tiling["BL0_matrix"])
+        l1_size_no_reorder = l0a_size * tiling["AL1_shape"][1] * al1_m_parts * bl1_n_parts \
+                             + l0b_size * tiling["BL1_shape"][1] * bl1_n_parts
+        l1_size_reorder = l0a_size * tiling["AL1_shape"][1] * al1_m_parts + \
+                          l0b_size * tiling["BL1_shape"][1] * bl1_n_parts * al1_m_parts
+        if l1_size_no_reorder > l1_size_reorder:
+            return True
+    if al1_m_parts == 1 and bl1_n_parts != 1:
+        return True
+    return False
+
+
 def get_fixpipe_flag(tensor_map):
     """
     code the fixpipe
@@ -383,9 +478,10 @@ def get_fixpipe_flag(tensor_map):
     :return: int, the flag of fixpipe
     """
     fixpipe_flag = 1
-    for fixpipe_scope in tensor_map.get("fixpipe_fb", {}).keys():
-        fixpipe_flag += int(math.pow(2, int(fixpipe_scope[-1])))
-
+    for fixpipe_input in tensor_map.get("fixpipe_input_name", []):
+        fixpipe_scope = FIXPIPE_SCOPE_MAP.get(fixpipe_input)
+        if fixpipe_scope is not None:
+            fixpipe_flag += int(math.pow(2, int(fixpipe_scope[-1])))
     return fixpipe_flag
 
 
@@ -398,13 +494,13 @@ def get_fused_num(tensor_map):
     fuse_num = 0
     res_data_size = DATA_SIZE.get(tensor_map["c_gm"].dtype, 1)
     ub_data_size = res_data_size
-    if tensor_map.get("ub_eltwise"):
+    if tensor_map.get("eltwise_tensor"):
         fuse_num += 1
-        for ub_eltwise_mem in tensor_map["ub_eltwise"]:
+        for ub_eltwise_mem in tensor_map["eltwise_tensor"]:
             ub_data_size = max(ub_data_size, DATA_SIZE.get(ub_eltwise_mem, 1))
-    if tensor_map.get("ub_eltwise_input"):
+    if tensor_map.get("eltwise_input_tensor"):
         fuse_num += 1
-        for ub_eltwise_input_mem in tensor_map["ub_eltwise_input"]:
+        for ub_eltwise_input_mem in tensor_map["eltwise_input_tensor"]:
             ub_data_size = max(ub_data_size, DATA_SIZE.get(ub_eltwise_input_mem, 1))
     fuse_num *= int_ceil_div(ub_data_size, res_data_size)
 
@@ -418,10 +514,12 @@ def check_tiling_l1(tiling, tensor_map):
     :param tensor_map: the tensor of matmul
     :return: None
     """
-    al1_shape = shape_to_list(tensor_map["a_l1"].shape)
-    bl1_shape = shape_to_list(tensor_map["b_l1"].shape)
-    al1_dtype = tensor_map["a_l1"].dtype
-    bl1_dtype = tensor_map["b_l1"].dtype
+    al1_tensor = tensor_map["a_l0a"].op.input_tensors[0]
+    bl1_tensor = tensor_map["b_l0b"].op.input_tensors[0]
+    al1_shape = shape_to_list(al1_tensor.shape)
+    bl1_shape = shape_to_list(bl1_tensor.shape)
+    al1_dtype = al1_tensor.dtype
+    bl1_dtype = bl1_tensor.dtype
 
     if tiling["AL1_shape"] == []:
         al1_size = reduce(lambda x, y: x * y, al1_shape[-4:]) // tiling["block_dim"][2]
@@ -549,21 +647,17 @@ def get_aicore_factor(tiling, tensor_map):
         l0c_tiling_factor[0] *= MULTI_FACTOR_BY_DTYPE
 
     # patrs for GM to AL1, AL1_shape = [(batch), n/16, k/16, 16, 16]
-    if tiling["AL1_shape"]:
-        al1_parts = [
-            tiling["AL1_shape"][0] // block_reduce // tiling["AL0_matrix"][1],
-            int_ceil_div(l0c_parts[1], tiling["AL1_shape"][1])
-        ]
-    else:
-        al1_parts = [None, 1]
+    al1_parts = [None, 1]
+    if tiling["attach_at_flag"]["al1_attach_flag"] == ATTACH_LESS:
+        al1_parts[0] = tiling["AL1_shape"][0] // block_reduce // tiling["AL0_matrix"][1]
+    if tiling["attach_at_flag"]["al1_attach_flag"] != ATTACH_FULLY_LOAD:
+        al1_parts[1] = int_ceil_div(l0c_parts[1], tiling["AL1_shape"][1])
 
-    if tiling["BL1_shape"]:
-        bl1_parts = [
-            tiling["BL1_shape"][0] // block_reduce // tiling["AL0_matrix"][1],
-            int_ceil_div(l0c_parts[0], tiling["BL1_shape"][1])
-        ]
-    else:
-        bl1_parts = [None, 1]
+    bl1_parts = [None, 1]
+    if tiling["attach_at_flag"]["bl1_attach_flag"] == ATTACH_LESS:
+        bl1_parts[0] = tiling["BL1_shape"][0] // block_reduce // tiling["AL0_matrix"][1]
+    if tiling["attach_at_flag"]["bl1_attach_flag"] != ATTACH_FULLY_LOAD:
+        bl1_parts[1] = int_ceil_div(l0c_parts[0], tiling["BL1_shape"][1])
 
     return l0c_tiling_factor, l0c_ub_parts, al1_parts, bl1_parts
 
@@ -657,74 +751,49 @@ def split_ub(c_gm, sch, l1_m_axis, l1_n_axis, ub_split):
     return c_gm_emit_axis + [fixpipe_attach_axis]
 
 
-def split_k(c_l0c, sch, l0c_k_factor, l1a_k_part, l1b_k_part):
+def split_k(c_l0c, sch, l0c_k_factor, l1_k_part, tiling):
     """
     split k dim
     :param c_l0c: the l0c tensor
     :param sch: schedule
     :param l0c_k_factor: the k factor in mmad cal
-    :param l1a_k_part: the k parts from L1A to L0c
-    :param l1b_k_part: the k parts from L1B to L0c
+    :param l1a_k_part: the k parts from L1 to L0C
+    :param tiling: tiling after process
     :return: [al1_k, bl1_k, l0k]
     """
     l0c_axis = sch[c_l0c].op.axis
     k_outer_outer, k_outer_inner = sch[c_l0c].split(sch[c_l0c].op.reduce_axis[0], l0c_k_factor)
     sch[c_l0c].reorder(k_outer_outer, *l0c_axis, k_outer_inner, sch[c_l0c].op.reduce_axis[1])
-
-    if l1a_k_part is not None and l1b_k_part is not None:
-        l1_parts_inner = min(l1a_k_part, l1b_k_part)
-        l1_parts_outer = max(l1a_k_part, l1b_k_part) // l1_parts_inner
-        k_outer_outer_outer, k_outer_outer_inner = sch[c_l0c].split(k_outer_outer, l1_parts_inner)
-        k_outer_outer_outer_outer, k_outer_outer_outer_inner = sch[c_l0c].split(k_outer_outer_outer, l1_parts_outer)
-    elif l1a_k_part is None and l1b_k_part is None:
-        k_outer_outer_outer, k_outer_outer_inner = sch[c_l0c].split(k_outer_outer, nparts=1)
-        k_outer_outer_outer_outer, k_outer_outer_outer_inner = sch[c_l0c].split(k_outer_outer_outer, nparts=1)
+    l1a_k_part, l1b_k_part = l1_k_part
+    if tiling["attach_at_flag"]["abkl1_attach_flag"] == KBL1_LARGE:
+        k_outer_outer_outer, k_outer_outer_inner = sch[c_l0c].split(k_outer_outer, l1a_k_part)
+        if l1b_k_part is None:
+            k_outer_outer_outer_outer, k_outer_outer_outer_inner = sch[c_l0c].split(k_outer_outer_outer, nparts=1)
+        else:
+            k_outer_outer_outer_outer, k_outer_outer_outer_inner = sch[c_l0c].split(
+                k_outer_outer_outer, l1b_k_part//l1a_k_part)
+        return [k_outer_outer_outer_inner, k_outer_outer_outer_outer, k_outer_outer_inner]
     else:
-        l1_parts_inner = l1a_k_part if l1a_k_part is not None else l1b_k_part
-        k_outer_outer_outer, k_outer_outer_inner = sch[c_l0c].split(k_outer_outer, l1_parts_inner)
-        k_outer_outer_outer_outer, k_outer_outer_outer_inner = sch[c_l0c].split(k_outer_outer_outer, nparts=1)
-
-    if l1a_k_part is None or (l1b_k_part is not None and l1a_k_part > l1b_k_part):
+        if tiling["attach_at_flag"]["abkl1_attach_flag"] == ATTACH_FULLY_LOAD:
+            k_outer_outer_outer, k_outer_outer_inner = sch[c_l0c].split(k_outer_outer, nparts=1)
+            k_outer_outer_outer_outer, k_outer_outer_outer_inner = sch[c_l0c].split(k_outer_outer_outer, nparts=1)
+        else:
+            k_outer_outer_outer, k_outer_outer_inner = sch[c_l0c].split(k_outer_outer, l1b_k_part)
+            if l1a_k_part is None:
+                k_outer_outer_outer_outer, k_outer_outer_outer_inner = sch[c_l0c].split(k_outer_outer_outer, nparts=1)
+            else:
+                k_outer_outer_outer_outer, k_outer_outer_outer_inner = sch[c_l0c].split(
+                    k_outer_outer_outer, l1a_k_part//l1b_k_part)
         return [k_outer_outer_outer_outer, k_outer_outer_outer_inner, k_outer_outer_inner]
-    return [k_outer_outer_outer_inner, k_outer_outer_outer_outer, k_outer_outer_inner]
-
-
-def reorder_l1_mn_axis(tiling, al1_m_parts, bl1_n_parts):
-    """
-    reorder axis of l1
-    :param tiling: the dict of tiling
-    :param al1_parts: tilling parts for al1
-    :param bl1_parts: tilling parts for bl1
-    :return: None
-    """
-    if in_dynamic():
-        if tiling["AL1_shape"] == []:
-            return True
-        if tiling["BL1_shape"] != [] and tiling["AL1_shape"][1] > tiling["BL1_shape"][1]:
-            return True
-        return False
-
-    if al1_m_parts != 1 and bl1_n_parts != 1:
-        l0a_size = reduce(lambda x, y: x * y, tiling["AL0_matrix"])
-        l0b_size = reduce(lambda x, y: x * y, tiling["BL0_matrix"])
-        l1_size_no_reorder = l0a_size * tiling["AL1_shape"][1] * al1_m_parts * bl1_n_parts \
-                             + l0b_size * tiling["BL1_shape"][1] * bl1_n_parts
-        l1_size_reorder = l0a_size * tiling["AL1_shape"][1] * al1_m_parts + \
-                          l0b_size * tiling["BL1_shape"][1] * bl1_n_parts * al1_m_parts
-        if l1_size_no_reorder > l1_size_reorder:
-            return True
-    if al1_m_parts == 1 and bl1_n_parts != 1:
-        return True
-    return False
 
 
 # compute at of matmul
-def attach_of_bias_table(sch, tensor_map, bl1_parts, c_slice_axis, fully_load_axis):
+def attach_of_bias_table(sch, tensor_map, tiling, c_slice_axis, fully_load_axis):
     """
     attach tensor of bias
     :param sch: schedule
     :param tensor_map: tensor of matmul
-    :param bl1_parts: tilling parts for bl1
+    :param tiling: tilling after_process
     :param c_slice_axis: l0c load axis tensor for tesor
     :param fully_load_axis: fully load axis for tensor
     :return: None
@@ -733,24 +802,24 @@ def attach_of_bias_table(sch, tensor_map, bl1_parts, c_slice_axis, fully_load_ax
         bias_l1 = tensor_map["bias_l1"]
         bias_bt = tensor_map["bias_bt"]
         sch[bias_bt].compute_at(sch[tensor_map["c_gm"]], c_slice_axis)
-        if bl1_parts[1] == 1:
+        if tiling["attach_at_flag"]["bl1_attach_flag"] == ATTACH_FULLY_LOAD:
             sch[bias_l1].compute_at(sch[tensor_map["c_gm"]], fully_load_axis)
         else:
             sch[bias_l1].compute_at(sch[tensor_map["c_gm"]], c_slice_axis)
 
 
-def attach_of_fixpipe(sch, tensor_map, bl1_parts, fixpipe_axis, fully_load_axis):
+def attach_of_fixpipe(sch, tensor_map, tiling, fixpipe_axis, fully_load_axis):
     """
     attach tensor of fixpipe
     :param sch: schedule
     :param tensor_map: tensor of matmul
-    :param bl1_parts: tilling parts for bl1
+    :param tiling: tilling after process
     :param fixpipe_axis: out load axis tensor for fixpipe tenspr
     :param fully_load_axis: fully load axis for tensor
     :return: None
     """
     for fixpipe_l1_mem in tensor_map.get("fixpipe_l1", []):
-        if bl1_parts[1] == 1:
+        if tiling["attach_at_flag"]["bl1_attach_flag"] == ATTACH_FULLY_LOAD:
             sch[fixpipe_l1_mem].compute_at(sch[tensor_map["c_gm"]], fully_load_axis)
         else:
             sch[fixpipe_l1_mem].compute_at(sch[tensor_map["c_gm"]], fixpipe_axis)
@@ -758,7 +827,7 @@ def attach_of_fixpipe(sch, tensor_map, bl1_parts, fixpipe_axis, fully_load_axis)
     if tensor_map.get("fixpipe_l1_eltwise") is not None:
         sch[tensor_map["fixpipe_l1_eltwise"]].compute_at(sch[tensor_map["c_gm"]], fixpipe_axis)
 
-    for fixpipe_fb_mem in tensor_map.get("fixpipe_fb", {}).values():
+    for fixpipe_fb_mem in tensor_map.get("fixpipe_fb", []):
         sch[fixpipe_fb_mem].compute_at(sch[tensor_map["c_gm"]], fixpipe_axis)
 
 
@@ -770,28 +839,23 @@ def attach_of_ub(sch, tensor_map, ub_axis):
     :param ub_axis: out load axis tensor for ub tenspr
     :return: None
     """
-    for ub_eltwise_mem in tensor_map.get("ub_eltwise", []):
-        sch[ub_eltwise_mem].compute_at(sch[tensor_map["c_gm"]], ub_axis)
-    for ddr_same_attach_ub in tensor_map.get("out_list", []):
-        sch[ddr_same_attach_ub].compute_at(sch[tensor_map["c_gm"]], ub_axis)
-    for ub_eltwise_input_mem in tensor_map.get("ub_eltwise_input", []):
-        sch[ub_eltwise_input_mem].compute_at(sch[tensor_map["c_gm"]], ub_axis)
+    ub_tensor_list =  tensor_map.get("ub_eltwise", []) + tensor_map.get("multi_output_list", []) + \
+                      tensor_map.get("ub_eltwise_input", [])
     if tensor_map.get("fixpipe_out") is not None:
-        fixpipe_out = tensor_map["fixpipe_out"]
-        sch[fixpipe_out].compute_at(sch[tensor_map["c_gm"]], ub_axis)
+        ub_tensor_list.append(tensor_map["fixpipe_out"])
     if tensor_map.get("workspace_to_ub") is not None:
-        workspace_to_ub = tensor_map.get("workspace_to_ub")
-        sch[workspace_to_ub].compute_at(sch[tensor_map["c_gm"]], ub_axis)
+        ub_tensor_list.append(tensor_map["workspace_to_ub"])
+    for ub_tensor_mem in ub_tensor_list:
+        sch[ub_tensor_mem].compute_at(sch[tensor_map["c_gm"]], ub_axis)
 
 
-def attach_of_l1_l0(sch, tensor_map, l1_attch_axis, al1_parts, bl1_parts):
+def attach_of_l1_l0(sch, tensor_map, l1_attch_axis, tiling):
     """
     attach tensor of l1a,l1b, l0a, l0b
     :param sch: schedule
     :param tensor_map: tensor of matmul
     :param l1_attch_axis: l1a_k_axis, l1b_k_axis, l0_k_aixs, l1a_m_axis, l1b_n_axis
-    :param al1_parts: tilling parts for al1
-    :param bl1_parts: tilling parts for bl1
+    :param tiling: the tiling after process
     :return: None
     """
     a_l1, b_l1 = tensor_map.get("a_l1"), tensor_map.get("b_l1")
@@ -799,11 +863,11 @@ def attach_of_l1_l0(sch, tensor_map, l1_attch_axis, al1_parts, bl1_parts):
     c_gm = tensor_map.get("c_gm")
     sch[a_l0].compute_at(sch[c_l0c], l1_attch_axis[2])
     sch[b_l0].compute_at(sch[c_l0c], l1_attch_axis[2])
-    if al1_parts[0] is None:
+    if tiling["attach_at_flag"]["al1_attach_flag"] != ATTACH_LESS:
         sch[a_l1].compute_at(sch[c_gm], l1_attch_axis[3])
     else:
         sch[a_l1].compute_at(sch[c_l0c], l1_attch_axis[0])
-    if bl1_parts[0] is None:
+    if tiling["attach_at_flag"]["bl1_attach_flag"] != ATTACH_LESS:
         sch[b_l1].compute_at(sch[c_gm], l1_attch_axis[4])
     else:
         sch[b_l1].compute_at(sch[c_l0c], l1_attch_axis[1])
@@ -828,30 +892,25 @@ def double_buffer_func(sch, tensor_map, tiling):
     if double_buffer_flag["BL0_pbuffer"] == 2:
         sch[tensor_map["b_l0b"]].double_buffer()
     if double_buffer_flag["CL0_pbuffer"] == 2:
-        sch[tensor_map["c_l0c"]].double_buffer()
-        double_buffer_fp_and_bt(sch, tensor_map)
+        double_buffer_l0c(sch, tensor_map)
     if double_buffer_flag["CUB_pbuffer"] == 2:
         double_buffer_ub(sch, tensor_map)
 
 
-def double_buffer_fp_and_bt(sch, tensor_map):
+def double_buffer_l0c(sch, tensor_map):
     """
     double buffer for bias table and fixpipe
     :param sch: schedule
     :param tensor_map: tensor of matmul
     :return: None
     """
-    if tensor_map.get("bias_l1") is not None:
-        bias_l1 = tensor_map["bias_l1"]
-        bias_bt = tensor_map["bias_bt"]
-        sch[bias_l1].double_buffer()
-        sch[bias_bt].double_buffer()
-    for fixpipe_l1_mem in tensor_map.get("fixpipe_l1", []):
-        sch[fixpipe_l1_mem].double_buffer()
+    db_l0c_list = tensor_map.get("fixpipe_l1", []) + tensor_map.get("fixpipe_fb", []) + [tensor_map["c_l0c"]]
+    if tensor_map.get("input_bias") is not None:
+        db_l0c_list += [tensor_map["bias_l1"], tensor_map["bias_bt"]]
     if tensor_map.get("fixpipe_l1_eltwise") is not None:
-        sch[tensor_map["fixpipe_l1_eltwise"]].double_buffer()
-    for fixpipe_fb_mem in tensor_map.get("fixpipe_fb", {}).values():
-        sch[fixpipe_fb_mem].double_buffer()
+        db_l0c_list.append(tensor_map["fixpipe_l1_eltwise"])
+    for db_l0c_mem in db_l0c_list:
+        sch[db_l0c_mem].double_buffer()
 
 
 def double_buffer_ub(sch, tensor_map):
@@ -861,16 +920,13 @@ def double_buffer_ub(sch, tensor_map):
     :param tensor_map: tensor of matmul
     :return: None
     """
-    for ub_eltwise_mem in tensor_map.get("ub_eltwise", []):
-        sch[ub_eltwise_mem].double_buffer()
-    for ub_eltwise_input_mem in tensor_map.get("ub_eltwise_input", []):
-        sch[ub_eltwise_input_mem].double_buffer()
+    ub_tensor_list = tensor_map.get("ub_eltwise", []) + tensor_map.get("ub_eltwise_input", [])
     if tensor_map.get("fixpipe_out") is not None and check_support_fixpipe_l0c2ub():
-        fixpipe_out = tensor_map["fixpipe_out"]
-        sch[fixpipe_out].double_buffer()
+        ub_tensor_list.append(tensor_map["fixpipe_out"])
     if tensor_map.get("workspace_to_ub") is not None:
-        workspace_to_ub = tensor_map.get("workspace_to_ub")
-        sch[workspace_to_ub].double_buffer()
+        ub_tensor_list.append(tensor_map["workspace_to_ub"])
+    for ub_tensor_mem in ub_tensor_list:
+        sch[ub_tensor_mem].double_buffer()
 
 
 # emit func of matmul
@@ -932,7 +988,10 @@ def emit_c_gm(sch, tensor_map, c_gm_emit_axis):
     fixpipe_out = tensor_map.get("fixpipe_out")
     if fixpipe_out is not None:
         emit_fixpipe_from_l0c(sch, fixpipe_out, True, fixpipe_out.op.axis, tensor_map)
-        if c_gm in tensor_map.get("phony_insn_list", []):
+        if tensor_map.get("multi_output_list"):
+            for tensor in tensor_map["multi_output_list"]:
+                emit_str = "fixpie_op" if tensor.op.tag == "gemm" else "dma_copy"
+                sch[tensor].emit_insn(tensor.op.axis[0], emit_str)
             sch[c_gm].emit_insn(c_gm_emit_axis[0], "phony_insn")
         else:
             sch[c_gm].emit_insn(c_gm_emit_axis[0], "dma_copy")
@@ -941,11 +1000,6 @@ def emit_c_gm(sch, tensor_map, c_gm_emit_axis):
     if tensor_map.get("workspace_to_ub") is not None:
         workspace_to_ub = tensor_map.get("workspace_to_ub")
         sch[workspace_to_ub].emit_insn(workspace_to_ub.op.axis[0], "dma_copy")
-    # emit_insn for multi_out scene and tensor are both out and inout of virtual res
-    out_list = tensor_map.get("out_list", [])
-    for tensor in out_list:
-        emit_str = "fixpipe_op" if tensor.op.tag == "gemm" else "dma_copy"
-        sch[tensor].emit_insn(tensor.op.axis[0], emit_str)
 
 
 def _check_nd2nz_tag(tensor_l1):
@@ -1009,19 +1063,19 @@ def emit_insn_l1_and_l0(sch, tensor_map, k_axis):
     _emit_insn_l1(sch, tensor_map)
 
     a_l0a = tensor_map["a_l0a"]
-    if a_l0a.dtype == "int8" and a_l0a.op.attrs["transpose_a"] == "false":
+    if a_l0a.dtype == "int8" and a_l0a.op.attrs["transpose_a"] == "true":
         _, a_l0a_inner = sch[a_l0a].split(a_l0a.op.axis[-4], 2) # split m1 axis
         sch[a_l0a].emit_insn(a_l0a_inner, "dma_copy")
-    elif a_l0a.dtype == "float32" and a_l0a.op.attrs["transpose_a"] == "false":
+    elif a_l0a.dtype == "float32" and a_l0a.op.attrs["transpose_a"] == "true":
         sch[a_l0a].split(a_l0a.op.axis[-2], factor=8)
         sch[a_l0a].emit_insn(a_l0a.op.axis[0], "dma_copy", {'img2col': 1})
     else:
         sch[a_l0a].emit_insn(a_l0a.op.axis[0], "dma_copy")
     b_l0b = tensor_map["b_l0b"]
-    if b_l0b.dtype == "int8" and b_l0b.op.attrs["transpose_b"] == "true" :
+    if b_l0b.dtype == "int8" and b_l0b.op.attrs["transpose_b"] == "false" :
         _, b_l0b_inner = sch[b_l0b].split(b_l0b.op.axis[-3], 2) # split n1 axis
         sch[b_l0b].emit_insn(b_l0b_inner, "dma_copy")
-    elif b_l0b.dtype == "float32" and b_l0b.op.attrs["transpose_b"] == "true":
+    elif b_l0b.dtype == "float32" and b_l0b.op.attrs["transpose_b"] == "false":
         sch[b_l0b].split(b_l0b.op.axis[-2], factor=8)
         sch[b_l0b].emit_insn(b_l0b.op.axis[0], "dma_copy", {'img2col': 1})
     else:
@@ -1053,7 +1107,7 @@ def emit_insn_fp_and_bt(sch, tensor_map):
     if tensor_map.get("fixpipe_l1_eltwise") is not None:
         fixpipe_l1_eltwise = tensor_map["fixpipe_l1_eltwise"]
         sch[fixpipe_l1_eltwise].emit_insn(fixpipe_l1_eltwise.op.axis[0], "dma_copy")
-    for fixpipe_fb_mem in tensor_map.get("fixpipe_fb", {}).values():
+    for fixpipe_fb_mem in tensor_map.get("fixpipe_fb", []):
         sch[fixpipe_fb_mem].emit_insn(fixpipe_fb_mem.op.axis[0], "dma_copy")
 
 
@@ -1077,18 +1131,18 @@ def emit_insn_ub(sch, tensor_map):
         sch[ub_eltwise_input_mem].emit_insn(ub_eltwise_input_mem.op.axis[0], "dma_copy")
 
 
-def do_buffer_align(sch, tensor_map, trans_a, trans_b):
+def do_buffer_align(sch, tensor_map):
     """
     do buffer align,
     m1 and n1 should be aligned to even number to do load2d_transpose when dtype is int8
     :param sch: schedule
     :param tensor_map: tensor of matmul
-    :param trans_a: bool
-    :param trans_b: bool
     """
     a_l0a, b_l0b, c_l0c = tensor_map.get("a_l0a"), tensor_map.get("b_l0b"), tensor_map.get("c_l0c")
-    m_align = (1, 2) if not trans_a and a_l0a.dtype == "int8" else (1, 1)
-    n_align = (1, 2) if trans_b and b_l0b.dtype == "int8" else (1, 1)
+    trans_a = a_l0a.op.attrs["transpose_a"] == "true"
+    trans_b = b_l0b.op.attrs["transpose_b"] == "true"
+    m_align = (1, 2) if trans_a and a_l0a.dtype == "int8" else (1, 1)
+    n_align = (1, 2) if not trans_b and b_l0b.dtype == "int8" else (1, 1)
     batch_length = len(c_l0c.shape) - MATMUL_LEN_NZ
     sch[c_l0c].buffer_align(
         *([(1, 1)] * batch_length),

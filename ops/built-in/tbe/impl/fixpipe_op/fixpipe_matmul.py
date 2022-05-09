@@ -161,7 +161,6 @@ class FixpipeMatmul(FixpipeBase):
                    indice[-4] % x2_w,
                    indice[-1])
                 ),
-            name="elewise_l1",
-            tag="elewise_l1"
+            name="fixpipe_trans_eltwise"
         )
         return self._x2_reform_generate_func_default(x2_l1, input_shape)

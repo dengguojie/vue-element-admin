@@ -84,6 +84,7 @@ class ConvSchedule:
         self._schedule.tiling_key = self._tiling_case['key']
         self._tiling_strategy = self._tiling_case['tiling_strategy']
         self._m_k_n_shape = self._tiling_case.get('m_k_n_shape')
+        self._tensor_list = self._tiling_case.get('tensor_list')
 
     def do_conv2d_schedule(self):
         """
@@ -155,7 +156,8 @@ class ConvSchedule:
         gemm_schedule(self._outs[0], sch_list,
                       {"tiling_strategy": self._tiling_strategy,
                        "m_k_n_shape": self._m_k_n_shape,
-                       "var_range": self._var_range})
+                       "var_range": self._var_range,
+                       "tensor_list": self._tensor_list})
         real_res = [self._outs[0]]
         if len(sch_list) > 1:
             real_res = sch_list[1:]

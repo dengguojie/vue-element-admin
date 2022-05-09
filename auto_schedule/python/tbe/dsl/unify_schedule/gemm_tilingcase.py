@@ -25,20 +25,20 @@ import itertools
 from functools import reduce
 from itertools import product
 
-from tbe.common.platform import intrinsic_check_support
 from tbe.common.platform import platform_info as tbe_platform_info
 from tbe.common.tiling.get_tiling import get_tiling
 from tbe.common.context import op_context
 from tbe.common import platform as tbe_platform
 from tbe.common.utils.errormgr import error_manager_cube
-
-from tbe.dsl.compute.matmul_compute import MatMulComputeParam as GEMMComputeParam1
-from tbe.dsl.compute.gemm_integrated_compute import GEMMComputeParam as GEMMComputeParam2
+from tbe.dsl.base.operation import in_dynamic
+from tbe.dsl.compute.gemm_integrated_compute import GEMMComputeParam
 from tbe.dsl.compute.util import int_ceil_div
 from tbe.dsl.base.operation import add_compile_info
 from tbe.dsl.base.operation import get_te_var
 from tbe.dsl.base.operation import register_tiling_case
 from tbe.dsl.base.operation import get_context
+from tbe.dsl.static_schedule import gemm_schedule_util
+from tbe.dsl.unify_schedule import util as schedule_util
 
 from .cube_tilingcase import CubeTilingOp
 from .cube_tilingcase import MAX_RANGE
@@ -47,7 +47,6 @@ from .cube_tilingcase import TilingUtils as utils
 from .constants import Pattern
 
 
-GEMMComputeParam = GEMMComputeParam2
 K_LEN = 2
 M_LEN = 2
 N_LEN = 2
@@ -65,6 +64,7 @@ ALIGNED_TILING_ID_OFFSET = 10000
 SHAPE_BMKN_LEN = 4
 BANK_THRESHOLD = 64
 BANK_GAP = 16
+BATCH_NZ_LENTH = 5
 
 
 def _get_bit(input_dtype):
@@ -476,6 +476,45 @@ def _calc_tiling_case_with_support_info(missing_support_info_list, mode, tiling_
     return tiling_case
 
 
+def _get_matmul_compute_tensor(outs):
+    """
+    get the matmul compute tensor and set scope
+    """
+    # get all tensor and leaf tensor of matmul compute
+    all_tensor, leaf_tensor = gemm_schedule_util.get_all_tensors(outs)
+    # get tensor in cube calculation
+    tensor_map = {}
+    schedule_util.get_single_matmul_tensor(tensor_map, all_tensor)
+    # get tensor after cube
+    schedule_util.get_fusion_matmul_tensor(tensor_map, all_tensor, leaf_tensor)
+    return [tensor_map, all_tensor, leaf_tensor]
+
+
+def _update_dynamic_para(tensor_map, tiling_info_dict):
+    """
+    update the dynamic para:GEMMComputeParam
+    """
+    GEMMComputeParam.tiling_info_dict = tiling_info_dict
+    GEMMComputeParam.m_var_name = "m"
+    GEMMComputeParam.n_var_name = "n"
+    GEMMComputeParam.k_var_name = "k"
+    GEMMComputeParam.format_a = "Fractal_NZ"
+    GEMMComputeParam.format_b = "Fractal_NZ"
+    GEMMComputeParam.block_in = tbe_platform.BLOCK_IN
+    GEMMComputeParam.block_out = tbe_platform.BLOCK_OUT
+    GEMMComputeParam.block_reduce = tbe_platform.BLOCK_REDUCE
+    a_tensor_zz = tensor_map["a_l0a"]
+    b_tensor_input = tensor_map["b_l0b"].op.input_tensors[0]
+    if b_tensor_input.op.input_tensors:
+        b_tensor_input = b_tensor_input.op.input_tensors[0]
+    GEMMComputeParam.batch_a = len(a_tensor_zz.shape) == BATCH_NZ_LENTH
+    GEMMComputeParam.batch_b = len(b_tensor_input.shape) == BATCH_NZ_LENTH
+    if GEMMComputeParam.batch_a:
+        GEMMComputeParam.dynamic_mode = "dynamic_mknb"
+    else:
+        GEMMComputeParam.dynamic_mode = "dynamic_mkn"
+
+
 @register_tiling_case(pattern=Pattern.MAT_MUL)
 def calc_matmul(outs, option=None):
     """
@@ -489,9 +528,22 @@ def calc_matmul(outs, option=None):
     -------
     list of dict, each dict for a tiling case
     """
-    if intrinsic_check_support("Intrinsic_fix_pipe_l0c2out"):
-        global GEMMComputeParam
-        GEMMComputeParam = GEMMComputeParam1
+    tensor_list = None
+    if tbe_platform_info.intrinsic_check_support("Intrinsic_fix_pipe_l0c2out"):
+        # get all tensor and leaf tensor of matmul compute
+        tensor_list = _get_matmul_compute_tensor(outs[0])
+        tensor_map = tensor_list[0]
+        # cal the tiling info_dict
+        tiling_info_dict = gemm_schedule_util.cal_tiling_info_dict(tensor_map)
+        # update the GEMMComputeParam
+        if in_dynamic():
+            _update_dynamic_para(tensor_map, tiling_info_dict)
+        else:
+            tiling_static = get_tiling(tiling_info_dict)
+            tiling_static = gemm_schedule_util.check_tiling(tiling_static, tensor_map)
+            tiling_case = [{"tiling_strategy": tiling_static}]
+            tiling_case = gemm_schedule_util.process_tiling(tiling_case, tensor_list)
+            return tiling_case
 
     mode = GEMMComputeParam.dynamic_mode
     # The variables is named x_ori in ND format, otherwise named x
@@ -530,11 +582,13 @@ def calc_matmul(outs, option=None):
                                                               INITIAL_TILING_ID,
                                                               context)
         _set_build_json_info(tiling_case, mode)
+        tiling_case = gemm_schedule_util.process_tiling(tiling_case, tensor_list)
         return tiling_case
     tiling_cases = _calc_tiling_case(mode, target_area, INITIAL_TILING_ID)
     # Generate Aligned schedule for ND input
     if GEMMComputeParam.format_a == "ND" and GEMMComputeParam.format_b == "ND":
         tiling_cases = _generate_aligned_tilingcase(tiling_cases)
+    tiling_cases = gemm_schedule_util.process_tiling(tiling_cases, tensor_list)
     return tiling_cases
 
 
@@ -587,7 +641,7 @@ class MatmulTiling(CubeTilingOp):
                                  ("Ascend910" in tbe_platform_info.get_soc_spec("SOC_VERSION") or
                                   "Ascend710" in tbe_platform_info.get_soc_spec("SOC_VERSION")))
 
-        if intrinsic_check_support("Intrinsic_fix_pipe_l0c2out"):
+        if tbe_platform_info.intrinsic_check_support("Intrinsic_fix_pipe_l0c2out"):
             self.use_cache_tiling = False
         get_context().add("_use_cache_tiling", self.use_cache_tiling)
         self._get_calc_info()

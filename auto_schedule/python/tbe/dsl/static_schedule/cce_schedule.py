@@ -40,6 +40,7 @@ from te.platform.fusion_manager import fusion_manager
 from tbe.common.context import get_context
 from tbe.common.rl_bank import bank_manager
 from tbe.common import buildcfg
+from tbe.dsl.base import operation
 from tbe.dsl.compute.conv_compute import ConvParam  # 'pylint: disable=C0412
 from tbe.common.rl_bank import rl_bank
 from tbe.common.utils.errormgr import get_error_message
@@ -1199,7 +1200,9 @@ def global_core_schedule(  # 'pylint: disable=R0911, R0912, R0914, R0915
     elif pattern == OpPatterns.MATMUL_PATTERN:
         mmad_schedule(outs, sch_list)  # 'pylint: disable=W0631
     elif pattern == OpPatterns.GEMM_PATTERN:
-        spec_mid_list = gemm_schedule(outs, sch_list)
+        tiling_case_func = operation.get_tiling_case("Matmul")
+        tiling_case_para = tiling_case_func(outs)
+        spec_mid_list = gemm_schedule(outs[0], sch_list, tiling_case_para[0])
     elif pattern == OpPatterns.POOL2D_PATTERN:
         pooling2d_schedule(outs[0], sch_list)
     elif pattern == OpPatterns.POOL3D_PATTERN:
