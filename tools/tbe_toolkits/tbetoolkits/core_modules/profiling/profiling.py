@@ -253,7 +253,7 @@ class ProfilingReturnStructure:
         self.bin_precision = compare_result[5]
         self.bre_precision = compare_result[6]
         self.perf_status = passed
-        self.cst_perf_status = passed
+        self.cst_perf_status = cst_passed
         self.rel_precision = compare_result[2]
         self.precision_status = compare_result[7]
         self.data_input_size_b = input_size
@@ -901,6 +901,17 @@ def handle_profiling_result(context: UniversalTestcaseStructure):
         finally:
             return _passed, _cycle_f
 
+    def _compare_cycle(golden, actual, off_flag) -> str:
+        if isinstance(actual, str):
+            return "PASS" if actual == off_flag else "EXCEPTION"
+        else:
+            if get_global_storage().perf_compare_flag:
+                return "PASS" if (golden / actual >= get_global_storage().perf_threshold[0] or
+                                    actual - golden <= get_global_storage().perf_threshold[1]) \
+                    else "FAIL"
+            else:
+                return "PASS"
+
     passed, cst_passed = "EXCEPTION", "EXCEPTION"
 
     _, stc_cycle_f = _get_cycle(context.stc_prof_result.cycle, "STC_OFF")
@@ -911,21 +922,13 @@ def handle_profiling_result(context: UniversalTestcaseStructure):
         passed = dyn_pass if stc_cycle_f == "STC_OFF" else "EXCEPTION"
         cst_passed = cst_pass if stc_cycle_f == "STC_OFF" else "EXCEPTION"
     else:
-        if isinstance(dyn_cycle_f, str):
-            passed = "PASS" if dyn_cycle_f == "DYN_OFF" else "EXCEPTION"
-        else:
-            passed = "PASS" if (stc_cycle_f / dyn_cycle_f >= get_global_storage().perf_threshold[0] or
-                                dyn_cycle_f - stc_cycle_f <= get_global_storage().perf_threshold[1]) \
-                else "FAIL"
+        context.stc_prof_result.cycle = stc_cycle_f
+        passed = _compare_cycle(stc_cycle_f, dyn_cycle_f, "DYN_OFF")
+        if passed not in ("EXCEPTION",):
             context.dyn_prof_result.cycle = dyn_cycle_f
-            context.stc_prof_result.cycle = stc_cycle_f
 
-        if isinstance(cst_cycle_f, str):
-            cst_passed = "PASS" if cst_cycle_f == "CST_OFF" else "EXCEPTION"
-        else:
-            cst_passed = "PASS" if (stc_cycle_f / cst_cycle_f >= get_global_storage().perf_threshold[0] or
-                                cst_cycle_f - stc_cycle_f <= get_global_storage().perf_threshold[1]) \
-                else "FAIL"
+        cst_passed = _compare_cycle(stc_cycle_f, cst_cycle_f, "CST_OFF")
+        if cst_passed not in ("EXCEPTION",):
             context.cst_prof_result.cycle = cst_cycle_f
 
     return passed, cst_passed

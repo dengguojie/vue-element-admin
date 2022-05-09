@@ -136,7 +136,8 @@ class SWITCHES:
         "selected_testcase_count",
         "selected_operators",
         "testcase_server",
-        "preserve_original_csv"
+        "preserve_original_csv",
+        "perf_compare_flag"
     ]
 
     def __init__(self):
@@ -178,6 +179,7 @@ class SWITCHES:
         self.run_time = 3
         self.tiling_run_time = 3
         self.perf_threshold = (1.0, 10)
+        self.perf_compare_flag = True
         # Hidden switches
         self.kernel_meta = pathlib.Path("./kernel_meta/")
         self.model_update_configs = True

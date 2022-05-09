@@ -168,7 +168,7 @@ def parse_params(switches: SWITCHES, params: Sequence):
 
 
 @register_param(["--dynamic", "-d"], "此选项控制动态Shape测试流程的开关，默认值为true 用法：\n"
-                                     "dynamic=false 或 -d=false 即可关闭动态Shape测试流程")
+                                     "--dynamic=false 或 -d=false 即可关闭动态Shape测试流程")
 def __set_dynamic(switches: SWITCHES, secondary_param: str):
     if secondary_param is None or secondary_param.lower() == "true":
         switches.dyn_switches.enabled = True
@@ -361,7 +361,7 @@ def __enable_ascend910a_model(switches: SWITCHES, secondary_param: str):
 def __single_log_mode(switches: SWITCHES, secondary_param: str):
     if secondary_param is None or secondary_param.lower() in ("true", "1"):
         switches.single_testcase_log_mode = True
-    elif secondary_param.lower() == ("false", "0"):
+    elif secondary_param.lower() in ("false", "0"):
         switches.single_testcase_log_mode = False
     else:
         raise RuntimeError("Invalid single testcase log mode switch: %s" % secondary_param)
@@ -395,6 +395,16 @@ def __set_perf_relative_tolerance(switches: SWITCHES, secondary_param: str):
 @register_param(["--perf-absolute-tolerance", "--pat"])
 def __set_perf_absolute_tolerance(switches: SWITCHES, secondary_param: str):
     switches.perf_threshold = (switches.perf_threshold[0], eval(secondary_param))
+
+
+@register_param(["--perf-compare"])
+def __set_perf_compare_flag(switches: SWITCHES, secondary_param: str):
+    if not secondary_param or secondary_param.lower() in ("true", "1"):
+        switches.perf_compare_flag = True
+    elif secondary_param.lower() in ("false", "0"):
+        switches.perf_compare_flag = False
+    else:
+        raise RuntimeError("Invalid perf compare switch: %s" % secondary_param)
 
 
 @register_param(["--debug"])

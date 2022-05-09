@@ -30,7 +30,7 @@ run() {
   if [[ -n "$cases" ]]; then
     echo "[INFO] run case file: $cases"
     # only dynamic
-    "${CUR_DIR}/tbe_toolkits/run.sh" "$cases" "${CUR_DIR}/st_plus_result.csv -s=false"
+    "${CUR_DIR}/tbe_toolkits/run.sh" "$cases" "${CUR_DIR}/st_plus_result.csv --perf-compare=false"
     if [[ $? -ne 0 ]]; then
       echo "[ERROR] run ops stest plus failed, case file is: $cases."
       exit $STATUS_FAILED
@@ -82,7 +82,7 @@ get_results() {
   local total_count=$(expr $lines - 1)
 
   # parse result.csv
-  local fail_case=`grep -E "FAIL|CRASH" "${result_file}" | awk -F',' '{print $1}'`
+  local fail_case=`grep -E "FAIL|CRASH|EXCEPTION" "${result_file}" | awk -F',' '{print $1}'`
   local arr=($fail_case)
   local fail_count=${#arr[@]}
   local succ_count=$(expr $total_count - $fail_count)
