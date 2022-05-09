@@ -197,6 +197,7 @@ set(_aicore_fusion_srcs
   graph_fusion/ai_core/common_lstm_fusion_pass.cc
   graph_fusion/ai_core/dynamic_gru_v2_fusion_pass.cc
   graph_fusion/ai_core/dynamic_augru_grad_fusion_pass.cc
+  graph_fusion/ai_core/dynamic_augru_seqlength_fusion_pass.cc
   graph_fusion/ai_core/dynamic_gru_v2_grad_fusion_pass.cc
   graph_fusion/ai_core/dynamic_gru_v2_grad_align_fusion_pass.cc
   graph_fusion/ai_core/dynamic_rnn_grad_fusion_pass.cc
