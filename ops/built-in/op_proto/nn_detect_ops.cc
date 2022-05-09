@@ -2191,4 +2191,29 @@ IMPLEMT_COMMON_INFERFUNC(RotatedBoxDecodeInferShape) {
 
 COMMON_INFER_FUNC_REG(RotatedBoxDecode, RotatedBoxDecodeInferShape);
 // ----------------RotatedBoxDecode Finished-------------------
+
+// ----------------CIoU-------------------
+IMPLEMT_COMMON_INFERFUNC(CIoUInferShape) {
+  auto shape_bboxes = op.GetInputDescByName("bboxes").GetShape();
+  vector<int64_t> shape_out;
+  shape_out.push_back(1);
+  shape_out.push_back(shape_bboxes.GetDim(1));
+
+  Shape output_shape(shape_out);
+  DataType input_type = op.GetInputDescByName("bboxes").GetDataType();
+
+  TensorDesc overlap_td = op.GetOutputDescByName("overlap");
+  TensorDesc atan_sub_td = op.GetOutputDescByName("atan_sub");
+  overlap_td.SetShape(output_shape);
+  overlap_td.SetDataType(input_type);
+  atan_sub_td.SetShape(output_shape);
+  atan_sub_td.SetDataType(input_type);
+  (void)op.UpdateOutputDesc("overlap", overlap_td);
+  (void)op.UpdateOutputDesc("atan_sub", atan_sub_td);
+
+  return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(CIoU, CIoUInferShape);
+// ----------------CIoU-------------------
 }  // namespace ge

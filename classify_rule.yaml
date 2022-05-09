@@ -678,7 +678,6 @@ vector_A:
       - ops/built-in/op_proto/aipp.cc
       - ops/built-in/op_proto/elewise_calculation_ops.cc
       - ops/built-in/op_proto/fsrdetectionoutput_ops.cc
-      - ops/built-in/op_proto/nn_detect_ops.cc
       - ops/built-in/op_proto/psroipooling_ops.cc
       - ops/built-in/op_proto/quantize_ops.cc
       - ops/built-in/op_proto/reduction_ops.cc
@@ -2129,7 +2128,6 @@ unkown:
       - ops/built-in/op_proto/inc/aipp.h
       - ops/built-in/op_proto/inc/candidate_sampling_ops.h
       - ops/built-in/op_proto/inc/nn_batch_norm_ops.h
-      - ops/built-in/op_proto/inc/nn_detect_ops.h
       - ops/built-in/op_proto/inc/vector_search.h
       - ops/built-in/op_proto/inc/ctc_ops.h
       - ops/built-in/op_proto/inc/sdca_ops.h
@@ -4259,6 +4257,9 @@ pytorch:
       - ops/built-in/tbe/impl/merge_sort_v2.py
       - ops/built-in/tbe/impl/multi_merge.py
       - ops/built-in/tbe/impl/segment_sort.py
+      - ops/built-in/op_proto/nn_detect_ops.cc
+      - ops/built-in/op_proto/inc/nn_detect_ops.h
+      - ops/built-in/tbe/impl/ciou.py
     unrelease:
       - ops/built-in/tests/ut/graph_fusion/ai_core/lstmp_fusion_test.cpp
       - ops/built-in/tests/ut/graph_fusion/ai_core/dynamic_rnn_v2_grad_fusion_test.cpp
