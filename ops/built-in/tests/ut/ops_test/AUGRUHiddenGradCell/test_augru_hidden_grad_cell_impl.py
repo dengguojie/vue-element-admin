@@ -16,6 +16,7 @@ def gen_augru_hidden_grad_case(t, n, output_size, dtype="float32"):
         {"shape": (t, output_size, n, 16, 16), "dtype": dtype},
         {"shape": (t, output_size, n, 16, 16), "dtype": dtype},
         {"shape": (t, output_size, n, 16, 16), "dtype": dtype},
+        {"shape": (t, output_size, n, 16, 16), "dtype": dtype},
         {"shape": (output_size, n, 16, 16), "dtype": dtype},
         {"shape": (t, 3 * output_size, n, 16, 16), "dtype": dtype},
         {"shape": (t, output_size, n, 16, 16), "dtype": dtype}],

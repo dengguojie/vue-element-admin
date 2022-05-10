@@ -10,22 +10,22 @@
 using namespace ge;
 using namespace op;
 
-class dynamic_augru_grad_fusion_test : public testing::Test {
+class dynamic_augru_grad_align_fusion_test : public testing::Test {
 protected:
   static void SetUpTestCase() {
-      std::cout << "dynamic_augru_grad_fusion_test SetUp" << std::endl;
+      std::cout << "dynamic_augru_grad_align_fusion_test SetUp" << std::endl;
   }
 
   static void TearDownTestCase() {
-      std::cout << "dynamic_augru_grad_fusion_test TearDown" << std::endl;
+      std::cout << "dynamic_augru_grad_align_fusion_test TearDown" << std::endl;
   }
 };
 
-TEST_F(dynamic_augru_grad_fusion_test, dynamic_augru_grad_fusion_test_1) {
-  ge::Graph graph("dynamic_augru_grad_fusion_test_1");
+TEST_F(dynamic_augru_grad_align_fusion_test, dynamic_augru_grad_align_fusion_test_1) {
+  ge::Graph graph("dynamic_augru_grad_align_fusion_test_1");
   int64_t tSize = 5;
   int64_t batchSize = 128;
-  int64_t inputSize = 64;
+  int64_t inputSize = 31;
   int64_t hiddenSize = 32;
   int64_t hiddenGateSize = 3 * hiddenSize;
 
@@ -130,7 +130,7 @@ TEST_F(dynamic_augru_grad_fusion_test, dynamic_augru_grad_fusion_test_1) {
   graph.SetInputs(inputs).SetOutputs(outputs);
   ge::ComputeGraphPtr computeGraphPtr = ge::GraphUtils::GetComputeGraph(graph);
   fe::FusionPassTestUtils::InferShapeAndType(computeGraphPtr);
-  fe::FusionPassTestUtils::RunGraphFusionPass("DynamicAUGRUGradFusionPass", fe::BUILT_IN_GRAPH_PASS, *computeGraphPtr);
+  fe::FusionPassTestUtils::RunGraphFusionPass("DynamicAUGRUGradAlignFusionPass", fe::BUILT_IN_GRAPH_PASS, *computeGraphPtr);
 
   bool findAUGRUHiddenGradCell = false;
   for (auto node: computeGraphPtr->GetAllNodes()) {
@@ -140,12 +140,12 @@ TEST_F(dynamic_augru_grad_fusion_test, dynamic_augru_grad_fusion_test_1) {
   }
   EXPECT_EQ(findAUGRUHiddenGradCell, true);
 }
-TEST_F(dynamic_augru_grad_fusion_test, dynamic_augru_grad_fusion_test_2) {
-ge::Graph graph("dynamic_augru_grad_fusion_test_2");
+TEST_F(dynamic_augru_grad_align_fusion_test, dynamic_augru_grad_align_fusion_test_2) {
+ge::Graph graph("dynamic_augru_grad_align_fusion_test_2");
 int64_t tSize = 1;
 int64_t batchSize = 128;
-int64_t inputSize = 64;
-int64_t hiddenSize = 32;
+int64_t inputSize = 17;
+int64_t hiddenSize = 17;
 int64_t hiddenGateSize = 3 * hiddenSize;
 
 std::vector<int64_t> xVec{tSize, batchSize, inputSize};
@@ -249,7 +249,7 @@ std::vector<Operator> outputs{dynamicAUGruGradOp};
 graph.SetInputs(inputs).SetOutputs(outputs);
 ge::ComputeGraphPtr computeGraphPtr = ge::GraphUtils::GetComputeGraph(graph);
 fe::FusionPassTestUtils::InferShapeAndType(computeGraphPtr);
-fe::FusionPassTestUtils::RunGraphFusionPass("DynamicAUGRUGradFusionPass", fe::BUILT_IN_GRAPH_PASS, *computeGraphPtr);
+fe::FusionPassTestUtils::RunGraphFusionPass("DynamicAUGRUGradAlignFusionPass", fe::BUILT_IN_GRAPH_PASS, *computeGraphPtr);
 
 bool findAUGRUHiddenGradCell = false;
 for (auto node: computeGraphPtr->GetAllNodes()) {

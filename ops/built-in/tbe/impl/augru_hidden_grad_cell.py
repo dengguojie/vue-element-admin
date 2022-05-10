@@ -75,7 +75,7 @@ class AUGRUHiddenGradCell(TikOpBase):
     """
     # 'pylint: disable=locally-disabled,too-many-statements,cell-var-from-loop,unnecessary-lambda
     # 'pylint: disable=too-many-locals,invalid-name,too-many-arguments
-    def __init__(self, tik_instance, h, dy, dnt_x, t_state, gate_order, kernel_name):
+    def __init__(self, tik_instance, h, dy, dnt_x, seq_mask, t_state, gate_order, kernel_name):
         """ init AUGRUHiddenGradCell
         """
         super(AUGRUHiddenGradCell, self).__init__(tik_instance)
@@ -97,6 +97,7 @@ class AUGRUHiddenGradCell(TikOpBase):
         self.t_offset = self.t_size - self.t_state - 1
         # ht offset for h
         self.ht_offset = 0 if self.t_size == 1 else self.t_size - self.t_state - 2
+        self.has_seq_mask = True if seq_mask else False
 
         # input
         self.weight_att = self.tik_instance.Tensor(self.dtype, t_fuse_shape, tbe_platform.scope_gm, "weight_att")
@@ -112,6 +113,9 @@ class AUGRUHiddenGradCell(TikOpBase):
         self.r2 = self.tik_instance.Tensor(self.dtype, t_fuse_shape, tbe_platform.scope_gm, "reset")
         self.n2 = self.tik_instance.Tensor(self.dtype, t_fuse_shape, tbe_platform.scope_gm, "n2")
         self.n2_mid = self.tik_instance.Tensor(self.dtype, t_fuse_shape, tbe_platform.scope_gm, "hidden_new")
+        if self.has_seq_mask:
+            self.seq_mask_t = self.tik_instance.Tensor(self.dtype, t_fuse_shape, tbe_platform.scope_gm, "seq_mask")
+
 
         # output
         self.dh_prev = self.tik_instance.Tensor(self.dtype, fuse_shape, tbe_platform.scope_gm, "dh_prev")
@@ -125,8 +129,12 @@ class AUGRUHiddenGradCell(TikOpBase):
         build cce
         """
         config_map = {"dump_cce_code": False}
-        input_list = (self.weight_att, self.dh_pre_t, self.h, self.dy, self.dh, self.i2, self.i2_att,
-                      self.r2, self.n2, self.n2_mid)
+        if self.has_seq_mask:
+            input_list = (self.weight_att, self.dh_pre_t, self.h, self.dy, self.dh, self.i2, self.i2_att,
+                          self.r2, self.n2, self.n2_mid, self.seq_mask_t)
+        else:
+            input_list = (self.weight_att, self.dh_pre_t, self.h, self.dy, self.dh, self.i2, self.i2_att,
+                          self.r2, self.n2, self.n2_mid)
         output_list = (self.dh_prev, self.d_gate_h, self.dnt_x, self.dw_att_t)
         self.tik_instance.BuildCCE(self.kernel_name, input_list, output_list, config=config_map)
 
@@ -166,6 +174,11 @@ class AUGRUHiddenGradCell(TikOpBase):
             dh_pre_t = self.tik_instance.Tensor(self.dtype, shape, tbe_platform.scope_ubuf, "dh_pre_t")
             self.move_data(dh_pre_t, self.dh_pre_t[input_offset], self.dtype, shape)
             self.vadd_func(dh, dh, dh_pre_t, shape)
+        if self.has_seq_mask:
+            seq_mask_ub = self.tik_instance.Tensor(self.dtype, shape, tbe_platform.scope_ubuf, "seq_mask")
+            self.move_data(seq_mask_ub, self.seq_mask_t[input_offset], self.dtype, shape)
+            self.vmul_func(dh, dh, seq_mask_ub, shape)
+
         if self.t_state == self.t_size:
             # just cal dh + dh_pre_t in last cell
             self.move_data(self.dh_prev[input_offset], dh, self.dtype, shape)
@@ -324,7 +337,7 @@ class AUGRUHiddenGradCell(TikOpBase):
 
 # 'pylint: disable=locally-disabled,too-many-statements,cell-var-from-loop,unnecessary-lambda
 # 'pylint: disable=too-many-locals,invalid-name,too-many-arguments,unused-argument
-def augru_hidden_grad_cell(weight_att, dh_pre_t, h, dy, dh, update, update_att, reset, new, hidden_new,
+def augru_hidden_grad_cell(weight_att, dh_pre_t, h, dy, dh, update, update_att, reset, new, hidden_new, seq_mask,
                             dh_prev, dgate_h, dnt_x, dw_att_t, t_state=0, gate_order="zrh",
                             kernel_name="augru_hidden_grad_cell"):
     """
@@ -342,6 +355,7 @@ def augru_hidden_grad_cell(weight_att, dh_pre_t, h, dy, dh, update, update_att, 
     :param reset: [t, n, out]
     :param new: [t, n, out]
     :param hidden_new: [t, n, out]
+    :param seq_mask: [t, n, out]
     :param dh_prev:
         output real dh_prev when cur_t == t
         otherwise, output dh_pre_t for next cell
@@ -357,6 +371,6 @@ def augru_hidden_grad_cell(weight_att, dh_pre_t, h, dy, dh, update, update_att, 
     _check_attr(gate_order)
 
     tik_instance = tik.Tik(tik.Dprofile())
-    cell = AUGRUHiddenGradCell(tik_instance, h, dy, dnt_x, t_state, gate_order, kernel_name)
+    cell = AUGRUHiddenGradCell(tik_instance, h, dy, dnt_x, seq_mask, t_state, gate_order, kernel_name)
     cell.compute()
     cell.build()

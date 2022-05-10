@@ -1,17 +1,17 @@
 /* *
- * Copyright (c) Huawei Technologies Co., Ltd. 2020-2021. All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2022. All rights reserved.
  *
  * @brief DynamicAUGRUGrad fusion pass(DynamicAUGRUGrad --> GRUHiddenGrad & GRUWeightGrad(Concat&Matmul&Reduce))
  *
  */
 
-#ifndef FE_DYNAMIC_AUGRU_GRAD_FUSION_PASS_H
-#define FE_DYNAMIC_AUGRU_GRAD_FUSION_PASS_H
+#ifndef FE_DYNAMIC_AUGRU_GRAD_ALIGN_FUSION_PASS_H
+#define FE_DYNAMIC_AUGRU_GRAD_ALIGN_FUSION_PASS_H
 
 #include "graph_optimizer/fusion_common/pattern_fusion_base_pass.h"
 
 namespace fe {
-class DynamicAUGRUGradFusionPass : public PatternFusionBasePass {
+class DynamicAUGRUGradAlignFusionPass : public PatternFusionBasePass {
  protected:
   vector<FusionPattern*> DefinePatterns() override;
   Status Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& newNodes) override;
@@ -56,9 +56,6 @@ class DynamicAUGRUGradFusionPass : public PatternFusionBasePass {
                              vector<ge::NodePtr>& newNodes, bool& failStatus);
   ge::NodePtr AddDwhMatmulNode(ge::NodePtr dynamicAUGRUGradNode, ge::NodePtr hConcatNode, ge::NodePtr gruHiddenGradNode,
                                ge::ComputeGraph& graph, vector<ge::NodePtr>& newNodes, bool& failStatus);
-  ge::NodePtr AddTConcatNodeBack(const string& nodeName, const string& inputName, vector<int64_t> fzDims,
-                                 ge::NodePtr dynamicAUGRUGradNode, vector<ge::NodePtr>& srcNodes, ge::ComputeGraph& graph,
-                                 vector<ge::NodePtr>& newNodes, bool& failStatus);
   // for time_step = 1
   ge::NodePtr AddDwhMatmulNode(ge::NodePtr dynamicAUGRUGradNode, ge::NodePtr gruHiddenGradNode, ge::ComputeGraph& graph,
                                vector<ge::NodePtr>& newNodes, bool& failStatus);
@@ -77,12 +74,6 @@ class DynamicAUGRUGradFusionPass : public PatternFusionBasePass {
   ge::NodePtr AddReduceSumNode(ge::NodePtr dynamicAUGRUGradNode, ge::NodePtr inputNode, int anchorIndex,
                                const vector<int64_t>& axis, const string& nodeName, const string& indexName,
                                ge::ComputeGraph& graph, vector<ge::NodePtr>& newNodes, bool& failStatus);
-  ge::NodePtr GetConstNodeOne(ge::NodePtr dynamicAUGRUGradNode, ge::NodePtr inputNode,
-                              const vector<int64_t>& axis, ge::ComputeGraph& graph,
-                              vector<ge::NodePtr>& newNodes, bool& failStatus);
-  ge::NodePtr AddTMatMulNode(ge::NodePtr dynamicAUGRUGradNode, ge::NodePtr inputNode,
-                             ge::NodePtr constNode, const string& nodeName, ge::ComputeGraph& graph, vector<ge::NodePtr>& newNodes,
-                             bool& failStatus);
   ge::NodePtr AddTReduceSumNode(ge::NodePtr dynamicAUGRUGradNode, ge::NodePtr inputNode,
                                 int anchorIndex,  const vector<int64_t>& axis, const string& nodeName,
                                 ge::ComputeGraph& graph, vector<ge::NodePtr>& newNodes, bool& failStatus);
@@ -90,23 +81,22 @@ class DynamicAUGRUGradFusionPass : public PatternFusionBasePass {
                             ge::ComputeGraph& graph, vector<ge::NodePtr>& newNodes);
   Status AddDbReduceSumNode(ge::NodePtr dynamicAUGRUGradNode, ge::NodePtr dbxNode, ge::NodePtr dbhNode,
                             ge::ComputeGraph& graph, vector<ge::NodePtr>& newNodes);
-  ge::NodePtr AddTConcatNodeDnxBack(const string& nodeName, const string& inputName,
-                                    vector<int64_t> fzDims, ge::NodePtr dynamicAUGRUGradNode,
-                                    vector<ge::NodePtr>& srcNodes, ge::ComputeGraph& graph,
-                                    vector<ge::NodePtr>& newNodes, bool& failStatus);
-  ge::NodePtr AddDgateHSplitNodeBack(ge::NodePtr dynamicAUGRUGradNode,
-                                     ge::NodePtr gruHiddenGradNode, ge::ComputeGraph& graph,
-                                     vector<ge::NodePtr>& newNodes, bool& failStatus);
-  ge::NodePtr AddDgateXConcatNodeBack(ge::NodePtr dynamicAUGRUGradNode, ge::NodePtr dgateHSplitNode,
-                                      ge::NodePtr gruHiddenGradNode, ge::ComputeGraph& graph,
-                                      vector<ge::NodePtr>& newNodes, bool& failStatus);
-  Status AddDxtMatmulNodeBack(ge::NodePtr dynamicAUGRUGradNode, ge::NodePtr dgateXConcatNode,
-                              ge::ComputeGraph& graph, vector<ge::NodePtr>& newNodes);
-  ge::NodePtr AddDwxMatmulNodeBack(ge::NodePtr dynamicAUGRUGradNode, ge::NodePtr dgateXConcatNode,
-                                   ge::ComputeGraph& graph, vector<ge::NodePtr>& newNodes,
-                                   bool& failStatus);
   Status AddDwAttReduceSumNode(ge::NodePtr dynamicAUGRUGradNode, ge::NodePtr dwAttNode, ge::ComputeGraph& graph,
                                vector<ge::NodePtr>& newNodes);
+  void AddBatchMatMulForCell(ge::OpDescPtr& lstmBatchMatMulDesc, const string &weightName);
+  ge::OpDescPtr SetDescForTransdata(ge::OpDescPtr &transdataDesc, const string &srcFormat, const string &weightName);
+  ge::OpDescPtr SetDescForTranspose(ge::OpDescPtr &transposeDesc, const string &weightName);
+  ge::NodePtr AddDbReduceSumTransNode(ge::NodePtr dynamicAUGRUGradNode, ge::NodePtr inputNode, int anchorIndex,
+  const vector<int64_t>& axis, const string& nodeName, const string& indexName,
+      ge::ComputeGraph& graph, vector<ge::NodePtr>& newNodes,
+  const vector<int64_t>& transDims, bool& failStatus);
+  ge::NodePtr AddDwReduceSumTransNode(ge::NodePtr dynamicAUGRUGradNode, ge::NodePtr inputNode, int anchorIndex,
+  const vector<int64_t>& axis, const string& nodeName, const string& indexName,
+      ge::ComputeGraph& graph, vector<ge::NodePtr>& newNodes,
+  const vector<int64_t>& transDims, const string& weightName, bool& failStatus);
+  ge::NodePtr AddTransposeNode(ge::NodePtr dynamicAUGRUGradNode, ge::NodePtr dwMatmulNode, const string& nodeName,
+  const string& weightName, const string& outputName, ge::ComputeGraph& graph,
+      vector<ge::NodePtr>& newNodes);
   const string FUSED_OP_TYPE = "AUGRUHiddenGradCell_Split_Concat_Matmul_Reduce";
   int64_t tSize = 0;
   int64_t batch = 0;
@@ -118,9 +108,8 @@ class DynamicAUGRUGradFusionPass : public PatternFusionBasePass {
   int64_t splitSize = 2;
   int64_t fzDim = 16;
   ge::DataType inputHType = ge::DT_FLOAT;
-  bool fusion_reduce = false;
   bool hasSeqLength = false;
 };
 }  // namespace fe
 
-#endif  // FE_DYNAMIC_AUGRU_GRAD_FUSION_PASS_H
+#endif  // FE_DYNAMIC_AUGRU_GRAD_ALIGN_FUSION_PASS_H
