@@ -77,65 +77,6 @@ def variable_shape(inputs: list, support_broadcast=False):
     :param support_broadcast: whether to support broadcast
     :return:
     """
-    def _has_intersection(range0, range1):
-        _range0 = list(range0)
-        _range1 = list(range1)
-        if _range0[1] is None:
-            _range0[1] = para_check.MAX_UNKNOWN_SHAPE_NUM
-        if _range1[1] is None:
-            _range1[1] = para_check.MAX_UNKNOWN_SHAPE_NUM
-        return max(_range0[0], _range1[0]) <= min(_range0[1], _range1[1])
-
-    def _select(cond, then_case, else_case):
-        if cond:
-            return then_case
-        return else_case
-
-# 'pylint: disable=too-many-branches
-    def _update_range(shape0, range0, shape1, range1):
-        for index, _ in enumerate(range0):
-            verify_shape = (shape0[index] != -1 and shape1[index] != -1) or \
-                            shape0[index] == 1 or shape1[index] == 1
-            if verify_shape:
-                continue
-            range_x = list(range0[index])
-            range_y = list(range1[index])
-            for j, (_rx, _ry) in enumerate(zip(range_x, range_y)):
-                if _rx is None:
-                    range_x[j] = para_check.MAX_UNKNOWN_SHAPE_NUM
-                if _ry is None:
-                    range_y[j] = para_check.MAX_UNKNOWN_SHAPE_NUM
-            x_const = shape0[index] != -1 and shape1[index] == -1
-            y_const = shape0[index] == -1 and shape1[index] != -1
-            variable_intersection = \
-                _has_intersection(range_x, range_y) and \
-                (range_x[0] > 1) and (range_y[0] > 1)
-            if x_const:
-                range_y = (_select(range_y[0] <= 1, range_y[0],
-                                   shape0[index]),
-                           _select(range_y[1] >= shape0[index],
-                                   shape0[index], 1))
-            elif y_const:
-                range_y = (_select(range_x[0] <= 1, range_x[0],
-                                   shape1[index]),
-                           _select(range_x[1] >= shape1[index],
-                                   shape1[index], 1))
-            elif variable_intersection:
-                range_x = (max(range_x[0], range_y[0]),
-                           min(range_x[1], range_y[1]))
-                range_y = range_x
-            elif not _has_intersection(range_x, range_y):
-                if range_x[0] <= 1:
-                    range_x = (1, 1)
-                if range_y[0] <= 1:
-                    range_y = (1, 1)
-            range0[index] = tuple(range_x)
-            range1[index] = tuple(range_y)
-            if range_x[0] == range_x[1]:
-                shape0[index] = range_x[0]
-            if range_y[0] == range_y[1]:
-                shape1[index] = range_y[0]
-
     def _fill(_inputs):
         x_0, x_1 = _inputs
         shape0, range0 = list(x_0["shape"]), list(x_0["range"])

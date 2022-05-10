@@ -40,7 +40,6 @@ MAX_COEXIST_NUM = 10
 BLOCK_SIZE_BYTE = 32
 
 
-
 class WithReduceSoftmaxCrossEntropyWithLogitsClassifier:
     """
     Elewise with broadcast classifier
@@ -64,17 +63,10 @@ class WithReduceSoftmaxCrossEntropyWithLogitsClassifier:
         self.dtype_size = 2 if self.dtype == "float16" else 4
         shapes = [x["shape"] for x in self.ins]
         self.dim_length = max([len(s) for s in shapes])
-
         self.normalized_ins = self._normalize()
-        self.normalized_shapes = [x["shape"] for x in self.normalized_ins]
         f_shape1, f_range1, f_shape2, f_range2, = _simplify_shape(*self.normalized_ins)
-        self._reduce_axis_index = _get_reduce_axis_index(self.normalized_shapes, self.format, f_shape1, f_shape2)
         self.f_shapes = [f_shape1, f_shape2]
         self.f_ranges = [f_range1, f_range2]
-        self.f_strict_pattern = _get_strict_pattern(f_shape1, f_shape2, self.format, self._reduce_axis_index)
-        self.f_patterns = _combinations(self.f_strict_pattern)
-        if self.format == "ND" and f_shape1[0] == f_shape2[0] == 1:
-            self.f_patterns = _trans_one_to_common(self.f_patterns)
 
     def classify(self):
         """
@@ -528,7 +520,6 @@ class WithReduceSoftmaxCrossEntropyWithLogitsClassifier:
                                 gen_template(special_shape1, special_range1, "vec6")])
                 return res
 
-
     def _normalize(self):
         def clone_complete(_in):
             _shape, _range = list(_in["shape"]), _in.get("range")
@@ -541,67 +532,6 @@ class WithReduceSoftmaxCrossEntropyWithLogitsClassifier:
             return in_x
 
         return [clone_complete(x) for x in self.ins]
-
-    def _is_const(self):
-        for i in range(self.dim_length):
-            dims_i = [s[i] for s in self.normalized_shapes]
-            min_dim_v, max_dim_v = min(dims_i), max(dims_i)
-            if min_dim_v == -1 and max_dim_v in (-1, 1):
-                return False
-
-        return True
-
-    def _classify_const(self):
-        def add_original():
-
-            ins = []
-            for x in self.ins:
-                in_x = OriginalMode.gen_in(x["shape"])
-                if "range" in x:
-                    in_x["range"] = x["range"]
-                ins.append(in_x)
-            return [ins]
-
-        ret = []
-        ret.extend(add_original())
-        return ret
-
-    def _classify_var(self):
-        def add_special():
-            ins_list = []
-            if self.format in ["ND"]:
-                for rs, p, sp in zip(SpecialMode2D.REGS, SpecialMode2D.PATTERS,
-                                     SpecialMode2D.STRICT_PATTERNS):
-                    matched_list = SpecialMode2D.match(rs, self.f_patterns)
-                    if not any(matched_list):
-                        continue
-                    ins_list.append(SpecialMode2D.gen_ins(matched_list, p, sp, self.format, self.normalized_shapes))
-                return ins_list
-
-        def add_original():
-            ins = []
-            for x in self.ins:
-                in_x = OriginalMode.gen_in(x["shape"])
-                if "range" in x:
-                    in_x["range"] = x["range"]
-                ins.append(in_x)
-
-            return [ins]
-
-        ret = []
-        ret.extend(add_original())
-        return ret
-
-
-def _trans_one_to_common(f_patterns):
-    if len(f_patterns) > 1:
-        res = []
-        for str in f_patterns:
-            str_i = ''
-            if str[0] == 'A':
-                str_i = '0' + str[1]
-            res.append(str_i)
-        return res
 
 
 def _simplify_shape(d_1, d_2):
@@ -637,213 +567,6 @@ def _simplify_shape(d_1, d_2):
             state = state_i
 
     return shape1, range1, shape2, range2
-
-
-def _get_reduce_axis_index(nor_shape: list, format: str, simple_shape1, simple_shape2):
-    if format == 'ND':
-        reduce_axis_index = len(simple_shape1) - 1
-    else:
-        if nor_shape[0][0] == nor_shape[1][0] and nor_shape[0][0] == 1:
-            reduce_axis_index = 0
-        else:
-            reduce_axis_index = 1
-    return reduce_axis_index
-
-
-def _get_strict_pattern(shape1, shape2, format, reduce_index):
-    strict_pattern = []
-    for i, (dim1, dim2) in enumerate(zip(shape1, shape2)):
-        if i == reduce_index:
-            if shape1[-1] > 1 and shape2[-1] > 1:
-                strict_pattern.extend([[AxisType.REDUCE_COMMON]])
-            elif shape1[-1] == -1 and shape2[-1] > 1:
-                strict_pattern.extend([[AxisType.REDUCE_COMMON, AxisType.REDUCE_ATOB]])
-            elif shape1[-1] > 1 and shape2[-1] == -1:
-                strict_pattern.extend([[AxisType.REDUCE_COMMON, AxisType.REDUCE_BTOA]])
-            else:
-                strict_pattern.extend([[AxisType.REDUCE_COMMON, AxisType.REDUCE_BTOA, AxisType.REDUCE_ATOB]])
-        else:
-            strict_pattern.extend([StrictPattern.get_pattern(dim1, dim2)])
-    return strict_pattern
-
-
-def _combinations(dim_patterns):
-    def divide(i, c_shape_patterns):
-        if i == len(dim_patterns):
-            return c_shape_patterns
-        shape_patterns = []
-        for sp in c_shape_patterns:
-            for dp in dim_patterns[i]:
-                spc = sp.copy()
-                spc.append(dp)
-                shape_patterns.append(spc)
-        return divide(i + 1, shape_patterns)
-
-    def convert_to_str(p_list):
-        q = p_list
-        return "".join(q) if any(q) else "0"
-
-    return [convert_to_str(q) for q in divide(0, [[]])]
-
-
-def _match(reg, patterns):
-    for p in patterns:
-        if re.match(reg, p):
-            return True
-    return False
-
-
-def _get_broadcast_axis_size(pattern):
-    broadcast_axis_size = 0
-    for p_i in pattern:
-        if AxisType.ATOB in p_i or AxisType.BTOA in p_i or AxisType.REDUCE_BTOA in p_i or AxisType.REDUCE_ATOB in p_i:
-            broadcast_axis_size += 1
-    return broadcast_axis_size
-
-
-class AxisType:
-    """
-    there are senven axis type
-    """
-    ONE = "A"
-    COMMON = "0"
-    ATOB = "1"
-    BTOA = "2"
-    REDUCE_COMMON = "3"
-    REDUCE_ATOB = "4"
-    REDUCE_BTOA = "5"
-
-
-class SpecialMode2D:
-    """
-    SpecialMode2D const
-    """
-    PATTERS = [
-        (COMMON, COMMON_REDUCE),  # AR
-        (COMMON, BROADCAST_REDUCE),  # A(BR)
-        (BROADCAST, COMMON_REDUCE),  # BR
-    ]
-
-    # what's 012 means, @see AxisType
-    STRICT_PATTERNS = [
-        ["03"],
-        ["04", "05"],
-        ["13", "23"],
-    ]
-
-    REGS = [
-        ["^03$"],
-        ["^04$", "^05$"],
-        ["^13$", "^23$"],
-    ]
-
-    @classmethod
-    def match(cls, regs, patterns):
-        """
-        match regex
-        """
-        return [_match(r, patterns) for r in regs]
-
-    @classmethod
-    def gen_ins(cls, matched_list, pattern, strict_pattern, format, normalized_shape):
-        """
-        generate inputs
-        """
-
-        def gen_in(shape):
-            return {"shape": shape,
-                    "range": util.generate_range(shape),
-                    "support_reduce": True,
-                    "mode": SPECIAL,
-                    "pattern": pattern,
-                    "format": format
-                    }
-
-        if all(matched_list):
-            [shape1, shape2] = [[-1] * len(pattern)] * 2
-            normal_shape1, normal_shape2 = normalized_shape
-            for i in range(len(shape1)):
-                if normal_shape1[i] != -1 and normal_shape2[i] != -1:
-                    shape1[i] = normal_shape1[i]
-                    shape2[i] = normal_shape2[i]
-            return [gen_in(shape1), gen_in(shape2)]
-
-        shape1, shape2 = [], []
-        out = strict_pattern[matched_list.index(True)]
-        for i, sp_i in strict_pattern[matched_list.index(True)]:
-            if sp_i == '0':
-                shape1.append(-1)
-                shape2.append(-1)
-            elif sp_i == '1':
-                shape1.append(1)
-                shape2.append(-1)
-            elif sp_i == '2':
-                shape1.append(-1)
-                shape2.append(1)
-            if normal_shape1[i] != -1 and normal_shape2[i] != -1:
-                shape1[-1] = normal_shape1[i]
-                shape2[-1] = normal_shape2[i]
-        return [gen_in(shape1), gen_in(shape2)]
-
-
-class OriginalMode:
-    """
-    Original Mode
-    """
-
-    @classmethod
-    def gen_in(cls, shape):
-        """
-        generate input
-        """
-        return {"shape": shape,
-                "range": util.generate_range(shape),
-                "support_reduce": True,
-                "mode": ORIGINAL,
-                }
-
-
-class ConstMode:
-    """
-    Const Mode
-    """
-
-    @classmethod
-    def gen_in(cls, shape):
-        """
-        generate input
-        """
-        return {"shape": shape,
-                "range": util.generate_range(shape),
-                "mode": CONST,
-                "support_reduce": True,
-                }
-
-
-class StrictPattern:
-    """
-    StrictPattern
-    """
-    KNOWN, UNKNOWN, ONE = 1, -1, 0
-
-    CATEGORY = {
-        (ONE, ONE): [AxisType.ONE],
-        (ONE, KNOWN): [AxisType.ATOB],
-        (ONE, UNKNOWN): [AxisType.ONE, AxisType.ATOB],
-        (KNOWN, ONE): [AxisType.BTOA],
-        (KNOWN, KNOWN): [AxisType.COMMON],
-        (KNOWN, UNKNOWN): [AxisType.COMMON, AxisType.BTOA],
-        (UNKNOWN, ONE): [AxisType.ONE, AxisType.BTOA],
-        (UNKNOWN, KNOWN): [AxisType.COMMON, AxisType.ATOB],
-        (UNKNOWN, UNKNOWN): [AxisType.COMMON, AxisType.ATOB, AxisType.BTOA, AxisType.ONE],
-    }
-
-    @classmethod
-    def get_pattern(cls, dim1, dim2):
-        def get_axis_type(_dim):
-            return cls.UNKNOWN if _dim < 0 else cls.KNOWN if _dim > 1 else cls.ONE
-
-        return cls.CATEGORY[(get_axis_type(dim1), get_axis_type(dim2))]
 
 
 class ShapeSimplifier:
