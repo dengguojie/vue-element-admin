@@ -196,6 +196,48 @@ IMPLEMT_INFERFUNC(UniqueExt2, UniqueExt2Infer) {
 
 INFER_FUNC_REG(UniqueExt2, UniqueExt2Infer);
 
+// ----------------UniqueConsecutive Begin-------------------
+IMPLEMT_INFERFUNC(UniqueConsecutive, UniqueConsecutiveInfer) {
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  auto x_desc_ptr = op_desc->MutableInputDesc(0);
+  auto y_desc_ptr = op_desc->MutableOutputDesc(0);
+  auto idx_desc_ptr = op_desc->MutableOutputDesc(1);
+  auto count_desc_ptr = op_desc->MutableOutputDesc(2);
+
+  auto& y_shape = y_desc_ptr->MutableShape();
+  auto& idx_shape = idx_desc_ptr->MutableShape();
+  auto& count_shape = count_desc_ptr->MutableShape();
+
+  bool return_idx = false;
+  bool return_counts = false;
+  int64_t axis = 1000;
+  
+  op.GetAttr("axis", axis);
+  op.GetAttr("return_idx", return_idx);
+  op.GetAttr("return_counts", return_counts);
+
+  if (!return_counts) {
+    size_t rank = 0;
+    count_shape.SetDimNum(rank);
+  } else {
+    count_shape.SetIsUnknownDimNum();
+  }
+
+  if (!return_idx) {
+    size_t rank = 0;
+    idx_shape.SetDimNum(rank);
+  } else {
+    idx_shape.SetIsUnknownDimNum();
+  }
+
+  y_shape.SetIsUnknownDimNum();
+
+  return GRAPH_SUCCESS;
+}
+
+INFER_FUNC_REG(UniqueConsecutive, UniqueConsecutiveInfer);
+// ----------------UniqueConsecutive End-----------------------
+
 IMPLEMT_INFERFUNC(InvertPermutation, InvertPermutationInfer) {
   Shape shape;
   if (WithRank(op.GetInputDesc(0), 1, shape, TbeGetName(op).c_str()) != GRAPH_SUCCESS) {

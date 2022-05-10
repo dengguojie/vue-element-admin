@@ -1228,6 +1228,8 @@ vector_B:
       - ops/built-in/kernel/binary_script/binary_op.py
       - ops/built-in/kernel/binary_script/binary_get_select_format.py
       - ops/CMakeLists.txt
+      - ops/built-in/op_proto/array_ops.cc
+      - ops/built-in/op_proto/inc/array_ops.h
     unrelease:
       - auto_schedule/python/tbe/dsl/static_schedule/bn_update_schedule.py
       - auto_schedule/python/tbe/dsl/static_schedule/l2_loss_schedule.py
@@ -2105,12 +2107,9 @@ unkown:
       - ops/built-in/op_proto/pad_ops.cc
       - ops/built-in/op_proto/ragged_conversion_ops.cc
       - ops/built-in/op_proto/vector_search.cc
-      - ops/built-in/op_proto/array_ops.cc
       - ops/built-in/op_proto/set_ops.cc
       - ops/built-in/op_proto/parsing_ops.cc
-      - ops/built-in/op_proto/bitwise_ops.cc
       - ops/built-in/op_proto/candidate_sampling_ops.cc
-      - ops/built-in/op_proto/correlation.cc
       - ops/built-in/op_proto/logging_ops.cc
       - ops/built-in/op_proto/ragged_math_ops.cc
       - ops/built-in/op_proto/randomdsa_ops.cc
@@ -2155,13 +2154,11 @@ unkown:
       - ops/built-in/op_proto/inc/spectral_ops.h
       - ops/built-in/op_proto/inc/case_condition_ops.h
       - ops/built-in/op_proto/inc/nn_ops.h
-      - ops/built-in/op_proto/inc/bitwise_ops.h
       - ops/built-in/op_proto/inc/lookup_ops.h
       - ops/built-in/op_proto/inc/logging_ops.h
       - ops/built-in/op_proto/inc/rnn.h
       - ops/built-in/op_proto/inc/math_ops.h
       - ops/built-in/op_proto/inc/npu_loss_scale_ops.h
-      - ops/built-in/op_proto/inc/array_ops.h
       - ops/built-in/op_proto/inc/hcom_ops.h
       - ops/built-in/op_proto/inc/string_ops.h
       - ops/built-in/op_proto/inc/slice_write_ops.h
@@ -2185,7 +2182,6 @@ unkown:
       - ops/built-in/op_proto/inc/stateless_random_ops.h
       - ops/built-in/op_proto/inc/state_ops.h
       - ops/built-in/op_proto/inc/control_flow_ops.h
-      - ops/built-in/op_proto/inc/correlation.h
       - ops/built-in/op_proto/inc/randomdsa_ops.h
       - ops/built-in/op_proto/inc/get_data_ops.h
       - ops/built-in/op_proto/inc/outfeed_ops.h
@@ -4266,6 +4262,10 @@ pytorch:
       - ops/built-in/op_proto/nn_detect_ops.cc
       - ops/built-in/op_proto/inc/nn_detect_ops.h
       - ops/built-in/tbe/impl/ciou.py
+      - ops/built-in/op_proto/bitwise_ops.cc
+      - ops/built-in/op_proto/inc/bitwise_ops.h
+      - ops/built-in/op_proto/correlation.cc
+      - ops/built-in/op_proto/inc/correlation.h
     unrelease:
       - ops/built-in/tests/ut/graph_fusion/ai_core/lstmp_fusion_test.cpp
       - ops/built-in/tests/ut/graph_fusion/ai_core/dynamic_rnn_v2_grad_fusion_test.cpp
