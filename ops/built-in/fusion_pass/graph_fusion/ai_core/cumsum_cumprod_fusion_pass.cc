@@ -74,11 +74,10 @@ Status CumFusionPass::AddTransposeNode(ge::NodePtr cumNode, ge::ComputeGraph &gr
   ge::OutDataAnchorPtr preAnchorPtr0 = cumAnchorPtr0->GetPeerOutAnchor();
   ge::NodePtr preNode = preAnchorPtr0->GetOwnerNode();
   // creat a transposeD node
-  std::shared_ptr<ge::OpDesc> transposeDDesc = nullptr;
-  transposeDDesc = std::make_shared<ge::OpDesc>(cumNode->GetName() + "_transposeD_layer", "TransposeD");
-  FUSION_PASS_CHECK(transposeDDesc == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "TransposeD failed."),
-                    return PARAM_INVALID);
+  ge::OpDescPtr transposeDDesc = nullptr;
+  FUSION_PASS_MAKE_SHARED(
+    (transposeDDesc = std::make_shared<ge::OpDesc>(cumNode->GetName() + "_transposeD_layer", "TransposeD")),
+    transposeDDesc = nullptr; return FAILED);
   // add input
   ge::GeTensorDesc input_desc = preNode->GetOpDesc()->GetOutputDesc(0);
   FUSION_PASS_CHECK(transposeDDesc->AddInputDesc(input_desc) != SUCCESS,
@@ -113,11 +112,10 @@ Status CumFusionPass::AddTransposeNode(ge::NodePtr cumNode, ge::ComputeGraph &gr
   ge::OutDataAnchorPtr cumAnchorPtr1 = cumNode->GetOutDataAnchor(0);
   auto transposeDpPtr1 = cumAnchorPtr1->GetPeerInDataAnchors().at(0);
 
-  std::shared_ptr<ge::OpDesc> transposeDDesc1 = nullptr;
-  transposeDDesc1 = std::make_shared<ge::OpDesc>(cumNode->GetName() + "_transposeD1_layer", "TransposeD");
-  FUSION_PASS_CHECK(transposeDDesc1 == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "transposeD is null, TransposeD failed."),
-                    return PARAM_INVALID);
+  ge::OpDescPtr transposeDDesc1 = nullptr;
+  FUSION_PASS_MAKE_SHARED(
+    (transposeDDesc1 = std::make_shared<ge::OpDesc>(cumNode->GetName() + "_transposeD1_layer", "TransposeD")),
+    transposeDDesc1 = nullptr; return FAILED);
   // add input
   ge::GeTensorDesc input_desc1 = cumNode->GetOpDesc()->GetOutputDesc(0);
   FUSION_PASS_CHECK(transposeDDesc1->AddInputDesc(input_desc1) != SUCCESS,
@@ -176,7 +174,7 @@ Status CumFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<g
   ge::NodePtr cumsumNode = GetNodeFromMapping(PATTERN_CUMSUM, mapping);
   ge::NodePtr cumNode;
   if (cumprodNode == nullptr && cumsumNode == nullptr) {
-    OP_LOGD(FUSED_OP_TYPE.c_str(), "cumsum and cumprod node both are null.");
+    OP_LOGE(FUSED_OP_TYPE.c_str(), "cumsum and cumprod node both are null.");
     return PARAM_INVALID;
   } else if (cumprodNode == nullptr) {
     cumNode = cumsumNode;
