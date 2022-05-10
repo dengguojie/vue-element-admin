@@ -22,6 +22,7 @@ protected:
 };
 
 TEST_F(dynamic_rnn_v2_grad_fusion_test, dynamic_rnn_v2_grad_fusion_test_1) {
+  int time_step = 1;
   int batch_size = -1;
   int input_size = 16;
   int hidden_size = 16;
@@ -49,117 +50,99 @@ TEST_F(dynamic_rnn_v2_grad_fusion_test, dynamic_rnn_v2_grad_fusion_test_1) {
   data_wh.update_input_desc_x(data_wh_desc);
   data_wh.update_output_desc_y(data_wh_desc);
 
+  std::vector<int64_t> data_2d_shape{batch_size, hidden_size};
+  std::vector<int64_t> data_3d_shape{time_step, batch_size, hidden_size};
   // y
   auto data_y = op::Data("y");
-  std::vector<int64_t> data_y_vec{batch_size, hidden_size};
-  ge::Shape data_y_shape(data_y_vec);
+  ge::Shape data_y_shape(data_3d_shape);
   ge::TensorDesc data_y_desc(data_y_shape, FORMAT_ND, DT_FLOAT16);
   data_y.update_input_desc_x(data_y_desc);
   data_y.update_output_desc_y(data_y_desc);
 
   // init_h
   auto data_init_h = op::Data("init_h");
-  std::vector<int64_t> data_init_h_vec{batch_size, hidden_size};
-  ge::Shape data_init_h_shape(data_init_h_vec);
+  ge::Shape data_init_h_shape(data_2d_shape);
   ge::TensorDesc data_init_h_desc(data_init_h_shape, FORMAT_ND, DT_FLOAT16);
   data_init_h.update_input_desc_x(data_init_h_desc);
   data_init_h.update_output_desc_y(data_init_h_desc);
 
   // init_c
   auto data_init_c = op::Data("init_c");
-  std::vector<int64_t> data_init_c_vec{batch_size, hidden_size};
-  ge::Shape data_init_c_shape(data_init_c_vec);
+  ge::Shape data_init_c_shape(data_2d_shape);
   ge::TensorDesc data_init_c_desc(data_init_c_shape, FORMAT_ND, DT_FLOAT16);
   data_init_c.update_input_desc_x(data_init_c_desc);
   data_init_c.update_output_desc_y(data_init_c_desc);
 
   // h
   auto data_h = op::Data("h");
-  std::vector<int64_t> data_h_vec{batch_size, hidden_size};
-  ge::Shape data_h_shape(data_h_vec);
+  ge::Shape data_h_shape(data_3d_shape);
   ge::TensorDesc data_h_desc(data_h_shape, FORMAT_ND, DT_FLOAT16);
   data_h.update_input_desc_x(data_h_desc);
   data_h.update_output_desc_y(data_h_desc);
 
   // c
   auto data_c = op::Data("c");
-  std::vector<int64_t> data_c_vec{batch_size, hidden_size};
-  ge::Shape data_c_shape(data_c_vec);
+  ge::Shape data_c_shape(data_3d_shape);
   ge::TensorDesc data_c_desc(data_c_shape, FORMAT_ND, DT_FLOAT16);
   data_c.update_input_desc_x(data_c_desc);
   data_c.update_output_desc_y(data_c_desc);
 
+  std::vector<int64_t> data_gate_vec{time_step, batch_size, hidden_size};
   // dy
   auto data_dy = op::Data("dy");
-  std::vector<int64_t> data_dy_vec{batch_size, hidden_size};
-  ge::Shape data_dy_shape(data_dy_vec);
+  ge::Shape data_dy_shape(data_3d_shape);
   ge::TensorDesc data_dy_desc(data_dy_shape, FORMAT_ND, DT_FLOAT16);
   data_dy.update_input_desc_x(data_dy_desc);
   data_dy.update_output_desc_y(data_dy_desc);
 
   // dh
   auto data_dh = op::Data("dh");
-  std::vector<int64_t> data_dh_vec{batch_size, hidden_size};
-  ge::Shape data_dh_shape(data_dh_vec);
+  ge::Shape data_dh_shape(data_2d_shape);
   ge::TensorDesc data_dh_desc(data_dh_shape, FORMAT_ND, DT_FLOAT16);
   data_dh.update_input_desc_x(data_dh_desc);
   data_dh.update_output_desc_y(data_dh_desc);
 
   // dc
   auto data_dc = op::Data("dc");
-  std::vector<int64_t> data_dc_vec{batch_size, hidden_size};
-  ge::Shape data_dc_shape(data_dc_vec);
+  ge::Shape data_dc_shape(data_2d_shape);
   ge::TensorDesc data_dc_desc(data_dc_shape, FORMAT_ND, DT_FLOAT16);
   data_dc.update_input_desc_x(data_dc_desc);
   data_dc.update_output_desc_y(data_dc_desc);
 
   // i
   auto data_i = op::Data("i");
-  std::vector<int64_t> data_i_vec{batch_size, hidden_size};
-  ge::Shape data_i_shape(data_i_vec);
+  ge::Shape data_i_shape(data_3d_shape);
   ge::TensorDesc data_i_desc(data_i_shape, FORMAT_ND, DT_FLOAT16);
   data_i.update_input_desc_x(data_i_desc);
   data_i.update_output_desc_y(data_i_desc);
 
   // j
   auto data_j = op::Data("j");
-  std::vector<int64_t> data_j_vec{batch_size, hidden_size};
-  ge::Shape data_j_shape(data_j_vec);
+  ge::Shape data_j_shape(data_3d_shape);
   ge::TensorDesc data_j_desc(data_j_shape, FORMAT_ND, DT_FLOAT16);
   data_j.update_input_desc_x(data_j_desc);
   data_j.update_output_desc_y(data_j_desc);
 
   // f
   auto data_f = op::Data("f");
-  std::vector<int64_t> data_f_vec{batch_size, hidden_size};
-  ge::Shape data_f_shape(data_f_vec);
+  ge::Shape data_f_shape(data_3d_shape);
   ge::TensorDesc data_f_desc(data_f_shape, FORMAT_ND, DT_FLOAT16);
   data_f.update_input_desc_x(data_f_desc);
   data_f.update_output_desc_y(data_f_desc);
 
   // o
   auto data_o = op::Data("o");
-  std::vector<int64_t> data_o_vec{batch_size, hidden_size};
-  ge::Shape data_o_shape(data_o_vec);
+  ge::Shape data_o_shape(data_3d_shape);
   ge::TensorDesc data_o_desc(data_o_shape, FORMAT_ND, DT_FLOAT16);
   data_o.update_input_desc_x(data_o_desc);
   data_o.update_output_desc_y(data_o_desc);
 
   // tanhct
   auto data_tanhct = op::Data("tanhct");
-  std::vector<int64_t> data_tanhct_vec{batch_size, hidden_size};
-  ge::Shape data_tanhct_shape(data_tanhct_vec);
+  ge::Shape data_tanhct_shape(data_3d_shape);
   ge::TensorDesc data_tanhct_desc(data_tanhct_shape, FORMAT_ND, DT_FLOAT16);
   data_tanhct.update_input_desc_x(data_tanhct_desc);
   data_tanhct.update_output_desc_y(data_tanhct_desc);
-
-  // mask
-  auto data_mask = op::Data("mask");
-  std::vector<int64_t> data_mask_vec{batch_size};
-  ge::Shape data_mask_shape(data_mask_vec);
-  ge::TensorDesc data_mask_desc(data_mask_shape, FORMAT_ND, DT_INT8);
-  data_mask.update_input_desc_x(data_mask_desc);
-  data_mask.update_output_desc_y(data_mask_desc);
 
   auto dynamci_rnn_grad_op = op::DynamicRNNV2Grad("DynamicRNNV2Grad");
   dynamci_rnn_grad_op.set_input_x(data_x)
@@ -192,20 +175,15 @@ TEST_F(dynamic_rnn_v2_grad_fusion_test, dynamic_rnn_v2_grad_fusion_test_1) {
   fe::FusionPassTestUtils::RunGraphFusionPass("DynamicRNNV2GradFusionPass", fe::BUILT_IN_GRAPH_PASS,
                                               *compute_graph_ptr);
 
-  bool findMatMulV2 = false;
-  bool findSplit = false;
-  bool findConcat = false;
+  bool findDynamicLSTMGradCell = false;
+  bool findBatchMatMulV2 = false;
   for (auto node : compute_graph_ptr->GetAllNodes()) {
-    if (node->GetType() == "MatMulV2") {
-      findMatMulV2 = true;
-    } else if (node->GetType() == "SplitVD") {
-      findSplit = true;
-    } else if (node->GetType() == "ConcatD") {
-      findConcat = true;
+    if (node->GetType() == "DynamicLSTMGradCell") {
+      findDynamicLSTMGradCell = true;
+    } else if (node->GetType() == "BatchMatMulV2") {
+      findBatchMatMulV2 = true;
     }
   }
-
-  EXPECT_EQ(findMatMulV2, true);
-  EXPECT_EQ(findSplit, true);
-  EXPECT_EQ(findConcat, true);
+  EXPECT_EQ(findDynamicLSTMGradCell, true);
+  EXPECT_EQ(findBatchMatMulV2, true);
 }
