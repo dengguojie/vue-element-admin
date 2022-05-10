@@ -18,6 +18,7 @@ import operator
 import math
 import enum
 
+from impl.util import util_select_op_base
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tik
 from impl.util.platform_adapter import tvm
@@ -38,6 +39,107 @@ from te.lang.cce import vrec
 from te.lang.cce import vsub
 from te.platform.cce_conf import api_check_support
 
+
+# 'pylint: disable=locally-disabled,too-many-branches,too-many-statements,invalid-name,unused-argument,too-many-locals
+def op_select_format(x, weight_input, weight_hidden, bias_input, bias_hidden, seq_length, init_h,
+                     y, output_h, update, reset, new, hidden_new,
+                     direction="UNIDIRECTIONAL", cell_depth=1, keep_prob=1.0,
+                     cell_clip=-1.0, num_proj=0, time_major=True, activation="tanh",
+                     gate_order="zrh", reset_after=True, is_training=True, kernel_name="dynamic_gru_v2"):
+    """ when inputsize and hidden_size is 16 aligned,
+            format_weight is FRACTAL_Z and format_bias is ND
+        else
+            format_weight is FRACTAL_ZN_RNN and format_bias is ND_RNN_BIAS
+    """
+
+    shape_x = x.get("ori_shape")
+    shape_weight_hidden = weight_hidden.get("ori_shape")
+    input_size = shape_x[2]
+    hidden_size = shape_weight_hidden[0]
+
+    format_x = "FRACTAL_NZ,FRACTAL_NZ,FRACTAL_NZ,FRACTAL_NZ"
+    format_seq_length = "FRACTAL_NZ,FRACTAL_NZ,ND,ND"
+    if (input_size % 16 == 0 and hidden_size % 16 == 0):
+        format_weight = "FRACTAL_Z,FRACTAL_Z,FRACTAL_Z,FRACTAL_Z"
+        format_bias = "ND,ND,ND,ND"
+    else:
+        format_weight = "FRACTAL_ZN_RNN,FRACTAL_ZN_RNN,FRACTAL_ZN_RNN,FRACTAL_ZN_RNN"
+        format_bias = "ND_RNN_BIAS,ND_RNN_BIAS,ND_RNN_BIAS,ND_RNN_BIAS"
+
+    dtype_x = "float16,float16,float16,float16"
+    dtype_bias = "float,float16,float,float16"
+    dtype_seq_length = "float16,float16,int32,int32"
+
+    input0 = util_select_op_base.gen_param(classify="input0",
+                                           name="x",
+                                           datatype=dtype_x,
+                                           format=format_x,
+                                           unknownshape_format=format_x)
+    input1 = util_select_op_base.gen_param(classify="input1",
+                                           name="weight_input",
+                                           datatype=dtype_x,
+                                           format=format_weight,
+                                           unknownshape_format=format_weight)
+    input2 = util_select_op_base.gen_param(classify="input2",
+                                           name="weight_hidden",
+                                           datatype=dtype_x,
+                                           format=format_weight,
+                                           unknownshape_format=format_weight)
+    input3 = util_select_op_base.gen_param(classify="input3",
+                                           name="bias_input",
+                                           datatype=dtype_bias,
+                                           format=format_bias,
+                                           unknownshape_format=format_bias)
+    input4 = util_select_op_base.gen_param(classify="input4",
+                                           name="bias_hidden",
+                                           datatype=dtype_bias,
+                                           format=format_bias,
+                                           unknownshape_format=format_bias)
+    input5 = util_select_op_base.gen_param(classify="input5",
+                                           name="seq_length",
+                                           datatype=dtype_seq_length,
+                                           format=format_seq_length,
+                                           unknownshape_format=format_seq_length)
+    input6 = util_select_op_base.gen_param(classify="input6",
+                                           name="init_h",
+                                           datatype=dtype_bias,
+                                           format=format_x,
+                                           unknownshape_format=format_x)
+    output0 = util_select_op_base.gen_param(classify="output0",
+                                            name="y",
+                                            datatype=dtype_bias,
+                                            format=format_x,
+                                            unknownshape_format=format_x)
+    output1 = util_select_op_base.gen_param(classify="output1",
+                                            name="output_h",
+                                            datatype=dtype_bias,
+                                            format=format_x,
+                                            unknownshape_format=format_x)
+    output2 = util_select_op_base.gen_param(classify="output2",
+                                            name="update",
+                                            datatype=dtype_bias,
+                                            format=format_x,
+                                            unknownshape_format=format_x)
+    output3 = util_select_op_base.gen_param(classify="output3",
+                                            name="reset",
+                                            datatype=dtype_bias,
+                                            format=format_x,
+                                            unknownshape_format=format_x)
+    output4 = util_select_op_base.gen_param(classify="output4",
+                                            name="new",
+                                            datatype=dtype_bias,
+                                            format=format_x,
+                                            unknownshape_format=format_x)
+    output5 = util_select_op_base.gen_param(classify="output5",
+                                            name="hidden_new",
+                                            datatype=dtype_bias,
+                                            format=format_x,
+                                            unknownshape_format=format_x)
+    param_list = [input0, input1, input2, input3, input4, input5, input6, output0, output1, output2, output3, output4,
+                  output5]
+    param_dynamic_in_json = util_select_op_base.get_dynamic_param_in_json(param_list)
+
+    return param_dynamic_in_json
 
 
 def _sigmoid_compute(input_x):

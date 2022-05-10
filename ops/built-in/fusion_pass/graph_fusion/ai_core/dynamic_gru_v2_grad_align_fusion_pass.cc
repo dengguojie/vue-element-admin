@@ -634,7 +634,7 @@ ge::NodePtr DynamicGRUV2GradAlignFusionPass::AddDwhMatmulNode(ge::NodePtr dynami
     inputTensorDescDgate = gruHiddenGradNode->GetOpDesc()->GetOutputDesc(0).Clone();  // dgate_h
   }
   inputTensorDescH.SetDataType(ge::DT_FLOAT16);
-  inputTensorDescDgate.SetOriginShape(GeShape({t_size, batch, (splitSize + 1) * hidden_dim}));
+  inputTensorDescDgate.SetOriginShape(GeShape({t_size, batch, (splitSize + 1) * nzHiddenDim * fzDim}));
 
   inputTensorDescDgate.SetFormat(ge::FORMAT_FRACTAL_NZ);
   inputTensorDescDgate.SetDataType(ge::DT_FLOAT16);

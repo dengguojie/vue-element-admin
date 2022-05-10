@@ -558,6 +558,29 @@ ut_case.add_case("all", {
     "expect": RuntimeError
 })
 
+
+def test_op_select_format(test_arg):
+    from impl.dynamic_gru_v2 import op_select_format
+    # dynamicgru shape
+    op_select_format(
+        {"shape": (200, 1, 32), "dtype": "float16", "format": "ND", "ori_shape": (200, 1, 32), "ori_format": "ND"},
+        {"shape": (32, 54), "dtype": "float16", "format": "ND", "ori_shape": (32, 54), "ori_format": "ND"},
+        {"shape": (18, 54), "dtype": "float16", "format": "ND", "ori_shape": (18, 54), "ori_format": "ND"},
+        {"shape": (54), "dtype": "float16", "format": "ND", "ori_shape": (54), "ori_format": "ND"},
+        {"shape": (54), "dtype": "float16", "format": "ND", "ori_shape": (54), "ori_format": "ND"},
+        {"shape": (200, 1, 18), "dtype": "float16", "format": "ND", "ori_shape": (200, 1, 18), "ori_format": "ND"},
+        {"shape": (1, 18), "dtype": "float16", "format": "ND", "ori_shape": (1, 18), "ori_format": "ND"},
+        {"shape": (200, 1, 18), "dtype": "float16", "format": "ND", "ori_shape": (200, 1, 18), "ori_format": "ND"},
+        {"shape": (200, 1, 18), "dtype": "float16", "format": "ND", "ori_shape": (200, 1, 18), "ori_format": "ND"},
+        {"shape": (200, 1, 18), "dtype": "float16", "format": "ND", "ori_shape": (200, 1, 18), "ori_format": "ND"},
+        {"shape": (200, 1, 18), "dtype": "float16", "format": "ND", "ori_shape": (200, 1, 18), "ori_format": "ND"},
+        {"shape": (200, 1, 18), "dtype": "float16", "format": "ND", "ori_shape": (200, 1, 18), "ori_format": "ND"},
+        {"shape": (200, 1, 18), "dtype": "float16", "format": "ND", "ori_shape": (200, 1, 18), "ori_format": "ND"}
+        )
+
+
+ut_case.add_cust_test_func(test_func=test_op_select_format)
+
 if __name__ == '__main__':
     ut_case.run(["Ascend910A", "Ascend310", "Ascend710"])
     exit(0)

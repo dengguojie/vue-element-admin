@@ -680,6 +680,8 @@ vector_A:
       - ops/built-in/fusion_pass/graph_fusion/ai_core/yolo_v3_detection_output_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/yolo_v3_detection_output_v2_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/yolo_v3_detection_output_v2_fusion_pass.h
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/dynamic_gru_v2_grad_align_fusion_pass.cc
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/dynamic_gru_v2_grad_align_fusion_pass.h
       - ops/built-in/op_proto/aipp.cc
       - ops/built-in/op_proto/elewise_calculation_ops.cc
       - ops/built-in/op_proto/fsrdetectionoutput_ops.cc
@@ -729,6 +731,8 @@ vector_A:
       - ops/built-in/tbe/impl/dynamic/resize_bilinear_v2_grad.py
       - ops/built-in/tbe/impl/dynamic/sync_resize_bilinear_v2_grad.py
       - ops/built-in/tbe/impl/axpy_v2.py
+      - ops/built-in/tbe/impl/dynamic_gru_v2.py
+      - ops/built-in/tbe/impl/dynamic_augru.py
       - ops/built-in/tbe/impl/dynamic/axpy_v2.py
       - ops/built-in/tbe/impl/augru_hidden_grad_cell.py
     unrelease:
@@ -2311,8 +2315,6 @@ unkown:
       - ops/built-in/tbe/impl/lamb_next_right.py
       - ops/built-in/tbe/impl/less.py
       - ops/built-in/tbe/impl/ndc1hwc0_2_ncdhw.py
-      - ops/built-in/tbe/impl/dynamic_gru_v2.py
-      - ops/built-in/tbe/impl/dynamic_augru.py
       - ops/built-in/tbe/impl/yolo_v3_cls_prob.py
       - ops/built-in/tbe/impl/act_ulq_clamp_max_grad.py
       - ops/built-in/tbe/impl/roll.py
@@ -3646,7 +3648,6 @@ unkown:
       - ops/built-in/fusion_pass/graph_fusion/ai_core/im2col_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/avg_pool_grad_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/reduce_mean_variance_fusion_pass.h
-      - ops/built-in/fusion_pass/graph_fusion/ai_core/dynamic_gru_v2_grad_align_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/softmax_cross_entropy_with_logits_grad.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/maxpoolwithargmax_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/batchnormgrad_preprocess_fusion_pass.cc
@@ -3655,7 +3656,6 @@ unkown:
       - ops/built-in/fusion_pass/graph_fusion/ai_core/extremum_grad_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/fusedbatchnorminfgrad_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/unsortedsegmentsumd_fusion_pass.h
-      - ops/built-in/fusion_pass/graph_fusion/ai_core/dynamic_gru_v2_grad_align_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/pad_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/padd_update_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/gelu_fusion_pass.h
