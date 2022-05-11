@@ -46,6 +46,7 @@ class ConstManager:
     OP_TEST_GEN_INVALID_INPUT_NAME_ERROR = 114
     OP_TEST_GEN_NONE_TYPICAL_SHAPE_ERROR = 115
     OP_TEST_GEN_INVALID_ERROR_THRESHOLD_ERROR = 116
+    OP_TEST_GEN_INVALID_ERROR_REPORT_ERROR = 117
     # error code for user: un know error
     OP_TEST_GEN_UNKNOWN_ERROR = 1001
     OP_TEST_GEN_TF_LOAD_ERROR = 1002
@@ -271,6 +272,7 @@ class ConstManager:
     TASK_DURATION_INDEX = 2
     TASK_ID_INDEX = 3
     OP = 'op'
+    ERR_REPORT_HEADER = ['Index', 'ExpectOut', 'RealOut', 'FpDiff', 'RateDiff']
 
     # -----------------MsOpRunner------------------------
     TEST_PY = 'test_{op_name}.py'

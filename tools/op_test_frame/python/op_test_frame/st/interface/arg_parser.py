@@ -7,8 +7,11 @@ Copyright Information:
 Huawei Technologies Co., Ltd. All Rights Reserved © 2020
 """
 import ast
+import os
 import sys
 import argparse
+import time
+
 from op_test_frame.st.interface import utils
 from op_test_frame.st.interface.const_manager import ConstManager
 
@@ -44,6 +47,7 @@ class MsopstArgParser:
         self.report_path = ''
         self.expect_path = ''
         self.result_path = ''
+        self.error_report = ''
         args = parse.parse_args(sys.argv[1:])
         if sys.argv[1] == 'create':
             self.input_file = args.input_file
@@ -58,6 +62,11 @@ class MsopstArgParser:
                 self._check_mi_args(args)
         else:
             self._check_run_args(args)
+
+    @staticmethod
+    def _add_time_steamp(out_path):
+        time_dir = time.strftime("%Y%m%d%H%M%S", time.localtime())
+        return os.path.realpath(os.path.join(out_path, time_dir))
 
     def _check_mi_args(self, args):
         if sys.argv[2] == 'get_shape':
@@ -78,10 +87,12 @@ class MsopstArgParser:
         if sys.argv[2] == 'compare':
             self.report_path = args.report_path
             self._gen_error_threshold(args.error_threshold)
+            self.error_report = args.error_report
             self.output_path = args.output_path
         if sys.argv[2] == 'compare_by_path':
             self.result_path = args.result_path
             self.expect_path = args.expect_path
+            self.error_report = args.error_report
 
     def _check_run_args(self, args):
         self.input_file = args.input_file
@@ -89,8 +100,9 @@ class MsopstArgParser:
         self._check_soc_version(args.soc_version)
         self._check_device_id(args.device_id)
         self._gen_error_threshold(args.error_threshold)
+        self.error_report = args.error_report
         self.config_file = args.config_file
-        self.output_path = args.output_path
+        self.output_path = self._add_time_steamp(args.output_path)
 
     def _check_soc_version(self, soc_version):
         if soc_version == '':
@@ -186,6 +198,12 @@ class MsopstArgParser:
             help="<Optional> error_threshold, Error threshold of result"
                  "comparison, like [0.001, 0.001].",
             required=False)
+        run_parser.add_argument(
+            '-err_report', "--error_report", dest="error_report",
+            default="false", choices=['false', 'true'],
+            help="For failed test cases, save the data results whose expected data "
+                 "is inconsistent with the actual data to a .csv file. The valid value is 'true'.",
+            required=False)
 
     def _mi_parser(self, mi_parser):
         """
@@ -271,6 +289,12 @@ class MsopstArgParser:
             help="<Optional> error_threshold, Error threshold of result"
                  "comparison, like [0.001, 0.001].",
             required=False)
+        compare_parser.add_argument(
+            '-err_report', "--error_report", dest="error_report",
+            default="false", choices=['false', 'true'],
+            help="For failed test cases, save the data results whose expected data "
+                 "is inconsistent with the actual data to a .csv file. The valid value is 'true'.",
+            required=False)
 
         # compare_by_path parse
         compare_by_path_parser.add_argument(
@@ -280,6 +304,12 @@ class MsopstArgParser:
             "-expect", "--expect path", dest="expect_path", default="",
             help="<Required> the expect result file path",
             required=True)
+        compare_by_path_parser.add_argument(
+            '-err_report', "--error_report", dest="error_report",
+            default="false", choices=['false', 'true'],
+            help="For failed test cases, save the data results whose expected data "
+                 "is inconsistent with the actual data to a .csv file. The valid value is 'true'.",
+            required=False)
 
     def get_input_file(self):
         """

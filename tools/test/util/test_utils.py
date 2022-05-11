@@ -1,7 +1,7 @@
 import os
 import shutil
 import filecmp
-import difflib
+import glob
 
 
 def clear_out_path(out_path):
@@ -54,3 +54,8 @@ def check_file_context(result_path, golden_path):
         print(" %s VS %s return false." % (src_name, dst_name))
         return False
     return True
+
+
+def get_time_stamp_output_path(st_out, file_path):
+    path_list = glob.glob(os.path.join(st_out, '*', file_path))
+    return path_list[0]

@@ -1,0 +1,118 @@
+{
+    "run_cmd":"",
+    "report_list": [
+        {
+            "case_name": "test_Add_01_case_001",
+            "status": "success",
+            "expect": "success",
+            "trace_detail": {
+                "st_case_info": {
+                    "case_name": "test_Add_01_case_001",
+                    "op_params": {
+                        "op": "Add",
+                        "input_desc": [
+                            {
+                                "format": "ND",
+                                "ori_format": "ND",
+                                "shape": [
+                                    1,
+                                    1
+                                ],
+                                "ori_shape": [
+                                    1,
+                                    1
+                                ],
+                                "type": "float16",
+                                "data_distribute": "uniform",
+                                "value_range": [
+                                    0.1,
+                                    1.0
+                                ],
+                                "name": "input_x"
+                            },
+                            {
+                                "format": "ND",
+                                "ori_format": "ND",
+                                "shape": [
+                                    1,
+                                    1
+                                ],
+                                "ori_shape": [
+                                    1,
+                                    1
+                                ],
+                                "type": "float16",
+                                "data_distribute": "uniform",
+                                "value_range": [
+                                    0.1,
+                                    1.0
+                                ],
+                                "name": "input_y"
+                            }
+                        ],
+                        "output_desc": [
+                            {
+                                "format": "ND",
+                                "ori_format": "ND",
+                                "shape": [
+                                    1,
+                                    1
+                                ],
+                                "ori_shape": [
+                                    1,
+                                    1
+                                ],
+                                "type": "float16",
+                                "name": "output_z"
+                            }
+                        ],
+                        "case_name": "test_Add_01_case_001",
+                        "calc_expect_func_file": "test_add_golden.py",
+                        "calc_expect_func_file_func": "calc_expect_func"
+                    },
+                    "input_data_path": "",
+                    "expect_data_paths": [
+                        "xx.bin"
+                    ],
+                    "planned_output_data_paths": [
+                        ""
+                    ]
+                },
+                "stage_result": [
+                    {
+                        "status": "success",
+                        "result": null,
+                        "stage_name": "atc_single_op_convert",
+                        "cmd": ""
+                    },
+                    {
+                        "status": "success",
+                        "result": "",
+                        "stage_name": "gen_acl_code"
+                    },
+                    {
+                        "status": "success",
+                        "result": null,
+                        "stage_name": "compile_acl_code",
+                        "cmd": ""
+                    },
+                    {
+                        "status": "success",
+                        "result": null,
+                        "stage_name": "run_acl_code"
+                    },
+                    {
+                        "status": "success",
+                        "result": null,
+                        "stage_name": "compare_data"
+                    }
+                ]
+            }
+        }
+    ],
+    "summary": {
+        "test case count": 1,
+        "success count": 1,
+        "failed count": 0
+    }
+}

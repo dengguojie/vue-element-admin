@@ -15,7 +15,8 @@ from op_test_frame.st.interface.const_manager import ConstManager
 from op_test_frame.st.interface import model_parser
 from op_test_frame.st.interface.framework import tf_model_parser
 from op_test_frame.st.interface.framework.tf_model_parser import TFModelParse
-from op_test_frame.st.interface import result_comparer
+from op_test_frame.st.interface.result_comparer import ResultCompare
+from op_test_frame.st.interface.compare_data import CompareData
 from op_test_frame.st.interface.case_generator import CaseGenerator
 from op_test_frame.st.interface.data_generator import DataGenerator
 from op_test_frame.st.interface.st_report import OpSTReport
@@ -136,6 +137,7 @@ ST_GOLDEN_SCALAR_INPUT_CONFIG_ACL_OP = './st/msopst/golden/base_case/golden_outp
 
 ST_GOLDEN_OP_ADD_REPORT_JSON_INPUT = './st/msopst/golden/base_case/input/add_st_report.json'
 ST_GOLDEN_OP_POOLING_REPORT_JSON_INPUT = './st/msopst/golden/base_case/input/pooling_st_report.json'
+ST_REPORT = './st/msopst/golden/base_case/input/golden_st_report.json'
 
 
 class NumpyArrar:
@@ -437,7 +439,9 @@ class TestUtilsMethods(unittest.TestCase):
         report = OpSTReport()
         run_dir = "xxx.txt"
         err_thr = [0.01, 0.01]
-        result_comparer.compare(report, run_dir, err_thr)
+        error_report = 'false'
+        comparer_obj = ResultCompare(report, run_dir, err_thr, error_report)
+        comparer_obj.compare()
 
     def test_compare_func_2(self):
         """
@@ -448,6 +452,7 @@ class TestUtilsMethods(unittest.TestCase):
         op_st_case_trace = OpSTCaseTrace(op_st)
         op_st_report = OpSTCaseReport(op_st_case_trace)
         err_thr = [0.01, 0.01]
+        error_report = 'false'
         with mock.patch('op_test_frame.st.interface.utils.check_path_valid'):
             with mock.patch(
                     'op_test_frame.st.interface.utils.execute_command'):
@@ -462,8 +467,8 @@ class TestUtilsMethods(unittest.TestCase):
                                     return_value=op_st_report):
                                 runner = AclOpRunner('/home', 'ddd', report)
                                 runner.run()
-                                result_comparer.compare(
-                                    report, ST_GOLDEN_OP_RESULT_TXT, err_thr)
+                                comparer_obj = ResultCompare(report, ST_GOLDEN_OP_RESULT_TXT, err_thr, error_report)
+                                comparer_obj.compare()
 
     def test_compare_func_3(self):
         """
@@ -473,6 +478,7 @@ class TestUtilsMethods(unittest.TestCase):
         op_st = OpSTCase("AddN", {"calc_expect_func_file_func": 1})
         op_st_case_trace = OpSTCaseTrace(op_st)
         op_st_report = OpSTCaseReport(op_st_case_trace)
+        error_report = 'false'
         with mock.patch('op_test_frame.st.interface.utils.check_path_valid'):
             with mock.patch('op_test_frame.st.interface.utils.execute_command'):
                 with mock.patch('os.path.exists',
@@ -489,8 +495,7 @@ class TestUtilsMethods(unittest.TestCase):
                                     runner = AclOpRunner(
                                         '/home', 'ddd', report)
                                     runner.run()
-                                    result_comparer.compare_by_path(
-                                        report, ST_GOLDEN_OP_RESULT_TXT)
+                                    ResultCompare.compare_by_path(report, ST_GOLDEN_OP_RESULT_TXT, error_report)
 
     def test_compare_func_4(self):
         """
@@ -501,7 +506,9 @@ class TestUtilsMethods(unittest.TestCase):
         cpu_output = [[10, 20, 30], [40, 50, 60], [70, 80, 90]]
         npu_output_array = np.array(npu_output)
         cpu_output_array = np.array(cpu_output)
-        result_comparer._data_compare(npu_output_array, cpu_output_array, err_thr)
+        error_report = 'false'
+        compare_data_obj = CompareData('current case', err_thr, error_report, '')
+        compare_data_obj.compare(npu_output_array, cpu_output_array)
 
     def test_compare_func_5(self):
         """
@@ -690,10 +697,10 @@ class TestUtilsMethods(unittest.TestCase):
                 with mock.patch(
                         'op_test_frame.st.interface.utils.execute_command'):
                     msopst.main()
-        testcase_cpp = os.path.join(ST_OUTPUT,
-                                          'TestOp/src/testcase.cpp')
-        acl_op_json = os.path.join(ST_OUTPUT, 'TestOp/run/out/test_data'
-                                         '/config/acl_op.json')
+        testcase_cpp = test_utils.get_time_stamp_output_path(
+            ST_OUTPUT, 'TestOp/src/testcase.cpp')
+        acl_op_json = test_utils.get_time_stamp_output_path(
+            ST_OUTPUT, 'TestOp/run/out/test_data/config/acl_op.json')
         self.assertTrue(compare_context(
             testcase_cpp, ST_GOLDEN_ATTR_SUPPORT_DATA_TYPE_TESTCASE))
         self.assertTrue(compare_context(
@@ -803,9 +810,10 @@ class TestUtilsMethods(unittest.TestCase):
                 with mock.patch(
                         'op_test_frame.st.interface.utils.execute_command'):
                     msopst.main()
-        pooling_output_testcase = os.path.join(ST_OUTPUT, 'Pooling/src/testcase.cpp')
-        pooling_output_json = os.path.join(ST_OUTPUT,
-                                           'Pooling/run/out/test_data/config/')
+        pooling_output_testcase = test_utils.get_time_stamp_output_path(
+            ST_OUTPUT, 'Pooling/src/testcase.cpp')
+        pooling_output_json = test_utils.get_time_stamp_output_path(
+            ST_OUTPUT, 'Pooling/run/out/test_data/config/')
         self.assertTrue(compare_context(
             pooling_output_testcase, ST_GOLDEN_ACL_PROJECT_OUTPUT_TESTCASE))
         self.assertTrue(test_utils.check_file_context(
@@ -935,7 +943,7 @@ class TestUtilsMethods(unittest.TestCase):
                 with mock.patch(
                         'op_test_frame.st.interface.utils.execute_command'):
                     msopst.main()
-        adds_output_src = os.path.join(ST_OUTPUT, 'Adds/src')
+        adds_output_src = test_utils.get_time_stamp_output_path(ST_OUTPUT, 'Adds/src')
         self.assertTrue(test_utils.check_file_context(
             adds_output_src, ST_GOLDEN_OP_GEN_WITH_VALUE_ACL_PROJECT_OUTPUT))
 
@@ -970,9 +978,9 @@ class TestUtilsMethods(unittest.TestCase):
                 with mock.patch(
                         'op_test_frame.st.interface.utils.execute_command'):
                     msopst.main()
-        fuzz_add_output_src = os.path.join(ST_OUTPUT, 'Add/src/testcase.cpp')
-        fuzz_add_output_json = os.path.join(ST_OUTPUT,
-                                           'Add/run/out/test_data/config/')
+        fuzz_add_output_src = test_utils.get_time_stamp_output_path(ST_OUTPUT, 'Add/src/testcase.cpp')
+        fuzz_add_output_json = test_utils.get_time_stamp_output_path(
+            ST_OUTPUT, 'Add/run/out/test_data/config/')
         self.assertTrue(compare_context(
             fuzz_add_output_src, ST_GOLDEN_OP_FUZZ_CASE_OUTPUT_SRC))
         self.assertTrue(test_utils.check_file_context(
@@ -991,7 +999,7 @@ class TestUtilsMethods(unittest.TestCase):
                                 '.ms_op_generator.MsOpGenerator'
                                 '._get_mindspore_input_param_type'):
                     msopst.main()
-        fuzz_square_output_src = os.path.join(ST_OUTPUT, 'Square/src')
+        fuzz_square_output_src = test_utils.get_time_stamp_output_path(ST_OUTPUT, 'Square/src')
         self.assertTrue(test_utils.check_file_context(
             fuzz_square_output_src, ST_GOLDEN_MS_FUZZ_CASE_OUTPUT_SRC))
 
@@ -1007,10 +1015,12 @@ class TestUtilsMethods(unittest.TestCase):
                 with mock.patch(
                         'op_test_frame.st.interface.utils.execute_command'):
                     msopst.main()
-        const_testcase_cpp = os.path.join(ST_OUTPUT, 'ResizeBilinearV2/src/testcase.cpp')
-        const_op_execute_cpp = os.path.join(ST_OUTPUT, 'ResizeBilinearV2/src/op_execute.cpp')
-        const_acl_op_json = os.path.join(ST_OUTPUT, 'ResizeBilinearV2/run/out/test_data'
-                                                    '/config/acl_op.json')
+        const_testcase_cpp = test_utils.get_time_stamp_output_path(
+            ST_OUTPUT, 'ResizeBilinearV2/src/testcase.cpp')
+        const_op_execute_cpp = test_utils.get_time_stamp_output_path(
+            ST_OUTPUT, 'ResizeBilinearV2/src/op_execute.cpp')
+        const_acl_op_json = test_utils.get_time_stamp_output_path(
+            ST_OUTPUT, 'ResizeBilinearV2/run/out/test_data/config/acl_op.json')
         self.assertTrue(compare_context(
             const_testcase_cpp, ST_GOLDEN_CONST_INPUT_SRC_TESTCASE))
         self.assertTrue(compare_context(
@@ -1030,10 +1040,10 @@ class TestUtilsMethods(unittest.TestCase):
                 with mock.patch(
                         'op_test_frame.st.interface.utils.execute_command'):
                     msopst.main()
-        const_testcase_cpp = os.path.join(ST_OUTPUT, 'ResizeBilinearV2/src/testcase.cpp')
-        const_op_execute_cpp = os.path.join(ST_OUTPUT, 'ResizeBilinearV2/src/op_execute.cpp')
-        const_acl_op_json = os.path.join(ST_OUTPUT, 'ResizeBilinearV2/run/out/test_data'
-                                                    '/config/acl_op.json')
+        const_testcase_cpp = test_utils.get_time_stamp_output_path(ST_OUTPUT, 'ResizeBilinearV2/src/testcase.cpp')
+        const_op_execute_cpp = test_utils.get_time_stamp_output_path(ST_OUTPUT, 'ResizeBilinearV2/src/op_execute.cpp')
+        const_acl_op_json = test_utils.get_time_stamp_output_path(
+            ST_OUTPUT, 'ResizeBilinearV2/run/out/test_data/config/acl_op.json')
         self.assertTrue(compare_context(
             const_testcase_cpp, ST_GOLDEN_CONST_INPUT_SRC_TESTCASE))
         self.assertTrue(compare_context(
@@ -1067,10 +1077,10 @@ class TestUtilsMethods(unittest.TestCase):
                 with mock.patch(
                         'op_test_frame.st.interface.utils.execute_command'):
                     msopst.main()
-        const_testcase_cpp = os.path.join(ST_OUTPUT, 'ResizeBilinearV2/src/testcase.cpp')
-        const_op_execute_cpp = os.path.join(ST_OUTPUT, 'ResizeBilinearV2/src/op_execute.cpp')
-        const_acl_op_json = os.path.join(ST_OUTPUT, 'ResizeBilinearV2/run/out/test_data'
-                                                    '/config/acl_op.json')
+        const_testcase_cpp = test_utils.get_time_stamp_output_path(ST_OUTPUT, 'ResizeBilinearV2/src/testcase.cpp')
+        const_op_execute_cpp = test_utils.get_time_stamp_output_path(ST_OUTPUT, 'ResizeBilinearV2/src/op_execute.cpp')
+        const_acl_op_json = test_utils.get_time_stamp_output_path(
+            ST_OUTPUT, 'ResizeBilinearV2/run/out/test_data/config/acl_op.json')
         self.assertTrue(compare_context(
             const_testcase_cpp, ST_GOLDEN_CONST_INPUT_SRC_TESTCASE))
         self.assertTrue(compare_context(
@@ -1089,9 +1099,9 @@ class TestUtilsMethods(unittest.TestCase):
             with mock.patch('sys.argv', args):
                 with mock.patch('op_test_frame.st.interface.utils.execute_command'):
                     msopst.main()
-        const_testcase_cpp = os.path.join(ST_OUTPUT, 'TestScalar/src/testcase.cpp')
-        const_acl_op_json = os.path.join(ST_OUTPUT, 'TestScalar/run/out/test_data'
-                                                    '/config/acl_op.json')
+        const_testcase_cpp = test_utils.get_time_stamp_output_path(ST_OUTPUT, 'TestScalar/src/testcase.cpp')
+        const_acl_op_json = test_utils.get_time_stamp_output_path(
+            ST_OUTPUT, 'TestScalar/run/out/test_data/config/acl_op.json')
         self.assertTrue(compare_context(
             const_testcase_cpp, ST_GOLDEN_SCALAR_INPUT_SRC_TESTCASE))
         self.assertTrue(compare_context(
@@ -1160,6 +1170,36 @@ class TestUtilsMethods(unittest.TestCase):
                 utils.write_json_file('/home/result', "test")
         self.assertEqual(error.value.args[0],
                          ConstManager.OP_TEST_GEN_WRITE_FILE_ERROR)
+
+    def test_get_compare_stage_result(self):
+        """
+        verify the abnormal scene of compare function in result_comparer.py
+        """
+        report_path = os.path.realpath(ST_REPORT)
+        report = OpSTReport()
+        report.load(report_path)
+        run_dir = ""
+        err_thr = [0.01, 0.01]
+        error_report = 'false'
+        op_st = OpSTCase("AddN", {"calc_expect_func_file_func": 1})
+        op_st_case_trace = OpSTCaseTrace(op_st)
+        op_st_report = OpSTCaseReport(op_st_case_trace)
+        result = "[pass]"
+        case_name = 'AddN'
+        with mock.patch('os.path.join', return_value=ST_GOLDEN_OP_RESULT_TXT):
+            comparer_obj = ResultCompare(report, run_dir, err_thr,
+                                         error_report)
+            comparer_obj.compare()
+            comparer_obj._get_run_stage_result(result, case_name, op_st_report)
+
+    def test_display_output(self):
+        diff_thd = [0.01, 0.05]
+        value1 = np.int8(1)
+        value2 = np.float16(1.0)
+        with mock.patch('op_test_frame.st.interface.compare_data.CompareData._display_data_by_index'):
+            compare_data_obj = CompareData('current case', diff_thd, 'false', '')
+            compare_data_obj.compare(value1, value2)
+            compare_data_obj._display_output(0, 30, 0.01)
 
 
 if __name__ == '__main__':

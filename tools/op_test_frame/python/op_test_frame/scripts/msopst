@@ -27,7 +27,7 @@ from op_test_frame.st.interface import st_report
 from op_test_frame.st.interface.advance_ini_parser import AdvanceIniParser
 from op_test_frame.st.interface.const_manager import ConstManager
 from op_test_frame.st.interface.atc_transform_om import AtcTransformOm
-
+from op_test_frame.st.interface.result_comparer import ResultCompare
 abnormal_termination = False
 
 
@@ -81,7 +81,8 @@ def _runner_and_compare(args, case_list, report, get_advance_args=None):
         runner = AclOpRunner(path, args.soc_version, report, get_advance_args)
         runner.run()
         # compare
-        result_comparer.compare(report, path, args.err_thr)
+        compare_obj = ResultCompare(report, path, args.err_thr, args.error_report)
+        compare_obj.compare()
     report.console_print()
 
 
@@ -121,7 +122,7 @@ def _do_mi_cmd(args, cmd, report):
         elif cmd == "gen_testcase":
             _generate_testcase(args, report, True)
         elif cmd == "compare_by_path":
-            result_comparer.compare_by_path(args.result_path, args.expect_path)
+            ResultCompare.compare_by_path(args.result_path, args.expect_path, args.error_report)
         elif cmd == "compare":
             # when the report is input,should avoid update the report
             global abnormal_termination
@@ -131,7 +132,9 @@ def _do_mi_cmd(args, cmd, report):
             report.load(report_path)
             utils.print_info_log("Load %s success." % args.report_path)
             run_dir = os.path.dirname(report_path)
-            result_comparer.compare(report, run_dir, args.err_thr)
+            # compare
+            compare_obj = ResultCompare(report, run_dir, args.err_thr, args.error_report)
+            compare_obj.compare()
             report.save(report_path)
             utils.print_info_log('The st report saved in: %s.' % report_path)
             report.console_print()
@@ -209,7 +212,8 @@ def _gen_build_convert_run(args, report):
                                  report, get_advance_args)
             runner.run()
             # compare
-            result_comparer.compare(report, path, args.err_thr)
+            compare_obj = ResultCompare(report, path, args.err_thr, args.error_report)
+            compare_obj.compare()
         report.console_print()
         report.save(report_path)
         utils.print_info_log('The st report saved in: %s.' % report_path)
