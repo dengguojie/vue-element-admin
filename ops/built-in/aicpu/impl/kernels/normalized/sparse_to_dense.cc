@@ -20,13 +20,17 @@
 #include "log.h"
 #include "status.h"
 #include "unsupported/Eigen/CXX11/Tensor"
+#include "cpu_kernel_utils.h"
+#include "utils/eigen_tensor.h"
+#include "utils/kernel_util.h"
 
 namespace aicpu {
 const char *const SPARSETODENSE = "SparseToDense";
 }
 
 namespace aicpu {
-uint32_t SparseToDenseCpuKernel::SparseToDense(SparseTensor &st,
+uint32_t SparseToDenseCpuKernel::SparseToDense(const CpuKernelContext &ctx, 
+                                               SparseTensor &st,
                                                Tensor *indices,
                                                Tensor *output) {
   KERNEL_LOG_INFO("Start to execute SparseToDense");
@@ -38,25 +42,25 @@ uint32_t SparseToDenseCpuKernel::SparseToDense(SparseTensor &st,
   DataType dt = static_cast<DataType>(output->GetDataType());
   switch (dt) {
     case DT_INT8:
-      return EigenSparseToDense<int8_t>(st, indices, output);
+      return EigenSparseToDense<int8_t>(ctx, st, indices, output);
     case DT_UINT8:
-      return EigenSparseToDense<uint8_t>(st, indices, output);
+      return EigenSparseToDense<uint8_t>(ctx, st, indices, output);
     case DT_INT16:
-      return EigenSparseToDense<int16_t>(st, indices, output);
+      return EigenSparseToDense<int16_t>(ctx, st, indices, output);
     case DT_UINT16:
-      return EigenSparseToDense<uint16_t>(st, indices, output);
+      return EigenSparseToDense<uint16_t>(ctx, st, indices, output);
     case DT_INT32:
-      return EigenSparseToDense<int32_t>(st, indices, output);
+      return EigenSparseToDense<int32_t>(ctx, st, indices, output);
     case DT_INT64:
-      return EigenSparseToDense<int64_t>(st, indices, output);
+      return EigenSparseToDense<int64_t>(ctx, st, indices, output);
     case DT_FLOAT16:
-      return EigenSparseToDense<Eigen::half>(st, indices, output);
+      return EigenSparseToDense<Eigen::half>(ctx, st, indices, output);
     case DT_FLOAT:
-      return EigenSparseToDense<float>(st, indices, output);
+      return EigenSparseToDense<float>(ctx, st, indices, output);
     case DT_BOOL:
-      return EigenSparseToDense<bool>(st, indices, output);
+      return EigenSparseToDense<bool>(ctx, st, indices, output);
     case DT_DOUBLE:
-      return EigenSparseToDense<double>(st, indices, output);
+      return EigenSparseToDense<double>(ctx, st, indices, output);
     default:
       KERNEL_LOG_ERROR("Sparse to dense can't support this data type [%d].",
                        dt);
@@ -208,7 +212,7 @@ uint32_t SparseToDenseCpuKernel::Compute(CpuKernelContext &ctx) {
     return KERNEL_STATUS_PARAM_INVALID;
   }
   if (validate_indices->GetBool()) {
-    if (st.IndicesValid() != KERNEL_STATUS_OK) {
+    if (st.IndicesValid(ctx) != KERNEL_STATUS_OK) {
       KERNEL_LOG_ERROR("Indices is valid.");
       return KERNEL_STATUS_PARAM_INVALID;
     }
@@ -233,7 +237,7 @@ uint32_t SparseToDenseCpuKernel::Compute(CpuKernelContext &ctx) {
       return KERNEL_STATUS_INNER_ERROR;
     }
   }
-  if (SparseToDense(st, indices_tensor, output_tensor) != KERNEL_STATUS_OK) {
+  if (SparseToDense(ctx, st, indices_tensor, output_tensor) != KERNEL_STATUS_OK) {
     KERNEL_LOG_ERROR("Sparse_to_dense excute failed.");
     return KERNEL_STATUS_PARAM_INVALID;
   }

@@ -22,6 +22,8 @@
 
 #include "cpu_tensor.h"
 #include "eigen_tensor.h"
+#include "kernel_util.h"
+#include "cpu_kernel_utils.h"
 #include "log.h"
 #include "sparse_group.h"
 #include "status.h"
@@ -56,7 +58,7 @@ class SparseTensor {
    * sparse indices valid
    * @return uint32_t: 0->success other->failed
    */
-  uint32_t IndicesValid() const;
+  uint32_t IndicesValid(CpuKernelContext &ctx) const;
 
   /*
    * group sparse tensor
@@ -69,48 +71,52 @@ class SparseTensor {
    * @return uint32_t: 0->success other->failed
    */
   template <typename T>
-  uint32_t EigenTensorIndicesValid(int64_t n) const {
-    KERNEL_LOG_INFO("Start to execute eigen IndicesValid.");
-    bool valid = true;
-    bool different = false;
-    bool increasing = true;
-
+  uint32_t EigenTensorIndicesValid(CpuKernelContext &ctx) const {
     const auto ix_t = ix_->matrix<T>();
-    if (n == 0) {
-      for (int di = 0; di < dims_; ++di) {
-        if (ix_t(n, di) < 0 || ix_t(n, di) >= shape_[di]) {
-          valid = false;
-        }
+    for (int32_t di = 0; di < dims_; ++di) {
+      if ((ix_t(0, di) < 0) || (ix_t(0, di) >= shape_[di])) {
+        KERNEL_LOG_ERROR("Indices is out of bounds, index=0.");
+        return KERNEL_STATUS_PARAM_INVALID;
       }
-      different = true;
-    } else {
-      for (int di = 0; di < dims_; ++di) {
-        if (ix_t(n, di) < 0 || ix_t(n, di) >= shape_[di]) {
-          valid = false;
+      int64_t dims_size = (ix_->GetTensor()->GetTensorShape()->GetDims() == 0)
+                      ? 1
+                      : ix_->GetTensor()->GetTensorShape()->GetDimSize(0);
+      const int64_t paralled_data_size = 16 *1024;
+      if (dims_size < paralled_data_size) {
+        for (int64_t n = 1; n < dims_size; ++n) {
+          if ((ix_t(n, di) < 0) || (ix_t(n, di) >= shape_[di])) {
+            KERNEL_LOG_ERROR("Indices is out of bounds, index=%lld, di = %d.", n, di);
+            return KERNEL_STATUS_PARAM_INVALID;
+          }
+          int64_t diff = ix_t(n, order_[di]) - ix_t(n - 1, order_[di]);
+          if (diff < 0) {
+            KERNEL_LOG_ERROR("Indices is out of order, index=%lld, di = %d.", n, di);
+            return KERNEL_STATUS_PARAM_INVALID;
+          }
         }
-        int64_t diff = ix_t(n, order_[di]) - ix_t(n - 1, order_[di]);
-        if (diff > 0) {
-          different = true;
-        }
-        if (!different && diff < 0) {
-          increasing = false;
-        }
+      } else {
+        uint32_t min_core_num = 1;
+        size_t max_core_num = std::max(min_core_num, aicpu::CpuKernelUtils::GetCPUNum(ctx) - kResvCpuNum);
+        uint32_t result = KERNEL_STATUS_OK;
+        aicpu::CpuKernelUtils::ParallelFor(
+            ctx, dims_size, dims_size / max_core_num, [&](std::int64_t begin, std::int64_t end) {
+            for (int64_t n = begin + 1; n < end; ++n) {
+              if ((ix_t(n, di) < 0) || (ix_t(0, di) >= shape_[di])) {
+                result = KERNEL_STATUS_PARAM_INVALID;
+                KERNEL_LOG_ERROR("Indices is out of bounds, index=%lld, di = %d.", n, di);
+                return;
+              }
+              int64_t diff = ix_t(n, order_[di]) - ix_t(n - 1, order_[di]);
+              if (diff < 0) {
+                result = KERNEL_STATUS_PARAM_INVALID;
+                KERNEL_LOG_ERROR("Indices is out of order, index=%lld, di = %d.", n, di);
+                return;
+              }
+            }
+          });
+        return result; 
       }
     }
-
-    if (!valid) {
-      KERNEL_LOG_ERROR("Indices is out of bounds, index=%lld.", n);
-      return KERNEL_STATUS_PARAM_INVALID;
-    }
-    if (!increasing) {
-      KERNEL_LOG_ERROR("indices is out of order, index=%lld.", n);
-      return KERNEL_STATUS_PARAM_INVALID;
-    }
-    if (!different) {
-      KERNEL_LOG_ERROR("indices is repeated, index=%lld.", n);
-      return KERNEL_STATUS_PARAM_INVALID;
-    }
-    KERNEL_LOG_INFO("Execute eigen IndicesValid end.");
     return KERNEL_STATUS_OK;
   }
 
@@ -120,27 +126,17 @@ class SparseTensor {
    * @return bool: true->success false->failed
    */
   bool ValidateToDense(const Tensor *out) const;
-
+  
   /*
    * sparse tensor to dense tensor
    * @param output: output tensor
    * @return uint32_t: 0->success other->failed
    */
   template <typename IndiceT, typename ValueT>
-  uint32_t ToDense(Tensor *output) {
-    KERNEL_LOG_INFO("Start to execute ToDense.");
-    if (output == nullptr || output->GetData() == nullptr) {
-      KERNEL_LOG_ERROR("Output tensor is nullptr.");
-      return KERNEL_STATUS_INNER_ERROR;
-    }
+  uint32_t ToDenseParallel(const CpuKernelContext &ctx, Tensor *output) {
     EigenTensor outputET(output, output->GetData());
-    if (!ValidateToDense(output)) {
-      KERNEL_LOG_ERROR("Validate to dense param failed.");
-      return KERNEL_STATUS_INNER_ERROR;
-    }
     auto output_t = outputET.flat<ValueT>();
     auto ix_t = ix_->matrix<IndiceT>();
-    auto vals_t = vals_->vec<ValueT>();
     std::vector<int64_t> strides(dims_);
     const auto &out_shape = output->GetTensorShape();
     if (dims_ > 0) {
@@ -149,24 +145,87 @@ class SparseTensor {
     for (int32_t d = dims_ - 2; d >= 0; --d) {
       strides[d] = strides[d + 1] * out_shape->GetDimSize(d + 1);
     }
-    for (int n = 0; n < vals_t.dimension(0); ++n) {
-      bool invalid_dims = false;
-      int64_t ix = 0;
-      for (int d = 0; d < dims_; ++d) {
-        const int64_t ix_n_d = ix_t(n, d);
-        if (ix_n_d > out_shape->GetDimSize(d)) {
-          invalid_dims = true;
+    auto vals_t = vals_->vec<ValueT>();
+    int64_t vals_size = vals_t.dimension(0);
+    uint32_t min_core_num = 1;
+    size_t max_core_num = std::max(min_core_num, aicpu::CpuKernelUtils::GetCPUNum(ctx) - kResvCpuNum);
+    uint32_t result = KERNEL_STATUS_OK;
+    auto parallel_proc = [&](std::int64_t begin, std::int64_t end) {
+      for (int n = begin; n < end; ++n) {
+        bool invalid_dims = false;
+        int64_t ix = 0;
+        for (int d = 0; d < dims_; ++d) {
+          const int64_t ix_n_d = ix_t(n, d);
+          if (ix_n_d > out_shape->GetDimSize(d)) {
+            invalid_dims = true;
+          }
+          ix += strides[d] * ix_n_d;
         }
-        ix += strides[d] * ix_n_d;
+        if (invalid_dims) {
+          result = KERNEL_STATUS_INNER_ERROR;
+          KERNEL_LOG_ERROR("Sparse to dense got invalid dims.");
+          return;
+        }
+        output_t(ix) = vals_t(n);
       }
-      if (invalid_dims) {
-        KERNEL_LOG_ERROR("Sparse to dense got invalid dims.");
-        return KERNEL_STATUS_INNER_ERROR;
-      }
-      output_t(ix) = vals_t(n);
+      return;
+    };
+    KERNEL_HANDLE_ERROR(aicpu::CpuKernelUtils::ParallelFor(ctx, vals_size, vals_size / max_core_num, parallel_proc),
+                        "SparseToDense Compute failed.")
+    return result;
+  }
+
+  /*
+   * sparse tensor to dense tensor
+   * @param output: output tensor
+   * @return uint32_t: 0->success other->failed
+   */
+  template <typename IndiceT, typename ValueT>
+  uint32_t ToDense(const CpuKernelContext &ctx, Tensor *output) {
+    KERNEL_LOG_INFO("Start to execute ToDense.");
+    if (output == nullptr || output->GetData() == nullptr) {
+      KERNEL_LOG_ERROR("Output tensor is nullptr.");
+      return KERNEL_STATUS_INNER_ERROR;
     }
-    KERNEL_LOG_INFO("Execute ToDense end.");
-    return KERNEL_STATUS_OK;
+    if (!ValidateToDense(output)) {
+      KERNEL_LOG_ERROR("Validate to dense param failed.");
+      return KERNEL_STATUS_INNER_ERROR;
+    }
+    auto vals_t = vals_->vec<ValueT>();
+    int64_t vals_size = vals_t.dimension(0);
+    const int64_t paralled_data_size = 16 *1024;
+    if (vals_size < paralled_data_size) {
+      EigenTensor outputET(output, output->GetData());
+      auto output_t = outputET.flat<ValueT>();
+      auto ix_t = ix_->matrix<IndiceT>();
+      std::vector<int64_t> strides(dims_);
+      const auto &out_shape = output->GetTensorShape();
+      if (dims_ > 0) {
+        strides[dims_ - 1] = 1;
+      }
+      for (int32_t d = dims_ - 2; d >= 0; --d) {
+        strides[d] = strides[d + 1] * out_shape->GetDimSize(d + 1);
+      }
+      for (int64_t n = 0; n < vals_size; ++n) {
+        bool invalid_dims = false;
+        int64_t ix = 0;
+        for (int d = 0; d < dims_; ++d) {
+          const int64_t ix_n_d = ix_t(n, d);
+          if (ix_n_d > out_shape->GetDimSize(d)) {
+            invalid_dims = true;
+          }
+          ix += strides[d] * ix_n_d;
+        }
+        if (invalid_dims) {
+          KERNEL_LOG_ERROR("Sparse to dense got invalid dims.");
+          return KERNEL_STATUS_INNER_ERROR;
+        }
+        output_t(ix) = vals_t(n);
+      }
+      return KERNEL_STATUS_OK;
+    } else {
+      return ToDenseParallel<IndiceT, ValueT>(ctx, output);
+    }
   }
 
  private:

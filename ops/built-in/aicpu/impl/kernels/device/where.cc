@@ -43,29 +43,9 @@ constexpr int kRankNum = 2;
     }                                                                          \
     break;                                                                     \
   }
-
-template <typename T>
-int64_t CountNoZero(const T *begin, const T *end) {
-  return std::accumulate(begin, end, 0UL, [](int64_t accum, const T &val) {
-    return accum + static_cast<int64_t>(val != T(0));
-  });
-}
-
-template <>
-int64_t CountNoZero(const bool *begin, const bool *end) {
-  return std::accumulate(begin, end, 0UL);
-}
 } // namespaces
 
 namespace aicpu {
-template <typename T>
-struct DataTrueNums {
-  static void DoCompute(typename TTypes<T>::ConstFlat input,
-                      int64_t &num_true) {
-    num_true = CountNoZero<T>(input.data(), input.data() + input.size());
-  }
-};
-
 template <typename T, int DIMS, typename TIndex>
 class Where {
 public:
@@ -101,8 +81,10 @@ static uint32_t DoCompute(typename TTypes<T>::ConstTensor flat_input,
   for (int i = DIMS - kInitStep; i >= 0; --i) {
     dim_strides[i] = dim_strides[i + 1] * input_dims[i + 1];
   }
-  for (Eigen::DenseIndex n = 0; n < flat_input.size(); ++n) {
-    if (flat_input.data()[n]) {
+  int64_t data_size = flat_input.size();
+  auto input_data = flat_input.data();
+  for (Eigen::DenseIndex n = 0; n < data_size; ++n) {
+    if (input_data[n]) {
       CalIndexRowMajor(output, dim_strides, true_nums, n);
       ++true_nums;
     }
@@ -114,23 +96,17 @@ static uint32_t DoCompute(typename TTypes<T>::ConstTensor flat_input,
 template <typename T>
 uint32_t WhereCpuKernel::WhereCompute(CpuKernelContext &ctx) {
   Tensor *input = ctx.Input(0);
-  KERNEL_CHECK_NULLPTR(input->GetData(),
-                       KERNEL_STATUS_PARAM_INVALID, "Get input data failed");
   Tensor *output = ctx.Output(0);
-  KERNEL_CHECK_NULLPTR(output->GetData(),
-                       KERNEL_STATUS_PARAM_INVALID, "Get output data failed");
-  int64_t num_true = 0;
   typename TTypes<T>::ConstFlat flat_input(reinterpret_cast<const T*>(
           input->GetData()), input->NumElements());
-  DataTrueNums<T>::DoCompute(flat_input, num_true);
+  int64_t num_true = std::accumulate(flat_input.data(), flat_input.data() + flat_input.size(), 0UL, 
+                                     [](int64_t accum, const T &val) {
+                                       return accum + static_cast<int64_t>(val != T(0));
+                                     });
   auto input_shape = input->GetTensorShape();
-  KERNEL_CHECK_NULLPTR(input_shape.get(),
-                       KERNEL_STATUS_PARAM_INVALID, "Get inputshape failed");
   int64_t rank = input_shape->GetDims();
   auto input_dims = input_shape->GetDimSizes();
   std::shared_ptr<TensorShape> output_shape = output->GetTensorShape();
-  KERNEL_CHECK_NULLPTR(output_shape.get(),
-                       KERNEL_STATUS_PARAM_INVALID, "Get outputshape failed");
   output_shape->SetDimSizes({num_true, rank});
   if (!output->SetTensorShape(output_shape.get())) {
     KERNEL_LOG_ERROR("Set output shape [%u] [%u] failed", num_true, rank);
