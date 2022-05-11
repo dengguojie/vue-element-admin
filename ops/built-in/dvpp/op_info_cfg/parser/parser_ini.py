@@ -17,6 +17,7 @@ import os
 import stat
 import sys
 
+
 def parse_ini_files(ini_files):
     """
     parse ini files to json
@@ -26,19 +27,19 @@ def parse_ini_files(ini_files):
     return:ops_info
     ----------------
     """
-    dvpp_ops_info = {}
+    tbe_ops_info = {}
     for ini_file in ini_files:
-        parse_ini_to_obj(ini_file, dvpp_ops_info)
-    return dvpp_ops_info
+        parse_ini_to_obj(ini_file, tbe_ops_info)
+    return tbe_ops_info
 
 
-def parse_ini_to_obj(ini_file, dvpp_ops_info):
+def parse_ini_to_obj(ini_file, tbe_ops_info):
     """
     parse ini file to json obj
     Parameters:
     ----------------
     ini_file:ini file path
-    dvpp_ops_info:ops_info
+    tbe_ops_info:ops_info
     ----------------
     """
     with open(ini_file) as ini_file:
@@ -50,7 +51,7 @@ def parse_ini_to_obj(ini_file, dvpp_ops_info):
             if line.startswith("["):
                 op_name = line[1:-1]
                 op = {}
-                dvpp_ops_info[op_name] = op
+                tbe_ops_info[op_name] = op
             else:
                 key1 = line[:line.index("=")]
                 key2 = line[line.index("=")+1:]
@@ -119,19 +120,19 @@ def check_op_info(tbe_ops):
     return is_valid
 
 
-def write_json_file(dvpp_ops_info, json_file_path):
+def write_json_file(tbe_ops_info, json_file_path):
     """
     Save info to json file
     Parameters:
     ----------------
-    dvpp_ops_info: ops_info
+    tbe_ops_info: ops_info
     json_file_path: json file path
     ----------------
     """
     json_file_real_path = os.path.realpath(json_file_path)
     with open(json_file_real_path, "w") as f:
         os.chmod(json_file_real_path, stat.S_IWGRP + stat.S_IWUSR + stat.S_IRGRP + stat.S_IRUSR)
-        json.dump(dvpp_ops_info, f, sort_keys=True, indent=4, separators=(',', ':'))
+        json.dump(tbe_ops_info, f, sort_keys=True, indent=4, separators=(',', ':'))
     print("Compile op info cfg successfully.")
 
 
@@ -144,18 +145,18 @@ def parse_ini_to_json(ini_file_paths, outfile_path):
     outfile_path: output file path
     ----------------
     """
-    dvpp_ops_info = parse_ini_files(ini_file_paths)
-    if not check_op_info(dvpp_ops_info):
+    tbe_ops_info = parse_ini_files(ini_file_paths)
+    if not check_op_info(tbe_ops_info):
         print("Compile dvpp op info cfg failed.")
         return False
-    write_json_file(dvpp_ops_info, outfile_path)
+    write_json_file(tbe_ops_info, outfile_path)
     return True
 
 
 if __name__ == '__main__':
     args = sys.argv
 
-    output_file_path = "dvpp_ops_info.json"
+    output_file_path = "tbe_ops_info.json"
     ini_file_path_list = []
 
     for arg in args:
@@ -166,7 +167,7 @@ if __name__ == '__main__':
             output_file_path = arg
 
     if len(ini_file_path_list) == 0:
-        ini_file_path_list.append("dvpp_ops_info.ini")
+        ini_file_path_list.append("tbe_ops_info.ini")
 
     if not parse_ini_to_json(ini_file_path_list, output_file_path):
         sys.exit(1)
