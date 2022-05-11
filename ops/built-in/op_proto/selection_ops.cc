@@ -2223,10 +2223,10 @@ IMPLEMT_COMMON_INFERFUNC(SegmentSumInferShape) {
       std::vector<std::pair<int64_t, int64_t>> output_shape_range;
       output_shape_range.push_back(std::pair<int64_t, int64_t>(out_range_first_dims, first_axis_dims));
       input_x_desc->GetShapeRange(shape_range_x);
+      MakeUpShapeRange(output_shape_dims, shape_range_x);
       for (size_t i = 1; i < output_shape_dims.size(); i++) {
-        output_shape_range.push_back(std::pair<int64_t, int64_t>(shape_x[i], shape_x[i]));
+        output_shape_range.push_back(shape_range_x[i]);
       }
-      MakeUpShapeRange(output_shape_dims, output_shape_range);
       output_desc->SetShapeRange(output_shape_range);
     }
   }

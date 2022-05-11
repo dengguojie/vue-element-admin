@@ -889,6 +889,7 @@ vector_B:
       - ops/built-in/op_proto/util/nn_shape_fns.h
       - ops/built-in/op_proto/util/resource_variable_ops_shape_fns.h
       - ops/built-in/op_proto/transformation_ops.cc
+      - ops/built-in/op_proto/selection_ops.cc
       - ops/built-in/op_tiling/arg_max_v2.cc
       - ops/built-in/op_tiling/arg_max_with_value.cc
       - ops/built-in/op_tiling/assign.cc
@@ -1846,6 +1847,7 @@ vector_B:
       - ops/built-in/tests/ut/ops_test/Yolo/test_Yolo_impl.py
       - ops/built-in/tests/ut/ops_test/YoloV2DetectionOutputD/test_YoloV2DetectionOutputD_impl.py
       - ops/built-in/tests/ut/ops_test/YoloV3DetectionOutputD/test_YoloV3DetectionOutputD_impl.py
+      - ops/built-in/tests/ut/ops_test/SegmentSum/test_segment_sum_proto.cpp
       - ops/built-in/tests/ut/plugin_test/CMakeLists.txt
       - ops/built-in/tests/ut/plugin_test/common/tensorflow_parser.h
       - ops/built-in/tests/ut/plugin_test/onnx/test_add_case_1.pb
@@ -2067,7 +2069,6 @@ unkown:
       - ops/built-in/op_tiling/resize.cc
       - ops/built-in/op_proto/sdca_ops.cc
       - ops/built-in/op_proto/avg_pool_1d_ops.cc
-      - ops/built-in/op_proto/selection_ops.cc
       - ops/built-in/op_proto/batch_ops.cc
       - ops/built-in/op_proto/audio_ops.cc
       - ops/built-in/op_proto/act_ulq_clamp_min_grad.cc
