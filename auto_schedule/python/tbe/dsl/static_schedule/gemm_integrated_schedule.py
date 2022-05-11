@@ -446,9 +446,10 @@ class GemmSchedule:
             batch_a = [self._get_value(i) for i in tensor_l0a.op.attrs["ori_batch_shape"]]
             batch_b = [self._get_value(i) for i in tensor_l0b.op.attrs["ori_batch_shape"]]
             batch_broadcast_flag = batch_a != batch_b
+            self.status_controller.batch_broadcast_flag = batch_broadcast_flag
             batch_broadcast_flag &= (len(batch_a) > 0 and self._prod(batch_a) != 1)
             batch_broadcast_flag &= (len(batch_b) > 0 and self._prod(batch_b) != 1)
-            self.status_controller.batch_broadcast_flag = batch_broadcast_flag
+            self.status_controller.batch_broadcast_change_attach = batch_broadcast_flag
 
     @staticmethod
     def _is_full_load(item):
@@ -1302,7 +1303,7 @@ class GemmSchedule:
         if tensor_reform is None:
             return
         insn = self.requant_fusion_insn_map.get(tensor_reform.op.name)
-        # axiss are batch，n1, m1, n0.outer(2), m0, n0.inner(16), the axis n0.outer should be out of emit_insn axis
+        # axiss are batch, n1, m1, n0.outer(2), m0, n0.inner(16), the axis n0.outer should be out of emit_insn axis
         self.sch[tensor_reform].emit_insn(tensor_reform.op.axis[-3], insn)
 
         return
@@ -2291,7 +2292,9 @@ class GemmSchedule:
             "shape_a_align": self.status_controller.align_a,
             "shape_b_align": self.status_controller.align_b,
             "kernel_name": self.kernel_name,
-            "scalar_size": scalar_size
+            "scalar_size": scalar_size,
+            "batch_type" : (int(self.status_controller.batch_broadcast_flag) * 4 +
+                            int(self.status_controller.have_batch_a) * 2 + int(self.status_controller.have_batch_b))
         }
         self._print_debug(info_dict, "info_dict")
         if self.is_dynamic:
@@ -2475,11 +2478,8 @@ class GemmSchedule:
                 self.bl0_tiling_n0,
                 self.bl0_tiling_k0
             ) = b_l0b_shape[-4:]
-            if self.is_dynamic:
-                self.bl0_tiling_batch = (b_l0b_shape[0] if self.status_controller.have_batch_b else 0)
-            else:
-                self.bl0_tiling_batch = (
-                    (b_l0b_shape[0] if self.status_controller.have_batch_b else 0) // tiling.get("block_dim")[0])
+            # full load only loads 1 batch
+            self.bl0_tiling_batch = 1
             self.bl0_tiling_nb = self.tiling.get("CL0_matrix")[0]
             self.bl0_tiling_kb = self.tiling.get("AL0_matrix")[1]
         self.bl0_tiling_k0 = self.block_reduce
@@ -2512,9 +2512,11 @@ class GemmSchedule:
         self.cl0_tiling_n0 = tbe_platform.CUBE_MKN[c_l0c.dtype]["mac"][2]
 
         # special handle
-        self.al0_tiling_batch = 1
-        self.bl0_tiling_batch = 1
-        self.cl0_tiling_batch = 1
+        if self.is_dynamic:
+            # dynamic shape does not support multi batch
+            self.al0_tiling_batch = 1
+            self.bl0_tiling_batch = 1
+            self.cl0_tiling_batch = 1
 
     def _get_l0c_reduce_dims(self):
         c_l0c = self.container.tensor_map.get("c_l0c")
@@ -2533,6 +2535,7 @@ class GemmSchedule:
 
     def _tiling_al1_process(self):
         tiling = self.tiling
+        al1_tiling_batch = 1
         if tiling.get("AL1_shape") != [] and (tiling.get("AL1_shape") is not None):
             al1_tiling_k, al1_tiling_m, al1_tiling_batch, _ = tiling.get("AL1_shape")
             al1_tiling_m *= self.al0_tiling_ma
@@ -2552,18 +2555,19 @@ class GemmSchedule:
 
             al1_tiling_m = (al1_ma + tiling.get("block_dim")[2] - 1) // tiling.get("block_dim")[2]
             al1_tiling_k = (al1_tiling_k + tiling.get("block_dim")[3] - 1) // tiling.get("block_dim")[3]
-            al1_tiling_batch = 0
             if self.status_controller.have_batch_a:
-                al1_tiling_batch = self.dynamic_batch if self.is_dynamic else al0_shape[0]
+                al1_tiling_batch = self.dynamic_batch if self.is_dynamic else al1_tiling_batch
 
-        al1_tiling_batch = 1
         self.al1_tiling_batch = al1_tiling_batch
+        if self.is_dynamic:
+            # dynamic shape does not support multi batch
+            self.al1_tiling_batch = 1
         self.al1_tiling_k = al1_tiling_k
         self.al1_tiling_m = al1_tiling_m
 
     def _tiling_bl1_process(self):
         tiling = self.tiling
-
+        bl1_tiling_batch = 1
         if tiling.get("BL1_shape") != [] and (tiling.get("BL1_shape") is not None):
             bl1_tiling_k, bl1_tiling_n, bl1_tiling_batch, _ = tiling.get("BL1_shape")
             bl1_tiling_n *= self.bl0_tiling_nb
@@ -2583,25 +2587,28 @@ class GemmSchedule:
 
             bl1_tiling_n = (bl1_n + tiling.get("block_dim")[1] - 1) // tiling.get("block_dim")[1]
             bl1_tiling_k = (bl1_tiling_k + tiling.get("block_dim")[3] - 1) // tiling.get("block_dim")[3]
-            bl1_tiling_batch = 0
-            if self.status_controller.have_batch_b:
-                bl1_tiling_batch = self.dynamic_batch if self.is_dynamic else bl0_shape[0]
 
-        bl1_tiling_batch = 1
         self.bl1_tiling_batch = bl1_tiling_batch
+        if self.is_dynamic:
+            # dynamic shape does not support multi batch
+            self.bl1_tiling_batch = 1
         self.bl1_tiling_k = bl1_tiling_k
         self.bl1_tiling_n = bl1_tiling_n
 
     def _tiling_ub_process(self):
         if self.format_a == "ND" or self.status_controller.ops_data_flow_mode == "int82fp32":
             self.aub_tiling_k, self.aub_tiling_m, self.aub_tiling_batch = self.tiling.get("AUB_shape")[:3]
-            self.aub_tiling_batch = 1
+            if not self.aub_tiling_batch or self.is_dynamic:
+                # dynamic shape does not support multi batch
+                self.aub_tiling_batch = 1
         else:
             self.aub_tiling_m, self.aub_tiling_k, self.aub_tiling_batch = 0, 0, 0
 
         if self.format_b == "ND" or self.status_controller.ops_data_flow_mode == "int82fp32":
             self.bub_tiling_k, self.bub_tiling_n, self.bub_tiling_batch = self.tiling.get("BUB_shape")[:3]
-            self.bub_tiling_batch = 1
+            if not self.bub_tiling_batch or self.is_dynamic:
+                # dynamic shape does not support multi batch
+                self.bub_tiling_batch = 1
         else:
             self.bub_tiling_k, self.bub_tiling_n, self.bub_tiling_batch = 0, 0, 0
 
@@ -3117,7 +3124,7 @@ class GemmSchedule:
         else:
             status = Compare.compare(al1_tiling_shape, cl0_tiling_shape)
             status_ori = Compare.compare(tiling_ori_al1, al1_shape)
-            if self.status_controller.batch_broadcast_flag and self.format_a == "ND":
+            if self.status_controller.batch_broadcast_change_attach and self.format_a == "ND":
                 status_ori = Compare.LESS_EQ
 
         return status_ori, status
@@ -3262,7 +3269,7 @@ class GemmSchedule:
         else:
             status = Compare.compare(bl1_tiling_shape, cl0_tiling_shape)
             status_ori = Compare.compare(tiling_ori_bl1, bl1_shape)
-            if self.status_controller.batch_broadcast_flag and self.format_b == "ND":
+            if self.status_controller.batch_broadcast_change_attach and self.format_b == "ND":
                 status_ori = Compare.LESS_EQ
 
         return status_ori, status
@@ -3455,7 +3462,7 @@ class GemmSchedule:
             status_ori = Compare.compare(tiling_ori_aub, a_ub_ori_shape)
             status_l1 = Compare.compare(tiling_ori_aub_with_l1, tiling_ori_al1)
             status_l0c = Compare.compare(aub_tiling_shape_with_lc0, cl0_tiling_shape)
-            if self.status_controller.batch_broadcast_flag and self.format_a == "ND":
+            if self.status_controller.batch_broadcast_change_attach and self.format_a == "ND":
                 status_ori = Compare.LESS_EQ
         return status_ori, status_l1, status_l0c
 
@@ -3612,7 +3619,7 @@ class GemmSchedule:
             status_ori = Compare.compare(tiling_ori_bub, b_ub_ori_shape)
             status_l1 = Compare.compare(tiling_ori_bub_with_l1, tiling_ori_bl1)
             status_l0c = Compare.compare(bub_tiling_shape_with_lc0, cl0_tiling_shape)
-            if self.status_controller.batch_broadcast_flag and self.format_b == "ND":
+            if self.status_controller.batch_broadcast_change_attach and self.format_b == "ND":
                 status_ori = Compare.LESS_EQ
         return status_ori, status_l1, status_l0c
 
@@ -3682,17 +3689,18 @@ class GemmSchedule:
             axis_order = self._get_cache_tiling_axis_order()
         else:
             # get order
-            k_dict = {
-                "aub": self.aub_tiling_k // self.block_reduce,
-                "bub": self.bub_tiling_k // self.block_reduce,
-                "al1": self.al1_tiling_k // int(self.al0_tiling_k0),
-                "bl1": self.bl1_tiling_k // int(self.bl0_tiling_k0)
+            order_dict = {
+                "aub": [self.aub_tiling_k // self.block_reduce, self.aub_tiling_batch],
+                "bub": [self.bub_tiling_k // self.block_reduce, self.bub_tiling_batch],
+                "al1": [self.al1_tiling_k // int(self.al0_tiling_k0), self.al1_tiling_batch],
+                "bl1": [self.bl1_tiling_k // int(self.bl0_tiling_k0), self.bl1_tiling_batch],
             }
-            tmp_order = sorted(k_dict.items(), key=lambda d: d[1], reverse=True)
+            tmp_order = sorted(order_dict.items(), key=lambda d: [d[1][0], d[1][1]], reverse=True)
             axis_order = [i[0] for i in tmp_order]
 
             def _adjust_order(axis_order, ub_tag, l1_tag):
-                if axis_order.index(ub_tag) > axis_order.index(l1_tag) and k_dict.get(ub_tag) == k_dict.get(l1_tag):
+                if (axis_order.index(ub_tag) > axis_order.index(l1_tag) and
+                    order_dict.get(ub_tag) == order_dict.get(l1_tag)):
                     index_ub = axis_order.index(ub_tag)
                     index_l1 = axis_order.index(l1_tag)
                     axis_order[index_ub] = l1_tag
@@ -5070,7 +5078,7 @@ class GemmSchedule:
             self.sch[self.container.tensor_map.get("b_l1")].mem_unique()
             self.sch[self.container.tensor_map.get("a_l0a")].mem_unique()
             self.sch[self.container.tensor_map.get("b_l0b")].mem_unique()
-            # tensor is used_by can't mem_unique；tensor is not reused_by must be unique
+            # tensor is used_by can't mem_unique; tensor is not reused_by must be unique
             c_ub = self.res.op.input_tensors[0]
             if not self.format_out == "ND":
                 self.sch[c_ub].mem_unique()

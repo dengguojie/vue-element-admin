@@ -785,7 +785,6 @@ ut_case.add_cust_test_func(test_func=test_mock_cases)
 
 
 
-
 if __name__ == '__main__':
     ut_case._case_info_map = {}
 
