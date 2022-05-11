@@ -63,7 +63,8 @@ class FixpipeFusionNew:
         self.relu_post_flag = False
         self.anti_quant_flag = False
         self.nz2nd_flag = False
-        self.cache_read_tensors = []
+        self.cache_read_tensors_fb = []
+        self.cache_read_tensors_l1 = []
         self.cache_read_tensors_elewise = []
 
     def fetch_quant_relu_flag(self):
@@ -144,13 +145,14 @@ class FixpipeFusionNew:
 
             input_fb = sch.cache_read(tensor, scope, next_op_map[tensor])
             input_l1 = sch.cache_read(tensor, cce_params.scope_cbuf, input_fb)
-            self.cache_read_tensors.extend([input_fb, input_l1])
+            self.cache_read_tensors_fb.append(input_fb)
+            self.cache_read_tensors_l1.append(input_l1)
 
     def fixpipe_inputs_emit_insn(self, sch):
         """
         Dma for the inputs of fixpipe fusion ops.
         """
-        for tensor in self.cache_read_tensors:
+        for tensor in self.cache_read_tensors_fb + self.cache_read_tensors_l1:
             sch[tensor].emit_insn(tensor.op.axis[0], "dma_copy")
 
         for tensor in self.cache_read_tensors_elewise:
@@ -163,12 +165,15 @@ class FixpipeFusionNew:
         for tensor in self.inline_tensors:
             sch[tensor].compute_inline()
 
-    def fixpipe_inputs_compute_at(self, sch, res, fixpipe_slice_axis, cub_slice_axis):
+    def fixpipe_inputs_compute_at(self, sch, res, fixpipe_slice_axis, bindcore_axis, cub_slice_axis):
         """
         Attach the inputs of fixpipe fusion ops to res tensor.
         """
-        for tensor in self.cache_read_tensors:
+        for tensor in self.cache_read_tensors_fb:
             sch[tensor].compute_at(sch[res], fixpipe_slice_axis)
+
+        for tensor in self.cache_read_tensors_l1:
+            sch[tensor].compute_at(sch[res], bindcore_axis)
 
         for tensor in self.cache_read_tensors_elewise:
             sch[tensor].compute_at(sch[res], cub_slice_axis)
@@ -189,7 +194,8 @@ class FixpipeFusion:
         self.weight_input = None
         self.inline_tensors = []
         self.fixpipe_inputs = [] # scale of dequant/requant, weight_input of prelu
-        self.cache_read_tensors = []
+        self.cache_read_tensors_fb = []
+        self.cache_read_tensors_l1 = []
 
     def parse_fusion_pattern(self):
         """
@@ -247,15 +253,19 @@ class FixpipeFusion:
 
             input_fb = sch.cache_read(tensor, scope_inputs, next_op_map[tensor]) # fb0: QUANT_PRE, fb1: RELU_PRE
             input_l1 = sch.cache_read(tensor, cce_params.scope_cbuf, input_fb)
-            self.cache_read_tensors.extend([input_fb, input_l1])
+            self.cache_read_tensors_fb.append(input_fb)
+            self.cache_read_tensors_l1.append(input_l1)
 
-    def fixpipe_inputs_compute_at(self, sch, res, fixpipe_slice_axis, cl0_at_res_axis):
+    def fixpipe_inputs_compute_at(self, sch, res, fixpipe_slice_axis, bindcore_axis, cub_slice_axis):
         """
         Attach the inputs of fixpipe fusion ops to res tensor.
         """
-        _ = cl0_at_res_axis
-        for tensor in self.cache_read_tensors:
+        _ = cub_slice_axis
+        for tensor in self.cache_read_tensors_fb:
             sch[tensor].compute_at(sch[res], fixpipe_slice_axis)
+
+        for tensor in self.cache_read_tensors_l1:
+            sch[tensor].compute_at(sch[res], bindcore_axis)
 
     def inline_fixpipe_tensor(self, sch):
         """
@@ -268,5 +278,5 @@ class FixpipeFusion:
         """
         Dma for the inputs of fixpipe fusion ops.
         """
-        for tensor in self.cache_read_tensors:
+        for tensor in self.cache_read_tensors_fb + self.cache_read_tensors_l1:
             sch[tensor].emit_insn(tensor.op.axis[0], "dma_copy")

@@ -725,6 +725,11 @@ def conv_v220_compute(fmap, weight, para_dict, optim_dict, dsl_flag, conv_param)
             "In v220, small channel case, the 4 * Hk * Wk must be smaller than " +
             "or equal to 65535. you can try to disable the small channel.")
 
+    if c04_flag and input_nd_flag:
+        err_man.raise_err_specific(
+            "conv2d",
+            "transdata prefusion is forbidden when conv2d enable c04 optimization."
+            )
     #==========================conv compute begin==============================
     # al1
     fmap_l1 = al1_compute(fmap)

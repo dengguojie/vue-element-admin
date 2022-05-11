@@ -101,7 +101,8 @@ TEST_F(AippConvReluMaxpoolingFusionTest, AippConvReluMaxpoolingFusionTest_2) {
   NodePtr conv_node = graph->AddNode(conv_op);
 
   fe::TbeAippConvReluMaxpoolingFusionPass fusion_pass;
-  fusion_pass.CheckConvNodeValidation(conv_node);
+  bool c04_conv2d_flag = false;
+  fusion_pass.CheckConvNodeValidation(conv_node, c04_conv2d_flag);
 
 }
 
@@ -311,7 +312,8 @@ TEST_F(AippConvReluMaxpoolingFusionTest, AippConvReluMaxpoolingFusionTest_5) {
   NodePtr conv_node = graph->AddNode(conv_op);
 
   fe::TbeAippConvReluMaxpoolingFusionPass fusion_pass;
-  fusion_pass.CheckConvNodeValidation(conv_node);
+  bool c04_conv2d_flag = false;
+  fusion_pass.CheckConvNodeValidation(conv_node, c04_conv2d_flag);
 
 }
 /************************************
@@ -389,5 +391,6 @@ NodePtr conv_node = graph->AddNode(conv_op);
 NodePtr pool_node = graph->AddNode(pool_op);
 ge::GraphUtils::AddEdge(conv_node->GetOutDataAnchor(0), pool_node->GetInDataAnchor(0));
 fe::TbeAippConvReluMaxpoolingFusionPass fusion_pass;
-fusion_pass.CheckConvNodeValidation(conv_node);
+bool c04_conv2d_flag = false;
+fusion_pass.CheckConvNodeValidation(conv_node, c04_conv2d_flag);
 }

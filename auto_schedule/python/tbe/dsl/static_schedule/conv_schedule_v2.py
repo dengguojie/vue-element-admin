@@ -2366,11 +2366,11 @@ class Conv2dSchedule:
                     sch[cub_bias_add].compute_at(sch[res], cub_at_res_axis)
                     sch[bias_ub].compute_at(sch[res], bindcore_axis)
                 else:
-                    if cub_channel_wise_flag:  # use INPUT_L1_BT_param later
-                        sch[bias_l1].compute_at(sch[res], cl0_at_res_axis)
+                    sch[bias_l1].compute_at(sch[res], bindcore_axis)
+                    if group_opt * co1_opt > 16:
+                        sch[bias_bt].compute_at(sch[res], cl0_at_res_axis)
                     else:
-                        sch[bias_l1].compute_at(sch[res], bindcore_axis)
-                    sch[bias_bt].compute_at(sch[res], cl0_at_res_axis)
+                        sch[bias_bt].compute_at(sch[res], bindcore_axis)
 
         def anti_quant_spilt_flag(res):
             """
@@ -2508,7 +2508,7 @@ class Conv2dSchedule:
         if not self._binary.flag:
             # fixpipe
             fixpipe_slice_axis = cub_at_res_axis if group_opt*co1_opt > 16 else bindcore_axis
-            self._fixpipe_fusion.fixpipe_inputs_compute_at(sch, res, fixpipe_slice_axis, cub_at_res_axis)
+            self._fixpipe_fusion.fixpipe_inputs_compute_at(sch, res, fixpipe_slice_axis, bindcore_axis, cub_at_res_axis)
 
         # ub fusion
         self._eltwise_ub_fusion.ub_tensors_attach(sch, res, cub_at_res_axis)

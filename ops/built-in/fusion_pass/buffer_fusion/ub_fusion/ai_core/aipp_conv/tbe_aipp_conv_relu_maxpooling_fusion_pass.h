@@ -52,7 +52,7 @@ class TbeAippConvReluMaxpoolingFusionPass : public BufferFusionPassBase {
   Status GetFusionNodes(const BufferFusionMapping& mapping, vector<ge::NodePtr>& fusion_nodes) override;
 
  private:
-  bool CheckConvNodeValidation(const ge::NodePtr& conv_node);
+  bool CheckConvNodeValidation(const ge::NodePtr& conv_node, const bool &c04_conv2d_flag);
   bool CheckMaxpoolNodeValidation(const ge::NodePtr& max_pool_node);
   void PoolingValidationAndFormatSet(const ge::NodePtr& aipp_node, const ge::NodePtr& conv_node,
                                      const ge::NodePtr& max_pool_node);

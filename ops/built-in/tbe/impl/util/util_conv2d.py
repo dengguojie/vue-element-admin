@@ -112,6 +112,17 @@ def is_support_fixpipe():
     return tbe.common.platform.platform_info.intrinsic_check_support("Intrinsic_fix_pipe_unit_list")
 
 
+def is_support_v300():
+    """
+    Check v300 intrinsic support.
+    """
+    if tbe.common.platform.platform_info.intrinsic_check_support("Intrinsic_fix_pipe_unit_list"):
+        return tbe.common.platform.platform_info.intrinsic_check_support(
+            "Intrinsic_fix_pipe_unit_list", "post_eltwise")
+
+    return False
+
+
 def calc_para_from_tensor(inputs,
                           weights,
                           bias,
@@ -748,9 +759,6 @@ def v220_gen_param(inputs: dict, weights: dict, shape_fm: list, c0_optim_flag: b
     """
     Gen op info in v220 situation.
     """
-    if not inputs.get("is_first_layer"):
-        c0_optim_flag = False
-
     if c0_optim_flag:
         if inputs.get("is_first_layer"):
             # first layer c04 (only set when aipp + conv2d).
@@ -769,21 +777,38 @@ def v220_gen_param(inputs: dict, weights: dict, shape_fm: list, c0_optim_flag: b
                 "output0": "NC1HWC0", # y
             }
         else:
-            # not first layer c04
-            dtype_dict = {
-                "input0": "float16,float32,int8", # fmap
-                "input1": "float16,float32,int8", # weight
-                "input2": "float16,float32,int32", # bias
-                "input3": "int8,int8,int8", # offset_w
-                "output0": "float16,float32,int32", # y
-            }
-            format_dict = {
-                "input0": "NC1HWC0,NC1HWC0,NC1HWC0", # fmap
-                "input1": "FRACTAL_Z_C04,FRACTAL_Z_C04,FRACTAL_Z_C04", # weight
-                "input2": "ND,ND,ND", # bias
-                "input3": "ND,ND,ND", # offset_w
-                "output0": "NC1HWC0,NC1HWC0,NC1HWC0", # y
-            }
+            # not aipp c04
+            # FRACTAL_Z_C04 for inference and FRACTAL_Z for training.
+            if is_support_v300():
+                dtype_dict = {
+                    "input0": "float16,float32,int8", # fmap
+                    "input1": "float16,float32,int8", # weight
+                    "input2": "float16,float32,int32", # bias
+                    "input3": "int8,int8,int8", # offset_w
+                    "output0": "float16,float32,int32", # y
+                }
+                format_dict = {
+                    "input0": "NC1HWC0,NC1HWC0,NC1HWC0", # fmap
+                    "input1": "FRACTAL_Z_C04,FRACTAL_Z_C04,FRACTAL_Z_C04", # weight
+                    "input2": "ND,ND,ND", # bias
+                    "input3": "ND,ND,ND", # offset_w
+                    "output0": "NC1HWC0,NC1HWC0,NC1HWC0", # y
+                }
+            else:
+                dtype_dict = {
+                    "input0": "float16,float32,int8", # fmap
+                    "input1": "float16,float32,int8", # weight
+                    "input2": "float16,float32,int32", # bias
+                    "input3": "int8,int8,int8", # offset_w
+                    "output0": "float16,float32,int32", # y
+                }
+                format_dict = {
+                    "input0": "NC1HWC0,NC1HWC0,NC1HWC0", # fmap
+                    "input1": "FRACTAL_Z,FRACTAL_Z,FRACTAL_Z", # weight
+                    "input2": "ND,ND,ND", # bias
+                    "input3": "ND,ND,ND", # offset_w
+                    "output0": "NC1HWC0,NC1HWC0,NC1HWC0", # y
+                }
     else:
         dtype_dict = {
             "input0": "float16,bfloat16,float32,int8", # fmap

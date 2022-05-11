@@ -82,6 +82,7 @@ vector<BufferFusionPattern*> TbeAippConvReluMaxpoolingFusionPass::DefinePatterns
   patterns.push_back(pattern);
   OP_LOGD(fused_op_type_.c_str(), "End to define %s pass pattern.", pass_name.c_str());
 
+  // AIPP(optional) -->Convolution -->Fixpipe(optional) -->MaxPool/Pooling
   string pass_name2 = "TbeAippConvReluMaxpoolingFusionPass2";
   BufferFusionPattern* pattern2 = new (std::nothrow) BufferFusionPattern(pass_name2);
   FUSION_PASS_CHECK((pattern2 == nullptr), OP_LOGE(fused_op_type_.c_str(), "new an object failed."), return patterns);
@@ -105,14 +106,16 @@ vector<BufferFusionPattern*> TbeAippConvReluMaxpoolingFusionPass::DefinePatterns
  * @brief: aipp, conv and maxpool fusion checking.
  * @return bool: fusion status ok or not.
  */
-bool TbeAippConvReluMaxpoolingFusionPass::CheckConvNodeValidation(const ge::NodePtr& conv_node) {
+bool TbeAippConvReluMaxpoolingFusionPass::CheckConvNodeValidation(const ge::NodePtr& conv_node, const bool &c04_conv2d_flag) {
   FUSION_PASS_CHECK(conv_node->GetOpDesc() == nullptr,
                     OP_LOGD(fused_op_type_.c_str(), "get desc failed"),
                     return false);
-  FUSION_PASS_CHECK(conv_node->GetOpDesc()->GetInputDesc(1).GetFormat() != ge::FORMAT_FRACTAL_Z_C04,
-                    OP_LOGD(fused_op_type_.c_str(), "The format of node[%s]'s second input is not FORMAT_FRACTAL_Z_C04",
-                            conv_node->GetName().c_str()),
-                    return false);
+  if (!c04_conv2d_flag) {
+        FUSION_PASS_CHECK(conv_node->GetOpDesc()->GetInputDesc(1).GetFormat() != ge::FORMAT_FRACTAL_Z_C04,
+                          OP_LOGD(fused_op_type_.c_str(), "The format of node[%s]'s second input is not FORMAT_FRACTAL_Z_C04",
+                          conv_node->GetName().c_str()),
+                          return false);
+  }
   ge::Format first_format = conv_node->GetOpDesc()->GetInputDesc(0).GetOriginFormat();
   std::vector<int64_t> first_dims = conv_node->GetOpDesc()->GetInputDesc(0).GetOriginShape().GetDims();
   ge::Format second_format = conv_node->GetOpDesc()->GetInputDesc(1).GetOriginFormat();
@@ -392,6 +395,7 @@ Status TbeAippConvReluMaxpoolingFusionPass::GetFusionNodes(const BufferFusionMap
   OP_LOGD(fused_op_type_.c_str(), "Begin to do TbeAippConvReluMaxpoolingFusionPass!");
   vector<ge::NodePtr> aipp_nodes = GetMatchedNodesByDescName(kPatternAipp, mapping);
   vector<ge::NodePtr> conv_nodes = GetMatchedNodesByDescName(kPatternConv, mapping);
+  vector<ge::NodePtr> fixpipe_nodes = GetMatchedNodesByDescName(kPatternFixpipe, mapping);
   vector<ge::NodePtr> elemwise_nodes = GetMatchedNodesByDescName(kPatternEltwise, mapping);
   vector<ge::NodePtr> max_pool_nodes = GetMatchedNodesByDescName(kPatternMaxpool, mapping);
 
@@ -422,8 +426,10 @@ Status TbeAippConvReluMaxpoolingFusionPass::GetFusionNodes(const BufferFusionMap
     }
   }
 
+  bool c04_conv2d_flag = aipp_nodes.empty() && !fixpipe_nodes.empty();
+
   for (const auto& conv_node : conv_nodes) {
-    if (!CheckConvNodeValidation(conv_node)) {
+    if (!CheckConvNodeValidation(conv_node, c04_conv2d_flag)) {
       OP_LOGD(fused_op_type_.c_str(), "Node[%s] not satisfied with fusion condition.", conv_node->GetName().c_str());
       return SUCCESS;
     }

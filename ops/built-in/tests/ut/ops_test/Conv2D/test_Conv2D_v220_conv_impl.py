@@ -65,6 +65,10 @@ def test_conv2d_v220(test_arg):
 
         ("conv2d_dequant", "int8", (1, 64, 32, 32), (32, 64, 3, 3), (1, 1, 1, 1), (1, 1), 1, False, "relu", False),
 
+        ("conv2d_dequant", "int8", (1, 128, 32, 32), (32, 128, 3, 3), (1, 1, 1, 1), (1, 1), 1, True, "relu", False),
+
+        ("conv2d_dequant", "int8", (1, 128, 32, 32), (512, 128, 3, 3), (1, 1, 1, 1), (1, 1), 1, True, "relu", False),
+
         ("conv2d_dequant", "int8", (1, 64, 32, 32), (32, 64, 3, 3), (1, 1, 1, 1), (1, 1), 1, False, "leaky_relu", False),
 
         # ("conv2d_dequant", "int8", (1, 64, 32, 32), (32, 64, 3, 3), (1, 1, 1, 1), (1, 1), 1, False, "prelu", False),
@@ -785,6 +789,15 @@ def test_conv2d_v220(test_arg):
                                       cout_real=cout_real)
 
 
+    def test_op_select_format():
+        from impl.util import util_conv2d
+        inputs = {"is_first_layer": False}
+        weights = {}
+        shape_fm = [1, 32, 16, 16]
+        c0_optim_flag = True
+        util_conv2d.v220_gen_param(inputs, weights, shape_fm, c0_optim_flag)
+
+
     cceconf.te_set_version('Ascend920A')
     with op_context.OpContext():
         run_testcase(v220_case)
@@ -792,6 +805,7 @@ def test_conv2d_v220(test_arg):
         run_testcase(v220_input_nd2nz_case)
         run_testcase(v220_output_nz2nd_case)
         run_testcase(v220_aipp_case)
+        test_op_select_format()
 
 
 def _test_5hd_trans_nhwc_format_err1(test_arg):

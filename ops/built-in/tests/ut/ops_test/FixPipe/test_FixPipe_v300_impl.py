@@ -1127,7 +1127,6 @@ def run_v220_cases(test_arg):
         with patch("tbe.common.platform.platform_info.intrinsic_check_support", MagicMock(side_effect=side_effects_220)):
             run_v300_batch_cases(single_conv2d)
 
-
 print("====> conv2d v300 ut start")
 ut_case.add_cust_test_func(test_func=run_v300_cases)
 ut_case.add_cust_test_func(test_func=run_v300_aipp_fusion_cases)

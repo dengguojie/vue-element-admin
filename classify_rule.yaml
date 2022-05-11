@@ -474,7 +474,6 @@ cube-tiling:
       - ops/built-in/tbe/impl/depthwise_conv2d.py
       - ops/built-in/tbe/impl/dynamic/conv2d.py
       - ops/built-in/tbe/impl/dynamic/depthwise_conv2d.py
-      - ops/built-in/tbe/impl/util/util_conv2d.py
       - ops/built-in/tbe/impl/util/util_conv2d_dynamic.py
       - ops/built-in/tbe/impl/fused_bn2_reluv2_conv2d_bn1.py
       - auto_schedule/python/lang/cce/te_compute/conv_compute.py
@@ -1940,10 +1939,8 @@ cube-conv2d:
       - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/conv/tbe_conv_sigmoid_mul_quant_pass.cc
       - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/conv/tbe_conv_sigmoid_mul_quant_pass.h
       - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/aipp_conv/tbe_aipp_common_fusion_pass.cc
-      - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/aipp_conv/tbe_aipp_conv_relu_maxpooling_fusion_pass.cc
       - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/aipp_conv/tbe_aipp_fusion_rule.cc
       - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/aipp_conv/tbe_aipp_common_fusion_pass.h
-      - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/aipp_conv/tbe_aipp_conv_relu_maxpooling_fusion_pass.h
       - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/aipp_conv/tbe_aipp_fusion_rule.h
       - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/conv/conv2d_add_relu6_mul_mul.h
       - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/conv/tbe_conv2d_fixpipe_fusion_pass.h
@@ -1976,6 +1973,8 @@ cube-conv2d-python:
   team: "cube-conv2d-python" ##组件名称
   src:
     release:
+      - auto_schedule/python/tbe/dsl/static_schedule/conv_fixpipefusion_schedule.py
+      - ops/built-in/tbe/impl/util/util_conv2d.py
       - auto_schedule/python/tbe/dsl/static_schedule/fixpipe_schedule.py
       - ops/built-in/tbe/impl/fix_pipe.py
       - ops/built-in/tbe/impl/fixpipe_op/__init__.py
