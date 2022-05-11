@@ -119,3 +119,35 @@ TEST_F(const2attr_fusion_pass_test, const2attr_fusion_pass_test_2) {
     }
   }
 }
+
+TEST_F(const2attr_fusion_pass_test, const2attr_fusion_pass_test_3) {
+  ge::ComputeGraphPtr graph = std::make_shared<ComputeGraph>("const2attr_fusion_pass_test_3");
+  ge::OpDescPtr op_perm = std::make_shared<OpDesc>("perm", "Constant");
+  ge::OpDescPtr op_enter = std::make_shared<OpDesc>("enter", "Enter");
+  ge::OpDescPtr op_iden = std::make_shared<OpDesc>("identity", "Identity");
+  ge::OpDescPtr op_trans = std::make_shared<OpDesc>("transpose", "Transpose");
+  
+  std::vector<int64_t> dims_size{3, 32};
+  GeShape shape_size(dims_size);
+  GeTensorDesc tensorDesc(shape_size);
+  op_enter->AddOutputDesc(tensorDesc);
+  op_perm->AddOutputDesc(tensorDesc);
+  op_trans->AddInputDesc(tensorDesc);
+  op_trans->AddInputDesc(tensorDesc);
+
+  auto node_perm = graph->AddNode(op_perm);
+  auto node_enter = graph->AddNode(op_enter);
+  auto node_iden = graph->AddNode(op_iden);
+  auto node_trans = graph->AddNode(op_trans);
+
+  ge::GraphUtils::AddEdge(node_enter->GetOutDataAnchor(0), node_trans->GetInDataAnchor(0));
+  ge::GraphUtils::AddEdge(node_perm->GetOutDataAnchor(0), node_trans->GetInDataAnchor(1));
+  ge::GraphUtils::AddEdge(node_iden->GetOutControlAnchor(), node_perm->GetInControlAnchor());
+
+  fe::FusionPassTestUtils::RunGraphFusionPass("ConstToAttrPass", fe::BUILT_IN_GRAPH_PASS, *graph);
+
+  auto node = graph->FindNode("transpose");
+  EXPECT_STREQ(node->GetType().c_str(), "TransposeD");
+  auto pre_control_node = node->GetInControlAnchor()->GetPeerOutControlAnchors().at(0)->GetOwnerNode();
+  EXPECT_STREQ(pre_control_node->GetName().c_str(), node_iden->GetName().c_str());
+}
