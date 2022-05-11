@@ -84,9 +84,9 @@ void BroadcastIterator::InitStrides() {
   // Update strides for broadcast
   // While the axis value is 1, the stride is 0
   std::transform(input_strides_a_.begin(), input_strides_a_.end(), input_shape_a_.begin(), input_strides_a_.begin(),
-                 [](const int64_t &a, const int64_t &b) { return b == 1 ? 0 : a; });
+                 [](const int64_t &a, const int64_t &b) { return (b == 1) ? 0 : a; });
   std::transform(input_strides_b_.begin(), input_strides_b_.end(), input_shape_b_.begin(), input_strides_b_.begin(),
-                 [](const int64_t &a, const int64_t &b) { return b == 1 ? 0 : a; });
+                 [](const int64_t &a, const int64_t &b) { return (b == 1) ? 0 : a; });
 }
 
 uint32_t GetBroadcastShape(const std::vector<int64_t>& x, const std::vector<int64_t>& y,

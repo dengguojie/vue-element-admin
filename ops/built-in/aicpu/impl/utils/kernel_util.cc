@@ -67,10 +67,10 @@ const std::map<Format, std::string> kFormatToStringMap = {
 
 std::string FormatToSerialString(Format format) {
   auto it =
-      kFormatToStringMap.find(static_cast<Format>(GetPrimaryFormat(format)));
+      kFormatToStringMap.find(static_cast<Format>(GetPrimaryFormat(static_cast<int32_t>(format))));
   if (it != kFormatToStringMap.end()) {
-    if (HasSubFormat(format)) {
-      return it->second + ":" + std::to_string(GetSubFormat(format));
+    if (HasSubFormat(static_cast<int32_t>(format))) {
+      return it->second + ":" + std::to_string(GetSubFormat(static_cast<int32_t>(format)));
     }
     return it->second;
   } else {

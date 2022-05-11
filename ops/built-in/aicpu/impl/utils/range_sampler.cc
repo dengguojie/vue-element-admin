@@ -98,7 +98,7 @@ uint32_t RangeSampler::SampleBatchGetExpectedCountAvoid(
     for (size_t i = 0; i < kBatchSize; i++) {
       batch[i] = Sample();
     }
-    num_tries = kBatchSize;
+    num_tries = static_cast<int>(kBatchSize);
   }
   // Compute the expected counts of the batch and the extra values
   return ComputeExpectedCount(kBatchSize, num_tries, batch, batch_expected_count,
@@ -121,7 +121,7 @@ uint32_t RangeSampler::ComputeExpectedCount(
     }
     for (size_t i = 0; i < kBatchSize; i++) {
       batch_expected_count[i] =
-          ExpectedCountHelper(Probability(batch[i]), kBatchSize, num_tries);
+          ExpectedCountHelper(Probability(batch[i]), static_cast<int>(kBatchSize), num_tries);
     }
   }
   if (extras.size() != extras_expected_count.size()) {
@@ -133,7 +133,7 @@ uint32_t RangeSampler::ComputeExpectedCount(
   }
   for (size_t i = 0; i < extras.size(); i++) {
     extras_expected_count[i] =
-        ExpectedCountHelper(Probability(extras[i]), kBatchSize, num_tries);
+        ExpectedCountHelper(Probability(extras[i]), static_cast<int>(kBatchSize), num_tries);
   }
   return KERNEL_STATUS_OK;
 }
@@ -179,7 +179,7 @@ float LogUniformSampler::Probability(int64_t value) const {
   // and log(value + 2).   The probability of this is:
   // (log(value + 2) - log(value + 1)) / log_range
   // To avoid two calls to log(), we compute this as follows:
-  return (log((value + 2.0) / (value + 1.0))) / log_range_;
+  return static_cast<float>((log((value + 2.0) / (value + 1.0))) / log_range_);
 }
 }  // namespace cpu
 }  // namespace aicpu

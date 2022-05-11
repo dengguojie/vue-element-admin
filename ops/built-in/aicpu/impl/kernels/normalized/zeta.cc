@@ -115,8 +115,7 @@ inline std::uint32_t ExtraCheckZeta(const CpuKernelContext &ctx) {
   return KERNEL_STATUS_OK;
 }
 
-inline std::uint32_t CheckZeta(CpuKernelContext &ctx, std::uint32_t inputs_num,
-                               std::uint32_t outputs_num) {
+inline std::uint32_t CheckZeta(CpuKernelContext &ctx) {
   return NormalCheck(ctx, kZetaInputNum, kZetaOutputNum)
              ? KERNEL_STATUS_PARAM_INVALID
              : ExtraCheckZeta(ctx);
@@ -138,9 +137,8 @@ inline std::uint32_t ComputeZeta(const CpuKernelContext &ctx) {
 }  // namespace detail
 
 std::uint32_t ZetaCpuKernel::Compute(CpuKernelContext &ctx) {
-  return detail::CheckZeta(ctx, kZetaInputNum, kZetaOutputNum)
-             ? KERNEL_STATUS_PARAM_INVALID
-             : detail::ComputeZeta(ctx);
+  return detail::CheckZeta(ctx) ? KERNEL_STATUS_PARAM_INVALID
+                                : detail::ComputeZeta(ctx);
 }
 
 REGISTER_CPU_KERNEL(kZeta, ZetaCpuKernel);

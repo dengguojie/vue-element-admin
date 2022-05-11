@@ -142,8 +142,8 @@ inline bool MulWithoutOverflow(const int64_t x, const int64_t y, int64_t &xy) {
   // Multiply in uint64 rather than int64 since signed overflow is undefined.
   // Negative values will wrap around to large unsigned values in the casts
   // (see section 4.7 [conv.integral] of the C++14 standard).
-  const uint64_t ux = x;
-  const uint64_t uy = y;
+  const uint64_t ux = static_cast<uint64_t>(x);
+  const uint64_t uy = static_cast<uint64_t>(y);
   const uint64_t uxy = ux * uy;
 
   // Check if we overflow uint64, using a cheap check if both inputs are small
@@ -174,8 +174,8 @@ inline bool MulWithoutOverflow(const int64_t x, const int64_t y, int64_t &xy) {
  * @return true: normal, false: overflow
  */
 inline bool AddWithoutOverflow(const int64_t x, const int64_t y, int64_t &sum) {
-  const uint64_t ux = x;
-  const uint64_t uy = y;
+  const uint64_t ux = static_cast<uint64_t>(x);
+  const uint64_t uy = static_cast<uint64_t>(y);
   const uint64_t usum = ux + uy;
   sum = static_cast<int64_t>(usum);
 

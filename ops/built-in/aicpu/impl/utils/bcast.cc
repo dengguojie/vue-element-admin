@@ -301,9 +301,9 @@ void Bcast::BCastIndexes(std::vector<int64_t> &x_indexes,
     y_dim = y_reshape_.at(i);    // i-th dimension of y.
     out_dim = shape_out_.at(i);  // i-th dimension of shape_out_.
 
-    int64_t stride = x_indexes.size();
+    std::vector<int64_t>::size_type stride = x_indexes.size();
     for (int64_t j = 1; j < out_dim; j++) {
-      for (int64_t k = 0; k < stride; k++) {
+      for (std::vector<int64_t>::size_type k = 0; k < stride; k++) {
         x_indexes.push_back(x_indexes.at(k) + (x_dim == 1 ? 0 : (j * x_bias)));
         y_indexes.push_back(y_indexes.at(k) + (y_dim == 1 ? 0 : (j * y_bias)));
       }

@@ -24,7 +24,7 @@
 namespace {
 const uint32_t kOutputNum = 1;
 const uint32_t kInputNum = 1;
-const char *kZerosLike = "ZerosLike";
+const char *const kZerosLike = "ZerosLike";
 
 #define ZEROSLIKE_COMPUTE_CASE(DTYPE, TYPE, CTX)            \
   case (DTYPE): {                                           \
@@ -68,7 +68,7 @@ uint32_t ZerosLikeCpuKernel::Compute(CpuKernelContext &ctx) {
   return KERNEL_STATUS_OK;
 }
 
-uint32_t ZerosLikeCpuKernel::ZerosLikeCheck(CpuKernelContext &ctx) {
+uint32_t ZerosLikeCpuKernel::ZerosLikeCheck(CpuKernelContext &ctx) const {
   auto input = ctx.Input(0);
   auto output = ctx.Output(0);
   KERNEL_CHECK_NULLPTR(input->GetData(), KERNEL_STATUS_PARAM_INVALID,
@@ -87,7 +87,7 @@ uint32_t ZerosLikeCpuKernel::ZerosLikeCheck(CpuKernelContext &ctx) {
 
 template <typename T>
 uint32_t ZerosLikeCpuKernel::ZerosLikePartCompute(CpuKernelContext &ctx) {
-  size_t data_num = ctx.Input(0)->NumElements();
+  size_t data_num = static_cast<size_t>(ctx.Input(0)->NumElements());
   Tensor *y = ctx.Output(0);
   auto y_addr = y->GetData();
   auto ret = memset_s(y_addr, data_num * sizeof(T), 0, data_num * sizeof(T));

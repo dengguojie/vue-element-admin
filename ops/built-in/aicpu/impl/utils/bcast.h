@@ -66,7 +66,7 @@ class Bcast {
 
  private:
   uint32_t Init(const std::vector<int64_t> &x, const std::vector<int64_t> &y);
- private:
+
   bool valid_;
   std::vector<int64_t> x_reshape_;
   std::vector<int64_t> y_reshape_;

@@ -12,7 +12,7 @@ namespace aicpu {
    * @return status code
    */
 template <typename T>
-uint32_t EqualCalculate(CpuKernelContext &ctx,
+uint32_t EqualCalculate(const CpuKernelContext &ctx,
                                       BCalcInfo &calcInfo, bool flag) {
   auto input_x1 = reinterpret_cast<T *>(calcInfo.input_0->GetData());
   auto input_x2 = reinterpret_cast<T *>(calcInfo.input_1->GetData());
@@ -63,8 +63,8 @@ uint32_t EqualCompute(CpuKernelContext &ctx, bool flag) {
   Bcast bcast;
   KERNEL_HANDLE_ERROR(bcast.GenerateBcastInfo(calcInfo),
                       "Generate broadcast info failed.")
-  (void)bcast.BCastIndexes(calcInfo.x_indexes, calcInfo.y_indexes);
-  (void)bcast.GetBcastVec(calcInfo);
+  bcast.BCastIndexes(calcInfo.x_indexes, calcInfo.y_indexes);
+  bcast.GetBcastVec(calcInfo);
 
   return EqualCalculate<T>(ctx, calcInfo, flag);
 }

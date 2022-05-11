@@ -19,7 +19,7 @@
 using namespace std;
 
 namespace aicpu {
-SamplingKernelType SamplingKernelTypeFromString(std::string &str) {
+SamplingKernelType SamplingKernelTypeFromString(const std::string &str) {
   // Define map for different types of sampling kernels
   static const std::map<std::string, SamplingKernelType> SamplingTypesInfo {
     {"lanczos1",      Lanczos1Kernel},

@@ -56,7 +56,7 @@ Group GroupIterable::IteratorStep::operator*() const {
 std::vector<int64_t> Group::group() const {
   std::vector<int64_t> g;
   const auto &ix_t = iter_->ix_matrix_;
-  for (const int d : iter_->group_dims_) {
+  for (const int64_t d : iter_->group_dims_) {
     g.push_back(ix_t(loc_, d));
   }
   return g;

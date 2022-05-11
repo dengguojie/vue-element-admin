@@ -24,11 +24,10 @@ namespace aicpu {
         ZerosLikeCpuKernel() = default;
         ~ZerosLikeCpuKernel() override = default;
 
-    protected:
         uint32_t Compute(CpuKernelContext &ctx) override;
 
     private:
-        uint32_t ZerosLikeCheck(CpuKernelContext &ctx);
+        uint32_t ZerosLikeCheck(CpuKernelContext &ctx) const;
 
         template <typename T>
         uint32_t ZerosLikePartCompute(CpuKernelContext &ctx);
