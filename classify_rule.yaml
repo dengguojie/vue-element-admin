@@ -21,6 +21,7 @@ aicpu:
   src:
     release:
       - ops/built-in/aicpu/
+      - ops/built-in/op_proto/array_ops.cc
     unrelease:
   llt:
     ut_check: true

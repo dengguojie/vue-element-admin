@@ -309,11 +309,11 @@ IMPLEMT_INFERFUNC(UnravelIndex, UnravelIndexInfer) {
     out_dims[0] = 1;
   } else {
     if (indices_shape_vec != ge::UNKNOWN_RANK && indices_shape_vec != ge::UNKNOWN_SHAPE) {
-      out_dims[0] = indices_shape_vec[0];
+      out_dims[1] = indices_shape_vec[0];
     }
   }
   if (dims_shape_vec != ge::UNKNOWN_RANK && dims_shape_vec != ge::UNKNOWN_SHAPE) {
-    out_dims[1] = dims_shape_vec[0];
+    out_dims[0] = dims_shape_vec[0];
   }
 
   TensorDesc out_desc = op.GetOutputDesc("y");
