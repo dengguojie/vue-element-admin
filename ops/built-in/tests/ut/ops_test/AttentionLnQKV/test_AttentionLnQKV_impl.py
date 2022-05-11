@@ -53,13 +53,22 @@ attention_ln_qkv_testcases = [
     # batch=24, seq_len=512, hidden_size=4096, n=16, dtype="float16", x_format="FRACTAL_NZ", kernel_format="FRACTAL_NZ"
     ((256, 768, 16, 16), (64, 256, 16, 16), (64, 256, 16, 16), (64, 256, 16, 16), (4096,), (4096,), (16, 64), (16, 64),
      (16, 64), (24, 64, 4, 32, 16, 16), "float16", "FRACTAL_NZ", "FRACTAL_NZ", RuntimeError,
-     "bert_large_attention_ln_qkv_24_512_4096_16_float16_NZ_NZ_unsupported_k")
+     "bert_large_attention_ln_qkv_24_512_4096_16_float16_NZ_NZ_unsupported_k"),
+    # batch=24, seq_len=512, hidden_size=1024, n=16, dtype="float16", x_format="FRACTAL_NZ", kernel_format="FRACTAL_NZ"
+    ((64, 768, 16, 16), (64, 64, 16, 16), (64, 64, 16, 16), (64, 64, 16, 16), (1024,), (1024,), (16, 64), (16, 64),
+     (16, 64), (24, 16, 4, 32, 16, 16), "float16", "FRACTAL_NZ", "FRACTAL_NZ", RuntimeError,
+     "bert_large_attention_ln_qkv_24_512_1024_16_float16_NZ_NZ_trans_flag_unsupported", True),
 ]
 
 
 def _gen_case(params):
     x_shape, kernel_q_shape, kernel_k_shape, kernel_v_shape, gamma_shape, beta_shape, bias_q_shape, bias_k_shape, bias_v_shape, \
-        out_shape, dtype, x_format, kernel_format, expect_result, kernel_name = params
+        out_shape, dtype, x_format, kernel_format, expect_result, kernel_name = params[:15]
+    trans_a = False
+    trans_b = False
+    if len(params) > 15:
+        trans_a = params[-1]
+        trans_b = params[-1]
     x_ori_shape = (x_shape[1] * x_shape[2], x_shape[0] * x_shape[3])
     x = {"shape": x_shape, "dtype": dtype, "format": x_format, "ori_shape": x_ori_shape, "ori_format": "ND"}
     kernel_q_ori_shape = (kernel_q_shape[1] * kernel_q_shape[2], kernel_q_shape[0] * kernel_q_shape[3])
@@ -101,7 +110,7 @@ def _gen_case(params):
     variance = {"shape": mean_shape, "dtype": dtype, "format": "NHWC", "ori_shape": mean_shape, "ori_format": "NHWC"}
     testcase = {
         "params": [x, kernel_query, kernel_key, kernel_value, gamma, beta, bias_query, bias_key, bias_value, norm, query_output,
-                   key_output, value_output, mean, variance],
+                   key_output, value_output, mean, variance, trans_a, trans_b],
         "case_name": kernel_name,
         "expect": expect_result,
         "support_expect": True,

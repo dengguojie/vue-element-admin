@@ -462,3 +462,4 @@ from .fused_bn2_reluv2_conv2d_bn1 import fused_bn2_reluv2_conv2d_bn1
 from .celu import celu
 from .attention_ln_qkv import attention_ln_qkv
 from .attention_qkv_grad_x import attention_qkv_grad_x
+from .attention_qkv_grad_w import attention_qkv_grad_w

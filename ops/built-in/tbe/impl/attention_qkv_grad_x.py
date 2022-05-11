@@ -20,6 +20,7 @@ from impl.util.attention_qkv_util import vconv
 from impl.util.attention_qkv_util import check_equal_shape
 from impl.util.attention_qkv_util import check_dtype
 from impl.util.attention_qkv_util import check_format
+from impl.util.attention_qkv_util import check_trans_flag
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tik
 from impl.util.platform_adapter import error_manager_cube
@@ -249,6 +250,7 @@ def attention_qkv_grad_x(ln_dx, query_dx, key_dw, value_dw, kernel_query, kernel
                       "matmul_dx_qkv kernel_shape should be equal.")
     check_equal_shape("attention_qkv_grad_x", [ln_dx_shape, out_shape, out_shape],
                       "ln_dx_shape should be equal with out_shape.")
+    check_trans_flag("attention_qkv_grad_x", trans_a, not trans_b)
     params = {
         "dtype": ln_dx.get("dtype"),
         "ln_dx_shape": ln_dx_shape,

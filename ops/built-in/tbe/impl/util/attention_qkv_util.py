@@ -33,6 +33,8 @@ class Constant:
     CANDIDATE_TILING_M1 = 12
     CANDIDATE_TILING_M2 = 8
     CANDIDATE_TILING_N = 16
+    CANDIDATE_TILING_K = 4
+    CANDIDATE_BLOCK_M = 4
     M_INNER_INDEX = 3
     SQUARE_ROOT = -0.5
     DOUBLE_BUFFER = 2
@@ -76,6 +78,14 @@ def check_format(op_type, input_x_format, kernel_format):
     '''
     if input_x_format != "FRACTAL_NZ" or kernel_format != "FRACTAL_NZ":
         error_manager_cube.raise_err_specific_user(op_type, "only support NZ format for matmul.")
+
+
+def check_trans_flag(op_type, trans_a, trans_b):
+    '''
+    check trans_flag
+    '''
+    if trans_a or trans_b:
+        error_manager_cube.raise_err_specific_user(op_type, "unsupported transpose flag for matmul.")
 
 
 def matmul_l0c_process(tik_instance, cond_params, mad_tensors, mad_size):

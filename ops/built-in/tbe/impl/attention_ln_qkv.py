@@ -24,6 +24,7 @@ from impl.util.attention_qkv_util import matmul_l0c_process
 from impl.util.attention_qkv_util import check_equal_shape
 from impl.util.attention_qkv_util import check_dtype
 from impl.util.attention_qkv_util import check_format
+from impl.util.attention_qkv_util import check_trans_flag
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tik
 from impl.util.platform_adapter import error_manager_cube
@@ -111,14 +112,11 @@ class AttentionLnQKV:
 
         # matmul_m_l0 can only be 12 or 8
         m_inner = self.out_shape[Constant.M_INNER_INDEX]
-        # when m_inner is factor of 12 or the opposite, choose 12 to be matmul_m_l0
-        if m_inner % Constant.CANDIDATE_TILING_M1 == 0 or Constant.CANDIDATE_TILING_M1 % m_inner == 0:
-            self.matmul_m_l0 = Constant.CANDIDATE_TILING_M1
-        elif (self.m1_shape // self.block_m) % Constant.CANDIDATE_TILING_M2 == 0:
-            # 8 is the left choice, make sure matmul_m_l0 should be factor of single core m data
+        if (self.m1_shape // self.block_m) % Constant.CANDIDATE_TILING_M2 == 0 and (m_inner % \
+            Constant.CANDIDATE_TILING_M2 == 0 or Constant.CANDIDATE_TILING_M2 % m_inner == 0):
             self.matmul_m_l0 = Constant.CANDIDATE_TILING_M2
         else:
-            self.matmul_m_l0 = math.gcd(Constant.CANDIDATE_TILING_M1, Constant.CANDIDATE_TILING_M2)
+            self.matmul_m_l0 = Constant.CANDIDATE_TILING_M1
         self.matmul_m_al1 = self.matmul_m_l0
         self.matmul_n_l0 = Constant.CANDIDATE_TILING_N
         self.matmul_n_l1 = self.matmul_n_l0
@@ -379,14 +377,24 @@ class AttentionLnQKV:
             m_inner = self.out_shape[Constant.M_INNER_INDEX]
             out_offset = (matmul_m_idx % m_inner) * Constant.FRAC_SIZE + matmul_n_idx * m_inner * Constant.FRAC_SIZE + \
                 matmul_m_idx // m_inner * self.n1_shape * m_inner * Constant.FRAC_SIZE
-            if m_inner >= self.matmul_m_l0:
+            if m_inner % self.matmul_m_l0 == 0:
                 tik_instance.data_move(out_gm[out_offset:], c_ub, 0, self.matmul_n_l0, self.matmul_m_l0 * Constant.M0,
                     0, (m_inner - self.matmul_m_l0) * Constant.M0)
-            else:
+            elif self.matmul_m_l0 % m_inner == 0:
                 with tik_instance.for_range(0, self.matmul_m_l0 // m_inner) as m_inner_idx:
                     out_offset += m_inner_idx * self.n1_shape * m_inner * Constant.FRAC_SIZE
                     tik_instance.data_move(out_gm[out_offset:], c_ub[m_inner_idx * m_inner * Constant.FRAC_SIZE], 0,
                         self.matmul_n_l0, m_inner * Constant.M0, (self.matmul_m_l0 - m_inner) * Constant.M0, 0)
+            else:
+                m_out_size = math.gcd(self.matmul_m_l0, m_inner)
+                with tik_instance.for_range(0, self.matmul_m_l0 // m_out_size) as m_out_idx:
+                    real_m_idx = matmul_m_idx + m_out_idx * m_out_size
+                    out_offset = (real_m_idx % m_inner) * Constant.FRAC_SIZE + matmul_n_idx * m_inner * \
+                        Constant.FRAC_SIZE + real_m_idx // m_inner * self.n1_shape * m_inner * Constant.FRAC_SIZE
+                    src_offset = m_out_idx * m_out_size * Constant.FRAC_SIZE
+                    tik_instance.data_move(out_gm[out_offset:], c_ub[src_offset:], 0, self.matmul_n_l0,
+                        m_out_size * Constant.M0, (self.matmul_m_l0 - m_out_size) * Constant.M0,
+                        (m_inner - m_out_size) * Constant.M0)
 
 
     def _matmul_l0c_compute(self, tik_instance, kernel_gm, l0c, ping_pong_params):
@@ -548,7 +556,7 @@ def attention_ln_qkv(x, kernel_query, kernel_key, kernel_value, gamma, beta, bia
     else:
         error_manager_cube.raise_err_specific_user("attention_ln_qkv",
                                                     "bias_flag is inconsistant for matmul_qkv.")
-
+    check_trans_flag("attention_ln_qkv", trans_a, trans_b)
     kernels = [kernel_query, kernel_key, kernel_value]
     outputs = [query_output, key_output, value_output, mean, variance]
     _check_shape_and_dtype(x, kernels, outputs)

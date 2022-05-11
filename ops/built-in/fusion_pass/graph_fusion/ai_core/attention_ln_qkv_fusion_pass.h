@@ -35,6 +35,9 @@ class AttentionLnQKVFusionPass : public PatternFusionBasePass {
   bool IsMatch(const ge::NodePtr &ln_node,
                std::vector<ge::NodePtr> &conf_trans_list,
                std::vector<ge::NodePtr> &matmul_list);
+  bool ShapeCheck(const ge::NodePtr &ln_node,
+                  const ge::NodePtr &matmul_node,
+                  const ge::NodePtr &conf_trans_node) const;
   bool UpgradeNodeList(const ge::OutDataAnchorPtr &out_anchor,
                        std::vector<ge::NodePtr> &conf_trans_list,
                        std::vector<ge::NodePtr> &matmul_list);

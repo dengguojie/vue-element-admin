@@ -24,7 +24,6 @@
 *       matmul_dx_value  ->
 */
 
-#include <string>
 #include "attention_qkv_gradx_fusion_pass.h"
 #include "anchor_util.h"
 #include "graph/utils/graph_utils.h"
@@ -122,7 +121,7 @@ bool AttentionQKVGradXFusionPass::IsMatch(const ge::NodePtr &addn_node, std::vec
         OP_LOGW(FUSED_OP_TYPE.c_str(), "get attr transpose_x2 failed."), return false);
     if (transpose_x1 || !transpose_x2) {
       OP_LOGI(FUSED_OP_TYPE.c_str(), "trans_a/trans_b should be false/true, the actual trans_flags are [%s] and [%s].",
-          kBoolToStr[transpose_x1], kBoolToStr[transpose_x2]);
+          kBoolToStr[transpose_x1].c_str(), kBoolToStr[transpose_x2].c_str());
       return false;
     }
     matmul_list.push_back(addn_input_node);
@@ -132,6 +131,19 @@ bool AttentionQKVGradXFusionPass::IsMatch(const ge::NodePtr &addn_node, std::vec
   bool invalid_out_shape = addn_out_shape[0] != kCandidateM1 || addn_out_shape[1] != kCandidateN;
   if (invalid_out_shape) {
     OP_LOGI(FUSED_OP_TYPE.c_str(), "invalid addn_out_shape.");
+    return false;
+  }
+  // dtype check
+  auto out_desc = addn_node->GetOpDesc()->GetOutputDesc(0);
+  if (out_desc.GetDataType() != ge::DT_FLOAT16) {
+    OP_LOGD(FUSED_OP_TYPE.c_str(), "addn_node dtype is not fp16, but [%s]!",
+        ge::TypeUtils::DataTypeToSerialString(out_desc.GetDataType()).c_str());
+    return false;
+  }
+  // format check
+  if (out_desc.GetFormat() != ge::FORMAT_FRACTAL_NZ) {
+    OP_LOGD(FUSED_OP_TYPE.c_str(), "addn_node output format is not FRACTAL_NZ, but [%s]!",
+        ge::TypeUtils::FormatToSerialString(out_desc.GetFormat()).c_str());
     return false;
   }
   OP_LOGD(FUSED_OP_TYPE.c_str(), "AttentionQKVGradXFusionPass match success");
@@ -173,7 +185,7 @@ Status AttentionQKVGradXFusionPass::ReplaceAttentionQKVGradX(ge::ComputeGraph &g
   new_node = attention_qkv_gradx_node;
   auto ln_x_bp_out_anchor = addn_node->GetInDataAnchor(0)->GetPeerOutAnchor();
   if (ge::GraphUtils::AddEdge(ln_x_bp_out_anchor, attention_qkv_gradx_node->GetInDataAnchor(0)) != SUCCESS) {
-    OP_LOGW(FUSED_OP_TYPE.c_str(), "Add edge from [%s] to attention_qkv_gradx failed.",
+    OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge from [%s] to attention_qkv_gradx failed.",
         ln_x_bp_out_anchor->GetOwnerNode()->GetName().c_str());
     return FAILED;
   }
@@ -183,14 +195,14 @@ Status AttentionQKVGradXFusionPass::ReplaceAttentionQKVGradX(ge::ComputeGraph &g
       auto pre_out_anchor = matmul_node->GetInDataAnchor(k)->GetPeerOutAnchor();
       // RemoveEdge from input_node of matmul to matmul
       if (ge::GraphUtils::RemoveEdge(pre_out_anchor, matmul_node->GetInDataAnchor(k)) != SUCCESS) {
-        OP_LOGW(FUSED_OP_TYPE.c_str(), "Remove edge from [%s] to matmul failed.",
+        OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove edge from [%s] to matmul failed.",
             pre_out_anchor->GetOwnerNode()->GetName().c_str());
         return FAILED;
       }
       // AddEdge from input_node of matmul to attention_qkv_gradx
       size_t index = k * kKernelNum + j + 1;
       if (ge::GraphUtils::AddEdge(pre_out_anchor, attention_qkv_gradx_node->GetInDataAnchor(index)) != SUCCESS) {
-        OP_LOGW(FUSED_OP_TYPE.c_str(), "Add edge from [%s] to attention_qkv_gradx_node failed.",
+        OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge from [%s] to attention_qkv_gradx_node failed.",
             pre_out_anchor->GetOwnerNode()->GetName().c_str());
         return FAILED;
       }
@@ -203,13 +215,13 @@ Status AttentionQKVGradXFusionPass::ReplaceAttentionQKVGradX(ge::ComputeGraph &g
   for (auto next_in_anchor : next_in_anchors) {
     // RemoveEdge from addn_node to its output
     if (ge::GraphUtils::RemoveEdge(addn_out_anchor, next_in_anchor) != SUCCESS) {
-      OP_LOGW(FUSED_OP_TYPE.c_str(), "Remove edge from addn to [%s] failed.",
+      OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove edge from addn to [%s] failed.",
           next_in_anchor->GetOwnerNode()->GetName().c_str());
       return FAILED;
     }
     // AddEdge from attention_qkv_gradx to addn_node's output
     if (ge::GraphUtils::AddEdge(attention_qkv_gradx_node->GetOutDataAnchor(0), next_in_anchor) != SUCCESS) {
-      OP_LOGW(FUSED_OP_TYPE.c_str(), "Add edge from attention_qkv_gradx to [%s] failed.",
+      OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge from attention_qkv_gradx to [%s] failed.",
           next_in_anchor->GetOwnerNode()->GetName().c_str());
       return FAILED;
     }

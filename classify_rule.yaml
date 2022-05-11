@@ -313,6 +313,8 @@ cube:
       - ops/built-in/fusion_pass/graph_fusion/ai_core/attention_ln_qkv_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/attention_qkv_gradx_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/attention_qkv_gradx_fusion_pass.h
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/attention_qkv_gradw_fusion_pass.cc
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/attention_qkv_gradw_fusion_pass.h
       - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/conv2d_backprop_input/conv2d_bp_input_dequant_elemwise_quant_pass.cc
       - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/conv2d_backprop_input/conv2d_bp_input_dequant_elemwise_quant_pass.h
       - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/conv2d_backprop_input/conv2d_bp_input_elemwise_pass.cc
@@ -448,6 +450,7 @@ cube:
       - ops/built-in/tbe/impl/fixpipe_op/fixpipe_conv2d_backprop_filter.py
       - ops/built-in/tbe/impl/attention_ln_qkv.py
       - ops/built-in/tbe/impl/attention_qkv_grad_x.py
+      - ops/built-in/tbe/impl/attention_qkv_grad_w.py
       - ops/built-in/tbe/impl/util/attention_qkv_util.py
     unrelease:
       - ops/built-in/tests/ut/ops_test/Dilation/test_dilation_impl.py
@@ -1268,6 +1271,7 @@ vector_B:
       - scripts/run_ut.py
       - scripts/util/run_ops_st.sh
       - scripts/util/run_ops_st_plus.sh
+      - ops/built-in/tbe/impl/__init__.py
       - ops/built-in/tests/common/CMakeLists.txt
       - ops/built-in/tests/get_change_relate_ops.py
       - ops/built-in/tests/st/AdaptiveAvgpool2dGrad/test_adaptive_avgpool2d_grad_st.json
@@ -2697,7 +2701,6 @@ unkown:
       - ops/built-in/tbe/impl/maximum_grad.py
       - ops/built-in/tbe/impl/pooling.py
       - ops/built-in/tbe/impl/gelu.py
-      - ops/built-in/tbe/impl/__init__.py
       - ops/built-in/tbe/impl/hwc_2_chw.py
       - ops/built-in/tbe/impl/unsorted_segment_min.py
       - ops/built-in/tbe/impl/softmax_grad_ext.py
