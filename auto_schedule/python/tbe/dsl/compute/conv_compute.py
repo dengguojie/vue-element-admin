@@ -31,6 +31,8 @@ from tbe.common.platform import intrinsic_check_support
 from tbe.common.buildcfg import get_current_build_config
 from tbe.common.platform import CUBE_MKN
 from tbe.common.utils.errormgr import error_manager_cube as err_man
+from tbe.common.utils.op_util.op_util_conv2d import is_support_fixpipe
+from tbe.common.utils.op_util.op_util_conv2d import show_class_var
 
 # fmapH, fmapW must be in [1,4096]
 FMAP_HW_MIN = 1
@@ -120,11 +122,11 @@ def is_support_v200():
     return False
 
 
-def is_support_v220():
-    """
-    Check if support fixpipe.
-    """
-    return tbe.common.platform.platform_info.intrinsic_check_support("Intrinsic_fix_pipe_unit_list")
+def is_support_version_v2():
+    if ConvParam.binary_mode:
+        return True
+
+    return is_support_fixpipe()
 
 
 def check_load3d_w_out_1_support():
@@ -139,7 +141,7 @@ def check_load3d_w_out_1_support():
     True: support
     False: not support
     """
-    if is_support_v220():
+    if is_support_fixpipe():
         return True
 
     soc_version = get_soc_spec("SOC_VERSION")
@@ -1923,7 +1925,7 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
 
         kernel_one_one = (para_dict["filter_h"] == 1) and (para_dict["filter_w"] == 1)
 
-        if optim_dict["c0_optim_flg"] and not is_support_v220():
+        if optim_dict["c0_optim_flg"] and not is_support_fixpipe():
             c0_value = _fmap_c0_check_value(weight.dtype, optim_dict)
             if weight.dtype != "int8" and data.shape[1].value == 1 and data.shape[4].value == c0_value \
                     and weight.shape[3].value == 16 and not kernel_one_one:
@@ -2590,7 +2592,10 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
         ConvParam.invalid_data_rm_flag = False
         ConvParam.invalid_data_rm_disable = True
 
-    if is_support_v220():
+    # show flags in ConvParam
+    show_class_var(ConvParam)
+
+    if is_support_version_v2():
         conv_res = conv_v220_compute(data, weight, para_dict, optim_dict, dsl_flag, ConvParam)
         if lxfusion_enable_flag and not dsl_flag:
             tensor_list[-1] = conv_res

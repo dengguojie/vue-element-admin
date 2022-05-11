@@ -28,6 +28,7 @@ from tbe.common.platform.platform_info import get_soc_spec
 from tbe.common.tiling.get_tiling import get_tiling
 from tbe.common.context import get_context
 from tbe.common.utils import log
+from tbe.common.utils.op_util import op_util_conv2d
 
 from tbe.dsl.base.operation import register_tiling_case
 from tbe.dsl.base.operation import get_te_var
@@ -52,6 +53,28 @@ TILING_REPO_MODE = 0
 TILING_COST_MODE = 1
 AUB_COEFFICIENT_INDEX = 0
 CUB_COEFFICIENT_INDEX = 2
+
+BINARY_BASE_TILING = {
+    "block_dim": [-1, -1, -1, -1],
+    "AL0_matrix": [-1, -1, utils.CUBE_SIZE, utils.CUBE_SIZE, 1, 1],
+    "BL0_matrix": [-1, -1, utils.CUBE_SIZE, utils.CUBE_SIZE, 1, 1],
+    "CL0_matrix": [-1, -1, utils.CUBE_SIZE, utils.CUBE_SIZE, 1, 1],
+    "CUB_matrix": [-1, -1, utils.CUBE_SIZE, utils.CUBE_SIZE, 1, 1],
+    "BUB_shape": None,
+    "AL1_shape": [-1, -1, 1, 1],
+    "BL1_shape": [-1, -1, 1, 1],
+    "AUB_shape": [],
+    "n_bef_batch_flag": 0, "n_bef_group_flag": 0, "batch_bef_group_flag": 0,
+    "A_overhead_opt_flag": 0, "B_overhead_opt_flag": 0,
+    "AUB_channel_wise_flag": None, "BUB_channel_wise_flag": None, "CUB_channel_wise_flag": None,
+    "tbe_compile_para": 0,
+    "manual_pingpong_buffer": {"AUB_pbuffer": utils.DB_OFF, "BUB_pbuffer": utils.DB_OFF,
+                               "AL1_pbuffer": utils.DB_ON, "BL1_pbuffer": utils.DB_ON,
+                               "AL0_pbuffer": utils.DB_ON, "BL0_pbuffer": utils.DB_ON,
+                               "CL0_pbuffer": utils.DB_ON,
+                               "CUB_pbuffer": utils.DB_OFF, "UBG_pbuffer": utils.DB_OFF},
+    "attach_at_flag": {"bl0_attach_flag": -1, "al1_attach_flag": -1, "bl1_attach_flag": -1}
+}
 
 
 def parse_fuzz_build_range(info_list):
@@ -725,28 +748,28 @@ class Conv2dTiling(CubeTilingOp):
         """
         get cache tiling
         """
+        def calc_tiling_key(attach_map):
+            attach_map = copy.deepcopy(attach_map)
+            binary_info = op_util_conv2d.get_binary_infos()
+            fmap_loadtol0a_mode = 1 if \
+                binary_info.get(op_util_conv2d.BinaryInfoKey.LOAD2D_FLAG) else 0
+            tiling_key = int(0)
+            tiling_key |= attach_map[op_util_conv2d.BinaryTilingKey.AL1_ATTACH_FLAG] << \
+                          op_util_conv2d.KernelIdKeyOffset.OFFSET_AL1
+            tiling_key |= attach_map[op_util_conv2d.BinaryTilingKey.BL1_ATTACH_FLAG] << \
+                          op_util_conv2d.KernelIdKeyOffset.OFFSET_BL1
+            tiling_key |= attach_map[op_util_conv2d.BinaryTilingKey.BL0_ATTACH_FLAG] << \
+                          op_util_conv2d.KernelIdKeyOffset.OFFSET_BL0
+            tiling_key |= fmap_loadtol0a_mode << op_util_conv2d.KernelIdKeyOffset.OFFSET_LOAD2D
+            return tiling_key
+
         cache_tiling_all = {}
-        base_tiling = {
-            "block_dim": [-1, -1, -1, 1],
-            "AL0_matrix": [-1, -1, utils.CUBE_SIZE, utils.CUBE_SIZE, 1, 1],
-            "BL0_matrix": [-1, -1, utils.CUBE_SIZE, utils.CUBE_SIZE, 1, 1],
-            "CL0_matrix": [-1, -1, utils.CUBE_SIZE, utils.CUBE_SIZE, 1, 1],
-            "CUB_matrix": [-1, -1, utils.CUBE_SIZE, utils.CUBE_SIZE, 1, 1],
-            "BUB_shape": None,
-            "AL1_shape": [-1, -1, 1, 1], 
-            "BL1_shape": [-1, -1, 1, 1], 
-            "AUB_shape": [],
-            "n_bef_batch_flag": 0, "n_bef_group_flag": 0, "batch_bef_group_flag": 0,
-            "A_overhead_opt_flag": 0, "B_overhead_opt_flag": 0,
-            "AUB_channel_wise_flag": None, "BUB_channel_wise_flag": None, "CUB_channel_wise_flag": None,
-            "tbe_compile_para": 0,
-            "manual_pingpong_buffer": {"AUB_pbuffer": utils.DB_OFF, "BUB_pbuffer": utils.DB_OFF, \
-            "AL1_pbuffer": utils.DB_ON, "BL1_pbuffer": utils.DB_ON, \
-            "AL0_pbuffer": utils.DB_ON, "BL0_pbuffer": utils.DB_ON, "CL0_pbuffer": utils.DB_ON, \
-            "CUB_pbuffer": utils.DB_OFF, "UBG_pbuffer": utils.DB_OFF},
-            "attach_at_flag": {"bl0_attach_flag": -1, "al1_attach_flag": -1, "bl1_attach_flag": -1}
-        }
-        cache_tiling_all[10001] = [[], base_tiling, []]
+        for attach_map in op_util_conv2d.TILING_ATTACH_SUPPORT_LIST:
+            tiling = copy.deepcopy(BINARY_BASE_TILING)
+            for attach_key in attach_map.keys():
+                tiling["attach_at_flag"][attach_key] = attach_map.get(attach_key)
+            tiling_key = calc_tiling_key(attach_map)
+            cache_tiling_all[tiling_key] = [[], copy.deepcopy(tiling), []]
 
         return cache_tiling_all
 

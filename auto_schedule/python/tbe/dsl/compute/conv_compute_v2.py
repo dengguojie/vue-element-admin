@@ -22,7 +22,12 @@ from enum import Enum
 from tbe import tvm
 from tbe.common.platform import CUBE_MKN
 from tbe.common.utils.errormgr import error_manager_cube as err_man
-
+from tbe.common.utils.op_util import op_util_conv2d
+from tbe.common.utils.op_util.op_util_conv2d import Conv2dTensorName
+from tbe.common.utils.op_util.op_util_conv2d import is_support_fixpipe
+from tbe.common.utils.op_util.op_util_conv2d import get_binary_infos
+from tbe.common.utils.op_util.op_util_conv2d import BinaryInfoKey
+from tbe.common.utils.op_util.op_util_conv2d import get_cur_soc
 
 OP_TAG = "convolution_"
 
@@ -49,6 +54,26 @@ def conv_v220_compute(fmap, weight, para_dict, optim_dict, dsl_flag, conv_param)
     """
     Compute of conv2d in v220.
     """
+    def get_input_nd_flag():
+        # input_nd_flag
+        return fmap.op.tag == "NHWC_trans_5HD"
+
+    def get_load2d_flag():
+        if conv_param.binary_mode:
+            return get_binary_infos()[BinaryInfoKey.LOAD2D_FLAG]
+
+        if lxfusion_para["l1_fusion_type"] in (0, 1) or lxfusion_para["input_memory_type"][0] == 1:
+            return False
+
+        if get_input_nd_flag():
+            return False
+
+        if padding == (0, 0, 0, 0) and stride == (1, 1) and kernel == (1, 1) and \
+            weight_dtype in ("float16", "bfloat16"):
+            return True
+
+        return False
+
     def al1_compute(fmap):
         """
         Compute of al1.
@@ -124,33 +149,63 @@ def conv_v220_compute(fmap, weight, para_dict, optim_dict, dsl_flag, conv_param)
 
         return fmap
 
-    def bias_compute(bias_tensor, bias_shape):
+    def bias_bt_compute(bias_tensor):
         """
         compute bias_l1 and bias_bt
         """
-        if bias_tensor is not None:
-            bias_co_ori = bias_tensor.shape[0]
-            _, _, co1_opt, _, block_n0 = bias_shape
-            bias_dtype = bias_tensor.dtype
-            bias_l1 = tvm.compute(bias_shape,
-                                  lambda group_idx, n_idx, co1_idx, hw_idx, co0_idx:
-                                      tvm.select(
-                                          (group_idx*co1_opt*block_n0 + co1_idx*block_n0 + co0_idx) >= bias_co_ori,
-                                          tvm.const(0, bias_dtype),
-                                          bias_tensor(group_idx*co1_opt*block_n0 + co1_idx*block_n0 + co0_idx)),
-                                  name="bias_l1",
-                                  tag=OP_TAG + "bias_l1")
-            bias_l1_to_bt_map = {
-                "float16": "float32",
-            }
-            bias_bt_dtype = bias_l1_to_bt_map.get(bias_dtype, bias_dtype)
-            bias_bt = tvm.compute(bias_shape,
-                                  lambda *indice:
-                                      bias_l1(*indice).astype(bias_bt_dtype),
-                                      name="bias_bt",
-                                      tag=OP_TAG + "bias_bt")
-            return bias_l1, bias_bt
-        return None, None
+        bias_tensor_map = {}
+        if bias_tensor is None:
+            return None, bias_tensor_map
+
+        bias_shape = group_opt, 1, co1_opt, 1, block_n0
+        bias_co_ori = bias_tensor.shape[0]
+        bias_dtype = bias_tensor.dtype
+        bias_l1 = tvm.compute(bias_shape,
+                              lambda group_idx, n_idx, co1_idx, hw_idx, co0_idx:
+                                  tvm.select(
+                                      (group_idx*co1_opt*block_n0 + co1_idx*block_n0 + co0_idx) >= bias_co_ori,
+                                      tvm.const(0, bias_dtype),
+                                      bias_tensor(group_idx*co1_opt*block_n0 + co1_idx*block_n0 + co0_idx)),
+                              name="bias_l1",
+                              tag=OP_TAG + "bias_l1")
+        bias_l1_to_bt_map = {
+            "float16": "float32",
+        }
+        bias_bt_dtype = bias_l1_to_bt_map.get(bias_dtype, bias_dtype)
+        bias_bt = tvm.compute(bias_shape,
+                              lambda *indice:
+                                  bias_l1(*indice).astype(bias_bt_dtype),
+                                  name="bias_bt",
+                              tag=OP_TAG + "bias_bt")
+        bias_tensor_map[Conv2dTensorName.BIAS_BT] = bias_bt
+        bias_tensor_map[Conv2dTensorName.BIAS_L1] = bias_l1
+        return bias_bt, bias_tensor_map
+
+    def bias_ub_compute(bias_tensor):
+        """
+        compute for bias ub
+        """
+        if bias_tensor is None:
+            return bias_tensor, {}
+        
+        bias_real_dim_len = bias_tensor.shape[0]
+        # load bias into UB and do 32Byte align
+        bias_32byte_align_shape = []
+        bias_tensor_map = {}
+        # when bias needs to align
+        bias_32byte_align_shape.append(ceil_div(bias_real_dim_len, 16)*16)
+        # move bias from ddr to ub
+        init_value = tvm.const(0, dtype=bias_tensor.dtype)
+        bias_ub = tvm.compute(bias_32byte_align_shape,
+                              lambda bias_index:
+                                  tvm.select(bias_index < bias_real_dim_len,
+                                             bias_tensor(bias_index),
+                                             init_value),
+                              name='bias_ub')
+
+        # save three bias tensor in TENSOR MAP
+        bias_tensor_map[Conv2dTensorName.BIAS_UB] = bias_ub
+        return bias_ub, bias_tensor_map
 
     def load2d_l0a_compute(fmap_l1):
         """
@@ -355,53 +410,30 @@ def conv_v220_compute(fmap, weight, para_dict, optim_dict, dsl_flag, conv_param)
         fmap_im2col_res = im2col_fractal_compute(fmap_l0_shape, fmap_row_major_reshape)
         return fmap_im2col_res
 
-    def l0c_compute(fmap_im2col, bias_bt=None):
-        # CL0's M is aligned by block_m0.
+    def get_mad_shape():
+        """
+        get mad shape
+        """
         mad_m = ceil_div(out_height * out_width, block_m0) * block_m0
         mad_shape = (group_opt, batch, co1_opt, mad_m, block_n0)
+        return mad_shape
+
+    def get_reduce_sum_axis():
+        """
+        get mad reduce axis
+        """
         weight_k1, _, _, _ = weight_fracz_shape
-
         reduce_k1 = weight_k1 // group_opt
-
         axis_k1 = tvm.reduce_axis((0, reduce_k1), name='cin_1_kh_kw')
         axis_k0 = tvm.reduce_axis((0, block_k0), name='cin_0')
+        return reduce_k1, axis_k1, axis_k0
 
-        if bias_bt is not None:
-            c_col = tvm.compute(
-                mad_shape,
-                lambda group_idx, batch_idx, co1_idx, howo_idx, co0_idx:
-                tvm.sum(
-                    tvm.select(
-                        tvm.all((group_idx * reduce_k1 + axis_k1) * block_k0 + axis_k0 < reduce_value),
-                        tvm.select(
-                            tvm.all(axis_k1.var == 0, axis_k0.var == 0),
-                            (fmap_im2col[group_idx,
-                                         batch_idx,
-                                         howo_idx // block_m0,
-                                         axis_k1,
-                                         howo_idx % block_m0,
-                                         axis_k0] *
-                             weight[group_idx * reduce_k1 + axis_k1,
-                                    co1_idx,
-                                    co0_idx,
-                                    axis_k0]).astype(mad_dtype) +
-                            bias_bt[group_idx, 0, co1_idx, 0, co0_idx],
-                            (fmap_im2col[group_idx,
-                                         batch_idx,
-                                         howo_idx // block_m0,
-                                         axis_k1,
-                                         howo_idx % block_m0,
-                                         axis_k0] *
-                             weight[group_idx * reduce_k1 + axis_k1,
-                                    co1_idx,
-                                    co0_idx,
-                                    axis_k0]).astype(mad_dtype))),
-                    axis=[axis_k1, axis_k0]),
-                name='mad1',
-                tag=OP_TAG + "c_col_bias"
-                )
-            return c_col
-
+    def l0c_compute_mad(fmap_im2col, weight_for_cube):
+        """
+        compute for mad
+        """
+        mad_shape = get_mad_shape()
+        reduce_k1, axis_k1, axis_k0 = get_reduce_sum_axis()
         c_col = tvm.compute(
             mad_shape,
             lambda group_idx, batch_idx, co1_idx, howo_idx, co0_idx:
@@ -414,35 +446,142 @@ def conv_v220_compute(fmap, weight, para_dict, optim_dict, dsl_flag, conv_param)
                                   axis_k1,
                                   howo_idx % block_m0,
                                   axis_k0]) *
-                     weight[group_idx * reduce_k1 + axis_k1,
-                            co1_idx,
-                            co0_idx,
-                            axis_k0]).astype(mad_dtype)),
+                     weight_for_cube[group_idx * reduce_k1 + axis_k1,
+                                     co1_idx,
+                                     co0_idx,
+                                     axis_k0]).astype(mad_dtype)),
                 axis=[axis_k1, axis_k0]),
-            name='mad1',
-            tag=OP_TAG + "c_col"
-            )
-
+            name=Conv2dTensorName.CL0,
+            tag=OP_TAG + "c_col")
         return c_col
 
-    def res_compute(cl0):
+    def l0c_compute_mad_with_bias_bt(fmap_im2col, weight_for_cube, bias_bt=None):
+        """
+        compute for mad with bias
+        """
+        mad_shape = get_mad_shape()
+        reduce_k1, axis_k1, axis_k0 = get_reduce_sum_axis()
+        c_col = tvm.compute(
+            mad_shape,
+            lambda group_idx, batch_idx, co1_idx, howo_idx, co0_idx:
+            tvm.sum(
+                tvm.select(
+                    tvm.all((group_idx * reduce_k1 + axis_k1) * block_k0 + axis_k0 < reduce_value),
+                    tvm.select(
+                        tvm.all(axis_k1.var == 0, axis_k0.var == 0),
+                        (fmap_im2col[group_idx,
+                                     batch_idx,
+                                     howo_idx // block_m0,
+                                     axis_k1,
+                                     howo_idx % block_m0,
+                                     axis_k0] *
+                        weight_for_cube[group_idx * reduce_k1 + axis_k1,
+                                        co1_idx,
+                                        co0_idx,
+                                        axis_k0]).astype(mad_dtype) +
+                        bias_bt[group_idx, 0, co1_idx, 0, co0_idx],
+                        (fmap_im2col[group_idx,
+                                     batch_idx,
+                                     howo_idx // block_m0,
+                                     axis_k1,
+                                     howo_idx % block_m0,
+                                     axis_k0] *
+                        weight_for_cube[group_idx * reduce_k1 + axis_k1,
+                                        co1_idx,
+                                        co0_idx,
+                                        axis_k0]).astype(mad_dtype))),
+                axis=[axis_k1, axis_k0]),
+            name=Conv2dTensorName.CL0,
+            tag=OP_TAG + "c_col_bias"
+            )
+        return c_col
+
+    def l0c_compute(fmap_im2col, weight_for_cube, bias_add_l0c=None):
+        """
+        compute for mad
+        """
+        if bias_add_l0c is None:
+            return l0c_compute_mad(fmap_im2col, weight_for_cube)
+        
+        if is_support_fixpipe():
+            return l0c_compute_mad_with_bias_bt(fmap_im2col, weight_for_cube, bias_add_l0c)
+
+        err_man.raise_err_message_cube("bias add is not supported for {}".format(get_cur_soc()))
+        return None
+
+
+    def l0c_to_buffer_compute(l0c, dst_shape, name, tag, attrs):
+        """
+        compute for l0c to another buffer
+        """
+        l0c_to_buffer = tvm.compute(dst_shape,
+                            lambda batch_idx, co1_idx, howo_idx, co0_idx:
+                            l0c(0 if group == 1 else co1_idx // co1_opt,
+                                batch_idx,
+                                co1_idx if group == 1 else co1_idx % co1_opt,
+                            howo_idx, co0_idx).astype(res_dtype),
+                        name=name,
+                        tag=tag,
+                        attrs=attrs)
+        return l0c_to_buffer
+
+    def cub_compute(l0c):
+        """
+        compute for l0c to cub
+        """
+        cub_shape = (batch, out_c1, howo_mad, block_n0)
+        name = Conv2dTensorName.CUB
+        tag = OP_TAG + name
+        attrs = None
+        return l0c_to_buffer_compute(l0c, cub_shape, name, tag, attrs)
+
+    def remove_pad_compute(res_in, invalid_data_rm_flag):
+        """
+        compute for remove pad(axis M)
+        """
+        dst_shape = res_shape
+        name = "remove_pad_cc"
+        if invalid_data_rm_flag:
+            dst_shape = res_in.shape
+            name = "invalid_conv2d_rmpad"
+        
+        res = tvm.compute(dst_shape,
+                          lambda n_idx, co1_idx, howo_idx, co0_idx:
+                          res_in(n_idx, co1_idx, howo_idx, co0_idx),
+                          name=name,
+                          tag=OP_TAG + "C",
+                          attrs={"conv_shape": conv_param.dim_map["output_conv_res_shape"],
+                                 "width_out": out_width}
+                          )
+        return res
+
+    def bias_add_ub_compute(tensor, bias_ub):
+        """
+        compute for bias add
+        """
+        if bias_ub is None:
+            return tensor
+        
+        bias_add = tvm.compute(
+            tensor.shape,
+            lambda n_idx, co1_idx, howo_idx, co0_idx:
+            tensor(n_idx, co1_idx, howo_idx, co0_idx) + 
+            bias_ub(co1_idx * CUBE_MKN[tensor.dtype]['mac'][op_util_conv2d.CUBE_MKN_IDX_K] +
+                    co0_idx),
+            name='bias_add',
+            attrs={'width_out': out_width})
+        return bias_add
+
+    def fixpipe_res_compute(l0c):
         """
         Compute of conv2d res. merge group axis && remove M/C padding.
         """
         # L0C —> out / L1
-        res = tvm.compute(
-            res_shape,
-            lambda n_idx, co1_idx, howo_idx, co0_idx:
-            cl0(0 if group == 1 else co1_idx // co1_opt,
-                n_idx,
-                co1_idx if group == 1 else co1_idx % co1_opt,
-                howo_idx,
-                co0_idx).astype(res_dtype),
-            name='res_conv2d',
-            tag=OP_TAG + "res_conv2d",
-            attrs={"conv_shape": conv_param.dim_map["output_conv_res_shape"],
-                   "width_out": out_width}
-            )
+        name = "res_conv2d"
+        tag = OP_TAG + "res_conv2d"
+        attrs = {"conv_shape": conv_param.dim_map["output_conv_res_shape"],
+                 "width_out": out_width}
+        res = l0c_to_buffer_compute(l0c, res_shape, name, tag, attrs)
 
         if conv_type == ConvType.FP32:
             # split channel + remove pad
@@ -538,27 +677,19 @@ def conv_v220_compute(fmap, weight, para_dict, optim_dict, dsl_flag, conv_param)
 
     # strideh_opti_flag
     strideh_opti_flag = (kernel_h == 1 and stride_h > 1) and padding == (0, 0, 0, 0) and not c04_flag
-
     if lxfusion_para["l1_fusion_type"] == 1 or lxfusion_para["input_memory_type"][0] == 1:
         # for L1 breadth fusion, fmap must load all at once
         strideh_opti_flag = False
 
     # l0a_load2d_flag
+    l0a_load2d_flag = get_load2d_flag()
     if padding == (0, 0, 0, 0) and stride == (1, 1) and kernel == (1, 1) and weight_dtype in ("float16", "bfloat16"):
-        l0a_load2d_flag = True
         c04_mode = "disabled"
         c04_flag = False
-    else:
-        l0a_load2d_flag = False
-
-    if lxfusion_para["l1_fusion_type"] in (0, 1) or lxfusion_para["input_memory_type"][0] == 1:
-        l0a_load2d_flag = False
 
     # input_nd_flag
-    input_nd_flag = fmap.op.tag == "NHWC_trans_5HD"
-
+    input_nd_flag = get_input_nd_flag()
     if input_nd_flag: # to be completed
-        l0a_load2d_flag = False
         strideh_opti_flag = False
 
     # weight_nd_flag
@@ -588,17 +719,17 @@ def conv_v220_compute(fmap, weight, para_dict, optim_dict, dsl_flag, conv_param)
         res_fp32_shape = batch, out_c1 * 2, out_height * out_width, 8
 
     #============================check parameters=========================================
-    if c04_flag and kernel_h * kernel_w * 4 > 65535:
+    if not conv_param.binary_mode and c04_flag and kernel_h * kernel_w * 4 > 65535:
         err_man.raise_err_specific(
             "conv2d",
             "In v220, small channel case, the 4 * Hk * Wk must be smaller than " +
             "or equal to 65535. you can try to disable the small channel.")
 
     #==========================conv compute begin==============================
+    # al1
     fmap_l1 = al1_compute(fmap)
-    bias_shape = group_opt, 1, co1_opt, 1, block_n0
-    bias_l1, bias_bt = bias_compute(bias_tensor, bias_shape)
 
+    # al0
     if l0a_load2d_flag:
         fmap_im2col = load2d_l0a_compute(fmap_l1)
     elif dynamic_flag:
@@ -607,32 +738,50 @@ def conv_v220_compute(fmap, weight, para_dict, optim_dict, dsl_flag, conv_param)
         fmap_row_major, fmap_row_major_reshape = row_major_compute(fmap_l1)
         fmap_im2col = l0a_compute(fmap_row_major_reshape)
 
-    cl0 = l0c_compute(fmap_im2col, bias_bt)
-    conv_res = res_compute(cl0)
+    # bias
+    if is_support_fixpipe():
+        bias_bt, bias_tensor_map = bias_bt_compute(bias_tensor)
+        bias_add_l0c = bias_bt
+        bias_add_ub = None
+    else:
+        bias_ub, bias_tensor_map = bias_ub_compute(bias_tensor)
+        bias_add_l0c = None
+        bias_add_ub = bias_ub
 
+    # l0c
+    l0c = l0c_compute(fmap_im2col, weight, bias_add_l0c)
+
+    # res
+    l0c_to_res_tensor_map = {}
+    if is_support_fixpipe():
+        conv_res = fixpipe_res_compute(l0c)
+    else:
+        cub = cub_compute(l0c)
+        cub_bias_add = bias_add_ub_compute(cub, bias_add_ub)
+        conv_res = remove_pad_compute(cub_bias_add, conv_param.invalid_data_rm_flag)
+        l0c_to_res_tensor_map[Conv2dTensorName.CUB] = cub
+        l0c_to_res_tensor_map[Conv2dTensorName.CUB_BIAS_ADD] = cub_bias_add
     #===========================update tensormap=============================
     update_tensormap = {
-        "cl0": cl0,
-        "filter": weight,
-        "fmap_im2col": fmap_im2col,
-        "fmap_l1": fmap_l1
+        Conv2dTensorName.CL0: l0c,
+        Conv2dTensorName.FILTER: weight,
+        Conv2dTensorName.FMAP_IMG2COL: fmap_im2col,
+        Conv2dTensorName.FMAP_L1: fmap_l1
     }
-    if bias_l1 is not None:
-        update_tensormap.update({
-            "bias_l1": bias_l1,
-            "bias_bt": bias_bt
-        })
+
+    update_tensormap.update(bias_tensor_map)
     if not dynamic_flag and not l0a_load2d_flag:
         update_tensormap.update({
-            "fmap_row_major": fmap_row_major,
-            "fmap_row_major_reshape": fmap_row_major_reshape,
+            Conv2dTensorName.FMAP_ROW_MAJOR: fmap_row_major,
+            Conv2dTensorName.FMAP_RAW_MAJOR_RESHAPE: fmap_row_major_reshape,
         })
 
     if conv_param.strided_read_flag or conv_param.aipp_fuse_flag:
-        update_tensormap.update({"fmap": fmap.op.input_tensors[0]})
+        update_tensormap.update({Conv2dTensorName.FMAP: fmap.op.input_tensors[0]})
     else:
-        update_tensormap.update({"fmap": fmap})
+        update_tensormap.update({Conv2dTensorName.FMAP: fmap})
 
+    update_tensormap.update(l0c_to_res_tensor_map)
     conv_param.tensor_map.update(update_tensormap)
 
     #===========================update dimmap=============================

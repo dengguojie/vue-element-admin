@@ -504,7 +504,10 @@ def test_conv2d_v200_lxfusion(test_arg):
 
     def run_testcase(config_dict):
         # dataflow_v200, l1fusion_dict, shape_in, shape_w, pads, strides, bias_flag, relu_flag
+        case_idx = 0
         for i in config_dict:
+            case_name = "v200_l1fusion" + str(case_idx)
+            case_idx += 1
             print("="*150)
             print("case {}".format(i))
             if i[0] in (1, 2):
@@ -522,11 +525,11 @@ def test_conv2d_v200_lxfusion(test_arg):
                 conv_v200_fusion_case(dataflow_v200, l1fusion_dict,
                                       shape_in, shape_w, pads, strides, offset_d,
                                       bias_flag, relu_flag, True, reqs16_relu_flag,
-                                      quant_scale=quant_scale, quant_offset=quant_offset)
+                                      quant_scale=quant_scale, quant_offset=quant_offset, kernel_name=case_name)
             else:
                 conv_v200_fusion_case(dataflow_v200, l1fusion_dict,
                                       shape_in, shape_w, pads, strides, offset_d,
-                                      bias_flag, relu_flag, True, reqs16_relu_flag)
+                                      bias_flag, relu_flag, True, reqs16_relu_flag, kernel_name=case_name)
 
 
     set_current_compile_soc_info("Hi3796CV300CS")

@@ -105,7 +105,7 @@ def is_support_v200():
     return False
 
 
-def is_support_v220():
+def is_support_fixpipe():
     """
     Check if support fixpipe.
     """
@@ -265,7 +265,7 @@ def calc_para_from_tensor(inputs,
                          weights.op.attrs['format'].value == "FRACTAL_Z_C04"):
         c0_optim_flg = True
 
-        if is_support_v220():
+        if is_support_fixpipe():
             v220_c04_mode = "first_layer_c04" if is_first_layer else "not_first_layer_c04"
             if (is_first_layer
                     and not is_input4channel) or (is_input4channel
@@ -373,7 +373,7 @@ def calc_para_from_dict(inputs,
     if shape_w[pos_c] <= 4 and weights.get("format") == "FRACTAL_Z_C04":
         c0_optim_flg = True
 
-        if is_support_v220():
+        if is_support_fixpipe():
             v220_c04_mode = "first_layer_c04" if is_first_layer else "not_first_layer_c04"
         else:
             if (shape_w[pos_h] == 1) and (shape_w[pos_w] == 1):

@@ -19,7 +19,7 @@ Schedule of conv2d + bn1 fusion.
 """
 from tbe import tvm
 from tbe.dsl.compute.conv_compute import ConvParam
-from tbe.dsl.compute.conv_compute import is_support_v220
+from tbe.dsl.compute.conv_compute import is_support_fixpipe
 from tbe.dsl.static_schedule.conv_schedule_util import get_src_tensor
 
 
@@ -46,7 +46,7 @@ def check_conv_bn1(outs):
         return False
 
     # check conv_type is fp16
-    if conv_out.dtype != "float16" and not is_support_v220():
+    if conv_out.dtype != "float16" and not is_support_fixpipe():
         return False
     # check cast->reduce_0
     reduce0_src = get_src_tensor(reduce_0)
@@ -106,7 +106,7 @@ def convbn1_recompute(outs):
         """
         return tvm.const(0, t_0), tvm.const(0, t_1)
 
-    if is_support_v220():
+    if is_support_fixpipe():
         fmap = ConvParam.tensor_map["fmap"]
         enable_fp32_flag = (fmap.dtype == "float32" and conv_out.dtype == "float32")
         # gm -> UB

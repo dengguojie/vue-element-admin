@@ -150,7 +150,7 @@ def pre_and_post_ubfusion_binary(test_arg):
                 {"ori_shape": [-1, -1, -1, -1], "dtype": "float16", "ori_format": "NCHW",},
                 None, None,
                 {'shape': [-1, -1, -1, -1, -1], 'ori_shape': [-1, -1, -1, -1], 'ori_format': 'NCHW', 'dtype': 'float16'},
-                (-1, -1, -1, -1), (0, 0, 0, 0), (1, 1, 1, 1), 1, "NCHW", 0, "success", "cache_tiling_case0"]
+                 (-1, -1, -1, -1), (0, 0, 0, 0), (1, 1, 1, 1), 1, "NCHW", 0, "success", "cache_tiling_case0"]
             ]
             # define_var
             dtype = "float16"
@@ -190,7 +190,7 @@ def pre_and_post_ubfusion_binary(test_arg):
             build(sch, config)
 
 
-ut_case.add_cust_test_func(test_func=pre_and_post_ubfusion_binary)
+# ut_case.add_cust_test_func(test_func=pre_and_post_ubfusion_binary)
 
 if __name__ == '__main__':
     test_conv2d_param_process_dynamic_cdim()  

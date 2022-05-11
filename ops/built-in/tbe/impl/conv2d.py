@@ -251,7 +251,7 @@ def op_select_format(inputs, weights, bias, offset_w, outputs, strides,
                 in ("Ascend710", "Ascend615", "Ascend610", "Hi3796CV300CS", "SD3403"):
             c0_optim_flg = False
 
-        if util_conv2d.is_support_v220():
+        if util_conv2d.is_support_fixpipe():
             return util_conv2d.v220_gen_param(inputs, weights, shape_fm, c0_optim_flg)
 
         if c0_optim_flg:

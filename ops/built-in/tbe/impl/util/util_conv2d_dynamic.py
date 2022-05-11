@@ -28,6 +28,8 @@ from impl.util.platform_adapter import tvm
 from impl.util.util_cube_dynamic import CubeParaProcess
 from tbe.common.context import get_context
 from tbe.common.utils import log
+from tbe.common.utils.op_util import op_util_conv2d
+from tbe.dsl.base.operation import get_te_var
 
 # the bytes length of several dtype
 BIT_RATIO_DICT = {"int32": 4, "float32": 4, "float16": 2,
@@ -379,7 +381,7 @@ class Conv2dParaProcess(CubeParaProcess):
         """
         demo
         """
-        if self.strides == (-1, -1, -1, -1):
+        if self.strides == [-1, -1, -1, -1] or self.strides == (-1, -1, -1, -1):
             self.cache_tiling_flag = True
 
     def check_support_valid(self, in_shape, w_shape):
@@ -577,61 +579,41 @@ class Conv2dParaProcess(CubeParaProcess):
                 "correct_range_flag": correct_range_flag,
                 "new_in_range": new_in_range_nchw}
 
-    def define_tiling_var(self):
-        operation.var("batch_single_core")
-        operation.var("n_single_core")
-
-        operation.var("batch_dim")
-        operation.var("n_dim")
-        operation.var("m_dim")
-
-        operation.var("cub_n1")
-        operation.var("n_ub_l0c_factor")
-        operation.var("m_l0")
-        operation.var("k_l0")
-        operation.var("m_al1_factor")
-        operation.var("n_bl1_factor")
-
-        operation.var("kal1_16")
-        operation.var("kbl1_16")
-        operation.var("kal1_factor")
-        operation.var("kbl1_factor")
-
     def cache_tiling_paras_process(self):
         """
         config paras for cachetiling
         """
-        dilation_h_var = operation.var("dilation_h")
-        dilation_w_var = operation.var("dilation_w")
-        stride_h_var = operation.var("stride_h")
-        stride_w_var = operation.var("stride_w")
+        def generate_op_var():
+            for i in range(op_util_conv2d.TilingDataIdx.TILINGDATA_IDX_END):
+                operation.var(op_util_conv2d.TILINGDATA_KEY_MAP.get(i))
+
+        generate_op_var()
+        dilation_h_var = get_te_var(op_util_conv2d.TilingDataKey.DILATION_H).get_tvm_var()
+        dilation_w_var = get_te_var(op_util_conv2d.TilingDataKey.DILATION_W).get_tvm_var()
+        stride_h_var = get_te_var(op_util_conv2d.TilingDataKey.STRIDE_H).get_tvm_var()
+        stride_w_var = get_te_var(op_util_conv2d.TilingDataKey.STRIDE_W).get_tvm_var()
         self.dilations = [1, 1, dilation_h_var, dilation_w_var]
         self.strides = [1, 1, stride_h_var, stride_w_var]
 
-        batch_n = operation.var("batch_n", [1, None])
-        fmap_h = operation.var("fmap_h", [1, None])
-        ho = operation.var("ho", [1, None])
-        fmap_w = operation.var("fmap_w", [1, None])
-        wo = operation.var("wo", [1, None])
+        batch_n = get_te_var(op_util_conv2d.TilingDataKey.BATCH_N).get_tvm_var()
+        fmap_h = get_te_var(op_util_conv2d.TilingDataKey.FMAP_H).get_tvm_var()
+        fmap_w = get_te_var(op_util_conv2d.TilingDataKey.FMAP_W).get_tvm_var()
 
-        c_in = operation.var("c_in")
-        c_out = operation.var("c_out")
-        k_h = operation.var("k_h")
-        k_w = operation.var("k_w")
-        pad_top = operation.var("pad_top")
-        pad_bottom = operation.var("pad_bottom")
-        pad_left = operation.var("pad_left")
-        pad_right = operation.var("pad_right")
+        c_in = get_te_var(op_util_conv2d.TilingDataKey.C_IN).get_tvm_var()
+        c_out = get_te_var(op_util_conv2d.TilingDataKey.C_OUT).get_tvm_var()
+        k_h = get_te_var(op_util_conv2d.TilingDataKey.K_H).get_tvm_var()
+        k_w = get_te_var(op_util_conv2d.TilingDataKey.K_W).get_tvm_var()
+        pad_top = get_te_var(op_util_conv2d.TilingDataKey.PAD_TOP).get_tvm_var()
+        pad_bottom = get_te_var(op_util_conv2d.TilingDataKey.PAD_BOTTOM).get_tvm_var()
+        pad_left = get_te_var(op_util_conv2d.TilingDataKey.PAD_LEFT).get_tvm_var()
+        pad_right = get_te_var(op_util_conv2d.TilingDataKey.PAD_RIGHT).get_tvm_var()
         self.pads = [pad_top, pad_bottom, pad_left, pad_right]
 
         block_size_k, block_size_n = tbe_platform.CUBE_MKN[self.dtype]["mac"][1:3]
-        input_shape = (batch_n, c_in*block_size_k, fmap_h, fmap_w)
         input_shape_5hd = (batch_n, c_in, fmap_h, fmap_w, block_size_k)
         w_shape = (c_out*block_size_n, c_in*block_size_n, k_h, k_w)
         w_shape_fracz = (c_in*k_h*k_w, c_out, block_size_n, block_size_k)
         group_para = {"enlarge": 1, "c1_opt": c_in, "cout1_opt": c_out, "group_opt": 1}
-
-        self.define_tiling_var()
 
         return {"in_shape_nc1hwc0": input_shape_5hd, "w_shape_frac_z": w_shape_fracz,
                 "w_shape": w_shape, "group_para": group_para,

@@ -18,13 +18,19 @@
 Schedule of conv2d in v220/v300.
 """
 from functools import reduce
+from tbe.common.utils.op_util.op_util_conv2d import BinaryTilingKey
 import tbe
 from tbe import tvm
 from tbe.common.utils import log
 from tbe.common.platform import CUBE_MKN
 from tbe.common.platform.platform_info import get_soc_spec
 from tbe.common.tiling import tiling_api
+from tbe.common.context import get_context
 from tbe.common.utils.errormgr import error_manager_cube as err_man
+from tbe.common.utils.op_util import op_util_conv2d
+from tbe.common.utils.op_util.op_util_conv2d import Conv2dTensorName
+from tbe.common.utils.op_util.op_util_conv2d import TilingDataKey
+from tbe.common.utils.op_util.op_util_conv2d import AttachMode
 from tbe.dsl.compute.max_pool2d_3_2_fusion_compute import MaxPoolParam
 from tbe.dsl.static_schedule import util
 from tbe.dsl.static_schedule.conv_fixpipefusion_schedule import FixpipeFusion
@@ -35,6 +41,7 @@ from tbe.dsl.static_schedule.conv_ubfusion_schedule import EltwiseUBFusion
 from tbe.dsl.static_schedule.conv_ubfusion_schedule import QuantFusion
 from tbe.dsl.static_schedule.conv_maxpoolfusion_schedule import MaxpoolFusion
 from tbe.dsl.static_schedule.conv_bn1_fusion_schedule import Conv2dBN1Fusion
+from tbe.dsl.base.operation import get_te_var
 from te.platform import cce_params
 
 
@@ -45,6 +52,21 @@ BREADTH_L1_FUSION = 1
 DDR_SCOPE = 0
 L1_SCOPE = 1
 L2_SCOPE = 2
+
+
+def test_set_value(sch, cache_tiling):
+    """
+    set values to binary vars
+    """
+    contex = get_context()
+    compile_test_flag = False
+    test_tiling_data_map = contex.get_addition("test_tiling_data")
+    if test_tiling_data_map is not None:
+        compile_test_flag = True
+
+    if compile_test_flag:
+        for key in test_tiling_data_map.keys():
+            sch.set_var_value(cache_tiling.get(key), test_tiling_data_map.get(key))
 
 
 class InputNd2Nz:
@@ -260,12 +282,15 @@ class DynamicShape:
     """
     Class of dynamic shape.
     """
-    def __init__(self, conv_param, tiling_dict_flag, tiling_case, var_range):
+    def __init__(self, conv_param, weight_dtype, tiling_dict_flag, tiling_case, var_range):
+        self.weight_dtype = weight_dtype
+        self.binary_mode = conv_param.binary_mode
         self.flag = conv_param.dynamic_flag
         self.var_map = conv_param.dyn_var_map
         self.tiling_dict_flag = tiling_dict_flag
-        self.tiling_case = tiling_case
         self.var_range = var_range
+        self.cache_tiling = self.init_cache_tiling(tiling_case)
+        self.tiling_case = self.init_tiling_case(tiling_case)
 
         #==========combined parameters==================
         self.h_dynamic = "fmap_h" in self.var_map
@@ -273,16 +298,77 @@ class DynamicShape:
         self.hw_dynamic = self.h_dynamic or self.w_dynamic
         self.n_dynamic = "batch_n" in self.var_map
 
+    def init_cache_tiling(self, tiling_case):
+        if not self.binary_mode or not tiling_case:
+            return {}
+
+        cache_tiling = {}
+        for _, key_name in op_util_conv2d.TILINGDATA_KEY_MAP.items():
+            cache_tiling[key_name] = get_te_var(key_name).get_tvm_var()
+        return cache_tiling
+
+    def init_tiling_case(self, tiling):
+        if not self.binary_mode or not tiling:
+            return tiling
+        attach_at_flag = tiling.get("attach_at_flag")
+        tiling["block_dim"] = [self.cache_tiling[TilingDataKey.BATCH_DIM],
+                               self.cache_tiling[TilingDataKey.N_DIM],
+                               self.cache_tiling[TilingDataKey.M_DIM],
+                               self.cache_tiling[TilingDataKey.GROUP_DIM]]
+        tiling["AL0_matrix"][0] = self.cache_tiling[TilingDataKey.M_L0]
+        tiling["AL0_matrix"][1] = self.cache_tiling[TilingDataKey.K_L0]
+        tiling["CL0_matrix"][0] = self.cache_tiling[TilingDataKey.N_UB_L0C_FACTOR] * \
+                                  self.cache_tiling[TilingDataKey.CUB_N1]
+        tiling["CL0_matrix"][1] = self.cache_tiling[TilingDataKey.M_L0]
+        tiling["CUB_matrix"][0] = self.cache_tiling[TilingDataKey.CUB_N1]
+        tiling["CUB_matrix"][1] = self.cache_tiling[TilingDataKey.M_L0]
+
+        if attach_at_flag.get("bl0_attach_flag") == AttachMode.ATTACH_FULL_LOAD:
+            tiling["BL0_matrix"] = []
+        else:
+            tiling["BL0_matrix"][0] = self.cache_tiling[TilingDataKey.K_L0]
+            tiling["BL0_matrix"][1] = self.cache_tiling[TilingDataKey.N_UB_L0C_FACTOR] * \
+                                      self.cache_tiling[TilingDataKey.CUB_N1]
+
+        # L1 buffer tiling
+        reduce_al1 = ((self.cache_tiling[TilingDataKey.K_H] - 1) *
+                      self.cache_tiling[TilingDataKey.DILATION_H] + 1) * \
+                     ((self.cache_tiling[TilingDataKey.K_W] - 1) *
+                      self.cache_tiling[TilingDataKey.DILATION_W] + 1)
+        reduce_bl1 = self.cache_tiling[TilingDataKey.K_H] * self.cache_tiling[TilingDataKey.K_W]
+
+        if attach_at_flag.get("al1_attach_flag") == AttachMode.ATTACH_FULL_LOAD:
+            tiling["AL1_shape"] = []
+        else:
+            tiling["AL1_shape"][0] = self.cache_tiling[TilingDataKey.KAL1_16] // reduce_al1
+            tiling["AL1_shape"][1] = self.cache_tiling[TilingDataKey.M_AL1_FACTOR]
+        if attach_at_flag.get("bl1_attach_flag") == AttachMode.ATTACH_PASS:
+            tiling["BL1_shape"] = None
+        elif attach_at_flag.get("bl1_attach_flag") == AttachMode.ATTACH_FULL_LOAD:
+            tiling["BL1_shape"] = []
+        else:
+            tiling["BL1_shape"][0] = self.cache_tiling[TilingDataKey.KBL1_16] // reduce_bl1
+            tiling["BL1_shape"][1] = self.cache_tiling[TilingDataKey.N_BL1_FACTOR]
+        return tiling
+
     def fetch_tiling_case(self):
         """
         Fetch tiling case in dynamic shape.
         """
         return self.tiling_case
 
+    @staticmethod
+    def handle_var_range_binary(sch):
+        for var_name, var_range in op_util_conv2d.TILINGDATA_KEY_RANGE_MAP.items():
+            sch.set_var_range(get_te_var(var_name).get_tvm_var(), *var_range)
+
     def handle_var_range(self, sch):
         """
         Set var range for hi, ho, wi, wo, batch.
         """
+        if self.binary_mode:
+            return self.handle_var_range_binary(sch)
+
         var_range = self.var_range
         var_map = self.var_map
 
@@ -301,6 +387,8 @@ class DynamicShape:
         if self.n_dynamic:
             batch_range = var_range['batch_n']
             sch.set_var_range(var_map['batch_n'], batch_range[0], batch_range[1])
+
+        return
 
     def check_dynamic_overhead_opt_flag(self, tiling):
         """
@@ -340,8 +428,8 @@ class DynamicShape:
         Set al1 bound for dynamic shape.
         """
         def modify_m_for_load3d():
-            ho_len = tvm.floordiv(m_al1, out_width) + additional_rows
-            hi_max = kernel_h + (ho_len - 1)*stride_h_update
+            ho_len = tvm.min(tvm.floordiv(m_al1, out_width) + additional_rows, out_height)
+            hi_max = tvm.min(kernel_h_dilation + (ho_len - 1) * stride_h_update, in_height)
             return hi_max*in_width
 
         if self.flag:
@@ -352,7 +440,9 @@ class DynamicShape:
 
             stride_h = conv_param.stride_h
             kernel_h = conv_param.filter_h
+            kernel_h_dilation = conv_param.filter_h_dilation
             out_width = conv_param.w_out
+            out_height = conv_param.h_out
 
             if al1_tiling:
                 multi_m_al1 = tiling_param["multi_m_al1"]
@@ -382,6 +472,28 @@ class DynamicShape:
                 al1_bound = m_al1 * in_c1 * in_c0
 
             sch[al1].set_buffer_size(al1_bound)
+
+    def set_bl1_bound(self, sch, bl1, tiling_param):
+        """
+        for bl1 bound set for dynamic shape
+        """
+        if self.tiling_case.get("attach_at_flag").get("bl1_attach_flag") == AttachMode.ATTACH_PASS:
+            return 0
+
+        if self.tiling_case.get("attach_at_flag").get("bl1_attach_flag") == AttachMode.ATTACH_FULL_LOAD:
+            k1, n1, n0, k0 = tiling_param["weight_fracz_shape"]
+            n_dim = tiling_param.get("block_dim")[1]
+            n1 = (n1 + n_dim - 1) // n_dim
+            bl1_bound_max_size = k1 * n1 * n0 * k0
+        else:
+            bl1_tiling = tiling_param["bl1_tiling"]
+            bl0_tiling = tiling_param["bl0_tiling"]
+            n_bound_max = bl1_tiling[1]*bl0_tiling[1]*CUBE_MKN[bl1.dtype]['mac'][2]
+            k_bound_max = bl1_tiling[0]*self.cache_tiling[TilingDataKey.K_H]*self.cache_tiling[TilingDataKey.K_W] * \
+                CUBE_MKN[bl1.dtype]['mac'][1]
+            bl1_bound_max_size = n_bound_max * k_bound_max
+        sch[bl1].set_buffer_size(bl1_bound_max_size)
+        return bl1_bound_max_size
 
     def set_cl0_bound(self, sch, cl0, cl0_tiling):
         """
@@ -457,6 +569,43 @@ class DynamicShape:
             sch[al0].emit_insn(dynamic_al0_pragma_axis, "dma_copy")
         else:
             sch[al0].emit_insn(dynamic_al0_pragma_axis, 'im2col_v2', im2col_attr_0)
+
+
+class Binary(DynamicShape):
+    """
+    class of binary
+    """
+    def __init__(self, conv_param):
+        self.flag = conv_param.binary_mode
+        self.attach_flags = {}
+
+    def cal_reuse_al1(self, tiling_case):
+        """
+        cal reuse al1 flag
+        """
+        reuse_al1 = False
+        reuse_al1_attach_flags = [
+            {BinaryTilingKey.BL0_ATTACH_FLAG: 1,
+             BinaryTilingKey.AL1_ATTACH_FLAG: 0,
+             BinaryTilingKey.BL1_ATTACH_FLAG: 3},
+            {BinaryTilingKey.BL0_ATTACH_FLAG: 1,
+             BinaryTilingKey.AL1_ATTACH_FLAG: 0,
+             BinaryTilingKey.BL1_ATTACH_FLAG: 1},
+            {BinaryTilingKey.BL0_ATTACH_FLAG: 1,
+             BinaryTilingKey.AL1_ATTACH_FLAG: 2,
+             BinaryTilingKey.BL1_ATTACH_FLAG: 3},
+            {BinaryTilingKey.BL0_ATTACH_FLAG: 1,
+             BinaryTilingKey.AL1_ATTACH_FLAG: 1,
+             BinaryTilingKey.BL1_ATTACH_FLAG: 3},
+            {BinaryTilingKey.BL0_ATTACH_FLAG: 1,
+             BinaryTilingKey.AL1_ATTACH_FLAG: 1,
+             BinaryTilingKey.BL1_ATTACH_FLAG: 1}
+        ]
+        self.attach_flags = tiling_case
+        if tiling_case in reuse_al1_attach_flags:
+            reuse_al1 = True
+
+        return reuse_al1
 
 
 class StridedRead:
@@ -715,7 +864,8 @@ class Conv2dSchedule:
         self._output_nz2nd = OutputNz2Nd(res)
         self._lx_fusion = LxFusion(conv_param)
         self._aipp_fusion = AippFusion(conv_param)
-        self._dynamic_shape = DynamicShape(conv_param, tiling_dict_flag, tiling_case, var_range)
+        self._dynamic_shape = DynamicShape(conv_param, self._weight_dtype, tiling_dict_flag,
+                                           tiling_case, var_range)
         self._strided_read = StridedRead(conv_param)
         self._strided_write = StridedWrite(res)
         self._im2col_dma = Im2colDma(conv_param)
@@ -726,6 +876,7 @@ class Conv2dSchedule:
         self._conv1d = Conv1dSplitw(conv_param)
         self._pooling_fusion = MaxpoolFusion(res, MaxPoolParam)
         self._convbn1 = Conv2dBN1Fusion(conv_param, self._fmap_dtype, op_graph, self._eltwise_ub_fusion.cub)
+        self._binary = Binary(conv_param)
 
         #===================parse fusion pattern========================
         self._fixpipe_fusion.parse_fusion_pattern()
@@ -907,11 +1058,10 @@ class Conv2dSchedule:
 
             return tiling
 
-        if self._dynamic_shape.flag and tiling_case:
+        if (self._dynamic_shape.flag or self._binary.flag) and tiling_case:
             self._tiling = self._dynamic_shape.fetch_tiling_case()
         else:
             self._tiling = get_v220_tiling(info_dict)
-
 
     def verify_tiling(self):
         """
@@ -967,6 +1117,9 @@ class Conv2dSchedule:
             if not self._eltwise_ub_fusion.flag and tiling["CUB_matrix"] != tiling["CL0_matrix"]:
                 err_man.raise_err_specific("conv2d", "CUB_matrix must be equal to CL0_matrix in no ub fusion cases!")
 
+        if self._binary.flag:
+            return
+
         tiling = self._tiling
         bl0_tiling = tiling["BL0_matrix"]
         ma_al0, ka_al0, _, _, _, _ = tiling["AL0_matrix"]
@@ -996,6 +1149,8 @@ class Conv2dSchedule:
         tiling = self._pooling_fusion.modify_tiling(
             tiling, self._dim_map["filter_matrix_dim"], self._out_width, self._conv_param, self._block_k0)
 
+        return
+
     def config_scope(self):
         """
         Config tensor scope.
@@ -1004,7 +1159,7 @@ class Conv2dSchedule:
             """
             Config cl0 scope.
             """
-            cl0 = tensor_map["cl0"]
+            cl0 = tensor_map[Conv2dTensorName.CL0]
             sch[cl0].set_scope(cce_params.scope_cc)
             return cl0
 
@@ -1077,7 +1232,7 @@ class Conv2dSchedule:
             """
             Config bias scope.
             """
-            if self._bias_flag:
+            if self._bias_flag and not self._binary.flag:
                 bias_l1 = tensor_map["bias_l1"]
                 sch[bias_l1].set_scope(cce_params.scope_cbuf)
                 bias_bt = tensor_map["bias_bt"]
@@ -1085,6 +1240,29 @@ class Conv2dSchedule:
                 return bias_l1, bias_bt
 
             return None, None
+
+        def config_bias_ub():
+            """
+            Config bias ub scope.
+            """
+            if self._bias_flag and self._binary.flag:
+                bias_ub = tensor_map[Conv2dTensorName.BIAS_UB]
+                sch[bias_ub].set_scope(cce_params.scope_ubuf)
+                cub_bias_add = tensor_map[Conv2dTensorName.CUB_BIAS_ADD]
+                sch[cub_bias_add].set_scope(cce_params.scope_ubuf)
+                return bias_ub, cub_bias_add
+
+            return None, None
+
+        def config_cub():
+            """
+            Config cub scope.
+            """
+            cub = None
+            if self._binary.flag:
+                cub = tensor_map[Conv2dTensorName.CUB]
+                sch[cub].set_scope(cce_params.scope_ubuf)
+            return cub
 
         #========set scope && cache_read && cache_write==========
         tensor_map = self._tensor_map
@@ -1101,9 +1279,12 @@ class Conv2dSchedule:
         al0 = config_al0()
         bl1 = config_bl1()
         bl0 = config_bl0()
+        cub = config_cub()
         bias_l1, bias_bt = config_bias()
+        bias_ub, cub_bias_add = config_bias_ub()
 
-        self._fixpipe_fusion.fixpipe_inputs_set_scope(sch, self._op_graph)
+        if not self._binary.flag:
+            self._fixpipe_fusion.fixpipe_inputs_set_scope(sch, self._op_graph)
 
         self._eltwise_ub_fusion.cub_set_scope(sch)
         self._eltwise_ub_fusion.inputs_cache_read(sch, self._op_graph)
@@ -1118,7 +1299,8 @@ class Conv2dSchedule:
                         "fmap_row_major": fmap_row_major, "fmap_row_major_reshape": fmap_row_major_reshape,
                         "al1_im2col": al1_im2col,
                         "al0": al0, "bl0": bl0, "cl0": cl0,
-                        "bias_l1": bias_l1, "bias_bt": bias_bt}
+                        "bias_l1": bias_l1, "bias_bt": bias_bt,
+                        "cub": cub, "bias_ub": bias_ub, "cub_bias_add": cub_bias_add}
         return tensor_param
 
     def special_process_pre(self, res, tensor_param):
@@ -1164,7 +1346,7 @@ class Conv2dSchedule:
 
         align_al1()
         align_row_major()
-        if not self._convbn1.flag:
+        if not self._convbn1.flag and not self._binary.flag:
             self._fixpipe_fusion.inline_fixpipe_tensor(sch)
         if res.op.name == "res_fp32_conv2d" and is_support_fixpipe_op():
             # for single conv2d inline res_conv2d
@@ -1569,21 +1751,28 @@ class Conv2dSchedule:
             blocks = batch_dim*n_dim*m_dim*group_dim
 
             if blocks != 1:
-                multicore_axis = sch[res].fuse(
-                    res_batch_dim_axis,
-                    res_group_dim_axis,
-                    res_n_dim_axis,
-                    res_m_dim_axis)
-                if self._dynamic_shape.flag:
-                    multicore_axis_o, _ = sch[res].split(multicore_axis, factor=1)
+                if self._binary.flag:
+                    multicore_axis_o, batchbindonly_pragma_axis = sch[res].split(res_m_dim_axis, factor=1)
+                    bind_axis_list = [res_batch_dim_axis, res_group_dim_axis, res_n_dim_axis, multicore_axis_o]
+                    block = tvm.thread_axis("blockIdx.x")
+                    sch.bind_axes(bind_axis_list, block)
+                    bindcore_axis = multicore_axis_o
                 else:
-                    multicore_axis_o, _ = sch[res].split(multicore_axis, nparts=blocks)
+                    multicore_axis = sch[res].fuse(
+                        res_batch_dim_axis,
+                        res_group_dim_axis,
+                        res_n_dim_axis,
+                        res_m_dim_axis)
+                    if self._dynamic_shape.flag:
+                        multicore_axis_o, _ = sch[res].split(multicore_axis, factor=1)
+                    else:
+                        multicore_axis_o, _ = sch[res].split(multicore_axis, nparts=blocks)
 
-                bindcore_axis, batchbindonly_pragma_axis = sch[res].split(multicore_axis_o, 1)
-                sch[res].bind(bindcore_axis, tvm.thread_axis("blockIdx.x"))
+                    bindcore_axis, batchbindonly_pragma_axis = sch[res].split(multicore_axis_o, 1)
+                    sch[res].bind(bindcore_axis, tvm.thread_axis("blockIdx.x"))
 
-                if blocks == batch_dim:
-                    sch[res].pragma(batchbindonly_pragma_axis, 'json_info_batchBindOnly', 1)
+                    if blocks == batch_dim:
+                        sch[res].pragma(batchbindonly_pragma_axis, 'json_info_batchBindOnly', 1)
             else:
                 bindcore_axis = res_batch_dim_axis
 
@@ -1969,17 +2158,25 @@ class Conv2dSchedule:
                                      cl0_ko,
                                      cl0_mo)
 
-            outer_factor = max(al1_nparts[0], bl1_nparts[0])
-            inner_factor = min(al1_nparts[0], bl1_nparts[0])
-
-            if outer_factor % inner_factor != 0:
-                err_man.raise_err_specific("conv2d", "illegal value of AL1_shape & BL1_shape")
-
-            if al1_nparts[0] > bl1_nparts[0]:
-                cl0_koo, cl0_koi = sch[cl0].split(cl0_ko, nparts=al1_nparts[0])
-                cl0_kooo, cl0_kooi = sch[cl0].split(cl0_koo, nparts=bl1_nparts[0])
+            bl1_nparts_tmp = bl1_nparts[0]
+            if self._binary.flag:
+                binary_attach_flag = self._dynamic_shape.tiling_case.get('attach_at_flag')
+                bl1_attach_flag = binary_attach_flag.get("bl1_attach_flag")
+                reuse_al1_flag = self._binary.cal_reuse_al1(binary_attach_flag)
+                if bl1_attach_flag == AttachMode.ATTACH_PASS:
+                    bl1_nparts_tmp = 1
             else:
-                cl0_koo, cl0_koi = sch[cl0].split(cl0_ko, nparts=bl1_nparts[0])
+                outer_factor = max(al1_nparts[0], bl1_nparts[0])
+                inner_factor = min(al1_nparts[0], bl1_nparts[0])
+                if outer_factor % inner_factor != 0:
+                    err_man.raise_err_specific("conv2d", "illegal value of AL1_shape & BL1_shape")
+                reuse_al1_flag = al1_nparts[0] <= bl1_nparts[0]
+
+            if not reuse_al1_flag:
+                cl0_koo, cl0_koi = sch[cl0].split(cl0_ko, nparts=al1_nparts[0])
+                cl0_kooo, cl0_kooi = sch[cl0].split(cl0_koo, nparts=bl1_nparts_tmp)
+            else:
+                cl0_koo, cl0_koi = sch[cl0].split(cl0_ko, nparts=bl1_nparts_tmp)
                 cl0_kooo, cl0_kooi = sch[cl0].split(cl0_koo, nparts=al1_nparts[0])
 
             def get_cl0_attach_axis():
@@ -1995,7 +2192,7 @@ class Conv2dSchedule:
                     bl0_at_cl0_axis = cl0_cio
 
                 # get al1_at_cl0_axis and bl1_at_cl0_axis
-                if al1_nparts[0] > bl1_nparts[0]:
+                if not reuse_al1_flag:
                     al1_at_cl0_axis = cl0_kooi
                     bl1_at_cl0_axis = cl0_kooo
                 else:
@@ -2065,15 +2262,22 @@ class Conv2dSchedule:
             """
             Handle bl0 attach.
             """
-            if self._pooling_fusion.flag:
-                sch[bl0].compute_at(sch[cl0], bl0_at_cl0_axis)
-            elif bl0_tiling or (bl0_tiling == [] and multi_cl0_group):
-                if multi_bl0_group and group_cl0 == 1:
+            if self._binary.flag:
+                binary_bl0_attach_flag = self._binary.attach_flags.get(BinaryTilingKey.BL0_ATTACH_FLAG)
+                if binary_bl0_attach_flag == AttachMode.ATTACH_FULL_LOAD:
                     sch[bl0].compute_at(sch[res], bl0_at_res_axis)
-                else:
+                elif binary_bl0_attach_flag == AttachMode.ATTACH_CL0_FOR_BL0:
                     sch[bl0].compute_at(sch[cl0], bl0_at_cl0_axis)
             else:
-                sch[bl0].compute_at(sch[res], bl0_at_res_axis)
+                if self._pooling_fusion.flag:
+                    sch[bl0].compute_at(sch[cl0], bl0_at_cl0_axis)
+                elif bl0_tiling or (bl0_tiling == [] and multi_cl0_group):
+                    if multi_bl0_group and group_cl0 == 1:
+                        sch[bl0].compute_at(sch[res], bl0_at_res_axis)
+                    else:
+                        sch[bl0].compute_at(sch[cl0], bl0_at_cl0_axis)
+                else:
+                    sch[bl0].compute_at(sch[res], bl0_at_res_axis)
 
         def al1_compute_at():
             """
@@ -2091,10 +2295,20 @@ class Conv2dSchedule:
                         return cl0, al1_at_cl0_axis
                 return res, al1_at_res_axis
 
-            consumer, target_axis = get_al1_attach_info()
-            sch[al1].compute_at(sch[consumer], target_axis)
-            if fmap_row_major is not None:
-                sch[fmap_row_major].compute_at(sch[consumer], target_axis)
+            if self._binary.flag:
+                binary_al1_attach_flag = self._binary.attach_flags.get("al1_attach_flag")
+                if binary_al1_attach_flag in [AttachMode.ATTACH_FULL_LOAD, AttachMode.ATTACH_RES]:
+                    sch[al1].compute_at(sch[res], al1_at_res_axis)
+                elif binary_al1_attach_flag == AttachMode.ATTACH_CL0:
+                    sch[al1].compute_at(sch[cl0], al1_at_cl0_axis)
+                else:
+                    err_man.raise_err_specific("conv2d",
+                                               ("binary bl1 compute val not support[%s]" % binary_al1_attach_flag))
+            else:
+                consumer, target_axis = get_al1_attach_info()
+                sch[al1].compute_at(sch[consumer], target_axis)
+                if fmap_row_major is not None:
+                    sch[fmap_row_major].compute_at(sch[consumer], target_axis)
 
         def bl1_compute_at():
             """
@@ -2120,20 +2334,43 @@ class Conv2dSchedule:
 
                 return res, bl1_at_res_axis
 
-            if bl1_tiling is not None:
-                consumer, target_axis = get_bl1_attach_info()
-                sch[bl1].compute_at(sch[consumer], target_axis)
+            if self._binary.flag:
+                binary_bl1_attach_flag = self._binary.attach_flags.get("bl1_attach_flag")
+                if binary_bl1_attach_flag in [AttachMode.ATTACH_FULL_LOAD, AttachMode.ATTACH_RES]:
+                    sch[bl1].compute_at(sch[res], bl1_at_res_axis)
+                elif binary_bl1_attach_flag == AttachMode.ATTACH_CL0:
+                    sch[bl1].compute_at(sch[cl0], bl1_at_cl0_axis)
+                elif binary_bl1_attach_flag == AttachMode.ATTACH_PASS:
+                    pass
+                else:
+                    err_man.raise_err_specific("conv2d",
+                                               ("binary bl1 compute val not support[%s]" % binary_bl1_attach_flag))
+            else:
+                if bl1_tiling is not None:
+                    consumer, target_axis = get_bl1_attach_info()
+                    sch[bl1].compute_at(sch[consumer], target_axis)
+
+        def cub_compute_at():
+            """
+            Handle cub attach.
+            """
+            if self._binary.flag:
+                sch[cub].compute_at(sch[res], cub_at_res_axis)
 
         def bias_compute_at():
             """
             Handle bias attach.
             """
             if self._bias_flag:
-                if cub_channel_wise_flag:  # use INPUT_L1_BT_param later
-                    sch[bias_l1].compute_at(sch[res], cl0_at_res_axis)
+                if self._binary.flag:
+                    sch[cub_bias_add].compute_at(sch[res], cub_at_res_axis)
+                    sch[bias_ub].compute_at(sch[res], bindcore_axis)
                 else:
-                    sch[bias_l1].compute_at(sch[res], bindcore_axis)
-                sch[bias_bt].compute_at(sch[res], cl0_at_res_axis)
+                    if cub_channel_wise_flag:  # use INPUT_L1_BT_param later
+                        sch[bias_l1].compute_at(sch[res], cl0_at_res_axis)
+                    else:
+                        sch[bias_l1].compute_at(sch[res], bindcore_axis)
+                    sch[bias_bt].compute_at(sch[res], cl0_at_res_axis)
 
         def anti_quant_spilt_flag(res):
             """
@@ -2177,19 +2414,25 @@ class Conv2dSchedule:
             nc_cl0, mc_cl0, m0_cl0, _, batch_cl0, group_cl0 = cl0_tiling
 
         if cub_tiling:
-            nc_factor_cub, _, _, _, _, _ = cub_tiling
+            nc_factor_cub, mc_factor_cub, m0_cub, _, _, _ = cub_tiling
 
         batch_al1 = 1
 
         if al1_tiling:
             k_al1, multi_m_al1, batch_al1, _ = al1_tiling
-            k1_al1 = k_al1 // (((kernel_h - 1)*dilate_h + 1)*((kernel_w - 1)*dilate_w + 1)*block_k0)
+            if not self._binary.flag:
+                k1_al1 = k_al1 // (((kernel_h - 1)*dilate_h + 1)*((kernel_w - 1)*dilate_w + 1)*block_k0)
+            else:
+                k1_al1 = k_al1
             if k1_al1 == 0:
                 k1_al1 = 1
 
         if bl1_tiling:
             k_bl1, multi_n_bl1, _, _ = bl1_tiling
-            k1_bl1 = k_bl1 // (kernel_h*kernel_w*block_k0)
+            if not self._binary.flag:
+                k1_bl1 = k_bl1 // (kernel_h*kernel_w*block_k0)
+            else:
+                k1_bl1 = k_bl1
 
         batch_dim, n_dim, m_dim, group_dim = self._tiling["block_dim"]
 
@@ -2210,10 +2453,11 @@ class Conv2dSchedule:
             al1_nparts = [1, 1]
 
         if bl1_tiling:
-            if cl0_factor[0] % multi_n_bl1 != 0:
-                err_man.raise_err_specific("conv2d", "second value of BL1_shape should be factor of n block num")
-            if multi_n_bl1 > 1 and multi_n_bl1 % 2 != 0:
-                err_man.raise_err_specific("conv2d", "second value of BL1_shape better to be even number")
+            if not self._binary.flag:
+                if cl0_factor[0] % multi_n_bl1 != 0:
+                    err_man.raise_err_specific("conv2d", "second value of BL1_shape should be factor of n block num")
+                if multi_n_bl1 > 1 and multi_n_bl1 % 2 != 0:
+                    err_man.raise_err_specific("conv2d", "second value of BL1_shape better to be even number")
 
             bl1_nparts = [(ci1_opt + k1_bl1 - 1) // k1_bl1,
                           (cl0_factor[0] + multi_n_bl1 - 1) // multi_n_bl1]
@@ -2230,6 +2474,10 @@ class Conv2dSchedule:
         fmap_row_major = tensor_param["fmap_row_major"]
         bias_l1 = tensor_param["bias_l1"]
         bias_bt = tensor_param["bias_bt"]
+        if self._binary.flag:
+            cub = tensor_param["cub"]
+            bias_ub = tensor_param["bias_ub"]
+            cub_bias_add = tensor_param["cub_bias_add"]
 
         attach_axis_dict = {}
         tiling_param = {}
@@ -2257,9 +2505,10 @@ class Conv2dSchedule:
         self._quant_fusion.split_reform_axis(sch)
 
         #===============================attach=======================================
-        # fixpipe
-        fixpipe_slice_axis = cub_at_res_axis if group_opt*co1_opt > 16 else bindcore_axis
-        self._fixpipe_fusion.fixpipe_inputs_compute_at(sch, res, fixpipe_slice_axis, cub_at_res_axis)
+        if not self._binary.flag:
+            # fixpipe
+            fixpipe_slice_axis = cub_at_res_axis if group_opt*co1_opt > 16 else bindcore_axis
+            self._fixpipe_fusion.fixpipe_inputs_compute_at(sch, res, fixpipe_slice_axis, cub_at_res_axis)
 
         # ub fusion
         self._eltwise_ub_fusion.ub_tensors_attach(sch, res, cub_at_res_axis)
@@ -2275,6 +2524,7 @@ class Conv2dSchedule:
         bl0_compute_at()
         al1_compute_at()
         bl1_compute_at()
+        cub_compute_at()
         bias_compute_at()
 
         tiling_param.update(
@@ -2287,7 +2537,9 @@ class Conv2dSchedule:
             "al1_nparts": al1_nparts,
             "stride_h_update": self._strideh_opti.stride_h_update,
             "fmap_5hd_shape": self._para_dict["a_shape"],
+            "weight_fracz_shape": self._para_dict["weight_fracz_shape"],
             "blocks": batch_dim*n_dim*m_dim*group_dim,
+            "block_dim": self._tiling["block_dim"],
             "m_cl0": mc_cl0*m0_cl0,
             "out_hw": self._out_hw
             }
@@ -2318,9 +2570,13 @@ class Conv2dSchedule:
         fmap_row_major = tensor_param["fmap_row_major"]
         al1 = tensor_param["al1"]
         al0 = tensor_param["al0"]
+        bl1 = tensor_param["bl1"]
         bl0 = tensor_param["bl0"]
         cl0 = tensor_param["cl0"]
-        cub = self._eltwise_ub_fusion.cub
+        if not self._binary.flag:
+            cub = self._eltwise_ub_fusion.cub
+        else:
+            cub = tensor_param["cub"]
 
         pingpong_buffer = self._tiling["manual_pingpong_buffer"]
         _, _, m_dim, _ = self._tiling["block_dim"]
@@ -2367,6 +2623,8 @@ class Conv2dSchedule:
         #=================================dynamic shape process=====================================
         self._dynamic_shape.set_al1_bound(sch, al1, conv_param, tiling_param,
                                           self._l0a_load2d.flag, self._strideh_opti.flag)
+        if self._binary.flag:
+            self._dynamic_shape.set_bl1_bound(sch, bl1, tiling_param)
         self._dynamic_shape.set_cl0_bound(sch, cl0, cl0_tiling)
         self._dynamic_shape.res_hw_dynamic_pragma(sch, res, res_pragma_axis)
 
@@ -2400,23 +2658,19 @@ class Conv2dSchedule:
         """
         pingpong_buffer = self._tiling["manual_pingpong_buffer"]
 
-        del pingpong_buffer["AUB_pbuffer"]
-        if "BUB_pbuffer" in pingpong_buffer:
-            del pingpong_buffer["BUB_pbuffer"]
-
-        del pingpong_buffer["UBG_pbuffer"]
-
         al1 = tensor_param["al1"]
         bl1 = tensor_param["bl1"]
         al0 = tensor_param["al0"]
         bl0 = tensor_param["bl0"]
         cl0 = tensor_param["cl0"]
+        cub = tensor_param["cub"]
 
         pingpong_map = {"AL1_pbuffer": al1,
                         "BL1_pbuffer": bl1,
                         "AL0_pbuffer": al0,
                         "BL0_pbuffer": bl0,
-                        "CL0_pbuffer": cl0}
+                        "CL0_pbuffer": cl0,
+                        "CUB_pbuffer": cub}
 
         # need to do bt doublebuffer with INPUT_L1_BT_pbuffer
 
@@ -2425,8 +2679,6 @@ class Conv2dSchedule:
                 self._sch[tensor].double_buffer()
             if self._eltwise_ub_fusion.flag:
                 self._sch[self._fixpipe_res].double_buffer()
-
-        del pingpong_buffer["CUB_pbuffer"]
 
         for key, value in pingpong_buffer.items():
             if value == 2 and pingpong_map[key] is not None:
@@ -2621,8 +2873,21 @@ class Conv2dSchedule:
             Emit insn for bias.
             """
             if self._bias_flag:
-                sch[bias_l1].emit_insn(bias_l1.op.axis[0], "dma_copy", attrs={"layout_transform": "nd2nz"})
-                sch[bias_bt].emit_insn(bias_bt.op.axis[0], "dma_copy")
+                if self._binary.flag:
+                    sch[bias_ub].emit_insn(bias_ub.op.axis[0], 'dma_copy')
+                    sch[cub_bias_add].emit_insn(cub_bias_add.op.axis[0], 'vector_add')
+                else:
+                    sch[bias_l1].emit_insn(bias_l1.op.axis[0], "dma_copy", attrs={"layout_transform": "nd2nz"})
+                    sch[bias_bt].emit_insn(bias_bt.op.axis[0], "dma_copy")
+
+        def cub_emit_insn():
+            """
+            Emit insn for cub.
+            """
+            if self._binary.flag:
+                sch[cub].emit_insn(cub.op.axis[0], 'dma_copy')
+                sch.sequential_malloc(cce_params.scope_ubuf)
+                sch[cub].mem_unique()
 
         #=============================prepare params=========================================
         conv_param = self._conv_param
@@ -2636,6 +2901,10 @@ class Conv2dSchedule:
         fmap_row_major = tensor_param["fmap_row_major"]
         bias_l1 = tensor_param["bias_l1"]
         bias_bt = tensor_param["bias_bt"]
+        if self._binary.flag:
+            cub = tensor_param["cub"]
+            bias_ub = tensor_param["bias_ub"]
+            cub_bias_add = tensor_param["cub_bias_add"]
 
         bl1_tiling = tiling_param["bl1_tiling"]
         bl0_tiling = tiling_param["bl0_tiling"]
@@ -2663,6 +2932,8 @@ class Conv2dSchedule:
         res_emit_insn()
 
         bias_emit_insn()
+
+        cub_emit_insn()
 
         self._fixpipe_fusion.fixpipe_inputs_emit_insn(sch)
 

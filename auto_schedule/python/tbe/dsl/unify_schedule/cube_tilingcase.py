@@ -262,6 +262,7 @@ class TilingSelection:
         if self.op.op_type == "conv2d" and self.op.cache_tiling_flag:
             template_candidates = self.op.get_cache_tiling()
             tiling_cases = [self.op.assembly_case(v[1], v[0], k) for k, v in template_candidates.items()]
+            add_compile_info("tiling_type", "binary")
             return tiling_cases
         if self.op.op_type == "conv2d_bp_input" and self.op.binary_mode:
             add_compile_info("tiling_type", "binary")

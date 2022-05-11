@@ -24,7 +24,7 @@ from enum import Enum
 from tbe.dsl.base import operation
 from tbe.dsl.compute.conv_compute import ConvParam
 from tbe.dsl.compute.conv_compute import is_support_v200
-from tbe.dsl.compute.conv_compute import is_support_v220
+from tbe.dsl.compute.conv_compute import is_support_version_v2
 from tbe.dsl.compute.conv_compute import remove_suffix_num_for_name
 from tbe.dsl.compute.conv_compute import shape_to_list
 from tbe.dsl.compute.max_pool2d_3_2_fusion_compute import MaxPoolParam
@@ -4921,7 +4921,7 @@ class CceConvOp:
 
         self_init()
 
-        if is_support_v220():
+        if is_support_version_v2():
             return conv_v220_schedule(self._schedule, res, spec_node_list, sch_list, ConvParam, self._op_graph, tilingdict_flag, tiling_case, var_range)
 
         _l0a_dma_load3d_support_check()
@@ -6811,7 +6811,7 @@ class AutoScheduleOp:
             dequant_s16_op_flag = 0
             post_transdata_nchw_op_flag = 0
             temp_flag = None
-            if is_support_v220():
+            if is_support_version_v2():
                 op_to_fusion_type_map.update(op_to_fusion_type_map_v220_v300)
                 fusion_type_dict.update(fusion_type_dict_v220_v300)
             for lop in self.body_ops:
