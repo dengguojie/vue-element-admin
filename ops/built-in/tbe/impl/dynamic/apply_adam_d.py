@@ -199,7 +199,7 @@ def _output_var_t_compute(var, lr_t, m_t, epsilon, v_t):
 
 @register_operator_compute("ApplyAdamD", op_mode="dynamic", support_fusion=True)
 def apply_adam_d_compute(var, m, v, beta1_power, beta2_power, lr, beta1, beta2, epsilon, grad, var_out, m_out, v_out,
-                         use_locking, use_nesterov, kernel_name="apply_adam_d"):
+                         use_nesterov, kernel_name="apply_adam_d"):
     """
     the opreator's compute
     lr_t = learning_rate*(sqrt(1-beta2_power)) / (1-beta1_power)
@@ -250,8 +250,6 @@ def apply_adam_d_compute(var, m, v, beta1_power, beta2_power, lr, beta1, beta2, 
     v_out: dict
         output tensor contains shape and dtype attributes.
         Must have the same type as 'v'.
-    use_locking: bool
-        default value is "False".
     use_nesterov: bool
         default value is "False".
     kernel_name : str
@@ -367,7 +365,7 @@ def apply_adam_d(var, m, v, beta1_power, beta2_power, lr, beta1, beta2, epsilon,
 
         res = apply_adam_d_compute(data_var, data_m, data_v, data_beta1_power, data_beta2_power, data_lr, data_beta1,
                                    data_beta2, data_epsilon, data_grad, var_out, m_out, v_out,
-                                   use_locking, use_nesterov, kernel_name)
+                                   use_nesterov, kernel_name)
 
         tensors.append([data_var, data_m, data_v, data_beta1_power, data_beta2_power, data_lr, data_beta1,
                         data_beta2, data_epsilon, data_grad] + list(res))

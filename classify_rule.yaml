@@ -1024,6 +1024,15 @@ vector_B:
       - ops/built-in/tbe/impl/dynamic/bessel_i1e.py
       - ops/built-in/tbe/impl/dynamic/bias_add.py
       - ops/built-in/tbe/impl/dynamic/bias_add_grad.py
+      - ops/built-in/tbe/impl/dynamic/apply_adam_d.py
+      - ops/built-in/tbe/impl/dynamic/apply_momentum_d.py
+      - ops/built-in/tbe/impl/dynamic/assign_add.py
+      - ops/built-in/tbe/impl/dynamic/bias.py
+      - ops/built-in/tbe/impl/dynamic/bn_training_reduce_grad.py
+      - ops/built-in/tbe/impl/dynamic/fill.py
+      - ops/built-in/tbe/impl/dynamic/kl_div.py
+      - ops/built-in/tbe/impl/dynamic/select.py
+      - ops/built-in/tbe/impl/dynamic/zeros_like.py
       - ops/built-in/tbe/impl/dynamic/binary_cross_entropy.py
       - ops/built-in/tbe/impl/dynamic/binary_cross_entropy_grad.py
       - ops/built-in/tbe/impl/dynamic/binary_query_register.py
@@ -2833,7 +2842,6 @@ unkown:
       - ops/built-in/tbe/impl/dynamic/greater.py
       - ops/built-in/tbe/impl/dynamic/dynamic_gru_v2.py
       - ops/built-in/tbe/impl/dynamic/act_ulq_clamp_max_grad.py
-      - ops/built-in/tbe/impl/dynamic/fill.py
       - ops/built-in/tbe/impl/dynamic/ascend_dequant_s16.py
       - ops/built-in/tbe/impl/dynamic/layer_norm_grad.py
       - ops/built-in/tbe/impl/dynamic/add_n.py
@@ -2849,7 +2857,6 @@ unkown:
       - ops/built-in/tbe/impl/dynamic/reverse_v2.py
       - ops/built-in/tbe/impl/dynamic/bn_training_update_grad.py
       - ops/built-in/tbe/impl/dynamic/masked_fill.py
-      - ops/built-in/tbe/impl/dynamic/kl_div.py
       - ops/built-in/tbe/impl/dynamic/reduce_max.py
       - ops/built-in/tbe/impl/dynamic/reduce_all.py
       - ops/built-in/tbe/impl/dynamic/sub.py
@@ -2864,8 +2871,6 @@ unkown:
       - ops/built-in/tbe/impl/dynamic/sigmoid_cross_entropy_with_logits_grad_v2.py
       - ops/built-in/tbe/impl/dynamic/tan.py
       - ops/built-in/tbe/impl/dynamic/reduce_any.py
-      - ops/built-in/tbe/impl/dynamic/bn_training_reduce_grad.py
-      - ops/built-in/tbe/impl/dynamic/zeros_like.py
       - ops/built-in/tbe/impl/dynamic/pack.py
       - ops/built-in/tbe/impl/dynamic/threshold_v2_d.py
       - ops/built-in/tbe/impl/dynamic/fused_mul_apply_momentum.py
@@ -2900,7 +2905,6 @@ unkown:
       - ops/built-in/tbe/impl/dynamic/batch_to_space.py
       - ops/built-in/tbe/impl/dynamic/moving_sum_with_sigmoid.py
       - ops/built-in/tbe/impl/dynamic/dyn_seq_outer.py
-      - ops/built-in/tbe/impl/dynamic/assign_add.py
       - ops/built-in/tbe/impl/dynamic/max_pool_with_argmax_v2_resnet50.py
       - ops/built-in/tbe/impl/dynamic/unsorted_segment.py
       - ops/built-in/tbe/impl/dynamic/sparse_apply_ftrl_v2_d.py
@@ -2930,7 +2934,6 @@ unkown:
       - ops/built-in/tbe/impl/dynamic/sparse_apply_ftrl_d.py
       - ops/built-in/tbe/impl/dynamic/tabulate_fusion_grad.py
       - ops/built-in/tbe/impl/dynamic/l2_loss.py
-      - ops/built-in/tbe/impl/dynamic/select.py
       - ops/built-in/tbe/impl/dynamic/scan_pq_codes_expand.py
       - ops/built-in/tbe/impl/dynamic/softplus_grad.py
       - ops/built-in/tbe/impl/dynamic/is_finite.py
@@ -2949,14 +2952,12 @@ unkown:
       - ops/built-in/tbe/impl/dynamic/drop_out_do_mask.py
       - ops/built-in/tbe/impl/dynamic/replication_pad_v3.py
       - ops/built-in/tbe/impl/dynamic/unsorted_segment_min.py
-      - ops/built-in/tbe/impl/dynamic/apply_momentum_d.py
       - ops/built-in/tbe/impl/dynamic/tanh_grad.py
       - ops/built-in/tbe/impl/dynamic/max_pool_grad_with_argmaxv2.py
       - ops/built-in/tbe/impl/dynamic/max_pool_grad_with_argmax_v2_resnet50.py
       - ops/built-in/tbe/impl/dynamic/mod.py
       - ops/built-in/tbe/impl/dynamic/atan.py
       - ops/built-in/tbe/impl/dynamic/gather_elements.py
-      - ops/built-in/tbe/impl/dynamic/apply_adam_d.py
       - ops/built-in/tbe/impl/dynamic/ascend_requant_s16.py
       - ops/built-in/tbe/impl/dynamic/concat_d_tik.py
       - ops/built-in/tbe/impl/dynamic/layer_norm_beta_gamma_backprop.py
@@ -2980,7 +2981,6 @@ unkown:
       - ops/built-in/tbe/impl/dynamic/dynamic_gru_cell_grad.py
       - ops/built-in/tbe/impl/dynamic/concat_d.py
       - ops/built-in/tbe/impl/dynamic/dynamic_rnn_v2.py
-      - ops/built-in/tbe/impl/dynamic/bias.py
       - ops/built-in/tbe/impl/dynamic/sparse_apply_rms_prop_d.py
       - ops/built-in/tbe/impl/dynamic/layer_norm_x_backprop.py
       - ops/built-in/tbe/impl/dynamic/mirror_pad.py

@@ -116,7 +116,7 @@ def _infer_axes(input_data_format, data_format, shape):
     return g_shape_list
 
 
-@register_operator_compute("BiasAddGrad", op_mode="dynamic", support_fusion=True)
+@register_operator_compute("BiasAddGrad", op_mode="dynamic", support_fusion=False)
 def bias_add_grad_compute(x, y, data_format, kernel_name="bias_add_grad"):
     """
     Reduce a tensor on last dimension in axis based on sum.

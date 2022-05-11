@@ -52,7 +52,10 @@ def apply_momentum_compute_d(var,
                              lr,
                              grad,
                              momentum,
-                             use_nesterov):
+                             var_out,
+                             accum_out,
+                             use_nesterov,
+                             kernel_name='apply_momentum_d'):
     """
     Update '*var' according to the ApplyMomentum algorithm.
 
@@ -217,7 +220,7 @@ def apply_momentum_d(var,
             data_momentum = tvm.placeholder(shape_momentum, name="data_momentum", dtype=compute_type)
 
             res = apply_momentum_compute_d(data_var, data_accum, data_lr, data_grad, data_momentum,
-                                           use_nesterov)
+                                           var_out, accum_out, use_nesterov, kernel_name)
 
             tensor_list = [data_var, data_accum, data_lr, data_grad, data_momentum] + list(res)
             tensors.append(tensor_list)

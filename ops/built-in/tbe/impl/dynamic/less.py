@@ -81,7 +81,7 @@ def _less_compare(data, shape, dtype, data_min):
     return tbe.cast_to(res, "uint8", True)
 
 
-@register_operator_compute("Less", op_mode="dynamic", support_fusion=False)
+@register_operator_compute("Less", op_mode="dynamic", support_fusion=True)
 def less_compute(input_x, input_y, output_z, kernel_name="less"):
     """
     if x is less than y, then return 1, else return 0.

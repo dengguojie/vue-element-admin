@@ -22,6 +22,7 @@ from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import register_operator_compute
 from impl.util.util_common import gen_range
 
 
@@ -34,6 +35,7 @@ def check_supported(dims, value, y, kernel_name="fill"):
 
 
 # 'pylint: disable=unused-argument,invalid-name,too-many-locals
+@register_operator_compute("Fill", op_mode="dynamic", support_fusion=False)
 def fill_compute(dims, value, y, kernel_name="fill"):
     """
     calculating data

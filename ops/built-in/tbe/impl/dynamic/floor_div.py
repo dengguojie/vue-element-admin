@@ -28,7 +28,7 @@ from impl.util.platform_adapter import register_operator_compute
 
 
 # 'pylint: disable=locally-disabled,unused-argument,too-many-locals,redefined-argument-from-local
-@register_operator_compute("FloorDiv", op_mode="dynamic", support_fusion=False)
+@register_operator_compute("FloorDiv", op_mode="dynamic", support_fusion=True)
 def floor_div_compute(input_x, input_y, output_z, kernel_name='floor_div'):
     """
        floordiv compute

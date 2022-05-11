@@ -26,7 +26,7 @@ from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import register_operator
 
 
-@register_operator_compute("FusedMulAddN", op_mode="dynamic", support_fusion=True)
+@register_operator_compute("FusedMulAddN", op_mode="dynamic", support_fusion=False)
 def fused_mul_add_n_compute(data_x, data_y, data_z):
     """
     fused mul+add_n, output = x * z + y

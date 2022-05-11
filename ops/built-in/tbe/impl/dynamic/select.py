@@ -64,7 +64,7 @@ def op_select_format(condition, x1, x2, y, kernel_name="select"):
 
 
 # 'pylint: disable=too-many-locals,invalid-name,unused-argument,too-many-statements
-@register_operator_compute("Select", op_mode="dynamic", support_fusion=True)
+@register_operator_compute("Select", op_mode="dynamic", support_fusion=False)
 def select_compute(condition, x1, x2, y, kernel_name="select"):
     """
     compute for select

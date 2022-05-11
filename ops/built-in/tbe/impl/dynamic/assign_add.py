@@ -22,9 +22,11 @@ from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import register_operator_compute
 
 
 # 'pylint: disable=unused-argument,too-many-locals
+@register_operator_compute("AssignAdd", op_mode="dynamic", support_fusion=True)
 def assign_add_compute(ref, value, output, kernel_name="assign_add"):
     """
     implementation of operator assign_add

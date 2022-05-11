@@ -124,7 +124,7 @@ def _check_format(data_format, origin_foramt):
                                                           "The origin format only supports NCHW when format is NCHW")
 
 
-@register_operator_compute("BNTrainingReduceGrad", op_mode="dynamic", support_fusion=True)
+@register_operator_compute("BNTrainingReduceGrad", op_mode="dynamic", support_fusion=False)
 def bn_training_reduce_grad_compute(grads,
                                     x,
                                     diff_scale,

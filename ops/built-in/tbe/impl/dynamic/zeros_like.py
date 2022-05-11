@@ -28,7 +28,7 @@ from impl.util.platform_adapter import register_operator_compute
 
 
 # 'pylint: disable=locally-disabled,invalid-name,unused-argument
-@register_operator_compute("ZerosLike", op_mode="dynamic", support_fusion=True)
+@register_operator_compute("ZerosLike", op_mode="dynamic", support_fusion=False)
 def zeros_like_compute(x, y, kernel_name="zeros_like"):
     """
     Enter a tensor, output a tensor of all zero,

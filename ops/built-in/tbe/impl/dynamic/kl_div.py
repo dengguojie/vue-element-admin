@@ -102,12 +102,12 @@ def op_select_format(input_x, input_target, output_y, reduction, kernel_name="kl
                                             unknownshape_format=output_format)
     param_list = [input0, input1, output0]
     param_dynamic_in_json = util_select_op_base.get_dynamic_param_in_json(param_list)
-    
+ 
     return param_dynamic_in_json
-    
+
 
 # 'pylint: disable=too-many-arguments,unused-argument,too-many-locals
-@register_operator_compute("KLDiv", op_mode="dynamic", support_fusion=True)
+@register_operator_compute("KLDiv", op_mode="dynamic", support_fusion=False)
 def kl_div_compute(input_x, input_target, output_y, axis, reduction, batch_size, kernel_name="kl_div"):
     """
     Parameters
