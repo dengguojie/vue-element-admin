@@ -227,6 +227,8 @@ def check_fp32_case_scenario(shape_a, shape_b, trans_b, src_dtype):
         shape_b_length = len(shape_b)
         if shape_a_length != shape_b_length:
             return False
+        elif shape_a_length == 2:
+            return False
         elif trans_b:
             if shape_b[shape_a_length - 2] == 1:
                 return False

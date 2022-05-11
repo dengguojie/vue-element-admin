@@ -467,6 +467,9 @@ def test_op_select_format(test_arg):
     op_select_format({"shape": (3, 2, 4), "dtype": "float", "format": "ND", "ori_shape": (3, 2, 4), "ori_format": "ND"},
                      {"shape": (1, 4, 5), "dtype": "float", "format": "ND", "ori_shape": (1, 4, 5), "ori_format": "ND"},
                      )
+    op_select_format({"shape": (2, 4), "dtype": "float", "format": "ND", "ori_shape": (2, 4), "ori_format": "ND"},
+                     {"shape": (4, 5), "dtype": "float", "format": "ND", "ori_shape": (4, 5), "ori_format": "ND"},
+                     )
 
 ut_case.add_cust_test_func(test_func=test_op_select_format)
 ut_case.add_cust_test_func(test_func=test_batchmatmul_confusion_transpose_910)
