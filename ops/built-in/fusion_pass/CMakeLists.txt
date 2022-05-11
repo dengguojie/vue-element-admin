@@ -392,6 +392,7 @@ set(_aicore_fusion_srcs
   graph_fusion/ai_core/dynamic_rnn_v2_seqlength_fusion_pass.cc
   graph_fusion/ai_core/cumsum_cumprod_fusion_pass.cc
   graph_fusion/ai_core/continuation_indicator_fusion_pass.cc
+  graph_fusion/ai_core/confusion_transpose_nz_fusion_pass.cc
   graph_fusion/ai_core/mul_square_fusion_pass.cc
   graph_fusion/ai_core/cast_remove_fusion_pass.cc
   graph_fusion/ai_core/tabulatefusion_transpose_fusion_pass.cc

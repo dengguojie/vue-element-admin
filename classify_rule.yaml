@@ -818,6 +818,8 @@ vector_B:
       - ops/built-in/fusion_pass/graph_fusion/ai_core/concatd_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/confusion_matrix_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/confusion_mul_grad_fusion_pass.cc
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/confusion_transpose_nz_fusion_pass.cc
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/confusion_transpose_nz_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/const2attr/const2attr_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/deformable_offsets_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/deformable_offsets_grad_fusion_pass.cc
