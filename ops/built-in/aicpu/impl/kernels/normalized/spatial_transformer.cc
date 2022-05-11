@@ -24,7 +24,7 @@
 #include "cpu_kernel.h"
 
 namespace {
-const char *kSpatialTransformer = "SpatialTransformer";
+const char *const kSpatialTransformer = "SpatialTransformer";
 const uint32_t kTotalThetaNumber = 6;
 
 #define STN_COMPUTE_CASE(DTYPE, TYPE, CTX)                             \

@@ -70,7 +70,6 @@ class SpatialTransformerCpuKernel : public CpuKernel {
    */
   template <typename T, typename T1> uint32_t DoCompute5D_C1(CpuKernelContext &ctx);
 
- private:
   Tensor* input_tensor_ = nullptr;
   Tensor* input_theta_ = nullptr;
   Tensor* output_tensor_ = nullptr;

@@ -80,7 +80,7 @@ class TopKPQDistanceCpuKernel : public CpuKernel {
   bool is_min_heap_ = true;
 
   template <typename T>
-  uint32_t GetInputAndCheck(CpuKernelContext &ctx, InputsData<T> &input_data);
+  uint32_t GetInputAndCheck(const CpuKernelContext &ctx, InputsData<T> &input_data);
 
   template <typename T>
   uint32_t DoCompute(CpuKernelContext &ctx);

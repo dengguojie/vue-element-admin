@@ -22,7 +22,7 @@
 #include "unsupported/Eigen/CXX11/Tensor"
 
 namespace aicpu {
-const char *SPARSETODENSE = "SparseToDense";
+const char *const SPARSETODENSE = "SparseToDense";
 }
 
 namespace aicpu {
@@ -62,10 +62,9 @@ uint32_t SparseToDenseCpuKernel::SparseToDense(SparseTensor &st,
                        dt);
       return KERNEL_STATUS_PARAM_INVALID;
   }
-  KERNEL_LOG_INFO("Execute SparseToDense end.");
 }
 
-uint32_t SparseToDenseCpuKernel::ValidParam(CpuKernelContext &ctx) {
+uint32_t SparseToDenseCpuKernel::ValidParam(const CpuKernelContext &ctx) {
   KERNEL_LOG_INFO("Start to execute ValidParam");
   // valid input and output nullptr
   Tensor *indices_tensor = ctx.Input(0);
@@ -216,7 +215,7 @@ uint32_t SparseToDenseCpuKernel::Compute(CpuKernelContext &ctx) {
   }
 
   // set default value
-  size_t type_size =
+  auto type_size =
       GetSizeByDataType(static_cast<DataType>(output_tensor->GetDataType()));
   if (type_size < 1) {
     KERNEL_LOG_ERROR("Don't support output tensor types");

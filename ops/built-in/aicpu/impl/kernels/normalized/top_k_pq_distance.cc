@@ -21,7 +21,7 @@
 #include "cpu_kernel_utils.h"
 #include "utils/kernel_util.h"
 namespace {
-const char *kTopKPQDistance = "TopKPQDistance";
+const char *const kTopKPQDistance = "TopKPQDistance";
 constexpr uint32_t kParamNum = 5;
 const uint32_t kOutputNum = 3;
 }  // namespace
@@ -51,14 +51,12 @@ uint32_t TopKPQDistanceCpuKernel::Compute(CpuKernelContext &ctx) {
           "DT_FLOAT], but got type[%s]",
           DTypeStr(data_type).c_str());
       return KERNEL_STATUS_PARAM_INVALID;
-      break;
   }
   if (res != KERNEL_STATUS_OK) {
     KERNEL_LOG_ERROR(
         "TopKPQDistance kernel compute failed, KernelStatus is [%d]", res);
-    return res;
   }
-  return KERNEL_STATUS_OK;
+  return res;
 }
 
 template <typename T>
@@ -87,7 +85,7 @@ uint32_t TopKPQDistanceCpuKernel::DoCompute(CpuKernelContext &ctx) {
 }
 
 template <typename T>
-uint32_t TopKPQDistanceCpuKernel::GetInputAndCheck(CpuKernelContext &ctx,
+uint32_t TopKPQDistanceCpuKernel::GetInputAndCheck(const CpuKernelContext &ctx,
                                                    InputsData<T> &input_data) {
   order_ = ctx.GetAttr("order")->GetString();
   is_min_heap_ = ("ASC" == order_) ? false : true;

@@ -25,6 +25,13 @@ class SparseToDenseCpuKernel : public CpuKernel {
  public:
   ~SparseToDenseCpuKernel() = default;
 
+  /*
+   * compute sparse to dense
+   * @param ctx: cpu kernel context
+   * @return uint32_t: 0->success other->failed
+   */
+  uint32_t Compute(CpuKernelContext &ctx) override;
+
  protected:
   /*
    * valid sparse to dense param
@@ -34,7 +41,7 @@ class SparseToDenseCpuKernel : public CpuKernel {
    * @return uint32_t: 0->success other->failed
    */
   template <typename ValueT>
-  uint32_t EigenSparseToDense(SparseTensor &st, Tensor *indices,
+  uint32_t EigenSparseToDense(SparseTensor &st, const Tensor *indices,
                               Tensor *output) {
     if (indices->GetDataType() == DT_INT32) {
       return st.ToDense<int32_t, ValueT>(output);
@@ -57,14 +64,7 @@ class SparseToDenseCpuKernel : public CpuKernel {
    * @param ctx: cpu kernel context
    * @return uint32_t: 0->success other->failed
    */
-  uint32_t ValidParam(CpuKernelContext &ctx);
-
-  /*
-   * compute sparse to dense
-   * @param ctx: cpu kernel context
-   * @return uint32_t: 0->success other->failed
-   */
-  uint32_t Compute(CpuKernelContext &ctx) override;
+  uint32_t ValidParam(const CpuKernelContext &ctx);
 };
 
 }  // namespace aicpu
