@@ -1004,6 +1004,8 @@ vector_B:
       - ops/built-in/tbe/impl/dynamic/acos_grad.py
       - ops/built-in/tbe/impl/dynamic/acosh.py
       - ops/built-in/tbe/impl/dynamic/acosh_grad.py
+      - ops/built-in/tbe/impl/dynamic/adam_apply_one.py
+      - ops/built-in/tbe/impl/dynamic/adam_apply_one_assign.py
       - ops/built-in/tbe/impl/dynamic/adam_apply_one_with_decay.py
       - ops/built-in/tbe/impl/dynamic/adam_apply_one_with_decay_assign.py
       - ops/built-in/tbe/impl/dynamic/add.py
@@ -2928,7 +2930,6 @@ unkown:
       - ops/built-in/tbe/impl/dynamic/scan_pq_codes_expand.py
       - ops/built-in/tbe/impl/dynamic/softplus_grad.py
       - ops/built-in/tbe/impl/dynamic/is_finite.py
-      - ops/built-in/tbe/impl/dynamic/adam_apply_one_assign.py
       - ops/built-in/tbe/impl/dynamic/apply_power_sign_d.py
       - ops/built-in/tbe/impl/dynamic/prod_virial_se_a.py
       - ops/built-in/tbe/impl/dynamic/sparse_apply_adagrad_d.py
@@ -2968,7 +2969,6 @@ unkown:
       - ops/built-in/tbe/impl/dynamic/fake_quant_with_min_max_vars.py
       - ops/built-in/tbe/impl/dynamic/pack_tik.py
       - ops/built-in/tbe/impl/dynamic/resize_nearest_neighbor_v2.py
-      - ops/built-in/tbe/impl/dynamic/adam_apply_one.py
       - ops/built-in/tbe/impl/dynamic/dynamic_gru_cell_grad.py
       - ops/built-in/tbe/impl/dynamic/concat_d.py
       - ops/built-in/tbe/impl/dynamic/dynamic_rnn_v2.py

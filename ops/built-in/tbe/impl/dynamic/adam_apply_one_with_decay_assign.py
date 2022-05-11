@@ -432,22 +432,22 @@ def adam_apply_one_with_decay_assign(input0,
                                                    dtype=data_dtype[idx])
                 idx += 1
 
-        res = adam_apply_one_with_decay_assign_compute(data_inputs[data_dict["data_grad"]],
-                                                       data_inputs[data_dict["data_v"]],
-                                                       data_inputs[data_dict["data_m"]],
-                                                       data_inputs[data_dict["data_var"]],
-                                                       data_inputs[data_dict["data_input4"]],
-                                                       data_inputs[data_dict["const_input_mul"]],
-                                                       data_inputs[data_dict["const_input_mul1"]],
-                                                       data_inputs[data_dict["const_input_mul2"]],
-                                                       data_inputs[data_dict["const_input_mul3"]],
-                                                       data_inputs[data_dict["const_input_mul4"]],
-                                                       data_inputs[data_dict["data_input_add2"]])
-        # Fusion with assign
-        fusion_util.reuse_input_as_output(data_inputs[data_dict["data_v"]], res[0], kernel_name)
-        fusion_util.reuse_input_as_output(data_inputs[data_dict["data_m"]], res[1], kernel_name)
-        fusion_util.reuse_input_as_output(data_inputs[data_dict["data_var"]], res[2], kernel_name)
-        tensors.append(data_inputs + list(res))
+            res = adam_apply_one_with_decay_assign_compute(data_inputs[data_dict["data_grad"]],
+                                                           data_inputs[data_dict["data_v"]],
+                                                           data_inputs[data_dict["data_m"]],
+                                                           data_inputs[data_dict["data_var"]],
+                                                           data_inputs[data_dict["data_input4"]],
+                                                           data_inputs[data_dict["const_input_mul"]],
+                                                           data_inputs[data_dict["const_input_mul1"]],
+                                                           data_inputs[data_dict["const_input_mul2"]],
+                                                           data_inputs[data_dict["const_input_mul3"]],
+                                                           data_inputs[data_dict["const_input_mul4"]],
+                                                           data_inputs[data_dict["data_input_add2"]])
+            # Fusion with assign
+            fusion_util.reuse_input_as_output(data_inputs[data_dict["data_v"]], res[0], kernel_name)
+            fusion_util.reuse_input_as_output(data_inputs[data_dict["data_m"]], res[1], kernel_name)
+            fusion_util.reuse_input_as_output(data_inputs[data_dict["data_var"]], res[2], kernel_name)
+            tensors.append(data_inputs + list(res))
         with tvm.target.cce():
             sch = tbe.auto_schedule(res)
         schedules.append(sch)

@@ -429,18 +429,18 @@ def adam_apply_one_with_decay(input0,
                                                    dtype=data_dtype[idx])
                 idx += 1
 
-        res = adam_apply_one_with_decay_compute(data_inputs[data_dict["data_grad"]],
-                                                data_inputs[data_dict["data_v"]],
-                                                data_inputs[data_dict["data_m"]],
-                                                data_inputs[data_dict["data_var"]],
-                                                data_inputs[data_dict["data_input4"]],
-                                                data_inputs[data_dict["const_input_mul"]],
-                                                data_inputs[data_dict["const_input_mul1"]],
-                                                data_inputs[data_dict["const_input_mul2"]],
-                                                data_inputs[data_dict["const_input_mul3"]],
-                                                data_inputs[data_dict["const_input_mul4"]],
-                                                data_inputs[data_dict["data_input_add2"]])
-        tensors.append(data_inputs + list(res))
+            res = adam_apply_one_with_decay_compute(data_inputs[data_dict["data_grad"]],
+                                                    data_inputs[data_dict["data_v"]],
+                                                    data_inputs[data_dict["data_m"]],
+                                                    data_inputs[data_dict["data_var"]],
+                                                    data_inputs[data_dict["data_input4"]],
+                                                    data_inputs[data_dict["const_input_mul"]],
+                                                    data_inputs[data_dict["const_input_mul1"]],
+                                                    data_inputs[data_dict["const_input_mul2"]],
+                                                    data_inputs[data_dict["const_input_mul3"]],
+                                                    data_inputs[data_dict["const_input_mul4"]],
+                                                    data_inputs[data_dict["data_input_add2"]])
+            tensors.append(data_inputs + list(res))
         with tvm.target.cce():
             sch = tbe.auto_schedule(res)
         schedules.append(sch)
