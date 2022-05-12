@@ -969,6 +969,7 @@ vector_B:
       - ops/built-in/op_tiling/scatter_sub.cc
       - ops/built-in/op_tiling/scatter_update.cc
       - ops/built-in/op_tiling/smooth_l1_loss_v2.cc
+      - ops/built-in/op_tiling/softmax_cross_entropy_with_logits.cc
       - ops/built-in/op_tiling/sort.cc
       - ops/built-in/op_tiling/space_to_batch_nd.cc
       - ops/built-in/op_tiling/sparse_apply_ftrl_d.cc
@@ -2071,7 +2072,6 @@ unkown:
       - ops/built-in/op_tiling/gather_elements.cc
       - ops/built-in/op_tiling/pad_common.h
       - ops/built-in/op_tiling/kl_div.cc
-      - ops/built-in/op_tiling/softmax_cross_entropy_with_logits.cc
       - ops/built-in/op_tiling/lru_cache_v2.cc
       - ops/built-in/op_tiling/dynamic_rnn_v3.cc
       - ops/built-in/op_tiling/layer_norm.cc

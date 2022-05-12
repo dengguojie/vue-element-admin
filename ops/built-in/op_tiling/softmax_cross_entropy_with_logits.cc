@@ -56,7 +56,6 @@ struct TilingInfo {
 
 const std::unordered_map<ge::DataType, int32_t> kDtypeSizeMap{{ge::DT_FLOAT16, 2}, {ge::DT_FLOAT, 4}};
 struct opInfo {
-  std::vector<bool> flag_info;
   int32_t ub_size;
   int32_t core_num;
 };
@@ -64,10 +63,6 @@ struct opInfo {
 bool SoftmaxCrossEntropyWithLogitsParseFunc(const std::string& op_type, const nlohmann::json& compile_info,
                                             opInfo& compile_value) {
   using namespace nlohmann;
-  OP_TILING_CHECK(
-      !GetCompileValue(compile_info, "flag_info", compile_value.flag_info),
-      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "SoftmaxCrossEntropyWithLogitsParseFunc get flag_info error"),
-      return false);
   auto common_info_iter = compile_info.find("common_info");
   OP_TILING_CHECK(
       common_info_iter == compile_info.end(),
