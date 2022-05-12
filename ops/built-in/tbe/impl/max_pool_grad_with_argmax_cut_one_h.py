@@ -69,7 +69,7 @@ class MaxpoolGradCustom(argmax_cut_w.MaxpoolGardObject):
         -------
         None
         """
-        is_support_col2img = self.is_support_col2img
+        is_support_load3dv1 = self.is_support_load3dv1
         batch, channel1, dyh, dyw, channel = self.input_gard_shape
         dxh, dxw = self.y_shape[2:4]
         strideh, stridew = self.strides[1:3]
@@ -100,7 +100,7 @@ class MaxpoolGradCustom(argmax_cut_w.MaxpoolGardObject):
 
         # vector_repeat_time
         v_rep_time = col2img_dyw * channel * dtype_size // ONE_REPEAT
-        if is_support_col2img:
+        if is_support_load3dv1:
             v_rep_cycle_fp32 = 2 * v_rep_time // V_MAX_REPEAT
             # v_rep_last
             v_rep_last_fp32 = 2 * v_rep_time % V_MAX_REPEAT
@@ -173,7 +173,7 @@ class MaxpoolGradCustom(argmax_cut_w.MaxpoolGardObject):
                                                        scope=tik.scope_ubuf)
                 if self.woverlap > 0 and dyw % 16 != 0 and self.padding == "VALID":
                     self.clean_max_ub(data_max_ub, dtype)
-                if is_support_col2img:
+                if is_support_load3dv1:
                     data_vmul_ub_col2img_fp32 = \
                         self.tik_instance.Tensor("float32",
                                                  (col2img_w * channel * col2img_h + 64,),
@@ -184,7 +184,7 @@ class MaxpoolGradCustom(argmax_cut_w.MaxpoolGardObject):
                                              (col2img_w * channel * col2img_h + 128,),
                                              name="data_vmul_ub_col2img_fp16",
                                              scope=tik.scope_ubuf)
-                if is_support_col2img:
+                if is_support_load3dv1:
                     self.clean_ub_multi_repeat(data_vmul_ub_col2img_fp32, dtype_size * 2)
                 else:
                     self.clean_ub_multi_repeat(data_vmul_ub_col2img_fp16, dtype_size)
@@ -214,7 +214,7 @@ class MaxpoolGradCustom(argmax_cut_w.MaxpoolGardObject):
                         data_vsel_ub = self.tik_instance.Tensor(dtype, (col2img_dyw * channel,),
                                                                 name="data_vsel_ub",
                                                                 scope=tik.scope_ubuf)
-                        if is_support_col2img:
+                        if is_support_load3dv1:
                             data_vsel_ub_fp32 = self.tik_instance.Tensor("float32", (col2img_dyw *
                                                                                      channel,),
                                                                          name="data_vsel_ub_fp32",
@@ -237,7 +237,7 @@ class MaxpoolGradCustom(argmax_cut_w.MaxpoolGardObject):
                                                        constant.REPEAT_STRIDE_EIGHT,
                                                        constant.REPEAT_STRIDE_EIGHT)
 
-                        if is_support_col2img:
+                        if is_support_load3dv1:
                             # fp16 to fp32
                             if v_rep_cycle_fp32 > 0:
                                 with self.tik_instance.for_range(0, v_rep_cycle_fp32,
@@ -276,18 +276,19 @@ class MaxpoolGradCustom(argmax_cut_w.MaxpoolGardObject):
                             fetch_filter_h = mask_id // windoww
                             fetch_filter_w = mask_id % windoww
                             img_addr = fetch_filter_h * col2img_w * channel + fetch_filter_w * channel
+                            repeat_times = col2img_dyw * channel * dtype_size // ONE_REPEAT
                             self.tik_instance.vadd(constant.MASK128,
                                                    data_vmul_ub_col2img_fp16[img_addr],
                                                    data_vmul_ub_col2img_fp16[img_addr],
                                                    data_vsel_ub[0],
-                                                   col2img_dyw * channel * dtype_size // ONE_REPEAT,
+                                                   repeat_times,
+                                                   stridew * repeat_times,
+                                                   stridew * repeat_times,
+                                                   repeat_times,
                                                    stridew,
                                                    stridew,
-                                                   constant.STRIDE_ONE,
-                                                   stridew * constant.REPEAT_STRIDE_EIGHT,
-                                                   stridew * constant.REPEAT_STRIDE_EIGHT,
-                                                   constant.REPEAT_STRIDE_EIGHT)
-                    if is_support_col2img:
+                                                   constant.STRIDE_ONE)
+                    if is_support_load3dv1:
                         if v_rep_cycle_col > 0:
                             with self.tik_instance.for_range(0, v_rep_cycle_col,
                                                              thread_num=1) as cycle:
@@ -342,7 +343,7 @@ class MaxpoolGradCustom(argmax_cut_w.MaxpoolGardObject):
                                                     data_vmul_ub_col2img_fp16[src_address],
                                                     constant.SID, nburst, burst_len,
                                                     src_stride, dst_stride)
-                        if is_support_col2img:
+                        if is_support_load3dv1:
                             self.clean_ub_multi_repeat(data_vmul_ub_col2img_fp32, dtype_size * 2)
                         else:
                             self.clean_ub_multi_repeat(data_vmul_ub_col2img_fp16, dtype_size)
@@ -376,7 +377,7 @@ class MaxpoolGradCustom(argmax_cut_w.MaxpoolGardObject):
                             dxh_calcline.set_as(dxh_calcline + nburst)
 
                         # dma_copy ub to ub
-                        if is_support_col2img:
+                        if is_support_load3dv1:
                             self.tik_instance.data_move(data_vmul_ub_col2img_fp32[0],
                                                         data_vmul_ub_col2img_fp32[strideh * channel * col2img_w],
                                                         constant.SID,
@@ -439,7 +440,7 @@ class MaxpoolGradCustom(argmax_cut_w.MaxpoolGardObject):
         """
         function for max_pool_grad_with_pool calc for normal shape
         """
-        is_support_col2img = self.is_support_col2img
+        is_support_load3dv1 = self.is_support_load3dv1
         batch, channel1, dyh, dyw, channel = self.input_gard_shape
         dxh, dxw = self.y_shape[2:4]
         strideh, stridew = self.strides[1:3]
@@ -478,7 +479,7 @@ class MaxpoolGradCustom(argmax_cut_w.MaxpoolGardObject):
 
         # vector_repeat_time
         v_rep_time = wo_max * channel * dtype_size // ONE_REPEAT
-        if is_support_col2img:
+        if is_support_load3dv1:
             v_rep_cycle_fp32 = 2 * v_rep_time // V_MAX_REPEAT
             # v_rep_last
             v_rep_last_fp32 = 2 * v_rep_time % V_MAX_REPEAT
@@ -559,7 +560,7 @@ class MaxpoolGradCustom(argmax_cut_w.MaxpoolGardObject):
                 if self.woverlap > 0 and dyw % 16 != 0 and self.padding == "VALID":
                     self.clean_max_ub(data_max_ub, dtype)
 
-                if is_support_col2img:
+                if is_support_load3dv1:
                     data_vmul_ub_col2img_fp32 = \
                         self.tik_instance.Tensor("float32",
                                                  (col2img_w * channel * col2img_h + 64,),
@@ -570,7 +571,7 @@ class MaxpoolGradCustom(argmax_cut_w.MaxpoolGardObject):
                                              (col2img_w * channel * col2img_h + 128,),
                                              name="data_vmul_ub_col2img_fp16",
                                              scope=tik.scope_ubuf)
-                if is_support_col2img:
+                if is_support_load3dv1:
                     self.clean_ub_multi_repeat(data_vmul_ub_col2img_fp32, dtype_size * 2)
                 else:
                     self.clean_ub_multi_repeat(data_vmul_ub_col2img_fp16, dtype_size)
@@ -615,7 +616,7 @@ class MaxpoolGradCustom(argmax_cut_w.MaxpoolGardObject):
                         data_vsel_ub = self.tik_instance.Tensor(dtype, (wo_max * channel,),
                                                                 name="data_vsel_ub",
                                                                 scope=tik.scope_ubuf)
-                        if is_support_col2img:
+                        if is_support_load3dv1:
                             data_vsel_ub_fp32 = self.tik_instance.Tensor("float32", (wo_max *
                                                                                      channel,),
                                                                          name="data_vsel_ub_fp32",
@@ -638,7 +639,7 @@ class MaxpoolGradCustom(argmax_cut_w.MaxpoolGardObject):
                                                        constant.REPEAT_STRIDE_EIGHT,
                                                        constant.REPEAT_STRIDE_EIGHT)
 
-                        if is_support_col2img:
+                        if is_support_load3dv1:
                             # fp16 to fp32
                             if v_rep_cycle_fp32 > 0:
                                 with self.tik_instance.for_range(0, v_rep_cycle_fp32) as cycle:
@@ -676,17 +677,18 @@ class MaxpoolGradCustom(argmax_cut_w.MaxpoolGardObject):
                             fetch_filter_h = mask_id // windoww
                             fetch_filter_w = mask_id % windoww
                             img_addr = fetch_filter_h * col2img_w * channel + fetch_filter_w * channel
+                            repeat_times = wo_max * channel * dtype_size // ONE_REPEAT
                             self.tik_instance.vadd(constant.MASK128,
                                                    data_vmul_ub_col2img_fp16[img_addr],
                                                    data_vmul_ub_col2img_fp16[img_addr],
                                                    data_vsel_ub[0],
-                                                   wo_max * channel * dtype_size // ONE_REPEAT,
+                                                   repeat_times,
+                                                   stridew * repeat_times,
+                                                   stridew * repeat_times,
+                                                   repeat_times,
                                                    stridew,
                                                    stridew,
-                                                   constant.STRIDE_ONE,
-                                                   stridew * constant.REPEAT_STRIDE_EIGHT,
-                                                   stridew * constant.REPEAT_STRIDE_EIGHT,
-                                                   constant.REPEAT_STRIDE_EIGHT)
+                                                   constant.STRIDE_ONE)
                     output_cuthline = self.tik_instance.Scalar("int32")
                     output_cuthline.set_as(strideh)
                     src_address = self.tik_instance.Scalar("int32")
@@ -709,7 +711,7 @@ class MaxpoolGradCustom(argmax_cut_w.MaxpoolGardObject):
                         with self.tik_instance.if_scope(block_h == ho_count - 1):
                             with self.tik_instance.if_scope(looph == h_cycle - 1):
                                 output_cuthline.set_as(windowh - pad_bottom)
-                    if is_support_col2img:
+                    if is_support_load3dv1:
                         # fp32 to fp16
                         v_rep_time_col = 2 * (col2img_w * channel * col2img_h + 64) * \
                                          dtype_size // ONE_REPEAT
@@ -746,7 +748,7 @@ class MaxpoolGradCustom(argmax_cut_w.MaxpoolGardObject):
                                                   output_cuthline * dxw * channel)
                     if hoverlap != 0:
                         with self.tik_instance.if_scope(looph + 1 != h_cycle):
-                            if is_support_col2img:
+                            if is_support_load3dv1:
                                 self.tik_instance.data_move(data_vmul_ub_col2img_fp32[0],
                                                             data_vmul_ub_col2img_fp32[strideh * channel * col2img_w],
                                                             constant.SID,
@@ -802,7 +804,7 @@ class MaxpoolGradCustom(argmax_cut_w.MaxpoolGardObject):
                                                                  constant.STRIDE_ONE,
                                                                  constant.REPEAT_STRIDE_EIGHT)
                     else:
-                        if is_support_col2img:
+                        if is_support_load3dv1:
                             self.clean_ub_multi_repeat(data_vmul_ub_col2img_fp32, dtype_size * 2)
                         else:
                             self.clean_ub_multi_repeat(data_vmul_ub_col2img_fp16, dtype_size)

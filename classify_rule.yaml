@@ -1257,6 +1257,10 @@ vector_B:
       - ops/CMakeLists.txt
       - ops/built-in/op_proto/array_ops.cc
       - ops/built-in/op_proto/inc/array_ops.h
+      - ops/built-in/tbe/impl/max_pool_grad_with_argmax.py
+      - ops/built-in/tbe/impl/max_pool_grad_with_argmax_cut_h.py
+      - ops/built-in/tbe/impl/max_pool_grad_with_argmax_cut_w.py
+      - ops/built-in/tbe/impl/max_pool_grad_with_argmax_cut_one_h.py
     unrelease:
       - auto_schedule/python/tbe/dsl/static_schedule/bn_update_schedule.py
       - auto_schedule/python/tbe/dsl/static_schedule/l2_loss_schedule.py
@@ -2323,13 +2327,11 @@ unkown:
       - ops/built-in/tbe/impl/act_ulq_clamp_max_grad.py
       - ops/built-in/tbe/impl/roll.py
       - ops/built-in/tbe/impl/fill.py
-      - ops/built-in/tbe/impl/max_pool_grad_with_argmax_cut_w.py
       - ops/built-in/tbe/impl/ascend_dequant_s16.py
       - ops/built-in/tbe/impl/layer_norm_grad.py
       - ops/built-in/tbe/impl/scatter_nd_add.py
       - ops/built-in/tbe/impl/slice_d.py
       - ops/built-in/tbe/impl/non_zero_with_value.py
-      - ops/built-in/tbe/impl/max_pool_grad_with_argmax.py
       - ops/built-in/tbe/impl/confusion_mul_grad.py
       - ops/built-in/tbe/impl/add_n.py
       - ops/built-in/tbe/impl/trans_data_2d.py
@@ -2559,7 +2561,6 @@ unkown:
       - ops/built-in/tbe/impl/fastrcnn_predictions.py
       - ops/built-in/tbe/impl/fractal_nz_2_nc1hwc0.py
       - ops/built-in/tbe/impl/bounding_box_decode.py
-      - ops/built-in/tbe/impl/max_pool_grad_with_argmax_cut_one_h.py
       - ops/built-in/tbe/impl/cum_computer.py
       - ops/built-in/tbe/impl/matmul_vector.py
       - ops/built-in/tbe/impl/bessel_i1e.py
@@ -2759,7 +2760,6 @@ unkown:
       - ops/built-in/tbe/impl/c1hwc0_2_chw.py
       - ops/built-in/tbe/impl/apply_centered_rms_prop_d.py
       - ops/built-in/tbe/impl/inplace_sub_d.py
-      - ops/built-in/tbe/impl/max_pool_grad_with_argmax_cut_h.py
       - ops/built-in/tbe/impl/pow.py
       - ops/built-in/tbe/impl/inv.py
       - ops/built-in/tbe/impl/zng_2_nchw_hwcn.py

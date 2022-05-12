@@ -56,7 +56,7 @@ class MaxpoolGradBase():
         """
         self.blocknum = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM)
         self.ub_size = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE)
-        self.is_support_col2img = tbe_platform.cce_conf.api_check_support("tik.col2img")
+        self.is_support_load3dv1 = tbe_platform.cce_conf.api_check_support("tik.load3dv1")
 
         self.input_gard_shape = grad.get("shape")
         self.argmax_shape = argmax.get("shape")
@@ -79,7 +79,7 @@ class MaxpoolGradBase():
         if stridew > dxw:
             stridew = dxw
         self.ub_limit = None
-        self._calc_ub_limit(self.ub_size, stridehw, self.is_support_col2img)
+        self._calc_ub_limit(self.ub_size, stridehw, self.is_support_load3dv1)
         windowh, windoww = self.ksize[1:3]
         pad_top = 0
         pad_bottom = 0
@@ -150,7 +150,7 @@ class MaxpoolGradBase():
         """
         function for max_pool_grad_with_pool calc for normal shape
         """
-        is_support_col2img = self.is_support_col2img
+        is_support_load3dv1 = self.is_support_load3dv1
 
         batch, channel1, dyh, dyw, channel = self.input_gard_shape
         dxh, dxw = self.y_shape[2:4]
@@ -200,7 +200,7 @@ class MaxpoolGradBase():
         mask_one_window = ((dyh * dyw + 15) // 16 + 1) * 16
         # vector_repeat_time
         v_rep_time = ho_max * wo_max * channel * dtype_size // ONE_REPEAT
-        if is_support_col2img:
+        if is_support_load3dv1:
             v_rep_cycle_fp32 = 2 * v_rep_time // V_MAX_REPEAT
             # v_rep_last
             v_rep_last_fp32 = 2 * v_rep_time % V_MAX_REPEAT
@@ -255,7 +255,7 @@ class MaxpoolGradBase():
                     data_max_ub = self.tik_instance.Tensor(dtype, (ho_max * wo_max * channel,),
                                                            name="data_max_ub",
                                                            scope=tik.scope_ubuf)
-                    if is_support_col2img:
+                    if is_support_load3dv1:
                         data_vmul_ub_col2img_fp32 = \
                             self.tik_instance.Tensor("float32",
                                                      (col2img_w * channel * col2img_h + 64,),
@@ -285,7 +285,7 @@ class MaxpoolGradBase():
                             with self.tik_instance.if_scope(looph == h_cycle - 1):
                                 in_nburst.set_as(dyh - looph * (ho_max - 1))
 
-                        if is_support_col2img:
+                        if is_support_load3dv1:
                             self.clean_ub_multi_repeat(data_vmul_ub_col2img_fp32, dtype_size * 2)
                         else:
                             self.clean_ub_multi_repeat(data_vmul_ub_col2img_fp16, dtype_size)
@@ -317,7 +317,7 @@ class MaxpoolGradBase():
                                                                     (ho_max * wo_max * channel,),
                                                                     name="data_vsel_ub",
                                                                     scope=tik.scope_ubuf)
-                            if is_support_col2img:
+                            if is_support_load3dv1:
                                 data_vsel_ub_fp32 = self.tik_instance.Tensor("float32",
                                                                              (ho_max * wo_max *
                                                                               channel,),
@@ -341,7 +341,7 @@ class MaxpoolGradBase():
                                                            constant.REPEAT_STRIDE_EIGHT,
                                                            constant.REPEAT_STRIDE_EIGHT,
                                                            constant.REPEAT_STRIDE_EIGHT)
-                            if is_support_col2img:
+                            if is_support_load3dv1:
                                 # fp16 to fp32
                                 if v_rep_cycle_fp32 > 0:
                                     with self.tik_instance.for_range(0, v_rep_cycle_fp32,
@@ -384,18 +384,19 @@ class MaxpoolGradBase():
                                     img_addr = cycle * strideh * col2img_w * channel + \
                                                fetch_filter_h * col2img_w * channel + \
                                                fetch_filter_w * channel
+                                    repeat_times = wo_max * channel * dtype_size // ONE_REPEAT
                                     self.tik_instance.vadd(constant.MASK128,
                                                            data_vmul_ub_col2img_fp16[img_addr],
                                                            data_vmul_ub_col2img_fp16[img_addr],
                                                            data_vsel_ub[cycle * wo_max * channel],
-                                                           wo_max * channel * dtype_size // ONE_REPEAT,
+                                                           repeat_times,
+                                                           stridew * repeat_times,
+                                                           stridew * repeat_times,
+                                                           repeat_times,
                                                            stridew,
                                                            stridew,
-                                                           constant.STRIDE_ONE,
-                                                           stridew * constant.REPEAT_STRIDE_EIGHT,
-                                                           stridew * constant.REPEAT_STRIDE_EIGHT,
-                                                           constant.REPEAT_STRIDE_EIGHT)
-                        if is_support_col2img:
+                                                           constant.STRIDE_ONE)
+                        if is_support_load3dv1:
                             if v_rep_cycle_col > 0:
                                 with self.tik_instance.for_range(0, v_rep_cycle_col) as cycle:
                                     self.tik_instance.vconv(constant.MASK64, "",
@@ -481,7 +482,7 @@ class MaxpoolGradBase():
         """
         function for max_pool_grad_with_pool calc for normal shape
         """
-        is_support_col2img = self.is_support_col2img
+        is_support_load3dv1 = self.is_support_load3dv1
         batch, channel1, dyh, dyw, channel = self.input_gard_shape
         dxh, dxw = self.y_shape[2:4]
         strideh, stridew = self.strides[1:3]
@@ -554,7 +555,7 @@ class MaxpoolGradBase():
         # vector_repeat_time
         v_rep_time_last = ho_max_last * wo_max * channel * dtype_size // ONE_REPEAT
         v_rep_time_every = ho_max_every * wo_max * channel * dtype_size // ONE_REPEAT
-        if is_support_col2img:
+        if is_support_load3dv1:
             v_rep_cycle_fp32_last = 2 * v_rep_time_last // V_MAX_REPEAT
             v_rep_last_fp32_last = 2 * v_rep_time_last % V_MAX_REPEAT
             v_rep_time_col_last = (2 * (col2img_w * channel * col2img_h_last + 64) *
@@ -615,7 +616,7 @@ class MaxpoolGradBase():
                     data_max_ub = self.tik_instance.Tensor(dtype, (ho_max_last * wo_max * channel,),
                                                            name="data_max_ub",
                                                            scope=tik.scope_ubuf)
-                    if is_support_col2img:
+                    if is_support_load3dv1:
                         data_vmul_ub_col2img_fp32 = \
                             self.tik_instance.Tensor("float32",
                                                      (col2img_w * channel * col2img_h_last + 64,),
@@ -657,7 +658,7 @@ class MaxpoolGradBase():
                             mask_address.set_as(mask_address + (block_h * (ho_every - 1) +
                                                                 new_looph) * dyw)
 
-                        if is_support_col2img:
+                        if is_support_load3dv1:
                             self.clean_ub_multi_repeat(data_vmul_ub_col2img_fp32, dtype_size * 2)
                         else:
                             self.clean_ub_multi_repeat(data_vmul_ub_col2img_fp16, dtype_size)
@@ -682,7 +683,7 @@ class MaxpoolGradBase():
                                                                             wo_max * channel,),
                                                                     name="data_vsel_ub",
                                                                     scope=tik.scope_ubuf)
-                            if is_support_col2img:
+                            if is_support_load3dv1:
                                 data_vsel_ub_fp32 = self.tik_instance.Tensor("float32",
                                                                              (ho_max_last * wo_max *
                                                                               channel,),
@@ -706,7 +707,7 @@ class MaxpoolGradBase():
                                                            constant.REPEAT_STRIDE_EIGHT,
                                                            constant.REPEAT_STRIDE_EIGHT,
                                                            constant.REPEAT_STRIDE_EIGHT)
-                            if is_support_col2img:
+                            if is_support_load3dv1:
                                 # fp16 to fp32
                                 if v_rep_cycle_fp32_last > 0:
                                     with self.tik_instance.for_range(0, v_rep_cycle_fp32_last,
@@ -749,18 +750,19 @@ class MaxpoolGradBase():
                                     img_addr = cycle * strideh * col2img_w * channel + \
                                                fetch_filter_h * col2img_w * channel + \
                                                fetch_filter_w * channel
+                                    repeat_times = wo_max * channel * dtype_size // ONE_REPEAT
                                     self.tik_instance.vadd(constant.MASK128,
                                                            data_vmul_ub_col2img_fp16[img_addr],
                                                            data_vmul_ub_col2img_fp16[img_addr],
                                                            data_vsel_ub[cycle * wo_max * channel],
-                                                           wo_max * channel * dtype_size // ONE_REPEAT,
+                                                           repeat_times,
+                                                           stridew * repeat_times,
+                                                           stridew * repeat_times,
+                                                           repeat_times,
                                                            stridew,
                                                            stridew,
-                                                           constant.STRIDE_ONE,
-                                                           stridew * constant.REPEAT_STRIDE_EIGHT,
-                                                           stridew * constant.REPEAT_STRIDE_EIGHT,
-                                                           constant.REPEAT_STRIDE_EIGHT)
-                        if is_support_col2img:
+                                                           constant.STRIDE_ONE)
+                        if is_support_load3dv1:
                             if v_rep_cycle_col_last > 0:
                                 with self.tik_instance.for_range(0, v_rep_cycle_col_last) as cycle:
                                     self.tik_instance.vconv(constant.MASK64, "",
@@ -825,7 +827,7 @@ class MaxpoolGradBase():
                                                            (ho_max_every * wo_max * channel,),
                                                            name="data_max_ub",
                                                            scope=tik.scope_ubuf)
-                    if is_support_col2img:
+                    if is_support_load3dv1:
                         data_vmul_ub_col2img_fp32 = \
                             self.tik_instance.Tensor("float32",
                                                      (col2img_w * channel * col2img_h_every + 64,),
@@ -865,7 +867,7 @@ class MaxpoolGradBase():
                             with self.tik_instance.if_scope(looph == h_cycle_every - 1):
                                 in_nburst.set_as(ho_every - looph * (ho_max_every - 1))
 
-                        if is_support_col2img:
+                        if is_support_load3dv1:
                             self.clean_ub_multi_repeat(data_vmul_ub_col2img_fp32, dtype_size * 2)
                         else:
                             self.clean_ub_multi_repeat(data_vmul_ub_col2img_fp16, dtype_size)
@@ -890,7 +892,7 @@ class MaxpoolGradBase():
                                                                             wo_max * channel,),
                                                                     name="data_vsel_ub",
                                                                     scope=tik.scope_ubuf)
-                            if is_support_col2img:
+                            if is_support_load3dv1:
                                 data_vsel_ub_fp32 = self.tik_instance.Tensor("float32",
                                                                              (ho_max_every *
                                                                               wo_max * channel,),
@@ -914,7 +916,7 @@ class MaxpoolGradBase():
                                                            constant.REPEAT_STRIDE_EIGHT,
                                                            constant.REPEAT_STRIDE_EIGHT,
                                                            constant.REPEAT_STRIDE_EIGHT)
-                            if is_support_col2img:
+                            if is_support_load3dv1:
                                 # fp16 to fp32
                                 if v_rep_cycle_fp32_every > 0:
                                     with self.tik_instance.for_range(0, v_rep_cycle_fp32_every,
@@ -957,18 +959,19 @@ class MaxpoolGradBase():
                                     img_addr = cycle * strideh * col2img_w * channel + \
                                                fetch_filter_h * col2img_w * channel + \
                                                fetch_filter_w * channel
+                                    repeat_times = wo_max * channel * dtype_size // ONE_REPEAT
                                     self.tik_instance.vadd(constant.MASK128,
                                                            data_vmul_ub_col2img_fp16[img_addr],
                                                            data_vmul_ub_col2img_fp16[img_addr],
                                                            data_vsel_ub[cycle * wo_max * channel],
-                                                           wo_max * channel * dtype_size // ONE_REPEAT,
+                                                           repeat_times,
+                                                           stridew * repeat_times,
+                                                           stridew * repeat_times,
+                                                           repeat_times,
                                                            stridew,
                                                            stridew,
-                                                           constant.STRIDE_ONE,
-                                                           stridew * constant.REPEAT_STRIDE_EIGHT,
-                                                           stridew * constant.REPEAT_STRIDE_EIGHT,
-                                                           constant.REPEAT_STRIDE_EIGHT)
-                        if is_support_col2img:
+                                                           constant.STRIDE_ONE)
+                        if is_support_load3dv1:
                             if v_rep_cycle_col_every > 0:
                                 with self.tik_instance.for_range(0, v_rep_cycle_col_every) as cycle:
                                     self.tik_instance.vconv(constant.MASK64, "",
@@ -1147,8 +1150,8 @@ class MaxpoolGradBase():
                                          0, v_rep_clear_last,
                                          constant.STRIDE_ONE, constant.REPEAT_STRIDE_EIGHT)
 
-    def _calc_ub_limit(self, ub_size, stridehw, is_support_col2img):
-        if is_support_col2img:
+    def _calc_ub_limit(self, ub_size, stridehw, is_support_load3dv1):
+        if is_support_load3dv1:
             if stridehw == 1:
                 self.ub_limit = ub_size / 8
             elif stridehw < 4:

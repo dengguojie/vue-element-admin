@@ -202,7 +202,7 @@ def test_check_support(test_arg):
 ut_case.add_cust_test_func(test_func=test_check_support)
 
 
-vals = {("tik.col2img",): False}
+vals = {("tik.load3dv1",): False}
 def side_effects(*args):
     return vals[args]
 with patch("te.platform.cce_conf.api_check_support", MagicMock(side_effect=side_effects)):
