@@ -224,6 +224,15 @@ graphStatus PadGradShapeFn(Operator& op) {
     return GRAPH_FAILED;
   }
 
+  size_t dim_num = op.GetInputDescByName("x").GetShape().GetDimNum();
+  std::vector<int64_t> empty_dim_vec = op.GetInputDescByName("x").GetShape().GetDims();
+  for (size_t i = 0; i < dim_num; i++) {
+    if (empty_dim_vec[i] == 0) {
+      output_desc.SetShape(Shape(empty_dim_vec));
+      return op.UpdateOutputDesc("y", output_desc);
+    }
+  }
+
   Tensor paddings_tensor;
   if (op.GetInputConstData("paddings", paddings_tensor) != GRAPH_SUCCESS) {
     std::vector<int64_t> unknow_dim_vec(input_rank, UNKNOWN_DIM);

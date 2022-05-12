@@ -27,7 +27,7 @@ aicpu:
       - ops/built-in/op_proto/inc/vector_search.h
       - ops/built-in/op_proto/index_to_addr_ops.cc
       - ops/built-in/op_proto/slice_write_ops.cc
-
+      - ops/built-in/op_proto/util/array_ops_shape_fns.cc
     unrelease:
   llt:
     ut_check: true
@@ -2209,7 +2209,6 @@ unkown:
       - ops/built-in/op_proto/util/error_util.cc
       - ops/built-in/op_proto/util/error_util.h
       - ops/built-in/op_proto/util/nn_shape_fns.cc
-      - ops/built-in/op_proto/util/array_ops_shape_fns.cc
       - ops/built-in/op_proto/util/util.cc
       - ops/built-in/op_proto/util/common_shape_fns.h
       - ops/built-in/op_proto/util/ragged_conversion_ops_shape_fns.h
