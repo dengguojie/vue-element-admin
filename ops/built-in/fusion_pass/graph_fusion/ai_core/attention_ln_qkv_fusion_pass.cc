@@ -79,6 +79,7 @@ static const string kOpLayernorm = "LayerNorm";
 static const string kOpMatmul = "MatMulV2";
 static const string kOpTransdata = "TransData";
 static const string kOpReformat = "ReFormat";
+static const string kOpAdd = "Add";
 static const string kOpConfusionTranspose = "ConfusionTransposeD";
 static const string kOpAttentionLnQKV = "AttentionLnQKV";
 vector<FusionPattern *> AttentionLnQKVFusionPass::DefinePatterns() {
@@ -121,8 +122,7 @@ Status AttentionLnQKVFusionPass::Fusion(ge::ComputeGraph &graph,
     OP_LOGW(FUSED_OP_TYPE, "Fail to get platform info.");
     optional_info.soc_version == "";
   }
-  size_t core_num = platform_info.soc_info.ai_core_cnt;
-  if (optional_info.soc_version == "Ascend310" || (core_num != kCoreNum8 && core_num != kCoreNum32)) {
+  if (optional_info.soc_version != "Ascend710") {
     OP_LOGD(FUSED_OP_TYPE.c_str(), "platform not supported.");
     return NOT_CHANGED;
   }
@@ -168,6 +168,10 @@ bool AttentionLnQKVFusionPass::IsMatch(const ge::NodePtr &ln_node,
   auto trans_node = peer_in_anchors.at(0)->GetOwnerNode();
   if (kOpTransdata != trans_node->GetType()) {
     g_trainingFlag = false;
+    if (kOpAdd != trans_node->GetType()) {
+      OP_LOGD(FUSED_OP_TYPE.c_str(), "add node [%s] match failed in inference.", trans_node->GetName().c_str());
+      return false;
+    }
   }
   if (g_trainingFlag) {
     auto reformat_node = trans_node->GetOutDataAnchor(0)->GetPeerInDataAnchors().at(0)->GetOwnerNode();
@@ -417,7 +421,7 @@ Status AttentionLnQKVFusionPass::ProcessLayerNorm(ge::ComputeGraph &graph,
       return FAILED;
     }
   }
-  std::vector<ge::NodePtr> remove_node_list= {ln_node};
+  std::vector<ge::NodePtr> remove_node_list = {ln_node};
   // in training, mean&&variance should be passed to LayerNormBackprop
   if (g_trainingFlag && SUCCESS != ProcessLayerNormBackprop(ln_node, attention_ln_qkv_node, remove_node_list)) {
     OP_LOGE(FUSED_OP_TYPE.c_str(), "ProcessLayerNormBackprop failed in training.");
