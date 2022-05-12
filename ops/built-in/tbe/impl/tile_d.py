@@ -138,8 +138,8 @@ def op_select_format(input_x, output_x, multiples, kernel_name="tile_d"):
             is_support_nz = True
 
     # ND dtype
-    dtype_base = ["float16", "float", "int32"]
-    dtype_list = ["float16", "float", "int32", "bool"]
+    dtype_base = ["float16", "float", "int32", "uint8"]
+    dtype_list = ["float16", "float", "int32", "bool", "uint8"]
     # default supprt ND for dtype_base
     dtype_base_out = dtype_list.copy()
     format_base_out = ["ND"] * len(dtype_list)
@@ -237,11 +237,11 @@ def tile_d_compute(data, output_x, multiples, kernel_name="tile_d"):
     for shape_i, multiples_i in zip(shape, multiples):
         out_shape_i = shape_i*multiples_i
         out_shape.append(out_shape_i)
-    if src_dtype == "int8":
+    if src_dtype == "int8" or src_dtype == "uint8":
         data = tbe.cast_to(data, "float16")
     res = tbe.broadcast(data, out_shape)
-    if src_dtype == "int8":
-        res = tbe.cast_to(res, "int8")
+    if src_dtype == "int8" or src_dtype == "uint8":
+        res = tbe.cast_to(res, src_dtype)
 
     return res
 
@@ -285,7 +285,8 @@ def tile_d(input_x, output_x, multiples, kernel_name="tile_d"):
     dtype = input_x.get("dtype").lower()
     para_check.check_shape(shape, param_name="input_x")
     para_check.check_shape(multiples, param_name="multiples")
-    para_check.check_dtype(dtype.lower(), ("float16", "float32", "int32", "int8", "bool"), param_name="input_x")
+    para_check.check_dtype(dtype.lower(), ("float16", "float32", "int32", "int8", "bool", "uint8"),
+                           param_name="input_x")
     if dtype == "bool":
         dtype = "int8"
     shape = list(shape)

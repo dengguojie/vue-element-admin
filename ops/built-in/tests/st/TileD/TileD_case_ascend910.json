@@ -136,5 +136,74 @@
         ]
       }
     ]
+  },
+  {
+    "case_name": "TileD_uint8_ascend910",
+    "op": "TileD",
+    "calc_expect_func_file":"tiled_golden.py:calc_expect_func",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "uint8"
+        ],
+        "shape": [
+          1
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            1,
+            100
+          ]
+        ],
+        "name": "x",
+        "shape_range": [
+          [
+            1,
+            65535
+          ]
+        ],
+        "typical_shape": [
+          1
+        ]
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "uint8"
+        ],
+        "shape": [
+          5
+        ],
+        "name": "y",
+        "shape_range": [
+          [
+            1,
+            65535
+          ]
+        ],
+        "typical_shape": [
+          1
+        ]
+      }
+    ],
+    "attr": [
+      {
+        "name": "multiples",
+        "type": "list_int",
+        "value": [
+          5
+        ]
+      }
+    ]
   }
 ]

@@ -39,6 +39,11 @@ case1 = {"params": get_input((128, 128, 128, 128), [16, 16, 16, 16], "float16", 
          "expect": RuntimeError,
          "format_expect": [],
          "support_expect": True}
+case2 = {"params": get_input((1, 16, 16, 16), [16, 1, 1, 1], "uint8", "ND", "ND"),
+         "case_name": "tile_d_impl_01",
+         "expect": "success",
+         "format_expect": [],
+         "support_expect": True}
 
 
 def test_tile_get_op_support_info(test_arg):
@@ -60,6 +65,7 @@ def test_tile_get_op_support_info(test_arg):
 
 
 ut_case.add_case(["Ascend310", "Ascend910"], case1)
+ut_case.add_case(["Ascend310", "Ascend910"], case2)
 ut_case.add_cust_test_func(test_func=test_tile_get_op_support_info)
 
 if __name__ == '__main__':

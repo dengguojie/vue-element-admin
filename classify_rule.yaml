@@ -1002,6 +1002,7 @@ vector_B:
       - ops/built-in/tbe/impl/combined_non_max_suppression.py
       - ops/built-in/tbe/impl/diag_d.py
       - ops/built-in/tbe/impl/max_pool_with_argmax.py
+      - ops/built-in/tbe/impl/tile_d.py
       - ops/built-in/tbe/impl/dynamic/__init__.py
       - ops/built-in/tbe/impl/dynamic/abs.py
       - ops/built-in/tbe/impl/dynamic/accumulate_nv2.py
@@ -2287,7 +2288,6 @@ unkown:
       - ops/built-in/tbe/impl/stn_pre.py
       - ops/built-in/tbe/impl/grid_unnormal.py
       - ops/built-in/tbe/impl/fused_minimum_or_maximum_grad.py
-      - ops/built-in/tbe/impl/tile_d.py
       - ops/built-in/tbe/impl/fused_mul_add_n.py
       - ops/built-in/tbe/impl/erfinv.py
       - ops/built-in/tbe/impl/relu6_grad.py
