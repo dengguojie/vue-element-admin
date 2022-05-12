@@ -15,15 +15,109 @@
 """
 fused_mul_add
 """
+from impl import constant_util
+from impl.util import util_select_op_base
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import shape_util
+from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
-from impl.util.platform_adapter import para_check
+from impl.util.util_select_op_base import SplitInput
+from impl.util.util_select_op_base import SplitOutput
 from impl.util.platform_adapter import register_operator
+from impl.util.util_select_op_base import get_op_cal_info
+from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import register_operator_compute
-from impl.fused_mul_add import op_select_format as static_op_select_format
+from impl.util.util_common import update_shape_for_other_format
+
+
+def _division_sixteen(shape):
+    """
+    check be div by sixteen
+    """
+    if len(shape) < 2:
+        if shape[-1] == 0:
+            error_detail = 'value of shape is illegal, shape[-1] == 0'
+            error_manager_vector.raise_err_specific_reson("fused_mul_add", error_detail)
+        return False
+
+    if shape[-1] == 0 or shape[-2] == 0:
+        error_detail = 'value of shape is illegal, shape[-1] == %s, shape[-2] == %s' % (shape[-1], shape[-2])
+        error_manager_vector.raise_err_specific_reson("fused_mul_add", error_detail)
+
+    return shape[-1] % constant_util.SIZE_SIXTEEN == 0 and shape[-2] % constant_util.SIZE_SIXTEEN == 0
+
+
+def split_bind(shape0, shape1):
+    """
+    check can be split together
+    """
+    if len(shape0) == 0 or len(shape1) == 0:
+        return False
+    if shape0[0] == 1 or shape1[0] == 1:
+        return False
+    if len(shape0) != len(shape1):
+        return False
+    if shape0[0] == shape1[0]:
+        return True
+    return False
+
+
+def get_split_matrix(input0_shape, input1_shape, input2_shape):
+    """
+    get axis split matrix
+    """
+    axis_split_matrix = None
+    if split_bind(input0_shape, input1_shape):
+        input_slice_list = [[0, [0], [-1], [-1]], [1, [0], [-1], [-1]]]
+        if split_bind(input1_shape, input2_shape):
+            input_slice_list.append([2, [0], [-1], [-1]])
+        split_0 = [SplitInput(*input_slice_list), SplitOutput([0, [0]])]
+        axis_split_matrix = [split_0]
+
+    elif split_bind(input0_shape, input2_shape):
+        input_slice_list = [[0, [0], [-1], [-1]], [2, [0], [-1], [-1]]]
+        split_0 = [SplitInput(*input_slice_list), SplitOutput([0, [0]])]
+        axis_split_matrix = [split_0]
+    
+    elif split_bind(input1_shape, input2_shape):
+        input_slice_list = [[0, [0], [-1], [-1]], [1, [0], [-1], [-1]]]
+        split_0 = [SplitInput(*input_slice_list), SplitOutput([0, [0]])]
+        axis_split_matrix = [split_0]
+    
+    return axis_split_matrix
+
+
+def get_op_support_info(input0, input1, input2, output,
+                        kernel_name="fused_mul_add"):
+    """
+    get_op_support_info
+    """
+    input0_shape = list(input0.get('shape'))
+    input1_shape = list(input1.get('shape'))
+    input2_shape = list(input2.get('shape'))
+
+    input_list = [input0, input1, input2]
+    input_shape_list = [input0_shape, input1_shape, input2_shape]
+    input_len_list = [len(input0_shape), len(input1_shape), len(input2_shape)]
+    maxlen_idx = input_len_list.index(max(input_len_list))
+
+    axis_split_matrix = None
+    axis_reduce_list = None
+
+    if input_len_list[maxlen_idx] != 0:
+        for _idx, _input in enumerate(input_list):
+            if _idx != maxlen_idx and input_len_list[_idx] != 0:
+                input_shape_list[_idx] = \
+                update_shape_for_other_format(_input['shape'], 
+                                              _input['format'].upper(),
+                                              _input['ori_shape'],
+                                              input_list[maxlen_idx]['format'].upper())
+
+        axis_split_matrix = get_split_matrix(*input_shape_list)
+    op_cal_info_in_json = get_op_cal_info(axis_split_matrix, axis_reduce_list, 0, 0)
+    return op_cal_info_in_json
 
 
 def op_select_format(input0, input1, input2, output,
@@ -32,8 +126,207 @@ def op_select_format(input0, input1, input2, output,
     _division_sixteen : judge whether the last two dimensions are divided by 16
     scalar2tensor_one : convert scalar to tensor
     """
-    return static_op_select_format(input0, input1, input2, output,
-                                   kernel_name="fused_mul_add")
+    shape_0 = input0.get("ori_shape")
+    shape_1 = input1.get("ori_shape")
+    shape_2 = input2.get("ori_shape")
+
+    shape_0 = shape_util.scalar2tensor_one(shape_0)
+    shape_1 = shape_util.scalar2tensor_one(shape_1)
+    shape_2 = shape_util.scalar2tensor_one(shape_2)
+
+    if _division_sixteen(shape_0) and not _division_sixteen(shape_1) \
+            and not _division_sixteen(shape_2):
+        # Nz+ND+ND
+        input0 = util_select_op_base.gen_param(classify="input0", name="x1",
+                                               datatype="float16,float16,float16,float16,float16,\
+                                     float,float,float,float,float,\
+                                     int32,int32,int32,int32,int32",
+                                               format="NCHW,NC1HWC0,NHWC,ND,FRACTAL_NZ,\
+                                   NCHW,NC1HWC0,NHWC,ND,FRACTAL_NZ,\
+                                   NCHW,NC1HWC0,NHWC,ND,FRACTAL_NZ")
+        input1 = util_select_op_base.gen_param(classify="input1", name="x2",
+                                               datatype="float16,float16,float16,float16,float16,\
+                                     float,float,float,float,float,\
+                                     int32,int32,int32,int32,int32",
+                                               format="NCHW,NC1HWC0,NHWC,ND,ND,\
+                                   NCHW,NC1HWC0,NHWC,ND,ND,\
+                                   NCHW,NC1HWC0,NHWC,ND,ND")
+        input2 = util_select_op_base.gen_param(classify="input2", name="x3",
+                                               datatype="float16,float16,float16,float16,float16,\
+                                     float,float,float,float,float,\
+                                     int32,int32,int32,int32,int32",
+                                               format="NCHW,NC1HWC0,NHWC,ND,ND,\
+                                   NCHW,NC1HWC0,NHWC,ND,ND,\
+                                   NCHW,NC1HWC0,NHWC,ND,ND")
+        output0 = util_select_op_base.gen_param(classify="output0", name="y",
+                                                datatype="float16,float16,float16,float16,float16,\
+                                      float,float,float,float,float,\
+                                      int32,int32,int32,int32,int32",
+                                                format="NCHW,NC1HWC0,NHWC,ND,FRACTAL_NZ,\
+                                    NCHW,NC1HWC0,NHWC,ND,FRACTAL_NZ,\
+                                    NCHW,NC1HWC0,NHWC,ND,FRACTAL_NZ")
+
+    elif _division_sixteen(shape_0) and not _division_sixteen(shape_1) \
+            and _division_sixteen(shape_2):
+        # Nz+ND+Nz
+        input0 = util_select_op_base.gen_param(classify="input0", name="x1",
+                                               datatype="float16,float16,float16,float16,float16,\
+                                     float,float,float,float,float,\
+                                     int32,int32,int32,int32,int32",
+                                               format="NCHW,NC1HWC0,NHWC,ND,FRACTAL_NZ,\
+                                   NCHW,NC1HWC0,NHWC,ND,FRACTAL_NZ,\
+                                   NCHW,NC1HWC0,NHWC,ND,FRACTAL_NZ")
+        input1 = util_select_op_base.gen_param(classify="input1", name="x2",
+                                               datatype="float16,float16,float16,float16,float16,\
+                                     float,float,float,float,float,\
+                                     int32,int32,int32,int32,int32",
+                                               format="NCHW,NC1HWC0,NHWC,ND,ND,\
+                                   NCHW,NC1HWC0,NHWC,ND,ND,\
+                                   NCHW,NC1HWC0,NHWC,ND,ND")
+        input2 = util_select_op_base.gen_param(classify="input2", name="x3",
+                                               datatype="float16,float16,float16,float16,float16,\
+                                     float,float,float,float,float,\
+                                     int32,int32,int32,int32,int32",
+                                               format="NCHW,NC1HWC0,NHWC,ND,FRACTAL_NZ,\
+                                   NCHW,NC1HWC0,NHWC,ND,FRACTAL_NZ,\
+                                   NCHW,NC1HWC0,NHWC,ND,FRACTAL_NZ")
+        output0 = util_select_op_base.gen_param(classify="output0", name="y",
+                                                datatype="float16,float16,float16,float16,float16,\
+                                      float,float,float,float,float,\
+                                      int32,int32,int32,int32,int32",
+                                                format="NCHW,NC1HWC0,NHWC,ND,FRACTAL_NZ,\
+                                    NCHW,NC1HWC0,NHWC,ND,FRACTAL_NZ,\
+                                    NCHW,NC1HWC0,NHWC,ND,FRACTAL_NZ")
+
+    elif not _division_sixteen(shape_0) and _division_sixteen(shape_1) \
+            and not _division_sixteen(shape_2):
+        # ND+NZ+ND
+        input0 = util_select_op_base.gen_param(classify="input0", name="x1",
+                                               datatype="float16,float16,float16,float16,float16,\
+                                     float,float,float,float,float,\
+                                     int32,int32,int32,int32,int32",
+                                               format="NCHW,NC1HWC0,NHWC,ND,ND,\
+                                   NCHW,NC1HWC0,NHWC,ND,ND,\
+                                   NCHW,NC1HWC0,NHWC,ND,ND")
+        input1 = util_select_op_base.gen_param(classify="input1", name="x2",
+                                               datatype="float16,float16,float16,float16,float16,\
+                                     float,float,float,float,float,\
+                                     int32,int32,int32,int32,int32",
+                                               format="NCHW,NC1HWC0,NHWC,ND,FRACTAL_NZ,\
+                                   NCHW,NC1HWC0,NHWC,ND,FRACTAL_NZ,\
+                                   NCHW,NC1HWC0,NHWC,ND,FRACTAL_NZ")
+        input2 = util_select_op_base.gen_param(classify="input2", name="x3",
+                                               datatype="float16,float16,float16,float16,float16,\
+                                     float,float,float,float,float,\
+                                     int32,int32,int32,int32,int32",
+                                               format="NCHW,NC1HWC0,NHWC,ND,ND,\
+                                   NCHW,NC1HWC0,NHWC,ND,ND,\
+                                   NCHW,NC1HWC0,NHWC,ND,ND")
+        output0 = util_select_op_base.gen_param(classify="output0", name="y",
+                                                datatype="float16,float16,float16,float16,float16,\
+                                      float,float,float,float,float,\
+                                      int32,int32,int32,int32,int32",
+                                                format="NCHW,NC1HWC0,NHWC,ND,FRACTAL_NZ,\
+                                    NCHW,NC1HWC0,NHWC,ND,FRACTAL_NZ,\
+                                    NCHW,NC1HWC0,NHWC,ND,FRACTAL_NZ")
+
+    elif not _division_sixteen(shape_0) and _division_sixteen(shape_1) \
+            and _division_sixteen(shape_2):
+        # ND+NZ+NZ
+        input0 = util_select_op_base.gen_param(classify="input0", name="x1",
+                                               datatype="float16,float16,float16,float16,float16,\
+                                     float,float,float,float,float,\
+                                     int32,int32,int32,int32,int32",
+                                               format="NCHW,NC1HWC0,NHWC,ND,ND,\
+                                   NCHW,NC1HWC0,NHWC,ND,ND,\
+                                   NCHW,NC1HWC0,NHWC,ND,ND")
+        input1 = util_select_op_base.gen_param(classify="input1", name="x2",
+                                               datatype="float16,float16,float16,float16,float16,\
+                                     float,float,float,float,float,\
+                                     int32,int32,int32,int32,int32",
+                                               format="NCHW,NC1HWC0,NHWC,ND,FRACTAL_NZ,\
+                                   NCHW,NC1HWC0,NHWC,ND,FRACTAL_NZ,\
+                                   NCHW,NC1HWC0,NHWC,ND,FRACTAL_NZ")
+        input2 = util_select_op_base.gen_param(classify="input2", name="x3",
+                                               datatype="float16,float16,float16,float16,float16,\
+                                     float,float,float,float,float,\
+                                     int32,int32,int32,int32,int32",
+                                               format="NCHW,NC1HWC0,NHWC,ND,FRACTAL_NZ,\
+                                   NCHW,NC1HWC0,NHWC,ND,FRACTAL_NZ,\
+                                   NCHW,NC1HWC0,NHWC,ND,FRACTAL_NZ")
+        output0 = util_select_op_base.gen_param(classify="output0", name="y",
+                                                datatype="float16,float16,float16,float16,float16,\
+                                      float,float,float,float,float,\
+                                      int32,int32,int32,int32,int32",
+                                                format="NCHW,NC1HWC0,NHWC,ND,FRACTAL_NZ,\
+                                    NCHW,NC1HWC0,NHWC,ND,FRACTAL_NZ,\
+                                    NCHW,NC1HWC0,NHWC,ND,FRACTAL_NZ")
+
+    elif not _division_sixteen(shape_0) and not _division_sixteen(shape_1) \
+            and _division_sixteen(shape_2):
+        # ND+ND+NZ
+        input0 = util_select_op_base.gen_param(classify="input0", name="x1",
+                                               datatype="float16,float16,float16,float16,float16,\
+                                     float,float,float,float,float,\
+                                     int32,int32,int32,int32,int32",
+                                               format="NCHW,NC1HWC0,NHWC,ND,ND,\
+                                   NCHW,NC1HWC0,NHWC,ND,ND,\
+                                   NCHW,NC1HWC0,NHWC,ND,ND")
+        input1 = util_select_op_base.gen_param(classify="input1", name="x2",
+                                               datatype="float16,float16,float16,float16,float16,\
+                                     float,float,float,float,float,\
+                                     int32,int32,int32,int32,int32",
+                                               format="NCHW,NC1HWC0,NHWC,ND,ND,\
+                                   NCHW,NC1HWC0,NHWC,ND,ND,\
+                                   NCHW,NC1HWC0,NHWC,ND,ND")
+        input2 = util_select_op_base.gen_param(classify="input2", name="x3",
+                                               datatype="float16,float16,float16,float16,float16,\
+                                     float,float,float,float,float,\
+                                     int32,int32,int32,int32,int32",
+                                               format="NCHW,NC1HWC0,NHWC,ND,FRACTAL_NZ,\
+                                   NCHW,NC1HWC0,NHWC,ND,FRACTAL_NZ,\
+                                   NCHW,NC1HWC0,NHWC,ND,FRACTAL_NZ")
+        output0 = util_select_op_base.gen_param(classify="output0", name="y",
+                                                datatype="float16,float16,float16,float16,float16,\
+                                      float,float,float,float,float,\
+                                      int32,int32,int32,int32,int32",
+                                                format="NCHW,NC1HWC0,NHWC,ND,FRACTAL_NZ,\
+                                    NCHW,NC1HWC0,NHWC,ND,FRACTAL_NZ,\
+                                    NCHW,NC1HWC0,NHWC,ND,FRACTAL_NZ")
+    else:
+        # ND+ND
+        input0 = util_select_op_base.gen_param(classify="input0", name="x1",
+                                               datatype="float16,float16,float16,float16,\
+                                     float,float,float,float,\
+                                     int32,int32,int32,int32",
+                                               format="NCHW,NC1HWC0,NHWC,ND,\
+                                   NCHW,NC1HWC0,NHWC,ND,\
+                                   NCHW,NC1HWC0,NHWC,ND")
+        input1 = util_select_op_base.gen_param(classify="input1", name="x2",
+                                               datatype="float16,float16,float16,float16,\
+                                     float,float,float,float,\
+                                     int32,int32,int32,int32",
+                                               format="NCHW,NC1HWC0,NHWC,ND,\
+                                   NCHW,NC1HWC0,NHWC,ND,\
+                                   NCHW,NC1HWC0,NHWC,ND")
+        input2 = util_select_op_base.gen_param(classify="input2", name="x3",
+                                               datatype="float16,float16,float16,float16,\
+                                     float,float,float,float,\
+                                     int32,int32,int32,int32",
+                                               format="NCHW,NC1HWC0,NHWC,ND,\
+                                   NCHW,NC1HWC0,NHWC,ND,\
+                                   NCHW,NC1HWC0,NHWC,ND")
+        output0 = util_select_op_base.gen_param(classify="output0", name="y",
+                                                datatype="float16,float16,float16,float16,\
+                                      float,float,float,float,\
+                                      int32,int32,int32,int32",
+                                                format="NCHW,NC1HWC0,NHWC,ND,\
+                                   NCHW,NC1HWC0,NHWC,ND,\
+                                   NCHW,NC1HWC0,NHWC,ND")
+
+    param_list = [input0, input1, input2, output0]
+    param_dynamic_in_json = util_select_op_base.get_dynamic_param_in_json(param_list)
+    return param_dynamic_in_json
 
 
 def _shape_broadcast(data_1, data_2):

@@ -1195,6 +1195,7 @@ vector_B:
       - ops/built-in/tbe/impl/elu.py
       - ops/built-in/tbe/impl/equal.py
       - ops/built-in/tbe/impl/exp.py
+      - ops/built-in/tbe/impl/fused_mul_add.py
       - ops/built-in/tbe/impl/fake_quant_with_min_max_vars_gradient.py
       - ops/built-in/tbe/impl/fast_gelu.py
       - ops/built-in/tbe/impl/fills.py
@@ -2523,7 +2524,6 @@ unkown:
       - ops/built-in/tbe/impl/deformable_offsets_grad.py
       - ops/built-in/tbe/impl/max_pool.py
       - ops/built-in/tbe/impl/soft_shrink_grad.py
-      - ops/built-in/tbe/impl/fused_mul_add.py
       - ops/built-in/tbe/impl/fused_mul_add_add.py
       - ops/built-in/tbe/impl/nhwc_2_fractal_z_c04.py
       - ops/built-in/tbe/impl/confusion_transpose_d.py
