@@ -171,6 +171,7 @@ bool getParseInfo(const std::string& opType, const nlohmann::json& opCompileInfo
     // get hardware info and ub/vector fusion utilize
     OP_LOGE_IF(!GetHardwareInfo(opType, opCompileInfo, "hardware_info", opInfo), false, opType, "Get hardware failed!");
     OP_LOGE_IF(!GetFusionUtilize(opType, opCompileInfo, "fusion_utilize", opInfo), false, opType, "Get fusion failed!");
+    OP_LOGE_IF(opInfo.tilingType == "binary", true, opType, "No need parse varMap for binary mode!");
     // get varMap
     if (opCompileInfo.count("_vars") == 0) {
         GELOGD("Op compile info json doesn't contain _vars info.");
@@ -218,6 +219,7 @@ bool getFuzzyBuildParseInfo(const std::string& opType, const nlohmann::json& opC
         CUBE_INNER_ERR_REPORT(opType.c_str(),
             "Conv2DTilingParseFunc, getFuzzyBuildParseInfo, get firstOpCompileInfo error."),
         return false);
+    OP_LOGE_IF(opInfo.tilingType == "binary", true, opType, "No need parse varMap for binary mode!");
     for (size_t i = 1; i < opCompileInfo.size(); i++) {
         auto& info = opCompileInfo[i];
         if (info.count("_vars") == 0 ||
