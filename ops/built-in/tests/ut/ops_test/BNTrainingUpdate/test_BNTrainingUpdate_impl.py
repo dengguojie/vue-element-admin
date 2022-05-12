@@ -2,6 +2,7 @@
 # -*- coding: UTF-8 -*-
 
 from op_test_frame.ut import OpUT
+import json
 ut_case = OpUT("BNTrainingUpdate", "impl.bn_training_update", "bn_training_update")
 
 def gen_bn_training_update_case(shape_x, shape_sum, shape_square_sum, shape_scale, shape_offset,
@@ -49,6 +50,36 @@ case2 = gen_bn_training_update_case2((2,1,2,5,5,16), (1,1,2,1,1,16), (1,1,2,1,1,
 
 ut_case.add_case(["Ascend910A"], case1)
 ut_case.add_case(["Ascend910A"], case2)
+
+def test_get_op_support_info(test_arg):
+    from impl.bn_training_update import get_op_support_info
+    res = get_op_support_info({"shape":(2,1,2,5,5,16), "ori_shape": (2,1,2,5,5,16), "dtype":"float16", "format":"NC1HWC0", "ori_format":"NC1HWC0"},
+                        {"shape":(1,4,1,1,16), "ori_shape": (1,4,1,1,16), "dtype":"float32", "format":"NC1HWC0", "ori_format":"NC1HWC0"},
+                        {"shape":(1,4,1,1,16), "ori_shape": (1,4,1,1,16), "dtype":"float32", "format":"NC1HWC0", "ori_format":"NC1HWC0"},
+                        {"shape":(1,4,1,1,16), "ori_shape": (1,4,1,1,16), "dtype":"float32", "format":"NC1HWC0", "ori_format":"NC1HWC0"},
+                        {"shape":(1,4,1,1,16), "ori_shape": (1,4,1,1,16), "dtype":"float32", "format":"NC1HWC0", "ori_format":"NC1HWC0"},
+                        {"shape":(1,4,1,1,16), "ori_shape": (1,4,1,1,16), "dtype":"float32", "format":"NC1HWC0", "ori_format":"NC1HWC0"},
+                        {"shape":(1,4,1,1,16), "ori_shape": (1,4,1,1,16), "dtype":"float32", "format":"NC1HWC0", "ori_format":"NC1HWC0"},
+                        {"shape":(2,1,2,5,5,16), "ori_shape": (2,1,2,5,5,16), "dtype":"float16", "format":"NC1HWC0", "ori_format":"NC1HWC0"},
+                        {"shape":(1,4,1,1,16), "ori_shape": (1,4,1,1,16), "dtype":"float32", "format":"NC1HWC0", "ori_format":"NC1HWC0"},
+                        {"shape":(1,4,1,1,16), "ori_shape": (1,4,1,1,16), "dtype":"float32", "format":"NC1HWC0", "ori_format":"NC1HWC0"},
+                        {"shape":(1,4,1,1,16), "ori_shape": (1,4,1,1,16), "dtype":"float32", "format":"NC1HWC0", "ori_format":"NC1HWC0"},
+                        {"shape":(1,4,1,1,16), "ori_shape": (1,4,1,1,16), "dtype":"float32", "format":"NC1HWC0", "ori_format":"NC1HWC0"},
+                        0.2, 0.0001)
+    split_maps = json.loads(res).get("_op_slice_info").get("splitMaps")
+    assert len(split_maps) == 1
+    for item in split_maps:
+        input_list = item.get("inputList")
+        assert len(input_list) == 1
+        idx = input_list[0].get("idx")
+        assert idx == 0
+        axis = input_list[0].get("axis")
+        assert axis == [0]
+        headOverLap = input_list[0].get("headOverLap")
+        assert headOverLap == [-1]
+        tailOverLap = input_list[0].get("tailOverLap")
+        assert tailOverLap == [-1]
+ut_case.add_cust_test_func(test_func=test_get_op_support_info)
 
 if __name__ == '__main__':
     ut_case.run("Ascend910A")

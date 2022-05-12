@@ -3,6 +3,7 @@
 
 from op_test_frame.common import precision_info
 from op_test_frame.ut import OpUT
+import json
 
 ut_case = OpUT("BnTrainingReduceGrad", None, None)
 
@@ -37,7 +38,36 @@ def test_get_op_support_info(test_arg):
          "ori_format": "NDC1HWC0"},
         {"shape": (1, 1, 2, 1, 1, 16), "ori_shape": (1, 1, 2, 1, 1, 16), "dtype": "float16", "format": "NDC1HWC0",
          "ori_format": "NDC1HWC0"}, 0.001)
-
+    res = get_op_support_info({"shape": (2, 3, 2, 2, 2, 16), "ori_shape": (2, 3, 2, 2, 2, 16), "dtype": "float16", "format": "NC1HWC0", "ori_format": "NC1HWC0"},
+                        {"shape": (2, 3, 2, 2, 2, 16), "ori_shape": (2, 3, 2, 2, 2, 16), "dtype": "float16", "format": "NC1HWC0", "ori_format": "NC1HWC0"},
+                        {"shape": (1, 1, 2, 1, 1, 16), "ori_shape": (1, 1, 2, 1, 1, 16), "dtype": "float32", "format": "NC1HWC0", "ori_format": "NC1HWC0"},
+                        {"shape": (1, 1, 2, 1, 1, 16), "ori_shape": (1, 1, 2, 1, 1, 16), "dtype": "float32", "format": "NC1HWC0", "ori_format": "NC1HWC0"},
+                        {"shape": (1, 1, 2, 1, 1, 16), "ori_shape": (1, 1, 2, 1, 1, 16), "dtype": "float32", "format": "NC1HWC0", "ori_format": "NC1HWC0"},
+                        {"shape": (1, 1, 2, 1, 1, 16), "ori_shape": (1, 1, 2, 1, 1, 16), "dtype": "float32", "format": "NC1HWC0", "ori_format": "NC1HWC0"},
+                        {"shape": (1, 1, 2, 1, 1, 16), "ori_shape": (1, 1, 2, 1, 1, 16), "dtype": "float32", "format": "NC1HWC0", "ori_format": "NC1HWC0"},
+                        {"shape": (2, 3, 2, 2, 2, 16), "ori_shape": (2, 3, 2, 2, 2, 16), "dtype": "float16", "format": "NC1HWC0", "ori_format": "NC1HWC0"},
+                        0.001)
+    split_maps = json.loads(res).get("_op_slice_info").get("splitMaps")
+    assert len(split_maps) == 1
+    for item in split_maps:
+        input_list = item.get("inputList")
+        assert len(input_list) == 2
+        idx = input_list[0].get("idx")
+        assert idx == 0
+        axis = input_list[0].get("axis")
+        assert axis == [0]
+        headOverLap = input_list[0].get("headOverLap")
+        assert headOverLap == [-1]
+        tailOverLap = input_list[0].get("tailOverLap")
+        assert tailOverLap == [-1]
+        idx = input_list[1].get("idx")
+        assert idx == 1
+        axis = input_list[1].get("axis")
+        assert axis == [0]
+        headOverLap = input_list[1].get("headOverLap")
+        assert headOverLap == [-1]
+        tailOverLap = input_list[1].get("tailOverLap")
+        assert tailOverLap == [-1]
 
 def gen_bn_training_reduce_grad_case(shape_grads, shape_x_norm, shape_diff_scale, shape_diff_offset, shape_scale,
                                      shape_batch_variance, dtype, dtype_others, case_name_val):

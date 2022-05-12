@@ -3,6 +3,7 @@
 
 from op_test_frame.ut import OpUT
 from op_test_frame.common import precision_info
+import json
 ut_case = OpUT("BnTrainingReduce", None, None)
 
 def gen_BNTrainingReduce_case(shape_x, shape_sum, shape_square, dtype, format, case_name_val):
@@ -32,6 +33,25 @@ def test_op_select_format(test_arg):
                      {"shape": (1,2,1,1), "dtype": "float16", "format": "NCHW", "ori_shape": (1,2,1,1),"ori_format": "NCHW"},
                      {"shape": (1,2,1,1), "dtype": "float16", "format": "NCHW", "ori_shape": (1,2,1,1),"ori_format": "NCHW"})
 
+def test_get_op_support_info(test_arg):
+    from impl.bn_training_reduce import get_op_support_info
+    res = get_op_support_info({"shape": (2,2,2,2,16), "dtype": "float16", "ori_shape": (2,2,2,2,16), "ori_format": "NC1HWC0", "format": "NC1HWC0"},
+                        {"shape": (1,2,1,1,16), "dtype": "float16", "ori_shape": (1,2,1,1,16), "ori_format": "NC1HWC0", "format": "NC1HWC0"},
+                        {"shape": (1,2,1,1,16), "dtype": "float16", "ori_shape": (1,2,1,1,16), "ori_format": "NC1HWC0", "format": "NC1HWC0"})
+    split_maps = json.loads(res).get("_op_slice_info").get("splitMaps")
+    assert len(split_maps) == 1
+    for item in split_maps:
+        input_list = item.get("inputList")
+        assert len(input_list) == 1
+        idx = input_list[0].get("idx")
+        assert idx == 0
+        axis = input_list[0].get("axis")
+        assert axis == [1]
+        headOverLap = input_list[0].get("headOverLap")
+        assert headOverLap == [-1]
+        tailOverLap = input_list[0].get("tailOverLap")
+        assert tailOverLap == [-1]
+
 ut_case.add_case(["Ascend910A", "Ascend310"], case1)
 ut_case.add_case(["Ascend910A", "Ascend310"], case2)
 ut_case.add_case(["Ascend910A", "Ascend310"], case3)
@@ -40,6 +60,7 @@ ut_case.add_case(["Ascend910A", "Ascend310"], case5)
 ut_case.add_case(["Ascend910A", "Ascend310"], case6)
 ut_case.add_case(["Ascend910A", "Ascend310"], case7)
 ut_case.add_cust_test_func(test_func=test_op_select_format)
+ut_case.add_cust_test_func(test_func=test_get_op_support_info)
 if __name__ == '__main__':
     ut_case.run("Ascend910A")
     ut_case.run("Ascend310")

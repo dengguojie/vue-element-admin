@@ -990,9 +990,12 @@ vector_B:
       - ops/built-in/tbe/impl/asinh.py
       - ops/built-in/tbe/impl/bn_infer.py
       - ops/built-in/tbe/impl/bn_infer_grad.py
+      - ops/built-in/tbe/impl/bn_training_update.py
       - ops/built-in/tbe/impl/bn_training_update_grad.py
       - ops/built-in/tbe/impl/bn_training_update_v2.py
       - ops/built-in/tbe/impl/bn_training_update_v3.py
+      - ops/built-in/tbe/impl/bn_training_reduce.py
+      - ops/built-in/tbe/impl/bn_training_reduce_grad.py
       - ops/built-in/tbe/impl/cast.py
       - ops/built-in/tbe/impl/clip_by_norm_no_div_sum.py
       - ops/built-in/tbe/impl/clip_by_value.py
@@ -2275,7 +2278,6 @@ unkown:
       - ops/built-in/tbe/impl/reduce_mean_variance.py
       - ops/built-in/tbe/impl/lstm_input_grad.py
       - ops/built-in/tbe/impl/data_format_dim_map.py
-      - ops/built-in/tbe/impl/bn_training_update.py
       - ops/built-in/tbe/impl/rpn_proposals_d_mdc_v200.py
       - ops/built-in/tbe/impl/stn_pre.py
       - ops/built-in/tbe/impl/grid_unnormal.py
@@ -2415,7 +2417,6 @@ unkown:
       - ops/built-in/tbe/impl/ncdhw_2_fractal_z_3d.py
       - ops/built-in/tbe/impl/rsqrt.py
       - ops/built-in/tbe/impl/sparse_apply_common.py
-      - ops/built-in/tbe/impl/bn_training_reduce_grad.py
       - ops/built-in/tbe/impl/batch_to_space_d.py
       - ops/built-in/tbe/impl/reduce_all_d.py
       - ops/built-in/tbe/impl/decode_wheels_target.py
@@ -2508,7 +2509,6 @@ unkown:
       - ops/built-in/tbe/impl/yolo_v5_cls_prob.py
       - ops/built-in/tbe/impl/tik_op_base.py
       - ops/built-in/tbe/impl/expand_d.py
-      - ops/built-in/tbe/impl/bn_training_reduce.py
       - ops/built-in/tbe/impl/asin.py
       - ops/built-in/tbe/impl/avg_pool3d_d.py
       - ops/built-in/tbe/impl/internal_data_move.py

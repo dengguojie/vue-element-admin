@@ -36,10 +36,8 @@ def get_op_support_info(grads, x, diff_scale, diff_offset, scale,
     get_op_support_info
     """
     format_grads = grads.get("format").upper()
-    if format_grads == "NC1HWC0" or format_grads == "NCHW":
-        axis_split_matrix = [[SplitInput([0, [1], [-1], [-1]], [1, [1], [-1], [-1]], [2, [0], [-1], [-1]], \
-                                         [3, [0], [-1], [-1]], [4, [0], [-1], [-1]], [5, [0], [-1], [-1]], \
-                                         [6, [0], [-1], [-1]]), SplitOutput([0, [1]])]]
+    if format_grads == "NC1HWC0":
+        axis_split_matrix = [[SplitInput([0, [0], [-1], [-1]], [1, [0], [-1], [-1]]), SplitOutput([0, [0]])]]
 
     else:
         axis_split_matrix = None

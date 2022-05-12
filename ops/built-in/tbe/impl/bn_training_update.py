@@ -52,10 +52,7 @@ def get_op_support_info(x,
     """
     format_x = x.get("format").upper()
     if format_x == "NC1HWC0":
-        axis_split_matrix = [[SplitInput([0, [1], [-1], [-1]], [1, [1], [-1], [-1]], [2, [1], [-1], [-1]], \
-                                         [3, [1], [-1], [-1]], [4, [1], [-1], [-1]], [5, [1], [-1], [-1]], \
-                                         [6, [1], [-1], [-1]]), \
-                              SplitOutput([0, [1]], [1, [1]], [2, [1]], [3, [1]], [4, [1]])]]
+        axis_split_matrix = [[SplitInput([0, [0], [-1], [-1]]), SplitOutput([0, [0]])]]
 
     else:
         axis_split_matrix = None
