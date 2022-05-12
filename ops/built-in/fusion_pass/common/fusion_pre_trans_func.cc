@@ -29,8 +29,8 @@ namespace fe {
 static const string kFusedPreTrans = "FusedTransdataBeforeCube";
 static const char kOpTypeTransdata[] = "TransData";
 static const std::unordered_map<ge::Format, std::unordered_set<ge::Format>> kSupportTransFormat = {
-  {ge::FORMAT_ND, {ge::FORMAT_FRACTAL_NZ}},
-  {ge::FORMAT_NHWC, {ge::FORMAT_NC1HWC0, ge::FORMAT_FRACTAL_Z}}
+    {ge::FORMAT_ND, {ge::FORMAT_FRACTAL_NZ}},
+    {ge::FORMAT_NHWC, {ge::FORMAT_NC1HWC0, ge::FORMAT_FRACTAL_Z}}
 };
 static const int64_t kMaxSupportLength = 65536;
 

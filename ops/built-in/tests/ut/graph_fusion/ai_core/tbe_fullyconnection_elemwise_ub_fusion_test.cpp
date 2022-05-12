@@ -393,3 +393,4 @@ TEST_F(TbeFullyconnectionElemwiseFusionPassTest, tbe_fullyconnection_elemwise_fu
   fe::PlatformInfoManager::Instance().platform_info_map_.clear();
   EXPECT_EQ(res, fe::SUCCESS);
 }
+
