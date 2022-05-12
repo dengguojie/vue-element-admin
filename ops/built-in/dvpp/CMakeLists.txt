@@ -14,14 +14,6 @@ if(NOT ENABLE_TEST)
 
   file(MAKE_DIRECTORY "${DVPP_JSON_OUT_PATH}")
 
-  add_custom_command(OUTPUT "${DVPP_JSON_OUT_PATH}/dvpp_kernel.json"
-    COMMAND "${HI_PYTHON}" "${INI_PARSER}"
-    "${CMAKE_CURRENT_SOURCE_DIR}/op_info_cfg/dvpp_kernel/dvpp_kernel.ini"
-    "${DVPP_JSON_OUT_PATH}/dvpp_kernel.json"
-    "${CUSTOM_FLAG}" 1>/dev/null
-    COMMENT "Parsing dvpp_kernel.ini file"
-  )
-
   add_custom_command(OUTPUT "${DVPP_JSON_OUT_PATH}/dvpp_ops_info_ascend710.json"
     COMMAND "${HI_PYTHON}" "${INI_PARSER}"
     "${CMAKE_CURRENT_SOURCE_DIR}/op_info_cfg/dvpp_ops_info_ascend710.ini"
@@ -38,7 +30,6 @@ if(NOT ENABLE_TEST)
     COMMENT "Parsing dvpp_ops_info_ascend920.ini file"
   )
 
-  list(APPEND ALL_JSON_FILES "${DVPP_JSON_OUT_PATH}/dvpp_kernel.json")
   list(APPEND ALL_JSON_FILES "${DVPP_JSON_OUT_PATH}/dvpp_ops_info_ascend710.json")
   list(APPEND ALL_JSON_FILES "${DVPP_JSON_OUT_PATH}/dvpp_ops_info_ascend920.json")
   set(DVPP_OP_PATH "${INSTALL_PATH}/opp/op_impl/built-in")
@@ -47,11 +38,6 @@ if(NOT ENABLE_TEST)
     DEPENDS ${ALL_JSON_FILES}
   )
   if(BUILD_OPEN_PROJECT)
-    cann_install(
-      TARGET      dvpp_ops_json_info
-      FILES       "${DVPP_JSON_OUT_PATH}/dvpp_kernel.json"
-      DESTINATION "${DVPP_OP_PATH}/dvpp/dvpp_kernel/config"
-    )
     cann_install(
       TARGET      dvpp_ops_json_info
       FILES       "${DVPP_JSON_OUT_PATH}/dvpp_ops_info_ascend710.json"
