@@ -1001,6 +1001,7 @@ vector_B:
       - ops/built-in/tbe/impl/clip_by_value.py
       - ops/built-in/tbe/impl/combined_non_max_suppression.py
       - ops/built-in/tbe/impl/diag_d.py
+      - ops/built-in/tbe/impl/max_pool_with_argmax.py
       - ops/built-in/tbe/impl/dynamic/__init__.py
       - ops/built-in/tbe/impl/dynamic/abs.py
       - ops/built-in/tbe/impl/dynamic/accumulate_nv2.py
@@ -2397,7 +2398,6 @@ unkown:
       - ops/built-in/tbe/impl/normalize_bbox.py
       - ops/built-in/tbe/impl/ascend_dequant.py
       - ops/built-in/tbe/impl/bn3d_training_update.py
-      - ops/built-in/tbe/impl/max_pool_with_argmax.py
       - ops/built-in/tbe/impl/normalize_scale.py
       - ops/built-in/tbe/impl/apply_adagrad_da_d.py
       - ops/built-in/tbe/impl/score_filter_pre_sort.py

@@ -2176,78 +2176,76 @@ class MaxPoolWithargmax():
 
     def _img2col(self, h_index, fmap_img2col_ub,
                  ori_ub_input, w_size, ori_ub_scalar):
-        out_size_h = (ori_ub_input.shape[0] - self.window_h + self.stride_h) // self.stride_h
-
         repeat = self.window_w * SCALAR_C0 // MASK
         remain = self.window_w * SCALAR_C0 % MASK
 
         with self.tik_instance.for_range(0, self.window_h) as h_rep:
             with self.tik_instance.for_range(0, SCALAR_C0) as b_rep:
-                cur_block = h_index * SCALAR_C0 + b_rep
-                with self.tik_instance.if_scope(cur_block < self.out_size_w * out_size_h):
-                    if repeat > 0:
-                        with self.tik_instance.for_range(0, repeat) as idx:
-                            with self.tik_instance.if_scope(
-                                (self.scalar_source_w + self.stride_w * b_rep) // self.stride_w >= self.out_size_w):
-                                source_h_new = self.scalar_source_h + self.stride_h + h_rep
-                                source_w_new = ((self.scalar_source_w + self.stride_w * b_rep) // self.stride_w) % \
-                                                 self.out_size_w * self.stride_w + idx * MASK // SCALAR_C0
-                                
-                                with self.tik_instance.if_scope((source_h_new * w_size + source_w_new) * SCALAR_C0 <
-                                                                 ori_ub_scalar):
-                                    self.tik_instance.vadds(MASK, fmap_img2col_ub[h_index * SCALAR_C0 * SCALAR_C0 *
-                                                                                  self.fmap_img2col_w +
-                                                                                  h_rep * self.window_w *
-                                                                                  SCALAR_C0 * SCALAR_C0 + b_rep *
-                                                                                  SCALAR_C0 + idx * MASK * SCALAR_C0],
-                                                            ori_ub_input[(source_h_new * w_size +
-                                                                          source_w_new) * SCALAR_C0],
-                                                            self.tik_instance.Scalar(dtype="float16", init_value=0.0),
-                                                            1, 16, 1, 0, 0)
-
-                            with self.tik_instance.else_scope():
+                if repeat > 0:
+                    with self.tik_instance.for_range(0, repeat) as idx:
+                        with self.tik_instance.if_scope(
+                            (self.scalar_source_w + self.stride_w * b_rep) // self.stride_w >= self.out_size_w):
+                            times = (self.scalar_source_w + self.stride_w * b_rep) // self.stride_w // self.out_size_w
+                            source_h_new = self.scalar_source_h + self.stride_h * times + h_rep
+                            source_w_new = ((self.scalar_source_w + self.stride_w * b_rep) // self.stride_w) % \
+                                             self.out_size_w * self.stride_w + idx * MASK // SCALAR_C0
+                            
+                            with self.tik_instance.if_scope((source_h_new * w_size + source_w_new) * SCALAR_C0 <
+                                                                ori_ub_scalar):
                                 self.tik_instance.vadds(MASK, fmap_img2col_ub[h_index * SCALAR_C0 * SCALAR_C0 *
                                                                               self.fmap_img2col_w +
                                                                               h_rep * self.window_w *
                                                                               SCALAR_C0 * SCALAR_C0 + b_rep *
                                                                               SCALAR_C0 + idx * MASK * SCALAR_C0],
-                                                            ori_ub_input[(self.scalar_source_h * w_size +
-                                                                          self.scalar_source_w + w_size * h_rep +
-                                                                          self.stride_w * b_rep) *
-                                                                          SCALAR_C0 + idx * MASK],
-                                                            self.tik_instance.Scalar(dtype="float16", init_value=0.0),
-                                                            1, 16, 1, 0, 0)
-
-                    if remain > 0:
-                        with self.tik_instance.if_scope(
-                            (self.scalar_source_w + self.stride_w * b_rep) // self.stride_w >= self.out_size_w):
-                            source_h_new = self.scalar_source_h + self.stride_h + h_rep
-                            source_w_new = ((self.scalar_source_w + self.stride_w * b_rep) // self.stride_w) % \
-                                            self.out_size_w * self.stride_w + repeat * MASK // SCALAR_C0
-                            
-                            with self.tik_instance.if_scope((source_h_new * w_size + source_w_new) * SCALAR_C0 <
-                                                             ori_ub_scalar):
-                                    self.tik_instance.vadds(remain, fmap_img2col_ub[h_index * SCALAR_C0 * SCALAR_C0 *
-                                                                                    self.fmap_img2col_w +
-                                                                                    h_rep * self.window_w *
-                                                                                    SCALAR_C0 * SCALAR_C0 + b_rep *
-                                                                                    SCALAR_C0 + repeat *
-                                                                                    MASK * SCALAR_C0],
-                                                            ori_ub_input[(source_h_new * w_size +
-                                                                          source_w_new) * SCALAR_C0],
-                                                            self.tik_instance.Scalar(dtype="float16", init_value=0.0),
-                                                            1, 16, 1, 0, 0)
+                                                        ori_ub_input[(source_h_new * w_size +
+                                                                      source_w_new) * SCALAR_C0],
+                                                        self.tik_instance.Scalar(dtype="float16", init_value=0.0),
+                                                        1, 16, 1, 0, 0)
 
                         with self.tik_instance.else_scope():
-                            self.tik_instance.vadds(remain, fmap_img2col_ub[h_index * SCALAR_C0 * SCALAR_C0 *
-                                                                            self.fmap_img2col_w +
-                                                                            h_rep * self.window_w *
-                                                                            SCALAR_C0 * SCALAR_C0 + b_rep *
-                                                                            SCALAR_C0 + repeat *
-                                                                            MASK * SCALAR_C0],
+                            self.tik_instance.vadds(MASK, fmap_img2col_ub[h_index * SCALAR_C0 * SCALAR_C0 *
+                                                                          self.fmap_img2col_w +
+                                                                          h_rep * self.window_w *
+                                                                          SCALAR_C0 * SCALAR_C0 + b_rep *
+                                                                          SCALAR_C0 + idx * MASK * SCALAR_C0],
                                                         ori_ub_input[(self.scalar_source_h * w_size +
                                                                       self.scalar_source_w + w_size * h_rep +
                                                                       self.stride_w * b_rep) *
-                                                                      SCALAR_C0 + repeat * MASK],
+                                                                      SCALAR_C0 + idx * MASK],
                                                         self.tik_instance.Scalar(dtype="float16", init_value=0.0),
                                                         1, 16, 1, 0, 0)
+
+                if remain > 0:
+                    with self.tik_instance.if_scope(
+                        (self.scalar_source_w + self.stride_w * b_rep) // self.stride_w >= self.out_size_w):
+                        times = (self.scalar_source_w + self.stride_w * b_rep) // self.stride_w // self.out_size_w
+                        source_h_new = self.scalar_source_h + self.stride_h * times + h_rep
+                        source_w_new = ((self.scalar_source_w + self.stride_w * b_rep) // self.stride_w) % \
+                                        self.out_size_w * self.stride_w + repeat * MASK // SCALAR_C0
+                        
+                        with self.tik_instance.if_scope((source_h_new * w_size + source_w_new) * SCALAR_C0 <
+                                                         ori_ub_scalar):
+                                self.tik_instance.vadds(remain, fmap_img2col_ub[h_index * SCALAR_C0 * SCALAR_C0 *
+                                                                                self.fmap_img2col_w +
+                                                                                h_rep * self.window_w *
+                                                                                SCALAR_C0 * SCALAR_C0 + b_rep *
+                                                                                SCALAR_C0 + repeat *
+                                                                                MASK * SCALAR_C0],
+                                                        ori_ub_input[(source_h_new * w_size +
+                                                                      source_w_new) * SCALAR_C0],
+                                                        self.tik_instance.Scalar(dtype="float16", init_value=0.0),
+                                                        1, 16, 1, 0, 0)
+
+                    with self.tik_instance.else_scope():
+                        self.tik_instance.vadds(remain, fmap_img2col_ub[h_index * SCALAR_C0 * SCALAR_C0 *
+                                                                        self.fmap_img2col_w +
+                                                                        h_rep * self.window_w *
+                                                                        SCALAR_C0 * SCALAR_C0 + b_rep *
+                                                                        SCALAR_C0 + repeat *
+                                                                        MASK * SCALAR_C0],
+                                                    ori_ub_input[(self.scalar_source_h * w_size +
+                                                                  self.scalar_source_w + w_size * h_rep +
+                                                                  self.stride_w * b_rep) *
+                                                                  SCALAR_C0 + repeat * MASK],
+                                                    self.tik_instance.Scalar(dtype="float16", init_value=0.0),
+                                                    1, 16, 1, 0, 0)

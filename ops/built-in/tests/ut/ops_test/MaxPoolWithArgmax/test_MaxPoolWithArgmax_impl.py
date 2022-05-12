@@ -85,6 +85,16 @@ case7 = {"params": [{"shape": (2,2,17,52,16), "dtype": "float16", "format": "NHW
          "expect": "success",
          "format_expect": [],
          "support_expect": True}
+case8 = {"params": [{"shape": (8,1,32,3,16), "dtype": "float16", "format": "NHWC", "ori_shape": (8,1,32,3,16),"ori_format": "NHWC"},
+                    {"shape": (8,1,4,3,16), "dtype": "float16", "format": "NHWC", "ori_shape": (8,1,4,3,16),"ori_format": "NHWC"},
+                    {"shape": (8,1,26,32), "dtype": "uint16", "format": "NHWC", "ori_shape": (8,1,26,32),"ori_format": "NHWC"},
+                    [1, 13, 2, 1],
+                    [1, 8, 1, 1],
+                    "SAME"],
+         "case_name": "max_pool_with_arxmax_8",
+         "expect": "success",
+         "format_expect": [],
+         "support_expect": True}
 
 #def test_max_pool_with_argmax_resnet50(test_arg):
 #
@@ -115,6 +125,7 @@ ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case4)
 # ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case5)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case6)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case7)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case8)
 #ut_case.add_cust_test_func(test_func=test_max_pool_with_argmax_resnet50)
 
 from impl.max_pool_with_argmax import check_supported
