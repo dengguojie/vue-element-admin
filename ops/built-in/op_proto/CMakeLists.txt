@@ -199,6 +199,11 @@ if(ENABLE_TEST STREQUAL "")
       EXPORT  opsproto-targets
       LIBRARY DESTINATION ${INSTALL_LIBRARY_DIR}
     )
+    install(
+      DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/inc
+      DESTINATION "${INSTALL_LIBRARY_DIR}/op_proto_inc"
+      PATTERN "OWNERS" EXCLUDE
+    )
   endif()
 elseif(UT_TEST_ALL OR PROTO_UT OR PASS_UT OR PLUGIN_UT OR ONNX_PLUGIN_UT)
   add_library(opsproto_llt STATIC
