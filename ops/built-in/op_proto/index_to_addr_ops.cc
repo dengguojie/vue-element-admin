@@ -18,7 +18,7 @@
  * \file index_to_addr_ops.cpp
  * \brief
  */
-#include "inc/index_to_addr_ops.h"
+#include "inc/vector_search.h"
 
 #include <vector>
 

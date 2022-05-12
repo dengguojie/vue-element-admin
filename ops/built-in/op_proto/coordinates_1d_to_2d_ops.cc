@@ -18,7 +18,7 @@
  * \file coordinates_1d_to_2d_ops.cpp
  * \brief
  */
-#include "inc/coordinates_1d_to_2d_ops.h"
+#include "inc/vector_search.h"
 
 #include <vector>
 

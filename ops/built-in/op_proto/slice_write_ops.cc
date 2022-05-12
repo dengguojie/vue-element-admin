@@ -18,7 +18,7 @@
  * \file slice_write_ops.cpp
  * \brief
  */
-#include "inc/slice_write_ops.h"
+#include "inc/vector_search.h"
 
 #include <vector>
 

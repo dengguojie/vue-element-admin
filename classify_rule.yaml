@@ -22,6 +22,12 @@ aicpu:
     release:
       - ops/built-in/aicpu/
       - ops/built-in/op_proto/array_ops.cc
+      - ops/built-in/op_proto/case_condition_ops.cc
+      - ops/built-in/op_proto/coordinates_1d_to_2d_ops.cc
+      - ops/built-in/op_proto/inc/vector_search.h
+      - ops/built-in/op_proto/index_to_addr_ops.cc
+      - ops/built-in/op_proto/slice_write_ops.cc
+
     unrelease:
   llt:
     ut_check: true
@@ -2090,7 +2096,6 @@ unkown:
       - ops/built-in/op_proto/act_ulq_clamp_max_grad.cc
       - ops/built-in/op_proto/warp_perspective_ops.cc
       - ops/built-in/op_proto/string_ops.cc
-      - ops/built-in/op_proto/case_condition_ops.cc
       - ops/built-in/op_proto/acts_ulq.cc
       - ops/built-in/op_proto/nn_training_ops.cc
       - ops/built-in/op_proto/random_ops.cc
@@ -2114,9 +2119,7 @@ unkown:
       - ops/built-in/op_proto/resource_variable_ops.cc
       - ops/built-in/op_proto/reduce_ops.cc
       - ops/built-in/op_proto/list_ops.cc
-      - ops/built-in/op_proto/coordinates_1d_to_2d_ops.cc
       - ops/built-in/op_proto/acts_ulq_input_grad.cc
-      - ops/built-in/op_proto/index_to_addr_ops.cc
       - ops/built-in/op_proto/math_ops.cc
       - ops/built-in/op_proto/ctc_ops.cc
       - ops/built-in/op_proto/pad_ops.cc
@@ -2138,7 +2141,6 @@ unkown:
       - ops/built-in/op_proto/linalg_ops.cc
       - ops/built-in/op_proto/nn_other_ops.cc
       - ops/built-in/op_proto/sparse_ops.cc
-      - ops/built-in/op_proto/slice_write_ops.cc
       - ops/built-in/op_proto/lookup_ops.cc
       - ops/built-in/op_proto/npu_loss_scale_ops.cc
       - ops/built-in/op_proto/inc/ragged_conversion_ops.h
@@ -2154,20 +2156,17 @@ unkown:
       - ops/built-in/op_proto/inc/aipp.h
       - ops/built-in/op_proto/inc/candidate_sampling_ops.h
       - ops/built-in/op_proto/inc/nn_batch_norm_ops.h
-      - ops/built-in/op_proto/inc/vector_search.h
       - ops/built-in/op_proto/inc/ctc_ops.h
       - ops/built-in/op_proto/inc/sdca_ops.h
       - ops/built-in/op_proto/inc/deep_md.h
       - ops/built-in/op_proto/inc/all_ops.h
       - ops/built-in/op_proto/inc/transformation_ops.h
-      - ops/built-in/op_proto/inc/coordinates_1d_to_2d_ops.h
       - ops/built-in/op_proto/inc/selection_ops.h
       - ops/built-in/op_proto/inc/functional_ops.h
       - ops/built-in/op_proto/inc/hvd_ops.h
       - ops/built-in/op_proto/inc/elewise_calculation_ops.h
       - ops/built-in/op_proto/inc/boosted_trees_ops.h
       - ops/built-in/op_proto/inc/spectral_ops.h
-      - ops/built-in/op_proto/inc/case_condition_ops.h
       - ops/built-in/op_proto/inc/nn_ops.h
       - ops/built-in/op_proto/inc/lookup_ops.h
       - ops/built-in/op_proto/inc/logging_ops.h
@@ -2176,7 +2175,6 @@ unkown:
       - ops/built-in/op_proto/inc/npu_loss_scale_ops.h
       - ops/built-in/op_proto/inc/hcom_ops.h
       - ops/built-in/op_proto/inc/string_ops.h
-      - ops/built-in/op_proto/inc/slice_write_ops.h
       - ops/built-in/op_proto/inc/condtake_ops.h
       - ops/built-in/op_proto/inc/internal_ops.h
       - ops/built-in/op_proto/inc/nn_norm_ops.h
@@ -2188,7 +2186,6 @@ unkown:
       - ops/built-in/op_proto/inc/nonlinear_fuc_ops.h
       - ops/built-in/op_proto/inc/ragged_math_ops.h
       - ops/built-in/op_proto/inc/list_ops.h
-      - ops/built-in/op_proto/inc/index_to_addr_ops.h
       - ops/built-in/op_proto/inc/avg_pool_1d_ops.h
       - ops/built-in/op_proto/inc/resource_variable_ops.h
       - ops/built-in/op_proto/inc/ragged_array_ops.h
