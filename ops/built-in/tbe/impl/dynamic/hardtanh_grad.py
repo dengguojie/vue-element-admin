@@ -139,13 +139,10 @@ def hardtanh_grad(result, grad, y, min_val, max_val, kernel_name="hardtanh_grad"
     if grad_dtype != result_dtype:
         raise RuntimeError("grad datatype %s and result datatype %s should be equal!" % (grad_dtype, result_dtype))
 
-    if result_shape != grad_shape:
-        raise RuntimeError("grad shape %s and result shape %s should be equal!" % (grad_shape, result_shape))
-
     """
     operator compute, invoke hardtanh_grad_compute
     """
-    ins = classify([result, grad], OpPatternMode.ELEWISE_WITH_BROADCAST)
+    ins = classify([result, grad], OpPatternMode.ELEWISE)
     schedules, tensors = [], []
     for (_result, _grad) in ins:
         with tbe.compute():
