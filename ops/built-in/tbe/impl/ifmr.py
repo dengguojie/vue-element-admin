@@ -28,6 +28,8 @@ from te.tvm import stmt as _stmt
 from te.platform import cce_params
 from te.platform.cce_runtime import PIPELINES
 from te.utils import para_check
+from tbe.common.platform import set_current_compile_soc_info
+from tbe.common.platform.platform_info import get_soc_spec
 
 # 'pylint: disable=locally-disabled,too-many-arguments
 # 'pylint: disable=too-many-branches, too-many-statements, too-many-locals, attribute-defined-outside-init
@@ -44,7 +46,14 @@ class Constant:
     SHAPE_SIZE_LIMIT = 2 ** 31
     MAX_BINS = 8192
     MAX_STEPS = 4096
-    ESP = 1.192092896e-07
+    EPS = 1.192092896e-07
+    DATA_TYPE_SIZE = {'float16': 2,
+                      'int16': 2,
+                      'float32': 4,
+                      'int32': 4}
+
+    def __init__(self):
+        return
 
 
 # 'pylint: disable=unused-argument
@@ -149,8 +158,12 @@ class Reconstruction():
         # variable. The name with suffix "size" represent the memory
         # space of variable. The name with suffix "repeat" represent the
         # number of repeat time when processing this variable.
-        self.tik_instance = tik.Tik(tik.Dprofile())
-        self.aicore_num = 30
+        self.soc_version = get_soc_spec("SOC_VERSION")
+        status = set_current_compile_soc_info(self.soc_version)
+        if status != "success":
+            raise ValueError('Set soc_version failed, please check!')
+        self.tik_instance = tik.Tik()
+        self.aicore_num = tik.Dprofile().get_aicore_num()
         self.unified_buffer_size = tik.Dprofile().get_unified_buffer_size()
 
         self.data_dtype = input_data.get('dtype')
@@ -158,6 +171,13 @@ class Reconstruction():
         self.data_num = functools.reduce(lambda x, y: x * y, data_shape)
         if self.data_num > Constant.SHAPE_SIZE_LIMIT:
             raise ValueError('Excessive amount of "input_data"(more than 2^31)!')
+
+        if self.soc_version in ('Ascend710', 'Ascend910', 'Ascend610'):
+            self.calc_precision = 'float32'
+        elif self.soc_version in ('SD3403'):
+            self.calc_precision = 'float16'
+        else:
+            raise ValueError('Unsupport soc_version!')
 
         if len(input_min.get('shape')) != 1 or input_min.get('shape')[0] != 1:
             raise ValueError('The shape of "input_min" must be "[1]"!')
@@ -170,6 +190,7 @@ class Reconstruction():
         self.cumsum_num = cumsum_shape[0]
         if cumsum_shape[0] > Constant.MAX_BINS:
             raise ValueError('Excessive amount of "input_cumsum"(more than 8192)!')
+        self.cumsum_data_byte = Constant.DATA_TYPE_SIZE.get('int32')
 
         # input&output global memory
         self.input_data = self.tik_instance.Tensor(self.data_dtype, data_shape, tik.scope_gm, 'input_data')
@@ -192,76 +213,114 @@ class Reconstruction():
 
         self.kernel_name = kernel_name
 
-        # uniform use float32 in processing
-        self.data_byte_size = 4
+        # uniform use calc_precision in processing
+        self.data_byte_size = Constant.DATA_TYPE_SIZE.get(self.calc_precision)
         self.block_byte_size = 32
         self.data_each_block = self.block_byte_size // self.data_byte_size
         self.vector_mask_max = 8 * self.data_each_block
 
         # search space
         self.steps_num = int((search_range[1] - search_range[0]) // search_step + 1)
-        if self.steps_num > 4096:
+        if self.steps_num > Constant.MAX_STEPS:
             raise ValueError('step size should be equal or less than 4096')
 
-        self.steps_size = self.steps_num // self.vector_mask_max * self.vector_mask_max
-        if self.steps_size < self.steps_num:
-            self.steps_size = self.steps_size + self.vector_mask_max
+        self.steps_size = ceil(self.steps_num / self.vector_mask_max) * self.vector_mask_max
         self.step_repeat = self.steps_size // self.vector_mask_max
 
         self.barrier_workspace = self.tik_instance.Tensor(
-            'int64', (self.data_byte_size * self.aicore_num,), tik.scope_gm, 'barrier_workspace', is_workspace=True,
-            is_atomic_add=True)
+            'int64', (Constant.DATA_TYPE_SIZE.get('int32') * self.aicore_num,),
+            tik.scope_gm, 'barrier_workspace', is_workspace=True, is_atomic_add=True)
 
         self.input_data_bytes_size = cce.cce_intrin.get_bit_len(self.data_dtype) // 8
         self.input_data_each_block = self.block_byte_size // self.input_data_bytes_size
         self.data_num_each_core = self.data_num // self.data_each_block // self.aicore_num * self.data_each_block
         self.data_num_last_core = self.data_num % self.data_each_block + \
             self.data_num // self.data_each_block % self.aicore_num * self.data_each_block
+
+        if self.calc_precision == 'float32':
+            ub_size_factor = 4
+        else:
+            ub_size_factor = 5
         self.ub_tensor_size = (
             (self.unified_buffer_size - 2 * self.steps_size * self.data_byte_size) //
-            self.data_byte_size // 4 // self.data_each_block * self.data_each_block)
+            self.data_byte_size // ub_size_factor // self.data_each_block * self.data_each_block)
 
         self.loss_each_core = (
             self.steps_num + self.data_each_block - 1) // self.data_each_block * self.data_each_block
         self.loss_workspace = self.tik_instance.Tensor(
-            'float32', (self.loss_each_core * self.aicore_num,), tik.scope_gm, 'loss_workspace', is_workspace=True,
-            is_atomic_add=True)
+            self.calc_precision, (self.loss_each_core * self.aicore_num,), tik.scope_gm,
+            'loss_workspace', is_workspace=True, is_atomic_add=True)
+
+    def _calculate_cdf(self, vector_mask_max_fp32, cumsum_size, cumsum_repeat_fp32, cumsum_repeat):
+        move_burst = ceil(self.cumsum_num * self.cumsum_data_byte / self.block_byte_size)
+        cumsum_int = self.tik_instance.Tensor('int32', (cumsum_size,), tik.scope_ubuf, 'cumsum_int')
+        self.tik_instance.vec_dup(vector_mask_max_fp32, cumsum_int, 0, cumsum_repeat_fp32, 8)
+        self.tik_instance.data_move(cumsum_int, self.input_cumsum, 0, 1, move_burst, 0, 0)
+
+        cumsum_float = self.tik_instance.Tensor(self.calc_precision, (cumsum_size,), tik.scope_ubuf, 'cumsum_float')
+        if self.soc_version in ['SD3403']:
+            cumsum_int16 = self.tik_instance.Tensor('int16', (cumsum_size,), tik.scope_ubuf, 'cumsum_int16')
+            self.tik_instance.vcbd(vector_mask_max_fp32, cumsum_int16, cumsum_int, cumsum_repeat_fp32, 1, 1, 4, 8)
+            self.tik_instance.vec_conv(self.vector_mask_max, 'none', cumsum_float,
+                cumsum_int16, cumsum_repeat, 8, 8)
+        else:
+            self.tik_instance.vec_conv(self.vector_mask_max, 'none', cumsum_float, cumsum_int, cumsum_repeat, 8, 8)
+
+        cumsum_max = self.tik_instance.Tensor(self.calc_precision, (self.vector_mask_max,),
+            tik.scope_ubuf, 'cumsum_max')
+        cdf = self.tik_instance.Tensor(self.calc_precision, (cumsum_size,), tik.scope_ubuf, 'cdf')
+        self.tik_instance.vec_dup(self.vector_mask_max, cumsum_max, self.data_num, 1, 8)
+        self.tik_instance.vdiv(
+            self.vector_mask_max, cdf, cumsum_float, cumsum_max, cumsum_repeat, 1, 1, 1, 8, 8, 0)
+        return cdf
+
+    def _calculate_max_list(self, max_init):
+        max_list = self.tik_instance.Tensor(self.calc_precision, (self.steps_size,), tik.scope_ubuf, 'max_list')
+        self.tik_instance.vec_dup(self.vector_mask_max, max_list, 0, self.step_repeat, 8)
+        search_step = self.tik_instance.Tensor(self.calc_precision, (self.data_each_block,),
+            tik.scope_ubuf, 'search_step')
+        self.tik_instance.vec_dup(1, search_step, self.search_step, 1, 8)
+        search_min = self.tik_instance.Tensor(self.calc_precision, (self.data_each_block,),
+            tik.scope_ubuf, 'search_min')
+        self.tik_instance.vec_dup(1, search_min, self.search_range[0], 1, 8)
+        step_length = self.tik_instance.Tensor(self.calc_precision, (self.data_each_block,),
+            tik.scope_ubuf, 'step_length')
+        with self.tik_instance.for_range(0, self.steps_num) as i:
+            self.tik_instance.vec_dup(1, step_length, i, 1, 8)
+            self.tik_instance.vec_mul(1, step_length, step_length, search_step, 1, 8, 8, 8)
+            self.tik_instance.vec_add(1, step_length, step_length, search_min, 1, 8, 8, 8)
+            self.tik_instance.vec_mul(1, step_length, step_length, max_init, 1, 8, 8, 8)
+            max_list[i].set_as(step_length[0])
+        return max_list
 
     def _compute_scale_offset(self):
         """Calculate the candidate scale and offset."""
-        cumsum_size = self.cumsum_num // self.vector_mask_max * self.vector_mask_max
-        if cumsum_size < self.cumsum_num:
-            cumsum_size = cumsum_size + self.vector_mask_max
+        cumsum_size = ceil(self.cumsum_num / self.vector_mask_max) * self.vector_mask_max
         cumsum_repeat = cumsum_size // self.vector_mask_max
         cumsum_redundance = cumsum_size - self.cumsum_num
 
-        move_burst = self.cumsum_num // self.data_each_block
-        if move_burst * self.data_each_block < self.cumsum_num:
-            move_burst = move_burst + 1
+        if self.calc_precision == 'float32':
+            cumsum_repeat_fp32 = cumsum_repeat
+            vector_mask_max_fp32 = self.vector_mask_max
+            data_each_block_fp32 = self.data_each_block
+        else:
+            cumsum_repeat_fp32 = cumsum_repeat * 2
+            vector_mask_max_fp32 = self.vector_mask_max // 2
+            data_each_block_fp32 = self.data_each_block // 2
 
         with self.tik_instance.new_stmt_scope():
-            cumsum_int = self.tik_instance.Tensor('int32', (cumsum_size,), tik.scope_ubuf, 'cumsum_int')
-            self.tik_instance.vec_dup(self.vector_mask_max, cumsum_int, 0, cumsum_repeat, 8)
-            self.tik_instance.data_move(cumsum_int, self.input_cumsum, 0, 1, move_burst, 0, 0)
+            cdf = self._calculate_cdf(vector_mask_max_fp32, cumsum_size, cumsum_repeat_fp32, cumsum_repeat)
 
-            cumsum_float = self.tik_instance.Tensor('float32', (cumsum_size,), tik.scope_ubuf, 'cumsum_float')
-            self.tik_instance.vec_conv(self.vector_mask_max, 'none', cumsum_float, cumsum_int, cumsum_repeat, 8, 8)
-
-            cumsum_max = self.tik_instance.Tensor('float32', (self.vector_mask_max,), tik.scope_ubuf, 'cumsum_max')
-            self.tik_instance.vec_dup(self.vector_mask_max, cumsum_max, self.data_num, 1, 8)
-
-            cdf = self.tik_instance.Tensor('float32', (cumsum_size,), tik.scope_ubuf, 'cdf')
-            self.tik_instance.vdiv(
-                self.vector_mask_max, cdf, cumsum_float, cumsum_max, cumsum_repeat, 1, 1, 1, 8, 8, 0)
-
-            max_tensor = self.tik_instance.Tensor('float32', (self.vector_mask_max,), tik.scope_ubuf, 'max_tensor')
-            min_tensor = self.tik_instance.Tensor('float32', (self.vector_mask_max,), tik.scope_ubuf, 'min_tensor')
+            max_tensor = self.tik_instance.Tensor(self.calc_precision, (self.vector_mask_max,),
+                tik.scope_ubuf, 'max_tensor')
+            min_tensor = self.tik_instance.Tensor(self.calc_precision, (self.vector_mask_max,),
+                tik.scope_ubuf, 'min_tensor')
             self.tik_instance.vec_dup(self.vector_mask_max, max_tensor, self.max_percentile, 1, 8)
             self.tik_instance.vec_dup(self.vector_mask_max, min_tensor, self.min_percentile, 1, 8)
 
             # 0&1 vector for comparing, just need length of "vector_mask_max"
-            zeros = self.tik_instance.Tensor('float32', (self.vector_mask_max,), tik.scope_ubuf, 'zeros')
-            ones = self.tik_instance.Tensor('float32', (self.vector_mask_max,), tik.scope_ubuf, 'ones')
+            zeros = self.tik_instance.Tensor(self.calc_precision, (self.vector_mask_max,), tik.scope_ubuf, 'zeros')
+            ones = self.tik_instance.Tensor(self.calc_precision, (self.vector_mask_max,), tik.scope_ubuf, 'ones')
             self.tik_instance.vec_dup(self.vector_mask_max, zeros, 0, 1, 8)
             self.tik_instance.vec_dup(self.vector_mask_max, ones, 1, 1, 8)
 
@@ -271,48 +330,64 @@ class Reconstruction():
             compare_repeat = (
                 self.cumsum_num + self.vector_mask_max * self.data_byte_size * 8 - 1) // (
                     self.vector_mask_max * self.data_byte_size * 8)
-            compare_size = compare_repeat * self.vector_mask_max
+            compare_size = compare_repeat * vector_mask_max_fp32
             result_max = self.tik_instance.Tensor(
-                'uint32', (compare_size + self.data_each_block,), tik.scope_ubuf, 'result_max')
+                'uint32', (compare_size + data_each_block_fp32,), tik.scope_ubuf, 'result_max')
             result_min = self.tik_instance.Tensor(
-                'uint32', (compare_size + self.data_each_block,), tik.scope_ubuf, 'result_min')
-            self.tik_instance.vec_dup(self.vector_mask_max, result_max, 0, compare_repeat, 8)
-            self.tik_instance.vec_dup(self.vector_mask_max, result_min, 0, compare_repeat, 8)
+                'uint32', (compare_size + data_each_block_fp32,), tik.scope_ubuf, 'result_min')
+            self.tik_instance.vec_dup(vector_mask_max_fp32, result_max, 0, compare_repeat, 8)
+            self.tik_instance.vec_dup(vector_mask_max_fp32, result_min, 0, compare_repeat, 8)
 
             self.tik_instance.vec_cmpv_gt(result_max, max_tensor, cdf, cumsum_repeat, 0, 8)
             self.tik_instance.vec_cmpv_gt(result_min, min_tensor, cdf, cumsum_repeat, 0, 8)
 
-            stat_max = self.tik_instance.Tensor('float32', (cumsum_size,), tik.scope_ubuf, 'stat_max')
-            stat_min = self.tik_instance.Tensor('float32', (cumsum_size,), tik.scope_ubuf, 'stat_min')
+            stat_max = self.tik_instance.Tensor(self.calc_precision, (cumsum_size,), tik.scope_ubuf, 'stat_max')
+            stat_min = self.tik_instance.Tensor(self.calc_precision, (cumsum_size,), tik.scope_ubuf, 'stat_min')
             self.tik_instance.vec_dup(self.vector_mask_max, stat_max, 0, cumsum_repeat, 8)
             self.tik_instance.vec_dup(self.vector_mask_max, stat_min, 0, cumsum_repeat, 8)
 
-            select = self.tik_instance.Tensor('uint32', (self.data_each_block,), tik.scope_ubuf, 'select')
+            select = self.tik_instance.Tensor('uint32', (data_each_block_fp32,), tik.scope_ubuf, 'select')
             with self.tik_instance.for_range(0, cumsum_repeat) as i:
-                select[0].set_as(result_max[i * 2])
-                select[1].set_as(result_max[i * 2 + 1])
+                if self.calc_precision == 'float32':
+                    select[0].set_as(result_max[i * 2])
+                    select[1].set_as(result_max[i * 2 + 1])
+                else:
+                    select[0].set_as(result_max[i * 4])
+                    select[1].set_as(result_max[i * 4 + 1])
+                    select[2].set_as(result_max[i * 4 + 2])
+                    select[3].set_as(result_max[i * 4 + 3])
                 self.tik_instance.vec_sel(
                     self.vector_mask_max, 0, stat_max[i * self.vector_mask_max], select, ones, zeros, 1)
-                select[0].set_as(result_min[i * 2])
-                select[1].set_as(result_min[i * 2 + 1])
+                if self.calc_precision == 'float32':
+                    select[0].set_as(result_min[i * 2])
+                    select[1].set_as(result_min[i * 2 + 1])
+                else:
+                    select[0].set_as(result_min[i * 4])
+                    select[1].set_as(result_min[i * 4 + 1])
+                    select[2].set_as(result_min[i * 4 + 2])
+                    select[3].set_as(result_min[i * 4 + 3])
                 self.tik_instance.vec_sel(
                     self.vector_mask_max, 0, stat_min[i * self.vector_mask_max], select, ones, zeros, 1)
 
-            max_index = self.tik_instance.Tensor('float32', (self.data_each_block,), tik.scope_ubuf, 'max_index')
-            min_index = self.tik_instance.Tensor('float32', (self.data_each_block,), tik.scope_ubuf, 'min_index')
-            work_tensor = self.tik_instance.Tensor('float32', (cumsum_repeat,), tik.scope_ubuf, 'work_tensor')
+            max_index = self.tik_instance.Tensor(self.calc_precision, (self.data_each_block,),
+                tik.scope_ubuf, 'max_index')
+            min_index = self.tik_instance.Tensor(self.calc_precision, (self.data_each_block,),
+                tik.scope_ubuf, 'min_index')
+            work_tensor = self.tik_instance.Tensor(self.calc_precision, (cumsum_repeat,), tik.scope_ubuf, 'work_tensor')
             self.tik_instance.vec_reduce_add(self.vector_mask_max, max_index, stat_max, work_tensor, cumsum_repeat, 8)
             self.tik_instance.vec_reduce_add(self.vector_mask_max, min_index, stat_min, work_tensor, cumsum_repeat, 8)
 
             cumsum_redundance_tensor = self.tik_instance.Tensor(
-                'float32', (self.data_each_block,), tik.scope_ubuf, 'cumsum_redundance_tensor')
+                self.calc_precision, (self.data_each_block,), tik.scope_ubuf, 'cumsum_redundance_tensor')
             self.tik_instance.vec_dup(1, cumsum_redundance_tensor, cumsum_redundance, 1, 8)
             self.tik_instance.vec_sub(1, max_index, max_index, cumsum_redundance_tensor, 1, 8, 8, 8)
             self.tik_instance.vec_sub(1, min_index, min_index, cumsum_redundance_tensor, 1, 8, 8, 8)
 
-            data_max = self.tik_instance.Tensor('float32', (self.data_each_block,), tik.scope_ubuf, 'data_max')
-            data_min = self.tik_instance.Tensor('float32', (self.data_each_block,), tik.scope_ubuf, 'data_min')
-            if self.data_dtype == 'float32':
+            data_max = self.tik_instance.Tensor(self.calc_precision, (self.data_each_block,),
+                tik.scope_ubuf, 'data_max')
+            data_min = self.tik_instance.Tensor(self.calc_precision, (self.data_each_block,),
+                tik.scope_ubuf, 'data_min')
+            if self.data_dtype == self.calc_precision:
                 self.tik_instance.data_move(data_max, self.input_max, 0, 1, 1, 0, 0)
                 self.tik_instance.data_move(data_min, self.input_min, 0, 1, 1, 0, 0)
             else:
@@ -325,11 +400,14 @@ class Reconstruction():
                 self.tik_instance.vec_conv(1, 'none', data_max, input_data_max, 1, 8, 8)
                 self.tik_instance.vec_conv(1, 'none', data_min, input_data_min, 1, 8, 8)
 
-            max_init = self.tik_instance.Tensor('float32', (self.data_each_block,), tik.scope_ubuf, 'max_init')
-            min_init = self.tik_instance.Tensor('float32', (self.data_each_block,), tik.scope_ubuf, 'min_init')
+            max_init = self.tik_instance.Tensor(self.calc_precision, (self.data_each_block,),
+                tik.scope_ubuf, 'max_init')
+            min_init = self.tik_instance.Tensor(self.calc_precision, (self.data_each_block,),
+                tik.scope_ubuf, 'min_init')
             cumsum_num_tensor = self.tik_instance.Tensor(
-                'float32', (self.data_each_block,), tik.scope_ubuf, 'cumsum_num')
-            data_range = self.tik_instance.Tensor('float32', (self.data_each_block,), tik.scope_ubuf, 'data_range')
+                self.calc_precision, (self.data_each_block,), tik.scope_ubuf, 'cumsum_num')
+            data_range = self.tik_instance.Tensor(self.calc_precision, (self.data_each_block,),
+                tik.scope_ubuf, 'data_range')
             self.tik_instance.vec_dup(1, cumsum_num_tensor, self.cumsum_num, 1, 8)
             self.tik_instance.vdiv(1, max_init, max_index, cumsum_num_tensor, 1, 1, 1, 1, 8, 8, 8)
             self.tik_instance.vdiv(1, min_init, min_index, cumsum_num_tensor, 1, 1, 1, 1, 8, 8, 8)
@@ -342,52 +420,46 @@ class Reconstruction():
             if self.with_offset:
                 self.tik_instance.vec_max(1, max_init, max_init, zeros, 1, 8, 8, 8)
                 self.tik_instance.vec_min(1, min_init, min_init, zeros, 1, 8, 8, 8)
-                min_value = self.tik_instance.Scalar('float32', 'min_value', min_init[0])
-                min_list = self.tik_instance.Tensor('float32', (self.steps_size,), tik.scope_ubuf, 'min_list')
+                min_value = self.tik_instance.Scalar(self.calc_precision, 'min_value', min_init[0])
+                min_list = self.tik_instance.Tensor(self.calc_precision, (self.steps_size,), tik.scope_ubuf, 'min_list')
                 self.tik_instance.vec_dup(self.vector_mask_max, min_list, min_value, self.step_repeat, 8)
             else:
                 self.tik_instance.vec_abs(1, max_init, max_init, 1, 8, 8)
                 self.tik_instance.vec_abs(1, min_init, min_init, 1, 8, 8)
                 self.tik_instance.vec_max(1, max_init, max_init, min_init, 1, 8, 8, 8)
 
-            max_list = self.tik_instance.Tensor('float32', (self.steps_size,), tik.scope_ubuf, 'max_list')
-            self.tik_instance.vec_dup(self.vector_mask_max, max_list, 0, self.step_repeat, 8)
-            search_step = self.tik_instance.Tensor('float32', (self.data_each_block,), tik.scope_ubuf, 'search_step')
-            self.tik_instance.vec_dup(1, search_step, self.search_step, 1, 8)
-            search_min = self.tik_instance.Tensor('float32', (self.data_each_block,), tik.scope_ubuf, 'search_min')
-            self.tik_instance.vec_dup(1, search_min, self.search_range[0], 1, 8)
-            step_length = self.tik_instance.Tensor('float32', (self.data_each_block,), tik.scope_ubuf, 'step_length')
-            with self.tik_instance.for_range(0, self.steps_num) as i:
-                self.tik_instance.vec_dup(1, step_length, i, 1, 8)
-                self.tik_instance.vec_mul(1, step_length, step_length, search_step, 1, 8, 8, 8)
-                self.tik_instance.vec_add(1, step_length, step_length, search_min, 1, 8, 8, 8)
-                self.tik_instance.vec_mul(1, step_length, step_length, max_init, 1, 8, 8, 8)
-                max_list[i].set_as(step_length[0])
+            max_list = self._calculate_max_list(max_init)
 
             if self.with_offset:
-                quant_step = self.tik_instance.Tensor('float32', (self.vector_mask_max,), tik.scope_ubuf, 'quant_step')
-                self.tik_instance.vec_dup(self.vector_mask_max, quant_step, 255, 1, 8)
                 self.tik_instance.vec_sub(
                     self.vector_mask_max, self.scale, max_list, min_list, self.step_repeat, 8, 8, 8)
+                quant_step = self.tik_instance.Tensor(self.calc_precision, (self.vector_mask_max,),
+                    tik.scope_ubuf, 'quant_step')
+                round_offset = self.tik_instance.Tensor('int32', (self.steps_size,), tik.scope_ubuf, 'round_offset')
+                self.tik_instance.vec_dup(self.vector_mask_max, quant_step, 255, 1, 8)
                 self.tik_instance.vdiv(
                     self.vector_mask_max, self.scale, self.scale, quant_step, self.step_repeat, 1, 1, 1, 8, 8, 0)
-                round_offset = self.tik_instance.Tensor('int32', (self.steps_size,), tik.scope_ubuf, 'round_offset')
                 self.tik_instance.vdiv(
                     self.vector_mask_max, self.offset, min_list, self.scale, self.step_repeat, 1, 1, 1, 8, 8, 8)
-                self.tik_instance.vec_conv(
-                    self.vector_mask_max, 'round', round_offset, self.offset, self.step_repeat, 8, 8)
-                self.tik_instance.vec_conv(self.vector_mask_max, '', self.offset, round_offset, self.step_repeat, 8, 8)
+                if self.soc_version in ['SD3403']:
+                    data_num = self.vector_mask_max * self.step_repeat
+                    self._round_fp16_through_int16(data_num, round_offset, self.offset, 0)
+                else:
+                    self._round_fp32(self.vector_mask_max, round_offset, self.offset, 0, self.step_repeat)
+
                 half_quant_step = self.tik_instance.Tensor(
-                    'float32', (self.vector_mask_max,), tik.scope_ubuf, 'half_quant_step')
+                    self.calc_precision, (self.vector_mask_max,), tik.scope_ubuf, 'half_quant_step')
                 self.tik_instance.vec_dup(self.vector_mask_max, half_quant_step, 128, 1, 8)
                 self.tik_instance.vec_add(
                     self.vector_mask_max, self.offset, self.offset, half_quant_step, self.step_repeat, 8, 8, 0)
-                negative = self.tik_instance.Tensor('float32', (self.vector_mask_max,), tik.scope_ubuf, 'negative')
+                negative = self.tik_instance.Tensor(self.calc_precision, (self.vector_mask_max,),
+                    tik.scope_ubuf, 'negative')
                 self.tik_instance.vec_dup(self.vector_mask_max, negative, -1, 1, 8)
                 self.tik_instance.vec_mul(
                     self.vector_mask_max, self.offset, self.offset, negative, self.step_repeat, 8, 8, 0)
             else:
-                quant_step = self.tik_instance.Tensor('float32', (self.vector_mask_max,), tik.scope_ubuf, 'quant_step')
+                quant_step = self.tik_instance.Tensor(self.calc_precision, (self.vector_mask_max,),
+                    tik.scope_ubuf, 'quant_step')
                 self.tik_instance.vec_dup(self.vector_mask_max, quant_step, 127, 1, 8)
                 self.tik_instance.vdiv(
                     self.vector_mask_max, self.scale, max_list, quant_step, self.step_repeat, 1, 1, 1, 8, 8, 0)
@@ -395,13 +467,14 @@ class Reconstruction():
     def _compute_mse_loss(self, index):
         with self.tik_instance.new_stmt_scope():
             loss_repeat = ceil(self.steps_size / self.vector_mask_max)
-            self.loss_ub = self.tik_instance.Tensor('float32', (self.steps_size,), tik.scope_ubuf, 'loss_ub')
+            self.loss_ub = self.tik_instance.Tensor(self.calc_precision, (self.steps_size,), tik.scope_ubuf, 'loss_ub')
             self.tik_instance.vec_dup(self.vector_mask_max, self.loss_ub, 0, loss_repeat, 8)
-            self.input_fm_ub = self.tik_instance.Tensor('float32', (self.ub_tensor_size, ), tik.scope_ubuf, 'fm_ub')
+            self.input_fm_ub = self.tik_instance.Tensor(self.calc_precision, (self.ub_tensor_size, ),
+                tik.scope_ubuf, 'fm_ub')
             self.input_fm_quant_ub = self.tik_instance.Tensor(
-                'float32', (self.ub_tensor_size, ), tik.scope_ubuf, 'fm_quant_ub')
+                self.calc_precision, (self.ub_tensor_size, ), tik.scope_ubuf, 'fm_quant_ub')
             self.one_loss_ub = self.tik_instance.Tensor(
-                'float32', (self.data_each_block,), tik.scope_ubuf, 'one_loss_ub')
+                self.calc_precision, (self.data_each_block,), tik.scope_ubuf, 'one_loss_ub')
             with self.tik_instance.for_range(0, self.steps_num) as search_index:
                 self.tik_instance.vec_dup(self.data_each_block, self.one_loss_ub, 0, 1, 8)
                 self._compute_mse(index, search_index)
@@ -439,7 +512,7 @@ class Reconstruction():
 
     def _mse_compute_each_loop(self, move_offset, move_num, search_index):
         # cal each loop move burst
-        if self.data_dtype == 'float16':
+        if self.data_dtype == 'float16' and self.calc_precision == 'float32':
             # conv fp16 to fp32
             with self.tik_instance.new_stmt_scope():
                 self.input_fm_fp16_ub = self.tik_instance.Tensor(
@@ -500,47 +573,121 @@ class Reconstruction():
                 last_num, '', self.input_fm_ub[convert_offset], self.input_fm_fp16_ub[convert_offset], repeat_times, 8,
                 4)
 
+    def _round_fp32(self, mask, dst, src, offset, repeat):
+        self.tik_instance.vec_conv(mask, 'round', dst, src[offset], repeat, 8, 8)
+        self.tik_instance.vec_conv(mask, '', src[offset], dst, repeat, 8, 8)
+
+    def _round_fp16_through_int16(self, data_num, dst, src, offset):
+        vector_mask_max_int32 = 64
+        repeat_time_int32 = data_num // vector_mask_max_int32
+        loop_repeat_time = repeat_time_int32 // 255
+        remain_repeat_time = repeat_time_int32 % 255
+        last_num_int32 = data_num % vector_mask_max_int32
+
+        if loop_repeat_time > 0:
+            tmp_ub_int16 = self.tik_instance.Tensor('int16', (vector_mask_max_int32 * 255,),
+                tik.scope_ubuf, 'tmp_ub_int16')
+        elif remain_repeat_time > 0:
+            tmp_ub_int16 = self.tik_instance.Tensor('int16', (vector_mask_max_int32 * remain_repeat_time,),
+                tik.scope_ubuf, 'tmp_ub_int16')
+        elif last_num_int32 > 0:
+            tmp_ub_int16 = self.tik_instance.Tensor('int16', (vector_mask_max_int32,), tik.scope_ubuf, 'tmp_ub_int16')
+
+        if loop_repeat_time > 0:
+            with self.tik_instance.for_range(0, loop_repeat_time) as loop_id:
+                # fp16 to int32 (round)
+                self.tik_instance.vec_conv(vector_mask_max_int32, 'round', dst[loop_id*255*vector_mask_max_int32],
+                    src[offset+loop_id*255*vector_mask_max_int32], 255, 8, 4)
+                # int32 to int16
+                self.tik_instance.vcbd(vector_mask_max_int32, tmp_ub_int16, dst[loop_id*255*vector_mask_max_int32],
+                    255, 1, 1, 4, 8)
+                # int16 to fp16 (none)
+                self.tik_instance.vec_conv(vector_mask_max_int32, '',
+                    src[offset+loop_id*255*vector_mask_max_int32], tmp_ub_int16, 255, 4, 4)
+        if remain_repeat_time > 0:
+            self.tik_instance.vec_conv(vector_mask_max_int32, 'round',
+                dst[loop_repeat_time*255*vector_mask_max_int32],
+                src[offset+loop_repeat_time*255*vector_mask_max_int32], remain_repeat_time, 8, 4)
+            self.tik_instance.vcbd(vector_mask_max_int32, tmp_ub_int16,
+                dst[loop_repeat_time*255*vector_mask_max_int32], remain_repeat_time, 1, 1, 4, 8)
+            self.tik_instance.vec_conv(vector_mask_max_int32, '',
+                src[offset+loop_repeat_time*255*vector_mask_max_int32], tmp_ub_int16, remain_repeat_time, 4, 4)
+        if last_num_int32 > 0:
+            self.tik_instance.vec_conv(last_num_int32, 'round', dst[repeat_time_int32*vector_mask_max_int32],
+                src[offset+repeat_time_int32*vector_mask_max_int32], 1, 8, 4)
+            self.tik_instance.vcbd(last_num_int32, tmp_ub_int16,
+                dst[repeat_time_int32*vector_mask_max_int32], 1, 1, 1, 4, 8)
+            self.tik_instance.vec_conv(last_num_int32, '',
+                src[offset+repeat_time_int32*vector_mask_max_int32], tmp_ub_int16, 1, 4, 4)
 
     def _ifmr_mse(self, mask_num, repeat_time, mse_offset, search_index):
         with self.tik_instance.new_stmt_scope():
-            scale_scalar = self.tik_instance.Scalar('float32')
+            scale_scalar = self.tik_instance.Scalar(self.calc_precision)
             scale_scalar.set_as(self.scale[search_index])
-            new_scale_scalar = self.tik_instance.Scalar('float32')
-            new_scale_scalar.set_as(1.0 / scale_scalar)
-            with self.tik_instance.new_stmt_scope():
-                self.fm_tmp_ub = self.tik_instance.Tensor('int32', (self.ub_tensor_size,), tik.scope_ubuf, 'fm_tmp_ub')
-                self.tik_instance.vec_muls(
-                    mask_num, self.input_fm_quant_ub[mse_offset], self.input_fm_ub[mse_offset], new_scale_scalar,
-                    repeat_time, 8, 8)
-                self.tik_instance.vec_conv(
-                    mask_num, 'round', self.fm_tmp_ub, self.input_fm_quant_ub[mse_offset], repeat_time, 8, 8)
-                self.tik_instance.vec_conv(
-                    mask_num, '', self.input_fm_quant_ub[mse_offset], self.fm_tmp_ub, repeat_time, 8, 8)
+            if self.soc_version in ['SD3403']:
+                new_scale = self.tik_instance.Tensor(self.calc_precision, (self.vector_mask_max,),
+                    tik.scope_ubuf, 'new_scale')
+                self.tik_instance.vec_dup(self.vector_mask_max, new_scale, scale_scalar, 1, 8)
+                new_scale_tensor = self.tik_instance.Tensor(self.calc_precision, (self.vector_mask_max,),
+                    tik.scope_ubuf, 'new_scale_tensor')
+                self.tik_instance.vrec(self.vector_mask_max, new_scale_tensor, new_scale, 1, 1, 1, 8, 8)
+                with self.tik_instance.new_stmt_scope():
+                    self.fm_tmp_ub = self.tik_instance.Tensor('int32', (self.ub_tensor_size,),
+                        tik.scope_ubuf, 'fm_tmp_ub')
+                    self.tik_instance.vec_mul(
+                        mask_num, self.input_fm_quant_ub[mse_offset], self.input_fm_ub[mse_offset], new_scale_tensor,
+                        repeat_time, 8, 8, 0)
+                    data_num = mask_num * repeat_time
+                    self._round_fp16_through_int16(data_num, self.fm_tmp_ub, self.input_fm_quant_ub, mse_offset)
+            else:
+                new_scale_scalar = self.tik_instance.Scalar(self.calc_precision)
+                new_scale_scalar.set_as(1.0 / scale_scalar)
+                with self.tik_instance.new_stmt_scope():
+                    self.fm_tmp_ub = self.tik_instance.Tensor('int32', (self.ub_tensor_size,),
+                        tik.scope_ubuf, 'fm_tmp_ub')
+                    self.tik_instance.vec_muls(
+                        mask_num, self.input_fm_quant_ub[mse_offset], self.input_fm_ub[mse_offset], new_scale_scalar,
+                        repeat_time, 8, 8)
+                    self._round_fp32(mask_num, self.fm_tmp_ub, self.input_fm_quant_ub, mse_offset, repeat_time)
+
             if self.with_offset:
-                offset_scalar = self.tik_instance.Scalar('float32')
+                offset_scalar = self.tik_instance.Scalar(self.calc_precision)
                 offset_scalar.set_as(self.offset[search_index])
                 self.tik_instance.vec_adds(
                     mask_num, self.input_fm_quant_ub[mse_offset], self.input_fm_quant_ub[mse_offset], offset_scalar,
                     repeat_time, 8, 8)
             # clip fm_quant max min
             with self.tik_instance.new_stmt_scope():
-                self.clip_max_ub = self.tik_instance.Tensor('float32', (mask_num,), tik.scope_ubuf, 'clip_max_ub')
+                self.clip_max_ub = self.tik_instance.Tensor(self.calc_precision, (mask_num,),
+                    tik.scope_ubuf, 'clip_max_ub')
                 self.tik_instance.vec_dup(mask_num, self.clip_max_ub, 127, 1, 8)
                 self.tik_instance.vec_min(
                     mask_num, self.input_fm_quant_ub[mse_offset], self.input_fm_quant_ub[mse_offset], self.clip_max_ub,
                     repeat_time, 8, 8, 0)
             with self.tik_instance.new_stmt_scope():
-                self.clip_min_ub = self.tik_instance.Tensor('float32', (mask_num,), tik.scope_ubuf, 'clip_min_ub')
+                self.clip_min_ub = self.tik_instance.Tensor(self.calc_precision, (mask_num,),
+                    tik.scope_ubuf, 'clip_min_ub')
                 self.tik_instance.vec_dup(mask_num, self.clip_min_ub, -128, 1, 8)
                 self.tik_instance.vec_max(
                     mask_num, self.input_fm_quant_ub[mse_offset], self.input_fm_quant_ub[mse_offset], self.clip_min_ub,
                     repeat_time, 8, 8, 0)
             if self.with_offset:
-                new_offset_scalar = self.tik_instance.Scalar('float32')
-                new_offset_scalar.set_as(-1.0 * offset_scalar)
-                self.tik_instance.vec_adds(
-                    mask_num, self.input_fm_quant_ub[mse_offset], self.input_fm_quant_ub[mse_offset],
-                    new_offset_scalar, repeat_time, 8, 8)
+                new_offset_scalar = self.tik_instance.Scalar(self.calc_precision)
+                if self.soc_version in ['SD3403']:
+                    new_offset_scalar.set_as(offset_scalar)
+                    new_offset = self.tik_instance.Tensor(self.calc_precision, (self.vector_mask_max,),
+                        tik.scope_ubuf, 'new_offset')
+                    self.tik_instance.vec_dup(self.vector_mask_max, new_offset, new_offset_scalar, 1, 8)
+                    new_offset_tensor = self.tik_instance.Tensor(self.calc_precision, (self.vector_mask_max,),
+                        tik.scope_ubuf, 'new_offset_tensor')
+                    self.tik_instance.vec_muls(self.vector_mask_max, new_offset_tensor, new_offset, -1.0, 1, 8, 8)
+                    self.tik_instance.vec_add(mask_num, self.input_fm_quant_ub[mse_offset],
+                        self.input_fm_quant_ub[mse_offset], new_offset_tensor, repeat_time, 8, 8, 0)
+                else:
+                    new_offset_scalar.set_as(-1.0 * offset_scalar)
+                    self.tik_instance.vec_adds(
+                        mask_num, self.input_fm_quant_ub[mse_offset], self.input_fm_quant_ub[mse_offset],
+                        new_offset_scalar, repeat_time, 8, 8)
             self.tik_instance.vec_muls(
                 mask_num, self.input_fm_quant_ub[mse_offset], self.input_fm_quant_ub[mse_offset], scale_scalar,
                 repeat_time, 8, 8)
@@ -553,9 +700,9 @@ class Reconstruction():
 
         # reduce each loss and move to loss_ub
         with self.tik_instance.new_stmt_scope():
-            self.work_ub = self.tik_instance.Tensor('float32', (repeat_time,), tik.scope_ubuf, 'work_ub')
+            self.work_ub = self.tik_instance.Tensor(self.calc_precision, (repeat_time,), tik.scope_ubuf, 'work_ub')
             self.tmp_loss_ub = self.tik_instance.Tensor(
-                'float32', (self.data_each_block,), tik.scope_ubuf, 'one_loss_ub')
+                self.calc_precision, (self.data_each_block,), tik.scope_ubuf, 'tmp_loss_ub')
             self.tik_instance.vec_dup(self.data_each_block, self.tmp_loss_ub, 0, 1, 8)
             self.tik_instance.vec_reduce_add(
                 mask_num, self.tmp_loss_ub, self.input_fm_quant_ub[mse_offset], self.work_ub, repeat_time, 8)
@@ -567,20 +714,23 @@ class Reconstruction():
         self.tik_instance.tensor_mov(
             self.loss_workspace[index * self.loss_each_core], self.loss_ub, '', 1, burst_len, 0, 0)
 
-    def _reduce_and_output(self):
-        # sum of all loss
-        total_loss = self.tik_instance.Tensor('float32', (self.loss_each_core,), tik.scope_ubuf, 'total_loss')
+    def _gather_total_loss(self, repeats, mask):
+        if self.soc_version in ['SD3403']:
+            total_loss = self.tik_instance.Tensor(self.calc_precision, (self.steps_size,),
+                tik.scope_ubuf, 'total_loss')
+            self.tik_instance.vec_dup(self.vector_mask_max, total_loss, Constant.SCALAR_MAX_FP16, self.step_repeat, 8)
+        else:
+            total_loss = self.tik_instance.Tensor(self.calc_precision, (self.loss_each_core,),
+                tik.scope_ubuf, 'total_loss')
 
         # zero out every item
-        repeats = self.steps_num // self.vector_mask_max
         if repeats > 0:
             self.tik_instance.vec_dup(self.vector_mask_max, total_loss, 0, repeats, 8)
-        mask = self.steps_num % self.vector_mask_max
         if mask > 0:
             self.tik_instance.vec_dup(mask, total_loss[self.vector_mask_max * repeats], 0, 1, 8)
 
         # loss of one core
-        loss = self.tik_instance.Tensor('float32', (self.loss_each_core,), tik.scope_ubuf, 'loss_sum')
+        loss = self.tik_instance.Tensor(self.calc_precision, (self.loss_each_core,), tik.scope_ubuf, 'loss')
         burst_len = self.loss_each_core // self.data_each_block
         for i in range(0, self.aicore_num):
             self.tik_instance.data_move(loss, self.loss_workspace[self.loss_each_core * i], 0, 1, burst_len, 0, 0)
@@ -590,32 +740,56 @@ class Reconstruction():
                 self.tik_instance.vec_add(
                     mask, total_loss[self.vector_mask_max * repeats], loss[self.vector_mask_max * repeats],
                     total_loss[self.vector_mask_max * repeats], 1, 8, 8, 8)
+        return total_loss
+
+    def _reduce_and_output(self):
+        repeats = self.steps_num // self.vector_mask_max
+        mask = self.steps_num % self.vector_mask_max
+
+        total_loss = self._gather_total_loss(repeats, mask)
 
         # do 8-block align
-        fp16_each_block = self.block_byte_size // 2
-        fp16_8_block = fp16_each_block * 8
-        fp16_loss_each_core = (self.loss_each_core + fp16_8_block - 1) // fp16_8_block * fp16_8_block
-        total_loss_fp16 = self.tik_instance.Tensor('float16', (fp16_loss_each_core,), tik.scope_ubuf, 'loss_sum')
-
-        fp16_repeat_time = fp16_loss_each_core // fp16_8_block
-        if fp16_repeat_time > 0:
-            self.tik_instance.vec_dup(fp16_8_block, total_loss_fp16, Constant.SCALAR_MAX_FP16, fp16_repeat_time, 8)
-
-        # conv fp32 to fp16
-        data_num_scalar = self.tik_instance.Scalar('float32')
-        data_num_scalar.set_as(self.data_num)
-        data_num = self.tik_instance.Tensor('float32', (self.data_each_block,), tik.scope_ubuf, 'data_num')
-        self.tik_instance.vec_dup(self.data_each_block, data_num, data_num_scalar, 1, 8)
-        if repeats > 0:
-            self.tik_instance.vdiv(self.vector_mask_max, loss, total_loss, data_num, repeats, 1, 1, 0, 8, 8, 0)
-            self.tik_instance.vec_conv(self.vector_mask_max, 'none', total_loss_fp16, loss, repeats, 4, 8)
-        if mask > 0:
-            self.tik_instance.vdiv(
-                mask, loss[self.vector_mask_max * repeats], total_loss[self.vector_mask_max * repeats], data_num, 1, 1,
-                1, 0, 8, 8, 0)
-            self.tik_instance.vec_conv(
-                mask, 'none', total_loss_fp16[self.vector_mask_max * repeats],
-                loss[self.vector_mask_max * repeats], 1, 4, 8)
+        if self.soc_version in ['SD3403']:
+            fp16_each_block = self.data_each_block
+            fp16_8_block = self.vector_mask_max
+            fp16_repeat_time = self.step_repeat
+            data_num_scalar = self.tik_instance.Scalar(self.calc_precision)
+            data_num = self.tik_instance.Tensor(self.calc_precision, (self.data_each_block,),
+                tik.scope_ubuf, 'data_num')
+            data_num_scalar.set_as(self.data_num)
+            self.tik_instance.vec_dup(self.data_each_block, data_num, data_num_scalar, 1, 8)
+            if repeats > 0:
+                self.tik_instance.vdiv(self.vector_mask_max, total_loss, total_loss, data_num,
+                    repeats, 1, 1, 0, 8, 8, 0)
+            if mask > 0:
+                self.tik_instance.vdiv(
+                    mask, total_loss[self.vector_mask_max * repeats], total_loss[self.vector_mask_max * repeats],
+                    data_num, 1, 1, 1, 0, 8, 8, 0)
+        else:
+            fp16_each_block = self.block_byte_size // 2
+            fp16_8_block = fp16_each_block * 8
+            fp16_loss_each_core = (self.loss_each_core + fp16_8_block - 1) // fp16_8_block * fp16_8_block
+            loss = self.tik_instance.Tensor(self.calc_precision, (self.loss_each_core,), tik.scope_ubuf, 'loss')
+            total_loss_fp16 = self.tik_instance.Tensor('float16', (fp16_loss_each_core,), tik.scope_ubuf, 'loss_sum')
+            fp16_repeat_time = fp16_loss_each_core // fp16_8_block
+            if fp16_repeat_time > 0:
+                self.tik_instance.vec_dup(fp16_8_block, total_loss_fp16, Constant.SCALAR_MAX_FP16, fp16_repeat_time, 8)
+            # conv fp32 to fp16
+            data_num_scalar = self.tik_instance.Scalar(self.calc_precision)
+            data_num = self.tik_instance.Tensor(self.calc_precision, (self.data_each_block,),
+                tik.scope_ubuf, 'data_num')
+            data_num_scalar.set_as(self.data_num)
+            self.tik_instance.vec_dup(self.data_each_block, data_num, data_num_scalar, 1, 8)
+            if repeats > 0:
+                self.tik_instance.vdiv(self.vector_mask_max, loss, total_loss, data_num, repeats, 1, 1, 0, 8, 8, 0)
+                self.tik_instance.vec_conv(self.vector_mask_max, 'none', total_loss_fp16, loss, repeats, 4, 8)
+            if mask > 0:
+                self.tik_instance.vdiv(
+                    mask, loss[self.vector_mask_max * repeats], total_loss[self.vector_mask_max * repeats],
+                    data_num, 1, 1, 1, 0, 8, 8, 0)
+                self.tik_instance.vec_conv(
+                    mask, 'none', total_loss_fp16[self.vector_mask_max * repeats],
+                    loss[self.vector_mask_max * repeats], 1, 4, 8)
 
         it1_output_count = 2 * fp16_repeat_time
         it2_align_start = ceil(it1_output_count / fp16_each_block) * fp16_each_block
@@ -629,60 +803,71 @@ class Reconstruction():
             'float16', (final_work_tensor_need_size,), tik.scope_ubuf, 'work_tensor_ub')
 
         result = self.tik_instance.Tensor('float16', (32,), tik.scope_ubuf, 'result')
-        self.tik_instance.vec_reduce_min(
-            128, result, total_loss_fp16, work_tensor_ub, fp16_repeat_time, 8, cal_index=True)
-
         index_scalar = self.tik_instance.Scalar('uint16')
-        index_scalar.set_as(result[1])
+        if self.soc_version in ['SD3403']:
+            self.tik_instance.vec_reduce_min(
+                128, result, total_loss, work_tensor_ub, fp16_repeat_time, 8, cal_index=True)
+            index_scalar.set_as(result[1])
+        else:
+            self.tik_instance.vec_reduce_min(
+                128, result, total_loss_fp16, work_tensor_ub, fp16_repeat_time, 8, cal_index=True)
+            index_scalar.set_as(result[1])
+            minimal_scalar = self.tik_instance.Scalar('float32')
+            minimal_scalar.set_as(total_loss[index_scalar])
+            minimal = self.tik_instance.Tensor('float32', (self.data_each_block,), tik.scope_ubuf, 'minial_loss')
+            self.tik_instance.vec_dup(self.data_each_block, minimal, minimal_scalar, 1, 8)
+            if repeats > 0:
+                self.tik_instance.vsub(self.vector_mask_max, loss, total_loss, minimal, repeats, 1, 1, 0, 8, 8, 0)
+                self.tik_instance.vec_conv(self.vector_mask_max, 'none', total_loss_fp16, loss, repeats, 4, 8)
+            if mask > 0:
+                self.tik_instance.vsub(
+                    mask, loss[self.vector_mask_max * repeats], total_loss[self.vector_mask_max * repeats],
+                    minimal, 1, 1, 1, 0, 8, 8, 0)
+                self.tik_instance.vec_conv(
+                    mask, 'none', total_loss_fp16[self.vector_mask_max * repeats],
+                    loss[self.vector_mask_max * repeats], 1, 4, 8)
 
-        minimal_scalar = self.tik_instance.Scalar('float32')
-        minimal_scalar.set_as(total_loss[index_scalar])
-        minimal = self.tik_instance.Tensor('float32', (self.data_each_block,), tik.scope_ubuf, 'minial_loss')
-        self.tik_instance.vec_dup(self.data_each_block, minimal, minimal_scalar, 1, 8)
-        if repeats > 0:
-            self.tik_instance.vsub(self.vector_mask_max, loss, total_loss, minimal, repeats, 1, 1, 0, 8, 8, 0)
-            self.tik_instance.vec_conv(self.vector_mask_max, 'none', total_loss_fp16, loss, repeats, 4, 8)
-        if mask > 0:
-            self.tik_instance.vsub(
-                mask, loss[self.vector_mask_max * repeats], total_loss[self.vector_mask_max * repeats], minimal, 1, 1,
-                1, 0, 8, 8, 0)
-            self.tik_instance.vec_conv(
-                mask, 'none', total_loss_fp16[self.vector_mask_max * repeats],
-                loss[self.vector_mask_max * repeats], 1, 4, 8)
+            self.tik_instance.vec_reduce_min(
+                128, result, total_loss_fp16, work_tensor_ub, fp16_repeat_time, 8, cal_index=True)
+            index_scalar.set_as(result[1])
 
-        self.tik_instance.vec_reduce_min(
-            128, result, total_loss_fp16, work_tensor_ub, fp16_repeat_time, 8, cal_index=True)
-
-        index_scalar.set_as(result[1])
-
-        optimal_scale = self.tik_instance.Scalar('float32')
+        optimal_scale = self.tik_instance.Scalar(self.calc_precision)
         optimal_scale.set_as(self.scale[index_scalar])
 
-        scale_tensor = self.tik_instance.Tensor('float32', (8,), tik.scope_ubuf, 'optimal_scale')
+        scale_tensor = self.tik_instance.Tensor(self.calc_precision, (8,), tik.scope_ubuf, 'optimal_scale')
         self.tik_instance.vec_dup(1, scale_tensor, optimal_scale, 1, 8)
         # set scale to one if too small
-        eps_scalar = self.tik_instance.Scalar('float32')
-        eps_scalar.set_as(Constant.ESP)
-        eps_tensor = self.tik_instance.Tensor('float32', (8,), tik.scope_ubuf, 'esp_scale')
+        eps_scalar = self.tik_instance.Scalar(self.calc_precision)
+        eps_scalar.set_as(Constant.EPS)
+        eps_tensor = self.tik_instance.Tensor(self.calc_precision, (8,), tik.scope_ubuf, 'eps_scale')
         self.tik_instance.vec_dup(1, eps_tensor, eps_scalar, 1, 8)
         cmpmask = self.tik_instance.vcmp_le(8, scale_tensor, eps_tensor, 1, 1)
         eps_scalar.set_as(1)
         self.tik_instance.vec_dup(1, eps_tensor, eps_scalar, 1, 8)
         self.tik_instance.vsel(8, 0, scale_tensor, cmpmask, eps_tensor, scale_tensor, 1, 1, 1, 1, 8, 8, 8)
 
-        self.tik_instance.tensor_mov(self.output_scale, scale_tensor, '', 1, 1, 0, 0)
-        optimal_offset = self.tik_instance.Scalar('float32')
+        optimal_offset = self.tik_instance.Scalar(self.calc_precision)
         if self.with_offset:
             optimal_offset.set_as(self.offset[index_scalar])
         else:
             optimal_offset.set_as(0.0)
-        offset_tensor = self.tik_instance.Tensor('float32', (8,), tik.scope_ubuf, 'optimal_offset')
+        offset_tensor = self.tik_instance.Tensor(self.calc_precision, (8,), tik.scope_ubuf, 'optimal_offset')
         self.tik_instance.vec_dup(1, offset_tensor, optimal_offset, 1, 8)
         if self.with_offset:
             eps_scalar.set_as(-128)
             self.tik_instance.vec_dup(1, eps_tensor, eps_scalar, 1, 8)
             self.tik_instance.vsel(8, 0, offset_tensor, cmpmask, eps_tensor, offset_tensor, 1, 1, 1, 1, 8, 8, 8)
-        self.tik_instance.tensor_mov(self.output_offset, offset_tensor, '', 1, 1, 0, 0)
+
+        if self.soc_version in ['SD3403']:
+            scale_tensor_tmp = self.tik_instance.Tensor('float32', (8,), tik.scope_ubuf, 'scale_tensor_tmp')
+            self.tik_instance.vec_conv(8, 'none', scale_tensor_tmp, scale_tensor, 1, 8, 4)
+            offset_tensor_tmp = self.tik_instance.Tensor('float32', (8,), tik.scope_ubuf, 'offset_tensor_tmp')
+            self.tik_instance.vec_conv(8, 'none', offset_tensor_tmp, offset_tensor, 1, 8, 4)
+            self.tik_instance.tensor_mov(self.output_scale, scale_tensor_tmp, '', 1, 1, 0, 0)
+            self.tik_instance.tensor_mov(self.output_offset, offset_tensor_tmp, '', 1, 1, 0, 0)
+        else:
+            self.tik_instance.tensor_mov(self.output_scale, scale_tensor, '', 1, 1, 0, 0)
+            self.tik_instance.tensor_mov(self.output_offset, offset_tensor, '', 1, 1, 0, 0)
 
     def ifmr_compute(self):
         """
@@ -691,9 +876,10 @@ class Reconstruction():
         with self.tik_instance.for_range(0, self.aicore_num, block_num=self.aicore_num) as index:
             self.barrier = Barrier(self.tik_instance, self.barrier_workspace, self.aicore_num, index)
 
-            self.scale = self.tik_instance.Tensor('float32', (self.steps_size,), tik.scope_ubuf, 'scale')
+            self.scale = self.tik_instance.Tensor(self.calc_precision, (self.steps_size,), tik.scope_ubuf, 'scale')
             if self.with_offset:
-                self.offset = self.tik_instance.Tensor('float32', (self.steps_size,), tik.scope_ubuf, 'offset')
+                self.offset = self.tik_instance.Tensor(self.calc_precision, (self.steps_size,),
+                    tik.scope_ubuf, 'offset')
 
             self._compute_scale_offset()
             self._compute_mse_loss(index)

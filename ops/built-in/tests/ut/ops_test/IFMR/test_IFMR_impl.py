@@ -1,6 +1,9 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
 from op_test_frame.ut import OpUT
+from impl.ifmr import ifmr
+from tbe.common.platform.platform_info import set_current_compile_soc_info
+import tbe
 
 ut_case = OpUT('ifmr', None, None)
 
@@ -25,7 +28,7 @@ ut_case.add_case(
         0.01,
         True],
         'expect': 'success',
-        'case_name': 'test_ifmr_float16_with_offset'})
+        'case_name': 'test_ifmr_float16_with_offset_910A'})
 
 ut_case.add_case(
     ['Ascend910A'],
@@ -48,7 +51,7 @@ ut_case.add_case(
         0.01,
         True],
         'expect': 'success',
-        'case_name': 'test_ifmr_float32_with_offset'})
+        'case_name': 'test_ifmr_float32_with_offset_910A'})
 
 ut_case.add_case(
     ['Ascend910A'],
@@ -71,7 +74,99 @@ ut_case.add_case(
         0.01,
         False],
         'expect': 'success',
-        'case_name': 'test_ifmr_float16_without_offset'})
+        'case_name': 'test_ifmr_float16_without_offset_910A'})
+
+def test_ifmr_float16_with_offset_SD3403(test_args):
+    set_current_compile_soc_info("SD3403")
+    with tbe.common.context.op_context.OpContext("static"):
+        ifmr({'shape': (32, 3, 5, 5), 'dtype': 'float16', 'format': 'ND',
+            'ori_shape': (32, 3, 5, 5), 'ori_format': 'ND'},
+            {'shape': (1,), 'dtype': 'float16', 'format': 'ND', 'ori_shape': (1,),
+            'ori_format': 'ND'},
+            {'shape': (1,), 'dtype': 'float16', 'format': 'ND', 'ori_shape': (1,),
+            'ori_format': 'ND'},
+            {'shape': (512,), 'dtype': 'int32', 'format': 'ND',
+            'ori_shape': (512,), 'ori_format': 'ND'},
+            {'shape': (1,), 'dtype': 'float32', 'format': 'ND', 'ori_shape': (1,),
+            'ori_format': 'ND'},
+            {'shape': (1,), 'dtype': 'float32', 'format': 'ND', 'ori_shape': (1,),
+            'ori_format': 'ND'},
+            0.999999,
+            0.999999,
+            [0.7, 1.3],
+            0.01,
+            True)
+    set_current_compile_soc_info(test_args)
+ut_case.add_cust_test_func(test_func=test_ifmr_float16_with_offset_SD3403)
+
+def test_ifmr_float16_without_offset_SD3403(test_args):
+    set_current_compile_soc_info("SD3403")
+    with tbe.common.context.op_context.OpContext("static"):
+        ifmr({'shape': (32, 3, 5, 5), 'dtype': 'float16', 'format': 'ND',
+            'ori_shape': (32, 3, 5, 5), 'ori_format': 'ND'},
+            {'shape': (1,), 'dtype': 'float16', 'format': 'ND', 'ori_shape': (1,),
+            'ori_format': 'ND'},
+            {'shape': (1,), 'dtype': 'float16', 'format': 'ND', 'ori_shape': (1,),
+            'ori_format': 'ND'},
+            {'shape': (512,), 'dtype': 'int32', 'format': 'ND',
+            'ori_shape': (512,), 'ori_format': 'ND'},
+            {'shape': (1,), 'dtype': 'float32', 'format': 'ND', 'ori_shape': (1,),
+            'ori_format': 'ND'},
+            {'shape': (1,), 'dtype': 'float32', 'format': 'ND', 'ori_shape': (1,),
+            'ori_format': 'ND'},
+            0.999999,
+            0.999999,
+            [0.7, 1.3],
+            0.01,
+            False)
+    set_current_compile_soc_info(test_args)
+ut_case.add_cust_test_func(test_func=test_ifmr_float16_without_offset_SD3403)
+
+def test_ifmr_float32_with_offset_710(test_args):
+    set_current_compile_soc_info("Ascend710")
+    with tbe.common.context.op_context.OpContext("static"):
+        ifmr({'shape': (32, 3, 5, 5), 'dtype': 'float32', 'format': 'ND',
+            'ori_shape': (32, 3, 5, 5), 'ori_format': 'ND'},
+            {'shape': (1,), 'dtype': 'float32', 'format': 'ND', 'ori_shape': (1,),
+            'ori_format': 'ND'},
+            {'shape': (1,), 'dtype': 'float32', 'format': 'ND', 'ori_shape': (1,),
+            'ori_format': 'ND'},
+            {'shape': (512,), 'dtype': 'int32', 'format': 'ND',
+            'ori_shape': (512,), 'ori_format': 'ND'},
+            {'shape': (1,), 'dtype': 'float32', 'format': 'ND', 'ori_shape': (1,),
+            'ori_format': 'ND'},
+            {'shape': (1,), 'dtype': 'float32', 'format': 'ND', 'ori_shape': (1,),
+            'ori_format': 'ND'},
+            0.999999,
+            0.999999,
+            [0.7, 1.3],
+            0.01,
+            True)
+    set_current_compile_soc_info(test_args)
+ut_case.add_cust_test_func(test_func=test_ifmr_float32_with_offset_710)
+
+def test_ifmr_float32_with_offset_610(test_args):
+    set_current_compile_soc_info("Ascend610")
+    with tbe.common.context.op_context.OpContext("static"):
+        ifmr({'shape': (32, 3, 5, 5), 'dtype': 'float32', 'format': 'ND',
+            'ori_shape': (32, 3, 5, 5), 'ori_format': 'ND'},
+            {'shape': (1,), 'dtype': 'float32', 'format': 'ND', 'ori_shape': (1,),
+            'ori_format': 'ND'},
+            {'shape': (1,), 'dtype': 'float32', 'format': 'ND', 'ori_shape': (1,),
+            'ori_format': 'ND'},
+            {'shape': (512,), 'dtype': 'int32', 'format': 'ND',
+            'ori_shape': (512,), 'ori_format': 'ND'},
+            {'shape': (1,), 'dtype': 'float32', 'format': 'ND', 'ori_shape': (1,),
+            'ori_format': 'ND'},
+            {'shape': (1,), 'dtype': 'float32', 'format': 'ND', 'ori_shape': (1,),
+            'ori_format': 'ND'},
+            0.999999,
+            0.999999,
+            [0.7, 1.3],
+            0.01,
+            True)
+    set_current_compile_soc_info(test_args)
+ut_case.add_cust_test_func(test_func=test_ifmr_float32_with_offset_610)
 
 # ut_case.add_case(
 #     ['Ascend910'],
@@ -442,5 +537,5 @@ ut_case.add_case(
 #         'case_name': 'test_ifmr_excessive_steps'})
 
 if __name__ == '__main__':
-    ut_case.run('Ascend910')
+    ut_case.run(["Ascend910", "SD3403", "Ascend710", "Ascend610"])
     exit(0)
