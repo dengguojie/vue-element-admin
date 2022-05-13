@@ -411,7 +411,7 @@ def slice(x, offsets, size, y, kernel_name="slice"):
     para_check.check_dtype(offsets_dtype, check_list_offsets, param_name="offsets")
     para_check.check_dtype(size_dtype, check_list_size, param_name="size")
 
-    if tbe_platform.api_check_support("tbe.dsl.slice"):
+    if tbe_platform.api_check_support("tbe.dsl.slice", "float32"):
         slice_dsl(x, offsets, size, y, kernel_name)
     else:
         slice_tik(x, offsets, size, y, kernel_name)

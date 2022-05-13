@@ -1189,6 +1189,7 @@ vector_B:
       - ops/built-in/tbe/impl/dynamic/sign.py
       - ops/built-in/tbe/impl/dynamic/sin.py
       - ops/built-in/tbe/impl/dynamic/sinh.py
+      - ops/built-in/tbe/impl/dynamic/slice.py
       - ops/built-in/tbe/impl/dynamic/smooth_l1_loss.py
       - ops/built-in/tbe/impl/dynamic/softplus.py
       - ops/built-in/tbe/impl/dynamic/softsign.py
@@ -2852,7 +2853,6 @@ unkown:
       - ops/built-in/tbe/impl/dynamic/unsorted_segment_prod.py
       - ops/built-in/tbe/impl/dynamic/diag.py
       - ops/built-in/tbe/impl/dynamic/as_strided.py
-      - ops/built-in/tbe/impl/dynamic/slice.py
       - ops/built-in/tbe/impl/dynamic/pad.py
       - ops/built-in/tbe/impl/dynamic/concat_offset.py
       - ops/built-in/tbe/impl/dynamic/reverse_v2.py
