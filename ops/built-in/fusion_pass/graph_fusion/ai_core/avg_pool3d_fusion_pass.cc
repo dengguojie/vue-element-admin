@@ -159,11 +159,9 @@ bool GetStridesAndKSize(Operator& op, Format refer, int32_t& strd, int32_t& strh
   std::vector<int32_t> stride_list;
   std::vector<int32_t> ksize_list;
   FUSION_PASS_CHECK(op.GetAttr("strides", stride_list) != GRAPH_SUCCESS,
-                    VECTOR_FUSION_INNER_ERR_REPORT(kPatternAvgPool3D.c_str(), "Get attr strides failed."),
-                    return false);
+                    OP_LOGW(TbeGetName(op), "Get attr strides failed."), return false);
   FUSION_PASS_CHECK(op.GetAttr("ksize", ksize_list) != GRAPH_SUCCESS,
-                    VECTOR_FUSION_INNER_ERR_REPORT(kPatternAvgPool3D.c_str(), "Get attr ksize failed."),
-                    return false);
+                    OP_LOGW(TbeGetName(op), "Get attr ksize failed."), return false);
   if (ksize_list.size() == 1) {
     kd = ksize_list[0];
     kh = ksize_list[0];
@@ -218,9 +216,7 @@ bool GetStridesAndKSize(Operator& op, Format refer, int32_t& strd, int32_t& strh
 vector<FusionPattern*> AvgPool3DFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
   FusionPattern* pattern = new (nothrow) FusionPattern("AvgPool3DFusionPass");
-  FUSION_PASS_CHECK(pattern == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "New a pattern obj failed."),
-                    return patterns);
+  FUSION_PASS_CHECK(pattern == nullptr, OP_LOGW(kFusedOpType.c_str(), "New a pattern obj failed."), return patterns);
   pattern->AddOpDesc(kPatternAvgPool3D, {"AvgPool3D"}).SetOutput(kPatternAvgPool3D);
   patterns.push_back(pattern);
   return patterns;
@@ -245,12 +241,8 @@ Status AvgPool3DFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector
   int64_t fmap_h;
   int64_t fmap_w;
   if (data_format == FORMAT_NDHWC) {
-    FUSION_PASS_CHECK(dims_out.size() < 4,
-                      VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "Dims of output is not enough."),
-                      return FAILED);
-    FUSION_PASS_CHECK(dims_in.size() < 5,
-                      VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "Dims of input is not enough."),
-                      return FAILED);
+    FUSION_PASS_CHECK(dims_out.size() < 4, OP_LOGW(op_node, "Dims of output is not enough."), return NOT_CHANGED);
+    FUSION_PASS_CHECK(dims_in.size() < 5, OP_LOGW(op_node, "Dims of input is not enough."), return NOT_CHANGED);
     dout = dims_out[1];
     ho = dims_out[kIndex2];
     wo = dims_out[kIndex3];
@@ -260,12 +252,8 @@ Status AvgPool3DFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector
     fmap_w = dims_in[kIndex3];
     fmap_c = dims_in[kIndex4];
   } else if (data_format == FORMAT_NCDHW) {
-    FUSION_PASS_CHECK(dims_out.size() < 5,
-                      VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "Dims of output is not enough."),
-                      return FAILED);
-    FUSION_PASS_CHECK(dims_in.size() < 5,
-                      VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "Dims of input is not enough."),
-                      return FAILED);
+    FUSION_PASS_CHECK(dims_out.size() < 5, OP_LOGW(op_node, "Dims of output is not enough."), return NOT_CHANGED);
+    FUSION_PASS_CHECK(dims_in.size() < 5, OP_LOGW(op_node, "Dims of input is not enough."), return NOT_CHANGED);
     dout = dims_out[kIndex2];
     ho = dims_out[kIndex3];
     wo = dims_out[kIndex4];
@@ -276,12 +264,8 @@ Status AvgPool3DFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector
     fmap_w = dims_in[kIndex4];
   } else {
     // DHWCN
-    FUSION_PASS_CHECK(dims_out.size() < 3,
-                      VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "Dims of output is not enough."),
-                      return FAILED);
-    FUSION_PASS_CHECK(dims_in.size() < 5,
-                      VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "Dims of input is not enough."),
-                      return FAILED);
+    FUSION_PASS_CHECK(dims_out.size() < 3, OP_LOGW(op_node, "Dims of output is not enough."), return NOT_CHANGED);
+    FUSION_PASS_CHECK(dims_in.size() < 5, OP_LOGW(op_node, "Dims of input is not enough."), return NOT_CHANGED);
     dout = dims_out[0];
     ho = dims_out[1];
     wo = dims_out[kIndex2];
@@ -295,12 +279,10 @@ Status AvgPool3DFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector
   // when static op or dynamic op phase_running, is_dynamic = false
   if (std::find(dims_in.begin(), dims_in.end(), -1) != dims_in.end()) {
     is_dynamic = true;
-    OP_LOGD(kFusedOpType.c_str(), "avg_pool3d fusion pass in dynamic mode.");
+    OP_LOGD(op_node, "avg_pool3d fusion pass in dynamic mode.");
   }
   FUSION_PASS_CHECK((PatternFusionUtil::IsUnknownShape(fmap_c)),
-                    VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(),
-                                                   "AvgPool3DFusionPass cannot be applied for unknown shape."),
-                    return FAILED);
+                    OP_LOGI(op_node, "AvgPool3DFusionPass cannot be applied for unknown shape."), return NOT_CHANGED);
   int64_t fmap_c1 = (fmap_c + kC0 - 1) / kC0;
 
   int kd;
@@ -309,13 +291,12 @@ Status AvgPool3DFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector
   int stride_d;
   int stride_h;
   int stride_w;
-  FUSION_PASS_CHECK(!GetStridesAndKSize(op, data_format, stride_d, stride_h, stride_w, kd, kh, kw),
-                    VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "GetStridesAndKSize failed"), return FAILED);
+  FUSION_PASS_CHECK_NOLOG(!GetStridesAndKSize(op, data_format, stride_d, stride_h, stride_w, kd, kh, kw),
+                          return NOT_CHANGED);
 
   vector<int32_t> pads;
-  FUSION_PASS_CHECK(op.GetAttr("pads", pads) != GRAPH_SUCCESS,
-                    VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "Get attr pads failed"),
-                    return FAILED);
+  FUSION_PASS_CHECK(op.GetAttr("pads", pads) != GRAPH_SUCCESS, OP_LOGW(op_node, "failed to get attr pads"),
+                    return NOT_CHANGED);
   // Attr count_include_pad, ceil_mode and divisor_override are optional
   bool count_include_pad = true;
   op.GetAttr("count_include_pad", count_include_pad);
@@ -325,7 +306,7 @@ Status AvgPool3DFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector
   op.GetAttr("divisor_override", divisor_override);
 
   if (!is_dynamic && IsVectorImpl(fmap_h, fmap_w, kh, kw, pads)) {
-    OP_LOGD("get into vector impl.");
+    OP_LOGI(op_node, "get into vector impl.");
     op_node_desc->SetType("AvgPool3DD");
     return SUCCESS;
   }
@@ -333,8 +314,7 @@ Status AvgPool3DFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector
   int64_t filter_size = fmap_c1 * kd * kh * kw * kC0 * kC0;
   GeTensorPtr filter_ptr{nullptr};
   unique_ptr<uint16_t[]> filter_mem(new (nothrow) uint16_t[filter_size]());
-  FUSION_PASS_CHECK(filter_mem.get() == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "Filter is NULL"),
+  FUSION_PASS_CHECK(filter_mem.get() == nullptr, CUBE_INNER_ERR_REPORT(op_node, "Filter is NULL"),
                     return PARAM_INVALID);
 
   float val = 1.0;
@@ -347,7 +327,7 @@ Status AvgPool3DFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector
   }
 
   FUSION_PASS_CHECK(GenFilter(filter_size, filter_mem.get(), val) != SUCCESS,
-                    VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "GenFilter failed"), return FAILED);
+                    CUBE_INNER_ERR_REPORT(op_node, "failed to generate filter"), return FAILED);
 
   // define shape
   vector<int64_t> assit_dim_info{fmap_c1 * kd * kh * kw, 1, kC0, kC0};
@@ -360,7 +340,7 @@ Status AvgPool3DFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector
   filter_tensor_desc.SetOriginFormat(FORMAT_DHWCN);
 
   FUSION_PASS_MAKE_SHARED(
-      (filter_ptr = make_shared<GeTensor>(filter_tensor_desc, reinterpret_cast<uint8_t*>(filter_mem.get()),
+      (filter_ptr = make_shared<GeTensor>(filter_tensor_desc, reinterpret_cast<uint8_t *>(filter_mem.get()),
                                           filter_size * sizeof(uint16_t))),
       filter_ptr = nullptr;
       return PARAM_INVALID);
@@ -368,12 +348,11 @@ Status AvgPool3DFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector
   vector<GeTensorPtr> weights = {filter_ptr};
 
   if (!is_dynamic && !IsZeroPads(pads) && !divisor_override) {
-    OP_LOGD(kFusedOpType.c_str(), "create multiplier data.");
+    OP_LOGD(op_node, "create multiplier data.");
     GeTensorPtr multiplier_ptr{nullptr};
     int64_t multiplier_size = fmap_n * fmap_c1 * kC0 * dout * ho * wo;
     unique_ptr<uint16_t[]> multiplier_mem(new (nothrow) uint16_t[multiplier_size]());
-    FUSION_PASS_CHECK(multiplier_mem.get() == nullptr,
-                      VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "Multiplier is NULL"),
+    FUSION_PASS_CHECK(multiplier_mem.get() == nullptr, CUBE_INNER_ERR_REPORT(op_node, "Multiplier is NULL"),
                       return PARAM_INVALID);
 
     GenMultiplier(fmap_n, fmap_c1, fmap_d, fmap_h, fmap_w, dout, ho, wo, kd, kh, kw, stride_d, stride_h, stride_w, pads,
@@ -393,11 +372,10 @@ Status AvgPool3DFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector
   }
 
   FUSION_PASS_CHECK(OpDescUtils::SetWeights(op_node, weights) != GRAPH_SUCCESS,
-                    VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(), "SetWeights failed"), return FAILED);
+                    CUBE_INNER_ERR_REPORT(op_node, "failed to set weights"), return FAILED);
   auto const_input_nodes = OpDescUtils::GetConstInputs(op_node);
   FUSION_PASS_CHECK(const_input_nodes.empty(),
-                    VECTOR_FUSION_INNER_ERR_REPORT(kFusedOpType.c_str(),
-                                                  "GetConstInputs Error Size: %lu", const_input_nodes.size()),
+                    CUBE_INNER_ERR_REPORT(op_node, "GetConstInputs Error Size: %zu", const_input_nodes.size()),
                     return PARAM_INVALID);
 
   for (size_t i = 0; i < const_input_nodes.size(); i++) {
@@ -408,7 +386,7 @@ Status AvgPool3DFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector
     op_node_desc->SetType("AvgPool3DD");
   }
 
-  GE_DUMP(make_shared<ComputeGraph>(graph), "avg_pool3d_fusion_pass_finish");
+  OP_LOGI(op_node, "succeed to execute fusion pass");
   return SUCCESS;
 }
 REGISTER_PASS("AvgPool3DFusionPass", BUILT_IN_GRAPH_PASS, AvgPool3DFusionPass);

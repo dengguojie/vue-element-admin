@@ -40,12 +40,12 @@ class AAMatMulNzToNdFusionPass : public PatternFusionBasePass {
   bool IsStaticShape();
   bool NeedFusion(const Mapping& mapping);
   bool GetOriginalValue();
-  bool UpdateNodesInfo();
+  Status UpdateNodesInfo();
   bool RelinkNodesBeforeMatMul();
   bool RelinkNodesAfterMatMul();
   bool RemoveRedanduntNodes(ge::ComputeGraph* graph);
   vector<FusionPattern*> DefinePatterns() override;
-  void RestoreOriginalValues();
+  Status RestoreOriginalValues();
 
  private:
   ge::NodePtr node_ptr_data_0 = nullptr;

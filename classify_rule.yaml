@@ -316,6 +316,13 @@ cube:
       - ops/built-in/fusion_pass/graph_fusion/ai_core/batch_matmul_v2_reduce_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/a_a_matmul_nz_to_nd_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/a_a_matmul_nz_to_nd_fusion_pass.h
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/avg_pool3d_fusion_pass.cc
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/avg_pool3d_fusion_pass.h
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/conv3d_backprop_input_bias_add_fusion_pass.cc
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/conv3d_backprop_input_bias_add_fusion_pass.h
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/fullyconnection_reshape_fusion_pass.cc
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/matmulv2_fusion_pass.cc
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/fc_transdata_merge_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/attention_ln_qkv_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/attention_ln_qkv_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/attention_qkv_gradx_fusion_pass.cc
@@ -363,6 +370,7 @@ cube:
       - ops/built-in/framework/tf_plugin/depthwise_conv2d_backprop_filter_plugin.cc
       - ops/built-in/framework/tf_plugin/depthwise_conv2d_backprop_input_plugin.cc
       - ops/built-in/framework/tf_plugin/avg_pool3d_grad_plugin.cc
+      - ops/built-in/framework/tf_plugin/matmul_plugin.cc
       - ops/built-in/framework/tf_plugin/k_means_centroids_plugin.cc
       - ops/built-in/framework/tf_plugin/k_means_centroids_v2_plugin.cc
       - auto_schedule/python/tbe/dsl/compute/conv2d_backprop_filter_compute.py
@@ -781,6 +789,7 @@ vector_B:
       - cmake/external/protobuf_static.cmake
       - cmake/template/config.cmake
       - cmake/util/intf_pub_llt_gccnative.cmake
+      - ops/common/inc/op_log.h
       - ops/built-in/CMakeLists.txt
       - ops/built-in/framework/tf_plugin/basic_lstm_cell_grad_plugin.cc
       - ops/built-in/framework/tf_plugin/basic_lstm_cell_plugin.cc
@@ -802,6 +811,8 @@ vector_B:
       - ops/built-in/framework/tf_plugin/parallel_concat_plugin.cc
       - ops/built-in/framework/tf_plugin/resize_bilinear_grad_plugin.cc
       - ops/built-in/framework/tf_plugin/resize_nearest_neighbor_grad_plugin.cc
+      - ops/built-in/fusion_pass/common/pattern_fusion_util.cc
+      - ops/built-in/fusion_pass/common/pattern_fusion_util.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/a_a_square_sum_maximum_rsqrt_mul_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/a_reduce_all_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/a_reduce_any_fusion_pass.cc
@@ -904,6 +915,8 @@ vector_B:
       - ops/built-in/op_proto/util/axis_util.h
       - ops/built-in/op_proto/util/nn_shape_fns.h
       - ops/built-in/op_proto/util/resource_variable_ops_shape_fns.h
+      - ops/built-in/op_proto/util/error_util.cc
+      - ops/built-in/op_proto/util/error_util.h
       - ops/built-in/op_proto/transformation_ops.cc
       - ops/built-in/op_proto/selection_ops.cc
       - ops/built-in/op_tiling/arg_max_v2.cc
@@ -2206,8 +2219,6 @@ unkown:
       - ops/built-in/op_proto/util/array_ops_shape_fns.h
       - ops/built-in/op_proto/util/candidate_sampling_shape_fns.cc
       - ops/built-in/op_proto/util/candidate_sampling_shape_fns.h
-      - ops/built-in/op_proto/util/error_util.cc
-      - ops/built-in/op_proto/util/error_util.h
       - ops/built-in/op_proto/util/nn_shape_fns.cc
       - ops/built-in/op_proto/util/util.cc
       - ops/built-in/op_proto/util/common_shape_fns.h
@@ -3460,9 +3471,7 @@ unkown:
       - ops/built-in/fusion_pass/common/fusion_removenode_registry.h
       - ops/built-in/fusion_pass/common/fusion_removenode_registry.cc
       - ops/built-in/fusion_pass/common/fusion_const2attr_registry.cc
-      - ops/built-in/fusion_pass/common/pattern_fusion_util.cc
       - ops/built-in/fusion_pass/common/quant_host_cpu_op_common.h
-      - ops/built-in/fusion_pass/common/pattern_fusion_util.h
       - ops/built-in/fusion_pass/common/fusion_addoutput_registry.h
       - ops/built-in/fusion_pass/common/fusion_precheck_func.h
       - ops/built-in/fusion_pass/common/fp16_t.cc
@@ -3839,7 +3848,6 @@ unkown:
       - ops/contrib/framework/tf_plugin/yolov3_post_process_plugin.cc
       - ops/contrib/framework/tf_plugin/tensorflow_fasterrcnn_second_stage_processor_tik_plugin.cc
       - ops/common/inc/example.h
-      - ops/common/inc/op_log.h
       - ops/common/inc/op_attr.h
       - ops/common/inc/op_util.h
       - ops/common/inc/op_const.h

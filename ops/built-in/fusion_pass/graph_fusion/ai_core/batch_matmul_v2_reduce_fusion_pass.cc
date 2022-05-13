@@ -51,7 +51,7 @@ static const uint32_t kRightShapeDim = 3;
 vector<FusionPattern *> BatchMatMulV2ReduceFusionPass::DefinePatterns() {
   vector<FusionPattern *> patterns;
   FusionPattern *pattern = new (std::nothrow) FusionPattern("BatchMatMulV2ReduceFusionPass");
-  FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new a pattern object fail."), return patterns);
+  FUSION_PASS_CHECK(pattern == nullptr, OP_LOGW(FUSED_OP_TYPE.c_str(), "new a pattern object fail."), return patterns);
   pattern->AddOpDesc(PATTERN_BATCHMATMULV2, {BATCHMATMULV2}).SetOutput(PATTERN_BATCHMATMULV2);
   patterns.push_back(pattern);
   return patterns;
@@ -157,8 +157,7 @@ bool BatchMatMulV2ReduceFusionPass::CheckNeedChange(const ge::NodePtr &fused_nod
     OP_LOGD(FUSED_OP_TYPE.c_str(), "input shape x1=[%ld, %ld, %ld], x2=[%ld, %ld, %ld].", shape_x[0], shape_x[1],
             shape_x[2], shape_y[0], shape_y[1], shape_y[2]);
     auto op_desc = fused_node->GetOpDesc();
-    FUSION_PASS_CHECK(op_desc == nullptr, CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "op_desc is null."),
-                      return false);
+    FUSION_PASS_CHECK(op_desc == nullptr, OP_LOGW(fused_node, "op_desc is null."), return false);
     // check if dynamic shape
     auto x0_desc = op_desc->MutableInputDesc(0);
     auto x1_desc = op_desc->MutableInputDesc(1);
@@ -547,26 +546,23 @@ Status BatchMatMulV2ReduceFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &m
 
   // common vars
   ge::NodePtr fused_node = GetNodeFromMapping(PATTERN_BATCHMATMULV2, mapping);
-  FUSION_PASS_CHECK(fused_node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "Fuse node is null, fusion failed."),
-                    return FAILED);
+  FUSION_PASS_CHECK(fused_node == nullptr, OP_LOGW(FUSED_OP_TYPE.c_str(), "Fuse node is null, fusion failed."),
+                    return NOT_CHANGED);
 
   auto input0desc = GetCurrNodeInputDesc(fused_node, 0);
   auto input1desc = GetCurrNodeInputDesc(fused_node, 1);
-  FUSION_PASS_CHECK(input0desc == nullptr, CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "inputDesc0 is null"),
-                    return FAILED);
-  FUSION_PASS_CHECK(input1desc == nullptr, CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "inputDesc1 is null"),
-                    return FAILED);
+  FUSION_PASS_CHECK(input0desc == nullptr, OP_LOGW(fused_node, "inputDesc0 is null"), return NOT_CHANGED);
+  FUSION_PASS_CHECK(input1desc == nullptr, OP_LOGW(fused_node, "inputDesc1 is null"), return NOT_CHANGED);
   auto x1_shape = input0desc->GetOriginShape().GetDims();
   auto x2_shape = input1desc->GetOriginShape().GetDims();
   bool trans_a = false;
   bool trans_b = false;
   auto op_desc = fused_node->GetOpDesc();
-  FUSION_PASS_CHECK(op_desc == nullptr, CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "op_desc is null."),
-                    return FAILED);
-  FUSION_PASS_CHECK(!AttrUtils::GetBool(op_desc, "adj_x1", trans_a),
-                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "GetBool adj_x1 failed!"), return FAILED);
-  FUSION_PASS_CHECK(!AttrUtils::GetBool(op_desc, "adj_x2", trans_b),
-                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "GetBool adj_x2 failed!"), return FAILED);
+  FUSION_PASS_CHECK(op_desc == nullptr, OP_LOGW(fused_node, "op_desc is null."), return NOT_CHANGED);
+  FUSION_PASS_CHECK(!AttrUtils::GetBool(op_desc, "adj_x1", trans_a), OP_LOGW(fused_node, "get adj_x1 failed!"),
+                    return NOT_CHANGED);
+  FUSION_PASS_CHECK(!AttrUtils::GetBool(op_desc, "adj_x2", trans_b), OP_LOGW(fused_node, "get adj_x2 failed!"),
+                    return NOT_CHANGED);
 
   std::vector<int64_t> product_x1_shape;
   std::vector<int64_t> product_x2_shape;
@@ -606,10 +602,10 @@ Status BatchMatMulV2ReduceFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &m
     auto k_dim = (trans_a == true) ? x1_shape[1] : x1_shape[2];
     if (k_dim == 1) {
       FUSION_PASS_CHECK(SUCCESS != DoFusionWithKOne(graph, fused_node, new_x1_out_shape, new_x2_out_shape, trans),
-                        CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "DoFusionWithKOne failed!"), return FAILED);
+                        CUBE_INNER_ERR_REPORT(fused_node, "DoFusionWithKOne failed"), return FAILED);
     } else {
       FUSION_PASS_CHECK(SUCCESS != DoFusionWithKNotOne(graph, fused_node, new_x1_out_shape, new_x2_out_shape, trans),
-                        CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "DoFusionWithKNotOne failed!"), return FAILED);
+                        CUBE_INNER_ERR_REPORT(fused_node, "DoFusionWithKNotOne failed"), return FAILED);
     }
 
     // flush the batmatmul output shape
@@ -620,7 +616,8 @@ Status BatchMatMulV2ReduceFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &m
     OP_LOGD(FUSED_OP_TYPE.c_str(), "BatchMatMulV2ReduceFusionPass %u*%u scenario success.", kLeftShapeDim,
             kRightShapeDim);
   }
-  OP_LOGD(FUSED_OP_TYPE.c_str(), "Leave BatchMatMulV2ReduceFusionPass.");
+
+  OP_LOGI(fused_node, "succeed to execute fusion pass");
   return SUCCESS;
 }
 

@@ -69,10 +69,9 @@ static const string kConv2dTransposeOpType = "Conv2DTransposeD";
   }
 
 vector<FusionPattern *> Conv2DbpInputDilationFusionPass::DefinePatterns() {
-  OP_LOGI(FUSED_OP_TYPE.c_str(), "Enter Conv2DbpInputDilationFusionPass::DefinePatterns.");
   vector<FusionPattern *> patterns;
   FusionPattern *pattern = new (std::nothrow) FusionPattern("Conv2DbpInputDilationFusionPass");
-  FUSION_PASS_CHECK(pattern == nullptr, CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
+  FUSION_PASS_CHECK(pattern == nullptr, OP_LOGW(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
                     return patterns);
 
   pattern
@@ -222,62 +221,62 @@ Status Conv2DbpInputDilationFusionPass::Relink(ge::NodePtr out_backprop_node, ge
                                                const int pre_anchor, const int sub_anchor,
                                                bool pre_dilation, const vector<int> &y_idxs) {
   if (pre_dilation) {
-    OP_LOGD(FUSED_OP_TYPE.c_str(), "pre relink");
+    OP_LOGD(out_backprop_node, "pre relink");
     FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(out_backprop_node->GetOutDataAnchor(0),
                                                  conv2dbp_input_node->GetInDataAnchor(pre_anchor)) != SUCCESS,
-                      CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                      CUBE_INNER_ERR_REPORT(out_backprop_node,
                                             "fail to remove edge between out_backprop_node and conv2dbp_input_node"),
                       return FAILED);
 
     FUSION_PASS_CHECK(
         ge::GraphUtils::AddEdge(out_backprop_node->GetOutDataAnchor(0), dilation_node->GetInDataAnchor(0)) != SUCCESS,
-        CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fail to add edge between out_backprop_node and dilation_node"),
+        CUBE_INNER_ERR_REPORT(out_backprop_node, "fail to add edge between out_backprop_node and dilation_node"),
         return FAILED);
 
     FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(dilation_node->GetOutDataAnchor(0),
                                               conv2dbp_input_node->GetInDataAnchor(pre_anchor)) != SUCCESS,
-                      CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                      CUBE_INNER_ERR_REPORT(out_backprop_node,
                                             "fail to add edge between dilation_node and conv2dbp_input_node"),
                       return FAILED);
 
     auto dilation_out_desc = GetCurrNodeOutputDesc(dilation_node, 0);
     FUSION_PASS_CHECK(dilation_out_desc == nullptr,
-                      CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "dilation_out_desc is null"), return FAILED);
+                      CUBE_INNER_ERR_REPORT(out_backprop_node, "dilation_out_desc is null"), return FAILED);
     auto conv2dbp_input_op_desc = conv2dbp_input_node->GetOpDesc();
     FUSION_PASS_CHECK(conv2dbp_input_op_desc == nullptr,
-                      CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "dilation_out_desc is null"), return FAILED);
+                      CUBE_INNER_ERR_REPORT(out_backprop_node, "dilation_out_desc is null"), return FAILED);
     FUSION_PASS_CHECK(
         conv2dbp_input_op_desc->UpdateInputDesc(pre_anchor, *(dilation_out_desc.get())) != SUCCESS,
-        CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fail to update input description of conv2dbp_input_node"),
+        CUBE_INNER_ERR_REPORT(out_backprop_node, "fail to update input description of conv2dbp_input_node"),
         return FAILED);
   } else {
-    OP_LOGD(FUSED_OP_TYPE.c_str(), "post relink");
+    OP_LOGD(out_backprop_node, "post relink");
     for (int i : y_idxs) {
       FUSION_PASS_CHECK(
           ge::GraphUtils::RemoveEdge(conv2dbp_input_node->GetOutDataAnchor(sub_anchor), y_node->GetInDataAnchor(i)) !=
               SUCCESS,
-          CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fail to remove edge between conv2dbp_input_node and y_node"),
+          CUBE_INNER_ERR_REPORT(out_backprop_node, "fail to remove edge between conv2dbp_input_node and y_node"),
           return FAILED);
       FUSION_PASS_CHECK(
           ge::GraphUtils::AddEdge(dilation_node->GetOutDataAnchor(0), y_node->GetInDataAnchor(i)) != SUCCESS,
-          CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fail to add edge between dilation_node and y_node"),
+          CUBE_INNER_ERR_REPORT(out_backprop_node, "fail to add edge between dilation_node and y_node"),
           return FAILED);
     }
     FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(conv2dbp_input_node->GetOutDataAnchor(sub_anchor),
                                               dilation_node->GetInDataAnchor(0)) != SUCCESS,
-                      CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                      CUBE_INNER_ERR_REPORT(out_backprop_node,
                                             "fail to add edge between conv2dbp_input_node and dilation_node"),
                       return FAILED);
     auto dilation_in_desc = GetCurrNodeInputDesc(dilation_node, 0);
     FUSION_PASS_CHECK(dilation_in_desc == nullptr,
-                      CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "dilation_in_desc is null"), return FAILED);
+                      CUBE_INNER_ERR_REPORT(out_backprop_node, "dilation_in_desc is null"), return FAILED);
     auto conv2dbp_input_op_desc = conv2dbp_input_node->GetOpDesc();
     FUSION_PASS_CHECK(
         conv2dbp_input_op_desc->UpdateOutputDesc(sub_anchor, *(dilation_in_desc.get())) != SUCCESS,
-        CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fail to update output description of conv2dbp_input_node"),
+        CUBE_INNER_ERR_REPORT(out_backprop_node, "fail to update output description of conv2dbp_input_node"),
         return FAILED);
   }
-  OP_LOGD(FUSED_OP_TYPE.c_str(), "finish  relink");
+  OP_LOGD(out_backprop_node, "finish  relink");
   return SUCCESS;
 }
 
@@ -287,7 +286,7 @@ Status Conv2DbpInputDilationFusionPass::Fusion(ge::ComputeGraph &graph, Mapping 
   OptionalInfo opti_compilation_info;
   FUSION_PASS_CHECK(
       PlatformInfoManager::Instance().GetPlatformInfoWithOutSocVersion(platform_info, opti_compilation_info) != SUCCESS,
-      CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Get platform_info failed."), return FAILED);
+      OP_LOGW(FUSED_OP_TYPE.c_str(), "Get platform_info failed."), return NOT_CHANGED);
   bool cube_vector_split_flag = platform_info.ai_core_spec.cube_vector_split;
   const auto &intrinsic_map = platform_info.ai_core_intrinsic_dtype_map;
   bool support_ub_dilation_flag = (intrinsic_map.find(kIntrinsicUbToL1) != intrinsic_map.end());
@@ -298,8 +297,8 @@ Status Conv2DbpInputDilationFusionPass::Fusion(ge::ComputeGraph &graph, Mapping 
 
   ge::NodePtr conv2dbp_input_node = GetNodeFromMapping(PATTERN_CONV2DBACKPROPINPUT, mapping);
   FUSION_PASS_CHECK(conv2dbp_input_node == nullptr,
-                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Conv2DBackpropInputNode is null, fusion failed."),
-                    return PARAM_INVALID);
+                    OP_LOGW(FUSED_OP_TYPE.c_str(), "Conv2DBackpropInputNode is null, fusion failed."),
+                    return NOT_CHANGED);
 
   auto dx_node_name = conv2dbp_input_node->GetName();
   OP_LOGD(FUSED_OP_TYPE.c_str(), "The conv2dbp input node name is:[%s]", dx_node_name.c_str());
@@ -324,66 +323,51 @@ Status Conv2DbpInputDilationFusionPass::Fusion(ge::ComputeGraph &graph, Mapping 
   std::vector<int64_t> pads;
 
   FUSION_PASS_CHECK(op.GetAttr("strides", strides) != GRAPH_SUCCESS,
-                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                                          "op [%s] get attribute strides failed or strides not exist",
-                                          dx_node_name.c_str()),
-                    return FAILED);
+                    OP_LOGW(dx_node_name, "get attribute strides failed or strides not exist"), return NOT_CHANGED);
   FUSION_PASS_CHECK(op.GetAttr("pads", pads) != GRAPH_SUCCESS,
-                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                                          "op [%s] get attribute pads failed or pads not exist",
-                                          dx_node_name.c_str()),
-                    return FAILED);
-  FUSION_PASS_CHECK(
-      op.GetAttr("input_size", input_size) != GRAPH_SUCCESS && op_type != kDeconvolutionOpType,
-      CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                            "op [%s] get attribute input_size failed or input_size not exist",
-                            dx_node_name.c_str()),
-      return FAILED);
+                    OP_LOGW(dx_node_name, "get attribute pads failed or pads not exist"), return NOT_CHANGED);
+  FUSION_PASS_CHECK(op.GetAttr("input_size", input_size) != GRAPH_SUCCESS && op_type != kDeconvolutionOpType,
+                    OP_LOGW(dx_node_name, "get attribute input_size failed or input_size not exist"),
+                    return NOT_CHANGED);
 
   auto peer_out_anchor = GetPeerOutAnchorWithInDataAnchor(conv2dbp_input_node, out_bp_anchor);
-  FUSION_PASS_CHECK(peer_out_anchor == nullptr,
-                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "op [%s] get peer out anchor failed",
-                                          dx_node_name.c_str()),
-                    return FAILED);
+  FUSION_PASS_CHECK(peer_out_anchor == nullptr, OP_LOGW(dx_node_name, "get peer out anchor failed"),
+                    return NOT_CHANGED);
   auto out_backprop_node = peer_out_anchor->GetOwnerNode();
-  FUSION_PASS_CHECK(out_backprop_node == nullptr,
-                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "op [%s] get owner node failed",
-                                          dx_node_name.c_str()),
-                    return FAILED);
+  FUSION_PASS_CHECK(out_backprop_node == nullptr, OP_LOGW(dx_node_name, "get owner node failed"), return NOT_CHANGED);
 
   ge::GeTensorDesc filter_desc = *(GetCurrNodeInputDesc(conv2dbp_input_node, filter_anchor).get());
   ge::GeTensorDesc conv2dbp_input_outbackprop_desc = *(GetCurrNodeInputDesc(conv2dbp_input_node, out_bp_anchor).get());
   ge::GeTensorDesc conv2dbp_input_y_desc = *(GetCurrNodeOutputDesc(conv2dbp_input_node, y_anchor).get());
   FUSION_PASS_CHECK(GetCurrNodeInputDesc(conv2dbp_input_node, filter_anchor) == nullptr,
-                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "filter_desc is null"), return FAILED);
+                    OP_LOGW(dx_node_name, "filter_desc is null"), return NOT_CHANGED);
   FUSION_PASS_CHECK(GetCurrNodeInputDesc(conv2dbp_input_node, out_bp_anchor) == nullptr,
-                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "outbackprop_desc is null"), return FAILED);
+                    OP_LOGW(dx_node_name, "outbackprop_desc is null"), return NOT_CHANGED);
   FUSION_PASS_CHECK(GetCurrNodeInputDesc(conv2dbp_input_node, y_anchor) == nullptr,
-                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "y_desc is null"), return FAILED);
+                    OP_LOGW(dx_node_name, "y_desc is null"), return NOT_CHANGED);
   // get shape
   auto filter_ori_shape = filter_desc.GetOriginShape().GetDims();
   FUSION_PASS_CHECK(filter_ori_shape.size() != kOriShapeLen,
-                    OP_LOGE(FUSED_OP_TYPE, "size of ori_shape of filter = 4, actually %ld", filter_ori_shape.size()),
-                    return FAILED);
+                    OP_LOGW(dx_node_name, "size of ori_shape of filter = 4, actually %zu", filter_ori_shape.size()),
+                    return NOT_CHANGED);
   auto out_backprop_ori_shape = conv2dbp_input_outbackprop_desc.GetOriginShape().GetDims();
   FUSION_PASS_CHECK(
       out_backprop_ori_shape.size() != kOriShapeLen,
-      OP_LOGE(FUSED_OP_TYPE, "size of ori_shape of out_backprop = 4, actually %ld",
-                            out_backprop_ori_shape.size()),
-      return FAILED);
+      OP_LOGW(dx_node_name, "size of ori_shape of out_backprop = 4, actually %zu", out_backprop_ori_shape.size()),
+      return NOT_CHANGED);
   auto y_shape = conv2dbp_input_y_desc.GetOriginShape().GetDims();
   FUSION_PASS_CHECK(y_shape.size() != kOriShapeLen,
-                    OP_LOGE(FUSED_OP_TYPE, "size of ori_shape of y = 4, actually %ld", y_shape.size()),
-                    return FAILED);
+                    OP_LOGW(dx_node_name, "size of ori_shape of y = 4, actually %zu", y_shape.size()),
+                    return NOT_CHANGED);
 
   vector<int64_t> dilation_hw;
   vector<int64_t> pad_hw(kNum2);
   std::string backprop_out_fmt_str = TypeUtils::FormatToSerialString(conv2dbp_input_outbackprop_desc.GetOriginFormat());
   FUSION_PASS_CHECK(find(kOriFormatSupportByOutBackprop.begin(), kOriFormatSupportByOutBackprop.end(),
                          backprop_out_fmt_str) == kOriFormatSupportByOutBackprop.end(),
-                    OP_LOGE(FUSED_OP_TYPE, "%s only support NHWC, NCHW, actually %s", kAttrOrgFmt.c_str(),
+                    OP_LOGW(dx_node_name, "%s only support NHWC, NCHW, actually %s", kAttrOrgFmt.c_str(),
                             backprop_out_fmt_str.c_str()),
-                    return FAILED);
+                    return NOT_CHANGED);
   size_t pos_backprop_out_h = backprop_out_fmt_str.find('H');
   CHECK_POSITION(pos_backprop_out_h);
   size_t pos_backprop_out_w = backprop_out_fmt_str.find('W');
@@ -392,8 +376,8 @@ Status Conv2DbpInputDilationFusionPass::Fusion(ge::ComputeGraph &graph, Mapping 
   std::string y_fmt_str = TypeUtils::FormatToSerialString(conv2dbp_input_y_desc.GetOriginFormat());
   FUSION_PASS_CHECK(
       find(kOriFormatSupportByY.begin(), kOriFormatSupportByY.end(), y_fmt_str) == kOriFormatSupportByY.end(),
-      OP_LOGE(FUSED_OP_TYPE, "%s only support NHWC, NCHW, actually %s", kAttrOrgFmt.c_str(), y_fmt_str.c_str()),
-      return FAILED);
+      OP_LOGW(dx_node_name, "%s only support NHWC, NCHW, actually %s", kAttrOrgFmt.c_str(), y_fmt_str.c_str()),
+      return NOT_CHANGED);
   size_t pos_y_h = y_fmt_str.find('H');
   CHECK_POSITION(pos_y_h);
   size_t pos_y_w = y_fmt_str.find('W');
@@ -404,9 +388,9 @@ Status Conv2DbpInputDilationFusionPass::Fusion(ge::ComputeGraph &graph, Mapping 
   std::string filter_fmt_str = TypeUtils::FormatToSerialString(filter_desc.GetOriginFormat());
   FUSION_PASS_CHECK(find(kOriFormatSupportByFilter.begin(), kOriFormatSupportByFilter.end(), filter_fmt_str) ==
                         kOriFormatSupportByFilter.end(),
-                    OP_LOGE(FUSED_OP_TYPE, "%s only support HWCN, NHWC, NCHW, actually %s", kAttrOrgFmt.c_str(),
+                    OP_LOGW(dx_node_name, "%s only support HWCN, NHWC, NCHW, actually %s", kAttrOrgFmt.c_str(),
                             filter_fmt_str.c_str()),
-                    return FAILED);
+                    return NOT_CHANGED);
   size_t pos_filter_h = filter_fmt_str.find('H');
   CHECK_POSITION(pos_filter_h);
   size_t pos_filter_w = filter_fmt_str.find('W');
@@ -430,8 +414,7 @@ Status Conv2DbpInputDilationFusionPass::Fusion(ge::ComputeGraph &graph, Mapping 
   }
 
   if (!need_dilation_flag) {
-    OP_LOGW(FUSED_OP_TYPE.c_str(), "Because op [%s]'s stride is 1, Dilation is not required",
-            dx_node_name.c_str());
+    OP_LOGI(dx_node_name, "because stride is 1, dilation is not required");
     return NOT_CHANGED;
   }
 
@@ -439,38 +422,31 @@ Status Conv2DbpInputDilationFusionPass::Fusion(ge::ComputeGraph &graph, Mapping 
   pad_hw[0] = y_shape[pos_y_h] - filter_ori_shape[pos_filter_h] + pads[0] + pads[1] + 1 - dilation_hw[0];
   pad_hw[1] = y_shape[pos_y_w] - filter_ori_shape[pos_filter_w] + pads[kIndex2] + pads[kIndex3] + 1 - dilation_hw[1];
 
-  OP_LOGD(FUSED_OP_TYPE.c_str(), "the pad_hw is %d and %d", pad_hw[0], pad_hw[1]);
+  OP_LOGD(dx_node_name, "the pad_hw is %d and %d", pad_hw[0], pad_hw[1]);
 
   int out_backprop_idx = peer_out_anchor->GetIdx();
   auto out_desc_ptr = GetCurrNodeOutputDesc(out_backprop_node, out_backprop_idx);
-  FUSION_PASS_CHECK(out_desc_ptr == nullptr, CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "out_desc_ptr is null"),
-                    return FAILED);
+  FUSION_PASS_CHECK(out_desc_ptr == nullptr, OP_LOGW(dx_node_name, "out_desc_ptr is null"), return NOT_CHANGED);
   ge::GeTensorDesc out_backprop_out_desc = *(out_desc_ptr.get());
   vector<int> y_idxs;
 
   auto outdata_anchor = conv2dbp_input_node->GetOutDataAnchor(y_anchor);
-  FUSION_PASS_CHECK(
-      outdata_anchor == nullptr,
-      CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "op [%s] failed to get out data anchor of index 0",
-                            dx_node_name.c_str()),
-      return FAILED);
+  FUSION_PASS_CHECK(outdata_anchor == nullptr, OP_LOGW(dx_node_name, "failed to get out data anchor of index 0"),
+                    return NOT_CHANGED);
   for (auto in_data_anchor : outdata_anchor->GetPeerInDataAnchors()) {
-    OP_LOGD(FUSED_OP_TYPE.c_str(), "all idx is:");
-    OP_LOGD(FUSED_OP_TYPE.c_str(), "idx = %d", in_data_anchor->GetIdx());
+    OP_LOGD(dx_node_name, "idx = %d", in_data_anchor->GetIdx());
     y_idxs.push_back(in_data_anchor->GetIdx());
   }
 
   auto y_anchor_ptr = GetPeerInAnchorByOutDataAnchor(outdata_anchor, 0);
-  FUSION_PASS_CHECK(y_anchor_ptr == nullptr,
-                    OP_LOGW(FUSED_OP_TYPE.c_str(), "fail to get peer in anchor by y."),
+  FUSION_PASS_CHECK(y_anchor_ptr == nullptr, OP_LOGW(dx_node_name, "fail to get peer in anchor by y."),
                     return NOT_CHANGED);
   int y_idx = y_anchor_ptr->GetIdx();
 
   ge::NodePtr y_node = GetPeerInNodeByOutDataAnchor(outdata_anchor, 0);
-  FUSION_PASS_CHECK(y_node == nullptr, OP_LOGW(FUSED_OP_TYPE.c_str(), "fail to get node of y"),
+  FUSION_PASS_CHECK(y_node == nullptr, OP_LOGW(dx_node_name, "fail to get node of y"), return NOT_CHANGED);
+  FUSION_PASS_CHECK(GetCurrNodeInputDesc(y_node, y_idx) == nullptr, OP_LOGW(dx_node_name, "y_desc is null"),
                     return NOT_CHANGED);
-  FUSION_PASS_CHECK(GetCurrNodeInputDesc(y_node, y_idx) == nullptr,
-                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "y_desc is null"), return FAILED);
   ge::GeTensorDesc y_desc = *(GetCurrNodeInputDesc(y_node, y_idx).get());
 
   ge::NodePtr dilation_node = nullptr;
@@ -478,17 +454,17 @@ Status Conv2DbpInputDilationFusionPass::Fusion(ge::ComputeGraph &graph, Mapping 
   if (pre_dilation) {
     FUSION_PASS_CHECK(generate_pre_dilation_node(&graph, &out_backprop_out_desc, &conv2dbp_input_outbackprop_desc,
                                                  &dilation_node, strides, dx_node_name) != SUCCESS,
-                      CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fail to generate dilation node"), return FAILED);
+                      CUBE_INNER_ERR_REPORT(dx_node_name, "fail to generate dilation node"), return FAILED);
   } else {
     FUSION_PASS_CHECK(
         generate_post_dilation_node(&graph, &conv2dbp_input_y_desc, &y_desc, &conv2dbp_input_outbackprop_desc,
                                     &dilation_node, strides, pad_hw, dx_node_name) != SUCCESS,
-        CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fail to generate dilation node"), return FAILED);
+        CUBE_INNER_ERR_REPORT(dx_node_name, "fail to generate dilation node"), return FAILED);
   }
 
-  FUSION_PASS_CHECK(Relink(out_backprop_node, dilation_node, conv2dbp_input_node, y_node, out_bp_anchor,
-                           y_anchor, pre_dilation, y_idxs) != SUCCESS,
-                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fail to generate relink node"), return FAILED);
+  FUSION_PASS_CHECK(Relink(out_backprop_node, dilation_node, conv2dbp_input_node, y_node, out_bp_anchor, y_anchor,
+                           pre_dilation, y_idxs) != SUCCESS,
+                    CUBE_INNER_ERR_REPORT(dx_node_name, "fail to generate relink node"), return FAILED);
 
   fusion_nodes.push_back(dilation_node);
   op.SetAttr("strides", {1, 1, 1, 1});
@@ -497,7 +473,7 @@ Status Conv2DbpInputDilationFusionPass::Fusion(ge::ComputeGraph &graph, Mapping 
     vector<int64_t> new_pads = pads;
     new_pads[1] = pads[1] - pad_hw[0];
     new_pads[kIndex3] = pads[kIndex3] - pad_hw[1];
-    OP_LOGD(FUSED_OP_TYPE.c_str(), "the pad_new is %d and %d", new_pads[1], new_pads[kIndex3]);
+    OP_LOGD(dx_node_name, "the pad_new is %d and %d", new_pads[1], new_pads[kIndex3]);
     op.SetAttr("pads", new_pads);
   } else if (op_type != kDeconvolutionOpType) {
     std::vector<int64_t> input_size_new = input_size;
@@ -506,8 +482,7 @@ Status Conv2DbpInputDilationFusionPass::Fusion(ge::ComputeGraph &graph, Mapping 
     op.SetAttr("input_size", input_size_new);
   }
 
-  OP_LOGI(FUSED_OP_TYPE.c_str(), "End Conv2DbpInputDilationFusionPass.");
-
+  OP_LOGI(dx_node_name, "succeed to execute fusion pass");
   return SUCCESS;
 }
 

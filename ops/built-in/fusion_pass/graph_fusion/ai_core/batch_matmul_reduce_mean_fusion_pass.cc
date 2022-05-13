@@ -69,7 +69,6 @@ vector<FusionPattern *> BatchMatMulReduceMeanFusionPass::DefinePatterns() {
   FUSION_PASS_CHECK(pattern == nullptr, OP_LOGW(kNameFusionPass, "Failed to create pattern."),
                     return patterns);
 
-  OP_LOGD(kNameFusionPass, "Start to define pattern.");
   pattern->AddOpDesc(PATTERN_BATCHMATMUL, {MATMUL, MATMULV2, BATCHMATMUL, BATCHMATMULV2})
     .AddOpDesc(PATTERN_ADD, {ADD})
     .AddOpDesc(PATTERN_RELU, {RELU})
@@ -79,13 +78,11 @@ vector<FusionPattern *> BatchMatMulReduceMeanFusionPass::DefinePatterns() {
     .SetInputs(PATTERN_REDUCEMEAN, {PATTERN_RELU})
     .SetOutput(PATTERN_REDUCEMEAN);
   patterns.push_back(pattern);
-  OP_LOGD(kNameFusionPass, "End to define pattern.");
 
   FusionPattern *pattern1 = new (std::nothrow) FusionPattern(kNameFusionPass);
   FUSION_PASS_CHECK(pattern1 == nullptr, OP_LOGW(kNameFusionPass, "Failed to create pattern1."),
                     return patterns);
 
-  OP_LOGD(kNameFusionPass, "Start to define pattern1.");
   pattern1->AddOpDesc(PATTERN_BATCHMATMUL, {MATMUL, MATMULV2, BATCHMATMUL, BATCHMATMULV2})
     .AddOpDesc(PATTERN_RELU, {RELU})
     .AddOpDesc(PATTERN_REDUCEMEAN, {REDUCEMEAND})
@@ -93,81 +90,56 @@ vector<FusionPattern *> BatchMatMulReduceMeanFusionPass::DefinePatterns() {
     .SetInputs(PATTERN_REDUCEMEAN, {PATTERN_RELU})
     .SetOutput(PATTERN_REDUCEMEAN);
   patterns.push_back(pattern1);
-  OP_LOGD(kNameFusionPass, "End to define pattern1.");
 
   return patterns;
 }
 
 Status BatchMatMulReduceMeanFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping,
                                                vector<ge::NodePtr> &fusion_nodes) {
-  OP_LOGI(kNameFusionPass, "Start BatchMatMulReduceMeanFusionPass.");
-  FUSION_PASS_CHECK(GetNodes(mapping) != SUCCESS, OP_LOGW(kNameFusionPass, "Failed to get nodes."),
-                    return NOT_CHANGED);
-  FUSION_PASS_CHECK(CheckStaticShape() != SUCCESS, OP_LOGW(kNameFusionPass, "There is an unknown shape node."),
-                    return NOT_CHANGED);
+  OP_LOGD(kNameFusionPass, "Start BatchMatMulReduceMeanFusionPass.");
+  FUSION_PASS_CHECK_NOLOG(GetNodes(mapping) != SUCCESS, return NOT_CHANGED);
+  FUSION_PASS_CHECK_NOLOG(CheckStaticShape() != SUCCESS, return NOT_CHANGED);
   // constant to attribution of pad node is valid when input is Const node
   FUSION_PASS_CHECK(OpDescUtils::IsNonConstInput(batch_matmul_node, 1),
-                    OP_LOGW(kNameFusionPass, "Input1 of %s is not const node.",
-                            batch_matmul_node->GetName().c_str()),
-                    return NOT_CHANGED);
-  FUSION_PASS_CHECK(CheckAligned() != SUCCESS, OP_LOGW(kNameFusionPass, "Axis m or n is not aligned."),
-                    return NOT_CHANGED);
-  FUSION_PASS_CHECK(CheckReduceMean() != SUCCESS, OP_LOGW(kNameFusionPass, "Check ReduceMean failed."),
-                    return NOT_CHANGED);
-
+                    OP_LOGI(batch_matmul_node, "Input1 is not const node."), return NOT_CHANGED);
+  FUSION_PASS_CHECK_NOLOG(CheckAligned() != SUCCESS, return NOT_CHANGED);
+  FUSION_PASS_CHECK_NOLOG(CheckReduceMean() != SUCCESS, return NOT_CHANGED);
   FUSION_PASS_CHECK(InsertBatchMatMulPadD(&graph) != SUCCESS,
-                    OP_LOGE(kNameFusionPass, "Failed to insert PadD node for BatchMatMul."),
-                    return FAILED);
-  FUSION_PASS_CHECK(InsertAddPadD(&graph) != SUCCESS,
-                    OP_LOGE(kNameFusionPass, "Failed to insert PadD node for Add."),
+                    OP_LOGE(batch_matmul_node, "Failed to insert PadD node for BatchMatMul."), return FAILED);
+  FUSION_PASS_CHECK(InsertAddPadD(&graph) != SUCCESS, OP_LOGE(batch_matmul_node, "Failed to insert PadD node for Add."),
                     return FAILED);
   FUSION_PASS_CHECK(InsertReduceMeanSliceD(&graph) != SUCCESS,
-                    OP_LOGE(kNameFusionPass, "Failed to insert SliceD for ReduceMeanD."),
-                    return FAILED);
+                    OP_LOGE(batch_matmul_node, "Failed to insert SliceD for ReduceMeanD."), return FAILED);
   FUSION_PASS_CHECK(UpdateAllShape(&batch_matmul_node, slice_node) != SUCCESS,
-                    OP_LOGE(kNameFusionPass, "Failed to update shape of each node."),
-                    return FAILED);
-
-  OP_LOGI(kNameFusionPass, "End BatchMatMulReduceMeanFusionPass.");
+                    OP_LOGE(batch_matmul_node, "Failed to update shape of each node."), return FAILED);
+  OP_LOGI(batch_matmul_node, "succeed to execute fusion pass");
   return SUCCESS;
 }
 
 Status BatchMatMulReduceMeanFusionPass::GetNodes(const Mapping &mapping) {
   batch_matmul_node = GetNodeFromMapping(PATTERN_BATCHMATMUL, mapping);
   FUSION_PASS_CHECK(batch_matmul_node == nullptr,
-                    CUBE_CALL_ERR_REPORT(kNameFusionPass, "New batch_matmul_node not success."),
+                    OP_LOGW(kNameFusionPass, "New batch_matmul_node not success."),
                     return PARAM_INVALID);
   add_node = GetNodeFromMapping(PATTERN_ADD, mapping);
   relu_node = GetNodeFromMapping(PATTERN_RELU, mapping);
   FUSION_PASS_CHECK(relu_node == nullptr,
-                    CUBE_CALL_ERR_REPORT(kNameFusionPass, "New relu_node not success."),
+                    OP_LOGW(kNameFusionPass, "New relu_node not success."),
                     return PARAM_INVALID);
   reduce_mean_node = GetNodeFromMapping(PATTERN_REDUCEMEAN, mapping);
   FUSION_PASS_CHECK(reduce_mean_node == nullptr,
-                    CUBE_CALL_ERR_REPORT(kNameFusionPass, "New reduce_mean_node not success."),
+                    OP_LOGW(kNameFusionPass, "New reduce_mean_node not success."),
                     return PARAM_INVALID);
   return SUCCESS;
 }
 
 Status BatchMatMulReduceMeanFusionPass::CheckStaticShape() const {
-  FUSION_PASS_CHECK(
-    CheckNodeShape(batch_matmul_node) != SUCCESS,
-    OP_LOGW(kNameFusionPass, "Check %s ori-shape and shape failed.", batch_matmul_node->GetName().c_str()),
-    return NOT_CHANGED);
+  FUSION_PASS_CHECK_NOLOG(CheckNodeShape(batch_matmul_node) != SUCCESS, return NOT_CHANGED);
   if (add_node != nullptr) {
-    FUSION_PASS_CHECK(
-      CheckNodeShape(add_node) != SUCCESS,
-      OP_LOGW(kNameFusionPass, "Check %s ori-shape and shape failed.", add_node->GetName().c_str()),
-      return NOT_CHANGED);
+    FUSION_PASS_CHECK_NOLOG(CheckNodeShape(add_node) != SUCCESS, return NOT_CHANGED);
   }
-  FUSION_PASS_CHECK(
-    CheckNodeShape(relu_node) != SUCCESS,
-    OP_LOGW(kNameFusionPass, "Check %s ori-shape and shape failed.", relu_node->GetName().c_str()),
-    return NOT_CHANGED);
-  FUSION_PASS_CHECK(
-    CheckNodeShape(reduce_mean_node) != SUCCESS,
-    OP_LOGW(kNameFusionPass, "Check %s ori-shape and shape failed.", reduce_mean_node->GetName().c_str()),
-    return NOT_CHANGED);
+  FUSION_PASS_CHECK_NOLOG(CheckNodeShape(relu_node) != SUCCESS, return NOT_CHANGED);
+  FUSION_PASS_CHECK_NOLOG(CheckNodeShape(reduce_mean_node) != SUCCESS, return NOT_CHANGED);
   return SUCCESS;
 }
 
@@ -176,15 +148,11 @@ Status BatchMatMulReduceMeanFusionPass::CheckNodeShape(const ge::NodePtr &node) 
   ge::OpDescPtr node_desc = node->GetOpDesc();
   for (size_t i = 0; i < node_inputs.size(); ++i) {
     ge::GeShape input_ori_shape = node_desc->MutableInputDesc(i)->GetOriginShape();
-    FUSION_PASS_CHECK(
-      input_ori_shape.IsUnknownShape(),
-      OP_LOGW(kNameFusionPass, "Input %zu of %s ori-shape is unknown shape.", i, node->GetName().c_str()),
-      return NOT_CHANGED);
+    FUSION_PASS_CHECK(input_ori_shape.IsUnknownShape(), OP_LOGI(node, "input %zu ori-shape is unknown shape.", i),
+                      return NOT_CHANGED);
     ge::GeShape input_shape = node_desc->MutableInputDesc(i)->GetShape();
-    FUSION_PASS_CHECK(
-      input_shape.IsUnknownShape(),
-      OP_LOGW(kNameFusionPass, "Input %zu of %s shape is unknown shape.", i, node->GetName().c_str()),
-      return NOT_CHANGED);
+    FUSION_PASS_CHECK(input_shape.IsUnknownShape(), OP_LOGI(node, "input %zu shape is unknown shape.", i),
+                      return NOT_CHANGED);
   }
   return SUCCESS;
 }
@@ -196,11 +164,9 @@ Status BatchMatMulReduceMeanFusionPass::CheckAligned() {
   // 2 means axis m
   int64_t m_dim = output_dims[output_dims.size() - 2];
   FUSION_PASS_CHECK((m_dim % ALIGN_UNIT != 0),
-                    OP_LOGW(kNameFusionPass, "Axis m of batch_matmul is not aligned to 16."),
-                    return NOT_CHANGED);
+                    OP_LOGI(batch_matmul_node, "Axis m of batch_matmul is not aligned to 16."), return NOT_CHANGED);
   n_dim = output_dims[output_dims.size() - 1];
-  FUSION_PASS_CHECK((n_dim % ALIGN_UNIT == 0),
-                    OP_LOGW(kNameFusionPass, "Axis n of batch_matmul is aligned to 16."),
+  FUSION_PASS_CHECK((n_dim % ALIGN_UNIT == 0), OP_LOGI(batch_matmul_node, "Axis n of batch_matmul is aligned to 16."),
                     return NOT_CHANGED);
   return SUCCESS;
 }
@@ -210,10 +176,8 @@ Status BatchMatMulReduceMeanFusionPass::CheckReduceMean() const {
   vector<int32_t> axes;
   int32_t axis_n = reduce_mean_input_shape.GetDimNum() - 1;
   FUSION_PASS_CHECK(!ge::AttrUtils::GetListInt(reduce_mean_node->GetOpDesc(), "axes", axes),
-                    OP_LOGW(kNameFusionPass, "Get attr axes of ReduceMeanD failed."),
-                    return NOT_CHANGED);
-  FUSION_PASS_CHECK(axes[0] == axis_n, OP_LOGW(kNameFusionPass, "Reduce axis is axis n."),
-                    return NOT_CHANGED);
+                    OP_LOGW(reduce_mean_node, "Get attr axes of ReduceMeanD failed."), return NOT_CHANGED);
+  FUSION_PASS_CHECK(axes[0] == axis_n, OP_LOGW(reduce_mean_node, "Reduce axis is axis n."), return NOT_CHANGED);
   return SUCCESS;
 }
 
@@ -279,16 +243,13 @@ Status BatchMatMulReduceMeanFusionPass::InsertAddPadD(ge::ComputeGraph *graph) c
   pad_params.shape = pad_output_shape;
   pad_params.paddings = paddings;
   FUSION_PASS_CHECK(CreatePadDNode(graph, &pad_node, op_node, pad_params) != SUCCESS,
-                    OP_LOGE(kNameFusionPass, "Failed to create PadD node for Add."),
-                    return FAILED);
+                    OP_LOGE(op_node, "Failed to create PadD node for Add."), return FAILED);
 
   OP_LOGD(kNameFusionPass, "Insert PadD node for Add.");
   auto dst_anchor = op_node->GetInDataAnchor(idx);
   auto src_anchor = dst_anchor->GetPeerOutAnchor();
-  FUSION_PASS_CHECK(
-    ge::GraphUtils::InsertNodeBetweenDataAnchors(src_anchor, dst_anchor, pad_node) != ge::GRAPH_SUCCESS,
-    OP_LOGE(kNameFusionPass, "Failed to insert PadD node for Add."),
-    return FAILED);
+  FUSION_PASS_CHECK(ge::GraphUtils::InsertNodeBetweenDataAnchors(src_anchor, dst_anchor, pad_node) != ge::GRAPH_SUCCESS,
+                    OP_LOGE(op_node, "Failed to insert PadD node for Add."), return FAILED);
 
   return SUCCESS;
 }
@@ -316,7 +277,7 @@ Status BatchMatMulReduceMeanFusionPass::InsertReduceMeanSliceD(ge::ComputeGraph 
   slice_params.offsets = offsets;
   slice_params.size = size;
   FUSION_PASS_CHECK(CreateSliceDNode(graph, reduce_mean_node, slice_params) != ge::GRAPH_SUCCESS,
-                    OP_LOGE(kNameFusionPass, "Failed to insert SliceD node."),
+                    OP_LOGE(reduce_mean_node, "Failed to insert SliceD node."),
                     return FAILED);
 
   OP_LOGD(kNameFusionPass, "Insert SliceD node for ReduceMeanD.");
@@ -324,7 +285,7 @@ Status BatchMatMulReduceMeanFusionPass::InsertReduceMeanSliceD(ge::ComputeGraph 
   auto dst_anchor = GetPeerInAnchorByOutDataAnchor(src_anchor, 0);
   FUSION_PASS_CHECK(
     ge::GraphUtils::InsertNodeBetweenDataAnchors(src_anchor, dst_anchor, slice_node) != ge::GRAPH_SUCCESS,
-    OP_LOGE(kNameFusionPass, "Failed to insert SliceD node for ReduceMeanD."),
+    OP_LOGE(reduce_mean_node, "Failed to insert SliceD node for ReduceMeanD."),
     return FAILED);
 
   return SUCCESS;

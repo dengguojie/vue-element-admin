@@ -44,7 +44,7 @@ Status AutoMappingFnMatMulV2(const ge::Operator& op_src, ge::Operator& op)
 
   op.SetAttr("transpose_x1", transposeA);
   op.SetAttr("transpose_x2", transposeB);
-  OP_LOGI("MatMul", "op[MatMul] tensorflow plugin parser[AutoMapping] success.");
+  OP_LOGD("MatMul", "op[MatMul] tensorflow plugin parser[AutoMapping] success.");
   return SUCCESS;
 }
 

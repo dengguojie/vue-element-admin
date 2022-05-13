@@ -58,7 +58,6 @@ vector<BufferFusionPattern*> TbeConv3dElemwisePass::DefinePatterns() {
   *     otherinput  ___/
   */
   FUSION_PASS_CHECK((pattern1 == nullptr), OP_LOGE(FUSED_OP_TYPE.c_str(), "new an object failed."), return patterns);
-  OP_LOGI(FUSED_OP_TYPE.c_str(), "Start to define %s pass pattern.", pass_name1.c_str());
   pattern1->AddOpDesc(PATTERN_CONV3D, {OP_PATTERN_CONV3D})
     .AddOpDesc(PATTERN_ELEM, {OP_PATTERN_ELEMWISE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
     .AddOpDesc(PATTERN_ELEM1, {OP_PATTERN_ELEMWISE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
@@ -68,7 +67,6 @@ vector<BufferFusionPattern*> TbeConv3dElemwisePass::DefinePatterns() {
     .SetOutputs(kPatternOtherInput, {PATTERN_ELEM})
     .SetOutputs(PATTERN_ELEM, {PATTERN_ELEM1});
   patterns.push_back(pattern1);
-  OP_LOGI(FUSED_OP_TYPE.c_str(), "End to define %s pass pattern.", pass_name1.c_str());
 
   string pass_name2 = "TbeConv3dElemwisePass2";
   BufferFusionPattern* pattern2 = new (std::nothrow) BufferFusionPattern(pass_name2);
@@ -76,7 +74,6 @@ vector<BufferFusionPattern*> TbeConv3dElemwisePass::DefinePatterns() {
   *     otherinput  ___/
   */
   FUSION_PASS_CHECK((pattern2 == nullptr), OP_LOGE(FUSED_OP_TYPE.c_str(), "new an object failed."), return patterns);
-  OP_LOGI(FUSED_OP_TYPE.c_str(), "Start to define %s pass pattern.", pass_name2.c_str());
   pattern2->AddOpDesc(PATTERN_CONV3D, {OP_PATTERN_CONV3D})
     .AddOpDesc(PATTERN_ELEM, {OP_PATTERN_ELEMWISE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
     .AddOpDesc(kPatternOtherInput, {TBE_PATTERN_INPUT_NODE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
@@ -84,19 +81,16 @@ vector<BufferFusionPattern*> TbeConv3dElemwisePass::DefinePatterns() {
     .SetOutputs(PATTERN_CONV3D, {PATTERN_ELEM})
     .SetOutputs(kPatternOtherInput, {PATTERN_ELEM});
   patterns.push_back(pattern2);
-  OP_LOGI(FUSED_OP_TYPE.c_str(), "End to define %s pass pattern.", pass_name2.c_str());
 
   string pass_name3 = "TbeConv3dElemwisePass3";
   BufferFusionPattern* pattern3 = new (std::nothrow) BufferFusionPattern(pass_name3);
   // conv3d --> relu
   FUSION_PASS_CHECK((pattern3 == nullptr), OP_LOGE(FUSED_OP_TYPE.c_str(), "new an object failed."), return patterns);
-  OP_LOGI(FUSED_OP_TYPE.c_str(), "Start to define %s pass pattern.", pass_name3.c_str());
   pattern3->AddOpDesc(PATTERN_CONV3D, {OP_PATTERN_CONV3D})
     .AddOpDesc(PATTERN_ELEM, {OP_PATTERN_ELEMWISE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT)
     .SetHead({PATTERN_CONV3D})
     .SetOutputs(PATTERN_CONV3D, {PATTERN_ELEM});
   patterns.push_back(pattern3);
-  OP_LOGI(FUSED_OP_TYPE.c_str(), "End to define %s pass pattern.", pass_name3.c_str());
 
   return patterns;
 }

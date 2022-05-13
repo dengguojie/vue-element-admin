@@ -60,7 +60,8 @@ TEST_F(avg_pool_3d_fusion_test, avg_pool_3d_fusion_invalid_c) {
     std::map<std::string, fe::FusionInfo> bufferFusionInfoMap;
     fe::FusionStatisticRecorder &fusionStatisticInst = fe::FusionStatisticRecorder::Instance();
     fusionStatisticInst.GetAndClearFusionInfo("0_0", graphFusionInfoMap, bufferFusionInfoMap);
-    EXPECT_EQ(graphFusionInfoMap["AvgPool3DFusionPass"].GetMatchTimes(), 0);
+    // return value from FAILED to NOT_CHANGED, match times is 1 now
+    EXPECT_EQ(graphFusionInfoMap["AvgPool3DFusionPass"].GetMatchTimes(), 1);
     EXPECT_EQ(graphFusionInfoMap["AvgPool3DFusionPass"].GetEffectTimes(), 0);
 }
 

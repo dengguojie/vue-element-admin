@@ -215,9 +215,7 @@ vector<FusionPattern*> Conv2DbpFilterMulFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
 
   FusionPattern* pattern = new (std::nothrow) FusionPattern("Conv2DbpFilterMulFusionPass");
-  FUSION_PASS_CHECK(pattern == nullptr,
-                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new pattern obj failed"),
-                    return patterns);
+  FUSION_PASS_CHECK(pattern == nullptr, OP_LOGW(FUSED_OP_TYPE.c_str(), "new pattern obj failed"), return patterns);
   pattern->AddOpDesc(PATTERN_CONV2DBPFILTER, {CONV2DBPFILTER}).SetOutput(PATTERN_CONV2DBPFILTER);
   patterns.push_back(pattern);
   return patterns;
@@ -234,13 +232,11 @@ Status Conv2DbpFilterMulFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& map
                                            vector<ge::NodePtr>& /* new_nodes */) {
   // dwNode info
   ge::NodePtr dwNode = GetNodeFromMapping(PATTERN_CONV2DBPFILTER, mapping);
-  FUSION_PASS_CHECK(dwNode == nullptr,
-                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "dw Node is null, fusion failed"),
-                    return PARAM_INVALID);
+  FUSION_PASS_CHECK(dwNode == nullptr, OP_LOGW(FUSED_OP_TYPE.c_str(), "dw Node is null, fusion failed"),
+                    return NOT_CHANGED);
   ge::OpDescPtr dwDesc = dwNode->GetOpDesc();
-  FUSION_PASS_CHECK(dwDesc == nullptr,
-                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "dw Node's Desc is null, fusion failed"),
-                    return PARAM_INVALID);
+  FUSION_PASS_CHECK(dwDesc == nullptr, OP_LOGW(FUSED_OP_TYPE.c_str(), "dw Node's Desc is null, fusion failed"),
+                    return NOT_CHANGED);
   ge::GeTensorDesc dwOutputDesc = dwDesc->GetOutputDesc(0);
   ge::GeShape dwOutputShape = dwOutputDesc.GetShape();
   ge::Format dwOutputOriginFormat = dwOutputDesc.GetOriginFormat();
@@ -273,30 +269,26 @@ Status Conv2DbpFilterMulFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& map
       filterC = outputDimInfo[kIndex2];
       filterN = outputDimInfo[kIndex3];
     } else {
-      CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "outputOriginFormat only support NHWC and NCHW and HWCN");
+      OP_LOGW(dwNode, "output OriginFormat only support NHWC and NCHW and HWCN, actually format is %s",
+              ge::TypeUtils::FormatToSerialString(dwOutputOriginFormat).c_str());
       return NOT_CHANGED;
     }
   } else {
-    OP_LOGW(FUSED_OP_TYPE.c_str(), "dimInfo is not right");
+    OP_LOGW(dwNode, "dimInfo is not right");
     return NOT_CHANGED;
   }
-  int64_t matrixSize = filterN *  filterC * filterH * filterW;
-  FUSION_PASS_CHECK(matrixSize <= 0,
-                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "matrixSize Invalid"),
-                    return PARAM_INVALID);
-  FUSION_PASS_CHECK(filterN % groups != 0,
-                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "filterN is not a multiple of groups"),
+  int64_t matrixSize = filterN * filterC * filterH * filterW;
+  FUSION_PASS_CHECK(matrixSize <= 0, CUBE_INNER_ERR_REPORT(dwNode, "matrixSize Invalid"), return PARAM_INVALID);
+  FUSION_PASS_CHECK(filterN % groups != 0, CUBE_INNER_ERR_REPORT(dwNode, "filterN is not a multiple of groups"),
                     return PARAM_INVALID);
 
   // add nodes
   ge::NodePtr mulNode = AddMul(graph, dwNode, dwOutputOriginFormat);
-  FUSION_PASS_CHECK(mulNode == nullptr,
-                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add mul Node failed"),
-                    return PARAM_INVALID);
-  FUSION_PASS_CHECK(AddAssit(mulNode, matrixSize) != SUCCESS,
-                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add assit failed"),
+  FUSION_PASS_CHECK(mulNode == nullptr, CUBE_INNER_ERR_REPORT(dwNode, "add mul Node failed"), return PARAM_INVALID);
+  FUSION_PASS_CHECK(AddAssit(mulNode, matrixSize) != SUCCESS, CUBE_INNER_ERR_REPORT(dwNode, "add assit failed"),
                     return PARAM_INVALID);
 
+  OP_LOGI(dwNode, "succeed to execute fusion pass");
   return SUCCESS;
 }
 

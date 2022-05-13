@@ -72,7 +72,6 @@ static const char PATTERN_CAST[] = "Pattern_Cast";
 }  // namespace
 
 vector<FusionPattern*> MatMulTransdataFusionPass::DefinePatterns() {
-  OP_LOGI(FUSED_OP_TYPE.c_str(), "Enter MatmulTransdata::DefinePatterns.");
   vector<FusionPattern*> patterns;
   FusionPattern* pattern0 = new (std::nothrow) FusionPattern("MatmulTransdataFusionPass");
   FusionPattern* pattern1 = new (std::nothrow) FusionPattern("MatmulTransdataFusionPass");

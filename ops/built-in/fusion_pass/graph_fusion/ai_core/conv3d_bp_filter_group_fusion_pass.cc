@@ -51,7 +51,6 @@ static const int kIndex3 = 3;
 static const int kIndex4 = 4;
 
 vector<FusionPattern*> Conv3DBpFilterGroupFusionPass::DefinePatterns() {
-  OP_LOGI(FUSED_OP_TYPE.c_str(), "enter Conv3DBpFilterGroupFusionPass::DefinePatterns.");
   vector<FusionPattern*> patterns;
   FusionPattern* pattern = new (std::nothrow) FusionPattern(PATTERN_CONV3D_DW_GROUP);
   FUSION_PASS_CHECK(pattern == nullptr,

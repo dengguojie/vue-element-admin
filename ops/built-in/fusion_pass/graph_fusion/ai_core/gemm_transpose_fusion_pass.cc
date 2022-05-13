@@ -48,7 +48,6 @@ static const int kNumTwo = 2;
 }  // namespace
 
 vector<FusionPattern*> GemmTransFusionPass::DefinePatterns() {
-  OP_LOGI(FUSED_OP_TYPE.c_str(), "Enter GemmTransFusionPass::DefinePatterns.");
   vector<FusionPattern*> patterns;
   FusionPattern* pattern =
       new (std::nothrow) FusionPattern("GemmTransFusionPass");

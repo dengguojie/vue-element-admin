@@ -62,6 +62,13 @@ struct PassInputInfo {
     }                                                  \
   } while (0)
 
+#define FUSION_PASS_CHECK_NOLOG(cond, return_expr)     \
+  do {                                                 \
+    if (cond) {                                        \
+      return_expr;                                     \
+    }                                                  \
+  } while (0)
+
 template <typename Dtype>
 Status NnSet(const int32_t n, const Dtype alpha, Dtype& output1) {
   Dtype* output = &output1;

@@ -54,7 +54,7 @@ vector<FusionPattern*> Conv2DbpInputBiasAddFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
   FusionPattern* pattern = new (std::nothrow) FusionPattern("Conv2DbpInputBiasAddFusionPass");
   FUSION_PASS_CHECK(pattern == nullptr,
-                    CUBE_CALL_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new an object not success."),
+                    OP_LOGW(FUSED_OP_TYPE.c_str(), "new an object not success."),
                     return patterns);
   pattern->AddOpDesc(PATTERN_CUBENODE, {OP_CONV2DBACKPROPINPUTD})
     .AddOpDesc(PATTERN_BIASADD, {OP_BIASADD})
@@ -68,56 +68,37 @@ vector<FusionPattern*> Conv2DbpInputBiasAddFusionPass::DefinePatterns() {
 
 Status Conv2DbpInputBiasAddFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
                                               vector<ge::NodePtr>& fusion_nodes) {
-  OP_LOGD("Start to fuse Conv2DBackpropInputD and BiasAdd.");
-  if (convert_dx_to_transpose(graph, mapping, fusion_nodes) != SUCCESS) {
-    return FAILED;
-  }
-  return SUCCESS;
-}
-
-Status Conv2DbpInputBiasAddFusionPass::convert_dx_to_transpose(ge::ComputeGraph &graph, Mapping &mapping,
-                                                               vector<ge::NodePtr> &fusion_nodes) {
   OP_LOGD("Start to convert Conv2DBackpropInputD to Conv2DTransposeD.");
   ge::NodePtr conv_node = GetNodeFromMapping(PATTERN_CUBENODE, mapping);
-  FUSION_PASS_CHECK(conv_node == nullptr,
-                    CUBE_CALL_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new conv_node not success."),
-                    return PARAM_INVALID);
+  FUSION_PASS_CHECK(conv_node == nullptr, OP_LOGW(FUSED_OP_TYPE.c_str(), "new conv_node not success."),
+                    return NOT_CHANGED);
   ge::NodePtr bias_node = GetNodeFromMapping(PATTERN_BIASADD, mapping);
-  FUSION_PASS_CHECK(bias_node == nullptr,
-                    CUBE_CALL_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new bias_node not success."),
-                    return PARAM_INVALID);
+  FUSION_PASS_CHECK(bias_node == nullptr, OP_LOGW(FUSED_OP_TYPE.c_str(), "new bias_node not success."),
+                    return NOT_CHANGED);
 
   auto in_all_nodes = bias_node->GetInAllNodes();
-  FUSION_PASS_CHECK(in_all_nodes.size() <= 1,
-                    CUBE_CALL_ERR_REPORT(FUSED_OP_TYPE.c_str(), "num of input nodes of bias must >= 2."),
-                    return PARAM_INVALID);
+  FUSION_PASS_CHECK(in_all_nodes.size() <= 1, OP_LOGW(bias_node, "num of input nodes of bias must >= 2."),
+                    return NOT_CHANGED);
   auto bias_const_node = in_all_nodes.at(1);
-  FUSION_PASS_CHECK(bias_const_node == nullptr,
-                    CUBE_CALL_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new bias_const_node not success."),
-                    return PARAM_INVALID);
+  FUSION_PASS_CHECK(bias_const_node == nullptr, OP_LOGW(bias_node, "new bias_const_node not success."),
+                    return NOT_CHANGED);
 
   // build a new node named Conv2DTransposeD
   auto conv_op = conv_node->GetOpDesc();
-  FUSION_PASS_CHECK(conv_op == nullptr,
-                    CUBE_CALL_ERR_REPORT(FUSED_OP_TYPE.c_str(), "conv_op is null."),
-                    return FAILED);
+  FUSION_PASS_CHECK(conv_op == nullptr, OP_LOGW(conv_node, "conv_op is null."), return NOT_CHANGED);
   ge::OpDescPtr conv2d_transpose_d_op = nullptr;
-  FUSION_PASS_MAKE_SHARED(
-    conv2d_transpose_d_op = std::make_shared<ge::OpDesc>(conv_op->GetName(), "Conv2DTransposeD"),
-    return FAILED);
+  FUSION_PASS_MAKE_SHARED(conv2d_transpose_d_op = std::make_shared<ge::OpDesc>(conv_op->GetName(), "Conv2DTransposeD"),
+                          return NOT_CHANGED);
 
   auto bias_const_op = bias_const_node->GetOpDesc();
-  FUSION_PASS_CHECK(bias_const_op == nullptr,
-                    CUBE_CALL_ERR_REPORT(FUSED_OP_TYPE.c_str(), "bias_const_op is null."),
-                    return FAILED);
+  FUSION_PASS_CHECK(bias_const_op == nullptr, OP_LOGW(bias_const_node, "bias_const_op is null."), return NOT_CHANGED);
 
   set_in_out_op_and_attr(conv_op, bias_const_op, conv2d_transpose_d_op);
 
   // add Conv2DTransposeD node and connect edges
   ge::NodePtr conv2d_transpose_d = graph.AddNode(conv2d_transpose_d_op);
-  FUSION_PASS_CHECK(conv2d_transpose_d == nullptr,
-                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new Conv2DTransposeD not success."),
-                    return PARAM_INVALID);
+  FUSION_PASS_CHECK(conv2d_transpose_d == nullptr, CUBE_INNER_ERR_REPORT(conv_node, "failed to new Conv2DTransposeD."),
+                    return FAILED);
 
   fusion_nodes.push_back(conv2d_transpose_d);
 
@@ -127,12 +108,11 @@ Status Conv2DbpInputBiasAddFusionPass::convert_dx_to_transpose(ge::ComputeGraph 
 
   // delete Conv2DBackpropInputD & BiasAdd
   FUSION_PASS_CHECK(graph.RemoveNode(conv_node) == ge::GRAPH_FAILED,
-                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Removing conv_node is failed."),
-                    return FAILED);
+                    CUBE_INNER_ERR_REPORT(conv_node, "failed to remove conv_node."), return FAILED);
   FUSION_PASS_CHECK(graph.RemoveNode(bias_node) == ge::GRAPH_FAILED,
-                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Removing bias_node is failed."),
-                    return FAILED);
+                    CUBE_INNER_ERR_REPORT(bias_node, "failed to remove bias_node."), return FAILED);
 
+  OP_LOGI(conv_node, "succeed to execute fusion pass");
   return SUCCESS;
 }
 

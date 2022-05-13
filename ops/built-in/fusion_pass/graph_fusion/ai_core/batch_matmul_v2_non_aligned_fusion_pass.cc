@@ -112,7 +112,6 @@ vector<FusionPattern *> BatchMatMulNonAlignedFusionPass::DefinePatterns() {
   FUSION_PASS_CHECK(pattern1 == nullptr, OP_LOGW(kNameFusionPass, "Failed to create pattern 1"),
                     return patterns);
 
-  OP_LOGD(kNameFusionPass, "Start to define pattern 1.");
   pattern1->AddOpDesc(PATTERN_BATCHMATMUL_3, {BATCHMATMULV2, BATCHMATMUL})
       .AddOpDesc(PATTERN_RESHAPE_2, {RESHAPE})
       .AddOpDesc(PATTERN_INPUT_1)
@@ -132,13 +131,11 @@ vector<FusionPattern *> BatchMatMulNonAlignedFusionPass::DefinePatterns() {
       .SetInputs(PATTERN_ADD_1, {PATTERN_BATCHMATMUL_1})
       .SetOutput(PATTERN_BATCHMATMUL_3);
   patterns.push_back(pattern1);
-  OP_LOGD(kNameFusionPass, "End to define pattern 1.");
 
   FusionPattern *pattern2 = new (std::nothrow) FusionPattern(kNameFusionPass);
   FUSION_PASS_CHECK(pattern2 == nullptr, OP_LOGW(kNameFusionPass, "Failed to create pattern 2"),
                     return patterns);
 
-  OP_LOGD(kNameFusionPass, "Start to define pattern 2.");
   pattern2->AddOpDesc(PATTERN_BATCHMATMUL_3, {BATCHMATMULV2, BATCHMATMUL})
       .AddOpDesc(PATTERN_TRANSPOSE_1, {TRANSPOSE})
       .AddOpDesc(PATTERN_RESHAPE_1, {RESHAPE})
@@ -157,47 +154,36 @@ vector<FusionPattern *> BatchMatMulNonAlignedFusionPass::DefinePatterns() {
       .SetInputs(PATTERN_ADD_2, {PATTERN_BATCHMATMUL_2})
       .SetOutput(PATTERN_BATCHMATMUL_3);
   patterns.push_back(pattern2);
-  OP_LOGD(kNameFusionPass, "End to define pattern 2.");
   return patterns;
 }
 
 Status BatchMatMulNonAlignedFusionPass::CheckTransposeDPerm() const {
   vector<int64_t> perm_list_1 = {0, 2, 1, 3};
-  FUSION_PASS_CHECK(CheckPerm(transpose_1_node, perm_list_1) != SUCCESS,
-                    OP_LOGW(kNameFusionPass, "Check %s perm, not match the fusion condition.",
-                            transpose_1_node->GetName().c_str()),
-                    return NOT_CHANGED);
+  FUSION_PASS_CHECK_NOLOG(CheckPerm(transpose_1_node, perm_list_1) != SUCCESS, return NOT_CHANGED);
   vector<int64_t> perm_list_2;
   if (add_2_node == nullptr) {
     perm_list_2 = perm_list_1;
   } else {
     perm_list_2 = {0, 2, 3, 1};
   }
-  FUSION_PASS_CHECK(CheckPerm(transpose_2_node, perm_list_2) != SUCCESS,
-                    OP_LOGW(kNameFusionPass, "Check %s perm, not match the fusion condition.",
-                            transpose_2_node->GetName().c_str()),
-                    return NOT_CHANGED);
+  FUSION_PASS_CHECK_NOLOG(CheckPerm(transpose_2_node, perm_list_2) != SUCCESS, return NOT_CHANGED);
   bool insert_loc_pattern1 = add_2_node == nullptr && CheckInsertLocPattern() == SUCCESS;
   bool insert_loc_pattern2 = add_2_node != nullptr && CheckInsertLocPattern() == SUCCESS;
   bool insert_loc_pattern_fail = !insert_loc_pattern1 && !insert_loc_pattern2;
-  FUSION_PASS_CHECK(insert_loc_pattern_fail,
-                    OP_LOGW(kNameFusionPass, "Check insert position, not match the fusion condition."),
-                    return NOT_CHANGED);
-  FUSION_PASS_CHECK(CheckReshapePattern() != SUCCESS,
-                    OP_LOGW(kNameFusionPass, "Check Reshape node, not match the fusion condition."),
-                    return NOT_CHANGED);
+  FUSION_PASS_CHECK_NOLOG(insert_loc_pattern_fail, return NOT_CHANGED);
+  FUSION_PASS_CHECK_NOLOG(CheckReshapePattern() != SUCCESS, return NOT_CHANGED);
   return SUCCESS;
 }
 
 Status BatchMatMulNonAlignedFusionPass::CheckBatchMatmulInputNode(const ge::NodePtr& batchmatmul_node) const {
   auto batchmatmul_inputs = batchmatmul_node->GetInDataNodes();
   FUSION_PASS_CHECK(batchmatmul_inputs.size() != kNumTwo,
-                    OP_LOGE(kNameFusionPass, "%s should only have 2 input, actual %zu.",
+                    OP_LOGW(kNameFusionPass, "%s should only have 2 input, actual %zu.",
                             batchmatmul_node->GetName().c_str(), batchmatmul_inputs.size()),
                     return FAILED);
   ge::NodePtr batchmatmul_input_1_node = batchmatmul_inputs.at(1);
   FUSION_PASS_CHECK(batchmatmul_input_1_node == nullptr,
-                    OP_LOGE(kNameFusionPass, "The 1 input of %s is null, fusion failed.",
+                    OP_LOGW(kNameFusionPass, "The 1 input of %s is null, fusion failed.",
                             batchmatmul_node->GetName().c_str()),
                     return PARAM_INVALID);
   return SUCCESS;
@@ -264,48 +250,40 @@ Status BatchMatMulNonAlignedFusionPass::GetBatchMatMulShape(map<std::string, int
   OP_LOGD(kNameFusionPass, "%s N dim is %ld", batchmatmul_1_node->GetName().c_str(), bmm_1_n_dim);
   OP_LOGD(kNameFusionPass, "After %s N dim alignment is %ld", batchmatmul_1_node->GetName().c_str(),
           bmm_1_n_dim_align);
-  Status ret = CheckBatchMatmulInputNode(batchmatmul_1_node);
-  FUSION_PASS_CHECK(ret != SUCCESS,
-                    OP_LOGE(kNameFusionPass, "Check BatchMatmul InputNode failed."), return ret);
+  FUSION_PASS_CHECK_NOLOG(CheckBatchMatmulInputNode(batchmatmul_1_node) != SUCCESS, return NOT_CHANGED);
   return SUCCESS;
 }
 
 Status BatchMatMulNonAlignedFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping,
                                                vector<ge::NodePtr> & fusion_nodes) {
-  OP_LOGI(kNameFusionPass, "Enter BatchMatMulNonAlignedFusionPass.");
-  FUSION_PASS_CHECK(GetNodes(mapping) != SUCCESS, OP_LOGW(kNameFusionPass, "Failed to get Nodes."),
-                    return NOT_CHANGED);
-  FUSION_PASS_CHECK(CheckStaticShape() != SUCCESS, OP_LOGW(kNameFusionPass, "There is an unknown shape node."),
-                    return NOT_CHANGED);
-  FUSION_PASS_CHECK(CheckBatchMatMul() != SUCCESS, OP_LOGW(kNameFusionPass, "Failed to check BatchMatMul."),
-                    return NOT_CHANGED);
-  FUSION_PASS_CHECK(CheckTransposeDPerm() != SUCCESS,
-                  OP_LOGW(kNameFusionPass, "Check failed."), return NOT_CHANGED);
+  FUSION_PASS_CHECK_NOLOG(GetNodes(mapping) != SUCCESS, return NOT_CHANGED);
+  FUSION_PASS_CHECK_NOLOG(CheckStaticShape() != SUCCESS, return NOT_CHANGED);
+  FUSION_PASS_CHECK_NOLOG(CheckBatchMatMul() != SUCCESS, return NOT_CHANGED);
+  FUSION_PASS_CHECK_NOLOG(CheckTransposeDPerm() != SUCCESS, return NOT_CHANGED);
   map<std::string, int64_t> batch_matmul_shape_info = {
                             {"bmm_1_n_dim", 0}, {"bmm_2_n_dim", 0}, {"bmm_3_k_dim", 0}, {"bmm_1_n_dim_align", 0},
                             {"bmm_2_n_dim_align", 0}, {"bmm_3_k_dim_align", 0}};
   Status ret = GetBatchMatMulShape(batch_matmul_shape_info);
-  FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGW(kNameFusionPass, "get bacthmatmul shape failed."),
-                    return ret);
+  FUSION_PASS_CHECK_NOLOG(ret != SUCCESS, return ret);
   if (add_2_node == nullptr) {
     FUSION_PASS_CHECK(DoFusionPattern1(&graph, batch_matmul_shape_info) != SUCCESS,
-                      OP_LOGW(kNameFusionPass, "Pattern 1, fusion failed."), return FAILED);
+                      CUBE_INNER_ERR_REPORT(batchmatmul_1_node, "Pattern 1, fusion failed."), return FAILED);
   } else {
     FUSION_PASS_CHECK(DoFusionPattern2(&graph, batch_matmul_shape_info) != SUCCESS,
-                      OP_LOGW(kNameFusionPass, "Pattern 2, fusion failed."),  return FAILED);
+                      CUBE_INNER_ERR_REPORT(batchmatmul_1_node, "Pattern 2, fusion failed."), return FAILED);
   }
 
   // modify ori_format
   batchmatmul_1_node->GetOpDesc()->MutableOutputDesc(0)->SetOriginFormat(FORMAT_NCHW);
   batchmatmul_2_node->GetOpDesc()->MutableOutputDesc(0)->SetOriginFormat(FORMAT_NCHW);
   batchmatmul_3_node->GetOpDesc()->MutableOutputDesc(0)->SetOriginFormat(FORMAT_NCHW);
-  OP_LOGI(kNameFusionPass, "BatchMatMulNonAlignedFusionPass Success.");
+  OP_LOGI(batchmatmul_1_node, "succeed to execute fusion pass");
   return SUCCESS;
 }
 
 Status BatchMatMulNonAlignedFusionPass::CheckPerm(const ge::NodePtr &transpose_node,
                                                   const vector<int64_t> &perm_list) const {
-  OP_LOGI(kNameFusionPass, "Enter CheckPerm.");
+  OP_LOGD(kNameFusionPass, "Enter CheckPerm.");
   Operator transpose_op = ge::OpDescUtils::CreateOperatorFromNode(transpose_node);
   vector<int64_t> cur_perm_list;
   FUSION_PASS_CHECK(transpose_op.GetAttr("perm", cur_perm_list) != ge::GRAPH_SUCCESS,
@@ -317,16 +295,16 @@ Status BatchMatMulNonAlignedFusionPass::CheckPerm(const ge::NodePtr &transpose_n
       return NOT_CHANGED);
   FUSION_PASS_CHECK(
       perm_list != cur_perm_list,
-      OP_LOGW(kNameFusionPass, "%s, Support perm is (%ld, %ld, %ld, %ld), but actual is (%ld, %ld, %ld, %ld).",
+      OP_LOGI(kNameFusionPass, "%s, Support perm is (%ld, %ld, %ld, %ld), but actual is (%ld, %ld, %ld, %ld).",
               transpose_node->GetName().c_str(), perm_list[0], perm_list[1], perm_list[kNumTwo], perm_list[kNumThree],
               cur_perm_list[0], cur_perm_list[1], cur_perm_list[kNumTwo], cur_perm_list[kNumThree]),
       return NOT_CHANGED);
-  OP_LOGI(kNameFusionPass, "End CheckPerm.");
+  OP_LOGD(kNameFusionPass, "End CheckPerm.");
   return SUCCESS;
 }
 
 Status BatchMatMulNonAlignedFusionPass::CheckBatchMatMul() const {
-  OP_LOGI(kNameFusionPass, "Enter CheckBatchMatMul.");
+  OP_LOGD(kNameFusionPass, "Enter CheckBatchMatMul.");
   // Check whether the K of the batchmatmul_3_node is not aligned with 16
   bool batchmatmul_3_adj_x1 = false;
   FUSION_PASS_CHECK(
@@ -343,58 +321,56 @@ Status BatchMatMulNonAlignedFusionPass::CheckBatchMatMul() const {
     bmm_3_m_dim = bmm_3_in_shape_1.GetDim(len_bmm_3_in_shape_1 - 1);
   }
   FUSION_PASS_CHECK(bmm_3_k_dim % ALIGN_UNIT == 0,
-                    OP_LOGW(kNameFusionPass, "K dim of %s is aligned, not match the fusion condition.",
+                    OP_LOGI(kNameFusionPass, "K dim of %s is aligned, not match the fusion condition.",
                             batchmatmul_3_node->GetName().c_str()),
                     return NOT_CHANGED);
   FUSION_PASS_CHECK(bmm_3_m_dim % ALIGN_UNIT != 0,
-                    OP_LOGW(kNameFusionPass, "M dim of %s is not aligned, not match the fusion condition.",
+                    OP_LOGI(kNameFusionPass, "M dim of %s is not aligned, not match the fusion condition.",
                             batchmatmul_3_node->GetName().c_str()),
                     return NOT_CHANGED);
-  OP_LOGI(kNameFusionPass, "End CheckBatchMatMul.");
+  OP_LOGD(kNameFusionPass, "End CheckBatchMatMul.");
   return SUCCESS;
 }
 
 Status BatchMatMulNonAlignedFusionPass::CheckStaticShape() const {
-  OP_LOGI(kNameFusionPass, "Enter CheckStaticShape.");
   FUSION_PASS_CHECK(
       CheckNodeShape(batchmatmul_1_node) != SUCCESS,
-      OP_LOGW(kNameFusionPass, "Check %s orishape and shape fail.", batchmatmul_1_node->GetName().c_str()),
+      OP_LOGI(kNameFusionPass, "Check %s orishape and shape fail.", batchmatmul_1_node->GetName().c_str()),
       return NOT_CHANGED);
   FUSION_PASS_CHECK(
       CheckNodeShape(batchmatmul_2_node) != SUCCESS,
-      OP_LOGW(kNameFusionPass, "Check %s orishape and shape fail.", batchmatmul_2_node->GetName().c_str()),
+      OP_LOGI(kNameFusionPass, "Check %s orishape and shape fail.", batchmatmul_2_node->GetName().c_str()),
       return NOT_CHANGED);
   FUSION_PASS_CHECK(
       CheckNodeShape(batchmatmul_3_node) != SUCCESS,
-      OP_LOGW(kNameFusionPass, "Check %s orishape and shape fail.", batchmatmul_3_node->GetName().c_str()),
+      OP_LOGI(kNameFusionPass, "Check %s orishape and shape fail.", batchmatmul_3_node->GetName().c_str()),
       return NOT_CHANGED);
   FUSION_PASS_CHECK(
       CheckNodeShape(transpose_1_node) != SUCCESS,
-      OP_LOGW(kNameFusionPass, "Check %s orishape and shape fail.", transpose_1_node->GetName().c_str()),
+      OP_LOGI(kNameFusionPass, "Check %s orishape and shape fail.", transpose_1_node->GetName().c_str()),
       return NOT_CHANGED);
   FUSION_PASS_CHECK(
       CheckNodeShape(transpose_2_node) != SUCCESS,
-      OP_LOGW(kNameFusionPass, "Check %s orishape and shape fail.", transpose_2_node->GetName().c_str()),
+      OP_LOGI(kNameFusionPass, "Check %s orishape and shape fail.", transpose_2_node->GetName().c_str()),
       return NOT_CHANGED);
   FUSION_PASS_CHECK(
       CheckNodeShape(reshape_1_node) != SUCCESS,
-      OP_LOGW(kNameFusionPass, "Check %s orishape and shape fail.", reshape_1_node->GetName().c_str()),
+      OP_LOGI(kNameFusionPass, "Check %s orishape and shape fail.", reshape_1_node->GetName().c_str()),
       return NOT_CHANGED);
   FUSION_PASS_CHECK(
       CheckNodeShape(reshape_2_node) != SUCCESS,
-      OP_LOGW(kNameFusionPass, "Check %s orishape and shape fail.", reshape_2_node->GetName().c_str()),
+      OP_LOGI(kNameFusionPass, "Check %s orishape and shape fail.", reshape_2_node->GetName().c_str()),
       return NOT_CHANGED);
   FUSION_PASS_CHECK(
       CheckNodeShape(add_1_node) != SUCCESS,
-      OP_LOGW(kNameFusionPass, "Check %s orishape and shape fail.", add_1_node->GetName().c_str()),
+      OP_LOGI(kNameFusionPass, "Check %s orishape and shape fail.", add_1_node->GetName().c_str()),
       return NOT_CHANGED);
   if (add_2_node != nullptr) {
     FUSION_PASS_CHECK(
         CheckNodeShape(add_2_node) != SUCCESS,
-        OP_LOGW(kNameFusionPass, "Check %s orishape and shape fail.", add_2_node->GetName().c_str()),
+        OP_LOGI(kNameFusionPass, "Check %s orishape and shape fail.", add_2_node->GetName().c_str()),
         return NOT_CHANGED);
   }
-  OP_LOGI(kNameFusionPass, "End CheckStaticShape.");
   return SUCCESS;
 }
 
@@ -405,12 +381,12 @@ Status BatchMatMulNonAlignedFusionPass::CheckNodeShape(const ge::NodePtr &node) 
     ge::GeShape input_ori_shape = node_desc->MutableInputDesc(i)->GetOriginShape();
     FUSION_PASS_CHECK(
         input_ori_shape.IsUnknownShape(),
-        OP_LOGW(kNameFusionPass, "%zu input of %s origin shape is unknow shape.", i, node->GetName().c_str()),
+        OP_LOGI(kNameFusionPass, "%zu input of %s origin shape is unknow shape.", i, node->GetName().c_str()),
         return NOT_CHANGED);
     ge::GeShape input_shape = node_desc->MutableInputDesc(i)->GetShape();
     FUSION_PASS_CHECK(
         input_shape.IsUnknownShape(),
-        OP_LOGW(kNameFusionPass, "%zu input of %s shape is unknow shape.", i, node->GetName().c_str()),
+        OP_LOGI(kNameFusionPass, "%zu input of %s shape is unknow shape.", i, node->GetName().c_str()),
         return NOT_CHANGED);
   }
   return SUCCESS;
@@ -418,7 +394,7 @@ Status BatchMatMulNonAlignedFusionPass::CheckNodeShape(const ge::NodePtr &node) 
 
 Status BatchMatMulNonAlignedFusionPass::CheckInsertLocPattern() const {
   FUSION_PASS_CHECK(OpDescUtils::IsNonConstInput(batchmatmul_1_node, 1),
-                    OP_LOGW(kNameFusionPass, "input of %s is not const node, not match the fusion condition.",
+                    OP_LOGI(kNameFusionPass, "input of %s is not const node, not match the fusion condition.",
                             batchmatmul_1_node->GetName().c_str()),
                     return NOT_CHANGED);
   auto in_nodes_add_1 = add_1_node->GetInNodes();
@@ -428,17 +404,17 @@ Status BatchMatMulNonAlignedFusionPass::CheckInsertLocPattern() const {
     const_add_input_index = 1;
   }
   FUSION_PASS_CHECK(OpDescUtils::IsNonConstInput(add_1_node, const_add_input_index),
-                    OP_LOGW(kNameFusionPass, "input of %s is not const node, not match the fusion condition.",
+                    OP_LOGI(kNameFusionPass, "input of %s is not const node, not match the fusion condition.",
                             add_1_node->GetName().c_str()),
                     return NOT_CHANGED);
   if (add_2_node == nullptr) {
     FUSION_PASS_CHECK(OpDescUtils::IsNonConstInput(batchmatmul_3_node, 1),
-                      OP_LOGW(kNameFusionPass, "input of %s is not const node, not match the fusion condition.",
+                      OP_LOGI(kNameFusionPass, "input of %s is not const node, not match the fusion condition.",
                               batchmatmul_3_node->GetName().c_str()),
                       return NOT_CHANGED);
   } else {
     FUSION_PASS_CHECK(OpDescUtils::IsNonConstInput(batchmatmul_2_node, 1),
-                      OP_LOGW(kNameFusionPass, "input of %s is not const node, not match the fusion condition.",
+                      OP_LOGI(kNameFusionPass, "input of %s is not const node, not match the fusion condition.",
                               batchmatmul_2_node->GetName().c_str()),
                       return NOT_CHANGED);
     auto in_nodes_add_2 = add_2_node->GetInNodes();
@@ -448,7 +424,7 @@ Status BatchMatMulNonAlignedFusionPass::CheckInsertLocPattern() const {
       const_add_2_input_index = 1;
     }
     FUSION_PASS_CHECK(OpDescUtils::IsNonConstInput(add_2_node, const_add_2_input_index),
-                      OP_LOGW(kNameFusionPass, "input of %s is not const node, not match the fusion condition.",
+                      OP_LOGI(kNameFusionPass, "input of %s is not const node, not match the fusion condition.",
                               add_2_node->GetName().c_str()),
                       return NOT_CHANGED);
   }
@@ -460,7 +436,7 @@ Status BatchMatMulNonAlignedFusionPass::CheckReshapePattern() const {
   auto len_reshape_1_in_shape = reshape_1_in_shape.GetDimNum();
   FUSION_PASS_CHECK(
       len_reshape_1_in_shape != kDim3,
-      OP_LOGW(kNameFusionPass, "Input of %s is not 3 dimensional, not match the fusion condition.",
+      OP_LOGI(kNameFusionPass, "Input of %s is not 3 dimensional, not match the fusion condition.",
               reshape_1_node->GetName().c_str()),
       return NOT_CHANGED);
   int64_t before_reshape_dim = reshape_1_in_shape.GetDim(len_reshape_1_in_shape - 1);
@@ -469,14 +445,14 @@ Status BatchMatMulNonAlignedFusionPass::CheckReshapePattern() const {
   auto len_reshape_1_out_shape = reshape_1_out_shape.GetDimNum();
   FUSION_PASS_CHECK(
       len_reshape_1_out_shape != kDim4,
-      OP_LOGW(kNameFusionPass, "output of %s is not 4 dimensional, not match the fusion condition.",
+      OP_LOGI(kNameFusionPass, "output of %s is not 4 dimensional, not match the fusion condition.",
               reshape_1_node->GetName().c_str()),
       return NOT_CHANGED);
   int64_t after_reshape_dim_1 = reshape_1_out_shape.GetDim(len_reshape_1_out_shape - 1);
   int64_t after_reshape_dim_2 = reshape_1_out_shape.GetDim(len_reshape_1_out_shape - kNumTwo);
   FUSION_PASS_CHECK(
       (after_reshape_dim_1 * after_reshape_dim_2) != before_reshape_dim,
-      OP_LOGW(kNameFusionPass, "%s , not match the fusion condition.", reshape_1_node->GetName().c_str()),
+      OP_LOGI(kNameFusionPass, "%s , not match the fusion condition.", reshape_1_node->GetName().c_str()),
       return NOT_CHANGED);
 
   GeShape &reshape_2_in_shape = reshape_2_node->GetOpDesc()->MutableInputDesc(0)->MutableShape();
@@ -487,38 +463,38 @@ Status BatchMatMulNonAlignedFusionPass::CheckReshapePattern() const {
   if (add_2_node == nullptr) {
     FUSION_PASS_CHECK(
         len_reshape_2_in_shape != kDim4,
-        OP_LOGW(kNameFusionPass, "Input of %s is not 4 dimensional, not match the fusion condition.",
+        OP_LOGI(kNameFusionPass, "Input of %s is not 4 dimensional, not match the fusion condition.",
                 reshape_2_node->GetName().c_str()),
         return NOT_CHANGED);
     int64_t before_reshape_dim_1 = reshape_2_in_shape.GetDim(len_reshape_2_in_shape - 1);
     int64_t before_reshape_dim_2 = reshape_2_in_shape.GetDim(len_reshape_2_in_shape - kNumTwo);
     FUSION_PASS_CHECK(
         len_reshape_2_out_shape != kDim3,
-        OP_LOGW(kNameFusionPass, "output of %s is not 3 dimensional, not match the fusion condition.",
+        OP_LOGI(kNameFusionPass, "output of %s is not 3 dimensional, not match the fusion condition.",
                 reshape_2_node->GetName().c_str()),
         return NOT_CHANGED);
     int64_t after_reshape_dim = reshape_2_out_shape.GetDim(len_reshape_2_out_shape - 1);
     FUSION_PASS_CHECK(
         (before_reshape_dim_1 * before_reshape_dim_2) != after_reshape_dim,
-        OP_LOGW(kNameFusionPass, "%s , not match the fusion condition.", reshape_2_node->GetName().c_str()),
+        OP_LOGI(kNameFusionPass, "%s , not match the fusion condition.", reshape_2_node->GetName().c_str()),
         return NOT_CHANGED);
   } else {
     FUSION_PASS_CHECK(
         len_reshape_2_in_shape != kDim3,
-        OP_LOGW(kNameFusionPass, "Input of %s is not 3 dimensional, not match the fusion condition.",
+        OP_LOGI(kNameFusionPass, "Input of %s is not 3 dimensional, not match the fusion condition.",
                 reshape_2_node->GetName().c_str()),
         return NOT_CHANGED);
     before_reshape_dim = reshape_2_in_shape.GetDim(len_reshape_2_in_shape - 1);
     FUSION_PASS_CHECK(
         len_reshape_2_out_shape != kDim4,
-        OP_LOGW(kNameFusionPass, "output of %s is not 4 dimensional, not match the fusion condition.",
+        OP_LOGI(kNameFusionPass, "output of %s is not 4 dimensional, not match the fusion condition.",
                 reshape_2_node->GetName().c_str()),
         return NOT_CHANGED);
     after_reshape_dim_1 = reshape_2_out_shape.GetDim(len_reshape_2_out_shape - 1);
     after_reshape_dim_2 = reshape_2_out_shape.GetDim(len_reshape_2_out_shape - kNumTwo);
     FUSION_PASS_CHECK(
         (after_reshape_dim_1 * after_reshape_dim_2) != before_reshape_dim,
-        OP_LOGW(kNameFusionPass, "%s , not match the fusion condition.", reshape_2_node->GetName().c_str()),
+        OP_LOGI(kNameFusionPass, "%s , not match the fusion condition.", reshape_2_node->GetName().c_str()),
         return NOT_CHANGED);
   }
   return SUCCESS;
@@ -526,28 +502,28 @@ Status BatchMatMulNonAlignedFusionPass::CheckReshapePattern() const {
 
 Status BatchMatMulNonAlignedFusionPass::GetNodes(const Mapping &mapping) {
   batchmatmul_1_node = GetNodeFromMapping(PATTERN_BATCHMATMUL_1, mapping);
-  FUSION_PASS_CHECK(batchmatmul_1_node == nullptr, OP_LOGE(kNameFusionPass, "Fuse node is null, fusion failed"),
+  FUSION_PASS_CHECK(batchmatmul_1_node == nullptr, OP_LOGW(kNameFusionPass, "Fuse node is null, fusion failed"),
                     return PARAM_INVALID);
   batchmatmul_2_node = GetNodeFromMapping(PATTERN_BATCHMATMUL_2, mapping);
-  FUSION_PASS_CHECK(batchmatmul_2_node == nullptr, OP_LOGE(kNameFusionPass, "Fuse node is null, fusion failed"),
+  FUSION_PASS_CHECK(batchmatmul_2_node == nullptr, OP_LOGW(kNameFusionPass, "Fuse node is null, fusion failed"),
                     return PARAM_INVALID);
   batchmatmul_3_node = GetNodeFromMapping(PATTERN_BATCHMATMUL_3, mapping);
-  FUSION_PASS_CHECK(batchmatmul_3_node == nullptr, OP_LOGE(kNameFusionPass, "Fuse node is null, fusion failed"),
+  FUSION_PASS_CHECK(batchmatmul_3_node == nullptr, OP_LOGW(kNameFusionPass, "Fuse node is null, fusion failed"),
                     return PARAM_INVALID);
   transpose_1_node = GetNodeFromMapping(PATTERN_TRANSPOSE_1, mapping);
-  FUSION_PASS_CHECK(transpose_1_node == nullptr, OP_LOGE(kNameFusionPass, "Fuse node is null, fusion failed"),
+  FUSION_PASS_CHECK(transpose_1_node == nullptr, OP_LOGW(kNameFusionPass, "Fuse node is null, fusion failed"),
                     return PARAM_INVALID);
   transpose_2_node = GetNodeFromMapping(PATTERN_TRANSPOSE_2, mapping);
-  FUSION_PASS_CHECK(transpose_2_node == nullptr, OP_LOGE(kNameFusionPass, "Fuse node is null, fusion failed"),
+  FUSION_PASS_CHECK(transpose_2_node == nullptr, OP_LOGW(kNameFusionPass, "Fuse node is null, fusion failed"),
                     return PARAM_INVALID);
   reshape_1_node = GetNodeFromMapping(PATTERN_RESHAPE_1, mapping);
-  FUSION_PASS_CHECK(reshape_1_node == nullptr, OP_LOGE(kNameFusionPass, "Fuse node is null, fusion failed"),
+  FUSION_PASS_CHECK(reshape_1_node == nullptr, OP_LOGW(kNameFusionPass, "Fuse node is null, fusion failed"),
                     return PARAM_INVALID);
   reshape_2_node = GetNodeFromMapping(PATTERN_RESHAPE_2, mapping);
-  FUSION_PASS_CHECK(reshape_2_node == nullptr, OP_LOGE(kNameFusionPass, "Fuse node is null, fusion failed"),
+  FUSION_PASS_CHECK(reshape_2_node == nullptr, OP_LOGW(kNameFusionPass, "Fuse node is null, fusion failed"),
                     return PARAM_INVALID);
   add_1_node = GetNodeFromMapping(PATTERN_ADD_1, mapping);
-  FUSION_PASS_CHECK(add_1_node == nullptr, OP_LOGE(kNameFusionPass, "Fuse node is null, fusion failed"),
+  FUSION_PASS_CHECK(add_1_node == nullptr, OP_LOGW(kNameFusionPass, "Fuse node is null, fusion failed"),
                     return PARAM_INVALID);
   add_2_node = GetNodeFromMapping(PATTERN_ADD_2, mapping);
 
@@ -556,7 +532,7 @@ Status BatchMatMulNonAlignedFusionPass::GetNodes(const Mapping &mapping) {
 
 Status BatchMatMulNonAlignedFusionPass::DoFusionPattern1(ge::ComputeGraph *graph,
                                                          map<std::string, int64_t>& batch_matmul_shape_info) const {
-  OP_LOGI(kNameFusionPass, "Enter DoFusionPattern1.");
+  OP_LOGD(kNameFusionPass, "Enter DoFusionPattern1.");
 
   // Create reshape1 pad reshape2 for batchmatmul_1_input_1_node
   auto bmm_1_input_1_shape = batchmatmul_1_node->GetOpDesc()->MutableInputDesc(1)->GetOriginShape();
@@ -639,13 +615,14 @@ Status BatchMatMulNonAlignedFusionPass::DoFusionPattern1(ge::ComputeGraph *graph
   }
   FUSION_PASS_CHECK(UpdateAllShape(cur_node, end_node) != SUCCESS,
                     OP_LOGW(kNameFusionPass, "Failed to update shape in pattern 1"), return FAILED);
-  OP_LOGI(kNameFusionPass, "End DoFusionPattern1.");
+
+  OP_LOGD(kNameFusionPass, "End DoFusionPattern1.");
   return SUCCESS;
 }
 
 Status BatchMatMulNonAlignedFusionPass::DoFusionPattern2(ge::ComputeGraph *graph,
                                                          map<std::string, int64_t>& batch_matmul_shape_info) const {
-  OP_LOGI(kNameFusionPass, "Enter DoFusionPattern2.");
+  OP_LOGD(kNameFusionPass, "Enter DoFusionPattern2.");
 
   // Create reshape1 pad reshape2 for batchmatmul_1_input_1_node
   auto bmm_1_input_1_shape = batchmatmul_1_node->GetOpDesc()->MutableInputDesc(1)->GetOriginShape();

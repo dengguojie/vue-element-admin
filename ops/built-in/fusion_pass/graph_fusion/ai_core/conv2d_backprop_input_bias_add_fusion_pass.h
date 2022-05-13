@@ -30,8 +30,6 @@ protected:
   Status Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes) override;
 
 private:
-  Status convert_dx_to_transpose(ge::ComputeGraph &graph, Mapping &mapping,
-                                 vector<ge::NodePtr> &fusion_nodes);
   Status connect_edges(ge::NodePtr &conv_node, ge::NodePtr &bias_node,
                        ge::NodePtr &bias_const_node, ge::NodePtr &conv2d_transpose_d);
   void set_in_out_op_and_attr(ge::OpDescPtr &conv_op, ge::OpDescPtr &bias_const_op,

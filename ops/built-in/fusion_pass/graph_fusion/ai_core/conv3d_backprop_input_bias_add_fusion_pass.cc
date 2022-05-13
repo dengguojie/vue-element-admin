@@ -53,8 +53,7 @@ vector<FusionPattern*> Conv3DbpInputBiasAddFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
   FusionPattern* pattern = new (std::nothrow) FusionPattern("Conv3DbpInputBiassAddFusionPass");
   FUSION_PASS_CHECK(pattern == nullptr,
-                    CUBE_CALL_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                      "create Conv3DbpInputBiassAddFusionPass pattern object fail."),
+                    OP_LOGW(FUSED_OP_TYPE.c_str(), "create Conv3DbpInputBiassAddFusionPass pattern object fail."),
                     return patterns);
   pattern->AddOpDesc(PATTERN_CUBENODE, {OP_CONV3D_BACKPROP_INPUT_D})
           .AddOpDesc(PATTERN_BIASADD, {OP_BIASADD})
@@ -68,53 +67,35 @@ vector<FusionPattern*> Conv3DbpInputBiasAddFusionPass::DefinePatterns() {
 Status Conv3DbpInputBiasAddFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping,
                                               vector<ge::NodePtr> &fusion_nodes) {
   OP_LOGD("begin Conv3DbpInputBiassAddFusionPass.");
-  if (ConvertDxToTranspose(graph, mapping, fusion_nodes) != SUCCESS) {
-    return FAILED;
-  }
-  return SUCCESS;
-}
-
-Status Conv3DbpInputBiasAddFusionPass::ConvertDxToTranspose(ge::ComputeGraph &graph, Mapping &mapping,
-                                                            vector<ge::NodePtr> &fusion_nodes) {
-  OP_LOGD("Start to convert Conv3DBackpropInputD to Conv3DTransposeD.");
   ge::NodePtr conv_node = GetNodeFromMapping(PATTERN_CUBENODE, mapping);
-  FUSION_PASS_CHECK(conv_node == nullptr,
-                    CUBE_CALL_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new conv_node not success."),
-                    return PARAM_INVALID);
+  FUSION_PASS_CHECK(conv_node == nullptr, OP_LOGW(FUSED_OP_TYPE.c_str(), "new conv_node not success."),
+                    return NOT_CHANGED);
   ge::NodePtr bias_node = GetNodeFromMapping(PATTERN_BIASADD, mapping);
-  FUSION_PASS_CHECK(bias_node == nullptr,
-                    CUBE_CALL_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new bias_node not success."),
-                    return PARAM_INVALID);
+  FUSION_PASS_CHECK(bias_node == nullptr, OP_LOGW(FUSED_OP_TYPE.c_str(), "new bias_node not success."),
+                    return NOT_CHANGED);
 
-  FUSION_PASS_CHECK(bias_node->GetInAllNodes().size() <= 1,
-                    CUBE_CALL_ERR_REPORT(FUSED_OP_TYPE.c_str(), "bias_node in node num is incollect."),
-                    return PARAM_INVALID);
+  FUSION_PASS_CHECK(bias_node->GetInAllNodes().size() <= 1, OP_LOGW(bias_node, "bias input node num is incorrect."),
+                    return NOT_CHANGED);
   ge::NodePtr bias_const_node = bias_node->GetInAllNodes().at(1);
-  FUSION_PASS_CHECK(bias_const_node == nullptr,
-                    CUBE_CALL_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new bias_const_node not success."),
-                    return PARAM_INVALID);
+  FUSION_PASS_CHECK(bias_const_node == nullptr, OP_LOGW(bias_node, "bias const node is null."), return NOT_CHANGED);
 
   // build a new node named Conv3DTransposeD
   auto conv_op = conv_node->GetOpDesc();
-  FUSION_PASS_CHECK(conv_op == nullptr,
-                    CUBE_CALL_ERR_REPORT(FUSED_OP_TYPE.c_str(), "get conv3d_transpose_d_op failed."),
-                    return PARAM_INVALID);
+  FUSION_PASS_CHECK(conv_op == nullptr, OP_LOGW(conv_node, "get conv3d_transpose_d_op failed."),
+                    return NOT_CHANGED);
   ge::OpDescPtr conv3d_transpose_d_op = nullptr;
-  FUSION_PASS_MAKE_SHARED(
-    conv3d_transpose_d_op = std::make_shared<ge::OpDesc>(conv_op->GetName(), "Conv3DTransposeD"),
-    return FAILED);
+  FUSION_PASS_MAKE_SHARED(conv3d_transpose_d_op = std::make_shared<ge::OpDesc>(conv_op->GetName(), "Conv3DTransposeD"),
+                          return NOT_CHANGED);
 
   auto bias_const_op = bias_const_node->GetOpDesc();
-  FUSION_PASS_CHECK(bias_const_op == nullptr,
-                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "bias_const_op is null."),
-                    return FAILED);
+  FUSION_PASS_CHECK(bias_const_op == nullptr, OP_LOGW(conv_node, "bias_const_op is null."),
+                    return NOT_CHANGED);
 
   SetOpAttr(conv_op, bias_const_op, conv3d_transpose_d_op);
 
   // add Conv3DTransposeD node and connect edges
   ge::NodePtr conv3d_transpose_d = graph.AddNode(conv3d_transpose_d_op);
-  FUSION_PASS_CHECK(conv3d_transpose_d == nullptr,
-                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new Conv3DTransposeD not success."),
+  FUSION_PASS_CHECK(conv3d_transpose_d == nullptr, CUBE_INNER_ERR_REPORT(conv_node, "failed to new Conv3DTransposeD."),
                     return PARAM_INVALID);
 
   fusion_nodes.push_back(conv3d_transpose_d);
@@ -125,12 +106,11 @@ Status Conv3DbpInputBiasAddFusionPass::ConvertDxToTranspose(ge::ComputeGraph &gr
 
   // delete Conv3DBackpropInputD & BiasAdd
   FUSION_PASS_CHECK(graph.RemoveNode(conv_node) == ge::GRAPH_FAILED,
-                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Removing conv_node is failed."),
-                    return FAILED);
+                    CUBE_INNER_ERR_REPORT(conv_node, "failed to remove conv_node."), return FAILED);
   FUSION_PASS_CHECK(graph.RemoveNode(bias_node) == ge::GRAPH_FAILED,
-                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Removing bias_node is failed."),
-                    return FAILED);
+                    CUBE_INNER_ERR_REPORT(bias_node, "failed to remove bias_node."), return FAILED);
 
+  OP_LOGI(conv_node, "succeed to execute fusion pass");
   return SUCCESS;
 }
 
@@ -157,30 +137,20 @@ void Conv3DbpInputBiasAddFusionPass::SetOpAttr(const ge::OpDescPtr &conv_op,
   ge::GeTensorDesc conv3d_transpose_d_in_desc_2 = bias_const_op->GetOutputDesc(0);
   ge::GeTensorDesc conv3d_transpose_d_in_desc_3(ge::GeShape(), ge::FORMAT_RESERVED, ge::DT_UNDEFINED);
 
-  FUSION_PASS_CHECK(
-    conv3d_transpose_d_op->AddInputDesc("x", conv3d_transpose_d_in_desc_0) != ge::GRAPH_SUCCESS,
-    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Adding input x for Conv3DTransposeD is failed."),
-    return);
-  FUSION_PASS_CHECK(
-    conv3d_transpose_d_op->AddInputDesc("filter", conv3d_transpose_d_in_desc_1) != ge::GRAPH_SUCCESS,
-    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Adding input filter for Conv3DTransposeD is failed."),
-    return);
-  FUSION_PASS_CHECK(
-    conv3d_transpose_d_op->AddInputDesc("bias", conv3d_transpose_d_in_desc_2) != ge::GRAPH_SUCCESS,
-    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Adding input bias for Conv3DTransposeD is failed."),
-    return);
-  FUSION_PASS_CHECK(
-    conv3d_transpose_d_op->AddInputDesc("offset_w", conv3d_transpose_d_in_desc_3) != ge::GRAPH_SUCCESS,
-    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Adding input offset_w for Conv3DTransposeD is failed."),
-    return);
+  FUSION_PASS_CHECK(conv3d_transpose_d_op->AddInputDesc("x", conv3d_transpose_d_in_desc_0) != ge::GRAPH_SUCCESS,
+                    CUBE_INNER_ERR_REPORT(conv_op, "Adding input x for Conv3DTransposeD is failed."), return );
+  FUSION_PASS_CHECK(conv3d_transpose_d_op->AddInputDesc("filter", conv3d_transpose_d_in_desc_1) != ge::GRAPH_SUCCESS,
+                    CUBE_INNER_ERR_REPORT(conv_op, "Adding input filter for Conv3DTransposeD is failed."), return );
+  FUSION_PASS_CHECK(conv3d_transpose_d_op->AddInputDesc("bias", conv3d_transpose_d_in_desc_2) != ge::GRAPH_SUCCESS,
+                    CUBE_INNER_ERR_REPORT(conv_op, "Adding input bias for Conv3DTransposeD is failed."), return );
+  FUSION_PASS_CHECK(conv3d_transpose_d_op->AddInputDesc("offset_w", conv3d_transpose_d_in_desc_3) != ge::GRAPH_SUCCESS,
+                    CUBE_INNER_ERR_REPORT(conv_op, "Adding input offset_w for Conv3DTransposeD is failed."), return );
   ge::GeTensorDesc conv3d_transpose_d_out_desc_0 = conv_op->GetOutputDesc(0);
   conv3d_transpose_d_out_desc_0.SetDataType(ge::DT_FLOAT16);
   conv3d_transpose_d_out_desc_0.SetOriginDataType(ge::DT_FLOAT16);
 
-  FUSION_PASS_CHECK(
-    conv3d_transpose_d_op->AddOutputDesc("y", conv3d_transpose_d_out_desc_0) != ge::GRAPH_SUCCESS,
-    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Adding output y for Conv3DTransposeD is failed."),
-    return);
+  FUSION_PASS_CHECK(conv3d_transpose_d_op->AddOutputDesc("y", conv3d_transpose_d_out_desc_0) != ge::GRAPH_SUCCESS,
+                    CUBE_INNER_ERR_REPORT(conv_op, "Adding output y for Conv3DTransposeD is failed."), return );
   std::vector<int64_t> input_size_index;
   if (ge::AttrUtils::GetListInt(conv_op, "input_size", input_size_index)) {
     ge::AttrUtils::SetListInt(conv3d_transpose_d_op, "input_size", input_size_index);

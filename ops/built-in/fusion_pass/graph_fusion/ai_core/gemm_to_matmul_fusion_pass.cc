@@ -45,7 +45,6 @@ static const char FUSED_OP_TYPE[] = "GEMM";
 }  // namespace
 
 vector<FusionPattern*> GemmToMatmulFusionPass::DefinePatterns() {
-  OP_LOGI(FUSED_OP_TYPE, "Enter GemmToMatmulFusionPass::DefinePatterns.");
   vector<FusionPattern*> patterns;
   FusionPattern* pattern = new (std::nothrow) FusionPattern("GemmToMatmulFusionPass");
   FUSION_PASS_CHECK(

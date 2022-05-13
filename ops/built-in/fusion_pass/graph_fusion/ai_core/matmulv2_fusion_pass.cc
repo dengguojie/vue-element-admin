@@ -44,7 +44,6 @@ static const string PERM = "perm";
 static const int CONST_INDEX = 1;
 static const int CONST_DIM_NUM = 2;
 vector<FusionPattern*> MatMulV2FusionPass::DefinePatterns() {
-  OP_LOGI(FUSED_OP_TYPE.c_str(), "Define MatMulV2FusionPass pattern begin");
   vector<FusionPattern*> patterns;
   FusionPattern* pattern = new (std::nothrow) FusionPattern("MatMulV2FusionPass");
 
@@ -58,7 +57,6 @@ vector<FusionPattern*> MatMulV2FusionPass::DefinePatterns() {
       .SetInputs(PATTERN_MATMULV2, {PATTERN_INPUTS1, PATTERN_INPUTS2, PATTERN_INPUTS3})
       .SetOutput(PATTERN_MATMULV2);
   patterns.push_back(pattern);
-  OP_LOGI(FUSED_OP_TYPE.c_str(), "Define MatMulV2FusionPass pattern end");
   return patterns;
 }
 

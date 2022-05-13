@@ -52,7 +52,6 @@ static const int kDimNumThree = 3;
 */
 
 vector<FusionPattern*> FullyConnectionReshapePass::DefinePatterns() {
-  OP_LOGI(FUSED_OP_TYPE.c_str(), "Define FullyConnectionReshapePass pattern begin");
   vector<FusionPattern*> patterns;
   FusionPattern* pattern1 = new (std::nothrow) FusionPattern("FullyConnectionReshapePass");
   FUSION_PASS_CHECK(pattern1 == nullptr,
@@ -63,7 +62,6 @@ vector<FusionPattern*> FullyConnectionReshapePass::DefinePatterns() {
       .SetInputs(PATTERN_FULLYCONNECTION, {PATTERN_RESHAPE})
       .SetOutput(PATTERN_FULLYCONNECTION);
   patterns.push_back(pattern1);
-  OP_LOGI(FUSED_OP_TYPE.c_str(), "Define FullyConnectionReshapePass pattern end");
 
   return patterns;
 }

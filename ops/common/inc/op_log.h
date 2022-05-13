@@ -24,6 +24,7 @@
 #include <string>
 #include <type_traits>
 #include "external/graph/operator.h"
+#include "graph/node.h"
 #include "common/util/error_manager/error_manager.h"
 
 #if !defined( __ANDROID__) && !defined(ANDROID)
@@ -50,6 +51,18 @@ template <class T>
 typename std::enable_if<std::is_same<char*, typename std::decay<T>::type>::value, const char*>::type
 get_cstr(T name) {
   return name;
+}
+
+template <class T>
+typename std::enable_if<std::is_same<ge::NodePtr, typename std::decay<T>::type>::value, const char *>::type get_cstr(
+    const T &node) {
+  return node != nullptr ? node->GetName().c_str() : "nil";
+}
+
+template <class T>
+typename std::enable_if<std::is_same<ge::OpDescPtr, typename std::decay<T>::type>::value, const char *>::type get_cstr(
+    const T &op_desc) {
+  return op_desc != nullptr ? op_desc->GetName().c_str() : "nil";
 }
 
 template <typename T>

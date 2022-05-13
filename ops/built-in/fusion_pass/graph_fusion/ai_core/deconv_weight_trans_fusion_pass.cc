@@ -59,8 +59,6 @@ static const int CONST_DIM0_NUM = 0;
 }  // namespace
 
 vector<FusionPattern*> DeconvWeightTransFusionPass::DefinePatterns() {
-  OP_LOGI(FUSED_OP_TYPE.c_str(),
-          "Enter DeconvWeightTransFusionPass::DefinePatterns.");
   vector<FusionPattern*> patterns;
   // patterns DeconvWeightTransFusionPass0 and DeconvWeightTransFusionPass can be fused to improve performance
   FusionPattern* pattern_0 = new (std::nothrow) FusionPattern("DeconvWeightTransFusionPass0");

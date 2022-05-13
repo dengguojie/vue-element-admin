@@ -33,7 +33,8 @@ protected:
 
 private:
   bool CheckIsNeedFusion(const ge::NodePtr& fused_node) const;
-  bool CheckAndDoTransposeFusion(ge::ComputeGraph& graph, const ge::NodePtr& fused_node) const;
+  bool CheckAndDoTransposeFusion(ge::ComputeGraph &graph, const ge::NodePtr &fused_node,
+                                 bool &is_transpose_fusion) const;
   bool CheckTransposeFusion(const ge::NodePtr& transpose_node) const;
   Status DoTransposeFusion(const ge::NodePtr& transpose_node, const ge::NodePtr& fused_node, int data_index,
                            const string& attr_name) const;

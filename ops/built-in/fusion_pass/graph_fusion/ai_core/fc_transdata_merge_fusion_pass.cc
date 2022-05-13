@@ -51,7 +51,6 @@ static const int NUM_4 = 4;
 */
 
 vector<FusionPattern*> FCTransdataMergePass::DefinePatterns() {
-  OP_LOGI(FUSED_OP_TYPE.c_str(), "Define FCTransdataMergePass pattern1 begin");
   vector<FusionPattern*> patterns;
   FusionPattern* pattern1 = new (std::nothrow) FusionPattern("FCTransdataMergePass1");
   FUSION_PASS_CHECK(pattern1 == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new an object failed"),
@@ -66,7 +65,6 @@ vector<FusionPattern*> FCTransdataMergePass::DefinePatterns() {
       .SetInputs(PATTERN_TRANSDATA_2, {PATTERN_RESHAPE})
       .SetOutput(PATTERN_TRANSDATA_2);
   patterns.push_back(pattern1);
-  OP_LOGI(FUSED_OP_TYPE.c_str(), "Define FCTransdataMergePass1 pattern end");
 
   FusionPattern* pattern2 = new (std::nothrow) FusionPattern("FCTransdataMergePass2");
   FUSION_PASS_CHECK(pattern2 == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new an object failed"),
@@ -80,7 +78,6 @@ vector<FusionPattern*> FCTransdataMergePass::DefinePatterns() {
       .SetInputs(PATTERN_TRANSDATA_2, {PATTERN_UNSQUEEZE_V2})
       .SetOutput(PATTERN_TRANSDATA_2);
   patterns.push_back(pattern2);
-  OP_LOGI(FUSED_OP_TYPE.c_str(), "Define FCTransdataMergePass2 pattern end");
 
   return patterns;
 }

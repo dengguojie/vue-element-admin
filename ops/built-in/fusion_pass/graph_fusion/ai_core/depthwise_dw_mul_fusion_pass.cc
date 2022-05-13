@@ -84,7 +84,6 @@ ge::OpDescPtr DepthwiseDwMulFusionPass::CreateTranspose(const string& node_name,
 
 vector<FusionPattern*> DepthwiseDwMulFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
-  OP_LOGI("Enter DepthwiseDwMulFusionPass Patterns");
   // define AvgPoolFusion
   FusionPattern* pattern = new (std::nothrow) FusionPattern("DepthwiseDwMulFusionPass");
   FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
@@ -93,7 +92,6 @@ vector<FusionPattern*> DepthwiseDwMulFusionPass::DefinePatterns() {
   pattern->AddOpDesc(PATTERN_DEPTHWISEDW, {DEPTHWISEDW_DYN, DEPTHWISEDW}).SetOutput(PATTERN_DEPTHWISEDW);
 
   patterns.push_back(pattern);
-  OP_LOGI("Leave DepthwiseDwMulFusionPass Patterns");
   return patterns;
 }
 
