@@ -246,6 +246,6 @@ Status BatchMultiClassNonMaxSuppressionRefreshSubgraphConstNodeFusionPass::Fusio
   return SUCCESS;
 }
 
-REGISTER_PASS("BatchMultiClassNonMaxSuppressionRefreshSubgraphConstNodeFusionPass", BUILT_IN_AFTER_MULTI_DIMS_PASS,
+REGISTER_PASS("BatchMultiClassNonMaxSuppressionRefreshSubgraphConstNodeFusionPass", BUILT_IN_GRAPH_PASS,
               BatchMultiClassNonMaxSuppressionRefreshSubgraphConstNodeFusionPass);
 }  // namespace fe
