@@ -393,7 +393,7 @@ def _process_l1_shape(tiling, tensor_map, para_name="AL1_shape"):
     # the n,m shape of input
     m_dim = shape_to_list(tensor_map["a_l0a"].shape)[-4]
     n_dim = shape_to_list(tensor_map["b_l0b"].shape)[-3]
-    k_dim = shape_to_list(tensor_map["a_l0a"].shape)[-3]
+    k_dim = shape_to_list(tensor_map["a_l0a"].shape)[-3] * shape_to_list(tensor_map["a_l0a"].shape)[-1]
 
     if not tiling[para_name]:
         l1_attach_flag = ATTACH_FULLY_LOAD
