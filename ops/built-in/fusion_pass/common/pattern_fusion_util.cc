@@ -371,24 +371,28 @@ Status PatternFusionUtil::ConstToAttrWithNode(ge::ComputeGraph& graph, ge::NodeP
                     return FAILED);
 
   for (auto oneConstNode : constNodes) {
-    if (HasControlEdge(oneConstNode)) {
-      FUSION_PASS_CHECK(SUCCESS != LinkControlAnchorForConst(oneConstNode, fusionNode),
+    if (GetOutEdgeSize(oneConstNode) == 0) {
+      FUSION_PASS_CHECK(SUCCESS != LinkControlAnchorForConst(oneConstNode, fusionNode, false),
               OP_LOGE(fusionOpType.c_str(), "Link control anchor Node[%s] failed", oneConstNode->GetName().c_str()),
               return FAILED);
-    }
-
-    if (GetOutEdgeSize(oneConstNode) == 0) {
       FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != graph.RemoveNode(oneConstNode),
                         OP_LOGE(fusionOpType.c_str(), "Remove Node[%s] failed", oneConstNode->GetName().c_str()),
                         return FAILED);
       OP_LOGI(fusionOpType.c_str(), "Remove const Node:[%s].", oneConstNode->GetName().c_str());
+    } else if (HasControlEdge(oneConstNode)) {
+      FUSION_PASS_CHECK(SUCCESS != LinkControlAnchorForConst(oneConstNode, fusionNode, true),
+              OP_LOGE(fusionOpType.c_str(), "Link control anchor Node[%s] failed", oneConstNode->GetName().c_str()),
+              return FAILED);
+    } else {
+      OP_LOGD(fusionOpType.c_str(), "Node:[%s] have output link to other node.", oneConstNode->GetName().c_str());
     }
   }
 
   return SUCCESS;
 }
 
-Status PatternFusionUtil::LinkControlAnchorForConst(ge::NodePtr oneConstNode, ge::NodePtr fusionNode) {
+Status PatternFusionUtil::LinkControlAnchorForConst(ge::NodePtr oneConstNode, ge::NodePtr fusionNode,
+                                                    bool has_in_control) {
   // link control anchor
   FUSION_PASS_CHECK(fusionNode == nullptr || fusionNode->GetOpDesc() == nullptr,
                     OP_LOGE("LinkControlAnchorForConst", "fusionNode or OpDesc is null, fusion failed."),
@@ -397,11 +401,15 @@ Status PatternFusionUtil::LinkControlAnchorForConst(ge::NodePtr oneConstNode, ge
   auto constControlAnchors = oneConstNode->GetInControlAnchor()->GetPeerOutControlAnchors();
   for (const auto &outControlAnchor : constControlAnchors) {
     auto outNode = outControlAnchor->GetOwnerNode();
-    OP_LOGD(fusionOpType.c_str(), "Link outNode node : %s to fusion node %s",
-            outNode->GetOpDesc()->GetName().c_str(), fusionNode->GetOpDesc()->GetName().c_str());
-    FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(outControlAnchor, fusionNode->GetInControlAnchor()),
-                      OP_LOGE(fusionOpType.c_str(), "Add out control edge failed in const2attr with node."),
-                      return FAILED);
+    OP_LOGD(fusionOpType.c_str(), "Get outNode node : %s outEdgeSize %d, inEdgeSize %d",
+            outNode->GetOpDesc()->GetName().c_str(), GetOutEdgeSize(outNode), outNode->GetAllInAnchors().size());
+    if ((GetOutEdgeSize(outNode) == 1 && outNode->GetAllInAnchors().size() == 0) || has_in_control) {
+      OP_LOGD(fusionOpType.c_str(), "Link outNode node : %s to fusion node %s",
+              outNode->GetOpDesc()->GetName().c_str(), fusionNode->GetOpDesc()->GetName().c_str());
+      FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(outControlAnchor, fusionNode->GetInControlAnchor()),
+                        OP_LOGE(fusionOpType.c_str(), "Add out control edge failed in const2attr with node."),
+                        return FAILED);
+    }
   }
   return SUCCESS;
 }
