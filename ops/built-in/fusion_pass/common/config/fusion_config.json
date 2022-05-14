@@ -84,6 +84,8 @@
                 "HostBNFusionPass": "5150",
                 "ZBNupdateReluV2Conv2DBNreducePass": "5160",
                 "CommonGRUFusionPass": "5170",
+                "DynamicGRUV2TransFusionPass":"5175",
+                "DynamicGRUV2AddSeqPass":"5176",
                 "ZConcatV2DAlignedFusionPass": "5180"
             }
         },

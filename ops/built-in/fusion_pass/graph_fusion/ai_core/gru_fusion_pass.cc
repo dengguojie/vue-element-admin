@@ -234,6 +234,7 @@ Status GRUFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<g
   FUSION_PASS_CHECK(gruNode == nullptr,
                     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "DynamicGRUV2 node is null, fusion failed."),
                     return FAILED);
+  newNodes.push_back(gruNode);
 
   // connect bias(splitD) to gru bias input
   if (hasBias) {
