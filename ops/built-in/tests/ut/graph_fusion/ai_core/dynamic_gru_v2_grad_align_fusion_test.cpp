@@ -118,6 +118,14 @@ TEST_F(dynamic_gru_v2_grad_align_fusion_test, dynamic_gru_v2_grad_align_fusion_t
   ge::TensorDesc data_o_desc(data_o_shape, FORMAT_ND, DT_FLOAT16);
   data_o.update_input_desc_x(data_o_desc);
   data_o.update_output_desc_y(data_o_desc);
+
+  // seqlength
+  auto data_seq = op::Data("seq_length");
+  std::vector<int64_t> data_seq_vec{1,1,17};
+  ge::Shape data_seq_shape(data_seq_vec);
+  ge::TensorDesc data_seq_desc(data_seq_shape, FORMAT_ND, DT_INT32);
+  data_seq.update_input_desc_x(data_seq_desc);
+  data_seq.update_output_desc_y(data_seq_desc);
   
   auto dynamci_gru_v2_grad_op = op::DynamicGRUV2Grad("DynamicGRUV2Grad");
   dynamci_gru_v2_grad_op.set_input_x(data_x)
@@ -131,10 +139,11 @@ TEST_F(dynamic_gru_v2_grad_align_fusion_test, dynamic_gru_v2_grad_align_fusion_t
                         .set_input_update(data_i)
                         .set_input_reset(data_j)
                         .set_input_new(data_f)
-                        .set_input_hidden_new(data_o);
+                        .set_input_hidden_new(data_o)
+                        .set_input_seq_length(data_seq);
 
   std::vector<Operator> inputs{data_x, data_w, data_b, data_y, data_init_h, data_init_c, 
-                               data_dy, data_dh, data_i, data_j, data_f, data_o};
+                               data_dy, data_dh, data_i, data_j, data_f, data_o, data_seq};
   std::vector<Operator> outputs{dynamci_gru_v2_grad_op};
 
   ge::Graph graph("dynamic_gru_v2_grad_align_fusion_test");

@@ -35,12 +35,15 @@ static map<std::string, int> INPUT_INDEX = {
     {"seq_length", 12}, {"mask", 13}};
 
 static map<std::string, int> HIDDENGRAD_INPUT_INDEX = {{"dh_pre_t", 0}, {"h", 1},     {"dy", 2},  {"dh", 3},
-                                                       {"update", 4},   {"reset", 5}, {"new", 6}, {"hidden_new", 7}};
+                                                       {"update", 4},   {"reset", 5}, {"new", 6}, {"hidden_new", 7},
+                                                       {"seq_mask", 8}};
 static map<std::string, int> OUTPUT_INDEX = {{"dw_input", 0},  {"dw_hidden", 1}, {"db_input", 2},
                                              {"db_hidden", 3}, {"dx", 4},        {"dh_prev", 5}};
 static map<std::string, int> HIDDENGRAD_OUTPUT_INDEX = {{"dh_prev", 0}, {"dgate_h", 1}, {"dnt_x", 2}};
 int64_t splitSize = 2;
 int64_t fzDim = 16;
+static int64_t INDEX_2 = 2;
+
 vector<FusionPattern*> DynamicGRUV2GradFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
   FusionPattern* pattern = new (std::nothrow) FusionPattern("DynamicGRUV2GradAFusionPass");
@@ -58,13 +61,14 @@ void DynamicGRUV2GradFusionPass::GetNodeInfo(ge::NodePtr dynamicGRUGradNode) {
   t_size = inputTensorDescH.GetShape().GetDim(0);
   batch = inputTensorDescH.GetShape().GetDim(1);
   nzBatch = (batch + fzDim - 1) / fzDim;
-  hidden_dim = inputTensorDescH.GetShape().GetDim(2);
-  nzHiddenDim = (hidden_dim + 15) / 16;
+  hidden_dim = inputTensorDescH.GetShape().GetDim(INDEX_2);
+  nzHiddenDim = (hidden_dim + fzDim - 1) / fzDim;
 
   ge::GeTensorDesc inputTensorDescX = dynamicGRUGradDesc->GetInputDesc(INPUT_INDEX["x"]);
-  input_dim = inputTensorDescX.GetShape().GetDim(2);
+  input_dim = inputTensorDescX.GetShape().GetDim(INDEX_2);
   nzInputDim = (input_dim + fzDim - 1) / fzDim;
   inputHType = inputTensorDescH.GetDataType();
+  hasSeqLength = dynamicGRUGradNode->GetOpDesc()->MutableInputDesc("seq_length") != nullptr;
   return;
 }
 
@@ -120,6 +124,7 @@ ge::NodePtr DynamicGRUV2GradFusionPass::AddNewNode(ge::ComputeGraph& graph, ge::
 void DynamicGRUV2GradFusionPass::AddHiddenGradNodeEdge(map<std::string, ge::NodePtr>& inputNodes,
                                                        ge::NodePtr hiddenGradNode, ge::NodePtr matmulGradNode,
                                                        ge::NodePtr lastHiddenGradNode, ge::NodePtr lastMatmulNode,
+                                                       ge::NodePtr genMaskNode,
                                                        ge::NodePtr dynamicGRUGradNode, int64_t curT) {
   if (curT == 0) {
     // fake connect dh_pre_t
@@ -165,6 +170,10 @@ void DynamicGRUV2GradFusionPass::AddHiddenGradNodeEdge(map<std::string, ge::Node
                           hiddenGradNode->GetInDataAnchor(HIDDENGRAD_INPUT_INDEX["new"]));
   ge::GraphUtils::AddEdge(dynamicGRUGradNode->GetInDataAnchor(INPUT_INDEX["hidden_new"])->GetPeerOutAnchor(),
                           hiddenGradNode->GetInDataAnchor(HIDDENGRAD_INPUT_INDEX["hidden_new"]));
+  if(hasSeqLength){
+    ge::GraphUtils::AddEdge(genMaskNode->GetOutDataAnchor(0),
+                            hiddenGradNode->GetInDataAnchor(HIDDENGRAD_INPUT_INDEX["seq_mask"]));
+  }
 }
 
 ge::NodePtr DynamicGRUV2GradFusionPass::AddOneHiddenGradNode(const string& gateOrder, int64_t curT,
@@ -205,6 +214,10 @@ ge::NodePtr DynamicGRUV2GradFusionPass::AddOneHiddenGradNode(const string& gateO
   hiddenGradDesc->AddInputDesc("reset", dynamicGRUGradDesc->GetInputDesc(INPUT_INDEX["reset"]).Clone());
   hiddenGradDesc->AddInputDesc("new", dynamicGRUGradDesc->GetInputDesc(INPUT_INDEX["new"]).Clone());
   hiddenGradDesc->AddInputDesc("hidden_new", dynamicGRUGradDesc->GetInputDesc(INPUT_INDEX["hidden_new"]).Clone());
+  // seq_mask has same shapeDesc with hidden_new
+  if(hasSeqLength){
+    hiddenGradDesc->AddInputDesc("seq_mask", dynamicGRUGradDesc->GetInputDesc(INPUT_INDEX["hidden_new"]).Clone());
+  }
 
   vector<int64_t> dgateHNzDim{1, (splitSize + 1) * nzHiddenDim, nzBatch, fzDim, fzDim};
   vector<int64_t> dgateHNzDimOri{1, (splitSize + 1) * nzHiddenDim, nzBatch, fzDim, fzDim};
@@ -324,6 +337,11 @@ vector<vector<ge::NodePtr>> DynamicGRUV2GradFusionPass::AddTLoopNode(map<std::st
   ge::NodePtr lastHiddenGradNode = nullptr;
   ge::NodePtr lastMatmulNode = nullptr;
 
+  ge::NodePtr genMaskNode = nullptr;
+  if(hasSeqLength){
+    genMaskNode = AddGenMaskNode(dynamicGRUGradNode, graph, newNodes, failStatus);
+  }
+
   for (int64_t i = 0; i < t_size; i++) {
     ge::NodePtr hiddenGradNode = AddOneHiddenGradNode(gateOrder, i, dynamicGRUGradNode, graph, newNodes, failStatus);
     FUSION_PASS_CHECK(failStatus, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
@@ -333,7 +351,7 @@ vector<vector<ge::NodePtr>> DynamicGRUV2GradFusionPass::AddTLoopNode(map<std::st
     FUSION_PASS_CHECK(failStatus, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
                                                                  "check failed, fusion failed."), return result);
     // add input edge
-    AddHiddenGradNodeEdge(inputNodes, hiddenGradNode, matmulNode, lastHiddenGradNode, lastMatmulNode,
+    AddHiddenGradNodeEdge(inputNodes, hiddenGradNode, matmulNode, lastHiddenGradNode, lastMatmulNode, genMaskNode,
                           dynamicGRUGradNode, i);
 
     lastHiddenGradNode = hiddenGradNode;
@@ -345,8 +363,8 @@ vector<vector<ge::NodePtr>> DynamicGRUV2GradFusionPass::AddTLoopNode(map<std::st
   ge::NodePtr hiddenGradNode = AddOneHiddenGradNode(gateOrder, t_size, dynamicGRUGradNode, graph, newNodes, failStatus);
   FUSION_PASS_CHECK(failStatus, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
                                                                "check failed, fusion failed."), return result);
-  AddHiddenGradNodeEdge(inputNodes, hiddenGradNode, nullptr, lastHiddenGradNode, lastMatmulNode, dynamicGRUGradNode,
-                        t_size);
+  AddHiddenGradNodeEdge(inputNodes, hiddenGradNode, nullptr, lastHiddenGradNode, lastMatmulNode, genMaskNode,
+                        dynamicGRUGradNode, t_size);
   hiddenGradNodes.push_back(hiddenGradNode);
 
   result.push_back(hiddenGradNodes);
@@ -582,6 +600,40 @@ map<std::string, ge::NodePtr> DynamicGRUV2GradFusionPass::AddGRUHiddenGradNode(g
   ge::NodePtr dhPrevNode = result_node[0][result_node[0].size() - 1];
   result["dh_prev"] = dhPrevNode;
   return result;
+}
+
+ge::NodePtr DynamicGRUV2GradFusionPass::AddGenMaskNode(ge::NodePtr dynamicGRUGradNode, ge::ComputeGraph &graph,
+                                                       vector<ge::NodePtr> &newNodes, bool &failStatus) {
+  ge::OpDescPtr genMaskDesc = nullptr;
+  FUSION_PASS_MAKE_SHARED(
+      (genMaskDesc = std::make_shared<ge::OpDesc>(dynamicGRUGradNode->GetName() + "GRUweightGrad/GenMaskNode",
+                                                  "RnnGenMask")),
+      genMaskDesc = nullptr;
+      failStatus = true;
+      return nullptr);
+  // input
+  vector<int64_t> inputDims = {batch};
+  AddInputNodeDesc(genMaskDesc, "seq_length", inputDims, ge::FORMAT_ND, inputDims, ge::FORMAT_ND,
+                   ge::DT_INT32);
+
+  // output
+  vector<int64_t> dstDims = {t_size, batch, hidden_dim};
+  AddOutputNodeDesc(genMaskDesc, "seq_mask", dstDims, ge::FORMAT_ND, dstDims, ge::FORMAT_ND, ge::DT_FLOAT16);
+
+  // attr
+  ge::AttrUtils::SetInt(genMaskDesc, "num_step", t_size);
+  ge::AttrUtils::SetInt(genMaskDesc, "hidden_size", hidden_dim);
+
+  // create node
+  ge::NodePtr genMaskNode = AddNewNode(graph, genMaskDesc, newNodes, failStatus);
+  FUSION_PASS_CHECK(failStatus, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                                               "check failed, fusion failed."),
+                    return nullptr);
+
+  // Edge
+  ge::GraphUtils::AddEdge(dynamicGRUGradNode->GetInDataAnchor(INPUT_INDEX["seq_length"])->GetPeerOutAnchor(),
+                          genMaskNode->GetInDataAnchor(0));
+  return genMaskNode;
 }
 
 ge::NodePtr DynamicGRUV2GradFusionPass::AddHTransData(ge::NodePtr dynamicGRUGradNode, ge::ComputeGraph &graph,

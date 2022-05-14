@@ -11,7 +11,7 @@ from gru_numpy_tik import gruv2_hidden_grad_data
 ut_case = OpUT("gru_v2_hidden_grad_cell", "impl.gru_v2_hidden_grad_cell", "gru_v2_hidden_grad_cell")
 
 
-def calc_expect_func(dh_pre_t, h, dy, dh, update, reset, new, hidden_new, dh_prev, dgate_h, dnt_x, t_state=0):
+def calc_expect_func(dh_pre_t, h, dy, dh, update, reset, new, hidden_new, seqlength, dh_prev, dgate_h, dnt_x, t_state=0):
     print("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%" * 3)
     print("dh_prev", dh_prev["valuey"].shape, dh_prev["shape"])
     print("dgate_h", dgate_h["valuey"].shape, dgate_h["shape"])
@@ -32,9 +32,9 @@ def gen_gru_v2_hidden_grad_case(t, n, output_size, dtype="float32"):
         {"shape": (t, output_size, n, 16, 16), "dtype": dtype},
         {"shape": (t, output_size, n, 16, 16), "dtype": dtype},
         {"shape": (t, output_size, n, 16, 16), "dtype": dtype},
+        {"shape": (t, output_size, n, 16, 16), "dtype": dtype},
         {"shape": (output_size, n, 16, 16), "dtype": dtype},
-        {"shape": (t, 3 * output_size, n, 16, 16), "dtype": dtype},
-        {"shape": (t, output_size, n, 16, 16), "dtype": dtype}],
+        {"shape": (t, 3 * output_size, n, 16, 16), "dtype": dtype}],
         "case_name": case_name
     }
 
@@ -77,7 +77,7 @@ def gen_gru_v2_hidden_grad_precision_case(shape_val, dtype, t_state=0):
     dnt_x = {"shape": (t, output_dim, batch, 16, 16), "dtype": dtype, "param_type": "output",
              "valuey": gru_dict["dnt_x"]}
     return {
-        "params": [dh_pre_t, h, dy, dh, update, reset, new, hidden_new, dh_prev, dgate_h, dnt_x, t_state],
+        "params": [dh_pre_t, h, dy, dh, update, reset, new, hidden_new, None, dh_prev, dgate_h, dnt_x, t_state],
         "case_name": "gru_v2_hidden_grad_cell",
         "calc_expect_func": calc_expect_func,
         "precision_standard": precision_info.PrecisionStandard(0.005, 0.001)
@@ -86,7 +86,7 @@ def gen_gru_v2_hidden_grad_precision_case(shape_val, dtype, t_state=0):
 
 #ut_case.add_precision_case(['Ascend910'], gen_gru_v2_hidden_grad_precision_case((5, 32, 64, 128), "float32"))
 ut_case.add_precision_case(['Ascend910A'], gen_gru_v2_hidden_grad_precision_case((1, 32, 64, 128), "float32"))
-ut_case.add_case(['Ascend910'], gen_gru_v2_hidden_grad_case(5, 1, 4))
+ut_case.add_case(['Ascend910A'], gen_gru_v2_hidden_grad_case(5, 1, 4))
 
 '''
 ut_case.add_case(['Ascend910'], gen_gru_v2_hidden_grad_case(5, 8, 8))

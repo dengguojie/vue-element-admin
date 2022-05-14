@@ -72,9 +72,14 @@ Status DynamicGRUV2SeqFusionPass::AddRNNMaskNode(ge::NodePtr fusedNode, ge::Comp
   if (rnnGenMaskExist) {
     ge::GeTensorDesc tensorOutDesc = existRnnNode->GetOpDesc()->GetOutputDesc(0);
     fusedNode->GetOpDesc()->UpdateInputDesc("seq_length", tensorOutDesc);
+    // Remove Edge
+    FUSION_PASS_CHECK(
+        SUCCESS != ge::GraphUtils::RemoveEdge(fusedNode->GetInDataAnchor(seqLenIndex)->GetPeerOutAnchor(),
+                                              fusedNode->GetInDataAnchor(seqLenIndex)),
+        OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove edge between seq_length and gruv2 failed"), return FAILED);
     // Add Edge
     FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(existRnnNode->GetOutDataAnchor(0),
-        fusedNode->GetInDataAnchor(seqLenIndex)),
+                                                         fusedNode->GetInDataAnchor(seqLenIndex)),
         OP_LOGE(FUSED_OP_TYPE.c_str(), "Add Mask output edge failed"), return FAILED);
     return SUCCESS;
   }

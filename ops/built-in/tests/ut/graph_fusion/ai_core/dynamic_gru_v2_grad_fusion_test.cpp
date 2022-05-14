@@ -54,6 +54,7 @@ TEST_F(dynamic_gru_v2_grad_fusion_test, dynamic_gru_v2_grad_fusion_test_1) {
   ge::TensorDesc resetDesc(tShape, FORMAT_ND, DT_FLOAT16);
   ge::TensorDesc newDesc(tShape, FORMAT_ND, DT_FLOAT16);
   ge::TensorDesc hiddenNewDesc(tShape, FORMAT_ND, DT_FLOAT16);
+  ge::TensorDesc seqLengthDesc(tShape, FORMAT_ND, DT_FLOAT16);
 
   auto xData = op::Data("x");
   xData.update_input_desc_x(xDesc);
@@ -91,6 +92,9 @@ TEST_F(dynamic_gru_v2_grad_fusion_test, dynamic_gru_v2_grad_fusion_test_1) {
   auto hiddenNewData = op::Data("hidden_new");
   hiddenNewData.update_input_desc_x(hiddenNewDesc);
   hiddenNewData.update_output_desc_y(hiddenNewDesc);
+  auto seqmaskData = op::Data("seq_length");
+  seqmaskData.update_input_desc_x(seqLengthDesc);
+  seqmaskData.update_output_desc_y(seqLengthDesc);
 
   auto dynamicGruV2GradOp = op::DynamicGRUV2Grad("DynamicGRUV2Grad_1");
   dynamicGruV2GradOp.set_input_x(xData)
@@ -104,7 +108,8 @@ TEST_F(dynamic_gru_v2_grad_fusion_test, dynamic_gru_v2_grad_fusion_test_1) {
       .set_input_update(updateData)
       .set_input_reset(resetData)
       .set_input_new(newData)
-      .set_input_hidden_new(hiddenNewData);
+      .set_input_hidden_new(hiddenNewData)
+      .set_input_seq_length(seqmaskData);
 
   std::vector<Operator> inputs{xData, weightInputData, weightHiddenData};
   std::vector<Operator> outputs{dynamicGruV2GradOp};

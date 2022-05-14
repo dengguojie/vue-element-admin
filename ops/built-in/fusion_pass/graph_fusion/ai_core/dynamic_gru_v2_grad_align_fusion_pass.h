@@ -30,7 +30,7 @@ class DynamicGRUV2GradAlignFusionPass : public PatternFusionBasePass {
                          bool& failStatus);
   void AddHiddenGradNodeEdge(map<std::string, ge::NodePtr>& inputNodes, ge::NodePtr hiddenGradNode,
                              ge::NodePtr matmulGradNode, ge::NodePtr lastHiddenGradNode, ge::NodePtr lastMatmulNode,
-                             ge::NodePtr dynamicGRUGradNode, int64_t curT);
+                             ge::NodePtr genMaskNode, ge::NodePtr dynamicGRUGradNode, int64_t curT);
   ge::NodePtr AddOneHiddenGradNode(const string& gateOrder, int64_t curT, ge::NodePtr dynamicGRUGradNode,
                                    ge::ComputeGraph& graph, vector<ge::NodePtr>& newNodes, bool& failStatus);
   ge::NodePtr AddOneHiddenGradMatmulNode(int64_t curT, ge::NodePtr hiddenGradNode, ge::NodePtr dynamicGRUGradNode,
@@ -44,6 +44,8 @@ class DynamicGRUV2GradAlignFusionPass : public PatternFusionBasePass {
   // dw_h  matmul(h.T, dgate_h)
   map<std::string, ge::NodePtr> AddGRUHiddenGradNode(ge::NodePtr dynamicGRUGradNode, ge::ComputeGraph& graph,
                                                      vector<ge::NodePtr>& newNodes, bool& failStatus);
+  ge::NodePtr AddGenMaskNode(ge::NodePtr dynamicGRUGradNode, ge::ComputeGraph &graph, vector<ge::NodePtr> &newNodes,
+                             bool &failStatus);
   ge::NodePtr AddHTransData(ge::NodePtr dynamicGRUGradNode, ge::ComputeGraph& graph,
                             vector<ge::NodePtr>& newNodes, bool& failStatus);
   ge::NodePtr AddHSplitNode(ge::NodePtr dynamicGRUGradNode, ge::ComputeGraph& graph, vector<ge::NodePtr>& newNodes,
@@ -126,7 +128,7 @@ class DynamicGRUV2GradAlignFusionPass : public PatternFusionBasePass {
   int64_t hidden_dim = 0;
   int64_t nzHiddenDim = 0;
   ge::DataType inputHType = ge::DT_FLOAT;
-  bool fusion_reduce = false;
+  bool hasSeqLength = false;
 };
 }  // namespace fe
 
