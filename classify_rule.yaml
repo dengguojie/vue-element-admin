@@ -28,6 +28,16 @@ aicpu:
       - ops/built-in/op_proto/index_to_addr_ops.cc
       - ops/built-in/op_proto/slice_write_ops.cc
       - ops/built-in/op_proto/util/array_ops_shape_fns.cc
+      - ops/built-in/op_proto/inc/all_ops.h
+      - ops/built-in/op_proto/map_ops.cc
+      - ops/built-in/op_proto/inc/map_ops.h
+      - ops/built-in/framework/tf_plugin/empty_tensor_map_plugin.cc
+      - ops/built-in/framework/tf_plugin/tensor_map_erase_plugin.cc
+      - ops/built-in/framework/tf_plugin/tensor_map_has_key_plugin.cc
+      - ops/built-in/framework/tf_plugin/tensor_map_insert_plugin.cc
+      - ops/built-in/framework/tf_plugin/tensor_map_lookup_plugin.cc
+      - ops/built-in/framework/tf_plugin/tensor_map_size_plugin.cc
+      - ops/built-in/framework/tf_plugin/tensor_map_stack_keys_plugin.cc
     unrelease:
   llt:
     ut_check: true
@@ -2173,7 +2183,6 @@ unkown:
       - ops/built-in/op_proto/inc/ctc_ops.h
       - ops/built-in/op_proto/inc/sdca_ops.h
       - ops/built-in/op_proto/inc/deep_md.h
-      - ops/built-in/op_proto/inc/all_ops.h
       - ops/built-in/op_proto/inc/transformation_ops.h
       - ops/built-in/op_proto/inc/selection_ops.h
       - ops/built-in/op_proto/inc/functional_ops.h

@@ -42,6 +42,7 @@
 #include "list_ops.h"
 #include "logging_ops.h"
 #include "lookup_ops.h"
+#include "map_ops.h"
 #include "math_ops.h"
 #include "matrix_calculation_ops.h"
 #include "nn_batch_norm_ops.h"

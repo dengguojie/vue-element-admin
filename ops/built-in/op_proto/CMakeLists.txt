@@ -72,6 +72,7 @@ set(_op_proto_srcs
   list_ops.cc
   logging_ops.cc
   lookup_ops.cc
+  map_ops.cc
   math_ops.cc
   matrix_calculation_ops.cc
   nn_batch_norm_ops.cc

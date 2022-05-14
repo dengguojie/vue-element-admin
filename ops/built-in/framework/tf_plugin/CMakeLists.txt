@@ -440,6 +440,13 @@ set(_tf_plugins
   tensor_array_scatter_plugin.cc
   tensor_array_size_plugin.cc
   tensor_array_write_plugin.cc
+  empty_tensor_map_plugin.cc
+  tensor_map_erase_plugin.cc
+  tensor_map_has_key_plugin.cc
+  tensor_map_insert_plugin.cc
+  tensor_map_lookup_plugin.cc
+  tensor_map_size_plugin.cc
+  tensor_map_stack_keys_plugin.cc
   tensorflow_fusion_op_parser_util.cc
   tensor_scatter_add_plugin.cc
   tensor_scatter_sub_plugin.cc
