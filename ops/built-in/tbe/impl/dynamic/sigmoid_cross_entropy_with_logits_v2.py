@@ -60,9 +60,7 @@ def op_select_format(predict, target, weight, pos_weight, loss, reduction="mean"
 
 
 # 'pylint: disable=locally-disabled,unused-argument,too-many-locals,too-many-arguments,line-too-long
-@register_operator_compute("SigmoidCrossEntropyWithLogitsV2",
-                           op_mode="SigmoidCrossEntropyWithLogitsV2",
-                           support_fusion=False)
+@register_operator_compute("SigmoidCrossEntropyWithLogitsV2", op_mode="dynamic", support_fusion=True)
 def sigmoid_cross_entropy_with_logits_v2_compute(predict, target, weight, pos_weight, loss, reduction, kernel_name):
     """
     calculating data

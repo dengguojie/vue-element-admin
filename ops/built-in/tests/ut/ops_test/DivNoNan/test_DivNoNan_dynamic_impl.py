@@ -89,7 +89,7 @@ case8 = {"params": [
     {"shape": (-2,), "ori_shape": (-2,), "format": "ND", "ori_format": "ND", 'dtype': "int8"},
     {"shape": (-2,), "ori_shape": (-2,), "format": "ND", "ori_format": "ND", 'dtype': "int8"},
     {"shape": (-2,), "ori_shape": (-2,), "format": "ND", "ori_format": "ND", 'dtype': "int8"}],
-    "case_name": "div_no_nan_dynamic_7",
+    "case_name": "div_no_nan_dynamic_8",
     "expect": "success",
     "format_expect": [],
     "support_expect": True}

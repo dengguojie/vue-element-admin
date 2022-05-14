@@ -27,10 +27,7 @@ from impl.util.platform_adapter import OpPatternMode
 
 
 # 'pylint: disable=locally-disabled,unused-argument,too-many-locals
-@register_operator_compute("ClipByValue",
-                            op_mode="dynamic",
-                            support_fusion=True)
-
+@register_operator_compute("ClipByValue", op_mode="dynamic", support_fusion=True)
 def clip_by_value_compute(input_t,
                           clip_value_min,
                           clip_value_max,

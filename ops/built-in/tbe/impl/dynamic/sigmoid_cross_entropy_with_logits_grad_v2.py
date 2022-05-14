@@ -50,7 +50,7 @@ def get_cof_by_shape(predict_shape, precision_dtype):
 
 
 # 'pylint: disable=too-many-arguments
-@register_operator_compute("SigmoidCrossEntropyWithLogitsGradV2", op_mode="dynamic", support_fusion=True)
+@register_operator_compute("SigmoidCrossEntropyWithLogitsGradV2", op_mode="dynamic", support_fusion=False)
 def sigmoid_cross_entropy_with_logits_grad_v2_compute(predict, target,
                                                       dout, weight, pos_weight,
                                                       reduction="mean"):

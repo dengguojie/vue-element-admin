@@ -1166,6 +1166,7 @@ vector_B:
       - ops/built-in/tbe/impl/dynamic/reduce_mean.py
       - ops/built-in/tbe/impl/dynamic/reduce_min.py
       - ops/built-in/tbe/impl/dynamic/reduce_std_v2_update.py
+      - ops/built-in/tbe/impl/dynamic/sigmoid_cross_entropy_with_logits_grad.py
       - ops/built-in/tbe/impl/dynamic/relu.py
       - ops/built-in/tbe/impl/dynamic/relu_grad_v2.py
       - ops/built-in/tbe/impl/dynamic/relu_v2.py
@@ -1204,6 +1205,8 @@ vector_B:
       - ops/built-in/tbe/impl/dynamic/softplus.py
       - ops/built-in/tbe/impl/dynamic/softsign.py
       - ops/built-in/tbe/impl/dynamic/space_to_depth.py
+      - ops/built-in/tbe/impl/dynamic/sigmoid_cross_entropy_with_logits_grad_v2.py
+      - ops/built-in/tbe/impl/dynamic/sigmoid_cross_entropy_with_logits_v2.py
       - ops/built-in/tbe/impl/dynamic/spence.py
       - ops/built-in/tbe/impl/dynamic/sqrt.py
       - ops/built-in/tbe/impl/dynamic/sqrt_grad.py
@@ -2878,7 +2881,6 @@ unkown:
       - ops/built-in/tbe/impl/dynamic/one_hot.py
       - ops/built-in/tbe/impl/dynamic/prod_env_mat_a.py
       - ops/built-in/tbe/impl/dynamic/prod_env_mat_a_calc_descrpt.py
-      - ops/built-in/tbe/impl/dynamic/sigmoid_cross_entropy_with_logits_grad_v2.py
       - ops/built-in/tbe/impl/dynamic/tan.py
       - ops/built-in/tbe/impl/dynamic/reduce_any.py
       - ops/built-in/tbe/impl/dynamic/pack.py
@@ -2938,7 +2940,6 @@ unkown:
       - ops/built-in/tbe/impl/dynamic/index_fill_d.py
       - ops/built-in/tbe/impl/dynamic/leaky_relu_grad.py
       - ops/built-in/tbe/impl/dynamic/real_div.py
-      - ops/built-in/tbe/impl/dynamic/sigmoid_cross_entropy_with_logits_grad.py
       - ops/built-in/tbe/impl/dynamic/prod_force_se_a.py
       - ops/built-in/tbe/impl/dynamic/mul_no_nan.py
       - ops/built-in/tbe/impl/dynamic/sparse_apply_ftrl_d.py
@@ -2992,7 +2993,6 @@ unkown:
       - ops/built-in/tbe/impl/dynamic/sparse_apply_rms_prop_d.py
       - ops/built-in/tbe/impl/dynamic/layer_norm_x_backprop.py
       - ops/built-in/tbe/impl/dynamic/mirror_pad.py
-      - ops/built-in/tbe/impl/dynamic/sigmoid_cross_entropy_with_logits_v2.py
       - ops/built-in/tbe/impl/dynamic/resize_bilinear_v2.py
       - ops/built-in/tbe/impl/dynamic/logical_and.py
       - ops/built-in/tbe/impl/auto_tune/__init__.py
