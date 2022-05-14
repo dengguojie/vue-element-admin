@@ -42,7 +42,7 @@ IMPLEMT_INFERFUNC(NonDeterministicInts, NonDeterministicIntsInfer) {
     OP_LOGE(TbeGetName(op).c_str(), "Get attr dtype error.");
     return GRAPH_FAILED;
   }
-  TensorDesc outputDesc = op.GetOutputDesc("y");
+  TensorDesc outputDesc = op.GetOutputDescByName("y");
   outputDesc.SetDataType(dtype);
   outputDesc.SetShape(shape);
   return op.UpdateOutputDesc("y", outputDesc);
@@ -105,7 +105,7 @@ IMPLEMT_INFERFUNC(StatefulRandomBinomial, StatefulRandomBinomialInfer) {
     return GRAPH_FAILED;
   }
 
-  TensorDesc outputDesc = op.GetOutputDesc("y");
+  TensorDesc outputDesc = op.GetOutputDescByName("y");
   DataType output_type;
   if (op.GetAttr("dtype", output_type) != GRAPH_SUCCESS) {
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op),
@@ -144,7 +144,7 @@ IMPLEMT_INFERFUNC(StatefulStandardNormalV2, StatefulStandardNormalV2Infer) {
     return GRAPH_FAILED;
   }
 
-  TensorDesc outputDesc = op.GetOutputDesc("y");
+  TensorDesc outputDesc = op.GetOutputDescByName("y");
   outputDesc.SetDataType(DT_FLOAT);
   outputDesc.SetShape(shape);
   return op.UpdateOutputDesc("y", outputDesc);
@@ -178,7 +178,7 @@ IMPLEMT_INFERFUNC(StatefulTruncatedNormal, StatefulTruncatedNormalInfer) {
     return GRAPH_FAILED;
   }
 
-  TensorDesc outputDesc = op.GetOutputDesc("y");
+  TensorDesc outputDesc = op.GetOutputDescByName("y");
   outputDesc.SetDataType(DT_FLOAT);
   outputDesc.SetShape(shape);
   return op.UpdateOutputDesc("y", outputDesc);
@@ -212,7 +212,7 @@ IMPLEMT_INFERFUNC(StatefulUniform, StatefulUniformInfer) {
     return GRAPH_FAILED;
   }
 
-  TensorDesc outputDesc = op.GetOutputDesc("y");
+  TensorDesc outputDesc = op.GetOutputDescByName("y");
   outputDesc.SetDataType(DT_FLOAT);
   outputDesc.SetShape(shape);
   return op.UpdateOutputDesc("y", outputDesc);
@@ -246,7 +246,7 @@ IMPLEMT_INFERFUNC(StatefulUniformFullInt, StatefulUniformFullIntInfer) {
     return GRAPH_FAILED;
   }
 
-  TensorDesc outputDesc = op.GetOutputDesc("y");
+  TensorDesc outputDesc = op.GetOutputDescByName("y");
   outputDesc.SetDataType(DT_UINT64);
   outputDesc.SetShape(shape);
   return op.UpdateOutputDesc("y", outputDesc);
@@ -296,7 +296,7 @@ IMPLEMT_INFERFUNC(StatefulUniformInt, StatefulUniformIntInfer) {
     return GRAPH_FAILED;
   }
 
-  TensorDesc outputDesc = op.GetOutputDesc("y");
+  TensorDesc outputDesc = op.GetOutputDescByName("y");
   outputDesc.SetDataType(DT_INT64);
   outputDesc.SetShape(shape);
   return op.UpdateOutputDesc("y", outputDesc);

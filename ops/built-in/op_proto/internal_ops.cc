@@ -79,8 +79,8 @@ IMPLEMT_INFERFUNC(AssistHelp, AssistHelpInfer) {
 INFER_FUNC_REG(AssistHelp, AssistHelpInfer);
 
 IMPLEMT_COMMON_INFERFUNC(CacheUpdateInferShape) {
-  TensorDesc out_desc = op.GetOutputDesc("x");
-  out_desc.SetDataType(op.GetInputDesc("x").GetDataType());
+  TensorDesc out_desc = op.GetOutputDescByName("x");
+  out_desc.SetDataType(op.GetInputDescByName("x").GetDataType());
   if (op.UpdateOutputDesc("x", out_desc) != GRAPH_SUCCESS) {
     OP_LOGE(TbeGetName(op).c_str(), "update output x failed.");
     return GRAPH_FAILED;

@@ -314,7 +314,7 @@ IMPLEMT_INFERFUNC(CropAndResizeGradBoxes, CropAndResizeGradBoxesInfer) {
     return GRAPH_FAILED;
   }
 
-  TensorDesc desc = op.GetOutputDesc("y");
+  TensorDesc desc = op.GetOutputDescByName("y");
   desc.SetShape(op.GetInputDesc(2).GetShape());
   desc.SetDataType(DT_FLOAT);
   if (op.UpdateOutputDesc("y", desc) != GRAPH_SUCCESS) {
@@ -503,7 +503,7 @@ IMPLEMT_INFERFUNC(ExtractGlimpse, ExtractGlimpseInfer) {
     return GRAPH_FAILED;
   }
 
-  TensorDesc desc = op.GetOutputDesc("y");
+  TensorDesc desc = op.GetOutputDescByName("y");
   desc.SetDataType(DT_FLOAT);
   if (op.UpdateOutputDesc("y", desc) != GRAPH_SUCCESS) {
     return GRAPH_FAILED;
@@ -519,7 +519,7 @@ IMPLEMT_INFERFUNC(ExtractGlimpse, ExtractGlimpseInfer) {
 INFER_FUNC_REG(ExtractGlimpse, ExtractGlimpseInfer);
 
 IMPLEMT_INFERFUNC(HSVToRGB, HSVToRGBInfer) {
-  TensorDesc desc = op.GetOutputDesc("y");
+  TensorDesc desc = op.GetOutputDescByName("y");
   desc.SetDataType(op.GetInputDesc(0).GetDataType());
   if (op.UpdateOutputDesc("y", desc) != GRAPH_SUCCESS) {
     return GRAPH_FAILED;
@@ -548,7 +548,7 @@ IMPLEMT_INFERFUNC(QuantizedResizeBilinear, QuantizedResizeBilinearInfer) {
     return GRAPH_FAILED;
   }
 
-  TensorDesc y_min = op.GetOutputDesc("y_min");
+  TensorDesc y_min = op.GetOutputDescByName("y_min");
   y_min.SetShape(Shape());
   y_min.SetDataType(DT_FLOAT);
   if (op.UpdateOutputDesc("y_min", y_min) != GRAPH_SUCCESS) {
@@ -556,7 +556,7 @@ IMPLEMT_INFERFUNC(QuantizedResizeBilinear, QuantizedResizeBilinearInfer) {
     return GRAPH_FAILED;
   }
 
-  TensorDesc y_max = op.GetOutputDesc("y_max");
+  TensorDesc y_max = op.GetOutputDescByName("y_max");
   y_max.SetShape(Shape());
   y_max.SetDataType(DT_FLOAT);
   if (op.UpdateOutputDesc("y_max", y_max) != GRAPH_SUCCESS) {
@@ -570,7 +570,7 @@ IMPLEMT_INFERFUNC(QuantizedResizeBilinear, QuantizedResizeBilinearInfer) {
 INFER_FUNC_REG(QuantizedResizeBilinear, QuantizedResizeBilinearInfer);
 
 IMPLEMT_INFERFUNC(ResizeArea, ResizeAreaInfer) {
-  TensorDesc desc = op.GetOutputDesc("y");
+  TensorDesc desc = op.GetOutputDescByName("y");
   desc.SetDataType(DT_FLOAT);
   if (op.UpdateOutputDesc("y", desc) != GRAPH_SUCCESS) {
     return GRAPH_FAILED;
@@ -581,7 +581,7 @@ IMPLEMT_INFERFUNC(ResizeArea, ResizeAreaInfer) {
 INFER_FUNC_REG(ResizeArea, ResizeAreaInfer);
 
 IMPLEMT_INFERFUNC(ResizeBicubicGrad, ResizeBicubicGradInfer) {
-  TensorDesc desc = op.GetOutputDesc("y");
+  TensorDesc desc = op.GetOutputDescByName("y");
   Format input_format = op.GetInputDesc(0).GetFormat();
   vector<int64_t> grads_shape = op.GetInputDesc(0).GetShape().GetDims();
   vector<int64_t> org_images_shape = op.GetInputDesc(1).GetShape().GetDims();
@@ -613,7 +613,7 @@ IMPLEMT_INFERFUNC(ResizeBicubicGrad, ResizeBicubicGradInfer) {
 INFER_FUNC_REG(ResizeBicubicGrad, ResizeBicubicGradInfer);
 
 IMPLEMT_INFERFUNC(ResizeBicubic, ResizeBicubicInfer) {
-  TensorDesc desc = op.GetOutputDesc("y");
+  TensorDesc desc = op.GetOutputDescByName("y");
   desc.SetDataType(DT_FLOAT);
   if (op.UpdateOutputDesc("y", desc) != GRAPH_SUCCESS) {
     return GRAPH_FAILED;
@@ -707,7 +707,7 @@ INFER_FUNC_REG(ResizeNearestNeighborV2Grad, ResizeNearestNeighborV2GradInfer);
 
 // ---------------ResizeNearestNeighborV2GradD Op Start-------------------
 IMPLEMT_INFERFUNC(ResizeNearestNeighborV2GradD, ResizeNearestNeighborV2GradDInfer) {
-  vector<int64_t> grads_shape = op.GetInputDesc("grads").GetShape().GetDims();
+  vector<int64_t> grads_shape = op.GetInputDescByName("grads").GetShape().GetDims();
   vector<int64_t> size_out;
   if (op.GetAttr("size", size_out) == ge::GRAPH_FAILED) {
     std::string err_msg = GetInputInvalidErrMsg("size");
@@ -720,8 +720,8 @@ IMPLEMT_INFERFUNC(ResizeNearestNeighborV2GradD, ResizeNearestNeighborV2GradDInfe
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
-  Format input_format = op.GetInputDesc("grads").GetFormat();
-  TensorDesc td = op.GetOutputDesc("y");
+  Format input_format = op.GetInputDescByName("grads").GetFormat();
+  TensorDesc td = op.GetOutputDescByName("y");
   vector<int64_t> y_shape;
   if (input_format == FORMAT_NHWC && grads_shape.size() > 3) {
     y_shape.push_back(grads_shape[0]);
@@ -748,7 +748,7 @@ IMPLEMT_INFERFUNC(ResizeNearestNeighborV2GradD, ResizeNearestNeighborV2GradDInfe
 INFER_FUNC_REG(ResizeNearestNeighborV2GradD, ResizeNearestNeighborV2GradDInfer);
 
 IMPLEMT_INFERFUNC(RGBToHSV, RGBToHSVInfer) {
-  TensorDesc desc = op.GetOutputDesc("y");
+  TensorDesc desc = op.GetOutputDescByName("y");
   desc.SetDataType(op.GetInputDesc(0).GetDataType());
   if (op.UpdateOutputDesc("y", desc) != GRAPH_SUCCESS) {
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(
@@ -803,25 +803,25 @@ IMPLEMT_INFERFUNC(SampleDistortedBoundingBox, SampleDistortedBoundingBoxInfer) {
     return GRAPH_FAILED;
   }
 
-  TensorDesc begin_desc = op.GetOutputDesc("begin");
+  TensorDesc begin_desc = op.GetOutputDescByName("begin");
   begin_desc.SetShape(Shape({3}));
-  begin_desc.SetDataType(op.GetInputDesc("image_size").GetDataType());
+  begin_desc.SetDataType(op.GetInputDescByName("image_size").GetDataType());
   if (op.UpdateOutputDesc("begin", begin_desc) != GRAPH_SUCCESS) {
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(
         TbeGetName(op), string("fail to update output[begin] desc."));
     return GRAPH_FAILED;
   }
 
-  TensorDesc size_desc = op.GetOutputDesc("size");
+  TensorDesc size_desc = op.GetOutputDescByName("size");
   size_desc.SetShape(Shape({3}));
-  size_desc.SetDataType(op.GetInputDesc("image_size").GetDataType());
+  size_desc.SetDataType(op.GetInputDescByName("image_size").GetDataType());
   if (op.UpdateOutputDesc("size", size_desc) != GRAPH_SUCCESS) {
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(
         TbeGetName(op), string("fail to update output[size] desc."));
     return GRAPH_FAILED;
   }
 
-  TensorDesc bboxes_desc = op.GetOutputDesc("bboxes");
+  TensorDesc bboxes_desc = op.GetOutputDescByName("bboxes");
   bboxes_desc.SetShape(Shape({1, 1, 4}));
   bboxes_desc.SetDataType(DT_FLOAT);
   if (op.UpdateOutputDesc("bboxes", bboxes_desc) != GRAPH_SUCCESS) {
@@ -882,25 +882,25 @@ IMPLEMT_INFERFUNC(SampleDistortedBoundingBoxExt2, SampleDistortedBoundingBoxExt2
     return GRAPH_FAILED;
   }
 
-  TensorDesc begin_desc = op.GetOutputDesc("begin");
+  TensorDesc begin_desc = op.GetOutputDescByName("begin");
   begin_desc.SetShape(Shape({3}));
-  begin_desc.SetDataType(op.GetInputDesc("image_size").GetDataType());
+  begin_desc.SetDataType(op.GetInputDescByName("image_size").GetDataType());
   if (op.UpdateOutputDesc("begin", begin_desc) != GRAPH_SUCCESS) {
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(
         TbeGetName(op), string("fail to update output[begin] desc."));
     return GRAPH_FAILED;
   }
 
-  TensorDesc size_desc = op.GetOutputDesc("size");
+  TensorDesc size_desc = op.GetOutputDescByName("size");
   size_desc.SetShape(Shape({3}));
-  size_desc.SetDataType(op.GetInputDesc("image_size").GetDataType());
+  size_desc.SetDataType(op.GetInputDescByName("image_size").GetDataType());
   if (op.UpdateOutputDesc("size", size_desc) != GRAPH_SUCCESS) {
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(
         TbeGetName(op), string("fail to update output[size] desc."));
     return GRAPH_FAILED;
   }
 
-  TensorDesc bboxes_desc = op.GetOutputDesc("bboxes");
+  TensorDesc bboxes_desc = op.GetOutputDescByName("bboxes");
   bboxes_desc.SetShape(Shape({1, 1, 4}));
   bboxes_desc.SetDataType(DT_FLOAT);
   if (op.UpdateOutputDesc("bboxes", bboxes_desc) != GRAPH_SUCCESS) {
@@ -950,8 +950,8 @@ IMPLEMT_INFERFUNC(DrawBoundingBoxes, DrawBoundingBoxesInfer) {
             "] of input[boxes], should 4 or -1"));
     return GRAPH_FAILED;
   }
-  DataType type = op.GetInputDesc("images").GetDataType();
-  TensorDesc y_desc = op.GetOutputDesc("y");
+  DataType type = op.GetInputDescByName("images").GetDataType();
+  TensorDesc y_desc = op.GetOutputDescByName("y");
   y_desc.SetDataType(type);
   y_desc.SetShape(images);
   return op.UpdateOutputDesc("y", y_desc);
@@ -1285,44 +1285,44 @@ IMPLEMT_INFERFUNC(NonMaxSuppressionV4, NonMaxSuppressionV4Infer) {
 INFER_FUNC_REG(NonMaxSuppressionV4, NonMaxSuppressionV4Infer);
 
 IMPLEMT_INFERFUNC(NonMaxSuppressionWithOverlaps, NonMaxSuppressionWithOverlapsInfer) {
-  Shape overlaps_shape = op.GetInputDesc("overlaps").GetShape();
-  Shape scores_shape = op.GetInputDesc("scores").GetShape();
-  Shape max_output_size_shape = op.GetInputDesc("max_output_size").GetShape();
-  Shape overlap_threshold_shape = op.GetInputDesc("overlap_threshold").GetShape();
-  Shape score_threshold_shape = op.GetInputDesc("score_threshold").GetShape();
-  if (WithRank(op.GetInputDesc("overlaps"), 2, overlaps_shape, TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
+  Shape overlaps_shape = op.GetInputDescByName("overlaps").GetShape();
+  Shape scores_shape = op.GetInputDescByName("scores").GetShape();
+  Shape max_output_size_shape = op.GetInputDescByName("max_output_size").GetShape();
+  Shape overlap_threshold_shape = op.GetInputDescByName("overlap_threshold").GetShape();
+  Shape score_threshold_shape = op.GetInputDescByName("score_threshold").GetShape();
+  if (WithRank(op.GetInputDescByName("overlaps"), 2, overlaps_shape, TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
     std::string err_msg = ConcatString("failed to call WithRank function, ",
       "input[overlaps] rank must be 2, but got rank[",
-      op.GetInputDesc("overlaps").GetShape().GetDimNum(), "]");
+      op.GetInputDescByName("overlaps").GetShape().GetDimNum(), "]");
     AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
-  if (WithRank(op.GetInputDesc("scores"), 1, scores_shape, TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
+  if (WithRank(op.GetInputDescByName("scores"), 1, scores_shape, TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
     std::string err_msg = ConcatString("failed to call WithRank function, ",
       "input[scores] rank must be 1, but got rank[",
-      op.GetInputDesc("scores").GetShape().GetDimNum(), "]");
+      op.GetInputDescByName("scores").GetShape().GetDimNum(), "]");
     AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
-  if (WithRank(op.GetInputDesc("max_output_size"), 0, max_output_size_shape, TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
+  if (WithRank(op.GetInputDescByName("max_output_size"), 0, max_output_size_shape, TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
     std::string err_msg = ConcatString("failed to call WithRank function, ",
       "input[max_output_size] rank must be 0, but got rank[",
-      op.GetInputDesc("max_output_size").GetShape().GetDimNum(), "]");
+      op.GetInputDescByName("max_output_size").GetShape().GetDimNum(), "]");
     AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
-  if (WithRank(op.GetInputDesc("overlap_threshold"), 0, overlap_threshold_shape, TbeGetName(op).c_str()) !=
+  if (WithRank(op.GetInputDescByName("overlap_threshold"), 0, overlap_threshold_shape, TbeGetName(op).c_str()) !=
       GRAPH_SUCCESS) {
     std::string err_msg = ConcatString("failed to call WithRank function, ",
       "input[overlap_threshold] rank must be 0, but got rank[",
-      op.GetInputDesc("overlap_threshold").GetShape().GetDimNum(), "]");
+      op.GetInputDescByName("overlap_threshold").GetShape().GetDimNum(), "]");
     AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
-  if (WithRank(op.GetInputDesc("score_threshold"), 0, score_threshold_shape, TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
+  if (WithRank(op.GetInputDescByName("score_threshold"), 0, score_threshold_shape, TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
     std::string err_msg = ConcatString("failed to call WithRank function, ",
       "input[score_threshold] rank must be 0, but got rank[",
-      op.GetInputDesc("score_threshold").GetShape().GetDimNum(), "]");
+      op.GetInputDescByName("score_threshold").GetShape().GetDimNum(), "]");
     AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
@@ -1344,7 +1344,7 @@ IMPLEMT_INFERFUNC(NonMaxSuppressionWithOverlaps, NonMaxSuppressionWithOverlapsIn
     return GRAPH_FAILED;
   }
 
-  TensorDesc selected_indices_desc = op.GetOutputDesc("selected_indices");
+  TensorDesc selected_indices_desc = op.GetOutputDescByName("selected_indices");
   Shape selecte_indices_shape;
   Vector(ge::UNKNOWN_DIM, selecte_indices_shape);
   selected_indices_desc.SetDataType(DT_INT32);
@@ -1626,7 +1626,7 @@ bool ResizeConstInferShape(const Operator& op, const std::pair<uint32_t, std::st
 }
 
 IMPLEMT_COMMON_INFERFUNC(ResizeInferShape) {
-  vector<int64_t> images_shape = op.GetInputDesc("x").GetShape().GetDims();
+  vector<int64_t> images_shape = op.GetInputDescByName("x").GetShape().GetDims();
   vector<int64_t> size_out;
   if (op.GetAttr("size", size_out) == ge::GRAPH_FAILED) {
     OP_LOGE(TbeGetName(op).c_str(), "GetOpAttr ConstValue size failed!");
@@ -1637,9 +1637,9 @@ IMPLEMT_COMMON_INFERFUNC(ResizeInferShape) {
     OP_LOGE(TbeGetName(op).c_str(), "length of size_out must be equal to 2");
     return GRAPH_FAILED;
   }
-  DataType input_dtype = op.GetInputDesc("x").GetDataType();
-  Format input_format = op.GetInputDesc("x").GetFormat();
-  TensorDesc td = op.GetOutputDesc("y");
+  DataType input_dtype = op.GetInputDescByName("x").GetDataType();
+  Format input_format = op.GetInputDescByName("x").GetFormat();
+  TensorDesc td = op.GetOutputDescByName("y");
   vector<int64_t> y_shape;
   if (input_format == FORMAT_NHWC && images_shape.size() > 3) {
     y_shape.push_back(images_shape[0]);
@@ -1772,7 +1772,7 @@ COMMON_INFER_FUNC_REG(SyncResizeBilinearV2, SyncResizeBilinearV2InferShape);
 // ---------------ResizeBilinearV2D Op Start-------------------
 IMPLEMT_COMMON_INFERFUNC(ResizeBilinearV2DInferShape) {
 
-  vector<int64_t> images_shape = op.GetInputDesc("x").GetShape().GetDims();
+  vector<int64_t> images_shape = op.GetInputDescByName("x").GetShape().GetDims();
   vector<int64_t> size_out;
   if (op.GetAttr("size", size_out) == ge::GRAPH_FAILED) {
     std::string err_msg = GetInputInvalidErrMsg("size");
@@ -1785,8 +1785,8 @@ IMPLEMT_COMMON_INFERFUNC(ResizeBilinearV2DInferShape) {
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
-  Format input_format = op.GetInputDesc("x").GetFormat();
-  TensorDesc td = op.GetOutputDesc("y");
+  Format input_format = op.GetInputDescByName("x").GetFormat();
+  TensorDesc td = op.GetOutputDescByName("y");
   vector<int64_t> y_shape;
   if (input_format == FORMAT_NHWC && images_shape.size() > 3) {
     y_shape.push_back(images_shape[0]);
@@ -1836,14 +1836,14 @@ IMPLEMT_COMMON_INFERFUNC(KeepRatioResizeBilinearInferShape) {
   std::int64_t heightDIms = 0;
   std::int64_t widthDims = 0;
   std::int64_t channelDIms = 0;
-  auto inputImagesShape = op.GetInputDesc("images").GetShape().GetDims();
+  auto inputImagesShape = op.GetInputDescByName("images").GetShape().GetDims();
 
   if (inputImagesShape.size() != DIM_SIZE4) {
     OP_LOGE(TbeGetName(op).c_str(), "length of size_out must be equal to 4");
     return GRAPH_FAILED;
   }
 
-  Format inputFormat = op.GetInputDesc("images").GetFormat();
+  Format inputFormat = op.GetInputDescByName("images").GetFormat();
   if (inputFormat == FORMAT_NHWC) {
     batchDIms = inputImagesShape[0];
     heightDIms = inputImagesShape[1];
@@ -1897,7 +1897,7 @@ IMPLEMT_COMMON_INFERFUNC(KeepRatioResizeBilinearInferShape) {
     yShape.push_back(outputShapeVec[1]);
   }
 
-  TensorDesc td = op.GetOutputDesc("y");
+  TensorDesc td = op.GetOutputDescByName("y");
   td.SetShape(ge::Shape(yShape));
   td.SetDataType(DT_FLOAT);
   (void)op.UpdateOutputDesc("y", td);
@@ -1911,10 +1911,10 @@ VERIFY_FUNC_REG(KeepRatioResizeBilinear, KeepRatioResizeBilinearVerify);
 
 // ---------------ResizeD Op Start-------------------
 IMPLEMT_COMMON_INFERFUNC(ResizeDInferShape) {
-    TensorDesc output_desc = op.GetOutputDesc("y");
-    DataType input_dtype = op.GetInputDesc("x").GetDataType();
-    Format input_format = op.GetInputDesc("x").GetFormat();
-    Shape input_shape = op.GetInputDesc("x").GetShape();
+    TensorDesc output_desc = op.GetOutputDescByName("y");
+    DataType input_dtype = op.GetInputDescByName("x").GetDataType();
+    Format input_format = op.GetInputDescByName("x").GetFormat();
+    Shape input_shape = op.GetInputDescByName("x").GetShape();
     std::vector<int64_t> input_dims = input_shape.GetDims();
     std::vector<int64_t> sizes;
     std::string mode = "nearest";
@@ -1988,10 +1988,10 @@ VERIFY_FUNC_REG(ResizeD, ResizeDVerify);
 
 // ---------------ResizeGradD Op Start-------------------
 IMPLEMT_COMMON_INFERFUNC(ResizeGradDInferShape) {
-    TensorDesc out_put_desc = op.GetOutputDesc("y");
-    DataType input_dtype = op.GetInputDesc("grads").GetDataType();
-    Format input_format = op.GetInputDesc("grads").GetFormat();
-    Shape input_shape = op.GetInputDesc("grads").GetShape();
+    TensorDesc out_put_desc = op.GetOutputDescByName("y");
+    DataType input_dtype = op.GetInputDescByName("grads").GetDataType();
+    Format input_format = op.GetInputDescByName("grads").GetFormat();
+    Shape input_shape = op.GetInputDescByName("grads").GetShape();
     std::vector<int64_t> input_dims = input_shape.GetDims();
     std::vector<int64_t> original_size;
     op.GetAttr("original_size", original_size);
@@ -2230,7 +2230,7 @@ IMPLEMT_INFERFUNC(ExtractJpegShape, ExtractJpegShapeInfer) {
   }
   Shape output_shape;
   Vector(3, output_shape);
-  TensorDesc image_shape_desc = op.GetOutputDesc("image_shape");
+  TensorDesc image_shape_desc = op.GetOutputDescByName("image_shape");
   image_shape_desc.SetShape(output_shape);
   image_shape_desc.SetDataType(output_type);
   image_shape_desc.SetFormat(FORMAT_NHWC);
@@ -2257,8 +2257,8 @@ IMPLEMT_INFERFUNC(DrawBoundingBoxesV2, DrawBoundingBoxesV2Infer) {
     return GRAPH_FAILED;
   }
 
-  DataType type = op.GetInputDesc("images").GetDataType();
-  TensorDesc outputDesc = op.GetOutputDesc("y");
+  DataType type = op.GetInputDescByName("images").GetDataType();
+  TensorDesc outputDesc = op.GetOutputDescByName("y");
   outputDesc.SetDataType(type);
   outputDesc.SetShape(images);
   return op.UpdateOutputDesc("y", outputDesc);
@@ -2354,8 +2354,8 @@ IMPLEMT_INFERFUNC(NonMaxSuppressionV5, NonMaxSuppressionV5Infer) {
     return GRAPH_FAILED;
   }
 
-  TensorDesc out_desc = op.GetOutputDesc("selected_indices");
-  TensorDesc out_desc_scores = op.GetOutputDesc("selected_scores");
+  TensorDesc out_desc = op.GetOutputDescByName("selected_indices");
+  TensorDesc out_desc_scores = op.GetOutputDescByName("selected_scores");
   out_desc.SetDataType(DT_INT32);
   DataType type;
   if (op.GetAttr("T", type) != GRAPH_SUCCESS) {
@@ -2396,7 +2396,7 @@ IMPLEMT_INFERFUNC(NonMaxSuppressionV5, NonMaxSuppressionV5Infer) {
     }
   }
 
-  TensorDesc out_desc1 = op.GetOutputDesc("valid_outputs");
+  TensorDesc out_desc1 = op.GetOutputDescByName("valid_outputs");
   out_desc1.SetShape(Shape());
   out_desc1.SetDataType(ge::DT_INT32);
   (void)op.UpdateOutputDesc("valid_outputs", out_desc1);
@@ -2406,7 +2406,7 @@ IMPLEMT_INFERFUNC(NonMaxSuppressionV5, NonMaxSuppressionV5Infer) {
 INFER_FUNC_REG(NonMaxSuppressionV5, NonMaxSuppressionV5Infer);
 
 IMPLEMT_INFERFUNC(ScaleAndTranslate, ScaleAndTranslateInfer) {
-  TensorDesc desc = op.GetOutputDesc("y");
+  TensorDesc desc = op.GetOutputDescByName("y");
   desc.SetDataType(DT_FLOAT);
   if (op.UpdateOutputDesc("y", desc) != GRAPH_SUCCESS) {
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op),
@@ -2419,7 +2419,7 @@ IMPLEMT_INFERFUNC(ScaleAndTranslate, ScaleAndTranslateInfer) {
 INFER_FUNC_REG(ScaleAndTranslate, ScaleAndTranslateInfer);
 
 IMPLEMT_INFERFUNC(ScaleAndTranslateGrad, ScaleAndTranslateGradInfer) {
-  TensorDesc desc = op.GetOutputDesc("y");
+  TensorDesc desc = op.GetOutputDescByName("y");
   Format input_format = op.GetInputDesc(0).GetFormat();
   vector<int64_t> grads_shape = op.GetInputDesc(0).GetShape().GetDims();
   vector<int64_t> org_images_shape = op.GetInputDesc(1).GetShape().GetDims();
@@ -2672,7 +2672,7 @@ IMPLEMT_INFERFUNC(CombinedNonMaxSuppression, CombinedNonMaxSuppressionInfer) {
   Shape shape3({batch_dim, output_size});
   Shape shape4({batch_dim});
 
-  TensorDesc desc1 = op.GetOutputDesc("nmsed_boxes");
+  TensorDesc desc1 = op.GetOutputDescByName("nmsed_boxes");
   desc1.SetShape(shape1);
   desc1.SetDataType(DT_FLOAT);
   if (op.UpdateOutputDesc("nmsed_boxes", desc1) != GRAPH_SUCCESS) {
@@ -2680,7 +2680,7 @@ IMPLEMT_INFERFUNC(CombinedNonMaxSuppression, CombinedNonMaxSuppressionInfer) {
         std::string("update output[nmsed_boxes] desc failed"));
     return GRAPH_FAILED;
   }
-  TensorDesc desc2 = op.GetOutputDesc("nmsed_scores");
+  TensorDesc desc2 = op.GetOutputDescByName("nmsed_scores");
   desc2.SetShape(shape2);
   desc2.SetDataType(DT_FLOAT);
   if (op.UpdateOutputDesc("nmsed_scores", desc2) != GRAPH_SUCCESS) {
@@ -2688,7 +2688,7 @@ IMPLEMT_INFERFUNC(CombinedNonMaxSuppression, CombinedNonMaxSuppressionInfer) {
         std::string("update output[nmsed_scores] desc failed"));
     return GRAPH_FAILED;
   }
-  TensorDesc desc3 = op.GetOutputDesc("nmsed_classes");
+  TensorDesc desc3 = op.GetOutputDescByName("nmsed_classes");
   desc3.SetShape(shape3);
   desc3.SetDataType(DT_FLOAT);
   if (op.UpdateOutputDesc("nmsed_classes", desc3) != GRAPH_SUCCESS) {
@@ -2696,7 +2696,7 @@ IMPLEMT_INFERFUNC(CombinedNonMaxSuppression, CombinedNonMaxSuppressionInfer) {
         std::string("update output[nmsed_classes] desc failed"));
     return GRAPH_FAILED;
   }
-  TensorDesc desc4 = op.GetOutputDesc("valid_detections");
+  TensorDesc desc4 = op.GetOutputDescByName("valid_detections");
   desc4.SetShape(shape4);
   desc4.SetDataType(DT_INT32);
   if (op.UpdateOutputDesc("valid_detections", desc4) != GRAPH_SUCCESS) {
@@ -2725,7 +2725,7 @@ IMPLEMT_INFERFUNC(SpatialTransformerD, SpatialTransformerDInferShape) {
 
   vector<int64_t> y_shape({x_shape.GetDim(0), x_shape.GetDim(1), output_size[0], output_size[1]});
 
-  auto out_desc = op.GetOutputDesc("y");
+  auto out_desc = op.GetOutputDescByName("y");
   out_desc.SetShape(Shape(y_shape));
   out_desc.SetDataType(ge::DataType(x_dtype));
   (void)op.update_output_desc_y(out_desc);
@@ -2754,7 +2754,7 @@ IMPLEMT_INFERFUNC(SpatialTransformer, SpatialTransformerInferShape) {
 
   vector<int64_t> y_shape({x_shape.GetDim(0), x_shape.GetDim(1), output_size[0], output_size[1]});
 
-  auto out_desc = op.GetOutputDesc("y");
+  auto out_desc = op.GetOutputDescByName("y");
   out_desc.SetShape(Shape(y_shape));
   out_desc.SetDataType(ge::DataType(x_dtype));
   (void)op.update_output_desc_y(out_desc);
@@ -2842,7 +2842,7 @@ IMPLEMT_INFERFUNC(Resize, ResizeNearestInferShape) {
     const vector<string> depend_names = {"sizes"};
     PREPARE_DYNAMIC_SHAPE(depend_names);
     if (op.GetInputConstData("sizes", sizes_tensor) == GRAPH_SUCCESS) {
-      DataType sizes_dtype = op.GetInputDesc("sizes").GetDataType();
+      DataType sizes_dtype = op.GetInputDescByName("sizes").GetDataType();
       GetConstValue(op, sizes_tensor, sizes_dtype, sizes_out);
       if (static_cast<int64_t>(sizes_out.size()) != dim_num) {
         OP_LOGE(TbeGetName(op).c_str(), "Rank of sizesnot support");
@@ -2858,7 +2858,7 @@ IMPLEMT_INFERFUNC(Resize, ResizeNearestInferShape) {
     const vector<string> depend_names = {"scales"};
     PREPARE_DYNAMIC_SHAPE(depend_names);
     if (op.GetInputConstData("scales", scales_tensor) == GRAPH_SUCCESS) {
-      DataType scales_dtype = op.GetInputDesc("scales").GetDataType();
+      DataType scales_dtype = op.GetInputDescByName("scales").GetDataType();
       GetConstValueFloat(op, scales_tensor, scales_dtype, scales_out);
       if (static_cast<int64_t>(scales_out.size()) != dim_num) {
         OP_LOGE(TbeGetName(op).c_str(), "Rank of scales support");
@@ -2928,12 +2928,12 @@ INFER_FUNC_REG(DecodeJpeg, DecodeJpegInfer);
 
 //-----------------DenseImageWarp Op Start-----------------
 IMPLEMT_INFERFUNC(DenseImageWarp, DenseImageWarpInfer) {
-  auto image_desc = op.GetInputDesc("image");
+  auto image_desc = op.GetInputDescByName("image");
   auto image_shape = image_desc.GetShape();
   auto image_dtype = image_desc.GetDataType();
   auto image_format = image_desc.GetFormat();
 
-  auto y_desc = op.GetOutputDesc("y");
+  auto y_desc = op.GetOutputDescByName("y");
   y_desc.SetShape(image_shape);
   y_desc.SetDataType(image_dtype);
   y_desc.SetFormat(image_format);
@@ -2954,8 +2954,8 @@ IMPLEMT_INFERFUNC(DenseImageWarp, DenseImageWarpInfer) {
 }
 
 IMPLEMT_VERIFIER(DenseImageWarp, DenseImageWarpVerify) {
-  auto image_desc = op.GetInputDesc("image");
-  auto flow_desc = op.GetInputDesc("flow");
+  auto image_desc = op.GetInputDescByName("image");
+  auto flow_desc = op.GetInputDescByName("flow");
   auto image_shape = image_desc.GetShape().GetDims();
   auto flow_shape = flow_desc.GetShape().GetDims();
   auto image_format = image_desc.GetFormat();
@@ -3012,17 +3012,17 @@ INFER_FUNC_REG(DenseImageWarp, DenseImageWarpInfer);
 VERIFY_FUNC_REG(DenseImageWarp, DenseImageWarpVerify);
 
 IMPLEMT_INFERFUNC(DenseImageWarpGrad, DenseImageWarpGradInfer) {
-  auto image_desc = op.GetInputDesc("image");
+  auto image_desc = op.GetInputDescByName("image");
   auto image_shape = image_desc.GetShape();
   auto image_dtype = image_desc.GetDataType();
-  auto flow_desc = op.GetInputDesc("flow");
+  auto flow_desc = op.GetInputDescByName("flow");
   auto flow_shape = flow_desc.GetShape();
   auto flow_dtype = flow_desc.GetDataType();
 
-  auto grad_image_desc = op.GetOutputDesc("grad_image");
+  auto grad_image_desc = op.GetOutputDescByName("grad_image");
   grad_image_desc.SetShape(image_shape);
   grad_image_desc.SetDataType(image_dtype);
-  auto grad_flow_desc = op.GetOutputDesc("grad_flow");
+  auto grad_flow_desc = op.GetOutputDescByName("grad_flow");
   grad_flow_desc.SetShape(flow_shape);
   grad_flow_desc.SetDataType(flow_dtype);
 
@@ -3046,11 +3046,11 @@ IMPLEMT_INFERFUNC(DenseImageWarpGrad, DenseImageWarpGradInfer) {
 }
 
 IMPLEMT_VERIFIER(DenseImageWarpGrad, DenseImageWarpGradVerify) {
-  auto grad_desc = op.GetInputDesc("grad");
+  auto grad_desc = op.GetInputDescByName("grad");
   auto grad_shape = grad_desc.GetShape().GetDims();
   auto grad_format = grad_desc.GetFormat();
 
-  auto image_desc = op.GetInputDesc("image");
+  auto image_desc = op.GetInputDescByName("image");
   auto image_shape = image_desc.GetShape().GetDims();
   auto image_format = image_desc.GetFormat();
 
@@ -3082,10 +3082,10 @@ VERIFY_FUNC_REG(DenseImageWarpGrad, DenseImageWarpGradVerify);
 //-----------------DenseImageWarp Op End-------------------
 // ---------------GridSampler2D Op start-------------------
 IMPLEMT_INFERFUNC(GridSampler2D, GridSampler2DInferShape) {
-    vector<int64_t> grid_shape = op.GetInputDesc("grid").GetShape().GetDims();
-    vector<int64_t> x_shape = op.GetInputDesc("x").GetShape().GetDims();
-    DataType x_dtype = op.GetInputDesc("x").GetDataType();
-    Format x_format = op.GetInputDesc("x").GetFormat();
+    vector<int64_t> grid_shape = op.GetInputDescByName("grid").GetShape().GetDims();
+    vector<int64_t> x_shape = op.GetInputDescByName("x").GetShape().GetDims();
+    DataType x_dtype = op.GetInputDescByName("x").GetDataType();
+    Format x_format = op.GetInputDescByName("x").GetFormat();
 
     if (x_shape.size() != 4 || grid_shape.size() != 4) {
         OP_LOGW(TbeGetName(op).c_str(), "Expected dim of x and grid should be 4. x dim is %d. grid dim is %d.",
@@ -3095,7 +3095,7 @@ IMPLEMT_INFERFUNC(GridSampler2D, GridSampler2DInferShape) {
 
     x_shape[2] = grid_shape[1];
     x_shape[3] = grid_shape[2];
-    TensorDesc output_desc_y = op.GetOutputDesc("y");
+    TensorDesc output_desc_y = op.GetOutputDescByName("y");
     output_desc_y.SetShape(ge::Shape(x_shape));
     output_desc_y.SetDataType(x_dtype);
     output_desc_y.SetFormat(x_format);
@@ -3150,10 +3150,10 @@ INFER_FUNC_REG(GridSampler2DGrad, GridSampler2DGradInferShape);
 
 // ---------------GridUnnormal Op start-------------------
 IMPLEMT_INFERFUNC(GridUnnormal, GridUnnormalInferShape) {
-    vector<int64_t> grid_shape = op.GetInputDesc("grid").GetShape().GetDims();
-    vector<int64_t> x_shape = op.GetInputDesc("assist").GetShape().GetDims();
-    DataType grid_dtype = op.GetInputDesc("grid").GetDataType();
-    Format grid_format = op.GetInputDesc("grid").GetFormat();
+    vector<int64_t> grid_shape = op.GetInputDescByName("grid").GetShape().GetDims();
+    vector<int64_t> x_shape = op.GetInputDescByName("assist").GetShape().GetDims();
+    DataType grid_dtype = op.GetInputDescByName("grid").GetDataType();
+    Format grid_format = op.GetInputDescByName("grid").GetFormat();
 
     if (x_shape.size() != 4 || grid_shape.size() != 4) {
         OP_LOGW(TbeGetName(op).c_str(), "Expected dim of assist and grid should be 4. assist dim is %d. grid dim is %d.",
@@ -3166,13 +3166,13 @@ IMPLEMT_INFERFUNC(GridUnnormal, GridUnnormalInferShape) {
         return GRAPH_FAILED;
     }
 
-    TensorDesc diff_desc = op.GetOutputDesc("diff");
+    TensorDesc diff_desc = op.GetOutputDescByName("diff");
     diff_desc.SetShape(ge::Shape(grid_shape));
     diff_desc.SetDataType(grid_dtype);
     diff_desc.SetFormat(grid_format);
     (void)op.UpdateOutputDesc("diff", diff_desc);
 
-    TensorDesc pos_desc = op.GetOutputDesc("position");
+    TensorDesc pos_desc = op.GetOutputDescByName("position");
     pos_desc.SetShape(ge::Shape(grid_shape));
     pos_desc.SetDataType(DT_INT32);
     pos_desc.SetFormat(grid_format);
@@ -3185,11 +3185,11 @@ INFER_FUNC_REG(GridUnnormal, GridUnnormalInferShape);
 // ---------------ImageUnfold Op start-------------------
 IMPLEMT_INFERFUNC(ImageUnfold, ImageUnfoldInferShape) {
     // N,C,Hin,Win
-    vector<int64_t> x_shape = op.GetInputDesc("x").GetShape().GetDims();
+    vector<int64_t> x_shape = op.GetInputDescByName("x").GetShape().GetDims();
     // N,Hout,Wout,4
-    vector<int64_t> pos_shape = op.GetInputDesc("position").GetShape().GetDims();
-    DataType x_dtype = op.GetInputDesc("x").GetDataType();
-    Format x_format = op.GetInputDesc("x").GetFormat();
+    vector<int64_t> pos_shape = op.GetInputDescByName("position").GetShape().GetDims();
+    DataType x_dtype = op.GetInputDescByName("x").GetDataType();
+    Format x_format = op.GetInputDescByName("x").GetFormat();
 
     if (x_shape.size() != 4 || pos_shape.size() != 4) {
         OP_LOGW(TbeGetName(op).c_str(), "Expected dim of x and position should be 4. x dim is %d. position dim is %d.",
@@ -3200,7 +3200,7 @@ IMPLEMT_INFERFUNC(ImageUnfold, ImageUnfoldInferShape) {
     vector<int64_t> output_shape = x_shape;
     output_shape[2] = pos_shape[1];
     output_shape[3] = pos_shape[2];
-    TensorDesc output_desc_y = op.GetOutputDesc("y");
+    TensorDesc output_desc_y = op.GetOutputDescByName("y");
     output_desc_y.SetShape(ge::Shape(output_shape));
     output_desc_y.SetDataType(x_dtype);
     output_desc_y.SetFormat(x_format);
@@ -3530,7 +3530,7 @@ INFER_FUNC_REG(UpsampleTrilinear3dGrad, UpsampleTrilinear3dGradInferShape);
 // ---------------UpsampleNearest1d Op START-------------------
 IMPLEMT_INFERFUNC(UpsampleNearest1d, UpsampleNearest1dInferShape) {
   OP_LOGD(TbeGetName(op).c_str(), "Enter UpsampleNearest1d inferfunction!");
-  TensorDesc input_desc = op.GetInputDesc("x");
+  TensorDesc input_desc = op.GetInputDescByName("x");
   auto input_shape_dims = input_desc.GetShape().GetDims();
   DataType input_dtype = input_desc.GetDataType();
   
@@ -3566,7 +3566,7 @@ IMPLEMT_INFERFUNC(UpsampleNearest1d, UpsampleNearest1dInferShape) {
   }
 
   Shape output_desc_shape(output_shape);
-  TensorDesc output_desc_y = op.GetOutputDesc("y");
+  TensorDesc output_desc_y = op.GetOutputDescByName("y");
   output_desc_y.SetShape(output_desc_shape);
   output_desc_y.SetDataType(input_dtype);
   op.UpdateOutputDesc("y", output_desc_y);
@@ -3579,7 +3579,7 @@ INFER_FUNC_REG(UpsampleNearest1d, UpsampleNearest1dInferShape);
 // ---------------UpsampleNearest1dGrad Op START-------------------
 IMPLEMT_INFERFUNC(UpsampleNearest1dGrad, UpsampleNearest1dGradInferShape) {
   OP_LOGD(TbeGetName(op).c_str(), "Enter UpsampleNearest1dGrad inferfunction!");
-  TensorDesc inputDesc = op.GetInputDesc("grad_output");
+  TensorDesc inputDesc = op.GetInputDescByName("grad_output");
   auto input_dtype = inputDesc.GetDataType();
   auto grad_output_dims = inputDesc.GetShape().GetDims();
  
@@ -3599,7 +3599,7 @@ IMPLEMT_INFERFUNC(UpsampleNearest1dGrad, UpsampleNearest1dGradInferShape) {
   }
 
   Shape output_desc_shape(input_size);
-  TensorDesc output_desc_y = op.GetOutputDesc("y");
+  TensorDesc output_desc_y = op.GetOutputDescByName("y");
   output_desc_y.SetShape(output_desc_shape);
   output_desc_y.SetDataType(input_dtype);
   op.UpdateOutputDesc("y", output_desc_y);

@@ -28,15 +28,15 @@
 namespace ge {
 
 IMPLEMT_INFERFUNC(WarpPerspective, WarpPerspectiveInfer) {
-  TensorDesc input0_desc = op.GetInputDesc("x");
+  TensorDesc input0_desc = op.GetInputDescByName("x");
   input0_desc.SetDataType(DT_FLOAT);
   op.UpdateInputDesc("x", input0_desc);
 
-  TensorDesc input1_desc = op.GetInputDesc("matrix");
+  TensorDesc input1_desc = op.GetInputDescByName("matrix");
   input1_desc.SetDataType(DT_FLOAT);
   op.UpdateInputDesc("matrix", input1_desc);
 
-  TensorDesc output_desc = op.GetOutputDesc("y");
+  TensorDesc output_desc = op.GetOutputDescByName("y");
   output_desc.SetDataType(DT_FLOAT);
 
   int out_height;
@@ -51,7 +51,7 @@ IMPLEMT_INFERFUNC(WarpPerspective, WarpPerspectiveInfer) {
     return GRAPH_FAILED;
   }
 
-  Shape input_shape = op.GetInputDesc("x").GetShape();
+  Shape input_shape = op.GetInputDescByName("x").GetShape();
   if (input_shape.GetDimNum() != 4) {
     OP_LOGE(TbeGetName(op).c_str(), "Input Shape dim is not 4!\n");
     return GRAPH_FAILED;

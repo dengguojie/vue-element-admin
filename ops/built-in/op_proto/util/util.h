@@ -324,7 +324,7 @@ template <typename T>
 bool GetConstAttr(const Operator& op, const std::vector<std::string>& attrNameList, std::vector<T>& attrVec) {
   T value;
   for (auto name : attrNameList) {
-    if (op.GetAttr(name, value) != ge::GRAPH_SUCCESS) {
+    if (op.GetAttr(name.c_str(), value) != ge::GRAPH_SUCCESS) {
       return false;
     }
     attrVec.push_back(value);

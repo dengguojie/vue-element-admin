@@ -135,12 +135,12 @@ IMPLEMT_INFERFUNC(LookupTableExport, LookupTableExportInfer) {
     return GRAPH_PARAM_INVALID;
   }
 
-  TensorDesc y_desc = op.GetOutputDesc("keys");
+  TensorDesc y_desc = op.GetOutputDescByName("keys");
   y_desc.SetShape(keys);
   y_desc.SetDataType(Tkeys);
   op.UpdateOutputDesc("keys", y_desc);
 
-  y_desc = op.GetOutputDesc("values");
+  y_desc = op.GetOutputDescByName("values");
   y_desc.SetShape(output_values_shape);
   y_desc.SetDataType(Tvalues);
   op.UpdateOutputDesc("values", y_desc);
@@ -200,7 +200,7 @@ INFER_FUNC_REG(LookupTableInsert, LookupTableInsertInfer);
 IMPLEMT_INFERFUNC(LookupTableSize, LookupTableSizeInfer) {
   Shape shape;
   (void)Scalar(shape);
-  TensorDesc output_desc = op.GetOutputDesc("size");
+  TensorDesc output_desc = op.GetOutputDescByName("size");
   output_desc.SetShape(shape);
   output_desc.SetDataType(DT_INT64);
   op.UpdateOutputDesc("size", output_desc);
@@ -258,7 +258,7 @@ IMPLEMT_INFERFUNC(HashTable, HashTableInfer) {
   }
   Shape scalar_shape;
   (void)Scalar(scalar_shape);
-  TensorDesc handle_desc = op.GetOutputDesc("handle");
+  TensorDesc handle_desc = op.GetOutputDescByName("handle");
   handle_desc.SetShape(scalar_shape);
   handle_desc.SetDataType(DT_RESOURCE);
   if (op.UpdateOutputDesc("handle", handle_desc) != GRAPH_SUCCESS) {
@@ -314,7 +314,7 @@ IMPLEMT_INFERFUNC(MutableDenseHashTable, MutableDenseHashTableInfer) {
 
   Shape value_s(std::move(value_p));
 
-  TensorDesc desc_handle = op.GetOutputDesc("handle");
+  TensorDesc desc_handle = op.GetOutputDescByName("handle");
   desc_handle.SetShape(Shape());
   desc_handle.SetDataType(DT_RESOURCE);
 
@@ -349,7 +349,7 @@ IMPLEMT_INFERFUNC(MutableDenseHashTable, MutableDenseHashTableInfer) {
     }
   }
 
-  auto empty_key = op.GetInputDesc("empty_key");
+  auto empty_key = op.GetInputDescByName("empty_key");
 
   std::vector<std::vector<ShapeAndType>> key_value_vec;
   std::vector<ShapeAndType> key_value;
@@ -379,7 +379,7 @@ IMPLEMT_INFERFUNC(MutableHashTableOfTensors, MutableHashTableOfTensorsInfer) {
 
   Shape value_s(std::move(value_p));
 
-  TensorDesc desc_handle = op.GetOutputDesc("handle");
+  TensorDesc desc_handle = op.GetOutputDescByName("handle");
   desc_handle.SetShape(Shape());
   desc_handle.SetDataType(DT_RESOURCE);
 
@@ -434,7 +434,7 @@ IMPLEMT_INFERFUNC(MutableHashTableOfTensors, MutableHashTableOfTensorsInfer) {
 INFER_FUNC_REG(MutableHashTableOfTensors, MutableHashTableOfTensorsInfer);
 
 IMPLEMT_INFERFUNC(MutableHashTable, MutableHashTableInfer) {
-  TensorDesc desc_handle = op.GetOutputDesc("handle");
+  TensorDesc desc_handle = op.GetOutputDescByName("handle");
   desc_handle.SetShape(Shape());
   desc_handle.SetDataType(DT_RESOURCE);
 

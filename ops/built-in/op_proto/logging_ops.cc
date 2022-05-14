@@ -25,7 +25,7 @@
 
 namespace ge {
 IMPLEMT_INFERFUNC(Timestamp, TimestampInfer) {
-  TensorDesc yDesc = op.GetOutputDesc("y");
+  TensorDesc yDesc = op.GetOutputDescByName("y");
   Shape scalarShape;
   (void)Scalar(scalarShape);
   yDesc.SetDataType(DT_DOUBLE);
@@ -64,9 +64,9 @@ INFER_FUNC_REG(PrintV2, PrintV2Infer);
 
 //----------------PrintV3----------------
 IMPLEMT_INFERFUNC(PrintV3, PrintV3Infer) {
-  TensorDesc output_desc = op.GetOutputDesc("y");
-  output_desc.SetShape(op.GetInputDesc("x").GetShape());
-  output_desc.SetDataType(op.GetInputDesc("x").GetDataType());
+  TensorDesc output_desc = op.GetOutputDescByName("y");
+  output_desc.SetShape(op.GetInputDescByName("x").GetShape());
+  output_desc.SetDataType(op.GetInputDescByName("x").GetDataType());
   op.UpdateOutputDesc("y", output_desc);
 
   return GRAPH_SUCCESS;

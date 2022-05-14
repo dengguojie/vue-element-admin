@@ -72,7 +72,7 @@ static graphStatus PadKnown(Operator& op, const Tensor& paddings_tensor, const i
       return GRAPH_FAILED;
     }
   }
-  auto output_desc = op.GetOutputDesc("y");
+  auto output_desc = op.GetOutputDescByName("y");
   output_desc.SetShape(Shape(output_dims));
 
   return op.UpdateOutputDesc("y", output_desc);
@@ -114,7 +114,7 @@ graphStatus PadShapeFn(Operator& op) {
       return GRAPH_FAILED;
     }
   }
-  TensorDesc output_desc = op.GetOutputDesc("y");
+  TensorDesc output_desc = op.GetOutputDescByName("y");
   Tensor paddings_tensor;
   std::vector<std::string> input_infer_depends = {"paddings"};
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
@@ -200,7 +200,7 @@ graphStatus PadGradShapeFn(Operator& op) {
     return GRAPH_FAILED;
   }
   int64_t input_rank = paddings.GetDim(0);
-  TensorDesc output_desc = op.GetOutputDesc("y");
+  TensorDesc output_desc = op.GetOutputDescByName("y");
   output_desc.SetDataType(op.GetInputDesc(0).GetDataType());
   if (input_rank == UNKNOWN_DIM) {
     OP_LOGE(TbeGetName(op).c_str(), "paddings inputShape of 0 dims is unknown, set out shape unknown.");

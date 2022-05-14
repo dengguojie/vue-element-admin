@@ -48,13 +48,13 @@ IMPLEMT_INFERFUNC(SSDDetectionOutput, SSDDetectionOutputInferShape) {
   auto Boxtype = op.get_input_desc_bbox_delta().GetDataType();
 
   vector<int64_t> actualNumShape({batch, 8});
-  auto outdesc0 = op.GetOutputDesc("out_boxnum");
+  auto outdesc0 = op.GetOutputDescByName("out_boxnum");
   outdesc0.SetShape(Shape(actualNumShape));
   outdesc0.SetDataType(ge::DT_INT32);
   (void)op.update_output_desc_out_boxnum(outdesc0);
 
   vector<int64_t> boxShape({batch, keep_top_k, 8});
-  auto outdesc = op.GetOutputDesc("y");
+  auto outdesc = op.GetOutputDescByName("y");
   outdesc.SetShape(Shape(boxShape));
   outdesc.SetDataType(ge::DataType(Boxtype));
   (void)op.update_output_desc_y(outdesc);

@@ -28,9 +28,9 @@
 namespace ge {
 // Obtains the processing function of the output tensor description.
 IMPLEMT_COMMON_INFERFUNC(ActsULQInputGradInferShape) {
-    Shape y_grad_shape = op.GetInputDesc("y_grad").GetShape();
-    Shape clamp_min_mask_shape = op.GetInputDesc("clamp_min_mask").GetShape();
-    Shape clamp_max_mask_shape = op.GetInputDesc("clamp_max_mask").GetShape();
+    Shape y_grad_shape = op.GetInputDescByName("y_grad").GetShape();
+    Shape clamp_min_mask_shape = op.GetInputDescByName("clamp_min_mask").GetShape();
+    Shape clamp_max_mask_shape = op.GetInputDescByName("clamp_max_mask").GetShape();
 
     if (y_grad_shape.GetDims() != clamp_min_mask_shape.GetDims()) {
         OP_LOGE(TbeGetName(op).c_str(), "The shape of clamp_min_mask must be the same as y_grad!");
@@ -42,9 +42,9 @@ IMPLEMT_COMMON_INFERFUNC(ActsULQInputGradInferShape) {
         return GRAPH_FAILED;
     }
 
-    TensorDesc x_grad = op.GetOutputDesc("x_grad");
+    TensorDesc x_grad = op.GetOutputDescByName("x_grad");
     x_grad.SetShape(y_grad_shape);
-    x_grad.SetDataType(op.GetInputDesc("y_grad").GetDataType());
+    x_grad.SetDataType(op.GetInputDescByName("y_grad").GetDataType());
     if (op.UpdateOutputDesc("x_grad", x_grad) != GRAPH_SUCCESS) {
         OP_LOGE(TbeGetName(op).c_str(), "Update output[x_grad] failed!");
         return GRAPH_FAILED;
@@ -54,8 +54,8 @@ IMPLEMT_COMMON_INFERFUNC(ActsULQInputGradInferShape) {
 }
 
 IMPLEMT_VERIFIER(ActsULQInputGrad, ActsULQInputGradVerify) {
-    DataType clamp_min_mask_type = op.GetInputDesc("clamp_min_mask").GetDataType();
-    DataType clamp_max_mask_type = op.GetInputDesc("clamp_max_mask").GetDataType();
+    DataType clamp_min_mask_type = op.GetInputDescByName("clamp_min_mask").GetDataType();
+    DataType clamp_max_mask_type = op.GetInputDescByName("clamp_max_mask").GetDataType();
 
     if (clamp_min_mask_type != clamp_max_mask_type) {
         OP_LOGE(TbeGetName(op).c_str(), "The type of clamp_min_mask must be the same as clamp_max_mask!");

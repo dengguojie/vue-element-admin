@@ -87,7 +87,7 @@ IMPLEMT_INFERFUNC(StatelessMultinomial, StatelessMultinomialInfer) {
   Shape shape;
   (void)Matrix(logits_shape.GetDim(0), numSamples, shape);
 
-  TensorDesc outputDesc = op.GetOutputDesc("y");
+  TensorDesc outputDesc = op.GetOutputDescByName("y");
   DataType output_type;
   if (op.GetAttr("output_dtype", output_type) != GRAPH_SUCCESS) {
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op),
@@ -151,8 +151,8 @@ IMPLEMT_INFERFUNC(StatelessRandomUniformInt, StatelessRandomUniformIntInfer) {
     return GRAPH_FAILED;
   }
 
-  TensorDesc outputDesc = op.GetOutputDesc("y");
-  DataType output_type = op.GetInputDesc("minval").GetDataType();
+  TensorDesc outputDesc = op.GetOutputDescByName("y");
+  DataType output_type = op.GetInputDescByName("minval").GetDataType();
   outputDesc.SetDataType(output_type);
   outputDesc.SetShape(shape);
   return op.UpdateOutputDesc("y", outputDesc);

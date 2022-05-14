@@ -94,8 +94,8 @@ COMMON_INFER_FUNC_REG(Power, PowerInferShape);
 // ---------Power End---------------
 
 IMPLEMT_INFERFUNC(Igamma, IgammaInfer) {
-  DataType a_type = op.GetInputDesc("a").GetDataType();
-  TensorDesc z_desc = op.GetOutputDesc("z");
+  DataType a_type = op.GetInputDescByName("a").GetDataType();
+  TensorDesc z_desc = op.GetOutputDescByName("z");
   z_desc.SetDataType(a_type);
   if (op.UpdateOutputDesc("z", z_desc) != GRAPH_SUCCESS) {
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op),
@@ -109,8 +109,8 @@ IMPLEMT_INFERFUNC(Igamma, IgammaInfer) {
 INFER_FUNC_REG(Igamma, IgammaInfer);
 
 IMPLEMT_INFERFUNC(Igammac, IgammacInfer) {
-  DataType a_type = op.GetInputDesc("a").GetDataType();
-  TensorDesc z_desc = op.GetOutputDesc("z");
+  DataType a_type = op.GetInputDescByName("a").GetDataType();
+  TensorDesc z_desc = op.GetOutputDescByName("z");
   z_desc.SetDataType(a_type);
   if (op.UpdateOutputDesc("z", z_desc) != GRAPH_SUCCESS) {
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op),
@@ -154,7 +154,7 @@ IMPLEMT_INFERFUNC(CompareAndBitpack, CompareAndBitpackInfer) {
     output.SetDim(len - 1, inferred_dim);
   }
 
-  TensorDesc output_desc = op.GetOutputDesc("y");
+  TensorDesc output_desc = op.GetOutputDescByName("y");
   output_desc.SetShape(output);
   output_desc.SetDataType(DT_UINT8);
   return op.UpdateOutputDesc("y", output_desc);
@@ -236,11 +236,11 @@ IMPLEMT_INFERFUNC(Betainc, BetaincInfer) {
   if (num_scalars == num_inputs - 1) {
     output = some_non_scalar;
   } else if (num_scalars == num_inputs) {
-    TensorDesc a_desc = op.GetInputDesc("a");
+    TensorDesc a_desc = op.GetInputDescByName("a");
     output = a_desc.GetShape();
   }
-  DataType a_type = op.GetInputDesc("a").GetDataType();
-  TensorDesc z_desc = op.GetOutputDesc("z");
+  DataType a_type = op.GetInputDescByName("a").GetDataType();
+  TensorDesc z_desc = op.GetOutputDescByName("z");
   z_desc.SetShape(output);
   z_desc.SetDataType(a_type);
   if (op.UpdateOutputDesc("z", z_desc) != GRAPH_SUCCESS) {
@@ -254,8 +254,8 @@ IMPLEMT_INFERFUNC(Betainc, BetaincInfer) {
 INFER_FUNC_REG(Betainc, BetaincInfer);
 
 IMPLEMT_INFERFUNC(Zeta, ZetaInfer) {
-  TensorDesc out_desc = op.GetOutputDesc("z");
-  DataType x_type = op.GetInputDesc("x").GetDataType();
+  TensorDesc out_desc = op.GetOutputDescByName("z");
+  DataType x_type = op.GetInputDescByName("x").GetDataType();
   out_desc.SetDataType(x_type);
   if (GRAPH_SUCCESS != op.UpdateOutputDesc("z", out_desc)) {
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op),
@@ -269,7 +269,7 @@ IMPLEMT_INFERFUNC(Zeta, ZetaInfer) {
 INFER_FUNC_REG(Zeta, ZetaInfer);
 
 IMPLEMT_INFERFUNC(Bucketize, BetaincInfer) {
-  TensorDesc out_desc = op.GetOutputDesc("y");
+  TensorDesc out_desc = op.GetOutputDescByName("y");
   out_desc.SetDataType(DT_INT32);
   if (op.UpdateOutputDesc("y", out_desc) != GRAPH_SUCCESS) {
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), string("update output[y] desc failed"));
@@ -397,8 +397,8 @@ IMPLEMT_INFERFUNC(SparseSegmentMeanGrad, SparseSegmentMeanGradInfer) {
 INFER_FUNC_REG(SparseSegmentMeanGrad, SparseSegmentMeanGradInfer);
 
 IMPLEMT_INFERFUNC(IgammaGradA, IgammaGradAInfer) {
-  DataType a_type = op.GetInputDesc("a").GetDataType();
-  TensorDesc out_desc = op.GetOutputDesc("z");
+  DataType a_type = op.GetInputDescByName("a").GetDataType();
+  TensorDesc out_desc = op.GetOutputDescByName("z");
   out_desc.SetDataType(a_type);
   if (op.UpdateOutputDesc("z", out_desc) != GRAPH_SUCCESS) {
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op),
@@ -492,7 +492,7 @@ IMPLEMT_INFERFUNC(GetDynamicDims, GetDynamicDimsInfer) {
     OP_LOGE(TbeGetName(op).c_str(), "Create output shape failed");
     return GRAPH_FAILED;
   }
-  auto dims_desc = op.GetOutputDesc("dims");
+  auto dims_desc = op.GetOutputDescByName("dims");
   dims_desc.SetShape(vector_shape);
   dims_desc.SetDataType(op.GetInputDesc(0).GetDataType());
   if (op.UpdateOutputDesc("dims", dims_desc) != GRAPH_SUCCESS) {
@@ -555,7 +555,7 @@ IMPLEMT_COMMON_INFERFUNC(HistogramFixedWidthInferShape) {
         std::string("get const data from input[nbins] failed"));
     return GRAPH_FAILED;
   }
-  DataType dtype = op.GetInputDesc("nbins").GetDataType();
+  DataType dtype = op.GetInputDescByName("nbins").GetDataType();
   std::vector<int64_t> nbins;
   GetConstValue(nbins_tensor, dtype, nbins);
   std::vector<int64_t> dim_vector;
@@ -566,7 +566,7 @@ IMPLEMT_COMMON_INFERFUNC(HistogramFixedWidthInferShape) {
   }
   dim_vector.push_back(nbins[0]);
   Shape output_shape(dim_vector);
-  TensorDesc td = op.GetOutputDesc("y");
+  TensorDesc td = op.GetOutputDescByName("y");
   td.SetShape(output_shape);
   td.SetDataType(DT_INT32);
   (void)op.UpdateOutputDesc("y", td);
@@ -618,7 +618,7 @@ IMPLEMT_COMMON_INFERFUNC(HistogramFixedWidthDInferShape) {
   std::vector<int64_t> temp_nbins;
   temp_nbins.push_back(nbins);
   Shape output_shape(temp_nbins);
-  TensorDesc td = op.GetOutputDesc("y");
+  TensorDesc td = op.GetOutputDescByName("y");
   td.SetShape(output_shape);
   td.SetDataType(DT_INT32);
   (void)op.UpdateOutputDesc("y", td);
@@ -630,11 +630,11 @@ VERIFY_FUNC_REG(HistogramFixedWidthD, HistogramFixedWidthDVerify);
 // ----------------HistogramFixedWidthD Op End-------------------
 
 IMPLEMT_INFERFUNC(NextAfter, NextAfterInfer) {
-  Shape x_shape = op.GetInputDesc("x1").GetShape();
-  Shape y_shape = op.GetInputDesc("x2").GetShape();
-  TensorDesc out_desc = op.GetOutputDesc("output");
-  DataType x_type = op.GetInputDesc("x1").GetDataType();
-  DataType y_type = op.GetInputDesc("x2").GetDataType();
+  Shape x_shape = op.GetInputDescByName("x1").GetShape();
+  Shape y_shape = op.GetInputDescByName("x2").GetShape();
+  TensorDesc out_desc = op.GetOutputDescByName("output");
+  DataType x_type = op.GetInputDescByName("x1").GetDataType();
+  DataType y_type = op.GetInputDescByName("x2").GetDataType();
   if (x_type != y_type) {
     OP_LOGE(TbeGetName(op).c_str(), "the type of x1 is different from that of x2!");
     return GRAPH_FAILED;
@@ -754,7 +754,7 @@ IMPLEMT_INFERFUNC(NextAfter, NextAfterInfer) {
 INFER_FUNC_REG(NextAfter, NextAfterInfer);
 
 IMPLEMT_INFERFUNC(IsFinite, IsFiniteInfer) {
-  TensorDesc out_desc = op.GetOutputDesc("y");
+  TensorDesc out_desc = op.GetOutputDescByName("y");
   out_desc.SetDataType(DT_BOOL);
   if (op.UpdateOutputDesc("y", out_desc) != GRAPH_SUCCESS) {
     OP_LOGE(TbeGetName(op).c_str(), "update y failed");
@@ -767,7 +767,7 @@ INFER_FUNC_REG(IsFinite, IsFiniteInfer);
 
 IMPLEMT_INFERFUNC(IsInf, IsInfInfer)
 {
-    TensorDesc out_desc = op.GetOutputDesc("y");
+    TensorDesc out_desc = op.GetOutputDescByName("y");
     out_desc.SetDataType(DT_BOOL);
     if (op.UpdateOutputDesc("y", out_desc) != GRAPH_SUCCESS) {
         AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op),
@@ -781,7 +781,7 @@ INFER_FUNC_REG(IsInf, IsInfInfer);
 
 IMPLEMT_INFERFUNC(ComplexAbs, ComplexAbsInfer)
 {
-    TensorDesc out_desc = op.GetOutputDesc("y");
+    TensorDesc out_desc = op.GetOutputDescByName("y");
     DataType Tout;
     if (op.GetAttr("Tout", Tout) != GRAPH_SUCCESS) {
       AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op),
@@ -795,7 +795,7 @@ IMPLEMT_INFERFUNC(ComplexAbs, ComplexAbsInfer)
 INFER_FUNC_REG(ComplexAbs, ComplexAbsInfer);
 
 IMPLEMT_INFERFUNC(IsNan, IsNanInfer) {
-  TensorDesc out_desc = op.GetOutputDesc("y");
+  TensorDesc out_desc = op.GetOutputDescByName("y");
   out_desc.SetDataType(DT_BOOL);
   if (op.UpdateOutputDesc("y", out_desc) != GRAPH_SUCCESS) {
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op),
@@ -808,7 +808,7 @@ IMPLEMT_INFERFUNC(IsNan, IsNanInfer) {
 INFER_FUNC_REG(IsNan, IsNanInfer);
 
 IMPLEMT_INFERFUNC(Real, RealInfer) {
-  TensorDesc out_desc = op.GetOutputDesc("output");
+  TensorDesc out_desc = op.GetOutputDescByName("output");
   DataType Tout;
   if (op.GetAttr("Tout", Tout) != GRAPH_SUCCESS) {
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(
@@ -827,7 +827,7 @@ IMPLEMT_INFERFUNC(Real, RealInfer) {
 INFER_FUNC_REG(Real, RealInfer);
 
 IMPLEMT_INFERFUNC(Conj, ConjInfer) {
-  TensorDesc desc = op.GetInputDesc("input");
+  TensorDesc desc = op.GetInputDescByName("input");
   return op.UpdateOutputDesc("output", desc);
 }
 
@@ -904,10 +904,10 @@ COMMON_INFER_FUNC_REG(NLLLossGrad, NLLLossGradInferShape);
 
 // --------------------Pdist----------------------
 IMPLEMT_COMMON_INFERFUNC(PdistInferShape) {
-    TensorDesc output_desc = op.GetOutputDesc("y");
-    DataType predict_dtype = op.GetInputDesc("x").GetDataType();
-    Format predict_format = op.GetInputDesc("x").GetFormat();
-    ge::Shape inputshape = op.GetInputDesc("x").GetShape();
+    TensorDesc output_desc = op.GetOutputDescByName("y");
+    DataType predict_dtype = op.GetInputDescByName("x").GetDataType();
+    Format predict_format = op.GetInputDescByName("x").GetFormat();
+    ge::Shape inputshape = op.GetInputDescByName("x").GetShape();
     if (inputshape.GetDims().size() != 2) {
         OP_LOGE(TbeGetName(op).c_str(), "The shape of input must be 2.");
         return GRAPH_FAILED;
@@ -933,11 +933,11 @@ VERIFY_FUNC_REG(Pdist, PdistVerify);
 // ----------------LpNorm Begin-------------------
 IMPLEMT_VERIFIER(LpNorm, LpNormVerify) { return GRAPH_SUCCESS; }
 IMPLEMT_COMMON_INFERFUNC(LpNormInfer) {
-  auto tensor_input = op.GetInputDesc("x");
+  auto tensor_input = op.GetInputDescByName("x");
   Shape x_shape = tensor_input.GetShape();
   DataType x_type = tensor_input.GetDataType();
   Format x_format = tensor_input.GetFormat();
-  size_t dim_num = op.GetInputDesc("x").GetShape().GetDimNum();
+  size_t dim_num = op.GetInputDescByName("x").GetShape().GetDimNum();
   std::vector<int64_t> x_axes = {};
   std::vector<int64_t> new_axes = {};
   std::vector<int64_t> y_vec = {};
@@ -969,7 +969,7 @@ IMPLEMT_COMMON_INFERFUNC(LpNormInfer) {
   }
   ge::Shape output_shape(y_vec);
   // update output desc
-  ge::TensorDesc output_desc = op.GetOutputDesc("y");
+  ge::TensorDesc output_desc = op.GetOutputDescByName("y");
   output_desc.SetShape(output_shape);
   if (x_axes.empty()) {
     std::vector<std::pair<int64_t, int64_t>> o_range;
@@ -1051,10 +1051,10 @@ COMMON_INFER_FUNC_REG(LpNormUpdate, LpNormUpdateInfer);
 
 // ----------------Trunc---------------------
 IMPLEMT_COMMON_INFERFUNC(TruncInferShape) {
-    TensorDesc output_desc = op.GetOutputDesc("output_y");
-    DataType predict_dtype = op.GetInputDesc("input_x").GetDataType();
-    Format predict_format = op.GetInputDesc("input_x").GetFormat();
-    ge::Shape output_shape = op.GetInputDesc("input_x").GetShape();
+    TensorDesc output_desc = op.GetOutputDescByName("output_y");
+    DataType predict_dtype = op.GetInputDescByName("input_x").GetDataType();
+    Format predict_format = op.GetInputDescByName("input_x").GetFormat();
+    ge::Shape output_shape = op.GetInputDescByName("input_x").GetShape();
 
     output_desc.SetDataType(predict_dtype);
     output_desc.SetFormat(predict_format);
@@ -1074,11 +1074,11 @@ VERIFY_FUNC_REG(Trunc, TruncVerify);
 
 IMPLEMT_INFERFUNC(Complex, ComplexInfer)
 {
-  TensorDesc out_desc = op.GetOutputDesc("out");
-  Shape x_shape = op.GetInputDesc("real").GetShape();
-  Shape y_shape = op.GetInputDesc("imag").GetShape();
-  DataType x_type = op.GetInputDesc("real").GetDataType();
-  DataType y_type = op.GetInputDesc("imag").GetDataType();
+  TensorDesc out_desc = op.GetOutputDescByName("out");
+  Shape x_shape = op.GetInputDescByName("real").GetShape();
+  Shape y_shape = op.GetInputDescByName("imag").GetShape();
+  DataType x_type = op.GetInputDescByName("real").GetDataType();
+  DataType y_type = op.GetInputDescByName("imag").GetDataType();
   if (x_type != y_type) {
     OP_LOGE(TbeGetName(op).c_str(), "The type of x1 [%d] is different from that of x2 [%d]!", x_type, y_type);
     return GRAPH_FAILED;
@@ -1210,7 +1210,7 @@ INFER_FUNC_REG(Complex, ComplexInfer);
 
 IMPLEMT_INFERFUNC(Imag, ImagInfer)
 {
-    TensorDesc out_desc = op.GetOutputDesc("output");
+    TensorDesc out_desc = op.GetOutputDescByName("output");
     DataType Tout;
     if (op.GetAttr("Tout", Tout) != GRAPH_SUCCESS) {
         OP_LOGE(TbeGetName(op).c_str(), "Get attr Tout error.");
@@ -1229,7 +1229,7 @@ INFER_FUNC_REG(Imag, ImagInfer);
 
 IMPLEMT_INFERFUNC(Angle, AngleInfer)
 {
-    TensorDesc out_desc = op.GetOutputDesc("output");
+    TensorDesc out_desc = op.GetOutputDescByName("output");
     DataType Tout;
     if (op.GetAttr("Tout", Tout) != GRAPH_SUCCESS) {
         OP_LOGE(TbeGetName(op).c_str(), "Get attr Tout error.");
@@ -1251,14 +1251,14 @@ bool infer_shape_and_type_soft_margin_loss_grad(Operator& op,
                                                 const string& input_name2,
                                                 const string& input_name3,
                                                 const string& output_name) {
-    TensorDesc v_output_desc = op.GetOutputDesc(output_name);
+    TensorDesc v_output_desc = op.GetOutputDescByName(output_name.c_str());
 
-    DataType input_dtype = op.GetInputDesc(input_name1).GetDataType();
-    Format input_format = op.GetInputDesc(input_name1).GetFormat();
+    DataType input_dtype = op.GetInputDescByName(input_name1.c_str()).GetDataType();
+    Format input_format = op.GetInputDescByName(input_name1.c_str()).GetFormat();
 
-    ge::Shape shape_x = op.GetInputDesc(input_name1).GetShape();
-    ge::Shape shape_y = op.GetInputDesc(input_name2).GetShape();
-    ge::Shape shape_z = op.GetInputDesc(input_name3).GetShape();
+    ge::Shape shape_x = op.GetInputDescByName(input_name1.c_str()).GetShape();
+    ge::Shape shape_y = op.GetInputDescByName(input_name2.c_str()).GetShape();
+    ge::Shape shape_z = op.GetInputDescByName(input_name3.c_str()).GetShape();
     std::vector<int64_t> dims_x = shape_x.GetDims();
     std::vector<int64_t> dims_y = shape_y.GetDims();
     std::vector<int64_t> dims_z = shape_z.GetDims();
@@ -1307,15 +1307,15 @@ bool infer_shape_and_type_soft_margin_loss_grad(Operator& op,
     v_output_desc.SetShape(output_shape);
     v_output_desc.SetDataType(input_dtype);
     v_output_desc.SetFormat(input_format);
-    op.UpdateOutputDesc(output_name, v_output_desc);
+    op.UpdateOutputDesc(output_name.c_str(), v_output_desc);
 
     return true;
 }
 
 IMPLEMT_VERIFIER(SoftMarginLossGrad, SoftMarginLossGradVerify)
 {
-    if (op.GetInputDesc("predict").GetDataType() != op.GetInputDesc("label").GetDataType() ||
-        op.GetInputDesc("predict").GetDataType() != op.GetInputDesc("dout").GetDataType()) {
+    if (op.GetInputDescByName("predict").GetDataType() != op.GetInputDescByName("label").GetDataType() ||
+        op.GetInputDescByName("predict").GetDataType() != op.GetInputDescByName("dout").GetDataType()) {
         OP_LOGE(TbeGetName(op).c_str(), "three input datatype must equal!\n");
         return GRAPH_FAILED;
     }
@@ -1339,12 +1339,12 @@ VERIFY_FUNC_REG(SoftMarginLossGrad, SoftMarginLossGradVerify);
 // ----------------Cross begin---------------------------------
 bool InferShapeAndTypeCross(Operator& op, const string& input_name1,
                             const string& input_name2, const string& output_name) {
-  TensorDesc v_output_desc = op.GetOutputDesc(output_name);
-  DataType input_dtype = op.GetInputDesc(input_name1).GetDataType();
-  Format input_format = op.GetInputDesc(input_name1).GetFormat();
+  TensorDesc v_output_desc = op.GetOutputDescByName(output_name.c_str());
+  DataType input_dtype = op.GetInputDescByName(input_name1.c_str()).GetDataType();
+  Format input_format = op.GetInputDescByName(input_name1.c_str()).GetFormat();
 
-  ge::Shape shape_x = op.GetInputDesc(input_name1).GetShape();
-  ge::Shape shape_y = op.GetInputDesc(input_name2).GetShape();
+  ge::Shape shape_x = op.GetInputDescByName(input_name1.c_str()).GetShape();
+  ge::Shape shape_y = op.GetInputDescByName(input_name2.c_str()).GetShape();
   std::vector<int64_t> dims_x = shape_x.GetDims();
   std::vector<int64_t> dims_y = shape_y.GetDims();
 
@@ -1363,7 +1363,7 @@ bool InferShapeAndTypeCross(Operator& op, const string& input_name1,
   v_output_desc.SetShape(output_shape);
   v_output_desc.SetDataType(input_dtype);
   v_output_desc.SetFormat(input_format);
-  op.UpdateOutputDesc(output_name, v_output_desc);
+  op.UpdateOutputDesc(output_name.c_str(), v_output_desc);
 
   return true;
 }
@@ -1378,7 +1378,7 @@ IMPLEMT_COMMON_INFERFUNC(CrossInferShape)
 
 IMPLEMT_VERIFIER(Cross, CrossVerify)
 {
-  if (op.GetInputDesc("x1").GetDataType() != op.GetInputDesc("x2").GetDataType()) {
+  if (op.GetInputDescByName("x1").GetDataType() != op.GetInputDescByName("x2").GetDataType()) {
     OP_LOGE(TbeGetName(op).c_str(), "the two inputs datatype not equal!\n");
     return GRAPH_FAILED;
   }
@@ -1395,13 +1395,13 @@ bool infer_shape_cdist(Operator& op,
                      const string& input_name2,
                      const string& output_name) {
 
-    TensorDesc output_desc = op.GetOutputDesc(output_name);
+    TensorDesc output_desc = op.GetOutputDescByName(output_name.c_str());
 
-    DataType input1_dtype = op.GetInputDesc(input_name1).GetDataType();
-    Format input_format = op.GetInputDesc(input_name1).GetFormat();
+    DataType input1_dtype = op.GetInputDescByName(input_name1.c_str()).GetDataType();
+    Format input_format = op.GetInputDescByName(input_name1.c_str()).GetFormat();
 
-    ge::Shape shape_x = op.GetInputDesc(input_name1).GetShape();
-    ge::Shape shape_y = op.GetInputDesc(input_name2).GetShape();
+    ge::Shape shape_x = op.GetInputDescByName(input_name1.c_str()).GetShape();
+    ge::Shape shape_y = op.GetInputDescByName(input_name2.c_str()).GetShape();
     std::vector<int64_t> dims_x = shape_x.GetDims();
     std::vector<int64_t> dims_y = shape_y.GetDims();
 
@@ -1426,14 +1426,14 @@ bool infer_shape_cdist(Operator& op,
     output_desc.SetShape(output_shape);
     output_desc.SetDataType(input1_dtype);
     output_desc.SetFormat(input_format);
-    op.UpdateOutputDesc(output_name, output_desc);
+    op.UpdateOutputDesc(output_name.c_str(), output_desc);
 
     return true;
 }
 
 IMPLEMT_VERIFIER(Cdist, CdistVerify)
 {
-    if (op.GetInputDesc("x1").GetDataType() != op.GetInputDesc("x2").GetDataType()) {
+    if (op.GetInputDescByName("x1").GetDataType() != op.GetInputDescByName("x2").GetDataType()) {
         OP_LOGE(TbeGetName(op).c_str(), "the two inputs datatype not equal!\n");
         return GRAPH_FAILED;
     }
@@ -1454,15 +1454,15 @@ VERIFY_FUNC_REG(Cdist, CdistVerify);
 
 // ----------------CdistGrad Begin------------------------
 IMPLEMT_COMMON_INFERFUNC(CdistGradInferShape) {
-    TensorDesc output_desc = op.GetOutputDesc("y");
+    TensorDesc output_desc = op.GetOutputDescByName("y");
 
-    DataType input_dtype = op.GetInputDesc("x1").GetDataType();
-    Format input_format = op.GetInputDesc("x1").GetFormat();
+    DataType input_dtype = op.GetInputDescByName("x1").GetDataType();
+    Format input_format = op.GetInputDescByName("x1").GetFormat();
 
-    ge::Shape grad_shape = op.GetInputDesc("grad").GetShape();
-    ge::Shape cdist_shape = op.GetInputDesc("cdist").GetShape();
-    ge::Shape input1_shape = op.GetInputDesc("x1").GetShape();
-    ge::Shape input2_shape = op.GetInputDesc("x2").GetShape();
+    ge::Shape grad_shape = op.GetInputDescByName("grad").GetShape();
+    ge::Shape cdist_shape = op.GetInputDescByName("cdist").GetShape();
+    ge::Shape input1_shape = op.GetInputDescByName("x1").GetShape();
+    ge::Shape input2_shape = op.GetInputDescByName("x2").GetShape();
 
     std::vector < int64_t > grad_dim = grad_shape.GetDims();
     std::vector < int64_t > cdist_dim = cdist_shape.GetDims();
@@ -1498,10 +1498,10 @@ IMPLEMT_COMMON_INFERFUNC(CdistGradInferShape) {
 }
 
 IMPLEMT_VERIFIER(CdistGrad, CdistGradVerify) {
-    DataType x1_dtype = op.GetInputDesc("x1").GetDataType();
-    DataType x2_dtype = op.GetInputDesc("x2").GetDataType();
-    DataType grad_dtype = op.GetInputDesc("grad").GetDataType();
-    DataType cdist_dtype = op.GetInputDesc("cdist").GetDataType();
+    DataType x1_dtype = op.GetInputDescByName("x1").GetDataType();
+    DataType x2_dtype = op.GetInputDescByName("x2").GetDataType();
+    DataType grad_dtype = op.GetInputDescByName("grad").GetDataType();
+    DataType cdist_dtype = op.GetInputDescByName("cdist").GetDataType();
 
     if ((x2_dtype != x1_dtype) || (grad_dtype != x1_dtype) || (cdist_dtype != x1_dtype)) {
         OP_LOGE(TbeGetName(op).c_str(), "the four input datatype must not be the same \n");

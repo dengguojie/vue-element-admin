@@ -40,9 +40,9 @@ graphStatus ColorspaceShapeFn(Operator& op, const std::string output_name) {
     OP_LOGE(op_name.GetString(), "input[images] last dimension must be size 3.");
     return GRAPH_PARAM_INVALID;
   }
-  TensorDesc desc = op.GetOutputDesc(output_name);
+  TensorDesc desc = op.GetOutputDescByName(output_name.c_str());
   desc.SetShape(Shape(shape));
-  return op.UpdateOutputDesc(output_name, desc);
+  return op.UpdateOutputDesc(output_name.c_str(), desc);
 }
 
 graphStatus ResizeShapeFn(Operator& op, const std::string input_name, const std::string size_input_name,
@@ -74,7 +74,7 @@ graphStatus SetOutputToSizedImage(Operator& op, const int64_t batch_dim, const s
     OP_LOGE(op_name.GetString(), "input size must be 1-D.");
     return GRAPH_PARAM_INVALID;
   }
-  auto size_dims = op.GetInputDesc(size_input_name).GetShape().GetDims();
+  auto size_dims = op.GetInputDescByName(size_input_name.c_str()).GetShape().GetDims();
   if (size_dims[0] != 2) {
     AscendString op_name;
     op.GetName(op_name);
@@ -87,8 +87,8 @@ graphStatus SetOutputToSizedImage(Operator& op, const int64_t batch_dim, const s
   op_desc->SetOpInferDepends(input_infer_depends);
 
   Tensor size_tensor;
-  TensorDesc td = op.GetOutputDesc(output_name);
-  status = op.GetInputConstData(size_input_name, size_tensor);
+  TensorDesc td = op.GetOutputDescByName(output_name.c_str());
+  status = op.GetInputConstData(size_input_name.c_str(), size_tensor);
   if (status != GRAPH_SUCCESS) {
     td.SetDataType(DT_FLOAT);
     std::vector<int64_t> out_shape;
@@ -108,7 +108,7 @@ graphStatus SetOutputToSizedImage(Operator& op, const int64_t batch_dim, const s
       AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), error_msg);
     }
     td.SetShape(Shape(out_shape));
-    op.UpdateOutputDesc(output_name, td);
+    op.UpdateOutputDesc(output_name.c_str(), td);
     return GRAPH_SUCCESS;
   }
 
@@ -133,7 +133,7 @@ graphStatus SetOutputToSizedImage(Operator& op, const int64_t batch_dim, const s
     OP_LOGE(TbeGetName(op).c_str(), "Not supported this format");
   }
   td.SetShape(Shape(output_shape));
-  return op.UpdateOutputDesc(output_name, td);
+  return op.UpdateOutputDesc(output_name.c_str(), td);
 }
 
 graphStatus EncodeImageShapeFn(Operator& op) {
@@ -147,7 +147,7 @@ graphStatus EncodeImageShapeFn(Operator& op) {
 
   Shape output_shape;
   (void)Scalar(output_shape);
-  TensorDesc output_tensor = op.GetOutputDesc("contents");
+  TensorDesc output_tensor = op.GetOutputDescByName("contents");
   output_tensor.SetDataType(DT_STRING);
   output_tensor.SetShape(output_shape);
   return op.UpdateOutputDesc("contents", output_tensor);

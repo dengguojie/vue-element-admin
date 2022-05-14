@@ -82,10 +82,10 @@ VERIFY_FUNC_REG(GeluGrad, GeluGradVerify);
 // ----------------------GeluGrad END----------------------
 //-----------------------ELUGRADV2-------------------------
 IMPLEMT_COMMON_INFERFUNC(EluGradV2InferShape){
-    TensorDesc output_desc = op.GetOutputDesc("y");
-    DataType input_dtype = op.GetInputDesc("activations").GetDataType();
-    Format input_format = op.GetInputDesc("activations").GetFormat();
-    ge::Shape input_shape = op.GetInputDesc("activations").GetShape();
+    TensorDesc output_desc = op.GetOutputDescByName("y");
+    DataType input_dtype = op.GetInputDescByName("activations").GetDataType();
+    Format input_format = op.GetInputDescByName("activations").GetFormat();
+    ge::Shape input_shape = op.GetInputDescByName("activations").GetShape();
     output_desc.SetDataType(input_dtype);
     output_desc.SetFormat(input_format);
     output_desc.SetShape(input_shape);
@@ -95,8 +95,8 @@ IMPLEMT_COMMON_INFERFUNC(EluGradV2InferShape){
 
 IMPLEMT_VERIFIER(EluGradV2, EluGradV2Verify){
     // Check Whether the two input tensor data types are consistent
-    DataType input_type_grads = op.GetInputDesc("grads").GetDataType();
-    DataType input_type_activations = op.GetInputDesc("activations").GetDataType();
+    DataType input_type_grads = op.GetInputDescByName("grads").GetDataType();
+    DataType input_type_activations = op.GetInputDescByName("activations").GetDataType();
     if(input_type_activations != input_type_grads) {
         OP_LOGE(TbeGetName(op).c_str(), "Input dtypes are not the same.");
         return GRAPH_FAILED;
@@ -190,11 +190,11 @@ COMMON_INFER_FUNC_REG(FastGeluV2, FastGeluV2InferShape);
 
 // ----------------TanhGrad Op Begin----------------
 IMPLEMT_COMMON_INFERFUNC(TanhGradInferShape) {
-  TensorDesc tensordesc_output = op.GetOutputDesc("z");
-  tensordesc_output.SetShape(op.GetInputDesc("y").GetShape());
-  tensordesc_output.SetDataType(op.GetInputDesc("y").GetDataType());
+  TensorDesc tensordesc_output = op.GetOutputDescByName("z");
+  tensordesc_output.SetShape(op.GetInputDescByName("y").GetShape());
+  tensordesc_output.SetDataType(op.GetInputDescByName("y").GetDataType());
   std::vector<std::pair<int64_t, int64_t>> shape_range_x;
-  op.GetInputDesc("y").GetShapeRange(shape_range_x);
+  op.GetInputDescByName("y").GetShapeRange(shape_range_x);
   tensordesc_output.SetShapeRange(shape_range_x);
   (void)op.UpdateOutputDesc("z", tensordesc_output);
   return GRAPH_SUCCESS;
@@ -222,14 +222,14 @@ IMPLEMT_VERIFIER(PReluGrad, PReluGradVerify) {
 }
 
 IMPLEMT_INFERFUNC(PReluGrad, PReluGradInferShape) {
-  auto outShape = op.GetInputDesc("grads").GetShape();
-  auto outDtype = op.GetInputDesc("grads").GetDataType();
-  TensorDesc td = op.GetOutputDesc("dx");
+  auto outShape = op.GetInputDescByName("grads").GetShape();
+  auto outDtype = op.GetInputDescByName("grads").GetDataType();
+  TensorDesc td = op.GetOutputDescByName("dx");
   td.SetShape(outShape);
   td.SetDataType(outDtype);
-  auto outShapeOne = op.GetInputDesc("weights").GetShape();
-  auto outDtypeOne = op.GetInputDesc("weights").GetDataType();
-  TensorDesc tdOne = op.GetOutputDesc("da");
+  auto outShapeOne = op.GetInputDescByName("weights").GetShape();
+  auto outDtypeOne = op.GetInputDescByName("weights").GetDataType();
+  TensorDesc tdOne = op.GetOutputDescByName("da");
   tdOne.SetShape(outShapeOne);
   tdOne.SetDataType(outDtypeOne);
 
@@ -261,8 +261,8 @@ IMPLEMT_COMMON_INFERFUNC(ReluV2InferShape) {
   auto outDesc_mask = op_info->MutableOutputDesc("mask");
 
   vector<int64_t> input_shape = xDesc->MutableShape().GetDims();
-  Shape origin_shape = op.GetInputDesc("x").GetOriginShape();
-  auto origin_format = op.GetInputDesc("x").GetOriginFormat();
+  Shape origin_shape = op.GetInputDescByName("x").GetOriginShape();
+  auto origin_format = op.GetInputDescByName("x").GetOriginFormat();
 
   std::vector<int64_t> dims_mask;
   std::vector<int64_t> dims = origin_shape.GetDims();
@@ -442,11 +442,11 @@ IMPLEMT_VERIFIER(SigmoidGrad, SigmoidGradVerify) {
 }
 
 IMPLEMT_COMMON_INFERFUNC(SigmoidGradInferShape) {
-  Shape shape_x = op.GetInputDesc("y").GetShape();
-  DataType input_dtype = op.GetInputDesc("y").GetDataType();
+  Shape shape_x = op.GetInputDescByName("y").GetShape();
+  DataType input_dtype = op.GetInputDescByName("y").GetDataType();
   std::vector<std::pair<int64_t, int64_t>> shape_range_y;
-  op.GetInputDesc("y").GetShapeRange(shape_range_y);
-  TensorDesc tensordesc_output = op.GetOutputDesc("z");
+  op.GetInputDescByName("y").GetShapeRange(shape_range_y);
+  TensorDesc tensordesc_output = op.GetOutputDescByName("z");
   tensordesc_output.SetShape(shape_x);
   tensordesc_output.SetDataType(input_dtype);
   tensordesc_output.SetShapeRange(shape_range_y);
@@ -607,11 +607,11 @@ IMPLEMT_VERIFIER(LeakyReluGrad, LeakyReluGradVerify) {
 }
 
 IMPLEMT_COMMON_INFERFUNC(LeakyReluGradInferShape) {
-  TensorDesc tensordesc_output = op.GetOutputDesc("backprops");
-  tensordesc_output.SetShape(op.GetInputDesc("gradients").GetShape());
-  tensordesc_output.SetDataType(op.GetInputDesc("gradients").GetDataType());
+  TensorDesc tensordesc_output = op.GetOutputDescByName("backprops");
+  tensordesc_output.SetShape(op.GetInputDescByName("gradients").GetShape());
+  tensordesc_output.SetDataType(op.GetInputDescByName("gradients").GetDataType());
   std::vector<std::pair<int64_t, int64_t>> shape_range_grad;
-  op.GetInputDesc("gradients").GetShapeRange(shape_range_grad);
+  op.GetInputDescByName("gradients").GetShapeRange(shape_range_grad);
   tensordesc_output.SetShapeRange(shape_range_grad);
   (void)op.UpdateOutputDesc("backprops", tensordesc_output);
   return GRAPH_SUCCESS;
@@ -624,12 +624,12 @@ COMMON_INFER_FUNC_REG(LeakyReluGrad, LeakyReluGradInferShape);
 // ----------------ThresholdGradV2D-------------------
 bool InferShapeAndTypeThresholdGradV2D(Operator& op, const string& input_name1, const string& input_name2,
                                        const string& output_name) {
-  TensorDesc vOutputDesc = op.GetOutputDesc(output_name);
+  TensorDesc vOutputDesc = op.GetOutputDescByName(output_name.c_str());
 
-  DataType input_dtype = op.GetInputDesc(input_name1).GetDataType();
-  Format input_format = op.GetInputDesc(input_name1).GetFormat();
-  ge::Shape shapeX = op.GetInputDesc(input_name1).GetShape();
-  ge::Shape shapeY = op.GetInputDesc(input_name2).GetShape();
+  DataType input_dtype = op.GetInputDescByName(input_name1.c_str()).GetDataType();
+  Format input_format = op.GetInputDescByName(input_name1.c_str()).GetFormat();
+  ge::Shape shapeX = op.GetInputDescByName(input_name1.c_str()).GetShape();
+  ge::Shape shapeY = op.GetInputDescByName(input_name2.c_str()).GetShape();
   std::vector<int64_t> dimsX = shapeX.GetDims();
   std::vector<int64_t> dimsY = shapeY.GetDims();
   if (dimsX.size() < dimsY.size()) {
@@ -659,13 +659,13 @@ bool InferShapeAndTypeThresholdGradV2D(Operator& op, const string& input_name1, 
   vOutputDesc.SetShape(outputShape);
   vOutputDesc.SetDataType(input_dtype);
   vOutputDesc.SetFormat(input_format);
-  op.UpdateOutputDesc(output_name, vOutputDesc);
+  op.UpdateOutputDesc(output_name.c_str(), vOutputDesc);
 
   return true;
 }
 
 IMPLEMT_VERIFIER(ThresholdGradV2D, ThresholdGradV2DVerify) {
-  if (op.GetInputDesc("gradients").GetDataType() != op.GetInputDesc("features").GetDataType()) {
+  if (op.GetInputDescByName("gradients").GetDataType() != op.GetInputDescByName("features").GetDataType()) {
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -691,11 +691,11 @@ IMPLEMT_VERIFIER(ThresholdV2D, ThresholdV2DVerify) {
   return GRAPH_SUCCESS;
 }
 IMPLEMT_COMMON_INFERFUNC(ThresholdV2DInferShape) {
-  TensorDesc tensordesc_output = op.GetOutputDesc("y");
+  TensorDesc tensordesc_output = op.GetOutputDescByName("y");
 
-  tensordesc_output.SetShape(op.GetInputDesc("x").GetShape());
-  tensordesc_output.SetDataType(op.GetInputDesc("x").GetDataType());
-  tensordesc_output.SetFormat(op.GetInputDesc("x").GetFormat());
+  tensordesc_output.SetShape(op.GetInputDescByName("x").GetShape());
+  tensordesc_output.SetDataType(op.GetInputDescByName("x").GetDataType());
+  tensordesc_output.SetFormat(op.GetInputDescByName("x").GetFormat());
   (void)op.UpdateOutputDesc("y", tensordesc_output);
   return GRAPH_SUCCESS;
 }
@@ -706,9 +706,9 @@ VERIFY_FUNC_REG(ThresholdV2D, ThresholdV2DVerify);
 
 // ------------Mish Op Start----------------
 IMPLEMT_COMMON_INFERFUNC(MishInferShape) {
-  TensorDesc tensordesc_output = op.GetOutputDesc("y");
-  tensordesc_output.SetShape(op.GetInputDesc("x").GetShape());
-  tensordesc_output.SetDataType(op.GetInputDesc("x").GetDataType());
+  TensorDesc tensordesc_output = op.GetOutputDescByName("y");
+  tensordesc_output.SetShape(op.GetInputDescByName("x").GetShape());
+  tensordesc_output.SetDataType(op.GetInputDescByName("x").GetDataType());
   (void)op.UpdateOutputDesc("y", tensordesc_output);
   return GRAPH_SUCCESS;
 }
@@ -718,8 +718,8 @@ COMMON_INFER_FUNC_REG(Mish, MishInferShape);
 
 // ------------Mish Grad Op Start----------------
 IMPLEMT_COMMON_INFERFUNC(MishGradInferShape) {
-  TensorDesc tensordesc_output = op.GetOutputDesc("x_grad");
-  TensorDesc tensordesc_input = op.GetInputDesc("x");
+  TensorDesc tensordesc_output = op.GetOutputDescByName("x_grad");
+  TensorDesc tensordesc_input = op.GetInputDescByName("x");
   tensordesc_output.SetShape(tensordesc_input.GetShape());
   tensordesc_output.SetDataType(tensordesc_input.GetDataType());
   (void)op.UpdateOutputDesc("x_grad", tensordesc_output);
@@ -758,12 +758,12 @@ INFER_FUNC_REG(HardtanhGrad, HardtanhGradInferShape);
 
 // ----------------SoftplusV2 Begin-------------------
 IMPLEMT_INFERFUNC(SoftplusV2, SoftplusV2InferShape) {
-  TensorDesc tensordesc_input = op.GetInputDesc("x");
+  TensorDesc tensordesc_input = op.GetInputDescByName("x");
   Shape input_shape = tensordesc_input.GetShape();
   Format input_format = tensordesc_input.GetFormat();
   DataType input_dtype = tensordesc_input.GetDataType();
 
-  TensorDesc tensordesc_output = op.GetOutputDesc("y");
+  TensorDesc tensordesc_output = op.GetOutputDescByName("y");
 
   tensordesc_output.SetShape(input_shape);
   tensordesc_output.SetDataType(input_dtype);
@@ -778,12 +778,12 @@ INFER_FUNC_REG(SoftplusV2, SoftplusV2InferShape);
 
 // ----------------SoftplusV2Grad Begin-------------------
 IMPLEMT_INFERFUNC(SoftplusV2Grad, SoftplusV2GradInferShape) {
-  TensorDesc tensordesc_input1 = op.GetInputDesc("input_gradients");
+  TensorDesc tensordesc_input1 = op.GetInputDescByName("input_gradients");
   Shape input_shape1 = tensordesc_input1.GetShape();
   Format input_format1 = tensordesc_input1.GetFormat();
   DataType input_dtype1 = tensordesc_input1.GetDataType();
   std::vector<int64_t> dims_input1 = input_shape1.GetDims();
-  TensorDesc tensordesc_input2 = op.GetInputDesc("input_features");
+  TensorDesc tensordesc_input2 = op.GetInputDescByName("input_features");
   Shape input_shape2 = tensordesc_input2.GetShape();
   std::vector<int64_t> dims_input2 = input_shape2.GetDims();
 
@@ -792,7 +792,7 @@ IMPLEMT_INFERFUNC(SoftplusV2Grad, SoftplusV2GradInferShape) {
     return GRAPH_FAILED;
   }
 
-  TensorDesc tensordesc_output = op.GetOutputDesc("output_backprops");
+  TensorDesc tensordesc_output = op.GetOutputDescByName("output_backprops");
   std::vector<int64_t> dim_vec;
   for (size_t i = 0; i < dims_input1.size(); i++) {
     if ((dims_input1[i] != dims_input2[i]) && (dims_input1[i] != 1) &&
@@ -815,8 +815,8 @@ IMPLEMT_INFERFUNC(SoftplusV2Grad, SoftplusV2GradInferShape) {
 
 IMPLEMT_VERIFIER(SoftplusV2Grad, SoftplusV2GradVerify) {
   // check input tensors' dtype which needed to be same
-  if (op.GetInputDesc("input_gradients").GetDataType() !=
-      op.GetInputDesc("input_features").GetDataType()) {
+  if (op.GetInputDescByName("input_gradients").GetDataType() !=
+      op.GetInputDescByName("input_features").GetDataType()) {
     OP_LOGE(TbeGetName(op).c_str(), "Input dtypes are not the same.");
     return GRAPH_FAILED;
   }
@@ -861,10 +861,10 @@ VERIFY_FUNC_REG(ThresholdedRelu, ThresholdedReluVerify);
 
 // ----------------HardShrink Begin-------------------
 IMPLEMT_COMMON_INFERFUNC(HardShrinkInferShape) {
-  TensorDesc output_desc = op.GetOutputDesc("output_y");
-  DataType predict_dtype = op.GetInputDesc("input_x").GetDataType();
-  Format predict_format = op.GetInputDesc("input_x").GetFormat();
-  ge::Shape output_shape = op.GetInputDesc("input_x").GetShape();
+  TensorDesc output_desc = op.GetOutputDescByName("output_y");
+  DataType predict_dtype = op.GetInputDescByName("input_x").GetDataType();
+  Format predict_format = op.GetInputDescByName("input_x").GetFormat();
+  ge::Shape output_shape = op.GetInputDescByName("input_x").GetShape();
   output_desc.SetDataType(predict_dtype);
   output_desc.SetFormat(predict_format);
   output_desc.SetShape(output_shape);
@@ -883,11 +883,11 @@ VERIFY_FUNC_REG(HardShrink, HardShrinkVerify);
 // ----------------HardShrinkGrad Begin-------------------
 IMPLEMT_COMMON_INFERFUNC(HardShrinkGradInferShape)
 {
-    TensorDesc output_desc = op.GetOutputDesc("backprops");
-    DataType dtype_x = op.GetInputDesc("features").GetDataType();
-    Format format_x = op.GetInputDesc("features").GetFormat();
-    ge::Shape shape_x = op.GetInputDesc("features").GetShape();
-    ge::Shape shape_grad = op.GetInputDesc("gradients").GetShape();
+    TensorDesc output_desc = op.GetOutputDescByName("backprops");
+    DataType dtype_x = op.GetInputDescByName("features").GetDataType();
+    Format format_x = op.GetInputDescByName("features").GetFormat();
+    ge::Shape shape_x = op.GetInputDescByName("features").GetShape();
+    ge::Shape shape_grad = op.GetInputDescByName("gradients").GetShape();
     std::vector<int64_t> dims_x = shape_x.GetDims();
     std::vector<int64_t> dims_grad = shape_grad.GetDims();
     if (dims_x.size() < dims_grad.size()) {
@@ -920,7 +920,7 @@ IMPLEMT_COMMON_INFERFUNC(HardShrinkGradInferShape)
 
 IMPLEMT_VERIFIER(HardShrinkGrad, HardShrinkGradVerify)
 {
-    if (op.GetInputDesc("features").GetDataType() != op.GetInputDesc("gradients").GetDataType()) {
+    if (op.GetInputDescByName("features").GetDataType() != op.GetInputDescByName("gradients").GetDataType()) {
         OP_LOGE(TbeGetName(op).c_str(), "Input two tensor's dtype must be same.");
         return GRAPH_FAILED;
     }
@@ -944,10 +944,10 @@ COMMON_INFER_FUNC_REG(HardSigmoid, HardSigmoidInferShape);
 
 // ----------------SoftShrink Begin-------------------
 IMPLEMT_COMMON_INFERFUNC(SoftShrinkInferShape) {
-  TensorDesc output_desc = op.GetOutputDesc("output_y");
-  DataType predict_dtype = op.GetInputDesc("input_x").GetDataType();
-  Format predict_format = op.GetInputDesc("input_x").GetFormat();
-  ge::Shape output_shape = op.GetInputDesc("input_x").GetShape();
+  TensorDesc output_desc = op.GetOutputDescByName("output_y");
+  DataType predict_dtype = op.GetInputDescByName("input_x").GetDataType();
+  Format predict_format = op.GetInputDescByName("input_x").GetFormat();
+  ge::Shape output_shape = op.GetInputDescByName("input_x").GetShape();
   output_desc.SetDataType(predict_dtype);
   output_desc.SetFormat(predict_format);
   output_desc.SetShape(output_shape);
@@ -965,11 +965,11 @@ VERIFY_FUNC_REG(SoftShrink, SoftShrinkVerify);
 
 // ----------------SoftShrinkGrad Begin-------------------
 IMPLEMT_COMMON_INFERFUNC(SoftShrinkGradInferShape) {
-  TensorDesc output_desc = op.GetOutputDesc("output_y");
-  DataType dtype_x = op.GetInputDesc("input_x").GetDataType();
-  Format format_x = op.GetInputDesc("input_x").GetFormat();
-  ge::Shape shape_x = op.GetInputDesc("input_x").GetShape();
-  ge::Shape shape_grad = op.GetInputDesc("input_grad").GetShape();
+  TensorDesc output_desc = op.GetOutputDescByName("output_y");
+  DataType dtype_x = op.GetInputDescByName("input_x").GetDataType();
+  Format format_x = op.GetInputDescByName("input_x").GetFormat();
+  ge::Shape shape_x = op.GetInputDescByName("input_x").GetShape();
+  ge::Shape shape_grad = op.GetInputDescByName("input_grad").GetShape();
   std::vector<int64_t> dims_x = shape_x.GetDims();
   std::vector<int64_t> dims_grad = shape_grad.GetDims();
   if (dims_x.size() < dims_grad.size()) {
@@ -1001,7 +1001,7 @@ IMPLEMT_COMMON_INFERFUNC(SoftShrinkGradInferShape) {
 }
 
 IMPLEMT_VERIFIER(SoftShrinkGrad, SoftShrinkGradVerify) {
-  if (op.GetInputDesc("input_x").GetDataType() != op.GetInputDesc("input_grad").GetDataType()) {
+  if (op.GetInputDescByName("input_x").GetDataType() != op.GetInputDescByName("input_grad").GetDataType()) {
     OP_LOGE(TbeGetName(op).c_str(), "Input dtypes are not the same.");
     return GRAPH_FAILED;
   }
@@ -1038,7 +1038,7 @@ COMMON_INFER_FUNC_REG(LeakyRelu, LeakyReluInferShape);
 
 // ----------------LogSigmoidGrad begin--------------------
 IMPLEMT_VERIFIER(LogSigmoidGrad, LogSigmoidGradVerify) {
-  if (op.GetInputDesc("grads").GetDataType() != op.GetInputDesc("features").GetDataType()) {
+  if (op.GetInputDescByName("grads").GetDataType() != op.GetInputDescByName("features").GetDataType()) {
     OP_LOGI(TbeGetName(op).c_str(), "Input and output's dtype mast be same.");
     return GRAPH_FAILED;
   }
@@ -1046,9 +1046,9 @@ IMPLEMT_VERIFIER(LogSigmoidGrad, LogSigmoidGradVerify) {
 }
 
 IMPLEMT_COMMON_INFERFUNC(LogSigmoidGradInferShape) {
-  TensorDesc output_desc = op.GetOutputDesc("backprops");
-  std::vector<int64_t> dims_grads = op.GetInputDesc("grads").GetShape().GetDims();
-  std::vector<int64_t> dims_features = op.GetInputDesc("features").GetShape().GetDims();
+  TensorDesc output_desc = op.GetOutputDescByName("backprops");
+  std::vector<int64_t> dims_grads = op.GetInputDescByName("grads").GetShape().GetDims();
+  std::vector<int64_t> dims_features = op.GetInputDescByName("features").GetShape().GetDims();
 
   if (dims_grads.size() < dims_features.size()) {
     std::vector<int64_t> dims_tmp = dims_grads;
@@ -1071,9 +1071,9 @@ IMPLEMT_COMMON_INFERFUNC(LogSigmoidGradInferShape) {
     dim_vec.push_back(dims);
   }
   output_desc.SetShape(ge::Shape(dim_vec));
-  DataType input_dtype = op.GetInputDesc("grads").GetDataType();
+  DataType input_dtype = op.GetInputDescByName("grads").GetDataType();
   output_desc.SetDataType(input_dtype);
-  Format input_format = op.GetInputDesc("grads").GetFormat();
+  Format input_format = op.GetInputDescByName("grads").GetFormat();
   output_desc.SetFormat(input_format);
   (void)op.UpdateOutputDesc("backprops", output_desc);
   return GRAPH_SUCCESS;
@@ -1085,12 +1085,12 @@ VERIFY_FUNC_REG(LogSigmoidGrad, LogSigmoidGradVerify);
 
 // ----------------LogSigmoid--------------------
 IMPLEMT_COMMON_INFERFUNC(LogSigmoidInferShape) {
-  Shape input_shape = op.GetInputDesc("x").GetShape();
-  TensorDesc output_desc = op.GetOutputDesc("y");
+  Shape input_shape = op.GetInputDescByName("x").GetShape();
+  TensorDesc output_desc = op.GetOutputDescByName("y");
   output_desc.SetShape(input_shape);
-  DataType input_dtype = op.GetInputDesc("x").GetDataType();
+  DataType input_dtype = op.GetInputDescByName("x").GetDataType();
   output_desc.SetDataType(input_dtype);
-  Format input_format = op.GetInputDesc("x").GetFormat();
+  Format input_format = op.GetInputDescByName("x").GetFormat();
   output_desc.SetFormat(input_format);
   (void)op.UpdateOutputDesc("y", output_desc);
   return GRAPH_SUCCESS;
@@ -1100,11 +1100,11 @@ COMMON_INFER_FUNC_REG(LogSigmoid, LogSigmoidInferShape);
 
 // ----------------HardSigmoidLossGrad--------------------
 IMPLEMT_COMMON_INFERFUNC(HardSigmoidGradInferShape) {
-    TensorDesc output_desc = op.GetOutputDesc("y");
-    ge::Shape shape_x = op.GetInputDesc("input_x").GetShape();
-    DataType dtype_grad = op.GetInputDesc("grads").GetDataType();
-    Format formatGrad = op.GetInputDesc("grads").GetFormat();
-    ge::Shape shape_grad = op.GetInputDesc("grads").GetShape();
+    TensorDesc output_desc = op.GetOutputDescByName("y");
+    ge::Shape shape_x = op.GetInputDescByName("input_x").GetShape();
+    DataType dtype_grad = op.GetInputDescByName("grads").GetDataType();
+    Format formatGrad = op.GetInputDescByName("grads").GetFormat();
+    ge::Shape shape_grad = op.GetInputDescByName("grads").GetShape();
     std::vector<int64_t> dims_x = shape_x.GetDims();
     std::vector<int64_t> dims_grad = shape_grad.GetDims();
     if (dims_x.size() != dims_grad.size()) {

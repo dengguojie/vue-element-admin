@@ -71,15 +71,15 @@ graphStatus CandidateSamplerShape(Operator& op) {
   true_dims.push_back(batch_size);
   true_dims.push_back(num_true);
 
-  TensorDesc candidate_desc = op.GetOutputDesc("sampled_candidates");
+  TensorDesc candidate_desc = op.GetOutputDescByName("sampled_candidates");
   candidate_desc.SetShape(Shape(sampled_dims));
   candidate_desc.SetDataType(DT_INT64);
 
-  TensorDesc true_desc = op.GetOutputDesc("true_expected_count");
+  TensorDesc true_desc = op.GetOutputDescByName("true_expected_count");
   true_desc.SetShape(Shape(true_dims));
   true_desc.SetDataType(DT_FLOAT);
 
-  TensorDesc sampled_desc = op.GetOutputDesc("sampled_expected_count");
+  TensorDesc sampled_desc = op.GetOutputDescByName("sampled_expected_count");
   sampled_desc.SetShape(Shape(sampled_dims));
   sampled_desc.SetDataType(DT_FLOAT);
 

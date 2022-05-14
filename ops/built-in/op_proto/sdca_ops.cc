@@ -73,7 +73,7 @@ IMPLEMT_INFERFUNC(SdcaOptimizerV2, SdcaOptimizerV2Infer) {
   dims.push_back(UNKNOWN_DIM);
   dims.push_back(4);
   Shape sec_shape(dims);
-  TensorDesc state_tensor_desc = op.GetOutputDesc("out_example_state_data");
+  TensorDesc state_tensor_desc = op.GetOutputDescByName("out_example_state_data");
   state_tensor_desc.SetShape(sec_shape);
   state_tensor_desc.SetDataType(DT_FLOAT);
   if (op.UpdateOutputDesc("out_example_state_data", state_tensor_desc) != GRAPH_SUCCESS) {

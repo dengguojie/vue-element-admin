@@ -56,7 +56,7 @@ IMPLEMT_INFERFUNC(PSROIPooling, PSROIPoolingInferShape) {
 
     vector<int64_t> y_shape({rois_num, output_dim, pool_h, pool_w});
 
-    auto out_desc = op.GetOutputDesc("y");
+    auto out_desc = op.GetOutputDescByName("y");
     out_desc.SetShape(Shape(y_shape));
     out_desc.SetDataType(ge::DataType(x_dtype));
     (void)op.update_output_desc_y(out_desc);
@@ -105,8 +105,8 @@ IMPLEMT_INFERFUNC(PSROIPoolingV2, PSROIPoolingV2InferShape) {
         return GRAPH_FAILED;
     }
 
-    auto x_shape = op.GetInputDesc("x").GetShape();
-    auto x_dtype = op.GetInputDesc("x").GetDataType();
+    auto x_shape = op.GetInputDescByName("x").GetShape();
+    auto x_dtype = op.GetInputDescByName("x").GetDataType();
     int64_t pool_h = group_size;
     int64_t pool_w = group_size;
     int64_t c_output_dim = x_shape.GetDim(1) / (group_size * group_size);
@@ -121,7 +121,7 @@ IMPLEMT_INFERFUNC(PSROIPoolingV2, PSROIPoolingV2InferShape) {
     int64_t rois_num = rois_shape.GetDim(0) * rois_shape.GetDim(2);
     vector<int64_t> y_shape({rois_num, output_dim, pool_h, pool_w});
 
-    auto out_desc = op.GetOutputDesc("y");
+    auto out_desc = op.GetOutputDescByName("y");
     out_desc.SetShape(Shape(y_shape));
     out_desc.SetDataType(ge::DataType(x_dtype));
     (void)op.update_output_desc_y(out_desc);
@@ -178,8 +178,8 @@ IMPLEMT_INFERFUNC(PSROIPoolingGradV2D, PSROIPoolingGradV2DInferShape) {
         return GRAPH_FAILED;
     }
 
-    auto x_shape = op.GetInputDesc("x").GetShape();
-    auto x_dtype = op.GetInputDesc("x").GetDataType();
+    auto x_shape = op.GetInputDescByName("x").GetShape();
+    auto x_dtype = op.GetInputDescByName("x").GetDataType();
 
     int64_t c_output_dim = x_shape.GetDim(1);
     if (c_output_dim != output_dim) {
@@ -196,7 +196,7 @@ IMPLEMT_INFERFUNC(PSROIPoolingGradV2D, PSROIPoolingGradV2DInferShape) {
     int64_t output_c = group_size * group_size * output_dim;
     std::vector<int64_t> y_shape({rois_batch, output_c, output_h, output_w});
 
-    auto out_desc = op.GetOutputDesc("y");
+    auto out_desc = op.GetOutputDescByName("y");
     out_desc.SetShape(Shape(y_shape));
     out_desc.SetDataType(ge::DataType(x_dtype));
     (void)op.UpdateOutputDesc("y", out_desc);

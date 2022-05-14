@@ -32,14 +32,14 @@
 namespace ge {
 // ------------------CheckValid-----------------------
 IMPLEMT_COMMON_INFERFUNC(CheckValidInferShape) {
-  auto tensordesc_bbox = op.GetInputDesc("bbox_tensor");
+  auto tensordesc_bbox = op.GetInputDescByName("bbox_tensor");
   auto shape_bbox = tensordesc_bbox.GetShape();
 
   std::vector<int64_t> dims_tmp;
   dims_tmp.push_back(shape_bbox.GetDim(0));
 
   Shape valid_shape(dims_tmp);
-  TensorDesc td = op.GetOutputDesc("valid_tensor");
+  TensorDesc td = op.GetOutputDescByName("valid_tensor");
   td.SetShape(valid_shape);
   (void)op.UpdateOutputDesc("valid_tensor", td);
 
@@ -57,10 +57,10 @@ IMPLEMT_INFERFUNC(ROIAlignGrad, ROIAlignGradInfer) {
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
-  auto inputType = op.GetInputDesc("ydiff").GetDataType();
+  auto inputType = op.GetInputDescByName("ydiff").GetDataType();
 
   Shape valid_shape(xdiff_shape);
-  TensorDesc td = op.GetOutputDesc("xdiff");
+  TensorDesc td = op.GetOutputDescByName("xdiff");
   td.SetShape(ge::Shape(valid_shape));
   td.SetDataType(inputType);
   (void)op.UpdateOutputDesc("xdiff", td);
@@ -72,9 +72,9 @@ INFER_FUNC_REG(ROIAlignGrad, ROIAlignGradInfer);
 
 // --------------ROIAlign------------------
 IMPLEMT_INFERFUNC(ROIAlign, ROIAlignInfer) {
-  auto inputDtype = op.GetInputDesc("features").GetDataType();
-  auto input_shape = op.GetInputDesc("features").GetShape();
-  auto input2_shape = op.GetInputDesc("rois").GetShape();
+  auto inputDtype = op.GetInputDescByName("features").GetDataType();
+  auto input_shape = op.GetInputDescByName("features").GetShape();
+  auto input2_shape = op.GetInputDescByName("rois").GetShape();
   int64_t pool_h_shape;
   int64_t pool_w_shape;
   if (op.GetAttr("pooled_height", pool_h_shape) == ge::GRAPH_FAILED) {
@@ -93,7 +93,7 @@ IMPLEMT_INFERFUNC(ROIAlign, ROIAlignInfer) {
   dimsTmp.push_back(pool_w_shape);
   Shape validShape(dimsTmp);
 
-  auto td = op.GetOutputDesc("y");
+  auto td = op.GetOutputDescByName("y");
   td.SetShape(validShape);
   td.SetDataType(inputDtype);
   (void)op.UpdateOutputDesc("y", td);
@@ -129,7 +129,7 @@ IMPLEMT_COMMON_INFERFUNC(IouInferShape) {
   overlap_shape.push_back(bboxes_shape[0]);
   overlap_shape.push_back(gtboxes_shape[0]);
 
-  TensorDesc td = op.GetOutputDesc("overlap");
+  TensorDesc td = op.GetOutputDescByName("overlap");
   td.SetShape(Shape{overlap_shape});
   td.SetDataType(inputType);
   (void)op.UpdateOutputDesc("overlap", td);
@@ -161,7 +161,7 @@ IMPLEMT_COMMON_INFERFUNC(GIoUInferShape) {
     overlap_shape.push_back(bboxes_shape[0]);
   }
 
-  TensorDesc td = op.GetOutputDesc("overlap");
+  TensorDesc td = op.GetOutputDescByName("overlap");
   td.SetShape(Shape{overlap_shape});
   td.SetDataType(inputType);
   (void)op.UpdateOutputDesc("overlap", td);
@@ -225,7 +225,7 @@ COMMON_INFER_FUNC_REG(BoundingBoxEncode, BoundingBoxEncodeInferShape);
 
 // ----------------PriorBox Op Start-------------------
 IMPLEMT_INFERFUNC(PriorBox, PriorBoxInfer) {
-  auto featureDesc = op.GetInputDesc("x");
+  auto featureDesc = op.GetInputDescByName("x");
 
   std::vector<float> aspect_ratio;
   op.GetAttr("aspect_ratio", aspect_ratio);
@@ -290,7 +290,7 @@ IMPLEMT_INFERFUNC(PriorBox, PriorBoxInfer) {
 
   vector<int64_t> yShape({1, 2, inputH * inputW * priorNum * 4, 1});
 
-  auto outdesc = op.GetOutputDesc("y");
+  auto outdesc = op.GetOutputDescByName("y");
   outdesc.SetShape(Shape(yShape));
   outdesc.SetDataType(output_dType);
   outdesc.SetFormat(featureDesc.GetFormat());
@@ -307,8 +307,8 @@ VERIFY_FUNC_REG(PriorBox, PriorBoxVerify);
 
 // ----------------PriorBoxD Op Start-------------------
 IMPLEMT_INFERFUNC(PriorBoxD, PriorBoxDInfer) {
-  auto featureDesc = op.GetInputDesc("x");
-  auto boxDesc = op.GetInputDesc("box_height");
+  auto featureDesc = op.GetInputDescByName("x");
+  auto boxDesc = op.GetInputDescByName("box_height");
   auto input_dType = featureDesc.GetDataType();
   auto output_dType = input_dType;
 
@@ -331,7 +331,7 @@ IMPLEMT_INFERFUNC(PriorBoxD, PriorBoxDInfer) {
   priorNum = boxLen[0];
   vector<int64_t> yShape({1, 2, inputH * inputW * priorNum, 4});
 
-  auto outdesc = op.GetOutputDesc("y");
+  auto outdesc = op.GetOutputDescByName("y");
   outdesc.SetShape(Shape(yShape));
   outdesc.SetDataType(output_dType);
   outdesc.SetFormat(featureDesc.GetFormat());
@@ -348,8 +348,8 @@ VERIFY_FUNC_REG(PriorBoxD, PriorBoxDVerify);
 
 // ---------------PriorBoxDV2 Op Start------------------
 IMPLEMT_INFERFUNC(PriorBoxDV2, PriorBoxDV2Infer) {
-  auto featureDesc = op.GetInputDesc("x");
-  auto boxDesc = op.GetInputDesc("boxes");
+  auto featureDesc = op.GetInputDescByName("x");
+  auto boxDesc = op.GetInputDescByName("boxes");
   auto input_dType = featureDesc.GetDataType();
   auto output_dType = input_dType;
 
@@ -372,7 +372,7 @@ IMPLEMT_INFERFUNC(PriorBoxDV2, PriorBoxDV2Infer) {
   priorNum = boxLen[0];
   vector<int64_t> yShape({1, 2, inputH * inputW * priorNum, 4});
 
-  auto outdesc = op.GetOutputDesc("y");
+  auto outdesc = op.GetOutputDescByName("y");
   outdesc.SetShape(Shape(yShape));
   outdesc.SetDataType(output_dType);
   outdesc.SetFormat(featureDesc.GetFormat());

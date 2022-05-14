@@ -155,7 +155,7 @@ bool GetConstData(const Operator& op, const int64_t const_input_idx, std::vector
   ge::Tensor const_tensor;
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
   auto input_name = op_desc->GetInputNameByIndex(const_input_idx);
-  if (op.GetInputConstData(input_name, const_tensor) != ge::GRAPH_SUCCESS) {
+  if (op.GetInputConstData(input_name.c_str(), const_tensor) != ge::GRAPH_SUCCESS) {
     OP_LOGW(TbeGetName(op).c_str(), "constvalue [%s] not exists.", input_name.c_str());
     return false;
   }

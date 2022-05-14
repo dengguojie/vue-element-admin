@@ -29,10 +29,10 @@ graphStatus RandomShape(Operator& op, const std::string& shape_name, const std::
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
   op_desc->SetOpInferDepends(input_infer_depends);
   Tensor tensor;
-  if (op.GetInputConstData(shape_name, tensor) != GRAPH_SUCCESS) {
-    TensorDesc output_desc = op.GetOutputDesc(out_name);
+  if (op.GetInputConstData(shape_name.c_str(), tensor) != GRAPH_SUCCESS) {
+    TensorDesc output_desc = op.GetOutputDescByName(out_name.c_str());
     output_desc.SetShape(ge::Shape(ge::UNKNOWN_RANK));
-    return op.UpdateOutputDesc(out_name, output_desc);
+    return op.UpdateOutputDesc(out_name.c_str(), output_desc);
   }
   Shape shape;
   if (MakeShapeFromShapeTensor(tensor, shape, TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
@@ -40,9 +40,9 @@ graphStatus RandomShape(Operator& op, const std::string& shape_name, const std::
         "MakeShapeFromShapeTensor function failed to get data of shape tensor"));
     return GRAPH_FAILED;
   }
-  TensorDesc output_desc = op.GetOutputDesc(out_name);
+  TensorDesc output_desc = op.GetOutputDescByName(out_name.c_str());
   output_desc.SetShape(shape);
-  return op.UpdateOutputDesc(out_name, output_desc);
+  return op.UpdateOutputDesc(out_name.c_str(), output_desc);
 }
 
 graphStatus RandomShapeWithDataType(Operator& op, const std::string& shape_name, const std::string& date_type_attr_name,
@@ -59,9 +59,9 @@ graphStatus RandomShapeWithDataType(Operator& op, const std::string& shape_name,
         ConcatString("get attr[", date_type_attr_name, "] failed"));
     return GRAPH_FAILED;
   }
-  if (op.GetInputConstData(shape_name, tensor) != GRAPH_SUCCESS) {
+  if (op.GetInputConstData(shape_name.c_str(), tensor) != GRAPH_SUCCESS) {
     output_desc->SetDataType(type);
-    auto input_shape = op.GetInputDesc(shape_name).GetShape();
+    auto input_shape = op.GetInputDescByName(shape_name.c_str()).GetShape();
     if (input_shape.GetShapeSize() == UNKNOWN_DIM) {
       output_desc->SetShape(GeShape(UNKNOWN_RANK));
       output_desc->SetOriginShape(GeShape(UNKNOWN_RANK));

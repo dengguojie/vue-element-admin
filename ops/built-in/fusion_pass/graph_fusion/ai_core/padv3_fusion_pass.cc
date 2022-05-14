@@ -113,7 +113,7 @@ Status PadV3FusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector
     return NOT_CHANGED;
   }
 
-  auto dtype = op.GetInputDesc("paddings").GetDataType();
+  auto dtype = op.GetInputDescByName("paddings").GetDataType();
   std::vector<int64_t> padValue;
   if (!GetConstValue(constTensor, dtype, padValue)) {
     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Get Const Value failed ");

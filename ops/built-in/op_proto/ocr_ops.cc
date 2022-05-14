@@ -224,9 +224,9 @@ IMPLEMT_COMMON_INFERFUNC(OCRDetectionPreHandleInferShape) {
 COMMON_INFER_FUNC_REG(OCRDetectionPreHandle, OCRDetectionPreHandleInferShape);
 
 IMPLEMT_COMMON_INFERFUNC(OCRIdentifyPreHandleInferShape) {
-  TensorDesc imgs_data_desc = op.GetInputDesc("imgs_data");
-  TensorDesc imgs_offset_desc = op.GetInputDesc("imgs_offset");
-  TensorDesc imgs_size_desc = op.GetInputDesc("imgs_size");
+  TensorDesc imgs_data_desc = op.GetInputDescByName("imgs_data");
+  TensorDesc imgs_offset_desc = op.GetInputDescByName("imgs_offset");
+  TensorDesc imgs_size_desc = op.GetInputDescByName("imgs_size");
   TensorDesc resized_imgs_desc = op.GetOutputDescByName("resized_imgs");
   std::vector<int64_t> list_out_size;
   (void)op.GetAttr("size", list_out_size);

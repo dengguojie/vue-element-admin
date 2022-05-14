@@ -39,8 +39,8 @@
 
 namespace ge {
 IMPLEMT_INFERFUNC(AvgPool1DAvgMatrix, AvgPool1DAvgMatrixInfer) {
-  TensorDesc output_tensor_desc = op.GetOutputDesc("y");
-  auto input_tensor = op.GetInputDesc("x");
+  TensorDesc output_tensor_desc = op.GetOutputDescByName("y");
+  auto input_tensor = op.GetInputDescByName("x");
   Format input_format = input_tensor.GetFormat();
   auto input_shape = input_tensor.GetShape();
   int64_t input_w_size = 0;

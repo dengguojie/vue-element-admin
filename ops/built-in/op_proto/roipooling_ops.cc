@@ -60,7 +60,7 @@ IMPLEMT_INFERFUNC(ROIPooling, ROIPoolingInferShape) {
   }
   vector<int64_t> yShape({output_n, inputC1, poolH, poolW});
 
-  auto outdesc = op.GetOutputDesc("y");
+  auto outdesc = op.GetOutputDescByName("y");
   outdesc.SetShape(Shape(yShape));
   outdesc.SetDataType(ge::DataType(xDtype));
   (void)op.update_output_desc_y(outdesc);

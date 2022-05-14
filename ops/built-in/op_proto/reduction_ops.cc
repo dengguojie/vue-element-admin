@@ -33,7 +33,7 @@
 namespace ge {
 
 static bool InferReductionShape(const ge::Operator& operation, const string& input_name, ge::TensorDesc& result_desc) {
-  result_desc = operation.GetInputDesc(input_name);
+  result_desc = operation.GetInputDescByName(input_name.c_str());
   auto shape = result_desc.GetShape();
   std::vector<int64_t> x_shape = shape.GetDims();
   int64_t dimNum = shape.GetDimNum();
@@ -83,7 +83,7 @@ IMPLEMT_COMMON_INFERFUNC(ReductionInferShape) {
   auto dtype = result_desc.GetDataType();
 
   // update output desc
-  ge::TensorDesc output_desc = op.GetOutputDesc("y");
+  ge::TensorDesc output_desc = op.GetOutputDescByName("y");
   output_desc.SetShape(shape);
   output_desc.SetDataType(dtype);
   (void)op.UpdateOutputDesc("y", output_desc);

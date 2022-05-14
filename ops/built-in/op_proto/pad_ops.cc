@@ -37,14 +37,14 @@ namespace ge {
 // ----------------PadD Op Begin-------------------
 static graphStatus PadDInferShapeAndType(ge::Operator& op, std::vector<std::vector<int64_t>>& paddings) {
   std::vector<std::pair<int64_t, int64_t>> shape_range;
-  Shape shape_x = op.GetInputDesc("x").GetShape();
-  op.GetInputDesc("x").GetShapeRange(shape_range);
+  Shape shape_x = op.GetInputDescByName("x").GetShape();
+  op.GetInputDescByName("x").GetShapeRange(shape_range);
   // shape_x is UNKNOWN_RANK
   if (shape_x.GetDims() == UNKNOWN_RANK) {
-    DataType input_dtype = op.GetInputDesc("x").GetDataType();
+    DataType input_dtype = op.GetInputDescByName("x").GetDataType();
     vector<int64_t> shape(1, -2);
     Shape out_shape(shape);
-    TensorDesc tensordesc_output = op.GetOutputDesc("y");
+    TensorDesc tensordesc_output = op.GetOutputDescByName("y");
     tensordesc_output.SetShape(out_shape);
     tensordesc_output.SetDataType(input_dtype);
     (void)op.UpdateOutputDesc("y", tensordesc_output);
@@ -84,9 +84,9 @@ static graphStatus PadDInferShapeAndType(ge::Operator& op, std::vector<std::vect
     }
   }
 
-  DataType input_dtype = op.GetInputDesc("x").GetDataType();
+  DataType input_dtype = op.GetInputDescByName("x").GetDataType();
   Shape out_shape(shape);
-  TensorDesc tensordesc_output = op.GetOutputDesc("y");
+  TensorDesc tensordesc_output = op.GetOutputDescByName("y");
   tensordesc_output.SetShape(out_shape);
   tensordesc_output.SetDataType(input_dtype);
   if (out_range.size() > 0) {
@@ -231,14 +231,14 @@ COMMON_INFER_FUNC_REG(Pad, PadInferShape);
 // ----------------PadV2D Op Begin-------------------
 static graphStatus PadV2DInferShapeAndType(ge::Operator& op, std::vector<std::vector<int64_t>>& paddings) {
   std::vector<std::pair<int64_t, int64_t>> shape_range;
-  Shape shape_x = op.GetInputDesc("x").GetShape();
-  op.GetInputDesc("x").GetShapeRange(shape_range);
+  Shape shape_x = op.GetInputDescByName("x").GetShape();
+  op.GetInputDescByName("x").GetShapeRange(shape_range);
   // shape_x is UNKNOWN_RANK
   if (shape_x.GetDims() == UNKNOWN_RANK) {
-    DataType input_dtype = op.GetInputDesc("x").GetDataType();
+    DataType input_dtype = op.GetInputDescByName("x").GetDataType();
     vector<int64_t> shape(1, -2);
     Shape out_shape(shape);
-    TensorDesc tensordesc_output = op.GetOutputDesc("y");
+    TensorDesc tensordesc_output = op.GetOutputDescByName("y");
     tensordesc_output.SetShape(out_shape);
     tensordesc_output.SetDataType(input_dtype);
     (void)op.UpdateOutputDesc("y", tensordesc_output);
@@ -279,9 +279,9 @@ static graphStatus PadV2DInferShapeAndType(ge::Operator& op, std::vector<std::ve
     }
   }
 
-  DataType input_dtype = op.GetInputDesc("x").GetDataType();
+  DataType input_dtype = op.GetInputDescByName("x").GetDataType();
   Shape out_shape(shape);
-  TensorDesc tensordesc_output = op.GetOutputDesc("y");
+  TensorDesc tensordesc_output = op.GetOutputDescByName("y");
   tensordesc_output.SetShape(out_shape);
   tensordesc_output.SetDataType(input_dtype);
   if (out_range.size() > 0) {
@@ -353,13 +353,13 @@ IMPLEMT_COMMON_INFERFUNC(PadV3InferShape) {
   Tensor paddings_tensor;
   if (ge::GRAPH_SUCCESS != op.GetInputConstData("paddings", paddings_tensor)) {
     OP_LOGE(TbeGetName(op).c_str(), "Get Const Value [paddings] failed, Setting shape to UNKNOWN_DIM");
-    Shape shape_x = op.GetInputDesc("x").GetShape();
+    Shape shape_x = op.GetInputDescByName("x").GetShape();
     vector<int64_t> shape;
     for (size_t dim = 0; dim < shape_x.GetDimNum(); dim++) {
       shape.push_back(UNKNOWN_DIM);
     }
-    DataType input_dtype = op.GetInputDesc("x").GetDataType();
-    TensorDesc tensordesc_output = op.GetOutputDesc("y");
+    DataType input_dtype = op.GetInputDescByName("x").GetDataType();
+    TensorDesc tensordesc_output = op.GetOutputDescByName("y");
     Shape out_shape(shape);
     tensordesc_output.SetShape(out_shape);
     tensordesc_output.SetDataType(input_dtype);
@@ -367,7 +367,7 @@ IMPLEMT_COMMON_INFERFUNC(PadV3InferShape) {
     return GRAPH_SUCCESS;
   }
 
-  DataType dtype = op.GetInputDesc("paddings").GetDataType();
+  DataType dtype = op.GetInputDescByName("paddings").GetDataType();
 
   std::vector<int64_t> paddings;
   if (!GetConstValue(op, paddings_tensor, dtype, paddings)) {
@@ -484,13 +484,13 @@ IMPLEMT_COMMON_INFERFUNC(PadV3GradInferShape) {
   Tensor paddings_tensor;
   if (ge::GRAPH_SUCCESS != op.GetInputConstData("paddings", paddings_tensor)) {
     OP_LOGE(TbeGetName(op).c_str(), "Get Const Value [paddings] failed, Setting shape to UNKNOWN_DIM");
-    Shape shape_x = op.GetInputDesc("x").GetShape();
+    Shape shape_x = op.GetInputDescByName("x").GetShape();
     vector<int64_t> shape;
     for (size_t dim = 0; dim < shape_x.GetDimNum(); dim++) {
       shape.push_back(UNKNOWN_DIM);
     }
-    DataType input_dtype = op.GetInputDesc("x").GetDataType();
-    TensorDesc tensordesc_output = op.GetOutputDesc("y");
+    DataType input_dtype = op.GetInputDescByName("x").GetDataType();
+    TensorDesc tensordesc_output = op.GetOutputDescByName("y");
     Shape out_shape(shape);
     tensordesc_output.SetShape(out_shape);
     tensordesc_output.SetDataType(input_dtype);
@@ -498,7 +498,7 @@ IMPLEMT_COMMON_INFERFUNC(PadV3GradInferShape) {
     return GRAPH_SUCCESS;
   }
 
-  DataType dtype = op.GetInputDesc("paddings").GetDataType();
+  DataType dtype = op.GetInputDescByName("paddings").GetDataType();
 
   std::vector<int64_t> paddings;
   if (!GetConstValue(op, paddings_tensor, dtype, paddings)) {
@@ -549,13 +549,13 @@ IMPLEMT_COMMON_INFERFUNC(FillInferShape) {
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
   op_desc->SetOpInferDepends({"dims"});
 
-  TensorDesc td = op.GetOutputDesc("y");
+  TensorDesc td = op.GetOutputDescByName("y");
 
   auto dim_idx = static_cast<uint32_t>(op_desc->GetInputIndexByName("dims"));
   const GeTensor *data = OpDescUtils::GetInputConstData(op, dim_idx);
   if (data == nullptr) {
     GE_OP_LOGW(TbeGetName(op).c_str(), "Get constValue failed of [dims]");
-    auto shape = op.GetInputDesc("dims").GetShape();
+    auto shape = op.GetInputDescByName("dims").GetShape();
     int64_t dim_value;
     dim_value = shape.GetDim(0);
     std::vector<std::pair<int64_t, int64_t>> range_output;
@@ -571,7 +571,7 @@ IMPLEMT_COMMON_INFERFUNC(FillInferShape) {
     }
     OP_LOGD(TbeGetName(op).c_str(), "fill no const infershape dims value done");
     td.SetShape(Shape(vec_dim));
-    td.SetDataType(op.GetInputDesc("value").GetDataType());
+    td.SetDataType(op.GetInputDescByName("value").GetDataType());
     td.SetShapeRange(range_output);
 
     (void)op.UpdateOutputDesc("y", td);
@@ -594,7 +594,7 @@ IMPLEMT_COMMON_INFERFUNC(FillInferShape) {
     std::vector<std::pair<int64_t, int64_t>> range_output;
 
     td.SetShape(Shape(vec_dim));
-    td.SetDataType(op.GetInputDesc("value").GetDataType());
+    td.SetDataType(op.GetInputDescByName("value").GetDataType());
 
     for (auto& dim_val : vec_dim) {
       range_output.push_back(std::make_pair(dim_val, dim_val));
@@ -626,9 +626,9 @@ IMPLEMT_COMMON_INFERFUNC(FillDInferShape) {
     return GRAPH_FAILED;
   }
 
-  TensorDesc td = op.GetOutputDesc("y");
+  TensorDesc td = op.GetOutputDescByName("y");
   td.SetShape(Shape(vec_dim));
-  td.SetDataType(op.GetInputDesc("value").GetDataType());
+  td.SetDataType(op.GetInputDescByName("value").GetDataType());
 
   (void)op.UpdateOutputDesc("y", td);
   OP_LOGI(TbeGetName(op).c_str(), "infershape success");
@@ -650,7 +650,7 @@ IMPLEMT_INFERFUNC(BroadcastTo, BroadcastToInferShape) {
         vector<int64_t> shapedims = shape_desc->MutableShape().GetDims();
         size_t dim_num = shapedims.size();
 
-        DataType input_dtype = op.GetInputDesc("x").GetDataType();
+        DataType input_dtype = op.GetInputDescByName("x").GetDataType();
 
         if (dim_num > 1) {
             std::string err_msg = ConcatString("the rank[", dim_num,"] of input[shape] should not be more than 1");
@@ -681,7 +681,7 @@ IMPLEMT_INFERFUNC(BroadcastTo, BroadcastToInferShape) {
         return GRAPH_PARAM_INVALID;
     }
     OP_LOGI(TbeGetName(op).c_str(), "the op infer shape and dtype");
-    DataType input_dtype = op.GetInputDesc("x").GetDataType();
+    DataType input_dtype = op.GetInputDescByName("x").GetDataType();
 
     auto output_desc = op_info->MutableOutputDesc("y");
     output_desc->SetShape(GeShape(vec_dim));
@@ -695,7 +695,7 @@ INFER_FUNC_REG(BroadcastTo, BroadcastToInferShape);
 // ------------------BroadcastToD------------------------
 IMPLEMT_INFERFUNC(BroadcastToD, BroadcastToDInferShape) {
   OP_LOGI(TbeGetName(op).c_str(), "the op infer shape and dtype");
-  DataType input_dtype = op.GetInputDesc("x").GetDataType();
+  DataType input_dtype = op.GetInputDescByName("x").GetDataType();
   std::vector<int64_t> shape_out;
   if (ge::GRAPH_SUCCESS != op.GetAttr("shape", shape_out)) {
     std::string err_msg = GetInputInvalidErrMsg("shape_out");
@@ -707,7 +707,7 @@ IMPLEMT_INFERFUNC(BroadcastToD, BroadcastToDInferShape) {
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
-  TensorDesc td = op.GetOutputDesc("y");
+  TensorDesc td = op.GetOutputDescByName("y");
   td.SetShape(ge::Shape(shape_out));
   td.SetDataType(input_dtype);
   (void)op.UpdateOutputDesc("y", td);
@@ -962,17 +962,17 @@ COMMON_INFER_FUNC_REG(EmbeddingLocalIndex, EmbeddingLocalIndexInferShape);
 IMPLEMT_INFERFUNC(FillV2, FillV2InferShape) {
   Tensor data;
   std::vector<int64_t> vec_dim;
-  TensorDesc td = op.GetOutputDesc("y");
+  TensorDesc td = op.GetOutputDescByName("y");
   if (op.GetInputConstData("dims", data) != GRAPH_SUCCESS) {
     OP_LOGE(TbeGetName(op).c_str(), "Get constValue failed of [dims]");
-    auto shape = op.GetInputDesc("dims").GetShape();
+    auto shape = op.GetInputDescByName("dims").GetShape();
     int64_t dimValue;
     dimValue = shape.GetDim(0);
     for (int64_t m = 0; m < dimValue; m++) {
       vec_dim.push_back(-1);
     }
     td.SetShape(Shape(vec_dim));
-    td.SetDataType(op.GetInputDesc("value").GetDataType());
+    td.SetDataType(op.GetInputDescByName("value").GetDataType());
     (void)op.UpdateOutputDesc("y", td);
     return GRAPH_SUCCESS;
   } else {
@@ -987,7 +987,7 @@ IMPLEMT_INFERFUNC(FillV2, FillV2InferShape) {
       return GRAPH_PARAM_INVALID;
     }
     td.SetShape(Shape(vec_dim));
-    td.SetDataType(op.GetInputDesc("value").GetDataType());
+    td.SetDataType(op.GetInputDescByName("value").GetDataType());
     (void)op.UpdateOutputDesc("y", td);
     return GRAPH_SUCCESS;
   }
@@ -1014,7 +1014,7 @@ IMPLEMT_INFERFUNC(FillV2D, FillV2DInferShape) {
     return GRAPH_FAILED;
   }
 
-  TensorDesc td = op.GetOutputDesc("y");
+  TensorDesc td = op.GetOutputDescByName("y");
   td.SetShape(Shape(vec_dim));
   td.SetDataType(DT_FLOAT);
 

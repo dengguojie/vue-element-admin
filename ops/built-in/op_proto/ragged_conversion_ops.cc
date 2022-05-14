@@ -103,7 +103,7 @@ IMPLEMT_INFERFUNC(RaggedTensorToSparse, RaggedTensorToSparseInfer) {
         string("failed to call Matrix for num_values and dense_dims"));
     return GRAPH_FAILED;
   }
-  TensorDesc sparse_indices_desc = op.GetOutputDesc("sparse_indices");
+  TensorDesc sparse_indices_desc = op.GetOutputDescByName("sparse_indices");
   sparse_indices_desc.SetDataType(DT_INT64);
   sparse_indices_desc.SetShape(sparse_indices_output);
   if (op.UpdateOutputDesc("sparse_indices", sparse_indices_desc) !=
@@ -113,7 +113,7 @@ IMPLEMT_INFERFUNC(RaggedTensorToSparse, RaggedTensorToSparseInfer) {
     return GRAPH_FAILED;
   }
 
-  TensorDesc sparse_values_desc = op.GetOutputDesc("sparse_values");
+  TensorDesc sparse_values_desc = op.GetOutputDescByName("sparse_values");
   sparse_values_desc.SetDataType(rt_dense_values_desc.GetDataType());
   sparse_values_desc.SetShape(Shape({num_values}));
   if (op.UpdateOutputDesc("sparse_values", sparse_values_desc) !=
@@ -123,7 +123,7 @@ IMPLEMT_INFERFUNC(RaggedTensorToSparse, RaggedTensorToSparseInfer) {
     return GRAPH_FAILED;
   }
 
-  TensorDesc sparse_dense_shape_desc = op.GetOutputDesc("sparse_dense_shape");
+  TensorDesc sparse_dense_shape_desc = op.GetOutputDescByName("sparse_dense_shape");
   sparse_dense_shape_desc.SetDataType(DT_INT64);
   sparse_dense_shape_desc.SetShape(Shape({dense_dims}));
   if (op.UpdateOutputDesc("sparse_dense_shape", sparse_dense_shape_desc) !=

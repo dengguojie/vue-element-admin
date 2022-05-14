@@ -97,7 +97,7 @@ Status Concatv2SliceFusionPass::GetConstValue(const ge::NodePtr &node_name,
                                               vector<int64_t> &const_data) {
   Operator op = ge::OpDescUtils::CreateOperatorFromNode(node_name);
   Tensor constTensor;
-  op.GetInputConstData(attr_name, constTensor);
+  op.GetInputConstData(attr_name.c_str(), constTensor);
   if (!TbeFusionPassUtil::GetConstIntData(constTensor, op.GetInputDescByName(attr_name.c_str()).GetDataType(),
                                           const_data)) {
     VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Get [%s] value failed", attr_name.c_str());

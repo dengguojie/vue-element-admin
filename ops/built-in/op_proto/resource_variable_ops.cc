@@ -28,7 +28,7 @@
 namespace ge {
 
 IMPLEMT_INFERFUNC(VarHandleOp, VarHandleOpInfer) {
-  TensorDesc outputDesc = op.GetOutputDesc("y");
+  TensorDesc outputDesc = op.GetOutputDescByName("y");
   outputDesc.SetDataType(DT_RESOURCE);
   outputDesc.SetShape(Shape());
   if (GRAPH_SUCCESS != op.UpdateOutputDesc("y", outputDesc)) {

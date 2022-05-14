@@ -39,12 +39,12 @@ IMPLEMT_INFERFUNC(FSRDetectionOutput, FSRDetectionOutputInferShape) {
   auto priorShape = op.get_input_desc_bbox_delta().GetShape().GetDims();
   auto priorDtype = op.get_input_desc_bbox_delta().GetDataType();
   vector<int64_t> actualNumShape({batch_rois, num_classes, 8});
-  auto outdesc0 = op.GetOutputDesc("actual_bbox_num");
+  auto outdesc0 = op.GetOutputDescByName("actual_bbox_num");
   outdesc0.SetShape(Shape(actualNumShape));
   outdesc0.SetDataType(ge::DataType(3));
   (void)op.update_output_desc_actual_bbox_num(outdesc0);
   vector<int64_t> boxShape({batch_rois, num_classes, post_nms_topn, 8});
-  auto outdesc = op.GetOutputDesc("box");
+  auto outdesc = op.GetOutputDescByName("box");
   outdesc.SetShape(Shape(boxShape));
   outdesc.SetDataType(ge::DataType(priorDtype));
   (void)op.update_output_desc_box(outdesc);

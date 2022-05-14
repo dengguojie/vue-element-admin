@@ -464,15 +464,15 @@ IMPLEMT_INFERFUNC(HcomAllToAllV, HcomAllToAllVInferShape) {
         (op.GetInputConstData("recv_counts", recvCountsTensor) != GRAPH_SUCCESS)) {
         auto outTensorDesc = opDesc->MutableOutputDesc("recv_data");
         outTensorDesc->SetShape(GeShape(UNKNOWN_SHAPE));
-        outTensorDesc->SetDataType(op.GetInputDesc("send_data").GetDataType());
+        outTensorDesc->SetDataType(op.GetInputDescByName("send_data").GetDataType());
         return GRAPH_SUCCESS;
     }
 
-    DataType recvDispDtype = op.GetInputDesc("recv_displacements").GetDataType();
+    DataType recvDispDtype = op.GetInputDescByName("recv_displacements").GetDataType();
     vector<int64_t> recvDisp;
     GetConstValue(op, recvDispTensor, recvDispDtype, recvDisp);
 
-    DataType recvCountsDtype = op.GetInputDesc("recv_counts").GetDataType();
+    DataType recvCountsDtype = op.GetInputDescByName("recv_counts").GetDataType();
     vector<int64_t> recvCounts;
     GetConstValue(op, recvCountsTensor, recvCountsDtype, recvCounts);
 
@@ -493,7 +493,7 @@ IMPLEMT_INFERFUNC(HcomAllToAllV, HcomAllToAllVInferShape) {
     recvDataDims.push_back(recvShape);
     auto outTensorDesc = opDesc->MutableOutputDesc("recv_data");
     outTensorDesc->SetShape(GeShape(recvDataDims));
-    outTensorDesc->SetDataType(op.GetInputDesc("send_data").GetDataType());
+    outTensorDesc->SetDataType(op.GetInputDescByName("send_data").GetDataType());
 
     return GRAPH_SUCCESS;
 }
@@ -516,30 +516,30 @@ IMPLEMT_INFERFUNC(HcomGatherAllToAllV, HcomGatherAllToAllVInferShape) {
     if ((op.GetInputConstData("addrinfo", addrinfoTensor) != GRAPH_SUCCESS) ||
         (op.GetInputConstData("recv_displacements", recvDispTensor) != GRAPH_SUCCESS) ||
         (op.GetInputConstData("recv_counts", recvCountsTensor) != GRAPH_SUCCESS)) {
-        TensorDesc recvDataTensorDesc = op.GetOutputDesc("recv_data");
+        TensorDesc recvDataTensorDesc = op.GetOutputDescByName("recv_data");
         recvDataTensorDesc.SetShape(ge::Shape(UNKNOWN_SHAPE));
         recvDataTensorDesc.SetDataType((DataType) op.get_attr_dtype());
         op.UpdateOutputDesc("recv_data", recvDataTensorDesc);
-        TensorDesc gatherdTensorDesc = op.GetOutputDesc("gathered");
+        TensorDesc gatherdTensorDesc = op.GetOutputDescByName("gathered");
         gatherdTensorDesc.SetShape(ge::Shape(UNKNOWN_SHAPE));
         gatherdTensorDesc.SetDataType((DataType) op.get_attr_dtype());
         op.UpdateOutputDesc("gathered", gatherdTensorDesc);
         return GRAPH_SUCCESS;
     }
 
-    DataType recvDispDtype = op.GetInputDesc("recv_displacements").GetDataType();
+    DataType recvDispDtype = op.GetInputDescByName("recv_displacements").GetDataType();
     vector<int64_t> recvDisp;
     GetConstValue(op, recvDispTensor, recvDispDtype, recvDisp);
 
-    DataType recvCountsDtype = op.GetInputDesc("recv_counts").GetDataType();
+    DataType recvCountsDtype = op.GetInputDescByName("recv_counts").GetDataType();
     vector<int64_t> recvCounts;
     GetConstValue(op, recvCountsTensor, recvCountsDtype, recvCounts);
 
     std::vector<int64_t> recvDataDims;
     recvDataDims.push_back((int64_t)recvDisp.back() + (int64_t)recvCounts.back());
-    TensorDesc outTensorDesc = op.GetOutputDesc("recv_data");
+    TensorDesc outTensorDesc = op.GetOutputDescByName("recv_data");
     outTensorDesc.SetShape(ge::Shape(recvDataDims));
-    outTensorDesc.SetDataType(op.GetInputDesc("send_data").GetDataType());
+    outTensorDesc.SetDataType(op.GetInputDescByName("send_data").GetDataType());
     op.UpdateOutputDesc("recv_data", outTensorDesc);
 
     int64_t addrLen = 0;
@@ -554,7 +554,7 @@ IMPLEMT_INFERFUNC(HcomGatherAllToAllV, HcomGatherAllToAllVInferShape) {
                 addrLenAttr, attrAddrLengthMin);
             return GRAPH_FAILED;
         } else if (addrLenAttr < 0) {
-            DataType addrInfoDtype = op.GetInputDesc("addrinfo").GetDataType();
+            DataType addrInfoDtype = op.GetInputDescByName("addrinfo").GetDataType();
             vector<uint64_t> addrinfo;
             GetConstValue(op, addrinfoTensor, addrInfoDtype, addrinfo);
             if ((addrinfo.size() % dataLenPerAddrinfo) || (addrinfo.size() == 0)) {
@@ -570,7 +570,7 @@ IMPLEMT_INFERFUNC(HcomGatherAllToAllV, HcomGatherAllToAllVInferShape) {
                 }
             }
         } else {
-            auto inShape = op.GetInputDesc("addrinfo").GetShape();
+            auto inShape = op.GetInputDescByName("addrinfo").GetShape();
             std::vector<int64_t> inDims = inShape.GetDims();
             if (inDims.size() == 0) {
                 OP_LOGE(TbeGetName(op).c_str(), "Input addrinfo tensor's dims is invalid, expected: >0, actual:%zu.",
@@ -591,7 +591,7 @@ IMPLEMT_INFERFUNC(HcomGatherAllToAllV, HcomGatherAllToAllVInferShape) {
 
     std::vector<int64_t> gatheredDims;
     gatheredDims.push_back(addrLen);
-    TensorDesc gatheredTensorDesc = op.GetOutputDesc("gathered");
+    TensorDesc gatheredTensorDesc = op.GetOutputDescByName("gathered");
     gatheredTensorDesc.SetShape(ge::Shape(gatheredDims));
     gatheredTensorDesc.SetDataType((DataType) op.get_attr_dtype());
     op.UpdateOutputDesc("gathered", gatheredTensorDesc);

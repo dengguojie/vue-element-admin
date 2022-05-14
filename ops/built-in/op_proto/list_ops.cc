@@ -408,7 +408,7 @@ INFER_FUNC_REG(TensorListPopBack, TensorListPopBackInfer);
 IMPLEMT_INFERFUNC(TensorListLength, TensorListLengthInfer) {
   Shape scalar_shape;
   (void)Scalar(scalar_shape);
-  TensorDesc output_desc = op.GetOutputDesc("length");
+  TensorDesc output_desc = op.GetOutputDescByName("length");
   output_desc.SetShape(scalar_shape);
   output_desc.SetDataType(DT_INT32);
   if (op.UpdateOutputDesc("length", output_desc) != GRAPH_SUCCESS) {

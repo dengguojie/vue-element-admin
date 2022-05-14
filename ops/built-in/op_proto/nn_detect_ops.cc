@@ -38,14 +38,14 @@ int64_t CeilX(int64_t size, int64_t alignSize) {
 IMPLEMT_COMMON_INFERFUNC(YoloInferShape) {
   // get input depth
   OP_LOGI("yolo", "infer shape begin---");
-  auto inputShape = op.GetInputDesc("x").GetShape().GetDims();
+  auto inputShape = op.GetInputDescByName("x").GetShape().GetDims();
   CHECK(inputShape.size() < 4,
         std::string err_msg = GetShapeErrMsg(0, ConcatString(inputShape.size()), ConcatString("more than or equal to 4"));
         VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg),
         return GRAPH_FAILED);
   int64_t batchNum = (int64_t)inputShape[0];
   int64_t hwSize = (int64_t)(inputShape[2] * inputShape[3]);
-  DataType inputType = op.GetInputDesc("x").GetDataType();
+  DataType inputType = op.GetInputDescByName("x").GetDataType();
   std::int64_t boxNum = 0;
   std::int64_t coordNum = 0;
   std::int64_t classNum = 0;
@@ -63,14 +63,14 @@ IMPLEMT_COMMON_INFERFUNC(YoloInferShape) {
   coord_dim_vector.push_back(boxNum * coordNum);
   coord_dim_vector.push_back(CeilX(hwSize * 2 + 32, 32) / 2);
   Shape coordsOutShape(coord_dim_vector);
-  TensorDesc coordsDesc = op.GetOutputDesc("coord_data");
+  TensorDesc coordsDesc = op.GetOutputDescByName("coord_data");
   coordsDesc.SetShape(coordsOutShape);
   coordsDesc.SetDataType(inputType);
   std::vector<int64_t> obj_dim_vector;
   obj_dim_vector.push_back(batchNum);
   obj_dim_vector.push_back(CeilX(boxNum * hwSize * 2 + 32, 32) / 2);
   Shape objOutShape(obj_dim_vector);
-  TensorDesc objDesc = op.GetOutputDesc("obj_prob");
+  TensorDesc objDesc = op.GetOutputDescByName("obj_prob");
   objDesc.SetShape(objOutShape);
   objDesc.SetDataType(inputType);
   std::vector<int64_t> class_dim_vector;
@@ -78,7 +78,7 @@ IMPLEMT_COMMON_INFERFUNC(YoloInferShape) {
   class_dim_vector.push_back(classNum);
   class_dim_vector.push_back(CeilX(boxNum * hwSize * 2 + 32, 32) / 2);
   Shape classesOutShape(class_dim_vector);
-  TensorDesc classesDesc = op.GetOutputDesc("classes_prob");
+  TensorDesc classesDesc = op.GetOutputDescByName("classes_prob");
   classesDesc.SetShape(classesOutShape);
   classesDesc.SetDataType(inputType);
   (void)op.UpdateOutputDesc("coord_data", coordsDesc);
@@ -91,7 +91,7 @@ IMPLEMT_VERIFIER(Yolo, YoloVerify) {
   int64_t boxNum = 0;
   int64_t coordNum = 0;
   int64_t classNum = 0;
-  auto inputShape = op.GetInputDesc("x").GetShape().GetDims();
+  auto inputShape = op.GetInputDescByName("x").GetShape().GetDims();
   CHECK(inputShape.size() < 2,
         std::string err_msg = GetShapeErrMsg(0, ConcatString(inputShape.size()), ConcatString("more than or equal to 2"));
         VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg),
@@ -144,14 +144,14 @@ int64_t YoloV5CeilX(int64_t size, int64_t alignSize) {
 IMPLEMT_COMMON_INFERFUNC(YoloPreDetectionInferShape) {
   // get input depth
   OP_LOGI("yolo_pre_detection", "infer shape begin---");
-  auto inputShape = op.GetInputDesc("x").GetShape().GetDims();
+  auto inputShape = op.GetInputDescByName("x").GetShape().GetDims();
   CHECK(inputShape.size() < 4,
         std::string err_msg = GetShapeErrMsg(0, ConcatString(inputShape.size()), ConcatString("more than or equal to 4"));
         VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg),
         return GRAPH_FAILED);
   int64_t batchNum = (int64_t)inputShape[0];
   int64_t hwSize = (int64_t)(inputShape[2] * inputShape[3]);
-  DataType inputType = op.GetInputDesc("x").GetDataType();
+  DataType inputType = op.GetInputDescByName("x").GetDataType();
   std::int64_t boxNum = 0;
   std::int64_t coordNum = 0;
   std::int64_t classNum = 0;
@@ -169,14 +169,14 @@ IMPLEMT_COMMON_INFERFUNC(YoloPreDetectionInferShape) {
   coord_dim_vector.push_back(boxNum * coordNum);
   coord_dim_vector.push_back(YoloV5CeilX(hwSize * 2 + 32, 32) / 2);
   Shape coordsOutShape(coord_dim_vector);
-  TensorDesc coordsDesc = op.GetOutputDesc("coord_data");
+  TensorDesc coordsDesc = op.GetOutputDescByName("coord_data");
   coordsDesc.SetShape(coordsOutShape);
   coordsDesc.SetDataType(inputType);
   std::vector<int64_t> obj_dim_vector;
   obj_dim_vector.push_back(batchNum);
   obj_dim_vector.push_back(YoloV5CeilX(boxNum * hwSize * 2 + 32, 32) / 2);
   Shape objOutShape(obj_dim_vector);
-  TensorDesc objDesc = op.GetOutputDesc("obj_prob");
+  TensorDesc objDesc = op.GetOutputDescByName("obj_prob");
   objDesc.SetShape(objOutShape);
   objDesc.SetDataType(inputType);
   std::vector<int64_t> class_dim_vector;
@@ -184,7 +184,7 @@ IMPLEMT_COMMON_INFERFUNC(YoloPreDetectionInferShape) {
   class_dim_vector.push_back(classNum);
   class_dim_vector.push_back(YoloV5CeilX(boxNum * hwSize * 2 + 32, 32) / 2);
   Shape classesOutShape(class_dim_vector);
-  TensorDesc classesDesc = op.GetOutputDesc("classes_prob");
+  TensorDesc classesDesc = op.GetOutputDescByName("classes_prob");
   classesDesc.SetShape(classesOutShape);
   classesDesc.SetDataType(inputType);
   (void)op.UpdateOutputDesc("coord_data", coordsDesc);
@@ -197,7 +197,7 @@ IMPLEMT_VERIFIER(YoloPreDetection, YoloPreDetectionVerify) {
   int64_t boxNum = 0;
   int64_t coordNum = 0;
   int64_t classNum = 0;
-  auto inputShape = op.GetInputDesc("x").GetShape().GetDims();
+  auto inputShape = op.GetInputDescByName("x").GetShape().GetDims();
   CHECK(inputShape.size() < 2,
         std::string err_msg = GetShapeErrMsg(0, ConcatString(inputShape.size()), ConcatString("more than or equal to 2"));
         VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg),
@@ -274,11 +274,11 @@ IMPLEMT_COMMON_INFERFUNC(YoloV5DetectionOutputInferShape) {
     dim_vector.push_back(maxNum);
   }
   Shape out_shape_bbox(dim_vector);
-  TensorDesc bbox_desc = op.GetOutputDesc("box_out");
+  TensorDesc bbox_desc = op.GetOutputDescByName("box_out");
   bbox_desc.SetShape(out_shape_bbox);
   bbox_desc.SetDataType(input_dtype);
   Shape out_shape_bbox_out_num({batch, 8});
-  TensorDesc num_desc = op.GetOutputDesc("box_out_num");
+  TensorDesc num_desc = op.GetOutputDescByName("box_out_num");
   num_desc.SetShape(out_shape_bbox_out_num);
   num_desc.SetDataType(ge::DT_INT32);
   (void)op.UpdateOutputDesc("box_out", bbox_desc);
@@ -321,11 +321,11 @@ IMPLEMT_COMMON_INFERFUNC(YoloV5DetectionOutputDInferShape) {
     dim_vector.push_back(maxNum);
   }
   Shape out_shape_bbox(dim_vector);
-  TensorDesc bbox_desc = op.GetOutputDesc("box_out");
+  TensorDesc bbox_desc = op.GetOutputDescByName("box_out");
   bbox_desc.SetShape(out_shape_bbox);
   bbox_desc.SetDataType(input_dtype);
   Shape out_shape_bbox_out_num({batch, 8});
-  TensorDesc num_desc = op.GetOutputDesc("box_out_num");
+  TensorDesc num_desc = op.GetOutputDescByName("box_out_num");
   num_desc.SetShape(out_shape_bbox_out_num);
   num_desc.SetDataType(ge::DT_INT32);
   (void)op.UpdateOutputDesc("box_out", bbox_desc);
@@ -342,12 +342,12 @@ IMPLEMT_VERIFIER(YoloV2DetectionOutput, YoloV2DetectionOutputVerify) {
 }
 IMPLEMT_COMMON_INFERFUNC(YoloV2DetectionOutputInferShape) {
   OP_LOGI(TbeGetName(op).c_str(), "infer shape begin---");
-  auto coord_shape = op.GetInputDesc("coord_data").GetShape().GetDims();
+  auto coord_shape = op.GetInputDescByName("coord_data").GetShape().GetDims();
   CHECK(coord_shape.empty(),
       VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), string("input shape is NULL!")),
           return GRAPH_FAILED);
   int64_t batch = coord_shape[0];
-  DataType input_dtype = op.GetInputDesc("coord_data").GetDataType();
+  DataType input_dtype = op.GetInputDescByName("coord_data").GetDataType();
   std::int64_t maxNum = 0;
   if (ge::GRAPH_SUCCESS != op.GetAttr("post_nms_topn", maxNum)) {
     OP_LOGE(TbeGetName(op).c_str(), "get attr failed");
@@ -357,11 +357,11 @@ IMPLEMT_COMMON_INFERFUNC(YoloV2DetectionOutputInferShape) {
   dim_vector.push_back(batch);
   dim_vector.push_back(6 * maxNum);
   Shape out_shape_bbox(dim_vector);
-  TensorDesc bbox_desc = op.GetOutputDesc("box_out");
+  TensorDesc bbox_desc = op.GetOutputDescByName("box_out");
   bbox_desc.SetShape(out_shape_bbox);
   bbox_desc.SetDataType(input_dtype);
   Shape out_shape_bbox_out_num({batch, 8});
-  TensorDesc num_desc = op.GetOutputDesc("box_out_num");
+  TensorDesc num_desc = op.GetOutputDescByName("box_out_num");
   num_desc.SetShape(out_shape_bbox_out_num);
   num_desc.SetDataType(ge::DT_INT32);
   (void)op.UpdateOutputDesc("box_out", bbox_desc);
@@ -379,13 +379,13 @@ IMPLEMT_VERIFIER(YoloV2DetectionOutputD, YoloV2DetectionOutputDVerify) {
 }
 IMPLEMT_COMMON_INFERFUNC(YoloV2DetectionOutputDInferShape) {
   OP_LOGI(TbeGetName(op).c_str(), "infer shape begin---");
-  auto coord_shape = op.GetInputDesc("coord_data").GetShape().GetDims();
+  auto coord_shape = op.GetInputDescByName("coord_data").GetShape().GetDims();
   CHECK(coord_shape.empty(),
         std::string err_msg = OtherErrMsg("input shape is NULL!");
         VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg),
         return GRAPH_FAILED);
   int64_t batch = coord_shape[0];
-  DataType input_dtype = op.GetInputDesc("coord_data").GetDataType();
+  DataType input_dtype = op.GetInputDescByName("coord_data").GetDataType();
   std::int64_t maxNum = 0;
   if (ge::GRAPH_SUCCESS != op.GetAttr("post_nms_topn", maxNum)) {
     std::string err_msg = GetInputInvalidErrMsg("post_nms_topn");
@@ -396,11 +396,11 @@ IMPLEMT_COMMON_INFERFUNC(YoloV2DetectionOutputDInferShape) {
   dim_vector.push_back(batch);
   dim_vector.push_back(6 * maxNum);
   Shape out_shape_bbox(dim_vector);
-  TensorDesc bbox_desc = op.GetOutputDesc("box_out");
+  TensorDesc bbox_desc = op.GetOutputDescByName("box_out");
   bbox_desc.SetShape(out_shape_bbox);
   bbox_desc.SetDataType(input_dtype);
   Shape out_shape_bbox_out_num({batch, 8});
-  TensorDesc num_desc = op.GetOutputDesc("box_out_num");
+  TensorDesc num_desc = op.GetOutputDescByName("box_out_num");
   num_desc.SetShape(out_shape_bbox_out_num);
   num_desc.SetDataType(ge::DT_INT32);
   (void)op.UpdateOutputDesc("box_out", bbox_desc);
@@ -418,13 +418,13 @@ IMPLEMT_VERIFIER(YoloV3DetectionOutput, YoloV3DetectionOutputVerify) {
 }
 IMPLEMT_COMMON_INFERFUNC(YoloV3DetectionOutputInferShape) {
   OP_LOGI("yolov3 detection output", "infer shape begin---");
-  auto coord_shape = op.GetInputDesc("coord_data_low").GetShape().GetDims();
+  auto coord_shape = op.GetInputDescByName("coord_data_low").GetShape().GetDims();
   CHECK(coord_shape.empty(),
         std::string err_msg = OtherErrMsg("input shape is NULL!");
         VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg),
         return GRAPH_FAILED);
   int64_t batch = coord_shape[0];
-  DataType input_dtype = op.GetInputDesc("coord_data_low").GetDataType();
+  DataType input_dtype = op.GetInputDescByName("coord_data_low").GetDataType();
   std::int64_t maxNum = 0;
   if (ge::GRAPH_SUCCESS != op.GetAttr("post_nms_topn", maxNum)) {
     std::string err_msg = GetInputInvalidErrMsg("post_nms_topn");
@@ -435,11 +435,11 @@ IMPLEMT_COMMON_INFERFUNC(YoloV3DetectionOutputInferShape) {
   dim_vector.push_back(batch);
   dim_vector.push_back(6 * maxNum);
   Shape out_shape_bbox(dim_vector);
-  TensorDesc bbox_desc = op.GetOutputDesc("box_out");
+  TensorDesc bbox_desc = op.GetOutputDescByName("box_out");
   bbox_desc.SetShape(out_shape_bbox);
   bbox_desc.SetDataType(input_dtype);
   Shape out_shape_bbox_out_num({batch, 8});
-  TensorDesc num_desc = op.GetOutputDesc("box_out_num");
+  TensorDesc num_desc = op.GetOutputDescByName("box_out_num");
   num_desc.SetShape(out_shape_bbox_out_num);
   num_desc.SetDataType(ge::DT_INT32);
   (void)op.UpdateOutputDesc("box_out", bbox_desc);
@@ -457,12 +457,12 @@ IMPLEMT_VERIFIER(YoloV3DetectionOutputD, YoloV3DetectionOutputDVerify) {
 }
 IMPLEMT_COMMON_INFERFUNC(YoloV3DetectionOutputDInferShape) {
   OP_LOGI(TbeGetName(op).c_str(), "infer shape begin---");
-  auto coord_shape = op.GetInputDesc("coord_data_low").GetShape().GetDims();
+  auto coord_shape = op.GetInputDescByName("coord_data_low").GetShape().GetDims();
   CHECK(coord_shape.empty(),
       VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), string("input shape is NULL!")),
       return GRAPH_FAILED);
   int64_t batch = coord_shape[0];
-  DataType input_dtype = op.GetInputDesc("coord_data_low").GetDataType();
+  DataType input_dtype = op.GetInputDescByName("coord_data_low").GetDataType();
   std::int64_t maxNum = 0;
   if (ge::GRAPH_SUCCESS != op.GetAttr("post_nms_topn", maxNum)) {
     OP_LOGE(TbeGetName(op).c_str(), "get attr failed");
@@ -472,11 +472,11 @@ IMPLEMT_COMMON_INFERFUNC(YoloV3DetectionOutputDInferShape) {
   dim_vector.push_back(batch);
   dim_vector.push_back(6 * maxNum);
   Shape out_shape_bbox(dim_vector);
-  TensorDesc bbox_desc = op.GetOutputDesc("box_out");
+  TensorDesc bbox_desc = op.GetOutputDescByName("box_out");
   bbox_desc.SetShape(out_shape_bbox);
   bbox_desc.SetDataType(input_dtype);
   Shape out_shape_bbox_out_num({batch, 8});
-  TensorDesc num_desc = op.GetOutputDesc("box_out_num");
+  TensorDesc num_desc = op.GetOutputDescByName("box_out_num");
   num_desc.SetShape(out_shape_bbox_out_num);
   num_desc.SetDataType(ge::DT_INT32);
   (void)op.UpdateOutputDesc("box_out", bbox_desc);
@@ -520,11 +520,11 @@ IMPLEMT_COMMON_INFERFUNC(YoloV3DetectionOutputV2InferShape) {
     dim_vector.push_back(maxNum);
   }
   Shape out_shape_bbox(dim_vector);
-  TensorDesc bbox_desc = op.GetOutputDesc("box_out");
+  TensorDesc bbox_desc = op.GetOutputDescByName("box_out");
   bbox_desc.SetShape(out_shape_bbox);
   bbox_desc.SetDataType(input_dtype);
   Shape out_shape_bbox_out_num({batch, 8});
-  TensorDesc num_desc = op.GetOutputDesc("box_out_num");
+  TensorDesc num_desc = op.GetOutputDescByName("box_out_num");
   num_desc.SetShape(out_shape_bbox_out_num);
   num_desc.SetDataType(ge::DT_INT32);
   (void)op.UpdateOutputDesc("box_out", bbox_desc);
@@ -571,11 +571,11 @@ IMPLEMT_COMMON_INFERFUNC(YoloV3DetectionOutputV2DInferShape) {
     dim_vector.push_back(maxNum);
   }
   Shape out_shape_bbox(dim_vector);
-  TensorDesc bbox_desc = op.GetOutputDesc("box_out");
+  TensorDesc bbox_desc = op.GetOutputDescByName("box_out");
   bbox_desc.SetShape(out_shape_bbox);
   bbox_desc.SetDataType(input_dtype);
   Shape out_shape_bbox_out_num({batch, 8});
-  TensorDesc num_desc = op.GetOutputDesc("box_out_num");
+  TensorDesc num_desc = op.GetOutputDescByName("box_out_num");
   num_desc.SetShape(out_shape_bbox_out_num);
   num_desc.SetDataType(ge::DT_INT32);
   (void)op.UpdateOutputDesc("box_out", bbox_desc);
@@ -620,7 +620,7 @@ IMPLEMT_INFERFUNC(SPP, SPPInferShape) {
   yShapeDims.push_back(xShapeDims[1] * dims);
   yShapeDims.push_back(1);
   yShapeDims.push_back(1);
-  auto outdesc = op.GetOutputDesc("y");
+  auto outdesc = op.GetOutputDescByName("y");
   outdesc.SetShape(Shape(yShapeDims));
   outdesc.SetDataType(xDtype);
   (void)op.update_output_desc_y(outdesc);
@@ -663,13 +663,13 @@ VERIFY_FUNC_REG(SPP, SPPVerify);
 // ----------------DecodeBbox-------------------
 IMPLEMT_VERIFIER(DecodeBbox, DecodeBboxVerify) {
   // check format
-  Format box_predictions_format = op.GetInputDesc("box_predictions").GetFormat();
+  Format box_predictions_format = op.GetInputDescByName("box_predictions").GetFormat();
   if (box_predictions_format != FORMAT_ND && box_predictions_format != FORMAT_NCHW &&
       box_predictions_format != FORMAT_NHWC) {
     OP_LOGE(TbeGetName(op).c_str(), "format of box_predictions should be ND or NCHW or NHWC");
     return GRAPH_FAILED;
   }
-  Format anchors_format = op.GetInputDesc("anchors").GetFormat();
+  Format anchors_format = op.GetInputDescByName("anchors").GetFormat();
   if (anchors_format != box_predictions_format) {
     OP_LOGE(TbeGetName(op).c_str(), "format of inputs should be equal");
     return GRAPH_FAILED;
@@ -687,12 +687,12 @@ IMPLEMT_VERIFIER(DecodeBbox, DecodeBboxVerify) {
   }
 
   // check shape
-  auto box_predictions_shape = op.GetInputDesc("box_predictions").GetShape().GetDims();
+  auto box_predictions_shape = op.GetInputDescByName("box_predictions").GetShape().GetDims();
   if (box_predictions_shape.empty()) {
     OP_LOGE(TbeGetName(op).c_str(), "can not get box_predictions shape.");
     return GRAPH_FAILED;
   }
-  auto anchors_shape = op.GetInputDesc("anchors").GetShape().GetDims();
+  auto anchors_shape = op.GetInputDescByName("anchors").GetShape().GetDims();
   if (anchors_shape.empty()) {
     OP_LOGE(TbeGetName(op).c_str(), "can not get anchors shape.");
     return GRAPH_FAILED;
@@ -742,8 +742,8 @@ IMPLEMT_VERIFIER(DecodeBbox, DecodeBboxVerify) {
 
 // Obtains the processing function of the output tensor description.
 IMPLEMT_COMMON_INFERFUNC(DecodeBboxInferShapeCommon) {
-  auto boxPredictionsShape = op.GetInputDesc("box_predictions").GetShape().GetDims();
-  auto anchorsShape = op.GetInputDesc("anchors").GetShape().GetDims();
+  auto boxPredictionsShape = op.GetInputDescByName("box_predictions").GetShape().GetDims();
+  auto anchorsShape = op.GetInputDescByName("anchors").GetShape().GetDims();
   int64_t shape_n = 1;
   for (uint32_t i = 0; i < boxPredictionsShape.size(); i++) {
     shape_n = shape_n * boxPredictionsShape[i];
@@ -762,10 +762,10 @@ IMPLEMT_COMMON_INFERFUNC(DecodeBboxInferShapeCommon) {
     dim_vector1.push_back(4);
   }
   Shape out_shape_decoded_boxes(dim_vector1);
-  TensorDesc decoded_boxes_desc = op.GetOutputDesc("decoded_boxes");
+  TensorDesc decoded_boxes_desc = op.GetOutputDescByName("decoded_boxes");
   decoded_boxes_desc.SetShape(out_shape_decoded_boxes);
   std::vector<std::pair<int64_t, int64_t>> range;
-  if (op.GetInputDesc("box_predictions").GetShapeRange(range) == GRAPH_SUCCESS){
+  if (op.GetInputDescByName("box_predictions").GetShapeRange(range) == GRAPH_SUCCESS){
     decoded_boxes_desc.SetShapeRange(range);
   }
   (void)op.UpdateOutputDesc("decoded_boxes", decoded_boxes_desc);
@@ -792,8 +792,8 @@ IMPLEMT_VERIFIER(ClipBoxes, ClipBoxesVerify) {
 
 // Obtains the processing function of the output tensor description.
 IMPLEMT_COMMON_INFERFUNC(ClipBoxesInferShapeCommon) {
-  auto boxes_input_shape = op.GetInputDesc("boxes_input").GetShape().GetDims();
-  TensorDesc td = op.GetOutputDesc("boxes_output");
+  auto boxes_input_shape = op.GetInputDescByName("boxes_input").GetShape().GetDims();
+  TensorDesc td = op.GetOutputDescByName("boxes_output");
   td.SetShape(ge::Shape(boxes_input_shape));
   (void)op.UpdateOutputDesc("boxes_output", td);
   return GRAPH_SUCCESS;
@@ -813,13 +813,13 @@ VERIFY_FUNC_REG(ClipBoxes, ClipBoxesVerify);
 
 IMPLEMT_VERIFIER(ClipBoxesD, ClipBoxesDVerify) {
   // check format
-  Format boxes_input_format = op.GetInputDesc("boxes_input").GetFormat();
+  Format boxes_input_format = op.GetInputDescByName("boxes_input").GetFormat();
   if (boxes_input_format != FORMAT_ND) {
     OP_LOGE(TbeGetName(op).c_str(), "format of boxes_input should be ND");
     return GRAPH_FAILED;
   }
   // check shape
-  auto boxes_input_shape = op.GetInputDesc("boxes_input").GetShape().GetDims();
+  auto boxes_input_shape = op.GetInputDescByName("boxes_input").GetShape().GetDims();
   if (boxes_input_shape.empty()) {
     OP_LOGE(TbeGetName(op).c_str(), "can not get boxes_input shape.");
     return GRAPH_FAILED;
@@ -862,8 +862,8 @@ IMPLEMT_VERIFIER(ClipBoxesD, ClipBoxesDVerify) {
 
 // Obtains the processing function of the output tensor description.
 IMPLEMT_COMMON_INFERFUNC(ClipBoxesDInferShapeCommon) {
-  auto boxes_input_shape = op.GetInputDesc("boxes_input").GetShape().GetDims();
-  TensorDesc td = op.GetOutputDesc("boxes_output");
+  auto boxes_input_shape = op.GetInputDescByName("boxes_input").GetShape().GetDims();
+  TensorDesc td = op.GetOutputDescByName("boxes_output");
   td.SetShape(ge::Shape(boxes_input_shape));
   (void)op.UpdateOutputDesc("boxes_output", td);
   return GRAPH_SUCCESS;
@@ -885,7 +885,7 @@ VERIFY_FUNC_REG(ClipBoxesD, ClipBoxesDVerify);
 // ----------------FastrcnnPredictions-------------------
 IMPLEMT_VERIFIER(FastrcnnPredictions, FastrcnnPredictionsVerify) {
   // check format
-  Format score_format = op.GetInputDesc("score").GetFormat();
+  Format score_format = op.GetInputDescByName("score").GetFormat();
   if (score_format != FORMAT_ND) {
     OP_LOGE(TbeGetName(op).c_str(), "format of score should be ND");
     return GRAPH_FAILED;
@@ -911,12 +911,12 @@ IMPLEMT_VERIFIER(FastrcnnPredictions, FastrcnnPredictionsVerify) {
     return GRAPH_FAILED;
   }
   // check shape
-  auto score_shape = op.GetInputDesc("score").GetShape().GetDims();
+  auto score_shape = op.GetInputDescByName("score").GetShape().GetDims();
   if (score_shape.empty()) {
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), string("Score shape is empty, please check!"));
     return GRAPH_FAILED;
   }
-  auto rois_shape = op.GetInputDesc("rois").GetShape().GetDims();
+  auto rois_shape = op.GetInputDescByName("rois").GetShape().GetDims();
   if (rois_shape.empty()) {
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), string("rois shape is empty, please check!"));
     return GRAPH_FAILED;
@@ -970,27 +970,27 @@ IMPLEMT_VERIFIER(FastrcnnPredictions, FastrcnnPredictionsVerify) {
 // Obtains the processing function of the output tensor description.
 IMPLEMT_COMMON_INFERFUNC(FastrcnnPredictionsInferShapeCommon) {
   OP_LOGI("fastrcnn_predictions", "infer shape begin---");
-  auto score_shape = op.GetInputDesc("score").GetShape().GetDims();
+  auto score_shape = op.GetInputDescByName("score").GetShape().GetDims();
   int64_t num = score_shape[0];
   std::vector<int64_t> dim_vector;
   dim_vector.push_back(num);
   dim_vector.push_back(4);
   Shape out_shape_sorted_rois(dim_vector);
-  TensorDesc sorted_rois_desc = op.GetOutputDesc("sorted_rois");
+  TensorDesc sorted_rois_desc = op.GetOutputDescByName("sorted_rois");
   sorted_rois_desc.SetShape(out_shape_sorted_rois);
   (void)op.UpdateOutputDesc("sorted_rois", sorted_rois_desc);
   std::vector<int64_t> dim_vector1;
   dim_vector1.push_back(num);
   dim_vector1.push_back(1);
   Shape out_shape_sorted_scores(dim_vector1);
-  TensorDesc sorted_scores_desc = op.GetOutputDesc("sorted_scores");
+  TensorDesc sorted_scores_desc = op.GetOutputDescByName("sorted_scores");
   sorted_scores_desc.SetShape(out_shape_sorted_scores);
   (void)op.UpdateOutputDesc("sorted_scores", sorted_scores_desc);
   std::vector<int64_t> dim_vector2;
   dim_vector2.push_back(num);
   dim_vector2.push_back(1);
   Shape out_shape_sorted_classes(dim_vector2);
-  TensorDesc sorted_classes_desc = op.GetOutputDesc("sorted_classes");
+  TensorDesc sorted_classes_desc = op.GetOutputDescByName("sorted_classes");
   sorted_classes_desc.SetShape(out_shape_sorted_classes);
   (void)op.UpdateOutputDesc("sorted_classes", sorted_classes_desc);
   return GRAPH_SUCCESS;
@@ -1011,7 +1011,7 @@ IMPLEMT_VERIFIER(RpnProposals, RpnProposalsVerify) {
 // Obtains the processing function of the output tensor description.
 IMPLEMT_COMMON_INFERFUNC(RpnProposalsInferShapeCommon) {
   OP_LOGI("rpn_proposals", "infer shape begin---");
-  DataType input_dtype = op.GetInputDesc("rois").GetDataType();
+  DataType input_dtype = op.GetInputDescByName("rois").GetDataType();
   int64_t post_nms_num = 0;
   if (ge::GRAPH_SUCCESS != op.GetAttr("post_nms_num", post_nms_num)) {
     OP_LOGE(TbeGetName(op).c_str(), "get attr post_nms_num failed");
@@ -1021,7 +1021,7 @@ IMPLEMT_COMMON_INFERFUNC(RpnProposalsInferShapeCommon) {
   dim_vector.push_back(post_nms_num);
   dim_vector.push_back(4);
   Shape out_shape_sorted_box(dim_vector);
-  TensorDesc sorted_box_desc = op.GetOutputDesc("sorted_box");
+  TensorDesc sorted_box_desc = op.GetOutputDescByName("sorted_box");
   sorted_box_desc.SetShape(out_shape_sorted_box);
   sorted_box_desc.SetDataType(input_dtype);
   (void)op.UpdateOutputDesc("sorted_box", sorted_box_desc);
@@ -1035,18 +1035,18 @@ COMMON_INFER_FUNC_REG(RpnProposals, RpnProposalsInferShapeCommon);
 VERIFY_FUNC_REG(RpnProposals, RpnProposalsVerify);
 IMPLEMT_VERIFIER(RpnProposalsD, RpnProposalsDVerify) {
   // check format
-  Format rois_format = op.GetInputDesc("rois").GetFormat();
+  Format rois_format = op.GetInputDescByName("rois").GetFormat();
   if (rois_format != FORMAT_ND) {
     OP_LOGE(TbeGetName(op).c_str(), "format of rois should be ND");
     return GRAPH_FAILED;
   }
   // check shape
-  auto score_shape = op.GetInputDesc("cls_bg_prob").GetShape().GetDims();
+  auto score_shape = op.GetInputDescByName("cls_bg_prob").GetShape().GetDims();
   if (score_shape.empty()) {
     OP_LOGE(TbeGetName(op).c_str(), "can not get cls_bg_prob shape.");
     return GRAPH_FAILED;
   }
-  auto rois_shape = op.GetInputDesc("rois").GetShape().GetDims();
+  auto rois_shape = op.GetInputDescByName("rois").GetShape().GetDims();
   if (rois_shape.empty()) {
     OP_LOGE(TbeGetName(op).c_str(), "can not get rois shape.");
     return GRAPH_FAILED;
@@ -1125,7 +1125,7 @@ IMPLEMT_COMMON_INFERFUNC(RpnProposalsDInferShapeCommon) {
   dim_vector.push_back(post_nms_num);
   dim_vector.push_back(4);
   Shape out_shape_sorted_box(dim_vector);
-  TensorDesc sorted_box_desc = op.GetOutputDesc("sorted_box");
+  TensorDesc sorted_box_desc = op.GetOutputDescByName("sorted_box");
   sorted_box_desc.SetShape(out_shape_sorted_box);
   (void)op.UpdateOutputDesc("sorted_box", sorted_box_desc);
   return GRAPH_SUCCESS;
@@ -1141,23 +1141,23 @@ VERIFY_FUNC_REG(RpnProposalsD, RpnProposalsDVerify);
 // ----------------DecodeBoundariesTarget-------------------
 IMPLEMT_VERIFIER(DecodeBoundariesTarget, DecodeBoundariesTargetVerify) {
   // check format
-  Format boundary_predictions_format = op.GetInputDesc("boundary_predictions").GetFormat();
+  Format boundary_predictions_format = op.GetInputDescByName("boundary_predictions").GetFormat();
   if (boundary_predictions_format != FORMAT_ND) {
     OP_LOGE(TbeGetName(op).c_str(), "format of boundary_predictions should be ND");
     return GRAPH_FAILED;
   }
-  Format anchors_format = op.GetInputDesc("anchors").GetFormat();
+  Format anchors_format = op.GetInputDescByName("anchors").GetFormat();
   if (anchors_format != boundary_predictions_format) {
     OP_LOGE(TbeGetName(op).c_str(), "format of anchors should be equle");
     return GRAPH_FAILED;
   }
   // check shape
-  auto boundary_predictions_shape = op.GetInputDesc("boundary_predictions").GetShape().GetDims();
+  auto boundary_predictions_shape = op.GetInputDescByName("boundary_predictions").GetShape().GetDims();
   if (boundary_predictions_shape.size() < 2) {
     OP_LOGE(TbeGetName(op).c_str(), "can not get boundary_predictions shape.");
     return GRAPH_FAILED;
   }
-  auto anchors_shape = op.GetInputDesc("anchors").GetShape().GetDims();
+  auto anchors_shape = op.GetInputDescByName("anchors").GetShape().GetDims();
   if (anchors_shape.size() < 2) {
     OP_LOGE(TbeGetName(op).c_str(), "can not get anchors shape.");
     return GRAPH_FAILED;
@@ -1179,9 +1179,9 @@ IMPLEMT_VERIFIER(DecodeBoundariesTarget, DecodeBoundariesTargetVerify) {
 
 // Obtains the processing function of the output tensor description.
 IMPLEMT_COMMON_INFERFUNC(DecodeBoundariesTargetInferShapeCommon) {
-  auto boundary_predictions_shape = op.GetInputDesc("boundary_predictions").GetShape().GetDims();
-  auto anchors_shape = op.GetInputDesc("anchors").GetShape().GetDims();
-  TensorDesc td = op.GetOutputDesc("boundary_predictions");
+  auto boundary_predictions_shape = op.GetInputDescByName("boundary_predictions").GetShape().GetDims();
+  auto anchors_shape = op.GetInputDescByName("anchors").GetShape().GetDims();
+  TensorDesc td = op.GetOutputDescByName("boundary_predictions");
   td.SetShape(ge::Shape(boundary_predictions_shape));
   (void)op.UpdateOutputDesc("boundary_encoded", td);
   return GRAPH_SUCCESS;
@@ -1203,12 +1203,12 @@ VERIFY_FUNC_REG(DecodeBoundariesTarget, DecodeBoundariesTargetVerify);
 // ----------------DecodeCornerpointsTargetBG-------------------
 IMPLEMT_VERIFIER(DecodeCornerpointsTargetBG, DecodeCornerpointsTargetBGVerify) {
   // check shape
-  auto keypoints_predictions_shape = op.GetInputDesc("keypoints_prediction").GetShape().GetDims();
+  auto keypoints_predictions_shape = op.GetInputDescByName("keypoints_prediction").GetShape().GetDims();
   if (keypoints_predictions_shape.empty()) {
     OP_LOGE(TbeGetName(op).c_str(), "can not get keypoints_predictions shape.");
     return GRAPH_FAILED;
   }
-  auto anchors_shape = op.GetInputDesc("anchors").GetShape().GetDims();
+  auto anchors_shape = op.GetInputDescByName("anchors").GetShape().GetDims();
   if (anchors_shape.empty()) {
     OP_LOGE(TbeGetName(op).c_str(), "can not get anchors shape.");
     return GRAPH_FAILED;
@@ -1242,9 +1242,9 @@ IMPLEMT_VERIFIER(DecodeCornerpointsTargetBG, DecodeCornerpointsTargetBGVerify) {
 
 // Obtains the processing function of the output tensor description.
 IMPLEMT_COMMON_INFERFUNC(DecodeCornerpointsTargetBGInferShapeCommon) {
-  auto keypoints_prediction_shape = op.GetInputDesc("keypoints_prediction").GetShape().GetDims();
-  auto anchors_shape = op.GetInputDesc("anchors").GetShape().GetDims();
-  TensorDesc td = op.GetOutputDesc("keypoints_decoded");
+  auto keypoints_prediction_shape = op.GetInputDescByName("keypoints_prediction").GetShape().GetDims();
+  auto anchors_shape = op.GetInputDescByName("anchors").GetShape().GetDims();
+  TensorDesc td = op.GetOutputDescByName("keypoints_decoded");
   td.SetShape(ge::Shape(keypoints_prediction_shape));
   (void)op.UpdateOutputDesc("keypoints_decoded", td);
   return GRAPH_SUCCESS;
@@ -1266,12 +1266,12 @@ VERIFY_FUNC_REG(DecodeCornerpointsTargetBG, DecodeCornerpointsTargetBGVerify);
 // ----------------DecodeCornerpointsTargetWrtCenterV1-------------------
 IMPLEMT_VERIFIER(DecodeCornerpointsTargetWrtCenterV1, DecodeCornerpointsTargetWrtCenterV1Verify) {
   // check shape
-  auto keypoints_predictions_shape = op.GetInputDesc("keypoints_prediction").GetShape().GetDims();
+  auto keypoints_predictions_shape = op.GetInputDescByName("keypoints_prediction").GetShape().GetDims();
   if (keypoints_predictions_shape.empty()) {
     OP_LOGE(TbeGetName(op).c_str(), "can not get keypoints_predictions shape.");
     return GRAPH_FAILED;
   }
-  auto anchors_shape = op.GetInputDesc("anchors").GetShape().GetDims();
+  auto anchors_shape = op.GetInputDescByName("anchors").GetShape().GetDims();
   if (anchors_shape.empty()) {
     OP_LOGE(TbeGetName(op).c_str(), "can not get anchors shape.");
     return GRAPH_FAILED;
@@ -1305,9 +1305,9 @@ IMPLEMT_VERIFIER(DecodeCornerpointsTargetWrtCenterV1, DecodeCornerpointsTargetWr
 
 // Obtains the processing function of the output tensor description.
 IMPLEMT_COMMON_INFERFUNC(DecodeCornerpointsTargetWrtCenterV1InferShapeCommon) {
-  auto keypoints_prediction_shape = op.GetInputDesc("keypoints_prediction").GetShape().GetDims();
-  auto anchors_shape = op.GetInputDesc("anchors").GetShape().GetDims();
-  TensorDesc td = op.GetOutputDesc("keypoints_decoded");
+  auto keypoints_prediction_shape = op.GetInputDescByName("keypoints_prediction").GetShape().GetDims();
+  auto anchors_shape = op.GetInputDescByName("anchors").GetShape().GetDims();
+  TensorDesc td = op.GetOutputDescByName("keypoints_decoded");
   td.SetShape(ge::Shape(keypoints_prediction_shape));
   (void)op.UpdateOutputDesc("keypoints_decoded", td);
   return GRAPH_SUCCESS;
@@ -1329,12 +1329,12 @@ VERIFY_FUNC_REG(DecodeCornerpointsTargetWrtCenterV1, DecodeCornerpointsTargetWrt
 // ----------------DecodeWheelsTarget-------------------
 IMPLEMT_VERIFIER(DecodeWheelsTarget, DecodeWheelsTargetVerify) {
   // check shape
-  auto boundary_predictions_shape = op.GetInputDesc("boundary_predictions").GetShape().GetDims();
+  auto boundary_predictions_shape = op.GetInputDescByName("boundary_predictions").GetShape().GetDims();
   if (boundary_predictions_shape.empty()) {
     OP_LOGE(TbeGetName(op).c_str(), "can not get boundary_predictions shape.");
     return GRAPH_FAILED;
   }
-  auto anchors_shape = op.GetInputDesc("anchors").GetShape().GetDims();
+  auto anchors_shape = op.GetInputDescByName("anchors").GetShape().GetDims();
   if (anchors_shape.empty()) {
     OP_LOGE(TbeGetName(op).c_str(), "can not get anchors shape.");
     return GRAPH_FAILED;
@@ -1368,9 +1368,9 @@ IMPLEMT_VERIFIER(DecodeWheelsTarget, DecodeWheelsTargetVerify) {
 
 // Obtains the processing function of the output tensor description.
 IMPLEMT_COMMON_INFERFUNC(DecodeWheelsTargetInferShapeCommon) {
-  auto boundary_predictions_shape = op.GetInputDesc("boundary_predictions").GetShape().GetDims();
-  auto anchors_shape = op.GetInputDesc("anchors").GetShape().GetDims();
-  TensorDesc td = op.GetOutputDesc("boundary_encoded");
+  auto boundary_predictions_shape = op.GetInputDescByName("boundary_predictions").GetShape().GetDims();
+  auto anchors_shape = op.GetInputDescByName("anchors").GetShape().GetDims();
+  TensorDesc td = op.GetOutputDescByName("boundary_encoded");
   td.SetShape(ge::Shape(boundary_predictions_shape));
   (void)op.UpdateOutputDesc("boundary_encoded", td);
   return GRAPH_SUCCESS;
@@ -1408,7 +1408,7 @@ IMPLEMT_VERIFIER(BatchMultiClassNonMaxSuppression, BatchMultiClassNonMaxSuppress
 
     return GRAPH_FAILED;
   }
-  auto inputShape = op.GetInputDesc("boxes").GetShape().GetDims();
+  auto inputShape = op.GetInputDescByName("boxes").GetShape().GetDims();
   bool is_unknown = IsUnknown(inputShape);
   // check input shape
   if (inputShape.empty()) {
@@ -1455,7 +1455,7 @@ IMPLEMT_VERIFIER(BatchMultiClassNonMaxSuppression, BatchMultiClassNonMaxSuppress
 
   if (inputShape.size() == 4) {
     // check class num in boxes
-    auto inputScoreShape = op.GetInputDesc("scores").GetShape().GetDims();
+    auto inputScoreShape = op.GetInputDescByName("scores").GetShape().GetDims();
     // check input shape
     CHECK(inputScoreShape.empty(), OP_LOGE(TbeGetName(op).c_str(), "can not get input score shape."),
           return GRAPH_FAILED);
@@ -1485,7 +1485,7 @@ void SetRangeShape(ge::Operator& op, ge::TensorDesc& desc, const std::string& in
   }
   std::vector<std::pair<int64_t, int64_t>> input_range;
   std::vector<std::pair<int64_t, int64_t>> output_range;
-  op.GetInputDesc(input_name).GetShapeRange(input_range);
+  op.GetInputDescByName(input_name.c_str()).GetShapeRange(input_range);
   if (input_range.empty()) {
     output_range.push_back(std::pair<int64_t, int64_t>(1, -1));
   } else {
@@ -1503,8 +1503,8 @@ IMPLEMT_COMMON_INFERFUNC(BatchMultiClassNonMaxSuppressionInferShape) {
   std::int64_t maxOutNum = 0;
   CHECK(ge::GRAPH_SUCCESS != op.GetAttr("max_total_size", maxOutNum),
         OP_LOGE(TbeGetName(op).c_str(), "get attr failed"), return false);
-  auto inputScoreShape = op.GetInputDesc("scores").GetShape().GetDims();
-  DataType inputDtype = op.GetInputDesc("scores").GetDataType();
+  auto inputScoreShape = op.GetInputDescByName("scores").GetShape().GetDims();
+  DataType inputDtype = op.GetInputDescByName("scores").GetDataType();
 
   // check input shape
   CHECK(inputScoreShape.empty(), OP_LOGE(TbeGetName(op).c_str(), "can not get input scores shape."), return GRAPH_FAILED);
@@ -1532,7 +1532,7 @@ IMPLEMT_COMMON_INFERFUNC(BatchMultiClassNonMaxSuppressionInferShape) {
     nmsedBoxesShape.push_back(maxOutNum);
     nmsedValidNum.push_back(8);
   }
-  TensorDesc tdBoxes = op.GetOutputDesc("nmsed_boxes");
+  TensorDesc tdBoxes = op.GetOutputDescByName("nmsed_boxes");
   tdBoxes.SetShape(ge::Shape(nmsedBoxesShape));
   tdBoxes.SetDataType(inputDtype);
   SetRangeShape(op, tdBoxes, "scores", is_unknown, nmsedBoxesShape);
@@ -1542,21 +1542,21 @@ IMPLEMT_COMMON_INFERFUNC(BatchMultiClassNonMaxSuppressionInferShape) {
   vector<int64_t> nmsedScoreShape;
   nmsedScoreShape.push_back(score_dim0);
   nmsedScoreShape.push_back(maxOutNum);
-  TensorDesc tdScore = op.GetOutputDesc("nmsed_scores");
+  TensorDesc tdScore = op.GetOutputDescByName("nmsed_scores");
   tdScore.SetShape(ge::Shape(nmsedScoreShape));
   tdScore.SetDataType(inputDtype);
   SetRangeShape(op, tdScore, "scores", is_unknown, nmsedScoreShape);
   CHECK(op.UpdateOutputDesc("nmsed_scores", tdScore) != GRAPH_SUCCESS,
         OP_LOGE(TbeGetName(op).c_str(), "UpdateOutputDesc failed."), return GRAPH_FAILED);
 
-  TensorDesc tdClass = op.GetOutputDesc("nmsed_classes");
+  TensorDesc tdClass = op.GetOutputDescByName("nmsed_classes");
   tdClass.SetShape(ge::Shape(nmsedScoreShape));
   tdClass.SetDataType(inputDtype);
   SetRangeShape(op, tdClass, "scores", is_unknown, nmsedScoreShape);
   CHECK(op.UpdateOutputDesc("nmsed_classes", tdClass) != GRAPH_SUCCESS,
         OP_LOGE(TbeGetName(op).c_str(), "UpdateOutputDesc failed."), return GRAPH_FAILED);
 
-  TensorDesc tdNum = op.GetOutputDesc("nmsed_num");
+  TensorDesc tdNum = op.GetOutputDescByName("nmsed_num");
   tdNum.SetShape(ge::Shape(nmsedValidNum));
   tdNum.SetDataType(DT_INT32);
   SetRangeShape(op, tdNum, "scores", is_unknown, nmsedValidNum);
@@ -1581,11 +1581,11 @@ COMMON_INFER_FUNC_REG(ToAbsoluteBBox, ELMTWISE_INFER_SHAPEANDTYPE("normalized_bo
 // ----------------DecodeBboxV2-------------------
 IMPLEMT_VERIFIER(DecodeBboxV2, DecodeBboxV2Verify) {
   // check shape
-  auto box_predictions_shape = op.GetInputDesc("boxes").GetShape().GetDims();
+  auto box_predictions_shape = op.GetInputDescByName("boxes").GetShape().GetDims();
   CHECK(box_predictions_shape.empty(), 
         VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), GetInputInvalidErrMsg("box_predictions shape")),
         return GRAPH_FAILED);
-  auto anchors_shape = op.GetInputDesc("anchors").GetShape().GetDims();
+  auto anchors_shape = op.GetInputDescByName("anchors").GetShape().GetDims();
   CHECK(anchors_shape.empty(), 
         VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), GetInputInvalidErrMsg("anchors shape")), 
         return GRAPH_FAILED);
@@ -1688,16 +1688,16 @@ VERIFY_FUNC_REG(Sort, SortVerify);
 // --------------------sort---------------------------
 // ----------------PTIou-------------------
 IMPLEMT_COMMON_INFERFUNC(IouInferShape) {
-  auto shape_box = op.GetInputDesc("bboxes").GetShape();
-  auto shap_gbox = op.GetInputDesc("gtboxes").GetShape();
+  auto shape_box = op.GetInputDescByName("bboxes").GetShape();
+  auto shap_gbox = op.GetInputDescByName("gtboxes").GetShape();
   vector<int64_t> shape_out;
   shape_out.push_back(shap_gbox.GetDim(0));
   shape_out.push_back(shape_box.GetDim(0));
 
   Shape output_shape(shape_out);
-  DataType input_type = op.GetInputDesc("bboxes").GetDataType();
+  DataType input_type = op.GetInputDescByName("bboxes").GetDataType();
 
-  TensorDesc td = op.GetOutputDesc("overlap");
+  TensorDesc td = op.GetOutputDescByName("overlap");
   td.SetShape(output_shape);
   td.SetDataType(input_type);
   (void)op.UpdateOutputDesc("overlap", td);
@@ -1730,7 +1730,7 @@ COMMON_INFER_FUNC_REG(PtIou, IouInferShape);
         } else {
             return GRAPH_FAILED;
         }
-        auto score_shape = op.GetInputDesc("scores").GetShape().GetDims();
+        auto score_shape = op.GetInputDescByName("scores").GetShape().GetDims();
         std::int64_t batch_size = 0;
         std::int64_t class_size = 0;
         std::int64_t total_size = 0;
@@ -1751,7 +1751,7 @@ COMMON_INFER_FUNC_REG(PtIou, IouInferShape);
         selected_indices_shape.push_back(max_box_size);
         selected_indices_shape.push_back(index_last_dim);
 
-        TensorDesc selected_index = op.GetOutputDesc("selected_indices");
+        TensorDesc selected_index = op.GetOutputDescByName("selected_indices");
         selected_index.SetShape(ge::Shape(selected_indices_shape));
         selected_index.SetDataType(DT_INT32);
         CHECK(op.UpdateOutputDesc("selected_indices",selected_index) != GRAPH_SUCCESS,
@@ -1789,7 +1789,7 @@ IMPLEMT_COMMON_INFERFUNC(RoiExtractorInferShape) {
   auto x0_desc = op.GetDynamicInputDesc("features", 0);
   auto input_dtype = x0_desc.GetDataType();
   auto x0_shape = x0_desc.GetShape();
-  auto rois_shape = op.GetInputDesc("rois").GetShape();
+  auto rois_shape = op.GetInputDescByName("rois").GetShape();
 
   int64_t pooled_height;
   int64_t pooled_width;
@@ -1813,7 +1813,7 @@ IMPLEMT_COMMON_INFERFUNC(RoiExtractorInferShape) {
   dim_tmp.push_back(pooled_width);
   Shape valid_shape(dim_tmp);
 
-  auto td = op.GetOutputDesc("y");
+  auto td = op.GetOutputDescByName("y");
   td.SetShape(valid_shape);
   td.SetDataType(input_dtype);
   (void)op.UpdateOutputDesc("y", td);
@@ -1831,15 +1831,15 @@ VERIFY_FUNC_REG(RoiExtractor, RoiExtractorVerify);
 
 // ----------------BalanceRois-------------------
 IMPLEMT_COMMON_INFERFUNC(BalanceRoisInferShape) {
-  auto rois_shape = op.GetInputDesc("rois").GetShape();
-  auto rois_dtype = op.GetInputDesc("rois").GetDataType();
+  auto rois_shape = op.GetInputDescByName("rois").GetShape();
+  auto rois_dtype = op.GetInputDescByName("rois").GetDataType();
 
   std::vector<int64_t> dim_tmp;
   dim_tmp.push_back(rois_shape.GetDim(0));
   Shape index_shape(dim_tmp);
 
-  auto output_rois = op.GetOutputDesc("balance_rois");
-  auto output_index = op.GetOutputDesc("index");
+  auto output_rois = op.GetOutputDescByName("balance_rois");
+  auto output_index = op.GetOutputDescByName("index");
   output_rois.SetShape(rois_shape);
   output_rois.SetDataType(rois_dtype);
   output_index.SetShape(index_shape);
@@ -1861,8 +1861,8 @@ VERIFY_FUNC_REG(BalanceRois, BalanceRoisVerify);
 // ----------------YoloBoxesEncode-------------------
 IMPLEMT_COMMON_INFERFUNC(YoloBoxesEncodeInferShape)
 {
-  auto input_shape = op.GetInputDesc("anchor_boxes").GetShape();
-  auto input_type = op.GetInputDesc("anchor_boxes").GetDataType();
+  auto input_shape = op.GetInputDescByName("anchor_boxes").GetShape();
+  auto input_type = op.GetInputDescByName("anchor_boxes").GetDataType();
   if (input_shape.GetDims().size() != 2) {
     OP_LOGI("YoloBoxesEncode", "Infershape input anchor boxes dims isn't equal to 2!");
     return GRAPH_FAILED;
@@ -1873,7 +1873,7 @@ IMPLEMT_COMMON_INFERFUNC(YoloBoxesEncodeInferShape)
   vec_dims.push_back(input_shape.GetDim(1));
   ge::Shape y_shape(vec_dims);
   
-  auto output_desc = op.GetOutputDesc("encoded_bboxes");
+  auto output_desc = op.GetOutputDescByName("encoded_bboxes");
   output_desc.SetShape(y_shape);
   output_desc.SetDataType(ge::DataType(input_type));
   (void)op.UpdateOutputDesc("encoded_bboxes", output_desc);
@@ -1928,7 +1928,7 @@ IMPLEMT_INFERFUNC(AnchorResponseFlags, AnchorResponseFlagsInfer) {
   output_size = featmap_h * featmap_w * num_base_anchors;
   output_shape.push_back(output_size);
 
-  TensorDesc output_desc = op.GetOutputDesc("flags");
+  TensorDesc output_desc = op.GetOutputDescByName("flags");
   output_desc.SetShape(ge::Shape(output_shape));
   output_desc.SetDataType(ge::DT_UINT8);
   (void)op.UpdateOutputDesc("flags", output_desc);
@@ -1939,8 +1939,8 @@ INFER_FUNC_REG(AnchorResponseFlags, AnchorResponseFlagsInfer);
 
 // ----------------GridAssignPositive Op start-------------------
 IMPLEMT_COMMON_INFERFUNC(GridAssignPositiveInferShape) {
-    TensorDesc tensordesc_output = op.GetOutputDesc("assigned_gt_inds_pos");
-    TensorDesc tensordesc_input = op.GetInputDesc("assigned_gt_inds");
+    TensorDesc tensordesc_output = op.GetOutputDescByName("assigned_gt_inds_pos");
+    TensorDesc tensordesc_input = op.GetInputDescByName("assigned_gt_inds");
     tensordesc_output.SetShape(tensordesc_input.GetShape());
     tensordesc_output.SetDataType(tensordesc_input.GetDataType());
     (void)op.UpdateOutputDesc("assigned_gt_inds_pos", tensordesc_output);
@@ -1949,13 +1949,13 @@ IMPLEMT_COMMON_INFERFUNC(GridAssignPositiveInferShape) {
 
 IMPLEMT_VERIFIER(GridAssignPositive, GridAssignPositiveVerify)
 {
-  auto input_shape_0 = op.GetInputDesc("assigned_gt_inds").GetShape().GetDims();
-  auto input_shape_1 = op.GetInputDesc("overlaps").GetShape().GetDims();
-  auto input_shape_2 = op.GetInputDesc("box_responsible_flags").GetShape().GetDims();
-  auto input_shape_3 = op.GetInputDesc("max_overlaps").GetShape().GetDims();
-  auto input_shape_4 = op.GetInputDesc("argmax_overlaps").GetShape().GetDims();
-  auto input_shape_5 = op.GetInputDesc("gt_max_overlaps").GetShape().GetDims();
-  auto input_shape_6 = op.GetInputDesc("gt_argmax_overlaps").GetShape().GetDims();
+  auto input_shape_0 = op.GetInputDescByName("assigned_gt_inds").GetShape().GetDims();
+  auto input_shape_1 = op.GetInputDescByName("overlaps").GetShape().GetDims();
+  auto input_shape_2 = op.GetInputDescByName("box_responsible_flags").GetShape().GetDims();
+  auto input_shape_3 = op.GetInputDescByName("max_overlaps").GetShape().GetDims();
+  auto input_shape_4 = op.GetInputDescByName("argmax_overlaps").GetShape().GetDims();
+  auto input_shape_5 = op.GetInputDescByName("gt_max_overlaps").GetShape().GetDims();
+  auto input_shape_6 = op.GetInputDescByName("gt_argmax_overlaps").GetShape().GetDims();
   if (input_shape_0.size() != 1 ||
       input_shape_1.size() != 2 ||
       input_shape_2.size() != 1 ||

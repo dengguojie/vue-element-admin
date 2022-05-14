@@ -33,7 +33,7 @@ IMPLEMT_INFERFUNC(Variable, VariableInfer) {
 INFER_FUNC_REG(Variable, VariableInfer);
 
 IMPLEMT_INFERFUNC(TemporaryVariable, TemporaryVariableInfer) {
-  TensorDesc td = op.GetOutputDesc("y");
+  TensorDesc td = op.GetOutputDescByName("y");
 
   std::vector<int64_t> shape_size{};
   (void)op.GetAttr("shape", shape_size);
@@ -49,7 +49,7 @@ IMPLEMT_INFERFUNC(TemporaryVariable, TemporaryVariableInfer) {
 INFER_FUNC_REG(TemporaryVariable, TemporaryVariableInfer);
 
 IMPLEMT_INFERFUNC(DestroyTemporaryVariable, DestroyTemporaryVariableInfer) {
-  TensorDesc input_desc = op.GetInputDesc("x");
+  TensorDesc input_desc = op.GetInputDescByName("x");
   (void)op.UpdateOutputDesc("y", input_desc);
   return GRAPH_SUCCESS;
 }
@@ -57,7 +57,7 @@ IMPLEMT_INFERFUNC(DestroyTemporaryVariable, DestroyTemporaryVariableInfer) {
 INFER_FUNC_REG(DestroyTemporaryVariable, DestroyTemporaryVariableInfer);
 
 IMPLEMT_INFERFUNC(IsVariableInitialized, IsVariableInitializedInfer) {
-  TensorDesc input_desc = op.GetInputDesc("x");
+  TensorDesc input_desc = op.GetInputDescByName("x");
   input_desc.SetShape(ge::Shape());
   input_desc.SetDataType(DT_BOOL);
   (void)op.UpdateOutputDesc("y", input_desc);
@@ -67,7 +67,7 @@ IMPLEMT_INFERFUNC(IsVariableInitialized, IsVariableInitializedInfer) {
 INFER_FUNC_REG(IsVariableInitialized, IsVariableInitializedInfer);
 
 IMPLEMT_INFERFUNC(VarIsInitializedOp, VarIsInitializedOpInfer) {
-  TensorDesc input_desc = op.GetInputDesc("x");
+  TensorDesc input_desc = op.GetInputDescByName("x");
   input_desc.SetShape(ge::Shape());
   input_desc.SetDataType(DT_BOOL);
   (void)op.UpdateOutputDesc("y", input_desc);

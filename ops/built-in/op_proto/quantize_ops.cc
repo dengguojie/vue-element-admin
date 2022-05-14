@@ -68,10 +68,10 @@ COMMON_INFER_FUNC_REG(Dequantize, DequantizeInferShape);
 
 // ----------------Quantize Beg----------------------------------------------
 IMPLEMT_COMMON_INFERFUNC(QuantizeInferShape) {
-  TensorDesc output_desc_y = op.GetOutputDesc("y");
+  TensorDesc output_desc_y = op.GetOutputDescByName("y");
   DataType predict_dtype = DT_INT8;
-  Format predict_format = op.GetInputDesc("x").GetFormat();
-  ge::Shape output_shape = op.GetInputDesc("x").GetShape();
+  Format predict_format = op.GetInputDescByName("x").GetFormat();
+  ge::Shape output_shape = op.GetInputDescByName("x").GetShape();
   string dtype = "torch.qint8";
   op.GetAttr("dtype", dtype);
   if (dtype == "torch.qint8") {

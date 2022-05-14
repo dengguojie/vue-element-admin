@@ -41,9 +41,9 @@ IMPLEMT_INFERFUNC(UniformCandidateSampler, UniformCandidateSamplerInfer) {
 INFER_FUNC_REG(UniformCandidateSampler, UniformCandidateSamplerInfer);
 
 IMPLEMT_INFERFUNC(FixedUnigramCandidateSampler, FixedUnigramCandidateSamplerInfer) {
-  TensorDesc tensordesc_output = op.GetOutputDesc("sampled_candidates");
-  TensorDesc tensordesc_output1 = op.GetOutputDesc("true_expected_count");
-  TensorDesc tensordesc_output2 = op.GetOutputDesc("sampled_expected_count");
+  TensorDesc tensordesc_output = op.GetOutputDescByName("sampled_candidates");
+  TensorDesc tensordesc_output1 = op.GetOutputDescByName("true_expected_count");
+  TensorDesc tensordesc_output2 = op.GetOutputDescByName("sampled_expected_count");
   tensordesc_output.SetDataType(DT_INT64);
   tensordesc_output1.SetDataType(DT_FLOAT);
   tensordesc_output2.SetDataType(DT_FLOAT);
@@ -56,13 +56,13 @@ IMPLEMT_INFERFUNC(FixedUnigramCandidateSampler, FixedUnigramCandidateSamplerInfe
 INFER_FUNC_REG(FixedUnigramCandidateSampler, FixedUnigramCandidateSamplerInfer);
 
 IMPLEMT_INFERFUNC(LearnedUnigramCandidateSampler, LearnedUnigramCandidateSamplerInfer) {
-  TensorDesc sampled_candidates_desc = op.GetOutputDesc("sampled_candidates");
+  TensorDesc sampled_candidates_desc = op.GetOutputDescByName("sampled_candidates");
   sampled_candidates_desc.SetDataType(DT_INT64);
   op.UpdateOutputDesc("sampled_candidates", sampled_candidates_desc);
-  TensorDesc true_expected_count_desc = op.GetOutputDesc("true_expected_count");
+  TensorDesc true_expected_count_desc = op.GetOutputDescByName("true_expected_count");
   true_expected_count_desc.SetDataType(DT_FLOAT);
   op.UpdateOutputDesc("true_expected_count", true_expected_count_desc);
-  TensorDesc expected_count_desc = op.GetOutputDesc("sampled_expected_count");
+  TensorDesc expected_count_desc = op.GetOutputDescByName("sampled_expected_count");
   expected_count_desc.SetDataType(DT_FLOAT);
   op.UpdateOutputDesc("sampled_expected_count", expected_count_desc);
   return CandidateSamplerShape(op);
@@ -109,7 +109,7 @@ IMPLEMT_INFERFUNC(AllCandidateSampler, AllCandidateSamplerInfer) {
   true_dims.push_back(batch_size);
   true_dims.push_back(num_true);
 
-  TensorDesc candidate_desc = op.GetOutputDesc("sampled_candidates");
+  TensorDesc candidate_desc = op.GetOutputDescByName("sampled_candidates");
   candidate_desc.SetShape(Shape(sampled_dims));
   candidate_desc.SetDataType(DT_INT64);
   judge = (op.UpdateOutputDesc("sampled_candidates", candidate_desc) != GRAPH_SUCCESS);
@@ -118,7 +118,7 @@ IMPLEMT_INFERFUNC(AllCandidateSampler, AllCandidateSamplerInfer) {
     return GRAPH_FAILED;
   }
 
-  TensorDesc true_desc = op.GetOutputDesc("true_expected_count");
+  TensorDesc true_desc = op.GetOutputDescByName("true_expected_count");
   true_desc.SetShape(Shape(true_dims));
   true_desc.SetDataType(DT_FLOAT);
   if (op.UpdateOutputDesc("true_expected_count", true_desc) != GRAPH_SUCCESS) {
@@ -126,7 +126,7 @@ IMPLEMT_INFERFUNC(AllCandidateSampler, AllCandidateSamplerInfer) {
     return GRAPH_FAILED;
   }
 
-  TensorDesc sampled_desc = op.GetOutputDesc("sampled_expected_count");
+  TensorDesc sampled_desc = op.GetOutputDescByName("sampled_expected_count");
   sampled_desc.SetShape(Shape(sampled_dims));
   sampled_desc.SetDataType(DT_FLOAT);
   judge = (op.UpdateOutputDesc("sampled_expected_count", sampled_desc) != GRAPH_SUCCESS);

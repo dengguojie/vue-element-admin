@@ -51,7 +51,7 @@ IMPLEMT_COMMON_INFERFUNC(SplitInferShape) {
   OP_LOGD(TbeGetName(op), "SplitInferShape start");
   auto shape_idx = static_cast<uint32_t>(op_desc->GetInputIndexByName("split_dim"));
   const GeTensor *split_dim_data = OpDescUtils::GetInputConstData(op, shape_idx);
-  auto x_inputdesc = op.GetInputDesc("x");
+  auto x_inputdesc = op.GetInputDescByName("x");
   auto x_shape = x_inputdesc.GetShape();
   auto x_dtype = x_inputdesc.GetDataType();
   TensorDesc td = op.GetDynamicOutputDesc("y", 0);
@@ -107,7 +107,7 @@ IMPLEMT_COMMON_INFERFUNC(SplitInferShape) {
     }
     return GRAPH_SUCCESS;
   }
-  auto split_dim_dtype = op.GetInputDesc("split_dim").GetDataType();
+  auto split_dim_dtype = op.GetInputDescByName("split_dim").GetDataType();
   std::vector<int64_t> split_dim_vec;
   CalcSplit(split_dim_data->GetData(), split_dim_dtype, split_dim_vec);
 
@@ -172,7 +172,7 @@ IMPLEMT_COMMON_INFERFUNC(SplitDInferShape) {
   PREPARE_DYNAMIC_SHAPE(depends);
 
   OP_LOGD(TbeGetName(op).c_str(), "SplitDInferShape");
-  auto x_desc = op.GetInputDesc("x");
+  auto x_desc = op.GetInputDescByName("x");
   auto x_shape = x_desc.GetShape();
   auto x_dtype = x_desc.GetDataType();
   TensorDesc td = op.GetDynamicOutputDesc("y", 0);
@@ -288,11 +288,11 @@ IMPLEMT_COMMON_INFERFUNC(SplitVInferShape) {
   const vector<string> depend_name = {"size_splits", "split_dim"};
   PREPARE_DYNAMIC_SHAPE(depend_name);
 
-  auto x_desc = op.GetInputDesc("x");
+  auto x_desc = op.GetInputDescByName("x");
   auto x_shape = x_desc.GetShape();
   DataType x_dtype = x_desc.GetDataType();
   TensorDesc td = op.GetDynamicOutputDesc("y", 0);
-  TensorDesc tdx = op.GetInputDesc("x");
+  TensorDesc tdx = op.GetInputDescByName("x");
   int64_t num_split;
   if (op.GetAttr("num_split", num_split) == GRAPH_FAILED) {
     OP_LOGE(TbeGetName(op).c_str(), "get attr num_split failed");
@@ -349,7 +349,7 @@ IMPLEMT_COMMON_INFERFUNC(SplitVInferShape) {
   }
 
   OP_LOGD(TbeGetName(op).c_str(), "SplitVInferShape, get split_dim value");
-  auto split_dim_dtype = op.GetInputDesc("split_dim").GetDataType();
+  auto split_dim_dtype = op.GetInputDescByName("split_dim").GetDataType();
   std::vector<int64_t> split_dim_vec;
   CalcSplitV(split_dim_data, split_dim_dtype, split_dim_vec);
 
@@ -389,7 +389,7 @@ IMPLEMT_COMMON_INFERFUNC(SplitVInferShape) {
   }
 
   OP_LOGD(TbeGetName(op).c_str(), "SplitVInferShape, get size_splits value");
-  auto size_splits_dtype = op.GetInputDesc("size_splits").GetDataType();
+  auto size_splits_dtype = op.GetInputDescByName("size_splits").GetDataType();
   std::vector<int64_t> size_splits_vec;
   CalcSplitV(size_splits_data, size_splits_dtype, size_splits_vec);
 
@@ -445,7 +445,7 @@ INFER_FUNC_REG(SplitV, SplitVInferShape);
 
 // ----------------SplitVD OP Begin-------------------
 IMPLEMT_INFERFUNC(SplitVD, SplitVDInferShape) {
-  auto tensordesc = op.GetInputDesc("x");
+  auto tensordesc = op.GetInputDescByName("x");
   auto shape = tensordesc.GetShape();
   DataType inputDtype = tensordesc.GetDataType();
   TensorDesc td = op.GetDynamicOutputDesc("y", 0);
@@ -982,7 +982,7 @@ INFER_DATA_SLICE_FUNC_REG(ConcatV2D, ConcatV2DInferDataSlice);
 // ----------------ParallelConcat OP Begin-------------------
 static std::vector<int64_t> GetAttrValue(const ge::Operator& op, const std::string& key_name) {
   std::vector<int64_t> list;
-  if (ge::GRAPH_SUCCESS != op.GetAttr(key_name, list)) {
+  if (ge::GRAPH_SUCCESS != op.GetAttr(key_name.c_str(), list)) {
     std::string err_msg = GetInputInvalidErrMsg("ConstValue");
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
   }
@@ -1031,14 +1031,14 @@ IMPLEMT_COMMON_INFERFUNC(ParallelConcatInferShape) {
     }
   }
   DataType input_dtype = op.GetDynamicInputDesc("values", 0).GetDataType();
-  TensorDesc outDesc = op.GetOutputDesc("output_data");
+  TensorDesc outDesc = op.GetOutputDescByName("output_data");
   std::string name_out = outDesc.GetName();
   outDesc.SetShape(ge::Shape(shape));
   outDesc.SetDataType(input_dtype);
   (void)op.UpdateOutputDesc("output_data", outDesc);
   OP_LOGI(TbeGetName(op).c_str(), "input shape attr is: %s, set output shape :%s, Obtain REAL OUTPUT SHAPE is %s",
           to_string(ge::Shape(shape)).c_str(), to_string(ge::Shape(outDesc.GetShape())).c_str(),
-          to_string(op.GetOutputDesc("output_data").GetShape()).c_str());
+          to_string(op.GetOutputDescByName("output_data").GetShape()).c_str());
   return GRAPH_SUCCESS;
 }
 
@@ -1521,7 +1521,7 @@ IMPLEMT_COMMON_INFERFUNC(CombinationsInferShape) {
   }
   dim_vector.push_back(r);
   Shape output_shape(dim_vector);
-  TensorDesc td = op.GetOutputDesc("y");
+  TensorDesc td = op.GetOutputDescByName("y");
   td.SetShape(output_shape);
   td.SetDataType(input_dtype);
   if (op.UpdateOutputDesc("y", td) != GRAPH_SUCCESS) {
@@ -1532,7 +1532,7 @@ IMPLEMT_COMMON_INFERFUNC(CombinationsInferShape) {
 
 IMPLEMT_VERIFIER(Combinations, CombinationsVerify)
 {
-  if (op.GetInputDesc("x").GetDataType() != op.GetOutputDesc("y").GetDataType()) {
+  if (op.GetInputDescByName("x").GetDataType() != op.GetOutputDescByName("y").GetDataType()) {
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;

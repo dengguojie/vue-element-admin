@@ -45,13 +45,13 @@ IMPLEMT_INFERFUNC(Batch, BatchInfer) {
 
   Shape scalar_shape;
   Scalar(scalar_shape);
-  TensorDesc y_desc = op.GetOutputDesc("y_id");
+  TensorDesc y_desc = op.GetOutputDescByName("y_id");
   y_desc.SetShape(scalar_shape);
   y_desc.SetDataType(DT_INT64);
   op.UpdateOutputDesc("y_id", y_desc);
 
   std::vector<int64_t> dims = {ge::UNKNOWN_DIM, 3};
-  TensorDesc output_desc_batch_index = op.GetOutputDesc("y_index");
+  TensorDesc output_desc_batch_index = op.GetOutputDescByName("y_index");
   output_desc_batch_index.SetShape(Shape(dims));
   output_desc_batch_index.SetDataType(DT_INT64);
   op.UpdateOutputDesc("y_index", output_desc_batch_index);
@@ -68,7 +68,7 @@ IMPLEMT_INFERFUNC(Unbatch, UnbatchInfer) {
         string("failed to call ReplaceDim function, create output[y_tensor] shape failed"));
     return GRAPH_FAILED;
   }
-  TensorDesc output_desc = op.GetOutputDesc("y_tensor");
+  TensorDesc output_desc = op.GetOutputDescByName("y_tensor");
   output_desc.SetShape(out_shape);
   output_desc.SetDataType(x_tensor.GetDataType());
   if (op.UpdateOutputDesc("y_tensor", output_desc) != GRAPH_SUCCESS) {
@@ -92,7 +92,7 @@ IMPLEMT_INFERFUNC(UnbatchGrad, UnbatchGradInfer) {
     return GRAPH_FAILED;
   }
   auto out_shape = UnknownShapeOfRank(grad_rank);
-  TensorDesc output_desc = op.GetOutputDesc("y_grad");
+  TensorDesc output_desc = op.GetOutputDescByName("y_grad");
   output_desc.SetShape(out_shape);
   output_desc.SetDataType(x_input_tensor.GetDataType());
   if (op.UpdateOutputDesc("y_grad", output_desc) != GRAPH_SUCCESS) {

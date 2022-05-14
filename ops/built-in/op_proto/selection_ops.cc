@@ -47,7 +47,7 @@ static bool CheckListEmpty(const std::string& op_name, const std::vector<int64_t
 }
 static std::vector<int64_t> GetAttrValue(const ge::Operator& op, const std::string& key_name) {
   std::vector<int64_t> list;
-  if (op.GetAttr(key_name, list) != GRAPH_SUCCESS) {
+  if (op.GetAttr(key_name.c_str(), list) != GRAPH_SUCCESS) {
     OP_LOGE(TbeGetName(op).c_str(), "GetOpAttr ConstValue failed!");
   }
   return list;
@@ -55,7 +55,7 @@ static std::vector<int64_t> GetAttrValue(const ge::Operator& op, const std::stri
 // ----------------StridedSliceGradD Op Begin-------------------
 static graphStatus GetStridedSliceGradValue(const ge::Operator& op, const std::string& keyName,
                                             vector<int32_t>& multiples) {
-  if (ge::GRAPH_SUCCESS != op.GetAttr(keyName, multiples)) {
+  if (ge::GRAPH_SUCCESS != op.GetAttr(keyName.c_str(), multiples)) {
     std::string err_msg = GetInputInvalidErrMsg(ConcatString(keyName));
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
@@ -65,8 +65,8 @@ static graphStatus GetStridedSliceGradValue(const ge::Operator& op, const std::s
 }
 
 IMPLEMT_COMMON_INFERFUNC(StridedSliceGradDInferShape) {
-  ge::Shape outputShape = op.GetInputDesc("dy").GetShape();
-  DataType input_dtype = op.GetInputDesc("dy").GetDataType();
+  ge::Shape outputShape = op.GetInputDescByName("dy").GetShape();
+  DataType input_dtype = op.GetInputDescByName("dy").GetDataType();
   size_t dimNum = outputShape.GetDimNum();
 
   // get out shape list from const node
@@ -114,7 +114,7 @@ IMPLEMT_COMMON_INFERFUNC(StridedSliceGradDInferShape) {
     return GRAPH_FAILED;
   }
 
-  TensorDesc tensordesc_output = op.GetOutputDesc("output");
+  TensorDesc tensordesc_output = op.GetOutputDescByName("output");
   tensordesc_output.SetShape(outputShape);
   tensordesc_output.SetDataType(input_dtype);
   (void)op.UpdateOutputDesc("output", tensordesc_output);
@@ -145,7 +145,7 @@ static graphStatus IsMasksAllZero(const ge::Operator& op, struct SsgMasks& slice
 
   for (auto& item : mask_maps) {
     int64_t mask_value = 0;
-    if (ge::GRAPH_SUCCESS != op.GetAttr(item.first, mask_value)) {
+    if (ge::GRAPH_SUCCESS != op.GetAttr(item.first.c_str(), mask_value)) {
       std::string err_msg = GetInputInvalidErrMsg(ConcatString(item.first));
       VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
       return GRAPH_FAILED;
@@ -163,8 +163,8 @@ static graphStatus IsMasksAllZero(const ge::Operator& op, struct SsgMasks& slice
 IMPLEMT_COMMON_INFERFUNC(StridedSliceGradInferShape) {
   OP_LOGD("OP[SSGInferShape]", "SSGInferShape BEGIN.");
   // Set depends if input_tensors are variable.
-  DataType input_dtype = op.GetInputDesc("dy").GetDataType();
-  Shape shape_dy = op.GetInputDesc("dy").GetShape();
+  DataType input_dtype = op.GetInputDescByName("dy").GetDataType();
+  Shape shape_dy = op.GetInputDescByName("dy").GetShape();
 
   // Get in_range, Set out_range
   std::vector<std::pair<int64_t, int64_t>> in_range;
@@ -172,11 +172,11 @@ IMPLEMT_COMMON_INFERFUNC(StridedSliceGradInferShape) {
   std::pair<int64_t, int64_t> range_value;
   vector<int64_t> outputShapeList;
   Tensor output_shape_tensor;
-  op.GetInputDesc("dy").GetShapeRange(in_range);
+  op.GetInputDescByName("dy").GetShapeRange(in_range);
 
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
   op_desc->SetOpInferDepends({"shape", "begin", "end", "strides"});
-  auto dim_vector = op.GetInputDesc("shape").GetShape().GetDims();
+  auto dim_vector = op.GetInputDescByName("shape").GetShape().GetDims();
   if (dim_vector.empty()) {
     std::string err_msg = OtherErrMsg("The dims of input is empty!");
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
@@ -198,7 +198,7 @@ IMPLEMT_COMMON_INFERFUNC(StridedSliceGradInferShape) {
           outputShapeList.push_back(-1);
         }
         Shape out_shape(outputShapeList);
-        TensorDesc tensordesc_output = op.GetOutputDesc("output");
+        TensorDesc tensordesc_output = op.GetOutputDescByName("output");
         tensordesc_output.SetShape(out_shape);
         tensordesc_output.SetDataType(input_dtype);
         (void)op.UpdateOutputDesc("output", tensordesc_output);
@@ -206,7 +206,7 @@ IMPLEMT_COMMON_INFERFUNC(StridedSliceGradInferShape) {
       }
       vector<int64_t> shape(1, -2);
       Shape out_shape(shape);
-      TensorDesc tensordesc_output = op.GetOutputDesc("output");
+      TensorDesc tensordesc_output = op.GetOutputDescByName("output");
       tensordesc_output.SetShape(out_shape);
       tensordesc_output.SetDataType(input_dtype);
       (void)op.UpdateOutputDesc("output", tensordesc_output);
@@ -219,7 +219,7 @@ IMPLEMT_COMMON_INFERFUNC(StridedSliceGradInferShape) {
       OP_LOGD(TbeGetName(op).c_str(), "shape is UNKNOWN_SHAPE or UNKNOWN_RANK");
       vector<int64_t> shape(1, -2);
       Shape out_shape(shape);
-      TensorDesc tensordesc_output = op.GetOutputDesc("output");
+      TensorDesc tensordesc_output = op.GetOutputDescByName("output");
       tensordesc_output.SetShape(out_shape);
       tensordesc_output.SetDataType(input_dtype);
       (void)op.UpdateOutputDesc("output", tensordesc_output);
@@ -230,7 +230,7 @@ IMPLEMT_COMMON_INFERFUNC(StridedSliceGradInferShape) {
     const vector<string> list_names = {"begin", "end", "strides"};
     int64_t begin_len = -1;
     for (const auto& param : list_names) {
-      begin_len = std::max(op.GetInputDesc(param).GetShape().GetDim(0), begin_len);
+      begin_len = std::max(op.GetInputDescByName(param.c_str()).GetShape().GetDim(0), begin_len);
     }
 
     bool no_mask = true;
@@ -251,7 +251,7 @@ IMPLEMT_COMMON_INFERFUNC(StridedSliceGradInferShape) {
         out_range.push_back(range_value);
       }
       Shape out_shape(shape);
-      TensorDesc tensordesc_output = op.GetOutputDesc("output");
+      TensorDesc tensordesc_output = op.GetOutputDescByName("output");
       tensordesc_output.SetShape(out_shape);
       tensordesc_output.SetDataType(input_dtype);
       tensordesc_output.SetShapeRange(out_range);
@@ -268,7 +268,7 @@ IMPLEMT_COMMON_INFERFUNC(StridedSliceGradInferShape) {
       outputShapeList.push_back(-1);
       out_range.push_back(std::make_pair(0, -1));
     }
-    TensorDesc tensordesc_output = op.GetOutputDesc("output");
+    TensorDesc tensordesc_output = op.GetOutputDescByName("output");
     ge::Shape out_shape = ge::Shape(outputShapeList);
     tensordesc_output.SetShape(out_shape);
     tensordesc_output.SetDataType(input_dtype);
@@ -279,14 +279,14 @@ IMPLEMT_COMMON_INFERFUNC(StridedSliceGradInferShape) {
 
   // if "shape" is -2 || (-1,-1,...) || (A, B, C,...,)
   OP_LOGD("OP[SSGInferShape]", "SSGInferShape BRANCH1.");
-  DataType dtype = op.GetInputDesc("shape").GetDataType();
+  DataType dtype = op.GetInputDescByName("shape").GetDataType();
   GetConstValue(op, output_shape_tensor, dtype, outputShapeList);
 
   // "shape" is -2
   if (outputShapeList == UNKNOWN_RANK) {
     vector<int64_t> shape(1, -2);
     Shape out_shape(shape);
-    TensorDesc tensordesc_output = op.GetOutputDesc("output");
+    TensorDesc tensordesc_output = op.GetOutputDescByName("output");
     tensordesc_output.SetShape(out_shape);
     tensordesc_output.SetDataType(input_dtype);
     (void)op.UpdateOutputDesc("output", tensordesc_output);
@@ -300,7 +300,7 @@ IMPLEMT_COMMON_INFERFUNC(StridedSliceGradInferShape) {
       out_range.push_back(range_value);
     }
   }
-  TensorDesc tensordesc_output = op.GetOutputDesc("output");
+  TensorDesc tensordesc_output = op.GetOutputDescByName("output");
   ge::Shape outputShape = ge::Shape(outputShapeList);
   tensordesc_output.SetShape(outputShape);
   tensordesc_output.SetDataType(input_dtype);
@@ -341,16 +341,16 @@ static graphStatus TileInferShapeAndType(ge::Operator& op, std::vector<int64_t>&
   OP_LOGI(TbeGetName(op).c_str(), "Get into multiples attr branch.");
   const int64_t shape_threshold = pow(2, 31) - 1;
   uint64_t multiples_len = multiples.size();
-  Shape input_shape = op.GetInputDesc("x").GetShape();
+  Shape input_shape = op.GetInputDescByName("x").GetShape();
   std::vector<int64_t> input_vector = input_shape.GetDims();
-  DataType input_dtype = op.GetInputDesc("x").GetDataType();
+  DataType input_dtype = op.GetInputDescByName("x").GetDataType();
   uint64_t input_len = input_shape.GetDimNum();
 
   std::vector<std::pair<int64_t, int64_t>> ori_shape_range;
-  op.GetInputDesc("x").GetShapeRange(ori_shape_range);
+  op.GetInputDescByName("x").GetShapeRange(ori_shape_range);
   MakeUpShapeRange(input_vector, ori_shape_range);
 
-  TensorDesc output_desc = op.GetOutputDesc("y");
+  TensorDesc output_desc = op.GetOutputDescByName("y");
   std::vector<int64_t> output_vector;
   std::vector<std::pair<int64_t, int64_t>> output_range;
 
@@ -454,15 +454,15 @@ IMPLEMT_COMMON_INFERFUNC(TileInferShape) {
   if (op.GetInputConstData("multiples", multiples_tensor) != GRAPH_SUCCESS) {
     // multiples is input tensor, not constInput or attr
     OP_LOGI(TbeGetName(op).c_str(), "Get constValue failed of [multiples]");
-    std::vector<int64_t> multiples_vector = op.GetInputDesc("multiples").GetShape().GetDims();
+    std::vector<int64_t> multiples_vector = op.GetInputDescByName("multiples").GetShape().GetDims();
 
-    TensorDesc output_desc = op.GetOutputDesc("y");
+    TensorDesc output_desc = op.GetOutputDescByName("y");
     std::vector<int64_t> output_vector;
     std::vector<std::pair<int64_t, int64_t>> output_range;
 
-    Shape input_shape = op.GetInputDesc("x").GetShape();
+    Shape input_shape = op.GetInputDescByName("x").GetShape();
     std::vector<int64_t> input_vector = input_shape.GetDims();
-    DataType input_dtype = op.GetInputDesc("x").GetDataType();
+    DataType input_dtype = op.GetInputDescByName("x").GetDataType();
     size_t input_len = input_shape.GetDimNum();
 
     if (multiples_vector.empty() || (!multiples_vector.empty() && multiples_vector[0] == 0)) {
@@ -506,7 +506,7 @@ IMPLEMT_COMMON_INFERFUNC(TileInferShape) {
     }
   }
 
-  DataType dtype = op.GetInputDesc("multiples").GetDataType();
+  DataType dtype = op.GetInputDescByName("multiples").GetDataType();
   std::vector<int64_t> multiples;
   GetTileConstValue(op, multiples_tensor, dtype, multiples);
   return TileInferShapeAndType(op, multiples);
@@ -518,7 +518,7 @@ COMMON_INFER_FUNC_REG(Tile, TileInferShape);
 // -----------------------TileD Op Begin----------------------------------
 vector<int64_t> GetTileDConstValue(const ge::Operator& op, const std::string& key_name) {
   std::vector<int64_t> multiples;
-  if (ge::GRAPH_SUCCESS != op.GetAttr(key_name, multiples)) {
+  if (ge::GRAPH_SUCCESS != op.GetAttr(key_name.c_str(), multiples)) {
     std::string err_msg = GetInputInvalidErrMsg("multiples");
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
   }
@@ -713,7 +713,7 @@ IMPLEMT_COMMON_INFERFUNC(RangeDInferShape) {
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
-  (void)op.UpdateOutputDesc("y", op.GetInputDesc("x"));
+  (void)op.UpdateOutputDesc("y", op.GetInputDescByName("x"));
   return GRAPH_SUCCESS;
 }
 
@@ -1169,7 +1169,7 @@ IMPLEMT_COMMON_INFERFUNC(GatherInferShape) {
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
   GeTensorDescPtr x_desc = op_desc->MutableInputDesc("x");
   std::vector<int64_t> x_shape = x_desc->MutableShape().GetDims();
-  DataType x_dtype = op.GetInputDesc("x").GetDataType();
+  DataType x_dtype = op.GetInputDescByName("x").GetDataType();
   std::vector<std::pair<int64_t, int64_t>> x_shape_range;
   op_desc->MutableInputDesc("x")->GetShapeRange(x_shape_range);
   MakeUpShapeRange(x_shape, x_shape_range);
@@ -1299,14 +1299,14 @@ COMMON_INFER_FUNC_REG(GatherD, GatherDInferShape);
 // --------------------------LogSpaceD---------------------
 bool InferShapeAndTypeLogSpaceD(Operator& op, const string& input_name, const string& output_name,
                                     const string& attr_name) {
-    TensorDesc v_output_desc = op.GetOutputDesc(output_name);
-    Format output_format = op.GetInputDesc(input_name).GetFormat();
-    ge::Shape shape = op.GetInputDesc(input_name).GetShape();
+    TensorDesc v_output_desc = op.GetOutputDescByName(output_name.c_str());
+    Format output_format = op.GetInputDescByName(input_name.c_str()).GetFormat();
+    ge::Shape shape = op.GetInputDescByName(input_name.c_str()).GetShape();
     ge::Shape outshape = ge::Shape(shape);
     v_output_desc.SetShape(outshape);
     v_output_desc.SetFormat(output_format);
     int64_t dtype = 1;
-    if (op.GetAttr(attr_name, dtype) != GRAPH_SUCCESS) {
+    if (op.GetAttr(attr_name.c_str(), dtype) != GRAPH_SUCCESS) {
         v_output_desc.SetDataType(DT_FLOAT);
     } else {
         if (dtype == 0) {
@@ -1316,13 +1316,13 @@ bool InferShapeAndTypeLogSpaceD(Operator& op, const string& input_name, const st
             v_output_desc.SetDataType(DT_FLOAT);
         }
     }
-    op.UpdateOutputDesc(output_name, v_output_desc);
+    op.UpdateOutputDesc(output_name.c_str(), v_output_desc);
     return true;
 }
 
 IMPLEMT_VERIFIER(LogSpaceD, LogSpaceDVerify)
 {
-    if (op.GetInputDesc("assist").GetShape().GetDims().size() != 1) {
+    if (op.GetInputDescByName("assist").GetShape().GetDims().size() != 1) {
         OP_LOGE(TbeGetName(op).c_str(), "Input size must be 1.");
         return GRAPH_FAILED;
     }
@@ -1527,7 +1527,7 @@ struct SliceMasks {
 // get value from const node
 static graphStatus GetStridedSliceListAttrValue(const ge::Operator &op, const std::string &keyName,
                                                 vector<int64_t> &multiples) {
-  if (ge::GRAPH_SUCCESS != op.GetAttr(keyName, multiples)) {
+  if (ge::GRAPH_SUCCESS != op.GetAttr(keyName.c_str(), multiples)) {
     std::string err_msg = GetInputInvalidErrMsg(ConcatString(keyName));
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
@@ -1564,7 +1564,7 @@ static graphStatus GetStridedSliceMasks(const ge::Operator& op, struct SliceMask
 
   for (auto& item : mask_maps) {
     int64_t mask_value = 0;
-    if (ge::GRAPH_SUCCESS != op.GetAttr(item.first, mask_value)) {
+    if (ge::GRAPH_SUCCESS != op.GetAttr(item.first.c_str(), mask_value)) {
       std::string err_msg = GetInputInvalidErrMsg(ConcatString(item.first));
       VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
       return GRAPH_FAILED;
@@ -1587,14 +1587,14 @@ static graphStatus GetStridedSliceListConstValues(const ge::Operator& op, struct
 
   bool all_const = true;
   for (auto& item: const_values) {
-    if (op.GetInputConstData(item.first, const_tensor) != GRAPH_SUCCESS) {
+    if (op.GetInputConstData(item.first.c_str(), const_tensor) != GRAPH_SUCCESS) {
       OP_LOGI(TbeGetName(op).c_str(), "[%s] is not constant.", item.first.c_str());
       all_const = false;
       continue;
     }
 
     item.second.clear();
-    auto dtype = op.GetInputDesc(item.first).GetDataType();
+    auto dtype = op.GetInputDescByName(item.first.c_str()).GetDataType();
     GetConstValue(op, const_tensor, dtype, item.second);
   }
 
@@ -1609,8 +1609,8 @@ IMPLEMT_COMMON_INFERFUNC(StridedSliceDInferShape) {
   PREPARE_DYNAMIC_SHAPE(depends);
 
   // Get input shape
-  ge::Shape shape = op.GetInputDesc("x").GetShape();
-  DataType input_dtype = op.GetInputDesc("x").GetDataType();
+  ge::Shape shape = op.GetInputDescByName("x").GetShape();
+  DataType input_dtype = op.GetInputDescByName("x").GetDataType();
 
   // Get 'begin_list','end_list','stride_list' from const node
   struct SliceParameters slice_params;
@@ -1647,7 +1647,7 @@ IMPLEMT_COMMON_INFERFUNC(StridedSliceDInferShape) {
   }
 
   ge::Shape outputShape = ge::Shape(output_shape);
-  TensorDesc tensor_desc_output = op.GetOutputDesc("y");
+  TensorDesc tensor_desc_output = op.GetOutputDescByName("y");
   tensor_desc_output.SetShape(outputShape);
   tensor_desc_output.SetDataType(input_dtype);
   OP_LOGD(TbeGetName(op).c_str(), "output_shape:%s", to_string(tensor_desc_output.GetShape()).c_str());
@@ -1820,7 +1820,7 @@ IMPLEMT_COMMON_INFERFUNC(StridedSliceInferShape) {
     output_real_dims.push_back(1);
   }
 
-  TensorDesc tensor_desc_output = op.GetOutputDesc("y");
+  TensorDesc tensor_desc_output = op.GetOutputDescByName("y");
   tensor_desc_output.SetDataType(input_dtype);
   tensor_desc_output.SetRealDimCnt(output_real_dims.size());
 
@@ -1864,9 +1864,9 @@ COMMON_INFER_FUNC_REG(ReverseV2, ReverseV2InferShape);
 
 // ----------------ReverseV2D Op Begin---------------
 IMPLEMT_INFERFUNC(ReverseV2D, ReverseV2DInferShape) {
-  TensorDesc tensordesc_output = op.GetOutputDesc("y");
-  Shape input_shape = op.GetInputDesc("x").GetShape();
-  DataType input_dtype = op.GetInputDesc("x").GetDataType();
+  TensorDesc tensordesc_output = op.GetOutputDescByName("y");
+  Shape input_shape = op.GetInputDescByName("x").GetShape();
+  DataType input_dtype = op.GetInputDescByName("x").GetDataType();
   tensordesc_output.SetShape(input_shape);
   tensordesc_output.SetDataType(input_dtype);
 
@@ -2020,8 +2020,8 @@ VERIFY_FUNC_REG(SelectV2, SelectV2Verify);
 
 // ----------------SegmentMax-------------------
 static bool SegmentShapeVerify(const Operator& op, const std::string& input_name, const std::string& segment_ids_name) {
-  auto input_shape_dims = op.GetInputDesc("x").GetShape().GetDims();
-  auto segment_ids_shape_dims = op.GetInputDesc("segment_ids").GetShape().GetDims();
+  auto input_shape_dims = op.GetInputDescByName("x").GetShape().GetDims();
+  auto segment_ids_shape_dims = op.GetInputDescByName("segment_ids").GetShape().GetDims();
 
   if (input_shape_dims.empty() || segment_ids_shape_dims.empty()) {
     OP_LOGE(TbeGetName(op).c_str(), "shape of input is empty.");
@@ -2040,15 +2040,15 @@ IMPLEMT_VERIFIER(SegmentMax, SegmentMaxVerify) {
 }
 
 IMPLEMT_COMMON_INFERFUNC(SegmentMaxInferShape) {
-  auto input_desc = op.GetInputDesc("x");
+  auto input_desc = op.GetInputDescByName("x");
   const std::string segment_ids_name = "segment_ids";
   Tensor segment_ids;
   int64_t first_axis_dims;
-  if (GRAPH_SUCCESS != op.GetInputConstData(segment_ids_name, segment_ids)) {
+  if (GRAPH_SUCCESS != op.GetInputConstData(segment_ids_name.c_str(), segment_ids)) {
     OP_LOGI("segment_max", "GetInputConstData %s failed.", segment_ids_name.c_str());
     first_axis_dims = -1;
   } else {
-    auto data_type = op.GetInputDesc(segment_ids_name).GetDataType();
+    auto data_type = op.GetInputDescByName(segment_ids_name.c_str()).GetDataType();
     std::vector<int64_t> const_data;
     if (!GetConstIntData(segment_ids, data_type, const_data)) {
       std::string err_msg = ConcatString("failed to call GetConstIntData function ",
@@ -2069,7 +2069,7 @@ IMPLEMT_COMMON_INFERFUNC(SegmentMaxInferShape) {
   output_shape_dims[0] = first_axis_dims;
   Shape output_shape(output_shape_dims);
   DataType input_dtype = input_desc.GetDataType();
-  TensorDesc tensor_desc_output = op.GetOutputDesc("y");
+  TensorDesc tensor_desc_output = op.GetOutputDescByName("y");
   tensor_desc_output.SetShape(output_shape);
   tensor_desc_output.SetDataType(input_dtype);
   (void)op.UpdateOutputDesc("y", tensor_desc_output);
@@ -2083,10 +2083,10 @@ VERIFY_FUNC_REG(SegmentMax, SegmentMaxVerify);
 // ----------------SegmentMaxD-------------------
 static bool SegmentDShapeVerify(const Operator& op, const std::string& input_name,
                                 const std::string& segment_ids_name) {
-  auto input_shape_dims = op.GetInputDesc("x").GetShape().GetDims();
+  auto input_shape_dims = op.GetInputDescByName("x").GetShape().GetDims();
 
   std::vector<int64_t> segment_ids;
-  if (GRAPH_SUCCESS != op.GetAttr(segment_ids_name, segment_ids)) {
+  if (GRAPH_SUCCESS != op.GetAttr(segment_ids_name.c_str(), segment_ids)) {
     OP_LOGE("segment_max_d", "GetAttr %s failed.", segment_ids_name.c_str());
     return false;
   }
@@ -2109,10 +2109,10 @@ IMPLEMT_VERIFIER(SegmentMaxD, SegmentMaxDVerify) {
 
 IMPLEMT_COMMON_INFERFUNC(SegmentMaxDInferShape) {
   OP_LOGI("segment_max_d", "enter SegmentMaxDInferShape ......");
-  auto input_desc = op.GetInputDesc("x");
+  auto input_desc = op.GetInputDescByName("x");
   const std::string segment_ids_name = "segment_ids";
   std::vector<int64_t> segment_ids;
-  if (GRAPH_SUCCESS != op.GetAttr(segment_ids_name, segment_ids)) {
+  if (GRAPH_SUCCESS != op.GetAttr(segment_ids_name.c_str(), segment_ids)) {
     OP_LOGE("segment_max_d", "GetAttr %s failed.", segment_ids_name.c_str());
     return GRAPH_FAILED;
   }
@@ -2149,7 +2149,7 @@ IMPLEMT_COMMON_INFERFUNC(SegmentMaxDInferShape) {
   }
   Shape output_shape(output_shape_dims);
   DataType input_dtype = input_desc.GetDataType();
-  TensorDesc tensordesc_output = op.GetOutputDesc("y");
+  TensorDesc tensordesc_output = op.GetOutputDescByName("y");
   tensordesc_output.SetShape(output_shape);
   tensordesc_output.SetDataType(input_dtype);
   (void)op.UpdateOutputDesc("y", tensordesc_output);
@@ -2194,12 +2194,12 @@ IMPLEMT_COMMON_INFERFUNC(SegmentSumInferShape) {
   Tensor segment_ids;
   int64_t first_axis_dims;
   int64_t out_range_first_dims;
-  if (GRAPH_SUCCESS != op.GetInputConstData(segment_ids_name, segment_ids)) {
+  if (GRAPH_SUCCESS != op.GetInputConstData(segment_ids_name.c_str(), segment_ids)) {
     OP_LOGI("segment_max", "GetInputConstData %s failed.", segment_ids_name.c_str());
     first_axis_dims = -1;
     out_range_first_dims = 0;
   } else {
-    auto data_type = op.GetInputDesc(segment_ids_name).GetDataType();
+    auto data_type = op.GetInputDescByName(segment_ids_name.c_str()).GetDataType();
     std::vector<int64_t> const_data;
     if (!GetConstIntData(segment_ids, data_type, const_data)) {
       std::string err_msg = ConcatString("failed to call GetConstIntData function ",
@@ -2271,8 +2271,8 @@ IMPLEMT_COMMON_INFERFUNC(SliceDInferShape) {
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
-  Shape shape = op.GetInputDesc("x").GetShape();
-  DataType input_dtype = op.GetInputDesc("x").GetDataType();
+  Shape shape = op.GetInputDescByName("x").GetShape();
+  DataType input_dtype = op.GetInputDescByName("x").GetDataType();
   size_t dimNum = shape.GetDimNum();
 
   if ((int64_t)input_size.size() != (int64_t)dimNum) {
@@ -2307,7 +2307,7 @@ IMPLEMT_COMMON_INFERFUNC(SliceDInferShape) {
       outputList.push_back(static_cast<int>(input_size[i]));
     }
   }
-  TensorDesc tensordesc_output = op.GetOutputDesc("y");
+  TensorDesc tensordesc_output = op.GetOutputDescByName("y");
   Shape outputShape(outputList);
   tensordesc_output.SetShape(outputShape);
   tensordesc_output.SetDataType(input_dtype);
@@ -2347,7 +2347,7 @@ IMPLEMT_COMMON_INFERFUNC(SliceInferShape) {
 
   Tensor input_begin_tensor;
   Tensor input_size_tensor;
-  auto input_desc = op.GetInputDesc("x");
+  auto input_desc = op.GetInputDescByName("x");
   const Shape shape = input_desc.GetShape();
   DataType input_dtype = input_desc.GetDataType();
   std::vector<int64_t> input_begin;
@@ -2358,7 +2358,7 @@ IMPLEMT_COMMON_INFERFUNC(SliceInferShape) {
     OP_LOGI(TbeGetName(op).c_str(), "Get offsets failed.");
     has_offsets = false;
   } else {
-    DataType input_begin_dtype = op.GetInputDesc("offsets").GetDataType();
+    DataType input_begin_dtype = op.GetInputDescByName("offsets").GetDataType();
     GetSliceConstValue(input_begin_tensor, input_begin_dtype, input_begin);
   }
 
@@ -2367,13 +2367,13 @@ IMPLEMT_COMMON_INFERFUNC(SliceInferShape) {
     OP_LOGI(TbeGetName(op).c_str(), "Get size failed.");
     has_size = false;
   } else {
-    DataType input_size_dtype = op.GetInputDesc("size").GetDataType();
+    DataType input_size_dtype = op.GetInputDescByName("size").GetDataType();
     GetSliceConstValue(input_size_tensor, input_size_dtype, input_size);
   }
 
   bool is_unknown_rank = !has_size && !has_offsets && shape.GetDims() == UNKNOWN_RANK;
   if (is_unknown_rank) {
-    TensorDesc output_desc = op.GetOutputDesc("y");
+    TensorDesc output_desc = op.GetOutputDescByName("y");
     output_desc.SetDataType(input_dtype);
     Shape outputShape(UNKNOWN_RANK);
     output_desc.SetShape(outputShape);
@@ -2441,7 +2441,7 @@ IMPLEMT_COMMON_INFERFUNC(SliceInferShape) {
     }
   }
 
-  TensorDesc tensordesc_output = op.GetOutputDesc("y");
+  TensorDesc tensordesc_output = op.GetOutputDescByName("y");
   tensordesc_output.SetDataType(input_dtype);
   if (IsUnKnownShape(outputList)) {
     tensordesc_output.SetShapeRange(ranges);
@@ -2485,7 +2485,7 @@ static graphStatus OneHotInferShapeAndType(ge::Operator& op, DataType& input_typ
   }
 
   Shape out_shape(dim_vector);
-  TensorDesc tensordesc_output = op.GetOutputDesc("y");
+  TensorDesc tensordesc_output = op.GetOutputDescByName("y");
   tensordesc_output.SetShape(out_shape);
   tensordesc_output.SetDataType(input_type);
   (void)op.UpdateOutputDesc("y", tensordesc_output);
@@ -2520,7 +2520,7 @@ IMPLEMT_COMMON_INFERFUNC(OneHotDInferShape) {
     return GRAPH_FAILED;
   }
 
-  DataType input_type = op.GetInputDesc("on_value").GetDataType();
+  DataType input_type = op.GetInputDescByName("on_value").GetDataType();
   return OneHotInferShapeAndType(op, input_type, depth, axis);
 }
 
@@ -2722,7 +2722,7 @@ IMPLEMT_COMMON_INFERFUNC(TopKV2DInferShape) {
   // So here use int32* ptr to get the k value
   int64_t k = UNKNOWN_DIM;
   if (!unkonwn_dim_flag && k_tensor.GetData() != nullptr) {
-    DataType dtype = op.GetInputDesc("k").GetDataType();
+    DataType dtype = op.GetInputDescByName("k").GetDataType();
     if (dtype == DT_INT32) {
       k = static_cast<int64_t>(*(reinterpret_cast<int32_t*>(k_tensor.GetData())));
     } else if (dtype == DT_INT64) {
@@ -2810,7 +2810,7 @@ IMPLEMT_COMMON_INFERFUNC(TopKV2InferShape) {
   // So here use int32* ptr to get the k value
   int64_t k = UNKNOWN_DIM;
   if (!unkonwn_dim_flag && k_tensor.GetData() != nullptr) {
-    DataType dtype = op.GetInputDesc("k").GetDataType();
+    DataType dtype = op.GetInputDescByName("k").GetDataType();
     if (dtype == DT_INT32) {
       k = static_cast<int64_t>(*(reinterpret_cast<int32_t*>(k_tensor.GetData())));
     } else if (dtype == DT_INT64) {
@@ -2888,10 +2888,10 @@ COMMON_INFER_FUNC_REG(ScatterNd, ScatterNdInferShape);
 
 // ----------------ScatterNdD-------------------
 IMPLEMT_COMMON_INFERFUNC(ScatterNdDInferShape) {
-  auto output_desc = op.GetInputDesc("x");
+  auto output_desc = op.GetInputDescByName("x");
   const std::string shape_name = "shape";
   std::vector<int64_t> shape_out_list;
-  if (GRAPH_SUCCESS != op.GetAttr(shape_name, shape_out_list)) {
+  if (GRAPH_SUCCESS != op.GetAttr(shape_name.c_str(), shape_out_list)) {
     USER_GE_LOGE("GetAttr %s failed.", shape_name.c_str());
     return GRAPH_FAILED;
   }
@@ -3122,9 +3122,9 @@ VERIFY_FUNC_REG(InTopK, InTopKVerify);
 
 // ----------------StridedSliceAssign-------------------
 IMPLEMT_COMMON_INFERFUNC(StridedSliceAssignInferShape) {
-  TensorDesc tensordesc_output = op.GetOutputDesc("var");
-  tensordesc_output.SetShape(op.GetInputDesc("var").GetShape());
-  tensordesc_output.SetDataType(op.GetInputDesc("var").GetDataType());
+  TensorDesc tensordesc_output = op.GetOutputDescByName("var");
+  tensordesc_output.SetShape(op.GetInputDescByName("var").GetShape());
+  tensordesc_output.SetDataType(op.GetInputDescByName("var").GetDataType());
   if (op.UpdateOutputDesc("var", tensordesc_output) != GRAPH_SUCCESS) {
     OP_LOGE(TbeGetName(op).c_str(), "UpdateOutputDesc run failed. Check whether the names of outputs are matched.");
     return GRAPH_FAILED;
@@ -3176,9 +3176,9 @@ IMPLEMT_COMMON_INFERFUNC(StridedSliceAssignDInferShape) {
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
-  TensorDesc tensordesc_output = op.GetOutputDesc("var");
-  tensordesc_output.SetShape(op.GetInputDesc("var").GetShape());
-  tensordesc_output.SetDataType(op.GetInputDesc("var").GetDataType());
+  TensorDesc tensordesc_output = op.GetOutputDescByName("var");
+  tensordesc_output.SetShape(op.GetInputDescByName("var").GetShape());
+  tensordesc_output.SetDataType(op.GetInputDescByName("var").GetDataType());
   if (op.UpdateOutputDesc("var", tensordesc_output) != GRAPH_SUCCESS) {
     std::string err_msg = UpdateParamErrMsg("var");
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
@@ -3192,7 +3192,7 @@ COMMON_INFER_FUNC_REG(StridedSliceAssignD, StridedSliceAssignDInferShape);
 
 // ----------------Cumprod-------------------
 IMPLEMT_COMMON_INFERFUNC(CumprodInferShape) {
-  TensorDesc desc = op.GetInputDesc("x");
+  TensorDesc desc = op.GetInputDescByName("x");
   return op.UpdateOutputDesc("y", desc);
 }
 
@@ -3207,7 +3207,7 @@ IMPLEMT_VERIFIER(CumprodD, CumprodDVerify) {
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
-  TensorDesc input_desc = op.GetInputDesc("x");
+  TensorDesc input_desc = op.GetInputDescByName("x");
   int64_t dimnum;
   dimnum = input_desc.GetShape().GetDimNum();
   if (axis < -dimnum || axis >= dimnum) {
@@ -3222,9 +3222,9 @@ IMPLEMT_VERIFIER(CumprodD, CumprodDVerify) {
 }
 
 IMPLEMT_COMMON_INFERFUNC(CumprodDInferShape) {
-  TensorDesc output_desc = op.GetOutputDesc("y");
-  output_desc.SetShape(op.GetInputDesc("x").GetShape());
-  output_desc.SetDataType(op.GetInputDesc("x").GetDataType());
+  TensorDesc output_desc = op.GetOutputDescByName("y");
+  output_desc.SetShape(op.GetInputDescByName("x").GetShape());
+  output_desc.SetDataType(op.GetInputDescByName("x").GetDataType());
   op.UpdateOutputDesc("y", output_desc);
 
   return GRAPH_SUCCESS;
@@ -3236,9 +3236,9 @@ VERIFY_FUNC_REG(CumprodD, CumprodDVerify);
 
 // ----------------Cumsum-------------------
 IMPLEMT_COMMON_INFERFUNC(CumsumInferShape) {
-  TensorDesc output_desc = op.GetOutputDesc("y");
-  output_desc.SetShape(op.GetInputDesc("x").GetShape());
-  output_desc.SetDataType(op.GetInputDesc("x").GetDataType());
+  TensorDesc output_desc = op.GetOutputDescByName("y");
+  output_desc.SetShape(op.GetInputDescByName("x").GetShape());
+  output_desc.SetDataType(op.GetInputDescByName("x").GetDataType());
   op.UpdateOutputDesc("y", output_desc);
 
   return GRAPH_SUCCESS;
@@ -3255,7 +3255,7 @@ IMPLEMT_VERIFIER(CumsumD, CumsumDVerify) {
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
-  TensorDesc input_desc = op.GetInputDesc("x");
+  TensorDesc input_desc = op.GetInputDescByName("x");
   int64_t dimnum;
   dimnum = input_desc.GetShape().GetDimNum();
   if (axis < -dimnum || axis >= dimnum) {
@@ -3270,9 +3270,9 @@ IMPLEMT_VERIFIER(CumsumD, CumsumDVerify) {
 }
 
 IMPLEMT_COMMON_INFERFUNC(CumsumDInferShape) {
-  TensorDesc output_desc = op.GetOutputDesc("y");
-  output_desc.SetShape(op.GetInputDesc("x").GetShape());
-  output_desc.SetDataType(op.GetInputDesc("x").GetDataType());
+  TensorDesc output_desc = op.GetOutputDescByName("y");
+  output_desc.SetShape(op.GetInputDescByName("x").GetShape());
+  output_desc.SetDataType(op.GetInputDescByName("x").GetDataType());
   op.UpdateOutputDesc("y", output_desc);
 
   return GRAPH_SUCCESS;
@@ -3284,11 +3284,11 @@ VERIFY_FUNC_REG(CumsumD, CumsumDVerify);
 
 // ----------------Cummin------------------------
 IMPLEMT_COMMON_INFERFUNC(CumminInferShape) {
-  TensorDesc output_desc_y = op.GetOutputDesc("y");
-  TensorDesc output_desc_argmin = op.GetOutputDesc("indices");
-  DataType predict_dtype = op.GetInputDesc("x").GetDataType();
-  Format predict_format = op.GetInputDesc("x").GetFormat();
-  ge::Shape output_shape = op.GetInputDesc("x").GetShape();
+  TensorDesc output_desc_y = op.GetOutputDescByName("y");
+  TensorDesc output_desc_argmin = op.GetOutputDescByName("indices");
+  DataType predict_dtype = op.GetInputDescByName("x").GetDataType();
+  Format predict_format = op.GetInputDescByName("x").GetFormat();
+  ge::Shape output_shape = op.GetInputDescByName("x").GetShape();
   output_desc_y.SetDataType(predict_dtype);
   output_desc_y.SetFormat(predict_format);
   output_desc_y.SetShape(output_shape);
@@ -3309,11 +3309,11 @@ IMPLEMT_COMMON_INFERFUNC(CumminInferShape) {
 
 // ----------------Cummax------------------------
 IMPLEMT_COMMON_INFERFUNC(CummaxInferShape) {
-  TensorDesc output_desc_y = op.GetOutputDesc("y");
-  TensorDesc output_desc_indices = op.GetOutputDesc("indices");
-  DataType predict_dtype = op.GetInputDesc("x").GetDataType();
-  Format predict_format = op.GetInputDesc("x").GetFormat();
-  ge::Shape output_shape = op.GetInputDesc("x").GetShape();
+  TensorDesc output_desc_y = op.GetOutputDescByName("y");
+  TensorDesc output_desc_indices = op.GetOutputDescByName("indices");
+  DataType predict_dtype = op.GetInputDescByName("x").GetDataType();
+  Format predict_format = op.GetInputDescByName("x").GetFormat();
+  ge::Shape output_shape = op.GetInputDescByName("x").GetShape();
   output_desc_y.SetDataType(predict_dtype);
   output_desc_y.SetFormat(predict_format);
   output_desc_y.SetShape(output_shape);
@@ -3356,8 +3356,8 @@ VERIFY_FUNC_REG(InplaceUpdate, InplaceUpdateVerify);
 
 // ----------------InplaceUpdateD-------------------
 IMPLEMT_COMMON_INFERFUNC(InplaceUpdateDInferShape) {
-  auto output_desc = op.GetInputDesc("x");
-  auto input_v_desc = op.GetInputDesc("v");
+  auto output_desc = op.GetInputDescByName("x");
+  auto input_v_desc = op.GetInputDescByName("v");
   int64_t dim_value_v;
   dim_value_v = input_v_desc.GetShape().GetDim(0);
   std::vector<int64_t> indices;
@@ -3379,10 +3379,10 @@ COMMON_INFER_FUNC_REG(InplaceUpdateD, InplaceUpdateDInferShape);
 
 // ----------------InplaceAdd-------------------
 IMPLEMT_COMMON_INFERFUNC(InplaceAddInferShape) {
-  auto output_desc = op.GetInputDesc("x");
+  auto output_desc = op.GetInputDescByName("x");
   const std::string indices_name = "indices";
   Tensor indices;
-  graphStatus ret = op.GetInputConstData(indices_name, indices);
+  graphStatus ret = op.GetInputConstData(indices_name.c_str(), indices);
   OP_LOGI(TbeGetName(op).c_str(), "InplaceAddInferShape get const data from input[%s] ret = %d",
           indices_name.c_str(), static_cast<int>(ret));
 
@@ -3399,8 +3399,8 @@ COMMON_INFER_FUNC_REG(InplaceAdd, InplaceAddInferShape);
 
 // ----------------InplaceAddD-------------------
 IMPLEMT_COMMON_INFERFUNC(InplaceAddDInferShape) {
-  auto output_desc = op.GetInputDesc("x");
-  auto input_v_desc = op.GetInputDesc("v");
+  auto output_desc = op.GetInputDescByName("x");
+  auto input_v_desc = op.GetInputDescByName("v");
   int64_t dim_value_v;
   dim_value_v = input_v_desc.GetShape().GetDim(0);
   std::vector<int64_t> indices;
@@ -3424,11 +3424,11 @@ COMMON_INFER_FUNC_REG(InplaceAddD, InplaceAddDInferShape);
 
 // ----------------InplaceSub-------------------
 IMPLEMT_COMMON_INFERFUNC(InplaceSubInferShape) {
-  auto output_desc = op.GetInputDesc("x");
+  auto output_desc = op.GetInputDescByName("x");
   const std::string indices_name = "indices";
   Tensor indices;
 
-  graphStatus ret = op.GetInputConstData(indices_name, indices);
+  graphStatus ret = op.GetInputConstData(indices_name.c_str(), indices);
   OP_LOGI(TbeGetName(op).c_str(), "InplaceSubInferShape get const data from input[%s] ret = %d",
           indices_name.c_str(), static_cast<int>(ret));
 
@@ -3444,8 +3444,8 @@ COMMON_INFER_FUNC_REG(InplaceSub, InplaceSubInferShape);
 
 // ----------------InplaceSubD-------------------
 IMPLEMT_COMMON_INFERFUNC(InplaceSubDInferShape) {
-  auto output_desc = op.GetInputDesc("x");
-  auto input_v_desc = op.GetInputDesc("v");
+  auto output_desc = op.GetInputDescByName("x");
+  auto input_v_desc = op.GetInputDescByName("v");
   int64_t dim_value_v;
   dim_value_v = input_v_desc.GetShape().GetDim(0);
   std::vector<int64_t> indices;
@@ -3500,9 +3500,9 @@ IMPLEMT_VERIFIER(Proposal, ProposalVerify) {
 
 IMPLEMT_COMMON_INFERFUNC(ProposalInferShape) {
   OP_LOGI("propsoal", "infer shape begin---");
-  auto cls_prob_shape = op.GetInputDesc("cls_prob").GetShape().GetDims();
+  auto cls_prob_shape = op.GetInputDescByName("cls_prob").GetShape().GetDims();
   int64_t batch = cls_prob_shape[0];
-  DataType input_dtype = op.GetInputDesc("cls_prob").GetDataType();
+  DataType input_dtype = op.GetInputDescByName("cls_prob").GetDataType();
 
   int64_t post_nms_topn = 0;
   if (ge::GRAPH_SUCCESS != op.GetAttr("post_nms_topn", post_nms_topn)) {
@@ -3518,12 +3518,12 @@ IMPLEMT_COMMON_INFERFUNC(ProposalInferShape) {
   dim_vector.push_back(5);
   dim_vector.push_back(tmp_post_nms_topn);
   Shape out_shape_rois(dim_vector);
-  TensorDesc rois_desc = op.GetOutputDesc("rois");
+  TensorDesc rois_desc = op.GetOutputDescByName("rois");
   rois_desc.SetShape(out_shape_rois);
   rois_desc.SetDataType(input_dtype);
 
   Shape out_shape_actual_rois_num({batch, 8});
-  TensorDesc actual_rois_num_desc = op.GetOutputDesc("actual_rois_num");
+  TensorDesc actual_rois_num_desc = op.GetOutputDescByName("actual_rois_num");
   actual_rois_num_desc.SetShape(out_shape_actual_rois_num);
   actual_rois_num_desc.SetDataType(ge::DT_INT32);
 
@@ -3542,9 +3542,9 @@ IMPLEMT_VERIFIER(ProposalD, ProposalDVerify) {
 
 IMPLEMT_COMMON_INFERFUNC(ProposalDInferShape) {
   OP_LOGI("propsoal", "infer shape begin---");
-  auto cls_prob_shape = op.GetInputDesc("cls_prob").GetShape().GetDims();
+  auto cls_prob_shape = op.GetInputDescByName("cls_prob").GetShape().GetDims();
   int64_t batch = cls_prob_shape[0];
-  DataType input_dtype = op.GetInputDesc("cls_prob").GetDataType();
+  DataType input_dtype = op.GetInputDescByName("cls_prob").GetDataType();
 
   int64_t post_nms_topn = 0;
   if (ge::GRAPH_SUCCESS != op.GetAttr("post_nms_topn", post_nms_topn)) {
@@ -3561,12 +3561,12 @@ IMPLEMT_COMMON_INFERFUNC(ProposalDInferShape) {
   dim_vector.push_back(5);
   dim_vector.push_back(tmp_post_nms_topn);
   Shape out_shape_rois(dim_vector);
-  TensorDesc rois_desc = op.GetOutputDesc("rois");
+  TensorDesc rois_desc = op.GetOutputDescByName("rois");
   rois_desc.SetShape(out_shape_rois);
   rois_desc.SetDataType(input_dtype);
 
   Shape out_shape_actual_rois_num({batch, 8});
-  TensorDesc actual_rois_num_desc = op.GetOutputDesc("actual_rois_num");
+  TensorDesc actual_rois_num_desc = op.GetOutputDescByName("actual_rois_num");
   actual_rois_num_desc.SetShape(out_shape_actual_rois_num);
   actual_rois_num_desc.SetDataType(ge::DT_INT32);
 
@@ -3710,8 +3710,8 @@ IMPLEMT_VERIFIER(Crop, CropVerify) {
 }
 
 IMPLEMT_COMMON_INFERFUNC(CropInferShape) {
-  auto inputDesc = op.GetInputDesc("x");
-  auto outputDesc = op.GetInputDesc("size");
+  auto inputDesc = op.GetInputDescByName("x");
+  auto outputDesc = op.GetInputDescByName("size");
   ge::Shape outputShape = outputDesc.GetShape();
   ge::Shape inputShape = inputDesc.GetShape();
   int64_t dimNum = inputShape.GetDimNum();
@@ -3746,8 +3746,8 @@ VERIFY_FUNC_REG(Crop, CropVerify);
 // ----------------------TileWithAxis-----------------
 IMPLEMT_INFERFUNC(TileWithAxis, TileWithAxisInferShape) {
   OP_LOGI("Enter TileWithAxisInferShape");
-  TensorDesc outputDesc = op.GetOutputDesc("y");
-  TensorDesc inputDesc = op.GetInputDesc("x");
+  TensorDesc outputDesc = op.GetOutputDescByName("y");
+  TensorDesc inputDesc = op.GetInputDescByName("x");
 
   auto inputDtype = inputDesc.GetDataType();
   outputDesc.SetDataType(inputDtype);
@@ -3841,7 +3841,7 @@ IMPLEMT_INFERFUNC(TileWithAxis, TileWithAxisInferShape) {
 }
 
 IMPLEMT_VERIFIER(TileWithAxis, TileWithAxisVerify) {
-  auto xShape = op.GetInputDesc("x").GetShape().GetDims();
+  auto xShape = op.GetInputDescByName("x").GetShape().GetDims();
 
   int64_t tiles;
   if (GRAPH_SUCCESS != op.GetAttr("tiles", tiles)) {
@@ -3972,9 +3972,9 @@ VERIFY_FUNC_REG(StridedWrite, StridedWriteVerify);
 
 // ----------------CumulativeLogsumexp-------------------
 IMPLEMT_COMMON_INFERFUNC(CumulativeLogsumexpInferShape) {
-  TensorDesc output_desc = op.GetOutputDesc("y");
-  output_desc.SetShape(op.GetInputDesc("x").GetShape());
-  output_desc.SetDataType(op.GetInputDesc("x").GetDataType());
+  TensorDesc output_desc = op.GetOutputDescByName("y");
+  output_desc.SetShape(op.GetInputDescByName("x").GetShape());
+  output_desc.SetDataType(op.GetInputDescByName("x").GetDataType());
   op.UpdateOutputDesc("y", output_desc);
 
   return GRAPH_SUCCESS;
@@ -3991,7 +3991,7 @@ IMPLEMT_VERIFIER(CumulativeLogsumexpD, CumulativeLogsumexpDVerify) {
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
-  TensorDesc input_desc = op.GetInputDesc("x");
+  TensorDesc input_desc = op.GetInputDescByName("x");
   int64_t dimnum;
   dimnum = input_desc.GetShape().GetDimNum();
   if (axis < -dimnum || axis >= dimnum) {
@@ -4006,9 +4006,9 @@ IMPLEMT_VERIFIER(CumulativeLogsumexpD, CumulativeLogsumexpDVerify) {
 }
 
 IMPLEMT_COMMON_INFERFUNC(CumulativeLogsumexpDInferShape) {
-  TensorDesc output_desc = op.GetOutputDesc("y");
-  output_desc.SetShape(op.GetInputDesc("x").GetShape());
-  output_desc.SetDataType(op.GetInputDesc("x").GetDataType());
+  TensorDesc output_desc = op.GetOutputDescByName("y");
+  output_desc.SetShape(op.GetInputDescByName("x").GetShape());
+  output_desc.SetDataType(op.GetInputDescByName("x").GetDataType());
   op.UpdateOutputDesc("y", output_desc);
 
   return GRAPH_SUCCESS;
@@ -4067,7 +4067,7 @@ IMPLEMT_COMMON_INFERFUNC(InferMaskedFillShape) {
 }
 
 IMPLEMT_VERIFIER(MaskedFill, MaskedFillVerify) {
-  auto input_type_mask = op.GetInputDesc("mask").GetDataType();
+  auto input_type_mask = op.GetInputDescByName("mask").GetDataType();
   if (input_type_mask != DT_BOOL) {
     return GRAPH_FAILED;
   }
@@ -4083,11 +4083,11 @@ VERIFY_FUNC_REG(MaskedFill, MaskedFillVerify);
 bool InferShapeAndTypeMaskedSelectV2(Operator& op, const string& input_name1,
                                      const string& input_name2,
                                      const string& output_name) {
-  TensorDesc output_desc = op.GetOutputDesc(output_name);
-  DataType input_dtype = op.GetInputDesc(input_name1).GetDataType();
-  Format input_format = op.GetInputDesc(input_name1).GetFormat();
-  ge::Shape shape_x = op.GetInputDesc(input_name1).GetShape();
-  ge::Shape shape_y = op.GetInputDesc(input_name2).GetShape();
+  TensorDesc output_desc = op.GetOutputDescByName(output_name.c_str());
+  DataType input_dtype = op.GetInputDescByName(input_name1.c_str()).GetDataType();
+  Format input_format = op.GetInputDescByName(input_name1.c_str()).GetFormat();
+  ge::Shape shape_x = op.GetInputDescByName(input_name1.c_str()).GetShape();
+  ge::Shape shape_y = op.GetInputDescByName(input_name2.c_str()).GetShape();
   std::vector<int64_t> dims_x = shape_x.GetDims();
   std::vector<int64_t> dims_y = shape_x.GetDims();
 
@@ -4115,14 +4115,14 @@ bool InferShapeAndTypeMaskedSelectV2(Operator& op, const string& input_name1,
   output_desc.SetShape(output_shape);
   output_desc.SetDataType(input_dtype);
   output_desc.SetFormat(input_format);
-  op.UpdateOutputDesc(output_name, output_desc);
+  op.UpdateOutputDesc(output_name.c_str(), output_desc);
 
   return true;
 }
 
 IMPLEMT_VERIFIER(MaskedSelectV2, MaskedSelectV2Verify) {
-  if (op.GetInputDesc("x").GetDataType() !=
-      op.GetOutputDesc("y").GetDataType()) {
+  if (op.GetInputDescByName("x").GetDataType() !=
+      op.GetOutputDescByName("y").GetDataType()) {
     OP_LOGE(TbeGetName(op).c_str(), "x y tensor dtype does not match.");
     return GRAPH_FAILED;
   }
@@ -4188,9 +4188,9 @@ static graphStatus GetStridedSliceInferConstData(const ge::Operator& op, struct 
   for (auto& item: const_values) {
     // avoid null input error when call GetInputConstData
     if (slice_desc->MutableInputDesc(item.first) != nullptr && \
-        op.GetInputConstData(item.first, const_tensor) == GRAPH_SUCCESS) {
+        op.GetInputConstData(item.first.c_str(), const_tensor) == GRAPH_SUCCESS) {
       item.second.clear();
-      auto dtype = op.GetInputDesc(item.first).GetDataType();
+      auto dtype = op.GetInputDescByName(item.first.c_str()).GetDataType();
       GetConstValue(op, const_tensor, dtype, item.second);
     } else {
       OP_LOGI(TbeGetName(op).c_str(), "[%s] is not constant.", item.first.c_str());
@@ -4219,12 +4219,12 @@ IMPLEMT_COMMON_INFERFUNC(StridedSliceV2InferShape) {
   PREPARE_DYNAMIC_SHAPE(depend_names);
 
   // Get input shape
-  auto input_desc = op.GetInputDesc("x");
+  auto input_desc = op.GetInputDescByName("x");
   const ge::Shape shape = input_desc.GetShape();
   DataType input_dtype = input_desc.GetDataType();
   int64_t begin_len = -1;
   for (const auto& param : depend_names) {
-    begin_len = std::max(op.GetInputDesc(param).GetShape().GetDim(0), begin_len);
+    begin_len = std::max(op.GetInputDescByName(param.c_str()).GetShape().GetDim(0), begin_len);
   }
 
   // check the ranks and get the len of final end list len start 
@@ -4263,7 +4263,7 @@ IMPLEMT_COMMON_INFERFUNC(StridedSliceV2InferShape) {
   OP_LOGD(TbeGetName(op).c_str(), "input stride_list:%s", to_string(slice_params.stride_list).c_str());
   
   if (shape.GetDims() == UNKNOWN_RANK) {
-    TensorDesc output_desc = op.GetOutputDesc("y");
+    TensorDesc output_desc = op.GetOutputDescByName("y");
     output_desc.SetDataType(input_dtype);
     ge::Shape outputShape = ge::Shape(UNKNOWN_RANK);
     output_desc.SetShape(outputShape);
@@ -4271,7 +4271,7 @@ IMPLEMT_COMMON_INFERFUNC(StridedSliceV2InferShape) {
     (void) op.UpdateOutputDesc("y", output_desc);
     return GRAPH_SUCCESS;
   } else if(begin_len == -1 || !stride_valid){
-    TensorDesc output_desc = op.GetOutputDesc("y");
+    TensorDesc output_desc = op.GetOutputDescByName("y");
     output_desc.SetDataType(input_dtype);
     ge::Shape outputShape = ge::Shape(std::vector<int64_t>(rank_num,-1));
     output_desc.SetShape(outputShape);
@@ -4421,7 +4421,7 @@ IMPLEMT_COMMON_INFERFUNC(StridedSliceV2InferShape) {
     output_real_dims.push_back(1);
   }
 
-  TensorDesc tensor_desc_output = op.GetOutputDesc("y");
+  TensorDesc tensor_desc_output = op.GetOutputDescByName("y");
   tensor_desc_output.SetDataType(input_dtype);
   tensor_desc_output.SetRealDimCnt(output_real_dims.size());
 
@@ -4454,12 +4454,12 @@ INFER_VALUE_RANGE_DEFAULT_REG(StridedSliceV2);
 // ----------------SliceLastDim Begin-------------------
 bool InferShapeAndTypeSliceLastDim(Operator& op, const string& x_name,
                                    const string& output_name) {
-  TensorDesc v_output_desc = op.GetOutputDesc(output_name);
+  TensorDesc v_output_desc = op.GetOutputDescByName(output_name.c_str());
 
-  DataType input_dtype = op.GetInputDesc(x_name).GetDataType();
-  Format input_format = op.GetInputDesc(x_name).GetFormat();
+  DataType input_dtype = op.GetInputDescByName(x_name.c_str()).GetDataType();
+  Format input_format = op.GetInputDescByName(x_name.c_str()).GetFormat();
 
-  ge::Shape shape_x = op.GetInputDesc(x_name).GetShape();
+  ge::Shape shape_x = op.GetInputDescByName(x_name.c_str()).GetShape();
   std::vector<int64_t> dims_x = shape_x.GetDims();
 
   std::vector<int64_t> dims_output;
@@ -4495,7 +4495,7 @@ bool InferShapeAndTypeSliceLastDim(Operator& op, const string& x_name,
   v_output_desc.SetShape(output_shape);
   v_output_desc.SetDataType(input_dtype);
   v_output_desc.SetFormat(input_format);
-  op.UpdateOutputDesc(output_name, v_output_desc);
+  op.UpdateOutputDesc(output_name.c_str(), v_output_desc);
 
   return true;
 }
@@ -4519,16 +4519,16 @@ VERIFY_FUNC_REG(SliceLastDim, SliceLastDimVerify);
 // ----------------IndexFillD-------------------
 bool InferShapeAndTypeIndexFillD(Operator &op, const string &input_name, const string &output_name)
 {
-  TensorDesc v_output_desc = op.GetOutputDesc(output_name);
-  DataType input_dtype = op.GetInputDesc(input_name).GetDataType();
-  Format input_format = op.GetInputDesc(input_name).GetFormat();
+  TensorDesc v_output_desc = op.GetOutputDescByName(output_name.c_str());
+  DataType input_dtype = op.GetInputDescByName(input_name.c_str()).GetDataType();
+  Format input_format = op.GetInputDescByName(input_name.c_str()).GetFormat();
 
   // shape of output y is the same as input x
-  ge::Shape shape_input = op.GetInputDesc(input_name).GetShape();
+  ge::Shape shape_input = op.GetInputDescByName(input_name.c_str()).GetShape();
   v_output_desc.SetShape(shape_input);
   v_output_desc.SetDataType(input_dtype);
   v_output_desc.SetFormat(input_format);
-  op.UpdateOutputDesc(output_name, v_output_desc);
+  op.UpdateOutputDesc(output_name.c_str(), v_output_desc);
 
   return true;
 }
@@ -4564,12 +4564,12 @@ VERIFY_FUNC_REG(IndexFillD, IndexFillDVerify);
 // ----------------AddRowRanges Begin-------------------
 bool InferShapeAndTypeAddRowRanges(Operator& op, const string& input_name1,
                                       const string& output_name) {
-  TensorDesc v_output_desc = op.GetOutputDesc(output_name);
+  TensorDesc v_output_desc = op.GetOutputDescByName(output_name.c_str());
 
-  DataType input_dtype = op.GetInputDesc(input_name1).GetDataType();
-  Format input_format = op.GetInputDesc(input_name1).GetFormat();
+  DataType input_dtype = op.GetInputDescByName(input_name1.c_str()).GetDataType();
+  Format input_format = op.GetInputDescByName(input_name1.c_str()).GetFormat();
 
-  ge::Shape shape_x = op.GetInputDesc(input_name1).GetShape();
+  ge::Shape shape_x = op.GetInputDescByName(input_name1.c_str()).GetShape();
   std::vector<int64_t> dims_x = shape_x.GetDims();
 
   ge::Shape output_shape = ge::Shape(dims_x);
@@ -4577,16 +4577,16 @@ bool InferShapeAndTypeAddRowRanges(Operator& op, const string& input_name1,
   v_output_desc.SetShape(output_shape);
   v_output_desc.SetDataType(input_dtype);
   v_output_desc.SetFormat(input_format);
-  op.UpdateOutputDesc(output_name, v_output_desc);
+  op.UpdateOutputDesc(output_name.c_str(), v_output_desc);
 
   return true;
 }
 
 IMPLEMT_VERIFIER(AddRowRanges, AddRowRangesVerify) {
-  DataType x_dtype = op.GetInputDesc("x").GetDataType();
-  DataType indices_dtype = op.GetInputDesc("indices").GetDataType();
-  DataType src_dtype = op.GetInputDesc("src").GetDataType();
-  DataType x_out_dtype = op.GetOutputDesc("x").GetDataType();
+  DataType x_dtype = op.GetInputDescByName("x").GetDataType();
+  DataType indices_dtype = op.GetInputDescByName("indices").GetDataType();
+  DataType src_dtype = op.GetInputDescByName("src").GetDataType();
+  DataType x_out_dtype = op.GetOutputDescByName("x").GetDataType();
   if (x_dtype != x_out_dtype || x_dtype != src_dtype) {
     OP_LOGE(TbeGetName(op).c_str(),
             "x dtype is not equal to src dtype, please check!");
@@ -4616,8 +4616,8 @@ VERIFY_FUNC_REG(AddRowRanges, AddRowRangesVerify);
 // ----------------MaskedFillRange Begin-------------------
 IMPLEMT_COMMON_INFERFUNC(MaskedFillRangeInferShape)
 {
-  auto input_shape = op.GetInputDesc("x").GetShape();
-  auto input_type = op.GetInputDesc("x").GetDataType();
+  auto input_shape = op.GetInputDescByName("x").GetShape();
+  auto input_type = op.GetInputDescByName("x").GetDataType();
   auto input_dim = input_shape.GetDims().size();
 
   std::vector<int64_t> vec_dims;
@@ -4627,7 +4627,7 @@ IMPLEMT_COMMON_INFERFUNC(MaskedFillRangeInferShape)
 
   ge::Shape output_shape(vec_dims);
 
-  auto output_desc = op.GetOutputDesc("y");
+  auto output_desc = op.GetOutputDescByName("y");
   output_desc.SetShape(output_shape);
   output_desc.SetDataType(ge::DataType(input_type));
   (void)op.UpdateOutputDesc("y", output_desc);
@@ -4675,9 +4675,9 @@ IMPLEMT_COMMON_INFERFUNC(InplaceTopKDistanceInferShape) {
 }
 
 IMPLEMT_VERIFIER(InplaceTopKDistance, InplaceTopKDistanceVerify) {
-  std::vector<int64_t> topk_pq_distance_dims = op.GetInputDesc("topk_pq_distance").GetShape().GetDims();
-  std::vector<int64_t> topk_pq_index_dims = op.GetInputDesc("topk_pq_index").GetShape().GetDims();
-  std::vector<int64_t> topk_pq_ivf_dims = op.GetInputDesc("topk_pq_ivf").GetShape().GetDims();
+  std::vector<int64_t> topk_pq_distance_dims = op.GetInputDescByName("topk_pq_distance").GetShape().GetDims();
+  std::vector<int64_t> topk_pq_index_dims = op.GetInputDescByName("topk_pq_index").GetShape().GetDims();
+  std::vector<int64_t> topk_pq_ivf_dims = op.GetInputDescByName("topk_pq_ivf").GetShape().GetDims();
   if (!(topk_pq_distance_dims == topk_pq_index_dims && topk_pq_index_dims == topk_pq_ivf_dims)) {
     string msg = ConcatString("The shape of topk_pq_distance is:", DebugString(topk_pq_distance_dims),
                               "The shape of topk_pq_index is:", DebugString(topk_pq_index_dims),
@@ -4696,8 +4696,8 @@ IMPLEMT_VERIFIER(InplaceTopKDistance, InplaceTopKDistanceVerify) {
     return GRAPH_FAILED;
   }
 
-  std::vector<int64_t> pq_distance_dims = op.GetInputDesc("pq_distance").GetShape().GetDims();
-  std::vector<int64_t> pq_index_dims = op.GetInputDesc("pq_index").GetShape().GetDims();
+  std::vector<int64_t> pq_distance_dims = op.GetInputDescByName("pq_distance").GetShape().GetDims();
+  std::vector<int64_t> pq_index_dims = op.GetInputDescByName("pq_index").GetShape().GetDims();
   if (!(pq_distance_dims == pq_index_dims)) {
     string msg = ConcatString("The shape of pq_distance is:", DebugString(topk_pq_distance_dims),
                               "The shape of pq_index is:", DebugString(topk_pq_index_dims),". They must be same");
@@ -4813,12 +4813,12 @@ IMPLEMT_COMMON_INFERFUNC(StridedSliceV3InferShape) {
   PREPARE_DYNAMIC_SHAPE(depend_names);
 
   // Get input shape
-  auto input_desc = op.GetInputDesc("x");
+  auto input_desc = op.GetInputDescByName("x");
   const ge::Shape shape = input_desc.GetShape();
   DataType input_dtype = input_desc.GetDataType();
   int64_t begin_len = -1;
   for (const auto& param : depend_names) {
-    begin_len = std::max(op.GetInputDesc(param).GetShape().GetDim(0), begin_len);
+    begin_len = std::max(op.GetInputDescByName(param.c_str()).GetShape().GetDim(0), begin_len);
   }
 
   // check the ranks and get the len of final end list len start 
@@ -4853,7 +4853,7 @@ IMPLEMT_COMMON_INFERFUNC(StridedSliceV3InferShape) {
   OP_LOGD(TbeGetName(op).c_str(), "input stride_list:%s", to_string(slice_params.stride_list).c_str());
   
   if (shape.GetDims() == UNKNOWN_RANK) {
-    TensorDesc output_desc = op.GetOutputDesc("y");
+    TensorDesc output_desc = op.GetOutputDescByName("y");
     output_desc.SetDataType(input_dtype);
     ge::Shape outputShape = ge::Shape(UNKNOWN_RANK);
     output_desc.SetShape(outputShape);
@@ -4861,7 +4861,7 @@ IMPLEMT_COMMON_INFERFUNC(StridedSliceV3InferShape) {
     (void) op.UpdateOutputDesc("y", output_desc);
     return GRAPH_SUCCESS;
   }else if(begin_len == -1 || !stride_valid){
-    TensorDesc output_desc = op.GetOutputDesc("y");
+    TensorDesc output_desc = op.GetOutputDescByName("y");
     output_desc.SetDataType(input_dtype);
     ge::Shape outputShape = ge::Shape(std::vector<int64_t>(rank_num,-1));
     output_desc.SetShape(outputShape);
@@ -5003,7 +5003,7 @@ IMPLEMT_COMMON_INFERFUNC(StridedSliceV3InferShape) {
     output_real_dims.push_back(1);
   }
 
-  TensorDesc tensor_desc_output = op.GetOutputDesc("y");
+  TensorDesc tensor_desc_output = op.GetOutputDescByName("y");
   tensor_desc_output.SetDataType(input_dtype);
   tensor_desc_output.SetRealDimCnt(output_real_dims.size());
 
@@ -5161,8 +5161,8 @@ COMMON_INFER_FUNC_REG(MaskedSelect, MaskedSelectInferShape);
 
 // ----------------NonMaxSuppressionBucketize Op Begin----------------
 IMPLEMT_COMMON_INFERFUNC(NonMaxSuppressionBucketizeInferShape) {
-  std::vector<int64_t> boxes_shape = op.GetInputDesc("input_nmsed_boxes").GetShape().GetDims();
-  std::vector<int64_t> score_class_shape = op.GetInputDesc("input_nmsed_score").GetShape().GetDims();
+  std::vector<int64_t> boxes_shape = op.GetInputDescByName("input_nmsed_boxes").GetShape().GetDims();
+  std::vector<int64_t> score_class_shape = op.GetInputDescByName("input_nmsed_score").GetShape().GetDims();
   // get output shape range
   std::vector<std::pair<int64_t, int64_t>> boxes_range;
   for (unsigned int i = 0; i < boxes_shape.size(); ++i) {
@@ -5180,9 +5180,9 @@ IMPLEMT_COMMON_INFERFUNC(NonMaxSuppressionBucketizeInferShape) {
     score_class_shape[1] = -1;
   }
   // update output desc
-  TensorDesc tensor_desc_boxes = op.GetOutputDesc("output_nmsed_boxes");
-  TensorDesc tensor_desc_score = op.GetOutputDesc("output_nmsed_score");
-  TensorDesc tensor_desc_class = op.GetOutputDesc("output_nmsed_class");
+  TensorDesc tensor_desc_boxes = op.GetOutputDescByName("output_nmsed_boxes");
+  TensorDesc tensor_desc_score = op.GetOutputDescByName("output_nmsed_score");
+  TensorDesc tensor_desc_class = op.GetOutputDescByName("output_nmsed_class");
   tensor_desc_boxes.SetShape(Shape(boxes_shape));
   tensor_desc_boxes.SetDataType(DT_FLOAT);
   tensor_desc_boxes.SetShapeRange(boxes_range);
@@ -5196,7 +5196,7 @@ IMPLEMT_COMMON_INFERFUNC(NonMaxSuppressionBucketizeInferShape) {
       op.UpdateOutputDesc("output_nmsed_score", tensor_desc_score) != GRAPH_SUCCESS ||
       op.UpdateOutputDesc("output_nmsed_class", tensor_desc_class) != GRAPH_SUCCESS) {
     std::string err_msg = UpdateParamErrMsg("output_nmsed_boxes or output_nmsed_score or output_nmsed_class");
-    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
   // set _op_no_tiling attr

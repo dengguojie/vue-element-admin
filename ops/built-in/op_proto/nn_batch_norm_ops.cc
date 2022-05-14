@@ -92,14 +92,14 @@ VERIFY_FUNC_REG(BatchNorm3D, BatchNorm3DVerify);
 IMPLEMT_INFERFUNC(SyncBatchNormGatherStatsWithCounts,
                   SyncBatchNormGatherStatsWithCountsInferShape) {
   OP_LOGI(TbeGetName(op).c_str(), "Enter SyncBatchNormGatherStatsWithCounts proto inferfunction!");
-  TensorDesc tensordesc_input = op.GetInputDesc("running_var");
+  TensorDesc tensordesc_input = op.GetInputDescByName("running_var");
   auto input_shape = tensordesc_input.GetShape().GetDims();
   DataType input_dtype = tensordesc_input.GetDataType();
 
-  TensorDesc tensordesc_output_1 = op.GetOutputDesc("invert_std");
+  TensorDesc tensordesc_output_1 = op.GetOutputDescByName("invert_std");
   tensordesc_output_1.SetDataType(input_dtype);
 
-  TensorDesc tensordesc_output_2 = op.GetOutputDesc("running_var_update");
+  TensorDesc tensordesc_output_2 = op.GetOutputDescByName("running_var_update");
   tensordesc_output_2.SetDataType(input_dtype);
 
   AscendString op_name;
@@ -125,11 +125,11 @@ INFER_FUNC_REG(SyncBatchNormGatherStatsWithCounts,
 IMPLEMT_INFERFUNC(SyncBNTrainingUpdate,
                   SyncBNTrainingUpdateInferShape) {
   OP_LOGI(TbeGetName(op).c_str(), "Enter SyncBNTrainingUpdate proto inferfunction!");
-  TensorDesc tensordesc_input = op.GetInputDesc("running_mean");
+  TensorDesc tensordesc_input = op.GetInputDescByName("running_mean");
   auto input_shape = tensordesc_input.GetShape().GetDims();
   DataType input_dtype = tensordesc_input.GetDataType();
 
-  TensorDesc tensordesc_output = op.GetOutputDesc("running_mean_update");
+  TensorDesc tensordesc_output = op.GetOutputDescByName("running_mean_update");
   tensordesc_output.SetDataType(input_dtype);
 
   AscendString op_name;
@@ -153,14 +153,14 @@ IMPLEMT_VERIFIER(SyncBatchNormBackwardReduce, SyncBatchNormBackwardReduceVerify)
 }
 
 IMPLEMT_INFERFUNC(SyncBatchNormBackwardReduce, SyncBatchNormBackwardReduceInferShape) {
-  auto x_shape = op.GetInputDesc("sum_dy").GetShape().GetDims();
-  DataType x_dtype = op.GetInputDesc("sum_dy").GetDataType();
+  auto x_shape = op.GetInputDescByName("sum_dy").GetShape().GetDims();
+  DataType x_dtype = op.GetInputDescByName("sum_dy").GetDataType();
 
-  TensorDesc sum_dy_xmu_desc = op.GetOutputDesc("sum_dy_xmu");
+  TensorDesc sum_dy_xmu_desc = op.GetOutputDescByName("sum_dy_xmu");
   sum_dy_xmu_desc.SetShape(ge::Shape(x_shape));
   sum_dy_xmu_desc.SetDataType(x_dtype);
   (void)op.UpdateOutputDesc("sum_dy_xmu", sum_dy_xmu_desc);
-  TensorDesc y_desc = op.GetOutputDesc("y");
+  TensorDesc y_desc = op.GetOutputDescByName("y");
   y_desc.SetShape(ge::Shape(x_shape));
   y_desc.SetDataType(x_dtype);
   (void)op.UpdateOutputDesc("y", y_desc);
@@ -178,9 +178,9 @@ IMPLEMT_VERIFIER(SyncBatchNormBackwardElemt, SyncBatchNormBackwardElemtVerify) {
 }
 
 IMPLEMT_INFERFUNC(SyncBatchNormBackwardElemt, SyncBatchNormBackwardElemtInferShape) {
-  auto x_shape = op.GetInputDesc("grad_output").GetShape().GetDims();
-  DataType x_dtype = op.GetInputDesc("grad_output").GetDataType();
-  TensorDesc grad_input_desc = op.GetOutputDesc("grad_input");
+  auto x_shape = op.GetInputDescByName("grad_output").GetShape().GetDims();
+  DataType x_dtype = op.GetInputDescByName("grad_output").GetDataType();
+  TensorDesc grad_input_desc = op.GetOutputDescByName("grad_input");
   grad_input_desc.SetShape(ge::Shape(x_shape));
   grad_input_desc.SetDataType(x_dtype);
   (void)op.UpdateOutputDesc("grad_input", grad_input_desc);
@@ -209,33 +209,33 @@ IMPLEMT_INFERFUNC(BatchNormExt2, BatchNormExt2InferShape) {
       return GRAPH_FAILED;
     }
   }
-  auto x_shape = op.GetInputDesc("input_x").GetShape().GetDims();
-  DataType x_dtype = op.GetInputDesc("input_x").GetDataType();
+  auto x_shape = op.GetInputDescByName("input_x").GetShape().GetDims();
+  DataType x_dtype = op.GetInputDescByName("input_x").GetDataType();
 
-  TensorDesc y_desc = op.GetOutputDesc("output_y");
+  TensorDesc y_desc = op.GetOutputDescByName("output_y");
   y_desc.SetShape(ge::Shape(x_shape));
   y_desc.SetDataType(x_dtype);
   (void)op.UpdateOutputDesc("output_y", y_desc);
 
-  auto scale_shape = op.GetInputDesc("input_scale").GetShape().GetDims();
-  DataType scale_dtype = op.GetInputDesc("input_scale").GetDataType();
+  auto scale_shape = op.GetInputDescByName("input_scale").GetShape().GetDims();
+  DataType scale_dtype = op.GetInputDescByName("input_scale").GetDataType();
 
-  TensorDesc batch_mean_desc = op.GetOutputDesc("output_mean");
+  TensorDesc batch_mean_desc = op.GetOutputDescByName("output_mean");
   batch_mean_desc.SetShape(ge::Shape(scale_shape));
   batch_mean_desc.SetDataType(scale_dtype);
   (void)op.UpdateOutputDesc("output_mean", batch_mean_desc);
 
-  TensorDesc batch_variance_desc = op.GetOutputDesc("output_variance");
+  TensorDesc batch_variance_desc = op.GetOutputDescByName("output_variance");
   batch_variance_desc.SetShape(ge::Shape(scale_shape));
   batch_variance_desc.SetDataType(scale_dtype);
   (void)op.UpdateOutputDesc("output_variance", batch_variance_desc);
 
-  TensorDesc reserve_space_1_desc = op.GetOutputDesc("output_reserve_space_1");
+  TensorDesc reserve_space_1_desc = op.GetOutputDescByName("output_reserve_space_1");
   reserve_space_1_desc.SetShape(ge::Shape(scale_shape));
   reserve_space_1_desc.SetDataType(scale_dtype);
   (void)op.UpdateOutputDesc("output_reserve_space_1", reserve_space_1_desc);
 
-  TensorDesc reserve_space_2_desc = op.GetOutputDesc("output_reserve_space_2");
+  TensorDesc reserve_space_2_desc = op.GetOutputDescByName("output_reserve_space_2");
   reserve_space_2_desc.SetShape(ge::Shape(scale_shape));
   reserve_space_2_desc.SetDataType(scale_dtype);
   (void)op.UpdateOutputDesc("output_reserve_space_2", reserve_space_2_desc);
@@ -368,23 +368,23 @@ IMPLEMT_INFERFUNC(BatchNormGradExt2, BatchNormGradExt2InferShape) {
       return GRAPH_FAILED;
     }
   }
-  auto x_shape = op.GetInputDesc("x").GetShape().GetDims();
-  DataType x_dtype = op.GetInputDesc("x").GetDataType();
+  auto x_shape = op.GetInputDescByName("x").GetShape().GetDims();
+  DataType x_dtype = op.GetInputDescByName("x").GetDataType();
 
-  TensorDesc x_backprop_desc = op.GetOutputDesc("x_backprop");
+  TensorDesc x_backprop_desc = op.GetOutputDescByName("x_backprop");
   x_backprop_desc.SetShape(ge::Shape(x_shape));
   x_backprop_desc.SetDataType(x_dtype);
   (void)op.UpdateOutputDesc("x_backprop", x_backprop_desc);
 
-  auto scale_shape = op.GetInputDesc("scale").GetShape().GetDims();
-  DataType scale_dtype = op.GetInputDesc("scale").GetDataType();
+  auto scale_shape = op.GetInputDescByName("scale").GetShape().GetDims();
+  DataType scale_dtype = op.GetInputDescByName("scale").GetDataType();
 
-  TensorDesc scale_backprop_desc = op.GetOutputDesc("scale_backprop");
+  TensorDesc scale_backprop_desc = op.GetOutputDescByName("scale_backprop");
   scale_backprop_desc.SetShape(ge::Shape(scale_shape));
   scale_backprop_desc.SetDataType(scale_dtype);
   (void)op.UpdateOutputDesc("scale_backprop", scale_backprop_desc);
 
-  TensorDesc offset_backprop_desc = op.GetOutputDesc("offset_backprop");
+  TensorDesc offset_backprop_desc = op.GetOutputDescByName("offset_backprop");
   offset_backprop_desc.SetShape(ge::Shape(scale_shape));
   offset_backprop_desc.SetDataType(scale_dtype);
   (void)op.UpdateOutputDesc("offset_backprop", offset_backprop_desc);
@@ -392,12 +392,12 @@ IMPLEMT_INFERFUNC(BatchNormGradExt2, BatchNormGradExt2InferShape) {
   std::vector<int64_t> oShapeVector;
   Shape oShape(oShapeVector);
 
-  TensorDesc reserve_space_3_desc = op.GetOutputDesc("reserve_space_3");
+  TensorDesc reserve_space_3_desc = op.GetOutputDescByName("reserve_space_3");
   reserve_space_3_desc.SetShape(ge::Shape(oShape));
   reserve_space_3_desc.SetDataType(scale_dtype);
   (void)op.UpdateOutputDesc("reserve_space_3", reserve_space_3_desc);
 
-  TensorDesc reserve_space_4_desc = op.GetOutputDesc("reserve_space_4");
+  TensorDesc reserve_space_4_desc = op.GetOutputDescByName("reserve_space_4");
   reserve_space_4_desc.SetShape(ge::Shape(oShape));
   reserve_space_4_desc.SetDataType(scale_dtype);
   (void)op.UpdateOutputDesc("reserve_space_4", reserve_space_4_desc);
@@ -411,10 +411,10 @@ VERIFY_FUNC_REG(BatchNormGradExt2, BatchNormGradExt2Verify);
 
 // -------------------------L2Normalize-----------------------------
 IMPLEMT_INFERFUNC(L2Normalize, L2NormalizeInferShape) {
-  auto outShape = op.GetInputDesc("x").GetShape();
-  auto outDtype = op.GetInputDesc("x").GetDataType();
+  auto outShape = op.GetInputDescByName("x").GetShape();
+  auto outDtype = op.GetInputDescByName("x").GetDataType();
 
-  TensorDesc td = op.GetOutputDesc("y");
+  TensorDesc td = op.GetOutputDescByName("y");
   td.SetShape(outShape);
   td.SetDataType(outDtype);
   (void)op.UpdateOutputDesc("y", td);
@@ -426,10 +426,10 @@ INFER_FUNC_REG(L2Normalize, L2NormalizeInferShape);
 
 // -------------------------L2NormalizeGrad-----------------------------
 IMPLEMT_INFERFUNC(L2NormalizeGrad, L2NormalizeGradInferShape) {
-  auto outShape = op.GetInputDesc("x").GetShape();
-  auto outDtype = op.GetInputDesc("x").GetDataType();
+  auto outShape = op.GetInputDescByName("x").GetShape();
+  auto outDtype = op.GetInputDescByName("x").GetDataType();
 
-  TensorDesc td = op.GetOutputDesc("dx");
+  TensorDesc td = op.GetOutputDescByName("dx");
   td.SetShape(outShape);
   td.SetDataType(outDtype);
   (void)op.UpdateOutputDesc("dx", td);
@@ -445,10 +445,10 @@ IMPLEMT_VERIFIER(BNInference, BNInferenceVerify) {
 }
 
 IMPLEMT_INFERFUNC(BNInference, BNInferenceInferShape) {
-  auto x_shape = op.GetInputDesc("x").GetShape().GetDims();
-  DataType x_dtype = op.GetInputDesc("x").GetDataType();
+  auto x_shape = op.GetInputDescByName("x").GetShape().GetDims();
+  DataType x_dtype = op.GetInputDescByName("x").GetDataType();
 
-  TensorDesc y_desc = op.GetOutputDesc("y");
+  TensorDesc y_desc = op.GetOutputDescByName("y");
   y_desc.SetShape(ge::Shape(x_shape));
   y_desc.SetDataType(x_dtype);
   (void)op.UpdateOutputDesc("y", y_desc);

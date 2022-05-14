@@ -30,14 +30,14 @@ const std::vector<int64_t> DUMMY_SHAPE = {-3};
 const graphStatus GRAPH_NODE_NEED_REPASS = 50331647; // current can not update submodule, so define here
 graphStatus VerifyInt32Scalar(Operator& op, const std::vector<std::string>& input_names) {
   for (const std::string& name : input_names) {
-    auto dims = op.GetInputDesc(name).GetShape().GetDims();
+    auto dims = op.GetInputDescByName(name.c_str()).GetShape().GetDims();
     if (dims.size() != 0) {
       string reason = "input " + name + " should be a scalar, actually rank=" + std::to_string(dims.size());
       REPORT_INNER_ERROR("E19999", "[Node:%s] Check shape rank failed, as %s", TbeGetName(op).c_str(), reason.c_str());
       GE_OP_LOGE(TbeGetName(op).c_str(), "[Verify][Check] Check shape rank failed, as %s", reason.c_str());
       return GRAPH_FAILED;
     }
-    DataType type = op.GetInputDesc(name).GetDataType();
+    DataType type = op.GetInputDescByName(name.c_str()).GetDataType();
     if (type != DT_INT32) {
       string reason = "input " + name + " should be DT_INT32, actually is " + DataTypeToStringDesc(type);
       REPORT_INNER_ERROR("E19999", "[Node:%s] Check dtype failed, as %s", TbeGetName(op).c_str(), reason.c_str());

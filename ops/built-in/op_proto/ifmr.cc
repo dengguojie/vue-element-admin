@@ -26,15 +26,15 @@
 namespace ge {
 IMPLEMT_VERIFIER(IFMR, IFMRVerify) {
   // verify the inputs of data type
-  if (op.GetInputDesc("data").GetDataType() != op.GetInputDesc("data_min").GetDataType()) {
+  if (op.GetInputDescByName("data").GetDataType() != op.GetInputDescByName("data_min").GetDataType()) {
     return GRAPH_FAILED;
   }
 
-  if (op.GetInputDesc("data").GetDataType() != op.GetInputDesc("data_max").GetDataType()) {
+  if (op.GetInputDescByName("data").GetDataType() != op.GetInputDescByName("data_max").GetDataType()) {
     return GRAPH_FAILED;
   }
 
-  if (op.GetInputDesc("cumsum").GetDataType() != ge::DT_INT32) {
+  if (op.GetInputDescByName("cumsum").GetDataType() != ge::DT_INT32) {
     return GRAPH_FAILED;
   }
 
@@ -45,12 +45,12 @@ IMPLEMT_VERIFIER(IFMR, IFMRVerify) {
 IMPLEMT_COMMON_INFERFUNC(IFMRInferShape) {
   Shape ret_shape({1, });
 
-  TensorDesc scale = op.GetOutputDesc("scale");
+  TensorDesc scale = op.GetOutputDescByName("scale");
   scale.SetShape(ret_shape);
   scale.SetDataType(DT_FLOAT);
   (void)op.UpdateOutputDesc("scale", scale);
 
-  TensorDesc offset = op.GetOutputDesc("offset");
+  TensorDesc offset = op.GetOutputDescByName("offset");
   offset.SetShape(ret_shape);
   offset.SetDataType(DT_FLOAT);
   (void)op.UpdateOutputDesc("offset", offset);

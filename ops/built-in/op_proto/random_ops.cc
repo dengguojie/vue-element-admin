@@ -55,7 +55,7 @@ IMPLEMT_INFERFUNC(Multinomial, MultinomialInfer) {
       std::string("get attr[dtype] failed"));
     return GRAPH_FAILED;
   }
-  TensorDesc output_desc = op.GetOutputDesc("y");
+  TensorDesc output_desc = op.GetOutputDescByName("y");
   output_desc.SetDataType(type);
   output_desc.SetShape(shape);
   return op.UpdateOutputDesc("y", output_desc);
@@ -80,7 +80,7 @@ IMPLEMT_INFERFUNC(MultinomialAliasDraw, MultinomialAliasDrawInfer) {
   int64_t num;
   (void)op.GetAttr("num_samples", num);
   std::vector<int64_t> out_dims = {num};
-  TensorDesc output_desc = op.GetOutputDesc("y");
+  TensorDesc output_desc = op.GetOutputDescByName("y");
   output_desc.SetDataType(DT_INT64);
   output_desc.SetShape(Shape(out_dims));
   op.UpdateOutputDesc("y", output_desc);
@@ -90,15 +90,15 @@ IMPLEMT_INFERFUNC(MultinomialAliasDraw, MultinomialAliasDrawInfer) {
 INFER_FUNC_REG(MultinomialAliasDraw, MultinomialAliasDrawInfer);
 
 IMPLEMT_INFERFUNC(MultinomialAliasSetup, MultinomialAliasSetupInfer) {
-  TensorDesc x_input = op.GetInputDesc("probs");
+  TensorDesc x_input = op.GetInputDescByName("probs");
   Shape x_shape;
   if (WithRankAtLeast(x_input, 1, x_shape, "MultinomialAliasSetup") != GRAPH_SUCCESS) {
     return GRAPH_FAILED;
   }
   
-  TensorDesc output_desc_q = op.GetOutputDesc("q");
-  TensorDesc output_desc_j = op.GetOutputDesc("j");
-  auto type = op.GetInputDesc("probs").GetDataType();
+  TensorDesc output_desc_q = op.GetOutputDescByName("q");
+  TensorDesc output_desc_j = op.GetOutputDescByName("j");
+  auto type = op.GetInputDescByName("probs").GetDataType();
   output_desc_q.SetDataType(type);
   output_desc_q.SetShape(x_shape);
   output_desc_j.SetDataType(DT_INT64);
@@ -148,8 +148,8 @@ IMPLEMT_INFERFUNC(ParameterizedTruncatedNormal, ParameterizedTruncatedNormalInfe
 INFER_FUNC_REG(ParameterizedTruncatedNormal, ParameterizedTruncatedNormalInfer);
 
 IMPLEMT_INFERFUNC(RandomGammaGrad, RandomGammaGradInfer) {
-  auto type = op.GetInputDesc("alpha").GetDataType();
-  TensorDesc tensordesc_output = op.GetOutputDesc("y");
+  auto type = op.GetInputDescByName("alpha").GetDataType();
+  TensorDesc tensordesc_output = op.GetOutputDescByName("y");
   tensordesc_output.SetDataType(type);
   (void)op.UpdateOutputDesc("y", tensordesc_output);
   return BROADCAST_INFER("alpha", "sample", "y")(op);
@@ -161,8 +161,8 @@ IMPLEMT_INFERFUNC(RandomGamma, RandomGammaInfer) {
   Shape shape;
   Shape alpha_shape;
   Tensor shape_tensor;
-  auto type = op.GetInputDesc("alpha").GetDataType();
-  TensorDesc output_desc = op.GetOutputDesc("y");
+  auto type = op.GetInputDescByName("alpha").GetDataType();
+  TensorDesc output_desc = op.GetOutputDescByName("y");
 
   std::vector<std::string> input_infer_depends = {"shape"};
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
@@ -170,7 +170,7 @@ IMPLEMT_INFERFUNC(RandomGamma, RandomGammaInfer) {
 
   if (op.GetInputConstData("shape", shape_tensor) != GRAPH_SUCCESS) {
     output_desc.SetDataType(type);
-    auto input_shape = op.GetInputDesc("shape").GetShape();
+    auto input_shape = op.GetInputDescByName("shape").GetShape();
     if (input_shape.GetShapeSize() == ge::UNKNOWN_DIM) {
       output_desc.SetShape(ge::Shape(ge::UNKNOWN_RANK));
       output_desc.SetOriginShape(ge::Shape(ge::UNKNOWN_RANK));
@@ -233,7 +233,7 @@ IMPLEMT_INFERFUNC(RandomPoisson, RandomPoissonInfer) {
       std::string("get attr[dtype] failed"));
     return GRAPH_FAILED;
   }
-  TensorDesc output_desc = op.GetOutputDesc("y");
+  TensorDesc output_desc = op.GetOutputDescByName("y");
   output_desc.SetDataType(type);
   output_desc.SetShape(shape);
   return op.UpdateOutputDesc("y", output_desc);
@@ -243,10 +243,10 @@ INFER_FUNC_REG(RandomPoisson, RandomPoissonInfer);
 
 IMPLEMT_INFERFUNC(Exponential, ExponentialInfer) {
 
-  TensorDesc tensordesc_output = op.GetOutputDesc("y");
+  TensorDesc tensordesc_output = op.GetOutputDescByName("y");
 
-  tensordesc_output.SetShape(op.GetInputDesc("x").GetShape());
-  tensordesc_output.SetDataType(op.GetInputDesc("x").GetDataType());
+  tensordesc_output.SetShape(op.GetInputDescByName("x").GetShape());
+  tensordesc_output.SetDataType(op.GetInputDescByName("x").GetDataType());
 
   (void)op.UpdateOutputDesc("y", tensordesc_output);
   return GRAPH_SUCCESS;
@@ -258,8 +258,8 @@ IMPLEMT_INFERFUNC(RandomShuffle, RandomShuffleInfer) {
   TensorDesc desc = op.GetInputDesc(0);
   Shape shape = desc.GetShape();
 
-  auto type = op.GetInputDesc("x").GetDataType();
-  TensorDesc output_desc = op.GetOutputDesc("y");
+  auto type = op.GetInputDescByName("x").GetDataType();
+  TensorDesc output_desc = op.GetOutputDescByName("y");
   std::vector<std::pair<int64_t,int64_t>> range;
   auto status = desc.GetShapeRange(range);
   if (status != GRAPH_SUCCESS) {
@@ -313,8 +313,8 @@ IMPLEMT_INFERFUNC(RandomUniformInt, RandomUniformIntInfer) {
     return GRAPH_FAILED;
   }
 
-  auto type = op.GetInputDesc("min").GetDataType();
-  TensorDesc output_desc = op.GetOutputDesc("y");
+  auto type = op.GetInputDescByName("min").GetDataType();
+  TensorDesc output_desc = op.GetOutputDescByName("y");
   output_desc.SetShape(shape);
   output_desc.SetDataType(type);
   return op.UpdateOutputDesc("y", output_desc);
@@ -433,7 +433,7 @@ IMPLEMT_COMMON_INFERFUNC(DropOutGenMaskInfer) {
         ConcatString("call GetDropOutGenMaskShapeAndRange function failed "));
       return GRAPH_FAILED;
     }
-    TensorDesc outputDesc = op.GetOutputDesc("y");
+    TensorDesc outputDesc = op.GetOutputDescByName("y");
     outputDesc.SetShape(shapeAndRange.shape_);
     outputDesc.SetShapeRange(shapeAndRange.shape_range_);
     outputDesc.SetDataType(DT_UINT8);
@@ -453,7 +453,7 @@ IMPLEMT_COMMON_INFERFUNC(DropOutGenMaskInfer) {
   std::vector<int64_t> out_dims = {n8s};
   Shape outShape(out_dims);
 
-  TensorDesc outputDesc = op.GetOutputDesc("y");
+  TensorDesc outputDesc = op.GetOutputDescByName("y");
   outputDesc.SetShape(outShape);
   outputDesc.SetDataType(DT_UINT8);
   return op.UpdateOutputDesc("y", outputDesc);
@@ -507,7 +507,7 @@ IMPLEMT_INFERFUNC(DropOutGenMaskV3, DropOutGenMaskV3Infer) {
   op_desc->SetOpInferDepends(input_infer_depends);
   Tensor shape_tensor;
   if (op.GetInputConstData("shape", shape_tensor) != GRAPH_SUCCESS) {
-    TensorDesc output_desc = op.GetOutputDesc("y");
+    TensorDesc output_desc = op.GetOutputDescByName("y");
     output_desc.SetShape(ge::Shape(ge::UNKNOWN_RANK));
     return op.UpdateOutputDesc("y", output_desc);
   }
@@ -564,7 +564,7 @@ IMPLEMT_INFERFUNC(DropOutGenMaskV3, DropOutGenMaskV3Infer) {
     out_shape = ge::Shape(ge::UNKNOWN_RANK);
   }
 
-  TensorDesc output_desc = op.GetOutputDesc("y");
+  TensorDesc output_desc = op.GetOutputDescByName("y");
   output_desc.SetShape(out_shape);
   output_desc.SetDataType(DT_UINT8);
   return op.UpdateOutputDesc("y", output_desc);
@@ -585,10 +585,10 @@ IMPLEMT_VERIFIER(Dropout, DropoutVerify) {
 VERIFY_FUNC_REG(Dropout, DropoutVerify);
 
 IMPLEMT_INFERFUNC(Dropout, DropoutInfer) {
-  TensorDesc tensordesc_output = op.GetOutputDesc("y");
+  TensorDesc tensordesc_output = op.GetOutputDescByName("y");
 
-  tensordesc_output.SetShape(op.GetInputDesc("x").GetShape());
-  tensordesc_output.SetDataType(op.GetInputDesc("x").GetDataType());
+  tensordesc_output.SetShape(op.GetInputDescByName("x").GetShape());
+  tensordesc_output.SetDataType(op.GetInputDescByName("x").GetDataType());
 
   (void)op.UpdateOutputDesc("y", tensordesc_output);
   return GRAPH_SUCCESS;
@@ -598,9 +598,9 @@ INFER_FUNC_REG(Dropout, DropoutInfer);
 
 // --------------------LinSpaceD-------------------------
 IMPLEMT_COMMON_INFERFUNC(LinSpaceDInferShape) {
-  Shape input_shape = op.GetInputDesc("assist").GetShape();
-  DataType input_dtype = op.GetInputDesc("assist").GetDataType();
-  TensorDesc td = op.GetOutputDesc("output");
+  Shape input_shape = op.GetInputDescByName("assist").GetShape();
+  DataType input_dtype = op.GetInputDescByName("assist").GetDataType();
+  TensorDesc td = op.GetOutputDescByName("output");
   td.SetShape(ge::Shape(input_shape));
   td.SetDataType(input_dtype);
   (void)op.UpdateOutputDesc("output", td);
@@ -640,7 +640,7 @@ IMPLEMT_COMMON_INFERFUNC(LinSpaceInferShape) {
     auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
     op_desc->SetOpInferDepends(input_infer_depends);
 
-    TensorDesc td = op.GetOutputDesc("output");
+    TensorDesc td = op.GetOutputDescByName("output");
     td.SetShape(ge::Shape(ge::UNKNOWN_RANK));
     td.SetDataType(input_dtype);
     (void)op.UpdateOutputDesc("output", td);
@@ -665,8 +665,8 @@ IMPLEMT_COMMON_INFERFUNC(LinSpaceInferShape) {
   }
   OP_LOGI(op_name.GetString(), "The num is %d \n", num_shape_vec[0]);
 
-  DataType input_dtype = op.GetInputDesc("start").GetDataType();
-  TensorDesc td = op.GetOutputDesc("output");
+  DataType input_dtype = op.GetInputDescByName("start").GetDataType();
+  TensorDesc td = op.GetOutputDescByName("output");
   td.SetShape(ge::Shape(num_shape_vec));
   td.SetDataType(input_dtype);
   (void)op.UpdateOutputDesc("output", td);
@@ -677,13 +677,13 @@ COMMON_INFER_FUNC_REG(LinSpace, LinSpaceInferShape);
 // -------------------LinSpace END-----------------------
 
 IMPLEMT_INFERFUNC(RandomChoiceWithMask, RandomChoiceWithMaskInfer) {
-  TensorDesc output_y_desc = op.GetOutputDesc("y");
+  TensorDesc output_y_desc = op.GetOutputDescByName("y");
   output_y_desc.SetDataType(DT_INT32);
-  TensorDesc output_mask_desc = op.GetOutputDesc("mask");
+  TensorDesc output_mask_desc = op.GetOutputDescByName("mask");
   output_mask_desc.SetDataType(DT_BOOL);
-  Shape input_shape = op.GetInputDesc("x").GetShape();
+  Shape input_shape = op.GetInputDescByName("x").GetShape();
   int64_t rank = static_cast<int64_t>(input_shape.GetDimNum());
-  std::vector<int64_t> input_dims = op.GetInputDesc("x").GetShape().GetDims();
+  std::vector<int64_t> input_dims = op.GetInputDescByName("x").GetShape().GetDims();
   if (input_dims.empty()) {
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op),
       std::string("input x should not be empty."));
@@ -749,7 +749,7 @@ IMPLEMT_VERIFIER(ShuffleChannel, ShuffleChannelVerify) {
 }
 
 IMPLEMT_COMMON_INFERFUNC(ShuffleChannelInferShape) {
-  auto output_desc = op.GetInputDesc("x");
+  auto output_desc = op.GetInputDescByName("x");
   return op.UpdateOutputDesc("y", output_desc);
 }
 
@@ -868,7 +868,7 @@ COMMON_INFER_FUNC_REG(Bernoulli, BernoulliInferShape);
 // ----------------------Uniform----------------------
 IMPLEMT_COMMON_INFERFUNC(UniformInferShape) {
 
-    TensorDesc tensordesc_input = op.GetInputDesc("x");
+    TensorDesc tensordesc_input = op.GetInputDescByName("x");
     (void)op.UpdateOutputDesc("y", tensordesc_input);
 
     return GRAPH_SUCCESS;
@@ -897,9 +897,9 @@ COMMON_INFER_FUNC_REG(ContinuationIndicator, ContinuationIndicatorInferShape);
 IMPLEMT_INFERFUNC(Poisson, PoissonInfer) {
   AscendString op_name;
   CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "failed to get op_name"), return GRAPH_FAILED);
-  TensorDesc tensordesc_output = op.GetOutputDesc("y");
-  tensordesc_output.SetShape(op.GetInputDesc("x").GetShape());
-  tensordesc_output.SetDataType(op.GetInputDesc("x").GetDataType());
+  TensorDesc tensordesc_output = op.GetOutputDescByName("y");
+  tensordesc_output.SetShape(op.GetInputDescByName("x").GetShape());
+  tensordesc_output.SetDataType(op.GetInputDescByName("x").GetDataType());
 
   (void)op.UpdateOutputDesc("y", tensordesc_output);
   return GRAPH_SUCCESS;
@@ -908,9 +908,9 @@ IMPLEMT_INFERFUNC(Poisson, PoissonInfer) {
 INFER_FUNC_REG(Poisson, PoissonInfer);
 
 IMPLEMT_INFERFUNC(Geometric, GeometricInfer) {
-  TensorDesc tensordesc_output = op.GetOutputDesc("y");
-  tensordesc_output.SetShape(op.GetInputDesc("x").GetShape());
-  tensordesc_output.SetDataType(op.GetInputDesc("x").GetDataType());
+  TensorDesc tensordesc_output = op.GetOutputDescByName("y");
+  tensordesc_output.SetShape(op.GetInputDescByName("x").GetShape());
+  tensordesc_output.SetDataType(op.GetInputDescByName("x").GetDataType());
 
   (void)op.UpdateOutputDesc("y", tensordesc_output);
   return GRAPH_SUCCESS;

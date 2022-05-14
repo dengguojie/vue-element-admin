@@ -28,7 +28,7 @@
 namespace ge {
 
 IMPLEMT_COMMON_INFERFUNC(NPUClearFloatStatusOperatorInferShape) {
-  TensorDesc td = op.GetOutputDesc("data");
+  TensorDesc td = op.GetOutputDescByName("data");
   td.SetShape(Shape({8}));
   (void)op.UpdateOutputDesc("data", td);
   return GRAPH_SUCCESS;
@@ -42,7 +42,7 @@ INFER_FUNC_REG(NPUClearFloatStatusOperator, NPUClearFloatStatusOperatorInferShap
 VERIFY_FUNC_REG(NPUClearFloatStatusOperator, NPUClearFloatStatusOperatorVerify);
 
 IMPLEMT_COMMON_INFERFUNC(NPUGetFloatStatusOperatorInferShape) {
-  TensorDesc td = op.GetOutputDesc("data");
+  TensorDesc td = op.GetOutputDescByName("data");
   td.SetShape(Shape({8}));
   (void)op.UpdateOutputDesc("data", td);
   return GRAPH_SUCCESS;
@@ -56,7 +56,7 @@ INFER_FUNC_REG(NPUGetFloatStatusOperator, NPUGetFloatStatusOperatorInferShape);
 VERIFY_FUNC_REG(NPUGetFloatStatusOperator, NPUGetFloatStatusOperatorVerify);
 
 IMPLEMT_COMMON_INFERFUNC(NPUAllocFloatStatusOperatorInferShape) {
-  TensorDesc td = op.GetOutputDesc("data");
+  TensorDesc td = op.GetOutputDescByName("data");
   td.SetShape(Shape({8}));
   (void)op.UpdateOutputDesc("data", td);
   return GRAPH_SUCCESS;
@@ -71,7 +71,7 @@ VERIFY_FUNC_REG(NPUAllocFloatStatusOperator, NPUAllocFloatStatusOperatorVerify);
 
 // ----------------------------TBE Loss Scale------------------------------------//
 IMPLEMT_COMMON_INFERFUNC(NPUClearFloatStatusInferShape) {
-  TensorDesc td = op.GetOutputDesc("data");
+  TensorDesc td = op.GetOutputDescByName("data");
   td.SetShape(Shape({8}));
   (void)op.UpdateOutputDesc("data", td);
   return GRAPH_SUCCESS;
@@ -85,7 +85,7 @@ INFER_FUNC_REG(NPUClearFloatStatus, NPUClearFloatStatusInferShape);
 VERIFY_FUNC_REG(NPUClearFloatStatus, NPUClearFloatStatusVerify);
 
 IMPLEMT_COMMON_INFERFUNC(NPUGetFloatStatusInferShape) {
-  TensorDesc td = op.GetOutputDesc("data");
+  TensorDesc td = op.GetOutputDescByName("data");
   td.SetShape(Shape({8}));
   (void)op.UpdateOutputDesc("data", td);
   return GRAPH_SUCCESS;
@@ -99,7 +99,7 @@ INFER_FUNC_REG(NPUGetFloatStatus, NPUGetFloatStatusInferShape);
 VERIFY_FUNC_REG(NPUGetFloatStatus, NPUGetFloatStatusVerify);
 
 IMPLEMT_COMMON_INFERFUNC(NPUAllocFloatStatusInferShape) {
-  TensorDesc td = op.GetOutputDesc("data");
+  TensorDesc td = op.GetOutputDescByName("data");
   td.SetShape(Shape({8}));
   (void)op.UpdateOutputDesc("data", td);
   return GRAPH_SUCCESS;
@@ -113,7 +113,7 @@ INFER_FUNC_REG(NPUAllocFloatStatus, NPUAllocFloatStatusInferShape);
 VERIFY_FUNC_REG(NPUAllocFloatStatus, NPUAllocFloatStatusVerify);
 // ----------------------------NPUGetFloatStatusV2------------------------------------//
 IMPLEMT_COMMON_INFERFUNC(NPUGetFloatStatusV2InferShape) {
-  TensorDesc td = op.GetOutputDesc("data");
+  TensorDesc td = op.GetOutputDescByName("data");
   td.SetShape(Shape({8}));  // 8 * 4B equals 32B
   td.SetDataType(DT_INT32);
   (void)op.UpdateOutputDesc("data", td);

@@ -56,8 +56,8 @@ IMPLEMT_INFERFUNC(SparseSoftmax, SparseSoftmaxInfer) {
     return GRAPH_FAILED;
   }
 
-  auto type = op.GetInputDesc("values").GetDataType();
-  TensorDesc output_desc = op.GetOutputDesc("y");
+  auto type = op.GetInputDescByName("values").GetDataType();
+  TensorDesc output_desc = op.GetOutputDescByName("y");
   output_desc.SetShape(values);
   output_desc.SetDataType(type);
   return op.UpdateOutputDesc("y", output_desc);
@@ -69,8 +69,8 @@ IMPLEMT_INFERFUNC(SparseTensorDenseAdd, SparseTensorDenseAddInfer) {
   TensorDesc desc = op.GetInputDesc(3);
   Shape shape = desc.GetShape();
 
-  auto type = op.GetInputDesc("x1_values").GetDataType();
-  TensorDesc output_desc = op.GetOutputDesc("y");
+  auto type = op.GetInputDescByName("x1_values").GetDataType();
+  TensorDesc output_desc = op.GetOutputDescByName("y");
   output_desc.SetShape(shape);
   output_desc.SetDataType(type);
   return op.UpdateOutputDesc("y", output_desc);
@@ -108,7 +108,7 @@ IMPLEMT_INFERFUNC(AddSparseToTensorsMap, AddSparseToTensorsMapInfer) {
     return GRAPH_FAILED;
   }
 
-  TensorDesc output_desc = op.GetOutputDesc("handle");
+  TensorDesc output_desc = op.GetOutputDescByName("handle");
   output_desc.SetShape(shape);
   output_desc.SetDataType(DT_INT64);
   return op.UpdateOutputDesc("handle", output_desc);
@@ -126,11 +126,11 @@ IMPLEMT_INFERFUNC(SparseSliceGrad, SparseSliceGradInfer) {
     AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_PARAM_INVALID;
   }
-  TensorDesc desc = op.GetOutputDesc("y_grad");
+  TensorDesc desc = op.GetOutputDescByName("y_grad");
   std::vector<int64_t> new_dims;
   new_dims.push_back(indices_shape.GetDim(0));
   desc.SetShape(Shape(new_dims));
-  DataType type = op.GetInputDesc("backprop_val_grad").GetDataType();
+  DataType type = op.GetInputDescByName("backprop_val_grad").GetDataType();
   desc.SetDataType(type);
   return op.UpdateOutputDesc("y_grad", desc);
 }
@@ -139,7 +139,7 @@ INFER_FUNC_REG(SparseSliceGrad, SparseSliceGradInfer);
 
 IMPLEMT_INFERFUNC(SparseSlice, SparseSliceInfer) {
   Shape shape_shape = op.GetInputDesc(2).GetShape();
-  TensorDesc y_indices_desc = op.GetOutputDesc("y_indices");
+  TensorDesc y_indices_desc = op.GetOutputDescByName("y_indices");
   std::vector<int64_t> new_dims;
   new_dims.push_back(UNKNOWN_DIM);
   new_dims.push_back(shape_shape.GetDim(0));
@@ -150,18 +150,18 @@ IMPLEMT_INFERFUNC(SparseSlice, SparseSliceInfer) {
         TbeGetName(op), string("update output[y_indices] desc failed."));
     return GRAPH_FAILED;
   }
-  TensorDesc y_value_desc = op.GetOutputDesc("y_values");
+  TensorDesc y_value_desc = op.GetOutputDescByName("y_values");
   new_dims.clear();
   new_dims.push_back(UNKNOWN_DIM);
   y_value_desc.SetShape(Shape(new_dims));
-  DataType type = op.GetInputDesc("values").GetDataType();
+  DataType type = op.GetInputDescByName("values").GetDataType();
   y_value_desc.SetDataType(type);
   if (op.UpdateOutputDesc("y_values", y_value_desc) != GRAPH_SUCCESS) {
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(
         TbeGetName(op), string("update output[y_values] desc failed."));
     return GRAPH_FAILED;
   }
-  TensorDesc y_shape_desc = op.GetOutputDesc("y_shape");
+  TensorDesc y_shape_desc = op.GetOutputDescByName("y_shape");
   y_shape_desc.SetShape(shape_shape);
   y_shape_desc.SetDataType(DT_INT64);
   if (op.UpdateOutputDesc("y_shape", y_shape_desc) != GRAPH_SUCCESS) {
@@ -207,7 +207,7 @@ IMPLEMT_INFERFUNC(SparseConcat, SparseConcatInfer) {
   for (int i = 0; i < 3; i++) {
     while (true) {
       TensorDesc unused_desc =
-          op.GetDynamicInputDesc(list_input_names[i], list_length[i]);
+          op.GetDynamicInputDesc(list_input_names[i].c_str(), list_length[i]);
       if (unused_desc.GetShape().GetDims().size() == 0) {
         break;
       } else {
@@ -293,7 +293,7 @@ IMPLEMT_INFERFUNC(SparseConcat, SparseConcatInfer) {
   }
 
   // Set output
-  TensorDesc y_indices_desc = op.GetOutputDesc("y_indices");
+  TensorDesc y_indices_desc = op.GetOutputDescByName("y_indices");
   Shape y_indices_shape({output_row_count, output_indice_cols});
   y_indices_desc.SetDataType(DT_INT64);
   y_indices_desc.SetShape(y_indices_shape);
@@ -303,7 +303,7 @@ IMPLEMT_INFERFUNC(SparseConcat, SparseConcatInfer) {
     return GRAPH_FAILED;
   }
 
-  TensorDesc y_values_desc = op.GetOutputDesc("y_values");
+  TensorDesc y_values_desc = op.GetOutputDescByName("y_values");
   Shape y_values_shape({output_row_count});
   DataType values_type = op.GetDynamicInputDesc("values", 0).GetDataType();
   y_values_desc.SetDataType(values_type);
@@ -314,7 +314,7 @@ IMPLEMT_INFERFUNC(SparseConcat, SparseConcatInfer) {
     return GRAPH_FAILED;
   }
 
-  TensorDesc y_shape_desc = op.GetOutputDesc("y_shape");
+  TensorDesc y_shape_desc = op.GetOutputDescByName("y_shape");
   y_shape_desc.SetDataType(DT_INT64);
   y_shape_desc.SetShape(output_shape);
   if (op.UpdateOutputDesc("y_shape", y_shape_desc) != GRAPH_SUCCESS) {
@@ -423,7 +423,7 @@ IMPLEMT_INFERFUNC(SparseCross, SparseCrossInfer) {
 
   Shape indices_shape;
   (void)Matrix(ge::UNKNOWN_DIM, 2, indices_shape);
-  TensorDesc indices_desc = op.GetOutputDesc("output_indices");
+  TensorDesc indices_desc = op.GetOutputDescByName("output_indices");
   indices_desc.SetShape(indices_shape);
   indices_desc.SetDataType(DT_INT64);
   if (op.UpdateOutputDesc("output_indices", indices_desc) != GRAPH_SUCCESS) {
@@ -434,7 +434,7 @@ IMPLEMT_INFERFUNC(SparseCross, SparseCrossInfer) {
 
   Shape values_shape;
   (void)Vector(ge::UNKNOWN_DIM, values_shape);
-  TensorDesc values_desc = op.GetOutputDesc("output_values");
+  TensorDesc values_desc = op.GetOutputDescByName("output_values");
   values_desc.SetShape(values_shape);
   values_desc.SetDataType(out_type);
 
@@ -446,7 +446,7 @@ IMPLEMT_INFERFUNC(SparseCross, SparseCrossInfer) {
 
   Shape shape;
   (void)Vector(2, shape);
-  TensorDesc shape_desc = op.GetOutputDesc("output_shape");
+  TensorDesc shape_desc = op.GetOutputDescByName("output_shape");
   shape_desc.SetShape(shape);
   shape_desc.SetDataType(DT_INT64);
 
@@ -474,7 +474,7 @@ IMPLEMT_INFERFUNC(SparseToDense, SparseToDenseInfer) {
   }
 
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
-  DataType values_type = op.GetInputDesc("values").GetDataType();
+  DataType values_type = op.GetInputDescByName("values").GetDataType();
 
   auto output_desc = op_desc->MutableOutputDesc(0);
   output_desc->SetShape(shape);
@@ -599,7 +599,7 @@ IMPLEMT_INFERFUNC(SparseFillEmptyRows, SparseFillEmptyRowsInfer) {
   }
 
   DataType indices_type = DT_INT64;
-  DataType values_type = op.GetInputDesc("values").GetDataType();
+  DataType values_type = op.GetInputDescByName("values").GetDataType();
   DataType empty_row_indicator_type = DT_BOOL;
   DataType reverse_index_map_type = DT_INT64;
 
@@ -738,9 +738,9 @@ IMPLEMT_INFERFUNC(SparseSparseMaximum, SparseSparseMaximumInfer) {
   }
 
   DataType x1_indices_type = DT_INT64;
-  DataType x1_values_type = op.GetInputDesc("x1_values").GetDataType();
+  DataType x1_values_type = op.GetInputDescByName("x1_values").GetDataType();
 
-  TensorDesc y_indices_desc = op.GetOutputDesc("y_indices");
+  TensorDesc y_indices_desc = op.GetOutputDescByName("y_indices");
   std::vector<int64_t> new_dims;
   new_dims.push_back(ge::UNKNOWN_DIM);
   new_dims.push_back(ge::UNKNOWN_DIM);
@@ -752,7 +752,7 @@ IMPLEMT_INFERFUNC(SparseSparseMaximum, SparseSparseMaximumInfer) {
     return GRAPH_FAILED;
   }
 
-  TensorDesc y_values_desc = op.GetOutputDesc("y_values");
+  TensorDesc y_values_desc = op.GetOutputDescByName("y_values");
   new_dims.clear();
   new_dims.push_back(ge::UNKNOWN_DIM);
   y_values_desc.SetShape(Shape(new_dims));
@@ -821,9 +821,9 @@ IMPLEMT_INFERFUNC(SparseSparseMinimum, SparseSparseMinimumInfer) {
   }
 
   DataType x1_indices_type = DT_INT64;
-  DataType x1_values_type = op.GetInputDesc("x1_values").GetDataType();
+  DataType x1_values_type = op.GetInputDescByName("x1_values").GetDataType();
 
-  TensorDesc y_indices_desc = op.GetOutputDesc("y_indices");
+  TensorDesc y_indices_desc = op.GetOutputDescByName("y_indices");
   std::vector<int64_t> newDims;
   newDims.push_back(ge::UNKNOWN_DIM);
   newDims.push_back(ge::UNKNOWN_DIM);
@@ -835,7 +835,7 @@ IMPLEMT_INFERFUNC(SparseSparseMinimum, SparseSparseMinimumInfer) {
     return GRAPH_FAILED;
   }
 
-  TensorDesc y_values_desc = op.GetOutputDesc("y_values");
+  TensorDesc y_values_desc = op.GetOutputDescByName("y_values");
   newDims.clear();
   newDims.push_back(ge::UNKNOWN_DIM);
   y_values_desc.SetShape(Shape(newDims));
@@ -858,14 +858,14 @@ IMPLEMT_INFERFUNC(SparseReduceMax, SparseReduceMaxInfer) {
                                        string("get attr[keep_dims] failed"));
     return GRAPH_FAILED;
   }
-  DataType x_values_type = op.GetInputDesc("x_values").GetDataType();
+  DataType x_values_type = op.GetInputDescByName("x_values").GetDataType();
   Tensor x_shape_tensor;
   Tensor reduction_axes_tensor;
   auto result_x = op.GetInputConstData("x_shape", x_shape_tensor);
   auto result_reduction = op.GetInputConstData("reduction_axes", reduction_axes_tensor);
   if (result_x != GRAPH_SUCCESS || result_reduction != GRAPH_SUCCESS) {
     Shape unknown_shape(ge::UNKNOWN_RANK);
-    TensorDesc y_desc = op.GetOutputDesc("y");
+    TensorDesc y_desc = op.GetOutputDescByName("y");
     y_desc.SetShape(unknown_shape);
     y_desc.SetDataType(x_values_type);
     op.UpdateOutputDesc("y", y_desc);
@@ -895,7 +895,7 @@ IMPLEMT_INFERFUNC(SparseReduceMax, SparseReduceMaxInfer) {
         }
       }
     }
-    TensorDesc y_desc = op.GetOutputDesc("y");
+    TensorDesc y_desc = op.GetOutputDescByName("y");
     ge::Shape shape(dims);
     y_desc.SetShape(shape);
     y_desc.SetDataType(x_values_type);
@@ -910,20 +910,20 @@ IMPLEMT_INFERFUNC(SparseReduceMaxSparse, SparseReduceMaxSparseInfer) {
   Shape unknown_shape(ge::UNKNOWN_SHAPE);
 
   DataType y_indices_type = DT_INT64;
-  DataType y_values_type = op.GetInputDesc("x_values").GetDataType();
+  DataType y_values_type = op.GetInputDescByName("x_values").GetDataType();
   DataType y_shape_type = DT_INT64;
 
-  TensorDesc y_indices_desc = op.GetOutputDesc("y_indices");
+  TensorDesc y_indices_desc = op.GetOutputDescByName("y_indices");
   y_indices_desc.SetShape(unknown_shape);
   y_indices_desc.SetDataType(y_indices_type);
   op.UpdateOutputDesc("y_indices", y_indices_desc);
 
-  TensorDesc y_values_desc = op.GetOutputDesc("y_values");
+  TensorDesc y_values_desc = op.GetOutputDescByName("y_values");
   y_values_desc.SetShape(unknown_shape);
   y_values_desc.SetDataType(y_values_type);
   op.UpdateOutputDesc("y_values", y_values_desc);
 
-  TensorDesc y_shape_desc = op.GetOutputDesc("y_shape");
+  TensorDesc y_shape_desc = op.GetOutputDescByName("y_shape");
   y_shape_desc.SetShape(unknown_shape);
   y_shape_desc.SetDataType(y_shape_type);
   op.UpdateOutputDesc("y_shape", y_shape_desc);
@@ -935,7 +935,7 @@ INFER_FUNC_REG(SparseReduceMaxSparse, SparseReduceMaxSparseInfer);
 
 IMPLEMT_INFERFUNC(SparseReduceSum, SparseReduceSumInfer) {
   GeShape unknown_shape(ge::UNKNOWN_SHAPE);
-  DataType y_type = op.GetInputDesc("x_values").GetDataType();
+  DataType y_type = op.GetInputDescByName("x_values").GetDataType();
 
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
   auto y_desc = op_desc->MutableOutputDesc(0);
@@ -951,20 +951,20 @@ IMPLEMT_INFERFUNC(SparseReduceSumSparse, SparseReduceSumSparseInfer) {
   Shape unknown_shape(ge::UNKNOWN_SHAPE);
 
   DataType y_indices_type = DT_INT64;
-  DataType y_values_type = op.GetInputDesc("x_values").GetDataType();
+  DataType y_values_type = op.GetInputDescByName("x_values").GetDataType();
   DataType y_shape_type = DT_INT64;
 
-  TensorDesc y_indices_desc = op.GetOutputDesc("y_indices");
+  TensorDesc y_indices_desc = op.GetOutputDescByName("y_indices");
   y_indices_desc.SetShape(unknown_shape);
   y_indices_desc.SetDataType(y_indices_type);
   op.UpdateOutputDesc("y_indices", y_indices_desc);
 
-  TensorDesc y_values_desc = op.GetOutputDesc("y_values");
+  TensorDesc y_values_desc = op.GetOutputDescByName("y_values");
   y_values_desc.SetShape(unknown_shape);
   y_values_desc.SetDataType(y_values_type);
   op.UpdateOutputDesc("y_values", y_values_desc);
 
-  TensorDesc y_shape_desc = op.GetOutputDesc("y_shape");
+  TensorDesc y_shape_desc = op.GetOutputDescByName("y_shape");
   y_shape_desc.SetShape(unknown_shape);
   y_shape_desc.SetDataType(y_shape_type);
   op.UpdateOutputDesc("y_shape", y_shape_desc);
@@ -1055,7 +1055,7 @@ IMPLEMT_INFERFUNC(AddManySparseToTensorsMap, AddManySparseToTensorsMapInfer) {
     return GRAPH_PARAM_INVALID;
   }
   auto output_shape = Shape({ge::UNKNOWN_DIM});
-  TensorDesc y_desc = op.GetOutputDesc("handles");
+  TensorDesc y_desc = op.GetOutputDescByName("handles");
   y_desc.SetShape(output_shape);
   y_desc.SetDataType(DT_INT64);
   if (op.UpdateOutputDesc("handles", y_desc) != GRAPH_SUCCESS) {
@@ -1082,7 +1082,7 @@ IMPLEMT_INFERFUNC(SparseDenseCwiseAdd, SparseDenseCwiseAddInfer) {
 
   auto x_dim = x1_indices_tensor.GetShape().GetDim(0);
   auto vector_shape = Shape({x_dim});
-  TensorDesc y_desc = op.GetOutputDesc("y");
+  TensorDesc y_desc = op.GetOutputDescByName("y");
   y_desc.SetShape(vector_shape);
   auto x1_values_tensor = op.get_input_desc_x1_values();
   y_desc.SetDataType(x1_values_tensor.GetDataType());
@@ -1110,7 +1110,7 @@ IMPLEMT_INFERFUNC(SparseDenseCwiseDiv, SparseDenseCwiseDivInfer) {
 
   auto x_dim = x1_indices_tensor.GetShape().GetDim(0);
   auto vector_shape = Shape({x_dim});
-  TensorDesc y_desc = op.GetOutputDesc("y");
+  TensorDesc y_desc = op.GetOutputDescByName("y");
   y_desc.SetShape(vector_shape);
   auto x1_values_tensor = op.get_input_desc_x1_values();
   y_desc.SetDataType(x1_values_tensor.GetDataType());
@@ -1138,7 +1138,7 @@ IMPLEMT_INFERFUNC(SparseDenseCwiseMul, SparseDenseCwiseMulInfer) {
 
   auto x_dim = x1_indices_tensor.GetShape().GetDim(0);
   auto vector_shape = Shape({x_dim});
-  TensorDesc y_desc = op.GetOutputDesc("y");
+  TensorDesc y_desc = op.GetOutputDescByName("y");
   y_desc.SetShape(vector_shape);
   auto x1_values_tensor = op.get_input_desc_x1_values();
   y_desc.SetDataType(x1_values_tensor.GetDataType());
@@ -1189,10 +1189,10 @@ IMPLEMT_INFERFUNC(SparseReorder, SparseReorderInfer) {
     return GRAPH_FAILED;
   }
 
-  DataType y_indices_type = op.GetInputDesc("indices").GetDataType();
-  DataType y_values_type = op.GetInputDesc("values").GetDataType();
+  DataType y_indices_type = op.GetInputDescByName("indices").GetDataType();
+  DataType y_values_type = op.GetInputDescByName("values").GetDataType();
 
-  TensorDesc indices_desc = op.GetOutputDesc("y_indices");
+  TensorDesc indices_desc = op.GetOutputDescByName("y_indices");
   indices_desc.SetShape(Shape(indices));
   indices_desc.SetDataType(y_indices_type);
   if (op.UpdateOutputDesc("y_indices", indices_desc) != GRAPH_SUCCESS) {
@@ -1201,7 +1201,7 @@ IMPLEMT_INFERFUNC(SparseReorder, SparseReorderInfer) {
     return GRAPH_FAILED;
   }
 
-  TensorDesc values_desc = op.GetOutputDesc("y_values");
+  TensorDesc values_desc = op.GetOutputDescByName("y_values");
   values_desc.SetShape(Shape(values));
   values_desc.SetDataType(y_values_type);
   if (op.UpdateOutputDesc("y_values", values_desc) != GRAPH_SUCCESS) {
@@ -1301,14 +1301,14 @@ IMPLEMT_INFERFUNC(SparseAddGrad, SparseAddGradInfer) {
     return GRAPH_FAILED;
   }
   DataType backprop_val_grad_type;
-  backprop_val_grad_type = op.GetInputDesc("backprop_val_grad").GetDataType();
+  backprop_val_grad_type = op.GetInputDescByName("backprop_val_grad").GetDataType();
 
   auto x1_indices_dims = op.GetInputDesc(1).GetShape().GetDims();
   auto x2_indices_dims = op.GetInputDesc(2).GetShape().GetDims();
 
   graphStatus output_status;
 
-  TensorDesc x1_val_grad_desc = op.GetOutputDesc("x1_val_grad");
+  TensorDesc x1_val_grad_desc = op.GetOutputDescByName("x1_val_grad");
   x1_val_grad_desc.SetShape(Shape({x1_indices_dims[0]}));
   x1_val_grad_desc.SetDataType(backprop_val_grad_type);
   output_status = op.UpdateOutputDesc("x1_val_grad", x1_val_grad_desc);
@@ -1318,7 +1318,7 @@ IMPLEMT_INFERFUNC(SparseAddGrad, SparseAddGradInfer) {
     return GRAPH_FAILED;
   }
 
-  TensorDesc x2_val_grad_desc = op.GetOutputDesc("x2_val_grad");
+  TensorDesc x2_val_grad_desc = op.GetOutputDescByName("x2_val_grad");
   x2_val_grad_desc.SetShape(Shape({x2_indices_dims[0]}));
   x2_val_grad_desc.SetDataType(backprop_val_grad_type);
   output_status = op.UpdateOutputDesc("x2_val_grad", x2_val_grad_desc);
@@ -1352,12 +1352,12 @@ IMPLEMT_INFERFUNC(SparseFillEmptyRowsGrad, SparseFillEmptyRowsGradInfer) {
     return GRAPH_FAILED;
   }
 
-  DataType grad_values_type = op.GetInputDesc("grad_values").GetDataType();
+  DataType grad_values_type = op.GetInputDescByName("grad_values").GetDataType();
   auto reverse_index_map_shape = op.GetInputDesc(0).GetShape();
 
   graphStatus output_status;
 
-  TensorDesc y_value_desc = op.GetOutputDesc("y_value");
+  TensorDesc y_value_desc = op.GetOutputDescByName("y_value");
   y_value_desc.SetShape(reverse_index_map_shape);
   y_value_desc.SetDataType(grad_values_type);
   output_status = op.UpdateOutputDesc("y_value", y_value_desc);
@@ -1367,7 +1367,7 @@ IMPLEMT_INFERFUNC(SparseFillEmptyRowsGrad, SparseFillEmptyRowsGradInfer) {
     return GRAPH_FAILED;
   }
 
-  TensorDesc y_default_value_desc = op.GetOutputDesc("y_default_value");
+  TensorDesc y_default_value_desc = op.GetOutputDescByName("y_default_value");
   y_default_value_desc.SetShape(Shape());
   y_default_value_desc.SetDataType(grad_values_type);
   output_status = op.UpdateOutputDesc("y_default_value", y_default_value_desc);
@@ -1461,7 +1461,7 @@ IMPLEMT_INFERFUNC(SparseTensorDenseMatMul, SparseTensorDenseMatMulInfer) {
     return GRAPH_FAILED;
   }
 
-  TensorDesc y_tensor = op.GetOutputDesc("y");
+  TensorDesc y_tensor = op.GetOutputDescByName("y");
   y_tensor.SetDataType(x1_values_tensor.GetDataType());
   y_tensor.SetShape(output_shape);
   return op.UpdateOutputDesc("y", y_tensor);
@@ -1504,7 +1504,7 @@ IMPLEMT_INFERFUNC(SerializeSparse, SerializeSparseInfer) {
   }
   Shape output_shape;
   (void)Vector(3, output_shape);
-  TensorDesc output_tensor = op.GetOutputDesc("serialized_sparse");
+  TensorDesc output_tensor = op.GetOutputDescByName("serialized_sparse");
   output_tensor.SetDataType(output_type);
   output_tensor.SetShape(output_shape);
   return op.UpdateOutputDesc("serialized_sparse", output_tensor);
@@ -1547,7 +1547,7 @@ IMPLEMT_INFERFUNC(SerializeManySparse, SerializeManySparseInfer) {
   }
   Shape output_shape;
   (void)Matrix(ge::UNKNOWN_DIM, 3, output_shape);
-  TensorDesc output_tensor = op.GetOutputDesc("serialized_sparse");
+  TensorDesc output_tensor = op.GetOutputDescByName("serialized_sparse");
   output_tensor.SetDataType(output_type);
   output_tensor.SetShape(output_shape);
   return op.UpdateOutputDesc("serialized_sparse", output_tensor);
@@ -1572,7 +1572,7 @@ IMPLEMT_INFERFUNC(DeserializeSparse, DeserializeSparseInfer) {
   (void)Vector(ge::UNKNOWN_DIM, values_shape);
   (void)Vector(ge::UNKNOWN_DIM, sparse_shape);
 
-  TensorDesc indices_tensor = op.GetOutputDesc("indices");
+  TensorDesc indices_tensor = op.GetOutputDescByName("indices");
   indices_tensor.SetDataType(DT_INT64);
   indices_tensor.SetShape(indices_shape);
   if (op.UpdateOutputDesc("indices", indices_tensor) != GRAPH_SUCCESS) {
@@ -1587,7 +1587,7 @@ IMPLEMT_INFERFUNC(DeserializeSparse, DeserializeSparseInfer) {
         TbeGetName(op), string("get attr[dtype] failed."));
     return GRAPH_FAILED;
   }
-  TensorDesc values_tensor = op.GetOutputDesc("values");
+  TensorDesc values_tensor = op.GetOutputDescByName("values");
   values_tensor.SetDataType(values_type);
   values_tensor.SetShape(values_shape);
   if (op.UpdateOutputDesc("values", values_tensor) != GRAPH_SUCCESS) {
@@ -1596,7 +1596,7 @@ IMPLEMT_INFERFUNC(DeserializeSparse, DeserializeSparseInfer) {
     return GRAPH_FAILED;
   }
 
-  TensorDesc shape_tensor = op.GetOutputDesc("shape");
+  TensorDesc shape_tensor = op.GetOutputDescByName("shape");
   shape_tensor.SetDataType(DT_INT64);
   shape_tensor.SetShape(sparse_shape);
   return op.UpdateOutputDesc("shape", shape_tensor);
@@ -1627,7 +1627,7 @@ IMPLEMT_INFERFUNC(DeserializeManySparse, DeserializeManySparseInfer) {
   (void)Vector(ge::UNKNOWN_DIM, values_shape);
   (void)Vector(ge::UNKNOWN_DIM, sparse_shape);
 
-  TensorDesc indices_tensor = op.GetOutputDesc("indices");
+  TensorDesc indices_tensor = op.GetOutputDescByName("indices");
   indices_tensor.SetDataType(DT_INT64);
   indices_tensor.SetShape(indices_shape);
   if (op.UpdateOutputDesc("indices", indices_tensor) != GRAPH_SUCCESS) {
@@ -1642,7 +1642,7 @@ IMPLEMT_INFERFUNC(DeserializeManySparse, DeserializeManySparseInfer) {
         TbeGetName(op), string("get attr[dtype] failed."));
     return GRAPH_FAILED;
   }
-  TensorDesc values_tensor = op.GetOutputDesc("values");
+  TensorDesc values_tensor = op.GetOutputDescByName("values");
   values_tensor.SetDataType(values_type);
   values_tensor.SetShape(values_shape);
   if (op.UpdateOutputDesc("values", values_tensor) != GRAPH_SUCCESS) {
@@ -1651,7 +1651,7 @@ IMPLEMT_INFERFUNC(DeserializeManySparse, DeserializeManySparseInfer) {
     return GRAPH_FAILED;
   }
 
-  TensorDesc shape_tensor = op.GetOutputDesc("shape");
+  TensorDesc shape_tensor = op.GetOutputDescByName("shape");
   shape_tensor.SetDataType(DT_INT64);
   shape_tensor.SetShape(sparse_shape);
   return op.UpdateOutputDesc("shape", shape_tensor);
@@ -1679,7 +1679,7 @@ IMPLEMT_INFERFUNC(TakeManySparseFromTensorsMap,
   (void)Vector(ge::UNKNOWN_DIM, values_shape);
   (void)Vector(ge::UNKNOWN_DIM, sparse_shape);
 
-  TensorDesc indices_tensor = op.GetOutputDesc("indices");
+  TensorDesc indices_tensor = op.GetOutputDescByName("indices");
   indices_tensor.SetDataType(DT_INT64);
   indices_tensor.SetShape(indices_shape);
   if (op.UpdateOutputDesc("indices", indices_tensor) != GRAPH_SUCCESS) {
@@ -1694,7 +1694,7 @@ IMPLEMT_INFERFUNC(TakeManySparseFromTensorsMap,
                                        string("fail to get attr[dtype]."));
     return GRAPH_FAILED;
   }
-  TensorDesc values_tensor = op.GetOutputDesc("values");
+  TensorDesc values_tensor = op.GetOutputDescByName("values");
   values_tensor.SetDataType(values_type);
   values_tensor.SetShape(values_shape);
   if (op.UpdateOutputDesc("values", values_tensor) != GRAPH_SUCCESS) {
@@ -1703,7 +1703,7 @@ IMPLEMT_INFERFUNC(TakeManySparseFromTensorsMap,
     return GRAPH_FAILED;
   }
 
-  TensorDesc shape_tensor = op.GetOutputDesc("shape");
+  TensorDesc shape_tensor = op.GetOutputDescByName("shape");
   shape_tensor.SetDataType(DT_INT64);
   shape_tensor.SetShape(sparse_shape);
   return op.UpdateOutputDesc("shape", shape_tensor);

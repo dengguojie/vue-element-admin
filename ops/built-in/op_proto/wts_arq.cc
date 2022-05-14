@@ -28,9 +28,9 @@
 namespace ge {
 // Obtains the processing function of the output tensor description.
 IMPLEMT_COMMON_INFERFUNC(WtsARQInferShape) {
-    Shape w_shape = op.GetInputDesc("w").GetShape();
-    Shape w_min_shape = op.GetInputDesc("w_min").GetShape();
-    Shape w_max_shape = op.GetInputDesc("w_max").GetShape();
+    Shape w_shape = op.GetInputDescByName("w").GetShape();
+    Shape w_min_shape = op.GetInputDescByName("w_min").GetShape();
+    Shape w_max_shape = op.GetInputDescByName("w_max").GetShape();
 
     if (w_shape.GetDimNum() != w_min_shape.GetDimNum()) {
         OP_LOGE(TbeGetName(op).c_str(), "The dimension of w_min must be the same as w!");
@@ -58,9 +58,9 @@ IMPLEMT_COMMON_INFERFUNC(WtsARQInferShape) {
         }
     }
 
-    TensorDesc y = op.GetOutputDesc("y");
+    TensorDesc y = op.GetOutputDescByName("y");
     y.SetShape(w_shape);
-    y.SetDataType(op.GetInputDesc("w").GetDataType());
+    y.SetDataType(op.GetInputDescByName("w").GetDataType());
     if (op.UpdateOutputDesc("y", y) != GRAPH_SUCCESS) {
         OP_LOGE(TbeGetName(op).c_str(), "Update output[y] failed!");
         return GRAPH_FAILED;
@@ -70,9 +70,9 @@ IMPLEMT_COMMON_INFERFUNC(WtsARQInferShape) {
 }
 
 IMPLEMT_VERIFIER(WtsARQ, WtsARQVerify) {
-    DataType w_type = op.GetInputDesc("w").GetDataType();
-    DataType w_min_type = op.GetInputDesc("w_min").GetDataType();
-    DataType w_max_type = op.GetInputDesc("w_max").GetDataType();
+    DataType w_type = op.GetInputDescByName("w").GetDataType();
+    DataType w_min_type = op.GetInputDescByName("w_min").GetDataType();
+    DataType w_max_type = op.GetInputDescByName("w_max").GetDataType();
 
     if (w_type != w_min_type) {
         OP_LOGE(TbeGetName(op).c_str(), "The type of w_min must be the same as w!");

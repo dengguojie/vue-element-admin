@@ -72,7 +72,7 @@ IMPLEMT_INFERFUNC(Mfcc, MfccInfer) {
   int64_t spectrogram_length = spectrogram_shape[1];
 
   vector<int64_t> y_shape({spectrogram_channels, spectrogram_length, output_channels});
-  TensorDesc y_desc = op.GetOutputDesc("y");
+  TensorDesc y_desc = op.GetOutputDescByName("y");
   y_desc.SetShape(Shape(y_shape));
   y_desc.SetDataType(DT_FLOAT);
   op.UpdateOutputDesc("y", y_desc);
@@ -160,7 +160,7 @@ IMPLEMT_INFERFUNC(AudioSpectrogram, AudioSpectrogramInfer) {
   int64_t output_channels = 1 + CalcNextPowerOfTwo(window_size) / 2;
 
   Shape out_shape({input_channels, output_length, output_channels});
-  TensorDesc out_desc = op.GetOutputDesc("spectrogram");
+  TensorDesc out_desc = op.GetOutputDescByName("spectrogram");
   out_desc.SetShape(out_shape);
   out_desc.SetDataType(DT_FLOAT);
   return op.UpdateOutputDesc("spectrogram", out_desc);
@@ -218,11 +218,11 @@ IMPLEMT_INFERFUNC(DecodeWav, DecodeWavInfer) {
   Shape audio_shape({samples_dim, channels_dim});
   Shape sample_rate_shape;
   (void)Scalar(sample_rate_shape);
-  TensorDesc audio_tensor = op.GetOutputDesc("audio");
+  TensorDesc audio_tensor = op.GetOutputDescByName("audio");
   audio_tensor.SetDataType(DT_FLOAT);
   audio_tensor.SetShape(audio_shape);
   (void)op.UpdateOutputDesc("audio", audio_tensor);
-  TensorDesc sample_rate_tensor = op.GetOutputDesc("sample_rate");
+  TensorDesc sample_rate_tensor = op.GetOutputDescByName("sample_rate");
   sample_rate_tensor.SetDataType(DT_INT32);
   sample_rate_tensor.SetShape(sample_rate_shape);
   return op.UpdateOutputDesc("sample_rate", sample_rate_tensor);
@@ -251,7 +251,7 @@ IMPLEMT_INFERFUNC(EncodeWav, EncodeWavInfer) {
 
   Shape output_shape;
   (void)Scalar(output_shape);
-  TensorDesc contents_tensor = op.GetOutputDesc("contents");
+  TensorDesc contents_tensor = op.GetOutputDescByName("contents");
   contents_tensor.SetDataType(DT_STRING);
   contents_tensor.SetShape(output_shape);
   return op.UpdateOutputDesc("contents", contents_tensor);

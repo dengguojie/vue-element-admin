@@ -74,7 +74,7 @@ IMPLEMT_INFERFUNC(RaggedGather, RaggedGatherInfer) {
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(
       TbeGetName(op), string("failed to get attr[Tsplits]"));
   }
-  DataType Tvalues_type = op.GetInputDesc("params_dense_values").GetDataType();
+  DataType Tvalues_type = op.GetInputDescByName("params_dense_values").GetDataType();
   std::vector<int64_t> unknow_dim_vec(1, UNKNOWN_DIM);
   for (int64_t i = 0; i < num_splits; ++i) {
     TensorDesc y_tensor = op.GetDynamicOutputDesc("output_nested_splits", i);
@@ -103,9 +103,9 @@ IMPLEMT_INFERFUNC(RaggedGather, RaggedGatherInfer) {
     return GRAPH_FAILED;
   }
 
-  TensorDesc outputDesc = op.GetOutputDesc("output_dense_values");
+  TensorDesc outputDesc = op.GetOutputDescByName("output_dense_values");
 
-  if(op.GetInputDesc("params_dense_values").GetShape().GetShapeSize() == UNKNOWN_DIM){
+  if(op.GetInputDescByName("params_dense_values").GetShape().GetShapeSize() == UNKNOWN_DIM){
     outputDesc.SetShape(Shape({UNKNOWN_DIM}));
     outputDesc.SetDataType(Tvalues_type);
     op.UpdateOutputDesc("output_dense_values",outputDesc);
@@ -113,7 +113,7 @@ IMPLEMT_INFERFUNC(RaggedGather, RaggedGatherInfer) {
   }else{
     std::vector<std::pair<int64_t,int64_t>> range;
     int64_t min_dim = 1;
-    std::vector<int64_t> max_dims = op.GetInputDesc("params_dense_values").GetShape().GetDims();
+    std::vector<int64_t> max_dims = op.GetInputDescByName("params_dense_values").GetShape().GetDims();
     for(const auto &maxdim:max_dims){
       auto p = std::make_pair(min_dim,maxdim);
       range.push_back(p);

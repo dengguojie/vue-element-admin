@@ -350,9 +350,9 @@ VERIFY_FUNC_REG(ScanPQCodes, ScanPQCodesVerify);
 
 // ----------------CalcBucketsLimitAndOffset Begin-------------------
 IMPLEMT_COMMON_INFERFUNC(CalcBucketsLimitAndOffsetInferShape) {
-  TensorDesc td = op.GetInputDesc("bucket_list");
+  TensorDesc td = op.GetInputDescByName("bucket_list");
   (void)op.UpdateOutputDesc("buckets_limit", td);
-  TensorDesc td_ivf_offset = op.GetInputDesc("ivf_offset");
+  TensorDesc td_ivf_offset = op.GetInputDescByName("ivf_offset");
   td.SetDataType(td_ivf_offset.GetDataType());
   (void)op.UpdateOutputDesc("buckets_offset", td);
   return GRAPH_SUCCESS;

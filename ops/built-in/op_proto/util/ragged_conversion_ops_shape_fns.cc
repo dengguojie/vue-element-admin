@@ -251,8 +251,8 @@ graphStatus RaggedTensorToTensorShapeFn(Operator& op) {
   std::vector<std::string> input_infer_depends = {"shape"};
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
   op_desc->SetOpInferDepends(input_infer_depends);
-  TensorDesc out_desc = op.GetOutputDesc("result");
-  out_desc.SetDataType(op.GetInputDesc("values").GetDataType());
+  TensorDesc out_desc = op.GetOutputDescByName("result");
+  out_desc.SetDataType(op.GetInputDescByName("values").GetDataType());
   if (op.GetInputConstData("shape", tensor) != GRAPH_SUCCESS) {
     out_desc.SetShape(Shape(ge::UNKNOWN_RANK));
     op.UpdateOutputDesc("result", out_desc);
@@ -275,10 +275,10 @@ graphStatus RaggedTensorToTensorShapeFn(Operator& op) {
   int32_t ragged_rank = GetRaggedRank(row_partition_types);
 
   TensorShape value_shape;
-  ShapeHandleToTensorShape(op.GetInputDesc("values").GetShape(), value_shape);
+  ShapeHandleToTensorShape(op.GetInputDescByName("values").GetShape(), value_shape);
 
   TensorShape default_value_shape;
-  ShapeHandleToTensorShape(op.GetInputDesc("default_value").GetShape(), default_value_shape);
+  ShapeHandleToTensorShape(op.GetInputDescByName("default_value").GetShape(), default_value_shape);
 
   if (ValidateDefaultValueShape(default_value_shape, value_shape, TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), OtherErrMsg(ConcatString("Validate default value shape failed")));

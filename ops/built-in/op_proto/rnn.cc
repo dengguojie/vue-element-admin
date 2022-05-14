@@ -35,21 +35,21 @@ IMPLEMT_VERIFIER(DynamicRNN, DynamicRNNVerify) {
 }
 
 IMPLEMT_INFERFUNC(DynamicRNN, DynamicRNNInferShape) {
-  ge::TensorDesc inputXTensorDesc = op.GetInputDesc("x");
-  ge::TensorDesc inputWTensorDesc = op.GetInputDesc("w");
-  ge::TensorDesc inputBTensorDesc = op.GetInputDesc("b");
+  ge::TensorDesc inputXTensorDesc = op.GetInputDescByName("x");
+  ge::TensorDesc inputWTensorDesc = op.GetInputDescByName("w");
+  ge::TensorDesc inputBTensorDesc = op.GetInputDescByName("b");
   ge::Shape shapeX = inputXTensorDesc.GetShape();
   ge::Shape shapeW = inputWTensorDesc.GetShape();
   DataType inputXDtype = inputXTensorDesc.GetDataType();
   DataType inputBDtype = inputBTensorDesc.GetDataType();
-  TensorDesc outputYTensorDesc = op.GetOutputDesc("y");
-  TensorDesc outputHTensorDesc = op.GetOutputDesc("output_h");
-  TensorDesc outputCTensorDesc = op.GetOutputDesc("output_c");
-  TensorDesc outputITensorDesc = op.GetOutputDesc("i");
-  TensorDesc outputJTensorDesc = op.GetOutputDesc("j");
-  TensorDesc outputFTensorDesc = op.GetOutputDesc("f");
-  TensorDesc outputOTensorDesc = op.GetOutputDesc("o");
-  TensorDesc outputTanhcTensorDesc = op.GetOutputDesc("tanhc");
+  TensorDesc outputYTensorDesc = op.GetOutputDescByName("y");
+  TensorDesc outputHTensorDesc = op.GetOutputDescByName("output_h");
+  TensorDesc outputCTensorDesc = op.GetOutputDescByName("output_c");
+  TensorDesc outputITensorDesc = op.GetOutputDescByName("i");
+  TensorDesc outputJTensorDesc = op.GetOutputDescByName("j");
+  TensorDesc outputFTensorDesc = op.GetOutputDescByName("f");
+  TensorDesc outputOTensorDesc = op.GetOutputDescByName("o");
+  TensorDesc outputTanhcTensorDesc = op.GetOutputDescByName("tanhc");
 
   int64_t dim_num = shapeX.GetDimNum();
   int64_t batchSize = 0;
@@ -224,7 +224,7 @@ IMPLEMT_VERIFIER(DynamicLSTMGradCell, DynamicLSTMGradCellVerify) {
 }
 
 IMPLEMT_INFERFUNC(DynamicLSTMGradCell, DynamicLSTMGradCellInferShape) {
-  ge::TensorDesc inputDYTensorDesc = op.GetInputDesc("dy");
+  ge::TensorDesc inputDYTensorDesc = op.GetInputDescByName("dy");
   ge::Shape shapeDY = inputDYTensorDesc.GetShape();
   DataType dtype = inputDYTensorDesc.GetDataType();
 
@@ -240,8 +240,8 @@ IMPLEMT_INFERFUNC(DynamicLSTMGradCell, DynamicLSTMGradCellInferShape) {
   }
 
   int64_t output_nz_dim_size = (output_dim_size + 15) / 16;
-  TensorDesc outputDgateTensorDesc = op.GetOutputDesc("dgate");
-  TensorDesc outputDct1TensorDesc = op.GetOutputDesc("dct_1");
+  TensorDesc outputDgateTensorDesc = op.GetOutputDescByName("dgate");
+  TensorDesc outputDct1TensorDesc = op.GetOutputDescByName("dct_1");
 
   vector<int64_t> outputDgateDims = {batch_size, 4 * output_nz_dim_size * 16};
   outputDgateTensorDesc.SetShape(ge::Shape(outputDgateDims));
@@ -266,7 +266,7 @@ IMPLEMT_VERIFIER(DynamicGRUCellGrad, DynamicGRUCellGradVerify) {
 }
 
 IMPLEMT_INFERFUNC(DynamicGRUCellGrad, DynamicGRUCellGradInferShape) {
-  ge::TensorDesc inputDYTensorDesc = op.GetInputDesc("dy");
+  ge::TensorDesc inputDYTensorDesc = op.GetInputDescByName("dy");
   ge::Shape shapeDY = inputDYTensorDesc.GetShape();
   DataType dtype = inputDYTensorDesc.GetDataType();
 
@@ -280,9 +280,9 @@ IMPLEMT_INFERFUNC(DynamicGRUCellGrad, DynamicGRUCellGradInferShape) {
   batch_size = shapeDY.GetDims().at(1);
   output_dim_size = shapeDY.GetDims().at(2);
   
-  TensorDesc outputDhPrevTensorDesc = op.GetOutputDesc("dh_prev");
-  TensorDesc outputDgateTensorDesc = op.GetOutputDesc("dgate_h");
-  TensorDesc outputDnxXTensorDesc = op.GetOutputDesc("dnt_x");
+  TensorDesc outputDhPrevTensorDesc = op.GetOutputDescByName("dh_prev");
+  TensorDesc outputDgateTensorDesc = op.GetOutputDescByName("dgate_h");
+  TensorDesc outputDnxXTensorDesc = op.GetOutputDescByName("dnt_x");
 
   vector<int64_t> outputDhPrevHDims = {1, batch_size, output_dim_size};
   outputDhPrevTensorDesc.SetShape(ge::Shape(outputDhPrevHDims));
@@ -420,17 +420,17 @@ IMPLEMT_VERIFIER(DynamicRNNGrad, DynamicRNNGradVerify) {
 }
 
 IMPLEMT_INFERFUNC(DynamicRNNGrad, DynamicRNNGradInferShape) {
-  ge::TensorDesc inputXTensorDesc = op.GetInputDesc("x");
-  ge::TensorDesc inputHTensorDesc = op.GetInputDesc("h");
+  ge::TensorDesc inputXTensorDesc = op.GetInputDescByName("x");
+  ge::TensorDesc inputHTensorDesc = op.GetInputDescByName("h");
   ge::Shape shapeX = inputXTensorDesc.GetShape();
   ge::Shape shapeH = inputHTensorDesc.GetShape();
   DataType dtype = inputXTensorDesc.GetDataType();
 
-  TensorDesc outputDxtTensorDesc = op.GetOutputDesc("dx");
-  TensorDesc outputDht_1TensorDesc = op.GetOutputDesc("dh_prev");
-  TensorDesc outputDct_1TensorDesc = op.GetOutputDesc("dc_prev");
-  TensorDesc outputDwTensorDesc = op.GetOutputDesc("dw");
-  TensorDesc outputDbTensorDesc = op.GetOutputDesc("db");
+  TensorDesc outputDxtTensorDesc = op.GetOutputDescByName("dx");
+  TensorDesc outputDht_1TensorDesc = op.GetOutputDescByName("dh_prev");
+  TensorDesc outputDct_1TensorDesc = op.GetOutputDescByName("dc_prev");
+  TensorDesc outputDwTensorDesc = op.GetOutputDescByName("dw");
+  TensorDesc outputDbTensorDesc = op.GetOutputDescByName("db");
 
   int64_t dim_num = shapeX.GetDimNum();
   int64_t batch_size = 0;
@@ -481,13 +481,13 @@ IMPLEMT_VERIFIER(DynamicLSTM, DynamicLSTMVerify) {
 }
 
 IMPLEMT_INFERFUNC(DynamicLSTM, DynamicLSTMInferShape) {
-  ge::TensorDesc inputXTensorDesc = op.GetInputDesc("x");
-  ge::TensorDesc inputWTensorDesc = op.GetInputDesc("w");
+  ge::TensorDesc inputXTensorDesc = op.GetInputDescByName("x");
+  ge::TensorDesc inputWTensorDesc = op.GetInputDescByName("w");
   ge::Shape shapeX = inputXTensorDesc.GetShape();
   ge::Shape shapeW = inputWTensorDesc.GetShape();
   DataType inputXDtype = inputXTensorDesc.GetDataType();
 
-  TensorDesc outputHTensorDesc = op.GetOutputDesc("output_h");
+  TensorDesc outputHTensorDesc = op.GetOutputDescByName("output_h");
 
   inputWTensorDesc.SetFormat(ge::FORMAT_HWCN);
   inputWTensorDesc.SetOriginFormat(ge::FORMAT_HWCN);
@@ -522,9 +522,9 @@ IMPLEMT_VERIFIER(BasicLSTMCell, BasicLSTMCellVerify) {
 }
 
 IMPLEMT_INFERFUNC(BasicLSTMCell, BasicLSTMCellInferShape) {
-  ge::TensorDesc inputHTensorDesc = op.GetInputDesc("h");
-  ge::TensorDesc inputCTensorDesc = op.GetInputDesc("c");
-  ge::TensorDesc inputWTensorDesc = op.GetInputDesc("w");
+  ge::TensorDesc inputHTensorDesc = op.GetInputDescByName("h");
+  ge::TensorDesc inputCTensorDesc = op.GetInputDescByName("c");
+  ge::TensorDesc inputWTensorDesc = op.GetInputDescByName("w");
   ge::Shape shape = inputCTensorDesc.GetShape();
   ge::Shape shapeH = inputHTensorDesc.GetShape();
   DataType inputHDtype = inputHTensorDesc.GetDataType();
@@ -533,13 +533,13 @@ IMPLEMT_INFERFUNC(BasicLSTMCell, BasicLSTMCellInferShape) {
   inputWTensorDesc.SetFormat(ge::FORMAT_HWCN);
   inputWTensorDesc.SetOriginFormat(ge::FORMAT_HWCN);
 
-  TensorDesc outputCtTensorDesc = op.GetOutputDesc("ct");
-  TensorDesc outputHtTensorDesc = op.GetOutputDesc("ht");
-  TensorDesc outputItTensorDesc = op.GetOutputDesc("it");
-  TensorDesc outputJtTensorDesc = op.GetOutputDesc("jt");
-  TensorDesc outputFtTensorDesc = op.GetOutputDesc("ft");
-  TensorDesc outputOtTensorDesc = op.GetOutputDesc("ot");
-  TensorDesc outputTanhctTensorDesc = op.GetOutputDesc("tanhct");
+  TensorDesc outputCtTensorDesc = op.GetOutputDescByName("ct");
+  TensorDesc outputHtTensorDesc = op.GetOutputDescByName("ht");
+  TensorDesc outputItTensorDesc = op.GetOutputDescByName("it");
+  TensorDesc outputJtTensorDesc = op.GetOutputDescByName("jt");
+  TensorDesc outputFtTensorDesc = op.GetOutputDescByName("ft");
+  TensorDesc outputOtTensorDesc = op.GetOutputDescByName("ot");
+  TensorDesc outputTanhctTensorDesc = op.GetOutputDescByName("tanhct");
 
   outputCtTensorDesc.SetShape(shape);
   outputCtTensorDesc.SetDataType(inputCDtype);
@@ -575,7 +575,7 @@ IMPLEMT_VERIFIER(BasicLSTMCellCStateGrad, BasicLSTMCellCStateGradVerify) {
 }
 
 IMPLEMT_INFERFUNC(BasicLSTMCellCStateGrad, BasicLSTMCellCStateGradInferShape) {
-  ge::TensorDesc inputCTensorDesc = op.GetInputDesc("c");
+  ge::TensorDesc inputCTensorDesc = op.GetInputDescByName("c");
 
   ge::Shape inputCShape = inputCTensorDesc.GetShape();
   DataType inputCDtype = inputCTensorDesc.GetDataType();
@@ -596,8 +596,8 @@ IMPLEMT_INFERFUNC(BasicLSTMCellCStateGrad, BasicLSTMCellCStateGradInferShape) {
 
   vector<int64_t> oldDims;
   oldDims = {batch_size, hidden_size};
-  TensorDesc outputDgateTensorDesc = op.GetOutputDesc("dgate");
-  TensorDesc outputDct1TensorDesc = op.GetOutputDesc("dct_1");
+  TensorDesc outputDgateTensorDesc = op.GetOutputDescByName("dgate");
+  TensorDesc outputDct1TensorDesc = op.GetOutputDescByName("dct_1");
 
   outputDgateTensorDesc.SetShape(ge::Shape(newDims));
   outputDgateTensorDesc.SetDataType(inputCDtype);
@@ -618,14 +618,14 @@ IMPLEMT_VERIFIER(BasicLSTMCellWeightGrad, BasicLSTMCellWeightGradVerify) {
 }
 
 IMPLEMT_INFERFUNC(BasicLSTMCellWeightGrad, BasicLSTMCellWeightGradInferShape) {
-  ge::TensorDesc inputxTensorDesc = op.GetInputDesc("x");
+  ge::TensorDesc inputxTensorDesc = op.GetInputDescByName("x");
   ge::Shape inputXShape = inputxTensorDesc.GetShape();
-  ge::TensorDesc inputHTensorDesc = op.GetInputDesc("h");
+  ge::TensorDesc inputHTensorDesc = op.GetInputDescByName("h");
   ge::Shape inputHShape = inputHTensorDesc.GetShape();
-  ge::TensorDesc inputDgateTensorDesc = op.GetInputDesc("dgate");
+  ge::TensorDesc inputDgateTensorDesc = op.GetInputDescByName("dgate");
   DataType inputDgateDtype = inputDgateTensorDesc.GetDataType();
-  TensorDesc outputDwTensorDesc = op.GetOutputDesc("dw");
-  TensorDesc outputDbTensorDesc = op.GetOutputDesc("db");
+  TensorDesc outputDwTensorDesc = op.GetOutputDescByName("dw");
+  TensorDesc outputDbTensorDesc = op.GetOutputDescByName("db");
 
   int64_t dim_num_x = inputXShape.GetDimNum();
   int64_t dim_num_h = inputHShape.GetDimNum();
@@ -682,10 +682,10 @@ IMPLEMT_VERIFIER(BasicLSTMCellInputGrad, BasicLSTMCellInputGradVerify) {
 }
 
 IMPLEMT_INFERFUNC(BasicLSTMCellInputGrad, BasicLSTMCellInputGradInferShape) {
-  ge::TensorDesc inputDgateTensorDesc = op.GetInputDesc("dgate");
+  ge::TensorDesc inputDgateTensorDesc = op.GetInputDescByName("dgate");
   ge::Shape inputDgateShape = inputDgateTensorDesc.GetShape();
   DataType inputDgateDtype = inputDgateTensorDesc.GetDataType();
-  ge::TensorDesc inputWTensorDesc = op.GetInputDesc("w");
+  ge::TensorDesc inputWTensorDesc = op.GetInputDescByName("w");
   ge::Shape inputWShape = inputWTensorDesc.GetShape();
 
   int64_t dim_num = inputDgateShape.GetDimNum();
@@ -717,8 +717,8 @@ IMPLEMT_INFERFUNC(BasicLSTMCellInputGrad, BasicLSTMCellInputGradInferShape) {
   vector<int64_t> dxtDims = {batchSize, inputSize};
   vector<int64_t> dhtDims = {batchSize, hiddenSize};
 
-  TensorDesc outputDxtTensorDesc = op.GetOutputDesc("dxt");
-  TensorDesc outputDhtTensorDesc = op.GetOutputDesc("dht");
+  TensorDesc outputDxtTensorDesc = op.GetOutputDescByName("dxt");
+  TensorDesc outputDhtTensorDesc = op.GetOutputDescByName("dht");
 
   outputDxtTensorDesc.SetShape(ge::Shape(dxtDims));
   outputDxtTensorDesc.SetDataType(inputDgateDtype);
@@ -741,9 +741,9 @@ IMPLEMT_VERIFIER(RNN, RNNVerify) {
 }
 
 IMPLEMT_INFERFUNC(RNN, RNNInferShape) {
-  ge::TensorDesc inputXTensorDesc = op.GetInputDesc("x");
+  ge::TensorDesc inputXTensorDesc = op.GetInputDescByName("x");
   ge::Shape shapeX = inputXTensorDesc.GetShape();
-  DataType dtypeDst = op.GetInputDesc("bias_h").GetDataType();
+  DataType dtypeDst = op.GetInputDescByName("bias_h").GetDataType();
 
   int64_t dimNumsX = shapeX.GetDimNum();
 
@@ -766,8 +766,8 @@ IMPLEMT_INFERFUNC(RNN, RNNInferShape) {
   vector<int64_t> dimsO = {time_size, batchSize, hiddenSize};
   vector<int64_t> dimsHt = {1, batchSize, hiddenSize};
 
-  TensorDesc outputOTensorDesc = op.GetOutputDesc("o");
-  TensorDesc outputHtTensorDesc = op.GetOutputDesc("h_t");
+  TensorDesc outputOTensorDesc = op.GetOutputDescByName("o");
+  TensorDesc outputHtTensorDesc = op.GetOutputDescByName("h_t");
 
   outputOTensorDesc.SetShape(ge::Shape(dimsO));
   outputOTensorDesc.SetDataType(dtypeDst);
@@ -788,10 +788,10 @@ IMPLEMT_VERIFIER(BasicRNNCell, BasicRNNCellVerify) {
 }
 
 IMPLEMT_INFERFUNC(BasicRNNCell, BasicRNNCellInferShape) {
-  ge::TensorDesc inputXTensorDesc = op.GetInputDesc("x");
+  ge::TensorDesc inputXTensorDesc = op.GetInputDescByName("x");
   ge::Shape shapeX = inputXTensorDesc.GetShape();
 
-  DataType dtypeDst = op.GetInputDesc("bias_h").GetDataType();
+  DataType dtypeDst = op.GetInputDescByName("bias_h").GetDataType();
 
   int64_t dimNumsX = shapeX.GetDimNum();
 
@@ -811,8 +811,8 @@ IMPLEMT_INFERFUNC(BasicRNNCell, BasicRNNCellInferShape) {
   vector<int64_t> dimsOt = {batchSize, hiddenSize};
   vector<int64_t> dimsHt = {batchSize, hiddenSize};
 
-  TensorDesc outputOtTensorDesc = op.GetOutputDesc("o_t");
-  TensorDesc outputHtTensorDesc = op.GetOutputDesc("h_t");
+  TensorDesc outputOtTensorDesc = op.GetOutputDescByName("o_t");
+  TensorDesc outputHtTensorDesc = op.GetOutputDescByName("h_t");
 
   outputOtTensorDesc.SetShape(ge::Shape(dimsOt));
   outputOtTensorDesc.SetDataType(dtypeDst);
@@ -833,19 +833,19 @@ IMPLEMT_VERIFIER(DynamicGRU, DynamicGRUVerify) {
 }
 
 IMPLEMT_INFERFUNC(DynamicGRU, DynamicGRUInferShape) {
-  ge::TensorDesc x_tensor_desc = op.GetInputDesc("x");
-  ge::TensorDesc w_tensor_desc = op.GetInputDesc("w");
-  ge::TensorDesc cw_tensor_desc = op.GetInputDesc("cw");
-  ge::TensorDesc b_tensor_desc = op.GetInputDesc("b");
+  ge::TensorDesc x_tensor_desc = op.GetInputDescByName("x");
+  ge::TensorDesc w_tensor_desc = op.GetInputDescByName("w");
+  ge::TensorDesc cw_tensor_desc = op.GetInputDescByName("cw");
+  ge::TensorDesc b_tensor_desc = op.GetInputDescByName("b");
   ge::Shape shape_x = x_tensor_desc.GetShape();
   ge::Shape shape_w = w_tensor_desc.GetShape();
   DataType bias_dtype = b_tensor_desc.GetDataType();
 
-  TensorDesc y_tensor_desc = op.GetOutputDesc("y");
-  TensorDesc h_tensor_desc = op.GetOutputDesc("output_h");
-  TensorDesc r_tensor_desc = op.GetOutputDesc("r");
-  TensorDesc i_tensor_desc = op.GetOutputDesc("i");
-  TensorDesc n_tensor_desc = op.GetOutputDesc("n");
+  TensorDesc y_tensor_desc = op.GetOutputDescByName("y");
+  TensorDesc h_tensor_desc = op.GetOutputDescByName("output_h");
+  TensorDesc r_tensor_desc = op.GetOutputDescByName("r");
+  TensorDesc i_tensor_desc = op.GetOutputDescByName("i");
+  TensorDesc n_tensor_desc = op.GetOutputDescByName("n");
 
   int64_t dim_num = shape_x.GetDimNum();
   CHECK(dim_num != 3, OP_LOGE(TbeGetName(op).c_str(), "The dimension count of x should be 3, please check!"),
@@ -899,28 +899,28 @@ IMPLEMT_VERIFIER(DynamicGRUV2, DynamicGRUV2Verify) {
 }
 
 IMPLEMT_INFERFUNC(DynamicGRUV2, DynamicGRUV2InferShape) {
-  TensorDesc x_tensor_desc = op.GetInputDesc("x");
-  TensorDesc w_input_tensor_desc = op.GetInputDesc("weight_input");
-  TensorDesc w_hidden_tensor_desc = op.GetInputDesc("weight_hidden");
+  TensorDesc x_tensor_desc = op.GetInputDescByName("x");
+  TensorDesc w_input_tensor_desc = op.GetInputDescByName("weight_input");
+  TensorDesc w_hidden_tensor_desc = op.GetInputDescByName("weight_hidden");
   Shape shape_x = x_tensor_desc.GetShape();
   Shape shape_w_hidden = w_hidden_tensor_desc.GetShape();
 
   DataType bias_dtype = x_tensor_desc.GetDataType();
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
   if (op_desc->MutableInputDesc("bias_input") != nullptr) {
-    bias_dtype = op.GetInputDesc("bias_input").GetDataType();
+    bias_dtype = op.GetInputDescByName("bias_input").GetDataType();
   } else if (op_desc->MutableInputDesc("bias_hidden") != nullptr) {
-    bias_dtype = op.GetInputDesc("bias_hidden").GetDataType();
+    bias_dtype = op.GetInputDescByName("bias_hidden").GetDataType();
   } else if (op_desc->MutableInputDesc("init_h") != nullptr) {
-    bias_dtype = op.GetInputDesc("init_h").GetDataType();
+    bias_dtype = op.GetInputDescByName("init_h").GetDataType();
   }
 
-  TensorDesc y_tensor_desc = op.GetOutputDesc("y");
-  TensorDesc h_tensor_desc = op.GetOutputDesc("output_h");
-  TensorDesc update_tensor_desc = op.GetOutputDesc("update");
-  TensorDesc reset_tensor_desc = op.GetOutputDesc("reset");
-  TensorDesc new_tensor_desc = op.GetOutputDesc("new");
-  TensorDesc hn_tensor_desc = op.GetOutputDesc("hidden_new");
+  TensorDesc y_tensor_desc = op.GetOutputDescByName("y");
+  TensorDesc h_tensor_desc = op.GetOutputDescByName("output_h");
+  TensorDesc update_tensor_desc = op.GetOutputDescByName("update");
+  TensorDesc reset_tensor_desc = op.GetOutputDescByName("reset");
+  TensorDesc new_tensor_desc = op.GetOutputDescByName("new");
+  TensorDesc hn_tensor_desc = op.GetOutputDescByName("hidden_new");
 
   int64_t dim_num = shape_x.GetDimNum();
   CHECK(dim_num != 3, OP_LOGE(TbeGetName(op).c_str(), "The dimension count of x should be 3, please check!"),
@@ -990,8 +990,8 @@ IMPLEMT_VERIFIER(DynamicGRUV2Grad, DynamicGRUV2GradVerify) {
 }
 
 IMPLEMT_INFERFUNC(DynamicGRUV2Grad, DynamicGRUV2GradInferShape) {
-  ge::TensorDesc inputXTensorDesc = op.GetInputDesc("x");
-  ge::TensorDesc inputHTensorDesc = op.GetInputDesc("h");
+  ge::TensorDesc inputXTensorDesc = op.GetInputDescByName("x");
+  ge::TensorDesc inputHTensorDesc = op.GetInputDescByName("h");
   ge::Shape shapeX = inputXTensorDesc.GetShape();
   ge::Shape shapeH = inputHTensorDesc.GetShape();
   DataType dtype = inputXTensorDesc.GetDataType();
@@ -1010,12 +1010,12 @@ IMPLEMT_INFERFUNC(DynamicGRUV2Grad, DynamicGRUV2GradInferShape) {
     return GRAPH_FAILED;
   }
 
-  TensorDesc outputDxtTensorDesc = op.GetOutputDesc("dx");
-  TensorDesc outputDht_1TensorDesc = op.GetOutputDesc("dh_prev");
-  TensorDesc outputDwxTensorDesc = op.GetOutputDesc("dw_input");
-  TensorDesc outputDwhTensorDesc = op.GetOutputDesc("dw_hidden");
-  TensorDesc outputDbxTensorDesc = op.GetOutputDesc("db_input");
-  TensorDesc outputDbhTensorDesc = op.GetOutputDesc("db_hidden");
+  TensorDesc outputDxtTensorDesc = op.GetOutputDescByName("dx");
+  TensorDesc outputDht_1TensorDesc = op.GetOutputDescByName("dh_prev");
+  TensorDesc outputDwxTensorDesc = op.GetOutputDescByName("dw_input");
+  TensorDesc outputDwhTensorDesc = op.GetOutputDescByName("dw_hidden");
+  TensorDesc outputDbxTensorDesc = op.GetOutputDescByName("db_input");
+  TensorDesc outputDbhTensorDesc = op.GetOutputDescByName("db_hidden");
 
   outputDxtTensorDesc.SetShape(shapeX);
   outputDxtTensorDesc.SetDataType(dtype);
@@ -1062,10 +1062,10 @@ IMPLEMT_VERIFIER(DynamicAUGRU, DynamicAUGRUVerify) {
 }
 
 IMPLEMT_INFERFUNC(DynamicAUGRU, DynamicAUGRUInferShape) {
-  TensorDesc x_tensor_desc = op.GetInputDesc("x");
-  TensorDesc w_input_tensor_desc = op.GetInputDesc("weight_input");
-  TensorDesc w_hidden_tensor_desc = op.GetInputDesc("weight_hidden");
-  TensorDesc w_att_tensor_desc = op.GetInputDesc("weight_att");
+  TensorDesc x_tensor_desc = op.GetInputDescByName("x");
+  TensorDesc w_input_tensor_desc = op.GetInputDescByName("weight_input");
+  TensorDesc w_hidden_tensor_desc = op.GetInputDescByName("weight_hidden");
+  TensorDesc w_att_tensor_desc = op.GetInputDescByName("weight_att");
   Shape shape_x = x_tensor_desc.GetShape();
   Shape shape_w_hidden = w_hidden_tensor_desc.GetShape();
   Shape shape_w_att = w_att_tensor_desc.GetShape();
@@ -1073,20 +1073,20 @@ IMPLEMT_INFERFUNC(DynamicAUGRU, DynamicAUGRUInferShape) {
   DataType bias_dtype = x_tensor_desc.GetDataType();
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
   if (op_desc->MutableInputDesc("bias_input") != nullptr) {
-    bias_dtype = op.GetInputDesc("bias_input").GetDataType();
+    bias_dtype = op.GetInputDescByName("bias_input").GetDataType();
   } else if (op_desc->MutableInputDesc("bias_hidden") != nullptr) {
-    bias_dtype = op.GetInputDesc("bias_hidden").GetDataType();
+    bias_dtype = op.GetInputDescByName("bias_hidden").GetDataType();
   } else if (op_desc->MutableInputDesc("init_h") != nullptr) {
-    bias_dtype = op.GetInputDesc("init_h").GetDataType();
+    bias_dtype = op.GetInputDescByName("init_h").GetDataType();
   }
 
-  TensorDesc y_tensor_desc = op.GetOutputDesc("y");
-  TensorDesc h_tensor_desc = op.GetOutputDesc("output_h");
-  TensorDesc update_tensor_desc = op.GetOutputDesc("update");
-  TensorDesc update_att_tensor_desc = op.GetOutputDesc("update_att");
-  TensorDesc reset_tensor_desc = op.GetOutputDesc("reset");
-  TensorDesc new_tensor_desc = op.GetOutputDesc("new");
-  TensorDesc hn_tensor_desc = op.GetOutputDesc("hidden_new");
+  TensorDesc y_tensor_desc = op.GetOutputDescByName("y");
+  TensorDesc h_tensor_desc = op.GetOutputDescByName("output_h");
+  TensorDesc update_tensor_desc = op.GetOutputDescByName("update");
+  TensorDesc update_att_tensor_desc = op.GetOutputDescByName("update_att");
+  TensorDesc reset_tensor_desc = op.GetOutputDescByName("reset");
+  TensorDesc new_tensor_desc = op.GetOutputDescByName("new");
+  TensorDesc hn_tensor_desc = op.GetOutputDescByName("hidden_new");
 
   int64_t dim_num = shape_x.GetDimNum();
   CHECK(dim_num != 3, OP_LOGE(TbeGetName(op).c_str(), "The dimension count of x should be 3, please check!"),
@@ -1171,9 +1171,9 @@ IMPLEMT_VERIFIER(DynamicAUGRUGrad, DynamicAUGRUGradVerify) {
 }
 
 IMPLEMT_INFERFUNC(DynamicAUGRUGrad, DynamicAUGRUGradInferShape) {
-  ge::TensorDesc inputXTensorDesc = op.GetInputDesc("x");
-  ge::TensorDesc inputHTensorDesc = op.GetInputDesc("h");
-  ge::TensorDesc inputAttTensorDesc = op.GetInputDesc("weight_att");
+  ge::TensorDesc inputXTensorDesc = op.GetInputDescByName("x");
+  ge::TensorDesc inputHTensorDesc = op.GetInputDescByName("h");
+  ge::TensorDesc inputAttTensorDesc = op.GetInputDescByName("weight_att");
   ge::Shape shapeX = inputXTensorDesc.GetShape();
   ge::Shape shapeH = inputHTensorDesc.GetShape();
   ge::Shape shapeAtt = inputAttTensorDesc.GetShape();
@@ -1202,13 +1202,13 @@ IMPLEMT_INFERFUNC(DynamicAUGRUGrad, DynamicAUGRUGradInferShape) {
     return GRAPH_FAILED;
   }
 
-  TensorDesc outputDxtTensorDesc = op.GetOutputDesc("dx");
-  TensorDesc outputDht_1TensorDesc = op.GetOutputDesc("dh_prev");
-  TensorDesc outputDwxTensorDesc = op.GetOutputDesc("dw_input");
-  TensorDesc outputDwhTensorDesc = op.GetOutputDesc("dw_hidden");
-  TensorDesc outputDbxTensorDesc = op.GetOutputDesc("db_input");
-  TensorDesc outputDbhTensorDesc = op.GetOutputDesc("db_hidden");
-  TensorDesc outputDwAttTensorDesc = op.GetOutputDesc("dw_att");
+  TensorDesc outputDxtTensorDesc = op.GetOutputDescByName("dx");
+  TensorDesc outputDht_1TensorDesc = op.GetOutputDescByName("dh_prev");
+  TensorDesc outputDwxTensorDesc = op.GetOutputDescByName("dw_input");
+  TensorDesc outputDwhTensorDesc = op.GetOutputDescByName("dw_hidden");
+  TensorDesc outputDbxTensorDesc = op.GetOutputDescByName("db_input");
+  TensorDesc outputDbhTensorDesc = op.GetOutputDescByName("db_hidden");
+  TensorDesc outputDwAttTensorDesc = op.GetOutputDescByName("dw_att");
 
   outputDxtTensorDesc.SetShape(shapeX);
   outputDxtTensorDesc.SetDataType(dtype);
@@ -1426,14 +1426,14 @@ IMPLEMT_VERIFIER(CommonLSTM, CommonLSTMVerify) {
 }
 
 IMPLEMT_INFERFUNC(CommonLSTM, CommonLSTMInferShape) {
-  ge::TensorDesc inputXTensorDesc = op.GetInputDesc("x");
-  ge::TensorDesc inputWTensorDesc = op.GetInputDesc("w");
+  ge::TensorDesc inputXTensorDesc = op.GetInputDescByName("x");
+  ge::TensorDesc inputWTensorDesc = op.GetInputDescByName("w");
   ge::Shape shapeX = inputXTensorDesc.GetShape();
   ge::Shape shapeW = inputWTensorDesc.GetShape();
   DataType inputXDtype = inputXTensorDesc.GetDataType();
-  TensorDesc outputYTensorDesc = op.GetOutputDesc("y");
-  TensorDesc outputHTensorDesc = op.GetOutputDesc("y_h");
-  TensorDesc outputCTensorDesc = op.GetOutputDesc("y_c");
+  TensorDesc outputYTensorDesc = op.GetOutputDescByName("y");
+  TensorDesc outputHTensorDesc = op.GetOutputDescByName("y_h");
+  TensorDesc outputCTensorDesc = op.GetOutputDescByName("y_c");
 
   int64_t dim_num = shapeX.GetDimNum();
   int64_t batchSize = 0;
@@ -1474,22 +1474,22 @@ INFER_FUNC_REG(CommonLSTM, CommonLSTMInferShape);
 VERIFY_FUNC_REG(CommonLSTM, CommonLSTMVerify);
 
 IMPLEMT_INFERFUNC(CommonGRU, CommonGRUInferShape) {
-  TensorDesc x_tensor_desc = op.GetInputDesc("x");
-  TensorDesc w_tensor_desc = op.GetInputDesc("w");
-  TensorDesc r_tensor_desc = op.GetInputDesc("r");
+  TensorDesc x_tensor_desc = op.GetInputDescByName("x");
+  TensorDesc w_tensor_desc = op.GetInputDescByName("w");
+  TensorDesc r_tensor_desc = op.GetInputDescByName("r");
   Shape shape_x = x_tensor_desc.GetShape();
   Shape shape_w = w_tensor_desc.GetShape();
 
   DataType bias_dtype = DT_FLOAT;
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
   if (op_desc->MutableInputDesc("b") != nullptr) {
-    bias_dtype = op.GetInputDesc("b").GetDataType();
+    bias_dtype = op.GetInputDescByName("b").GetDataType();
   } else if (op_desc->MutableInputDesc("init_h") != nullptr) {
-    bias_dtype = op.GetInputDesc("init_h").GetDataType();
+    bias_dtype = op.GetInputDescByName("init_h").GetDataType();
   }
 
-  TensorDesc y_tensor_desc = op.GetOutputDesc("y");
-  TensorDesc y_h_tensor_desc = op.GetOutputDesc("y_h");
+  TensorDesc y_tensor_desc = op.GetOutputDescByName("y");
+  TensorDesc y_h_tensor_desc = op.GetOutputDescByName("y_h");
 
   int64_t dim_num = shape_x.GetDimNum();
   if (dim_num != 3) {
@@ -1538,18 +1538,18 @@ int64_t get_batch_dim(bool include_last_offset, int64_t offset_lens) {
 IMPLEMT_COMMON_INFERFUNC(EmbeddingBagInferShape) {
     OP_LOGI(TbeGetName(op).c_str(), " EmbeddingBag inferShape begin!");
     // get weight info
-    TensorDesc weight_desc = op.GetInputDesc("weight");
+    TensorDesc weight_desc = op.GetInputDescByName("weight");
     auto weight_shape = weight_desc.GetShape().GetDims();
     DataType weight_dtype = weight_desc.GetDataType();
 
     int64_t batch_dim = 0;
     int64_t embedding_dim = weight_shape[1];
     // get indices info
-    TensorDesc indices_desc = op.GetInputDesc("indices");
+    TensorDesc indices_desc = op.GetInputDescByName("indices");
     auto indices_shape = indices_desc.GetShape().GetDims();
 
     // get offsets info
-    TensorDesc offsets_desc = op.GetInputDesc("offsets");
+    TensorDesc offsets_desc = op.GetInputDescByName("offsets");
     auto offsets_shape = offsets_desc.GetShape().GetDims();
 
     // get offset_lens
@@ -1574,7 +1574,7 @@ IMPLEMT_COMMON_INFERFUNC(EmbeddingBagInferShape) {
     embedding_output_shape.push_back(embedding_dim);
 
     // update output info
-    TensorDesc output_desc = op.GetOutputDesc("y");
+    TensorDesc output_desc = op.GetOutputDescByName("y");
     output_desc.SetShape(ge::Shape(embedding_output_shape));
     output_desc.SetDataType(weight_dtype);
     output_desc.SetOriginFormat(ge::FORMAT_ND);
@@ -1596,9 +1596,9 @@ IMPLEMT_VERIFIER(LSTMP, LSTMPVerify) {
   return GRAPH_SUCCESS;
 }
 IMPLEMT_INFERFUNC(LSTMP, LSTMPInferShape) {
-  auto inputx = op.GetInputDesc("x");
-  auto inputwx = op.GetInputDesc("wx");
-  auto inputwr = op.GetInputDesc("wr");
+  auto inputx = op.GetInputDescByName("x");
+  auto inputwx = op.GetInputDescByName("wx");
+  auto inputwr = op.GetInputDescByName("wr");
   auto shapex = inputx.GetShape();
   auto shapewx = inputwx.GetShape();
   auto shapewr = inputwr.GetShape();
@@ -1629,7 +1629,7 @@ IMPLEMT_INFERFUNC(LSTMP, LSTMPInferShape) {
   }
   
   auto x_dtype = inputx.GetDataType();
-  auto output_y = op.GetOutputDesc("y");
+  auto output_y = op.GetOutputDescByName("y");
   std::vector<int64_t> dims_y = {batch_size, num_step, state};
   if (time_major == true) {
     dims_y = {num_step, batch_size, state};
@@ -1637,12 +1637,12 @@ IMPLEMT_INFERFUNC(LSTMP, LSTMPInferShape) {
   output_y.SetShape(ge::Shape(dims_y));
   output_y.SetDataType(x_dtype);
 
-  auto output_rt = op.GetOutputDesc("output_h");
+  auto output_rt = op.GetOutputDescByName("output_h");
   std::vector<int64_t> dims_rt = {1, batch_size, state};
   output_rt.SetShape(ge::Shape(dims_rt));
   output_rt.SetDataType(x_dtype);
 
-  auto output_ct = op.GetOutputDesc("output_c");
+  auto output_ct = op.GetOutputDescByName("output_c");
   std::vector<int64_t> dims_ct = {1, batch_size, hidden_size};
   output_ct.SetShape(ge::Shape(dims_ct));
   output_ct.SetDataType(x_dtype);

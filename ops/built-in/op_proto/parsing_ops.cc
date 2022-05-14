@@ -32,7 +32,7 @@
 namespace ge {
 
 IMPLEMT_INFERFUNC(StringToNumber, StringToNumberInfer) {
-  TensorDesc out_desc = op.GetOutputDesc("y");
+  TensorDesc out_desc = op.GetOutputDescByName("y");
   DataType out_type;
   if (op.GetAttr("out_type", out_type) != GRAPH_SUCCESS) {
     OP_LOGE(TbeGetName(op).c_str(), "get attribute failed");
@@ -66,7 +66,7 @@ IMPLEMT_INFERFUNC(DecodeRaw, DecodeRawInfer) {
     OP_LOGE(TbeGetName(op).c_str(), "Get attr dtype failed");
     return GRAPH_FAILED;
   }
-  TensorDesc y_tensor = op.GetOutputDesc("output");
+  TensorDesc y_tensor = op.GetOutputDescByName("output");
   y_tensor.SetDataType(dtype);
   y_tensor.SetShape(output_shape);
   if (op.UpdateOutputDesc("output", y_tensor) != GRAPH_SUCCESS) {
@@ -86,7 +86,7 @@ IMPLEMT_INFERFUNC(ParseTensor, ParseTensorInfer) {
     return GRAPH_FAILED;
   }
 
-  TensorDesc output_desc = op.GetOutputDesc("output");
+  TensorDesc output_desc = op.GetOutputDescByName("output");
   output_desc.SetShape(output_shape);
   output_desc.SetDataType(out_type);
   if (op.UpdateOutputDesc("output", output_desc) != GRAPH_SUCCESS) {
@@ -100,7 +100,7 @@ IMPLEMT_INFERFUNC(ParseTensor, ParseTensorInfer) {
 INFER_FUNC_REG(ParseTensor, ParseTensorInfer);
 
 IMPLEMT_INFERFUNC(ParseSingleExample, ParseSingleExampleInfer) {
-  auto x1_tensor = op.GetInputDesc("serialized");
+  auto x1_tensor = op.GetInputDescByName("serialized");
   Shape x1_shape;
   if (WithRank(x1_tensor, 0, x1_shape, TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
     std::string err_msg = ConcatString(
@@ -231,7 +231,7 @@ IMPLEMT_INFERFUNC(DecodeCSV, DecodeCSVInfer) {
   }
 
   size_t outputs_size = op_desc->GetOutputsSize();
-  auto temp_records_desc = op.GetInputDesc("records");
+  auto temp_records_desc = op.GetInputDescByName("records");
   for (size_t i = 0; i < outputs_size; ++i) {
     auto temp_record_default_desc =
         op.GetDynamicInputDesc("record_defaults", i);

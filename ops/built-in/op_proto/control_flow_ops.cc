@@ -163,7 +163,7 @@ graphStatus MergeInferImpl(Operator &op) {
 
   // For dynamic multi batch.
   bool is_multi_batch = false;
-  if (op.GetAttr(ATTR_INSERT_BY_MBATCH, is_multi_batch) == GRAPH_SUCCESS) {
+  if (op.GetAttr(ATTR_INSERT_BY_MBATCH.c_str(), is_multi_batch) == GRAPH_SUCCESS) {
     return MergeAsMaxInput(op);
   }
 
@@ -387,30 +387,30 @@ graphStatus EnterInferImpl(Operator& op) {
 }
 
 graphStatus PassThroughInferImpl(Operator& op, const std::string& in_name, const std::string& out_name) {
-  auto input_dims = op.GetInputDesc(in_name).GetShape().GetDims();
-  DataType input_type = op.GetInputDesc(in_name).GetDataType();
-  TensorDesc tensordesc_output = op.GetOutputDesc(out_name);
+  auto input_dims = op.GetInputDescByName(in_name.c_str()).GetShape().GetDims();
+  DataType input_type = op.GetInputDescByName(in_name.c_str()).GetDataType();
+  TensorDesc tensordesc_output = op.GetOutputDescByName(out_name.c_str());
   tensordesc_output.SetShape(ge::Shape(input_dims));
   tensordesc_output.SetDataType(input_type);
   std::vector<std::pair<int64_t, int64_t>> input_range;
-  (void)op.GetInputDesc(in_name).GetShapeRange(input_range);
+  (void)op.GetInputDescByName(in_name.c_str()).GetShapeRange(input_range);
   (void)tensordesc_output.SetShapeRange(input_range);
-  (void)op.UpdateOutputDesc(out_name, tensordesc_output);
+  (void)op.UpdateOutputDesc(out_name.c_str(), tensordesc_output);
 
   return GRAPH_SUCCESS;
 }
 
 graphStatus LoopCondInferImpl(Operator& op) {
-  auto input_dims = op.GetInputDesc("x").GetShape().GetDims();
+  auto input_dims = op.GetInputDescByName("x").GetShape().GetDims();
   if ((input_dims != ge::UNKNOWN_RANK) && (input_dims.size() != 0)) {
     string reason = "input x should be a scalar, actually rank=" + std::to_string(input_dims.size());
     REPORT_INNER_ERROR("E19999", "[Node:%s] Check shape rank failed, as %s", TbeGetName(op).c_str(), reason.c_str());
     GE_OP_LOGE(TbeGetName(op).c_str(), "[InferShape][Check] Check shape rank failed, as %s", reason.c_str());
     return GRAPH_FAILED;
   }
-  TensorDesc tensordesc_output = op.GetOutputDesc("y");
+  TensorDesc tensordesc_output = op.GetOutputDescByName("y");
   tensordesc_output.SetShape(ge::Shape(input_dims));
-  DataType input_type = op.GetInputDesc("x").GetDataType();
+  DataType input_type = op.GetInputDescByName("x").GetDataType();
   if (input_type != DT_BOOL) {
     string reason = "input x should be DT_BOOL, actually is " + DataTypeToStringDesc(input_type);
     REPORT_INNER_ERROR("E19999", "[Node:%s] Check dtype failed, as %s", TbeGetName(op).c_str(), reason.c_str());
@@ -504,14 +504,14 @@ IMPLEMT_VERIFIER(MapIndex, MapIndexVerify) {
 
 IMPLEMT_COMMON_INFERFUNC(MapIndexInferShape) {
   OP_LOGI("MapIndex", "infer shape begin---");
-  auto x_shape = op.GetInputDesc("x").GetShape().GetDims();
+  auto x_shape = op.GetInputDescByName("x").GetShape().GetDims();
   if (x_shape.empty()) {
     OP_LOGE(TbeGetName(op).c_str(), "x_shape is empty");
     return GRAPH_FAILED;
   }
   int64_t x_length = x_shape[0];
 
-  auto data_seq_shape = op.GetInputDesc("data_seq").GetShape().GetDims();
+  auto data_seq_shape = op.GetInputDescByName("data_seq").GetShape().GetDims();
   if (data_seq_shape.empty()) {
     OP_LOGE(TbeGetName(op).c_str(), "data_seq_shape is empty");
     return GRAPH_FAILED;
@@ -533,7 +533,7 @@ IMPLEMT_COMMON_INFERFUNC(MapIndexInferShape) {
     return GRAPH_FAILED;
   }
 
-  auto level_index_shape = op.GetInputDesc("level_index").GetShape().GetDims();
+  auto level_index_shape = op.GetInputDescByName("level_index").GetShape().GetDims();
   if (!level_index_shape.empty()) {
     int64_t level_index_length = level_index_shape[0];
     if (level_index_length != (data_seq_length / x_length)) {
@@ -544,7 +544,7 @@ IMPLEMT_COMMON_INFERFUNC(MapIndexInferShape) {
     }
   }
 
-  TensorDesc y_desc = op.GetOutputDesc("y");
+  TensorDesc y_desc = op.GetOutputDescByName("y");
   y_desc.SetShape(ge::Shape());
   y_desc.SetDataType(ge::DT_INT32);
 

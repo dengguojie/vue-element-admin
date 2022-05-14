@@ -73,15 +73,15 @@ IMPLEMT_INFERFUNC(CTCLoss, CTCLossInfer) {
   }
   inputs.SetDim(1, batch_size);
 
-  DataType type = op.GetInputDesc("inputs").GetDataType();
-  TensorDesc loss_desc = op.GetOutputDesc("loss");
+  DataType type = op.GetInputDescByName("inputs").GetDataType();
+  TensorDesc loss_desc = op.GetOutputDescByName("loss");
   loss_desc.SetShape(Shape({batch_size}));
   loss_desc.SetDataType(type);
   if (op.UpdateOutputDesc("loss", loss_desc) != GRAPH_SUCCESS) {
     AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), std::string("update output[loss] desc failed."));
     return GRAPH_FAILED;
   }
-  TensorDesc gradient_desc = op.GetOutputDesc("gradient");
+  TensorDesc gradient_desc = op.GetOutputDescByName("gradient");
   gradient_desc.SetShape(Shape(inputs));
   gradient_desc.SetDataType(type);
   if (op.UpdateOutputDesc("gradient", gradient_desc) != GRAPH_SUCCESS) {
@@ -209,7 +209,7 @@ IMPLEMT_INFERFUNC(CTCBeamSearchDecoder, CTCBeamSearchDecoderInfer) {
     }
   }
 
-  auto log_probability_desc = op.GetOutputDesc("log_probability");
+  auto log_probability_desc = op.GetOutputDescByName("log_probability");
   log_probability_desc.SetShape(Shape({batch_size, top_paths}));
   log_probability_desc.SetDataType(inputs_desc.GetDataType());
   if (op.UpdateOutputDesc("log_probability", log_probability_desc) != GRAPH_SUCCESS) {

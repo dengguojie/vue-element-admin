@@ -30,8 +30,8 @@
 
 namespace ge {
 bool InTopKV2CheckInput(const Operator& op) {
-  Shape shape_prediction = op.GetInputDesc("predictions").GetShape();
-  Shape shape_target = op.GetInputDesc("targets").GetShape();
+  Shape shape_prediction = op.GetInputDescByName("predictions").GetShape();
+  Shape shape_target = op.GetInputDescByName("targets").GetShape();
   int prediction_dim = shape_prediction.GetDimNum();
   if (prediction_dim != DIM_SIZE2) {
     OP_LOGE(TbeGetName(op).c_str(), "Predictions must be 2-dimensional, but get [%d]", prediction_dim);
@@ -60,8 +60,8 @@ IMPLEMT_VERIFIER(InTopKV2, InTopKV2Verify) {
 
 IMPLEMT_COMMON_INFERFUNC(InTopKV2InferShape) {
   DataType output_dtype = DT_BOOL;
-  Shape shape_target = op.GetInputDesc("targets").GetShape();
-  TensorDesc tensordesc_output = op.GetOutputDesc("precision");
+  Shape shape_target = op.GetInputDescByName("targets").GetShape();
+  TensorDesc tensordesc_output = op.GetOutputDescByName("precision");
   tensordesc_output.SetShape(shape_target);
   tensordesc_output.SetDataType(output_dtype);
   if (op.UpdateOutputDesc("precision", tensordesc_output) != GRAPH_SUCCESS) {
@@ -76,7 +76,7 @@ VERIFY_FUNC_REG(InTopKV2, InTopKV2Verify);
 
 IMPLEMT_INFERFUNC(FusedBatchNormV2, FusedBatchNormV2Infer) {
   Shape xshape;
-  if (WithRank(op.GetInputDesc("x"), 4, xshape, TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
+  if (WithRank(op.GetInputDescByName("x"), 4, xshape, TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
     OP_LOGE(TbeGetName(op).c_str(), "Input x rank must be 4");
     return GRAPH_FAILED;
   }
@@ -128,7 +128,7 @@ IMPLEMT_INFERFUNC(FusedBatchNormV2, FusedBatchNormV2Infer) {
     OP_LOGE(TbeGetName(op).c_str(), "Failed to replacedim from xshape");
     return GRAPH_FAILED;
   }
-  DataType xtype = op.GetInputDesc("x").GetDataType();
+  DataType xtype = op.GetInputDescByName("x").GetDataType();
   TensorDesc tensordesc_output = op.GetOutputDesc(0);
   tensordesc_output.SetDataType(xtype);
   tensordesc_output.SetShape(yshape);
@@ -171,8 +171,8 @@ IMPLEMT_INFERFUNC(FusedBatchNormV2, FusedBatchNormV2Infer) {
 INFER_FUNC_REG(FusedBatchNormV2, FusedBatchNormV2Infer);
 //-----------------------SegmentSort-------------------------
 IMPLEMT_COMMON_INFERFUNC(SegmentSortInferShape) {
-    TensorDesc tensordesc_output = op.GetOutputDesc("output_proposal");
-    TensorDesc tensordesc_input = op.GetInputDesc("input_data");
+    TensorDesc tensordesc_output = op.GetOutputDescByName("output_proposal");
+    TensorDesc tensordesc_input = op.GetInputDescByName("input_data");
 
     int64_t data_num = tensordesc_input.GetShape().GetDim(0);
     int64_t k_num = 0;
@@ -224,9 +224,9 @@ IMPLEMT_COMMON_INFERFUNC(MultiMergeInferShape) {
     bool include_index = false;
     op.GetAttr("include_index", include_index);
     if (include_index) {
-        TensorDesc tensordesc_output_data = op.GetOutputDesc("output_proposal");
-        TensorDesc tensordesc_output_index = op.GetOutputDesc("output_index");
-        TensorDesc tensordesc_input = op.GetInputDesc("input_proposal");
+        TensorDesc tensordesc_output_data = op.GetOutputDescByName("output_proposal");
+        TensorDesc tensordesc_output_index = op.GetOutputDescByName("output_index");
+        TensorDesc tensordesc_input = op.GetInputDescByName("input_proposal");
         vector<int64_t> output_shape;
         output_shape.push_back(k_num);
 
@@ -239,8 +239,8 @@ IMPLEMT_COMMON_INFERFUNC(MultiMergeInferShape) {
         (void)op.UpdateOutputDesc("output_index", tensordesc_output_index);
         return GRAPH_SUCCESS;
     } else {
-        TensorDesc tensordesc_output = op.GetOutputDesc("output_proposal");
-        TensorDesc tensordesc_input = op.GetInputDesc("input_proposal");
+        TensorDesc tensordesc_output = op.GetOutputDescByName("output_proposal");
+        TensorDesc tensordesc_input = op.GetInputDescByName("input_proposal");
 
         int64_t channel_num = tensordesc_input.GetShape().GetDim(0);
         int64_t data_num = tensordesc_input.GetShape().GetDim(1);
@@ -272,7 +272,7 @@ IMPLEMT_COMMON_INFERFUNC(MultiMergeInferShape) {
         tensordesc_output.SetDataType(tensordesc_input.GetDataType());
         (void)op.UpdateOutputDesc("output_proposal", tensordesc_output);
 
-        TensorDesc tensordesc_output_index = op.GetOutputDesc("output_index");
+        TensorDesc tensordesc_output_index = op.GetOutputDescByName("output_index");
         vector<int64_t> index_shape;
         index_shape.push_back(1);
         tensordesc_output_index.SetShape(Shape(index_shape));
@@ -286,9 +286,9 @@ COMMON_INFER_FUNC_REG(MultiMerge, MultiMergeInferShape);
 //-----------------------MultiMerge END---------------------
 // ----------------------SingleMerge----------------------
 IMPLEMT_COMMON_INFERFUNC(SingleMergeInferShape) {
-    TensorDesc tensordesc_output_data = op.GetOutputDesc("output_data");
-    TensorDesc tensordesc_output_index = op.GetOutputDesc("output_index");
-    TensorDesc tensordesc_input = op.GetInputDesc("input_proposal");
+    TensorDesc tensordesc_output_data = op.GetOutputDescByName("output_data");
+    TensorDesc tensordesc_output_index = op.GetOutputDescByName("output_index");
+    TensorDesc tensordesc_input = op.GetInputDescByName("input_proposal");
     int64_t k_num = 0;
     if (GRAPH_SUCCESS != op.GetAttr("k_num", k_num)) {
         OP_LOGE(TbeGetName(op).c_str(), "Get attr k_num failed");

@@ -203,10 +203,10 @@ COMMON_INFER_FUNC_REG(SmoothL1LossGrad, SmoothL1LossGradInferShape);
 
 // ----------------Roll Begin---------------------
 IMPLEMT_COMMON_INFERFUNC(RollInferShape) {
-  TensorDesc output_desc_y = op.GetOutputDesc("y");
-  DataType predict_dtype = op.GetInputDesc("x").GetDataType();
-  Format predict_format = op.GetInputDesc("x").GetFormat();
-  ge::Shape output_shape = op.GetInputDesc("x").GetShape();
+  TensorDesc output_desc_y = op.GetOutputDescByName("y");
+  DataType predict_dtype = op.GetInputDescByName("x").GetDataType();
+  Format predict_format = op.GetInputDescByName("x").GetFormat();
+  ge::Shape output_shape = op.GetInputDescByName("x").GetShape();
   output_desc_y.SetDataType(predict_dtype);
   output_desc_y.SetFormat(predict_format);
   output_desc_y.SetShape(output_shape);
@@ -218,9 +218,9 @@ COMMON_INFER_FUNC_REG(Roll, RollInferShape);
 
 // ----------------RollV2 Begin---------------------
 IMPLEMT_COMMON_INFERFUNC(RollV2InferShape) {
-  TensorDesc output_desc_y = op.GetOutputDesc("output");
-  ge::Shape output_shape = op.GetInputDesc("input").GetShape();
-  DataType predict_dtype = op.GetInputDesc("input").GetDataType();
+  TensorDesc output_desc_y = op.GetOutputDescByName("output");
+  ge::Shape output_shape = op.GetInputDescByName("input").GetShape();
+  DataType predict_dtype = op.GetInputDescByName("input").GetDataType();
 
   output_desc_y.SetDataType(predict_dtype);
   output_desc_y.SetShape(output_shape);
@@ -445,7 +445,7 @@ IMPLEMT_COMMON_INFERFUNC(SoftmaxCrossEntropyWithLogitsInferShape) {
   int64_t input_labels_dim_0;
   int64_t input_labels_dim_1;
 
-  OP_LOGD(op.GetName().c_str(),
+  OP_LOGD(TbeGetName(op),
           "input_features_dim_num is %d, input_labels_dim_num is %d", input_features_dim_num, input_labels_dim_num);
 
   // to fill the shorter shape with 1
@@ -475,9 +475,9 @@ IMPLEMT_COMMON_INFERFUNC(SoftmaxCrossEntropyWithLogitsInferShape) {
     return GRAPH_FAILED;
   }
 
-  OP_LOGD(op.GetName().c_str(),
+  OP_LOGD(TbeGetName(op),
           "after complete, input_features_dim is [%d, %d]", input_features_dim_0, input_features_dim_1);
-  OP_LOGD(op.GetName().c_str(),
+  OP_LOGD(TbeGetName(op),
           "after complete, input_labels_dim is [%d, %d]", input_labels_dim_0, input_labels_dim_1);
 
 
@@ -505,7 +505,7 @@ IMPLEMT_COMMON_INFERFUNC(SoftmaxCrossEntropyWithLogitsInferShape) {
   } else {
     output_backprop_shape.SetDim(1, -1);
   }
-  OP_LOGD(op.GetName().c_str(),
+  OP_LOGD(TbeGetName(op),
           "output_loss_desc dtype value is %d, DT_FLOAT16 dtype value is %ld, DT_FLOAT dtype value is %ld",
            input_features_desc_ptr->GetDataType(), DT_FLOAT16, DT_FLOAT);
 
@@ -567,9 +567,9 @@ COMMON_INFER_FUNC_REG(ConfusionSoftmaxGrad, ConfusionSoftmaxGradInferShape);
 
 // --------------------------SoftmaxGradExt-------------------------
 IMPLEMT_COMMON_INFERFUNC(SoftmaxGradExtInferShape) {
-  auto outShape = op.GetInputDesc("x1").GetShape();
-  auto outDtype = op.GetInputDesc("x1").GetDataType();
-  TensorDesc td = op.GetOutputDesc("y");
+  auto outShape = op.GetInputDescByName("x1").GetShape();
+  auto outDtype = op.GetInputDescByName("x1").GetDataType();
+  TensorDesc td = op.GetOutputDescByName("y");
   td.SetShape(outShape);
   td.SetDataType(outDtype);
   (void)op.UpdateOutputDesc("y", td);
@@ -589,9 +589,9 @@ COMMON_INFER_FUNC_REG(SoftmaxV2WithDropOutDoMaskV3D, SoftmaxV2WithDropoutDoMaskV
 
 // ------------------------MVN---------------------------
 IMPLEMT_INFERFUNC(MVN, MVNInferShape) {
-  auto outShape = op.GetInputDesc("x").GetShape();
-  auto outDtype = op.GetInputDesc("x").GetDataType();
-  TensorDesc td = op.GetOutputDesc("y");
+  auto outShape = op.GetInputDescByName("x").GetShape();
+  auto outDtype = op.GetInputDescByName("x").GetDataType();
+  TensorDesc td = op.GetOutputDescByName("y");
   td.SetShape(outShape);
   td.SetDataType(outDtype);
   (void)op.UpdateOutputDesc("y", td);
@@ -608,9 +608,9 @@ VERIFY_FUNC_REG(MVN, MVNVerify);
 
 // ------------------------MVNV2---------------------------
 IMPLEMT_INFERFUNC(MVNV2, MVNV2InferShape) {
-  auto outShape = op.GetInputDesc("x").GetShape();
-  auto outDtype = op.GetInputDesc("x").GetDataType();
-  TensorDesc td = op.GetOutputDesc("y");
+  auto outShape = op.GetInputDescByName("x").GetShape();
+  auto outDtype = op.GetInputDescByName("x").GetDataType();
+  TensorDesc td = op.GetOutputDescByName("y");
   td.SetShape(outShape);
   td.SetDataType(outDtype);
   CHECK(op.UpdateOutputDesc("y", td) != GRAPH_SUCCESS,
@@ -645,10 +645,10 @@ VERIFY_FUNC_REG(Normalize, NormalizeVerify);
 
 // ----------------------Renorm begin------------------------
 IMPLEMT_COMMON_INFERFUNC(RenormInferShape) {
-    TensorDesc output_desc = op.GetOutputDesc("y");
-    DataType predict_dtype = op.GetInputDesc("x").GetDataType();
-    Format predict_format = op.GetInputDesc("x").GetFormat();
-    ge::Shape output_shape = op.GetInputDesc("x").GetShape();
+    TensorDesc output_desc = op.GetOutputDescByName("y");
+    DataType predict_dtype = op.GetInputDescByName("x").GetDataType();
+    Format predict_format = op.GetInputDescByName("x").GetFormat();
+    ge::Shape output_shape = op.GetInputDescByName("x").GetShape();
     int64_t dim;
     op.GetAttr("dim", dim);
     for (size_t i = 0; i < output_shape.GetDimNum(); i++) {
@@ -673,18 +673,18 @@ VERIFY_FUNC_REG(Renorm, RenormVerify);
 
 // ----------------------LayerNormGrad------------------------
 IMPLEMT_COMMON_INFERFUNC(LayerNormGradInferShape) {
-  TensorDesc td_output_pd_x = op.GetOutputDesc("pd_x");
-  TensorDesc td_output2_pd_gamma = op.GetOutputDesc("pd_gamma");
-  TensorDesc td_output3_pd_beta = op.GetOutputDesc("pd_beta");
+  TensorDesc td_output_pd_x = op.GetOutputDescByName("pd_x");
+  TensorDesc td_output2_pd_gamma = op.GetOutputDescByName("pd_gamma");
+  TensorDesc td_output3_pd_beta = op.GetOutputDescByName("pd_beta");
 
-  td_output_pd_x.SetShape(op.GetInputDesc("dy").GetShape());
-  td_output_pd_x.SetDataType(op.GetInputDesc("dy").GetDataType());
+  td_output_pd_x.SetShape(op.GetInputDescByName("dy").GetShape());
+  td_output_pd_x.SetDataType(op.GetInputDescByName("dy").GetDataType());
 
-  td_output2_pd_gamma.SetShape(op.GetInputDesc("gamma").GetShape());
-  td_output2_pd_gamma.SetDataType(op.GetInputDesc("gamma").GetDataType());
+  td_output2_pd_gamma.SetShape(op.GetInputDescByName("gamma").GetShape());
+  td_output2_pd_gamma.SetDataType(op.GetInputDescByName("gamma").GetDataType());
 
-  td_output3_pd_beta.SetShape(op.GetInputDesc("gamma").GetShape());
-  td_output3_pd_beta.SetDataType(op.GetInputDesc("gamma").GetDataType());
+  td_output3_pd_beta.SetShape(op.GetInputDescByName("gamma").GetShape());
+  td_output3_pd_beta.SetDataType(op.GetInputDescByName("gamma").GetDataType());
 
   (void)op.UpdateOutputDesc("pd_x", td_output_pd_x);
   (void)op.UpdateOutputDesc("pd_gamma", td_output2_pd_gamma);
@@ -870,8 +870,8 @@ IMPLEMT_COMMON_INFERFUNC(LayerNormBetaGammaBackpropInferShape) {
   }
   Shape valid_shape(dims_tm);
 
-  TensorDesc tensordesc_output0_pd_gamma = op.GetOutputDesc("pd_gamma");
-  TensorDesc tensordesc_output1_pd_beta = op.GetOutputDesc("pd_beta");
+  TensorDesc tensordesc_output0_pd_gamma = op.GetOutputDescByName("pd_gamma");
+  TensorDesc tensordesc_output1_pd_beta = op.GetOutputDescByName("pd_beta");
 
   tensordesc_output0_pd_gamma.SetShape(valid_shape);
   tensordesc_output0_pd_gamma.SetDataType(DT_FLOAT);
@@ -890,10 +890,10 @@ COMMON_INFER_FUNC_REG(LayerNormBetaGammaBackprop, LayerNormBetaGammaBackpropInfe
 
 // --------------------------LayerNormXBackprop-----------------------
 IMPLEMT_COMMON_INFERFUNC(LayerNormXBackpropInferShape) {
-  TensorDesc tensordesc_output_pd_x = op.GetOutputDesc("pd_x");
+  TensorDesc tensordesc_output_pd_x = op.GetOutputDescByName("pd_x");
 
-  tensordesc_output_pd_x.SetShape(op.GetInputDesc("dy").GetShape());
-  tensordesc_output_pd_x.SetDataType(op.GetInputDesc("dy").GetDataType());
+  tensordesc_output_pd_x.SetShape(op.GetInputDescByName("dy").GetShape());
+  tensordesc_output_pd_x.SetDataType(op.GetInputDescByName("dy").GetDataType());
 
   (void)op.UpdateOutputDesc("pd_x", tensordesc_output_pd_x);
 
@@ -912,8 +912,8 @@ IMPLEMT_COMMON_INFERFUNC(LayerNormBetaGammaBackpropV2InferShape) {
   }
   Shape valid_shape(dims_tm);
 
-  TensorDesc tensordesc_output0_pd_gamma = op.GetOutputDesc("pd_gamma");
-  TensorDesc tensordesc_output1_pd_beta = op.GetOutputDesc("pd_beta");
+  TensorDesc tensordesc_output0_pd_gamma = op.GetOutputDescByName("pd_gamma");
+  TensorDesc tensordesc_output1_pd_beta = op.GetOutputDescByName("pd_beta");
 
   tensordesc_output0_pd_gamma.SetShape(valid_shape);
   tensordesc_output0_pd_gamma.SetDataType(DT_FLOAT);
@@ -1018,10 +1018,10 @@ IMPLEMT_VERIFIER(DropOutDoMaskV3D, DropOutDoMaskV3DVerify) {
 }
 
 IMPLEMT_COMMON_INFERFUNC(DropOutDoMaskV3DInferShape) {
-  TensorDesc tensor_desc_output = op.GetOutputDesc("y");
+  TensorDesc tensor_desc_output = op.GetOutputDescByName("y");
 
-  tensor_desc_output.SetShape(op.GetInputDesc("x").GetShape());
-  tensor_desc_output.SetDataType(op.GetInputDesc("x").GetDataType());
+  tensor_desc_output.SetShape(op.GetInputDescByName("x").GetShape());
+  tensor_desc_output.SetDataType(op.GetInputDescByName("x").GetDataType());
   (void)op.UpdateOutputDesc("y", tensor_desc_output);
 
   return GRAPH_SUCCESS;
@@ -1035,11 +1035,11 @@ VERIFY_FUNC_REG(DropOutDoMaskV3D, DropOutDoMaskV3DVerify);
 // ---------------------------------Scale------------------------------------
 IMPLEMT_INFERFUNC(Scale, ScaleInferShape) {
   OP_LOGI("Scale", "infer shape begin---");
-  DataType dtype_x = op.GetInputDesc("x").GetDataType();
-  ge::Shape shape_x = op.GetInputDesc("x").GetShape();
+  DataType dtype_x = op.GetInputDescByName("x").GetDataType();
+  ge::Shape shape_x = op.GetInputDescByName("x").GetShape();
   std::vector<int64_t> dims_x = shape_x.GetDims();
   // set output
-  TensorDesc output_desc = op.GetOutputDesc("y");
+  TensorDesc output_desc = op.GetOutputDescByName("y");
   output_desc.SetShape(shape_x);
   output_desc.SetDataType(dtype_x);
   (void)op.UpdateOutputDesc("y", output_desc);
@@ -1064,7 +1064,7 @@ IMPLEMT_INFERFUNC(Scale, ScaleInferShape) {
   }
 
   int64_t length_x = dims_x.size();
-  ge::Shape shape_scale = op.GetInputDesc("scale").GetShape();
+  ge::Shape shape_scale = op.GetInputDescByName("scale").GetShape();
   int64_t scale_dim_num = shape_scale.GetDimNum();
   std::vector<int64_t> dims_scale = shape_scale.GetDims();
   int64_t length_scale = dims_scale.size();
@@ -1149,18 +1149,18 @@ IMPLEMT_INFERFUNC(Scale, ScaleInferShape) {
 
     // update scale shape
     ge::Shape output_scale_shape = ge::Shape(dims_scale_tmp);
-    TensorDesc scale_desc = op.GetInputDesc("scale");
+    TensorDesc scale_desc = op.GetInputDescByName("scale");
     scale_desc.SetShape(output_scale_shape);
     scale_desc.SetOriginShape(output_scale_shape);
     (void)op.UpdateInputDesc("scale", scale_desc);
 
     // update bias shape
-    DataType dtype_bias = op.GetInputDesc("bias").GetDataType();
-    Format format_bias = op.GetInputDesc("bias").GetFormat();
+    DataType dtype_bias = op.GetInputDescByName("bias").GetDataType();
+    Format format_bias = op.GetInputDescByName("bias").GetFormat();
     if (!((dtype_bias == DT_UNDEFINED) && (format_bias == FORMAT_RESERVED))) {
       // bias input
       ge::Shape output_bias_shape = ge::Shape(dims_scale_tmp);
-      TensorDesc bias_desc = op.GetInputDesc("bias");
+      TensorDesc bias_desc = op.GetInputDescByName("bias");
       bias_desc.SetShape(output_bias_shape);
       bias_desc.SetOriginShape(output_bias_shape);
       (void)op.UpdateInputDesc("bias", bias_desc);
@@ -1172,8 +1172,8 @@ IMPLEMT_INFERFUNC(Scale, ScaleInferShape) {
 }
 
 IMPLEMT_VERIFIER(Scale, ScaleVerify) {
-  ge::Shape shape_x = op.GetInputDesc("x").GetShape();
-  ge::Shape shape_scale = op.GetInputDesc("scale").GetShape();
+  ge::Shape shape_x = op.GetInputDescByName("x").GetShape();
+  ge::Shape shape_scale = op.GetInputDescByName("scale").GetShape();
   std::vector<int64_t> dims_x = shape_x.GetDims();
   std::vector<int64_t> dims_scale = shape_scale.GetDims();
   int64_t scale_dim_num = shape_scale.GetDimNum();
@@ -1360,33 +1360,33 @@ IMPLEMT_COMMON_INFERFUNC(GroupNormInferShape) {
       return GRAPH_FAILED;
     }
   }
-  auto x_shape = op.GetInputDesc("x").GetShape().GetDims();
-  DataType x_dtype = op.GetInputDesc("x").GetDataType();
+  auto x_shape = op.GetInputDescByName("x").GetShape().GetDims();
+  DataType x_dtype = op.GetInputDescByName("x").GetDataType();
 
-  TensorDesc y_desc = op.GetOutputDesc("y");
+  TensorDesc y_desc = op.GetOutputDescByName("y");
   y_desc.SetShape(ge::Shape(x_shape));
   y_desc.SetDataType(x_dtype);
   (void)op.UpdateOutputDesc("y", y_desc);
 
-  auto scale_shape = op.GetInputDesc("scale").GetShape().GetDims();
-  DataType scale_dtype = op.GetInputDesc("scale").GetDataType();
+  auto scale_shape = op.GetInputDescByName("scale").GetShape().GetDims();
+  DataType scale_dtype = op.GetInputDescByName("scale").GetDataType();
 
-  TensorDesc batch_mean_desc = op.GetOutputDesc("batch_mean");
+  TensorDesc batch_mean_desc = op.GetOutputDescByName("batch_mean");
   batch_mean_desc.SetShape(ge::Shape(scale_shape));
   batch_mean_desc.SetDataType(scale_dtype);
   (void)op.UpdateOutputDesc("batch_mean", batch_mean_desc);
 
-  TensorDesc batch_variance_desc = op.GetOutputDesc("batch_variance");
+  TensorDesc batch_variance_desc = op.GetOutputDescByName("batch_variance");
   batch_variance_desc.SetShape(ge::Shape(scale_shape));
   batch_variance_desc.SetDataType(scale_dtype);
   (void)op.UpdateOutputDesc("batch_variance", batch_variance_desc);
 
-  TensorDesc reserve_space_1_desc = op.GetOutputDesc("reserve_space_1");
+  TensorDesc reserve_space_1_desc = op.GetOutputDescByName("reserve_space_1");
   reserve_space_1_desc.SetShape(ge::Shape(scale_shape));
   reserve_space_1_desc.SetDataType(scale_dtype);
   (void)op.UpdateOutputDesc("reserve_space_1", reserve_space_1_desc);
 
-  TensorDesc reserve_space_2_desc = op.GetOutputDesc("reserve_space_2");
+  TensorDesc reserve_space_2_desc = op.GetOutputDescByName("reserve_space_2");
   reserve_space_2_desc.SetShape(ge::Shape(scale_shape));
   reserve_space_2_desc.SetDataType(scale_dtype);
   (void)op.UpdateOutputDesc("reserve_space_2", reserve_space_2_desc);
@@ -1403,7 +1403,7 @@ IMPLEMT_VERIFIER(InstanceNormV2, InstanceNormV2Verify) {
 }
 
 IMPLEMT_COMMON_INFERFUNC(InstanceNormV2InferShape) {
-  auto inputTensorDesc = op.GetInputDesc("x");
+  auto inputTensorDesc = op.GetInputDescByName("x");
   auto shape = inputTensorDesc.GetShape();
   DataType x_dtype = inputTensorDesc.GetDataType();
 
@@ -1421,17 +1421,17 @@ IMPLEMT_COMMON_INFERFUNC(InstanceNormV2InferShape) {
     }
   }
 
-  TensorDesc y_desc = op.GetOutputDesc("y");
+  TensorDesc y_desc = op.GetOutputDescByName("y");
   y_desc.SetShape(ge::Shape(dims_input));
   y_desc.SetDataType(x_dtype);
   (void)op.UpdateOutputDesc("y", y_desc);
 
-  TensorDesc batch_mean_desc = op.GetOutputDesc("batch_mean");
+  TensorDesc batch_mean_desc = op.GetOutputDescByName("batch_mean");
   batch_mean_desc.SetShape(ge::Shape(dimVector));
   batch_mean_desc.SetDataType(DT_FLOAT);
   (void)op.UpdateOutputDesc("batch_mean", batch_mean_desc);
 
-  TensorDesc batch_variance_desc = op.GetOutputDesc("batch_variance");
+  TensorDesc batch_variance_desc = op.GetOutputDescByName("batch_variance");
   batch_variance_desc.SetShape(ge::Shape(dimVector));
   batch_variance_desc.SetDataType(DT_FLOAT);
   (void)op.UpdateOutputDesc("batch_variance", batch_variance_desc);
@@ -1448,7 +1448,7 @@ IMPLEMT_VERIFIER(INInferV2D, INInferV2DVerify) {
 }
 
 IMPLEMT_COMMON_INFERFUNC(INInferV2DInferShape) {
-  auto inputTensorDescX = op.GetInputDesc("x");
+  auto inputTensorDescX = op.GetInputDescByName("x");
   auto shape = inputTensorDescX.GetShape();
   DataType x_dtype = inputTensorDescX.GetDataType();
 
@@ -1465,17 +1465,17 @@ IMPLEMT_COMMON_INFERFUNC(INInferV2DInferShape) {
     }
   }
 
-  TensorDesc y_desc = op.GetOutputDesc("y");
+  TensorDesc y_desc = op.GetOutputDescByName("y");
   y_desc.SetShape(ge::Shape(dims_input));
   y_desc.SetDataType(x_dtype);
   (void)op.UpdateOutputDesc("y", y_desc);
 
-  TensorDesc batch_mean_desc = op.GetOutputDesc("batch_mean");
+  TensorDesc batch_mean_desc = op.GetOutputDescByName("batch_mean");
   batch_mean_desc.SetShape(ge::Shape(dimVector));
   batch_mean_desc.SetDataType(DT_FLOAT);
   (void)op.UpdateOutputDesc("batch_mean", batch_mean_desc);
 
-  TensorDesc batch_variance_desc = op.GetOutputDesc("batch_variance");
+  TensorDesc batch_variance_desc = op.GetOutputDescByName("batch_variance");
   batch_variance_desc.SetShape(ge::Shape(dimVector));
   batch_variance_desc.SetDataType(DT_FLOAT);
   (void)op.UpdateOutputDesc("batch_variance", batch_variance_desc);
@@ -1591,15 +1591,15 @@ COMMON_INFER_FUNC_REG(InstanceNormGrad, InstanceNormGradInferShape);
 // ----------------KlDivLossGrad Begin-------------------
 bool InferShapeAndTypeKlDivLossGrad(Operator& op, const string& input_name,
                                     const string& output_name) {
-  TensorDesc output_desc = op.GetOutputDesc(output_name);
-  DataType input_dtype = op.GetInputDesc(input_name).GetDataType();
-  Format input_format = op.GetInputDesc(input_name).GetFormat();
-  ge::Shape input_shape = op.GetInputDesc(input_name).GetShape();
+  TensorDesc output_desc = op.GetOutputDescByName(output_name.c_str());
+  DataType input_dtype = op.GetInputDescByName(input_name.c_str()).GetDataType();
+  Format input_format = op.GetInputDescByName(input_name.c_str()).GetFormat();
+  ge::Shape input_shape = op.GetInputDescByName(input_name.c_str()).GetShape();
 
   output_desc.SetShape(input_shape);
   output_desc.SetDataType(input_dtype);
   output_desc.SetFormat(input_format);
-  op.UpdateOutputDesc(output_name, output_desc);
+  op.UpdateOutputDesc(output_name.c_str(), output_desc);
   return true;
 }
 
@@ -1612,10 +1612,10 @@ IMPLEMT_COMMON_INFERFUNC(KlDivLossGradInferShape) {
 }
 
 IMPLEMT_VERIFIER(KlDivLossGrad, KlDivLossGradVerify) {
-  if (op.GetInputDesc("grad").GetDataType() !=
-          op.GetInputDesc("input").GetDataType() ||
-      op.GetInputDesc("input").GetDataType() !=
-          op.GetInputDesc("target").GetDataType()) {
+  if (op.GetInputDescByName("grad").GetDataType() !=
+          op.GetInputDescByName("input").GetDataType() ||
+      op.GetInputDescByName("input").GetDataType() !=
+          op.GetInputDescByName("target").GetDataType()) {
     OP_LOGE(TbeGetName(op).c_str(), "grad type is not same with input or target");
     return GRAPH_FAILED;
   }
@@ -1628,9 +1628,9 @@ VERIFY_FUNC_REG(KlDivLossGrad, KlDivLossGradVerify);
 
 // ----------------L1LossGrad Begin-------------------
 IMPLEMT_VERIFIER(L1LossGrad, L1LossGradVerify) {
-  DataType grads_type = op.GetInputDesc("grads").GetDataType();
-  DataType predict_type = op.GetInputDesc("predict").GetDataType();
-  DataType label_type = op.GetInputDesc("label").GetDataType();
+  DataType grads_type = op.GetInputDescByName("grads").GetDataType();
+  DataType predict_type = op.GetInputDescByName("predict").GetDataType();
+  DataType label_type = op.GetInputDescByName("label").GetDataType();
 
   if ((grads_type != DT_FLOAT16 && grads_type != DT_FLOAT) ||
       (label_type != DT_FLOAT16 && label_type != DT_FLOAT) ||
@@ -1658,9 +1658,9 @@ IMPLEMT_COMMON_INFERFUNC(L1LossGradInfer) {
     }
   }
 
-  Shape grads_shape = op.GetInputDesc("grads").GetShape();
-  Shape label_shape = op.GetInputDesc("label").GetShape();
-  Shape predict_shape = op.GetInputDesc("predict").GetShape();
+  Shape grads_shape = op.GetInputDescByName("grads").GetShape();
+  Shape label_shape = op.GetInputDescByName("label").GetShape();
+  Shape predict_shape = op.GetInputDescByName("predict").GetShape();
   if (predict_shape.GetDims().size() != grads_shape.GetDims().size() ||
       predict_shape.GetDims().size() != label_shape.GetDims().size()) {
     OP_LOGE(TbeGetName(op).c_str(),
@@ -1727,9 +1727,9 @@ VERIFY_FUNC_REG(LpLoss, LpLossVerify);
 IMPLEMT_COMMON_INFERFUNC(MseLossGradInferShape) {
   bool is_dynamic_output = true;
 
-  auto tensor_predict = op.GetInputDesc("predict");
+  auto tensor_predict = op.GetInputDescByName("predict");
   auto predict_type = tensor_predict.GetDataType();
-  auto tensor_label = op.GetInputDesc("label");
+  auto tensor_label = op.GetInputDescByName("label");
   auto label_type = tensor_label.GetDataType();
 
   if (predict_type != label_type) {
@@ -1785,16 +1785,16 @@ COMMON_INFER_FUNC_REG(MseLoss, MseLossInferShape);
 // ----------------SoftMarginLoss Begin-------------------
 bool InferShapeAndTypeSoftMarginLoss(Operator& op, const string& input_name1, const string& input_name2,
                                      const string& output_name, const string& reduction) {
-    TensorDesc v_output_desc = op.GetOutputDesc(output_name);
-    DataType input_dtype = op.GetInputDesc(input_name1).GetDataType();
-    Format input_format = op.GetInputDesc(input_name1).GetFormat();
+    TensorDesc v_output_desc = op.GetOutputDescByName(output_name.c_str());
+    DataType input_dtype = op.GetInputDescByName(input_name1.c_str()).GetDataType();
+    Format input_format = op.GetInputDescByName(input_name1.c_str()).GetFormat();
     ge::Shape output_shape;
     std::string attr_value = "none";
     op.GetAttr("reduction", attr_value);
 
     if(attr_value == "none") {
-        ge::Shape shape_x = op.GetInputDesc(input_name1).GetShape();
-        ge::Shape shape_y = op.GetInputDesc(input_name2).GetShape();
+        ge::Shape shape_x = op.GetInputDescByName(input_name1.c_str()).GetShape();
+        ge::Shape shape_y = op.GetInputDescByName(input_name2.c_str()).GetShape();
         std::vector<int64_t> dims_x = shape_x.GetDims();
         std::vector<int64_t> dims_y = shape_y.GetDims();
         if (dims_x.size() < dims_y.size()) {
@@ -1828,12 +1828,12 @@ bool InferShapeAndTypeSoftMarginLoss(Operator& op, const string& input_name1, co
     v_output_desc.SetShape(output_shape);
     v_output_desc.SetDataType(input_dtype);
     v_output_desc.SetFormat(input_format);
-    op.UpdateOutputDesc(output_name, v_output_desc);
+    op.UpdateOutputDesc(output_name.c_str(), v_output_desc);
     return true;
 }
 
 IMPLEMT_VERIFIER(SoftMarginLoss, SoftMarginLossVerify) {
-    if (op.GetInputDesc("input_x").GetDataType() != op.GetInputDesc("input_y").GetDataType()) {
+    if (op.GetInputDescByName("input_x").GetDataType() != op.GetInputDescByName("input_y").GetDataType()) {
         OP_LOGE(TbeGetName(op).c_str(), "The dtype of input_x input_y should be same.");
         return GRAPH_FAILED;
     }
@@ -1855,9 +1855,9 @@ VERIFY_FUNC_REG(SoftMarginLoss, SoftMarginLossVerify);
 IMPLEMT_VERIFIER(SigmoidCrossEntropyWithLogitsGradV2,
                  SigmoidCrossEntropyWithLogitsGradV2Verity) {
   std::vector<int64_t> predict_shape_dim =
-      op.GetInputDesc("predict").GetShape().GetDims();
+      op.GetInputDescByName("predict").GetShape().GetDims();
   std::vector<int64_t> target_shape_dim =
-      op.GetInputDesc("target").GetShape().GetDims();
+      op.GetInputDescByName("target").GetShape().GetDims();
   for (size_t i = 0; i < predict_shape_dim.size(); i++) {
     if ((predict_shape_dim[i] != target_shape_dim[i])) {
       printf(TbeGetName(op).c_str(),
@@ -1951,8 +1951,8 @@ IMPLEMT_INFERFUNC(SmoothL1LossV2, SmoothL1LossV2InferShape) {
 
 IMPLEMT_VERIFIER(SmoothL1LossV2, SmoothL1LossV2Verify) {
   const char *op_name = "SmoothL1LossV2";
-  DataType input_type_x = op.GetInputDesc("predict").GetDataType();
-  DataType input_type_y = op.GetInputDesc("label").GetDataType();
+  DataType input_type_x = op.GetInputDescByName("predict").GetDataType();
+  DataType input_type_y = op.GetInputDescByName("label").GetDataType();
   if (input_type_x != input_type_y) {
     OP_LOGE(op_name, "Input Type Unmatch.");
     return GRAPH_FAILED;
@@ -1969,11 +1969,11 @@ bool InferShapeAndTypePoissonNllLoss(Operator& op,
                                      const string& target,
                                      const string& loss,
                                      const string& reduction) {
-    TensorDesc vOutputDesc = op.GetOutputDesc(loss);
-    DataType inputDtype = op.GetInputDesc(input_x).GetDataType();
-    Format inputFormat = op.GetInputDesc(input_x).GetFormat();
-    ge::Shape shapeX = op.GetInputDesc(input_x).GetShape();
-    ge::Shape shapeY = op.GetInputDesc(target).GetShape();
+    TensorDesc vOutputDesc = op.GetOutputDescByName(loss.c_str());
+    DataType inputDtype = op.GetInputDescByName(input_x.c_str()).GetDataType();
+    Format inputFormat = op.GetInputDescByName(input_x.c_str()).GetFormat();
+    ge::Shape shapeX = op.GetInputDescByName(input_x.c_str()).GetShape();
+    ge::Shape shapeY = op.GetInputDescByName(target.c_str()).GetShape();
     std::vector<int64_t> dimsX = shapeX.GetDims();
     std::vector<int64_t> dimsY = shapeY.GetDims();
     if (dimsX.size() < dimsY.size()) {
@@ -2008,14 +2008,14 @@ bool InferShapeAndTypePoissonNllLoss(Operator& op,
     vOutputDesc.SetShape(outputShape);
     vOutputDesc.SetDataType(inputDtype);
     vOutputDesc.SetFormat(inputFormat);
-    op.UpdateOutputDesc(loss, vOutputDesc);
+    op.UpdateOutputDesc(loss.c_str(), vOutputDesc);
     return true;
 }
 
 // PoissonNllLoss
 IMPLEMT_VERIFIER(PoissonNllLoss, PoissonNllLossVerify) {
-    DataType input_type_input = op.GetInputDesc("input_x").GetDataType();
-    DataType input_type_target = op.GetInputDesc("target").GetDataType();
+    DataType input_type_input = op.GetInputDescByName("input_x").GetDataType();
+    DataType input_type_target = op.GetInputDescByName("target").GetDataType();
     if (input_type_input != input_type_target) {
         OP_LOGE(TbeGetName(op).c_str(), "Input dtypes are not the same.");
         return GRAPH_FAILED;
@@ -2042,8 +2042,8 @@ VERIFY_FUNC_REG(PoissonNllLoss, PoissonNllLossVerify);
 // ----------------PoissonNllLoss END------------------------------
 // --------------------------RnnGenMask-------------------------
 IMPLEMT_COMMON_INFERFUNC(RnnGenMaskInferShape) {
-  TensorDesc tensordesc_input = op.GetInputDesc("seq_length");
-  TensorDesc tensordesc_output = op.GetOutputDesc("seq_mask");
+  TensorDesc tensordesc_input = op.GetInputDescByName("seq_length");
+  TensorDesc tensordesc_output = op.GetOutputDescByName("seq_mask");
 
   Shape length_shape = tensordesc_input.GetShape();
   std::vector<int64_t> dim_length = length_shape.GetDims();
@@ -2092,13 +2092,13 @@ IMPLEMT_INFERFUNC(MultilabelMarginLoss, MultilabelMarginLossInferShape) {
   string output_name1 = "y";
   string output_name2 = "is_target";
 
-  DataType input_dtype = op.GetInputDesc(input_name1).GetDataType();
-  Format input_format = op.GetInputDesc(input_name1).GetFormat();
-  DataType target_dtype = op.GetInputDesc(input_name2).GetDataType();
-  Format target_format = op.GetInputDesc(input_name2).GetFormat();
+  DataType input_dtype = op.GetInputDescByName(input_name1.c_str()).GetDataType();
+  Format input_format = op.GetInputDescByName(input_name1.c_str()).GetFormat();
+  DataType target_dtype = op.GetInputDescByName(input_name2.c_str()).GetDataType();
+  Format target_format = op.GetInputDescByName(input_name2.c_str()).GetFormat();
 
-  ge::Shape shape_x = op.GetInputDesc(input_name1).GetShape();
-  ge::Shape shape_y = op.GetInputDesc(input_name2).GetShape();
+  ge::Shape shape_x = op.GetInputDescByName(input_name1.c_str()).GetShape();
+  ge::Shape shape_y = op.GetInputDescByName(input_name2.c_str()).GetShape();
   std::vector<int64_t> dims_x = shape_x.GetDims();
   std::vector<int64_t> dims_y = shape_y.GetDims();
 
@@ -2112,8 +2112,8 @@ IMPLEMT_INFERFUNC(MultilabelMarginLoss, MultilabelMarginLossInferShape) {
     return GRAPH_FAILED;
   }
 
-  TensorDesc outputDesc = op.GetOutputDesc(output_name1);
-  TensorDesc isTargetDesc = op.GetOutputDesc(output_name2);
+  TensorDesc outputDesc = op.GetOutputDescByName(output_name1.c_str());
+  TensorDesc isTargetDesc = op.GetOutputDescByName(output_name2.c_str());
 
   std::string reduction = op.get_attr_reduction();
   std::vector<int64_t> outputDimVec;
@@ -2138,8 +2138,8 @@ IMPLEMT_INFERFUNC(MultilabelMarginLoss, MultilabelMarginLossInferShape) {
   isTargetDesc.SetDataType(target_dtype);
   isTargetDesc.SetFormat(target_format);
 
-  op.UpdateOutputDesc(output_name1, outputDesc);
-  op.UpdateOutputDesc(output_name2, isTargetDesc);
+  op.UpdateOutputDesc(output_name1.c_str(), outputDesc);
+  op.UpdateOutputDesc(output_name2.c_str(), isTargetDesc);
 
   return GRAPH_SUCCESS;
 }
@@ -2149,8 +2149,8 @@ VERIFY_FUNC_REG(MultilabelMarginLoss, MultilabelMarginLossVerify);
 // ----------------MultiLabelMarginLoss end----------------------------------
 // ----------------------NormalizeBatch----------------------
 IMPLEMT_COMMON_INFERFUNC(NormalizeBatchInferShape) {
-  TensorDesc tensordesc_output = op.GetOutputDesc("output_y");
-  TensorDesc tensordesc_input = op.GetInputDesc("input_x");
+  TensorDesc tensordesc_output = op.GetOutputDescByName("output_y");
+  TensorDesc tensordesc_input = op.GetInputDescByName("input_x");
   auto input_shape = tensordesc_input.GetShape();
   auto input_dtype = tensordesc_input.GetDataType();
   auto input_dims = input_shape.GetDims();
@@ -2168,8 +2168,8 @@ COMMON_INFER_FUNC_REG(NormalizeBatch, NormalizeBatchInferShape);
 // -----------------------NormalizeBatch END---------------------
 // ------------GroupNormRelu Op Start----------------
 IMPLEMT_COMMON_INFERFUNC(GroupNormReluInferShape) {
-  TensorDesc tensordesc_output = op.GetOutputDesc("y");
-  TensorDesc tensordesc_input = op.GetInputDesc("x");
+  TensorDesc tensordesc_output = op.GetOutputDescByName("y");
+  TensorDesc tensordesc_input = op.GetInputDescByName("x");
   tensordesc_output.SetShape(tensordesc_input.GetShape());
   tensordesc_output.SetDataType(tensordesc_input.GetDataType());
   (void)op.UpdateOutputDesc("y", tensordesc_output);

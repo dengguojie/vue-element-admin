@@ -37,17 +37,17 @@ IMPLEMT_VERIFIER(TargetCropAndResize, TargetCropAndResizeVerify) {
 
 IMPLEMT_COMMON_INFERFUNC(TargetCropAndResizeInferShape) {
   OP_LOGI("TargetCropAndResize", "infer shape begin");
-  auto x_desc = op.GetInputDesc("x");
+  auto x_desc = op.GetInputDescByName("x");
   auto x_shape = x_desc.GetShape().GetDims();
   int64_t channel = 3;
-  int64_t xDimNum = op.GetInputDesc("x").GetShape().GetDimNum();
+  int64_t xDimNum = op.GetInputDescByName("x").GetShape().GetDimNum();
   if (x_shape.empty() || xDimNum < 4) {
     OP_LOGE(TbeGetName(op).c_str(), "get x shape failed, or x shape is smaller than 4.");
     return GRAPH_FAILED;
   }
 
-  auto boxes_shape = op.GetInputDesc("boxes").GetShape().GetDims();
-  int64_t boxesDimNum = op.GetInputDesc("boxes").GetShape().GetDimNum();
+  auto boxes_shape = op.GetInputDescByName("boxes").GetShape().GetDims();
+  int64_t boxesDimNum = op.GetInputDescByName("boxes").GetShape().GetDimNum();
   if (boxes_shape.empty() || boxesDimNum < 2) {
     OP_LOGE(TbeGetName(op).c_str(), "get boxes shape failed, or boxes shape is smaller than 2.");
     return GRAPH_FAILED;
@@ -77,7 +77,7 @@ IMPLEMT_COMMON_INFERFUNC(TargetCropAndResizeInferShape) {
   dim_vector.push_back(output_h);
   dim_vector.push_back(output_w);
   Shape out_shape(dim_vector);
-  TensorDesc y_desc = op.GetOutputDesc("y");
+  TensorDesc y_desc = op.GetOutputDescByName("y");
   y_desc.SetShape(out_shape);
   y_desc.SetDataType(ge::DT_UINT8);
   (void)op.UpdateOutputDesc("y", y_desc);

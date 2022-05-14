@@ -95,14 +95,14 @@ IMPLEMT_INFERFUNC(RaggedRange, RaggedRangeInfer) {
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), string("get attr[Tsplits] failed"));
     return GRAPH_FAILED;
   }
-  TensorDesc rt_nested_desc = op.GetOutputDesc("rt_nested_splits");
+  TensorDesc rt_nested_desc = op.GetOutputDescByName("rt_nested_splits");
   rt_nested_desc.SetShape(Shape({rt_nested_splits_dim}));
   rt_nested_desc.SetDataType(Tsplits_type);
   (void)op.UpdateOutputDesc("rt_nested_splits", rt_nested_desc);
 
-  DataType T_type = op.GetInputDesc("starts").GetDataType();
+  DataType T_type = op.GetInputDescByName("starts").GetDataType();
   std::vector<int64_t> unknow_dim_vec(1, UNKNOWN_DIM);
-  TensorDesc dense_desc = op.GetOutputDesc("rt_dense_values");
+  TensorDesc dense_desc = op.GetOutputDescByName("rt_dense_values");
   dense_desc.SetShape(Shape(unknow_dim_vec));
   dense_desc.SetDataType(T_type);
   (void)op.UpdateOutputDesc("rt_dense_values", dense_desc);

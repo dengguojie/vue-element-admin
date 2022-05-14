@@ -781,7 +781,7 @@ static graphStatus GetShapeDataFromShapeTensor(Operator& op,
   data.reserve(dim_value);
   Tensor shape_tensor;
   if (data_type == DT_INT32) {
-    if (op.GetInputConstData(dst_name, shape_tensor) == GRAPH_SUCCESS) {
+    if (op.GetInputConstData(dst_name.c_str(), shape_tensor) == GRAPH_SUCCESS) {
       const int32_t* shape_data =
           reinterpret_cast<const int32_t*>(shape_tensor.GetData());
       for (int64_t i = 0; i < dim_value; i++) {
@@ -795,7 +795,7 @@ static graphStatus GetShapeDataFromShapeTensor(Operator& op,
       }
     }
   } else if (data_type == DT_INT64) {
-    if (op.GetInputConstData(dst_name, shape_tensor) == GRAPH_SUCCESS) {
+    if (op.GetInputConstData(dst_name.c_str(), shape_tensor) == GRAPH_SUCCESS) {
       const int64_t* shape_data =
           reinterpret_cast<const int64_t*>(shape_tensor.GetData());
       for (int64_t i = 0; i < dim_value; i++) {
@@ -923,9 +923,9 @@ graphStatus Scalar(Shape& out) {
 }
 
 graphStatus UnchangedShape(Operator& op, const string input_name, const string output_name) {
-  TensorDesc desc = op.GetOutputDesc(output_name);
-  desc.SetShape(op.GetInputDesc(input_name).GetShape());
-  return op.UpdateOutputDesc(output_name, desc);
+  TensorDesc desc = op.GetOutputDescByName(output_name.c_str());
+  desc.SetShape(op.GetInputDescByName(input_name.c_str()).GetShape());
+  return op.UpdateOutputDesc(output_name.c_str(), desc);
 }
 
 graphStatus Divide(const int64_t dividend, const int64_t divisor, const bool evenlyDivisible, int64_t& out,

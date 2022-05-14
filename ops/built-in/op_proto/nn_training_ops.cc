@@ -30,12 +30,12 @@ namespace ge {
 
 // Obtains the output tensor description for Apply_op
 void ApplyInferShapeAndDtype(Operator& op, const string& input_name, const string& output_name) {
-  TensorDesc out_desc = op.GetOutputDesc(output_name);
-  TensorDesc in_desc = op.GetInputDesc(input_name);
+  TensorDesc out_desc = op.GetOutputDescByName(output_name.c_str());
+  TensorDesc in_desc = op.GetInputDescByName(input_name.c_str());
 
   out_desc.SetShape(in_desc.GetShape());
   out_desc.SetDataType(in_desc.GetDataType());
-  if (op.UpdateOutputDesc(output_name, out_desc) != GRAPH_SUCCESS) {
+  if (op.UpdateOutputDesc(output_name.c_str(), out_desc) != GRAPH_SUCCESS) {
     OP_LOGE(TbeGetName(op).c_str(), "UpdateOutputDesc failed, maybe output name error!");
   }
 }
@@ -72,7 +72,7 @@ void SetRefInput(Operator& op, const string& input_name) {
 bool ApplyVerifyFunc(const ge::Operator& op, const std::vector<std::string>& inputTensorList,
                      const std::vector<std::string>& inputScalarList) {
   // check shape of Tensor
-  auto var_dims = op.GetInputDesc(inputTensorList[0]).GetShape().GetDims();
+  auto var_dims = op.GetInputDescByName(inputTensorList[0].c_str()).GetShape().GetDims();
   if (var_dims.size() > 8 || var_dims.size() < 0) {
     OP_LOGE(TbeGetName(op).c_str(), "var only support 0 ~ 8 dims!");
     return GRAPH_FAILED;
@@ -82,7 +82,7 @@ bool ApplyVerifyFunc(const ge::Operator& op, const std::vector<std::string>& inp
     return true;
   }
   for (std::size_t i = 1; i < inputTensorList.size(); i++) {
-    auto tmp_dims = op.GetInputDesc(inputTensorList[i]).GetShape().GetDims();
+    auto tmp_dims = op.GetInputDescByName(inputTensorList[i].c_str()).GetShape().GetDims();
     if (IsUnknown(tmp_dims)) {
       OP_LOGW(TbeGetName(op).c_str(), "this is dynamic shape, will continue ApplyVerifyFunc");
       continue;
@@ -96,7 +96,7 @@ bool ApplyVerifyFunc(const ge::Operator& op, const std::vector<std::string>& inp
 
   // check shape of Scalar
   for (std::size_t j = 0; j < inputScalarList.size(); j++) {
-    auto scalar_dims = op.GetInputDesc(inputScalarList[j]).GetShape().GetDims();
+    auto scalar_dims = op.GetInputDescByName(inputScalarList[j].c_str()).GetShape().GetDims();
     if (scalar_dims.size() > 1) {
       OP_LOGE(TbeGetName(op).c_str(), "The input %s must be scalar!", inputScalarList[j].c_str());
       return false;
@@ -170,11 +170,11 @@ VERIFY_FUNC_REG(ApplyAdaMaxD, ApplyAdaMaxDVerify);
 
 // ----------------SparseApplyAdagrad Op----------------
 IMPLEMT_COMMON_INFERFUNC(SparseApplyAdagradInferShape) {
-  Shape var_shape = op.GetInputDesc("var").GetShape();
-  Shape accum_shape = op.GetInputDesc("accum").GetShape();
-  DataType input_dtype = op.GetInputDesc("var").GetDataType();
-  TensorDesc out_var_desc = op.GetOutputDesc("var");
-  TensorDesc out_accum_desc = op.GetOutputDesc("accum");
+  Shape var_shape = op.GetInputDescByName("var").GetShape();
+  Shape accum_shape = op.GetInputDescByName("accum").GetShape();
+  DataType input_dtype = op.GetInputDescByName("var").GetDataType();
+  TensorDesc out_var_desc = op.GetOutputDescByName("var");
+  TensorDesc out_accum_desc = op.GetOutputDescByName("accum");
   out_var_desc.SetShape(ge::Shape(var_shape));
   out_accum_desc.SetShape(ge::Shape(accum_shape));
   out_var_desc.SetDataType(input_dtype);
@@ -189,8 +189,8 @@ IMPLEMT_COMMON_INFERFUNC(SparseApplyAdagradInferShape) {
 }
 
 IMPLEMT_VERIFIER(SparseApplyAdagrad, SparseApplyAdagradVerify) {
-  DataType var_dtype = op.GetInputDesc("var").GetDataType();
-  DataType accum_dtype = op.GetInputDesc("accum").GetDataType();
+  DataType var_dtype = op.GetInputDescByName("var").GetDataType();
+  DataType accum_dtype = op.GetInputDescByName("accum").GetDataType();
   if (var_dtype != accum_dtype) {
     std::string err_msg = OtherErrMsg("The sparse_apply_adagrad op inputs should have the same dtype!");
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
@@ -205,11 +205,11 @@ VERIFY_FUNC_REG(SparseApplyAdagrad, SparseApplyAdagradVerify);
 
 // ----------------SparseApplyAdagradD Op----------------
 IMPLEMT_COMMON_INFERFUNC(SparseApplyAdagradDInferShape) {
-  Shape var_shape = op.GetInputDesc("var").GetShape();
-  Shape accum_shape = op.GetInputDesc("accum").GetShape();
-  DataType input_dtype = op.GetInputDesc("var").GetDataType();
-  TensorDesc out_var_desc = op.GetOutputDesc("var");
-  TensorDesc out_accum_desc = op.GetOutputDesc("accum");
+  Shape var_shape = op.GetInputDescByName("var").GetShape();
+  Shape accum_shape = op.GetInputDescByName("accum").GetShape();
+  DataType input_dtype = op.GetInputDescByName("var").GetDataType();
+  TensorDesc out_var_desc = op.GetOutputDescByName("var");
+  TensorDesc out_accum_desc = op.GetOutputDescByName("accum");
   out_var_desc.SetShape(ge::Shape(var_shape));
   out_accum_desc.SetShape(ge::Shape(accum_shape));
   out_var_desc.SetDataType(input_dtype);
@@ -224,8 +224,8 @@ IMPLEMT_COMMON_INFERFUNC(SparseApplyAdagradDInferShape) {
 }
 
 IMPLEMT_VERIFIER(SparseApplyAdagradD, SparseApplyAdagradDVerify) {
-  DataType var_dtype = op.GetInputDesc("var").GetDataType();
-  DataType accum_dtype = op.GetInputDesc("accum").GetDataType();
+  DataType var_dtype = op.GetInputDescByName("var").GetDataType();
+  DataType accum_dtype = op.GetInputDescByName("accum").GetDataType();
   if (var_dtype != accum_dtype) {
     std::string err_msg = OtherErrMsg("The sparse_apply_adagrad_d op inputs should have the same dtype!");
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
@@ -262,9 +262,9 @@ VERIFY_FUNC_REG(SparseApplyAdagradV2D, SparseApplyAdagradV2DVerify);
 
 // ----------------SparseApplyAdagradV2 Op----------------
 IMPLEMT_COMMON_INFERFUNC(SparseApplyAdagradV2InferShape) {
-  Shape var_shape = op.GetInputDesc("var").GetShape();
-  DataType input_dtype = op.GetInputDesc("var").GetDataType();
-  TensorDesc out_var_desc = op.GetOutputDesc("var");
+  Shape var_shape = op.GetInputDescByName("var").GetShape();
+  DataType input_dtype = op.GetInputDescByName("var").GetDataType();
+  TensorDesc out_var_desc = op.GetOutputDescByName("var");
   out_var_desc.SetShape(Shape(var_shape));
   out_var_desc.SetDataType(input_dtype);
   if (op.UpdateOutputDesc("var", out_var_desc) != GRAPH_SUCCESS) {
@@ -960,19 +960,19 @@ COMMON_INFER_FUNC_REG(SparseApplyProximalAdagrad, ELMTWISE_INFER_SHAPEANDTYPE("v
 IMPLEMT_COMMON_INFERFUNC(SparseApplyProximalAdagradDShape) {
   OP_LOGI(TbeGetName(op).c_str(), "Enter SparseApplyProximalAdagradD op_proto inferfunction!");
   // var_out
-  TensorDesc var_tensordesc_output = op.GetOutputDesc("var");
-  var_tensordesc_output.SetShape(op.GetInputDesc("var").GetShape());
-  var_tensordesc_output.SetDataType(op.GetInputDesc("var").GetDataType());
+  TensorDesc var_tensordesc_output = op.GetOutputDescByName("var");
+  var_tensordesc_output.SetShape(op.GetInputDescByName("var").GetShape());
+  var_tensordesc_output.SetDataType(op.GetInputDescByName("var").GetDataType());
   std::vector<std::pair<int64_t, int64_t>> shape_range_var;
-  op.GetInputDesc("var").GetShapeRange(shape_range_var);
+  op.GetInputDescByName("var").GetShapeRange(shape_range_var);
   var_tensordesc_output.SetShapeRange(shape_range_var);
   (void)op.UpdateOutputDesc("var", var_tensordesc_output);
   // accum_out
-  TensorDesc accum_tensordesc_output = op.GetOutputDesc("accum");
-  accum_tensordesc_output.SetShape(op.GetInputDesc("accum").GetShape());
-  accum_tensordesc_output.SetDataType(op.GetInputDesc("accum").GetDataType());
+  TensorDesc accum_tensordesc_output = op.GetOutputDescByName("accum");
+  accum_tensordesc_output.SetShape(op.GetInputDescByName("accum").GetShape());
+  accum_tensordesc_output.SetDataType(op.GetInputDescByName("accum").GetDataType());
   std::vector<std::pair<int64_t, int64_t>> shape_range_accum;
-  op.GetInputDesc("accum").GetShapeRange(shape_range_accum);
+  op.GetInputDescByName("accum").GetShapeRange(shape_range_accum);
   accum_tensordesc_output.SetShapeRange(shape_range_accum);
   (void)op.UpdateOutputDesc("accum", accum_tensordesc_output);
   OP_LOGI(TbeGetName(op).c_str(), "Leave SparseApplyProximalAdagradD op_proto inferfunction!");
@@ -1194,7 +1194,7 @@ VERIFY_FUNC_REG(ApplyAdadeltaD, ApplyAdadeltaDVerify);
 
 // ----------------ApplyAdam Op-------------------
 bool ApplyAdamSetNd(Operator& op, std::string& input) {
-  auto tensor_desc = op.GetInputDesc(input);
+  auto tensor_desc = op.GetInputDescByName(input.c_str());
   tensor_desc.SetOriginFormat(ge::FORMAT_ND);
   tensor_desc.SetFormat(ge::FORMAT_ND);
 
@@ -1377,14 +1377,14 @@ IMPLEMT_VERIFIER(SparseApplyRMSProp, SparseApplyRMSPropVerify) {
     return GRAPH_FAILED;
   }
 
-  auto vector_dims = op.GetInputDesc("indices").GetShape().GetDims();
+  auto vector_dims = op.GetInputDescByName("indices").GetShape().GetDims();
   if (vector_dims.size() != 1) {
     OP_LOGE(TbeGetName(op).c_str(), "Input indices must be one-dimensional");
     return GRAPH_FAILED;
   }
 
-  vector<int64_t> var_dims = op.GetInputDesc("var").GetShape().GetDims();
-  vector<int64_t> grad_dims = op.GetInputDesc("grad").GetShape().GetDims();
+  vector<int64_t> var_dims = op.GetInputDescByName("var").GetShape().GetDims();
+  vector<int64_t> grad_dims = op.GetInputDescByName("grad").GetShape().GetDims();
 
   for (unsigned int dim_index = 1; dim_index < var_dims.size(); dim_index++) {
     if (var_dims[dim_index] != grad_dims[dim_index]) {
@@ -1428,15 +1428,15 @@ IMPLEMT_VERIFIER(SparseApplyRMSPropD, SparseApplyRMSPropDVerify) {
     return GRAPH_FAILED;
   }
 
-  auto vector_dims = op.GetInputDesc("indices").GetShape().GetDims();
+  auto vector_dims = op.GetInputDescByName("indices").GetShape().GetDims();
   if (vector_dims.size() != 1) {
     std::string err_msg = GetShapeSizeErrMsg(5, ConcatString(vector_dims.size()), ConcatString("one-dimensional"));
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
 
-  vector<int64_t> var_dims = op.GetInputDesc("var").GetShape().GetDims();
-  vector<int64_t> grad_dims = op.GetInputDesc("grad").GetShape().GetDims();
+  vector<int64_t> var_dims = op.GetInputDescByName("var").GetShape().GetDims();
+  vector<int64_t> grad_dims = op.GetInputDescByName("grad").GetShape().GetDims();
 
   for (unsigned int dim_index = 1; dim_index < var_dims.size(); dim_index++) {
     if (var_dims[dim_index] != grad_dims[dim_index]) {
@@ -1473,14 +1473,14 @@ IMPLEMT_VERIFIER(SparseApplyAdadelta, SparseApplyAdadeltaVerify) {
     return GRAPH_FAILED;
   }
 
-  auto vector_dims = op.GetInputDesc("indices").GetShape().GetDims();
+  auto vector_dims = op.GetInputDescByName("indices").GetShape().GetDims();
   if (vector_dims.size() != 1) {
     OP_LOGE(TbeGetName(op).c_str(), "Input indices must be one-dimensional");
     return GRAPH_FAILED;
   }
 
-  vector<int64_t> var_dims = op.GetInputDesc("var").GetShape().GetDims();
-  vector<int64_t> grad_dims = op.GetInputDesc("grad").GetShape().GetDims();
+  vector<int64_t> var_dims = op.GetInputDescByName("var").GetShape().GetDims();
+  vector<int64_t> grad_dims = op.GetInputDescByName("grad").GetShape().GetDims();
 
   for (unsigned int dim_index = 1; dim_index < var_dims.size(); dim_index++) {
     if (var_dims[dim_index] != grad_dims[dim_index]) {
@@ -1524,15 +1524,15 @@ IMPLEMT_VERIFIER(SparseApplyAdadeltaD, SparseApplyAdadeltaDVerify) {
     return GRAPH_FAILED;
   }
 
-  auto vector_dims = op.GetInputDesc("indices").GetShape().GetDims();
+  auto vector_dims = op.GetInputDescByName("indices").GetShape().GetDims();
   if (vector_dims.size() != 1) {
     std::string err_msg = GetShapeSizeErrMsg(6, ConcatString(vector_dims.size()), ConcatString(1));
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
 
-  vector<int64_t> var_dims = op.GetInputDesc("var").GetShape().GetDims();
-  vector<int64_t> grad_dims = op.GetInputDesc("grad").GetShape().GetDims();
+  vector<int64_t> var_dims = op.GetInputDescByName("var").GetShape().GetDims();
+  vector<int64_t> grad_dims = op.GetInputDescByName("grad").GetShape().GetDims();
 
   for (unsigned int dim_index = 1; dim_index < var_dims.size(); dim_index++) {
     if (var_dims[dim_index] != grad_dims[dim_index]) {
@@ -1568,7 +1568,7 @@ VERIFY_FUNC_REG(SparseApplyAdadeltaD, SparseApplyAdadeltaDVerify);
 bool CheckSgdDimension(const Operator& op) {
   OP_LOGI(TbeGetName(op).c_str(), "Enter SGD op_proto inferfunction!");
   // input tensor dim check
-  auto var_dims = op.GetInputDesc("parameters").GetShape().GetDims();
+  auto var_dims = op.GetInputDescByName("parameters").GetShape().GetDims();
   if (var_dims.size() > 8 || var_dims.size() <= 0) {
     std::string err_msg = GetShapeSizeErrMsg(0, ConcatString(var_dims.size()), ConcatString("1 ~ 8 dims!"));
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
@@ -1607,11 +1607,11 @@ IMPLEMT_COMMON_INFERFUNC(SGDInferShape) {
       return GRAPH_FAILED;
     }
   }
-  TensorDesc variable_desc = op.GetInputDesc("parameters");
+  TensorDesc variable_desc = op.GetInputDescByName("parameters");
   auto variabl_shape = variable_desc.GetShape().GetDims();
   DataType variabl_dtype = variable_desc.GetDataType();
 
-  TensorDesc variable_update_desc = op.GetOutputDesc("parameters");
+  TensorDesc variable_update_desc = op.GetOutputDescByName("parameters");
   variable_update_desc.SetShape(Shape(variabl_shape));
   variable_update_desc.SetDataType(variabl_dtype);
   if (op.UpdateOutputDesc("parameters", variable_update_desc) != GRAPH_SUCCESS) {
@@ -1846,9 +1846,9 @@ COMMON_INFER_FUNC_REG(SparseApplyFtrlD, SparseApplyFtrlDInferShape);
 VERIFY_FUNC_REG(SparseApplyFtrlD, SparseApplyFtrlDVerify);
 
 IMPLEMT_COMMON_INFERFUNC(SparseApplyFtrlInferShape) {
-  Shape var_shape = op.GetInputDesc("var").GetShape();
-  DataType input_dtype = op.GetInputDesc("var").GetDataType();
-  TensorDesc out_tensor_desc = op.GetOutputDesc("var");
+  Shape var_shape = op.GetInputDescByName("var").GetShape();
+  DataType input_dtype = op.GetInputDescByName("var").GetDataType();
+  TensorDesc out_tensor_desc = op.GetOutputDescByName("var");
   out_tensor_desc.SetShape(Shape(var_shape));
   out_tensor_desc.SetDataType(input_dtype);
   if (op.UpdateOutputDesc("var", out_tensor_desc) != GRAPH_SUCCESS) {
@@ -1886,8 +1886,8 @@ IMPLEMT_COMMON_INFERFUNC(SparseApplyFtrlV2DInferShape) {
 }
 
 IMPLEMT_VERIFIER(SparseApplyFtrlV2D, SparseApplyFtrlV2DVerify) {
-  DataType var_dtype = op.GetInputDesc("var").GetDataType();
-  DataType accum_dtype = op.GetInputDesc("accum").GetDataType();
+  DataType var_dtype = op.GetInputDescByName("var").GetDataType();
+  DataType accum_dtype = op.GetInputDescByName("accum").GetDataType();
   if (var_dtype != accum_dtype) {
     std::string err_msg = OtherErrMsg("The sparse_apply_ftrl op inputs should have the same dtype!");
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
@@ -1951,9 +1951,9 @@ COMMON_INFER_FUNC_REG(SparseApplyFtrlV2D, SparseApplyFtrlV2DInferShape);
 VERIFY_FUNC_REG(SparseApplyFtrlV2D, SparseApplyFtrlV2DVerify);
 
 IMPLEMT_COMMON_INFERFUNC(SparseApplyFtrlV2InferShape) {
-  Shape var_shape = op.GetInputDesc("var").GetShape();
-  DataType input_dtype = op.GetInputDesc("var").GetDataType();
-  TensorDesc out_tensor_desc = op.GetOutputDesc("var");
+  Shape var_shape = op.GetInputDescByName("var").GetShape();
+  DataType input_dtype = op.GetInputDescByName("var").GetDataType();
+  TensorDesc out_tensor_desc = op.GetOutputDescByName("var");
   out_tensor_desc.SetShape(ge::Shape(var_shape));
   out_tensor_desc.SetDataType(input_dtype);
   if (op.UpdateOutputDesc("var", out_tensor_desc) != GRAPH_SUCCESS) {
@@ -1964,8 +1964,8 @@ IMPLEMT_COMMON_INFERFUNC(SparseApplyFtrlV2InferShape) {
 }
 
 IMPLEMT_VERIFIER(SparseApplyFtrlV2, SparseApplyFtrlV2Verify) {
-  DataType var_dtype = op.GetInputDesc("var").GetDataType();
-  DataType accum_dtype = op.GetInputDesc("accum").GetDataType();
+  DataType var_dtype = op.GetInputDescByName("var").GetDataType();
+  DataType accum_dtype = op.GetInputDescByName("accum").GetDataType();
   if (var_dtype != accum_dtype) {
     OP_LOGE(TbeGetName(op).c_str(), "The sparse_apply_ftrl op inputs should have the same dtype!");
     return GRAPH_FAILED;

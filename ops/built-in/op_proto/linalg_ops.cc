@@ -74,8 +74,8 @@ INFER_FUNC_REG(Cholesky, CholeskyInfer);
 
 // ----------------------Ger Starts----------------------
 IMPLEMT_VERIFIER(Ger, GerVerify) {
-  DataType x1_type = op.GetInputDesc("x1").GetDataType();
-  DataType x2_type = op.GetInputDesc("x2").GetDataType();
+  DataType x1_type = op.GetInputDescByName("x1").GetDataType();
+  DataType x2_type = op.GetInputDescByName("x2").GetDataType();
   if (x1_type != DT_FLOAT16 && x1_type != DT_FLOAT) {
     std::string err_msg;
     err_msg = ConcatString(
@@ -104,9 +104,9 @@ IMPLEMT_VERIFIER(Ger, GerVerify) {
 }
 
 IMPLEMT_INFERFUNC(Ger, GerInfer) {
-  DataType x1_type = op.GetInputDesc("x1").GetDataType();
-  Shape x1_shape = op.GetInputDesc("x1").GetShape();
-  Shape x2_shape = op.GetInputDesc("x2").GetShape();
+  DataType x1_type = op.GetInputDescByName("x1").GetDataType();
+  Shape x1_shape = op.GetInputDescByName("x1").GetShape();
+  Shape x2_shape = op.GetInputDescByName("x2").GetShape();
   if (x1_shape.GetDims().size() != 1 || x2_shape.GetDims().size() != 1) {
     std::string err_msg; 
     err_msg= ConcatString(
@@ -120,7 +120,7 @@ IMPLEMT_INFERFUNC(Ger, GerInfer) {
 
   Shape y_shape;
   Concatenate(x1_shape, x2_shape, y_shape);
-  TensorDesc y_desc = op.GetOutputDesc("y");
+  TensorDesc y_desc = op.GetOutputDescByName("y");
   y_desc.SetShape(Shape(y_shape));
   y_desc.SetDataType(x1_type);
   op.UpdateOutputDesc("y", y_desc);
@@ -150,27 +150,27 @@ IMPLEMT_INFERFUNC(LogMatrixDeterminant, LogMatrixDeterminantInfer) {
     return GRAPH_FAILED;
   }
 
-  DataType type = op.GetInputDesc("x").GetDataType();
+  DataType type = op.GetInputDescByName("x").GetDataType();
 
   if (size_num == 2) {
-    TensorDesc sign_desc = op.GetOutputDesc("sign");
+    TensorDesc sign_desc = op.GetOutputDescByName("sign");
     sign_desc.SetShape(Shape({1}));
     sign_desc.SetDataType(type);
     op.UpdateOutputDesc("sign", sign_desc);
 
-    TensorDesc y_desc = op.GetOutputDesc("y");
+    TensorDesc y_desc = op.GetOutputDescByName("y");
     y_desc.SetShape(Shape({1}));
     y_desc.SetDataType(type);
     op.UpdateOutputDesc("y", y_desc);
   } else {
     vector<int64_t> shape(x_shape.begin(), (x_shape.end() - 2));
 
-    TensorDesc sign_desc = op.GetOutputDesc("sign");
+    TensorDesc sign_desc = op.GetOutputDescByName("sign");
     sign_desc.SetShape(Shape(shape));
     sign_desc.SetDataType(type);
     op.UpdateOutputDesc("sign", sign_desc);
 
-    TensorDesc y_desc = op.GetOutputDesc("y");
+    TensorDesc y_desc = op.GetOutputDescByName("y");
     y_desc.SetShape(Shape(shape));
     y_desc.SetDataType(type);
     op.UpdateOutputDesc("y", y_desc);
@@ -205,9 +205,9 @@ IMPLEMT_INFERFUNC(MatrixDeterminant, MatrixDeterminantInfer) {
     return GRAPH_FAILED;
   }
 
-  DataType type = op.GetInputDesc("x").GetDataType();
+  DataType type = op.GetInputDescByName("x").GetDataType();
 
-  TensorDesc y_desc = op.GetOutputDesc("y");
+  TensorDesc y_desc = op.GetOutputDescByName("y");
   y_desc.SetShape(Shape(result));
   y_desc.SetDataType(type);
   op.UpdateOutputDesc("y", y_desc);
@@ -224,9 +224,9 @@ IMPLEMT_INFERFUNC(MatrixInverse, MatrixInverseInfer) {
     OP_LOGE(TbeGetName(op).c_str(), "Op first input x tensor Make Batch Square Matrix failed.");
     return GRAPH_FAILED;
   }
-  DataType type = op.GetInputDesc("x").GetDataType();
+  DataType type = op.GetInputDescByName("x").GetDataType();
 
-  TensorDesc y_desc = op.GetOutputDesc("y");
+  TensorDesc y_desc = op.GetOutputDescByName("y");
   y_desc.SetShape(Shape(result));
   y_desc.SetDataType(type);
   op.UpdateOutputDesc("y", y_desc);
@@ -243,9 +243,9 @@ IMPLEMT_INFERFUNC(MatrixSolve, MatrixSolveInfer) {
     OP_LOGE(TbeGetName(op).c_str(), "Op MatrixSolve Call MatrixSolve Infer Shape fns Failed.");
     return GRAPH_FAILED;
   }
-  DataType type = op.GetInputDesc("matrix").GetDataType();
+  DataType type = op.GetInputDescByName("matrix").GetDataType();
 
-  TensorDesc y_desc = op.GetOutputDesc("y");
+  TensorDesc y_desc = op.GetOutputDescByName("y");
   y_desc.SetShape(Shape(result));
   y_desc.SetDataType(type);
   op.UpdateOutputDesc("y", y_desc);
@@ -271,9 +271,9 @@ IMPLEMT_INFERFUNC(MatrixSolveLs, MatrixSolveLsInfer) {
     return GRAPH_FAILED;
   }
 
-  DataType type = op.GetInputDesc("matrix").GetDataType();
+  DataType type = op.GetInputDescByName("matrix").GetDataType();
 
-  TensorDesc y_desc = op.GetOutputDesc("y");
+  TensorDesc y_desc = op.GetOutputDescByName("y");
   y_desc.SetShape(Shape(result));
   y_desc.SetDataType(type);
   op.UpdateOutputDesc("y", y_desc);
@@ -291,9 +291,9 @@ IMPLEMT_INFERFUNC(MatrixTriangularSolve, MatrixTriangularSolveInfer) {
     return GRAPH_FAILED;
   }
 
-  DataType type = op.GetInputDesc("matrix").GetDataType();
+  DataType type = op.GetInputDescByName("matrix").GetDataType();
 
-  TensorDesc y_desc = op.GetOutputDesc("y");
+  TensorDesc y_desc = op.GetOutputDescByName("y");
   y_desc.SetShape(Shape(result));
   y_desc.SetDataType(type);
   op.UpdateOutputDesc("y", y_desc);
@@ -342,8 +342,8 @@ IMPLEMT_INFERFUNC(Qr, QrInfer) {
     Concatenate(batch_shape, p_n_shape, r_shape);
   }
 
-  DataType type = op.GetInputDesc("x").GetDataType();
-  TensorDesc q_desc = op.GetOutputDesc("q");
+  DataType type = op.GetInputDescByName("x").GetDataType();
+  TensorDesc q_desc = op.GetOutputDescByName("q");
   q_desc.SetShape(Shape(q_shape));
   q_desc.SetDataType(type);
   if (op.UpdateOutputDesc("q", q_desc) != GRAPH_SUCCESS) {
@@ -351,7 +351,7 @@ IMPLEMT_INFERFUNC(Qr, QrInfer) {
     return GRAPH_FAILED;
   }
 
-  TensorDesc r_desc = op.GetOutputDesc("r");
+  TensorDesc r_desc = op.GetOutputDescByName("r");
   r_desc.SetShape(Shape(r_shape));
   r_desc.SetDataType(type);
   if (op.UpdateOutputDesc("r", r_desc) != GRAPH_SUCCESS) {
@@ -405,9 +405,9 @@ IMPLEMT_INFERFUNC(SelfAdjointEig, SelfAdjointEigInfer) {
     OP_LOGE(TbeGetName(op).c_str(), "Concatenate eigen_value in SelfAdjointEig failed");
     return GRAPH_FAILED;
   }
-  TensorDesc value_desc = op.GetOutputDesc("eigen_value");
+  TensorDesc value_desc = op.GetOutputDescByName("eigen_value");
   value_desc.SetShape(Shape(value_shape));
-  value_desc.SetDataType(op.GetInputDesc("x").GetDataType());
+  value_desc.SetDataType(op.GetInputDescByName("x").GetDataType());
   if (op.UpdateOutputDesc("eigen_value", value_desc) != GRAPH_SUCCESS) {
     OP_LOGE(TbeGetName(op).c_str(), "fail to update output eigen_value.");
     return GRAPH_FAILED;
@@ -426,17 +426,17 @@ IMPLEMT_INFERFUNC(SelfAdjointEig, SelfAdjointEigInfer) {
       OP_LOGE(TbeGetName(op).c_str(), "Concatenate eigen_vector in SelfAdjointEig failed");
       return GRAPH_FAILED;
     }
-    TensorDesc vector_desc = op.GetOutputDesc("eigen_vector");
+    TensorDesc vector_desc = op.GetOutputDescByName("eigen_vector");
     vector_desc.SetShape(Shape(vector_shape));
-    vector_desc.SetDataType(op.GetInputDesc("x").GetDataType());
+    vector_desc.SetDataType(op.GetInputDescByName("x").GetDataType());
     if (op.UpdateOutputDesc("eigen_vector", vector_desc) != GRAPH_SUCCESS) {
       OP_LOGE(TbeGetName(op).c_str(), "fail to update eigen_vector.");
       return GRAPH_FAILED;
     }
   } else {
-    TensorDesc vector_desc = op.GetOutputDesc("eigen_vector");
+    TensorDesc vector_desc = op.GetOutputDescByName("eigen_vector");
     vector_desc.SetShape(Shape());
-    vector_desc.SetDataType(op.GetInputDesc("x").GetDataType());
+    vector_desc.SetDataType(op.GetInputDescByName("x").GetDataType());
     if (op.UpdateOutputDesc("eigen_vector", vector_desc) != GRAPH_SUCCESS) {
       OP_LOGE(TbeGetName(op).c_str(), "fail to update eigen_vector.");
       return GRAPH_FAILED;
@@ -449,7 +449,7 @@ INFER_FUNC_REG(SelfAdjointEig, SelfAdjointEigInfer);
 
 // ----------------Slogdet start-------------------
 IMPLEMT_VERIFIER(Slogdet, SlogdetVerify) {
-    DataType type = op.GetInputDesc("x").GetDataType();
+    DataType type = op.GetInputDescByName("x").GetDataType();
     if (type != DT_FLOAT16 && type != DT_FLOAT && type != DT_DOUBLE) {
         OP_LOGE(TbeGetName(op).c_str(), "Expert a floating point tensor as input.");
         return GRAPH_FAILED;
@@ -460,7 +460,7 @@ IMPLEMT_VERIFIER(Slogdet, SlogdetVerify) {
 IMPLEMT_INFERFUNC(Slogdet, SlogdetInfer) {
     auto x_shape = op.get_input_desc_x().GetShape().GetDims();
     size_t size_num = x_shape.size();
-    DataType type = op.GetInputDesc("x").GetDataType();
+    DataType type = op.GetInputDescByName("x").GetDataType();
     if (size_num < 2) {
       OP_LOGE(TbeGetName(op).c_str(), "The rank of x must be greater than 2");
       return GRAPH_FAILED;
@@ -471,12 +471,12 @@ IMPLEMT_INFERFUNC(Slogdet, SlogdetInfer) {
     }
 
     if (size_num == 2) {
-        TensorDesc sign_desc = op.GetOutputDesc("sign");
+        TensorDesc sign_desc = op.GetOutputDescByName("sign");
         sign_desc.SetShape(Shape({1}));
         sign_desc.SetDataType(type);
         op.UpdateOutputDesc("sign", sign_desc);
 
-        TensorDesc y_desc = op.GetOutputDesc("y");
+        TensorDesc y_desc = op.GetOutputDescByName("y");
         y_desc.SetShape(Shape({1}));
         y_desc.SetDataType(type);
         op.UpdateOutputDesc("y", y_desc);
@@ -485,14 +485,14 @@ IMPLEMT_INFERFUNC(Slogdet, SlogdetInfer) {
         std::vector<std::pair<int64_t, int64_t>> out_range;
         std::pair<int64_t, int64_t> pair({1, INT64_MAX});
         out_range.emplace_back(pair);
-        TensorDesc sign_desc = op.GetOutputDesc("sign");
+        TensorDesc sign_desc = op.GetOutputDescByName("sign");
         sign_desc.SetShape(Shape(ge::UNKNOWN_SHAPE));
         sign_desc.SetOriginShape(Shape(ge::UNKNOWN_SHAPE));
         sign_desc.SetShapeRange(out_range);
         sign_desc.SetDataType(type);
         op.UpdateOutputDesc("sign", sign_desc);
 
-        TensorDesc y_desc = op.GetOutputDesc("y");
+        TensorDesc y_desc = op.GetOutputDescByName("y");
         y_desc.SetShape(Shape(ge::UNKNOWN_SHAPE));
         y_desc.SetOriginShape(Shape(ge::UNKNOWN_SHAPE));
         y_desc.SetShapeRange(out_range);
@@ -501,12 +501,12 @@ IMPLEMT_INFERFUNC(Slogdet, SlogdetInfer) {
     } else {
         vector<int64_t> shape(x_shape.begin(), (x_shape.end() - 2));
 
-        TensorDesc sign_desc = op.GetOutputDesc("sign");
+        TensorDesc sign_desc = op.GetOutputDescByName("sign");
         sign_desc.SetShape(Shape(shape));
         sign_desc.SetDataType(type);
         op.UpdateOutputDesc("sign", sign_desc);
 
-        TensorDesc y_desc = op.GetOutputDesc("y");
+        TensorDesc y_desc = op.GetOutputDescByName("y");
         y_desc.SetShape(Shape(shape));
         y_desc.SetDataType(type);
         op.UpdateOutputDesc("y", y_desc);
@@ -547,9 +547,9 @@ IMPLEMT_INFERFUNC(Svd, SvdInfer) {
     OP_LOGE(TbeGetName(op).c_str(), "Concatenate sigma_shap in Svd failed!");
     return GRAPH_FAILED;
   }
-  TensorDesc sigma_desc = op.GetOutputDesc("sigma");
+  TensorDesc sigma_desc = op.GetOutputDescByName("sigma");
   sigma_desc.SetShape(Shape(sigma_shape));
-  sigma_desc.SetDataType(op.GetInputDesc("x").GetDataType());
+  sigma_desc.SetDataType(op.GetInputDescByName("x").GetDataType());
   if (op.UpdateOutputDesc("sigma", sigma_desc) != GRAPH_SUCCESS) {
     OP_LOGE(TbeGetName(op).c_str(), "fail to update output sigma");
     return GRAPH_FAILED;
@@ -596,33 +596,33 @@ IMPLEMT_INFERFUNC(Svd, SvdInfer) {
         return GRAPH_FAILED;
       }
     }
-    TensorDesc u_desc = op.GetOutputDesc("u");
+    TensorDesc u_desc = op.GetOutputDescByName("u");
     u_desc.SetShape(Shape(u_shape));
-    u_desc.SetDataType(op.GetInputDesc("x").GetDataType());
+    u_desc.SetDataType(op.GetInputDescByName("x").GetDataType());
     if (op.UpdateOutputDesc("u", u_desc) != GRAPH_SUCCESS) {
       OP_LOGE(TbeGetName(op).c_str(), "fail to update output u.");
       return GRAPH_FAILED;
     }
 
-    TensorDesc v_desc = op.GetOutputDesc("v");
+    TensorDesc v_desc = op.GetOutputDescByName("v");
     v_desc.SetShape(Shape(v_shape));
-    v_desc.SetDataType(op.GetInputDesc("x").GetDataType());
+    v_desc.SetDataType(op.GetInputDescByName("x").GetDataType());
     if (op.UpdateOutputDesc("v", v_desc) != GRAPH_SUCCESS) {
       OP_LOGE(TbeGetName(op).c_str(), "fail to update output v");
       return GRAPH_FAILED;
     }
   } else {
-    TensorDesc u_desc = op.GetOutputDesc("u");
+    TensorDesc u_desc = op.GetOutputDescByName("u");
     u_desc.SetShape(Shape());
-    u_desc.SetDataType(op.GetInputDesc("x").GetDataType());
+    u_desc.SetDataType(op.GetInputDescByName("x").GetDataType());
     if (op.UpdateOutputDesc("u", u_desc) != GRAPH_SUCCESS) {
       OP_LOGE(TbeGetName(op).c_str(), "fail to update output u.");
       return GRAPH_FAILED;
     }
 
-    TensorDesc v_desc = op.GetOutputDesc("v");
+    TensorDesc v_desc = op.GetOutputDescByName("v");
     v_desc.SetShape(Shape());
-    v_desc.SetDataType(op.GetInputDesc("x").GetDataType());
+    v_desc.SetDataType(op.GetInputDescByName("x").GetDataType());
     if (op.UpdateOutputDesc("v", v_desc) != GRAPH_SUCCESS) {
       OP_LOGE(TbeGetName(op).c_str(), "fail to update output v");
       return GRAPH_FAILED;
@@ -677,16 +677,16 @@ IMPLEMT_INFERFUNC(Lu, LuInfer) {
     return GRAPH_FAILED;
   }
 
-  TensorDesc lu_desc = op.GetOutputDesc("lu");
+  TensorDesc lu_desc = op.GetOutputDescByName("lu");
   lu_desc.SetShape(Shape(lu_shape));
-  DataType lu_type = op.GetInputDesc("input").GetDataType();
+  DataType lu_type = op.GetInputDescByName("input").GetDataType();
   lu_desc.SetDataType(lu_type);
   if (op.UpdateOutputDesc("lu", lu_desc) != GRAPH_SUCCESS) {
     OP_LOGE(TbeGetName(op).c_str(), "fail to update output lu.");
     return GRAPH_FAILED;
   }
 
-  TensorDesc p_desc = op.GetOutputDesc("p");
+  TensorDesc p_desc = op.GetOutputDescByName("p");
   p_desc.SetShape(Shape(p_shape));
   DataType p_type;
   if (op.GetAttr("output_idx_type", p_type) != GRAPH_SUCCESS) {
@@ -711,8 +711,8 @@ IMPLEMT_INFERFUNC(MatrixSquareRoot, MatrixSquareRootInfer) {
     return GRAPH_FAILED;
   }
 
-  TensorDesc y_desc = op.GetOutputDesc("y");
-  DataType type = op.GetInputDesc("input").GetDataType();
+  TensorDesc y_desc = op.GetOutputDescByName("y");
+  DataType type = op.GetInputDescByName("input").GetDataType();
   y_desc.SetShape(Shape(y_shape));
   y_desc.SetDataType(type);
   if (op.UpdateOutputDesc("y", y_desc) != GRAPH_SUCCESS) {
@@ -785,9 +785,9 @@ IMPLEMT_INFERFUNC(TridiagonalSolve, TridiagonalSolveInfer) {
     return GRAPH_FAILED;
   }
 
-  TensorDesc y_desc = op.GetOutputDesc("y");
+  TensorDesc y_desc = op.GetOutputDescByName("y");
   y_desc.SetShape(Shape(rhs));
-  DataType type = op.GetInputDesc("diagonals").GetDataType();
+  DataType type = op.GetInputDescByName("diagonals").GetDataType();
   y_desc.SetDataType(type);
   if (op.UpdateOutputDesc("y", y_desc) != GRAPH_SUCCESS) {
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op),

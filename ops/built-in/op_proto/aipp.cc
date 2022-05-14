@@ -742,7 +742,7 @@ static void SaveImagesDesc(Operator& op, const std::string& aipp_config_path) {
     OP_LOGD(TbeGetName(op).c_str(), "SaveImagesDesc, aipp_config_path is %s", aipp_config_path.c_str());
     op.SetAttr("aipp_config_file_path", aipp_config_path);
 
-    auto images_desc = op.GetInputDesc("images");
+    auto images_desc = op.GetInputDescByName("images");
     Tensor images_tensor(images_desc);
     OP_LOGD(TbeGetName(op).c_str(),
             "SaveImagesDesc, images_shape is %s, images_dtype value is %d, images_format value is %d",
@@ -765,7 +765,7 @@ static void GetImagesDesc(Operator& op, TensorDesc& images_desc) {
             images_desc.GetDataType(), images_desc.GetFormat());
   } else {
     OP_LOGD(TbeGetName(op).c_str(), "GetImagesDesc, first, get images_desc from images");
-    images_desc = op.GetInputDesc("images");
+    images_desc = op.GetInputDescByName("images");
   }
   OP_LOGD(TbeGetName(op).c_str(), "aipp infershape, GetImagesDesc end");
 }
@@ -783,8 +783,8 @@ static graphStatus DynamicShapeInfershape(Operator& op, const GeTensor* params_d
     return GRAPH_FAILED;
   }
 
-  auto images_desc = op.GetInputDesc("images");
-  auto features_desc = op.GetOutputDesc("features");
+  auto images_desc = op.GetInputDescByName("images");
+  auto features_desc = op.GetOutputDescByName("features");
   auto features_format = features_desc.GetFormat();
   if (features_format != FORMAT_NCHW && features_format != FORMAT_NHWC) {
     OP_LOGE(TbeGetName(op).c_str(), "aipp dynamic shape, input format only support NCHW, NHWC.");
@@ -1157,7 +1157,7 @@ IMPLEMT_COMMON_INFERFUNC(AippInfer) {
 IMPLEMT_INFER_DATA_SLICE(Aipp, AippInferDataSlice) {
   OP_LOGI(TbeGetName(op).c_str(), "AippInferDataSlice start.");
 
-  auto images_desc = op.GetInputDesc("images");
+  auto images_desc = op.GetInputDescByName("images");
   auto input_format = images_desc.GetFormat();
 
   if (input_format != FORMAT_NHWC && input_format != FORMAT_NCHW && input_format != FORMAT_NC1HWC0_C04) {

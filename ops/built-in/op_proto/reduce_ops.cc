@@ -59,7 +59,7 @@ static bool InferReduceShape(const ge::Operator& op, const string& input_name, c
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
   op_desc->SetOpInferDepends(input_infer_depends);
 
-  result_desc = op.GetInputDesc(input_name);
+  result_desc = op.GetInputDescByName(input_name.c_str());
   auto shape = result_desc.GetShape();
   std::vector<int64_t> shapeVector = shape.GetDims();
   int64_t dim_num = shape.GetDimNum();
@@ -91,13 +91,13 @@ static bool InferReduceShape(const ge::Operator& op, const string& input_name, c
   }
 
   bool keep_dims;
-  if (GRAPH_SUCCESS != op.GetAttr(keep_dims_name, keep_dims)) {
+  if (GRAPH_SUCCESS != op.GetAttr(keep_dims_name.c_str(), keep_dims)) {
     OP_LOGE(TbeGetName(op).c_str(), "GetAttr of %s failed.", keep_dims_name.c_str());
     return false;
   }
 
   ge::TensorDesc axis_desc;
-  axis_desc = op.GetInputDesc(axis_name);
+  axis_desc = op.GetInputDescByName(axis_name.c_str());
   auto axis_shape = axis_desc.GetShape();
   auto axis_type = axis_desc.GetDataType();
   std::vector<int64_t> axis_shapeVector = axis_shape.GetDims();
@@ -117,7 +117,7 @@ static bool InferReduceShape(const ge::Operator& op, const string& input_name, c
 
   Tensor data;
   // axis unknown
-  if (GRAPH_SUCCESS != op.GetInputConstData(axis_name, data)) {
+  if (GRAPH_SUCCESS != op.GetInputConstData(axis_name.c_str(), data)) {
     OP_LOGI(TbeGetName(op).c_str(), "GetInputConstData of %s failed, enter axis unknown scenario.", axis_name.c_str());
 
     std::vector<int64_t> oShapeVector;
@@ -252,7 +252,7 @@ static bool InferReduceShape(const ge::Operator& op, const string& input_name, c
 
 static bool CheckReduceInfo(const ge::Operator& op, const size_t& input_size, const size_t& axis_size,
                             const string& keep_dims_name, bool& keep_dims) {
-  if (GRAPH_SUCCESS != op.GetAttr(keep_dims_name, keep_dims)) {
+  if (GRAPH_SUCCESS != op.GetAttr(keep_dims_name.c_str(), keep_dims)) {
     OP_LOGE(TbeGetName(op).c_str(), "GetAttr of %s failed.", keep_dims_name.c_str());
     return false;
   }
@@ -261,11 +261,11 @@ static bool CheckReduceInfo(const ge::Operator& op, const size_t& input_size, co
 
 static bool CheckReduceDInfo(const ge::Operator& op, const size_t& input_size, const string& keep_dims_name,
                              const string& axis_name, bool& keep_dims, std::vector<int64_t>& axis) {
-  if (GRAPH_SUCCESS != op.GetAttr(keep_dims_name, keep_dims)) {
+  if (GRAPH_SUCCESS != op.GetAttr(keep_dims_name.c_str(), keep_dims)) {
     OP_LOGE(TbeGetName(op).c_str(), "GetAttr of %s failed.", keep_dims_name.c_str());
     return false;
   }
-  if (GRAPH_SUCCESS != op.GetAttr(axis_name, axis)) {
+  if (GRAPH_SUCCESS != op.GetAttr(axis_name.c_str(), axis)) {
     OP_LOGE(TbeGetName(op).c_str(), "GetAttr of %s failed.", axis_name.c_str());
     return false;
   }
@@ -630,7 +630,7 @@ static bool InferReduceDShapeProcess(const ge::Operator& op, const string& input
 
 static bool InferReduceDShape(const ge::Operator& op, const string& input_name, const string& axis_name,
                               const string& keep_dims_name, ge::TensorDesc& result_desc) {
-  result_desc = op.GetInputDesc(input_name);
+  result_desc = op.GetInputDescByName(input_name.c_str());
   auto shape = result_desc.GetShape();
   std::vector<int64_t> shapeVector = shape.GetDims();
   int64_t dimNum = shape.GetDimNum();
@@ -644,13 +644,13 @@ static bool InferReduceDShape(const ge::Operator& op, const string& input_name, 
   }
 
   std::vector<int64_t> axis;
-  if (GRAPH_SUCCESS != op.GetAttr(axis_name, axis)) {
+  if (GRAPH_SUCCESS != op.GetAttr(axis_name.c_str(), axis)) {
     OP_LOGE(TbeGetName(op).c_str(), "GetAttr of %s failed.", axis_name.c_str());
     return false;
   }
 
   bool keep_dims;
-  if (GRAPH_SUCCESS != op.GetAttr(keep_dims_name, keep_dims)) {
+  if (GRAPH_SUCCESS != op.GetAttr(keep_dims_name.c_str(), keep_dims)) {
     OP_LOGE(TbeGetName(op).c_str(), "GetAttr of %s failed.", keep_dims_name.c_str());
     return false;
   }
@@ -735,7 +735,7 @@ IMPLEMT_COMMON_INFERFUNC(ReduceAllInferShape) {
   result_desc.GetShapeRange(range);
 
   // update output desc
-  TensorDesc output_desc = op.GetOutputDesc("y");
+  TensorDesc output_desc = op.GetOutputDescByName("y");
   output_desc.SetShape(shape);
   output_desc.SetDataType(dtype);
   if (range.size() > 0) {
@@ -761,7 +761,7 @@ IMPLEMT_COMMON_INFERFUNC(ReduceAllDInferShape) {
   auto dtype = result_desc.GetDataType();
 
   // update output desc
-  TensorDesc output_desc = op.GetOutputDesc("y");
+  TensorDesc output_desc = op.GetOutputDescByName("y");
   output_desc.SetShape(shape);
   output_desc.SetDataType(dtype);
   (void)op.UpdateOutputDesc("y", output_desc);
@@ -787,7 +787,7 @@ IMPLEMT_COMMON_INFERFUNC(ReduceProdInferShape) {
   result_desc.GetShapeRange(range);
 
   // update output desc
-  TensorDesc output_desc = op.GetOutputDesc("y");
+  TensorDesc output_desc = op.GetOutputDescByName("y");
   output_desc.SetShape(shape);
   output_desc.SetDataType(dtype);
   if (range.size() > 0) {
@@ -812,7 +812,7 @@ IMPLEMT_COMMON_INFERFUNC(ReduceProdDInferShape) {
   auto dtype = result_desc.GetDataType();
 
   // update output desc
-  TensorDesc output_desc = op.GetOutputDesc("y");
+  TensorDesc output_desc = op.GetOutputDescByName("y");
   output_desc.SetShape(shape);
   output_desc.SetDataType(dtype);
   (void)op.UpdateOutputDesc("y", output_desc);
@@ -866,7 +866,7 @@ COMMON_INFER_FUNC_REG(ReduceMeanD, ReduceMeanDInferShape);
 
 // ----------------BNTrainingReduce-------------------
 IMPLEMT_COMMON_INFERFUNC(BNTrainingReduceInferShape) {
-  auto tensordesc = op.GetInputDesc("x");
+  auto tensordesc = op.GetInputDescByName("x");
   auto shape = tensordesc.GetShape();
   auto format = tensordesc.GetFormat();
   std::vector<int64_t> shapeVector = shape.GetDims();
@@ -926,7 +926,7 @@ IMPLEMT_COMMON_INFERFUNC(BNTrainingReduceInferShape) {
     return GRAPH_FAILED;
   }
 
-  TensorDesc td = op.GetOutputDesc("sum");
+  TensorDesc td = op.GetOutputDescByName("sum");
   Shape oShape(oShapeVector);
   td.SetShape(oShape);
   td.SetDataType(DT_FLOAT);
@@ -1107,7 +1107,7 @@ VERIFY_FUNC_REG(BNTrainingUpdateV3, BNTrainingUpdateV3Verify);
 
 // ----------------BN3DTrainingReduce-------------------
 IMPLEMT_COMMON_INFERFUNC(BN3DTrainingReduceInferShape) {
-  auto tensordesc = op.GetInputDesc("x");
+  auto tensordesc = op.GetInputDescByName("x");
   auto shape = tensordesc.GetShape();
   auto format = tensordesc.GetFormat();
   std::vector<int64_t> shapeVector = shape.GetDims();
@@ -1145,7 +1145,7 @@ IMPLEMT_COMMON_INFERFUNC(BN3DTrainingReduceInferShape) {
     return GRAPH_FAILED;
   }
 
-  TensorDesc td = op.GetOutputDesc("sum");
+  TensorDesc td = op.GetOutputDescByName("sum");
   Shape oShape(oShapeVector);
   td.SetShape(oShape);
   td.SetDataType(DT_FLOAT);
@@ -1172,32 +1172,32 @@ VERIFY_FUNC_REG(BN3DTrainingReduceGrad, BN3DTrainingReduceGradVerify);
 
 // -------------------BN3DTrainingUpdate--------------------
 IMPLEMT_COMMON_INFERFUNC(BN3DTrainingUpdateInferShape) {
-  auto shape = op.GetInputDesc("x").GetShape();
-  auto output_dtype = op.GetInputDesc("x").GetDataType();
-  TensorDesc td = op.GetOutputDesc("y");
+  auto shape = op.GetInputDescByName("x").GetShape();
+  auto output_dtype = op.GetInputDescByName("x").GetDataType();
+  TensorDesc td = op.GetOutputDescByName("y");
   td.SetShape(shape);
   td.SetDataType(output_dtype);
   op.UpdateOutputDesc("y", td);
 
-  auto shape_scale = op.GetInputDesc("scale").GetShape();
-  auto output_dtype_scale = op.GetInputDesc("scale").GetDataType();
+  auto shape_scale = op.GetInputDescByName("scale").GetShape();
+  auto output_dtype_scale = op.GetInputDescByName("scale").GetDataType();
 
-  TensorDesc td_mean = op.GetOutputDesc("mean");
+  TensorDesc td_mean = op.GetOutputDescByName("mean");
   td_mean.SetShape(shape_scale);
   td_mean.SetDataType(output_dtype_scale);
   op.UpdateOutputDesc("mean", td_mean);
 
-  TensorDesc td_variance = op.GetOutputDesc("variance");
+  TensorDesc td_variance = op.GetOutputDescByName("variance");
   td_variance.SetShape(shape_scale);
   td_variance.SetDataType(output_dtype_scale);
   op.UpdateOutputDesc("variance", td_variance);
 
-  TensorDesc td_batch_mean = op.GetOutputDesc("batch_mean");
+  TensorDesc td_batch_mean = op.GetOutputDescByName("batch_mean");
   td_batch_mean.SetShape(shape_scale);
   td_batch_mean.SetDataType(output_dtype_scale);
   op.UpdateOutputDesc("batch_mean", td_batch_mean);
 
-  TensorDesc td_batch_variance = op.GetOutputDesc("batch_variance");
+  TensorDesc td_batch_variance = op.GetOutputDescByName("batch_variance");
   td_batch_variance.SetShape(shape_scale);
   td_batch_variance.SetDataType(output_dtype_scale);
   op.UpdateOutputDesc("batch_variance", td_batch_variance);
@@ -1265,15 +1265,15 @@ IMPLEMT_VERIFIER(BN3DTrainingUpdateGrad, BN3DTrainingUpdateGradVerify) {
   return GRAPH_SUCCESS;
 }
 IMPLEMT_COMMON_INFERFUNC(BN3DTrainingUpdateGradInferShape) {
-  auto shape = op.GetInputDesc("batch_mean").GetShape();
-  auto output_dtype = op.GetInputDesc("batch_mean").GetDataType();
+  auto shape = op.GetInputDescByName("batch_mean").GetShape();
+  auto output_dtype = op.GetInputDescByName("batch_mean").GetDataType();
 
-  TensorDesc td_diff_scale = op.GetOutputDesc("diff_scale");
+  TensorDesc td_diff_scale = op.GetOutputDescByName("diff_scale");
   td_diff_scale.SetShape(shape);
   td_diff_scale.SetDataType(output_dtype);
   op.UpdateOutputDesc("diff_scale", td_diff_scale);
 
-  TensorDesc td_diff_offset = op.GetOutputDesc("diff_offset");
+  TensorDesc td_diff_offset = op.GetOutputDescByName("diff_offset");
   td_diff_offset.SetShape(shape);
   td_diff_offset.SetDataType(output_dtype);
   op.UpdateOutputDesc("diff_offset", td_diff_scale);
@@ -1363,7 +1363,7 @@ IMPLEMT_COMMON_INFERFUNC(ReduceMeanWithCountInferShape) {
   auto dtype = result_desc.GetDataType();
 
   // update output desc
-  TensorDesc output_desc = op.GetOutputDesc("y");
+  TensorDesc output_desc = op.GetOutputDescByName("y");
   output_desc.SetShape(shape);
   output_desc.SetDataType(dtype);
   (void)op.UpdateOutputDesc("y", output_desc);
@@ -1388,7 +1388,7 @@ IMPLEMT_COMMON_INFERFUNC(ReduceAnyInferShape) {
   result_desc.GetShapeRange(range);
 
   // update output desc
-  TensorDesc output_desc = op.GetOutputDesc("y");
+  TensorDesc output_desc = op.GetOutputDescByName("y");
   output_desc.SetShape(shape);
   output_desc.SetDataType(dtype);
   if (range.size() > 0) {
@@ -1425,7 +1425,7 @@ IMPLEMT_COMMON_INFERFUNC(ReduceAnyDInferShape) {
   auto dtype = result_desc.GetDataType();
 
   // update output desc
-  TensorDesc output_desc = op.GetOutputDesc("y");
+  TensorDesc output_desc = op.GetOutputDescByName("y");
   output_desc.SetShape(shape);
   output_desc.SetDataType(dtype);
   (void)op.UpdateOutputDesc("y", output_desc);
@@ -1530,7 +1530,7 @@ IMPLEMT_COMMON_INFERFUNC(EuclideanNormInferShape) {
   auto dtype = result_desc.GetDataType();
 
   // update output desc
-  TensorDesc output_desc = op.GetOutputDesc("y");
+  TensorDesc output_desc = op.GetOutputDescByName("y");
   output_desc.SetShape(shape);
   output_desc.SetDataType(dtype);
   (void)op.UpdateOutputDesc("y", output_desc);
@@ -1551,7 +1551,7 @@ IMPLEMT_COMMON_INFERFUNC(EuclideanNormDInferShape) {
   auto dtype = result_desc.GetDataType();
 
   // update output desc
-  TensorDesc output_desc = op.GetOutputDesc("y");
+  TensorDesc output_desc = op.GetOutputDescByName("y");
   output_desc.SetShape(shape);
   output_desc.SetDataType(dtype);
   (void)op.UpdateOutputDesc("y", output_desc);
@@ -1707,7 +1707,7 @@ COMMON_INFER_FUNC_REG(INTrainingUpdateGradGammaBeta, INTrainingUpdateGradGammaBe
 
 // ------------------------GNTrainingReduce--------------------------
 IMPLEMT_COMMON_INFERFUNC(GNTrainingReduceInferShape) {
-  auto inputTensorDesc = op.GetInputDesc("x");
+  auto inputTensorDesc = op.GetInputDescByName("x");
   auto shape = inputTensorDesc.GetShape();
 
   Format input_format = inputTensorDesc.GetFormat();
@@ -1755,12 +1755,12 @@ IMPLEMT_COMMON_INFERFUNC(GNTrainingReduceInferShape) {
     }
   }
 
-  TensorDesc sum = op.GetOutputDesc("sum");
+  TensorDesc sum = op.GetOutputDescByName("sum");
   sum.SetShape(ge::Shape(dimVector));
   sum.SetDataType(DT_FLOAT);
   (void)op.UpdateOutputDesc("sum", sum);
 
-  TensorDesc square_sum = op.GetOutputDesc("square_sum");
+  TensorDesc square_sum = op.GetOutputDescByName("square_sum");
   square_sum.SetShape(ge::Shape(dimVector));
   square_sum.SetDataType(DT_FLOAT);
   (void)op.UpdateOutputDesc("square_sum", square_sum);
@@ -1772,7 +1772,7 @@ COMMON_INFER_FUNC_REG(GNTrainingReduce, GNTrainingReduceInferShape);
 
 // -------------------GNTrainingUpdate--------------------
 IMPLEMT_COMMON_INFERFUNC(GNTrainingUpdateInferShape) {
-  auto inputTensorDesc = op.GetInputDesc("x");
+  auto inputTensorDesc = op.GetInputDescByName("x");
   auto shape = inputTensorDesc.GetShape();
   auto output_dtype = inputTensorDesc.GetDataType();
   Format input_format = inputTensorDesc.GetFormat();
@@ -1789,20 +1789,20 @@ IMPLEMT_COMMON_INFERFUNC(GNTrainingUpdateInferShape) {
     std::string err_msg = GetInputInvalidErrMsg("num_groups");
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
   }
-  TensorDesc td = op.GetOutputDesc("y");
+  TensorDesc td = op.GetOutputDescByName("y");
   td.SetShape(shape);
   td.SetDataType(output_dtype);
   op.UpdateOutputDesc("y", td);
 
-  auto shape_sum = op.GetInputDesc("sum").GetShape();
-  auto output_dtype_sum = op.GetInputDesc("sum").GetDataType();
+  auto shape_sum = op.GetInputDescByName("sum").GetShape();
+  auto output_dtype_sum = op.GetInputDescByName("sum").GetDataType();
 
-  TensorDesc td_mean = op.GetOutputDesc("batch_mean");
+  TensorDesc td_mean = op.GetOutputDescByName("batch_mean");
   td_mean.SetShape(shape_sum);
   td_mean.SetDataType(output_dtype_sum);
   op.UpdateOutputDesc("batch_mean", td_mean);
 
-  TensorDesc td_variance = op.GetOutputDesc("batch_variance");
+  TensorDesc td_variance = op.GetOutputDescByName("batch_variance");
   td_variance.SetShape(shape_sum);
   td_variance.SetDataType(output_dtype_sum);
   op.UpdateOutputDesc("batch_variance", td_variance);
@@ -1828,7 +1828,7 @@ IMPLEMT_INFERFUNC(ReduceJoin, ReduceJoinInfer) {
   result_desc.GetShapeRange(range);
 
   // update output desc
-  TensorDesc output_desc = op.GetOutputDesc("output");
+  TensorDesc output_desc = op.GetOutputDescByName("output");
   output_desc.SetShape(shape);
   output_desc.SetDataType(dtype);
   if (range.size() > 0) {

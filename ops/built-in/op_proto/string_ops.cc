@@ -106,7 +106,7 @@ IMPLEMT_INFERFUNC(StringSplit, StringSplitInfer) {
 INFER_FUNC_REG(StringSplit, StringSplitInfer);
 
 IMPLEMT_INFERFUNC(StaticRegexReplace, StaticRegexReplaceInfer) {
-  auto x_desc = op.GetInputDesc("input");
+  auto x_desc = op.GetInputDescByName("input");
   DataType y_type = x_desc.GetDataType();
   if(y_type != DT_STRING) {
     std::string input_dt = DTypeStr(y_type);
@@ -114,12 +114,12 @@ IMPLEMT_INFERFUNC(StaticRegexReplace, StaticRegexReplaceInfer) {
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
-  TensorDesc desc = op.GetOutputDesc("output");
+  TensorDesc desc = op.GetOutputDescByName("output");
   std::vector<std::pair<int64_t, int64_t>> range;
   if (x_desc.GetShapeRange(range) != GRAPH_SUCCESS) {
     desc.SetShapeRange(range);
   }
-  desc.SetShape(op.GetInputDesc("input").GetShape());
+  desc.SetShape(op.GetInputDescByName("input").GetShape());
   desc.SetDataType(y_type);
 
   (void)op.UpdateOutputDesc("output", desc);
@@ -129,7 +129,7 @@ IMPLEMT_INFERFUNC(StaticRegexReplace, StaticRegexReplaceInfer) {
 INFER_FUNC_REG(StaticRegexReplace, StaticRegexReplaceInfer);
 
 IMPLEMT_INFERFUNC(StaticRegexFullMatch, StaticRegexFullMatchInfer) {
-  auto x_desc = op.GetInputDesc("input");
+  auto x_desc = op.GetInputDescByName("input");
   DataType x_type = x_desc.GetDataType();
   if(x_type != DT_STRING) {
     std::string input_dt = DTypeStr(x_type);
@@ -137,12 +137,12 @@ IMPLEMT_INFERFUNC(StaticRegexFullMatch, StaticRegexFullMatchInfer) {
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
-  TensorDesc desc = op.GetOutputDesc("output");
+  TensorDesc desc = op.GetOutputDescByName("output");
   std::vector<std::pair<int64_t, int64_t>> range;
   if (x_desc.GetShapeRange(range) != GRAPH_SUCCESS) {
     desc.SetShapeRange(range);
   }
-  desc.SetShape(op.GetInputDesc("input").GetShape());
+  desc.SetShape(op.GetInputDescByName("input").GetShape());
   desc.SetDataType(DT_BOOL);
 
   (void)op.UpdateOutputDesc("output", desc);
@@ -153,10 +153,10 @@ INFER_FUNC_REG(StaticRegexFullMatch, StaticRegexFullMatchInfer);
 
 IMPLEMT_INFERFUNC(UnsortedSegmentJoin, UnsortedSegmentJoinInfer) {
   OP_LOGI(TbeGetName(op).c_str(), "Enter UnsortedSegmentJoin proto inferfunction!");
-  Shape x_shape = op.GetInputDesc("input").GetShape();
-  Shape segment_ids_shape = op.GetInputDesc("segment_ids").GetShape();
+  Shape x_shape = op.GetInputDescByName("input").GetShape();
+  Shape segment_ids_shape = op.GetInputDescByName("segment_ids").GetShape();
   Shape num_segment_shape;
-  if (WithRank(op.GetInputDesc("num_segments"), 0, num_segment_shape, TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
+  if (WithRank(op.GetInputDescByName("num_segments"), 0, num_segment_shape, TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
     std::string err_msg = ConcatString(
         "failed to call WithRank function, input[num_segments] rank must be 0, "
         "got rank[",
@@ -180,7 +180,7 @@ IMPLEMT_INFERFUNC(UnsortedSegmentJoin, UnsortedSegmentJoinInfer) {
     auto result_x = op.GetInputConstData("num_segments", num_segments_tensor);
     if (result_x != GRAPH_SUCCESS) {
       Shape unknown_shape(ge::UNKNOWN_RANK);
-      TensorDesc y_desc = op.GetOutputDesc("output");
+      TensorDesc y_desc = op.GetOutputDescByName("output");
       y_desc.SetShape(unknown_shape);
       y_desc.SetDataType(DT_STRING);
       (void)op.UpdateOutputDesc("output", y_desc);
@@ -213,13 +213,13 @@ IMPLEMT_INFERFUNC(UnsortedSegmentJoin, UnsortedSegmentJoinInfer) {
     Concatenate(Shape({num_segments_dim}), s_data_suffix, out_shape);
   } else {
     Shape unknown_shape(ge::UNKNOWN_RANK);
-    TensorDesc y_desc = op.GetOutputDesc("output");
+    TensorDesc y_desc = op.GetOutputDescByName("output");
     y_desc.SetShape(unknown_shape);
     y_desc.SetDataType(DT_STRING);
     op.UpdateOutputDesc("output", y_desc);
     return GRAPH_SUCCESS;
   }
-  TensorDesc output_desc = op.GetOutputDesc("output");
+  TensorDesc output_desc = op.GetOutputDescByName("output");
   output_desc.SetShape(out_shape);
   output_desc.SetDataType(DT_STRING);
   (void)op.UpdateOutputDesc("output", output_desc);
@@ -229,7 +229,7 @@ IMPLEMT_INFERFUNC(UnsortedSegmentJoin, UnsortedSegmentJoinInfer) {
 INFER_FUNC_REG(UnsortedSegmentJoin, UnsortedSegmentJoinInfer);
 
 IMPLEMT_INFERFUNC(StringLower, StringLowerInfer) {
-  auto x_desc = op.GetInputDesc("input");
+  auto x_desc = op.GetInputDescByName("input");
   DataType y_type = x_desc.GetDataType();
   if(y_type != DT_STRING) {
     std::string input_dt = DTypeStr(y_type);
@@ -237,12 +237,12 @@ IMPLEMT_INFERFUNC(StringLower, StringLowerInfer) {
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
-  TensorDesc desc = op.GetOutputDesc("output");
+  TensorDesc desc = op.GetOutputDescByName("output");
   std::vector<std::pair<int64_t, int64_t>> range;
   if (x_desc.GetShapeRange(range) != GRAPH_SUCCESS) {
     desc.SetShapeRange(range);
   }
-  desc.SetShape(op.GetInputDesc("input").GetShape());
+  desc.SetShape(op.GetInputDescByName("input").GetShape());
   desc.SetDataType(y_type);
 
   (void)op.UpdateOutputDesc("output", desc);
@@ -252,7 +252,7 @@ IMPLEMT_INFERFUNC(StringLower, StringLowerInfer) {
 INFER_FUNC_REG(StringLower, StringLowerInfer);
 
 IMPLEMT_INFERFUNC(StringUpper, StringUpperInfer) {
-  auto x_desc = op.GetInputDesc("input");
+  auto x_desc = op.GetInputDescByName("input");
   DataType y_type = x_desc.GetDataType();
   if(y_type != DT_STRING) {
     std::string input_dt = DTypeStr(y_type);
@@ -260,8 +260,8 @@ IMPLEMT_INFERFUNC(StringUpper, StringUpperInfer) {
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
-  TensorDesc desc = op.GetOutputDesc("output");
-  desc.SetShape(op.GetInputDesc("input").GetShape());
+  TensorDesc desc = op.GetOutputDescByName("output");
+  desc.SetShape(op.GetInputDescByName("input").GetShape());
   desc.SetDataType(y_type);
   std::vector<std::pair<int64_t, int64_t>> range;
   if (x_desc.GetShapeRange(range) != GRAPH_SUCCESS) {
@@ -415,7 +415,7 @@ IMPLEMT_INFERFUNC(UnicodeDecodeWithOffsets, UnicodeDecodeWithOffsetsInfer) {
     type = DT_INT64;
   }
 
-  TensorDesc row_splits_desc = op.GetOutputDesc("row_splits");
+  TensorDesc row_splits_desc = op.GetOutputDescByName("row_splits");
   Shape row_splits_shape({row_splits_num});
   row_splits_desc.SetDataType(type);
   row_splits_desc.SetShape(row_splits_shape);
@@ -429,7 +429,7 @@ IMPLEMT_INFERFUNC(UnicodeDecodeWithOffsets, UnicodeDecodeWithOffsetsInfer) {
     return GRAPH_FAILED;
   }
 
-  TensorDesc char_values_desc = op.GetOutputDesc("char_values");
+  TensorDesc char_values_desc = op.GetOutputDescByName("char_values");
   char_values_desc.SetDataType(DT_INT32);
   char_values_desc.SetShape(Shape({UNKNOWN_DIM}));
   char_values_desc.SetShapeRange({std::pair<int64_t, int64_t>(1, -1)});
@@ -439,7 +439,7 @@ IMPLEMT_INFERFUNC(UnicodeDecodeWithOffsets, UnicodeDecodeWithOffsetsInfer) {
     return GRAPH_FAILED;
   }
 
-  TensorDesc char_to_byte_starts_desc = op.GetOutputDesc("char_to_byte_starts");
+  TensorDesc char_to_byte_starts_desc = op.GetOutputDescByName("char_to_byte_starts");
   char_to_byte_starts_desc.SetDataType(DT_INT64);
   char_to_byte_starts_desc.SetShape(Shape({UNKNOWN_DIM}));
   char_to_byte_starts_desc.SetShapeRange({std::pair<int64_t, int64_t>(1, -1)});
@@ -473,7 +473,7 @@ IMPLEMT_INFERFUNC(UnicodeDecode, UnicodeDecodeInfer) {
     type = DT_INT64;
   }
 
-  TensorDesc row_splits_desc = op.GetOutputDesc("row_splits");
+  TensorDesc row_splits_desc = op.GetOutputDescByName("row_splits");
   Shape row_splits_shape({row_splits_num});
   row_splits_desc.SetDataType(type);
   row_splits_desc.SetShape(row_splits_shape);
@@ -486,7 +486,7 @@ IMPLEMT_INFERFUNC(UnicodeDecode, UnicodeDecodeInfer) {
     return GRAPH_FAILED;
   }
 
-  TensorDesc char_values_desc = op.GetOutputDesc("char_values");
+  TensorDesc char_values_desc = op.GetOutputDescByName("char_values");
   char_values_desc.SetDataType(DT_INT32);
   char_values_desc.SetShape(Shape({UNKNOWN_DIM}));
   char_values_desc.SetShapeRange({std::pair<int64_t, int64_t>(1, -1)});
@@ -502,7 +502,7 @@ INFER_FUNC_REG(UnicodeDecode, UnicodeDecodeInfer);
 
 IMPLEMT_INFERFUNC(UnicodeTranscode, UnicodeTranscodeInfer) {
   DataType y_type = op.GetInputDesc(0).GetDataType();
-  TensorDesc desc = op.GetOutputDesc("output");
+  TensorDesc desc = op.GetOutputDescByName("output");
   desc.SetShape(op.GetInputDesc(0).GetShape());
   desc.SetDataType(y_type);
   std::vector<std::pair<int64_t, int64_t>> shape_range;
@@ -553,7 +553,7 @@ IMPLEMT_INFERFUNC(UnicodeEncode, UnicodeEncodeInfer) {
     return GRAPH_FAILED;
   }
 
-  TensorDesc desc = op.GetOutputDesc("output");
+  TensorDesc desc = op.GetOutputDescByName("output");
   desc.SetShape(Shape(output_dims));
   desc.SetDataType(DT_STRING);
   std::vector<std::pair<int64_t, int64_t>> shape_range;
@@ -572,9 +572,9 @@ IMPLEMT_INFERFUNC(UnicodeEncode, UnicodeEncodeInfer) {
 INFER_FUNC_REG(UnicodeEncode, UnicodeEncodeInfer);
 
 IMPLEMT_INFERFUNC(UnicodeScript, UnicodeScriptInfer) {
-  DataType y_type = op.GetInputDesc("x").GetDataType();
-  TensorDesc desc = op.GetOutputDesc("y");
-  desc.SetShape(op.GetInputDesc("x").GetShape());
+  DataType y_type = op.GetInputDescByName("x").GetDataType();
+  TensorDesc desc = op.GetOutputDescByName("y");
+  desc.SetShape(op.GetInputDescByName("x").GetShape());
   desc.SetDataType(y_type);
 
   if (op.UpdateOutputDesc("y", desc) != GRAPH_SUCCESS) {
@@ -647,15 +647,15 @@ IMPLEMT_INFERFUNC(StringToHashBucketFast, StringToHashBucketFastInfer) {
 INFER_FUNC_REG(StringToHashBucketFast, StringToHashBucketFastInfer);
 
 IMPLEMT_INFERFUNC(StringToHashBucketStrong, StringToHashBucketStrongInfer) {
-  DataType x_type = op.GetInputDesc("x").GetDataType();
+  DataType x_type = op.GetInputDescByName("x").GetDataType();
   if (x_type != DT_STRING) {
     std::string input_dt = DTypeStr(x_type);
     std::string err_msg = ConcatString("input[x] data type[", input_dt,"] must be DT_STRING");
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_PARAM_INVALID;
   }
-  TensorDesc desc = op.GetOutputDesc("y");
-  desc.SetShape(op.GetInputDesc("x").GetShape());
+  TensorDesc desc = op.GetOutputDescByName("y");
+  desc.SetShape(op.GetInputDescByName("x").GetShape());
   desc.SetDataType(DT_INT64);
 
   if (op.UpdateOutputDesc("y", desc) != GRAPH_SUCCESS) {
@@ -669,7 +669,7 @@ IMPLEMT_INFERFUNC(StringToHashBucketStrong, StringToHashBucketStrongInfer) {
 INFER_FUNC_REG(StringToHashBucketStrong, StringToHashBucketStrongInfer);
 
 IMPLEMT_INFERFUNC(StringToHashBucket, StringToHashBucketInfer) {
-  TensorDesc desc = op.GetOutputDesc("y");
+  TensorDesc desc = op.GetOutputDescByName("y");
   desc.SetShape(op.GetInputDesc(0).GetShape());
   desc.SetDataType(DT_INT64);
 
@@ -684,7 +684,7 @@ IMPLEMT_INFERFUNC(StringToHashBucket, StringToHashBucketInfer) {
 INFER_FUNC_REG(StringToHashBucket, StringToHashBucketInfer);
 
 IMPLEMT_INFERFUNC(StringStrip, StringStripInfer) {
-  TensorDesc desc = op.GetOutputDesc("y");
+  TensorDesc desc = op.GetOutputDescByName("y");
   desc.SetShape(op.GetInputDesc(0).GetShape());
   desc.SetDataType(DT_STRING);
 
@@ -699,7 +699,7 @@ IMPLEMT_INFERFUNC(StringStrip, StringStripInfer) {
 INFER_FUNC_REG(StringStrip, StringStripInfer);
 
 IMPLEMT_INFERFUNC(StringLength, StringLengthInfer) {
-  TensorDesc desc = op.GetOutputDesc("y");
+  TensorDesc desc = op.GetOutputDescByName("y");
   desc.SetShape(op.GetInputDesc(0).GetShape());
   desc.SetDataType(DT_INT32);
 
@@ -722,7 +722,7 @@ IMPLEMT_INFERFUNC(StringJoin, StringJoinInfer) {
     }
   }
 
-  TensorDesc desc = op.GetOutputDesc("y");
+  TensorDesc desc = op.GetOutputDescByName("y");
   desc.SetDataType(DT_STRING);
   if (all_scalar) {
     desc.SetShape(Shape());
@@ -791,7 +791,7 @@ IMPLEMT_INFERFUNC(StringFormat, StringFormatInfer) {
     return GRAPH_FAILED;
   }
 
-  TensorDesc desc = op.GetOutputDesc("y");
+  TensorDesc desc = op.GetOutputDescByName("y");
   desc.SetDataType(DT_STRING);
   desc.SetShape(Shape());
 
@@ -807,15 +807,15 @@ INFER_FUNC_REG(StringFormat, StringFormatInfer);
 
 IMPLEMT_INFERFUNC(RegexFullMatch, RegexFullMatchInfer) {
   Shape un_used;
-  if (WithRank(op.GetInputDesc("pattern"), 0, un_used, TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
+  if (WithRank(op.GetInputDescByName("pattern"), 0, un_used, TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
     std::string err_msg = ConcatString("input[pattern] has wrong shape",
-      DebugString(op.GetInputDesc("pattern").GetShape().GetDims()),
+      DebugString(op.GetInputDescByName("pattern").GetShape().GetDims()),
       ", it should be scalar");
     AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
-  Shape x_shape = op.GetInputDesc("x").GetShape();
-  TensorDesc y_desc = op.GetOutputDesc("y");
+  Shape x_shape = op.GetInputDescByName("x").GetShape();
+  TensorDesc y_desc = op.GetOutputDescByName("y");
   y_desc.SetShape(x_shape);
   y_desc.SetDataType(DT_BOOL);
   if (op.UpdateOutputDesc("y", y_desc) != GRAPH_SUCCESS) {
@@ -830,22 +830,22 @@ INFER_FUNC_REG(RegexFullMatch, RegexFullMatchInfer);
 
 IMPLEMT_INFERFUNC(RegexReplace, RegexReplaceInfer) {
   Shape un_used;
-  if (WithRank(op.GetInputDesc("pattern"), 0, un_used, TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
+  if (WithRank(op.GetInputDescByName("pattern"), 0, un_used, TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
     std::string err_msg = ConcatString("input[pattern] has wrong shape",
-      DebugString(op.GetInputDesc("pattern").GetShape().GetDims()),
+      DebugString(op.GetInputDescByName("pattern").GetShape().GetDims()),
       ", it should be scalar");
     AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
-  if (WithRank(op.GetInputDesc("rewrite"), 0, un_used, TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
+  if (WithRank(op.GetInputDescByName("rewrite"), 0, un_used, TbeGetName(op).c_str()) != GRAPH_SUCCESS) {
     std::string err_msg = ConcatString("input[rewrite] has wrong shape",
-      DebugString(op.GetInputDesc("rewrite").GetShape().GetDims()),
+      DebugString(op.GetInputDescByName("rewrite").GetShape().GetDims()),
       ", it should be scalar");
     AICPU_INFER_SHAPE_CALL_ERR_REPORT(TbeGetName(op), err_msg);
     return GRAPH_FAILED;
   }
-  Shape x_shape = op.GetInputDesc("x").GetShape();
-  TensorDesc y_desc = op.GetOutputDesc("y");
+  Shape x_shape = op.GetInputDescByName("x").GetShape();
+  TensorDesc y_desc = op.GetOutputDescByName("y");
   y_desc.SetShape(x_shape);
   y_desc.SetDataType(DT_STRING);
   if (op.UpdateOutputDesc("y", y_desc) != GRAPH_SUCCESS) {
@@ -859,7 +859,7 @@ IMPLEMT_INFERFUNC(RegexReplace, RegexReplaceInfer) {
 INFER_FUNC_REG(RegexReplace, RegexReplaceInfer);
 
 IMPLEMT_INFERFUNC(AsString, AsStringInfer) {
-  TensorDesc out_desc = op.GetOutputDesc("y");
+  TensorDesc out_desc = op.GetOutputDescByName("y");
   out_desc.SetDataType(DT_STRING);
   if (op.UpdateOutputDesc("y", out_desc) != GRAPH_SUCCESS) {
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(
@@ -872,7 +872,7 @@ IMPLEMT_INFERFUNC(AsString, AsStringInfer) {
 INFER_FUNC_REG(AsString, AsStringInfer);
 
 IMPLEMT_INFERFUNC(EncodeBase64, EncodeBase64Infer) {
-  TensorDesc output_desc = op.GetOutputDesc("y");
+  TensorDesc output_desc = op.GetOutputDescByName("y");
   output_desc.SetDataType(DT_STRING);
   if (op.UpdateOutputDesc("y", output_desc) != GRAPH_SUCCESS) {
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(
@@ -885,7 +885,7 @@ IMPLEMT_INFERFUNC(EncodeBase64, EncodeBase64Infer) {
 INFER_FUNC_REG(EncodeBase64, EncodeBase64Infer);
 
 IMPLEMT_INFERFUNC(DecodeBase64, DecodeBase64Infer) {
-  TensorDesc out_desc = op.GetOutputDesc("y");
+  TensorDesc out_desc = op.GetOutputDescByName("y");
   out_desc.SetDataType(DT_STRING);
   if (op.UpdateOutputDesc("y", out_desc) != GRAPH_SUCCESS) {
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(

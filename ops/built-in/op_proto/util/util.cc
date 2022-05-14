@@ -45,10 +45,10 @@ bool GetInputDataType(const ge::DataType& data_type, const std::vector<ge::DataT
 bool CheckInputDtypeAndShape(const Operator& op, const std::map<std::string, std::vector<DataType>>& inputTensorMap) {
   auto iter = inputTensorMap.begin();
   auto first_name = iter->first;
-  auto first_shape_dims = op.GetInputDesc(iter->first).GetShape().GetDims();
-  auto first_input_dtype = op.GetInputDesc(iter->first).GetDataType();
+  auto first_shape_dims = op.GetInputDescByName(iter->first.c_str()).GetShape().GetDims();
+  auto first_input_dtype = op.GetInputDescByName(iter->first.c_str()).GetDataType();
   for (; iter != inputTensorMap.end(); ++iter) {
-    const TensorDesc input_desc = op.GetInputDesc(iter->first);
+    const TensorDesc input_desc = op.GetInputDescByName(iter->first.c_str());
     // check input dtype
     auto input_type = input_desc.GetDataType();
     if (input_type != first_input_dtype) {
@@ -67,7 +67,7 @@ bool CheckInputDtypeAndShape(const Operator& op, const std::map<std::string, std
 bool CheckInputDataType(const Operator& op, const std::string& input_name,
                         const std::vector<ge::DataType>& support_list) {
   bool valid = false;
-  DataType input_type = op.GetInputDesc(input_name).GetDataType();
+  DataType input_type = op.GetInputDescByName(input_name.c_str()).GetDataType();
   do {
     const auto& found_list = find(support_list.begin(), support_list.end(), input_type);
 
@@ -111,7 +111,7 @@ bool CheckInputDtypeSame(const Operator& op, std::vector<std::string>& input_ten
   auto first_name = input_tensors.begin();
   auto first_input_dtype = op.GetInputDesc(*first_name).GetDataType();
   for (const string& input_name : input_tensors) {
-    const TensorDesc input_desc = op.GetInputDesc(input_name);
+    const TensorDesc input_desc = op.GetInputDescByName(input_name.c_str());
     auto input_dtype = input_desc.GetDataType();
     if (input_dtype != first_input_dtype) {
       VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op), OtherErrMsg(ConcatString("the op type of param ", input_name, " must equal with param ", (*first_name))));
@@ -969,7 +969,7 @@ bool GetInputDataType(const ge::DataType& dataType, const std::vector<ge::DataTy
 
 bool CheckInputDataType(const Operator& op, std::string* data_type, const std::string& input_name,
                         const std::vector<ge::DataType>& supportList) {
-  DataType input_type = op.GetInputDesc(input_name).GetDataType();
+  DataType input_type = op.GetInputDescByName(input_name.c_str()).GetDataType();
   if (false == GetInputDataType(input_type, supportList, *data_type)) {
     LOG_ERROR("[ERROR]op [%s] [%s] do not supported dtype [%s]!\n", TbeGetName(op).c_str(), input_name.c_str(),
               data_type->c_str());
@@ -979,7 +979,7 @@ bool CheckInputDataType(const Operator& op, std::string* data_type, const std::s
 }
 
 bool GetConstValue(const ge::Operator& op, const std::string& key_name, float& attr_value) {
-  if (ge::GRAPH_SUCCESS != op.GetAttr(key_name, attr_value)) {
+  if (ge::GRAPH_SUCCESS != op.GetAttr(key_name.c_str(), attr_value)) {
     LOG_ERROR("[ERROR]op [%s] GetOpAttr [%s] failed!\n", TbeGetName(op).c_str(), key_name.c_str());
     return false;
   }
@@ -987,7 +987,7 @@ bool GetConstValue(const ge::Operator& op, const std::string& key_name, float& a
 }
 
 bool GetConstValue(const ge::Operator& op, const std::string& key_name, int64_t& attr_value) {
-  if (ge::GRAPH_SUCCESS != op.GetAttr(key_name, attr_value)) {
+  if (ge::GRAPH_SUCCESS != op.GetAttr(key_name.c_str(), attr_value)) {
     LOG_ERROR("[ERROR]op [%s] GetOpAttr [%s] failed!\n", TbeGetName(op).c_str(), key_name.c_str());
     return false;
   }
@@ -995,7 +995,7 @@ bool GetConstValue(const ge::Operator& op, const std::string& key_name, int64_t&
 }
 
 bool GetConstValue(const ge::Operator& op, const std::string& key_name, bool& attr_value) {
-  if (ge::GRAPH_SUCCESS != op.GetAttr(key_name, attr_value)) {
+  if (ge::GRAPH_SUCCESS != op.GetAttr(key_name.c_str(), attr_value)) {
     LOG_ERROR("[ERROR]op [%s] GetOpAttr [%s] failed!\n", TbeGetName(op).c_str(), key_name.c_str());
     return false;
   }
@@ -1003,7 +1003,7 @@ bool GetConstValue(const ge::Operator& op, const std::string& key_name, bool& at
 }
 
 bool GetConstValue(const ge::Operator& op, const std::string& key_name, std::vector<int32_t>& attr_value) {
-  if (ge::GRAPH_SUCCESS != op.GetAttr(key_name, attr_value)) {
+  if (ge::GRAPH_SUCCESS != op.GetAttr(key_name.c_str(), attr_value)) {
     LOG_ERROR("[ERROR]op [%s] GetOpAttr [%s] failed!\n", TbeGetName(op).c_str(), key_name.c_str());
     return false;
   }

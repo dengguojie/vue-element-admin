@@ -29,11 +29,11 @@
 namespace ge {
 
 IMPLEMT_INFERFUNC(Copy, CopyInferShape) {
-  TensorDesc tensordesc = op.GetInputDesc("x");
+  TensorDesc tensordesc = op.GetInputDescByName("x");
   Shape input_shape = tensordesc.GetShape();
   DataType input_dtype = tensordesc.GetDataType();
   Format input_format = tensordesc.GetFormat();
-  TensorDesc td = op.GetOutputDesc("y");
+  TensorDesc td = op.GetOutputDescByName("y");
 
   int64_t top_size;
   if (GRAPH_SUCCESS != op.GetAttr("N", top_size)) {

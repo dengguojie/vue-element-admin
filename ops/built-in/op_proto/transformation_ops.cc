@@ -86,7 +86,7 @@ IMPLEMT_VERIFIER(Bitcast, BitcastVerify) {
 }
 
 IMPLEMT_COMMON_INFERFUNC(BitcastInfer) {
-  auto input_desc = op.GetInputDesc("x");
+  auto input_desc = op.GetInputDescByName("x");
   auto input_shape_dims = input_desc.GetShape().GetDims();
   auto input_type = input_desc.GetDataType();
 
@@ -107,7 +107,7 @@ IMPLEMT_COMMON_INFERFUNC(BitcastInfer) {
     return GRAPH_FAILED;
   }
 
-  TensorDesc output_desc = op.GetOutputDesc("y");
+  TensorDesc output_desc = op.GetOutputDescByName("y");
   output_desc.SetShape(Shape(output_shape));
   output_desc.SetDataType(out_type);
 
@@ -131,7 +131,7 @@ bool SixToFourInferShapeAndType(const ge::Operator& op, ge::TensorDesc& vOutputD
     return GRAPH_FAILED;
   }
 
-  auto inputDesc = op.GetInputDesc("x");
+  auto inputDesc = op.GetInputDescByName("x");
   int64_t dimSize = inputDesc.GetShape().GetDimNum();
 
   vector<int64_t> outShape;
@@ -142,7 +142,7 @@ bool SixToFourInferShapeAndType(const ge::Operator& op, ge::TensorDesc& vOutputD
     outShape.push_back(inputDesc.GetShape().GetDim(3));
     ge::Shape outputShape = ge::Shape(outShape);
     vOutputDesc.SetShape(outputShape);
-    vOutputDesc.SetDataType(op.GetInputDesc("x").GetDataType());
+    vOutputDesc.SetDataType(op.GetInputDescByName("x").GetDataType());
   } else {
     OP_LOGE(TbeGetName(op).c_str(), "please make sure that the dim of inputshape is 6!");
     return false;
@@ -160,8 +160,8 @@ IMPLEMT_VERIFIER(DepthwiseWeight6DTo4D, DepthwiseWeight6DTo4DVerify) {
 IMPLEMT_COMMON_INFERFUNC(DepthwiseWeight6DTo4DInferShape) {
   OP_LOGI(TbeGetName(op).c_str(), "enter op_proto inferfunction!!!");
   ge::TensorDesc output_desc;
-  output_desc.SetShape(op.GetInputDesc("x").GetShape());
-  output_desc.SetDataType(op.GetInputDesc("x").GetDataType());
+  output_desc.SetShape(op.GetInputDescByName("x").GetShape());
+  output_desc.SetDataType(op.GetInputDescByName("x").GetDataType());
   if (!SixToFourInferShapeAndType(op, output_desc)) {
     return GRAPH_FAILED;
   }
@@ -177,7 +177,7 @@ VERIFY_FUNC_REG(DepthwiseWeight6DTo4D, DepthwiseWeight6DTo4DVerify);
 // ----------------DepthwiseWeight4DTo6D Op-------------------
 // transfer shape and dtype
 static bool FourToSixInferShapeAndType(const ge::Operator& op, ge::TensorDesc& output_desc) {
-  auto inputDesc = op.GetInputDesc("x");
+  auto inputDesc = op.GetInputDescByName("x");
   int64_t dimNum = inputDesc.GetShape().GetDimNum();
   if (dimNum == 4) {
     int64_t columnNum = inputDesc.GetShape().GetDim(2);
@@ -193,7 +193,7 @@ static bool FourToSixInferShapeAndType(const ge::Operator& op, ge::TensorDesc& o
     outShape.push_back(c0Value);
     ge::Shape outputShape = ge::Shape(outShape);
     output_desc.SetShape(outputShape);
-    output_desc.SetDataType(op.GetInputDesc("x").GetDataType());
+    output_desc.SetDataType(op.GetInputDescByName("x").GetDataType());
   } else {
     OP_LOGE(TbeGetName(op).c_str(), "please make sure that the dim of inputshape is 4!");
     return false;
@@ -1027,15 +1027,15 @@ IMPLEMT_INFERFORMAT_FUNC(Transpose, TransposeInferFormat) {
   Tensor perm_tensor;
   if (GRAPH_SUCCESS != op.GetInputConstData("perm", perm_tensor)) {
     OP_LOGI("GetInputConstData perm failed. Set unkonwn format.");
-    auto input_format = op.GetInputDesc("x").GetOriginFormat();
-    auto output_format = op.GetOutputDesc("y").GetOriginFormat();
+    auto input_format = op.GetInputDescByName("x").GetOriginFormat();
+    auto output_format = op.GetOutputDescByName("y").GetOriginFormat();
 
-    TensorDesc tensordesc_output = op.GetOutputDesc("y");
+    TensorDesc tensordesc_output = op.GetOutputDescByName("y");
     tensordesc_output.SetOriginFormat(output_format);
     tensordesc_output.SetFormat(output_format);
     (void)op.UpdateOutputDesc("y", tensordesc_output);
 
-    TensorDesc tensordesc_input = op.GetInputDesc("x");
+    TensorDesc tensordesc_input = op.GetInputDescByName("x");
     tensordesc_input.SetOriginFormat(input_format);
     tensordesc_input.SetFormat(input_format);
     (void)op.UpdateInputDesc("x", tensordesc_input);
@@ -1062,20 +1062,20 @@ IMPLEMT_INFERFORMAT_FUNC(Transpose, TransposeInferFormat) {
     OP_LOGE(TbeGetName(op), "transpose perm do not support this type %d", dtype);
   }
 
-  auto input_format = (recovery_flag == false) ? op.GetInputDesc("x").GetOriginFormat() : FORMAT_ND;
-  auto output_format = (recovery_flag == false) ? op.GetOutputDesc("y").GetOriginFormat() : FORMAT_ND;
+  auto input_format = (recovery_flag == false) ? op.GetInputDescByName("x").GetOriginFormat() : FORMAT_ND;
+  auto output_format = (recovery_flag == false) ? op.GetOutputDescByName("y").GetOriginFormat() : FORMAT_ND;
 
   if (input_format == FORMAT_ND && output_format == FORMAT_ND) {
     OP_LOGI(TbeGetName(op),
             "[Transpose Inferformat] only support trans between NCHW and NHWC.input format is %d, output format is %d",
             input_format, output_format);
     // Recovery ND origin format
-    TensorDesc tensordesc_output = op.GetOutputDesc("y");
+    TensorDesc tensordesc_output = op.GetOutputDescByName("y");
     tensordesc_output.SetOriginFormat(output_format);
     tensordesc_output.SetFormat(output_format);
     (void)op.UpdateOutputDesc("y", tensordesc_output);
 
-    TensorDesc tensordesc_input = op.GetInputDesc("x");
+    TensorDesc tensordesc_input = op.GetInputDescByName("x");
     tensordesc_input.SetOriginFormat(input_format);
     tensordesc_input.SetFormat(input_format);
     (void)op.UpdateInputDesc("x", tensordesc_input);
@@ -1125,12 +1125,12 @@ IMPLEMT_INFERFORMAT_FUNC(Transpose, TransposeInferFormat) {
   OP_LOGD(TbeGetName(op), "[Transpose Inferformat] Finaly input format is %d, output format is %d",
           input_format, output_format);
 
-  TensorDesc tensordesc_output = op.GetOutputDesc("y");
+  TensorDesc tensordesc_output = op.GetOutputDescByName("y");
   tensordesc_output.SetOriginFormat(output_format);
   tensordesc_output.SetFormat(output_format);
   (void)op.UpdateOutputDesc("y", tensordesc_output);
 
-  TensorDesc tensordesc_input = op.GetInputDesc("x");
+  TensorDesc tensordesc_input = op.GetInputDescByName("x");
   tensordesc_input.SetOriginFormat(input_format);
   tensordesc_input.SetFormat(input_format);
   (void)op.UpdateInputDesc("x", tensordesc_input);
@@ -1167,20 +1167,20 @@ IMPLEMT_INFERFORMAT_FUNC(TransposeD, TransposeDInferFormat) {
     recovery_flag = true;  // if not scene that transformation between NCHW or NHWC, keep ND
   }
 
-  auto input_format = (recovery_flag == false) ? op.GetInputDesc("x").GetOriginFormat() : FORMAT_ND;
-  auto output_format = (recovery_flag == false) ? op.GetOutputDesc("y").GetOriginFormat() : FORMAT_ND;
+  auto input_format = (recovery_flag == false) ? op.GetInputDescByName("x").GetOriginFormat() : FORMAT_ND;
+  auto output_format = (recovery_flag == false) ? op.GetOutputDescByName("y").GetOriginFormat() : FORMAT_ND;
 
   if (input_format == FORMAT_ND && output_format == FORMAT_ND) {
     OP_LOGI(TbeGetName(op).c_str(),
             "[TransposeD Inferformat] only support trans between NCHW and NHWC.input format is %d, output format is %d",
             input_format, output_format);
     // Recovery ND origin format
-    TensorDesc tensordesc_output = op.GetOutputDesc("y");
+    TensorDesc tensordesc_output = op.GetOutputDescByName("y");
     tensordesc_output.SetOriginFormat(output_format);
     tensordesc_output.SetFormat(output_format);
     (void)op.UpdateOutputDesc("y", tensordesc_output);
 
-    TensorDesc tensordesc_input = op.GetInputDesc("x");
+    TensorDesc tensordesc_input = op.GetInputDescByName("x");
     tensordesc_input.SetOriginFormat(input_format);
     tensordesc_input.SetFormat(input_format);
     (void)op.UpdateInputDesc("x", tensordesc_input);
@@ -1230,12 +1230,12 @@ IMPLEMT_INFERFORMAT_FUNC(TransposeD, TransposeDInferFormat) {
   OP_LOGD(TbeGetName(op).c_str(), "[TransposeD Inferformat] Finaly input format is %d, output format is %d", input_format,
           output_format);
 
-  TensorDesc tensordesc_output = op.GetOutputDesc("y");
+  TensorDesc tensordesc_output = op.GetOutputDescByName("y");
   tensordesc_output.SetOriginFormat(output_format);
   tensordesc_output.SetFormat(output_format);
   (void)op.UpdateOutputDesc("y", tensordesc_output);
 
-  TensorDesc tensordesc_input = op.GetInputDesc("x");
+  TensorDesc tensordesc_input = op.GetInputDescByName("x");
   tensordesc_input.SetOriginFormat(input_format);
   tensordesc_input.SetFormat(input_format);
   (void)op.UpdateInputDesc("x", tensordesc_input);
@@ -1295,7 +1295,7 @@ COMMON_INFER_FUNC_REG(TransData, TransDataInferShape);
 
 // ----------------Permute Op Begin-------------------
 IMPLEMT_COMMON_INFERFUNC(PermuteInferShape) {
-  auto input_shape = op.GetInputDesc("x").GetShape();
+  auto input_shape = op.GetInputDescByName("x").GetShape();
   std::vector<int64_t> input_shape_dims = input_shape.GetDims();
 
   std::vector<int64_t> perm_list;
@@ -2240,7 +2240,7 @@ COMMON_INFER_FUNC_REG(Unpack, UnpackInferShape);
 // ----------------ExtractImagePatches-------------------
 static std::vector<int64_t> GetAttrValue(const Operator& op, const std::string& key_name) {
   std::vector<int64_t> list;
-  if (op.GetAttr(key_name, list) != GRAPH_SUCCESS) {
+  if (op.GetAttr(key_name.c_str(), list) != GRAPH_SUCCESS) {
     OP_LOGE(TbeGetName(op).c_str(), "GetOpAttr ConstValue failed!");
   }
   return list;
@@ -2470,7 +2470,7 @@ INFER_DATA_SLICE_FUNC_REG(ExtractImagePatches, ExtractImagePatchesInferDataSlice
 // ----------------ExtractVolumePatches-------------------
 static std::vector<int64_t> GetAttrValueVolume(const Operator& op, const std::string& key_name) {
   std::vector<int64_t> list;
-  if (op.GetAttr(key_name, list) != GRAPH_SUCCESS) {
+  if (op.GetAttr(key_name.c_str(), list) != GRAPH_SUCCESS) {
     OP_LOGE(TbeGetName(op).c_str(), "GetOpAttr ConstValue failed!");
   }
   return list;
@@ -2707,8 +2707,8 @@ INFER_DATA_SLICE_FUNC_REG(ExtractVolumePatches, ExtractVolumePatchesInferDataSli
 
 // -----------------------ConfusionTranspose---------------------
 IMPLEMT_COMMON_INFERFUNC(ConfusionTransposeInferShape) {
-  Shape input_shape = op.GetInputDesc("x").GetShape();
-  Shape shape = op.GetInputDesc("shape").GetShape();
+  Shape input_shape = op.GetInputDescByName("x").GetShape();
+  Shape shape = op.GetInputDescByName("shape").GetShape();
   std::vector<int64_t> perm_list;
   if (GRAPH_SUCCESS != op.GetAttr("perm", perm_list)) {
     OP_LOGE(TbeGetName(op).c_str(), "GetOpAttr perm failed!");
@@ -2734,9 +2734,9 @@ IMPLEMT_COMMON_INFERFUNC(ConfusionTransposeInferShape) {
   }
 
   Shape out_shape(out_vec);
-  TensorDesc tensordesc_output = op.GetOutputDesc("y");
+  TensorDesc tensordesc_output = op.GetOutputDescByName("y");
   tensordesc_output.SetShape(out_shape);
-  tensordesc_output.SetDataType(op.GetInputDesc("x").GetDataType());
+  tensordesc_output.SetDataType(op.GetInputDescByName("x").GetDataType());
   (void)op.UpdateOutputDesc("y", tensordesc_output);
   return GRAPH_SUCCESS;
 }
@@ -2745,7 +2745,7 @@ IMPLEMT_COMMON_INFERFUNC(ConfusionTransposeInferShape) {
 COMMON_INFER_FUNC_REG(ConfusionTranspose, ConfusionTransposeInferShape);
 
 IMPLEMT_COMMON_INFERFUNC(ConfusionTransposeDInferShape) {
-  Shape input_shape = op.GetInputDesc("x").GetShape();
+  Shape input_shape = op.GetInputDescByName("x").GetShape();
   std::vector<int64_t> perm_list;
   if (GRAPH_SUCCESS != op.GetAttr("perm", perm_list)) {
     std::string err_msg = GetInputInvalidErrMsg("perm");
@@ -2779,9 +2779,9 @@ IMPLEMT_COMMON_INFERFUNC(ConfusionTransposeDInferShape) {
   }
 
   Shape out_shape(out_vec);
-  TensorDesc tensordesc_output = op.GetOutputDesc("y");
+  TensorDesc tensordesc_output = op.GetOutputDescByName("y");
   tensordesc_output.SetShape(out_shape);
-  tensordesc_output.SetDataType(op.GetInputDesc("x").GetDataType());
+  tensordesc_output.SetDataType(op.GetInputDescByName("x").GetDataType());
   (void)op.UpdateOutputDesc("y", tensordesc_output);
   return GRAPH_SUCCESS;
 }
@@ -3351,18 +3351,18 @@ IMPLEMT_COMMON_INFERFUNC(AffineGridInferShape) {
     // get input data type
     auto theta_dtype = op.GetInputDesc(0).GetDataType();
 
-    TensorDesc theta_desc = op.GetInputDesc("theta");
+    TensorDesc theta_desc = op.GetInputDescByName("theta");
     theta_desc.SetFormat(ge::FORMAT_ND);
     theta_desc.SetFormat(ge::FORMAT_ND);
     (void)op.UpdateInputDesc("theta", theta_desc);
 
-    TensorDesc outsize_desc = op.GetInputDesc("output_size");
+    TensorDesc outsize_desc = op.GetInputDescByName("output_size");
     outsize_desc.SetFormat(ge::FORMAT_ND);
     outsize_desc.SetFormat(ge::FORMAT_ND);
     (void)op.UpdateInputDesc("output_size", outsize_desc);
 
     // update output shape and dtype
-    TensorDesc output_desc = op.GetOutputDesc("y");
+    TensorDesc output_desc = op.GetOutputDescByName("y");
     output_desc.SetShape(ge::Shape(affine_output_shape));
     output_desc.SetDataType(theta_dtype);
     output_desc.SetOriginFormat(ge::FORMAT_ND);

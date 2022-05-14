@@ -74,7 +74,7 @@ IMPLEMT_INFERFUNC(RFFT, RFFTInfer) {
     }
   }
 
-  TensorDesc y_desc = op.GetOutputDesc("y");
+  TensorDesc y_desc = op.GetOutputDescByName("y");
   // unknown shape support
   const char* kFftLengthField = "fft_length";
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
@@ -126,7 +126,7 @@ IMPLEMT_INFERFUNC(IRFFT, IRFFTInfer) {
     }
   }
 
-  TensorDesc y_desc = op.GetOutputDesc("y");
+  TensorDesc y_desc = op.GetOutputDescByName("y");
   // unknown shape support
   const char* kFftLengthField = "fft_length";
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
@@ -163,8 +163,8 @@ IMPLEMT_INFERFUNC(FFT2D, FFT2DInfer) {
     return GRAPH_FAILED;
   }
 
-  DataType y_type = op.GetInputDesc("x").GetDataType();
-  TensorDesc y_desc = op.GetOutputDesc("y");
+  DataType y_type = op.GetInputDescByName("x").GetDataType();
+  TensorDesc y_desc = op.GetOutputDescByName("y");
   y_desc.SetShape(Shape(out));
   y_desc.SetDataType(y_type);
 
