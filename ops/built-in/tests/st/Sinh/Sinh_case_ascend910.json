@@ -116,5 +116,28 @@
         ]
       }
     ]
+  },
+  {
+    "case_name": "Sinh_dynamic_rank_000",
+    "calc_expect_func_file" : "test_sinh_golden.py:calc_expect_func",
+    "op": "Sinh",
+    "input_desc": [
+      {
+        "format": "ND",
+        "type": "float32",
+        "shape": [-2],
+        "value_range": [[0.1, 1.0]],
+        "name": "x",
+        "typical_shape": [16, 16]
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "type": "float32",
+        "shape": [16, 16],
+        "name": "y"
+      }
+    ]
   }
 ]

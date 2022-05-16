@@ -177,4 +177,4 @@ def apply_adagradv2_d(var,
                 sch = tbe.auto_schedule(res)
             schedules.append(sch)
     config = {"name": kernel_name, "tensor_list": tensors}
-    tbe.build(sch, config)
+    tbe.build(schedules, config)

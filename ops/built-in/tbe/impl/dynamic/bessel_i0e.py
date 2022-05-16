@@ -177,4 +177,4 @@ def bessel_i0e(x, y, kernel_name="bessel_i0e"):
     config = {"name": kernel_name,
               "print_ir": False,
               "tensor_list": tensors}
-    tbe.build(sch, config)
+    tbe.build(schedules, config)

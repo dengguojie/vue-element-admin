@@ -105,4 +105,4 @@ def softsign(x, y, kernel_name="softsign"):
     # build
     config = {"name": kernel_name,
               "tensor_list": tensors}
-    tbe.build(sch, config)
+    tbe.build(schedules, config)

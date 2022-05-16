@@ -217,5 +217,28 @@
         ]
       }
     ]
+  },
+  {
+    "case_name": "spence_dynamic_rank_000",
+    "calc_expect_func_file": "test_spence.py:calc_expect_func",
+    "op": "Spence",
+    "input_desc": [
+      {
+        "format": "ND",
+        "type": "float32",
+        "shape": [-2],
+        "value_range": [[-100.0, 100.0]],
+        "typical_shape": [16],
+        "name": "x"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "type": "float32",
+        "shape": [16],
+        "name": "y"
+      }
+    ]
   }
 ]

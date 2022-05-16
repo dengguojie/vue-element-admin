@@ -194,5 +194,35 @@
           "type": "float32"
         }
       ]
+    },
+    {
+      "op": "SoftsignGrad",
+      "case_name": "test_SoftsignGrad_007",
+      "calc_expect_func_file": "test_softsign_grad_golden.py:calc_expect_func",
+      "input_desc": [
+        {
+          "shape": [-2],
+          "format": "ND",
+          "typical_shape": [15, 32],
+          "name": "y_grad",
+          "type": "float32"
+        },
+        {
+          "shape": [-2],
+          "format": "ND",
+          "typical_shape": [15, 32],
+          "name": "x",
+          "type": "float32"
+        }
+      ],
+      "output_desc": [
+        {
+          "shape": [15, 32],
+          "format": "ND",
+          "param_type": "output",
+          "name": "x_grad",
+          "type": "float32"
+        }
+      ]
     }
   ]

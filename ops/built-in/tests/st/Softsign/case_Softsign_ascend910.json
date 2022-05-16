@@ -1,0 +1,26 @@
+[
+    {
+        "op": "Softsign",
+        "calc_expect_func_file": "test_softsign_golden.py:calc_expect_func",
+        "input_desc": [
+          {
+            "shape": [-2],
+            "typical_shape": [2, 16, 32],
+            "format": "ND",
+            "param_type": "input",
+            "name": "x",
+            "type": "float32"
+          }
+        ],
+        "output_desc": [
+          {
+            "shape": [2, 16, 32],
+            "format": "ND",
+            "param_type": "output",
+            "name": "y",
+            "type": "float"
+          }
+        ],
+        "case_name": "test_Softsign_dynamic_rank_001"
+      }
+]
