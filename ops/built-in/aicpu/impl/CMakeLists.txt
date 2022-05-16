@@ -104,10 +104,6 @@ set(local_kernels_src_files
     kernels/normalized/tile_with_axis.cc
     kernels/normalized/reduce_sum.cc
     kernels/normalized/linspace.cc
-    kernels/normalized/environ_create.cc
-    kernels/normalized/environ_get.cc
-    kernels/normalized/environ_set.cc
-    kernels/normalized/environ_destroy_all.cc
     utils/allocator_utils.cc
     utils/bcast.cc
     utils/broadcast_iterator.cc
@@ -117,7 +113,6 @@ set(local_kernels_src_files
     utils/sampling_kernels.cc
     utils/sparse_group.cc
     utils/sparse_tensor.cc
-    utils/environ_manager.cc
 )
 if(WITH_CUSTOM_OP)
     list(APPEND local_kernels_src_files
