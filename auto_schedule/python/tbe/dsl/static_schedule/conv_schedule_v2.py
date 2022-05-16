@@ -1475,8 +1475,7 @@ class Conv2dSchedule:
                 return reorder_mn_flag
 
             # Only fixpipe fusion. The special axis split operation works on res.
-            fixpipe_nz2nd_flag = self._output_nz2nd.flag or \
-                (self._fixpipe_fusion.nz2nd_flag and not self._eltwise_ub_fusion.flag)
+            fixpipe_nz2nd_flag = self._output_nz2nd.flag or self._fixpipe_fusion.nz2nd_flag
             fixpipe_channelsplit_flag = res.dtype == "float32" and not self._eltwise_ub_fusion.flag
             fixpipe_channelmerge_flag = res.dtype in ("int4", "int8") and not self._eltwise_ub_fusion.flag
             fixpipe_antiquant_flag = anti_quant_spilt_flag(res)
