@@ -448,7 +448,7 @@ target_compile_options(cpu_kernels_host PRIVATE
 if("x${PRODUCT}" STREQUAL "xascend310" OR "x${PRODUCT}" STREQUAL "xascend910" OR "x${PRODUCT}" STREQUAL "xascend710" OR "x${PRODUCT}" STREQUAL "xascend310rc")
   set(INSTALL_LIBRARY_DIR lib/${PRODUCT})
 else()
-  if("${PRODUCT_SIDE}" STREQUAL "device")
+  if("${PRODUCT_SIDE}" STREQUAL "device" AND "x${PRODUCT}" STREQUAL "xascend")
   set(INSTALL_LIBRARY_DIR lib/ascend/)
   else()
   set(INSTALL_LIBRARY_DIR lib/)
