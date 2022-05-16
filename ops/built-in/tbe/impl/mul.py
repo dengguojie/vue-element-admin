@@ -966,6 +966,10 @@ def mul_compute(input_x, input_y, output_data, is_scene_1d=False, kernel_name="m
                     target_shape[-3] = shape_x[-3]
                     input_y = reshape(input_y, target_shape, 1)
                     shape_y = target_shape
+                elif len(ori_shape_y) > 2 and ori_shape_y[-2] == 1 and ori_shape_y[-1] == 1:
+                    error_manager_vector.raise_err_input_shape_invalid("mul", "y",
+                                                                       "not support UB fusion")
+
             elif format_y == check_format and "ori_shape" in input_x.op.attrs:
                 ori_shape_x = [i.value for i in input_x.op.attrs["ori_shape"]]
                 if len(ori_shape_x) == 1 and ori_shape_x[0] != 1:
@@ -980,6 +984,9 @@ def mul_compute(input_x, input_y, output_data, is_scene_1d=False, kernel_name="m
                     target_shape[-3] = shape_y[-3]
                     input_x = reshape(input_x, target_shape, 1)
                     shape_x = target_shape
+                elif len(ori_shape_x) > 2 and ori_shape_x[-2] == 1 and ori_shape_x[-1] == 1:
+                    error_manager_vector.raise_err_input_shape_invalid("mul", "x",
+                                                                       "not support UB fusion")
 
         shape_x, shape_y, shape_max = shape_util.broadcast_shapes(shape_x,
                                                                   shape_y,

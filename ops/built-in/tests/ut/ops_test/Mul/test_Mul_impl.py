@@ -115,6 +115,16 @@ def test_mul_compute_nz_nd_ubfusion_2(test_arg):
     output = {"shape": (2, 16, 16, 16), "dtype": "float16", "ori_shape": (256, 32), "format": "FRACTAL_NZ", "ori_format": "ND"}
     mul_compute(x, y, output, False)
 
+def test_mul_compute_nz_nd_ubfusion_3(test_arg):
+    from impl.mul import mul_compute
+    try:
+        x = tvm.placeholder((4, 2, 4, 16, 16), name="x", dtype="float16", attrs={'format': "FRACTAL_NZ", "ori_shape": (4, 64, 32)})
+        y = tvm.placeholder((4, 1, 1), name="y", dtype="float16", attrs={'format': "ND", "ori_shape": (4, 1, 1)})
+        output = {"shape": (4, 2, 4, 16, 16), "dtype": "float16", "ori_shape": (4, 64, 32), "format": "FRACTAL_NZ", "ori_format": "ND"}
+        mul_compute(x, y, output, False)
+    except RuntimeError as e:
+        print("test_mul_compute_nz_nd_ubfusion_3_ivalid success")
+
 def test_mul_compute_nd_nz_ubfusion_1(test_arg):
     from impl.mul import mul_compute
     x = tvm.placeholder((1, 1, 1, 240), name="y", dtype="float16", attrs={'format': "ND", "ori_shape": (240,)})
@@ -128,6 +138,16 @@ def test_mul_compute_nd_nz_ubfusion_2(test_arg):
     y = tvm.placeholder((2, 16, 16, 16), name="x", dtype="float16", attrs={'format': "FRACTAL_NZ", "ori_shape": (256, 32)})
     output = {"shape": (2, 16, 16, 16), "dtype": "float16", "ori_shape": (256, 32), "format": "FRACTAL_NZ", "ori_format": "ND"}
     mul_compute(x, y, output, False)
+
+def test_mul_compute_nd_nz_ubfusion_3(test_arg):
+    from impl.mul import mul_compute
+    try:
+        x = tvm.placeholder((4, 1, 1), name="y", dtype="float16", attrs={'format': "ND", "ori_shape": (4, 1, 1)})
+        y = tvm.placeholder((4, 2, 4, 16, 16), name="x", dtype="float16", attrs={'format': "FRACTAL_NZ", "ori_shape": (4, 64, 32)})
+        output = {"shape": (4, 2, 4, 16, 16), "dtype": "float16", "ori_shape": (4, 64, 32), "format": "FRACTAL_NZ", "ori_format": "ND"}
+        mul_compute(x, y, output, False)
+    except RuntimeError as e:
+        print("test_mul_compute_nd_nz_ubfusion_3_ivalid success")
 
 # pylint: disable=unused-argument
 def test_op_select_format(test_arg):
@@ -314,8 +334,10 @@ ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case7)
 ut_case.add_cust_test_func(test_func=test_op_select_format)
 ut_case.add_cust_test_func(test_func=test_mul_compute_nz_nd_ubfusion_1)
 ut_case.add_cust_test_func(test_func=test_mul_compute_nz_nd_ubfusion_2)
+ut_case.add_cust_test_func(test_func=test_mul_compute_nz_nd_ubfusion_3)
 ut_case.add_cust_test_func(test_func=test_mul_compute_nd_nz_ubfusion_1)
 ut_case.add_cust_test_func(test_func=test_mul_compute_nd_nz_ubfusion_2)
+ut_case.add_cust_test_func(test_func=test_mul_compute_nd_nz_ubfusion_3)
 
 """
 The ca_model of CI is faulty.Related cases are commented out temporaily.
