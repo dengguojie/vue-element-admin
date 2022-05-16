@@ -293,9 +293,13 @@ target_compile_options(aicpu_nodedef_builder PRIVATE
 )
 
 if("x${PRODUCT}" STREQUAL "xascend310" OR "x${PRODUCT}" STREQUAL "xascend910" OR "x${PRODUCT}" STREQUAL "xascend710" OR "x${PRODUCT}" STREQUAL "xascend310rc" OR "x${PRODUCT}" STREQUAL "xascend920")
-set(INSTALL_LIBRARY_DIR lib/${PRODUCT})
+  set(INSTALL_LIBRARY_DIR lib/${PRODUCT})
 else()
-set(INSTALL_LIBRARY_DIR lib/)
+  if("${PRODUCT_SIDE}" STREQUAL "device")
+  set(INSTALL_LIBRARY_DIR lib/ascend/)
+  else()
+  set(INSTALL_LIBRARY_DIR lib/)
+  endif()
 endif()
 
 install(TARGETS cpu_kernels_context_static OPTIONAL
