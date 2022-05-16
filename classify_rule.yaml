@@ -25,6 +25,9 @@ aicpu:
       - ops/built-in/op_proto/case_condition_ops.cc
       - ops/built-in/op_proto/coordinates_1d_to_2d_ops.cc
       - ops/built-in/op_proto/inc/vector_search.h
+      - ops/built-in/op_proto/inc/sparse_ops.h
+      - ops/built-in/op_proto/inc/elewise_calculation_ops.h
+
       - ops/built-in/op_proto/index_to_addr_ops.cc
       - ops/built-in/op_proto/slice_write_ops.cc
       - ops/built-in/op_proto/util/array_ops_shape_fns.cc
@@ -2196,7 +2199,6 @@ unkown:
       - ops/built-in/op_proto/inc/selection_ops.h
       - ops/built-in/op_proto/inc/functional_ops.h
       - ops/built-in/op_proto/inc/hvd_ops.h
-      - ops/built-in/op_proto/inc/elewise_calculation_ops.h
       - ops/built-in/op_proto/inc/boosted_trees_ops.h
       - ops/built-in/op_proto/inc/spectral_ops.h
       - ops/built-in/op_proto/inc/nn_ops.h
@@ -2230,7 +2232,6 @@ unkown:
       - ops/built-in/op_proto/inc/get_data_ops.h
       - ops/built-in/op_proto/inc/outfeed_ops.h
       - ops/built-in/op_proto/inc/batch_ops.h
-      - ops/built-in/op_proto/inc/sparse_ops.h
       - ops/built-in/op_proto/inc/image_ops.h
       - ops/built-in/op_proto/inc/random_ops.h
       - ops/built-in/op_proto/inc/pad_ops.h
