@@ -60,5 +60,34 @@
         "name": "y"
       }
     ]
+  },
+  {
+    "op": "TruncateDiv",
+    "calc_expect_func_file" : "test_truncatediv_golden.py:calc_expect_func",
+    "input_desc": [
+      {
+        "shape": [-2],
+        "typical_shape": [16],
+        "format": "ND",
+        "name": "input_x",
+        "type": "float32"
+      },
+      {
+        "shape": [-2],
+        "typical_shape": [1],
+        "format": "ND",
+        "name": "input_y",
+        "type": "float32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [16],
+        "format": "ND",
+        "name": "output_x",
+        "type": "float32"
+      }
+    ],
+    "case_name": "test_TruncateDiv_unknowshape_000"
   }
 ]

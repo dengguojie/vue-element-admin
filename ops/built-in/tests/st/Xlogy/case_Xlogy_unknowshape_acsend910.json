@@ -1,0 +1,31 @@
+[
+    {
+        "op": "Xlogy",
+        "calc_expect_func_file" : "test_xlogy_golden.py:calc_expect_func",
+        "input_desc": [
+          {
+            "shape": [-2],
+            "typical_shape": [16],
+            "format": "ND",
+            "name": "x1",
+            "type": "float32"
+          },
+          {
+            "shape": [-2],
+            "typical_shape": [16],
+            "format": "ND",
+            "name": "x2",
+            "type": "float32"
+          }
+        ],
+        "output_desc": [
+          {
+            "shape": [16],
+            "format": "ND",
+            "name": "y",
+            "type": "float32"
+          }
+        ],
+        "case_name": "test_Xlogy_unknowshape_000"
+      }
+]

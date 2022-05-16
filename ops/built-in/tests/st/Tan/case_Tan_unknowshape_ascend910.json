@@ -1,0 +1,27 @@
+[
+    {
+        "op": "Tan",
+        "calc_expect_func_file" : "test_tan_golden.py:calc_expect_func",
+        "input_desc": [
+          {
+            "shape": [-2],
+            "format": "ND",
+            "typical_shape": [4, 4, 4, 4],
+            "value_range": [[-1, 1]],
+            "param_type": "input",
+            "name": "x",
+            "type": "float32"
+          }
+        ],
+        "output_desc": [
+          {
+            "shape": [4, 4, 4, 4],
+            "format": "ND",
+            "param_type": "output",
+            "name": "y",
+            "type": "float32"
+          }
+        ],
+        "case_name": "test_tan_dynamic_rank_001"
+      }
+]
