@@ -32,7 +32,7 @@ class InvGradCpuKernel : public CpuKernel {
 
   template <typename T>
   void SpecialCompute(int64_t start, int64_t end,
-                      T *input1, T *input2, T *output) const;
+                      const T *input1, const T *input2, T *output) const;
 
   template <typename T>
   uint32_t NoBcastCompute(CpuKernelContext &ctx) const;

@@ -29,7 +29,7 @@
 namespace {
 const uint32_t kOutputNum = 1;
 const uint32_t kInputNum = 2;
-const char *kInvGrad = "InvGrad";
+const char *const kInvGrad = "InvGrad";
 const int64_t kParallelDataNum = 2 * 1024;
 const int64_t kParallelDataNumMid = 16 * 1024;
 const int64_t kParallelDataNumSameShape = 7 * 1024;
@@ -98,8 +98,8 @@ uint32_t InvGradCpuKernel::InvGradParamCheck(CpuKernelContext &ctx) const {
 // 3. input2 is a 1D tensor with only one element or input2 is scalar
 // 4. the shapes of input1 and input2 are different
 template <typename T>
-void InvGradCpuKernel::SpecialCompute(int64_t start, int64_t end, T *input1,
-                                      T *input2, T *output) const {
+void InvGradCpuKernel::SpecialCompute(int64_t start, int64_t end, const T *input1,
+                                      const T *input2, T *output) const {
   for (int64_t i = start; i < end; ++i) {
     *(output + i) =
         *(input1 + i) * *(input1 + i) * *(input2 + i) * static_cast<T>(-1);
@@ -116,18 +116,18 @@ uint32_t InvGradCpuKernel::NoBcastCompute(CpuKernelContext &ctx) const {
 
   if (data_num >= kParallelDataNumSameShape) {
     uint32_t min_core_num = 1;
-    uint32_t max_core_num = std::max(
+    int64_t max_core_num = std::max(
         min_core_num, aicpu::CpuKernelUtils::GetCPUNum(ctx) - kResvCpuNum);
 
     if (data_num <= kParallelDataNumSameShapeMid) {
-      max_core_num = std::min(max_core_num, 4U);  // up to 4 cpu cores
+      max_core_num = std::min(max_core_num, static_cast<int64_t>(4));  // up to 4 cpu cores
     }
 
     if (max_core_num > data_num) {
       max_core_num = data_num;
     }
 
-    auto sharder_invgrad = [&](size_t start, size_t end) {
+    auto sharder_invgrad = [this, &in0, &in1, &out](size_t start, size_t end) {
       SpecialCompute<T>(start, end, in0, in1, out);
     };
 
@@ -145,7 +145,6 @@ uint32_t InvGradCpuKernel::NoBcastCompute(CpuKernelContext &ctx) const {
 template <typename T>
 uint32_t InvGradCpuKernel::InvGradCompute(CpuKernelContext &ctx) const {
   Tensor *input0_tensor = ctx.Input(0);
-  auto input0_shape = input0_tensor->GetTensorShape()->GetDimSizes();
   int64_t input0_elements_nums = input0_tensor->NumElements();
 
   Tensor *input1_tensor = ctx.Input(1);
@@ -160,8 +159,6 @@ uint32_t InvGradCpuKernel::InvGradCompute(CpuKernelContext &ctx) const {
   } else {
     return NoBcastCompute<T>(ctx);
   }
-
-  return KERNEL_STATUS_OK;
 }
 
 REGISTER_CPU_KERNEL(kInvGrad, InvGradCpuKernel);
