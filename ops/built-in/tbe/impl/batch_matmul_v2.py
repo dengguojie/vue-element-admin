@@ -268,8 +268,7 @@ def op_select_format(input_x, input_y, bias=None, offset_w=None, output_z=None, 
     provide static format to FE
     """
     src_dtype = input_x.get("dtype")
-    src_fp16_flag = src_dtype == "float16"
-    _, full_case_senario_combinations = base_op_select_format(input_x, input_y, src_dtype, trans_b, src_fp16_flag)
+    _, full_case_senario_combinations = base_op_select_format(input_x, input_y, src_dtype, trans_b)
 
     param_list = gen_op_select_format_params(full_case_senario_combinations, support_offset_w=True)
     param_dynamic_in_json = util_select_op_base.get_dynamic_param_in_json(param_list)

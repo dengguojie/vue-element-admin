@@ -129,7 +129,7 @@ def get_op_support_info(input_x1, input_x2, bias=None, offset_w=None, output_z=N
     return op_cal_info_in_json
 
 
-def base_op_select_format(input_x, input_y, src_dtype, trans_b, src_fp16_flag: bool) -> tuple:
+def base_op_select_format(input_x, input_y, src_dtype, trans_b) -> tuple:
     """
     provide dynamic format to FE(Base processing)
     This funciton contains all basic format combinations
@@ -196,10 +196,9 @@ def base_op_select_format(input_x, input_y, src_dtype, trans_b, src_fp16_flag: b
     # Construct scenario list for static
     if support_l0c2out:
         full_case_scenario_list = cube_vector_scenario
-    elif src_fp16_flag:
-        full_case_scenario_list = base_case_scenario + fp32_out_scenatio + rnn_scenatio
     else:
-        full_case_scenario_list = base_case_scenario + base_quant_case_scenario + fp32_dtype_scenario
+        full_case_scenario_list = base_case_scenario + base_quant_case_scenario + fp32_dtype_scenario + \
+            fp32_out_scenatio + rnn_scenatio
         if support_s322f32:
             full_case_scenario_list += int32_dtype_scenario
     return dyn_case_scenario_list, full_case_scenario_list
@@ -335,8 +334,7 @@ def op_select_format(input_x, input_y, bias=None, offset_w=None, output_z=None, 
     provide dynamic format to FE
     """
     src_dtype = input_x.get("dtype")
-    src_fp16_flag = src_dtype == "float16"
-    scenario_combinations, _ = base_op_select_format(input_x, input_y, src_dtype, trans_b, src_fp16_flag)
+    scenario_combinations, _ = base_op_select_format(input_x, input_y, src_dtype, trans_b)
 
     param_list = gen_op_select_format_params(scenario_combinations, support_offset_w=True)
     param_dynamic_in_json = util_select_op_base.get_dynamic_param_in_json(param_list)
