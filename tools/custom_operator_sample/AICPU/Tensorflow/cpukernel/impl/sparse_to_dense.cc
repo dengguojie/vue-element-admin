@@ -1,5 +1,5 @@
 /**
- * Copyright 2020 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2021-2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,18 +20,20 @@
 #include "log.h"
 #include "status.h"
 #include "unsupported/Eigen/CXX11/Tensor"
+#include "cpu_kernel_utils.h"
+#include "utils/eigen_tensor.h"
+#include "utils/kernel_util.h"
 
 namespace aicpu {
-
-const char *SPARSETODENSE = "SparseToDense";
+const char *const SPARSETODENSE = "SparseToDense";
 }
 
 namespace aicpu {
-
-uint32_t SparseToDenseCpuKernel::SparseToDense(SparseTensor &st,
+uint32_t SparseToDenseCpuKernel::SparseToDense(const CpuKernelContext &ctx, 
+                                               SparseTensor &st,
                                                Tensor *indices,
                                                Tensor *output) {
-  KERNEL_LOG_INFO("Start to execute SparseToDense.");
+  KERNEL_LOG_INFO("Start to execute SparseToDense");
   if (indices == nullptr || output == nullptr) {
     KERNEL_LOG_ERROR("Indices or output tensor is nullptr.");
     return KERNEL_STATUS_PARAM_INVALID;
@@ -40,35 +42,34 @@ uint32_t SparseToDenseCpuKernel::SparseToDense(SparseTensor &st,
   DataType dt = static_cast<DataType>(output->GetDataType());
   switch (dt) {
     case DT_INT8:
-      return EigenSparseToDense<int8_t>(st, indices, output);
+      return EigenSparseToDense<int8_t>(ctx, st, indices, output);
     case DT_UINT8:
-      return EigenSparseToDense<uint8_t>(st, indices, output);
+      return EigenSparseToDense<uint8_t>(ctx, st, indices, output);
     case DT_INT16:
-      return EigenSparseToDense<int16_t>(st, indices, output);
+      return EigenSparseToDense<int16_t>(ctx, st, indices, output);
     case DT_UINT16:
-      return EigenSparseToDense<uint16_t>(st, indices, output);
+      return EigenSparseToDense<uint16_t>(ctx, st, indices, output);
     case DT_INT32:
-      return EigenSparseToDense<int32_t>(st, indices, output);
+      return EigenSparseToDense<int32_t>(ctx, st, indices, output);
     case DT_INT64:
-      return EigenSparseToDense<int64_t>(st, indices, output);
+      return EigenSparseToDense<int64_t>(ctx, st, indices, output);
     case DT_FLOAT16:
-      return EigenSparseToDense<Eigen::half>(st, indices, output);
+      return EigenSparseToDense<Eigen::half>(ctx, st, indices, output);
     case DT_FLOAT:
-      return EigenSparseToDense<float>(st, indices, output);
+      return EigenSparseToDense<float>(ctx, st, indices, output);
     case DT_BOOL:
-      return EigenSparseToDense<bool>(st, indices, output);
+      return EigenSparseToDense<bool>(ctx, st, indices, output);
     case DT_DOUBLE:
-      return EigenSparseToDense<double>(st, indices, output);
+      return EigenSparseToDense<double>(ctx, st, indices, output);
     default:
       KERNEL_LOG_ERROR("Sparse to dense can't support this data type [%d].",
                        dt);
       return KERNEL_STATUS_PARAM_INVALID;
   }
-  KERNEL_LOG_INFO("Execute SparseToDense end.");
 }
 
-uint32_t SparseToDenseCpuKernel::ValidParam(CpuKernelContext &ctx) {
-  KERNEL_LOG_INFO("Start to execute ValidParam.");
+uint32_t SparseToDenseCpuKernel::ValidParam(const CpuKernelContext &ctx) {
+  KERNEL_LOG_INFO("Start to execute ValidParam");
   // valid input and output nullptr
   Tensor *indices_tensor = ctx.Input(0);
   Tensor *shape_tensor = ctx.Input(1);
@@ -112,7 +113,7 @@ uint32_t SparseToDenseCpuKernel::ValidParam(CpuKernelContext &ctx) {
 
   // output_shape
   if (output_shape->GetDims() != 1) {
-    KERNEL_LOG_ERROR("Output_shape should be a vector, got dim size [%d].",
+    KERNEL_LOG_ERROR("Output_shape should be a vector, and got dim size [%d].",
                      output_shape->GetDims());
     return KERNEL_STATUS_PARAM_INVALID;
   }
@@ -130,10 +131,8 @@ uint32_t SparseToDenseCpuKernel::ValidParam(CpuKernelContext &ctx) {
   bool validShapeType =
       ((outShapeType != DT_INT32) && (outShapeType != DT_INT64));
   if (validShapeType || validIndiceType) {
-    KERNEL_LOG_ERROR(
-        "Valid indice or output shape data type failed, indiceType [%d], "
-        "shapeType [%d].",
-        IndiceType, outShapeType);
+    KERNEL_LOG_ERROR("Valid indice or output shape data type failed, indiceType [%d], "
+        "shapeType [%d].", IndiceType, outShapeType);
     return KERNEL_STATUS_PARAM_INVALID;
   }
 
@@ -154,7 +153,7 @@ uint32_t SparseToDenseCpuKernel::ValidParam(CpuKernelContext &ctx) {
 
   // default_value
   if (default_value_shape->GetDims() != 0) {
-    KERNEL_LOG_ERROR("Default_value should be a scalar, got dim size [%d].",
+    KERNEL_LOG_ERROR("Default_value should be a scalar, and got dim size [%d].",
                      default_value_shape->GetDims());
     return KERNEL_STATUS_PARAM_INVALID;
   }
@@ -213,14 +212,14 @@ uint32_t SparseToDenseCpuKernel::Compute(CpuKernelContext &ctx) {
     return KERNEL_STATUS_PARAM_INVALID;
   }
   if (validate_indices->GetBool()) {
-    if (st.IndicesValid() != KERNEL_STATUS_OK) {
-      KERNEL_LOG_ERROR("Indices valid failed.");
+    if (st.IndicesValid(ctx) != KERNEL_STATUS_OK) {
+      KERNEL_LOG_ERROR("Indices is valid.");
       return KERNEL_STATUS_PARAM_INVALID;
     }
   }
 
   // set default value
-  size_t type_size =
+  auto type_size =
       GetSizeByDataType(static_cast<DataType>(output_tensor->GetDataType()));
   if (type_size < 1) {
     KERNEL_LOG_ERROR("Don't support output tensor types");
@@ -238,8 +237,8 @@ uint32_t SparseToDenseCpuKernel::Compute(CpuKernelContext &ctx) {
       return KERNEL_STATUS_INNER_ERROR;
     }
   }
-  if (SparseToDense(st, indices_tensor, output_tensor) != KERNEL_STATUS_OK) {
-    KERNEL_LOG_ERROR("Sparse to dense failed.");
+  if (SparseToDense(ctx, st, indices_tensor, output_tensor) != KERNEL_STATUS_OK) {
+    KERNEL_LOG_ERROR("Sparse_to_dense excute failed.");
     return KERNEL_STATUS_PARAM_INVALID;
   }
   return KERNEL_STATUS_OK;
