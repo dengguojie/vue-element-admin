@@ -2156,44 +2156,6 @@ def _shape_check(para_dict):
     _shape_range_check(shape_x1, shape_x2)
 
 
-def _format_check(para_dict):
-    """
-    format check
-
-    Parameters:
-    -------------
-    para_dict: inputs and outputs parameters, dict
-
-    Returns:
-    -------------
-    None
-    """
-    x = para_dict.get("x")
-    y = para_dict.get("y")
-    sum_square_x = para_dict.get("sum_square_x")
-    sum_square_y = para_dict.get("sum_square_y")
-    segment_sum = para_dict.get("segment_sum")
-    segment_count = para_dict.get("segment_count")
-    kmean_total_sum = para_dict.get("kmean_total_sum")
-
-    input1_format = x.get("format")
-    input2_format = y.get("format")
-    input4_format = sum_square_y.get("format")
-    output1_format = segment_sum.get("format")
-    output2_format = segment_count.get("format")
-    output3_format = kmean_total_sum.get("format")
-
-    if sum_square_x:
-        input3_format = sum_square_x.get("format")
-        if input3_format != "ND":
-            error_manager_cube.raise_err_message_cube("k_means_centroids", "Inputs format only support ND.")
-
-    if input1_format != "ND" or input2_format != "ND" or input4_format != "ND":
-        error_manager_cube.raise_err_message_cube("k_means_centroids", "Inputs format only support ND.")
-    if output1_format != "ND" or output2_format != "ND" or output3_format != "ND":
-        error_manager_cube.raise_err_message_cube("k_means_centroids", "Outputs format only support ND.")
-
-
 def _data_type_check(para_dict):
     """
     data type and format check
@@ -2332,7 +2294,6 @@ def k_means_centroids(
 
     _shape_check(para_dict)
     _data_type_check(para_dict)
-    _format_check(para_dict)
 
     kmeans = KMeansCentroids(para_dict)
 
