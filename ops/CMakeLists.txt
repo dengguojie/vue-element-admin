@@ -15,6 +15,6 @@
 
 add_subdirectory(built-in)
 
-if(ENABLE_TEST)
+if(ENABLE_TEST OR BENCHMARK)
   add_subdirectory(built-in/tests)
 endif()

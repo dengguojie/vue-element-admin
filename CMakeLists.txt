@@ -98,6 +98,7 @@ if(BUILD_OPEN_PROJECT)
   include(cmake/external/gtest.cmake)
   include(cmake/external/eigen.cmake)
   include(scripts/script.cmake)
+  include(cmake/external/gbenchmark.cmake)
 
   if(DEFINED ENV{TOOLCHAIN_DIR})
     set(TOOLCHAIN_DIR $ENV{TOOLCHAIN_DIR})

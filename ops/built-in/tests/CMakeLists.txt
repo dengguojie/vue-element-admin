@@ -79,3 +79,7 @@ if (ENABLE_TEST STREQUAL UT)
         )
     endif()
 endif ()
+
+if (BENCHMARK)
+    add_subdirectory(benchmark)
+endif()

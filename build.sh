@@ -38,7 +38,8 @@ RELEASE_VERSION="ops_all_caffe_plugin,ops_all_onnx_plugin,ops_all_plugin,ops_fus
 UT_VERSION="protoc,secure_c,c_sec,eigen,protobuf_static_build,external_protobuf,nlohmann_json,\
           external_gtest,eigen_headers,ops_all_onnx_plugin_llt,opsplugin_llt,ops_fusion_pass_aicore_llt,\
           opsproto_llt,optiling_llt,generate_ops_cpp_cov,ops_cpp_proto_utest,ops_cpp_op_tiling_utest,\
-          ops_cpp_fusion_pass_aicore_utest,cpu_kernels_ut,cpu_kernels_llt,ops_cpp_plugin_utest,ops_cpp_onnx_plugin_utest"
+          ops_cpp_fusion_pass_aicore_utest,cpu_kernels_ut,cpu_kernels_llt,ops_cpp_plugin_utest,ops_cpp_onnx_plugin_utest,\
+          ops_benchmark"
 }
 
 create_lib(){
@@ -312,7 +313,7 @@ make_clean_all(){
 # print usage message
 usage() {
   echo "Usage:"
-  echo "    bash build.sh [-h] [-j[n]] [-u] [-s] [-v] [-g]"
+  echo "    bash build.sh [-h] [-j[n]] [-u] [-s] [-b] [-v] [-g]"
   echo ""
   echo "If you are using it for the first time, it needs to be executed "
   echo "If you're in the yellow zone of Huawei, please cancel the # before config proxy code in the front of build.sh, and fill in the correct account and password"
@@ -355,6 +356,7 @@ usage() {
   echo "    -j[n] Set the number of threads used to build CANN, default is 8"
   echo "    -u Build all UT"
   echo "    -s Build ST"
+  echo "    -b Build benchmark"
   echo "    -v Verbose"
   echo "    -g GCC compiler prefix, used to specify the compiler toolchain"
   echo "    -a|--aicpu only compile aicpu task"
@@ -441,8 +443,9 @@ checkopts() {
   CI_MODE=FALSE
   upload=FALSE
   WITH_CUSTOM_OP=FALSE
+  BENCHMARK=FALSE
   # Process the options
-  while getopts 'xhj:usvg:a-:cm-:f:' opt
+  while getopts 'xhj:usbvg:a-:cm-:f:' opt
   do
     case "${opt}" in
       x) git submodule init &&git submodule update
@@ -454,6 +457,7 @@ checkopts() {
       u) UT_TEST_ALL=TRUE
 	     UT_MODE=TRUE ;;
       s) ST_TEST=TRUE ;;
+      b) BENCHMARK=TRUE ;;
       v) VERBOSE="VERBOSE=1" ;;
       g) GCC_PREFIX=$OPTARG ;;
       a) AICPU_ONLY=TRUE ;;
@@ -533,6 +537,9 @@ checkopts() {
                 fi
                 if [[ $OPTARG =~ "onnx" ]];then
                   ONNX_PLUGIN_UT=TRUE
+                  no_all_ut=TRUE
+                fi
+                if [[ $OPTARG =~ "benchmark" ]];then
                   no_all_ut=TRUE
                 fi
                 if [[ "$no_all_ut" =~ "FALSE" ]];then
@@ -692,7 +699,8 @@ build_cann() {
             -DCPU_UT=$CPU_UT -DPASS_UT=$PASS_UT \
             -DTILING_UT=$TILING_UT -DPROTO_UT=$PROTO_UT \
             -DPLUGIN_UT=$PLUGIN_UT -DONNX_PLUGIN_UT=$ONNX_PLUGIN_UT
-            -DBUILD_MODE=$build_mode -DWITH_CUSTOM_OP=$WITH_CUSTOM_OP"
+            -DBUILD_MODE=$build_mode -DWITH_CUSTOM_OP=$WITH_CUSTOM_OP
+            -DBENCHMARK=$BENCHMARK"
 
   logging "Start build host target. CMake Args: ${CMAKE_ARGS}"
 
@@ -749,7 +757,8 @@ main() {
     -DUT_TEST_ALL=$UT_TEST_ALL -DST_TEST=$ST_TEST -DAICPU_ONLY=$AICPU_ONLY\
     -DCPU_UT=$CPU_UT -DPASS_UT=$PASS_UT -DTILING_UT=$TILING_UT\
     -DPROTO_UT=$PROTO_UT -DPLUGIN_UT=$PLUGIN_UT -DONNX_PLUGIN_UT=$ONNX_PLUGIN_UT\
-    -DUT_NO_EXEC=$UT_NO_EXEC -DBUILD_MODE=$build_mode -DWITH_CUSTOM_OP=$WITH_CUSTOM_OP"
+    -DUT_NO_EXEC=$UT_NO_EXEC -DBUILD_MODE=$build_mode -DWITH_CUSTOM_OP=$WITH_CUSTOM_OP\
+    -DBENCHMARK=$BENCHMARK"
     create_lib $@
     exit 0
   fi
@@ -770,7 +779,7 @@ main() {
   if [ "$CPU_UT" = "FALSE" -a "$PASS_UT" = "FALSE" \
     -a "$TILING_UT" = "FALSE" -a "$PROTO_UT" = "FALSE" \
     -a "$PLUGIN_UT" = "FALSE" -a "$ONNX_PLUGIN_UT" = "FALSE" \
-    -a "$UT_TEST_ALL" = "FALSE" ]; then
+    -a "$UT_TEST_ALL" = "FALSE" -a "$BENCHMARK" = "FALSE" ]; then
     release_cann
   fi
   logging "---------------- CANN build finished ----------------"
