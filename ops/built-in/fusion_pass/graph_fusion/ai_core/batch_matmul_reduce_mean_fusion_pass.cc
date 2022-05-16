@@ -59,6 +59,7 @@ static const char REDUCEMEAND[] = "ReduceMeanD";
 static const char PADD[] = "PadD";
 static const char SLICED[] = "SliceD";
 static const int ALIGN_UNIT = 16;
+static const vector<string> kMatMulWhiteList = {"MatMul", "MatMulV2", "BatchMatMul", "BatchMatMulV2"};
 
 static const char kNameFusionPass[] = "BatchMatMulReduceMeanFusionPass";
 }  // namespace
@@ -243,13 +244,13 @@ Status BatchMatMulReduceMeanFusionPass::InsertAddPadD(ge::ComputeGraph *graph) c
   pad_params.shape = pad_output_shape;
   pad_params.paddings = paddings;
   FUSION_PASS_CHECK(CreatePadDNode(graph, &pad_node, op_node, pad_params) != SUCCESS,
-                    OP_LOGE(op_node, "Failed to create PadD node for Add."), return FAILED);
+                    OP_LOGE(op_node, "Failed to create PadD node for Add or BiasAdd."), return FAILED);
 
   OP_LOGD(kNameFusionPass, "Insert PadD node for Add.");
   auto dst_anchor = op_node->GetInDataAnchor(idx);
   auto src_anchor = dst_anchor->GetPeerOutAnchor();
   FUSION_PASS_CHECK(ge::GraphUtils::InsertNodeBetweenDataAnchors(src_anchor, dst_anchor, pad_node) != ge::GRAPH_SUCCESS,
-                    OP_LOGE(op_node, "Failed to insert PadD node for Add."), return FAILED);
+                    OP_LOGE(op_node, "Failed to insert PadD node for Add or BiasAdd."), return FAILED);
 
   return SUCCESS;
 }
@@ -301,11 +302,13 @@ Status BatchMatMulReduceMeanFusionPass::CreatePadDNode(ge::ComputeGraph *graph,
   vector<vector<int64_t> > paddings = pad_params.paddings;
 
   auto pre_peer_node = GetPeerOutNodeWithInDataAnchor(op_node, op_pre_peer_idx);
-  if (op_node->GetName().find("MatMul") != string::npos) {
-    FUSION_PASS_CHECK(pre_peer_node == nullptr,
-                      OP_LOGE(kNameFusionPass, "No bias in %s node.", op_node->GetName().c_str()),
-                      return FAILED);
+  string error_log = "Failed to get input " + to_string(op_pre_peer_idx) + " of " + op_node->GetName() + " node.";
+  if (find(kMatMulWhiteList.begin(), kMatMulWhiteList.end(), op_node->GetType()) != kMatMulWhiteList.end()) {
+    error_log = "No bias in " + op_node->GetName() + " node.";
   }
+  FUSION_PASS_CHECK(pre_peer_node == nullptr,
+                    OP_LOGE(kNameFusionPass, "%s", error_log.c_str()),
+                    return FAILED);
   int idx = GetPeerOutAnchorWithInDataAnchor(op_node, op_pre_peer_idx)->GetIdx();
   auto pre_peer_node_desc = pre_peer_node->GetOpDesc()->MutableOutputDesc(idx);
 
