@@ -27,15 +27,42 @@ case2 = {"params": [{"shape": (-1, -1, -1), "dtype": "float32", "format": "ND",
 
 case3 = {"params": [{"shape": (3, 4, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ",
                      "ori_shape": (16, 16), "ori_format": "ND"},
-                    {"shape": (16, 16), "dtype": "float16", "format": "ND",
-                     "ori_shape": (16, 16), "ori_format": "ND"},
+                    {"shape": (1, ), "dtype": "float16", "format": "ND",
+                     "ori_shape": (1, ), "ori_format": "ND"},
                     [0, 1]],
          "case_name": "static_square_sum_v1_001",
+         "expect": "success"}
+
+case4 = {"params": [{"shape": (1, 2, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ",
+                     "ori_shape": (32, 16), "ori_format": "ND"},
+                    {"shape": (32, ), "dtype": "float16", "format": "ND",
+                     "ori_shape": (32, ), "ori_format": "ND"},
+                    [1]],
+         "case_name": "static_square_sum_v1_002",
+         "expect": "success"}
+
+case5 = {"params": [{"shape": (1, 2, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ",
+                     "ori_shape": (32, 16), "ori_format": "ND"},
+                    {"shape": (1, ), "dtype": "float16", "format": "ND",
+                     "ori_shape": (1, ), "ori_format": "ND"},
+                    []],
+         "case_name": "static_square_sum_v1_003",
+         "expect": "success"}
+
+case6 = {"params": [{"shape": (1, 4, 16, 16), "dtype": "float16", "format": "FRACTAL_Z",
+                     "ori_shape": (64, 16, 1, 1), "ori_format": "HWCN"},
+                    {"shape": (1, ), "dtype": "float16", "format": "ND",
+                     "ori_shape": (1, ), "ori_format": "ND"},
+                    [0, 1, 2, 3]],
+         "case_name": "static_square_sum_v1_004",
          "expect": "success"}
 
 ut_case.add_case(["Ascend310", "Ascend910A"], case1)
 ut_case.add_case(["Ascend310", "Ascend910A"], case2)
 ut_case.add_case(["Ascend310", "Ascend910A"], case3)
+ut_case.add_case(["Ascend310", "Ascend910A"], case4)
+ut_case.add_case(["Ascend310", "Ascend910A"], case5)
+ut_case.add_case(["Ascend310", "Ascend910A"], case6)
 
 
 def test_op_select_format(test_arg):

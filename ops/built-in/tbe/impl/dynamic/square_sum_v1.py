@@ -29,6 +29,7 @@ from impl.util.util_select_op_base import SplitOutput
 from impl.util.util_select_op_base import get_op_cal_info
 from impl.util.util_select_op_base import gen_param
 from impl.util.util_select_op_base import get_dynamic_param_in_json
+from impl.util.util_common import update_axis_for_other_format
 
 
 # 'pylint: disable = unused-argument
@@ -113,10 +114,32 @@ def op_select_format(input_x, output1, attr1, attr2, kernel_name="square_sum_v1"
     return param_dynamic_in_json
 
 
+def get_new_format_axis(ori_shape, ori_axis, input_format, ori_format):
+    """
+    convert nd_axis to new_format_axis
+    """
+    axis = []
+
+    # when input_format is FRACTAL_Z, ori_axis is [0, 1, 2, 3], so reduce all is applied, axis convert will not be done.
+    if input_format == "FRACTAL_Z":
+        axis = list(ori_axis)
+    else:
+        for i in ori_axis:
+            new_axis = update_axis_for_other_format(ori_shape, i, input_format, ori_format, True)
+            if isinstance(new_axis, int):
+                axis.append(new_axis)
+            else:
+                for j in new_axis:
+                    axis.append(j)
+
+    return axis
+
+
 # 'pylint: disable=locally-disabled,too-many-arguments,unused-argument,invalid-name
 # 'pylint: disable=locally-disabled,redefined-builtin,too-many-locals,unused-variable
 def reduce_sum_d_compute(x, y, axis=None, keepdims=None, kernel_name="reduce_sum_d"):
-    """redusce_sum_d compute
+    """
+    redusce_sum_d compute
 
     Parameters:
     ----------
@@ -166,11 +189,12 @@ def square_compute(input_x, output_y, kernel_name="square"):
         the result of square
     """
     res = tbe.vmul(input_x, input_x)
+
     return res
 
 
 @register_operator_compute("SquareSumV1", op_mode="dynamic", support_fusion=True)
-def square_sum_v1_compute(input_x, output1, attr1, attr2, kernel_name="square_sum_v1"):
+def square_sum_v1_compute(input_x, output1, axis, attr2, kernel_name="square_sum_v1"):
     """
     calculating data
 
@@ -182,28 +206,9 @@ def square_sum_v1_compute(input_x, output1, attr1, attr2, kernel_name="square_su
     -------
     output tensor
     """
-    shape = shape_util.shape_to_list(input_x.shape)
-    axis_d = []
-    x_format = "ND"
-    if input_x.op.attrs:
-        if "format" in input_x.op.attrs:
-            x_format = input_x.op.attrs["format"]
 
-    if not attr1:
-        for i, _ in enumerate(shape):
-            axis_d.append(i)
-    else:
-        axis_d = attr1
-
-    # when the input format is FRACTAL_NZ or FRACTAL_Z, only support reduce all the axis(except axis0)
-    if x_format in ["FRACTAL_NZ", "FRACTAL_Z"]:
-        axis_d = []
-        for i, _ in enumerate(shape):
-            axis_d.append(i)
-        axis_d.remove(0)
     square = square_compute(input_x, {}, kernel_name)
-
-    sum0 = reduce_sum_d_compute(square, {}, axis_d, keepdims=attr2, kernel_name=kernel_name)
+    sum0 = reduce_sum_d_compute(square, {}, axis, keepdims=attr2, kernel_name=kernel_name)
 
     return sum0
 
@@ -225,11 +230,24 @@ def square_sum_v1(input_x, output1, attr1, attr2=True, kernel_name="square_sum_v
     None
     """
     dtype = input_x.get("dtype")
+    shape = input_x.get("shape")
+    ori_shape = input_x.get("ori_shape")
     input_dtype = dtype.lower()
     x_format = input_x.get("format")
+    x_ori_format = input_x.get("ori_format")
 
-    input_axis = {"shape": [len(attr1)], "value": attr1, "rel_pos_to_reduce": "axis"}
+    axis_d = []
+
+    if not attr1:
+        axis_d = list(range(len(shape)))
+    elif x_format in ["FRACTAL_NZ", "FRACTAL_Z"]:
+        axis_d = get_new_format_axis(ori_shape, attr1, x_format, x_ori_format)
+    else:
+        axis_d = attr1
+
+    input_axis = {"shape": [len(axis_d)], "value": axis_d, "rel_pos_to_reduce": "axis"}
     input_x["rel_pos_to_reduce"] = "before"
+
     ins = classify([input_x, input_axis], OpPatternMode.REDUCE,
                    {"keepdims": attr2 is True})
     schedules, tensors = [], []

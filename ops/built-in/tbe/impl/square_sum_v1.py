@@ -15,16 +15,19 @@
 """
 square_sum_v1
 """
+from te import tvm
 import te.lang.cce as tbe
 import te.platform as tbe_platform
 from te.utils import para_check
 from te.utils import shape_util
-from te import tvm
 from impl.util.util_select_op_base import SplitInput
 from impl.util.util_select_op_base import SplitOutput
 from impl.util.util_select_op_base import get_op_cal_info
 from impl.util.util_select_op_base import gen_param
 from impl.util.util_select_op_base import get_dynamic_param_in_json
+from impl.dynamic.square_sum_v1 import get_new_format_axis
+from impl.dynamic.square_sum_v1 import get_op_support_info as dynamic_get_op_support_info
+from impl.dynamic.square_sum_v1 import op_select_format as dynamic_op_select_format
 
 MIN_FP32 = 2**(-126)
 # min float16 value
@@ -39,76 +42,40 @@ def get_op_support_info(input_x, output1, attr1, attr2=True, kernel_name="square
     """
     get_op_support_info
     """
-    shape_x = shape_util.shape_to_list(input_x.get("shape"))
-    axis_d = []
-    for i, _ in enumerate(shape_x):
-        axis_d.append(i)
-    format_x = input_x.get("format").upper()
-    axis_split = [i for i in axis_d if i not in attr1]
-    if format_x == "ND":
-        if attr2:
-            axis_split_matrix = []
-            for i in axis_split:
-                split_0 = [SplitInput([0, [i], [-1], [-1]]), SplitOutput([0, [i]])]
-                axis_split_matrix.append(split_0)
-            axis_reduce_list = None
-        else:
-            axis_split_matrix = None
-            axis_reduce_list = None
-    else:
-        axis_split_matrix = None
-        axis_reduce_list = None
-    op_cal_info_in_json = get_op_cal_info(axis_split_matrix, axis_reduce_list, 0, 0)
-    return op_cal_info_in_json
+
+    return dynamic_get_op_support_info(input_x, output1, attr1, attr2=True, kernel_name="square_sum_v1")
 
 
 def op_select_format(input_x, output1, attr1, attr2, kernel_name="square_sum_v1"):
-    """select format dynamiclly.
-        1. when ori_format is 'HWCN', input_format is 'FRACTAL_Z'
-            for example:
-                ori:
-                    input_x              shape = [5,5,16,16]           format = 'HWCN'
-                    output1              shape = []                    format = 'ND'
-                format transformer:
-                    input_x              shape = [25,1,16,16]          format = 'FRACTAL_Z'
-                    output1              shape = []                    format = 'ND'
-                ---------------------------------------------------------------------------
-                ori:
-                    input_x              shape = [16,16]           format = 'ND'
-                    output1              shape = []                    format = 'ND'
-                format transformer:
-                    input_x              shape = [1,1,16,16]          format = 'FRACTAL_NZ'
-                    output1              shape = []                    format = 'ND'
     """
-    dtype = "float16, float"
-    input_format = "ND, ND"
-    output_format = "ND, ND"
-    ori_shape = input_x.get("ori_shape")
-    ori_format = input_x.get("ori_format")
-    if attr1 is None:
-        attr1 = [i for i in range(len(ori_shape))]
-    if ori_format in ("HWCN",) and len(ori_shape) == 4 and ori_shape[-1] % 16 == 0 and ori_shape[-2] % 16 == 0 and list(
-            attr1) == [0, 1, 2, 3]:
-        dtype = "float16, float, float16, float"
-        input_format = "ND, ND, FRACTAL_Z, FRACTAL_Z"
-        output_format = "ND, ND, ND, ND"
-    if len(ori_shape) >= 2 and ori_shape[-1] % 16 == 0 and ori_shape[-2] % 16 == 0 and \
-       list(attr1) == [i for i in range(len(ori_shape))]:
-        dtype = dtype + ", float16, float"
-        input_format = input_format + ", FRACTAL_NZ, FRACTAL_NZ"
-        output_format = output_format + ", ND, ND"
-    input0 = gen_param(classify="input0", name="input_x", datatype=dtype, format=input_format)
-    output0 = gen_param(classify="output0", name="output1", datatype=dtype, format=output_format)
+    select format dynamically
+    op_select_format support desc:
+    1. input_format always support 'ND'
+    2. when ori_format is 'HWCN', input_format support 'FRACTAL_Z' or 'FRACTAL_NZ' in compile_static process
+        for example:
+            ori:
+                input_x              shape = [5,5,16,16]           format = 'HWCN'
+                output1              shape = []                    format = 'ND'
+            format transformer:
+                input_x              shape = [25,1,16,16]          format = 'FRACTAL_Z'
+                output1              shape = []                    format = 'ND'
+            ---------------------------------------------------------------------------
+            ori:
+                input_x              shape = [16,16]               format = 'ND'
+                output1              shape = []                    format = 'ND'
+            format transformer:
+                input_x              shape = [1,1,16,16]          format = 'FRACTAL_NZ'
+                output1              shape = []                    format = 'ND'
 
-    param_list = [input0, output0]
-    param_dynamic_in_json = get_dynamic_param_in_json(param_list)
-    return param_dynamic_in_json
+    """
+
+    return dynamic_op_select_format(input_x, output1, attr1, attr2, kernel_name="square_sum_v1")
 
 
 # 'pylint: disable=locally-disabled,too-many-arguments,unused-argument,invalid-name
 # 'pylint: disable=locally-disabled,redefined-builtin,too-many-locals,unused-variable
 @tbe_platform.fusion_manager.fusion_manager.register("square_sum_v1")
-def square_sum_v1_compute(input_x, output1, attr1, attr2, kernel_name="square_sum_v1", impl_mode=None):
+def square_sum_v1_compute(input_x, output1, axis, attr2, kernel_name="square_sum_v1", impl_mode=None):
     """
     calculating data
 
@@ -120,14 +87,7 @@ def square_sum_v1_compute(input_x, output1, attr1, attr2, kernel_name="square_su
     -------
     output tensor
     """
-    shape = shape_util.shape_to_list(input_x.shape)
     ori_dtype = input_x.dtype
-    axis_d = []
-    if not attr1:
-        for i, _ in enumerate(shape):
-            axis_d.append(i)
-    else:
-        axis_d = attr1
 
     if impl_mode == "high_precision":
         input_x = tbe.cast_to(input_x, "float32")
@@ -136,10 +96,9 @@ def square_sum_v1_compute(input_x, output1, attr1, attr2, kernel_name="square_su
     if square_res.dtype == "float16" and tbe_platform.api_check_support("te.lang.cce.sum", "float32"):
         square_res = tbe.cast_to(square_res, "float32")
 
-    sum_res = tbe.sum(square_res, axis=axis_d, keepdims=attr2)
+    sum_res = tbe.sum(square_res, axis=axis, keepdims=attr2)
 
     res = tbe.cast_to(sum_res, ori_dtype)
-
 
     return res
 
@@ -160,18 +119,26 @@ def square_sum_v1(input_x, output1, attr1, attr2=True, kernel_name="square_sum_v
     """
     shape = input_x.get("shape")
     dtype = input_x.get("dtype")
-
+    ori_shape = input_x.get("ori_shape")
     x_format = input_x.get("format")
+    x_ori_format = input_x.get("ori_format")
     input_dtype = dtype.lower()
-    # because op_select_format infer out x_format can support NZ, so axis is all.
-    if x_format == "FRACTAL_NZ":
-        attr1 = [i for i in range(len(shape))]
+
+    axis_d = []
+
+    if not attr1:
+        for i, _ in enumerate(shape):
+            axis_d.append(i)
+    elif x_format in ["FRACTAL_NZ", "FRACTAL_Z"]:
+        axis_d = get_new_format_axis(ori_shape, attr1, x_format, x_ori_format)
+    else:
+        axis_d = attr1
 
     para_check.check_shape(shape, param_name="input_x")
 
     data_input = tvm.placeholder(shape, name="data_input", dtype=input_dtype)
 
-    res = square_sum_v1_compute(data_input, output1, attr1, attr2, kernel_name, impl_mode)
+    res = square_sum_v1_compute(data_input, output1, axis_d, attr2, kernel_name, impl_mode)
 
     with tvm.target.cce():
         sch = tbe.auto_schedule(res)
