@@ -2130,7 +2130,10 @@ Status DynamicRNNGradDAlignFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& 
   hidden_size =
       dynamicRNNGradNode->GetOpDesc()->GetInputDesc(RNN_GRAD_NODE_INPUT_INDEX["h"]).GetShape().GetDim(SHAPE_2);
 
-  hasSeqLength = dynamicRNNGradNode->GetOpDesc()->MutableInputDesc("seq_length") != nullptr;
+  if (dynamicRNNGradNode->GetOpDesc()->MutableInputDesc("seq_length") != nullptr &&
+      dynamicRNNGradNode->GetOpDesc()->MutableInputDesc("seq_length")->GetShape().GetDims().size() != 0) {
+    hasSeqLength = true;
+  }
 
   DynamicRNNGradName = dynamicRNNGradNode->GetName();
   if (dynamicRNNGradNode->GetOpDesc()->GetInputDesc(RNN_GRAD_NODE_INPUT_INDEX["init_c"]).GetShape().GetDims().size() ==
