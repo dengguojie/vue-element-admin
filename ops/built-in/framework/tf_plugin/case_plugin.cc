@@ -39,7 +39,14 @@ Status ParseSubgraphPostFnCase(const std::string& subgraph_name, const ge::Graph
 
 REGISTER_CUSTOM_OP("Case")
     .FrameworkType(TENSORFLOW)
-    .OriginOpType({"Case", "StatelessCase"})
+    .OriginOpType({"Case"})
+    .ParseParamsFn(AutoMappingFnCase)
+    .ParseSubgraphPostFn(ParseSubgraphPostFnCase)
+    .ImplyType(ImplyType::GELOCAL);
+
+REGISTER_CUSTOM_OP("StatelessCase")
+    .FrameworkType(TENSORFLOW)
+    .OriginOpType({"StatelessCase"})
     .ParseParamsFn(AutoMappingFnCase)
     .ParseSubgraphPostFn(ParseSubgraphPostFnCase)
     .ImplyType(ImplyType::GELOCAL);

@@ -148,6 +148,15 @@ IMPLEMT_VERIFIER(Case, CaseVerify) {
 }
 VERIFY_FUNC_REG(Case, CaseVerify);
 
+IMPLEMT_INFERFUNC(StatelessCase, StatelessCaseInfer) {
+  return GRAPH_SUCCESS;
+}
+INFER_FUNC_REG(StatelessCase, StatelessCaseInfer);
+IMPLEMT_VERIFIER(StatelessCase, StatelessCaseVerify) {
+  return VerifyInt32Scalar(op, {"branch_index"});
+}
+VERIFY_FUNC_REG(StatelessCase, StatelessCaseVerify);
+
 IMPLEMT_INFERFUNC(_While, _WhileInfer) {
   return WhileInferImpl(op);
 }

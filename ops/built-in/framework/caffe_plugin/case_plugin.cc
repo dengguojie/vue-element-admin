@@ -43,4 +43,11 @@ REGISTER_CUSTOM_OP("Case")
     .ParseParamsFn(AutoMappingFnCase)
     .ParseSubgraphPostFn(ParseSubgraphPostFnCase)
     .ImplyType(ImplyType::GELOCAL);
+
+REGISTER_CUSTOM_OP("StatelessCase")
+    .FrameworkType(CAFFE)
+    .OriginOpType("StatelessCase")
+    .ParseParamsFn(AutoMappingFnCase)
+    .ParseSubgraphPostFn(ParseSubgraphPostFnCase)
+    .ImplyType(ImplyType::GELOCAL);
 }  // namespace domi
