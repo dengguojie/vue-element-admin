@@ -660,6 +660,8 @@ vector_A:
       - ops/built-in/fusion_pass/graph_fusion/ai_core/dynamic_rnn_v2_seqlength_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/dynamic_rnn_v3_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/dynamic_rnn_v3_fusion_pass.h
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/dynamic_augru_seqlength_fusion_pass.cc
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/dynamic_augru_seqlength_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/dynamic_augru_grad_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/dynamic_augru_grad_align_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/dynamic_augru_grad_fusion_pass.h
@@ -3707,8 +3709,6 @@ unkown:
       - ops/built-in/fusion_pass/graph_fusion/ai_core/top_k_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/prod_force_se_a_vector_core_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/dynamic_gru_v2_grad_d_fusion_pass.cc
-      - ops/built-in/fusion_pass/graph_fusion/ai_core/dynamic_augru_seqlength_fusion_pass.h
-      - ops/built-in/fusion_pass/graph_fusion/ai_core/dynamic_augru_seqlength_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/concat_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/mean_grad_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/single_instance_norm_fusion_pass.cc

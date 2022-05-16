@@ -40,7 +40,7 @@ static const char* FUSED_NODE = "DynamicAUGRU";
 static const std::string PATTERN_FUSEDNODE = "DynamicAUGRU";
 static const int SEQ_LEN_INDEX = 6;
 static const int WEIGHT_HIDDEN_INDEX = 2;
-static const int64_t inputShapeDim = 2;
+static const int64_t INPUT_SHAPE_DIM = 2;
 
 vector<FusionPattern*> DynamicAUGRUSeqFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
@@ -71,6 +71,11 @@ Status DynamicAUGRUSeqFusionPass::AddRNNMaskNode(ge::NodePtr fusedNode, ge::Comp
   if (rnnGenMaskExist) {
     ge::GeTensorDesc tensorOutDesc = existRnnNode->GetOpDesc()->GetOutputDesc(0);
     fusedNode->GetOpDesc()->UpdateInputDesc("seq_length", tensorOutDesc);
+
+    // Remove Edge
+    FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::RemoveEdge(fusedNode->GetInDataAnchor(seqLenIndex)->GetPeerOutAnchor(),
+                                                            fusedNode->GetInDataAnchor(seqLenIndex)),
+                      OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove edge between seq_length and gruv2 failed"), return FAILED);
     // Add Edge
     FUSION_PASS_CHECK(
         SUCCESS != ge::GraphUtils::AddEdge(existRnnNode->GetOutDataAnchor(0), fusedNode->GetInDataAnchor(seqLenIndex)),
@@ -181,7 +186,7 @@ Status DynamicAUGRUSeqFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mappi
   bhTensorDesc->SetOriginFormat(ge::FORMAT_ND);
 
   vector<int64_t> tensorXDims = fusedDesc->GetInputDesc(0).GetShape().GetDims();
-  int64_t inputSize = tensorXDims[inputShapeDim];
+  int64_t inputSize = tensorXDims[INPUT_SHAPE_DIM];
   ge::AttrUtils::SetInt(fusedDesc, "input_size", inputSize);
   vector<int64_t> tensorYDims = fusedDesc->GetInputDesc(WEIGHT_HIDDEN_INDEX).GetShape().GetDims();
   int64_t hiddenSize = tensorYDims[0];
