@@ -33,7 +33,7 @@
  */
 #include <stdlib.h>
 #include "attention_score_fusion_pass.h"
-
+#include "common/util/platform_info.h"
 #include "anchor_util.h"
 #include "error_util.h"
 #include "graph/utils/graph_utils.h"
@@ -59,6 +59,7 @@ static const char SOFTMAXV2WITHDROPOUTDOMASKV3D[] = "SoftmaxV2WithDropOutDoMaskV
 static const char CONFUSIONTRANSPOSE[] = "ConfusionTransposeD";
 static const char SOFTMAXV2[] = "SoftmaxV2";
 static const int ALIGN_UNIT = 16;
+static const int ALIGN_UNIT_BASE = 12;
 static const int CONFUSION_DIM_ONE = 12288;
 static const int CONFUSION_DIM_TWO = 768;
 static const int NUM_TWO = 2;
@@ -66,7 +67,7 @@ static const int NUM_THREE = 3;
 static const int NUM_FOUR = 4;
 static const int NUM_FIVE = 5;
 static const int NUM_SIX = 6;
-
+static const std::vector<std::string> SUPPORT_PLATFORM_PATTERN = {"Ascend710"};
 static const char kNameFusionPass[] = "ZAttentionScoreFusionPass";
 }  // namespace
 
@@ -109,9 +110,36 @@ vector<FusionPattern *> ZAttentionScoreFusionPass::DefinePatterns() {
   return patterns;
 }
 
+Status ZAttentionScoreFusionPass::CheckPlatformInfo() {
+  OP_LOGD(kNameFusionPass, "CheckPlatformInfo begin");
+  PlatformInfo platformInfo;
+  OptionalInfo optionalInfo;
+  FUSION_PASS_CHECK(
+      PlatformInfoManager::Instance().GetPlatformInfoWithOutSocVersion(platformInfo, optionalInfo) != fe::SUCCESS,
+      OP_LOGD(kNameFusionPass, "Failed to get platform info"), return NOT_CHANGED);
+
+  std::string socVersion = optionalInfo.soc_version;
+  OP_LOGD(kNameFusionPass, "Get soc version: %s", socVersion.c_str());
+
+  bool isSupport = false;
+  for (string pattern : SUPPORT_PLATFORM_PATTERN) {
+    if (socVersion == pattern || socVersion.find(pattern) != string::npos) {
+      isSupport = true;
+      break;
+    }
+  }
+  FUSION_PASS_CHECK(!isSupport, OP_LOGD(kNameFusionPass, "Only support 710, 910 series platform"),
+                    return NOT_CHANGED);
+
+  OP_LOGD(kNameFusionPass, "CheckPlatformInfo end");
+  return SUCCESS;
+}
+
 Status ZAttentionScoreFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping, vector<ge::NodePtr> &fusion_nodes) {
   OP_LOGI(kNameFusionPass, "Start ZAttentionScoreFusionPass.");
 
+  FUSION_PASS_CHECK(CheckPlatformInfo() != SUCCESS, OP_LOGD(kNameFusionPass, "Failed to check platform info"),
+                    return NOT_CHANGED);
   batch_matmul_node1 = GetNodeFromMapping(PATTERN_BATCHMATMUL, mapping);
   FUSION_PASS_CHECK(batch_matmul_node1 == nullptr,
                     CUBE_CALL_ERR_REPORT(kNameFusionPass, "Get batch_matmul_node1 not success."),
@@ -166,6 +194,19 @@ Status ZAttentionScoreFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mappi
     OP_LOGI(kNameFusionPass, "Not Support traing, graph not change.");
     return NOT_CHANGED;
   }
+
+  std::string temp_out_name = "";
+  std::string quant_name = "Quant";
+  for (auto netout_in_data_anchor : confusion_transpose_node->GetOutDataAnchor(0)->GetPeerInDataAnchors()) {
+    ge::NodePtr temp_out_node = netout_in_data_anchor->GetOwnerNode();
+    temp_out_name = temp_out_node->GetName().c_str();
+    size_t found_quant = temp_out_name.find(quant_name);
+    if (found_quant != std::string::npos) {
+      OP_LOGI(kNameFusionPass, "Graph not support quant.");
+      return NOT_CHANGED;
+    }
+  }
+
   if (traning) {
     for (auto netout_in_data_anchor : softmax_node->GetOutDataAnchor(1)->GetPeerInDataAnchors()) {
       ge::NodePtr temp_batch_node = netout_in_data_anchor->GetOwnerNode();
@@ -189,13 +230,27 @@ Status ZAttentionScoreFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mappi
   int64_t batch_dim1 = softmax_shape_dims[1];
   int64_t batch_dim2 = softmax_shape_dims[NUM_TWO];
   int64_t batch_dim3 = softmax_shape_dims[NUM_THREE];
+
+  int64_t batch_dim3_target = 64;
+  int64_t dim_three = 3;
   bool shape_not_matched = false;
-  if (batch_dim1 != ALIGN_UNIT || batch_dim2 != batch_dim3) {
+  if ((batch_dim1 != ALIGN_UNIT && batch_dim1 != ALIGN_UNIT_BASE) || batch_dim2 != batch_dim3 ||
+      batch_matmul_node1_dims[dim_three] != batch_dim3_target) {
     shape_not_matched = true;
   }
+  int64_t seq_value_factor = 32;
+  int64_t max_seq_value = 512;
+  int64_t mini_batch_value = 8;
   auto softmax_format = softmax_node->GetOpDesc()->GetInputDesc(0).GetFormat();
+  if ((dim_size == NUM_FOUR) && (batch_dim2 % seq_value_factor != 0)) {
+    shape_not_matched = true;
+  }
+  OP_LOGD(kNameFusionPass, "The seq_value is %d.", batch_dim2);
   if (dim_size == NUM_FOUR) {
-    if (batch_dim0 * batch_dim2 != CONFUSION_DIM_ONE) {
+    if (traning && batch_dim0 * batch_dim2 != CONFUSION_DIM_ONE) {
+      shape_not_matched = true;
+    }
+    if (((batch_dim0 * batch_dim1)% mini_batch_value != 0) || (batch_dim2 > max_seq_value)) {
       shape_not_matched = true;
     }
   } else if (dim_size == NUM_SIX && softmax_format == ge::FORMAT_FRACTAL_NZ) {

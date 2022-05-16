@@ -27,6 +27,7 @@ class ZAttentionScoreFusionPass : public PatternFusionBasePass {
 protected:
   vector<FusionPattern *> DefinePatterns() override;
   Status Fusion(ge::ComputeGraph &graph, Mapping &mapping, vector<ge::NodePtr> &fusion_nodes) override;
+  Status CheckPlatformInfo();
 
 private:
   ge::NodePtr batch_matmul_node1 = nullptr;

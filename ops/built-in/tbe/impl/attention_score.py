@@ -225,8 +225,8 @@ class MatMulSoftmax:
                 self.tik_instance.tensor_mov(ub_mask16, tensor_c_l0c,
                                              'm', 1, single_m_size * single_n_size,
                                              cc_to_ub_dst_stride, cc_to_ub_src_stride)
-                outer_blk = (block_idx * self.batch_outer_num + cur_b_idx) // 16
-                inner_blk = (block_idx * self.batch_outer_num + cur_b_idx) % 16
+                outer_blk = (block_idx * self.batch_outer_num + cur_b_idx) // self.x1_shape[1]
+                inner_blk = (block_idx * self.batch_outer_num + cur_b_idx) % self.x1_shape[1]
                 single_data_size = single_m_size * self.block_num
                 repeat_times = single_n_size
                 output_dst_stride = (self.x1_shape[0] * self.second_m_dim - single_m_size) * self.block_num
@@ -287,8 +287,8 @@ class MatMulSoftmax:
                 self.tik_instance.tensor_mov(tensor_c_ub2, tensor_c_l0c_ub,
                                              'm', 1, single_m_size * single_n_size,
                                              cc_to_ub_dst_stride, cc_to_ub_src_stride)
-                outer_blk = (block_idx * self.batch_outer_num + cur_b_idx) // 16
-                inner_blk = (block_idx * self.batch_outer_num + cur_b_idx) % 16
+                outer_blk = (block_idx * self.batch_outer_num + cur_b_idx) // self.x1_shape[1]
+                inner_blk = (block_idx * self.batch_outer_num + cur_b_idx) % self.x1_shape[1]
                 single_data_size = single_m_size * self.block_num
                 repeat_times = single_n_size
                 output_dst_stride = (self.x1_shape[0] * self.second_m_dim - single_m_size) * self.block_num
@@ -346,7 +346,7 @@ class MatMulSoftmax:
                                                 sid=0, nburst=tensor_a_repeat_times, burst=tesnor_a_data_size,
                                                 src_stride=tensor_a_src_stride, dst_stride=tensor_a_dst_stride)
 
-                first_mov = (block_idx * self.batch_outer_num + cur_b_idx) // 16
+                first_mov = (block_idx * self.batch_outer_num + cur_b_idx) // self.x1_shape[1]
                 ele_move_offset = first_mov * self.first_m_dim * self.first_n_dim * self.block_num * self.block_num + \
                                   cur_om_idx * om_size * self.block_num * self.block_num + \
                                   cur_m_idx * cur_m_size * self.block_num * self.block_num + \
@@ -396,7 +396,7 @@ class MatMulSoftmax:
                     self.tik_instance.vmuls(self.repeat_once_size, tensor_c_ub[255 * self.repeat_once_size],
                                             tensor_c_ub[255 * self.repeat_once_size],
                                             mul_value,
-                                            ele_compute_repeat_times,
+                                            tail,
                                             self.block_stride, self.block_stride,
                                             self.repeat_stride, self.repeat_stride)
 
@@ -410,7 +410,7 @@ class MatMulSoftmax:
                     self.tik_instance.vadd(self.repeat_once_size, tensor_c_ub[255 * self.repeat_once_size],
                                            tensor_c_ub[255 * self.repeat_once_size],
                                            elewise_data_ub2[255 * self.repeat_once_size],
-                                           ele_compute_repeat_times,
+                                           tail,
                                            self.block_stride, self.block_stride, self.block_stride,
                                            self.repeat_stride, self.repeat_stride, self.repeat_stride)
                 self.softmax_compute(tensor_c_ub, single_m_size, single_n_size)
@@ -655,15 +655,17 @@ class MatMulSoftmax:
 
     def tiling_batch_m_axis(self, batch, m_size):
         batch_range_value = self.x1_shape[0] * self.x1_shape[1] // self.cur_op_core_num
-        if m_size % 8 == 0:
+        if m_size >= 32:
             outer_m_range_value = 2
             inner_m_range_value = self.x1_shape[3] // 4
-        elif m_size % 4 == 0:
-            outer_m_range_value = 1
-            inner_m_range_value = self.x1_shape[3] // 2
         else:
             outer_m_range_value = 1
-            inner_m_range_value = self.x1_shape[3]
+            if m_size > 16:
+                inner_m_range_value = self.x1_shape[3] // 2
+            elif m_size == 16:
+                inner_m_range_value = 4
+            else:
+                inner_m_range_value = 2
 
         return batch_range_value, outer_m_range_value, inner_m_range_value
 
@@ -816,7 +818,7 @@ class MatMulSoftmax:
                                             first_bmm_tensor_c_l0c_db,
                                             first_bmm_tensor_c_ub_db, mul_value, elewise_add_data_ub_db]
             first_bmm_compute_idx = [block_idx, cur_b_idx, cur_om_idx, 2 * inner_m_idx + 1]
-            self.mat_mul_compute(first_bmm_compute_buffers, first_bmm_compute_idx, first_bmm_compute_each_layer_size)
+            self.mat_mul_compute(first_bmm_compute_db_buffers, first_bmm_compute_idx, first_bmm_compute_each_layer_size)
 
     def second_bmm_compute_for_outer_m_once(self, preload_buffers, range_idxs, outer_m_range_once_m_size,
                                             inner_m_range_value):
@@ -983,17 +985,19 @@ class MatMulSoftmax:
         mul_value.set_as(mul_x_ub[0])
         with self.tik_instance.for_range(0, batch_range_value) as cur_b_idx:
             first_bmm_tensor_b = self.first_bmm_move_tensor_b_from_gm_to_l1(block_idx, batch_range_value, cur_b_idx)
-            second_bmm_tensor_b = self.second_bmm_move_tensor_b_from_gm_to_l1(block_idx, cur_b_idx)
-
+            first_bmm_tensor_c = self.apply_buffer_for_tensor_c_l1(outer_m_range_value)
+            first_bmm_tensor_b_l0b = self.apply_buffer_for_tensor_b_l0_and_move_data_in(first_bmm_tensor_b)
             with self.tik_instance.for_range(0, outer_m_range_value) as cur_om_idx:
-                first_bmm_tensor_c = self.apply_buffer_for_tensor_c_l1(outer_m_range_value)
-                first_bmm_tensor_b_l0b = self.apply_buffer_for_tensor_b_l0_and_move_data_in(first_bmm_tensor_b)
                 first_preload_buffers = [first_bmm_tensor_b, first_bmm_tensor_c, first_bmm_tensor_b_l0b]
                 range_idxs = [block_idx, cur_b_idx, cur_om_idx]
                 self.first_bmm_compute_for_outer_m_once(first_preload_buffers, range_idxs,
                                                         outer_m_range_once_m_size, inner_m_range_value, mul_value)
+
+            second_bmm_tensor_b = self.second_bmm_move_tensor_b_from_gm_to_l1(block_idx, cur_b_idx)
+            with self.tik_instance.for_range(0, outer_m_range_value) as cur_om_idx:
                 second_bmm_tensor_b_l0b = first_bmm_tensor_b_l0b
                 second_bmm_tensor_c = first_bmm_tensor_c
+                range_idxs = [block_idx, cur_b_idx, cur_om_idx]
                 second_bmm_preload_buffers = [second_bmm_tensor_b, second_bmm_tensor_b_l0b, second_bmm_tensor_c]
                 self.second_bmm_compute_for_outer_m_once(second_bmm_preload_buffers, range_idxs,
                                                          outer_m_range_once_m_size, inner_m_range_value)
