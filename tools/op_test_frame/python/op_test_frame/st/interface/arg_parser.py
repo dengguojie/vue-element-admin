@@ -201,8 +201,8 @@ class MsopstArgParser:
         run_parser.add_argument(
             '-err_report', "--error_report", dest="error_report",
             default="false", choices=['false', 'true'],
-            help="For failed test cases, save the data results whose expected data "
-                 "is inconsistent with the actual data to a .csv file. The valid value is 'true'.",
+            help="<Optional> Generate error reports (.csv) for failed ST cases. "
+                 "This option is available when the script for expected result verification is specified.",
             required=False)
 
     def _mi_parser(self, mi_parser):
@@ -292,8 +292,8 @@ class MsopstArgParser:
         compare_parser.add_argument(
             '-err_report', "--error_report", dest="error_report",
             default="false", choices=['false', 'true'],
-            help="For failed test cases, save the data results whose expected data "
-                 "is inconsistent with the actual data to a .csv file. The valid value is 'true'.",
+            help="<Optional> Generate error reports (.csv) for failed ST cases. "
+                 "This option is available when the script for expected result verification is specified.",
             required=False)
 
         # compare_by_path parse
@@ -307,8 +307,8 @@ class MsopstArgParser:
         compare_by_path_parser.add_argument(
             '-err_report', "--error_report", dest="error_report",
             default="false", choices=['false', 'true'],
-            help="For failed test cases, save the data results whose expected data "
-                 "is inconsistent with the actual data to a .csv file. The valid value is 'true'.",
+            help="<Optional> Generate error reports (.csv) for failed ST cases. "
+                 "This option is available when the script for expected result verification is specified.",
             required=False)
 
     def get_input_file(self):

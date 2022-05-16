@@ -68,7 +68,7 @@ class CompareData:
                 writer = csv.writer(file_object)
                 writer.writerow(csv_data)
         except IOError as io_error:
-            utils.print_warn_log("Failed to save the error report data, the reason is %s" % io_error)
+            utils.print_error_log("Failed to save the error report, the reason is %s." % io_error)
         finally:
             pass
 
@@ -190,8 +190,7 @@ class CompareData:
         csv_path = self._get_err_report_path()
         # If error_report is true, write header to .csv
         if self.error_report == 'true':
-            utils.print_warn_log("For failed test cases, it may take a long time to save the data "
-                                 "results whose expected data is inconsistent with the actual data.")
+            utils.print_warn_log("It may take some time to save the error reports. Please wait…")
             self._write_err_report(csv_path, ConstManager.ERR_REPORT_HEADER)
         # Print inconsistent data for the first 10 and the last 10.
         utils.print_info_log('Error Line-----------------------------------------------------------------------------')
@@ -201,9 +200,8 @@ class CompareData:
         # Show Error line and if error_report is true, write error line to .csv
         self._show_and_write_err_report(err_idx, relative_diff, csv_path)
         if self.error_report == 'true':
-            utils.print_warn_log(
-                "For failed test case of %s, the data results whose expected data is inconsistent with "
-                "the actual data saved in: %s" % (self.op_params.get(ConstManager.CASE_NAME), csv_path))
+            utils.print_info_log("Finished. The error report (.csv) for %s is saved in: %s."
+                                 % (self.op_params.get(ConstManager.CASE_NAME), csv_path))
         utils.print_info_log('---------------------------------------------------------------------------------------')
 
     def _show_and_write_err_report(self, err_idx, relative_diff, csv_path):
