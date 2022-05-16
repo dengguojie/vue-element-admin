@@ -1382,51 +1382,6 @@ def depthwise_conv2d_backprop_input(input_shape,
         input_shape, weight, dout, weight_sizes, strides, pads, kernel_name)
 
 
-def depthwise_conv2d(fmap,
-                     weight,
-                     depthwise_res_dtype,
-                     stride,
-                     pad,
-                     dilation,
-                     para_dict,
-                     l1_fusion_para,
-                     kernel_name="depthwise_conv2d_compute"):
-    """
-    algorithm: depthwise_conv2d_compute
-
-    calculating  depthwise convolution compute
-
-    the interface will be eliminated soon!
-
-    Parameters
-    ----------
-    fmap : feature map placehold
-    5-D shape of input tensor [N, C1, H, W, C0]
-
-    weight : filter placehold
-    5-D shape of filter tensor [C1, H, W, Co, C0]
-
-    depthwise_res_dtype : dtype of depthwise UB result
-
-    stride : int or a list/tuple of two ints
-    stride size, or [stride_height, stride_width]
-
-    pad : padding added to each dimension of the input
-
-    dilation : the dilation factor for each dimension of input
-
-    para_dict : bias tensor dict
-
-    Returns
-    -------
-    depthwise_res : result tensor
-    forward depthwise result of out
-    """
-    return depthwise_conv2d_compute.depthwise_conv2d_compute(fmap, weight, depthwise_res_dtype, stride, pad,
-                                                             dilation, para_dict, l1_fusion_para,
-                                                             kernel_name)
-
-
 def dilation(tensor_x, dilations, pads=None, padding_value=0.0):
     """
     dilation_compute
@@ -1602,28 +1557,65 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
 
     para_dict: dict of params
 
+    optim_dict: optim flag
+
     dsl_flag: true if not from topi
 
     Returns
     -------
     tensor: res
     """
+    def cal_weight_ori_shape(weight_frac_z):
+        """
+        cal nchw weight shape
+        """
+        cikhkw, co1, co0, ci0 = weight_frac_z
+        filter_h, filter_w = para_dict["filter_h"], para_dict["filter_w"]
+        cout, cin, kernel_h, kernel_w = co1*co0, (ci0*cikhkw)//(filter_h*filter_w), filter_h, filter_w
+        weight_nchw = (cout, cin, kernel_h, kernel_w)
+        return weight_nchw
+
+    # get shape info from tensor
+    fmap_5hd = list(i.value for i in data.shape)
     weight_frac_z = list(i.value for i in weight.shape)
-    cikhkw, co1, co0, ci0 = weight_frac_z
-    filter_h, filter_w = para_dict["filter_h"], para_dict["filter_w"]
-    cout, cin, kernel_h, kernel_w = co1*co0, (ci0*cikhkw)//(filter_h*filter_w), filter_h, filter_w
-    para_dict["weight_ori_shape_nchw"] = (cout, cin, kernel_h, kernel_w)
-    para_dict["group_opt"] = 1
-    para_dict["dilate_h"] = 1
-    para_dict["dilate_w"] = 1
-    para_dict["c1_opt"] = 1
-    para_dict["a_shape"] = list(i.value for i in data.shape)
-    para_dict["group"] = 1
-    para_dict["cout1_opt"] = list(i.value for i in data.shape)[2]
+
+    # set para_dict for dsl api
+    para_dict["a_shape"] = fmap_5hd
+    para_dict["weight_ori_shape_nchw"] = cal_weight_ori_shape(weight_frac_z)
+    para_dict["group"] = para_dict.get("group", 1)
+    para_dict["group_opt"] = para_dict.get("group_opt", 1)
+    para_dict["c1_opt"] = para_dict.get("c1_opt", 1)
+    para_dict["cout1_opt"] = para_dict.get("cout1_opt", 1)
+    para_dict["dilate_h"] = para_dict.get("dilate_h", 1)
+    para_dict["dilate_w"] = para_dict.get("dilate_w", 1)
+
     para_dict["fusion_para"] = {
-            "fmap_l1_addr_flag": "nothing",
-            "fmap_l1_valid_size": -1,
-            "slice_offset": (0, 0, 0, 0, 0),
-            }
-    
+        "fmap_l1_addr_flag": "nothing",
+        "fmap_l1_valid_size": -1,
+        "slice_offset": (0, 0, 0, 0, 0),
+    }
+
     return conv_compute.conv(data, weight, para_dict, optim_dict, dsl_flag)
+
+
+def depthwise_conv2d(data, weight, para_dict, optim_dict=None, dsl_flag=True):
+    """
+    depthwise conv2d
+
+    Parameters
+    ----------
+    data: feature map
+
+    weight: filter
+
+    para_dict: dict of params
+
+    optim_dict: optim flag
+
+    dsl_flag: true if not from topi
+
+    Returns
+    -------
+    tensor: res
+    """
+    return conv(data, weight, para_dict, optim_dict, dsl_flag)

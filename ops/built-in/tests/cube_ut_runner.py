@@ -46,7 +46,7 @@ class Constant:
     """
     DATA_DIR_MODES = stat.S_IWUSR | stat.S_IRUSR | stat.S_IXUSR | stat.S_IRGRP | stat.S_IXGRP
     cube_source_dirs = [
-        "impl", "tbe.dsl.compute", "tbe.dsl.static_schedule", "tbe.dsl.unify_schedule", "tbe.common.utils"
+        "impl", "tbe.dsl.compute", "tbe.dsl.static_schedule", "tbe.dsl.unify_schedule", "tbe.common.utils", "tbe.dsl"
     ]
 
 

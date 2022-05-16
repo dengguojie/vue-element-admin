@@ -102,6 +102,7 @@ from .api import conv3d
 from .api import depthwise_conv2d_backprop_filter
 from .api import depthwise_conv2d_backprop_input
 from .api import depthwise_conv2d
+from .api import conv
 from .api import dilation
 from .api import gemm
 from .api import matmul
@@ -113,5 +114,3 @@ from .api import gather_nd
 from .api import slice
 
 from .api import transdata
-
-from .api import conv

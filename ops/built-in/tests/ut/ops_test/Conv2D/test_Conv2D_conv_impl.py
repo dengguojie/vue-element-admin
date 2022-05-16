@@ -19,16 +19,13 @@ def test_conv2d_conv(test_arg):
     filter_w = 1
     Data = tvm.placeholder(shape_in, name="FmapW", dtype="float16")
     Weight = tvm.placeholder(shape_w, name="FilterW", dtype="float16")
-    bias_tensor = tvm.placeholder(
-            (shape_w[1] * shape_w[2], ), name="Bias", dtype="float16")
+    bias_tensor = tvm.placeholder((shape_w[1] * shape_w[2], ), name="Bias", dtype="float16")
     res_tensor = dsl.conv(
-            Data, Weight, {"bias_tensor": bias_tensor,
-                           "pad_h": pad_h, "pad_w": pad_w,
-                           "stride_h": stride_h, "stride_w": stride_w,
-                           "filter_h": filter_h, "filter_w": filter_w,
-                           "offset_a": 0})
-
-
+        Data, Weight, {"bias_tensor": bias_tensor,
+                       "pad_h": pad_h, "pad_w": pad_w,
+                       "stride_h": stride_h, "stride_w": stride_w,
+                       "filter_h": filter_h, "filter_w": filter_w,
+                       "offset_a": 0})
 
 
 print("adding Conv2D tbe/dsl/conv ut testcases")
