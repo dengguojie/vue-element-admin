@@ -471,5 +471,56 @@
       }
     ],
     "case_name": "test_SigmoidCrossEntropyWithLogitsV2_004"
+  },
+  {
+    "op": "SigmoidCrossEntropyWithLogitsV2",
+    "calc_expect_func_file" : "test_SigmoidCrossEntropyWithLogitsV2_golden.py:calc_expect_func",
+    "input_desc": [
+      {
+        "shape": [-2],
+        "format": "ND",
+        "typical_shape": [2, 4, 4, 4],
+        "value_range": [[0, 1]],
+        "name": "predict",
+        "type": "float32"
+      },
+      {
+        "shape": [-2],
+        "format": "ND",
+        "typical_shape": [2, 4, 4, 4],
+        "name": "target",
+        "type": "float32"
+      },
+      {
+        "shape": [-2],
+        "format": "ND",
+        "typical_shape": [2, 4, 4, 4],
+        "name": "weight",
+        "type": "float32"
+      },
+      {
+        "shape": [-2],
+        "format": "ND",
+        "typical_shape": [2, 4, 4, 4],
+        "name": "pos_weight",
+        "type": "float32"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "ND",
+        "shape": [2, 4, 4, 4],
+        "name": "loss",
+        "type": "float32"
+      }
+    ],
+    "attr": [
+      {
+        "name": "reduction",
+        "type": "string",
+        "value": "none"
+      }
+    ],
+    "case_name": "test_SigmoidCrossEntropyWithLogitsV2__unkonwshape_000"
   }
 ]

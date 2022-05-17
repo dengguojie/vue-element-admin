@@ -1336,5 +1336,67 @@
 				"type":"string"
 			}
 		]
+	},
+	{
+		"case_name":"Test_SigmoidCrossEntropyWithLogitsGradV2_unkonwshape_000",
+		"calc_expect_func_file" : "test_SigmoidCrossEntropyWithLogitsGradV2_golden.py:calc_expect_func",
+		"op":"SigmoidCrossEntropyWithLogitsGradV2",
+		"input_desc":[
+			{
+				"format": "ND",
+				"type": "float32",
+				"shape": [-2],
+				"typical_shape":[2, 4, 6, 8],
+				"value_range":[[-1, 1]],
+				"name": "predict"
+			},
+			{
+				"format": "ND",
+				"type": "float32",
+				"shape": [-2],
+				"typical_shape":[2, 4, 6, 8],
+				"value_range":[[-1, 1]],
+				"name": "target"
+			},
+			{
+				"format": "ND",
+				"type": "float32",
+				"shape": [-2],
+				"typical_shape":[2, 4, 6, 8],
+				"value_range":[[-1, 1]],
+				"name": "dout"
+			},
+			{
+				"format": "ND",
+				"type": "float32",
+				"shape": [-2],
+				"typical_shape":[2, 4, 6, 8],
+				"value_range":[[-1, 1]],
+				"name": "weight"
+			},
+			{
+				"format": "ND",
+				"type": "float32",
+				"shape": [-2],
+				"typical_shape":[2, 4, 6, 8],
+				"value_range":[[-1, 1]],
+				"name": "pos_weight"
+			}
+		],
+		"output_desc":[
+			{
+				"format": "ND",
+				"type": "float32",
+				"shape":[2, 4, 6, 8],
+				"name": "gradient"
+			}
+		],
+		"attr":[
+			{
+				"name":"reduction",
+				"value":"none",
+				"type":"string"
+			}
+		]
 	}
 ]

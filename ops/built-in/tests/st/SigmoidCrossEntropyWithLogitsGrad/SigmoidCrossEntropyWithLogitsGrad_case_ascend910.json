@@ -363,5 +363,41 @@
     ],
     "attr": [],
     "case_name": "test_SigmoidCrossEntropyWithLogitsGrad_004"
+  },
+  {
+    "op": "SigmoidCrossEntropyWithLogitsGrad",
+    "calc_expect_func_file" : "test_SigmoidCrossEntropyWithLogitsGrad_golden.py:calc_expect_func",
+    "input_desc": [
+      {
+        "shape": [-2],
+        "typical_shape": [32, 2, 4, 16],
+        "format": "ND",
+        "name": "predict",
+        "type": "float32"
+      },
+      {
+        "shape": [-2],
+        "typical_shape": [32, 2, 4, 16],
+        "format": "ND",
+        "name": "target",
+        "type": "float32"
+      },
+      {
+        "shape": [-2],
+        "typical_shape": [32, 2, 4, 16],
+        "format": "ND",
+        "name": "dout",
+        "type": "float32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [32, 2, 4, 16],
+        "format": "ND",
+        "name": "gradient",
+        "type": "float32"
+      }
+    ],
+    "case_name": "test_SigmoidCrossEntropyWithLogitsGrad_unkonwshape_000"
   }
 ]
