@@ -344,9 +344,6 @@ void Broadcast::MulTrySwitchToPerfPattern() {
 }
 
 void Broadcast::MulTrySwitchToPerfPatternMilan() {
-  if (original_dim_len == fusion_shapes[0].size()) {
-    return ;
-  }
   int64_t pattern_key = 0;
   int64_t base = 100;
   for (size_t i = 0; i < fusion_shapes[0].size(); i++) {
@@ -368,11 +365,17 @@ void Broadcast::MulTrySwitchToPerfPatternMilan() {
   }
   if (SPECIAL_PATTERN.find(pattern_key) != SPECIAL_PATTERN.end()) {
     s_pattern = SPECIAL_PATTERN.at(pattern_key);
-  } else {
+  } else if (original_dim_len > fusion_shapes[0].size()) {
     s_pattern = Pattern::UNKNWON_UNKNOWN;
+  } else {
+    return;
   }
   dim_len = fusion_shapes[0].size();
   size_t start = original_dim_len - dim_len - 1;
+  // special_pattern don't need add 1, start must be 0, avoid array index -1
+  if (s_pattern != Pattern::UNKNWON_UNKNOWN) {
+    start = 0;
+  }
   for (size_t i = 0; i < start; i++) {
     for (size_t j = 0; j < input_num; j++) {
       input_shapes[j][i] = 1;

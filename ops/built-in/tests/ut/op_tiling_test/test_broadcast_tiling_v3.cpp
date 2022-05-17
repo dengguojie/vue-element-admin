@@ -902,5 +902,53 @@ TEST_F(BroadcastTilingV3, TilingTest23) {
 
   v3::Broadcast broadcast("autotiling", op_paras, actual_ptr, runInfo);
   ASSERT_TRUE(broadcast.BroadcastTiling());
-}
+  }
+
+  TEST_F(BroadcastTilingV3, TilingTest24) {
+    std::vector<std::vector<int64_t>> inputs {{8, 7, 7, 6}};
+    std::vector<std::vector<int64_t>> outputs {{8, 7, 7, 6}};
+    ge::DataType dtype = ge::DT_FLOAT16;
+    ge::OpDescPtr op_desc = std::make_shared<ge::OpDesc>();
+    for (std::size_t i = 0; i < inputs.size(); i++) {
+      contruct_tensor(op_desc, inputs[i], dtype);
+    }
+    for (std::size_t i = 0; i < outputs.size(); i++) {
+      contruct_tensor(op_desc, outputs[i], dtype, false);
+    }
+    ge::Operator op_paras = ge::OpDescUtils::CreateOperatorFromOpDesc(op_desc);
+    optiling::utils::OpRunInfo runInfo;
+
+
+  std::string compileInfo = R"({"_ub_factor_align": 128,  "_pattern": "Broadcast", "_fusion_index": [[0,1,2,3]],"_soc_version": "Ascend920", "push_status": 0, "_flag_info": [false, false, true, true, false, false, false], "_base_info": {"100": [48, 4, 16384, 8192]}, "_elewise_vars": { "210000000": [10000, 20000, 30000],"210010000": [10000, 20000, 30000]} })";
+  std::shared_ptr<AutoTilingHandler> outer_compile_info = \
+    CreateBroadcastTilingHandler(this->test_info_->name(),
+                              "autotiling",
+                              nlohmann::json::parse(compileInfo));
+  ASSERT_TRUE(outer_compile_info->DoTiling(op_paras, runInfo));
+  }
+
+  TEST_F(BroadcastTilingV3, TilingTest25) {
+    std::vector<std::vector<int64_t>> inputs {{8, 7, 7, 6},{1,7,1,6},{8,1,7,1}};
+    std::vector<std::vector<int64_t>> outputs {{8, 7, 7, 6}};
+    ge::DataType dtype = ge::DT_FLOAT16;
+    ge::OpDescPtr op_desc = std::make_shared<ge::OpDesc>();
+    for (std::size_t i = 0; i < inputs.size(); i++) {
+      contruct_tensor(op_desc, inputs[i], dtype);
+    }
+    for (std::size_t i = 0; i < outputs.size(); i++) {
+      contruct_tensor(op_desc, outputs[i], dtype, false);
+    }
+    ge::Operator op_paras = ge::OpDescUtils::CreateOperatorFromOpDesc(op_desc);
+    optiling::utils::OpRunInfo runInfo;
+
+
+  std::string compileInfo = R"({"_ub_factor_align": 128,  "_pattern": "Broadcast", "_fusion_index": [[0],[1],[2],[3]],"_soc_version": "Ascend920", "push_status": 0, "_flag_info": [false, false, true, true, false, false, false], "_base_info": {"0": [48, 4, 16384, 8192]}, "_elewise_vars": { "210000000": [10000, 20000, 30000],"210010000": [10000, 20000, 30000]} })";
+  std::shared_ptr<AutoTilingHandler> outer_compile_info = \
+    CreateBroadcastTilingHandler(this->test_info_->name(),
+                              "autotiling",
+                              nlohmann::json::parse(compileInfo));
+  ASSERT_TRUE(!outer_compile_info->DoTiling(op_paras, runInfo));
+  }
+
+
 
