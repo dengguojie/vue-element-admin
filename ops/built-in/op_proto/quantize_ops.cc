@@ -1,5 +1,5 @@
 /**
- * Copyright 2019 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2019-2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -76,9 +76,9 @@ IMPLEMT_COMMON_INFERFUNC(QuantizeInferShape) {
   op.GetAttr("dtype", dtype);
   if (dtype == "torch.qint8") {
       predict_dtype = DT_INT8;
-  } else if(dtype == "torch.quint8") {
+  } else if (dtype == "torch.quint8") {
       predict_dtype = DT_UINT8;
-  } else if(dtype == "torch.qint32") {
+  } else if (dtype == "torch.qint32") {
       predict_dtype = DT_INT32;
   } else {
       OP_LOGI(TbeGetName(op).c_str(), "The dtype is not supported.");
