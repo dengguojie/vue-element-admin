@@ -624,7 +624,7 @@ class MaxPoolWithargmax():
 
     # 'pylint: disable=too-many-locals,too-many-statements
     def _calc_only_cut_h(self, cut_h_index, cut_h_size, cut_stride, cut_h_num,
-                         input_fmap_l1, fmap_img2col_ub, fmap_img2col_cut_h,
+                         fmap_img2col_ub, fmap_img2col_cut_h,
                          mask_shape_ub, nc1_num):
         """
         calc only cut H
@@ -635,7 +635,6 @@ class MaxPoolWithargmax():
         cut_h_size: size of cuth
         cut_stride: stride of cuth
         cut_h_num: number of cuth
-        input_fmap_l1: fmag in l1
         fmap_img2col_ub: fmag in ub
         fmap_img2col_cut_h: fmag cutH
         mask_shape_ub: shape of mask
@@ -645,6 +644,12 @@ class MaxPoolWithargmax():
         -------
         none
         """
+        if self.is_support_load3d:
+            fmap_l1_shape = (cut_h_size, self.in_size_w, self.c_block_size)
+            # fmag in l1
+            input_fmap_l1 = self.tik_instance.Tensor(self.input_dtype, fmap_l1_shape, name="input_fmap_l1",
+                                                     scope=tik.scope_cbuf)
+
         fmap_img2col_cut_h_num = _ceil_div(fmap_img2col_cut_h, SCALAR_C0)
         mask_ub = self.tik_instance.Tensor("uint16", mask_shape_ub, name="mask_ub", scope=tik.scope_ubuf)
         data_x_max = self.tik_instance.Tensor("float16", (
@@ -970,9 +975,6 @@ class MaxPoolWithargmax():
         -------
         none
         """
-        fmap_l1_shape = (cut_h_size, self.in_size_w, self.c_block_size)
-        input_fmap_l1 = self.tik_instance.Tensor(self.input_dtype, fmap_l1_shape, name="input_fmap_l1",
-                                                 scope=tik.scope_cbuf)
         out_size_cut_h = (cut_h_size - self.window_h + self.stride_h) // self.stride_h
         fmap_img2col_cut_h = self.out_size_w * out_size_cut_h
         fmap_img2col_cut_h_num = _ceil_div(fmap_img2col_cut_h, SCALAR_C0)
@@ -983,12 +985,12 @@ class MaxPoolWithargmax():
         if flag_cut_h:
             cut_h_index = (block_index * nc1_cuth_size + nc1_cuth_index) % cut_h_num
             nc1_num = (block_index * nc1_cuth_size + nc1_cuth_index) // cut_h_num
-            self._calc_only_cut_h(cut_h_index, cut_h_size, cut_stride, cut_h_num, input_fmap_l1,
+            self._calc_only_cut_h(cut_h_index, cut_h_size, cut_stride, cut_h_num,
                                   fmap_img2col_ub, fmap_img2col_cut_h, mask_shape_ub, nc1_num)
         else:
             nc1_num = block_index * nc1_cuth_size + nc1_cuth_index
             with self.tik_instance.for_range(0, cut_h_num) as cut_h_index:
-                self._calc_only_cut_h(cut_h_index, cut_h_size, cut_stride, cut_h_num, input_fmap_l1,
+                self._calc_only_cut_h(cut_h_index, cut_h_size, cut_stride, cut_h_num,
                                       fmap_img2col_ub, fmap_img2col_cut_h, mask_shape_ub, nc1_num)
 
     # 'pylint: disable=too-many-statements,too-many-branches
@@ -1009,9 +1011,11 @@ class MaxPoolWithargmax():
         none
         """
         cut_w_size, cut_w_stride, cut_w_num = self._calc_cut_w_size_fun()
-        fmap_l1_shape = (cut_h_size, self.in_size_w, self.c_block_size)
-        input_fmap_l1 = self.tik_instance.Tensor(self.input_dtype, fmap_l1_shape, name="input_fmap_l1",
-                                                 scope=tik.scope_cbuf)
+        if self.is_support_load3d:
+            fmap_l1_shape = (cut_h_size, self.in_size_w, self.c_block_size)
+            input_fmap_l1 = self.tik_instance.Tensor(self.input_dtype, fmap_l1_shape, name="input_fmap_l1",
+                                                     scope=tik.scope_cbuf)
+
         with self.tik_instance.for_range(0, cut_w_num) as cut_w_index:
             out_size_cut_h = (cut_h_size - self.window_h + self.stride_h) // self.stride_h
             fmap_img2col_cut_h = self.out_size_w * out_size_cut_h
