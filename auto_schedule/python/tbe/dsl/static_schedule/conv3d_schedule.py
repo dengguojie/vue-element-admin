@@ -1954,7 +1954,8 @@ class AutoScheduleOp:
                 for i in tmp_op["src_buffer"]:
                     i.next = operation
                     operation.prev = i
-                    tmp_operation_list.append(i)
+                    if i not in tmp_operation_list:
+                        tmp_operation_list.append(i)
                     if tmp_op["op"] == "conv3d_c_col":
                         i.tag = "conv3d_Input"
                     if tmp_op["op"] == "conv3d_fuse_fmap_tensor":
@@ -1963,7 +1964,7 @@ class AutoScheduleOp:
                         i.tag = "conv3d_A"
                     if tmp_op["op"] == "conv3d_bias_l0c":
                         i.tag = "conv3d_bias_tensor"
-            operation_list = list(set(tmp_operation_list))
+            operation_list = tmp_operation_list
 
     def __connect_op(self):
         for lop in self._op:

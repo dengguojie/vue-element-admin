@@ -77,7 +77,7 @@ def _test_op_get_op_support_info(test_arg):
                 pads, dilations, groups, data_format, offset_x)
     except Exception as e:
         print(e)
-    
+
 ut_case.add_cust_test_func(test_func=_test_op_get_op_support_info)
 
 # test _check_d_dimension
@@ -233,10 +233,10 @@ def test_conv3d_mock_tiling(test_args):
         (1, 2, 2, 2, 1), [0, 0, 0, 0, 0, 0], (1, 1, 1, 1, 1),
         1, "NDHWC", 0, "conv3d_tiling_test"
     ]
-    
+
     tiling_dict_list = [
         # AL0 not equal CL0
-        {'conv3d_tiling_test': 
+        {'conv3d_tiling_test':
             {'AL0_matrix': [56, 1, 16, 16, 1, 1], 'AL1_shape': [128, 1, 1, 2],
             'AUB_channel_wise_flag': None, 'AUB_shape': None, 'A_overhead_opt_flag': 0,
             'BL0_matrix': [], 'BL1_shape': None, 'BUB_channel_wise_flag': None,
@@ -249,7 +249,7 @@ def test_conv3d_mock_tiling(test_args):
             'CUB_pbuffer': 2, 'UBG_pbuffer': 2},
             'n_bef_batch_flag': 0, 'n_bef_group_flag': 0, 'tbe_compile_para': 0}},
         # AL0 m_C0 not equal to 16
-        {'conv3d_tiling_test': 
+        {'conv3d_tiling_test':
             {'AL0_matrix': [56, 1, 8, 16, 1, 1], 'AL1_shape': [128, 1, 1, 2],
             'AUB_channel_wise_flag': None, 'AUB_shape': None, 'A_overhead_opt_flag': 0,
             'BL0_matrix': [], 'BL1_shape': None, 'BUB_channel_wise_flag': None,
@@ -262,7 +262,7 @@ def test_conv3d_mock_tiling(test_args):
             'CUB_pbuffer': 2, 'UBG_pbuffer': 2},
             'n_bef_batch_flag': 0, 'n_bef_group_flag': 0, 'tbe_compile_para': 0}},
         # AL0 k_C0 not equal to 16
-        {'conv3d_tiling_test': 
+        {'conv3d_tiling_test':
             {'AL0_matrix': [56, 1, 16, 8, 1, 1], 'AL1_shape': [128, 1, 1, 2],
             'AUB_channel_wise_flag': None, 'AUB_shape': None, 'A_overhead_opt_flag': 0,
             'BL0_matrix': [], 'BL1_shape': None, 'BUB_channel_wise_flag': None,
@@ -594,7 +594,7 @@ ut_case.add_case(["Ascend310"],
                  _gen_data_case(invalid_fmap_w_shape, RuntimeError, "invalid_fmap_w_shape", True))
 
 ut_case.add_case(["Ascend310"],
-                 _gen_data_case(invalid_output_case, RuntimeError, "invalid_output_case", True))
+                 _gen_data_case(invalid_output_case, TypeError, "invalid_output_case", True))
 
 ut_case.add_case(["Ascend310"],
                  _gen_data_case(invalid_fmap_shape_case, RuntimeError, "invalid_fmap_shape_case", True))
@@ -612,7 +612,7 @@ ut_case.add_case(["Ascend310"],
                  _gen_data_case(too_large_fmap_case, RuntimeError, "too_large_fmap_case", True))
 
 ut_case.add_case(["Ascend310"],
-                 _gen_data_case(invalid_bias_type_case, RuntimeError, "invalid_bias_type_case", True))
+                 _gen_data_case(invalid_bias_type_case, TypeError, "invalid_bias_type_case", True))
 
 ut_case.add_case(["Ascend310"],
                  _gen_data_case(invalid_pads_w_case, RuntimeError, "invalid_pads_w_case", True))
@@ -673,7 +673,7 @@ ut_case.add_case(["Ascend310"],
 
 ut_case.add_case(["Ascend310"],
                  _gen_data_case(invalid_dilation_h_case, RuntimeError, "invalid_dilation_h_case", True))
-        
+
 ut_case.add_case(["Ascend310"],
                  _gen_data_case(invalid_dilation_w_case, RuntimeError, "invalid_dilation_w_case", True))
 
