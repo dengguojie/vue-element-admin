@@ -8,15 +8,15 @@ import tensorflow as tf
 
 
 
-def calc_expect_func(y_grad, x, x_grad):
+def calc_expect_func(gradients, features, output):
 
-    y_grad = y_grad.get('value')
-    tensor_y_grad = tf.placeholder(y_grad.dtype, shape=y_grad.shape)
+    gradients = gradients.get('value')
+    tensor_gradients = tf.placeholder(gradients.dtype, shape=gradients.shape)
 
-    x = x.get('value')
-    tensor_x = tf.placeholder(x.dtype, shape=x.shape)
-    out = tf.raw_ops.SoftsignGrad(gradients=y_grad, features=x, name="SoftsignGrad")
+    features = features.get('value')
+    tensor_features = tf.placeholder(features.dtype, shape=features.shape)
+    out = tf.raw_ops.SoftsignGrad(gradients=gradients, features=features, name="SoftsignGrad")
 
     with tf.Session() as sess:
-        res = sess.run(out, feed_dict={tensor_y_grad: y_grad, tensor_x: x})
+        res = sess.run(out, feed_dict={tensor_gradients: gradients, tensor_features: features})
     return [res]

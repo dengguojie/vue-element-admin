@@ -503,10 +503,10 @@ COMMON_INFER_FUNC_REG(Softsign, SoftsignInferShape);
 
 // ----------------SoftsignGrad-------------------
 IMPLEMT_VERIFIER(SoftsignGrad, SoftsignGradVerify) {
-  if (!CheckTwoInputDtypeSame(op, "y_grad", "x")) {
+  if (!CheckTwoInputDtypeSame(op, "gradients", "features")) {
     return GRAPH_FAILED;
   }
-  if (!CheckTwoInputShapeSame(op, "y_grad", "x")) {
+  if (!CheckTwoInputShapeSame(op, "gradients", "features")) {
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -517,7 +517,7 @@ IMPLEMT_COMMON_INFERFUNC(SoftsignGradInferShape) {
   if (!InferShapeAndTypeTwoInOneOutBroadcast(op, 0, 1, 0, is_dynamic_output)) {
     return GRAPH_FAILED;
   }
-  if (!InferShapeRangeTwoInOneOutBroadcase(op, "y_grad", "x", "x_grad")) {
+  if (!InferShapeRangeTwoInOneOutBroadcase(op, "gradients", "features", "output")) {
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -540,10 +540,10 @@ COMMON_INFER_FUNC_REG(Selu, SeluInferShape);
 
 // ----------------SeluGrad-------------------
 IMPLEMT_VERIFIER(SeluGrad, SeluGradVerify) {
-  if (!CheckTwoInputDtypeSame(op, "y_grad", "y")) {
+  if (!CheckTwoInputDtypeSame(op, "gradients", "outputs")) {
     return GRAPH_FAILED;
   }
-  if (!CheckTwoInputShapeSame(op, "y_grad", "y")) {
+  if (!CheckTwoInputShapeSame(op, "gradients", "outputs")) {
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -554,7 +554,7 @@ IMPLEMT_COMMON_INFERFUNC(SeluGradInferShape) {
   if (!InferShapeAndTypeTwoInOneOutBroadcast(op, 0, 1, 0, is_dynamic_output)) {
     return GRAPH_FAILED;
   }
-  if (!InferShapeRangeTwoInOneOutBroadcase(op, "y_grad", "y", "x_grad")) {
+  if (!InferShapeRangeTwoInOneOutBroadcase(op, "gradients", "outputs", "y")) {
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;

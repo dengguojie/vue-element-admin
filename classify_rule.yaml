@@ -938,6 +938,7 @@ vector_B:
       - ops/built-in/fusion_rules/ai_core/built_in_graph_rules.json
       - ops/built-in/fusion_rules/CMakeLists.txt
       - ops/built-in/op_proto/data_flow_ops.cc
+      - ops/built-in/op_proto/inc/nonlinear_fuc_ops.h
       - ops/built-in/op_proto/nn_batch_norm_ops.cc
       - ops/built-in/op_proto/rpn_ops.cc
       - ops/built-in/op_proto/util/axis_util.h
@@ -947,6 +948,7 @@ vector_B:
       - ops/built-in/op_proto/util/error_util.h
       - ops/built-in/op_proto/transformation_ops.cc
       - ops/built-in/op_proto/selection_ops.cc
+      - ops/built-in/op_proto/nonlinear_fuc_ops.cc
       - ops/built-in/op_tiling/arg_max_v2.cc
       - ops/built-in/op_tiling/arg_max_with_value.cc
       - ops/built-in/op_tiling/assign.cc
@@ -2162,7 +2164,6 @@ unkown:
       - ops/built-in/op_proto/spectral_ops.cc
       - ops/built-in/op_proto/ocr_ops.cc
       - ops/built-in/op_proto/deep_md.cc
-      - ops/built-in/op_proto/nonlinear_fuc_ops.cc
       - ops/built-in/op_proto/ragged_array_ops.cc
       - ops/built-in/op_proto/boosted_trees_ops.cc
       - ops/built-in/op_proto/resource_variable_ops.cc
@@ -2229,7 +2230,6 @@ unkown:
       - ops/built-in/op_proto/inc/data_flow_ops.h
       - ops/built-in/op_proto/inc/ocr_ops.h
       - ops/built-in/op_proto/inc/audio_ops.h
-      - ops/built-in/op_proto/inc/nonlinear_fuc_ops.h
       - ops/built-in/op_proto/inc/ragged_math_ops.h
       - ops/built-in/op_proto/inc/list_ops.h
       - ops/built-in/op_proto/inc/avg_pool_1d_ops.h
