@@ -18,6 +18,7 @@
 Schedule of conv2d in v220/v300.
 """
 from functools import reduce
+from collections import deque
 from tbe.common.utils.op_util.op_util_conv2d import BinaryTilingKey
 import tbe
 from tbe import tvm
@@ -37,6 +38,7 @@ from tbe.dsl.static_schedule.conv_fixpipefusion_schedule import FixpipeFusion
 from tbe.dsl.static_schedule.conv_fixpipefusion_schedule import FixpipeFusionNew
 from tbe.dsl.static_schedule.conv_schedule_util import ceil, ceil_div, is_support_fixpipe_op, get_src_tensor
 from tbe.dsl.static_schedule.conv_schedule_util import is_v300_soc
+from tbe.dsl.static_schedule.conv_schedule_util import delete_op
 from tbe.dsl.static_schedule.conv_ubfusion_schedule import EltwiseUBFusion
 from tbe.dsl.static_schedule.conv_ubfusion_schedule import QuantFusion
 from tbe.dsl.static_schedule.conv_maxpoolfusion_schedule import MaxpoolFusion
@@ -72,18 +74,12 @@ def test_set_value(sch, cache_tiling):
 class InputNd2Nz:
     """
     Class of input nd2nz.
-    Transform the fmap of NHWC format in ddr to the fmap_l1 of 5hd format in L1.
+    Transform the fmap of ND format in ddr to the fmap_l1 of 5hd format in L1.
     """
     def __init__(self, conv_param):
         self.flag = conv_param.input_nd_flag
-
-    def inline_input_nd_dynamic(self, sch, tensor_map, dynamic_flag):
-        """
-        inline al1 in nd2nz dynamic situation (group = 1).
-        """
-        if self.flag and dynamic_flag:
-            input_nd_dynamic = tensor_map["fmap"]
-            sch[input_nd_dynamic].compute_inline()
+        self.mode = conv_param.input_nd_mode
+        self._fmap_in_ub = {}
 
     @staticmethod
     def al1_nd2nz_emit_insn(sch, al1):
@@ -93,6 +89,94 @@ class InputNd2Nz:
         sch[al1].emit_insn(al1.op.axis[1],
                            "dma_copy",
                            {"layout_transform": "nd2nz"})
+
+    def inline_input_nd_dynamic(self, sch, tensor_map, dynamic_flag):
+        """
+        inline al1 in nd2nz dynamic situation (group = 1).
+        """
+        if self.flag and dynamic_flag:
+            input_nd_dynamic = tensor_map["fmap"]
+            sch[input_nd_dynamic].compute_inline()
+
+    def input_nd_binary_set_scope(self, sch, _op_graph, fmap):
+        """
+        set scope in binary input_nd
+        """
+        if self.mode == "NCHW":
+            nchw_in_gm = None
+            for lop in _op_graph.input_ops:
+                next_op = lop["next_op"][0]["dst_buffer"]
+                if next_op.op.name == "input_ub_td":
+                    nchw_in_gm = lop["dst_buffer"]
+                    break
+
+            tensor_queue = deque()
+            tensor_queue.append(fmap)
+            while tensor_queue:
+                process_tensor = tensor_queue.popleft()
+                if process_tensor.op.name == "reshape_c":
+                    sch[process_tensor].compute_inline()
+                elif process_tensor != fmap:
+                    sch[process_tensor].set_scope(cce_params.scope_ubuf)
+                    self._fmap_in_ub[process_tensor.op.name] = process_tensor
+
+                if process_tensor.op.input_tensors:
+                    append_list = list(i for i in process_tensor.op.input_tensors if i != nchw_in_gm)
+                    tensor_queue.extend(append_list)
+
+            sch[fmap].compute_inline()
+
+            sch[self._fmap_in_ub.get("input_ub_vn")].reused_by(
+                self._fmap_in_ub.get("input_ub_td"), self._fmap_in_ub.get("input_ub_pad"))
+
+            sch[self._fmap_in_ub.get("transpose_hw_c0")].mem_unique()
+
+    def input_nd_binary_compute_at(self, sch, al1, _tiling):
+        """
+        compute at in binary input_nd
+        """
+        if self.mode == "NCHW":
+            if not _tiling["AUB_shape"]:
+                err_man.raise_err_specific("conv2d", "aub tiling cannot be None when fm nd2nz.")
+            aub_h, aub_ci1, *_ = _tiling["AUB_shape"]
+            c1_outer, c1_inner = sch[al1].split(sch[al1].op.axis[2], nparts=aub_h)
+            h_outer, h_inner = sch[al1].split(sch[al1].op.axis[3], nparts=aub_ci1)
+            sch[al1].reorder(c1_outer, h_outer, sch[al1].op.axis[0],
+                             sch[al1].op.axis[1], c1_inner, h_inner)
+            for tensor in self._fmap_in_ub.values():
+                sch[tensor].compute_at(sch[al1], h_outer)
+
+    def input_nd_binary_process_post(self, sch, aub_bound_ceil):
+        """
+        binary input_nd process post
+        """
+        if self.mode == "NCHW":
+            for tensor in self._fmap_in_ub.values():
+                sch[tensor].set_buffer_size(aub_bound_ceil)
+                if tensor.op.name == "transpose_hw_c0":
+                    sch[tensor].storage_align(tensor.op.axis[-3], 256, 0)
+                else:
+                    sch[tensor].storage_align(tensor.op.axis[-2], 16, 0)
+
+    def input_nd_binary_emit_insn(self, sch):
+        """
+        binary input_nd emit_insn
+        """
+        if self.mode == "NCHW":
+            binary_schedule_emit_insn_dict = {
+                "input_ub_td": "dma_copy",  # N C_align HiWi
+                "input_ub_pad": "vector_dup",
+                "input_ub_vn": "phony_insn",
+            }
+            for tensor_name in binary_schedule_emit_insn_dict.keys():
+                tensor = self._fmap_in_ub.get(tensor_name)
+                sch[tensor].emit_insn(tensor.op.axis[0], binary_schedule_emit_insn_dict.get(tensor_name))
+
+            # transpose (N C_align HiWi) to (N Ci1 HiWi Ci0)
+            transpose_hw_c0 = self._fmap_in_ub.get("transpose_hw_c0")
+            src_in_dst_order = tvm.expr.Call('handle', 'tvm_tuple', [1, 0], tvm.expr.Call.PureIntrinsic, None, 0)
+            sch[transpose_hw_c0].emit_insn(transpose_hw_c0.op.axis[2], 'vector_transpose',
+                                           attrs={'src_in_dst_order': src_in_dst_order})
 
 
 class WeightNd2Nz:
@@ -124,19 +208,80 @@ class WeightNd2Nz:
 class OutputNz2Nd:
     """
     Class of output nz2nd.
-    Transform the output of 5hd format in L0C to the output of NHWC format in DDR.
+    Transform the output of 5hd format in L0C to the output of ND format in DDR.
     """
     def __init__(self, res):
-        self.flag = res.op.tag == "5HD_trans_NHWC"
+        self.flag = False
+        self.mode = None
+        self.c_ub_transpose = None
+        self.output_nchw_tensor = None
+        self._set_output_nd_flag_mode(res)
 
-    @staticmethod
-    def res_nz2nd_emit_insn(sch, res, res_pragma_axis):
+    def output_nd_binary_set_scope(self, sch):
+        """
+        set scope in binary output_nd
+        """
+        if self.mode == "NCHW":
+            self.c_ub_transpose = self.output_nchw_tensor.op.input_tensors[0]
+            sch[self.c_ub_transpose].set_scope(cce_params.scope_ubuf)
+            sch[self.output_nchw_tensor].compute_inline()
+
+    def output_nd_binary_compute_at(self, sch, res, cub_at_res_axis):
+        """
+        compute at in binary output_nd
+        """
+        if self.mode == "NCHW":
+            sch[self.c_ub_transpose].compute_at(sch[res], cub_at_res_axis)
+
+    def output_nd_binary_process_post(self, sch, cub, tiling_param):
+        """
+        binary output_nd process post
+        """
+        if self.mode == "NCHW":
+            cub_buffer_size = reduce((lambda x, y: x*y), tiling_param.get("cub_tiling"))
+            sch[self.c_ub_transpose].set_buffer_size(cub_buffer_size)
+            sch[self.c_ub_transpose].storage_align(self.c_ub_transpose.op.axis[-2], 16, 0)
+            process_tensor = self.c_ub_transpose
+            while True:
+                process_tensor = process_tensor.op.input_tensors[0]
+                if process_tensor == cub:
+                    break
+                sch[process_tensor].set_buffer_size(cub_buffer_size)
+                sch[process_tensor].storage_align(sch[process_tensor].op.axis[-3], 256, 0)
+                if not process_tensor.op.input_tensors:
+                    break
+
+    def res_nz2nd_emit_insn(self, sch, res, res_pragma_axis):
         """
         Emit insn for res in output nz2nd situation.
         """
-        sch[res].emit_insn(res_pragma_axis,
-                           "dma_copy",
-                           attrs={"layout_transform": "nz2nd"})
+        if self.mode == "NHWC":
+            sch[res].emit_insn(res_pragma_axis,
+                               "dma_copy",
+                               attrs={"layout_transform": "nz2nd"})
+        elif self.mode == "NCHW":
+            # transpose (N, Co1, HoWo_mad, Co0) -> (N, Co1, Co0, HoWo_mad)
+            src_in_dst_order = tvm.expr.Call('handle', 'tvm_tuple', [1, 0], tvm.expr.Call.PureIntrinsic, None, 0)
+            sch[self.c_ub_transpose].emit_insn(self.c_ub_transpose.op.axis[2], 'vector_transpose',
+                                               attrs={'src_in_dst_order': src_in_dst_order})
+
+            leaf_ivars = list(sch[res].leaf_iter_vars)
+            res_emit_insn_axis = leaf_ivars[-2::][0]
+            sch[res].emit_insn(res_emit_insn_axis,
+                               "dma_copy",
+                               {'no_overlap': "process_data_smaller_than_one_block"})
+
+    def _set_output_nd_flag_mode(self, res):
+        """
+        set output_nd_flag and mode, support NCHW, NHWC
+        """
+        if res.op.tag == "5HD_trans_NHWC":
+            self.flag = True
+            self.mode = "NHWC"
+        elif res.op.input_tensors[0].op.tag == "5HD_TRANS_NCHW":
+            self.flag = True
+            self.mode = "NCHW"
+            self.output_nchw_tensor = res.op.input_tensors[0]
 
 
 class LxFusion:
@@ -322,6 +467,8 @@ class DynamicShape:
         tiling["CL0_matrix"][1] = self.cache_tiling[TilingDataKey.M_L0]
         tiling["CUB_matrix"][0] = self.cache_tiling[TilingDataKey.CUB_N1]
         tiling["CUB_matrix"][1] = self.cache_tiling[TilingDataKey.M_L0]
+        tiling["AUB_shape"][0] = self.cache_tiling[TilingDataKey.AUB_H]
+        tiling["AUB_shape"][1] = self.cache_tiling[TilingDataKey.AUB_CI1]
 
         if attach_at_flag.get("bl0_attach_flag") == AttachMode.ATTACH_FULL_LOAD:
             tiling["BL0_matrix"] = []
@@ -437,6 +584,9 @@ class DynamicShape:
             al1_tiling = tiling_param["al1_tiling"]
             stride_h_update = tiling_param["stride_h_update"]
             m_cl0 = tiling_param["m_cl0"]
+            aub_h, aub_ci1 = 1, 1
+            if tiling_param["aub_tiling"]:
+                aub_h, aub_ci1, *_ = tiling_param["aub_tiling"]
 
             stride_h = conv_param.stride_h
             kernel_h = conv_param.filter_h
@@ -465,13 +615,16 @@ class DynamicShape:
                             additional_rows = 2
                     m_al1 = modify_m_for_load3d()
                 al1_bound = m_al1 * k1_al1 * in_c0
+                aub_bound_ceil = ceil(m_al1//aub_h, in_c0) * k1_al1//aub_ci1 * in_c0
             else:
                 if strideh_opti_flag:
                     in_height = (in_height - 1) // stride_h + 1
                 m_al1 = ceil(in_height * in_width, in_c0)
                 al1_bound = m_al1 * in_c1 * in_c0
+                aub_bound_ceil = ceil(m_al1//aub_h, in_c0) * in_c1//aub_ci1 * in_c0
 
             sch[al1].set_buffer_size(al1_bound)
+            return aub_bound_ceil
 
     def set_bl1_bound(self, sch, bl1, tiling_param):
         """
@@ -1294,6 +1447,10 @@ class Conv2dSchedule:
 
         self._pooling_fusion.set_maxpool_ub_scope(sch, self._op_graph.body_ops)
 
+        if self._binary.flag:
+            self._input_nd2nz.input_nd_binary_set_scope(sch, self._op_graph, fmap)
+            self._output_nz2nd.output_nd_binary_set_scope(sch)
+
         tensor_param = {"al1": al1, "bl1": bl1,
                         "fmap": fmap, "weight": weight,
                         "fmap_row_major": fmap_row_major, "fmap_row_major_reshape": fmap_row_major_reshape,
@@ -1338,6 +1495,13 @@ class Conv2dSchedule:
                 (1, 4 if self._c04.flag else self._block_k0))
             return None
 
+        def process_data_rm():
+            """
+            process remove pad M
+            """
+            if self._conv_param.invalid_data_rm_flag:
+                delete_op("invalid_conv2d_rmpad", self._op_graph.body_ops, sch)
+
         sch = self._sch
         al1 = tensor_param["al1"]
         fmap_row_major = tensor_param["fmap_row_major"]
@@ -1346,6 +1510,8 @@ class Conv2dSchedule:
 
         align_al1()
         align_row_major()
+        process_data_rm()
+
         if not self._convbn1.flag and not self._binary.flag:
             self._fixpipe_fusion.inline_fixpipe_tensor(sch)
         if res.op.name == "res_fp32_conv2d" and is_support_fixpipe_op():
@@ -1475,7 +1641,7 @@ class Conv2dSchedule:
                 return reorder_mn_flag
 
             # Only fixpipe fusion. The special axis split operation works on res.
-            fixpipe_nz2nd_flag = self._output_nz2nd.flag or self._fixpipe_fusion.nz2nd_flag
+            fixpipe_nz2nd_flag = self._output_nz2nd.mode == "NHWC" or self._fixpipe_fusion.nz2nd_flag
             fixpipe_channelsplit_flag = res.dtype == "float32" and not self._eltwise_ub_fusion.flag
             fixpipe_channelmerge_flag = res.dtype in ("int4", "int8") and not self._eltwise_ub_fusion.flag
             fixpipe_antiquant_flag = anti_quant_spilt_flag(res)
@@ -1494,7 +1660,10 @@ class Conv2dSchedule:
                 """
                 Fetch axes of the res tensor.
                 """
-                if self._output_nz2nd.flag or self._fixpipe_fusion.nz2nd_flag:
+                if self._output_nz2nd.mode == "NCHW":
+                    res_n_axis, res_c_axis, res_hw_axis = res.op.axis  # [n, co, howo]
+                    res_c1_axis, res_c0_axis = sch[res].split(res_c_axis, 16)  # [n, co1, co0, howo]
+                elif self._output_nz2nd.mode == "NHWC" or self._fixpipe_fusion.nz2nd_flag:
                     res_n_axis, res_hw_axis, res_c_axis = res.op.axis  # [n, howo, co]
                     # split c axis into c1 and c0 to avoid nonlinear ir
                     res_c1_axis, res_c0_axis = sch[res].split(res_c_axis, 16)  # [n, howo, co1, co0]
@@ -2388,6 +2557,7 @@ class Conv2dSchedule:
         bl0_tiling = self._tiling["BL0_matrix"]
         cl0_tiling = self._tiling["CL0_matrix"]
         cub_tiling = self._tiling["CUB_matrix"]
+        aub_tiling = self._tiling["AUB_shape"]
         pingpong_buffer = self._tiling["manual_pingpong_buffer"]
         cub_channel_wise_flag = self._tiling["CUB_channel_wise_flag"]
         batch = self._batch
@@ -2518,6 +2688,10 @@ class Conv2dSchedule:
         # bn1 fusion
         self._convbn1.bn1fusion_compute_at(sch, res, cub_at_res_axis)
 
+        if self._binary.flag:
+            self._input_nd2nz.input_nd_binary_compute_at(sch, al1, self._tiling)
+            self._output_nz2nd.output_nd_binary_compute_at(sch, res, cub_at_res_axis)
+
         sch[cl0].compute_at(sch[res], cl0_at_res_axis)
         sch[al0].compute_at(sch[cl0], al0_at_cl0_axis)
         bl0_compute_at()
@@ -2533,6 +2707,8 @@ class Conv2dSchedule:
             "bl1_tiling": bl1_tiling,
             "bl0_tiling": bl0_tiling,
             "cl0_tiling": cl0_tiling,
+            "cub_tiling": cub_tiling,
+            "aub_tiling": aub_tiling,
             "al1_nparts": al1_nparts,
             "stride_h_update": self._strideh_opti.stride_h_update,
             "fmap_5hd_shape": self._para_dict["a_shape"],
@@ -2620,10 +2796,13 @@ class Conv2dSchedule:
         self._lx_fusion.config_l1_tensormap(sch, fmap, al1, self._op_graph)
 
         #=================================dynamic shape process=====================================
-        self._dynamic_shape.set_al1_bound(sch, al1, conv_param, tiling_param,
-                                          self._l0a_load2d.flag, self._strideh_opti.flag)
+        aub_bound_ceil = self._dynamic_shape.set_al1_bound(sch, al1, conv_param, tiling_param,
+                                                           self._l0a_load2d.flag, self._strideh_opti.flag)
         if self._binary.flag:
             self._dynamic_shape.set_bl1_bound(sch, bl1, tiling_param)
+            self._input_nd2nz.input_nd_binary_process_post(sch, aub_bound_ceil)
+            self._output_nz2nd.output_nd_binary_process_post(sch, cub, tiling_param)
+
         self._dynamic_shape.set_cl0_bound(sch, cl0, cl0_tiling)
         self._dynamic_shape.res_hw_dynamic_pragma(sch, res, res_pragma_axis)
 
@@ -2758,7 +2937,7 @@ class Conv2dSchedule:
             if self._dynamic_shape.flag:
                 self._dynamic_shape.dynamic_mode_im2col_v2(
                     sch, conv_param, tensor_param, tiling_param,
-                    emit_insn_dict, self._input_nd2nz.flag, self._l0a_load2d.flag)
+                    emit_insn_dict, self._input_nd2nz.mode == "NHWC", self._l0a_load2d.flag)
             elif self._l0a_load2d.flag:
                 self._l0a_load2d.load2d_emit_insn(sch, al1, al0)
             else:
@@ -2766,6 +2945,8 @@ class Conv2dSchedule:
                 al1_emit_insn()
                 self._lx_fusion.al1_l1fusion_pragma(sch, al1)
                 al0_emit_insn()
+            if self._binary.flag:
+                self._input_nd2nz.input_nd_binary_emit_insn(sch)
             if not self._dynamic_shape.flag:
                 get_weight_repeat_number()
 

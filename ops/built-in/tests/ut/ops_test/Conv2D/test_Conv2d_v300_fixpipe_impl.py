@@ -392,7 +392,7 @@ def conv_v300_fusion_case(casename,
         "tensor_list": tensor_list
     }
    
-    tbe.dsl.build(sch, config)
+    # tbe.dsl.build(sch, config)
 
 
 def conv_v300_single_op_case(casename,

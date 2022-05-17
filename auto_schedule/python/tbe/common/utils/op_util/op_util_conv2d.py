@@ -79,19 +79,19 @@ class TilingDataIdx(IntEnum):
     tiling data define index
     """
     TILINGDATA_IDX_START = 0
-    IDX_DILATION_H = TILINGDATA_IDX_START
-    IDX_DILATION_W = auto()
-    IDX_STRIDE_H = auto()
-    IDX_STRIDE_W = auto()
-    IDX_BATCH_N = auto()
-    IDX_FMAP_H = auto()
-    IDX_HO = auto()
-    IDX_FMAP_W = auto()
-    IDX_WO = auto()
+    IDX_BATCH_N = TILINGDATA_IDX_START
     IDX_C_IN = auto()
+    IDX_FMAP_H = auto()
+    IDX_FMAP_W = auto()
     IDX_C_OUT = auto()
     IDX_K_H = auto()
     IDX_K_W = auto()
+    IDX_DILATION_H = auto()
+    IDX_DILATION_W = auto()
+    IDX_STRIDE_H = auto()
+    IDX_STRIDE_W = auto()
+    IDX_HO = auto()
+    IDX_WO = auto()
     IDX_PAD_TOP = auto()
     IDX_PAD_BOTTOM = auto()
     IDX_PAD_LEFT = auto()
@@ -102,6 +102,8 @@ class TilingDataIdx(IntEnum):
     IDX_N_DIM = auto()
     IDX_M_DIM = auto()
     IDX_GROUP_DIM = auto()
+    IDX_AUB_H = auto()
+    IDX_AUB_CI1 = auto()
     IDX_CUB_N1 = auto()
     IDX_N_UB_L0C_FACTOR = auto()
     IDX_M_L0 = auto()
@@ -125,6 +127,8 @@ class TilingDataKey(object):
     N_DIM = "n_dim"
     M_DIM = "m_dim"
     GROUP_DIM = "group_dim"
+    AUB_H = "aub_h"
+    AUB_CI1 = "aub_ci1"
     CUB_N1 = "cub_n1"
     N_UB_L0C_FACTOR = "n_ub_l0c_factor"
     M_L0 = "m_l0"
@@ -161,6 +165,8 @@ TILINGDATA_KEY_MAP = {
     TilingDataIdx.IDX_N_DIM: TilingDataKey.N_DIM,
     TilingDataIdx.IDX_M_DIM: TilingDataKey.M_DIM,
     TilingDataIdx.IDX_GROUP_DIM: TilingDataKey.GROUP_DIM,
+    TilingDataIdx.IDX_AUB_H: TilingDataKey.AUB_H,
+    TilingDataIdx.IDX_AUB_CI1: TilingDataKey.AUB_CI1,
     TilingDataIdx.IDX_CUB_N1: TilingDataKey.CUB_N1,
     TilingDataIdx.IDX_N_UB_L0C_FACTOR: TilingDataKey.N_UB_L0C_FACTOR,
     TilingDataIdx.IDX_M_L0: TilingDataKey.M_L0,
@@ -198,6 +204,8 @@ TILINGDATA_KEY_RANGE_MAP = {
     TilingDataKey.N_DIM: [1, TILING_DIM_MAX],
     TilingDataKey.M_DIM: [1, TILING_DIM_MAX],
     TilingDataKey.GROUP_DIM: [1, TILING_DIM_MAX],
+    TilingDataKey.AUB_H: [1, 16],
+    TilingDataKey.AUB_CI1: [1, 16],
     TilingDataKey.CUB_N1: [1, 128],
     TilingDataKey.N_UB_L0C_FACTOR: [1, 64],
     TilingDataKey.M_L0: [1, 128],

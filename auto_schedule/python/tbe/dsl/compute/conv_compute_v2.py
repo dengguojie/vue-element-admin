@@ -56,7 +56,17 @@ def conv_v220_compute(fmap, weight, para_dict, optim_dict, dsl_flag, conv_param)
     """
     def get_input_nd_flag():
         # input_nd_flag
-        return fmap.op.tag == "NHWC_trans_5HD"
+        return fmap.op.tag == "NHWC_trans_5HD" or fmap.op.tag == "NCHW_trans_5HD"
+
+    def get_input_nd_flag_mode():
+        """
+        get input_nd_flag and mode, support NCHW, NHWC
+        """
+        _input_nd_flag = get_input_nd_flag()
+        _input_nd_mode = None
+        if _input_nd_flag:
+            _input_nd_mode = fmap.op.tag.split("_")[0]
+        return _input_nd_flag, _input_nd_mode
 
     def get_load2d_flag():
         if conv_param.binary_mode:
@@ -434,6 +444,7 @@ def conv_v220_compute(fmap, weight, para_dict, optim_dict, dsl_flag, conv_param)
         """
         mad_shape = get_mad_shape()
         reduce_k1, axis_k1, axis_k0 = get_reduce_sum_axis()
+        remove_pad_m = out_height * out_width
         c_col = tvm.compute(
             mad_shape,
             lambda group_idx, batch_idx, co1_idx, howo_idx, co0_idx:
@@ -452,7 +463,8 @@ def conv_v220_compute(fmap, weight, para_dict, optim_dict, dsl_flag, conv_param)
                                      axis_k0]).astype(mad_dtype)),
                 axis=[axis_k1, axis_k0]),
             name=Conv2dTensorName.CL0,
-            tag=OP_TAG + "c_col")
+            tag=OP_TAG + "c_col",
+            attrs={'remove_pad_M': remove_pad_m})  # used in Feature invalid_data_rm
         return c_col
 
     def l0c_compute_mad_with_bias_bt(fmap_im2col, weight_for_cube, bias_bt=None):
@@ -539,20 +551,19 @@ def conv_v220_compute(fmap, weight, para_dict, optim_dict, dsl_flag, conv_param)
         """
         compute for remove pad(axis M)
         """
-        dst_shape = res_shape
-        name = "remove_pad_cc"
         if invalid_data_rm_flag:
-            dst_shape = res_in.shape
-            name = "invalid_conv2d_rmpad"
-        
-        res = tvm.compute(dst_shape,
-                          lambda n_idx, co1_idx, howo_idx, co0_idx:
-                          res_in(n_idx, co1_idx, howo_idx, co0_idx),
-                          name=name,
-                          tag=OP_TAG + "C",
-                          attrs={"conv_shape": conv_param.dim_map["output_conv_res_shape"],
-                                 "width_out": out_width}
-                          )
+            res = tvm.compute(res_in.shape,
+                              lambda n_idx, co1_idx, howo_idx, co0_idx:
+                                  res_in(n_idx, co1_idx, howo_idx, co0_idx),
+                              name="invalid_conv2d_rmpad")
+        else:
+            res = tvm.compute(res_shape,
+                              lambda n_idx, co1_idx, howo_idx, co0_idx:
+                                  res_in(n_idx, co1_idx, howo_idx, co0_idx),
+                              name="remove_pad_cc",
+                              tag=OP_TAG + "C",
+                              attrs={"conv_shape": conv_param.dim_map["output_conv_res_shape"],
+                                     "width_out": out_width})
         return res
 
     def bias_add_ub_compute(tensor, bias_ub):
@@ -687,9 +698,9 @@ def conv_v220_compute(fmap, weight, para_dict, optim_dict, dsl_flag, conv_param)
         c04_mode = "disabled"
         c04_flag = False
 
-    # input_nd_flag
-    input_nd_flag = get_input_nd_flag()
-    if input_nd_flag: # to be completed
+    # input_nd_flag, input_nd_mode
+    input_nd_flag, input_nd_mode = get_input_nd_flag_mode()
+    if input_nd_flag:  # to be completed
         strideh_opti_flag = False
 
     # weight_nd_flag
@@ -814,6 +825,7 @@ def conv_v220_compute(fmap, weight, para_dict, optim_dict, dsl_flag, conv_param)
     conv_param.v220_c04_mode = c04_mode
     conv_param.strideh_opti_flag = strideh_opti_flag
     conv_param.input_nd_flag = input_nd_flag
+    conv_param.input_nd_mode = input_nd_mode
     conv_param.weight_nd_flag = weight_nd_flag
     conv_param.impl_mode = para_dict.get("impl_mode", "")
     conv_param.l0a_load2d_flag = l0a_load2d_flag

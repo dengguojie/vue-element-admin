@@ -100,3 +100,35 @@ def is_v300_soc():
         return True
 
     return False
+
+
+def delete_op(del_op, body_ops, sch, dtype=None):
+    """
+    delete op from body_ops and inline the dst_buffer tensor.
+
+    Parameters
+    ----------
+    del_op: str
+        Op name.
+    body_ops: dict
+        A dict that contains all ops in the dataflow.
+    sch:
+        Schedule.
+    dtype: str
+        Optional dtype constraint.
+
+    Returns
+    -------
+    None
+    """
+    for i, j in enumerate(body_ops):
+        if dtype:
+            if j["op"] == del_op and j["dst_buffer"].dtype == dtype:
+                sch[j["dst_buffer"]].compute_inline()
+                del body_ops[i]
+                break
+        else:
+            if j["op"] == del_op:
+                sch[j["dst_buffer"]].compute_inline()
+                del body_ops[i]
+                break

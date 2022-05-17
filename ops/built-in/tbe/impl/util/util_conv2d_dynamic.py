@@ -350,13 +350,9 @@ class Conv2dParaProcess(CubeParaProcess):
             self.input_tensor = paras.get("inputs")
             self.weights_tensor = paras.get("weights")
             self.bias_tensor = paras.get("bias")
-
-            if self.input_tensor.op.name == "split_hw" and self.input_tensor.op.tag == "NCHW_trans_5HD":
-                pass
-            else:
-                self.inputs = conver_tensor2dict(self.input_tensor, True)
-                self.weights = conver_tensor2dict(self.weights_tensor, False)
-                self.bias = conver_tensor2dict(self.bias_tensor, False)
+            self.inputs = conver_tensor2dict(self.input_tensor, True)
+            self.weights = conver_tensor2dict(self.weights_tensor, False)
+            self.bias = conver_tensor2dict(self.bias_tensor, False)
             self.dtype = self.input_tensor.dtype
 
         self.outputs = paras.get("outputs")
@@ -585,7 +581,8 @@ class Conv2dParaProcess(CubeParaProcess):
         """
         def generate_op_var():
             for i in range(op_util_conv2d.TilingDataIdx.TILINGDATA_IDX_END):
-                operation.var(op_util_conv2d.TILINGDATA_KEY_MAP.get(i))
+                if not operation.get_te_var(op_util_conv2d.TILINGDATA_KEY_MAP.get(i)):
+                    operation.var(op_util_conv2d.TILINGDATA_KEY_MAP.get(i))
 
         generate_op_var()
         dilation_h_var = get_te_var(op_util_conv2d.TilingDataKey.DILATION_H).get_tvm_var()
@@ -610,10 +607,13 @@ class Conv2dParaProcess(CubeParaProcess):
         self.pads = [pad_top, pad_bottom, pad_left, pad_right]
 
         block_size_k, block_size_n = tbe_platform.CUBE_MKN[self.dtype]["mac"][1:3]
-        input_shape_5hd = (batch_n, c_in, fmap_h, fmap_w, block_size_k)
-        w_shape = (c_out*block_size_n, c_in*block_size_n, k_h, k_w)
-        w_shape_fracz = (c_in*k_h*k_w, c_out, block_size_n, block_size_k)
-        group_para = {"enlarge": 1, "c1_opt": c_in, "cout1_opt": c_out, "group_opt": 1}
+        ci1 = ceil_div(c_in, block_size_k)
+        co1 = ceil_div(c_out, block_size_n)
+
+        input_shape_5hd = (batch_n, ci1, fmap_h, fmap_w, block_size_k)
+        w_shape = (co1*block_size_n, ci1*block_size_n, k_h, k_w)
+        w_shape_fracz = (ci1*k_h*k_w, co1, block_size_n, block_size_k)
+        group_para = {"enlarge": 1, "c1_opt": ci1, "cout1_opt": co1, "group_opt": 1}
 
         return {"in_shape_nc1hwc0": input_shape_5hd, "w_shape_frac_z": w_shape_fracz,
                 "w_shape": w_shape, "group_para": group_para,
@@ -621,7 +621,7 @@ class Conv2dParaProcess(CubeParaProcess):
                 "new_in_range": [(1, None), (1, None), (1, None), (1, None)]}
 
 
-    def config_paras(self):
+    def config_paras(self, options=None):
         """
         config paras and placeholders
         """
@@ -643,8 +643,12 @@ class Conv2dParaProcess(CubeParaProcess):
             weight_tensor = self.weights_tensor
             bias_tensor = self.bias_tensor
 
+        optim_dict = self.paras.get("optim_dict")
+        if options is not None:
+            optim_dict.update(options)
+
         return {"input_tensor": input_tensor, "weight_tensor": weight_tensor, "bias_tensor": bias_tensor,
                 "w_shape": param.get("w_shape"), "in_shape_nc1hwc0": param.get("in_shape_nc1hwc0"),
                 "w_shape_frac_z": param.get("w_shape_frac_z"), "group_para": param.get("group_para"),
                 "correct_range_flag": param.get("correct_range_flag", False), "new_in_range": param.get("new_in_range"),
-                "cache_tiling_flag": self.cache_tiling_flag}
+                "optim_dict": optim_dict, "cache_tiling_flag": self.cache_tiling_flag}

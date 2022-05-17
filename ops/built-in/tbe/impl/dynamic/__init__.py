@@ -111,6 +111,7 @@ from .reduce_std_with_mean import reduce_std_with_mean
 from .resize_nearest_neighbor_v2 import resize_nearest_neighbor_v2
 from .reverse_v2 import reverse_v2
 from .conv2d import conv2d
+from .conv2d_data_rm import conv2d_data_rm_compute
 from .depthwise_conv2d import depthwise_conv2d
 from .conv3d import conv3d
 from .conv3d_backprop_input import conv3d_backprop_input

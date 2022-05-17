@@ -508,6 +508,7 @@ cube-tiling:
       - ops/built-in/tbe/impl/conv2d_data_rm.py
       - ops/built-in/tbe/impl/depthwise_conv2d.py
       - ops/built-in/tbe/impl/dynamic/conv2d.py
+      - ops/built-in/tbe/impl/dynamic/conv2d_data_rm.py
       - ops/built-in/tbe/impl/dynamic/depthwise_conv2d.py
       - ops/built-in/tbe/impl/util/util_conv2d_dynamic.py
       - ops/built-in/tbe/impl/fused_bn2_reluv2_conv2d_bn1.py

@@ -63,7 +63,7 @@ BINARY_BASE_TILING = {
     "BUB_shape": None,
     "AL1_shape": [-1, -1, 1, 1],
     "BL1_shape": [-1, -1, 1, 1],
-    "AUB_shape": [],
+    "AUB_shape": [-1, -1],
     "n_bef_batch_flag": 0, "n_bef_group_flag": 0, "batch_bef_group_flag": 0,
     "A_overhead_opt_flag": 0, "B_overhead_opt_flag": 0,
     "AUB_channel_wise_flag": None, "BUB_channel_wise_flag": None, "CUB_channel_wise_flag": None,

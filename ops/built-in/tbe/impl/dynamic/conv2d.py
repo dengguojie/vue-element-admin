@@ -194,7 +194,10 @@ def set_default_para():
     """
     default_para = {}
     default_para["res_dtype"] = "float16"
-    default_para["optim_dict"] = {"c0_optim_flg": False}
+    default_para["optim_dict"] = {"c0_optim_flg": False,
+                                  "use_v200_c04_flg": False,
+                                  "v220_c04_mode": "disabled",
+                                  "invalid_data_rm": False}
     default_para["fusion_para"] = {"input_memory_type": 0, "output_memory_type": 0,
                                    "valid_shape": (), "slice_offset": (),
                                    "l1_fusion_type": -1}
@@ -205,10 +208,10 @@ def set_default_para():
 @register_op_compute("Conv2D", op_mode="dynamic", support_fusion=True)
 @para_check.check_input_type(tvm.tensor.Tensor, tvm.tensor.Tensor, (tvm.tensor.Tensor, NONETYPE),
                              (tvm.tensor.Tensor, NONETYPE), dict, (tuple, list), (tuple, list), (tuple, list),
-                             int, str, int, str, str)
+                             int, str, int, str, str, dict)
 def conv2d_fusion_compute(inputs, weights, bias, offset_w, outputs, strides, pads, dilations,
                           groups=1, data_format='NHWC', offset_x=0, kernel_name="conv2d",
-                          dsl_flag=True):
+                          dsl_flag=True, options=None):
     fusion_util.check_fusion_input([inputs])
     fusion_util.check_fusion_input([weights])
 
@@ -219,7 +222,7 @@ def conv2d_fusion_compute(inputs, weights, bias, offset_w, outputs, strides, pad
     set_fusion_buildcfg("Conv2D", build_cfg)
     return _conv2d_compute(
         inputs, weights, bias, offset_w, outputs, strides, pads, dilations,
-        groups, data_format, offset_x, kernel_name, dsl_flag)
+        groups, data_format, offset_x, kernel_name, dsl_flag, options)
 
 
 def _collect_org_tensors(ori_paras):
@@ -238,7 +241,7 @@ def _collect_org_tensors(ori_paras):
 
 def _conv2d_compute(inputs, weights, bias, offset_w, outputs, strides, pads, dilations,
                     groups=1, data_format='NHWC', offset_x=0, kernel_name="conv2d",
-                    dsl_flag=True):
+                    dsl_flag=True, options=None):
 
     """
     conv2d compute
@@ -289,7 +292,7 @@ def _conv2d_compute(inputs, weights, bias, offset_w, outputs, strides, pads, dil
     }
     impl_mode = util_conv2d.get_op_precision_mode("Conv2D")
     conv_para = Conv2dParaProcess(ori_paras)
-    paras = conv_para.config_paras()
+    paras = conv_para.config_paras(options)
 
     pad_t, pad_b, pad_l, pad_r = conv_para.pads
     op_res = conv(paras.get("input_tensor"), paras.get("weight_tensor"),
@@ -319,7 +322,7 @@ def _conv2d_compute(inputs, weights, bias, offset_w, outputs, strides, pads, dil
                    "new_in_range": paras.get("new_in_range"),
                    "ori_tensors": _collect_org_tensors(ori_paras),
                    "cache_tiling_flag": paras.get("cache_tiling_flag")},
-                  optim_dict=default_para.get("optim_dict"),
+                  optim_dict=paras.get("optim_dict"),
                   dsl_flag=dsl_flag)
 
     if conv_para.is_tensor:
