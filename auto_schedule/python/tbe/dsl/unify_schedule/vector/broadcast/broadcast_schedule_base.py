@@ -897,8 +897,8 @@ class BaseBroadcastSchedule:
         u_idx = self._ub_split_axis
         for tensor_i in self._broadcast_store_predicate:
             input_tensors = tensor_i.op.input_tensors
-            is_pad_broadcast = len(input_tensors) > 0 and input_tensors[0] in self._remove_pad_map \
-                               and util.is_broadcast(input_tensors[0])
+            is_pad_broadcast = len(input_tensors) > 0 and util.is_broadcast(input_tensors[0]) \
+                                                      and tensor_i in self._remove_pad_cache_read_buffer
             if util.is_broadcast(tensor_i):
                 ub_split_src = tensor_i.op.input_tensors[0].shape[u_idx]
             elif is_pad_broadcast:

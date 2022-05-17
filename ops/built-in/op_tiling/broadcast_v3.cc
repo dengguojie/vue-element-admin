@@ -250,7 +250,7 @@ void Broadcast::TrySwitchToPerfPatternMilan() {
   for (size_t i = 0; i < dim_len; i++) {
     input_shapes[0][i + start] = fusion_shapes[0][i];
     input_shapes[1][i + start] = fusion_shapes[1][i];
-    output_shape.push_back(std::max(input_shapes[0][i], input_shapes[1][i]));
+    output_shape.push_back(std::max(input_shapes[0][i + start], input_shapes[1][i + start]));
   }
 }
 
@@ -783,6 +783,7 @@ int64_t Broadcast::SplitUb(const int64_t& max_ub_shape, const int64_t& ele_in_bl
   bool is_middle_optimize = false;
   int64_t last_under_ub_shape = 1;
   int64_t under_ub_shape = 1;
+  int64_t out_ele_in_block = BGetElementByType(out_type);
   int64_t lowest_middle_index = FindLowestMiddle();
   for (int64_t i = shape_len; i >= last_ub_axis; i--) {
     if (broadcast_axis[i] && i != shape_len) {
@@ -792,11 +793,13 @@ int64_t Broadcast::SplitUb(const int64_t& max_ub_shape, const int64_t& ele_in_bl
         break;
       } else if (i <= lowest_middle_index && output_shape[i] >= (ele_in_block * MIDDLE_AXIS_OPTIMIZE_BLOCK_NUMS) &&
                  output_shape[i] > last_broadcast_size) {
-        ub_axis = i;
-        ub_factor = output_shape[i];
-        last_under_ub_shape = under_ub_shape;
-        is_middle_optimize = true;
-        last_broadcast_size = output_shape[i];
+        if (ub_factor * under_ub_shape >= out_ele_in_block) {
+          ub_axis = i;
+          ub_factor = output_shape[i];
+          last_under_ub_shape = under_ub_shape;
+          is_middle_optimize = true;
+          last_broadcast_size = output_shape[i];
+        }
       } else if (!broadcast_axis[i + 1] &&
                  under_ub_shape > (max_ub_shape / under_ub_shape * NONE_BRC_AXIS_OPTIMIZE_BLOCK_NUMS) &&
                  under_ub_shape > (BLOCK_NUM * ele_in_block) && !is_middle_optimize) {
@@ -918,6 +921,8 @@ void Broadcast::AdjustUbTiling(const int64_t under_ub_shape, const int64_t limit
     int64_t shape_len = static_cast<int64_t>(output_shape.size()) - 1;
     if (ub_axis == shape_len && ub_factor != output_shape[shape_len]) {
       int64_t ele_in_block = BGetElementByType(out_type);
+      V_OP_TILING_CHECK((ele_in_block != 0), VECTOR_INNER_ERR_REPORT_TILIING(op_type, "ele_in_block cannot be zero."),
+               return);
       if (output_shape.size() == 1) {
         ele_in_block = broadcast_compile_info.ub_factor_align;
       }
@@ -929,6 +934,8 @@ void Broadcast::AdjustUbTiling(const int64_t under_ub_shape, const int64_t limit
       }
     }
     // Adjust the UB factor to avoid tail block less than 32 bytes
+    V_OP_TILING_CHECK((ub_factor != 0), VECTOR_INNER_ERR_REPORT_TILIING(op_type, "ub_factor cannot be zero."),
+               return);
     int64_t ele_in_block = BGetElementByType(out_type);
     int64_t ub_tail = output_shape[ub_axis] % ub_factor;
     if (ub_tail != 0 && (under_ub_shape * ub_tail < ele_in_block)) {
@@ -1121,11 +1128,16 @@ bool Broadcast::ModifyTiling() {
     block_dims = 1;
     block_factor = 1;
   } else {
+    // core_num_compile: physical core num
+    int64_t max_tiling_core_num = core_num_compile;
+    if (need_single_core) {
+      max_tiling_core_num = 1;
+    }
     output_shape[block_axis] = multi_core_output;
     int64_t shape_before_ub = std::accumulate(output_shape.begin(),
         output_shape.begin() + ub_axis, 1LL, std::multiplies<int64_t>());
     int64_t ub_split_out = std::ceil(output_shape[ub_axis] * 1.0 / ub_factor);
-    block_factor = std::ceil(shape_before_ub * ub_split_out * 1.0 / core_num_compile);
+    block_factor = std::ceil(shape_before_ub * ub_split_out * 1.0 / max_tiling_core_num);
     if(block_factor == 0) {
       VECTOR_INNER_ERR_REPORT_TILIING(op_type, "block_factor must not be 0");
       return false;
@@ -1145,7 +1157,7 @@ bool Broadcast::CompletedShapes() {
         if (ge::OpDescUtils::GetOpDescFromOperator(op_paras)->MutableInputDesc(i)->MutableShape().GetDimNum() >
             dim_len) {
             dim_len = ge::OpDescUtils::GetOpDescFromOperator(
-              op_paras)->MutableInputDesc(i)->MutableShape().GetDimNum();
+               op_paras)->MutableInputDesc(i)->MutableShape().GetDimNum();
         }
     }
     V_CHECK_LE(dim_len, B_MAX_DIM_LEN,

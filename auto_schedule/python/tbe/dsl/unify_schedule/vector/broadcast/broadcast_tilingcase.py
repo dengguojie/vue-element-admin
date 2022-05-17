@@ -217,7 +217,7 @@ class BroadcastComputation(Computation):
         block_axis = 0
         base_key += 1
         for i in range(dim_len):
-            tiling_key = tiling_key = base_key + block_axis * dim_len + i
+            tiling_key = base_key + block_axis * dim_len + i
             one_cut_tiling_case = BroadcastTilingCase()
             one_cut_tiling_case.set_one_cut_tiling_case(tiling_key, block_axis, i)
             tiling_case.append(one_cut_tiling_case)
