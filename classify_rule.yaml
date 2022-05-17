@@ -1306,10 +1306,6 @@ vector_B:
       - ops/built-in/tbe/impl_mode/high_precision_for_all.ini
       - ops/built-in/kernel/binary_script/binary_json_cfg.ini
       - ops/built-in/tbe/op_info_cfg/parser/parser_ini.py
-      - ops/built-in/kernel/binary_script/gen_output_json.py
-      - ops/built-in/kernel/binary_script/binary_json.py
-      - ops/built-in/kernel/binary_script/binary_op.py
-      - ops/built-in/kernel/binary_script/binary_get_select_format.py
       - ops/CMakeLists.txt
       - ops/built-in/op_proto/array_ops.cc
       - ops/built-in/op_proto/inc/array_ops.h
@@ -1345,6 +1341,13 @@ vector_B:
       - scripts/run_ut.py
       - scripts/util/run_ops_st.sh
       - scripts/util/run_ops_st_plus.sh
+      - ops/built-in/kernel/binary_script/gen_output_json.py
+      - ops/built-in/kernel/binary_script/binary_json.py
+      - ops/built-in/kernel/binary_script/binary_op.py
+      - ops/built-in/kernel/binary_script/binary_util/util.py
+      - ops/built-in/kernel/binary_script/binary_get_select_format.py
+      - ops/built-in/kernel/binary_script/gen_opc_json_with_impl_mode.py
+      - ops/built-in/kernel/binary_script/gen_opc_json_with_threadnum.py
       - ops/built-in/tbe/impl/__init__.py
       - ops/built-in/tests/common/CMakeLists.txt
       - ops/built-in/tests/get_change_relate_ops.py

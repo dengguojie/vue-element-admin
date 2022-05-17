@@ -14,8 +14,8 @@
 # limitations under the License.
 # ============================================================================
 # bash build_binary.sh {opp_run_path} {output_path} {soc_version}
-export ASCEND_SLOG_PRINT_TO_STDOUT=1
-export ASCEND_GLOBAL_LOG_LEVEL=1
+export ASCEND_SLOG_PRINT_TO_STDOUT=0
+export ASCEND_GLOBAL_LOG_LEVEL=3
 
 OPP_RUN_PATH=$1
 OUTPUT_PATH=$2
@@ -79,29 +79,23 @@ echo "**************End to Generate Opc Info*****************"
 echo "**************Start to Generate Single Op*****************"
 # 并行编译适配
 # 设置并行编译数, 当前默认16个进程进行算子编译, 即同时16个算子进行二进制编译
-PRONUM=8
-[ -e /tmp/binary_fd ] || mkfifo /tmp/binary_fd
-exec 8<>/tmp/binary_fd   # 创建文件描述符8
-rm -rf /tmp/binary_fd
-for ((i=1;i<=${PRONUM};i++))
-do
-    echo >&8
-done
+PRONUM=16
+
+# gen compile task
+source build_env.sh
+task_path="build_binary_all"
+[ -d "./${task_path}/" ] || mkdir -p ./${task_path}/
+rm -f ./${task_path}/*
 
 op_list=`cat ${binary_csv_file} | tail -n +3 | awk -F, '{print $1}'`
 for op_type in ${op_list}; do
-read -u8
 {
-    bash build_binary_single_op.sh ${op_type} ${soc_version} ${OPP_RUN_PATH}/opp ${OUTPUT_PATH} ${csv_file}
-    if [ "$?" != 0 ]; then
-        echo "ERROR: Build binary single op ${op_type} failed."
-        echo >&8
-        exit 1
-    else
-        echo "SUCCESS: Build binary single op ${op_type} successfully."
-    fi
-    echo >&8
-}&
+    bash build_binary_single_op_gen_task.sh ${op_type} ${soc_version} ${OPP_RUN_PATH}/opp ${OUTPUT_PATH} ${task_path} ${csv_file}
+}
 done
-wait  # 等待所有的算子编译结束
+
+# exe task
+bash build_binary_single_op_exe_task.sh ${task_path} ${PRONUM}
+
 echo "run build_binary.sh SUCCESS"
+

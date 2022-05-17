@@ -18,7 +18,9 @@ gen_output_json.py
 import sys
 import os
 import json
-import stat
+from pathlib import Path
+from binary_util.util import wr_json
+
 
 def main(binary_file, kernel_output, output_json):
     """
@@ -29,15 +31,20 @@ def main(binary_file, kernel_output, output_json):
         return False
     with open(binary_file, "r") as file_wr:
         binary_json = json.load(file_wr)
-    binary_new_json = dict()
-    binary_new_json["binList"] = []
+    output_json_path = Path(output_json)
+    if output_json_path.is_file():
+        binary_new_json = json.loads(output_json_path.read_text())
+    else:
+        binary_new_json = dict()
+        binary_new_json["binList"] = []
     list_index = []
     for i, item in enumerate(binary_json.get("op_list")):
         opc_json_file_name = item.get("bin_filename")
         opc_json_file_path = kernel_output + opc_json_file_name + ".json"
         json_file_path = opc_json_file_path.split("kernel/")[1]
         if not os.path.exists(opc_json_file_path):
-            print("[INFO]the opc_json_file desont exsit")
+            print("[WARNING]the kernel {0} donot find the opc_json_file".format(opc_json_file_name))
+            print("[WARNING]the kernel {0} is {1}".format(opc_json_file_name, item))
             list_index.append(i)
             continue
         with open(opc_json_file_path, "r") as file_opc:
@@ -47,11 +54,10 @@ def main(binary_file, kernel_output, output_json):
         bin_json_item["jsonFilePath"] = json_file_path
         one_binary_case_info["binInfo"] = bin_json_item
         binary_new_json.get("binList").append(one_binary_case_info)
-    flags = os.O_WRONLY | os.O_CREAT
-    modes = stat.S_IWUSR | stat.S_IRUSR
-    with os.fdopen(os.open(output_json, flags, modes), "w") as f:
-        json.dump(binary_new_json, f, indent=2)
-    #remove item to failed json when deosnt match by bin_filename
+
+    wr_json(binary_new_json, output_json)
+
+    # remove item to failed json when deosnt match by bin_filename
     if len(list_index) != 0:
         list_index.reverse()
         for i in list_index:
@@ -59,8 +65,9 @@ def main(binary_file, kernel_output, output_json):
             bin_filename = item.get("bin_filename")
             failed_json_file_name = bin_filename + "_failed"
             failed_json_file = kernel_output + failed_json_file_name + ".json"
-            with os.fdopen(os.open(failed_json_file, flags, modes), "w") as f:
-                json.dump(item, f, indent=2)
+            wr_json(item, failed_json_file)
+
 
 if __name__ == '__main__':
     main(sys.argv[1], sys.argv[2], sys.argv[3])
+

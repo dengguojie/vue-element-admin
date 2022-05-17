@@ -7,7 +7,7 @@
         {
           "name": "x",
           "index": 0,
-          "dtype": "uint8",
+          "dtype": "int32",
           "format": "ND",
           "paramType": "required",
           "shape": [
@@ -19,7 +19,7 @@
         {
           "name": "y",
           "index": 0,
-          "dtype": "float32",
+          "dtype": "int8",
           "format": "ND",
           "paramType": "required",
           "shape": [
@@ -41,7 +41,7 @@
         {
           "name": "x",
           "index": 0,
-          "dtype": "float16",
+          "dtype": "int8",
           "format": "ND",
           "paramType": "required",
           "shape": [
@@ -121,7 +121,7 @@
         {
           "name": "y",
           "index": 0,
-          "dtype": "float32",
+          "dtype": "float16",
           "format": "ND",
           "paramType": "required",
           "shape": [
@@ -143,7 +143,7 @@
         {
           "name": "x",
           "index": 0,
-          "dtype": "float32",
+          "dtype": "float16",
           "format": "ND",
           "paramType": "required",
           "shape": [
@@ -155,7 +155,7 @@
         {
           "name": "y",
           "index": 0,
-          "dtype": "float16",
+          "dtype": "uint8",
           "format": "ND",
           "paramType": "required",
           "shape": [
@@ -177,7 +177,7 @@
         {
           "name": "x",
           "index": 0,
-          "dtype": "uint8",
+          "dtype": "float16",
           "format": "ND",
           "paramType": "required",
           "shape": [
@@ -189,7 +189,7 @@
         {
           "name": "y",
           "index": 0,
-          "dtype": "float16",
+          "dtype": "bool",
           "format": "ND",
           "paramType": "required",
           "shape": [
@@ -211,7 +211,7 @@
         {
           "name": "x",
           "index": 0,
-          "dtype": "int8",
+          "dtype": "bool",
           "format": "ND",
           "paramType": "required",
           "shape": [
@@ -223,7 +223,7 @@
         {
           "name": "y",
           "index": 0,
-          "dtype": "float16",
+          "dtype": "float32",
           "format": "ND",
           "paramType": "required",
           "shape": [
@@ -257,7 +257,7 @@
         {
           "name": "y",
           "index": 0,
-          "dtype": "int32",
+          "dtype": "int8",
           "format": "ND",
           "paramType": "required",
           "shape": [
@@ -279,7 +279,7 @@
         {
           "name": "x",
           "index": 0,
-          "dtype": "bool",
+          "dtype": "int32",
           "format": "ND",
           "paramType": "required",
           "shape": [
@@ -291,7 +291,7 @@
         {
           "name": "y",
           "index": 0,
-          "dtype": "float16",
+          "dtype": "bool",
           "format": "ND",
           "paramType": "required",
           "shape": [
@@ -313,7 +313,7 @@
         {
           "name": "x",
           "index": 0,
-          "dtype": "int32",
+          "dtype": "float16",
           "format": "ND",
           "paramType": "required",
           "shape": [
@@ -325,7 +325,7 @@
         {
           "name": "y",
           "index": 0,
-          "dtype": "uint8",
+          "dtype": "int32",
           "format": "ND",
           "paramType": "required",
           "shape": [
@@ -359,7 +359,7 @@
         {
           "name": "y",
           "index": 0,
-          "dtype": "float32",
+          "dtype": "int64",
           "format": "ND",
           "paramType": "required",
           "shape": [
@@ -381,7 +381,7 @@
         {
           "name": "x",
           "index": 0,
-          "dtype": "float16",
+          "dtype": "float32",
           "format": "ND",
           "paramType": "required",
           "shape": [
@@ -393,7 +393,7 @@
         {
           "name": "y",
           "index": 0,
-          "dtype": "uint8",
+          "dtype": "float16",
           "format": "ND",
           "paramType": "required",
           "shape": [
@@ -415,7 +415,7 @@
         {
           "name": "x",
           "index": 0,
-          "dtype": "bool",
+          "dtype": "uint8",
           "format": "ND",
           "paramType": "required",
           "shape": [
@@ -427,7 +427,7 @@
         {
           "name": "y",
           "index": 0,
-          "dtype": "uint8",
+          "dtype": "float16",
           "format": "ND",
           "paramType": "required",
           "shape": [
@@ -449,7 +449,7 @@
         {
           "name": "x",
           "index": 0,
-          "dtype": "int32",
+          "dtype": "int64",
           "format": "ND",
           "paramType": "required",
           "shape": [
@@ -461,7 +461,7 @@
         {
           "name": "y",
           "index": 0,
-          "dtype": "float16",
+          "dtype": "int32",
           "format": "ND",
           "paramType": "required",
           "shape": [
@@ -495,7 +495,7 @@
         {
           "name": "y",
           "index": 0,
-          "dtype": "int8",
+          "dtype": "uint8",
           "format": "ND",
           "paramType": "required",
           "shape": [
@@ -517,7 +517,7 @@
         {
           "name": "x",
           "index": 0,
-          "dtype": "int8",
+          "dtype": "float32",
           "format": "ND",
           "paramType": "required",
           "shape": [
@@ -551,7 +551,7 @@
         {
           "name": "x",
           "index": 0,
-          "dtype": "bool",
+          "dtype": "int8",
           "format": "ND",
           "paramType": "required",
           "shape": [
@@ -585,7 +585,7 @@
         {
           "name": "x",
           "index": 0,
-          "dtype": "int32",
+          "dtype": "uint8",
           "format": "ND",
           "paramType": "required",
           "shape": [
@@ -597,7 +597,7 @@
         {
           "name": "y",
           "index": 0,
-          "dtype": "bool",
+          "dtype": "float32",
           "format": "ND",
           "paramType": "required",
           "shape": [
@@ -619,7 +619,7 @@
         {
           "name": "x",
           "index": 0,
-          "dtype": "float32",
+          "dtype": "bool",
           "format": "ND",
           "paramType": "required",
           "shape": [
@@ -653,7 +653,75 @@
         {
           "name": "x",
           "index": 0,
-          "dtype": "int8",
+          "dtype": "bool",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "uint8",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "dst_type",
+          "dtype": "int",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "Cast_20",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "float16",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "dst_type",
+          "dtype": "int",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "Cast_21",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "float16",
           "format": "ND",
           "paramType": "required",
           "shape": [
@@ -666,6 +734,74 @@
           "name": "y",
           "index": 0,
           "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "dst_type",
+          "dtype": "int",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "Cast_22",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "int32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "float32",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "dst_type",
+          "dtype": "int",
+          "value": null
+        }
+      ]
+    },
+    {
+      "bin_filename": "Cast_23",
+      "inputs": [
+        {
+          "name": "x",
+          "index": 0,
+          "dtype": "int8",
+          "format": "ND",
+          "paramType": "required",
+          "shape": [
+            -2
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "y",
+          "index": 0,
+          "dtype": "float16",
           "format": "ND",
           "paramType": "required",
           "shape": [
