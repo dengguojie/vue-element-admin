@@ -2546,6 +2546,11 @@ protected:
 };
 
 
+
+
+
+
+
 TEST_F(Conv2DFastTilingResNetTest310, test_get_tiling_case_00) {
     get_resnet_tiling_case_00(inputParams);
     auto begin = std::chrono::high_resolution_clock::now();
@@ -4082,6 +4087,102 @@ TEST_F(Conv2DFastTilingResNetTest710, test_get_tiling_case_48) {
 
 TEST_F(Conv2DFastTilingResNetTest710, test_get_tiling_case_49) {
     get_resnet_tiling_case_49(inputParams);
+    auto begin = std::chrono::high_resolution_clock::now();
+    bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
+    auto end = std::chrono::high_resolution_clock::now();
+    int64_t runTime = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout<<"Con2dFastTiling run time is "<<runTime<<"us"<<std::endl;
+    //ASSERT_LE(runTime, targetTime);
+    ASSERT_TRUE(ret);
+    CheckTiling checker(tiling, inputParams);
+    // checker.ShowTiling();
+    uint32_t check_ret = checker.IsValidTiling();
+    ASSERT_EQ(check_ret, VALID);
+}
+
+
+
+class Conv2DFastTilingResNetTest910B : public testing::Test {
+protected:
+    static void SetUpTestCase() {
+        std::cout << "Conv2DFastTilingTest SetUp" << std::endl;
+    }
+
+    static void TearDownTestCase() {
+        std::cout << "Conv2DFastTilingTest TearDown" << std::endl;
+    }
+
+    void setHardwareInfoAscend910() {
+        hardwareInfo.aicoreNum = 30;
+        hardwareInfo.l2Size = 33554432;
+        hardwareInfo.l1Size = 1048576;
+        hardwareInfo.l0aSize = 65536;
+        hardwareInfo.l0bSize = 65536;
+        hardwareInfo.l0cSize = 262144;
+        hardwareInfo.ubSize = 253952;
+        hardwareInfo.btSize = 0;
+        hardwareInfo.ddrReadRate = 32;
+        hardwareInfo.ddrWriteRate = 32;
+        hardwareInfo.l2Rate = 110;
+        hardwareInfo.l2ReadRate = 110;
+        hardwareInfo.l2WriteRate = 86;
+        hardwareInfo.l1ToL0aRate = 512;
+        hardwareInfo.l1ToL0bRate = 256;
+        hardwareInfo.l1ToUbRate = 128;
+        hardwareInfo.l0cToUbRate = 256;
+        hardwareInfo.ubToL2Rate = 64;
+        hardwareInfo.ubToDdrRate = 64;
+        hardwareInfo.ubToL1Rate = 128;
+        hardwareInfo.socVersion = "Ascend910B";
+    }
+
+    virtual void SetUp() {
+        setHardwareInfoAscend910();
+        std::cout << "SetUp" << std::endl;
+    }
+
+    virtual void TearDown() {
+         std::cout << "TearDown" << std::endl;
+
+    }
+    Conv2dParams inputParams;
+    HardwareInfo hardwareInfo;
+    Conv2dTiling tiling;
+    int64_t targetTime = std::chrono::microseconds(10).count();
+};
+
+void get_resnet_tiling_case_ssd_001(Conv2dParams& inputParams) {
+    // feature map
+    inputParams.batch = 1;
+    inputParams.fmci = 1280;
+    inputParams.hi = 10;
+    inputParams.wi = 10;
+    // weight
+    inputParams.n = 128;
+    inputParams.wci = 1280;
+    inputParams.kh = 3;
+    inputParams.kw = 3;
+    // out
+    inputParams.ho = 10;
+    inputParams.wo = 10;
+
+    inputParams.padu = 1;
+    inputParams.padd = 1;
+    inputParams.padl = 1;
+    inputParams.padr = 1;
+    inputParams.dilations_h = 1;
+    inputParams.dilations_w = 1;
+    inputParams.stride_h = 1;
+    inputParams.stride_w = 1;
+    inputParams.groups = 1;
+    inputParams.biasFlag = false;
+
+    inputParams.preFusionUbUtilize = 1;
+    inputParams.postFusionUbUtilize = 1;
+}
+
+TEST_F(Conv2DFastTilingResNetTest910B, test_tiling_case_ssd_001) {
+    get_resnet_tiling_case_ssd_001(inputParams);
     auto begin = std::chrono::high_resolution_clock::now();
     bool ret = Conv2dFastTiling(inputParams, hardwareInfo, tiling);
     auto end = std::chrono::high_resolution_clock::now();

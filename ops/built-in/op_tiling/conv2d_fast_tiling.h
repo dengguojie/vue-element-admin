@@ -342,6 +342,7 @@ private:
     void GetL1TilingRange(Tiling &tiling);
     bool GetL1Tiling(Tiling &tiling);
     void AssignmentL1(Tiling &tiling);
+    void AddL1Data(const float nBL1number, const float mAL1number, const float kAL1number);
     // get L0 dim range
     void WeightFullLoad();
     void GetL0TilingRange(const Tiling& tiling);

@@ -326,7 +326,6 @@ void FastTiling::GetL1TilingRange(Tiling &tiling)
     tilingRangeL1_.mAL1.clear();
     tilingRangeL1_.kAL1.clear();
     tilingRangeL1_.nBL1.clear();
-    tilingRangeL1_.kBL1.clear();
     tilingRangeL1_.batch.clear();
     tilingRangeL1_.group.clear();
 
@@ -364,12 +363,6 @@ void FastTiling::GetL1TilingRange(Tiling &tiling)
     // c1 > kAL1 > kAL1Min
     tilingRangeL1_.kAL1.assign(beginIter, kAL1Vector.end());
 
-    // kBL1 range
-    vector<uint32_t> kBL1Vector;
-    uint32_t kBL1Size = shapeInfo_.iShape5D.at(1); // 5hd[N,ci,Hi,Wi,c0]
-    CalcCommFactor(kBL1Size, kBL1Size, kBL1Vector);
-    tilingRangeL1_.kBL1.assign(kBL1Vector.end() - 1, kBL1Vector.end()); // fix kBL1 as Ci
-
     // group range
     vector<uint32_t> groupVector;
     uint32_t groupPerCore = (opInfo_.groups + tiling.groupDim -1) / tiling.groupDim;
@@ -381,7 +374,7 @@ void FastTiling::UpdateL1Data()
 {
     uint32_t al1HixWi;
     uint32_t kAL1 = tilingRangeL1_.kAL1.at(l1Data_.kAL1_index);
-    uint32_t kBL1 = tilingRangeL1_.kBL1.at(l1Data_.kBL1_index);
+    uint32_t kBL1 = tilingRangeL1_.kAL1.at(l1Data_.kBL1_index);
     uint32_t mAL1 = tilingRangeL1_.mAL1.at(l1Data_.mAL1_index);
     uint32_t nBL1 = tilingRangeL1_.nBL1.at(l1Data_.nBL1_index);
     if (isSplitWAxis_) {
@@ -420,22 +413,12 @@ int64_t FastTiling::GetEleNum(const vector<int64_t>& shape)
     return eleNum;
 }
 
-void FastTiling::AddKbl1()
-{
-    if (l1Data_.l1_current < hardware_.l1Size / TWO &&
-        l1Data_.kBL1_index < (tilingRangeL1_.kBL1.size() -1) &&
-        (l1Data_.fmCurrent + l1Data_.filter_current / tilingRangeL1_.kBL1.at(l1Data_.kBL1_index) *
-         tilingRangeL1_.kBL1.at(l1Data_.kBL1_index + 1)) < hardware_.l1Size / TWO) {
-        l1Data_.kBL1_index++;
-    }
-}
-
 void FastTiling::AddKal1()
 {
     if (l1Data_.l1_current < hardware_.l1Size / TWO &&
         l1Data_.kAL1_index < (tilingRangeL1_.kAL1.size() -1) &&
-        (l1Data_.filter_current + l1Data_.fmCurrent / tilingRangeL1_.kBL1.at(l1Data_.kBL1_index) *
-         tilingRangeL1_.kBL1.at(l1Data_.kBL1_index + 1)) < hardware_.l1Size / TWO) {
+        (l1Data_.filter_current + l1Data_.fmCurrent / tilingRangeL1_.kAL1.at(l1Data_.kAL1_index) *
+         tilingRangeL1_.kAL1.at(l1Data_.kAL1_index + 1)) < hardware_.l1Size / TWO) {
         l1Data_.kAL1_index++;
     }
 }
@@ -460,19 +443,37 @@ void FastTiling::AddNbl1()
     }
 }
 
-bool JudgeL1(const pair<string, float>& numberA, const pair<string, float>& numberB) {
-    return numberA.second < numberB.second;
-}
-
-void FastTiling::AddL1Data(const pair<string, float>& data) {
-    if (data.first == "nBL1") {
-        AddNbl1();
-    } else if (data.first == "mAL1") {
-        AddMal1();
-    } else if (data.first == "kAL1") {
-        AddKal1();
-    } else { // "kBL1'"
-        AddKbl1();
+void FastTiling::AddL1Data(const float nBL1number, const float mAL1number, const float kAL1number) {
+    if (nBL1number < mAL1number) {
+        if (mAL1number < kAL1number) {
+            AddKal1();
+            AddMal1();
+            AddNbl1();
+        } else {
+            AddMal1();
+            AddKal1();
+            AddNbl1();
+        }
+    } else if (mAL1number < kAL1number) {
+        if (kAL1number < nBL1number) {
+            AddNbl1();
+            AddKal1();
+            AddMal1();
+        } else {
+            AddKal1();
+            AddNbl1();
+            AddMal1();
+        }
+    } else {
+        if(nBL1number < mAL1number) {
+            AddMal1();
+            AddNbl1();
+            AddKal1();
+        } else {
+            AddNbl1();
+            AddMal1();
+            AddKal1();
+        }
     }
 }
 
@@ -480,49 +481,37 @@ bool FastTiling::GetL1Tiling(Tiling &tiling)
 {
     // initialize
     GetL1TilingRange(tiling);
-    float nBL1scale = hardware_.l0cToUbRate / hardware_.l2Rate;
-    float mAL1scale = hardware_.l0cToUbRate / hardware_.l2Rate;
-    float kAL1scale = hardware_.l2Rate / hardware_.l0cToUbRate;
-    float kBL1scale = hardware_.l2Rate / hardware_.l0cToUbRate;
-    std::vector<pair<string, float>> l1TempVector;
+
+    float nBL1scale = (float)hardware_.l0cToUbRate / (float)hardware_.l2Rate;
+    float mAL1scale = (float)hardware_.l0cToUbRate / (float)hardware_.l2Rate;
+    float kAL1scale = (float)hardware_.l2Rate / (float)hardware_.l0cToUbRate;
     uint32_t pre_mAL1_index = -1;
     uint32_t pre_nBL1_index = -1;
     uint32_t pre_kAL1_index = -1;
-    uint32_t pre_kBL1_index = -1;
-
+    l1Data_.kBL1_index = tilingRangeL1_.kAL1.size() - 1;
     UpdateL1Data();
     // get l1 tiling
     // target function min(1/l2Rate*nBL1  + 1/l2Rate*mAL1 + 1/l0cToUbRate*kal1 + 1/l0cToUbRate*kbl1)
     while (l1Data_.l1_current <=  hardware_.l1Size / TWO) {
         // ping pong is on by default
         bool breakFlag = (l1Data_.nBL1_index == pre_nBL1_index) && (l1Data_.mAL1_index == pre_mAL1_index)
-                          && (l1Data_.kAL1_index == pre_kAL1_index) && (l1Data_.kBL1_index == pre_kBL1_index);
+                          && (l1Data_.kAL1_index == pre_kAL1_index);
         if (breakFlag) {
             break;
         } else {
             pre_nBL1_index = l1Data_.nBL1_index;
             pre_mAL1_index = l1Data_.mAL1_index;
             pre_kAL1_index = l1Data_.kAL1_index;
-            pre_kBL1_index = l1Data_.kBL1_index;
         }
 
         float nBL1number = nBL1scale * tilingRangeL1_.nBL1.at(l1Data_.nBL1_index);
         float mAL1number = mAL1scale * tilingRangeL1_.mAL1.at(l1Data_.mAL1_index);
         float kAL1number = kAL1scale * tilingRangeL1_.kAL1.at(l1Data_.kAL1_index);
-        float kBL1number = kBL1scale * tilingRangeL1_.kBL1.at(l1Data_.kBL1_index);
-        l1TempVector.push_back(make_pair("nBL1", nBL1number));
-        l1TempVector.push_back(make_pair("mAL1", mAL1number));
-        l1TempVector.push_back(make_pair("kAL1", kAL1number));
-        l1TempVector.push_back(make_pair("kBL1", kBL1number));
-
-        sort(l1TempVector.begin(), l1TempVector.end(), JudgeL1);
-        for (auto data : l1TempVector) {
-            AddL1Data(data);
-        }
+        
+        AddL1Data(nBL1number, mAL1number, kAL1number);
         UpdateL1Data();
-        l1TempVector.clear();
     }
-    uint32_t kBL1 = tilingRangeL1_.kBL1.at(l1Data_.kBL1_index);
+    uint32_t kBL1 = tilingRangeL1_.kAL1.at(l1Data_.kBL1_index);
     uint32_t nBL1 = tilingRangeL1_.nBL1.at(l1Data_.nBL1_index);
     l1Data_.filter_current = kBL1 * getCi0() * opInfo_.kh * opInfo_.kw * nBL1 * CUBE_UNIT_16 * byteForDtype_.at(opInfo_.bType);
     // assignment
@@ -531,7 +520,7 @@ bool FastTiling::GetL1Tiling(Tiling &tiling)
 }
 
 void FastTiling::AssignmentL1(Tiling& tiling) {
-    if (tilingRangeL1_.kBL1.at(l1Data_.kBL1_index) == shapeInfo_.iShape5D.at(1) &&
+    if (tilingRangeL1_.kAL1.at(l1Data_.kBL1_index) == shapeInfo_.iShape5D.at(1) &&
         tilingRangeL1_.nBL1.at(l1Data_.nBL1_index) == shapeInfo_.oShape5D.at(1)) {
         if (l1Data_.filter_current <= hardware_.l0bSize / TWO && tiling.kAL1 == shapeInfo_.iShape5D.at(1)) {
         // filter full load to l0B
@@ -543,7 +532,7 @@ void FastTiling::AssignmentL1(Tiling& tiling) {
         }
     } else {
         tiling.nBL1Value = tilingRangeL1_.nBL1.at(l1Data_.nBL1_index);
-        tiling.kBL1ci = tilingRangeL1_.kBL1.at(l1Data_.kBL1_index);
+        tiling.kBL1ci = tilingRangeL1_.kAL1.at(l1Data_.kBL1_index);
         tiling.kBL1 = tiling.kBL1ci * reduceKAxisBL1_KhKwCi0_;
     }
 
