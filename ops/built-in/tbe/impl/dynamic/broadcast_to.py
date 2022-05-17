@@ -114,6 +114,8 @@ def _pre_tiling(x, shape):
     return [30, 2, 5, 5]
     """
     len_diff = len(shape) - len(x)
+    if len_diff == 0:
+        return shape
 
     return [_accum_mul(shape[:len_diff])] + shape[len_diff:]
 

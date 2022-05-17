@@ -46,6 +46,20 @@ ut_case.add_case("all",
                                        "int32", None, "NCHW", "dynamic_axpy_int32_NCHW",
                                        "success"))
 
+ut_case.add_case("all", {
+    "params": [{'shape': (11, 12, 1, 1, 16, 16), 'dtype': 'float32',
+                'format': 'FRACTAL_NZ', 'ori_shape': (11, 12, 16, 16),
+                'ori_format': 'ND'},
+               {'shape': (1,), 'dtype': 'float32', 'format': 'ND',
+                'ori_shape': (1,), 'ori_format': 'ND'},
+               {'shape': (11, 12, 1, 1, 16, 16), 'dtype': 'float32',
+                'format': 'FRACTAL_NZ', 'ori_shape': (11, 12, 16, 16),
+                'ori_format': 'ND'},
+               2.0],
+    "expect": "success",
+    "op_imply_type": "dynamic"
+})
+
 if __name__ == '__main__':
     ut_case.run("Ascend910A")
     ut_case.run("Ascend310")

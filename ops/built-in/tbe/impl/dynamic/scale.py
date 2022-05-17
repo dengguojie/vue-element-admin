@@ -495,6 +495,36 @@ def scale_compute(x, scale, bias, y, axis, num_axes, scale_from_blob, kernel_nam
     return res
 
 
+def reshape_for_scale(x, shape_bias, shape_x, shape_scale, axis, num_axes, scale_from_blob):
+    """
+    reshape for scale
+    """
+    shape_x_ori = x.get("ori_shape")
+    length_x_ori = len(shape_x_ori)
+
+    shape_scale_new = []
+    shape_bias_new = []
+
+    if length_x_ori == 4:
+        param_scale_check(shape_x, shape_scale)
+        shape_scale_new = get_param_scale_shape(shape_x, shape_scale)
+        if len(shape_bias) > 0:
+            shape_bias_new = shape_scale_new
+    else:
+        _check_scale_shape_axis(shape_x, shape_scale, axis, num_axes, scale_from_blob)
+
+        length_x = len(shape_x)
+        if axis < 0:
+            axis_ = length_x + axis
+        else:
+            axis_ = axis
+
+        shape_scale_new = get_scale_shape(shape_x, shape_scale, axis_, num_axes, scale_from_blob)
+        if len(shape_bias) > 0:
+            shape_bias_new = shape_scale_new
+    return shape_scale_new, shape_bias_new
+
+
 # 'pylint: disable=too-many-locals,no-member,invalid-name,too-many-statements,line-too-long
 @register_operator("Scale")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
@@ -548,37 +578,14 @@ def scale(x, scale, bias, y, axis=1, num_axes=1, scale_from_blob=True, kernel_na
         para_check.check_shape(shape_bias, param_name="input_bias")
         _check_dtype(dtype_bias.lower(), "input_bias")
 
-    shape_x_ori = x.get("ori_shape")
-    length_x_ori = len(shape_x_ori)
+    shape_scale_new, shape_bias_new = \
+        reshape_for_scale(x, shape_bias, shape_x, shape_scale, axis, num_axes, scale_from_blob)
 
-    shape_scale_new = []
-    shape_bias_new = []
-
-    if length_x_ori == 4:
-        param_scale_check(shape_x, shape_scale)
-        shape_scale_new.append(get_param_scale_shape(shape_x, shape_scale))
-        if len(shape_bias) > 0:
-            shape_bias_new = shape_scale_new
-    else:
-        _check_scale_shape_axis(shape_x, shape_scale, axis, num_axes, scale_from_blob)
-
-        length_x = len(shape_x)
-        if axis < 0:
-            axis_ = length_x + axis
-        else:
-            axis_ = axis
-
-        shape_scale_new = get_scale_shape(shape_x, shape_scale, axis_, num_axes, scale_from_blob)
-        if len(shape_bias) > 0:
-            shape_bias_new = shape_scale_new
-
-    shape_bias_new = shape_scale_new
     tbe_context.get_context().add_compile_info("_boardcast_scale_shape", shape_scale_new)
     scale["shape"] = shape_scale_new
-    bias["shape"] = shape_scale_new
     scale_range = []
-    for i, _range in enumerate(x["range"]):
-        _range = (shape_scale_new[i], shape_scale_new[i]) if shape_scale_new[i] != -1 else _range
+    for i, x_range in enumerate(x["range"]):
+        _range = (shape_scale_new[i], shape_scale_new[i]) if shape_scale_new[i] != -1 else x_range
         scale_range.append(_range)
     scale["range"] = tuple(scale_range)
 
@@ -592,7 +599,9 @@ def scale(x, scale, bias, y, axis=1, num_axes=1, scale_from_blob=True, kernel_na
 
             tensor_x = tvm.placeholder(shape_x, dtype_x, "tensor_x")
             tensor_scale = tvm.placeholder(shape_scale, dtype_scale, "tensor_scale")
-            tensor_bias = tvm.placeholder(shape_scale, dtype_bias, "tensor_bias")
+            tensor_bias = None
+            if bias is not None and bool(bias):
+                tensor_bias = tvm.placeholder(shape_scale, dtype_bias, "tensor_bias")
             res = scale_compute(tensor_x, tensor_scale, tensor_bias, y, axis, num_axes,
                                 scale_from_blob, kernel_name)
             tensor_list = [tensor_x, tensor_scale, res]

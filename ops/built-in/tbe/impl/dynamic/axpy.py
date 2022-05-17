@@ -24,7 +24,10 @@ from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
 from impl.common_util import get_attr
+from impl.util import util_common
 from impl.axpy import op_select_format as static_op_select_format
+from impl.axpy import _add_check_format
+from impl.axpy import _infer_shape
 
 
 # 'pylint: disable=unused-argument,too-many-nested-blocks,too-many-arguments
@@ -162,6 +165,16 @@ def axpy(x1, x2, y, alpha, kernel_name="axpy"):
     None
     """
     # check dtype
+    if not util_common.is_unknown([x1, x2]):
+        format_pattern = _add_check_format(x1, x2)
+        shape_x1, shape_x2 = _infer_shape(format_pattern, x1, x2)
+        range_x1 = util_common.gen_range(shape_x1)
+        range_x2 = util_common.gen_range(shape_x2)
+        x1["shape"] = shape_x1
+        x2["shape"] = shape_x2
+        x1["range"] = range_x1
+        x2["range"] = range_x2
+
     dtype_list = ("float16", "float32", "int32")
     dtype_x1 = x1.get("dtype").lower()
     para_check.check_dtype(dtype_x1, dtype_list)
