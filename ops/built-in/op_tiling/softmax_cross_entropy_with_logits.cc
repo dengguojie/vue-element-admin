@@ -38,6 +38,7 @@ static const size_t MAX_COEXIST_NUM = 10;
 static const size_t ND_SHAPE_LEN = 2;
 static const size_t MAX_DTYPE_SIZE = 4;
 static const size_t FP16_BLOCK_SIZE = 16;
+static const size_t MAX_WORKSPACE_NUMS = 5;
 
 // compile info
 struct CompileInfo {
@@ -101,14 +102,12 @@ bool WriteTilingData(const std::string& op_type, const CompileInfo& compile_info
 
   GELOGD("op [%s] tiling block_axis:%lld", op_type.c_str(), tiling_info.block_axis);
   GELOGD("op [%s] tiling ub_axis:%lld", op_type.c_str(), tiling_info.ub_axis);
-  std::vector<int32_t> workspaces;
+
   int32_t dtype_size = GetDtypeSize(out_type);
-  int32_t bound_size = compile_info.ub_size / MAX_DTYPE_SIZE / MAX_COEXIST_NUM / FP16_BLOCK_SIZE * FP16_BLOCK_SIZE;
-  if (output_shape[1] > bound_size) {
-    int32_t workspace_size = output_shape[0] * output_shape[1] * dtype_size;
-    workspaces = {workspace_size, workspace_size, workspace_size, workspace_size, workspace_size};
-  }
-  for (int32_t ws : workspaces) {
+  int64_t workspace_size = output_shape[0] * output_shape[1] * dtype_size;
+  std::array<int64_t, MAX_WORKSPACE_NUMS> workspaces{workspace_size, workspace_size, workspace_size,
+                                                     workspace_size, workspace_size};
+  for (int64_t ws : workspaces) {
     run_info.AddWorkspace(ws);
   }
 

@@ -265,6 +265,17 @@
         "reduce_sum",
         "reduce_classify"
     ],
+    "auto_schedule/python/tbe/dsl/base/classifier/with_reduce_softmax_cross_entropy_with_logits_classifier.py":[
+        "softmax_cross_entropy_with_logits_classify",
+        "softmax_cross_entropy_with_logits"
+    ],
+    "auto_schedule/python/tbe/dsl/base/classifier/softmax_cross_entropy_with_logits_classifier.py":[
+        "softmax_cross_entropy_with_logits_classify",
+        "softmax_cross_entropy_with_logits"
+    ],
+    "auto_schedule/python/tbe/dsl/unify_schedule/softmax_cross_entropy_with_logits_schedule.py":[
+        "softmax_cross_entropy_with_logits"
+    ],
     "auto_schedule/python/tbe/dsl/base/classifier/known_reduce_classifier.py":[
         "reduce_sum",
         "reduce_classify"

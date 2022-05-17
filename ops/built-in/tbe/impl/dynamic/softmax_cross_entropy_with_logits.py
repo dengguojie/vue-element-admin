@@ -120,7 +120,7 @@ def variable_shape(inputs: list, support_broadcast=False):
     d_shapes = [[] for _ in shapes]
     for i in range(len(shapes[0])):
         _var = None
-        need_two_vars = _maybe_broadcast()
+        need_two_vars = _maybe_broadcast() and "copy" not in mode
         _suffix = 0
         for d_shape, shape, _range in zip(d_shapes, shapes, ranges):
             if shape[i] == -1 and _range[i][0] == _range[i][1]:
@@ -229,10 +229,8 @@ def softmax_cross_entropy_with_logits_compute(
         loss = tbe.cast_to(loss, "float16")
         backprop = tbe.cast_to(backprop, "float16")
 
-    is_data_features_broadcast = \
-        mode in ("original_and_cut", "vec6_and_cut", "vec9_and_cut", "copy_and_cut", "vec1_and_cut", "vec2_and_cut")
-    is_data_labels_broadcast = \
-        mode in ("original_and_cut", "vec6_and_cut", "vec9_and_cut", "copy_and_cut", "vec4_and_cut", "vec8_and_cut")
+    is_data_features_broadcast = mode in ("vec6_and_cut", "vec9_and_cut", "vec1_and_cut", "vec2_and_cut")
+    is_data_labels_broadcast = mode in ("vec6_and_cut", "vec9_and_cut", "vec4_and_cut", "vec8_and_cut")
     is_workspace = "cut" in mode
     res = [loss, backprop]
     if is_workspace:
@@ -329,21 +327,6 @@ def softmax_cross_entropy_with_logits(
         with tvm.target.cce():
             schedule = tbe.auto_schedule(res[:2])
         schedules.append(schedule)
-    tbe_context.get_context().add_compile_info("ori_shape",
-                                               {"features_shape0": input_features['shape'][0],
-                                                "features_shape1": input_features['shape'][1],
-                                                "labels_shape0": input_labels['shape'][0],
-                                                "labels_shape1": input_labels['shape'][1]})
-
-    tbe_context.get_context().add_compile_info("range",
-                                               {"features_range0_l": input_features['range'][0][0],
-                                                "features_range0_r": input_features['range'][0][1],
-                                                "features_range1_l": input_features['range'][1][0],
-                                                "features_range1_r": input_features['range'][1][1],
-                                                "labels_range0_l": input_labels['range'][0][0],
-                                                "labels_range0_r": input_labels['range'][0][1],
-                                                "labels_range1_l": input_labels['range'][1][0],
-                                                "labels_range1_r": input_labels['range'][1][1]})
 
     tbe_context.get_context().add_compile_info("common_info",
                                                {"ub_size": tbe_platform.get_soc_spec("UB_SIZE"),

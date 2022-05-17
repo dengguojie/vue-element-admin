@@ -123,6 +123,8 @@ auto_schedule:
       - auto_schedule/python/tbe/dsl/base/classifier/tuple_reduce_classifier.py
       - auto_schedule/python/tbe/dsl/base/classifier/reduce_helper.py
       - auto_schedule/python/tbe/dsl/base/classifier/slice_classifier.py
+      - auto_schedule/python/tbe/dsl/base/classifier/softmax_cross_entropy_with_logits_classifier.py
+      - auto_schedule/python/tbe/dsl/base/classifier/with_reduce_softmax_cross_entropy_with_logits_classifier.py
       - auto_schedule/python/tbe/dsl/base/classifier/unknown_reduce_classifier.py
       - auto_schedule/python/tbe/dsl/base/classifier/transdata/constants.py
       - auto_schedule/python/tbe/dsl/base/classifier/util.py
@@ -1219,6 +1221,7 @@ vector_B:
       - ops/built-in/tbe/impl/dynamic/sinh.py
       - ops/built-in/tbe/impl/dynamic/slice.py
       - ops/built-in/tbe/impl/dynamic/smooth_l1_loss.py
+      - ops/built-in/tbe/impl/dynamic/softmax_cross_entropy_with_logits.py
       - ops/built-in/tbe/impl/dynamic/softplus.py
       - ops/built-in/tbe/impl/dynamic/softsign.py
       - ops/built-in/tbe/impl/dynamic/space_to_depth.py
@@ -1319,6 +1322,7 @@ vector_B:
       - auto_schedule/python/tbe/dsl/static_schedule/l2_loss_schedule.py
       - auto_schedule/python/tbe/dsl/static_schedule/l2loss_mul_addn_schedule.py
       - auto_schedule/python/tbe/dsl/static_schedule/layer_norm_grad_schedule.py
+      - auto_schedule/python/tbe/dsl/unify_schedule/softmax_cross_entropy_with_logits_schedule.py
       - auto_schedule/python/utils/scatter/scatter.py
       - tools/op_test_frame/python/op_test_frame/common/ascend_tbe_op.py
       - tools/op_test_frame/python/op_test_frame/common/data_generator.py
@@ -2907,7 +2911,6 @@ unkown:
       - ops/built-in/tbe/impl/dynamic/acts_ulq.py
       - ops/built-in/tbe/impl/dynamic/logical_or.py
       - ops/built-in/tbe/impl/dynamic/apply_ftrl_v2_d.py
-      - ops/built-in/tbe/impl/dynamic/softmax_cross_entropy_with_logits.py
       - ops/built-in/tbe/impl/dynamic/in_top_k.py
       - ops/built-in/tbe/impl/dynamic/layer_norm_beta_gamma_backprop_v2.py
       - ops/built-in/tbe/impl/dynamic/unsorted_segment_max.py
@@ -3897,9 +3900,7 @@ unkown:
       - auto_schedule/python/tbe/dsl/static_schedule/softmax_cross_entropy_with_logits_schedule.py
       - auto_schedule/python/tbe/dsl/static_schedule/read_select_schedule.py
       - auto_schedule/python/tbe/dsl/static_schedule/depthwise_conv2d_schedule.py
-      - auto_schedule/python/tbe/dsl/base/classifier/softmax_cross_entropy_with_logits_classifier.py
       - auto_schedule/python/tbe/dsl/base/classifier/transpose_classifier.py
-      - auto_schedule/python/tbe/dsl/base/classifier/with_reduce_softmax_cross_entropy_with_logits_classifier.py
       - auto_schedule/python/tbe/dsl/base/classifier/gather_classifier.py
       - auto_schedule/python/tbe/dsl/base/classifier/concat_classifier.py
       - auto_schedule/python/tbe/dsl/base/classifier/transdata/general_transdata_classifier.py
@@ -3929,7 +3930,6 @@ unkown:
       - auto_schedule/python/tbe/dsl/unify_schedule/confusion_softmax_grad_schedule.py
       - auto_schedule/python/tbe/dsl/unify_schedule/layer_norm_beta_gamma_backprop_v2_tilingcase.py
       - auto_schedule/python/tbe/dsl/unify_schedule/layer_norm_beta_gamma_backprop_tilingcase.py
-      - auto_schedule/python/tbe/dsl/unify_schedule/softmax_cross_entropy_with_logits_schedule.py
       - auto_schedule/python/tbe/dsl/unify_schedule/layer_norm_x_backprop_schedule.py
       - auto_schedule/python/tbe/dsl/unify_schedule/layer_norm_x_backprop_v2_schedule.py
       - auto_schedule/python/tbe/dsl/unify_schedule/layer_norm_tilingcase.py

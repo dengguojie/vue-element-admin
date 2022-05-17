@@ -15,7 +15,7 @@
 # limitations under the License.
 # ============================================================================
 """
-classifier of shape in broadcast elewise
+classifier of softmax_cross_entropy_with_logits
 """
 import re
 from enum import Enum, auto
@@ -79,9 +79,9 @@ class WithReduceSoftmaxCrossEntropyWithLogitsClassifier:
                     "mode": mode
                     }
 
-        def is_legal_range(dim_range):
-            dim_range_l, dim_range_r = dim_range
-            return dim_range_l <= dim_range_r
+        def _is_legal_range(range0, range1):
+            [(r00_l, r00_r), (r01_l, r01_r)], [(r10_l, r10_r), (r11_l, r11_r)] = range0, range1
+            return (r00_l <= r00_r) and (r01_l <= r01_r) and (r10_l <= r10_r) and (r11_l <= r11_r)
 
         def _process_range_vs_2(dim_range):
             if dim_range[1] >= 2:
@@ -92,7 +92,72 @@ class WithReduceSoftmaxCrossEntropyWithLogitsClassifier:
         def _range_to_int(range_val):
             return MAX_INT32_VALUE if range_val is None else int(range_val)
 
-        def _process_range(range0, range1):
+        def _process_shape(range0, range1, shape0, shape1, is_copy=False):
+            [(r00_l, r00_r), (r01_l, r01_r)], [(r10_l, r10_r), (r11_l, r11_r)] = range0, range1
+            [dim00, dim01], [dim10, dim11] = shape0, shape1
+            if r00_l == r00_r:
+                dim00 = r00_l
+            if r01_l == r01_r:
+                dim01 = r01_l
+            if r10_l == r10_r:
+                dim10 = r10_l
+            if r11_l == r11_r:
+                dim11 = r11_l
+            if is_copy and shape0 != shape1:
+                if dim00 > 0:
+                    dim10 = dim00
+                if dim10 > 0:
+                    dim00 = dim10
+                if dim01 > 0:
+                    dim11 = dim01
+                if dim11 > 0:
+                    dim01 = dim11
+            shape0, shape1 = [dim00, dim01], [dim10, dim11]
+            return shape0, shape1
+
+        def _is_copy(shape0, shape1):
+            [dim00, dim01], [dim10, dim11] = shape0, shape1
+            if dim00 == dim10 and dim01 == dim11:
+                return True
+            return False
+
+        def _is_vec1(shape0, shape1):
+            [dim00, dim01], [dim10, dim11] = shape0, shape1
+            if dim01 == dim11 and dim00 == 1 and dim10 != 1:
+                return True
+            return False
+
+        def _is_vec2(shape0, shape1):
+            [dim00, dim01], [dim10, dim11] = shape0, shape1
+            if dim00 == dim10 and dim01 == 1 and dim11 != 1:
+                return True
+            return False
+
+        def _is_vec4(shape0, shape1):
+            [dim00, dim01], [dim10, dim11] = shape0, shape1
+            if dim01 == dim11 and dim10 == 1 and dim00 != 1:
+                return True
+            return False
+
+        def _is_vec6(shape0, shape1):
+            [dim00, dim01], [dim10, dim11] = shape0, shape1
+            if dim01 == 1 and dim10 == 1 and dim00 != 1 and dim11 != 1:
+                return True
+            return False
+
+        def _is_vec8(shape0, shape1):
+            [dim00, dim01], [dim10, dim11] = shape0, shape1
+            if dim00 == dim10 and dim11 == 1 and dim01 != 1:
+                return True
+            return False
+
+        def _is_vec9(shape0, shape1):
+            [dim00, dim01], [dim10, dim11] = shape0, shape1
+            if dim00 == 1 and dim11 == 1 and dim01 != 1 and dim10 != 1:
+                return True
+            return False
+
+        def _process_range_step1(range0, range1):
             dim00_range = range0[0]
             dim01_range = range0[1]
             dim10_range = range1[0]
@@ -119,6 +184,27 @@ class WithReduceSoftmaxCrossEntropyWithLogitsClassifier:
             range1 = [dim10_range, dim11_range]
             return range0, range1
 
+        def _process_range_step2(range0, range1, is_cut_reduce=False, mode="copy"):
+            dim00_range = range0[0]
+            dim01_range = range0[1]
+            dim10_range = range1[0]
+            dim11_range = range1[1]
+            # when mode is vec2 or vec6, dim01 is 1, range = [1, 1]
+            process_dim01 = "vec2" not in mode and "vec6" not in mode
+
+            # when mode is vec8 or vec9, dim11 is 1, range = [1, 1]
+            process_dim11 = "vec8" not in mode and "vec9" not in mode
+            if is_cut_reduce:
+                dim01_range = (max(dim01_range[0], bound_size), dim01_range[1]) if process_dim01 else dim01_range
+                dim11_range = (max(dim11_range[0], bound_size), dim11_range[1]) if process_dim11 else dim11_range
+            else:
+                dim01_range = (dim01_range[0], min(dim01_range[1], bound_size)) if process_dim01 else dim01_range
+                dim11_range = (dim11_range[0], min(dim11_range[1], bound_size)) if process_dim11 else dim11_range
+
+            range0 = [dim00_range, dim01_range]
+            range1 = [dim10_range, dim11_range]
+            return range0, range1
+
         [[(r00_l, r00_r), (r01_l, r01_r)], [(r10_l, r10_r), (r11_l, r11_r)]] = self.f_ranges
         tail_not_broadcast = (r01_l > 1 and r11_l > 1) or (r01_l == r01_r == 1 and r11_l == r11_r == 1)
         tail_may_broadcast = not tail_not_broadcast
@@ -127,31 +213,48 @@ class WithReduceSoftmaxCrossEntropyWithLogitsClassifier:
         ub_size = operation.get_context().get("ub_size")
         num_per_block = BLOCK_SIZE_BYTE // self.dtype_size
         bound_size = (ub_size // 4 // MAX_COEXIST_NUM) // 16 * 16
-        range0, range1 = _process_range(self.f_ranges[0], self.f_ranges[1])
+        range0, range1 = _process_range_step1(self.f_ranges[0], self.f_ranges[1])
         r01_r = range0[0][1]
         r11_r = range0[1][1]
+        self.f_ranges = [range0, range1]
         may_cut_reduce = (r01_r >= bound_size or r11_r >= bound_size)
         not_cut_reduce = not may_cut_reduce
 
         if not_cut_reduce:
             if tail_not_broadcast and batch_not_broadcast:
                 res = []
-                res.append([gen_template(self.f_shapes[0], self.f_ranges[0], COPY),
-                            gen_template(self.f_shapes[1], self.f_ranges[1], COPY)])
+                special_range0, special_range1 = _process_range_step1(self.f_ranges[0], self.f_ranges[1])
+                special_range0, special_range1 = _process_range_step2(special_range0, special_range1,
+                                                                      is_cut_reduce=False, mode=COPY)
+                special_shape0, special_shape1 = _process_shape(special_range0, special_range1,
+                                                                self.f_shapes[0], self.f_shapes[1], is_copy=True)
+                if _is_legal_range(special_range0, special_range1) and _is_copy(special_shape0, special_shape1):
+                    res.append([gen_template(special_shape0, special_range0, COPY),
+                                gen_template(special_shape1, special_range1, COPY)])
                 return res
 
             if tail_not_broadcast and batch_may_broadcast:
                 res = []
-                res.append([gen_template(self.f_shapes[0], self.f_ranges[0], ORIGINAL),
-                            gen_template(self.f_shapes[1], self.f_ranges[1], ORIGINAL)])
+
+                special_range0, special_range1 = _process_range_step1(self.f_ranges[0], self.f_ranges[1])
+                special_range0, special_range1 = _process_range_step2(special_range0, special_range1,
+                                                                      is_cut_reduce=False, mode=COPY)
+                special_shape0, special_shape1 = _process_shape(special_range0, special_range1,
+                                                                self.f_shapes[0], self.f_shapes[1], is_copy=True)
+                if _is_legal_range(special_range0, special_range1) and _is_copy(special_shape0, special_shape1):
+                    res.append([gen_template(special_shape0, special_range0, COPY),
+                                gen_template(special_shape1, special_range1, COPY)])
 
                 special_shape0 = [1, self.f_shapes[0][1]]
                 special_range0 = [(1, 1), _process_range_vs_2(self.f_ranges[0][1])]
                 special_shape1 = self.f_shapes[1]
                 special_range1 = [_process_range_vs_2(self.f_ranges[1][0]), _process_range_vs_2(self.f_ranges[1][1])]
-                special_range0, special_range1 = _process_range(special_range0, special_range1)
-                if is_legal_range(special_range0[0]) and is_legal_range(special_range0[1]) \
-                        and is_legal_range(special_range1[0]) and is_legal_range(special_range1[1]):
+                special_range0, special_range1 = _process_range_step1(special_range0, special_range1)
+                special_range0, special_range1 = _process_range_step2(special_range0, special_range1,
+                                                                      is_cut_reduce=False, mode="vec1")
+                special_shape0, special_shape1 = _process_shape(special_range0, special_range1,
+                                                                special_shape0, special_shape1, is_copy=False)
+                if _is_legal_range(special_range0, special_range1) and _is_vec1(special_shape0, special_shape1):
                     res.append([gen_template(special_shape0, special_range0, "vec1"),
                                 gen_template(special_shape1, special_range1, "vec1")])
 
@@ -159,31 +262,38 @@ class WithReduceSoftmaxCrossEntropyWithLogitsClassifier:
                 special_range0 = [_process_range_vs_2(self.f_ranges[0][0]), _process_range_vs_2(self.f_ranges[0][1])]
                 special_shape1 = [1, self.f_shapes[1][1]]
                 special_range1 = [(1, 1), _process_range_vs_2(self.f_ranges[1][1])]
-                special_range0, special_range1 = _process_range(special_range0, special_range1)
-                if is_legal_range(special_range0[0]) and is_legal_range(special_range0[1]) \
-                        and is_legal_range(special_range1[0]) and is_legal_range(special_range1[1]):
+                special_range0, special_range1 = _process_range_step1(special_range0, special_range1)
+                special_range0, special_range1 = _process_range_step2(special_range0, special_range1,
+                                                                      is_cut_reduce=False, mode="vec4")
+                special_shape0, special_shape1 = _process_shape(special_range0, special_range1,
+                                                                special_shape0, special_shape1, is_copy=False)
+                if _is_legal_range(special_range0, special_range1) and _is_vec4(special_shape0, special_shape1):
                     res.append([gen_template(special_shape0, special_range0, "vec4"),
                                 gen_template(special_shape1, special_range1, "vec4")])
 
-                res.append([gen_template(self.f_shapes[0], self.f_ranges[0], COPY),
-                            gen_template(self.f_shapes[1], self.f_ranges[1], COPY)])
                 return res
 
             if tail_may_broadcast and batch_not_broadcast:
                 res = []
-                res.append([gen_template(self.f_shapes[0], self.f_ranges[0], ORIGINAL),
-                            gen_template(self.f_shapes[1], self.f_ranges[1], ORIGINAL)])
-
-                res.append([gen_template(self.f_shapes[0], self.f_ranges[0], COPY),
-                            gen_template(self.f_shapes[1], self.f_ranges[1], COPY)])
+                special_range0, special_range1 = _process_range_step1(self.f_ranges[0], self.f_ranges[1])
+                special_range0, special_range1 = _process_range_step2(special_range0, special_range1,
+                                                                      is_cut_reduce=False, mode=COPY)
+                special_shape0, special_shape1 = _process_shape(special_range0, special_range1,
+                                                                self.f_shapes[0], self.f_shapes[1], is_copy=True)
+                if _is_legal_range(special_range0, special_range1) and _is_copy(special_shape0, special_shape1):
+                    res.append([gen_template(special_shape0, special_range0, COPY),
+                                gen_template(special_shape1, special_range1, COPY)])
 
                 special_shape0 = [self.f_shapes[0][0], 1]
                 special_range0 = [_process_range_vs_2(self.f_ranges[0][0]), (1, 1)]
                 special_shape1 = self.f_shapes[1]
                 special_range1 = [_process_range_vs_2(self.f_ranges[1][0]), _process_range_vs_2(self.f_ranges[1][1])]
-                special_range0, special_range1 = _process_range(special_range0, special_range1)
-                if is_legal_range(special_range0[0]) and is_legal_range(special_range0[1]) \
-                        and is_legal_range(special_range1[0]) and is_legal_range(special_range1[1]):
+                special_range0, special_range1 = _process_range_step1(special_range0, special_range1)
+                special_range0, special_range1 = _process_range_step2(special_range0, special_range1,
+                                                                      is_cut_reduce=False, mode="vec2")
+                special_shape0, special_shape1 = _process_shape(special_range0, special_range1,
+                                                                special_shape0, special_shape1, is_copy=False)
+                if _is_legal_range(special_range0, special_range1) and _is_vec2(special_shape0, special_shape1):
                     res.append([gen_template(special_shape0, special_range0, "vec2"),
                                 gen_template(special_shape1, special_range1, "vec2")])
 
@@ -191,28 +301,37 @@ class WithReduceSoftmaxCrossEntropyWithLogitsClassifier:
                 special_range0 = [_process_range_vs_2(self.f_ranges[0][0]), _process_range_vs_2(self.f_ranges[0][1])]
                 special_shape1 = [self.f_shapes[1][0], 1]
                 special_range1 = [_process_range_vs_2(self.f_ranges[1][0]), (1, 1)]
-                special_range0, special_range1 = _process_range(special_range0, special_range1)
-                if is_legal_range(special_range0[0]) and is_legal_range(special_range0[1]) \
-                        and is_legal_range(special_range1[0]) and is_legal_range(special_range1[1]):
+                special_range0, special_range1 = _process_range_step1(special_range0, special_range1)
+                special_range0, special_range1 = _process_range_step2(special_range0, special_range1,
+                                                                      is_cut_reduce=False, mode="vec8")
+                special_shape0, special_shape1 = _process_shape(special_range0, special_range1,
+                                                                special_shape0, special_shape1, is_copy=False)
+                if _is_legal_range(special_range0, special_range1) and _is_vec8(special_shape0, special_shape1):
                     res.append([gen_template(special_shape0, special_range0, "vec8"),
                                 gen_template(special_shape1, special_range1, "vec8")])
                 return res
 
             if tail_may_broadcast and batch_may_broadcast:
                 res = []
-                res.append([gen_template(self.f_shapes[0], self.f_ranges[0], ORIGINAL),
-                            gen_template(self.f_shapes[1], self.f_ranges[1], ORIGINAL)])
-
-                res.append([gen_template(self.f_shapes[0], self.f_ranges[0], COPY),
-                            gen_template(self.f_shapes[1], self.f_ranges[1], COPY)])
+                special_range0, special_range1 = _process_range_step1(self.f_ranges[0], self.f_ranges[1])
+                special_range0, special_range1 = _process_range_step2(special_range0, special_range1,
+                                                                      is_cut_reduce=False, mode=COPY)
+                special_shape0, special_shape1 = _process_shape(special_range0, special_range1,
+                                                                self.f_shapes[0], self.f_shapes[1], is_copy=True)
+                if _is_legal_range(special_range0, special_range1) and _is_copy(special_shape0, special_shape1):
+                    res.append([gen_template(special_shape0, special_range0, COPY),
+                                gen_template(special_shape1, special_range1, COPY)])
 
                 special_shape0 = [1, self.f_shapes[0][1]]
                 special_range0 = [(1, 1), _process_range_vs_2(self.f_ranges[0][1])]
                 special_shape1 = self.f_shapes[1]
                 special_range1 = [_process_range_vs_2(self.f_ranges[1][0]), _process_range_vs_2(self.f_ranges[1][1])]
-                special_range0, special_range1 = _process_range(special_range0, special_range1)
-                if is_legal_range(special_range0[0]) and is_legal_range(special_range0[1]) \
-                        and is_legal_range(special_range1[0]) and is_legal_range(special_range1[1]):
+                special_range0, special_range1 = _process_range_step1(special_range0, special_range1)
+                special_range0, special_range1 = _process_range_step2(special_range0, special_range1,
+                                                                      is_cut_reduce=False, mode="vec1")
+                special_shape0, special_shape1 = _process_shape(special_range0, special_range1,
+                                                                special_shape0, special_shape1, is_copy=False)
+                if _is_legal_range(special_range0, special_range1) and _is_vec1(special_shape0, special_shape1):
                     res.append([gen_template(special_shape0, special_range0, "vec1"),
                                 gen_template(special_shape1, special_range1, "vec1")])
 
@@ -220,9 +339,12 @@ class WithReduceSoftmaxCrossEntropyWithLogitsClassifier:
                 special_range0 = [_process_range_vs_2(self.f_ranges[0][0]), _process_range_vs_2(self.f_ranges[0][1])]
                 special_shape1 = [1, self.f_shapes[1][1]]
                 special_range1 = [(1, 1), _process_range_vs_2(self.f_ranges[1][1])]
-                special_range0, special_range1 = _process_range(special_range0, special_range1)
-                if is_legal_range(special_range0[0]) and is_legal_range(special_range0[1]) \
-                        and is_legal_range(special_range1[0]) and is_legal_range(special_range1[1]):
+                special_range0, special_range1 = _process_range_step1(special_range0, special_range1)
+                special_range0, special_range1 = _process_range_step2(special_range0, special_range1,
+                                                                      is_cut_reduce=False, mode="vec4")
+                special_shape0, special_shape1 = _process_shape(special_range0, special_range1,
+                                                                special_shape0, special_shape1, is_copy=False)
+                if _is_legal_range(special_range0, special_range1) and _is_vec4(special_shape0, special_shape1):
                     res.append([gen_template(special_shape0, special_range0, "vec4"),
                                 gen_template(special_shape1, special_range1, "vec4")])
 
@@ -230,9 +352,12 @@ class WithReduceSoftmaxCrossEntropyWithLogitsClassifier:
                 special_range0 = [_process_range_vs_2(self.f_ranges[0][0]), (1, 1)]
                 special_shape1 = self.f_shapes[1]
                 special_range1 = [_process_range_vs_2(self.f_ranges[1][0]), _process_range_vs_2(self.f_ranges[1][1])]
-                special_range0, special_range1 = _process_range(special_range0, special_range1)
-                if is_legal_range(special_range0[0]) and is_legal_range(special_range0[1]) \
-                        and is_legal_range(special_range1[0]) and is_legal_range(special_range1[1]):
+                special_range0, special_range1 = _process_range_step1(special_range0, special_range1)
+                special_range0, special_range1 = _process_range_step2(special_range0, special_range1,
+                                                                      is_cut_reduce=False, mode="vec2")
+                special_shape0, special_shape1 = _process_shape(special_range0, special_range1,
+                                                                special_shape0, special_shape1, is_copy=False)
+                if _is_legal_range(special_range0, special_range1) and _is_vec2(special_shape0, special_shape1):
                     res.append([gen_template(special_shape0, special_range0, "vec2"),
                                 gen_template(special_shape1, special_range1, "vec2")])
 
@@ -240,9 +365,12 @@ class WithReduceSoftmaxCrossEntropyWithLogitsClassifier:
                 special_range0 = [_process_range_vs_2(self.f_ranges[0][0]), _process_range_vs_2(self.f_ranges[0][1])]
                 special_shape1 = [self.f_shapes[1][0], 1]
                 special_range1 = [_process_range_vs_2(self.f_ranges[1][0]), (1, 1)]
-                special_range0, special_range1 = _process_range(special_range0, special_range1)
-                if is_legal_range(special_range0[0]) and is_legal_range(special_range0[1]) \
-                        and is_legal_range(special_range1[0]) and is_legal_range(special_range1[1]):
+                special_range0, special_range1 = _process_range_step1(special_range0, special_range1)
+                special_range0, special_range1 = _process_range_step2(special_range0, special_range1,
+                                                                      is_cut_reduce=False, mode="vec8")
+                special_shape0, special_shape1 = _process_shape(special_range0, special_range1,
+                                                                special_shape0, special_shape1, is_copy=False)
+                if _is_legal_range(special_range0, special_range1) and _is_vec8(special_shape0, special_shape1):
                     res.append([gen_template(special_shape0, special_range0, "vec8"),
                                 gen_template(special_shape1, special_range1, "vec8")])
 
@@ -250,9 +378,12 @@ class WithReduceSoftmaxCrossEntropyWithLogitsClassifier:
                 special_range0 = [(1, 1), _process_range_vs_2(self.f_ranges[0][1])]
                 special_shape1 = [self.f_shapes[1][0], 1]
                 special_range1 = [_process_range_vs_2(self.f_ranges[1][0]), (1, 1)]
-                special_range0, special_range1 = _process_range(special_range0, special_range1)
-                if is_legal_range(special_range0[0]) and is_legal_range(special_range0[1]) \
-                        and is_legal_range(special_range1[0]) and is_legal_range(special_range1[1]):
+                special_range0, special_range1 = _process_range_step1(special_range0, special_range1)
+                special_range0, special_range1 = _process_range_step2(special_range0, special_range1,
+                                                                      is_cut_reduce=False, mode="vec9")
+                special_shape0, special_shape1 = _process_shape(special_range0, special_range1,
+                                                                special_shape0, special_shape1, is_copy=False)
+                if _is_legal_range(special_range0, special_range1) and _is_vec9(special_shape0, special_shape1):
                     res.append([gen_template(special_shape0, special_range0, "vec9"),
                                 gen_template(special_shape1, special_range1, "vec9")])
 
@@ -260,9 +391,12 @@ class WithReduceSoftmaxCrossEntropyWithLogitsClassifier:
                 special_range0 = [_process_range_vs_2(self.f_ranges[0][0]), (1, 1)]
                 special_shape1 = [1, self.f_shapes[1][1]]
                 special_range1 = [(1, 1), _process_range_vs_2(self.f_ranges[1][1])]
-                special_range0, special_range1 = _process_range(special_range0, special_range1)
-                if is_legal_range(special_range0[0]) and is_legal_range(special_range0[1]) \
-                        and is_legal_range(special_range1[0]) and is_legal_range(special_range1[1]):
+                special_range0, special_range1 = _process_range_step1(special_range0, special_range1)
+                special_range0, special_range1 = _process_range_step2(special_range0, special_range1,
+                                                                      is_cut_reduce=False, mode="vec6")
+                special_shape0, special_shape1 = _process_shape(special_range0, special_range1,
+                                                                special_shape0, special_shape1, is_copy=False)
+                if _is_legal_range(special_range0, special_range1) and _is_vec6(special_shape0, special_shape1):
                     res.append([gen_template(special_shape0, special_range0, "vec6"),
                                 gen_template(special_shape1, special_range1, "vec6")])
                 return res
@@ -270,26 +404,55 @@ class WithReduceSoftmaxCrossEntropyWithLogitsClassifier:
         if may_cut_reduce:
             if tail_not_broadcast and batch_not_broadcast:
                 res = []
-                res.append([gen_template(self.f_shapes[0], self.f_ranges[0], COPY_AND_CUT),
-                            gen_template(self.f_shapes[1], self.f_ranges[1], COPY_AND_CUT)])
-                res.append([gen_template(self.f_shapes[0], self.f_ranges[0], COPY),
-                            gen_template(self.f_shapes[1], self.f_ranges[1], COPY)])
+                special_range0, special_range1 = _process_range_step1(self.f_ranges[0], self.f_ranges[1])
+                special_range0, special_range1 = _process_range_step2(special_range0, special_range1,
+                                                                      is_cut_reduce=True, mode=COPY_AND_CUT)
+                special_shape0, special_shape1 = _process_shape(special_range0, special_range1,
+                                                                self.f_shapes[0], self.f_shapes[1], is_copy=True)
+                if _is_legal_range(special_range0, special_range1) and _is_copy(special_shape0, special_shape1):
+                    res.append([gen_template(special_shape0, special_range0, COPY_AND_CUT),
+                                gen_template(special_shape1, special_range1, COPY_AND_CUT)])
+
+                special_range0, special_range1 = _process_range_step1(self.f_ranges[0], self.f_ranges[1])
+                special_range0, special_range1 = _process_range_step2(special_range0, special_range1,
+                                                                      is_cut_reduce=False, mode=COPY)
+                special_shape0, special_shape1 = _process_shape(special_range0, special_range1,
+                                                                self.f_shapes[0], self.f_shapes[1], is_copy=True)
+                if _is_legal_range(special_range0, special_range1) and _is_copy(special_shape0, special_shape1):
+                    res.append([gen_template(special_shape0, special_range0, COPY),
+                                gen_template(special_shape1, special_range1, COPY)])
                 return res
 
             if tail_not_broadcast and batch_may_broadcast:
                 res = []
-                res.append([gen_template(self.f_shapes[0], self.f_ranges[0], ORIGINAL_AND_CUT),
-                            gen_template(self.f_shapes[1], self.f_ranges[1], ORIGINAL_AND_CUT)])
-                res.append([gen_template(self.f_shapes[0], self.f_ranges[0], ORIGINAL),
-                            gen_template(self.f_shapes[1], self.f_ranges[1], ORIGINAL)])
+                special_range0, special_range1 = _process_range_step1(self.f_ranges[0], self.f_ranges[1])
+                special_range0, special_range1 = _process_range_step2(special_range0, special_range1,
+                                                                      is_cut_reduce=True, mode=COPY_AND_CUT)
+                special_shape0, special_shape1 = _process_shape(special_range0, special_range1,
+                                                                self.f_shapes[0], self.f_shapes[1], is_copy=True)
+                if _is_legal_range(special_range0, special_range1) and _is_copy(special_shape0, special_shape1):
+                    res.append([gen_template(special_shape0, special_range0, COPY_AND_CUT),
+                                gen_template(special_shape1, special_range1, COPY_AND_CUT)])
+
+                special_range0, special_range1 = _process_range_step1(self.f_ranges[0], self.f_ranges[1])
+                special_range0, special_range1 = _process_range_step2(special_range0, special_range1,
+                                                                      is_cut_reduce=False, mode=COPY)
+                special_shape0, special_shape1 = _process_shape(special_range0, special_range1,
+                                                                self.f_shapes[0], self.f_shapes[1], is_copy=True)
+                if _is_legal_range(special_range0, special_range1) and _is_copy(special_shape0, special_shape1):
+                    res.append([gen_template(special_shape0, special_range0, COPY),
+                                gen_template(special_shape1, special_range1, COPY)])
 
                 special_shape0 = [1, self.f_shapes[0][1]]
                 special_range0 = [(1, 1), _process_range_vs_2(self.f_ranges[0][1])]
                 special_shape1 = self.f_shapes[1]
                 special_range1 = [_process_range_vs_2(self.f_ranges[1][0]), _process_range_vs_2(self.f_ranges[1][1])]
-                special_range0, special_range1 = _process_range(special_range0, special_range1)
-                if is_legal_range(special_range0[0]) and is_legal_range(special_range0[1]) \
-                        and is_legal_range(special_range1[0]) and is_legal_range(special_range1[1]):
+                special_range0, special_range1 = _process_range_step1(special_range0, special_range1)
+                special_range0, special_range1 = _process_range_step2(special_range0, special_range1,
+                                                                      is_cut_reduce=True, mode="vec1_and_cut")
+                special_shape0, special_shape1 = _process_shape(special_range0, special_range1,
+                                                                special_shape0, special_shape1, is_copy=False)
+                if _is_legal_range(special_range0, special_range1) and _is_vec1(special_shape0, special_shape1):
                     res.append([gen_template(special_shape0, special_range0, "vec1_and_cut"),
                                 gen_template(special_shape1, special_range1, "vec1_and_cut")])
 
@@ -297,9 +460,12 @@ class WithReduceSoftmaxCrossEntropyWithLogitsClassifier:
                 special_range0 = [(1, 1), _process_range_vs_2(self.f_ranges[0][1])]
                 special_shape1 = self.f_shapes[1]
                 special_range1 = [_process_range_vs_2(self.f_ranges[1][0]), _process_range_vs_2(self.f_ranges[1][1])]
-                special_range0, special_range1 = _process_range(special_range0, special_range1)
-                if is_legal_range(special_range0[0]) and is_legal_range(special_range0[1]) \
-                        and is_legal_range(special_range1[0]) and is_legal_range(special_range1[1]):
+                special_range0, special_range1 = _process_range_step1(special_range0, special_range1)
+                special_range0, special_range1 = _process_range_step2(special_range0, special_range1,
+                                                                      is_cut_reduce=False, mode="vec1")
+                special_shape0, special_shape1 = _process_shape(special_range0, special_range1,
+                                                                special_shape0, special_shape1, is_copy=False)
+                if _is_legal_range(special_range0, special_range1) and _is_vec1(special_shape0, special_shape1):
                     res.append([gen_template(special_shape0, special_range0, "vec1"),
                                 gen_template(special_shape1, special_range1, "vec1")])
 
@@ -307,9 +473,12 @@ class WithReduceSoftmaxCrossEntropyWithLogitsClassifier:
                 special_range0 = [_process_range_vs_2(self.f_ranges[0][0]), _process_range_vs_2(self.f_ranges[0][1])]
                 special_shape1 = [1, self.f_shapes[1][1]]
                 special_range1 = [(1, 1), _process_range_vs_2(self.f_ranges[1][1])]
-                special_range0, special_range1 = _process_range(special_range0, special_range1)
-                if is_legal_range(special_range0[0]) and is_legal_range(special_range0[1]) \
-                        and is_legal_range(special_range1[0]) and is_legal_range(special_range1[1]):
+                special_range0, special_range1 = _process_range_step1(special_range0, special_range1)
+                special_range0, special_range1 = _process_range_step2(special_range0, special_range1,
+                                                                      is_cut_reduce=True, mode="vec4_and_cut")
+                special_shape0, special_shape1 = _process_shape(special_range0, special_range1,
+                                                                special_shape0, special_shape1, is_copy=False)
+                if _is_legal_range(special_range0, special_range1) and _is_vec4(special_shape0, special_shape1):
                     res.append([gen_template(special_shape0, special_range0, "vec4_and_cut"),
                                 gen_template(special_shape1, special_range1, "vec4_and_cut")])
 
@@ -317,40 +486,46 @@ class WithReduceSoftmaxCrossEntropyWithLogitsClassifier:
                 special_range0 = [_process_range_vs_2(self.f_ranges[0][0]), _process_range_vs_2(self.f_ranges[0][1])]
                 special_shape1 = [1, self.f_shapes[1][1]]
                 special_range1 = [(1, 1), _process_range_vs_2(self.f_ranges[1][1])]
-                special_range0, special_range1 = _process_range(special_range0, special_range1)
-                if is_legal_range(special_range0[0]) and is_legal_range(special_range0[1]) \
-                        and is_legal_range(special_range1[0]) and is_legal_range(special_range1[1]):
+                special_range0, special_range1 = _process_range_step1(special_range0, special_range1)
+                special_range0, special_range1 = _process_range_step2(special_range0, special_range1,
+                                                                      is_cut_reduce=False, mode="vec4")
+                special_shape0, special_shape1 = _process_shape(special_range0, special_range1,
+                                                                special_shape0, special_shape1, is_copy=False)
+                if _is_legal_range(special_range0, special_range1) and _is_vec4(special_shape0, special_shape1):
                     res.append([gen_template(special_shape0, special_range0, "vec4"),
                                 gen_template(special_shape1, special_range1, "vec4")])
-
-                res.append([gen_template(self.f_shapes[0], self.f_ranges[0], COPY_AND_CUT),
-                            gen_template(self.f_shapes[1], self.f_ranges[1], COPY_AND_CUT)])
-
-                res.append([gen_template(self.f_shapes[0], self.f_ranges[0], COPY),
-                            gen_template(self.f_shapes[1], self.f_ranges[1], COPY)])
                 return res
 
             if tail_may_broadcast and batch_not_broadcast:
                 res = []
-                res.append([gen_template(self.f_shapes[0], self.f_ranges[0], ORIGINAL_AND_CUT),
-                            gen_template(self.f_shapes[1], self.f_ranges[1], ORIGINAL_AND_CUT)])
+                special_range0, special_range1 = _process_range_step1(self.f_ranges[0], self.f_ranges[1])
+                special_range0, special_range1 = _process_range_step2(special_range0, special_range1,
+                                                                      is_cut_reduce=True, mode=COPY_AND_CUT)
+                special_shape0, special_shape1 = _process_shape(special_range0, special_range1,
+                                                                self.f_shapes[0], self.f_shapes[1], is_copy=True)
+                if _is_legal_range(special_range0, special_range1) and _is_copy(special_shape0, special_shape1):
+                    res.append([gen_template(special_shape0, special_range0, COPY_AND_CUT),
+                                gen_template(special_shape1, special_range1, COPY_AND_CUT)])
 
-                res.append([gen_template(self.f_shapes[0], self.f_ranges[0], ORIGINAL),
-                            gen_template(self.f_shapes[1], self.f_ranges[1], ORIGINAL)])
-
-                res.append([gen_template(self.f_shapes[0], self.f_ranges[0], COPY_AND_CUT),
-                            gen_template(self.f_shapes[1], self.f_ranges[1], COPY_AND_CUT)])
-
-                res.append([gen_template(self.f_shapes[0], self.f_ranges[0], COPY),
-                            gen_template(self.f_shapes[1], self.f_ranges[1], COPY)])
+                special_range0, special_range1 = _process_range_step1(self.f_ranges[0], self.f_ranges[1])
+                special_range0, special_range1 = _process_range_step2(special_range0, special_range1,
+                                                                      is_cut_reduce=False, mode=COPY)
+                special_shape0, special_shape1 = _process_shape(special_range0, special_range1,
+                                                                self.f_shapes[0], self.f_shapes[1], is_copy=True)
+                if _is_legal_range(special_range0, special_range1) and _is_copy(special_shape0, special_shape1):
+                    res.append([gen_template(special_shape0, special_range0, COPY),
+                                gen_template(special_shape1, special_range1, COPY)])
 
                 special_shape0 = [self.f_shapes[0][0], 1]
                 special_range0 = [_process_range_vs_2(self.f_ranges[0][0]), (1, 1)]
                 special_shape1 = self.f_shapes[1]
                 special_range1 = [_process_range_vs_2(self.f_ranges[1][0]), _process_range_vs_2(self.f_ranges[1][1])]
-                special_range0, special_range1 = _process_range(special_range0, special_range1)
-                if is_legal_range(special_range0[0]) and is_legal_range(special_range0[1]) \
-                        and is_legal_range(special_range1[0]) and is_legal_range(special_range1[1]):
+                special_range0, special_range1 = _process_range_step1(special_range0, special_range1)
+                special_range0, special_range1 = _process_range_step2(special_range0, special_range1,
+                                                                      is_cut_reduce=True, mode="vec2_and_cut")
+                special_shape0, special_shape1 = _process_shape(special_range0, special_range1,
+                                                                special_shape0, special_shape1, is_copy=False)
+                if _is_legal_range(special_range0, special_range1) and _is_vec2(special_shape0, special_shape1):
                     res.append([gen_template(special_shape0, special_range0, "vec2_and_cut"),
                                 gen_template(special_shape1, special_range1, "vec2_and_cut")])
 
@@ -358,9 +533,12 @@ class WithReduceSoftmaxCrossEntropyWithLogitsClassifier:
                 special_range0 = [_process_range_vs_2(self.f_ranges[0][0]), (1, 1)]
                 special_shape1 = self.f_shapes[1]
                 special_range1 = [_process_range_vs_2(self.f_ranges[1][0]), _process_range_vs_2(self.f_ranges[1][1])]
-                special_range0, special_range1 = _process_range(special_range0, special_range1)
-                if is_legal_range(special_range0[0]) and is_legal_range(special_range0[1]) \
-                        and is_legal_range(special_range1[0]) and is_legal_range(special_range1[1]):
+                special_range0, special_range1 = _process_range_step1(special_range0, special_range1)
+                special_range0, special_range1 = _process_range_step2(special_range0, special_range1,
+                                                                      is_cut_reduce=False, mode="vec2")
+                special_shape0, special_shape1 = _process_shape(special_range0, special_range1,
+                                                                special_shape0, special_shape1, is_copy=False)
+                if _is_legal_range(special_range0, special_range1) and _is_vec2(special_shape0, special_shape1):
                     res.append([gen_template(special_shape0, special_range0, "vec2"),
                                 gen_template(special_shape1, special_range1, "vec2")])
 
@@ -368,9 +546,12 @@ class WithReduceSoftmaxCrossEntropyWithLogitsClassifier:
                 special_range0 = [_process_range_vs_2(self.f_ranges[0][0]), _process_range_vs_2(self.f_ranges[0][1])]
                 special_shape1 = [self.f_shapes[1][0], 1]
                 special_range1 = [_process_range_vs_2(self.f_ranges[1][0]), (1, 1)]
-                special_range0, special_range1 = _process_range(special_range0, special_range1)
-                if is_legal_range(special_range0[0]) and is_legal_range(special_range0[1]) \
-                        and is_legal_range(special_range1[0]) and is_legal_range(special_range1[1]):
+                special_range0, special_range1 = _process_range_step1(special_range0, special_range1)
+                special_range0, special_range1 = _process_range_step2(special_range0, special_range1,
+                                                                      is_cut_reduce=True, mode="vec8_and_cut")
+                special_shape0, special_shape1 = _process_shape(special_range0, special_range1,
+                                                                special_shape0, special_shape1, is_copy=False)
+                if _is_legal_range(special_range0, special_range1) and _is_vec8(special_shape0, special_shape1):
                     res.append([gen_template(special_shape0, special_range0, "vec8_and_cut"),
                                 gen_template(special_shape1, special_range1, "vec8_and_cut")])
 
@@ -378,34 +559,46 @@ class WithReduceSoftmaxCrossEntropyWithLogitsClassifier:
                 special_range0 = [_process_range_vs_2(self.f_ranges[0][0]), _process_range_vs_2(self.f_ranges[0][1])]
                 special_shape1 = [self.f_shapes[1][0], 1]
                 special_range1 = [_process_range_vs_2(self.f_ranges[1][0]), (1, 1)]
-                special_range0, special_range1 = _process_range(special_range0, special_range1)
-                if is_legal_range(special_range0[0]) and is_legal_range(special_range0[1]) \
-                        and is_legal_range(special_range1[0]) and is_legal_range(special_range1[1]):
+                special_range0, special_range1 = _process_range_step1(special_range0, special_range1)
+                special_range0, special_range1 = _process_range_step2(special_range0, special_range1,
+                                                                      is_cut_reduce=False, mode="vec8")
+                special_shape0, special_shape1 = _process_shape(special_range0, special_range1,
+                                                                special_shape0, special_shape1, is_copy=False)
+                if _is_legal_range(special_range0, special_range1) and _is_vec8(special_shape0, special_shape1):
                     res.append([gen_template(special_shape0, special_range0, "vec8"),
                                 gen_template(special_shape1, special_range1, "vec8")])
                 return res
 
             if tail_may_broadcast and batch_may_broadcast:
                 res = []
-                res.append([gen_template(self.f_shapes[0], self.f_ranges[0], ORIGINAL_AND_CUT),
-                            gen_template(self.f_shapes[1], self.f_ranges[1], ORIGINAL_AND_CUT)])
+                special_range0, special_range1 = _process_range_step1(self.f_ranges[0], self.f_ranges[1])
+                special_range0, special_range1 = _process_range_step2(special_range0, special_range1,
+                                                                      is_cut_reduce=True, mode=COPY_AND_CUT)
+                special_shape0, special_shape1 = _process_shape(special_range0, special_range1,
+                                                                self.f_shapes[0], self.f_shapes[1], is_copy=True)
+                if _is_legal_range(special_range0, special_range1) and _is_copy(special_shape0, special_shape1):
+                    res.append([gen_template(special_shape0, special_range0, COPY_AND_CUT),
+                                gen_template(special_shape1, special_range1, COPY_AND_CUT)])
 
-                res.append([gen_template(self.f_shapes[0], self.f_ranges[0], ORIGINAL),
-                            gen_template(self.f_shapes[1], self.f_ranges[1], ORIGINAL)])
-
-                res.append([gen_template(self.f_shapes[0], self.f_ranges[0], COPY_AND_CUT),
-                            gen_template(self.f_shapes[1], self.f_ranges[1], COPY_AND_CUT)])
-
-                res.append([gen_template(self.f_shapes[0], self.f_ranges[0], COPY),
-                            gen_template(self.f_shapes[1], self.f_ranges[1], COPY)])
+                special_range0, special_range1 = _process_range_step1(self.f_ranges[0], self.f_ranges[1])
+                special_range0, special_range1 = _process_range_step2(special_range0, special_range1,
+                                                                      is_cut_reduce=False, mode=COPY)
+                special_shape0, special_shape1 = _process_shape(special_range0, special_range1,
+                                                                self.f_shapes[0], self.f_shapes[1], is_copy=True)
+                if _is_legal_range(special_range0, special_range1) and _is_copy(special_shape0, special_shape1):
+                    res.append([gen_template(special_shape0, special_range0, COPY),
+                                gen_template(special_shape1, special_range1, COPY)])
 
                 special_shape0 = [1, self.f_shapes[0][1]]
                 special_range0 = [(1, 1), _process_range_vs_2(self.f_ranges[0][1])]
                 special_shape1 = self.f_shapes[1]
                 special_range1 = [_process_range_vs_2(self.f_ranges[1][0]), _process_range_vs_2(self.f_ranges[1][1])]
-                special_range0, special_range1 = _process_range(special_range0, special_range1)
-                if is_legal_range(special_range0[0]) and is_legal_range(special_range0[1]) \
-                        and is_legal_range(special_range1[0]) and is_legal_range(special_range1[1]):
+                special_range0, special_range1 = _process_range_step1(special_range0, special_range1)
+                special_range0, special_range1 = _process_range_step2(special_range0, special_range1,
+                                                                      is_cut_reduce=True, mode="vec1_and_cut")
+                special_shape0, special_shape1 = _process_shape(special_range0, special_range1,
+                                                                special_shape0, special_shape1, is_copy=False)
+                if _is_legal_range(special_range0, special_range1) and _is_vec1(special_shape0, special_shape1):
                     res.append([gen_template(special_shape0, special_range0, "vec1_and_cut"),
                                 gen_template(special_shape1, special_range1, "vec1_and_cut")])
 
@@ -413,9 +606,12 @@ class WithReduceSoftmaxCrossEntropyWithLogitsClassifier:
                 special_range0 = [(1, 1), _process_range_vs_2(self.f_ranges[0][1])]
                 special_shape1 = self.f_shapes[1]
                 special_range1 = [_process_range_vs_2(self.f_ranges[1][0]), _process_range_vs_2(self.f_ranges[1][1])]
-                special_range0, special_range1 = _process_range(special_range0, special_range1)
-                if is_legal_range(special_range0[0]) and is_legal_range(special_range0[1]) \
-                        and is_legal_range(special_range1[0]) and is_legal_range(special_range1[1]):
+                special_range0, special_range1 = _process_range_step1(special_range0, special_range1)
+                special_range0, special_range1 = _process_range_step2(special_range0, special_range1,
+                                                                      is_cut_reduce=False, mode="vec1")
+                special_shape0, special_shape1 = _process_shape(special_range0, special_range1,
+                                                                special_shape0, special_shape1, is_copy=False)
+                if _is_legal_range(special_range0, special_range1) and _is_vec1(special_shape0, special_shape1):
                     res.append([gen_template(special_shape0, special_range0, "vec1"),
                                 gen_template(special_shape1, special_range1, "vec1")])
 
@@ -423,9 +619,12 @@ class WithReduceSoftmaxCrossEntropyWithLogitsClassifier:
                 special_range0 = [_process_range_vs_2(self.f_ranges[0][0]), _process_range_vs_2(self.f_ranges[0][1])]
                 special_shape1 = [1, self.f_shapes[1][1]]
                 special_range1 = [(1, 1), _process_range_vs_2(self.f_ranges[1][1])]
-                special_range0, special_range1 = _process_range(special_range0, special_range1)
-                if is_legal_range(special_range0[0]) and is_legal_range(special_range0[1]) \
-                        and is_legal_range(special_range1[0]) and is_legal_range(special_range1[1]):
+                special_range0, special_range1 = _process_range_step1(special_range0, special_range1)
+                special_range0, special_range1 = _process_range_step2(special_range0, special_range1,
+                                                                      is_cut_reduce=True, mode="vec4_and_cut")
+                special_shape0, special_shape1 = _process_shape(special_range0, special_range1,
+                                                                special_shape0, special_shape1, is_copy=False)
+                if _is_legal_range(special_range0, special_range1) and _is_vec4(special_shape0, special_shape1):
                     res.append([gen_template(special_shape0, special_range0, "vec4_and_cut"),
                                 gen_template(special_shape1, special_range1, "vec4_and_cut")])
 
@@ -433,9 +632,12 @@ class WithReduceSoftmaxCrossEntropyWithLogitsClassifier:
                 special_range0 = [_process_range_vs_2(self.f_ranges[0][0]), _process_range_vs_2(self.f_ranges[0][1])]
                 special_shape1 = [1, self.f_shapes[1][1]]
                 special_range1 = [(1, 1), _process_range_vs_2(self.f_ranges[1][1])]
-                special_range0, special_range1 = _process_range(special_range0, special_range1)
-                if is_legal_range(special_range0[0]) and is_legal_range(special_range0[1]) \
-                        and is_legal_range(special_range1[0]) and is_legal_range(special_range1[1]):
+                special_range0, special_range1 = _process_range_step1(special_range0, special_range1)
+                special_range0, special_range1 = _process_range_step2(special_range0, special_range1,
+                                                                      is_cut_reduce=False, mode="vec4")
+                special_shape0, special_shape1 = _process_shape(special_range0, special_range1,
+                                                                special_shape0, special_shape1, is_copy=False)
+                if _is_legal_range(special_range0, special_range1) and _is_vec4(special_shape0, special_shape1):
                     res.append([gen_template(special_shape0, special_range0, "vec4"),
                                 gen_template(special_shape1, special_range1, "vec4")])
 
@@ -443,9 +645,12 @@ class WithReduceSoftmaxCrossEntropyWithLogitsClassifier:
                 special_range0 = [_process_range_vs_2(self.f_ranges[0][0]), (1, 1)]
                 special_shape1 = self.f_shapes[1]
                 special_range1 = [_process_range_vs_2(self.f_ranges[1][0]), _process_range_vs_2(self.f_ranges[1][1])]
-                special_range0, special_range1 = _process_range(special_range0, special_range1)
-                if is_legal_range(special_range0[0]) and is_legal_range(special_range0[1]) \
-                        and is_legal_range(special_range1[0]) and is_legal_range(special_range1[1]):
+                special_range0, special_range1 = _process_range_step1(special_range0, special_range1)
+                special_range0, special_range1 = _process_range_step2(special_range0, special_range1,
+                                                                      is_cut_reduce=True, mode="vec2_and_cut")
+                special_shape0, special_shape1 = _process_shape(special_range0, special_range1,
+                                                                special_shape0, special_shape1, is_copy=False)
+                if _is_legal_range(special_range0, special_range1) and _is_vec2(special_shape0, special_shape1):
                     res.append([gen_template(special_shape0, special_range0, "vec2_and_cut"),
                                 gen_template(special_shape1, special_range1, "vec2_and_cut")])
 
@@ -453,9 +658,12 @@ class WithReduceSoftmaxCrossEntropyWithLogitsClassifier:
                 special_range0 = [_process_range_vs_2(self.f_ranges[0][0]), (1, 1)]
                 special_shape1 = self.f_shapes[1]
                 special_range1 = [_process_range_vs_2(self.f_ranges[1][0]), _process_range_vs_2(self.f_ranges[1][1])]
-                special_range0, special_range1 = _process_range(special_range0, special_range1)
-                if is_legal_range(special_range0[0]) and is_legal_range(special_range0[1]) \
-                        and is_legal_range(special_range1[0]) and is_legal_range(special_range1[1]):
+                special_range0, special_range1 = _process_range_step1(special_range0, special_range1)
+                special_range0, special_range1 = _process_range_step2(special_range0, special_range1,
+                                                                      is_cut_reduce=False, mode="vec2")
+                special_shape0, special_shape1 = _process_shape(special_range0, special_range1,
+                                                                special_shape0, special_shape1, is_copy=False)
+                if _is_legal_range(special_range0, special_range1) and _is_vec2(special_shape0, special_shape1):
                     res.append([gen_template(special_shape0, special_range0, "vec2"),
                                 gen_template(special_shape1, special_range1, "vec2")])
 
@@ -463,9 +671,12 @@ class WithReduceSoftmaxCrossEntropyWithLogitsClassifier:
                 special_range0 = [_process_range_vs_2(self.f_ranges[0][0]), _process_range_vs_2(self.f_ranges[0][1])]
                 special_shape1 = [self.f_shapes[1][0], 1]
                 special_range1 = [_process_range_vs_2(self.f_ranges[1][0]), (1, 1)]
-                special_range0, special_range1 = _process_range(special_range0, special_range1)
-                if is_legal_range(special_range0[0]) and is_legal_range(special_range0[1]) \
-                        and is_legal_range(special_range1[0]) and is_legal_range(special_range1[1]):
+                special_range0, special_range1 = _process_range_step1(special_range0, special_range1)
+                special_range0, special_range1 = _process_range_step2(special_range0, special_range1,
+                                                                      is_cut_reduce=True, mode="vec8_and_cut")
+                special_shape0, special_shape1 = _process_shape(special_range0, special_range1,
+                                                                special_shape0, special_shape1, is_copy=False)
+                if _is_legal_range(special_range0, special_range1) and _is_vec8(special_shape0, special_shape1):
                     res.append([gen_template(special_shape0, special_range0, "vec8_and_cut"),
                                 gen_template(special_shape1, special_range1, "vec8_and_cut")])
 
@@ -473,9 +684,12 @@ class WithReduceSoftmaxCrossEntropyWithLogitsClassifier:
                 special_range0 = [_process_range_vs_2(self.f_ranges[0][0]), _process_range_vs_2(self.f_ranges[0][1])]
                 special_shape1 = [self.f_shapes[1][0], 1]
                 special_range1 = [_process_range_vs_2(self.f_ranges[1][0]), (1, 1)]
-                special_range0, special_range1 = _process_range(special_range0, special_range1)
-                if is_legal_range(special_range0[0]) and is_legal_range(special_range0[1]) \
-                        and is_legal_range(special_range1[0]) and is_legal_range(special_range1[1]):
+                special_range0, special_range1 = _process_range_step1(special_range0, special_range1)
+                special_range0, special_range1 = _process_range_step2(special_range0, special_range1,
+                                                                      is_cut_reduce=False, mode="vec8")
+                special_shape0, special_shape1 = _process_shape(special_range0, special_range1,
+                                                                special_shape0, special_shape1, is_copy=False)
+                if _is_legal_range(special_range0, special_range1) and _is_vec8(special_shape0, special_shape1):
                     res.append([gen_template(special_shape0, special_range0, "vec8"),
                                 gen_template(special_shape1, special_range1, "vec8")])
 
@@ -483,9 +697,12 @@ class WithReduceSoftmaxCrossEntropyWithLogitsClassifier:
                 special_range0 = [(1, 1), _process_range_vs_2(self.f_ranges[0][1])]
                 special_shape1 = [self.f_shapes[1][0], 1]
                 special_range1 = [_process_range_vs_2(self.f_ranges[1][0]), (1, 1)]
-                special_range0, special_range1 = _process_range(special_range0, special_range1)
-                if is_legal_range(special_range0[0]) and is_legal_range(special_range0[1]) \
-                        and is_legal_range(special_range1[0]) and is_legal_range(special_range1[1]):
+                special_range0, special_range1 = _process_range_step1(special_range0, special_range1)
+                special_range0, special_range1 = _process_range_step2(special_range0, special_range1,
+                                                                      is_cut_reduce=True, mode="vec9_and_cut")
+                special_shape0, special_shape1 = _process_shape(special_range0, special_range1,
+                                                                special_shape0, special_shape1, is_copy=False)
+                if _is_legal_range(special_range0, special_range1) and _is_vec9(special_shape0, special_shape1):
                     res.append([gen_template(special_shape0, special_range0, "vec9_and_cut"),
                                 gen_template(special_shape1, special_range1, "vec9_and_cut")])
 
@@ -493,9 +710,12 @@ class WithReduceSoftmaxCrossEntropyWithLogitsClassifier:
                 special_range0 = [(1, 1), _process_range_vs_2(self.f_ranges[0][1])]
                 special_shape1 = [self.f_shapes[1][0], 1]
                 special_range1 = [_process_range_vs_2(self.f_ranges[1][0]), (1, 1)]
-                special_range0, special_range1 = _process_range(special_range0, special_range1)
-                if is_legal_range(special_range0[0]) and is_legal_range(special_range0[1]) \
-                        and is_legal_range(special_range1[0]) and is_legal_range(special_range1[1]):
+                special_range0, special_range1 = _process_range_step1(special_range0, special_range1)
+                special_range0, special_range1 = _process_range_step2(special_range0, special_range1,
+                                                                      is_cut_reduce=False, mode="vec9")
+                special_shape0, special_shape1 = _process_shape(special_range0, special_range1,
+                                                                special_shape0, special_shape1, is_copy=False)
+                if _is_legal_range(special_range0, special_range1) and _is_vec9(special_shape0, special_shape1):
                     res.append([gen_template(special_shape0, special_range0, "vec9"),
                                 gen_template(special_shape1, special_range1, "vec9")])
 
@@ -503,9 +723,12 @@ class WithReduceSoftmaxCrossEntropyWithLogitsClassifier:
                 special_range0 = [_process_range_vs_2(self.f_ranges[0][0]), (1, 1)]
                 special_shape1 = [1, self.f_shapes[1][1]]
                 special_range1 = [(1, 1), _process_range_vs_2(self.f_ranges[1][1])]
-                special_range0, special_range1 = _process_range(special_range0, special_range1)
-                if is_legal_range(special_range0[0]) and is_legal_range(special_range0[1]) \
-                        and is_legal_range(special_range1[0]) and is_legal_range(special_range1[1]):
+                special_range0, special_range1 = _process_range_step1(special_range0, special_range1)
+                special_range0, special_range1 = _process_range_step2(special_range0, special_range1,
+                                                                      is_cut_reduce=True, mode="vec6_and_cut")
+                special_shape0, special_shape1 = _process_shape(special_range0, special_range1,
+                                                                special_shape0, special_shape1, is_copy=False)
+                if _is_legal_range(special_range0, special_range1) and _is_vec6(special_shape0, special_shape1):
                     res.append([gen_template(special_shape0, special_range0, "vec6_and_cut"),
                                 gen_template(special_shape1, special_range1, "vec6_and_cut")])
 
@@ -513,12 +736,16 @@ class WithReduceSoftmaxCrossEntropyWithLogitsClassifier:
                 special_range0 = [_process_range_vs_2(self.f_ranges[0][0]), (1, 1)]
                 special_shape1 = [1, self.f_shapes[1][1]]
                 special_range1 = [(1, 1), _process_range_vs_2(self.f_ranges[1][1])]
-                special_range0, special_range1 = _process_range(special_range0, special_range1)
-                if is_legal_range(special_range0[0]) and is_legal_range(special_range0[1]) \
-                        and is_legal_range(special_range1[0]) and is_legal_range(special_range1[1]):
+                special_range0, special_range1 = _process_range_step1(special_range0, special_range1)
+                special_range0, special_range1 = _process_range_step2(special_range0, special_range1,
+                                                                      is_cut_reduce=False, mode="vec6")
+                special_shape0, special_shape1 = _process_shape(special_range0, special_range1,
+                                                                special_shape0, special_shape1, is_copy=False)
+                if _is_legal_range(special_range0, special_range1) and _is_vec6(special_shape0, special_shape1):
                     res.append([gen_template(special_shape0, special_range0, "vec6"),
                                 gen_template(special_shape1, special_range1, "vec6")])
                 return res
+
 
     def _normalize(self):
         def clone_complete(_in):

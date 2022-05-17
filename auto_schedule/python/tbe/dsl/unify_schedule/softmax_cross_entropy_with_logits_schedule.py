@@ -21,6 +21,8 @@ from typing import Optional
 
 import tbe
 from tbe import tvm
+from tbe.dsl.base import operation
+from tbe.dsl.base.operation import register_schedule
 import te.lang.cce
 from te import platform as cce
 
@@ -34,8 +36,7 @@ from .constants import TERNARY_INSNS
 
 from . import util
 from .softmax_cross_entropy_with_logits_tilingcase import TilingStrategy
-from tbe.dsl.base.operation import register_schedule
-from tbe.dsl.base import operation
+
 
 # block size in D architecture
 BLOCK_SIZE_BYTE = 32
@@ -720,11 +721,8 @@ class SoftmaxCrossEntropyWithLogitsSchedule:
             cast_2 = broadcast_ext.op.input_tensors[0]
             reduce_2 = cast_2.op.input_tensors[0]
 
-        is_data_labels_broadcast = self._mode in (
-            "original_and_cut", "vec6_and_cut", "vec9_and_cut", "copy_and_cut", "vec4_and_cut", "vec8_and_cut")
-
-        is_data_features_broadcast = self._mode in (
-            "original_and_cut", "vec6_and_cut", "vec9_and_cut", "copy_and_cut", "vec1_and_cut", "vec2_and_cut")
+        is_data_labels_broadcast = self._mode in ("vec6_and_cut", "vec9_and_cut", "vec4_and_cut", "vec8_and_cut")
+        is_data_features_broadcast = self._mode in ("vec6_and_cut", "vec9_and_cut", "vec1_and_cut", "vec2_and_cut")
 
         if self._out.dtype == "float32":
             if is_data_labels_broadcast:
@@ -846,7 +844,7 @@ class SoftmaxCrossEntropyWithLogitsSchedule:
         if self._out.dtype != "float32":
             cast_3_ub = s.cache_write(cast_3, "local.UB")
             cast_2_ub = s.cache_write(cast_2, "local.UB")
-    
+
         # compute_inline
         s[reduce_0].compute_inline()
         s[broadcast_tensor_2].compute_inline()
@@ -919,7 +917,7 @@ class SoftmaxCrossEntropyWithLogitsSchedule:
                     s[broadcast_tensor_0].split(s[broadcast_tensor_0].op.axis[1], factor=self._reduce_ub_tiling_factor)
                 s[broadcast_tensor_0].reorder(broadcast_tensor_0_axis_0_b, broadcast_tensor_0_axis_0_i,
                                               broadcast_tensor_0_axis_1_u, broadcast_tensor_0_axis_1_i)
-            
+
             if is_data_labels_broadcast:
                 broadcast_tensor_1_axis_0_b, broadcast_tensor_1_axis_0_i = \
                     s[broadcast_tensor_1].split(s[broadcast_tensor_1].op.axis[0],
