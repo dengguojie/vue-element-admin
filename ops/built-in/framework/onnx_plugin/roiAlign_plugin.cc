@@ -85,10 +85,11 @@ Status ParseOpToGraphRoiAlign(const ge::Operator& op, Graph& graph) {
 
   std::vector<int64_t> axes = {-1};
   auto unsqueeze_op = op::Unsqueeze("unsqueeze").set_input_x(data2).set_attr_axes(axes);
-  auto cast_op = op::Cast("cast").set_input_x(unsqueeze_op).set_attr_dst_type(DT_FLOAT16);
+  auto cast_op = op::Cast("cast").set_input_x(unsqueeze_op).set_attr_dst_type(DT_FLOAT);
+  auto cast1_op = op::Cast("cast1").set_input_x(data1).set_attr_dst_type(DT_FLOAT);
   auto concat_op = op::Concat("concat").create_dynamic_input_x(2)
                                          .set_dynamic_input_x(0, cast_op)
-                                         .set_dynamic_input_x(1, data1)
+                                         .set_dynamic_input_x(1, cast1_op)
                                          .set_input_concat_dim(dim_const_op)
                                          .set_attr_N(2);
   
