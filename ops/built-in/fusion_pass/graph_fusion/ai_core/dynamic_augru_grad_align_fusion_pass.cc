@@ -201,7 +201,7 @@ void DynamicAUGRUGradAlignFusionPass::AddHiddenGradNodeEdge(map<std::string, ge:
                           hiddenGradNode->GetInDataAnchor(HIDDENGRAD_INPUT_INDEX["new"]));
   ge::GraphUtils::AddEdge(dynamicAUGRUGradNode->GetInDataAnchor(INPUT_INDEX["hidden_new"])->GetPeerOutAnchor(),
                           hiddenGradNode->GetInDataAnchor(HIDDENGRAD_INPUT_INDEX["hidden_new"]));
-  if(hasSeqLength){
+  if (hasSeqLength) {
     ge::GraphUtils::AddEdge(genMaskNode->GetOutDataAnchor(0),
                             hiddenGradNode->GetInDataAnchor(HIDDENGRAD_INPUT_INDEX["seq_mask"]));
   }
@@ -249,7 +249,7 @@ ge::NodePtr DynamicAUGRUGradAlignFusionPass::AddOneHiddenGradNode(const string& 
   hiddenGradDesc->AddInputDesc("new", dynamicAUGRUGradDesc->GetInputDesc(INPUT_INDEX["new"]).Clone());
   hiddenGradDesc->AddInputDesc("hidden_new", dynamicAUGRUGradDesc->GetInputDesc(INPUT_INDEX["hidden_new"]).Clone());
   // seq_mask has same shapeDesc with hidden_new
-  if(hasSeqLength){
+  if (hasSeqLength) {
     hiddenGradDesc->AddInputDesc("seq_mask", dynamicAUGRUGradDesc->GetInputDesc(INPUT_INDEX["hidden_new"]).Clone());
   }
 
@@ -367,7 +367,7 @@ vector<vector<ge::NodePtr>> DynamicAUGRUGradAlignFusionPass::AddTLoopNode(map<st
   ge::NodePtr lastMatmulNode = nullptr;
 
   ge::NodePtr genMaskNode = nullptr;
-  if(hasSeqLength){
+  if (hasSeqLength) {
     genMaskNode = AddGenMaskNode(dynamicAUGRUGradNode, graph, newNodes, failStatus);
   }
 
@@ -973,9 +973,9 @@ Status DynamicAUGRUGradAlignFusionPass::AddDxtMatmulNode(ge::NodePtr dynamicAUGR
   return failStatus;
 }
 
-ge::NodePtr DynamicAUGRUGradAlignFusionPass::AddDwxMatmulNode(ge::NodePtr dynamicAUGRUGradNode, ge::NodePtr dgateXConcatNode,
-                                                              ge::ComputeGraph &graph, vector<ge::NodePtr> &newNodes,
-                                                              bool &failStatus) {
+ge::NodePtr DynamicAUGRUGradAlignFusionPass::AddDwxMatmulNode(ge::NodePtr dynamicAUGRUGradNode,
+                                                              ge::NodePtr dgateXConcatNode, ge::ComputeGraph &graph,
+                                                              vector<ge::NodePtr> &newNodes, bool &failStatus) {
   // create matmul desc
   ge::OpDescPtr matmulDesc = nullptr;
   FUSION_PASS_MAKE_SHARED(
@@ -1406,7 +1406,8 @@ Status DynamicAUGRUGradAlignFusionPass::AddDwAttReduceSumNode(ge::NodePtr augruG
   return SUCCESS;
 }
 
-Status DynamicAUGRUGradAlignFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& newNodes) {
+Status DynamicAUGRUGradAlignFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
+                                               vector<ge::NodePtr> &newNodes) {
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Define DynamicAUGRUGradAlignFusionPass fusion begin.");
   bool isFailure = false;
   // get dynamicAUGRUGradNode
