@@ -2998,8 +2998,6 @@ unkown:
       - ops/built-in/tbe/impl/dynamic/replication_pad_v3.py
       - ops/built-in/tbe/impl/dynamic/unsorted_segment_min.py
       - ops/built-in/tbe/impl/dynamic/tanh_grad.py
-      - ops/built-in/tbe/impl/dynamic/max_pool_grad_with_argmaxv2.py
-      - ops/built-in/tbe/impl/dynamic/max_pool_grad_with_argmax_v2_resnet50.py
       - ops/built-in/tbe/impl/dynamic/mod.py
       - ops/built-in/tbe/impl/dynamic/atan.py
       - ops/built-in/tbe/impl/dynamic/gather_elements.py
@@ -4043,6 +4041,8 @@ pytorch:
       - ops/built-in/op_proto/correlation.cc
       - ops/built-in/op_proto/inc/correlation.h
       - ops/built-in/tbe/impl/dynamic/hardtanh_grad.py
+      - ops/built-in/tbe/impl/dynamic/max_pool_grad_with_argmaxv2.py
+      - ops/built-in/tbe/impl/dynamic/max_pool_grad_with_argmax_v2_resnet50.py
     unrelease:
       - ops/built-in/tests/ut/graph_fusion/ai_core/lstmp_fusion_test.cpp
       - ops/built-in/tests/ut/graph_fusion/ai_core/dynamic_rnn_v2_grad_fusion_test.cpp

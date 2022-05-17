@@ -318,7 +318,7 @@ class MaxpoolGrad:
     def init_workspace(self):
         """Init temporary storage of overlap in workspace
         """
-        self.overlap_gm = self.tik_instance.Tensor("float32", (Constant.CORE_NUM * Constant.WORKSPACE_ONE_CORE,), 
+        self.overlap_gm = self.tik_instance.Tensor("float32", (Constant.CORE_NUM * Constant.WORKSPACE_ONE_CORE // 4,), 
                                                    name="overlap_gm", scope=tik.scope_gm, is_workspace=True)
 
     def init_ub_tensor(self):
@@ -1382,7 +1382,7 @@ class MaxpoolGrad:
         overlap_offset = self.tik_instance.Scalar(dtype='int64', name='overlap_offset')
         with self.tik_instance.if_scope(self.stride_h < self.kh):
             overlap_shape_w.set_as((self.wi + pad_left + pad_right) * Constant.C0)
-            overlap_offset.set_as(core_idx * Constant.WORKSPACE_ONE_CORE)
+            overlap_offset.set_as(core_idx * Constant.WORKSPACE_ONE_CORE // 4)
             # save every h overlap on gm
             overlap_buffer = self.overlap_gm
 
