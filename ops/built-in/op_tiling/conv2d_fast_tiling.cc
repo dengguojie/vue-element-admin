@@ -785,6 +785,7 @@ void FastTiling::WeightL1ToL0Reset(Tiling &tiling)
         tilingRangeL0_.kL0.at(l0Data_.kL0Index) == tiling.kBL1ci) {
         // also means nBl1 zero.
         tiling.nBL1Value = 0;
+        tiling.nBL1 = 0;
         tiling.kBL1ci = 0;
         // tiling.kBL1 is tiling.kBL1ci * reduceKAxisAL1_KhDilKwDilCi0_
         tiling.kBL1 = 0;
