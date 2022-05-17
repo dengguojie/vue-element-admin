@@ -34,6 +34,7 @@ static const char PATTERN_MATMUL[] = "batch_matmul";
 static const char PATTERN_REDUCESUM[] = "reduce_sum_d";
 static const char PATTERN_CAST[] = "cast";
 static const int kNumTwo = 2;
+static const int kUintMax16 = 65535;
 
 /*
  * @brief:  define matmul op fusion pattern
@@ -118,15 +119,18 @@ Status MatmulReduceSumUbFusion::GetFusionNodes(const BufferFusionMapping& mappin
       return SUCCESS;
     }
     vector<int64_t> matmul_x1_shape = matmulNode->GetOpDesc()->GetInputDesc(0).GetOriginShape().GetDims();
-    if (matmul_x1_shape.size() > kNumTwo && matmul_x1_shape[0] == 1) {
-      OP_LOGD(FUSED_OP_TYPE, "Do not support BatchMatMul shape batch=1.");
-      return SUCCESS;
-    }
+    // bmm+reducesum cannot support batch larger than 65535, due to hardware limitation.
+    bool not_support_x1 =
+      matmul_x1_shape.size() > kNumTwo && (matmul_x1_shape[0] == 1 || matmul_x1_shape[0] > kUintMax16);
+    FUSION_PASS_CHECK(not_support_x1,
+                      OP_LOGD(FUSED_OP_TYPE, "Do not support BatchMatMul input x1 batch=1 or batch > UINT16MAX"),
+                      return SUCCESS);
     vector<int64_t> matmul_x2_shape = matmulNode->GetOpDesc()->GetInputDesc(1).GetOriginShape().GetDims();
-    if (matmul_x2_shape.size() > kNumTwo && matmul_x2_shape[0] == 1) {
-      OP_LOGD(FUSED_OP_TYPE, "Do not support BatchMatMul shape batch=1.");
-      return SUCCESS;
-    }
+    bool not_support_x2 =
+      matmul_x2_shape.size() > kNumTwo && (matmul_x2_shape[0] == 1 || matmul_x2_shape[0] > kUintMax16);
+    FUSION_PASS_CHECK(not_support_x2,
+                      OP_LOGD(FUSED_OP_TYPE, "Do not support BatchMatMul input x2 batch=1 or batch > UINT16MAX"),
+                      return SUCCESS);
   }
 
   for (auto reduceNode : reduceSumDNodes) {

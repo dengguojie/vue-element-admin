@@ -572,7 +572,7 @@ def test_mock_cases(test_args):
     with patch("tbe.common.platform.platform_info.get_soc_spec", MagicMock(side_effect=side_effects)):
         with patch("tbe.common.platform.platform_info.intrinsic_check_support", MagicMock(side_effect=side_effects)):
             import tbe
-            with tbe.common.context.op_context.OpContext("pre-static"):    
+            with tbe.common.context.op_context.OpContext("pre-static"):
                 test_matmul_ND2ND_fp16()
                 test_matmul_ND2ND_int8()
                 test_matmul_ND2ND_fp32()

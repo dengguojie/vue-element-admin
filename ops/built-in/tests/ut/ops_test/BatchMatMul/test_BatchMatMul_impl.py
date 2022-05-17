@@ -561,7 +561,6 @@ def test_matmul_api(test_arg):
         "batch_shape_out": [2]
     }
     tbe.matmul(tensor_a, tensor_b, trans_a=True, trans_b=True, format_a="FRACTAL_NZ", format_b="FRACTAL_NZ", attrs=matmul_attr)
-
 ut_case.add_cust_test_func(test_func=test_matmul_api)
 
 

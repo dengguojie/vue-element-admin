@@ -138,15 +138,16 @@ class GemmSchedule:
         "int42int32": "int32",
         "int82fp32": "float32"
     }
-    emit_fusion_insn_map = {"dequant_NZ": "phony_insn",
-                            "cast_f16_ub": "vector_conv",
-                            "input_ub": "phony_insn",
-                            "reform_by_vmuls": "vector_muls",
-                            "scale_sqrt_ub": "vector_muls",
-                            "offset_ub": "vector_adds",
-                            "cast_i8_ub": "vector_conv",
-                            "reform_by_vadds": "vector_adds"
-                            }
+    emit_fusion_insn_map = {
+        "dequant_NZ": "phony_insn",
+        "cast_f16_ub": "vector_conv",
+        "input_ub": "phony_insn",
+        "reform_by_vmuls": "vector_muls",
+        "scale_sqrt_ub": "vector_muls",
+        "offset_ub": "vector_adds",
+        "cast_i8_ub": "vector_conv",
+        "reform_by_vadds": "vector_adds"
+    }
 
     reform_tensor_tag_list = ("reform_by_vadds",
                               "reform_by_vmuls",
@@ -245,6 +246,8 @@ class GemmSchedule:
 
     IDX_KAL1 = 0
     IDX_MULTI_M1 = 1
+
+    UINT16_MAX = 65535
 
     TILING_RANGE = {
         "range_block_dim": (1, 32),
@@ -2294,7 +2297,8 @@ class GemmSchedule:
             "kernel_name": self.kernel_name,
             "scalar_size": scalar_size,
             "batch_type" : (int(self.status_controller.batch_broadcast_flag) * 4 +
-                            int(self.status_controller.have_batch_a) * 2 + int(self.status_controller.have_batch_b))
+                            int(self.status_controller.have_batch_a) * 2 + int(self.status_controller.have_batch_b)),
+            "reduce_fusion": int(self.status_controller.reduce_fusion)
         }
         self._print_debug(info_dict, "info_dict")
         if self.is_dynamic:

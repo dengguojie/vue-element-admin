@@ -53,7 +53,7 @@ def test_matmul_ND2ND_fp32_1():
         tensor_b_ori = tvm.placeholder((96, 32), name="tensor_b_ori", dtype="float32")
         tensor_a = trans_data_compute(tensor_a_ori, None, src_format="ND", dst_format="FRACTAL_NZ")
         tensor_b = trans_data_compute(tensor_b_ori, None, src_format="ND", dst_format="FRACTAL_NZ")
-        output_y = {"shape": (10, 12, 4, 16, 8), "dtype": "float32", "ori_shape": (10, 64, 96), 
+        output_y = {"shape": (10, 12, 4, 16, 8), "dtype": "float32", "ori_shape": (10, 64, 96),
                     "format": "ND", "ori_format": "ND"}
         matmul_out = batch_matmul_compute(tensor_a, tensor_b, None, None, output_y, False, True)
         out = trans_data_compute(matmul_out, None, src_format="FRACTAL_NZ", dst_format="ND")
@@ -111,7 +111,7 @@ def test_matmul_hf32():
             tensor_b_ori = tvm.placeholder((96, 32), name="tensor_b_ori", dtype="float32")
             tensor_a = trans_data_compute(tensor_a_ori, None, src_format="ND", dst_format="FRACTAL_NZ")
             tensor_b = trans_data_compute(tensor_b_ori, None, src_format="ND", dst_format="FRACTAL_NZ")
-            output_y = {"shape": (10, 12, 4, 16, 8), "dtype": "float32", "ori_shape": (10, 64, 96), 
+            output_y = {"shape": (10, 12, 4, 16, 8), "dtype": "float32", "ori_shape": (10, 64, 96),
                         "format": "ND", "ori_format": "ND"}
             matmul_out = batch_matmul_compute(tensor_a, tensor_b, None, None, output_y, False, True)
             out = trans_data_compute(matmul_out, None, src_format="FRACTAL_NZ", dst_format="ND")
@@ -185,7 +185,8 @@ def test_matmul_fixpipe_4():
             output_y = {"shape": (2, 3, 2, 2, 16, 16), "dtype": "int32", "ori_shape": (2, 3, 32, 32), "format": "FRACTAL_NZ", "ori_format": "ND"}
             matmul_out = batch_matmul_compute(x1, x2, bias, None, output_y, False, False, 0)
             deq = tvm.placeholder((1, 2, 1, 1, 16), name='deq', dtype="uint64", attrs={"ori_shape": (32, ), "format": "NC1HWC0", "ori_format": "ND"})
-            y = {"shape": (2, 3, 2, 2, 16, 16), "dtype": "float16", "ori_shape": (2, 3, 32, 32), "format": "FRACTAL_NZ", "ori_format": "ND"}
+            y = {"shape": (2, 3, 2, 2, 16, 16), "dtype": "float16", "ori_shape": (2, 3, 32, 32),
+                 "format": "FRACTAL_NZ", "ori_format": "ND"}
             res = fixpipe_compute(matmul_out, None, None, None, None, None, None, None, None, None, y, [], [], "")
             tensor_list = [x1, x2, bias, deq, res]
             sch = auto_schedule(res)
